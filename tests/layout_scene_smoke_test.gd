@@ -438,6 +438,8 @@ const GAME_SESSION_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/game_sess
 const GAME_SESSION_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/GameSessionRuntimeController.tscn"
 const GAME_SAVE_RUNTIME_COORDINATOR_SCRIPT := "res://scripts/runtime/game_save_runtime_coordinator.gd"
 const GAME_SAVE_RUNTIME_COORDINATOR_SCENE := "res://scenes/runtime/GameSaveRuntimeCoordinator.tscn"
+const V06_SAVE_OWNER_REGISTRY_BENCH_SCENE := "res://scenes/tools/V06SaveOwnerRegistryBench.tscn"
+const V06_LAYOUT_SAVE_QA_PATH := "user://test_runs/layout_save_v06.save"
 const GAME_SESSION_SAVE_OWNERSHIP_BENCH_SCRIPT := "res://scripts/tools/game_session_save_ownership_bench.gd"
 const GAME_SESSION_SAVE_OWNERSHIP_BENCH_SCENE := "res://scenes/tools/GameSessionSaveOwnershipBench.tscn"
 const GAME_SESSION_SAVE_OWNERSHIP_OUTPUT_DIR := "user://space_syndicate_design_qa/game_session_save_ownership/"
@@ -8227,16 +8229,20 @@ func _check_ruleset_v05_foundation_component() -> void:
 	_expect(not _variant_contains_callable(clock_snapshot) and not _variant_contains_object(clock_snapshot), "clock-domain registry snapshot stays pure data")
 	var handshake_packed := load(RULESET_SAVE_HANDSHAKE_V05_SCENE) as PackedScene
 	var handshake := handshake_packed.instantiate() if handshake_packed != null else null
-	_expect(handshake != null and handshake.has_method("inspect_envelope") and handshake.has_method("validate_v05_envelope") and handshake.has_method("compose_v05_envelope") and handshake.has_method("write_authorization") and handshake.has_method("debug_snapshot"), "RulesetSaveHandshakeService exposes the passive v0.5 envelope API")
+	_expect(handshake != null and handshake.has_method("inspect_envelope") and handshake.has_method("inspect_legacy") and handshake.has_method("validate_envelope") and handshake.has_method("compose_v06_envelope") and handshake.has_method("required_section_manifest") and handshake.has_method("write_authorization") and handshake.has_method("debug_snapshot"), "RulesetSaveHandshakeService exposes the strict v3/v0.6 envelope API")
 	if handshake != null:
 		var handshake_snapshot: Dictionary = handshake.call("debug_snapshot")
-		var legacy_inspection: Dictionary = handshake.call("inspect_envelope", {"save_version": 1}, "v0.5")
-		var v05_envelope: Dictionary = handshake.call("compose_v05_envelope", {"session_id": "layout_smoke"}, {"foundation": {"ready": true}})
-		var v05_validation: Dictionary = handshake.call("validate_v05_envelope", v05_envelope)
-		var no_downgrade: Dictionary = handshake.call("write_authorization", v05_envelope, {"save_version": 1})
-		_expect(bool(handshake_snapshot.get("passive_only", false)) and not bool(handshake_snapshot.get("production_save_path_owned", true)), "v0.5 save handshake is passive and owns no production save path")
-		_expect(str(legacy_inspection.get("classification", "")) == "legacy_v04" and not bool(legacy_inspection.get("can_resume", true)) and bool(v05_validation.get("valid", false)) and not bool(no_downgrade.get("allowed", true)), "save handshake recognizes v1, validates v0.5, and blocks cross-ruleset overwrite")
-		_expect(not _variant_contains_callable(v05_envelope) and not _variant_contains_object(v05_envelope), "v0.5 save envelope stays pure data")
+		var v1_inspection: Dictionary = handshake.call("inspect_legacy", {"version": 1, "players": []})
+		var v2_inspection: Dictionary = handshake.call("inspect_legacy", {"save_version": 2, "ruleset_id": "v0.5", "session": {}, "domains": {}})
+		var v06_envelope := _compose_v06_layout_save_envelope(handshake)
+		var v06_validation: Dictionary = handshake.call("validate_envelope", v06_envelope)
+		var unknown_owner_envelope := v06_envelope.duplicate(true)
+		(unknown_owner_envelope.get("sections", {}) as Dictionary)["unknown_owner"] = {"schema_version": 1}
+		var unknown_owner_validation: Dictionary = handshake.call("validate_envelope", unknown_owner_envelope)
+		_expect(int(handshake_snapshot.get("save_version", 0)) == 3 and str(handshake_snapshot.get("ruleset_id", "")) == "v0.6" and int(handshake_snapshot.get("required_section_count", 0)) == 18 and bool(handshake_snapshot.get("registry_valid", false)) and not bool(handshake_snapshot.get("legacy_resume_enabled", true)) and not bool(handshake_snapshot.get("production_save_path_owned", true)), "save handshake owns one strict 18-owner v3/v0.6 envelope without a production default path")
+		_expect(str(v1_inspection.get("classification", "")) == "legacy_v1" and str(v2_inspection.get("classification", "")) == "legacy_v2" and not bool(v1_inspection.get("can_resume", true)) and not bool(v2_inspection.get("can_resume", true)) and bool(v1_inspection.get("requires_backup", false)) and bool(v2_inspection.get("requires_backup", false)), "v1 and v2 saves are inspect-only and resume fail-closed")
+		_expect(bool(v06_validation.get("valid", false)) and (v06_envelope.get("sections", {}) as Dictionary).size() == 18 and not bool(unknown_owner_validation.get("valid", true)), "v3 validation requires exactly the registered 18 owners and rejects an unknown owner")
+		_expect(not _variant_contains_callable(v06_envelope) and not _variant_contains_object(v06_envelope), "v3 save envelope stays pure data")
 		handshake.free()
 	var bench_packed := load(RULESET_V05_FOUNDATION_BENCH_SCENE) as PackedScene
 	var bench := bench_packed.instantiate() if bench_packed != null else null
@@ -8295,7 +8301,7 @@ func _check_ruleset_v05_foundation_component() -> void:
 	var catalog_source := FileAccess.get_file_as_string("res://scripts/runtime/card_runtime_catalog_service.gd") + FileAccess.get_file_as_string("res://scenes/runtime/CardRuntimeCatalogService.tscn")
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 	_expect(bridge_source.contains("space_syndicate_ruleset_v04.tres") and not bridge_source.contains("space_syndicate_ruleset_v05.tres"), "production RulesetRuntimeBridge remains pinned to v0.4")
-	_expect(save_source.contains("const CURRENT_SAVE_VERSION := 1") and not save_source.contains("RulesetSaveHandshakeService"), "production GameSaveRuntimeCoordinator retains v1 behavior")
+	_expect(save_source.contains("const CURRENT_SAVE_VERSION := 3") and save_source.contains("const RULESET_ID := \"v0.6\"") and save_source.contains("const DEFAULT_SAVE_PATH := \"\""), "production GameSaveRuntimeCoordinator is v3/v0.6 and requires an explicit save path")
 	_expect(catalog_source.contains("card_runtime_catalog_v04.tres") and not catalog_source.contains("card_runtime_catalog_v05.tres"), "production CardRuntimeCatalogService remains pinned to v0.4")
 	_expect(not main_source.contains("space_syndicate_ruleset_v05") and not main_source.contains("RulesetSaveHandshakeService"), "main.gd has no v0.5 selector, fallback, or handshake owner")
 
@@ -8389,7 +8395,7 @@ func _check_ruleset_v06_region_infrastructure_foundation_component() -> void:
 	var active_catalog_scene := FileAccess.get_file_as_string("res://scenes/runtime/CardRuntimeCatalogService.tscn")
 	var save_source := FileAccess.get_file_as_string(GAME_SAVE_RUNTIME_COORDINATOR_SCRIPT)
 	_expect(main_source.sha256_text().to_upper() == "7F4AF6CA535051FB5189BDCD4273B990CE996464BFBCBE756A43BA7381673A62", "SS06-00 keeps production main.gd byte-for-byte unchanged")
-	_expect(active_ruleset_scene.contains("space_syndicate_ruleset_v04.tres") and not active_ruleset_scene.contains("space_syndicate_ruleset_v06.tres") and active_catalog_scene.contains("card_runtime_catalog_v04.tres") and save_source.contains("const CURRENT_SAVE_VERSION := 1"), "SS06-00 leaves production Ruleset, Card Catalog, and save owner on v0.4/v1")
+	_expect(active_ruleset_scene.contains("space_syndicate_ruleset_v04.tres") and not active_ruleset_scene.contains("space_syndicate_ruleset_v06.tres") and active_catalog_scene.contains("card_runtime_catalog_v04.tres") and save_source.contains("const CURRENT_SAVE_VERSION := 3") and save_source.contains("const RULESET_ID := \"v0.6\""), "SS06-00 preserves active Ruleset/Card Catalog compatibility while the save owner advances to v3/v0.6")
 
 
 func _check_player_text_v05_foundation_component() -> void:
@@ -8485,7 +8491,7 @@ func _check_player_text_v05_foundation_component() -> void:
 	var catalog_source := FileAccess.get_file_as_string("res://scripts/runtime/card_runtime_catalog_service.gd") + FileAccess.get_file_as_string("res://scenes/runtime/CardRuntimeCatalogService.tscn")
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 	_expect(bridge_source.contains("space_syndicate_ruleset_v04.tres") and not bridge_source.contains("player_text_v05"), "production RulesetRuntimeBridge does not consume Player Text v0.5")
-	_expect(save_source.contains("const CURRENT_SAVE_VERSION := 1") and not save_source.contains("PlayerText"), "production GameSaveRuntimeCoordinator stores no localized text")
+	_expect(save_source.contains("const CURRENT_SAVE_VERSION := 3") and save_source.contains("const RULESET_ID := \"v0.6\"") and not save_source.contains("PlayerText"), "production v3 GameSaveRuntimeCoordinator stores no localized text")
 	_expect(catalog_source.contains("card_runtime_catalog_v04.tres") and not catalog_source.contains("player_text_v05"), "production CardRuntimeCatalogService remains on v0.4 without a text fallback")
 	_expect(not main_source.contains("PlayerTextV05") and not main_source.contains("player_text_schema_v05"), "main.gd has no Player Text v0.5 selector or active owner")
 
@@ -8615,6 +8621,7 @@ func _check_game_session_save_ownership_component() -> void:
 		GAME_SESSION_RUNTIME_CONTROLLER_SCENE,
 		GAME_SAVE_RUNTIME_COORDINATOR_SCRIPT,
 		GAME_SAVE_RUNTIME_COORDINATOR_SCENE,
+		V06_SAVE_OWNER_REGISTRY_BENCH_SCENE,
 		GAME_SESSION_SAVE_OWNERSHIP_BENCH_SCRIPT,
 		GAME_SESSION_SAVE_OWNERSHIP_BENCH_SCENE,
 	]:
@@ -8627,15 +8634,27 @@ func _check_game_session_save_ownership_component() -> void:
 		coordinator.call("configure", bridge.call("debug_snapshot"))
 		var session := coordinator.get_node_or_null("GameSessionRuntimeController")
 		var save := coordinator.get_node_or_null("GameSessionRuntimeController/GameSaveRuntimeCoordinator")
+		var handshake := coordinator.get_node_or_null("GameSessionRuntimeController/GameSaveRuntimeCoordinator/RulesetSaveHandshakeService")
+		var owner_registry := coordinator.get_node_or_null("GameSessionRuntimeController/V06SaveOwnerRegistry")
 		_expect(session != null and session.scene_file_path == GAME_SESSION_RUNTIME_CONTROLLER_SCENE and session.has_method("begin_session") and session.has_method("session_state") and session.has_method("session_summary") and session.has_method("mark_dirty") and session.has_method("pause_session") and session.has_method("resume_session") and session.has_method("request_save") and session.has_method("request_load") and session.has_method("debug_snapshot"), "GameSessionRuntimeController is an editable lifecycle and save-operation owner")
-		_expect(save != null and save.scene_file_path == GAME_SAVE_RUNTIME_COORDINATOR_SCENE and save.has_method("compose_save_payload") and save.has_method("validate_save_payload") and save.has_method("normalize_save_payload") and save.has_method("write_save") and save.has_method("read_save") and save.has_method("extract_section") and save.has_method("operation_snapshot") and save.has_method("set_qa_default_save_path_override") and save.has_method("clear_qa_default_save_path_override"), "GameSaveRuntimeCoordinator owns format/file I/O and exposes a bounded QA save-path override")
-		_expect(int(coordinator.call("run_save_version")) == 1 and str(coordinator.call("default_run_save_path")) == "user://space_syndicate_current_run.save", "save version 1 and default current-run path remain unchanged")
-		coordinator.call("begin_session", {"session_id": "smoke", "scenario_id": "first_table", "ruleset_id": "v0.4", "seed": 7, "player_count": 4, "ai_player_count": 3, "hidden_owner": 2, "private_hand": ["secret"]})
+		_expect(save != null and save.scene_file_path == GAME_SAVE_RUNTIME_COORDINATOR_SCENE and save.has_method("validate_envelope") and save.has_method("write_authorization") and save.has_method("write_validated_envelope") and save.has_method("read_and_validate") and save.has_method("inspect_legacy") and save.has_method("public_operation_receipt") and save.has_method("operation_snapshot") and save.has_method("set_qa_default_save_path_override") and save.has_method("clear_qa_default_save_path_override"), "GameSaveRuntimeCoordinator exposes the narrow authorized v3 I/O API")
+		var save_snapshot: Dictionary = save.call("operation_snapshot") if save != null else {}
+		_expect(int(coordinator.call("run_save_version")) == 3 and str(coordinator.call("default_run_save_path")).is_empty() and str(save_snapshot.get("ruleset_id", "")) == "v0.6" and int(save_snapshot.get("currency_scale", 0)) == 100 and bool(save_snapshot.get("explicit_path_required", false)) and str(save_snapshot.get("qa_save_root", "")) == "user://test_runs/", "save v3/v0.6 has no implicit player path and requires an explicit isolated QA path")
+		var qa_override_accepted := bool(save.call("set_qa_default_save_path_override", V06_LAYOUT_SAVE_QA_PATH)) if save != null else false
+		var player_path_rejected := not bool(save.call("set_qa_default_save_path_override", "user://space_syndicate_current_run.save")) if save != null else false
+		var override_snapshot: Dictionary = save.call("operation_snapshot") if save != null else {}
+		_expect(qa_override_accepted and player_path_rejected and str(override_snapshot.get("default_save_path", "")) == V06_LAYOUT_SAVE_QA_PATH and bool(override_snapshot.get("qa_save_path_override_active", false)), "save path override accepts only the explicit QA root and rejects the legacy player path")
+		if save != null:
+			save.call("clear_qa_default_save_path_override")
+		_expect(save != null and str((save.call("operation_snapshot") as Dictionary).get("default_save_path", "not-empty")).is_empty(), "clearing the QA override restores explicit-path-only mode")
+		coordinator.call("begin_session", {"session_id": "smoke", "scenario_id": "first_table", "ruleset_id": "v0.6", "seed": 7, "player_count": 4, "ai_player_count": 3, "hidden_owner": 2, "private_hand": ["secret"]})
 		var debug_snapshot: Dictionary = coordinator.call("debug_snapshot")
 		_expect(not var_to_str(debug_snapshot).contains("hidden_owner") and not var_to_str(debug_snapshot).contains("secret") and not _variant_contains_callable(debug_snapshot) and not _variant_contains_object(debug_snapshot), "Session/save debug snapshots are privacy-safe pure data")
-		var domain := {"players": [], "districts": [], "game_time": 4.0}
-		var payload: Dictionary = coordinator.call("compose_run_save_payload", domain)
-		_expect(payload == {"players": [], "districts": [], "game_time": 4.0, "version": 1}, "Save Coordinator preserves the flat v1 payload and adds only version")
+		var envelope := _compose_v06_layout_save_envelope(handshake)
+		var envelope_validation: Dictionary = save.call("validate_envelope", envelope) if save != null else {}
+		var registry_snapshot: Dictionary = owner_registry.call("registry_snapshot") if owner_registry != null else {}
+		_expect(bool(envelope_validation.get("valid", false)) and int(envelope.get("save_version", 0)) == 3 and str(envelope.get("ruleset_id", "")) == "v0.6" and (envelope.get("sections", {}) as Dictionary).size() == 18, "Save Coordinator validates one strict v3/v0.6 18-section envelope")
+		_expect(bool(registry_snapshot.get("valid", false)) and int(registry_snapshot.get("required_section_count", 0)) == 18 and int(registry_snapshot.get("transactional_section_count", 0)) == 5 and int(registry_snapshot.get("unsupported_section_count", 0)) == 13 and not bool(registry_snapshot.get("resume_ready", true)), "production owner registry exposes the audited 5/13 boundary and keeps resume fail-closed")
 		coordinator.free()
 		bridge.free()
 	var main_packed := load("res://scenes/main.tscn") as PackedScene
@@ -8648,7 +8667,20 @@ func _check_game_session_save_ownership_component() -> void:
 			main.free()
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 	_expect(not main_source.contains("RUN_SAVE_VERSION") and not main_source.contains("RUN_SAVE_PATH") and not main_source.contains("FileAccess") and not main_source.contains("store_var(") and not main_source.contains("get_var("), "main.gd no longer owns save version, default path, or file-I/O format")
-	_expect(main_source.contains("request_run_save") and main_source.contains("request_run_load") and main_source.contains("_capture_run_domain_state_compatibility_adapter") and main_source.contains("_apply_run_domain_state_compatibility_adapter"), "main.gd keeps only explicit domain collect/apply compatibility adapters")
+	_expect(not main_source.contains("func _capture_run_state") and not main_source.contains("func _apply_run_state") and not main_source.contains("_capture_run_domain_state_compatibility_adapter"), "main.gd does not restore the retired run-state wrappers or a second capture owner")
+	var owner_bench_packed := load(V06_SAVE_OWNER_REGISTRY_BENCH_SCENE) as PackedScene
+	var owner_bench := owner_bench_packed.instantiate() if owner_bench_packed != null else null
+	if owner_bench != null:
+		owner_bench.set("auto_run_on_ready", false)
+		root.add_child(owner_bench)
+		await process_frame
+	var owner_bench_result: Dictionary = owner_bench.call("run_bench") if owner_bench != null else {}
+	var owner_evidence: Dictionary = owner_bench_result.get("evidence", {}) if owner_bench_result.get("evidence", {}) is Dictionary else {}
+	_expect(bool(owner_bench_result.get("passed", false)) and int(owner_bench_result.get("checks", 0)) >= 20, "V06SaveOwnerRegistryBench passes the complete owner transaction matrix")
+	_expect(bool(owner_evidence.get("global_preflight", false)) and bool(owner_evidence.get("rollback_complete", false)) and bool(owner_evidence.get("public_receipt_private", false)) and not bool(owner_evidence.get("production_resume_ready", true)) and not bool(owner_evidence.get("full_production_restore_claimed", true)), "save apply proves global preflight, reverse rollback, privacy-safe receipts, and fail-closed production resume")
+	if owner_bench != null:
+		root.remove_child(owner_bench)
+		owner_bench.queue_free()
 	var bench_packed := load(GAME_SESSION_SAVE_OWNERSHIP_BENCH_SCENE) as PackedScene
 	if bench_packed != null:
 		var bench := bench_packed.instantiate() as Control
@@ -13832,6 +13864,27 @@ func _check_hand_layout_motion_targets(hand: Control) -> void:
 
 func _snapshot_entry(value: Variant) -> Dictionary:
 	return value if value is Dictionary else {}
+
+
+func _compose_v06_layout_save_envelope(handshake: Node) -> Dictionary:
+	if handshake == null or not handshake.has_method("required_section_manifest") or not handshake.has_method("compose_v06_envelope"):
+		return {}
+	var manifest: Dictionary = handshake.call("required_section_manifest")
+	var session_payload: Dictionary = {}
+	var domains: Dictionary = {}
+	for section_variant in manifest.keys():
+		var section_id := str(section_variant)
+		var contract: Dictionary = manifest.get(section_variant, {}) if manifest.get(section_variant, {}) is Dictionary else {}
+		var payload := {
+			"schema_version": int(contract.get("state_version", 0)),
+			"revision": 0,
+			"fixture_id": "layout_save_v06",
+		}
+		if section_id == "session":
+			session_payload = payload
+		else:
+			domains[section_id] = payload
+	return handshake.call("compose_v06_envelope", session_payload, domains, {"envelope_id": "layout-save-v06", "write_id": "layout-save-v06-write"}) as Dictionary
 
 
 func _snapshot_position(value: Variant) -> Vector2:
