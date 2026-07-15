@@ -6149,8 +6149,28 @@ func _first_lure_target_district(main: Node, current_position: int) -> int:
 	return -1
 
 
-func _verify_monster_lure_replaces_control_window(main: Node) -> bool:
-	var saved := main.call("_capture_run_state") as Dictionary
+func _verify_monster_lure_replaces_control_window(_main: Node) -> bool:
+	var packed := load(MAIN_SCENE_PATH) as PackedScene
+	if packed == null:
+		return false
+	var main := packed.instantiate()
+	var fixture_save_path := "user://test_runs/smoke_monster_lure_fixture.save"
+	if FileAccess.file_exists(fixture_save_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(fixture_save_path))
+	var save_coordinator := main.get_node_or_null(SAVE_COORDINATOR_NODE_PATH) as Node
+	var save_override_ready := save_coordinator != null \
+		and save_coordinator.has_method("set_qa_default_save_path_override") \
+		and bool(save_coordinator.call("set_qa_default_save_path_override", fixture_save_path))
+	if not save_override_ready:
+		main.free()
+		return false
+	main.set("configured_player_count", EXPECTED_PLAYER_COUNT)
+	main.set("configured_ai_player_count", EXPECTED_AI_PLAYER_COUNT)
+	main.set("configured_role_indices", [0, 1, 2, 3, 4])
+	main.set("configured_starter_monster_indices", [7, 6, 2, 4, 3])
+	get_root().add_child(main)
+	main.call("_new_game")
+	main.set("opening_guide_dismissed", true)
 	var ok := true
 	var failures := []
 	var main_source := FileAccess.get_file_as_string(MAIN_SCRIPT_PATH)
@@ -6170,15 +6190,51 @@ func _verify_monster_lure_replaces_control_window(main: Node) -> bool:
 	if String(skill.get("text", "")).contains("持续控制"):
 		failures.append("skill text still mentions persistent control")
 		ok = false
-	var facts := _card_presentation_array(main, skill, "key_rule_facts")
-	var facts_text := "｜".join(facts)
-	if not facts_text.contains("诱导提前"):
+	var coordinator := _runtime_card_coordinator(main)
+	var card_presentation_variant: Variant = coordinator.call("compose_card_presentation", {
+		"card_name": "诱导电波1",
+		"display_name": main.call("_card_display_name", "诱导电波1"),
+		"skill": skill,
+		"rank": 1,
+	}) if coordinator != null else {}
+	var card_presentation: Dictionary = card_presentation_variant if card_presentation_variant is Dictionary else {}
+	if not String(card_presentation.get("rules_text_full", "")).contains("下一次自动移动"):
 		failures.append("card facts do not include lure speedup")
 		ok = false
-	if not String(main.call("_card_resolution_animation_catalog_text", "诱导电波1", skill)).contains("一次性诱导"):
+	var resolution_presentation_variant: Variant = coordinator.call("compose_card_resolution_presentation", {
+		"card": {
+			"card_name": "诱导电波1",
+			"display_name": main.call("_card_display_name", "诱导电波1"),
+			"skill": skill,
+			"targets_monster": true,
+		},
+		"skill": skill,
+		"targets_monster": true,
+		"seconds_left": 1.0,
+		"display_duration": 1.0,
+	}) if coordinator != null else {}
+	var resolution_presentation: Dictionary = resolution_presentation_variant if resolution_presentation_variant is Dictionary else {}
+	if not String(resolution_presentation.get("animation_catalog_text", "")).contains("一次性诱导"):
 		failures.append("animation text does not include one-shot lure")
 		ok = false
+	var monster_owner := _monster_controller(main)
 	var actors := _as_array(main.get("auto_monsters"))
+	if actors.is_empty() and monster_owner != null:
+		var start_district := -1
+		for district_index in range(_as_array(main.get("districts")).size()):
+			var district := _as_array(main.get("districts"))[district_index] as Dictionary
+			if not bool(district.get("destroyed", false)):
+				start_district = district_index
+				break
+		if start_district >= 0:
+			var fixture_actor := monster_owner.call("_make_auto_monster", 0, 0, start_district, 1, 1) as Dictionary
+			var monster_state := monster_owner.call("to_save_data") as Dictionary
+			monster_state["auto_monsters"] = [fixture_actor]
+			var monster_restore := monster_owner.call("apply_save_data", monster_state) as Dictionary
+			if not bool(monster_restore.get("applied", false)):
+				failures.append("monster owner fixture rejected")
+				ok = false
+			actors = _as_array(main.get("auto_monsters"))
 	if actors.is_empty():
 		failures.append("no field monsters")
 		ok = false
@@ -6228,10 +6284,12 @@ func _verify_monster_lure_replaces_control_window(main: Node) -> bool:
 			if not lure_callout_seen and not _callouts_contain(_as_array(main.get("action_callouts")), "诱导"):
 				failures.append("lure callout missing")
 				ok = false
-	var restore_result := int(main.call("_apply_run_state", saved))
 	if not failures.is_empty():
 		print("Monster lure verification failures: %s" % " / ".join(failures))
-	return ok and restore_result == OK
+	main.free()
+	if FileAccess.file_exists(fixture_save_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(fixture_save_path))
+	return ok
 
 
 func _verify_agent_policy_audit_report(main: Node) -> bool:
