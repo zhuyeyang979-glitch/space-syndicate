@@ -715,6 +715,9 @@ const PRODUCT_FUTURES_TERMS_CATALOG := "res://resources/finance/product_futures/
 const PRODUCT_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCRIPT := "res://scripts/runtime/product_codex_public_snapshot_service.gd"
 const PRODUCT_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE := "res://scenes/runtime/ProductCodexPublicSnapshotService.tscn"
 const PRODUCT_CODEX_PUBLIC_SNAPSHOT_SERVICE_TEST := "res://tests/product_codex_public_snapshot_service_test.gd"
+const PRODUCT_CODEX_PUBLIC_SOURCE_SERVICE_SCRIPT := "res://scripts/runtime/product_codex_public_source_service.gd"
+const PRODUCT_CODEX_PUBLIC_SOURCE_SERVICE_SCENE := "res://scenes/runtime/ProductCodexPublicSourceService.tscn"
+const PRODUCT_CODEX_PUBLIC_SOURCE_SERVICE_TEST := "res://tests/product_codex_public_source_service_test.gd"
 const PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/product_codex_public_snapshot_cutover_bench.gd"
 const PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE := "res://scenes/tools/ProductCodexPublicSnapshotCutoverBench.tscn"
 const PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/product_codex_public_snapshot_cutover/"
@@ -12285,7 +12288,7 @@ func _check_runtime_card_authoring_workflow_component() -> void:
 
 
 func _check_product_codex_public_snapshot_cutover_component() -> void:
-	for path in [PRODUCT_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCRIPT, PRODUCT_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE, PRODUCT_CODEX_PUBLIC_SNAPSHOT_SERVICE_TEST, PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT, PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE]:
+	for path in [PRODUCT_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCRIPT, PRODUCT_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE, PRODUCT_CODEX_PUBLIC_SNAPSHOT_SERVICE_TEST, PRODUCT_CODEX_PUBLIC_SOURCE_SERVICE_SCRIPT, PRODUCT_CODEX_PUBLIC_SOURCE_SERVICE_SCENE, PRODUCT_CODEX_PUBLIC_SOURCE_SERVICE_TEST, PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT, PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE]:
 		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Product Codex Public Snapshot Cutover" % path)
 	var service_packed := load(PRODUCT_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE) as PackedScene
 	var service := service_packed.instantiate() if service_packed != null else null
@@ -12300,7 +12303,7 @@ func _check_product_codex_public_snapshot_cutover_component() -> void:
 		service.free()
 	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
 	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
-	_expect(coordinator != null and coordinator.get_node_or_null("ProductCodexPublicSnapshotService") != null and coordinator.has_method("compose_product_codex_snapshot"), "GameRuntimeCoordinator composes and proxies ProductCodexPublicSnapshotService")
+	_expect(coordinator != null and coordinator.get_node_or_null("ProductCodexPublicSnapshotService") != null and coordinator.get_node_or_null("ProductCodexPublicSourceService") != null and coordinator.has_method("product_codex_public_browser_snapshot") and coordinator.has_method("product_codex_public_detail_snapshot") and not coordinator.has_method("compose_product_codex_snapshot"), "GameRuntimeCoordinator composes ProductCodexPublicSourceService + SnapshotService and exposes only browser/detail Product APIs")
 	if coordinator != null:
 		coordinator.free()
 	var bench_packed := load(PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE) as PackedScene
@@ -12310,25 +12313,30 @@ func _check_product_codex_public_snapshot_cutover_component() -> void:
 		root.add_child(bench)
 		await process_frame
 		_expect(bench.has_method("output_dir") and bench.has_method("retired_formatter_names") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "ProductCodexPublicSnapshotCutoverBench exposes required QA APIs")
-		var expected_cases := ["required_service_assets_load", "service_scene_contract", "product_source_pure_data", "product_summary_parity", "browser_entry_shape", "detail_shape", "detail_chip_contract", "detail_kpi_contract", "strategy_facts_supplied_not_calculated", "futures_warehouse_public_contract", "monster_focus_public_contract", "related_content_contract", "city_clue_sanitization", "empty_source_safe", "privacy_boundary", "coordinator_scene_composition", "coordinator_pure_data_proxy", "real_main_browser_route", "real_main_detail_route", "legacy_product_formatters_absent_and_metrics"]
+		var expected_cases := ["required_service_assets_load", "service_scene_contract", "product_source_pure_data", "product_summary_parity", "browser_entry_shape", "detail_shape", "detail_chip_contract", "detail_kpi_contract", "strategy_facts_supplied_not_calculated", "futures_warehouse_public_contract", "monster_focus_public_contract", "related_content_contract", "city_clue_sanitization", "empty_source_safe", "privacy_boundary", "coordinator_scene_composition", "coordinator_pure_data_proxy", "real_main_browser_route", "real_main_detail_route", "real_codex_surface_browser_and_detail", "legacy_product_formatters_absent_and_metrics"]
 		var cases: Array = bench.call("cutover_cases")
 		var retired_formatters: Array = bench.call("retired_formatter_names")
 		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
 		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
-		var fields_ok := records.size() == 20
+		var fields_ok := records.size() == 21
 		for record_variant: Variant in records:
 			var record := record_variant as Dictionary
 			for key in ["case_id", "product_name", "service_checked", "main_checked", "market_checked", "strategy_checked", "futures_checked", "routing_checked", "privacy_checked", "pure_data_checked", "deletion_checked", "passed", "notes"]:
 				fields_ok = fields_ok and record.has(key)
 		var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-		var all_retired := retired_formatters.size() == 20
+		var all_retired := retired_formatters.size() == 30
 		for formatter_name_variant in retired_formatters:
 			all_retired = all_retired and not main_source.contains("func %s(" % str(formatter_name_variant))
-		_expect(cases == expected_cases and all_retired and int(manifest.get("retired_formatter_count", 0)) == 20 and str(bench.call("output_dir")) == PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "ProductCodexPublicSnapshotCutoverBench defines 20 pure-data cases, 20 retired formatters, and user:// outputs")
+		_expect(cases == expected_cases and all_retired and int(manifest.get("retired_formatter_count", 0)) == 30 and str(bench.call("output_dir")) == PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "ProductCodexPublicSnapshotCutoverBench defines 21 pure-data cases, 30 retired helpers, and user:// outputs")
 		root.remove_child(bench)
 		bench.queue_free()
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	_expect(main_source.contains("func _product_codex_public_source_snapshot(") and main_source.contains("func _product_codex_public_snapshot(") and main_source.contains("compose_product_codex_snapshot"), "main.gd keeps only Product public-fact adapters and delegates presentation")
+	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
+	var deleted_product_helpers := ["_product_codex_grid_text", "_product_codex_browser_snapshot", "_product_codex_public_source_snapshot", "_product_codex_public_snapshot", "_product_warehouse_public_facts", "_product_related_card_name_facts", "_product_monster_focus_name_facts", "_product_related_district_name_facts", "_product_public_clue_facts", "_sort_product_warehouse_entry"]
+	var product_helpers_deleted := true
+	for helper_name in deleted_product_helpers:
+		product_helpers_deleted = product_helpers_deleted and not main_source.contains("func %s(" % helper_name)
+	_expect(product_helpers_deleted and coordinator_source.contains("func product_codex_public_browser_snapshot(") and coordinator_source.contains("func product_codex_public_detail_snapshot(") and not coordinator_source.contains("func compose_product_codex_snapshot("), "main.gd deletes Product public source helpers and Coordinator exposes only Product browser/detail snapshots")
 	var nonblank := 0
 	var function_count := 0
 	var variable_count := 0
@@ -12353,7 +12361,7 @@ func _check_product_codex_public_snapshot_cutover_component() -> void:
 	var registry: RefCounted = registry_script.new() if registry_script != null else null
 	if registry != null:
 		var registered_paths: Array = registry.call("scene_paths")
-		_expect(registered_paths.has(PRODUCT_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE) and registered_paths.has(PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE), "MCP registry includes the Product Codex snapshot service and bench")
+		_expect(registered_paths.has(PRODUCT_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE) and registered_paths.has(PRODUCT_CODEX_PUBLIC_SOURCE_SERVICE_SCENE) and registered_paths.has(PRODUCT_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE), "MCP registry includes the Product Codex source service, snapshot service, and bench")
 	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
 	var system_audit: RefCounted = system_script.new() if system_script != null else null
 	if system_audit != null:

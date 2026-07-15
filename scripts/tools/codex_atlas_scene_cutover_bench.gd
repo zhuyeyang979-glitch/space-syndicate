@@ -263,12 +263,17 @@ func _run_case(case_id: String) -> Dictionary:
 			flags["pure_data_checked"] = true
 			notes = "monster atlas receives a pure-data snapshot"
 		"product_snapshot_pure_data":
-			var snapshot: Variant = _main.call("_product_codex_browser_snapshot") if _main != null else {}
+			var coordinator := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if _main != null else null
+			var total := ProductMarketRuntimeController.PRODUCT_CATALOG.size()
+			var snapshot: Variant = coordinator.call("product_codex_public_browser_snapshot", {"start_index": 0, "end_index": mini(total, 6), "selected_index": 0, "columns": 3, "can_page": total > 6, "page_label": "测试商品目录"}) if coordinator != null and coordinator.has_method("product_codex_public_browser_snapshot") else {}
 			passed = snapshot is Dictionary and _is_pure_data(snapshot)
 			flags["pure_data_checked"] = true
 			notes = "product atlas receives a pure-data snapshot"
 		"privacy_boundary_preserved":
-			var snapshots := [_main.call("_bestiary_codex_browser_snapshot"), _main.call("_product_codex_browser_snapshot")] if _main != null else []
+			var coordinator := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if _main != null else null
+			var total := ProductMarketRuntimeController.PRODUCT_CATALOG.size()
+			var product_snapshot: Variant = coordinator.call("product_codex_public_browser_snapshot", {"start_index": 0, "end_index": mini(total, 6), "selected_index": 0, "columns": 3, "can_page": total > 6, "page_label": "测试商品目录"}) if coordinator != null and coordinator.has_method("product_codex_public_browser_snapshot") else {}
+			var snapshots := [_main.call("_bestiary_codex_browser_snapshot"), product_snapshot] if _main != null else []
 			passed = _is_pure_data(snapshots) and not _contains_private_key(snapshots)
 			flags["privacy_checked"] = true
 			notes = "atlas snapshots contain no hidden owner, target, discard, or plan keys"

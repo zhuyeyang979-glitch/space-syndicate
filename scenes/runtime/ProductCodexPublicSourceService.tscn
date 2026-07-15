@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/product_codex_public_source_service.gd" id="1_source"]
+
+[node name="ProductCodexPublicSourceService" type="Node"]
+script = ExtResource("1_source")
+editor_description = "Scene-owned public source assembly for Product Codex. Consumes ProductMarket public snapshots, Card catalog facts, Region public projections, and the existing Product snapshot formatter; owns no market rules, AI strategy, save state, quote, camera, or private player data."

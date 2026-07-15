@@ -227,6 +227,7 @@ func _check_static_composition(main: Control) -> void:
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterCodexPublicSnapshotService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterCodexPublicSourceService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ProductCodexPublicSnapshotService",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ProductCodexPublicSourceService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardCodexPublicSnapshotService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardCodexPublicSourceService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionCodexPublicSourceService",
@@ -306,6 +307,7 @@ func _check_static_composition(main: Control) -> void:
 	var monster_codex_public_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterCodexPublicSnapshotService")
 	var monster_codex_public_source := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterCodexPublicSourceService")
 	var product_codex_public_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ProductCodexPublicSnapshotService")
+	var product_codex_public_source := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ProductCodexPublicSourceService")
 	var card_codex_public_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardCodexPublicSnapshotService")
 	var card_codex_public_source := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardCodexPublicSourceService")
 	var region_codex_public_source := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionCodexPublicSourceService")
@@ -420,6 +422,8 @@ func _check_static_composition(main: Control) -> void:
 	_expect(monster_codex_public_source != null and monster_codex_public_source.scene_file_path == "res://scenes/runtime/MonsterCodexPublicSourceService.tscn" and monster_codex_public_source.has_method("compose_browser_source") and monster_codex_public_source.has_method("compose_detail_source") and monster_codex_public_source.has_method("debug_snapshot"), "GameRuntimeCoordinator uniquely owns the scene-backed public-only Monster Codex source service")
 	_expect(coordinator != null and coordinator.has_method("monster_codex_public_browser_snapshot") and coordinator.has_method("monster_codex_public_detail_snapshot") and not coordinator.has_method("compose_monster_codex_snapshot"), "GameRuntimeCoordinator exposes Monster Codex browser/detail public snapshot boundaries without a generic source proxy")
 	_expect(product_codex_public_snapshot != null and product_codex_public_snapshot.scene_file_path == "res://scenes/runtime/ProductCodexPublicSnapshotService.tscn" and product_codex_public_snapshot.has_method("compose"), "GameRuntimeCoordinator owns the editable ProductCodexPublicSnapshotService scene")
+	_expect(product_codex_public_source != null and product_codex_public_source.scene_file_path == "res://scenes/runtime/ProductCodexPublicSourceService.tscn" and product_codex_public_source.has_method("compose_browser_snapshot") and product_codex_public_source.has_method("compose_snapshot") and product_codex_public_source.has_method("debug_snapshot"), "GameRuntimeCoordinator uniquely owns the scene-backed public-only Product Codex source service")
+	_expect(coordinator != null and coordinator.has_method("product_codex_public_browser_snapshot") and coordinator.has_method("product_codex_public_detail_snapshot") and not coordinator.has_method("compose_product_codex_snapshot"), "GameRuntimeCoordinator exposes Product Codex browser/detail public snapshot boundaries without a generic source proxy")
 	_expect(card_codex_public_snapshot != null and card_codex_public_snapshot.scene_file_path == "res://scenes/runtime/CardCodexPublicSnapshotService.tscn" and card_codex_public_snapshot.has_method("compose_browser") and card_codex_public_snapshot.has_method("compose_detail"), "GameRuntimeCoordinator owns the editable CardCodexPublicSnapshotService scene")
 	_expect(card_codex_public_source != null and card_codex_public_source.scene_file_path == CARD_CODEX_PUBLIC_SOURCE_SERVICE and card_codex_public_source.has_method("compose_browser") and card_codex_public_source.has_method("compose_detail") and card_codex_public_source.has_method("debug_snapshot"), "GameRuntimeCoordinator uniquely owns the scene-backed public-only Card Codex source service")
 	_expect(coordinator != null and coordinator.has_method("card_codex_public_browser_snapshot") and coordinator.has_method("card_codex_public_detail_snapshot"), "GameRuntimeCoordinator exposes only the browser/detail Card Codex public snapshot boundary")

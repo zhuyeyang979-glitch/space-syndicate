@@ -6539,17 +6539,40 @@ func _update_product_codex_menu() -> void:
 		_show_catalog_empty_page("商品图鉴", "当前没有商品资料。")
 		return
 	_product_market_runtime_call("ensure_catalog")
-	_codex_navigation_controller_node().product_codex_index = wrapi(_codex_navigation_controller_node().product_codex_index, 0, ProductMarketRuntimeController.PRODUCT_CATALOG.size())
+	var total_count := ProductMarketRuntimeController.PRODUCT_CATALOG.size()
+	var per_page := _product_codex_entries_per_page()
+	var page_count := _codex_page_count(total_count, per_page)
+	_codex_navigation_controller_node().product_codex_index = wrapi(_codex_navigation_controller_node().product_codex_index, 0, total_count)
 	_codex_navigation_controller_node().previewed_product_codex_index = _valid_product_codex_index(_codex_navigation_controller_node().previewed_product_codex_index)
-	_codex_navigation_controller_node().product_codex_grid_page = clampi(_codex_navigation_controller_node().product_codex_grid_page, 0, _codex_page_count(ProductMarketRuntimeController.PRODUCT_CATALOG.size(), _product_codex_entries_per_page()) - 1)
+	_codex_navigation_controller_node().product_codex_grid_page = clampi(_codex_navigation_controller_node().product_codex_grid_page, 0, page_count - 1)
+	var start_index: int = int(_codex_navigation_controller_node().product_codex_grid_page) * per_page
+	var end_index := mini(total_count, start_index + per_page)
+	if start_index >= total_count:
+		start_index = _codex_first_index_on_page(_codex_navigation_controller_node().product_codex_grid_page, total_count, per_page)
+		end_index = mini(total_count, start_index + per_page)
+	if not _codex_navigation_controller_node().product_codex_show_detail and (_codex_navigation_controller_node().previewed_product_codex_index < start_index or _codex_navigation_controller_node().previewed_product_codex_index >= end_index):
+		_codex_navigation_controller_node().previewed_product_codex_index = start_index
+		_codex_navigation_controller_node().product_codex_index = start_index
 	var product_name := String(ProductMarketRuntimeController.PRODUCT_CATALOG[_codex_navigation_controller_node().product_codex_index])
-	var product_snapshot := _product_codex_public_snapshot(product_name, _codex_navigation_controller_node().product_codex_index, true)
-	var body_text := str(product_snapshot.get("summary_text", "")) if _codex_navigation_controller_node().product_codex_show_detail else _product_codex_grid_text()
+	var coordinator := _game_runtime_coordinator_node()
+	var product_snapshot: Dictionary = coordinator.call("product_codex_public_detail_snapshot", product_name, _codex_navigation_controller_node().product_codex_index, true) if coordinator != null and coordinator.has_method("product_codex_public_detail_snapshot") else {}
+	var browser_snapshot := {}
+	if not _codex_navigation_controller_node().product_codex_show_detail:
+		var browser_value: Variant = coordinator.call("product_codex_public_browser_snapshot", {
+			"start_index": start_index,
+			"end_index": end_index,
+			"selected_index": _codex_navigation_controller_node().previewed_product_codex_index,
+			"columns": _product_codex_grid_columns(),
+			"can_page": page_count > 1,
+			"page_label": "第%d/%d页｜%d种商品｜本页%d-%d" % [_codex_navigation_controller_node().product_codex_grid_page + 1, page_count, total_count, start_index + 1, end_index],
+		}) if coordinator != null and coordinator.has_method("product_codex_public_browser_snapshot") else {}
+		browser_snapshot = (browser_value as Dictionary).duplicate(true) if browser_value is Dictionary else {}
+	var body_text := str(product_snapshot.get("summary_text", "")) if _codex_navigation_controller_node().product_codex_show_detail else str(browser_snapshot.get("summary_text", "商品目录"))
 	_present_codex_page("商品图鉴", body_text, {
 		"mode": "product",
 		"view": "detail" if _codex_navigation_controller_node().product_codex_show_detail else "browser",
 		"detail": product_snapshot.get("detail", {}) if _codex_navigation_controller_node().product_codex_show_detail else {},
-		"browser": _product_codex_browser_snapshot() if not _codex_navigation_controller_node().product_codex_show_detail else {},
+		"browser": browser_snapshot if not _codex_navigation_controller_node().product_codex_show_detail else {},
 		"navigation": _codex_navigation_data(
 			_codex_navigation_controller_node().product_codex_show_detail,
 			_codex_navigation_controller_node().product_codex_show_detail,
@@ -6595,21 +6618,6 @@ func _sort_product_count_entry_desc(a: Dictionary, b: Dictionary) -> bool:
 	return String(a.get("label", "")) < String(b.get("label", ""))
 
 
-func _product_codex_grid_text() -> String:
-	var page_count := _codex_page_count(ProductMarketRuntimeController.PRODUCT_CATALOG.size(), _product_codex_entries_per_page())
-	var report := _game_runtime_coordinator_node().gameplay_balance_diagnostics_service().product_ecosystem_report()
-	return "商品目录｜第%d/%d页｜本页%d×%d\n本局出现%d/%d种商品（海%d/陆%d）。看价格、供需、趋势和主打法；悬停预览，双击详情。" % [
-		_codex_navigation_controller_node().product_codex_grid_page + 1,
-		page_count,
-		_product_codex_grid_columns(),
-		_product_codex_grid_rows(),
-		int(report.get("run_product_count", 0)),
-		int(report.get("catalog_count", ProductMarketRuntimeController.PRODUCT_CATALOG.size())),
-		int(report.get("run_ocean_count", 0)),
-		int(report.get("run_land_count", 0)),
-	]
-
-
 func _turn_product_codex_grid_page(step: int) -> void:
 	if ProductMarketRuntimeController.PRODUCT_CATALOG.is_empty():
 		return
@@ -6620,149 +6628,6 @@ func _turn_product_codex_grid_page(step: int) -> void:
 	_codex_navigation_controller_node().previewed_product_codex_index = first_index
 	_codex_navigation_controller_node().product_codex_show_detail = false
 	_update_product_codex_menu()
-
-
-func _product_codex_browser_snapshot() -> Dictionary:
-	var total_count := ProductMarketRuntimeController.PRODUCT_CATALOG.size()
-	var page_count := _codex_page_count(total_count, _product_codex_entries_per_page())
-	_codex_navigation_controller_node().product_codex_grid_page = clampi(_codex_navigation_controller_node().product_codex_grid_page, 0, max(0, page_count - 1))
-	var per_page := _product_codex_entries_per_page()
-	var start_index: int = int(_codex_navigation_controller_node().product_codex_grid_page) * per_page
-	var end_index := mini(total_count, start_index + per_page)
-	if start_index >= total_count:
-		start_index = _codex_first_index_on_page(_codex_navigation_controller_node().product_codex_grid_page, total_count, _product_codex_entries_per_page())
-		end_index = mini(total_count, start_index + per_page)
-	if _codex_navigation_controller_node().previewed_product_codex_index < start_index or _codex_navigation_controller_node().previewed_product_codex_index >= end_index:
-		_codex_navigation_controller_node().previewed_product_codex_index = start_index
-		_codex_navigation_controller_node().product_codex_index = start_index
-	var report := _game_runtime_coordinator_node().gameplay_balance_diagnostics_service().product_ecosystem_report()
-	var entries: Array = []
-	for catalog_index in range(start_index, end_index):
-		var product_name := str(ProductMarketRuntimeController.PRODUCT_CATALOG[catalog_index])
-		var product_snapshot := _product_codex_public_snapshot(product_name, catalog_index, catalog_index == _codex_navigation_controller_node().previewed_product_codex_index)
-		entries.append(product_snapshot.get("browser_entry", {}))
-	return {
-		"columns": _product_codex_grid_columns(),
-		"selected_index": _codex_navigation_controller_node().previewed_product_codex_index,
-		"can_page": page_count > 1,
-		"page_label": "第%d/%d页｜%d种商品｜本页%d-%d" % [_codex_navigation_controller_node().product_codex_grid_page + 1, page_count, total_count, start_index + 1, end_index],
-		"summaries": [
-			{"title": "本局商品生态", "body": "图鉴%d种｜本局%d种｜海洋%d/陆地%d｜区域产%d/需%d" % [int(report.get("catalog_count", 0)), int(report.get("run_product_count", 0)), int(report.get("run_ocean_count", 0)), int(report.get("run_land_count", 0)), int(report.get("district_product_slots", 0)), int(report.get("district_demand_slots", 0))], "meta": "城市生产槽%d｜城市需求槽%d｜商品符号%d/%d" % [int(report.get("active_city_product_slots", 0)), int(report.get("active_city_demand_slots", 0)), int(report.get("profile_complete_count", 0)), int(report.get("catalog_count", 0))], "accent": Color("#22c55e")},
-			{"title": "策略入口", "body": _product_count_summary(report.get("strategy_counts", {}) as Dictionary, 5), "meta": "热点:%s" % _limited_name_list(report.get("top_hotspots", []) as Array, 5, "暂无"), "accent": Color("#facc15")},
-			{"title": "商品路线分布", "body": _product_count_summary(report.get("route_counts", {}) as Dictionary, 5), "meta": "品类:%s" % _product_count_summary(report.get("category_counts", {}) as Dictionary, 4), "accent": Color("#38bdf8")},
-			{"title": "牌路连接", "body": "相关卡覆盖%d种｜怪兽偏好覆盖%d种" % [int(report.get("related_card_product_count", 0)), int(report.get("monster_focus_product_count", 0))], "meta": "商品连接GDP、区域补给、期货、仓储、商路和怪兽目标。", "accent": Color("#c084fc")},
-		],
-		"entries": entries,
-		"preview": (_product_codex_public_snapshot(str(ProductMarketRuntimeController.PRODUCT_CATALOG[_codex_navigation_controller_node().previewed_product_codex_index]), _codex_navigation_controller_node().previewed_product_codex_index, true)).get("detail", {}) if not ProductMarketRuntimeController.PRODUCT_CATALOG.is_empty() else {},
-	}
-func _product_codex_public_source_snapshot(product_name: String, catalog_index: int = -1, selected: bool = false) -> Dictionary:
-	if product_name == "" or not ProductMarketRuntimeController.PRODUCT_CATALOG.has(product_name):
-		return {"valid": false, "name": product_name, "index": catalog_index, "total": ProductMarketRuntimeController.PRODUCT_CATALOG.size()}
-	_product_market_runtime_call("ensure_catalog")
-	var safe_index := ProductMarketRuntimeController.PRODUCT_CATALOG.find(product_name) if catalog_index < 0 or catalog_index >= ProductMarketRuntimeController.PRODUCT_CATALOG.size() or str(ProductMarketRuntimeController.PRODUCT_CATALOG[catalog_index]) != product_name else catalog_index
-	var market_entry := _product_market_entry_snapshot(product_name)
-	var current_price := _product_market_price(product_name)
-	var base_price := int(market_entry.get("base_price", current_price))
-	var clue_facts := _product_public_clue_facts(product_name, 4)
-	return {
-		"valid": true,
-		"index": safe_index,
-		"total": ProductMarketRuntimeController.PRODUCT_CATALOG.size(),
-		"selected": selected,
-		"name": product_name,
-		"profile": _product_profile(product_name).duplicate(true),
-		"market": {
-			"current_price": current_price,
-			"base_price": base_price,
-			"tier": str(market_entry.get("tier", _product_market_tier(product_name))),
-			"trend_text": _product_trend_text(product_name),
-			"price_path_text": _product_market_price_path_text(market_entry),
-			"supply": int(market_entry.get("supply", 0)),
-			"demand": int(market_entry.get("demand", 0)),
-			"disrupted": int(market_entry.get("disrupted", 0)),
-			"volatility": int(market_entry.get("volatility", 0)),
-			"weather_text": _product_market_boon_text(product_name),
-		},
-		"strategy_rankings": _product_strategy_rankings(product_name).duplicate(true),
-		"futures_public_full": _product_market_futures_public_text(product_name),
-		"futures_public_compact": _product_market_futures_public_text(product_name, true),
-		"warehouse_public_entries": _product_warehouse_public_facts(product_name, 4),
-		"monster_focus_names": _product_monster_focus_name_facts(product_name, 6),
-		"related_card_names": _product_related_card_name_facts(product_name, 8),
-		"supply_district_names": _product_related_district_name_facts(product_name, "products", 6),
-		"demand_district_names": _product_related_district_name_facts(product_name, "demands", 6),
-		"public_clue_lines": (clue_facts.get("lines", []) as Array).duplicate(true),
-		"public_clue_labels": (clue_facts.get("labels", []) as Array).duplicate(true),
-	}
-
-
-func _product_codex_public_snapshot(product_name: String, catalog_index: int = -1, selected: bool = false) -> Dictionary:
-	var coordinator := _game_runtime_coordinator_node()
-	var source := _product_codex_public_source_snapshot(product_name, catalog_index, selected)
-	var value: Variant = coordinator.call("compose_product_codex_snapshot", source) if coordinator != null and coordinator.has_method("compose_product_codex_snapshot") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func _product_warehouse_public_facts(product_name: String, limit: int = 4) -> Array:
-	var entries := []
-	for district_index_variant in _active_city_district_indices():
-		var district_index := int(district_index_variant)
-		var city := _district_city(district_index)
-		var products: Array = city.get("warehouse_stockpile_products", [])
-		if not products.has(product_name):
-			continue
-		var expires_at := float(city.get("warehouse_stockpile_expires_at", -1.0))
-		entries.append({
-			"name": str(districts[district_index].get("name", "城市")),
-			"pressure": _city_warehouse_stockpile_pressure(city),
-			"units": int(city.get("warehouse_stockpile_units", 0)),
-			"count": int(city.get("warehouse_stockpile_count", 0)),
-			"duration": _duration_short_text(maxf(1.0, expires_at - game_time)) if expires_at >= 0.0 else "未知",
-		})
-	entries.sort_custom(Callable(self, "_sort_product_warehouse_entry"))
-	return _first_entries(entries, limit)
-
-
-func _product_related_card_name_facts(product_name: String, limit: int = 8) -> Array:
-	var names := []
-	for skill_name_variant in _game_runtime_coordinator_node().card_catalog_ordered_ids():
-		var skill_name := str(skill_name_variant)
-		var skill: Dictionary = _game_runtime_coordinator_node().card_authored_catalog_definition(skill_name)
-		var matches := str(skill.get("play_product", "")) == product_name
-		var contract_products_variant: Variant = skill.get("contract_products", [])
-		if not matches and contract_products_variant is Array:
-			matches = (contract_products_variant as Array).has(product_name)
-		if matches:
-			names.append(skill_name)
-	return _first_entries(names, limit)
-
-
-func _product_monster_focus_name_facts(product_name: String, limit: int = 6) -> Array:
-	var names := []
-	for monster_variant in MonsterCatalogV06.roster():
-		var monster: Dictionary = monster_variant
-		if (monster.get("resource_focus", []) as Array).has(product_name):
-			names.append(str(monster.get("name", "怪兽")))
-	return _first_entries(names, limit)
-
-
-func _product_related_district_name_facts(product_name: String, field_name: String, limit: int = 6) -> Array:
-	var names := []
-	for district_variant in districts:
-		var district: Dictionary = district_variant
-		if (district.get(field_name, []) as Array).has(product_name):
-			names.append(str(district.get("name", "区域")))
-	return _first_entries(names, limit)
-
-
-func _product_public_clue_facts(product_name: String, limit: int = 4) -> Dictionary:
-	var lines := []
-	var labels := []
-	for clue_variant in _economy_city_public_clue_entries(limit, product_name):
-		var clue: Dictionary = clue_variant
-		lines.append(_economy_city_public_clue_line(clue))
-		labels.append("%s/%s" % [str(clue.get("district", "城市")), str(clue.get("kind", "线索"))])
-	return {"lines": lines, "labels": labels}
 
 
 func _product_strategy_scores(product_name: String) -> Dictionary:
@@ -6826,14 +6691,6 @@ func _sort_product_strategy_score_desc(a: Dictionary, b: Dictionary) -> bool:
 	if score_a != score_b:
 		return score_a > score_b
 	return String(a.get("label", "")) < String(b.get("label", ""))
-
-
-func _sort_product_warehouse_entry(a: Dictionary, b: Dictionary) -> bool:
-	var pressure_a := int(a.get("pressure", 0))
-	var pressure_b := int(b.get("pressure", 0))
-	if pressure_a != pressure_b:
-		return pressure_a > pressure_b
-	return int(a.get("units", 0)) > int(b.get("units", 0))
 
 
 func _product_monster_focus_count(product_name: String) -> int:

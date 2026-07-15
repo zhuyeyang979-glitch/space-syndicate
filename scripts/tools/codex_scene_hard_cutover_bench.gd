@@ -367,12 +367,14 @@ func _codex_snapshots() -> Array:
 	var hub_snapshot: Dictionary = hub_script.call("compose", 960.0) as Dictionary if hub_script != null else {}
 	var card_browser := coordinator.call("card_codex_public_browser_snapshot", {"names": _card_names, "columns": 3, "rows": 2, "page_index": 0, "filter_id": "all", "filter_label": "全部牌", "selected_card": card_name, "filters": []}) as Dictionary if coordinator != null else {}
 	var card_detail := coordinator.call("card_codex_public_detail_snapshot", card_name, 0, maxi(1, _card_names.size())) as Dictionary if coordinator != null and card_name != "" else {}
+	var product_names := _main.call("_product_catalog_names") as Array
+	var product_detail := coordinator.call("product_codex_public_detail_snapshot", str(product_names[0]), 0, true) as Dictionary if coordinator != null and not product_names.is_empty() else {}
 	return [
 		hub_snapshot,
 		card_browser,
 		card_detail.get("detail", {}),
 		(coordinator.call("monster_codex_public_detail_snapshot", 0, true) as Dictionary).get("detail", {}) if coordinator != null else {},
-		(_main.call("_product_codex_public_snapshot", str((_main.call("_product_catalog_names") as Array)[0]), 0, true) as Dictionary).get("detail", {}),
+		product_detail.get("detail", {}),
 		region_snapshot.get("detail", {}),
 		role_snapshot.get("board", {}),
 	]
