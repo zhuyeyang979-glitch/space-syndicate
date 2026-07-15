@@ -2358,6 +2358,24 @@ func weather_region_detail_snapshot(region_index: int) -> Dictionary:
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
+func weather_telemetry_recent_events_snapshot() -> Dictionary:
+	var service := _weather_telemetry_runtime_service_node()
+	var value: Variant = service.call("recent_events_snapshot") if service != null and service.has_method("recent_events_snapshot") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func weather_telemetry_aggregate_snapshot() -> Dictionary:
+	var service := _weather_telemetry_runtime_service_node()
+	var value: Variant = service.call("aggregate_snapshot") if service != null and service.has_method("aggregate_snapshot") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func weather_telemetry_debug_snapshot() -> Dictionary:
+	var service := _weather_telemetry_runtime_service_node()
+	var value: Variant = service.call("debug_snapshot") if service != null and service.has_method("debug_snapshot") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
 func military_runtime_call(method_name: StringName, arguments: Array = []) -> Variant:
 	var controller := _military_runtime_controller_node()
 	if controller == null or not controller.has_method(method_name):
@@ -3972,6 +3990,10 @@ func _weather_runtime_world_bridge_node() -> Node:
 
 func _weather_presentation_runtime_service_node() -> Node:
 	return get_node_or_null("WeatherPresentationRuntimeService")
+
+
+func _weather_telemetry_runtime_service_node() -> Node:
+	return get_node_or_null("WeatherTelemetryRuntimeService")
 
 
 func _contract_runtime_controller_node() -> Node:

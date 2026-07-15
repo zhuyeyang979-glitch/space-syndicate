@@ -1,4 +1,4 @@
-[gd_scene load_steps=70 format=3]
+[gd_scene load_steps=71 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -40,6 +40,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/WeatherRuntimeController.tscn" id="38_weather_runtime"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/WeatherRuntimeWorldBridge.tscn" id="39_weather_world_bridge"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/WeatherPresentationRuntimeService.tscn" id="75_weather_presentation"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/WeatherTelemetryRuntimeService.tscn" id="76_weather_telemetry"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ContractRuntimeController.tscn" id="40_contract_runtime"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ContractRuntimeWorldBridge.tscn" id="41_contract_world_bridge"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ProductMarketRuntimeController.tscn" id="42_product_market"]
@@ -182,6 +183,9 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="WeatherPresentationRuntimeService" parent="." instance=ExtResource("75_weather_presentation")]
+unique_name_in_owner = true
+
+[node name="WeatherTelemetryRuntimeService" parent="." instance=ExtResource("76_weather_telemetry")]
 unique_name_in_owner = true
 
 [node name="ContractRuntimeController" parent="." instance=ExtResource("40_contract_runtime")]
