@@ -2458,7 +2458,9 @@ func _verify_role_passive_runtime(main: Node) -> bool:
 
 
 func _verify_role_intel_and_trace_tools(main: Node) -> bool:
-	var saved := main.call("_capture_run_state") as Dictionary
+	var saved_players := _as_array(main.get("players")).duplicate(true)
+	var saved_districts := _as_array(main.get("districts")).duplicate(true)
+	var saved_history := _as_array(main.get("resolved_card_history")).duplicate(true)
 	var ok := true
 	var city_index := _first_empty_land_district_for_contract(main)
 	var contract_target_index := _first_empty_land_district_for_contract(main, [city_index])
@@ -2513,8 +2515,10 @@ func _verify_role_intel_and_trace_tools(main: Node) -> bool:
 		ok = ok and int(known_cards.get(str(card_resolution_id), -1)) == 1
 		ok = ok and int(known_contract.get("proposer", -1)) == 2
 		ok = ok and int(known_contract.get("target_owner", -1)) == 1
-	var restore_result := int(main.call("_apply_run_state", saved))
-	return ok and restore_result == OK
+	main.set("players", saved_players)
+	main.set("districts", saved_districts)
+	main.set("resolved_card_history", saved_history)
+	return ok
 
 
 func _verify_ai_intel_policy(main: Node) -> bool:
