@@ -36,7 +36,7 @@ func _ready() -> void:
 	if not menu_button.pressed.is_connected(_on_menu_pressed):
 		menu_button.pressed.connect(_on_menu_pressed)
 	end_turn_button.visible = false
-	_apply_responsive_visibility()
+	_sync_responsive_visibility()
 
 
 func set_state(data: Dictionary) -> void:
@@ -76,7 +76,7 @@ func set_state(data: Dictionary) -> void:
 	if show_end_turn:
 		end_turn_button.text = str(data.get("end_turn_label", "结束"))
 		end_turn_button.tooltip_text = str(data.get("end_turn_tooltip", "结算当前桌面步骤。"))
-	_apply_responsive_visibility()
+	_sync_responsive_visibility()
 
 
 func _first_text(data: Dictionary, keys: Array, fallback: String) -> String:
@@ -134,7 +134,7 @@ func _short_chip_text(value: String, max_characters: int) -> String:
 	return value.left(maxi(1, max_characters - 1)) + "..."
 
 
-func _apply_responsive_visibility() -> void:
+func _sync_responsive_visibility() -> void:
 	var compact := DisplayServer.window_get_size().x < COMPACT_PHYSICAL_WIDTH
 	selected_district_chip.visible = not compact
 	primary_action_chip.visible = not compact
@@ -144,7 +144,7 @@ func _apply_responsive_visibility() -> void:
 
 
 func _on_window_size_changed() -> void:
-	_apply_responsive_visibility()
+	_sync_responsive_visibility()
 
 
 func _on_end_turn_pressed() -> void:
