@@ -9035,12 +9035,6 @@ func _v06_world_card_from_definition(card: Dictionary) -> Dictionary:
 	return result
 
 
-func _v06_runtime_card_display_name(card: Dictionary) -> String:
-	var player_text: Dictionary = card.get("player", {}) if card.get("player", {}) is Dictionary else {}
-	var label := str(player_text.get("name", card.get("display_name", ""))).strip_edges()
-	return label if not label.is_empty() else str((card.get("machine", {}) as Dictionary).get("card_id", "卡牌"))
-
-
 func _v06_actor_id(player_index: int) -> String:
 	if player_index < 0 or player_index >= players.size():
 		return ""
@@ -9057,24 +9051,34 @@ func _play_v06_runtime_card_for_player(player_index: int, slot_index: int) -> bo
 	var card: Dictionary = slots[slot_index]
 	if not _is_v06_runtime_card(card):
 		return false
+	var player_text: Dictionary = card.get("player", {}) if card.get("player", {}) is Dictionary else {}
+	var label := str(player_text.get("name", card.get("display_name", (card.get("machine", {}) as Dictionary).get("card_id", "卡牌")))).strip_edges()
 	var actor_id := _v06_actor_id(player_index)
 	var region_id := ""
 	if selected_district >= 0 and selected_district < districts.size():
 		region_id = str((districts[selected_district] as Dictionary).get("region_id", "region.%03d" % selected_district))
 	var coordinator := _game_runtime_coordinator_node()
 	if coordinator == null or not coordinator.has_method("play_v06_runtime_card"):
-		_log("%s尚未接入本局卡牌事务。" % _v06_runtime_card_display_name(card))
+		_log("%s尚未接入本局卡牌事务。" % label)
 		return false
 	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
-	if str(machine.get("effect_kind", "")) == "build_upgrade_or_repair_facility" and coordinator.has_method("economic_source_snapshot"):
-		var source_variant: Variant = coordinator.call("economic_source_snapshot", actor_id)
-		var source: Dictionary = source_variant if source_variant is Dictionary else {}
-		var legal_region_ids: Array = source.get("legal_region_ids", []) if source.get("legal_region_ids", []) is Array else []
-		if not legal_region_ids.has(region_id):
-			region_id = str(source.get("target_region_id", "")).strip_edges()
-			var target_district := _district_index_for_region_id(region_id)
-			if target_district >= 0:
-				_jump_to_district_on_table(target_district)
+	if str(machine.get("effect_kind", "")) == "build_upgrade_or_repair_facility":
+		var action_result_variant: Variant = coordinator.call(
+			"execute_v06_facility_play_action",
+			actor_id,
+			str(machine.get("card_id", "")),
+			region_id
+		)
+		var action_result: Dictionary = action_result_variant if action_result_variant is Dictionary else {}
+		var succeeded := bool(action_result.get("success", false))
+		if runtime_game_screen != null and runtime_game_screen.has_method("present_action_result"):
+			runtime_game_screen.call("present_action_result", action_result)
+		_log("%s｜%s" % [str(action_result.get("title", "城市设施未部署")), str(action_result.get("consequence", "设施与生产状态未改变。"))])
+		if succeeded:
+			if _district_supply_is_open():
+				_close_district_supply_overlay()
+			_complete_scenario_signal("card_played", "打出城市设施牌。", "after_play", "public_track")
+		return succeeded
 	var authoritative_instance_id := ""
 	var authoritative_slot_index := -1
 	if coordinator.has_method("v06_card_player_snapshot"):
@@ -9093,7 +9097,7 @@ func _play_v06_runtime_card_for_player(player_index: int, slot_index: int) -> bo
 				authoritative_instance_id = str(production_card.get("runtime_instance_id", "")).strip_edges()
 				break
 	if authoritative_slot_index < 0:
-		_log("%s未打出：权威手牌槽位已变化，请刷新手牌后重试。" % _v06_runtime_card_display_name(card))
+		_log("%s未打出：权威手牌槽位已变化，请刷新手牌后重试。" % label)
 		return false
 	var instance_id := authoritative_instance_id if not authoritative_instance_id.is_empty() else str(card.get("runtime_instance_id", "slot:%d" % slot_index))
 	var transaction_id := "v06-play:%s:%s:%s" % [actor_id, instance_id, region_id]
@@ -9107,25 +9111,15 @@ func _play_v06_runtime_card_for_player(player_index: int, slot_index: int) -> bo
 	var result: Dictionary = result_variant if result_variant is Dictionary else {}
 	var feedback: Dictionary = result.get("feedback", {}) if result.get("feedback", {}) is Dictionary else {}
 	var effect_finalization: Dictionary = result.get("effect_finalization", {}) if result.get("effect_finalization", {}) is Dictionary else {}
-	var label := _v06_runtime_card_display_name(card)
 	var play_finalized := bool(result.get("committed", false)) and bool(effect_finalization.get("finalized", result.get("finalized", false)))
 	if play_finalized:
-		if str(machine.get("effect_kind", "")) == "build_upgrade_or_repair_facility" and _district_supply_is_open():
-			_close_district_supply_overlay()
 		_log("%s已通过v0.6卡牌事务完成。" % label)
 		if runtime_game_screen != null and runtime_game_screen.has_method("_show_player_action_feedback"):
-			var source_after_variant: Variant = coordinator.call("economic_source_snapshot", actor_id) if coordinator.has_method("economic_source_snapshot") else {}
-			var source_after: Dictionary = source_after_variant if source_after_variant is Dictionary else {}
 			runtime_game_screen.call(
 				"_show_player_action_feedback",
-				"play_facility_v06",
+				"play_v06_runtime_card",
 				"resolved",
-				"已打出%s｜GDP源:%s｜结算:%s｜%s" % [
-					label,
-					"已建立" if bool(source_after.get("has_source", false)) else "未建立",
-					"完成" if bool(source_after.get("bootstrap_finalized", false)) else "待确认",
-					str(source_after.get("reason_code", "source_snapshot_unavailable")),
-				]
+				"已打出%s｜现役卡牌事务已完成。" % label
 			)
 		_complete_scenario_signal("card_played", "打出卡牌：%s。" % label, "after_play", "public_track")
 		return true
@@ -9133,7 +9127,7 @@ func _play_v06_runtime_card_for_player(player_index: int, slot_index: int) -> bo
 	var next_step := str(feedback.get("next_step", "请检查目标与当前状态后重试。"))
 	_log("%s未打出：%s %s" % [label, reason, next_step])
 	if runtime_game_screen != null and runtime_game_screen.has_method("_show_player_action_feedback"):
-		runtime_game_screen.call("_show_player_action_feedback", "play_facility_v06", "blocked", "%s｜%s" % [reason, next_step])
+		runtime_game_screen.call("_show_player_action_feedback", "play_v06_runtime_card", "blocked", "%s｜%s" % [reason, next_step])
 	return false
 
 

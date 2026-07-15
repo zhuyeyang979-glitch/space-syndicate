@@ -61,7 +61,7 @@ func _run() -> void:
 	_expect(bool(identity.get("available", false)) and actor_id == "player.0", "Coordinator reverses the sole production adapter actor map")
 	var source_before: Dictionary = coordinator.call("economic_source_snapshot", actor_id)
 	_expect(bool(source_before.get("available", false)) and not bool(source_before.get("has_source", true)), "source snapshot reads existing owners and starts empty")
-	var market_before: Dictionary = coordinator.call("market_snapshot", actor_id)
+	var market_before := _first_available_market(coordinator, actor_id)
 	var listing: Dictionary = market_before.get("listing", {}) if market_before.get("listing", {}) is Dictionary else {}
 	var legal_regions: Array = listing.get("legal_region_ids", []) if listing.get("legal_region_ids", []) is Array else []
 	print("AI_V06_PORT_STAGE|stage=market|available=%s|reason=%s|legal=%d" % [bool(market_before.get("available", false)), str(market_before.get("reason_code", "missing")), legal_regions.size()])
@@ -140,6 +140,25 @@ func _run() -> void:
 func _wait_frames(count: int) -> void:
 	for _frame in range(count):
 		await process_frame
+
+
+func _first_available_market(coordinator: Node, actor_id: String) -> Dictionary:
+	var surface_variant: Variant = coordinator.call("v06_first_table_facility_market_snapshot", actor_id)
+	var surface: Dictionary = surface_variant if surface_variant is Dictionary else {}
+	var listing: Dictionary = surface.get("listing", {}) if surface.get("listing", {}) is Dictionary else {}
+	var district_index := int(listing.get("source_district_index", -1))
+	var chosen_second := -1
+	for second in range(0, 120, 5):
+		coordinator.call("restore_world_effective_seconds", float(second))
+		var availability_variant: Variant = coordinator.call("card_market_listing_availability", district_index)
+		var availability: Dictionary = availability_variant if availability_variant is Dictionary else {}
+		if str(availability.get("availability_kind", "")) == "sunlit":
+			chosen_second = second
+			break
+	if chosen_second >= 0:
+		coordinator.call("restore_world_effective_seconds", float(chosen_second + 120))
+	var market_variant: Variant = coordinator.call("market_snapshot", actor_id)
+	return (market_variant as Dictionary).duplicate(true) if market_variant is Dictionary else {}
 
 
 func _remove_qa_save() -> void:

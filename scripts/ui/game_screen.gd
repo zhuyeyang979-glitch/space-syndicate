@@ -257,6 +257,21 @@ func get_runtime_player_feedback_snapshot() -> Dictionary:
 	return _last_runtime_player_feedback.duplicate(true)
 
 
+func present_action_result(result: Dictionary) -> bool:
+	var action_id := str(result.get("action_id", "")).strip_edges()
+	if action_id.is_empty() or not (result.get("success") is bool):
+		return false
+	var succeeded := bool(result.get("success", false))
+	var detail := "%s｜%s｜%s｜%s" % [
+		str(result.get("title", "动作未完成")),
+		str(result.get("explanation", "现役事务没有返回可解释结果。")),
+		str(result.get("consequence", "规则状态未改变。")),
+		str(result.get("suggested_action", "刷新牌桌状态后重试。")),
+	]
+	_show_player_action_feedback(action_id, "resolved" if succeeded else "blocked", detail)
+	return succeeded
+
+
 func runtime_focus_order_snapshot() -> Array:
 	_sync_runtime_table_focus_order()
 	var controls := _runtime_table_focus_controls()

@@ -203,7 +203,8 @@ func _run() -> void:
 	while true:
 		await process_frame
 		var now_msec := Time.get_ticks_msec()
-		var ui_action := _scripted_ui_action(runtime_screen, exhausted_navigation_actions)
+		var public_progress: Dictionary = final_telemetry.get("progress", {}) if final_telemetry.get("progress", {}) is Dictionary else {}
+		var ui_action := _scripted_ui_action(runtime_screen, exhausted_navigation_actions, public_progress)
 		if _session_state(session) == "running":
 			var waiting_for_world := str(ui_action.get("id", "")) in ["district_supply_wait", "gdp_accumulation_wait"] and bool(ui_action.get("disabled", false))
 			main_instance.set("time_scale", WAIT_SIMULATION_TIME_SCALE if waiting_for_world else SIMULATION_TIME_SCALE)
@@ -418,7 +419,15 @@ func _collect_telemetry(run_seed: int, coordinator: Node, session: Node, settlem
 		if bool(actor_binding.get("available", false)):
 			var source_variant: Variant = coordinator.call("economic_source_snapshot", str(actor_binding.get("actor_id", "")))
 			economic_source = source_variant if source_variant is Dictionary else {}
-	var ui_action := _scripted_ui_action(runtime_screen)
+	var public_progress := {
+		"controlled_region_count": int(own_candidate.get("controlled_region_count", 0)),
+		"required_region_count": int(own_candidate.get("required_region_count", 0)),
+		"top_k_gdp_per_minute": int(own_candidate.get("top_k_gdp_per_minute", 0)),
+		"required_top_k_gdp_per_minute": int(own_candidate.get("required_top_k_gdp_per_minute", 0)),
+		"owned_facility_count": int(economic_source.get("owned_facility_count", 0)),
+		"eligible": bool(own_candidate.get("eligible", false)),
+	}
+	var ui_action := _scripted_ui_action(runtime_screen, {}, public_progress)
 	var session_state := _session_state(session)
 	var settlement := _settlement_snapshot(victory, settlement_composition, session_state)
 	var phase := _phase_for(session_state, victory, decision, ui_action, settlement)
@@ -430,14 +439,7 @@ func _collect_telemetry(run_seed: int, coordinator: Node, session: Node, settlem
 			"wall_seconds": maxf(0.0, float(Time.get_ticks_msec() - run_started_msec) / 1000.0),
 			"world_seconds": world_seconds,
 		},
-		"progress": {
-			"controlled_region_count": int(own_candidate.get("controlled_region_count", 0)),
-			"required_region_count": int(own_candidate.get("required_region_count", 0)),
-			"top_k_gdp_per_minute": int(own_candidate.get("top_k_gdp_per_minute", 0)),
-			"required_top_k_gdp_per_minute": int(own_candidate.get("required_top_k_gdp_per_minute", 0)),
-			"owned_facility_count": int(economic_source.get("owned_facility_count", 0)),
-			"eligible": bool(own_candidate.get("eligible", false)),
-		},
+		"progress": public_progress,
 		"decision_window": {
 			"active": not decision.is_empty(),
 			"kind": str(decision.get("kind", "none")),
@@ -486,7 +488,7 @@ func _settlement_snapshot(victory: Dictionary, settlement_composition: Node, ses
 	}
 
 
-func _scripted_ui_action(runtime_screen: Node, exhausted_navigation_actions: Dictionary = {}) -> Dictionary:
+func _scripted_ui_action(runtime_screen: Node, exhausted_navigation_actions: Dictionary = {}, public_progress: Dictionary = {}) -> Dictionary:
 	if runtime_screen == null:
 		return {"id": "", "phase": "play", "disabled": true}
 	var menu_action := _menu_overlay_ui_action(runtime_screen)
@@ -509,48 +511,47 @@ func _scripted_ui_action(runtime_screen: Node, exhausted_navigation_actions: Dic
 	if not coach.is_empty():
 		var primary: Dictionary = coach.get("primary_action", {}) if coach.get("primary_action", {}) is Dictionary else {}
 		var stage := str(coach.get("stage", "play"))
-		if str(primary.get("id", "")) == "coach_buy_card":
-			var coached_supply_action := _district_supply_ui_action(runtime_screen)
-			if not coached_supply_action.is_empty():
-				coached_supply_action["phase"] = "first_run.%s.%s" % [stage, str(coached_supply_action.get("phase", "supply"))]
-				return coached_supply_action
-		if str(primary.get("id", "")) == "coach_play_card":
-			var coached_facility_action := _first_enabled_card_action_by_kind(hand_cards, "facility_v06")
-			if not coached_facility_action.is_empty():
-				coached_facility_action["phase"] = "first_run.%s.%s" % [stage, str(coached_facility_action.get("phase", "hand"))]
-				return coached_facility_action
 		if not str(primary.get("id", "")).is_empty() and not bool(primary.get("disabled", false)):
 			return {
 				"id": str(primary.get("id", "")),
 				"phase": "first_run.%s" % stage,
 				"disabled": false,
 			}
+	var source_established := false
+	var strategy_actions: Array[Dictionary] = []
+	for strategy_kind in ["expand_economic_source", "protect_route", "pressure_competition"]:
+		var strategy_action := _first_enabled_action_by_kind(player_board.get("actions", []), strategy_kind)
+		if strategy_action.is_empty():
+			continue
+		source_established = true
+		strategy_actions.append(strategy_action)
+	if source_established and int(public_progress.get("top_k_gdp_per_minute", 0)) <= 0:
+		return {
+			"id": "gdp_accumulation_wait",
+			"phase": "play.gdp_first_receipt",
+			"disabled": true,
+			"origin": "economic_wait",
+		}
 	var facility_hand_action := _first_enabled_card_action_by_kind(hand_cards, "facility_v06")
 	if not facility_hand_action.is_empty():
 		return facility_hand_action
 	var visible_supply_action := _district_supply_ui_action(runtime_screen)
 	if not visible_supply_action.is_empty():
 		return visible_supply_action
-	var source_established := false
-	for strategy_kind in ["expand_economic_source", "protect_route", "pressure_competition"]:
-		var strategy_action := _first_enabled_action_by_kind(player_board.get("actions", []), strategy_kind)
-		if strategy_action.is_empty():
-			continue
-		source_established = true
-		var strategy_signature := "strategy:%s:%d" % [str(strategy_action.get("id", strategy_kind)), int(strategy_action.get("source_revision", 0))]
+	for strategy_action in strategy_actions:
+		var strategy_signature := "strategy:%s:%d" % [str(strategy_action.get("id", "strategy")), int(strategy_action.get("source_revision", 0))]
 		if not bool(exhausted_navigation_actions.get(strategy_signature, false)):
 			return _board_action_request(strategy_action, player_board, strategy_signature)
-	if not source_established:
-		var supply_action := _district_supply_ui_action(runtime_screen)
-		if not supply_action.is_empty():
-			return supply_action
-	else:
+	if source_established:
 		return {
 			"id": "gdp_accumulation_wait",
 			"phase": "play.gdp_accumulation",
 			"disabled": true,
 			"origin": "economic_wait",
 		}
+	var supply_action := _district_supply_ui_action(runtime_screen)
+	if not supply_action.is_empty():
+		return supply_action
 	var build_source_action := _first_enabled_action_by_kind(player_board.get("actions", []), "build_economic_source")
 	if not build_source_action.is_empty():
 		return _board_action_request(build_source_action, player_board)

@@ -24,6 +24,8 @@ func compose(source: Dictionary) -> Dictionary:
 		return _unsafe_source_result(str(source.get("action_id", "")), str(source.get("action_family", "")))
 	if str(request.get("action_id", "")) == "district_card_purchase":
 		return _compose_district_card_purchase(request)
+	if str(request.get("action_id", "")) == "facility_card_play":
+		return _compose_facility_card_play(request)
 	return _compose_card_group_ready(request)
 
 
@@ -79,6 +81,38 @@ func _compose_district_card_purchase(request: Dictionary) -> Dictionary:
 		"focus_target": "district_supply",
 		"relevant_cost": "¥%d" % price_cash if success else "未扣款；重新报价前以牌架显示为准",
 		"relevant_requirement": str(copy.get("relevant_requirement", "须通过现役市场资格、报价与库存事务检查。")),
+		"affected_entity_ids": affected_entity_ids,
+	})
+
+
+func _compose_facility_card_play(request: Dictionary) -> Dictionary:
+	var outcome_code := str(request.get("outcome_code", "facility_play_conflict"))
+	var copy := _facility_card_play_copy(outcome_code)
+	var success := outcome_code == "facility_play_committed"
+	var region_id := str(request.get("region_id", ""))
+	var facility_count := int(request.get("owned_facility_count", 0))
+	var production_count := int(request.get("production_installation_count", 0))
+	var replay := bool(request.get("idempotent_replay", false))
+	var affected_entity_ids: Array = []
+	if success and not region_id.is_empty():
+		affected_entity_ids.append("region:%s" % region_id)
+	var consequence := str(copy.get("consequence", "设施、生产与手牌均未改变。"))
+	if success:
+		consequence = "此前的设施事务已确认，未重复建设。" if replay else "目标区域已新增城市设施与持续生产；当前共有%d座设施、%d个生产安装。" % [facility_count, production_count]
+	return ACTION_RESULT_V1.sanitize_public_result({
+		"schema_version": ACTION_RESULT_V1.SCHEMA_VERSION,
+		"action_id": "facility_card_play",
+		"action_family": "card_play",
+		"status": "committed" if success else "rejected",
+		"success": success,
+		"failure_code": "" if success else outcome_code,
+		"title": str(copy.get("title", "城市设施未部署")),
+		"explanation": str(copy.get("explanation", "现役卡牌事务没有接受本次设施部署。")),
+		"consequence": consequence,
+		"suggested_action": str(copy.get("suggested_action", "刷新手牌与目标区域后重试。")),
+		"focus_target": "planet_board",
+		"relevant_cost": "已消耗一张设施牌" if success and not replay else ("无重复消耗" if replay else "未消耗设施牌"),
+		"relevant_requirement": str(copy.get("relevant_requirement", "设施牌、目标区域与经济源 revision 必须同时有效。")),
 		"affected_entity_ids": affected_entity_ids,
 	})
 
@@ -239,6 +273,67 @@ func _district_card_purchase_copy(outcome_code: String) -> Dictionary:
 	return _district_card_purchase_copy("purchase_conflict")
 
 
+func _facility_card_play_copy(outcome_code: String) -> Dictionary:
+	match outcome_code:
+		"facility_play_committed":
+			return {
+				"title": "城市设施已部署",
+				"explanation": "现役卡牌事务已完成设施建设并接入持续生产。",
+				"consequence": "设施与生产安装已经由各自权威 owner 提交。",
+				"suggested_action": "让时间推进并查看经济总览中的生产与GDP变化。",
+				"relevant_requirement": "设施牌、目标区域与生产安装必须在同一原子事务中完成。",
+			}
+		"facility_play_request_invalid":
+			return {
+				"title": "设施部署请求无效",
+				"explanation": "当前动作缺少稳定卡牌身份、事务身份或目标区域。",
+				"consequence": "设施、生产安装和手牌均未改变。",
+				"suggested_action": "刷新手牌后重新选择这张设施牌。",
+				"relevant_requirement": "提交必须绑定当前卡牌实例、槽位、区域与revision。",
+			}
+		"facility_play_card_changed":
+			return {
+				"title": "手牌位置已经变化",
+				"explanation": "提交时的槽位不再对应刚才选择的设施牌实例。",
+				"consequence": "不会误打出新槽位中的另一张牌。",
+				"suggested_action": "刷新手牌并重新选择设施牌。",
+				"relevant_requirement": "槽位与稳定卡牌实例必须同时匹配。",
+			}
+		"facility_play_source_changed":
+			return {
+				"title": "经济源状态已经变化",
+				"explanation": "设施提交前，玩家或经济源revision已不再匹配。",
+				"consequence": "本次事务未消耗卡牌，也未新增设施。",
+				"suggested_action": "刷新玩家面板与目标区域后重试。",
+				"relevant_requirement": "玩家手牌和经济源必须保持同一次快照的revision。",
+			}
+		"facility_play_target_unavailable":
+			return {
+				"title": "当前区域不能部署该设施",
+				"explanation": "目标区域没有符合这张设施牌的可用产业槽位。",
+				"consequence": "卡牌保留在手中，区域与生产状态未改变。",
+				"suggested_action": "选择面板建议的合法区域，或查看区域详情中的产业类型。",
+				"relevant_requirement": "目标区域必须存活、产业匹配且对应设施槽位空闲。",
+			}
+		"facility_play_settlement_unavailable":
+			return {
+				"title": "设施结算暂不可用",
+				"explanation": "卡牌、设施或生产 owner 尚未完成这笔原子事务。",
+				"consequence": "公开结果不会把未完成的事务报告为成功。",
+				"suggested_action": "刷新牌桌状态后重试。",
+				"relevant_requirement": "设施与持续生产必须同时提交并完成finalization。",
+			}
+		"facility_play_conflict":
+			return {
+				"title": "城市设施未部署",
+				"explanation": "现役事务在提交前检测到卡牌、目标或owner状态冲突。",
+				"consequence": "本次动作没有形成新的设施或生产安装。",
+				"suggested_action": "刷新手牌和区域详情后重试。",
+				"relevant_requirement": "所有权威owner必须接受同一个设施事务。",
+			}
+	return _facility_card_play_copy("facility_play_conflict")
+
+
 func _unsafe_source_result(requested_action_id: String = "", requested_action_family: String = "") -> Dictionary:
 	if requested_action_id == "district_card_purchase" and requested_action_family == "card_market":
 		return ACTION_RESULT_V1.sanitize_public_result({
@@ -255,6 +350,23 @@ func _unsafe_source_result(requested_action_id: String = "", requested_action_fa
 			"focus_target": "district_supply",
 			"relevant_cost": "以现役市场锁定报价为准",
 			"relevant_requirement": "购牌结果只能由匿名公开 receipt 或公开失败码投影。",
+			"affected_entity_ids": [],
+		})
+	if requested_action_id == "facility_card_play" and requested_action_family == "card_play":
+		return ACTION_RESULT_V1.sanitize_public_result({
+			"schema_version": ACTION_RESULT_V1.SCHEMA_VERSION,
+			"action_id": "facility_card_play",
+			"action_family": "card_play",
+			"status": "rejected",
+			"success": false,
+			"failure_code": "unsafe_source",
+			"title": "设施结果不可公开",
+			"explanation": "本次设施结果包含公开receipt或失败码之外的数据。",
+			"consequence": "公开反馈已关闭，展示服务不会修改手牌、设施或生产状态。",
+			"suggested_action": "刷新手牌与区域状态后重试。",
+			"focus_target": "planet_board",
+			"relevant_cost": "未公开私有资源",
+			"relevant_requirement": "设施结果只能由最小公开receipt或公开失败码投影。",
 			"affected_entity_ids": [],
 		})
 	return ACTION_RESULT_V1.sanitize_public_result({

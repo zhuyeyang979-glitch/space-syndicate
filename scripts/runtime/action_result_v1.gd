@@ -93,6 +93,15 @@ const DISTRICT_CARD_PURCHASE_OUTCOMES := [
 	"purchase_conflict",
 	"purchase_committed",
 ]
+const FACILITY_CARD_PLAY_OUTCOMES := [
+	"facility_play_request_invalid",
+	"facility_play_card_changed",
+	"facility_play_source_changed",
+	"facility_play_target_unavailable",
+	"facility_play_settlement_unavailable",
+	"facility_play_conflict",
+	"facility_play_committed",
+]
 const PUBLIC_FAILURE_CODES := [
 	"player_unavailable",
 	"queued_entry_missing",
@@ -106,6 +115,12 @@ const PUBLIC_FAILURE_CODES := [
 	"purchase_funds_unavailable",
 	"purchase_inventory_unavailable",
 	"purchase_conflict",
+	"facility_play_request_invalid",
+	"facility_play_card_changed",
+	"facility_play_source_changed",
+	"facility_play_target_unavailable",
+	"facility_play_settlement_unavailable",
+	"facility_play_conflict",
 	"unsafe_source",
 ]
 const FORBIDDEN_KEY_TOKENS := [
@@ -162,6 +177,8 @@ static func sanitize_request(source: Dictionary) -> Dictionary:
 		return _sanitize_card_group_ready_request(source)
 	if action_id == "district_card_purchase" and action_family == "card_market":
 		return _sanitize_district_card_purchase_request(source)
+	if action_id == "facility_card_play" and action_family == "card_play":
+		return _sanitize_facility_card_play_request(source)
 	return {}
 
 
@@ -229,6 +246,61 @@ static func _sanitize_district_card_purchase_request(source: Dictionary) -> Dict
 		"action_family": "card_market",
 		"outcome_code": _district_purchase_public_failure_code(owner_failure_code),
 		"district_index": -1,
+	}
+
+
+static func _sanitize_facility_card_play_request(source: Dictionary) -> Dictionary:
+	for key_variant in source.keys():
+		if not ["schema_version", "action_id", "action_family", "public_receipt", "failure_code"].has(str(key_variant)):
+			return {}
+	var has_receipt := source.has("public_receipt")
+	var has_failure := source.has("failure_code")
+	if has_receipt == has_failure:
+		return {}
+	if has_receipt:
+		if not (source.get("public_receipt") is Dictionary):
+			return {}
+		var receipt: Dictionary = source.get("public_receipt", {})
+		if receipt.size() != 5 or not receipt.has("event_code") or not receipt.has("region_id") \
+				or not receipt.has("owned_facility_count") or not receipt.has("production_installation_count") \
+				or not receipt.has("idempotent_replay"):
+			return {}
+		if not (receipt.get("event_code") is String or receipt.get("event_code") is StringName) \
+				or str(receipt.get("event_code")) != "facility_play_committed":
+			return {}
+		if not (receipt.get("region_id") is String or receipt.get("region_id") is StringName) \
+				or not _is_public_token(str(receipt.get("region_id")), 128):
+			return {}
+		if not (receipt.get("owned_facility_count") is int) or int(receipt.get("owned_facility_count")) < 1:
+			return {}
+		if not (receipt.get("production_installation_count") is int) or int(receipt.get("production_installation_count")) < 1:
+			return {}
+		if not (receipt.get("idempotent_replay") is bool):
+			return {}
+		return {
+			"schema_version": SCHEMA_VERSION,
+			"action_id": "facility_card_play",
+			"action_family": "card_play",
+			"outcome_code": "facility_play_committed",
+			"region_id": str(receipt.get("region_id")),
+			"owned_facility_count": int(receipt.get("owned_facility_count")),
+			"production_installation_count": int(receipt.get("production_installation_count")),
+			"idempotent_replay": bool(receipt.get("idempotent_replay")),
+		}
+	if not (source.get("failure_code") is String or source.get("failure_code") is StringName):
+		return {}
+	var owner_failure_code := str(source.get("failure_code", "")).strip_edges()
+	if owner_failure_code.is_empty():
+		return {}
+	return {
+		"schema_version": SCHEMA_VERSION,
+		"action_id": "facility_card_play",
+		"action_family": "card_play",
+		"outcome_code": _facility_play_public_failure_code(owner_failure_code),
+		"region_id": "",
+		"owned_facility_count": 0,
+		"production_installation_count": 0,
+		"idempotent_replay": false,
 	}
 
 
@@ -348,6 +420,21 @@ static func _district_purchase_public_failure_code(owner_failure_code: String) -
 	if normalized.contains("runtime_not_ready") or normalized.contains("catalog_unavailable") or normalized.contains("player_unavailable") or normalized.contains("player_binding_unavailable") or normalized.contains("controller_not_ready"):
 		return "purchase_market_unavailable"
 	return "purchase_conflict"
+
+
+static func _facility_play_public_failure_code(owner_failure_code: String) -> String:
+	var normalized := owner_failure_code.strip_edges().to_lower()
+	if normalized.contains("request_invalid") or normalized.contains("transaction_id_missing"):
+		return "facility_play_request_invalid"
+	if normalized.contains("card_binding") or normalized.contains("slot") or normalized.contains("inventory"):
+		return "facility_play_card_changed"
+	if normalized.contains("source_revision") or normalized.contains("player_revision") or normalized.contains("state_changed"):
+		return "facility_play_source_changed"
+	if normalized.contains("target") or normalized.contains("region") or normalized.contains("facility_slot"):
+		return "facility_play_target_unavailable"
+	if normalized.contains("runtime") or normalized.contains("unavailable") or normalized.contains("not_ready") or normalized.contains("finaliz"):
+		return "facility_play_settlement_unavailable"
+	return "facility_play_conflict"
 
 
 static func _is_public_text(value: Variant, max_length: int) -> bool:

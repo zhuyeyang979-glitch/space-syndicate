@@ -1475,7 +1475,7 @@ func market_snapshot(actor_id: String) -> Dictionary:
 	var revision := maxi(0, int(market.get("revision", 0)))
 	if not bool(surface.get("ready", false)) or card.is_empty():
 		return _ai_v06_economy_failure(str(surface.get("reason_code", "ai_v06_market_snapshot_unavailable")), revision)
-	if not bool(quote.get("purchasable", false)):
+	if not bool(quote.get("confirmable", quote.get("eligible", false))):
 		return _ai_v06_economy_failure("ai_v06_market_source_dark", revision)
 	var legal_region_ids := _ai_v06_legal_facility_region_ids(card, normalized_actor_id)
 	if legal_region_ids.is_empty():
@@ -1524,8 +1524,6 @@ func purchase_rank_i_facility(
 	var source := economic_source_snapshot(normalized_actor_id)
 	if not bool(source.get("available", false)) or int(source.get("revision", -1)) != expected_source_revision:
 		return _ai_v06_economy_failure("ai_v06_economic_source_revision_stale", maxi(0, int(source.get("revision", 0))))
-	if bool(source.get("has_source", false)) or bool(source.get("bootstrap_finalized", false)):
-		return _ai_v06_economy_failure("ai_v06_economic_source_already_exists", int(source.get("revision", 0)))
 	var current_market := market_snapshot(normalized_actor_id)
 	var listing: Dictionary = current_market.get("listing", {}) if current_market.get("listing", {}) is Dictionary else {}
 	if not bool(current_market.get("available", false)) \
@@ -1572,8 +1570,6 @@ func play_runtime_card(request: Dictionary) -> Dictionary:
 	var source := economic_source_snapshot(actor_id)
 	if not bool(source.get("available", false)) or int(source.get("revision", -1)) != int(request.get("expected_source_revision", -2)):
 		return _ai_v06_economy_failure("ai_v06_economic_source_revision_stale", maxi(0, int(source.get("revision", 0))))
-	if bool(source.get("has_source", false)) or bool(source.get("bootstrap_finalized", false)):
-		return _ai_v06_economy_failure("ai_v06_economic_source_already_exists", int(source.get("revision", 0)))
 	var authoritative_player := v06_card_player_snapshot(actor_id)
 	if authoritative_player.is_empty() or int(authoritative_player.get("revision", -1)) != int(request.get("expected_player_revision", -2)):
 		return _ai_v06_economy_failure("ai_v06_facility_player_revision_stale", maxi(0, int(authoritative_player.get("revision", 0))))
@@ -1949,6 +1945,68 @@ func execute_v06_facility_purchase_action(actor_id: String, expected_card_id: St
 		action_source["public_receipt"] = (owner_result.get("public_receipt", {}) as Dictionary).duplicate(true) if owner_result.get("public_receipt", {}) is Dictionary else {}
 	else:
 		action_source["failure_code"] = str(owner_result.get("reason_code", "purchase_conflict"))
+	return compose_action_result_v1(action_source)
+
+
+func execute_v06_facility_play_action(actor_id: String, card_id: String, region_id: String) -> Dictionary:
+	var action_source := {
+		"schema_version": 1,
+		"action_id": "facility_card_play",
+		"action_family": "card_play",
+	}
+	var normalized_actor_id := actor_id.strip_edges()
+	var normalized_card_id := card_id.strip_edges()
+	var normalized_region_id := region_id.strip_edges()
+	if normalized_actor_id.is_empty() or normalized_card_id.is_empty() or normalized_region_id.is_empty():
+		action_source["failure_code"] = "facility_play_request_invalid"
+		return compose_action_result_v1(action_source)
+	var player := v06_card_player_snapshot(normalized_actor_id)
+	var inventory: Dictionary = player.get("inventory", {}) if player.get("inventory", {}) is Dictionary else {}
+	var slots: Array = inventory.get("slots", []) if inventory.get("slots", []) is Array else []
+	var slot_index := -1
+	var runtime_instance_id := ""
+	for index in range(slots.size()):
+		if not (slots[index] is Dictionary):
+			continue
+		var card: Dictionary = slots[index]
+		var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+		if str(machine.get("card_id", "")).strip_edges() == normalized_card_id and _ai_v06_is_rank_i_facility_card(card):
+			slot_index = index
+			runtime_instance_id = str(card.get("runtime_instance_id", "")).strip_edges()
+			break
+	if slot_index < 0 or runtime_instance_id.is_empty():
+		action_source["failure_code"] = "ai_v06_facility_card_binding_changed"
+		return compose_action_result_v1(action_source)
+	var source := economic_source_snapshot(normalized_actor_id)
+	var clock := world_effective_clock_snapshot()
+	var owner_request := {
+		"actor_id": normalized_actor_id,
+		"slot_index": slot_index,
+		"runtime_instance_id": runtime_instance_id,
+		"transaction_id": "facility-play:%s:%s:%s" % [normalized_actor_id, runtime_instance_id, normalized_region_id],
+		"region_id": normalized_region_id,
+		"expected_player_revision": int(player.get("revision", -1)),
+		"expected_source_revision": int(source.get("revision", -1)),
+		"game_time": float(clock.get("world_effective_seconds", 0.0)),
+	}
+	var owner_result := play_runtime_card(owner_request)
+	var finalized := bool(owner_result.get("committed", false)) and bool(owner_result.get("finalized", false))
+	if not finalized:
+		action_source["failure_code"] = str(owner_result.get("reason_code", "facility_play_settlement_unavailable"))
+		return compose_action_result_v1(action_source)
+	var source_after := economic_source_snapshot(normalized_actor_id)
+	if not bool(source_after.get("available", false)) or not bool(source_after.get("has_source", false)) \
+			or int(source_after.get("owned_facility_count", 0)) < 1 \
+			or int(source_after.get("production_installation_count", 0)) < 1:
+		action_source["failure_code"] = "facility_play_settlement_unavailable"
+		return compose_action_result_v1(action_source)
+	action_source["public_receipt"] = {
+		"event_code": "facility_play_committed",
+		"region_id": normalized_region_id,
+		"owned_facility_count": int(source_after.get("owned_facility_count", 0)),
+		"production_installation_count": int(source_after.get("production_installation_count", 0)),
+		"idempotent_replay": bool(owner_result.get("idempotent_replay", false)),
+	}
 	return compose_action_result_v1(action_source)
 
 
