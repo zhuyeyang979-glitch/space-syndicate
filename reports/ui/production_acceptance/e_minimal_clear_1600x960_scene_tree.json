@@ -1,0 +1,227 @@
+{
+  "economy_back_button": {
+    "clip_contents": false,
+    "found": true,
+    "name": "MenuBackButton",
+    "path": "/root/Main/RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay/MenuSurfacePanel/MenuShellMargin/MenuShell/MenuNavRow/MenuBackButton",
+    "rect": {
+      "height": 44.0,
+      "width": 152.0,
+      "x": 724.0,
+      "y": 266.4
+    },
+    "type": "Button",
+    "visible": true,
+    "visible_in_tree": true
+  },
+  "economy_overview": {
+    "clip_contents": false,
+    "found": true,
+    "name": "EconomyDashboardPanel",
+    "path": "/root/Main/RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay/MenuSurfacePanel/MenuShellMargin/MenuShell/MenuContentScroll/MenuContentMargin/MenuContentBox/MenuPreviewBox/EconomyDashboardPanel",
+    "rect": {
+      "height": 628.0,
+      "width": 1202.0,
+      "x": 192.0,
+      "y": 1089.4
+    },
+    "type": "PanelContainer",
+    "visible": true,
+    "visible_in_tree": true
+  },
+  "failures": [],
+  "nodes": {
+    "DistrictInfoPanel": {
+      "clip_contents": false,
+      "found": true,
+      "name": "DistrictInfoPanel",
+      "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TableArea/RightInspector/InspectorRows/DistrictInfoPanel",
+      "rect": {
+        "height": 235.0,
+        "width": 280.0,
+        "x": 1292.0,
+        "y": 234.0
+      },
+      "type": "PanelContainer",
+      "visible": true,
+      "visible_in_tree": true
+    },
+    "HandRack": {
+      "clip_contents": false,
+      "found": true,
+      "name": "HandRack",
+      "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/PlayerBoard/PlayerRows/PlayerBoardBody/PlayerHandTableau/PlayerHandRows/HandRackColumn/HandRack",
+      "rect": {
+        "height": 162.0,
+        "width": 970.0,
+        "x": 290.0,
+        "y": 777.0
+      },
+      "type": "Control",
+      "visible": true,
+      "visible_in_tree": true
+    },
+    "MenuModalOverlay": {
+      "clip_contents": false,
+      "found": true,
+      "name": "MenuModalOverlay",
+      "path": "/root/Main/RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay",
+      "rect": {
+        "height": 960.0,
+        "width": 1600.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "type": "ColorRect",
+      "visible": false,
+      "visible_in_tree": false
+    },
+    "PlanetBoard": {
+      "clip_contents": false,
+      "found": true,
+      "name": "PlanetBoard",
+      "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TableArea/PlanetBoard",
+      "rect": {
+        "height": 613.0,
+        "width": 1256.0,
+        "x": 16.0,
+        "y": 119.0
+      },
+      "type": "PanelContainer",
+      "visible": true,
+      "visible_in_tree": true
+    },
+    "PlanetMapView": {
+      "clip_contents": false,
+      "found": true,
+      "name": "PlanetMapView",
+      "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TableArea/PlanetBoard/PlanetRows/PlanetStageViewport/MapHost/PlanetMapView",
+      "rect": {
+        "height": 471.0,
+        "width": 560.0,
+        "x": 363.5,
+        "y": 260.0
+      },
+      "type": "Control",
+      "visible": true,
+      "visible_in_tree": true
+    },
+    "RightInspector": {
+      "clip_contents": false,
+      "found": true,
+      "name": "RightInspector",
+      "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TableArea/RightInspector",
+      "rect": {
+        "height": 613.0,
+        "width": 304.0,
+        "x": 1280.0,
+        "y": 119.0
+      },
+      "type": "PanelContainer",
+      "visible": true,
+      "visible_in_tree": true
+    },
+    "RuntimeGameScreen": {
+      "clip_contents": false,
+      "found": true,
+      "name": "RuntimeGameScreen",
+      "path": "/root/Main/RuntimeGameScreen",
+      "rect": {
+        "height": 960.0,
+        "width": 1600.0,
+        "x": 0.0,
+        "y": 0.0
+      },
+      "type": "Control",
+      "visible": true,
+      "visible_in_tree": true
+    },
+    "WeatherForecastStrip": {
+      "clip_contents": false,
+      "found": true,
+      "name": "WeatherForecastStrip",
+      "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TableArea/PlanetBoard/PlanetRows/WeatherForecastStrip",
+      "rect": {
+        "height": 110.0,
+        "width": 1254.0,
+        "x": 17.0,
+        "y": 144.0
+      },
+      "type": "PanelContainer",
+      "visible": true,
+      "visible_in_tree": true
+    },
+    "WeatherMapOverlay": {
+      "clip_contents": false,
+      "found": true,
+      "name": "WeatherLayer",
+      "path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TableArea/PlanetBoard/PlanetRows/PlanetStageViewport/MapHost/PlanetMapView/WeatherLayer",
+      "rect": {
+        "height": 471.0,
+        "width": 560.0,
+        "x": 363.5,
+        "y": 260.0
+      },
+      "type": "Control",
+      "visible": true,
+      "visible_in_tree": true
+    }
+  },
+  "projection": {
+    "complex_polygon_fill_in_globe": false,
+    "default_zoom": 0.48,
+    "district_count": 6,
+    "flat_projection_mask": "FlatProjectionSpaceMask",
+    "focus_beacon_active": false,
+    "focus_beacon_alpha": 0.0,
+    "focus_rotation_active": false,
+    "focus_rotation_progress": 1.0,
+    "focus_start_center_m": "(153.0935, 394.25)",
+    "focus_target_center_m": "(153.0935, 394.25)",
+    "focus_target_district": -1,
+    "globe_blend": 1.0,
+    "globe_mode": true,
+    "globe_region_fill_policy": "fast_markers_to_avoid_edge_color_blocks",
+    "globe_region_outline_policy": "always_lightweight_during_interaction",
+    "globe_zoom": 0.48,
+    "local_zoom": 0.98,
+    "map_size_m": "(1162.0, 788.5)",
+    "mode": "globe",
+    "programmatic_focus_animation_enabled": true,
+    "target_view_zoom": 0.48,
+    "view_center_m": "(153.0935, 394.25)",
+    "view_zoom": 0.48
+  },
+  "renderer": "Windows",
+  "resolution": {
+    "x": 1600,
+    "y": 960
+  },
+  "save_isolation": {
+    "player_default_after": {
+      "exists": false,
+      "modified_unix": 0,
+      "sha256": "",
+      "size_bytes": 0
+    },
+    "player_default_before": {
+      "exists": false,
+      "modified_unix": 0,
+      "sha256": "",
+      "size_bytes": 0
+    },
+    "player_default_save_path": "user://space_syndicate_current_run.save",
+    "player_default_unchanged": true,
+    "qa_artifacts_after_cleanup": [],
+    "qa_override_active_before_tree": true,
+    "qa_save_path": "user://test_runs/e_production_ui_minimal_capture.save"
+  },
+  "saved_paths": [
+    "C:/Users/zhuye/Documents/New project/.codex-worktrees/space-syndicate-e/reports/ui/production_acceptance/e_minimal_clear_globe_1600x960.png",
+    "C:/Users/zhuye/Documents/New project/.codex-worktrees/space-syndicate-e/reports/ui/production_acceptance/e_minimal_clear_local_1600x960.png",
+    "C:/Users/zhuye/Documents/New project/.codex-worktrees/space-syndicate-e/reports/ui/production_acceptance/e_minimal_economy_overview_1600x960.png"
+  ],
+  "scene": "res://scenes/main.tscn",
+  "state": "clear_globe",
+  "visible_machine_id_candidates": []
+}

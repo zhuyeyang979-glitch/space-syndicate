@@ -3,6 +3,14 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-15。
 
+## 2026-07-15｜真实主桌最小生产视觉回归与机器 ID 清理
+
+- Codex E 使用真实 `main.tscn` 在 1280×720、1600×960、1920×1080 生成 globe、local projection 与经济总览共 9 张 headed 截图；每档同时保存 scene tree JSON 与 console log，不以组件 bench 代替生产场景。
+- 本块只修 UI 展示：卡牌消费公开 `display_name`，怪兽 token 不再显示 motif，区域地形/设施/选中焦点与 hover tooltip 使用玩家可见中文，经济总览默认返回按钮完成本地化。没有修改经济、AI、怪兽、天气、存档或私密数据规则。
+- production capture 在 Main 入树前安装 `user://test_runs/e_production_ui_minimal_capture.save` QA override，运行前后清理隔离文件，并在三份 JSON 中证明玩家默认存档元数据/SHA-256 不变；可见 Label、Button 和 Control tooltip 扫描均为 `visible_machine_id_candidates=[]`、`failures=[]`，headed console 的 error/warning 命中均为 0。
+- `ui_text_smoke_test.gd`、`visual_snapshot.gd`、`smoke_test.gd --check-only` 通过；完整 layout 仍被现存旧 owner/save/economy/Main adapter oracle 阻塞，本块未恢复退役兼容层。
+- 地图标签拥挤、顶栏省略、1280 首屏密度与经济文本墙记录在 `reports/ui/production_acceptance/e_minimal_production_acceptance.md`，留待下一视觉块；queued/forecast/active/fading/双事件尚未纳入本最小矩阵。
+
 ## 2026-07-15｜区域天气系统 v1 完整闭环
 
 - 六种区域天气现由 `resources/weather/*.tres` 与 `WeatherDefinition` 完整数据驱动：离子风暴、引力潮、孢子季、晶尘暴、极寒期、太阳耀斑。商品、怪兽和单位使用最小显式标签，不按中文名称猜测规则；天气定义、倍率和生命周期没有进入 `main.gd`。

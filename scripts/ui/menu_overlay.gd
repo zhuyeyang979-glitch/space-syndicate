@@ -192,7 +192,7 @@ func hide_global_navigation() -> void:
 func set_catalog_navigation(data: Dictionary) -> void:
 	catalog_prev_button.text = str(data.get("prev_text", "Previous"))
 	catalog_next_button.text = str(data.get("next_text", "Next"))
-	catalog_back_button.text = str(data.get("back_text", "Back"))
+	catalog_back_button.text = str(data.get("back_text", "返回"))
 	catalog_prev_button.visible = bool(data.get("prev_visible", false))
 	catalog_next_button.visible = bool(data.get("next_visible", false))
 	catalog_back_button.visible = bool(data.get("back_visible", false))

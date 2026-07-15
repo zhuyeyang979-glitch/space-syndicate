@@ -28,7 +28,7 @@ func configure(data: Dictionary) -> void:
 	if name_label != null:
 		name_label.text = str(data.get("name", "未命名区域"))
 	if meta_label != null:
-		var terrain := str(data.get("terrain", "地表区"))
+		var terrain := _terrain_label(str(data.get("terrain", "地表区")))
 		var hp := int(data.get("hp", 0))
 		var panic := int(data.get("panic", 0))
 		meta_label.text = "%s｜共享生命 %d｜警戒 %d%%" % [terrain, hp, panic]
@@ -37,6 +37,16 @@ func configure(data: Dictionary) -> void:
 	if state_label != null:
 		state_label.text = "当前选区" if is_selected else "区域节点"
 	_refresh_style(Color(str(data.get("accent", "#38bdf8"))), is_selected)
+
+
+func _terrain_label(terrain_id: String) -> String:
+	return str({
+		"land": "陆地",
+		"ocean": "海洋",
+		"sea": "海洋",
+		"coast": "海岸",
+		"city": "城区",
+	}.get(terrain_id.to_lower(), terrain_id))
 
 
 func debug_snapshot() -> Dictionary:

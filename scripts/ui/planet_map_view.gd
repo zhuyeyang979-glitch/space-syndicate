@@ -409,7 +409,7 @@ func _sync_monster_tokens() -> void:
 			"name": str(marker.get("name", "Monster")),
 			"label": str(marker.get("label", "")),
 			"glyph": str(marker.get("glyph", "M")),
-			"motif": str(marker.get("motif", "threat")),
+			"detail_label": str(marker.get("display_subtitle", "场上单位")),
 			"accent": _color_to_hex(marker.get("color", Color("#ef4444"))),
 			"secondary": _color_to_hex(marker.get("secondary", Color("#fde68a"))),
 		})
@@ -525,11 +525,21 @@ func _sync_selection_marker() -> void:
 	node.call("configure", {
 		"index": selected_district,
 		"name": str(entry.get("name", "Selected region")),
-		"detail": "当前焦点｜%s" % str(entry.get("terrain", "地表区")),
+		"detail": "当前焦点｜%s" % _terrain_display_label(str(entry.get("terrain", "地表区"))),
 		"screen_position": get_district_control_position(selected_district),
 		"accent": "#facc15",
 	})
 	_sceneized_selection_nodes.append(node)
+
+
+func _terrain_display_label(terrain_id: String) -> String:
+	return str({
+		"land": "陆地",
+		"ocean": "海洋",
+		"sea": "海洋",
+		"coast": "海岸",
+		"city": "城区",
+	}.get(terrain_id.to_lower(), terrain_id))
 
 
 func _sync_map_event_effects() -> void:

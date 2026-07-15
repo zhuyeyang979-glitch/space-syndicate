@@ -1,0 +1,8 @@
+Godot Engine v4.7.stable.official.5b4e0cb0f - https://godotengine.org
+OpenGL API OpenGL ES 3.0 (ANGLE 2.1.1 git hash: aaebda1c5a40) - Compatibility - Using Device: Google Inc. (AMD) - ANGLE (AMD, AMD Radeon(TM) 890M Graphics (0x0000150E) Direct3D11 vs_5_0 ps_5_0, D3D11-32.0.31019.2002)
+
+CAPTURE: C:/Users/zhuye/Documents/New project/.codex-worktrees/space-syndicate-e/reports/ui/production_acceptance/e_minimal_clear_globe_1280x720.png
+CAPTURE: C:/Users/zhuye/Documents/New project/.codex-worktrees/space-syndicate-e/reports/ui/production_acceptance/e_minimal_clear_local_1280x720.png
+CAPTURE: C:/Users/zhuye/Documents/New project/.codex-worktrees/space-syndicate-e/reports/ui/production_acceptance/e_minimal_economy_overview_1280x720.png
+SCENE_TREE: C:/Users/zhuye/Documents/New project/.codex-worktrees/space-syndicate-e/reports/ui/production_acceptance/e_minimal_clear_1280x720_scene_tree.json
+Production UI minimal capture passed: C:/Users/zhuye/Documents/New project/.codex-worktrees/space-syndicate-e/reports/ui/production_acceptance/e_minimal_clear_globe_1280x720.png, C:/Users/zhuye/Documents/New project/.codex-worktrees/space-syndicate-e/reports/ui/production_acceptance/e_minimal_clear_local_1280x720.png, C:/Users/zhuye/Documents/New project/.codex-worktrees/space-syndicate-e/reports/ui/production_acceptance/e_minimal_economy_overview_1280x720.png

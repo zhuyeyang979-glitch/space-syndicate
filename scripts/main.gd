@@ -10358,13 +10358,14 @@ func _card_presentation_source(card_name: String, supplied_skill: Dictionary = {
 		skill = _game_runtime_coordinator_node().card_definition(card_name)
 	if skill.is_empty():
 		return {}
+	var player_facing_display_name := String(skill.get("display_name", "")).strip_edges()
 	var kind := String(skill.get("kind", ""))
 	var requirement := _card_play_requirement_snapshot(player_index, skill, {"selected_district": district_index})
 	var target := _card_play_target_snapshot(skill)
 	return {
 		"card_name": card_name,
 		"skill": skill,
-		"display_name": _card_display_name(card_name),
+		"display_name": player_facing_display_name if player_facing_display_name != "" else _card_display_name(card_name),
 		"display_text": _skill_display_text(skill),
 		"tag_text": _skill_tag_text(skill),
 		"rank": _game_runtime_coordinator_node().card_rank(card_name),

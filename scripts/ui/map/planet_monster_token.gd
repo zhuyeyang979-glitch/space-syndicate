@@ -22,7 +22,7 @@ func configure(data: Dictionary) -> void:
 	if name_label != null:
 		name_label.text = str(data.get("name", "未知怪兽"))
 	if motif_label != null:
-		motif_label.text = str(data.get("motif", "威胁单位"))
+		motif_label.text = str(data.get("detail_label", "场上单位"))
 	_refresh_style(Color(str(data.get("accent", "#ef4444"))), Color(str(data.get("secondary", "#fde68a"))))
 
 
@@ -30,6 +30,7 @@ func debug_snapshot() -> Dictionary:
 	return {
 		"kind": "monster",
 		"name": name_label.text if name_label != null else "",
+		"detail_label": motif_label.text if motif_label != null else "",
 	}
 
 
