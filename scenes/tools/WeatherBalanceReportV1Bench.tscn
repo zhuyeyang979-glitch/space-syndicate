@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/weather_balance_report_v1_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/WeatherTelemetryRuntimeService.tscn" id="2_telemetry"]
+
+[node name="WeatherBalanceReportV1Bench" type="Node"]
+script = ExtResource("1_bench")
+
+[node name="WeatherTelemetryRuntimeService" parent="." instance=ExtResource("2_telemetry")]
+event_capacity = 128
