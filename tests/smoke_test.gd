@@ -540,24 +540,12 @@ func _run() -> void:
 		_expect(buildable_district >= 0, "city build smoke has an undestroyed land district after monster collision checks")
 		main.set("selected_player", 0)
 		main.set("selected_district", buildable_district)
-		var build_players := _as_array(main.get("players")).duplicate(true)
-		if not build_players.is_empty():
-			var build_player := (build_players[0] as Dictionary).duplicate(true)
-			if int(build_player.get("cash", 0)) < 1800:
-				build_player["cash"] = 1800
-				var build_cash_history := _as_array(build_player.get("cash_history", [])).duplicate(true)
-				build_cash_history.append(1800)
-				build_player["cash_history"] = build_cash_history
-				build_players[0] = build_player
-				main.set("players", build_players)
-		var build_error_before := String(main.call("_city_build_error"))
-		_expect(build_error_before == "", "city build smoke has a funded valid land target before building%s" % ("：%s" % build_error_before if build_error_before != "" else ""))
-		main.call("_build_city_in_selected_district")
-		await process_frame
-		_expect(int(main.call("_player_active_city_count", 0)) == 1, "city build action creates an active city for player 1")
-		_expect(_city_has_single_goods(main, buildable_district), "newly urbanized cities start with one produced good and one demanded good")
-		_expect(_map_effects_contain(main, "city_rise"), "city build action emits a temporary city-rise map animation")
-		_expect(_player_ledger_contains(_as_array(main.get("players")), 0, "建城支出"), "city build action records an economy ledger spend")
+		var facility_gate := await _v06_first_table_facility_owner_chain_snapshot()
+		_expect(bool(facility_gate.get("market_ready", false)), "first-table city economy exposes one canonical public facility listing")
+		_expect(bool(facility_gate.get("purchase_committed", false)) and int(facility_gate.get("slot_index", -1)) >= 0, "facility purchase commits once and places the canonical card in the player's authoritative hand")
+		_expect(bool(facility_gate.get("cash_spent", false)), "facility purchase spends authoritative player cash")
+		_expect(bool(facility_gate.get("play_finalized", false)), "facility play creates and finalizes the authoritative city-economy source")
+		_expect(bool(facility_gate.get("source_finalized", false)), "facility owner and CommodityFlow expose the finalized production source")
 		_expect(_verify_card_play_flow_gate_and_one_shot(main, buildable_district), "rank-I cards can be condition-free, regional GDP gates block ineligible plays, and one-shot cards leave the hand")
 		var rival_city_count_before := _rival_active_city_count(main, 0)
 		var rival_cash_before := _rival_cash_total(_as_array(main.get("players")), 0)
@@ -5030,6 +5018,91 @@ func _verify_card_rank_ladders_are_complete(main: Node) -> bool:
 			previous_budget = budget_points
 		checked += 1
 	return checked >= 40
+
+
+func _v06_first_table_facility_owner_chain_snapshot() -> Dictionary:
+	var result := {
+		"market_ready": false,
+		"purchase_committed": false,
+		"slot_index": -1,
+		"cash_spent": false,
+		"play_finalized": false,
+		"source_finalized": false,
+	}
+	var packed := load(MAIN_SCENE_PATH) as PackedScene
+	if packed == null:
+		return result
+	var fixture := packed.instantiate()
+	var fixture_save_path := "user://test_runs/smoke_v06_facility_owner_fixture.save"
+	if FileAccess.file_exists(fixture_save_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(fixture_save_path))
+	var save_coordinator := fixture.get_node_or_null(SAVE_COORDINATOR_NODE_PATH) as Node
+	var save_override_ready := save_coordinator != null \
+		and save_coordinator.has_method("set_qa_default_save_path_override") \
+		and bool(save_coordinator.call("set_qa_default_save_path_override", fixture_save_path))
+	if not save_override_ready:
+		fixture.free()
+		return result
+	fixture.set("configured_player_count", EXPECTED_PLAYER_COUNT)
+	fixture.set("configured_ai_player_count", EXPECTED_AI_PLAYER_COUNT)
+	fixture.set("configured_role_indices", [0, 1, 2, 3, 4])
+	fixture.set("configured_starter_monster_indices", [7, 6, 2, 4, 3])
+	get_root().add_child(fixture)
+	fixture.call("_new_game")
+	fixture.set_process(false)
+	var coordinator := _runtime_card_coordinator(fixture)
+	if coordinator != null and coordinator.has_method("refresh_v06_production_player_bindings"):
+		coordinator.call("refresh_v06_production_player_bindings", fixture)
+	var actor_binding: Dictionary = coordinator.call("actor_id_for_player_index", 0) if coordinator != null and coordinator.has_method("actor_id_for_player_index") else {}
+	var actor_id := String(actor_binding.get("actor_id", "")).strip_edges()
+	var facility_card: Dictionary = coordinator.call("v06_first_table_facility_card") if coordinator != null and coordinator.has_method("v06_first_table_facility_card") else {}
+	var facility_machine: Dictionary = facility_card.get("machine", {}) if facility_card.get("machine", {}) is Dictionary else {}
+	var facility_card_id := String(facility_machine.get("card_id", ""))
+	var market: Dictionary = coordinator.call("v06_first_table_facility_market_snapshot", actor_id) if coordinator != null and coordinator.has_method("v06_first_table_facility_market_snapshot") and bool(actor_binding.get("available", false)) else {}
+	var listing: Dictionary = market.get("listing", {}) if market.get("listing", {}) is Dictionary else {}
+	var player_before: Dictionary = coordinator.call("v06_card_player_snapshot", actor_id) if coordinator != null and coordinator.has_method("v06_card_player_snapshot") else {}
+	var purchase: Dictionary = coordinator.call(
+		"purchase_v06_first_table_facility_card",
+		actor_id,
+		String(listing.get("item_id", "")),
+		"smoke:v06-facility-purchase:%s" % actor_id,
+	) if bool(market.get("ready", false)) and facility_card_id != "" else {}
+	var player_after: Dictionary = coordinator.call("v06_card_player_snapshot", actor_id) if coordinator != null and coordinator.has_method("v06_card_player_snapshot") else {}
+	var inventory: Dictionary = player_after.get("inventory", {}) if player_after.get("inventory", {}) is Dictionary else {}
+	var slots: Array = inventory.get("slots", []) if inventory.get("slots", []) is Array else []
+	var slot_index := -1
+	for candidate_index in range(slots.size()):
+		if not (slots[candidate_index] is Dictionary):
+			continue
+		var machine: Dictionary = (slots[candidate_index] as Dictionary).get("machine", {}) if (slots[candidate_index] as Dictionary).get("machine", {}) is Dictionary else {}
+		if String(machine.get("card_id", "")) == facility_card_id:
+			slot_index = candidate_index
+			break
+	var target_district := _first_buildable_land_district(_as_array(fixture.get("districts")))
+	var target_region_id := ""
+	if target_district >= 0:
+		var target_entry := _as_array(fixture.get("districts"))[target_district] as Dictionary
+		target_region_id = String(target_entry.get("region_id", "")).strip_edges()
+	var play: Dictionary = coordinator.call("play_v06_runtime_card", {
+		"actor_id": actor_id,
+		"slot_index": slot_index,
+		"transaction_id": "smoke:v06-facility-play:%s" % actor_id,
+		"region_id": target_region_id,
+		"game_time": float(fixture.get("game_time")),
+	}) if bool(purchase.get("committed", false)) and slot_index >= 0 and target_region_id != "" else {}
+	var finalization: Dictionary = play.get("effect_finalization", {}) if play.get("effect_finalization", {}) is Dictionary else {}
+	var source: Dictionary = coordinator.call("economic_source_snapshot", actor_id) if coordinator != null and coordinator.has_method("economic_source_snapshot") else {}
+	result["market_ready"] = bool(market.get("ready", false)) and facility_card_id != ""
+	result["purchase_committed"] = bool(purchase.get("committed", false))
+	result["slot_index"] = slot_index
+	result["cash_spent"] = int(player_after.get("cash", -1)) < int(player_before.get("cash", -1))
+	result["play_finalized"] = bool(play.get("committed", false)) and bool(finalization.get("finalized", false))
+	result["source_finalized"] = bool(source.get("has_source", false)) and bool(source.get("bootstrap_finalized", false))
+	fixture.queue_free()
+	await process_frame
+	if FileAccess.file_exists(fixture_save_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(fixture_save_path))
+	return result
 
 
 func _verify_ten_hour_route_pack(_main: Node) -> bool:
