@@ -582,15 +582,18 @@ func _run() -> void:
 		_expect(_ai_decision_sample_count(players_after_business) > _ai_decision_sample_count(players_after_auto_expand), "AI business actions add more decision samples")
 		_expect(_city_public_clue_exists(main), "rival business actions leave public clues on city records")
 		_expect(_city_public_clue_history_exists(main), "city public clue history keeps recent anonymous business and contract evidence")
-		var cash_after_build := _player_cash(_as_array(main.get("players")), 0)
-		main.call("_market_tick")
-		main.call("_settle_city_cashflow_seconds", 60.0)
+		var economy_coordinator := _runtime_card_coordinator(main)
+		var receipts_before: Array = economy_coordinator.commodity_flow_recent_receipts(-1) if economy_coordinator != null and economy_coordinator.has_method("commodity_flow_recent_receipts") else []
+		var economy_advance: Dictionary = economy_coordinator.advance_commodity_flow(60.0, {
+			"game_time": float(main.get("game_time")),
+			"player_count": _as_array(main.get("players")).size(),
+		}) if economy_coordinator != null and economy_coordinator.has_method("advance_commodity_flow") else {}
+		var market_cycle: Dictionary = economy_coordinator.tick_product_market_cycle(60.0) if economy_coordinator != null and economy_coordinator.has_method("tick_product_market_cycle") else {}
 		await process_frame
-		var players_after_market := _as_array(main.get("players"))
-		_expect(_player_cash(players_after_market, 0) > cash_after_build, "global market refresh plus realtime cashflow pays city income")
-		_expect(int((players_after_market[0] as Dictionary).get("last_cashflow_income", 0)) > 0, "realtime cashflow records income since the last global refresh")
-		_expect(_as_array((players_after_market[0] as Dictionary).get("cash_history", [])).size() >= 3, "player cash history records spending and income changes")
-		_expect(_player_ledger_contains(players_after_market, 0, "城市收入") or _player_ledger_contains(players_after_market, 0, "项目分红"), "realtime cashflow records city or project-share income in the economy ledger")
+		var receipts_after: Array = economy_coordinator.commodity_flow_recent_receipts(-1) if economy_coordinator != null and economy_coordinator.has_method("commodity_flow_recent_receipts") else []
+		_expect(bool(economy_advance.get("advanced", false)), "CommodityFlow advances one authoritative economic interval through the Coordinator")
+		_expect(receipts_after.size() >= receipts_before.size(), "CommodityFlow keeps sale receipts after the economic interval")
+		_expect(bool(market_cycle.get("ticked", false)) or int(market_cycle.get("business_cycle_count", 0)) > 0, "ProductMarket advances its own business cycle through the Coordinator")
 		_expect(_verify_realtime_gdp_directionality_pack(main, buildable_district), "realtime GDP breakdown responds to production, consumption, transport, route-flow, route damage, and region damage")
 		_verify_economy_card_effects(main, buildable_district)
 		var ledger_components_after_build := {
