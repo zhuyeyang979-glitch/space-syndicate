@@ -8,11 +8,14 @@ const UNIT_DEFAULT_DURATION_SECONDS := 28.0
 const UNIT_DEFAULT_COOLDOWN_SECONDS := 7.5
 const UNIT_HISTORY_LIMIT := 16
 const UNIT_COMMAND_COOLDOWN_SECONDS := 5.0
+const WEATHER_MOVEMENT_FLOOR := 0.40
+const WEATHER_RANGED_EFFECT_FLOOR := 0.70
 
 var _world_bridge: MilitaryRuntimeWorldBridge
 var _region_infrastructure_world_bridge: Node
 var _route_network_runtime_controller: RouteNetworkRuntimeController
 var _monster_runtime_controller: MonsterRuntimeController
+var _weather_runtime_controller: WeatherRuntimeController
 var _product_market_runtime_controller: ProductMarketRuntimeController
 var _inventory_service: CardInventoryRuntimeService
 var _card_runtime_catalog_service: CardRuntimeCatalogService
@@ -38,6 +41,10 @@ func set_route_network_runtime_controller(controller: RouteNetworkRuntimeControl
 
 func set_monster_runtime_controller(controller: MonsterRuntimeController) -> void:
 	_monster_runtime_controller = controller
+
+
+func set_weather_runtime_controller(controller: WeatherRuntimeController) -> void:
+	_weather_runtime_controller = controller
 
 
 func set_product_market_runtime_controller(controller: ProductMarketRuntimeController) -> void:
@@ -272,6 +279,97 @@ func unit_hp(skill: Dictionary) -> int:
 
 
 func unit_movement_speed_mps(unit: Dictionary, target_index: int, command_speed_mps: float = -1.0) -> float:
+	var base_speed := _unit_base_movement_speed_mps(unit, target_index, command_speed_mps)
+	var weather_region_index := _unit_region_index(unit)
+	if weather_region_index < 0:
+		weather_region_index = target_index
+	var weather := military_weather_effect_snapshot(unit, weather_region_index)
+	return maxf(0.5, base_speed * float(weather.get("movement_multiplier", 1.0)))
+
+
+func military_weather_effect_snapshot(unit_or_skill: Dictionary, region_index: int) -> Dictionary:
+	var identity := _military_weather_identity(region_index)
+	if _weather_runtime_controller == null or region_index < 0:
+		return identity
+	var context := {
+		"movement_domain": _weather_movement_domain(unit_or_skill),
+		"unit_tags": _weather_traits(unit_or_skill),
+		"weather_resistance": clampf(float(unit_or_skill.get("weather_resistance", 0.0)), 0.0, 1.0),
+		"weather_exploitation_multiplier": maxf(1.0, float(unit_or_skill.get("weather_exploitation_multiplier", 1.0))),
+	}
+	var source_variant: Variant = _weather_runtime_controller.region_effect_snapshot(region_index, context)
+	if not (source_variant is Dictionary):
+		return identity
+	var source := source_variant as Dictionary
+	var effects: Array = source.get("effects", []) if source.get("effects", []) is Array else []
+	var land := 1.0
+	var ocean := 1.0
+	var air := 1.0
+	var ranged := 1.0
+	var orbital := 1.0
+	var knockback := 1.0
+	var flying_risk := 1.0
+	var explanation_codes: Array = []
+	var effect_count := 0
+	for effect_variant in effects:
+		if not (effect_variant is Dictionary):
+			continue
+		var effect := effect_variant as Dictionary
+		var military: Dictionary = effect.get("military", {}) if effect.get("military", {}) is Dictionary else {}
+		if military.is_empty():
+			continue
+		effect_count += 1
+		land *= maxf(WEATHER_MOVEMENT_FLOOR, float(military.get("land_multiplier", 1.0)))
+		ocean *= maxf(WEATHER_MOVEMENT_FLOOR, float(military.get("ocean_multiplier", 1.0)))
+		air *= maxf(WEATHER_MOVEMENT_FLOOR, float(military.get("air_multiplier", 1.0)))
+		ranged *= maxf(WEATHER_RANGED_EFFECT_FLOOR, float(military.get("ranged_multiplier", 1.0)))
+		orbital *= maxf(0.0, float(military.get("orbital_multiplier", 1.0)))
+		knockback *= maxf(0.0, float(military.get("knockback_multiplier", 1.0)))
+		flying_risk *= maxf(0.0, float(military.get("flying_risk_multiplier", 1.0)))
+		var codes: Array = effect.get("explanations", effect.get("explanation", [])) if effect.get("explanations", effect.get("explanation", [])) is Array else []
+		for code_variant in codes:
+			var code := str(code_variant)
+			if not code.is_empty() and not explanation_codes.has(code):
+				explanation_codes.append(code)
+	land = maxf(WEATHER_MOVEMENT_FLOOR, land)
+	ocean = maxf(WEATHER_MOVEMENT_FLOOR, ocean)
+	air = maxf(WEATHER_MOVEMENT_FLOOR, air)
+	ranged = maxf(WEATHER_RANGED_EFFECT_FLOOR, ranged)
+	var domain := _weather_movement_domain(unit_or_skill)
+	var movement := 1.0
+	match domain:
+		"land": movement = land
+		"ocean": movement = ocean
+		"air": movement = air
+	return {
+		"available": bool(source.get("available", true)),
+		"affected": effect_count > 0,
+		"region_index": region_index,
+		"effect_count": effect_count,
+		"movement_multiplier": movement,
+		"land_movement_multiplier": land,
+		"ocean_movement_multiplier": ocean,
+		"air_movement_multiplier": air,
+		"ranged_effect_multiplier": ranged,
+		"orbital_effect_multiplier": orbital,
+		"command_range_multiplier": maxf(WEATHER_RANGED_EFFECT_FLOOR, ranged * orbital),
+		"knockback_multiplier": knockback,
+		"flying_risk_multiplier": flying_risk,
+		"explanation_codes": explanation_codes,
+	}
+
+
+func effective_command_range(unit_or_skill: Dictionary, region_index: int, base_range: float) -> float:
+	var weather := military_weather_effect_snapshot(unit_or_skill, region_index)
+	return maxf(1.0, base_range * float(weather.get("command_range_multiplier", 1.0)))
+
+
+func effective_knockback(unit_or_skill: Dictionary, region_index: int, base_knockback: float) -> float:
+	var weather := military_weather_effect_snapshot(unit_or_skill, region_index)
+	return maxf(0.0, base_knockback * float(weather.get("knockback_multiplier", 1.0)))
+
+
+func _unit_base_movement_speed_mps(unit: Dictionary, target_index: int, command_speed_mps: float = -1.0) -> float:
 	var model := RuntimeBalanceModelScript.new().call(
 		"military_movement_speed_model",
 		unit,
@@ -280,6 +378,43 @@ func unit_movement_speed_mps(unit: Dictionary, target_index: int, command_speed_
 		float(_world_call(&"_current_balance_region_radius_m"))
 	) as Dictionary
 	return maxf(0.5, float(model.get("speed_mps", 18.0)))
+
+
+func _military_weather_identity(region_index: int) -> Dictionary:
+	return {
+		"available": _weather_runtime_controller != null,
+		"affected": false,
+		"region_index": region_index,
+		"effect_count": 0,
+		"movement_multiplier": 1.0,
+		"land_movement_multiplier": 1.0,
+		"ocean_movement_multiplier": 1.0,
+		"air_movement_multiplier": 1.0,
+		"ranged_effect_multiplier": 1.0,
+		"orbital_effect_multiplier": 1.0,
+		"command_range_multiplier": 1.0,
+		"knockback_multiplier": 1.0,
+		"flying_risk_multiplier": 1.0,
+		"explanation_codes": [],
+	}
+
+
+func _weather_movement_domain(unit_or_skill: Dictionary) -> String:
+	var domain := str(unit_or_skill.get("military_domain", "mixed")).strip_edges().to_lower()
+	return "ocean" if domain == "sea" else domain
+
+
+func _weather_traits(unit_or_skill: Dictionary) -> Array:
+	var result: Array = []
+	for field in ["movement_traits", "weather_traits"]:
+		var source: Variant = unit_or_skill.get(field, [])
+		if not (source is Array or source is PackedStringArray):
+			continue
+		for value in source:
+			var tag := str(value).strip_edges().to_lower()
+			if not tag.is_empty() and not result.has(tag):
+				result.append(tag)
+	return result
 
 
 func unit_index_by_uid(uid: int) -> int:
@@ -528,7 +663,9 @@ func trigger_command(skill: Dictionary, target_slot: int = -1, acting_player_ind
 		return false
 	var command := str(skill.get("military_command", ""))
 	var damage := maxi(1, int(unit.get("damage", skill.get("damage", 1))))
-	var command_range := maxf(80.0, float(unit.get("range", skill.get("range", 220.0))))
+	var unit_region_index := _unit_region_index(unit)
+	var base_command_range := maxf(80.0, float(unit.get("range", skill.get("range", 220.0))))
+	var command_range := effective_command_range(unit, unit_region_index, base_command_range)
 	var command_move := maxf(1.0, float(unit.get("move", skill.get("move", 220.0))))
 	var source := "匿名%s·%s" % [label, _skill_family(str(skill.get("name", "军令")))]
 	var before := _entity_world_position(unit)
@@ -539,8 +676,9 @@ func trigger_command(skill: Dictionary, target_slot: int = -1, acting_player_ind
 				_log("%s需要选中一个未毁区域作为前进目标。" % str(skill.get("name", "军令")))
 				return false
 			var terrain_multiplier := terrain_move_multiplier(unit, selected_district)
+			var base_move_speed_mps := _unit_base_movement_speed_mps(unit, selected_district, command_move)
 			var move_speed_mps := unit_movement_speed_mps(unit, selected_district, command_move)
-			var moved := float(_world_call(&"_start_entity_linear_motion", [unit, _district_center(selected_district), move_speed_mps, source, str(unit.get("military_domain", "")), -1.0, "military_move"]))
+			var moved := float(_world_call(&"_start_entity_linear_motion", [unit, _district_center(selected_district), base_move_speed_mps, source, str(unit.get("military_domain", "")), -1.0, "military_move"]))
 			if moved <= 0.5:
 				_log("%s已经在目标附近。" % str(skill.get("name", "军令")))
 				return false
@@ -749,6 +887,7 @@ func debug_snapshot(viewer_index: int = -1) -> Dictionary:
 		"roster": public_roster,
 		"inventory_service_bound": _inventory_service != null,
 		"monster_controller_bound": _monster_runtime_controller != null,
+		"weather_controller_bound": _weather_runtime_controller != null,
 		"default_duration_seconds": UNIT_DEFAULT_DURATION_SECONDS,
 		"default_command_cooldown_seconds": UNIT_COMMAND_COOLDOWN_SECONDS,
 	}
@@ -759,7 +898,13 @@ func _update_units(delta: float) -> void:
 	for index in range(military_units.size() - 1, -1, -1):
 		var unit := military_units[index] as Dictionary
 		if _entity_has_linear_motion(unit):
+			var base_motion_speed := maxf(0.0, float(unit.get("linear_move_speed_mps", 0.0)))
+			var region_index := _unit_region_index(unit)
+			var weather := military_weather_effect_snapshot(unit, region_index)
+			unit["linear_move_speed_mps"] = base_motion_speed * float(weather.get("movement_multiplier", 1.0))
 			var info_variant: Variant = _world_call(&"_advance_entity_linear_motion", [unit, delta])
+			if unit.has("linear_move_speed_mps"):
+				unit["linear_move_speed_mps"] = base_motion_speed
 			var info: Dictionary = info_variant if info_variant is Dictionary else {}
 			if bool(info.get("arrived", false)):
 				var district_index := int(info.get("target_district", unit.get("position", -1)))
@@ -774,6 +919,14 @@ func _update_units(delta: float) -> void:
 			remove_unit(index, "在场时间结束或战力耗尽。")
 			continue
 		military_units[index] = unit
+
+
+func _unit_region_index(unit: Dictionary) -> int:
+	var region_index := int(unit.get("position", -1))
+	if region_index >= 0:
+		return region_index
+	var nearest_variant: Variant = _world_call(&"_nearest_district_to", [_entity_world_position(unit)])
+	return int(nearest_variant) if nearest_variant != null else -1
 
 
 func _invalidate_bound_commands(unit_uid: int, reason: String = "绑定军队已离场，此军令失效。") -> void:

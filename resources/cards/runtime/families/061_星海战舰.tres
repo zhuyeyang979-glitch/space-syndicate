@@ -29,7 +29,7 @@ effect_parameters = {
 "military_range": 420.0,
 "military_strike_route_damage": 1,
 "military_type": "warship",
-"movement_traits": ["sea", "fleet"],
+"movement_traits": ["sea", "fleet", "ranged"],
 "terrain_move_multiplier": {
 "land": 0.05,
 "ocean": 1.2
@@ -63,7 +63,7 @@ effect_parameters = {
 "military_range": 520.0,
 "military_strike_route_damage": 1,
 "military_type": "warship",
-"movement_traits": ["sea", "fleet"],
+"movement_traits": ["sea", "fleet", "ranged"],
 "terrain_move_multiplier": {
 "land": 0.05,
 "ocean": 1.24
@@ -97,7 +97,7 @@ effect_parameters = {
 "military_range": 640.0,
 "military_strike_route_damage": 2,
 "military_type": "warship",
-"movement_traits": ["sea", "fleet"],
+"movement_traits": ["sea", "fleet", "ranged"],
 "terrain_move_multiplier": {
 "land": 0.05,
 "ocean": 1.28
@@ -131,7 +131,7 @@ effect_parameters = {
 "military_range": 780.0,
 "military_strike_route_damage": 2,
 "military_type": "warship",
-"movement_traits": ["sea", "fleet"],
+"movement_traits": ["sea", "fleet", "ranged"],
 "terrain_move_multiplier": {
 "land": 0.05,
 "ocean": 1.34

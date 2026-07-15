@@ -28,7 +28,7 @@ effect_parameters = {
 "military_range": 520.0,
 "military_strike_route_damage": 1,
 "military_type": "bomber",
-"movement_traits": ["air", "bombard"],
+"movement_traits": ["air", "bombard", "flying", "ranged", "orbital"],
 "terrain_move_multiplier": {
 "land": 1.1,
 "ocean": 1.1
@@ -61,7 +61,7 @@ effect_parameters = {
 "military_range": 620.0,
 "military_strike_route_damage": 1,
 "military_type": "bomber",
-"movement_traits": ["air", "bombard"],
+"movement_traits": ["air", "bombard", "flying", "ranged", "orbital"],
 "terrain_move_multiplier": {
 "land": 1.14,
 "ocean": 1.14
@@ -94,7 +94,7 @@ effect_parameters = {
 "military_range": 740.0,
 "military_strike_route_damage": 2,
 "military_type": "bomber",
-"movement_traits": ["air", "bombard"],
+"movement_traits": ["air", "bombard", "flying", "ranged", "orbital"],
 "terrain_move_multiplier": {
 "land": 1.18,
 "ocean": 1.18
@@ -127,7 +127,7 @@ effect_parameters = {
 "military_range": 860.0,
 "military_strike_route_damage": 2,
 "military_type": "bomber",
-"movement_traits": ["air", "bombard"],
+"movement_traits": ["air", "bombard", "flying", "ranged", "orbital"],
 "terrain_move_multiplier": {
 "land": 1.22,
 "ocean": 1.22

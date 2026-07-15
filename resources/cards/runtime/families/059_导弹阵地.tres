@@ -29,7 +29,7 @@ effect_parameters = {
 "military_range": 800.0,
 "military_strike_route_damage": 1,
 "military_type": "missile",
-"movement_traits": ["land", "artillery"],
+"movement_traits": ["land", "artillery", "ranged"],
 "terrain_move_multiplier": {
 "land": 0.55,
 "ocean": 0.05
@@ -63,7 +63,7 @@ effect_parameters = {
 "military_range": 960.0,
 "military_strike_route_damage": 1,
 "military_type": "missile",
-"movement_traits": ["land", "artillery"],
+"movement_traits": ["land", "artillery", "ranged"],
 "terrain_move_multiplier": {
 "land": 0.58,
 "ocean": 0.05
@@ -97,7 +97,7 @@ effect_parameters = {
 "military_range": 1120.0,
 "military_strike_route_damage": 2,
 "military_type": "missile",
-"movement_traits": ["land", "artillery"],
+"movement_traits": ["land", "artillery", "ranged"],
 "terrain_move_multiplier": {
 "land": 0.6,
 "ocean": 0.05
@@ -131,7 +131,7 @@ effect_parameters = {
 "military_range": 1300.0,
 "military_strike_route_damage": 2,
 "military_type": "missile",
-"movement_traits": ["land", "artillery"],
+"movement_traits": ["land", "artillery", "ranged"],
 "terrain_move_multiplier": {
 "land": 0.62,
 "ocean": 0.05

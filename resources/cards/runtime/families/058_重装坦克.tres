@@ -28,7 +28,7 @@ effect_parameters = {
 "military_move": 150.0,
 "military_range": 220.0,
 "military_type": "tank",
-"movement_traits": ["land", "armor"],
+"movement_traits": ["land", "armor", "heavy"],
 "terrain_move_multiplier": {
 "land": 1.1,
 "ocean": 0.1
@@ -61,7 +61,7 @@ effect_parameters = {
 "military_move": 180.0,
 "military_range": 280.0,
 "military_type": "tank",
-"movement_traits": ["land", "armor"],
+"movement_traits": ["land", "armor", "heavy"],
 "terrain_move_multiplier": {
 "land": 1.14,
 "ocean": 0.1
@@ -94,7 +94,7 @@ effect_parameters = {
 "military_move": 210.0,
 "military_range": 340.0,
 "military_type": "tank",
-"movement_traits": ["land", "armor"],
+"movement_traits": ["land", "armor", "heavy"],
 "terrain_move_multiplier": {
 "land": 1.18,
 "ocean": 0.1
@@ -127,7 +127,7 @@ effect_parameters = {
 "military_move": 240.0,
 "military_range": 400.0,
 "military_type": "tank",
-"movement_traits": ["land", "armor"],
+"movement_traits": ["land", "armor", "heavy"],
 "terrain_move_multiplier": {
 "land": 1.22,
 "ocean": 0.1
