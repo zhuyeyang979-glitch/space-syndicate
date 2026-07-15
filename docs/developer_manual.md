@@ -258,10 +258,38 @@ pwsh -File tools/invoke_godot_test.ps1 -TestScript res://tests/smoke_test.gd -Ti
 pwsh -File tools/invoke_godot_test.ps1 -Scene res://scenes/tools/ProductMarketRuntimeCharacterizationBench.tscn -TimeoutSeconds 300
 ```
 
+新工作树第一次运行 gate 时使用 `-EnsureImported`。它只在
+`.godot/global_script_class_cache.cfg` 缺失、为空或格式无效时，先阻塞执行一次
+GUI Godot 4.7 的 `--headless --import`；已有有效 cache 时直接跳过 import：
+
+```powershell
+pwsh -File tools/invoke_godot_test.ps1 -TestScript res://tests/main_runtime_composition_test.gd -EnsureImported -ImportTimeoutSeconds 300 -TimeoutSeconds 180
+```
+
+分支切换、cherry-pick 或新增 `class_name` 后，即使 cache 文件仍存在也可能已经过期。
+一次真实集成中，旧 cache 大小为 `104161`，其中没有新加入的
+`MonsterCatalogV06`；显式 import 后大小变为 `104787`，该全局类才完成注册。
+这种情况使用显式 `-RefreshImport`：它在本次 runner invocation 的 test 之前强制且
+只执行一次 import。若同时传入 `-EnsureImported`，refresh 优先，仍只执行一次：
+
+```powershell
+pwsh -File tools/invoke_godot_test.ps1 -TestScript res://tests/main_runtime_composition_test.gd -RefreshImport -ImportTimeoutSeconds 300 -TimeoutSeconds 180
+```
+
+不要给每个测试无条件加 refresh；同一代码/资源基线完成一次显式刷新后，后续 gate
+继续使用 `-EnsureImported`。可用以下隔离 self-test 审计冷启动、暖 cache 跳过、
+无效 cache 重建、陈旧 cache 刷新、import 失败短路及玩家状态指纹不变：
+
+```powershell
+pwsh -File tools/invoke_godot_test_self_test.ps1
+```
+
 正常完成时 runner 原样返回 Godot ExitCode。runner 自身保留 `124` 表示 timeout，
 `125` 表示测试进程结束后检测到本项目的遗留 headless/game 进程（即使自动清理成功）；
-这两种情况都不能标记为测试通过。`result.json` 同时记录命令参数、进程 PID、耗时、
-清理 PID 与剩余 PID。
+`126` 表示 import 已结束但没有生成有效 cache。这些情况都不能标记为测试通过；
+import 失败时 `test_started=false`。`result.json` 同时记录命令参数、进程 PID、耗时、
+清理 PID 与剩余 PID；`import` 对象另行记录 `requested/mode/reason`、cache 前后的
+size/mtime/SHA-256、是否实际执行、独立 timeout/log、真实 ExitCode 与清理结果。
 runner 只清理同一 Godot 可执行文件和同一绝对 project path 下的运行进程，不关闭
 Godot 编辑器。
 

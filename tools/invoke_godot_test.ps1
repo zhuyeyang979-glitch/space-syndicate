@@ -30,6 +30,13 @@ pwsh -File tools/invoke_godot_test.ps1 `
     -EnsureImported `
     -ImportTimeoutSeconds 300 `
     -TimeoutSeconds 180
+
+.EXAMPLE
+pwsh -File tools/invoke_godot_test.ps1 `
+    -TestScript res://tests/main_runtime_composition_test.gd `
+    -RefreshImport `
+    -ImportTimeoutSeconds 300 `
+    -TimeoutSeconds 180
 #>
 [CmdletBinding(DefaultParameterSetName = "Script")]
 param(
@@ -49,6 +56,9 @@ param(
     [int]$TimeoutSeconds = 180,
 
     [switch]$EnsureImported,
+
+    [Alias("ForceImport")]
+    [switch]$RefreshImport,
 
     [ValidateRange(1, 86400)]
     [int]$ImportTimeoutSeconds = 300,
@@ -165,6 +175,55 @@ function New-GodotProcessStartInfo {
         $startInfo.ArgumentList.Add($argument)
     }
     return $startInfo
+}
+
+function Get-ClassCacheAudit {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $item = Get-Item -LiteralPath $Path -ErrorAction SilentlyContinue
+    if ($null -eq $item -or $item.PSIsContainer) {
+        return [pscustomobject][ordered]@{
+            present = $false
+            valid = $false
+            invalid_reason = "missing"
+            size = [int64]0
+            mtime_utc = $null
+            sha256 = $null
+        }
+    }
+
+    $size = [int64]$item.Length
+    $mtimeUtc = $item.LastWriteTimeUtc.ToString("o")
+    $sha256 = $null
+    $valid = $false
+    $invalidReason = $null
+    try {
+        $sha256 = (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash
+        if ($size -le 0) {
+            $invalidReason = "empty"
+        } else {
+            $content = [IO.File]::ReadAllText($Path)
+            if ($content.TrimStart().StartsWith("list=", [StringComparison]::Ordinal)) {
+                $valid = $true
+            } else {
+                $invalidReason = "invalid_format"
+            }
+        }
+    } catch {
+        $invalidReason = "unreadable"
+    }
+
+    return [pscustomobject][ordered]@{
+        present = $true
+        valid = $valid
+        invalid_reason = $invalidReason
+        size = $size
+        mtime_utc = $mtimeUtc
+        sha256 = $sha256
+    }
 }
 
 function Invoke-GodotBlockingProcess {
@@ -338,16 +397,40 @@ if ($targetType -eq "scene") {
 $arguments += @($TestArgument)
 
 $classCachePath = Join-Path $ProjectPath ".godot\global_script_class_cache.cfg"
-$cacheFileBefore = Get-Item -LiteralPath $classCachePath -ErrorAction SilentlyContinue
-$cacheSizeBefore = if ($null -ne $cacheFileBefore) { [int64]$cacheFileBefore.Length } else { [int64]0 }
-$cachePresentBefore = $cacheSizeBefore -gt 0
+$cacheBefore = Get-ClassCacheAudit -Path $classCachePath
+$importMode = if ($RefreshImport) {
+    "refresh"
+} elseif ($EnsureImported) {
+    "ensure"
+} else {
+    "none"
+}
+$importRequested = $importMode -ne "none"
+$importReason = if ($RefreshImport) {
+    "refresh_requested"
+} elseif (-not $EnsureImported) {
+    "not_requested"
+} elseif (-not $cacheBefore.present) {
+    "cache_missing"
+} elseif (-not $cacheBefore.valid) {
+    "cache_invalid"
+} else {
+    "cache_valid"
+}
 $importRecord = [ordered]@{
-    requested = [bool]$EnsureImported
+    requested = $importRequested
+    mode = $importMode
+    reason = $importReason
     cache_path = $classCachePath
-    cache_present_before = $cachePresentBefore
-    cache_size_before = $cacheSizeBefore
+    cache_present_before = [bool]$cacheBefore.present
+    cache_valid_before = [bool]$cacheBefore.valid
+    cache_invalid_reason_before = $cacheBefore.invalid_reason
+    cache_size_before = [int64]$cacheBefore.size
+    cache_mtime_utc_before = $cacheBefore.mtime_utc
+    cache_sha256_before = $cacheBefore.sha256
     attempted = $false
-    status = if ($EnsureImported) { "pending" } else { "not_requested" }
+    status = if ($importRequested) { "pending" } else { "not_requested" }
+    process_status = $null
     succeeded = $null
     process_id = $null
     timeout_seconds = $ImportTimeoutSeconds
@@ -362,17 +445,23 @@ $importRecord = [ordered]@{
     godot_log = $null
     cleanup_process_ids = @()
     remaining_project_runtime_process_ids = @()
-    cache_present_after = $cachePresentBefore
-    cache_size_after = $cacheSizeBefore
+    cache_present_after = [bool]$cacheBefore.present
+    cache_valid_after = [bool]$cacheBefore.valid
+    cache_invalid_reason_after = $cacheBefore.invalid_reason
+    cache_size_after = [int64]$cacheBefore.size
+    cache_mtime_utc_after = $cacheBefore.mtime_utc
+    cache_sha256_after = $cacheBefore.sha256
+    cache_changed = $false
+    cache_size_delta = [int64]0
 }
 
 $importReady = $true
 $importFailureStatus = $null
 $importFailureExitCode = $null
-if ($EnsureImported -and $cachePresentBefore) {
-    $importRecord.status = "cache_present"
+if ($importMode -eq "ensure" -and $cacheBefore.valid) {
+    $importRecord.status = "cache_valid"
     $importRecord.succeeded = $true
-} elseif ($EnsureImported) {
+} elseif ($importRequested) {
     $importArguments = @(
         "--headless",
         "--path", $ProjectPath,
@@ -388,25 +477,40 @@ if ($EnsureImported -and $cachePresentBefore) {
         -StdoutPath $importStdoutPath `
         -StderrPath $importStderrPath `
         -GodotLogPath $importGodotLogPath
+    $importRecord.process_status = $importProcess.status
     foreach ($property in $importProcess.PSObject.Properties) {
-        $importRecord[$property.Name] = $property.Value
+        if ($property.Name -ne "status") {
+            $importRecord[$property.Name] = $property.Value
+        }
     }
-    $cacheFileAfter = Get-Item -LiteralPath $classCachePath -ErrorAction SilentlyContinue
-    $importRecord.cache_size_after = if ($null -ne $cacheFileAfter) { [int64]$cacheFileAfter.Length } else { [int64]0 }
-    $importRecord.cache_present_after = [int64]$importRecord.cache_size_after -gt 0
-    $importReady = $importProcess.status -eq "passed" -and [bool]$importRecord.cache_present_after
+    $cacheAfter = Get-ClassCacheAudit -Path $classCachePath
+    $importRecord.cache_present_after = [bool]$cacheAfter.present
+    $importRecord.cache_valid_after = [bool]$cacheAfter.valid
+    $importRecord.cache_invalid_reason_after = $cacheAfter.invalid_reason
+    $importRecord.cache_size_after = [int64]$cacheAfter.size
+    $importRecord.cache_mtime_utc_after = $cacheAfter.mtime_utc
+    $importRecord.cache_sha256_after = $cacheAfter.sha256
+    $importRecord.cache_changed = $cacheBefore.sha256 -ne $cacheAfter.sha256
+    $importRecord.cache_size_delta = [int64]$cacheAfter.size - [int64]$cacheBefore.size
+    $importReady = $importProcess.status -eq "passed" -and [bool]$cacheAfter.valid
     $importRecord.succeeded = $importReady
-    if (-not $importReady) {
-        if ($importProcess.status -eq "passed") {
+    if ($importReady) {
+        $importRecord.status = if ($importMode -eq "refresh") { "refreshed" } else { "bootstrapped" }
+    } elseif ($importProcess.status -eq "passed") {
+        if (-not $cacheAfter.present) {
             $importRecord.status = "cache_missing_after_import"
             $importFailureStatus = "import_cache_missing"
-            $importFailureExitCode = 126
         } else {
-            $importFailureStatus = "import_$($importProcess.status)"
-            $importFailureExitCode = [int]$importProcess.runner_exit_code
-            if ($importFailureExitCode -eq 0) {
-                $importFailureExitCode = 126
-            }
+            $importRecord.status = "cache_invalid_after_import"
+            $importFailureStatus = "import_cache_invalid"
+        }
+        $importFailureExitCode = 126
+    } else {
+        $importRecord.status = $importProcess.status
+        $importFailureStatus = "import_$($importProcess.status)"
+        $importFailureExitCode = [int]$importProcess.runner_exit_code
+        if ($importFailureExitCode -eq 0) {
+            $importFailureExitCode = 126
         }
     }
 }
@@ -455,6 +559,8 @@ $result = [ordered]@{
     godot_path = $GodotPath
     godot_product_version = $godotVersion
     ensure_imported = [bool]$EnsureImported
+    refresh_import = [bool]$RefreshImport
+    import_mode = $importMode
     import_status = $importRecord.status
     import = $importRecord
     test_started = $testStarted
