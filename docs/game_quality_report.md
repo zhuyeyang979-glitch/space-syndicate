@@ -20,7 +20,7 @@ the production settlement exactly once.
 | `scripts/main.gd` physical lines | 18,972 | 18,631 | -341 |
 | `scripts/main.gd` `func` declarations | 1,097 | 1,075 | -22 |
 | Full layout failure labels | 52 | 40 | -12 |
-| Full smoke retired Main references | 71 (`31` capture, `40` apply) | 64 (`28` capture, `36` apply) | -7 |
+| Full smoke retired Main references | 71 (`31` capture, `40` apply) | 61 (`27` capture, `34` apply) | -10 |
 
 The current Main reduction comes from the Product Codex public-source sceneization and
 the physical retirement of the non-authoritative priority-bid UI path. Test-only
@@ -91,12 +91,15 @@ result.
 
 ### Full smoke
 
-The complete smoke test still times out. The AI military-command block now uses current
-Region, Route, AI, and Military owner facts; its focused Military gate passes `49/49`.
-The latest 300.322-second complete run passed that target block and moved the first
-retired Main snapshot error forward to `_verify_ai_military_force_deploy_policy`.
-Migration is proceeding one ownership block at a time. The check-only result does not
-substitute for a complete run.
+The complete smoke test still times out. Both the AI military-command and force-deploy
+blocks now use current Region, Route, AI, and Military owner facts; the focused
+Military gate passes `49/49`. Run `20260715-083750-404-smoke_test-dcb8655b` reached the
+300.309-second hard limit with both target blocks passing and no remaining process. It
+moved the next retired Main snapshot error to `_verify_direct_player_interaction_cards`.
+Before that wrapper, the same run reports active assertion failures in role weather
+benefits and card-strategy/development-route coverage; those still require production
+versus stale-contract classification. Migration is proceeding one ownership block at
+a time. The check-only result does not substitute for a complete run.
 
 ### Action feedback
 
