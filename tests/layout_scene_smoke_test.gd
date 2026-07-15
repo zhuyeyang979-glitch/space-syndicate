@@ -193,13 +193,11 @@ const DESIGN_QA_DOCK_SCENE := "res://addons/space_syndicate_design_qa/SpaceSyndi
 const DESIGN_QA_DOCK_SCRIPT := "res://addons/space_syndicate_design_qa/space_syndicate_design_qa_dock.gd"
 const CODEX_MCP_COMPANION_PLUGIN_CFG := "res://addons/codex_mcp_companion/plugin.cfg"
 const CODEX_MCP_COMPANION_PLUGIN_SCRIPT := "res://addons/codex_mcp_companion/plugin.gd"
-const GODOT_MCP_PLUGIN_CFG := "res://addons/godot_mcp/plugin.cfg"
-const GODOT_MCP_PLUGIN_SCRIPT := "res://addons/godot_mcp/plugin.gd"
-const GODOT_MCP_CLIENT_SCRIPT := "res://addons/godot_mcp/mcp_client.gd"
-const GODOT_MCP_TOOL_EXECUTOR_SCRIPT := "res://addons/godot_mcp/tool_executor.gd"
-const GODOT_MCP_RUNTIME_SCRIPT := "res://addons/godot_mcp/runtime/mcp_runtime.gd"
-const GODOT_MCP_PROJECT_TOOLS_SCRIPT := "res://addons/godot_mcp/tools/project_tools.gd"
-const GODOT_MCP_SOURCE_NOTE := "res://addons/godot_mcp/SOURCE.md"
+const LEGACY_GODOT_MCP_PLUGIN_CFG := "res://addons/godot_mcp/plugin.cfg"
+const FUNPLAY_MCP_PLUGIN_CFG := "res://addons/funplay_mcp/plugin.cfg"
+const FUNPLAY_MCP_PLUGIN_SCRIPT := "res://addons/funplay_mcp/plugin.gd"
+const FUNPLAY_MCP_SOURCE_NOTE := "res://addons/funplay_mcp/SOURCE.md"
+const FUNPLAY_MCP_STDIO_BRIDGE := "res://tools/funplay_mcp_stdio.cmd"
 const MCP_CONFIG_PATH := "res://.mcp.json"
 const TEMPORARY_DECISION_PREVIEW_SCENE := "res://scenes/ui/TemporaryDecisionOverlayPreview.tscn"
 const TEMPORARY_DECISION_CAPTURE_BENCH_SCENE := "res://scenes/ui/TemporaryDecisionOverlayCaptureBench.tscn"
@@ -850,7 +848,7 @@ func _run() -> void:
 	await _check_first_mission_spine_bench_component()
 	await _check_first_mission_runtime_main_bench_component()
 	_check_codex_mcp_companion_addon()
-	_check_godot_mcp_editor_addon()
+	_check_funplay_mcp_editor_addon()
 	await _check_temporary_decision_overlay_capture_bench_component()
 	await _check_temporary_decision_overlay_interaction_bench_component()
 	await _check_temporary_decision_overlay_preview_component()
@@ -3867,24 +3865,20 @@ func _check_codex_mcp_companion_addon() -> void:
 	var godot_server: Dictionary = servers.get("godot", {}) if servers.get("godot", {}) is Dictionary else {}
 	var args: Array = godot_server.get("args", []) if godot_server.get("args", []) is Array else []
 	_expect(str(godot_server.get("command", "")) == "cmd", ".mcp.json uses Windows cmd to launch the Godot MCP server")
-	_expect(args.size() >= 4 and args[0] == "/c" and args[1] == "npx" and args[2] == "-y" and args[3] == "godot-mcp-server", ".mcp.json points at the selected godot-mcp-server npm package")
+	_expect(args == ["/d", "/s", "/c", "tools\\funplay_mcp_stdio.cmd"] and FileAccess.file_exists(FUNPLAY_MCP_STDIO_BRIDGE), ".mcp.json uses the repository Funplay MCP stdio bridge")
 	_expect(not _variant_contains_callable(parsed) and not _variant_contains_object(parsed), ".mcp.json stays pure JSON data")
 
 
-func _check_godot_mcp_editor_addon() -> void:
-	_expect(FileAccess.file_exists(GODOT_MCP_PLUGIN_CFG), "Godot MCP editor plugin.cfg exists")
-	_expect(ResourceLoader.exists(GODOT_MCP_PLUGIN_SCRIPT), "Godot MCP editor plugin script exists")
-	_expect(ResourceLoader.exists(GODOT_MCP_CLIENT_SCRIPT), "Godot MCP client script exists")
-	_expect(ResourceLoader.exists(GODOT_MCP_TOOL_EXECUTOR_SCRIPT), "Godot MCP tool executor script exists")
-	_expect(ResourceLoader.exists(GODOT_MCP_RUNTIME_SCRIPT), "Godot MCP optional runtime script exists")
-	_expect(ResourceLoader.exists(GODOT_MCP_PROJECT_TOOLS_SCRIPT), "Godot MCP project tools script exists")
-	_expect(FileAccess.file_exists(GODOT_MCP_SOURCE_NOTE), "Godot MCP vendored source note exists")
+func _check_funplay_mcp_editor_addon() -> void:
+	_expect(FileAccess.file_exists(FUNPLAY_MCP_PLUGIN_CFG), "Funplay MCP editor plugin.cfg exists")
+	_expect(ResourceLoader.exists(FUNPLAY_MCP_PLUGIN_SCRIPT), "Funplay MCP editor plugin script exists")
+	_expect(FileAccess.file_exists(FUNPLAY_MCP_SOURCE_NOTE), "Funplay MCP vendored source note exists")
 	var config := ConfigFile.new()
-	var config_error := config.load(GODOT_MCP_PLUGIN_CFG)
-	_expect(config_error == OK, "Godot MCP plugin.cfg loads")
+	var config_error := config.load(FUNPLAY_MCP_PLUGIN_CFG)
+	_expect(config_error == OK, "Funplay MCP plugin.cfg loads")
 	if config_error == OK:
-		_expect(str(config.get_value("plugin", "name", "")) == "Godot MCP", "Godot MCP plugin.cfg declares the expected plugin name")
-		_expect(str(config.get_value("plugin", "script", "")) == "plugin.gd", "Godot MCP plugin.cfg points at plugin.gd")
+		_expect(str(config.get_value("plugin", "name", "")) == "Funplay MCP for Godot" and str(config.get_value("plugin", "version", "")) == "0.9.6", "Funplay MCP plugin.cfg declares the pinned plugin and version")
+		_expect(str(config.get_value("plugin", "script", "")) == "plugin.gd", "Funplay MCP plugin.cfg points at plugin.gd")
 	var enabled_variant: Variant = ProjectSettings.get_setting("editor_plugins/enabled", PackedStringArray())
 	var enabled_paths: Array[String] = []
 	if enabled_variant is PackedStringArray:
@@ -3893,25 +3887,14 @@ func _check_godot_mcp_editor_addon() -> void:
 	elif enabled_variant is Array:
 		for path_variant in enabled_variant:
 			enabled_paths.append(str(path_variant))
-	_expect(enabled_paths.has(GODOT_MCP_PLUGIN_CFG), "project.godot registers the Godot MCP editor plugin")
-	var plugin_script := load(GODOT_MCP_PLUGIN_SCRIPT) as Script
-	var client_script := load(GODOT_MCP_CLIENT_SCRIPT) as Script
-	var executor_script := load(GODOT_MCP_TOOL_EXECUTOR_SCRIPT) as Script
-	var runtime_script := load(GODOT_MCP_RUNTIME_SCRIPT) as Script
-	var project_tools_script := load(GODOT_MCP_PROJECT_TOOLS_SCRIPT) as Script
-	_expect(plugin_script != null, "Godot MCP EditorPlugin script loads")
-	_expect(client_script != null, "Godot MCP client script loads")
-	_expect(executor_script != null, "Godot MCP tool executor script loads")
-	_expect(runtime_script != null, "Godot MCP runtime script loads")
-	_expect(project_tools_script != null, "Godot MCP project tools script loads")
-	var source_file := FileAccess.open(GODOT_MCP_SOURCE_NOTE, FileAccess.READ)
+	_expect(enabled_paths.has(FUNPLAY_MCP_PLUGIN_CFG) and not enabled_paths.has(LEGACY_GODOT_MCP_PLUGIN_CFG), "project.godot enables Funplay MCP and retires the legacy Godot MCP editor plugin")
+	var plugin_script := load(FUNPLAY_MCP_PLUGIN_SCRIPT) as Script
+	_expect(plugin_script != null, "Funplay MCP EditorPlugin script loads")
+	var source_file := FileAccess.open(FUNPLAY_MCP_SOURCE_NOTE, FileAccess.READ)
 	var source_text := source_file.get_as_text() if source_file != null else ""
-	_expect(source_text.contains("tomyud1/godot-mcp") and source_text.contains("godot-mcp-server") and source_text.contains("127.0.0.1:6505"), "Godot MCP source note records the selected GitHub repo, npm server, and localhost connection")
-	var mcp_client_text := FileAccess.get_file_as_string(GODOT_MCP_CLIENT_SCRIPT)
-	var runtime_text := FileAccess.get_file_as_string(GODOT_MCP_RUNTIME_SCRIPT)
-	var project_tools_text := FileAccess.get_file_as_string(GODOT_MCP_PROJECT_TOOLS_SCRIPT)
-	_expect(mcp_client_text.contains("ws://127.0.0.1:6505") and runtime_text.contains("ws://127.0.0.1:6505"), "Godot MCP editor/runtime clients connect only to localhost by default")
-	_expect(project_tools_text.contains("reload_from_disk") and project_tools_text.contains("get_unsaved_scenes") and project_tools_text.contains("reload_scene_from_path"), "Godot MCP open_in_godot supports safe external-edit reload without discarding unsaved scenes")
+	var bridge_text := FileAccess.get_file_as_string(FUNPLAY_MCP_STDIO_BRIDGE)
+	_expect(source_text.contains("Funplay") and source_text.contains("0.9.6"), "Funplay MCP source note records the selected source and pinned version")
+	_expect(bridge_text.contains("endpoint.txt") and bridge_text.contains("auth.token") and bridge_text.contains("funplay-godot-mcp@0.9.6"), "Funplay MCP stdio bridge requires the role-local endpoint and auth token")
 
 
 func _check_temporary_decision_overlay_capture_bench_component() -> void:
