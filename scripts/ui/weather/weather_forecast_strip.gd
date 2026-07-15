@@ -19,10 +19,12 @@ const MOTION_MODES := ["full", "reduced", "off"]
 @onready var _hints_host: Control = get_node("Margin/Content/Hints") as Control
 
 var _view_model: Dictionary = {}
-var _motion_mode := "off"
+var _motion_mode := ""
 var _pattern_swatch: WeatherPatternSwatch
 var _animation_elapsed := 0.0
 var _compact_mode := false
+var _render_signature := ""
+var _region_signature := ""
 
 
 class WeatherPatternSwatch:
@@ -38,6 +40,8 @@ class WeatherPatternSwatch:
 		custom_minimum_size = Vector2(38.0, 38.0)
 
 	func configure(next_pattern_key: String, next_accent: Color) -> void:
+		if pattern_key == next_pattern_key and accent.is_equal_approx(next_accent):
+			return
 		pattern_key = next_pattern_key
 		accent = next_accent
 		queue_redraw()
@@ -92,10 +96,17 @@ func set_view_model(view_model: Dictionary) -> bool:
 	var validator := FORECAST_VIEW_MODEL.new()
 	if not validator.validate_view_model(view_model):
 		_view_model = {}
+		_render_signature = ""
+		_region_signature = "__invalid__"
+		_clear_children(_region_buttons)
 		visible = false
 		return false
 	_view_model = view_model.duplicate(true)
 	visible = true
+	var render_signature := _view_model_render_signature(_view_model)
+	if render_signature == _render_signature:
+		return true
+	_render_signature = render_signature
 	if (_view_model["events"] as Array).is_empty():
 		_render_clear_state()
 	else:
@@ -104,6 +115,8 @@ func set_view_model(view_model: Dictionary) -> bool:
 
 
 func set_compact_mode(compact: bool) -> void:
+	if _compact_mode == compact:
+		return
 	_compact_mode = compact
 	custom_minimum_size = Vector2(0.0 if compact else 360.0, 78.0 if compact else 184.0)
 	if _effects_host != null:
@@ -121,6 +134,8 @@ func set_motion_mode(mode: String) -> bool:
 		set_process(false)
 		_reset_animation()
 		return false
+	if _motion_mode == mode:
+		return true
 	_motion_mode = mode
 	set_process(mode == "full")
 	if mode != "full":
@@ -172,7 +187,7 @@ func _render_clear_state() -> void:
 	_phase_badge.text = "CLEAR"
 	_phase_badge.modulate = Color("96B8A8")
 	_pattern_swatch.configure("dots", Color("65B99A"))
-	_clear_children(_region_buttons)
+	_sync_region_buttons([])
 	for effect_label: Label in _effect_labels:
 		effect_label.text = "公开预报暂无影响"
 	_exploitation_label.text = "利用：维持当前计划"
@@ -198,17 +213,7 @@ func _render_event(event: Dictionary) -> void:
 	_phase_badge.modulate = accent
 	_pattern_swatch.configure(event["pattern_key"], accent)
 
-	_clear_children(_region_buttons)
-	for raw_region: Variant in event["regions"]:
-		var region := raw_region as Dictionary
-		var button := Button.new()
-		button.text = region["label"]
-		button.focus_mode = Control.FOCUS_ALL
-		button.tooltip_text = "定位到%s" % region["label"]
-		button.set_meta("region_index", region["region_index"])
-		button.pressed.connect(_emit_region_jump.bind(int(region["region_index"])))
-		_set_accessibility_name(button, button.tooltip_text)
-		_region_buttons.add_child(button)
+	_sync_region_buttons(event["regions"] as Array)
 
 	var effects := event["effects"] as Array
 	for index: int in range(_effect_labels.size()):
@@ -218,6 +223,46 @@ func _render_event(event: Dictionary) -> void:
 	_counterplay_label.text = "应对：%s" % event["counterplay_hint"]
 	tooltip_text = event["accessible_text"]
 	_set_accessibility_name(self, tooltip_text)
+
+
+func _sync_region_buttons(regions: Array) -> void:
+	var signature_parts: Array[String] = []
+	for raw_region: Variant in regions:
+		if raw_region is Dictionary:
+			var region := raw_region as Dictionary
+			signature_parts.append("%d:%s" % [int(region.get("region_index", -1)), str(region.get("label", ""))])
+	var signature := "|".join(signature_parts)
+	if signature == _region_signature:
+		return
+	_region_signature = signature
+	_clear_children(_region_buttons)
+	for raw_region: Variant in regions:
+		if not (raw_region is Dictionary):
+			continue
+		var region := raw_region as Dictionary
+		var button := Button.new()
+		button.text = str(region.get("label", "区域"))
+		button.focus_mode = Control.FOCUS_ALL
+		button.tooltip_text = "定位到%s" % button.text
+		button.set_meta("region_index", int(region.get("region_index", -1)))
+		button.pressed.connect(_emit_region_jump.bind(int(region.get("region_index", -1))))
+		_set_accessibility_name(button, button.tooltip_text)
+		_region_buttons.add_child(button)
+
+
+func _view_model_render_signature(view_model: Dictionary) -> String:
+	var canonical := view_model.duplicate(true)
+	canonical.erase("world_effective_us")
+	var events: Array = canonical.get("events", []) if canonical.get("events", []) is Array else []
+	for index in range(events.size()):
+		if not (events[index] is Dictionary):
+			continue
+		var event := (events[index] as Dictionary).duplicate(true)
+		var remaining_us := int(event.get("remaining_us", 0))
+		event["remaining_us"] = int(ceil(float(remaining_us) / 1_000_000.0))
+		events[index] = event
+	canonical["events"] = events
+	return var_to_str(canonical)
 
 
 func _emit_region_jump(region_index: int) -> void:
