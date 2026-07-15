@@ -100,21 +100,13 @@ func _test_projection_contract() -> void:
 
 func _test_real_production_adopter() -> void:
 	var main := MAIN_SCENE.instantiate()
+	main.process_mode = Node.PROCESS_MODE_DISABLED
 	var save := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController/GameSaveRuntimeCoordinator")
 	_expect(save != null and bool(save.call("set_qa_default_save_path_override", QA_SAVE_PATH)), "production fixture isolates its save path")
-	var rng_variant: Variant = main.get("rng")
-	if rng_variant is RandomNumberGenerator:
-		(rng_variant as RandomNumberGenerator).seed = 76107
 	root.add_child(main)
-	await _wait_frames(8)
-	main.set("configured_player_count", 3)
-	main.set("configured_ai_player_count", 2)
-	main.set("configured_roguelike_depth", 1)
-	main.set("configured_role_indices", [0, 1, 2])
-	main.set("configured_starter_monster_indices", [0, 1, 2])
-	main.call("_on_new_game_setup_action_requested", "setup_start")
-	await _wait_frames(10)
-	main.set_process(false)
+	await _wait_frames(3)
+	main.call("_start_scenario_from_menu", "first_table")
+	await _wait_frames(4)
 
 	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
 	var screen := main.get("runtime_game_screen") as Control
@@ -134,6 +126,7 @@ func _test_real_production_adopter() -> void:
 
 	var owner_before: Dictionary = coordinator.call("v06_card_player_snapshot", actor_id)
 	var quote: Dictionary = market.get("quote", {}) if market.get("quote", {}) is Dictionary else {}
+	_expect(str(quote.get("availability_kind", "")) == "sunlit" and bool(quote.get("purchasable", false)), "authored first-table source is deterministically sunlit before the purchase action")
 	var expected_price := int(quote.get("final_price", -1))
 	var market_revision_before := int((market.get("market", {}) as Dictionary).get("revision", -1)) if market.get("market", {}) is Dictionary else -1
 	var failure_before: Dictionary = coordinator.call("execute_v06_facility_purchase_action", actor_id, "%s:stale" % card_id)
