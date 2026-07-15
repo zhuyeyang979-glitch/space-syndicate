@@ -42,6 +42,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		card_market_pricing.call("configure", {})
 	var region_infrastructure := _region_infrastructure_runtime_controller_node()
 	var region_infrastructure_bridge := _region_infrastructure_world_bridge_node()
+	var weather_telemetry := _weather_telemetry_runtime_service_node()
 	if region_infrastructure_bridge != null and region_infrastructure_bridge.has_method("set_controller"):
 		region_infrastructure_bridge.call("set_controller", region_infrastructure)
 	if region_infrastructure != null and region_infrastructure.has_method("configure"):
@@ -93,6 +94,8 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var product_market_world_bridge := _product_market_runtime_world_bridge_node()
 	if product_market_controller != null and product_market_controller.has_method("set_world_bridge"):
 		product_market_controller.call("set_world_bridge", product_market_world_bridge)
+	if product_market_controller != null and product_market_controller.has_method("set_weather_telemetry_runtime_service"):
+		product_market_controller.call("set_weather_telemetry_runtime_service", weather_telemetry)
 	if product_market_controller != null and product_market_controller.has_method("configure"):
 		product_market_controller.call("configure", ruleset_snapshot, economy_product_route_formula)
 	var city_gdp_derivative_controller := _city_gdp_derivative_runtime_controller_node()
@@ -121,6 +124,8 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		route_network_bridge.call("set_region_infrastructure_controller", region_infrastructure)
 	if route_network_controller != null and route_network_controller.has_method("set_world_bridge"):
 		route_network_controller.call("set_world_bridge", route_network_bridge)
+	if route_network_controller != null and route_network_controller.has_method("set_weather_telemetry_runtime_service"):
+		route_network_controller.call("set_weather_telemetry_runtime_service", weather_telemetry)
 	if route_network_controller != null and route_network_controller.has_method("configure"):
 		route_network_controller.call("configure", RULESET_V06_PROFILE.debug_snapshot())
 	var commodity_flow := _commodity_flow_runtime_controller_node()
@@ -244,6 +249,10 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		weather_controller.call("set_world_effective_clock", world_clock)
 	if weather_controller != null and weather_controller.has_method("set_route_network_runtime_controller"):
 		weather_controller.call("set_route_network_runtime_controller", route_network_controller)
+	if weather_controller != null and weather_controller.has_method("set_region_infrastructure_world_bridge"):
+		weather_controller.call("set_region_infrastructure_world_bridge", region_infrastructure_bridge)
+	if weather_controller != null and weather_controller.has_method("set_weather_telemetry_runtime_service"):
+		weather_controller.call("set_weather_telemetry_runtime_service", weather_telemetry)
 	if weather_controller != null and weather_controller.has_method("configure"):
 		weather_controller.call("configure", ruleset_snapshot)
 	var weather_presentation := _weather_presentation_runtime_service_node()
@@ -288,6 +297,8 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		monster_controller.call("set_route_network_runtime_controller", route_network_controller)
 	if monster_controller != null and monster_controller.has_method("set_weather_runtime_controller"):
 		monster_controller.call("set_weather_runtime_controller", weather_controller)
+	if monster_controller != null and monster_controller.has_method("set_weather_telemetry_runtime_service"):
+		monster_controller.call("set_weather_telemetry_runtime_service", weather_telemetry)
 	if monster_controller != null and monster_controller.has_method("set_card_runtime_catalog_service"):
 		monster_controller.call("set_card_runtime_catalog_service", card_runtime_catalog)
 	if monster_controller != null and monster_controller.has_method("configure"):
@@ -2374,6 +2385,13 @@ func weather_telemetry_debug_snapshot() -> Dictionary:
 	var service := _weather_telemetry_runtime_service_node()
 	var value: Variant = service.call("debug_snapshot") if service != null and service.has_method("debug_snapshot") else {}
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func record_weather_public_response(region_index: int, category: String) -> int:
+	var service := _weather_telemetry_runtime_service_node()
+	if service == null or not service.has_method("record_public_response"):
+		return 0
+	return int(service.call("record_public_response", region_index, category))
 
 
 func military_runtime_call(method_name: StringName, arguments: Array = []) -> Variant:

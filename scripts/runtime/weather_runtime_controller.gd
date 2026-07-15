@@ -28,6 +28,7 @@ var _world_bridge: WeatherRuntimeWorldBridge
 var _product_market_runtime_controller: ProductMarketRuntimeController
 var _route_network_runtime_controller: RouteNetworkRuntimeController
 var _region_infrastructure_world_bridge: RegionInfrastructureWorldBridge
+var _weather_telemetry_runtime_service: Node
 var _world_effective_clock: Node
 var _ruleset_snapshot: Dictionary = {}
 var _configured := false
@@ -77,6 +78,10 @@ func set_region_infrastructure_world_bridge(bridge: RegionInfrastructureWorldBri
 	_region_infrastructure_world_bridge = bridge
 
 
+func set_weather_telemetry_runtime_service(service: Node) -> void:
+	_weather_telemetry_runtime_service = service
+
+
 func configure(ruleset_snapshot: Dictionary) -> void:
 	_ruleset_snapshot = ruleset_snapshot.duplicate(true)
 	_bind_clock_from_scene()
@@ -92,6 +97,8 @@ func reset_state() -> void:
 	_telemetry.clear()
 	_next_generation_world_us = WeatherSystem.START_GRACE_US
 	weather_sequence = 0
+	if _weather_telemetry_runtime_service != null and _weather_telemetry_runtime_service.has_method("clear"):
+		_weather_telemetry_runtime_service.call("clear")
 	_refresh_legacy_projection()
 
 
@@ -613,6 +620,8 @@ func _schedule_event(type_id: String, regions: Array, forecast_duration_us: int,
 		_increment_telemetry("queued_conflict")
 	else:
 		_increment_telemetry("scheduled_forecast")
+		_begin_telemetry_session(event)
+		_announce_forecast(event, definition)
 	for region in clean_regions:
 		_region_history[str(region)] = weather_sequence
 	_log("天气预报：%s将在%s后影响%s。" % [definition.display_name, _duration_short_text(float(event.get("forecast_duration_world_us", 0)) / 1_000_000.0), district_names(event, 5)])
@@ -627,6 +636,7 @@ func _advance_lifecycle(now_us: int) -> bool:
 		if not (event_variant is Dictionary):
 			continue
 		var event := event_variant as Dictionary
+		_ensure_telemetry_session(event)
 		var old_phase := str(event.get("phase", WeatherRuntimeState.PHASE_FORECAST))
 		var new_phase := _system.lifecycle_phase(event, now_us)
 		if new_phase != old_phase:
@@ -634,8 +644,10 @@ func _advance_lifecycle(now_us: int) -> bool:
 			event["phase"] = new_phase
 			_increment_telemetry("phase_%s" % new_phase)
 			if new_phase == WeatherRuntimeState.PHASE_ACTIVE:
+				_activate_telemetry_session(event)
 				_add_action_callout("星球天气", label(str(event.get("definition_id", ""))), "%s开始影响%s。" % [label(str(event.get("definition_id", ""))), district_names(event, 5)], color(str(event.get("definition_id", ""))), _district_center(int(WeatherRuntimeState.event_region_indices(event).front())), 8.0)
 		if new_phase == WeatherRuntimeState.PHASE_ENDED:
+			_finish_telemetry_session(event)
 			if not bool(event.get("lifecycle_end_recorded", false)):
 				_history.append(_history_entry(event, now_us))
 				_increment_telemetry("ended")
@@ -664,6 +676,9 @@ func _release_waiting_queue(now_us: int) -> bool:
 		event["active_ends_at_world_us"] = int(event.get("active_starts_at_world_us", now_us)) + int(event.get("active_duration_world_us", WeatherSystem.ACTIVE_MIN_US))
 		event["fade_ends_at_world_us"] = int(event.get("active_ends_at_world_us", now_us)) + int(event.get("fade_duration_world_us", WeatherSystem.FADE_US))
 		_increment_telemetry("dequeued")
+		_begin_telemetry_session(event)
+		var definition := _definition(str(event.get("definition_id", event.get("type", ""))))
+		_announce_forecast(event, definition)
 		changed = true
 	_queue = _live_queue_ids()
 	return changed
@@ -731,6 +746,7 @@ func _apply_region_weather_damage(now_us: int) -> bool:
 			_increment_telemetry("region_damage_accounted")
 			if int(receipt.get("applied_damage", 0)) > 0:
 				_increment_telemetry("region_damage_applied")
+				_observe_telemetry_metric(int(event.get("id", 0)), "region_damage", float(receipt.get("applied_damage", 0)))
 			changed = true
 		event["weather_damage_accounted_units_by_region"] = accounted
 		event["weather_damage_applied_units_by_region"] = applied_totals
@@ -1007,6 +1023,71 @@ func _log(message: String) -> void:
 
 func _add_action_callout(source: String, title: String, detail: String, accent: Color, world_position: Vector2, duration: float = 5.0) -> void:
 	_world_call(&"_add_action_callout", [source, title, detail, accent, world_position, duration])
+
+
+func _announce_forecast(event: Dictionary, definition: WeatherDefinition) -> void:
+	if definition == null:
+		return
+	var regions := WeatherRuntimeState.event_region_indices(event)
+	if regions.is_empty():
+		return
+	var lead_seconds := float(event.get("forecast_duration_world_us", 0)) / 1_000_000.0
+	var active_seconds := float(event.get("active_duration_world_us", 0)) / 1_000_000.0
+	_add_action_callout(
+		"气象台",
+		"预报·%s" % definition.display_name,
+		"%s后影响%s，预计持续%s。%s｜点击天气条定位。" % [
+			_duration_short_text(lead_seconds),
+			district_names(event, 3),
+			_duration_short_text(active_seconds),
+			definition.counterplay_hint,
+		],
+		definition.accent_color,
+		_district_center(int(regions.front())),
+		8.0
+	)
+
+
+func _ensure_telemetry_session(event: Dictionary) -> void:
+	if _weather_telemetry_runtime_service == null:
+		return
+	if str(event.get("phase", "")) == WeatherRuntimeState.PHASE_QUEUED:
+		return
+	_begin_telemetry_session(event)
+	if [WeatherRuntimeState.PHASE_ACTIVE, WeatherRuntimeState.PHASE_FADING, WeatherRuntimeState.PHASE_ENDED].has(str(event.get("phase", ""))):
+		_activate_telemetry_session(event)
+
+
+func _begin_telemetry_session(event: Dictionary) -> void:
+	if _weather_telemetry_runtime_service == null or not _weather_telemetry_runtime_service.has_method("begin_weather_session"):
+		return
+	_weather_telemetry_runtime_service.call(
+		"begin_weather_session",
+		int(event.get("id", 0)),
+		str(event.get("definition_id", event.get("type", ""))),
+		WeatherRuntimeState.event_region_indices(event),
+		float(event.get("forecast_duration_world_us", 0)) / 1_000_000.0,
+		float(event.get("active_duration_world_us", 0)) / 1_000_000.0,
+		float(event.get("fade_duration_world_us", 0)) / 1_000_000.0
+	)
+
+
+func _activate_telemetry_session(event: Dictionary) -> void:
+	if _weather_telemetry_runtime_service != null and _weather_telemetry_runtime_service.has_method("activate_weather_session"):
+		_weather_telemetry_runtime_service.call("activate_weather_session", int(event.get("id", 0)))
+
+
+func _finish_telemetry_session(event: Dictionary) -> void:
+	if bool(event.get("telemetry_end_recorded", false)):
+		return
+	if _weather_telemetry_runtime_service != null and _weather_telemetry_runtime_service.has_method("finish_weather_session"):
+		if bool(_weather_telemetry_runtime_service.call("finish_weather_session", int(event.get("id", 0)))):
+			event["telemetry_end_recorded"] = true
+
+
+func _observe_telemetry_metric(event_id: int, metric: String, value: float) -> void:
+	if _weather_telemetry_runtime_service != null and _weather_telemetry_runtime_service.has_method("observe_public_metric"):
+		_weather_telemetry_runtime_service.call("observe_public_metric", event_id, metric, value)
 
 
 func _seconds_to_us(seconds: float) -> int:

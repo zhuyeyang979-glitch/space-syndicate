@@ -11795,6 +11795,8 @@ func _toggle_selected_trade_route() -> void:
 			selected_trade_product = String(ProductMarketRuntimeController.PRODUCT_CATALOG[0])
 	_refresh_board()
 	_refresh_map_controls()
+	if selected_district >= 0:
+		_game_runtime_coordinator_node().record_weather_public_response(selected_district, "route_after_forecast")
 
 
 func _cycle_trade_product(step: int) -> void:
@@ -17496,6 +17498,7 @@ func _buy_card_for_player_from_district(player_index: int, district_index: int, 
 	if _active_runtime_scenario_id() == "first_table" and skill_name == _first_table_followup_card_name() and not anonymous and player_index == selected_player:
 		_complete_scenario_signal("followup_card_bought", "购买第二张经营牌：%s进入你的手牌。" % _card_display_name(skill_name), "after_followup_buy", "player_hand")
 	_grant_role_bonus_card_on_purchase(player_index, district_index, skill_name, anonymous)
+	runtime_coordinator.call("record_weather_public_response", district_index, "buy_after_forecast")
 	return true
 
 
@@ -17550,6 +17553,10 @@ func _finish_played_skill(player_index: int, slot_index: int, skill: Dictionary,
 		else:
 			players[player_index]["slots"][slot_index] = null
 	players[player_index]["action_cooldown"] = max(float(players[player_index].get("action_cooldown", 0.0)), cooldown)
+	var response_region := int(skill.get("target_district", selected_district))
+	if response_region >= 0:
+		var response_category := "build_after_forecast" if str(skill.get("kind", "")) in ["public_facility", "city_development", "city_product_upgrade", "city_product_shift"] else "play_after_forecast"
+		_game_runtime_coordinator_node().record_weather_public_response(response_region, response_category)
 
 
 func _card_resolution_duration(_skill: Dictionary) -> float:

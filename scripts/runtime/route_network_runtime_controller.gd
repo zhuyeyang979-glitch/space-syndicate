@@ -14,6 +14,7 @@ const WEATHER_ROUTE_FLOOR := 0.40
 var _configured := false
 var _world_bridge: Node
 var _weather_runtime_controller: Node
+var _weather_telemetry_runtime_service: Node
 var _transport_throughput_by_rank: Dictionary = {}
 var _transport_speed_by_rank: Dictionary = {}
 var _cached_topology_revision := ""
@@ -33,6 +34,10 @@ func set_world_bridge(bridge: Node) -> void:
 
 func set_weather_runtime_controller(controller: Node) -> void:
 	_weather_runtime_controller = controller
+
+
+func set_weather_telemetry_runtime_service(service: Node) -> void:
+	_weather_telemetry_runtime_service = service
 
 
 func configure(profile_snapshot: Dictionary) -> Dictionary:
@@ -310,6 +315,7 @@ func _weather_projection_for_candidate(candidate: Dictionary) -> Dictionary:
 			var current: Dictionary = event_projection_by_key.get(event_key, {}) if event_projection_by_key.get(event_key, {}) is Dictionary else {}
 			if current.is_empty() or _weather_multiplier_is_stronger(multiplier, float(current.get("multiplier", 1.0))):
 				event_projection_by_key[event_key] = {
+					"event_id": event_id,
 					"definition_id": definition_id,
 					"mode": mode,
 					"multiplier": multiplier,
@@ -324,6 +330,9 @@ func _weather_projection_for_candidate(candidate: Dictionary) -> Dictionary:
 		if is_equal_approx(event_multiplier, 1.0):
 			continue
 		multiplier *= event_multiplier
+		var event_id := int(projection.get("event_id", 0))
+		if event_id > 0 and _weather_telemetry_runtime_service != null and _weather_telemetry_runtime_service.has_method("observe_public_metric"):
+			_weather_telemetry_runtime_service.call("observe_public_metric", event_id, "route_revenue_delta_percent", (event_multiplier - 1.0) * 100.0)
 		explanation_parts.append(_weather_efficiency_explanation(
 			str(projection.get("definition_id", "weather")),
 			str(projection.get("mode", "generic")),

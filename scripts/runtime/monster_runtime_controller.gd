@@ -59,6 +59,7 @@ var _route_network_runtime_controller: RouteNetworkRuntimeController
 var _product_market_runtime_controller: ProductMarketRuntimeController
 var _card_runtime_catalog_service: CardRuntimeCatalogService
 var _weather_runtime_controller: WeatherRuntimeController
+var _weather_telemetry_runtime_service: Node
 var _ruleset_snapshot: Dictionary = {}
 var _configured := false
 
@@ -106,6 +107,10 @@ func set_card_runtime_catalog_service(service: CardRuntimeCatalogService) -> voi
 
 func set_weather_runtime_controller(controller: WeatherRuntimeController) -> void:
 	_weather_runtime_controller = controller
+
+
+func set_weather_telemetry_runtime_service(service: Node) -> void:
+	_weather_telemetry_runtime_service = service
 
 var players: Array:
 	get:
@@ -2060,6 +2065,7 @@ func _monster_weather_effect(actor: Dictionary, region_index: int) -> Dictionary
 		"family_id": family_id,
 		"affinity_tags": affinity_tags.duplicate(),
 		"matched_tags": [],
+		"event_ids": [],
 		"preference_multiplier": 1.0,
 		"speed_multiplier": 1.0,
 		"armor_multiplier": 1.0,
@@ -2076,6 +2082,7 @@ func _monster_weather_effect(actor: Dictionary, region_index: int) -> Dictionary
 	var preference := 1.0
 	var speed := 1.0
 	var armor := 1.0
+	var event_ids: Array = []
 	for effect_variant in snapshot.get("effects", []):
 		if not (effect_variant is Dictionary):
 			continue
@@ -2087,8 +2094,12 @@ func _monster_weather_effect(actor: Dictionary, region_index: int) -> Dictionary
 			var tag := str(tag_variant)
 			if affinity_tags.has(tag) and not matched_tags.has(tag):
 				matched_tags.append(tag)
+		var event_id := int((effect_variant as Dictionary).get("event_id", 0))
+		if event_id > 0 and not event_ids.has(event_id):
+			event_ids.append(event_id)
 	result["active"] = not matched_tags.is_empty()
 	result["matched_tags"] = matched_tags
+	result["event_ids"] = event_ids if not matched_tags.is_empty() else []
 	result["preference_multiplier"] = preference if not matched_tags.is_empty() else maxf(1.0, preference)
 	result["speed_multiplier"] = clampf(speed if not matched_tags.is_empty() else 1.0, 1.0, MONSTER_WEATHER_SPEED_CAP)
 	result["armor_multiplier"] = maxf(1.0, armor if not matched_tags.is_empty() else 1.0)
@@ -4686,11 +4697,21 @@ func _auto_monster_target_candidates(actor: Dictionary) -> Array:
 func _weighted_auto_monster_target(actor: Dictionary) -> int:
 	var weights := []
 	var candidates := _auto_monster_target_candidates(actor)
+	var weather_event_ids: Array = []
 	for entry in candidates:
 		weights.append(int(entry["weight"]))
+		var weather_effect := _monster_weather_effect(actor, int(entry.get("index", -1)))
+		if float(weather_effect.get("preference_multiplier", 1.0)) > 1.0:
+			for event_id_variant in weather_effect.get("event_ids", []):
+				var event_id := int(event_id_variant)
+				if event_id > 0 and not weather_event_ids.has(event_id):
+					weather_event_ids.append(event_id)
 	var picked := _weighted_pick_index(weights)
 	if picked < 0:
 		return -1
+	if _weather_telemetry_runtime_service != null and _weather_telemetry_runtime_service.has_method("mark_monster_target_changed"):
+		for event_id in weather_event_ids:
+			_weather_telemetry_runtime_service.call("mark_monster_target_changed", int(event_id))
 	return int(candidates[picked]["index"])
 
 func _auto_monster_target_probability_text(actor: Dictionary, index: int) -> String:

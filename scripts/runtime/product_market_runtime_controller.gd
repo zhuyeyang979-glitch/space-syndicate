@@ -115,6 +115,7 @@ var _world_bridge: ProductMarketRuntimeWorldBridge
 var _formula_service: CardEconomyProductRouteFormulaRuntimeService
 var _route_network_runtime_controller: RouteNetworkRuntimeController
 var _weather_runtime_controller: WeatherRuntimeController
+var _weather_telemetry_runtime_service: Node
 var _futures_open_count := 0
 var _futures_settlement_count := 0
 var _legacy_positions_normalized := 0
@@ -140,6 +141,10 @@ func set_route_network_runtime_controller(controller: RouteNetworkRuntimeControl
 
 func set_weather_runtime_controller(controller: WeatherRuntimeController) -> void:
 	_weather_runtime_controller = controller
+
+
+func set_weather_telemetry_runtime_service(service: Node) -> void:
+	_weather_telemetry_runtime_service = service
 
 
 func reset_state() -> Dictionary:
@@ -323,6 +328,7 @@ func refresh_prices() -> Dictionary:
 		entry["weather_modifier"] = weather_modifier
 		entry["weather_contributions"] = _sanitize_weather_contributions(weather_context.get("contributions", []))
 		entry["weather_driver_summary"] = _weather_driver_summary(entry["weather_contributions"] as Array, weather_price_growth_multiplier)
+		_record_weather_price_telemetry(entry["weather_contributions"] as Array)
 		if temporary_demand > 0: entry["temporary_demand_pressure"] = maxi(0, temporary_demand - 1)
 		if temporary_supply > 0: entry["temporary_supply_pressure"] = maxi(0, temporary_supply - 1)
 		_append_price_history(entry, price)
@@ -963,6 +969,29 @@ func _weather_driver_summary(rows: Array, weather_multiplier: float) -> String:
 		if row_variant is Dictionary:
 			region_ids[int((row_variant as Dictionary).get("region_index", -1))] = true
 	return "天气价格增速%+d%%（%d区）" % [int(round((weather_multiplier - 1.0) * 100.0)), region_ids.size()]
+
+
+func _record_weather_price_telemetry(rows: Array) -> void:
+	if _weather_telemetry_runtime_service == null or not _weather_telemetry_runtime_service.has_method("observe_public_metric"):
+		return
+	var event_samples: Dictionary = {}
+	for row_variant in rows:
+		if not (row_variant is Dictionary):
+			continue
+		var row := row_variant as Dictionary
+		var event_id := int(row.get("event_id", 0))
+		if event_id <= 0:
+			continue
+		var multiplier := float(row.get("price_growth_multiplier", row.get("multiplier", 1.0)))
+		var samples: Array = event_samples.get(event_id, []) if event_samples.get(event_id, []) is Array else []
+		samples.append((multiplier - 1.0) * 100.0)
+		event_samples[event_id] = samples
+	for event_id_variant in event_samples.keys():
+		var samples := event_samples[event_id_variant] as Array
+		var total := 0.0
+		for sample in samples:
+			total += float(sample)
+		_weather_telemetry_runtime_service.call("observe_public_metric", int(event_id_variant), "product_price_delta_percent", total / float(samples.size()))
 
 
 func _sanitize_weather_contributions(value: Variant) -> Array:
