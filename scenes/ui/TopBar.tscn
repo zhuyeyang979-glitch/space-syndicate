@@ -75,6 +75,16 @@ layout_mode = 2
 text = "天气:无影响｜预报:暂无"
 text_overrun_behavior = 3
 
+[node name="MoreChip" type="Label" parent="TopBarRow/FirstGlanceRail"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(86, 0)
+layout_mode = 2
+tooltip_text = "选区、下一步与天气的完整公开信息。"
+text = "更多 3项"
+vertical_alignment = 1
+text_overrun_behavior = 3
+
 [node name="ResourceLabel" type="Label" parent="TopBarRow"]
 unique_name_in_owner = true
 layout_mode = 2

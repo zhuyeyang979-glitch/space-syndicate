@@ -3,6 +3,12 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-15。
 
+## 2026-07-15｜1280 经济总览与顶栏信息层级
+
+- Codex E 在本地集成点 `14836e0f4044b06a1db0821f2f4089cb2556ce3e` 上复现真实 `main.tscn`：经济页滚动生命周期稳定为首开 0、深滚、关闭重开 0，active/dual-active 首开也为 0，因此没有修改既有 reset；真正的首屏红灯是完整公开摘要把 Dashboard 推到折下。
+- `MenuOverlay` 现把完整经济说明保留为默认折叠的“详细经济证据”，让既有 KPI、概览与决策卡进入 1280 首屏；`TopBar` 按物理窗口宽度在 1280 保留桌态、时间、本席、现金、GDP 和完整胜利目标，并把选区、下一步与天气移入带完整 tooltip 的“更多 3项”，1600 恢复全量。
+- 五态 before/after GUI Godot 4.7 production capture、scene-tree、像素、机器 ID、QA save/default save、MCP play/console、UI text、visual snapshot 与 smoke `--check-only` 均通过。完整相对证据见 `reports/ui/production_acceptance/e_1280_economy_topbar/e_1280_economy_topbar_acceptance.md`。
+
 ## 2026-07-15｜1280 主桌可读性与地图层级化降噪 v2
 
 - Codex E 基于 `origin/main@fdb62bd2896dd19d01c8660a2a39cd541de2553b` 对真实 `main.tscn` 做最小展示修复：globe 总览把非选中区域压为单行名、重复路线标牌聚合为公开 `商路 ×N`、邻近怪兽按公开数量合组、天气与行动提示改为 compact 层级；区域边界、路线段、天气阶段与完整公开解释均保留在地图、tooltip 或既有详情面。

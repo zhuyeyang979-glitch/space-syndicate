@@ -1,0 +1,39 @@
+Godot Engine v4.7.stable.official.5b4e0cb0f
+branch=codex/e-1280-economy-topbar
+base=14836e0f4044b06a1db0821f2f4089cb2556ce3e
+scene=res://scenes/main.tscn
+capture_script=res://tests/e_1280_economy_topbar_capture.gd
+mode=GUI Godot 4.7 blocking production capture
+physical_resolution=1280x720
+logical_canvas=1706x960
+cases=table_idle,economy_first,economy_reopened,economy_active,economy_dual
+before_process_exit_code=0
+before_scroll_sequence=0 -> 852/852 -> close/reopen -> 0
+after_process_exit_code=0
+after_scroll_sequence=0 -> expand_public_detail -> 898/898 -> close/reopen -> 0
+active_open_scroll=0
+dual_active_open_scroll=0
+active_weather_event_count=1
+dual_active_weather_event_count=2
+layout_gate=PASS (5/5 final)
+pixel_integrity_gate=PASS (5/5 final)
+machine_identifier_count=0 (5/5 final; visible text and Control tooltip_text)
+qa_save_artifacts_after_cleanup=0 (5/5 final)
+player_default_save_metadata_sha256_unchanged=true (5/5 final)
+capture_ERROR=0
+capture_SCRIPT_ERROR=0
+capture_WARNING=0
+capture_timed_out=false
+capture_remaining_project_runtime_process_count=0
+wide_topbar_probe=PASS (1600x960 full chips restored; MoreChip hidden)
+MCP_scene=res://scenes/main.tscn
+MCP_runtime_root=/root/Main
+MCP_changed_script_diagnostics=0
+MCP_console_ERROR=0
+MCP_console_WARNING=0
+MCP_play_stop=is_playing_scene:false
+MCP_editor_stop=clean; port_open:false; process_alive:false
+ui_text_smoke_test=PASS; run_id=20260715-085539-967-ui_text_smoke_test-952ce60e
+visual_snapshot=PASS; run_id=20260715-085542-900-visual_snapshot-794f1774
+smoke_check_only=PASS; run_id=20260715-085545-799-smoke_test-3352f5b7
+focused_test_log_ERROR_SCRIPT_ERROR_WARNING=0

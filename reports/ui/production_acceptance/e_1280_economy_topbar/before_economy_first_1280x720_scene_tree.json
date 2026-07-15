@@ -1,0 +1,502 @@
+{
+	"capture": {
+		"pixel_metrics": {
+			"canvas_to_pixel_scale": {
+				"x": 0.75,
+				"y": 0.75
+			},
+			"node_regions": {
+				"CashChip": {
+					"effective_coverage": 0.0,
+					"mean_luminance": 0.0302127481259523,
+					"non_black_coverage": 1.0,
+					"opaque_coverage": 1.0,
+					"sample_count": 95
+				},
+				"GdpChip": {
+					"effective_coverage": 0.0,
+					"mean_luminance": 0.0293470510991249,
+					"non_black_coverage": 1.0,
+					"opaque_coverage": 1.0,
+					"sample_count": 90
+				},
+				"GoalChip": {
+					"effective_coverage": 0.0,
+					"mean_luminance": 0.0324409199475816,
+					"non_black_coverage": 1.0,
+					"opaque_coverage": 1.0,
+					"sample_count": 105
+				},
+				"MenuBodyLabel": {
+					"effective_coverage": 0.12482782369146,
+					"mean_luminance": 0.117883778700522,
+					"non_black_coverage": 1.0,
+					"opaque_coverage": 1.0,
+					"sample_count": 29040
+				},
+				"MenuButton": {
+					"effective_coverage": 0.0,
+					"mean_luminance": 0.0354229075262821,
+					"non_black_coverage": 1.0,
+					"opaque_coverage": 1.0,
+					"sample_count": 112
+				},
+				"MenuContentScroll": {
+					"effective_coverage": 0.143053375196232,
+					"mean_luminance": 0.132139201077731,
+					"non_black_coverage": 1.0,
+					"opaque_coverage": 1.0,
+					"sample_count": 25480
+				},
+				"MenuModalOverlay": {
+					"effective_coverage": 0.0859027777777778,
+					"mean_luminance": 0.0869225286590402,
+					"non_black_coverage": 1.0,
+					"opaque_coverage": 1.0,
+					"sample_count": 57600
+				},
+				"MenuSurfacePanel": {
+					"effective_coverage": 0.13437997611465,
+					"mean_luminance": 0.115474188365369,
+					"non_black_coverage": 1.0,
+					"opaque_coverage": 1.0,
+					"sample_count": 40192
+				},
+				"PhaseLabel": {
+					"effective_coverage": 0.0,
+					"mean_luminance": 0.028167373590573,
+					"non_black_coverage": 1.0,
+					"opaque_coverage": 1.0,
+					"sample_count": 115
+				},
+				"PrimaryActionChip": {
+					"effective_coverage": 0.0,
+					"mean_luminance": 0.0310377592540067,
+					"non_black_coverage": 1.0,
+					"opaque_coverage": 1.0,
+					"sample_count": 120
+				},
+				"SelectedDistrictChip": {
+					"effective_coverage": 0.0,
+					"mean_luminance": 0.0281635775108188,
+					"non_black_coverage": 1.0,
+					"opaque_coverage": 1.0,
+					"sample_count": 125
+				},
+				"TopBar": {
+					"effective_coverage": 0.0676751592356688,
+					"mean_luminance": 0.0661492108569221,
+					"non_black_coverage": 1.0,
+					"opaque_coverage": 1.0,
+					"sample_count": 3768
+				},
+				"TurnLabel": {
+					"effective_coverage": 0.0,
+					"mean_luminance": 0.0269189854395429,
+					"non_black_coverage": 1.0,
+					"opaque_coverage": 1.0,
+					"sample_count": 95
+				},
+				"WeatherChip": {
+					"effective_coverage": 0.0,
+					"mean_luminance": 0.0371467620256892,
+					"non_black_coverage": 1.0,
+					"opaque_coverage": 1.0,
+					"sample_count": 150
+				}
+			},
+			"sample_stride_pixels": 4,
+			"whole": {
+				"effective_coverage": 0.0859027777777778,
+				"mean_luminance": 0.0869225286590402,
+				"non_black_coverage": 1.0,
+				"opaque_coverage": 1.0,
+				"sample_count": 57600
+			}
+		},
+		"resource_path": "res://reports/ui/production_acceptance/e_1280_economy_topbar/before_economy_first_1280x720.png",
+		"saved": true,
+		"sha256": "24a73fd2b63e7cb0411880909406d0bef705c6aca5bb3d72556dca4129861152"
+	},
+	"case": "economy_first",
+	"evidence_phase": "before",
+	"failures": [],
+	"layout_gate": {
+		"failures": [
+			"physical window is not 1280x720",
+			"EconomyDashboardPanel outside logical canvas: [P: (202.6, 1089.4), S: (1286.0, 628.0)]",
+			"EconomyDashboardTitle outside logical canvas: [P: (217.6, 1102.4), S: (75.0, 22.0)]"
+		],
+		"passed": false
+	},
+	"logical_canvas_size": {
+		"x": 1706.0,
+		"y": 960.0
+	},
+	"machine_id_candidates": [],
+	"machine_id_gate_passed": true,
+	"physical_window_size": {
+		"x": 1920,
+		"y": 998
+	},
+	"save_isolation": {
+		"player_default_after": {
+			"exists": false,
+			"modified_time": 0,
+			"sha256": "",
+			"size": 0
+		},
+		"player_default_before": {
+			"exists": false,
+			"modified_time": 0,
+			"sha256": "",
+			"size": 0
+		},
+		"player_default_save_path": "user://space_syndicate_current_run.save",
+		"player_default_unchanged": true,
+		"qa_artifacts_after_cleanup": [],
+		"qa_override_active_before_tree": true,
+		"qa_save_path": "user://test_runs/e_1280_economy_topbar.save"
+	},
+	"save_operation_before_tree": {
+		"captures_business_state": false,
+		"configured": false,
+		"currency_scale": 100,
+		"default_save_path": "user://test_runs/e_1280_economy_topbar.save",
+		"explicit_path_required": false,
+		"format": "space_syndicate_json",
+		"last_error_code": 0,
+		"last_operation": "idle",
+		"last_path": "",
+		"last_reason_code": "idle",
+		"operation_sequence": 0,
+		"operation_state": "clean",
+		"qa_save_path_override_active": true,
+		"qa_save_root": "user://test_runs/",
+		"ruleset_id": "v0.6",
+		"save_version": 3
+	},
+	"scene_tree": {
+		"CashChip": {
+			"found": true,
+			"name": "CashChip",
+			"path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TopBar/TopBarRow/FirstGlanceRail/CashChip",
+			"rect": {
+				"height": 22.0,
+				"width": 96.0,
+				"x": 380.0,
+				"y": 15.0
+			},
+			"text": "现金 ¥ 2080",
+			"tooltip": "现金: ¥ 2080",
+			"type": "Label",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"EconomyDashboardDecisionRail": {
+			"found": true,
+			"name": "EconomyDashboardDecisionRail",
+			"path": "/root/Main/RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay/MenuSurfacePanel/MenuShellMargin/MenuShell/MenuContentScroll/MenuContentMargin/MenuContentBox/MenuPreviewBox/EconomyDashboardPanel/EconomyDashboardMargin/EconomyDashboardStack/EconomyDashboardDecisionRail",
+			"rect": {
+				"height": 74.0,
+				"width": 1256.0,
+				"x": 217.6,
+				"y": 1318.4
+			},
+			"tooltip": "",
+			"type": "HFlowContainer",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"EconomyDashboardKpiGrid": {
+			"found": true,
+			"name": "EconomyDashboardKpiGrid",
+			"path": "/root/Main/RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay/MenuSurfacePanel/MenuShellMargin/MenuShell/MenuContentScroll/MenuContentMargin/MenuContentBox/MenuPreviewBox/EconomyDashboardPanel/EconomyDashboardMargin/EconomyDashboardStack/EconomyDashboardKpiGrid",
+			"rect": {
+				"height": 88.0,
+				"width": 1256.0,
+				"x": 217.6,
+				"y": 1134.4
+			},
+			"tooltip": "",
+			"type": "GridContainer",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"EconomyDashboardLaneGrid": {
+			"found": true,
+			"name": "EconomyDashboardLaneGrid",
+			"path": "/root/Main/RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay/MenuSurfacePanel/MenuShellMargin/MenuShell/MenuContentScroll/MenuContentMargin/MenuContentBox/MenuPreviewBox/EconomyDashboardPanel/EconomyDashboardMargin/EconomyDashboardStack/EconomyDashboardLaneGrid",
+			"rect": {
+				"height": 302.0,
+				"width": 1256.0,
+				"x": 217.6,
+				"y": 1402.4
+			},
+			"tooltip": "",
+			"type": "GridContainer",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"EconomyDashboardOverviewGrid": {
+			"found": true,
+			"name": "EconomyDashboardOverviewGrid",
+			"path": "/root/Main/RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay/MenuSurfacePanel/MenuShellMargin/MenuShell/MenuContentScroll/MenuContentMargin/MenuContentBox/MenuPreviewBox/EconomyDashboardPanel/EconomyDashboardMargin/EconomyDashboardStack/EconomyDashboardOverviewGrid",
+			"rect": {
+				"height": 76.0,
+				"width": 1256.0,
+				"x": 217.6,
+				"y": 1232.4
+			},
+			"tooltip": "",
+			"type": "GridContainer",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"EconomyDashboardPanel": {
+			"found": true,
+			"name": "EconomyDashboardPanel",
+			"path": "/root/Main/RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay/MenuSurfacePanel/MenuShellMargin/MenuShell/MenuContentScroll/MenuContentMargin/MenuContentBox/MenuPreviewBox/EconomyDashboardPanel",
+			"rect": {
+				"height": 628.0,
+				"width": 1286.0,
+				"x": 202.6,
+				"y": 1089.4
+			},
+			"tooltip": "经济仪表板：看三件事：钱从哪座城来、哪种商品变热、公开线索指向哪里。",
+			"type": "PanelContainer",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"EconomyDashboardTitle": {
+			"found": true,
+			"name": "EconomyDashboardTitle",
+			"path": "/root/Main/RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay/MenuSurfacePanel/MenuShellMargin/MenuShell/MenuContentScroll/MenuContentMargin/MenuContentBox/MenuPreviewBox/EconomyDashboardPanel/EconomyDashboardMargin/EconomyDashboardStack/EconomyDashboardHeader/EconomyDashboardTitle",
+			"rect": {
+				"height": 22.0,
+				"width": 75.0,
+				"x": 217.6,
+				"y": 1102.4
+			},
+			"text": "经济仪表板",
+			"tooltip": "先看现金流、商品、城市、线索四块；细节用悬停查看。",
+			"type": "Label",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"GdpChip": {
+			"found": true,
+			"name": "GdpChip",
+			"path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TopBar/TopBarRow/FirstGlanceRail/GdpChip",
+			"rect": {
+				"height": 22.0,
+				"width": 92.0,
+				"x": 482.0,
+				"y": 15.0
+			},
+			"text": "GDP 0/min",
+			"tooltip": "GDP: 0/min",
+			"type": "Label",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"GoalChip": {
+			"found": true,
+			"name": "GoalChip",
+			"path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TopBar/TopBarRow/FirstGlanceRail/GoalChip",
+			"rect": {
+				"height": 22.0,
+				"width": 108.0,
+				"x": 580.0,
+				"y": 15.0
+			},
+			"text": "目标 Top-N 0/144",
+			"tooltip": "目标: Top-N 0/144",
+			"type": "Label",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"MenuBodyDisclosureButton": {
+			"found": false
+		},
+		"MenuBodyLabel": {
+			"found": true,
+			"name": "MenuBodyLabel",
+			"path": "/root/Main/RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay/MenuSurfacePanel/MenuShellMargin/MenuShell/MenuContentScroll/MenuContentMargin/MenuContentBox/MenuBodyLabel",
+			"rect": {
+				"height": 753.0,
+				"width": 1286.0,
+				"x": 202.6,
+				"y": 324.4
+			},
+			"text": "经济总览\n看三件事：钱从哪座城来，哪个商品在变贵，哪些公开动作留下线索。\n城市现金按秒进账；商品供需、天气和商路会改变GDP/min；对手现金、手牌和私密推理保持隐藏。\n情报现金只在终局兑现；当前页只整理公开证据和当前玩家自己的经济流水，不验证隐藏真相。\n经济天气:天气:无活跃天气｜预报:引力潮即将到达港口｜卡牌余波:0条｜城市线索商品:零点饮料、反物质茶、晨昏奶酪｜怪兽资金线索:0条。\n商品热榜｜引力棉 ¥265（战略稀缺｜偏离+23｜趋势+23｜供0/需1/断0｜波16｜天气无｜公开状态高波动16｜路径242→260→265）；暗礁珊瑚 ¥261（战略稀缺｜偏离+13｜趋势+13｜供0/需1/断0｜波16｜天气无｜公开状态高波动16｜路径248→271→261）；轨道盆栽 ¥96（成长商品｜偏离+10｜趋势+10｜供0/需1/断0｜波7｜天气无｜公开状态无｜路径86→94→96）\n低价/供给压制｜极光盐 ¥84（成长商品｜偏离-11｜趋势-11｜供1/需0/断0｜波7｜天气无｜公开状态无｜路径95→86→84）；光合凝胶 ¥194（战略稀缺｜偏离-12｜趋势-12｜供1/需1/断0｜波16｜天气无｜公开状态高波动16｜路径206→196→194）\n商路收入前景｜玩家经济隐私：对手现金、手牌和私密流水不公开｜暂无城市；先城市化陆地。\n公开异动：场上怪兽3只；天气:天气:无活跃天气｜预报:引力潮即将到达港口。页面只汇总场面结果；对手现金、手牌和私密推理保持隐藏。\n最近卡牌余波｜暂无匿名卡余波；看顶部牌轨等待公开结果。\n最近城市公开线索｜类型:暂无｜线索商品:暂无｜等待城市公开线索。\n最近怪兽资金线索｜最大生命比例决定归属方掉钱幅度｜暂无伤害资金线索。\n仓储靶标｜匿名仓储会把期货收益绑定到可被攻击的城市｜暂无匿名仓储靶标。\n当前玩家推理板\n城市私标｜暂无标注｜未标注陌生城市0｜己方城市0｜只显示我的私人标注，不验证正误\n公开卡牌归属｜暂无被竞猜揭晓的卡牌\n卡牌条件反推｜暂无公开匿名牌条件\n公开怪兽归属｜暂无因受伤资金线索而公开的怪兽\n交叉提示｜把城市私标、公开卡牌归属、怪兽资金线索、商品/商路变化一起比对；没有一项单独等于真相。\n玩家经济流水｜玩家1｜前K区商品GDP/min0｜现金2080｜城市0｜情报待结算：已标0/0｜全对0 / 全错0｜终局揭晓｜实时现金流0｜角色累计+0｜潜在GDP/min 0｜最近0｜窗口0｜轨迹2080｜流水暂无；玩家2｜现金、结算预估、城市资产、现金流、资金轨迹与流水均为私人信息；只能从公开行动自行推测。；玩家3｜现金、结算预估、城市资产、现金流、资金轨迹与流水均为私人信息；只能从公开行动自行推测。；玩家4｜现金、结算预估、城市资产、现金流、资金轨迹与流水均为私人信息；只能从公开行动自行推测。\n下方仪表板只显示可扫读信息；悬停每一行可看完整证据。\n刷新0｜当前玩家：玩家1｜怪兽3只｜天气:无活跃天气｜预报:引力潮即将到达港口",
+			"tooltip": "",
+			"type": "Label",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"MenuButton": {
+			"found": true,
+			"name": "MenuButton",
+			"path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TopBar/TopBarRow/MenuButton",
+			"rect": {
+				"height": 42.0,
+				"width": 72.0,
+				"x": 1606.0,
+				"y": 15.0
+			},
+			"text": "菜单",
+			"tooltip": "",
+			"type": "Button",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"MenuContentScroll": {
+			"found": true,
+			"name": "MenuContentScroll",
+			"path": "/root/Main/RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay/MenuSurfacePanel/MenuShellMargin/MenuShell/MenuContentScroll",
+			"rect": {
+				"height": 551.0,
+				"width": 1304.0,
+				"x": 200.6,
+				"y": 322.4
+			},
+			"tooltip": "",
+			"type": "ScrollContainer",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"MenuModalOverlay": {
+			"found": true,
+			"name": "MenuModalOverlay",
+			"path": "/root/Main/RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay",
+			"rect": {
+				"height": 960.0,
+				"width": 1706.0,
+				"x": 0.0,
+				"y": 0.0
+			},
+			"tooltip": "",
+			"type": "ColorRect",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"MenuSurfacePanel": {
+			"found": true,
+			"name": "MenuSurfacePanel",
+			"path": "/root/Main/RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay/MenuSurfacePanel",
+			"rect": {
+				"height": 835.2,
+				"width": 1364.8,
+				"x": 170.6,
+				"y": 62.4
+			},
+			"tooltip": "",
+			"type": "PanelContainer",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"MoreChip": {
+			"found": false
+		},
+		"PhaseLabel": {
+			"found": true,
+			"name": "PhaseLabel",
+			"path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TopBar/TopBarRow/PhaseLabel",
+			"rect": {
+				"height": 22.0,
+				"width": 118.0,
+				"x": 28.0,
+				"y": 25.0
+			},
+			"text": "桌态 经营中",
+			"tooltip": "桌态: 经营中",
+			"type": "Label",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"PrimaryActionChip": {
+			"found": true,
+			"name": "PrimaryActionChip",
+			"path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TopBar/TopBarRow/FirstGlanceRail/PrimaryActionChip",
+			"rect": {
+				"height": 22.0,
+				"width": 122.0,
+				"x": 830.0,
+				"y": 15.0
+			},
+			"text": "下一步 可选：召唤怪兽",
+			"tooltip": "下一步: 可选：召唤怪兽",
+			"type": "Label",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"SelectedDistrictChip": {
+			"found": true,
+			"name": "SelectedDistrictChip",
+			"path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TopBar/TopBarRow/FirstGlanceRail/SelectedDistrictChip",
+			"rect": {
+				"height": 22.0,
+				"width": 130.0,
+				"x": 694.0,
+				"y": 15.0
+			},
+			"text": "选区 东京湾",
+			"tooltip": "选区: 东京湾",
+			"type": "Label",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"TopBar": {
+			"found": true,
+			"name": "TopBar",
+			"path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TopBar",
+			"rect": {
+				"height": 62.0,
+				"width": 1674.0,
+				"x": 16.0,
+				"y": 5.0
+			},
+			"tooltip": "",
+			"type": "PanelContainer",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"TurnLabel": {
+			"found": true,
+			"name": "TurnLabel",
+			"path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TopBar/TopBarRow/TurnLabel",
+			"rect": {
+				"height": 22.0,
+				"width": 96.0,
+				"x": 156.0,
+				"y": 25.0
+			},
+			"text": "计时 00:04",
+			"tooltip": "计时: 00:04",
+			"type": "Label",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"WeatherChip": {
+			"found": true,
+			"name": "WeatherChip",
+			"path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TopBar/TopBarRow/FirstGlanceRail/WeatherChip",
+			"rect": {
+				"height": 22.0,
+				"width": 154.0,
+				"x": 958.0,
+				"y": 15.0
+			},
+			"text": "天气:无活跃天气｜预报:引力潮即将到达港口",
+			"tooltip": "天气:无活跃天气｜预报:引力潮即将到达港口",
+			"type": "Label",
+			"visible": true,
+			"visible_in_tree": true
+		}
+	},
+	"state": {
+		"scroll_stage": "first_open",
+		"scroll_value": 0
+	}
+}

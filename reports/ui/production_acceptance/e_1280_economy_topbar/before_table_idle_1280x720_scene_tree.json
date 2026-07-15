@@ -1,0 +1,316 @@
+{
+	"capture": {
+		"pixel_metrics": {
+			"canvas_to_pixel_scale": {
+				"x": 0.75,
+				"y": 0.75
+			},
+			"node_regions": {
+				"CashChip": {
+					"effective_coverage": 0.189473684210526,
+					"mean_luminance": 0.205136656758958,
+					"non_black_coverage": 1.0,
+					"opaque_coverage": 1.0,
+					"sample_count": 95
+				},
+				"GdpChip": {
+					"effective_coverage": 0.177777777777778,
+					"mean_luminance": 0.193727690877434,
+					"non_black_coverage": 1.0,
+					"opaque_coverage": 1.0,
+					"sample_count": 90
+				},
+				"GoalChip": {
+					"effective_coverage": 0.238095238095238,
+					"mean_luminance": 0.231847116963225,
+					"non_black_coverage": 1.0,
+					"opaque_coverage": 1.0,
+					"sample_count": 105
+				},
+				"MenuButton": {
+					"effective_coverage": 0.910714285714286,
+					"mean_luminance": 0.270510096375138,
+					"non_black_coverage": 1.0,
+					"opaque_coverage": 1.0,
+					"sample_count": 112
+				},
+				"PhaseLabel": {
+					"effective_coverage": 0.191304347826087,
+					"mean_luminance": 0.178265560207367,
+					"non_black_coverage": 1.0,
+					"opaque_coverage": 1.0,
+					"sample_count": 115
+				},
+				"PrimaryActionChip": {
+					"effective_coverage": 0.191666666666667,
+					"mean_luminance": 0.214462880614425,
+					"non_black_coverage": 1.0,
+					"opaque_coverage": 1.0,
+					"sample_count": 120
+				},
+				"SelectedDistrictChip": {
+					"effective_coverage": 0.152,
+					"mean_luminance": 0.177382932184136,
+					"non_black_coverage": 1.0,
+					"opaque_coverage": 1.0,
+					"sample_count": 125
+				},
+				"TopBar": {
+					"effective_coverage": 0.095276008492569,
+					"mean_luminance": 0.123881296633884,
+					"non_black_coverage": 1.0,
+					"opaque_coverage": 1.0,
+					"sample_count": 3768
+				},
+				"TurnLabel": {
+					"effective_coverage": 0.178947368421053,
+					"mean_luminance": 0.162036372251291,
+					"non_black_coverage": 1.0,
+					"opaque_coverage": 1.0,
+					"sample_count": 95
+				},
+				"WeatherChip": {
+					"effective_coverage": 0.38,
+					"mean_luminance": 0.291456063958109,
+					"non_black_coverage": 1.0,
+					"opaque_coverage": 1.0,
+					"sample_count": 150
+				}
+			},
+			"sample_stride_pixels": 4,
+			"whole": {
+				"effective_coverage": 0.394774305555556,
+				"mean_luminance": 0.128783087899383,
+				"non_black_coverage": 1.0,
+				"opaque_coverage": 1.0,
+				"sample_count": 57600
+			}
+		},
+		"resource_path": "res://reports/ui/production_acceptance/e_1280_economy_topbar/before_table_idle_1280x720.png",
+		"saved": true,
+		"sha256": "5d27eb99270bd597e98d360bfe2ed8c522dd24e7e9c9366cf1997276d9d621eb"
+	},
+	"case": "table_idle",
+	"evidence_phase": "before",
+	"failures": [],
+	"layout_gate": {
+		"failures": [
+			"physical window is not 1280x720"
+		],
+		"passed": false
+	},
+	"logical_canvas_size": {
+		"x": 1706.0,
+		"y": 960.0
+	},
+	"machine_id_candidates": [],
+	"machine_id_gate_passed": true,
+	"physical_window_size": {
+		"x": 1920,
+		"y": 998
+	},
+	"save_isolation": {
+		"player_default_after": {
+			"exists": false,
+			"modified_time": 0,
+			"sha256": "",
+			"size": 0
+		},
+		"player_default_before": {
+			"exists": false,
+			"modified_time": 0,
+			"sha256": "",
+			"size": 0
+		},
+		"player_default_save_path": "user://space_syndicate_current_run.save",
+		"player_default_unchanged": true,
+		"qa_artifacts_after_cleanup": [],
+		"qa_override_active_before_tree": true,
+		"qa_save_path": "user://test_runs/e_1280_economy_topbar.save"
+	},
+	"save_operation_before_tree": {
+		"captures_business_state": false,
+		"configured": false,
+		"currency_scale": 100,
+		"default_save_path": "user://test_runs/e_1280_economy_topbar.save",
+		"explicit_path_required": false,
+		"format": "space_syndicate_json",
+		"last_error_code": 0,
+		"last_operation": "idle",
+		"last_path": "",
+		"last_reason_code": "idle",
+		"operation_sequence": 0,
+		"operation_state": "clean",
+		"qa_save_path_override_active": true,
+		"qa_save_root": "user://test_runs/",
+		"ruleset_id": "v0.6",
+		"save_version": 3
+	},
+	"scene_tree": {
+		"CashChip": {
+			"found": true,
+			"name": "CashChip",
+			"path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TopBar/TopBarRow/FirstGlanceRail/CashChip",
+			"rect": {
+				"height": 22.0,
+				"width": 96.0,
+				"x": 380.0,
+				"y": 15.0
+			},
+			"text": "现金 ¥ 2080",
+			"tooltip": "现金: ¥ 2080",
+			"type": "Label",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"GdpChip": {
+			"found": true,
+			"name": "GdpChip",
+			"path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TopBar/TopBarRow/FirstGlanceRail/GdpChip",
+			"rect": {
+				"height": 22.0,
+				"width": 92.0,
+				"x": 482.0,
+				"y": 15.0
+			},
+			"text": "GDP 0/min",
+			"tooltip": "GDP: 0/min",
+			"type": "Label",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"GoalChip": {
+			"found": true,
+			"name": "GoalChip",
+			"path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TopBar/TopBarRow/FirstGlanceRail/GoalChip",
+			"rect": {
+				"height": 22.0,
+				"width": 108.0,
+				"x": 580.0,
+				"y": 15.0
+			},
+			"text": "目标 Top-N 0/144",
+			"tooltip": "目标: Top-N 0/144",
+			"type": "Label",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"MenuButton": {
+			"found": true,
+			"name": "MenuButton",
+			"path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TopBar/TopBarRow/MenuButton",
+			"rect": {
+				"height": 42.0,
+				"width": 72.0,
+				"x": 1606.0,
+				"y": 15.0
+			},
+			"text": "菜单",
+			"tooltip": "",
+			"type": "Button",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"MoreChip": {
+			"found": false
+		},
+		"PhaseLabel": {
+			"found": true,
+			"name": "PhaseLabel",
+			"path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TopBar/TopBarRow/PhaseLabel",
+			"rect": {
+				"height": 22.0,
+				"width": 118.0,
+				"x": 28.0,
+				"y": 25.0
+			},
+			"text": "桌态 经营中",
+			"tooltip": "桌态: 经营中",
+			"type": "Label",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"PrimaryActionChip": {
+			"found": true,
+			"name": "PrimaryActionChip",
+			"path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TopBar/TopBarRow/FirstGlanceRail/PrimaryActionChip",
+			"rect": {
+				"height": 22.0,
+				"width": 122.0,
+				"x": 830.0,
+				"y": 15.0
+			},
+			"text": "下一步 可选：召唤怪兽",
+			"tooltip": "下一步: 可选：召唤怪兽",
+			"type": "Label",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"SelectedDistrictChip": {
+			"found": true,
+			"name": "SelectedDistrictChip",
+			"path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TopBar/TopBarRow/FirstGlanceRail/SelectedDistrictChip",
+			"rect": {
+				"height": 22.0,
+				"width": 130.0,
+				"x": 694.0,
+				"y": 15.0
+			},
+			"text": "选区 东京湾",
+			"tooltip": "选区: 东京湾",
+			"type": "Label",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"TopBar": {
+			"found": true,
+			"name": "TopBar",
+			"path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TopBar",
+			"rect": {
+				"height": 62.0,
+				"width": 1674.0,
+				"x": 16.0,
+				"y": 5.0
+			},
+			"tooltip": "",
+			"type": "PanelContainer",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"TurnLabel": {
+			"found": true,
+			"name": "TurnLabel",
+			"path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TopBar/TopBarRow/TurnLabel",
+			"rect": {
+				"height": 22.0,
+				"width": 96.0,
+				"x": 156.0,
+				"y": 25.0
+			},
+			"text": "计时 00:04",
+			"tooltip": "计时: 00:04",
+			"type": "Label",
+			"visible": true,
+			"visible_in_tree": true
+		},
+		"WeatherChip": {
+			"found": true,
+			"name": "WeatherChip",
+			"path": "/root/Main/RuntimeGameScreen/SafeArea/MainRows/TopBar/TopBarRow/FirstGlanceRail/WeatherChip",
+			"rect": {
+				"height": 22.0,
+				"width": 154.0,
+				"x": 958.0,
+				"y": 15.0
+			},
+			"text": "天气:无活跃天气｜预报:引力潮即将到达港口",
+			"tooltip": "天气:无活跃天气｜预报:引力潮即将到达港口",
+			"type": "Label",
+			"visible": true,
+			"visible_in_tree": true
+		}
+	},
+	"state": {
+		"scroll_stage": "closed"
+	}
+}

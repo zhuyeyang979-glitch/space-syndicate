@@ -25,6 +25,7 @@ signal codex_action_requested(action_id: String, payload: Dictionary)
 @onready var catalog_back_button: Button = %MenuBestiaryBackButton
 @onready var content_scroll: ScrollContainer = %MenuContentScroll
 @onready var content_box: VBoxContainer = %MenuContentBox
+@onready var body_disclosure_button: Button = %MenuBodyDisclosureButton
 @onready var body_label: Label = %MenuBodyLabel
 @onready var preview_box: VBoxContainer = %MenuPreviewBox
 @onready var codex_surface: Control = %CodexCompendiumSurface
@@ -32,6 +33,8 @@ signal codex_action_requested(action_id: String, payload: Dictionary)
 
 var _root_table_menu := false
 var _compact_page := false
+var _body_detail_available := false
+var _body_detail_expanded := false
 
 
 func _ready() -> void:
@@ -54,7 +57,11 @@ func present_menu_shell(data: Dictionary) -> void:
 	hint_panel.visible = bool(data.get("hint_visible", not root_table_menu)) and not compact_page
 	hint_panel.tooltip_text = hint_label.text
 	body_label.text = body_text
-	body_label.visible = body_text.strip_edges() != "" and not root_table_menu
+	_body_detail_available = title_text == "经济总览" and body_text.strip_edges() != "" and not root_table_menu
+	_body_detail_expanded = false
+	body_disclosure_button.visible = _body_detail_available
+	body_label.visible = body_text.strip_edges() != "" and not root_table_menu and not _body_detail_available
+	_refresh_body_disclosure()
 	if bool(data.get("clear_preview", true)):
 		clear_preview()
 	if content_scroll != null and bool(data.get("reset_scroll", true)):
@@ -109,7 +116,7 @@ func present_codex_page(data: Dictionary) -> bool:
 
 func set_body_text(text: String, should_show: bool = true) -> void:
 	body_label.text = text
-	body_label.visible = should_show and text.strip_edges() != ""
+	body_label.visible = should_show and text.strip_edges() != "" and (not _body_detail_available or _body_detail_expanded)
 
 
 func set_run_save_summary(text: String) -> void:
@@ -254,6 +261,8 @@ func _connect_buttons() -> void:
 		catalog_next_button.pressed.connect(_on_next_pressed)
 	if not catalog_back_button.pressed.is_connected(_on_catalog_back_pressed):
 		catalog_back_button.pressed.connect(_on_catalog_back_pressed)
+	if not body_disclosure_button.pressed.is_connected(_on_body_disclosure_pressed):
+		body_disclosure_button.pressed.connect(_on_body_disclosure_pressed)
 	if quick_navigation != null and quick_navigation.has_signal("action_requested"):
 		var callback := Callable(self, "_on_quick_nav_action_requested")
 		if not quick_navigation.is_connected("action_requested", callback):
@@ -281,6 +290,8 @@ func _style_shell() -> void:
 	_style_button(catalog_prev_button, Color("#93c5fd"))
 	_style_button(catalog_next_button, Color("#93c5fd"))
 	_style_button(catalog_back_button, Color("#facc15"))
+	_style_button(body_disclosure_button, Color("#22d3ee"))
+	body_disclosure_button.add_theme_font_size_override("font_size", 12)
 
 
 func _style_button(button: Button, accent: Color, primary: bool = false) -> void:
@@ -342,6 +353,21 @@ func _on_next_pressed() -> void:
 
 func _on_catalog_back_pressed() -> void:
 	catalog_back_requested.emit()
+
+
+func _on_body_disclosure_pressed() -> void:
+	if not _body_detail_available:
+		return
+	_body_detail_expanded = not _body_detail_expanded
+	body_label.visible = _body_detail_expanded
+	_refresh_body_disclosure()
+
+
+func _refresh_body_disclosure() -> void:
+	if body_disclosure_button == null:
+		return
+	body_disclosure_button.text = "收起详细经济证据" if _body_detail_expanded else "展开详细经济证据"
+	body_disclosure_button.tooltip_text = "收起完整公开经济说明，回到摘要。" if _body_detail_expanded else "展开完整公开经济说明；仪表板摘要保持在页面上方。"
 
 
 func _on_quick_nav_action_requested(action_id: String) -> void:
