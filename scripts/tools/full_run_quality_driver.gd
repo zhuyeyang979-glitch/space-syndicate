@@ -24,7 +24,8 @@ const DEFAULT_OBSERVATION_SECONDS := 12
 const DEFAULT_MAX_WALL_SECONDS := 30
 const SIMULATION_TIME_SCALE := 16.0
 const WAIT_SIMULATION_TIME_SCALE := 128.0
-const SUPPLY_WAIT_ENGINE_TIME_SCALE := 4.0
+const ACTION_ENGINE_TIME_SCALE := 2.0
+const SUPPLY_WAIT_ENGINE_TIME_SCALE := 8.0
 const GDP_WAIT_ENGINE_TIME_SCALE := 8.0
 const SUPPLY_QUOTE_REFRESH_INTERVAL_MSEC := 1000
 const EXIT_INVALID_ARGUMENTS := 2
@@ -214,7 +215,7 @@ func _run() -> void:
 			var waiting_action_id := str(ui_action.get("id", "")) if bool(ui_action.get("disabled", false)) else ""
 			var waiting_for_world := waiting_action_id in ["district_supply_wait", "gdp_accumulation_wait"]
 			main_instance.set("time_scale", WAIT_SIMULATION_TIME_SCALE if waiting_for_world else SIMULATION_TIME_SCALE)
-			Engine.time_scale = GDP_WAIT_ENGINE_TIME_SCALE if waiting_action_id == "gdp_accumulation_wait" else (SUPPLY_WAIT_ENGINE_TIME_SCALE if waiting_action_id == "district_supply_wait" else 1.0)
+			Engine.time_scale = GDP_WAIT_ENGINE_TIME_SCALE if waiting_action_id == "gdp_accumulation_wait" else (SUPPLY_WAIT_ENGINE_TIME_SCALE if waiting_action_id == "district_supply_wait" else ACTION_ENGINE_TIME_SCALE)
 		final_telemetry = _collect_telemetry(run_seed, coordinator, session, settlement_composition, runtime_screen, observation_started_msec, _last_event)
 		if int((final_telemetry.get("nonfinite", {}) as Dictionary).get("count", 0)) > 0:
 			final_status = "failed"
@@ -617,7 +618,14 @@ func _district_supply_ui_action(runtime_screen: Node) -> Dictionary:
 			"payload": {"card_name": preview_card_name, "source": "full_run_visible_preview"},
 		}
 	var cards: Array = snapshot.get("cards", []) if snapshot.get("cards", []) is Array else []
-	var facility_card := _first_supply_card_of_kind(cards, "facility_v06")
+	var retry_next_facility := str(preview.get("action_reason_code", "")) in [
+		"source_region_dark",
+		"source_region_destroyed",
+		"market_listing_changed",
+		"market_quote_unavailable",
+		"quote_expired",
+	]
+	var facility_card := _next_supply_card_of_kind(cards, "facility_v06", preview_card_name if retry_next_facility else "")
 	if not facility_card.is_empty():
 		var facility_name := str(facility_card.get("card_name", ""))
 		if preview_card_name != facility_name:
@@ -664,17 +672,22 @@ func _refresh_visible_supply_quote(runtime_screen: Node) -> bool:
 	return true
 
 
-func _first_supply_card_of_kind(cards: Array, kind: String) -> Dictionary:
-	var visible_fallback: Dictionary = {}
+func _next_supply_card_of_kind(cards: Array, kind: String, after_card_name: String = "") -> Dictionary:
+	var matching: Array[Dictionary] = []
 	for card_variant in cards:
-		if not (card_variant is Dictionary) or str((card_variant as Dictionary).get("kind", "")) != kind:
-			continue
-		var card: Dictionary = card_variant
+		if card_variant is Dictionary and str((card_variant as Dictionary).get("kind", "")) == kind:
+			matching.append((card_variant as Dictionary).duplicate(true))
+	if matching.is_empty():
+		return {}
+	for card in matching:
 		if bool(card.get("actionable", false)):
-			return card.duplicate(true)
-		if visible_fallback.is_empty():
-			visible_fallback = card.duplicate(true)
-	return visible_fallback
+			return card
+	if after_card_name.is_empty():
+		return matching[0]
+	for index in range(matching.size()):
+		if str(matching[index].get("card_name", "")) == after_card_name:
+			return matching[wrapi(index + 1, 0, matching.size())]
+	return matching[0]
 
 
 func _first_enabled_action_by_kind(value: Variant, kind: String) -> Dictionary:
