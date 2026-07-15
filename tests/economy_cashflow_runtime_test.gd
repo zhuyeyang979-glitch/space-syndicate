@@ -1,11 +1,15 @@
 extends SceneTree
 
-const CONTROLLER_SCENE := "res://scenes/runtime/EconomyCashflowRuntimeController.tscn"
+const RETIRED_CONTROLLER_SCENE := "res://scenes/runtime/EconomyCashflowRuntimeController.tscn"
+const CURRENT_OWNER_SCENE := "res://scenes/runtime/CommodityFlowRuntimeController.tscn"
+const CURRENT_WORLD_BRIDGE_SCENE := "res://scenes/runtime/CommodityFlowWorldBridge.tscn"
 const COORDINATOR_SCENE := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
-const RULESET_SCENE := "res://scenes/runtime/RulesetRuntimeBridge.tscn"
-const MAIN_SCENE := "res://scenes/main.tscn"
+const CURRENT_FOCUSED_TEST := "res://tests/commodity_flow_local_baseline_demand_v06_test.gd"
+const CURRENT_CONTRACT := "res://docs/installed_commodity_continuous_economy_runtime_contract.md"
+const RULESET_PROFILE := preload("res://resources/rules/space_syndicate_ruleset_v06.tres")
 
-var failures: Array[String] = []
+var _checks := 0
+var _failures: Array[String] = []
 
 
 func _init() -> void:
@@ -13,98 +17,137 @@ func _init() -> void:
 
 
 func _run() -> void:
-	var controller_packed := load(CONTROLLER_SCENE) as PackedScene
+	var retired_packed := load(RETIRED_CONTROLLER_SCENE) as PackedScene
+	var current_packed := load(CURRENT_OWNER_SCENE) as PackedScene
+	var bridge_packed := load(CURRENT_WORLD_BRIDGE_SCENE) as PackedScene
 	var coordinator_packed := load(COORDINATOR_SCENE) as PackedScene
-	var ruleset_packed := load(RULESET_SCENE) as PackedScene
-	_expect(controller_packed != null and coordinator_packed != null and ruleset_packed != null, "cashflow runtime scenes load")
-	if controller_packed == null or coordinator_packed == null or ruleset_packed == null:
+	_expect(
+		retired_packed != null
+		and current_packed != null
+		and bridge_packed != null
+		and coordinator_packed != null
+		and load(CURRENT_FOCUSED_TEST) is Script
+		and FileAccess.file_exists(CURRENT_CONTRACT),
+		"retired marker and current Commodity Flow owner-focused assets load"
+	)
+	if retired_packed == null or current_packed == null or bridge_packed == null or coordinator_packed == null:
 		_finish()
 		return
+
+	var retired := retired_packed.instantiate()
+	root.add_child(retired)
+	var retired_debug: Dictionary = retired.call("debug_snapshot")
+	var retired_methods_absent := true
+	for method_name in ["configure", "advance_clock", "settle_sources", "accumulator_seconds", "to_legacy_save_snapshot", "apply_legacy_save_snapshot", "private_ui_snapshot"]:
+		retired_methods_absent = retired_methods_absent and not retired.has_method(method_name)
+	_expect(
+		bool(retired_debug.get("retired", false))
+		and str(retired_debug.get("retired_by", "")) == "SS06-02B"
+		and str(retired_debug.get("replacement_owner", "")) == "CommodityFlowRuntimeController"
+		and retired_methods_absent,
+		"EconomyCashflowRuntimeController is load-only retirement evidence without legacy runtime APIs"
+	)
+
+	var current := current_packed.instantiate()
+	var bridge := bridge_packed.instantiate()
+	root.add_child(current)
+	root.add_child(bridge)
+	var configured: Dictionary = current.call("configure", RULESET_PROFILE.call("debug_snapshot"))
+	var current_debug: Dictionary = current.call("debug_snapshot")
+	var bridge_debug: Dictionary = bridge.call("debug_snapshot")
+	var public_receipts: Array = current.call("recent_sale_receipts_snapshot", -1)
+	var region_gdp: Dictionary = current.call("region_gdp_snapshot", "region.0001")
+	var current_save: Dictionary = current.call("to_save_data")
+	_expect(
+		bool(configured.get("configured", false))
+		and bool(current_debug.get("controller_authoritative", false))
+		and str(current_debug.get("runtime_owner", "")) == "CommodityFlowRuntimeController"
+		and current.has_method("advance_world")
+		and current.has_method("recent_sale_receipts_snapshot")
+		and current.has_method("region_gdp_snapshot")
+		and current.has_method("to_save_data"),
+		"CommodityFlowRuntimeController is the current continuous-flow, Sale Receipt, and receipt-GDP owner"
+	)
+	_expect(
+		str(bridge_debug.get("runtime_owner", "")) == "none"
+		and str(bridge_debug.get("bridge_role", "")) == "commodity_flow_world_facts_and_atomic_cash_apply"
+		and not bool(bridge_debug.get("owns_flow_rules", true))
+		and not bool(bridge_debug.get("owns_sale_receipts", true))
+		and bridge.has_method("apply_sale_receipt_batch"),
+		"CommodityFlowWorldBridge remains non-owning and exposes atomic Sale Receipt cash application"
+	)
+	_expect(
+		public_receipts.is_empty()
+		and int(region_gdp.get("region_gdp_per_minute_cents", -1)) == 0
+		and not current_save.has("economy_cashflow_timer")
+		and _is_pure_data(current_debug)
+		and _is_pure_data(region_gdp)
+		and _is_pure_data(current_save),
+		"current snapshots and save data are pure and do not revive the legacy cashflow timer"
+	)
+
 	var coordinator := coordinator_packed.instantiate()
-	var ruleset := ruleset_packed.instantiate()
-	_expect(coordinator != null and ruleset != null, "coordinator and ruleset instantiate")
-	if coordinator == null or ruleset == null:
-		_finish()
-		return
-	coordinator.call("configure", ruleset.call("debug_snapshot"))
-	var controller := coordinator.get_node_or_null("EconomyCashflowRuntimeController")
-	_expect(controller != null and controller.scene_file_path == CONTROLLER_SCENE, "GameRuntimeCoordinator composes the editable cashflow controller")
-	var required_methods := ["configure", "reset_state", "advance_clock", "settle_sources", "accumulator_seconds", "to_legacy_save_snapshot", "apply_legacy_save_snapshot", "private_ui_snapshot", "debug_snapshot"]
-	for method_name in required_methods:
-		_expect(controller != null and controller.has_method(method_name), "controller exposes %s" % method_name)
-	if controller != null:
-		var debug: Dictionary = controller.call("debug_snapshot")
-		_expect(bool(debug.get("controller_authoritative", false)) and bool(debug.get("realtime_income_enabled", false)), "v0.4 realtime-income capability configures controller authority")
-		_expect(is_equal_approx(float(debug.get("tick_interval_seconds", 0.0)), 1.0) and is_equal_approx(float(debug.get("basis_seconds", 0.0)), 60.0), "scene owns the 1/60 cadence")
-		controller.call("reset_state")
-		var ticks: Array = controller.call("advance_clock", 2.25, {})
-		_expect(ticks == [1.0, 1.0] and is_equal_approx(float(controller.call("accumulator_seconds")), 0.25), "clock emits deterministic ticks and retains sub-tick time")
-		var payout: Dictionary = controller.call("settle_sources", 1.0, {"sources": [_source(40, 0.0)]})
-		var event: Dictionary = (payout.get("payout_events", []) as Array)[0] as Dictionary
-		_expect(int(event.get("paid_amount", -1)) == 0 and is_equal_approx(float(event.get("remainder_after", -1.0)), 2.0 / 3.0), "one-second GDP accrual floors explicitly and returns its remainder")
-		var payout_two: Dictionary = controller.call("settle_sources", 1.0, {"sources": [_source(40, float(event.get("remainder_after", 0.0)))]})
-		var event_two: Dictionary = (payout_two.get("payout_events", []) as Array)[0] as Dictionary
-		_expect(int(event_two.get("paid_amount", -1)) == 1 and is_equal_approx(float(event_two.get("remainder_after", -1.0)), 1.0 / 3.0), "fractional remainder carries into the next payout plan")
-		controller.call("apply_legacy_save_snapshot", {"economy_cashflow_timer": 0.75})
-		var legacy: Dictionary = controller.call("to_legacy_save_snapshot")
-		_expect(is_equal_approx(float(legacy.get("economy_cashflow_timer", 0.0)), 0.75), "legacy v1 timer key roundtrips through controller authority")
-		_expect(_is_pure_data(debug) and _is_pure_data(controller.call("private_ui_snapshot", 0)) and _is_pure_data(payout_two), "controller inputs and outputs remain pure data")
-	var main_packed := load(MAIN_SCENE) as PackedScene
-	var main := main_packed.instantiate() if main_packed != null else null
-	_expect(main != null, "main scene instantiates")
-	if main != null:
-		var nested := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/EconomyCashflowRuntimeController")
-		_expect(nested != null and nested.scene_file_path == CONTROLLER_SCENE, "main scene composes cashflow controller beneath GameRuntimeCoordinator")
-		main.free()
-	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	var network_source := FileAccess.get_file_as_string("res://scripts/runtime/city_trade_network_runtime_controller.gd")
-	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
-	_expect(not main_source.contains("var economy_cashflow_timer") and not main_source.contains("ECONOMY_CASHFLOW_TICK_SECONDS") and not main_source.contains("ECONOMY_CASHFLOW_BASIS_SECONDS"), "main has no duplicate cashflow timer or cadence constants")
-	_expect(not main_source.contains("func _settle_city_project_cashflow_seconds") and main_source.contains("advance_economy_cashflow") and main_source.contains("func _settle_city_cashflow_seconds") and main_source.contains('"settle_cashflow_seconds"') and network_source.contains('call("settle_sources"') and coordinator_source.contains("func settle_economy_sources("), "main keeps a narrow compatibility entry while CityTradeNetworkRuntimeController composes payout sources and delegates arithmetic to EconomyCashflowRuntimeController")
-	coordinator.free()
-	ruleset.free()
+	root.add_child(coordinator)
+	var retired_owner := coordinator.get_node_or_null("EconomyCashflowRuntimeController")
+	var composed_owner := coordinator.get_node_or_null("CommodityFlowRuntimeController")
+	var composed_bridge := coordinator.get_node_or_null("CommodityFlowWorldBridge")
+	_expect(
+		retired_owner == null
+		and composed_owner != null
+		and composed_owner.scene_file_path == CURRENT_OWNER_SCENE
+		and composed_bridge != null
+		and composed_bridge.scene_file_path == CURRENT_WORLD_BRIDGE_SCENE,
+		"GameRuntimeCoordinator composes only the current economy owner pair"
+	)
+
+	var coordinator_source := FileAccess.get_file_as_string(COORDINATOR_SCENE)
+	var contract_source := FileAccess.get_file_as_string(CURRENT_CONTRACT)
+	_expect(
+		coordinator_source.contains("CommodityFlowRuntimeController.tscn")
+		and coordinator_source.contains("CommodityFlowWorldBridge.tscn")
+		and not coordinator_source.contains("EconomyCashflowRuntimeController.tscn")
+		and contract_source.contains("applies cash and facility rent deltas once")
+		and contract_source.contains("Public receipt snapshots remove commodity owner")
+		and contract_source.contains("Old v0.4/v0.5 characterization tests"),
+		"composition and focused contract preserve atomic cash, privacy, and retirement boundaries"
+	)
+
+	retired.queue_free()
+	current.queue_free()
+	bridge.queue_free()
+	coordinator.queue_free()
+	await process_frame
 	_finish()
 
 
-func _source(gdp_per_minute: int, remainder: float) -> Dictionary:
-	return {
-		"source_id": "gdp.region.0000.project.g1.player.0",
-		"source_kind": "project_share",
-		"district_index": 0,
-		"player_index": 0,
-		"gdp_per_minute": gdp_per_minute,
-		"remainder": remainder,
-		"role_bonus_gdp_per_minute": 0,
-		"role_bonus_basis_gdp_per_minute": gdp_per_minute,
-		"eligible": true,
-	}
+func _expect(condition: bool, message: String) -> void:
+	_checks += 1
+	if condition:
+		return
+	_failures.append(message)
+	print("FAIL: %s" % message)
+
+
+func _finish() -> void:
+	if _failures.is_empty():
+		print("ECONOMY_CASHFLOW_RETIREMENT_TEST|status=PASS|checks=%d|failures=0" % _checks)
+		quit(0)
+		return
+	print("ECONOMY_CASHFLOW_RETIREMENT_TEST|status=FAIL|checks=%d|failures=%d|details=%s" % [_checks, _failures.size(), JSON.stringify(_failures)])
+	quit(1)
 
 
 func _is_pure_data(value: Variant) -> bool:
-	if typeof(value) == TYPE_OBJECT or value is Callable:
-		return false
+	if value == null or value is String or value is bool or value is int or value is float:
+		return true
+	if value is Array:
+		for item in value:
+			if not _is_pure_data(item):
+				return false
+		return true
 	if value is Dictionary:
 		for key in value.keys():
 			if not _is_pure_data(key) or not _is_pure_data(value[key]):
 				return false
-	elif value is Array:
-		for item in value:
-			if not _is_pure_data(item):
-				return false
-	return true
-
-
-func _expect(condition: bool, message: String) -> void:
-	if condition:
-		return
-	failures.append(message)
-	push_error("ECONOMY CASHFLOW RUNTIME: %s" % message)
-
-
-func _finish() -> void:
-	if failures.is_empty():
-		print("ECONOMY CASHFLOW RUNTIME PASS")
-		quit(0)
-		return
-	print("ECONOMY CASHFLOW RUNTIME FAIL: %d" % failures.size())
-	quit(1)
+		return true
+	return false

@@ -499,14 +499,12 @@ const CARD_ECONOMY_PRODUCT_ROUTE_FORMULA_RUNTIME_SERVICE_TEST := "res://tests/ca
 const CARD_ECONOMY_PRODUCT_ROUTE_FORMULA_RUNTIME_CONTRACT_DOC := "res://docs/card_economy_product_route_formula_runtime_contract.md"
 const ECONOMY_CASHFLOW_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/economy_cashflow_runtime_controller.gd"
 const ECONOMY_CASHFLOW_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/EconomyCashflowRuntimeController.tscn"
-const ECONOMY_CASHFLOW_RUNTIME_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/economy_cashflow_runtime_cutover_bench.gd"
-const ECONOMY_CASHFLOW_RUNTIME_CUTOVER_BENCH_SCENE := "res://scenes/tools/EconomyCashflowRuntimeCutoverBench.tscn"
-const ECONOMY_CASHFLOW_RUNTIME_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/economy_cashflow_runtime_cutover/"
-const ECONOMY_CASHFLOW_RUNTIME_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/economy_cashflow_runtime_cutover_sprint_4.png"
 const GDP_FORMULA_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/gdp_formula_runtime_controller.gd"
 const GDP_FORMULA_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/GdpFormulaRuntimeController.tscn"
 const COMMODITY_FLOW_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/commodity_flow_runtime_controller.gd"
 const COMMODITY_FLOW_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/CommodityFlowRuntimeController.tscn"
+const COMMODITY_FLOW_WORLD_BRIDGE_SCRIPT := "res://scripts/runtime/commodity_flow_world_bridge.gd"
+const COMMODITY_FLOW_WORLD_BRIDGE_SCENE := "res://scenes/runtime/CommodityFlowWorldBridge.tscn"
 const COMMODITY_FLOW_LOCAL_BASELINE_TEST := "res://tests/commodity_flow_local_baseline_demand_v06_test.gd"
 const COMMODITY_FLOW_RUNTIME_CONTRACT := "res://docs/installed_commodity_continuous_economy_runtime_contract.md"
 const SCENARIO_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/scenario_runtime_controller.gd"
@@ -877,7 +875,7 @@ func _run() -> void:
 	await _check_player_hand_interaction_runtime_characterization_component()
 	await _check_card_resolution_queue_runtime_characterization_component()
 	await _check_card_resolution_execution_runtime_characterization_component()
-	await _check_economy_cashflow_runtime_cutover_component()
+	await _check_economy_cashflow_retirement_component()
 	await _check_gdp_formula_runtime_cutover_component()
 	await _check_scenario_runtime_glue_cutover_component()
 	await _check_first_table_authored_runtime_cutover_component()
@@ -9762,115 +9760,55 @@ func _check_card_resolution_execution_runtime_characterization_component() -> vo
 		viewport.queue_free()
 
 
-func _check_economy_cashflow_runtime_cutover_component() -> void:
+func _check_economy_cashflow_retirement_component() -> void:
 	for path in [
 		ECONOMY_CASHFLOW_RUNTIME_CONTROLLER_SCRIPT,
 		ECONOMY_CASHFLOW_RUNTIME_CONTROLLER_SCENE,
-		ECONOMY_CASHFLOW_RUNTIME_CUTOVER_BENCH_SCRIPT,
-		ECONOMY_CASHFLOW_RUNTIME_CUTOVER_BENCH_SCENE,
+		COMMODITY_FLOW_RUNTIME_CONTROLLER_SCRIPT,
+		COMMODITY_FLOW_RUNTIME_CONTROLLER_SCENE,
+		COMMODITY_FLOW_WORLD_BRIDGE_SCRIPT,
+		COMMODITY_FLOW_WORLD_BRIDGE_SCENE,
+		COMMODITY_FLOW_LOCAL_BASELINE_TEST,
 	]:
-		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Economy Cashflow Runtime Cutover" % path)
-	var bridge_packed := load(RULESET_RUNTIME_BRIDGE_SCENE) as PackedScene
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for EconomyCashflow retirement/current-owner gate" % path)
+	_expect(FileAccess.file_exists(COMMODITY_FLOW_RUNTIME_CONTRACT), "Commodity Flow ownership contract exists for EconomyCashflow retirement")
+	var retired_packed := load(ECONOMY_CASHFLOW_RUNTIME_CONTROLLER_SCENE) as PackedScene
+	var retired := retired_packed.instantiate() if retired_packed != null else null
+	if retired != null:
+		var retired_debug: Dictionary = retired.call("debug_snapshot")
+		var retired_methods_absent := true
+		for method_name in ["configure", "advance_clock", "settle_sources", "accumulator_seconds", "to_legacy_save_snapshot", "apply_legacy_save_snapshot", "private_ui_snapshot"]:
+			retired_methods_absent = retired_methods_absent and not retired.has_method(method_name)
+		_expect(bool(retired_debug.get("retired", false)) and str(retired_debug.get("retired_by", "")) == "SS06-02B" and str(retired_debug.get("replacement_owner", "")) == "CommodityFlowRuntimeController" and retired_methods_absent, "EconomyCashflowRuntimeController remains a loadable retired marker without payout, clock, wrapper, or legacy-save APIs")
+		retired.free()
+	var current_packed := load(COMMODITY_FLOW_RUNTIME_CONTROLLER_SCENE) as PackedScene
+	var current_bridge_packed := load(COMMODITY_FLOW_WORLD_BRIDGE_SCENE) as PackedScene
+	var current := current_packed.instantiate() if current_packed != null else null
+	var current_bridge := current_bridge_packed.instantiate() if current_bridge_packed != null else null
+	if current != null and current_bridge != null:
+		var current_profile := load(RULESET_V06_PROFILE)
+		var configured: Dictionary = current.call("configure", current_profile.call("debug_snapshot") if current_profile != null else {})
+		var current_debug: Dictionary = current.call("debug_snapshot")
+		var bridge_debug: Dictionary = current_bridge.call("debug_snapshot")
+		var public_receipts: Array = current.call("recent_sale_receipts_snapshot", -1)
+		var region_gdp: Dictionary = current.call("region_gdp_snapshot", "region.0001")
+		_expect(bool(configured.get("configured", false)) and bool(current_debug.get("controller_authoritative", false)) and str(current_debug.get("runtime_owner", "")) == "CommodityFlowRuntimeController" and current.has_method("advance_world") and current.has_method("recent_sale_receipts_snapshot") and current.has_method("region_gdp_snapshot") and current.has_method("to_save_data"), "CommodityFlowRuntimeController owns continuous flow, the unique Sale Receipt ledger, and receipt-derived GDP")
+		_expect(str(bridge_debug.get("runtime_owner", "")) == "none" and str(bridge_debug.get("bridge_role", "")) == "commodity_flow_world_facts_and_atomic_cash_apply" and not bool(bridge_debug.get("owns_flow_rules", true)) and not bool(bridge_debug.get("owns_sale_receipts", true)) and current_bridge.has_method("apply_sale_receipt_batch"), "CommodityFlowWorldBridge is non-owning and applies validated Sale Receipt cash batches atomically")
+		_expect(public_receipts.is_empty() and int(region_gdp.get("region_gdp_per_minute_cents", -1)) == 0 and not _variant_contains_callable(current_debug) and not _variant_contains_object(current_debug) and not _variant_contains_callable(region_gdp) and not _variant_contains_object(region_gdp), "current economy snapshots are pure data and do not synthesize legacy project-share payouts")
+		current.free()
+		current_bridge.free()
 	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
-	var bridge := bridge_packed.instantiate() if bridge_packed != null else null
 	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
-	if coordinator != null and bridge != null:
-		coordinator.call("configure", bridge.call("debug_snapshot"))
-		var controller := coordinator.get_node_or_null("EconomyCashflowRuntimeController")
-		var required_methods := ["configure", "reset_state", "advance_clock", "settle_sources", "accumulator_seconds", "to_legacy_save_snapshot", "apply_legacy_save_snapshot", "private_ui_snapshot", "debug_snapshot"]
-		var methods_ok := controller != null and controller.scene_file_path == ECONOMY_CASHFLOW_RUNTIME_CONTROLLER_SCENE
-		for method_name in required_methods:
-			methods_ok = methods_ok and controller != null and controller.has_method(method_name)
-		_expect(methods_ok, "EconomyCashflowRuntimeController is an editable scene owner with cadence, payout planning, save, and snapshot APIs")
-		var debug: Dictionary = controller.call("debug_snapshot") if controller != null else {}
-		_expect(bool(debug.get("controller_authoritative", false)) and bool(debug.get("realtime_income_enabled", false)), "RulesetRuntimeBridge enables the v0.4 realtime cashflow authority")
-		_expect(is_equal_approx(float(debug.get("tick_interval_seconds", 0.0)), 1.0) and is_equal_approx(float(debug.get("basis_seconds", 0.0)), 60.0), "EconomyCashflowRuntimeController scene owns the one-second cadence and sixty-second GDP basis")
-		if controller != null:
-			controller.call("reset_state")
-			var ticks: Array = controller.call("advance_clock", 2.25, {"overlay_visible": true})
-			var result: Dictionary = controller.call("settle_sources", 1.0, {"sources": [{"source_id": "gdp:smoke:player:0", "source_kind": "project_share", "district_index": 0, "player_index": 0, "gdp_per_minute": 40, "remainder": 0.0, "role_bonus_gdp_per_minute": 0, "role_bonus_basis_gdp_per_minute": 40, "eligible": true}]})
-			var event: Dictionary = ((result.get("payout_events", []) as Array)[0] as Dictionary) if not (result.get("payout_events", []) as Array).is_empty() else {}
-			_expect(ticks == [1.0, 1.0] and is_equal_approx(float(controller.call("accumulator_seconds")), 0.25), "controller emits deterministic active-time ticks and retains sub-tick time")
-			_expect(int(event.get("paid_amount", -1)) == 0 and is_equal_approx(float(event.get("remainder_after", -1.0)), 2.0 / 3.0), "controller plans explicit floor and fractional remainder arithmetic")
-			controller.call("apply_legacy_save_snapshot", {"economy_cashflow_timer": 0.625})
-			var legacy: Dictionary = controller.call("to_legacy_save_snapshot")
-			var private_ui: Dictionary = controller.call("private_ui_snapshot", 0)
-			_expect(is_equal_approx(float(legacy.get("economy_cashflow_timer", 0.0)), 0.625), "legacy v1 cashflow timer restores into controller authority")
-			_expect(not _variant_contains_callable(debug) and not _variant_contains_object(debug) and not _variant_contains_callable(result) and not _variant_contains_object(result) and not _variant_contains_callable(private_ui) and not _variant_contains_object(private_ui), "cashflow debug, payout, and private UI payloads remain pure data")
+	if coordinator != null:
+		var retired_owner := coordinator.get_node_or_null("EconomyCashflowRuntimeController")
+		var composed_owner := coordinator.get_node_or_null("CommodityFlowRuntimeController")
+		var composed_bridge := coordinator.get_node_or_null("CommodityFlowWorldBridge")
+		_expect(retired_owner == null and composed_owner != null and composed_owner.scene_file_path == COMMODITY_FLOW_RUNTIME_CONTROLLER_SCENE and composed_bridge != null and composed_bridge.scene_file_path == COMMODITY_FLOW_WORLD_BRIDGE_SCENE, "GameRuntimeCoordinator composes CommodityFlow plus its non-owning WorldBridge and keeps EconomyCashflow absent")
 		coordinator.free()
-		bridge.free()
-	var main_packed := load("res://scenes/main.tscn") as PackedScene
-	if main_packed != null:
-		var main := main_packed.instantiate() as Control
-		var main_controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/EconomyCashflowRuntimeController") if main != null else null
-		_expect(main_controller != null and main_controller.scene_file_path == ECONOMY_CASHFLOW_RUNTIME_CONTROLLER_SCENE, "main.tscn composes EconomyCashflowRuntimeController under GameRuntimeCoordinator")
-		if main != null:
-			main.free()
-	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	var controller_source := FileAccess.get_file_as_string(ECONOMY_CASHFLOW_RUNTIME_CONTROLLER_SCRIPT)
-	var network_source := FileAccess.get_file_as_string(CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCRIPT)
-	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
-	_expect(not main_source.contains("var economy_cashflow_timer") and not main_source.contains("ECONOMY_CASHFLOW_TICK_SECONDS") and not main_source.contains("ECONOMY_CASHFLOW_BASIS_SECONDS"), "main.gd no longer owns the realtime cashflow timer or cadence constants")
-	_expect(not main_source.contains("func _settle_city_project_cashflow_seconds") and main_source.contains("advance_economy_cashflow") and main_source.contains("func _settle_city_cashflow_seconds") and main_source.contains('"settle_cashflow_seconds"') and network_source.contains('call("settle_sources"') and coordinator_source.contains("func settle_economy_sources("), "main.gd retains a narrow settlement entry while CityTradeNetworkRuntimeController composes payout sources and delegates arithmetic")
-	_expect(not controller_source.contains("_city_gdp_per_minute_breakdown") and not controller_source.contains("_district_transit_gdp") and not controller_source.contains("players") and not controller_source.contains("districts"), "cashflow controller does not absorb GDP, route, player, or district domain ownership")
-	var bench_packed := load(ECONOMY_CASHFLOW_RUNTIME_CUTOVER_BENCH_SCENE) as PackedScene
-	if bench_packed != null:
-		var bench := bench_packed.instantiate() as Control
-		bench.set("auto_run", false)
-		root.add_child(bench)
-		await process_frame
-		_expect(bench.has_method("output_dir") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "EconomyCashflowRuntimeCutoverBench exposes required QA APIs")
-		var expected_cases := ["controller_scene_composition", "ruleset_realtime_income_enabled", "scene_owned_cadence_config", "sub_tick_accumulator", "exact_one_second_tick", "multi_tick_catchup", "session_pause_preserves_accumulator", "forced_global_block_preserves_accumulator", "game_over_blocks_cashflow", "exact_one_minute_owner_payout", "fractional_remainder_carries", "project_share_split_payout", "project_remainders_conserve_value", "eliminated_player_no_payout", "destroyed_city_source_excluded", "ledger_and_cash_history_parity", "real_main_owner_delegates", "real_main_project_share_delegates", "legacy_save_timer_restores", "privacy_pure_data_and_main_legacy_authority_inactive"]
-		var cases: Array = bench.call("cutover_cases")
-		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
-		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
-		var fields_ok := records.size() == 20
-		for record_variant in records:
-			var record: Dictionary = record_variant if record_variant is Dictionary else {}
-			for key in ["case_id", "input_seconds", "emitted_tick_count", "payout_total", "payout_event_count", "remainder_checked", "blocking_checked", "main_delegation_checked", "save_compatibility_checked", "privacy_checked", "pure_data_checked", "controller_ready", "passed", "notes"]:
-				fields_ok = fields_ok and record.has(key)
-		_expect(cases == expected_cases and str(bench.call("output_dir")) == ECONOMY_CASHFLOW_RUNTIME_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == ECONOMY_CASHFLOW_RUNTIME_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "EconomyCashflowRuntimeCutoverBench defines 20 pure-data cases and user:// outputs")
-		root.remove_child(bench)
-		bench.queue_free()
-	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
-	var audit: RefCounted = audit_script.new() if audit_script != null else null
-	if audit != null:
-		var record: Dictionary = audit.call("record_for_id", "economy_cashflow_runtime_ownership_gate")
-		_expect(str(record.get("current_scene_path", "")) == ECONOMY_CASHFLOW_RUNTIME_CONTROLLER_SCENE and str(record.get("sceneization_status", "")) == "full", "Sceneization Audit marks economy cashflow runtime ownership complete")
-	var conformance_script := load(RULESET_V04_CONFORMANCE_REGISTRY_SCRIPT) as Script
-	var conformance: RefCounted = conformance_script.new() if conformance_script != null else null
-	if conformance != null:
-		var rule: Dictionary = conformance.call("record_for_id", "realtime_cashflow")
-		_expect(str(rule.get("current_status", "")) == "cutover_complete" and str(rule.get("current_owner", "")).contains("EconomyCashflowRuntimeController"), "Ruleset Conformance records realtime cashflow cutover as complete")
-	var mcp_registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
-	var mcp_registry: RefCounted = mcp_registry_script.new() if mcp_registry_script != null else null
-	if mcp_registry != null:
-		var scene_paths: Array[String] = mcp_registry.call("scene_paths")
-		_expect(scene_paths.has(ECONOMY_CASHFLOW_RUNTIME_CONTROLLER_SCENE) and scene_paths.has(ECONOMY_CASHFLOW_RUNTIME_CUTOVER_BENCH_SCENE), "MCP registry includes Economy Cashflow Controller and Cutover Bench")
-	var doc_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
-	_expect(doc_source.contains("Economy Cashflow Cadence and Payout Planning Cutover") and doc_source.contains("EconomyCashflowRuntimeController"), "main runtime replacement document records the Sprint 4 ownership boundary")
-	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
-	if dock_packed != null:
-		var viewport := SubViewport.new()
-		viewport.size = Vector2i(380, 760)
-		root.add_child(viewport)
-		var dock := dock_packed.instantiate() as Control
-		viewport.add_child(dock)
-		await process_frame
-		for button_name in ["OpenEconomyCashflowRuntimeControllerButton", "RunEconomyCashflowRuntimeCutoverBenchButton", "OpenEconomyCashflowRuntimeCutoverOutputFolderButton"]:
-			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
-		var controller_paths: Array[String] = []
-		var bench_paths: Array[String] = []
-		dock.connect("open_economy_cashflow_runtime_controller_requested", func(scene_path: String) -> void: controller_paths.append(scene_path))
-		dock.connect("run_economy_cashflow_runtime_cutover_bench_requested", func(scene_path: String) -> void: bench_paths.append(scene_path))
-		(dock.find_child("OpenEconomyCashflowRuntimeControllerButton", true, false) as Button).emit_signal("pressed")
-		(dock.find_child("RunEconomyCashflowRuntimeCutoverBenchButton", true, false) as Button).emit_signal("pressed")
-		await process_frame
-		_expect(controller_paths == [ECONOMY_CASHFLOW_RUNTIME_CONTROLLER_SCENE] and bench_paths == [ECONOMY_CASHFLOW_RUNTIME_CUTOVER_BENCH_SCENE], "Design QA Dock fallback signals emit Economy Cashflow Controller and Bench paths")
-		viewport.remove_child(dock)
-		dock.queue_free()
-		root.remove_child(viewport)
-		viewport.queue_free()
+	var coordinator_scene_source := FileAccess.get_file_as_string(GAME_RUNTIME_COORDINATOR_SCENE)
+	_expect(coordinator_scene_source.contains("CommodityFlowRuntimeController.tscn") and coordinator_scene_source.contains("CommodityFlowWorldBridge.tscn") and not coordinator_scene_source.contains("EconomyCashflowRuntimeController.tscn"), "Coordinator source contains the current economy owner pair without the retired shell")
+	var contract_source := FileAccess.get_file_as_string(COMMODITY_FLOW_RUNTIME_CONTRACT)
+	_expect(contract_source.contains("Old v0.4/v0.5 characterization tests") and contract_source.contains("applies cash and facility rent deltas once") and contract_source.contains("Public receipt snapshots remove commodity owner") and load(COMMODITY_FLOW_LOCAL_BASELINE_TEST) is Script, "current focused gate owns atomic Sale Receipt cash application, privacy, and legacy-owner absence")
 
 
 func _check_gdp_formula_runtime_cutover_component() -> void:
