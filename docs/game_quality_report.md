@@ -45,6 +45,12 @@ Test-only migrations do not count as Main reduction.
   Evidence run: `20260715-074535-593-layout_scene_smoke_test-f8c1a82b`.
 - The current Main composition gate passes. The latest role-focused gate and smoke
   `--check-only` also exit 0.
+- The real `FullRunQualityDriver` capability preflight exits `3` by design instead of
+  starting a match it cannot restore. Run
+  `20260715-080236-770-full_run_quality_driver-2b279ab4` reported `5/18`
+  transactional sections, `13` unsupported sections, incomplete RNG/player
+  continuation, `failure_code=restore_capability_incomplete`, no timeout, and zero
+  remaining project processes.
 
 ## Open production risks
 
@@ -67,6 +73,10 @@ Required before the 20-seed release gate:
 5. Four presubmit seeds and then all 20 fixed release seeds complete without softlock.
 
 Current status: **not verified and not shippable**.
+
+The fail-closed preflight itself is now independently reproduced on the local
+integration branch. It is evidence of the capability gap, not a completed-match
+result.
 
 ### Full smoke
 
