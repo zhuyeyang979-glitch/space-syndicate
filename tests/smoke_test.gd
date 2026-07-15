@@ -547,18 +547,16 @@ func _run() -> void:
 		_expect(bool(facility_gate.get("play_finalized", false)), "facility play creates and finalizes the authoritative city-economy source")
 		_expect(bool(facility_gate.get("source_finalized", false)), "facility owner and CommodityFlow expose the finalized production source")
 		_expect(_verify_card_play_flow_gate_and_one_shot(main, buildable_district), "rank-I cards can be condition-free, regional GDP gates block ineligible plays, and one-shot cards leave the hand")
-		var rival_city_count_before := _rival_active_city_count(main, 0)
-		var rival_cash_before := _rival_cash_total(_as_array(main.get("players")), 0)
-		var auto_expansions := int(_ai_controller(main).call("_auto_expand_rival_syndicates", true))
+		var ai_facility_bootstrap := _execute_ai_v06_facility_bootstrap_smoke(main)
+		var auto_expansions := int(ai_facility_bootstrap.get("acted", 0))
 		await process_frame
-		var rival_city_count_after := _rival_active_city_count(main, 0)
 		var players_after_auto_expand := _as_array(main.get("players"))
-		_expect(auto_expansions > 0, "forced rival auto expansion creates at least one anonymous city")
-		_expect(rival_city_count_after > rival_city_count_before, "rival auto expansion increases non-active-player city count")
-		_expect(_rival_cash_total(players_after_auto_expand, 0) < rival_cash_before, "rival auto expansion spends hidden rival funds")
-		_expect(_ai_decision_sample_count(players_after_auto_expand) > 0, "AI city expansion records decision samples for later training")
+		_expect(auto_expansions > 0, "AI facility bootstrap finalizes at least one authoritative rival economic source")
+		_expect(int(ai_facility_bootstrap.get("sources_after", 0)) > int(ai_facility_bootstrap.get("sources_before", 0)), "AI facility bootstrap increases finalized rival economic sources")
+		_expect(int(ai_facility_bootstrap.get("cash_after", -1)) < int(ai_facility_bootstrap.get("cash_before", -1)), "AI facility bootstrap spends authoritative rival cash")
+		_expect(bool(ai_facility_bootstrap.get("public_available", false)), "AI facility bootstrap exposes a public capability result without private scoring weights")
 		_expect(_verify_area_trade_contract_accept_and_decline(main), "area trade contracts open a separate non-blocking five-second decision window after reveal and resolve accept, reject, and timeout effects")
-		_expect(int(main.call("_player_active_city_count", 0)) == 1, "rival auto expansion does not create a city for the active player")
+		_expect(not bool(ai_facility_bootstrap.get("human_source_after", true)), "AI facility bootstrap does not create an economic source for the human seat")
 		_expect(_city_markers_include_unknown_rival(main), "active player's map marks rival auto-expanded cities as unknown owners")
 		var rival_city_index := _first_rival_city_index(main, 0)
 		_expect(rival_city_index >= 0, "rival auto expansion leaves an identifiable rival city for inference testing")
@@ -7722,6 +7720,74 @@ func _runtime_card_coordinator(main: Node) -> Node:
 	return main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if main != null else null
 
 
+func _execute_ai_v06_facility_bootstrap_smoke(main: Node) -> Dictionary:
+	var result := {
+		"acted": 0,
+		"sources_before": 0,
+		"sources_after": 0,
+		"cash_before": 0,
+		"cash_after": 0,
+		"human_source_after": false,
+		"public_available": false,
+	}
+	var coordinator := _runtime_card_coordinator(main)
+	var ai := _ai_controller(main)
+	if coordinator == null or ai == null \
+			or not coordinator.has_method("refresh_v06_production_player_bindings") \
+			or not ai.has_method("execute_v06_facility_bootstrap_cycle"):
+		return result
+	coordinator.call("refresh_v06_production_player_bindings", main)
+	var player_count := _as_array(main.get("players")).size()
+	var before := _ai_v06_economy_summary(coordinator, player_count)
+	var previous_enabled := bool(ai.get("ai_card_decision_enabled"))
+	ai.set("ai_card_decision_enabled", true)
+	var acted := 0
+	for _cycle in range(maxi(1, player_count * 2)):
+		var receipt_variant: Variant = ai.call("execute_v06_facility_bootstrap_cycle", true)
+		var receipt: Dictionary = (receipt_variant as Dictionary).duplicate(true) if receipt_variant is Dictionary else {}
+		acted += int(receipt.get("acted", 0))
+		if int(receipt.get("acted", 0)) <= 0 and int(receipt.get("attempted", 0)) <= 0:
+			break
+	ai.set("ai_card_decision_enabled", previous_enabled)
+	var after := _ai_v06_economy_summary(coordinator, player_count)
+	var public_snapshot: Dictionary = ai.call("ai_v06_facility_bootstrap_public_snapshot") if ai.has_method("ai_v06_facility_bootstrap_public_snapshot") else {}
+	result["acted"] = acted
+	result["sources_before"] = int(before.get("source_count", 0))
+	result["sources_after"] = int(after.get("source_count", 0))
+	result["cash_before"] = int(before.get("cash", 0))
+	result["cash_after"] = int(after.get("cash", 0))
+	result["human_source_after"] = bool(after.get("human_source", false))
+	result["public_available"] = bool(public_snapshot.get("available", false))
+	return result
+
+
+func _ai_v06_economy_summary(coordinator: Node, player_count: int) -> Dictionary:
+	var source_count := 0
+	var cash := 0
+	var human_source := false
+	for player_index in range(player_count):
+		var binding_variant: Variant = coordinator.call("actor_id_for_player_index", player_index) if coordinator.has_method("actor_id_for_player_index") else {}
+		var binding: Dictionary = (binding_variant as Dictionary).duplicate(true) if binding_variant is Dictionary else {}
+		if not bool(binding.get("available", false)):
+			continue
+		var actor_id := String(binding.get("actor_id", "")).strip_edges()
+		var source_variant: Variant = coordinator.call("economic_source_snapshot", actor_id) if coordinator.has_method("economic_source_snapshot") else {}
+		var source: Dictionary = (source_variant as Dictionary).duplicate(true) if source_variant is Dictionary else {}
+		var player_variant: Variant = coordinator.call("player_snapshot", actor_id) if coordinator.has_method("player_snapshot") else {}
+		var player: Dictionary = (player_variant as Dictionary).duplicate(true) if player_variant is Dictionary else {}
+		if player_index == 0:
+			human_source = bool(source.get("has_source", false))
+			continue
+		cash += int(player.get("cash", 0))
+		if bool(source.get("has_source", false)) and bool(source.get("bootstrap_finalized", false)):
+			source_count += 1
+	return {
+		"source_count": source_count,
+		"cash": cash,
+		"human_source": human_source,
+	}
+
+
 func _runtime_card_exists(main: Node, card_id: String) -> bool:
 	var coordinator := _runtime_card_coordinator(main)
 	return bool(coordinator.call("card_exists", card_id)) if coordinator != null else false
@@ -9095,8 +9161,28 @@ func _test_contract_product(main: Node, source_index: int, target_index: int) ->
 	return "环晶电池"
 
 
-func _verify_area_trade_contract_accept_and_decline(main: Node) -> bool:
-	var saved := main.call("_capture_run_state") as Dictionary
+func _verify_area_trade_contract_accept_and_decline(_main: Node) -> bool:
+	var packed := load(MAIN_SCENE_PATH) as PackedScene
+	if packed == null:
+		return false
+	var main := packed.instantiate()
+	var fixture_save_path := "user://test_runs/smoke_area_trade_contract_fixture.save"
+	if FileAccess.file_exists(fixture_save_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(fixture_save_path))
+	var save_coordinator := main.get_node_or_null(SAVE_COORDINATOR_NODE_PATH) as Node
+	var save_override_ready := save_coordinator != null \
+		and save_coordinator.has_method("set_qa_default_save_path_override") \
+		and bool(save_coordinator.call("set_qa_default_save_path_override", fixture_save_path))
+	if not save_override_ready:
+		main.free()
+		return false
+	main.set("configured_player_count", EXPECTED_PLAYER_COUNT)
+	main.set("configured_ai_player_count", EXPECTED_AI_PLAYER_COUNT)
+	main.set("configured_role_indices", [0, 1, 2, 3, 4])
+	main.set("configured_starter_monster_indices", [7, 6, 2, 4, 3])
+	get_root().add_child(main)
+	main.call("_new_game")
+	main.set_process(false)
 	var saved_force_duration: float = float(main.get("card_resolution_force_duration"))
 	var saved_force_simultaneous: float = float(main.get("card_resolution_force_simultaneous_window"))
 	var ok := true
@@ -9316,10 +9402,12 @@ func _verify_area_trade_contract_accept_and_decline(main: Node) -> bool:
 		ok = ok and _ai_memory_has_kind_with_metadata(players_after_ai_contract, target_owner, "匿名合约签约", "policy_kind", "contract_accept")
 		ok = ok and _ai_memory_has_kind_with_metadata(players_after_ai_contract, target_owner, "匿名合约签约", "contract_response_role", "accept_avoid_punishment")
 		ok = ok and _ai_memory_has_kind_with_metadata(players_after_ai_contract, target_owner, "匿名合约签约", "contract_source_district", source_index)
-	var restore_result := int(main.call("_apply_run_state", saved))
 	main.set("card_resolution_force_duration", saved_force_duration)
 	main.set("card_resolution_force_simultaneous_window", saved_force_simultaneous)
-	return ok and restore_result == OK
+	main.free()
+	if FileAccess.file_exists(fixture_save_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(fixture_save_path))
+	return ok
 
 
 func _expect(condition: bool, label: String) -> void:
