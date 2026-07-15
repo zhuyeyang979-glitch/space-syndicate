@@ -1,6 +1,6 @@
 # Regional Weather System v1
 
-Status: implementation in progress. This document fixes the product and ownership contract for the first regional-weather release. It does not claim that every integration below is already live.
+Status: integrated release candidate. Focused runtime, economy, route, monster, military/intel, presentation, telemetry, save/privacy, and damage gates are active; full-project regression and headed screenshot acceptance remain release gates.
 
 ## Product Intent
 
@@ -100,9 +100,9 @@ The map uses a lightweight overlay that preserves region borders, cities, monste
 
 ## Save And Telemetry
 
-Weather save schema v2 lives inside the existing `weather` section. It stores validated definitions by id, event timestamps and phases, affected regions, waiting queue, next natural-generation time, sequence/history needed for repeat avoidance, and local telemetry aggregates. It stores neither a second clock nor UI state. Apply is validate-then-commit and fails closed on malformed data. Legacy v1 weather data may be conservatively migrated or cleared; it may not resurrect old timing or multiplier rules.
+Weather save schema v2 lives inside the existing `weather` section. It stores validated definitions by id, event timestamps and phases, affected regions, waiting queue, next natural-generation time, sequence/history needed for repeat avoidance, and bounded lifecycle counters. It stores neither a second clock, UI state, nor outcome-telemetry sessions. Apply is validate-then-commit and fails closed on malformed data. Legacy v1 weather data may be conservatively migrated or cleared; it may not resurrect old timing or multiplier rules.
 
-Telemetry remains local. It records definition id, phase timestamps, affected regions, public economic and route deltas, forecast-response action categories, monster target-score influence, capped region damage, and estimated per-player value. Reports must distinguish deterministic simulation from observed human playtest data.
+Telemetry remains local-memory only and is not a save owner. It records definition id, phase durations, affected regions, price-growth and route-efficiency contributions, forecast-response action categories, monster target-score influence, capped region damage, and an anonymous conservative economic estimate derived from committed public commodity-flow receipts. Deterministic acceptance reports must label missing realized currency as `N/A` and distinguish resolver-backed samples from observed human playtest data.
 
 ## Acceptance
 

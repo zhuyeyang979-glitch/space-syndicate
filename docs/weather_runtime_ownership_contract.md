@@ -1,79 +1,63 @@
 # Weather Runtime Ownership Contract
 
-## Sprint 49 status
+## Current v0.6 status
 
-Sprint 49 completed the Weather Runtime hard cutover. `WeatherRuntimeController.tscn` is the sole production owner for weather state and behavior. `WeatherRuntimeWorldBridge.tscn` is a non-owning adapter to the existing shared RNG and existing world refresh, log, position, and callout methods. The legacy `main.gd` weather engine was deleted in the same change.
+`WeatherRuntimeController.tscn` is the sole production owner for regional-weather lifecycle state. `WeatherRuntimeWorldBridge.tscn` is non-owning and exposes only the existing shared RNG and public world facts/actions. `WeatherPresentationRuntimeService`, `WeatherTelemetryRuntimeService`, ViewModels, overlays, and effect resolvers own no world state, clock, save section, or rules.
 
-The authoritative gate remains `WeatherRuntimeCharacterizationBench.tscn`. It now runs 53 cases: the 40 Sprint 48 behavior observations plus 13 hard-cutover ownership checks.
+The active catalog contains exactly six data-driven definitions: `ion_storm`, `gravity_tide`, `spore_season`, `crystal_dust_storm`, `deep_freeze`, and `solar_flare`. The executable values live in `resources/weather/*.tres`; UI copy, tests, and reports must consume those resources instead of recreating a weather table in `main.gd`.
 
 ## Authoritative state
 
 `WeatherRuntimeController` owns:
 
-- `weather_forecast`
-- `active_weather_zones`
-- `weather_sequence`
-- the four production weather templates
-- the 60-180 second forecast range
-- the 75-135 second natural duration range
-- the one-to-five district zone cap
+- the event roster and same-region waiting queue;
+- event sequence, region-hit history, and next natural-generation timestamp;
+- `queued`, `forecast`, `active`, `fading`, and `ended` transitions;
+- source type (`natural`, `monster`, or `card`), while v1 natural generation is the default producer;
+- the single existing `weather` save section and validate-then-commit restore path;
+- public lifecycle snapshots and structured effect queries.
 
-The controller owns scheduling, neighbor-first selection, shared-RNG fallback selection, activation, overlap, expiration, district multiplier lookup, weather-card rewrites, public weather snapshots, and v1 save serialization.
+All time boundaries use the existing integer `world_effective_us` owner. Weather does not save a second clock or a solar/rotation phase. A true pause freezes that clock; opening the market does not.
 
-## Scheduling and RNG order
+## Lifecycle and selection
 
-Natural scheduling consumes the existing `main.rng` through `WeatherRuntimeWorldBridge.shared_rng()` in this order:
+- New games have a 90-second grace period.
+- Natural forecast generation is scheduled 90 to 150 world-effective seconds apart.
+- Definition-authored forecast lead is clamped to 30 to 60 seconds.
+- Definition-authored active duration is clamped to 45 to 90 seconds.
+- Fade lasts 10 seconds and linearly reduces intensity to zero.
+- At most two non-ended events may exist.
+- Each event affects exactly one region in v1.
+- A second event for an occupied region waits until that region is free.
+- Selection uses public region activity and recent-hit history; it excludes destroyed regions and avoids immediate repeated hits.
+- Final-settlement countdown disables new natural forecasts while allowing existing events to finish.
 
-1. weather type
-2. anchor district
-3. forecast lead
-4. duration
-5. disconnected-zone fallback picks, only when required
+Natural selection is deterministic under the shared RNG, but no consumer or test may depend on the owner's internal RNG call order. Forecast/active durations come from definitions, not random duration rolls.
 
-The Controller never constructs, seeds, or randomizes another RNG. Destroyed districts are excluded. Zone selection expands through valid neighbors before random fallback.
+## Effect boundaries
 
-## Activation and expiration order
+`WeatherEffectResolver` starts from identity `1.0`, scales the delta by phase intensity and resistance, applies exploitation to positive deltas only, then applies channel guardrails.
 
-Activation preserves the characterized order:
+- Economy contributions enter the existing production, demand, price-growth, and income chains; Weather never writes a final price.
+- Route owners compute effective capacity with a 40% floor; Weather does not permanently damage route topology.
+- Monster owners consume explicit family tags for preference, speed, and armor. Private weights and target identity remain hidden.
+- Military owners consume explicit unit/movement tags for land, ocean, air, ranged, orbital, knockback, and flying-risk effects.
+- Intel effects modify deterministic duration or range, not random success.
+- Crystal-dust damage is the sole v1 weather-damage exception. The controller submits a nonlethal, capped environmental request to the existing region owner; it cannot destroy a healthy region.
+- Ending an event restores every query to identity and leaves no permanent actor or route modifier.
 
-1. copy the pending forecast
-2. stamp `started_at` and `ends_at`
-3. append the active zone
-4. clear the forecast slot
-5. refresh city networks and product prices once
-6. emit the public callout and log
-7. schedule the next public forecast
+## Presentation and telemetry
 
-Expiration removes only elapsed zones and performs one city/market refresh pair for the expiry batch.
+Presentation consumes pure public snapshots. The map overlay renders below district boundaries/cities and above the planet backdrop; routes, monsters, and selection remain above it. Region detail and economy contribution rows retain the same public `event_id` and player-facing weather label. Forecast notices are non-modal and can focus the affected region.
 
-## Multipliers
-
-- `solar_storm`: production 1.08, transport 0.82, consumption 1.06
-- `acid_rain`: production 0.82, transport 0.88, consumption 0.96
-- `gravity_tide`: production 0.96, transport 1.10, ocean transport 1.26, consumption 1.02
-- `magnetic_fog`: production 1.00, transport 0.92, consumption 0.90
-
-Overlapping weather multipliers compose multiplicatively.
-
-## External boundaries
-
-- `AiRuntimeController` selects weather intent and target only. It reads templates and deterministic preview zones from `WeatherRuntimeController`.
-- Card Resolution dispatches `weather_control` once to `WeatherRuntimeController.apply_weather_control()`.
-- GDP and market owners consume weather multipliers; they do not own weather state or lifecycle.
-- GameScreen, TopBar, and PlanetBoard consume public-safe weather ViewModel text.
-- `EnvironmentBalanceModel` remains an Inspector/QA model and is not a production fallback.
-- Monster wager and readonly pause continue to freeze planet time before `Coordinator.tick_weather()`.
+`WeatherTelemetryRuntimeService` is local-memory only, owns no save API, and has no network path. Its metrics are named for what they measure: price-growth contribution, route-efficiency contribution, anonymous forecast response, weather-influenced monster target scoring, applied region damage, and a conservative economic estimate derived only from committed public commodity-flow receipts. It stores no player identity, owner, exact cash, hand/discard, card identity, private target/weights, AI plan, save payload, or camera state.
 
 ## Save and privacy
 
-Save version 1 retains the flat keys `weather_forecast`, `active_weather_zones`, and `weather_sequence`. `main.gd` preserves only the compatibility envelope; `WeatherRuntimeController.to_save_data()` and `apply_save_data()` own serialization and missing-key defaults.
+Weather save schema v2 remains inside the existing 18-owner v0.6 envelope. It stores validated event timestamps/phases, affected regions, queue, next generation, sequence, recent-hit history, and lifecycle counters. It does not persist presentation state or outcome telemetry sessions. Malformed payloads fail closed; legacy flat weather state may be conservatively cleared but must not resurrect retired timing or multiplier rules.
 
-Public and debug snapshots contain only pure data. They do not expose acting player identity, hidden owner, private target, private discard, or AI private plan.
+Public/debug snapshots and reports must remain pure data and viewer-invariant. The authoritative privacy gates reject private keys and sentinel values recursively.
 
-## Deleted legacy owner
+## Main boundary
 
-Sprint 49 removed the legacy weather state, six top-level constants, UI label mirrors, and 21 main functions, including scheduling, selection, activation, ticking, multiplier lookup, weather text assembly, and weather-card commit. No parallel main fallback remains.
-
-The Sprint 48 baseline was 25,380 nonblank lines and 1,436 functions. Sprint 49 reduced `main.gd` to 25,039 nonblank lines and 1,415 functions before documentation and QA registry updates; the production weather deletion was 341 nonblank lines and 21 functions.
-
-The v0.4 rules text mentions possible monster-movement and financial-risk weather effects. Those effects were not present in the characterized runtime, so Sprint 49 does not invent them. They require a future behavior characterization before extending the Controller.
+`main.gd` may advance the Coordinator, forward public snapshots to scene-owned UI, and record anonymous public response categories. It may not own definitions, lifecycle transitions, selection weights, effect formulas, weather save data, telemetry aggregation, or dynamic weather UI construction. No legacy weather fallback or wrapper farm may be restored.
