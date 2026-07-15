@@ -1824,7 +1824,18 @@ func _verify_ai_military_force_deploy_policy(main: Node) -> bool:
 
 
 func _verify_ai_product_futures_policy(main: Node) -> bool:
-	var saved := main.call("_capture_run_state") as Dictionary
+	var saved := {
+		"players": _as_array(main.get("players")).duplicate(true),
+		"districts": _as_array(main.get("districts")).duplicate(true),
+		"auto_monsters": _as_array(main.get("auto_monsters")).duplicate(true),
+		"product_market": _product_market_for_test(main).duplicate(true),
+		"selected_trade_product": String(main.get("selected_trade_product")),
+		"active_card_resolution": (main.get("active_card_resolution") as Dictionary).duplicate(true),
+		"card_resolution_queue": _as_array(main.get("card_resolution_queue")).duplicate(true),
+		"next_card_resolution_queue": _as_array(main.get("next_card_resolution_queue")).duplicate(true),
+		"card_resolution_batch_locked": bool(main.get("card_resolution_batch_locked")),
+		"card_resolution_auction_open": bool(main.get("card_resolution_auction_open")),
+	}
 	var saved_ai_enabled := bool(main.get("ai_card_decision_enabled"))
 	var ok := true
 	var failures := []
@@ -1840,7 +1851,10 @@ func _verify_ai_product_futures_policy(main: Node) -> bool:
 	var own_index := _first_empty_land_district_for_contract(main)
 	var rival_index := _first_empty_land_district_for_contract(main, [own_index])
 	if own_index < 0 or rival_index < 0:
-		main.call("_apply_run_state", saved)
+		main.set("players", saved.players)
+		main.set("districts", saved.districts)
+		main.set("auto_monsters", saved.auto_monsters)
+		_replace_product_market_for_test(main, saved.product_market)
 		main.set("ai_card_decision_enabled", saved_ai_enabled)
 		return false
 	var players := _as_array(main.get("players")).duplicate(true)
@@ -1870,7 +1884,7 @@ func _verify_ai_product_futures_policy(main: Node) -> bool:
 	ok = ok and own_created and rival_created
 	ok = ok and _set_city_goods_for_test(main, own_index, "环晶电池", "环晶电池")
 	ok = ok and _set_city_goods_for_test(main, rival_index, "环晶电池", "轨迹墨水")
-	main.call("_refresh_city_networks")
+	_runtime_coordinator(main).call("refresh_route_network", true)
 	_set_product_market_focus_for_test(main, "环晶电池")
 	var districts := _as_array(main.get("districts")).duplicate(true)
 	var supply_district := districts[own_index] as Dictionary
@@ -1976,7 +1990,17 @@ func _verify_ai_product_futures_policy(main: Node) -> bool:
 		and _ai_memory_has_kind_with_metadata(players_after, 1, "匿名出牌", "futures_warehouse_city", own_index)
 	if not memory_ok:
 		failures.append("memory queued=%s choice=%s" % [str(queued), str(not stockpile_choice.is_empty())])
-	var restore_result := int(main.call("_apply_run_state", saved))
+	main.set("players", saved.players)
+	main.set("districts", saved.districts)
+	main.set("auto_monsters", saved.auto_monsters)
+	_replace_product_market_for_test(main, saved.product_market)
+	main.set("selected_trade_product", saved.selected_trade_product)
+	main.set("active_card_resolution", saved.active_card_resolution)
+	main.set("card_resolution_queue", saved.card_resolution_queue)
+	main.set("next_card_resolution_queue", saved.next_card_resolution_queue)
+	main.set("card_resolution_batch_locked", saved.card_resolution_batch_locked)
+	main.set("card_resolution_auction_open", saved.card_resolution_auction_open)
+	var restore_result := OK
 	main.set("ai_card_decision_enabled", saved_ai_enabled)
 	if not failures.is_empty():
 		print("AI product futures policy failures: %s" % " / ".join(failures))
