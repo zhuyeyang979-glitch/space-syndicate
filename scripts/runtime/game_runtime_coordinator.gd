@@ -81,6 +81,9 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var card_resolution_queue := _card_resolution_queue_node()
 	if card_resolution_queue != null and card_resolution_queue.has_method("configure"):
 		card_resolution_queue.call("configure", _v06_card_group_runtime_snapshot())
+	var action_result_presentation := _action_result_presentation_node()
+	if action_result_presentation != null and action_result_presentation.has_method("configure"):
+		action_result_presentation.call("configure", {})
 	var card_resolution_execution := _card_resolution_execution_node()
 	if card_resolution_execution != null and card_resolution_execution.has_method("configure"):
 		card_resolution_execution.call("configure", ruleset_snapshot)
@@ -381,6 +384,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var card_definition_bridge_snapshot := _card_runtime_definition_bridge_debug_snapshot()
 	var balance_diagnostics_snapshot := _gameplay_balance_diagnostics_debug_snapshot()
 	var card_resolution_queue_snapshot := _card_resolution_queue_debug_snapshot()
+	var action_result_presentation_snapshot := _action_result_presentation_debug_snapshot()
 	var card_resolution_execution_snapshot := _card_resolution_execution_debug_snapshot()
 	var economy_product_route_effect_snapshot := _card_economy_product_route_effect_debug_snapshot()
 	var economy_product_route_formula_snapshot := _card_economy_product_route_formula_debug_snapshot()
@@ -422,6 +426,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var solar_snapshot := _node_debug_snapshot(solar_availability)
 	var card_market_snapshot := _node_debug_snapshot(card_market_pricing)
 	_composition_ready = _ruleset_id == "v0.4" and scheduler != null and not priority_order.is_empty() and bool(world_clock_snapshot.get("controller_ready", false)) and bool(solar_snapshot.get("service_ready", false)) and bool(card_market_snapshot.get("controller_ready", false)) and bool(card_runtime_catalog_snapshot.get("service_ready", false)) and bool(card_definition_bridge_snapshot.get("bridge_ready", false)) and bool(balance_diagnostics_snapshot.get("service_ready", false)) and bool(session_snapshot.get("session_ready", false)) and bool(purchase_snapshot.get("controller_ready", false)) and bool(card_inventory_snapshot.get("service_ready", false)) and bool(card_resolution_queue_snapshot.get("service_ready", false)) and bool(card_resolution_execution_snapshot.get("service_ready", false)) and bool(economy_product_route_effect_snapshot.get("service_ready", false)) and bool(economy_product_route_formula_snapshot.get("service_ready", false)) and bool(product_market_snapshot.get("controller_ready", false)) and bool(city_gdp_derivative_snapshot.get("controller_ready", false)) and bool(route_network_snapshot.get("controller_ready", false)) and bool(commodity_flow_snapshot.get("controller_ready", false)) and bool(commodity_flow_bridge_snapshot.get("bridge_ready", false)) and bool(player_mana_snapshot.get("controller_ready", false)) and bool(hand_interaction_snapshot.get("service_ready", false)) and bool(purchase_settlement_snapshot.get("service_ready", false)) and bool(scenario_snapshot.get("controller_ready", false)) and bool(first_table_authored_snapshot.get("service_ready", false)) and bool(codex_navigation_snapshot.get("controller_ready", false)) and bool(codex_public_snapshot_debug.get("service_ready", false)) and bool(monster_codex_public_snapshot_debug.get("service_ready", false)) and bool(monster_codex_public_source_debug.get("service_ready", false)) and bool(product_codex_public_snapshot_debug.get("service_ready", false)) and bool(product_codex_public_source_debug.get("service_ready", false)) and bool(card_codex_public_snapshot_debug.get("service_ready", false)) and bool(card_codex_public_source_debug.get("service_ready", false)) and bool(region_codex_public_source_debug.get("service_ready", false)) and bool(economy_dashboard_public_snapshot_debug.get("service_ready", false)) and bool(standings_public_snapshot_debug.get("service_ready", false)) and bool(final_settlement_public_snapshot_debug.get("service_ready", false)) and bool(intel_dossier_public_snapshot_debug.get("service_ready", false)) and bool(district_supply_snapshot_state.get("service_ready", false)) and bool(card_presentation_snapshot.get("service_ready", false)) and bool(card_play_eligibility_snapshot.get("service_ready", false)) and bool(card_play_world_bridge_snapshot.get("bridge_ready", false)) and bool(table_viewmodel_snapshot.get("service_ready", false)) and bool(ai_snapshot.get("controller_ready", false)) and bool(monster_snapshot.get("controller_ready", false)) and bool(military_snapshot.get("controller_ready", false)) and bool(weather_snapshot.get("controller_ready", false)) and bool(contract_snapshot.get("controller_ready", false)) and bool(victory_snapshot.get("controller_ready", false))
+	_composition_ready = _composition_ready and bool(action_result_presentation_snapshot.get("service_ready", false))
 	_refresh_coordinator_readiness()
 
 
@@ -2920,6 +2925,12 @@ func card_resolution_queue_debug() -> Dictionary:
 	return _card_resolution_queue_debug_snapshot()
 
 
+func compose_action_result_v1(source: Dictionary) -> Dictionary:
+	var service := _action_result_presentation_node()
+	var value: Variant = service.call("compose", source) if service != null and service.has_method("compose") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
 func plan_card_resolution_execution(request_snapshot: Dictionary) -> Dictionary:
 	return _card_resolution_execution_dictionary_call("plan_execution", [request_snapshot])
 
@@ -3798,6 +3809,7 @@ func debug_snapshot() -> Dictionary:
 	var balance_diagnostics_snapshot := _gameplay_balance_diagnostics_debug_snapshot()
 	var card_inventory_snapshot := _card_inventory_debug_snapshot()
 	var card_resolution_queue_snapshot := _card_resolution_queue_debug_snapshot()
+	var action_result_presentation_snapshot := _action_result_presentation_debug_snapshot()
 	var card_resolution_execution_snapshot := _card_resolution_execution_debug_snapshot()
 	var economy_product_route_effect_snapshot := _card_economy_product_route_effect_debug_snapshot()
 	var economy_product_route_formula_snapshot := _card_economy_product_route_formula_debug_snapshot()
@@ -3863,6 +3875,7 @@ func debug_snapshot() -> Dictionary:
 		"district_purchase": purchase_snapshot,
 		"card_inventory": card_inventory_snapshot,
 		"card_resolution_queue": card_resolution_queue_snapshot,
+		"action_result_presentation": action_result_presentation_snapshot,
 		"card_resolution_execution": card_resolution_execution_snapshot,
 		"card_economy_product_route_effect": economy_product_route_effect_snapshot,
 		"card_economy_product_route_formula": economy_product_route_formula_snapshot,
@@ -4097,6 +4110,10 @@ func _card_resolution_queue_node() -> Node:
 	return get_node_or_null("CardResolutionQueueRuntimeService")
 
 
+func _action_result_presentation_node() -> Node:
+	return get_node_or_null("ActionResultPresentationService")
+
+
 func _card_resolution_execution_node() -> Node:
 	return get_node_or_null("CardResolutionExecutionRuntimeService")
 
@@ -4302,6 +4319,15 @@ func _card_inventory_debug_snapshot() -> Dictionary:
 
 func _card_resolution_queue_debug_snapshot() -> Dictionary:
 	var service := _card_resolution_queue_node()
+	if service != null and service.has_method("debug_snapshot"):
+		var snapshot_variant: Variant = service.call("debug_snapshot")
+		if snapshot_variant is Dictionary:
+			return (snapshot_variant as Dictionary).duplicate(true)
+	return {}
+
+
+func _action_result_presentation_debug_snapshot() -> Dictionary:
+	var service := _action_result_presentation_node()
 	if service != null and service.has_method("debug_snapshot"):
 		var snapshot_variant: Variant = service.call("debug_snapshot")
 		if snapshot_variant is Dictionary:

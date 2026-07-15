@@ -67,12 +67,9 @@ func compose_resolution_overlay_badges(source: Dictionary) -> Array:
 			"active": badge_texts.append("合约展示｜随后签约")
 			"pending": badge_texts.append("合约待签｜看底部沙漏")
 			_: badge_texts.append("合约结果｜%s" % str(source.get("contract_response_label", "待公开")))
-	var bid := int(entry.get("priority_bid", 0))
-	if bid > 0:
-		badge_texts.append("优先报价¥%d｜%s" % [bid, "已托管" if bool(entry.get("priority_bid_committed", false)) else "锁定"])
-	var tip_clue := str(source.get("tip_clue", ""))
-	if tip_clue != "":
-		badge_texts.append("竞价线索｜%s" % _short_text(tip_clue, 20))
+	var order_clue := str(source.get("order_clue", ""))
+	if order_clue != "":
+		badge_texts.append("结算顺序｜%s" % _short_text(order_clue, 20))
 	var current_queue_count := maxi(0, int(source.get("current_queue_count", 0)))
 	var next_queue_count := maxi(0, int(source.get("next_queue_count", 0)))
 	if current_queue_count > 0:
@@ -148,7 +145,7 @@ func _compose_track(source: Dictionary) -> Dictionary:
 		var group_order := maxi(1, int(queue_entry.get("group_order", 1)))
 		var group_size := maxi(1, int(queue_entry.get("group_size", 1)))
 		var state_text := "组织组%d·%d/%d" % [group_position, group_order, group_size]
-		if bool(source.get("auction_open", false)): state_text = "竞拍组%d·%d/%d" % [group_position, group_order, group_size]
+		if bool(source.get("auction_open", false)): state_text = "锁定组%d·%d/%d" % [group_position, group_order, group_size]
 		elif bool(source.get("batch_locked", false)) or not active.is_empty(): state_text = "锁定组%d·%d/%d" % [group_position, group_order, group_size]
 		entries.append(_compose_track_entry(queue_source, state_text, source))
 	var next_queue := _array(source.get("next_queue", []))
@@ -168,7 +165,7 @@ func _compose_track(source: Dictionary) -> Dictionary:
 		"empty_text": str(source.get("status_text", "等待玩家出牌。")),
 		"auction_open": bool(source.get("auction_open", false)),
 		"auction_response": {
-			"active": bool(source.get("bidding_open", false)) or bool(source.get("counter_window_active", false)) or bool(source.get("pending_decision", false)),
+			"active": bool(source.get("counter_window_active", false)) or bool(source.get("pending_decision", false)),
 			"summary": _track_response_text(source),
 		},
 		"entries": entries,
@@ -185,18 +182,15 @@ func _compose_track_entry(source: Dictionary, state_text: String, track: Diction
 	var owner_revealed := bool(entry.get("public_owner_revealed", false))
 	var owner_text := "待猜"
 	if owner_revealed: owner_text = str(entry.get("public_owner_label", source.get("public_owner_label", "已公开"))).replace("归属：", "").replace("归属:", "")
-	var bid := int(float(int(entry.get("winning_priority_bid_cents", entry.get("priority_bid_cents", 0)))) / 100.0)
-	var cost_text := "¥%d" % bid if bid > 0 else ""
 	var card_label := str(source.get("card_label", presentation.get("display_name", "公开牌")))
 	var requirement_text := str(source.get("requirement_text", card_source.get("play_requirement_text", "")))
 	var target_text := str(source.get("target_text", ""))
-	var badges := _visible_badges(entry, state_text, bid, track, selected)
+	var badges := _visible_badges(entry, state_text, selected)
 	var tooltip := _track_tooltip(source, presentation, state_text, requirement_text, target_text, badges)
 	var requirements := [
 		{"text":state_text, "tooltip":"这张牌在公共牌轨中的位置。"},
-		{"text":"归属:%s" % owner_text, "tooltip":"未公开前只能从报价、目标和余波推理。"},
+		{"text":"归属:%s" % owner_text, "tooltip":"未公开前只能从目标、顺序和余波推理。"},
 	]
-	if cost_text != "": requirements.append({"text":"报价%s" % cost_text, "tooltip":"公开报价/成交小费，是来源推理线索。"})
 	if requirement_text != "": requirements.append({"text":_short_text(requirement_text.replace("打出条件：", "").replace("条件：", ""), 18), "tooltip":requirement_text})
 	if target_text != "": requirements.append({"text":"目标:%s" % _short_text(target_text, 12), "tooltip":target_text})
 	if str(_dictionary(card_source.get("skill", {})).get("kind", "")) == "public_facility":
@@ -205,24 +199,24 @@ func _compose_track_entry(source: Dictionary, state_text: String, track: Diction
 	var deep_links := []
 	if resolution_id >= 0:
 		actions.append({"id":"track_select_%d" % resolution_id, "label":"选中竞猜", "disabled":owner_revealed, "tooltip":"把这张牌设为当前归属竞猜对象。" if not owner_revealed else "归属已公开，无需竞猜。"})
-		actions.append({"id":"track_intel_%d" % resolution_id, "label":"线索档案", "tooltip":"打开情报档案，并把这张牌的条件、目标、报价和余波线索置顶。"})
+		actions.append({"id":"track_intel_%d" % resolution_id, "label":"线索档案", "tooltip":"打开情报档案，并把这张牌的条件、目标、顺序和余波线索置顶。"})
 		deep_links.append({"id":"track_intel_%d" % resolution_id, "label":"线索档案", "tooltip":"打开情报档案并置顶这张牌。"})
 		var group_size := maxi(1, int(entry.get("group_size", 1)))
 		var group_order := clampi(int(entry.get("group_order", 1)), 1, group_size)
 		if bool(source.get("can_reorder", false)) and group_size > 1:
-			actions.append({"id":"group_order_up_%d" % resolution_id, "label":"组内前移", "disabled":group_order <= 1, "tooltip":"只调整自己卡牌组的连续结算顺序，不改变组报价。"})
-			actions.append({"id":"group_order_down_%d" % resolution_id, "label":"组内后移", "disabled":group_order >= group_size, "tooltip":"只调整自己卡牌组的连续结算顺序，不改变组报价。"})
+			actions.append({"id":"group_order_up_%d" % resolution_id, "label":"组内前移", "disabled":group_order <= 1, "tooltip":"只调整自己卡牌组的连续结算顺序。"})
+			actions.append({"id":"group_order_down_%d" % resolution_id, "label":"组内后移", "disabled":group_order >= group_size, "tooltip":"只调整自己卡牌组的连续结算顺序。"})
 	var card_name := str(card_source.get("card_name", _dictionary(card_source.get("skill", {})).get("name", "")))
 	if card_name != "":
 		actions.append({"id":"track_open_%s" % card_name, "label":"卡牌详情", "tooltip":"打开这张牌的图鉴详情。"})
 		deep_links.append({"id":"track_open_%s" % card_name, "label":"卡牌详情"})
 	return {
 		"id":"track_%d" % resolution_id, "resolution_id":resolution_id,
-		"group_id":str(entry.get("group_id", "")), "group_position":int(entry.get("group_position", 0)), "group_order":int(entry.get("group_order", 1)), "group_size":int(entry.get("group_size", 1)), "priority_bid":bid,
-		"card_name":card_name, "label":"%s %s" % [state_text, _short_text(card_label, 8)], "slot":_slot_text(state_text), "state":state_text, "kind":_track_kind(state_text), "cost":cost_text,
-		"owner_hint":owner_text, "badges":badges, "active":selected or state_text.begins_with("当前展示") or state_text.begins_with("竞拍组1") or state_text.begins_with("锁定组1"), "selected":selected,
+		"group_id":str(entry.get("group_id", "")), "group_position":int(entry.get("group_position", 0)), "group_order":int(entry.get("group_order", 1)), "group_size":int(entry.get("group_size", 1)),
+		"card_name":card_name, "label":"%s %s" % [state_text, _short_text(card_label, 8)], "slot":_slot_text(state_text), "state":state_text, "kind":_track_kind(state_text), "cost":"",
+		"owner_hint":owner_text, "badges":badges, "active":selected or state_text.begins_with("当前展示") or state_text.begins_with("展示组1") or state_text.begins_with("锁定组1"), "selected":selected,
 		"accent":presentation.get("accent", Color("#94a3b8")), "tooltip":tooltip, "title":"牌轨详情", "summary":"%s｜%s｜归属:%s" % [state_text, _short_text(card_label, 10), owner_text],
-		"detail":_short_text(tooltip, 64), "full_detail":tooltip, "why":"看报价、目标、余波猜来源。", "requirements":requirements, "actions":actions, "deep_links":deep_links,
+		"detail":_short_text(tooltip, 64), "full_detail":tooltip, "why":"看顺序、目标、余波猜来源。", "requirements":requirements, "actions":actions, "deep_links":deep_links,
 		"select_action":"track_select_%d" % resolution_id if resolution_id >= 0 else "", "open_action":"track_open_%s" % card_name if card_name != "" else "",
 	}
 
@@ -258,8 +252,6 @@ func _hand_inspector(card: Dictionary, logs: Array) -> Dictionary:
 
 func _track_inspector(entry: Dictionary, logs: Array) -> Dictionary:
 	var chips := [{"text":"槽 %s" % str(entry.get("slot", "--"))}, {"text":str(entry.get("state", "等待"))}, {"text":"归属:%s" % str(entry.get("owner_hint", "匿名"))}]
-	var cost_text := str(entry.get("cost", "")).strip_edges()
-	if cost_text != "": chips.append({"text":"报价%s" % cost_text})
 	for badge_variant in _array(entry.get("badges", [])):
 		var badge_text := str(badge_variant).strip_edges()
 		if badge_text != "": chips.append({"text":badge_text})
@@ -268,15 +260,14 @@ func _track_inspector(entry: Dictionary, logs: Array) -> Dictionary:
 	return {"title":str(entry.get("title", "牌轨详情")), "why":str(entry.get("why", tooltip)), "district":{"id":str(entry.get("id", "")), "title":str(entry.get("label", "公共牌槽")), "summary":str(entry.get("summary", tooltip)), "detail":str(entry.get("detail", tooltip)), "full_detail":str(entry.get("full_detail", tooltip)), "chips":chips}, "requirements":_array(entry.get("requirements", [])), "actions":_array(entry.get("actions", [])), "deep_links":_array(entry.get("deep_links", [])), "logs":logs}
 
 
-func _visible_badges(entry: Dictionary, state_text: String, bid: int, track: Dictionary, selected: bool) -> Array:
+func _visible_badges(entry: Dictionary, state_text: String, selected: bool) -> Array:
 	var badges := []
 	if selected: badges.append("已选")
 	if str(entry.get("group_id", "")) != "": badges.append("同源组 %d/%d" % [clampi(int(entry.get("group_order", 1)), 1, maxi(1, int(entry.get("group_size", 1)))), maxi(1, int(entry.get("group_size", 1)))])
 	if bool(entry.get("public_owner_revealed", false)): badges.append(_short_text(str(entry.get("public_owner_label", "已公开")).replace("归属：", ""), 6))
 	elif bool(entry.get("is_viewer_card", false)): badges.append("我的牌")
-	if bool(track.get("auction_open", false)) and state_text.begins_with("竞拍") and bid > 0 and bid == int(track.get("highest_bid", -1)): badges.append("最高价")
 	if state_text.begins_with("当前展示"): badges.append("展示")
-	elif state_text.begins_with("锁定组1") or state_text.begins_with("竞拍组1") or state_text.begins_with("组织组1"): badges.append("队首")
+	elif state_text.begins_with("锁定组1") or state_text.begins_with("展示组1") or state_text.begins_with("组织组1"): badges.append("队首")
 	elif state_text.begins_with("下批"): badges.append("下批")
 	if state_text.begins_with("已结算") and str(entry.get("aftermath_clue", "")) != "": badges.append("余波")
 	return badges.slice(0, 2)
@@ -285,7 +276,7 @@ func _visible_badges(entry: Dictionary, state_text: String, bid: int, track: Dic
 func _resolution_badge_color(text: String) -> Color:
 	if text.contains("我的"): return Color("#a7f3d0")
 	if text.contains("余波线索"): return Color("#f0abfc")
-	if text.contains("竞价线索") or text.contains("成交") or text.contains("小费") or text.contains("最高"): return Color("#fde68a")
+	if text.contains("结算顺序"): return Color("#fde68a")
 	if text.contains("合约"): return Color("#fbbf24")
 	if text.contains("出牌条件"): return Color("#bbf7d0")
 	if text.contains("归属未知") or text.contains("归属待猜"): return Color("#94a3b8")
@@ -301,8 +292,8 @@ func _track_tooltip(source: Dictionary, presentation: Dictionary, state_text: St
 	if target_text != "": lines.append("目标：%s" % _short_text(target_text, 48))
 	var animation_text := str(source.get("animation_text", ""))
 	if animation_text != "": lines.append("演出：%s" % _short_text(animation_text, 64))
-	var tip_clue := str(source.get("tip_clue", ""))
-	if tip_clue != "": lines.append("竞价：%s" % _short_text(tip_clue, 60))
+	var order_clue := str(source.get("order_clue", ""))
+	if order_clue != "": lines.append("顺序：%s" % _short_text(order_clue, 60))
 	if not badges.is_empty(): lines.append("牌槽标记：%s" % " / ".join(badges))
 	lines.append("单击竞猜归属；双击打开卡牌图鉴。")
 	return "\n".join(lines)
@@ -319,7 +310,7 @@ func _track_phase(source: Dictionary) -> String:
 	if bool(source.get("counter_window_active", false)): return "响应"
 	match _normalized_group_phase(source):
 		"planning": return "规划"
-		"public_bid": return "公开竞价"
+		"public_bid": return "公开展示"
 		"lock": return "锁牌"
 	if not _dictionary(source.get("active", {})).is_empty(): return "展示中"
 	if bool(source.get("batch_locked", false)): return "锁定"
@@ -334,8 +325,8 @@ func _track_summary(source: Dictionary, entries: Array) -> String:
 	var phase := _normalized_group_phase(source)
 	var remaining := maxi(0, int(ceil(float(source.get("group_phase_remaining_seconds", 0.0)))))
 	if phase == "planning": return "规划阶段（剩余%d秒）：每人按当前上限形成一个匿名组，可调整组内顺序并准备。" % remaining
-	if phase == "public_bid": return "公开竞价阶段（剩余%d秒）：%d个匿名组可调整优先报价，不能再提交普通牌。" % [remaining, maxi(1, int(source.get("group_count", 1)))]
-	if phase == "lock": return "锁牌阶段（剩余%d秒）：卡牌、目标和优先报价已冻结。" % remaining
+	if phase == "public_bid": return "公开展示阶段（剩余%d秒）：%d个匿名组公开排队，不能再提交普通牌。" % [remaining, maxi(1, int(source.get("group_count", 1)))]
+	if phase == "lock": return "锁牌阶段（剩余%d秒）：卡牌、目标和组内顺序已冻结。" % remaining
 	if not _dictionary(source.get("active", {})).is_empty(): return "正在展示 1 张匿名牌；效果公开，归属仍靠线索推理。"
 	var queue := _array(source.get("queue", [])); var next_queue := _array(source.get("next_queue", [])); var history := _array(source.get("history", []))
 	if not queue.is_empty() or not next_queue.is_empty(): return "候补 %d 张｜下批 %d 张｜历史 %d 条。" % [queue.size(), next_queue.size(), history.size()]
@@ -345,9 +336,9 @@ func _track_summary(source: Dictionary, entries: Array) -> String:
 
 func _track_response_text(source: Dictionary) -> String:
 	var phase := _normalized_group_phase(source)
-	if phase == "planning": return "规划阶段可按当前上限提交普通牌并调整组内顺序；报价将在下一阶段公开。"
-	if phase == "public_bid": return "公开竞价阶段可调整既有组报价；正报价档位唯一，最高组报价进入怪兽赌局公共奖池。"
-	if phase == "lock": return "锁牌阶段不能提交普通牌或修改报价；等待本批次结算。"
+	if phase == "planning": return "规划阶段可按当前上限提交普通牌并调整组内顺序；全员确认后进入公开展示。"
+	if phase == "public_bid": return "公开展示阶段不能再提交普通牌；各席可确认本阶段准备。"
+	if phase == "lock": return "锁牌阶段不能提交普通牌或修改目标；等待本批次结算。"
 	if bool(source.get("counter_window_active", false)): return "相位响应窗口开启；可用响应牌可以介入当前展示。"
 	if bool(source.get("pending_decision", false)): return "临时决策 Overlay 正在等待选择；完成后继续结算。"
 	return ""

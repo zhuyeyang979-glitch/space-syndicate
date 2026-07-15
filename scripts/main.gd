@@ -2031,7 +2031,8 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 			_cancel_discard_purchase()
 			handled = true
 		"card_group_ready":
-			handled = _set_selected_player_card_group_ready()
+			var ready_result := _set_selected_player_card_group_ready()
+			handled = not ready_result.is_empty()
 		"coach_select_district", "coach_open_rack", "coach_buy_card", "coach_play_card", "coach_buy_followup_card", "coach_play_followup_card", "coach_inspect_track", "coach_check_economy", "coach_observe_ai_public_action", "coach_inspect_clues", "coach_inspect_monster_pressure", "coach_choose_route_growth":
 			handled = _activate_first_run_coach_action(action_id)
 		"rack", "buy", "play":
@@ -2041,10 +2042,6 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 				handled = true
 			elif action_id.begins_with("scenario_"):
 				handled = _activate_scenario_action(action_id)
-			elif action_id.begins_with("bid_set_"):
-				var target_bid := int(action_id.substr("bid_set_".length()))
-				_set_selected_card_priority_bid(target_bid)
-				handled = true
 			elif action_id.begins_with("group_order_up_"):
 				var group_up_resolution_id := int(action_id.substr("group_order_up_".length()))
 				handled = _move_card_within_group(group_up_resolution_id, -1)
@@ -2422,8 +2419,6 @@ func _runtime_card_resolution_overlay_badge_source(entry: Dictionary) -> Diction
 		"public_owner_revealed": bool(entry.get("public_owner_revealed", false)),
 		"public_owner_label": str(entry.get("public_owner_label", "归属：已公开")),
 		"is_viewer_card": selected_player >= 0 and selected_player < players.size() and int(entry.get("player_index", -1)) == selected_player,
-		"priority_bid": int(float(int(entry.get("winning_priority_bid_cents", entry.get("priority_bid_cents", 0)))) / 100.0),
-		"priority_bid_committed": int(entry.get("priority_bid_cents", 0)) > 0,
 	}
 	return {
 		"entry": public_entry,
@@ -2431,7 +2426,7 @@ func _runtime_card_resolution_overlay_badge_source(entry: Dictionary) -> Diction
 		"is_contract": str(skill.get("kind", "")) == "area_trade_contract",
 		"contract_state": "active" if active_id == resolution_id else ("pending" if not pending_contract.is_empty() else "result"),
 		"contract_response_label": contract_controller.response_public_label(entry) if contract_controller != null else "无签约窗口",
-		"tip_clue": _card_resolution_tip_clue_text(entry),
+		"order_clue": _card_resolution_order_clue_text(entry),
 		"current_queue_count": _card_resolution_current_queue().size(),
 		"next_queue_count": _card_resolution_next_queue().size(),
 	}
@@ -3977,11 +3972,7 @@ func _activate_scenario_step_action(phase: Dictionary, action_id: String) -> boo
 				_open_card_codex_by_name(card_name)
 				return true
 		"read_bid_board":
-			return _complete_scenario_signal("bid_board_read", "查看竞价板：我的报价、最高价、本批和下批都在底部。", "batch_ready", "bid_board")
-		"raise_bid":
-			return _increase_selected_card_bid(50)
-		"reset_bid":
-			return _reset_selected_card_bid()
+			return _complete_scenario_signal("bid_board_read", "查看牌组确认板：本阶段状态、本批和下批都在底部。", "batch_ready", "bid_board")
 	_record_scenario_help_request(phase, "定位剧本目标：%s" % str(phase.get("label", "目标")))
 	_focus_scenario_phase_target(phase)
 	_sync_runtime_game_screen(true)
@@ -4000,7 +3991,7 @@ func _focus_scenario_phase_target(phase: Dictionary) -> bool:
 			handled = _focus_scenario_public_track()
 		"read_inspector", "open_card_detail":
 			handled = _focus_scenario_right_inspector(player_index)
-		"read_bid_board", "raise_bid", "reset_bid":
+		"read_bid_board":
 			handled = _focus_scenario_bid_board()
 		"open_intel", "mark_guess":
 			_open_intel_dossier_menu()
@@ -5012,7 +5003,7 @@ func _intel_card_guess_entries(viewer_index: int, limit: int = 5) -> Array:
 			"status": status,
 			"target": String(resolution_presentation.get("target_text", "目标未知")),
 			"requirement": _card_resolution_play_requirement_text(entry).replace("打出条件：", ""),
-			"tip": _card_resolution_tip_clue_text(entry),
+			"tip": _card_resolution_order_clue_text(entry),
 			"aftermath": String(entry.get("aftermath_clue", "")),
 			"style": String(resolution_presentation.get("effect_style_label", "卡牌")),
 			"time": time_value,
@@ -5039,7 +5030,7 @@ func _intel_card_guess_track_state(entry: Dictionary, resolution_id: int) -> Str
 		var group_order := maxi(1, int(queue_entry.get("group_order", 1)))
 		var group_size := maxi(1, int(queue_entry.get("group_size", 1)))
 		if card_resolution_auction_open:
-			return "竞拍组%d·%d/%d" % [group_position, group_order, group_size]
+			return "锁定组%d·%d/%d" % [group_position, group_order, group_size]
 		if card_resolution_batch_locked or not _card_resolution_active_entry().is_empty():
 			return "锁定组%d·%d/%d" % [group_position, group_order, group_size]
 		return "组织组%d·%d/%d" % [group_position, group_order, group_size]
@@ -5161,7 +5152,6 @@ func _economy_card_aftermath_entries(limit: int = 5) -> Array:
 			"card": card_label,
 			"style": String(resolution_presentation.get("effect_style_label", "卡牌")),
 			"clue": clue,
-			"tip_clue": _card_resolution_tip_clue_text(entry),
 			"target": String(resolution_presentation.get("target_text", "目标未知")),
 			"resolved_time": float(entry.get("resolved_time", -1.0)),
 			"owner_known": bool(entry.get("public_owner_revealed", false)),
@@ -9525,7 +9515,7 @@ func _runtime_top_bar_table_state_text() -> String:
 		return "主菜单"
 	var queue_count := _card_resolution_current_queue().size() + _card_resolution_next_queue().size()
 	if card_resolution_auction_open:
-		return "竞价中"
+		return "锁牌中"
 	if card_resolution_simultaneous_timer > 0.0:
 		return "短窗"
 	if card_resolution_counter_window_active:
@@ -9983,7 +9973,7 @@ func _runtime_player_board_table_state_lamps(_player_index: int) -> Array:
 	var table_active := false
 	var table_accent := Color("#93c5fd")
 	if card_resolution_auction_open:
-		table_state = "竞价%d" % queue_count
+		table_state = "锁牌%d" % queue_count
 		table_active = true
 		table_accent = Color("#f59e0b")
 	elif not _card_resolution_active_entry().is_empty():
@@ -10034,22 +10024,21 @@ func _runtime_player_board_readiness_chips(player_index: int) -> Array:
 func _runtime_player_board_bid_board(player_index: int) -> Dictionary:
 	if not _runtime_player_is_valid(player_index):
 		return {
-			"title": "卡牌组竞价",
+			"title": "卡牌组确认",
 			"phase": "未开局",
-			"status": "开新一桌后才能报价。",
+			"status": "开新一桌后才能确认牌组阶段。",
 			"active": false,
 			"accent": Color("#94a3b8"),
 			"chips": [],
 			"track_links": [],
 			"actions": _runtime_bid_board_actions(player_index, true),
 		}
-	var active_bid := _selected_card_priority_bid_amount(player_index)
 	var queued_index := _queued_card_entry_index_for_player(player_index)
 	var next_count := _card_resolution_next_queue().size()
-	var status_text := _card_bid_control_status_text(player_index)
-	var phase := "预设"
+	var status_text := _card_group_control_status_text(player_index)
+	var phase := "等待提交"
 	var accent := Color("#fde68a")
-	var active := active_bid > 0
+	var active := queued_index >= 0
 	var window_phase := _card_group_window_phase()
 	if ["planning", "public_bid", "lock"].has(window_phase) and not _card_resolution_current_queue().is_empty():
 		phase = "%s %ds" % [_card_group_phase_label(window_phase), int(ceil(_card_group_phase_remaining_seconds()))]
@@ -10063,14 +10052,17 @@ func _runtime_player_board_bid_board(player_index: int) -> Dictionary:
 		phase = "下批等待"
 		accent = Color("#38bdf8")
 		active = true
+	var controller := _card_resolution_controller_node()
+	var controller_debug_variant: Variant = controller.call("debug_snapshot") if controller != null and controller.has_method("debug_snapshot") else {}
+	var controller_debug: Dictionary = controller_debug_variant if controller_debug_variant is Dictionary else {}
+	var ready_players: Dictionary = controller_debug.get("ready_players", {}) if controller_debug.get("ready_players", {}) is Dictionary else {}
+	var player_ready := bool(ready_players.get(str(player_index), false))
 	var chips := [
 		{"label": "我的组", "state": "%d/%d" % [_card_group_count_for_player(player_index), _card_group_limit_for_player(player_index)], "active": queued_index >= 0, "accent": Color("#c084fc"), "tooltip": status_text, "max_chars": 9},
-		{"label": "组报价", "state": "¥%d" % active_bid, "active": active_bid > 0 or queued_index >= 0, "accent": Color("#fde68a"), "tooltip": status_text, "max_chars": 9},
-		{"label": "最高", "state": "¥%d" % _highest_card_resolution_bid(), "active": _card_group_bidding_open(), "accent": Color("#f59e0b"), "tooltip": "当前共享窗最高优先报价；同价按轮转顺时针参考席位。", "max_chars": 9},
-		{"label": "怪兽池", "state": "¥%d" % monster_runtime_controller.public_card_bid_monster_wager_pool, "active": monster_runtime_controller.public_card_bid_monster_wager_pool > 0, "accent": Color("#fb7185"), "tooltip": "每个组的优先报价都会累积到下一场有效怪兽赌局。", "max_chars": 10},
+		{"label": "本阶段", "state": "已确认" if player_ready else "待确认", "active": player_ready, "accent": Color("#22c55e") if player_ready else Color("#fde68a"), "tooltip": status_text, "max_chars": 9},
 	]
 	return {
-		"title": "卡牌组竞价",
+		"title": "卡牌组确认",
 		"phase": phase,
 		"phase_tooltip": _card_resolution_status_text(),
 		"status": _runtime_bid_board_status_line(status_text),
@@ -10088,7 +10080,7 @@ func _runtime_bid_board_track_links(player_index: int) -> Array:
 	if not _card_resolution_active_entry().is_empty():
 		links.append(_runtime_bid_board_track_link("展示", _card_resolution_active_entry(), "当前展示", true))
 	var queued_index := _queued_card_entry_index_for_player(player_index)
-	if _card_group_bidding_open() and not _card_resolution_current_queue().is_empty():
+	if _card_group_window_phase() == "public_bid" and not _card_resolution_current_queue().is_empty():
 		var leading_index := _card_resolution_leading_queue_index()
 		for i in range(_card_resolution_current_queue().size()):
 			var queued_entry: Dictionary = _card_resolution_current_queue()[i]
@@ -10099,7 +10091,7 @@ func _runtime_bid_board_track_links(player_index: int) -> Array:
 				label = "领跑"
 			elif i == queued_index:
 				label = "我的牌"
-			links.append(_runtime_bid_board_track_link(label, queued_entry, "竞拍组%d" % group_position, true))
+			links.append(_runtime_bid_board_track_link(label, queued_entry, "展示组%d" % group_position, true))
 	elif (card_resolution_batch_locked or not _card_resolution_active_entry().is_empty()) and not _card_resolution_current_queue().is_empty():
 		for i in range(_card_resolution_current_queue().size()):
 			var locked_entry: Dictionary = _card_resolution_current_queue()[i]
@@ -10110,35 +10102,15 @@ func _runtime_bid_board_track_links(player_index: int) -> Array:
 			links.append(_runtime_bid_board_track_link("本批%d" % (i + 1), waiting_entry, "待定%d" % (i + 1), i == 0))
 	if links.size() < 3 and not _card_resolution_next_queue().is_empty():
 		links.append(_runtime_bid_board_track_link("下批", _card_resolution_next_queue()[0] as Dictionary, "下批等待1", true))
-	if links.is_empty() and _active_runtime_scenario_id() == "bid_practice":
-		links.append(_runtime_scenario_bid_board_demo_track_link())
 	return links
-
-
-func _runtime_scenario_bid_board_demo_track_link() -> Dictionary:
-	var resolution_id := _runtime_scenario_demo_resolution_id()
-	var selected := selected_card_resolution_id == resolution_id
-	return {
-		"id": "track_select_%d" % resolution_id,
-			"label": "教学牌",
-		"state": "竞拍1 ¥40",
-		"active": true,
-		"selected": selected,
-		"accent": Color("#f59e0b"),
-		"tooltip": "对应顶部牌轨的教学牌；金额公开，来源靠线索判断。",
-		"max_chars": 13,
-	}
 
 
 func _runtime_bid_board_track_link(label: String, entry: Dictionary, state_text: String, active: bool) -> Dictionary:
 	var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
 	var selected := resolution_id >= 0 and resolution_id == selected_card_resolution_id
-	var bid := int(float(int(entry.get("winning_priority_bid_cents", entry.get("priority_bid_cents", 0)))) / 100.0)
 	var card_label := _short_card_text(_card_resolution_entry_card_label(entry), 7)
 	var state := state_text
-	if bid > 0:
-		state = "%s ¥%d" % [state_text, bid]
-	elif card_label != "":
+	if card_label != "":
 		state = "%s %s" % [state_text, card_label]
 	return {
 		"id": "track_select_%d" % resolution_id if resolution_id >= 0 else "",
@@ -10153,7 +10125,7 @@ func _runtime_bid_board_track_link(label: String, entry: Dictionary, state_text:
 
 
 func _runtime_bid_board_status_line(status_text: String) -> String:
-	var text := status_text.replace("报价状态：", "").strip_edges()
+	var text := status_text.replace("牌组状态：", "").strip_edges()
 	var first_break := text.find("｜")
 	if first_break >= 0:
 		var second_break := text.find("｜", first_break + 1)
@@ -10164,21 +10136,15 @@ func _runtime_bid_board_status_line(status_text: String) -> String:
 
 func _runtime_bid_board_actions(player_index: int, force_disabled: bool) -> Array:
 	var actions: Array = []
-	var active_bid := _selected_card_priority_bid_amount(player_index)
-	for target_variant in [0, 50, 100]:
-		var target_bid := int(target_variant)
-		actions.append({
-			"id": "bid_set_%d" % target_bid,
-			"label": "¥%d" % target_bid,
-			"disabled": force_disabled or target_bid == active_bid or not _runtime_bid_board_can_set_tip(player_index, target_bid),
-			"active": target_bid == active_bid,
-			"accent": Color("#22c55e") if target_bid == 100 else (Color("#f59e0b") if target_bid == 50 else Color("#94a3b8")),
-			"tooltip": _card_bid_button_tooltip(player_index, target_bid),
-		})
 	var window_phase := _card_group_window_phase()
-	if _queued_card_entry_index_for_player(player_index) >= 0 and ["planning", "public_bid", "lock"].has(window_phase):
-		var ready_label := "完成规划" if window_phase == "planning" else ("完成竞价" if window_phase == "public_bid" else "确认锁牌")
-		var ready_tooltip := "本阶段准备后进入公开竞价；不会跳过竞价阶段。" if window_phase == "planning" else ("本阶段准备后进入锁牌；不会立即结算。" if window_phase == "public_bid" else "本阶段准备后封盘并开始结算。")
+	var controller := _card_resolution_controller_node()
+	var debug_variant: Variant = controller.call("debug_snapshot") if controller != null and controller.has_method("debug_snapshot") else {}
+	var debug: Dictionary = debug_variant if debug_variant is Dictionary else {}
+	var ready_players: Dictionary = debug.get("ready_players", {}) if debug.get("ready_players", {}) is Dictionary else {}
+	var already_ready := bool(ready_players.get(str(player_index), false))
+	if not force_disabled and not already_ready and _queued_card_entry_index_for_player(player_index) >= 0 and ["planning", "public_bid", "lock"].has(window_phase):
+		var ready_label := "完成规划" if window_phase == "planning" else ("完成展示" if window_phase == "public_bid" else "确认锁牌")
+		var ready_tooltip := "确认后等待其他席位；全员准备只推进到公开展示阶段。" if window_phase == "planning" else ("确认后等待其他席位；全员准备只推进到锁牌阶段。" if window_phase == "public_bid" else "确认后等待其他席位；全员准备只触发一次封盘。")
 		actions.append({
 			"id": "card_group_ready",
 			"label": ready_label,
@@ -10187,26 +10153,6 @@ func _runtime_bid_board_actions(player_index: int, force_disabled: bool) -> Arra
 			"tooltip": ready_tooltip,
 		})
 	return actions
-
-
-func _runtime_bid_board_can_set_tip(player_index: int, target_tip: int) -> bool:
-	if _runtime_session_finished() or not _runtime_player_is_valid(player_index):
-		return false
-	var clamped := maxi(0, target_tip)
-	if not [0, 50, 100].has(clamped):
-		return false
-	var queued_index := _queued_card_entry_index_for_player(player_index)
-	if queued_index >= 0:
-		if not _card_group_bidding_open():
-			return false
-		var queued_entry: Dictionary = _card_resolution_current_queue()[queued_index]
-		var old_bid := int(float(int(queued_entry.get("priority_bid_cents", 0))) / 100.0)
-		if clamped <= old_bid:
-			return false
-		return int((players[player_index] as Dictionary).get("cash", 0)) >= clamped - old_bid
-	if _next_batch_card_entry_index_for_player(player_index) >= 0:
-		return false
-	return int((players[player_index] as Dictionary).get("cash", 0)) >= clamped
 
 
 func _card_presentation_source(card_name: String, supplied_skill: Dictionary = {}, player_index: int = -1, district_index: int = -1) -> Dictionary:
@@ -10401,12 +10347,10 @@ func _runtime_card_track_model_source() -> Dictionary:
 		"auction_open": card_resolution_auction_open,
 		"batch_locked": card_resolution_batch_locked,
 		"counter_window_active": card_resolution_counter_window_active,
-		"bidding_open": _card_group_bidding_open(),
 		"group_phase": _card_group_window_phase(),
 		"group_phase_remaining_seconds": _card_group_phase_remaining_seconds(),
 		"group_cadence": _card_group_cadence_snapshot(),
 		"group_count": _card_resolution_groups().size(),
-		"highest_bid": _highest_card_resolution_bid(),
 		"pending_decision": not _runtime_temporary_decision_snapshot_source(_runtime_snapshot_player_index()).is_empty() if _runtime_snapshot_player_index() >= 0 else false,
 		"status_text": _card_resolution_status_text(),
 		"history_window": 10,
@@ -10441,7 +10385,7 @@ func _runtime_enriched_card_track_entry(entry: Dictionary) -> Dictionary:
 		"requirement_text": _card_resolution_play_requirement_text(entry),
 		"target_text": String(resolution_presentation.get("target_text", "")),
 		"animation_text": String(resolution_presentation.get("animation_text", "")),
-		"tip_clue": _card_resolution_tip_clue_text(entry),
+		"order_clue": _card_resolution_order_clue_text(entry),
 		"facility_label": facility_label,
 		"can_reorder": owner_index == selected_player and _card_group_submissions_open(),
 	}
@@ -10458,12 +10402,11 @@ func _runtime_scenario_demo_card_model_source() -> Dictionary:
 		"queued_order": resolution_id,
 		"player_index": -1,
 		"skill": skill,
-		"priority_bid_cents": 5000,
 		"public_owner_revealed": false,
 		"selected_trade_product": selected_trade_product,
 	}
 	var result := _runtime_enriched_card_track_entry(entry)
-	result["state_text"] = "竞拍1" if _active_runtime_scenario_id() == "bid_practice" else "已公开"
+	result["state_text"] = "已公开"
 	return result
 
 
@@ -10565,15 +10508,13 @@ func _runtime_selected_district_snapshot_source(player_index: int) -> Dictionary
 
 
 func _scenario_runtime_needs_demo_track() -> bool:
-	return _active_runtime_scenario_id() in ["public_track_intro", "bid_practice", "intel_guess"]
+	return _active_runtime_scenario_id() in ["public_track_intro", "intel_guess"]
 
 
 func _runtime_scenario_demo_resolution_id() -> int:
 	match _active_runtime_scenario_id():
 		"public_track_intro":
 			return 930301
-		"bid_practice":
-			return 930401
 		"intel_guess":
 			return 930701
 	return 930000
@@ -10732,7 +10673,7 @@ func _runtime_planet_outer_rail_entries() -> Array:
 
 func _runtime_planet_card_track_short_text(queue_count: int) -> String:
 	if card_resolution_auction_open:
-		return "竞价%d" % queue_count
+		return "锁牌%d" % queue_count
 	if not _card_resolution_active_entry().is_empty():
 		return "展示"
 	if queue_count > 0:
@@ -10928,7 +10869,7 @@ func _active_bottom_countdown_state() -> Dictionary:
 	if card_resolution_auction_open:
 		return {
 			"visible": true,
-			"label": "锁牌竞价",
+			"label": "锁牌确认",
 			"remaining": maxf(0.0, card_resolution_auction_timer),
 			"total": maxf(1.0, _card_resolution_timer_total_for_stage("auction", {})),
 			"accent": Color("#f59e0b"),
@@ -15746,88 +15687,38 @@ func _can_selected_player_act() -> bool:
 	return true
 
 
-func _card_bid_control_status_text(player_index: int) -> String:
+func _card_group_control_status_text(player_index: int) -> String:
 	if player_index < 0 or player_index >= players.size():
-		return "报价状态：无当前玩家"
-	var active_bid := _selected_card_priority_bid_amount(player_index)
+		return "牌组状态：无当前玩家"
 	var queued_index := _queued_card_entry_index_for_player(player_index)
 	var next_queued_index := _next_batch_card_entry_index_for_player(player_index)
-	var player: Dictionary = players[player_index]
-	var cash := int(player.get("cash", 0))
 	if queued_index >= 0:
 		var group_count := _card_group_count_for_player(player_index)
 		var group_limit := _card_group_limit_for_player(player_index)
 		var window_phase := _card_group_window_phase()
+		var controller := _card_resolution_controller_node()
+		var debug_variant: Variant = controller.call("debug_snapshot") if controller != null and controller.has_method("debug_snapshot") else {}
+		var debug: Dictionary = debug_variant if debug_variant is Dictionary else {}
+		var ready_players: Dictionary = debug.get("ready_players", {}) if debug.get("ready_players", {}) is Dictionary else {}
+		var ready_text := "已确认" if bool(ready_players.get(str(player_index), false)) else "待确认"
 		if window_phase == "public_bid":
-			return "报价状态：公开竞价阶段｜优先报价¥%d｜最高¥%d｜不能加牌｜固定档0/50/100｜可用现金¥%d" % [
-				active_bid,
-				_highest_card_resolution_bid(),
-				cash,
-			]
+			return "牌组状态：公开展示阶段｜本组%d/%d张｜%s｜不能再加牌" % [group_count, group_limit, ready_text]
 		if window_phase == "planning":
-			return "报价状态：规划阶段｜本组%d/%d张｜等待公开竞价｜预设¥%d" % [group_count, group_limit, active_bid]
+			return "牌组状态：规划阶段｜本组%d/%d张｜%s｜可调整组内顺序" % [group_count, group_limit, ready_text]
 		if window_phase == "lock":
-			return "报价状态：锁牌阶段｜优先报价¥%d｜不能加牌或改价" % active_bid
+			return "牌组状态：锁牌阶段｜本组%d/%d张｜%s｜不能加牌或改目标" % [group_count, group_limit, ready_text]
 		var next_suffix := "｜另有响应牌等待" if next_queued_index >= 0 else ""
-		return "报价状态：卡牌组已封盘｜优先报价¥%d已进公共奖池｜组内顺序看顶部牌轨%s" % [active_bid, next_suffix]
+		return "牌组状态：卡牌组已封盘｜按轮换席位和组内顺序结算%s" % next_suffix
 	if next_queued_index >= 0:
-		return "报价状态：相位响应牌已提交｜当前组结算后清理｜不可参与普通组竞价"
+		return "牌组状态：相位响应牌已提交｜当前组结算后清理"
 	if card_resolution_batch_locked or not _card_resolution_active_entry().is_empty():
-		return "报价状态：当前卡牌组连续结算中｜预设¥%d｜普通牌保留到下一共享窗" % active_bid
+		return "牌组状态：当前卡牌组连续结算中｜普通牌保留到下一共享窗"
 	if not _card_resolution_current_queue().is_empty():
 		var current_phase := _card_group_window_phase()
 		if current_phase == "planning":
-			return "报价状态：规划阶段｜预设¥%d｜现在打牌会建立自己的卡牌组" % active_bid
-		return "报价状态：%s阶段｜预设¥%d｜不能新建组" % [_card_group_phase_label(current_phase), active_bid]
-	return "报价状态：预设¥%d｜空闲：下一张牌会开启%s" % [active_bid, _card_group_window_cadence_text(_card_group_next_window_sequence())]
-
-
-func _card_bid_button_tooltip(player_index: int, target_tip: int) -> String:
-	if player_index < 0 or player_index >= players.size():
-		return "没有当前玩家，无法设置报价。"
-	var active_bid := _selected_card_priority_bid_amount(player_index)
-	if _runtime_session_finished():
-		return "游戏已经结束，不能修改报价。"
-	var queued_index := _queued_card_entry_index_for_player(player_index)
-	var next_queued_index := _next_batch_card_entry_index_for_player(player_index)
-	if queued_index >= 0:
-		if not _card_group_bidding_open():
-			return "不能修改：共享窗已封盘或卡牌组正在连续结算，锁定组报价保持¥%d。" % active_bid
-		if target_tip <= active_bid:
-			return "卡牌组已经公开提交；报价只能提高，不能撤回或降低。"
-		if not [0, 50, 100].has(target_tip):
-			return "优先报价只能选择¥0、¥50或¥100。"
-		var cash_needed := maxi(0, target_tip - active_bid)
-		var available_cash := int((players[player_index] as Dictionary).get("cash", 0))
-		if available_cash < cash_needed:
-			return "资金不足：卡牌行动费已经在提交时支付；当前剩余资金¥%d，无法承诺组报价¥%d。" % [
-				available_cash,
-				target_tip,
-			]
-		return "把整组优先报价提高到¥%d；差额立即托管，封盘后进入公共怪兽赌局奖池。" % target_tip
-	if next_queued_index >= 0:
-		return "相位响应牌不参与普通卡牌组竞价。"
-	var cash := int((players[player_index] as Dictionary).get("cash", 0))
-	if not [0, 50, 100].has(target_tip):
-		return "优先报价只能选择¥0、¥50或¥100。"
-	if cash < maxi(0, target_tip):
-		return "资金不足：无法把下一张牌预设报价设为¥%d；当前资金¥%d。" % [target_tip, cash]
-	if target_tip <= 0:
-		return "清空下一组的预设报价；已公开提交的卡牌组不受影响。"
-	return "把下一组预设优先报价设为¥%d；第一张卡提交时会开启%s。" % [target_tip, _card_group_window_cadence_text(_card_group_next_window_sequence())]
-
-
-func _selected_card_priority_bid_amount(player_index: int) -> int:
-	if player_index < 0 or player_index >= players.size():
-		return 0
-	var queued_index := _queued_card_entry_index_for_player(player_index)
-	if queued_index >= 0:
-		return int(float(int((_card_resolution_current_queue()[queued_index] as Dictionary).get("priority_bid_cents", 0))) / 100.0)
-	var next_queued_index := _next_batch_card_entry_index_for_player(player_index)
-	if next_queued_index >= 0:
-		return int(float(int((_card_resolution_next_queue()[next_queued_index] as Dictionary).get("priority_bid_cents", 0))) / 100.0)
-	var amount := int((players[player_index] as Dictionary).get("queued_card_tip", 0))
-	return max(0, amount)
+			return "牌组状态：规划阶段｜现在打牌会建立自己的公开牌组"
+		return "牌组状态：%s阶段｜当前不能新建普通牌组" % _card_group_phase_label(current_phase)
+	return "牌组状态：空闲｜下一张普通牌会开启%s" % _card_group_window_cadence_text(_card_group_next_window_sequence())
 
 
 func _queued_card_entry_index_for_player(player_index: int) -> int:
@@ -15859,111 +15750,75 @@ func _move_card_within_group(resolution_id: int, direction: int) -> bool:
 	return true
 
 
-func _set_selected_card_priority_bid(amount: int) -> bool:
-	var old_amount := _selected_card_priority_bid_amount(selected_player)
-	var changed := _set_selected_card_bid_absolute(max(0, amount))
-	if changed and amount > old_amount:
-		_complete_scenario_signal("bid_raised", "公开报价提高到¥%d。" % max(0, amount), "after_bid", "bid_board")
-	elif changed and amount == 0 and old_amount > 0:
-		_complete_scenario_signal("bid_reset", "公开报价已清零。", "after_bid", "bid_board")
-	return changed
-
-
-func _increase_selected_card_bid(increment: int) -> bool:
-	if increment <= 0:
-		return false
-	var old_amount := _selected_card_priority_bid_amount(selected_player)
-	var target_amount := 50 if old_amount < 50 else 100
-	if target_amount <= old_amount:
-		return false
-	var changed := _set_selected_card_bid_absolute(target_amount)
-	if changed and target_amount > old_amount:
-		_complete_scenario_signal("bid_raised", "公开报价提高到¥%d。" % target_amount, "after_bid", "bid_board")
-	return changed
-
-
-func _reset_selected_card_bid() -> bool:
-	var old_amount := _selected_card_priority_bid_amount(selected_player)
-	var changed := _set_selected_card_bid_absolute(0)
-	if changed and old_amount > 0:
-		_complete_scenario_signal("bid_reset", "公开报价已清零。", "after_bid", "bid_board")
-	return changed
-
-
-func _set_selected_card_bid_absolute(amount: int) -> bool:
-	return _set_card_bid_for_player(selected_player, amount, true)
-
-
-func _set_card_bid_for_player(player_index: int, amount: int, announce: bool = true) -> bool:
-	if player_index < 0 or player_index >= players.size():
-		return false
-	var clamped: int = maxi(0, amount)
-	if not [0, 50, 100].has(clamped):
-		if announce:
-			_log("优先报价只能选择¥0、¥50或¥100。")
-		return false
-	var queued_index: int = _queued_card_entry_index_for_player(player_index)
-	if queued_index >= 0:
-		var entry: Dictionary = _card_resolution_current_queue()[queued_index]
-		var old_bid := int(float(int(entry.get("priority_bid_cents", 0))) / 100.0)
-		var service := _card_resolution_queue_service_node()
-		var result_variant: Variant = service.call("set_group_priority_bid_cents", player_index, clamped * 100, {
-			"bidding_open": _card_group_bidding_open(),
-			"available_cash_cents": int(players[player_index].get("cash", 0)) * 100,
-			"priority_bid_escrow_authorized": true,
-			"game_time": game_time,
-			"reference_player": card_resolution_batch_reference_player,
-			"player_count": players.size(),
-		}) if service != null and service.has_method("set_group_priority_bid_cents") else {}
-		var result: Dictionary = result_variant if result_variant is Dictionary else {}
-		if not bool(result.get("changed", false)):
-			if announce:
-				var reason := str(result.get("reason", "queue_service_missing"))
-				match reason:
-					"bidding_closed": _log("共享卡牌窗已经封盘，锁定组报价不能再修改。")
-					"bid_not_increased":
-						if clamped < old_bid: _log("卡牌组报价只能提高，不能从¥%d降低到¥%d。" % [old_bid, clamped])
-					"invalid_priority_bid": _log("优先报价只能选择¥0、¥50或¥100。")
-					"insufficient_cash": _log("卡牌行动费已经在提交时支付；当前剩余资金不足以承诺组报价¥%d。" % clamped)
-			return false
-		var escrow_delta_cash := int(float(int(result.get("priority_bid_escrow_delta_cents", 0))) / 100.0)
-		if escrow_delta_cash > 0:
-			players[player_index]["cash"] = int(players[player_index].get("cash", 0)) - escrow_delta_cash
-			players[player_index]["total_card_spend"] = int(players[player_index].get("total_card_spend", 0)) + escrow_delta_cash
-			_record_player_economic_event(player_index, "卡牌组优先报价", "追加托管", -escrow_delta_cash, "锁牌后进入下一场怪兽赌局公共奖池。")
-			_record_player_cash_snapshot(player_index)
-		if announce:
-			_log("公开组报价：一个匿名卡牌组从¥%d提高到¥%d；报价只增不减，来源身份仍隐藏。" % [old_bid, clamped])
-		_refresh_ui()
-		return true
-	if _next_batch_card_entry_index_for_player(player_index) >= 0:
-		if announce:
-			_log("下一批等待牌已经提交；当前批次清空并进入统一竞价前，报价暂不修改。")
-		return false
-	if int(players[player_index].get("cash", 0)) < clamped:
-		if announce:
-			_log("当前视角资金不足，无法预设¥%d匿名报价。" % clamped)
-		return false
-	players[player_index]["queued_card_tip"] = clamped
-	_refresh_ui()
-	return true
-
-
-func _set_selected_player_card_group_ready() -> bool:
-	var window_phase := _card_group_window_phase()
-	if _queued_card_entry_index_for_player(selected_player) < 0 or not ["planning", "public_bid", "lock"].has(window_phase):
-		return false
+func _set_selected_player_card_group_ready() -> Dictionary:
+	var coordinator := _game_runtime_coordinator_node()
 	var controller := _card_resolution_controller_node()
-	if controller == null or not controller.has_method("set_player_ready"):
-		return false
-	var active_players: Array = _card_resolution_controller_facts().get("active_player_indices", []) as Array
-	var result_variant: Variant = controller.call("set_player_ready", selected_player, true, active_players)
-	var result: Dictionary = result_variant if result_variant is Dictionary else {}
-	if not bool(result.get("changed", false)):
-		return false
-	_log("当前席位已完成%s阶段准备（%d/%d）；全员准备只推进到下一阶段。" % [_card_group_phase_label(window_phase), int(result.get("ready_count", 0)), int(result.get("active_player_count", 0))])
-	_refresh_ui()
-	return true
+	var outcome_code := "ready_rejected"
+	var resolution_id := -1
+	var action_result: Dictionary = {}
+	var window_phase := _card_group_window_phase()
+	if selected_player < 0 or selected_player >= players.size() or _player_is_eliminated(selected_player):
+		outcome_code = "player_unavailable"
+	else:
+		var queued_index := _queued_card_entry_index_for_player(selected_player)
+		if queued_index < 0:
+			outcome_code = "queued_entry_missing"
+		else:
+			var entry: Dictionary = _card_resolution_current_queue()[queued_index]
+			resolution_id = int(entry.get("resolution_id", entry.get("queued_order", -1)))
+			if not ["planning", "public_bid", "lock"].has(window_phase):
+				outcome_code = "group_window_closed"
+			elif coordinator == null or not coordinator.has_method("compose_action_result_v1"):
+				outcome_code = "ready_rejected"
+			elif controller == null or not controller.has_method("set_player_ready"):
+				outcome_code = "ready_rejected"
+			else:
+				var debug_variant: Variant = controller.call("debug_snapshot") if controller.has_method("debug_snapshot") else {}
+				var debug: Dictionary = debug_variant if debug_variant is Dictionary else {}
+				var ready_players: Dictionary = debug.get("ready_players", {}) if debug.get("ready_players", {}) is Dictionary else {}
+				if bool(ready_players.get(str(selected_player), false)):
+					outcome_code = "already_ready"
+				else:
+					var success_candidate_variant: Variant = coordinator.call("compose_action_result_v1", {
+						"schema_version": 1,
+						"action_id": "card_group_ready",
+						"action_family": "card_resolution",
+						"outcome_code": "group_ready_committed",
+						"resolution_id": resolution_id,
+					})
+					var success_candidate: Dictionary = success_candidate_variant if success_candidate_variant is Dictionary else {}
+					if success_candidate.is_empty() or not bool(success_candidate.get("success", false)):
+						outcome_code = "ready_rejected"
+					else:
+						var active_players: Array = _card_resolution_controller_facts().get("active_player_indices", []) as Array
+						var result_variant: Variant = controller.call("set_player_ready", selected_player, true, active_players)
+						var result: Dictionary = result_variant if result_variant is Dictionary else {}
+						outcome_code = "group_ready_committed" if bool(result.get("changed", false)) else "ready_rejected"
+						if outcome_code == "group_ready_committed":
+							action_result = success_candidate
+	var source := {
+		"schema_version": 1,
+		"action_id": "card_group_ready",
+		"action_family": "card_resolution",
+		"outcome_code": outcome_code,
+		"resolution_id": resolution_id,
+	}
+	if action_result.is_empty():
+		var action_result_variant: Variant = coordinator.call("compose_action_result_v1", source) if coordinator != null and coordinator.has_method("compose_action_result_v1") else {}
+		action_result = action_result_variant if action_result_variant is Dictionary else {}
+	if action_result.is_empty():
+		return {}
+	var detail := "%s %s %s" % [
+		str(action_result.get("explanation", "")),
+		str(action_result.get("consequence", "")),
+		str(action_result.get("suggested_action", "")),
+	]
+	if runtime_game_screen != null and runtime_game_screen.has_method("_show_player_action_feedback"):
+		runtime_game_screen.call("_show_player_action_feedback", "card_group_ready", "resolved" if bool(action_result.get("success", false)) else "blocked", detail.strip_edges())
+	_log("%s｜%s" % [str(action_result.get("title", "牌组准备状态")), str(action_result.get("explanation", ""))])
+	if bool(action_result.get("success", false)):
+		_refresh_ui()
+	return action_result
 
 
 func _card_resolution_status_text() -> String:
@@ -15977,10 +15832,9 @@ func _card_resolution_phase_text(entry: Dictionary = {}, _seconds_left: float = 
 	var queued := _card_resolution_current_queue().size()
 	var window_phase := _card_group_window_phase()
 	if window_phase == "public_bid":
-		return "阶段：公开竞价｜剩余%d秒｜匿名组%d｜最高优先报价¥%d｜新牌：保留手牌" % [
+		return "阶段：公开展示｜剩余%d秒｜匿名组%d｜新牌：保留手牌｜可确认准备" % [
 			int(ceil(_card_group_phase_remaining_seconds())),
 			_card_resolution_groups().size(),
-			_highest_card_resolution_bid(),
 		]
 	if window_phase == "planning":
 		return "阶段：规划｜剩余%d秒｜匿名组%d｜牌%d｜普通上限%d张｜可调顺序/准备" % [
@@ -15990,7 +15844,7 @@ func _card_resolution_phase_text(entry: Dictionary = {}, _seconds_left: float = 
 			_card_group_limit_for_player(selected_player),
 		]
 	if window_phase == "lock":
-		return "阶段：锁牌｜剩余%d秒｜匿名组%d｜牌%d｜不能加牌或改价" % [
+		return "阶段：锁牌｜剩余%d秒｜匿名组%d｜牌%d｜不能加牌或改目标" % [
 			int(ceil(_card_group_phase_remaining_seconds())),
 			_card_resolution_groups().size(),
 			queued,
@@ -16003,7 +15857,7 @@ func _card_resolution_phase_text(entry: Dictionary = {}, _seconds_left: float = 
 			return "阶段：相位响应｜可打反制｜原牌暂未结算｜出牌者%s" % [
 				"已揭晓" if bool(active_entry.get("public_owner_revealed", false)) else "未知",
 			]
-		return "阶段：组内连续结算｜锁定候补%d｜可加价：否｜普通牌等待下一窗口｜出牌者%s" % [
+		return "阶段：组内连续结算｜锁定候补%d｜普通牌等待下一窗口｜出牌者%s" % [
 			queued,
 			"已揭晓" if bool(active_entry.get("public_owner_revealed", false)) else "未知",
 		]
@@ -16245,7 +16099,7 @@ func _player_tableau_progress_entries(player_index: int) -> Array:
 			{"text": "公开线索", "state": _player_visible_city_text(player_index, viewer_index), "accent": Color("#38bdf8"), "active": true, "tip": "对手城市业主仍靠标注和公开线索推理。"},
 			{"text": "明怪", "state": "%d" % _player_visible_monster_count(player_index, viewer_index), "accent": Color("#fb7185"), "active": _player_visible_monster_count(player_index, viewer_index) > 0, "tip": "只统计已公开归属或本席可见的怪兽。"},
 			{"text": "明军", "state": "%d" % military_runtime_controller.visible_unit_count(player_index, viewer_index), "accent": Color("#67e8f9"), "active": military_runtime_controller.visible_unit_count(player_index, viewer_index) > 0, "tip": "只显示公开归属的军队线索。"},
-			{"text": "牌轨", "state": "看公开", "accent": Color("#c084fc"), "active": not resolved_card_history.is_empty() or not _card_resolution_current_queue().is_empty(), "tip": "只能从匿名牌轨、竞价和结算结果推理。"},
+			{"text": "牌轨", "state": "看公开", "accent": Color("#c084fc"), "active": not resolved_card_history.is_empty() or not _card_resolution_current_queue().is_empty(), "tip": "只能从匿名牌轨、公开展示、准备状态和结算结果推理。"},
 			{"text": "资金/手牌", "state": "隐私", "accent": Color("#94a3b8"), "active": false, "tip": "对手现金、真实手牌数量、弃牌和AI内部计划不显示。"},
 		]
 	var player: Dictionary = players[player_index]
@@ -16972,7 +16826,7 @@ func _card_group_phase_label(phase: String = "") -> String:
 	var resolved_phase := _card_group_window_phase() if phase.is_empty() else phase
 	match resolved_phase:
 		"planning": return "规划"
-		"public_bid": return "公开竞价"
+		"public_bid": return "公开展示"
 		"lock": return "锁牌"
 		"resolving": return "结算"
 	return "空闲"
@@ -16980,7 +16834,7 @@ func _card_group_phase_label(phase: String = "") -> String:
 
 func _card_group_window_cadence_text(sequence: int = -1) -> String:
 	var cadence := _card_group_cadence_snapshot(sequence)
-	return "%d秒共享窗：规划%d秒、公开竞价%d秒、锁牌%d秒" % [
+	return "%d秒共享窗：规划%d秒、公开展示%d秒、锁牌%d秒" % [
 		int(cadence.get("total_seconds", 0)),
 		int(cadence.get("planning_seconds", 0)),
 		int(cadence.get("public_bid_seconds", 0)),
@@ -17017,14 +16871,6 @@ func _card_group_submissions_open() -> bool:
 	if controller != null and controller.has_method("submissions_open"):
 		return bool(controller.call("submissions_open", _card_resolution_controller_facts()))
 	_mark_card_resolution_controller_missing("submission gate", true)
-	return false
-
-
-func _card_group_bidding_open() -> bool:
-	var controller := _card_resolution_controller_node()
-	if controller != null and controller.has_method("bidding_open"):
-		return bool(controller.call("bidding_open", _card_resolution_controller_facts()))
-	_mark_card_resolution_controller_missing("bidding gate", true)
 	return false
 
 
@@ -17117,13 +16963,13 @@ func _apply_card_resolution_controller_transition(command: Dictionary) -> void:
 		"show_group_window":
 			_show_card_batch_lobby_overlay()
 		"enter_public_bid":
-			_log("共享卡牌窗进入%d秒公开竞价阶段：不能再提交普通牌，可调整既有组报价。" % int(_card_group_cadence_snapshot().get("public_bid_seconds", 0)))
+			_log("共享卡牌窗进入%d秒公开展示阶段：不能再提交普通牌，可确认本阶段准备。" % int(_card_group_cadence_snapshot().get("public_bid_seconds", 0)))
 		"enter_lock":
-			_log("共享卡牌窗进入%d秒锁牌阶段：不能再提交新牌或修改报价。" % int(_card_group_cadence_snapshot().get("lock_seconds", 0)))
+			_log("共享卡牌窗进入%d秒锁牌阶段：不能再提交新牌或修改目标。" % int(_card_group_cadence_snapshot().get("lock_seconds", 0)))
 		"all_ready_public_bid":
-			_log("所有仍在局内的席位均已完成规划，窗口推进到公开竞价阶段。")
+			_log("所有仍在局内的席位均已完成规划，窗口推进到公开展示阶段。")
 		"all_ready_lock":
-			_log("所有仍在局内的席位均已完成公开竞价，窗口推进到锁牌阶段。")
+			_log("所有仍在局内的席位均已完成公开展示，窗口推进到锁牌阶段。")
 		"all_ready_lock_batch":
 			_log("所有仍在局内的席位均已确认锁牌，卡牌组窗口提前封盘。")
 		"lock_batch":
@@ -17148,12 +16994,6 @@ func _sort_card_resolution_queue() -> void:
 		service.call("sort_current", card_resolution_batch_reference_player, players.size())
 
 
-func _highest_card_resolution_bid() -> int:
-	var service := _card_resolution_queue_service_node()
-	var cents := int(service.call("highest_priority_bid_cents")) if service != null and service.has_method("highest_priority_bid_cents") else 0
-	return int(float(cents) / 100.0)
-
-
 func _card_resolution_leading_queue_index() -> int:
 	var service := _card_resolution_queue_service_node()
 	return int(service.call("leading_index", card_resolution_batch_reference_player, players.size())) if service != null and service.has_method("leading_index") else -1
@@ -17166,46 +17006,14 @@ func _card_resolution_entry_card_label(entry: Dictionary) -> String:
 	return card_name if card_label == "" else card_label
 
 
-func _card_resolution_tip_clue_text(entry: Dictionary) -> String:
-	var explicit_clue := String(entry.get("tip_payment_clue", ""))
-	if explicit_clue != "":
-		return explicit_clue
-	var bid_cents := int(entry.get("winning_priority_bid_cents", entry.get("priority_bid_cents", 0)))
-	var bid := int(float(bid_cents) / 100.0)
-	if bid_cents <= 0:
-		return "本组零报价，按顺位座次结算，不发生资金转移。"
-	return "本组优先报价¥%d已进入下一场怪兽赌局公共奖池；同组卡牌连续结算，来源身份待猜。" % bid
+func _card_resolution_order_clue_text(_entry: Dictionary) -> String:
+	return "同组卡牌按轮换席位与组内顺序连续结算；来源身份待猜。"
 
 
 func _card_resolution_groups() -> Array:
 	var service := _card_resolution_queue_service_node()
 	var value: Variant = service.call("groups", card_resolution_batch_reference_player, players.size()) if service != null and service.has_method("groups") else []
 	return (value as Array).duplicate(true) if value is Array else []
-
-
-func _apply_card_group_wager_pool_receipt(receipt: Dictionary) -> Dictionary:
-	if str(receipt.get("recipient_kind", "")) != "public_monster_wager_pool" or int(receipt.get("currency_scale", 0)) != 100:
-		return {"applied": false, "reason": "invalid_public_wager_pool_receipt"}
-	var total_cents := maxi(0, int(receipt.get("total_cents", 0)))
-	if total_cents % 100 != 0:
-		return {"applied": false, "reason": "wager_pool_receipt_mixed_unit"}
-	var total_cash := int(float(total_cents) / 100.0)
-	if total_cash > 0:
-		monster_runtime_controller.add_public_wager_pool(total_cash)
-	for entry_variant in _card_resolution_current_queue():
-		if entry_variant is Dictionary:
-			var entry := (entry_variant as Dictionary).duplicate(true)
-			entry["tip_payment_clue"] = _card_resolution_tip_clue_text(entry)
-			_store_card_resolution_entry(entry)
-	if total_cash > 0:
-		_log("共享卡牌窗封盘：全部优先报价共¥%d进入下一场怪兽赌局公共奖池。" % total_cash)
-	return {
-		"applied": true,
-		"reason": "",
-		"receipt_id": str(receipt.get("receipt_id", "")),
-		"public_pool_delta": total_cash,
-		"public_pool_total": monster_runtime_controller.public_card_bid_monster_wager_pool,
-	}
 
 
 func _queue_skill_resolution(player_index: int, slot_index: int, target_slot: int = -1, target_player: int = -1) -> bool:
@@ -17323,7 +17131,7 @@ func _queue_skill_resolution(player_index: int, slot_index: int, target_slot: in
 		var rejection := str(queue_plan.get("reason", "queue_service_missing"))
 		match rejection:
 			"group_full": _log("%s未提交：本窗口卡牌组已达到%d张上限。" % [card_label, int(queue_plan.get("card_limit", _card_group_limit_for_player(player_index)))])
-			"public_bid_phase": _log("%s未提交：共享卡牌窗正在公开竞价，不能再加入普通牌；卡牌保留在手牌。" % card_label)
+			"public_bid_phase": _log("%s未提交：共享卡牌窗正在公开展示，不能再加入普通牌；卡牌保留在手牌。" % card_label)
 			"lock_phase", "window_closed": _log("%s未提交：共享卡牌窗已进入锁牌阶段；卡牌保留在手牌。" % card_label)
 			"active_resolution": _log("%s未提交：当前卡牌组正在连续结算，下一共享窗尚未开始；卡牌保留在手牌。" % card_label)
 			"counter_already_submitted": _log("当前玩家已经提交一张响应牌；同一5秒响应窗不能重复提交。")
@@ -17454,9 +17262,6 @@ func _start_next_card_resolution() -> void:
 		return
 	var entry: Dictionary = start_result.get("active_entry", {}) if start_result.get("active_entry", {}) is Dictionary else {}
 	var skill: Dictionary = entry.get("skill", {}) if entry.get("skill", {}) is Dictionary else {}
-	if not entry.has("tip_payment_clue"):
-		entry["tip_payment_clue"] = _card_resolution_tip_clue_text(entry)
-		_store_card_resolution_entry(entry)
 	card_resolution_visual_id = -1
 	card_resolution_visual_stage = -1
 	card_resolution_auction_open = false
@@ -17506,9 +17311,9 @@ func _show_card_batch_lobby_overlay() -> void:
 		var window_phase := _card_group_window_phase()
 		var lobby_text := "%s｜剩余%d秒｜普通上限%d张｜%s已入组" % [_card_group_phase_label(window_phase), int(ceil(_card_group_phase_remaining_seconds())), _card_group_limit_for_player(selected_player), card_label]
 		if window_phase == "public_bid":
-			lobby_text = "公开竞价｜剩余%d秒｜不能加牌｜可调整既有组报价" % int(ceil(_card_group_phase_remaining_seconds()))
+			lobby_text = "公开展示｜剩余%d秒｜不能加牌｜可确认本阶段准备" % int(ceil(_card_group_phase_remaining_seconds()))
 		elif window_phase == "lock":
-			lobby_text = "锁牌｜剩余%d秒｜不能加牌或改价" % int(ceil(_card_group_phase_remaining_seconds()))
+			lobby_text = "锁牌｜剩余%d秒｜不能加牌或改目标" % int(ceil(_card_group_phase_remaining_seconds()))
 		var roster_text := _card_resolution_batch_roster_text(76)
 		if roster_text != "":
 			lobby_text += "\n%s" % roster_text
@@ -17531,13 +17336,10 @@ func _card_resolution_batch_roster_text(max_chars: int = 120) -> String:
 		var label := _card_resolution_entry_card_label(entry)
 		if label.strip_edges() == "":
 			label = "牌桌卡牌"
-		var bid := int(float(int(entry.get("winning_priority_bid_cents", entry.get("priority_bid_cents", 0)))) / 100.0)
 		var group_position := maxi(1, int(entry.get("group_position", i + 1)))
 		var group_order := maxi(1, int(entry.get("group_order", 1)))
 		var group_size := maxi(1, int(entry.get("group_size", 1)))
 		var text := "G%d·%d/%d %s" % [group_position, group_order, group_size, _short_card_text(label, 8)]
-		if bid > 0:
-			text += "¥%d" % bid
 		pieces.append(text)
 	if pieces.is_empty():
 		return ""
@@ -17622,9 +17424,9 @@ func _card_resolution_overlay_detail_text(entry: Dictionary, seconds_left: float
 	var target_text := String(resolution_presentation.get("target_text", ""))
 	if target_text != "":
 		lines.append("目标：%s" % _short_card_text(target_text, 100))
-	var tip_text := _card_resolution_tip_clue_text(entry)
-	if tip_text != "":
-		lines.append("竞价：%s" % _short_card_text(tip_text, 110))
+	var order_text := _card_resolution_order_clue_text(entry)
+	if order_text != "":
+		lines.append("顺序：%s" % _short_card_text(order_text, 110))
 	if _card_can_open_counter_window(entry):
 		lines.append("提示：展示后进入玩家互动响应窗口。")
 	lines.append("更完整的卡面和等级效果可双击顶部牌轨打开图鉴。")
