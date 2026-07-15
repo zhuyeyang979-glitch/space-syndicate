@@ -19,7 +19,7 @@ the production settlement exactly once.
 |---|---:|---:|---:|
 | `scripts/main.gd` physical lines | 18,972 | 18,631 | -341 |
 | `scripts/main.gd` `func` declarations | 1,097 | 1,075 | -22 |
-| Full layout failure labels | 52 | 27 | -25 |
+| Full layout failure labels | 52 | 24 | -28 |
 | Full smoke retired Main references | 71 (`31` capture, `40` apply) | 61 (`27` capture, `34` apply) | -10 |
 
 The current Main reduction comes from the Product Codex public-source sceneization and
@@ -41,15 +41,16 @@ migrations do not count as Main reduction.
 - Layout ownership checks now use the current Military, CommodityFlow,
   RegionInfrastructure, RouteNetwork, and non-owning bridge boundaries. The full
   layout run has no parser or invalid-method failure.
-- The latest integrated full layout run completed in 58.129 seconds with ExitCode 1,
-  27 remaining assertion labels, no parser/API error, no timeout, and zero remaining
+- The latest integrated full layout run completed in 62.338 seconds with ExitCode 1,
+  24 remaining assertion labels, no parser/API error, no timeout, and zero remaining
   project processes. The fixed priority-bid fixtures are physically retired, the
-  RightInspector ViewModel gate now follows the authoritative sunlight-availability
-  explanation, and Card Codex consistently states that same-name same-rank cards can
-  be manually merged into an upgrade. The shared card-group gate now uses the v0.6
+  split RightInspector initial/live-refresh fixtures now both follow the authoritative
+  sunlight-availability explanation without rebuilding identical requirement chips,
+  and Card Codex consistently states that same-name same-rank cards can be manually
+  merged into an upgrade. The shared card-group gate now uses the v0.6
   `30/20/5/5` planning, public-bid, and lock cadence instead of the retired v0.5
   organize/lock timings. Evidence run:
-  `20260715-092202-004-layout_scene_smoke_test-a54ef7c3`.
+  `20260715-092557-919-layout_scene_smoke_test-57f81a91`.
 - The current Main composition gate passes. The latest role-focused gate and smoke
   `--check-only` also exit 0.
 - The real `FullRunQualityDriver` capability preflight exits `3` by design instead of
@@ -170,15 +171,17 @@ that evidence is unavailable rather than invent a turning point or expose AI wei
 
 ## Remaining layout groups
 
-The 27 current labels include:
+The 24 current labels include:
 
-- RightInspector why/availability restoration;
 - environment-only MCP configuration checks;
 - historical Sprint 40 formula-dispatch and AI policy registry contracts;
 - historical 1280 coordinate assertions that still need migration to the now-green
   real-pixel production evidence;
-- live map, public-track, card play, market purchase, and private-discard flows;
-- split RightInspector scene restoration details.
+- live map, public-track, card play, and market purchase flows.
+
+The full-hand private-discard assertion has appeared and disappeared across adjacent
+unchanged full-layout runs, so it is tracked as a state/timing instability rather than
+claimed fixed merely because it was absent from the latest 24-label run.
 
 Each old oracle must be replaced with point-for-point current-owner evidence. Failure
 counts may not be reduced through ignore lists or by deleting a test without a new
