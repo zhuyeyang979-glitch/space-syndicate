@@ -401,10 +401,12 @@ func _check_save_schema_clock_authority_and_atomic_apply() -> void:
 	var restored_payload := _weather_save_payload([_event_payload(11, "deep_freeze", 0, "natural", 700_000_000, 700_000_000, 710_000_000, 800_000_000, 810_000_000)])
 	var weather_receipt: Dictionary = _weather.call("apply_save_data", restored_payload)
 	var restored_public: Dictionary = _weather.call("public_snapshot")
-	var restored_active: Array = _weather.call("active_zones_snapshot")
 	_expect(bool(session_receipt.get("applied", false)) and bool(weather_receipt.get("applied", false)), "session_then_weather_apply_receipts_succeed")
 	_expect(int(_clock.call("world_effective_micros")) == 777_000_000 and int(restored_public.get("world_effective_us", -1)) == 777_000_000, "game_session_world_effective_us_is_final_clock_authority")
-	_expect(restored_active.size() == 1 and str((restored_active[0] as Dictionary).get("phase", "")) == PHASE_ACTIVE, "weather_restore_uses_restored_world_effective_clock_instead_of_game_time")
+	_expect((restored_payload.get("events", []) as Array) == (_weather.call("to_save_data") as Dictionary).get("events", []), "weather_apply_preserves_exact_state_until_all_save_owners_restore")
+	_weather.call("tick", 0.0)
+	var restored_active: Array = _weather.call("active_zones_snapshot")
+	_expect(restored_active.size() == 1 and str((restored_active[0] as Dictionary).get("phase", "")) == PHASE_ACTIVE, "first_weather_tick_uses_restored_world_effective_clock_instead_of_game_time")
 
 
 func _check_privacy_surfaces() -> void:

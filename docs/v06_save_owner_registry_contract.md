@@ -101,10 +101,12 @@ normalized to fail-closed public values.
 - PlayerMana transaction: `res://tests/player_mana_save_owner_transaction_test.gd`
 - Bankruptcy transaction: `res://tests/bankruptcy_neutral_estate_save_owner_transaction_test.gd`
 
-The gate covers exact manifest mapping, the production 7/11 capability
+The gate covers exact manifest mapping, the production 8/10 capability
 boundary, full fake-owner capture through the real handshake, late preflight
 rejection with zero live mutation, fixed-order apply, reverse-order rollback
 including a partially mutated failing owner, exact checkpoint restoration, and
 adversarial public-receipt privacy. The owner-focused tests additionally prove
 detached preflight, repeated exact rollback, and private-field rejection for the
-newly transactional PlayerMana and Bankruptcy sections.
+newly transactional PlayerMana, Bankruptcy, and Weather sections. Weather
+restore is exact and clock-neutral during apply; lifecycle catch-up happens on
+the first owner tick after the Session owner restores world-effective time.

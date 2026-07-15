@@ -505,8 +505,6 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	_telemetry = next_telemetry
 	_next_generation_world_us = int(data.get("next_generation_world_us", WeatherSystem.START_GRACE_US))
 	weather_sequence = maxi(0, int(data.get("sequence", 0)))
-	_advance_lifecycle(_now_us())
-	_release_waiting_queue(_now_us())
 	_refresh_legacy_projection()
 	return {"applied": true, "schema_version": WeatherRuntimeState.SCHEMA_VERSION, "forecast_present": not weather_forecast.is_empty(), "active_zone_count": active_weather_zones.size(), "sequence": weather_sequence}
 
