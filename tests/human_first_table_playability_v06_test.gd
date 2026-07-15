@@ -123,15 +123,14 @@ func _run_human_gate() -> void:
 	var canonical_card: Dictionary = coordinator.call("v06_first_table_facility_card") if coordinator.has_method("v06_first_table_facility_card") else {}
 	var canonical_machine: Dictionary = canonical_card.get("machine", {}) if canonical_card.get("machine", {}) is Dictionary else {}
 	var canonical_card_id := str(canonical_machine.get("card_id", ""))
-	var reserved: Dictionary = coordinator.call("reserve_district_purchase_discard", {"player_index": 0, "district_index": district, "card_id": canonical_card_id}) if coordinator.has_method("reserve_district_purchase_discard") else {}
-	var pending_window: Dictionary = coordinator.call("district_purchase_private_ui_snapshot", 0) if coordinator.has_method("district_purchase_private_ui_snapshot") else {}
-	_expect(not reserved.is_empty() and str(pending_window.get("state", "")) == "pending_discard", "purchase window exposes the private pending-discard state")
-	var discard_resolved: Dictionary = coordinator.call("resolve_district_purchase_discard", {"player_index": 0, "reason": "a9_capability_checked"}) if coordinator.has_method("resolve_district_purchase_discard") else {}
-	_expect(str(discard_resolved.get("state", "")) == "active", "discard capability returns to the active purchase window without mutating a card")
-
 	var market_surface: Dictionary = coordinator.call("v06_first_table_facility_market_snapshot", actor_id) if coordinator.has_method("v06_first_table_facility_market_snapshot") else {}
 	var listing: Dictionary = market_surface.get("listing", {}) if market_surface.get("listing", {}) is Dictionary else {}
 	var source_item_id := str(listing.get("item_id", ""))
+	_expect(str(purchase_window.get("state", "")) == "active" and not _contains_private_discard_rescue(purchase_window), "v0.6 purchase window remains active without exposing a private discard-rescue state")
+	var rejected_purchase: Dictionary = coordinator.call("purchase_v06_first_table_facility_card", actor_id, "%s:stale" % source_item_id, "vs06-a9:facility-reject:%s" % actor_id) if coordinator.has_method("purchase_v06_first_table_facility_card") else {}
+	var window_after_rejection: Dictionary = coordinator.call("district_purchase_private_ui_snapshot", 0) if coordinator.has_method("district_purchase_private_ui_snapshot") else {}
+	_expect(not bool(rejected_purchase.get("committed", true)) and str(rejected_purchase.get("reason_code", "")) == "market_listing_changed" and str(window_after_rejection.get("state", "")) == "active" and not _contains_private_discard_rescue(window_after_rejection), "a stale purchase fails closed without opening a private discard-rescue path")
+
 	var purchase: Dictionary = coordinator.call("purchase_v06_first_table_facility_card", actor_id, source_item_id, "vs06-a9:facility-purchase:%s" % actor_id) if coordinator.has_method("purchase_v06_first_table_facility_card") else {}
 	var player_after_purchase: Dictionary = coordinator.call("v06_card_player_snapshot", actor_id) if coordinator.has_method("v06_card_player_snapshot") else {}
 	var purchased_card_id := str(purchase.get("card_id", canonical_card_id))
@@ -151,7 +150,8 @@ func _run_human_gate() -> void:
 
 	var monster_before_optional_summon: Dictionary = monster.call("unit_card_snapshot_v06", "monster") if monster != null and monster.has_method("unit_card_snapshot_v06") else {}
 	_expect(int(monster_before_optional_summon.get("monster_count", -1)) == int(monster_before.get("monster_count", -1)), "facility purchase and play complete without implicitly summoning the held starter")
-	var summon_submitted := bool(main.call("_activate_first_run_coach_action", "coach_first_summon"))
+	var starter_slot := int(main.call("_first_starter_monster_slot", players[0])) if not players.is_empty() and players[0] is Dictionary else -1
+	var summon_submitted := starter_slot >= 0 and bool(main.call("_queue_skill_resolution", 0, starter_slot, -1))
 	var summon_drained := await _drain_card_resolution(main, 240)
 	var monster_after: Dictionary = monster.call("unit_card_snapshot_v06", "monster") if monster != null and monster.has_method("unit_card_snapshot_v06") else {}
 	var monster_save_after: Dictionary = monster.call("to_save_data") if monster != null and monster.has_method("to_save_data") else {}
@@ -340,6 +340,23 @@ func _contains_action_id(value: Variant, action_id: String) -> bool:
 			if _contains_action_id(nested, action_id):
 				return true
 	return false
+
+
+func _contains_private_discard_rescue(value: Variant) -> bool:
+	if value is Dictionary:
+		for key_variant in (value as Dictionary).keys():
+			var key := str(key_variant).to_lower()
+			if key in ["reserved_card_id", "discard_slot", "requires_discard"]:
+				return true
+			if _contains_private_discard_rescue((value as Dictionary).get(key_variant)):
+				return true
+		return false
+	if value is Array:
+		for nested in value:
+			if _contains_private_discard_rescue(nested):
+				return true
+		return false
+	return str(value).to_lower() == "pending_discard"
 
 
 func _scan_public_value(value: Variant, path: String) -> void:
