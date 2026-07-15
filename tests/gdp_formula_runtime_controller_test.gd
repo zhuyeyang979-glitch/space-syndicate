@@ -1,7 +1,11 @@
 extends SceneTree
 
-const CONTROLLER_SCENE := "res://scenes/runtime/GdpFormulaRuntimeController.tscn"
+const RETIRED_CONTROLLER_SCENE := "res://scenes/runtime/GdpFormulaRuntimeController.tscn"
+const CURRENT_OWNER_SCENE := "res://scenes/runtime/CommodityFlowRuntimeController.tscn"
+const COORDINATOR_SCENE := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
+const RULESET_PROFILE := preload("res://resources/rules/space_syndicate_ruleset_v06.tres")
 
+var _checks := 0
 var _failures: Array[String] = []
 
 
@@ -10,88 +14,76 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	var packed := load(CONTROLLER_SCENE) as PackedScene
-	_expect(packed != null, "GDP formula controller scene loads")
-	if packed == null:
-		quit(1)
+	var retired_packed := load(RETIRED_CONTROLLER_SCENE) as PackedScene
+	var current_packed := load(CURRENT_OWNER_SCENE) as PackedScene
+	_expect(retired_packed != null and current_packed != null, "retired GDP marker and current Commodity Flow owner scenes load")
+	if retired_packed == null or current_packed == null:
+		_finish()
 		return
-	var controller := packed.instantiate()
-	root.add_child(controller)
-	controller.call("configure", {})
-	var debug: Dictionary = controller.call("debug_snapshot")
-	_expect(bool(debug.get("controller_ready", false)) and str(debug.get("profile_id", "")) == "gdp_formula_v05", "v0.5 GDP formula controller is authoritative")
-	var parameters: Dictionary = controller.call("parameters_snapshot")
-	_expect(int(parameters.get("product_base_revenue", 0)) == 42 and bool(parameters.get("zero_gdp_allowed", false)) and not parameters.has("minimum_city_gdp"), "v0.5 profile removes the legacy minimum-city floor")
 
-	var inactive: Dictionary = controller.call("calculate_city_gdp", {"active": false, "region_id": "region.0001"})
-	_expect(int(inactive.get("net", -1)) == 0 and (inactive.get("gdp_rows", []) as Array).is_empty(), "inactive city produces no GDP rows")
-	var composition: Dictionary = controller.call("calculate_city_gdp", _input({"adjustments": [_adjustment("legacy_revenue_bonus", 30), _adjustment("legacy_role_bonus", 10), _adjustment("legacy_contract_income", 20)]}))
-	_expect(int(composition.get("gross", 0)) == 60 and int(composition.get("net", 0)) == 60 and int(composition.get("explicit_neutral_gdp_per_minute", 0)) == 60, "unassigned legacy adjustments become explicit neutral GDP")
-	var production: Dictionary = controller.call("calculate_city_gdp", _input({"production_projects": [_project("production", "星露莓", 0, 1).merged({"price": 100, "rank": 1, "production_factor": 1.0, "supply_demand_ratio": 1.0, "transport_speed": 1.0}, true)]}))
-	_expect(int(production.get("product", 0)) == 36 and int(production.get("net", 0)) == 36 and (production.get("gdp_rows", []) as Array).size() == 1, "production GDP maps to its stable production project without a floor")
-	var demand: Dictionary = controller.call("calculate_city_gdp", _input({"demand_projects": [_project("demand", "月壤葡萄", 0, 1).merged({"price": 80, "flow_amount": 1.0, "consumption_factor": 1.0, "supply_availability_ratio": 1.0, "flow_speed": 1.0, "route_available": true, "disrupted": false}, true)]}))
-	_expect(int(demand.get("route", 0)) == 27 and str(((demand.get("gdp_rows", []) as Array)[0] as Dictionary).get("direction", "")) == "demand", "demand delivery GDP maps to its stable demand project")
-	var commerce: Dictionary = controller.call("calculate_city_gdp", _input({"commerce_projects": [_project("commerce", "星露莓", 0, 1).merged({"transit_routes": [_transit(100, 1.0, 1.0)]}, true)]}))
-	_expect(int(commerce.get("transit", 0)) == 23 and str(((commerce.get("gdp_rows", []) as Array)[0] as Dictionary).get("direction", "")) == "commerce", "transit GDP maps to its stable commerce project")
-	var pressure: Dictionary = controller.call("calculate_city_gdp", _input({"adjustments": [_adjustment("legacy_revenue_bonus", 100)], "competition_matches": 2, "disrupted_route_count": 1, "district_damage": 1}))
-	_expect(int(pressure.get("penalty", 0)) == 100 and int(pressure.get("unabsorbed_penalty", 0)) == 5 and int(pressure.get("net", -1)) == 0, "pressure can reduce region GDP to zero without recreating a floor")
-	var row_validation: Dictionary = controller.call("validate_gdp_rows", pressure.get("gdp_rows", []) as Array)
-	_expect(bool(row_validation.get("valid", false)) and int(row_validation.get("row_count", 0)) == 1, "GDP receipt rows conserve gross, penalty, and net")
-	var summary := str(controller.call("breakdown_summary", pressure))
-	var reason := str(controller.call("change_reason_text", pressure))
-	_expect(summary.contains("GDP/min") and reason.contains("断路") and reason.contains("压力"), "GDP/min summary and pressure explanation remain available")
-	_expect(_is_data_only(parameters) and _is_data_only(pressure) and not bool(debug.get("legacy_formula_fallback_used", true)), "GDP controller outputs pure data and never uses a legacy fallback")
+	var retired := retired_packed.instantiate()
+	root.add_child(retired)
+	var retired_debug: Dictionary = retired.call("debug_snapshot")
+	_expect(
+		bool(retired_debug.get("retired", false))
+		and str(retired_debug.get("retired_by", "")) == "SS06-02B"
+		and str(retired_debug.get("replacement_owner", "")) == "CommodityFlowRuntimeController.sale_receipts"
+		and not retired.has_method("calculate_city_gdp")
+		and not retired.has_method("calculate_transit_gdp"),
+		"GdpFormulaRuntimeController exposes only its audited retirement marker"
+	)
 
-	controller.queue_free()
+	var current := current_packed.instantiate()
+	root.add_child(current)
+	current.call("configure", RULESET_PROFILE.call("debug_snapshot"))
+	var current_debug: Dictionary = current.call("debug_snapshot")
+	var public_receipts: Array = current.call("recent_sale_receipts_snapshot", -1)
+	var region_gdp: Dictionary = current.call("region_gdp_snapshot", "region.0001")
+	_expect(
+		current.has_method("advance_world")
+		and current.has_method("recent_sale_receipts_snapshot")
+		and current.has_method("region_gdp_snapshot")
+		and current.has_method("to_save_data")
+		and bool(current_debug.get("controller_authoritative", false))
+		and str(current_debug.get("runtime_owner", "")) == "CommodityFlowRuntimeController",
+		"CommodityFlowRuntimeController owns Sale Receipts and receipt-derived GDP"
+	)
+	_expect(
+		public_receipts.is_empty()
+		and int(region_gdp.get("region_gdp_per_minute_cents", -1)) == 0
+		and _is_data_only(current_debug)
+		and _is_data_only(region_gdp),
+		"empty current-owner snapshots are pure data and do not synthesize legacy project GDP"
+	)
+
+	var coordinator_source := FileAccess.get_file_as_string(COORDINATOR_SCENE)
+	_expect(
+		coordinator_source.contains("CommodityFlowRuntimeController.tscn")
+		and not coordinator_source.contains("GdpFormulaRuntimeController.tscn"),
+		"GameRuntimeCoordinator composes only the current GDP owner"
+	)
+
+	retired.queue_free()
+	current.queue_free()
 	await process_frame
-	if _failures.is_empty():
-		print("GDP formula runtime controller test passed.")
-	else:
-		for failure in _failures:
-			push_error(failure)
-	quit(_failures.size())
-
-
-func _input(overrides: Dictionary) -> Dictionary:
-	var result := {
-		"active": true,
-		"destroyed": false,
-		"region_id": "region.0001",
-		"production_projects": [],
-		"demand_projects": [],
-		"commerce_projects": [],
-		"adjustments": [],
-	}
-	result.merge(overrides, true)
-	return result
-
-
-func _project(direction: String, product_id: String, slot_index: int, generation: int) -> Dictionary:
-	var slot_id := "region.0001.slot.%s.%d" % [direction, slot_index]
-	return {
-		"active": true,
-		"project_id": "%s.project.g%d" % [slot_id, generation],
-		"slot_id": slot_id,
-		"generation": generation,
-		"product_id": product_id,
-		"direction": direction,
-	}
-
-
-func _adjustment(source_kind: String, amount: int) -> Dictionary:
-	return {"source_kind": source_kind, "amount_gdp_per_minute": amount}
-
-
-func _transit(price: int, amount: float, speed: float) -> Dictionary:
-	return {"price": price, "flow_amount": amount, "transport_speed": speed, "disrupted": false, "destination_is_district": false, "path_contains_district": true}
+	_finish()
 
 
 func _expect(condition: bool, message: String) -> void:
+	_checks += 1
 	if condition:
-		print("PASS: %s" % message)
-	else:
-		_failures.append(message)
-		print("FAIL: %s" % message)
+		return
+	_failures.append(message)
+	print("FAIL: %s" % message)
+
+
+func _finish() -> void:
+	if _failures.is_empty():
+		print("GDP_FORMULA_RUNTIME_RETIREMENT_TEST|status=PASS|checks=%d|failures=0" % _checks)
+		quit(0)
+		return
+	print("GDP_FORMULA_RUNTIME_RETIREMENT_TEST|status=FAIL|checks=%d|failures=%d|details=%s" % [_checks, _failures.size(), JSON.stringify(_failures)])
+	quit(1)
 
 
 func _is_data_only(value: Variant) -> bool:

@@ -503,14 +503,12 @@ const ECONOMY_CASHFLOW_RUNTIME_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/econ
 const ECONOMY_CASHFLOW_RUNTIME_CUTOVER_BENCH_SCENE := "res://scenes/tools/EconomyCashflowRuntimeCutoverBench.tscn"
 const ECONOMY_CASHFLOW_RUNTIME_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/economy_cashflow_runtime_cutover/"
 const ECONOMY_CASHFLOW_RUNTIME_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/economy_cashflow_runtime_cutover_sprint_4.png"
-const GDP_FORMULA_PROFILE_SCRIPT := "res://scripts/economy/gdp_formula_profile_v05_resource.gd"
-const GDP_FORMULA_PROFILE_RESOURCE := "res://resources/economy/space_syndicate_gdp_formula_v05.tres"
 const GDP_FORMULA_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/gdp_formula_runtime_controller.gd"
 const GDP_FORMULA_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/GdpFormulaRuntimeController.tscn"
-const GDP_FORMULA_RUNTIME_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/gdp_formula_runtime_cutover_bench.gd"
-const GDP_FORMULA_RUNTIME_CUTOVER_BENCH_SCENE := "res://scenes/tools/GdpFormulaRuntimeCutoverBench.tscn"
-const GDP_FORMULA_RUNTIME_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/gdp_formula_runtime_cutover/"
-const GDP_FORMULA_RUNTIME_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/structured_project_gdp_v05_sprint_3.png"
+const COMMODITY_FLOW_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/commodity_flow_runtime_controller.gd"
+const COMMODITY_FLOW_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/CommodityFlowRuntimeController.tscn"
+const COMMODITY_FLOW_LOCAL_BASELINE_TEST := "res://tests/commodity_flow_local_baseline_demand_v06_test.gd"
+const COMMODITY_FLOW_RUNTIME_CONTRACT := "res://docs/installed_commodity_continuous_economy_runtime_contract.md"
 const SCENARIO_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/scenario_runtime_controller.gd"
 const SCENARIO_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/ScenarioRuntimeController.tscn"
 const SCENARIO_RUNTIME_GLUE_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/scenario_runtime_glue_cutover_bench.gd"
@@ -617,8 +615,10 @@ const MILITARY_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/military_runt
 const MILITARY_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/MilitaryRuntimeController.tscn"
 const MILITARY_RUNTIME_WORLD_BRIDGE_SCRIPT := "res://scripts/runtime/military_runtime_world_bridge.gd"
 const MILITARY_RUNTIME_WORLD_BRIDGE_SCENE := "res://scenes/runtime/MilitaryRuntimeWorldBridge.tscn"
-const MILITARY_RUNTIME_CHARACTERIZATION_OUTPUT_DIR := "user://space_syndicate_design_qa/military_runtime_characterization/"
-const MILITARY_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH := "user://space_syndicate_design_qa/military_runtime_hard_cutover_sprint_47.png"
+const MILITARY_CARD_RUNTIME_V06_TEST := "res://tests/military_card_runtime_v06_test.gd"
+const MONSTER_MILITARY_CARD_RUNTIME_V06_BENCH_SCRIPT := "res://scripts/tools/monster_military_card_runtime_v06_bench.gd"
+const MONSTER_MILITARY_CARD_RUNTIME_V06_BENCH_SCENE := "res://scenes/tools/MonsterMilitaryCardRuntimeV06Bench.tscn"
+const MONSTER_MILITARY_CARD_RUNTIME_V06_CONTRACT := "res://docs/monster_military_card_runtime_v06_contract.md"
 const WEATHER_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT := "res://scripts/tools/weather_runtime_characterization_bench.gd"
 const WEATHER_RUNTIME_CHARACTERIZATION_BENCH_SCENE := "res://scenes/tools/WeatherRuntimeCharacterizationBench.tscn"
 const WEATHER_RUNTIME_OWNERSHIP_CONTRACT := "res://docs/weather_runtime_ownership_contract.md"
@@ -9872,135 +9872,35 @@ func _check_economy_cashflow_runtime_cutover_component() -> void:
 
 func _check_gdp_formula_runtime_cutover_component() -> void:
 	for path in [
-		GDP_FORMULA_PROFILE_SCRIPT,
-		GDP_FORMULA_PROFILE_RESOURCE,
 		GDP_FORMULA_RUNTIME_CONTROLLER_SCRIPT,
 		GDP_FORMULA_RUNTIME_CONTROLLER_SCENE,
-		GDP_FORMULA_RUNTIME_CUTOVER_BENCH_SCRIPT,
-		GDP_FORMULA_RUNTIME_CUTOVER_BENCH_SCENE,
+		COMMODITY_FLOW_RUNTIME_CONTROLLER_SCRIPT,
+		COMMODITY_FLOW_RUNTIME_CONTROLLER_SCENE,
+		COMMODITY_FLOW_LOCAL_BASELINE_TEST,
 	]:
-		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for GDP Formula Runtime Cutover" % path)
-	var profile := load(GDP_FORMULA_PROFILE_RESOURCE) as Resource
-	_expect(profile != null and profile.has_method("to_dictionary") and profile.has_method("validate_profile"), "GDP Formula Profile is Inspector-editable and exposes pure parameter/validation APIs")
-	if profile != null:
-		var parameters: Dictionary = profile.call("to_dictionary")
-		_expect(str(parameters.get("profile_id", "")) == "gdp_formula_v05" and int(parameters.get("product_base_revenue", 0)) == 42 and int(parameters.get("product_rank_revenue", 0)) == 12 and int(parameters.get("demand_supply_revenue", 0)) == 28 and int(parameters.get("transit_gdp_base", 0)) == 18 and int(parameters.get("competition_penalty", 0)) == 16 and int(parameters.get("trade_disruption_penalty", 0)) == 55 and int(parameters.get("district_damage_penalty", 0)) == 18 and bool(parameters.get("zero_gdp_allowed", false)) and not parameters.has("minimum_city_gdp"), "GDP Formula Profile preserves characterized arithmetic while enabling v0.5 zero-GDP structured rows")
-		_expect(not _variant_contains_callable(parameters) and not _variant_contains_object(parameters), "GDP Formula Profile emits pure parameter data")
-	var bridge_packed := load(RULESET_RUNTIME_BRIDGE_SCENE) as PackedScene
-	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
-	var bridge := bridge_packed.instantiate() if bridge_packed != null else null
-	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
-	if coordinator != null and bridge != null:
-		coordinator.call("configure", bridge.call("debug_snapshot"))
-		var controller := coordinator.get_node_or_null("GdpFormulaRuntimeController")
-		var required_methods := ["configure", "parameters_snapshot", "empty_breakdown", "calculate_city_gdp", "calculate_transit_gdp", "breakdown_summary", "change_reason_text", "debug_snapshot"]
-		var methods_ok := controller != null and controller.scene_file_path == GDP_FORMULA_RUNTIME_CONTROLLER_SCENE
-		for method_name in required_methods:
-			methods_ok = methods_ok and controller != null and controller.has_method(method_name)
-		_expect(methods_ok, "GdpFormulaRuntimeController is an editable scene owner with formula, transit, summary, and debug APIs")
-		var production_project := {"active": true, "project_id": "region.0001.slot.production.0.project.g1", "slot_id": "region.0001.slot.production.0", "generation": 1, "product_id": "星露莓", "direction": "production", "price": 100, "rank": 1, "production_factor": 1.0, "supply_demand_ratio": 1.0, "transport_speed": 1.0}
-		var demand_project := {"active": true, "project_id": "region.0001.slot.demand.0.project.g1", "slot_id": "region.0001.slot.demand.0", "generation": 1, "product_id": "月壤葡萄", "direction": "demand", "price": 80, "flow_amount": 1.0, "consumption_factor": 1.0, "supply_availability_ratio": 1.0, "flow_speed": 1.0, "route_available": true, "disrupted": false}
-		var commerce_project := {"active": true, "project_id": "region.0001.slot.commerce.0.project.g1", "slot_id": "region.0001.slot.commerce.0", "generation": 1, "product_id": "星露莓", "direction": "commerce", "transit_routes": [{"price": 100, "flow_amount": 1.0, "transport_speed": 1.0, "disrupted": false, "destination_is_district": false, "path_contains_district": true}]}
-		var base_input := {"active": true, "destroyed": false, "region_id": "region.0001", "production_projects": [], "demand_projects": [], "commerce_projects": [], "adjustments": []}
-		var production_input: Dictionary = base_input.duplicate(true)
-		production_input["production_projects"] = [production_project]
-		var demand_input: Dictionary = base_input.duplicate(true)
-		demand_input["demand_projects"] = [demand_project]
-		var transit_input: Dictionary = base_input.duplicate(true)
-		transit_input["commerce_projects"] = [commerce_project]
-		var pressure_input: Dictionary = base_input.duplicate(true)
-		pressure_input.merge({"adjustments": [{"source_kind": "legacy_revenue_bonus", "amount_gdp_per_minute": 100}], "competition_matches": 2, "disrupted_route_count": 1, "district_damage": 1}, true)
-		var production: Dictionary = coordinator.call("calculate_city_gdp", production_input)
-		var demand: Dictionary = coordinator.call("calculate_city_gdp", demand_input)
-		var transit: Dictionary = coordinator.call("calculate_city_gdp", transit_input)
-		var pressure: Dictionary = coordinator.call("calculate_city_gdp", pressure_input)
-		_expect(int(production.get("product", 0)) == 36 and int(production.get("net", 0)) == 36 and (production.get("gdp_rows", []) as Array).size() == 1, "controller emits one stable production-project GDP row without an active-city floor")
-		_expect(int(demand.get("route", 0)) == 27 and int(transit.get("transit", 0)) == 23, "controller preserves demand and transit arithmetic")
-		_expect(int(pressure.get("penalty", 0)) == 100 and int(pressure.get("unabsorbed_penalty", 0)) == 5 and int(pressure.get("net", -1)) == 0, "controller allocates pressure deterministically and permits zero regional GDP")
-		var debug: Dictionary = controller.call("debug_snapshot") if controller != null else {}
-		_expect(bool(debug.get("controller_authoritative", false)) and not bool(debug.get("legacy_formula_fallback_used", true)), "GDP formula controller is authoritative with legacy fallback inactive")
-		_expect(not _variant_contains_callable(production) and not _variant_contains_object(production) and not _variant_contains_callable(pressure) and not _variant_contains_object(pressure), "GDP formula inputs and outputs remain pure data")
-		coordinator.free()
-		bridge.free()
-	var main_packed := load("res://scenes/main.tscn") as PackedScene
-	if main_packed != null:
-		var main := main_packed.instantiate() as Control
-		var main_controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GdpFormulaRuntimeController") if main != null else null
-		_expect(main_controller != null and main_controller.scene_file_path == GDP_FORMULA_RUNTIME_CONTROLLER_SCENE, "main.tscn composes GdpFormulaRuntimeController under GameRuntimeCoordinator")
-		if main != null:
-			main.free()
-	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	for legacy_token in ["CITY_PRODUCT_BASE_REVENUE", "CITY_PRODUCT_LEVEL_REVENUE", "CITY_DEMAND_SUPPLY_REVENUE", "CITY_PRODUCT_PRICE_REVENUE_DIVISOR", "CITY_DEMAND_PRICE_REVENUE_DIVISOR", "CITY_PRODUCTION_GDP_SCALE", "CITY_CONSUMPTION_GDP_SCALE", "CITY_TRANSIT_GDP_BASE", "CITY_TRANSIT_PRICE_DIVISOR", "CITY_COMPETITION_PENALTY", "TRADE_DISRUPTION_PENALTY", "CITY_DAMAGE_GDP_PENALTY", "CITY_MINIMUM_INCOME", "func _district_transit_gdp"]:
-		_expect(not main_source.contains(legacy_token), "main.gd no longer owns GDP formula token %s" % legacy_token)
-	var city_trade_network_source := FileAccess.get_file_as_string(CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCRIPT)
-	_expect(not main_source.contains("func _city_gdp_formula_snapshot") and city_trade_network_source.contains("func gdp_formula_snapshot(") and city_trade_network_source.contains("calculate_city_gdp") and main_source.contains("gdp_formula_breakdown_summary") and main_source.contains("gdp_formula_change_reason_text"), "CityTradeNetworkRuntimeController assembles GDP facts while main.gd retains only display compatibility delegation")
-	var nonblank := 0
-	var function_count := 0
-	var variable_count := 0
-	var constant_count := 0
-	for line in main_source.split("\n"):
-		if line.strip_edges() != "":
-			nonblank += 1
-		if line.begins_with("func "):
-			function_count += 1
-		elif line.begins_with("var "):
-			variable_count += 1
-		elif line.begins_with("const "):
-			constant_count += 1
-	_expect(nonblank < 46661 and function_count <= 2219 and variable_count <= 255 and constant_count < 342, "main.gd passes Sprint 6 GDP formula deletion metrics")
-	var bench_packed := load(GDP_FORMULA_RUNTIME_CUTOVER_BENCH_SCENE) as PackedScene
-	if bench_packed != null:
-		var bench := bench_packed.instantiate() as Control
-		bench.set("auto_run", false)
-		root.add_child(bench)
-		await process_frame
-		_expect(bench.has_method("output_dir") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "GdpFormulaRuntimeCutoverBench exposes required QA APIs")
-		var expected_cases := ["profile_scene_composition", "profile_v05_identity", "profile_schema_version", "no_minimum_floor_parameter", "product_catalog_ready", "inactive_city_zero", "destroyed_city_zero", "neutral_adjustment_row", "production_project_row", "demand_project_row", "commerce_project_row", "production_baseline_exact", "production_rank_direction", "production_factor_direction", "production_transport_direction", "demand_baseline_exact", "demand_missing_route_zero", "demand_flow_direction", "demand_speed_direction", "commerce_baseline_exact", "commerce_destination_excluded", "commerce_path_excluded", "competition_penalty_exact", "route_disruption_penalty_exact", "damage_penalty_exact", "control_pressure_exact", "military_pressure_exact", "zero_gdp_no_floor", "unabsorbed_penalty_reported", "row_conservation", "deterministic_pressure_allocation", "stable_receipt_identity", "product_industry_mapping", "unknown_product_fails_closed", "missing_project_identity_fails_closed", "duplicate_receipt_rejected", "project_attribution_conservation", "share_rounding_remainder_is_neutral", "public_private_attribution_boundary", "runtime_owner_and_legacy_absence"]
-		var cases: Array = bench.call("cutover_cases")
-		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
-		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
-		var fields_ok := records.size() == 40
-		for record_variant in records:
-			var record: Dictionary = record_variant if record_variant is Dictionary else {}
-			for key in ["case_id", "region_id", "row_count", "region_gdp_per_minute", "project_gdp_per_minute", "player_gdp_per_minute", "neutral_gdp_per_minute", "conservation_checked", "receipt_checked", "privacy_checked", "main_delegation_checked", "pure_data_checked", "controller_ready", "legacy_fallback_used", "passed", "notes"]:
-				fields_ok = fields_ok and record.has(key)
-		_expect(cases == expected_cases and str(bench.call("output_dir")) == GDP_FORMULA_RUNTIME_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == GDP_FORMULA_RUNTIME_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "GdpFormulaRuntimeCutoverBench defines 40 pure-data SS05-03 cases and user:// outputs")
-		root.remove_child(bench)
-		bench.queue_free()
-	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
-	var audit: RefCounted = audit_script.new() if audit_script != null else null
-	if audit != null:
-		var record: Dictionary = audit.call("record_for_id", "gdp_formula_runtime_ownership_gate")
-		_expect(str(record.get("current_scene_path", "")) == GDP_FORMULA_RUNTIME_CONTROLLER_SCENE and str(record.get("sceneization_status", "")) == "full", "Sceneization Audit marks GDP formula runtime ownership complete")
-	var mcp_registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
-	var mcp_registry: RefCounted = mcp_registry_script.new() if mcp_registry_script != null else null
-	if mcp_registry != null:
-		var scene_paths: Array[String] = mcp_registry.call("scene_paths")
-		_expect(scene_paths.has(GDP_FORMULA_RUNTIME_CONTROLLER_SCENE) and scene_paths.has(GDP_FORMULA_RUNTIME_CUTOVER_BENCH_SCENE), "MCP registry includes GDP Formula Controller and Cutover Bench")
-	var doc_source := FileAccess.get_file_as_string(MAIN_RUNTIME_REPLACEMENT_DOC)
-	_expect(doc_source.contains("SS05-03: Structured Project GDP Hard Cutover") and doc_source.contains("GdpFormulaRuntimeController") and doc_source.contains("108/108"), "main runtime replacement document records the SS05-03 structured GDP boundary")
-	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
-	if dock_packed != null:
-		var viewport := SubViewport.new()
-		viewport.size = Vector2i(380, 760)
-		root.add_child(viewport)
-		var dock := dock_packed.instantiate() as Control
-		viewport.add_child(dock)
-		await process_frame
-		for button_name in ["OpenGdpFormulaRuntimeControllerButton", "RunGdpFormulaRuntimeCutoverBenchButton", "OpenGdpFormulaRuntimeCutoverOutputFolderButton"]:
-			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
-		var controller_paths: Array[String] = []
-		var bench_paths: Array[String] = []
-		dock.connect("open_gdp_formula_runtime_controller_requested", func(scene_path: String) -> void: controller_paths.append(scene_path))
-		dock.connect("run_gdp_formula_runtime_cutover_bench_requested", func(scene_path: String) -> void: bench_paths.append(scene_path))
-		(dock.find_child("OpenGdpFormulaRuntimeControllerButton", true, false) as Button).emit_signal("pressed")
-		(dock.find_child("RunGdpFormulaRuntimeCutoverBenchButton", true, false) as Button).emit_signal("pressed")
-		await process_frame
-		_expect(controller_paths == [GDP_FORMULA_RUNTIME_CONTROLLER_SCENE] and bench_paths == [GDP_FORMULA_RUNTIME_CUTOVER_BENCH_SCENE], "Design QA Dock fallback signals emit GDP Formula Controller and Bench paths")
-		viewport.remove_child(dock)
-		dock.queue_free()
-		root.remove_child(viewport)
-		viewport.queue_free()
+		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for GDP owner retirement/current gate" % path)
+	_expect(FileAccess.file_exists(COMMODITY_FLOW_RUNTIME_CONTRACT), "Commodity Flow ownership contract exists")
+	var retired_packed := load(GDP_FORMULA_RUNTIME_CONTROLLER_SCENE) as PackedScene
+	var retired := retired_packed.instantiate() if retired_packed != null else null
+	if retired != null:
+		var retired_debug: Dictionary = retired.call("debug_snapshot")
+		_expect(bool(retired_debug.get("retired", false)) and str(retired_debug.get("retired_by", "")) == "SS06-02B" and str(retired_debug.get("replacement_owner", "")) == "CommodityFlowRuntimeController.sale_receipts" and not retired.has_method("calculate_city_gdp"), "GdpFormulaRuntimeController remains a loadable retired marker without the deleted formula API")
+		retired.free()
+	var current_packed := load(COMMODITY_FLOW_RUNTIME_CONTROLLER_SCENE) as PackedScene
+	var current := current_packed.instantiate() if current_packed != null else null
+	if current != null:
+		var current_profile := load(RULESET_V06_PROFILE)
+		current.call("configure", current_profile.call("debug_snapshot") if current_profile != null else {})
+		var current_debug: Dictionary = current.call("debug_snapshot")
+		var public_receipts: Array = current.call("recent_sale_receipts_snapshot", -1)
+		var region_gdp: Dictionary = current.call("region_gdp_snapshot", "region.0001")
+		_expect(current.has_method("advance_world") and current.has_method("recent_sale_receipts_snapshot") and current.has_method("region_gdp_snapshot") and current.has_method("to_save_data") and bool(current_debug.get("controller_authoritative", false)) and str(current_debug.get("runtime_owner", "")) == "CommodityFlowRuntimeController", "CommodityFlowRuntimeController is the current Sale Receipt and receipt-GDP owner")
+		_expect(public_receipts.is_empty() and int(region_gdp.get("region_gdp_per_minute_cents", -1)) == 0 and not _variant_contains_callable(current_debug) and not _variant_contains_object(current_debug) and not _variant_contains_callable(region_gdp) and not _variant_contains_object(region_gdp), "current GDP and public receipt snapshots are pure data without synthetic legacy project rows")
+		current.free()
+	var coordinator_scene_source := FileAccess.get_file_as_string(GAME_RUNTIME_COORDINATOR_SCENE)
+	_expect(coordinator_scene_source.contains("CommodityFlowRuntimeController.tscn") and not coordinator_scene_source.contains("GdpFormulaRuntimeController.tscn"), "GameRuntimeCoordinator composes the current CommodityFlow owner and keeps the retired GDP formula owner absent")
+	var contract_source := FileAccess.get_file_as_string(COMMODITY_FLOW_RUNTIME_CONTRACT)
+	_expect(contract_source.contains("SS06-02B") and contract_source.contains("Sale Receipt") and contract_source.contains("Public receipt snapshots remove commodity owner"), "current ownership contract records receipt-derived GDP and the public receipt privacy boundary")
 
 
 func _check_scenario_runtime_glue_cutover_component() -> void:
@@ -11343,34 +11243,20 @@ func _check_monster_runtime_characterization_component() -> void:
 
 
 func _check_military_runtime_characterization_component() -> void:
-	for path in [MILITARY_RUNTIME_CONTROLLER_SCRIPT, MILITARY_RUNTIME_CONTROLLER_SCENE, MILITARY_RUNTIME_WORLD_BRIDGE_SCRIPT, MILITARY_RUNTIME_WORLD_BRIDGE_SCENE, MILITARY_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT, MILITARY_RUNTIME_CHARACTERIZATION_BENCH_SCENE, MILITARY_RUNTIME_OWNERSHIP_CONTRACT]:
+	for path in [MILITARY_RUNTIME_CONTROLLER_SCRIPT, MILITARY_RUNTIME_CONTROLLER_SCENE, MILITARY_RUNTIME_WORLD_BRIDGE_SCRIPT, MILITARY_RUNTIME_WORLD_BRIDGE_SCENE, MILITARY_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT, MILITARY_RUNTIME_CHARACTERIZATION_BENCH_SCENE, MILITARY_RUNTIME_OWNERSHIP_CONTRACT, MILITARY_CARD_RUNTIME_V06_TEST, MONSTER_MILITARY_CARD_RUNTIME_V06_BENCH_SCRIPT, MONSTER_MILITARY_CARD_RUNTIME_V06_BENCH_SCENE, MONSTER_MILITARY_CARD_RUNTIME_V06_CONTRACT]:
 		_expect(ResourceLoader.exists(path) or FileAccess.file_exists(path), "%s exists for Military Runtime Characterization" % path)
 		if not path.ends_with(".md"):
 			_expect(load(path) != null, "%s loads for Military Runtime Characterization" % path)
-	var packed := load(MILITARY_RUNTIME_CHARACTERIZATION_BENCH_SCENE) as PackedScene
-	if packed != null:
-		var bench := packed.instantiate() as Control
-		bench.set("auto_run", false)
-		root.add_child(bench)
-		await process_frame
-		for node_name in ["RuntimeMainHost", "SummaryLabel", "StatusLabel", "OwnershipText", "CasesText"]:
-			_expect(bench.find_child(node_name, true, false) != null, "MilitaryRuntimeCharacterizationBench statically owns %s" % node_name)
-		_expect(bench.has_method("output_dir") and bench.has_method("screenshot_path") and bench.has_method("characterization_cases") and bench.has_method("build_characterization_manifest_preview") and bench.has_method("run_characterization_suite") and bench.has_method("run_suite"), "MilitaryRuntimeCharacterizationBench exposes the long-lived characterization API")
-		var cases: Array = bench.call("characterization_cases")
-		var required_cases := ["seven_real_military_families_exist", "rank_i_to_iv_progression", "unit_creation_shape_and_uid", "control_limit_rejects_atomically", "movement_starts_linear_not_teleport", "movement_arrival_commits_position", "bound_commands_granted", "move_command_causes_no_implicit_damage", "gdp_pressure_applies_once", "strike_district_is_explicit", "strike_route_is_explicit", "attack_monster_routes_to_monster_controller", "monster_damage_applies_exactly_once", "card_inventory_remains_command_slot_owner", "current_save_shape", "legacy_save_defaults", "private_owner_and_ai_plan_not_exposed", "sprint47_deletion_candidates_complete", "controller_scene_composition", "controller_api_contract", "coordinator_static_composition", "roster_owner_cutover", "lifecycle_owner_cutover", "movement_owner_cutover", "command_owner_cutover", "inventory_invalidation_routes_once", "monster_damage_routes_once", "save_owner_cutover", "ai_controller_binding", "pure_debug_snapshot", "main_legacy_military_absent"]
-		var cases_ok := cases.size() == 50
-		for case_id in required_cases:
-			cases_ok = cases_ok and cases.has(case_id)
-		var manifest: Dictionary = bench.call("build_characterization_manifest_preview")
-		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
-		var fields_ok := records.size() == 50
-		for record_variant in records:
-			var record: Dictionary = record_variant
-			for key in ["case_id", "card_id", "unit_uid", "command", "start_district", "target_district", "unit_count_delta", "duration_delta", "cooldown_delta", "gdp_pressure_delta", "district_damage_delta", "route_damage_delta", "monster_damage_delta", "inventory_checked", "monster_controller_checked", "ai_route_checked", "save_checked", "privacy_checked", "pure_data_checked", "observed", "contract_aligned", "needs_design_decision", "risk", "notes"]:
-				fields_ok = fields_ok and record.has(key)
-		_expect(cases_ok and fields_ok and int(manifest.get("case_count", 0)) == 50 and str(bench.call("output_dir")) == MILITARY_RUNTIME_CHARACTERIZATION_OUTPUT_DIR and str(bench.call("screenshot_path")) == MILITARY_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH and bool(manifest.get("runtime_cutover_enabled", false)) and str(manifest.get("runtime_owner", "")) == MILITARY_RUNTIME_CONTROLLER_SCRIPT and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "MilitaryRuntimeCharacterizationBench defines 50 pure-data behavior and hard-cutover checks with user:// outputs")
-		root.remove_child(bench)
-		bench.queue_free()
+	var legacy_packed := load(MILITARY_RUNTIME_CHARACTERIZATION_BENCH_SCENE) as PackedScene
+	_expect(legacy_packed != null, "historical MilitaryRuntimeCharacterizationBench remains parse-loadable without serving as the current behavior oracle")
+	var current_packed := load(MONSTER_MILITARY_CARD_RUNTIME_V06_BENCH_SCENE) as PackedScene
+	var current_bench: Node = current_packed.instantiate() if current_packed != null else null
+	if current_bench != null:
+		var attached_script := current_bench.get_script() as Script
+		_expect(attached_script != null and attached_script.resource_path == MONSTER_MILITARY_CARD_RUNTIME_V06_BENCH_SCRIPT and load(MILITARY_CARD_RUNTIME_V06_TEST) is Script, "layout delegates Military v0.6 behavior to the owner-focused test and independent current bench")
+		current_bench.free()
+	var current_contract_source := FileAccess.get_file_as_string(MONSTER_MILITARY_CARD_RUNTIME_V06_CONTRACT)
+	_expect(current_contract_source.contains("military_owner_atomic_contract_missing") and current_contract_source.contains("atomic_mutation_ready") and current_contract_source.contains("隐私与三层 receipt"), "current Military card contract keeps real-owner capability fail-closed and privacy-filtered")
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 	var military_source := FileAccess.get_file_as_string(MILITARY_RUNTIME_CONTROLLER_SCRIPT)
 	_expect(main_source.sha256_text() != "22b6579f07eea66a8905ad2ec075b68de1c6d4ad2150a933d44c059164db7c25" and not main_source.contains("var military_units := []") and not main_source.contains("func _trigger_military_command(") and military_source.contains("var military_units: Array = []") and military_source.contains("func trigger_command("), "Sprint 47 makes MilitaryRuntimeController authoritative and removes the legacy main military engine")

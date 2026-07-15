@@ -609,18 +609,18 @@ func _case_guard() -> Dictionary:
 func _case_gdp_once() -> Dictionary:
 	var district_index := _prepare_city(0)
 	var unit := _make_unit("轨道轰炸机3", 0, district_index, 46010)
-	var first := _military_controller.apply_gdp_pressure(unit, district_index, "strike_district", "anonymous-test")
+	var first: int = int(_military_controller.apply_gdp_pressure(unit, district_index, "strike_district", "anonymous-test"))
 	var city_first: Dictionary = ((_runtime_main.get("districts") as Array)[district_index] as Dictionary).get("city", {})
-	var second := _military_controller.apply_gdp_pressure(unit, district_index, "strike_district", "anonymous-test")
+	var second: int = int(_military_controller.apply_gdp_pressure(unit, district_index, "strike_district", "anonymous-test"))
 	var city_second: Dictionary = ((_runtime_main.get("districts") as Array)[district_index] as Dictionary).get("city", {})
-	var observed := first > 0 and second == first and int(city_first.get("military_gdp_penalty", 0)) == first and int(city_second.get("military_gdp_penalty", 0)) == first and is_equal_approx(float(city_first.get("military_pressure_until", 0.0)), float(city_second.get("military_pressure_until", 0.0)))
+	var observed: bool = first > 0 and second == first and int(city_first.get("military_gdp_penalty", 0)) == first and int(city_second.get("military_gdp_penalty", 0)) == first and is_equal_approx(float(city_first.get("military_pressure_until", 0.0)), float(city_second.get("military_pressure_until", 0.0)))
 	return _record("gdp_pressure_applies_once", observed, observed, "Repeated pressure uses max semantics rather than stacking the same penalty additively.", {"card_id": "轨道轰炸机3", "unit_uid": 46010, "command": "strike_district", "target_district": district_index, "gdp_pressure_delta": first})
 
 
 func _case_gdp_expiry() -> Dictionary:
 	var district_index := _prepare_city(0)
 	var unit := _make_unit("制空战斗机1", 0, district_index, 46011)
-	var pressure := _military_controller.apply_gdp_pressure(unit, district_index, "move", "anonymous-test")
+	var pressure: int = int(_military_controller.apply_gdp_pressure(unit, district_index, "move", "anonymous-test"))
 	var city: Dictionary = ((_runtime_main.get("districts") as Array)[district_index] as Dictionary).get("city", {})
 	var until := float(city.get("military_pressure_until", 0.0))
 	_runtime_main.set("game_time", until + 0.1)
@@ -628,7 +628,7 @@ func _case_gdp_expiry() -> Dictionary:
 	if market_controller != null:
 		market_controller.call("age_economic_boons", 0.1)
 	var expired_city: Dictionary = ((_runtime_main.get("districts") as Array)[district_index] as Dictionary).get("city", {})
-	var observed := pressure > 0 and until > 0.0 and int(expired_city.get("military_gdp_penalty", -1)) == 0 and str(expired_city.get("military_pressure_source", "x")) == ""
+	var observed: bool = pressure > 0 and until > 0.0 and int(expired_city.get("military_gdp_penalty", -1)) == 0 and str(expired_city.get("military_pressure_source", "x")) == ""
 	return _record("gdp_pressure_duration_and_expiry", observed, observed, "Military GDP pressure records an absolute expiry and the existing economy aging pass clears penalty and source after it elapses.", {"card_id": "制空战斗机1", "unit_uid": 46011, "gdp_pressure_delta": pressure, "duration_delta": until})
 
 
