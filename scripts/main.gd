@@ -12321,7 +12321,7 @@ func _runtime_first_run_coach_primary_action(player_index: int, progress: Dictio
 		"buy_card":
 			var buyable_district := _first_teachable_buyable_district_for_player(player_index)
 			var buyable_card := _first_teachable_buyable_district_card(buyable_district, player_index)
-			var fallback_district := _first_buyable_district_for_player(player_index)
+			var fallback_district := _first_card_accessible_district_for_player(player_index)
 			var fallback_card := _first_run_teaching_card_name()
 			var can_prepare_teaching_card := buyable_card != "" or (fallback_district >= 0 and fallback_card != "")
 			return {
