@@ -1836,7 +1836,7 @@ func _verify_ai_product_futures_policy(main: Node) -> bool:
 		"card_resolution_batch_locked": main.get("card_resolution_batch_locked") == true,
 		"card_resolution_auction_open": main.get("card_resolution_auction_open") == true,
 	}
-	var saved_ai_enabled := bool(main.get("ai_card_decision_enabled"))
+	var saved_ai_enabled: bool = main.get("ai_card_decision_enabled") == true
 	var ok := true
 	var failures := []
 	main.set("ai_card_decision_enabled", true)
