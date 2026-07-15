@@ -2322,7 +2322,24 @@ func _check_sceneization_audit_and_card_track_sceneization_component() -> void:
 	_expect(shared_group_window_script != null, "SharedCardGroupWindow pure-data rule module loads")
 	if shared_group_window_script != null:
 		var shared_group_window := shared_group_window_script.new() as RefCounted
-		_expect(shared_group_window != null and str(shared_group_window.call("phase_for_remaining", 8.0)) == "organize" and str(shared_group_window.call("phase_for_remaining", 2.0)) == "lock", "SharedCardGroupWindow exposes the v0.5 six-second organize and two-second lock phases")
+		var standard_cadence: Dictionary = shared_group_window.call("cadence_for_sequence", 3) if shared_group_window != null else {}
+		var public_bid_boundary := float(standard_cadence.get("public_bid_seconds", 0.0)) + float(standard_cadence.get("lock_seconds", 0.0))
+		var lock_boundary := float(standard_cadence.get("lock_seconds", 0.0))
+		_expect(
+			shared_group_window != null
+			and int(standard_cadence.get("total_seconds", 0)) == 30
+			and int(standard_cadence.get("planning_seconds", 0)) == 20
+			and int(standard_cadence.get("public_bid_seconds", 0)) == 5
+			and int(standard_cadence.get("lock_seconds", 0)) == 5
+			and str(shared_group_window.call("phase_for_remaining", float(standard_cadence.get("total_seconds", 0.0)))) == "planning"
+			and str(shared_group_window.call("phase_for_remaining", public_bid_boundary)) == "public_bid"
+			and str(shared_group_window.call("phase_for_remaining", lock_boundary)) == "lock"
+			and bool(shared_group_window.call("submissions_open", float(standard_cadence.get("total_seconds", 0.0))))
+			and not bool(shared_group_window.call("submissions_open", public_bid_boundary))
+			and bool(shared_group_window.call("bidding_open", public_bid_boundary))
+			and not bool(shared_group_window.call("bidding_open", lock_boundary)),
+			"SharedCardGroupWindow exposes the authoritative v0.6 30/20/5/5 planning, public-bid, and lock cadence",
+		)
 
 	var runtime_resolution_script := load(RUNTIME_CARD_RESOLUTION_TRACK_FLOW_BENCH_SCRIPT) as Script
 	_expect(runtime_resolution_script != null, "RuntimeCardResolutionTrackFlowBench script loads")
