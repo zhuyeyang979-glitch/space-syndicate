@@ -19,7 +19,7 @@ the production settlement exactly once.
 |---|---:|---:|---:|
 | `scripts/main.gd` physical lines | 18,972 | 18,631 | -341 |
 | `scripts/main.gd` `func` declarations | 1,097 | 1,075 | -22 |
-| Full layout failure labels | 52 | 30 | -22 |
+| Full layout failure labels | 52 | 28 | -24 |
 | Full smoke retired Main references | 71 (`31` capture, `40` apply) | 61 (`27` capture, `34` apply) | -10 |
 
 The current Main reduction comes from the Product Codex public-source sceneization and
@@ -41,13 +41,13 @@ migrations do not count as Main reduction.
 - Layout ownership checks now use the current Military, CommodityFlow,
   RegionInfrastructure, RouteNetwork, and non-owning bridge boundaries. The full
   layout run has no parser or invalid-method failure.
-- The latest integrated full layout run completed in 51.554 seconds with ExitCode 1,
-  30 remaining assertion labels, no parser/API error, no timeout, and zero remaining
-  project processes. The fixed priority-bid fixtures and assertions are now physically
-  retired: the current gate verifies planning confirmation, both public-track pointers,
-  bid-board/public-track hover in both directions, stable selection, RightInspector
-  preview, and the single `card_group_ready` action. Evidence run:
-  `20260715-085651-117-layout_scene_smoke_test-a500ae37`.
+- The latest integrated full layout run completed in 58.040 seconds with ExitCode 1,
+  28 remaining assertion labels, no parser/API error, no timeout, and zero remaining
+  project processes. The fixed priority-bid fixtures are physically retired, the
+  RightInspector ViewModel gate now follows the authoritative sunlight-availability
+  explanation, and Card Codex consistently states that same-name same-rank cards can
+  be manually merged into an upgrade. Evidence run:
+  `20260715-091958-757-layout_scene_smoke_test-3de07bf8`.
 - The current Main composition gate passes. The latest role-focused gate and smoke
   `--check-only` also exit 0.
 - The real `FullRunQualityDriver` capability preflight exits `3` by design instead of
@@ -136,10 +136,15 @@ states at 1280x720, 1600x960, and 1920x1080. All 12 real `main.tscn` captures pa
 scene-tree, stable-frame, PNG pixel, public weather, machine-identifier, save-isolation,
 console, and process-cleanup gates. The complete evidence is in
 `reports/ui/production_acceptance/e_1280_table_readability_v2/after_acceptance.md`.
-This proves the scoped table and map presentation is readable at 1280. It does not yet
-prove that every first-run interaction, temporary decision window, economy workflow,
-countdown, and settlement can be completed at that resolution. Top-bar ellipsis and
-the economy overview's text density remain active findings.
+This proves the scoped table and map presentation is readable at 1280. The follow-up
+economy/TopBar pass now places KPI and decision summaries before the collapsible long
+evidence, restores the economy scroll position to the top on every reopen, and keeps
+table state, time, seat, cash, GDP, and victory goal visible while moving lower-priority
+district/action/weather details into a public `更多 3项` tooltip. Evidence is in
+`reports/ui/production_acceptance/e_1280_economy_topbar/e_1280_economy_topbar_acceptance.md`.
+This still does not prove that every first-run interaction, temporary decision window,
+countdown, and settlement can be completed at that resolution; that real core-path
+capture is the active E workstream.
 
 On local integration `14836e0`, Codex A independently reopened the final 1280
 dual-weather PNG at original resolution and reran `ui_text_smoke_test.gd`
@@ -163,7 +168,7 @@ that evidence is unavailable rather than invent a turning point or expose AI wei
 
 ## Remaining layout groups
 
-The 30 current labels include:
+The 28 current labels include:
 
 - RightInspector why/availability restoration;
 - one historical v0.5 SharedCardGroupWindow phase-duration contract;
@@ -171,8 +176,8 @@ The 30 current labels include:
 - historical Sprint 40 formula-dispatch and AI policy registry contracts;
 - historical 1280 coordinate assertions that still need migration to the now-green
   real-pixel production evidence;
-- live map, public-track, card play, and market purchase flows;
-- Card Codex/RightInspector presentation details.
+- live map, public-track, card play, market purchase, and private-discard flows;
+- split RightInspector scene restoration details.
 
 Each old oracle must be replaced with point-for-point current-owner evidence. Failure
 counts may not be reduced through ignore lists or by deleting a test without a new
