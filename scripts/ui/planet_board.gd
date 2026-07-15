@@ -3,10 +3,7 @@ class_name SpaceSyndicatePlanetBoard
 
 @onready var title_label: Label = %PlanetTitle
 @onready var hint_label: Label = %PlanetHint
-@onready var weather_forecast_bar: PanelContainer = %WeatherForecastBar
-@onready var weather_active_label: Label = %WeatherActiveLabel
-@onready var weather_forecast_label: Label = %WeatherForecastLabel
-@onready var weather_impact_label: Label = %WeatherImpactLabel
+@onready var weather_forecast_strip: Control = %WeatherForecastStrip
 @onready var stage_viewport: Control = %PlanetStageViewport
 @onready var map_host: Control = %MapHost
 @onready var embedded_map_view: Control = get_node_or_null("%PlanetMapView") as Control
@@ -44,6 +41,11 @@ var right_rail_suppressed := false
 
 func _ready() -> void:
 	_style_board()
+	if weather_forecast_strip != null:
+		if weather_forecast_strip.has_method("set_compact_mode"):
+			weather_forecast_strip.call("set_compact_mode", true)
+		if weather_forecast_strip.has_signal("region_jump_requested"):
+			weather_forecast_strip.connect("region_jump_requested", Callable(self, "_on_weather_region_jump_requested"))
 	_configure_pointer_passthrough_layers()
 	if map_host != null:
 		map_host.clip_contents = false
@@ -119,6 +121,7 @@ func attach_runtime_map(map_node: Control) -> void:
 	map_node.visible = true
 	map_node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	map_host.add_child(map_node)
+	embedded_map_view = map_node
 	map_node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_fit_square_stage()
 
@@ -126,7 +129,6 @@ func attach_runtime_map(map_node: Control) -> void:
 func _configure_pointer_passthrough_layers() -> void:
 	for node in [
 		playtest_flow_compass,
-		weather_forecast_bar,
 		left_space_rail,
 		right_space_rail,
 	]:
@@ -285,13 +287,6 @@ func _style_board() -> void:
 		if label != null:
 			label.add_theme_font_size_override("font_size", 10)
 			label.add_theme_color_override("font_color", Color("#cbd5e1"))
-	if weather_forecast_bar != null:
-		weather_forecast_bar.add_theme_stylebox_override("panel", _panel_style(Color("#38bdf8"), Color("#020617").lerp(Color("#38bdf8"), 0.08), 1, 6))
-	for label in [weather_active_label, weather_forecast_label, weather_impact_label]:
-		if label != null:
-			label.custom_minimum_size = Vector2(152, 0)
-			label.add_theme_font_size_override("font_size", 10)
-			label.add_theme_color_override("font_color", Color("#dbeafe"))
 	if playtest_flow_compass != null:
 		playtest_flow_compass.add_theme_stylebox_override("panel", _panel_style(Color("#facc15"), Color("#020617").lerp(Color("#facc15"), 0.10), 1, 6))
 	if playtest_flow_compass_title != null:
@@ -381,10 +376,36 @@ func _set_space_rail(stack: VBoxContainer, title: Label, fallback: Label, rail_d
 
 func _set_weather_strip(data_variant: Variant) -> void:
 	var data: Dictionary = data_variant if data_variant is Dictionary else {}
-	weather_active_label.text = str(data.get("active", "现在：无天气"))
-	weather_forecast_label.text = str(data.get("forecast", "预报：开局后生成"))
-	weather_impact_label.text = str(data.get("impact", "影响：产/交/消"))
-	weather_forecast_bar.tooltip_text = str(data.get("tooltip", "%s\n%s\n%s" % [weather_active_label.text, weather_forecast_label.text, weather_impact_label.text]))
+	if weather_forecast_strip != null:
+		weather_forecast_strip.tooltip_text = str(data.get("tooltip", "公开天气预报将在开局保护期后出现。"))
+
+
+func set_weather_presentation(forecast_view_model: Dictionary, overlay_view_model: Dictionary, motion_mode: String) -> void:
+	if weather_forecast_strip != null:
+		if weather_forecast_strip.has_method("set_view_model"):
+			weather_forecast_strip.call("set_view_model", forecast_view_model)
+		if weather_forecast_strip.has_method("set_motion_mode"):
+			weather_forecast_strip.call("set_motion_mode", motion_mode)
+	var map_view := _active_map_view()
+	if map_view != null:
+		if map_view.has_method("set_weather_overlay_view_model"):
+			map_view.call("set_weather_overlay_view_model", overlay_view_model)
+		if map_view.has_method("set_weather_overlay_motion_mode"):
+			map_view.call("set_weather_overlay_motion_mode", motion_mode)
+
+
+func _on_weather_region_jump_requested(region_index: int) -> void:
+	var map_view := _active_map_view()
+	if map_view != null and map_view.has_method("focus_weather_region"):
+		map_view.call("focus_weather_region", region_index)
+
+
+func _active_map_view() -> Control:
+	if map_host != null:
+		for child in map_host.get_children():
+			if child is Control and (child as Control).visible and (child as Control).has_method("set_map"):
+				return child as Control
+	return get_embedded_map_view()
 
 
 func _set_flow_compass(data_variant: Variant) -> void:

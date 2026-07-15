@@ -15,11 +15,14 @@ const MOTION_MODES := ["full", "reduced", "off"]
 @onready var _effect_labels: Array[Label] = [%EffectOne, %EffectTwo, %EffectThree]
 @onready var _exploitation_label: Label = %ExploitationLabel
 @onready var _counterplay_label: Label = %CounterplayLabel
+@onready var _effects_host: Control = get_node("Margin/Content/Effects") as Control
+@onready var _hints_host: Control = get_node("Margin/Content/Hints") as Control
 
 var _view_model: Dictionary = {}
 var _motion_mode := "off"
 var _pattern_swatch: WeatherPatternSwatch
 var _animation_elapsed := 0.0
+var _compact_mode := false
 
 
 class WeatherPatternSwatch:
@@ -100,6 +103,18 @@ func set_view_model(view_model: Dictionary) -> bool:
 	return true
 
 
+func set_compact_mode(compact: bool) -> void:
+	_compact_mode = compact
+	custom_minimum_size = Vector2(0.0 if compact else 360.0, 78.0 if compact else 184.0)
+	if _effects_host != null:
+		_effects_host.visible = not compact
+	if _hints_host != null:
+		_hints_host.visible = not compact
+	if _region_buttons != null:
+		_region_buttons.visible = true
+	queue_sort()
+
+
 func set_motion_mode(mode: String) -> bool:
 	if not MOTION_MODES.has(mode):
 		_motion_mode = "off"
@@ -127,6 +142,7 @@ func debug_snapshot() -> Dictionary:
 		"state": _view_model.get("state", "invalid"),
 		"source_revision": _view_model.get("source_revision", -1),
 		"motion_mode": _motion_mode,
+		"compact_mode": _compact_mode,
 		"animated": is_processing(),
 		"region_indices": region_indices,
 		"effect_count": _effect_labels.size() if not _view_model.is_empty() else 0,

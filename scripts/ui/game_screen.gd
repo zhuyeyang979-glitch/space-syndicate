@@ -201,6 +201,11 @@ func attach_runtime_map(map_node: Control) -> void:
 	call_deferred("_sync_runtime_table_focus_order")
 
 
+func set_weather_presentation(forecast_view_model: Dictionary, overlay_view_model: Dictionary, motion_mode: String) -> void:
+	if planet_board != null and planet_board.has_method("set_weather_presentation"):
+		planet_board.call("set_weather_presentation", forecast_view_model, overlay_view_model, motion_mode)
+
+
 func get_embedded_map_view() -> Control:
 	if planet_board != null and planet_board.has_method("get_embedded_map_view"):
 		var embedded: Variant = planet_board.call("get_embedded_map_view")

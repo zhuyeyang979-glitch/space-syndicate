@@ -2260,6 +2260,15 @@ func _refresh_developer_balance_greybox() -> void:
 func _sync_runtime_game_screen(force: bool = false) -> void:
 	if runtime_game_screen == null or not runtime_game_screen.has_method("apply_state"):
 		return
+	var coordinator := _game_runtime_coordinator_node()
+	if coordinator != null and runtime_game_screen.has_method("set_weather_presentation"):
+		var weather_motion_mode := "reduced" if campaign_animation_intensity == "简化" else ("off" if campaign_animation_intensity == "关闭" else "full")
+		runtime_game_screen.call(
+			"set_weather_presentation",
+			coordinator.weather_forecast_view_model(),
+			coordinator.weather_map_overlay_view_model(),
+			weather_motion_mode
+		)
 	var table_state := _runtime_table_snapshot_source()
 	var signature := var_to_str(table_state)
 	if not force and signature == runtime_game_screen_snapshot_signature:
@@ -11502,9 +11511,13 @@ func _set_map_view_data(target_view: Control) -> void:
 	var coordinator := _game_runtime_coordinator_node()
 	if coordinator != null and target_view.has_method("set_solar_presentation_snapshot"):
 		target_view.call("set_solar_presentation_snapshot", coordinator.solar_public_presentation_snapshot())
+	if coordinator != null and target_view.has_method("set_weather_overlay_view_model"):
+		target_view.call("set_weather_overlay_view_model", coordinator.weather_map_overlay_view_model())
 	if target_view.has_method("set_solar_camera_motion_mode"):
 		var solar_motion_mode := "reduced" if campaign_animation_intensity == "简化" else ("off" if campaign_animation_intensity == "关闭" else "full")
 		target_view.call("set_solar_camera_motion_mode", solar_motion_mode)
+		if target_view.has_method("set_weather_overlay_motion_mode"):
+			target_view.call("set_weather_overlay_motion_mode", solar_motion_mode)
 
 
 func _focus_runtime_map_on_district(district_index: int) -> void:
@@ -15847,7 +15860,7 @@ func _player_card_effect_text(skill: Dictionary) -> String:
 			]
 		"weather_control":
 			return "改写下一条天气预报：%s｜约%s后影响%d区，持续%s。" % [
-				weather_runtime_controller.label(String(skill.get("weather_type", "solar_storm"))),
+				weather_runtime_controller.label(String(skill.get("weather_type", "solar_flare"))),
 				_duration_short_text(float(skill.get("weather_forecast_lead_seconds", WeatherRuntimeController.FORECAST_LEAD_MIN_SECONDS))),
 				maxi(1, int(skill.get("weather_zone_count", 1))),
 				_duration_short_text(float(skill.get("weather_duration_seconds", WeatherRuntimeController.DURATION_MIN_SECONDS))),
@@ -18601,7 +18614,7 @@ func _apply_card_resolution_effect_request(transaction: Dictionary) -> Dictionar
 					resolved = false
 					_log("%s没有处在有效相位响应窗口内，未产生反制效果。" % card_label)
 				"weather_control":
-					resolved = weather_runtime_controller.apply_weather_control(skill)
+					resolved = weather_runtime_controller.apply_weather_control_at(skill, selected_district)
 				"intel_city_reveal":
 					resolved = _apply_intel_city_reveal(player, skill)
 				"intel_card_trace":

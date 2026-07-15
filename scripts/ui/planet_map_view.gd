@@ -16,6 +16,7 @@ const PlanetMapRenderModelScript := preload("res://scripts/ui/map/planet_map_ren
 @onready var backdrop_layer: Control = get_node_or_null("BackdropLayer") as Control
 @onready var orbit_layer: Control = get_node_or_null("OrbitLayer") as Control
 @onready var district_layer: Control = get_node_or_null("DistrictLayer") as Control
+@onready var weather_layer: Control = get_node_or_null("WeatherLayer") as Control
 @onready var route_layer: Control = get_node_or_null("RouteLayer") as Control
 @onready var monster_layer: Control = get_node_or_null("MonsterLayer") as Control
 @onready var selection_layer: Control = get_node_or_null("SelectionLayer") as Control
@@ -32,6 +33,7 @@ const EDITABLE_LAYER_NAMES := [
 	"BackdropLayer",
 	"OrbitLayer",
 	"DistrictLayer",
+	"WeatherLayer",
 	"RouteLayer",
 	"MonsterLayer",
 	"SelectionLayer",
@@ -165,6 +167,35 @@ func set_solar_presentation_snapshot(snapshot: Dictionary) -> bool:
 	return bool(solar_camera_controller.call("apply_public_solar_snapshot", snapshot))
 
 
+func set_weather_overlay_view_model(view_model: Dictionary) -> bool:
+	if weather_layer == null or not weather_layer.has_method("set_overlay_view_model"):
+		return false
+	var applied := bool(weather_layer.call("set_overlay_view_model", view_model))
+	_sync_weather_overlay_layout()
+	return applied
+
+
+func set_weather_overlay_motion_mode(mode: String) -> void:
+	if weather_layer != null and weather_layer.has_method("set_motion_mode"):
+		weather_layer.call("set_motion_mode", mode)
+
+
+func focus_weather_region(region_index: int) -> bool:
+	if region_index < 0 or region_index >= districts.size():
+		return false
+	focus_district(region_index, true)
+	district_selected.emit(region_index)
+	grab_focus()
+	return true
+
+
+func weather_overlay_debug_snapshot() -> Dictionary:
+	if weather_layer == null or not weather_layer.has_method("debug_snapshot"):
+		return {}
+	var snapshot_variant: Variant = weather_layer.call("debug_snapshot")
+	return (snapshot_variant as Dictionary).duplicate(true) if snapshot_variant is Dictionary else {}
+
+
 func set_solar_camera_motion_mode(mode: String) -> void:
 	if solar_camera_controller != null and solar_camera_controller.has_method("set_motion_mode"):
 		solar_camera_controller.call("set_motion_mode", mode)
@@ -198,6 +229,7 @@ func get_sceneization_debug_snapshot() -> Dictionary:
 		"runtime_focus_kind": str(get_meta("runtime_focus_kind", "")),
 	}
 	snapshot["solar_camera"] = solar_camera_debug_snapshot()
+	snapshot["weather_overlay"] = weather_overlay_debug_snapshot()
 	snapshot.merge(get_sceneized_child_snapshot(), true)
 	return snapshot
 
@@ -264,6 +296,7 @@ func _sync_sceneized_map_children() -> void:
 	_sync_underlay_components()
 	_clear_sceneized_map_children()
 	_sync_district_polygons()
+	_sync_weather_overlay_layout()
 	_sync_route_segments()
 	_sync_movement_trails()
 	_sync_route_markers()
@@ -583,6 +616,7 @@ func _configure_editable_layers() -> void:
 	backdrop_layer = get_node_or_null("BackdropLayer") as Control
 	orbit_layer = get_node_or_null("OrbitLayer") as Control
 	district_layer = get_node_or_null("DistrictLayer") as Control
+	weather_layer = get_node_or_null("WeatherLayer") as Control
 	route_layer = get_node_or_null("RouteLayer") as Control
 	monster_layer = get_node_or_null("MonsterLayer") as Control
 	selection_layer = get_node_or_null("SelectionLayer") as Control
@@ -600,6 +634,19 @@ func _configure_editable_layers() -> void:
 		layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		layer.set_meta("mcp_planet_map_layer", layer_name)
+
+
+func _sync_weather_overlay_layout() -> void:
+	if weather_layer == null or not weather_layer.has_method("set_region_layout") or size.x <= 1.0 or size.y <= 1.0:
+		return
+	var normalized_positions: Dictionary = {}
+	for index in range(districts.size()):
+		var position := get_district_control_position(index)
+		normalized_positions[index] = Vector2(
+			clampf(position.x / size.x, 0.0, 1.0),
+			clampf(position.y / size.y, 0.0, 1.0)
+		)
+	weather_layer.call("set_region_layout", normalized_positions)
 
 
 func _sync_underlay_components() -> void:

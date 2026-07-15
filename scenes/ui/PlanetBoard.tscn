@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scripts/ui/planet_board.gd" id="2_planet_board"]
 [ext_resource type="PackedScene" path="res://scenes/ui/PlanetMapView.tscn" id="3_planet_map_view"]
+[ext_resource type="PackedScene" path="res://scenes/ui/weather/WeatherForecastStrip.tscn" id="4_weather_strip"]
 
 [node name="PlanetBoard" type="PanelContainer"]
 custom_minimum_size = Vector2(600, 300)
@@ -35,43 +36,10 @@ vertical_alignment = 1
 text_overrun_behavior = 3
 autowrap_mode = 3
 
-[node name="WeatherForecastBar" type="PanelContainer" parent="PlanetRows"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 24)
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="WeatherForecastMargin" type="MarginContainer" parent="PlanetRows/WeatherForecastBar"]
-layout_mode = 2
-theme_override_constants/margin_left = 8
-theme_override_constants/margin_top = 1
-theme_override_constants/margin_right = 8
-theme_override_constants/margin_bottom = 1
-
-[node name="WeatherForecastChipRail" type="HFlowContainer" parent="PlanetRows/WeatherForecastBar/WeatherForecastMargin"]
+[node name="WeatherForecastStrip" parent="PlanetRows" instance=ExtResource("4_weather_strip")]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/h_separation = 6
-theme_override_constants/v_separation = 2
-
-[node name="WeatherActiveLabel" type="Label" parent="PlanetRows/WeatherForecastBar/WeatherForecastMargin/WeatherForecastChipRail"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "现在：无天气"
-text_overrun_behavior = 3
-
-[node name="WeatherForecastLabel" type="Label" parent="PlanetRows/WeatherForecastBar/WeatherForecastMargin/WeatherForecastChipRail"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "预报：开局后生成"
-text_overrun_behavior = 3
-
-[node name="WeatherImpactLabel" type="Label" parent="PlanetRows/WeatherForecastBar/WeatherForecastMargin/WeatherForecastChipRail"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "影响：产/交/消"
-text_overrun_behavior = 3
 
 [node name="PlanetStageViewport" type="Control" parent="PlanetRows"]
 unique_name_in_owner = true

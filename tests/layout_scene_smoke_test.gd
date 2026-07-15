@@ -29,6 +29,8 @@ const SPLIT_UI_SCENE_PATHS := [
 	"res://scenes/ui/map/PlanetOrbitGuide.tscn",
 	"res://scenes/ui/map/PlanetFocusRangeOverlay.tscn",
 	"res://scenes/ui/map/PlanetMapScaleHint.tscn",
+	"res://scenes/ui/weather/WeatherForecastStrip.tscn",
+	"res://scenes/ui/weather/WeatherMapOverlay.tscn",
 	"res://scenes/ui/PlayerBoard.tscn",
 	"res://scenes/ui/HandRack.tscn",
 	"res://scenes/ui/CardFace.tscn",
@@ -4291,7 +4293,7 @@ func _check_planet_map_sceneization_component() -> void:
 			viewport.add_child(map_view)
 			map_view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 			await process_frame
-			for layer_name in ["BackdropLayer", "OrbitLayer", "DistrictLayer", "RouteLayer", "MonsterLayer", "SelectionLayer", "EffectLayer", "CalloutLayer", "DebugOverlayLayer"]:
+			for layer_name in ["BackdropLayer", "OrbitLayer", "DistrictLayer", "WeatherLayer", "RouteLayer", "MonsterLayer", "SelectionLayer", "EffectLayer", "CalloutLayer", "DebugOverlayLayer"]:
 				_expect(map_view.find_child(layer_name, true, false) != null, "PlanetMapView contains editable layer %s" % layer_name)
 			_expect(map_view.get_node_or_null("BackdropLayer/PlanetGlobeBackdrop") != null, "PlanetMapView embeds PlanetGlobeBackdrop under BackdropLayer")
 			_expect(map_view.get_node_or_null("OrbitLayer/PlanetOrbitGuide") != null, "PlanetMapView embeds PlanetOrbitGuide under OrbitLayer")
@@ -4346,8 +4348,10 @@ func _check_planet_map_sceneization_component() -> void:
 		await process_frame
 		var map_host := board.find_child("MapHost", true, false) as Control
 		var embedded_map := board.find_child("PlanetMapView", true, false) as Control
+		var weather_strip := board.find_child("WeatherForecastStrip", true, false) as Control
 		_expect(map_host != null and embedded_map != null and embedded_map.get_parent() == map_host, "PlanetBoard embeds PlanetMapView under MapHost by default")
 		_expect(board.has_method("get_embedded_map_view") and board.call("get_embedded_map_view") == embedded_map, "PlanetBoard exposes the embedded map for main.gd reuse")
+		_expect(weather_strip != null and weather_strip.has_method("set_view_model") and embedded_map.find_child("WeatherLayer", true, false) != null, "PlanetBoard statically composes the weather forecast strip and map overlay")
 		root.remove_child(board)
 		board.queue_free()
 	_expect(ResourceLoader.exists(PLANET_MAP_CONTROL_TOOLBAR_SCRIPT) and load(PLANET_MAP_CONTROL_TOOLBAR_SCRIPT) != null, "PlanetMapControlToolbar script loads")
