@@ -105,10 +105,27 @@ military, route, contract, and weather actions remain outside this first slice.
 
 The historical layout gate mixes a 1706x960 logical canvas with a 1280x720 physical
 window, so its out-of-bounds labels are not sufficient evidence by themselves. Real
-captures also found a genuine map-density problem. A production-only presentation
-pass is currently validating deterministic clear, forecast, active, and dual-weather
-states at 1280x720, 1600x960, and 1920x1080. No result is accepted unless the scene
-tree, complete PNG pixels, console, save isolation, and process cleanup all pass.
+captures also found a genuine map-density problem: the original 1280 frame contained
+262 hard label/token overlaps and 6 district collisions. The production presentation
+pass has now reduced both counts to zero without changing Main, rules, owners, save
+state, or private data.
+
+The deterministic production matrix covers clear, forecast, active, and dual-weather
+states at 1280x720, 1600x960, and 1920x1080. All 12 real `main.tscn` captures pass the
+scene-tree, stable-frame, PNG pixel, public weather, machine-identifier, save-isolation,
+console, and process-cleanup gates. The complete evidence is in
+`reports/ui/production_acceptance/e_1280_table_readability_v2/after_acceptance.md`.
+This proves the scoped table and map presentation is readable at 1280. It does not yet
+prove that every first-run interaction, temporary decision window, economy workflow,
+countdown, and settlement can be completed at that resolution. Top-bar ellipsis and
+the economy overview's text density remain active findings.
+
+On local integration `14836e0`, Codex A independently reopened the final 1280
+dual-weather PNG at original resolution and reran `ui_text_smoke_test.gd`
+(`20260715-082220-876-ui_text_smoke_test-fdd60f6e`), `visual_snapshot.gd`
+(`20260715-082228-844-visual_snapshot-9052b0cf`), and `smoke_test.gd --check-only`
+(`20260715-082237-374-smoke_test-d715d595`). All three returned ExitCode 0 without a
+timeout or remaining project runtime process.
 
 ## AI and settlement evidence
 
@@ -133,7 +150,8 @@ The 42 current labels include:
 - historical Main hash and old characterization contracts;
 - scenario phase-count drift;
 - Victory and capacity owner oracles;
-- corrected 1280 coordinate and real-pixel coverage;
+- historical 1280 coordinate assertions that still need migration to the now-green
+  real-pixel production evidence;
 - live map, public-track, card play, and market purchase flows;
 - Card Codex/RightInspector presentation details.
 
@@ -149,7 +167,7 @@ gate.
 | Can the first-table core path run? | Focused `26/26`; full-match continuity remains unverified. |
 | Can a complete match be proven to finish? | No. |
 | Can save, exit, reload, and continue to settlement be proven? | No; capability preflight is incomplete. |
-| Is 1280x720 proven playable? | Not yet; real deterministic matrix is in progress. |
+| Is 1280x720 proven playable? | The real table/map readability matrix is green; complete first-run interaction at 1280 is not yet proven. |
 | Are all major failures specific and actionable? | Not yet; ActionResult coverage is only beginning. |
 | Are AI personalities publicly readable without cheating? | Not yet. |
 | Can settlement explain the match from authoritative receipts? | Not yet. |
@@ -161,8 +179,8 @@ gate.
    current production behavior rather than retired entry points.
 2. Land the fail-closed FullRunQualityDriver preflight, then make v3 save continuation
    transactional owner by owner.
-3. Complete the deterministic 1280 production matrix and fix only demonstrated visual
-   defects.
+3. Exercise the complete first-run, economy, decision-window, countdown, and settlement
+   interaction path at 1280; fix only defects demonstrated by those real runs.
 4. Land ActionResult for a real action and remove the dead priority-bid controls.
 5. Introduce sanitized public receipts before claiming observable AI strategy or an
    explanatory settlement.
