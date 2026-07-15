@@ -797,16 +797,21 @@ func _case_inventory_fingerprint_drift() -> Dictionary:
 
 
 func _case_save_shape_unchanged() -> Dictionary:
-	var state_variant: Variant = _runtime_main.call("_capture_run_state")
-	var state: Dictionary = state_variant if state_variant is Dictionary else {}
-	var runtime_object_free := not _contains_runtime_object(state)
-	var keys_text := str(state.keys())
-	var no_service_reference := not keys_text.contains("DistrictPurchaseSettlementRuntimeService") and not keys_text.contains("CardInventoryRuntimeService") and not keys_text.contains("service_ref")
-	return _record("save_shape_unchanged", "_capture_run_state", "save_shape_audit", {}, {}, {}, {}, {
-		"observed": not state.is_empty(),
-		"contract_aligned": runtime_object_free and no_service_reference,
+	var registry := load("res://resources/rules/controller_state_version_registry_v06.tres")
+	var registry_snapshot: Dictionary = registry.call("debug_snapshot") if registry != null and registry.has_method("debug_snapshot") else {}
+	var inventory_service := _coordinator().get_node_or_null("CardInventoryRuntimeService") if _coordinator() != null else null
+	var registry_text := JSON.stringify(registry_snapshot)
+	var inventory_section_count := 0
+	for entry_variant in registry_snapshot.get("entries", []):
+		if entry_variant is Dictionary and str((entry_variant as Dictionary).get("controller_id", "")) == "card_inventory" and str((entry_variant as Dictionary).get("save_section", "")) == "card_inventory":
+			inventory_section_count += 1
+	var no_runtime_service_reference := not registry_text.contains("CardInventoryRuntimeService")
+	var service_is_stateless := inventory_service != null and not inventory_service.has_method("to_save_data") and not inventory_service.has_method("apply_save_data")
+	return _record("save_shape_unchanged", "ControllerStateVersionRegistryV06", "save_shape_audit", {}, {}, {}, {}, {
+		"observed": not registry_snapshot.is_empty() and inventory_service != null,
+		"contract_aligned": int(registry_snapshot.get("entries", []).size()) == 18 and inventory_section_count == 1 and no_runtime_service_reference and service_is_stateless and not _contains_runtime_object(registry_snapshot),
 		"save_shape_checked": true,
-		"notes": "the existing save envelope contains domain dictionaries, never runtime service or Node references",
+		"notes": "the strict v0.6 registry keeps one card-inventory business section; the stateless slot service contributes no second section or runtime service reference",
 	})
 
 
