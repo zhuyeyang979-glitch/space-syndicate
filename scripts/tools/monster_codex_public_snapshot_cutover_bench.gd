@@ -5,11 +5,14 @@ const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const MAIN_SCRIPT_PATH := "res://scripts/main.gd"
 const SERVICE_SCENE := "res://scenes/runtime/MonsterCodexPublicSnapshotService.tscn"
 const SERVICE_SCRIPT := "res://scripts/runtime/monster_codex_public_snapshot_service.gd"
+const SOURCE_SCENE := "res://scenes/runtime/MonsterCodexPublicSourceService.tscn"
+const SOURCE_SCRIPT := "res://scripts/runtime/monster_codex_public_source_service.gd"
 const COORDINATOR_SCENE := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
 const OUTPUT_DIR := "user://space_syndicate_design_qa/monster_codex_public_snapshot_cutover/"
 const MANIFEST_PATH := OUTPUT_DIR + "manifest.json"
 const REPORT_PATH := OUTPUT_DIR + "report.md"
 const SCREENSHOT_PATH := "user://space_syndicate_design_qa/monster_codex_public_snapshot_cutover_sprint_15.png"
+const QA_SAVE_PATH := "user://test_runs/monster_codex_public_snapshot_cutover.save"
 
 const RETIRED_FORMATTERS := [
 	"_bestiary_codex_browser_entry_snapshot", "_bestiary_public_resource_text", "_bestiary_bound_ladder_text",
@@ -20,6 +23,7 @@ const RETIRED_FORMATTERS := [
 ]
 
 @export var auto_run := true
+@export var quit_on_complete := true
 
 @onready var status_label: Label = %StatusLabel
 @onready var summary_label: Label = %SummaryLabel
@@ -27,10 +31,13 @@ const RETIRED_FORMATTERS := [
 @onready var results_text: RichTextLabel = %ResultsText
 
 var _service: Node
+var _source_service: Node
+var _coordinator: Node
 var _main: Control
 var _main_source := ""
 var _records: Array = []
 var _failures: Array[String] = []
+var _qa_save_override_ready := false
 
 
 func _ready() -> void:
@@ -48,7 +55,7 @@ func retired_formatter_names() -> Array:
 
 func cutover_cases() -> Array:
 	return [
-		"required_service_assets_load", "service_scene_contract", "monster_source_pure_data", "monster_summary_parity",
+		"required_service_assets_load", "service_scene_contract", "source_service_scene_contract", "qa_save_isolated", "monster_source_pure_data", "monster_catalog_world_invariant", "coordinator_browser_detail_world_call_free", "public_catalog_source_scan", "monster_summary_parity",
 		"browser_entry_shape", "detail_shape", "detail_chip_contract", "detail_kpi_contract",
 		"action_probability_board", "action_probability_tooltip", "bound_monster_card_preview", "ecology_identity_contract",
 		"empty_source_safe", "privacy_boundary", "coordinator_scene_composition", "coordinator_pure_data_proxy",
@@ -66,7 +73,9 @@ func build_cutover_manifest_preview() -> Dictionary:
 func run_cutover_suite() -> void:
 	_records.clear()
 	_failures.clear()
+	_qa_save_override_ready = false
 	_prepare_output_dir()
+	_delete_qa_save_file()
 	_main_source = FileAccess.get_file_as_string(MAIN_SCRIPT_PATH)
 	await _prepare_runtime()
 	for case_id_variant: Variant in cutover_cases():
@@ -80,6 +89,7 @@ func run_cutover_suite() -> void:
 	_write_text(REPORT_PATH, _markdown_report(manifest))
 	_update_ui(manifest)
 	await _dispose_runtime()
+	_delete_qa_save_file()
 	_save_screenshot()
 	print("MonsterCodexPublicSnapshotCutoverBench manifest: %s" % MANIFEST_PATH)
 	print("MonsterCodexPublicSnapshotCutoverBench report: %s" % REPORT_PATH)
@@ -87,7 +97,7 @@ func run_cutover_suite() -> void:
 	print("MonsterCodexPublicSnapshotCutoverBench passed: %d/%d" % [_passed_count(), _records.size()])
 	if not _failures.is_empty():
 		push_error("MonsterCodexPublicSnapshotCutoverBench failed:\n- %s" % "\n- ".join(_failures))
-	if DisplayServer.get_name() == "headless":
+	if quit_on_complete:
 		get_tree().quit(0 if _failures.is_empty() else 1)
 
 
@@ -101,13 +111,37 @@ func _prepare_runtime() -> void:
 	_main = main_packed.instantiate() as Control if main_packed != null else null
 	if _main != null:
 		_main.visible = false
-		add_child(_main)
+		_qa_save_override_ready = _apply_qa_save_override(_main)
+		if _qa_save_override_ready:
+			add_child(_main)
+		else:
+			_main.queue_free()
+			_main = null
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if _main != null and _main.has_method("_new_game"):
 		_main.call("_new_game")
 	await get_tree().process_frame
 	await get_tree().process_frame
+	if _main != null:
+		_coordinator = _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
+		_source_service = _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterCodexPublicSourceService")
+
+
+func _apply_qa_save_override(main: Node) -> bool:
+	var save := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController/GameSaveRuntimeCoordinator") if main != null else null
+	if save == null or not save.has_method("set_qa_default_save_path_override"):
+		push_error("MonsterCodexPublicSnapshotCutoverBench requires GameSaveRuntimeCoordinator QA save override before adding main to the tree.")
+		return false
+	return bool(save.call("set_qa_default_save_path_override", QA_SAVE_PATH))
+
+
+func _delete_qa_save_file() -> void:
+	var absolute := ProjectSettings.globalize_path(QA_SAVE_PATH)
+	if absolute == "":
+		return
+	if FileAccess.file_exists(QA_SAVE_PATH):
+		DirAccess.remove_absolute(absolute)
 
 
 func _run_case(case_id: String) -> Dictionary:
@@ -116,20 +150,70 @@ func _run_case(case_id: String) -> Dictionary:
 	var flags := {}
 	match case_id:
 		"required_service_assets_load":
-			passed = load(SERVICE_SCRIPT) is Script and load(SERVICE_SCENE) is PackedScene and load(COORDINATOR_SCENE) is PackedScene
+			passed = load(SERVICE_SCRIPT) is Script and load(SERVICE_SCENE) is PackedScene and load(SOURCE_SCRIPT) is Script and load(SOURCE_SCENE) is PackedScene and load(COORDINATOR_SCENE) is PackedScene
 			flags["service_checked"] = true
 			notes = "monster public snapshot service assets and coordinator load"
 		"service_scene_contract":
 			passed = _service != null and _service.has_method("configure") and _service.has_method("compose") and _service.has_method("debug_snapshot")
 			flags["service_checked"] = true
 			notes = "service exposes pure composition and debug contracts"
+		"source_service_scene_contract":
+			passed = _source_service != null and _source_service.scene_file_path == SOURCE_SCENE and _source_service.has_method("configure") and _source_service.has_method("compose_browser_source") and _source_service.has_method("compose_detail_source") and _source_service.has_method("debug_snapshot") and _source_service.has_method("public_field_schema") and not _source_service.has_method("compose_source") and not _source_service.has_method("compose_browser")
+			flags["service_checked"] = true
+			notes = "scene-owned source service exposes C acceptance method contract without alias wrappers"
+		"qa_save_isolated":
+			var save := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController/GameSaveRuntimeCoordinator") if _main != null else null
+			var operation: Dictionary = save.call("operation_snapshot") if save != null and save.has_method("operation_snapshot") else {}
+			passed = _qa_save_override_ready and save != null and str(operation.get("default_save_path", "")) == QA_SAVE_PATH and bool(operation.get("qa_save_path_override_active", false))
+			flags["service_checked"] = true
+			notes = "real main fixture sets a QA-only save override before entering the tree and never uses the default player save"
 		"monster_source_pure_data":
-			var source: Dictionary = _main.call("_monster_codex_public_source_snapshot", 0, true) if _main != null else {}
+			var source: Dictionary = _source_service.call("compose_detail_source", 0, true) if _source_service != null else {}
 			passed = bool(source.get("valid", false)) and _is_pure_data(source) and not _contains_private_key(source)
 			flags["monster_checked"] = true
 			flags["pure_data_checked"] = true
 			flags["privacy_checked"] = true
-			notes = "main gathers ecology, probability, and bound-card public facts only"
+			notes = "MonsterCodexPublicSourceService gathers owner catalog, probability, and bound-card public facts only"
+		"monster_catalog_world_invariant":
+			var monster := _coordinator.get_node_or_null("MonsterRuntimeController") if _coordinator != null else null
+			var bridge := _coordinator.get_node_or_null("MonsterRuntimeWorldBridge") if _coordinator != null else null
+			var before_calls := int(bridge.get("_world_call_count")) if bridge != null else -1
+			if monster != null and monster.has_method("_rebuild_monster_codex_public_catalog_cache_v06"):
+				monster.call("_rebuild_monster_codex_public_catalog_cache_v06")
+			var after_rebuild_calls := int(bridge.get("_world_call_count")) if bridge != null else -2
+			var first: Dictionary = monster.call("monster_codex_public_catalog_source_v06", 0) if monster != null else {}
+			var restored := _mutate_private_world_for_catalog_gate()
+			var second: Dictionary = monster.call("monster_codex_public_catalog_source_v06", 0) if monster != null else {}
+			_restore_private_world_for_catalog_gate(restored)
+			var after_calls := int(bridge.get("_world_call_count")) if bridge != null else -2
+			passed = monster != null and bridge != null and before_calls == after_rebuild_calls and after_rebuild_calls == after_calls and _canonical_text(first) == _canonical_text(second) and bool(first.get("valid", false))
+			flags["monster_checked"] = true
+			flags["privacy_checked"] = true
+			flags["pure_data_checked"] = true
+			notes = "owner catalog cache rebuild and compose are public data: selected/player/cash/destroyed mutations do not change it and add zero world calls"
+		"coordinator_browser_detail_world_call_free":
+			var bridge := _coordinator.get_node_or_null("MonsterRuntimeWorldBridge") if _coordinator != null else null
+			var before_calls := int(bridge.get("_world_call_count")) if bridge != null else -1
+			var detail: Dictionary = _coordinator.call("monster_codex_public_detail_snapshot", 0, true) if _coordinator != null else {}
+			var browser: Dictionary = _coordinator.call("monster_codex_public_browser_snapshot", {"start_index": 0, "end_index": 4, "selected_index": 0, "columns": 4, "can_page": true, "page_label": "1/2"}) if _coordinator != null else {}
+			var after_calls := int(bridge.get("_world_call_count")) if bridge != null else -2
+			passed = bridge != null and before_calls == after_calls and not detail.is_empty() and not (browser.get("entries", []) as Array).is_empty() and _is_pure_data(detail) and _is_pure_data(browser)
+			flags["routing_checked"] = true
+			flags["privacy_checked"] = true
+			flags["pure_data_checked"] = true
+			notes = "coordinator browser/detail routes consume cached owner catalog + source service with zero MonsterWorldBridge calls"
+		"public_catalog_source_scan":
+			var monster_source := FileAccess.get_file_as_string("res://scripts/runtime/monster_runtime_controller.gd")
+			var public_start := monster_source.find("func monster_codex_public_catalog_source_v06")
+			var public_end := monster_source.find("func region_attraction_public_snapshot_v06")
+			var public_slice := monster_source.substr(public_start, public_end - public_start) if public_start >= 0 and public_end > public_start else monster_source
+			var catalog_source := FileAccess.get_file_as_string("res://scripts/runtime/monster_catalog_v06.gd")
+			var main_source := FileAccess.get_file_as_string(MAIN_SCRIPT_PATH)
+			var pure_weight_helpers := not monster_source.contains("func _probability_text(weight: int, total: int) -> String:\n\treturn _world_call") and not monster_source.contains("func _ranked_action_weights(source_weights: Array, rank: int) -> Array:\n\treturn _world_call") and not monster_source.contains("func _weight_total(weights: Array) -> int:\n\treturn _world_call")
+			passed = public_start >= 0 and public_end > public_start and not public_slice.contains("_world_call") and not public_slice.contains("_monster_art_profile") and not public_slice.contains("_has_destroyed_district") and pure_weight_helpers and catalog_source.contains("class_name MonsterCatalogV06") and not main_source.contains("const MONSTER_ROSTER :=") and not main_source.contains("const MONSTER_ART_PROFILES :=") and not main_source.contains("const MONSTER_ACTION_TABLES :=") and not main_source.contains("func _monster_art_profile")
+			flags["monster_checked"] = true
+			flags["deletion_checked"] = true
+			notes = "public Monster Codex catalog call graph avoids world helpers and Main no longer owns monster catalog constants/art wrapper"
 		"monster_summary_parity":
 			var snapshot: Dictionary = _service.call("compose", _source()) if _service != null else {}
 			passed = str(snapshot.get("summary_text", "")).contains("怪兽详情｜第1/8只｜岩甲兽") and str(snapshot.get("summary_text", "")).contains("正面经济天气")
@@ -186,27 +270,30 @@ func _run_case(case_id: String) -> Dictionary:
 			flags["monster_checked"] = true
 			notes = "invalid catalog source returns a safe empty presentation"
 		"privacy_boundary":
+			var adapter_script := load("res://scripts/runtime/monster_codex_public_source_adapter.gd") as Script
+			var adapter: RefCounted = adapter_script.new() as RefCounted if adapter_script != null else null
 			var source := _source()
 			source["hidden_owner"] = 2
 			source["private_plan"] = "secret"
-			var snapshot: Dictionary = _service.call("compose", source) if _service != null else {}
-			passed = not _contains_private_key(snapshot) and _is_pure_data(snapshot)
+			var rejected: Dictionary = adapter.call("compose_source", source) if adapter != null else {"leaked": true}
+			var real_source: Dictionary = _source_service.call("compose_detail_source", 0, true) if _source_service != null else {}
+			passed = rejected.is_empty() and not _contains_private_key(real_source) and _is_pure_data(real_source)
 			flags["privacy_checked"] = true
 			flags["pure_data_checked"] = true
-			notes = "unknown owner and private-plan input is never copied to public output"
+			notes = "adapter fail-closes private injected input while real source stays public"
 		"coordinator_scene_composition":
-			var node := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterCodexPublicSnapshotService") if _main != null else null
-			passed = node != null and node.scene_file_path == SERVICE_SCENE
+			var source_node := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterCodexPublicSourceService") if _main != null else null
+			var snapshot_node := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterCodexPublicSnapshotService") if _main != null else null
+			passed = source_node != null and source_node.scene_file_path == SOURCE_SCENE and snapshot_node != null and snapshot_node.scene_file_path == SERVICE_SCENE
 			flags["service_checked"] = true
 			flags["main_checked"] = true
-			notes = "real main composition owns one editable monster snapshot service"
+			notes = "real main composition owns one editable monster source service and one formatter service"
 		"coordinator_pure_data_proxy":
-			var coordinator := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if _main != null else null
-			var snapshot: Variant = coordinator.call("compose_monster_codex_snapshot", _source()) if coordinator != null else {}
-			passed = coordinator != null and _is_pure_data(snapshot) and not _contains_private_key(snapshot)
+			var snapshot: Variant = _coordinator.call("monster_codex_public_detail_snapshot", 0, true) if _coordinator != null else {}
+			passed = _coordinator != null and _is_pure_data(snapshot) and not _contains_private_key(snapshot)
 			flags["pure_data_checked"] = true
 			flags["privacy_checked"] = true
-			notes = "coordinator exposes duplicated pure-data monster presentation only"
+			notes = "coordinator exposes duplicated pure-data monster source+presentation by index only"
 		"real_main_browser_route":
 			var browser: Dictionary = _main.call("_bestiary_codex_browser_snapshot") if _main != null else {}
 			passed = not (browser.get("entries", []) as Array).is_empty() and browser.get("preview", {}) is Dictionary and _is_pure_data(browser)
@@ -214,17 +301,19 @@ func _run_case(case_id: String) -> Dictionary:
 			flags["routing_checked"] = true
 			notes = "real atlas route delegates entry and preview composition to the service"
 		"real_main_detail_route":
-			var snapshot: Dictionary = _main.call("_monster_codex_public_snapshot", 0, true) if _main != null else {}
+			var snapshot: Dictionary = _coordinator.call("monster_codex_public_detail_snapshot", 0, true) if _coordinator != null else {}
 			passed = str(snapshot.get("summary_text", "")).contains(str((_main.call("_catalog_entry", 0) as Dictionary).get("name", ""))) and snapshot.get("detail", {}) is Dictionary
 			flags["main_checked"] = true
 			flags["routing_checked"] = true
-			notes = "real monster detail route delegates public source facts through the coordinator"
+			notes = "real monster detail route delegates public catalog source facts through the coordinator"
 		"legacy_monster_formatters_absent":
 			passed = true
 			for formatter_name in RETIRED_FORMATTERS:
 				passed = passed and not _main_source.contains("func %s(" % formatter_name)
+			for old_helper in ["_monster_codex_public_source_snapshot", "_monster_codex_action_probability_facts", "_monster_codex_public_snapshot"]:
+				passed = passed and not _main_source.contains("func %s(" % old_helper) and not _main_source.contains("%s(" % old_helper)
 			flags["deletion_checked"] = true
-			notes = "all 14 retired monster presentation formatters stay absent from main.gd"
+			notes = "retired formatters and old Monster Codex Main helper definitions/calls stay absent"
 		"deletion_metrics_and_privacy":
 			var metrics := _main_metrics()
 			var debug: Dictionary = _service.call("debug_snapshot") if _service != null else {}
@@ -293,6 +382,66 @@ func _contains_private_key(value: Variant) -> bool:
 			if _contains_private_key(item_variant):
 				return true
 	return false
+
+
+func _mutate_private_world_for_catalog_gate() -> Dictionary:
+	if _main == null:
+		return {}
+	var restored := {
+		"selected_player": int(_main.get("selected_player")),
+		"selected_district": int(_main.get("selected_district")),
+		"players": (_main.get("players") as Array).duplicate(true) if _main.get("players") is Array else [],
+		"districts": (_main.get("districts") as Array).duplicate(true) if _main.get("districts") is Array else [],
+	}
+	_main.set("selected_player", 2)
+	_main.set("selected_district", 3)
+	var players: Array = (_main.get("players") as Array).duplicate(true) if _main.get("players") is Array else []
+	if not players.is_empty() and players[0] is Dictionary:
+		var player := (players[0] as Dictionary).duplicate(true)
+		player["cash"] = 999999
+		player["hand"] = ["private_hand_sentinel"]
+		player["discard"] = ["private_discard_sentinel"]
+		players[0] = player
+		_main.set("players", players)
+	var districts: Array = (_main.get("districts") as Array).duplicate(true) if _main.get("districts") is Array else []
+	if not districts.is_empty() and districts[0] is Dictionary:
+		var district := (districts[0] as Dictionary).duplicate(true)
+		district["destroyed"] = not bool(district.get("destroyed", false))
+		district["owner"] = 7
+		district["hidden_owner"] = "private_owner_sentinel"
+		districts[0] = district
+		_main.set("districts", districts)
+	return restored
+
+
+func _restore_private_world_for_catalog_gate(restored: Dictionary) -> void:
+	if _main == null or restored.is_empty():
+		return
+	_main.set("selected_player", int(restored.get("selected_player", 0)))
+	_main.set("selected_district", int(restored.get("selected_district", 0)))
+	_main.set("players", (restored.get("players", []) as Array).duplicate(true) if restored.get("players", []) is Array else [])
+	_main.set("districts", (restored.get("districts", []) as Array).duplicate(true) if restored.get("districts", []) is Array else [])
+
+
+func _canonical_text(value: Variant) -> String:
+	return var_to_str(_canonical_value(value))
+
+
+func _canonical_value(value: Variant) -> Variant:
+	if value is Dictionary:
+		var source := value as Dictionary
+		var keys: Array = source.keys()
+		keys.sort()
+		var result := {}
+		for key_variant: Variant in keys:
+			result[key_variant] = _canonical_value(source[key_variant])
+		return result
+	if value is Array:
+		var result: Array = []
+		for item_variant: Variant in value:
+			result.append(_canonical_value(item_variant))
+		return result
+	return value
 
 
 func _main_metrics() -> Dictionary:
@@ -386,6 +535,8 @@ func _dispose_runtime() -> void:
 				player.stream = null
 		_main.queue_free()
 		_main = null
+	_coordinator = null
+	_source_service = null
 	if _service != null:
 		_service.queue_free()
 		_service = null

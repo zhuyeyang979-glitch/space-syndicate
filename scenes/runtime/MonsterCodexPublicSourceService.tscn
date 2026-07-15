@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/monster_codex_public_source_service.gd" id="1_source"]
+
+[node name="MonsterCodexPublicSourceService" type="Node"]
+script = ExtResource("1_source")
+editor_description = "Scene-owned public source assembly for Monster Codex. Consumes only MonsterRuntimeController public catalog facts plus Card public source; owns no rules or save state."

@@ -371,7 +371,7 @@ func _codex_snapshots() -> Array:
 		hub_snapshot,
 		card_browser,
 		card_detail.get("detail", {}),
-		(_main.call("_monster_codex_public_snapshot", 0, true) as Dictionary).get("detail", {}),
+		(coordinator.call("monster_codex_public_detail_snapshot", 0, true) as Dictionary).get("detail", {}) if coordinator != null else {},
 		(_main.call("_product_codex_public_snapshot", str((_main.call("_product_catalog_names") as Array)[0]), 0, true) as Dictionary).get("detail", {}),
 		region_snapshot.get("detail", {}),
 		role_snapshot.get("board", {}),

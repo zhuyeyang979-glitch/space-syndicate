@@ -1,6 +1,7 @@
 extends Control
 
 const MonsterArtViewScript := preload("res://scripts/monster_art_view.gd")
+const MonsterCatalogV06 := preload("res://scripts/runtime/monster_catalog_v06.gd")
 const RuntimeBalanceModelScript := preload("res://scripts/balance/runtime_balance_model.gd")
 const CardPlayRequirementPolicyScript := preload("res://scripts/cards/card_play_requirement_policy.gd")
 const SharedCardGroupWindowScript := preload("res://scripts/cards/shared_card_group_window.gd")
@@ -402,8 +403,6 @@ const OCEAN_DISTRICT_NAME_POOL := [
 	"群岛外海", "寒冠洋", "珊瑚环礁", "远洋航门", "月影海", "磁暴海峡",
 ]
 
-const SPECIAL_MONSTER_EARLY_ACTION_WEIGHTS := [2, 2, 2, 0, 0, 0]
-const SPECIAL_MONSTER_ESCALATED_ACTION_WEIGHTS := [1, 1, 1, 1, 1, 1]
 
 const WAREHOUSE_STOCKPILE_COUNT_PRESSURE := 34
 const WAREHOUSE_STOCKPILE_UNIT_PRESSURE := 8
@@ -442,277 +441,6 @@ const REALTIME_BALANCE := {
 	"monster_damage": 1,
 	"special_monster_damage_bonus": 0,
 	"special_monster_move_bonus": 0,
-}
-
-const MONSTER_ROSTER := [
-	{
-		"name": "孢雾海皇",
-		"hp": 50,
-		"armor": 0,
-		"move": 190.0,
-		"move_damage": 1,
-		"collision_damage": 1,
-		"resource_drain": 2,
-		"movement_traits": ["aquatic"],
-		"terrain_move_multiplier": {"ocean": 1.35, "land": 0.72},
-		"style": "瘴气水栖型：生命高，海洋移动更快、陆地迟钝，会用瘴气炮和持续区域压力污染城区。",
-		"resource_focus": ["深海菌毯", "梦境香氛", "孢子丝绸"],
-		"summon_access": "ocean_monster_zone",
-		"economy_boon": {"label": "瘴气菌毯红利", "growth_multiplier": 1.35, "route_flow_multiplier": 1.1, "text": "偏好商品会形成黑市药材需求：正向价格增速×1.35，相关商路流通×1.1。"},
-		"market_skills": ["城市融资1", "城市融资2", "城市融资3", "星际广告1", "星际广告2", "星际广告3", "轨道融资1", "舆论操控1", "诱导电波1", "过载补给1", "移动2", "移动3", "普攻2", "普攻3", "格挡1", "格挡2", "区域破坏1", "区域破坏2", "区域破坏3", "飞行1", "飞行2", "重壳冲锋1", "重壳冲锋2", "甩尾1", "甩尾2", "装甲再生1", "瘴气炮1", "瘴气炮2", "瘴气结界1", "瘴气结界2", "瘴气爆发1", "瘴气爆发2", "瘴气回收1", "瘴气回收2", "瘴气回收3", "腐蚀吐息1"],
-	},
-	{
-		"name": "砂铠陆行兽",
-		"hp": 40,
-		"armor": 2,
-		"move": 220.0,
-		"move_damage": 2,
-		"collision_damage": 2,
-		"resource_drain": 1,
-		"style": "冲撞护甲型：初始护甲更高，会用重壳冲锋、潜行和泥石流冲散城区。",
-		"resource_focus": ["重力陶瓷", "钛壳贝", "虹膜矿粉"],
-		"summon_access": "land_monster_zone",
-		"economy_boon": {"label": "地壳矿带开采潮", "growth_multiplier": 1.45, "route_flow_multiplier": 1.15, "text": "偏好矿物商品获得开采热潮：正向价格增速×1.45，相关商路流通×1.15。"},
-		"market_skills": ["城市融资1", "城市融资2", "城市融资3", "星际广告1", "星际广告2", "星际广告3", "轨道融资1", "舆论操控1", "诱导电波1", "过载补给1", "移动2", "移动3", "普攻2", "普攻3", "格挡1", "格挡2", "格挡3", "区域破坏1", "区域破坏2", "区域破坏3", "重壳冲锋1", "重壳冲锋2", "重壳冲锋3", "甩尾1", "甩尾2", "装甲再生1", "咆哮1", "咆哮2", "地底潜行1", "地底潜行2", "地底潜行3", "打滚1", "打滚2", "狂奔2", "泥甲1", "泥石流1"],
-	},
-	{
-		"name": "流星哨兵",
-		"hp": 30,
-		"move": 360.0,
-		"move_damage": 1,
-		"collision_damage": 1,
-		"resource_drain": 1,
-		"movement_traits": ["flying"],
-		"terrain_move_multiplier": {"land": 1.18, "ocean": 1.18},
-		"style": "高速飞行型：移动速度高，飞行移动不会碾压路径区域，适合标准压力局。",
-		"resource_focus": ["环晶电池", "活体芯片", "轨迹墨水"],
-		"summon_access": "monster_zone",
-		"economy_boon": {"label": "高速航线窗口", "growth_multiplier": 1.3, "route_flow_multiplier": 1.35, "text": "偏好科技商品借高速巡航扩散：正向价格增速×1.3，相关商路流通×1.35。"},
-		"special_cards": ["火花反制1", "白谱锁定1", "轨降擒投诱导1", "流星航线加速1"],
-	},
-	{
-		"name": "棱刃重甲",
-		"hp": 45,
-		"move": 280.0,
-		"move_damage": 1,
-		"collision_damage": 2,
-		"resource_drain": 1,
-		"style": "重装火力型：生命更高，但追击速度较慢。",
-		"resource_focus": ["离子香料", "静电蜂蜜", "等离子米"],
-		"summon_access": "land_monster_zone",
-		"economy_boon": {"label": "军需采购波", "growth_multiplier": 1.55, "route_flow_multiplier": 1.1, "text": "偏好能量食品被军需采购推高：正向价格增速×1.55，相关商路流通×1.1。"},
-		"special_cards": ["裂刃预判1", "电击踢破绽1", "垂直裂刃窗口1"],
-	},
-	{
-		"name": "绿洲修复体",
-		"hp": 30,
-		"move": 300.0,
-		"move_damage": 1,
-		"collision_damage": 1,
-		"resource_drain": 0,
-		"style": "防守救援型：低生命、慢追击，适合教学或低压局。",
-		"resource_focus": ["光合凝胶", "轨道盆栽", "北极薄荷"],
-		"summon_access": "land_monster_zone",
-		"economy_boon": {"label": "修复光线招商", "growth_multiplier": 1.2, "route_flow_multiplier": 1.6, "text": "偏好修复商品成为避难刚需：正向价格增速×1.2，相关商路流通×1.6。"},
-		"special_cards": ["修复光线干扰1", "定身闪光余波1", "修正铁拳读秒1", "修复光线招商1"],
-	},
-	{
-		"name": "焰环幼星",
-		"hp": 45,
-		"move": 300.0,
-		"move_damage": 1,
-		"collision_damage": 2,
-		"resource_drain": 1,
-		"style": "近战爆发型：HP降至15或以下后启动星焰能量，移动更快且近战互伤会追加火焰。",
-		"resource_focus": ["太阳鳞片", "火山番茄", "彗尾柑"],
-		"summon_access": "land_monster_zone",
-		"economy_boon": {"label": "星焰能源热潮", "growth_multiplier": 2.0, "route_flow_multiplier": 1.15, "text": "偏好高能商品被战场能源需求点燃：正向价格增速×2，相关商路流通×1.15。"},
-		"special_cards": ["星焰能量诱导1", "飞踢落点预判1", "星焰火焰护甲1", "星焰能源热潮1"],
-	},
-	{
-		"name": "蓝锋骑士",
-		"hp": 50,
-		"move": 360.0,
-		"move_damage": 1,
-		"collision_damage": 2,
-		"resource_drain": 1,
-		"style": "复仇装甲型：HP降至20或以下后穿上复仇之铠，减伤、增伤，并在移动时破坏城区。",
-		"resource_focus": ["极光盐", "离岸水晶", "晨昏奶酪"],
-		"summon_access": "monster_zone",
-		"economy_boon": {"label": "蓝锋专利授权", "growth_multiplier": 1.65, "route_flow_multiplier": 1.35, "text": "偏好晶体/精密商品获得科技授权：正向价格增速×1.65，相关商路流通×1.35。"},
-		"special_cards": ["复仇之铠过载1", "热负荷射线诱导1", "蓝锋光刃窗口1", "蓝锋专利授权1"],
-	},
-	{
-		"name": "镜像猎兵",
-		"hp": 45,
-		"move": 220.0,
-		"move_damage": 1,
-		"collision_damage": 1,
-		"resource_drain": 0,
-		"style": "远程迂回型：保持中距离发射光线，近战受击时可能完美格挡并反击后撤。",
-		"resource_focus": ["活体芯片", "等离子米", "轨迹墨水"],
-		"summon_access": "ocean_monster_zone",
-		"economy_boon": {"label": "复制兵器订单", "growth_multiplier": 1.5, "route_flow_multiplier": 1.25, "text": "偏好科技军工商品出现复制订单：正向价格增速×1.5，相关商路流通×1.25。"},
-		"special_cards": ["完美格挡破绽1", "混乱光线诱导1", "迂回路线封锁1"],
-	},
-]
-
-const MONSTER_ART_PROFILES := {
-	"孢雾海皇": {
-		"accent": Color("#a855f7"),
-		"secondary": Color("#4ade80"),
-		"glyph": "瘴",
-		"motif": "miasma",
-		"subtitle": "瘴气古龙｜海雾巢",
-		"upstream_source_id": "superpowers_asset_packs_cc0",
-		"visual_source_id": "superpowers_cc0_dragon_family",
-		"sprite_key": "superpowers_dragon",
-		"sprite_cell": "full",
-	},
-	"砂铠陆行兽": {
-		"accent": Color("#d97706"),
-		"secondary": Color("#facc15"),
-		"glyph": "砂",
-		"motif": "mud",
-		"subtitle": "冲撞泥甲｜荒漠线",
-		"upstream_source_id": "monster_battler_cc0",
-		"visual_source_id": "monster_battler_cc0_rock_family",
-		"sprite_key": "monster_battler_rock",
-		"sprite_cell": "full",
-	},
-	"流星哨兵": {
-		"accent": Color("#38bdf8"),
-		"secondary": Color("#f87171"),
-		"glyph": "杰",
-		"motif": "meteor_sentinel",
-		"subtitle": "高速机兵｜轨道坠星",
-		"upstream_source_id": "kenney_cc0",
-		"visual_source_id": "kenney_cc0_enemy_ufo_family",
-		"sprite_key": "kenney_enemy_ufo",
-		"sprite_cell": "full",
-	},
-	"棱刃重甲": {
-		"accent": Color("#60a5fa"),
-		"secondary": Color("#f472b6"),
-		"glyph": "断",
-		"motif": "prism_armor",
-		"subtitle": "重装裂刃｜晶体壳",
-		"upstream_source_id": "monster_battler_cc0",
-		"visual_source_id": "monster_battler_cc0_dino_family",
-		"sprite_key": "monster_battler_dino",
-		"sprite_cell": "full",
-	},
-	"绿洲修复体": {
-		"accent": Color("#22c55e"),
-		"secondary": Color("#93c5fd"),
-		"glyph": "修",
-		"motif": "oasis_support",
-		"subtitle": "防守救援｜绿洲核",
-		"upstream_source_id": "pixelmob_cc0",
-		"visual_source_id": "pixelmob_cc0_slime_square_family",
-		"sprite_key": "pixelmob_slime_square",
-		"sprite_cell": "0",
-	},
-	"焰环幼星": {
-		"accent": Color("#fb7185"),
-		"secondary": Color("#f97316"),
-		"glyph": "炎",
-		"motif": "ember_ring",
-		"subtitle": "星焰幼体｜熔环",
-		"upstream_source_id": "moth_kaijuice_mit",
-		"visual_source_id": "moth_kaijuice_mit_kaiju_family",
-		"sprite_key": "moth_kaijuice_kaiju",
-		"sprite_cell": "0,0",
-	},
-	"蓝锋骑士": {
-		"accent": Color("#06b6d4"),
-		"secondary": Color("#818cf8"),
-		"glyph": "刃",
-		"motif": "blue_lancer",
-		"subtitle": "蓝锋光刃｜复仇铠",
-		"upstream_source_id": "superpowers_asset_packs_cc0",
-		"visual_source_id": "superpowers_cc0_snake_family",
-		"sprite_key": "superpowers_snake",
-		"sprite_cell": "full",
-	},
-	"镜像猎兵": {
-		"accent": Color("#ef4444"),
-		"secondary": Color("#a3e635"),
-		"glyph": "杀",
-		"motif": "mirror_hunter",
-		"subtitle": "远程猎兵｜镜像眼",
-		"upstream_source_id": "kenney_cc0",
-		"visual_source_id": "kenney_cc0_alien_blue_family",
-		"sprite_key": "kenney_alien_blue",
-		"sprite_cell": "full",
-	},
-}
-
-const MONSTER_ACTION_TABLES := {
-	"孢雾海皇": [
-		{"name": "瘴气漫步", "range": 0.0, "damage": 1, "move_override": 190.0, "miasma_count": 1, "text": "自动向高热城区移动约190米，落点造成1点区域伤害并尝试留下瘴气。"},
-		{"name": "腐蚀吐息", "range": 420.0, "damage": 2, "move_override": -1.0, "miasma_count": 2, "text": "420米腐蚀吐息，对目标城区造成2点压力，并在周边留下瘴气。"},
-		{"name": "瘴气炮", "range": 520.0, "damage": 2, "move_override": -1.0, "miasma_count": 3, "text": "520米远程瘴气炮，沿路径污染城区并造成2点区域伤害。"},
-		{"name": "瘴气结界", "range": 260.0, "damage": 1, "move_override": -1.0, "miasma_count": 4, "text": "260米范围内散布瘴气，制造持续目标偏移和区域压力。"},
-		{"name": "瘴气回收", "range": 240.0, "damage": 1, "move_override": -1.0, "self_heal": 2, "text": "回收周边瘴气回复自身，并让附近城区承受1点腐蚀压力。"},
-		{"name": "灾厄压迫", "range": 180.0, "damage": 3, "move_override": 160.0, "text": "向最近高价值城区压迫推进，180米内造成3点区域伤害。"},
-	],
-	"砂铠陆行兽": [
-		{"name": "重壳冲锋", "range": 130.0, "damage": 3, "move_override": 320.0, "knockback": 260.0, "text": "自动冲向高权重城区约320米，落点和近身目标承受强力冲撞。"},
-		{"name": "甩尾", "range": 160.0, "damage": 2, "move_override": -1.0, "knockback": 220.0, "text": "160米范围尾击，造成2点区域/近身伤害并击退附近怪兽。"},
-		{"name": "咆哮", "range": 450.0, "damage": 1, "move_override": -1.0, "delay": 1.5, "text": "450米咆哮造成区域共享生命伤害，并拖慢下一次特殊行动节奏。"},
-		{"name": "地底潜行", "range": 0.0, "damage": 1, "move_override": 340.0, "armor": 2, "text": "潜入地下移动约340米，获得2点护甲并在落点造成1点区域破坏。"},
-		{"name": "打滚", "range": 140.0, "damage": 2, "move_override": 260.0, "knockback": 180.0, "text": "翻滚推进约260米，落点区域和140米内目标承受2点伤害。"},
-		{"name": "泥石流", "range": 220.0, "damage": 2, "move_override": -1.0, "text": "220米范围泥石流，对区域共享生命造成2点伤害。"},
-	],
-	"流星哨兵": [
-		{"name": "翼爪扫击", "range": 110.0, "damage": 2, "move_override": -1.0, "knockback": 120.0, "text": "110米翼爪横扫，2伤害，并击退怪兽约120米。"},
-		{"name": "俯冲肩撞", "range": 125.0, "damage": 2, "move_override": 260.0, "knockback": 150.0, "text": "短距俯冲约260米后肩撞，2伤害，并击退怪兽约150米。"},
-		{"name": "火花电击", "range": 420.0, "damage": 2, "move_override": -1.0, "paralyze": 1, "text": "420米射程，2伤害，并封锁一张怪兽技能卡。"},
-		{"name": "高空气旋", "range": 120.0, "damage": 2, "move_override": -1.0, "throw_radius": 420.0, "text": "120米近战投掷，2坠落伤害，并把怪兽投向420米内区域。"},
-		{"name": "白谱光线", "range": 600.0, "damage": 3, "move_override": -1.0, "knockback": 320.0, "text": "600米光线，3伤害，并直线击退怪兽约320米。"},
-		{"name": "轨降擒投", "range": 120.0, "damage": 4, "move_override": -1.0, "throw_radius": 320.0, "stun": 1, "text": "120米近战空投，4伤害，把怪兽摔向320米内区域并使其补给受挫。"},
-	],
-	"棱刃重甲": [
-		{"name": "普攻", "range": 110.0, "damage": 2, "move_override": -1.0, "knockback": 120.0, "text": "110米近战AOE，2伤害，并击退怪兽约120米。"},
-		{"name": "电击踢", "range": 120.0, "damage": 2, "move_override": -1.0, "knockback": 120.0, "paralyze": 1, "text": "120米近战AOE，2伤害，击退怪兽并封锁一张技能卡。"},
-		{"name": "闪光手刀", "range": 120.0, "damage": 3, "move_override": 420.0, "paralyze": 1, "text": "高速追近420米后近战3伤害，并封锁一张技能卡。"},
-		{"name": "水平裂刃", "range": 240.0, "damage": 3, "move_override": -1.0, "cripple": 1, "text": "240米射程，3伤害，并致残1张技能卡。"},
-		{"name": "十字裂刃", "range": 320.0, "damage": 2, "move_override": -1.0, "cripple": 1, "stun": 1, "text": "320米射程，2伤害，并致残1张技能卡、削减技能补给。"},
-		{"name": "垂直裂刃", "range": 260.0, "damage": 4, "move_override": -1.0, "cripple": 2, "text": "260米射程，4伤害，并致残2张技能卡。"},
-	],
-	"绿洲修复体": [
-		{"name": "藤蔓掌击", "range": 110.0, "damage": 2, "move_override": -1.0, "tether": 1, "text": "110米藤蔓掌击，2伤害，并牵制怪兽下次移动。"},
-		{"name": "绿洲钩拳", "range": 125.0, "damage": 2, "move_override": -1.0, "tether": 2, "text": "125米绿洲钩拳，2伤害，并施加2层牵制。"},
-		{"name": "束缚光线", "range": 420.0, "damage": 2, "move_override": -1.0, "tether": 2, "text": "420米束缚光线，2伤害，并施加2层牵制。"},
-		{"name": "修复光线", "range": 420.0, "damage": 3, "move_override": -1.0, "repair": 1, "text": "420米修复光线，3伤害，并修复所在区域。"},
-		{"name": "定身闪光", "range": 160.0, "damage": 2, "move_override": -1.0, "repair_radius": 220.0, "tether": 4, "text": "220米修复AOE，并对160米近身目标2伤害，施加4层牵制。"},
-		{"name": "修正铁拳", "range": 130.0, "damage": 5, "move_override": 560.0, "repair_path": 1, "stun_if_tethered": 3, "text": "追近560米，沿追击路径修复受损区域，对130米内目标5伤害；若怪兽被牵制则追加强眩晕。"},
-	],
-	"焰环幼星": [
-		{"name": "普攻", "range": 110.0, "damage": 2, "move_override": -1.0, "knockback": 120.0, "text": "110米近战AOE，2伤害，并击退怪兽约120米。"},
-		{"name": "重拳", "range": 120.0, "damage": 3, "move_override": -1.0, "knockback": 320.0, "text": "120米重拳，3伤害，并击退怪兽约320米。"},
-		{"name": "飞踢", "range": 140.0, "damage": 3, "move_override": 420.0, "stun": 1, "text": "向前飞踢追近420米，对140米内目标造成3近战伤害并眩晕1。"},
-		{"name": "星焰斩击", "range": 240.0, "damage": 2, "close_range": 120.0, "close_damage": 3, "move_override": -1.0, "cripple": 1, "text": "120米内近战3伤害；否则240米远程2伤害，并致残1张技能牌。"},
-		{"name": "星焰爆裂", "range": 320.0, "damage": 4, "move_override": -1.0, "stun": 1, "text": "320米远程爆裂，4伤害，并眩晕1。"},
-		{"name": "星焰炸弹", "range": 120.0, "damage": 8, "move_override": -1.0, "stun": 2, "self_damage": EMBER_RING_BOMB_SELF_DAMAGE, "text": "120米近战爆弹，8伤害并眩晕2；之后焰环幼星承受3点反冲。"},
-	],
-	"蓝锋骑士": [
-		{"name": "蓝锋轻斩", "range": 110.0, "damage": 2, "move_override": -1.0, "knockback": 120.0, "text": "110米轻斩AOE，2伤害，并击退怪兽约120米。"},
-		{"name": "回旋刃撞", "range": 125.0, "damage": 2, "move_override": 220.0, "knockback": 160.0, "text": "回旋突进约220米，125米内造成2伤害，并击退怪兽约160米。"},
-		{"name": "蓝锋斩击", "range": 240.0, "damage": 2, "close_range": 120.0, "close_damage": 3, "move_override": -1.0, "cripple": 1, "text": "120米内近战3伤害；否则240米蓝锋远斩2伤害，并致残1张技能牌。"},
-		{"name": "逆刃斩击", "range": 260.0, "damage": 2, "close_range": 120.0, "close_damage": 3, "move_override": -1.0, "cripple": 1, "knockback": 140.0, "text": "260米逆刃斩击；近身3伤害，远程2伤害，并致残1张技能牌、击退约140米。"},
-		{"name": "热负荷射线", "range": 420.0, "damage": 3, "move_override": -1.0, "knockback": 320.0, "stun": 1, "text": "420米热负荷射线，3伤害，直线击退怪兽约320米并眩晕1。"},
-		{"name": "热负荷闪光", "range": 600.0, "damage": 1, "move_override": -1.0, "self_heal": 4, "paralyze": 2, "stun": 2, "text": "自身回复4HP；600米闪光造成1伤害，并麻痹2、眩晕2。"},
-	],
-	"镜像猎兵": [
-		{"name": "劣质光线", "range": 420.0, "damage": 2, "move_override": -1.0, "knockback": 220.0, "chaos_ray": true, "text": "420米劣质光线，2伤害，直线击退怪兽约220米，并破坏光线路径。"},
-		{"name": "折射劣光", "range": 460.0, "damage": 2, "move_override": -1.0, "knockback": 180.0, "chaos_ray": true, "text": "460米折射劣光，2伤害，斜向击退怪兽约180米，并破坏光线路径。"},
-		{"name": "劣质炸弹", "range": 420.0, "damage": 3, "move_override": -1.0, "stun": 1, "text": "420米劣质炸弹，3伤害，并眩晕1。"},
-		{"name": "改良光线", "range": 520.0, "damage": 3, "move_override": -1.0, "knockback": 320.0, "chaos_ray": true, "text": "520米改良光线，3伤害，直线击退怪兽约320米，并破坏光线路径。"},
-		{"name": "改良炸弹", "range": 520.0, "damage": 4, "move_override": -1.0, "stun": 2, "text": "520米改良炸弹，4伤害，并眩晕2。"},
-		{"name": "优质光线", "range": 600.0, "damage": 5, "move_override": -1.0, "knockback": 600.0, "chaos_ray": true, "text": "600米优质光线，5伤害，直线击退怪兽约600米，并破坏光线路径。"},
-	],
 }
 
 var rng := RandomNumberGenerator.new()
@@ -6509,7 +6237,7 @@ func _update_bestiary_menu() -> void:
 	_codex_navigation_controller_node().bestiary_index = wrapi(_codex_navigation_controller_node().bestiary_index, 0, _catalog_size())
 	_codex_navigation_controller_node().previewed_bestiary_index = _valid_bestiary_index(_codex_navigation_controller_node().previewed_bestiary_index)
 	_codex_navigation_controller_node().bestiary_grid_page = clampi(_codex_navigation_controller_node().bestiary_grid_page, 0, _codex_page_count(_catalog_size(), _bestiary_entries_per_page()) - 1)
-	var public_snapshot := _monster_codex_public_snapshot(_codex_navigation_controller_node().bestiary_index, true)
+	var public_snapshot := _game_runtime_coordinator_node().monster_codex_public_detail_snapshot(_codex_navigation_controller_node().bestiary_index, true)
 	var body_text := str(public_snapshot.get("summary_text", "")) if _codex_navigation_controller_node().bestiary_show_detail else _bestiary_grid_text()
 	var page := {
 		"mode": "monster",
@@ -6522,15 +6250,7 @@ func _update_bestiary_menu() -> void:
 	}
 	if _codex_navigation_controller_node().bestiary_show_detail:
 		page["detail"] = public_snapshot.get("detail", {})
-		var monster_card_name := _monster_card_name(_codex_navigation_controller_node().bestiary_index, 1)
-		var monster_card_skill := _game_runtime_coordinator_node().card_definition(monster_card_name)
-		page["monster_card_link"] = {
-			"visible": not monster_card_skill.is_empty(),
-			"card_name": monster_card_name,
-			"label": "对应怪兽牌（属于卡牌图鉴｜悬停看属性｜点击跳转）：",
-			"button_text": "%s｜¥%d" % [_card_display_name(monster_card_name), _card_price(monster_card_name)],
-			"tooltip": _card_presentation_detail_tooltip(monster_card_name),
-		}
+		page["monster_card_link"] = public_snapshot.get("monster_card_link", {})
 	else:
 		page["browser"] = _bestiary_codex_browser_snapshot()
 	_present_codex_page("怪兽生态档案", body_text, page)
@@ -6587,116 +6307,14 @@ func _bestiary_codex_browser_snapshot() -> Dictionary:
 	if _codex_navigation_controller_node().previewed_bestiary_index < start_index or _codex_navigation_controller_node().previewed_bestiary_index >= end_index:
 		_codex_navigation_controller_node().previewed_bestiary_index = start_index
 		_codex_navigation_controller_node().bestiary_index = start_index
-	var report := _game_runtime_coordinator_node().gameplay_balance_diagnostics_service().monster_ecology_balance_report()
-	var movement_pieces: Array[String] = []
-	for movement_variant: Variant in (report.get("movement_counts", {}) as Dictionary).keys():
-		var movement := str(movement_variant)
-		movement_pieces.append("%s×%d" % [movement, int((report.get("movement_counts", {}) as Dictionary).get(movement, 0))])
-	var entries: Array = []
-	for catalog_index in range(start_index, end_index):
-		var entry_snapshot := _monster_codex_public_snapshot(catalog_index, catalog_index == _codex_navigation_controller_node().previewed_bestiary_index)
-		entries.append(entry_snapshot.get("browser_entry", {}))
-	return {
+	return _game_runtime_coordinator_node().monster_codex_public_browser_snapshot({
+		"start_index": start_index,
+		"end_index": end_index,
 		"columns": _bestiary_grid_columns(),
 		"selected_index": _codex_navigation_controller_node().previewed_bestiary_index,
 		"can_page": page_count > 1,
 		"page_label": "第%d/%d页｜%d只怪兽｜本页%d-%d" % [_codex_navigation_controller_node().bestiary_grid_page + 1, page_count, total_count, start_index + 1, end_index],
-		"summaries": [{
-			"title": "生态速览",
-			"body": "%d只怪兽｜移动:%s｜偏好%d种商品｜%d种行动风格" % [int(report.get("catalog_count", total_count)), " / ".join(movement_pieces) if not movement_pieces.is_empty() else "暂无", int(report.get("resource_good_count", 0)), int(report.get("role_tag_count", 0))],
-			"meta": "飞行 / 水栖海域 / 陆行会改变接近城市和商路的方式。",
-			"accent": Color("#fb7185"),
-		}],
-		"entries": entries,
-		"preview": (_monster_codex_public_snapshot(_codex_navigation_controller_node().previewed_bestiary_index, true)).get("detail", {}),
-	}
-
-
-func _monster_codex_public_source_snapshot(catalog_index: int, selected: bool = false) -> Dictionary:
-	if catalog_index < 0 or catalog_index >= _catalog_size():
-		return {"valid": false, "index": catalog_index, "total": _catalog_size()}
-	var entry := _catalog_entry(catalog_index)
-	var ecology := _game_runtime_coordinator_node().gameplay_balance_diagnostics_service().monster_ecology_identity_entry(catalog_index)
-	var monster_name := str(entry.get("name", "怪兽"))
-	var profile := _monster_art_profile(monster_name)
-	var actions := []
-	var catalog_actions := _catalog_actions(catalog_index)
-	for action_index in range(mini(catalog_actions.size(), 6)):
-		var action: Dictionary = catalog_actions[action_index] if catalog_actions[action_index] is Dictionary else {}
-		var probability_facts := _monster_codex_action_probability_facts(catalog_index, action_index)
-		actions.append({
-			"name": str(action.get("name", "行动")),
-			"text": str(action.get("text", "自动行动。")),
-			"tags": monster_runtime_controller._monster_action_role_tags(action),
-			"facts": _catalog_action_numeric_facts(action),
-			"i_open": str(probability_facts.get("i_open", "0%")),
-			"i_destroyed": str(probability_facts.get("i_destroyed", "0%")),
-			"iv_open": str(probability_facts.get("iv_open", "0%")),
-			"iv_destroyed": str(probability_facts.get("iv_destroyed", "0%")),
-			"probability_tooltip": str(probability_facts.get("tooltip", "")),
-		})
-	var monster_card_name := _monster_card_name(catalog_index, 1)
-	var monster_card_skill := _game_runtime_coordinator_node().card_definition(monster_card_name)
-	var monster_card := {"valid": not monster_card_skill.is_empty()}
-	if not monster_card_skill.is_empty():
-		monster_card.merge({
-			"display_name": _card_display_name(monster_card_name),
-			"price": _card_price(monster_card_name),
-			"region_text": _monster_card_region_text(monster_card_skill),
-		}, true)
-	return {
-		"valid": true,
-		"index": catalog_index,
-		"total": _catalog_size(),
-		"selected": selected,
-		"entry": entry.duplicate(true),
-		"ecology": ecology.duplicate(true),
-		"profile": profile.duplicate(true),
-		"accent": profile.get("accent", Color("#fb7185")) as Color,
-		"move_text": _meters_text(_catalog_move_speed(catalog_index)),
-		"art_move_text": _meters_text(float(entry.get("move", MonsterRuntimeController.MONSTER_RAMPAGE_MOVE_METERS))),
-		"ecology_move_text": _meters_text(float(ecology.get("move", 0.0))),
-		"max_range_text": _meters_text(float(ecology.get("max_range", 0.0))),
-		"encounter_range_text": _meters_text(MonsterRuntimeController.AUTO_MONSTER_ENCOUNTER_RANGE_METERS),
-		"mobility_summary": _monster_mobility_summary_from_fields(ecology.get("movement_traits", []) as Array, ecology.get("terrain_move_multiplier", {}) as Dictionary),
-		"action_summary": _catalog_action_summary(catalog_index),
-		"rank_iv_shift_summary": _catalog_rank_iv_shift_summary(catalog_index, false),
-		"actions": actions,
-		"monster_card": monster_card,
-		"level_labels": [_level_text(1), _level_text(2), _level_text(3), _level_text(4)],
-	}
-
-
-func _monster_codex_action_probability_facts(catalog_index: int, action_index: int) -> Dictionary:
-	var i_open := _monster_codex_probability_percent(_catalog_ranked_action_weights_for_index(catalog_index, false, 1), action_index)
-	var i_destroyed := _monster_codex_probability_percent(_catalog_ranked_action_weights_for_index(catalog_index, true, 1), action_index)
-	var iv_open := _monster_codex_probability_percent(_catalog_ranked_action_weights_for_index(catalog_index, false, 4), action_index)
-	var iv_destroyed := _monster_codex_probability_percent(_catalog_ranked_action_weights_for_index(catalog_index, true, 4), action_index)
-	return {
-		"i_open": i_open,
-		"i_destroyed": i_destroyed,
-		"iv_open": iv_open,
-		"iv_destroyed": iv_destroyed,
-		"tooltip": "I开局%s / I破坏后%s\nIV开局%s / IV破坏后%s" % [
-			i_open,
-			i_destroyed,
-			_catalog_ranked_probability_line(catalog_index, action_index, false, 4),
-			_catalog_ranked_probability_line(catalog_index, action_index, true, 4),
-		],
-	}
-
-
-func _monster_codex_probability_percent(weights: Array, action_index: int) -> String:
-	var total := _weight_total(weights)
-	var weight := int(weights[action_index]) if action_index >= 0 and action_index < weights.size() else 0
-	return _probability_text(weight, total)
-
-
-func _monster_codex_public_snapshot(catalog_index: int, selected: bool = false) -> Dictionary:
-	var coordinator := _game_runtime_coordinator_node()
-	var source := _monster_codex_public_source_snapshot(catalog_index, selected)
-	var value: Variant = coordinator.call("compose_monster_codex_snapshot", source) if coordinator != null and coordinator.has_method("compose_monster_codex_snapshot") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+	})
 
 
 func _preview_bestiary_entry(catalog_index: int, refresh: bool = true) -> void:
@@ -7121,7 +6739,7 @@ func _product_related_card_name_facts(product_name: String, limit: int = 8) -> A
 
 func _product_monster_focus_name_facts(product_name: String, limit: int = 6) -> Array:
 	var names := []
-	for monster_variant in MONSTER_ROSTER:
+	for monster_variant in MonsterCatalogV06.roster():
 		var monster: Dictionary = monster_variant
 		if (monster.get("resource_focus", []) as Array).has(product_name):
 			names.append(str(monster.get("name", "怪兽")))
@@ -7220,7 +6838,7 @@ func _sort_product_warehouse_entry(a: Dictionary, b: Dictionary) -> bool:
 
 func _product_monster_focus_count(product_name: String) -> int:
 	var count := 0
-	for monster_variant in MONSTER_ROSTER:
+	for monster_variant in MonsterCatalogV06.roster():
 		var monster: Dictionary = monster_variant
 		var focus: Array = monster.get("resource_focus", [])
 		if focus.has(product_name):
@@ -12399,7 +12017,7 @@ func _first_table_resolved_content_catalog() -> Dictionary:
 				"industry_id": str(skill.get("industry_id", "")),
 			})
 	var monster_ids: Array = []
-	for roster_variant in MONSTER_ROSTER:
+	for roster_variant in MonsterCatalogV06.roster():
 		if roster_variant is Dictionary:
 			monster_runtime_controller._append_unique_string(monster_ids, str((roster_variant as Dictionary).get("name", "")))
 	var product_ids: Array = []
@@ -12462,8 +12080,8 @@ func _first_table_starter_monster_name(player_index: int, authored_monster_ids: 
 			if int(actor.get("owner", -1)) == player_index and not bool(actor.get("down", false)):
 				return str(actor.get("name", "怪兽"))
 	var configured_index := int(configured_starter_monster_indices[player_index]) if player_index >= 0 and player_index < configured_starter_monster_indices.size() else -1
-	if configured_index >= 0 and configured_index < MONSTER_ROSTER.size() and MONSTER_ROSTER[configured_index] is Dictionary:
-		return str((MONSTER_ROSTER[configured_index] as Dictionary).get("name", "起始怪兽"))
+	if configured_index >= 0 and configured_index < MonsterCatalogV06.catalog_size():
+		return str(MonsterCatalogV06.catalog_entry(configured_index).get("name", "起始怪兽"))
 	return str(authored_monster_ids[0]) if not authored_monster_ids.is_empty() else "起始怪兽"
 
 
@@ -15015,29 +14633,15 @@ func _cycle_configured_starter_monster_for_player(player_index: int, step: int) 
 
 
 func _catalog_size() -> int:
-	return MONSTER_ROSTER.size()
+	return MonsterCatalogV06.catalog_size()
 
 
 func _catalog_entry(index: int) -> Dictionary:
-	var clamped_index: int = max(0, min(index, _catalog_size() - 1))
-	return MONSTER_ROSTER[clamped_index] as Dictionary
-
-
-func _monster_art_profile(monster_name: String) -> Dictionary:
-	if MONSTER_ART_PROFILES.has(monster_name):
-		return MONSTER_ART_PROFILES[monster_name] as Dictionary
-	return {
-		"accent": Color("#94a3b8"),
-		"secondary": Color("#e2e8f0"),
-		"glyph": "怪",
-		"motif": "beast",
-		"subtitle": "自动怪兽｜星兽档案",
-	}
+	return MonsterCatalogV06.catalog_entry(index)
 
 
 func _catalog_move_speed(index: int) -> float:
-	var entry: Dictionary = _catalog_entry(index)
-	return float(entry.get("move", MonsterRuntimeController.MONSTER_RAMPAGE_MOVE_METERS))
+	return MonsterCatalogV06.catalog_move_speed(index)
 
 
 func _monster_mobility_summary_from_fields(traits: Array, terrain_multiplier: Dictionary) -> String:
@@ -15056,23 +14660,15 @@ func _monster_mobility_summary_from_fields(traits: Array, terrain_multiplier: Di
 
 
 func _monster_catalog_index_by_name(monster_name: String) -> int:
-	for i in range(MONSTER_ROSTER.size()):
-		var entry: Dictionary = MONSTER_ROSTER[i]
-		if String(entry.get("name", "")) == monster_name:
-			return i
-	return -1
+	return MonsterCatalogV06.monster_catalog_index_by_name(monster_name)
 
 
 func _monster_card_name(index: int, rank: int = 1) -> String:
-	var entry := _catalog_entry(index)
-	return "怪兽·%s%d" % [String(entry.get("name", "怪兽")), clampi(rank, 1, 4)]
+	return MonsterCatalogV06.monster_card_name(index, rank)
 
 
 func _monster_card_names(rank: int = 1) -> Array:
-	var result := []
-	for i in range(_catalog_size()):
-		result.append(_monster_card_name(i, rank))
-	return result
+	return MonsterCatalogV06.monster_card_names(rank)
 
 
 func _monster_name_from_card_name(card_name: String) -> String:
@@ -15137,13 +14733,7 @@ func _monster_card_definition(card_name: String) -> Dictionary:
 
 
 func _monster_technique_card_name(monster_name: String, action_index: int, rank: int = 1) -> String:
-	var catalog_index := _monster_catalog_index_by_name(monster_name)
-	var actions := _catalog_actions(catalog_index) if catalog_index >= 0 else []
-	var action_name := "招式"
-	if action_index >= 0 and action_index < actions.size():
-		var action: Dictionary = actions[action_index]
-		action_name = String(action.get("name", "招式"))
-	return "兽技·%s·%02d%s%d" % [monster_name, action_index + 1, action_name, clampi(rank, 1, 4)]
+	return MonsterCatalogV06.monster_technique_card_name(monster_name, action_index, rank)
 
 
 func _is_monster_technique_card_name(card_name: String) -> bool:
@@ -15200,56 +14790,19 @@ func _monster_technique_definition(card_name: String) -> Dictionary:
 
 
 func _catalog_actions(index: int) -> Array:
-	var entry: Dictionary = _catalog_entry(index)
-	var monster_name := String(entry.get("name", ""))
-	if MONSTER_ACTION_TABLES.has(monster_name):
-		return MONSTER_ACTION_TABLES[monster_name] as Array
-	return MONSTER_ACTION_TABLES["孢雾海皇"] as Array
+	return MonsterCatalogV06.catalog_actions(index)
 
 
 func _catalog_special_cards(index: int) -> Array:
-	var entry: Dictionary = _catalog_entry(index)
-	if entry.has("market_skills"):
-		return entry.get("market_skills", []) as Array
-	if entry.has("special_cards"):
-		return entry.get("special_cards", []) as Array
-	return []
-
-
-func _catalog_action_summary(index: int) -> String:
-	var actions := _catalog_actions(index)
-	var weights := _catalog_action_weights_for_index(index, _has_destroyed_district())
-	var total := _weight_total(weights)
-	var names := []
-	for i in range(actions.size()):
-		var weight := int(weights[i])
-		if weight <= 0:
-			continue
-		var action: Dictionary = actions[i]
-		names.append("%s %s" % [action["name"], _probability_text(weight, total)])
-	return " / ".join(names)
+	return MonsterCatalogV06.catalog_special_cards(index)
 
 
 func _catalog_action_weights(actions: Array, any_destroyed: bool) -> Array:
-	var source_weights: Array = SPECIAL_MONSTER_ESCALATED_ACTION_WEIGHTS if any_destroyed else SPECIAL_MONSTER_EARLY_ACTION_WEIGHTS
-	var weights := []
-	for i in range(actions.size()):
-		weights.append(int(source_weights[i]) if i < source_weights.size() else 0)
-	return weights
+	return MonsterCatalogV06.catalog_action_weights(actions, any_destroyed)
 
 
 func _catalog_action_weights_for_index(index: int, any_destroyed: bool) -> Array:
-	var actions := _catalog_actions(index)
-	var entry := _catalog_entry(index)
-	var monster_name := String(entry.get("name", ""))
-	var table: Dictionary = MonsterRuntimeController.MONSTER_SKILL_WEIGHT_TABLES.get(monster_name, {})
-	var source_weights: Array = table.get("escalated" if any_destroyed else "early", [])
-	if source_weights.is_empty():
-		return _catalog_action_weights(actions, any_destroyed)
-	var weights := []
-	for i in range(actions.size()):
-		weights.append(int(source_weights[i]) if i < source_weights.size() else 0)
-	return weights
+	return MonsterCatalogV06.catalog_action_weights_for_index(index, any_destroyed, MonsterRuntimeController.MONSTER_SKILL_WEIGHT_TABLES)
 
 
 func _ranked_action_weights(source_weights: Array, rank: int) -> Array:
@@ -15271,15 +14824,6 @@ func _catalog_ranked_action_weights_for_index(index: int, any_destroyed: bool, r
 	return _ranked_action_weights(_catalog_action_weights_for_index(index, any_destroyed), rank)
 
 
-func _action_weight_delta_summary(base_weights: Array, ranked_weights: Array) -> String:
-	var chunks := []
-	for i in range(min(base_weights.size(), ranked_weights.size())):
-		var delta := int(ranked_weights[i]) - int(base_weights[i])
-		if delta > 0:
-			chunks.append("%d号+%d" % [i + 1, delta])
-	return " / ".join(chunks) if not chunks.is_empty() else "无变化"
-
-
 func _ranked_probability_delta_text(base_weight: int, base_total: int, ranked_weight: int, ranked_total: int) -> String:
 	var base_probability := 0.0 if base_total <= 0 else float(base_weight) * 100.0 / float(base_total)
 	var ranked_probability := 0.0 if ranked_total <= 0 else float(ranked_weight) * 100.0 / float(ranked_total)
@@ -15290,12 +14834,6 @@ func _ranked_probability_delta_text(base_weight: int, base_total: int, ranked_we
 	if rounded_delta > 0:
 		return "+%d%%" % rounded_delta
 	return "%d%%" % rounded_delta
-
-
-func _catalog_rank_iv_shift_summary(index: int, any_destroyed: bool = false) -> String:
-	var base_weights := _catalog_action_weights_for_index(index, any_destroyed)
-	var rank_iv_weights := _catalog_ranked_action_weights_for_index(index, any_destroyed, 4)
-	return _action_weight_delta_summary(base_weights, rank_iv_weights)
 
 
 func _auto_monster_action_probability_text(actor: Dictionary, action_index: int, weights: Array, total: int, any_destroyed: bool) -> String:
@@ -15313,49 +14851,6 @@ func _auto_monster_action_probability_text(actor: Dictionary, action_index: int,
 	)
 	return "%s，%s修正%s" % [probability, _level_text(rank), delta]
 
-
-func _catalog_ranked_probability_line(index: int, action_index: int, any_destroyed: bool, rank: int) -> String:
-	var base_weights := _catalog_action_weights_for_index(index, any_destroyed)
-	var ranked_weights := _catalog_ranked_action_weights_for_index(index, any_destroyed, rank)
-	var base_total := _weight_total(base_weights)
-	var ranked_total := _weight_total(ranked_weights)
-	var base_weight := int(base_weights[action_index]) if action_index < base_weights.size() else 0
-	var ranked_weight := int(ranked_weights[action_index]) if action_index < ranked_weights.size() else 0
-	var rank_suffix := ""
-	if rank > 1:
-		rank_suffix = "（%s修正%s）" % [_level_text(rank), _ranked_probability_delta_text(base_weight, base_total, ranked_weight, ranked_total)]
-	return "%s%s" % [
-		_probability_text(ranked_weight, ranked_total),
-		rank_suffix,
-	]
-
-
-func _catalog_action_numeric_facts(action: Dictionary) -> String:
-	var facts := []
-	var damage := int(action.get("damage", 0))
-	var range_m := float(action.get("range", 0.0))
-	var move_override := float(action.get("move_override", -1.0))
-	var knockback := float(action.get("knockback", 0.0))
-	var armor := int(action.get("armor", 0))
-	var heal := int(action.get("self_heal", 0))
-	var self_damage := int(action.get("self_damage", 0))
-	if damage > 0:
-		facts.append("招式伤害%d" % damage)
-	if range_m > 0.0:
-		facts.append("射程%s" % _meters_text(range_m))
-	else:
-		facts.append("贴近/移动")
-	if move_override >= 0.0:
-		facts.append("移动%s" % _meters_text(move_override))
-	if knockback > 0.5:
-		facts.append("击退%s" % _meters_text(knockback))
-	if armor > 0:
-		facts.append("护甲+%d" % armor)
-	if heal > 0:
-		facts.append("自愈%d" % heal)
-	if self_damage > 0:
-		facts.append("反冲%d" % self_damage)
-	return "｜".join(facts)
 
 func _compact_card_list(cards: Array, limit: int) -> String:
 	if cards.is_empty():
@@ -19157,7 +18652,7 @@ func _auto_monster_markers() -> Array:
 	for i in range(monster_runtime_controller.auto_monsters.size()):
 		var actor: Dictionary = monster_runtime_controller.auto_monsters[i]
 		var monster_name := String(actor.get("name", "怪兽"))
-		var profile := _monster_art_profile(monster_name)
+		var profile := MonsterCatalogV06.art_profile(monster_name)
 		result.append({
 			"position": _entity_world_position(actor),
 			"label": "%d" % (i + 1),

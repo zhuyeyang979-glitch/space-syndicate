@@ -4,6 +4,7 @@ class_name MonsterRuntimeController
 
 const UNIT_CARD_SCHEMA_V06 := preload("res://scripts/cards/v06/units/unit_card_runtime_schema_v06.gd")
 const CARD_RUNTIME_CATALOG_V06 := preload("res://resources/cards/runtime/card_runtime_catalog_v06.tres")
+const MONSTER_CATALOG_V06 := preload("res://scripts/runtime/monster_catalog_v06.gd")
 const MONSTER_FAMILY_WEATHER_TRAITS_V1 := preload("res://resources/monsters/monster_family_weather_traits_v1.tres")
 const MONSTER_WEATHER_SPEED_CAP := 1.30
 
@@ -80,6 +81,8 @@ var _monster_card_reservations_v06: Dictionary = {}
 var _monster_card_terminal_journal_v06: Dictionary = {}
 var _monster_card_presentation_journal_v06: Dictionary = {}
 var _bankruptcy_estate_journal: Dictionary = {}
+var _monster_codex_public_catalog_cache_v06: Array = []
+var _monster_codex_public_catalog_summary_cache_v06: Dictionary = {}
 var _monster_card_lifecycle_call_counts_v06 := {
 	"prepare": 0,
 	"commit": 0,
@@ -276,6 +279,11 @@ func configure_monster_binding_capability_provider_v06(provider: Object) -> Dict
 func configure(ruleset_snapshot: Dictionary) -> void:
 	_ruleset_snapshot = ruleset_snapshot.duplicate(true)
 	_configured = str(_ruleset_snapshot.get("ruleset_id", "")) == "v0.4" and _world_bridge != null and _card_runtime_catalog_service != null
+	if _configured:
+		_rebuild_monster_codex_public_catalog_cache_v06()
+	else:
+		_monster_codex_public_catalog_cache_v06.clear()
+		_monster_codex_public_catalog_summary_cache_v06.clear()
 
 
 func reset_state() -> void:
@@ -503,6 +511,355 @@ func roster_snapshot(include_private: bool = true) -> Array:
 	return public_result
 
 
+func monster_codex_public_catalog_source_v06(catalog_index: int) -> Dictionary:
+	var total := _monster_codex_public_catalog_cache_v06.size()
+	if catalog_index < 0 or catalog_index >= total:
+		return {"schema_version": 1, "contract_version": "monster_codex_public_catalog_v06", "valid": false, "index": catalog_index, "total": total, "reason_code": "monster_catalog_index_invalid"}
+	if total == 0:
+		return {"schema_version": 1, "contract_version": "monster_codex_public_catalog_v06", "valid": false, "index": catalog_index, "total": total, "reason_code": "monster_catalog_cache_unavailable"}
+	return (_monster_codex_public_catalog_cache_v06[catalog_index] as Dictionary).duplicate(true)
+
+
+func monster_codex_public_catalog_summary_v06() -> Dictionary:
+	if _monster_codex_public_catalog_summary_cache_v06.is_empty():
+		return {"schema_version": 1, "contract_version": "monster_codex_public_catalog_summary_v06", "catalog_count": 0, "reason_code": "monster_catalog_cache_unavailable"}
+	return _monster_codex_public_catalog_summary_cache_v06.duplicate(true)
+
+
+func _rebuild_monster_codex_public_catalog_cache_v06() -> void:
+	_monster_codex_public_catalog_cache_v06.clear()
+	_monster_codex_public_catalog_summary_cache_v06.clear()
+	var total := MONSTER_CATALOG_V06.catalog_size()
+	for catalog_index in range(total):
+		_monster_codex_public_catalog_cache_v06.append(_build_monster_codex_public_catalog_source_v06(catalog_index, total))
+	_monster_codex_public_catalog_summary_cache_v06 = _build_monster_codex_public_catalog_summary_v06()
+
+
+func _build_monster_codex_public_catalog_source_v06(catalog_index: int, total: int) -> Dictionary:
+	var entry := _monster_codex_public_entry_v06(_catalog_entry(catalog_index))
+	var monster_name := str(entry.get("name", "怪兽"))
+	var ecology := _monster_codex_public_ecology_v06(catalog_index, entry)
+	var monster_card_name := MONSTER_CATALOG_V06.monster_card_name(catalog_index, 1)
+	return {
+		"schema_version": 1,
+		"contract_version": "monster_codex_public_catalog_v06",
+		"valid": true,
+		"index": catalog_index,
+		"total": total,
+		"entry": entry,
+		"ecology": ecology,
+		"profile": {},
+		"accent": Color("#fb7185"),
+		"move_text": MONSTER_CATALOG_V06.meters_text(_catalog_move_speed(catalog_index)),
+		"art_move_text": MONSTER_CATALOG_V06.meters_text(float(entry.get("move", MONSTER_RAMPAGE_MOVE_METERS))),
+		"ecology_move_text": MONSTER_CATALOG_V06.meters_text(float(ecology.get("move", 0.0))),
+		"max_range_text": MONSTER_CATALOG_V06.meters_text(float(ecology.get("max_range", 0.0))),
+		"encounter_range_text": MONSTER_CATALOG_V06.meters_text(AUTO_MONSTER_ENCOUNTER_RANGE_METERS),
+		"mobility_summary": _monster_codex_mobility_summary_v06(ecology.get("movement_traits", []) as Array, ecology.get("terrain_move_multiplier", {}) as Dictionary),
+		"action_summary": _monster_codex_action_summary_v06(catalog_index),
+		"rank_iv_shift_summary": _monster_codex_rank_iv_shift_summary_v06(catalog_index, false),
+		"actions": _monster_codex_public_action_sources_v06(catalog_index),
+		"monster_card": {
+			"valid": monster_card_name != "",
+			"card_name": monster_card_name,
+			"region_text": MONSTER_CATALOG_V06.monster_card_region_text({"summon_access": str(entry.get("summon_access", "monster_zone"))}),
+		},
+		"level_labels": [MONSTER_CATALOG_V06.level_text(1), MONSTER_CATALOG_V06.level_text(2), MONSTER_CATALOG_V06.level_text(3), MONSTER_CATALOG_V06.level_text(4)],
+	}
+
+
+func _build_monster_codex_public_catalog_summary_v06() -> Dictionary:
+	var movement_counts: Dictionary = {}
+	var role_tag_counts: Dictionary = {}
+	var resource_goods: Dictionary = {}
+	for catalog_index in range(_monster_codex_public_catalog_cache_v06.size()):
+		var entry := _monster_codex_public_entry_v06(_catalog_entry(catalog_index))
+		var ecology := _monster_codex_public_ecology_v06(catalog_index, entry)
+		var movement := str(ecology.get("movement_archetype", "通用"))
+		movement_counts[movement] = int(movement_counts.get(movement, 0)) + 1
+		for tag_variant: Variant in ecology.get("role_tags", []):
+			var tag := str(tag_variant)
+			if tag != "":
+				role_tag_counts[tag] = int(role_tag_counts.get(tag, 0)) + 1
+		for product_variant: Variant in entry.get("resource_focus", []):
+			var product := str(product_variant)
+			if product != "":
+				resource_goods[product] = true
+	return {
+		"schema_version": 1,
+		"contract_version": "monster_codex_public_catalog_summary_v06",
+		"catalog_count": _monster_codex_public_catalog_cache_v06.size(),
+		"movement_counts": movement_counts,
+		"role_tag_count": role_tag_counts.size(),
+		"resource_good_count": resource_goods.size(),
+	}
+
+
+func _monster_codex_public_entry_v06(raw_entry: Dictionary) -> Dictionary:
+	var entry := {}
+	for key in ["name", "style", "hp", "armor", "move", "resource_focus", "movement_traits", "terrain_move_multiplier", "summon_access"]:
+		if raw_entry.has(key):
+			entry[key] = raw_entry[key].duplicate(true) if raw_entry[key] is Array or raw_entry[key] is Dictionary else raw_entry[key]
+	return entry
+
+
+func _monster_codex_public_ecology_v06(catalog_index: int, entry: Dictionary) -> Dictionary:
+	var raw_entry := _catalog_entry(catalog_index)
+	var actions := _catalog_actions(catalog_index)
+	var early := _catalog_action_weights_for_index(catalog_index, false)
+	var escalated := _catalog_action_weights_for_index(catalog_index, true)
+	var rank_iv := _ranked_action_weights(early, 4)
+	var role_tags: Array = []
+	var action_names: Array = []
+	var active_early := 0
+	var active_escalated := 0
+	var late_shift := 0
+	var max_damage := 0
+	var max_range := 0.0
+	var max_move := 0.0
+	for action_index in range(actions.size()):
+		var action: Dictionary = actions[action_index] if actions[action_index] is Dictionary else {}
+		action_names.append(str(action.get("name", "招式")))
+		if action_index < early.size() and int(early[action_index]) > 0:
+			active_early += 1
+		if action_index < escalated.size() and int(escalated[action_index]) > 0:
+			active_escalated += 1
+		if action_index < rank_iv.size() and action_index < early.size() and int(rank_iv[action_index]) > int(early[action_index]):
+			late_shift += int(rank_iv[action_index]) - int(early[action_index])
+		max_damage = maxi(max_damage, maxi(int(action.get("damage", 0)), int(action.get("close_damage", 0))))
+		max_range = maxf(max_range, float(action.get("range", 0.0)))
+		max_move = maxf(max_move, float(action.get("move_override", 0.0)))
+		for tag_variant: Variant in _monster_action_role_tags(action):
+			_append_unique_string(role_tags, str(tag_variant))
+	var resource_focus: Array = (entry.get("resource_focus", []) as Array).duplicate(true) if entry.get("resource_focus", []) is Array else []
+	var special_cards := _catalog_special_cards(catalog_index)
+	var bound_counts := _monster_codex_bound_skill_counts_v06(catalog_index)
+	var economy_boon := raw_entry.get("economy_boon", {}) as Dictionary if raw_entry.get("economy_boon", {}) is Dictionary else {}
+	return {
+		"index": catalog_index,
+		"name": str(entry.get("name", "怪兽")),
+		"hp": int(entry.get("hp", 0)),
+		"armor": int(entry.get("armor", 0)),
+		"move": float(entry.get("move", 0.0)),
+		"resource_focus": resource_focus,
+		"resource_focus_count": resource_focus.size(),
+		"movement_archetype": _monster_codex_movement_archetype_v06(entry),
+		"movement_traits": (entry.get("movement_traits", []) as Array).duplicate(true) if entry.get("movement_traits", []) is Array else [],
+		"terrain_move_multiplier": (entry.get("terrain_move_multiplier", {}) as Dictionary).duplicate(true) if entry.get("terrain_move_multiplier", {}) is Dictionary else {},
+		"summon_access": str(entry.get("summon_access", "monster_zone")),
+		"has_economy_boon": not economy_boon.is_empty(),
+		"economy_boon": _monster_codex_public_economy_boon_v06(economy_boon),
+		"special_cards": special_cards.duplicate(true),
+		"action_count": actions.size(),
+		"action_names": action_names,
+		"active_early_actions": active_early,
+		"active_escalated_actions": active_escalated,
+		"role_tags": role_tags,
+		"late_shift_score": late_shift,
+		"bound_skill_counts": bound_counts,
+		"max_damage": max_damage,
+		"max_range": max_range,
+		"max_move": max_move,
+		"resource_drain": int(_catalog_entry(catalog_index).get("resource_drain", 0)),
+		"rank_iv_shift": _monster_codex_rank_iv_shift_summary_v06(catalog_index, false),
+	}
+
+
+func _monster_codex_public_economy_boon_v06(value: Variant) -> Dictionary:
+	if not (value is Dictionary):
+		return {}
+	var boon := value as Dictionary
+	return {"label": str(boon.get("label", "")), "text": str(boon.get("text", ""))}
+
+
+func _monster_codex_public_action_sources_v06(catalog_index: int) -> Array:
+	var actions := _catalog_actions(catalog_index)
+	var result: Array = []
+	for action_index in range(mini(actions.size(), 6)):
+		var action: Dictionary = actions[action_index] if actions[action_index] is Dictionary else {}
+		var probability_facts := _monster_codex_action_probability_facts_v06(catalog_index, action_index)
+		result.append({
+			"name": str(action.get("name", "行动")),
+			"text": str(action.get("text", "自动行动。")),
+			"tags": _monster_action_role_tags(action),
+			"facts": _monster_codex_action_numeric_facts_v06(action),
+			"i_open": str(probability_facts.get("i_open", "0%")),
+			"i_destroyed": str(probability_facts.get("i_destroyed", "0%")),
+			"iv_open": str(probability_facts.get("iv_open", "0%")),
+			"iv_destroyed": str(probability_facts.get("iv_destroyed", "0%")),
+			"probability_tooltip": str(probability_facts.get("tooltip", "")),
+		})
+	return result
+
+
+func _monster_codex_action_probability_facts_v06(catalog_index: int, action_index: int) -> Dictionary:
+	var i_open := _monster_codex_probability_percent_v06(_catalog_ranked_action_weights_for_index_v06(catalog_index, false, 1), action_index)
+	var i_destroyed := _monster_codex_probability_percent_v06(_catalog_ranked_action_weights_for_index_v06(catalog_index, true, 1), action_index)
+	var iv_open := _monster_codex_probability_percent_v06(_catalog_ranked_action_weights_for_index_v06(catalog_index, false, 4), action_index)
+	var iv_destroyed := _monster_codex_probability_percent_v06(_catalog_ranked_action_weights_for_index_v06(catalog_index, true, 4), action_index)
+	return {
+		"i_open": i_open,
+		"i_destroyed": i_destroyed,
+		"iv_open": iv_open,
+		"iv_destroyed": iv_destroyed,
+		"tooltip": "I开局%s / I破坏后%s\nIV开局%s / IV破坏后%s" % [
+			i_open,
+			i_destroyed,
+			_monster_codex_ranked_probability_line_v06(catalog_index, action_index, false, 4),
+			_monster_codex_ranked_probability_line_v06(catalog_index, action_index, true, 4),
+		],
+	}
+
+
+func _monster_codex_probability_percent_v06(weights: Array, action_index: int) -> String:
+	var total := _weight_total(weights)
+	var weight := int(weights[action_index]) if action_index >= 0 and action_index < weights.size() else 0
+	return _probability_text(weight, total)
+
+
+func _catalog_action_weights_for_index(catalog_index: int, any_destroyed: bool) -> Array:
+	var actions := _catalog_actions(catalog_index)
+	var entry := _catalog_entry(catalog_index)
+	var monster_name := str(entry.get("name", ""))
+	var table: Dictionary = MONSTER_SKILL_WEIGHT_TABLES.get(monster_name, {})
+	var source_weights: Array = table.get("escalated" if any_destroyed else "early", [])
+	if source_weights.is_empty():
+		return _catalog_action_weights(actions, any_destroyed)
+	var weights: Array = []
+	for action_index in range(actions.size()):
+		weights.append(int(source_weights[action_index]) if action_index < source_weights.size() else 0)
+	return weights
+
+
+func _catalog_ranked_action_weights_for_index_v06(catalog_index: int, any_destroyed: bool, rank: int) -> Array:
+	return _ranked_action_weights(_catalog_action_weights_for_index(catalog_index, any_destroyed), rank)
+
+
+func _monster_codex_action_summary_v06(catalog_index: int) -> String:
+	var actions := _catalog_actions(catalog_index)
+	var names: Array = []
+	for action_index in range(actions.size()):
+		var action: Dictionary = actions[action_index] if actions[action_index] is Dictionary else {}
+		var facts := _monster_codex_action_probability_facts_v06(catalog_index, action_index)
+		if str(facts.get("i_open", "0%")) == "0%" and str(facts.get("i_destroyed", "0%")) == "0%" and str(facts.get("iv_open", "0%")) == "0%" and str(facts.get("iv_destroyed", "0%")) == "0%":
+			continue
+		names.append("%s I%s/%s IV%s/%s" % [
+			str(action.get("name", "行动")),
+			str(facts.get("i_open", "0%")),
+			str(facts.get("i_destroyed", "0%")),
+			str(facts.get("iv_open", "0%")),
+			str(facts.get("iv_destroyed", "0%")),
+		])
+	return " / ".join(names)
+
+
+func _monster_codex_rank_iv_shift_summary_v06(catalog_index: int, any_destroyed: bool = false) -> String:
+	var base_weights := _catalog_action_weights_for_index(catalog_index, any_destroyed)
+	var rank_iv_weights := _catalog_ranked_action_weights_for_index_v06(catalog_index, any_destroyed, 4)
+	var chunks: Array = []
+	for action_index in range(mini(base_weights.size(), rank_iv_weights.size())):
+		var delta := int(rank_iv_weights[action_index]) - int(base_weights[action_index])
+		if delta > 0:
+			chunks.append("%d号+%d" % [action_index + 1, delta])
+	return " / ".join(chunks) if not chunks.is_empty() else "无变化"
+
+
+func _monster_codex_ranked_probability_line_v06(catalog_index: int, action_index: int, any_destroyed: bool, rank: int) -> String:
+	var base_weights := _catalog_action_weights_for_index(catalog_index, any_destroyed)
+	var ranked_weights := _catalog_ranked_action_weights_for_index_v06(catalog_index, any_destroyed, rank)
+	var base_total := _weight_total(base_weights)
+	var ranked_total := _weight_total(ranked_weights)
+	var base_weight := int(base_weights[action_index]) if action_index < base_weights.size() else 0
+	var ranked_weight := int(ranked_weights[action_index]) if action_index < ranked_weights.size() else 0
+	var rank_suffix := ""
+	if rank > 1:
+		rank_suffix = "（%s修正%s）" % [MONSTER_CATALOG_V06.level_text(rank), _monster_codex_ranked_probability_delta_text_v06(base_weight, base_total, ranked_weight, ranked_total)]
+	return "%s%s" % [_probability_text(ranked_weight, ranked_total), rank_suffix]
+
+
+func _monster_codex_ranked_probability_delta_text_v06(base_weight: int, base_total: int, ranked_weight: int, ranked_total: int) -> String:
+	var base_probability := 0.0 if base_total <= 0 else float(base_weight) * 100.0 / float(base_total)
+	var ranked_probability := 0.0 if ranked_total <= 0 else float(ranked_weight) * 100.0 / float(ranked_total)
+	var delta := ranked_probability - base_probability
+	if absf(delta) < 0.5:
+		return "±0%"
+	var rounded_delta := int(round(delta))
+	if rounded_delta > 0:
+		return "+%d%%" % rounded_delta
+	return "%d%%" % rounded_delta
+
+
+func _monster_codex_action_numeric_facts_v06(action: Dictionary) -> String:
+	var facts: Array = []
+	var damage := int(action.get("damage", 0))
+	var range_m := float(action.get("range", 0.0))
+	var move_override := float(action.get("move_override", -1.0))
+	var knockback := float(action.get("knockback", 0.0))
+	var armor := int(action.get("armor", 0))
+	var heal := int(action.get("self_heal", 0))
+	var self_damage := int(action.get("self_damage", 0))
+	if damage > 0:
+		facts.append("招式伤害%d" % damage)
+	if range_m > 0.0:
+		facts.append("射程%s" % MONSTER_CATALOG_V06.meters_text(range_m))
+	else:
+		facts.append("贴近/移动")
+	if move_override >= 0.0:
+		facts.append("移动%s" % MONSTER_CATALOG_V06.meters_text(move_override))
+	if knockback > 0.5:
+		facts.append("击退%s" % MONSTER_CATALOG_V06.meters_text(knockback))
+	if armor > 0:
+		facts.append("护甲+%d" % armor)
+	if heal > 0:
+		facts.append("自愈%d" % heal)
+	if self_damage > 0:
+		facts.append("反冲%d" % self_damage)
+	return "｜".join(facts)
+
+
+func _monster_codex_bound_skill_counts_v06(catalog_index: int) -> Array:
+	var counts: Array = []
+	for rank in range(1, 5):
+		var count := 0
+		var entry := _catalog_entry(catalog_index)
+		var monster_name := str(entry.get("name", "怪兽"))
+		var actions := _catalog_actions(catalog_index)
+		for action_index in range(actions.size()):
+			var card_name := _monster_technique_card_name(monster_name, action_index, rank)
+			if card_name != "":
+				count += 1
+		counts.append(count)
+	return counts
+
+
+func _monster_codex_movement_archetype_v06(entry: Dictionary) -> String:
+	var traits: Array = (entry.get("movement_traits", []) as Array).duplicate(true) if entry.get("movement_traits", []) is Array else []
+	var terrain := (entry.get("terrain_move_multiplier", {}) as Dictionary).duplicate(true) if entry.get("terrain_move_multiplier", {}) is Dictionary else {}
+	var access := str(entry.get("summon_access", "monster_zone"))
+	if traits.has("flying"):
+		return "飞行"
+	if traits.has("aquatic") or float(terrain.get("ocean", 1.0)) > float(terrain.get("land", 1.0)) + 0.25 or access == "ocean_monster_zone":
+		return "水栖/海域"
+	if access == "land_monster_zone" or float(terrain.get("land", 1.0)) >= float(terrain.get("ocean", 1.0)):
+		return "陆行"
+	return "通用"
+
+
+func _monster_codex_mobility_summary_v06(traits: Array, terrain_multiplier: Dictionary) -> String:
+	var pieces: Array = []
+	if traits.has("flying"):
+		pieces.append("飞行免碾压")
+	if traits.has("aquatic"):
+		pieces.append("水栖")
+	var ocean := float(terrain_multiplier.get("ocean", 1.0))
+	var land := float(terrain_multiplier.get("land", 1.0))
+	if absf(ocean - 1.0) > 0.01 or absf(land - 1.0) > 0.01:
+		pieces.append("海×%.2f/陆×%.2f" % [ocean, land])
+	if pieces.is_empty():
+		return "普通步行"
+	return "、".join(pieces)
+
+
 func region_attraction_public_snapshot_v06(region_index: int) -> Dictionary:
 	if not _configured or _world_bridge == null or not _world_bridge.has_world():
 		return _monster_region_public_attraction_snapshot_v06(false, region_index, [], "monster_region_public_attraction_unavailable")
@@ -671,6 +1028,14 @@ func debug_snapshot(viewer_index: int = -1) -> Dictionary:
 		"runtime_owner": "MonsterRuntimeController",
 		"parallel_legacy_owner": false,
 		"card_catalog_bound": _card_runtime_catalog_service != null,
+		"monster_codex_public_catalog_api": has_method("monster_codex_public_catalog_source_v06"),
+		"monster_codex_public_catalog_schema": "monster_codex_public_catalog_v06",
+		"monster_codex_public_catalog_reads_roster": false,
+		"monster_codex_public_catalog_reads_private_owner": false,
+		"monster_codex_public_catalog_reads_rng": false,
+		"monster_codex_public_catalog_reads_world_bridge_during_compose": false,
+		"monster_codex_public_catalog_cache_ready": not _monster_codex_public_catalog_cache_v06.is_empty(),
+		"monster_codex_public_catalog_cache_count": _monster_codex_public_catalog_cache_v06.size(),
 		"monster_count": auto_monsters.size(),
 		"active_monster_count": _active_auto_monster_count(),
 		"selected_slot": selected_auto_monster_slot,
@@ -4822,19 +5187,22 @@ func _can_summon_monster_card_at_district(skill: Dictionary, district_index: int
 	return _world_call(&"_can_summon_monster_card_at_district", [skill, district_index])
 
 func _catalog_action_weights(actions: Array, any_destroyed: bool) -> Array:
-	return _world_call(&"_catalog_action_weights", [actions, any_destroyed])
+	return MONSTER_CATALOG_V06.catalog_action_weights(actions, any_destroyed)
 
 func _catalog_actions(index: int) -> Array:
-	return _world_call(&"_catalog_actions", [index])
+	return MONSTER_CATALOG_V06.catalog_actions(index)
+
+func _catalog_special_cards(index: int) -> Array:
+	return MONSTER_CATALOG_V06.catalog_special_cards(index)
 
 func _catalog_entry(index: int) -> Dictionary:
-	return _world_call(&"_catalog_entry", [index])
+	return MONSTER_CATALOG_V06.catalog_entry(index)
 
 func _catalog_move_speed(index: int) -> float:
-	return _world_call(&"_catalog_move_speed", [index])
+	return MONSTER_CATALOG_V06.catalog_move_speed(index)
 
 func _catalog_size() -> int:
-	return _world_call(&"_catalog_size", [])
+	return MONSTER_CATALOG_V06.catalog_size()
 
 func _city_demand_names(city: Dictionary) -> Array:
 	return _world_call(&"_city_demand_names", [city])
@@ -4897,7 +5265,7 @@ func _has_destroyed_district() -> bool:
 	return _world_call(&"_has_destroyed_district", [])
 
 func _level_text(rank: int) -> String:
-	return _world_call(&"_level_text", [rank])
+	return MONSTER_CATALOG_V06.level_text(rank)
 
 func _limited_name_list(names: Array, limit: int = 6, empty_text: String = "无") -> String:
 	return _world_call(&"_limited_name_list", [names, limit, empty_text])
@@ -4909,7 +5277,7 @@ func _make_skill(skill_name: String) -> Dictionary:
 	return _world_call(&"_make_skill", [skill_name])
 
 func _meters_text(value: float) -> String:
-	return _world_call(&"_meters_text", [value])
+	return MONSTER_CATALOG_V06.meters_text(value)
 
 func _monster_action_animation_profile(_monster_name: String, action: Dictionary, _action_index: int = -1) -> Dictionary:
 	return _world_call(&"_monster_action_animation_profile", [_monster_name, action, _action_index])
@@ -4918,19 +5286,19 @@ func _monster_card_duration_text(skill: Dictionary, compact: bool = false) -> St
 	return _world_call(&"_monster_card_duration_text", [skill, compact])
 
 func _monster_card_name(index: int, rank: int = 1) -> String:
-	return _world_call(&"_monster_card_name", [index, rank])
+	return MONSTER_CATALOG_V06.monster_card_name(index, rank)
 
 func _monster_card_region_text(skill: Dictionary, compact: bool = false) -> String:
-	return _world_call(&"_monster_card_region_text", [skill, compact])
+	return MONSTER_CATALOG_V06.monster_card_region_text(skill, compact)
 
 func _monster_catalog_index_by_name(monster_name: String) -> int:
-	return _world_call(&"_monster_catalog_index_by_name", [monster_name])
+	return MONSTER_CATALOG_V06.monster_catalog_index_by_name(monster_name)
 
 func _monster_knockback_model(action_or_skill: Dictionary, actor: Dictionary = {}) -> Dictionary:
 	return _world_call(&"_monster_knockback_model", [action_or_skill, actor])
 
 func _monster_technique_card_name(monster_name: String, action_index: int, rank: int = 1) -> String:
-	return _world_call(&"_monster_technique_card_name", [monster_name, action_index, rank])
+	return MONSTER_CATALOG_V06.monster_technique_card_name(monster_name, action_index, rank)
 
 func _monster_wager_percent_for_amount(player_index: int, amount: int) -> int:
 	if player_index < 0 or player_index >= players.size():
@@ -4956,13 +5324,13 @@ func _preset_int(key: String) -> int:
 	return _world_call(&"_preset_int", [key])
 
 func _probability_text(weight: int, total: int) -> String:
-	return _world_call(&"_probability_text", [weight, total])
+	return MONSTER_CATALOG_V06.probability_text(weight, total)
 
 func _pulse_district(index: int, color: Color) -> void:
 	_world_call(&"_pulse_district", [index, color])
 
 func _ranked_action_weights(source_weights: Array, rank: int) -> Array:
-	return _world_call(&"_ranked_action_weights", [source_weights, rank])
+	return MONSTER_CATALOG_V06.ranked_action_weights(source_weights, rank)
 
 func _record_player_cash_snapshot(player_index: int) -> void:
 	_world_call(&"_record_player_cash_snapshot", [player_index])
@@ -4996,7 +5364,7 @@ func _weight_part_total(parts: Dictionary) -> int:
 	return _world_call(&"_weight_part_total", [parts])
 
 func _weight_total(weights: Array) -> int:
-	return _world_call(&"_weight_total", [weights])
+	return MONSTER_CATALOG_V06.weight_total(weights)
 
 func _weighted_pick_index(weights: Array) -> int:
 	return _world_call(&"_weighted_pick_index", [weights])
