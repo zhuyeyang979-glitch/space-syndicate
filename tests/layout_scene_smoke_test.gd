@@ -646,6 +646,8 @@ const CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/cit
 const CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/CityTradeNetworkRuntimeController.tscn"
 const CITY_TRADE_NETWORK_RUNTIME_WORLD_BRIDGE_SCRIPT := "res://scripts/runtime/city_trade_network_world_bridge.gd"
 const CITY_TRADE_NETWORK_RUNTIME_WORLD_BRIDGE_SCENE := "res://scenes/runtime/CityTradeNetworkWorldBridge.tscn"
+const ROUTE_NETWORK_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/RouteNetworkRuntimeController.tscn"
+const ROUTE_NETWORK_WORLD_BRIDGE_SCENE := "res://scenes/runtime/RouteNetworkWorldBridge.tscn"
 const CITY_TRADE_NETWORK_RUNTIME_OWNERSHIP_CONTRACT := "res://docs/city_trade_network_runtime_ownership_contract.md"
 const CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_OUTPUT_DIR := "user://space_syndicate_design_qa/city_trade_network_characterization/"
 const CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH := "user://space_syndicate_design_qa/structured_project_gdp_v05_sprint_3.png"
@@ -11538,11 +11540,39 @@ func _check_city_trade_network_runtime_characterization_component() -> void:
 		var bridge := bridge_packed.instantiate()
 		var controller_debug: Dictionary = controller.call("debug_snapshot") if controller.has_method("debug_snapshot") else {}
 		var bridge_debug: Dictionary = bridge.call("debug_snapshot") if bridge.has_method("debug_snapshot") else {}
-		_expect(controller.has_method("refresh_networks") and controller.has_method("shortest_trade_path") and controller.has_method("settle_cashflow_seconds") and controller.has_method("public_project_slot_snapshots") and controller.has_method("tombstone_project") and controller.has_method("to_save_data") and controller.has_method("apply_save_data"), "CityTradeNetworkRuntimeController exposes project-slot, generation/tombstone, network, cashflow-orchestration, and save APIs")
-		_expect(not bool(bridge_debug.get("owns_runtime_state", true)) and not bool(bridge_debug.get("owns_rules", true)) and bridge.has_method("capture_world_snapshot") and bridge.has_method("apply_network_receipt"), "CityTradeNetworkWorldBridge is explicitly non-owning")
+		var controller_method_names: Array[String] = []
+		for method_record in controller_script.get_script_method_list():
+			controller_method_names.append(str((method_record as Dictionary).get("name", "")))
+		controller_method_names.sort()
+		var bridge_method_names: Array[String] = []
+		for method_record in bridge_script.get_script_method_list():
+			bridge_method_names.append(str((method_record as Dictionary).get("name", "")))
+		bridge_method_names.sort()
+		var retired_save: Dictionary = controller.call("to_save_data") if controller.has_method("to_save_data") else {}
+		_expect(bool(controller_debug.get("retired", false)) and str(controller_debug.get("retired_by", "")) == "SS06-03" and str(controller_debug.get("replacement", "")) == "RouteNetworkRuntimeController" and not bool(controller_debug.get("controller_authoritative", true)) and not bool(controller_debug.get("owns_route_topology", true)) and not bool(controller_debug.get("owns_project_state", true)) and not bool(controller_debug.get("owns_cashflow", true)) and bool(retired_save.get("retired", false)) and controller_method_names == ["apply_save_data", "configure", "debug_snapshot", "reset_state", "to_save_data"], "CityTradeNetworkRuntimeController remains a non-authoritative retired marker for the current owner split")
+		_expect(bool(bridge_debug.get("retired", false)) and str(bridge_debug.get("replacement", "")) == "RouteNetworkWorldBridge" and not bool(bridge_debug.get("owns_runtime_state", true)) and not bool(bridge_debug.get("owns_rules", true)) and bridge_method_names == ["bind_world", "debug_snapshot"], "CityTradeNetworkWorldBridge is explicitly non-owning")
 		_expect(not _variant_contains_callable(controller_debug) and not _variant_contains_object(controller_debug) and not _variant_contains_callable(bridge_debug) and not _variant_contains_object(bridge_debug), "City / Trade Network debug snapshots are pure data")
 		controller.free()
 		bridge.free()
+	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
+	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
+	if coordinator != null:
+		var route_owner := coordinator.get_node_or_null("RouteNetworkRuntimeController")
+		var route_bridge := coordinator.get_node_or_null("RouteNetworkWorldBridge")
+		var commodity_owner := coordinator.get_node_or_null("CommodityFlowRuntimeController")
+		var commodity_bridge := coordinator.get_node_or_null("CommodityFlowWorldBridge")
+		var infrastructure_owner := coordinator.get_node_or_null("RegionInfrastructureRuntimeController")
+		var route_debug: Dictionary = route_owner.call("debug_snapshot") if route_owner != null and route_owner.has_method("debug_snapshot") else {}
+		var route_bridge_debug: Dictionary = route_bridge.call("debug_snapshot") if route_bridge != null and route_bridge.has_method("debug_snapshot") else {}
+		var commodity_debug: Dictionary = commodity_owner.call("debug_snapshot") if commodity_owner != null and commodity_owner.has_method("debug_snapshot") else {}
+		var commodity_bridge_debug: Dictionary = commodity_bridge.call("debug_snapshot") if commodity_bridge != null and commodity_bridge.has_method("debug_snapshot") else {}
+		var infrastructure_debug: Dictionary = infrastructure_owner.call("debug_snapshot") if infrastructure_owner != null and infrastructure_owner.has_method("debug_snapshot") else {}
+		_expect(route_owner != null and route_owner.scene_file_path == ROUTE_NETWORK_RUNTIME_CONTROLLER_SCENE and route_owner.has_method("refresh_routes") and route_owner.has_method("route_candidates_for_regions") and bool(route_debug.get("owns_route_legality", false)) and bool(route_debug.get("owns_route_capacity_derivation", false)) and not bool(route_debug.get("owns_goods_or_cash", true)), "RouteNetworkRuntimeController owns route derivation without owning goods or cash")
+		_expect(commodity_owner != null and commodity_owner.scene_file_path == COMMODITY_FLOW_RUNTIME_CONTROLLER_SCENE and commodity_owner.has_method("advance_world") and commodity_owner.has_method("recent_sale_receipts_snapshot") and commodity_owner.has_method("region_gdp_snapshot") and bool(commodity_debug.get("owns_sale_receipt_ledger", false)) and not bool(commodity_debug.get("owns_cash_state", true)) and not bool(commodity_debug.get("owns_route_topology", true)), "CommodityFlowRuntimeController owns Sale Receipts and receipt-derived GDP without owning cash or routes")
+		_expect(infrastructure_owner != null and infrastructure_owner.scene_file_path == REGION_INFRASTRUCTURE_RUNTIME_CONTROLLER_SCENE and infrastructure_owner.has_method("regions_snapshot") and infrastructure_owner.has_method("facilities_snapshot") and str(infrastructure_debug.get("runtime_owner", "")) == "RegionInfrastructureRuntimeController", "RegionInfrastructureRuntimeController owns the region and public-facility state consumed by routes")
+		_expect(route_bridge != null and route_bridge.scene_file_path == ROUTE_NETWORK_WORLD_BRIDGE_SCENE and route_bridge.has_method("capture_route_topology") and not bool(route_bridge_debug.get("owns_runtime_state", true)) and not bool(route_bridge_debug.get("owns_route_rules", true)) and not bool(route_bridge_debug.get("owns_goods", true)) and not bool(route_bridge_debug.get("owns_cash", true)) and commodity_bridge != null and commodity_bridge.scene_file_path == COMMODITY_FLOW_WORLD_BRIDGE_SCENE and commodity_bridge.has_method("apply_sale_receipt_batch") and str(commodity_bridge_debug.get("runtime_owner", "")) == "none" and not bool(commodity_bridge_debug.get("owns_flow_rules", true)) and not bool(commodity_bridge_debug.get("owns_sale_receipts", true)), "current Route and Commodity WorldBridges expose facts and atomic receipt application without becoming owners")
+		_expect(coordinator.get_node_or_null("CityTradeNetworkRuntimeController") == null and coordinator.get_node_or_null("CityTradeNetworkWorldBridge") == null, "GameRuntimeCoordinator composes current route, receipt, and infrastructure owners without retired CityTrade nodes")
+		coordinator.free()
 	var packed := load(CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_BENCH_SCENE) as PackedScene
 	_expect(packed != null, "CityTradeNetworkRuntimeCharacterizationBench scene loads")
 	if packed != null:
