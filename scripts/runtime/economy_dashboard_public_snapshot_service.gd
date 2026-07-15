@@ -188,7 +188,8 @@ func _compact_product_lines(entries: Array, cold: bool) -> Array:
 	var lines := []
 	for entry_variant: Variant in entries.slice(0, mini(4, entries.size())):
 		var entry := entry_variant as Dictionary
-		lines.append("%s ¥%d｜供%d/需%d｜%s%s" % [str(entry.get("name", "商品")), int(entry.get("price", 0)), int(entry.get("supply", 0)), int(entry.get("demand", 0)), "受压" if cold else "趋势", _signed_int(int(entry.get("trend", 0)))])
+		var weather := str(entry.get("weather", "无"))
+		lines.append("%s ¥%d｜供%d/需%d｜%s%s｜天气%s" % [str(entry.get("name", "商品")), int(entry.get("price", 0)), int(entry.get("supply", 0)), int(entry.get("demand", 0)), "受压" if cold else "趋势", _signed_int(int(entry.get("trend", 0))), weather])
 	return lines
 
 
@@ -196,7 +197,7 @@ func _compact_city_lines(entries: Array) -> Array:
 	var lines := []
 	for entry_variant: Variant in entries.slice(0, mini(4, entries.size())):
 		var entry := entry_variant as Dictionary
-		lines.append("%s｜%s｜收入%d｜断%d" % [str(entry.get("name", "城市")), str(entry.get("owner_view", "未知业主")), int(entry.get("income", 0)), int(entry.get("disrupted", 0))])
+		lines.append("%s｜%s｜收入%d｜断%d｜天气%s" % [str(entry.get("name", "城市")), str(entry.get("owner_view", "未知业主")), int(entry.get("income", 0)), int(entry.get("disrupted", 0)), _weather_income_contribution_text(entry.get("weather_contributions", []))])
 	if lines.is_empty(): lines.append("暂无城市；先城市化陆地。")
 	return lines
 
@@ -215,8 +216,24 @@ func _city_detail_lines(entries: Array, limit: int) -> Array:
 	var lines := []
 	for entry_variant: Variant in entries.slice(0, mini(limit, entries.size())):
 		var entry := entry_variant as Dictionary
-		lines.append("%s｜%s｜%s｜潜在收入%d｜上次%d｜%s｜收入拆解%s｜公开状态%s｜合约%s｜供给%d/%d｜断路%d｜竞争%d｜流通%s｜生产%s｜需求%s" % [str(entry.get("name", "城市")), str(entry.get("owner_view", "未知业主")), str(entry.get("intel_hint", "情报：无")), int(entry.get("income", 0)), int(entry.get("last_income", 0)), str(entry.get("gdp_trend", "GDP趋势：暂无历史")), str(entry.get("breakdown", "")), _status_text(entry.get("status_tags", []) as Array), str(entry.get("contract", "无")), int(entry.get("supplied", 0)), int(entry.get("demand_count", 0)), int(entry.get("disrupted", 0)), int(entry.get("competition", 0)), str(entry.get("flow", "无")), _limited_names(entry.get("products", []) as Array, 3, "无"), _limited_names(entry.get("demands", []) as Array, 3, "无")])
+		lines.append("%s｜%s｜%s｜潜在收入%d｜上次%d｜%s｜收入拆解%s｜天气%s｜公开状态%s｜合约%s｜供给%d/%d｜断路%d｜竞争%d｜流通%s｜生产%s｜需求%s" % [str(entry.get("name", "城市")), str(entry.get("owner_view", "未知业主")), str(entry.get("intel_hint", "情报：无")), int(entry.get("income", 0)), int(entry.get("last_income", 0)), str(entry.get("gdp_trend", "GDP趋势：暂无历史")), str(entry.get("breakdown", "")), _weather_income_contribution_text(entry.get("weather_contributions", [])), _status_text(entry.get("status_tags", []) as Array), str(entry.get("contract", "无")), int(entry.get("supplied", 0)), int(entry.get("demand_count", 0)), int(entry.get("disrupted", 0)), int(entry.get("competition", 0)), str(entry.get("flow", "无")), _limited_names(entry.get("products", []) as Array, 3, "无"), _limited_names(entry.get("demands", []) as Array, 3, "无")])
 	return lines
+
+
+func _weather_income_contribution_text(value: Variant) -> String:
+	if not (value is Array) or (value as Array).is_empty():
+		return "无"
+	var parts: Array[String] = []
+	for row_variant in value as Array:
+		if not (row_variant is Dictionary):
+			continue
+		var row := row_variant as Dictionary
+		var direction := "生产" if str(row.get("direction", "")) == "production" else "需求"
+		var multiplier := float(row.get("multiplier", 1.0))
+		parts.append("%s%s%+d%%" % [str(row.get("weather_id", "天气")), direction, int(round((multiplier - 1.0) * 100.0))])
+		if parts.size() >= 3:
+			break
+	return "、".join(parts) if not parts.is_empty() else "无"
 
 
 func _card_aftermath_lines(entries: Array, limit: int) -> Array:

@@ -322,7 +322,7 @@ func refresh_prices() -> Dictionary:
 		entry["weather_price_growth_multiplier"] = weather_price_growth_multiplier
 		entry["weather_modifier"] = weather_modifier
 		entry["weather_contributions"] = _sanitize_weather_contributions(weather_context.get("contributions", []))
-		entry["weather_driver_summary"] = _weather_driver_summary(entry["weather_contributions"] as Array, weather_modifier)
+		entry["weather_driver_summary"] = _weather_driver_summary(entry["weather_contributions"] as Array, weather_price_growth_multiplier)
 		if temporary_demand > 0: entry["temporary_demand_pressure"] = maxi(0, temporary_demand - 1)
 		if temporary_supply > 0: entry["temporary_supply_pressure"] = maxi(0, temporary_supply - 1)
 		_append_price_history(entry, price)
@@ -955,14 +955,14 @@ func _append_product_weather_contributions(aggregate: Dictionary, region_index: 
 		aggregate["contributions"] = rows
 
 
-func _weather_driver_summary(rows: Array, weather_modifier: int) -> String:
-	if rows.is_empty() or weather_modifier == 0:
+func _weather_driver_summary(rows: Array, weather_multiplier: float) -> String:
+	if rows.is_empty() or is_equal_approx(weather_multiplier, 1.0):
 		return "无天气因素"
 	var region_ids: Dictionary = {}
 	for row_variant in rows:
 		if row_variant is Dictionary:
 			region_ids[int((row_variant as Dictionary).get("region_index", -1))] = true
-	return "天气%+d（%d区）" % [weather_modifier, region_ids.size()]
+	return "天气价格增速%+d%%（%d区）" % [int(round((weather_multiplier - 1.0) * 100.0)), region_ids.size()]
 
 
 func _sanitize_weather_contributions(value: Variant) -> Array:

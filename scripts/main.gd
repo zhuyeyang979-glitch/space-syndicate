@@ -4989,12 +4989,19 @@ func _sort_economy_product_hot_entry(a: Dictionary, b: Dictionary) -> bool:
 
 func _economy_city_income_entries() -> Array:
 	var entries := []
+	var weather_projection_variant: Variant = _commodity_flow_runtime_call("public_weather_contribution_snapshot")
+	var weather_projection: Dictionary = weather_projection_variant if weather_projection_variant is Dictionary else {}
+	var public_weather_rows: Array = weather_projection.get("contributions", []) if weather_projection.get("contributions", []) is Array else []
 	for index_variant in _active_city_district_indices():
 		var index := int(index_variant)
 		var city := _district_city(index)
 		var competition := _city_competition_matches(index)
 		var breakdown := _city_cycle_income_breakdown(index, competition)
 		var potential_income := int(breakdown.get("net", 0))
+		var city_weather_rows: Array = []
+		for weather_row_variant in public_weather_rows:
+			if weather_row_variant is Dictionary and int((weather_row_variant as Dictionary).get("region_index", -1)) == index:
+				city_weather_rows.append((weather_row_variant as Dictionary).duplicate(true))
 		entries.append({
 			"district_index": index,
 			"name": String(districts[index].get("name", "区域%d" % (index + 1))),
@@ -5013,6 +5020,7 @@ func _economy_city_income_entries() -> Array:
 			"contract": _city_contract_status_text(city),
 			"status_tags": _city_public_status_tags(city),
 			"breakdown": _city_income_breakdown_summary(breakdown),
+			"weather_contributions": city_weather_rows,
 		})
 	entries.sort_custom(Callable(self, "_sort_economy_city_income_entry"))
 	return entries
@@ -16965,6 +16973,9 @@ func _product_market_boon_text(product_name: String) -> String:
 	if entry.is_empty():
 		return "无"
 	var pieces := []
+	var weather_driver := String(entry.get("weather_driver_summary", "无天气因素"))
+	if weather_driver != "无天气因素":
+		pieces.append(weather_driver)
 	var growth_multiplier: float = float(entry.get("growth_multiplier", 1.0))
 	if growth_multiplier > 1.001:
 		var growth_source := String(entry.get("growth_source", entry.get("base_growth_source", "")))
