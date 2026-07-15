@@ -1,6 +1,7 @@
 extends SceneTree
 
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
+const OPTIONAL_SUMMON_FOCUSED_ARG := "--first-table-optional-summon-only"
 const VIEWPORT_SIZES := [
 	Vector2i(1280, 720),
 	Vector2i(1600, 960),
@@ -39,10 +40,15 @@ func _init() -> void:
 
 
 func _run() -> void:
+	if OS.get_cmdline_user_args().has(OPTIONAL_SUMMON_FOCUSED_ARG):
+		await _check_first_table_optional_summon_after_economy()
+		_finish()
+		return
 	_check_gate_documentation()
 	for viewport_size in VIEWPORT_SIZES:
 		await _check_first_table_runtime_layout(viewport_size)
 	await _check_first_run_cta_forgives_missing_region()
+	await _check_first_table_optional_summon_after_economy()
 	await _check_first_ten_minute_action_chain()
 	_finish()
 
@@ -75,6 +81,79 @@ func _check_first_table_runtime_layout(viewport_size: Vector2i) -> void:
 	await _wait_frames(1)
 
 
+func _check_first_table_optional_summon_after_economy() -> void:
+	root.size = Vector2i(1600, 960)
+	var main := await _instantiate_main()
+	if main == null:
+		return
+	main.call("_start_scenario_from_menu", "first_table")
+	await _wait_frames(12)
+	main.set_process(false)
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
+	var monster_owner: Object = coordinator.call("monster_runtime_controller") if coordinator != null and coordinator.has_method("monster_runtime_controller") else null
+	var infrastructure := coordinator.get_node_or_null("RegionInfrastructureRuntimeController") if coordinator != null else null
+	_expect(coordinator != null and monster_owner != null and infrastructure != null, "optional-summon gate composes current Coordinator, Monster owner, and RegionInfrastructure owner")
+	if coordinator == null or monster_owner == null or infrastructure == null:
+		root.remove_child(main)
+		main.queue_free()
+		await _wait_frames(1)
+		return
+
+	var players: Array = main.get("players") as Array
+	var actor_id := _actor_id(players, 0)
+	var district := int(main.call("_first_run_recommended_start_district", 0))
+	if district >= 0:
+		main.call("_select_district", district)
+		main.call("_open_district_supply_from_map", district)
+	await _wait_frames(3)
+	var monster_before: Dictionary = monster_owner.call("unit_card_snapshot_v06", "monster")
+	var monster_save_before: Dictionary = monster_owner.call("to_save_data")
+	var journal_before: Dictionary = monster_save_before.get("monster_card_atomic_terminal_journal", {}) if monster_save_before.get("monster_card_atomic_terminal_journal", {}) is Dictionary else {}
+	var facilities_before := (infrastructure.call("facilities_snapshot", false) as Array).size()
+	var market: Dictionary = coordinator.call("v06_first_table_facility_market_snapshot", actor_id)
+	var listing: Dictionary = market.get("listing", {}) if market.get("listing", {}) is Dictionary else {}
+	var source_item_id := str(listing.get("item_id", ""))
+	var purchase: Dictionary = coordinator.call("purchase_v06_first_table_facility_card", actor_id, source_item_id, "commercial-v06:facility-purchase:%s" % actor_id)
+	var player_after_purchase: Dictionary = coordinator.call("v06_card_player_snapshot", actor_id)
+	var purchased_card_id := str(purchase.get("card_id", ""))
+	var slot_index := _find_v06_card_slot(player_after_purchase, purchased_card_id)
+	var play_request := {
+		"actor_id": actor_id,
+		"slot_index": slot_index,
+		"transaction_id": "commercial-v06:facility-play:%s" % actor_id,
+		"region_id": _selected_region_id(main),
+		"game_time": float(main.get("game_time")),
+	}
+	var play: Dictionary = coordinator.call("play_v06_runtime_card", play_request) if bool(purchase.get("committed", false)) and slot_index >= 0 else {}
+	var play_finalization: Dictionary = play.get("effect_finalization", {}) if play.get("effect_finalization", {}) is Dictionary else {}
+	_expect(bool(purchase.get("committed", false)) and slot_index >= 0, "first_table purchases the current Rank-I facility before any summon")
+	_expect(bool(play.get("committed", false)) and bool(play_finalization.get("finalized", false)), "first_table finalizes that facility through the current CardFlow owner before any summon")
+	_expect((infrastructure.call("facilities_snapshot", false) as Array).size() == facilities_before + 1, "first_table facility play mutates the unique RegionInfrastructure owner once")
+	var monster_after_economy: Dictionary = monster_owner.call("unit_card_snapshot_v06", "monster")
+	_expect(int(monster_after_economy.get("monster_count", -1)) == int(monster_before.get("monster_count", -1)), "facility purchase and economic establishment do not implicitly summon the held starter")
+
+	main.call("_open_economy_overview_menu")
+	await _wait_frames(3)
+	var economy_title := main.find_child("MenuTitleLabel", true, false) as Label
+	_expect(economy_title != null and economy_title.text == "经济总览", "economy review remains available before the optional summon")
+	main.call("_close_menu")
+	await _wait_frames(2)
+
+	var starter_slot := int(main.call("_first_starter_monster_slot", players[0])) if not players.is_empty() and players[0] is Dictionary else -1
+	var summon_submitted := starter_slot >= 0 and bool(main.call("_queue_skill_resolution", 0, starter_slot, -1))
+	await _drain_card_resolution(main, 240)
+	var monster_after: Dictionary = monster_owner.call("unit_card_snapshot_v06", "monster")
+	var monster_save_after: Dictionary = monster_owner.call("to_save_data")
+	var journal_after: Dictionary = monster_save_after.get("monster_card_atomic_terminal_journal", {}) if monster_save_after.get("monster_card_atomic_terminal_journal", {}) is Dictionary else {}
+	var new_transactions := _new_dictionary_keys(journal_before, journal_after)
+	var summon_finalized := new_transactions.size() == 1 and _monster_terminal_finalized(journal_after, str(new_transactions[0]))
+	_expect(summon_submitted, "first_table can voluntarily submit the held starter after facility and economy actions")
+	_expect(int(monster_after.get("monster_count", -1)) == int(monster_before.get("monster_count", -1)) + 1 and summon_finalized, "later voluntary summon finalizes exactly once in the current Monster owner")
+	root.remove_child(main)
+	main.queue_free()
+	await _wait_frames(1)
+
+
 func _check_first_ten_minute_action_chain() -> void:
 	root.size = Vector2i(1600, 960)
 	var main := await _instantiate_main()
@@ -94,15 +173,11 @@ func _check_first_ten_minute_action_chain() -> void:
 	_expect(str(_runtime_scenario_state(main).get("active_scenario_id", "")) == "first_table", "first ten-minute path starts the authored first_table scenario")
 	_expect(bool(main.call("_activate_first_run_coach_action", "coach_select_district")), "first ten-minute path selects the recommended district from coach")
 	await _wait_frames(4)
-	_expect(bool(main.call("_activate_first_run_coach_action", "coach_first_summon")), "first ten-minute path can perform first summon from coach")
-	await _wait_frames(12)
-	var progress_after_summon: Dictionary = main.call("_first_run_coach_progress", 0)
-	_expect(bool(progress_after_summon.get("has_monster", false)), "first ten-minute path records starter monster separately")
-	_expect(not bool(progress_after_summon.get("has_bought_card", false)), "first ten-minute path does not treat starter cards as purchased cards")
-	_expect(not bool(progress_after_summon.get("has_played_card", false)), "first ten-minute path does not treat first summon as the first normal card play")
+	var progress_before_purchase: Dictionary = main.call("_first_run_coach_progress", 0)
+	_expect(not bool(progress_before_purchase.get("has_monster", false)), "first ten-minute path keeps the held starter unsummoned before facility purchase")
 	_expect(bool(main.call("_first_run_should_defer_monster_wager")), "first_table defers monster wager freezes while the authored mission is active")
-	_expect(str(main.call("_first_run_coach_stage", progress_after_summon)) == "open_rack", "first_table moves from first summon directly to the real district rack, not free coach city building")
-	_expect(bool(main.call("_activate_first_run_coach_action", "coach_open_rack")), "first ten-minute path can open district card rack from coach")
+	_expect(str(main.call("_first_run_coach_stage", progress_before_purchase)) == "open_rack", "first_table moves from district selection directly to the real district rack without requiring a summon")
+	_expect(bool(main.call("_activate_first_run_coach_action", "coach_open_rack")), "first ten-minute path can open district card rack while the starter remains unsummoned")
 	await _wait_frames(8)
 	var runtime := main.find_child("RuntimeGameScreen", true, false) as Control
 	var ui_text := _node_text(runtime)
@@ -207,9 +282,6 @@ func _check_first_run_cta_forgives_missing_region() -> void:
 		return
 	buy_main.call("_new_game")
 	await _wait_frames(12)
-	_expect(bool(buy_main.call("_activate_first_run_coach_action", "coach_first_summon")), "first-run buy recovery setup can summon the starter monster")
-	await _wait_frames(12)
-	_expect_first_run_focus_pulse(buy_main, "planet", "牌架", "first-run first-summon CTA pulses the next district-rack area")
 	var wrong_district := _first_non_buyable_district(buy_main)
 	if wrong_district >= 0:
 		buy_main.set("selected_district", wrong_district)
@@ -219,7 +291,7 @@ func _check_first_run_cta_forgives_missing_region() -> void:
 		_expect(bool(buy_main.call("_activate_first_run_coach_action", "coach_buy_card")), "first-run Buy CTA can recover from a non-buyable selected region")
 		await _wait_frames(12)
 		var recovered_district := int(buy_main.get("district_supply_open_district"))
-		_expect(recovered_district >= 0 and bool(buy_main.call("_can_buy_card_from_district", recovered_district, 0)), "first-run Buy CTA reopens a legal monster-accessible card rack")
+		_expect(recovered_district >= 0 and bool(buy_main.call("_can_buy_card_from_district", recovered_district, 0)), "first-run Buy CTA reopens a legal sunlight-available card rack without requiring a summon")
 		await _expect_runtime_map_centered_on_district(buy_main, recovered_district, "first-run Buy CTA rotates the central planet to the recovered legal rack")
 		_expect_first_run_focus_pulse(buy_main, "district_supply", "牌架", "first-run Buy CTA pulses the recovered legal card rack")
 		_expect(_local_hand_size(buy_main) >= hand_before, "first-run Buy CTA does not lose local hand cards while recovering from the wrong region")
@@ -313,9 +385,65 @@ func _wait_for_scenario_signal(main: Node, signal_id: String, max_frames: int = 
 
 func _drain_card_resolution(main: Node, frame_count: int = 24) -> void:
 	for _frame_index in range(maxi(1, frame_count)):
+		if _card_resolution_queue_idle(main):
+			return
 		if main.has_method("_update_card_resolution_queue"):
 			main.call("_update_card_resolution_queue", 0.5)
 		await process_frame
+
+
+func _card_resolution_queue_idle(main: Node) -> bool:
+	var active: Variant = main.get("active_card_resolution")
+	var queue: Variant = main.get("card_resolution_queue")
+	var next_queue: Variant = main.get("next_card_resolution_queue")
+	return (not (active is Dictionary) or (active as Dictionary).is_empty()) \
+		and (not (queue is Array) or (queue as Array).is_empty()) \
+		and (not (next_queue is Array) or (next_queue as Array).is_empty()) \
+		and not bool(main.get("card_resolution_batch_locked"))
+
+
+func _new_dictionary_keys(before: Dictionary, after: Dictionary) -> Array[String]:
+	var result: Array[String] = []
+	for key_variant in after.keys():
+		var key := str(key_variant)
+		if not before.has(key):
+			result.append(key)
+	result.sort()
+	return result
+
+
+func _monster_terminal_finalized(journal: Dictionary, transaction_id: String) -> bool:
+	var terminal: Dictionary = journal.get(transaction_id, {}) if journal.get(transaction_id, {}) is Dictionary else {}
+	var receipt: Dictionary = terminal.get("receipt", {}) if terminal.get("receipt", {}) is Dictionary else {}
+	return str(terminal.get("stage", "")) == "finalized" and bool(receipt.get("finalized", false))
+
+
+func _find_v06_card_slot(player: Dictionary, card_id: String) -> int:
+	var inventory: Dictionary = player.get("inventory", {}) if player.get("inventory", {}) is Dictionary else {}
+	var slots: Array = inventory.get("slots", []) if inventory.get("slots", []) is Array else []
+	for slot_index in range(slots.size()):
+		if not (slots[slot_index] is Dictionary):
+			continue
+		var slot: Dictionary = slots[slot_index]
+		var machine: Dictionary = slot.get("machine", {}) if slot.get("machine", {}) is Dictionary else {}
+		if str(machine.get("card_id", "")) == card_id:
+			return slot_index
+	return -1
+
+
+func _selected_region_id(main: Node) -> String:
+	var districts: Array = main.get("districts") as Array
+	var district_index := int(main.get("selected_district"))
+	if district_index < 0 or district_index >= districts.size() or not (districts[district_index] is Dictionary):
+		return ""
+	return str((districts[district_index] as Dictionary).get("region_id", "")).strip_edges()
+
+
+func _actor_id(players: Array, player_index: int) -> String:
+	if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary):
+		return ""
+	var configured := str((players[player_index] as Dictionary).get("actor_id", "")).strip_edges()
+	return configured if not configured.is_empty() else "player.%d" % player_index
 
 
 func _expect_runtime_map_centered_on_district(main: Node, district_index: int, message: String) -> void:
