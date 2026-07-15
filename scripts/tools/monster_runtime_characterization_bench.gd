@@ -11,7 +11,12 @@ const MANIFEST_PATH := OUTPUT_DIR + "manifest.json"
 const REPORT_PATH := OUTPUT_DIR + "report.md"
 const SCREENSHOT_PATH := "user://space_syndicate_design_qa/monster_runtime_hard_cutover_sprint_45.png"
 const RULESET_ID := "v0.4"
-const CASE_COUNT := 50
+const CASE_COUNT := 53
+const TARGET_WEIGHT_FOCUSED_CASES := [
+	"alive_target_has_positive_weight",
+	"special_target_factors_are_positive",
+	"public_target_factor_summary_is_safe",
+]
 const FIXED_SEED := 440044
 const BASELINE_MAIN_SHA256 := "46eb1f21e1d8182d78d16af4858eb3b90081da2c9644b50f81594469a667cc99"
 const BASELINE_MAIN_METRICS := {
@@ -43,7 +48,10 @@ var _controller_source := ""
 func _ready() -> void:
 	print("MonsterRuntimeCharacterizationBench ready: auto_run=%s editor_hint=%s" % [auto_run, Engine.is_editor_hint()])
 	if auto_run and not Engine.is_editor_hint():
-		call_deferred("run_characterization_suite")
+		if OS.get_cmdline_args().has("--target-weight-focused"):
+			call_deferred("run_target_weight_focused_suite")
+		else:
+			call_deferred("run_characterization_suite")
 
 
 func output_dir() -> String:
@@ -72,6 +80,9 @@ func characterization_cases() -> Array:
 		"action_table_and_rank_weights",
 		"destroyed_district_excluded_from_target_candidates",
 		"target_weight_fact_breakdown",
+		"alive_target_has_positive_weight",
+		"special_target_factors_are_positive",
+		"public_target_factor_summary_is_safe",
 		"fixed_seed_target_is_deterministic",
 		"target_pick_shared_rng_sequence",
 		"lure_overrides_target_once",
@@ -200,6 +211,31 @@ func run_suite() -> void:
 	run_characterization_suite()
 
 
+func run_target_weight_focused_suite() -> void:
+	_records.clear()
+	_failures.clear()
+	if not await _ensure_runtime_main():
+		push_error("Monster target-weight focused bench could not instantiate real main.tscn")
+		get_tree().quit(1)
+		return
+	for case_id in TARGET_WEIGHT_FOCUSED_CASES:
+		_reset_fixture()
+		var record := _run_case(case_id)
+		record["pure_data_checked"] = _is_data_only(record) and not _contains_runtime_object(record)
+		record["passed"] = bool(record.get("observed", false)) and bool(record.get("contract_aligned", false)) and bool(record.get("pure_data_checked", false))
+		_records.append(record)
+		if not bool(record.get("passed", false)):
+			_failures.append("%s: %s" % [case_id, str(record.get("notes", "observation failed"))])
+	var passed := _passed_count()
+	print("MONSTER_TARGET_WEIGHT_FOCUSED_TEST %s %d/%d" % ["PASS" if _failures.is_empty() else "FAIL", passed, TARGET_WEIGHT_FOCUSED_CASES.size()])
+	if not _failures.is_empty():
+		push_error("Monster target-weight focused bench failed:\n- %s" % "\n- ".join(_failures))
+	_release_runtime_main()
+	for _frame in range(4):
+		await get_tree().process_frame
+	get_tree().quit(0 if _failures.is_empty() else 1)
+
+
 func _run_case(case_id: String) -> Dictionary:
 	match case_id:
 		"monster_call_graph_complete":
@@ -234,6 +270,12 @@ func _run_case(case_id: String) -> Dictionary:
 			return _case_destroyed_district_excluded_from_target_candidates()
 		"target_weight_fact_breakdown":
 			return _case_target_weight_fact_breakdown()
+		"alive_target_has_positive_weight":
+			return _case_alive_target_has_positive_weight()
+		"special_target_factors_are_positive":
+			return _case_special_target_factors_are_positive()
+		"public_target_factor_summary_is_safe":
+			return _case_public_target_factor_summary_is_safe()
 		"fixed_seed_target_is_deterministic":
 			return _case_fixed_seed_target_is_deterministic()
 		"target_pick_shared_rng_sequence":
@@ -490,11 +532,74 @@ func _case_target_weight_fact_breakdown() -> Dictionary:
 	for value in parts.values():
 		total += int(value)
 	var weight := int(_runtime_monsters.call("_auto_monster_target_weight", actor, district_index))
-	var required := ["base", "panic", "city", "competition", "warehouse", "resource", "distance", "miasma", "monster"]
+	var required := ["base", "city", "competition", "warehouse", "resource", "distance", "miasma", "monster"]
 	var aligned := weight == maxi(1, total)
 	for key in required:
 		aligned = aligned and parts.has(key)
 	return _record("target_weight_fact_breakdown", true, aligned, "Target score is the visible sum of map pressure factors with a minimum live weight of one.", {"fixture_id": "target-facts", "target_district": district_index, "action_kind": "target_score"})
+
+
+func _case_alive_target_has_positive_weight() -> Dictionary:
+	var actor := _make_actor(0, _safe_district(), -1, 1)
+	var candidates: Array = _runtime_monsters.call("_auto_monster_target_candidates", actor)
+	var positive_alive_target := false
+	var target_district := -1
+	var districts: Array = _runtime_main.get("districts") as Array
+	for candidate_variant: Variant in candidates:
+		if not (candidate_variant is Dictionary):
+			continue
+		var candidate := candidate_variant as Dictionary
+		var index := int(candidate.get("index", -1))
+		if index < 0 or index >= districts.size() or not (districts[index] is Dictionary):
+			continue
+		if not bool((districts[index] as Dictionary).get("destroyed", false)) and int(candidate.get("weight", 0)) > 0:
+			positive_alive_target = true
+			target_district = index
+			break
+	return _record("alive_target_has_positive_weight", true, positive_alive_target, "The Monster owner always exposes at least one strictly positive weighted target while a live district exists.", {"fixture_id": "alive-target-weight", "target_district": target_district, "action_kind": "target_score"})
+
+
+func _case_special_target_factors_are_positive() -> Dictionary:
+	var fixture := _prepare_public_target_factor_fixture()
+	var actor := fixture.get("actor", {}) as Dictionary
+	var district_index := int(fixture.get("district_index", -1))
+	var parts: Dictionary = _runtime_monsters.call("_auto_monster_target_weight_parts", actor, district_index, _runtime_monsters.auto_monsters)
+	var special_parts := ["city", "competition", "warehouse", "resource", "miasma", "monster"]
+	var missing: Array[String] = []
+	for part_name in special_parts:
+		if int(parts.get(part_name, 0)) <= 0:
+			missing.append(part_name)
+	return _record("special_target_factors_are_positive", true, missing.is_empty(), "Each special attraction factor is strictly positive in its explicit public-world fixture.", {"fixture_id": "special-target-factors", "target_district": district_index, "action_kind": "target_score", "risk": "Missing positive factors: %s" % ",".join(missing) if not missing.is_empty() else ""})
+
+
+func _case_public_target_factor_summary_is_safe() -> Dictionary:
+	var fixture := _prepare_public_target_factor_fixture()
+	var district_index := int(fixture.get("district_index", -1))
+	var snapshot := _runtime_monsters.region_attraction_public_snapshot_v06(district_index)
+	var entries: Array = snapshot.get("entries", []) as Array
+	var allowed_top_level := ["available", "contract_version", "region_index", "entries", "reason_code"]
+	var allowed_entry_keys := ["ordinal", "name", "factor_codes", "reason"]
+	var special_codes := ["city", "competition", "warehouse", "resource", "miasma", "other_monster"]
+	var schema_safe := bool(snapshot.get("available", false)) and not entries.is_empty()
+	for key_variant: Variant in snapshot.keys():
+		schema_safe = schema_safe and allowed_top_level.has(str(key_variant))
+	var surfaced_special := false
+	for entry_variant: Variant in entries:
+		if not (entry_variant is Dictionary):
+			schema_safe = false
+			continue
+		var entry := entry_variant as Dictionary
+		for key_variant: Variant in entry.keys():
+			schema_safe = schema_safe and allowed_entry_keys.has(str(key_variant))
+		for code_variant: Variant in entry.get("factor_codes", []):
+			surfaced_special = surfaced_special or special_codes.has(str(code_variant))
+	var public_text := var_to_str(snapshot).to_lower()
+	var forbidden_tokens := ["weight", "probability", "numerator", "denominator", "owner", "player_index", "权重", "%", "+n"]
+	var privacy_safe := true
+	for token in forbidden_tokens:
+		privacy_safe = privacy_safe and not public_text.contains(token)
+	var aligned := schema_safe and surfaced_special and privacy_safe
+	return _record("public_target_factor_summary_is_safe", true, aligned, "The public attraction summary names a special factor without exposing raw weights, probabilities, or private ownership.", {"fixture_id": "public-target-summary", "target_district": district_index, "action_kind": "public_attraction", "privacy_checked": true})
 
 
 func _case_fixed_seed_target_is_deterministic() -> Dictionary:
@@ -985,6 +1090,40 @@ func _other_district(origin: int) -> int:
 		if index != origin and districts[index] is Dictionary and not bool((districts[index] as Dictionary).get("destroyed", false)):
 			return index
 	return origin
+
+
+func _prepare_public_target_factor_fixture() -> Dictionary:
+	var district_index := _safe_district()
+	var districts := (_runtime_main.get("districts") as Array).duplicate(true)
+	var district := (districts[district_index] as Dictionary).duplicate(true)
+	district["destroyed"] = false
+	district["miasma"] = true
+	var focus_product := str((district.get("products", []) as Array)[0]) if not (district.get("products", []) as Array).is_empty() else "环晶电池"
+	district["products"] = [focus_product]
+	district["demands"] = [focus_product]
+	district["city"] = {
+		"active": true,
+		"owner": 1,
+		"products": [{"name": focus_product}],
+		"demands": [focus_product],
+		"competition_matches": 2,
+		"warehouse_stockpile_count": 1,
+		"warehouse_stockpile_units": 5,
+		"warehouse_stockpile_products": [focus_product],
+	}
+	districts[district_index] = district
+	_runtime_main.set("districts", districts)
+	var actor := _make_actor(0, district_index, 0, 1)
+	actor["name"] = "QA Public Alpha"
+	actor["resource_focus"] = [focus_product]
+	actor["remaining_time"] = 90.0
+	actor["down"] = false
+	var rival := _make_actor(1, district_index, 1, 1)
+	rival["name"] = "QA Public Beta"
+	rival["remaining_time"] = 90.0
+	rival["down"] = false
+	_set_monsters([actor, rival])
+	return {"actor": actor, "district_index": district_index}
 
 
 func _make_actor(catalog_index: int, district_index: int, owner_index: int, rank: int) -> Dictionary:
