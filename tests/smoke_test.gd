@@ -9,6 +9,7 @@ const CITY_FIXTURES := preload("res://tests/helpers/city_world_fixture_factory.g
 const V06_RULES_SNAPSHOT := preload("res://scripts/viewmodels/rules_quick_reference_snapshot_v06.gd")
 const TEST_RUN_SAVE_PATH := "user://test_runs/smoke_test_current_run.save"
 const SAVE_COORDINATOR_NODE_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController/GameSaveRuntimeCoordinator"
+const PRODUCT_MARKET_CONTROLLER_NODE_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ProductMarketRuntimeController"
 const SMOKE_PROGRESS_PATH := "user://space_syndicate_smoke_progress.log"
 const EXPECTED_PLAYER_COUNT := 4
 const EXPECTED_AI_PLAYER_COUNT := 3
@@ -129,7 +130,7 @@ func _run() -> void:
 	var districts := _as_array(main.get("districts"))
 	var skill_market := _as_array(main.get("skill_market"))
 	var auto_monsters := _as_array(main.get("auto_monsters"))
-	var product_market := main.get("product_market") as Dictionary
+	var product_market := _product_market_for_test(main)
 
 	_expect(players.size() == EXPECTED_PLAYER_COUNT, "new game creates the configured player count")
 	_expect(int(main.get("configured_ai_player_count")) == EXPECTED_AI_PLAYER_COUNT, "new game keeps the configured AI opponent count")
@@ -371,7 +372,7 @@ func _run() -> void:
 	districts = _as_array(main.get("districts"))
 	skill_market = _as_array(main.get("skill_market"))
 	auto_monsters = _as_array(main.get("auto_monsters"))
-	product_market = main.get("product_market") as Dictionary
+	product_market = _product_market_for_test(main)
 	_expect(auto_monsters.size() == EXPECTED_SUMMONED_MONSTER_COUNT, "playing starting monster cards summons four anonymous automatic monsters for the smoke run")
 	player_box = main.get("player_box") as VBoxContainer
 	var occupied_event_parts := main.call("_event_target_weight_parts", int((auto_monsters[0] as Dictionary).get("position", -1))) as Dictionary
@@ -1795,7 +1796,7 @@ func _verify_ai_product_futures_policy(main: Node) -> bool:
 			int(stockpile_context.get("futures_warehouse_city", -1)),
 			int(stockpile_context.get("futures_stockpile_units", 0)),
 		])
-	var market := (main.get("product_market") as Dictionary).duplicate(true)
+	var market := _product_market_for_test(main)
 	var short_entry := (market.get("环晶电池", {}) as Dictionary).duplicate(true)
 	short_entry["price"] = 92
 	short_entry["base_price"] = 120
@@ -1805,7 +1806,7 @@ func _verify_ai_product_futures_policy(main: Node) -> bool:
 	short_entry["temporary_supply_pressure"] = 7
 	short_entry["volatility"] = 5
 	market["环晶电池"] = short_entry
-	main.set("product_market", market)
+	_replace_product_market_for_test(main, market)
 	var short_skill := main.call("_make_skill", "商品看跌1") as Dictionary
 	var short_context := _ai_controller(main).call("_ai_card_play_context", 1, 1, short_skill) as Dictionary
 	var short_ok := not short_context.is_empty() \
@@ -2119,7 +2120,7 @@ func _reset_route_plan_sandbox_for_test(main: Node) -> void:
 
 
 func _set_product_market_focus_for_test(main: Node, focus_product: String) -> void:
-	var market := (main.get("product_market") as Dictionary).duplicate(true)
+	var market := _product_market_for_test(main)
 	for key_variant in market.keys():
 		var product_key := String(key_variant)
 		var entry := (market.get(product_key, {}) as Dictionary).duplicate(true)
@@ -2142,7 +2143,7 @@ func _set_product_market_focus_for_test(main: Node, focus_product: String) -> vo
 	focus_entry["contract_demand_pressure"] = 4
 	focus_entry["contract_supply_pressure"] = 0
 	market[focus_product] = focus_entry
-	main.set("product_market", market)
+	_replace_product_market_for_test(main, market)
 
 
 func _ai_memory_has_kind(players: Array, player_index: int, kind: String) -> bool:
@@ -2572,7 +2573,7 @@ func _verify_ai_economic_focus_strategy(main: Node) -> bool:
 		ok = ok and _set_city_goods_for_test(main, own_index, "环晶电池", "轨迹墨水")
 		ok = ok and _set_district_goods_for_test(main, focus_index, "环晶电池", "离岸水晶")
 		ok = ok and _set_district_goods_for_test(main, decoy_index, "深海菌毯", "星尘香料")
-		var market := (main.get("product_market") as Dictionary).duplicate(true)
+		var market := _product_market_for_test(main)
 		var focus_entry := (market.get("环晶电池", {}) as Dictionary).duplicate(true)
 		focus_entry["price"] = 240
 		focus_entry["base_price"] = 120
@@ -2585,7 +2586,7 @@ func _verify_ai_economic_focus_strategy(main: Node) -> bool:
 		decoy_entry["demand"] = 1
 		decoy_entry["supply"] = 4
 		market["深海菌毯"] = decoy_entry
-		main.set("product_market", market)
+		_replace_product_market_for_test(main, market)
 		var focus_product := String(_ai_controller(main).call("_ai_refresh_economic_focus", 1, true))
 		ok = ok and focus_product == "环晶电池"
 		var players_after_focus := _as_array(main.get("players"))
@@ -7018,6 +7019,34 @@ func _city_public_clue_history_exists(main: Node) -> bool:
 	return false
 
 
+func _product_market_controller_for_test(main: Node) -> Node:
+	return main.get_node_or_null(PRODUCT_MARKET_CONTROLLER_NODE_PATH)
+
+
+func _product_market_for_test(main: Node) -> Dictionary:
+	var controller := _product_market_controller_for_test(main)
+	if controller == null or not controller.has_method("runtime_state_snapshot"):
+		return {}
+	var snapshot_variant: Variant = controller.call("runtime_state_snapshot")
+	if not (snapshot_variant is Dictionary):
+		return {}
+	var market_variant: Variant = (snapshot_variant as Dictionary).get("product_market", {})
+	return (market_variant as Dictionary).duplicate(true) if market_variant is Dictionary else {}
+
+
+func _replace_product_market_for_test(main: Node, market: Dictionary) -> bool:
+	var controller := _product_market_controller_for_test(main)
+	if controller == null or not controller.has_method("to_save_data") or not controller.has_method("apply_save_data"):
+		return false
+	var save_variant: Variant = controller.call("to_save_data")
+	if not (save_variant is Dictionary):
+		return false
+	var save_data := (save_variant as Dictionary).duplicate(true)
+	save_data["product_market"] = market.duplicate(true)
+	var applied_variant: Variant = controller.call("apply_save_data", save_data)
+	return applied_variant is Dictionary and (applied_variant as Dictionary).get("product_market", {}) is Dictionary
+
+
 func _product_market_has_prices(product_market: Dictionary) -> bool:
 	for entry_variant in product_market.values():
 		if not (entry_variant is Dictionary):
@@ -7919,7 +7948,7 @@ func _verify_card_play_flow_gate_and_one_shot(main: Node, district_index: int) -
 
 func _verify_realtime_gdp_directionality_pack(main: Node, district_index: int) -> bool:
 	var previous_districts := _as_array(main.get("districts")).duplicate(true)
-	var previous_market := (main.get("product_market") as Dictionary).duplicate(true)
+	var previous_market := _product_market_for_test(main)
 	var previous_selected_district := int(main.get("selected_district"))
 	var previous_selected_product := String(main.get("selected_trade_product"))
 	var previous_log_lines := _as_array(main.get("log_lines")).duplicate(true)
@@ -7991,7 +8020,7 @@ func _verify_realtime_gdp_directionality_pack(main: Node, district_index: int) -
 				"temporary_demand_pressure": 0,
 			}
 			main.set("districts", districts)
-			main.set("product_market", product_market)
+			_replace_product_market_for_test(main, product_market)
 			main.set("selected_district", district_index)
 			main.set("selected_trade_product", product_name)
 			main.call("_refresh_city_networks")
@@ -8073,7 +8102,7 @@ func _verify_realtime_gdp_directionality_pack(main: Node, district_index: int) -
 			ok = ok and summary.contains("生产GDP") and summary.contains("消费GDP") and summary.contains("断路") and summary.contains("损伤")
 			ok = ok and reason.contains("驱动") and reason.contains("压力")
 	main.set("districts", previous_districts)
-	main.set("product_market", previous_market)
+	_replace_product_market_for_test(main, previous_market)
 	main.set("selected_district", previous_selected_district)
 	main.set("selected_trade_product", previous_selected_product)
 	main.set("log_lines", previous_log_lines)
@@ -8134,19 +8163,19 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 		_expect(int(city.get("revenue_bonus", 0)) == revenue_before_demand_shift + 10, "demand redesign adds permanent city revenue")
 
 	main.set("selected_trade_product", product_name)
-	var product_market := main.get("product_market") as Dictionary
+	var product_market := _product_market_for_test(main)
 	var entry := product_market.get(product_name, {}) as Dictionary
 	entry["price"] = int(entry.get("base_price", 60))
 	entry["trend"] = 0
 	product_market[product_name] = entry
-	main.set("product_market", product_market)
+	_replace_product_market_for_test(main, product_market)
 	var players_before_pump := _as_array(main.get("players"))
 	var card_income_before := int((players_before_pump[0] as Dictionary).get("total_card_income", 0))
 	_set_player_skill(main, 0, 2, "价格套利1")
 	_clear_player_cooldown(main, 0)
 	main.call("_use_skill", 2)
 	var players_after_pump := _as_array(main.get("players"))
-	product_market = main.get("product_market") as Dictionary
+	product_market = _product_market_for_test(main)
 	entry = product_market.get(product_name, {}) as Dictionary
 	var demand_pressure_after_pump := int(entry.get("temporary_demand_pressure", 0))
 	_expect(demand_pressure_after_pump > 0, "price speculation creates temporary demand pressure instead of directly setting price")
@@ -8155,12 +8184,12 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 	_set_player_skill(main, 0, 2, "商品做空1")
 	_clear_player_cooldown(main, 0)
 	main.call("_use_skill", 2)
-	product_market = main.get("product_market") as Dictionary
+	product_market = _product_market_for_test(main)
 	entry = product_market.get(product_name, {}) as Dictionary
 	var supply_pressure_after_short := int(entry.get("temporary_supply_pressure", 0))
 	_expect(supply_pressure_after_short > 0, "short-selling card creates temporary supply pressure instead of directly setting price")
 
-	product_market = main.get("product_market") as Dictionary
+	product_market = _product_market_for_test(main)
 	entry = product_market.get(product_name, {}) as Dictionary
 	var volatility_before := int(entry.get("volatility", 4))
 	var demand_pressure_before_stabilize := int(entry.get("temporary_demand_pressure", 0))
@@ -8168,7 +8197,7 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 	_set_player_skill(main, 0, 2, "市场稳定1")
 	_clear_player_cooldown(main, 0)
 	main.call("_use_skill", 2)
-	product_market = main.get("product_market") as Dictionary
+	product_market = _product_market_for_test(main)
 	entry = product_market.get(product_name, {}) as Dictionary
 	_expect(int(entry.get("temporary_demand_pressure", 0)) < demand_pressure_before_stabilize or int(entry.get("temporary_supply_pressure", 0)) < supply_pressure_before_stabilize, "market stabilization reduces temporary supply/demand pressure")
 	_expect(int(entry.get("volatility", volatility_before)) < volatility_before, "market stabilization permanently reduces product volatility")
@@ -8178,7 +8207,7 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 	_set_player_skill(main, 0, 2, "远期采购1")
 	_clear_player_cooldown(main, 0)
 	main.call("_use_skill", 2)
-	product_market = main.get("product_market") as Dictionary
+	product_market = _product_market_for_test(main)
 	entry = product_market.get(product_name, {}) as Dictionary
 	_expect(int(entry.get("market_contract_demand", 0)) >= 3, "forward-purchase card adds sustained product demand pressure")
 	_expect(float(entry.get("market_contract_seconds", 0.0)) >= 90.0, "forward-purchase card adds a visible real-time product contract duration")
@@ -8189,7 +8218,7 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 	_set_player_skill(main, 0, 2, "期货套保1")
 	_clear_player_cooldown(main, 0)
 	main.call("_use_skill", 2)
-	product_market = main.get("product_market") as Dictionary
+	product_market = _product_market_for_test(main)
 	entry = product_market.get(product_name, {}) as Dictionary
 	_expect(int(entry.get("market_contract_supply", 0)) >= 3, "futures hedge card adds sustained product supply pressure")
 	_expect(String(main.call("_product_market_boon_text", product_name)).contains("供+"), "futures hedge supply pressure appears in product economy weather text")
@@ -8197,7 +8226,7 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 	_set_player_skill(main, 0, 2, "包销协议1")
 	_clear_player_cooldown(main, 0)
 	main.call("_use_skill", 2)
-	product_market = main.get("product_market") as Dictionary
+	product_market = _product_market_for_test(main)
 	entry = product_market.get(product_name, {}) as Dictionary
 	var market_contract_seconds_before_age := float(entry.get("market_contract_seconds", 0.0))
 	_expect(int(entry.get("market_contract_demand", 0)) >= 4, "distribution contract card strengthens sustained product demand pressure")
@@ -8206,7 +8235,7 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 	_set_player_skill(main, 0, 2, "商品催化1")
 	_clear_player_cooldown(main, 0)
 	main.call("_use_skill", 2)
-	product_market = main.get("product_market") as Dictionary
+	product_market = _product_market_for_test(main)
 	entry = product_market.get(product_name, {}) as Dictionary
 	var growth_seconds_before_age := float(entry.get("growth_seconds", 0.0))
 	_expect(float(entry.get("growth_multiplier", 1.0)) >= 2.0, "product catalyst card boosts the selected product's positive growth multiplier")
@@ -8355,7 +8384,7 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 	derivative_controller.reset_state()
 
 	main.call("_age_economic_boons", 30.0)
-	product_market = main.get("product_market") as Dictionary
+	product_market = _product_market_for_test(main)
 	entry = product_market.get(product_name, {}) as Dictionary
 	districts = _as_array(main.get("districts"))
 	city = (districts[district_index] as Dictionary).get("city", {}) as Dictionary
@@ -8986,7 +9015,7 @@ func _test_contract_product(main: Node, source_index: int, target_index: int) ->
 	var target_city := (districts[target_index] as Dictionary).get("city", {}) as Dictionary
 	var source_products := _test_city_product_names(source_city)
 	var target_demands := _test_city_demand_names(target_city)
-	var market := main.get("product_market") as Dictionary
+	var market := _product_market_for_test(main)
 	for product_variant in market.keys():
 		var product_name := String(product_variant)
 		if product_name != "" and not source_products.has(product_name) and not target_demands.has(product_name):
