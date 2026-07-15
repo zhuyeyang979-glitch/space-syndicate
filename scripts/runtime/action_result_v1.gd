@@ -2,6 +2,7 @@ extends RefCounted
 class_name ActionResultV1
 
 const SCHEMA_VERSION := 1
+const PUBLIC_SCHEMA_ID := "action_result.v1"
 const REQUIRED_PUBLIC_FIELDS := [
 	"success",
 	"failure_code",
@@ -20,6 +21,51 @@ const OPTIONAL_PUBLIC_FIELDS := [
 	"action_family",
 	"status",
 ]
+const PUBLIC_FIELD_TYPES := {
+	"schema_version": "int",
+	"action_id": "string",
+	"action_family": "string",
+	"status": "string",
+	"success": "bool",
+	"failure_code": "string",
+	"title": "string",
+	"explanation": "string",
+	"consequence": "string",
+	"suggested_action": "string",
+	"focus_target": "string",
+	"relevant_cost": "string",
+	"relevant_requirement": "string",
+	"affected_entity_ids": "array[string]",
+}
+const PUBLIC_TEXT_LIMITS := {
+	"title": 128,
+	"explanation": 512,
+	"consequence": 512,
+	"suggested_action": 512,
+	"focus_target": 96,
+	"relevant_cost": 192,
+	"relevant_requirement": 512,
+}
+const FAILURE_DETAIL_FIELDS := [
+	"explanation",
+	"consequence",
+	"suggested_action",
+	"relevant_requirement",
+]
+const FAILURE_DETAIL_MIN_LENGTH := 8
+const NON_SPECIFIC_FAILURE_COPY := [
+	"条件不足",
+	"不能使用",
+	"目标无效",
+	"操作失败",
+	"发生错误",
+	"未知错误",
+	"发生未知错误",
+	"请重试",
+	"稍后重试",
+]
+const MAX_AFFECTED_ENTITY_IDS := 64
+const MAX_PUBLIC_DATA_DEPTH := 16
 const REQUEST_FIELDS := [
 	"schema_version",
 	"action_id",
@@ -73,6 +119,7 @@ const FORBIDDEN_KEY_TOKENS := [
 	"ai_plan",
 	"ai_score",
 	"ai_weight",
+	"weight",
 	"authorization",
 	"quote_id",
 	"quote_fingerprint",
@@ -89,6 +136,9 @@ const PRIVATE_VALUE_SENTINELS := [
 	"city_guess",
 	"ai_private",
 	"ai_plan",
+	"ai_weight",
+	"private_cash",
+	"private_hand",
 	"authorization",
 	"secret",
 ]
@@ -183,16 +233,23 @@ static func _sanitize_district_card_purchase_request(source: Dictionary) -> Dict
 
 
 static func sanitize_public_result(source: Dictionary) -> Dictionary:
+	return presenter_snapshot(source)
+
+
+static func validate_public_result(source: Dictionary) -> bool:
+	return not presenter_snapshot(source).is_empty()
+
+
+static func presenter_snapshot(source: Dictionary) -> Dictionary:
 	if source.is_empty() or not _is_public_value(source):
 		return {}
-	var allowed_fields := REQUIRED_PUBLIC_FIELDS + OPTIONAL_PUBLIC_FIELDS
+	var allowed_fields := public_field_schema()
+	if source.size() != allowed_fields.size():
+		return {}
 	for key_variant in source.keys():
 		if not allowed_fields.has(str(key_variant)):
 			return {}
-	for field_variant in REQUIRED_PUBLIC_FIELDS:
-		if not source.has(str(field_variant)):
-			return {}
-	for field_variant in OPTIONAL_PUBLIC_FIELDS:
+	for field_variant in allowed_fields:
 		if not source.has(str(field_variant)):
 			return {}
 	if not (source.get("schema_version") is int) or int(source.get("schema_version")) != SCHEMA_VERSION:
@@ -203,7 +260,7 @@ static func sanitize_public_result(source: Dictionary) -> Dictionary:
 		return {}
 	var action_id := str(source.get("action_id"))
 	var action_family := str(source.get("action_family"))
-	if not ((action_id == "card_group_ready" and action_family == "card_resolution") or (action_id == "district_card_purchase" and action_family == "card_market")):
+	if not _is_public_token(action_id, 96) or not _is_public_token(action_family, 96):
 		return {}
 	if not (source.get("success") is bool):
 		return {}
@@ -213,35 +270,42 @@ static func sanitize_public_result(source: Dictionary) -> Dictionary:
 	var failure_code := str(source.get("failure_code", ""))
 	if success == (failure_code != ""):
 		return {}
-	if not success and not PUBLIC_FAILURE_CODES.has(failure_code):
+	if not success and not _is_public_token(failure_code, 96):
 		return {}
 	if not (source.get("status") is String or source.get("status") is StringName):
 		return {}
 	var status := str(source.get("status", ""))
 	if status != ("committed" if success else "rejected"):
 		return {}
-	for field_variant in ["title", "explanation", "consequence", "suggested_action", "focus_target", "relevant_cost", "relevant_requirement"]:
-		if not (source.get(str(field_variant)) is String or source.get(str(field_variant)) is StringName):
+	for field_variant in PUBLIC_TEXT_LIMITS.keys():
+		var field := str(field_variant)
+		if not _is_public_text(source.get(field), int(PUBLIC_TEXT_LIMITS.get(field, 512))):
 			return {}
-		if str(source.get(str(field_variant), "")).strip_edges() == "":
-			return {}
+	if not _is_public_token(str(source.get("focus_target")), int(PUBLIC_TEXT_LIMITS.get("focus_target", 96))):
+		return {}
+	if not success and not _has_concrete_failure_copy(source):
+		return {}
 	var affected_variant: Variant = source.get("affected_entity_ids", [])
 	if not affected_variant is Array:
 		return {}
+	if (affected_variant as Array).size() > MAX_AFFECTED_ENTITY_IDS:
+		return {}
 	var affected: Array = []
+	var seen_entity_ids := {}
 	for entity_variant in affected_variant as Array:
 		if not (entity_variant is String or entity_variant is StringName):
 			return {}
-		var entity_id := str(entity_variant)
-		var expected_prefix := "resolution:" if action_id == "card_group_ready" else "district:"
-		var suffix := entity_id.trim_prefix(expected_prefix)
-		if not entity_id.begins_with(expected_prefix) or not suffix.is_valid_int() or int(suffix) < 0:
+		var entity_id := str(entity_variant).strip_edges()
+		if not _is_public_entity_id(entity_id) or seen_entity_ids.has(entity_id):
 			return {}
+		seen_entity_ids[entity_id] = true
 		affected.append(entity_id)
 	var result := {}
-	for field_variant in OPTIONAL_PUBLIC_FIELDS + REQUIRED_PUBLIC_FIELDS:
+	for field_variant in allowed_fields:
 		var field := str(field_variant)
-		if source.has(field):
+		if PUBLIC_TEXT_LIMITS.has(field) or ["action_id", "action_family", "status", "failure_code"].has(field):
+			result[field] = str(source[field]).strip_edges()
+		else:
 			result[field] = source[field]
 	result["affected_entity_ids"] = affected
 	return result
@@ -249,6 +313,24 @@ static func sanitize_public_result(source: Dictionary) -> Dictionary:
 
 static func public_field_schema() -> Array:
 	return (OPTIONAL_PUBLIC_FIELDS + REQUIRED_PUBLIC_FIELDS).duplicate()
+
+
+static func public_schema_snapshot() -> Dictionary:
+	var fields := public_field_schema()
+	return {
+		"schema_id": PUBLIC_SCHEMA_ID,
+		"schema_version": SCHEMA_VERSION,
+		"fields": fields.duplicate(),
+		"required_fields": fields.duplicate(),
+		"core_fields": REQUIRED_PUBLIC_FIELDS.duplicate(),
+		"envelope_fields": OPTIONAL_PUBLIC_FIELDS.duplicate(),
+		"field_types": PUBLIC_FIELD_TYPES.duplicate(true),
+		"text_limits": PUBLIC_TEXT_LIMITS.duplicate(true),
+		"allow_additional_fields": false,
+		"failure_detail_fields": FAILURE_DETAIL_FIELDS.duplicate(),
+		"failure_detail_min_length": FAILURE_DETAIL_MIN_LENGTH,
+		"max_affected_entity_ids": MAX_AFFECTED_ENTITY_IDS,
+	}
 
 
 static func _district_purchase_public_failure_code(owner_failure_code: String) -> String:
@@ -268,7 +350,68 @@ static func _district_purchase_public_failure_code(owner_failure_code: String) -
 	return "purchase_conflict"
 
 
+static func _is_public_text(value: Variant, max_length: int) -> bool:
+	if not (value is String or value is StringName):
+		return false
+	var text := str(value).strip_edges()
+	return not text.is_empty() and text.length() <= max_length
+
+
+static func _is_public_token(value: String, max_length: int) -> bool:
+	var token := value.strip_edges()
+	if token.is_empty() or token.length() > max_length:
+		return false
+	for index in range(token.length()):
+		if not "abcdefghijklmnopqrstuvwxyz0123456789_.:-".contains(token.substr(index, 1)):
+			return false
+	return true
+
+
+static func _is_public_entity_id(entity_id: String) -> bool:
+	if not _is_public_token(entity_id, 128) or not entity_id.contains(":"):
+		return false
+	var lowered := entity_id.to_lower()
+	for private_token in ["cash", "hand", "owner", "ai_weight", "weight"]:
+		if lowered.contains(str(private_token)):
+			return false
+	return _is_public_value(entity_id)
+
+
+static func _has_concrete_failure_copy(source: Dictionary) -> bool:
+	for field_variant in FAILURE_DETAIL_FIELDS:
+		var detail := str(source.get(str(field_variant), ""))
+		if _normalize_failure_copy(detail).length() < FAILURE_DETAIL_MIN_LENGTH or _is_non_specific_failure_copy(detail):
+			return false
+	return true
+
+
+static func _is_non_specific_failure_copy(value: String) -> bool:
+	var normalized := _normalize_failure_copy(value)
+	var retry_suffixes := ["请重试", "重试", "请稍后重试", "稍后重试"]
+	for phrase_variant in NON_SPECIFIC_FAILURE_COPY:
+		var phrase := _normalize_failure_copy(str(phrase_variant))
+		if normalized == phrase:
+			return true
+		for suffix_variant in retry_suffixes:
+			if normalized == phrase + str(suffix_variant):
+				return true
+	return false
+
+
+static func _normalize_failure_copy(value: String) -> String:
+	var normalized := value.strip_edges().to_lower()
+	for character in [" ", "\t", "\r", "\n", "。", ".", "！", "!", "？", "?", "，", ",", "；", ";", "：", ":", "、"]:
+		normalized = normalized.replace(str(character), "")
+	return normalized
+
+
 static func _is_public_value(value: Variant) -> bool:
+	return _is_public_value_at_depth(value, 0)
+
+
+static func _is_public_value_at_depth(value: Variant, depth: int) -> bool:
+	if depth > MAX_PUBLIC_DATA_DEPTH:
+		return false
 	if value == null or value is bool or value is int or value is float:
 		return true
 	if value is String or value is StringName:
@@ -279,16 +422,18 @@ static func _is_public_value(value: Variant) -> bool:
 		return true
 	if value is Dictionary:
 		for key_variant in value.keys():
+			if not (key_variant is String or key_variant is StringName):
+				return false
 			var key := str(key_variant).to_lower()
 			for token_variant in FORBIDDEN_KEY_TOKENS:
 				if key.contains(str(token_variant)) and key != "price_cash":
 					return false
-			if not _is_public_value(key_variant) or not _is_public_value(value[key_variant]):
+			if not _is_public_value_at_depth(key_variant, depth + 1) or not _is_public_value_at_depth(value[key_variant], depth + 1):
 				return false
 		return true
 	elif value is Array:
 		for item_variant in value:
-			if not _is_public_value(item_variant):
+			if not _is_public_value_at_depth(item_variant, depth + 1):
 				return false
 		return true
 	elif value is Object or value is Callable:

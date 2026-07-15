@@ -87,6 +87,18 @@ func public_field_schema() -> Array:
 	return ACTION_RESULT_V1.public_field_schema()
 
 
+func public_schema_snapshot() -> Dictionary:
+	return ACTION_RESULT_V1.public_schema_snapshot()
+
+
+func validate_public_result(source: Dictionary) -> bool:
+	return ACTION_RESULT_V1.validate_public_result(source)
+
+
+func presenter_snapshot(source: Dictionary) -> Dictionary:
+	return ACTION_RESULT_V1.presenter_snapshot(source)
+
+
 func debug_snapshot() -> Dictionary:
 	return {
 		"service_ready": _configured,

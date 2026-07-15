@@ -12,6 +12,19 @@ const OUTCOMES := [
 	"ready_rejected",
 	"group_ready_committed",
 ]
+const PURE_DATA_ONLY_ARG := "--pure-data"
+const CORE_PUBLIC_FIELDS := [
+	"success",
+	"failure_code",
+	"title",
+	"explanation",
+	"consequence",
+	"suggested_action",
+	"focus_target",
+	"relevant_cost",
+	"relevant_requirement",
+	"affected_entity_ids",
+]
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -63,8 +76,13 @@ func _init() -> void:
 
 func _run() -> void:
 	_test_presentation_contract()
-	_test_main_success_and_failures()
-	_test_dead_priority_bid_ui_entrypoints_retired()
+	_test_public_schema_validator_and_presenter()
+	_test_recursive_private_rejection()
+	_test_failure_copy_quality()
+	var command_line_args := OS.get_cmdline_args() + OS.get_cmdline_user_args()
+	if not command_line_args.has(PURE_DATA_ONLY_ARG):
+		_test_main_success_and_failures()
+		_test_dead_priority_bid_ui_entrypoints_retired()
 	_finish()
 
 
@@ -96,8 +114,8 @@ func _test_presentation_contract() -> void:
 	malformed["schema_version"] = {}
 	_expect(ActionResultV1Script.sanitize_request(malformed).is_empty(), "malformed schema version fails closed without coercion")
 	var wrong_public: Dictionary = service.call("compose", _request("ready_rejected", 101))
-	wrong_public["action_id"] = "buy_card"
-	_expect(ActionResultV1Script.sanitize_public_result(wrong_public).is_empty(), "wrong public action identity fails closed")
+	wrong_public["action_id"] = "buy card"
+	_expect(ActionResultV1Script.sanitize_public_result(wrong_public).is_empty(), "malformed public action identity fails closed")
 	wrong_public = service.call("compose", _request("ready_rejected", 101))
 	wrong_public["schema_version"] = 2
 	_expect(ActionResultV1Script.sanitize_public_result(wrong_public).is_empty(), "wrong public schema fails closed")
@@ -116,6 +134,160 @@ func _test_presentation_contract() -> void:
 		_expect(ActionResultV1Script.sanitize_request(unsafe).is_empty(), "forbidden raw request fails closed")
 		var public_failure: Dictionary = service.call("compose", unsafe)
 		_expect(str(public_failure.get("failure_code", "")) == "unsafe_source" and not _contains_private_token(public_failure), "unsafe request produces fixed private-free feedback")
+	service.free()
+
+
+func _test_public_schema_validator_and_presenter() -> void:
+	var service := ActionResultPresentationServiceScript.new() as Node
+	var schema: Dictionary = service.call("public_schema_snapshot")
+	var field_schema: Array = service.call("public_field_schema")
+	var expected_fields: Array = ["schema_version", "action_id", "action_family", "status"] + CORE_PUBLIC_FIELDS
+	var expected_types := {
+		"schema_version": "int",
+		"action_id": "string",
+		"action_family": "string",
+		"status": "string",
+		"success": "bool",
+		"failure_code": "string",
+		"title": "string",
+		"explanation": "string",
+		"consequence": "string",
+		"suggested_action": "string",
+		"focus_target": "string",
+		"relevant_cost": "string",
+		"relevant_requirement": "string",
+		"affected_entity_ids": "array[string]",
+	}
+	var field_types: Dictionary = schema.get("field_types", {}) if schema.get("field_types", {}) is Dictionary else {}
+	_expect(str(schema.get("schema_id", "")) == "action_result.v1" and int(schema.get("schema_version", 0)) == 1, "schema snapshot publishes the stable ActionResult v1 identity")
+	_expect(_same_string_set(schema.get("fields", []) as Array, expected_fields) and _same_string_set(schema.get("required_fields", []) as Array, expected_fields), "schema snapshot makes every envelope and core field explicit and required")
+	_expect(_same_string_set(schema.get("core_fields", []) as Array, CORE_PUBLIC_FIELDS), "schema snapshot covers every player-facing ActionResult field")
+	_expect(_same_string_set(field_schema, expected_fields) and not bool(schema.get("allow_additional_fields", true)), "schema is exact and rejects undeclared fields")
+	for field_variant in expected_types.keys():
+		var field := str(field_variant)
+		_expect(str(field_types.get(field, "")) == str(expected_types[field]), "schema publishes the exact type for %s" % field)
+	_expect(int(schema.get("failure_detail_min_length", 0)) >= 8 and int(schema.get("max_affected_entity_ids", 0)) == 64, "schema publishes bounded failure detail and affected-entity limits")
+	_expect(_is_pure_data(schema), "schema snapshot contains pure data only")
+
+	(schema.get("core_fields", []) as Array).clear()
+	field_types["success"] = "string"
+	var fresh_schema: Dictionary = service.call("public_schema_snapshot")
+	_expect(_same_string_set(fresh_schema.get("core_fields", []) as Array, CORE_PUBLIC_FIELDS) and str((fresh_schema.get("field_types", {}) as Dictionary).get("success", "")) == "bool", "schema snapshots are defensive copies")
+
+	var success := _public_result(true)
+	var failure := _public_result(false)
+	_expect(bool(service.call("validate_public_result", success)) and bool(service.call("validate_public_result", failure)), "validator accepts complete generic success and failure results")
+	_expect(service.call("presenter_snapshot", failure) == failure, "presenter returns the exact validated pure-data failure snapshot")
+	_expect(str(failure.get("action_id", "")) == "fleet_move" and str(failure.get("failure_code", "")) == "target_out_of_range", "v1 validation is reusable beyond the two original adopters")
+
+	var padded := failure.duplicate(true)
+	for field_variant in ["action_id", "action_family", "failure_code", "title", "explanation", "consequence", "suggested_action", "focus_target", "relevant_cost", "relevant_requirement"]:
+		var field := str(field_variant)
+		padded[field] = "  %s  " % str(padded[field])
+	padded["affected_entity_ids"] = ["  fleet:7  "]
+	var normalized: Dictionary = service.call("presenter_snapshot", padded)
+	_expect(str(normalized.get("action_id", "")) == "fleet_move" and str(normalized.get("failure_code", "")) == "target_out_of_range" and normalized.get("affected_entity_ids", []) == ["fleet:7"], "presenter normalizes surrounding whitespace without mutating meaning")
+	_expect(str(padded.get("action_id", "")).begins_with("  "), "presenter does not mutate its source dictionary")
+
+	for field_variant in expected_fields:
+		var field := str(field_variant)
+		var missing := failure.duplicate(true)
+		missing.erase(field)
+		_expect(not bool(service.call("validate_public_result", missing)) and (service.call("presenter_snapshot", missing) as Dictionary).is_empty(), "validator and presenter reject missing field %s" % field)
+		var wrong_type := failure.duplicate(true)
+		wrong_type[field] = "fleet:7" if field == "affected_entity_ids" else []
+		_expect(not bool(service.call("validate_public_result", wrong_type)) and (service.call("presenter_snapshot", wrong_type) as Dictionary).is_empty(), "validator and presenter reject the wrong type for %s" % field)
+
+	var extra_field := failure.duplicate(true)
+	extra_field["debug_detail"] = "not part of v1"
+	_expect(not bool(service.call("validate_public_result", extra_field)), "validator rejects additional public-result fields")
+	var success_with_failure := success.duplicate(true)
+	success_with_failure["failure_code"] = "unexpected_failure"
+	_expect(not bool(service.call("validate_public_result", success_with_failure)), "success requires an empty failure_code")
+	var failure_without_code := failure.duplicate(true)
+	failure_without_code["failure_code"] = ""
+	_expect(not bool(service.call("validate_public_result", failure_without_code)), "failure requires a concrete failure_code")
+	var wrong_status := failure.duplicate(true)
+	wrong_status["status"] = "committed"
+	_expect(not bool(service.call("validate_public_result", wrong_status)), "status must agree with success")
+	var malformed_focus := failure.duplicate(true)
+	malformed_focus["focus_target"] = "fleet board"
+	_expect(not bool(service.call("validate_public_result", malformed_focus)), "focus_target is a bounded machine token")
+
+	for invalid_ids_variant in [
+		["fleet"],
+		["fleet:7", "fleet:7"],
+		["owner:7"],
+		[7],
+	]:
+		var invalid_ids := failure.duplicate(true)
+		invalid_ids["affected_entity_ids"] = invalid_ids_variant
+		_expect(not bool(service.call("validate_public_result", invalid_ids)), "affected_entity_ids reject malformed, duplicate, or private identities")
+	var too_many_ids := failure.duplicate(true)
+	var entity_ids: Array = []
+	for index in range(65):
+		entity_ids.append("fleet:%d" % index)
+	too_many_ids["affected_entity_ids"] = entity_ids
+	_expect(not bool(service.call("validate_public_result", too_many_ids)), "affected_entity_ids enforce the published maximum")
+	service.free()
+
+
+func _test_recursive_private_rejection() -> void:
+	var service := ActionResultPresentationServiceScript.new() as Node
+	service.call("configure", {})
+	for private_key_variant in ["private_hand_probe", "rival_cash_snapshot", "hidden_owner", "ai_weight", "quote_fingerprint"]:
+		var private_key := str(private_key_variant)
+		var unsafe := _request("ready_rejected", 101)
+		unsafe["public_context"] = {
+			"layers": [
+				{"metadata": {private_key: "redacted"}},
+			],
+		}
+		_expect(ActionResultV1Script.sanitize_request(unsafe).is_empty(), "request recursively rejects private field %s" % private_key)
+		var public_failure: Dictionary = service.call("compose", unsafe)
+		_expect(str(public_failure.get("failure_code", "")) == "unsafe_source" and not _contains_private_token(public_failure), "recursive private rejection returns fixed public copy for %s" % private_key)
+
+	var safe_purchase := {
+		"schema_version": 1,
+		"action_id": "district_card_purchase",
+		"action_family": "card_market",
+		"public_receipt": {
+			"event_code": "anonymous_purchase_committed",
+			"district_index": 7,
+			"price_cash": 202,
+		},
+	}
+	_expect(not ActionResultV1Script.sanitize_request(safe_purchase).is_empty(), "recursive privacy guard preserves the explicit public price_cash receipt field")
+	var non_string_key := _request("ready_rejected", 101)
+	non_string_key[7] = "not a JSON object key"
+	_expect(ActionResultV1Script.sanitize_request(non_string_key).is_empty(), "pure-data dictionaries require string keys at every level")
+
+	var nested_private_result := _public_result(false)
+	nested_private_result["affected_entity_ids"] = [{"layers": [{"metadata": {"owner": "redacted"}}]}]
+	_expect(not bool(service.call("validate_public_result", nested_private_result)) and (service.call("presenter_snapshot", nested_private_result) as Dictionary).is_empty(), "validator and presenter recursively reject a private field hidden inside an array")
+	var private_value_result := _public_result(false)
+	private_value_result["explanation"] = "PRIVATE_SENTINEL must never reach presentation"
+	_expect(not bool(service.call("validate_public_result", private_value_result)), "validator rejects private value sentinels without echoing them")
+	service.free()
+
+
+func _test_failure_copy_quality() -> void:
+	var service := ActionResultPresentationServiceScript.new() as Node
+	var vague_copy := [
+		"错误。",
+		"条件不足。",
+		"不能使用，请重试。",
+		"目标无效。",
+		"操作失败。",
+		"发生未知错误，请稍后重试。",
+	]
+	for field_variant in ["explanation", "consequence", "suggested_action", "relevant_requirement"]:
+		var field := str(field_variant)
+		for copy_variant in vague_copy:
+			var vague_failure := _public_result(false)
+			vague_failure[field] = str(copy_variant)
+			_expect(not bool(service.call("validate_public_result", vague_failure)) and (service.call("presenter_snapshot", vague_failure) as Dictionary).is_empty(), "failure %s rejects vague copy: %s" % [field, str(copy_variant)])
+	_expect(bool(service.call("validate_public_result", _public_result(false))), "failure with reason, consequence, next action, and requirement passes copy quality")
 	service.free()
 
 
@@ -262,6 +434,25 @@ func _request(outcome_code: String, resolution_id: int) -> Dictionary:
 	}
 
 
+func _public_result(success: bool) -> Dictionary:
+	return {
+		"schema_version": 1,
+		"action_id": "fleet_move",
+		"action_family": "fleet_runtime",
+		"status": "committed" if success else "rejected",
+		"success": success,
+		"failure_code": "" if success else "target_out_of_range",
+		"title": "舰队移动已完成" if success else "舰队未能进入目标区域",
+		"explanation": "舰队已通过公开航线抵达所选区域。" if success else "目标区域不在当前舰队可用航线的连接范围内。",
+		"consequence": "舰队位置已经更新，原区域不再保留该舰队。" if success else "舰队仍停留在原区域，行动资源与地图状态均未改变。",
+		"suggested_action": "查看目标区域状态并继续下一项行动。" if success else "选择与当前区域直接相连且允许舰队进入的公开区域。",
+		"focus_target": "fleet_board",
+		"relevant_cost": "已支付1点行动力" if success else "未支付行动力",
+		"relevant_requirement": "舰队必须沿公开航线移动到一个合法相邻区域。",
+		"affected_entity_ids": ["fleet:7"],
+	}
+
+
 func _required_copy_present(result: Dictionary) -> bool:
 	for key in ["title", "explanation", "consequence", "suggested_action", "focus_target", "relevant_cost", "relevant_requirement"]:
 		if str(result.get(key, "")).strip_edges() == "":
@@ -279,6 +470,24 @@ func _same_string_set(left: Array, right: Array) -> bool:
 	left_strings.sort()
 	right_strings.sort()
 	return left_strings == right_strings
+
+
+func _is_pure_data(value: Variant, depth: int = 0) -> bool:
+	if depth > 32:
+		return false
+	if value == null or value is bool or value is int or value is float or value is String or value is StringName:
+		return true
+	if value is Array:
+		for item_variant in value:
+			if not _is_pure_data(item_variant, depth + 1):
+				return false
+		return true
+	if value is Dictionary:
+		for key_variant in value.keys():
+			if not (key_variant is String or key_variant is StringName) or not _is_pure_data(value[key_variant], depth + 1):
+				return false
+		return true
+	return false
 
 
 func _contains_private_token(value: Variant) -> bool:
