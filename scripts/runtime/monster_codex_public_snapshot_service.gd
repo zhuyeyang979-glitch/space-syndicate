@@ -24,14 +24,14 @@ func compose(source: Dictionary) -> Dictionary:
 	var card_preview_text := _card_preview_text(source.get("monster_card", {}) as Dictionary)
 	var detail_tooltip := "%s\n%s\n%s\n操作：悬停/单击预览；双击进入完整怪兽详情。" % [monster_name, preview_text, card_preview_text]
 	var accent: Color = source.get("accent", Color("#fb7185")) as Color
-	var summary_text := "怪兽详情｜第%d/%d只｜%s\n看下方怪兽档案板：画像、HP/速度、资源偏好、破坏、行动概率、固定技能成长。\n偏好:%s｜定位:%s｜怪兽牌在卡牌图鉴。\n正面经济天气：%s｜IV级权重修正：%s。" % [
+	var summary_text := "怪兽详情｜第%d/%d只｜%s\n看下方怪兽档案板：画像、HP/速度、资源偏好、破坏、行动概率、固定技能成长。\n偏好:%s｜定位:%s｜怪兽牌在卡牌图鉴。\n正面经济天气：%s｜IV级概率变化：%s。" % [
 		int(source.get("index", 0)) + 1,
 		maxi(1, int(source.get("total", 1))),
 		monster_name,
 		resource_text,
 		_short_text("、".join(ecology.get("role_tags", []) as Array), 36),
 		str((ecology.get("economy_boon", {}) as Dictionary).get("label", "暂无")),
-		str(ecology.get("rank_iv_shift", "危险行动更容易出现")),
+		str(ecology.get("rank_iv_probability_shift", "危险行动更容易出现")),
 	]
 	var detail := {
 		"title": "%s｜怪兽单位档案" % monster_name,
@@ -102,9 +102,9 @@ func _bound_ladder_text(ecology: Dictionary, level_labels: Array) -> String:
 
 
 func _preview_text(source: Dictionary, entry: Dictionary, resource_text: String) -> String:
-	return "HP:%d｜护甲:%d｜移动:%s｜资源偏好:%s｜行动:%s｜IV级权重:%s" % [
+	return "HP:%d｜护甲:%d｜移动:%s｜资源偏好:%s｜行动:%s｜IV级概率:%s" % [
 		int(entry.get("hp", 0)), int(entry.get("armor", 0)), str(source.get("move_text", "0m/s")), resource_text,
-		str(source.get("action_summary", "暂无")), str(source.get("rank_iv_shift_summary", "无变化")),
+		str(source.get("action_summary", "暂无")), str(source.get("rank_iv_probability_summary", "无变化")),
 	]
 
 
@@ -133,7 +133,7 @@ func _detail_kpis(source: Dictionary, _entry: Dictionary, ecology: Dictionary, r
 		{"title": "生态位", "value": "%s｜%s" % [str(ecology.get("movement_archetype", "通用")), str(source.get("mobility_summary", "通用移动"))], "meta": "召唤:%s｜移动%s" % [str(ecology.get("summon_access", "monster_zone")), str(source.get("ecology_move_text", source.get("move_text", "0m/s")))], "accent": Color("#fb923c")},
 		{"title": "资源与经济", "value": _short_text(resource_text, 34), "meta": "吸取%d｜%s" % [int(ecology.get("resource_drain", 0)), economy_text], "accent": Color("#4ade80")},
 		{"title": "行动定位", "value": _short_text(role_tags, 34), "meta": "最高伤%d｜射程%s" % [int(ecology.get("max_damage", 0)), str(source.get("max_range_text", "0m"))], "accent": Color("#38bdf8")},
-		{"title": "固定技能成长", "value": ladder_text, "meta": "IV概率:%s" % str(ecology.get("rank_iv_shift", "无变化")), "accent": Color("#fde047")},
+		{"title": "固定技能成长", "value": ladder_text, "meta": "IV概率:%s" % str(ecology.get("rank_iv_probability_shift", "无变化")), "accent": Color("#fde047")},
 	]
 
 

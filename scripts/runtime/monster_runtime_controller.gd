@@ -557,7 +557,7 @@ func _build_monster_codex_public_catalog_source_v06(catalog_index: int, total: i
 		"encounter_range_text": MONSTER_CATALOG_V06.meters_text(AUTO_MONSTER_ENCOUNTER_RANGE_METERS),
 		"mobility_summary": _monster_codex_mobility_summary_v06(ecology.get("movement_traits", []) as Array, ecology.get("terrain_move_multiplier", {}) as Dictionary),
 		"action_summary": _monster_codex_action_summary_v06(catalog_index),
-		"rank_iv_shift_summary": _monster_codex_rank_iv_shift_summary_v06(catalog_index, false),
+		"rank_iv_probability_summary": _monster_codex_rank_iv_probability_summary_v06(catalog_index, false),
 		"actions": _monster_codex_public_action_sources_v06(catalog_index),
 		"monster_card": {
 			"valid": monster_card_name != "",
@@ -608,12 +608,10 @@ func _monster_codex_public_ecology_v06(catalog_index: int, entry: Dictionary) ->
 	var actions := _catalog_actions(catalog_index)
 	var early := _catalog_action_weights_for_index(catalog_index, false)
 	var escalated := _catalog_action_weights_for_index(catalog_index, true)
-	var rank_iv := _ranked_action_weights(early, 4)
 	var role_tags: Array = []
 	var action_names: Array = []
 	var active_early := 0
 	var active_escalated := 0
-	var late_shift := 0
 	var max_damage := 0
 	var max_range := 0.0
 	var max_move := 0.0
@@ -624,8 +622,6 @@ func _monster_codex_public_ecology_v06(catalog_index: int, entry: Dictionary) ->
 			active_early += 1
 		if action_index < escalated.size() and int(escalated[action_index]) > 0:
 			active_escalated += 1
-		if action_index < rank_iv.size() and action_index < early.size() and int(rank_iv[action_index]) > int(early[action_index]):
-			late_shift += int(rank_iv[action_index]) - int(early[action_index])
 		max_damage = maxi(max_damage, maxi(int(action.get("damage", 0)), int(action.get("close_damage", 0))))
 		max_range = maxf(max_range, float(action.get("range", 0.0)))
 		max_move = maxf(max_move, float(action.get("move_override", 0.0)))
@@ -655,13 +651,12 @@ func _monster_codex_public_ecology_v06(catalog_index: int, entry: Dictionary) ->
 		"active_early_actions": active_early,
 		"active_escalated_actions": active_escalated,
 		"role_tags": role_tags,
-		"late_shift_score": late_shift,
 		"bound_skill_counts": bound_counts,
 		"max_damage": max_damage,
 		"max_range": max_range,
 		"max_move": max_move,
 		"resource_drain": int(_catalog_entry(catalog_index).get("resource_drain", 0)),
-		"rank_iv_shift": _monster_codex_rank_iv_shift_summary_v06(catalog_index, false),
+		"rank_iv_probability_shift": _monster_codex_rank_iv_probability_summary_v06(catalog_index, false),
 	}
 
 
@@ -712,9 +707,14 @@ func _monster_codex_action_probability_facts_v06(catalog_index: int, action_inde
 
 
 func _monster_codex_probability_percent_v06(weights: Array, action_index: int) -> String:
+	return MONSTER_CATALOG_V06.probability_text(int(round(_monster_codex_probability_value_v06(weights, action_index))), 100)
+
+
+func _monster_codex_probability_value_v06(weights: Array, action_index: int) -> float:
 	var total := _weight_total(weights)
-	var weight := int(weights[action_index]) if action_index >= 0 and action_index < weights.size() else 0
-	return _probability_text(weight, total)
+	if total <= 0 or action_index < 0 or action_index >= weights.size():
+		return 0.0
+	return float(maxi(0, int(weights[action_index]))) * 100.0 / float(total)
 
 
 func _catalog_action_weights_for_index(catalog_index: int, any_destroyed: bool) -> Array:
@@ -753,14 +753,21 @@ func _monster_codex_action_summary_v06(catalog_index: int) -> String:
 	return " / ".join(names)
 
 
-func _monster_codex_rank_iv_shift_summary_v06(catalog_index: int, any_destroyed: bool = false) -> String:
+func _monster_codex_rank_iv_probability_summary_v06(catalog_index: int, any_destroyed: bool = false) -> String:
+	var actions := _catalog_actions(catalog_index)
 	var base_weights := _catalog_action_weights_for_index(catalog_index, any_destroyed)
 	var rank_iv_weights := _catalog_ranked_action_weights_for_index_v06(catalog_index, any_destroyed, 4)
 	var chunks: Array = []
 	for action_index in range(mini(base_weights.size(), rank_iv_weights.size())):
-		var delta := int(rank_iv_weights[action_index]) - int(base_weights[action_index])
-		if delta > 0:
-			chunks.append("%d号+%d" % [action_index + 1, delta])
+		var delta_points := int(round(_monster_codex_probability_value_v06(rank_iv_weights, action_index) - _monster_codex_probability_value_v06(base_weights, action_index)))
+		if delta_points == 0:
+			continue
+		var action: Dictionary = actions[action_index] if action_index < actions.size() and actions[action_index] is Dictionary else {}
+		var action_name := str(action.get("name", "行动%d" % (action_index + 1)))
+		if delta_points > 0:
+			chunks.append("%s上升%d个百分点" % [action_name, delta_points])
+		else:
+			chunks.append("%s下降%d个百分点" % [action_name, abs(delta_points)])
 	return " / ".join(chunks) if not chunks.is_empty() else "无变化"
 
 
@@ -773,7 +780,7 @@ func _monster_codex_ranked_probability_line_v06(catalog_index: int, action_index
 	var ranked_weight := int(ranked_weights[action_index]) if action_index < ranked_weights.size() else 0
 	var rank_suffix := ""
 	if rank > 1:
-		rank_suffix = "（%s修正%s）" % [MONSTER_CATALOG_V06.level_text(rank), _monster_codex_ranked_probability_delta_text_v06(base_weight, base_total, ranked_weight, ranked_total)]
+		rank_suffix = "（%s概率%s）" % [MONSTER_CATALOG_V06.level_text(rank), _monster_codex_ranked_probability_delta_text_v06(base_weight, base_total, ranked_weight, ranked_total)]
 	return "%s%s" % [_probability_text(ranked_weight, ranked_total), rank_suffix]
 
 
@@ -785,8 +792,8 @@ func _monster_codex_ranked_probability_delta_text_v06(base_weight: int, base_tot
 		return "±0%"
 	var rounded_delta := int(round(delta))
 	if rounded_delta > 0:
-		return "+%d%%" % rounded_delta
-	return "%d%%" % rounded_delta
+		return "上升%d个百分点" % rounded_delta
+	return "下降%d个百分点" % abs(rounded_delta)
 
 
 func _monster_codex_action_numeric_facts_v06(action: Dictionary) -> String:

@@ -276,11 +276,17 @@ func _run_case(case_id: String) -> Dictionary:
 			source["hidden_owner"] = 2
 			source["private_plan"] = "secret"
 			var rejected: Dictionary = adapter.call("compose_source", source) if adapter != null else {"leaked": true}
+			var monster := _coordinator.get_node_or_null("MonsterRuntimeController") if _coordinator != null else null
+			var owner_source: Dictionary = monster.call("monster_codex_public_catalog_source_v06", 0) if monster != null else {}
 			var real_source: Dictionary = _source_service.call("compose_detail_source", 0, true) if _source_service != null else {}
+			var final_snapshot: Dictionary = _coordinator.call("monster_codex_public_detail_snapshot", 0, true) if _coordinator != null else {}
 			passed = rejected.is_empty() and not _contains_private_key(real_source) and _is_pure_data(real_source)
+			passed = passed and _public_probability_facts_present(owner_source) and _public_probability_facts_present(real_source) and _public_probability_facts_present(final_snapshot)
+			passed = passed and not _contains_public_weight_leak(owner_source) and not _contains_public_weight_leak(real_source) and not _contains_public_weight_leak(final_snapshot)
 			flags["privacy_checked"] = true
+			flags["probability_checked"] = true
 			flags["pure_data_checked"] = true
-			notes = "adapter fail-closes private injected input while real source stays public"
+			notes = "adapter fail-closes private injected input while owner/source/snapshot keep public probabilities without raw weights"
 		"coordinator_scene_composition":
 			var source_node := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterCodexPublicSourceService") if _main != null else null
 			var snapshot_node := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterCodexPublicSnapshotService") if _main != null else null
@@ -329,8 +335,8 @@ func _source() -> Dictionary:
 	return {
 		"valid": true, "index": 0, "total": 8, "selected": true,
 		"entry": {"name": "岩甲兽", "style": "重装陆行怪兽。", "hp": 18, "armor": 3, "resource_focus": ["环晶电池"]},
-		"ecology": {"movement_archetype": "陆行", "movement_traits": ["重装"], "role_tags": ["破坏", "仓储压力"], "bound_skill_counts": [1, 2, 2, 3], "summon_access": "monster_zone", "resource_drain": 2, "max_damage": 5, "economy_boon": {"label": "矿脉富集"}, "rank_iv_shift": "破坏行动上升"},
-		"profile": {"accent": Color("#fb7185")}, "accent": Color("#fb7185"), "move_text": "80m/s", "art_move_text": "80m/s", "ecology_move_text": "80m/s", "max_range_text": "120m", "encounter_range_text": "50m", "mobility_summary": "陆地稳定移动", "action_summary": "撞击/掠夺", "rank_iv_shift_summary": "破坏权重+2", "level_labels": ["I", "II", "III", "IV"],
+		"ecology": {"movement_archetype": "陆行", "movement_traits": ["重装"], "role_tags": ["破坏", "仓储压力"], "bound_skill_counts": [1, 2, 2, 3], "summon_access": "monster_zone", "resource_drain": 2, "max_damage": 5, "economy_boon": {"label": "矿脉富集"}, "rank_iv_probability_shift": "撞击上升10个百分点"},
+		"profile": {"accent": Color("#fb7185")}, "accent": Color("#fb7185"), "move_text": "80m/s", "art_move_text": "80m/s", "ecology_move_text": "80m/s", "max_range_text": "120m", "encounter_range_text": "50m", "mobility_summary": "陆地稳定移动", "action_summary": "撞击/掠夺", "rank_iv_probability_summary": "撞击上升10个百分点", "level_labels": ["I", "II", "III", "IV"],
 		"actions": [{"name": "撞击", "text": "攻击城市并制造热度。", "tags": ["攻击"], "facts": "伤害5｜热度+1", "i_open": "25%", "i_destroyed": "30%", "iv_open": "35%", "iv_destroyed": "40%", "probability_tooltip": "I开局25% / I破坏后30%\nIV开局35% / IV破坏后40%"}],
 		"monster_card": {"valid": true, "display_name": "岩甲兽 I", "price": 260, "region_text": "不限区"},
 	}
@@ -382,6 +388,30 @@ func _contains_private_key(value: Variant) -> bool:
 			if _contains_private_key(item_variant):
 				return true
 	return false
+
+
+func _contains_public_weight_leak(value: Variant) -> bool:
+	if value is Dictionary:
+		for key_variant: Variant in value:
+			var key := str(key_variant).to_lower()
+			if key.contains("weight") or key.contains("numerator") or key.contains("denominator") or key in ["late_shift_score", "rank_iv_shift", "rank_iv_shift_summary"]:
+				return true
+			if _contains_public_weight_leak(value[key_variant]):
+				return true
+	elif value is Array:
+		for item_variant: Variant in value:
+			if _contains_public_weight_leak(item_variant):
+				return true
+	elif value is String:
+		var text := str(value)
+		if text.contains("权重") or text.contains("numerator") or text.contains("denominator") or text.contains("分子") or text.contains("分母") or text.contains("号+"):
+			return true
+	return false
+
+
+func _public_probability_facts_present(value: Variant) -> bool:
+	var text := _canonical_text(value)
+	return text.contains("I") and text.contains("IV") and text.contains("%") and text.contains("开局") and text.contains("破坏后")
 
 
 func _mutate_private_world_for_catalog_gate() -> Dictionary:

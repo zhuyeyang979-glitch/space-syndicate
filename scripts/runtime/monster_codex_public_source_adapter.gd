@@ -69,7 +69,7 @@ const FORBIDDEN_VALUE_SENTINELS := [
 const TOP_LEVEL_FIELDS := [
 	"schema_version", "contract_version", "valid", "index", "total", "selected", "entry", "ecology",
 	"profile", "accent", "move_text", "art_move_text", "ecology_move_text", "max_range_text",
-	"encounter_range_text", "mobility_summary", "action_summary", "rank_iv_shift_summary", "actions",
+	"encounter_range_text", "mobility_summary", "action_summary", "rank_iv_probability_summary", "actions",
 	"monster_card", "monster_card_link", "level_labels",
 ]
 const ENTRY_FIELDS := [
@@ -79,7 +79,7 @@ const ENTRY_FIELDS := [
 const ECOLOGY_FIELDS := [
 	"movement_archetype", "movement_traits", "terrain_move_multiplier", "role_tags",
 	"bound_skill_counts", "summon_access", "resource_drain", "max_damage", "max_range", "move",
-	"economy_boon", "rank_iv_shift",
+	"economy_boon", "rank_iv_probability_shift",
 ]
 const ECOLOGY_BOON_FIELDS := ["label", "text"]
 const PROFILE_FIELDS := ["accent", "secondary", "glyph", "motif", "subtitle", "sprite_key", "sprite_cell", "visual_source_id"]
