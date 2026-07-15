@@ -73,6 +73,9 @@ func _run() -> void:
 	_expect(str(forecast.get("schema_version", "")) == "weather_forecast_view_model.v1" and str(forecast.get("state", "")) == "forecast", "forecast view model composed from real runtime")
 	_expect(str(overlay.get("schema_version", "")) == "weather_map_overlay_view_model.v1" and (overlay.get("regions", []) as Array).size() == 1, "map overlay composed from real runtime")
 	_expect(str(detail.get("definition_id", "")) == "ion_storm" and str(detail.get("phase", "")) == "forecast" and (detail.get("effects", []) as Array).size() == 3, "region detail carries phase, time, and three effects")
+	_expect(int(detail.get("remaining_us", 0)) > 0 and str(detail.get("exploitation_hint", "")).strip_edges() != "" and str(detail.get("counterplay_hint", "")).strip_edges() != "", "region detail explains remaining time, exploitation, and counterplay")
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	_expect(main_source.contains("weather_region_detail_snapshot(selected_district)") and main_source.contains("天气影响：") and main_source.contains("正在消退"), "selected-region inspector consumes the public weather detail without owning weather rules")
 	var serialized := JSON.stringify({"runtime": runtime, "definitions": definitions, "forecast": forecast, "overlay": overlay, "detail": detail})
 	_expect(not serialized.contains("private_sentinel") and not serialized.contains("987654321") and not serialized.contains("players"), "presentation excludes private world state")
 	var debug: Dictionary = presentation.call("debug_snapshot") as Dictionary

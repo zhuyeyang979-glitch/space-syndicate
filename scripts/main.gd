@@ -11030,6 +11030,26 @@ func _runtime_selected_district_snapshot_source(player_index: int) -> Dictionary
 			_level_text(int(facility.get("rank", 1))),
 			int(facility.get("owner_player_index", -1)) + 1,
 		])
+	var coordinator := _game_runtime_coordinator_node()
+	var weather_detail: Dictionary = coordinator.weather_region_detail_snapshot(selected_district) if coordinator != null and coordinator.has_method("weather_region_detail_snapshot") else {}
+	if not weather_detail.is_empty() and str(weather_detail.get("phase", "clear")) != "clear":
+		var phase_label: String = str({"queued": "等待中", "forecast": "预报中", "active": "生效中", "fading": "正在消退"}.get(str(weather_detail.get("phase", "")), "未知"))
+		var remaining_seconds := float(int(weather_detail.get("remaining_us", 0))) / 1_000_000.0
+		chips.insert(1, {
+			"text": "%s｜%s" % [str(weather_detail.get("display_name", "区域天气")), phase_label],
+			"tooltip": str(weather_detail.get("accessible_text", "")),
+			"color": Color("#7dd3fc"),
+		})
+		infrastructure_lines.append("天气：%s｜%s｜剩余%s" % [
+			str(weather_detail.get("display_name", "区域天气")),
+			phase_label,
+			_duration_short_text(remaining_seconds),
+		])
+		for effect_variant in weather_detail.get("effects", []):
+			var effect := effect_variant as Dictionary
+			infrastructure_lines.append("天气影响：%s %s" % [str(effect.get("label", "影响")), str(effect.get("value_text", ""))])
+		infrastructure_lines.append("利用：%s" % str(weather_detail.get("exploitation_hint", "维持当前计划")))
+		infrastructure_lines.append("应对：%s" % str(weather_detail.get("counterplay_hint", "无需额外部署")))
 	var full_detail := "%s\n%s%s" % [
 		district_summary,
 		supply_summary,
