@@ -19,7 +19,7 @@ the production settlement exactly once.
 |---|---:|---:|---:|
 | `scripts/main.gd` physical lines | 18,972 | 18,631 | -341 |
 | `scripts/main.gd` `func` declarations | 1,097 | 1,075 | -22 |
-| Full layout failure labels | 52 | 40 | -12 |
+| Full layout failure labels | 52 | 30 | -22 |
 | Full smoke retired Main references | 71 (`31` capture, `40` apply) | 61 (`27` capture, `34` apply) | -10 |
 
 The current Main reduction comes from the Product Codex public-source sceneization and
@@ -41,11 +41,13 @@ migrations do not count as Main reduction.
 - Layout ownership checks now use the current Military, CommodityFlow,
   RegionInfrastructure, RouteNetwork, and non-owning bridge boundaries. The full
   layout run has no parser or invalid-method failure.
-- The latest integrated full layout run completed in 56.131 seconds with ExitCode 1,
-  40 remaining assertion labels, no parser/API error, no timeout, and zero remaining
-  project processes. Four of those labels are newly exposed stale fixed-bid assertions
-  after the intentional removal of the dead priority-bid path, not new production
-  crashes. Evidence run: `20260715-082955-031-layout_scene_smoke_test-228238ca`.
+- The latest integrated full layout run completed in 51.554 seconds with ExitCode 1,
+  30 remaining assertion labels, no parser/API error, no timeout, and zero remaining
+  project processes. The fixed priority-bid fixtures and assertions are now physically
+  retired: the current gate verifies planning confirmation, both public-track pointers,
+  bid-board/public-track hover in both directions, stable selection, RightInspector
+  preview, and the single `card_group_ready` action. Evidence run:
+  `20260715-085651-117-layout_scene_smoke_test-a500ae37`.
 - The current Main composition gate passes. The latest role-focused gate and smoke
   `--check-only` also exit 0.
 - The real `FullRunQualityDriver` capability preflight exits `3` by design instead of
@@ -161,14 +163,12 @@ that evidence is unavailable rather than invent a turning point or expose AI wei
 
 ## Remaining layout groups
 
-The 40 current labels include:
+The 30 current labels include:
 
 - RightInspector why/availability restoration;
-- current card-group/BidBoard contract drift;
+- one historical v0.5 SharedCardGroupWindow phase-duration contract;
 - environment-only MCP configuration checks;
-- historical Main hash and old characterization contracts;
-- scenario phase-count drift;
-- Victory and capacity owner oracles;
+- historical Sprint 40 formula-dispatch and AI policy registry contracts;
 - historical 1280 coordinate assertions that still need migration to the now-green
   real-pixel production evidence;
 - live map, public-track, card play, and market purchase flows;
