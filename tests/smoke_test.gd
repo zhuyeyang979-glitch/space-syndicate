@@ -5032,8 +5032,28 @@ func _verify_card_rank_ladders_are_complete(main: Node) -> bool:
 	return checked >= 40
 
 
-func _verify_ten_hour_route_pack(main: Node) -> bool:
-	var saved := main.call("_capture_run_state") as Dictionary
+func _verify_ten_hour_route_pack(_main: Node) -> bool:
+	var packed := load(MAIN_SCENE_PATH) as PackedScene
+	if packed == null:
+		return false
+	var main := packed.instantiate()
+	var fixture_save_path := "user://test_runs/smoke_ten_hour_route_pack_fixture.save"
+	if FileAccess.file_exists(fixture_save_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(fixture_save_path))
+	var save_coordinator := main.get_node_or_null(SAVE_COORDINATOR_NODE_PATH) as Node
+	var save_override_ready := save_coordinator != null \
+		and save_coordinator.has_method("set_qa_default_save_path_override") \
+		and bool(save_coordinator.call("set_qa_default_save_path_override", fixture_save_path))
+	if not save_override_ready:
+		main.free()
+		return false
+	main.set("configured_player_count", EXPECTED_PLAYER_COUNT)
+	main.set("configured_ai_player_count", EXPECTED_AI_PLAYER_COUNT)
+	main.set("configured_role_indices", [0, 1, 2, 3, 4])
+	main.set("configured_starter_monster_indices", [7, 6, 2, 4, 3])
+	get_root().add_child(main)
+	main.call("_new_game")
+	main.set("opening_guide_dismissed", true)
 	var ok := true
 	var failures := []
 	var families := ["应急修复", "竞争封锁", "线索悬赏", "航线预报"]
@@ -5079,11 +5099,14 @@ func _verify_ten_hour_route_pack(main: Node) -> bool:
 		var card_name := String(card_variant)
 		var skill := main.call("_make_skill", card_name) as Dictionary
 		var expected := route_expectations[card_name] as Dictionary
-		var route_label := String(main.call("_card_strategy_route_label", skill))
+		var route_label := _card_presentation_text(main, skill, "strategy_route_label", card_name)
 		if route_label != String(expected.get("route", "")):
 			failures.append("route %s -> %s" % [card_name, route_label])
 			ok = false
-		var pillars := _as_array(main.call("_card_balance_pillars", skill))
+		var pillars := _as_array(_diagnostics(main).card_balance_pillars(skill, {
+			"card_id": card_name,
+			"strategy_route_label": route_label,
+		}))
 		for pillar_variant in _as_array(expected.get("pillars", [])):
 			var pillar := String(pillar_variant)
 			if not pillars.has(pillar):
@@ -5097,29 +5120,27 @@ func _verify_ten_hour_route_pack(main: Node) -> bool:
 	else:
 		ok = ok and CITY_FIXTURES.create_city_bool(main, 0, repair_district, "十小时修复烟测城")
 		ok = ok and _set_city_goods_for_test(main, repair_district, "光合凝胶", "轨迹墨水")
-		main.set("selected_player", 0)
-		main.set("selected_district", repair_district)
-		var districts_after_city := _as_array(main.get("districts")).duplicate(true)
-		var repair_entry := (districts_after_city[repair_district] as Dictionary).duplicate(true)
+		var districts_after_city := _as_array(main.get("districts"))
+		var repair_entry := districts_after_city[repair_district] as Dictionary
 		var city := (repair_entry.get("city", {}) as Dictionary).duplicate(true)
 		city["trade_route_damage"] = 3
-		repair_entry["city"] = city
-		districts_after_city[repair_district] = repair_entry
-		main.set("districts", districts_after_city)
-		main.set("selected_player", 0)
-		main.set("selected_district", repair_district)
-		var repaired := bool(main.call("_apply_route_insurance", _as_array(main.get("players"))[0], main.call("_make_skill", "应急修复3")))
-		var repaired_city := ((_as_array(main.get("districts"))[repair_district] as Dictionary).get("city", {}) as Dictionary)
-		if not repaired or int(repaired_city.get("trade_route_damage", 99)) > 0 or float(repaired_city.get("route_flow_multiplier", 1.0)) < 1.39:
+		var repair_skill := main.call("_make_skill", "应急修复3") as Dictionary
+		var route_formula := _runtime_coordinator(main).get_node_or_null("CardEconomyProductRouteFormulaRuntimeService")
+		var repair_result: Dictionary = route_formula.call("calculate", "route_insurance", {
+			"city": city,
+			"repair_routes": int(repair_skill.get("repair_routes", 0)),
+			"revenue_amount": int(repair_skill.get("revenue_amount", 0)),
+			"route_flow_multiplier": float(repair_skill.get("route_flow_multiplier", 1.0)),
+			"route_flow_seconds": float(repair_skill.get("route_flow_seconds", 0.0)),
+			"source": "smoke_ten_hour_route_pack",
+		}) if route_formula != null and route_formula.has_method("calculate") else {}
+		var repaired_city := repair_result.get("city", {}) as Dictionary
+		if not bool(repair_result.get("changed", false)) or int(repaired_city.get("trade_route_damage", 99)) > 0 or float(repaired_city.get("route_flow_multiplier", 1.0)) < 1.39:
 			failures.append("repair resolver damage=%d flow=%.2f" % [
 				int(repaired_city.get("trade_route_damage", 99)),
 				float(repaired_city.get("route_flow_multiplier", 1.0)),
 			])
 			ok = false
-	var mid_restore := int(main.call("_apply_run_state", saved))
-	if mid_restore != OK:
-		failures.append("mid restore")
-		ok = false
 	var ai_ok := true
 	var ai_districts := _as_array(main.get("districts"))
 	var own_index := _first_buildable_land_district(ai_districts)
@@ -5167,10 +5188,12 @@ func _verify_ten_hour_route_pack(main: Node) -> bool:
 	else:
 		failures.append("AI route setup")
 		ok = false
-	var restore_result := int(main.call("_apply_run_state", saved))
 	if not failures.is_empty():
 		print("Ten-hour route pack failures: %s" % " / ".join(failures))
-	return ok and restore_result == OK
+	main.free()
+	if FileAccess.file_exists(fixture_save_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(fixture_save_path))
+	return ok
 
 
 func _verify_direct_player_interaction_cards(_main: Node) -> bool:
