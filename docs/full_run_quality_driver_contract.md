@@ -46,6 +46,6 @@ Validated with Godot `4.7.stable.official` on 2026-07-15:
 - production capability evidence: 18 required, 7 transactional, 11 unsupported, capture rejected without an envelope;
 - PlayerMana transaction run `20260715-080847-400-player_mana_save_owner_transaction_test-ad8acee7`: ExitCode 0, exact revision/reservation/terminal-receipt restore, detached preflight normalization, failed apply mutation count zero;
 - bankruptcy estate transaction run `20260715-081350-090-bankruptcy_neutral_estate_save_owner_transaction_test-cb248ab2`: ExitCode 0, strict journal allowlist, detached preflight, exact rollback, and private-field rejection;
-- registry run `20260715-081358-705-v06_save_owner_registry_test-09bc8869`: ExitCode 0, production boundary 7/11 and full resume still fail-closed;
+- registry run `20260715-102300-208-v06_save_owner_registry_test-aaa5e15d`: ExitCode 0, production boundary 8/10 and full resume still fail-closed;
 - the player default save was unchanged and the scoped QA directory was not created;
 - `git diff --check` passed.

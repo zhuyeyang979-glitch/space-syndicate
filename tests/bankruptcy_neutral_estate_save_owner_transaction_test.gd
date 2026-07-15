@@ -54,7 +54,7 @@ func _run() -> void:
 	var registry := coordinator.get_node_or_null("GameSessionRuntimeController/V06SaveOwnerRegistry")
 	var registry_snapshot: Dictionary = registry.registry_snapshot() if registry != null else {}
 	_expect(registry != null and bool(registry_snapshot.get("valid", false)), "production registry remains structurally valid")
-	_expect(int(registry_snapshot.get("transactional_section_count", 0)) == 7 and int(registry_snapshot.get("unsupported_section_count", 0)) == 11, "bankruptcy estate advances the honest production boundary to 7 transactional and 11 unsupported sections")
+	_expect(int(registry_snapshot.get("transactional_section_count", 0)) >= 7 and int(registry_snapshot.get("unsupported_section_count", 0)) <= 11, "bankruptcy estate remains one of the registered transactional owners")
 	var binding: Resource
 	if registry != null:
 		for candidate in registry.bindings:
