@@ -632,14 +632,10 @@ func _all_exact_definitions_match_authored() -> bool:
 
 
 func _city_development_precedence() -> bool:
-	var cards_variant: Variant = _runtime_main.get("city_development_runtime_cards")
-	if cards_variant is Dictionary and (cards_variant as Dictionary).is_empty() and _runtime_main.has_method("_rebuild_city_development_runtime_cards"):
-		_runtime_main.call("_rebuild_city_development_runtime_cards")
-		cards_variant = _runtime_main.get("city_development_runtime_cards")
-	if not (cards_variant is Dictionary) or (cards_variant as Dictionary).is_empty():
+	if _main_source.contains("city_development_runtime_cards") or _main_source.contains("_rebuild_city_development_runtime_cards"):
 		return false
-	var card_id := str((cards_variant as Dictionary).keys()[0])
-	return _service.authored_definition(card_id).is_empty() and _canonical(_coordinator.card_definition(card_id)) == _canonical((cards_variant as Dictionary)[card_id])
+	var result := _coordinator.submit_public_facility_card({"skill": {"kind": "city_development_card"}})
+	return not bool(result.get("committed", false)) and str(result.get("reason", "")) == "legacy_city_development_retired"
 
 
 func _monster_card_route() -> bool:
