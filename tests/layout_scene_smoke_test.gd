@@ -8463,8 +8463,38 @@ func _check_ruleset_v06_region_infrastructure_foundation_component() -> void:
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 	var active_ruleset_scene := FileAccess.get_file_as_string(RULESET_RUNTIME_BRIDGE_SCENE)
 	var active_catalog_scene := FileAccess.get_file_as_string("res://scenes/runtime/CardRuntimeCatalogService.tscn")
+	var coordinator_scene_source := FileAccess.get_file_as_string(GAME_RUNTIME_COORDINATOR_SCENE)
 	var save_source := FileAccess.get_file_as_string(GAME_SAVE_RUNTIME_COORDINATOR_SCRIPT)
-	_expect(main_source.sha256_text().to_upper() == "7F4AF6CA535051FB5189BDCD4273B990CE996464BFBCBE756A43BA7381673A62", "SS06-00 keeps production main.gd byte-for-byte unchanged")
+	var retired_main_tokens := [
+		"_capture_run_state",
+		"_apply_run_state",
+		"_card_codex_public_browser_source",
+		"_card_codex_public_card_facts",
+		"_card_codex_public_upgrade_facts",
+		"_card_codex_public_browser_snapshot",
+		"_card_codex_public_detail_snapshot",
+		"_region_card_choice_summary",
+		"_region_codex_public_source_snapshot",
+		"_region_codex_public_snapshot",
+		"_set_selected_card_priority_bid",
+		"_increase_selected_card_bid",
+		"_reset_selected_card_bid",
+		"_set_selected_card_bid_absolute",
+		"_set_card_bid_for_player",
+	]
+	var retired_main_tokens_absent := true
+	for token in retired_main_tokens:
+		retired_main_tokens_absent = retired_main_tokens_absent and not main_source.contains(str(token))
+	var sceneized_owners_present := true
+	for owner_name in ["ProductCodexPublicSourceService", "CardCodexPublicSourceService", "RegionCodexPublicSourceService", "ActionResultPresentationService"]:
+		sceneized_owners_present = sceneized_owners_present and coordinator_scene_source.contains(str(owner_name))
+	_expect(
+		main_source.split("\n").size() < 18972
+		and main_source.count("\nfunc ") < 1097
+		and retired_main_tokens_absent
+		and sceneized_owners_present,
+		"SS06-00 keeps migrated presentation, save, and action owners out of Main without freezing a byte hash",
+	)
 	_expect(active_ruleset_scene.contains("space_syndicate_ruleset_v04.tres") and not active_ruleset_scene.contains("space_syndicate_ruleset_v06.tres") and active_catalog_scene.contains("card_runtime_catalog_v04.tres") and save_source.contains("const CURRENT_SAVE_VERSION := 3") and save_source.contains("const RULESET_ID := \"v0.6\""), "SS06-00 preserves active Ruleset/Card Catalog compatibility while the save owner advances to v3/v0.6")
 
 
