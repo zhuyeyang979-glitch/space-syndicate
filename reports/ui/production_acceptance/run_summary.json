@@ -1,0 +1,37 @@
+{
+  "status": "PASS",
+  "source_revision": "0c25b3a421f06fc66dc8cbad172b70334c916f77",
+  "godot_version": "4.7.stable.official.5b4e0cb0f",
+  "command": "C:\\Users\\zhuye\\AppData\\Local\\Programs\\Godot\\4.7\\Godot_v4.7-stable_win64_console.exe --path C:\\Users\\zhuye\\Documents\\New project\\space-syndicate --windowed --resolution 1280x720 --position 20,20 --script res://reports/ui/production_acceptance/production_acceptance.gd",
+  "blocking_wait": true,
+  "timeout_seconds": 180,
+  "timed_out": false,
+  "process_exit_code": 0,
+  "runtime_result_present": true,
+  "runtime_status": "PASS",
+  "pass_marker": true,
+  "clean_stop_marker": true,
+  "qa_profile_removed": true,
+  "default_save_before": {
+    "path": "C:\\Users\\zhuye\\AppData\\Roaming\\Godot\\app_userdata\\太空辛迪加\\space_syndicate_current_run.save",
+    "exists": false,
+    "length": 0,
+    "last_write_utc": null,
+    "sha256": ""
+  },
+  "default_save_after": {
+    "path": "C:\\Users\\zhuye\\AppData\\Roaming\\Godot\\app_userdata\\太空辛迪加\\space_syndicate_current_run.save",
+    "exists": false,
+    "length": 0,
+    "last_write_utc": null,
+    "sha256": ""
+  },
+  "default_save_metadata_and_sha256_unchanged": true,
+  "console": {
+    "error_count": 0,
+    "warning_count": 0,
+    "by_category": {},
+    "entries": [],
+    "pass": true
+  }
+}
