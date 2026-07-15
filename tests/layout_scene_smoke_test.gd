@@ -1228,7 +1228,7 @@ func _check_split_game_screen_data_binding() -> void:
 				"full_detail": "海雾商品线正在升温。完整区域详情应进入抽屉，而不是常驻右侧主桌。这里还有供需、怪兽、牌架与历史线索。",
 				"chips": [{"text": "日照开放"}],
 			},
-			"requirements": [{"text": "怪兽半径 OK"}, {"text": "现金足够"}],
+			"requirements": [{"text": "来源区域受光"}, {"text": "现金足够"}],
 			"actions": [{"id": "buy", "label": "买牌"}],
 			"deep_links": [{"id": "detail_region", "label": "区域详情"}],
 			"logs": ["公开事件"],
@@ -1370,7 +1370,7 @@ func _check_split_game_screen_data_binding() -> void:
 	_expect(end_turn_button != null and not end_turn_button.visible, "split TopBar keeps end-turn controls hidden by default so PlayerBoard remains the single main-action dock")
 	_expect(right_inspector != null and right_inspector.has_method("set_context"), "split GameScreen routes context through RightInspector")
 	_expect(reason_panel != null and reason_panel.visible, "split RightInspector shows the reason panel only when why/requirements exist")
-	_expect(reason_label != null and reason_label.text.contains("买牌可用"), "split RightInspector binds why/availability text")
+	_expect(reason_label != null and reason_label.text.contains("受光") and reason_label.text.contains("可买"), "split RightInspector binds sunlight availability why text")
 	_expect(requirement_row != null and requirement_row.get_child_count() == 2, "split RightInspector binds requirement chips")
 	_check_right_inspector_collapses_empty_panels(screen, "split sample GameScreen")
 	_expect(deep_link_row != null and deep_link_row.get_child_count() == 1, "split RightInspector binds Codex/detail links")
@@ -1461,7 +1461,7 @@ func _check_split_game_screen_data_binding() -> void:
 		hand_rack.emit_signal("card_unhovered")
 		await process_frame
 		_expect(inspector_title != null and inspector_title.text == "当前说明", "split HandRack unhover restores the prior RightInspector context")
-		_expect(reason_label != null and reason_label.text.contains("买牌可用"), "split RightInspector restores why/availability text after hand-card unhover")
+		_expect(reason_label != null and reason_label.text.contains("受光") and reason_label.text.contains("可买"), "split RightInspector restores sunlight availability text after hand-card unhover")
 	if hand_rack != null and hand_rack.has_signal("card_drag_preview_started"):
 		var drag_preview_label: Label = screen.find_child("DragPreviewLabel", true, false) as Label
 		var preview_data: Dictionary = {"name": "轨道融资", "type": "经济", "cost": "2"}
@@ -1607,7 +1607,7 @@ func _check_split_game_screen_data_binding() -> void:
 				"full_detail": "海雾商品线正在升温。完整区域详情应进入抽屉，而不是常驻右侧主桌。这里还有供需、怪兽、牌架与历史线索。",
 				"chips": [{"text": "日照开放"}],
 			},
-			"requirements": [{"text": "怪兽半径 OK"}, {"text": "现金足够"}],
+			"requirements": [{"text": "来源区域受光"}, {"text": "现金足够"}],
 			"actions": [{"id": "buy", "label": "买牌"}],
 			"deep_links": [{"id": "detail_region", "label": "区域详情"}],
 		},
