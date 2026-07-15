@@ -1377,7 +1377,7 @@ func _verify_military_unit_variant_cards(main: Node) -> bool:
 			if String(family.get("type", "")) != "defense":
 				if _as_array(skill.get("movement_traits", [])).is_empty() or (skill.get("terrain_move_multiplier", {}) as Dictionary).is_empty():
 					return false
-			var facts := _card_presentation_array(main, skill, "rule_facts")
+			var facts := _card_presentation_array(main, skill, "key_rule_facts")
 			var facts_text := ""
 			for fact_variant in facts:
 				facts_text += "%s\n" % String(fact_variant)
@@ -5068,10 +5068,10 @@ func _verify_direct_player_interaction_cards(main: Node) -> bool:
 	ok = ok and bool((main.call("_card_play_target_snapshot", steal) as Dictionary).get("requires_target_player", false))
 	ok = ok and not bool((main.call("_card_play_target_snapshot", freeze) as Dictionary).get("requires_target_player", false))
 	ok = ok and not bool((main.call("_card_play_target_snapshot", barrage) as Dictionary).get("requires_target_player", false))
-	ok = ok and str(_card_presentation_array(main, disrupt, "rule_facts")).contains("指定玩家")
-	ok = ok and str(_card_presentation_array(main, steal, "rule_facts")).contains("牵牌")
-	ok = ok and str(_card_presentation_array(main, freeze, "rule_facts")).contains("产权冻结")
-	ok = ok and str(_card_presentation_array(main, barrage, "rule_facts")).contains("齐射")
+	ok = ok and str(_card_presentation_array(main, disrupt, "key_rule_facts")).contains("拆牌")
+	ok = ok and str(_card_presentation_array(main, steal, "key_rule_facts")).contains("牵牌")
+	ok = ok and str(_card_presentation_array(main, freeze, "key_rule_facts")).contains("产权冻结")
+	ok = ok and str(_card_presentation_array(main, barrage, "key_rule_facts")).contains("齐射")
 	if _as_array(main.get("players")).size() >= 2:
 		main.set("selected_player", 0)
 		main.set("selected_district", maxi(0, int(main.get("selected_district"))))
@@ -5896,7 +5896,7 @@ func _verify_monster_lure_replaces_control_window(main: Node) -> bool:
 	if String(skill.get("text", "")).contains("持续控制"):
 		failures.append("skill text still mentions persistent control")
 		ok = false
-	var facts := _card_presentation_array(main, skill, "rule_facts")
+	var facts := _card_presentation_array(main, skill, "key_rule_facts")
 	var facts_text := "｜".join(facts)
 	if not facts_text.contains("诱导提前"):
 		failures.append("card facts do not include lure speedup")

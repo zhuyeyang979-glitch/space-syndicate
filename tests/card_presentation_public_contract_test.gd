@@ -90,9 +90,9 @@ func _test_public_card_facts_contract() -> void:
 	_expect(bool(growth.get("valid", false)), "legal_growth_card_facts_valid")
 	_expect(str(growth.get("strategy_route_label", "")).contains("城市成长"), "legal_growth_card_route_label_from_source_service")
 	_expect(str(growth.get("art_stats", "")).contains("城市成长"), "legal_growth_card_art_stats_from_source_service")
-	_expect(_array(growth.get("rule_facts", [])).size() >= 3 or _array(growth.get("key_rule_facts", [])).size() >= 1, "legal_growth_card_rule_facts_from_source_service")
+	_expect(_array(growth.get("key_rule_facts", [])).size() >= 1, "legal_growth_card_rule_facts_from_source_service")
 	var disrupt := _compose_card_facts("星链拆解1")
-	_expect(str(disrupt.get("rule_facts", [])).contains("指定玩家"), "direct_interaction_target_fact_from_source_service")
+	_expect(bool(disrupt.get("targets_player", false)) and str(disrupt.get("key_rule_facts", [])).contains("拆牌"), "direct_interaction_public_source_marks_player_target_and_key_facts")
 	_expect(_canonical_text(growth) != _canonical_text(disrupt), "different_public_card_changes_public_facts")
 	_expect(_forbidden_paths(growth).is_empty(), "public_growth_card_facts_have_no_private_keys|paths=%s" % [_forbidden_paths(growth)])
 	_expect(_sentinel_paths(growth).is_empty(), "public_growth_card_facts_have_no_private_sentinels|paths=%s" % [_sentinel_paths(growth)])
@@ -152,7 +152,6 @@ func _public_projection(snapshot: Dictionary) -> Dictionary:
 		"card_name": snapshot.get("card_name", ""),
 		"strategy_route_label": snapshot.get("strategy_route_label", ""),
 		"art_stats": snapshot.get("art_stats", ""),
-		"rule_facts": _array(snapshot.get("rule_facts", [])),
 		"key_rule_facts": _array(snapshot.get("key_rule_facts", [])),
 		"quick_effect_compact": snapshot.get("quick_effect_compact", ""),
 		"detail_tooltip": snapshot.get("detail_tooltip", ""),
