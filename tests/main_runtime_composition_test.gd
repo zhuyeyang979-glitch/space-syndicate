@@ -369,6 +369,8 @@ func _check_static_composition(main: Control) -> void:
 	_expect(district_supply_snapshot != null and district_supply_snapshot.scene_file_path == "res://scenes/runtime/DistrictSupplySnapshotService.tscn" and district_supply_snapshot.has_method("compose") and district_supply_snapshot.has_method("validate_source") and district_supply_snapshot.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the editable DistrictSupplySnapshotService scene")
 	for retired_diagnostic in ["_development_route_profiles", "_card_strength_budget_report", "_development_route_balance_audit", "_development_route_pressure_audit", "_direct_interaction_balance_report", "_role_balance_audit", "_monster_ecology_balance_report", "_product_ecosystem_report", "_card_supply_product_filter_audit", "_card_one_glance_audit_report", "_runtime_balance_snapshot"]:
 		_expect(not main_source.contains("func %s(" % retired_diagnostic), "Sprint 62 deletes legacy main.gd diagnostic owner %s" % retired_diagnostic)
+	for retired_economy_formatter in ["_economy_city_public_clue_line", "_city_product_market_price_summary", "_city_demand_price_summary", "_city_income_detail_lines"]:
+		_expect(not main_source.contains("func %s(" % retired_economy_formatter) and not main_source.contains("%s(" % retired_economy_formatter), "unused Main economy formatter stays physically absent: %s" % retired_economy_formatter)
 	var buy_start := main_source.find("func _buy_card_for_player_from_district(")
 	var buy_end := main_source.find("\nfunc ", buy_start + 5)
 	var buy_source := main_source.substr(buy_start, buy_end - buy_start) if buy_start >= 0 and buy_end > buy_start else ""

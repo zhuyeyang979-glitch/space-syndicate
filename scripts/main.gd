@@ -5245,23 +5245,6 @@ func _sort_economy_city_public_clue_entry(a: Dictionary, b: Dictionary) -> bool:
 	return String(a.get("clue", "")) > String(b.get("clue", ""))
 
 
-func _economy_city_public_clue_line(entry: Dictionary) -> String:
-	var owner_text := "己方城市" if bool(entry.get("owner_visible", false)) else "业主未知"
-	var time_text := "T+%.0fs" % float(entry.get("time", 0.0)) if float(entry.get("time", -1.0)) >= 0.0 else "时间未知"
-	var clue_products := entry.get("clue_products", []) as Array
-	return "%s｜%s｜%s｜类型:%s｜线索商品:%s｜上次收入%d｜生产:%s｜需求:%s｜线索:%s" % [
-		time_text,
-		String(entry.get("district", "城市")),
-		owner_text,
-		String(entry.get("kind", "公开")),
-		_limited_name_list(clue_products, 3, "无"),
-		int(entry.get("income", 0)),
-		_limited_name_list(entry.get("products", []) as Array, 3, "无"),
-		_limited_name_list(entry.get("demands", []) as Array, 3, "无"),
-		String(entry.get("clue", "")),
-	]
-
-
 func _economy_monster_cash_clue_entries(limit: int = 5) -> Array:
 	var entries := []
 	for slot in range(monster_runtime_controller.auto_monsters.size()):
@@ -11073,16 +11056,6 @@ func _district_transport_speed(index: int) -> float:
 	var base_score := _transport_score_from_level(level, String(district.get("terrain", "land")) == "ocean")
 	var weather_multiplier := weather_runtime_controller.district_multiplier(index, "transport_multiplier", 1.0)
 	return clampf(float(district.get("transport_score", base_score)) * weather_multiplier, REGION_TRANSPORT_SCORE_MIN, REGION_TRANSPORT_SCORE_MAX)
-
-
-func _city_product_market_price_summary(city: Dictionary) -> String:
-	var names := _city_product_names(city)
-	return _product_list_with_prices(names, 4)
-
-
-func _city_demand_price_summary(city: Dictionary) -> String:
-	var names := _city_demand_names(city)
-	return _product_list_with_prices(names, 4)
 
 
 func _pay_rival_business_cost(player_index: int) -> void:
@@ -18095,19 +18068,6 @@ func _sync_commodity_gdp_city_presentation(district_index: int, breakdown: Dicti
 	city["last_gdp_breakdown"] = breakdown.duplicate(true)
 	city["gdp_history"] = history
 	districts[district_index]["city"] = city
-
-
-func _city_income_detail_lines(city_index: int, competition_matches: int) -> Array:
-	var breakdown := _city_cycle_income_breakdown(city_index, competition_matches)
-	var city := _district_city(city_index)
-	var lines := []
-	lines.append("收入拆解：%s。" % _city_income_breakdown_summary(breakdown))
-	lines.append(_city_gdp_trend_text(city))
-	lines.append("合约状态：%s。" % _city_contract_status_text(_district_city(city_index)))
-	lines.append("生产明细：%s。" % _limited_name_list(breakdown.get("product_lines", []) as Array, 5))
-	lines.append("消费明细：%s。" % _limited_name_list(breakdown.get("route_lines", []) as Array, 5))
-	lines.append("过境明细：%s。" % _limited_name_list(breakdown.get("transit_lines", []) as Array, 5))
-	return lines
 
 
 func _refresh_route_network() -> void:
