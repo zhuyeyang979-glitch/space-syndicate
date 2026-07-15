@@ -142,7 +142,7 @@ func _run() -> void:
 	_expect(_regions_start_with_terrain_goods(main), "land and ocean regions start with one terrain-appropriate produced good and one demanded good before contracts expand them")
 	_expect(auto_monsters.is_empty(), "new game starts with no field monsters until monster cards are played")
 	_expect(_players_have_role_cards(main, players), "each player receives an alien syndicate role card")
-	_expect(_role_catalog_has_positive_cards(main), "role codex exposes distinct alien cards with positive mechanical benefits")
+	_expect(_role_catalog_has_positive_cards(main), "role codex exposes distinct alien cards through public balance and codex owners")
 	_expect(_verify_random_ai_roles_resolve_unique(main), "random AI role setup resolves to public non-duplicate role cards")
 	_expect(_verify_role_selection_and_budget_audit(main), "role setup resolves duplicate selections and every public role exposes balance-budget metadata")
 	_expect(_role_cards_have_mechanical_passives(players), "role cards carry visible mechanical passive rules")
@@ -1261,15 +1261,19 @@ func _role_catalog_has_positive_cards(main: Node) -> bool:
 	var role_count := int(main.call("_player_role_catalog_size"))
 	if role_count < 24:
 		return false
+	var audit := _diagnostics(main).role_balance_audit()
+	if int(audit.get("role_count", 0)) != role_count \
+		or not _as_array(audit.get("duplicate_names", [])).is_empty() \
+		or not _as_array(audit.get("missing_budget_roles", [])).is_empty() \
+		or not _as_array(audit.get("missing_positive_roles", [])).is_empty():
+		print("Role codex balance owner audit failed: %s" % str(audit))
+		return false
 	var names := {}
-	var has_city_intel_role := false
-	var has_card_trace_role := false
-	var has_contract_trace_role := false
-	var has_remote_supply_role := false
-	var has_monster_limit_role := false
-	var has_military_limit_role := false
+	var has_supply_role := false
+	var has_intel_role := false
+	var has_control_role := false
 	for role_index in range(role_count):
-		var role := main.call("_make_player_role_card", role_index, role_index) as Dictionary
+		var role := main.call("_make_player_role_card", 0, role_index) as Dictionary
 		var role_name := String(role.get("name", ""))
 		if role_name == "" or names.has(role_name) or String(role.get("species", "")) == "" or String(role.get("passive", "")) == "":
 			return false
@@ -1277,30 +1281,21 @@ func _role_catalog_has_positive_cards(main: Node) -> bool:
 		for starter_field in ["starter_monster_index", "starter_monster_name", "starter_monster_card", "starter_hp_bonus", "starter_duration_bonus", "starter_move_multiplier", "starter_fixed_skill_bonus"]:
 			if role.has(starter_field):
 				return false
-		var has_positive_benefit := int(main.call("_role_starting_cash_delta", role)) > 0
-		has_positive_benefit = has_positive_benefit or int(role.get("resource_cash_amount", 0)) > 0
-		has_positive_benefit = has_positive_benefit or String(role.get("bonus_card_product", "")) != ""
-		has_positive_benefit = has_positive_benefit or int(role.get("monster_upgrade_cash", 0)) > 0
-		has_positive_benefit = has_positive_benefit or int(role.get("intel_city_reveal_charges", 0)) > 0
-		has_positive_benefit = has_positive_benefit or int(role.get("intel_card_trace_charges", 0)) > 0
-		has_positive_benefit = has_positive_benefit or int(role.get("intel_contract_trace_charges", 0)) > 0
-		has_positive_benefit = has_positive_benefit or int(role.get("city_guess_reward_bonus", 0)) > 0
-		has_positive_benefit = has_positive_benefit or int(role.get("card_owner_guess_discount", 0)) > 0
-		has_positive_benefit = has_positive_benefit or int(role.get("card_owner_guess_bonus", 0)) > 0
-		has_positive_benefit = has_positive_benefit or int(role.get("contract_flow_discount", 0)) > 0
-		has_positive_benefit = has_positive_benefit or int(role.get("card_access_extra_hops", 0)) > 0
-		has_positive_benefit = has_positive_benefit or bool(role.get("card_access_global", false))
-		has_positive_benefit = has_positive_benefit or int(role.get("monster_control_limit_bonus", 0)) > 0
-		has_positive_benefit = has_positive_benefit or int(role.get("military_control_limit_bonus", 0)) > 0
-		if not has_positive_benefit:
+		var tags := _as_array(role.get("balance_tags", []))
+		if int(role.get("balance_budget", 0)) <= 0 or _as_array(role.get("balance_drivers", [])).is_empty() or tags.is_empty():
 			return false
-		has_city_intel_role = has_city_intel_role or int(role.get("intel_city_reveal_charges", 0)) > 0
-		has_card_trace_role = has_card_trace_role or int(role.get("intel_card_trace_charges", 0)) > 0
-		has_contract_trace_role = has_contract_trace_role or int(role.get("intel_contract_trace_charges", 0)) > 0
-		has_remote_supply_role = has_remote_supply_role or int(role.get("card_access_extra_hops", 0)) > 0
-		has_monster_limit_role = has_monster_limit_role or int(role.get("monster_control_limit_bonus", 0)) > 0
-		has_military_limit_role = has_military_limit_role or int(role.get("military_control_limit_bonus", 0)) > 0
-	return names.size() == role_count and has_city_intel_role and has_card_trace_role and has_contract_trace_role and has_remote_supply_role and has_monster_limit_role and has_military_limit_role
+		var snapshot := main.call("_role_codex_public_snapshot", role, role_index, role_count) as Dictionary
+		var board := snapshot.get("board", {}) as Dictionary
+		if not str(snapshot.get("summary_text", "")).contains(role_name) \
+			or str(snapshot.get("route_label", "")).strip_edges() == "" \
+			or _as_array(board.get("chips", [])).size() < 2 \
+			or _as_array(board.get("kpis", [])).size() != 4 \
+			or _as_array(board.get("routes", [])).size() < 6:
+			return false
+		has_supply_role = has_supply_role or tags.has("supply")
+		has_intel_role = has_intel_role or tags.has("intel")
+		has_control_role = has_control_role or tags.has("monster") or tags.has("military") or tags.has("counter")
+	return names.size() == role_count and has_supply_role and has_intel_role and has_control_role
 
 
 func _role_card_art_exposes_runtime_triggers(main: Node) -> bool:
@@ -1900,7 +1895,9 @@ func _verify_temporary_economy_duration_seconds(main: Node) -> bool:
 
 
 func _verify_random_ai_roles_resolve_unique(main: Node) -> bool:
-	var saved := main.call("_capture_run_state") as Dictionary
+	var previous_player_count := int(main.get("configured_player_count"))
+	var previous_ai_count := int(main.get("configured_ai_player_count"))
+	var previous_role_indices := _as_array(main.get("configured_role_indices")).duplicate(true)
 	var ok := true
 	var random_index := -1
 	main.set("configured_player_count", 8)
@@ -1924,8 +1921,20 @@ func _verify_random_ai_roles_resolve_unique(main: Node) -> bool:
 		if String(role.get("name", "")) == "随机角色":
 			ok = false
 			break
-	var restore_result := int(main.call("_apply_run_state", saved))
-	return ok and restore_result == OK
+	var restored := _restore_role_setup_for_smoke(main, previous_player_count, previous_ai_count, previous_role_indices)
+	return ok and restored
+
+
+func _restore_role_setup_for_smoke(main: Node, player_count: int, ai_count: int, role_indices: Array) -> bool:
+	main.set("configured_player_count", player_count)
+	main.set("configured_ai_player_count", ai_count)
+	main.set("configured_role_indices", role_indices.duplicate(true))
+	main.call("_ensure_configured_role_indices")
+	main.call("_new_game")
+	var restored_roles := _as_array(main.get("configured_role_indices"))
+	return int(main.get("configured_player_count")) == player_count \
+		and int(main.get("configured_ai_player_count")) == ai_count \
+		and restored_roles.size() >= player_count
 
 
 func _role_index_array_is_unique(indices: Array, seat_count: int, allow_random: bool = false) -> bool:
