@@ -502,6 +502,9 @@ func _scripted_ui_action(runtime_screen: Node, exhausted_navigation_actions: Dic
 			"origin": "board_primary" if str(board_action.get("id", "")) == "primary" else "board_action",
 			"signature": board_signature,
 		}
+	var map_action := _next_public_map_action(runtime_screen)
+	if not map_action.is_empty():
+		return map_action
 	return {"id": "", "phase": "play", "disabled": true}
 
 
@@ -545,7 +548,32 @@ func _submit_scripted_ui_action(runtime_screen: Node, action: Dictionary) -> voi
 		if drawer != null and drawer.has_signal("supply_action_requested"):
 			drawer.emit_signal("supply_action_requested", str(action.get("id", "")), (action.get("payload", {}) as Dictionary).duplicate(true))
 		return
+	if str(action.get("origin", "")) == "planet_map":
+		var map_view: Control = runtime_screen.call("get_embedded_map_view") if runtime_screen.has_method("get_embedded_map_view") else null
+		if map_view != null and map_view.has_signal("district_selected"):
+			map_view.emit_signal("district_selected", int(action.get("district_index", -1)))
+		return
 	runtime_screen.emit_signal("action_requested", str(action.get("id", "")))
+
+
+func _next_public_map_action(runtime_screen: Node) -> Dictionary:
+	var map_view: Control = runtime_screen.call("get_embedded_map_view") if runtime_screen.has_method("get_embedded_map_view") else null
+	if map_view == null or not map_view.has_method("get_sceneization_debug_snapshot") or not map_view.has_signal("district_selected"):
+		return {}
+	var snapshot_variant: Variant = map_view.call("get_sceneization_debug_snapshot")
+	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
+	var district_count := int(snapshot.get("district_count", 0))
+	if district_count <= 1:
+		return {}
+	var selected_district := int(snapshot.get("selected_district", -1))
+	var next_district := wrapi(selected_district + 1, 0, district_count)
+	return {
+		"id": "map_select_%d" % next_district,
+		"phase": "play.map.%d_to_%d" % [selected_district, next_district],
+		"disabled": false,
+		"origin": "planet_map",
+		"district_index": next_district,
+	}
 
 
 func _first_enabled_board_action(player_board: Dictionary, exhausted_navigation_actions: Dictionary) -> Dictionary:
