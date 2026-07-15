@@ -8695,7 +8695,7 @@ func _verify_special_monster_passives(main: Node) -> void:
 		_monster_controller(main).call("_auto_monster_take_damage", 0, 3, "烟测星焰炸弹", -1)
 		var ember_ring_after := (_as_array(main.get("auto_monsters"))[0]) as Dictionary
 		_expect(int(ember_ring_after.get("hp", 0)) == 15, "星焰炸弹 self-damage reduces 焰环幼星 HP by 3")
-		_expect(bool(main.call("_is_auto_ember_ring_energy_active", 0)), "星焰能量 activates at 15 HP")
+		_expect(bool(_monster_controller(main).call("_is_auto_ember_ring_energy_active", 0)), "星焰能量 activates at 15 HP")
 		_expect(bool(ember_ring_after.get("ember_ring_energy_announced", false)), "星焰能量 activation is announced once")
 
 	var blue_lancer_index := int(main.call("_monster_catalog_index_by_name", "蓝锋骑士"))
