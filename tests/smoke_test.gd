@@ -5089,13 +5089,16 @@ func _v06_first_table_facility_owner_chain_snapshot() -> Dictionary:
 		"game_time": float(fixture.get("game_time")),
 	}) if bool(purchase.get("committed", false)) and slot_index >= 0 and target_region_id != "" else {}
 	var finalization: Dictionary = play.get("effect_finalization", {}) if play.get("effect_finalization", {}) is Dictionary else {}
-	var source: Dictionary = coordinator.call("economic_source_snapshot", actor_id) if coordinator != null and coordinator.has_method("economic_source_snapshot") else {}
+	var owner_result: Dictionary = finalization.get("owner_result", {}) if finalization.get("owner_result", {}) is Dictionary else {}
+	var nested_owner_result: Dictionary = owner_result.get("owner_result", {}) if owner_result.get("owner_result", {}) is Dictionary else {}
+	var facility_result: Dictionary = nested_owner_result.get("facility_result", {}) if nested_owner_result.get("facility_result", {}) is Dictionary else {}
+	var commodity_result: Dictionary = nested_owner_result.get("commodity_result", {}) if nested_owner_result.get("commodity_result", {}) is Dictionary else {}
 	result["market_ready"] = bool(market.get("ready", false)) and facility_card_id != ""
 	result["purchase_committed"] = bool(purchase.get("committed", false))
 	result["slot_index"] = slot_index
 	result["cash_spent"] = int(player_after.get("cash", -1)) < int(player_before.get("cash", -1))
 	result["play_finalized"] = bool(play.get("committed", false)) and bool(finalization.get("finalized", false))
-	result["source_finalized"] = bool(source.get("has_source", false)) and bool(source.get("bootstrap_finalized", false))
+	result["source_finalized"] = bool(facility_result.get("finalized", false)) and bool(commodity_result.get("finalized", false))
 	fixture.queue_free()
 	await process_frame
 	if FileAccess.file_exists(fixture_save_path):
