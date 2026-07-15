@@ -22,7 +22,7 @@ const ACTION_PROGRESS_TIMEOUT_SECONDS := 3.0
 const NO_ACTION_TIMEOUT_SECONDS := 1.5
 const DEFAULT_OBSERVATION_SECONDS := 12
 const DEFAULT_MAX_WALL_SECONDS := 30
-const SIMULATION_TIME_SCALE := 4.0
+const SIMULATION_TIME_SCALE := 16.0
 const EXIT_INVALID_ARGUMENTS := 2
 const EXIT_CAPABILITY_INCOMPLETE := 3
 const EXIT_OBSERVATION_INCOMPLETE := 4
@@ -593,7 +593,11 @@ func _board_action_signature(action: Dictionary, player_board: Dictionary) -> St
 	if action.is_empty():
 		return ""
 	var actions: Array = player_board.get("actions", []) if player_board.get("actions", []) is Array else []
-	return "%s:%s" % [str(action.get("id", "")), str(hash(var_to_str(actions)))]
+	var public_context := {
+		"actions": actions,
+		"selected_district_summary": str(player_board.get("selected_district_summary", "")),
+	}
+	return "%s:%s" % [str(action.get("id", "")), str(hash(var_to_str(public_context)))]
 
 
 func _first_enabled_action(value: Variant) -> Dictionary:
