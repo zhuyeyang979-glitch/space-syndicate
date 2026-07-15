@@ -57,7 +57,7 @@ var _sceneized_selection_nodes: Array[Node] = []
 var _sceneized_map_event_effect_nodes: Array[Node] = []
 var _sceneized_action_callout_nodes: Array[Node] = []
 var _sceneized_sync_queued := false
-var _sceneized_animation_sync_timer := 0.0
+var _sceneized_dynamic_sync_queued := false
 var _sceneized_projection_signature := ""
 var _render_model: RefCounted = PlanetMapRenderModelScript.new()
 
@@ -87,12 +87,6 @@ func _process(delta: float) -> void:
 	var next_projection_signature := _current_sceneized_projection_signature()
 	if next_projection_signature != _sceneized_projection_signature:
 		_sceneized_projection_signature = next_projection_signature
-		_queue_sceneized_sync()
-	if not _sceneized_animated_surfaces_active():
-		return
-	_sceneized_animation_sync_timer -= delta
-	if _sceneized_animation_sync_timer <= 0.0:
-		_sceneized_animation_sync_timer = 0.08
 		_queue_sceneized_sync()
 
 
@@ -124,6 +118,16 @@ func set_map(
 	new_trade_product: String = "",
 	new_visual_layer_focus: String = "all"
 ) -> void:
+	var previous_map_signature := _map_signature
+	var previous_visual_signature := _visual_payload_signature
+	var previous_structural_signature := _sceneized_structural_payload_signature(
+		districts,
+		selected_district,
+		city_markers,
+		trade_route_markers,
+		trade_product,
+		visual_layer_focus
+	)
 	super.set_map(
 		new_districts,
 		width_m,
@@ -139,8 +143,21 @@ func set_map(
 		new_trade_product,
 		new_visual_layer_focus
 	)
-	_sceneized_projection_signature = ""
-	_queue_sceneized_sync()
+	if previous_map_signature == _map_signature and previous_visual_signature == _visual_payload_signature:
+		return
+	var structural_signature := _sceneized_structural_payload_signature(
+		districts,
+		selected_district,
+		city_markers,
+		trade_route_markers,
+		trade_product,
+		visual_layer_focus
+	)
+	if previous_map_signature != _map_signature or previous_structural_signature != structural_signature:
+		_sceneized_projection_signature = _current_sceneized_projection_signature()
+		_queue_sceneized_sync()
+	else:
+		_queue_sceneized_dynamic_sync()
 
 
 func reset_to_planet_overview() -> void:
@@ -287,8 +304,16 @@ func _queue_sceneized_sync() -> void:
 	call_deferred("_sync_sceneized_map_children")
 
 
+func _queue_sceneized_dynamic_sync() -> void:
+	if _sceneized_sync_queued or _sceneized_dynamic_sync_queued:
+		return
+	_sceneized_dynamic_sync_queued = true
+	call_deferred("_sync_sceneized_dynamic_children")
+
+
 func _sync_sceneized_map_children() -> void:
 	_sceneized_sync_queued = false
+	_sceneized_dynamic_sync_queued = false
 	if not is_inside_tree():
 		return
 	_configure_editable_layers()
@@ -304,6 +329,24 @@ func _sync_sceneized_map_children() -> void:
 	_sync_city_markers()
 	_sync_monster_tokens()
 	_sync_selection_marker()
+	_sync_map_event_effects()
+	_sync_action_callouts()
+	_sceneized_projection_signature = _current_sceneized_projection_signature()
+
+
+func _sync_sceneized_dynamic_children() -> void:
+	if not _sceneized_dynamic_sync_queued:
+		return
+	_sceneized_dynamic_sync_queued = false
+	if not is_inside_tree():
+		return
+	_sync_projection_metrics_for_query()
+	_clear_sceneized_node_list(_sceneized_movement_trail_nodes)
+	_clear_sceneized_node_list(_sceneized_monster_token_nodes)
+	_clear_sceneized_node_list(_sceneized_map_event_effect_nodes)
+	_clear_sceneized_node_list(_sceneized_action_callout_nodes)
+	_sync_movement_trails()
+	_sync_monster_tokens()
 	_sync_map_event_effects()
 	_sync_action_callouts()
 
@@ -740,6 +783,17 @@ func _clear_sceneized_map_children() -> void:
 	_sceneized_action_callout_nodes.clear()
 
 
+func _clear_sceneized_node_list(nodes: Array[Node]) -> void:
+	for node in nodes:
+		if node == null or not is_instance_valid(node):
+			continue
+		var parent := node.get_parent()
+		if parent != null:
+			parent.remove_child(node)
+		node.queue_free()
+	nodes.clear()
+
+
 func _configure_editable_layers() -> void:
 	backdrop_layer = get_node_or_null("BackdropLayer") as Control
 	orbit_layer = get_node_or_null("OrbitLayer") as Control
@@ -992,6 +1046,28 @@ func _current_sceneized_projection_signature() -> String:
 	])
 
 
+func _sceneized_structural_payload_signature(
+	map_districts: Array,
+	selected: int,
+	map_city_markers: Array,
+	map_route_markers: Array,
+	map_trade_product: String,
+	layer_focus: String
+) -> String:
+	return _build_visual_payload_signature(
+		map_districts,
+		selected,
+		[],
+		[],
+		[],
+		[],
+		map_city_markers,
+		map_route_markers,
+		map_trade_product,
+		layer_focus
+	)
+
+
 func _sceneized_overview_compact() -> bool:
 	var snapshot := get_projection_debug_snapshot() if has_method("get_projection_debug_snapshot") else {}
 	return str(snapshot.get("mode", "globe")) == "globe" or float(snapshot.get("globe_blend", 1.0)) > 0.62
@@ -1013,10 +1089,6 @@ func _rounded_float(value: float, scale_value: float) -> float:
 	if scale_value <= 0.0:
 		return value
 	return roundf(value * scale_value) / scale_value
-
-
-func _sceneized_animated_surfaces_active() -> bool:
-	return not movement_trails.is_empty() or not action_callouts.is_empty() or not map_event_effects.is_empty()
 
 
 func _sceneized_polygon_points(value: Variant) -> PackedVector2Array:
