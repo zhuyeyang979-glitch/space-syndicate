@@ -1,0 +1,26 @@
+Godot Engine v4.7.stable.official.5b4e0cb0f
+mode=windowed blocking
+scene=res://scenes/main.tscn
+capture_script=res://tests/e_1280_table_readability_capture.gd
+physical_resolution=1280x720
+logical_canvas=1706x960
+stable_frame_count=11
+capture=before_clear_table_1280x720.png
+scene_tree=before_clear_1280x720_scene_tree.json
+layout_status=RED
+core_table_gate=PASS
+map_readability_gate=FAIL
+hard_overlap_pair_count=262
+district_overlap_pair_count=6
+pixel_integrity_gate=PASS
+machine_identifier_count=0
+qa_save_artifacts_after_cleanup=0
+player_default_save_metadata_sha256_unchanged=true
+ERROR=0
+SCRIPT_ERROR=0
+WARNING=0
+process_exit_code=0
+timed_out=false
+remaining_project_runtime_process_count=0
+E_1280_TABLE_READABILITY_CAPTURE|status=PASS|layout=RED|expected_red=true
+
