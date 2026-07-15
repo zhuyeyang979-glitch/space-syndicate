@@ -4,6 +4,7 @@ class_name CommodityFlowWorldBridge
 
 const CURRENCY_SCALE := 100
 const PRODUCT_INDUSTRY_CATALOG := preload("res://resources/content/product_industry_catalog_v05.tres")
+const ROLE_RESOURCE_CASH_SETTLEMENT_SERVICE := preload("res://scripts/runtime/role_resource_cash_settlement_runtime_service.gd")
 
 var _world: Node
 var _controller: Node
@@ -14,6 +15,7 @@ var _bankruptcy_estate_controller: Node
 var _capture_count := 0
 var _apply_count := 0
 var _applied_batch_ids: Dictionary = {}
+var _role_resource_cash_settlement := ROLE_RESOURCE_CASH_SETTLEMENT_SERVICE.new()
 
 
 func set_controller(controller: Node) -> void:
@@ -119,6 +121,7 @@ func apply_sale_receipt_batch(batch: Dictionary) -> Dictionary:
 	var prepared_players: Array = (players_variant as Array).duplicate(true)
 	var deltas_by_player: Dictionary = {}
 	var ledger_rows_by_player: Dictionary = {}
+	var role_counter_deltas_by_player: Dictionary = {}
 	var receipt_ids: Dictionary = {}
 	var authorized_negative_players: Dictionary = {}
 	var neutral_rent_rows: Array = []
@@ -145,6 +148,8 @@ func apply_sale_receipt_batch(batch: Dictionary) -> Dictionary:
 			return {"applied": false, "reason": "receipt_identity_invalid"}
 		receipt_ids[receipt_id] = true
 		if not neutral_local_market:
+			if not (prepared_players[owner_index] is Dictionary):
+				return {"applied": false, "reason": "player_record_invalid"}
 			var owner_net_cash := int(receipt.get("owner_net_cash", 0))
 			var active_storage_debt := str(receipt.get("bankruptcy_causality", "")) == "active_storage_debt"
 			if owner_net_cash < 0 and not active_storage_debt:
@@ -152,6 +157,23 @@ func apply_sale_receipt_batch(batch: Dictionary) -> Dictionary:
 			_append_player_delta(deltas_by_player, ledger_rows_by_player, owner_index, owner_net_cash, receipt_id, "commodity_sale")
 			if active_storage_debt and owner_net_cash < 0:
 				authorized_negative_players[owner_index] = true
+			var role_plan: Dictionary = _role_resource_cash_settlement.plan_for_sale_receipt(
+				prepared_players[owner_index] as Dictionary,
+				owner_index,
+				receipt
+			)
+			if bool(role_plan.get("eligible", false)) and not bool(role_plan.get("duplicate", false)):
+				var role_ledger_variant: Variant = role_plan.get("ledger_receipt", {})
+				if not (role_ledger_variant is Dictionary) or str((role_ledger_variant as Dictionary).get("transaction_id", "")).is_empty():
+					return {"applied": false, "reason": "role_resource_cash_plan_invalid"}
+				_append_private_ledger_receipt(
+					deltas_by_player,
+					ledger_rows_by_player,
+					owner_index,
+					int(role_plan.get("cash_delta_cents", 0)),
+					role_ledger_variant as Dictionary
+				)
+				role_counter_deltas_by_player[owner_index] = int(role_counter_deltas_by_player.get(owner_index, 0)) + int(role_plan.get("counter_delta", 0))
 		for rent_variant in receipt.get("rent_rows", []):
 			if not (rent_variant is Dictionary):
 				return {"applied": false, "reason": "rent_row_invalid"}
@@ -177,6 +199,12 @@ func apply_sale_receipt_batch(batch: Dictionary) -> Dictionary:
 			return {"applied": false, "reason": "passive_cash_would_be_negative"}
 		player["cash_cents"] = cash_cents
 		player["cash"] = int(floor(float(cash_cents) / float(CURRENCY_SCALE)))
+		var role_counter_delta := int(role_counter_deltas_by_player.get(player_index, 0))
+		if role_counter_delta > 0:
+			player["last_cycle_income"] = int(player.get("last_cycle_income", 0)) + role_counter_delta
+			player["last_cashflow_income"] = int(player.get("last_cashflow_income", 0)) + role_counter_delta
+			player["total_city_income"] = int(player.get("total_city_income", 0)) + role_counter_delta
+			player["total_role_income"] = int(player.get("total_role_income", 0)) + role_counter_delta
 		var ledger: Array = player.get("v06_transaction_ledger", []) if player.get("v06_transaction_ledger", []) is Array else []
 		for row_variant in ledger_rows_by_player.get(player_index, []):
 			ledger.append((row_variant as Dictionary).duplicate(true))
@@ -214,6 +242,7 @@ func debug_snapshot() -> Dictionary:
 		"route_runtime_dependency": "RouteNetworkRuntimeController",
 		"owns_sale_receipts": false,
 		"bankruptcy_checkpoint_sink_bound": _bankruptcy_estate_controller != null,
+		"role_resource_cash_settlement": _role_resource_cash_settlement.debug_snapshot(),
 		"pure_data": true,
 	}
 
@@ -227,6 +256,13 @@ func _append_player_delta(deltas: Dictionary, ledger_rows: Dictionary, player_in
 		"category": category,
 		"ledger_delta_cents": amount_cents,
 	})
+
+
+func _append_private_ledger_receipt(deltas: Dictionary, ledger_rows: Dictionary, player_index: int, amount_cents: int, receipt: Dictionary) -> void:
+	deltas[player_index] = int(deltas.get(player_index, 0)) + amount_cents
+	if not ledger_rows.has(player_index):
+		ledger_rows[player_index] = []
+	(ledger_rows[player_index] as Array).append(receipt.duplicate(true))
 
 
 func _is_pure_data(value: Variant) -> bool:
