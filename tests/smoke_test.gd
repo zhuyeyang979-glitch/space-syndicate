@@ -8,6 +8,7 @@ const MONSTER_ART_SCRIPT_PATH := "res://scripts/monster_art_view.gd"
 const CITY_FIXTURES := preload("res://tests/helpers/city_world_fixture_factory.gd")
 const V06_RULES_SNAPSHOT := preload("res://scripts/viewmodels/rules_quick_reference_snapshot_v06.gd")
 const CARD_RESOLUTION_QUEUE_SCRIPT := preload("res://scripts/runtime/card_resolution_queue_runtime_service.gd")
+const RUNTIME_BALANCE_MODEL_SCRIPT := preload("res://scripts/balance/runtime_balance_model.gd")
 const TEST_RUN_SAVE_PATH := "user://test_runs/smoke_test_current_run.save"
 const SAVE_COORDINATOR_NODE_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController/GameSaveRuntimeCoordinator"
 const PRODUCT_MARKET_CONTROLLER_NODE_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ProductMarketRuntimeController"
@@ -429,7 +430,8 @@ func _run() -> void:
 	_expect(_card_presentation_text(main, main.call("_make_skill", "城市融资1") as Dictionary, "art_stats").contains("城市成长"), "card face stats show the strategy route for non-monster cards")
 	_expect(int(main.call("_card_price", first_monster_card)) > basic_card_price, "monster cards have priced card faces in the shared card economy")
 	_expect(_verify_card_codex_uses_unified_categories(main), "card codex treats monster cards as cards and browses them through subcategories")
-	_expect(["高阶档", "旗舰档"].has(String(main.call("_card_price_tier_text", premium_card_price))), "high-leverage economy cards map into an explicit non-basic price tier")
+	var runtime_balance_model: RefCounted = RUNTIME_BALANCE_MODEL_SCRIPT.new()
+	_expect(["高阶档", "旗舰档"].has(String(runtime_balance_model.call("card_price_tier_text", premium_card_price))), "high-leverage economy cards map into an explicit non-basic price tier")
 	_expect(_verify_v06_market_rule_contract(), "v0.6 market contract keeps sunlight eligibility, additive monster pressure, upward rounding, and five-second quote locks")
 	_expect(_verify_reacquired_card_upgrade_rules(main), "reacquiring an owned card upgrades its family and stops at rank IV")
 	_expect(_verify_private_discard_purchase_flow(main), "full-hand purchases require a private discard choice without leaking hand size, card names, or discard details")
@@ -8892,8 +8894,10 @@ func _verify_card_codex_uses_unified_categories(main: Node) -> bool:
 	if district_supply_card == "" or String(main.call("_card_supply_layer_for_card", district_supply_card)) != "区域补给":
 		failures.append("district_supply_layer")
 	if district_supply_card != "":
-		var district_card_visible_name := String(main.call("_card_display_name", district_supply_card))
-		if not String(main.call("_card_detail_tooltip", district_supply_card, district_supply_index)).contains(district_card_visible_name):
+		var public_source := _card_codex_public_source_service(main)
+		var district_card_facts: Dictionary = public_source.call("compose_card_facts", district_supply_card, district_supply_index) if public_source != null else {}
+		var district_card_visible_name := String(district_card_facts.get("display_name", ""))
+		if district_card_visible_name == "" or not String(district_card_facts.get("detail_tooltip", "")).contains(district_card_visible_name):
 			failures.append("district_tooltip_preview")
 	if String(main.call("_card_codex_category_for_card", "相位否决1", _runtime_card_definition(main, "相位否决1"))) != "interaction":
 		failures.append("phase_cancel_interaction_category")
