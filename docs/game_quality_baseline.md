@@ -17,7 +17,9 @@ Godot: `4.7.stable.official`, using
 
 ## Source Identity
 
-- `scripts/main.gd`: 16,339 physical lines and 1,075 `func` declarations.
+- `scripts/main.gd`: 18,631 physical lines, 16,339 nonblank lines, and 1,075
+  `func` declarations. The earlier baseline draft mislabeled the nonblank count as
+  the physical count; the source commit itself is unchanged.
 - The worktree already contained unrelated untracked Godot UID files and the prior
   `tests/e_1280_first_run_core_path_capture.gd` before capture. They were preserved
   and are not part of this baseline commit.
@@ -59,6 +61,54 @@ Evidence root:
 Focused production result: **10 of 10 targets passed**. This proves the selected owner
 contracts in isolation. It does not prove a complete match, save/resume to settlement,
 1280 playability, AI quality, or pacing.
+
+## Local Integration Progress After Capture
+
+These results are later local-only progress through integration commit
+`6bd1a7c` (`test: migrate card codex smoke formatters`); they do not rewrite the historical
+capture table above and have not been pushed to cloud `main`.
+
+- `scripts/main.gd` is now 18,609 physical lines, 16,319 nonblank lines, and
+  1,074 functions: net -22 physical lines, -20 nonblank lines, and -1 function
+  relative to the captured baseline.
+- Weather restore is now the eighth transactional save owner. Run
+  `20260715-102325-540-full_run_quality_driver-23cd016e` reports an honest 8
+  transactional / 10 unsupported boundary, then exits 3 at capability preflight;
+  it still does not claim a playable complete run.
+- Full layout run `20260715-102847-268-layout_scene_smoke_test-abba41db`
+  completes in 62.849 seconds with ExitCode 1, no timeout, no residual process,
+  no parser error, and 13 remaining failures. The corrected production-canvas
+  harness removed all nine false 1280 bounds reports, while the Funplay MCP
+  contract migration removed three obsolete tooling failures.
+- Direct-player-interaction, Monster-wager, and Monster-lure smoke setup no longer
+  call retired Main-wide capture/apply wrappers. Other smoke blocks still contain
+  54 such references (24 capture / 30 apply) and
+  remain migration work; no compatibility wrapper was restored.
+- The obsolete AI fixed-priority-bid loop, its dead Main bridge calls, bid-budget
+  metadata, and high-bid owner-guess signal were physically removed. The active
+  v0.6 queue already orders submissions by rotating seat priority and explicitly
+  owns no priority-bid authority. `action_result_v1_test` run
+  `20260715-115606-540-action_result_v1_test-4b3e2f3d`, Main composition run
+  `20260715-115709-291-main_runtime_composition_test-10d8e6c0`, and smoke
+  check-only run `20260715-115723-660-smoke_test-74c2fbe0` all exited 0.
+- A new full-smoke run,
+  `20260715-115802-450-smoke_test-75dcf446`, timed out after 300.273 seconds
+  with runner ExitCode 124 and zero residual process. It contains no missing
+  `_set_card_bid_for_player` or typed-`Nil` error. Its last durable marker remains
+  the card-resolution smoke; the next lock is an isolated fixture reusing
+  `resolution_id=1` after the authoritative execution owner already completed that
+  ID. The owner correctly rejects the second execution as `already_completed`.
+  Retired Main snapshot and formatter calls occur earlier in the same run and must
+  still migrate to current owners.
+- After replacing that synthetic auction fixture with an isolated real v0.6 queue,
+  full-smoke run `20260715-120738-351-smoke_test-dfa7616c` again timed out at
+  300.297 seconds with ExitCode 124 and zero residual process. It passed the new
+  `v0.6 card resolution owner smoke` marker and reached later route/Card Codex
+  assertions. Its earliest remaining failures are stale AI military command/deploy
+  metadata and retired Main snapshot calls. The Card Codex calls to retired
+  `_card_detail_tooltip` and `_card_price_tier_text` have since been migrated to
+  `CardCodexPublicSourceService` and `RuntimeBalanceModel`; smoke check-only,
+  card-presentation public privacy, and runtime-balance focused gates all exit 0.
 
 ## Full Layout Findings
 
@@ -216,9 +266,11 @@ routes, temporary decision UI, final countdown, and settlement has not been comp
 
 ## Baseline Decision
 
-This baseline is **not a quality pass**. The next owner should first repair the AI bid
-route and migrate the earliest retired smoke block without restoring Main wrappers,
-then rerun full smoke to expose the next genuine blocker. A milestone cannot claim
+This baseline is **not a quality pass**. The missing AI priority-bid route has been
+removed with the retired mechanic rather than restored, and synthetic resolution
+fixtures no longer reuse production execution state. The next owner should migrate
+the remaining AI military and Main-wide snapshot smoke blocks to focused owners,
+without weakening exact-once protection or restoring Main wrappers. A milestone cannot claim
 complete-run quality until deterministic matches finish, save/resume reaches settlement,
 1280 interaction is demonstrated, and the final report includes AI, pacing, feedback,
 privacy, and turning-point evidence.
