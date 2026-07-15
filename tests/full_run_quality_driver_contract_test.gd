@@ -30,6 +30,7 @@ const REQUIRED_TELEMETRY_KEYS := [
 	"seed",
 	"phase",
 	"elapsed",
+	"progress",
 	"decision_window",
 	"settlement",
 	"invalid_actions",
@@ -84,6 +85,8 @@ func _run() -> void:
 	_expect(bool(DriverScript.public_output_contract().get("single_run_only", false)), "this atomic block executes one seed and cannot claim a twenty-run completion rate")
 	_expect(driver_source.contains("_parse_options(_driver_arguments(OS.get_cmdline_args()))") and driver_source.contains("func _driver_arguments(") and not driver_source.contains("get_cmdline_user_args"), "driver extracts only its runner-compatible arguments without requiring a global Godot delimiter change")
 	_expect(DriverScript.SIMULATION_TIME_SCALE == 16.0 and driver_source.contains('main_instance.set("time_scale", SIMULATION_TIME_SCALE)'), "bounded full-run time acceleration stays inside the driver and does not add a production UI control")
+	_expect(DriverScript.WAIT_SIMULATION_TIME_SCALE == 128.0 and driver_source.contains("WAIT_SIMULATION_TIME_SCALE if waiting_for_world"), "post-action victory waiting can advance faster without shortening interactive quote windows")
+	_expect(driver_source.contains('["district_supply_wait", "gdp_accumulation_wait"]'), "only explicit no-action world waits use the higher acceleration tier")
 
 	_expect(driver_source.contains("res://scenes/main.tscn") and driver_source.contains("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator"), "driver instantiates the real Main scene and current Coordinator composition")
 	_expect(driver_source.contains("_first_run_recommended_setup") and driver_source.contains("_confirm_start_new_run_from_setup"), "driver starts the real recommended four-seat session")
@@ -94,6 +97,17 @@ func _run() -> void:
 	_expect(driver_source.contains("FinalSettlementRuntimeComposition") and driver_source.contains("last_public_snapshot"), "driver observes the real final-settlement composition without forcing an outcome")
 	_expect(driver_source.contains("registry_snapshot") and driver_source.contains("capture_resume_envelope") and driver_source.contains("restore_capability_incomplete"), "save continuation remains explicitly fail-closed while owner coverage is incomplete")
 	_expect(driver_source.contains("scripted_ui_action_no_progress") and driver_source.contains("scripted_ui_action_disabled") and driver_source.contains("scripted_guidance_exhausted_before_settlement"), "driver reports an exact scripted-player stall or disabled action instead of claiming completion")
+	_expect(driver_source.contains("coach_buy_card") and driver_source.contains("coached_supply_action"), "first-run buy guidance hands off to the visible district supply interaction instead of repeating the coach command")
+	_expect(driver_source.contains("coach_play_card") and driver_source.contains("coached_facility_action"), "first-run play guidance hands off to the visible facility hand action instead of stopping on a disabled generic command")
+	_expect(driver_source.contains("not bool(primary.get(\"disabled\", false))"), "disabled coach guidance does not hide later public PlayerBoard strategy actions")
+	_expect(driver_source.contains("build_economic_source") and driver_source.contains("facility_v06") and driver_source.contains("_first_enabled_card_action_by_kind"), "driver prioritizes the public GDP-source strategy and the real facility card interaction")
+	_expect(driver_source.contains('for strategy_kind in ["expand_economic_source", "protect_route", "pressure_competition"]'), "driver expands GDP through owner revisions before route review and economic wait")
+	_expect(driver_source.contains('int(strategy_action.get("source_revision", 0))'), "GDP expansion exhaustion is scoped to the authoritative source revision")
+	_expect(driver_source.contains('pending_id != "strategy_expand_gdp"'), "a successful GDP expansion remains repeatable until the owner reports no legal facility target")
+	_expect(driver_source.find("var visible_supply_action") < driver_source.find('for strategy_kind in ["expand_economic_source"'), "an opened supply drawer takes precedence over repeating the expansion button")
+	_expect(driver_source.contains("district_supply_quote_availability") and driver_source.contains("SIMULATION_TIME_SCALE"), "driver waits for world-time quote availability and restores accelerated simulation after presentation menus")
+	_expect(driver_source.contains("gdp_accumulation_wait") and driver_source.contains("victory_qualification"), "driver stops manufacturing clicks after strategy review and lets authoritative GDP/victory time advance")
+	_expect(driver_source.contains("MenuModalOverlay") and driver_source.contains("continue_requested"), "driver closes strategy pages through the scene-owned menu signal")
 	_expect(driver_source.contains("if not temporary.is_empty():") and not driver_source.contains('temporary.get("visible"') and not driver_source.contains('temporary.get("active"'), "driver consumes the normalized non-empty temporary-decision snapshot instead of retired visible/active flags")
 	_expect(driver_source.contains('player_board.get("hand_cards"') and driver_source.contains('player_board.get("actions"') and driver_source.contains('"play.hand.%s.%s"') and driver_source.contains('"play.board.%s.%s"'), "post-coach scripted play uses only public HandRack and PlayerBoard action ids with stateful progress fingerprints")
 	_expect(driver_source.contains('"board_primary"') and driver_source.contains("navigation_no_state_change") and driver_source.contains('"selected_district_summary"'), "one-shot board navigation cannot loop in one region and becomes eligible again after a public region change")

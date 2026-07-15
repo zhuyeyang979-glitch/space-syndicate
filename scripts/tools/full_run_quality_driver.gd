@@ -23,6 +23,7 @@ const NO_ACTION_TIMEOUT_SECONDS := 1.5
 const DEFAULT_OBSERVATION_SECONDS := 12
 const DEFAULT_MAX_WALL_SECONDS := 30
 const SIMULATION_TIME_SCALE := 16.0
+const WAIT_SIMULATION_TIME_SCALE := 128.0
 const EXIT_INVALID_ARGUMENTS := 2
 const EXIT_CAPABILITY_INCOMPLETE := 3
 const EXIT_OBSERVATION_INCOMPLETE := 4
@@ -70,6 +71,7 @@ const SUMMARY_PUBLIC_KEYS := [
 	"actions",
 	"phase",
 	"elapsed",
+	"progress",
 	"decision_window",
 	"settlement",
 	"invalid_actions",
@@ -95,6 +97,7 @@ const CAPABILITY_PUBLIC_KEYS := [
 var _started_msec := 0
 var _heartbeat_sequence := 0
 var _last_event := "driver_started"
+var _last_progress_feedback := ""
 var _action_stats := {
 	"attempted": 0,
 	"progressed": 0,
@@ -201,6 +204,9 @@ func _run() -> void:
 		await process_frame
 		var now_msec := Time.get_ticks_msec()
 		var ui_action := _scripted_ui_action(runtime_screen, exhausted_navigation_actions)
+		if _session_state(session) == "running":
+			var waiting_for_world := str(ui_action.get("id", "")) in ["district_supply_wait", "gdp_accumulation_wait"] and bool(ui_action.get("disabled", false))
+			main_instance.set("time_scale", WAIT_SIMULATION_TIME_SCALE if waiting_for_world else SIMULATION_TIME_SCALE)
 		final_telemetry = _collect_telemetry(run_seed, coordinator, session, settlement_composition, runtime_screen, observation_started_msec, _last_event)
 		if int((final_telemetry.get("nonfinite", {}) as Dictionary).get("count", 0)) > 0:
 			final_status = "failed"
@@ -219,7 +225,13 @@ func _run() -> void:
 			var action_progressed := str(ui_action.get("id", "")) != pending_id or str(ui_action.get("phase", "")) != pending_phase
 			if action_progressed:
 				_action_stats["progressed"] = int(_action_stats.get("progressed", 0)) + 1
-				_last_event = "action_progressed:%s" % pending_id
+				if str(pending_action.get("origin", "")) == "board_primary" and pending_id != "strategy_expand_gdp":
+					var progressed_signature := str(pending_action.get("signature", ""))
+					if not progressed_signature.is_empty():
+						exhausted_navigation_actions[progressed_signature] = true
+				var feedback := _runtime_action_feedback(runtime_screen)
+				_last_progress_feedback = "%s:%s:%s" % [pending_id, str(feedback.get("state", "none")), str(feedback.get("detail", "")).left(96)]
+				_last_event = "action_progressed:%s" % _last_progress_feedback
 				pending_action = {}
 				no_action_since_msec = now_msec
 			elif now_msec - int(pending_action.get("requested_msec", now_msec)) >= int(ACTION_PROGRESS_TIMEOUT_SECONDS * 1000.0):
@@ -244,7 +256,7 @@ func _run() -> void:
 			if not action_id.is_empty() and not bool(ui_action.get("disabled", false)):
 				_submit_scripted_ui_action(runtime_screen, ui_action)
 				_action_stats["attempted"] = int(_action_stats.get("attempted", 0)) + 1
-				_last_event = "action_requested:%s" % action_id
+				_last_event = "action_requested:%s:after:%s" % [action_id, _last_progress_feedback]
 				pending_action = {
 					"id": action_id,
 					"phase": str(ui_action.get("phase", "play")),
@@ -252,6 +264,9 @@ func _run() -> void:
 					"signature": str(ui_action.get("signature", "")),
 					"requested_msec": now_msec,
 				}
+				no_action_since_msec = now_msec
+			elif action_id in ["district_supply_wait", "gdp_accumulation_wait"] and bool(ui_action.get("disabled", false)):
+				_last_event = "waiting:district_supply_quote_availability" if action_id == "district_supply_wait" else "waiting:gdp_accumulation_and_victory_qualification"
 				no_action_since_msec = now_msec
 			elif now_msec - no_action_since_msec >= int(NO_ACTION_TIMEOUT_SECONDS * 1000.0):
 				var exact_phase := str(final_telemetry.get("phase", "play"))
@@ -382,6 +397,8 @@ func _collect_telemetry(run_seed: int, coordinator: Node, session: Node, settlem
 	var clock: Dictionary = {}
 	var victory: Dictionary = {}
 	var decision: Dictionary = {}
+	var own_candidate: Dictionary = {}
+	var economic_source: Dictionary = {}
 	if coordinator != null and coordinator.has_method("world_effective_clock_snapshot"):
 		var clock_variant: Variant = coordinator.call("world_effective_clock_snapshot")
 		clock = (clock_variant as Dictionary).duplicate(true) if clock_variant is Dictionary else {}
@@ -391,6 +408,16 @@ func _collect_telemetry(run_seed: int, coordinator: Node, session: Node, settlem
 	if coordinator != null and coordinator.has_method("active_forced_decision"):
 		var decision_variant: Variant = coordinator.call("active_forced_decision", SCRIPTED_PLAYER_INDEX)
 		decision = (decision_variant as Dictionary).duplicate(true) if decision_variant is Dictionary else {}
+	if coordinator != null and coordinator.has_method("victory_control_private_snapshot"):
+		var private_victory_variant: Variant = coordinator.call("victory_control_private_snapshot", SCRIPTED_PLAYER_INDEX)
+		var private_victory: Dictionary = private_victory_variant if private_victory_variant is Dictionary else {}
+		own_candidate = (private_victory.get("own_candidate", {}) as Dictionary).duplicate(true) if private_victory.get("own_candidate", {}) is Dictionary else {}
+	if coordinator != null and coordinator.has_method("actor_id_for_player_index") and coordinator.has_method("economic_source_snapshot"):
+		var actor_binding_variant: Variant = coordinator.call("actor_id_for_player_index", SCRIPTED_PLAYER_INDEX)
+		var actor_binding: Dictionary = actor_binding_variant if actor_binding_variant is Dictionary else {}
+		if bool(actor_binding.get("available", false)):
+			var source_variant: Variant = coordinator.call("economic_source_snapshot", str(actor_binding.get("actor_id", "")))
+			economic_source = source_variant if source_variant is Dictionary else {}
 	var ui_action := _scripted_ui_action(runtime_screen)
 	var session_state := _session_state(session)
 	var settlement := _settlement_snapshot(victory, settlement_composition, session_state)
@@ -402,6 +429,14 @@ func _collect_telemetry(run_seed: int, coordinator: Node, session: Node, settlem
 		"elapsed": {
 			"wall_seconds": maxf(0.0, float(Time.get_ticks_msec() - run_started_msec) / 1000.0),
 			"world_seconds": world_seconds,
+		},
+		"progress": {
+			"controlled_region_count": int(own_candidate.get("controlled_region_count", 0)),
+			"required_region_count": int(own_candidate.get("required_region_count", 0)),
+			"top_k_gdp_per_minute": int(own_candidate.get("top_k_gdp_per_minute", 0)),
+			"required_top_k_gdp_per_minute": int(own_candidate.get("required_top_k_gdp_per_minute", 0)),
+			"owned_facility_count": int(economic_source.get("owned_facility_count", 0)),
+			"eligible": bool(own_candidate.get("eligible", false)),
 		},
 		"decision_window": {
 			"active": not decision.is_empty(),
@@ -423,6 +458,10 @@ func _collect_telemetry(run_seed: int, coordinator: Node, session: Node, settlem
 			"victory": {
 				"qualification_remaining_seconds": float(victory.get("qualification_remaining_seconds", 0.0)),
 				"audit_remaining_seconds": float(victory.get("audit_remaining_seconds", 0.0)),
+			},
+			"progress": {
+				"controlled_region_count": float(own_candidate.get("controlled_region_count", 0)),
+				"top_k_gdp_per_minute": float(own_candidate.get("top_k_gdp_per_minute", 0)),
 			},
 			"decision": {"opened_sequence": float(decision.get("opened_sequence", 0.0))},
 		},
@@ -450,8 +489,13 @@ func _settlement_snapshot(victory: Dictionary, settlement_composition: Node, ses
 func _scripted_ui_action(runtime_screen: Node, exhausted_navigation_actions: Dictionary = {}) -> Dictionary:
 	if runtime_screen == null:
 		return {"id": "", "phase": "play", "disabled": true}
+	var menu_action := _menu_overlay_ui_action(runtime_screen)
+	if not menu_action.is_empty():
+		return menu_action
 	var ui_variant: Variant = runtime_screen.get("current_ui_data")
 	var ui: Dictionary = ui_variant if ui_variant is Dictionary else {}
+	var player_board: Dictionary = ui.get("player_board", {}) if ui.get("player_board", {}) is Dictionary else {}
+	var hand_cards: Array = player_board.get("hand_cards", []) if player_board.get("hand_cards", []) is Array else []
 	var temporary: Dictionary = ui.get("temporary_decision", {}) if ui.get("temporary_decision", {}) is Dictionary else {}
 	if not temporary.is_empty():
 		var temporary_action := _first_enabled_action(temporary.get("actions", []))
@@ -465,14 +509,51 @@ func _scripted_ui_action(runtime_screen: Node, exhausted_navigation_actions: Dic
 	if not coach.is_empty():
 		var primary: Dictionary = coach.get("primary_action", {}) if coach.get("primary_action", {}) is Dictionary else {}
 		var stage := str(coach.get("stage", "play"))
-		if not str(primary.get("id", "")).is_empty():
+		if str(primary.get("id", "")) == "coach_buy_card":
+			var coached_supply_action := _district_supply_ui_action(runtime_screen)
+			if not coached_supply_action.is_empty():
+				coached_supply_action["phase"] = "first_run.%s.%s" % [stage, str(coached_supply_action.get("phase", "supply"))]
+				return coached_supply_action
+		if str(primary.get("id", "")) == "coach_play_card":
+			var coached_facility_action := _first_enabled_card_action_by_kind(hand_cards, "facility_v06")
+			if not coached_facility_action.is_empty():
+				coached_facility_action["phase"] = "first_run.%s.%s" % [stage, str(coached_facility_action.get("phase", "hand"))]
+				return coached_facility_action
+		if not str(primary.get("id", "")).is_empty() and not bool(primary.get("disabled", false)):
 			return {
 				"id": str(primary.get("id", "")),
 				"phase": "first_run.%s" % stage,
-				"disabled": bool(primary.get("disabled", false)),
+				"disabled": false,
 			}
-	var player_board: Dictionary = ui.get("player_board", {}) if ui.get("player_board", {}) is Dictionary else {}
-	var hand_cards: Array = player_board.get("hand_cards", []) if player_board.get("hand_cards", []) is Array else []
+	var facility_hand_action := _first_enabled_card_action_by_kind(hand_cards, "facility_v06")
+	if not facility_hand_action.is_empty():
+		return facility_hand_action
+	var visible_supply_action := _district_supply_ui_action(runtime_screen)
+	if not visible_supply_action.is_empty():
+		return visible_supply_action
+	var source_established := false
+	for strategy_kind in ["expand_economic_source", "protect_route", "pressure_competition"]:
+		var strategy_action := _first_enabled_action_by_kind(player_board.get("actions", []), strategy_kind)
+		if strategy_action.is_empty():
+			continue
+		source_established = true
+		var strategy_signature := "strategy:%s:%d" % [str(strategy_action.get("id", strategy_kind)), int(strategy_action.get("source_revision", 0))]
+		if not bool(exhausted_navigation_actions.get(strategy_signature, false)):
+			return _board_action_request(strategy_action, player_board, strategy_signature)
+	if not source_established:
+		var supply_action := _district_supply_ui_action(runtime_screen)
+		if not supply_action.is_empty():
+			return supply_action
+	else:
+		return {
+			"id": "gdp_accumulation_wait",
+			"phase": "play.gdp_accumulation",
+			"disabled": true,
+			"origin": "economic_wait",
+		}
+	var build_source_action := _first_enabled_action_by_kind(player_board.get("actions", []), "build_economic_source")
+	if not build_source_action.is_empty():
+		return _board_action_request(build_source_action, player_board)
 	for card_variant in hand_cards:
 		if not (card_variant is Dictionary):
 			continue
@@ -484,9 +565,6 @@ func _scripted_ui_action(runtime_screen: Node, exhausted_navigation_actions: Dic
 				"phase": "play.hand.%s.%s" % [str(card.get("id", "card")), str(card.get("action_state", card.get("play_state", "ready")))],
 				"disabled": false,
 			}
-	var supply_action := _district_supply_ui_action(runtime_screen)
-	if not supply_action.is_empty():
-		return supply_action
 	var board_action := _first_enabled_action(player_board.get("actions", []))
 	var board_signature := ""
 	if not board_action.is_empty():
@@ -495,13 +573,7 @@ func _scripted_ui_action(runtime_screen: Node, exhausted_navigation_actions: Dic
 			board_action = _first_enabled_board_action(player_board, exhausted_navigation_actions)
 			board_signature = _board_action_signature(board_action, player_board)
 	if not board_action.is_empty():
-		return {
-			"id": str(board_action.get("id", "")),
-			"phase": "play.board.%s.%s" % [str(board_action.get("label", "action")), str(board_action.get("state", "ready"))],
-			"disabled": false,
-			"origin": "board_primary" if str(board_action.get("id", "")) == "primary" else "board_action",
-			"signature": board_signature,
-		}
+		return _board_action_request(board_action, player_board, board_signature)
 	var map_action := _next_public_map_action(runtime_screen)
 	if not map_action.is_empty():
 		return map_action
@@ -509,7 +581,7 @@ func _scripted_ui_action(runtime_screen: Node, exhausted_navigation_actions: Dic
 
 
 func _district_supply_ui_action(runtime_screen: Node) -> Dictionary:
-	var drawer := runtime_screen.get_node_or_null("OverlayLayer/RuntimeSurfaceLayer/DistrictSupplySideDrawerOverlay")
+	var drawer := _district_supply_drawer(runtime_screen)
 	if drawer == null or not drawer.visible or not drawer.has_method("debug_snapshot") or not drawer.has_signal("supply_action_requested"):
 		return {}
 	var snapshot_variant: Variant = drawer.call("debug_snapshot")
@@ -525,6 +597,17 @@ func _district_supply_ui_action(runtime_screen: Node) -> Dictionary:
 			"payload": {"card_name": preview_card_name, "source": "full_run_visible_preview"},
 		}
 	var cards: Array = snapshot.get("cards", []) if snapshot.get("cards", []) is Array else []
+	var facility_card := _first_supply_card_of_kind(cards, "facility_v06")
+	if not facility_card.is_empty():
+		var facility_name := str(facility_card.get("card_name", ""))
+		if preview_card_name != facility_name:
+			return {
+				"id": "district_supply_preview_card",
+				"phase": "play.supply.preview_facility.%s" % facility_name,
+				"disabled": false,
+				"origin": "district_supply",
+				"payload": {"card_name": facility_name, "source": "full_run_gdp_strategy"},
+			}
 	for card_variant in cards:
 		if not (card_variant is Dictionary):
 			continue
@@ -539,12 +622,68 @@ func _district_supply_ui_action(runtime_screen: Node) -> Dictionary:
 			"origin": "district_supply",
 			"payload": {"card_name": card_name, "source": "full_run_visible_card"},
 		}
+	return {
+		"id": "district_supply_wait",
+		"phase": "play.supply.wait.cards_%d.preview_%s" % [cards.size(), "yes" if not preview_card_name.is_empty() else "no"],
+		"disabled": true,
+		"origin": "district_supply",
+	} if drawer.visible else {}
+
+
+func _first_supply_card_of_kind(cards: Array, kind: String) -> Dictionary:
+	for card_variant in cards:
+		if card_variant is Dictionary and str((card_variant as Dictionary).get("kind", "")) == kind:
+			return (card_variant as Dictionary).duplicate(true)
 	return {}
 
 
+func _first_enabled_action_by_kind(value: Variant, kind: String) -> Dictionary:
+	if not (value is Array):
+		return {}
+	for action_variant in value as Array:
+		if action_variant is Dictionary:
+			var action: Dictionary = action_variant
+			if str(action.get("kind", "")) == kind and not str(action.get("id", "")).is_empty() and not bool(action.get("disabled", false)):
+				return action.duplicate(true)
+	return {}
+
+
+func _first_enabled_card_action_by_kind(cards: Array, kind: String) -> Dictionary:
+	for card_variant in cards:
+		if not (card_variant is Dictionary):
+			continue
+		var card: Dictionary = card_variant
+		if str(card.get("kind", "")) != kind:
+			continue
+		var action := _first_enabled_action(card.get("actions", []))
+		if not action.is_empty():
+			return {
+				"id": str(action.get("id", "")),
+				"phase": "play.hand.%s.%s" % [kind, str(card.get("action_state", card.get("play_state", "ready")))],
+				"disabled": false,
+			}
+	return {}
+
+
+func _board_action_request(action: Dictionary, player_board: Dictionary, signature: String = "") -> Dictionary:
+	var action_signature := signature if not signature.is_empty() else _board_action_signature(action, player_board)
+	return {
+		"id": str(action.get("id", "")),
+		"phase": "play.board.%s.%s" % [str(action.get("kind", "action")), str(action.get("state", "ready"))],
+		"disabled": bool(action.get("disabled", false)),
+		"origin": "board_primary" if str(action.get("kind", "")) in ["build_economic_source", "expand_economic_source", "open_rack", "summon_monster", "play_card", "review_economy", "protect_route", "pressure_competition"] else "board_action",
+		"signature": action_signature,
+	}
+
+
 func _submit_scripted_ui_action(runtime_screen: Node, action: Dictionary) -> void:
+	if str(action.get("origin", "")) == "menu_overlay":
+		var menu_overlay := _menu_overlay(runtime_screen)
+		if menu_overlay != null and menu_overlay.has_signal("continue_requested"):
+			menu_overlay.emit_signal("continue_requested")
+		return
 	if str(action.get("origin", "")) == "district_supply":
-		var drawer := runtime_screen.get_node_or_null("OverlayLayer/RuntimeSurfaceLayer/DistrictSupplySideDrawerOverlay")
+		var drawer := _district_supply_drawer(runtime_screen)
 		if drawer != null and drawer.has_signal("supply_action_requested"):
 			drawer.emit_signal("supply_action_requested", str(action.get("id", "")), (action.get("payload", {}) as Dictionary).duplicate(true))
 		return
@@ -554,6 +693,46 @@ func _submit_scripted_ui_action(runtime_screen: Node, action: Dictionary) -> voi
 			map_view.emit_signal("district_selected", int(action.get("district_index", -1)))
 		return
 	runtime_screen.emit_signal("action_requested", str(action.get("id", "")))
+
+
+func _district_supply_drawer(runtime_screen: Node) -> Node:
+	if runtime_screen == null:
+		return null
+	if runtime_screen.has_method("get_district_supply_drawer"):
+		var owned_drawer: Variant = runtime_screen.call("get_district_supply_drawer")
+		if owned_drawer is Node:
+			return owned_drawer as Node
+	var drawer := runtime_screen.get_node_or_null("OverlayLayer/RuntimeSurfaceLayer/DistrictSupplySideDrawerOverlay")
+	if drawer == null:
+		drawer = runtime_screen.find_child("DistrictSupplySideDrawerOverlay", true, false)
+	return drawer
+
+
+func _menu_overlay_ui_action(runtime_screen: Node) -> Dictionary:
+	var menu_overlay := _menu_overlay(runtime_screen)
+	if menu_overlay == null or not menu_overlay.visible or not menu_overlay.has_signal("continue_requested"):
+		return {}
+	return {
+		"id": "menu_continue",
+		"phase": "menu.close",
+		"disabled": false,
+		"origin": "menu_overlay",
+	}
+
+
+func _menu_overlay(runtime_screen: Node) -> Node:
+	var main := runtime_screen.get_parent()
+	if main == null:
+		return null
+	var direct := main.find_child("MenuModalOverlay", true, false)
+	return direct if direct != null else main.find_child("MenuOverlay", true, false)
+
+
+func _runtime_action_feedback(runtime_screen: Node) -> Dictionary:
+	if runtime_screen == null or not runtime_screen.has_method("get_runtime_player_feedback_snapshot"):
+		return {}
+	var value: Variant = runtime_screen.call("get_runtime_player_feedback_snapshot")
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
 func _next_public_map_action(runtime_screen: Node) -> Dictionary:

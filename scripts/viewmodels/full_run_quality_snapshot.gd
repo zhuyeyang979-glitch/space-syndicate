@@ -38,6 +38,7 @@ const PUBLIC_KEYS := [
 	"seed",
 	"phase",
 	"elapsed",
+	"progress",
 	"decision_window",
 	"settlement",
 	"invalid_actions",
@@ -52,6 +53,7 @@ static func compose(source: Dictionary) -> Dictionary:
 		return _invalid_snapshot(seed_value, "telemetry_input_not_public")
 	var elapsed_source: Dictionary = _dictionary(source.get("elapsed", {}))
 	var decision_source: Dictionary = _dictionary(source.get("decision_window", {}))
+	var progress_source: Dictionary = _dictionary(source.get("progress", {}))
 	var settlement_source: Dictionary = _dictionary(source.get("settlement", {}))
 	var invalid_source: Dictionary = _dictionary(source.get("invalid_actions", {}))
 	var observed_public_facts: Variant = source.get("observed_public_facts", {})
@@ -66,6 +68,14 @@ static func compose(source: Dictionary) -> Dictionary:
 		"elapsed": {
 			"wall_seconds": maxf(0.0, float(elapsed_source.get("wall_seconds", 0.0))),
 			"world_seconds": maxf(0.0, float(elapsed_source.get("world_seconds", 0.0))),
+		},
+		"progress": {
+			"controlled_region_count": maxi(0, int(progress_source.get("controlled_region_count", 0))),
+			"required_region_count": maxi(0, int(progress_source.get("required_region_count", 0))),
+			"top_k_gdp_per_minute": maxi(0, int(progress_source.get("top_k_gdp_per_minute", 0))),
+			"required_top_k_gdp_per_minute": maxi(0, int(progress_source.get("required_top_k_gdp_per_minute", 0))),
+			"owned_facility_count": maxi(0, int(progress_source.get("owned_facility_count", 0))),
+			"eligible": bool(progress_source.get("eligible", false)),
 		},
 		"decision_window": {
 			"active": bool(decision_source.get("active", false)),
@@ -109,6 +119,7 @@ static func _invalid_snapshot(seed_value: int, reason_code: String) -> Dictionar
 		"seed": seed_value,
 		"phase": "blocked",
 		"elapsed": {"wall_seconds": 0.0, "world_seconds": 0.0},
+		"progress": {"controlled_region_count": 0, "required_region_count": 0, "top_k_gdp_per_minute": 0, "required_top_k_gdp_per_minute": 0, "owned_facility_count": 0, "eligible": false},
 		"decision_window": {
 			"active": false,
 			"kind": "none",
