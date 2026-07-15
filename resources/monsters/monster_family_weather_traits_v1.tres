@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="MonsterFamilyWeatherTraits" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/monster_family_weather_traits.gd" id="1_traits"]
+
+[resource]
+script = ExtResource("1_traits")
+catalog_index_to_family_id = PackedStringArray("spore_tide_emperor", "sand_armor_rover", "meteor_sentinel", "prism_blade_colossus", "oasis_repairer", "flame_ring_proto_star", "blue_edge_knight", "mirror_hunter")
+family_tags_by_id = {
+"blue_edge_knight": PackedStringArray("cold", "electromagnetic"),
+"flame_ring_proto_star": PackedStringArray("energy"),
+"meteor_sentinel": PackedStringArray("electromagnetic", "energy"),
+"mirror_hunter": PackedStringArray("electromagnetic"),
+"oasis_repairer": PackedStringArray("biological", "cold"),
+"prism_blade_colossus": PackedStringArray("crystal"),
+"sand_armor_rover": PackedStringArray("crystal"),
+"spore_tide_emperor": PackedStringArray("biological")
+}

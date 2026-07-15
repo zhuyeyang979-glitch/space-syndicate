@@ -4,6 +4,8 @@ class_name MonsterRuntimeController
 
 const UNIT_CARD_SCHEMA_V06 := preload("res://scripts/cards/v06/units/unit_card_runtime_schema_v06.gd")
 const CARD_RUNTIME_CATALOG_V06 := preload("res://resources/cards/runtime/card_runtime_catalog_v06.tres")
+const MONSTER_FAMILY_WEATHER_TRAITS_V1 := preload("res://resources/monsters/monster_family_weather_traits_v1.tres")
+const MONSTER_WEATHER_SPEED_CAP := 1.30
 
 const MONSTER_CARD_LIFECYCLE_SCHEMA_V06 := "monster_deploy_atomic_lifecycle_v06"
 const MONSTER_CARD_CONTRACT_VERSION_V06 := "v0.6"
@@ -56,6 +58,7 @@ var _region_infrastructure_world_bridge: Node
 var _route_network_runtime_controller: RouteNetworkRuntimeController
 var _product_market_runtime_controller: ProductMarketRuntimeController
 var _card_runtime_catalog_service: CardRuntimeCatalogService
+var _weather_runtime_controller: WeatherRuntimeController
 var _ruleset_snapshot: Dictionary = {}
 var _configured := false
 
@@ -99,6 +102,10 @@ func set_route_network_runtime_controller(controller: RouteNetworkRuntimeControl
 
 func set_card_runtime_catalog_service(service: CardRuntimeCatalogService) -> void:
 	_card_runtime_catalog_service = service
+
+
+func set_weather_runtime_controller(controller: WeatherRuntimeController) -> void:
+	_weather_runtime_controller = controller
 
 var players: Array:
 	get:
@@ -2021,6 +2028,82 @@ func _monster_family_id_for_actor_v06(actor: Dictionary) -> String:
 	if not explicit.is_empty():
 		return explicit
 	return str(MONSTER_FAMILY_BY_NAME_V06.get(str(actor.get("name", "")), ""))
+
+
+func _monster_weather_family_id(actor: Dictionary) -> String:
+	var explicit := str(actor.get("monster_family_id", "")).strip_edges()
+	if not explicit.is_empty():
+		return explicit
+	return MONSTER_FAMILY_WEATHER_TRAITS_V1.family_id_for_catalog_index(int(actor.get("catalog_index", -1)))
+
+
+func _monster_weather_tags(actor: Dictionary) -> Array:
+	return MONSTER_FAMILY_WEATHER_TRAITS_V1.tags_for_actor(
+		str(actor.get("monster_family_id", "")),
+		int(actor.get("catalog_index", -1))
+	)
+
+
+func _monster_weather_eligible(actor: Dictionary, region_index: int) -> bool:
+	if _weather_runtime_controller == null or not is_instance_valid(_weather_runtime_controller):
+		return false
+	if bool(actor.get("down", false)) or float(actor.get("remaining_time", 0.0)) <= 0.0:
+		return false
+	return region_index >= 0
+
+
+func _monster_weather_effect(actor: Dictionary, region_index: int) -> Dictionary:
+	var family_id := _monster_weather_family_id(actor)
+	var affinity_tags := _monster_weather_tags(actor)
+	var result := {
+		"active": false,
+		"family_id": family_id,
+		"affinity_tags": affinity_tags.duplicate(),
+		"matched_tags": [],
+		"preference_multiplier": 1.0,
+		"speed_multiplier": 1.0,
+		"armor_multiplier": 1.0,
+	}
+	if affinity_tags.is_empty() or not _monster_weather_eligible(actor, region_index):
+		return result
+	var context := {
+		"monster_tags": affinity_tags.duplicate(),
+		"weather_resistance": clampf(float(actor.get("weather_resistance", 0.0)), 0.0, 1.0),
+		"weather_exploitation_multiplier": maxf(1.0, float(actor.get("weather_exploitation_multiplier", 1.0))),
+	}
+	var snapshot := _weather_runtime_controller.region_effect_snapshot(region_index, context)
+	var matched_tags: Array = []
+	var preference := 1.0
+	var speed := 1.0
+	var armor := 1.0
+	for effect_variant in snapshot.get("effects", []):
+		if not (effect_variant is Dictionary):
+			continue
+		var monster_effect: Dictionary = (effect_variant as Dictionary).get("monster", {}) as Dictionary
+		preference *= maxf(0.0, float(monster_effect.get("preference_multiplier", 1.0)))
+		speed *= maxf(0.0, float(monster_effect.get("speed_multiplier", 1.0)))
+		armor *= maxf(0.0, float(monster_effect.get("armor_multiplier", 1.0)))
+		for tag_variant in monster_effect.get("matched_tags", []):
+			var tag := str(tag_variant)
+			if affinity_tags.has(tag) and not matched_tags.has(tag):
+				matched_tags.append(tag)
+	result["active"] = not matched_tags.is_empty()
+	result["matched_tags"] = matched_tags
+	result["preference_multiplier"] = preference if not matched_tags.is_empty() else maxf(1.0, preference)
+	result["speed_multiplier"] = clampf(speed if not matched_tags.is_empty() else 1.0, 1.0, MONSTER_WEATHER_SPEED_CAP)
+	result["armor_multiplier"] = maxf(1.0, armor if not matched_tags.is_empty() else 1.0)
+	return result
+
+
+func _monster_weather_armor_absorption(actor: Dictionary, incoming_damage: int) -> int:
+	if incoming_damage <= 1:
+		return 0
+	var effect := _monster_weather_effect(actor, int(actor.get("position", -1)))
+	var multiplier := maxf(1.0, float(effect.get("armor_multiplier", 1.0)))
+	if multiplier <= 1.0:
+		return 0
+	var absorbed := roundi(float(incoming_damage) * (1.0 - 1.0 / multiplier))
+	return clampi(absorbed, 0, incoming_damage - 1)
 
 
 func _monster_public_actor_v06(source: Dictionary) -> Dictionary:
@@ -4387,6 +4470,10 @@ func _auto_monster_take_damage(slot: int, damage: int, source: String, _source_s
 	if bool(actor.get("down", false)):
 		return 0
 	var remaining := damage
+	var weather_absorbed := _monster_weather_armor_absorption(actor, remaining)
+	if weather_absorbed > 0:
+		remaining -= weather_absorbed
+		_log("%s的天气适应抵消%d点%s伤害。" % [String(actor.get("name", "怪兽")), weather_absorbed, source])
 	var armor := int(actor.get("armor", 0))
 	if armor > 0:
 		var absorbed: int = min(armor, remaining)
@@ -4520,6 +4607,12 @@ func _auto_monster_target_weight_parts(actor: Dictionary, index: int, peer_roste
 		if int(other.get("position", -1)) == index:
 			parts["monster"] = MONSTER_TARGET_RIVAL_BONUS
 			break
+	var base_weight := maxi(0, _weight_part_total(parts))
+	var weather_effect := _monster_weather_effect(actor, index)
+	var preference_multiplier := maxf(1.0, float(weather_effect.get("preference_multiplier", 1.0)))
+	var weather_bonus := maxi(0, roundi(float(base_weight) * (preference_multiplier - 1.0)))
+	if weather_bonus > 0:
+		parts["weather"] = weather_bonus
 	return parts
 
 
@@ -4666,7 +4759,19 @@ func _add_visual_trail(from_position: Vector2, to_position: Vector2, color: Colo
 	_world_call(&"_add_visual_trail", [from_position, to_position, color, label, duration, style])
 
 func _advance_entity_linear_motion(entity: Dictionary, delta_seconds: float) -> Dictionary:
-	return _world_call(&"_advance_entity_linear_motion", [entity, delta_seconds])
+	var baseline_speed := maxf(0.0, float(entity.get("linear_move_speed_mps", 0.0)))
+	var weather_effect := _monster_weather_effect(entity, int(entity.get("position", -1)))
+	var speed_multiplier := clampf(float(weather_effect.get("speed_multiplier", 1.0)), 1.0, MONSTER_WEATHER_SPEED_CAP)
+	if baseline_speed <= 0.0 or is_equal_approx(speed_multiplier, 1.0):
+		return _world_call(&"_advance_entity_linear_motion", [entity, delta_seconds])
+	var transient := entity.duplicate(true)
+	transient["linear_move_speed_mps"] = baseline_speed * speed_multiplier
+	var info_variant: Variant = _world_call(&"_advance_entity_linear_motion", [transient, delta_seconds])
+	if transient.has("world_position"):
+		entity["world_position"] = transient.get("world_position")
+	if transient.has("position"):
+		entity["position"] = transient.get("position")
+	return info_variant as Dictionary if info_variant is Dictionary else {"moved": 0.0, "arrived": false}
 
 func _ai_runtime_call(method_name: StringName, arguments: Array = []) -> Variant:
 	return _world_call(&"_ai_runtime_call", [method_name, arguments])
