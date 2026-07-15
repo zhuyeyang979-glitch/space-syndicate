@@ -1952,7 +1952,9 @@ func _role_index_array_is_unique(indices: Array, seat_count: int, allow_random: 
 
 
 func _verify_role_selection_and_budget_audit(main: Node) -> bool:
-	var saved := main.call("_capture_run_state") as Dictionary
+	var previous_player_count := int(main.get("configured_player_count"))
+	var previous_ai_count := int(main.get("configured_ai_player_count"))
+	var previous_role_indices := _as_array(main.get("configured_role_indices")).duplicate(true)
 	var ok := true
 	var role_count := int(main.call("_player_role_catalog_size"))
 	ok = ok and role_count >= 24
@@ -2007,8 +2009,8 @@ func _verify_role_selection_and_budget_audit(main: Node) -> bool:
 	ok = ok and _role_index_array_is_unique(_as_array(main.get("configured_role_indices")), seat_count, true)
 	var resolved := main.call("_resolve_configured_role_indices_for_run") as Array
 	ok = ok and _role_index_array_is_unique(resolved, seat_count, false)
-	var restore_result := int(main.call("_apply_run_state", saved))
-	return ok and restore_result == OK
+	var restored := _restore_role_setup_for_smoke(main, previous_player_count, previous_ai_count, previous_role_indices)
+	return ok and restored
 
 
 func _role_index_by_name(main: Node, role_name: String) -> int:
