@@ -594,6 +594,8 @@ const CODEX_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design
 const CODEX_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/codex_public_snapshot_cutover_sprint_14.png"
 const MONSTER_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCRIPT := "res://scripts/runtime/monster_codex_public_snapshot_service.gd"
 const MONSTER_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE := "res://scenes/runtime/MonsterCodexPublicSnapshotService.tscn"
+const MONSTER_CODEX_PUBLIC_SOURCE_SERVICE_SCRIPT := "res://scripts/runtime/monster_codex_public_source_service.gd"
+const MONSTER_CODEX_PUBLIC_SOURCE_SERVICE_SCENE := "res://scenes/runtime/MonsterCodexPublicSourceService.tscn"
 const MONSTER_CODEX_PUBLIC_SNAPSHOT_SERVICE_TEST := "res://tests/monster_codex_public_snapshot_service_test.gd"
 const MONSTER_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/monster_codex_public_snapshot_cutover_bench.gd"
 const MONSTER_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE := "res://scenes/tools/MonsterCodexPublicSnapshotCutoverBench.tscn"
@@ -11120,22 +11122,31 @@ func _check_codex_public_snapshot_cutover_component() -> void:
 
 
 func _check_monster_codex_public_snapshot_cutover_component() -> void:
-	for path in [MONSTER_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCRIPT, MONSTER_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE, MONSTER_CODEX_PUBLIC_SNAPSHOT_SERVICE_TEST, MONSTER_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT, MONSTER_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE]:
+	for path in [MONSTER_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCRIPT, MONSTER_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE, MONSTER_CODEX_PUBLIC_SOURCE_SERVICE_SCRIPT, MONSTER_CODEX_PUBLIC_SOURCE_SERVICE_SCENE, MONSTER_CODEX_PUBLIC_SNAPSHOT_SERVICE_TEST, MONSTER_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT, MONSTER_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE]:
 		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Monster Codex Public Snapshot Cutover" % path)
+	var source_packed := load(MONSTER_CODEX_PUBLIC_SOURCE_SERVICE_SCENE) as PackedScene
+	var source_service := source_packed.instantiate() if source_packed != null else null
+	if source_service != null:
+		_expect(source_service.has_method("configure") and source_service.has_method("compose_browser_source") and source_service.has_method("compose_detail_source") and source_service.has_method("compose_snapshot") and source_service.has_method("public_field_schema") and source_service.has_method("debug_snapshot"), "MonsterCodexPublicSourceService exposes scene-owned browser/detail source APIs")
+		var source_debug: Dictionary = source_service.call("debug_snapshot")
+		_expect(not bool(source_debug.get("reads_world_bridge", true)) and not bool(source_debug.get("reads_roster", true)) and not bool(source_debug.get("reads_private_targeting", true)) and not bool(source_debug.get("reads_player_state", true)) and not bool(source_debug.get("reads_market_quote", true)) and not bool(source_debug.get("reads_camera", true)) and not bool(source_debug.get("owns_rules", true)) and not bool(source_debug.get("owns_save_state", true)), "MonsterCodexPublicSourceService is public-only, non-owning source assembly")
+		source_service.free()
 	var service_packed := load(MONSTER_CODEX_PUBLIC_SNAPSHOT_SERVICE_SCENE) as PackedScene
 	var service := service_packed.instantiate() if service_packed != null else null
 	if service != null:
 		_expect(service.has_method("configure") and service.has_method("compose") and service.has_method("debug_snapshot"), "MonsterCodexPublicSnapshotService exposes required pure-data APIs")
 		service.call("configure", {})
-		var source := {"valid": true, "index": 0, "total": 1, "selected": true, "entry": {"name": "测试怪兽", "hp": 10, "armor": 1, "resource_focus": []}, "ecology": {"movement_archetype": "陆行", "role_tags": [], "bound_skill_counts": [1, 1, 1, 1], "economy_boon": {}}, "profile": {}, "accent": Color("#fb7185"), "move_text": "80m/s", "art_move_text": "80m/s", "ecology_move_text": "80m/s", "max_range_text": "0m", "encounter_range_text": "50m", "mobility_summary": "陆行", "action_summary": "暂无", "rank_iv_shift_summary": "无变化", "actions": [], "monster_card": {"valid": false}, "level_labels": ["I", "II", "III", "IV"]}
+		var source := {"valid": true, "index": 0, "total": 1, "selected": true, "entry": {"name": "测试怪兽", "hp": 10, "armor": 1, "resource_focus": []}, "ecology": {"movement_archetype": "陆行", "role_tags": [], "bound_skill_counts": [1, 1, 1, 1], "economy_boon": {}, "rank_iv_probability_shift": "IV级更偏向公开危险行动"}, "profile": {}, "accent": Color("#fb7185"), "move_text": "80m/s", "art_move_text": "80m/s", "ecology_move_text": "80m/s", "max_range_text": "0m", "encounter_range_text": "50m", "mobility_summary": "陆行", "action_summary": "公开概率示例", "rank_iv_probability_summary": "IV级概率更偏向危险行动", "actions": [{"action": "测试行动", "text": "公开概率示例", "i_open": "30%", "i_destroyed": "40%", "iv_open": "45%", "iv_destroyed": "55%", "probability_tooltip": "I级开局30%｜I级破坏后40%｜IV级开局45%｜IV级破坏后55%", "facts": ["公开概率"]}], "monster_card": {"valid": false}, "level_labels": ["I", "II", "III", "IV"]}
 		var snapshot: Dictionary = service.call("compose", source)
 		_expect(snapshot.get("detail", {}) is Dictionary and snapshot.get("browser_entry", {}) is Dictionary and not _variant_contains_callable(snapshot) and not _variant_contains_object(snapshot), "MonsterCodexPublicSnapshotService returns pure detail and browser snapshots")
+		var snapshot_text := str(snapshot)
+		_expect(snapshot_text.contains("I 30%/40%｜IV 45%/55%") and not snapshot_text.contains("权重") and not snapshot_text.contains("numerator") and not snapshot_text.contains("denominator") and not snapshot_text.contains("分子") and not snapshot_text.contains("分母") and not snapshot_text.contains("号+"), "Monster public probability remains visible without raw weight, numerator, denominator, or +N leaks")
 		var debug: Dictionary = service.call("debug_snapshot")
 		_expect(not bool(debug.get("calculates_action_weights", true)) and not bool(debug.get("reads_runtime_nodes", true)), "Monster formatter does not own probability calculations or runtime Nodes")
 		service.free()
 	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
 	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
-	_expect(coordinator != null and coordinator.get_node_or_null("MonsterCodexPublicSnapshotService") != null and coordinator.has_method("compose_monster_codex_snapshot"), "GameRuntimeCoordinator composes and proxies MonsterCodexPublicSnapshotService")
+	_expect(coordinator != null and coordinator.get_node_or_null("MonsterCodexPublicSourceService") != null and coordinator.get_node_or_null("MonsterCodexPublicSnapshotService") != null and coordinator.find_children("MonsterCodexPublicSourceService", "", true, false).size() == 1 and coordinator.find_children("MonsterCodexPublicSnapshotService", "", true, false).size() == 1 and coordinator.has_method("monster_codex_public_browser_snapshot") and coordinator.has_method("monster_codex_public_detail_snapshot") and not coordinator.has_method("compose_monster_codex_snapshot"), "GameRuntimeCoordinator composes unique MonsterCodex source/snapshot services and exposes thin browser/detail APIs")
 	if coordinator != null:
 		coordinator.free()
 	var bench_packed := load(MONSTER_CODEX_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE) as PackedScene
@@ -11145,12 +11156,12 @@ func _check_monster_codex_public_snapshot_cutover_component() -> void:
 		root.add_child(bench)
 		await process_frame
 		_expect(bench.has_method("output_dir") and bench.has_method("retired_formatter_names") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "MonsterCodexPublicSnapshotCutoverBench exposes required QA APIs")
-		var expected_cases := ["required_service_assets_load", "service_scene_contract", "monster_source_pure_data", "monster_summary_parity", "browser_entry_shape", "detail_shape", "detail_chip_contract", "detail_kpi_contract", "action_probability_board", "action_probability_tooltip", "bound_monster_card_preview", "ecology_identity_contract", "empty_source_safe", "privacy_boundary", "coordinator_scene_composition", "coordinator_pure_data_proxy", "real_main_browser_route", "real_main_detail_route", "legacy_monster_formatters_absent", "deletion_metrics_and_privacy"]
+		var expected_cases := ["required_service_assets_load", "service_scene_contract", "source_service_scene_contract", "qa_save_isolated", "monster_source_pure_data", "monster_catalog_world_invariant", "coordinator_browser_detail_world_call_free", "public_catalog_source_scan", "monster_summary_parity", "browser_entry_shape", "detail_shape", "detail_chip_contract", "detail_kpi_contract", "action_probability_board", "action_probability_tooltip", "bound_monster_card_preview", "ecology_identity_contract", "empty_source_safe", "privacy_boundary", "coordinator_scene_composition", "coordinator_pure_data_proxy", "real_main_browser_route", "real_main_detail_route", "legacy_monster_formatters_absent", "deletion_metrics_and_privacy"]
 		var cases: Array = bench.call("cutover_cases")
 		var retired_formatters: Array = bench.call("retired_formatter_names")
 		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
 		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
-		var fields_ok := records.size() == 20
+		var fields_ok := records.size() == expected_cases.size()
 		for record_variant in records:
 			var record: Dictionary = record_variant if record_variant is Dictionary else {}
 			for key in ["case_id", "service_checked", "main_checked", "monster_checked", "probability_checked", "card_checked", "routing_checked", "privacy_checked", "pure_data_checked", "deletion_checked", "passed", "notes"]:
@@ -11159,11 +11170,12 @@ func _check_monster_codex_public_snapshot_cutover_component() -> void:
 		var all_retired := retired_formatters.size() == 14
 		for formatter_name_variant in retired_formatters:
 			all_retired = all_retired and not main_source.contains("func %s(" % str(formatter_name_variant))
-		_expect(cases == expected_cases and all_retired and int(manifest.get("retired_formatter_count", 0)) == 14 and str(bench.call("output_dir")) == MONSTER_CODEX_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == MONSTER_CODEX_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "MonsterCodexPublicSnapshotCutoverBench defines 20 pure-data cases, 14 retired formatters, and user:// outputs")
+		_expect(cases == expected_cases and all_retired and int(manifest.get("retired_formatter_count", 0)) == retired_formatters.size() and str(bench.call("output_dir")) == MONSTER_CODEX_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == MONSTER_CODEX_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "MonsterCodexPublicSnapshotCutoverBench defines the current 25 pure-data cases, current retired formatter count, and user:// outputs")
 		root.remove_child(bench)
 		bench.queue_free()
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	_expect(main_source.contains("func _monster_codex_public_source_snapshot(") and main_source.contains("func _monster_codex_action_probability_facts(") and main_source.contains("compose_monster_codex_snapshot"), "main.gd keeps only monster public-fact and probability adapters")
+	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
+	_expect(not main_source.contains("func _monster_codex_public_source_snapshot(") and not main_source.contains("func _monster_codex_action_probability_facts(") and not main_source.contains("func _monster_codex_public_snapshot(") and not main_source.contains("func _monster_art_profile(") and not coordinator_source.contains("compose_monster_codex_snapshot"), "main.gd has zero legacy Monster Codex source/probability/art helper definitions or executable proxies")
 	var nonblank := 0
 	var function_count := 0
 	var variable_count := 0
