@@ -183,8 +183,11 @@ func compose_play_eligibility(eligibility: Dictionary, card_source: Dictionary =
 
 func compose_hand_card(source: Dictionary) -> Dictionary:
 	_hand_compose_count += 1
-	var presentation := compose_card(_dictionary(source.get("card", {})))
-	var skill := _dictionary(_dictionary(source.get("card", {})).get("skill", {}))
+	var raw_card := _dictionary(source.get("card", {}))
+	var presentation := compose_card(raw_card)
+	var skill := _dictionary(raw_card.get("skill", {}))
+	var machine := _dictionary(skill.get("machine", raw_card.get("machine", {})))
+	var hand_kind := "facility_v06" if str(machine.get("category_id", "")) == "facility" else str(skill.get("kind", raw_card.get("kind", "card")))
 	var play_state := compose_play_eligibility(_dictionary(source.get("eligibility", {})), _dictionary(source.get("card", {})))
 	var slot := int(source.get("slot", -1))
 	var actionable := bool(play_state.get("actionable", false))
@@ -195,6 +198,8 @@ func compose_hand_card(source: Dictionary) -> Dictionary:
 		"id": "hand_%d" % slot,
 		"slot": slot,
 		"name": str(presentation.get("display_name", "卡牌")),
+		"kind": hand_kind,
+		"strategy_route": "grow_gdp" if hand_kind == "facility_v06" else str(presentation.get("strategy_route_id", "")),
 		"rank": str(presentation.get("rank_label", "I")),
 		"type": str(presentation.get("strategy_route_label", "即时战术")),
 		"cost": str(skill.get("cost", skill.get("play_cash", ""))),

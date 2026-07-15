@@ -126,7 +126,7 @@ func _test_real_production_adopter() -> void:
 
 	var owner_before: Dictionary = coordinator.call("v06_card_player_snapshot", actor_id)
 	var quote: Dictionary = market.get("quote", {}) if market.get("quote", {}) is Dictionary else {}
-	_expect(str(quote.get("availability_kind", "")) == "sunlit" and bool(quote.get("purchasable", false)), "authored first-table source is deterministically sunlit before the purchase action")
+	_expect(str(quote.get("availability_kind", "")) == "sunlit" and bool(quote.get("confirmable", false)), "authored first-table source has one player-bound confirmable quote before the purchase action")
 	var expected_price := int(quote.get("final_price", -1))
 	var market_revision_before := int((market.get("market", {}) as Dictionary).get("revision", -1)) if market.get("market", {}) is Dictionary else -1
 	var failure_before: Dictionary = coordinator.call("execute_v06_facility_purchase_action", actor_id, "%s:stale" % card_id)
@@ -153,12 +153,16 @@ func _test_real_production_adopter() -> void:
 	await _wait_frames(3)
 	var owner_after_success: Dictionary = coordinator.call("v06_card_player_snapshot", actor_id)
 	var market_after_success: Dictionary = coordinator.call("v06_first_table_facility_market_snapshot", actor_id)
+	var next_listing: Dictionary = market_after_success.get("listing", {}) if market_after_success.get("listing", {}) is Dictionary else {}
+	var next_card: Dictionary = next_listing.get("card", {}) if next_listing.get("card", {}) is Dictionary else {}
+	var next_machine: Dictionary = next_card.get("machine", {}) if next_card.get("machine", {}) is Dictionary else {}
 	var feedback: Dictionary = screen.call("get_runtime_player_feedback_snapshot")
 	_expect(int(owner_after_success.get("revision", -1)) == int(owner_before.get("revision", -1)) + 1, "real UI purchase commits the authoritative player revision exactly once")
 	_expect(int(((market_after_success.get("market", {}) as Dictionary).get("revision", -1))) == market_revision_before + 1, "real UI purchase commits the authoritative market revision exactly once")
 	_expect(_inventory_count(owner_after_success) == _inventory_count(owner_before) + 1, "real UI purchase atomically adds one ordinary facility card")
 	_expect(int(owner_after_success.get("card_purchase_count", -1)) == int(owner_before.get("card_purchase_count", 0)) + 1, "real UI purchase advances the authoritative purchase count exactly once")
 	_expect(int(owner_after_success.get("total_card_spend", -1)) == int(owner_before.get("total_card_spend", 0)) + expected_price, "real UI purchase records the locked public price in the authoritative spend ledger")
+	_expect(str(next_machine.get("card_id", "")) != card_id and str(next_machine.get("category_id", "")) == "facility" and int(next_machine.get("rank", 0)) == 1, "successful purchase rotates the public market to a different legal rank-I facility")
 	_expect(str(feedback.get("action_id", "")) == "district_card_purchase" and str(feedback.get("state", "")) == "resolved", "real GameScreen receives structured purchase success feedback")
 	_expect(not _contains_private_value(feedback) and not str(feedback).contains("quote_id") and not str(feedback).contains("quote_fingerprint"), "visible purchase feedback omits rival facts and private quote binding")
 

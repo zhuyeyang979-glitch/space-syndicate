@@ -1652,6 +1652,10 @@ func economic_source_snapshot(actor_id: String) -> Dictionary:
 		"reason_code": "ai_v06_economic_source_ready",
 		"has_source": not owned_facility_ids.is_empty() or not production_installation_ids.is_empty(),
 		"bootstrap_finalized": not finalized_transaction_ids.is_empty(),
+		"owned_facility_count": owned_facility_ids.size(),
+		"production_installation_count": production_installation_ids.size(),
+		"legal_region_count": legal_region_ids.size(),
+		"expansion_available": not legal_region_ids.is_empty(),
 		"lineage_transaction_id": finalized_transaction_ids.back() if not finalized_transaction_ids.is_empty() else "",
 		"target_region_id": str(legal_region_ids[0]) if not legal_region_ids.is_empty() else "",
 		"legal_region_ids": legal_region_ids.duplicate(),
@@ -1833,14 +1837,15 @@ func v06_first_table_facility_market_snapshot(actor_id: String) -> Dictionary:
 			return {"ready": false, "reason_code": str(configured.get("reason_code", "v06_facility_market_configuration_failed"))}
 		market = (configured.get("market", {}) as Dictionary).duplicate(true) if configured.get("market", {}) is Dictionary else {}
 		listing = (market.get("listing", {}) as Dictionary).duplicate(true) if market.get("listing", {}) is Dictionary else {}
-	elif str(((listing.get("card", {}) as Dictionary).get("machine", {}) as Dictionary).get("card_id", "")) != str(machine.get("card_id", "")):
+	elif not _ai_v06_is_rank_i_facility_card(listing.get("card", {}) as Dictionary):
 		return {"ready": false, "reason_code": "v06_market_owned_by_other_listing"}
 	if int(listing.get("source_district_index", -1)) < 0 or str(listing.get("source_region_id", "")).is_empty() or str(listing.get("supply_revision", "")).is_empty():
 		return {"ready": false, "reason_code": "v06_market_listing_source_invalid"}
 	var player_index := _ai_v06_actor_player_index(actor_id)
 	if player_index < 0:
 		return {"ready": false, "reason_code": "v06_facility_player_binding_unavailable"}
-	var quote := card_market_preview({
+	var quote := card_market_quote({
+		"player_index": player_index,
 		"district_index": int(listing.get("source_district_index", -1)),
 		"card_id": str(machine.get("card_id", "")),
 		"supply_revision": str(listing.get("supply_revision", "")),
@@ -1868,7 +1873,8 @@ func purchase_v06_first_table_facility_card(actor_id: String, source_item_id: St
 	if str(listing.get("item_id", "")) != source_item_id.strip_edges():
 		return {"committed": false, "reason_code": "market_listing_changed"}
 	var card: Dictionary = listing.get("card", {}) if listing.get("card", {}) is Dictionary else {}
-	var next_listing := _v06_first_table_facility_listing(card, int(market.get("revision", 0)) + 1)
+	var next_card := _v06_next_rank_i_facility_card(card)
+	var next_listing := _v06_first_table_facility_listing(next_card, int(market.get("revision", 0)) + 1)
 	if next_listing.is_empty():
 		return {"committed": false, "reason_code": "v06_market_listing_source_unavailable"}
 	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
@@ -1970,6 +1976,25 @@ func _v06_first_table_facility_listing(card: Dictionary, revision: int) -> Dicti
 		"source_region_id": str(source.get("region_id", "")),
 		"supply_revision": "v06-facility:%d:%s" % [maxi(0, revision), item_id],
 	}
+
+
+func _v06_next_rank_i_facility_card(current_card: Dictionary) -> Dictionary:
+	var cards := v06_rank_i_facility_cards()
+	if cards.is_empty():
+		return current_card.duplicate(true)
+	var current_id := str((current_card.get("machine", {}) as Dictionary).get("card_id", ""))
+	var current_index := -1
+	for index in range(cards.size()):
+		var candidate: Dictionary = cards[index] if cards[index] is Dictionary else {}
+		if str((candidate.get("machine", {}) as Dictionary).get("card_id", "")) == current_id:
+			current_index = index
+			break
+	for offset in range(1, cards.size() + 1):
+		var candidate_index := wrapi(current_index + offset, 0, cards.size())
+		var candidate: Dictionary = cards[candidate_index] if cards[candidate_index] is Dictionary else {}
+		if not _ai_v06_legal_facility_region_ids(candidate, "").is_empty():
+			return candidate.duplicate(true)
+	return current_card.duplicate(true)
 
 
 func _v06_market_source_snapshot(_revision: int) -> Dictionary:

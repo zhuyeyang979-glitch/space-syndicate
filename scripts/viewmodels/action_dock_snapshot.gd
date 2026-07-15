@@ -78,7 +78,7 @@ func _normalize_action(entry_variant: Variant, index: int, fallback_label: Strin
 	var active := bool(entry.get("active", not disabled))
 	var state := _state_text(_first_text(entry, ["state", "status", "phase"], "ready" if active else "waiting"), active, disabled)
 	var shortcut := _quick_action_shortcut(entry, index, quick_action)
-	return {
+	var result := {
 		"id": _short_text(action_id, 32),
 		"label": _short_text(raw_label, 8 if quick_action else 16),
 		"state": state,
@@ -87,6 +87,11 @@ func _normalize_action(entry_variant: Variant, index: int, fallback_label: Strin
 		"shortcut": shortcut,
 		"tooltip": _first_text(entry, ["tooltip", "hint", "why"], ""),
 	}
+	for semantic_key in ["kind", "strategy_route", "consequence", "suggested_action", "focus_target", "relevant_cost", "relevant_requirement"]:
+		var semantic_value := str(entry.get(semantic_key, "")).strip_edges()
+		if not semantic_value.is_empty():
+			result[semantic_key] = semantic_value
+	return result
 
 
 func _quick_action_shortcut(entry: Dictionary, index: int, quick_action: bool) -> String:

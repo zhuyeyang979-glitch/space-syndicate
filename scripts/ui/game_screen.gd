@@ -243,6 +243,10 @@ func get_overlay_host() -> Node:
 	return overlay_layer
 
 
+func get_district_supply_drawer() -> Node:
+	return overlay_layer.find_child("DistrictSupplySideDrawerOverlay", true, false) if overlay_layer != null else null
+
+
 func get_visual_event_snapshot() -> Dictionary:
 	if visual_event_layer != null and visual_event_layer.has_method("get_visual_event_snapshot"):
 		return visual_event_layer.call("get_visual_event_snapshot") as Dictionary
