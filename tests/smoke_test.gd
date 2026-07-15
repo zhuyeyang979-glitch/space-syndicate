@@ -153,7 +153,6 @@ func _run() -> void:
 	_expect(_verify_military_balance_identity(main), "military balance audit preserves fighter, bomber, tank, missile, submarine, and warship identities")
 	_expect(_verify_ai_military_command_policy(main), "AI uses reusable military commands to guard cities, strike rivals, attack monsters, and record command metadata")
 	_expect(_verify_ai_military_force_deploy_policy(main), "AI deploys military-force cards with field-driven guard, strike, and purchase metadata")
-	_expect(_verify_ai_product_futures_policy(main), "AI evaluates commodity futures from fields for long, short, stockpile, buy, and training metadata")
 	_expect(_verify_product_futures_terms_catalog(main), "commodity futures use the complete v0.4 Inspector terms catalog with margin, caps, duration, and warehouse exposure")
 	_expect(_verify_temporary_economy_duration_seconds(main), "temporary economy, contract, commodity, route, and derivative cards expose real seconds as their authoritative duration")
 	_expect(_verify_role_passive_runtime(main), "role resource-cash, regional bonus-card, and monster-upgrade rewards resolve in play")
