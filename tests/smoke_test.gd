@@ -7140,7 +7140,7 @@ func _verify_ai_online_learning_policy(main: Node) -> bool:
 		main.set("resolved_card_history", history)
 		var card_candidate := _ai_controller(main).call("_ai_card_guess_candidate_for_owner", 1, card_guess_entry, 2) as Dictionary
 		var saw_card_guess_learning := String(card_candidate.get("policy_kind", "")) == "card_owner_guess" and int(card_candidate.get("learning_bonus", 0)) > 0
-		var learned_state := main.call("_capture_run_state") as Dictionary
+		var learned_state := _runtime_coordinator(main).call("ai_to_save_data") as Dictionary
 		var reset_players := _as_array(main.get("players")).duplicate(true)
 		var reset_player := reset_players[1] as Dictionary
 		var reset_memory := (reset_player.get("ai_memory", {}) as Dictionary).duplicate(true)
@@ -7149,7 +7149,8 @@ func _verify_ai_online_learning_policy(main: Node) -> bool:
 		reset_player["ai_memory"] = reset_memory
 		reset_players[1] = reset_player
 		main.set("players", reset_players)
-		var restore_learned_ok := int(main.call("_apply_run_state", learned_state)) == OK
+		var restore_learned_receipt := _runtime_coordinator(main).call("apply_ai_save_data", learned_state) as Dictionary
+		var restore_learned_ok := bool(restore_learned_receipt.get("applied", false))
 		var restored_players := _as_array(main.get("players"))
 		var restored_memory := (restored_players[1] as Dictionary).get("ai_memory", {}) as Dictionary
 		var persisted_ok := _ai_memory_has_positive_learning(restored_memory, "policy:price_pump")
@@ -7257,7 +7258,7 @@ func _verify_ai_episode_learning_policy(main: Node) -> bool:
 		ok = ok and _ai_memory_has_negative_learning(lose_memory, "policy:route_sabotage")
 		ok = ok and lose_bonus < 0
 		ok = ok and duplicate_updates == 0
-		var learned_state := main.call("_capture_run_state") as Dictionary
+		var learned_state := _runtime_coordinator(main).call("ai_to_save_data") as Dictionary
 		var reset_players := _as_array(main.get("players")).duplicate(true)
 		var reset_player := reset_players[1] as Dictionary
 		var reset_memory := (reset_player.get("ai_memory", {}) as Dictionary).duplicate(true)
@@ -7266,7 +7267,8 @@ func _verify_ai_episode_learning_policy(main: Node) -> bool:
 		reset_player["ai_memory"] = reset_memory
 		reset_players[1] = reset_player
 		main.set("players", reset_players)
-		ok = ok and int(main.call("_apply_run_state", learned_state)) == OK
+		var restore_learned_receipt := _runtime_coordinator(main).call("apply_ai_save_data", learned_state) as Dictionary
+		ok = ok and bool(restore_learned_receipt.get("applied", false))
 		var restored_players := _as_array(main.get("players"))
 		var restored_memory := (restored_players[1] as Dictionary).get("ai_memory", {}) as Dictionary
 		ok = ok and _ai_memory_has_positive_learning(restored_memory, "policy:price_pump")
