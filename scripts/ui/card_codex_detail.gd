@@ -33,7 +33,7 @@ func set_detail(data: Dictionary) -> void:
 	var accent := _dictionary_color(data, "accent", Color("#38bdf8"))
 	tooltip_text = str(data.get("tooltip", ""))
 	add_theme_stylebox_override("panel", _card_style(accent, Color("#020617").lerp(accent, 0.05), 1, 8))
-	face_note_label.text = str(data.get("face_note", "同名同级→主动合并；价格看I级。"))
+	face_note_label.text = str(data.get("face_note", "同名同级牌可主动合并升级；价格看I级。"))
 	face_note_label.tooltip_text = str(data.get("face_note_tooltip", ""))
 	_render_card_face(data.get("card_face", {}))
 	_render_summary(data.get("summary", {}), accent)

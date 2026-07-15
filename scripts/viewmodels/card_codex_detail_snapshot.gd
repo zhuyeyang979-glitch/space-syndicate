@@ -9,7 +9,7 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	detail = {
 		"accent": accent,
 		"tooltip": _first_text(data, ["tooltip"], ""),
-		"face_note": _first_text(data, ["face_note"], "同名同级→主动合并；价格看I级。"),
+		"face_note": _first_text(data, ["face_note"], "同名同级牌可主动合并升级；价格看I级。"),
 		"face_note_tooltip": _first_text(data, ["face_note_tooltip"], "资料库只展示公开卡面和公开规则，不展示隐藏牌主。"),
 		"card_face": _normalize_card_face(data.get("card_face", {}), accent),
 		"summary": _normalize_summary(data.get("summary", {}), accent),

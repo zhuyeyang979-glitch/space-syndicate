@@ -69,7 +69,7 @@ func compose_detail(source: Dictionary) -> Dictionary:
 	var detail_source := {
 		"accent": accent,
 		"tooltip": str(source.get("detail_tooltip", "")),
-		"face_note": "同名同级→主动合并；价格看I级。",
+		"face_note": "同名同级牌可主动合并升级；价格看I级。",
 		"face_note_tooltip": "资料库只展示公开卡面和公开规则，不展示隐藏牌主。",
 		"card_face": {
 			"name": "%s %s" % [str(source.get("icon", "◇")), display_name],
