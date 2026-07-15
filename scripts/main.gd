@@ -13658,8 +13658,8 @@ func _district_supply_snapshot_source(district_index: int, subject_player_index:
 		previewed_district_card = preview_name
 		selected_market_skill = preview_name
 	var card_sources: Array = []
-	if not v06_facility_source.is_empty() and v06_facility_card_id == preview_name:
-		v06_facility_source["selected"] = true
+	if not v06_facility_source.is_empty():
+		v06_facility_source["selected"] = v06_facility_card_id == preview_name
 		if not viewer_authorized:
 			v06_facility_source = _district_supply_public_card_source(v06_facility_source)
 		card_sources.append(v06_facility_source)
@@ -13672,11 +13672,6 @@ func _district_supply_snapshot_source(district_index: int, subject_player_index:
 			if not viewer_authorized:
 				card_source = _district_supply_public_card_source(card_source)
 			card_sources.append(card_source)
-	if not v06_facility_source.is_empty() and v06_facility_card_id != preview_name:
-		v06_facility_source["selected"] = v06_facility_card_id == preview_name
-		if not viewer_authorized:
-			v06_facility_source = _district_supply_public_card_source(v06_facility_source)
-		card_sources.append(v06_facility_source)
 	var availability_kind := _district_market_availability_kind(district_index)
 	var can_buy := _district_market_currently_purchasable(district_index) if viewer_authorized else false
 	var purchase_window: Dictionary = {}

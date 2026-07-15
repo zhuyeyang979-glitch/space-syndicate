@@ -118,23 +118,29 @@ func _render_chip_row(parent: Container, entries_variant: Variant, header: bool)
 
 func _render_market_cards(entries_variant: Variant) -> void:
 	var entries: Array = entries_variant if entries_variant is Array else []
-	var signature := var_to_str(entries)
-	if signature == _cards_signature:
-		return
-	_cards_signature = signature
-	_market_card_names.clear()
-	_clear_children(market_grid)
+	var valid_entries: Array[Dictionary] = []
+	var card_names: Array[String] = []
 	for entry_variant in entries:
 		if not (entry_variant is Dictionary):
 			continue
 		var entry := entry_variant as Dictionary
 		var card_name := str(entry.get("card_name", ""))
-		if card_name == "":
+		if card_name.is_empty():
 			continue
+		valid_entries.append(entry)
+		card_names.append(card_name)
+	var signature := var_to_str(card_names)
+	if signature == _cards_signature:
+		_update_market_cards(valid_entries)
+		return
+	_cards_signature = signature
+	_market_card_names = card_names
+	_clear_children(market_grid)
+	for entry in valid_entries:
 		var card := MARKET_CARD_SCENE.instantiate() as Control
 		if card == null:
 			continue
-		card.name = "DistrictSupplyMarketCard_%d" % _market_card_names.size()
+		card.name = "DistrictSupplyMarketCard_%d" % market_grid.get_child_count()
 		market_grid.add_child(card)
 		if card.has_signal("card_hovered"):
 			card.connect("card_hovered", Callable(self, "_on_card_preview_requested").bind("hover"))
@@ -144,8 +150,22 @@ func _render_market_cards(entries_variant: Variant) -> void:
 			card.connect("card_activated", Callable(self, "_on_card_purchase_requested").bind("market_activation"))
 		if card.has_method("set_card"):
 			card.call("set_card", entry)
-		_market_card_names.append(card_name)
 	_sync_market_focus_chain()
+
+
+func _update_market_cards(entries: Array[Dictionary]) -> void:
+	var children := market_grid.get_children()
+	if children.size() != entries.size():
+		_cards_signature = ""
+		_render_market_cards(entries)
+		return
+	for index in range(entries.size()):
+		var card := children[index] as Control
+		if card == null or not card.has_method("set_card"):
+			_cards_signature = ""
+			_render_market_cards(entries)
+			return
+		card.call("set_card", entries[index])
 
 
 func _render_preview(entry_variant: Variant) -> void:
@@ -154,9 +174,13 @@ func _render_preview(entry_variant: Variant) -> void:
 	if signature == _preview_signature:
 		return
 	_preview_signature = signature
-	_clear_children(preview_box)
-	_preview_card = null
 	if entry.is_empty() or str(entry.get("card_name", "")) == "":
+		_clear_children(preview_box)
+		_preview_card = null
+		return
+	if _preview_card != null and is_instance_valid(_preview_card):
+		if _preview_card.has_method("set_preview"):
+			_preview_card.call("set_preview", entry)
 		return
 	var preview := PREVIEW_CARD_SCENE.instantiate() as Control
 	if preview == null:
