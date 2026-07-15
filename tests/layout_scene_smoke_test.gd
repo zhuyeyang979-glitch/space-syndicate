@@ -657,9 +657,13 @@ const VICTORY_CONTROL_WORLD_BRIDGE_SCRIPT := "res://scripts/runtime/victory_cont
 const VICTORY_CONTROL_WORLD_BRIDGE_SCENE := "res://scenes/runtime/VictoryControlWorldBridge.tscn"
 const VICTORY_CONTROL_RUNTIME_BENCH_SCRIPT := "res://scripts/tools/victory_control_runtime_bench.gd"
 const VICTORY_CONTROL_RUNTIME_BENCH_SCENE := "res://scenes/tools/VictoryControlRuntimeBench.tscn"
+const VICTORY_CONTROL_SPLIT_DELTA_PRECISION_TEST := "res://tests/victory_control_split_delta_precision_test.gd"
+const VICTORY_CONTROL_PUBLIC_PROJECTION_PRIVACY_TEST := "res://tests/victory_control_public_projection_privacy_v06_test.gd"
+const MAIN_VICTORY_PUBLIC_PRIVACY_TEST := "res://tests/main_victory_public_privacy_v06_test.gd"
+const BANKRUPTCY_NEUTRAL_ESTATE_RUNTIME_TEST := "res://tests/bankruptcy_neutral_estate_runtime_test.gd"
+const MAIN_RUNTIME_COMPOSITION_TEST := "res://tests/main_runtime_composition_test.gd"
+const BANKRUPTCY_NEUTRAL_ESTATE_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/BankruptcyNeutralEstateRuntimeController.tscn"
 const VICTORY_CONTROL_RUNTIME_CONTRACT := "res://docs/victory_control_runtime_contract.md"
-const VICTORY_CONTROL_RUNTIME_OUTPUT_DIR := "user://space_syndicate_design_qa/victory_control_runtime/"
-const VICTORY_CONTROL_RUNTIME_SCREENSHOT_PATH := "user://space_syndicate_design_qa/victory_control_runtime_sprint_4.png"
 const INDUSTRY_CAPACITY_RUNTIME_SERVICE_SCRIPT := "res://scripts/runtime/industry_capacity_runtime_service.gd"
 const INDUSTRY_CAPACITY_RUNTIME_SERVICE_SCENE := "res://scenes/runtime/IndustryCapacityRuntimeService.tscn"
 const INDUSTRY_CAPACITY_WORLD_BRIDGE_SCRIPT := "res://scripts/runtime/industry_capacity_world_bridge.gd"
@@ -11731,16 +11735,47 @@ func _check_city_development_settlement_runtime_characterization_component() -> 
 
 
 func _check_victory_control_runtime_component() -> void:
-	for path in [VICTORY_CONTROL_RUNTIME_CONTROLLER_SCRIPT, VICTORY_CONTROL_RUNTIME_CONTROLLER_SCENE, VICTORY_CONTROL_WORLD_BRIDGE_SCRIPT, VICTORY_CONTROL_WORLD_BRIDGE_SCENE, VICTORY_CONTROL_RUNTIME_BENCH_SCRIPT, VICTORY_CONTROL_RUNTIME_BENCH_SCENE, VICTORY_CONTROL_RUNTIME_CONTRACT]:
-		_expect(ResourceLoader.exists(path) or FileAccess.file_exists(path), "Victory Control v0.5 asset exists: %s" % path)
+	for path in [VICTORY_CONTROL_RUNTIME_CONTROLLER_SCRIPT, VICTORY_CONTROL_RUNTIME_CONTROLLER_SCENE, VICTORY_CONTROL_WORLD_BRIDGE_SCRIPT, VICTORY_CONTROL_WORLD_BRIDGE_SCENE, VICTORY_CONTROL_RUNTIME_BENCH_SCRIPT, VICTORY_CONTROL_RUNTIME_BENCH_SCENE, VICTORY_CONTROL_SPLIT_DELTA_PRECISION_TEST, VICTORY_CONTROL_PUBLIC_PROJECTION_PRIVACY_TEST, MAIN_VICTORY_PUBLIC_PRIVACY_TEST, BANKRUPTCY_NEUTRAL_ESTATE_RUNTIME_TEST, MAIN_RUNTIME_COMPOSITION_TEST, VICTORY_CONTROL_RUNTIME_CONTRACT]:
+		_expect(ResourceLoader.exists(path) or FileAccess.file_exists(path), "Victory Control v0.6 owner/gate asset exists: %s" % path)
 	var controller_packed := load(VICTORY_CONTROL_RUNTIME_CONTROLLER_SCENE) as PackedScene
 	var controller := controller_packed.instantiate() if controller_packed != null else null
 	_expect(controller != null and controller.scene_file_path == VICTORY_CONTROL_RUNTIME_CONTROLLER_SCENE, "VictoryControlRuntimeController scene loads")
 	if controller != null:
 		var configured: Dictionary = controller.call("configure")
 		var debug: Dictionary = controller.call("debug_snapshot")
-		_expect(bool(configured.get("configured", false)) and str(configured.get("ruleset_id", "")) == "v0.5" and bool(debug.get("owns_victory_state", false)) and not bool(debug.get("legacy_cash_goal_fallback_used", true)), "VictoryControlRuntimeController owns one v0.5 state machine with no cash-goal fallback")
+		_expect(bool(configured.get("configured", false)) and str(configured.get("ruleset_id", "")) == "v0.6" and bool(debug.get("owns_victory_state", false)) and bool(debug.get("owns_outcome_ordering", false)) and bool(debug.get("owns_public_audit_roster", false)) and bool(debug.get("owns_public_audit_cash_authorization", false)) and bool(debug.get("dynamic_denominator_enabled", false)) and not bool(debug.get("fixed_depth_table_present", true)) and not bool(debug.get("audit_failure_cooldown_present", true)) and not bool(debug.get("legacy_cash_goal_fallback_used", true)), "VictoryControlRuntimeController owns the v0.6 dynamic Top-K/control audit without a cash-goal fallback")
 		_expect(controller.has_method("evaluate_region_control") and controller.has_method("evaluate_candidates") and controller.has_method("advance_world_effective") and controller.has_method("resolve_special_outcome") and controller.has_method("public_snapshot") and controller.has_method("private_snapshot") and controller.has_method("to_save_data") and controller.has_method("apply_save_data"), "VictoryControlRuntimeController exposes control, audit, outcome, privacy, and save APIs")
+		var current_world := {
+			"schema_version": "v0.6.victory-world.2",
+			"players": [
+				{"player_index": 0, "eliminated": false, "cash_ledger_cents": 100, "audit_assets": {}},
+				{"player_index": 1, "eliminated": false, "cash_ledger_cents": 999999, "audit_assets": {}},
+			],
+			"regions": [
+				{"region_id": "region.0000", "district_index": 0, "lifecycle_state": "active", "destroyed": false, "region_gdp_per_minute_cents": 7200, "player_gdp_by_index": {"0": 3600}},
+				{"region_id": "region.0001", "district_index": 1, "lifecycle_state": "active", "destroyed": false, "region_gdp_per_minute_cents": 7200, "player_gdp_by_index": {"0": 3600}},
+				{"region_id": "region.0002", "district_index": 2, "lifecycle_state": "active", "destroyed": false, "region_gdp_per_minute_cents": 0, "player_gdp_by_index": {}},
+				{"region_id": "region.0003", "district_index": 3, "lifecycle_state": "active", "destroyed": false, "region_gdp_per_minute_cents": 0, "player_gdp_by_index": {}},
+				{"region_id": "region.0004", "district_index": 4, "lifecycle_state": "active", "destroyed": false, "region_gdp_per_minute_cents": 0, "player_gdp_by_index": {}},
+			],
+			"clock_pause": {},
+			"settlement_checkpoint": "read_only",
+		}
+		var region_control: Dictionary = controller.call("evaluate_region_control", (current_world.get("regions", []) as Array)[0])
+		var candidates: Array = controller.call("evaluate_candidates", current_world)
+		var candidate_zero: Dictionary = candidates[0] if candidates.size() > 0 and candidates[0] is Dictionary else {}
+		var candidate_one: Dictionary = candidates[1] if candidates.size() > 1 and candidates[1] is Dictionary else {}
+		_expect(int(region_control.get("controller_player_index", -1)) == 0 and int(region_control.get("control_threshold_basis_points", 0)) == 3000 and int(candidate_zero.get("controlled_region_count", 0)) == 2 and int(candidate_zero.get("top_k_gdp_per_minute_cents", 0)) == 7200 and bool(candidate_zero.get("eligible", false)) and not bool(candidate_one.get("eligible", true)), "v0.6 Victory qualification uses region control and Top-K GDP while a richer non-qualifier cannot trigger a cash win")
+		controller.call("advance_world_effective", 10.0, current_world)
+		var public_audit: Dictionary = controller.call("public_snapshot", -1)
+		var audit_entries: Array = public_audit.get("audit_entries", []) if public_audit.get("audit_entries", []) is Array else []
+		_expect(str(public_audit.get("state", "")) == "audit" and str(public_audit.get("visibility_scope", "")) == "public" and public_audit == controller.call("public_snapshot", 1) and not public_audit.has("own_economic_assets") and audit_entries.size() == 1 and int((audit_entries[0] as Dictionary).get("player_index", -1)) == 0 and int((audit_entries[0] as Dictionary).get("cash_ledger_cents", -1)) == 100, "Victory public audit projection is viewer-stable and exposes exact cash only for the authoritative audit roster")
+		var stale_endpoint: Dictionary = controller.call("advance_world_effective", 120.0, current_world)
+		var settled_world: Dictionary = current_world.duplicate(true)
+		settled_world["settlement_checkpoint"] = "post_world_settlement"
+		var settled_endpoint: Dictionary = controller.call("advance_world_effective", 0.0, settled_world)
+		var outcome: Dictionary = controller.call("outcome_receipt")
+		_expect(str(stale_endpoint.get("state", "")) == "audit" and str(stale_endpoint.get("reason", "")) == "awaiting_post_world_settlement_checkpoint" and str(settled_endpoint.get("state", "")) == "resolved" and outcome.get("comparison_order", []) == ["top_k_gdp_per_minute_cents", "controlled_region_count", "cash_ledger_cents"], "Victory audit resolves only after post_world_settlement and uses cash only after Top-K GDP and control")
 		controller.free()
 	var bridge_packed := load(VICTORY_CONTROL_WORLD_BRIDGE_SCENE) as PackedScene
 	var bridge := bridge_packed.instantiate() if bridge_packed != null else null
@@ -11758,22 +11793,19 @@ func _check_victory_control_runtime_component() -> void:
 		await process_frame
 		for node_name in ["RulesetRuntimeBridge", "GameRuntimeCoordinator", "ControllerHost", "SummaryLabel", "StatusLabel", "RulesText", "ResultsText"]:
 			_expect(bench.find_child(node_name, true, false) != null, "VictoryControlRuntimeBench statically owns %s" % node_name)
-		var cases: Array = bench.call("victory_cases")
 		var manifest: Dictionary = bench.call("build_victory_manifest_preview")
-		var required_cases := ["share_2999bp_fails", "share_3000bp_unique_controls", "share_3000bp_tie_no_control", "qualification_999_not_triggered", "qualification_10_starts_audit", "audit_does_not_cancel_midway", "endpoint_same_tick_leader_joins", "exact_tie_is_co_victory", "menu_pause_freezes_clock", "save_restores_audit_roster_and_time", "public_snapshot_hides_private_contents", "planet_destroyed_uses_cash_only", "main_legacy_cash_victory_absent", "real_main_static_composition"]
-		var cases_ok := cases.size() == 56
-		for case_id in required_cases:
-			cases_ok = cases_ok and cases.has(case_id)
-		var fields_ok := true
-		for record_variant in manifest.get("records", []):
-			var record: Dictionary = record_variant if record_variant is Dictionary else {}
-			for field_name in ["case_id", "state", "control_checked", "qualification_checked", "audit_checked", "ordering_checked", "save_checked", "privacy_checked", "session_checked", "pure_data_checked", "legacy_fallback_used", "passed", "notes"]:
-				fields_ok = fields_ok and record.has(field_name)
-		_expect(bench.has_method("output_dir") and bench.has_method("victory_cases") and bench.has_method("build_victory_manifest_preview") and bench.has_method("run_victory_suite") and cases_ok and fields_ok and int(manifest.get("record_count", 0)) == 56 and str(bench.call("output_dir")) == VICTORY_CONTROL_RUNTIME_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == VICTORY_CONTROL_RUNTIME_SCREENSHOT_PATH and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "VictoryControlRuntimeBench defines the 56-case pure-data SS05-04 gate and user:// outputs")
+		_expect(bench.has_method("victory_cases") and bench.has_method("build_victory_manifest_preview") and bench.has_method("run_victory_suite") and str(manifest.get("suite", "")) == "victory-control-v06-dynamic" and load(VICTORY_CONTROL_SPLIT_DELTA_PRECISION_TEST) is Script and load(VICTORY_CONTROL_PUBLIC_PROJECTION_PRIVACY_TEST) is Script and load(MAIN_VICTORY_PUBLIC_PRIVACY_TEST) is Script and load(BANKRUPTCY_NEUTRAL_ESTATE_RUNTIME_TEST) is Script and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "Victory v0.6 rule, settlement, bankruptcy, and public-privacy gates replace the retired exact-count bench oracle")
 		root.remove_child(bench)
 		bench.queue_free()
+	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
+	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
+	var composed_victory := coordinator.get_node_or_null("VictoryControlRuntimeController") if coordinator != null else null
+	var composed_bridge := coordinator.get_node_or_null("VictoryControlWorldBridge") if coordinator != null else null
+	var composed_bankruptcy := coordinator.get_node_or_null("BankruptcyNeutralEstateRuntimeController") if coordinator != null else null
 	var contract_text := FileAccess.get_file_as_string(VICTORY_CONTROL_RUNTIME_CONTRACT)
-	_expect(contract_text.contains("SS05-04 is a hard cutover") and contract_text.contains("56 cases") and contract_text.contains("There is no cash-goal or legacy countdown fallback"), "Victory Control contract records ownership, privacy, endpoint order, and deletion gate")
+	_expect(composed_victory != null and composed_victory.scene_file_path == VICTORY_CONTROL_RUNTIME_CONTROLLER_SCENE and composed_bridge != null and composed_bridge.scene_file_path == VICTORY_CONTROL_WORLD_BRIDGE_SCENE and composed_bankruptcy != null and composed_bankruptcy.scene_file_path == BANKRUPTCY_NEUTRAL_ESTATE_RUNTIME_CONTROLLER_SCENE and composed_bankruptcy.has_method("settle_checkpoint") and load(MAIN_RUNTIME_COMPOSITION_TEST) is Script and contract_text.contains("SS06-05 is a hard cutover") and contract_text.contains("post_world_settlement") and contract_text.contains("top_k_gdp_per_minute_cents") and contract_text.contains('cash_visibility="public_audit"') and contract_text.contains("private_snapshot(viewer_index)") and contract_text.contains("no runtime fallback"), "Victory Control v0.6 contract is backed by unique owner composition, settlement ordering, bankruptcy separation, and viewer-safe public projection")
+	if coordinator != null:
+		coordinator.free()
 	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
 	var registry: RefCounted = registry_script.new() if registry_script != null else null
 	if registry != null:
