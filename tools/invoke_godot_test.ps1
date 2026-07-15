@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-Runs one Godot 4.7 test as a blocking, timeout-bounded process.
+Runs one Godot 4.7 script or scene gate as a blocking, timeout-bounded process.
 
 .DESCRIPTION
 Uses the GUI Godot executable directly, captures the actual process exit code,
@@ -17,12 +17,21 @@ pwsh -File tools/invoke_godot_test.ps1 `
     -TestScript res://tests/smoke_test.gd `
     -TestArgument --check-only `
     -TimeoutSeconds 180
+
+.EXAMPLE
+pwsh -File tools/invoke_godot_test.ps1 `
+    -Scene res://scenes/tools/ProductMarketRuntimeCharacterizationBench.tscn `
+    -TimeoutSeconds 300
 #>
-[CmdletBinding()]
+[CmdletBinding(DefaultParameterSetName = "Script")]
 param(
-    [Parameter(Mandatory = $true)]
+    [Parameter(Mandatory = $true, ParameterSetName = "Script")]
     [ValidatePattern('^res://.+\.gd$')]
     [string]$TestScript,
+
+    [Parameter(Mandatory = $true, ParameterSetName = "Scene")]
+    [ValidatePattern('^res://.+\.tscn$')]
+    [string]$Scene,
 
     [string]$ProjectPath = (Split-Path -Parent $PSScriptRoot),
 
@@ -161,14 +170,16 @@ if ($godotVersion -notmatch '^4\.7(?:\.|$)') {
     throw "Godot 4.7 is required, but $GodotPath reports ProductVersion '$godotVersion'."
 }
 
-$relativeTestPath = $TestScript.Substring("res://".Length).Replace('/', [IO.Path]::DirectorySeparatorChar)
-$absoluteTestPath = [IO.Path]::GetFullPath((Join-Path $ProjectPath $relativeTestPath))
+$targetType = if ($PSCmdlet.ParameterSetName -eq "Scene") { "scene" } else { "script" }
+$targetPath = if ($targetType -eq "scene") { $Scene } else { $TestScript }
+$relativeTargetPath = $targetPath.Substring("res://".Length).Replace('/', [IO.Path]::DirectorySeparatorChar)
+$absoluteTargetPath = [IO.Path]::GetFullPath((Join-Path $ProjectPath $relativeTargetPath))
 $projectPrefix = $ProjectPath + [IO.Path]::DirectorySeparatorChar
-if (-not $absoluteTestPath.StartsWith($projectPrefix, [StringComparison]::OrdinalIgnoreCase)) {
-    throw "Test script must stay inside the project: $TestScript"
+if (-not $absoluteTargetPath.StartsWith($projectPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+    throw "Godot target must stay inside the project: $targetPath"
 }
-if (-not (Test-Path -LiteralPath $absoluteTestPath -PathType Leaf)) {
-    throw "Test script was not found: $absoluteTestPath"
+if (-not (Test-Path -LiteralPath $absoluteTargetPath -PathType Leaf)) {
+    throw "Godot target was not found: $absoluteTargetPath"
 }
 
 $preexistingRuntime = @(Get-ProjectRuntimeProcess -ResolvedProjectPath $ProjectPath -ResolvedGodotPath $GodotPath)
@@ -177,7 +188,7 @@ if ($preexistingRuntime.Count -gt 0) {
     throw "Refusing to overlap an existing Godot headless/game process for this project. PIDs: $ids"
 }
 
-$testName = [IO.Path]::GetFileNameWithoutExtension($absoluteTestPath)
+$testName = [IO.Path]::GetFileNameWithoutExtension($absoluteTargetPath)
 $safeTestName = [regex]::Replace($testName, '[^A-Za-z0-9_.-]', '_')
 $runId = "{0}-{1}-{2}" -f [DateTime]::UtcNow.ToString("yyyyMMdd-HHmmss-fff"), $safeTestName, ([guid]::NewGuid().ToString("N").Substring(0, 8))
 $runDirectory = Join-Path $LogRoot $runId
@@ -190,9 +201,14 @@ $resultPath = Join-Path $runDirectory "result.json"
 $arguments = @(
     "--headless",
     "--path", $ProjectPath,
-    "--log-file", $godotLogPath,
-    "--script", $TestScript
-) + @($TestArgument)
+    "--log-file", $godotLogPath
+)
+if ($targetType -eq "scene") {
+    $arguments += @("--scene", $Scene)
+} else {
+    $arguments += @("--script", $TestScript)
+}
+$arguments += @($TestArgument)
 
 $startedAt = [DateTime]::UtcNow
 $stopwatch = [Diagnostics.Stopwatch]::StartNew()
@@ -269,7 +285,10 @@ $status = if ($timedOut) {
 $result = [ordered]@{
     run_id = $runId
     status = $status
-    test_script = $TestScript
+    target_type = $targetType
+    target_path = $targetPath
+    test_script = if ($targetType -eq "script") { $TestScript } else { $null }
+    scene = if ($targetType -eq "scene") { $Scene } else { $null }
     test_arguments = @($TestArgument)
     project_path = $ProjectPath
     godot_path = $GodotPath

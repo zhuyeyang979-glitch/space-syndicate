@@ -255,6 +255,7 @@ pwsh -File tools/invoke_godot_test.ps1 -TestScript res://tests/visual_snapshot.g
 pwsh -File tools/invoke_godot_test.ps1 -TestScript res://tests/layout_scene_smoke_test.gd -TimeoutSeconds 300
 pwsh -File tools/invoke_godot_test.ps1 -TestScript res://tests/smoke_test.gd -TestArgument --check-only -TimeoutSeconds 180
 pwsh -File tools/invoke_godot_test.ps1 -TestScript res://tests/smoke_test.gd -TimeoutSeconds 600
+pwsh -File tools/invoke_godot_test.ps1 -Scene res://scenes/tools/ProductMarketRuntimeCharacterizationBench.tscn -TimeoutSeconds 300
 ```
 
 正常完成时 runner 原样返回 Godot ExitCode。runner 自身保留 `124` 表示 timeout，
