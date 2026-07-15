@@ -5357,6 +5357,64 @@ func _force_runtime_screen_sync(main: Node) -> void:
 		main.call("_sync_runtime_game_screen", true)
 
 
+func _compose_scene_owned_runtime_table_snapshot(main: Node, coordinator: Node) -> Dictionary:
+	if main == null or coordinator == null or not main.has_method("_runtime_table_viewmodel_source") or not coordinator.has_method("compose_game_table_snapshot"):
+		return {}
+	var source_variant: Variant = main.call("_runtime_table_viewmodel_source")
+	if not (source_variant is Dictionary):
+		return {}
+	var snapshot_variant: Variant = coordinator.call("compose_game_table_snapshot", source_variant)
+	return (snapshot_variant as Dictionary).duplicate(true) if snapshot_variant is Dictionary else {}
+
+
+func _runtime_game_screen_table_snapshot(runtime_screen: Control) -> Dictionary:
+	if runtime_screen == null:
+		return {}
+	var snapshot_variant: Variant = runtime_screen.get("current_ui_data")
+	return (snapshot_variant as Dictionary).duplicate(true) if snapshot_variant is Dictionary else {}
+
+
+func _runtime_table_snapshot_contains_private_owner_data(value: Variant) -> bool:
+	var forbidden_keys := [
+		"players",
+		"opponents",
+		"opponent_cash",
+		"opponent_hand",
+		"cash",
+		"cash_cents",
+		"player_cash",
+		"hand",
+		"private_hand",
+		"private_guess",
+		"private_target",
+		"private_discard",
+		"city_guesses",
+		"city_guess_confidence",
+		"city_guess_reasons",
+		"hidden_owner",
+		"owner_player_index",
+		"owner_truth",
+		"true_owner",
+		"known_card_owners",
+		"known_contract_parties",
+		"ai_plan",
+		"ai_private_plan",
+		"ai_memory",
+		"ai_score",
+	]
+	if value is Dictionary:
+		for key_variant in (value as Dictionary).keys():
+			if forbidden_keys.has(str(key_variant).to_lower()):
+				return true
+			if _runtime_table_snapshot_contains_private_owner_data((value as Dictionary).get(key_variant)):
+				return true
+	elif value is Array:
+		for item in value:
+			if _runtime_table_snapshot_contains_private_owner_data(item):
+				return true
+	return false
+
+
 func _resolve_runtime_card_resolution_until_idle(main: Node) -> void:
 	if not main.has_method("_update_card_resolution_queue"):
 		return
@@ -5875,8 +5933,12 @@ func _check_runtime_table_snapshot_bridge() -> void:
 	viewport.add_child(main)
 	await process_frame
 	await process_frame
-	_expect(main.has_method("_runtime_table_snapshot"), "main runtime exposes a TableSnapshot-compatible adapter")
 	var runtime_screen := main.find_child("RuntimeGameScreen", true, false) as Control
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
+	var table_viewmodel := coordinator.get_node_or_null("GameTableViewModelRuntimeService") if coordinator != null else null
+	var table_viewmodel_debug: Dictionary = table_viewmodel.call("debug_snapshot") if table_viewmodel != null and table_viewmodel.has_method("debug_snapshot") else {}
+	_expect(coordinator != null and coordinator.has_method("compose_game_table_snapshot") and table_viewmodel != null and table_viewmodel.scene_file_path == GAME_TABLE_VIEWMODEL_RUNTIME_SERVICE_SCENE and table_viewmodel.has_method("compose_table") and runtime_screen != null and runtime_screen.has_method("apply_state"), "scene-owned GameTableViewModelRuntimeService and GameScreen own the runtime TableSnapshot chain")
+	_expect(bool(table_viewmodel_debug.get("owns_table_snapshot_normalization", false)) and not bool(table_viewmodel_debug.get("reads_runtime_nodes", true)) and not bool(table_viewmodel_debug.get("legacy_main_snapshot_assembly_active", true)), "GameTableViewModelRuntimeService owns pure TableSnapshot normalization without runtime-node reads or legacy Main assembly")
 	var runtime_map := main.get("map_view") as Control
 	var runtime_overlay_host: Node = null
 	var map_host: Control = null
@@ -5899,8 +5961,10 @@ func _check_runtime_table_snapshot_bridge() -> void:
 		var overlay_node := hosted_overlay_nodes[overlay_label] as Control
 		_expect(overlay_node != null and overlay_node.get_parent() == runtime_surface_host and overlay_node.get_parent() != main, "main runtime hosts %s inside sceneized RuntimeSurfaceLayer instead of the root scene" % overlay_label)
 	_expect(main.has_method("_on_runtime_game_screen_action_requested"), "main runtime handles split GameScreen action signals")
-	var snapshot_variant: Variant = main.call("_runtime_table_snapshot") if main.has_method("_runtime_table_snapshot") else {}
-	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
+	_force_runtime_screen_sync(main)
+	var snapshot := _compose_scene_owned_runtime_table_snapshot(main, coordinator)
+	var screen_snapshot := _runtime_game_screen_table_snapshot(runtime_screen)
+	_expect(snapshot == screen_snapshot, "GameScreen consumes the same scene-owned normalized TableSnapshot produced by the ViewModel owner")
 	_expect(snapshot.has("top_bar"), "runtime snapshot contains top_bar")
 	_expect(snapshot.has("right_inspector"), "runtime snapshot contains right_inspector")
 	_expect(snapshot.has("player_board"), "runtime snapshot contains player_board")
@@ -5908,11 +5972,8 @@ func _check_runtime_table_snapshot_bridge() -> void:
 	_expect(snapshot.has("card_resolution_track"), "runtime snapshot contains card_resolution_track")
 	_expect(snapshot.has("planet"), "runtime snapshot contains planet")
 	_expect(snapshot.has("first_run_coach"), "runtime snapshot contains first_run_coach")
-	_expect(not _variant_contains_callable(snapshot), "runtime TableSnapshot bridge emits data-only snapshots without Callable rule handles")
-	var snapshot_source_variant: Variant = main.call("_runtime_table_snapshot_source") if main.has_method("_runtime_table_snapshot_source") else {}
-	var snapshot_source: Dictionary = snapshot_source_variant if snapshot_source_variant is Dictionary else {}
-	_expect(snapshot_source.has("card_resolution_track"), "runtime TableSnapshot source includes sceneized card resolution track payload")
-	_expect(not _variant_contains_callable(snapshot_source), "runtime TableSnapshot source strips internal Callable action targets before split UI sync")
+	_expect(not _variant_contains_callable(snapshot) and not _variant_contains_object(snapshot), "scene-owned runtime TableSnapshot is pure data without Callable or Object rule handles")
+	_expect(not _runtime_table_snapshot_contains_private_owner_data(snapshot), "public TableSnapshot excludes opponent cash/hand, private guesses, hidden owner truth, and AI plans")
 	var top_bar: Dictionary = snapshot.get("top_bar", {}) if snapshot.get("top_bar", {}) is Dictionary else {}
 	var right_inspector: Dictionary = snapshot.get("right_inspector", {}) if snapshot.get("right_inspector", {}) is Dictionary else {}
 	var player_board: Dictionary = snapshot.get("player_board", {}) if snapshot.get("player_board", {}) is Dictionary else {}
@@ -5942,6 +6003,7 @@ func _check_runtime_table_snapshot_bridge() -> void:
 	if main.has_method("_close_menu"):
 		main.call("_close_menu")
 		await process_frame
+	_force_runtime_screen_sync(main)
 	var runtime_menu_button: Button = null
 	var runtime_end_turn_button: Button = null
 	if runtime_screen != null:
@@ -5953,12 +6015,12 @@ func _check_runtime_table_snapshot_bridge() -> void:
 		runtime_menu_button.emit_signal("pressed")
 		await process_frame
 		_expect(runtime_menu_overlay != null and runtime_menu_overlay.visible, "runtime split TopBar menu button opens the existing menu overlay")
-	var live_snapshot_variant: Variant = main.call("_runtime_table_snapshot")
-	var live_snapshot: Dictionary = live_snapshot_variant if live_snapshot_variant is Dictionary else {}
+	var live_snapshot := _compose_scene_owned_runtime_table_snapshot(main, coordinator)
 	var live_player_board: Dictionary = live_snapshot.get("player_board", {}) if live_snapshot.get("player_board", {}) is Dictionary else {}
 	var live_right_inspector: Dictionary = live_snapshot.get("right_inspector", {}) if live_snapshot.get("right_inspector", {}) is Dictionary else {}
 	var live_first_run_coach: Dictionary = live_snapshot.get("first_run_coach", {}) if live_snapshot.get("first_run_coach", {}) is Dictionary else {}
 	var live_deep_links: Array = live_right_inspector.get("deep_links", []) if live_right_inspector.get("deep_links", []) is Array else []
+	_expect(not _runtime_table_snapshot_contains_private_owner_data(live_snapshot), "live public TableSnapshot keeps opponent cash/hand, private guesses, hidden owner truth, and AI plans out of the UI payload")
 	_expect(live_player_board.get("hand_cards", []) is Array and (live_player_board.get("hand_cards", []) as Array).size() > 0, "runtime player_board snapshot includes live hand-card data after a new run starts")
 	var live_quick_actions: Array = live_player_board.get("quick_actions", []) if live_player_board.get("quick_actions", []) is Array else []
 	_expect(live_quick_actions.size() == 3 and not _action_list_has_id(live_quick_actions, "build") and _action_list_has_id(live_quick_actions, "rack") and _action_list_has_id(live_quick_actions, "buy") and _action_list_has_id(live_quick_actions, "play"), "runtime player_board snapshot includes only Rack/Buy/Play scan chips after a new run starts")
@@ -5971,10 +6033,10 @@ func _check_runtime_table_snapshot_bridge() -> void:
 	_prepare_runtime_open_card_auction(main)
 	_force_runtime_screen_sync(main)
 	await process_frame
-	var auction_snapshot_variant: Variant = main.call("_runtime_table_snapshot")
-	var auction_snapshot: Dictionary = auction_snapshot_variant if auction_snapshot_variant is Dictionary else {}
+	var auction_snapshot := _compose_scene_owned_runtime_table_snapshot(main, coordinator)
 	var auction_player_board: Dictionary = auction_snapshot.get("player_board", {}) if auction_snapshot.get("player_board", {}) is Dictionary else {}
 	var auction_bid_board: Dictionary = auction_player_board.get("bid_board", {}) if auction_player_board.get("bid_board", {}) is Dictionary else {}
+	_expect(not _runtime_table_snapshot_contains_private_owner_data(auction_snapshot), "public auction TableSnapshot keeps private player and AI state behind the owner boundary")
 	var auction_bid_chips: Array = auction_bid_board.get("chips", []) if auction_bid_board.get("chips", []) is Array else []
 	var auction_track_links: Array = auction_bid_board.get("track_links", []) if auction_bid_board.get("track_links", []) is Array else []
 	var auction_bid_actions: Array = auction_bid_board.get("actions", []) if auction_bid_board.get("actions", []) is Array else []
@@ -6071,8 +6133,7 @@ func _check_runtime_table_snapshot_bridge() -> void:
 	_clear_runtime_card_auction_fixture(main)
 	_force_runtime_screen_sync(main)
 	await process_frame
-	live_snapshot_variant = main.call("_runtime_table_snapshot")
-	live_snapshot = live_snapshot_variant if live_snapshot_variant is Dictionary else {}
+	live_snapshot = _compose_scene_owned_runtime_table_snapshot(main, coordinator)
 	live_player_board = live_snapshot.get("player_board", {}) if live_snapshot.get("player_board", {}) is Dictionary else {}
 	var live_hand_cards: Array = live_player_board.get("hand_cards", []) if live_player_board.get("hand_cards", []) is Array else []
 	if not live_hand_cards.is_empty():
@@ -6083,8 +6144,8 @@ func _check_runtime_table_snapshot_bridge() -> void:
 			expected_play_id = "play_%d" % int(first_card_id.substr("hand_".length()))
 		main.call("_on_runtime_game_screen_card_selected", first_card)
 		await process_frame
-		var card_snapshot_variant: Variant = main.call("_runtime_table_snapshot")
-		var card_snapshot: Dictionary = card_snapshot_variant if card_snapshot_variant is Dictionary else {}
+		_force_runtime_screen_sync(main)
+		var card_snapshot := _compose_scene_owned_runtime_table_snapshot(main, coordinator)
 		var card_inspector: Dictionary = card_snapshot.get("right_inspector", {}) if card_snapshot.get("right_inspector", {}) is Dictionary else {}
 		var card_requirements: Array = card_inspector.get("requirements", []) if card_inspector.get("requirements", []) is Array else []
 		var card_actions: Array = card_inspector.get("actions", []) if card_inspector.get("actions", []) is Array else []
