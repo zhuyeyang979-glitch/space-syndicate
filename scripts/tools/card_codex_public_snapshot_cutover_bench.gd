@@ -504,8 +504,8 @@ func _coordinator_detail() -> Dictionary:
 func _mutate_private_viewer_state() -> void:
 	if _main == null:
 		return
-	_main.set("selected_player", 1)
-	_main.set("selected_district", 3)
+	((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 1
+	((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = 3
 	var players_variant: Variant = _main.get("players")
 	if not (players_variant is Array):
 		return

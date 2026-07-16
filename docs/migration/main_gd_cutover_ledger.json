@@ -99,16 +99,44 @@
       "old_consumers": [
         "GameScreen snapshot",
         "PlanetBoard actions",
-        "PlayerBoard actions"
+        "PlayerBoard actions",
+        "AI runtime",
+        "monster runtime",
+        "military runtime",
+        "product market runtime",
+        "contract runtime",
+        "card eligibility and resolution",
+        "infrastructure and balance diagnostics",
+        "save restore",
+        "active tests and characterization benches"
       ],
-      "new_owner_scene": "",
-      "new_owner_script": "",
-      "new_public_api": [],
-      "tests": [],
-      "old_path_deleted": false,
-      "duplicate_execution_checked": false,
+      "new_owner_scene": "res://scenes/runtime/TableSelectionState.tscn",
+      "new_owner_script": "res://scripts/runtime/table_selection_state.gd",
+      "new_public_api": [
+        "selected_player",
+        "inspected_player",
+        "selected_district",
+        "selected_trade_product",
+        "reset",
+        "set_active_context",
+        "restore",
+        "snapshot",
+        "to_save_data",
+        "apply_save_data"
+      ],
+      "tests": [
+        "res://tests/table_selection_state_cutover_test.gd",
+        "res://scenes/tools/TableSelectionStateCutoverBench.tscn",
+        "res://tests/main_runtime_composition_test.gd",
+        "res://tests/runtime_pointer_input_layer_test.gd",
+        "res://tests/ui_text_smoke_test.gd",
+        "res://tests/visual_snapshot.gd",
+        "res://tests/smoke_test.gd --check-only"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
       "commit_sha": "",
-      "status": "pending"
+      "status": "cut_over"
     },
     {
       "domain": "runtime_loop",

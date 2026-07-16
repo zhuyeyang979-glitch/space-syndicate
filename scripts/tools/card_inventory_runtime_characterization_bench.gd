@@ -622,7 +622,7 @@ func _case_extra_district_supply_receive() -> Dictionary:
 	var before := _player_probe(0)
 	var debug_before := _inventory_debug()
 	if not fixture.is_empty():
-		_runtime_main.set("selected_district", int(fixture.get("district_index", -1)))
+		((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = int(fixture.get("district_index", -1))
 		var players: Array = _runtime_main.get("players") as Array
 		var player: Dictionary = players[0]
 		_runtime_main.call("_draw_extra_district_cards", player, 1, "characterization")
@@ -645,7 +645,7 @@ func _case_hand_steal_receive_success() -> Dictionary:
 	var steal_skill := _interaction_skill("player_hand_steal")
 	_reset_player(0, [])
 	_reset_player(1, [_make_skill(card_id)])
-	_runtime_main.set("selected_district", int(_first_supply_fixture().get("district_index", 0)))
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = int(_first_supply_fixture().get("district_index", 0))
 	_seed_runtime_rng(30012)
 	var source_before := _player_probe(0)
 	var target_before := _player_probe(1)
@@ -670,7 +670,7 @@ func _case_hand_steal_receive_failure_conversion() -> Dictionary:
 	var steal_skill := _interaction_skill("player_hand_steal")
 	_reset_player(0, [_make_skill(max_id)])
 	_reset_player(1, [_make_skill(card_id)])
-	_runtime_main.set("selected_district", int(_first_supply_fixture().get("district_index", 0)))
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = int(_first_supply_fixture().get("district_index", 0))
 	_seed_runtime_rng(30013)
 	var source_before := _player_probe(0)
 	var target_before := _player_probe(1)
@@ -820,7 +820,7 @@ func _case_public_private_boundary() -> Dictionary:
 	var steal_skill := _interaction_skill("player_hand_steal")
 	_reset_player(0, [])
 	_reset_player(1, [_make_skill(card_id)])
-	_runtime_main.set("selected_district", int(_first_supply_fixture().get("district_index", 0)))
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = int(_first_supply_fixture().get("district_index", 0))
 	_seed_runtime_rng(30019)
 	var source_before := _player_probe(0)
 	var target_before := _player_probe(1)
@@ -1166,8 +1166,8 @@ func _prepare_purchase_fixture(player_index: int) -> Dictionary:
 	var district_index := int(fixture.get("district_index", -1))
 	var card_id := str(fixture.get("card_id", ""))
 	_reset_player(player_index, [])
-	_runtime_main.set("selected_player", player_index)
-	_runtime_main.set("selected_district", district_index)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = player_index
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
 	_runtime_main.set("selected_market_skill", card_id)
 	_runtime_main.set("previewed_district_card", card_id)
 	_runtime_main.call("_open_district_card_purchase_window", district_index, player_index)
@@ -1213,7 +1213,7 @@ func _acquire_for_player(player_index: int, card_id: String) -> bool:
 	if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary):
 		return false
 	var player: Dictionary = players[player_index]
-	var acquired := bool(_runtime_main.call("_acquire_card_for_player", player, card_id, int(_runtime_main.get("selected_district")), "characterization", true))
+	var acquired := bool(_runtime_main.call("_acquire_card_for_player", player, card_id, int(((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district), "characterization", true))
 	players[player_index] = player
 	_runtime_main.set("players", players)
 	return acquired

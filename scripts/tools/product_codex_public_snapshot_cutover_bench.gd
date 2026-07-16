@@ -264,8 +264,8 @@ func _run_case(case_id: String) -> Dictionary:
 				players[0] = player
 				_main.set("players", players)
 			if _main != null:
-				_main.set("selected_player", 2)
-				_main.set("selected_district", 3)
+				((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 2
+				((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = 3
 			var after: Dictionary = coordinator.call("product_codex_public_detail_snapshot", _real_product_name, 0, true) if coordinator != null else {}
 			passed = sanitized.is_empty() and before == after and not _contains_private_key(snapshot) and _is_pure_data(snapshot) and not JSON.stringify(snapshot).contains("PRIVATE_SENTINEL")
 			flags["privacy_checked"] = true

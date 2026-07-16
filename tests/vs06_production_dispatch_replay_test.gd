@@ -153,7 +153,7 @@ func _check_facility_dispatch(main: Node, coordinator: Node, inventory: Object, 
 	var card_id := str(purchase.get("card_id", ""))
 	var player := coordinator.call("v06_card_player_snapshot", actor_id) as Dictionary
 	var slot_index := _find_card_slot(player, card_id)
-	var district := int(main.get("selected_district"))
+	var district := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
 	var region_id := _selected_region_id(main, district)
 	var transaction_id := "vs06-a5:facility-play:%s" % actor_id
 	var request := {

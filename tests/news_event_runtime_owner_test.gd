@@ -60,15 +60,22 @@ func _initialize() -> void:
 	var formula := FORMULA_SCENE.instantiate()
 	var market := RecordingMarket.new()
 	var world := FixtureWorld.new()
+	var table_selection := TableSelectionState.new()
 	root.add_child(service)
 	root.add_child(bridge)
 	root.add_child(formula)
 	root.add_child(market)
 	root.add_child(world)
+	root.add_child(table_selection)
+	table_selection.restore({
+		"selected_district": 0,
+		"selected_trade_product": "星露莓",
+	})
 	service.configure({"ruleset_id": "v0.4"})
 	formula.configure({"ruleset_id": "v0.4"})
 	bridge.set_product_market_runtime_controller(market)
 	bridge.set_formula_runtime_service(formula)
+	bridge.set_table_selection_state(table_selection)
 
 	var skill := {
 		"name": "监管风暴1",
@@ -126,6 +133,7 @@ func _initialize() -> void:
 	root.add_child(market_world)
 	market_formula.configure({"ruleset_id": "v0.4"})
 	market_bridge.bind_world(market_world)
+	market_bridge.set_table_selection_state(table_selection)
 	real_market.set_world_bridge(market_bridge)
 	real_market.product_market = {"星露莓": {"base_price": 50, "price": 50, "volatility": 4, "temporary_demand_pressure": 0, "temporary_supply_pressure": 0, "price_history": [50]}}
 	var real_market_receipt: Dictionary = real_market.apply_news_market_pressure({"market_demand_pressure": 2, "market_supply_pressure": 1, "volatility_delta": 1})

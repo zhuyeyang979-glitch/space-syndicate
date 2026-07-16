@@ -137,15 +137,21 @@ var game_time: float:
 
 var selected_player: int:
 	get:
-		return int(_world_value(&"selected_player", -1))
+		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
+		return state.selected_player if state != null else -1
 	set(value):
-		_write_world_value(&"selected_player", value)
+		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
+		if state != null:
+			state.selected_player = value
 
 var selected_district: int:
 	get:
-		return int(_world_value(&"selected_district", -1))
+		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
+		return state.selected_district if state != null else -1
 	set(value):
-		_write_world_value(&"selected_district", value)
+		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
+		if state != null:
+			state.selected_district = value
 
 var rng: RunRngService:
 	get:

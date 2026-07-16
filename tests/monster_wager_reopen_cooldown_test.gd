@@ -35,7 +35,7 @@ func _run() -> void:
 	var timing: Dictionary = main.call("_ruleset_timing_rules")
 	var cooldown := float(timing.get("monster_wager_reopen_cooldown_seconds", -1.0))
 	_expect(is_equal_approx(cooldown, 20.0), "ruleset owns a 20-second wager reopen cooldown")
-	var district_index := maxi(0, int(main.get("selected_district")))
+	var district_index := maxi(0, int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district))
 	var actor_a := monsters.call("_make_auto_monster", 0, 0, district_index, 0, 1) as Dictionary
 	var actor_b := monsters.call("_make_auto_monster", 1, 1, district_index, 1, 1) as Dictionary
 	actor_a["slot"] = 0

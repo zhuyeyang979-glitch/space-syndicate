@@ -183,8 +183,8 @@ func _test_private_intel_callers_remain_owned() -> void:
 
 
 func _reset_private_fixture() -> void:
-	_main.set("selected_player", 0)
-	_main.set("selected_district", _district_index)
+	((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = _district_index
 	var players: Array = _main.get("players")
 	for player_index in range(players.size()):
 		var player := (players[player_index] as Dictionary).duplicate(true)
@@ -225,7 +225,7 @@ func _reset_private_fixture() -> void:
 func _apply_private_mutation(mutation_id: String) -> void:
 	match mutation_id:
 		"selected_player":
-			_main.set("selected_player", 1)
+			((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 1
 		"city_guesses":
 			var players: Array = _main.get("players")
 			var player := (players[0] as Dictionary).duplicate(true)

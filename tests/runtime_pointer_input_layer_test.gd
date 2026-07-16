@@ -100,7 +100,7 @@ func _check_viewport_mouse_reaches_map(main: Node, map_view: Control) -> void:
 		print("DEBUG map drag blockers: %s" % str(_controls_under_point(root, drag_end)))
 		print("DEBUG viewport hovered after drag: %s" % _control_debug_name(root.gui_get_hovered_control()))
 	_expect(center_after.distance_to(center_before) > 0.05, "real viewport mouse drag reaches RuntimeMapView rotation/pan path")
-	_expect(int(main.get("selected_district")) >= -1, "runtime map pointer path keeps gameplay district state accessible")
+	_expect(int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district) >= -1, "runtime map pointer path keeps gameplay district state accessible")
 
 
 func _check_viewport_mouse_reaches_hand_card(main: Node, hand_rack: Control) -> void:

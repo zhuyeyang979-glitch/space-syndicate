@@ -2399,7 +2399,7 @@ func _check_runtime_map_mouse_selection_flow(main: Node, runtime_screen: Control
 	_expect(map_view.has_method("get_district_control_position"), "runtime MapView exposes district control coordinates for real input routing")
 	if not map_view.has_method("get_district_control_position"):
 		return
-	var current_district := int(main.get("selected_district"))
+	var current_district := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
 	var target_district := _first_runtime_alive_district_with_supply(main, current_district)
 	if target_district < 0:
 		target_district = _first_runtime_alive_district_except(main, current_district)
@@ -2408,7 +2408,7 @@ func _check_runtime_map_mouse_selection_flow(main: Node, runtime_screen: Control
 		return
 	var previous_district := _first_runtime_alive_district_except(main, target_district)
 	if previous_district >= 0:
-		main.set("selected_district", previous_district)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = previous_district
 	_force_runtime_screen_sync(main)
 	await process_frame
 	var position_variant: Variant = map_view.call("get_district_control_position", target_district)
@@ -2419,7 +2419,7 @@ func _check_runtime_map_mouse_selection_flow(main: Node, runtime_screen: Control
 	_click_map_control(map_view, local_position, false)
 	await process_frame
 	await process_frame
-	_expect(int(main.get("selected_district")) == target_district, "single-clicking the live MapView selects the target district through real mouse release")
+	_expect(int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district) == target_district, "single-clicking the live MapView selects the target district through real mouse release")
 	var snapshot_variant: Variant = main.call("_runtime_table_snapshot") if main.has_method("_runtime_table_snapshot") else {}
 	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
 	var top_bar: Dictionary = snapshot.get("top_bar", {}) if snapshot.get("top_bar", {}) is Dictionary else {}
@@ -2446,8 +2446,8 @@ func _check_runtime_main_action_dock_click_flow(main: Node, runtime_screen: Cont
 		main.call("_new_game")
 		await process_frame
 	_prepare_runtime_human_player(main, 0)
-	main.set("selected_player", 0)
-	main.set("inspected_player", 0)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).inspected_player = 0
 	if main.has_method("_close_menu"):
 		main.call("_close_menu")
 		await process_frame
@@ -2462,7 +2462,7 @@ func _check_runtime_main_action_dock_click_flow(main: Node, runtime_screen: Cont
 	var supply_district := _first_runtime_district_with_supply(main)
 	_expect(supply_district >= 0, "runtime quick-action click flow finds a district with public card supply")
 	if supply_district >= 0:
-		main.set("selected_district", supply_district)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = supply_district
 		_force_runtime_screen_sync(main)
 		await process_frame
 		dock = runtime_screen.find_child("PlayerMainActionDock", true, false) as Control
@@ -2482,9 +2482,9 @@ func _check_runtime_main_action_dock_click_flow(main: Node, runtime_screen: Cont
 	var build_district := _first_runtime_buildable_district(main)
 	_expect(build_district >= 0, "runtime quick-action click flow finds a district that the legacy path would have accepted")
 	if build_district >= 0:
-		main.set("selected_player", 0)
-		main.set("inspected_player", 0)
-		main.set("selected_district", build_district)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).inspected_player = 0
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = build_district
 		# The rejection path refreshes city cashflow shells. Stabilize those derived
 		# dictionaries before taking the no-mutation baseline.
 		if main.has_method("_refresh_ui"):
@@ -2517,7 +2517,7 @@ func _check_runtime_main_action_dock_click_flow(main: Node, runtime_screen: Cont
 	var action_context := _first_runtime_actionable_hand_context(main)
 	var actionable_slot := int(action_context.get("slot", -1))
 	if not action_context.is_empty():
-		main.set("selected_district", int(action_context.get("district", -1)))
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = int(action_context.get("district", -1))
 	_clear_runtime_player_action_cooldown(main, 0)
 	_force_runtime_screen_sync(main)
 	await process_frame
@@ -2567,7 +2567,7 @@ func _check_runtime_hand_card_double_click_play(main: Node, runtime_screen: Cont
 		return
 	var district_index := int(action_context.get("district", -1))
 	var slot_index := int(action_context.get("slot", -1))
-	main.set("selected_district", district_index)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
 	main.set("selected_runtime_card_slot", -1)
 	_force_runtime_screen_sync(main)
 	await process_frame
@@ -2614,7 +2614,7 @@ func _check_runtime_hand_card_drag_to_map_play(main: Node, runtime_screen: Contr
 		await process_frame
 	var previous_district := _first_runtime_alive_district_except(main, target_district)
 	if previous_district >= 0:
-		main.set("selected_district", previous_district)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = previous_district
 	main.set("selected_runtime_card_slot", -1)
 	_force_runtime_screen_sync(main)
 	await process_frame
@@ -2632,7 +2632,7 @@ func _check_runtime_hand_card_drag_to_map_play(main: Node, runtime_screen: Contr
 	_drag_card_control_to_screen(hand_card, drop_screen_position)
 	await process_frame
 	await process_frame
-	_expect(int(main.get("selected_district")) == target_district, "dragging a live hand card onto a map district selects the drop district before playing")
+	_expect(int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district) == target_district, "dragging a live hand card onto a map district selects the drop district before playing")
 	_expect(int(main.get("selected_runtime_card_slot")) == slot_index, "dragging a live hand card onto the map selects the matching runtime hand slot")
 	_expect(_runtime_card_resolution_entry_count(main) > queue_before, "dragging a live hand card onto the map commits it to the public resolution track through the gameplay controller")
 	main.set("selected_card_resolution_id", -1)
@@ -2712,7 +2712,7 @@ func _check_runtime_blocked_hand_card_drag_reason(main: Node, runtime_screen: Co
 	_expect(map_view != null and map_view.has_method("get_district_control_position"), "runtime blocked hand-card drag flow uses MapView drop coordinates")
 	if map_view == null or not map_view.has_method("get_district_control_position"):
 		return
-	main.set("selected_district", target_district)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = target_district
 	_set_runtime_player_action_cooldown(main, 0, 2.5)
 	main.set("selected_runtime_card_slot", -1)
 	_force_runtime_screen_sync(main)
@@ -2758,7 +2758,7 @@ func _check_runtime_market_card_double_click_purchase(main: Node, runtime_screen
 	_expect(not action_context.is_empty(), "runtime market-card double-click flow can prepare first monster access")
 	if action_context.is_empty():
 		return
-	main.set("selected_district", int(action_context.get("district", -1)))
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = int(action_context.get("district", -1))
 	_force_runtime_screen_sync(main)
 	await process_frame
 	var dock := runtime_screen.find_child("PlayerMainActionDock", true, false) as Control
@@ -2777,7 +2777,7 @@ func _check_runtime_market_card_double_click_purchase(main: Node, runtime_screen
 		return
 	var buy_district := int(buy_offer.get("district", -1))
 	var buy_card := String(buy_offer.get("card", ""))
-	main.set("selected_district", buy_district)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = buy_district
 	main.set("selected_market_skill", buy_card)
 	main.set("previewed_district_card", buy_card)
 	_force_runtime_screen_sync(main)
@@ -3037,7 +3037,7 @@ func _first_runtime_actionable_hand_context(main: Node) -> Dictionary:
 		var district: Dictionary = districts[i]
 		if bool(district.get("destroyed", false)):
 			continue
-		main.set("selected_district", i)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = i
 		var slot_index := int(main.call("_first_actionable_hand_slot", 0))
 		if slot_index >= 0:
 			return {"district": i, "slot": slot_index}
@@ -3109,9 +3109,9 @@ func _prepare_runtime_full_hand_purchase(main: Node, district_index: int, incomi
 			]
 		players[0] = player
 		main.set("players", players)
-	main.set("selected_player", 0)
-	main.set("inspected_player", 0)
-	main.set("selected_district", district_index)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).inspected_player = 0
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
 	main.set("selected_market_skill", incoming_card)
 	main.set("previewed_district_card", incoming_card)
 	main.set("pending_discard_purchase", {})
@@ -10379,7 +10379,7 @@ func _check_main_player_panel_refresh_contract() -> void:
 	var hand_rack_source := FileAccess.get_file_as_string("res://scripts/ui/hand_rack.gd")
 	_expect(not main_source.contains("var player_panel_signature") and not main_source.contains("func _uses_split_runtime_table") and not main_source.contains("func _refresh_split_compatibility_player_panel") and not main_source.contains("func _player_panel_structure_signature") and not main_source.contains("func _refresh_player_panel_live_values"), "main.gd no longer owns the generated or compatibility PlayerBoard renderer")
 	_expect(main_source.contains("func _sync_runtime_game_screen") and main_source.contains("runtime_game_screen.call(\"apply_state\""), "main.gd updates the scene-owned GameScreen through the snapshot bridge")
-	_expect(main_source.contains("func _activate_runtime_quick_action") and main_source.contains("_runtime_quick_action_entry(player_index, action_id)") and not main_source.contains("_reject_legacy_direct_city_build") and main_source.contains("_open_district_supply_from_map(selected_district)") and coordinator_source.contains("func play_v06_runtime_card("), "main quick actions stay data-backed while rack opening and card play use their existing runtime routes")
+	_expect(main_source.contains("func _activate_runtime_quick_action") and main_source.contains("_runtime_quick_action_entry(player_index, action_id)") and not main_source.contains("_reject_legacy_direct_city_build") and main_source.contains("_open_district_supply_from_map(_game_runtime_coordinator_node().table_selection_state().selected_district)") and coordinator_source.contains("func play_v06_runtime_card("), "main quick actions stay data-backed while rack opening and card play use their existing runtime routes")
 	_expect(main_source.contains("func _runtime_player_board_quick_actions") and main_source.contains("\"rack\"") and main_source.contains("\"buy\"") and main_source.contains("\"play\"") and main_source.contains("_first_actionable_hand_slot(player_index)") and main_source.contains("_use_skill(slot_index)"), "main runtime quick actions expose generic rack, buy, and play actions without asserting a guaranteed card category")
 	var game_screen_source := FileAccess.get_file_as_string("res://scripts/ui/game_screen.gd")
 	_expect(game_screen_source.contains("func _unhandled_key_input") and game_screen_source.contains("_quick_action_index_for_key") and game_screen_source.contains("_quick_action_id_at") and game_screen_source.contains("_should_ignore_quick_action_hotkey"), "split GameScreen maps 1-4 keyboard shortcuts onto the current data-backed quick actions without reading gameplay rules")

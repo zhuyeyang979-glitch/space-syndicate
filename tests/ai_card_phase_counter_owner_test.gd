@@ -63,7 +63,7 @@ func _test_anonymous_simultaneous_card_policy(main: Node, ai: Node, queue: Node,
 		player["slots"] = [card]
 		players[player_index] = player
 	main.set("players", players)
-	main.set("selected_district", _first_alive_district(main))
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = _first_alive_district(main)
 	main.set("card_resolution_force_duration", 5.0)
 	main.set("card_resolution_force_simultaneous_window", 0.5)
 	ai.set("ai_card_decision_enabled", true)

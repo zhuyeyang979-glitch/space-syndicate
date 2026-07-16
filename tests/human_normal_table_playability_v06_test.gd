@@ -198,7 +198,7 @@ func _first_playable_district(main: Node) -> int:
 
 func _selected_region_id(main: Node) -> String:
 	var districts: Array = main.get("districts") if main.get("districts") is Array else []
-	var index := int(main.get("selected_district"))
+	var index := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
 	if index < 0 or index >= districts.size() or not (districts[index] is Dictionary):
 		return ""
 	return str((districts[index] as Dictionary).get("region_id", ""))

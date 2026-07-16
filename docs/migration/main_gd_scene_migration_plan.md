@@ -52,20 +52,36 @@ The first production cutover is `RunRngService`:
 Current Main reduction from the frozen baseline: one top-level field and one
 method removed, with no replacement compatibility property.
 
+## Second atomic cutover: complete
+
+`TableSelectionState` is now a real scene owner:
+
+- `TableSelectionState.tscn` is composed exactly once under
+  `GameRuntimeCoordinator.tscn`;
+- it owns selected/inspected player, selected district and selected trade
+  product with typed properties, one revision and atomic restore/save APIs;
+- AI, monster, military, product-market, contract, card eligibility,
+  card-resolution, infrastructure, economy-effect and balance-diagnostics
+  bridges receive the same typed instance from the coordinator;
+- every active test and characterization Bench that previously used
+  `Main.get/set("selected_*")` now addresses the scene owner;
+- Main's four top-level selection fields are physically deleted, with no
+  compatibility property, dynamic fallback or second state node;
+- the Godot 4.7 MCP production Bench proves all ten bridges share the same
+  instance and the privacy projection contains no player-private state.
+
+Current Main reduction from the previous committed cutover: four top-level
+fields removed, two physical lines removed, and 144 external Main caller
+occurrences removed. No Main method, constant, preload or caller count
+increased.
+
 ## Next atomic cutover
 
-The next production cutover is `TableSelectionState`. It is deliberately
-smaller than the world arrays:
-
-- remove Main ownership of selected/inspected player, selected district,
-  selected product and closely related table-selection values;
-- add one scene-owned state node under the existing runtime composition;
-- migrate every production reader/writer and active test in the same commit;
-- prove the state node is the only writer and no compatibility property remains
-  on Main.
-
-This continues the typed owner pattern before moving the much larger `players`
-and `districts` graphs.
+The next recommended production cutover is `WorldSessionState`, beginning with
+the authoritative `players`, `districts` and `game_time` data boundary. It must
+be split by typed read/write ports rather than copied into a second monolithic
+controller. Topology generation and runtime clock ownership should remain
+separate subdomains even if they are migrated in the same dependency phase.
 
 ## Completion rule
 

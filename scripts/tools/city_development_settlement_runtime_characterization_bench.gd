@@ -899,7 +899,7 @@ func _reset_fixture() -> void:
 	_city_world_bridge.call("reset_state")
 	_runtime_main.set("game_time", 100.0)
 	_runtime_main.set("game_over", false)
-	_runtime_main.set("selected_player", 0)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
 	_runtime_main.set("log_lines", [])
 	_runtime_main.set("action_callouts", [])
 	_runtime_main.set("map_event_effects", [])
@@ -946,8 +946,8 @@ func _apply_fixture(fixture: Dictionary, player_index: int) -> bool:
 	if fixture.is_empty(): return false
 	var skill: Dictionary = (fixture.get("skill", {}) as Dictionary).duplicate(true)
 	skill["development_target_district"] = int(fixture.get("district_index", -1))
-	_runtime_main.set("selected_player", player_index)
-	_runtime_main.set("selected_district", int(fixture.get("district_index", -1)))
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = player_index
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = int(fixture.get("district_index", -1))
 	var result: Dictionary = _coordinator.call("execute_city_development", {"player_index": player_index, "district_index": int(fixture.get("district_index", -1)), "skill": skill})
 	return bool(result.get("resolved", false))
 

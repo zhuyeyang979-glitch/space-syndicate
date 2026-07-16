@@ -874,7 +874,9 @@ func _default_product() -> String:
 
 
 func _set_selected_product(product_name: String) -> void:
-	if _world_bridge != null: _world_bridge.write_world_value("selected_trade_product", product_name)
+	var selection := _world_bridge.table_selection_state() if _world_bridge != null else null
+	if selection != null:
+		selection.selected_trade_product = product_name
 
 
 func _log(message: String) -> void:

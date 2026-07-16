@@ -368,7 +368,7 @@ func _fixture(entry: Dictionary, open_window: bool) -> Dictionary:
 		{"name": "玩家1", "eliminated": false, "slots": [], "action_cooldown": 0.0},
 		{"name": "玩家2", "eliminated": false, "slots": [], "action_cooldown": 0.0},
 	])
-	main.set("selected_player", 0)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
 	queue.call("reset_state")
 	queue.call("replace_current_queue", [entry])
 	controller.call("reset_state")

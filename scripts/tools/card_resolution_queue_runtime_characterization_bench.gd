@@ -1179,8 +1179,8 @@ func _prepare_players(slot_sets: Array, cash_values: Array) -> void:
 		player_states[player_index] = player_state
 	_runtime_main.set("players", player_states)
 	_runtime_main.set("game_over", false)
-	_runtime_main.set("selected_player", 0)
-	_runtime_main.set("selected_district", 0)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = 0
 
 
 func _clear_queue_state() -> void:

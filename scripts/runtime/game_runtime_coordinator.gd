@@ -28,11 +28,13 @@ var _ai_v06_economy_action_port: RefCounted
 
 func _ready() -> void:
 	_wire_run_rng_service()
+	_wire_table_selection_state()
 
 
 func configure(ruleset_snapshot: Dictionary) -> void:
 	_ruleset_id = str(ruleset_snapshot.get("ruleset_id", ""))
 	_wire_run_rng_service()
+	_wire_table_selection_state()
 	var world_clock := _world_effective_clock_runtime_controller_node()
 	if world_clock != null and world_clock.has_method("configure"):
 		world_clock.call("configure", {})
@@ -1023,6 +1025,10 @@ func run_rng_service() -> RunRngService:
 	return _run_rng_service_node()
 
 
+func table_selection_state() -> TableSelectionState:
+	return _table_selection_state_node()
+
+
 func _wire_run_rng_service() -> void:
 	var service := _run_rng_service_node()
 	if service == null:
@@ -1040,6 +1046,42 @@ func _wire_run_rng_service() -> void:
 		(weather_bridge as WeatherRuntimeWorldBridge).set_rng_service(service)
 	if product_market_bridge is ProductMarketRuntimeWorldBridge:
 		(product_market_bridge as ProductMarketRuntimeWorldBridge).set_rng_service(service)
+
+
+func _wire_table_selection_state() -> void:
+	var state := _table_selection_state_node()
+	if state == null:
+		return
+	var ai_bridge := _ai_runtime_world_bridge_node()
+	var monster_bridge := _monster_runtime_world_bridge_node()
+	var military_bridge := _military_runtime_world_bridge_node()
+	var market_bridge := _product_market_runtime_world_bridge_node()
+	var contract_bridge := _contract_runtime_world_bridge_node()
+	var eligibility_bridge := _card_play_world_bridge_node()
+	var diagnostics_bridge := _gameplay_balance_diagnostics_world_bridge_node()
+	var infrastructure_bridge := _region_infrastructure_world_bridge_node()
+	var resolution_bridge := _card_resolution_execution_world_bridge_node()
+	var economy_bridge := _card_economy_product_route_effect_world_bridge_node()
+	if ai_bridge is AiRuntimeWorldBridge:
+		(ai_bridge as AiRuntimeWorldBridge).set_table_selection_state(state)
+	if monster_bridge is MonsterRuntimeWorldBridge:
+		(monster_bridge as MonsterRuntimeWorldBridge).set_table_selection_state(state)
+	if military_bridge is MilitaryRuntimeWorldBridge:
+		(military_bridge as MilitaryRuntimeWorldBridge).set_table_selection_state(state)
+	if market_bridge is ProductMarketRuntimeWorldBridge:
+		(market_bridge as ProductMarketRuntimeWorldBridge).set_table_selection_state(state)
+	if contract_bridge is ContractRuntimeWorldBridge:
+		(contract_bridge as ContractRuntimeWorldBridge).set_table_selection_state(state)
+	if eligibility_bridge is CardPlayEligibilityWorldBridge:
+		(eligibility_bridge as CardPlayEligibilityWorldBridge).set_table_selection_state(state)
+	if diagnostics_bridge is GameplayBalanceDiagnosticsWorldBridge:
+		(diagnostics_bridge as GameplayBalanceDiagnosticsWorldBridge).set_table_selection_state(state)
+	if infrastructure_bridge is RegionInfrastructureWorldBridge:
+		(infrastructure_bridge as RegionInfrastructureWorldBridge).set_table_selection_state(state)
+	if resolution_bridge is CardResolutionExecutionWorldBridge:
+		(resolution_bridge as CardResolutionExecutionWorldBridge).set_table_selection_state(state)
+	if economy_bridge is CardEconomyProductRouteEffectWorldBridge:
+		(economy_bridge as CardEconomyProductRouteEffectWorldBridge).set_table_selection_state(state)
 
 
 func solar_public_presentation_snapshot() -> Dictionary:
@@ -4493,12 +4535,20 @@ func _card_play_world_bridge_node() -> Node:
 	return get_node_or_null("CardPlayEligibilityWorldBridge")
 
 
+func _card_resolution_execution_world_bridge_node() -> Node:
+	return get_node_or_null("CardResolutionExecutionWorldBridge")
+
+
 func _world_effective_clock_runtime_controller_node() -> Node:
 	return get_node_or_null("WorldEffectiveClockRuntimeController")
 
 
 func _run_rng_service_node() -> RunRngService:
 	return get_node_or_null("RunRngService") as RunRngService
+
+
+func _table_selection_state_node() -> TableSelectionState:
+	return get_node_or_null("TableSelectionState") as TableSelectionState
 
 
 func _solar_availability_runtime_service_node() -> Node:

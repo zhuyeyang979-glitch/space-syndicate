@@ -247,7 +247,7 @@ func _run() -> void:
 	if _as_array(main.get("players")).size() > 1:
 		var viewer_snapshot := main.call("_runtime_table_snapshot_source") as Dictionary
 		_expect(
-			int(main.get("selected_player")) == 0
+			int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player) == 0
 			and viewer_snapshot.get("player_board", {}) is Dictionary
 			and not viewer_snapshot.has("players")
 			and not viewer_snapshot.has("districts")
@@ -426,7 +426,7 @@ func _run() -> void:
 	_expect(int(terrain_counts.get("land", 0)) > 0, "generated planet includes land regions")
 	_expect(int(terrain_counts.get("ocean", 0)) > 0, "generated planet includes ocean regions")
 
-	var selected_district := int(main.get("selected_district"))
+	var selected_district := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
 	_expect(selected_district >= 0 and selected_district < districts.size(), "selected district is inside the generated map")
 	_expect(main.get("map_view") is Control, "main map view is built")
 	var main_map_view := main.get("map_view") as Control
@@ -460,12 +460,12 @@ func _run() -> void:
 	)
 	_expect(_map_view_has_betting_table_theme(), "map view draws a felt-table rim with small chips around the centered planet")
 	_expect(_container_has_named_node(main, "MapLayerFocusRail") and _container_has_named_node(main, "MapLayerFocusChip") and _container_has_named_node(main, "MapLayerFocusStatus") and _container_label_text_contains(main, "图层:全图"), "main map exposes a compact board-game layer focus rail")
-	var trade_product_before_route_view := String(main.get("selected_trade_product"))
+	var trade_product_before_route_view := String(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product)
 	var map_toolbar := main.find_child("PlanetMapControlToolbar", true, false) as Control
 	var route_layer_button := map_toolbar.find_child("MapLayerRouteButton", true, false) as Button if map_toolbar != null else null
 	if route_layer_button != null:
 		route_layer_button.emit_signal("pressed")
-	_expect(String(main.get("selected_trade_product")) == trade_product_before_route_view and main_map_view != null and String(main_map_view.get("trade_product")).is_empty(), "route-layer UI opens only the local opt-in selector and does not auto-select a gameplay product or visible route")
+	_expect(String(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product) == trade_product_before_route_view and main_map_view != null and String(main_map_view.get("trade_product")).is_empty(), "route-layer UI opens only the local opt-in selector and does not auto-select a gameplay product or visible route")
 	_expect(
 		_container_label_text_contains(main, "桌边牌架")
 		or (runtime_hand_rack != null and runtime_player_board != null and runtime_planet_board != null and runtime_hand_rect.size.y >= 78.0 and runtime_hand_rect.size.y < runtime_planet_rect.size.y * 0.55 and runtime_hand_rect.size.x > 300.0 and runtime_player_rect.position.y > runtime_planet_rect.position.y),
@@ -489,8 +489,8 @@ func _run() -> void:
 		districts = _as_array(main.get("districts"))
 		buildable_district = _first_buildable_land_district(districts)
 		_expect(buildable_district >= 0, "city build smoke has an undestroyed land district after monster collision checks")
-		main.set("selected_player", 0)
-		main.set("selected_district", buildable_district)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = buildable_district
 		var facility_gate := await _v06_facility_owner_chain_snapshot()
 		_expect(bool(facility_gate.get("market_ready", false)), "first-table city economy exposes one canonical public facility listing")
 		_expect(bool(facility_gate.get("purchase_committed", false)) and int(facility_gate.get("slot_index", -1)) >= 0, "facility purchase commits once and places the canonical card in the player's authoritative hand")
@@ -517,8 +517,8 @@ func _run() -> void:
 			var real_owner := int(rival_city.get("owner", -1))
 			var cash_before_guess := _player_cash(_as_array(main.get("players")), 0)
 			var intel_cash_before_guess := _intel_cash_from_stats(main, 0)
-			main.set("selected_player", 0)
-			main.set("selected_district", rival_city_index)
+			((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+			((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = rival_city_index
 			main.set("selected_guess_player", real_owner)
 			main.call("_mark_selected_city_guess")
 			await process_frame
@@ -863,7 +863,7 @@ func _run() -> void:
 	main.call("_back_from_catalog_menu")
 	await process_frame
 	_expect(menu_body_label != null and menu_body_label.text.contains("卡牌图鉴"), "card detail can return to the thumbnail grid")
-	main.set("selected_trade_product", "活体芯片")
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = "活体芯片"
 	main.call("_open_product_codex_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "商品图鉴", "product codex opens from the compendium")
@@ -1778,7 +1778,7 @@ func _verify_ai_product_futures_policy(main: Node) -> bool:
 		"districts": _as_array(main.get("districts")).duplicate(true),
 		"auto_monsters": _as_array(main.get("auto_monsters")).duplicate(true),
 		"product_market": _product_market_for_test(main).duplicate(true),
-		"selected_trade_product": String(main.get("selected_trade_product")),
+		"selected_trade_product": String(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product),
 		"active_card_resolution": (main.get("active_card_resolution") as Dictionary).duplicate(true),
 		"card_resolution_queue": _as_array(main.get("card_resolution_queue")).duplicate(true),
 		"next_card_resolution_queue": _as_array(main.get("next_card_resolution_queue")).duplicate(true),
@@ -1794,7 +1794,7 @@ func _verify_ai_product_futures_policy(main: Node) -> bool:
 	main.set("next_card_resolution_queue", [])
 	main.set("card_resolution_batch_locked", false)
 	main.set("card_resolution_auction_open", false)
-	main.set("selected_trade_product", "环晶电池")
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = "环晶电池"
 	_reset_route_plan_sandbox_for_test(main)
 	ok = ok and _reset_ai_memory_for_test(main, 1)
 	var own_index := _first_empty_land_district_for_contract(main)
@@ -1943,7 +1943,7 @@ func _verify_ai_product_futures_policy(main: Node) -> bool:
 	main.set("districts", saved.districts)
 	main.set("auto_monsters", saved.auto_monsters)
 	_replace_product_market_for_test(main, saved.product_market)
-	main.set("selected_trade_product", saved.selected_trade_product)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = saved.selected_trade_product
 	main.set("active_card_resolution", saved.active_card_resolution)
 	main.set("card_resolution_queue", saved.card_resolution_queue)
 	main.set("next_card_resolution_queue", saved.next_card_resolution_queue)
@@ -4331,10 +4331,10 @@ func _verify_news_and_weather_card_rules(main: Node) -> bool:
 	if runtime_coordinator == null or weather == null:
 		return false
 	var saved_weather := runtime_coordinator.call("weather_to_save_data") as Dictionary
-	var saved_selected_district := int(main.get("selected_district"))
-	var saved_selected_player := int(main.get("selected_player"))
-	main.set("selected_district", district_index)
-	main.set("selected_player", 0)
+	var saved_selected_district := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
+	var saved_selected_player := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
 	var news_skill := main.call("_make_skill", "热搜推送1") as Dictionary
 	var weather_skill := {"weather_type": "ion_storm", "source_type": "card", "effect": "weather_control"}
 	ok = ok and String(main.call("_card_codex_filter_label", "news")) == "新闻事件"
@@ -4356,8 +4356,8 @@ func _verify_news_and_weather_card_rules(main: Node) -> bool:
 	ok = ok and _as_array(forecast.get("region_indices", forecast.get("districts", []))) == [district_index]
 	ok = ok and int(forecast.get("active_starts_at_world_us", 0)) - int(forecast.get("forecast_starts_at_world_us", 0)) >= 30_000_000
 	var restore_weather := runtime_coordinator.call("apply_weather_save_data", saved_weather) as Dictionary
-	main.set("selected_district", saved_selected_district)
-	main.set("selected_player", saved_selected_player)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = saved_selected_district
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = saved_selected_player
 	main.call("_refresh_ui")
 	return ok and bool(restore_weather.get("applied", false))
 
@@ -4377,18 +4377,18 @@ func _verify_monster_card_terrain_restriction(main: Node, players: Array, distri
 		return false
 	var previous_monsters := _as_array(main.get("auto_monsters")).duplicate(true)
 	var previous_players := _as_array(main.get("players")).duplicate(true)
-	var previous_selected_district := int(main.get("selected_district"))
-	var previous_selected_player := int(main.get("selected_player"))
+	var previous_selected_district := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
+	var previous_selected_player := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player)
 	var temp_actor := _monster_controller(main).call("_make_auto_monster", previous_monsters.size(), 0, ocean_index, 0, 1) as Dictionary
 	main.set("auto_monsters", [temp_actor])
-	main.set("selected_player", 0)
-	main.set("selected_district", ocean_index)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = ocean_index
 	var rejected := not bool(_monster_controller(main).call("_summon_monster_from_card", players[0] as Dictionary, land_card))
 	var monster_count_after := _as_array(main.get("auto_monsters")).size()
 	main.set("auto_monsters", previous_monsters)
 	main.set("players", previous_players)
-	main.set("selected_district", previous_selected_district)
-	main.set("selected_player", previous_selected_player)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = previous_selected_district
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = previous_selected_player
 	return rejected and monster_count_after == 1
 
 
@@ -4397,17 +4397,17 @@ func _summon_starting_monsters_for_smoke(main: Node, count: int) -> void:
 	var districts := _as_array(main.get("districts"))
 	if players.is_empty() or districts.is_empty():
 		return
-	var landing := int(main.get("selected_district"))
+	var landing := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
 	if landing < 0 or landing >= districts.size():
 		landing = 0
 	for i in range(min(count, players.size())):
-		main.set("selected_player", i)
-		main.set("selected_district", landing)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = i
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = landing
 		_clear_player_cooldown(main, i)
 		main.call("_use_skill", 0)
 		_clear_player_cooldown(main, i)
-	main.set("selected_player", 0)
-	main.set("selected_district", landing)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = landing
 	_clear_player_cooldown(main, 0)
 
 
@@ -4505,8 +4505,8 @@ func _verify_field_monster_card_upgrade_refreshes_state(main: Node) -> bool:
 	var previous_monsters := _as_array(main.get("auto_monsters")).duplicate(true)
 	var previous_logs := _as_array(main.get("log_lines")).duplicate(true)
 	var previous_callouts := _as_array(main.get("action_callouts")).duplicate(true)
-	var previous_selected_player := int(main.get("selected_player"))
-	var previous_selected_district := int(main.get("selected_district"))
+	var previous_selected_player := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player)
+	var previous_selected_district := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
 	if previous_players.is_empty() or previous_monsters.is_empty():
 		return false
 	var monsters := previous_monsters.duplicate(true)
@@ -4540,8 +4540,8 @@ func _verify_field_monster_card_upgrade_refreshes_state(main: Node) -> bool:
 	main.set("auto_monsters", monsters)
 	main.set("log_lines", [])
 	main.set("action_callouts", [])
-	main.set("selected_player", owner)
-	main.set("selected_district", -1)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = owner
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = -1
 	var active_bound_before := _active_bound_skill_count_for_uid(players, owner, monster_uid)
 	var upgrade_card := main.call("_make_skill", main.call("_monster_card_name", catalog_index, 2)) as Dictionary
 	var expected_fixed_skill_count := int(upgrade_card.get("fixed_skill_count", 2))
@@ -4555,8 +4555,8 @@ func _verify_field_monster_card_upgrade_refreshes_state(main: Node) -> bool:
 		main.set("auto_monsters", previous_monsters)
 		main.set("log_lines", previous_logs)
 		main.set("action_callouts", previous_callouts)
-		main.set("selected_player", previous_selected_player)
-		main.set("selected_district", previous_selected_district)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = previous_selected_player
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = previous_selected_district
 		return false
 	var upgraded_actor := after_monsters[0] as Dictionary
 	var total_after_upgrade := int(upgraded_actor.get("owner_damage_cash_total", 0))
@@ -4597,8 +4597,8 @@ func _verify_field_monster_card_upgrade_refreshes_state(main: Node) -> bool:
 	main.set("auto_monsters", previous_monsters)
 	main.set("log_lines", previous_logs)
 	main.set("action_callouts", previous_callouts)
-	main.set("selected_player", previous_selected_player)
-	main.set("selected_district", previous_selected_district)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = previous_selected_player
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = previous_selected_district
 	main.call("_refresh_ui")
 	return upgrade_ok and damage_ok
 
@@ -4608,8 +4608,8 @@ func _verify_single_owned_monster_limit_and_rank_iv_refresh(main: Node) -> bool:
 	var previous_monsters := _as_array(main.get("auto_monsters")).duplicate(true)
 	var previous_logs := _as_array(main.get("log_lines")).duplicate(true)
 	var previous_callouts := _as_array(main.get("action_callouts")).duplicate(true)
-	var previous_selected_player := int(main.get("selected_player"))
-	var previous_selected_district := int(main.get("selected_district"))
+	var previous_selected_player := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player)
+	var previous_selected_district := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
 	var districts := _as_array(main.get("districts"))
 	if previous_players.is_empty() or previous_monsters.is_empty() or districts.is_empty():
 		return false
@@ -4628,8 +4628,8 @@ func _verify_single_owned_monster_limit_and_rank_iv_refresh(main: Node) -> bool:
 	var other_catalog_index := (catalog_index + 1) % int(main.call("_catalog_size"))
 	var district_index := clampi(int(actor.get("position", previous_selected_district)), 0, districts.size() - 1)
 	main.set("auto_monsters", monsters)
-	main.set("selected_player", owner)
-	main.set("selected_district", district_index)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = owner
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
 	var other_card := main.call("_make_skill", main.call("_monster_card_name", other_catalog_index, 1)) as Dictionary
 	other_card["starter_play_free"] = true
 	other_card["summon_access"] = "any"
@@ -4663,8 +4663,8 @@ func _verify_single_owned_monster_limit_and_rank_iv_refresh(main: Node) -> bool:
 	main.set("auto_monsters", previous_monsters)
 	main.set("log_lines", previous_logs)
 	main.set("action_callouts", previous_callouts)
-	main.set("selected_player", previous_selected_player)
-	main.set("selected_district", previous_selected_district)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = previous_selected_player
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = previous_selected_district
 	main.call("_refresh_ui")
 	return cap_ok and refresh_ok
 
@@ -5209,8 +5209,8 @@ func _verify_direct_player_interaction_cards(_main: Node) -> bool:
 	ok = ok and str(_card_presentation_array(main, freeze, "key_rule_facts")).contains("产权冻结")
 	ok = ok and str(_card_presentation_array(main, barrage, "key_rule_facts")).contains("齐射")
 	if _as_array(main.get("players")).size() >= 2:
-		main.set("selected_player", 0)
-		main.set("selected_district", maxi(0, int(main.get("selected_district"))))
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = maxi(0, int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district))
 		_set_player_skill(main, 1, 2, "城市融资1")
 		_set_player_skill(main, 1, 3, "价格套利1")
 		var target_hand_before := _player_card_names(_as_array(main.get("players")), 1).size()
@@ -5342,8 +5342,8 @@ func _verify_direct_player_interaction_cards(_main: Node) -> bool:
 			break
 	if freeze_target >= 0:
 		CITY_FIXTURES.create_city_bool(main, 1, freeze_target, "互动烟测城")
-		main.set("selected_player", 0)
-		main.set("selected_district", freeze_target)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = freeze_target
 		ok = ok and bool(main.call("_apply_city_control_dispute", 0, freeze))
 		districts = _as_array(main.get("districts"))
 		var city := ((districts[freeze_target] as Dictionary).get("city", {}) as Dictionary)
@@ -5501,7 +5501,7 @@ func _verify_ai_monster_wager_policy(_main: Node) -> bool:
 	main.set("players", players)
 	var district_index := _first_buildable_land_district(_as_array(main.get("districts")))
 	if district_index < 0:
-		district_index = maxi(0, int(main.get("selected_district")))
+		district_index = maxi(0, int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district))
 	var center := main.call("_district_center", district_index) as Vector2
 	if CITY_FIXTURES.create_city_bool(main, 1, district_index, "AI赌局风险城"):
 		ok = ok and _set_city_goods_for_test(main, district_index, "环晶电池", "星尘香料")
@@ -5804,7 +5804,7 @@ func _verify_monster_duration_expiry(main: Node) -> bool:
 	var districts := _as_array(main.get("districts"))
 	if before.is_empty() or districts.is_empty():
 		return false
-	var landing := clampi(int(main.get("selected_district")), 0, districts.size() - 1)
+	var landing := clampi(int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district), 0, districts.size() - 1)
 	var expiring := _monster_controller(main).call("_make_auto_monster", before.size(), 0, landing, 0, 1) as Dictionary
 	var expiring_uid := int(expiring.get("uid", 0))
 	expiring["down"] = true
@@ -5829,8 +5829,8 @@ func _verify_monster_card_runtime_overrides(main: Node) -> bool:
 	if players.is_empty() or districts.is_empty():
 		return false
 	var previous_monsters := _as_array(main.get("auto_monsters")).duplicate(true)
-	var previous_selected_player := int(main.get("selected_player"))
-	var previous_selected_district := int(main.get("selected_district"))
+	var previous_selected_player := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player)
+	var previous_selected_district := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
 	var test_monsters := []
 	for actor_variant in previous_monsters:
 		var actor := actor_variant as Dictionary
@@ -5844,18 +5844,18 @@ func _verify_monster_card_runtime_overrides(main: Node) -> bool:
 	card["hp"] = 77
 	card["duration"] = 13.5
 	card["move"] = 333.0
-	main.set("selected_player", 0)
-	main.set("selected_district", clampi(int(main.get("selected_district")), 0, districts.size() - 1))
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = clampi(int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district), 0, districts.size() - 1)
 	if not bool(_monster_controller(main).call("_summon_monster_from_card", players[0] as Dictionary, card)):
 		main.set("auto_monsters", previous_monsters)
-		main.set("selected_player", previous_selected_player)
-		main.set("selected_district", previous_selected_district)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = previous_selected_player
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = previous_selected_district
 		return false
 	var after := _as_array(main.get("auto_monsters"))
 	if after.size() != before_count + 1:
 		main.set("auto_monsters", previous_monsters)
-		main.set("selected_player", previous_selected_player)
-		main.set("selected_district", previous_selected_district)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = previous_selected_player
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = previous_selected_district
 		return false
 	var actor := after[after.size() - 1] as Dictionary
 	var matches := int(actor.get("hp", 0)) == 77 \
@@ -5864,8 +5864,8 @@ func _verify_monster_card_runtime_overrides(main: Node) -> bool:
 		and is_equal_approx(float(actor.get("remaining_time", 0.0)), 13.5) \
 		and is_equal_approx(float(actor.get("move", 0.0)), 333.0)
 	main.set("auto_monsters", previous_monsters)
-	main.set("selected_player", previous_selected_player)
-	main.set("selected_district", previous_selected_district)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = previous_selected_player
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = previous_selected_district
 	return matches
 
 
@@ -6037,7 +6037,7 @@ func _verify_monster_ecology_balance_audit(main: Node) -> bool:
 
 
 func _verify_anonymous_cash_card(main: Node) -> bool:
-	main.set("selected_player", 0)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
 	var test_slot := 10
 	_set_player_skill(main, 0, test_slot, "轨道融资1")
 	_clear_player_cooldown(main, 0)
@@ -6055,7 +6055,7 @@ func _verify_anonymous_cash_card(main: Node) -> bool:
 
 
 func _verify_anonymous_direct_command(main: Node) -> bool:
-	main.set("selected_player", 0)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
 	var test_slot := 11
 	_set_player_skill(main, 0, test_slot, "垂直裂刃窗口1")
 	_clear_player_cooldown(main, 0)
@@ -6193,7 +6193,7 @@ func _verify_monster_lure_replaces_control_window(_main: Node) -> bool:
 				isolated_other["down"] = true
 				actors[other_index] = isolated_other
 			main.set("auto_monsters", actors)
-			main.set("selected_district", target_index)
+			((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = target_index
 			var players := _as_array(main.get("players"))
 			var distance_before := float(main.call("_entity_distance_to_district", actor, target_index))
 			if not bool(main.call("_resolve_targeted_skill", skill, players[0] as Dictionary, 0, 0)):
@@ -6379,7 +6379,7 @@ func _card_callouts_hide_player(main: Node, card_name: String, player_name: Stri
 
 
 func _economy_ledgers_respect_active_view(main: Node) -> bool:
-	var selected_player := int(main.get("selected_player"))
+	var selected_player := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player)
 	var dashboard_snapshot := main.call("_economy_dashboard_public_snapshot") as Dictionary
 	var summary_text := str(dashboard_snapshot.get("summary_text", ""))
 	if summary_text == "":
@@ -7517,9 +7517,9 @@ func _verify_card_play_flow_gate_and_one_shot(main: Node, district_index: int) -
 	var previous_districts := _as_array(main.get("districts")).duplicate(true)
 	var previous_log_lines := _as_array(main.get("log_lines")).duplicate(true)
 	var previous_callouts := _as_array(main.get("action_callouts")).duplicate(true)
-	var previous_selected_player := int(main.get("selected_player"))
-	var previous_selected_district := int(main.get("selected_district"))
-	var previous_selected_trade_product := String(main.get("selected_trade_product"))
+	var previous_selected_player := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player)
+	var previous_selected_district := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
+	var previous_selected_trade_product := String(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product)
 	if district_index < 0 or district_index >= previous_districts.size() or previous_players.is_empty():
 		return false
 	var district := previous_districts[district_index] as Dictionary
@@ -7549,9 +7549,9 @@ func _verify_card_play_flow_gate_and_one_shot(main: Node, district_index: int) -
 	player["slots"] = slots
 	players[0] = player
 	main.set("players", players)
-	main.set("selected_player", 0)
-	main.set("selected_district", district_index)
-	main.set("selected_trade_product", product_name)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = product_name
 	_clear_player_cooldown(main, 0)
 	var cash_before := _player_cash(_as_array(main.get("players")), 0)
 	var playable_evaluation := main.call("_card_play_eligibility_snapshot", 0, playable_skill, "rule", {}) as Dictionary
@@ -7607,9 +7607,9 @@ func _verify_card_play_flow_gate_and_one_shot(main: Node, district_index: int) -
 	main.set("districts", previous_districts)
 	main.set("log_lines", previous_log_lines)
 	main.set("action_callouts", previous_callouts)
-	main.set("selected_player", previous_selected_player)
-	main.set("selected_district", previous_selected_district)
-	main.set("selected_trade_product", previous_selected_trade_product)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = previous_selected_player
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = previous_selected_district
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = previous_selected_trade_product
 	main.call("_refresh_ui")
 	return play_ok and blocked_ok
 
@@ -7617,8 +7617,8 @@ func _verify_card_play_flow_gate_and_one_shot(main: Node, district_index: int) -
 func _verify_realtime_gdp_directionality_pack(main: Node, district_index: int) -> bool:
 	var previous_districts := _as_array(main.get("districts")).duplicate(true)
 	var previous_market := _product_market_for_test(main)
-	var previous_selected_district := int(main.get("selected_district"))
-	var previous_selected_product := String(main.get("selected_trade_product"))
+	var previous_selected_district := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
+	var previous_selected_product := String(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product)
 	var previous_log_lines := _as_array(main.get("log_lines")).duplicate(true)
 	var ok := true
 	var districts := previous_districts.duplicate(true)
@@ -7689,8 +7689,8 @@ func _verify_realtime_gdp_directionality_pack(main: Node, district_index: int) -
 			}
 			main.set("districts", districts)
 			_replace_product_market_for_test(main, product_market)
-			main.set("selected_district", district_index)
-			main.set("selected_trade_product", product_name)
+			((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
+			((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = product_name
 			main.call("_refresh_city_networks")
 			var baseline := main.call("_city_cycle_income_breakdown", district_index, 0) as Dictionary
 			var baseline_product := int(baseline.get("product", 0))
@@ -7771,16 +7771,16 @@ func _verify_realtime_gdp_directionality_pack(main: Node, district_index: int) -
 			ok = ok and reason.contains("驱动") and reason.contains("压力")
 	main.set("districts", previous_districts)
 	_replace_product_market_for_test(main, previous_market)
-	main.set("selected_district", previous_selected_district)
-	main.set("selected_trade_product", previous_selected_product)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = previous_selected_district
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = previous_selected_product
 	main.set("log_lines", previous_log_lines)
 	main.call("_refresh_ui")
 	return ok
 
 
 func _verify_economy_card_effects(main: Node, district_index: int) -> void:
-	main.set("selected_player", 0)
-	main.set("selected_district", district_index)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
 	var districts := _as_array(main.get("districts"))
 	var city := (districts[district_index] as Dictionary).get("city", {}) as Dictionary
 	var products := _as_array(city.get("products", []))
@@ -7803,7 +7803,7 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 	if not demands_for_shift.is_empty():
 		var shift_target := String(demands_for_shift[0])
 		var revenue_before_shift := int(city.get("revenue_bonus", 0))
-		main.set("selected_trade_product", shift_target)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = shift_target
 		_set_player_skill(main, 0, 2, "商品换线1")
 		_clear_player_cooldown(main, 0)
 		main.call("_use_skill", 2)
@@ -7819,7 +7819,7 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 		main.set("districts", districts)
 		var damage_before_demand_shift := int(city.get("trade_route_damage", 0))
 		var revenue_before_demand_shift := int(city.get("revenue_bonus", 0))
-		main.set("selected_trade_product", product_name)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = product_name
 		_set_player_skill(main, 0, 2, "需求改造1")
 		_clear_player_cooldown(main, 0)
 		main.call("_use_skill", 2)
@@ -7830,7 +7830,7 @@ func _verify_economy_card_effects(main: Node, district_index: int) -> void:
 		_expect(int(city.get("trade_route_damage", 0)) == damage_before_demand_shift - 1, "demand redesign repairs one route-damage pressure")
 		_expect(int(city.get("revenue_bonus", 0)) == revenue_before_demand_shift + 10, "demand redesign adds permanent city revenue")
 
-	main.set("selected_trade_product", product_name)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = product_name
 	var product_market := _product_market_for_test(main)
 	var entry := product_market.get(product_name, {}) as Dictionary
 	entry["price"] = int(entry.get("base_price", 60))
@@ -8197,7 +8197,7 @@ func _verify_special_monster_passives(main: Node) -> void:
 	var saved_special_monster_timer := float(main.get("special_monster_timer"))
 	var saved_log_lines := _as_array(main.get("log_lines")).duplicate(true)
 	var saved_action_callouts := _as_array(main.get("action_callouts")).duplicate(true)
-	var start_district := maxi(0, int(main.get("selected_district")))
+	var start_district := maxi(0, int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district))
 
 	var ember_ring_index := int(main.call("_monster_catalog_index_by_name", "焰环幼星"))
 	_expect(ember_ring_index >= 0, "monster catalog contains 焰环幼星")
@@ -8776,19 +8776,19 @@ func _verify_area_trade_contract_accept_and_decline(_main: Node) -> bool:
 		queue_player["slots"] = queue_slots
 		queue_players[0] = queue_player
 		main.set("players", queue_players)
-		main.set("selected_player", 0)
-		main.set("selected_trade_product", product_name)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = product_name
 		contract_controller.call("set_selection_state", -1, -1)
 		ok = ok and not bool(main.call("_queue_skill_resolution", 0, 0, -1))
 		ok = ok and _as_array(main.get("card_resolution_queue")).is_empty() and _contract_pending_offers(main).is_empty()
-		main.set("selected_district", source_index)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = source_index
 		contract_controller.call("select_source_district", source_index, product_name)
-		main.set("selected_district", target_index)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = target_index
 		contract_controller.call("select_target_district", target_index, product_name)
 		var selection := contract_controller.call("selection_snapshot") as Dictionary
 		ok = ok and int(selection.get("source_district", -1)) == source_index
 		ok = ok and int(selection.get("target_district", -1)) == target_index
-		main.set("selected_trade_product", product_name)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = product_name
 		var context := contract_controller.call("offer_context", skill, 0, source_index, target_index, product_name) as Dictionary
 		ok = ok and String(context.get("error", "")) == ""
 		var target_owner := int(context.get("target_owner", -1))
@@ -8809,14 +8809,14 @@ func _verify_area_trade_contract_accept_and_decline(_main: Node) -> bool:
 		# The public reveal itself must not expose signing controls.
 		main.set("active_card_resolution", entry.duplicate(true))
 		main.set("card_resolution_timer", 5.0)
-		main.set("selected_player", target_owner)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = target_owner
 		main.call("_refresh_ui")
 		var player_box := main.get("player_box") as VBoxContainer
 		ok = ok and player_box != null and not _container_label_text_contains(player_box, "匿名合约签署窗口")
 		main.set("active_card_resolution", {})
 		main.set("card_resolution_timer", 0.0)
 
-		main.set("selected_player", 0)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
 		ok = ok and bool(main.call("_queue_skill_resolution", 0, 0, -1))
 		ok = ok and _contract_pending_offers(main).is_empty()
 		ok = ok and (main.get("active_card_resolution") as Dictionary).is_empty()
@@ -8828,7 +8828,7 @@ func _verify_area_trade_contract_accept_and_decline(_main: Node) -> bool:
 		ok = ok and int(active_contract_reveal.get("contract_source_district", -1)) == source_index
 		ok = ok and int(active_contract_reveal.get("contract_target_district", -1)) == target_index
 		ok = ok and _contract_pending_offers(main).is_empty()
-		main.set("selected_player", target_owner)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = target_owner
 		main.call("_refresh_ui")
 		player_box = main.get("player_box") as VBoxContainer
 		ok = ok and player_box != null and not _container_label_text_contains(player_box, "匿名合约签署窗口")
@@ -8845,7 +8845,7 @@ func _verify_area_trade_contract_accept_and_decline(_main: Node) -> bool:
 			queued_contract_id = int(queued_offer.get("resolution_id", queued_offer.get("contract_offer_id", -1)))
 			ok = ok and is_equal_approx(float(queued_offer.get("contract_decision_timer", 0.0)), 5.0)
 		_set_player_skill(main, 2, 40, "舆论操控1")
-		main.set("selected_player", 2)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 2
 		ok = ok and bool(main.call("_queue_skill_resolution", 2, 40, -1))
 		ok = ok and _contract_pending_offers(main).size() == 1
 		main.set("card_resolution_queue", [])
@@ -8858,7 +8858,7 @@ func _verify_area_trade_contract_accept_and_decline(_main: Node) -> bool:
 		main.set("card_resolution_batch_locked", false)
 		main.set("card_resolution_batch_reference_player", -1)
 		main.set("last_card_resolution_player_index", -1)
-		main.set("selected_player", target_owner)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = target_owner
 		var history := _as_array(main.get("resolved_card_history")).duplicate(true)
 		for i in range(history.size()):
 			var history_entry := history[i] as Dictionary

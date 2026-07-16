@@ -10,6 +10,7 @@ const ROUTE_FLOW_MULTIPLIER_MAX := 2.8
 const HISTORY_LIMIT := 24
 
 var _world: Node
+var _table_selection_state: TableSelectionState
 var _product_market_runtime_controller: ProductMarketRuntimeController
 var _route_network_runtime_controller: RouteNetworkRuntimeController
 var _contract_atomic_effect_owner_v06: Object
@@ -19,6 +20,14 @@ var _failed_world_call_count := 0
 
 func bind_world(world: Node) -> void:
 	_world = world
+
+
+func set_table_selection_state(state: TableSelectionState) -> void:
+	_table_selection_state = state
+
+
+func table_selection_state() -> TableSelectionState:
+	return _table_selection_state
 
 
 func set_product_market_runtime_controller(controller: ProductMarketRuntimeController) -> void:
@@ -378,7 +387,8 @@ func _apply_accept(transaction: Dictionary, skill: Dictionary, products: Array) 
 	if _product_market_runtime_controller != null:
 		_product_market_runtime_controller.refresh_prices()
 	if not products.is_empty():
-		_world.set("selected_trade_product", str(products[0]))
+		if _table_selection_state != null:
+			_table_selection_state.selected_trade_product = str(products[0])
 	_call_world(&"_pulse_district", [source_index, Color("#fbbf24")])
 	_call_world(&"_pulse_district", [target_index, Color("#f59e0b")])
 	_call_world(&"_add_action_callout", ["匿名合约", source_label, "%s→%s签约：%s。" % [_district_name(source_index), _district_name(target_index), _limited_names(products, 4)], Color("#fbbf24"), _district_center(target_index)])

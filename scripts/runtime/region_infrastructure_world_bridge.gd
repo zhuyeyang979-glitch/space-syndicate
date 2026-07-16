@@ -14,6 +14,7 @@ const REGION_CODEX_PRIVATE_SENTINEL_MARKERS_V06 := [
 
 var _controller: Node
 var _world: Node
+var _table_selection_state: TableSelectionState
 var _request_sequence := 0
 var _forward_count := 0
 var _failure_count := 0
@@ -31,6 +32,14 @@ func set_controller(controller: Node) -> void:
 
 func bind_world(world: Node) -> void:
 	_world = world
+
+
+func set_table_selection_state(state: TableSelectionState) -> void:
+	_table_selection_state = state
+
+
+func table_selection_state() -> TableSelectionState:
+	return _table_selection_state
 
 
 func initialize_from_legacy_map(region_definitions: Array) -> Dictionary:
@@ -296,7 +305,7 @@ func public_commodity_region_facts() -> Array:
 func selected_region_commodity_facts() -> Dictionary:
 	if _world == null or not is_instance_valid(_world):
 		return {"available": false, "authoritative": false, "reason_code": "region_commodity_facts_unavailable"}
-	var selected_index := int(_world.get("selected_district"))
+	var selected_index := _table_selection_state.selected_district if _table_selection_state != null else -1
 	var districts_variant: Variant = _world.get("districts")
 	if not (districts_variant is Array) or selected_index < 0 or selected_index >= (districts_variant as Array).size():
 		return {"available": false, "authoritative": false, "reason_code": "selected_region_missing"}

@@ -2,6 +2,16 @@
 extends Node
 class_name CardResolutionExecutionWorldBridge
 
+var _table_selection_state: TableSelectionState
+
+
+func set_table_selection_state(state: TableSelectionState) -> void:
+	_table_selection_state = state
+
+
+func table_selection_state() -> TableSelectionState:
+	return _table_selection_state
+
 
 func apply_intent(world: Node, transaction: Dictionary) -> Dictionary:
 	if world == null or not is_instance_valid(world):
@@ -107,9 +117,13 @@ func _target_receipt(world: Node, transaction: Dictionary) -> Dictionary:
 	var player_index := int(entry.get("player_index", -1))
 	if player_index < 0 or player_index >= players.size() or skill.is_empty():
 		return {"intent_type": "revalidate_target", "valid": false, "reason": "invalid_actor"}
-	world.set("selected_player", player_index)
-	world.set("selected_district", clampi(int(entry.get("selected_district", world.get("selected_district"))), 0, max(0, districts.size() - 1)))
-	world.set("selected_trade_product", str(entry.get("selected_trade_product", world.get("selected_trade_product"))))
+	if _table_selection_state == null:
+		return {"intent_type": "revalidate_target", "valid": false, "reason": "table_selection_state_missing"}
+	_table_selection_state.set_active_context(
+		player_index,
+		clampi(int(entry.get("selected_district", _table_selection_state.selected_district)), 0, max(0, districts.size() - 1)),
+		str(entry.get("selected_trade_product", _table_selection_state.selected_trade_product))
+	)
 	var card_label := str(world.call("_card_display_name", str(skill.get("name", ""))))
 	if card_label == "":
 		card_label = str(skill.get("name", "卡牌"))
@@ -119,7 +133,7 @@ func _target_receipt(world: Node, transaction: Dictionary) -> Dictionary:
 	var monster_controller := _monster_runtime_controller(world)
 	var focused_variant: Variant = monster_controller.call("selected_actor_snapshot", true) if monster_controller != null and monster_controller.has_method("selected_actor_snapshot") else {}
 	var focused_actor: Dictionary = focused_variant if focused_variant is Dictionary else {}
-	var effect_position: Vector2 = world.call("_entity_world_position", focused_actor) as Vector2 if not focused_actor.is_empty() else world.call("_district_center", int(world.get("selected_district"))) as Vector2
+	var effect_position: Vector2 = world.call("_entity_world_position", focused_actor) as Vector2 if not focused_actor.is_empty() else world.call("_district_center", _table_selection_state.selected_district) as Vector2
 	var presentation_variant: Variant = world.call("_card_resolution_presentation_snapshot", skill, entry, -1.0, true)
 	var presentation: Dictionary = presentation_variant if presentation_variant is Dictionary else {}
 	world.call("_add_action_callout", "匿名卡牌", card_label, str(presentation.get("animation_text", "卡面公开，效果等待结算。")), Color("#fb7185"), effect_position)
@@ -163,9 +177,13 @@ func _restore_context_receipt(world: Node, transaction: Dictionary) -> Dictionar
 	var context: Dictionary = transaction.get("selection_context", {}) as Dictionary
 	var players: Array = world.get("players") as Array
 	var districts: Array = world.get("districts") as Array
-	world.set("selected_player", clampi(int(context.get("selected_player", world.get("selected_player"))), 0, max(0, players.size() - 1)))
-	world.set("selected_district", clampi(int(context.get("selected_district", world.get("selected_district"))), 0, max(0, districts.size() - 1)))
-	world.set("selected_trade_product", str(context.get("selected_trade_product", world.get("selected_trade_product"))))
+	if _table_selection_state == null:
+		return {"intent_type": "restore_context", "restored": false, "reason": "table_selection_state_missing"}
+	_table_selection_state.set_active_context(
+		clampi(int(context.get("selected_player", _table_selection_state.selected_player)), 0, max(0, players.size() - 1)),
+		clampi(int(context.get("selected_district", _table_selection_state.selected_district)), 0, max(0, districts.size() - 1)),
+		str(context.get("selected_trade_product", _table_selection_state.selected_trade_product))
+	)
 	var contract_controller := _contract_runtime_controller(world)
 	if contract_controller != null:
 		var selection := contract_controller.selection_snapshot()

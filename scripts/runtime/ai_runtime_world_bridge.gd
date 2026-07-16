@@ -6,6 +6,7 @@ signal intent_routed(intent: Dictionary, receipt: Dictionary)
 
 var _world: Node
 var _rng_service: RunRngService
+var _table_selection_state: TableSelectionState
 var _routed_intent_count := 0
 var _failed_intent_count := 0
 
@@ -18,8 +19,16 @@ func set_rng_service(service: RunRngService) -> void:
 	_rng_service = service
 
 
+func set_table_selection_state(state: TableSelectionState) -> void:
+	_table_selection_state = state
+
+
 func shared_rng() -> RunRngService:
 	return _rng_service
+
+
+func table_selection_state() -> TableSelectionState:
+	return _table_selection_state
 
 
 func has_world() -> bool:
@@ -75,6 +84,7 @@ func debug_snapshot() -> Dictionary:
 	return {
 		"bridge_ready": has_world(),
 		"rng_service_ready": _rng_service != null,
+		"table_selection_state_ready": _table_selection_state != null,
 		"routed_intent_count": _routed_intent_count,
 		"failed_intent_count": _failed_intent_count,
 		"owns_ai_state": false,

@@ -1111,7 +1111,7 @@ func _case_warehouse_requirement() -> Dictionary:
 	district["city"] = _simple_city(0)
 	districts[district_index] = district
 	_runtime_main.set("districts", districts)
-	_runtime_main.set("selected_district", district_index)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
 	var with_city := bool(_market_controller.call("apply_futures", 0, card))
 	var futures: Array = _entry(SAMPLE_PRODUCT).get("futures_positions", [])
 	var warehouse := int((futures[0] as Dictionary).get("warehouse_district", -1)) if futures.size() == 1 else -1
@@ -1292,10 +1292,10 @@ func _reset_fixture() -> void:
 	_runtime_main.set("game_time", 100.0)
 	_runtime_main.set("time_scale", 1.0)
 	_runtime_main.set("game_over", false)
-	_runtime_main.set("selected_player", 0)
-	_runtime_main.set("inspected_player", 0)
-	_runtime_main.set("selected_trade_product", SAMPLE_PRODUCT)
-	_runtime_main.set("selected_district", _fixture_district_index())
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).inspected_player = 0
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = SAMPLE_PRODUCT
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = _fixture_district_index()
 	_runtime_main.set("log_lines", [])
 	_runtime_main.set("action_callouts", [])
 	_runtime_main.set("map_event_effects", [])
@@ -1340,8 +1340,8 @@ func _configure_market_fixture(kind: String) -> void:
 		fixture["city"] = city
 	districts[index] = fixture
 	_runtime_main.set("districts", districts)
-	_runtime_main.set("selected_district", index)
-	_runtime_main.set("selected_trade_product", SAMPLE_PRODUCT)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = index
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = SAMPLE_PRODUCT
 	var market: Dictionary = (_baseline_product_market as Dictionary).duplicate(true)
 	for product_variant in market.keys():
 		var entry: Dictionary = (market[product_variant] as Dictionary).duplicate(true)
@@ -1536,7 +1536,7 @@ func _configure_owned_warehouse_city(owner_index: int) -> void:
 	district["city"] = _simple_city(owner_index)
 	districts[district_index] = district
 	_runtime_main.set("districts", districts)
-	_runtime_main.set("selected_district", district_index)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
 
 
 func _other_product(excluded_product: String) -> String:

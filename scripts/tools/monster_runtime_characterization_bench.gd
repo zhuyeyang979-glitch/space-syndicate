@@ -404,8 +404,8 @@ func _case_actor_owner_hidden_initially() -> Dictionary:
 
 func _case_first_summon_free_placement() -> Dictionary:
 	var district_index := _safe_district()
-	_runtime_main.set("selected_player", 0)
-	_runtime_main.set("selected_district", district_index)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
 	var skill := _monster_skill(0, 1)
 	skill["starter_play_free"] = true
 	var accepted := bool(_runtime_monsters.call("_summon_monster_from_card", _player(0), skill))
@@ -422,8 +422,8 @@ func _case_control_limit_rejects_second_bound_monster() -> Dictionary:
 	for index in range(mini(limit, maxi(0, catalog_size - 1))):
 		seeded.append(_make_actor(index, _safe_district(), 0, 1))
 	_set_monsters(seeded)
-	_runtime_main.set("selected_player", 0)
-	_runtime_main.set("selected_district", _safe_district())
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = _safe_district()
 	var requested_index := mini(limit, catalog_size - 1)
 	var skill := _monster_skill(requested_index, 1)
 	skill["starter_play_free"] = true
@@ -1036,8 +1036,8 @@ func _reset_fixture() -> void:
 	_runtime_main.set("special_monster_timer", 5.0)
 	_runtime_main.set("opening_guide_dismissed", true)
 	_runtime_main.set("game_over", false)
-	_runtime_main.set("selected_player", 0)
-	_runtime_main.set("selected_district", _safe_district())
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = _safe_district()
 	_runtime_main.set("movement_trails", [])
 	_runtime_main.set("action_callouts", [])
 	_runtime_main.set("map_event_effects", [])

@@ -7963,3 +7963,32 @@
   methods and from 102 to 101 top-level fields.
 - Validation: RNG cutover test 19 checks PASS; scene Bench 9 checks PASS;
   Main budget PASS; Godot 4.7 script errors 0.
+
+# 2026-07-17 — Table selection state scene owner cutover
+
+- Added the production `TableSelectionState.tscn` owner under
+  `GameRuntimeCoordinator.tscn`.
+- Moved selected/inspected player, selected district and selected trade product
+  out of `scripts/main.gd`; all four old top-level fields were physically
+  deleted without compatibility properties or dynamic Main access.
+- Wired one typed owner into AI, monster, military, product market, contract,
+  card eligibility/resolution, infrastructure, economy-effect and balance
+  diagnostics bridges.
+- Migrated active tests and characterization Benches away from
+  `Main.get/set("selected_*")`.
+- Added atomic restore/save, one revision, a privacy-safe debug snapshot,
+  `table_selection_state_cutover_test.gd` and a production-composition MCP
+  Bench.
+- Main budget moved from 15,474 to 15,472 physical lines and from 101 to 97
+  top-level fields. External Main caller occurrences dropped from 2,309 to
+  2,165.
+- Validation: TableSelectionState cutover 29 checks PASS; MCP Bench 13 checks
+  PASS; Godot 4.7 script errors 0 after editor reload; main runtime composition,
+  ActionResult v1, runtime pointer input, news-event owner, UI text, visual
+  contract and smoke check-only PASS.
+- Known pre-existing/stale broad-gate failures were not repaired by restoring
+  retired architecture: layout smoke still references removed campaign
+  snapshots and older owner-count/Main-adapter expectations; the legacy AI
+  phase fixture still calls the removed `_start_scenario_from_menu`; the human
+  facility playability fixture assumes a facility listing that the current
+  fully-random regional supply no longer guarantees.

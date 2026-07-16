@@ -574,7 +574,8 @@ func refresh_unit_from_skill(unit: Dictionary, skill: Dictionary, district_index
 func summon_from_card(player_index: int, skill: Dictionary) -> bool:
 	var players := _players()
 	var districts := _districts()
-	var selected_district := int(_world_value(&"selected_district", -1))
+	var selection: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
+	var selected_district: int = selection.selected_district if selection != null else -1
 	if player_index < 0 or player_index >= players.size():
 		return false
 	if selected_district < 0 or selected_district >= districts.size() or bool((districts[selected_district] as Dictionary).get("destroyed", false)):
@@ -641,7 +642,8 @@ func remove_unit(index: int, reason: String) -> bool:
 func trigger_command(skill: Dictionary, target_slot: int = -1, acting_player_index: int = -1) -> bool:
 	var players := _players()
 	var districts := _districts()
-	var player_index := acting_player_index if acting_player_index >= 0 else int(_world_value(&"selected_player", -1))
+	var selection: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
+	var player_index := acting_player_index if acting_player_index >= 0 else (selection.selected_player if selection != null else -1)
 	if player_index < 0 or player_index >= players.size():
 		return false
 	var unit_index := unit_index_by_uid(int(skill.get("bound_military_uid", 0)))
@@ -669,7 +671,8 @@ func trigger_command(skill: Dictionary, target_slot: int = -1, acting_player_ind
 	var command_move := maxf(1.0, float(unit.get("move", skill.get("move", 220.0))))
 	var source := "匿名%s·%s" % [label, _skill_family(str(skill.get("name", "军令")))]
 	var before := _entity_world_position(unit)
-	var selected_district := int(_world_value(&"selected_district", -1))
+	var table_selection: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
+	var selected_district: int = table_selection.selected_district if table_selection != null else -1
 	match command:
 		"move":
 			if not _valid_target_district(selected_district, districts):

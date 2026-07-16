@@ -588,8 +588,8 @@ func _world_state_signature() -> int:
 	return var_to_str({
 		"players": _main.get("players"),
 		"districts": _main.get("districts"),
-		"selected_player": _main.get("selected_player"),
-		"selected_district": _main.get("selected_district"),
+		"selected_player": ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player,
+		"selected_district": ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district,
 		"skill_market": _main.get("skill_market"),
 		"game_over": _main.get("game_over"),
 	}).hash()

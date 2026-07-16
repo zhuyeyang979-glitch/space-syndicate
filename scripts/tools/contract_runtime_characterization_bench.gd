@@ -536,7 +536,7 @@ func _case_later_card_continues() -> Dictionary:
 	player["cash"] = 5000
 	players[2] = player
 	_runtime_main.set("players", players)
-	_runtime_main.set("selected_player", 2)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 2
 	var queued := bool(_runtime_main.call("_queue_skill_resolution", 2, 0, -1))
 	var current_queue_count := (_queue_service.call("current_queue") as Array).size()
 	var next_queue_count := (_queue_service.call("next_queue") as Array).size()
@@ -647,7 +647,7 @@ func _case_preemption_boundary() -> Dictionary:
 func _case_overlay_actions() -> Dictionary:
 	var opened := _open_offer("区域供需合约1", 50208)
 	var target_owner := int(opened.get("target_owner", -1))
-	_runtime_main.set("selected_player", target_owner)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = target_owner
 	var snapshot: Dictionary = _contract_controller.private_response_snapshot(target_owner)
 	var ids: Array = []
 	for action_variant in snapshot.get("actions", []):
@@ -845,7 +845,7 @@ func _case_hidden_owner() -> Dictionary:
 func _case_private_payload_boundary() -> Dictionary:
 	var opened := _open_offer("区域供需合约1", 50506)
 	var target_owner := int(opened.get("target_owner", -1))
-	_runtime_main.set("selected_player", target_owner)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = target_owner
 	var snapshot: Dictionary = _contract_controller.private_response_snapshot(target_owner)
 	var serialized := JSON.stringify(snapshot)
 	var observed := not serialized.contains("contract_target_owner") and not serialized.contains("player_index") and not serialized.contains("private_target") and not serialized.contains("private_discard") and not serialized.contains("ai_plan")
@@ -1095,9 +1095,9 @@ func _reset_fixture() -> void:
 	_runtime_main.set("districts", _baseline_districts.duplicate(true))
 	_product_market_controller.apply_save_data(_baseline_product_market.duplicate(true))
 	_contract_controller.reset_state()
-	_runtime_main.set("selected_trade_product", "活体芯片")
-	_runtime_main.set("selected_player", 0)
-	_runtime_main.set("inspected_player", 0)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = "活体芯片"
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).inspected_player = 0
 	_runtime_main.set("game_time", 100.0)
 	_runtime_main.set("game_over", false)
 	_runtime_main.set("log_lines", [])
@@ -1159,7 +1159,7 @@ func _contract_fixture(card_id: String, resolution_id: int, target_city_owner: i
 	districts[target_index] = target_district
 	_runtime_main.set("districts", districts)
 	_contract_controller.set_selection_state(source_index, target_index)
-	_runtime_main.set("selected_trade_product", "活体芯片")
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = "活体芯片"
 	var skill := _skill(card_id)
 	var context: Dictionary = _contract_controller.offer_context(skill, source_owner, source_index, target_index, "活体芯片")
 	var entry := {

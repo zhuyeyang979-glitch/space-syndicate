@@ -105,7 +105,7 @@ func _check_runtime_controller_cutover() -> void:
 	if main != null:
 		main.set("players", [{"cash": 10, "slots": []}])
 		main.set("districts", [])
-		main.set("selected_district", -1)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = -1
 		var quick_actions: Array = main.call("_runtime_player_board_quick_actions", 0)
 		var quick_ids: Array[String] = []
 		for action_variant in quick_actions:

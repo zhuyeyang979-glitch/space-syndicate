@@ -500,11 +500,11 @@ func _cutover_selection_context_restored() -> Dictionary:
 	var original_player := mini(1, (_runtime_main.get("players") as Array).size() - 1)
 	var original_district := mini(1, (_runtime_main.get("districts") as Array).size() - 1)
 	var original_product := _first_runtime_product()
-	_runtime_main.set("selected_player", original_player)
-	_runtime_main.set("selected_district", original_district)
-	_runtime_main.set("selected_trade_product", original_product)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = original_player
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = original_district
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = original_product
 	_complete_entry_twice(_entry(CASH_CARD_ID, 3716, 0, -1, -1, 0))
-	var checked := int(_runtime_main.get("selected_player")) == original_player and int(_runtime_main.get("selected_district")) == original_district and str(_runtime_main.get("selected_trade_product")) == original_product
+	var checked := int(((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player) == original_player and int(((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district) == original_district and str(((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product) == original_product
 	return _cutover_record("selection_context_restored", {"observed": _history_count_for_resolution(3716) == 1, "contract_aligned": checked, "world_adapter_checked": checked, "notes": "Actor/district/product selection is captured in the pure plan and restored before history continuation."})
 
 
@@ -1042,7 +1042,7 @@ func _case_immediate_economy_effect_applies_once() -> Dictionary:
 
 func _case_city_or_product_effect_applies_once() -> Dictionary:
 	_prepare_players([[], []], [1000, 1000])
-	_runtime_main.set("selected_trade_product", _first_runtime_product())
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = _first_runtime_product()
 	var before_cash := _player_cash(0)
 	var skill := _real_skill(PRODUCT_CARD_ID)
 	_complete_entry_twice(_entry_with_skill(skill, 3610))
@@ -1063,7 +1063,7 @@ func _case_city_or_product_effect_applies_once() -> Dictionary:
 func _case_route_or_district_effect_applies_once() -> Dictionary:
 	_prepare_players([[], []], [1000, 1000])
 	var district_index := _first_alive_district()
-	_runtime_main.set("selected_district", district_index)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
 	var before := _district_public_metrics(district_index)
 	_complete_entry_twice(_entry(DISTRICT_CARD_ID, 3611, 0, -1, -1, district_index))
 	var after := _district_public_metrics(district_index)
@@ -1594,8 +1594,8 @@ func _prepare_players(slot_sets: Array, cash_values: Array) -> void:
 		player_state["is_ai"] = false
 		player_states[player_index] = player_state
 	_runtime_main.set("players", player_states)
-	_runtime_main.set("selected_player", 0)
-	_runtime_main.set("selected_district", _first_alive_district())
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = _first_alive_district()
 
 
 func _real_skill(card_id: String) -> Dictionary:

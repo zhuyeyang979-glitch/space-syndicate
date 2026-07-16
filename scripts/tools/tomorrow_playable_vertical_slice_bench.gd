@@ -689,7 +689,7 @@ func _stage_privacy() -> void:
 		ai_player["hidden_owner"] = "VS06_TRUE_OWNER_SENTINEL"
 		players[1] = ai_player
 		_main.set("players", players)
-	var district := int(_main.get("selected_district"))
+	var district := int(((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
 	var ai_supply: Dictionary = {}
 	if district >= 0 and _main.has_method("_district_supply_snapshot_source"):
 		ai_supply = _main.call("_district_supply_snapshot_source", district, 1) as Dictionary
@@ -987,7 +987,7 @@ func _selected_v06_region_id() -> String:
 	if _main == null:
 		return ""
 	var districts := _array_property(_main, "districts")
-	var district_index := int(_main.get("selected_district"))
+	var district_index := int(((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
 	if district_index < 0 or district_index >= districts.size():
 		district_index = _first_playable_district()
 	if district_index < 0 or district_index >= districts.size() or not (districts[district_index] is Dictionary):

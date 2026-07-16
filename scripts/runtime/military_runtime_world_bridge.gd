@@ -5,12 +5,21 @@ class_name MilitaryRuntimeWorldBridge
 signal runtime_event_forwarded(event: Dictionary)
 
 var _world: Node
+var _table_selection_state: TableSelectionState
 var _world_call_count := 0
 var _failed_world_call_count := 0
 
 
 func bind_world(world: Node) -> void:
 	_world = world
+
+
+func set_table_selection_state(state: TableSelectionState) -> void:
+	_table_selection_state = state
+
+
+func table_selection_state() -> TableSelectionState:
+	return _table_selection_state
 
 
 func has_world() -> bool:
@@ -63,6 +72,7 @@ func debug_snapshot() -> Dictionary:
 		"bridge_ready": has_world(),
 		"world_call_count": _world_call_count,
 		"failed_world_call_count": _failed_world_call_count,
+		"table_selection_state_ready": _table_selection_state != null,
 		"owns_military_state": false,
 		"owns_military_rules": false,
 		"owns_card_inventory": false,

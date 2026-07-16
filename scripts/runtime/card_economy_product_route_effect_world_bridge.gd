@@ -5,6 +5,7 @@ class_name CardEconomyProductRouteEffectWorldBridge
 var _product_market_runtime_controller: ProductMarketRuntimeController
 var _city_gdp_derivative_runtime_controller: CityGdpDerivativeRuntimeController
 var _formula_runtime_service: CardEconomyProductRouteFormulaRuntimeService
+var _table_selection_state: TableSelectionState
 
 
 func set_product_market_runtime_controller(controller: ProductMarketRuntimeController) -> void:
@@ -17,6 +18,14 @@ func set_city_gdp_derivative_runtime_controller(controller: CityGdpDerivativeRun
 
 func set_formula_runtime_service(service: CardEconomyProductRouteFormulaRuntimeService) -> void:
 	_formula_runtime_service = service
+
+
+func set_table_selection_state(state: TableSelectionState) -> void:
+	_table_selection_state = state
+
+
+func table_selection_state() -> TableSelectionState:
+	return _table_selection_state
 
 
 func apply_effect(world: Node, plan: Dictionary) -> Dictionary:
@@ -40,7 +49,7 @@ func apply_effect(world: Node, plan: Dictionary) -> Dictionary:
 		"product_futures":
 			resolved = _product_market_runtime_controller.apply_futures(player_index, skill) if _product_market_runtime_controller != null else false
 		"city_gdp_derivative":
-			var district_index := int(world.get("selected_district"))
+			var district_index: int = _table_selection_state.selected_district if _table_selection_state != null else -1
 			var derivative_receipt := _city_gdp_derivative_runtime_controller.open_position(player_index, skill, district_index) if _city_gdp_derivative_runtime_controller != null else {"committed": false}
 			resolved = bool(derivative_receipt.get("committed", false))
 		"product_contract_boon":
@@ -78,11 +87,10 @@ func _apply_news_event(world: Node, handler_id: String, skill: Dictionary) -> Di
 	if _formula_runtime_service == null or _product_market_runtime_controller == null:
 		return _receipt(handler_id, false, "news_event_owner_unavailable")
 	var districts_variant: Variant = world.get("districts")
-	var selected_variant: Variant = world.get("selected_district")
-	if not (districts_variant is Array) or selected_variant == null:
+	if not (districts_variant is Array) or _table_selection_state == null:
 		return _receipt(handler_id, false, "news_event_world_facts_unavailable")
 	var districts := (districts_variant as Array).duplicate(true)
-	var district_index := int(selected_variant)
+	var district_index: int = _table_selection_state.selected_district
 	if district_index < 0 or district_index >= districts.size() or not (districts[district_index] is Dictionary):
 		return _receipt(handler_id, false, "news_event_target_invalid")
 	var effect := _news_effect_allowlist(skill)

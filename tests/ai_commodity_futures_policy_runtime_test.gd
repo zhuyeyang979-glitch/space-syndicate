@@ -120,7 +120,7 @@ func _install_fixture(main: Node, ai: Node, market: Node) -> Dictionary:
 	rival_district["city"] = _city(2, "AI期货竞品城", PRODUCT, "轨迹墨水", 1180, 4)
 	districts[rival_index] = rival_district
 	main.set("districts", districts)
-	main.set("selected_trade_product", PRODUCT)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = PRODUCT
 
 	var market_save := market.call("to_save_data") as Dictionary
 	var product_market: Dictionary = (market_save.get("product_market", {}) as Dictionary).duplicate(true)

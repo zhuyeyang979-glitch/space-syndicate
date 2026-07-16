@@ -5,11 +5,20 @@ class_name GameplayBalanceDiagnosticsWorldBridge
 const MonsterCatalogV06 := preload("res://scripts/runtime/monster_catalog_v06.gd")
 
 var _world: Node
+var _table_selection_state: TableSelectionState
 var _build_count := 0
 
 
 func bind_world(world: Node) -> void:
 	_world = world
+
+
+func set_table_selection_state(state: TableSelectionState) -> void:
+	_table_selection_state = state
+
+
+func table_selection_state() -> TableSelectionState:
+	return _table_selection_state
 
 
 func build_world_snapshot(sample_only := false) -> Dictionary:
@@ -19,13 +28,15 @@ func build_world_snapshot(sample_only := false) -> Dictionary:
 	var coordinator := _coordinator()
 	if coordinator == null:
 		return {"world_ready": false, "reason": "coordinator_missing"}
-	var selected_player := int(_world.get("selected_player"))
+	if _table_selection_state == null:
+		return {"world_ready": false, "reason": "table_selection_state_missing"}
+	var selected_player: int = _table_selection_state.selected_player
 	var cards := _card_facts(coordinator, selected_player, sample_only)
 	var snapshot := {
 		"world_ready": true,
 		"sample_only": sample_only,
 		"selected_player": selected_player,
-		"selected_district": int(_world.get("selected_district")),
+		"selected_district": _table_selection_state.selected_district,
 		"cards": cards,
 		"roles": _role_facts(),
 		"products": _product_facts(),
@@ -78,7 +89,7 @@ func _card_facts(coordinator: Node, selected_player: int, sample_only: bool) -> 
 		var requirement := _world_dictionary_call(&"_card_play_requirement_snapshot", [selected_player, skill])
 		var target := _world_dictionary_call(&"_card_play_target_snapshot", [skill])
 		var chip_texts: Array = []
-		var chip_variants: Array = _world_array_call(&"_card_presentation_array", [skill, "chips", card_id, selected_player, int(_world.get("selected_district"))])
+		var chip_variants: Array = _world_array_call(&"_card_presentation_array", [skill, "chips", card_id, selected_player, _table_selection_state.selected_district])
 		for chip_variant in chip_variants:
 			if chip_variant is Dictionary:
 				chip_texts.append(str((chip_variant as Dictionary).get("text", "")))

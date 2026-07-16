@@ -418,13 +418,13 @@ func _mutate_private_world_for_catalog_gate() -> Dictionary:
 	if _main == null:
 		return {}
 	var restored := {
-		"selected_player": int(_main.get("selected_player")),
-		"selected_district": int(_main.get("selected_district")),
+		"selected_player": int(((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player),
+		"selected_district": int(((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district),
 		"players": (_main.get("players") as Array).duplicate(true) if _main.get("players") is Array else [],
 		"districts": (_main.get("districts") as Array).duplicate(true) if _main.get("districts") is Array else [],
 	}
-	_main.set("selected_player", 2)
-	_main.set("selected_district", 3)
+	((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 2
+	((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = 3
 	var players: Array = (_main.get("players") as Array).duplicate(true) if _main.get("players") is Array else []
 	if not players.is_empty() and players[0] is Dictionary:
 		var player := (players[0] as Dictionary).duplicate(true)
@@ -447,8 +447,8 @@ func _mutate_private_world_for_catalog_gate() -> Dictionary:
 func _restore_private_world_for_catalog_gate(restored: Dictionary) -> void:
 	if _main == null or restored.is_empty():
 		return
-	_main.set("selected_player", int(restored.get("selected_player", 0)))
-	_main.set("selected_district", int(restored.get("selected_district", 0)))
+	((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = int(restored.get("selected_player", 0))
+	((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = int(restored.get("selected_district", 0))
 	_main.set("players", (restored.get("players", []) as Array).duplicate(true) if restored.get("players", []) is Array else [])
 	_main.set("districts", (restored.get("districts", []) as Array).duplicate(true) if restored.get("districts", []) is Array else [])
 

@@ -3,11 +3,20 @@ extends Node
 class_name CardPlayEligibilityWorldBridge
 
 var _world: Node = null
+var _table_selection_state: TableSelectionState
 var _build_count := 0
 
 
 func bind_world(world: Node) -> void:
 	_world = world
+
+
+func set_table_selection_state(state: TableSelectionState) -> void:
+	_table_selection_state = state
+
+
+func table_selection_state() -> TableSelectionState:
+	return _table_selection_state
 
 
 func build_facts(player_index: int, skill: Dictionary, context: Dictionary = {}) -> Dictionary:
@@ -19,7 +28,10 @@ func build_facts(player_index: int, skill: Dictionary, context: Dictionary = {})
 	var monsters: Array = _array_property("auto_monsters")
 	var player_valid := player_index >= 0 and player_index < players.size()
 	var player: Dictionary = (players[player_index] as Dictionary).duplicate(true) if player_valid and players[player_index] is Dictionary else {}
-	var selected_district := int(context.get("selected_district", _world.get("selected_district")))
+	var selected_district := int(context.get(
+		"selected_district",
+		_table_selection_state.selected_district if _table_selection_state != null else -1
+	))
 	var selected_district_valid := selected_district >= 0 and selected_district < districts.size()
 	var selected_district_data: Dictionary = (districts[selected_district] as Dictionary).duplicate(true) if selected_district_valid and districts[selected_district] is Dictionary else {}
 	var active_entry := _world_dictionary_call(&"_card_resolution_active_entry")
@@ -39,7 +51,10 @@ func build_facts(player_index: int, skill: Dictionary, context: Dictionary = {})
 			player_index,
 			int(context.get("contract_source_district", contract_selection.get("source_district", -1))),
 			int(context.get("contract_target_district", contract_selection.get("target_district", -1))),
-			str(context.get("selected_trade_product", _world.get("selected_trade_product")))
+			str(context.get(
+				"selected_trade_product",
+				_table_selection_state.selected_trade_product if _table_selection_state != null else ""
+			))
 		) if contract_controller != null else {"error": "合约运行时控制器不可用", "reason": "contract_controller_missing"}
 	var role: Dictionary = _world_dictionary_call(&"_player_role_card_for_index", [player_index]) if player_valid else {}
 	var share_by_district := {}

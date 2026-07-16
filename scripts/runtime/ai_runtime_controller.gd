@@ -458,21 +458,30 @@ var selected_contract_target_district:
 
 var selected_district:
 	get:
-		return _world_value(&"selected_district", 0)
+		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
+		return state.selected_district if state != null else 0
 	set(value):
-		_write_world_value(&"selected_district", value)
+		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
+		if state != null:
+			state.selected_district = int(value)
 
 var selected_player:
 	get:
-		return _world_value(&"selected_player", 0)
+		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
+		return state.selected_player if state != null else 0
 	set(value):
-		_write_world_value(&"selected_player", value)
+		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
+		if state != null:
+			state.selected_player = int(value)
 
 var selected_trade_product:
 	get:
-		return _world_value(&"selected_trade_product", "")
+		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
+		return state.selected_trade_product if state != null else ""
 	set(value):
-		_write_world_value(&"selected_trade_product", value)
+		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
+		if state != null:
+			state.selected_trade_product = str(value)
 
 var victory_control_active:
 	get:

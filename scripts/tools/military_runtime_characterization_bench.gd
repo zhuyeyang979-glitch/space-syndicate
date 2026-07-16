@@ -444,7 +444,7 @@ func _case_movement_start() -> Dictionary:
 	var unit := _make_unit("制空战斗机2", 0, start, 46001)
 	unit["remaining_time"] = 999.0
 	_military_controller.replace_runtime_state([unit], 46002)
-	_runtime_main.set("selected_district", target)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = target
 	var before: Vector2 = unit.get("world_position", Vector2.ZERO)
 	var command := _military_controller.make_command_skill("move", 2, 46001, "制空战斗机2")
 	var resolved := _military_controller.trigger_command(command, -1, 0)
@@ -460,7 +460,7 @@ func _case_movement_arrival() -> Dictionary:
 	var unit := _make_unit("制空战斗机2", 0, start, 46002)
 	unit["remaining_time"] = 999.0
 	_military_controller.replace_runtime_state([unit], 46003)
-	_runtime_main.set("selected_district", target)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = target
 	var command := _military_controller.make_command_skill("move", 2, 46002, "制空战斗机2")
 	var resolved := _military_controller.trigger_command(command, -1, 0)
 	var moving: Dictionary = _units()[0] if not _units().is_empty() else {}
@@ -553,7 +553,7 @@ func _case_command_cooldown() -> Dictionary:
 	var unit := _make_unit("行星防卫军2", 0, district_index, 46007)
 	unit["range"] = 99999.0
 	_military_controller.replace_runtime_state([unit], 46008)
-	_runtime_main.set("selected_district", district_index)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
 	var command := _military_controller.make_command_skill("guard", 2, 46007, "行星防卫军2")
 	var first := _military_controller.trigger_command(command, -1, 0)
 	var cooldown := float((_units()[0] as Dictionary).get("cooldown_left", 0.0))
@@ -570,7 +570,7 @@ func _case_move_no_damage() -> Dictionary:
 	var unit := _make_unit("制空战斗机2", 0, start, 46008)
 	unit["remaining_time"] = 999.0
 	_military_controller.replace_runtime_state([unit], 46009)
-	_runtime_main.set("selected_district", target)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = target
 	var before_district: Dictionary = ((_runtime_main.get("districts") as Array)[target] as Dictionary).duplicate(true)
 	var command := _military_controller.make_command_skill("move", 2, 46008, "制空战斗机2")
 	var resolved := _military_controller.trigger_command(command, -1, 0)
@@ -597,7 +597,7 @@ func _case_guard() -> Dictionary:
 	var unit := _make_unit("行星防卫军3", 0, district_index, 46009)
 	unit["range"] = 99999.0
 	_military_controller.replace_runtime_state([unit], 46010)
-	_runtime_main.set("selected_district", district_index)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
 	var command := _military_controller.make_command_skill("guard", 3, 46009, "行星防卫军3")
 	var resolved := _military_controller.trigger_command(command, -1, 0)
 	var after: Dictionary = (_runtime_main.get("districts") as Array)[district_index]
@@ -645,7 +645,7 @@ func _strike_case(route_case: bool) -> Dictionary:
 	var unit := _make_unit("轨道轰炸机3", 0, district_index, 46012 if not route_case else 46013)
 	unit["range"] = 99999.0
 	_military_controller.replace_runtime_state([unit], int(unit.get("uid", 0)) + 1)
-	_runtime_main.set("selected_district", district_index)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
 	var before: Dictionary = ((_runtime_main.get("districts") as Array)[district_index] as Dictionary).duplicate(true)
 	var before_city: Dictionary = (before.get("city", {}) as Dictionary).duplicate(true)
 	var command := _military_controller.make_command_skill("strike_district", 3, int(unit.get("uid", 0)), "轨道轰炸机3")
@@ -714,7 +714,7 @@ func _case_player_ai_route() -> Dictionary:
 	player_unit["range"] = 99999.0
 	ai_unit["range"] = 99999.0
 	_military_controller.replace_runtime_state([player_unit, ai_unit], 46019)
-	_runtime_main.set("selected_district", district_index)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
 	var player_command := _military_controller.make_command_skill("guard", 2, 46017, "行星防卫军2")
 	var ai_command := _military_controller.make_command_skill("guard", 2, 46018, "行星防卫军2")
 	var player_result := _military_controller.trigger_command(player_command, -1, 0)
@@ -918,8 +918,8 @@ func _reset_fixture() -> void:
 	_runtime_main.set("districts", _baseline_districts.duplicate(true))
 	_product_market_controller.call("apply_save_data", _baseline_product_market.duplicate(true))
 	_military_controller.reset_state()
-	_runtime_main.set("selected_player", 0)
-	_runtime_main.set("selected_district", _first_district("land"))
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = _first_district("land")
 	_runtime_main.set("game_time", 0.0)
 	_runtime_main.set("game_over", false)
 	_runtime_main.set("movement_trails", [])
@@ -964,8 +964,8 @@ func _release_runtime_main() -> void:
 
 
 func _deploy(card_id: String, player_index: int, district_index: int) -> bool:
-	_runtime_main.set("selected_player", player_index)
-	_runtime_main.set("selected_district", district_index)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = player_index
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
 	var skill: Dictionary = _runtime_main.call("_make_skill", card_id)
 	return _military_controller.summon_from_card(player_index, skill)
 
