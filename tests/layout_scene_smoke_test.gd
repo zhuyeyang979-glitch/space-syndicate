@@ -516,7 +516,7 @@ const FIRST_TABLE_AUTHORED_RUNTIME_SERVICE_SCENE := "res://scenes/runtime/FirstT
 const FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/first_table_authored_runtime_cutover_bench.gd"
 const FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_BENCH_SCENE := "res://scenes/tools/FirstTableAuthoredRuntimeCutoverBench.tscn"
 const FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/first_table_authored_runtime_cutover/"
-const FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/first_table_authored_runtime_cutover_sprint_7.png"
+const FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/first_table_public_rack_recommendation_v06.png"
 const LEGACY_RUNTIME_SURFACE_RETIREMENT_BENCH_SCRIPT := "res://scripts/tools/legacy_runtime_surface_retirement_bench.gd"
 const LEGACY_RUNTIME_SURFACE_RETIREMENT_BENCH_SCENE := "res://scenes/tools/LegacyRuntimeSurfaceRetirementBench.tscn"
 const LEGACY_RUNTIME_SURFACE_RETIREMENT_OUTPUT_DIR := "user://space_syndicate_design_qa/legacy_runtime_surface_retirement/"
@@ -3745,27 +3745,17 @@ func _check_first_mission_runtime_main_bench_component() -> void:
 		_expect(screenshot_path == FIRST_MISSION_RUNTIME_MAIN_SCREENSHOT_PATH and screenshot_path.begins_with("user://") and not screenshot_path.contains("res://reports"), "FirstMissionRuntimeMainBench exposes user:// screenshot target")
 	var cases_variant: Variant = bench.call("flow_cases") if bench.has_method("flow_cases") else []
 	var cases: Array = cases_variant if cases_variant is Array else []
-	var expected_case_ids := [
+	var required_case_ids := [
 		"start_first_mission",
 		"select_recommended_district",
-		"summon_starter_monster",
 		"open_real_district_supply",
-		"land_rack_guarantees_city_development",
-		"buy_city_development_card",
-		"inspect_and_play_city_development",
-		"create_first_product_project_share",
 		"receive_first_positive_gdp_or_cash_tick",
-		"buy_followup_business_card",
-		"play_followup_business_card",
 		"observe_public_resolution_track",
 		"observe_ai_public_action",
 		"read_public_clue_without_owner_leak",
 		"monster_pressure_visible",
 		"mission_completion_feedback",
-		"core_set_ids_exist",
 		"core_set_resources_validate",
-		"rank_i_entry_cards_available",
-		"teaching_supply_reachable",
 		"first_enabled_card_is_clear",
 		"disabled_reason_is_actionable",
 		"economy_route_payoff_visible",
@@ -3774,33 +3764,28 @@ func _check_first_mission_runtime_main_bench_component() -> void:
 		"ai_can_use_core_set_without_private_leak",
 		"pacing_profile_15_to_30_minutes",
 		"milestone_telemetry_records_real_game_time",
-		"first_development_card_timing",
 		"first_positive_income_timing",
-		"second_card_timing",
 		"first_public_clue_timing",
 		"first_monster_pressure_timing",
 		"mission_completion_budget",
-		"local_product_development_supply_stable",
-		"followup_supply_prepositioned",
 		"privacy_boundary_runtime",
 	]
 	var seen_cases := {}
-	var required_case_fields_ok := cases.size() == expected_case_ids.size()
+	var required_case_fields_ok := not cases.is_empty()
 	for case_variant in cases:
 		var flow_case: Dictionary = case_variant if case_variant is Dictionary else {}
 		seen_cases[str(flow_case.get("case_id", ""))] = true
-		required_case_fields_ok = required_case_fields_ok and flow_case.has("case_id") and flow_case.has("scenario_id") and flow_case.has("interaction") and flow_case.has("expected_action_id") and flow_case.has("notes")
-		_expect(str(flow_case.get("scenario_id", "")) == "first_table", "FirstMissionRuntimeMainBench case %s targets first_table" % str(flow_case.get("case_id", "")))
+		required_case_fields_ok = required_case_fields_ok and flow_case.has("case_id") and flow_case.has("scenario_id") and flow_case.has("interaction") and flow_case.has("expected_action_id") and flow_case.has("notes") and str(flow_case.get("scenario_id", "")) == "first_table"
 	_expect(required_case_fields_ok, "FirstMissionRuntimeMainBench flow cases include required fields")
-	for case_id in expected_case_ids:
+	for case_id in required_case_ids:
 		_expect(seen_cases.has(case_id), "FirstMissionRuntimeMainBench includes runtime main case %s" % case_id)
 	var manifest_variant: Variant = bench.call("build_flow_manifest_preview") if bench.has_method("build_flow_manifest_preview") else {}
 	var manifest: Dictionary = manifest_variant if manifest_variant is Dictionary else {}
 	var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
-	var manifest_records_ok: bool = str(manifest.get("output_dir", "")) == FIRST_MISSION_RUNTIME_MAIN_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == FIRST_MISSION_RUNTIME_MAIN_SCREENSHOT_PATH and int(manifest.get("case_count", 0)) == expected_case_ids.size() and records.size() == expected_case_ids.size() and manifest.has("pacing_profile") and manifest.has("pacing_evaluation")
+	var manifest_records_ok: bool = str(manifest.get("output_dir", "")) == FIRST_MISSION_RUNTIME_MAIN_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == FIRST_MISSION_RUNTIME_MAIN_SCREENSHOT_PATH and int(manifest.get("case_count", 0)) == cases.size() and records.size() == cases.size() and manifest.has("pacing_profile") and manifest.has("pacing_evaluation")
 	for record_variant in records:
 		var record: Dictionary = record_variant if record_variant is Dictionary else {}
-		manifest_records_ok = manifest_records_ok and record.has("case_id") and record.has("scenario_id") and record.has("clicked_action_id") and record.has("emitted_action_id") and record.has("coach_checked") and record.has("player_board_checked") and record.has("track_checked") and record.has("map_checked") and record.has("overlay_checked") and record.has("privacy_checked") and record.has("content_checked") and record.has("income_checked") and record.has("ai_public_action_checked") and record.has("monster_pressure_checked") and record.has("mission_complete_checked") and record.has("rack_guarantee_checked") and record.has("project_checked") and record.has("second_card_checked") and record.has("core_content_checked") and record.has("pacing_checked") and record.has("supply_pacing_checked") and record.has("observed_seconds") and record.has("target_seconds") and record.has("warning_seconds") and record.has("pace_status") and record.has("passed") and record.has("notes")
+		manifest_records_ok = manifest_records_ok and record.has("case_id") and record.has("scenario_id") and record.has("clicked_action_id") and record.has("emitted_action_id") and record.has("coach_checked") and record.has("player_board_checked") and record.has("track_checked") and record.has("map_checked") and record.has("overlay_checked") and record.has("privacy_checked") and record.has("content_checked") and record.has("income_checked") and record.has("ai_public_action_checked") and record.has("monster_pressure_checked") and record.has("mission_complete_checked") and record.has("core_content_checked") and record.has("pacing_checked") and record.has("supply_pacing_checked") and record.has("observed_seconds") and record.has("target_seconds") and record.has("warning_seconds") and record.has("pace_status") and record.has("passed") and record.has("notes")
 	_expect(manifest_records_ok, "FirstMissionRuntimeMainBench manifest preview records include required runtime main fields")
 	_expect(not _variant_contains_callable(cases) and not _variant_contains_object(cases) and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "FirstMissionRuntimeMainBench cases and manifest preview stay data-only")
 	_expect(ResourceLoader.exists("res://scenes/main.tscn") and load("res://scenes/main.tscn") != null, "FirstMissionRuntimeMainBench can rely on the real main.tscn")
@@ -3819,12 +3804,10 @@ func _check_first_mission_runtime_main_bench_component() -> void:
 	var development_coordinator := main_instance.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if main_instance != null else null
 	var infrastructure := development_coordinator.get_node_or_null("RegionInfrastructureRuntimeController") if development_coordinator != null else null
 	var first_table_service := development_coordinator.get_node_or_null("FirstTableAuthoredRuntimeService") if development_coordinator != null else null
-	_expect(development_coordinator != null and development_coordinator.has_method("v06_first_table_facility_market_snapshot") and development_coordinator.has_method("purchase_v06_first_table_facility_card") and development_coordinator.has_method("play_v06_runtime_card") and infrastructure != null and infrastructure.has_method("apply_facility_action") and first_table_service != null and first_table_service.has_method("resolve_content_catalog"), "Coordinator owns first_table facility supply and CardFlow settlement through RegionInfrastructure")
-	if development_coordinator != null:
-		var rank_i_facility_cards: Array = development_coordinator.call("v06_rank_i_facility_cards") if development_coordinator.has_method("v06_rank_i_facility_cards") else []
-		var canonical_card: Dictionary = development_coordinator.call("v06_card_definition", "facility.factory.life.rank_1") if development_coordinator.has_method("v06_card_definition") else {}
-		var canonical_machine: Dictionary = canonical_card.get("machine", {}) if canonical_card.get("machine", {}) is Dictionary else {}
-		_expect(not rank_i_facility_cards.is_empty() and str(canonical_machine.get("category_id", "")) == "facility" and int(canonical_machine.get("rank", 0)) == 1 and str(canonical_machine.get("effect_kind", "")) == "build_upgrade_or_repair_facility", "first_table facility guarantee uses a canonical Rank I v0.6 card and the shared CardFlow route")
+	_expect(development_coordinator != null and development_coordinator.has_method("play_v06_runtime_card") and infrastructure != null and infrastructure.has_method("apply_facility_action") and first_table_service != null and first_table_service.has_method("resolve_content_catalog") and first_table_service.has_method("recommend_rack_item"), "Coordinator keeps CardFlow settlement behind RegionInfrastructure while first_table guidance reads the current public rack")
+	if first_table_service != null:
+		var first_table_debug: Dictionary = first_table_service.call("debug_snapshot")
+		_expect(not bool(first_table_debug.get("mutates_region_supply_rack", true)) and not bool(first_table_debug.get("fixed_city_development_selection_active", true)) and not bool(first_table_debug.get("fixed_monster_selection_active", true)) and not bool(first_table_debug.get("factory_before_market_assumption_active", true)), "first_table guidance does not restore fixed slots, category order, or rack mutation")
 	if main_instance != null:
 		viewport.remove_child(main_instance)
 		main_instance.queue_free()
@@ -10122,28 +10105,39 @@ func _check_first_table_authored_runtime_cutover_component() -> void:
 		coordinator.call("configure", bridge.call("debug_snapshot"))
 		var service := coordinator.get_node_or_null("FirstTableAuthoredRuntimeService")
 		var methods_ok := service != null and service.scene_file_path == FIRST_TABLE_AUTHORED_RUNTIME_SERVICE_SCENE
-		for method_name in ["configure", "fixture_snapshot", "resolve_content_catalog", "select_teaching_product", "compose_runtime_content", "contextualize_phase", "completion_summary", "completion_label", "score_district", "pacing_profile", "evaluate_pacing", "supply_plan", "debug_snapshot"]:
+		for method_name in ["configure", "fixture_snapshot", "resolve_content_catalog", "select_teaching_product", "compose_runtime_content", "contextualize_phase", "completion_summary", "completion_label", "score_district", "recommend_rack_item", "pacing_profile", "evaluate_pacing", "supply_plan", "debug_snapshot"]:
 			methods_ok = methods_ok and service != null and service.has_method(method_name)
 		_expect(methods_ok, "FirstTableAuthoredRuntimeService is an editable scene owner with catalog, content, copy, score, and debug APIs")
 		var catalog: Dictionary = coordinator.call("first_table_resolve_content_catalog", {
-			"card_ids": ["活体芯片生产1", "城市融资1", "商品换线1", "诱导电波1", "业主透镜1"],
-			"city_development_cards": [{"card_id": "活体芯片生产1", "rank": 1, "product_id": "活体芯片"}],
-			"monster_ids": ["镜像猎兵", "蓝锋骑士", "流星哨兵", "绿洲修复体"],
-			"product_ids": ["活体芯片", "轨迹墨水", "等离子米"],
+			"card_ids": ["card.factory.life.rank_1", "card.market.life.rank_1"],
+			"monster_ids": ["monster.fixture.only"],
+			"product_ids": ["life"],
 		})
+		var public_rack := {
+			"visibility_scope": "public",
+			"public_snapshot": true,
+			"region_id": "region.002",
+			"public_revision": 23,
+			"cards": [
+				{"slot_id": "slot.0", "card_id": "card.market.life.rank_1", "display_name": "生命市场", "kind": "facility", "facility_type": "market", "rank": 1, "tutorial_eligible": true, "product_id": "life", "facts": "公开市场条件"},
+				{"slot_id": "slot.1", "card_id": "card.route.rank_1", "display_name": "短程商路", "kind": "route", "rank": 1, "tutorial_eligible": true, "facts": "公开路线条件"},
+			],
+		}
 		var owner_facility_fact := {"facility_id": "facility.first_table.life", "region_id": "region.002", "facility_type": "factory", "industry_id": "life", "rank": 1, "lifecycle_state": "active"}
 		var owner_gdp_per_minute := 72
 		var owner_sale_receipt_cash_cents := 1800
-		var content: Dictionary = coordinator.call("first_table_compose_runtime_content", {"district_index": 2, "district_name": "曙光港", "teaching_product_id": "活体芯片", "owned_facilities": [owner_facility_fact], "public_projects": [{"product_id": "活体芯片", "hidden_owner": 2}], "gdp_per_minute": owner_gdp_per_minute, "cashflow_paid_total": owner_sale_receipt_cash_cents, "visible_monster_name": "镜像猎兵"}, catalog)
+		var content: Dictionary = coordinator.call("first_table_compose_runtime_content", {"district_index": 2, "district_name": "曙光港", "public_region_supply_rack_snapshot": public_rack, "owned_facilities": [owner_facility_fact], "public_projects": [{"product_id": "life", "hidden_owner": 2}], "gdp_per_minute": owner_gdp_per_minute, "cashflow_paid_total": owner_sale_receipt_cash_cents, "visible_monster_name": "实际怪兽"}, catalog)
 		var phase: Dictionary = coordinator.call("first_table_contextualize_phase", {"id": "check_economy"}, content)
 		var debug: Dictionary = service.call("debug_snapshot") if service != null else {}
-		_expect((catalog.get("runtime_card_ids", []) as Array).has("城市融资1") and (catalog.get("starter_monster_ids", []) as Array).size() == 4 and (catalog.get("preferred_product_ids", []) as Array).size() == 3, "service filters real first_table card, monster, and product ids")
+		var rack_recommendation: Dictionary = content.get("rack_recommendation", {}) if content.get("rack_recommendation", {}) is Dictionary else {}
+		var followup_recommendation: Dictionary = content.get("followup_rack_recommendation", {}) if content.get("followup_rack_recommendation", {}) is Dictionary else {}
+		_expect(bool(catalog.get("catalog_input_ignored", false)) and (catalog.get("runtime_card_ids", []) as Array).is_empty() and (catalog.get("starter_monster_ids", []) as Array).is_empty() and (catalog.get("preferred_product_ids", []) as Array).is_empty() and str(rack_recommendation.get("card_id", "")) == "card.market.life.rank_1" and str(followup_recommendation.get("card_id", "")) == "card.route.rank_1" and not bool(content.get("rack_mutation_requested", true)) and (content.get("starter_monster_ids", []) as Array).is_empty(), "service ignores fixed catalog sequences and recommends the current public rack without mutation")
 		var composed_facilities: Array = content.get("owned_facilities", []) if content.get("owned_facilities", []) is Array else []
 		var composed_facility: Dictionary = composed_facilities[0] if not composed_facilities.is_empty() and composed_facilities[0] is Dictionary else {}
 		var owner_gate_scripts_load := load("res://tests/region_infrastructure_atomic_lifecycle_v06_test.gd") is Script and load("res://tests/commodity_flow_local_baseline_demand_v06_test.gd") is Script and load("res://tests/vs06_facility_commodity_flow_integration_test.gd") is Script and load("res://tests/human_first_table_playability_v06_test.gd") is Script and load(MAIN_RUNTIME_COMPOSITION_TEST) is Script
-		_expect(bool(content.get("city_present", false)) and composed_facilities.size() == 1 and str(composed_facility.get("facility_type", "")) == "factory" and str(composed_facility.get("industry_id", "")) == "life" and str(content.get("urbanization_share_text", "")).contains("life") and str(content.get("urbanization_share_text", "")).contains("factory") and int(content.get("gdp_per_minute", -1)) == owner_gdp_per_minute and int(content.get("cashflow_paid_total", -1)) == owner_sale_receipt_cash_cents and bool(content.get("positive_income_observed", false)) and str(phase.get("detail", "")).contains("GDP/min %d" % owner_gdp_per_minute) and str(phase.get("detail", "")).contains(str(owner_sale_receipt_cash_cents)) and int(debug.get("phase_count", 0)) == 13 and owner_gate_scripts_load, "FirstTableAuthoredRuntimeService presents RegionInfrastructure facilities and CommodityFlow receipt/GDP facts without owning their arithmetic")
+		_expect(bool(content.get("city_present", false)) and composed_facilities.size() == 1 and str(composed_facility.get("facility_type", "")) == "factory" and str(composed_facility.get("industry_id", "")) == "life" and str(content.get("urbanization_share_text", "")).contains("life") and str(content.get("urbanization_share_text", "")).contains("factory") and int(content.get("gdp_per_minute", -1)) == owner_gdp_per_minute and int(content.get("cashflow_paid_total", -1)) == owner_sale_receipt_cash_cents and bool(content.get("positive_income_observed", false)) and str(content.get("visible_monster_name", "")) == "实际怪兽" and str(phase.get("detail", "")).contains("GDP/min %d" % owner_gdp_per_minute) and str(phase.get("detail", "")).contains(str(owner_sale_receipt_cash_cents)) and int(debug.get("phase_count", 0)) == 13 and owner_gate_scripts_load, "FirstTableAuthoredRuntimeService presents observed RegionInfrastructure, CommodityFlow, and monster facts without selecting fixed rack content")
 		_expect(not JSON.stringify(content.get("public_projects", [])).contains("hidden_owner"), "service strips hidden ownership from public authored content")
-		_expect(bool(debug.get("service_authoritative", false)) and not bool(debug.get("legacy_authored_fallback_used", true)), "first_table authored service is authoritative with legacy fallback inactive")
+		_expect(bool(debug.get("service_authoritative", false)) and not bool(debug.get("legacy_authored_fallback_used", true)) and not bool(debug.get("fixed_city_development_selection_active", true)) and not bool(debug.get("fixed_monster_selection_active", true)) and not bool(debug.get("followup_card_injection_active", true)) and not bool(debug.get("factory_before_market_assumption_active", true)), "first_table authored service is authoritative with fixed-slot and ordered-category fallbacks inactive")
 		_expect(not _variant_contains_callable(catalog) and not _variant_contains_object(catalog) and not _variant_contains_callable(content) and not _variant_contains_object(content), "first_table authored service boundary stays pure data")
 		coordinator.free()
 		bridge.free()
@@ -10178,13 +10172,13 @@ func _check_first_table_authored_runtime_cutover_component() -> void:
 		bench.set("auto_run", false)
 		root.add_child(bench)
 		await process_frame
-		var expected_cases := ["service_scene_composition", "real_first_table_fixture_loaded", "fixture_arrays_deduplicated", "catalog_filters_real_runtime_ids", "catalog_rejects_missing_ids", "teaching_product_prefers_authored_chain", "teaching_product_uses_remote_demand_fallback", "pre_project_content_safe_state", "project_share_and_income_summary", "public_project_privacy_sanitized", "phase_context_uses_runtime_facts", "completion_copy_keeps_match_running", "district_score_characterized", "invalid_district_rejected", "pacing_profile_authored", "pacing_evaluation_ordered", "supply_plan_prepositions_followup", "local_product_development_catalog_complete", "all_outputs_data_only", "real_main_delegates_legacy_inactive"]
+		var expected_cases := ["service_scene_composition", "real_fixture_has_no_fixed_fields", "legacy_fixture_fields_ignored", "catalog_authors_no_fixed_sequence", "public_rack_scope_required", "private_rack_fields_rejected", "market_before_factory_allowed", "factory_before_market_allowed", "public_tutorial_tag_can_recommend", "no_suitable_card_uses_generic_hint", "recommendation_does_not_mutate_snapshot", "content_uses_current_rack_first_and_second", "visible_monster_is_observed_not_selected", "phase_copy_promises_no_injection", "supply_api_is_read_only", "listing_api_is_inert", "legacy_score_reads_rack_only", "public_project_privacy_sanitized", "pacing_success_signals_unchanged", "all_outputs_data_only"]
 		var cases: Array = bench.call("cutover_cases")
 		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
 		var fields_ok := (manifest.get("records", []) as Array).size() == 20
 		for record_variant in manifest.get("records", []):
 			var record: Dictionary = record_variant if record_variant is Dictionary else {}
-			for key in ["case_id", "scenario_id", "catalog_checked", "content_checked", "context_checked", "scoring_checked", "pacing_checked", "supply_checked", "privacy_checked", "service_checked", "main_delegation_checked", "pure_data_checked", "service_ready", "legacy_fallback_used", "passed", "notes"]:
+			for key in ["case_id", "scenario_id", "fixture_checked", "catalog_checked", "recommendation_checked", "order_checked", "content_checked", "context_checked", "ownership_checked", "pacing_checked", "privacy_checked", "service_checked", "pure_data_checked", "service_ready", "mutates_region_supply_rack", "passed", "notes"]:
 				fields_ok = fields_ok and record.has(key)
 		_expect(cases == expected_cases and str(bench.call("output_dir")) == FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "FirstTableAuthoredRuntimeCutoverBench defines 20 pure-data cases and user:// outputs")
 		root.remove_child(bench)
@@ -13881,8 +13875,8 @@ func _check_main_player_panel_refresh_contract() -> void:
 	var hand_rack_source := FileAccess.get_file_as_string("res://scripts/ui/hand_rack.gd")
 	_expect(not main_source.contains("var player_panel_signature") and not main_source.contains("func _uses_split_runtime_table") and not main_source.contains("func _refresh_split_compatibility_player_panel") and not main_source.contains("func _player_panel_structure_signature") and not main_source.contains("func _refresh_player_panel_live_values"), "main.gd no longer owns the generated or compatibility PlayerBoard renderer")
 	_expect(main_source.contains("func _sync_runtime_game_screen") and main_source.contains("runtime_game_screen.call(\"apply_state\""), "main.gd updates the scene-owned GameScreen through the snapshot bridge")
-	_expect(main_source.contains("func _activate_runtime_quick_action") and main_source.contains("_runtime_quick_action_entry(player_index, action_id)") and not main_source.contains("_reject_legacy_direct_city_build") and coordinator_source.contains("func v06_first_table_facility_market_snapshot(") and coordinator_source.contains("func play_v06_runtime_card("), "main quick actions stay data-backed while first_table facility play uses the Coordinator CardFlow facade")
-	_expect(main_source.contains("func _runtime_player_board_quick_actions") and main_source.contains("\"发展牌架\"") and main_source.contains("_open_district_supply_from_map(selected_district)") and main_source.contains("_first_actionable_hand_slot(player_index)") and main_source.contains("_use_skill(slot_index)"), "main runtime quick actions expose rack/buy/play and route city development through real cards")
+	_expect(main_source.contains("func _activate_runtime_quick_action") and main_source.contains("_runtime_quick_action_entry(player_index, action_id)") and not main_source.contains("_reject_legacy_direct_city_build") and main_source.contains("_open_district_supply_from_map(selected_district)") and coordinator_source.contains("func play_v06_runtime_card("), "main quick actions stay data-backed while rack opening and card play use their existing runtime routes")
+	_expect(main_source.contains("func _runtime_player_board_quick_actions") and main_source.contains("\"rack\"") and main_source.contains("\"buy\"") and main_source.contains("\"play\"") and main_source.contains("_first_actionable_hand_slot(player_index)") and main_source.contains("_use_skill(slot_index)"), "main runtime quick actions expose generic rack, buy, and play actions without asserting a guaranteed card category")
 	var game_screen_source := FileAccess.get_file_as_string("res://scripts/ui/game_screen.gd")
 	_expect(game_screen_source.contains("func _unhandled_key_input") and game_screen_source.contains("_quick_action_index_for_key") and game_screen_source.contains("_quick_action_id_at") and game_screen_source.contains("_should_ignore_quick_action_hotkey"), "split GameScreen maps 1-4 keyboard shortcuts onto the current data-backed quick actions without reading gameplay rules")
 	_expect(main_source.contains("_on_runtime_game_screen_card_drop_requested") and main_source.contains("_runtime_drop_position_targets_map(screen_position)") and main_source.contains("get_district_at_control_position"), "main runtime maps split hand-card drops onto MapView districts before using existing play-card controller flow")
