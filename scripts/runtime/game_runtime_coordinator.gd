@@ -159,6 +159,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 			commodity_flow,
 			region_infrastructure
 		)
+	_bind_region_supply_source_port()
 	var scenario := _scenario_node()
 	if scenario != null and scenario.has_method("configure"):
 		scenario.call("configure", {})
@@ -1297,6 +1298,42 @@ func rollback_region_supply_slot_refill(transaction_id: String) -> Dictionary:
 func finalize_region_supply_slot_refill(transaction_id: String) -> Dictionary:
 	var value: Variant = region_supply_runtime_call("finalize_slot_refill", [transaction_id])
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+## Thin production facade. RegionSupply remains the sole rack/bag/RNG owner and
+## CommodityCardInventory/CardFlow remains the sole purchase transaction owner.
+func purchase_region_supply_card(request: Dictionary) -> Dictionary:
+	var inventory := _commodity_card_inventory_runtime_controller_node()
+	if inventory == null or not inventory.has_method("purchase_region_supply_card"):
+		return {
+			"committed": false,
+			"reason_code": "region_supply_purchase_inventory_unavailable",
+		}
+	var quote_request: Dictionary = (
+		(request.get("quote_request", {}) as Dictionary).duplicate(true)
+		if request.get("quote_request", {}) is Dictionary
+		else {}
+	)
+	var value_variant: Variant = inventory.call(
+		"purchase_region_supply_card",
+		str(request.get("actor_id", "")).strip_edges(),
+		str(request.get("region_id", "")).strip_edges(),
+		int(request.get("slot_index", -1)),
+		str(request.get("item_id", "")).strip_edges(),
+		str(request.get("card_id", "")).strip_edges(),
+		int(request.get("player_revision", -1)),
+		str(request.get("supply_revision", "")).strip_edges(),
+		str(request.get("transaction_id", "")).strip_edges(),
+		quote_request
+	)
+	return (
+		(value_variant as Dictionary).duplicate(true)
+		if value_variant is Dictionary
+		else {
+			"committed": false,
+			"reason_code": "region_supply_purchase_result_invalid",
+		}
+	)
 
 
 func commit_district_purchase_with_region_supply(
@@ -3076,6 +3113,7 @@ func reset_state() -> void:
 	var commodity_card_inventory := _commodity_card_inventory_runtime_controller_node()
 	if commodity_card_inventory != null and commodity_card_inventory.has_method("reset_state"):
 		commodity_card_inventory.call("reset_state")
+	_bind_region_supply_source_port()
 	var organization_owner := _player_organization_runtime_controller_node()
 	if organization_owner != null and organization_owner.has_method("reset_state"):
 		organization_owner.call("reset_state")
@@ -4477,6 +4515,30 @@ func _player_mana_runtime_controller_node() -> Node:
 
 func _commodity_card_inventory_runtime_controller_node() -> Node:
 	return get_node_or_null("CommodityCardInventoryRuntimeController")
+
+
+func _bind_region_supply_source_port() -> Dictionary:
+	var inventory := _commodity_card_inventory_runtime_controller_node()
+	var source := _region_supply_runtime_controller_node()
+	if inventory == null or not inventory.has_method("set_region_supply_source_port"):
+		return {
+			"configured": false,
+			"reason_code": "region_supply_inventory_unavailable",
+		}
+	if source == null:
+		return {
+			"configured": false,
+			"reason_code": "region_supply_source_unavailable",
+		}
+	var value_variant: Variant = inventory.call("set_region_supply_source_port", source)
+	return (
+		(value_variant as Dictionary).duplicate(true)
+		if value_variant is Dictionary
+		else {
+			"configured": false,
+			"reason_code": "region_supply_source_binding_invalid",
+		}
+	)
 
 
 func _card_player_state_production_adapter_v06_node() -> Node:
