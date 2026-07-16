@@ -115,7 +115,7 @@ func _test_real_production_adopter() -> void:
 		main.queue_free()
 		await process_frame
 		return
-	var players: Array = main.get("players") if main.get("players") is Array else []
+	var players: Array = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players if ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players is Array else []
 	var actor_id := str((players[0] as Dictionary).get("actor_id", "player.0")) if not players.is_empty() and players[0] is Dictionary else "player.0"
 	var market: Dictionary = coordinator.call("v06_facility_market_snapshot", actor_id)
 	var listing: Dictionary = market.get("listing", {}) if market.get("listing", {}) is Dictionary else {}
@@ -162,7 +162,7 @@ func _test_real_production_adopter() -> void:
 	_expect(str(failure_before.get("failure_code", "")) == "purchase_listing_changed" and not bool(failure_before.get("success", true)), "production action projects an owner listing mismatch as structured failure")
 	_expect(owner_after_failure == owner_before and int(((market_after_failure.get("market", {}) as Dictionary).get("revision", -2))) == market_revision_before, "failed production action leaves owner player and market revisions unchanged")
 
-	var players_before_private_probe: Array = (main.get("players") as Array).duplicate(true) if main.get("players") is Array else []
+	var players_before_private_probe: Array = (((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true) if ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players is Array else []
 	var private_probe_players := players_before_private_probe.duplicate(true)
 	if private_probe_players.size() > 1 and private_probe_players[1] is Dictionary:
 		var rival := (private_probe_players[1] as Dictionary).duplicate(true)
@@ -171,10 +171,10 @@ func _test_real_production_adopter() -> void:
 		rival["hidden_owner"] = "ARV1_HIDDEN_OWNER_SENTINEL"
 		rival["ai_weight"] = "ARV1_AI_WEIGHT_SENTINEL"
 		private_probe_players[1] = rival
-		main.set("players", private_probe_players)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = private_probe_players
 	var failure_after_private_change: Dictionary = coordinator.call("execute_v06_facility_purchase_action", actor_id, "%s:stale" % card_id)
 	_expect(failure_after_private_change == failure_before and not _contains_private_value(failure_after_private_change), "rival cash, hand, owner and AI weight cannot influence or enter the public failure projection")
-	main.set("players", players_before_private_probe)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players_before_private_probe
 
 	main.call("_on_district_supply_action_requested", "district_supply_purchase_card", {"card_name": card_id})
 	await _wait_frames(3)

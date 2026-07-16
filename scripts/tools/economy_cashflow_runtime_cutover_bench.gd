@@ -356,7 +356,7 @@ func _reset_real_main() -> bool:
 func _first_land_district() -> int:
 	if _real_main == null:
 		return -1
-	var districts: Array = _real_main.get("districts") as Array
+	var districts: Array = ((_real_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array
 	for index in range(districts.size()):
 		var district: Dictionary = districts[index] if districts[index] is Dictionary else {}
 		if not bool(district.get("destroyed", false)) and str(district.get("terrain", "land")) == "land":
@@ -378,13 +378,13 @@ func _exercise_real_main_owner_cashflow() -> Dictionary:
 	var prepared := _prepare_owner_city()
 	if prepared.is_empty():
 		return {}
-	var players: Array = _real_main.get("players") as Array
+	var players: Array = ((_real_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array
 	var before: Dictionary = (players[0] as Dictionary).duplicate(true)
 	var before_cash := int(before.get("cash", 0))
 	var before_ledger_size := (before.get("economic_ledger", []) as Array).size()
 	var before_history_size := (before.get("cash_history", []) as Array).size()
 	var payout_total := int(_real_main.call("_settle_city_cashflow_seconds", 60.0))
-	players = _real_main.get("players") as Array
+	players = ((_real_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array
 	var after: Dictionary = players[0] if players[0] is Dictionary else {}
 	var coordinator_node := _real_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
 	var debug: Dictionary = coordinator_node.call("debug_snapshot") if coordinator_node != null else {}
@@ -416,15 +416,15 @@ func _exercise_real_main_project_cashflow() -> Dictionary:
 		"contribution_units": int((project.get("contribution_by_player", {}) as Dictionary).get("0", 1)),
 	}, 101)
 	city = (second_contribution.get("city", {}) as Dictionary).duplicate(true)
-	var districts: Array = _real_main.get("districts") as Array
+	var districts: Array = ((_real_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array
 	(districts[district_index] as Dictionary)["city"] = city
-	_real_main.set("districts", districts)
+	((_real_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 	_real_main.call("_refresh_city_networks")
-	var players: Array = _real_main.get("players") as Array
+	var players: Array = ((_real_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array
 	var before_zero := int((players[0] as Dictionary).get("cash", 0))
 	var before_one := int((players[1] as Dictionary).get("cash", 0))
 	var payout_total := int(_real_main.call("_settle_city_cashflow_seconds", 60.0))
-	players = _real_main.get("players") as Array
+	players = ((_real_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array
 	var zero_delta := int((players[0] as Dictionary).get("cash", 0)) - before_zero
 	var one_delta := int((players[1] as Dictionary).get("cash", 0)) - before_one
 	var coordinator_node := _real_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")

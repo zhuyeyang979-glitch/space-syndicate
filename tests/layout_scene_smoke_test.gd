@@ -3002,7 +3002,7 @@ func _button_debug_under(node: Node) -> String:
 
 
 func _runtime_districts(main: Node) -> Array:
-	var districts_variant: Variant = main.get("districts")
+	var districts_variant: Variant = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts
 	return districts_variant if districts_variant is Array else []
 
 
@@ -3075,7 +3075,7 @@ func _prepare_runtime_human_player(main: Node, player_index: int) -> void:
 	player["action_cooldown"] = 0.0
 	player["cash"] = maxi(int(player.get("cash", 0)), 5000)
 	players[player_index] = player
-	main.set("players", players)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 
 
 func _prepare_runtime_full_hand_purchase(main: Node, district_index: int, incoming_card: String) -> void:
@@ -3084,7 +3084,7 @@ func _prepare_runtime_full_hand_purchase(main: Node, district_index: int, incomi
 		var district: Dictionary = (districts[district_index] as Dictionary).duplicate(true)
 		district["card_choices"] = [incoming_card]
 		districts[district_index] = district
-		main.set("districts", districts)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 	var monster_controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterRuntimeController")
 	if monster_controller != null and monster_controller.has_method("_make_auto_monster") and monster_controller.has_method("replace_runtime_state"):
 		var actor_variant: Variant = monster_controller.call("_make_auto_monster", 0, 0, district_index, 0, 1)
@@ -3108,7 +3108,7 @@ func _prepare_runtime_full_hand_purchase(main: Node, district_index: int, incomi
 				main.call("_make_skill", "区域供需合约1"),
 			]
 		players[0] = player
-		main.set("players", players)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).inspected_player = 0
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
@@ -3271,7 +3271,7 @@ func _runtime_owned_monster_count(main: Node, player_index: int) -> int:
 
 
 func _runtime_players(main: Node) -> Array:
-	var players_variant: Variant = main.get("players")
+	var players_variant: Variant = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players
 	return players_variant if players_variant is Array else []
 
 
@@ -3353,7 +3353,7 @@ func _set_runtime_player_action_cooldown(main: Node, player_index: int, cooldown
 	var player: Dictionary = (players[player_index] as Dictionary).duplicate(true)
 	player["action_cooldown"] = maxf(0.0, cooldown)
 	players[player_index] = player
-	main.set("players", players)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 
 
 func _runtime_player_cash(main: Node, player_index: int) -> int:

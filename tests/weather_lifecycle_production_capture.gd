@@ -97,7 +97,7 @@ func _run() -> void:
 
 
 func _prepare_visible_world(main: Node) -> Array[int]:
-	var districts_variant: Variant = main.get("districts")
+	var districts_variant: Variant = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts
 	if not (districts_variant is Array):
 		_fail("production district list is unavailable")
 		return []
@@ -116,7 +116,7 @@ func _prepare_visible_world(main: Node) -> Array[int]:
 	if not bool(city_receipt.get("created", false)):
 		_fail("city fixture receipt: %s" % JSON.stringify(city_receipt))
 	var second_region := -1
-	districts = main.get("districts") as Array
+	districts = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array
 	for index in range(districts.size()):
 		var district: Dictionary = districts[index] if districts[index] is Dictionary else {}
 		if index != city_region and not bool(district.get("destroyed", false)):

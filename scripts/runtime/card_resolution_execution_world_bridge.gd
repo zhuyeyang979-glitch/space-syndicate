@@ -3,10 +3,19 @@ extends Node
 class_name CardResolutionExecutionWorldBridge
 
 var _table_selection_state: TableSelectionState
+var _world_session_state: WorldSessionState
 
 
 func set_table_selection_state(state: TableSelectionState) -> void:
 	_table_selection_state = state
+
+
+func set_world_session_state(state: WorldSessionState) -> void:
+	_world_session_state = state
+
+
+func world_session_state() -> WorldSessionState:
+	return _world_session_state
 
 
 func table_selection_state() -> TableSelectionState:
@@ -76,7 +85,9 @@ func _requirement_receipt(world: Node, transaction: Dictionary) -> Dictionary:
 	var entry: Dictionary = (transaction.get("active_entry", {}) as Dictionary).duplicate(true)
 	var skill: Dictionary = (transaction.get("skill", {}) as Dictionary).duplicate(true)
 	var player_index := int(entry.get("player_index", -1))
-	var players: Array = world.get("players") as Array
+	if _world_session_state == null:
+		return {"intent_type": "apply_cash_cost", "applied": false, "reason": "world_session_state_missing"}
+	var players: Array = _world_session_state.players
 	if player_index < 0 or player_index >= players.size():
 		return {"intent_type": "revalidate_requirement", "valid": false, "reason": "invalid_player", "skill": skill}
 	if skill.is_empty():
@@ -91,7 +102,7 @@ func _requirement_receipt(world: Node, transaction: Dictionary) -> Dictionary:
 		slots[slot_index] = skill
 		player["slots"] = slots
 	players[player_index] = player
-	world.set("players", players)
+	_world_session_state.players = players
 	if str(skill.get("kind", "")) == "area_trade_contract":
 		var contract_controller := _contract_runtime_controller(world)
 		if contract_controller != null:
@@ -112,8 +123,10 @@ func _requirement_receipt(world: Node, transaction: Dictionary) -> Dictionary:
 func _target_receipt(world: Node, transaction: Dictionary) -> Dictionary:
 	var entry: Dictionary = transaction.get("active_entry", {}) as Dictionary
 	var skill: Dictionary = transaction.get("skill", {}) as Dictionary
-	var players: Array = world.get("players") as Array
-	var districts: Array = world.get("districts") as Array
+	if _world_session_state == null:
+		return {"intent_type": "revalidate_target", "valid": false, "reason": "world_session_state_missing"}
+	var players: Array = _world_session_state.players
+	var districts: Array = _world_session_state.districts
 	var player_index := int(entry.get("player_index", -1))
 	if player_index < 0 or player_index >= players.size() or skill.is_empty():
 		return {"intent_type": "revalidate_target", "valid": false, "reason": "invalid_actor"}
@@ -175,8 +188,10 @@ func _aftermath_receipt(world: Node, transaction: Dictionary) -> Dictionary:
 
 func _restore_context_receipt(world: Node, transaction: Dictionary) -> Dictionary:
 	var context: Dictionary = transaction.get("selection_context", {}) as Dictionary
-	var players: Array = world.get("players") as Array
-	var districts: Array = world.get("districts") as Array
+	if _world_session_state == null:
+		return {"intent_type": "restore_context", "restored": false, "reason": "world_session_state_missing"}
+	var players: Array = _world_session_state.players
+	var districts: Array = _world_session_state.districts
 	if _table_selection_state == null:
 		return {"intent_type": "restore_context", "restored": false, "reason": "table_selection_state_missing"}
 	_table_selection_state.set_active_context(

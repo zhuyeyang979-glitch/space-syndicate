@@ -24,6 +24,7 @@ SCAN_EXCLUDES = (
     "scenes/tools/RuntimeAuthorityAuditBench.tscn",
     "tests/run_rng_service_cutover_test.gd",
     "tests/table_selection_state_cutover_test.gd",
+    "tests/world_session_state_cutover_test.gd",
 )
 CALLER_PATTERNS = (
     re.compile(r"\b(?:main|_main)\.(?:call|get|set|has_method)\s*\("),

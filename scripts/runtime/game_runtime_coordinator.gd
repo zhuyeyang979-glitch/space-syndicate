@@ -18,6 +18,7 @@ var _ruleset_id := ""
 var _configured := false
 var _composition_ready := false
 var _bound_world: Node
+var _world_session_state_cache: WorldSessionState
 var _last_v06_player_binding_result: Dictionary = {
 	"ready": false,
 	"reason_code": "production_players_not_bound",
@@ -29,12 +30,14 @@ var _ai_v06_economy_action_port: RefCounted
 func _ready() -> void:
 	_wire_run_rng_service()
 	_wire_table_selection_state()
+	_wire_world_session_state()
 
 
 func configure(ruleset_snapshot: Dictionary) -> void:
 	_ruleset_id = str(ruleset_snapshot.get("ruleset_id", ""))
 	_wire_run_rng_service()
 	_wire_table_selection_state()
+	_wire_world_session_state()
 	var world_clock := _world_effective_clock_runtime_controller_node()
 	if world_clock != null and world_clock.has_method("configure"):
 		world_clock.call("configure", {})
@@ -584,10 +587,11 @@ func refresh_v06_production_player_bindings(world: Node = null) -> Dictionary:
 	var region_infrastructure := _region_infrastructure_runtime_controller_node()
 	var region_infrastructure_bridge := _region_infrastructure_world_bridge_node()
 	var organization_owner := _player_organization_runtime_controller_node()
-	if _bound_world != null and card_player_state_adapter != null and card_player_state_adapter.has_method("bind_world"):
-		card_player_state_adapter.call("bind_world", _bound_world)
-	if _bound_world != null and commodity_card_inventory != null and commodity_card_inventory.has_method("bind_world"):
-		commodity_card_inventory.call("bind_world", _bound_world)
+	var session_state := _world_session_state_node()
+	if card_player_state_adapter is CardPlayerStateProductionAdapterV06:
+		(card_player_state_adapter as CardPlayerStateProductionAdapterV06).set_world_session_state(session_state)
+	if commodity_card_inventory is CommodityCardInventoryRuntimeController:
+		(commodity_card_inventory as CommodityCardInventoryRuntimeController).set_world_session_state(session_state)
 	var actor_map: Dictionary = card_player_state_adapter.call("actor_player_indices") if card_player_state_adapter != null and card_player_state_adapter.has_method("actor_player_indices") else {}
 	var organization_owner_result := _configure_player_organization_runtime(actor_map)
 	var public_demand_bootstrap := _bootstrap_v06_public_demand_endpoints()
@@ -885,7 +889,8 @@ func _v06_facility_finalize_preflight(infrastructure: Object, receipt: Dictionar
 
 
 func _v06_world_game_time() -> float:
-	return maxf(0.0, float(_bound_world.get("game_time"))) if _bound_world != null and is_instance_valid(_bound_world) else 0.0
+	var state := _world_session_state_node()
+	return state.game_time if state != null else 0.0
 
 
 func _refresh_coordinator_readiness() -> void:
@@ -1029,6 +1034,10 @@ func table_selection_state() -> TableSelectionState:
 	return _table_selection_state_node()
 
 
+func world_session_state() -> WorldSessionState:
+	return _world_session_state_node()
+
+
 func _wire_run_rng_service() -> void:
 	var service := _run_rng_service_node()
 	if service == null:
@@ -1082,6 +1091,69 @@ func _wire_table_selection_state() -> void:
 		(resolution_bridge as CardResolutionExecutionWorldBridge).set_table_selection_state(state)
 	if economy_bridge is CardEconomyProductRouteEffectWorldBridge:
 		(economy_bridge as CardEconomyProductRouteEffectWorldBridge).set_table_selection_state(state)
+
+
+func _wire_world_session_state() -> void:
+	var state := _world_session_state_node()
+	if state == null:
+		return
+	var ai_bridge := _ai_runtime_world_bridge_node()
+	var monster_bridge := _monster_runtime_world_bridge_node()
+	var military_bridge := _military_runtime_world_bridge_node()
+	var weather_bridge := _weather_runtime_world_bridge_node()
+	var market_bridge := _product_market_runtime_world_bridge_node()
+	var contract_bridge := _contract_runtime_world_bridge_node()
+	var eligibility_bridge := _card_play_world_bridge_node()
+	var diagnostics_bridge := _gameplay_balance_diagnostics_world_bridge_node()
+	var infrastructure_bridge := _region_infrastructure_world_bridge_node()
+	var resolution_bridge := _card_resolution_execution_world_bridge_node()
+	var economy_bridge := _card_economy_product_route_effect_world_bridge_node()
+	var card_market_bridge := _card_market_policy_world_bridge_node()
+	var derivative_bridge := _city_gdp_derivative_runtime_world_bridge_node()
+	var route_bridge := _route_network_world_bridge_node()
+	var flow_bridge := _commodity_flow_world_bridge_node()
+	var victory_bridge := _victory_control_world_bridge_node()
+	var bankruptcy_bridge := _bankruptcy_neutral_estate_world_bridge_node()
+	var card_player_state := _card_player_state_production_adapter_v06_node()
+	var card_inventory := _commodity_card_inventory_runtime_controller_node()
+	if ai_bridge is AiRuntimeWorldBridge:
+		(ai_bridge as AiRuntimeWorldBridge).set_world_session_state(state)
+	if monster_bridge is MonsterRuntimeWorldBridge:
+		(monster_bridge as MonsterRuntimeWorldBridge).set_world_session_state(state)
+	if military_bridge is MilitaryRuntimeWorldBridge:
+		(military_bridge as MilitaryRuntimeWorldBridge).set_world_session_state(state)
+	if weather_bridge is WeatherRuntimeWorldBridge:
+		(weather_bridge as WeatherRuntimeWorldBridge).set_world_session_state(state)
+	if market_bridge is ProductMarketRuntimeWorldBridge:
+		(market_bridge as ProductMarketRuntimeWorldBridge).set_world_session_state(state)
+	if contract_bridge is ContractRuntimeWorldBridge:
+		(contract_bridge as ContractRuntimeWorldBridge).set_world_session_state(state)
+	if eligibility_bridge is CardPlayEligibilityWorldBridge:
+		(eligibility_bridge as CardPlayEligibilityWorldBridge).set_world_session_state(state)
+	if diagnostics_bridge is GameplayBalanceDiagnosticsWorldBridge:
+		(diagnostics_bridge as GameplayBalanceDiagnosticsWorldBridge).set_world_session_state(state)
+	if infrastructure_bridge is RegionInfrastructureWorldBridge:
+		(infrastructure_bridge as RegionInfrastructureWorldBridge).set_world_session_state(state)
+	if resolution_bridge is CardResolutionExecutionWorldBridge:
+		(resolution_bridge as CardResolutionExecutionWorldBridge).set_world_session_state(state)
+	if economy_bridge is CardEconomyProductRouteEffectWorldBridge:
+		(economy_bridge as CardEconomyProductRouteEffectWorldBridge).set_world_session_state(state)
+	if card_market_bridge is CardMarketPolicyWorldBridge:
+		(card_market_bridge as CardMarketPolicyWorldBridge).set_world_session_state(state)
+	if derivative_bridge is CityGdpDerivativeRuntimeWorldBridge:
+		(derivative_bridge as CityGdpDerivativeRuntimeWorldBridge).set_world_session_state(state)
+	if route_bridge is RouteNetworkWorldBridge:
+		(route_bridge as RouteNetworkWorldBridge).set_world_session_state(state)
+	if flow_bridge is CommodityFlowWorldBridge:
+		(flow_bridge as CommodityFlowWorldBridge).set_world_session_state(state)
+	if victory_bridge is VictoryControlWorldBridge:
+		(victory_bridge as VictoryControlWorldBridge).set_world_session_state(state)
+	if bankruptcy_bridge is BankruptcyNeutralEstateWorldBridge:
+		(bankruptcy_bridge as BankruptcyNeutralEstateWorldBridge).set_world_session_state(state)
+	if card_player_state is CardPlayerStateProductionAdapterV06:
+		(card_player_state as CardPlayerStateProductionAdapterV06).set_world_session_state(state)
+	if card_inventory is CommodityCardInventoryRuntimeController:
+		(card_inventory as CommodityCardInventoryRuntimeController).set_world_session_state(state)
 
 
 func solar_public_presentation_snapshot() -> Dictionary:
@@ -2457,9 +2529,10 @@ func _v06_facility_card_for_pair(cards: Array, industry_id: String, facility_kin
 
 
 func _v06_market_source_snapshot() -> Dictionary:
-	if _bound_world == null:
+	var state := _world_session_state_node()
+	if state == null:
 		return {}
-	var districts_variant: Variant = _bound_world.get("districts")
+	var districts_variant: Variant = state.districts
 	var districts: Array = districts_variant if districts_variant is Array else []
 	for source_index in range(districts.size()):
 		if not (districts[source_index] is Dictionary):
@@ -4549,6 +4622,13 @@ func _run_rng_service_node() -> RunRngService:
 
 func _table_selection_state_node() -> TableSelectionState:
 	return get_node_or_null("TableSelectionState") as TableSelectionState
+
+
+func _world_session_state_node() -> WorldSessionState:
+	if _world_session_state_cache != null and is_instance_valid(_world_session_state_cache):
+		return _world_session_state_cache
+	_world_session_state_cache = get_node_or_null("WorldSessionState") as WorldSessionState
+	return _world_session_state_cache
 
 
 func _solar_availability_runtime_service_node() -> Node:

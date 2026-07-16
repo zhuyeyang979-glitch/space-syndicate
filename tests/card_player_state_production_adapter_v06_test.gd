@@ -13,8 +13,7 @@ var _failures: Array[String] = []
 
 
 class TestWorld:
-	extends Node
-	var players: Array = []
+	extends WorldSessionState
 
 
 class BoundEffectHandler:
@@ -68,7 +67,7 @@ func _verify_exact_delta_preserves_live_income_and_recovery(catalog: Resource) -
 	world.players = [{"actor_id": "A", "cash": 10, "cash_cents": 1055, "card_purchase_count": 2, "total_card_spend": 10, "slots": [card]}]
 	var adapter = ADAPTER_SCRIPT.new()
 	_expect(bool(adapter.configure(catalog, asset_owner).get("configured", false)), "production adapter configures against real asset owner API")
-	_expect(bool(adapter.bind_world(world).get("bound", false)), "production adapter binds the existing world owner")
+	_expect(bool(adapter.set_world_session_state(world).get("bound", false)), "production adapter binds the scene-owned world session state")
 	var first := adapter.read_player("A")
 	var first_state: Dictionary = first.get("player_state", {}) as Dictionary
 	_expect(int(first_state.get("revision", -1)) == 0, "first production read starts a per-player revision")
@@ -130,7 +129,7 @@ func _verify_pre_effect_staging_and_abort(catalog: Resource) -> void:
 	world.players = [{"actor_id": "A", "cash": 8, "slots": [_card(catalog, "facility.road.rank_1", "card:a:abort:1")]}]
 	var adapter = ADAPTER_SCRIPT.new()
 	adapter.configure(catalog, asset_owner)
-	adapter.bind_world(world)
+	adapter.set_world_session_state(world)
 	var initial: Dictionary = adapter.read_player("A").get("player_state", {}) as Dictionary
 	var reserved := adapter.reserve_transaction("tx-abort", "intent-abort", {"A": int(initial.get("revision", 0))}, ["A"])
 	var next := initial.duplicate(true)
@@ -161,7 +160,7 @@ func _verify_multi_player_atomic_commit_and_failure(catalog: Resource) -> void:
 	]
 	var adapter = ADAPTER_SCRIPT.new()
 	adapter.configure(catalog, asset_owner)
-	adapter.bind_world(world)
+	adapter.set_world_session_state(world)
 	var a := adapter.read_player("A").get("player_state", {}) as Dictionary
 	var b := adapter.read_player("B").get("player_state", {}) as Dictionary
 	var reserved := adapter.reserve_transaction("tx-transfer", "intent-transfer", {"A": int(a.get("revision", 0)), "B": int(b.get("revision", 0))}, ["B", "A"])
@@ -210,7 +209,7 @@ func _verify_exact_once_survives_save_load(catalog: Resource) -> void:
 	world.players = [{"actor_id": "A", "cash": 9, "slots": [_card(catalog, "commodity.ring_crystal_battery.rank_1", "card:a:once:1")]}]
 	var adapter = ADAPTER_SCRIPT.new()
 	adapter.configure(catalog, asset_owner)
-	adapter.bind_world(world)
+	adapter.set_world_session_state(world)
 	var state := adapter.read_player("A").get("player_state", {}) as Dictionary
 	var reserved := adapter.reserve_transaction("tx-once", "intent-once", {"A": int(state.get("revision", 0))}, ["A"])
 	var next := state.duplicate(true)
@@ -220,7 +219,7 @@ func _verify_exact_once_survives_save_load(catalog: Resource) -> void:
 	var saved: Dictionary = adapter.to_save_data()
 	var restored = ADAPTER_SCRIPT.new()
 	restored.configure(catalog, asset_owner)
-	restored.bind_world(world)
+	restored.set_world_session_state(world)
 	_expect(bool(restored.apply_save_data(saved).get("applied", false)), "production journal restores from save data")
 	var replay := restored.reserve_transaction("tx-once", "intent-once", {"A": 0}, ["A"])
 	_expect(bool(replay.get("committed", false)) and bool(replay.get("idempotent_replay", false)), "saved transaction replays without charging again")
@@ -237,7 +236,7 @@ func _verify_missing_credit_api_fails_closed(catalog: Resource) -> void:
 	world.players = [{"actor_id": "A", "cash": 4, "slots": []}]
 	var adapter = ADAPTER_SCRIPT.new()
 	adapter.configure(catalog, asset_owner)
-	adapter.bind_world(world)
+	adapter.set_world_session_state(world)
 	var state := adapter.read_player("A").get("player_state", {}) as Dictionary
 	var reserved := adapter.reserve_transaction("tx-credit", "intent-credit", {"A": int(state.get("revision", 0))}, ["A"])
 	var next := state.duplicate(true)
@@ -262,7 +261,7 @@ func _verify_transaction_service_uses_production_staging(catalog: Resource) -> v
 	world.players = [{"actor_id": "A", "cash": 10, "cash_cents": 1000, "card_purchase_count": 4, "total_card_spend": 19, "slots": []}]
 	var adapter = ADAPTER_SCRIPT.new()
 	adapter.configure(catalog, asset_owner)
-	adapter.bind_world(world)
+	adapter.set_world_session_state(world)
 	var quote_authority = QUOTE_AUTHORITY_FIXTURE_SCRIPT.new()
 	var service = TRANSACTION_SERVICE_SCRIPT.new(catalog, adapter, quote_authority)
 	_expect(bool(service.register_player("A", {}).get("configured", false)), "transaction service registers through the production adapter")

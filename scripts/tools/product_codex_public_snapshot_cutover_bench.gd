@@ -252,7 +252,7 @@ func _run_case(case_id: String) -> Dictionary:
 			var snapshot: Dictionary = _service.call("compose", sanitized) if _service != null else {}
 			var coordinator := _coordinator()
 			var before: Dictionary = coordinator.call("product_codex_public_detail_snapshot", _real_product_name, 0, true) if coordinator != null else {}
-			var players_variant: Variant = _main.get("players") if _main != null else []
+			var players_variant: Variant = ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players if _main != null else []
 			if players_variant is Array and not (players_variant as Array).is_empty():
 				var players: Array = players_variant
 				var player := (players[0] as Dictionary).duplicate(true) if players[0] is Dictionary else {}
@@ -262,7 +262,7 @@ func _run_case(case_id: String) -> Dictionary:
 				player["city_guesses"] = {"PRIVATE_SENTINEL_CITY": 1}
 				player["ai_plan"] = "PRIVATE_SENTINEL_AI"
 				players[0] = player
-				_main.set("players", players)
+				((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 			if _main != null:
 				((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 2
 				((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = 3

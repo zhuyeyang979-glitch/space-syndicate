@@ -4,6 +4,7 @@ class_name CardPlayEligibilityWorldBridge
 
 var _world: Node = null
 var _table_selection_state: TableSelectionState
+var _world_session_state: WorldSessionState
 var _build_count := 0
 
 
@@ -13,6 +14,14 @@ func bind_world(world: Node) -> void:
 
 func set_table_selection_state(state: TableSelectionState) -> void:
 	_table_selection_state = state
+
+
+func set_world_session_state(state: WorldSessionState) -> void:
+	_world_session_state = state
+
+
+func world_session_state() -> WorldSessionState:
+	return _world_session_state
 
 
 func table_selection_state() -> TableSelectionState:
@@ -142,6 +151,12 @@ func _counterable(skill: Dictionary) -> bool:
 
 
 func _array_property(property_name: StringName) -> Array:
+	if _world_session_state != null:
+		match property_name:
+			&"players":
+				return _world_session_state.players.duplicate(true)
+			&"districts":
+				return _world_session_state.districts.duplicate(true)
 	var value: Variant = _world.get(property_name)
 	return (value as Array).duplicate(true) if value is Array else []
 

@@ -3,12 +3,21 @@ extends Node
 class_name CityGdpDerivativeRuntimeWorldBridge
 
 var _world: Node
+var _world_session_state: WorldSessionState
 var _world_call_count := 0
 var _failed_world_call_count := 0
 
 
 func bind_world(world: Node) -> void:
 	_world = world
+
+
+func set_world_session_state(state: WorldSessionState) -> void:
+	_world_session_state = state
+
+
+func world_session_state() -> WorldSessionState:
+	return _world_session_state
 
 
 func has_world() -> bool:
@@ -18,9 +27,9 @@ func has_world() -> bool:
 func world_snapshot() -> Dictionary:
 	if not has_world():
 		return {}
-	var districts_variant: Variant = _world.get("districts")
+	var districts_variant: Variant = _world_session_state.districts if _world_session_state != null else []
 	return {
-		"game_time": float(_world.get("game_time")),
+		"game_time": _world_session_state.game_time if _world_session_state != null else 0.0,
 		"district_count": (districts_variant as Array).size() if districts_variant is Array else 0,
 	}
 
@@ -28,7 +37,7 @@ func world_snapshot() -> Dictionary:
 func city_snapshot(district_index: int) -> Dictionary:
 	if not has_world():
 		return {}
-	var districts_variant: Variant = _world.get("districts")
+	var districts_variant: Variant = _world_session_state.districts if _world_session_state != null else []
 	if not (districts_variant is Array):
 		return {}
 	var districts := districts_variant as Array
@@ -49,7 +58,7 @@ func city_gdp(district_index: int) -> int:
 func district_name(district_index: int) -> String:
 	if not has_world():
 		return "城市"
-	var districts_variant: Variant = _world.get("districts")
+	var districts_variant: Variant = _world_session_state.districts if _world_session_state != null else []
 	if not (districts_variant is Array):
 		return "城市"
 	var districts := districts_variant as Array
@@ -61,7 +70,7 @@ func district_name(district_index: int) -> String:
 func player_cash(player_index: int) -> int:
 	if not has_world():
 		return -1
-	var players_variant: Variant = _world.get("players")
+	var players_variant: Variant = _world_session_state.players if _world_session_state != null else []
 	if not (players_variant is Array):
 		return -1
 	var players := players_variant as Array
@@ -99,6 +108,7 @@ func call_world(method_name: StringName, arguments: Array = []) -> Variant:
 func debug_snapshot() -> Dictionary:
 	return {
 		"bridge_ready": has_world(),
+		"world_session_state_ready": _world_session_state != null,
 		"cash_adapter_available": has_world() and _world.has_method("_commit_city_gdp_derivative_cash_delta"),
 		"world_call_count": _world_call_count,
 		"failed_world_call_count": _failed_world_call_count,

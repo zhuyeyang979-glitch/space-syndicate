@@ -425,7 +425,7 @@ func _wide_topbar_probe(main: Node) -> Dictionary:
 
 func _first_live_districts(main: Node, count: int) -> Array[int]:
 	var result: Array[int] = []
-	var districts_variant: Variant = main.get("districts")
+	var districts_variant: Variant = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts
 	if not (districts_variant is Array):
 		return result
 	for index in range((districts_variant as Array).size()):

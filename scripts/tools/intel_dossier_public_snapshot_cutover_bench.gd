@@ -251,8 +251,8 @@ func _run_case(case_id: String) -> Dictionary:
 func _seed_real_intel_city() -> void:
 	if _main == null:
 		return
-	var players_variant: Variant = _main.get("players")
-	var districts_variant: Variant = _main.get("districts")
+	var players_variant: Variant = ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players
+	var districts_variant: Variant = ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts
 	if not (players_variant is Array) or (players_variant as Array).size() < 2 or not (districts_variant is Array):
 		return
 	var districts := districts_variant as Array
@@ -287,7 +287,7 @@ func _real_main_route_and_render_checked() -> bool:
 	mark_button.emit_signal("pressed")
 	await get_tree().process_frame
 	await get_tree().process_frame
-	var players := _main.get("players") as Array
+	var players := ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array
 	if players.is_empty():
 		return false
 	var guesses := (players[0] as Dictionary).get("city_guesses", {}) as Dictionary

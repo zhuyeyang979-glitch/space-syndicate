@@ -309,7 +309,7 @@ func _ensure_runtime_main() -> bool:
 	await get_tree().process_frame
 	_runtime_main.set_process(false)
 	_coordinator = _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
-	_baseline_districts = (_runtime_main.get("districts") as Array).duplicate(true)
+	_baseline_districts = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	return _coordinator != null and not _baseline_districts.is_empty()
 
 

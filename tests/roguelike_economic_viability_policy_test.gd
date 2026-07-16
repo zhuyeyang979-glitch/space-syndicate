@@ -287,7 +287,7 @@ func _check_real_depth_one_seed_60610() -> void:
 	main.set("time_scale", 0.0)
 	await _wait_frames(8)
 
-	var districts: Array = main.get("districts") if main.get("districts") is Array else []
+	var districts: Array = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts if ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts is Array else []
 	var dev_variant: Variant = main.get("_roguelike_economic_viability_dev_audit")
 	var dev: Dictionary = dev_variant if dev_variant is Dictionary else {}
 	_expect(not districts.is_empty() and bool(dev.get("ok", false)) and bool(dev.get("viable", false)), "depth-I seed 60610 has a planet-wide exact-product opportunity")

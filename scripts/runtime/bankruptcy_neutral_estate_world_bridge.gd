@@ -11,6 +11,7 @@ const PARTICIPANT_ORDER := [
 ]
 
 var _world: Node
+var _world_session_state: WorldSessionState
 var _card_player_state: Node
 var _commodity_flow: Node
 var _military: Node
@@ -22,6 +23,14 @@ var _victory_coordinator: Node
 
 func bind_world(world: Node) -> void:
 	_world = world
+
+
+func set_world_session_state(state: WorldSessionState) -> void:
+	_world_session_state = state
+
+
+func world_session_state() -> WorldSessionState:
+	return _world_session_state
 
 
 func set_runtime_dependencies(
@@ -131,6 +140,7 @@ func debug_snapshot() -> Dictionary:
 		"participant_matrix": participant_matrix,
 		"owns_rules": false,
 		"owns_state": false,
+		"world_session_state_ready": _world_session_state != null,
 	}
 
 
@@ -166,9 +176,9 @@ func _dependencies_ready() -> bool:
 
 
 func _players() -> Array:
-	if _world == null or not is_instance_valid(_world):
+	if _world_session_state == null:
 		return []
-	var value: Variant = _world.get("players")
+	var value: Variant = _world_session_state.players
 	return value if value is Array else []
 
 

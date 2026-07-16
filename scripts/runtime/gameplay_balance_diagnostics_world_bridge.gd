@@ -6,6 +6,7 @@ const MonsterCatalogV06 := preload("res://scripts/runtime/monster_catalog_v06.gd
 
 var _world: Node
 var _table_selection_state: TableSelectionState
+var _world_session_state: WorldSessionState
 var _build_count := 0
 
 
@@ -15,6 +16,14 @@ func bind_world(world: Node) -> void:
 
 func set_table_selection_state(state: TableSelectionState) -> void:
 	_table_selection_state = state
+
+
+func set_world_session_state(state: WorldSessionState) -> void:
+	_world_session_state = state
+
+
+func world_session_state() -> WorldSessionState:
+	return _world_session_state
 
 
 func table_selection_state() -> TableSelectionState:
@@ -66,6 +75,7 @@ func debug_snapshot() -> Dictionary:
 		"formula_authority": false,
 		"world_mutation_authority": false,
 		"privacy_boundary": "public_and_developer_safe_facts_only",
+		"world_session_state_ready": _world_session_state != null,
 	}
 
 

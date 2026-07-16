@@ -75,13 +75,36 @@ fields removed, two physical lines removed, and 144 external Main caller
 occurrences removed. No Main method, constant, preload or caller count
 increased.
 
+## Third atomic cutover: complete
+
+`WorldSessionState` is now the production owner of the live player records,
+district records and current session time:
+
+- `WorldSessionState.tscn` is composed exactly once under
+  `GameRuntimeCoordinator.tscn`;
+- Main's `players`, `districts` and `game_time` fields are physically deleted;
+- active runtime bridges receive the same typed owner from the coordinator and
+  fail closed for these fields if that owner is missing;
+- the v0.6 production player-state adapter and commodity-card inventory no
+  longer bind Main as their state source;
+- active tests, visual drivers and characterization Benches no longer use
+  dynamic `Main.get/set("players|districts|game_time")`;
+- the state owner provides deterministic reset, replacement, time advance and
+  save/restore APIs while keeping debug output limited to counts and time;
+- topology generation, runtime tick ordering, economy formulas, AI policy and
+  UI state remain outside this owner.
+
+Current Main reduction from the previous committed cutover: three top-level
+fields and three physical lines removed. External Main caller occurrences fell
+from 2,165 to 1,652, with no method, constant, preload or caller-file increase.
+
 ## Next atomic cutover
 
-The next recommended production cutover is `WorldSessionState`, beginning with
-the authoritative `players`, `districts` and `game_time` data boundary. It must
-be split by typed read/write ports rather than copied into a second monolithic
-controller. Topology generation and runtime clock ownership should remain
-separate subdomains even if they are migrated in the same dependency phase.
+The next recommended production cutover is the authoritative runtime loop and
+clock-driving boundary. It should move deterministic tick ordering out of
+Main without moving topology generation, economy rules, AI policy or UI
+presentation into `WorldSessionState`. Typed world ports can then retire the
+remaining root-bound method routing in smaller domain slices.
 
 ## Completion rule
 

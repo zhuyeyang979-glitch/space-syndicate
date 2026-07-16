@@ -528,10 +528,10 @@ func _case_city_surface_creation() -> Dictionary:
 	_isolate_map()
 	var district_index := _first_land_district()
 	if district_index < 0: return _record("city_surface_creation_order", false, false, "No land district.")
-	var players_before: Array = _runtime_main.get("players")
+	var players_before: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players
 	var built_before := int((players_before[0] as Dictionary).get("cities_built", 0))
 	var city: Dictionary = CITY_FIXTURES.create_city_surface(_runtime_main, 0, district_index, "CityTrade fixture")
-	var players_after: Array = _runtime_main.get("players")
+	var players_after: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players
 	var observed := bool(city.get("active", false)) and int(city.get("owner", -1)) == 0 and not (city.get("projects", []) as Array).is_empty() and int((players_after[0] as Dictionary).get("cities_built", 0)) == built_before + 1
 	return _record("city_surface_creation_order", observed, observed, "The real development transaction creates the shell and first product project atomically while incrementing cities_built once.", {"district_index": district_index})
 
@@ -540,13 +540,13 @@ func _case_development_sequence() -> Dictionary:
 	_isolate_map()
 	var district_index := _first_land_district()
 	if district_index < 0: return _record("development_sequence_increments_once", false, false, "No land district.")
-	var districts: Array = (_runtime_main.get("districts") as Array).duplicate(true)
+	var districts: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	var district: Dictionary = (districts[district_index] as Dictionary).duplicate(true)
 	var products: Array = district.get("products", []) if district.get("products", []) is Array else []
 	if not products.has(TEST_PRODUCT): products.append(TEST_PRODUCT)
 	district["products"] = products
 	districts[district_index] = district
-	_runtime_main.set("districts", districts)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 	var before := int(_controller.call("project_sequence"))
 	var coordinator := _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
 	var receipt: Dictionary = coordinator.call("execute_city_development", {"player_index": 0, "district_index": district_index, "skill": {"name": "Sprint63Development", "action_id": "sprint63_city_development", "development_target_district": district_index, "product_id": TEST_PRODUCT, "project_direction": "production", "contribution_units": 1, "allowed_terrains": ["land"]}}) if coordinator != null else {}
@@ -584,9 +584,9 @@ func _case_destroyed_city_gdp() -> Dictionary:
 	var fixture := _network_fixture(false, true)
 	if fixture.is_empty(): return _record("destroyed_city_zeroes_project_gdp", false, false, "No network fixture.")
 	var destination := int(fixture.get("destination", -1))
-	var districts: Array = (_runtime_main.get("districts") as Array).duplicate(true)
+	var districts: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	districts[destination]["destroyed"] = true
-	_runtime_main.set("districts", districts)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 	_runtime_main.call("_refresh_city_networks")
 	var city: Dictionary = _runtime_main.call("_district_city", destination)
 	var projects: Array = city.get("projects", [])
@@ -621,13 +621,13 @@ func _case_no_supply_route() -> Dictionary:
 	var fixture := _network_fixture(false, true, false)
 	var destination := int(fixture.get("destination", -1))
 	if destination < 0: return _record("no_supply_route_safe_state", false, false, "No destination.")
-	var districts: Array = (_runtime_main.get("districts") as Array).duplicate(true)
+	var districts: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	var source := int(fixture.get("source", -1))
 	var source_district: Dictionary = (districts[source] as Dictionary).duplicate(true)
 	source_district["products"] = []
 	source_district["city"] = {}
 	districts[source] = source_district
-	_runtime_main.set("districts", districts)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 	_runtime_main.call("_refresh_city_networks")
 	var routes: Array = (_runtime_main.call("_district_city", destination) as Dictionary).get("trade_routes", [])
 	var route: Dictionary = routes[0] if not routes.is_empty() else {}
@@ -654,13 +654,13 @@ func _case_ocean_modifier() -> Dictionary:
 	var land := _first_district_by_terrain("land")
 	var ocean := _first_district_by_terrain("ocean")
 	if land < 0 or ocean < 0: return _record("ocean_transport_cost_modifier", false, false, "Missing land/ocean district.")
-	var districts: Array = (_runtime_main.get("districts") as Array).duplicate(true)
+	var districts: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	for index in [land, ocean]:
 		districts[index]["transport_score"] = 2.0
 		districts[index]["panic"] = 0
 		districts[index]["miasma"] = false
 		districts[index]["destroyed"] = false
-	_runtime_main.set("districts", districts)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 	var land_cost := float(_controller.call("trade_node_cost_multiplier", land))
 	var ocean_cost := float(_controller.call("trade_node_cost_multiplier", ocean))
 	var observed := ocean_cost < land_cost and is_equal_approx(ocean_cost / land_cost, 0.88)
@@ -671,9 +671,9 @@ func _case_destroyed_path() -> Dictionary:
 	var fixture := _network_fixture(false, true)
 	var path: Array = fixture.get("path", [])
 	if path.is_empty(): return _record("destroyed_path_disrupted", false, false, "No route path.")
-	var districts: Array = (_runtime_main.get("districts") as Array).duplicate(true)
+	var districts: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	districts[int(path[0])]["destroyed"] = true
-	_runtime_main.set("districts", districts)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 	var observed: bool = _controller.call("trade_path_is_disrupted", path)
 	return _record("destroyed_path_disrupted", observed, observed, "Any destroyed node marks the path disrupted.", _route_flags(fixture))
 
@@ -681,16 +681,16 @@ func _case_destroyed_path() -> Dictionary:
 func _case_miasma_panic_cost() -> Dictionary:
 	var district_index := _first_land_district()
 	if district_index < 0: return _record("miasma_panic_cost_modifier", false, false, "No land district.")
-	var districts: Array = (_runtime_main.get("districts") as Array).duplicate(true)
+	var districts: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	districts[district_index]["destroyed"] = false
 	districts[district_index]["miasma"] = false
 	districts[district_index]["panic"] = 0
-	_runtime_main.set("districts", districts)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 	var before := float(_controller.call("trade_node_cost_multiplier", district_index))
-	districts = (_runtime_main.get("districts") as Array).duplicate(true)
+	districts = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	districts[district_index]["miasma"] = true
 	districts[district_index]["panic"] = 100
-	_runtime_main.set("districts", districts)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 	var after := float(_controller.call("trade_node_cost_multiplier", district_index))
 	var observed := is_equal_approx(after - before, 0.55)
 	return _record("miasma_panic_cost_modifier", observed, observed, "Miasma adds 0.35 and panic adds 0.002 per point to node cost.", {"district_index": district_index})
@@ -1224,7 +1224,7 @@ func _network_fixture(city_source: bool, include_project: bool, include_supply: 
 	if pair.is_empty(): return {}
 	var source := int(pair[0])
 	var destination := int(pair[1])
-	var districts: Array = (_runtime_main.get("districts") as Array).duplicate(true)
+	var districts: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	if include_supply:
 		if city_source:
 			var source_project := CITY_PROJECT_STATE.create_project(source, TEST_PRODUCT, "production", 0, 1, 1)
@@ -1235,7 +1235,7 @@ func _network_fixture(city_source: bool, include_project: bool, include_supply: 
 			districts[source]["products"] = source_products
 	var projects: Array = [CITY_PROJECT_STATE.create_project(destination, TEST_PRODUCT, "demand", 0, 1, 2)] if include_project else []
 	districts[destination]["city"] = _base_city(0, [], [TEST_PRODUCT], projects)
-	_runtime_main.set("districts", districts)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 	_runtime_main.call("_refresh_city_networks")
 	var city: Dictionary = _runtime_main.call("_district_city", destination)
 	var routes: Array = city.get("trade_routes", [])
@@ -1261,7 +1261,7 @@ func _two_demand_fixture(route_damage: int) -> Dictionary:
 	if fixture.is_empty(): return {}
 	var source := int(fixture.get("source", -1))
 	var destination := int(fixture.get("destination", -1))
-	var districts: Array = (_runtime_main.get("districts") as Array).duplicate(true)
+	var districts: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	var source_products: Array = districts[source].get("products", []) if districts[source].get("products", []) is Array else []
 	for product_id in [TEST_PRODUCT, SECOND_PRODUCT]:
 		if not source_products.has(product_id): source_products.append(product_id)
@@ -1271,7 +1271,7 @@ func _two_demand_fixture(route_damage: int) -> Dictionary:
 	city["trade_route_damage"] = route_damage
 	city["projects"] = [CITY_PROJECT_STATE.create_project(destination, TEST_PRODUCT, "demand", 0, 1, 2), CITY_PROJECT_STATE.create_project(destination, SECOND_PRODUCT, "demand", 0, 1, 3)]
 	districts[destination]["city"] = city
-	_runtime_main.set("districts", districts)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 	_runtime_main.call("_refresh_city_networks")
 	city = _runtime_main.call("_district_city", destination)
 	return {"source": source, "destination": destination, "city": city.duplicate(true), "routes": (city.get("trade_routes", []) as Array).duplicate(true)}
@@ -1281,7 +1281,7 @@ func _cashflow_fixture(with_projects: bool, destroyed: bool, revenue_bonus: int 
 	var fixture := _network_fixture(false, with_projects)
 	if fixture.is_empty(): return {}
 	var destination := int(fixture.get("destination", -1))
-	var districts: Array = (_runtime_main.get("districts") as Array).duplicate(true)
+	var districts: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	var city: Dictionary = (districts[destination].get("city", {}) as Dictionary).duplicate(true)
 	city["owner"] = 0
 	city["revenue_bonus"] = revenue_bonus
@@ -1295,7 +1295,7 @@ func _cashflow_fixture(with_projects: bool, destroyed: bool, revenue_bonus: int 
 		city["projects"] = []
 	districts[destination]["city"] = city
 	districts[destination]["destroyed"] = destroyed
-	_runtime_main.set("districts", districts)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 	_runtime_main.call("_refresh_city_networks")
 	return {"destination": destination}
 
@@ -1393,17 +1393,17 @@ func _isolate_map() -> void:
 		products.erase(SECOND_PRODUCT)
 		district["products"] = products
 		districts[i] = district
-	_runtime_main.set("districts", districts)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 
 
 func _set_city(district_index: int, city: Dictionary) -> void:
-	var districts: Array = (_runtime_main.get("districts") as Array).duplicate(true)
+	var districts: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	districts[district_index]["city"] = city.duplicate(true)
-	_runtime_main.set("districts", districts)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 
 
 func _reachable_pair() -> Array:
-	var districts: Array = _runtime_main.get("districts")
+	var districts: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts
 	for source in range(districts.size()):
 		if str((districts[source] as Dictionary).get("terrain", "land")) != "land": continue
 		for destination in range(districts.size()):
@@ -1418,7 +1418,7 @@ func _first_land_district() -> int:
 
 
 func _first_district_by_terrain(terrain: String) -> int:
-	var districts: Array = _runtime_main.get("districts")
+	var districts: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts
 	for i in range(districts.size()):
 		if str((districts[i] as Dictionary).get("terrain", "land")) == terrain: return i
 	return -1
@@ -1438,7 +1438,7 @@ func _route_flags(fixture: Dictionary) -> Dictionary:
 
 func _player_cash_values() -> Array:
 	var result: Array = []
-	for player_variant in _runtime_main.get("players") as Array:
+	for player_variant in ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array:
 		result.append(int((player_variant as Dictionary).get("cash", 0)))
 	return result
 
@@ -1489,18 +1489,18 @@ func _ensure_runtime_main() -> bool:
 	_product_market = _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ProductMarketRuntimeController")
 	_controller = _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CityTradeNetworkRuntimeController")
 	_world_bridge = _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CityTradeNetworkWorldBridge")
-	_baseline_players = (_runtime_main.get("players") as Array).duplicate(true)
-	_baseline_districts = (_runtime_main.get("districts") as Array).duplicate(true)
+	_baseline_players = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
+	_baseline_districts = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	_baseline_project_sequence = int(_controller.call("project_sequence")) if _controller != null else 1
 	return _coordinator != null and _controller != null and _world_bridge != null and _gdp_formula != null and _cashflow != null and _product_market != null and not _baseline_players.is_empty() and not _baseline_districts.is_empty()
 
 
 func _reset_fixture() -> void:
 	_runtime_main.set_process(false)
-	_runtime_main.set("players", _baseline_players.duplicate(true))
-	_runtime_main.set("districts", _baseline_districts.duplicate(true))
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = _baseline_players.duplicate(true)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = _baseline_districts.duplicate(true)
 	_controller.call("apply_save_data", {"city_trade_network_runtime": {"terms_version": "v0.5.structured-project-gdp.1", "project_sequence": _baseline_project_sequence, "generation_by_slot_id": {}, "project_tombstones": []}})
-	_runtime_main.set("game_time", 100.0)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = 100.0
 	_runtime_main.set("game_over", false)
 	_runtime_main.set("log_lines", [])
 	_runtime_main.set("action_callouts", [])
@@ -1508,14 +1508,14 @@ func _reset_fixture() -> void:
 	_runtime_main.set("movement_trails", [])
 	if _cashflow.has_method("apply_legacy_save_snapshot"):
 		_cashflow.call("apply_legacy_save_snapshot", {"economy_cashflow_timer": 0.0})
-	var players: Array = (_runtime_main.get("players") as Array).duplicate(true)
+	var players: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
 	for i in range(players.size()):
 		var player: Dictionary = (players[i] as Dictionary).duplicate(true)
 		player["cash"] = 1000
 		player["eliminated"] = false
 		player["economic_ledger"] = []
 		players[i] = player
-	_runtime_main.set("players", players)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 
 
 func _record(case_id: String, observed: bool, aligned: bool, notes: String, flags: Dictionary = {}) -> Dictionary:

@@ -823,14 +823,14 @@ func _interaction_debug() -> Dictionary:
 func _player(player_index: int) -> Dictionary:
 	if _runtime_main == null:
 		return {}
-	var players: Array = _runtime_main.get("players") as Array
+	var players: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array
 	if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary):
 		return {}
 	return (players[player_index] as Dictionary).duplicate(true)
 
 
 func _reset_player(player_index: int, slots: Array, cash: int = 1000, ai_override: Variant = null) -> void:
-	var players: Array = (_runtime_main.get("players") as Array).duplicate(true)
+	var players: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
 	if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary):
 		return
 	var player: Dictionary = (players[player_index] as Dictionary).duplicate(true)
@@ -843,7 +843,7 @@ func _reset_player(player_index: int, slots: Array, cash: int = 1000, ai_overrid
 	if ai_override is bool:
 		player["is_ai"] = bool(ai_override)
 	players[player_index] = player
-	_runtime_main.set("players", players)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 
 
 func _player_probe(player_index: int) -> Dictionary:

@@ -164,7 +164,7 @@ func _check_ai_metadata(main: Node) -> void:
 		"kind": "city_revenue_boost",
 		"policy_kind": "city_revenue_boost",
 	})
-	var ai_player := (main.get("players") as Array)[1] as Dictionary
+	var ai_player := (((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array)[1] as Dictionary
 	var samples := ((ai_player.get("ai_memory", {}) as Dictionary).get("decision_samples", []) as Array)
 	_expect(not samples.is_empty(), "AI decision metadata writes a training sample")
 	if not samples.is_empty():

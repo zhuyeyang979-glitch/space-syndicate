@@ -6,6 +6,7 @@ const BRIDGE_ID := "victory_control_world_bridge_v06"
 const CURRENCY_SCALE := 100
 
 var _world: Node
+var _world_session_state: WorldSessionState
 var _region_infrastructure_controller: Node
 var _commodity_flow_controller: Node
 var _contract_controller: Node
@@ -19,6 +20,14 @@ var _applied_outcome_ids: Dictionary = {}
 
 func bind_world(world: Node) -> void:
 	_world = world
+
+
+func set_world_session_state(state: WorldSessionState) -> void:
+	_world_session_state = state
+
+
+func world_session_state() -> WorldSessionState:
+	return _world_session_state
 
 
 func set_runtime_dependencies(region_infrastructure_controller: Node, commodity_flow_controller: Node, contract_controller: Node, product_market_controller: Node, city_gdp_derivative_controller: Node, military_controller: Node) -> void:
@@ -44,7 +53,7 @@ func capture_world_snapshot(clock_pause: Dictionary = {}, settlement_checkpoint 
 	if not has_world() or _region_infrastructure_controller == null or _commodity_flow_controller == null:
 		return {}
 	_capture_count += 1
-	var players_variant: Variant = _world.get("players")
+	var players_variant: Variant = _world_session_state.players if _world_session_state != null else []
 	var players: Array = players_variant if players_variant is Array else []
 	var region_rows: Array = []
 	var runtime_regions_variant: Variant = _region_infrastructure_controller.call("regions_snapshot") if _region_infrastructure_controller.has_method("regions_snapshot") else []
@@ -135,6 +144,7 @@ func debug_snapshot() -> Dictionary:
 		"owns_victory_state": false,
 		"owns_session_state": false,
 		"pure_fact_bridge": true,
+		"world_session_state_ready": _world_session_state != null,
 	}
 
 
@@ -350,7 +360,7 @@ func _ordering_receipt(settlement_checkpoint: String) -> Dictionary:
 		"checkpoint": settlement_checkpoint,
 		"region_revision": int(region_debug.get("revision", 0)),
 		"flow_revision": int(flow_debug.get("flow_revision", 0)),
-		"captured_at_game_time": float(_world.get("game_time")) if has_world() else 0.0,
+		"captured_at_game_time": _world_session_state.game_time if _world_session_state != null else 0.0,
 		"victory_reads_after": ["locked_intents", "construction_repair", "unit_attacks", "region_lifecycle", "route_rebuild", "commodity_flow", "sale_receipts", "bankruptcy"],
 	}
 

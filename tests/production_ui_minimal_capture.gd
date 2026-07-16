@@ -114,7 +114,7 @@ func _run() -> void:
 
 
 func _select_first_live_district(main: Node) -> void:
-	var districts_variant: Variant = main.get("districts")
+	var districts_variant: Variant = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts
 	if not (districts_variant is Array):
 		_fail("production district list was unavailable")
 		return

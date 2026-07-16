@@ -336,7 +336,7 @@ func _start_fixed_seed_run(main_instance: Node, session: Node, run_seed: int) ->
 	runtime_rng.seed = run_seed
 	main_instance.call("_confirm_start_new_run_from_setup")
 	await _wait_frames(10)
-	var players_variant: Variant = main_instance.get("players")
+	var players_variant: Variant = ((main_instance.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players
 	var players: Array = players_variant if players_variant is Array else []
 	var ai_count := 0
 	for player_variant in players:

@@ -11,6 +11,7 @@ const HISTORY_LIMIT := 24
 
 var _world: Node
 var _table_selection_state: TableSelectionState
+var _world_session_state: WorldSessionState
 var _product_market_runtime_controller: ProductMarketRuntimeController
 var _route_network_runtime_controller: RouteNetworkRuntimeController
 var _contract_atomic_effect_owner_v06: Object
@@ -24,6 +25,14 @@ func bind_world(world: Node) -> void:
 
 func set_table_selection_state(state: TableSelectionState) -> void:
 	_table_selection_state = state
+
+
+func set_world_session_state(state: WorldSessionState) -> void:
+	_world_session_state = state
+
+
+func world_session_state() -> WorldSessionState:
+	return _world_session_state
 
 
 func table_selection_state() -> TableSelectionState:
@@ -47,11 +56,11 @@ func has_world() -> bool:
 
 
 func game_time() -> float:
-	return float(_world.get("game_time")) if has_world() else 0.0
+	return _world_session_state.game_time if _world_session_state != null else 0.0
 
 
 func player_count() -> int:
-	var value: Variant = _world.get("players") if has_world() else []
+	var value: Variant = _world_session_state.players if _world_session_state != null else []
 	return (value as Array).size() if value is Array else 0
 
 
@@ -106,7 +115,7 @@ func contract_history_entries(preferred_resolution_id: int = -1, limit: int = 1)
 func remember_contract_parties(viewer_index: int, entry: Dictionary, source: String) -> bool:
 	if not has_world():
 		return false
-	var players_variant: Variant = _world.get("players")
+	var players_variant: Variant = _world_session_state.players if _world_session_state != null else []
 	var players: Array = players_variant if players_variant is Array else []
 	if viewer_index < 0 or viewer_index >= players.size() or not (players[viewer_index] is Dictionary):
 		return false
@@ -128,7 +137,8 @@ func remember_contract_parties(viewer_index: int, entry: Dictionary, source: Str
 	}
 	viewer["known_contract_parties"] = known
 	players[viewer_index] = viewer
-	_world.set("players", players)
+	if _world_session_state != null:
+		_world_session_state.players = players
 	_call_world(&"_record_player_economic_event", [viewer_index, "情报", source, 0, "私下查明轨道#%d合约：出牌方玩家%d，目标商品控制者玩家%d。" % [resolution_id, proposer + 1, target_controller + 1]])
 	return true
 
@@ -466,7 +476,8 @@ func _apply_region_delta(index: int, production_delta: int, transport_delta: int
 		city = _append_city_clue(city, "%s使区域经营参数变化：生产%d→%d、交通%d→%d、消费%d→%d。" % [source, before_production, after_production, before_transport, after_transport, before_consumption, after_consumption])
 		district["city"] = city
 	districts[index] = district
-	_world.set("districts", districts)
+	if _world_session_state != null:
+		_world_session_state.districts = districts
 	result = {
 		"changed": before_production != after_production or before_transport != after_transport or before_consumption != after_consumption,
 		"before_production": before_production, "after_production": after_production,
@@ -498,7 +509,8 @@ func _grant_cash(player_index: int, amount: int, label: String, detail: String) 
 	var player := (players[player_index] as Dictionary).duplicate(true)
 	player["cash"] = int(player.get("cash", 0)) + amount
 	players[player_index] = player
-	_world.set("players", players)
+	if _world_session_state != null:
+		_world_session_state.players = players
 	_call_world(&"_record_player_card_income", [player_index, amount, label, detail])
 	return amount
 
@@ -513,7 +525,8 @@ func _pay_penalty(player_index: int, amount: int, label: String, detail: String)
 		return 0
 	player["cash"] = int(player.get("cash", 0)) - paid
 	players[player_index] = player
-	_world.set("players", players)
+	if _world_session_state != null:
+		_world_session_state.players = players
 	_call_world(&"_record_player_card_spend", [player_index, paid, label, detail])
 	return paid
 
@@ -575,12 +588,12 @@ func _product_catalog() -> Array:
 
 
 func _districts() -> Array:
-	var value: Variant = _world.get("districts") if has_world() else []
+	var value: Variant = _world_session_state.districts if _world_session_state != null else []
 	return (value as Array).duplicate(true) if value is Array else []
 
 
 func _players() -> Array:
-	var value: Variant = _world.get("players") if has_world() else []
+	var value: Variant = _world_session_state.players if _world_session_state != null else []
 	return (value as Array).duplicate(true) if value is Array else []
 
 
@@ -598,7 +611,8 @@ func _set_city(index: int, city: Dictionary) -> void:
 	var district := (districts[index] as Dictionary).duplicate(true)
 	district["city"] = city.duplicate(true)
 	districts[index] = district
-	_world.set("districts", districts)
+	if _world_session_state != null:
+		_world_session_state.districts = districts
 
 
 func _city_active(city: Dictionary) -> bool:

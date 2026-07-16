@@ -46,7 +46,7 @@ func _run() -> void:
 	var adapter_debug: Dictionary = adapter.call("debug_snapshot")
 	_expect(not bool(adapter_debug.get("owns_victory_rules", true)) and not bool(adapter_debug.get("owns_cash", true)) and not bool(adapter_debug.get("exposes_exact_cash", true)), "public source adapter owns no victory, cash, or exact-balance state")
 
-	var players: Array = (main.get("players") as Array).duplicate(true)
+	var players: Array = (((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
 	_expect(players.size() >= 2 and bool((players[1] as Dictionary).get("is_ai", false)), "real new game provides an AI seat for the private cash sentinel")
 	if players.size() < 2:
 		main.queue_free()
@@ -57,7 +57,7 @@ func _run() -> void:
 	ai_player["cash"] = int(PRIVATE_CASH_CENTS / 100)
 	ai_player["cash_cents"] = PRIVATE_CASH_CENTS
 	players[1] = ai_player
-	main.set("players", players)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 
 	var controller := coordinator.call("victory_control_runtime_controller") as Node
 	var world: Dictionary = coordinator.call("victory_control_world_snapshot")

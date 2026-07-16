@@ -7992,3 +7992,33 @@
   phase fixture still calls the removed `_start_scenario_from_menu`; the human
   facility playability fixture assumes a facility listing that the current
   fully-random regional supply no longer guarantees.
+
+# 2026-07-17 — World session state scene owner cutover
+
+- Added `WorldSessionState.tscn` under the production
+  `GameRuntimeCoordinator` composition as the only live owner of player
+  records, district records and session time.
+- Physically deleted Main's top-level `players`, `districts` and `game_time`
+  fields without adding compatibility properties, wrappers or dynamic
+  fallbacks.
+- Wired the typed state owner into AI, monster, military, weather, product
+  market, contract, card eligibility/resolution, infrastructure, commodity
+  flow, route, GDP derivative, victory, bankruptcy and card-market bridges.
+- Migrated the v0.6 production player-state adapter and commodity-card
+  inventory away from `bind_world(Main)` to the typed state owner.
+- Migrated active tests, visual capture drivers and characterization Benches
+  away from dynamic Main state access. Standalone weather/news fixtures now
+  inject a real `WorldSessionState`, so missing state continues to fail closed
+  instead of silently falling back to a fake root.
+- Added deterministic reset/replace/time-advance/save APIs, a privacy-safe
+  count-only debug projection, a 48-check focused test and a production
+  composition Bench.
+- Main budget moved from 15,472 to 15,469 physical lines and from 97 to 94
+  top-level fields. External Main caller occurrences dropped from 2,165 to
+  1,652.
+- Validation: focused cutover 48/48 PASS; production MCP Bench 19/19 PASS;
+  Godot 4.7 MCP script scan 386 files with 0 errors; main composition,
+  ActionResult v1, card-player state, facility unlock, news owner, weather
+  presentation, monster lifecycle, UI text, visual snapshot, layout smoke and
+  smoke check-only all exited successfully. Layout smoke retains one existing
+  non-fatal focus warning (`grab_focus` outside tree).

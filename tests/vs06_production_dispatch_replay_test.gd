@@ -59,7 +59,7 @@ func _run() -> void:
 
 
 func _check_monster_dispatch(main: Node, coordinator: Node, inventory: Object, monster: Object) -> void:
-	var players: Array = main.get("players") if main.get("players") is Array else []
+	var players: Array = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players if ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players is Array else []
 	_expect(players.size() == 3, "three production seats exist")
 	if players.is_empty():
 		return
@@ -92,7 +92,7 @@ func _check_monster_dispatch(main: Node, coordinator: Node, inventory: Object, m
 		"slot_index": slot_index,
 		"transaction_id": transaction_id,
 		"region_id": region_id,
-		"game_time": float(main.get("game_time")),
+		"game_time": float(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time),
 	}
 	var before_owner := monster.call("unit_card_snapshot_v06", "monster") as Dictionary
 	var before_terminal := _monster_terminal_journal(monster)
@@ -138,7 +138,7 @@ func _check_monster_dispatch(main: Node, coordinator: Node, inventory: Object, m
 
 
 func _check_facility_dispatch(main: Node, coordinator: Node, inventory: Object, infrastructure: Object) -> void:
-	var players: Array = main.get("players") if main.get("players") is Array else []
+	var players: Array = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players if ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players is Array else []
 	if players.is_empty():
 		return
 	var actor_id := _actor_id(players[0] as Dictionary, 0)
@@ -161,7 +161,7 @@ func _check_facility_dispatch(main: Node, coordinator: Node, inventory: Object, 
 		"slot_index": slot_index,
 		"transaction_id": transaction_id,
 		"region_id": region_id,
-		"game_time": float(main.get("game_time")),
+		"game_time": float(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time),
 	}
 	var before_facilities: Array = infrastructure.call("facilities_snapshot", false)
 	var play := coordinator.call("play_v06_runtime_card", request) as Dictionary
@@ -255,14 +255,14 @@ func _actor_id(player: Dictionary, fallback_index: int) -> String:
 
 
 func _selected_region_id(main: Node, district: int) -> String:
-	var districts: Array = main.get("districts") if main.get("districts") is Array else []
+	var districts: Array = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts if ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts is Array else []
 	if district < 0 or district >= districts.size() or not (districts[district] is Dictionary):
 		return ""
 	return str((districts[district] as Dictionary).get("region_id", "region.%03d" % district))
 
 
 func _first_playable_district(main: Node) -> int:
-	var districts: Array = main.get("districts") if main.get("districts") is Array else []
+	var districts: Array = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts if ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts is Array else []
 	for index in range(districts.size()):
 		var district_data: Dictionary = districts[index] if districts[index] is Dictionary else {}
 		if not bool(district_data.get("is_ocean", false)) and not str(district_data.get("region_id", "")).is_empty():
@@ -271,7 +271,7 @@ func _first_playable_district(main: Node) -> int:
 
 
 func _different_region_id(main: Node, current_region_id: String) -> String:
-	var districts: Array = main.get("districts") if main.get("districts") is Array else []
+	var districts: Array = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts if ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts is Array else []
 	for district_variant in districts:
 		if not (district_variant is Dictionary):
 			continue

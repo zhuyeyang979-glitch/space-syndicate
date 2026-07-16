@@ -324,11 +324,12 @@ func _runtime_supply_drawer_visible(root_node: Node) -> bool:
 
 
 func _capture_district_with_cards(root_node: Node) -> int:
-	var districts_variant: Variant = root_node.get("districts")
-	if not (districts_variant is Array):
-		return int(root_node.get("selected_district")) if _node_has_property(root_node, "selected_district") else -1
-	var districts: Array = districts_variant as Array
-	var selected := int(root_node.get("selected_district")) if _node_has_property(root_node, "selected_district") else -1
+	var state := _world_session_state(root_node)
+	var selection := _table_selection_state(root_node)
+	if state == null:
+		return selection.selected_district if selection != null else -1
+	var districts: Array = state.districts
+	var selected := selection.selected_district if selection != null else -1
 	if _district_has_capture_cards(districts, selected):
 		return selected
 	for i in range(districts.size()):
@@ -454,13 +455,14 @@ func _collect_runtime_hand_cards(node: Node, result: Array) -> void:
 func _ensure_runtime_hand_for_capture(root_node: Node) -> void:
 	if _runtime_visible_hand_card(root_node, 0) != null:
 		return
-	var players_variant: Variant = root_node.get("players")
-	if not (players_variant is Array):
+	var state := _world_session_state(root_node)
+	var selection := _table_selection_state(root_node)
+	if state == null:
 		return
-	var players: Array = (players_variant as Array).duplicate(true)
+	var players: Array = state.players.duplicate(true)
 	if players.is_empty():
 		return
-	var selected_index := clampi(int(root_node.get("selected_player")), 0, players.size() - 1)
+	var selected_index := clampi(selection.selected_player if selection != null else 0, 0, players.size() - 1)
 	if not (players[selected_index] is Dictionary):
 		return
 	var player: Dictionary = (players[selected_index] as Dictionary).duplicate(true)
@@ -477,7 +479,7 @@ func _ensure_runtime_hand_for_capture(root_node: Node) -> void:
 			slots[0] = skill
 		player["slots"] = slots
 		players[selected_index] = player
-		root_node.set("players", players)
+		state.players = players
 	if root_node.has_method("_sync_runtime_game_screen"):
 		root_node.call("_sync_runtime_game_screen", true)
 	await _pump_frames(8)
@@ -626,17 +628,33 @@ func _first_runtime_hand_card_data(hand_rack: Node) -> Dictionary:
 
 
 func _set_runtime_player_action_cooldown(root_node: Node, player_index: int, cooldown: float) -> bool:
-	var players_variant: Variant = root_node.get("players")
-	if not (players_variant is Array):
+	var state := _world_session_state(root_node)
+	if state == null:
 		return false
-	var players: Array = (players_variant as Array).duplicate(true)
+	var players: Array = state.players.duplicate(true)
 	if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary):
 		return false
 	var player: Dictionary = (players[player_index] as Dictionary).duplicate(true)
 	player["action_cooldown"] = maxf(0.0, cooldown)
 	players[player_index] = player
-	root_node.set("players", players)
+	state.players = players
 	return true
+
+
+func _game_runtime_coordinator(root_node: Node) -> GameRuntimeCoordinator:
+	if root_node == null:
+		return null
+	return root_node.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+
+
+func _world_session_state(root_node: Node) -> WorldSessionState:
+	var coordinator := _game_runtime_coordinator(root_node)
+	return coordinator.world_session_state() if coordinator != null else null
+
+
+func _table_selection_state(root_node: Node) -> TableSelectionState:
+	var coordinator := _game_runtime_coordinator(root_node)
+	return coordinator.table_selection_state() if coordinator != null else null
 
 
 func _save_viewport_snapshot(file_name: String) -> void:

@@ -59,7 +59,7 @@ func _run() -> void:
 	main.call("_on_new_game_setup_action_requested", "setup_start")
 	await _wait_frames(10)
 	main.set_process(false)
-	var players: Array = main.get("players") if main.get("players") is Array else []
+	var players: Array = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players if ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players is Array else []
 	_expect(players.size() == 3, "normal game creates one human and two AI seats")
 	_expect(main.find_child("RuntimeGameScreen", true, false) != null, "normal game screen remains composed")
 	_expect(main.find_child("PlanetBoard", true, false) != null, "PlanetBoard remains composed")
@@ -105,7 +105,7 @@ func _run() -> void:
 			"slot_index": slot_index,
 			"transaction_id": "normal-table:facility-play",
 			"region_id": region_id,
-			"game_time": float(main.get("game_time")),
+			"game_time": float(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time),
 		}
 		var play: Dictionary = coordinator.call("play_v06_runtime_card", play_request) if slot_index >= 0 and not region_id.is_empty() else {}
 		var finalization: Dictionary = play.get("effect_finalization", {}) if play.get("effect_finalization", {}) is Dictionary else {}
@@ -132,7 +132,7 @@ func _run() -> void:
 			rival["ai_memory"] = {"route_plan": "NORMAL_TABLE_AI_PLAN_SENTINEL"}
 			rival["hidden_owner"] = "NORMAL_TABLE_TRUE_OWNER_SENTINEL"
 			players[1] = rival
-			main.set("players", players)
+			((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 		var rival_supply: Dictionary = main.call("_district_supply_snapshot_source", district, 1, 0)
 		var victory_public: Dictionary = coordinator.call("victory_control_public_snapshot", -1)
 		_scan_public_value(rival_supply, "district_supply.public")
@@ -154,7 +154,7 @@ func _run() -> void:
 		_scan_public_value(settlement_snapshot, "settlement.public")
 		_scan_visible_controls(main, "main.visible")
 		_expect(_privacy_leaks.is_empty(), "public surfaces omit rival cash, hand, owner truth, and AI plan sentinels")
-		main.set("players", players_backup)
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players_backup
 
 		var save_service := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController/GameSaveRuntimeCoordinator")
 		var handshake := save_service.get_node_or_null("RulesetSaveHandshakeService") if save_service != null else null
@@ -188,7 +188,7 @@ func _contains_removed_token(text: String) -> bool:
 
 
 func _first_playable_district(main: Node) -> int:
-	var districts: Array = main.get("districts") if main.get("districts") is Array else []
+	var districts: Array = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts if ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts is Array else []
 	for index in range(districts.size()):
 		var district: Dictionary = districts[index] if districts[index] is Dictionary else {}
 		if not bool(district.get("is_ocean", false)) and not bool(district.get("destroyed", false)) and not str(district.get("region_id", "")).is_empty():
@@ -197,7 +197,7 @@ func _first_playable_district(main: Node) -> int:
 
 
 func _selected_region_id(main: Node) -> String:
-	var districts: Array = main.get("districts") if main.get("districts") is Array else []
+	var districts: Array = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts if ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts is Array else []
 	var index := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
 	if index < 0 or index >= districts.size() or not (districts[index] is Dictionary):
 		return ""

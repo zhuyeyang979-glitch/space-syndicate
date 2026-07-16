@@ -79,14 +79,40 @@
         "map",
         "card execution"
       ],
-      "new_owner_scene": "",
-      "new_owner_script": "",
-      "new_public_api": [],
-      "tests": [],
-      "old_path_deleted": false,
-      "duplicate_execution_checked": false,
+      "new_owner_scene": "res://scenes/runtime/WorldSessionState.tscn",
+      "new_owner_script": "res://scripts/runtime/world_session_state.gd",
+      "new_public_api": [
+        "players",
+        "districts",
+        "game_time",
+        "reset",
+        "replace_players",
+        "replace_districts",
+        "set_game_time",
+        "advance_game_time",
+        "restore",
+        "internal_snapshot",
+        "to_save_data",
+        "apply_save_data"
+      ],
+      "tests": [
+        "res://tests/world_session_state_cutover_test.gd",
+        "res://scenes/tools/WorldSessionStateCutoverBench.tscn",
+        "res://tests/main_runtime_composition_test.gd",
+        "res://tests/card_player_state_production_adapter_v06_test.gd",
+        "res://tests/facility_card_production_unlock_v06_test.gd",
+        "res://tests/news_event_runtime_owner_test.gd",
+        "res://tests/weather_presentation_runtime_service_test.gd",
+        "res://tests/monster_deploy_atomic_lifecycle_v06_test.gd",
+        "res://tests/ui_text_smoke_test.gd",
+        "res://tests/visual_snapshot.gd",
+        "res://tests/layout_scene_smoke_test.gd",
+        "res://tests/smoke_test.gd --check-only"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
       "commit_sha": "",
-      "status": "pending"
+      "status": "cut_over"
     },
     {
       "domain": "table_selection_state",

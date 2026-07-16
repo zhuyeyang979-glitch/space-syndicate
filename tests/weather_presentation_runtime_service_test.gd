@@ -18,12 +18,14 @@ class FakeClock:
 
 
 class FakeWorld:
-	extends Node
-	var districts := [
-		{"name": "晨港", "destroyed": false, "terrain": "land", "neighbors": [1], "city": {"active": true}, "trade_volume_bucket": 2},
-		{"name": "云廊", "destroyed": false, "terrain": "air", "neighbors": [0], "city": {"active": true}, "trade_volume_bucket": 3},
-	]
-	var players := [{"cash": 987654321, "hand": ["private_sentinel"]}]
+	extends WorldSessionState
+
+	func _init() -> void:
+		districts = [
+			{"name": "晨港", "destroyed": false, "terrain": "land", "neighbors": [1], "city": {"active": true}, "trade_volume_bucket": 2},
+			{"name": "云廊", "destroyed": false, "terrain": "air", "neighbors": [0], "city": {"active": true}, "trade_volume_bucket": 3},
+		]
+		players = [{"cash": 987654321, "hand": ["private_sentinel"]}]
 
 	func _duration_short_text(seconds: float) -> String:
 		return "%d秒" % ceili(seconds)
@@ -56,6 +58,7 @@ func _run() -> void:
 	root.add_child(controller)
 	root.add_child(presentation)
 	bridge.bind_world(world)
+	bridge.set_world_session_state(world)
 	run_rng.seed = 81
 	bridge.set_rng_service(run_rng)
 	controller.set_world_bridge(bridge)
@@ -76,7 +79,7 @@ func _run() -> void:
 	_expect(int(detail.get("event_id", 0)) == 1 and str(detail.get("definition_id", "")) == "ion_storm" and str(detail.get("phase", "")) == "forecast" and (detail.get("effects", []) as Array).size() == 3, "region detail keeps the public event id, phase, time, and three effects")
 	_expect(int(detail.get("remaining_us", 0)) > 0 and str(detail.get("exploitation_hint", "")).strip_edges() != "" and str(detail.get("counterplay_hint", "")).strip_edges() != "", "region detail explains remaining time, exploitation, and counterplay")
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	_expect(main_source.contains("weather_region_detail_snapshot(selected_district)") and main_source.contains("天气影响：") and main_source.contains("正在消退"), "selected-region inspector consumes the public weather detail without owning weather rules")
+	_expect(main_source.contains("coordinator.weather_region_detail_snapshot(_game_runtime_coordinator_node().table_selection_state().selected_district)") and main_source.contains("天气影响：") and main_source.contains("正在消退"), "selected-region inspector consumes the public weather detail without owning weather rules")
 	var serialized := JSON.stringify({"runtime": runtime, "definitions": definitions, "forecast": forecast, "overlay": overlay, "detail": detail})
 	_expect(not serialized.contains("private_sentinel") and not serialized.contains("987654321") and not serialized.contains("players"), "presentation excludes private world state")
 	var debug: Dictionary = presentation.call("debug_snapshot") as Dictionary

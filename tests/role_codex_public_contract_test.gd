@@ -119,7 +119,7 @@ func _test_random_role_resolution_without_run_state_wrapper() -> void:
 	var configured := _array(_main.get("configured_role_indices"))
 	_expect(configured.size() >= seat_count and int(configured[1]) == -1 and int(configured[7]) == -1, "setup_keeps_random_role_placeholders_before_run")
 	_main.call("_new_game")
-	var players := _array(_main.get("players"))
+	var players := _array(((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players)
 	var used := {}
 	var resolved_ok := players.size() == seat_count
 	for player_variant in players:
@@ -132,7 +132,7 @@ func _test_random_role_resolution_without_run_state_wrapper() -> void:
 		used[role_index] = true
 	_expect(resolved_ok and used.size() == seat_count, "random_ai_roles_resolve_to_unique_public_roles")
 	_restore_role_setup(previous_player_count, previous_ai_count, previous_role_indices)
-	_expect(int(_main.get("configured_player_count")) == previous_player_count and int(_main.get("configured_ai_player_count")) == previous_ai_count and _array(_main.get("players")).size() == previous_player_count, "setup_scalar_restore_rebuilds_original_run_without_global_save_wrapper")
+	_expect(int(_main.get("configured_player_count")) == previous_player_count and int(_main.get("configured_ai_player_count")) == previous_ai_count and _array(((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players).size() == previous_player_count, "setup_scalar_restore_rebuilds_original_run_without_global_save_wrapper")
 
 
 func _compose_role_snapshot(role: Dictionary, index: int, total: int) -> Dictionary:

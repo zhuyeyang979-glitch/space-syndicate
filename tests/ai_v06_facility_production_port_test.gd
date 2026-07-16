@@ -54,7 +54,7 @@ func _run() -> void:
 	var ai_public: Dictionary = ai.call("ai_v06_facility_bootstrap_public_snapshot") if ai != null else {}
 	_expect(bool(ai_public.get("available", false)), "AI reports the production port capability without private policy details")
 
-	var players: Array = main.get("players") if main.get("players") is Array else []
+	var players: Array = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players if ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players is Array else []
 	_expect(not players.is_empty() and players[0] is Dictionary and not (players[0] as Dictionary).has("actor_id"), "production player has no actor_id field")
 	var identity: Dictionary = coordinator.call("actor_id_for_player_index", 0)
 	var actor_id := str(identity.get("actor_id", ""))

@@ -119,7 +119,7 @@ func _find_action(actions: Array, action_id: String) -> Dictionary:
 
 
 func _first_playable_district(main: Node) -> int:
-	var districts: Array = main.get("districts") if main.get("districts") is Array else []
+	var districts: Array = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts if ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts is Array else []
 	for index in range(districts.size()):
 		var district: Dictionary = districts[index] if districts[index] is Dictionary else {}
 		if not bool(district.get("is_ocean", false)) and not str(district.get("region_id", "")).is_empty():

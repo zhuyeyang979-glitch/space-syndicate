@@ -346,7 +346,7 @@ func _stage_public_facility_dispatch() -> void:
 		"slot_index": slot_index,
 		"transaction_id": play_transaction_id,
 		"region_id": region_id,
-		"game_time": float(_main.get("game_time")),
+		"game_time": float(((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time),
 	}
 	var play: Dictionary = _coordinator.call("play_v06_runtime_card", play_request) if bool(purchase.get("committed", false)) and slot_index >= 0 and not region_id.is_empty() and _coordinator != null and _coordinator.has_method("play_v06_runtime_card") else {}
 	var play_effect_finalization: Dictionary = play.get("effect_finalization", {}) if play.get("effect_finalization", {}) is Dictionary else {}
@@ -446,7 +446,7 @@ func _stage_realtime_income() -> void:
 	var before_cash := _player_cash_cents(players, 0)
 	var before_receipts: Array = flow.call("recent_sale_receipts_snapshot", -1) if flow != null and flow.has_method("recent_sale_receipts_snapshot") else []
 	for _second in range(120):
-		_main.set("game_time", float(_main.get("game_time")) + 1.0)
+		((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = float(((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time) + 1.0
 		_main.call("_advance_continuous_commodity_flow", 1.0)
 		if _second % 10 == 0:
 			await get_tree().process_frame
@@ -506,7 +506,7 @@ func _stage_ai_progress() -> void:
 		player["action_cooldown"] = 0.0
 		if player_index < players.size():
 			players[player_index] = player
-	_main.set("players", players)
+	((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 	var infrastructure := _infrastructure_owner()
 	var flow := _commodity_flow_owner()
 	var before_facilities: Array = infrastructure.call("facilities_snapshot", false) if infrastructure != null and infrastructure.has_method("facilities_snapshot") else []
@@ -535,7 +535,7 @@ func _stage_ai_progress() -> void:
 		if not before_facility_ids.has(str(facility.get("facility_id", ""))) and [1, 2].has(int(facility.get("owner_player_index", -1))):
 			built += 1
 	for _second in range(120):
-		_main.set("game_time", float(_main.get("game_time")) + 1.0)
+		((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = float(((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time) + 1.0
 		_main.call("_advance_continuous_commodity_flow", 1.0)
 		if _second % 20 == 0:
 			await get_tree().process_frame
@@ -688,7 +688,7 @@ func _stage_privacy() -> void:
 		ai_player["ai_memory"] = {"route_plan": "VS06_AI_PLAN_SENTINEL"}
 		ai_player["hidden_owner"] = "VS06_TRUE_OWNER_SENTINEL"
 		players[1] = ai_player
-		_main.set("players", players)
+		((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 	var district := int(((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
 	var ai_supply: Dictionary = {}
 	if district >= 0 and _main.has_method("_district_supply_snapshot_source"):
@@ -709,7 +709,7 @@ func _stage_privacy() -> void:
 	var unknown_audit_cash_path_rejected := _victory_unknown_audit_cash_path_rejected(victory_public)
 	_scan_public_value(_final_settlement_snapshot, "settlement.public")
 	_scan_visible_controls(_main, "main.visible")
-	_main.set("players", player_backup)
+	((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = player_backup
 	_record(
 		"player_facing_privacy",
 		_privacy_leaks.is_empty() and unknown_audit_cash_path_rejected,
@@ -1051,7 +1051,7 @@ func _eligible_victory_world(checkpoint: String) -> Dictionary:
 func _scenario_state() -> Dictionary:
 	if _coordinator == null or not _coordinator.has_method("runtime_scenario_state"):
 		return {}
-	var value: Variant = _coordinator.call("runtime_scenario_state", float(_main.get("game_time")))
+	var value: Variant = _coordinator.call("runtime_scenario_state", float(((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time))
 	return value as Dictionary if value is Dictionary else {}
 
 

@@ -103,8 +103,8 @@ func _check_runtime_controller_cutover() -> void:
 	var main := main_packed.instantiate() if main_packed != null else null
 	_expect(main != null, "main scene instantiates for direct-action emission check")
 	if main != null:
-		main.set("players", [{"cash": 10, "slots": []}])
-		main.set("districts", [])
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = [{"cash": 10, "slots": []}]
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = []
 		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = -1
 		var quick_actions: Array = main.call("_runtime_player_board_quick_actions", 0)
 		var quick_ids: Array[String] = []

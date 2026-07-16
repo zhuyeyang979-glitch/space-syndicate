@@ -86,7 +86,7 @@ func _run() -> void:
 	# Freeze before the first post-start frame so unrelated CommodityFlow work stays out of scope.
 	main.set("time_scale", 0.0)
 	await _wait_frames(10)
-	var players: Array = main.get("players") if main.get("players") is Array else []
+	var players: Array = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players if ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players is Array else []
 	_expect(players.size() == 3, "real setup_start creates three production players")
 	if players.size() == 3:
 		await _check_district_supply_boundary(main, players, starter_names)
@@ -150,7 +150,7 @@ func _check_district_supply_boundary(main: Node, players: Array, starter_names: 
 	ai["hidden_owner"] = HIDDEN_OWNER_SENTINEL
 	players[0] = human
 	players[1] = ai
-	main.set("players", players)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 
 	var district_index := _first_public_supply_district(main)
 	_expect(district_index >= 0, "public district path exposes at least one card without requiring an AI monster")
@@ -230,7 +230,7 @@ func _check_district_supply_boundary(main: Node, players: Array, starter_names: 
 
 
 func _first_public_supply_district(main: Node) -> int:
-	var districts: Array = main.get("districts") if main.get("districts") is Array else []
+	var districts: Array = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts if ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts is Array else []
 	for district_index in range(districts.size()):
 		var source_variant: Variant = main.call("_district_supply_snapshot_source", district_index, 1, 0)
 		var source: Dictionary = source_variant if source_variant is Dictionary else {}

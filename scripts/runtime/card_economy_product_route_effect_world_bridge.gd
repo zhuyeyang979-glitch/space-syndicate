@@ -6,6 +6,7 @@ var _product_market_runtime_controller: ProductMarketRuntimeController
 var _city_gdp_derivative_runtime_controller: CityGdpDerivativeRuntimeController
 var _formula_runtime_service: CardEconomyProductRouteFormulaRuntimeService
 var _table_selection_state: TableSelectionState
+var _world_session_state: WorldSessionState
 
 
 func set_product_market_runtime_controller(controller: ProductMarketRuntimeController) -> void:
@@ -24,6 +25,14 @@ func set_table_selection_state(state: TableSelectionState) -> void:
 	_table_selection_state = state
 
 
+func set_world_session_state(state: WorldSessionState) -> void:
+	_world_session_state = state
+
+
+func world_session_state() -> WorldSessionState:
+	return _world_session_state
+
+
 func table_selection_state() -> TableSelectionState:
 	return _table_selection_state
 
@@ -38,7 +47,7 @@ func apply_effect(world: Node, plan: Dictionary) -> Dictionary:
 	var entry: Dictionary = payload.get("active_entry", {}) as Dictionary
 	var skill: Dictionary = payload.get("skill", {}) as Dictionary
 	var player_index := int(payload.get("player_index", -1))
-	var players_variant: Variant = world.get("players")
+	var players_variant: Variant = _world_session_state.players if _world_session_state != null else []
 	var players: Array = players_variant if players_variant is Array else []
 	if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary) or skill.is_empty():
 		return _receipt(handler_id, false, "effect_context_missing")
@@ -86,7 +95,7 @@ func debug_snapshot() -> Dictionary:
 func _apply_news_event(world: Node, handler_id: String, skill: Dictionary) -> Dictionary:
 	if _formula_runtime_service == null or _product_market_runtime_controller == null:
 		return _receipt(handler_id, false, "news_event_owner_unavailable")
-	var districts_variant: Variant = world.get("districts")
+	var districts_variant: Variant = _world_session_state.districts if _world_session_state != null else []
 	if not (districts_variant is Array) or _table_selection_state == null:
 		return _receipt(handler_id, false, "news_event_world_facts_unavailable")
 	var districts := (districts_variant as Array).duplicate(true)
@@ -109,7 +118,8 @@ func _apply_news_event(world: Node, handler_id: String, skill: Dictionary) -> Di
 	var public_receipt := _news_public_receipt(district_index, district, effect, region_result, market_result)
 	_append_news_public_clue(district, public_receipt)
 	districts[district_index] = district
-	world.set("districts", districts)
+	if _world_session_state != null:
+		_world_session_state.districts = districts
 	_product_market_runtime_controller.refresh_after_news_event()
 	var result := _receipt(handler_id, true, "news_event_committed", true)
 	result["public_receipt"] = public_receipt
