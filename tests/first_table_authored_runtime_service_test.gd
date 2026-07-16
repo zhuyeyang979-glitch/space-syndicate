@@ -85,8 +85,11 @@ func _run() -> void:
 	var market_before_factory: Dictionary = service.call("recommend_rack_item", market_first)
 	_expect(
 		str(market_before_factory.get("card_id", "")) == "card.market.green.rank_1"
+		and int(market_before_factory.get("slot_index", -1)) == 0
+		and not str(market_before_factory.get("item_id", "")).is_empty()
+		and not str(market_before_factory.get("supply_revision", "")).is_empty()
 		and not bool(market_before_factory.get("mutates_rack", true)),
-		"market may be recommended before a matching factory when that is the current rack order"
+		"native RegionSupply listing identity is preserved and market may precede factory in current rack order"
 	)
 	var factory_first := _rack([
 		_card("card.factory.green.rank_1", "工厂 I", "facility", "factory", 1),
@@ -97,18 +100,16 @@ func _run() -> void:
 		"factory may also be recommended first without a category-order branch"
 	)
 
-	var tagged_rack := _rack([
-		_card("card.route.rank_2", "普通路线牌", "strategy", "", 2),
-		_card("card.weather.rank_2", "教学天气牌", "weather", "", 2, ["tutorial"]),
+	var ranked_rack := _rack([
+		_card("card.route.rank_2", "二级路线牌", "strategy", "", 2),
+		_card("card.weather.rank_1", "一级天气牌", "weather", "", 1),
 	], 13)
 	_expect(
-		str((service.call("recommend_rack_item", tagged_rack) as Dictionary).get("card_id", "")) == "card.weather.rank_2",
-		"an explicit public tutorial tag may select a later current-rack item"
+		str((service.call("recommend_rack_item", ranked_rack) as Dictionary).get("card_id", "")) == "card.weather.rank_1",
+		"public rank may improve a recommendation while equal-score market and factory cards preserve rack order"
 	)
 
-	var no_suitable := _rack([
-		_card("card.blocked.one", "暂不推荐", "strategy", "", 1, [], "", false),
-	], 14)
+	var no_suitable := _rack([], 14)
 	var generic: Dictionary = service.call("recommend_rack_item", no_suitable)
 	_expect(
 		not bool(generic.get("available", true))
@@ -120,21 +121,33 @@ func _run() -> void:
 	var private_rack := market_first.duplicate(true)
 	private_rack["purchase_window"] = {"quote": "private"}
 	private_rack["player_cash"] = 999999
+	var private_regions: Array = private_rack.get("regions", [])
+	var private_region: Dictionary = private_regions[0]
+	var private_slots: Array = private_region.get("slots", [])
+	var private_listing: Dictionary = private_slots[0]
+	var private_card: Dictionary = private_listing.get("card", {})
+	private_card["true_owner"] = 7
+	private_listing["card"] = private_card
+	private_slots[0] = private_listing
+	private_region["slots"] = private_slots
+	private_regions[0] = private_region
+	private_rack["regions"] = private_regions
 	var rejected_private: Dictionary = service.call("recommend_rack_item", private_rack)
 	_expect(
 		not bool(rejected_private.get("available", true))
 		and str(rejected_private.get("reason_code", "")) == "public_rack_private_field_rejected"
-		and not JSON.stringify(rejected_private).contains("999999"),
-		"viewer-private purchase and cash fields fail closed without leaking into guidance"
+		and not JSON.stringify(rejected_private).contains("999999")
+		and not JSON.stringify(rejected_private).contains("true_owner"),
+		"recursive viewer-private cash, quote and owner fields fail closed without leaking into guidance"
 	)
 
-	var mutation_probe := tagged_rack.duplicate(true)
+	var mutation_probe := ranked_rack.duplicate(true)
 	var mutation_before := JSON.stringify(mutation_probe)
 	service.call("recommend_rack_item", mutation_probe)
 	_expect(JSON.stringify(mutation_probe) == mutation_before, "recommendation leaves the caller rack snapshot byte-equivalent as data")
 
 	var composed_rack := _rack([
-		_card("card.market.blue.rank_1", "蓝色市场", "facility", "market", 1, ["first_table"], "product.blue"),
+		_card("card.market.blue.rank_1", "蓝色市场", "facility", "market", 1),
 		_card("card.route.rank_1", "短程商路", "route", "", 1),
 	], 21)
 	var content: Dictionary = service.call("compose_runtime_content", {
@@ -152,8 +165,7 @@ func _run() -> void:
 	_expect(
 		str(content.get("teaching_card_id", "")) == "card.market.blue.rank_1"
 		and str(content.get("followup_card_id", "")) == "card.route.rank_1"
-		and str(content.get("teaching_product_id", "")) == "product.blue"
-		and int(content.get("rack_public_revision", 0)) == 21,
+		and str(content.get("rack_public_revision", "")) == "region:region.test:21",
 		"runtime content derives first and second recommendations only from the current public rack"
 	)
 	_expect(
@@ -200,7 +212,7 @@ func _run() -> void:
 	var product_id := str(service.call("select_teaching_product", {"public_region_supply_rack_snapshot": composed_rack}, catalog))
 	var rack_score := int(service.call("score_district", {"public_region_supply_rack_snapshot": composed_rack}, catalog))
 	var no_rack_score := int(service.call("score_district", {"product_ids": ["固定商品"], "transport_score": 99.0}, catalog))
-	_expect(product_id == "product.blue" and rack_score == 1 and no_rack_score == -1000000, "legacy product and district adapters now depend only on a public rack snapshot")
+	_expect(product_id.is_empty() and rack_score == 1 and no_rack_score == -1000000, "legacy product and district adapters now depend only on native public rack facts")
 
 	var pacing: Dictionary = service.call("pacing_profile")
 	var evaluation: Dictionary = service.call("evaluate_pacing", {
@@ -241,12 +253,31 @@ func _run() -> void:
 
 
 func _rack(cards: Array, revision: int) -> Dictionary:
+	var slots: Array = []
+	for slot_index in range(cards.size()):
+		var card: Dictionary = cards[slot_index] if cards[slot_index] is Dictionary else {}
+		var card_id := str(card.get("card_id", ""))
+		slots.append({
+			"item_id": "region-supply:region.test:%d:%d:%s" % [slot_index, revision, card_id],
+			"card_id": card_id,
+			"card": card.duplicate(true),
+			"source_region_id": "region.test",
+			"source_district_index": 2,
+			"slot_index": slot_index,
+			"price_cash": 100,
+			"supply_revision": "region:region.test:slot:%d:revision:%d" % [slot_index, revision],
+		})
 	return {
-		"visibility_scope": "public",
-		"public_snapshot": true,
-		"region_id": "region.test",
-		"public_revision": revision,
-		"cards": cards.duplicate(true),
+		"available": true,
+		"reason_code": "region_supply_public_snapshot",
+		"state_revision": revision,
+		"regions": [{
+			"region_id": "region.test",
+			"region_index": 2,
+			"display_name": "测试区",
+			"rack_revision": "region:region.test:%d" % revision,
+			"slots": slots,
+		}],
 	}
 
 
@@ -254,22 +285,19 @@ func _card(
 	card_id: String,
 	display_name: String,
 	kind: String,
-	facility_type: String,
+	_facility_type: String,
 	rank: int,
-	tags: Array = [],
-	product_id := "",
-	tutorial_eligible := true
+	_tags: Array = [],
+	_product_id := "",
+	_tutorial_eligible := true
 ) -> Dictionary:
 	return {
 		"card_id": card_id,
 		"display_name": display_name,
-		"kind": kind,
-		"facility_type": facility_type,
+		"card_type": kind,
 		"rank": rank,
-		"tutorial_tags": tags.duplicate(),
-		"product_id": product_id,
-		"tutorial_eligible": tutorial_eligible,
-		"facts": "公开卡面条件",
+		"effect_text": "公开卡面条件",
+		"requirement_text": "公开条件",
 	}
 
 

@@ -48,11 +48,11 @@ func cutover_cases() -> Array:
 		"real_fixture_has_no_fixed_fields",
 		"legacy_fixture_fields_ignored",
 		"catalog_authors_no_fixed_sequence",
-		"public_rack_scope_required",
+		"native_region_supply_snapshot_required",
 		"private_rack_fields_rejected",
 		"market_before_factory_allowed",
 		"factory_before_market_allowed",
-		"public_tutorial_tag_can_recommend",
+		"public_rank_can_recommend",
 		"no_suitable_card_uses_generic_hint",
 		"recommendation_does_not_mutate_snapshot",
 		"content_uses_current_rack_first_and_second",
@@ -153,23 +153,36 @@ func _run_case(case_id: String) -> Dictionary:
 				and (_resolved_catalog.get("starter_monster_ids", []) as Array).is_empty()
 			flags["catalog_checked"] = true
 			notes = "catalog compatibility ignores the global catalog and authors no fixed sequence"
-		"public_rack_scope_required":
-			var rack := _rack([_card("card.route.one", "路线牌", "route", "", 1)], 1)
-			rack["visibility_scope"] = "viewer_private"
-			var recommendation: Dictionary = service.call("recommend_rack_item", rack)
-			passed = not bool(recommendation.get("available", true)) and str(recommendation.get("reason_code", "")) == "public_rack_scope_invalid"
-			flags["privacy_checked"] = true
-			notes = "recommendation fails closed unless the rack snapshot is explicitly public"
+		"native_region_supply_snapshot_required":
+			var recommendation: Dictionary = service.call("recommend_rack_item", {
+				"available": true,
+				"cards": [_card("card.route.one", "路线牌", "route", "", 1)],
+			})
+			passed = not bool(recommendation.get("available", true)) and str(recommendation.get("reason_code", "")) == "public_rack_regions_invalid"
+			flags["ownership_checked"] = true
+			notes = "the service consumes the authoritative RegionSupply regions/slots shape instead of a parallel cards array"
 		"private_rack_fields_rejected":
 			var rack := _rack([_card("card.route.one", "路线牌", "route", "", 1)], 2)
 			rack["player_cash"] = 777777
 			rack["purchase_window"] = {"private": true}
+			var regions: Array = rack.get("regions", [])
+			var region: Dictionary = regions[0]
+			var slots: Array = region.get("slots", [])
+			var listing: Dictionary = slots[0]
+			var card: Dictionary = listing.get("card", {})
+			card["owner_truth"] = 4
+			listing["card"] = card
+			slots[0] = listing
+			region["slots"] = slots
+			regions[0] = region
+			rack["regions"] = regions
 			var recommendation: Dictionary = service.call("recommend_rack_item", rack)
 			passed = not bool(recommendation.get("available", true)) \
 				and str(recommendation.get("reason_code", "")) == "public_rack_private_field_rejected" \
-				and not JSON.stringify(recommendation).contains("777777")
+				and not JSON.stringify(recommendation).contains("777777") \
+				and not JSON.stringify(recommendation).contains("owner_truth")
 			flags["privacy_checked"] = true
-			notes = "cash, hand, quote and other private fields are rejected and never echoed"
+			notes = "recursive cash, quote, owner and other private fields are rejected and never echoed"
 		"market_before_factory_allowed":
 			var recommendation: Dictionary = service.call("recommend_rack_item", _rack([
 				_card("card.market.green.rank_1", "绿色市场", "facility", "market", 1),
@@ -186,18 +199,16 @@ func _run_case(case_id: String) -> Dictionary:
 			passed = str(recommendation.get("card_id", "")) == "card.factory.green.rank_1"
 			flags["order_checked"] = true
 			notes = "factory may likewise be recommended first; category does not reorder the rack"
-		"public_tutorial_tag_can_recommend":
+		"public_rank_can_recommend":
 			var recommendation: Dictionary = service.call("recommend_rack_item", _rack([
-				_card("card.route.rank_2", "普通路线牌", "route", "", 2),
-				_card("card.weather.rank_2", "教学天气牌", "weather", "", 2, ["tutorial"]),
+				_card("card.route.rank_2", "二级路线牌", "route", "", 2),
+				_card("card.weather.rank_1", "一级天气牌", "weather", "", 1),
 			], 5))
-			passed = str(recommendation.get("card_id", "")) == "card.weather.rank_2"
+			passed = str(recommendation.get("card_id", "")) == "card.weather.rank_1"
 			flags["recommendation_checked"] = true
-			notes = "an explicit public tutorial tag may recommend a later current-rack listing"
+			notes = "a lower public rank may improve a recommendation while equal scores retain rack order"
 		"no_suitable_card_uses_generic_hint":
-			var recommendation: Dictionary = service.call("recommend_rack_item", _rack([
-				_card("card.no.tutorial", "暂不推荐", "strategy", "", 1, [], false),
-			], 6))
+			var recommendation: Dictionary = service.call("recommend_rack_item", _rack([], 6))
 			passed = not bool(recommendation.get("available", true)) and str(recommendation.get("label", "")) == "浏览当前牌架"
 			flags["recommendation_checked"] = true
 			notes = "no suitable public listing produces the generic browse-current-rack hint"
@@ -212,7 +223,7 @@ func _run_case(case_id: String) -> Dictionary:
 			var content := _compose({"public_region_supply_rack_snapshot": _sample_rack(), "visible_monster_name": "实际怪兽"})
 			passed = str(content.get("teaching_card_id", "")) == "card.market.blue.rank_1" \
 				and str(content.get("followup_card_id", "")) == "card.route.rank_1" \
-				and int(content.get("rack_public_revision", 0)) == 17 \
+				and str(content.get("rack_public_revision", "")) == "region:region.bench:17" \
 				and not bool(content.get("rack_mutation_requested", true))
 			flags["content_checked"] = true
 			notes = "first and second hints are selected from the same current public rack without mutation"
@@ -327,18 +338,37 @@ func _compose(world: Dictionary) -> Dictionary:
 
 func _sample_rack() -> Dictionary:
 	return _rack([
-		_card("card.market.blue.rank_1", "蓝色市场", "facility", "market", 1, ["first_table"], true, "product.blue"),
+		_card("card.market.blue.rank_1", "蓝色市场", "facility", "market", 1),
 		_card("card.route.rank_1", "短程商路", "route", "", 1),
 	], 17)
 
 
 func _rack(cards: Array, revision: int) -> Dictionary:
+	var slots: Array = []
+	for slot_index in range(cards.size()):
+		var card: Dictionary = cards[slot_index] if cards[slot_index] is Dictionary else {}
+		var card_id := str(card.get("card_id", ""))
+		slots.append({
+			"item_id": "region-supply:region.bench:%d:%d:%s" % [slot_index, revision, card_id],
+			"card_id": card_id,
+			"card": card.duplicate(true),
+			"source_region_id": "region.bench",
+			"source_district_index": 2,
+			"slot_index": slot_index,
+			"price_cash": 100,
+			"supply_revision": "region:region.bench:slot:%d:revision:%d" % [slot_index, revision],
+		})
 	return {
-		"visibility_scope": "public",
-		"public_snapshot": true,
-		"region_id": "region.bench",
-		"public_revision": revision,
-		"cards": cards.duplicate(true),
+		"available": true,
+		"reason_code": "region_supply_public_snapshot",
+		"state_revision": revision,
+		"regions": [{
+			"region_id": "region.bench",
+			"region_index": 2,
+			"display_name": "Bench 区域",
+			"rack_revision": "region:region.bench:%d" % revision,
+			"slots": slots,
+		}],
 	}
 
 
@@ -346,22 +376,19 @@ func _card(
 	card_id: String,
 	display_name: String,
 	kind: String,
-	facility_type: String,
+	_facility_type: String,
 	rank: int,
-	tags: Array = [],
-	tutorial_eligible := true,
-	product_id := ""
+	_tags: Array = [],
+	_tutorial_eligible := true,
+	_product_id := ""
 ) -> Dictionary:
 	return {
 		"card_id": card_id,
 		"display_name": display_name,
-		"kind": kind,
-		"facility_type": facility_type,
+		"card_type": kind,
 		"rank": rank,
-		"tutorial_tags": tags.duplicate(),
-		"tutorial_eligible": tutorial_eligible,
-		"product_id": product_id,
-		"facts": "公开卡面条件",
+		"effect_text": "公开卡面条件",
+		"requirement_text": "公开条件",
 	}
 
 

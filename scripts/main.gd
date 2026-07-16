@@ -52,9 +52,6 @@ const FIRST_RUN_RECOMMENDED_PLAYER_COUNT := 4
 const FIRST_RUN_RECOMMENDED_AI_COUNT := 3
 const FIRST_RUN_RECOMMENDED_ROLE_INDICES := [0, 1, 2, 3]
 const FIRST_RUN_RECOMMENDED_STARTER_MONSTER_INDICES := [7, 6, 2, 4]
-const FIRST_RUN_TEACHING_CARD_NAME := "轨道融资1"
-const FIRST_RUN_TEACHING_CARD_SOURCE := "首局教学补给"
-const FIRST_TABLE_FOLLOWUP_CARD_SOURCE := "首局任务第二张经营牌"
 const ROLE_RANDOM_INDEX := -1
 const ROGUELIKE_DEPTH_MIN := 1
 const ROGUELIKE_DEPTH_MAX := 6
@@ -459,7 +456,7 @@ var time_scale := 1.0
 var selected_player := 0
 var inspected_player := 0
 var selected_district := 0
-var selected_market_skill := "城市融资1"
+var selected_market_skill := ""
 var previewed_district_card := ""
 var pending_discard_purchase := {}
 var selected_guess_player := -1
@@ -2032,7 +2029,7 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 		"card_group_ready":
 			var ready_result := _set_selected_player_card_group_ready()
 			handled = not ready_result.is_empty()
-		"coach_select_district", "coach_open_rack", "coach_buy_card", "coach_play_card", "coach_buy_followup_card", "coach_play_followup_card", "coach_inspect_track", "coach_check_economy", "coach_observe_ai_public_action", "coach_inspect_clues", "coach_inspect_monster_pressure", "coach_choose_route_growth":
+		"coach_select_district", "coach_open_rack", "coach_buy_card", "coach_play_card", "coach_inspect_track", "coach_check_economy", "coach_observe_ai_public_action", "coach_inspect_clues", "coach_inspect_monster_pressure", "coach_choose_route_growth":
 			handled = _activate_first_run_coach_action(action_id)
 		"rack", "buy", "play":
 			handled = _activate_runtime_quick_action(action_id)
@@ -3950,9 +3947,9 @@ func _activate_scenario_step_action(phase: Dictionary, action_id: String) -> boo
 		"check_economy":
 			return _activate_first_run_coach_action("coach_check_economy")
 		"buy_followup":
-			return _activate_first_run_coach_action("coach_buy_followup_card")
+			return _activate_first_run_coach_action("coach_buy_card")
 		"play_followup":
-			return _activate_first_run_coach_action("coach_play_followup_card")
+			return _activate_first_run_coach_action("coach_play_card")
 		"observe_ai_public_action":
 			return _activate_first_run_coach_action("coach_observe_ai_public_action")
 		"inspect_clues":
@@ -11344,21 +11341,6 @@ func _first_actionable_hand_slot(player_index: int) -> int:
 	return -1
 
 
-func _first_actionable_teachable_hand_slot(player_index: int) -> int:
-	if player_index < 0 or player_index >= players.size():
-		return -1
-	var player: Dictionary = players[player_index]
-	var slots: Array = player.get("slots", [])
-	for i in range(slots.size()):
-		if not (slots[i] is Dictionary):
-			continue
-		var skill: Dictionary = slots[i]
-		if not _first_run_skill_is_direct_teachable(player_index, skill):
-			continue
-		return i
-	return -1
-
-
 func _table_goal_primary_action(player_index: int, body: String) -> Dictionary:
 	var empty := {
 		"id": "primary_select_region",
@@ -11572,68 +11554,6 @@ func _apply_recommended_first_run_setup() -> void:
 	_refresh_ui()
 
 
-func _first_table_resolved_content_catalog() -> Dictionary:
-	var coordinator := _game_runtime_coordinator_node()
-	if coordinator == null or not coordinator.has_method("first_table_resolve_content_catalog"):
-		return {}
-	var available_card_ids: Array = []
-	var public_facility_cards: Array = []
-	for card_name_variant in coordinator.call("card_catalog_ordered_ids"):
-		var card_name := str(card_name_variant)
-		monster_runtime_controller._append_unique_string(available_card_ids, card_name)
-		var skill_variant: Variant = coordinator.call("card_definition", card_name)
-		var skill: Dictionary = skill_variant if skill_variant is Dictionary else {}
-		if str(skill.get("kind", "")) == "public_facility":
-			public_facility_cards.append({
-				"card_id": card_name,
-				"rank": int(skill.get("rank", 1)),
-				"facility_type": str(skill.get("facility_type", "")),
-				"industry_id": str(skill.get("industry_id", "")),
-			})
-	var monster_ids: Array = []
-	for roster_variant in MonsterCatalogV06.roster():
-		if roster_variant is Dictionary:
-			monster_runtime_controller._append_unique_string(monster_ids, str((roster_variant as Dictionary).get("name", "")))
-	var product_ids: Array = []
-	for product_variant in ProductMarketRuntimeController.PRODUCT_CATALOG:
-		monster_runtime_controller._append_unique_string(product_ids, str(product_variant))
-	var value: Variant = coordinator.call("first_table_resolve_content_catalog", {
-		"card_ids": available_card_ids,
-		"public_facility_cards": public_facility_cards,
-		"monster_ids": monster_ids,
-		"product_ids": product_ids,
-	})
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func _first_table_followup_card_name() -> String:
-	return str(_first_table_resolved_content_catalog().get("followup_card_id", "")).strip_edges()
-
-
-func _first_table_teaching_product_for_district(district_index: int) -> String:
-	if district_index < 0 or district_index >= districts.size():
-		return ""
-	var district: Dictionary = districts[district_index]
-	var city_product_ids: Array = []
-	var city := _district_city(district_index)
-	if _city_is_active(city):
-		for product_variant in _city_product_names(city):
-			monster_runtime_controller._append_unique_string(city_product_ids, str(product_variant))
-	var remote_demand_product_ids: Array = []
-	for other_index in range(districts.size()):
-		if other_index == district_index:
-			continue
-		for demand_variant in districts[other_index].get("demands", []):
-			monster_runtime_controller._append_unique_string(remote_demand_product_ids, str(demand_variant))
-	var coordinator := _game_runtime_coordinator_node()
-	return str(coordinator.call("first_table_select_teaching_product", {
-		"city_product_ids": city_product_ids,
-		"district_product_ids": (district.get("products", []) as Array).duplicate(true) if district.get("products", []) is Array else [],
-		"district_demand_ids": (district.get("demands", []) as Array).duplicate(true) if district.get("demands", []) is Array else [],
-		"remote_demand_product_ids": remote_demand_product_ids,
-	}, _first_table_resolved_content_catalog())) if coordinator != null and coordinator.has_method("first_table_select_teaching_product") else ""
-
-
 func _first_table_player_city_district(player_index: int) -> int:
 	if selected_district >= 0 and selected_district < districts.size() and not _region_infrastructure_owned_facilities(selected_district, player_index).is_empty():
 		return selected_district
@@ -11647,18 +11567,6 @@ func _first_table_public_clue_count() -> int:
 	return _economy_city_public_clue_entries(32).size() + _economy_card_aftermath_entries(32).size() + _economy_monster_cash_clue_entries(32).size()
 
 
-func _first_table_starter_monster_name(player_index: int, authored_monster_ids: Array = []) -> String:
-	for actor_variant in monster_runtime_controller.auto_monsters:
-		if actor_variant is Dictionary:
-			var actor: Dictionary = actor_variant
-			if int(actor.get("owner", -1)) == player_index and not bool(actor.get("down", false)):
-				return str(actor.get("name", "怪兽"))
-	var configured_index := int(configured_starter_monster_indices[player_index]) if player_index >= 0 and player_index < configured_starter_monster_indices.size() else -1
-	if configured_index >= 0 and configured_index < MonsterCatalogV06.catalog_size():
-		return str(MonsterCatalogV06.catalog_entry(configured_index).get("name", "起始怪兽"))
-	return str(authored_monster_ids[0]) if not authored_monster_ids.is_empty() else "起始怪兽"
-
-
 func _first_table_visible_monster_name() -> String:
 	for actor_variant in monster_runtime_controller.auto_monsters:
 		if actor_variant is Dictionary and not bool((actor_variant as Dictionary).get("down", false)):
@@ -11667,17 +11575,10 @@ func _first_table_visible_monster_name() -> String:
 
 
 func _first_table_runtime_content_snapshot(player_index: int) -> Dictionary:
-	var resolved_catalog := _first_table_resolved_content_catalog()
 	var district_index := _first_table_player_city_district(player_index)
 	if district_index < 0:
 		district_index = _first_run_recommended_start_district(player_index)
 	var district_name := str(districts[district_index].get("name", "推荐区域")) if district_index >= 0 and district_index < districts.size() else "推荐区域"
-	var facility_ids: Array = resolved_catalog.get("public_facility_card_ids", []) if resolved_catalog.get("public_facility_card_ids", []) is Array else []
-	var teaching_card_id := str(facility_ids[0]) if not facility_ids.is_empty() else ""
-	var teaching_skill: Dictionary = _game_runtime_coordinator_node().card_definition(teaching_card_id) if teaching_card_id != "" else {}
-	var teaching_product := String(teaching_skill.get("product_id", ""))
-	if teaching_product == "":
-		teaching_product = _first_table_teaching_product_for_district(district_index)
 	var city: Dictionary = _district_city(district_index) if district_index >= 0 and district_index < districts.size() else {}
 	var infrastructure := _region_infrastructure_snapshot_for_district(district_index)
 	var public_facilities: Array = infrastructure.get("facilities", []) if infrastructure.get("facilities", []) is Array else []
@@ -11701,14 +11602,15 @@ func _first_table_runtime_content_snapshot(player_index: int) -> Dictionary:
 		for ledger_row_variant in player.get("v06_transaction_ledger", []):
 			if ledger_row_variant is Dictionary and str((ledger_row_variant as Dictionary).get("category", "")) == "commodity_sale":
 				cashflow_paid_total += maxi(0, int((ledger_row_variant as Dictionary).get("ledger_delta_cents", 0)))
-	var starter_monster_ids: Array = resolved_catalog.get("starter_monster_ids", []) if resolved_catalog.get("starter_monster_ids", []) is Array else []
 	var coordinator := _game_runtime_coordinator_node()
+	var public_rack_snapshot: Dictionary = {}
+	if coordinator != null and coordinator.has_method("region_supply_public_rack") and district_index >= 0:
+		var rack_variant: Variant = coordinator.call("region_supply_public_rack", _district_region_id(district_index))
+		public_rack_snapshot = (rack_variant as Dictionary).duplicate(true) if rack_variant is Dictionary else {}
 	var value: Variant = coordinator.call("first_table_compose_runtime_content", {
 		"district_index": district_index,
 		"district_name": district_name,
-		"teaching_product_id": teaching_product,
-		"teaching_card_id": teaching_card_id,
-		"starter_monster_id": _first_table_starter_monster_name(player_index, starter_monster_ids),
+		"public_region_supply_rack_snapshot": public_rack_snapshot,
 		"city_present": city_present,
 		"city_product_ids": city_products,
 		"city_demand_ids": city_demands,
@@ -11722,28 +11624,21 @@ func _first_table_runtime_content_snapshot(player_index: int) -> Dictionary:
 		"monster_pressure_visible": not monster_runtime_controller.auto_monsters.is_empty(),
 		"visible_monster_name": _first_table_visible_monster_name(),
 		"route_choice": _first_run_coach_route_choice(player_index),
-	}, resolved_catalog) if coordinator != null and coordinator.has_method("first_table_compose_runtime_content") else {}
+	}, {}) if coordinator != null and coordinator.has_method("first_table_compose_runtime_content") else {}
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
 func _first_table_district_content_score(_player_index: int, district_index: int) -> int:
 	if district_index < 0 or district_index >= districts.size():
 		return -1000000
-	var district: Dictionary = districts[district_index]
-	var remote_demand_product_ids: Array = []
-	for other_index in range(districts.size()):
-		if other_index == district_index:
-			continue
-		for demand_variant in districts[other_index].get("demands", []):
-			monster_runtime_controller._append_unique_string(remote_demand_product_ids, str(demand_variant))
 	var coordinator := _game_runtime_coordinator_node()
+	var public_rack_snapshot: Dictionary = {}
+	if coordinator != null and coordinator.has_method("region_supply_public_rack"):
+		var rack_variant: Variant = coordinator.call("region_supply_public_rack", _district_region_id(district_index))
+		public_rack_snapshot = (rack_variant as Dictionary).duplicate(true) if rack_variant is Dictionary else {}
 	return int(coordinator.call("first_table_score_district", {
-		"build_allowed": not bool(district.get("destroyed", false)),
-		"product_ids": (district.get("products", []) as Array).duplicate(true) if district.get("products", []) is Array else [],
-		"demand_ids": (district.get("demands", []) as Array).duplicate(true) if district.get("demands", []) is Array else [],
-		"transport_score": float(district.get("transport_score", 1.0)),
-		"remote_demand_product_ids": remote_demand_product_ids,
-	}, _first_table_resolved_content_catalog())) if coordinator != null and coordinator.has_method("first_table_score_district") else -1000000
+		"public_region_supply_rack_snapshot": public_rack_snapshot,
+	}, {})) if coordinator != null and coordinator.has_method("first_table_score_district") else -1000000
 
 
 func _first_table_has_public_ai_economy_presence() -> bool:
@@ -11926,60 +11821,6 @@ func _open_first_run_coach_district_supply(district_index: int, player_index: in
 	_open_district_card_purchase_window(district_index, player_index)
 
 
-func _first_table_accessible_land_district(player_index: int) -> int:
-	if player_index < 0 or player_index >= players.size():
-		return -1
-	if selected_district >= 0 and selected_district < districts.size() \
-			and String(districts[selected_district].get("terrain", "land")) == "land" \
-			and _district_market_currently_purchasable(selected_district):
-		return selected_district
-	for district_index in range(districts.size()):
-		if bool(districts[district_index].get("destroyed", false)) or String(districts[district_index].get("terrain", "land")) != "land":
-			continue
-		if _district_market_currently_purchasable(district_index):
-			return district_index
-	return -1
-
-
-func _first_table_followup_hand_slot(player_index: int) -> int:
-	if player_index < 0 or player_index >= players.size():
-		return -1
-	var followup_card_name := _first_table_followup_card_name()
-	if followup_card_name == "":
-		return -1
-	var slots: Array = (players[player_index] as Dictionary).get("slots", []) as Array
-	for slot_index in range(slots.size()):
-		if not (slots[slot_index] is Dictionary):
-			continue
-		var skill: Dictionary = slots[slot_index] as Dictionary
-		if _game_runtime_coordinator_node().card_family_id(String(skill.get("name", ""))) != _game_runtime_coordinator_node().card_family_id(followup_card_name):
-			continue
-		if bool(_card_play_eligibility_snapshot(player_index, skill, "hand").get("actionable", false)):
-			return slot_index
-	return -1
-
-
-func _buy_first_table_followup_card(player_index: int) -> bool:
-	var district_index := _first_table_player_city_district(player_index)
-	var card_name := _first_teachable_buyable_district_card(district_index, player_index)
-	if district_index < 0 or card_name.is_empty():
-		district_index = _first_teachable_buyable_district_for_player(player_index)
-		card_name = _first_teachable_buyable_district_card(district_index, player_index)
-	if district_index < 0 or card_name.is_empty():
-		district_index = _first_buyable_district_for_player(player_index)
-		card_name = _first_buyable_district_card(district_index, player_index)
-	if district_index < 0 or card_name.is_empty():
-		return false
-	_jump_to_district_on_table(district_index)
-	_open_first_run_coach_district_supply(district_index, player_index)
-	selected_market_skill = card_name
-	previewed_district_card = card_name
-	_claim_district_card(card_name)
-	if pending_discard_purchase.is_empty() and _district_supply_is_open():
-		_close_district_supply_overlay()
-	return true
-
-
 func _first_run_coach_strong_focus_copy(stage: String, action_id: String = "") -> Dictionary:
 	var copy := {
 		"stuck_state": "strong",
@@ -12029,11 +11870,11 @@ func _first_run_coach_strong_focus_copy(stage: String, action_id: String = "") -
 			copy["title"] = "看星球区域"
 			copy["body"] = "打开牌架。"
 			copy["tooltip"] = "最短操作：打开当前区域牌架；不能买也能先看。"
-		"buy_card":
+		"buy_card", "buy_development", "buy_followup":
 			copy["title"] = "看区域牌架"
 			copy["body"] = "买一张可购买牌。"
 			copy["tooltip"] = "最短操作：在牌架里买一张可购买牌。"
-		"play_card":
+		"play_card", "play_development", "play_followup":
 			copy["title"] = "看手牌"
 			copy["body"] = "打出可用手牌。"
 			copy["tooltip"] = "最短操作：选一张可用手牌；需要目标会再询问。"
@@ -12140,24 +11981,21 @@ func _runtime_first_run_coach_primary_action(player_index: int, progress: Dictio
 				"tooltip": "打开当前区域牌架；不能购买时也能先查看卡牌。",
 				"accent": Color("#facc15"),
 			}
-		"buy_card":
-			var buyable_district := _first_teachable_buyable_district_for_player(player_index)
-			var buyable_card := _first_teachable_buyable_district_card(buyable_district, player_index)
-			var fallback_district := _first_card_accessible_district_for_player(player_index)
-			var fallback_card := _first_run_teaching_card_name()
-			var can_prepare_teaching_card := buyable_card != "" or (fallback_district >= 0 and fallback_card != "")
+		"buy_card", "buy_development", "buy_followup":
+			var buyable_district := _first_buyable_district_for_player(player_index)
+			var buyable_card := _first_buyable_district_card(buyable_district, player_index)
 			return {
 				"id": "coach_buy_card",
-				"label": "买第一牌",
-				"disabled": not can_prepare_teaching_card,
-				"tooltip": _first_run_buy_card_tooltip(buyable_district if buyable_card != "" else fallback_district, buyable_card if buyable_card != "" else fallback_card),
+				"label": "购买当前挂牌" if stage == "buy_followup" else "购买一张牌",
+				"disabled": buyable_card == "",
+				"tooltip": _first_run_buy_card_tooltip(buyable_district, buyable_card),
 				"accent": Color("#fde68a"),
 			}
-		"play_card":
-			var slot := _first_actionable_teachable_hand_slot(player_index)
+		"play_card", "play_development", "play_followup":
+			var slot := _first_actionable_hand_slot(player_index)
 			return {
 				"id": "coach_play_card",
-				"label": "打出手牌",
+				"label": "打出第二张牌" if stage == "play_followup" else "打出手牌",
 				"disabled": slot < 0,
 				"tooltip": "打出当前可用手牌；需要目标的牌会先打开目标选择。",
 				"accent": Color("#c084fc"),
@@ -12195,25 +12033,6 @@ func _runtime_first_run_coach_primary_action(player_index: int, progress: Dictio
 				"tooltip": "聚焦地图怪兽层，读取真实自动行动留下的移动、目标、商路或城市压力。",
 				"accent": Color("#fb7185"),
 			}
-		"buy_development":
-			var development_district := _first_teachable_buyable_district_for_player(player_index)
-			var development_card := _first_teachable_buyable_district_card(development_district, player_index) if development_district >= 0 else ""
-			return {
-				"id": "coach_buy_card",
-				"label": "购买设施牌",
-				"disabled": development_card == "",
-				"tooltip": "从可达牌架购买一张已迁移的 v0.6 公共设施牌。" if development_card != "" else "当前目录没有可购买的 v0.6 公共设施牌。",
-				"accent": Color("#fde68a"),
-			}
-		"play_development":
-			var development_slot := _first_actionable_teachable_hand_slot(player_index)
-			return {
-				"id": "coach_play_card",
-				"label": "打出设施牌",
-				"disabled": development_slot < 0,
-				"tooltip": "把公共设施牌提交到公开结算轨；设施类型、产业和目标区域公开。",
-				"accent": Color("#c084fc"),
-			}
 		"establish_project":
 			return {
 				"id": "coach_inspect_track",
@@ -12221,23 +12040,6 @@ func _runtime_first_run_coach_primary_action(player_index: int, progress: Dictio
 				"disabled": _first_public_track_resolution_id() < 0,
 				"tooltip": "查看发展牌的公开展示进度；项目结算后会自动进入下一步。",
 				"accent": Color("#f59e0b"),
-			}
-		"buy_followup":
-			return {
-				"id": "coach_buy_followup_card",
-				"label": "购买经营牌",
-				"disabled": _first_table_player_city_district(player_index) < 0,
-				"tooltip": "购买%s，用真实项目继续强化城市收入。" % _card_display_name(_first_table_followup_card_name()),
-				"accent": Color("#fde68a"),
-			}
-		"play_followup":
-			var followup_slot := _first_table_followup_hand_slot(player_index)
-			return {
-				"id": "coach_play_followup_card",
-				"label": "打出经营牌",
-				"disabled": followup_slot < 0,
-				"tooltip": "打出%s，让现有项目进入第二次公开卡牌结算。" % _card_display_name(_first_table_followup_card_name()),
-				"accent": Color("#c084fc"),
 			}
 		"choose_route":
 			return {
@@ -12341,36 +12143,18 @@ func _activate_first_run_coach_action(action_id: String) -> bool:
 			_finish_first_run_coach_action_feedback(player_index, action_id)
 			return true
 		"coach_buy_card":
-			var accessible_district := _first_card_accessible_district_for_player(player_index)
-			if accessible_district < 0:
-				if not _ensure_first_run_coach_action_district(player_index):
-					return false
-				accessible_district = _first_card_accessible_district_for_player(player_index)
-			if accessible_district >= 0 and accessible_district != selected_district:
-				_jump_to_district_on_table(accessible_district)
-			if accessible_district < 0:
+			var buyable_district := _first_buyable_district_for_player(player_index)
+			if buyable_district < 0:
+				_log("首局买牌：当前公开牌架没有本席可购买的挂牌；仍可浏览卡面与公开条件。")
 				return false
-			var prepared_teaching_district := _ensure_first_run_teaching_card_supply(player_index)
-			var target_buy_district := selected_district
-			if _first_teachable_buyable_district_card(target_buy_district, player_index) == "":
-				target_buy_district = _first_teachable_buyable_district_for_player(player_index)
-				if target_buy_district < 0:
-					target_buy_district = prepared_teaching_district
-				if target_buy_district >= 0:
-					_jump_to_district_on_table(target_buy_district)
-			if selected_district < 0 or selected_district >= districts.size():
-				return false
+			if buyable_district != selected_district:
+				_jump_to_district_on_table(buyable_district)
 			selected_player = player_index
 			if not _district_supply_is_open() or district_supply_open_district != selected_district:
 				_open_first_run_coach_district_supply(selected_district, player_index)
-			var teaching_card := _first_run_teaching_card_name()
-			if teaching_card != "" and _district_has_card(selected_district, teaching_card):
-				_request_card_market_quote(teaching_card, selected_district, player_index)
-			var buyable_card := _first_teachable_buyable_district_card(selected_district, player_index)
+			var buyable_card := _first_buyable_district_card(selected_district, player_index)
 			if buyable_card == "":
-				_log("首局买牌：当前没有受光挂牌；牌架仍可查看，等待自转或选择其他来源区。")
-				_finish_first_run_coach_action_feedback(player_index, action_id)
-				return true
+				return false
 			selected_market_skill = buyable_card
 			previewed_district_card = buyable_card
 			_claim_district_card(buyable_card)
@@ -12382,9 +12166,7 @@ func _activate_first_run_coach_action(action_id: String) -> bool:
 			selected_player = player_index
 			if pending_discard_purchase.is_empty() and _district_supply_is_open():
 				_close_district_supply_overlay()
-			if _first_actionable_teachable_hand_slot(player_index) < 0:
-				_ensure_first_run_teachable_hand_card(player_index)
-			var slot_index := _first_actionable_teachable_hand_slot(player_index)
+			var slot_index := _first_actionable_hand_slot(player_index)
 			if slot_index < 0:
 				return false
 			selected_runtime_card_slot = slot_index
@@ -12393,27 +12175,6 @@ func _activate_first_run_coach_action(action_id: String) -> bool:
 			if play_handled:
 				_finish_first_run_coach_action_feedback(player_index, action_id)
 			return play_handled
-		"coach_buy_followup_card":
-			var followup_bought := _buy_first_table_followup_card(player_index)
-			if followup_bought:
-				_finish_first_run_coach_action_feedback(player_index, action_id)
-			return followup_bought
-		"coach_play_followup_card":
-			selected_player = player_index
-			if pending_discard_purchase.is_empty() and _district_supply_is_open():
-				_close_district_supply_overlay()
-			var project_district := _first_table_player_city_district(player_index)
-			if project_district >= 0:
-				_jump_to_district_on_table(project_district)
-			var followup_slot := _first_table_followup_hand_slot(player_index)
-			if followup_slot < 0:
-				return false
-			selected_runtime_card_slot = followup_slot
-			_use_skill(followup_slot)
-			var followup_played := _player_has_committed_or_resolved_card(player_index)
-			if followup_played:
-				_finish_first_run_coach_action_feedback(player_index, action_id)
-			return followup_played
 		"coach_inspect_track":
 			var resolution_id := _first_public_track_resolution_id()
 			if resolution_id < 0:
@@ -12488,125 +12249,31 @@ func _first_buyable_district_card(district_index: int, player_index: int) -> Str
 	if district_index < 0 or district_index >= districts.size() or player_index < 0 or player_index >= players.size():
 		return ""
 	var choices := _district_supply_card_ids(district_index)
+	if _active_runtime_scenario_id() == "first_table":
+		var coordinator := _game_runtime_coordinator_node()
+		if coordinator != null \
+				and coordinator.has_method("region_supply_public_rack") \
+				and coordinator.has_method("first_table_compose_runtime_content"):
+			var rack_variant: Variant = coordinator.call("region_supply_public_rack", _district_region_id(district_index))
+			var rack_snapshot: Dictionary = (rack_variant as Dictionary).duplicate(true) if rack_variant is Dictionary else {}
+			var content_variant: Variant = coordinator.call("first_table_compose_runtime_content", {
+				"public_region_supply_rack_snapshot": rack_snapshot,
+			}, {})
+			var content: Dictionary = content_variant if content_variant is Dictionary else {}
+			var phase := _first_run_coach_stage(_first_run_coach_progress(player_index))
+			var recommendation_key := "followup_rack_recommendation" if phase == "buy_followup" else "rack_recommendation"
+			var recommendation: Dictionary = content.get(recommendation_key, {}) if content.get(recommendation_key, {}) is Dictionary else {}
+			var recommended_card_id := str(recommendation.get("card_id", ""))
+			if choices.has(recommended_card_id):
+				var recommended_state := _district_supply_purchase_state(district_index, recommended_card_id, player_index)
+				if bool(recommended_state.get("actionable", false)):
+					return recommended_card_id
 	for card_variant in choices:
 		var card_name := String(card_variant)
 		var state := _district_supply_purchase_state(district_index, card_name, player_index)
 		if bool(state.get("actionable", false)):
 			return card_name
 	return ""
-
-
-func _first_teachable_buyable_district_card(district_index: int, player_index: int) -> String:
-	if district_index < 0 or district_index >= districts.size() or player_index < 0 or player_index >= players.size():
-		return ""
-	var choices := _district_supply_card_ids(district_index)
-	for card_variant in choices:
-		var card_name := String(card_variant)
-		var state := _district_supply_purchase_state(district_index, card_name, player_index)
-		if not bool(state.get("actionable", false)):
-			continue
-		if _first_run_card_is_teachable_after_purchase(player_index, card_name):
-			return card_name
-	return ""
-
-
-func _first_run_teaching_card_name() -> String:
-	if _game_runtime_coordinator_node().card_exists(FIRST_RUN_TEACHING_CARD_NAME):
-		return FIRST_RUN_TEACHING_CARD_NAME
-	for fallback_name in ["地下融资1"]:
-		if _game_runtime_coordinator_node().card_exists(String(fallback_name)):
-			return String(fallback_name)
-	return ""
-
-
-func _ensure_first_run_teaching_card_supply(player_index: int) -> int:
-	var existing_district := _first_teachable_buyable_district_for_player(player_index)
-	if existing_district >= 0:
-		return existing_district
-	return _first_buyable_district_for_player(player_index)
-
-
-func _first_run_card_is_teachable_after_purchase(player_index: int, card_name: String) -> bool:
-	if player_index < 0 or player_index >= players.size() or card_name == "" or not _game_runtime_coordinator_node().card_exists(card_name):
-		return false
-	var skill := _make_skill(card_name)
-	return _first_run_skill_has_direct_teaching_profile(player_index, skill)
-
-
-func _first_run_skill_has_direct_teaching_profile(player_index: int, skill: Dictionary) -> bool:
-	if player_index < 0 or player_index >= players.size() or skill.is_empty():
-		return false
-	if bool(skill.get("starter_play_free", false)):
-		return false
-	var kind := String(skill.get("kind", ""))
-	if kind != "cash_gain":
-		return false
-	var target := _card_play_target_snapshot(skill)
-	if String(skill.get("kind", "")) == "card_counter" or bool(target.get("requires_target_monster", false)) or bool(target.get("requires_target_player", false)):
-		return false
-	var cash_cost := int(_card_play_requirement_snapshot(player_index, skill).get("cash_cost", 0))
-	if not bool(skill.get("_play_cost_paid_on_queue", false)) and cash_cost > 0 and int(players[player_index].get("cash", 0)) < cash_cost:
-		return false
-	var required := _skill_play_flow_required(skill, player_index)
-	if required > 0:
-		var product_name := _skill_play_product(skill, player_index)
-		if _player_product_flow(player_index, product_name) < required:
-			return false
-	return true
-
-
-func _first_run_skill_is_direct_teachable(player_index: int, skill: Dictionary) -> bool:
-	if not _first_run_skill_has_direct_teaching_profile(player_index, skill):
-		return false
-	var state := _card_play_eligibility_snapshot(player_index, skill, "hand")
-	return bool(state.get("actionable", false))
-
-
-func _ensure_first_run_teachable_hand_card(player_index: int) -> bool:
-	if _first_actionable_teachable_hand_slot(player_index) >= 0:
-		return true
-	if player_index < 0 or player_index >= players.size():
-		return false
-	var previous_selected_player := selected_player
-	var previous_selected_district := selected_district
-	var previous_market_skill := selected_market_skill
-	var previous_previewed_card := previewed_district_card
-	for district_index in range(districts.size()):
-		if bool(districts[district_index].get("destroyed", false)) or not _district_market_currently_purchasable(district_index):
-			continue
-		for card_variant in _district_supply_card_ids(district_index):
-			var card_name := String(card_variant)
-			if not _first_run_card_is_teachable_after_purchase(player_index, card_name):
-				continue
-			var state := _district_supply_purchase_state(district_index, card_name, player_index)
-			if not bool(state.get("actionable", false)):
-				continue
-			selected_player = player_index
-			_jump_to_district_on_table(district_index)
-			_open_first_run_coach_district_supply(district_index, player_index)
-			selected_market_skill = card_name
-			previewed_district_card = card_name
-			_claim_district_card(card_name)
-			if _first_actionable_teachable_hand_slot(player_index) >= 0:
-				return true
-	selected_player = previous_selected_player
-	selected_district = previous_selected_district
-	selected_market_skill = previous_market_skill
-	previewed_district_card = previous_previewed_card
-	return _first_actionable_teachable_hand_slot(player_index) >= 0
-
-
-func _first_card_accessible_district_for_player(player_index: int) -> int:
-	if player_index < 0 or player_index >= players.size():
-		return -1
-	if selected_district >= 0 and selected_district < districts.size() and _district_market_currently_purchasable(selected_district):
-		return selected_district
-	if _district_supply_is_open() and _district_market_currently_purchasable(district_supply_open_district):
-		return district_supply_open_district
-	for district_index in range(districts.size()):
-		if not bool(districts[district_index].get("destroyed", false)) and _district_market_currently_purchasable(district_index):
-			return district_index
-	return -1
 
 
 func _first_buyable_district_for_player(player_index: int) -> int:
@@ -12618,22 +12285,6 @@ func _first_buyable_district_for_player(player_index: int) -> int:
 		return district_supply_open_district
 	for district_index in range(districts.size()):
 		if not bool(districts[district_index].get("destroyed", false)) and _first_buyable_district_card(district_index, player_index) != "":
-			return district_index
-	return -1
-
-
-func _first_teachable_buyable_district_for_player(player_index: int) -> int:
-	if player_index < 0 or player_index >= players.size():
-		return -1
-	if selected_district >= 0 and selected_district < districts.size() and _first_teachable_buyable_district_card(selected_district, player_index) != "":
-		return selected_district
-	if _district_supply_is_open() and _first_teachable_buyable_district_card(district_supply_open_district, player_index) != "":
-		return district_supply_open_district
-	for district_index in range(districts.size()):
-		if bool(districts[district_index].get("destroyed", false)):
-			continue
-		var card_name := _first_teachable_buyable_district_card(district_index, player_index)
-		if card_name != "":
 			return district_index
 	return -1
 
@@ -16210,10 +15861,16 @@ func _buy_card_for_player_from_district(player_index: int, district_index: int, 
 	if int(pending_discard_purchase.get("player_index", -1)) == player_index and String(pending_discard_purchase.get("skill_name", "")) == skill_name:
 		pending_discard_purchase = {}
 	_log("一次匿名购牌在%s完成；买家、具体卡牌、手牌数量和弃牌情况不公开。" % districts[district_index]["name"])
+	var first_table_phase_before_purchase := ""
+	if _active_runtime_scenario_id() == "first_table" \
+			and not anonymous \
+			and not _player_is_ai(player_index) \
+			and player_index == _first_run_coach_player_index():
+		first_table_phase_before_purchase = _first_run_coach_stage(_first_run_coach_progress(player_index))
 	if not anonymous and player_index == selected_player:
 		_complete_scenario_signal("card_bought", "完成购牌：%s的一张牌进入你的手牌。" % String(districts[district_index].get("name", "区域")), "after_buy", "player_hand")
-	if _active_runtime_scenario_id() == "first_table" and skill_name == _first_table_followup_card_name() and not anonymous and player_index == selected_player:
-		_complete_scenario_signal("followup_card_bought", "购买第二张经营牌：%s进入你的手牌。" % _card_display_name(skill_name), "after_followup_buy", "player_hand")
+	if first_table_phase_before_purchase == "buy_followup":
+		_complete_scenario_signal("followup_card_bought", "购买第二张当前挂牌：%s进入你的手牌。" % _card_display_name(skill_name), "after_followup_buy", "player_hand")
 	_grant_role_bonus_card_on_purchase(player_index, district_index, skill_name, anonymous)
 	runtime_coordinator.call("record_weather_public_response", district_index, "buy_after_forecast")
 	return true
@@ -16695,12 +16352,17 @@ func _queue_skill_resolution(player_index: int, slot_index: int, target_slot: in
 		card_group_window_sequence = int(queue_commit.get("next_window_sequence", card_group_window_sequence + 1))
 		_begin_card_group_window(card_resolution_batch_reference_player, card_group_window_sequence)
 	var queue_to_next_batch := str(queue_commit.get("route", "current")) == "next"
+	var first_table_phase_before_play := ""
+	if _active_runtime_scenario_id() == "first_table" \
+			and not _player_is_ai(player_index) \
+			and player_index == _first_run_coach_player_index():
+		first_table_phase_before_play = _first_run_coach_stage(_first_run_coach_progress(player_index))
 	if queue_to_next_batch:
 		_log("匿名响应牌已承诺：%s进入当前5秒相位响应通道。" % card_label)
 		if player_index == selected_player:
 			_complete_scenario_signal("card_played", "提交匿名出牌：%s进入等待区。" % card_label, "after_play", "public_track")
-			if _active_runtime_scenario_id() == "first_table" and _game_runtime_coordinator_node().card_family_id(String(skill.get("name", ""))) == _game_runtime_coordinator_node().card_family_id(_first_table_followup_card_name()):
-				_complete_scenario_signal("followup_card_played", "第二张经营牌已进入等待区：%s。" % card_label, "after_followup_play", "public_track")
+		if first_table_phase_before_play == "play_followup":
+			_complete_scenario_signal("followup_card_played", "第二张当前手牌已进入等待区：%s。" % card_label, "after_followup_play", "public_track")
 		_refresh_ui()
 		return true
 	var current_group_count := _card_group_count_for_player(player_index)
@@ -16711,8 +16373,8 @@ func _queue_skill_resolution(player_index: int, slot_index: int, target_slot: in
 		_show_card_batch_lobby_overlay()
 	if player_index == selected_player:
 		_complete_scenario_signal("card_played", "提交匿名出牌：%s进入公开牌轨。" % card_label, "after_play", "public_track")
-		if _active_runtime_scenario_id() == "first_table" and _game_runtime_coordinator_node().card_family_id(String(skill.get("name", ""))) == _game_runtime_coordinator_node().card_family_id(_first_table_followup_card_name()):
-			_complete_scenario_signal("followup_card_played", "第二张经营牌已进入公开牌轨：%s。" % card_label, "after_followup_play", "public_track")
+	if first_table_phase_before_play == "play_followup":
+		_complete_scenario_signal("followup_card_played", "第二张当前手牌已进入公开牌轨：%s。" % card_label, "after_followup_play", "public_track")
 	if card_resolution_simultaneous_timer <= 0.0:
 		_lock_card_resolution_batch()
 	return true

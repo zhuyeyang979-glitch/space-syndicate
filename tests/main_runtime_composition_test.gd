@@ -444,6 +444,54 @@ func _check_static_composition(main: Control) -> void:
 	_expect(not main_source.contains("func _lowest_level_city_product_index(") and not main_source.contains("func _product_futures_balance_") and not main_source.contains("PRODUCT_FUTURES_PAYOUT_UNIT") and not execution_service_source.contains("CardEconomyProductRouteFormulaRuntimeService"), "retired formula ownership stays absent from main and the Execution Service remains formula-agnostic")
 	_expect(scenario != null and scenario.scene_file_path == "res://scenes/runtime/ScenarioRuntimeController.tscn" and scenario.has_method("start_scenario") and scenario.has_method("complete_signal") and scenario.has_method("viewer_action_log"), "GameRuntimeCoordinator owns the editable ScenarioRuntimeController scene")
 	_expect(first_table_authored != null and first_table_authored.scene_file_path == "res://scenes/runtime/FirstTableAuthoredRuntimeService.tscn" and first_table_authored.has_method("resolve_content_catalog") and first_table_authored.has_method("compose_runtime_content") and first_table_authored.has_method("contextualize_phase") and first_table_authored.has_method("pacing_profile") and first_table_authored.has_method("evaluate_pacing") and first_table_authored.has_method("supply_plan"), "GameRuntimeCoordinator owns the editable FirstTableAuthoredRuntimeService scene and its authored pacing API")
+	var first_table_service_source := FileAccess.get_file_as_string("res://scripts/runtime/first_table_authored_runtime_service.gd")
+	var first_table_content_source := _function_source(main_source, "_first_table_runtime_content_snapshot")
+	var first_table_buyable_source := _function_source(main_source, "_first_buyable_district_card")
+	var retired_first_table_symbols := [
+		"FIRST_RUN_TEACHING_CARD_NAME",
+		"FIRST_RUN_TEACHING_CARD_SOURCE",
+		"FIRST_TABLE_FOLLOWUP_CARD_SOURCE",
+		"_first_table_resolved_content_catalog",
+		"_first_table_followup_card_name",
+		"_first_table_teaching_product_for_district",
+		"_first_table_starter_monster_name",
+		"_first_actionable_teachable_hand_slot",
+		"_first_table_accessible_land_district",
+		"_first_table_followup_hand_slot",
+		"_buy_first_table_followup_card",
+		"_first_teachable_buyable_district_card",
+		"_first_run_teaching_card_name",
+		"_ensure_first_run_teaching_card_supply",
+		"_first_run_card_is_teachable_after_purchase",
+		"_first_run_skill_has_direct_teaching_profile",
+		"_first_run_skill_is_direct_teachable",
+		"_ensure_first_run_teachable_hand_card",
+		"_first_teachable_buyable_district_for_player",
+		"coach_buy_followup_card",
+		"coach_play_followup_card",
+	]
+	var first_table_legacy_absent := true
+	for retired_symbol in retired_first_table_symbols:
+		first_table_legacy_absent = first_table_legacy_absent and not main_source.contains(str(retired_symbol))
+	_expect(
+		first_table_legacy_absent
+		and first_table_content_source.contains("region_supply_public_rack")
+		and first_table_content_source.contains("public_region_supply_rack_snapshot")
+		and first_table_buyable_source.contains("followup_rack_recommendation")
+		and first_table_service_source.contains('snapshot.get("regions", [])')
+		and first_table_service_source.contains('region.get("slots", [])')
+		and first_table_service_source.contains("PUBLIC_RACK_FORBIDDEN_KEYS"),
+		"First-table content reads the native public RegionSupply rack and physically removes the fixed-card teaching chain"
+	)
+	_expect(
+		buy_source.contains('first_table_phase_before_purchase == "buy_followup"')
+		and queue_submit_source.contains('first_table_phase_before_play == "play_followup"')
+		and buy_source.find("first_table_phase_before_purchase =") < buy_source.find('_complete_scenario_signal("card_bought"')
+		and queue_submit_source.find("first_table_phase_before_play =") < queue_submit_source.find('_complete_scenario_signal("card_played"')
+		and not buy_source.contains("card_family_id")
+		and not queue_submit_source.contains("_first_table_followup_card_name"),
+		"First-table follow-up signals depend on the local-human phase before successful purchase/queue advancement, never on a fixed card name"
+	)
 	_expect(codex_navigation != null and codex_navigation.scene_file_path == "res://scenes/runtime/CodexNavigationRuntimeController.tscn" and codex_navigation.has_method("navigation_snapshot") and codex_navigation.has_method("to_legacy_save_snapshot") and codex_navigation.has_method("apply_legacy_save_snapshot"), "GameRuntimeCoordinator owns the editable CodexNavigationRuntimeController scene")
 	_expect(codex_public_snapshot != null and codex_public_snapshot.scene_file_path == "res://scenes/runtime/CodexPublicSnapshotService.tscn" and codex_public_snapshot.has_method("compose_role") and codex_public_snapshot.has_method("compose_region"), "GameRuntimeCoordinator owns the editable CodexPublicSnapshotService scene")
 	_expect(monster_codex_public_snapshot != null and monster_codex_public_snapshot.scene_file_path == "res://scenes/runtime/MonsterCodexPublicSnapshotService.tscn" and monster_codex_public_snapshot.has_method("compose"), "GameRuntimeCoordinator owns the editable MonsterCodexPublicSnapshotService scene")

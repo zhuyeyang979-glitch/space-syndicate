@@ -58,7 +58,6 @@ const PUBLIC_RACK_FORBIDDEN_KEYS := [
 	"unlisted_unique_card_ids",
 ]
 
-const TUTORIAL_RECOMMENDATION_TAGS := ["first_table", "tutorial", "intro", "beginner"]
 const GENERIC_RACK_HINT := "浏览当前牌架"
 const RECOMMENDATION_SOURCE := "public_region_supply_rack"
 
@@ -295,8 +294,9 @@ func compose_runtime_content(world_snapshot: Dictionary, resolved_catalog: Dicti
 	var public_rack := _rack_snapshot_from_source(world_snapshot)
 	var first_recommendation := recommend_rack_item(public_rack)
 	var first_card_id := str(first_recommendation.get("card_id", ""))
-	var excluded_card_ids: Array = [first_card_id] if first_card_id != "" else []
-	var followup_recommendation := recommend_rack_item(public_rack, excluded_card_ids)
+	var first_item_id := str(first_recommendation.get("item_id", ""))
+	var excluded_listing_ids: Array = [first_item_id] if first_item_id != "" else ([first_card_id] if first_card_id != "" else [])
+	var followup_recommendation := recommend_rack_item(public_rack, excluded_listing_ids)
 	var teaching_card_ids: Array = [first_card_id] if first_card_id != "" else []
 	var owned_facilities := _data_array(world_snapshot.get("owned_facilities", []))
 	var city_present := bool(world_snapshot.get("city_present", false)) or not owned_facilities.is_empty()
@@ -332,7 +332,8 @@ func compose_runtime_content(world_snapshot: Dictionary, resolved_catalog: Dicti
 		"followup_rack_recommendation": followup_recommendation,
 		"rack_guidance": str(first_recommendation.get("guidance", GENERIC_RACK_HINT)),
 		"recommendation_source": RECOMMENDATION_SOURCE,
-		"rack_public_revision": int(first_recommendation.get("public_revision", 0)),
+		"rack_public_revision": str(first_recommendation.get("rack_revision", "")),
+		"rack_state_revision": int(first_recommendation.get("state_revision", 0)),
 		"rack_mutation_requested": false,
 		"city_present": city_present,
 		"city_product_ids": _string_array(world_snapshot.get("city_product_ids", [])) if city_present else [],
@@ -407,14 +408,14 @@ func score_district(district_snapshot: Dictionary, resolved_catalog: Dictionary)
 	return 1 if bool(recommendation.get("available", false)) else -1000000
 
 
-func recommend_rack_item(public_rack_snapshot: Dictionary, excluded_card_ids: Array = []) -> Dictionary:
+func recommend_rack_item(public_rack_snapshot: Dictionary, excluded_listing_ids: Array = []) -> Dictionary:
 	_rack_recommendation_count += 1
-	if not _configured or not _is_data_only(public_rack_snapshot) or not _is_data_only(excluded_card_ids):
+	if not _configured or not _is_data_only(public_rack_snapshot) or not _is_data_only(excluded_listing_ids):
 		return _generic_rack_recommendation("public_rack_invalid", public_rack_snapshot)
 	var validation := _validate_public_rack_snapshot(public_rack_snapshot)
 	if not bool(validation.get("valid", false)):
 		return _generic_rack_recommendation(str(validation.get("reason_code", "public_rack_invalid")), public_rack_snapshot)
-	var excluded := _string_set(excluded_card_ids)
+	var excluded := _string_set(excluded_listing_ids)
 	var candidates := _public_rack_candidates(public_rack_snapshot, excluded)
 	if candidates.is_empty():
 		return _generic_rack_recommendation("no_suitable_public_rack_card", public_rack_snapshot)
@@ -436,8 +437,12 @@ func recommend_rack_item(public_rack_snapshot: Dictionary, excluded_card_ids: Ar
 		"action_hint": "查看 %s" % display_name,
 		"guidance": "当前公开随机牌架推荐先阅读：%s。该提示不会预留、刷新或改动牌架。" % display_name,
 		"selection_reason": str(selected.get("selection_reason", "当前公开牌架中的可读挂牌")),
-		"region_id": str(public_rack_snapshot.get("region_id", public_rack_snapshot.get("district_id", ""))),
-		"public_revision": _rack_public_revision(public_rack_snapshot),
+		"region_id": str(selected.get("region_id", "")),
+		"rack_revision": str(selected.get("rack_revision", "")),
+		"state_revision": maxi(0, int(public_rack_snapshot.get("state_revision", 0))),
+		"item_id": str(selected.get("item_id", "")),
+		"supply_revision": str(selected.get("supply_revision", "")),
+		"slot_index": int(selected.get("slot_index", -1)),
 		"rack_card_count": int(validation.get("card_count", 0)),
 		"mutates_rack": false,
 		"reserves_slot": false,
@@ -505,7 +510,7 @@ func _rack_snapshot_from_source(source: Dictionary) -> Dictionary:
 		var value: Variant = source.get(key, {})
 		if value is Dictionary:
 			return (value as Dictionary).duplicate(true)
-	if source.has("cards") and source.get("cards", []) is Array:
+	if source.has("regions") and source.get("regions", []) is Array:
 		return source.duplicate(true)
 	return {}
 
@@ -513,11 +518,6 @@ func _rack_snapshot_from_source(source: Dictionary) -> Dictionary:
 func _validate_public_rack_snapshot(snapshot: Dictionary) -> Dictionary:
 	if snapshot.is_empty() or not _is_data_only(snapshot):
 		return {"valid": false, "reason_code": "public_rack_invalid", "card_count": 0}
-	var scope := str(snapshot.get("visibility_scope", "")).strip_edges()
-	if scope.is_empty() and bool(snapshot.get("public_snapshot", false)):
-		scope = "public"
-	if scope != "public":
-		return {"valid": false, "reason_code": "public_rack_scope_invalid", "card_count": 0}
 	var forbidden_paths: Array = []
 	_collect_public_rack_forbidden_paths(snapshot, "rack", forbidden_paths)
 	if not forbidden_paths.is_empty():
@@ -526,13 +526,25 @@ func _validate_public_rack_snapshot(snapshot: Dictionary) -> Dictionary:
 			"reason_code": "public_rack_private_field_rejected",
 			"card_count": 0,
 		}
-	var cards_variant: Variant = snapshot.get("cards", [])
-	if not (cards_variant is Array):
-		return {"valid": false, "reason_code": "public_rack_cards_invalid", "card_count": 0}
+	if snapshot.has("available") and not bool(snapshot.get("available", false)):
+		return {"valid": false, "reason_code": str(snapshot.get("reason_code", "public_rack_unavailable")), "card_count": 0}
+	var regions_variant: Variant = snapshot.get("regions", [])
+	if not snapshot.has("regions") or not (regions_variant is Array):
+		return {"valid": false, "reason_code": "public_rack_regions_invalid", "card_count": 0}
+	var card_count := 0
+	for region_variant in regions_variant:
+		if not (region_variant is Dictionary):
+			return {"valid": false, "reason_code": "public_rack_region_invalid", "card_count": 0}
+		var region: Dictionary = region_variant
+		if str(region.get("region_id", "")).strip_edges().is_empty() or not (region.get("slots", []) is Array):
+			return {"valid": false, "reason_code": "public_rack_region_invalid", "card_count": 0}
+		for listing_variant in region.get("slots", []):
+			if listing_variant is Dictionary and not (listing_variant as Dictionary).is_empty():
+				card_count += 1
 	return {
 		"valid": true,
 		"reason_code": "ready",
-		"card_count": (cards_variant as Array).size(),
+		"card_count": card_count,
 	}
 
 
@@ -552,69 +564,67 @@ func _collect_public_rack_forbidden_paths(value: Variant, path: String, result: 
 
 func _public_rack_candidates(snapshot: Dictionary, excluded: Dictionary) -> Array:
 	var candidates: Array = []
-	var cards: Array = snapshot.get("cards", []) if snapshot.get("cards", []) is Array else []
-	for rack_index in range(cards.size()):
-		if not (cards[rack_index] is Dictionary):
+	var regions: Array = snapshot.get("regions", []) if snapshot.get("regions", []) is Array else []
+	for region_order in range(regions.size()):
+		if not (regions[region_order] is Dictionary):
 			continue
-		var card: Dictionary = cards[rack_index]
-		var card_id := str(card.get("card_id", card.get("card_name", card.get("id", "")))).strip_edges()
-		if card_id.is_empty() or bool(excluded.get(card_id, false)):
-			continue
-		if bool(card.get("retired", false)) \
-			or not bool(card.get("tutorial_eligible", card.get("recommendable", true))) \
-			or str(card.get("listing_state", card.get("state", ""))) in ["empty", "sold", "removed", "retired"]:
-			continue
-		var rank := maxi(1, int(card.get("rank_number", card.get("rank", 1))))
-		var tags := _merge_public_tags([
-			card.get("tutorial_tags", []),
-			card.get("teaching_tags", []),
-			card.get("mode_enable_tags", []),
-			card.get("tags", []),
-		])
-		var has_tutorial_tag := false
-		for tag_variant in tags:
-			if TUTORIAL_RECOMMENDATION_TAGS.has(str(tag_variant).to_lower()):
-				has_tutorial_tag = true
-				break
-		var clarity_bonus := 10 if not str(card.get("facts", card.get("effect_text", ""))).strip_edges().is_empty() else 0
-		var selection_score := (100000 if has_tutorial_tag else 0) + maxi(0, 5 - rank) * 100 + clarity_bonus
-		candidates.append({
-			"card_id": card_id,
-			"display_name": str(card.get("display_name", card.get("title_tooltip", card_id))).strip_edges(),
-			"slot_id": str(card.get("slot_id", card.get("slot_index", rack_index))),
-			"rack_index": rack_index,
-			"kind": str(card.get("kind", card.get("category_id", ""))),
-			"facility_type": str(card.get("facility_type", "")),
-			"product_id": str(card.get("product_id", "")),
-			"rank": rank,
-			"selection_score": selection_score,
-			"selection_reason": "公开教学标签与首桌匹配" if has_tutorial_tag else ("当前牌架中的低等级挂牌" if rank == 1 else "当前公开牌架中的可读挂牌"),
-		})
+		var region: Dictionary = regions[region_order]
+		var region_id := str(region.get("region_id", "")).strip_edges()
+		var rack_revision := str(region.get("rack_revision", ""))
+		var slots: Array = region.get("slots", []) if region.get("slots", []) is Array else []
+		for slot_order in range(slots.size()):
+			if not (slots[slot_order] is Dictionary):
+				continue
+			var listing: Dictionary = slots[slot_order]
+			if listing.is_empty():
+				continue
+			var card_id := str(listing.get("card_id", "")).strip_edges()
+			var item_id := str(listing.get("item_id", "")).strip_edges()
+			if card_id.is_empty() or bool(excluded.get(item_id, false)) or bool(excluded.get(card_id, false)):
+				continue
+			var card: Dictionary = listing.get("card", {}) if listing.get("card", {}) is Dictionary else {}
+			if bool(card.get("retired", false)) \
+			or str(listing.get("listing_state", listing.get("state", ""))) in ["empty", "sold", "removed", "retired"]:
+				continue
+			var rank := _rank_number(card.get("rank", 1))
+			var card_type := str(card.get("card_type", "")).strip_edges()
+			var is_public_facility := card_type in ["public_facility", "facility"]
+			candidates.append({
+				"card_id": card_id,
+				"display_name": str(card.get("display_name", card.get("name", card_id))).strip_edges(),
+				"item_id": item_id,
+				"slot_id": str(item_id if item_id != "" else listing.get("slot_index", slot_order)),
+				"slot_index": int(listing.get("slot_index", slot_order)),
+				"rack_index": slot_order,
+				"region_order": region_order,
+				"kind": card_type,
+				"facility_type": "",
+				"product_id": "",
+				"rank": rank,
+				"selection_score": (10000 if is_public_facility else 0) + maxi(0, 5 - rank) * 100,
+				"selection_reason": "当前牌架中的公共设施挂牌" if is_public_facility else ("当前牌架中的低等级挂牌" if rank == 1 else "当前公开牌架中的可读挂牌"),
+				"region_id": region_id,
+				"rack_revision": rack_revision,
+				"supply_revision": str(listing.get("supply_revision", "")),
+			})
 	candidates.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
 		var left_score := int(left.get("selection_score", 0))
 		var right_score := int(right.get("selection_score", 0))
 		if left_score != right_score:
 			return left_score > right_score
+		var left_region_order := int(left.get("region_order", 0))
+		var right_region_order := int(right.get("region_order", 0))
+		if left_region_order != right_region_order:
+			return left_region_order < right_region_order
 		var left_index := int(left.get("rack_index", 0))
 		var right_index := int(right.get("rack_index", 0))
-		if left_index != right_index:
-			return left_index < right_index
-		return str(left.get("card_id", "")) < str(right.get("card_id", ""))
+		return left_index < right_index
 	)
 	return candidates
 
 
-func _merge_public_tags(groups: Array) -> Array:
-	var result: Array = []
-	for group_variant in groups:
-		if not (group_variant is Array):
-			continue
-		for tag_variant in group_variant:
-			_append_unique_string(result, str(tag_variant).to_lower())
-	return result
-
-
 func _generic_rack_recommendation(reason_code: String, snapshot: Dictionary = {}) -> Dictionary:
+	var first_region := _first_public_region(snapshot)
 	return {
 		"available": false,
 		"reason_code": reason_code,
@@ -631,17 +641,43 @@ func _generic_rack_recommendation(reason_code: String, snapshot: Dictionary = {}
 		"action_hint": GENERIC_RACK_HINT,
 		"guidance": "当前公开随机牌架暂无合适推荐；浏览当前牌架，按公开条件自行选择。",
 		"selection_reason": "没有合适的当前公开挂牌",
-		"region_id": str(snapshot.get("region_id", snapshot.get("district_id", ""))),
-		"public_revision": _rack_public_revision(snapshot),
-		"rack_card_count": (snapshot.get("cards", []) as Array).size() if snapshot.get("cards", []) is Array else 0,
+		"region_id": str(first_region.get("region_id", "")),
+		"rack_revision": str(first_region.get("rack_revision", "")),
+		"state_revision": maxi(0, int(snapshot.get("state_revision", 0))),
+		"rack_card_count": _native_rack_card_count(snapshot),
 		"mutates_rack": false,
 		"reserves_slot": false,
 		"refreshes_rack": false,
 	}
 
 
-func _rack_public_revision(snapshot: Dictionary) -> int:
-	return maxi(0, int(snapshot.get("public_revision", snapshot.get("revision", snapshot.get("refresh_sequence", 0)))))
+func _first_public_region(snapshot: Dictionary) -> Dictionary:
+	var regions: Array = snapshot.get("regions", []) if snapshot.get("regions", []) is Array else []
+	return (regions[0] as Dictionary).duplicate(true) if not regions.is_empty() and regions[0] is Dictionary else {}
+
+
+func _native_rack_card_count(snapshot: Dictionary) -> int:
+	var count := 0
+	for region_variant in snapshot.get("regions", []):
+		if not (region_variant is Dictionary):
+			continue
+		for listing_variant in (region_variant as Dictionary).get("slots", []):
+			if listing_variant is Dictionary and not (listing_variant as Dictionary).is_empty():
+				count += 1
+	return count
+
+
+func _rank_number(value: Variant) -> int:
+	if value is int:
+		return maxi(1, int(value))
+	match str(value).strip_edges().to_upper():
+		"II", "2", "RANK_II", "RANK_2":
+			return 2
+		"III", "3", "RANK_III", "RANK_3":
+			return 3
+		"IV", "4", "RANK_IV", "RANK_4":
+			return 4
+	return 1
 
 
 func _dictionary(value: Variant) -> Dictionary:
