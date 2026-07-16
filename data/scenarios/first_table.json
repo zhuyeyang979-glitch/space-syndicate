@@ -6,42 +6,14 @@
   "duration_label": "15-30分钟",
   "player_count": 4,
   "ai_count": 3,
-  "summary": "建立第一份城市化收入，打出真实教学牌，再从匿名牌轨、AI公开行动和怪兽压力中读出下一步。",
+  "summary": "从当前公开随机牌架选择一张真实挂牌，完成购买与结算，再从匿名牌轨、AI公开行动和怪兽压力中读出下一步。",
   "recommended_for": "第一次坐上牌桌的玩家",
-  "core_system": "城市化收入、匿名牌轨与怪兽压力",
+  "core_system": "随机区域牌架、真实卡牌结算、匿名牌轨与怪兽压力",
   "allowed_private_information": "current_player_only",
   "fixture": {
     "focus": "first_table_authored_content",
-    "public_summary": "城市化份额让你赚钱；怪兽让别人少赚钱；卡牌改变局势；公开线索帮助判断谁在背后操作。",
-    "teaching_card_ids": [],
-    "teaching_card_kind": "city_development",
+    "public_summary": "当前区域牌架来自公开随机供牌；卡牌改变局势，怪兽制造压力，公开线索帮助判断谁在背后操作。",
     "map_seed": 606120,
-    "facility_market_source_district_index": 5,
-    "followup_card_ids": ["城市融资1", "商品换线1", "诱导电波1", "业主透镜1"],
-    "featured_card_ids": [
-      "城市融资1",
-      "星际广告1",
-      "轨道融资1",
-      "生产扩张1",
-      "交通升级1",
-      "消费刺激1",
-      "商品换线1",
-      "产业升级1",
-      "需求改造1",
-      "供应链保险1",
-      "应急修复1",
-      "星港快线1",
-      "诱导电波1",
-      "远程挑衅1",
-      "业主透镜1",
-      "出牌追帧1",
-      "线索悬赏1",
-      "相位否决1",
-      "包销协议1",
-      "市场稳定1"
-    ],
-    "starter_monster_ids": ["镜像猎兵", "蓝锋骑士", "流星哨兵", "绿洲修复体"],
-    "preferred_product_ids": ["活体芯片", "轨迹墨水", "等离子米"],
     "pacing": {
       "measurement_kind": "scenario_game_time",
       "recommended_min_seconds": 900,
@@ -57,8 +29,8 @@
       ]
     },
     "acts": [
-      {"id": "economy_foundation", "label": "第一幕｜建立经济基础", "minutes": "0-6", "phase_ids": ["select_district", "open_rack", "buy_development", "play_development", "establish_project"]},
-      {"id": "first_profit_route", "label": "第二幕｜形成赚钱路线", "minutes": "6-14", "phase_ids": ["check_economy", "buy_followup", "play_followup", "select_track_card"]},
+      {"id": "economy_foundation", "label": "第一幕｜读取随机牌架", "minutes": "0-6", "phase_ids": ["select_district", "open_rack", "buy_development", "play_development", "establish_project"]},
+      {"id": "first_profit_route", "label": "第二幕｜继续真实牌局", "minutes": "6-14", "phase_ids": ["check_economy", "buy_followup", "play_followup", "select_track_card"]},
       {"id": "pressure_and_clues", "label": "第三幕｜压力与公开线索", "minutes": "14-24", "phase_ids": ["observe_ai_public_action", "inspect_clues", "inspect_monster_pressure", "choose_route"]}
     ],
     "runtime_content_required": true,
@@ -92,7 +64,7 @@
     {"id": "select_track_card", "label": "第二幕｜公开结算", "goal": "查看公开牌轨里的卡牌、目标与结算状态；牌主身份仍然隐藏。", "primary_action_hint": "查看公开牌轨", "success_signal": "track_selected", "snapshot_key": "after_track", "focus_target": "public_track", "stuck_hint": "点击顶部 CardResolutionTrack 中的活动牌或历史牌，只读取公开信息。"},
     {"id": "observe_ai_public_action", "label": "第三幕｜AI暗流", "goal": "观察现有 AI 的一次公开经济行动：结果与目标公开，策略评分和真实操作者不公开。", "primary_action_hint": "观察 AI 公开行动", "success_signal": "ai_public_action_observed", "snapshot_key": "after_ai_action", "focus_target": "public_track", "stuck_hint": "查看公开牌轨、地图 callout 或城市公开线索；不要寻找 AI 私有计划。"},
     {"id": "inspect_clues", "label": "第三幕｜公开线索", "goal": "打开线索档案，基于商品、目标和结果做一次非强制归属判断。", "primary_action_hint": "读取公开线索", "success_signal": "public_clue_read", "snapshot_key": "after_clue", "focus_target": "intel_dossier", "stuck_hint": "只用公开事实整理嫌疑；真实业主、私密目标与私密弃牌不会显示。"},
-    {"id": "inspect_monster_pressure", "label": "第三幕｜怪兽压力", "goal": "观察真实怪兽自动行动留下的移动、商路或城市压力，并判断它威胁了什么。", "primary_action_hint": "聚焦怪兽压力", "success_signal": "monster_pressure_observed", "snapshot_key": "after_monster_pressure", "focus_target": "planet", "stuck_hint": "切到地图怪兽层，查看怪兽标记、移动轨迹、目标 callout 与受压城市/商路。"},
+    {"id": "inspect_monster_pressure", "label": "第三幕｜怪兽压力", "goal": "观察当前实际在场怪兽留下的移动、商路或城市压力，并判断它威胁了什么。", "primary_action_hint": "聚焦怪兽压力", "success_signal": "monster_pressure_observed", "snapshot_key": "after_monster_pressure", "focus_target": "planet", "stuck_hint": "场上没有怪兽压力时继续真实牌局；教学只观察实际在场怪兽，不指定或生成怪兽。"},
     {"id": "choose_route", "label": "第三幕｜下一步", "goal": "根据收入与公开线索，选择保护商路、继续扩张、诱导怪兽或继续观察。", "primary_action_hint": "选择首局路线", "success_signal": "route_chosen", "snapshot_key": "complete", "focus_target": "action_dock", "stuck_hint": "首局推荐先扩 GDP；也可以依据怪兽压力选择护商路或继续读线索。"}
   ]
 }

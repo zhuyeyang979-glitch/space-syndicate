@@ -12,23 +12,76 @@ const PUBLIC_FORBIDDEN_KEYS := [
 	"ai_reason",
 ]
 
+const LEGACY_FIXED_FIXTURE_KEYS := [
+	"facility_market_source_district_index",
+	"teaching_card_ids",
+	"teaching_card_kind",
+	"followup_card_ids",
+	"featured_card_ids",
+	"starter_monster_ids",
+	"preferred_product_ids",
+	"city_development_guarantee_card",
+	"monster_guarantee_card",
+]
+
+const PUBLIC_RACK_FORBIDDEN_KEYS := [
+	"player_cash",
+	"cash",
+	"cash_cents",
+	"counted_hand_size",
+	"hand_limit",
+	"hand_cards",
+	"player_hand",
+	"purchase_window",
+	"can_buy",
+	"subject_player_index",
+	"viewer_player_index",
+	"owner_player_index",
+	"hidden_owner",
+	"true_owner",
+	"owner_truth",
+	"private_plan",
+	"private_target",
+	"private_discard",
+	"ai_plan",
+	"ai_score",
+	"ai_reason",
+	"bag",
+	"bag_order",
+	"bag_epoch",
+	"rng",
+	"rng_seed",
+	"rng_state",
+	"draw_cursor",
+	"next_card_id",
+	"future_card_ids",
+	"unlisted_unique_card_ids",
+]
+
+const TUTORIAL_RECOMMENDATION_TAGS := ["first_table", "tutorial", "intro", "beginner"]
+const GENERIC_RACK_HINT := "浏览当前牌架"
+const RECOMMENDATION_SOURCE := "public_region_supply_rack"
+
 @export var scenario_id := "first_table"
 
 var _configured := false
 var _scenario_definition: Dictionary = {}
 var _fixture: Dictionary = {}
+var _ignored_legacy_fixture_fields: Array[String] = []
 var _catalog_resolution_count := 0
 var _content_composition_count := 0
 var _context_composition_count := 0
 var _score_count := 0
 var _pacing_evaluation_count := 0
 var _supply_plan_count := 0
+var _rack_recommendation_count := 0
 
 
 func configure(config: Dictionary = {}) -> void:
 	_configured = false
 	_scenario_definition.clear()
 	_fixture.clear()
+	_ignored_legacy_fixture_fields.clear()
 	if not _is_data_only(config):
 		return
 	var definition_variant: Variant = config.get("scenario_definition", {})
@@ -40,6 +93,12 @@ func configure(config: Dictionary = {}) -> void:
 		return
 	_scenario_definition = definition
 	_fixture = (fixture_variant as Dictionary).duplicate(true)
+	for field_variant in LEGACY_FIXED_FIXTURE_KEYS:
+		var field := str(field_variant)
+		if _fixture.has(field):
+			_fixture.erase(field)
+			_ignored_legacy_fixture_fields.append(field)
+	_scenario_definition["fixture"] = _fixture.duplicate(true)
 	_configured = not _fixture.is_empty()
 
 
@@ -50,11 +109,15 @@ func fixture_snapshot() -> Dictionary:
 func market_listing_plan() -> Dictionary:
 	if not _configured:
 		return {}
-	var source_district_index := int(_fixture.get("facility_market_source_district_index", -1))
 	return {
 		"scenario_id": scenario_id,
-		"source_district_index": source_district_index,
-		"ready": source_district_index >= 0,
+		"ready": false,
+		"reason_code": "public_region_supply_rack_snapshot_required",
+		"operation": "read_only_recommendation",
+		"recommendation_source": RECOMMENDATION_SOURCE,
+		"mutates_rack": false,
+		"reserves_slot": false,
+		"refreshes_rack": false,
 	}
 
 
@@ -174,18 +237,25 @@ func evaluate_pacing(runtime_snapshot: Dictionary) -> Dictionary:
 	}
 
 
-func supply_plan(resolved_catalog: Dictionary) -> Dictionary:
+func supply_plan(public_rack_snapshot: Dictionary) -> Dictionary:
 	_supply_plan_count += 1
-	if not _configured or not _is_data_only(resolved_catalog):
+	if not _configured or not _is_data_only(public_rack_snapshot):
 		return {}
-	var followup_card_id := str(resolved_catalog.get("followup_card_id", "")).strip_edges()
+	var recommendation := recommend_rack_item(public_rack_snapshot)
 	return {
 		"scenario_id": scenario_id,
-		"ready": followup_card_id != "",
-		"followup_card_id": followup_card_id,
-		"inject_after_signal": "public_facility_committed",
-		"supply_source_id": "first_table_pacing_guarantee",
-		"preserve_monster_guarantee": true,
+		"ready": bool(recommendation.get("available", false)),
+		"reason_code": str(recommendation.get("reason_code", "")),
+		"operation": "read_only_recommendation",
+		"recommendation": recommendation,
+		"followup_card_id": "",
+		"inject_after_signal": "",
+		"supply_source_id": RECOMMENDATION_SOURCE,
+		"mutates_rack": false,
+		"reserves_slot": false,
+		"refreshes_rack": false,
+		"preserve_monster_guarantee": false,
+		"preserve_city_development_guarantee": false,
 	}
 
 
@@ -193,77 +263,41 @@ func resolve_content_catalog(catalog_snapshot: Dictionary) -> Dictionary:
 	_catalog_resolution_count += 1
 	if not _configured or not _is_data_only(catalog_snapshot):
 		return _empty_catalog()
-	var available_cards := _string_set(catalog_snapshot.get("card_ids", []))
-	var available_monsters := _string_set(catalog_snapshot.get("monster_ids", []))
-	var available_products := _string_set(catalog_snapshot.get("product_ids", []))
-	var preferred_products := _filtered_fixture_ids("preferred_product_ids", available_products)
-	var public_facility_ids: Array = []
-	var runtime_card_ids: Array = []
-	var facility_cards_variant: Variant = catalog_snapshot.get("public_facility_cards", [])
-	var facility_cards: Array = facility_cards_variant if facility_cards_variant is Array else []
-	for card_variant in facility_cards:
-		if not (card_variant is Dictionary):
-			continue
-		var card: Dictionary = card_variant
-		var card_id := str(card.get("card_id", card.get("id", ""))).strip_edges()
-		if card_id == "" or int(card.get("rank", 1)) != 1 or not bool(available_cards.get(card_id, false)):
-			continue
-		_append_unique_string(public_facility_ids, card_id)
-		_append_unique_string(runtime_card_ids, card_id)
-	var followup_ids := _filtered_fixture_ids("followup_card_ids", available_cards)
-	for card_id_variant in followup_ids:
-		_append_unique_string(runtime_card_ids, str(card_id_variant))
-	var featured_ids := _filtered_fixture_ids("featured_card_ids", available_cards)
-	var starter_ids := _filtered_fixture_ids("starter_monster_ids", available_monsters)
-	var followup_card_id := str(followup_ids[0]) if not followup_ids.is_empty() else ""
 	return {
 		"scenario_id": scenario_id,
-		"teaching_card_kind": "public_facility",
-		"runtime_card_ids": runtime_card_ids,
-		"public_facility_card_ids": public_facility_ids,
-		"followup_card_ids": followup_ids,
-		"followup_card_id": followup_card_id,
-		"featured_card_ids": featured_ids,
-		"starter_monster_ids": starter_ids,
-		"preferred_product_ids": preferred_products,
+		"recommendation_source": RECOMMENDATION_SOURCE,
+		"available_card_count": 0,
+		"catalog_card_ids": [],
+		"catalog_input_ignored": true,
+		"teaching_card_kind": "current_public_rack",
+		"runtime_card_ids": [],
+		"public_facility_card_ids": [],
+		"followup_card_ids": [],
+		"followup_card_id": "",
+		"featured_card_ids": [],
+		"starter_monster_ids": [],
+		"preferred_product_ids": [],
+		"legacy_fixed_catalog_selection_active": false,
 	}
 
 
 func select_teaching_product(district_snapshot: Dictionary, resolved_catalog: Dictionary = {}) -> String:
 	if not _configured or not _is_data_only(district_snapshot) or not _is_data_only(resolved_catalog):
 		return ""
-	var products: Array = []
-	for key in ["city_product_ids", "public_project_product_ids", "district_product_ids", "district_demand_ids"]:
-		for value_variant in _string_array(district_snapshot.get(key, [])):
-			var value := str(value_variant)
-			if value != "公共通商":
-				_append_unique_string(products, value)
-	var preferred_products := _string_array(resolved_catalog.get("preferred_product_ids", []))
-	for preferred_variant in preferred_products:
-		var preferred_product := str(preferred_variant)
-		if products.has(preferred_product):
-			return preferred_product
-	var remote_demands := _string_set(district_snapshot.get("remote_demand_product_ids", []))
-	for product_variant in products:
-		var product_id := str(product_variant)
-		if bool(remote_demands.get(product_id, false)):
-			return product_id
-	return str(products[0]) if not products.is_empty() else ""
+	var recommendation := recommend_rack_item(_rack_snapshot_from_source(district_snapshot))
+	return str(recommendation.get("product_id", "")) if bool(recommendation.get("available", false)) else ""
 
 
 func compose_runtime_content(world_snapshot: Dictionary, resolved_catalog: Dictionary) -> Dictionary:
 	_content_composition_count += 1
 	if not _configured or not _is_data_only(world_snapshot) or not _is_data_only(resolved_catalog):
 		return {}
-	var teaching_card_ids := _string_array(resolved_catalog.get("runtime_card_ids", []))
-	var teaching_card_id := str(world_snapshot.get("teaching_card_id", "")).strip_edges()
-	if teaching_card_id == "":
-		teaching_card_id = str(world_snapshot.get("fallback_teaching_card_id", "")).strip_edges()
-	if teaching_card_id == "":
-		var facility_ids := _string_array(resolved_catalog.get("public_facility_card_ids", []))
-		teaching_card_id = str(facility_ids[0]) if not facility_ids.is_empty() else ""
-	if teaching_card_id != "":
-		_append_unique_string(teaching_card_ids, teaching_card_id)
+	var public_rack := _rack_snapshot_from_source(world_snapshot)
+	var first_recommendation := recommend_rack_item(public_rack)
+	var first_card_id := str(first_recommendation.get("card_id", ""))
+	var excluded_card_ids: Array = [first_card_id] if first_card_id != "" else []
+	var followup_recommendation := recommend_rack_item(public_rack, excluded_card_ids)
+	var teaching_card_ids: Array = [first_card_id] if first_card_id != "" else []
 	var owned_facilities := _data_array(world_snapshot.get("owned_facilities", []))
 	var city_present := bool(world_snapshot.get("city_present", false)) or not owned_facilities.is_empty()
 	var share_text := "尚未建立公共设施"
@@ -278,28 +312,28 @@ func compose_runtime_content(world_snapshot: Dictionary, resolved_catalog: Dicti
 			share_text = "、".join(facility_labels)
 	var gdp_per_minute := maxi(0, int(world_snapshot.get("gdp_per_minute", 0))) if city_present else 0
 	var cashflow_paid_total := maxi(0, int(world_snapshot.get("cashflow_paid_total", 0))) if city_present else 0
-	var starter_monster_id := str(world_snapshot.get("starter_monster_id", "")).strip_edges()
-	var starter_ids := _string_array(resolved_catalog.get("starter_monster_ids", []))
-	if starter_monster_id == "" and not starter_ids.is_empty():
-		starter_monster_id = str(starter_ids[0])
-	if starter_monster_id == "":
-		starter_monster_id = "起始怪兽"
 	var visible_monster_name := str(world_snapshot.get("visible_monster_name", "")).strip_edges()
 	if visible_monster_name == "":
-		visible_monster_name = starter_monster_id
+		visible_monster_name = "场上怪兽"
 	return {
 		"scenario_id": scenario_id,
 		"district_index": int(world_snapshot.get("district_index", -1)),
 		"district_name": str(world_snapshot.get("district_name", "推荐区域")),
-		"teaching_product_id": str(world_snapshot.get("teaching_product_id", "")),
-		"teaching_card_id": teaching_card_id,
+		"teaching_product_id": str(first_recommendation.get("product_id", "")),
+		"teaching_card_id": first_card_id,
 		"teaching_card_ids": teaching_card_ids,
-		"teaching_card_kind": str(resolved_catalog.get("teaching_card_kind", "public_facility")),
-		"followup_card_id": str(resolved_catalog.get("followup_card_id", "")),
-		"featured_card_ids": _string_array(resolved_catalog.get("featured_card_ids", [])),
-		"starter_monster_id": starter_monster_id,
-		"starter_monster_ids": starter_ids,
-		"preferred_product_ids": _string_array(resolved_catalog.get("preferred_product_ids", [])),
+		"teaching_card_kind": str(first_recommendation.get("kind", "current_public_rack")) if bool(first_recommendation.get("available", false)) else "browse_current_rack",
+		"followup_card_id": str(followup_recommendation.get("card_id", "")),
+		"featured_card_ids": [],
+		"starter_monster_id": "",
+		"starter_monster_ids": [],
+		"preferred_product_ids": [],
+		"rack_recommendation": first_recommendation,
+		"followup_rack_recommendation": followup_recommendation,
+		"rack_guidance": str(first_recommendation.get("guidance", GENERIC_RACK_HINT)),
+		"recommendation_source": RECOMMENDATION_SOURCE,
+		"rack_public_revision": int(first_recommendation.get("public_revision", 0)),
+		"rack_mutation_requested": false,
 		"city_present": city_present,
 		"city_product_ids": _string_array(world_snapshot.get("city_product_ids", [])) if city_present else [],
 		"city_demand_ids": _string_array(world_snapshot.get("city_demand_ids", [])) if city_present else [],
@@ -324,21 +358,22 @@ func contextualize_phase(phase_snapshot: Dictionary, content_snapshot: Dictionar
 		return {}
 	var contextual := phase_snapshot.duplicate(true)
 	var district_name := str(content_snapshot.get("district_name", "推荐区域"))
-	var product_id := str(content_snapshot.get("teaching_product_id", "真实商品"))
-	var card_id := str(content_snapshot.get("teaching_card_id", "城市发展牌"))
-	var followup_card_id := str(content_snapshot.get("followup_card_id", "经营牌"))
-	var monster_id := str(content_snapshot.get("visible_monster_name", content_snapshot.get("starter_monster_id", "怪兽")))
+	var recommendation := _dictionary(content_snapshot.get("rack_recommendation", {}))
+	var followup_recommendation := _dictionary(content_snapshot.get("followup_rack_recommendation", {}))
+	var recommended_label := str(recommendation.get("display_name", recommendation.get("card_id", GENERIC_RACK_HINT))) if bool(recommendation.get("available", false)) else GENERIC_RACK_HINT
+	var followup_label := str(followup_recommendation.get("display_name", followup_recommendation.get("card_id", GENERIC_RACK_HINT))) if bool(followup_recommendation.get("available", false)) else GENERIC_RACK_HINT
+	var monster_id := str(content_snapshot.get("visible_monster_name", "场上怪兽"))
 	match str(contextual.get("id", "")):
 		"select_district":
-			contextual["detail"] = "推荐：%s｜商品链：%s。推荐只改变镜头与提示，不改变建城规则。" % [district_name, product_id]
+			contextual["detail"] = "选择区域后打开该区当前公开随机牌架；推荐只读取公开挂牌，不改变牌位、刷新序号或下一张牌。"
 		"buy_development", "play_development":
-			contextual["detail"] = "发展牌：%s｜商品线：%s。RightInspector 会显示方向、目标、效果与 disabled reason。" % [card_id, product_id]
+			contextual["detail"] = "当前牌架推荐：%s。先在 RightInspector 阅读公开条件；若它不适合当前计划，就%s。" % [recommended_label, GENERIC_RACK_HINT]
 		"establish_project":
-			contextual["detail"] = "当前我的份额：%s｜我的项目 GDP/min %d。其他玩家的贡献与控制者保持隐藏。" % [str(content_snapshot.get("urbanization_share_text", "待建立")), int(content_snapshot.get("gdp_per_minute", 0))]
+			contextual["detail"] = "观察刚购买卡牌的真实公开结算。当前我的设施：%s｜我的项目 GDP/min %d；其他玩家的私有状态保持隐藏。" % [str(content_snapshot.get("urbanization_share_text", "待建立")), int(content_snapshot.get("gdp_per_minute", 0))]
 		"check_economy":
 			contextual["detail"] = "%s 我的项目 GDP/min %d｜已结算项目分红 %d。" % [district_name, int(content_snapshot.get("gdp_per_minute", 0)), int(content_snapshot.get("cashflow_paid_total", 0))]
 		"buy_followup", "play_followup":
-			contextual["detail"] = "第二张经营牌：%s｜项目落成时已放入项目所在区牌架，商品流动与目标城市仍按真实规则检查。" % followup_card_id
+			contextual["detail"] = "当前牌架的下一项公开推荐：%s。服务不会注入、预留或刷新任何挂牌；没有合适牌时就%s。" % [followup_label, GENERIC_RACK_HINT]
 		"observe_ai_public_action", "inspect_clues":
 			contextual["detail"] = "当前公开线索 %d 条；只显示行动、目标与结果，不显示真实操作者。" % int(content_snapshot.get("public_clue_count", 0))
 		"inspect_monster_pressure":
@@ -351,9 +386,8 @@ func contextualize_phase(phase_snapshot: Dictionary, content_snapshot: Dictionar
 func completion_summary(content_snapshot: Dictionary) -> String:
 	if not _configured or not _is_data_only(content_snapshot):
 		return ""
-	return "首局任务完成：%s已建立%s，当前 GDP/min %d；你已读过匿名牌轨、AI公开线索和%s的怪兽压力。整局仍继续。" % [
+	return "首局任务完成：你在%s读取了当前随机牌架并完成真实卡牌结算，当前 GDP/min %d；你已读过匿名牌轨、AI公开线索和%s的怪兽压力。整局仍继续。" % [
 		str(content_snapshot.get("district_name", "推荐区域")),
-		str(content_snapshot.get("urbanization_share_text", "城市化份额")),
 		int(content_snapshot.get("gdp_per_minute", 0)),
 		str(content_snapshot.get("visible_monster_name", "怪兽")),
 	]
@@ -362,28 +396,53 @@ func completion_summary(content_snapshot: Dictionary) -> String:
 func completion_label(content_snapshot: Dictionary) -> String:
 	if not _configured or not _is_data_only(content_snapshot):
 		return ""
-	return "首局完成｜GDP %d/min｜整局继续" % int(content_snapshot.get("gdp_per_minute", 0))
+	return "首局完成｜当前牌架已读｜GDP %d/min｜整局继续" % int(content_snapshot.get("gdp_per_minute", 0))
 
 
 func score_district(district_snapshot: Dictionary, resolved_catalog: Dictionary) -> int:
 	_score_count += 1
-	if not _configured or not _is_data_only(district_snapshot) or not _is_data_only(resolved_catalog) or not bool(district_snapshot.get("build_allowed", false)):
+	if not _configured or not _is_data_only(district_snapshot) or not _is_data_only(resolved_catalog):
 		return -1000000
-	var products := _string_array(district_snapshot.get("product_ids", []))
-	var demands := _string_array(district_snapshot.get("demand_ids", []))
-	var score := products.size() * 30 + demands.size() * 12
-	score += int(round(float(district_snapshot.get("transport_score", 1.0)) * 20.0))
-	for preferred_variant in _string_array(resolved_catalog.get("preferred_product_ids", [])):
-		var preferred_product := str(preferred_variant)
-		if products.has(preferred_product):
-			score += 80
-		if demands.has(preferred_product):
-			score += 24
-	var remote_demands := _string_set(district_snapshot.get("remote_demand_product_ids", []))
-	for product_variant in products:
-		if bool(remote_demands.get(str(product_variant), false)):
-			score += 18
-	return score
+	var recommendation := recommend_rack_item(_rack_snapshot_from_source(district_snapshot))
+	return 1 if bool(recommendation.get("available", false)) else -1000000
+
+
+func recommend_rack_item(public_rack_snapshot: Dictionary, excluded_card_ids: Array = []) -> Dictionary:
+	_rack_recommendation_count += 1
+	if not _configured or not _is_data_only(public_rack_snapshot) or not _is_data_only(excluded_card_ids):
+		return _generic_rack_recommendation("public_rack_invalid", public_rack_snapshot)
+	var validation := _validate_public_rack_snapshot(public_rack_snapshot)
+	if not bool(validation.get("valid", false)):
+		return _generic_rack_recommendation(str(validation.get("reason_code", "public_rack_invalid")), public_rack_snapshot)
+	var excluded := _string_set(excluded_card_ids)
+	var candidates := _public_rack_candidates(public_rack_snapshot, excluded)
+	if candidates.is_empty():
+		return _generic_rack_recommendation("no_suitable_public_rack_card", public_rack_snapshot)
+	var selected: Dictionary = candidates[0]
+	var display_name := str(selected.get("display_name", selected.get("card_id", "")))
+	return {
+		"available": true,
+		"reason_code": "current_public_rack_recommendation",
+		"source": RECOMMENDATION_SOURCE,
+		"card_id": str(selected.get("card_id", "")),
+		"display_name": display_name,
+		"slot_id": str(selected.get("slot_id", "")),
+		"rack_index": int(selected.get("rack_index", -1)),
+		"kind": str(selected.get("kind", "")),
+		"facility_type": str(selected.get("facility_type", "")),
+		"product_id": str(selected.get("product_id", "")),
+		"rank": int(selected.get("rank", 1)),
+		"label": "当前牌架推荐｜%s" % display_name,
+		"action_hint": "查看 %s" % display_name,
+		"guidance": "当前公开随机牌架推荐先阅读：%s。该提示不会预留、刷新或改动牌架。" % display_name,
+		"selection_reason": str(selected.get("selection_reason", "当前公开牌架中的可读挂牌")),
+		"region_id": str(public_rack_snapshot.get("region_id", public_rack_snapshot.get("district_id", ""))),
+		"public_revision": _rack_public_revision(public_rack_snapshot),
+		"rack_card_count": int(validation.get("card_count", 0)),
+		"mutates_rack": false,
+		"reserves_slot": false,
+		"refreshes_rack": false,
+	}
 
 
 func debug_snapshot() -> Dictionary:
@@ -400,22 +459,193 @@ func debug_snapshot() -> Dictionary:
 		"score_count": _score_count,
 		"pacing_evaluation_count": _pacing_evaluation_count,
 		"supply_plan_count": _supply_plan_count,
+		"rack_recommendation_count": _rack_recommendation_count,
 		"pacing_milestone_count": (pacing_profile().get("milestones", []) as Array).size(),
+		"recommendation_source": RECOMMENDATION_SOURCE,
+		"ignored_legacy_fixture_fields": _ignored_legacy_fixture_fields.duplicate(),
+		"legacy_fixed_fixture_field_count": _ignored_legacy_fixture_fields.size(),
+		"selects_from_current_public_rack_only": true,
+		"mutates_region_supply_rack": false,
+		"reserves_region_supply_slot": false,
+		"refreshes_region_supply_rack": false,
+		"fixed_city_development_selection_active": false,
+		"fixed_monster_selection_active": false,
+		"followup_card_injection_active": false,
+		"factory_before_market_assumption_active": false,
 		"legacy_authored_fallback_used": false,
 	}
 
 
 func _empty_catalog() -> Dictionary:
-	return {"scenario_id": scenario_id, "teaching_card_kind": "public_facility", "runtime_card_ids": [], "public_facility_card_ids": [], "followup_card_ids": [], "followup_card_id": "", "featured_card_ids": [], "starter_monster_ids": [], "preferred_product_ids": []}
+	return {
+		"scenario_id": scenario_id,
+		"recommendation_source": RECOMMENDATION_SOURCE,
+		"available_card_count": 0,
+		"catalog_card_ids": [],
+		"catalog_input_ignored": true,
+		"teaching_card_kind": "current_public_rack",
+		"runtime_card_ids": [],
+		"public_facility_card_ids": [],
+		"followup_card_ids": [],
+		"followup_card_id": "",
+		"featured_card_ids": [],
+		"starter_monster_ids": [],
+		"preferred_product_ids": [],
+		"legacy_fixed_catalog_selection_active": false,
+	}
 
 
-func _filtered_fixture_ids(key: String, available: Dictionary) -> Array:
-	var values: Array = []
-	for value_variant in _string_array(_fixture.get(key, [])):
-		var value := str(value_variant)
-		if bool(available.get(value, false)):
-			values.append(value)
-	return values
+func _rack_snapshot_from_source(source: Dictionary) -> Dictionary:
+	for key in [
+		"public_region_supply_rack_snapshot",
+		"region_supply_rack_snapshot",
+		"public_rack_snapshot",
+		"rack_snapshot",
+	]:
+		var value: Variant = source.get(key, {})
+		if value is Dictionary:
+			return (value as Dictionary).duplicate(true)
+	if source.has("cards") and source.get("cards", []) is Array:
+		return source.duplicate(true)
+	return {}
+
+
+func _validate_public_rack_snapshot(snapshot: Dictionary) -> Dictionary:
+	if snapshot.is_empty() or not _is_data_only(snapshot):
+		return {"valid": false, "reason_code": "public_rack_invalid", "card_count": 0}
+	var scope := str(snapshot.get("visibility_scope", "")).strip_edges()
+	if scope.is_empty() and bool(snapshot.get("public_snapshot", false)):
+		scope = "public"
+	if scope != "public":
+		return {"valid": false, "reason_code": "public_rack_scope_invalid", "card_count": 0}
+	var forbidden_paths: Array = []
+	_collect_public_rack_forbidden_paths(snapshot, "rack", forbidden_paths)
+	if not forbidden_paths.is_empty():
+		return {
+			"valid": false,
+			"reason_code": "public_rack_private_field_rejected",
+			"card_count": 0,
+		}
+	var cards_variant: Variant = snapshot.get("cards", [])
+	if not (cards_variant is Array):
+		return {"valid": false, "reason_code": "public_rack_cards_invalid", "card_count": 0}
+	return {
+		"valid": true,
+		"reason_code": "ready",
+		"card_count": (cards_variant as Array).size(),
+	}
+
+
+func _collect_public_rack_forbidden_paths(value: Variant, path: String, result: Array) -> void:
+	if value is Dictionary:
+		for key_variant in (value as Dictionary).keys():
+			var key := str(key_variant).strip_edges().to_lower()
+			var next_path := "%s.%s" % [path, key]
+			if PUBLIC_RACK_FORBIDDEN_KEYS.has(key):
+				result.append(next_path)
+				continue
+			_collect_public_rack_forbidden_paths((value as Dictionary)[key_variant], next_path, result)
+	elif value is Array:
+		for index in range((value as Array).size()):
+			_collect_public_rack_forbidden_paths((value as Array)[index], "%s[%d]" % [path, index], result)
+
+
+func _public_rack_candidates(snapshot: Dictionary, excluded: Dictionary) -> Array:
+	var candidates: Array = []
+	var cards: Array = snapshot.get("cards", []) if snapshot.get("cards", []) is Array else []
+	for rack_index in range(cards.size()):
+		if not (cards[rack_index] is Dictionary):
+			continue
+		var card: Dictionary = cards[rack_index]
+		var card_id := str(card.get("card_id", card.get("card_name", card.get("id", "")))).strip_edges()
+		if card_id.is_empty() or bool(excluded.get(card_id, false)):
+			continue
+		if bool(card.get("retired", false)) \
+			or not bool(card.get("tutorial_eligible", card.get("recommendable", true))) \
+			or str(card.get("listing_state", card.get("state", ""))) in ["empty", "sold", "removed", "retired"]:
+			continue
+		var rank := maxi(1, int(card.get("rank_number", card.get("rank", 1))))
+		var tags := _merge_public_tags([
+			card.get("tutorial_tags", []),
+			card.get("teaching_tags", []),
+			card.get("mode_enable_tags", []),
+			card.get("tags", []),
+		])
+		var has_tutorial_tag := false
+		for tag_variant in tags:
+			if TUTORIAL_RECOMMENDATION_TAGS.has(str(tag_variant).to_lower()):
+				has_tutorial_tag = true
+				break
+		var clarity_bonus := 10 if not str(card.get("facts", card.get("effect_text", ""))).strip_edges().is_empty() else 0
+		var selection_score := (100000 if has_tutorial_tag else 0) + maxi(0, 5 - rank) * 100 + clarity_bonus
+		candidates.append({
+			"card_id": card_id,
+			"display_name": str(card.get("display_name", card.get("title_tooltip", card_id))).strip_edges(),
+			"slot_id": str(card.get("slot_id", card.get("slot_index", rack_index))),
+			"rack_index": rack_index,
+			"kind": str(card.get("kind", card.get("category_id", ""))),
+			"facility_type": str(card.get("facility_type", "")),
+			"product_id": str(card.get("product_id", "")),
+			"rank": rank,
+			"selection_score": selection_score,
+			"selection_reason": "公开教学标签与首桌匹配" if has_tutorial_tag else ("当前牌架中的低等级挂牌" if rank == 1 else "当前公开牌架中的可读挂牌"),
+		})
+	candidates.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		var left_score := int(left.get("selection_score", 0))
+		var right_score := int(right.get("selection_score", 0))
+		if left_score != right_score:
+			return left_score > right_score
+		var left_index := int(left.get("rack_index", 0))
+		var right_index := int(right.get("rack_index", 0))
+		if left_index != right_index:
+			return left_index < right_index
+		return str(left.get("card_id", "")) < str(right.get("card_id", ""))
+	)
+	return candidates
+
+
+func _merge_public_tags(groups: Array) -> Array:
+	var result: Array = []
+	for group_variant in groups:
+		if not (group_variant is Array):
+			continue
+		for tag_variant in group_variant:
+			_append_unique_string(result, str(tag_variant).to_lower())
+	return result
+
+
+func _generic_rack_recommendation(reason_code: String, snapshot: Dictionary = {}) -> Dictionary:
+	return {
+		"available": false,
+		"reason_code": reason_code,
+		"source": RECOMMENDATION_SOURCE,
+		"card_id": "",
+		"display_name": "",
+		"slot_id": "",
+		"rack_index": -1,
+		"kind": "",
+		"facility_type": "",
+		"product_id": "",
+		"rank": 0,
+		"label": GENERIC_RACK_HINT,
+		"action_hint": GENERIC_RACK_HINT,
+		"guidance": "当前公开随机牌架暂无合适推荐；浏览当前牌架，按公开条件自行选择。",
+		"selection_reason": "没有合适的当前公开挂牌",
+		"region_id": str(snapshot.get("region_id", snapshot.get("district_id", ""))),
+		"public_revision": _rack_public_revision(snapshot),
+		"rack_card_count": (snapshot.get("cards", []) as Array).size() if snapshot.get("cards", []) is Array else 0,
+		"mutates_rack": false,
+		"reserves_slot": false,
+		"refreshes_rack": false,
+	}
+
+
+func _rack_public_revision(snapshot: Dictionary) -> int:
+	return maxi(0, int(snapshot.get("public_revision", snapshot.get("revision", snapshot.get("refresh_sequence", 0)))))
+
+
+func _dictionary(value: Variant) -> Dictionary:
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
 func _string_set(value: Variant) -> Dictionary:
