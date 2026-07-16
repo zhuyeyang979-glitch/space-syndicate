@@ -1,10 +1,9 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
 [ext_resource type="PackedScene" path="res://scenes/ui/HandRack.tscn" id="2_hand_rack"]
 [ext_resource type="Script" path="res://scripts/ui/player_board.gd" id="3_player_board"]
 [ext_resource type="PackedScene" path="res://scenes/ui/ActionDock.tscn" id="4_action_dock"]
-[ext_resource type="PackedScene" path="res://scenes/ui/BidBoard.tscn" id="5_bid_board"]
 
 [node name="PlayerBoard" type="PanelContainer"]
 custom_minimum_size = Vector2(0, 192)
@@ -159,11 +158,6 @@ size_flags_vertical = 3
 [node name="PlayerCommandRows" type="VBoxContainer" parent="PlayerRows/PlayerBoardBody/PlayerCommandTableau"]
 layout_mode = 2
 theme_override_constants/separation = 4
-
-[node name="PlayerBidBoard" parent="PlayerRows/PlayerBoardBody/PlayerCommandTableau/PlayerCommandRows" instance=ExtResource("5_bid_board")]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(260, 56)
-layout_mode = 2
 
 [node name="PlayerMainActionDock" parent="PlayerRows/PlayerBoardBody/PlayerCommandTableau/PlayerCommandRows" instance=ExtResource("4_action_dock")]
 unique_name_in_owner = true

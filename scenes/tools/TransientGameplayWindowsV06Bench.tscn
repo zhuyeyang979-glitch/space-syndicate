@@ -1,0 +1,22 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/transient_gameplay_windows_v06_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/ui/GameScreen.tscn" id="2_game_screen"]
+
+[node name="TransientGameplayWindowsV06Bench" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_bench")
+
+[node name="TransientGameScreen" parent="." instance=ExtResource("2_game_screen")]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2

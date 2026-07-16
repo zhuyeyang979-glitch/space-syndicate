@@ -113,9 +113,10 @@ func _gui_input(event: InputEvent) -> void:
 		var mouse_event := event as InputEventMouseButton
 		if not mouse_event.pressed or mouse_event.button_index != MOUSE_BUTTON_LEFT:
 			return
-		card_preview_requested.emit(_card_name)
 		if mouse_event.double_click:
 			card_activated.emit(_card_name)
+		else:
+			card_preview_requested.emit(_card_name)
 		accept_event()
 	elif event is InputEventKey:
 		var key_event := event as InputEventKey
@@ -125,7 +126,6 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _activate_from_confirm() -> void:
-	card_preview_requested.emit(_card_name)
 	card_activated.emit(_card_name)
 
 

@@ -25,12 +25,12 @@ func _run() -> void:
 	await _apply_and_expect_focus(screen, "player_hand", "手牌", "first_summon")
 	await _apply_and_expect_focus(screen, "public_track", "牌轨", "select_track_card")
 	await _apply_and_expect_focus(screen, "right_inspector", "右侧详情", "read_inspector")
-	await _apply_and_expect_focus(screen, "bid_board", "竞价", "read_bid_board")
 	await _apply_first_run_and_expect_focus(screen, "select_district", "星球", "planet")
-	await _apply_first_run_and_expect_focus(screen, "first_summon", "手牌", "player_hand")
+	await _apply_first_run_and_expect_focus(screen, "play_card", "手牌", "player_hand")
 	await _apply_first_run_and_expect_focus(screen, "build_city", "行动区", "action_dock")
 	await _apply_first_run_and_expect_focus(screen, "buy_card", "牌架", "district_supply")
 	await _apply_first_run_and_expect_focus(screen, "inspect_track", "牌轨", "public_track")
+	await _apply_and_expect_focus(screen, "bid_board", "竞价", "read_bid_board")
 	screen.call("apply_state", _table_state(""))
 	await process_frame
 	await process_frame
@@ -98,7 +98,7 @@ func _target_control(screen: Control, focus_target: String) -> Control:
 		"right_inspector":
 			return screen.find_child("RightInspector", true, false) as Control
 		"bid_board":
-			return screen.find_child("PlayerBidBoard", true, false) as Control
+			return screen.find_child("PublicBidDecisionPanel", true, false) as Control
 		_:
 			return null
 
@@ -137,6 +137,14 @@ func _table_state(focus_target: String, phase_id: String = "first_summon") -> Di
 			},
 		}
 	return {
+		"active_forced_decision": {
+			"id": "public_bid",
+			"kind": "public_bid",
+			"priority_group": "public_bid",
+			"visible_to_viewer": true,
+			"presentation_surface": "overlay",
+			"blocks_player_actions": true,
+		} if focus_target == "bid_board" else {},
 		"top_bar": {
 			"identity": "本席 玩家1",
 			"cash_text": "现金 ¥2080",
@@ -177,7 +185,13 @@ func _table_state(focus_target: String, phase_id: String = "first_summon") -> Di
 				{"id": "build_city", "label": "城市化", "active": true},
 				{"id": "open_rack", "label": "牌架", "active": true},
 			],
-			"bid_board": {"title": "牌桌竞价", "my_bid": "¥0", "highest_bid": "¥0", "actions": [{"id": "bid_set_50", "label": "设为 ¥50"}]},
+			"bid_board": {
+				"title": "牌序竞价",
+				"phase_id": "public_bid" if focus_target == "bid_board" else "planning",
+				"phase": "公开竞价 5s" if focus_target == "bid_board" else "规划",
+				"status": "只在结构化 public_bid 中显示完整竞价。",
+				"actions": [{"id": "card_group_ready", "label": "完成展示"}],
+			},
 		},
 		"scenario_coach": scenario,
 		"campaign_focus_mode": true,
@@ -220,6 +234,8 @@ func _first_run_action_label(stage: String) -> String:
 			return "点选区域"
 		"first_summon":
 			return "在选区首召"
+		"play_card":
+			return "打出手牌"
 		"build_city":
 			return "城市化"
 		"buy_card":

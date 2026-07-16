@@ -112,7 +112,7 @@ func compose(source: Dictionary) -> Dictionary:
 		var card_source: Dictionary = card_variant if card_variant is Dictionary else {}
 		if card_source.is_empty() or str(card_source.get("card_name", "")) == "":
 			continue
-		cards.append(_market_card_snapshot(card_source))
+		cards.append(_market_card_snapshot(card_source, source))
 		if str(card_source.get("card_name", "")) == selected_name:
 			selected_source = card_source
 	if selected_source.is_empty() and not source_cards.is_empty() and source_cards[0] is Dictionary:
@@ -124,8 +124,8 @@ func compose(source: Dictionary) -> Dictionary:
 	var viewer_private := visibility_scope == "viewer_private"
 	var output := {
 		"title": "区域牌架｜%s" % str(source.get("district_name", "区域")),
-		"rule_strip": "市场牌架｜悬停看｜双击买",
-		"rule_tooltip": "区域牌架 %d张｜%s｜%s\n公开预览不创建报价；本地玩家显式选择或确认后锁定5个世界秒。单击地图不会关闭，双击其他区域会切换牌架。" % [
+		"rule_strip": "悬停/单击只预览｜双击/购买才报价",
+		"rule_tooltip": "区域牌架 %d张｜%s｜%s\n公开预览不创建报价；本地玩家双击挂牌或点购买后才锁定5个世界秒。单击地图只换选区，双击其他区域才切换牌架。" % [
 			source_cards.size(),
 			"可购买" if bool(source.get("can_buy", false)) else "仅浏览",
 			str(source.get("availability_text", "")),
@@ -314,7 +314,7 @@ func _status_entry(label: String, value: int, accent: String, tooltip: String) -
 	}
 
 
-func _market_card_snapshot(card: Dictionary) -> Dictionary:
+func _market_card_snapshot(card: Dictionary, source: Dictionary) -> Dictionary:
 	var state := _purchase_state(card)
 	var card_name := str(card.get("card_name", ""))
 	var display_name := str(card.get("display_name", card_name))
@@ -327,7 +327,7 @@ func _market_card_snapshot(card: Dictionary) -> Dictionary:
 	var facts := _join_first(card.get("key_rule_facts", []) as Array, 2, "｜")
 	if facts == "":
 		facts = _short_text(str(card.get("effect_text", "")), 26)
-	return {
+	var result := {
 		"card_name": card_name,
 		"display_name": display_name,
 		"selected": selected,
@@ -356,6 +356,8 @@ func _market_card_snapshot(card: Dictionary) -> Dictionary:
 		"theme_color": theme_color,
 		"tooltip": "%s\n%s" % [str(card.get("detail_tooltip", "")), str(state.get("detail", ""))],
 	}
+	result["preview"] = _preview_snapshot(card, source)
+	return result
 
 
 func _preview_snapshot(card: Dictionary, source: Dictionary) -> Dictionary:
@@ -368,6 +370,7 @@ func _preview_snapshot(card: Dictionary, source: Dictionary) -> Dictionary:
 	var route_label := str(card.get("strategy_route", ""))
 	var facts := _join_first(card.get("key_rule_facts", []) as Array, 4, "｜")
 	var detail := str(state.get("detail", ""))
+	var can_request_quote := _can_request_quote(state, source)
 	return {
 		"card_name": card_name,
 		"title": "%s | %s" % [display_name, str(card.get("primary_type_label", "卡牌"))],
@@ -387,14 +390,22 @@ func _preview_snapshot(card: Dictionary, source: Dictionary) -> Dictionary:
 		"status_text": "%s｜¥%d｜%s" % [str(state.get("label", "仅浏览")), price, _short_text(detail, 36)],
 		"status_tooltip": detail,
 		"action_reason_code": _safe_action_reason_code(state),
-		"buy_text": "%s ¥%d" % ["手满限制" if bool(state.get("requires_discard", false)) else "购买", price],
-		"buy_enabled": bool(state.get("actionable", false)),
+		"buy_text": "%s ¥%d" % ["获取报价" if can_request_quote else ("手满限制" if bool(state.get("requires_discard", false)) else "购买"), price],
+		"buy_enabled": bool(state.get("actionable", false)) or can_request_quote,
 		"buy_tooltip": "查看总是允许；%s" % detail,
 		"card_face": _preview_card_face(card),
 		"accent": accent,
 		"theme_color": theme_color,
 		"tooltip": str(card.get("detail_tooltip", "")),
 	}
+
+
+func _can_request_quote(state: Dictionary, source: Dictionary) -> bool:
+	if str(source.get("visibility_scope", "")) != "viewer_private":
+		return false
+	if str(source.get("availability_kind", "")) != "sunlit":
+		return false
+	return str(state.get("label", "")) in ["选择以报价", "报价已过期"]
 
 
 func _micro_chips(card: Dictionary) -> Array:

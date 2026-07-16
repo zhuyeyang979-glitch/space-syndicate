@@ -3,6 +3,7 @@ class_name BidBoardSnapshot
 
 var title := ""
 var phase := ""
+var phase_id := ""
 var phase_tooltip := ""
 var status := ""
 var status_tooltip := ""
@@ -17,6 +18,7 @@ var actions: Array = []
 func apply_dictionary(data: Dictionary) -> RefCounted:
 	title = _first_text(data, ["title", "name"], "牌桌竞价")
 	phase = _first_text(data, ["phase", "state"], "待报价")
+	phase_id = _first_text(data, ["phase_id", "window_phase_id", "state_id"], "")
 	phase_tooltip = _first_text(data, ["phase_tooltip", "tooltip"], "")
 	status = _first_text(data, ["status", "summary", "detail"], "下一张牌可报价。")
 	status_tooltip = _first_text(data, ["status_tooltip", "tooltip"], status)
@@ -33,6 +35,7 @@ func to_ui_dictionary() -> Dictionary:
 	return {
 		"title": title,
 		"phase": phase,
+		"phase_id": phase_id,
 		"phase_tooltip": phase_tooltip,
 		"status": status,
 		"status_tooltip": status_tooltip,

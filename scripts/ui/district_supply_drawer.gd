@@ -26,6 +26,8 @@ var _header_signature := ""
 var _market_status_signature := ""
 var _preview_signature := ""
 var _preview_card: Control
+var _market_entries_by_name: Dictionary = {}
+var _local_preview_card_name := ""
 
 
 func _ready() -> void:
@@ -37,7 +39,7 @@ func _ready() -> void:
 func set_supply(snapshot: Dictionary) -> void:
 	_snapshot = snapshot.duplicate(true)
 	title_label.text = str(snapshot.get("title", "区域牌架"))
-	rule_strip.text = str(snapshot.get("rule_strip", "悬停预览｜单击或键盘选择生成5秒报价｜双击按当前报价购买"))
+	rule_strip.text = str(snapshot.get("rule_strip", "悬停/单击预览｜双击或购买按钮才报价"))
 	rule_strip.tooltip_text = str(snapshot.get("rule_tooltip", rule_strip.text))
 	privacy_hint.text = str(snapshot.get("privacy_hint", "只显示当前玩家可见的购买状态；不会公开手牌、弃牌或渠道来源。"))
 	privacy_hint.tooltip_text = str(snapshot.get("privacy_tooltip", privacy_hint.text))
@@ -46,8 +48,19 @@ func set_supply(snapshot: Dictionary) -> void:
 		purchase_status.call("set_snapshot", window_snapshot)
 	_render_chip_row(header_chip_rail, snapshot.get("header_chips", []), true)
 	_render_chip_row(market_status_rail, snapshot.get("market_status", []), false)
+	var snapshot_preview: Dictionary = snapshot.get("preview", {}) if snapshot.get("preview", {}) is Dictionary else {}
+	if _local_preview_card_name.is_empty():
+		_local_preview_card_name = str(snapshot_preview.get("card_name", ""))
 	_render_market_cards(snapshot.get("cards", []))
-	_render_preview(snapshot.get("preview", {}))
+	if _market_entries_by_name.has(_local_preview_card_name):
+		var local_entry: Dictionary = _market_entries_by_name.get(_local_preview_card_name, {}) as Dictionary
+		var local_preview: Dictionary = local_entry.get("preview", {}) if local_entry.get("preview", {}) is Dictionary else {}
+		if local_preview.is_empty() and str(snapshot_preview.get("card_name", "")) == _local_preview_card_name:
+			local_preview = snapshot_preview
+		_render_preview(local_preview)
+	else:
+		_local_preview_card_name = str(snapshot_preview.get("card_name", ""))
+		_render_preview(snapshot_preview)
 	var empty_state: Dictionary = snapshot.get("empty_state", {}) if snapshot.get("empty_state", {}) is Dictionary else {}
 	market_empty_state.text = str(empty_state.get("market_text", "当前区域暂无卡牌。"))
 	preview_empty_state.text = str(empty_state.get("preview_text", "选择一张区域供牌查看详情。"))
@@ -62,10 +75,12 @@ func clear_supply() -> void:
 	_market_status_signature = ""
 	_preview_signature = ""
 	_market_card_names.clear()
+	_market_entries_by_name.clear()
+	_local_preview_card_name = ""
 	if title_label != null:
 		title_label.text = "区域牌架"
 	if rule_strip != null:
-		rule_strip.text = "悬停预览｜单击或键盘选择生成5秒报价｜双击按当前报价购买"
+		rule_strip.text = "悬停/单击预览｜双击或购买按钮才报价"
 	if privacy_hint != null:
 		privacy_hint.text = "只显示当前玩家可见的购买状态。"
 	if purchase_status != null and purchase_status.has_method("set_snapshot"):
@@ -88,6 +103,8 @@ func debug_snapshot() -> Dictionary:
 	result["market_empty_visible"] = market_empty_state.visible if market_empty_state != null else true
 	result["preview_empty_visible"] = preview_empty_state.visible if preview_empty_state != null else true
 	result["focus_chain"] = _market_card_names.duplicate()
+	result["local_preview_card_name"] = _local_preview_card_name
+	result["passive_preview_only"] = true
 	if purchase_status != null and purchase_status.has_method("debug_snapshot"):
 		result["rendered_purchase_window"] = purchase_status.call("debug_snapshot")
 	return result
@@ -120,6 +137,7 @@ func _render_market_cards(entries_variant: Variant) -> void:
 	var entries: Array = entries_variant if entries_variant is Array else []
 	var valid_entries: Array[Dictionary] = []
 	var card_names: Array[String] = []
+	_market_entries_by_name.clear()
 	for entry_variant in entries:
 		if not (entry_variant is Dictionary):
 			continue
@@ -127,8 +145,15 @@ func _render_market_cards(entries_variant: Variant) -> void:
 		var card_name := str(entry.get("card_name", ""))
 		if card_name.is_empty():
 			continue
-		valid_entries.append(entry)
+		var local_entry := entry.duplicate(true)
+		var entry_preview: Dictionary = local_entry.get("preview", {}) if local_entry.get("preview", {}) is Dictionary else {}
+		var snapshot_preview: Dictionary = _snapshot.get("preview", {}) if _snapshot.get("preview", {}) is Dictionary else {}
+		if entry_preview.is_empty() and str(snapshot_preview.get("card_name", "")) == card_name:
+			local_entry["preview"] = snapshot_preview.duplicate(true)
+		local_entry["selected"] = card_name == _local_preview_card_name
+		valid_entries.append(local_entry)
 		card_names.append(card_name)
+		_market_entries_by_name[card_name] = local_entry
 	var signature := var_to_str(card_names)
 	if signature == _cards_signature:
 		_update_market_cards(valid_entries)
@@ -217,8 +242,18 @@ func _on_close_pressed() -> void:
 
 
 func _on_card_preview_requested(card_name: String, source: String) -> void:
-	if card_name != "":
-		supply_action_requested.emit("district_supply_preview_card", {"card_name": card_name, "source": source})
+	if card_name == "" or not _market_entries_by_name.has(card_name):
+		return
+	_local_preview_card_name = card_name
+	var entry: Dictionary = _market_entries_by_name.get(card_name, {}) as Dictionary
+	_render_preview(entry.get("preview", {}))
+	for child in market_grid.get_children():
+		if child is Control and child.has_method("get_card_name") and child.has_method("set_card"):
+			var child_name := str(child.call("get_card_name"))
+			var child_entry: Dictionary = (_market_entries_by_name.get(child_name, {}) as Dictionary).duplicate(true)
+			child_entry["selected"] = child_name == card_name
+			child.call("set_card", child_entry)
+	set_meta("last_passive_preview_source", source)
 
 
 func _on_card_purchase_requested(card_name: String, source: String) -> void:

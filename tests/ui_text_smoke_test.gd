@@ -56,9 +56,9 @@ func _run() -> void:
 
 	_expect(_has_nodes(game_screen, ["TopBar", "PublicTrack", "PlanetBoard", "RightInspector", "PlayerBoard", "OverlayLayer"]), "GameScreen composes the real table scenes")
 	_expect(_has_nodes(game_screen, ["FirstRunCoach", "ScenarioCoach", "RuntimeVisualEventLayer"]), "GameScreen owns the coach and runtime feedback surfaces")
-	_expect(_has_nodes(player_board, ["PlayerResourceTableau", "HandRack", "PlayerBidBoard", "PlayerMainActionDock"]), "PlayerBoard owns resources, hand, bids, and actions")
+	_expect(_has_nodes(player_board, ["PlayerResourceTableau", "HandRack", "PlayerMainActionDock"]) and player_board.find_child("PlayerBidBoard", true, false) == null, "PlayerBoard owns resources, hand, and actions without reserving a permanent bid surface")
 	_expect(_has_nodes(card_track, ["HistoryRail", "ActiveResolutionSlot", "QueueRail", "NextQueueRail", "AuctionResponseLayer", "PrivacyHintLayer", "EmptyStateLayer"]), "CardResolutionTrack owns its complete public resolution surface")
-	_expect(_has_nodes(overlay, ["ConfirmPanel", "MonsterWagerDecisionPanel", "ContractResponseDecisionPanel", "TemporaryChoiceDecisionPanel"]), "OverlayLayer owns all temporary decision panels")
+	_expect(_has_nodes(overlay, ["ConfirmPanel", "MonsterWagerDecisionPanel", "ContractResponseDecisionPanel", "TemporaryChoiceDecisionPanel", "PublicBidDecisionPanel"]), "OverlayLayer owns every temporary decision panel, including structured public_bid")
 	_expect(_has_nodes(planet_board, ["WeatherForecastStrip", "PlanetMapView"]), "PlanetBoard owns weather and the sceneized planet map")
 	_expect(_has_nodes(district_supply, ["DistrictSupplyMarketGrid", "DistrictSupplyPreviewPanel"]), "DistrictSupplyDrawer owns its market and preview surfaces")
 

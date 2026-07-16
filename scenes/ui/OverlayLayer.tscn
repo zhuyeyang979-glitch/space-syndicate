@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scripts/ui/overlay_layer.gd" id="2_overlay"]
@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/BottomCountdownBar.tscn" id="8_countdown"]
 [ext_resource type="PackedScene" path="res://scenes/ui/DistrictSupplyDrawer.tscn" id="9_supply_drawer"]
 [ext_resource type="PackedScene" path="res://scenes/ui/MenuOverlay.tscn" id="10_menu"]
+[ext_resource type="PackedScene" path="res://scenes/ui/BidBoard.tscn" id="11_bid_board"]
 
 [node name="OverlayLayer" type="CanvasLayer"]
 script = ExtResource("2_overlay")
@@ -245,6 +246,12 @@ layout_mode = 2
 [node name="TemporaryChoiceDecisionPanel" parent="OverlayRoot/ModalLayer/ConfirmCenter" instance=ExtResource("5_choice")]
 unique_name_in_owner = true
 visible = false
+layout_mode = 2
+
+[node name="PublicBidDecisionPanel" parent="OverlayRoot/ModalLayer/ConfirmCenter" instance=ExtResource("11_bid_board")]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(336, 176)
 layout_mode = 2
 
 [node name="RuntimeSurfaceLayer" type="Control" parent="."]
