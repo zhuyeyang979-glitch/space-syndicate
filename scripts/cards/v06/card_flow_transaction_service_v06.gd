@@ -10,6 +10,7 @@ var _catalog: CardRuntimeCatalogV06Resource
 var _policy: CardFlowPolicyV06
 var _state_port: Object
 var _market_quote_authority: Object
+var _region_supply_source_port: Object
 var _belt: Dictionary = {"revision": 0, "items": {}}
 var _market: Dictionary = {"revision": 0, "listing": {}}
 var _journal: Dictionary = {}
@@ -25,6 +26,14 @@ func _init(
 	_policy = POLICY_SCRIPT.new() as CardFlowPolicyV06
 	_state_port = state_port if state_port != null else STATE_PORT_SCRIPT.new()
 	_market_quote_authority = market_quote_authority
+
+
+func set_region_supply_source_port(source_port: Object) -> Dictionary:
+	_region_supply_source_port = source_port
+	return {
+		"configured": _region_supply_source_ready(),
+		"reason_code": "region_supply_source_configured" if _region_supply_source_ready() else "region_supply_source_unavailable",
+	}
 
 
 func register_player(actor_id: String, initial_state: Dictionary) -> Dictionary:
@@ -333,6 +342,326 @@ func purchase_market_card(
 	return _finish_transaction(transaction_id, intent_hash, result)
 
 
+func purchase_region_supply_card(
+	actor_id: String,
+	region_id: String,
+	slot_index: int,
+	source_item_id: String,
+	card_id: String,
+	expected_player_revision: int,
+	expected_supply_revision: String,
+	transaction_id: String,
+	quote_request: Dictionary
+) -> Dictionary:
+	var intent := {
+		"operation": "region_supply_purchase",
+		"actor_id": actor_id,
+		"region_id": region_id,
+		"slot_index": slot_index,
+		"source_item_id": source_item_id,
+		"card_id": card_id,
+		"expected_player_revision": expected_player_revision,
+		"expected_supply_revision": expected_supply_revision,
+		"quote_id": str(quote_request.get("quote_id", "")),
+		"quote_fingerprint": str(quote_request.get("quote_fingerprint", "")),
+	}
+	var intent_hash := _intent_hash(intent)
+	var gate := _transaction_gate(transaction_id, intent_hash)
+	if bool(gate.get("handled", false)):
+		var replay: Dictionary = (gate.get("result", {}) as Dictionary).duplicate(true)
+		return _retry_region_supply_finalization(transaction_id, intent_hash, replay)
+	if not _catalog_ready():
+		return _finish_reject(transaction_id, intent_hash, "region_supply_purchase", actor_id, "catalog_unavailable")
+	if not _region_supply_source_ready():
+		return _finish_reject(transaction_id, intent_hash, "region_supply_purchase", actor_id, "region_supply_source_unavailable")
+	var normalized_actor_id := actor_id.strip_edges()
+	var normalized_region_id := region_id.strip_edges()
+	var normalized_item_id := source_item_id.strip_edges()
+	var normalized_card_id := card_id.strip_edges()
+	var normalized_supply_revision := expected_supply_revision.strip_edges()
+	if normalized_actor_id.is_empty() \
+			or normalized_region_id.is_empty() \
+			or normalized_item_id.is_empty() \
+			or normalized_card_id.is_empty() \
+			or normalized_supply_revision.is_empty() \
+			or slot_index < 0:
+		return _finish_reject(transaction_id, intent_hash, "region_supply_purchase", actor_id, "region_supply_binding_invalid")
+	var reservation := _reserve_player_state(normalized_actor_id, expected_player_revision, transaction_id, intent_hash)
+	if not bool(reservation.get("reserved", false)):
+		return _finish_reject(
+			transaction_id,
+			intent_hash,
+			"region_supply_purchase",
+			normalized_actor_id,
+			_reservation_failure_reason(reservation)
+		)
+	var listing := _region_supply_current_listing(normalized_region_id, slot_index)
+	if listing.is_empty():
+		return _abort_and_finish_reject(
+			reservation,
+			transaction_id,
+			intent_hash,
+			"region_supply_purchase",
+			normalized_actor_id,
+			"region_supply_listing_missing"
+		)
+	if str(listing.get("source_region_id", "")).strip_edges() != normalized_region_id \
+			or int(listing.get("slot_index", -1)) != slot_index \
+			or str(listing.get("item_id", "")).strip_edges() != normalized_item_id \
+			or str(listing.get("card_id", "")).strip_edges() != normalized_card_id \
+			or str(listing.get("supply_revision", "")).strip_edges() != normalized_supply_revision:
+		return _abort_and_finish_reject(
+			reservation,
+			transaction_id,
+			intent_hash,
+			"region_supply_purchase",
+			normalized_actor_id,
+			"region_supply_listing_changed"
+		)
+	var canonical_card := _catalog.card_snapshot(normalized_card_id)
+	if canonical_card.is_empty():
+		return _abort_and_finish_reject(
+			reservation,
+			transaction_id,
+			intent_hash,
+			"region_supply_purchase",
+			normalized_actor_id,
+			"incoming_card_invalid"
+		)
+	var authorization := _authorize_region_supply_quote(
+		normalized_actor_id,
+		listing,
+		quote_request,
+		normalized_region_id,
+		slot_index,
+		normalized_item_id,
+		normalized_card_id,
+		normalized_supply_revision
+	)
+	if not bool(authorization.get("authorized", false)):
+		return _abort_and_finish_reject(
+			reservation,
+			transaction_id,
+			intent_hash,
+			"region_supply_purchase",
+			normalized_actor_id,
+			str(authorization.get("reason_code", "market_quote_unauthorized"))
+		)
+	var price_cash := int(authorization.get("price_cash", -1))
+	var player := _reservation_player_snapshot(reservation, normalized_actor_id)
+	if player.is_empty():
+		return _abort_and_finish_reject(
+			reservation,
+			transaction_id,
+			intent_hash,
+			"region_supply_purchase",
+			normalized_actor_id,
+			"player_missing"
+		)
+	if price_cash < 0:
+		return _abort_and_finish_reject(
+			reservation,
+			transaction_id,
+			intent_hash,
+			"region_supply_purchase",
+			normalized_actor_id,
+			"market_listing_invalid"
+		)
+	if int(player.get("cash", 0)) < price_cash:
+		return _abort_and_finish_reject(
+			reservation,
+			transaction_id,
+			intent_hash,
+			"region_supply_purchase",
+			normalized_actor_id,
+			"cash_insufficient"
+		)
+	var incoming_card := _card_with_instance(
+		canonical_card,
+		"region-supply:%s:%s" % [normalized_item_id, transaction_id]
+	)
+	var receive_plan := _policy.plan_receive(player.get("inventory", {}) as Dictionary, incoming_card, _catalog)
+	if not bool(receive_plan.get("ready", false)):
+		return _abort_and_finish_reject(
+			reservation,
+			transaction_id,
+			intent_hash,
+			"region_supply_purchase",
+			normalized_actor_id,
+			str(receive_plan.get("reason_code", "inventory_commit_failed"))
+		)
+	var receive_result := _policy.commit_receive(player.get("inventory", {}) as Dictionary, receive_plan)
+	if not bool(receive_result.get("committed", false)):
+		return _abort_and_finish_reject(
+			reservation,
+			transaction_id,
+			intent_hash,
+			"region_supply_purchase",
+			normalized_actor_id,
+			str(receive_result.get("reason_code", "inventory_commit_failed"))
+		)
+	var next_player := player.duplicate(true)
+	next_player["inventory"] = (receive_result.get("inventory", {}) as Dictionary).duplicate(true)
+	_assign_result_instance(next_player["inventory"] as Dictionary, receive_result, transaction_id)
+	next_player["cash"] = int(player.get("cash", 0)) - price_cash
+	next_player["card_purchase_count"] = int(player.get("card_purchase_count", 0)) + 1
+	next_player["total_card_spend"] = int(player.get("total_card_spend", 0)) + price_cash
+	var mutation_prepare := _prepare_player_state_mutation(reservation, normalized_actor_id, next_player)
+	if not bool(mutation_prepare.get("prepared", false)):
+		return _abort_and_finish_reject(
+			reservation,
+			transaction_id,
+			intent_hash,
+			"region_supply_purchase",
+			normalized_actor_id,
+			str(mutation_prepare.get("reason_code", "player_state_prepare_failed"))
+		)
+	var source_prepare := _region_supply_prepare(
+		normalized_region_id,
+		slot_index,
+		normalized_item_id,
+		normalized_supply_revision,
+		transaction_id
+	)
+	var source_prepare_matches := _region_supply_receipt_matches(
+		source_prepare,
+		transaction_id,
+		normalized_region_id,
+		slot_index,
+		normalized_item_id,
+		normalized_supply_revision
+	)
+	if not bool(source_prepare.get("prepared", false)) or not source_prepare_matches:
+		var prepare_reason := str(source_prepare.get(
+			"reason_code",
+			"region_supply_prepare_failed"
+		)) if not bool(source_prepare.get("prepared", false)) else "region_supply_prepare_receipt_invalid"
+		if bool(source_prepare.get("prepared", false)):
+			var prepare_rollback := _region_supply_rollback(transaction_id)
+			if not bool(prepare_rollback.get("rolled_back", false)):
+				_abort_state_reservation(reservation, "region_supply_compensation_failed")
+				return _finish_reject(
+					transaction_id,
+					intent_hash,
+					"region_supply_purchase",
+					normalized_actor_id,
+					"region_supply_compensation_failed",
+					_region_supply_recovery_extra(source_prepare, prepare_rollback)
+				)
+		return _abort_and_finish_reject(
+			reservation,
+			transaction_id,
+			intent_hash,
+			"region_supply_purchase",
+			normalized_actor_id,
+			prepare_reason
+		)
+	var source_commit := _region_supply_commit(transaction_id)
+	var source_commit_matches := _region_supply_receipt_matches(
+		source_commit,
+		transaction_id,
+		normalized_region_id,
+		slot_index,
+		normalized_item_id,
+		normalized_supply_revision
+	)
+	if not bool(source_commit.get("committed", false)) or not source_commit_matches:
+		var commit_reason := str(source_commit.get(
+			"reason_code",
+			"region_supply_commit_failed"
+		)) if not bool(source_commit.get("committed", false)) else "region_supply_commit_receipt_invalid"
+		var commit_rollback := _region_supply_rollback(transaction_id)
+		if not bool(commit_rollback.get("rolled_back", false)):
+			_abort_state_reservation(reservation, "region_supply_compensation_failed")
+			return _finish_reject(
+				transaction_id,
+				intent_hash,
+				"region_supply_purchase",
+				normalized_actor_id,
+				"region_supply_compensation_failed",
+				_region_supply_recovery_extra(source_commit, commit_rollback)
+			)
+		return _abort_and_finish_reject(
+			reservation,
+			transaction_id,
+			intent_hash,
+			"region_supply_purchase",
+			normalized_actor_id,
+			commit_reason,
+			{
+				"rolled_back": true,
+				"region_supply_receipt": source_commit.duplicate(true),
+				"region_supply_compensation": commit_rollback.duplicate(true),
+			}
+		)
+	var state_commit := _commit_player_state(
+		reservation,
+		normalized_actor_id,
+		next_player,
+		_region_supply_state_commit_receipt(
+			transaction_id,
+			intent_hash,
+			source_commit
+		)
+	)
+	if not bool(state_commit.get("committed", false)):
+		var state_reason := str(state_commit.get(
+			"reason_code",
+			"player_state_commit_failed"
+		))
+		var source_rollback := _region_supply_rollback(transaction_id)
+		_abort_state_reservation(reservation, state_reason)
+		if not bool(source_rollback.get("rolled_back", false)):
+			return _finish_reject(
+				transaction_id,
+				intent_hash,
+				"region_supply_purchase",
+				normalized_actor_id,
+				"region_supply_compensation_failed",
+				_region_supply_recovery_extra(source_commit, source_rollback, state_reason)
+			)
+		return _finish_reject(
+			transaction_id,
+			intent_hash,
+			"region_supply_purchase",
+			normalized_actor_id,
+			"player_state_commit_failed",
+			{
+				"rolled_back": true,
+				"state_port_reason_code": state_reason,
+				"region_supply_receipt": source_commit.duplicate(true),
+				"region_supply_compensation": source_rollback.duplicate(true),
+			}
+		)
+	var committed_player := _committed_player_snapshot(state_commit, normalized_actor_id)
+	var finalization := _region_supply_finalize(transaction_id)
+	var result := _success_result(
+		"region_supply_purchase",
+		normalized_actor_id,
+		transaction_id,
+		intent_hash
+	)
+	result["player_state"] = committed_player
+	result["cash_debit"] = price_cash
+	result["source_item_id"] = normalized_item_id
+	result["card_id"] = normalized_card_id
+	result["source_region_id"] = normalized_region_id
+	result["slot_index"] = slot_index
+	result["supply_revision"] = normalized_supply_revision
+	result["region_supply_receipt"] = source_commit.duplicate(true)
+	result["region_supply_finalization"] = _region_supply_finalization_result(finalization)
+	result["state_port_receipt"] = _compact_state_port_receipt(state_commit)
+	result["public_receipt"] = {
+		"event_code": "anonymous_purchase_committed",
+		"source_region_id": normalized_region_id,
+		"slot_index": slot_index,
+	}
+	if not bool((result.get("region_supply_finalization", {}) as Dictionary).get("finalized", false)):
+		result["recovery_required"] = true
+		result["reason_code"] = "committed_pending_region_supply_finalization"
+	return _finish_transaction(transaction_id, intent_hash, result)
+
+
 func _valid_market_quote_request(request: Dictionary) -> bool:
 	return not str(request.get("quote_id", "")).is_empty() \
 		and not str(request.get("quote_fingerprint", "")).is_empty() \
@@ -340,6 +669,50 @@ func _valid_market_quote_request(request: Dictionary) -> bool:
 		and int(request.get("district_index", -1)) >= 0 \
 		and not str(request.get("card_id", "")).is_empty() \
 		and not str(request.get("supply_revision", "")).is_empty()
+
+
+func _authorize_region_supply_quote(
+	actor_id: String,
+	listing: Dictionary,
+	request: Dictionary,
+	region_id: String,
+	slot_index: int,
+	source_item_id: String,
+	card_id: String,
+	supply_revision: String
+) -> Dictionary:
+	if not _valid_market_quote_request(request) \
+			or str(request.get("source_region_id", "")).strip_edges() != region_id \
+			or int(request.get("slot_index", -1)) != slot_index \
+			or str(request.get("source_item_id", "")).strip_edges() != source_item_id \
+			or str(request.get("card_id", "")).strip_edges() != card_id \
+			or str(request.get("supply_revision", "")).strip_edges() != supply_revision:
+		return {"authorized": false, "reason_code": "region_supply_quote_binding_mismatch"}
+	if _market_quote_authority == null or not _market_quote_authority.has_method("authorize_purchase"):
+		return {"authorized": false, "reason_code": "market_quote_authority_unavailable"}
+	var authorization_variant: Variant = _market_quote_authority.call(
+		"authorize_purchase",
+		request.duplicate(true)
+	)
+	var authorization: Dictionary = (authorization_variant as Dictionary).duplicate(true) \
+		if authorization_variant is Dictionary else {}
+	if not bool(authorization.get("authorized", false)):
+		return {"authorized": false, "reason_code": "market_quote_unauthorized"}
+	var actor_player_index := _actor_player_index(actor_id)
+	if actor_player_index < 0 \
+			or actor_player_index != int(request.get("player_index", -2)) \
+			or int(authorization.get("player_index", -1)) != actor_player_index \
+			or str(authorization.get("quote_id", "")) != str(request.get("quote_id", "")) \
+			or str(authorization.get("quote_fingerprint", "")) != str(request.get("quote_fingerprint", "")) \
+			or str(authorization.get("card_id", "")) != card_id \
+			or int(authorization.get("district_index", -1)) != int(listing.get("source_district_index", -1)) \
+			or str(authorization.get("supply_revision", "")) != supply_revision:
+		return {"authorized": false, "reason_code": "region_supply_quote_binding_mismatch"}
+	return {
+		"authorized": true,
+		"reason_code": "market_quote_authorized",
+		"price_cash": int(authorization.get("final_price", -1)),
+	}
 
 
 func _actor_player_index(actor_id: String) -> int:
@@ -607,6 +980,17 @@ func player_feedback(reason_code: String) -> Dictionary:
 		"market_listing_changed": ["这张市场牌已被买走。", "直接查看刷新后的下一张牌。"],
 		"market_next_listing_invalid": ["下一张市场牌未能生成。", "本次不会扣钱或拿牌，请重新刷新。"],
 		"market_next_listing_reuses_item": ["市场没有生成新的牌位。", "生成新的牌位后再购买。"],
+		"region_supply_source_unavailable": ["区域牌架尚未就绪。", "等待当前区域牌架完成同步后再购买。"],
+		"region_supply_binding_invalid": ["选择的区域牌位信息不完整。", "重新打开区域牌架并选择一张牌。"],
+		"region_supply_listing_missing": ["这个牌位已经为空。", "查看刷新后的区域牌架。"],
+		"region_supply_listing_changed": ["这张区域牌已经被买走或刷新。", "查看该牌位的新卡并重新报价。"],
+		"region_supply_quote_binding_mismatch": ["报价与当前区域牌位不一致。", "重新选择这张牌并取得新报价。"],
+		"region_supply_prepare_failed": ["区域牌位未能安全预留。", "本次不会扣钱或拿牌，请重新选择。"],
+		"region_supply_prepare_receipt_invalid": ["区域牌位预留信息不一致。", "本次不会扣钱或拿牌，请等待牌架同步。"],
+		"region_supply_commit_failed": ["区域牌位没有完成刷新。", "本次不会扣钱或拿牌，请重新操作。"],
+		"region_supply_commit_receipt_invalid": ["区域牌位刷新信息不一致。", "本次不会扣钱或拿牌，请等待牌架同步。"],
+		"region_supply_compensation_failed": ["区域牌架与玩家状态暂时不同步。", "等待对局完成恢复后再继续购买。"],
+		"committed_pending_region_supply_finalization": ["购买已经完成，牌架仍在确认刷新。", "无需重复付款；等待牌位同步完成。"],
 		"cash_insufficient": ["现金不足，无法购买这张牌。", "等待收入增长或选择更便宜的牌。"],
 		"hand_limit_mismatch": ["手牌上限状态不同步。", "重新同步手牌后再操作。"],
 		"incoming_card_invalid": ["这张牌的数据不完整。", "从当前牌源重新选择。"],
@@ -783,6 +1167,195 @@ func _actor_is_legal_for_source(actor_id: String, item: Dictionary) -> bool:
 		return false
 	var actors: Array = actors_variant
 	return actors.is_empty() or actors.has(actor_id)
+
+
+func _region_supply_source_ready() -> bool:
+	if _region_supply_source_port == null:
+		return false
+	for method_name in [
+		"public_rack_snapshot",
+		"prepare_slot_refill",
+		"commit_slot_refill",
+		"rollback_slot_refill",
+		"finalize_slot_refill",
+	]:
+		if not _region_supply_source_port.has_method(method_name):
+			return false
+	return true
+
+
+func _region_supply_current_listing(region_id: String, slot_index: int) -> Dictionary:
+	if not _region_supply_source_ready():
+		return {}
+	var snapshot_variant: Variant = _region_supply_source_port.call(
+		"public_rack_snapshot",
+		region_id
+	)
+	if not (snapshot_variant is Dictionary):
+		return {}
+	var snapshot: Dictionary = snapshot_variant
+	if not bool(snapshot.get("available", false)):
+		return {}
+	var regions: Array = snapshot.get("regions", []) if snapshot.get("regions", []) is Array else []
+	for row_variant in regions:
+		if not (row_variant is Dictionary):
+			continue
+		var row: Dictionary = row_variant
+		if str(row.get("region_id", "")).strip_edges() != region_id:
+			continue
+		var slots: Array = row.get("slots", []) if row.get("slots", []) is Array else []
+		if slot_index < 0 or slot_index >= slots.size() or not (slots[slot_index] is Dictionary):
+			return {}
+		return (slots[slot_index] as Dictionary).duplicate(true)
+	return {}
+
+
+func _region_supply_prepare(
+	region_id: String,
+	slot_index: int,
+	source_item_id: String,
+	supply_revision: String,
+	transaction_id: String
+) -> Dictionary:
+	var value_variant: Variant = _region_supply_source_port.call(
+		"prepare_slot_refill",
+		region_id,
+		slot_index,
+		source_item_id,
+		supply_revision,
+		transaction_id
+	)
+	return (value_variant as Dictionary).duplicate(true) if value_variant is Dictionary else {}
+
+
+func _region_supply_commit(transaction_id: String) -> Dictionary:
+	var value_variant: Variant = _region_supply_source_port.call(
+		"commit_slot_refill",
+		transaction_id
+	)
+	return (value_variant as Dictionary).duplicate(true) if value_variant is Dictionary else {}
+
+
+func _region_supply_rollback(transaction_id: String) -> Dictionary:
+	var value_variant: Variant = _region_supply_source_port.call(
+		"rollback_slot_refill",
+		transaction_id
+	)
+	return (value_variant as Dictionary).duplicate(true) if value_variant is Dictionary else {}
+
+
+func _region_supply_finalize(transaction_id: String) -> Dictionary:
+	if not _region_supply_source_ready():
+		return {
+			"finalized": false,
+			"reason_code": "region_supply_source_unavailable",
+		}
+	var value_variant: Variant = _region_supply_source_port.call(
+		"finalize_slot_refill",
+		transaction_id
+	)
+	return (value_variant as Dictionary).duplicate(true) if value_variant is Dictionary else {}
+
+
+func _region_supply_receipt_matches(
+	receipt: Dictionary,
+	transaction_id: String,
+	region_id: String,
+	slot_index: int,
+	source_item_id: String,
+	supply_revision: String
+) -> bool:
+	return str(receipt.get("transaction_id", "")) == transaction_id \
+		and str(receipt.get("region_id", "")) == region_id \
+		and int(receipt.get("slot_index", -1)) == slot_index \
+		and str(receipt.get("source_item_id", "")) == source_item_id \
+		and str(receipt.get("intent_fingerprint", "")) == "%s|%d|%s|%s" % [
+			region_id,
+			slot_index,
+			source_item_id,
+			supply_revision,
+		]
+
+
+func _region_supply_state_commit_receipt(
+	transaction_id: String,
+	intent_hash: String,
+	source_receipt: Dictionary
+) -> Dictionary:
+	var receipt := _state_commit_receipt(
+		"region_supply_purchase",
+		transaction_id,
+		intent_hash
+	)
+	receipt["region_supply_receipt"] = source_receipt.duplicate(true)
+	return receipt
+
+
+func _region_supply_finalization_result(owner_result: Dictionary) -> Dictionary:
+	var finalized := bool(owner_result.get("finalized", false))
+	return {
+		"supported": true,
+		"finalized": finalized,
+		"finalization_failed": not finalized,
+		"reason_code": "region_supply_finalized" if finalized else str(owner_result.get(
+			"reason_code",
+			"region_supply_finalize_failed"
+		)),
+		"owner_result": owner_result.duplicate(true),
+	}
+
+
+func _region_supply_recovery_extra(
+	source_receipt: Dictionary,
+	rollback_result: Dictionary,
+	state_reason_code := ""
+) -> Dictionary:
+	var result := {
+		"rolled_back": false,
+		"compensation_failed": true,
+		"recovery_required": true,
+		"region_supply_receipt": source_receipt.duplicate(true),
+		"region_supply_compensation": rollback_result.duplicate(true),
+	}
+	if not state_reason_code.is_empty():
+		result["state_port_reason_code"] = state_reason_code
+	return result
+
+
+func _retry_region_supply_finalization(
+	transaction_id: String,
+	intent_hash: String,
+	previous_result: Dictionary
+) -> Dictionary:
+	if not bool(previous_result.get("committed", false)):
+		return previous_result
+	var prior_finalization: Dictionary = previous_result.get(
+		"region_supply_finalization",
+		{}
+	) if previous_result.get("region_supply_finalization", {}) is Dictionary else {}
+	if bool(prior_finalization.get("finalized", false)):
+		return previous_result
+	var source_receipt: Dictionary = previous_result.get(
+		"region_supply_receipt",
+		{}
+	) if previous_result.get("region_supply_receipt", {}) is Dictionary else {}
+	if source_receipt.is_empty() or not _region_supply_source_ready():
+		return previous_result
+	var next_result := previous_result.duplicate(true)
+	var finalization := _region_supply_finalization_result(
+		_region_supply_finalize(transaction_id)
+	)
+	next_result["region_supply_finalization"] = finalization
+	if bool(finalization.get("finalized", false)):
+		next_result.erase("recovery_required")
+		next_result["reason_code"] = "committed"
+	if _journal.has(transaction_id):
+		_journal[transaction_id] = {
+			"intent_hash": intent_hash,
+			"result": next_result.duplicate(true),
+		}
+	next_result["idempotent_replay"] = true
+	return next_result
 
 
 func _state_port_ready() -> bool:
