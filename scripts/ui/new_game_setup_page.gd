@@ -12,7 +12,6 @@ signal action_requested(action_id: String)
 @onready var seat_scroll: ScrollContainer = %NewGameSetupSeatScroll
 @onready var seat_grid: GridContainer = %NewGameSetupSeatGrid
 @onready var hint_label: Label = %NewGameSetupHintLabel
-@onready var recommended_button: Button = %FirstRunRecommendedSetupButton
 @onready var start_button: Button = %NewGameSetupStartButton
 @onready var back_button: Button = %NewGameSetupBackButton
 @onready var return_table_button: Button = %NewGameSetupReturnTableButton
@@ -22,11 +21,9 @@ func _ready() -> void:
 	set_meta("new_game_setup_page", true)
 	if option_board.has_signal("option_selected"):
 		option_board.connect("option_selected", _on_option_selected)
-	recommended_button.pressed.connect(_emit_action.bind("setup_recommended"))
 	start_button.pressed.connect(_emit_action.bind("setup_start"))
 	back_button.pressed.connect(_emit_action.bind("setup_back"))
 	return_table_button.pressed.connect(_emit_action.bind("setup_return_table"))
-	_style_button(recommended_button, Color("#facc15"), true)
 	_style_button(start_button, Color("#22c55e"), true)
 	_style_button(back_button, Color("#38bdf8"), false)
 	_style_button(return_table_button, Color("#22c55e"), false)

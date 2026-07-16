@@ -212,7 +212,7 @@ func _verify_real_main_facility_income_chain() -> void:
 
 	var players: Array = main.get("players") if main.get("players") is Array else []
 	var actor_id := str((players[0] as Dictionary).get("actor_id", "player.0")) if not players.is_empty() and players[0] is Dictionary else ""
-	var district := int(main.call("_first_run_recommended_start_district", 0))
+	var district := _first_playable_district(main)
 	main.call("_select_district", district)
 	coordinator.call("refresh_v06_production_player_bindings", main)
 	var public_demands := _installations(flow, "demand", "public")
@@ -222,9 +222,9 @@ func _verify_real_main_facility_income_chain() -> void:
 	var repeated_refresh: Dictionary = coordinator.call("refresh_v06_production_player_bindings", main)
 	_expect(bool(repeated_refresh.get("public_demand_ready", false)), "public demand bootstrap replays after world time advances")
 	_expect(stable_refresh_before == JSON.stringify({"infrastructure": infrastructure.call("to_save_data"), "flow": flow.call("to_save_data")}), "stable public-demand transaction IDs do not bind changing world time")
-	var market_surface: Dictionary = coordinator.call("v06_first_table_facility_market_snapshot", actor_id)
+	var market_surface: Dictionary = coordinator.call("v06_facility_market_snapshot", actor_id)
 	var listing: Dictionary = market_surface.get("listing", {}) if market_surface.get("listing", {}) is Dictionary else {}
-	var purchase: Dictionary = coordinator.call("purchase_v06_first_table_facility_card", actor_id, str(listing.get("item_id", "")), "vs06-a6:purchase")
+	var purchase: Dictionary = coordinator.call("purchase_v06_facility_card", actor_id, str(listing.get("item_id", "")), "vs06-a6:purchase")
 	_expect(bool(purchase.get("committed", false)), "canonical matching rank-I facility is purchased")
 	var player_before_play: Dictionary = coordinator.call("v06_card_player_snapshot", actor_id)
 	var slot_index := _find_card_slot(player_before_play, str(purchase.get("card_id", "")))
@@ -322,6 +322,15 @@ func _selected_region_id(main: Node, district: int) -> String:
 	if district < 0 or district >= districts.size() or not (districts[district] is Dictionary):
 		return ""
 	return str((districts[district] as Dictionary).get("region_id", "region.%03d" % district))
+
+
+func _first_playable_district(main: Node) -> int:
+	var districts: Array = main.get("districts") if main.get("districts") is Array else []
+	for index in range(districts.size()):
+		var district: Dictionary = districts[index] if districts[index] is Dictionary else {}
+		if not bool(district.get("is_ocean", false)) and not str(district.get("region_id", "")).is_empty():
+			return index
+	return -1
 
 
 func _player_cash_cents(main: Node, player_index: int) -> int:

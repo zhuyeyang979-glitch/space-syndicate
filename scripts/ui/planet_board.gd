@@ -35,7 +35,6 @@ const DEFAULT_FLOW_STEPS := ["点区", "首召", "建城", "买牌", "出牌", "
 
 var left_rail_signature: String = ""
 var right_rail_signature: String = ""
-var campaign_focus_mode := false
 var right_rail_suppressed := false
 
 
@@ -64,19 +63,11 @@ func _notification(what: int) -> void:
 
 
 func set_board_state(data: Dictionary) -> void:
-	campaign_focus_mode = bool(data.get("campaign_focus_mode", data.get("compact", false)))
 	var right_rail_data: Dictionary = _right_rail_source(data)
 	right_rail_suppressed = bool(right_rail_data.get("hidden", right_rail_data.get("suppressed", false)))
-	if campaign_focus_mode:
-		if playtest_flow_compass != null:
-			playtest_flow_compass.visible = false
-		if left_space_rail != null:
-			left_space_rail.visible = false
-		if right_space_rail != null:
-			right_space_rail.visible = false
 	title_label.text = str(data.get("title", "星球牌桌"))
 	hint_label.text = str(data.get("hint", "轨道外圈显示公开局势。"))
-	hint_label.add_theme_font_size_override("font_size", 9 if campaign_focus_mode else 10)
+	hint_label.add_theme_font_size_override("font_size", 10)
 	_set_space_rail(
 		left_rail_stack,
 		left_rail_title,
@@ -189,9 +180,6 @@ func _fit_square_stage() -> void:
 func _layout_flow_compass(map_rect: Rect2, _available: Vector2) -> void:
 	if playtest_flow_compass == null:
 		return
-	if campaign_focus_mode:
-		playtest_flow_compass.visible = false
-		return
 	playtest_flow_compass.visible = true
 	var compass_width := clampf(map_rect.position.x - SIDE_RAIL_GAP * 2.0, 158.0, 218.0)
 	var compass_height := 60.0
@@ -205,9 +193,6 @@ func _layout_flow_compass(map_rect: Rect2, _available: Vector2) -> void:
 
 func _layout_space_rail(rail: PanelContainer, left_side: bool, map_rect: Rect2, available: Vector2) -> void:
 	if rail == null:
-		return
-	if campaign_focus_mode:
-		rail.visible = false
 		return
 	if not left_side:
 		rail.set_meta("planet_side_lane_suppressed_for_resolution", right_rail_suppressed)

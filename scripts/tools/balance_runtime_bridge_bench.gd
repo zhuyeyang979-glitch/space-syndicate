@@ -27,7 +27,7 @@ const FLOW_CASES := [
 	{"case_id": "price_curve_parity", "source_mode": "json_current", "notes": "Price curve JSON and Resource payloads match."},
 	{"case_id": "source_mode_json_current", "source_mode": "json_current", "notes": "json_current explicitly returns JSON payloads."},
 	{"case_id": "source_mode_resource_profile", "source_mode": "resource_profile", "notes": "resource_profile explicitly returns Resource payloads."},
-	{"case_id": "first_mission_runtime_default_unchanged", "source_mode": "json_current", "notes": "Default runtime source remains json_current for the real main scene."},
+	{"case_id": "main_scene_runtime_default_unchanged", "source_mode": "json_current", "notes": "Default runtime source remains json_current for the real main scene."},
 	{"case_id": "no_callable_or_object_in_payloads", "source_mode": "auto_safe", "notes": "Bridge payloads and comparison manifest stay pure data."},
 ]
 
@@ -688,7 +688,7 @@ func _case_condition(case_id: String, source_mode: String, comparison: Dictionar
 			return source_mode == "json_current" and _deep_equal(runtime_payload, json_runtime) and _deep_equal(price_payload, json_curve)
 		"source_mode_resource_profile":
 			return source_mode == "resource_profile" and _deep_equal(runtime_payload, resource_runtime) and _deep_equal(price_payload, resource_curve)
-		"first_mission_runtime_default_unchanged":
+		"main_scene_runtime_default_unchanged":
 			return runtime_default_checked and str(ProjectSettings.get_setting("application/run/main_scene", "")) == "res://scenes/main.tscn"
 		"no_callable_or_object_in_payloads":
 			return pure_data_checked and parity_checked

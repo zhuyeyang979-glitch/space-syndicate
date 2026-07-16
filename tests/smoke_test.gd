@@ -73,13 +73,6 @@ func _run() -> void:
 	main.set("configured_ai_player_count", EXPECTED_AI_PLAYER_COUNT)
 	main.set("configured_role_indices", [0, 1, 2, 3, 4])
 	main.set("configured_starter_monster_indices", [7, 6, 2, 4, 3])
-	if main.has_method("_apply_recommended_first_run_setup"):
-		main.set("configured_player_count", 8)
-		main.set("configured_ai_player_count", 7)
-		main.call("_apply_recommended_first_run_setup")
-		_expect(int(main.get("configured_player_count")) == EXPECTED_PLAYER_COUNT and int(main.get("configured_ai_player_count")) == EXPECTED_AI_PLAYER_COUNT, "recommended first-run setup resets to 4 seats with 3 AI opponents")
-		_expect(_as_array(main.get("configured_role_indices")).slice(0, 4) == [0, 1, 2, 3], "recommended first-run setup chooses non-duplicate starter role indices")
-		_expect(_as_array(main.get("configured_starter_monster_indices")).slice(0, 4) == [7, 6, 2, 4], "recommended first-run setup chooses readable starter monsters")
 	_mark_smoke_progress("new game setup")
 	main.call("_new_game")
 	_expect(_verify_v06_market_rule_contract(), "smoke consumes the settled voluntary-summon and solar-market public rule contract")
@@ -281,47 +274,7 @@ func _run() -> void:
 		or (split_player_board != null and split_action_dock != null and _container_label_text_contains(split_player_board, "选区") and _container_button_text_contains(split_action_dock, "建城") and _container_button_text_contains(split_action_dock, "牌架") and _container_button_text_contains(split_action_dock, "买牌")),
 		"player panel exposes a chip-based selected-region action card"
 	)
-	_expect(
-		(player_box != null and _container_label_text_contains(player_box, "开局轻引导") and _container_button_text_contains(player_box, "经济总览") and _container_button_text_contains(player_box, "关闭"))
-		or (split_player_board != null and split_top_bar != null and _container_label_text_contains(split_player_board, "下一步") and _container_button_text_contains(split_top_bar, "菜单")),
-		"early-run guide keeps a first-minute next step visible with menu access to deeper help"
-	)
-	_expect(
-		(player_box != null and _container_label_text_contains(player_box, "开局进度") and _container_label_text_contains(player_box, "下一步｜") and _container_label_text_contains(player_box, "牌架") and not _container_label_text_contains(player_box, "为什么：") and not _container_label_text_contains(player_box, "入口："))
-		or (split_player_board != null and split_action_dock != null and _container_label_text_contains(split_player_board, "下一步") and _container_button_text_contains(split_action_dock, "牌架") and not _container_label_text_contains(split_player_board, "为什么：") and not _container_label_text_contains(split_player_board, "入口：")),
-		"early-run guide presents compact progress chips and a short next-step strip"
-	)
-	_expect(
-		(player_box != null and _container_button_text_contains(player_box, "新手引导") and _container_button_text_contains(player_box, "游戏规则"))
-		or (split_top_bar != null and _container_button_text_contains(split_top_bar, "菜单") and split_right_inspector != null),
-		"early-run guide exposes tutorial and rules shortcuts"
-	)
-	_expect(
-		(player_box != null and _container_label_text_contains(player_box, "下一步｜") and _container_label_text_contains(player_box, "□ 看经济总览"))
-		or (split_player_board != null and _container_label_text_contains(split_player_board, "下一步") and split_action_dock != null and not bool(main.call("_opening_guide_economy_seen", 0))),
-		"early-run guide shows the real next step and leaves economy overview unchecked before it is opened"
-	)
-	main.call("_open_economy_overview_menu")
-	main.call("_close_menu")
-	main.call("_refresh_ui")
-	player_box = main.get("player_box") as VBoxContainer
-	_expect(
-		(player_box != null and _container_label_text_contains(player_box, "✓ 看经济总览"))
-		or (player_box == null and bool(main.call("_opening_guide_economy_seen", 0))),
-		"early-run guide checks off economy overview only after opening it"
-	)
-	main.call("_refresh_ui")
-	player_box = main.get("player_box") as VBoxContainer
-	main.set("opening_guide_dismissed", true)
-	main.call("_sync_runtime_game_screen", true)
-	var dismissed_coach_snapshot := main.call("_runtime_first_run_coach_snapshot_source", 0) as Dictionary
-	_expect(
-		bool(dismissed_coach_snapshot.get("dismissed", false))
-		and not bool(dismissed_coach_snapshot.get("visible", true)),
-		"early-run guide can be dismissed from the main play panel"
-	)
-	main.call("_refresh_ui")
-	player_box = main.get("player_box") as VBoxContainer
+	_expect(split_top_bar != null and _container_button_text_contains(split_top_bar, "菜单"), "normal table keeps menu access without legacy onboarding overlays")
 	_expect(
 		(player_box != null and not _container_label_text_contains(player_box, "角色卡") and not _container_label_text_contains(player_box, "经济流水") and not _container_card_art_kind_contains(player_box, "player_role"))
 		or (runtime_screen != null and not _container_label_text_contains(runtime_screen, "角色卡") and not _container_label_text_contains(runtime_screen, "经济流水") and not _container_card_art_kind_contains(runtime_screen, "player_role")),
@@ -538,7 +491,7 @@ func _run() -> void:
 		_expect(buildable_district >= 0, "city build smoke has an undestroyed land district after monster collision checks")
 		main.set("selected_player", 0)
 		main.set("selected_district", buildable_district)
-		var facility_gate := await _v06_first_table_facility_owner_chain_snapshot()
+		var facility_gate := await _v06_facility_owner_chain_snapshot()
 		_expect(bool(facility_gate.get("market_ready", false)), "first-table city economy exposes one canonical public facility listing")
 		_expect(bool(facility_gate.get("purchase_committed", false)) and int(facility_gate.get("slot_index", -1)) >= 0, "facility purchase commits once and places the canonical card in the player's authoritative hand")
 		_expect(bool(facility_gate.get("cash_spent", false)), "facility purchase spends authoritative player cash")
@@ -626,9 +579,9 @@ func _run() -> void:
 	_expect(menu_content_scroll != null and not menu_content_scroll.follow_focus and menu_content_box != null and menu_preview_box != null and menu_preview_box.get_parent() == menu_content_box, "main menu keeps body and previews inside a scrollable content column without focus-jumping on hover")
 	_expect(menu_overlay != null and _container_has_named_node(menu_overlay, "MainMenuPlanetLobbyPanel") and _container_has_named_node(menu_overlay, "MainMenuCommandCard") and _container_has_named_node(menu_overlay, "MainMenuUtilityRail"), "main menu arranges only the planet lobby and compact command buttons")
 	_expect(menu_body_label != null and menu_body_label.text.contains("最后钱最多") and not menu_body_label.text.contains("游戏规则"), "main menu keeps only a short objective line")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "星球赌桌大厅") and _container_button_text_contains(menu_preview_box, "新手战役") and _container_button_text_contains(menu_preview_box, "快速开局") and _container_button_text_contains(menu_preview_box, "资料库"), "main menu exposes the three commercial table-lobby primary actions")
-	_expect(menu_overlay != null and _container_button_text_contains(menu_overlay, "新手战役") and not _container_button_text_contains(menu_overlay, "开新一桌"), "main menu routes first play through the campaign entry instead of a raw new-game button")
-	_expect(menu_overlay != null and _container_label_text_contains(menu_overlay, "目标、奖励、复盘") and _container_label_text_contains(menu_overlay, "建城｜怪兽｜下注｜推理"), "main menu uses short player-facing command labels")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "星球赌桌大厅") and _container_button_text_contains(menu_preview_box, "开始新局") and _container_button_text_contains(menu_preview_box, "资料库"), "main menu exposes current normal-game primary actions")
+	_expect(menu_overlay != null and not _container_button_text_contains(menu_overlay, "新手战役") and not _container_button_text_contains(menu_overlay, "快速开局") and not _container_button_text_contains(menu_overlay, "首局任务"), "main menu has no legacy onboarding entry")
+	_expect(menu_overlay != null and _container_label_text_contains(menu_overlay, "建城｜怪兽｜下注｜推理"), "main menu uses short player-facing command labels")
 	_expect(menu_overlay != null and _container_button_has_stylebox(menu_overlay, "hover") and _container_button_has_stylebox(menu_overlay, "pressed"), "menu buttons expose reusable hover and pressed visual states")
 	_expect(menu_overlay != null and not _container_button_text_contains(menu_overlay, "情报档案") and not _container_button_text_contains(menu_overlay, "经济总览") and not _container_button_text_contains(menu_overlay, "局势排名"), "main menu keeps in-game analysis pages out of the root lobby")
 	_expect(menu_overlay != null and not _container_button_text_contains(menu_overlay, "选择四怪兽"), "main menu no longer exposes a separate monster-selection branch")
@@ -681,8 +634,6 @@ func _run() -> void:
 	main.call("_ensure_configured_role_indices")
 	main.call("_open_main_menu")
 	await process_frame
-	var tutorial_quick_start_scene := load("res://scenes/ui/TutorialQuickStartBoard.tscn") as PackedScene
-	_expect(tutorial_quick_start_scene != null, "tutorial quick-start board remains available as the first-run reference surface")
 	main.call("_open_rules_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "游戏规则", "rules menu opens from the main scene")
@@ -4909,7 +4860,7 @@ func _verify_card_rank_ladders_are_complete(main: Node) -> bool:
 	return checked >= 40
 
 
-func _v06_first_table_facility_owner_chain_snapshot() -> Dictionary:
+func _v06_facility_owner_chain_snapshot() -> Dictionary:
 	var result := {
 		"market_ready": false,
 		"purchase_committed": false,
@@ -4944,14 +4895,14 @@ func _v06_first_table_facility_owner_chain_snapshot() -> Dictionary:
 		coordinator.call("refresh_v06_production_player_bindings", fixture)
 	var actor_binding: Dictionary = coordinator.call("actor_id_for_player_index", 0) if coordinator != null and coordinator.has_method("actor_id_for_player_index") else {}
 	var actor_id := String(actor_binding.get("actor_id", "")).strip_edges()
-	var facility_card: Dictionary = coordinator.call("v06_first_table_facility_card") if coordinator != null and coordinator.has_method("v06_first_table_facility_card") else {}
+	var facility_card: Dictionary = coordinator.call("v06_facility_card") if coordinator != null and coordinator.has_method("v06_facility_card") else {}
 	var facility_machine: Dictionary = facility_card.get("machine", {}) if facility_card.get("machine", {}) is Dictionary else {}
 	var facility_card_id := String(facility_machine.get("card_id", ""))
-	var market: Dictionary = coordinator.call("v06_first_table_facility_market_snapshot", actor_id) if coordinator != null and coordinator.has_method("v06_first_table_facility_market_snapshot") and bool(actor_binding.get("available", false)) else {}
+	var market: Dictionary = coordinator.call("v06_facility_market_snapshot", actor_id) if coordinator != null and coordinator.has_method("v06_facility_market_snapshot") and bool(actor_binding.get("available", false)) else {}
 	var listing: Dictionary = market.get("listing", {}) if market.get("listing", {}) is Dictionary else {}
 	var player_before: Dictionary = coordinator.call("v06_card_player_snapshot", actor_id) if coordinator != null and coordinator.has_method("v06_card_player_snapshot") else {}
 	var purchase: Dictionary = coordinator.call(
-		"purchase_v06_first_table_facility_card",
+		"purchase_v06_facility_card",
 		actor_id,
 		String(listing.get("item_id", "")),
 		"smoke:v06-facility-purchase:%s" % actor_id,

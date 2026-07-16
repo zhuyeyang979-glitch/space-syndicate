@@ -4381,8 +4381,6 @@ func _try_finish_monster_wager_if_ready(wager_id: int) -> bool:
 func _open_monster_wager_for_pair(slot_a: int, slot_b: int, context: String = "怪兽遭遇", pending_attack: Dictionary = {}) -> int:
 	if slot_a < 0 or slot_a >= auto_monsters.size() or slot_b < 0 or slot_b >= auto_monsters.size() or slot_a == slot_b:
 		return -1
-	if _first_run_should_defer_monster_wager():
-		return -1
 	if _monster_wager_reopen_cooldown_active():
 		return -1
 	var existing_index := _active_monster_wager_index_for_pair(slot_a, slot_b)
@@ -5283,9 +5281,6 @@ func _entity_world_position(entity: Dictionary) -> Vector2:
 
 func _first_empty_or_new_slot(player: Dictionary) -> int:
 	return _world_call(&"_first_empty_or_new_slot", [player])
-
-func _first_run_should_defer_monster_wager() -> bool:
-	return _world_call(&"_first_run_should_defer_monster_wager", [])
 
 func _has_destroyed_district() -> bool:
 	return _world_call(&"_has_destroyed_district", [])

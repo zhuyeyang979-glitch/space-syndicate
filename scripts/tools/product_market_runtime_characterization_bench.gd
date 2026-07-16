@@ -123,7 +123,7 @@ const CUTOVER_CASE_IDS := [
 	"ai_risk_adjusted_terms",
 	"presentation_shows_financial_terms",
 	"no_parallel_futures_fallback",
-	"first_mission_runtime_default_unchanged",
+	"main_scene_runtime_default_unchanged",
 ]
 const DESIGN_DECISIONS := [
 	{"decision_id": "cost_or_margin", "question": "Is the existing cost a non-refundable action fee or refundable margin?", "options": ["Treat purchase cost as the only cost", "Add a separate refundable margin", "Add both action fee and margin"], "recommendation": "Keep purchase cost separate and add an explicit refundable margin field."},
@@ -264,7 +264,7 @@ const CASE_IDS := [
 	"ai_risk_adjusted_terms",
 	"presentation_shows_financial_terms",
 	"no_parallel_futures_fallback",
-	"first_mission_runtime_default_unchanged",
+	"main_scene_runtime_default_unchanged",
 ]
 
 @export var auto_run := true
@@ -531,7 +531,7 @@ func _run_cutover_case(case_id: String) -> Dictionary:
 		"ai_risk_adjusted_terms": return _case_ai_risk_adjusted_terms()
 		"presentation_shows_financial_terms": return _case_presentation_shows_financial_terms()
 		"no_parallel_futures_fallback": return _case_no_parallel_futures_fallback()
-		"first_mission_runtime_default_unchanged": return _case_first_mission_runtime_default_unchanged()
+		"main_scene_runtime_default_unchanged": return _case_main_scene_runtime_default_unchanged()
 	return _record(case_id, false, false, "Unknown Sprint 55 cutover case.")
 
 
@@ -722,10 +722,10 @@ func _case_no_parallel_futures_fallback() -> Dictionary:
 	return _live_record("no_parallel_futures_fallback", observed, "No positive-only payout, warehouse clear-only branch, or main.gd financial fallback remains.")
 
 
-func _case_first_mission_runtime_default_unchanged() -> Dictionary:
-	var scene_exists := ResourceLoader.exists("res://scenes/tools/FirstMissionRuntimeMainBench.tscn") and ResourceLoader.exists(MAIN_SCENE_PATH)
-	var source := str(_sources.get("main", "")); var observed := scene_exists and source.contains("first_table") and source.contains("_product_market_runtime_controller")
-	return _live_record("first_mission_runtime_default_unchanged", observed, "First mission keeps its existing main/runtime route; the dedicated 17-case regression remains the release gate.")
+func _case_main_scene_runtime_default_unchanged() -> Dictionary:
+	var scene_exists := ResourceLoader.exists(MAIN_SCENE_PATH)
+	var source := str(_sources.get("main", "")); var observed := scene_exists and source.contains("_product_market_runtime_controller")
+	return _live_record("main_scene_runtime_default_unchanged", observed, "The normal main scene keeps the current product-market runtime route.")
 
 
 func _live_record(case_id: String, observed: bool, notes: String, flags: Dictionary = {}) -> Dictionary:

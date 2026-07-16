@@ -55,7 +55,7 @@ func _run() -> void:
 	var district_supply := roots.get("district_supply") as Node
 
 	_expect(_has_nodes(game_screen, ["TopBar", "PublicTrack", "PlanetBoard", "RightInspector", "PlayerBoard", "OverlayLayer"]), "GameScreen composes the real table scenes")
-	_expect(_has_nodes(game_screen, ["FirstRunCoach", "ScenarioCoach", "RuntimeVisualEventLayer"]), "GameScreen owns the coach and runtime feedback surfaces")
+	_expect(_has_nodes(game_screen, ["RuntimeVisualEventLayer"]) and not _has_nodes(game_screen, ["FirstRunCoach", "ScenarioCoach"]), "GameScreen keeps runtime feedback and removes legacy coach surfaces")
 	_expect(_has_nodes(player_board, ["PlayerResourceTableau", "HandRack", "PlayerMainActionDock"]) and player_board.find_child("PlayerBidBoard", true, false) == null, "PlayerBoard owns resources, hand, and actions without reserving a permanent bid surface")
 	_expect(_has_nodes(card_track, ["HistoryRail", "ActiveResolutionSlot", "QueueRail", "NextQueueRail", "AuctionResponseLayer", "PrivacyHintLayer", "EmptyStateLayer"]), "CardResolutionTrack owns its complete public resolution surface")
 	_expect(_has_nodes(overlay, ["ConfirmPanel", "MonsterWagerDecisionPanel", "ContractResponseDecisionPanel", "TemporaryChoiceDecisionPanel", "PublicBidDecisionPanel"]), "OverlayLayer owns every temporary decision panel, including structured public_bid")

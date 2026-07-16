@@ -61,7 +61,6 @@ const RUNTIME_CASES := [
 	["failed_intent_no_partial_mutation", "World Bridge"],
 	["public_private_boundary", "Privacy"],
 	["three_ai_players_complete_cycle", "Runtime Flow"],
-	["first_mission_ai_public_action", "Runtime Flow"],
 	["main_ai_algorithms_absent", "Main Deletion"],
 	["main_ai_adapter_under_300_lines", "Main Deletion"],
 	["execution_service_unchanged", "Ownership Boundary"],
@@ -207,7 +206,6 @@ func _runtime_case_passed(case_id: String, controller: String, bridge: String, c
 		"failed_intent_no_partial_mutation": return bridge.contains("world_or_intent_invalid") and bridge.contains("_failed_intent_count += 1")
 		"public_private_boundary": return controller.contains("private_plan_exposed\": false") and bridge.contains("func _public_intent(")
 		"three_ai_players_complete_cycle": return controller.contains("func _update_ai_decisions(") and controller.contains("func _ai_player_indices(")
-		"first_mission_ai_public_action": return main_source.contains("func _ensure_first_table_ai_public_action(") and main_source.contains("_ai_runtime_call")
 		"main_ai_algorithms_absent": return no_main_algorithms
 		"main_ai_adapter_under_300_lines": return _main_ai_adapter_line_count(main_source) <= 300
 		"execution_service_unchanged": return not FileAccess.get_file_as_string("res://scripts/runtime/card_resolution_execution_runtime_service.gd").contains("AiRuntimeController")

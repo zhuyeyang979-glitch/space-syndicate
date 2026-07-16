@@ -1,11 +1,9 @@
-[gd_scene load_steps=75 format=3]
+[gd_scene load_steps=73 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/GameSessionRuntimeController.tscn" id="3_session"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/DistrictPurchaseRuntimeController.tscn" id="4_purchase"]
-[ext_resource type="PackedScene" path="res://scenes/runtime/ScenarioRuntimeController.tscn" id="6_scenario"]
-[ext_resource type="PackedScene" path="res://scenes/runtime/FirstTableAuthoredRuntimeService.tscn" id="8_first_table_authored"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CodexNavigationRuntimeController.tscn" id="9_codex_navigation"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CodexPublicSnapshotService.tscn" id="10_codex_public_snapshot"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/MonsterCodexPublicSnapshotService.tscn" id="11_monster_codex_public_snapshot"]
@@ -250,12 +248,6 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="DistrictPurchaseSettlementRuntimeService" parent="." instance=ExtResource("19_purchase_settlement")]
-unique_name_in_owner = true
-
-[node name="ScenarioRuntimeController" parent="." instance=ExtResource("6_scenario")]
-unique_name_in_owner = true
-
-[node name="FirstTableAuthoredRuntimeService" parent="." instance=ExtResource("8_first_table_authored")]
 unique_name_in_owner = true
 
 [node name="CodexNavigationRuntimeController" parent="." instance=ExtResource("9_codex_navigation")]

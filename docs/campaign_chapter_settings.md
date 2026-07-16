@@ -1,5 +1,7 @@
 # Campaign Chapter Settings
 
+> Historical / legacy / removed. This document is not runtime authority.
+
 本文件独立记录战役关卡配置规则。它面向开发者和测试，不进入玩家主 UI。
 
 目标：战役不是另一套游戏，而是把真实运行路径切成可试玩的学习章节。每个 chapter 必须能加载真实 scenario/runtime fixture、进入 `main.tscn` 的 `RuntimeGameScreen`，并在完成后输出奖励和复盘。

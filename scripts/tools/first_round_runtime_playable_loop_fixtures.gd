@@ -150,7 +150,6 @@ func _table_state_from_fixture(fixture: Dictionary, flow_case: Dictionary) -> Di
 		"planet": _planet_panel_state_for_case(case_id),
 		"right_inspector": inspector,
 		"player_board": player_state,
-		"first_run_coach": _coach_for_case(case_id),
 		"temporary_decision": temporary_decision_payload() if case_id in ["temporary_decision_pending_flow", "recovery_after_action_sequence"] else {},
 	}
 
@@ -299,19 +298,6 @@ func _base_map_payload() -> Dictionary:
 		"map_event_effects": [],
 		"trade_product": "ore",
 		"visual_layer_focus": "all",
-	}
-
-
-func _coach_for_case(case_id: String) -> Dictionary:
-	return {
-		"visible": true,
-		"collapsed": false,
-		"stage": "first_round_runtime_playable_loop",
-		"title": "第一轮目标",
-		"body": "按顺序完成选牌、看详情、执行、牌轨回应、地图反馈、临时决策和结束回合。",
-		"progress": case_id,
-		"primary_action": {"id": "first_round:%s" % case_id, "label": _primary_action_for_case(case_id), "accent": "#38bdf8"},
-		"chips": [{"text": "选牌"}, {"text": "看详情"}, {"text": "执行"}, {"text": "结束"}],
 	}
 
 

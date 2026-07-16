@@ -24,7 +24,6 @@ func _run() -> void:
 	_expect(FileAccess.file_exists("res://scripts/balance/environment_balance_model.gd"), "environment balance model is split out of main.gd")
 	_expect(FileAccess.file_exists("res://data/balance/runtime_balance_targets.json"), "runtime balance targets data is checked in")
 	_expect(FileAccess.file_exists("res://docs/runtime_balance_report.md"), "runtime balance report document is checked in")
-	_expect(FileAccess.file_exists("res://docs/campaign_chapter_settings.md"), "campaign chapter settings document is checked in")
 	_expect(FileAccess.file_exists("res://docs/global_environment_balance.md"), "global environment balance document is checked in")
 	var report_text := FileAccess.get_file_as_string("res://docs/runtime_balance_report.md")
 	_expect(report_text.contains("Runtime Balance Gradient Report") and report_text.contains("runtime_balance_model.gd") and report_text.contains("movement_balance_model.gd") and report_text.contains("combat_balance_model.gd"), "runtime balance report points to the independent model scripts")

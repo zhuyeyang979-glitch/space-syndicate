@@ -7,7 +7,6 @@ const CardPlayRequirementPolicyScript := preload("res://scripts/cards/card_play_
 const SharedCardGroupWindowScript := preload("res://scripts/cards/shared_card_group_window.gd")
 const RoguelikeEconomicViabilityPolicyScript := preload("res://scripts/runtime/roguelike_economic_viability_policy.gd")
 const MenuRootLobbyScene := preload("res://scenes/ui/MenuRootLobby.tscn")
-const TutorialQuickStartBoardScene := preload("res://scenes/ui/TutorialQuickStartBoard.tscn")
 const RulesQuickReferenceBoardScene := preload("res://scenes/ui/RulesQuickReferenceBoard.tscn")
 const RulesQuickReferenceSnapshotV06Script := preload("res://scripts/viewmodels/rules_quick_reference_snapshot_v06.gd")
 const CompendiumHubSnapshotScript := preload("res://scripts/viewmodels/compendium_hub_snapshot.gd")
@@ -15,43 +14,14 @@ const EconomyDashboardScene := preload("res://scenes/ui/EconomyDashboard.tscn")
 const IntelDossierBoardScene := preload("res://scenes/ui/IntelDossierBoard.tscn")
 const StandingsScoreboardScene := preload("res://scenes/ui/StandingsScoreboard.tscn")
 const NewGameSetupPageScene := preload("res://scenes/ui/NewGameSetupPage.tscn")
-const PresentationSettingsPanelScene := preload("res://scenes/ui/PresentationSettingsPanel.tscn")
-const ScenarioPauseActionsPanelScene := preload("res://scenes/ui/ScenarioPauseActionsPanel.tscn")
-const ScenarioFixtureFactoryScript := preload("res://scripts/scenarios/scenario_fixture_factory.gd")
-const ScenarioBrowserScene := preload("res://scenes/ui/ScenarioBrowser.tscn")
-const ScenarioActionLogScene := preload("res://scenes/ui/ScenarioActionLog.tscn")
-const ScenarioReplayPanelScene := preload("res://scenes/ui/ScenarioReplayPanel.tscn")
-const ScenarioBrowserSnapshotScript := preload("res://scripts/viewmodels/scenario_browser_snapshot.gd")
-const ScenarioActionLogSnapshotScript := preload("res://scripts/viewmodels/scenario_action_log_snapshot.gd")
-const ScenarioReplayPanelSnapshotScript := preload("res://scripts/viewmodels/scenario_replay_panel_snapshot.gd")
-const CampaignDefinitionScript := preload("res://scripts/campaign/campaign_definition.gd")
-const CampaignProgressScript := preload("res://scripts/campaign/campaign_progress.gd")
-const CampaignSaveScript := preload("res://scripts/campaign/campaign_save.gd")
-const CampaignRewardServiceScript := preload("res://scripts/campaign/campaign_reward_service.gd")
-const RecommendedStartServiceScript := preload("res://scripts/recommendations/recommended_start_service.gd")
-const CampaignMenuScene := preload("res://scenes/ui/CampaignMenu.tscn")
-const CampaignBriefingScene := preload("res://scenes/ui/CampaignBriefing.tscn")
-const CampaignProgressMapScene := preload("res://scenes/ui/CampaignProgressMap.tscn")
-const CampaignRewardPanelScene := preload("res://scenes/ui/CampaignRewardPanel.tscn")
-const MatchRecapPanelScene := preload("res://scenes/ui/MatchRecapPanel.tscn")
-const CampaignMenuSnapshotScript := preload("res://scripts/viewmodels/campaign_menu_snapshot.gd")
-const CampaignBriefingSnapshotScript := preload("res://scripts/viewmodels/campaign_briefing_snapshot.gd")
-const CampaignProgressMapSnapshotScript := preload("res://scripts/viewmodels/campaign_progress_map_snapshot.gd")
-const CampaignRewardSnapshotScript := preload("res://scripts/viewmodels/campaign_reward_snapshot.gd")
-const MatchRecapSnapshotScript := preload("res://scripts/viewmodels/match_recap_snapshot.gd")
 const PlayerBoardStrategyActionSnapshotScript := preload("res://scripts/viewmodels/player_board_strategy_action_snapshot.gd")
 const TABLE_SFX_KEYS := ["card", "impact", "storm"]
-const CAMPAIGN_SUCCESS_FEEDBACK_SECONDS := 1.0
 const MIN_PLAYER_COUNT := 3
 const MAX_PLAYER_COUNT := 8
 const DEFAULT_PLAYER_COUNT := 4
 const MIN_AI_PLAYER_COUNT := 2
 const MAX_AI_PLAYER_COUNT := 7
 const DEFAULT_AI_PLAYER_COUNT := 3
-const FIRST_RUN_RECOMMENDED_PLAYER_COUNT := 4
-const FIRST_RUN_RECOMMENDED_AI_COUNT := 3
-const FIRST_RUN_RECOMMENDED_ROLE_INDICES := [0, 1, 2, 3]
-const FIRST_RUN_RECOMMENDED_STARTER_MONSTER_INDICES := [7, 6, 2, 4]
 const ROLE_RANDOM_INDEX := -1
 const ROGUELIKE_DEPTH_MIN := 1
 const ROGUELIKE_DEPTH_MAX := 6
@@ -584,44 +554,15 @@ var developer_balance_refresh_timer := 0.0
 var table_bgm_player: AudioStreamPlayer
 var table_sfx_players := {}
 var table_sfx_last_time := {}
-var opening_guide_dismissed := false
-var opening_guide_economy_seen_players := {}
-var first_run_coach_district_seen_players := {}
-var first_run_coach_supply_seen_players := {}
-var first_run_coach_public_track_seen_players := {}
-var first_run_coach_ai_public_action_seen_players := {}
-var first_run_coach_monster_pressure_seen_players := {}
-var first_run_coach_route_choice_players := {}
-var first_run_coach_clues_seen_players := {}
-var first_run_coach_strong_focus_until_seconds := 0.0
-var first_run_coach_strong_focus_player_index := -1
-var first_run_coach_strong_focus_action_id := ""
-var selected_scenario_id := "first_table"
-var scenario_teaching_hints_enabled := true
-var scenario_auto_pause_prompts_enabled := true
-var scenario_font_scale_percent := 100
-var active_campaign_id := "tutorial_campaign"
-var selected_campaign_chapter_id := ""
-var active_campaign_chapter_id := ""
-var campaign_completed_chapter_ids: Array = []
-var campaign_last_reward: Dictionary = {}
-var campaign_last_recap: Dictionary = {}
-var campaign_completion_pending_chapter_id := ""
 var runtime_visual_events: Array = []
 var runtime_visual_event_key := ""
 var runtime_visual_event_counter := 0
-var campaign_animation_intensity := "完整"
-var campaign_font_scale_label := "中"
-var campaign_colorblind_assist_enabled := false
-var campaign_ui_volume := 80
-var campaign_bgm_volume := 60
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	rng.randomize()
 	_load_settings()
-	_load_campaign_progress_state()
 	_build_layout()
 	_build_developer_balance_greybox()
 	_build_table_audio()
@@ -1070,7 +1011,6 @@ func _on_region_infrastructure_receipt(receipt: Dictionary) -> void:
 		_log("%s的共享生命修复%d。" % [str((districts[district_index] as Dictionary).get("name", "区域")), int(receipt.get("applied_repair", 0))])
 	elif str(receipt.get("receipt_kind", "")) == "facility_action":
 		_pulse_district(district_index, Color("#38bdf8"))
-		_complete_scenario_signal("public_facility_committed", "公共设施已进入区域设施槽。", "after_facility", "planet")
 
 
 func monster_deploy_cross_owner_capabilities_v06() -> Dictionary:
@@ -1823,19 +1763,6 @@ func _bind_game_runtime_coordinator() -> void:
 	game_runtime_coordinator_missing_reported = false
 
 
-func _active_runtime_scenario_id() -> String:
-	var coordinator := _game_runtime_coordinator_node()
-	return str(coordinator.call("active_runtime_scenario_id")) if coordinator != null and coordinator.has_method("active_runtime_scenario_id") else ""
-
-
-func _runtime_scenario_state() -> Dictionary:
-	var coordinator := _game_runtime_coordinator_node()
-	if coordinator != null and coordinator.has_method("runtime_scenario_state"):
-		var value: Variant = coordinator.call("runtime_scenario_state", game_time)
-		return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-	return {}
-
-
 func _card_resolution_controller_node() -> Node:
 	if card_resolution_runtime_controller != null and is_instance_valid(card_resolution_runtime_controller):
 		return card_resolution_runtime_controller
@@ -1988,12 +1915,11 @@ func _sync_runtime_game_screen(force: bool = false) -> void:
 		return
 	var coordinator := _game_runtime_coordinator_node()
 	if coordinator != null and runtime_game_screen.has_method("set_weather_presentation"):
-		var weather_motion_mode := "reduced" if campaign_animation_intensity == "简化" else ("off" if campaign_animation_intensity == "关闭" else "full")
 		runtime_game_screen.call(
 			"set_weather_presentation",
 			coordinator.weather_forecast_view_model(),
 			coordinator.weather_map_overlay_view_model(),
-			weather_motion_mode
+			"full"
 		)
 	var table_state := _runtime_table_snapshot_source()
 	var signature := var_to_str(table_state)
@@ -2029,8 +1955,6 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 		"card_group_ready":
 			var ready_result := _set_selected_player_card_group_ready()
 			handled = not ready_result.is_empty()
-		"coach_select_district", "coach_open_rack", "coach_buy_card", "coach_play_card", "coach_inspect_track", "coach_check_economy", "coach_observe_ai_public_action", "coach_inspect_clues", "coach_inspect_monster_pressure", "coach_choose_route_growth":
-			handled = _activate_first_run_coach_action(action_id)
 		"rack", "buy", "play":
 			handled = _activate_runtime_quick_action(action_id)
 		_:
@@ -2038,8 +1962,6 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 				handled = true
 			elif _activate_runtime_temporary_decision_action(action_id):
 				handled = true
-			elif action_id.begins_with("scenario_"):
-				handled = _activate_scenario_action(action_id)
 			elif action_id.begins_with("group_order_up_"):
 				var group_up_resolution_id := int(action_id.substr("group_order_up_".length()))
 				handled = _move_card_within_group(group_up_resolution_id, -1)
@@ -2073,14 +1995,11 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 				var resolution_id := int(action_id.substr("track_select_".length()))
 				selected_runtime_card_slot = -1
 				_select_card_resolution_track_entry(resolution_id)
-				_mark_first_run_coach_public_track_seen(_runtime_snapshot_player_index())
 				handled = true
 			elif action_id.begins_with("track_intel_"):
 				var intel_resolution_id := int(action_id.substr("track_intel_".length()))
 				selected_runtime_card_slot = -1
 				selected_card_resolution_id = intel_resolution_id
-				_mark_first_run_coach_public_track_seen(_runtime_snapshot_player_index())
-				_mark_first_run_coach_clues_seen(_runtime_snapshot_player_index())
 				_open_intel_dossier_menu()
 				handled = true
 			elif action_id.begins_with("track_open_"):
@@ -2329,58 +2248,6 @@ func _bind_runtime_overlay_surfaces() -> void:
 	_bind_menu_overlay_scene()
 
 
-func _playtest_flow_compass_entries(player_index: int) -> Array:
-	var has_selection := selected_district >= 0 and selected_district < districts.size()
-	var progress := _first_run_coach_progress(player_index)
-	if progress.is_empty():
-		progress = _opening_guide_progress(player_index)
-	var steps := [
-		{"label": "点区", "done": has_selection, "accent": Color("#38bdf8"), "tip": "在中央星球点一个区域；双击可查看区域牌架。"},
-		{"label": "建城", "done": bool(progress.get("has_city", false)), "accent": Color("#4ade80"), "tip": "在陆地城市化，开始获得实时GDP现金流。"},
-		{"label": "买牌", "done": bool(progress.get("has_bought_card", false)), "accent": Color("#facc15"), "tip": "查看全局挂牌；来源区受光时锁定5秒报价。"},
-		{"label": "出牌", "done": bool(progress.get("has_played_card", false)), "accent": Color("#c084fc"), "tip": "满足卡面GDP份额后出牌；需要目标的牌会先询问。"},
-		{"label": "牌轨", "done": bool(progress.get("has_seen_public_track", false)), "accent": Color("#f59e0b"), "tip": "看顶部公共时间线，确认已打出的牌留下什么线索。"},
-		{"label": "经济", "done": bool(progress.get("has_checked_economy", false)), "accent": Color("#38bdf8"), "tip": "打开经济总览，看GDP、商品和商路如何变成钱。"},
-		{"label": "路线", "done": bool(progress.get("has_chosen_route", false)), "accent": Color("#22c55e"), "tip": "首局先选一条继续路线：扩GDP、护商路或压竞争。"},
-	]
-	var current_index := -1
-	for i in range(steps.size()):
-		var entry: Dictionary = steps[i]
-		if not bool(entry.get("done", false)):
-			current_index = i
-			break
-	if current_index < 0:
-		current_index = steps.size() - 1
-	for i in range(steps.size()):
-		var entry: Dictionary = steps[i]
-		entry["current"] = i == current_index and not bool(entry.get("done", false))
-		steps[i] = entry
-	return steps
-
-
-func _playtest_flow_next_text(player_index: int) -> String:
-	if players.is_empty():
-		return "下一步：开局准备"
-	if selected_district < 0 or selected_district >= districts.size():
-		return "下一步：点星球区域"
-	var progress := _first_run_coach_progress(player_index)
-	if progress.is_empty():
-		progress = _opening_guide_progress(player_index)
-	if not bool(progress.get("has_city", false)):
-		return "下一步：城市化"
-	if not bool(progress.get("has_bought_card", false)):
-		return "下一步：买第一牌"
-	if not bool(progress.get("has_played_card", false)):
-		return "下一步：打出手牌"
-	if not bool(progress.get("has_seen_public_track", false)):
-		return "下一步：看牌轨"
-	if not bool(progress.get("has_checked_economy", false)):
-		return "下一步：看经济"
-	if not bool(progress.get("has_chosen_route", false)):
-		return "下一步：选路线"
-	return "下一步：看线索"
-
-
 func _recent_table_event_clean_text(line: String) -> String:
 	var text := line.strip_edges()
 	if text.begins_with("["):
@@ -2511,7 +2378,6 @@ func _select_card_resolution_track_entry(resolution_id: int) -> void:
 	selected_card_resolution_id = -1 if selected_card_resolution_id == resolution_id else resolution_id
 	if selected_card_resolution_id >= 0:
 		_focus_card_resolution_target_region(selected_card_resolution_id)
-		_complete_scenario_signal("track_selected", "选中公开牌轨上的匿名牌。", "after_track", "public_track")
 	_sync_runtime_game_screen(true)
 
 
@@ -2934,7 +2800,6 @@ func _refresh_menu_layout() -> void:
 func _menu_quick_nav_entries() -> Array:
 	return [
 		{"id": "setup", "label": "开局", "tooltip": "进入开局配置：设置席位、电脑对手、角色和起始怪兽。", "accent": "#38bdf8"},
-		{"id": "scenario", "label": "剧本", "tooltip": "进入固定试玩剧本：练核心系统、看日志、做复盘。", "accent": "#facc15"},
 		{"id": "standings", "label": "局势", "tooltip": "查看动态区域控制、前K区商品GDP、资格进度和公开审计。", "accent": "#facc15"},
 		{"id": "economy", "label": "经济", "tooltip": "查看GDP、商品、商路、天气和收入拆解。", "accent": "#4ade80"},
 		{"id": "intel", "label": "情报", "tooltip": "整理城市归属推理、卡牌竞猜和怪兽资金线索。", "accent": "#c084fc"},
@@ -2947,15 +2812,13 @@ func _menu_quick_nav_active_key(title_text: String) -> String:
 	match title_text:
 		"开局准备":
 			return "setup"
-		"试玩剧本", "试玩剧本辅助", "剧本行动日志", "剧本复盘":
-			return "scenario"
 		"局势排名", "终局结算":
 			return "standings"
 		"经济总览":
 			return "economy"
 		"情报档案":
 			return "intel"
-		"游戏规则", "新手引导":
+		"游戏规则":
 			return "rules"
 		"图鉴", "角色图鉴", "怪兽生态档案", "卡牌图鉴", "商品图鉴", "区域图鉴":
 			return "compendium"
@@ -2970,8 +2833,6 @@ func _on_menu_quick_nav_action_requested(action_id: String) -> void:
 	match action_id:
 		"setup":
 			_start_new_run_from_menu()
-		"scenario":
-			_open_scenario_browser_menu()
 		"standings":
 			_open_standings_menu()
 		"economy":
@@ -3083,7 +2944,7 @@ func _main_menu_root_lobby_snapshot() -> Dictionary:
 		"accent": Color("#f59e0b"),
 		"tooltip": "星球赌桌大厅：保存、开局、继续和资料库入口。",
 		"title": "SPACE SYNDICATE",
-		"title_tooltip": "主菜单保留战役、快速开局和资料库三个主方向。",
+		"title_tooltip": "主菜单保留开新一桌、继续牌桌、资料库和游戏规则。",
 		"status": "星球赌桌｜控区、GDP与公开审计",
 		"status_tooltip": "终局按现金排名。",
 		"planet_mark": "◎",
@@ -3091,7 +2952,7 @@ func _main_menu_root_lobby_snapshot() -> Dictionary:
 		"planet_hint": "建城｜怪兽｜下注｜推理",
 		"chip_rail_tooltip": "首屏只保留开桌前必须知道的桌面身份。",
 		"table_line": "选择你的下一步",
-		"table_tooltip": "主菜单只负责新手战役、快速开局、资料库和少量辅助入口。",
+		"table_tooltip": "主菜单只显示当前可用的正常游戏入口。",
 		"columns": 1,
 		"chips": [
 			{"text": "席位 3-8｜真人对 AI", "accent": Color("#bfdbfe"), "tooltip": "真人玩家对2-7个电脑对手。"},
@@ -3108,22 +2969,8 @@ func _main_menu_root_lobby_snapshot() -> Dictionary:
 				"featured": true,
 			},
 			{
-				"id": "campaign",
-				"kicker": "02｜战役",
-				"label": "新手战役",
-				"detail": "目标、奖励、复盘、下一关",
-				"accent": Color("#facc15"),
-			},
-			{
-				"id": "quick_start",
-				"kicker": "03｜快局",
-				"label": "快速开局",
-				"detail": "推荐配置直接开桌",
-				"accent": Color("#38bdf8"),
-			},
-			{
 				"id": "compendium",
-				"kicker": "04｜资料",
+				"kicker": "02｜资料",
 				"label": "资料库",
 				"detail": "图鉴、卡牌、商品、区域",
 				"accent": Color("#f472b6"),
@@ -3137,10 +2984,7 @@ func _main_menu_root_lobby_snapshot() -> Dictionary:
 				"accent": Color("#22c55e"),
 				"disabled": not can_continue,
 			},
-			{"id": "first_mission", "label": "开始首局任务", "accent": Color("#38bdf8"), "tooltip": "使用推荐首局设置并进入 first_table 教学任务。"},
-			{"id": "scenario_lab", "label": "剧本库", "accent": Color("#facc15")},
 			{"id": "rules", "label": "游戏规则", "accent": Color("#93c5fd")},
-			{"id": "campaign_settings", "label": "设置", "accent": Color("#a78bfa")},
 			{"id": "load_run", "label": "读取局面", "accent": Color("#94a3b8")},
 			{"id": "quit", "label": "退出游戏", "accent": Color("#fb7185")},
 		],
@@ -3149,24 +2993,14 @@ func _main_menu_root_lobby_snapshot() -> Dictionary:
 
 func _on_menu_root_lobby_action_requested(action_id: String) -> void:
 	match action_id:
-		"campaign":
-			_open_campaign_menu()
-		"quick_start":
-			_start_recommended_quick_run("stable_economy")
-		"first_mission":
-			start_first_mission_runtime()
 		"new_run":
 			_start_new_run_from_menu()
-		"scenario_lab":
-			_open_scenario_browser_menu()
 		"continue":
 			_close_menu()
 		"compendium":
 			_open_compendium_menu()
 		"rules":
 			_open_rules_menu()
-		"campaign_settings":
-			_open_campaign_settings_menu()
 		"load_run":
 			_load_run_from_menu()
 		"quit":
@@ -3187,1007 +3021,6 @@ func _add_main_menu_planet_lobby_panel(parent: Container) -> void:
 		if load_button_variant is Button:
 			menu_load_run_button = load_button_variant as Button
 
-
-func _campaign_definition() -> Dictionary:
-	var campaign: Dictionary = CampaignDefinitionScript.new().load_by_id(active_campaign_id)
-	return campaign
-
-
-func _campaign_chapter_by_id(chapter_id: String) -> Dictionary:
-	var campaign := _campaign_definition()
-	var chapters: Array = campaign.get("chapters", []) if campaign.get("chapters", []) is Array else []
-	for chapter_variant in chapters:
-		if chapter_variant is Dictionary and str((chapter_variant as Dictionary).get("id", "")) == chapter_id:
-			return (chapter_variant as Dictionary).duplicate(true)
-	return {}
-
-
-func _campaign_progress_dictionary(selected_id: String = "") -> Dictionary:
-	var campaign := _campaign_definition()
-	return CampaignProgressScript.new().apply_state(campaign, campaign_completed_chapter_ids, selected_id if selected_id != "" else selected_campaign_chapter_id).to_dictionary()
-
-
-func _load_campaign_progress_state() -> void:
-	var saved: Dictionary = CampaignSaveScript.new().load_progress()
-	if saved.is_empty():
-		campaign_completed_chapter_ids = []
-		selected_campaign_chapter_id = ""
-		return
-	active_campaign_id = str(saved.get("campaign_id", "tutorial_campaign"))
-	campaign_completed_chapter_ids = (saved.get("completed_chapter_ids", []) as Array).duplicate(true) if saved.get("completed_chapter_ids", []) is Array else []
-	selected_campaign_chapter_id = str(saved.get("selected_chapter_id", ""))
-
-
-func _save_campaign_progress_state() -> void:
-	var progress := _campaign_progress_dictionary(selected_campaign_chapter_id)
-	CampaignSaveScript.new().save_progress({
-		"campaign_id": active_campaign_id,
-		"completed_chapter_ids": campaign_completed_chapter_ids.duplicate(true),
-		"unlocked_chapter_ids": (progress.get("unlocked_chapter_ids", []) as Array).duplicate(true) if progress.get("unlocked_chapter_ids", []) is Array else [],
-		"selected_chapter_id": selected_campaign_chapter_id,
-		"last_completed_chapter_id": active_campaign_chapter_id,
-	})
-
-
-func _open_campaign_menu() -> void:
-	_show_menu("新手战役", "先打一桌：点区、看受光牌架、用发展牌建立商品项目；召唤怪兽可随时进行。", not _runtime_session_finished(), false, true)
-	if menu_preview_box == null:
-		return
-	menu_overlay.call("clear_preview")
-	menu_preview_box.visible = true
-	_add_campaign_menu_panel(menu_preview_box)
-
-
-func _add_campaign_menu_panel(parent: Container) -> void:
-	var panel := CampaignMenuScene.instantiate() as Control
-	if panel == null:
-		return
-	if panel.has_signal("action_requested"):
-		panel.connect("action_requested", Callable(self, "_on_campaign_action_requested"))
-	parent.add_child(panel)
-	if panel.has_method("set_campaign_menu"):
-		panel.call("set_campaign_menu", _campaign_menu_snapshot())
-
-
-func _campaign_menu_snapshot() -> Dictionary:
-	var campaign := _campaign_definition()
-	var progress := _campaign_progress_dictionary()
-	var recommendations: Dictionary = RecommendedStartServiceScript.new().load_recommendations()
-	return CampaignMenuSnapshotScript.new().apply_dictionary({
-		"campaign": campaign,
-		"progress": progress,
-		"recommendations": recommendations,
-	}).to_ui_dictionary()
-
-
-func _open_campaign_briefing_menu(chapter_id: String = "") -> void:
-	var progress := _campaign_progress_dictionary(chapter_id)
-	var resolved_id := chapter_id.strip_edges()
-	if resolved_id == "":
-		resolved_id = str(progress.get("current_chapter_id", progress.get("next_chapter_id", "")))
-	var unlocked: Array = progress.get("unlocked_chapter_ids", []) if progress.get("unlocked_chapter_ids", []) is Array else []
-	if resolved_id == "" or not unlocked.has(resolved_id):
-		_log("战役关卡尚未解锁：%s。" % resolved_id)
-		_open_campaign_menu()
-		return
-	selected_campaign_chapter_id = resolved_id
-	_save_campaign_progress_state()
-	_show_menu("关卡说明", "读完目标后开始。本页只显示本关需要的信息。", not _runtime_session_finished(), false)
-	if menu_preview_box == null:
-		return
-	menu_overlay.call("clear_preview")
-	menu_preview_box.visible = true
-	var map_panel := CampaignProgressMapScene.instantiate() as Control
-	if map_panel != null:
-		if map_panel.has_signal("action_requested"):
-			map_panel.connect("action_requested", Callable(self, "_on_campaign_action_requested"))
-		menu_preview_box.add_child(map_panel)
-		if map_panel.has_method("set_progress_map"):
-			map_panel.call("set_progress_map", CampaignProgressMapSnapshotScript.new().apply_dictionary({"progress": progress}).to_ui_dictionary())
-	var briefing := CampaignBriefingScene.instantiate() as Control
-	if briefing == null:
-		return
-	if briefing.has_signal("action_requested"):
-		briefing.connect("action_requested", Callable(self, "_on_campaign_action_requested"))
-	menu_preview_box.add_child(briefing)
-	if briefing.has_method("set_briefing"):
-		briefing.call("set_briefing", _campaign_briefing_snapshot(resolved_id))
-
-
-func _campaign_briefing_snapshot(chapter_id: String) -> Dictionary:
-	return CampaignBriefingSnapshotScript.new().apply_dictionary({
-		"campaign": _campaign_definition(),
-		"chapter": _campaign_chapter_by_id(chapter_id),
-	}).to_ui_dictionary()
-
-
-func _on_campaign_action_requested(action_id: String) -> void:
-	if action_id.begins_with("campaign_continue_"):
-		_open_campaign_briefing_menu(action_id.substr("campaign_continue_".length()).strip_edges())
-	elif action_id.begins_with("campaign_chapter_"):
-		_open_campaign_briefing_menu(action_id.substr("campaign_chapter_".length()).strip_edges())
-	elif action_id.begins_with("campaign_start_"):
-		_start_campaign_chapter(action_id.substr("campaign_start_".length()).strip_edges())
-	elif action_id.begins_with("campaign_next_"):
-		var next_id := action_id.substr("campaign_next_".length()).strip_edges()
-		if next_id == "":
-			_open_campaign_menu()
-		else:
-			_open_campaign_briefing_menu(next_id)
-	elif action_id.begins_with("quick_preset_"):
-		_start_recommended_quick_run(action_id.substr("quick_preset_".length()).strip_edges())
-	elif action_id == "campaign_quick_start":
-		_start_recommended_quick_run("stable_economy")
-	elif action_id == "campaign_settings":
-		_open_campaign_settings_menu()
-	elif action_id == "campaign_reset_progress":
-		_reset_campaign_progress()
-	elif action_id == "campaign_recap":
-		_open_campaign_recap_menu()
-	elif action_id == "campaign_reward":
-		_open_campaign_reward_menu()
-	elif action_id == "campaign_menu":
-		_open_campaign_menu()
-	elif action_id == "campaign_back":
-		_open_main_menu()
-
-
-func _start_campaign_chapter(chapter_id: String) -> void:
-	var chapter := _campaign_chapter_by_id(chapter_id)
-	if chapter.is_empty():
-		_log("战役关卡无法加载：%s。" % chapter_id)
-		return
-	_apply_recommended_start("stable_economy")
-	selected_campaign_chapter_id = chapter_id
-	active_campaign_chapter_id = chapter_id
-	campaign_last_reward = {}
-	campaign_last_recap = {}
-	_save_campaign_progress_state()
-	_start_scenario_from_menu(str(chapter.get("scenario_id", "first_table")))
-	active_campaign_chapter_id = chapter_id
-	_record_scenario_action("campaign", "开始战役关卡：%s" % str(chapter.get("title", chapter_id)), "", "campaign:%s" % chapter_id, "start", "scenario_coach")
-	_sync_runtime_game_screen(true)
-
-
-func _start_recommended_quick_run(preset_id: String) -> void:
-	active_campaign_chapter_id = ""
-	var coordinator := _game_runtime_coordinator_node()
-	if coordinator != null and coordinator.has_method("clear_runtime_scenario"):
-		coordinator.call("clear_runtime_scenario")
-	_apply_recommended_start(preset_id)
-	_new_game()
-	_log("快速开局：已应用推荐配置「%s」。" % preset_id)
-	_close_menu()
-	_sync_runtime_game_screen(true)
-
-
-func _apply_recommended_start(preset_id: String = "") -> void:
-	var service: Variant = RecommendedStartServiceScript.new()
-	var data: Dictionary = service.load_recommendations()
-	var preset: Dictionary = service.preset_by_id(preset_id) if preset_id != "" else {}
-	configured_player_count = clampi(int(preset.get("player_count", data.get("player_count", 4))), 3, 8)
-	configured_ai_player_count = clampi(int(preset.get("ai_count", data.get("ai_count", 3))), 2, 7)
-	configured_roguelike_depth = clampi(int(preset.get("roguelike_depth", data.get("roguelike_depth", 1))), ROGUELIKE_DEPTH_MIN, ROGUELIKE_DEPTH_MAX)
-	var role_value: Variant = preset.get("role_indices", data.get("role_indices", FIRST_RUN_RECOMMENDED_ROLE_INDICES))
-	configured_role_indices = (role_value as Array).duplicate(true) if role_value is Array else FIRST_RUN_RECOMMENDED_ROLE_INDICES.duplicate(true)
-	var starter_value: Variant = preset.get("starter_monster_indices", data.get("starter_monster_indices", FIRST_RUN_RECOMMENDED_STARTER_MONSTER_INDICES))
-	configured_starter_monster_indices = (starter_value as Array).duplicate(true) if starter_value is Array else FIRST_RUN_RECOMMENDED_STARTER_MONSTER_INDICES.duplicate(true)
-	_ensure_configured_ai_player_count()
-	_ensure_configured_roguelike_depth()
-	_ensure_configured_role_indices()
-	_ensure_configured_starter_monster_indices()
-
-
-func _maybe_finish_campaign_chapter_from_signals() -> void:
-	if active_campaign_chapter_id == "":
-		return
-	if campaign_completion_pending_chapter_id != "":
-		return
-	var chapter := _campaign_chapter_by_id(active_campaign_chapter_id)
-	if chapter.is_empty():
-		return
-	var conditions: Array = chapter.get("success_conditions", []) if chapter.get("success_conditions", []) is Array else []
-	if conditions.is_empty():
-		return
-	var completed_signals: Dictionary = _runtime_scenario_state().get("completed_signals", {})
-	for condition_variant in conditions:
-		if not bool(completed_signals.get(str(condition_variant), false)):
-			return
-	_schedule_campaign_chapter_completion(chapter)
-
-
-func _schedule_campaign_chapter_completion(chapter: Dictionary) -> void:
-	var chapter_id := str(chapter.get("id", active_campaign_chapter_id)).strip_edges()
-	if chapter_id == "":
-		return
-	campaign_completion_pending_chapter_id = chapter_id
-	var scenario_state := _runtime_scenario_state()
-	var snapshot_key := str(scenario_state.get("active_snapshot_key", "start"))
-	var scenario_id := str(scenario_state.get("active_scenario_id", ""))
-	_record_scenario_action("chapter_success", "目标完成：演出结算后进入奖励。", "", "campaign_success_feedback", snapshot_key, "scenario_coach")
-	_queue_scenario_visual_events(scenario_id, snapshot_key, "chapter_success")
-	_sync_runtime_game_screen(true)
-	await get_tree().create_timer(CAMPAIGN_SUCCESS_FEEDBACK_SECONDS).timeout
-	if active_campaign_chapter_id == chapter_id and campaign_completion_pending_chapter_id == chapter_id:
-		_finish_campaign_chapter(chapter)
-
-
-func _finish_campaign_chapter(chapter: Dictionary) -> void:
-	var chapter_id := str(chapter.get("id", active_campaign_chapter_id)).strip_edges()
-	if chapter_id == "":
-		return
-	campaign_completion_pending_chapter_id = ""
-	if not campaign_completed_chapter_ids.has(chapter_id):
-		campaign_completed_chapter_ids.append(chapter_id)
-	selected_campaign_chapter_id = CampaignProgressScript.new().apply_state(_campaign_definition(), campaign_completed_chapter_ids, chapter_id).next_chapter_id()
-	var progress := _campaign_progress_dictionary(selected_campaign_chapter_id)
-	var stats := _campaign_completion_stats(chapter)
-	campaign_last_reward = CampaignRewardServiceScript.new().build_reward(_campaign_definition(), chapter, progress, stats)
-	var action_log_entries: Array = _runtime_scenario_state().get("action_log_entries", [])
-	campaign_last_recap = CampaignRewardServiceScript.new().build_recap(_campaign_definition(), chapter, action_log_entries, stats)
-	_save_campaign_progress_state()
-	active_campaign_chapter_id = ""
-	_open_campaign_reward_menu()
-
-
-func _campaign_completion_stats(chapter: Dictionary) -> Dictionary:
-	var conditions: Array = chapter.get("success_conditions", []) if chapter.get("success_conditions", []) is Array else []
-	var hint_count := 0
-	var action_log_entries: Array = _runtime_scenario_state().get("action_log_entries", [])
-	for entry_variant in action_log_entries:
-		if entry_variant is Dictionary and str((entry_variant as Dictionary).get("phase_id", "")) == "hint":
-			hint_count += 1
-	return {
-		"time_text": _format_time(game_time),
-		"objectives_completed": conditions.size(),
-		"objectives_total": maxi(1, conditions.size()),
-		"errors": 0,
-		"hints": hint_count,
-		"economy": _campaign_recap_economy_stats(0),
-	}
-
-
-func _campaign_recap_economy_stats(player_index: int) -> Dictionary:
-	if player_index < 0 or player_index >= players.size():
-		return {}
-	var player: Dictionary = players[player_index]
-	var starting_cash := int(player.get("starting_cash_total", player.get("base_starting_cash", STARTING_CASH)))
-	var final_cash := int(player.get("cash", starting_cash))
-	var city_count := 0
-	var gdp_per_min := 0
-	var pressure := 0
-	var top_city := ""
-	var top_city_gdp := -999999
-	for district_index in range(districts.size()):
-		var city := _district_city(district_index)
-		if city.is_empty() or not _city_is_active(city) or int(city.get("owner", -1)) != player_index:
-			continue
-		city_count += 1
-		var city_gdp := _city_gdp_per_minute(district_index, _city_competition_matches(district_index))
-		gdp_per_min += city_gdp
-		pressure += int(districts[district_index].get("damage", 0))
-		pressure += int(city.get("route_damage", 0))
-		if city_gdp > top_city_gdp:
-			top_city_gdp = city_gdp
-			top_city = "%s｜GDP/min %d" % [String(districts[district_index].get("name", "城市")), city_gdp]
-	return {
-		"starting_cash": starting_cash,
-		"final_cash": final_cash,
-		"cash_delta": final_cash - starting_cash,
-		"city_count": city_count,
-		"gdp_per_min": gdp_per_min,
-		"total_income": _player_commodity_sale_income(player_index) + int(player.get("total_card_income", 0)) + int(player.get("total_role_income", 0)),
-		"total_spend": int(player.get("total_card_spend", 0)) + int(player.get("total_build_spend", 0)) + int(player.get("total_business_spend", 0)),
-		"pressure": max(0, pressure),
-		"top_city": top_city,
-	}
-
-
-func _open_campaign_reward_menu() -> void:
-	if campaign_last_reward.is_empty():
-		_open_campaign_menu()
-		return
-	_show_menu("关卡奖励", "关卡完成。看奖励、复盘，或继续下一关。", not _runtime_session_finished(), false)
-	if menu_preview_box == null:
-		return
-	menu_overlay.call("clear_preview")
-	menu_preview_box.visible = true
-	var panel := CampaignRewardPanelScene.instantiate() as Control
-	if panel == null:
-		return
-	if panel.has_signal("action_requested"):
-		panel.connect("action_requested", Callable(self, "_on_campaign_action_requested"))
-	menu_preview_box.add_child(panel)
-	if panel.has_method("set_reward"):
-		panel.call("set_reward", CampaignRewardSnapshotScript.new().apply_dictionary(campaign_last_reward).to_ui_dictionary())
-
-
-func _open_campaign_recap_menu() -> void:
-	if campaign_last_recap.is_empty():
-		_open_scenario_replay_menu()
-		return
-	_show_menu("战役复盘", "只显示公开行动、你自己的记录和下一步建议。", not _runtime_session_finished(), false)
-	if menu_preview_box == null:
-		return
-	menu_overlay.call("clear_preview")
-	menu_preview_box.visible = true
-	var panel := MatchRecapPanelScene.instantiate() as Control
-	if panel == null:
-		return
-	if panel.has_signal("action_requested"):
-		panel.connect("action_requested", Callable(self, "_on_campaign_action_requested"))
-	menu_preview_box.add_child(panel)
-	if panel.has_method("set_recap"):
-		panel.call("set_recap", MatchRecapSnapshotScript.new().apply_dictionary(campaign_last_recap).to_ui_dictionary())
-
-
-func _open_campaign_settings_menu() -> void:
-	_show_menu("设置", "调整教学、动画、字体和声音。设置只影响呈现，不改变牌局规则。", not _runtime_session_finished(), false)
-	if menu_preview_box == null:
-		return
-	menu_overlay.call("clear_preview")
-	menu_preview_box.visible = true
-	var panel := PresentationSettingsPanelScene.instantiate() as Control
-	if panel == null or not panel.has_method("set_settings"):
-		_report_required_ui_scene_missing("PresentationSettingsPanel", "set_settings")
-		return
-	if panel.has_signal("action_requested"):
-		panel.connect("action_requested", Callable(self, "_on_presentation_menu_action_requested"))
-	menu_preview_box.add_child(panel)
-	panel.call("set_settings", _presentation_settings_snapshot("campaign"))
-
-
-func _toggle_campaign_teaching_hints() -> void:
-	scenario_teaching_hints_enabled = not scenario_teaching_hints_enabled
-	if not scenario_teaching_hints_enabled:
-		var coordinator := _game_runtime_coordinator_node()
-		if coordinator != null and coordinator.has_method("set_runtime_scenario_coach_closed"):
-			coordinator.call("set_runtime_scenario_coach_closed", true)
-	_save_settings(false)
-	_open_campaign_settings_menu()
-	_sync_runtime_game_screen(true)
-
-
-func _cycle_campaign_animation_intensity() -> void:
-	var values := ["完整", "简化", "关闭"]
-	var idx := values.find(campaign_animation_intensity)
-	campaign_animation_intensity = values[(idx + 1) % values.size()] if idx >= 0 else "完整"
-	_save_settings(false)
-	_open_campaign_settings_menu()
-
-
-func _cycle_campaign_font_scale() -> void:
-	var values := ["小", "中", "大"]
-	var idx := values.find(campaign_font_scale_label)
-	campaign_font_scale_label = values[(idx + 1) % values.size()] if idx >= 0 else "中"
-	_save_settings(false)
-	_open_campaign_settings_menu()
-
-
-func _toggle_campaign_colorblind_assist() -> void:
-	campaign_colorblind_assist_enabled = not campaign_colorblind_assist_enabled
-	_save_settings(false)
-	_open_campaign_settings_menu()
-
-
-func _cycle_campaign_ui_volume() -> void:
-	campaign_ui_volume = (campaign_ui_volume + 20) % 120
-	_save_settings(false)
-	_open_campaign_settings_menu()
-
-
-func _cycle_campaign_bgm_volume() -> void:
-	campaign_bgm_volume = (campaign_bgm_volume + 20) % 120
-	_save_settings(false)
-	_open_campaign_settings_menu()
-
-
-func _reset_campaign_progress() -> void:
-	campaign_completed_chapter_ids = []
-	selected_campaign_chapter_id = ""
-	CampaignSaveScript.new().reset()
-	_open_campaign_menu()
-
-
-func _open_scenario_browser_menu() -> void:
-	_show_menu(
-		"试玩剧本",
-		"选择一个固定局面：练步骤、看日志、复盘关键状态。这里不泄露对手私有信息。",
-		not _runtime_session_finished(),
-		false
-	)
-	if menu_preview_box == null:
-		return
-	menu_overlay.call("clear_preview")
-	menu_preview_box.visible = true
-	_add_scenario_browser_panel(menu_preview_box)
-
-
-func _add_scenario_browser_panel(parent: Container) -> void:
-	var browser := ScenarioBrowserScene.instantiate() as Control
-	if browser == null:
-		return
-	if browser.has_signal("action_requested"):
-		browser.connect("action_requested", Callable(self, "_on_scenario_browser_action_requested"))
-	parent.add_child(browser)
-	if browser.has_method("set_browser"):
-		browser.call("set_browser", _scenario_browser_snapshot())
-
-
-func _scenario_browser_snapshot() -> Dictionary:
-	var coordinator := _game_runtime_coordinator_node()
-	var scenarios: Array = coordinator.call("scenario_catalog") if coordinator != null and coordinator.has_method("scenario_catalog") else []
-	return ScenarioBrowserSnapshotScript.new().apply_dictionary({
-		"scenarios": scenarios,
-		"selected_id": selected_scenario_id,
-		"title": "试玩剧本",
-		"subtitle": "固定局面像桌游练习包：进入、完成目标、看日志、复盘。"
-	}).to_ui_dictionary()
-
-
-func _on_scenario_browser_action_requested(action_id: String) -> void:
-	if action_id.begins_with("scenario_select_"):
-		selected_scenario_id = action_id.substr("scenario_select_".length()).strip_edges()
-		_open_scenario_browser_menu()
-	elif action_id.begins_with("scenario_start_"):
-		var scenario_id := action_id.substr("scenario_start_".length()).strip_edges()
-		if scenario_id == "":
-			scenario_id = selected_scenario_id
-		active_campaign_chapter_id = ""
-		_start_scenario_from_menu(scenario_id)
-	elif action_id == "scenario_restart_last":
-		active_campaign_chapter_id = ""
-		var active_id := _active_runtime_scenario_id()
-		_start_scenario_from_menu(active_id if active_id != "" else selected_scenario_id)
-	elif action_id == "scenario_settings":
-		_open_scenario_settings_menu()
-	elif action_id == "scenario_back":
-		_open_main_menu()
-
-
-func _open_scenario_settings_menu() -> void:
-	_show_menu(
-		"剧本教学设置",
-		"只调整试玩剧本的提示层，不改变牌局规则。",
-		not _runtime_session_finished(),
-		false
-	)
-	if menu_preview_box == null:
-		return
-	menu_overlay.call("clear_preview")
-	menu_preview_box.visible = true
-	var panel := PresentationSettingsPanelScene.instantiate() as Control
-	if panel == null or not panel.has_method("set_settings"):
-		_report_required_ui_scene_missing("PresentationSettingsPanel", "set_settings")
-		return
-	if panel.has_signal("action_requested"):
-		panel.connect("action_requested", Callable(self, "_on_presentation_menu_action_requested"))
-	menu_preview_box.add_child(panel)
-	panel.call("set_settings", _presentation_settings_snapshot("scenario"))
-
-
-func _presentation_settings_snapshot(mode: String) -> Dictionary:
-	if mode == "scenario":
-		return {
-			"mode": "scenario",
-			"mode_label": "剧本辅助",
-			"title": "试玩剧本辅助",
-			"summary": "当前：教学提示%s｜自动暂停%s｜提示字号%d%%。" % [
-				"开启" if scenario_teaching_hints_enabled else "关闭",
-				"开启" if scenario_auto_pause_prompts_enabled else "关闭",
-				scenario_font_scale_percent,
-			],
-			"privacy_text": "这里只显示桌面提示，不显示对手私密计划、评分或私有手牌。",
-			"actions": [
-				{"id": "scenario_toggle_teaching_hints", "label": "教学提示：%s" % ("开" if scenario_teaching_hints_enabled else "关"), "tooltip": "关闭后，牌桌上的剧本目标教练不再自动出现；可以从剧本页重新打开。"},
-				{"id": "scenario_toggle_auto_pause", "label": "自动暂停提示：%s" % ("开" if scenario_auto_pause_prompts_enabled else "关"), "tooltip": "打开时，关键教学节点可短暂停住桌面；当前只保存你的偏好。"},
-				{"id": "scenario_cycle_font_scale", "label": "提示字号：%d%%" % scenario_font_scale_percent, "tooltip": "循环90%、100%、110%、125%，只放大剧本提示文字。"},
-				{"id": "scenario_settings_back", "label": "返回剧本库", "tooltip": "回到固定试玩剧本选择。"},
-			],
-		}
-	return {
-		"mode": "campaign",
-		"mode_label": "战役呈现",
-		"title": "可访问性与教学",
-		"summary": "教学提示%s｜动画%s｜字体%s｜色盲辅助%s｜UI音效%d｜BGM%d" % [
-			"开" if scenario_teaching_hints_enabled else "关",
-			campaign_animation_intensity,
-			campaign_font_scale_label,
-			"开" if campaign_colorblind_assist_enabled else "关",
-			campaign_ui_volume,
-			campaign_bgm_volume,
-		],
-		"privacy_text": "设置只影响呈现，不改变牌局规则、结算、AI或隐私边界。",
-		"actions": [
-			{"id": "campaign_toggle_teaching_hints", "label": "教学提示：%s" % ("开" if scenario_teaching_hints_enabled else "关"), "tooltip": "开关战役与剧本的桌面教学提示。"},
-			{"id": "campaign_cycle_animation_intensity", "label": "动画：%s" % campaign_animation_intensity, "tooltip": "循环完整、简化和关闭三档呈现动画。"},
-			{"id": "campaign_cycle_font_scale", "label": "字体：%s" % campaign_font_scale_label, "tooltip": "循环小、中、大三档战役字体。"},
-			{"id": "campaign_toggle_colorblind", "label": "色盲辅助：%s" % ("开" if campaign_colorblind_assist_enabled else "关"), "tooltip": "切换额外的非颜色信息提示。"},
-			{"id": "campaign_cycle_ui_volume", "label": "UI音效：%d" % campaign_ui_volume, "tooltip": "循环界面音效音量。"},
-			{"id": "campaign_cycle_bgm_volume", "label": "BGM：%d" % campaign_bgm_volume, "tooltip": "循环背景音乐音量。"},
-			{"id": "campaign_reset_progress", "label": "重置教程进度", "tooltip": "清除战役教程进度并回到战役入口。"},
-			{"id": "campaign_settings_back", "label": "返回战役", "tooltip": "返回新手战役地图。"},
-		],
-	}
-
-
-func _on_presentation_menu_action_requested(action_id: String) -> void:
-	match action_id:
-		"campaign_toggle_teaching_hints":
-			_toggle_campaign_teaching_hints()
-		"campaign_cycle_animation_intensity":
-			_cycle_campaign_animation_intensity()
-		"campaign_cycle_font_scale":
-			_cycle_campaign_font_scale()
-		"campaign_toggle_colorblind":
-			_toggle_campaign_colorblind_assist()
-		"campaign_cycle_ui_volume":
-			_cycle_campaign_ui_volume()
-		"campaign_cycle_bgm_volume":
-			_cycle_campaign_bgm_volume()
-		"campaign_reset_progress":
-			_reset_campaign_progress()
-		"campaign_settings_back":
-			_open_campaign_menu()
-		"scenario_toggle_teaching_hints":
-			_toggle_scenario_teaching_hints()
-		"scenario_toggle_auto_pause":
-			_toggle_scenario_auto_pause_prompts()
-		"scenario_cycle_font_scale":
-			_cycle_scenario_font_scale_percent()
-		"scenario_settings_back":
-			_open_scenario_browser_menu()
-		"scenario_pause_restart":
-			_restart_active_scenario_from_pause()
-		"scenario_pause_choose":
-			if active_campaign_chapter_id != "" or not campaign_last_recap.is_empty():
-				_open_campaign_menu()
-			else:
-				_open_scenario_browser_menu()
-		"scenario_pause_log":
-			_open_scenario_action_log_menu()
-		"scenario_pause_replay":
-			if active_campaign_chapter_id != "" or not campaign_last_recap.is_empty():
-				_open_campaign_recap_menu()
-			else:
-				_open_scenario_replay_menu()
-		"scenario_pause_settings":
-			_open_scenario_settings_menu()
-
-
-func _toggle_scenario_teaching_hints() -> void:
-	scenario_teaching_hints_enabled = not scenario_teaching_hints_enabled
-	if not scenario_teaching_hints_enabled:
-		var coordinator := _game_runtime_coordinator_node()
-		if coordinator != null and coordinator.has_method("set_runtime_scenario_coach_closed"):
-			coordinator.call("set_runtime_scenario_coach_closed", true)
-	_save_settings(false)
-	_open_scenario_settings_menu()
-	_sync_runtime_game_screen(true)
-
-
-func _toggle_scenario_auto_pause_prompts() -> void:
-	scenario_auto_pause_prompts_enabled = not scenario_auto_pause_prompts_enabled
-	_save_settings(false)
-	_open_scenario_settings_menu()
-
-
-func _cycle_scenario_font_scale_percent() -> void:
-	var values := [90, 100, 110, 125]
-	var current_index := values.find(scenario_font_scale_percent)
-	scenario_font_scale_percent = int(values[(current_index + 1) % values.size()]) if current_index >= 0 else 100
-	_save_settings(false)
-	_open_scenario_settings_menu()
-	_sync_runtime_game_screen(true)
-
-
-func _start_scenario_from_menu(scenario_id: String) -> void:
-	var coordinator := _game_runtime_coordinator_node()
-	var scenario: Dictionary = coordinator.call("scenario_definition", scenario_id) if coordinator != null and coordinator.has_method("scenario_definition") else {}
-	if scenario.is_empty():
-		_log("试玩剧本无法加载：%s。" % scenario_id)
-		return
-	var start_result: Dictionary = coordinator.call("start_runtime_scenario", scenario_id, 0.0) if coordinator.has_method("start_runtime_scenario") else {}
-	if not bool(start_result.get("started", false)):
-		_log("试玩剧本运行时无法启动：%s。" % scenario_id)
-		return
-	selected_scenario_id = scenario_id
-	campaign_completion_pending_chapter_id = ""
-	runtime_visual_events = []
-	runtime_visual_event_key = ""
-	configured_player_count = clampi(int(scenario.get("player_count", 4)), 3, 8)
-	configured_ai_player_count = clampi(int(scenario.get("ai_count", 3)), 2, 7)
-	_ensure_configured_ai_player_count()
-	_ensure_configured_role_indices()
-	_ensure_configured_starter_monster_indices()
-	_new_game()
-	_record_scenario_action("start", "开始剧本：%s" % str(scenario.get("title", scenario_id)), "", "scenario:%s" % scenario_id, "start", "scenario_coach")
-	_close_menu()
-	_sync_runtime_game_screen(true)
-
-
-func start_first_mission_runtime() -> void:
-	active_campaign_chapter_id = ""
-	_apply_recommended_first_run_setup()
-	_start_scenario_from_menu("first_table")
-
-
-func _record_scenario_action(phase_id: String, public_text: String, private_text: String = "", developer_text: String = "", snapshot_key: String = "", focus_target: String = "") -> void:
-	var coordinator := _game_runtime_coordinator_node()
-	if _active_runtime_scenario_id() == "" or coordinator == null or not coordinator.has_method("record_runtime_scenario_action"):
-		return
-	coordinator.call("record_runtime_scenario_action", {
-		"time": _format_time(game_time),
-		"phase_id": phase_id,
-		"public_text": public_text,
-		"private_text": private_text,
-		"developer_text": developer_text,
-		"viewer_index": selected_player,
-		"snapshot_key": snapshot_key,
-		"focus_target": focus_target,
-	})
-
-
-func _complete_scenario_signal(signal_id: String, public_text: String, snapshot_key: String = "", focus_target: String = "") -> bool:
-	signal_id = signal_id.strip_edges()
-	var coordinator := _game_runtime_coordinator_node()
-	if coordinator == null or not coordinator.has_method("complete_runtime_scenario_signal") or signal_id == "":
-		return false
-	var result: Dictionary = coordinator.call("complete_runtime_scenario_signal", signal_id, {
-		"time": _format_time(game_time),
-		"public_text": public_text,
-		"private_text": "",
-		"developer_text": "signal:%s" % signal_id,
-		"viewer_index": selected_player,
-		"snapshot_key": snapshot_key,
-		"focus_target": focus_target,
-	}, game_time)
-	if not bool(result.get("accepted", false)):
-		return false
-	var visual_request: Dictionary = result.get("visual_event_request", {})
-	var events: Array = visual_request.get("events", []) if visual_request.get("events", []) is Array else []
-	if not events.is_empty():
-		runtime_visual_event_counter += 1
-		runtime_visual_events = events.duplicate(true)
-		runtime_visual_event_key = "%s:%s:%s:%d" % [str(visual_request.get("scenario_id", "")), str(visual_request.get("snapshot_key", "start")), signal_id, runtime_visual_event_counter]
-	_sync_runtime_game_screen(true)
-	_maybe_finish_campaign_chapter_from_signals()
-	return true
-
-
-func _queue_scenario_visual_events(scenario_id: String, snapshot_key: String, trigger_id: String = "") -> void:
-	if scenario_id.strip_edges() == "":
-		return
-	var coordinator := _game_runtime_coordinator_node()
-	if coordinator == null or not coordinator.has_method("build_runtime_scenario_visual_event_request"):
-		return
-	var request: Dictionary = coordinator.call("build_runtime_scenario_visual_event_request", scenario_id, snapshot_key, trigger_id)
-	var events: Array = request.get("events", []) if request.get("events", []) is Array else []
-	if events.is_empty():
-		return
-	runtime_visual_event_counter += 1
-	runtime_visual_events = events.duplicate(true)
-	runtime_visual_event_key = "%s:%s:%s:%d" % [str(request.get("scenario_id", scenario_id)), str(request.get("snapshot_key", snapshot_key)), trigger_id, runtime_visual_event_counter]
-
-
-func _runtime_scenario_coach_snapshot_source(player_index: int) -> Dictionary:
-	var scenario_id := _active_runtime_scenario_id()
-	if scenario_id == "" or player_index < 0 or player_index >= players.size():
-		return {}
-	var coordinator := _game_runtime_coordinator_node()
-	var progress: Dictionary = coordinator.call("runtime_scenario_progress", game_time) if coordinator != null and coordinator.has_method("runtime_scenario_progress") else {}
-	if progress.is_empty():
-		return {}
-	var phase: Dictionary = progress.get("current_phase", {}) if progress.get("current_phase", {}) is Dictionary else {}
-	if scenario_id == "first_table":
-		var authored_content := _first_table_runtime_content_snapshot(player_index)
-		var scenario_state := _runtime_scenario_state()
-		progress["authored_content"] = authored_content
-		progress["pacing"] = coordinator.call("first_table_evaluate_pacing", scenario_state) if coordinator != null and coordinator.has_method("first_table_evaluate_pacing") else {}
-		progress["completion_summary"] = str(coordinator.call("first_table_completion_summary", authored_content)) if coordinator != null and coordinator.has_method("first_table_completion_summary") else ""
-		progress["completion_label"] = str(coordinator.call("first_table_completion_label", authored_content)) if coordinator != null and coordinator.has_method("first_table_completion_label") else ""
-		if not phase.is_empty():
-			var contextual_variant: Variant = coordinator.call("first_table_contextualize_phase", phase, authored_content) if coordinator != null and coordinator.has_method("first_table_contextualize_phase") else {}
-			if contextual_variant is Dictionary and not (contextual_variant as Dictionary).is_empty():
-				phase = (contextual_variant as Dictionary).duplicate(true)
-			progress["current_phase"] = phase
-	if active_campaign_chapter_id != "":
-		var chapter := _campaign_chapter_by_id(active_campaign_chapter_id)
-		progress["campaign_id"] = active_campaign_id
-		progress["chapter_id"] = active_campaign_chapter_id
-		progress["title"] = "新手战役｜%s" % str(chapter.get("title", progress.get("title", "当前关卡")))
-	progress["visible"] = scenario_teaching_hints_enabled
-	progress["primary_action_id"] = "scenario_step_%s" % str(phase.get("id", "done"))
-	progress["font_scale_percent"] = scenario_font_scale_percent
-	progress["campaign_focus_mode"] = _runtime_campaign_focus_mode()
-	return progress
-
-
-func _activate_scenario_action(action_id: String) -> bool:
-	var scenario_id := _active_runtime_scenario_id()
-	if scenario_id == "":
-		return false
-	var coordinator := _game_runtime_coordinator_node()
-	var progress: Dictionary = coordinator.call("runtime_scenario_progress", game_time) if coordinator != null and coordinator.has_method("runtime_scenario_progress") else {}
-	var phase: Dictionary = progress.get("current_phase", {}) if progress.get("current_phase", {}) is Dictionary else {}
-	if action_id == "scenario_reopen_coach":
-		coordinator.call("set_runtime_scenario_coach_closed", false)
-		_sync_runtime_game_screen(true)
-		return true
-	if action_id == "scenario_close_coach":
-		coordinator.call("set_runtime_scenario_coach_closed", true)
-		_sync_runtime_game_screen(true)
-		return true
-	if action_id == "scenario_hint":
-		_record_scenario_help_request(phase, "查看剧本提示")
-		_sync_runtime_game_screen(true)
-		return true
-	if action_id == "scenario_restart":
-		_start_scenario_from_menu(scenario_id)
-		return true
-	if action_id == "scenario_focus_target":
-		_record_scenario_help_request(phase, "定位剧本目标：%s" % str(phase.get("label", "目标")))
-		_focus_scenario_phase_target(phase)
-		_sync_runtime_game_screen(true)
-		return true
-	if action_id.begins_with("scenario_step_"):
-		return _activate_scenario_step_action(phase, action_id)
-	return false
-
-
-func _activate_scenario_step_action(phase: Dictionary, action_id: String) -> bool:
-	var phase_id := str(phase.get("id", action_id.replace("scenario_step_", ""))).strip_edges()
-	match phase_id:
-		"buy_development":
-			return _activate_first_run_coach_action("coach_buy_card")
-		"play_development":
-			return _activate_first_run_coach_action("coach_play_card")
-		"establish_project":
-			return _activate_first_run_coach_action("coach_inspect_track")
-		"check_economy":
-			return _activate_first_run_coach_action("coach_check_economy")
-		"buy_followup":
-			return _activate_first_run_coach_action("coach_buy_card")
-		"play_followup":
-			return _activate_first_run_coach_action("coach_play_card")
-		"observe_ai_public_action":
-			return _activate_first_run_coach_action("coach_observe_ai_public_action")
-		"inspect_clues":
-			return _activate_first_run_coach_action("coach_inspect_clues")
-		"inspect_monster_pressure":
-			return _activate_first_run_coach_action("coach_inspect_monster_pressure")
-		"choose_route":
-			return _activate_first_run_coach_action("coach_choose_route_growth")
-		"open_rack":
-			var district_index := selected_district
-			if district_index < 0 or district_index >= districts.size():
-				district_index = _first_run_recommended_start_district(_runtime_snapshot_player_index())
-			if district_index >= 0:
-				_open_district_supply_from_map(district_index)
-				return true
-		"compare_cards":
-			if not _district_supply_is_open():
-				_activate_scenario_step_action({"id": "open_rack"}, "scenario_step_open_rack")
-			var context_district := _active_district_card_context()
-			var choices := _district_supply_card_ids(context_district)
-			for card_variant in choices:
-				var card_name := str(card_variant)
-				if _game_runtime_coordinator_node().card_exists(card_name):
-					_preview_district_card(card_name, true)
-					return true
-		"buy_pressure", "buy_card":
-			return _activate_first_run_coach_action("coach_buy_card")
-		"select_track_card":
-			var resolution_id := _first_public_track_resolution_id()
-			if resolution_id >= 0:
-				_select_card_resolution_track_entry(resolution_id)
-				_mark_first_run_coach_public_track_seen(_runtime_snapshot_player_index())
-				return true
-		"read_inspector":
-			if selected_card_resolution_id < 0:
-				var track_resolution_id := _first_public_track_resolution_id()
-				if track_resolution_id >= 0:
-					_select_card_resolution_track_entry(track_resolution_id)
-			return _complete_scenario_signal("inspector_read", "查看右侧详情：只读公开条件和线索。", "after_track", "right_inspector")
-		"open_card_detail":
-			var card_surfaces := _runtime_card_surfaces_snapshot()
-			var entries: Array = card_surfaces.get("card_track", []) if card_surfaces.get("card_track", []) is Array else []
-			var selected_entry := {}
-			for entry_variant in entries:
-				if entry_variant is Dictionary and int((entry_variant as Dictionary).get("resolution_id", -1)) == selected_card_resolution_id:
-					selected_entry = entry_variant as Dictionary
-					break
-			var card_name := str(selected_entry.get("card_name", "")).strip_edges()
-			if card_name == "":
-				for entry_variant in entries:
-					if entry_variant is Dictionary:
-						card_name = str((entry_variant as Dictionary).get("card_name", "")).strip_edges()
-						if card_name != "":
-							break
-			if card_name != "":
-				_open_card_codex_by_name(card_name)
-				return true
-		"read_bid_board":
-			return _complete_scenario_signal("bid_board_read", "查看牌组确认板：本阶段状态、本批和下批都在底部。", "batch_ready", "bid_board")
-	_record_scenario_help_request(phase, "定位剧本目标：%s" % str(phase.get("label", "目标")))
-	_focus_scenario_phase_target(phase)
-	_sync_runtime_game_screen(true)
-	return true
-
-
-func _focus_scenario_phase_target(phase: Dictionary) -> bool:
-	var focus_target := str(phase.get("focus_target", "scenario_coach")).strip_edges()
-	var phase_id := str(phase.get("id", "")).strip_edges()
-	var player_index := _runtime_snapshot_player_index()
-	var handled := false
-	match phase_id:
-		"open_rack", "compare_cards", "buy_pressure", "buy_card", "discard_private":
-			handled = _focus_scenario_district_supply(player_index)
-		"select_track_card", "select_anonymous_card":
-			handled = _focus_scenario_public_track()
-		"read_inspector", "open_card_detail":
-			handled = _focus_scenario_right_inspector(player_index)
-		"read_bid_board":
-			handled = _focus_scenario_bid_board()
-		"open_intel", "mark_guess":
-			_open_intel_dossier_menu()
-			handled = true
-		"inspect_city_gdp", "inspect_goods":
-			handled = _focus_scenario_right_inspector(player_index)
-		"open_economy":
-			_open_economy_overview_menu()
-			handled = true
-		"open_standings":
-			_open_standings_menu()
-			handled = true
-		"route_delta":
-			handled = _focus_scenario_map_layer("route", player_index)
-		"offer_contract":
-			handled = _focus_scenario_map_layer("route", player_index)
-	if handled:
-		return true
-	match focus_target:
-		"planet":
-			return _focus_scenario_map_layer("monster" if phase_id == "inspect_monster" else "all", player_index)
-		"district_supply", "private_decision":
-			return _focus_scenario_district_supply(player_index)
-		"public_track":
-			return _focus_scenario_public_track()
-		"right_inspector":
-			return _focus_scenario_right_inspector(player_index)
-		"bid_board":
-			return _focus_scenario_bid_board()
-		"intel_dossier":
-			_open_intel_dossier_menu()
-			return true
-		"economy_overview":
-			_open_economy_overview_menu()
-			return true
-		"standings":
-			_open_standings_menu()
-			return true
-		"route_layer":
-			return _focus_scenario_map_layer("route", player_index)
-		"contract_prompt":
-			return _focus_scenario_map_layer("route", player_index)
-		"top_bar", "player_hand", "action_dock", "scenario_coach":
-			return true
-	return false
-
-
-func _focus_scenario_district_supply(player_index: int) -> bool:
-	var district_index := _first_buyable_district_for_player(player_index)
-	if district_index < 0 and _district_supply_is_open():
-		district_index = district_supply_open_district
-	if district_index < 0 and selected_district >= 0 and selected_district < districts.size():
-		district_index = selected_district
-	if district_index < 0:
-		district_index = _first_run_recommended_start_district(player_index)
-	if district_index < 0 or district_index >= districts.size():
-		return false
-	selected_player = player_index
-	_open_district_supply_from_map(district_index)
-	return true
-
-
-func _focus_scenario_public_track() -> bool:
-	var resolution_id := _first_public_track_resolution_id()
-	if resolution_id < 0:
-		return false
-	_focus_card_resolution_track_entry(resolution_id)
-	return true
-
-
-func _focus_scenario_right_inspector(player_index: int) -> bool:
-	var handled := _focus_scenario_public_track()
-	if handled:
-		return true
-	var district_index := selected_district
-	if district_index < 0 or district_index >= districts.size():
-		district_index = _first_run_recommended_start_district(player_index)
-	if district_index >= 0 and district_index < districts.size():
-		_jump_to_district_on_table(district_index)
-		return true
-	return false
-
-
-func _focus_scenario_bid_board() -> bool:
-	_focus_scenario_public_track()
-	return true
-
-
-func _focus_scenario_map_layer(layer_id: String, player_index: int) -> bool:
-	var district_index := selected_district
-	if district_index < 0 or district_index >= districts.size():
-		district_index = _first_run_recommended_start_district(player_index)
-	if district_index >= 0 and district_index < districts.size():
-		_jump_to_district_on_table(district_index)
-	_set_map_layer_focus(layer_id)
-	return true
-
-
-func _record_scenario_help_request(phase: Dictionary, public_text: String) -> void:
-	var phase_id := str(phase.get("id", "hint")).strip_edges()
-	if phase_id == "":
-		phase_id = "hint"
-	var coordinator := _game_runtime_coordinator_node()
-	if coordinator == null or not coordinator.has_method("record_runtime_scenario_failed_attempt"):
-		return
-	var snapshot_key := str(phase.get("snapshot_key", _runtime_scenario_state().get("active_snapshot_key", "start")))
-	coordinator.call("record_runtime_scenario_failed_attempt", phase_id, {
-		"time": _format_time(game_time),
-		"public_text": public_text,
-		"private_text": str(phase.get("stuck_hint", phase.get("detail", phase.get("goal", "")))),
-		"developer_text": "",
-		"viewer_index": selected_player,
-		"snapshot_key": snapshot_key,
-		"focus_target": str(phase.get("focus_target", "scenario_coach")),
-	}, game_time)
-
-
-func _open_scenario_action_log_menu() -> void:
-	_show_menu("剧本行动日志", "只显示公开记录和当前玩家自己的私密记录；隐藏资料不会出现在这里。", not _runtime_session_finished(), false)
-	if menu_preview_box == null:
-		return
-	menu_overlay.call("clear_preview")
-	menu_preview_box.visible = true
-	var panel := ScenarioActionLogScene.instantiate() as Control
-	menu_preview_box.add_child(panel)
-	if panel.has_method("set_log"):
-		var scenario_state := _runtime_scenario_state()
-		panel.call("set_log", ScenarioActionLogSnapshotScript.new().apply_dictionary({
-			"scenario_id": str(scenario_state.get("active_scenario_id", "")),
-			"title": "剧本行动日志",
-			"viewer_index": selected_player,
-			"entries": scenario_state.get("action_log_entries", []),
-			"include_developer": false,
-		}).to_ui_dictionary())
-
-
-func _open_scenario_replay_menu() -> void:
-	_show_menu("剧本复盘", "轻量复盘：点击关键节点会重新打开该剧本局面。", not _runtime_session_finished(), false)
-	if menu_preview_box == null:
-		return
-	menu_overlay.call("clear_preview")
-	menu_preview_box.visible = true
-	var scenario_state := _runtime_scenario_state()
-	var fixture: Dictionary = ScenarioFixtureFactoryScript.new().make_fixture(str(scenario_state.get("active_scenario_id", "")), str(scenario_state.get("active_snapshot_key", "start")))
-	var panel := ScenarioReplayPanelScene.instantiate() as Control
-	if panel.has_signal("action_requested"):
-		panel.connect("action_requested", Callable(self, "_on_scenario_replay_action_requested"))
-	menu_preview_box.add_child(panel)
-	if panel.has_method("set_replay"):
-		panel.call("set_replay", ScenarioReplayPanelSnapshotScript.new().apply_dictionary(fixture.get("replay", {}) as Dictionary).to_ui_dictionary())
-
-
-func _on_scenario_replay_action_requested(action_id: String) -> void:
-	if action_id.begins_with("scenario_replay_"):
-		var snapshot_key := action_id.substr("scenario_replay_".length()).strip_edges()
-		var coordinator := _game_runtime_coordinator_node()
-		if coordinator != null and coordinator.has_method("set_runtime_scenario_snapshot_key"):
-			coordinator.call("set_runtime_scenario_snapshot_key", snapshot_key)
-		_record_scenario_action("replay", "复盘跳到关键节点：%s" % snapshot_key, "", "fixture_reload", snapshot_key, "scenario_replay")
-		_open_scenario_replay_menu()
 
 func _populate_pause_menu_summary_cards() -> void:
 	_show_menu_summary_cards([
@@ -4216,39 +3049,6 @@ func _populate_pause_menu_summary_cards() -> void:
 			"accent": Color("#94a3b8"),
 		},
 	], "暂停速览｜先决定继续、复查、查资料还是重开")
-	if _active_runtime_scenario_id() != "" and menu_preview_box != null:
-		_add_scenario_pause_actions_panel(menu_preview_box)
-
-
-func _add_scenario_pause_actions_panel(parent: Container) -> void:
-	var in_campaign := active_campaign_chapter_id != "" or not campaign_last_recap.is_empty()
-	var panel := ScenarioPauseActionsPanelScene.instantiate() as Control
-	if panel == null or not panel.has_method("set_pause_actions"):
-		_report_required_ui_scene_missing("ScenarioPauseActionsPanel", "set_pause_actions")
-		return
-	if panel.has_signal("action_requested"):
-		panel.connect("action_requested", Callable(self, "_on_presentation_menu_action_requested"))
-	parent.add_child(panel)
-	menu_regular_buttons.append(panel)
-	panel.call("set_pause_actions", {
-		"in_campaign": in_campaign,
-		"mode_label": "战役关卡" if in_campaign else "试玩剧本",
-		"title": "新手战役" if in_campaign else "试玩剧本",
-		"detail": "当前关卡可重开、返回战役、查看日志或复盘。" if in_campaign else "当前剧本可重开、返回选择页或查看行动日志。",
-		"actions": [
-			{"id": "scenario_pause_restart", "label": "重开本关" if in_campaign else "重开本剧本", "tooltip": "重新进入当前剧本的起点局面。"},
-			{"id": "scenario_pause_choose", "label": "返回战役" if in_campaign else "返回剧本选择", "tooltip": "回到新手战役地图。" if in_campaign else "回到试玩剧本库。"},
-			{"id": "scenario_pause_log", "label": "查看行动日志", "tooltip": "只显示公开记录和当前玩家私密记录。"},
-			{"id": "scenario_pause_replay", "label": "查看复盘" if in_campaign else "复盘快照", "tooltip": "打开战役复盘。" if in_campaign else "打开关键节点快照，不做完整时间回滚。"},
-			{"id": "scenario_pause_settings", "label": "教学设置", "tooltip": "开关剧本提示、自动暂停偏好和提示字号。"},
-		],
-	})
-
-
-func _restart_active_scenario_from_pause() -> void:
-	var scenario_id := _active_runtime_scenario_id()
-	if scenario_id != "":
-		_start_scenario_from_menu(scenario_id)
 
 
 func _open_rules_menu() -> void:
@@ -4272,7 +3072,6 @@ func _open_standings_menu() -> void:
 
 
 func _open_economy_overview_menu() -> void:
-	_mark_opening_guide_economy_seen(selected_player)
 	var snapshot := _economy_dashboard_public_snapshot()
 	_show_menu("经济总览", String(snapshot.get("summary_text", "还没有当前局经济数据。")), not _runtime_session_finished())
 	_populate_economy_overview_summary_cards(snapshot)
@@ -6177,8 +4976,6 @@ func _open_card_codex_by_name(card_name: String) -> void:
 		_codex_navigation_controller_node().card_codex_grid_page = _codex_page_for_index(_codex_navigation_controller_node().card_codex_index, _card_codex_names().size(), _card_codex_cards_per_page())
 		_codex_navigation_controller_node().previewed_card_codex_card = String(names[_codex_navigation_controller_node().card_codex_index])
 	_update_card_codex_menu()
-	if _codex_navigation_controller_node().card_codex_show_detail:
-		_complete_scenario_signal("card_detail_opened", "打开卡牌详情：%s。" % _card_display_name(_codex_navigation_controller_node().previewed_card_codex_card), "after_track", "right_inspector")
 
 
 func _open_role_codex_menu(index: int = -1) -> void:
@@ -7429,9 +6226,7 @@ func _new_game_setup_summary_chip_snapshots() -> Array:
 
 
 func _on_new_game_setup_action_requested(action_id: String) -> void:
-	if action_id == "setup_recommended":
-		_apply_recommended_first_run_setup_from_menu()
-	elif action_id == "setup_start":
+	if action_id == "setup_start":
 		_confirm_start_new_run_from_setup()
 	elif action_id == "setup_back":
 		_open_main_menu()
@@ -7454,11 +6249,6 @@ func _on_new_game_setup_action_requested(action_id: String) -> void:
 		var values := action_id.substr("setup_monster_step_".length()).split("_", false, 1)
 		if values.size() == 2:
 			_cycle_configured_starter_monster_for_player_from_new_game_menu(int(values[0]), int(values[1]))
-
-
-func _apply_recommended_first_run_setup_from_menu() -> void:
-	_apply_recommended_first_run_setup()
-	_open_new_game_setup_menu()
 
 
 func _new_game_setup_lobby_snapshot() -> Dictionary:
@@ -7843,15 +6633,6 @@ func _apply_run_domain_state_compatibility_adapter(state: Dictionary) -> int:
 	runtime_controller.call("apply_save_data", controller_state)
 	resolved_card_history = (state.get("resolved_card_history", []) as Array).duplicate(true)
 	selected_card_resolution_id = int(state.get("selected_card_resolution_id", -1))
-	opening_guide_dismissed = bool(state.get("opening_guide_dismissed", false))
-	opening_guide_economy_seen_players = (state.get("opening_guide_economy_seen_players", {}) as Dictionary).duplicate(true)
-	first_run_coach_district_seen_players = (state.get("first_run_coach_district_seen_players", {}) as Dictionary).duplicate(true)
-	first_run_coach_supply_seen_players = (state.get("first_run_coach_supply_seen_players", {}) as Dictionary).duplicate(true)
-	first_run_coach_public_track_seen_players = (state.get("first_run_coach_public_track_seen_players", {}) as Dictionary).duplicate(true)
-	first_run_coach_ai_public_action_seen_players = (state.get("first_run_coach_ai_public_action_seen_players", {}) as Dictionary).duplicate(true)
-	first_run_coach_monster_pressure_seen_players = (state.get("first_run_coach_monster_pressure_seen_players", {}) as Dictionary).duplicate(true)
-	first_run_coach_route_choice_players = (state.get("first_run_coach_route_choice_players", {}) as Dictionary).duplicate(true)
-	first_run_coach_clues_seen_players = (state.get("first_run_coach_clues_seen_players", {}) as Dictionary).duplicate(true)
 	configured_player_count = clampi(int(state.get("configured_player_count", DEFAULT_PLAYER_COUNT)), MIN_PLAYER_COUNT, MAX_PLAYER_COUNT)
 	configured_ai_player_count = int(state.get("configured_ai_player_count", min(DEFAULT_AI_PLAYER_COUNT, configured_player_count - 1)))
 	_ensure_configured_ai_player_count()
@@ -7956,14 +6737,6 @@ func _save_settings(show_log: bool) -> void:
 	config.set_value("setup", "roguelike_depth", configured_roguelike_depth)
 	config.set_value("setup", "role_indices", configured_role_indices)
 	config.set_value("setup", "starter_monster_indices", configured_starter_monster_indices)
-	config.set_value("scenario", "teaching_hints_enabled", scenario_teaching_hints_enabled)
-	config.set_value("scenario", "auto_pause_prompts_enabled", scenario_auto_pause_prompts_enabled)
-	config.set_value("scenario", "font_scale_percent", scenario_font_scale_percent)
-	config.set_value("campaign", "animation_intensity", campaign_animation_intensity)
-	config.set_value("campaign", "font_scale_label", campaign_font_scale_label)
-	config.set_value("campaign", "colorblind_assist_enabled", campaign_colorblind_assist_enabled)
-	config.set_value("campaign", "ui_volume", campaign_ui_volume)
-	config.set_value("campaign", "bgm_volume", campaign_bgm_volume)
 	var err: int = config.save(SETTINGS_PATH)
 	if not show_log:
 		return
@@ -7994,14 +6767,6 @@ func _load_settings() -> void:
 	var saved_starter_monster_indices: Variant = config.get_value("setup", "starter_monster_indices", [])
 	configured_starter_monster_indices = (saved_starter_monster_indices as Array).duplicate(true) if saved_starter_monster_indices is Array else []
 	_ensure_configured_starter_monster_indices()
-	scenario_teaching_hints_enabled = bool(config.get_value("scenario", "teaching_hints_enabled", true))
-	scenario_auto_pause_prompts_enabled = bool(config.get_value("scenario", "auto_pause_prompts_enabled", true))
-	scenario_font_scale_percent = clampi(int(config.get_value("scenario", "font_scale_percent", 100)), 90, 125)
-	campaign_animation_intensity = str(config.get_value("campaign", "animation_intensity", "完整"))
-	campaign_font_scale_label = str(config.get_value("campaign", "font_scale_label", "中"))
-	campaign_colorblind_assist_enabled = bool(config.get_value("campaign", "colorblind_assist_enabled", false))
-	campaign_ui_volume = clampi(int(config.get_value("campaign", "ui_volume", 80)), 0, 100)
-	campaign_bgm_volume = clampi(int(config.get_value("campaign", "bgm_volume", 60)), 0, 100)
 
 
 func _roguelike_depth_label(depth: int = -1) -> String:
@@ -8525,15 +7290,6 @@ func _new_game() -> void:
 	card_resolution_visual_stage = -1
 	resolved_card_history = []
 	selected_card_resolution_id = -1
-	opening_guide_dismissed = false
-	opening_guide_economy_seen_players = {}
-	first_run_coach_district_seen_players = {}
-	first_run_coach_supply_seen_players = {}
-	first_run_coach_public_track_seen_players = {}
-	first_run_coach_ai_public_action_seen_players = {}
-	first_run_coach_monster_pressure_seen_players = {}
-	first_run_coach_route_choice_players = {}
-	first_run_coach_clues_seen_players = {}
 	_product_market_runtime_call("reset_state")
 	_city_gdp_derivative_runtime_call("reset_state")
 	skill_market = _monster_market_skills()
@@ -8613,13 +7369,6 @@ func _new_game() -> void:
 		})
 	_ai_runtime_call("_ensure_player_ai_state")
 
-	if _active_runtime_scenario_id() == "first_table" and coordinator != null and coordinator.has_method("first_table_fixture_snapshot"):
-		var first_table_fixture_variant: Variant = coordinator.call("first_table_fixture_snapshot")
-		var first_table_fixture: Dictionary = first_table_fixture_variant if first_table_fixture_variant is Dictionary else {}
-		var authored_map_seed: Variant = first_table_fixture.get("map_seed", -1)
-		var authored_map_seed_value := int(authored_map_seed) if authored_map_seed is int or authored_map_seed is float else -1
-		if authored_map_seed_value >= 0 and is_equal_approx(float(authored_map_seed), float(authored_map_seed_value)):
-			rng.seed = authored_map_seed_value
 	_generate_roguelike_districts()
 	_initialize_region_infrastructure_runtime()
 	if coordinator == null or not coordinator.has_method("refresh_v06_production_player_bindings"):
@@ -8670,7 +7419,7 @@ func _new_game() -> void:
 	_log("本局地图：%.0fm×%.0fm球面投影星球，生成%d个随机陆海区域。" % [map_width_m, map_height_m, districts.size()])
 	_log("本局区域牌架从统一合法牌池确定性随机抽取；购买花钱，I级牌大多可直接打出，高阶牌检查地区GDP份额。每个区域提供%d个随机挂牌。" % DISTRICT_CARD_CHOICE_MAX)
 	if coordinator != null and coordinator.has_method("begin_session"):
-		var scenario_id := _active_runtime_scenario_id()
+		var scenario_id := ""
 		coordinator.call("begin_session", {
 			"scenario_id": scenario_id,
 			"ruleset_id": "v0.4",
@@ -8789,7 +7538,6 @@ func _play_v06_runtime_card_for_player(player_index: int, slot_index: int) -> bo
 		if succeeded:
 			if _district_supply_is_open():
 				_close_district_supply_overlay()
-			_complete_scenario_signal("card_played", "打出城市设施牌。", "after_play", "public_track")
 		return succeeded
 	var authoritative_instance_id := ""
 	var authoritative_slot_index := -1
@@ -8833,7 +7581,6 @@ func _play_v06_runtime_card_for_player(player_index: int, slot_index: int) -> bo
 				"resolved",
 				"已打出%s｜现役卡牌事务已完成。" % label
 			)
-		_complete_scenario_signal("card_played", "打出卡牌：%s。" % label, "after_play", "public_track")
 		return true
 	var reason := str(feedback.get("reason", effect_finalization.get("reason_code", result.get("reason_code", "这张牌当前没有生效。"))))
 	var next_step := str(feedback.get("next_step", "请检查目标与当前状态后重试。"))
@@ -9186,14 +7933,11 @@ func _runtime_table_viewmodel_source() -> Dictionary:
 	var action_entries: Array = _runtime_snapshot_action_entries(player_index)
 	var logs: Array = _runtime_public_log_snapshot()
 	var table_source := {
-		"campaign_focus_mode": _runtime_campaign_focus_mode(),
 		"top_bar": _runtime_top_bar_snapshot_source(player_index),
 		"planet": _runtime_planet_snapshot_source(),
 		"district": district_snapshot,
 		"actions": action_entries,
 		"player_board": _runtime_player_board_snapshot_source(player_index, action_entries),
-		"first_run_coach": _runtime_first_run_coach_snapshot_source(player_index),
-		"scenario_coach": _runtime_scenario_coach_snapshot_source(player_index),
 		"temporary_decision": _runtime_temporary_decision_snapshot_source(player_index),
 		"visual_events": runtime_visual_events,
 		"visual_event_key": runtime_visual_event_key,
@@ -9203,10 +7947,6 @@ func _runtime_table_viewmodel_source() -> Dictionary:
 		"table_source": table_source,
 		"card_surfaces": _runtime_card_viewmodel_source(player_index, district_snapshot, action_entries, logs),
 	}
-
-
-func _runtime_campaign_focus_mode() -> bool:
-	return active_campaign_chapter_id != "" or _active_runtime_scenario_id() != ""
 
 
 func _runtime_snapshot_player_index() -> int:
@@ -10071,8 +8811,6 @@ func _runtime_card_track_model_source() -> Dictionary:
 		"queue": _runtime_enriched_card_track_entries(current_queue),
 		"next_queue": _runtime_enriched_card_track_entries(next_queue),
 		"events": _recent_table_event_entries(),
-		"scenario_demo": _runtime_scenario_demo_card_model_source(),
-		"needs_scenario_demo": _scenario_runtime_needs_demo_track(),
 		"selected_resolution_id": selected_card_resolution_id,
 		"selected_player": selected_player,
 		"auction_open": card_resolution_auction_open,
@@ -10120,25 +8858,6 @@ func _runtime_enriched_card_track_entry(entry: Dictionary) -> Dictionary:
 		"facility_label": facility_label,
 		"can_reorder": owner_index == selected_player and _card_group_submissions_open(),
 	}
-
-
-func _runtime_scenario_demo_card_model_source() -> Dictionary:
-	if not _scenario_runtime_needs_demo_track():
-		return {}
-	var card_name := _runtime_scenario_demo_card_name()
-	var skill: Dictionary = _make_skill(card_name) if card_name != "" else {}
-	var resolution_id := _runtime_scenario_demo_resolution_id()
-	var entry := {
-		"resolution_id": resolution_id,
-		"queued_order": resolution_id,
-		"player_index": -1,
-		"skill": skill,
-		"public_owner_revealed": false,
-		"selected_trade_product": selected_trade_product,
-	}
-	var result := _runtime_enriched_card_track_entry(entry)
-	result["state_text"] = "已公开"
-	return result
 
 
 func _runtime_selected_district_snapshot_source(player_index: int) -> Dictionary:
@@ -10238,48 +8957,15 @@ func _runtime_selected_district_snapshot_source(player_index: int) -> Dictionary
 
 
 
-func _scenario_runtime_needs_demo_track() -> bool:
-	return _active_runtime_scenario_id() in ["public_track_intro", "intel_guess"]
-
-
-func _runtime_scenario_demo_resolution_id() -> int:
-	match _active_runtime_scenario_id():
-		"public_track_intro":
-			return 930301
-		"intel_guess":
-			return 930701
-	return 930000
-
-
-func _runtime_scenario_demo_card_name() -> String:
-	for candidate in ["城市融资1", "交通升级1", "区域宣传1", "商路黑客1"]:
-		if _game_runtime_coordinator_node().card_exists(candidate):
-			return candidate
-	for skill_name_variant in _game_runtime_coordinator_node().card_catalog_ordered_ids():
-		return str(skill_name_variant)
-	return ""
-
-
-
-
-
-
-
-
-
-
 func _runtime_planet_snapshot_source() -> Dictionary:
-	var campaign_focus := _runtime_campaign_focus_mode()
 	return {
 		"title": "星球牌桌",
-		"hint": "双击区域看牌架｜滚轮缩放｜拖拽旋转" if campaign_focus else "区域 %d｜怪兽 %d｜军队 %d｜选区 %s" % [
+		"hint": "区域 %d｜怪兽 %d｜军队 %d｜选区 %s" % [
 			districts.size(),
 			monster_runtime_controller.auto_monsters.size(),
 			military_runtime_controller.roster_snapshot(true).size(),
 			_runtime_selected_district_title(),
 		],
-		"campaign_focus_mode": campaign_focus,
-		"compact": campaign_focus,
 		"left_rail": {
 			"title": "地表情报",
 			"entries": _runtime_planet_surface_rail_entries(selected_player),
@@ -10300,23 +8986,7 @@ func _runtime_planet_snapshot_source() -> Dictionary:
 
 
 func _runtime_planet_flow_compass_source() -> Dictionary:
-	var steps: Array = []
-	var next_text := "下一步：开局准备"
-	if selected_player >= 0 and selected_player < players.size():
-		steps = _playtest_flow_compass_entries(selected_player)
-		next_text = _playtest_flow_next_text(selected_player)
-	else:
-		steps = [
-			{"label": "开局", "done": false, "current": true, "accent": Color("#fef3c7"), "tip": "先从开局准备进入一桌测试局。"},
-			{"label": "点区", "done": false, "current": false, "accent": Color("#38bdf8"), "tip": "进局后先点中央星球区域。"},
-			{"label": "牌架", "done": false, "current": false, "accent": Color("#facc15"), "tip": "查看挂牌并选择受光来源。"},
-		]
-	return {
-		"title": "试玩 罗盘",
-		"steps": steps,
-		"next_text": next_text,
-		"tooltip": "第一局只要顺着这条小轨走到“选路线”；具体按钮在底部快捷行动、手牌架和经济总览。",
-	}
+	return {}
 
 
 func _card_resolution_side_lane_focus_active() -> bool:
@@ -10717,7 +9387,7 @@ func _set_map_view_data(target_view: Control) -> void:
 	if coordinator != null and target_view.has_method("set_weather_overlay_view_model"):
 		target_view.call("set_weather_overlay_view_model", coordinator.weather_map_overlay_view_model())
 	if target_view.has_method("set_solar_camera_motion_mode"):
-		var solar_motion_mode := "reduced" if campaign_animation_intensity == "简化" else ("off" if campaign_animation_intensity == "关闭" else "full")
+		var solar_motion_mode := "full"
 		target_view.call("set_solar_camera_motion_mode", solar_motion_mode)
 		if target_view.has_method("set_weather_overlay_motion_mode"):
 			target_view.call("set_weather_overlay_motion_mode", solar_motion_mode)
@@ -11454,915 +10124,6 @@ func _table_goal_primary_action(player_index: int, body: String) -> Dictionary:
 	}
 
 
-func _opening_guide_player_key(player_index: int) -> String:
-	return str(player_index)
-
-
-func _mark_opening_guide_economy_seen(player_index: int) -> void:
-	if player_index < 0 or player_index >= players.size():
-		return
-	opening_guide_economy_seen_players[_opening_guide_player_key(player_index)] = true
-
-
-func _opening_guide_economy_seen(player_index: int) -> bool:
-	if player_index < 0 or player_index >= players.size():
-		return false
-	return bool(opening_guide_economy_seen_players.get(_opening_guide_player_key(player_index), false)) \
-		or bool(opening_guide_economy_seen_players.get(player_index, false))
-
-
-func _first_run_coach_player_key(player_index: int) -> String:
-	return str(player_index)
-
-
-func _mark_first_run_coach_district_seen(player_index: int) -> void:
-	if player_index < 0 or player_index >= players.size():
-		return
-	first_run_coach_district_seen_players[_first_run_coach_player_key(player_index)] = true
-
-
-func _mark_first_run_coach_supply_seen(player_index: int) -> void:
-	if player_index < 0 or player_index >= players.size():
-		return
-	first_run_coach_supply_seen_players[_first_run_coach_player_key(player_index)] = true
-
-
-func _mark_first_run_coach_public_track_seen(player_index: int) -> void:
-	if player_index < 0 or player_index >= players.size():
-		return
-	first_run_coach_public_track_seen_players[_first_run_coach_player_key(player_index)] = true
-
-
-func _mark_first_run_coach_ai_public_action_seen(player_index: int) -> void:
-	if player_index < 0 or player_index >= players.size():
-		return
-	first_run_coach_ai_public_action_seen_players[_first_run_coach_player_key(player_index)] = true
-
-
-func _mark_first_run_coach_monster_pressure_seen(player_index: int) -> void:
-	if player_index < 0 or player_index >= players.size():
-		return
-	first_run_coach_monster_pressure_seen_players[_first_run_coach_player_key(player_index)] = true
-
-
-func _mark_first_run_coach_route_choice(player_index: int, route_id: String) -> void:
-	if player_index < 0 or player_index >= players.size():
-		return
-	var normalized := str(route_id).strip_edges()
-	if normalized == "":
-		normalized = "grow_gdp"
-	first_run_coach_route_choice_players[_first_run_coach_player_key(player_index)] = normalized
-
-
-func _first_run_coach_route_choice(player_index: int) -> String:
-	if player_index < 0 or player_index >= players.size():
-		return ""
-	return str(first_run_coach_route_choice_players.get(_first_run_coach_player_key(player_index), first_run_coach_route_choice_players.get(player_index, ""))).strip_edges()
-
-
-func _mark_first_run_coach_clues_seen(player_index: int) -> void:
-	if player_index < 0 or player_index >= players.size():
-		return
-	first_run_coach_clues_seen_players[_first_run_coach_player_key(player_index)] = true
-
-
-func _first_run_coach_seen(map: Dictionary, player_index: int) -> bool:
-	return bool(map.get(_first_run_coach_player_key(player_index), false)) or bool(map.get(player_index, false))
-
-
-func _first_run_recommended_setup() -> Dictionary:
-	return {
-		"player_count": FIRST_RUN_RECOMMENDED_PLAYER_COUNT,
-		"ai_count": FIRST_RUN_RECOMMENDED_AI_COUNT,
-		"role_indices": FIRST_RUN_RECOMMENDED_ROLE_INDICES.duplicate(true),
-		"starter_monster_indices": FIRST_RUN_RECOMMENDED_STARTER_MONSTER_INDICES.duplicate(true),
-		"label": "推荐首局：4席 / 3 AI / 简单角色 / 易读怪兽",
-	}
-
-
-func _apply_recommended_first_run_setup() -> void:
-	configured_player_count = FIRST_RUN_RECOMMENDED_PLAYER_COUNT
-	configured_ai_player_count = FIRST_RUN_RECOMMENDED_AI_COUNT
-	configured_roguelike_depth = DEFAULT_ROGUELIKE_DEPTH
-	configured_role_indices = FIRST_RUN_RECOMMENDED_ROLE_INDICES.duplicate(true)
-	configured_starter_monster_indices = FIRST_RUN_RECOMMENDED_STARTER_MONSTER_INDICES.duplicate(true)
-	_ensure_configured_ai_player_count()
-	_ensure_configured_role_indices()
-	_ensure_configured_starter_monster_indices()
-	_log("已套用推荐首局设置：4席、3个AI、推荐角色、推荐起始怪兽。")
-	_save_settings(false)
-	_refresh_ui()
-
-
-func _first_table_player_city_district(player_index: int) -> int:
-	if selected_district >= 0 and selected_district < districts.size() and not _region_infrastructure_owned_facilities(selected_district, player_index).is_empty():
-		return selected_district
-	for district_index in range(districts.size()):
-		if not _region_infrastructure_owned_facilities(district_index, player_index).is_empty():
-			return district_index
-	return -1
-
-
-func _first_table_public_clue_count() -> int:
-	return _economy_city_public_clue_entries(32).size() + _economy_card_aftermath_entries(32).size() + _economy_monster_cash_clue_entries(32).size()
-
-
-func _first_table_visible_monster_name() -> String:
-	for actor_variant in monster_runtime_controller.auto_monsters:
-		if actor_variant is Dictionary and not bool((actor_variant as Dictionary).get("down", false)):
-			return str((actor_variant as Dictionary).get("name", "怪兽"))
-	return "怪兽"
-
-
-func _first_table_runtime_content_snapshot(player_index: int) -> Dictionary:
-	var district_index := _first_table_player_city_district(player_index)
-	if district_index < 0:
-		district_index = _first_run_recommended_start_district(player_index)
-	var district_name := str(districts[district_index].get("name", "推荐区域")) if district_index >= 0 and district_index < districts.size() else "推荐区域"
-	var city: Dictionary = _district_city(district_index) if district_index >= 0 and district_index < districts.size() else {}
-	var infrastructure := _region_infrastructure_snapshot_for_district(district_index)
-	var public_facilities: Array = infrastructure.get("facilities", []) if infrastructure.get("facilities", []) is Array else []
-	var owned_facilities := _region_infrastructure_owned_facilities(district_index, player_index)
-	var city_present := not owned_facilities.is_empty()
-	var city_products: Array = []
-	var city_demands: Array = []
-	var gdp_per_minute := 0
-	var cashflow_paid_total := 0
-	if city_present:
-		for product_variant in _city_product_names(city):
-			city_products.append(str(product_variant))
-		for demand_variant in _city_demand_names(city):
-			city_demands.append(str(demand_variant))
-		var region_id := str((districts[district_index] as Dictionary).get("region_id", "region.%03d" % district_index))
-		var gdp_snapshot_variant: Variant = _commodity_flow_runtime_call("region_gdp_snapshot", [region_id])
-		var gdp_snapshot: Dictionary = gdp_snapshot_variant if gdp_snapshot_variant is Dictionary else {}
-		var by_player: Dictionary = gdp_snapshot.get("player_gdp_per_minute_cents_by_index", {}) if gdp_snapshot.get("player_gdp_per_minute_cents_by_index", {}) is Dictionary else {}
-		gdp_per_minute = int(round(float(int(by_player.get(str(player_index), 0))) / 100.0))
-		var player: Dictionary = players[player_index] if player_index >= 0 and player_index < players.size() and players[player_index] is Dictionary else {}
-		for ledger_row_variant in player.get("v06_transaction_ledger", []):
-			if ledger_row_variant is Dictionary and str((ledger_row_variant as Dictionary).get("category", "")) == "commodity_sale":
-				cashflow_paid_total += maxi(0, int((ledger_row_variant as Dictionary).get("ledger_delta_cents", 0)))
-	var coordinator := _game_runtime_coordinator_node()
-	var public_rack_snapshot: Dictionary = {}
-	if coordinator != null and coordinator.has_method("region_supply_public_rack") and district_index >= 0:
-		var rack_variant: Variant = coordinator.call("region_supply_public_rack", _district_region_id(district_index))
-		public_rack_snapshot = (rack_variant as Dictionary).duplicate(true) if rack_variant is Dictionary else {}
-	var value: Variant = coordinator.call("first_table_compose_runtime_content", {
-		"district_index": district_index,
-		"district_name": district_name,
-		"public_region_supply_rack_snapshot": public_rack_snapshot,
-		"city_present": city_present,
-		"city_product_ids": city_products,
-		"city_demand_ids": city_demands,
-		"public_facilities": public_facilities,
-		"owned_facilities": owned_facilities,
-		"gdp_per_minute": gdp_per_minute,
-		"cashflow_paid_total": cashflow_paid_total,
-		"public_clue_count": _first_table_public_clue_count(),
-		"ai_public_action_seen": _first_run_coach_seen(first_run_coach_ai_public_action_seen_players, player_index),
-		"monster_pressure_seen": _first_run_coach_seen(first_run_coach_monster_pressure_seen_players, player_index),
-		"monster_pressure_visible": not monster_runtime_controller.auto_monsters.is_empty(),
-		"visible_monster_name": _first_table_visible_monster_name(),
-		"route_choice": _first_run_coach_route_choice(player_index),
-	}, {}) if coordinator != null and coordinator.has_method("first_table_compose_runtime_content") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func _first_table_district_content_score(_player_index: int, district_index: int) -> int:
-	if district_index < 0 or district_index >= districts.size():
-		return -1000000
-	var coordinator := _game_runtime_coordinator_node()
-	var public_rack_snapshot: Dictionary = {}
-	if coordinator != null and coordinator.has_method("region_supply_public_rack"):
-		var rack_variant: Variant = coordinator.call("region_supply_public_rack", _district_region_id(district_index))
-		public_rack_snapshot = (rack_variant as Dictionary).duplicate(true) if rack_variant is Dictionary else {}
-	return int(coordinator.call("first_table_score_district", {
-		"public_region_supply_rack_snapshot": public_rack_snapshot,
-	}, {})) if coordinator != null and coordinator.has_method("first_table_score_district") else -1000000
-
-
-func _first_table_has_public_ai_economy_presence() -> bool:
-	for district_index in range(districts.size()):
-		for facility_variant in _region_infrastructure_snapshot_for_district(district_index).get("facilities", []):
-			if facility_variant is Dictionary and str((facility_variant as Dictionary).get("owner_kind", "")) == "player" and _player_is_ai(int((facility_variant as Dictionary).get("owner_player_index", -1))):
-				return true
-	return false
-
-
-func _ensure_first_table_public_ai_city_clue() -> bool:
-	for district_index in range(districts.size()):
-		var ai_presence := false
-		var facility_labels: Array = []
-		for facility_variant in _region_infrastructure_snapshot_for_district(district_index).get("facilities", []):
-			if not (facility_variant is Dictionary):
-				continue
-			var facility: Dictionary = facility_variant
-			facility_labels.append("%s%s" % [str(facility.get("industry_id", "通用")), str(facility.get("facility_type", "设施"))])
-			if str(facility.get("owner_kind", "")) == "player" and _player_is_ai(int(facility.get("owner_player_index", -1))):
-				ai_presence = true
-		if not ai_presence:
-			continue
-		var district_name := str(districts[district_index].get("name", "区域"))
-		var facility_summary := "、".join(facility_labels) if not facility_labels.is_empty() else "公共设施"
-		_set_city_public_clue(district_index, "匿名建设：%s出现%s；设施产权按公开状态显示。" % [district_name, facility_summary])
-		return true
-	return false
-
-
-func _ensure_first_table_ai_public_action() -> bool:
-	if _active_runtime_scenario_id() != "first_table":
-		return _first_table_public_clue_count() > 0
-	for entry_variant in resolved_card_history:
-		if entry_variant is Dictionary:
-			var entry: Dictionary = entry_variant
-			var player_index := int(entry.get("player_index", -1))
-			if player_index >= 0 and player_index < players.size() and _player_is_ai(player_index) and _opening_guide_card_entry_counts(entry):
-				return true
-	if _first_table_has_public_ai_economy_presence():
-		return _ensure_first_table_public_ai_city_clue()
-	var clue_count_before := _first_table_public_clue_count()
-	var acted := int(_ai_runtime_call("_auto_rival_business_actions", [true]))
-	if _first_table_has_public_ai_economy_presence():
-		_ensure_first_table_public_ai_city_clue()
-	var resolved_ai_card := false
-	for entry_variant in resolved_card_history:
-		if entry_variant is Dictionary:
-			var entry: Dictionary = entry_variant
-			var player_index := int(entry.get("player_index", -1))
-			if player_index >= 0 and player_index < players.size() and _player_is_ai(player_index) and _opening_guide_card_entry_counts(entry):
-				resolved_ai_card = true
-				break
-	return acted > 0 or resolved_ai_card or _first_table_public_clue_count() > clue_count_before or _first_table_has_public_ai_economy_presence()
-
-
-func _first_run_recommended_start_district(player_index: int) -> int:
-	if districts.is_empty():
-		return -1
-	if player_index < 0 or player_index >= players.size():
-		player_index = 0
-	var keep_selected := _active_runtime_scenario_id() != "first_table" or _first_run_coach_seen(first_run_coach_district_seen_players, player_index)
-	if keep_selected and selected_district >= 0 \
-			and selected_district < districts.size() \
-			and not bool(districts[selected_district].get("destroyed", false)):
-		return selected_district
-	var first_alive := -1
-	var best_authored_district := -1
-	var best_authored_score := -1000000
-	for i in range(districts.size()):
-		var district: Dictionary = districts[i]
-		if bool(district.get("destroyed", false)):
-			continue
-		if first_alive < 0:
-			first_alive = i
-		if _active_runtime_scenario_id() == "first_table":
-			var authored_score := _first_table_district_content_score(player_index, i)
-			if authored_score > best_authored_score:
-				best_authored_score = authored_score
-				best_authored_district = i
-		else:
-			return i
-	if best_authored_district >= 0:
-		return best_authored_district
-	return first_alive
-
-
-func _first_run_coach_progress(player_index: int) -> Dictionary:
-	var progress := _opening_guide_progress(player_index)
-	if progress.is_empty():
-		return {}
-	progress["selected_district"] = _first_run_coach_seen(first_run_coach_district_seen_players, player_index)
-	progress["has_opened_supply"] = _first_run_coach_seen(first_run_coach_supply_seen_players, player_index) \
-		or (district_supply_open_player == player_index and district_supply_open_district >= 0) \
-		or bool(progress.get("has_bought_card", false))
-	progress["has_seen_public_track"] = _first_run_coach_seen(first_run_coach_public_track_seen_players, player_index) \
-		or selected_card_resolution_id >= 0
-	progress["has_seen_ai_public_action"] = _first_run_coach_seen(first_run_coach_ai_public_action_seen_players, player_index)
-	progress["has_seen_monster_pressure"] = _first_run_coach_seen(first_run_coach_monster_pressure_seen_players, player_index)
-	var route_choice := _first_run_coach_route_choice(player_index)
-	progress["has_chosen_route"] = route_choice != ""
-	progress["route_choice"] = route_choice
-	progress["has_seen_clues"] = _first_run_coach_seen(first_run_coach_clues_seen_players, player_index)
-	return progress
-
-
-func _runtime_first_run_coach_snapshot_source(player_index: int) -> Dictionary:
-	if _runtime_campaign_focus_mode():
-		return {}
-	player_index = _first_run_coach_player_index()
-	if player_index < 0 or player_index >= players.size() or _runtime_session_finished():
-		return {}
-	var progress := _first_run_coach_progress(player_index)
-	var stage := _first_run_coach_stage(progress)
-	var primary_action := _runtime_first_run_coach_primary_action(player_index, progress)
-	var source := {
-		"visible": not opening_guide_dismissed,
-		"dismissed": opening_guide_dismissed,
-		"stage": stage,
-		"progress": progress,
-		"primary_action": primary_action,
-		"recommended_setup": _first_run_recommended_setup(),
-		"auto_fold_after_route_choice": false,
-	}
-	if stage == "choose_route":
-		source["chips"] = _first_run_coach_route_choice_chips()
-	if _first_run_coach_strong_focus_active(player_index):
-		source.merge(_first_run_coach_strong_focus_copy(stage, first_run_coach_strong_focus_action_id), true)
-	return source
-
-
-func _first_run_coach_route_choice_chips() -> Array:
-	return [
-		{"text": "扩GDP", "tooltip": "优先强化城市收入、商品供需和商路。", "accent": Color("#4ade80")},
-		{"text": "护商路", "tooltip": "优先保护高收入城市、修复路线和降低风险。", "accent": Color("#38bdf8")},
-		{"text": "压竞争", "tooltip": "优先读公开线索，攻击疑似竞争城市。", "accent": Color("#fb7185")},
-	]
-
-
-func _first_run_coach_player_index() -> int:
-	for i in range(players.size()):
-		if not _player_is_ai(i) and not _player_is_eliminated(i):
-			return i
-	if selected_player >= 0 and selected_player < players.size() and not _player_is_eliminated(selected_player):
-		return selected_player
-	return 0 if not players.is_empty() else -1
-
-
-func _first_run_coach_strong_focus_active(player_index: int) -> bool:
-	if first_run_coach_strong_focus_until_seconds <= 0.0:
-		return false
-	if first_run_coach_strong_focus_player_index != player_index:
-		return false
-	return game_time <= first_run_coach_strong_focus_until_seconds
-
-
-func _arm_first_run_coach_strong_focus(player_index: int, action_id: String) -> void:
-	if player_index < 0 or player_index >= players.size():
-		return
-	first_run_coach_strong_focus_player_index = player_index
-	first_run_coach_strong_focus_action_id = action_id
-	first_run_coach_strong_focus_until_seconds = game_time + 5.0
-
-
-func _finish_first_run_coach_action_feedback(player_index: int, action_id: String) -> void:
-	_arm_first_run_coach_strong_focus(player_index, action_id)
-	_refresh_ui()
-
-
-func _open_first_run_coach_district_supply(district_index: int, player_index: int) -> void:
-	if district_index < 0 or district_index >= districts.size() or player_index < 0 or player_index >= players.size():
-		return
-	selected_player = player_index
-	_open_district_supply_from_map(district_index)
-	selected_player = player_index
-	district_supply_open_district = district_index
-	district_supply_open_player = player_index
-	if district_supply_overlay != null:
-		district_supply_overlay.visible = true
-	_open_district_card_purchase_window(district_index, player_index)
-
-
-func _first_run_coach_strong_focus_copy(stage: String, action_id: String = "") -> Dictionary:
-	var copy := {
-		"stuck_state": "strong",
-		"pulse_focus": true,
-	}
-	match action_id:
-		"coach_select_district":
-			copy["focus_target"] = "planet"
-			copy["shortest_action_text"] = "打开区域牌架，查看受光挂牌。"
-		"coach_open_rack":
-			copy["focus_target"] = "district_supply"
-			copy["shortest_action_text"] = "看牌架，读卡或买牌。"
-		"coach_buy_card":
-			copy["focus_target"] = "player_hand"
-			copy["shortest_action_text"] = "看手牌，准备出牌。"
-		"coach_play_card":
-			copy["focus_target"] = "public_track"
-			copy["shortest_action_text"] = "看牌轨，读公开线索。"
-		"coach_inspect_track":
-			copy["focus_target"] = "public_track"
-			copy["shortest_action_text"] = "看牌轨，双击看详情。"
-		"coach_check_economy":
-			copy["focus_target"] = "economy_overview"
-			copy["shortest_action_text"] = "看经济，理解钱从哪里来。"
-		"coach_observe_ai_public_action":
-			copy["focus_target"] = "public_track"
-			copy["shortest_action_text"] = "看公开结果，不猜私有计划。"
-		"coach_inspect_monster_pressure":
-			copy["focus_target"] = "planet"
-			copy["shortest_action_text"] = "看怪兽轨迹和受压目标。"
-		"coach_choose_route_growth":
-			copy["focus_target"] = "action_dock"
-			copy["shortest_action_text"] = "先走扩GDP路线。"
-		"coach_inspect_clues":
-			copy["focus_target"] = "right_inspector"
-			copy["shortest_action_text"] = "看右侧，整理线索。"
-	match stage:
-		"select_district":
-			copy["title"] = "看中央星球"
-			copy["body"] = "按确认选区。"
-			copy["tooltip"] = "最短操作：看中央星球，确认一个可建城区域。"
-		"build_city":
-			copy["title"] = "看星球区域"
-			copy["body"] = "打开发展牌架。"
-			copy["tooltip"] = "v0.4 不允许直接建城；购买并打出绑定商品项目的城市发展牌。"
-		"open_rack":
-			copy["title"] = "看星球区域"
-			copy["body"] = "打开牌架。"
-			copy["tooltip"] = "最短操作：打开当前区域牌架；不能买也能先看。"
-		"buy_card", "buy_development", "buy_followup":
-			copy["title"] = "看区域牌架"
-			copy["body"] = "买一张可购买牌。"
-			copy["tooltip"] = "最短操作：在牌架里买一张可购买牌。"
-		"play_card", "play_development", "play_followup":
-			copy["title"] = "看手牌"
-			copy["body"] = "打出可用手牌。"
-			copy["tooltip"] = "最短操作：选一张可用手牌；需要目标会再询问。"
-		"inspect_track":
-			copy["title"] = "看顶部牌轨"
-			copy["body"] = "读公开线索。"
-			copy["tooltip"] = "最短操作：看顶部公共时间线。"
-		"check_economy":
-			copy["title"] = "看经济总览"
-			copy["body"] = "理解钱源。"
-			copy["tooltip"] = "最短操作：打开经济总览，看GDP、商品和商路。"
-		"observe_ai_public_action":
-			copy["title"] = "看AI公开行动"
-			copy["body"] = "读目标和结果。"
-			copy["tooltip"] = "最短操作：观察公开行动，只读取桌面证据。"
-		"inspect_monster_pressure":
-			copy["title"] = "看怪兽压力"
-			copy["body"] = "读移动和受压目标。"
-			copy["tooltip"] = "最短操作：切到地图怪兽层，看轨迹、目标与商路压力。"
-		"choose_route":
-			copy["title"] = "选继续路线"
-			copy["body"] = "扩GDP、护商路、压竞争。"
-			copy["tooltip"] = "最短操作：先选一条能理解的路线继续玩。"
-		"inspect_clues":
-			copy["title"] = "看右侧线索"
-			copy["body"] = "打开线索档案。"
-			copy["tooltip"] = "最短操作：从右侧详情进入线索档案。"
-		_:
-			copy["title"] = "继续牌桌"
-			copy["body"] = "围绕现金流和线索行动。"
-			copy["tooltip"] = "首轮路径已完成，继续做赚钱或压制决策。"
-	match action_id:
-		"coach_select_district":
-			copy["title"] = "看星球区域"
-			copy["body"] = "打开真实牌架。"
-			copy["tooltip"] = "最短操作：打开区域牌架；挂牌来源受光时可确认购买。"
-		"coach_open_rack":
-			copy["title"] = "看区域牌架"
-			copy["body"] = "读卡或买牌。"
-			copy["tooltip"] = "最短操作：牌架已打开，先看用途，再买一张可购买牌。"
-		"coach_buy_card":
-			copy["title"] = "看手牌"
-			copy["body"] = "准备出牌。"
-			copy["tooltip"] = "最短操作：新牌已进入手牌，hover 看用途后打出可用牌。"
-		"coach_play_card":
-			copy["title"] = "看顶部牌轨"
-			copy["body"] = "读公开线索。"
-			copy["tooltip"] = "最短操作：牌已进公共时间线，看它留下什么线索。"
-		"coach_inspect_track":
-			copy["title"] = "看顶部牌轨"
-			copy["body"] = "双击看详情。"
-			copy["tooltip"] = "最短操作：在牌轨上双击卡牌，查看详情和猜测入口。"
-		"coach_check_economy":
-			copy["title"] = "看经济总览"
-			copy["body"] = "看GDP来源。"
-			copy["tooltip"] = "最短操作：打开经济总览，确认城市、商品和商路如何变成钱。"
-		"coach_observe_ai_public_action":
-			copy["title"] = "AI已行动"
-			copy["body"] = "读公开结果。"
-			copy["tooltip"] = "最短操作：查看公开牌轨、地图 callout 或城市线索，不读取AI策略评分。"
-		"coach_inspect_monster_pressure":
-			copy["title"] = "怪兽压力"
-			copy["body"] = "看它威胁什么。"
-			copy["tooltip"] = "最短操作：看地图怪兽层、移动轨迹和受压城市/商路。"
-		"coach_choose_route_growth":
-			copy["title"] = "路线已选"
-			copy["body"] = "先扩GDP。"
-			copy["tooltip"] = "最短操作：回到牌桌，围绕城市收入、商品和商路继续行动。"
-		"coach_inspect_clues":
-			copy["title"] = "看右侧线索"
-			copy["body"] = "整理嫌疑。"
-			copy["tooltip"] = "最短操作：查看线索档案，只整理公开事实和你的推理。"
-	return copy
-
-
-func _runtime_first_run_coach_primary_action(player_index: int, progress: Dictionary) -> Dictionary:
-	if progress.is_empty():
-		return {"id": "", "label": "选择席位", "disabled": true, "tooltip": "先选择有效席位。"}
-	var stage := _first_run_coach_stage(progress)
-	match stage:
-		"select_district":
-			var recommended_district := _first_run_recommended_start_district(player_index)
-			var recommended_name := String(districts[recommended_district].get("name", "区域")) if recommended_district >= 0 and recommended_district < districts.size() else "可用区域"
-			return {
-				"id": "coach_select_district",
-				"label": "确认选区",
-				"disabled": recommended_district < 0,
-				"tooltip": "把地图焦点放到%s；右侧会显示能否建城、牌架和商品线索。" % recommended_name,
-				"accent": Color("#38bdf8"),
-			}
-		"build_city":
-			return {
-				"id": "coach_open_rack",
-				"label": "打开发展牌架",
-				"disabled": selected_district < 0 or selected_district >= districts.size(),
-				"tooltip": "v0.4 城市发展必须从真实发展牌进入，并绑定商品项目。",
-				"accent": Color("#4ade80"),
-			}
-		"open_rack":
-			return {
-				"id": "coach_open_rack",
-				"label": "查看牌架",
-				"disabled": selected_district < 0 or selected_district >= districts.size(),
-				"tooltip": "打开当前区域牌架；不能购买时也能先查看卡牌。",
-				"accent": Color("#facc15"),
-			}
-		"buy_card", "buy_development", "buy_followup":
-			var buyable_district := _first_buyable_district_for_player(player_index)
-			var buyable_card := _first_buyable_district_card(buyable_district, player_index)
-			return {
-				"id": "coach_buy_card",
-				"label": "购买当前挂牌" if stage == "buy_followup" else "购买一张牌",
-				"disabled": buyable_card == "",
-				"tooltip": _first_run_buy_card_tooltip(buyable_district, buyable_card),
-				"accent": Color("#fde68a"),
-			}
-		"play_card", "play_development", "play_followup":
-			var slot := _first_actionable_hand_slot(player_index)
-			return {
-				"id": "coach_play_card",
-				"label": "打出第二张牌" if stage == "play_followup" else "打出手牌",
-				"disabled": slot < 0,
-				"tooltip": "打出当前可用手牌；需要目标的牌会先打开目标选择。",
-				"accent": Color("#c084fc"),
-			}
-		"inspect_track":
-			var track_id := _first_public_track_resolution_id()
-			return {
-				"id": "coach_inspect_track",
-				"label": "看牌轨",
-				"disabled": track_id < 0,
-				"tooltip": "聚焦顶部公开牌轨，确认匿名牌如何展示和留下线索。",
-				"accent": Color("#f59e0b"),
-			}
-		"check_economy":
-			return {
-				"id": "coach_check_economy",
-				"label": "看经济",
-				"disabled": false,
-				"tooltip": "打开经济总览，确认GDP、商品、商路和城市收入如何变成钱。",
-				"accent": Color("#4ade80"),
-			}
-		"observe_ai_public_action":
-			return {
-				"id": "coach_observe_ai_public_action",
-				"label": "观察AI行动",
-				"disabled": players.size() <= 1,
-				"tooltip": "让现有AI执行一次合法公开经济行动；只展示目标、结果与线索，不展示策略评分或真实操作者。",
-				"accent": Color("#f59e0b"),
-			}
-		"inspect_monster_pressure":
-			return {
-				"id": "coach_inspect_monster_pressure",
-				"label": "看怪兽压力",
-				"disabled": monster_runtime_controller.auto_monsters.is_empty(),
-				"tooltip": "聚焦地图怪兽层，读取真实自动行动留下的移动、目标、商路或城市压力。",
-				"accent": Color("#fb7185"),
-			}
-		"establish_project":
-			return {
-				"id": "coach_inspect_track",
-				"label": "查看项目结算",
-				"disabled": _first_public_track_resolution_id() < 0,
-				"tooltip": "查看发展牌的公开展示进度；项目结算后会自动进入下一步。",
-				"accent": Color("#f59e0b"),
-			}
-		"choose_route":
-			return {
-				"id": "coach_choose_route_growth",
-				"label": "走扩GDP",
-				"disabled": false,
-				"tooltip": "首局推荐先围绕城市收入、商品供需和商路扩张；旁边短签给出其他可读路线。",
-				"accent": Color("#22c55e"),
-			}
-		"inspect_clues":
-			return {
-				"id": "coach_inspect_clues",
-				"label": "看线索",
-				"disabled": false,
-				"tooltip": "打开线索档案，查看公开证据和自己的推测入口。",
-				"accent": Color("#93c5fd"),
-			}
-	return {"id": "", "label": "已完成", "disabled": true, "tooltip": "首轮引导已折叠。", "accent": Color("#22c55e")}
-
-
-func _first_run_coach_stage(progress: Dictionary) -> String:
-	if _active_runtime_scenario_id() == "first_table":
-		var completed_signals: Dictionary = _runtime_scenario_state().get("completed_signals", {})
-		var signal_order := [
-			["district_selected", "select_district"],
-			["rack_opened", "open_rack"],
-			["card_bought", "buy_development"],
-			["card_played", "play_development"],
-			["public_facility_committed", "establish_project"],
-			["economy_checked", "check_economy"],
-			["followup_card_bought", "buy_followup"],
-			["followup_card_played", "play_followup"],
-			["track_selected", "inspect_track"],
-			["ai_public_action_observed", "observe_ai_public_action"],
-			["public_clue_read", "inspect_clues"],
-			["monster_pressure_observed", "inspect_monster_pressure"],
-			["route_chosen", "choose_route"],
-		]
-		for step_variant in signal_order:
-			var step: Array = step_variant as Array
-			if not bool(completed_signals.get(String(step[0]), false)):
-				return String(step[1])
-		return "done"
-	if bool(progress.get("has_played_card", false)) \
-			and bool(progress.get("has_seen_public_track", false)) \
-			and bool(progress.get("has_checked_economy", false)) \
-			and bool(progress.get("has_seen_ai_public_action", false)) \
-			and bool(progress.get("has_seen_clues", false)) \
-			and bool(progress.get("has_seen_monster_pressure", false)) \
-			and bool(progress.get("has_chosen_route", false)):
-		return "done"
-	if not bool(progress.get("selected_district", false)):
-		return "select_district"
-	if not bool(progress.get("has_opened_supply", false)):
-		return "open_rack"
-	if not bool(progress.get("has_bought_card", false)):
-		return "buy_card"
-	if not bool(progress.get("has_played_card", false)):
-		return "play_card"
-	if not bool(progress.get("has_seen_public_track", false)):
-		return "inspect_track"
-	if not bool(progress.get("has_checked_economy", false)):
-		return "check_economy"
-	if not bool(progress.get("has_seen_ai_public_action", false)):
-		return "observe_ai_public_action"
-	if not bool(progress.get("has_seen_clues", false)):
-		return "inspect_clues"
-	if not bool(progress.get("has_seen_monster_pressure", false)):
-		return "inspect_monster_pressure"
-	if not bool(progress.get("has_chosen_route", false)):
-		return "choose_route"
-	return "done"
-
-
-func _activate_first_run_coach_action(action_id: String) -> bool:
-	var player_index := _first_run_coach_player_index()
-	if player_index < 0 or player_index >= players.size():
-		return false
-	match action_id:
-		"coach_select_district":
-			var recommended_district := _first_run_recommended_start_district(player_index)
-			if recommended_district >= 0:
-				_jump_to_district_on_table(recommended_district)
-			elif selected_district < 0 or selected_district >= districts.size():
-				selected_district = 0 if not districts.is_empty() else -1
-				if selected_district >= 0:
-					_jump_to_district_on_table(selected_district)
-			_mark_first_run_coach_district_seen(player_index)
-			_sync_selected_district_card()
-			_load_selected_district_guess()
-			if selected_district >= 0 and selected_district < districts.size():
-				_complete_scenario_signal("district_selected", "选择推荐区域：%s；商品与建城条件来自真实地图数据。" % str(districts[selected_district].get("name", "区域")), "after_select", "planet")
-			_finish_first_run_coach_action_feedback(player_index, action_id)
-			return true
-		"coach_open_rack":
-			if not _ensure_first_run_coach_action_district(player_index):
-				return false
-			if selected_district < 0 or selected_district >= districts.size():
-				return false
-			_open_first_run_coach_district_supply(selected_district, player_index)
-			_finish_first_run_coach_action_feedback(player_index, action_id)
-			return true
-		"coach_buy_card":
-			var buyable_district := _first_buyable_district_for_player(player_index)
-			if buyable_district < 0:
-				_log("首局买牌：当前公开牌架没有本席可购买的挂牌；仍可浏览卡面与公开条件。")
-				return false
-			if buyable_district != selected_district:
-				_jump_to_district_on_table(buyable_district)
-			selected_player = player_index
-			if not _district_supply_is_open() or district_supply_open_district != selected_district:
-				_open_first_run_coach_district_supply(selected_district, player_index)
-			var buyable_card := _first_buyable_district_card(selected_district, player_index)
-			if buyable_card == "":
-				return false
-			selected_market_skill = buyable_card
-			previewed_district_card = buyable_card
-			_claim_district_card(buyable_card)
-			if pending_discard_purchase.is_empty() and _district_supply_is_open():
-				_close_district_supply_overlay()
-			_finish_first_run_coach_action_feedback(player_index, action_id)
-			return true
-		"coach_play_card":
-			selected_player = player_index
-			if pending_discard_purchase.is_empty() and _district_supply_is_open():
-				_close_district_supply_overlay()
-			var slot_index := _first_actionable_hand_slot(player_index)
-			if slot_index < 0:
-				return false
-			selected_runtime_card_slot = slot_index
-			_use_skill(slot_index)
-			var play_handled := _player_has_committed_or_resolved_card(player_index)
-			if play_handled:
-				_finish_first_run_coach_action_feedback(player_index, action_id)
-			return play_handled
-		"coach_inspect_track":
-			var resolution_id := _first_public_track_resolution_id()
-			if resolution_id < 0:
-				return false
-			selected_runtime_card_slot = -1
-			_select_card_resolution_track_entry(resolution_id)
-			_mark_first_run_coach_public_track_seen(player_index)
-			_finish_first_run_coach_action_feedback(player_index, action_id)
-			return true
-		"coach_check_economy":
-			selected_player = player_index
-			_open_economy_overview_menu()
-			_complete_scenario_signal("economy_checked", "查看经济总览：确认城市GDP、商品供需、商路与实时现金流。", "after_economy", "economy_overview")
-			_finish_first_run_coach_action_feedback(player_index, action_id)
-			return true
-		"coach_observe_ai_public_action":
-			selected_player = player_index
-			if not _ensure_first_table_ai_public_action():
-				_log("首局任务：AI当前没有合法的公开经济行动；等待城市与商品条件形成。")
-				return false
-			_mark_first_run_coach_ai_public_action_seen(player_index)
-			_complete_scenario_signal("ai_public_action_observed", "观察AI公开行动：目标与结果可见，真实操作者和策略评分保持隐藏。", "after_ai_action", "public_track")
-			_finish_first_run_coach_action_feedback(player_index, action_id)
-			return true
-		"coach_choose_route_growth":
-			selected_player = player_index
-			_mark_first_run_coach_route_choice(player_index, "grow_gdp")
-			_complete_scenario_signal("route_chosen", "选择首局路线：继续扩张GDP，同时保留对怪兽与公开线索的观察。", "complete", "action_dock")
-			_close_menu()
-			_finish_first_run_coach_action_feedback(player_index, action_id)
-			return true
-		"coach_inspect_clues":
-			if _first_table_public_clue_count() <= 0:
-				_ensure_first_table_ai_public_action()
-			_mark_first_run_coach_clues_seen(player_index)
-			_open_intel_dossier_menu()
-			_complete_scenario_signal("public_clue_read", "读取公开线索：商品、目标与结果可见，归属判断保持非强制。", "after_clue", "intel_dossier")
-			_finish_first_run_coach_action_feedback(player_index, action_id)
-			return true
-		"coach_inspect_monster_pressure":
-			if monster_runtime_controller.auto_monsters.is_empty():
-				return false
-			var monster_slot := monster_runtime_controller._valid_auto_monster_slot(monster_runtime_controller.selected_auto_monster_slot)
-			if monster_slot >= 0:
-				monster_runtime_controller.select_slot(monster_slot)
-				var actor: Dictionary = monster_runtime_controller.auto_monsters[monster_slot]
-				var district_index := int(actor.get("position", selected_district))
-				if district_index >= 0 and district_index < districts.size():
-					_jump_to_district_on_table(district_index)
-			_set_map_layer_focus("monster")
-			_mark_first_run_coach_monster_pressure_seen(player_index)
-			_complete_scenario_signal("monster_pressure_observed", "观察怪兽压力：移动、目标和受压结果公开，怪兽归属仍需从线索判断。", "after_monster_pressure", "planet")
-			_finish_first_run_coach_action_feedback(player_index, action_id)
-			return true
-	return false
-
-
-func _ensure_first_run_coach_action_district(player_index: int) -> bool:
-	if selected_district >= 0 and selected_district < districts.size() and not bool(districts[selected_district].get("destroyed", false)):
-		return true
-	var recommended_district := _first_run_recommended_start_district(player_index)
-	if recommended_district < 0 or recommended_district >= districts.size():
-		return false
-	_jump_to_district_on_table(recommended_district)
-	_mark_first_run_coach_district_seen(player_index)
-	_sync_selected_district_card()
-	_load_selected_district_guess()
-	return true
-
-
-func _first_buyable_district_card(district_index: int, player_index: int) -> String:
-	if district_index < 0 or district_index >= districts.size() or player_index < 0 or player_index >= players.size():
-		return ""
-	var choices := _district_supply_card_ids(district_index)
-	if _active_runtime_scenario_id() == "first_table":
-		var coordinator := _game_runtime_coordinator_node()
-		if coordinator != null \
-				and coordinator.has_method("region_supply_public_rack") \
-				and coordinator.has_method("first_table_compose_runtime_content"):
-			var rack_variant: Variant = coordinator.call("region_supply_public_rack", _district_region_id(district_index))
-			var rack_snapshot: Dictionary = (rack_variant as Dictionary).duplicate(true) if rack_variant is Dictionary else {}
-			var content_variant: Variant = coordinator.call("first_table_compose_runtime_content", {
-				"public_region_supply_rack_snapshot": rack_snapshot,
-			}, {})
-			var content: Dictionary = content_variant if content_variant is Dictionary else {}
-			var phase := _first_run_coach_stage(_first_run_coach_progress(player_index))
-			var recommendation_key := "followup_rack_recommendation" if phase == "buy_followup" else "rack_recommendation"
-			var recommendation: Dictionary = content.get(recommendation_key, {}) if content.get(recommendation_key, {}) is Dictionary else {}
-			var recommended_card_id := str(recommendation.get("card_id", ""))
-			if choices.has(recommended_card_id):
-				var recommended_state := _district_supply_purchase_state(district_index, recommended_card_id, player_index)
-				if bool(recommended_state.get("actionable", false)):
-					return recommended_card_id
-	for card_variant in choices:
-		var card_name := String(card_variant)
-		var state := _district_supply_purchase_state(district_index, card_name, player_index)
-		if bool(state.get("actionable", false)):
-			return card_name
-	return ""
-
-
-func _first_buyable_district_for_player(player_index: int) -> int:
-	if player_index < 0 or player_index >= players.size():
-		return -1
-	if selected_district >= 0 and selected_district < districts.size() and _first_buyable_district_card(selected_district, player_index) != "":
-		return selected_district
-	if _district_supply_is_open() and _first_buyable_district_card(district_supply_open_district, player_index) != "":
-		return district_supply_open_district
-	for district_index in range(districts.size()):
-		if not bool(districts[district_index].get("destroyed", false)) and _first_buyable_district_card(district_index, player_index) != "":
-			return district_index
-	return -1
-
-
-func _first_run_buy_card_tooltip(buyable_district: int, buyable_card: String) -> String:
-	if buyable_district < 0 or buyable_card == "":
-		return "当前没有合法可买牌；等待一个来源区域进入日照半球。"
-	var district_name := String(districts[buyable_district].get("name", "区域")) if buyable_district >= 0 and buyable_district < districts.size() else "可买区域"
-	var card_label := _card_display_name(buyable_card)
-	if buyable_district == selected_district:
-		return "从当前牌架购买%s；满手时会进入私密弃牌确认。" % card_label
-	return "会先切到%s的合法牌架，再购买%s；满手时会进入私密弃牌确认。" % [district_name, card_label]
-
-
-func _first_public_track_resolution_id() -> int:
-	var card_surfaces := _runtime_card_surfaces_snapshot()
-	var entries: Array = card_surfaces.get("card_track", []) if card_surfaces.get("card_track", []) is Array else []
-	for entry_variant in entries:
-		if not (entry_variant is Dictionary):
-			continue
-		var entry: Dictionary = entry_variant
-		var resolution_id := int(entry.get("resolution_id", -1))
-		if resolution_id >= 0 and String(entry.get("kind", "")) != "event":
-			return resolution_id
-	return -1
-
-
-func _opening_guide_progress(player_index: int) -> Dictionary:
-	if player_index < 0 or player_index >= players.size():
-		return {}
-	var player: Dictionary = players[player_index]
-	var has_monster := int(_ai_runtime_call("_ai_owned_active_monster_count", [player_index])) > 0
-	var has_city := _player_active_city_count(player_index) > 0
-	var has_bought_card := int(player.get("card_purchase_count", 0)) > 0
-	var has_played_card := false
-	for entry_variant in resolved_card_history:
-		if not (entry_variant is Dictionary):
-			continue
-		var entry := entry_variant as Dictionary
-		if int(entry.get("player_index", -1)) == player_index and _opening_guide_card_entry_counts(entry):
-			has_played_card = true
-			break
-	for entry_variant in _card_resolution_current_queue():
-		if entry_variant is Dictionary and int((entry_variant as Dictionary).get("player_index", -1)) == player_index and _opening_guide_card_entry_counts(entry_variant as Dictionary):
-			has_played_card = true
-	for entry_variant in _card_resolution_next_queue():
-		if entry_variant is Dictionary and int((entry_variant as Dictionary).get("player_index", -1)) == player_index and _opening_guide_card_entry_counts(entry_variant as Dictionary):
-			has_played_card = true
-	if int(_card_resolution_active_entry().get("player_index", -1)) == player_index and _opening_guide_card_entry_counts(_card_resolution_active_entry()):
-		has_played_card = true
-	var has_checked_economy := _opening_guide_economy_seen(player_index)
-	var route_choice := _first_run_coach_route_choice(player_index)
-	return {
-		"has_monster": has_monster,
-		"has_city": has_city,
-		"has_bought_card": has_bought_card,
-		"has_played_card": has_played_card,
-		"has_checked_economy": has_checked_economy,
-		"has_chosen_route": route_choice != "",
-		"route_choice": route_choice,
-	}
-
-
-func _first_run_should_defer_monster_wager() -> bool:
-	if opening_guide_dismissed or _runtime_session_finished():
-		return false
-	var completed_signals: Dictionary = _runtime_scenario_state().get("completed_signals", {})
-	if _active_runtime_scenario_id() == "first_table" and not bool(completed_signals.get("route_chosen", false)):
-		return true
-	var player_index := _first_run_coach_player_index()
-	if player_index < 0 or player_index >= players.size() or _player_is_ai(player_index):
-		return false
-	var progress := _opening_guide_progress(player_index)
-	if progress.is_empty():
-		return false
-	return not bool(progress.get("has_played_card", false))
-
-
 func _selected_district_status_text(player_index: int) -> String:
 	if selected_district < 0 or selected_district >= districts.size():
 		return "未选择区域"
@@ -12760,7 +10521,6 @@ func _preview_district_card(card_name: String, refresh: bool = true) -> void:
 	if context_district >= 0 and context_district < districts.size() and not _district_has_card(context_district, card_name):
 		return
 	previewed_district_card = card_name
-	_complete_scenario_signal("card_previewed", "查看卡牌：%s。" % _card_display_name(card_name), "rack_open", "district_supply")
 	if refresh:
 		_refresh_ui()
 
@@ -12778,7 +10538,6 @@ func _select_district_card_for_quote(card_name: String, refresh: bool = true) ->
 	if runtime_coordinator != null and runtime_coordinator.has_method("acknowledge_district_purchase_selection"):
 		runtime_coordinator.call("acknowledge_district_purchase_selection", purchase_player, context_district, card_name, _district_supply_rack_revision(context_district))
 		_request_card_market_quote(card_name, context_district, purchase_player)
-	_complete_scenario_signal("card_previewed", "查看卡牌：%s。" % _card_display_name(card_name), "rack_open", "district_supply")
 	if refresh:
 		_refresh_ui()
 
@@ -12814,18 +10573,16 @@ func _open_district_supply_from_map(district_index: int, focus_v06_facility: boo
 	_jump_to_district_on_table(district_index)
 	district_supply_open_district = district_index
 	district_supply_open_player = _local_human_player_index()
-	_mark_first_run_coach_supply_seen(district_supply_open_player)
 	_open_district_card_purchase_window(district_index, district_supply_open_player)
 	_sync_selected_district_card()
 	_load_selected_district_guess()
 	if focus_v06_facility:
-		var facility_source := _v06_first_table_facility_supply_source(district_index, district_supply_open_player, true)
+		var facility_source := _v06_facility_supply_source(district_index, district_supply_open_player, true)
 		var facility_card_id := str(facility_source.get("card_name", ""))
 		if not facility_card_id.is_empty():
 			_preview_v06_facility_card(facility_card_id)
 	if district_supply_overlay != null:
 		district_supply_overlay.visible = true
-	_complete_scenario_signal("rack_opened", "打开区域牌架：%s。" % String(districts[district_index].get("name", "区域")), "after_rack", "district_supply")
 	_refresh_ui()
 func _refresh_district_supply_overlay() -> void:
 	if district_supply_overlay == null or not district_supply_overlay.visible:
@@ -12867,7 +10624,7 @@ func _district_supply_snapshot_source(district_index: int, subject_player_index:
 		card_context_player_index = subject_player_index
 	var district: Dictionary = districts[district_index]
 	var choices := _district_supply_card_ids(district_index)
-	var v06_facility_source := _v06_first_table_facility_supply_source(district_index, card_context_player_index, false)
+	var v06_facility_source := _v06_facility_supply_source(district_index, card_context_player_index, false)
 	var v06_facility_card_id := str(v06_facility_source.get("card_name", ""))
 	var preview_name := previewed_district_card
 	if not choices.has(preview_name) and preview_name != v06_facility_card_id:
@@ -12951,7 +10708,7 @@ func _district_supply_public_card_source(source: Dictionary) -> Dictionary:
 	return result
 
 
-func _v06_first_table_facility_supply_source(district_index: int, player_index: int, selected: bool) -> Dictionary:
+func _v06_facility_supply_source(district_index: int, player_index: int, selected: bool) -> Dictionary:
 	if district_index < 0 or district_index >= districts.size() or player_index < 0 or player_index >= players.size() or _player_is_ai(player_index):
 		return {}
 	var coordinator := _game_runtime_coordinator_node()
@@ -13033,11 +10790,10 @@ func _preview_v06_facility_card(card_id: String) -> void:
 	if not _is_v06_facility_card_id(card_id):
 		return
 	var coordinator := _game_runtime_coordinator_node()
-	if coordinator != null and coordinator.has_method("refresh_v06_first_table_facility_quote"):
-		coordinator.call("refresh_v06_first_table_facility_quote", _v06_actor_id(_local_human_player_index()), card_id)
+	if coordinator != null and coordinator.has_method("refresh_v06_facility_quote"):
+		coordinator.call("refresh_v06_facility_quote", _v06_actor_id(_local_human_player_index()), card_id)
 	previewed_district_card = card_id
 	selected_market_skill = card_id
-	_complete_scenario_signal("card_previewed", "查看城市设施牌。", "rack_open", "district_supply")
 	_refresh_ui()
 
 
@@ -13123,9 +10879,7 @@ func _on_district_supply_action_requested(action_id: String, payload: Dictionary
 					if runtime_game_screen != null and runtime_game_screen.has_method("_show_player_action_feedback"):
 						runtime_game_screen.call("_show_player_action_feedback", "district_card_purchase", "resolved" if bool(action_result.get("success", false)) else "blocked", detail.strip_edges())
 					_log("%s｜%s" % [str(action_result.get("title", "区域购牌状态")), str(action_result.get("explanation", ""))])
-					if bool(action_result.get("success", false)):
-						_complete_scenario_signal("card_bought", "购买城市设施牌。", "after_buy", "district_supply")
-				_refresh_ui()
+					_refresh_ui()
 			else:
 				_claim_district_card(card_id)
 
@@ -13249,11 +11003,8 @@ func _select_player(index: int) -> void:
 func _select_district(index: int) -> void:
 	if not _jump_to_district_on_table(index):
 		return
-	_mark_first_run_coach_district_seen(selected_player)
 	_sync_selected_district_card()
 	_load_selected_district_guess()
-	if selected_district >= 0 and selected_district < districts.size():
-		_complete_scenario_signal("district_selected", "选择区域：%s。" % String(districts[selected_district].get("name", "区域")), "after_select", "planet")
 	_refresh_ui()
 
 
@@ -14655,7 +12406,7 @@ func _claim_district_card(skill_name: String) -> void:
 	var context_district := _active_district_card_context()
 	var purchase_player := district_supply_open_player if _district_supply_is_open() else selected_player
 	if purchase_player < 0 or purchase_player >= players.size():
-		purchase_player = _first_run_coach_player_index()
+		purchase_player = _local_human_player_index()
 	if purchase_player < 0 or purchase_player >= players.size():
 		return
 	if context_district < 0 or context_district >= districts.size():
@@ -15224,16 +12975,16 @@ func _local_human_player_index() -> int:
 func _player_has_committed_or_resolved_card(player_index: int) -> bool:
 	if player_index < 0 or player_index >= players.size():
 		return false
-	if int(_card_resolution_active_entry().get("player_index", -1)) == player_index and _opening_guide_card_entry_counts(_card_resolution_active_entry()):
+	if int(_card_resolution_active_entry().get("player_index", -1)) == player_index and _card_entry_counts_for_tableau(_card_resolution_active_entry()):
 		return true
 	for queue_variant in [_card_resolution_current_queue(), _card_resolution_next_queue(), resolved_card_history]:
 		for entry_variant in queue_variant:
-			if entry_variant is Dictionary and int((entry_variant as Dictionary).get("player_index", -1)) == player_index and _opening_guide_card_entry_counts(entry_variant as Dictionary):
+			if entry_variant is Dictionary and int((entry_variant as Dictionary).get("player_index", -1)) == player_index and _card_entry_counts_for_tableau(entry_variant as Dictionary):
 				return true
 	return false
 
 
-func _opening_guide_card_entry_counts(entry: Dictionary) -> bool:
+func _card_entry_counts_for_tableau(entry: Dictionary) -> bool:
 	var skill: Dictionary = entry.get("skill", {}) if entry.get("skill", {}) is Dictionary else {}
 	return not bool(skill.get("starter_play_free", false))
 
@@ -15861,16 +13612,6 @@ func _buy_card_for_player_from_district(player_index: int, district_index: int, 
 	if int(pending_discard_purchase.get("player_index", -1)) == player_index and String(pending_discard_purchase.get("skill_name", "")) == skill_name:
 		pending_discard_purchase = {}
 	_log("一次匿名购牌在%s完成；买家、具体卡牌、手牌数量和弃牌情况不公开。" % districts[district_index]["name"])
-	var first_table_phase_before_purchase := ""
-	if _active_runtime_scenario_id() == "first_table" \
-			and not anonymous \
-			and not _player_is_ai(player_index) \
-			and player_index == _first_run_coach_player_index():
-		first_table_phase_before_purchase = _first_run_coach_stage(_first_run_coach_progress(player_index))
-	if not anonymous and player_index == selected_player:
-		_complete_scenario_signal("card_bought", "完成购牌：%s的一张牌进入你的手牌。" % String(districts[district_index].get("name", "区域")), "after_buy", "player_hand")
-	if first_table_phase_before_purchase == "buy_followup":
-		_complete_scenario_signal("followup_card_bought", "购买第二张当前挂牌：%s进入你的手牌。" % _card_display_name(skill_name), "after_followup_buy", "player_hand")
 	_grant_role_bonus_card_on_purchase(player_index, district_index, skill_name, anonymous)
 	runtime_coordinator.call("record_weather_public_response", district_index, "buy_after_forecast")
 	return true
@@ -16043,9 +13784,8 @@ func _card_group_submissions_open() -> bool:
 
 func _card_group_limit_for_player(_player_index: int) -> int:
 	var rules := _card_group_runtime_rules()
-	var tutorial_limit := int(rules.get("tutorial_group_card_limit", SharedCardGroupWindowScript.TUTORIAL_MAX_CARDS))
 	var standard_limit := int(rules.get("standard_group_card_limit", SharedCardGroupWindowScript.STANDARD_MAX_CARDS))
-	return SharedCardGroupWindowScript.card_limit(tutorial_limit if _active_runtime_scenario_id() == "first_table" else standard_limit)
+	return SharedCardGroupWindowScript.card_limit(standard_limit)
 
 
 func _card_group_runtime_rules() -> Dictionary:
@@ -16352,17 +14092,8 @@ func _queue_skill_resolution(player_index: int, slot_index: int, target_slot: in
 		card_group_window_sequence = int(queue_commit.get("next_window_sequence", card_group_window_sequence + 1))
 		_begin_card_group_window(card_resolution_batch_reference_player, card_group_window_sequence)
 	var queue_to_next_batch := str(queue_commit.get("route", "current")) == "next"
-	var first_table_phase_before_play := ""
-	if _active_runtime_scenario_id() == "first_table" \
-			and not _player_is_ai(player_index) \
-			and player_index == _first_run_coach_player_index():
-		first_table_phase_before_play = _first_run_coach_stage(_first_run_coach_progress(player_index))
 	if queue_to_next_batch:
 		_log("匿名响应牌已承诺：%s进入当前5秒相位响应通道。" % card_label)
-		if player_index == selected_player:
-			_complete_scenario_signal("card_played", "提交匿名出牌：%s进入等待区。" % card_label, "after_play", "public_track")
-		if first_table_phase_before_play == "play_followup":
-			_complete_scenario_signal("followup_card_played", "第二张当前手牌已进入等待区：%s。" % card_label, "after_followup_play", "public_track")
 		_refresh_ui()
 		return true
 	var current_group_count := _card_group_count_for_player(player_index)
@@ -16371,10 +14102,6 @@ func _queue_skill_resolution(player_index: int, slot_index: int, target_slot: in
 	else:
 		_log("匿名卡牌进入%s：%s；普通玩家本窗最多%d张牌。" % [_card_group_window_cadence_text(card_group_window_sequence), card_label, _card_group_limit_for_player(player_index)])
 		_show_card_batch_lobby_overlay()
-	if player_index == selected_player:
-		_complete_scenario_signal("card_played", "提交匿名出牌：%s进入公开牌轨。" % card_label, "after_play", "public_track")
-	if first_table_phase_before_play == "play_followup":
-		_complete_scenario_signal("followup_card_played", "第二张当前手牌已进入公开牌轨：%s。" % card_label, "after_followup_play", "public_track")
 	if card_resolution_simultaneous_timer <= 0.0:
 		_lock_card_resolution_batch()
 	return true
@@ -16674,7 +14401,7 @@ func _set_planet_right_rail_resolution_suppressed(enabled: bool) -> void:
 	var rail := get_tree().get_root().find_child("PlanetRightSpaceRail", true, false) as Control
 	if rail == null:
 		return
-	if _runtime_campaign_focus_mode():
+	if false:
 		rail.visible = false
 		rail.set_meta("planet_side_lane_suppressed_for_resolution", true)
 		return

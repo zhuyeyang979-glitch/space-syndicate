@@ -87,7 +87,6 @@ func run_suite() -> Dictionary:
 	status_label.text = "Checking purchase-session bindings…"
 	_test_purchase_session_binding()
 	status_label.text = "Checking real first-table flow…"
-	await _test_real_main_hover_and_first_table()
 	return result_snapshot()
 
 
@@ -152,7 +151,7 @@ func _test_clock_and_solar() -> void:
 	var composed_session_payload: Dictionary = composed_session_save.get("game_session_runtime", {}) if composed_session_save.get("game_session_runtime", {}) is Dictionary else {}
 	_expect(composed_session_payload.get("world_effective_us") is int and int(composed_session_payload.get("world_effective_us", -1)) == 0, "Coordinator composition injects the clock and captures an authoritative integer world_effective_us")
 	coordinator.restore_world_effective_seconds(9.5)
-	var applied: Dictionary = session.call("apply_save_data", {"game_session_runtime": {"schema_version": 1, "session_state": "running", "ruleset_id": "v0.4", "session_id": "clock-restore", "scenario_id": "first_table", "seed": 7, "setup": {}, "outcome_receipt": {}, "world_effective_us": 1234567}}) if session != null else {}
+	var applied: Dictionary = session.call("apply_save_data", {"game_session_runtime": {"schema_version": 1, "session_state": "running", "ruleset_id": "v0.4", "session_id": "clock-restore", "scenario_id": "", "seed": 7, "setup": {}, "outcome_receipt": {}, "world_effective_us": 1234567}}) if session != null else {}
 	_expect(bool(applied.get("applied", false)) and int(coordinator.world_effective_clock_snapshot().get("world_effective_us", -1)) == 1234567, "game-session integer clock overrides a legacy float migration seed")
 	var before_invalid: Dictionary = coordinator.world_effective_clock_snapshot()
 	var invalid: Dictionary = session.call("apply_save_data", {"game_session_runtime": {"schema_version": 1, "session_state": "bogus", "world_effective_us": -1}}) if session != null else {}
@@ -284,165 +283,6 @@ func _test_purchase_session_binding() -> void:
 	_expect(coordinator.card_market_active_quote(0, 0).is_empty(), "supply revision change clears the old session quote instead of live-repricing it")
 	var mismatched := coordinator.get_node("DistrictPurchaseRuntimeController").call("attach_quote", 0, 0, quote) as Dictionary
 	_expect(mismatched.is_empty(), "old supply-bound quote cannot attach to the revised session")
-
-
-func _test_real_main_hover_and_first_table() -> void:
-	var main := MAIN_SCENE.instantiate() as Control
-	main.process_mode = Node.PROCESS_MODE_DISABLED
-	add_child(main)
-	await _wait_frames(3)
-	main.call("_start_scenario_from_menu", "first_table")
-	await _wait_frames(4)
-	var runtime_coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
-	var fixture: Dictionary = runtime_coordinator.call("first_table_fixture_snapshot") if runtime_coordinator != null else {}
-	var source_district := int(fixture.get("facility_market_source_district_index", -1))
-	var availability: Dictionary = runtime_coordinator.call("card_market_listing_availability", source_district) if runtime_coordinator != null else {}
-	var monsters: Object = runtime_coordinator.call("monster_runtime_controller") if runtime_coordinator != null and runtime_coordinator.has_method("monster_runtime_controller") else null
-	var monster_snapshot: Dictionary = monsters.call("unit_card_snapshot_v06", "monster") if monsters != null and monsters.has_method("unit_card_snapshot_v06") else {}
-	var district_rows: Array = main.get("districts") if main.get("districts") is Array else []
-	var source_center: Variant = (district_rows[source_district] as Dictionary).get("center", Vector2.ZERO) if source_district >= 0 and source_district < district_rows.size() and district_rows[source_district] is Dictionary else Vector2.ZERO
-	_diagnostics["first_table_source"] = {"map_seed": fixture.get("map_seed", -1), "source_district": source_district, "source_center": source_center, "availability": availability.duplicate(true)}
-	_expect(int(fixture.get("map_seed", -1)) == 606120 and source_district == 5 and str(availability.get("availability_kind", "")) == "sunlit", "real first-table authored map seed and source district are deterministically sunlit at t=0")
-	_expect(int(monster_snapshot.get("monster_count", -1)) == 0, "starting monster cards are held but summoning remains optional")
-	main.call("_select_district", source_district)
-	main.call("_open_district_supply_from_map", source_district)
-	await _wait_frames(2)
-	var choices: Array = (district_rows[source_district] as Dictionary).get("card_choices", []) if source_district >= 0 and source_district < district_rows.size() and district_rows[source_district] is Dictionary else []
-	var ordinary_cards: Array[String] = []
-	for value in choices:
-		var card_id := str(value)
-		if bool(main.call("_is_v06_facility_card_id", card_id)):
-			continue
-		ordinary_cards.append(card_id)
-		if ordinary_cards.size() >= 2:
-			break
-	_expect(ordinary_cards.size() >= 2, "real district supply exposes two ordinary listings for hover/select routing")
-	if ordinary_cards.size() >= 2:
-		var first_card := ordinary_cards[0]
-		var second_card := ordinary_cards[1]
-		main.call("_on_district_supply_action_requested", "district_supply_preview_card", {"card_name": first_card, "source": "hover"})
-		main.call("_on_district_supply_action_requested", "district_supply_preview_card", {"card_name": second_card, "source": "hover"})
-		main.call("_refresh_district_supply_overlay")
-		var after_hover := _market_debug(runtime_coordinator)
-		_expect(int(after_hover.get("quote_count", -1)) == 0, "continuous real drawer hover and UI refresh create zero quotes")
-		main.call("_on_district_supply_action_requested", "district_supply_preview_card", {"card_name": first_card, "source": "click_or_keyboard"})
-		var first_active: Dictionary = runtime_coordinator.call("card_market_active_quote", 0, source_district)
-		var after_select := _market_debug(runtime_coordinator)
-		_expect(int(after_select.get("quote_count", -1)) == 1 and not str(first_active.get("quote_id", "")).is_empty(), "explicit real drawer selection creates exactly one quote")
-		main.call("_on_district_supply_action_requested", "district_supply_preview_card", {"card_name": second_card, "source": "hover"})
-		main.call("_refresh_district_supply_overlay")
-		var after_other_hover := _market_debug(runtime_coordinator)
-		var still_active: Dictionary = runtime_coordinator.call("card_market_active_quote", 0, source_district)
-		_expect(int(after_other_hover.get("quote_count", -1)) == 1 and str(still_active.get("quote_id", "")) == str(first_active.get("quote_id", "")), "hovering another card never replaces or renews the stable selected quote")
-		main.call("_on_district_supply_action_requested", "district_supply_preview_card", {"card_name": second_card, "source": "click_or_keyboard"})
-		var second_active: Dictionary = runtime_coordinator.call("card_market_active_quote", 0, source_district)
-		_expect(int(_market_debug(runtime_coordinator).get("quote_count", -1)) == 2 and str(second_active.get("quote_id", "")) != str(first_active.get("quote_id", "")), "explicitly selecting the other card replaces the session quote")
-		var player_rows_before_purchase: Array = main.get("players") if main.get("players") is Array else []
-		var player_before_purchase: Dictionary = (player_rows_before_purchase[0] as Dictionary).duplicate(true) if not player_rows_before_purchase.is_empty() and player_rows_before_purchase[0] is Dictionary else {}
-		player_before_purchase["role_card"] = {}
-		player_rows_before_purchase[0] = player_before_purchase
-		main.set("players", player_rows_before_purchase)
-		var cash_before_purchase := int(player_before_purchase.get("cash", 0))
-		var purchase_count_before := int(player_before_purchase.get("card_purchase_count", 0))
-		var ordinary_price := int(second_active.get("final_price", -1))
-		var supply_revision_before := str((district_rows[source_district] as Dictionary).get("card_choices", []))
-		var settlement_before: Dictionary = runtime_coordinator.call("district_purchase_settlement_debug")
-		var inventory_before: Dictionary = runtime_coordinator.call("card_inventory_debug")
-		var bought := bool(main.call("_buy_card_for_player_from_district", 0, source_district, second_card, true, true, -1, str(second_active.get("quote_id", ""))))
-		var player_rows_after_purchase: Array = main.get("players") if main.get("players") is Array else []
-		var player_after_purchase: Dictionary = (player_rows_after_purchase[0] as Dictionary).duplicate(true) if not player_rows_after_purchase.is_empty() and player_rows_after_purchase[0] is Dictionary else {}
-		var settlement_after: Dictionary = runtime_coordinator.call("district_purchase_settlement_debug")
-		var inventory_after: Dictionary = runtime_coordinator.call("card_inventory_debug")
-		_diagnostics["ordinary_settlement"] = {
-			"bought": bought,
-			"quote_price": ordinary_price,
-			"cash_before": cash_before_purchase,
-			"cash_after": int(player_after_purchase.get("cash", 0)),
-			"purchases_before": purchase_count_before,
-			"purchases_after": int(player_after_purchase.get("card_purchase_count", 0)),
-			"settlement_commits_before": int(settlement_before.get("committed_count", 0)),
-			"settlement_commits_after": int(settlement_after.get("committed_count", 0)),
-			"inventory_commits_before": int(inventory_before.get("committed_count", 0)),
-			"inventory_commits_after": int(inventory_after.get("committed_count", 0)),
-		}
-		_expect(bought and cash_before_purchase - int(player_after_purchase.get("cash", 0)) == ordinary_price and int(player_after_purchase.get("card_purchase_count", 0)) == purchase_count_before + 1 and int(settlement_after.get("committed_count", 0)) == int(settlement_before.get("committed_count", 0)) + 1 and int(inventory_after.get("committed_count", 0)) == int(inventory_before.get("committed_count", 0)) + 1, "one real ordinary-card quote settles cash and inventory exactly once")
-		var revised_district_rows: Array = (main.get("districts") as Array).duplicate(true)
-		var revised_source: Dictionary = (revised_district_rows[source_district] as Dictionary).duplicate(true)
-		var revised_choices: Array = (revised_source.get("card_choices", []) as Array).duplicate()
-		revised_choices.reverse()
-		revised_source["card_choices"] = revised_choices
-		revised_district_rows[source_district] = revised_source
-		main.set("districts", revised_district_rows)
-		var supply_revision_after := str(revised_choices)
-		runtime_coordinator.call("mark_district_supply_revision", 0, source_district, supply_revision_after)
-		var player_before_replay: Dictionary = ((main.get("players") as Array)[0] as Dictionary).duplicate(true)
-		var stale_replay := bool(main.call("_buy_card_for_player_from_district", 0, source_district, second_card, true, true, -1, str(second_active.get("quote_id", ""))))
-		var player_after_replay: Dictionary = ((main.get("players") as Array)[0] as Dictionary).duplicate(true)
-		_expect(supply_revision_before != supply_revision_after and not stale_replay and player_after_replay == player_before_replay and int((runtime_coordinator.call("district_purchase_settlement_debug") as Dictionary).get("committed_count", 0)) == int(settlement_after.get("committed_count", 0)), "a changed supply revision invalidates the locked quote with zero replay mutation")
-
-	var before_pause := runtime_coordinator.call("world_effective_clock_snapshot") as Dictionary
-	main.set("time_scale", 0.0)
-	main.call("_process", 0.25)
-	var after_pause := runtime_coordinator.call("world_effective_clock_snapshot") as Dictionary
-	main.set("time_scale", 1.0)
-	main.call("_process", 0.25)
-	var after_market_tick := runtime_coordinator.call("world_effective_clock_snapshot") as Dictionary
-	_expect(before_pause == after_pause, "true pause freezes world_effective time")
-	_expect(int(after_market_tick.get("world_effective_us", 0)) > int(after_pause.get("world_effective_us", 0)), "an open market does not pause world_effective time")
-
-	var market_surface: Dictionary = runtime_coordinator.call("v06_first_table_facility_market_snapshot", "player.0")
-	var listing: Dictionary = market_surface.get("listing", {}) if market_surface.get("listing", {}) is Dictionary else {}
-	var preview: Dictionary = market_surface.get("quote", {}) if market_surface.get("quote", {}) is Dictionary else {}
-	_expect(bool(market_surface.get("ready", false)) and int(listing.get("source_district_index", -1)) == source_district and int(preview.get("multiplier_q2", -1)) == 2 and int(preview.get("final_price", -1)) == int(preview.get("base_price", -2)), "real first-table facility listing is explicit-source, sunlit and 1x with no summoned monster")
-	var purchase: Dictionary = runtime_coordinator.call("purchase_v06_first_table_facility_card", "player.0", str(listing.get("item_id", "")), "card-market-policy:first-table-purchase")
-	var player_after: Dictionary = runtime_coordinator.call("v06_card_player_snapshot", "player.0")
-	var slot_index := _find_card_slot(player_after, str(purchase.get("card_id", "")))
-	var region_id := str((district_rows[source_district] as Dictionary).get("region_id", "")) if source_district >= 0 and source_district < district_rows.size() and district_rows[source_district] is Dictionary else ""
-	var infrastructure := runtime_coordinator.get_node_or_null("RegionInfrastructureRuntimeController")
-	var facilities_before: Array = infrastructure.call("facilities_snapshot", false) if infrastructure != null else []
-	var play: Dictionary = runtime_coordinator.call("play_v06_runtime_card", {"actor_id": "player.0", "slot_index": slot_index, "transaction_id": "card-market-policy:first-table-play", "region_id": region_id, "game_time": float(main.get("game_time"))}) if bool(purchase.get("committed", false)) and slot_index >= 0 and not region_id.is_empty() else {}
-	var facilities_after: Array = infrastructure.call("facilities_snapshot", false) if infrastructure != null else []
-	_expect(bool(purchase.get("committed", false)) and bool(play.get("committed", false)) and facilities_after.size() == facilities_before.size() + 1, "human can delay summoning, buy through the shared quote authority and progress the facility economy")
-	var flow: Object = runtime_coordinator.call("commodity_flow_runtime_controller") if runtime_coordinator.has_method("commodity_flow_runtime_controller") else null
-	var receipts_before: Array = flow.call("recent_sale_receipts_snapshot", 0) if flow != null else []
-	var card_player_before_income: Dictionary = runtime_coordinator.call("v06_card_player_snapshot", "player.0")
-	var cash_before_income := int(card_player_before_income.get("cash", 0))
-	var produced_receipts := 0
-	for _second in range(12):
-		var tick_variant: Variant = flow.call("advance_world", 1.0, {}) if flow != null else {}
-		var tick: Dictionary = tick_variant if tick_variant is Dictionary else {}
-		produced_receipts += int(tick.get("receipt_count", 0))
-		if produced_receipts > 0:
-			break
-	var receipts_after: Array = flow.call("recent_sale_receipts_snapshot", 0) if flow != null else []
-	var card_player_after_income: Dictionary = runtime_coordinator.call("v06_card_player_snapshot", "player.0")
-	var cash_after_income := int(card_player_after_income.get("cash", 0))
-	_expect(produced_receipts == 1 and receipts_after.size() == receipts_before.size() + 1 and cash_after_income > cash_before_income, "the delayed-summon facility produces one real Sale Receipt and positive income")
-	var followup_surface: Dictionary = runtime_coordinator.call("v06_first_table_facility_market_snapshot", "player.0")
-	var followup_listing: Dictionary = followup_surface.get("listing", {}) if followup_surface.get("listing", {}) is Dictionary else {}
-	var followup_purchase: Dictionary = runtime_coordinator.call("purchase_v06_first_table_facility_card", "player.0", str(followup_listing.get("item_id", "")), "card-market-policy:first-table-followup-purchase")
-	_expect(bool(followup_purchase.get("committed", false)), "facility income can be followed by a second market purchase while the starter monster remains unsummoned")
-	var card_player_before_summon: Dictionary = runtime_coordinator.call("v06_card_player_snapshot", "player.0")
-	var starter_slot := _find_category_slot(card_player_before_summon, "monster")
-	var monsters_before_summon: Dictionary = monsters.call("unit_card_snapshot_v06", "monster") if monsters != null else {}
-	var summon: Dictionary = runtime_coordinator.call("play_v06_runtime_card", {"actor_id": "player.0", "slot_index": starter_slot, "transaction_id": "card-market-policy:voluntary-starter-summon", "region_id": region_id, "game_time": float(main.get("game_time"))}) if starter_slot >= 0 and not region_id.is_empty() else {}
-	var monsters_after_summon: Dictionary = monsters.call("unit_card_snapshot_v06", "monster") if monsters != null else {}
-	_expect(bool(summon.get("committed", false)) and int(monsters_after_summon.get("monster_count", 0)) == int(monsters_before_summon.get("monster_count", 0)) + 1, "the held starter monster remains legally summonable as a voluntary later action")
-	_diagnostics["first_table_economy"] = {
-		"source_district": source_district,
-		"facility_purchase_committed": bool(purchase.get("committed", false)),
-		"facility_play_committed": bool(play.get("committed", false)),
-		"facilities_before": facilities_before.size(),
-		"facilities_after": facilities_after.size(),
-		"sale_receipt_delta": receipts_after.size() - receipts_before.size(),
-		"income_cash_delta": cash_after_income - cash_before_income,
-		"followup_purchase_committed": bool(followup_purchase.get("committed", false)),
-		"starter_slot": starter_slot,
-		"summon_reason": str(summon.get("reason_code", summon.get("reason", ""))),
-		"summon_committed": bool(summon.get("committed", false)),
-	}
-	main.queue_free()
-	await _wait_frames(3)
 
 
 func _listing(district_index: int, card_id: String, supply_revision: String, base_price: int, player_index := 0) -> Dictionary:

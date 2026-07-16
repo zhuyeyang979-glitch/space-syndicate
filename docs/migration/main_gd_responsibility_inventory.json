@@ -1,0 +1,219 @@
+{
+  "schema": "space_syndicate_main_gd_inventory_v1",
+  "baseline": "fa7ca46",
+  "path": "scripts/main.gd",
+  "baseline_physical_line_count": 17761,
+  "line_count": 15570,
+  "method_count": 1028,
+  "post_purge": {
+    "physical_line_count": 15488,
+    "nonblank_line_count": 13528,
+    "method_count": 916,
+    "top_level_variable_count": 102,
+    "constant_count": 121,
+    "main_scene_still_references_script": true
+  },
+  "classification_semantics": "ordered_first_match",
+  "rules": [
+    {
+      "priority": 1,
+      "selector": "(?i)(campaign|first_run|first_mission|tutorial|scenario|coach|recommended_start)",
+      "responsibility": "legacy_onboarding",
+      "disposition": "delete",
+      "owner": null
+    },
+    {
+      "priority": 2,
+      "selector": "^(_ready|_process|_unhandled_input|_bind_sceneized_runtime_composition|_build_runtime_game_screen)$",
+      "responsibility": "application_bootstrap",
+      "disposition": "blocked_then_bootstrap_only",
+      "owner": "scripts/app/game_application_root.gd"
+    },
+    {
+      "priority": 3,
+      "selector": "(?i)(new_game|new_run|configured_|role_|starter_monster|player_count|setup)",
+      "responsibility": "new_game_setup",
+      "disposition": "new_small_owner",
+      "owner": "scene_owned_new_game_session_coordinator"
+    },
+    {
+      "priority": 4,
+      "selector": "(?i)(save|load|settings)",
+      "responsibility": "save_load",
+      "disposition": "existing_owner_or_blocked",
+      "owner": "v06_save_coordinator_and_owner_registry"
+    },
+    {
+      "priority": 5,
+      "selector": "(?i)(runtime_game_screen|table_snapshot|sync_runtime|presentation)",
+      "responsibility": "game_screen_binding",
+      "disposition": "new_small_owner",
+      "owner": "table_presentation_coordinator"
+    },
+    {
+      "priority": 6,
+      "selector": "(?i)(map|district|planet|region)",
+      "responsibility": "planet_board_binding",
+      "disposition": "existing_or_new_small_owner",
+      "owner": "PlanetBoard_and_map_presentation_bridge"
+    },
+    {
+      "priority": 7,
+      "selector": "(?i)(player_board|hand|player_|strategy)",
+      "responsibility": "player_board_binding",
+      "disposition": "existing_or_new_small_owner",
+      "owner": "PlayerBoard_and_hand_interaction_owner"
+    },
+    {
+      "priority": 8,
+      "selector": "(?i)(menu|overlay|quick_nav|compendium)",
+      "responsibility": "menu_navigation",
+      "disposition": "new_small_owner",
+      "owner": "menu_router"
+    },
+    {
+      "priority": 9,
+      "selector": "(?i)(codex|catalog)",
+      "responsibility": "compendium",
+      "disposition": "existing_owner",
+      "owner": "codex_navigation_and_public_snapshot_services"
+    },
+    {
+      "priority": 10,
+      "selector": "(?i)(economy_dashboard|intel_dossier|standings|final_settlement)",
+      "responsibility": "dashboard_or_settlement",
+      "disposition": "existing_owner",
+      "owner": "public_snapshot_services_and_final_settlement_composition"
+    },
+    {
+      "priority": 11,
+      "selector": "(?i)(audio|bgm|sfx)",
+      "responsibility": "audio",
+      "disposition": "new_small_owner",
+      "owner": "scene_owned_table_audio_controller"
+    },
+    {
+      "priority": 12,
+      "selector": "(?i)(card_resolution|card_group|card_track|counter)",
+      "responsibility": "card_runtime",
+      "disposition": "existing_owner_plus_blocked_facade",
+      "owner": "CardResolutionRuntimeController"
+    },
+    {
+      "priority": 13,
+      "selector": "(?i)monster",
+      "responsibility": "monster_runtime",
+      "disposition": "existing_owner_plus_blocked_facade",
+      "owner": "MonsterRuntimeController"
+    },
+    {
+      "priority": 14,
+      "selector": "(?i)military",
+      "responsibility": "military_runtime",
+      "disposition": "existing_owner_plus_blocked_facade",
+      "owner": "MilitaryRuntimeController"
+    },
+    {
+      "priority": 15,
+      "selector": "(?i)weather",
+      "responsibility": "weather_runtime",
+      "disposition": "existing_owner_plus_blocked_facade",
+      "owner": "WeatherRuntimeController"
+    },
+    {
+      "priority": 16,
+      "selector": "(?i)(^_ai|ai_runtime)",
+      "responsibility": "ai_runtime",
+      "disposition": "existing_owner_plus_blocked_world_port",
+      "owner": "AI_runtime_controller"
+    },
+    {
+      "priority": 17,
+      "selector": "(?i)(economy|city|product|route|commodity|facility|infrastructure)",
+      "responsibility": "economy_runtime",
+      "disposition": "existing_owners_plus_blocked_world_port",
+      "owner": "domain_runtime_controllers"
+    },
+    {
+      "priority": 18,
+      "selector": "(?i)(victory|audit|game_over|winner)",
+      "responsibility": "victory_and_final_settlement",
+      "disposition": "existing_owner",
+      "owner": "VictoryControl_and_FinalSettlement"
+    },
+    {
+      "priority": 19,
+      "selector": "(?i)(^_get$|^_set$|fallback|missing|legacy)",
+      "responsibility": "compatibility_surface",
+      "disposition": "delete_after_consumer_migration",
+      "owner": null
+    },
+    {
+      "priority": 20,
+      "selector": ".*",
+      "responsibility": "mixed_remaining_helper",
+      "disposition": "blocked",
+      "owner": "requires_call_graph_assignment"
+    }
+  ],
+  "major_fields": {
+    "delete": [
+      "campaign/scenario/first-run state"
+    ],
+    "existing_owner": [
+      "domain controller references and authoritative state"
+    ],
+    "new_small_owner": [
+      "menu state",
+      "table presentation refresh state",
+      "audio state",
+      "new-game setup state"
+    ],
+    "bootstrap_only": [
+      "explicit scene-owned service references",
+      "minimal top-level signal connections"
+    ],
+    "blocked": [
+      "players",
+      "districts",
+      "world clocks and selections",
+      "card queues",
+      "presentation caches",
+      "normal-game world-port helpers"
+    ]
+  },
+  "removal_verdict_at_audit": "blocked_after_onboarding_purge_unless_remaining_ports_are_migrated",
+  "post_purge_blockers": [
+    {
+      "methods_or_fields": ["players", "districts", "rng", "game_time", "_new_game"],
+      "consumers": ["runtime world bridges", "normal UI snapshots", "save restore"],
+      "target_owner": "RunWorldState_and_PlanetTopology",
+      "missing_api": "typed world state, topology and selection ports"
+    },
+    {
+      "methods_or_fields": ["_process"],
+      "consumers": ["AI", "weather", "card queue", "monster", "military", "economy"],
+      "target_owner": "RuntimeLoop",
+      "missing_api": "explicit ordered tick contract"
+    },
+    {
+      "methods_or_fields": ["_queue_skill_resolution", "_complete_active_card_resolution", "_apply_card_resolution_effect_request", "_use_skill"],
+      "consumers": ["GameScreen", "HandRack", "CardResolution services"],
+      "target_owner": "CardExecutionWorldPort",
+      "missing_api": "complete queue lifecycle and world mutation transaction"
+    },
+    {
+      "methods_or_fields": ["_load_run", "_apply_run_domain_state_compatibility_adapter"],
+      "consumers": ["GameSessionRuntimeController", "GameSaveRuntimeCoordinator"],
+      "target_owner": "V06SaveOwnerRegistry",
+      "missing_api": "complete normal-world restore transaction"
+    },
+    {
+      "methods_or_fields": ["_runtime_table_snapshot_source", "_on_runtime_game_screen_action_requested"],
+      "consumers": ["GameScreen", "PlanetBoard", "PlayerBoard", "MenuOverlay"],
+      "target_owner": "TablePresentationCoordinator_and_ActionRouter",
+      "missing_api": "typed presentation source and action dispatch ports"
+    }
+  ],
+  "final_status": "LEGACY_ONBOARDING_PURGED_MAIN_GD_REMOVAL_BLOCKED"
+}

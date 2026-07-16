@@ -52,10 +52,7 @@ func _check_passthrough_controls(runtime_screen: Control) -> void:
 		return
 	for node_name in [
 		"Background",
-		"FirstRunCoachHost",
-		"ScenarioCoachHost",
 		"HandHoverPreviewHost",
-		"FocusGuideLayer",
 		"RuntimeVisualEventLayer",
 		"PlaytestFlowCompass",
 		"PlanetLeftSpaceRail",

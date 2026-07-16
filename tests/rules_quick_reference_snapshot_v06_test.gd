@@ -4,7 +4,6 @@ const RulesSnapshot := preload("res://scripts/viewmodels/rules_quick_reference_s
 const RulesBoardScene := preload("res://scenes/ui/RulesQuickReferenceBoard.tscn")
 const SNAPSHOT_SOURCE_PATH := "res://scripts/viewmodels/rules_quick_reference_snapshot_v06.gd"
 const PLAYER_COPY_PATHS := [
-	"res://scripts/viewmodels/first_run_coach_snapshot.gd",
 	"res://scripts/runtime/card_presentation_runtime_service.gd",
 	"res://scripts/cards/card_runtime_family_resource.gd",
 	"res://scripts/runtime/card_codex_public_snapshot_service.gd",
@@ -85,7 +84,7 @@ func _check_active_document_entries() -> void:
 	_expect(active_readme.contains("summoning is entirely voluntary") and active_readme.contains("120 `world_effective` seconds") and active_readme.contains("q2 = min(10") and active_readme.contains("exactly 5 `world_effective` seconds"), "README active v0.6 section exposes voluntary summon, solar rotation, additive pricing, and quote lock")
 	_expect(not active_readme.contains("first-summon prompt") and not active_readme.contains("only from a monster's current region"), "README active v0.6 section rejects historical forced-summon and regional purchase gates")
 	_expect(summary.contains("tabletop_rulebook_v06.md") and summary.contains("同名、同等级普通卡由玩家主动选择合并"), "current rules summary is a v0.6 quick reference")
-	_expect(summary.contains("召唤时点完全自愿") and summary.contains("每 120 秒权威自转一周") and summary.contains("q2 = min(10") and summary.contains("有效期为 5 秒 `world_effective` 时间"), "rules summary exposes voluntary summon, solar rotation, additive pricing, and quote lock")
+	_expect(summary.contains("召唤时点完全自愿") and summary.contains("每 120 秒权威自转一周") and summary.contains("怪兽按公开位置提高同区或相邻区域的牌价") and summary.contains("锁定 5 秒 `world_effective` 时间"), "rules summary exposes voluntary summon, solar rotation, position-based pricing, and quote lock")
 	_expect(rulebook.contains("何时召唤完全由玩家决定") and rulebook.contains("每 120 秒完成一周权威自转") and rulebook.contains("q2 = min(10") and rulebook.contains("有效 5 秒 `world_effective` 时间"), "authoritative rulebook records the settled summon, solar, and market rules")
 	_expect(not rulebook.contains("首召阶段必须") and not rulebook.contains("强制首召"), "authoritative rulebook retires mandatory first summon")
 	_expect(not summary.contains("](tabletop_rulebook.md)"), "current rules summary no longer routes to the v0.4 rulebook")

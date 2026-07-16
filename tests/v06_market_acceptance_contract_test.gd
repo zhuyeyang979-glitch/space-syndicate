@@ -15,7 +15,6 @@ const RETIRED_ORACLE_PATHS := {
 		"monster landing regions discount card purchases while adjacent regions keep base price",
 		"expected_landed_price := maxi(80",
 		"func _verify_monster_region_card_pricing",
-		"func _verify_first_run_coach_runtime_snapshot",
 		"func _verify_remote_supply_access",
 		"_district_card_access_kind",
 	],

@@ -5,7 +5,6 @@ const SCHEMA_VERSION := 1
 const MAX_EVENT_LENGTH := 96
 const VALID_PHASE_PREFIXES := [
 	"setup",
-	"first_run",
 	"decision_window",
 	"play",
 	"qualification",

@@ -160,13 +160,6 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 			region_infrastructure
 		)
 	_bind_region_supply_source_port()
-	var scenario := _scenario_node()
-	if scenario != null and scenario.has_method("configure"):
-		scenario.call("configure", {})
-	var first_table_authored := _first_table_authored_node()
-	if first_table_authored != null and first_table_authored.has_method("configure"):
-		var first_table_definition: Dictionary = scenario.call("scenario_definition", "first_table") if scenario != null and scenario.has_method("scenario_definition") else {}
-		first_table_authored.call("configure", {"scenario_definition": first_table_definition})
 	var codex_navigation := _codex_navigation_node()
 	if codex_navigation != null and codex_navigation.has_method("configure"):
 		codex_navigation.call("configure", {})
@@ -397,8 +390,6 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var player_mana_snapshot := _player_mana_runtime_debug_snapshot()
 	var hand_interaction_snapshot := _player_hand_interaction_debug_snapshot()
 	var purchase_settlement_snapshot := _purchase_settlement_debug_snapshot()
-	var scenario_snapshot := _scenario_debug_snapshot()
-	var first_table_authored_snapshot := _first_table_authored_debug_snapshot()
 	var codex_navigation_snapshot := _codex_navigation_debug_snapshot()
 	var codex_public_snapshot_debug := _codex_public_snapshot_debug_snapshot()
 	var monster_codex_public_snapshot_debug := _monster_codex_public_snapshot_debug_snapshot()
@@ -426,7 +417,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var world_clock_snapshot := _node_debug_snapshot(world_clock)
 	var solar_snapshot := _node_debug_snapshot(solar_availability)
 	var card_market_snapshot := _node_debug_snapshot(card_market_pricing)
-	_composition_ready = _ruleset_id == "v0.4" and scheduler != null and not priority_order.is_empty() and bool(world_clock_snapshot.get("controller_ready", false)) and bool(solar_snapshot.get("service_ready", false)) and bool(card_market_snapshot.get("controller_ready", false)) and bool(card_runtime_catalog_snapshot.get("service_ready", false)) and bool(card_definition_bridge_snapshot.get("bridge_ready", false)) and bool(balance_diagnostics_snapshot.get("service_ready", false)) and bool(session_snapshot.get("session_ready", false)) and bool(purchase_snapshot.get("controller_ready", false)) and bool(card_inventory_snapshot.get("service_ready", false)) and bool(card_resolution_queue_snapshot.get("service_ready", false)) and bool(card_resolution_execution_snapshot.get("service_ready", false)) and bool(economy_product_route_effect_snapshot.get("service_ready", false)) and bool(economy_product_route_formula_snapshot.get("service_ready", false)) and bool(product_market_snapshot.get("controller_ready", false)) and bool(city_gdp_derivative_snapshot.get("controller_ready", false)) and bool(route_network_snapshot.get("controller_ready", false)) and bool(commodity_flow_snapshot.get("controller_ready", false)) and bool(commodity_flow_bridge_snapshot.get("bridge_ready", false)) and bool(player_mana_snapshot.get("controller_ready", false)) and bool(hand_interaction_snapshot.get("service_ready", false)) and bool(purchase_settlement_snapshot.get("service_ready", false)) and bool(scenario_snapshot.get("controller_ready", false)) and bool(first_table_authored_snapshot.get("service_ready", false)) and bool(codex_navigation_snapshot.get("controller_ready", false)) and bool(codex_public_snapshot_debug.get("service_ready", false)) and bool(monster_codex_public_snapshot_debug.get("service_ready", false)) and bool(monster_codex_public_source_debug.get("service_ready", false)) and bool(product_codex_public_snapshot_debug.get("service_ready", false)) and bool(product_codex_public_source_debug.get("service_ready", false)) and bool(card_codex_public_snapshot_debug.get("service_ready", false)) and bool(card_codex_public_source_debug.get("service_ready", false)) and bool(region_codex_public_source_debug.get("service_ready", false)) and bool(economy_dashboard_public_snapshot_debug.get("service_ready", false)) and bool(standings_public_snapshot_debug.get("service_ready", false)) and bool(final_settlement_public_snapshot_debug.get("service_ready", false)) and bool(intel_dossier_public_snapshot_debug.get("service_ready", false)) and bool(district_supply_snapshot_state.get("service_ready", false)) and bool(card_presentation_snapshot.get("service_ready", false)) and bool(card_play_eligibility_snapshot.get("service_ready", false)) and bool(card_play_world_bridge_snapshot.get("bridge_ready", false)) and bool(table_viewmodel_snapshot.get("service_ready", false)) and bool(ai_snapshot.get("controller_ready", false)) and bool(monster_snapshot.get("controller_ready", false)) and bool(military_snapshot.get("controller_ready", false)) and bool(weather_snapshot.get("controller_ready", false)) and bool(contract_snapshot.get("controller_ready", false)) and bool(victory_snapshot.get("controller_ready", false))
+	_composition_ready = _ruleset_id == "v0.4" and scheduler != null and not priority_order.is_empty() and bool(world_clock_snapshot.get("controller_ready", false)) and bool(solar_snapshot.get("service_ready", false)) and bool(card_market_snapshot.get("controller_ready", false)) and bool(card_runtime_catalog_snapshot.get("service_ready", false)) and bool(card_definition_bridge_snapshot.get("bridge_ready", false)) and bool(balance_diagnostics_snapshot.get("service_ready", false)) and bool(session_snapshot.get("session_ready", false)) and bool(purchase_snapshot.get("controller_ready", false)) and bool(card_inventory_snapshot.get("service_ready", false)) and bool(card_resolution_queue_snapshot.get("service_ready", false)) and bool(card_resolution_execution_snapshot.get("service_ready", false)) and bool(economy_product_route_effect_snapshot.get("service_ready", false)) and bool(economy_product_route_formula_snapshot.get("service_ready", false)) and bool(product_market_snapshot.get("controller_ready", false)) and bool(city_gdp_derivative_snapshot.get("controller_ready", false)) and bool(route_network_snapshot.get("controller_ready", false)) and bool(commodity_flow_snapshot.get("controller_ready", false)) and bool(commodity_flow_bridge_snapshot.get("bridge_ready", false)) and bool(player_mana_snapshot.get("controller_ready", false)) and bool(hand_interaction_snapshot.get("service_ready", false)) and bool(purchase_settlement_snapshot.get("service_ready", false)) and bool(codex_navigation_snapshot.get("controller_ready", false)) and bool(codex_public_snapshot_debug.get("service_ready", false)) and bool(monster_codex_public_snapshot_debug.get("service_ready", false)) and bool(monster_codex_public_source_debug.get("service_ready", false)) and bool(product_codex_public_snapshot_debug.get("service_ready", false)) and bool(product_codex_public_source_debug.get("service_ready", false)) and bool(card_codex_public_snapshot_debug.get("service_ready", false)) and bool(card_codex_public_source_debug.get("service_ready", false)) and bool(region_codex_public_source_debug.get("service_ready", false)) and bool(economy_dashboard_public_snapshot_debug.get("service_ready", false)) and bool(standings_public_snapshot_debug.get("service_ready", false)) and bool(final_settlement_public_snapshot_debug.get("service_ready", false)) and bool(intel_dossier_public_snapshot_debug.get("service_ready", false)) and bool(district_supply_snapshot_state.get("service_ready", false)) and bool(card_presentation_snapshot.get("service_ready", false)) and bool(card_play_eligibility_snapshot.get("service_ready", false)) and bool(card_play_world_bridge_snapshot.get("bridge_ready", false)) and bool(table_viewmodel_snapshot.get("service_ready", false)) and bool(ai_snapshot.get("controller_ready", false)) and bool(monster_snapshot.get("controller_ready", false)) and bool(military_snapshot.get("controller_ready", false)) and bool(weather_snapshot.get("controller_ready", false)) and bool(contract_snapshot.get("controller_ready", false)) and bool(victory_snapshot.get("controller_ready", false))
 	_composition_ready = _composition_ready and bool(action_result_presentation_snapshot.get("service_ready", false))
 	_refresh_coordinator_readiness()
 
@@ -1583,7 +1574,7 @@ func v06_rank_i_facility_cards() -> Array:
 	return result
 
 
-func v06_first_table_facility_card() -> Dictionary:
+func v06_facility_card() -> Dictionary:
 	var cards := v06_rank_i_facility_cards()
 	var bridge := _region_infrastructure_world_bridge_node()
 	if cards.is_empty() or bridge == null or not bridge.has_method("selected_region_commodity_facts"):
@@ -1684,7 +1675,7 @@ func actor_id_for_player_index(player_index: int) -> Dictionary:
 
 func market_snapshot(actor_id: String) -> Dictionary:
 	var normalized_actor_id := actor_id.strip_edges()
-	var surface := v06_first_table_facility_market_snapshot(normalized_actor_id)
+	var surface := v06_facility_market_snapshot(normalized_actor_id)
 	var market: Dictionary = surface.get("market", {}) if surface.get("market", {}) is Dictionary else {}
 	var listing: Dictionary = surface.get("listing", {}) if surface.get("listing", {}) is Dictionary else {}
 	var card: Dictionary = listing.get("card", {}) if listing.get("card", {}) is Dictionary else {}
@@ -1751,7 +1742,7 @@ func purchase_rank_i_facility(
 	var current_player := player_snapshot(normalized_actor_id)
 	if not bool(current_player.get("available", false)) or int(current_player.get("revision", -1)) != expected_player_revision:
 		return _ai_v06_economy_failure("ai_v06_facility_player_revision_stale", maxi(0, int(current_player.get("revision", 0))))
-	var value_variant: Variant = purchase_v06_first_table_facility_card(normalized_actor_id, item_id, normalized_transaction_id)
+	var value_variant: Variant = purchase_v06_facility_card(normalized_actor_id, item_id, normalized_transaction_id)
 	var result: Dictionary = (value_variant as Dictionary).duplicate(true) if value_variant is Dictionary else {}
 	return _ai_v06_owner_result(result, normalized_actor_id)
 
@@ -1955,7 +1946,7 @@ func _ai_v06_current_facility_card(actor_id: String) -> Dictionary:
 	var listing_card: Dictionary = listing.get("card", {}) if listing.get("card", {}) is Dictionary else {}
 	if _ai_v06_is_rank_i_facility_card(listing_card):
 		return listing_card.duplicate(true)
-	return v06_first_table_facility_card()
+	return v06_facility_card()
 
 
 func _ai_v06_legal_facility_region_ids(card: Dictionary, _actor_id: String) -> Array[String]:
@@ -2033,11 +2024,11 @@ func _ai_v06_binding_revision(binding: Dictionary) -> int:
 	return int(digest.substr(0, 7).hex_to_int()) if digest.length() >= 7 else 0
 
 
-func v06_first_table_facility_market_snapshot(actor_id: String) -> Dictionary:
+func v06_facility_market_snapshot(actor_id: String) -> Dictionary:
 	var inventory := _commodity_card_inventory_runtime_controller_node()
 	if not _configured or inventory == null or not inventory.has_method("market_snapshot"):
 		return {"ready": false, "reason_code": "v06_card_runtime_not_ready"}
-	var card := v06_first_table_facility_card()
+	var card := v06_facility_card()
 	if card.is_empty():
 		return {"ready": false, "reason_code": "v06_rank_i_facility_unavailable"}
 	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
@@ -2049,7 +2040,7 @@ func v06_first_table_facility_market_snapshot(actor_id: String) -> Dictionary:
 	var revision := int(market.get("revision", 0))
 	var listing: Dictionary = market.get("listing", {}) if market.get("listing", {}) is Dictionary else {}
 	if listing.is_empty():
-		listing = _v06_first_table_facility_listing(card, revision)
+		listing = _v06_facility_market_listing(card, revision)
 		if listing.is_empty():
 			return {"ready": false, "reason_code": "v06_market_listing_source_unavailable"}
 		var configured_variant: Variant = inventory.call("configure_market", revision, listing)
@@ -2075,7 +2066,7 @@ func v06_first_table_facility_market_snapshot(actor_id: String) -> Dictionary:
 	var player := v06_card_player_snapshot(actor_id)
 	return {
 		"ready": not player.is_empty() and not listing.is_empty() and bool(quote.get("viewable", false)),
-		"reason_code": "v06_first_table_facility_market_ready" if not player.is_empty() and not listing.is_empty() and bool(quote.get("viewable", false)) else "v06_facility_player_unavailable",
+		"reason_code": "v06_facility_market_ready" if not player.is_empty() and not listing.is_empty() and bool(quote.get("viewable", false)) else "v06_facility_player_unavailable",
 		"market": market.duplicate(true),
 		"listing": listing.duplicate(true),
 		"player": player.duplicate(true),
@@ -2083,8 +2074,8 @@ func v06_first_table_facility_market_snapshot(actor_id: String) -> Dictionary:
 	}
 
 
-func refresh_v06_first_table_facility_quote(actor_id: String, expected_card_id: String) -> Dictionary:
-	var snapshot := v06_first_table_facility_market_snapshot(actor_id)
+func refresh_v06_facility_quote(actor_id: String, expected_card_id: String) -> Dictionary:
+	var snapshot := v06_facility_market_snapshot(actor_id)
 	var listing: Dictionary = snapshot.get("listing", {}) if snapshot.get("listing", {}) is Dictionary else {}
 	var card: Dictionary = listing.get("card", {}) if listing.get("card", {}) is Dictionary else {}
 	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
@@ -2110,8 +2101,8 @@ func refresh_v06_first_table_facility_quote(actor_id: String, expected_card_id: 
 	return quote
 
 
-func purchase_v06_first_table_facility_card(actor_id: String, source_item_id: String, transaction_id: String) -> Dictionary:
-	var snapshot := v06_first_table_facility_market_snapshot(actor_id)
+func purchase_v06_facility_card(actor_id: String, source_item_id: String, transaction_id: String) -> Dictionary:
+	var snapshot := v06_facility_market_snapshot(actor_id)
 	if not bool(snapshot.get("ready", false)):
 		return {"committed": false, "reason_code": str(snapshot.get("reason_code", "v06_facility_market_unavailable"))}
 	var inventory := _commodity_card_inventory_runtime_controller_node()
@@ -2122,7 +2113,7 @@ func purchase_v06_first_table_facility_card(actor_id: String, source_item_id: St
 		return {"committed": false, "reason_code": "market_listing_changed"}
 	var card: Dictionary = listing.get("card", {}) if listing.get("card", {}) is Dictionary else {}
 	var next_card := _v06_next_rank_i_facility_card(card)
-	var next_listing := _v06_first_table_facility_listing(next_card, int(market.get("revision", 0)) + 1)
+	var next_listing := _v06_facility_market_listing(next_card, int(market.get("revision", 0)) + 1)
 	if next_listing.is_empty():
 		return {"committed": false, "reason_code": "v06_market_listing_source_unavailable"}
 	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
@@ -2166,7 +2157,7 @@ func purchase_v06_first_table_facility_card(actor_id: String, source_item_id: St
 
 
 func execute_v06_facility_purchase_action(actor_id: String, expected_card_id: String) -> Dictionary:
-	var snapshot := v06_first_table_facility_market_snapshot(actor_id)
+	var snapshot := v06_facility_market_snapshot(actor_id)
 	if not bool(snapshot.get("ready", false)):
 		return compose_action_result_v1({
 			"schema_version": 1,
@@ -2187,7 +2178,7 @@ func execute_v06_facility_purchase_action(actor_id: String, expected_card_id: St
 		})
 	var source_item_id := str(listing.get("item_id", ""))
 	var transaction_id := "vs06-facility-purchase:%s:%s:%d" % [actor_id.strip_edges(), source_item_id, int(market.get("revision", 0))]
-	var owner_result := purchase_v06_first_table_facility_card(actor_id, source_item_id, transaction_id)
+	var owner_result := purchase_v06_facility_card(actor_id, source_item_id, transaction_id)
 	var action_source := {
 		"schema_version": 1,
 		"action_id": "district_card_purchase",
@@ -2201,7 +2192,7 @@ func execute_v06_facility_purchase_action(actor_id: String, expected_card_id: St
 
 
 func v06_facility_purchase_public_state(actor_id: String, expected_card_id: String) -> Dictionary:
-	var snapshot := v06_first_table_facility_market_snapshot(actor_id)
+	var snapshot := v06_facility_market_snapshot(actor_id)
 	var listing: Dictionary = snapshot.get("listing", {}) if snapshot.get("listing", {}) is Dictionary else {}
 	var card: Dictionary = listing.get("card", {}) if listing.get("card", {}) is Dictionary else {}
 	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
@@ -2321,12 +2312,12 @@ func _v06_runtime_card_catalog() -> Resource:
 	return value_variant as Resource if value_variant is Resource else null
 
 
-func _v06_first_table_facility_listing(card: Dictionary, revision: int) -> Dictionary:
+func _v06_facility_market_listing(card: Dictionary, revision: int) -> Dictionary:
 	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
-	var source := _v06_market_source_snapshot(revision)
+	var source := _v06_market_source_snapshot()
 	if source.is_empty():
 		return {}
-	var item_id := "vs06:first-table-facility:%d" % maxi(0, revision)
+	var item_id := "v06:facility:%d" % maxi(0, revision)
 	return {
 		"item_id": item_id,
 		"card": card.duplicate(true),
@@ -2395,29 +2386,23 @@ func _v06_facility_card_for_pair(cards: Array, industry_id: String, facility_kin
 	return {}
 
 
-func _v06_market_source_snapshot(_revision: int) -> Dictionary:
+func _v06_market_source_snapshot() -> Dictionary:
 	if _bound_world == null:
-		return {}
-	var authored := _first_table_authored_node()
-	if authored == null or not authored.has_method("market_listing_plan"):
-		return {}
-	var plan_variant: Variant = authored.call("market_listing_plan")
-	var plan: Dictionary = plan_variant if plan_variant is Dictionary else {}
-	if not bool(plan.get("ready", false)):
 		return {}
 	var districts_variant: Variant = _bound_world.get("districts")
 	var districts: Array = districts_variant if districts_variant is Array else []
-	var source_index := int(plan.get("source_district_index", -1))
-	if source_index < 0 or source_index >= districts.size() or not (districts[source_index] is Dictionary):
-		return {}
-	var source: Dictionary = districts[source_index]
-	var region_id := str(source.get("region_id", "")).strip_edges()
-	if bool(source.get("destroyed", false)) or region_id.is_empty():
-		return {}
-	return {
-		"district_index": source_index,
-		"region_id": region_id,
-	}
+	for source_index in range(districts.size()):
+		if not (districts[source_index] is Dictionary):
+			continue
+		var source: Dictionary = districts[source_index]
+		var region_id := str(source.get("region_id", "")).strip_edges()
+		if bool(source.get("destroyed", false)) or str(source.get("terrain", "land")) == "ocean" or region_id.is_empty():
+			continue
+		return {
+			"district_index": source_index,
+			"region_id": region_id,
+		}
+	return {}
 
 
 func v06_runtime_card_route(card: Dictionary) -> Dictionary:
@@ -3733,151 +3718,6 @@ func commodity_flow_player_region_share_bp(player_index: int, region_id: String)
 	return int(controller.call("player_region_gdp_share_basis_points", player_index, region_id)) if controller != null and controller.has_method("player_region_gdp_share_basis_points") else 0
 
 
-func scenario_catalog() -> Array:
-	var scenario := _scenario_node()
-	var value: Variant = scenario.call("scenario_catalog") if scenario != null and scenario.has_method("scenario_catalog") else []
-	return (value as Array).duplicate(true) if value is Array else []
-
-
-func scenario_definition(scenario_id: String) -> Dictionary:
-	var scenario := _scenario_node()
-	var value: Variant = scenario.call("scenario_definition", scenario_id) if scenario != null and scenario.has_method("scenario_definition") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func first_table_fixture_snapshot() -> Dictionary:
-	var service := _first_table_authored_node()
-	var value: Variant = service.call("fixture_snapshot") if service != null and service.has_method("fixture_snapshot") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func first_table_resolve_content_catalog(catalog_snapshot: Dictionary) -> Dictionary:
-	var service := _first_table_authored_node()
-	var value: Variant = service.call("resolve_content_catalog", catalog_snapshot) if service != null and service.has_method("resolve_content_catalog") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func first_table_pacing_profile() -> Dictionary:
-	var service := _first_table_authored_node()
-	var value: Variant = service.call("pacing_profile") if service != null and service.has_method("pacing_profile") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func first_table_evaluate_pacing(runtime_snapshot: Dictionary) -> Dictionary:
-	var service := _first_table_authored_node()
-	var value: Variant = service.call("evaluate_pacing", runtime_snapshot) if service != null and service.has_method("evaluate_pacing") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func first_table_supply_plan(resolved_catalog: Dictionary) -> Dictionary:
-	var service := _first_table_authored_node()
-	var value: Variant = service.call("supply_plan", resolved_catalog) if service != null and service.has_method("supply_plan") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func first_table_select_teaching_product(district_snapshot: Dictionary, resolved_catalog: Dictionary) -> String:
-	var service := _first_table_authored_node()
-	return str(service.call("select_teaching_product", district_snapshot, resolved_catalog)) if service != null and service.has_method("select_teaching_product") else ""
-
-
-func first_table_compose_runtime_content(world_snapshot: Dictionary, resolved_catalog: Dictionary) -> Dictionary:
-	var service := _first_table_authored_node()
-	var value: Variant = service.call("compose_runtime_content", world_snapshot, resolved_catalog) if service != null and service.has_method("compose_runtime_content") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func first_table_contextualize_phase(phase_snapshot: Dictionary, content_snapshot: Dictionary) -> Dictionary:
-	var service := _first_table_authored_node()
-	var value: Variant = service.call("contextualize_phase", phase_snapshot, content_snapshot) if service != null and service.has_method("contextualize_phase") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func first_table_completion_summary(content_snapshot: Dictionary) -> String:
-	var service := _first_table_authored_node()
-	return str(service.call("completion_summary", content_snapshot)) if service != null and service.has_method("completion_summary") else ""
-
-
-func first_table_completion_label(content_snapshot: Dictionary) -> String:
-	var service := _first_table_authored_node()
-	return str(service.call("completion_label", content_snapshot)) if service != null and service.has_method("completion_label") else ""
-
-
-func first_table_score_district(district_snapshot: Dictionary, resolved_catalog: Dictionary) -> int:
-	var service := _first_table_authored_node()
-	return int(service.call("score_district", district_snapshot, resolved_catalog)) if service != null and service.has_method("score_district") else -1000000
-
-
-func start_runtime_scenario(scenario_id: String, now_seconds: float) -> Dictionary:
-	var scenario := _scenario_node()
-	var value: Variant = scenario.call("start_scenario", scenario_id, now_seconds) if scenario != null and scenario.has_method("start_scenario") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func clear_runtime_scenario() -> void:
-	var scenario := _scenario_node()
-	if scenario != null and scenario.has_method("clear_scenario"):
-		scenario.call("clear_scenario")
-
-
-func active_runtime_scenario_id() -> String:
-	var scenario := _scenario_node()
-	return str(scenario.call("active_scenario_id")) if scenario != null and scenario.has_method("active_scenario_id") else ""
-
-
-func runtime_scenario_progress(now_seconds: float) -> Dictionary:
-	var scenario := _scenario_node()
-	var value: Variant = scenario.call("progress_snapshot", now_seconds) if scenario != null and scenario.has_method("progress_snapshot") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func complete_runtime_scenario_signal(signal_id: String, event_snapshot: Dictionary, now_seconds: float) -> Dictionary:
-	var scenario := _scenario_node()
-	var value: Variant = scenario.call("complete_signal", signal_id, event_snapshot, now_seconds) if scenario != null and scenario.has_method("complete_signal") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func record_runtime_scenario_action(entry_snapshot: Dictionary) -> Dictionary:
-	var scenario := _scenario_node()
-	var value: Variant = scenario.call("record_action", entry_snapshot) if scenario != null and scenario.has_method("record_action") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func record_runtime_scenario_failed_attempt(phase_id: String, entry_snapshot: Dictionary, now_seconds: float) -> Dictionary:
-	var scenario := _scenario_node()
-	var value: Variant = scenario.call("record_failed_attempt", phase_id, entry_snapshot, now_seconds) if scenario != null and scenario.has_method("record_failed_attempt") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func set_runtime_scenario_coach_closed(closed: bool) -> void:
-	var scenario := _scenario_node()
-	if scenario != null and scenario.has_method("set_coach_closed"):
-		scenario.call("set_coach_closed", closed)
-
-
-func set_runtime_scenario_snapshot_key(snapshot_key: String) -> void:
-	var scenario := _scenario_node()
-	if scenario != null and scenario.has_method("set_snapshot_key"):
-		scenario.call("set_snapshot_key", snapshot_key)
-
-
-func runtime_scenario_state(now_seconds: float = 0.0) -> Dictionary:
-	var scenario := _scenario_node()
-	var value: Variant = scenario.call("runtime_state_snapshot", now_seconds) if scenario != null and scenario.has_method("runtime_state_snapshot") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func runtime_scenario_viewer_action_log(viewer_index: int, include_developer: bool = false) -> Array:
-	var scenario := _scenario_node()
-	var value: Variant = scenario.call("viewer_action_log", viewer_index, include_developer) if scenario != null and scenario.has_method("viewer_action_log") else []
-	return (value as Array).duplicate(true) if value is Array else []
-
-
-func build_runtime_scenario_visual_event_request(scenario_id: String, snapshot_key: String, trigger_id: String = "") -> Dictionary:
-	var scenario := _scenario_node()
-	var value: Variant = scenario.call("build_visual_event_request", scenario_id, snapshot_key, trigger_id) if scenario != null and scenario.has_method("build_visual_event_request") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
 func begin_session(setup_snapshot: Dictionary) -> Dictionary:
 	var session := _session_node()
 	if session == null or not session.has_method("begin_session"):
@@ -4294,8 +4134,6 @@ func debug_snapshot() -> Dictionary:
 	var player_organization_snapshot := _player_organization_runtime_health_snapshot()
 	var hand_interaction_snapshot := _player_hand_interaction_debug_snapshot()
 	var purchase_settlement_snapshot := _purchase_settlement_debug_snapshot()
-	var scenario_snapshot := _scenario_debug_snapshot()
-	var first_table_authored_snapshot := _first_table_authored_debug_snapshot()
 	var codex_navigation_snapshot := _codex_navigation_debug_snapshot()
 	var codex_public_snapshot := _codex_public_snapshot_debug_snapshot()
 	var monster_codex_public_snapshot := _monster_codex_public_snapshot_debug_snapshot()
@@ -4328,7 +4166,7 @@ func debug_snapshot() -> Dictionary:
 		"coordinator_composition_ready": _composition_ready,
 		"v06_production_player_bindings_ready": bool(_last_v06_player_binding_result.get("ready", false)),
 		"v06_production_player_bindings": _last_v06_player_binding_result.duplicate(true),
-		"coordinator_authoritative": _configured and bool(scheduler_snapshot.get("scheduler_authoritative", false)) and bool(card_runtime_catalog_snapshot.get("service_authoritative", false)) and bool(session_snapshot.get("session_authoritative", false)) and bool(purchase_snapshot.get("controller_authoritative", false)) and bool(card_inventory_snapshot.get("service_authoritative", false)) and bool(card_resolution_queue_snapshot.get("service_authoritative", false)) and bool(card_resolution_execution_snapshot.get("service_authoritative", false)) and bool(economy_product_route_effect_snapshot.get("service_authoritative", false)) and bool(economy_product_route_formula_snapshot.get("service_authoritative", false)) and bool(product_market_runtime_snapshot.get("controller_authoritative", false)) and bool(city_gdp_derivative_runtime_snapshot.get("controller_authoritative", false)) and bool(commodity_flow_runtime_snapshot.get("controller_authoritative", false)) and bool(hand_interaction_snapshot.get("service_authoritative", false)) and bool(purchase_settlement_snapshot.get("service_authoritative", false)) and bool(scenario_snapshot.get("controller_authoritative", false)) and bool(first_table_authored_snapshot.get("service_authoritative", false)) and bool(codex_navigation_snapshot.get("controller_authoritative", false)) and bool(codex_public_snapshot.get("service_authoritative", false)) and bool(monster_codex_public_snapshot.get("service_authoritative", false)) and bool(monster_codex_public_source.get("service_authoritative", false)) and bool(product_codex_public_snapshot.get("service_authoritative", false)) and bool(product_codex_public_source.get("service_authoritative", false)) and bool(card_codex_public_snapshot.get("service_authoritative", false)) and bool(economy_dashboard_public_snapshot.get("service_authoritative", false)) and bool(standings_public_snapshot.get("service_authoritative", false)) and bool(final_settlement_public_snapshot.get("service_authoritative", false)) and bool(intel_dossier_public_snapshot.get("service_authoritative", false)) and bool(district_supply_snapshot.get("service_authoritative", false)) and bool(card_presentation_snapshot.get("service_authoritative", false)) and bool(card_play_eligibility_snapshot.get("service_authoritative", false)) and bool(table_viewmodel_snapshot.get("service_authoritative", false)) and bool(monster_runtime_snapshot.get("controller_authoritative", false)) and bool(military_runtime_snapshot.get("controller_authoritative", false)) and bool(weather_runtime_snapshot.get("controller_authoritative", false)) and bool(contract_runtime_snapshot.get("controller_authoritative", false)),
+		"coordinator_authoritative": _configured and bool(scheduler_snapshot.get("scheduler_authoritative", false)) and bool(card_runtime_catalog_snapshot.get("service_authoritative", false)) and bool(session_snapshot.get("session_authoritative", false)) and bool(purchase_snapshot.get("controller_authoritative", false)) and bool(card_inventory_snapshot.get("service_authoritative", false)) and bool(card_resolution_queue_snapshot.get("service_authoritative", false)) and bool(card_resolution_execution_snapshot.get("service_authoritative", false)) and bool(economy_product_route_effect_snapshot.get("service_authoritative", false)) and bool(economy_product_route_formula_snapshot.get("service_authoritative", false)) and bool(product_market_runtime_snapshot.get("controller_authoritative", false)) and bool(city_gdp_derivative_runtime_snapshot.get("controller_authoritative", false)) and bool(commodity_flow_runtime_snapshot.get("controller_authoritative", false)) and bool(hand_interaction_snapshot.get("service_authoritative", false)) and bool(purchase_settlement_snapshot.get("service_authoritative", false)) and bool(codex_navigation_snapshot.get("controller_authoritative", false)) and bool(codex_public_snapshot.get("service_authoritative", false)) and bool(monster_codex_public_snapshot.get("service_authoritative", false)) and bool(monster_codex_public_source.get("service_authoritative", false)) and bool(product_codex_public_snapshot.get("service_authoritative", false)) and bool(product_codex_public_source.get("service_authoritative", false)) and bool(card_codex_public_snapshot.get("service_authoritative", false)) and bool(economy_dashboard_public_snapshot.get("service_authoritative", false)) and bool(standings_public_snapshot.get("service_authoritative", false)) and bool(final_settlement_public_snapshot.get("service_authoritative", false)) and bool(intel_dossier_public_snapshot.get("service_authoritative", false)) and bool(district_supply_snapshot.get("service_authoritative", false)) and bool(card_presentation_snapshot.get("service_authoritative", false)) and bool(card_play_eligibility_snapshot.get("service_authoritative", false)) and bool(table_viewmodel_snapshot.get("service_authoritative", false)) and bool(monster_runtime_snapshot.get("controller_authoritative", false)) and bool(military_runtime_snapshot.get("controller_authoritative", false)) and bool(weather_runtime_snapshot.get("controller_authoritative", false)) and bool(contract_runtime_snapshot.get("controller_authoritative", false)),
 		"ruleset_id": _ruleset_id,
 		"forced_decision_scheduler": scheduler_snapshot,
 		"world_effective_clock": world_clock_snapshot,
@@ -4361,8 +4199,6 @@ func debug_snapshot() -> Dictionary:
 		"organization_consumer_readiness": organization_consumer_readiness_snapshot(),
 		"player_hand_interaction": hand_interaction_snapshot,
 		"district_purchase_settlement": purchase_settlement_snapshot,
-		"scenario_runtime": scenario_snapshot,
-		"first_table_authored_runtime": first_table_authored_snapshot,
 		"codex_navigation_runtime": codex_navigation_snapshot,
 		"codex_public_snapshot": codex_public_snapshot,
 		"monster_codex_public_snapshot": monster_codex_public_snapshot,
@@ -4687,14 +4523,6 @@ func _player_hand_interaction_node() -> Node:
 
 func _purchase_settlement_node() -> Node:
 	return get_node_or_null("DistrictPurchaseSettlementRuntimeService")
-
-
-func _scenario_node() -> Node:
-	return get_node_or_null("ScenarioRuntimeController")
-
-
-func _first_table_authored_node() -> Node:
-	return get_node_or_null("FirstTableAuthoredRuntimeService")
 
 
 func _codex_navigation_node() -> Node:
@@ -5088,24 +4916,6 @@ func _player_hand_interaction_debug_snapshot() -> Dictionary:
 
 func _purchase_settlement_debug_snapshot() -> Dictionary:
 	var service := _purchase_settlement_node()
-	if service != null and service.has_method("debug_snapshot"):
-		var snapshot_variant: Variant = service.call("debug_snapshot")
-		if snapshot_variant is Dictionary:
-			return (snapshot_variant as Dictionary).duplicate(true)
-	return {}
-
-
-func _scenario_debug_snapshot() -> Dictionary:
-	var scenario := _scenario_node()
-	if scenario != null and scenario.has_method("debug_snapshot"):
-		var snapshot_variant: Variant = scenario.call("debug_snapshot")
-		if snapshot_variant is Dictionary:
-			return (snapshot_variant as Dictionary).duplicate(true)
-	return {}
-
-
-func _first_table_authored_debug_snapshot() -> Dictionary:
-	var service := _first_table_authored_node()
 	if service != null and service.has_method("debug_snapshot"):
 		var snapshot_variant: Variant = service.call("debug_snapshot")
 		if snapshot_variant is Dictionary:

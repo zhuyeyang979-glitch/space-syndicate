@@ -143,10 +143,6 @@ func _capture_size_suite(packed: PackedScene, layout_demo_packed: PackedScene, c
 		await _pump_frames(8)
 	main.call("_close_menu")
 	await _pump_frames(16)
-	if _runtime_first_run_coach_visible(main):
-		await _save_viewport_snapshot("first_run_coach_%s.png" % suffix)
-	else:
-		_capture_failures.append("runtime first-run coach was not visible for %s" % suffix)
 	await _save_viewport_snapshot("play_table_%s.png" % suffix)
 	if _open_runtime_supply_drawer_for_capture(main):
 		await _pump_frames(8)
@@ -349,15 +345,6 @@ func _district_has_capture_cards(districts: Array, index: int) -> bool:
 		return false
 	var choices_variant: Variant = district.get("card_choices", [])
 	return choices_variant is Array and not (choices_variant as Array).is_empty()
-
-
-func _runtime_first_run_coach_visible(root_node: Node) -> bool:
-	var runtime_screen := root_node.find_child("RuntimeGameScreen", true, false)
-	if runtime_screen == null:
-		return false
-	var coach := runtime_screen.find_child("FirstRunCoach", true, false) as Control
-	var button := runtime_screen.find_child("CoachPrimaryButton", true, false) as Button
-	return coach != null and coach.visible and coach.is_visible_in_tree() and button != null
 
 
 func _stage_runtime_hand_hover(root_node: Node) -> bool:

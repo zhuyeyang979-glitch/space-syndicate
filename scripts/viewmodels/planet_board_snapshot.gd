@@ -24,13 +24,11 @@ var left_rail: Dictionary = {}
 var right_rail: Dictionary = {}
 var weather: Dictionary = {}
 var flow_compass: Dictionary = {}
-var campaign_focus_mode := false
 
 
 func apply_dictionary(data: Dictionary) -> RefCounted:
 	title = _first_text(data, ["title", "name", "label"], "星球牌桌")
 	hint = _first_text(data, ["hint", "summary", "subtitle"], "轨道外圈显示公开局势。")
-	campaign_focus_mode = bool(data.get("campaign_focus_mode", data.get("compact", false)))
 	left_rail = _normalized_rail(
 		_left_rail_source(data),
 		DEFAULT_LEFT_TITLE,
@@ -56,8 +54,6 @@ func to_ui_dictionary() -> Dictionary:
 		"right_rail": right_rail.duplicate(true),
 		"weather": weather.duplicate(true),
 		"flow_compass": flow_compass.duplicate(true),
-		"campaign_focus_mode": campaign_focus_mode,
-		"compact": campaign_focus_mode,
 	}
 
 

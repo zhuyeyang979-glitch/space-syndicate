@@ -21,7 +21,7 @@ const MANIFEST_PATH := OUTPUT_DIR + "manifest.json"
 const REPORT_PATH := OUTPUT_DIR + "report.md"
 const SCREENSHOT_PATH := "user://space_syndicate_design_qa/city_development_settlement_hard_cutover_sprint_66.png"
 const RULESET_ID := "v0.4"
-const CASE_COUNT := 64
+const CASE_COUNT := 62
 const FIXED_SEED := 650065
 const BASELINE_MAIN_SHA256 := "B8174D78AA08BE2883E7EA5C7A5568CB8C5ED902D1945BCE0EAE8F7D3AD3CC67"
 const BASELINE_MAIN_METRICS := {
@@ -67,7 +67,6 @@ const CASE_IDS := [
 	"lifecycle_opened_resolved",
 	"economic_event_exact_once",
 	"public_callout_anonymous",
-	"player_ai_first_table_same_route",
 	"public_private_project_privacy",
 	"current_and_migration_save_shape",
 	"downstream_refresh_atomicity_characterized",
@@ -90,7 +89,6 @@ const CASE_IDS := [
 	"lifecycle_events_exact_once",
 	"player_route_uses_coordinator",
 	"ai_route_uses_coordinator",
-	"first_table_route_uses_coordinator",
 	"save_compatibility_cutover",
 	"public_receipt_privacy",
 	"reflected_tests_migrated",
@@ -286,7 +284,6 @@ func _run_case(case_id: String) -> Dictionary:
 		"lifecycle_opened_resolved": return _case_lifecycle()
 		"economic_event_exact_once": return _case_economic_event()
 		"public_callout_anonymous": return _case_public_callout()
-		"player_ai_first_table_same_route": return _case_shared_route()
 		"public_private_project_privacy": return _case_privacy()
 		"current_and_migration_save_shape": return _case_save_shape()
 		"downstream_refresh_atomicity_characterized": return _case_downstream_atomicity()
@@ -309,7 +306,6 @@ func _run_case(case_id: String) -> Dictionary:
 		"lifecycle_events_exact_once": return _case_lifecycle_events_exact_once()
 		"player_route_uses_coordinator": return _case_route_source("player")
 		"ai_route_uses_coordinator": return _case_route_source("ai")
-		"first_table_route_uses_coordinator": return _case_route_source("first_table")
 		"save_compatibility_cutover": return _rename_record("save_compatibility_cutover", _case_save_shape())
 		"public_receipt_privacy": return _case_public_receipt_privacy()
 		"reflected_tests_migrated": return _case_reflected_tests_migrated()
@@ -619,15 +615,6 @@ func _case_public_callout() -> Dictionary:
 	return _record("public_callout_anonymous", observed, observed, "Public callout exposes project/product evidence but keeps the contributor anonymous.", {"district_index": int(fixture.get("district_index", -1)), "event_checked": true, "privacy_checked": true})
 
 
-func _case_shared_route() -> Dictionary:
-	var main_source := str(_sources.get("main", ""))
-	var dispatch := _function_source(main_source, "_apply_card_resolution_effect_request")
-	var ai_route := _function_source(main_source, "_perform_first_table_authored_ai_city_action")
-	var first_table_source := _function_source(main_source, "_buy_first_table_city_development_card") + _function_source(main_source, "_activate_first_run_coach_action")
-	var observed := dispatch.contains("execute_city_development") and ai_route.contains("execute_city_development") and first_table_source.contains("city_development") and not main_source.contains("func _apply_city_development_card(")
-	return _record("player_ai_first_table_same_route", observed, observed, "Player Queue resolution and authored AI converge on Coordinator; First Table supplies the same real city-development cards.", {"event_checked": true})
-
-
 func _case_privacy() -> Dictionary:
 	var fixture := _development_fixture("production")
 	var first := _apply_fixture(fixture, 0)
@@ -778,9 +765,8 @@ func _case_route_source(route_kind: String) -> Dictionary:
 	var source := ""
 	match route_kind:
 		"player": source = _function_source(main_source, "_apply_card_resolution_effect_request")
-		"ai": source = _function_source(main_source, "_perform_first_table_authored_ai_city_action")
-		"first_table": source = _function_source(main_source, "_buy_first_table_city_development_card") + _function_source(main_source, "_perform_first_table_authored_ai_city_action")
-	var observed := source.contains("execute_city_development") if route_kind != "first_table" else source.contains("city_development") and main_source.contains("execute_city_development")
+		"ai": source = FileAccess.get_file_as_string("res://scripts/runtime/ai_runtime_controller.gd")
+	var observed := source.contains("execute_city_development")
 	return _record("%s_route_uses_coordinator" % route_kind, observed, observed, "%s route reaches the shared Coordinator settlement API without a private formula." % route_kind, {"main_adapter_checked": true})
 
 

@@ -2,7 +2,6 @@ extends Node
 class_name ShowcaseDirector
 
 const SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/visual_event_snapshot.gd")
-const SCENARIO_LAB_ADAPTER_SCRIPT := preload("res://scripts/ui/scenario_lab_showcase_adapter.gd")
 const DEFAULT_SEQUENCE_PATH := "res://data/showcase/hearthstone_grade_sequence.json"
 
 var sequence: Dictionary = {}
@@ -128,19 +127,6 @@ func scenario_snapshot(scenario_id: String) -> Dictionary:
 		"required_audio_hooks": segment.get("required_audio_hooks", []),
 		"showcase_goal": str(segment.get("showcase_goal", "")),
 	}
-
-
-func stage_snapshot_from_scenario_lab(payload: Dictionary) -> Dictionary:
-	var adapter: Variant = SCENARIO_LAB_ADAPTER_SCRIPT.new()
-	var scenario_id := str(payload.get("scenario_id", payload.get("id", "first_table")))
-	var stage_id := str(payload.get("stage_id", ""))
-	var fallback := stage_by_id(stage_id) if stage_id != "" else _fallback_stage_for_scenario(scenario_id)
-	return adapter.call("normalize_payload", payload, fallback)
-
-
-func scenario_contract_from_scenario_lab(payload: Dictionary) -> Dictionary:
-	var adapter: Variant = SCENARIO_LAB_ADAPTER_SCRIPT.new()
-	return adapter.call("scenario_contract_from_payload", payload)
 
 
 func stage_snapshot(stage_id: String) -> Dictionary:

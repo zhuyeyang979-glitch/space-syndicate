@@ -93,7 +93,6 @@ func _table_state_from_fixture(fixture: Dictionary, step_data: Dictionary) -> Di
 		"planet": _planet_for_step(step_id),
 		"right_inspector": inspector,
 		"player_board": player_state,
-		"first_run_coach": _coach_for_step(step_id),
 		"temporary_decision": temporary_decision_payload() if step_id == "temporary_decision_roundtrip" else {},
 	}
 
@@ -142,24 +141,6 @@ func _planet_for_step(step_id: String) -> Dictionary:
 		"table_lanes": [
 			{"title": "当前目标", "detail": _primary_action_for_step(step_id)},
 			{"title": "玩家操作", "detail": "真实 GameScreen / PlayerBoard / OverlayLayer"},
-		],
-	}
-
-
-func _coach_for_step(step_id: String) -> Dictionary:
-	return {
-		"visible": true,
-		"collapsed": false,
-		"stage": "first_playable_loop",
-		"title": "第一轮目标",
-		"body": "选择一张手牌，确认右侧详情，再执行一个行动。若出现临时决策，先完成 Overlay。",
-		"progress": "Step %s" % step_id,
-		"primary_action": {"id": "loop:%s" % step_id, "label": _primary_action_for_step(step_id), "accent": Color("#38bdf8")},
-		"chips": [
-			{"text": "选牌"},
-			{"text": "看详情"},
-			{"text": "执行"},
-			{"text": "结束回合"},
 		],
 	}
 

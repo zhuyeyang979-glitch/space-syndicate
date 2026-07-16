@@ -66,16 +66,15 @@ func _test_real_player_board_route() -> void:
 	root.add_child(main)
 	await process_frame
 	await process_frame
-	var setup: Dictionary = main.call("_first_run_recommended_setup")
-	main.set("configured_player_count", int(setup.get("player_count", 4)))
-	main.set("configured_ai_player_count", int(setup.get("ai_count", 3)))
-	main.set("configured_role_indices", (setup.get("role_indices", []) as Array).duplicate(true))
-	main.set("configured_starter_monster_indices", (setup.get("starter_monster_indices", []) as Array).duplicate(true))
+	main.set("configured_player_count", 4)
+	main.set("configured_ai_player_count", 3)
+	main.set("configured_role_indices", [0, 1, 2, 3])
+	main.set("configured_starter_monster_indices", [0, 1, 2, 3])
 	main.call("_confirm_start_new_run_from_setup")
 	for _frame in range(8):
 		await process_frame
-	var recommended_district := int(main.call("_first_run_recommended_start_district", 0))
-	main.call("_select_district", recommended_district)
+	var playable_district := _first_playable_district(main)
+	main.call("_select_district", playable_district)
 	await process_frame
 	var actions: Array = main.call("_runtime_snapshot_action_entries", 0)
 	var build := _find_action(actions, "strategy_build_gdp_source")
@@ -117,6 +116,15 @@ func _find_action(actions: Array, action_id: String) -> Dictionary:
 		if action_variant is Dictionary and str((action_variant as Dictionary).get("id", "")) == action_id:
 			return (action_variant as Dictionary).duplicate(true)
 	return {}
+
+
+func _first_playable_district(main: Node) -> int:
+	var districts: Array = main.get("districts") if main.get("districts") is Array else []
+	for index in range(districts.size()):
+		var district: Dictionary = districts[index] if districts[index] is Dictionary else {}
+		if not bool(district.get("is_ocean", false)) and not str(district.get("region_id", "")).is_empty():
+			return index
+	return -1
 
 
 func _expect(condition: bool, label: String) -> void:

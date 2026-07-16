@@ -77,9 +77,6 @@ const RUNTIME_CARD_AUTHORING_WORKFLOW_BENCH := "res://scenes/tools/RuntimeCardAu
 const RUNTIME_CARD_AUTHORING_SERVICE := "res://scripts/cards/card_runtime_authoring_service.gd"
 const RUNTIME_CARD_AUTHORING_INSPECTOR_PLUGIN := "res://addons/space_syndicate_design_qa/card_runtime_authoring_inspector_plugin.gd"
 const RUNTIME_CARD_AUTHORING_WORKFLOW_DOC := "res://docs/runtime_card_authoring_workflow.md"
-const GLOBAL_UI_NAVIGATION_CHARACTERIZATION_REGISTRY := "res://scripts/tools/global_ui_navigation_characterization_registry.gd"
-const GLOBAL_UI_NAVIGATION_RUNTIME_CONTRACT := "res://docs/global_ui_navigation_runtime_contract.md"
-const MENU_SHELL_RUNTIME_CUTOVER_BENCH := "res://scenes/tools/MenuShellRuntimeCutoverBench.tscn"
 const RULESET_V05_PROFILE := "res://resources/rules/space_syndicate_ruleset_v05.tres"
 const PRODUCT_INDUSTRY_CATALOG_V05 := "res://resources/content/product_industry_catalog_v05.tres"
 const CARD_RUNTIME_CATALOG_V05 := "res://resources/cards/runtime/card_runtime_catalog_v05.tres"
@@ -142,7 +139,6 @@ func _run() -> void:
 	_check_city_gdp_derivative_assets()
 	_check_runtime_card_catalog_resource_assets()
 	_check_runtime_card_authoring_assets()
-	_check_global_ui_navigation_characterization_assets()
 	_check_ruleset_v05_foundation_assets()
 	_check_player_text_v05_foundation_assets()
 	_check_victory_control_runtime_assets()
@@ -224,7 +220,6 @@ func _check_static_composition(main: Control) -> void:
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionInfrastructureWorldBridge",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/VictoryControlRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/VictoryControlWorldBridge",
-		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ScenarioRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CodexNavigationRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CodexPublicSnapshotService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterCodexPublicSnapshotService",
@@ -305,8 +300,6 @@ func _check_static_composition(main: Control) -> void:
 	var hand_interaction := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/PlayerHandInteractionRuntimeService")
 	var purchase_settlement := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictPurchaseSettlementRuntimeService")
 	var district_supply_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictSupplySnapshotService")
-	var scenario := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ScenarioRuntimeController")
-	var first_table_authored := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/FirstTableAuthoredRuntimeService")
 	var codex_navigation := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CodexNavigationRuntimeController")
 	var codex_public_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CodexPublicSnapshotService")
 	var monster_codex_public_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterCodexPublicSnapshotService")
@@ -442,56 +435,6 @@ func _check_static_composition(main: Control) -> void:
 	namespace_cutover_checked = namespace_cutover_checked and commodity_inventory_source.contains("func play_core_card(") and core_economic_adapter_source.contains("func play_card(") and main_source.contains("func _play_v06_runtime_card_for_player(")
 	_expect(namespace_cutover_checked, "legacy v0.4 effect/formula services stay isolated while v0.6 core cards use the single CardFlow transaction facade")
 	_expect(not main_source.contains("func _lowest_level_city_product_index(") and not main_source.contains("func _product_futures_balance_") and not main_source.contains("PRODUCT_FUTURES_PAYOUT_UNIT") and not execution_service_source.contains("CardEconomyProductRouteFormulaRuntimeService"), "retired formula ownership stays absent from main and the Execution Service remains formula-agnostic")
-	_expect(scenario != null and scenario.scene_file_path == "res://scenes/runtime/ScenarioRuntimeController.tscn" and scenario.has_method("start_scenario") and scenario.has_method("complete_signal") and scenario.has_method("viewer_action_log"), "GameRuntimeCoordinator owns the editable ScenarioRuntimeController scene")
-	_expect(first_table_authored != null and first_table_authored.scene_file_path == "res://scenes/runtime/FirstTableAuthoredRuntimeService.tscn" and first_table_authored.has_method("resolve_content_catalog") and first_table_authored.has_method("compose_runtime_content") and first_table_authored.has_method("contextualize_phase") and first_table_authored.has_method("pacing_profile") and first_table_authored.has_method("evaluate_pacing") and first_table_authored.has_method("supply_plan"), "GameRuntimeCoordinator owns the editable FirstTableAuthoredRuntimeService scene and its authored pacing API")
-	var first_table_service_source := FileAccess.get_file_as_string("res://scripts/runtime/first_table_authored_runtime_service.gd")
-	var first_table_content_source := _function_source(main_source, "_first_table_runtime_content_snapshot")
-	var first_table_buyable_source := _function_source(main_source, "_first_buyable_district_card")
-	var retired_first_table_symbols := [
-		"FIRST_RUN_TEACHING_CARD_NAME",
-		"FIRST_RUN_TEACHING_CARD_SOURCE",
-		"FIRST_TABLE_FOLLOWUP_CARD_SOURCE",
-		"_first_table_resolved_content_catalog",
-		"_first_table_followup_card_name",
-		"_first_table_teaching_product_for_district",
-		"_first_table_starter_monster_name",
-		"_first_actionable_teachable_hand_slot",
-		"_first_table_accessible_land_district",
-		"_first_table_followup_hand_slot",
-		"_buy_first_table_followup_card",
-		"_first_teachable_buyable_district_card",
-		"_first_run_teaching_card_name",
-		"_ensure_first_run_teaching_card_supply",
-		"_first_run_card_is_teachable_after_purchase",
-		"_first_run_skill_has_direct_teaching_profile",
-		"_first_run_skill_is_direct_teachable",
-		"_ensure_first_run_teachable_hand_card",
-		"_first_teachable_buyable_district_for_player",
-		"coach_buy_followup_card",
-		"coach_play_followup_card",
-	]
-	var first_table_legacy_absent := true
-	for retired_symbol in retired_first_table_symbols:
-		first_table_legacy_absent = first_table_legacy_absent and not main_source.contains(str(retired_symbol))
-	_expect(
-		first_table_legacy_absent
-		and first_table_content_source.contains("region_supply_public_rack")
-		and first_table_content_source.contains("public_region_supply_rack_snapshot")
-		and first_table_buyable_source.contains("followup_rack_recommendation")
-		and first_table_service_source.contains('snapshot.get("regions", [])')
-		and first_table_service_source.contains('region.get("slots", [])')
-		and first_table_service_source.contains("PUBLIC_RACK_FORBIDDEN_KEYS"),
-		"First-table content reads the native public RegionSupply rack and physically removes the fixed-card teaching chain"
-	)
-	_expect(
-		buy_source.contains('first_table_phase_before_purchase == "buy_followup"')
-		and queue_submit_source.contains('first_table_phase_before_play == "play_followup"')
-		and buy_source.find("first_table_phase_before_purchase =") < buy_source.find('_complete_scenario_signal("card_bought"')
-		and queue_submit_source.find("first_table_phase_before_play =") < queue_submit_source.find('_complete_scenario_signal("card_played"')
-		and not buy_source.contains("card_family_id")
-		and not queue_submit_source.contains("_first_table_followup_card_name"),
-		"First-table follow-up signals depend on the local-human phase before successful purchase/queue advancement, never on a fixed card name"
-	)
 	_expect(codex_navigation != null and codex_navigation.scene_file_path == "res://scenes/runtime/CodexNavigationRuntimeController.tscn" and codex_navigation.has_method("navigation_snapshot") and codex_navigation.has_method("to_legacy_save_snapshot") and codex_navigation.has_method("apply_legacy_save_snapshot"), "GameRuntimeCoordinator owns the editable CodexNavigationRuntimeController scene")
 	_expect(codex_public_snapshot != null and codex_public_snapshot.scene_file_path == "res://scenes/runtime/CodexPublicSnapshotService.tscn" and codex_public_snapshot.has_method("compose_role") and codex_public_snapshot.has_method("compose_region"), "GameRuntimeCoordinator owns the editable CodexPublicSnapshotService scene")
 	_expect(monster_codex_public_snapshot != null and monster_codex_public_snapshot.scene_file_path == "res://scenes/runtime/MonsterCodexPublicSnapshotService.tscn" and monster_codex_public_snapshot.has_method("compose"), "GameRuntimeCoordinator owns the editable MonsterCodexPublicSnapshotService scene")
@@ -545,8 +488,6 @@ func _check_runtime_snapshot(main: Control, phase: String) -> void:
 	var core_economic_snapshot: Dictionary = coordinator_snapshot.get("core_economic_card_runtime_adapter_v06", {}) if coordinator_snapshot.get("core_economic_card_runtime_adapter_v06", {}) is Dictionary else {}
 	var region_snapshot: Dictionary = coordinator_snapshot.get("region_infrastructure_runtime", {}) if coordinator_snapshot.get("region_infrastructure_runtime", {}) is Dictionary else {}
 	var victory_snapshot: Dictionary = coordinator_snapshot.get("victory_control_runtime", {}) if coordinator_snapshot.get("victory_control_runtime", {}) is Dictionary else {}
-	var scenario_snapshot: Dictionary = coordinator_snapshot.get("scenario_runtime", {}) if coordinator_snapshot.get("scenario_runtime", {}) is Dictionary else {}
-	var first_table_snapshot: Dictionary = coordinator_snapshot.get("first_table_authored_runtime", {}) if coordinator_snapshot.get("first_table_authored_runtime", {}) is Dictionary else {}
 	var card_presentation_snapshot: Dictionary = coordinator_snapshot.get("card_presentation", {}) if coordinator_snapshot.get("card_presentation", {}) is Dictionary else {}
 	var table_viewmodel_snapshot: Dictionary = coordinator_snapshot.get("game_table_viewmodel", {}) if coordinator_snapshot.get("game_table_viewmodel", {}) is Dictionary else {}
 	_expect(scheduler_snapshot.get("priority_order", []) == ["monster_wager", "counter_response", "contract_response", "other_choice", "public_bid"], "%s preserves RulesetRuntimeBridge priorities and appends public_bid as the lowest forced-decision priority" % phase)
@@ -566,8 +507,6 @@ func _check_runtime_snapshot(main: Control, phase: String) -> void:
 	_expect(bool(region_snapshot.get("controller_ready", false)) and str(region_snapshot.get("ruleset_id", "")) == "v0.6" and bool(region_snapshot.get("facility_rollback_atomic_ready", false)) and not bool(region_snapshot.get("has_heat_state", true)), "%s configures RegionInfrastructure as the v0.6 facility/shared-life owner" % phase)
 	_expect(bool(victory_snapshot.get("controller_ready", false)) and str(victory_snapshot.get("ruleset_id", "")) == "v0.6" and bool(victory_snapshot.get("dynamic_denominator_enabled", false)) and not bool(victory_snapshot.get("fixed_depth_table_present", true)), "%s configures the unique v0.6 Victory owner" % phase)
 	_expect(not coordinator_snapshot.has("city_development_runtime") and not coordinator_snapshot.has("economy_cashflow") and not coordinator_snapshot.has("industry_capacity_runtime"), "%s does not revive retired city-project, parallel cashflow, or industry-capacity owners" % phase)
-	_expect(bool(scenario_snapshot.get("controller_ready", false)) and bool(scenario_snapshot.get("controller_authoritative", false)), "%s finds and configures the scene-owned scenario runtime authority" % phase)
-	_expect(bool(first_table_snapshot.get("service_ready", false)) and bool(first_table_snapshot.get("service_authoritative", false)) and not bool(first_table_snapshot.get("legacy_authored_fallback_used", true)), "%s configures scene-owned first_table authored runtime authority" % phase)
 	_expect(bool(card_presentation_snapshot.get("service_ready", false)) and bool(card_presentation_snapshot.get("service_authoritative", false)) and bool(card_presentation_snapshot.get("owns_card_use_case", false)) and bool(card_presentation_snapshot.get("owns_hand_card_viewmodel", false)) and not bool(card_presentation_snapshot.get("calculates_card_price", true)) and not bool(card_presentation_snapshot.get("calculates_play_legality", true)) and not bool(card_presentation_snapshot.get("mutates_game_state", true)), "%s configures scene-owned card presentation without moving price, legality, or mutation rules" % phase)
 	_expect(bool(table_viewmodel_snapshot.get("service_ready", false)) and bool(table_viewmodel_snapshot.get("service_authoritative", false)) and bool(table_viewmodel_snapshot.get("owns_table_snapshot_normalization", false)) and bool(table_viewmodel_snapshot.get("owns_right_inspector_assembly", false)) and bool(table_viewmodel_snapshot.get("owns_public_track_viewmodels", false)) and bool(table_viewmodel_snapshot.get("owns_resolution_overlay_badges", false)) and not bool(table_viewmodel_snapshot.get("calculates_play_legality", true)) and not bool(table_viewmodel_snapshot.get("mutates_game_state", true)), "%s configures scene-owned TableSnapshot, public track, resolution-overlay badge, and RightInspector assembly" % phase)
 	_expect(bool(card_presentation_snapshot.get("owns_resolution_presentation", false)), "%s configures scene-owned card-resolution cinematic presentation" % phase)
@@ -798,29 +737,6 @@ func _check_runtime_card_authoring_assets() -> void:
 	var workflow_doc := FileAccess.get_file_as_string(RUNTIME_CARD_AUTHORING_WORKFLOW_DOC)
 	ready = ready and workflow_doc.contains("36/36") and workflow_doc.contains("editor-only") and workflow_doc.contains("CardRuntimeCatalogService")
 	_expect(ready, "Sprint 59 provides Inspector validation, Workspace navigation, and user-scoped change review while staying outside main/Coordinator runtime composition")
-
-
-func _check_global_ui_navigation_characterization_assets() -> void:
-	var ready := ResourceLoader.exists(GLOBAL_UI_NAVIGATION_CHARACTERIZATION_REGISTRY) and FileAccess.file_exists(GLOBAL_UI_NAVIGATION_RUNTIME_CONTRACT) and ResourceLoader.exists(MENU_SHELL_RUNTIME_CUTOVER_BENCH)
-	var registry_script := load(GLOBAL_UI_NAVIGATION_CHARACTERIZATION_REGISTRY) as Script
-	var registry: RefCounted = registry_script.new() if registry_script != null else null
-	var cases: Array = registry.call("characterization_cases") if registry != null and registry.has_method("characterization_cases") else []
-	var surfaces: Array = registry.call("surface_registry") if registry != null and registry.has_method("surface_registry") else []
-	var deletion_candidates: Array = registry.call("deletion_candidates") if registry != null and registry.has_method("deletion_candidates") else []
-	ready = ready and cases.size() == 32 and surfaces.size() >= 15 and deletion_candidates.size() == 8 and _is_pure_data(cases) and _is_pure_data(surfaces) and _is_pure_data(deletion_candidates)
-	var bench_packed := load(MENU_SHELL_RUNTIME_CUTOVER_BENCH) as PackedScene
-	var bench := bench_packed.instantiate() if bench_packed != null else null
-	var preview: Dictionary = bench.call("build_global_navigation_manifest_preview") if bench != null and bench.has_method("build_global_navigation_manifest_preview") else {}
-	ready = ready and bench != null and bench.has_method("global_navigation_cases") and int(preview.get("record_count", 0)) == 32 and _is_pure_data(preview)
-	if bench != null:
-		bench.free()
-	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	var input_source := _function_source(main_source, "_unhandled_input")
-	ready = ready and input_source.contains("full_map_overlay") and input_source.contains("menu_overlay") and input_source.contains("_open_pause_menu()") and not input_source.contains("ui_cancel")
-	ready = ready and not main_source.contains("GlobalUiNavigationRuntimeController") and not main_source.contains("func global_navigation_snapshot(")
-	var contract := FileAccess.get_file_as_string(GLOBAL_UI_NAVIGATION_RUNTIME_CONTRACT)
-	ready = ready and contract.contains("32/32 cases observed") and contract.contains("19/32 cases already aligned") and contract.contains("Sprint 68 deletion gate")
-	_expect(ready, "Sprint 67 characterizes 32 real global navigation cases without adding a parallel runtime owner or changing main.gd behavior")
 
 
 func _check_ruleset_v05_foundation_assets() -> void:

@@ -117,7 +117,7 @@ func _test_real_production_adopter() -> void:
 		return
 	var players: Array = main.get("players") if main.get("players") is Array else []
 	var actor_id := str((players[0] as Dictionary).get("actor_id", "player.0")) if not players.is_empty() and players[0] is Dictionary else "player.0"
-	var market: Dictionary = coordinator.call("v06_first_table_facility_market_snapshot", actor_id)
+	var market: Dictionary = coordinator.call("v06_facility_market_snapshot", actor_id)
 	var listing: Dictionary = market.get("listing", {}) if market.get("listing", {}) is Dictionary else {}
 	var card: Dictionary = listing.get("card", {}) if listing.get("card", {}) is Dictionary else {}
 	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
@@ -131,14 +131,14 @@ func _test_real_production_adopter() -> void:
 		availability_kinds.append(str(availability.get("availability_kind", "invalid")))
 	_expect(availability_kinds.has("sunlit") and availability_kinds.has("dark"), "real facility source alternates between a purchasable day side and a browse-only night side within one authoritative rotation")
 	coordinator.call("restore_world_effective_seconds", 0.0)
-	coordinator.call("refresh_v06_first_table_facility_quote", actor_id, card_id)
-	market = coordinator.call("v06_first_table_facility_market_snapshot", actor_id)
+	coordinator.call("refresh_v06_facility_quote", actor_id, card_id)
+	market = coordinator.call("v06_facility_market_snapshot", actor_id)
 	var public_state: Dictionary = coordinator.call("v06_facility_purchase_public_state", actor_id, card_id)
 	_expect(bool(public_state.get("available", false)) and bool(public_state.get("actionable", false)) and int(public_state.get("price_cash", -1)) >= 0, "facility shelf consumes one confirmable owner-backed public purchase state")
 	_expect(public_state.keys().size() == 7 and not _contains_private_value(public_state) and not public_state.has("quote_id") and not public_state.has("quote_fingerprint"), "facility purchase state exposes only the strict public allowlist")
 	main.call("_activate_runtime_player_board_action", "strategy_build_gdp_source")
 	await _wait_frames(3)
-	var focused_market: Dictionary = coordinator.call("v06_first_table_facility_market_snapshot", actor_id)
+	var focused_market: Dictionary = coordinator.call("v06_facility_market_snapshot", actor_id)
 	var initial_quote: Dictionary = market.get("quote", {}) if market.get("quote", {}) is Dictionary else {}
 	var focused_quote: Dictionary = focused_market.get("quote", {}) if focused_market.get("quote", {}) is Dictionary else {}
 	_expect(not str(focused_quote.get("quote_id", "")).is_empty() and str(focused_quote.get("quote_id", "")) != str(initial_quote.get("quote_id", "")), "opening the focused facility rack explicitly replaces the earlier presentation quote")
@@ -158,7 +158,7 @@ func _test_real_production_adopter() -> void:
 	var market_revision_before := int((market.get("market", {}) as Dictionary).get("revision", -1)) if market.get("market", {}) is Dictionary else -1
 	var failure_before: Dictionary = coordinator.call("execute_v06_facility_purchase_action", actor_id, "%s:stale" % card_id)
 	var owner_after_failure: Dictionary = coordinator.call("v06_card_player_snapshot", actor_id)
-	var market_after_failure: Dictionary = coordinator.call("v06_first_table_facility_market_snapshot", actor_id)
+	var market_after_failure: Dictionary = coordinator.call("v06_facility_market_snapshot", actor_id)
 	_expect(str(failure_before.get("failure_code", "")) == "purchase_listing_changed" and not bool(failure_before.get("success", true)), "production action projects an owner listing mismatch as structured failure")
 	_expect(owner_after_failure == owner_before and int(((market_after_failure.get("market", {}) as Dictionary).get("revision", -2))) == market_revision_before, "failed production action leaves owner player and market revisions unchanged")
 
@@ -179,7 +179,7 @@ func _test_real_production_adopter() -> void:
 	main.call("_on_district_supply_action_requested", "district_supply_purchase_card", {"card_name": card_id})
 	await _wait_frames(3)
 	var owner_after_success: Dictionary = coordinator.call("v06_card_player_snapshot", actor_id)
-	var market_after_success: Dictionary = coordinator.call("v06_first_table_facility_market_snapshot", actor_id)
+	var market_after_success: Dictionary = coordinator.call("v06_facility_market_snapshot", actor_id)
 	var next_listing: Dictionary = market_after_success.get("listing", {}) if market_after_success.get("listing", {}) is Dictionary else {}
 	var next_card: Dictionary = next_listing.get("card", {}) if next_listing.get("card", {}) is Dictionary else {}
 	var next_machine: Dictionary = next_card.get("machine", {}) if next_card.get("machine", {}) is Dictionary else {}
@@ -200,7 +200,7 @@ func _test_real_production_adopter() -> void:
 func _test_main_helper_retirement() -> void:
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
-	_expect(not main_source.contains("func _purchase_v06_first_table_facility_card(") and not main_source.contains("_purchase_v06_first_table_facility_card("), "old Main facility-purchase helper has zero definitions and references")
+	_expect(not main_source.contains("func _purchase_v06_facility_card(") and not main_source.contains("_purchase_v06_facility_card("), "old Main facility-purchase helper has zero definitions and references")
 	for retired_copy in [
 		"城市设施牌市场已经刷新，请重新选择。",
 		"已购买一张I级城市设施牌；现金¥-",

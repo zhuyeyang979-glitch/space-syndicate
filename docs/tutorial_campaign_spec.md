@@ -1,5 +1,7 @@
 # Tutorial Campaign Spec
 
+> Historical / legacy / removed. This document is not runtime authority.
+
 ## 战役：辛迪加入桌
 
 | 顺序 | 关卡 ID | 训练内容 | 对应剧本 |

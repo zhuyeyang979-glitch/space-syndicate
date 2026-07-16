@@ -63,7 +63,7 @@ func _check_monster_dispatch(main: Node, coordinator: Node, inventory: Object, m
 	_expect(players.size() == 3, "three production seats exist")
 	if players.is_empty():
 		return
-	var district := int(main.call("_first_run_recommended_start_district", 0))
+	var district := _first_playable_district(main)
 	_expect(district >= 0, "starter district exists")
 	if district < 0:
 		return
@@ -142,11 +142,11 @@ func _check_facility_dispatch(main: Node, coordinator: Node, inventory: Object, 
 	if players.is_empty():
 		return
 	var actor_id := _actor_id(players[0] as Dictionary, 0)
-	var surface := coordinator.call("v06_first_table_facility_market_snapshot", actor_id) as Dictionary
+	var surface := coordinator.call("v06_facility_market_snapshot", actor_id) as Dictionary
 	var listing: Dictionary = surface.get("listing", {}) if surface.get("listing", {}) is Dictionary else {}
 	var source_item_id := str(listing.get("item_id", ""))
 	var purchase_id := "vs06-a5:facility-purchase:%s" % actor_id
-	var purchase := coordinator.call("purchase_v06_first_table_facility_card", actor_id, source_item_id, purchase_id) as Dictionary
+	var purchase := coordinator.call("purchase_v06_facility_card", actor_id, source_item_id, purchase_id) as Dictionary
 	_expect(bool(purchase.get("committed", false)), "canonical facility purchase commits")
 	if not bool(purchase.get("committed", false)):
 		return
@@ -259,6 +259,15 @@ func _selected_region_id(main: Node, district: int) -> String:
 	if district < 0 or district >= districts.size() or not (districts[district] is Dictionary):
 		return ""
 	return str((districts[district] as Dictionary).get("region_id", "region.%03d" % district))
+
+
+func _first_playable_district(main: Node) -> int:
+	var districts: Array = main.get("districts") if main.get("districts") is Array else []
+	for index in range(districts.size()):
+		var district_data: Dictionary = districts[index] if districts[index] is Dictionary else {}
+		if not bool(district_data.get("is_ocean", false)) and not str(district_data.get("region_id", "")).is_empty():
+			return index
+	return -1
 
 
 func _different_region_id(main: Node, current_region_id: String) -> String:

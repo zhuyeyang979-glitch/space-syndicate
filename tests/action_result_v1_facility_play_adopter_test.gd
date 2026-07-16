@@ -149,7 +149,7 @@ func _wait_frames(count: int) -> void:
 
 
 func _first_available_market(coordinator: Node, actor_id: String) -> Dictionary:
-	var surface_variant: Variant = coordinator.call("v06_first_table_facility_market_snapshot", actor_id)
+	var surface_variant: Variant = coordinator.call("v06_facility_market_snapshot", actor_id)
 	var surface: Dictionary = surface_variant if surface_variant is Dictionary else {}
 	var listing: Dictionary = surface.get("listing", {}) if surface.get("listing", {}) is Dictionary else {}
 	var district_index := int(listing.get("source_district_index", -1))

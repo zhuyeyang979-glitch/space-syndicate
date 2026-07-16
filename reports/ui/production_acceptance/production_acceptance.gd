@@ -4,7 +4,7 @@ const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const REPORT_DIR := "res://reports/ui/production_acceptance"
 const CAPTURE_SIZE := Vector2i(1280, 720)
 const CAPTURE_FILES := {
-	"first_run_core_table": "01_first_run_core_table_1280x720.png",
+	"normal_core_table": "01_normal_core_table_1280x720.png",
 	"weather_forecast": "02_weather_forecast_1280x720.png",
 	"weather_active": "03_weather_active_1280x720.png",
 	"weather_dual": "04_weather_dual_1280x720.png",
@@ -66,7 +66,7 @@ func _run() -> void:
 	await _pump_frames(8)
 
 	_record_core_table_state(main)
-	await _capture("first_run_core_table")
+	await _capture("normal_core_table")
 	await _capture_weather_states(main)
 	await _capture_economy_reopen(main)
 	await _capture_live_table_modules(main)
@@ -157,7 +157,7 @@ func _record_core_table_state(main: Node) -> void:
 		"selected_district": int(main.get("selected_district")),
 		"menu_closed": not _named_control_visible(main, "MenuOverlay"),
 		"runtime_game_screen_visible": _named_control_visible(main, "RuntimeGameScreen"),
-		"first_run_coach_visible": _named_control_visible(main, "FirstRunCoach"),
+		"legacy_coach_absent": main.find_child("FirstRunCoach", true, false) == null and main.find_child("ScenarioCoach", true, false) == null,
 		"forecast_present": not (main.get("weather_forecast") as Dictionary).is_empty(),
 		"active_weather_count": (main.get("active_weather_zones") as Array).size(),
 	}
@@ -166,6 +166,8 @@ func _record_core_table_state(main: Node) -> void:
 		_fail("core_table_state", "new game did not create four players and a production district set")
 	if not bool(core.get("menu_closed", false)) or not bool(core.get("runtime_game_screen_visible", false)):
 		_fail("core_table_visibility", "core table was not fully visible after closing the menu")
+	if not bool(core.get("legacy_coach_absent", false)):
+		_fail("legacy_coach_absence", "removed onboarding coach nodes are still present")
 
 
 func _capture_weather_states(main: Node) -> void:

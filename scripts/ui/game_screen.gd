@@ -3,15 +3,6 @@ class_name SpaceSyndicateGameScreen
 
 const TABLE_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/table_snapshot.gd")
 const OVERLAY_LAYER_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/overlay_layer_snapshot.gd")
-const PLANET_RIGHT_SIDE_LANE_LEFT := 0.635
-const PLANET_RIGHT_SIDE_LANE_TOP := 0.145
-const PLANET_RIGHT_SIDE_LANE_RIGHT := 0.790
-const PLANET_RIGHT_SIDE_LANE_BOTTOM := 0.285
-const PLANET_RIGHT_SIDE_LANE_FOCUS_BOTTOM := 0.270
-const PLANET_LEFT_SIDE_LANE_LEFT := 0.020
-const PLANET_LEFT_SIDE_LANE_TOP := 0.150
-const PLANET_LEFT_SIDE_LANE_RIGHT := 0.225
-const PLANET_LEFT_SIDE_LANE_BOTTOM := 0.335
 const HAND_HOVER_PREVIEW_LEFT := 0.020
 const HAND_HOVER_PREVIEW_TOP := 0.350
 const HAND_HOVER_PREVIEW_RIGHT := 0.190
@@ -55,8 +46,6 @@ signal card_drop_requested(card_data: Dictionary, screen_position: Vector2)
 @onready var top_bar: Node = %TopBar
 @onready var public_track: Node = get_node_or_null("%PublicTrack")
 @onready var card_track: Node = get_node_or_null("%CardTrack")
-@onready var first_run_coach: Node = get_node_or_null("%FirstRunCoach")
-@onready var scenario_coach: Node = get_node_or_null("%ScenarioCoach")
 @onready var track_focus_ribbon: PanelContainer = get_node_or_null("%TrackFocusRibbon") as PanelContainer
 @onready var track_focus_label: Label = get_node_or_null("%TrackFocusLabel") as Label
 @onready var planet_board: Node = %PlanetBoard
@@ -64,9 +53,6 @@ signal card_drop_requested(card_data: Dictionary, screen_position: Vector2)
 @onready var player_board: Node = %PlayerBoard
 @onready var visual_event_layer: Node = get_node_or_null("%RuntimeVisualEventLayer")
 @onready var overlay_layer: Node = %OverlayLayer
-@onready var scenario_coach_host: Control = get_node_or_null("ScenarioCoachHost") as Control
-@onready var first_run_coach_host: Control = get_node_or_null("FirstRunCoachHost") as Control
-@onready var focus_guide_layer: Node = get_node_or_null("%FocusGuideLayer")
 @onready var hand_hover_preview_host: Control = get_node_or_null("%HandHoverPreviewHost") as Control
 @onready var hand_hover_preview_panel: PanelContainer = get_node_or_null("%HandHoverPreviewPanel") as PanelContainer
 @onready var hand_hover_preview_title: Label = get_node_or_null("%HandHoverPreviewTitle") as Label
@@ -79,14 +65,10 @@ var _last_runtime_player_feedback: Dictionary = {}
 var _last_track_action_bridge_id := ""
 var _last_track_action_bridge_frame := -1
 var _last_visual_event_key := ""
-var _campaign_focus_layout := false
-var _last_focus_guide_data: Dictionary = {}
-
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	_configure_pointer_passthrough_hosts()
 	_configure_track_focus_ribbon()
-	_configure_focus_guide()
 	_configure_hand_hover_preview()
 	if top_bar.has_signal("end_turn_requested"):
 		top_bar.connect("end_turn_requested", Callable(self, "_on_end_turn_requested"))
@@ -103,10 +85,6 @@ func _ready() -> void:
 		track_node.connect("track_entry_hovered", Callable(self, "_on_track_entry_hovered"))
 	if track_node != null and track_node.has_signal("track_entry_unhovered"):
 		track_node.connect("track_entry_unhovered", Callable(self, "_on_track_entry_unhovered"))
-	if first_run_coach != null and first_run_coach.has_signal("primary_action_requested"):
-		first_run_coach.connect("primary_action_requested", Callable(self, "_on_action_requested"))
-	if scenario_coach != null and scenario_coach.has_signal("action_requested"):
-		scenario_coach.connect("action_requested", Callable(self, "_on_action_requested"))
 	if right_inspector.has_signal("action_requested"):
 		right_inspector.connect("action_requested", Callable(self, "_on_action_requested"))
 	if player_board.has_signal("card_selected"):
@@ -143,10 +121,7 @@ func _ready() -> void:
 func _configure_pointer_passthrough_hosts() -> void:
 	for node in [
 		get_node_or_null("Background"),
-		first_run_coach_host,
-		scenario_coach_host,
 		hand_hover_preview_host,
-		focus_guide_layer,
 		visual_event_layer,
 	]:
 		if node is Control:
@@ -156,7 +131,6 @@ func _configure_pointer_passthrough_hosts() -> void:
 func apply_state(data: Dictionary) -> void:
 	var ui_data: Dictionary = TABLE_SNAPSHOT_SCRIPT.new().apply_dictionary(data).to_ui_dictionary()
 	current_ui_data = ui_data
-	_sync_campaign_focus_layout(bool(ui_data.get("campaign_focus_mode", false)), ui_data)
 	if top_bar.has_method("set_state"):
 		top_bar.call("set_state", ui_data.get("top_bar", {}))
 	var track_node := _public_track_node()
@@ -169,10 +143,6 @@ func apply_state(data: Dictionary) -> void:
 	elif track_node != null and track_node.has_method("set_entries"):
 		var track_entries: Variant = ui_data.get("card_track", [])
 		track_node.call("set_entries", track_entries if track_entries is Array else [])
-	if first_run_coach != null and first_run_coach.has_method("set_coach"):
-		first_run_coach.call("set_coach", ui_data.get("first_run_coach", {}) if ui_data.get("first_run_coach", {}) is Dictionary else {})
-	if scenario_coach != null and scenario_coach.has_method("set_coach"):
-		scenario_coach.call("set_coach", ui_data.get("scenario_coach", {}) if ui_data.get("scenario_coach", {}) is Dictionary else {})
 	if planet_board.has_method("set_board_state"):
 		planet_board.call("set_board_state", ui_data.get("planet", {}))
 	if right_inspector.has_method("set_context"):
@@ -189,30 +159,7 @@ func apply_state(data: Dictionary) -> void:
 		player_data.get("bid_board", {}),
 		ui_data.get("active_forced_decision", {})
 	)
-	_sync_focus_guide(ui_data)
-	call_deferred("_sync_focus_guide_from_current_state")
 	call_deferred("_sync_runtime_table_focus_order")
-
-
-func _sync_campaign_focus_layout(enabled: bool, ui_data: Dictionary) -> void:
-	_campaign_focus_layout = enabled
-	if right_inspector is Control:
-		var inspector := right_inspector as Control
-		inspector.custom_minimum_size = Vector2(226, 0) if enabled else Vector2(292, 0)
-	if scenario_coach_host != null:
-		scenario_coach_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		if enabled:
-			_set_overlay_anchor_rect(scenario_coach_host, PLANET_RIGHT_SIDE_LANE_LEFT, PLANET_RIGHT_SIDE_LANE_TOP, PLANET_RIGHT_SIDE_LANE_RIGHT, PLANET_RIGHT_SIDE_LANE_FOCUS_BOTTOM)
-		else:
-			_set_overlay_anchor_rect(scenario_coach_host, PLANET_RIGHT_SIDE_LANE_LEFT, PLANET_RIGHT_SIDE_LANE_TOP, PLANET_RIGHT_SIDE_LANE_RIGHT, PLANET_RIGHT_SIDE_LANE_BOTTOM)
-	if first_run_coach_host != null:
-		first_run_coach_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_set_overlay_anchor_rect(first_run_coach_host, PLANET_LEFT_SIDE_LANE_LEFT, PLANET_LEFT_SIDE_LANE_TOP, PLANET_LEFT_SIDE_LANE_RIGHT, PLANET_LEFT_SIDE_LANE_BOTTOM)
-	var scenario_data: Dictionary = ui_data.get("scenario_coach", {}) if ui_data.get("scenario_coach", {}) is Dictionary else {}
-	if track_focus_ribbon != null and enabled and str(scenario_data.get("focus_target", "")) != "public_track":
-		track_focus_ribbon.custom_minimum_size = Vector2(0, 18)
-	elif track_focus_ribbon != null:
-		track_focus_ribbon.custom_minimum_size = Vector2(0, 24)
 
 
 func _set_overlay_anchor_rect(control: Control, left: float, top: float, right: float, bottom: float) -> void:
@@ -361,6 +308,14 @@ func _runtime_map_focus_control() -> Control:
 		if runtime_map is Control and (runtime_map as Control).is_visible_in_tree():
 			return runtime_map as Control
 	return _first_visible_control(["MapHost", "PlanetStageViewport", "PlanetBoard"])
+
+
+func _first_visible_control(names: Array[String]) -> Control:
+	for node_name in names:
+		var node := find_child(node_name, true, false)
+		if node is Control and (node as Control).is_visible_in_tree():
+			return node as Control
+	return null
 
 
 func _append_runtime_focus_control(result: Array[Control], control: Control, label: String) -> void:
@@ -805,14 +760,6 @@ func _configure_track_focus_ribbon() -> void:
 		track_focus_label.add_theme_color_override("font_color", Color("#fde68a"))
 
 
-func _configure_focus_guide() -> void:
-	if focus_guide_layer != null:
-		if focus_guide_layer is Control:
-			(focus_guide_layer as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
-		if focus_guide_layer.has_method("hide_focus"):
-			focus_guide_layer.call("hide_focus")
-
-
 func _configure_hand_hover_preview() -> void:
 	if hand_hover_preview_host == null:
 		return
@@ -929,130 +876,6 @@ func _hand_hover_preview_style() -> StyleBoxFlat:
 	style.set_content_margin(SIDE_TOP, 0.0)
 	style.set_content_margin(SIDE_BOTTOM, 0.0)
 	return style
-
-
-func _sync_focus_guide_from_current_state() -> void:
-	if current_ui_data.is_empty():
-		_hide_focus_guide()
-		return
-	_sync_focus_guide(current_ui_data)
-
-
-func _sync_focus_guide(ui_data: Dictionary) -> void:
-	var focus_data := _focus_guide_source_data(ui_data)
-	if focus_data.is_empty():
-		_hide_focus_guide()
-		return
-	var focus_target := str(focus_data.get("focus_target", "")).strip_edges()
-	if focus_target == "":
-		_hide_focus_guide()
-		return
-	var target_control := _focus_target_control(focus_target)
-	if target_control == null or not target_control.is_visible_in_tree():
-		_hide_focus_guide()
-		return
-	var target_rect := _focus_target_rect(target_control, focus_target)
-	if target_rect.size.x <= 4.0 or target_rect.size.y <= 4.0:
-		_hide_focus_guide()
-		return
-	_show_focus_guide(target_rect, focus_target, focus_data)
-
-
-func _focus_guide_source_data(ui_data: Dictionary) -> Dictionary:
-	var first_run_data: Dictionary = ui_data.get("first_run_coach", {}) if ui_data.get("first_run_coach", {}) is Dictionary else {}
-	if _focus_guide_source_is_active(first_run_data) and _focus_guide_source_is_strong(first_run_data):
-		return first_run_data
-	var scenario_data: Dictionary = ui_data.get("scenario_coach", {}) if ui_data.get("scenario_coach", {}) is Dictionary else {}
-	if _focus_guide_source_is_active(scenario_data):
-		return scenario_data
-	if _focus_guide_source_is_active(first_run_data):
-		return first_run_data
-	return {}
-
-
-func _focus_guide_source_is_active(data: Dictionary) -> bool:
-	if data.is_empty():
-		return false
-	if not bool(data.get("visible", false)):
-		return false
-	if bool(data.get("collapsed", false)):
-		return false
-	return str(data.get("focus_target", "")).strip_edges() != ""
-
-
-func _focus_guide_source_is_strong(data: Dictionary) -> bool:
-	return bool(data.get("pulse_focus", false)) or str(data.get("stuck_state", "")).strip_edges() == "strong"
-
-
-func _show_focus_guide(target_global_rect: Rect2, focus_target: String, scenario_data: Dictionary) -> void:
-	if focus_guide_layer == null or not focus_guide_layer.has_method("show_focus"):
-		return
-	var next_signature := var_to_str([
-		focus_target,
-		target_global_rect.position.round(),
-		target_global_rect.size.round(),
-		scenario_data.get("phase_id", ""),
-		scenario_data.get("stuck_state", ""),
-		scenario_data.get("pulse_focus", false),
-		scenario_data.get("shortest_action_text", ""),
-	])
-	if next_signature == str(_last_focus_guide_data.get("signature", "")):
-		return
-	_last_focus_guide_data = {"signature": next_signature, "target": focus_target}
-	focus_guide_layer.call("show_focus", target_global_rect, focus_target, scenario_data)
-
-
-func _hide_focus_guide() -> void:
-	_last_focus_guide_data = {}
-	if focus_guide_layer != null and focus_guide_layer.has_method("hide_focus"):
-		focus_guide_layer.call("hide_focus")
-
-
-func _focus_target_control(focus_target: String) -> Control:
-	match focus_target:
-		"planet", "route_layer":
-			return _runtime_map_focus_control()
-		"player_hand":
-			return _first_visible_control(["HandRack", "PlayerHandTableau", "PlayerBoard"])
-		"action_dock":
-			return _first_visible_control(["PlayerMainActionDock", "PlayerCommandTableau", "PlayerBoard"])
-		"bid_board":
-			return _first_visible_control(["PublicBidDecisionPanel", "PlayerCommandTableau"])
-		"public_track":
-			return _public_track_node() as Control
-		"right_inspector", "economy_overview", "intel_dossier", "standings", "settlement":
-			return right_inspector as Control
-		"district_supply":
-			return _first_visible_control(["DistrictSupplySideDrawer", "DistrictSupplyPanel", "DistrictSupplySideDrawerOverlay", "DistrictSupplyDrawer", "SideDrawerPanel", "RightInspector", "PlanetStageViewport"])
-		"private_decision", "contract_prompt":
-			return _first_visible_control(["MonsterWagerDecisionPanel", "ContractResponseDecisionPanel", "TemporaryChoiceDecisionPanel", "TemporaryDecisionPanel", "ConfirmPanel", "ModalLayer", "OverlayLayer"])
-		"top_bar":
-			return top_bar as Control
-		"scenario_coach":
-			return scenario_coach_host if scenario_coach_host != null else scenario_coach as Control
-		_:
-			return _first_visible_control(["RightInspector", "PlanetBoard"])
-
-
-func _first_visible_control(names: Array[String]) -> Control:
-	for node_name in names:
-		var node := find_child(node_name, true, false)
-		if node is Control and (node as Control).is_visible_in_tree():
-			return node as Control
-	return null
-
-
-func _focus_target_rect(control: Control, focus_target: String) -> Rect2:
-	var rect := control.get_global_rect()
-	if focus_target == "planet" or focus_target == "route_layer":
-		var map_control := _first_visible_control(["MapHost"])
-		if map_control != null:
-			rect = map_control.get_global_rect()
-	if focus_target == "player_hand":
-		var hand_control := _first_visible_control(["HandRack"])
-		if hand_control != null:
-			rect = hand_control.get_global_rect()
-	return rect
 
 
 func _sync_selected_track_focus_from_state() -> void:
@@ -1353,13 +1176,6 @@ func _action_label_for_id(action_id: String) -> String:
 	var inspector: Dictionary = current_ui_data.get("right_inspector", {}) if current_ui_data.get("right_inspector", {}) is Dictionary else {}
 	if inspector.get("actions", []) is Array:
 		candidates.append_array(inspector.get("actions", []))
-	for coach_key in ["first_run_coach", "scenario_coach"]:
-		var coach: Dictionary = current_ui_data.get(coach_key, {}) if current_ui_data.get(coach_key, {}) is Dictionary else {}
-		var primary_action: Dictionary = coach.get("primary_action", {}) if coach.get("primary_action", {}) is Dictionary else {}
-		if not primary_action.is_empty():
-			candidates.append(primary_action)
-		if coach.get("secondary_actions", []) is Array:
-			candidates.append_array(coach.get("secondary_actions", []))
 	for entry_variant in candidates:
 		if not (entry_variant is Dictionary):
 			continue
