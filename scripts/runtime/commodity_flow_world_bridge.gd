@@ -137,43 +137,35 @@ func apply_sale_receipt_batch(batch: Dictionary) -> Dictionary:
 		var receipt: Dictionary = receipt_variant
 		var receipt_id := str(receipt.get("receipt_id", ""))
 		var owner_index := int(receipt.get("commodity_owner", -1))
-		var rent_rows_variant: Variant = receipt.get("rent_rows", [])
-		var neutral_local_market := str(receipt.get("trade_kind", "")) == "local_market_baseline" \
-			and str(receipt.get("economic_owner_kind", "")) == "public_local" \
-			and owner_index == -1 \
-			and int(receipt.get("owner_net_cash", -1)) == 0 \
-			and rent_rows_variant is Array \
-			and (rent_rows_variant as Array).is_empty()
-		if receipt_id.is_empty() or receipt_ids.has(receipt_id) or (not neutral_local_market and (owner_index < 0 or owner_index >= prepared_players.size())):
+		if receipt_id.is_empty() or receipt_ids.has(receipt_id) or owner_index < 0 or owner_index >= prepared_players.size():
 			return {"applied": false, "reason": "receipt_identity_invalid"}
 		receipt_ids[receipt_id] = true
-		if not neutral_local_market:
-			if not (prepared_players[owner_index] is Dictionary):
-				return {"applied": false, "reason": "player_record_invalid"}
-			var owner_net_cash := int(receipt.get("owner_net_cash", 0))
-			var active_storage_debt := str(receipt.get("bankruptcy_causality", "")) == "active_storage_debt"
-			if owner_net_cash < 0 and not active_storage_debt:
-				return {"applied": false, "reason": "passive_cash_would_be_negative"}
-			_append_player_delta(deltas_by_player, ledger_rows_by_player, owner_index, owner_net_cash, receipt_id, "commodity_sale")
-			if active_storage_debt and owner_net_cash < 0:
-				authorized_negative_players[owner_index] = true
-			var role_plan: Dictionary = _role_resource_cash_settlement.plan_for_sale_receipt(
-				prepared_players[owner_index] as Dictionary,
+		if not (prepared_players[owner_index] is Dictionary):
+			return {"applied": false, "reason": "player_record_invalid"}
+		var owner_net_cash := int(receipt.get("owner_net_cash", 0))
+		var active_storage_debt := str(receipt.get("bankruptcy_causality", "")) == "active_storage_debt"
+		if owner_net_cash < 0 and not active_storage_debt:
+			return {"applied": false, "reason": "passive_cash_would_be_negative"}
+		_append_player_delta(deltas_by_player, ledger_rows_by_player, owner_index, owner_net_cash, receipt_id, "commodity_sale")
+		if active_storage_debt and owner_net_cash < 0:
+			authorized_negative_players[owner_index] = true
+		var role_plan: Dictionary = _role_resource_cash_settlement.plan_for_sale_receipt(
+			prepared_players[owner_index] as Dictionary,
+			owner_index,
+			receipt
+		)
+		if bool(role_plan.get("eligible", false)) and not bool(role_plan.get("duplicate", false)):
+			var role_ledger_variant: Variant = role_plan.get("ledger_receipt", {})
+			if not (role_ledger_variant is Dictionary) or str((role_ledger_variant as Dictionary).get("transaction_id", "")).is_empty():
+				return {"applied": false, "reason": "role_resource_cash_plan_invalid"}
+			_append_private_ledger_receipt(
+				deltas_by_player,
+				ledger_rows_by_player,
 				owner_index,
-				receipt
+				int(role_plan.get("cash_delta_cents", 0)),
+				role_ledger_variant as Dictionary
 			)
-			if bool(role_plan.get("eligible", false)) and not bool(role_plan.get("duplicate", false)):
-				var role_ledger_variant: Variant = role_plan.get("ledger_receipt", {})
-				if not (role_ledger_variant is Dictionary) or str((role_ledger_variant as Dictionary).get("transaction_id", "")).is_empty():
-					return {"applied": false, "reason": "role_resource_cash_plan_invalid"}
-				_append_private_ledger_receipt(
-					deltas_by_player,
-					ledger_rows_by_player,
-					owner_index,
-					int(role_plan.get("cash_delta_cents", 0)),
-					role_ledger_variant as Dictionary
-				)
-				role_counter_deltas_by_player[owner_index] = int(role_counter_deltas_by_player.get(owner_index, 0)) + int(role_plan.get("counter_delta", 0))
+			role_counter_deltas_by_player[owner_index] = int(role_counter_deltas_by_player.get(owner_index, 0)) + int(role_plan.get("counter_delta", 0))
 		for rent_variant in receipt.get("rent_rows", []):
 			if not (rent_variant is Dictionary):
 				return {"applied": false, "reason": "rent_row_invalid"}

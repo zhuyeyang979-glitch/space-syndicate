@@ -4,13 +4,16 @@ class_name CommodityFlowRuntimeController
 
 signal installation_committed(receipt: Dictionary)
 signal sale_receipt_batch_committed(receipt: Dictionary)
+signal flow_loss_batch_committed(events: Array)
 
 const RULESET_ID := "v0.6"
-const STATE_VERSION := 1
+const STATE_VERSION := 2
+const LEGACY_STATE_VERSION := 1
 const FIXED_POINT_SCALE := 1000
 const MILLISECONDS_PER_MINUTE := 60000
 const BASIS_POINTS := 10000
-const LOCAL_BASELINE_TERMS_VERSION := 1
+const COMMODITY_FLOW_TERMS_VERSION := 2
+const LEGACY_BACKPRESSURE_MIGRATION_VERSION := 1
 const REMOTE_ROUTE_VALUE_BASIS_POINTS := BASIS_POINTS
 const PRODUCT_INDUSTRY_CATALOG := preload("res://resources/content/product_industry_catalog_v05.tres")
 const CARD_EFFECT_SUPPORT := preload("res://scripts/cards/v06/effects/card_effect_adapter_support_v06.gd")
@@ -34,12 +37,6 @@ const WEATHER_PUBLIC_CONTRIBUTION_KEYS := [
 	"reason_codes",
 ]
 
-@export_range(1, 100, 1) var local_production_absorption_units_per_minute := 1
-@export_range(1, 100, 1) var local_market_turnover_units_per_minute := 1
-@export_range(1, BASIS_POINTS, 1) var local_production_absorption_rate_cap_basis_points := 1000
-@export_range(1, BASIS_POINTS, 1) var local_production_baseline_value_basis_points := 1000
-@export_range(1, BASIS_POINTS, 1) var local_market_baseline_value_basis_points := 500
-
 var _configured := false
 var _world_bridge: Node
 var _weather_runtime_controller: WeatherRuntimeController
@@ -54,6 +51,11 @@ var _warehouse_storage_rent_bp_per_minute_by_rank: Dictionary = {}
 var _distance_premium_per_unit_bp := 0
 var _distance_premium_maximum_bp := 0
 var _non_storage_rent_cap_bp := 0
+var _ambient_consumption_default_units_per_minute := 0
+var _ambient_consumption_units_per_minute_by_commodity: Dictionary = {}
+var _ambient_consumption_value_basis_points := 0
+var _market_backlog_horizon_seconds := 0
+var _market_backlog_recovery_extra_basis_points := 0
 
 var _installations: Dictionary = {}
 var _installation_sequence := 0
@@ -62,7 +64,19 @@ var _installation_transaction_receipts: Dictionary = {}
 var _installation_rollback_receipts: Dictionary = {}
 var _rate_remainders: Dictionary = {}
 var _pair_remainders: Dictionary = {}
-var _backpressured_milliunits_by_source: Dictionary = {}
+var _ambient_rate_remainders: Dictionary = {}
+var _ambient_fairness_cursor_by_region_commodity: Dictionary = {}
+var _ambient_revision := 0
+var _market_backlog_by_key: Dictionary = {}
+var _wasted_continuous_milliunits_by_source: Dictionary = {}
+var _wasted_continuous_milliunits_per_minute_by_source: Dictionary = {}
+var _cumulative_wasted_milliunits_by_source: Dictionary = {}
+var _cumulative_wasted_milliunits_by_commodity: Dictionary = {}
+var _cumulative_wasted_milliunits_by_region: Dictionary = {}
+var _waste_revision := 0
+var _recent_flow_loss_events: Array = []
+var _recent_flow_events: Array = []
+var _legacy_backpressure_migration_version := 0
 var _recent_sale_receipts: Array = []
 var _warehouse_inventory: Dictionary = {}
 var _pending_one_shot_supplies: Dictionary = {}
@@ -109,6 +123,12 @@ func configure(profile_snapshot: Dictionary) -> Dictionary:
 	_distance_premium_per_unit_bp = maxi(0, int(commodity.get("distance_premium_per_unit_bp", 0)))
 	_distance_premium_maximum_bp = maxi(0, int(commodity.get("distance_premium_maximum_bp", 0)))
 	_non_storage_rent_cap_bp = clampi(int(commodity.get("non_storage_rent_cap_bp", 0)), 0, BASIS_POINTS)
+	var terms_version := int(commodity.get("commodity_flow_terms_version", 0))
+	_ambient_consumption_default_units_per_minute = maxi(0, int(commodity.get("ambient_consumption_default_units_per_minute", 0)))
+	_ambient_consumption_units_per_minute_by_commodity = _commodity_rate_map(commodity.get("ambient_consumption_units_per_minute_by_commodity", {}))
+	_ambient_consumption_value_basis_points = clampi(int(commodity.get("ambient_consumption_value_basis_points", 0)), 0, BASIS_POINTS)
+	_market_backlog_horizon_seconds = maxi(0, int(commodity.get("market_backlog_horizon_seconds", 0)))
+	_market_backlog_recovery_extra_basis_points = maxi(0, int(commodity.get("market_backlog_recovery_extra_basis_points", 0)))
 	_configured = str(identity.get("ruleset_id", "")) == RULESET_ID \
 		and bool(capabilities.get("continuous_commodity_flow_enabled", false)) \
 		and not bool(capabilities.get("legacy_project_slots_enabled", true)) \
@@ -117,11 +137,11 @@ func configure(profile_snapshot: Dictionary) -> Dictionary:
 		and not _warehouse_capacity_by_rank.is_empty() \
 		and not _warehouse_throughput_by_rank.is_empty() \
 		and not _warehouse_storage_rent_bp_per_minute_by_rank.is_empty() \
-		and local_production_absorption_units_per_minute > 0 \
-		and local_market_turnover_units_per_minute > 0 \
-		and local_production_absorption_rate_cap_basis_points > 0 \
-		and local_production_baseline_value_basis_points > 0 \
-		and local_market_baseline_value_basis_points > 0 \
+		and terms_version == COMMODITY_FLOW_TERMS_VERSION \
+		and _ambient_consumption_default_units_per_minute > 0 \
+		and _ambient_consumption_value_basis_points > 0 \
+		and _market_backlog_horizon_seconds > 0 \
+		and _market_backlog_recovery_extra_basis_points >= 0 \
 		and PRODUCT_INDUSTRY_CATALOG != null
 	if not _configured:
 		push_error("CommodityFlowRuntimeController requires the v0.6 continuous-flow profile and product catalog.")
@@ -130,11 +150,12 @@ func configure(profile_snapshot: Dictionary) -> Dictionary:
 		"ruleset_id": RULESET_ID,
 		"currency_scale": _currency_scale,
 		"observation_window_seconds": _observation_window_seconds,
-		"local_production_absorption_units_per_minute": local_production_absorption_units_per_minute,
-		"local_market_turnover_units_per_minute": local_market_turnover_units_per_minute,
-		"local_production_absorption_rate_cap_basis_points": local_production_absorption_rate_cap_basis_points,
-		"local_production_baseline_value_basis_points": local_production_baseline_value_basis_points,
-		"local_market_baseline_value_basis_points": local_market_baseline_value_basis_points,
+		"commodity_flow_terms_version": terms_version,
+		"ambient_consumption_default_units_per_minute": _ambient_consumption_default_units_per_minute,
+		"ambient_consumption_units_per_minute_by_commodity": _ambient_consumption_units_per_minute_by_commodity.duplicate(true),
+		"ambient_consumption_value_basis_points": _ambient_consumption_value_basis_points,
+		"market_backlog_horizon_seconds": _market_backlog_horizon_seconds,
+		"market_backlog_recovery_extra_basis_points": _market_backlog_recovery_extra_basis_points,
 	}
 
 
@@ -146,7 +167,19 @@ func reset_state() -> void:
 	_installation_rollback_receipts.clear()
 	_rate_remainders.clear()
 	_pair_remainders.clear()
-	_backpressured_milliunits_by_source.clear()
+	_ambient_rate_remainders.clear()
+	_ambient_fairness_cursor_by_region_commodity.clear()
+	_ambient_revision = 0
+	_market_backlog_by_key.clear()
+	_wasted_continuous_milliunits_by_source.clear()
+	_wasted_continuous_milliunits_per_minute_by_source.clear()
+	_cumulative_wasted_milliunits_by_source.clear()
+	_cumulative_wasted_milliunits_by_commodity.clear()
+	_cumulative_wasted_milliunits_by_region.clear()
+	_waste_revision = 0
+	_recent_flow_loss_events.clear()
+	_recent_flow_events.clear()
+	_legacy_backpressure_migration_version = 0
 	_recent_sale_receipts.clear()
 	_warehouse_inventory.clear()
 	_pending_one_shot_supplies.clear()
@@ -504,8 +537,6 @@ func prepare_card_effect_batch(plan: Dictionary) -> Dictionary:
 		return _card_effect_batch_failure(binding, "request_not_pure_data", "prepare")
 	if not _card_effect_batch_binding_complete(binding):
 		return _card_effect_batch_failure(binding, "transaction_binding_missing", "prepare")
-	if str(plan.get("one_time_effect_kind", "")) == "local_baseline_modifier":
-		return _card_effect_batch_failure(binding, "local_baseline_modifier_terms_not_authored", "prepare")
 	var transaction_id := str(binding.get("transaction_id", ""))
 	if _card_effect_batch_journal.has(transaction_id):
 		var existing: Dictionary = _dictionary(_card_effect_batch_journal.get(transaction_id, {}))
@@ -758,26 +789,6 @@ func card_effect_batch_snapshot(transaction_id: String) -> Dictionary:
 	return _dictionary(journal.get("receipt", {}))
 
 
-func local_baseline_modifier_capability_snapshot() -> Dictionary:
-	return {
-		"available": false,
-		"authoritative_owner": "CommodityFlowRuntimeController",
-		"lifecycle_api": "card_effect_batch",
-		"reason_code": "local_baseline_modifier_terms_not_authored",
-		"effect_kind": "local_baseline_modifier",
-		"required_effect_fields": [
-			"local_production_absorption_delta_units_per_minute",
-			"local_market_turnover_delta_units_per_minute",
-			"local_baseline_modifier_seconds",
-		],
-		"required_lifecycle": ["prepare", "commit", "rollback", "finalize", "expire", "save_load"],
-		"second_modifier_owner_allowed": false,
-		"current_production_hard_cap_units_per_minute": local_production_absorption_units_per_minute,
-		"current_market_hard_cap_units_per_minute": local_market_turnover_units_per_minute,
-		"pure_data": true,
-	}
-
-
 func advance_world(delta_seconds: float, clock_pause: Dictionary = {}) -> Dictionary:
 	if not _configured or _world_bridge == null:
 		return {"advanced": false, "reason": "controller_or_bridge_not_ready", "receipt_count": 0}
@@ -813,6 +824,9 @@ func advance_world(delta_seconds: float, clock_pause: Dictionary = {}) -> Dictio
 		}
 	_commit_flow_plan(plan)
 	_record_weather_economic_telemetry(plan.get("receipts", []) as Array)
+	var loss_events: Array = (plan.get("flow_loss_events", []) as Array).duplicate(true)
+	if not loss_events.is_empty():
+		flow_loss_batch_committed.emit(loss_events)
 	if _world_bridge.has_method("notify_sale_receipt_batch_committed"):
 		_world_bridge.call("notify_sale_receipt_batch_committed", batch)
 	var committed := {
@@ -824,9 +838,11 @@ func advance_world(delta_seconds: float, clock_pause: Dictionary = {}) -> Dictio
 		"rent_value": int(plan.get("rent_value", 0)),
 		"owner_net_cash": int(plan.get("owner_net_cash", 0)),
 		"gdp_value": int(plan.get("gdp_value", 0)),
-		"backpressured_milliunits": int(plan.get("backpressured_milliunits", 0)),
+		"market_sold_milliunits": int(plan.get("market_sold_milliunits", 0)),
+		"ambient_consumed_milliunits": int(plan.get("ambient_consumed_milliunits", 0)),
 		"stored_milliunits": int(plan.get("stored_milliunits", 0)),
-		"one_shot_lost_milliunits": int(plan.get("one_shot_lost_milliunits", 0)),
+		"wasted_milliunits": int(plan.get("wasted_milliunits", 0)),
+		"market_backlog_milliunits": _market_backlog_total(_market_backlog_by_key),
 		"warehouse_destroyed_loss_milliunits": int(plan.get("warehouse_destroyed_loss_milliunits", 0)),
 		"flow_revision": _flow_revision,
 	}
@@ -892,8 +908,14 @@ func warehouse_inventory_snapshot(viewer_index := -1) -> Array:
 	for bucket_id_variant in bucket_ids:
 		var row: Dictionary = (_warehouse_inventory[bucket_id_variant] as Dictionary).duplicate(true)
 		if viewer_index < 0 or int(row.get("owner_player_index", -1)) != viewer_index:
+			row.erase("bucket_id")
 			row.erase("owner_player_index")
 			row.erase("source_installation_id")
+			row.erase("source_factory_id")
+			row.erase("batch_transaction_id")
+			row.erase("storage_rent_debt_cents")
+			row.erase("storage_rent_remainder")
+			row.erase("storage_liability_kind")
 		result.append(row)
 	return result
 
@@ -907,9 +929,13 @@ func recent_sale_receipts_snapshot(viewer_index := -1) -> Array:
 		receipt["weather_contributions"] = _sanitize_weather_contributions(receipt.get("weather_contributions", []))
 		if viewer_index < 0:
 			receipt.erase("commodity_owner")
+			receipt.erase("economic_owner_kind")
+			receipt.erase("owner_net_cash")
 			receipt.erase("source_installation_id")
 			receipt.erase("demand_installation_id")
+			receipt.erase("source_factory_id")
 			receipt.erase("observer_intents")
+			receipt.erase("bankruptcy_causality")
 			var public_rents: Array = []
 			for rent_variant in receipt.get("rent_rows", []):
 				var rent: Dictionary = (rent_variant as Dictionary).duplicate(true)
@@ -918,11 +944,150 @@ func recent_sale_receipts_snapshot(viewer_index := -1) -> Array:
 			receipt["rent_rows"] = public_rents
 		elif int(receipt.get("commodity_owner", -1)) != viewer_index:
 			receipt.erase("commodity_owner")
+			receipt.erase("economic_owner_kind")
+			receipt.erase("owner_net_cash")
 			receipt.erase("source_installation_id")
 			receipt.erase("demand_installation_id")
+			receipt.erase("source_factory_id")
 			receipt.erase("observer_intents")
+			receipt.erase("bankruptcy_causality")
 		result.append(receipt)
 	return result
+
+
+func public_market_backlog_snapshot() -> Dictionary:
+	var rows: Array = []
+	var keys: Array = _market_backlog_by_key.keys()
+	keys.sort()
+	for key_variant in keys:
+		var record: Dictionary = _dictionary(_market_backlog_by_key.get(key_variant, {}))
+		rows.append({
+			"market_facility_id": str(record.get("market_facility_id", "")),
+			"region_id": str(record.get("region_id", "")),
+			"commodity_id": str(record.get("commodity_id", "")),
+			"steady_demand_units_per_minute": _rounded_units_per_minute(int(record.get("steady_demand_rate_milliunits_per_minute", 0))),
+			"unmet_backlog_units": _rounded_units(int(record.get("unmet_backlog_milliunits", 0))),
+			"backlog_cap_units": _rounded_units(int(record.get("backlog_cap_milliunits", 0))),
+			"maximum_recovery_units": _rounded_units(int(record.get("backlog_recovery_budget_milliunits", 0))),
+			"public_revision": int(record.get("backlog_revision", 0)),
+		})
+	return {
+		"available": _configured,
+		"flow_revision": _flow_revision,
+		"summary_label": "市场待满足需求",
+		"rows": rows,
+	}
+
+
+func public_waste_summary_snapshot() -> Dictionary:
+	var commodity_rows: Array = []
+	var commodity_ids: Array = _cumulative_wasted_milliunits_by_commodity.keys()
+	commodity_ids.sort()
+	for commodity_id_variant in commodity_ids:
+		commodity_rows.append({
+			"commodity_id": str(commodity_id_variant),
+			"cumulative_wasted_units": _rounded_units(int(_cumulative_wasted_milliunits_by_commodity.get(commodity_id_variant, 0))),
+		})
+	var region_rows: Array = []
+	var region_ids: Array = _cumulative_wasted_milliunits_by_region.keys()
+	region_ids.sort()
+	for region_id_variant in region_ids:
+		region_rows.append({
+			"region_id": str(region_id_variant),
+			"cumulative_wasted_units": _rounded_units(int(_cumulative_wasted_milliunits_by_region.get(region_id_variant, 0))),
+		})
+	return {
+		"available": _configured,
+		"flow_revision": _flow_revision,
+		"waste_revision": _waste_revision,
+		"summary_label": "浪费产能",
+		"commodity_rows": commodity_rows,
+		"region_rows": region_rows,
+	}
+
+
+func recent_actual_flow_snapshot(commodity_id := "") -> Dictionary:
+	var rows: Array = []
+	for event_variant in _recent_flow_events:
+		if not (event_variant is Dictionary):
+			continue
+		var event: Dictionary = event_variant
+		if not commodity_id.is_empty() and str(event.get("commodity_id", "")) != commodity_id:
+			continue
+		var projected := _public_actual_flow_event(event)
+		if not projected.is_empty():
+			rows.append(projected)
+	return {
+		"available": _configured,
+		"public_revision": _flow_revision,
+		"selected_commodity_id": commodity_id,
+		"rows": rows,
+	}
+
+
+func public_actual_flow_snapshot(commodity_id := "") -> Dictionary:
+	return recent_actual_flow_snapshot(commodity_id)
+
+
+func _public_actual_flow_event(event: Dictionary) -> Dictionary:
+	var internal_kind := str(event.get("internal_flow_kind", ""))
+	var source_kind := str(event.get("source_kind", ""))
+	var public_kind := ""
+	var display_label := ""
+	var from_region_id := str(event.get("source_region_id", ""))
+	var to_region_id := ""
+	match internal_kind:
+		"market":
+			public_kind = "warehouse_outbound" if source_kind == "warehouse" else "market_sale"
+			display_label = "仓库出库" if source_kind == "warehouse" else "已售出"
+			to_region_id = str(event.get("market_region_id", ""))
+		"warehouse_inbound":
+			public_kind = "warehouse_inbound"
+			display_label = "已入库"
+			to_region_id = str(event.get("warehouse_region_id", ""))
+		"ambient":
+			public_kind = "ambient_consumption"
+			display_label = "区域基础消费"
+			to_region_id = str(event.get("consuming_region_id", ""))
+	if public_kind.is_empty():
+		return {}
+	var settled_at := maxf(0.0, float(event.get("settled_at", 0.0)))
+	var transport_modes := _unique_sorted_strings(event.get("transport_modes", []))
+	var is_ambient := public_kind == "ambient_consumption"
+	return {
+		"flow_event_id": str(event.get("flow_event_id", "")),
+		"public_revision": maxi(0, int(event.get("public_revision", 0))),
+		"commodity_id": str(event.get("commodity_id", "")),
+		"from_region_id": from_region_id,
+		"to_region_id": to_region_id,
+		"flow_kind": public_kind,
+		"display_label": display_label,
+		"route_id": "" if is_ambient else str(event.get("route_id", "")),
+		"transport_modes": [] if is_ambient else transport_modes,
+		"delivered_units_band": _delivered_units_band(float(event.get("quantity_units", 0.0))),
+		"capacity_limited": bool(event.get("capacity_limited", false)),
+		"congested": bool(event.get("capacity_limited", false)),
+		"last_active_world_effective": settled_at,
+		"activity_state": "current_tick" if is_equal_approx(settled_at, _current_game_time) else "recent",
+		"ambient_one_hop": is_ambient and str(event.get("ambient_kind", "")) == "ambient_adjacent_land_consumption",
+		"low_emphasis": is_ambient,
+	}
+
+
+func _delivered_units_band(units: float) -> String:
+	if units < 1.0:
+		return "trace"
+	if units <= 5.0:
+		return "low"
+	if units <= 20.0:
+		return "medium"
+	if units <= 50.0:
+		return "high"
+	return "bulk"
+
+
+func recent_flow_loss_events_snapshot() -> Array:
+	return _recent_flow_loss_events.duplicate(true)
 
 
 func public_weather_contribution_snapshot() -> Dictionary:
@@ -1055,12 +1220,12 @@ func to_save_data() -> Dictionary:
 	return {
 		"state_version": STATE_VERSION,
 		"ruleset_id": RULESET_ID,
-		"local_baseline_terms_version": LOCAL_BASELINE_TERMS_VERSION,
-		"local_production_absorption_units_per_minute": local_production_absorption_units_per_minute,
-		"local_market_turnover_units_per_minute": local_market_turnover_units_per_minute,
-		"local_production_absorption_rate_cap_basis_points": local_production_absorption_rate_cap_basis_points,
-		"local_production_baseline_value_basis_points": local_production_baseline_value_basis_points,
-		"local_market_baseline_value_basis_points": local_market_baseline_value_basis_points,
+		"commodity_flow_terms_version": COMMODITY_FLOW_TERMS_VERSION,
+		"ambient_consumption_default_units_per_minute": _ambient_consumption_default_units_per_minute,
+		"ambient_consumption_units_per_minute_by_commodity": _ambient_consumption_units_per_minute_by_commodity.duplicate(true),
+		"ambient_consumption_value_basis_points": _ambient_consumption_value_basis_points,
+		"market_backlog_horizon_seconds": _market_backlog_horizon_seconds,
+		"market_backlog_recovery_extra_basis_points": _market_backlog_recovery_extra_basis_points,
 		"flow_revision": _flow_revision,
 		"installation_sequence": _installation_sequence,
 		"receipt_sequence": _receipt_sequence,
@@ -1073,7 +1238,19 @@ func to_save_data() -> Dictionary:
 		"installation_rollback_receipts": _installation_rollback_receipts.duplicate(true),
 		"rate_remainders": _rate_remainders.duplicate(true),
 		"pair_remainders": _pair_remainders.duplicate(true),
-		"backpressured_milliunits_by_source": _backpressured_milliunits_by_source.duplicate(true),
+		"ambient_rate_remainders": _ambient_rate_remainders.duplicate(true),
+		"ambient_fairness_cursor_by_region_commodity": _ambient_fairness_cursor_by_region_commodity.duplicate(true),
+		"ambient_revision": _ambient_revision,
+		"market_backlog_by_key": _market_backlog_by_key.duplicate(true),
+		"wasted_continuous_milliunits_by_source": _wasted_continuous_milliunits_by_source.duplicate(true),
+		"wasted_continuous_milliunits_per_minute_by_source": _wasted_continuous_milliunits_per_minute_by_source.duplicate(true),
+		"cumulative_wasted_milliunits_by_source": _cumulative_wasted_milliunits_by_source.duplicate(true),
+		"cumulative_wasted_milliunits_by_commodity": _cumulative_wasted_milliunits_by_commodity.duplicate(true),
+		"cumulative_wasted_milliunits_by_region": _cumulative_wasted_milliunits_by_region.duplicate(true),
+		"waste_revision": _waste_revision,
+		"recent_flow_loss_events": _recent_flow_loss_events.duplicate(true),
+		"recent_flow_events": _recent_flow_events.duplicate(true),
+		"legacy_backpressure_migration_version": _legacy_backpressure_migration_version,
 		"recent_sale_receipts": _recent_sale_receipts.duplicate(true),
 		"warehouse_inventory": _warehouse_inventory.duplicate(true),
 		"pending_one_shot_supplies": _pending_one_shot_supplies.duplicate(true),
@@ -1086,15 +1263,31 @@ func to_save_data() -> Dictionary:
 
 
 func apply_save_data(data: Dictionary) -> Dictionary:
-	if not _is_pure_data(data) or int(data.get("state_version", -1)) != STATE_VERSION or str(data.get("ruleset_id", "")) != RULESET_ID:
+	var source_state_version := int(data.get("state_version", -1))
+	var legacy_state := source_state_version == LEGACY_STATE_VERSION
+	if not _is_pure_data(data) or not [LEGACY_STATE_VERSION, STATE_VERSION].has(source_state_version) or str(data.get("ruleset_id", "")) != RULESET_ID:
 		return {"applied": false, "reason": "save_header_invalid"}
-	if int(data.get("local_baseline_terms_version", LOCAL_BASELINE_TERMS_VERSION)) != LOCAL_BASELINE_TERMS_VERSION \
-		or int(data.get("local_production_absorption_units_per_minute", local_production_absorption_units_per_minute)) != local_production_absorption_units_per_minute \
-		or int(data.get("local_market_turnover_units_per_minute", local_market_turnover_units_per_minute)) != local_market_turnover_units_per_minute \
-		or int(data.get("local_production_absorption_rate_cap_basis_points", local_production_absorption_rate_cap_basis_points)) != local_production_absorption_rate_cap_basis_points \
-		or int(data.get("local_production_baseline_value_basis_points", local_production_baseline_value_basis_points)) != local_production_baseline_value_basis_points \
-		or int(data.get("local_market_baseline_value_basis_points", local_market_baseline_value_basis_points)) != local_market_baseline_value_basis_points:
-		return {"applied": false, "reason": "local_baseline_terms_mismatch"}
+	if legacy_state:
+		if int(data.get("local_baseline_terms_version", -1)) != 1:
+			return {"applied": false, "reason": "legacy_backpressure_migration_source_invalid"}
+		for new_field in [
+			"market_backlog_by_key",
+			"wasted_continuous_milliunits_by_source",
+			"cumulative_wasted_milliunits_by_source",
+			"cumulative_wasted_milliunits_by_commodity",
+			"cumulative_wasted_milliunits_by_region",
+		]:
+			if data.has(new_field):
+				return {"applied": false, "reason": "legacy_backpressure_migration_ambiguous"}
+	elif int(data.get("commodity_flow_terms_version", -1)) != COMMODITY_FLOW_TERMS_VERSION \
+		or int(data.get("ambient_consumption_default_units_per_minute", -1)) != _ambient_consumption_default_units_per_minute \
+		or _dictionary(data.get("ambient_consumption_units_per_minute_by_commodity", {})) != _ambient_consumption_units_per_minute_by_commodity \
+		or int(data.get("ambient_consumption_value_basis_points", -1)) != _ambient_consumption_value_basis_points \
+		or int(data.get("market_backlog_horizon_seconds", -1)) != _market_backlog_horizon_seconds \
+		or int(data.get("market_backlog_recovery_extra_basis_points", -1)) != _market_backlog_recovery_extra_basis_points:
+		return {"applied": false, "reason": "commodity_flow_terms_mismatch"}
+	elif data.has("backpressured_milliunits_by_source"):
+		return {"applied": false, "reason": "legacy_backpressure_field_forbidden"}
 	for forbidden_key in ["project_slots", "project_sequence", "generation_by_slot_id", "project_tombstones", "player_gdp_attribution_rows", "gdp_cashflow_remainder_by_source_id", "trade_route_damage"]:
 		if data.has(forbidden_key):
 			return {"applied": false, "reason": "legacy_project_state_rejected"}
@@ -1141,9 +1334,36 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 			prepared_transaction_receipts[transaction_id] = {"transaction_id": transaction_id, "committed": true, "duplicate": false, "reason": "restored_exact_once_guard"}
 	var prepared_rate_remainders := _dictionary(data.get("rate_remainders", {}))
 	var prepared_pair_remainders := _dictionary(data.get("pair_remainders", {}))
-	var prepared_backpressure := _dictionary(data.get("backpressured_milliunits_by_source", {}))
-	if not _nonnegative_integer_dictionary(prepared_rate_remainders) or not _nonnegative_integer_dictionary(prepared_pair_remainders) or not _nonnegative_integer_dictionary(prepared_backpressure):
+	var prepared_ambient_remainders := _dictionary(data.get("ambient_rate_remainders", {}))
+	var prepared_ambient_cursors := _dictionary(data.get("ambient_fairness_cursor_by_region_commodity", {}))
+	if not _nonnegative_integer_dictionary(prepared_rate_remainders) \
+		or not _nonnegative_integer_dictionary(prepared_pair_remainders) \
+		or not _nonnegative_integer_dictionary(prepared_ambient_remainders) \
+		or not _nonnegative_integer_dictionary(prepared_ambient_cursors):
 		return {"applied": false, "reason": "fixed_point_remainder_invalid"}
+	var prepared_market_backlog := _dictionary(data.get("market_backlog_by_key", {}))
+	if not _market_backlog_state_valid(prepared_market_backlog):
+		return {"applied": false, "reason": "market_backlog_state_invalid"}
+	var prepared_wasted_current := _dictionary(data.get("wasted_continuous_milliunits_by_source", {}))
+	var prepared_wasted_rates := _dictionary(data.get("wasted_continuous_milliunits_per_minute_by_source", {}))
+	var prepared_cumulative_waste_by_source := _dictionary(data.get("cumulative_wasted_milliunits_by_source", {}))
+	var prepared_cumulative_waste_by_commodity := _dictionary(data.get("cumulative_wasted_milliunits_by_commodity", {}))
+	var prepared_cumulative_waste_by_region := _dictionary(data.get("cumulative_wasted_milliunits_by_region", {}))
+	var legacy_backpressure := _dictionary(data.get("backpressured_milliunits_by_source", {})) if legacy_state else {}
+	for waste_map in [
+		prepared_wasted_current,
+		prepared_wasted_rates,
+		prepared_cumulative_waste_by_source,
+		prepared_cumulative_waste_by_commodity,
+		prepared_cumulative_waste_by_region,
+		legacy_backpressure,
+	]:
+		if not _nonnegative_integer_dictionary(waste_map):
+			return {"applied": false, "reason": "waste_state_invalid"}
+	var prepared_recent_loss_events: Array = (data.get("recent_flow_loss_events", []) as Array).duplicate(true) if data.get("recent_flow_loss_events", []) is Array else []
+	var prepared_recent_flow_events: Array = (data.get("recent_flow_events", []) as Array).duplicate(true) if data.get("recent_flow_events", []) is Array else []
+	if not _is_pure_data(prepared_recent_loss_events) or not _is_pure_data(prepared_recent_flow_events):
+		return {"applied": false, "reason": "recent_flow_event_state_invalid"}
 	var prepared_recent_receipts: Array = []
 	var recent_receipt_ids: Dictionary = {}
 	for receipt_variant in data.get("recent_sale_receipts", []):
@@ -1186,6 +1406,18 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	)
 	if not bool(batch_state_validation.get("valid", false)):
 		return {"applied": false, "reason": str(batch_state_validation.get("reason", "card_effect_batch_state_invalid"))}
+	var prepared_migration_version := maxi(0, int(data.get("legacy_backpressure_migration_version", 0)))
+	if legacy_state:
+		prepared_cumulative_waste_by_source = legacy_backpressure.duplicate(true)
+		for source_id_variant in legacy_backpressure.keys():
+			var source_id := str(source_id_variant)
+			var amount := maxi(0, int(legacy_backpressure.get(source_id_variant, 0)))
+			var installation: Dictionary = _dictionary(prepared_installations.get(source_id, {}))
+			var commodity_id := str(installation.get("commodity_id", "legacy_unknown"))
+			var region_id := str(installation.get("region_id", "legacy_unknown"))
+			prepared_cumulative_waste_by_commodity[commodity_id] = int(prepared_cumulative_waste_by_commodity.get(commodity_id, 0)) + amount
+			prepared_cumulative_waste_by_region[region_id] = int(prepared_cumulative_waste_by_region.get(region_id, 0)) + amount
+		prepared_migration_version = LEGACY_BACKPRESSURE_MIGRATION_VERSION
 	_installations = prepared_installations
 	_installation_sequence = maxi(0, int(data.get("installation_sequence", 0)))
 	_receipt_sequence = maxi(0, int(data.get("receipt_sequence", 0)))
@@ -1195,7 +1427,19 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	_installation_generation_by_key = _dictionary(data.get("installation_generation_by_key", {}))
 	_rate_remainders = prepared_rate_remainders
 	_pair_remainders = prepared_pair_remainders
-	_backpressured_milliunits_by_source = prepared_backpressure
+	_ambient_rate_remainders = prepared_ambient_remainders
+	_ambient_fairness_cursor_by_region_commodity = prepared_ambient_cursors
+	_ambient_revision = maxi(0, int(data.get("ambient_revision", 0)))
+	_market_backlog_by_key = prepared_market_backlog
+	_wasted_continuous_milliunits_by_source = prepared_wasted_current
+	_wasted_continuous_milliunits_per_minute_by_source = prepared_wasted_rates
+	_cumulative_wasted_milliunits_by_source = prepared_cumulative_waste_by_source
+	_cumulative_wasted_milliunits_by_commodity = prepared_cumulative_waste_by_commodity
+	_cumulative_wasted_milliunits_by_region = prepared_cumulative_waste_by_region
+	_waste_revision = maxi(0, int(data.get("waste_revision", 0)))
+	_recent_flow_loss_events = prepared_recent_loss_events
+	_recent_flow_events = prepared_recent_flow_events
+	_legacy_backpressure_migration_version = prepared_migration_version
 	_recent_sale_receipts = prepared_recent_receipts
 	_installation_transaction_receipts = prepared_transaction_receipts
 	_installation_rollback_receipts = prepared_rollback_receipts
@@ -1212,6 +1456,8 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 		"warehouse_bucket_count": _warehouse_inventory.size(),
 		"receipt_count": _recent_sale_receipts.size(),
 		"flow_revision": _flow_revision,
+		"migrated_legacy_backpressure": legacy_state,
+		"legacy_backpressure_migration_version": _legacy_backpressure_migration_version,
 	}
 
 
@@ -1222,13 +1468,12 @@ func debug_snapshot() -> Dictionary:
 		"runtime_owner": "CommodityFlowRuntimeController",
 		"ruleset_id": RULESET_ID,
 		"state_version": STATE_VERSION,
-		"local_baseline_terms_version": LOCAL_BASELINE_TERMS_VERSION,
+		"commodity_flow_terms_version": COMMODITY_FLOW_TERMS_VERSION,
 		"remote_route_value_basis_points": REMOTE_ROUTE_VALUE_BASIS_POINTS,
-		"local_production_absorption_units_per_minute": local_production_absorption_units_per_minute,
-		"local_market_turnover_units_per_minute": local_market_turnover_units_per_minute,
-		"local_production_absorption_rate_cap_basis_points": local_production_absorption_rate_cap_basis_points,
-		"local_production_baseline_value_basis_points": local_production_baseline_value_basis_points,
-		"local_market_baseline_value_basis_points": local_market_baseline_value_basis_points,
+		"ambient_consumption_default_units_per_minute": _ambient_consumption_default_units_per_minute,
+		"ambient_consumption_value_basis_points": _ambient_consumption_value_basis_points,
+		"market_backlog_horizon_seconds": _market_backlog_horizon_seconds,
+		"market_backlog_recovery_extra_basis_points": _market_backlog_recovery_extra_basis_points,
 		"fixed_point_scale": FIXED_POINT_SCALE,
 		"installation_count": installations_snapshot(false).size(),
 		"inactive_installation_count": installations_snapshot(true).size() - installations_snapshot(false).size(),
@@ -1236,7 +1481,12 @@ func debug_snapshot() -> Dictionary:
 		"recent_sale_receipt_count": _recent_sale_receipts.size(),
 		"warehouse_bucket_count": _warehouse_inventory.size(),
 		"warehouse_stored_milliunits": _warehouse_inventory_total(_warehouse_inventory),
-		"backpressured_milliunits": _dictionary_total(_backpressured_milliunits_by_source),
+		"market_backlog_record_count": _market_backlog_by_key.size(),
+		"market_backlog_milliunits": _market_backlog_total(_market_backlog_by_key),
+		"wasted_continuous_milliunits": _dictionary_total(_wasted_continuous_milliunits_by_source),
+		"cumulative_wasted_milliunits": _dictionary_total(_cumulative_wasted_milliunits_by_source),
+		"ambient_revision": _ambient_revision,
+		"waste_revision": _waste_revision,
 		"pending_one_shot_count": _pending_one_shot_supplies.size(),
 		"pending_one_shot_demand_count": _pending_one_shot_demands.size(),
 		"card_effect_batch_transaction_count": _card_effect_batch_journal.size(),
@@ -1253,13 +1503,13 @@ func debug_snapshot() -> Dictionary:
 		"owns_fixed_point_flow": true,
 		"owns_capacity_allocation": true,
 		"owns_many_source_many_sink_allocation": true,
-		"owns_backpressure": true,
+		"owns_market_backlog": true,
+		"owns_ambient_consumption": true,
+		"owns_waste_accounting": true,
 		"owns_warehouse_inventory": true,
 		"owns_warehouse_capacity_allocation": true,
 		"owns_one_shot_overflow_loss": true,
 		"owns_sale_receipt_ledger": true,
-		"owns_local_baseline_demand": true,
-		"local_baseline_modifier_capability": local_baseline_modifier_capability_snapshot(),
 		"owns_cash_state": false,
 		"owns_route_topology": false,
 		"route_runtime_owner": "RouteNetworkRuntimeController",
@@ -1390,6 +1640,552 @@ func _string_array(value: Variant) -> Array:
 	return result
 
 
+func _commodity_rate_map(value: Variant) -> Dictionary:
+	var result: Dictionary = {}
+	if not (value is Dictionary):
+		return result
+	for commodity_id_variant in (value as Dictionary).keys():
+		var commodity_id := str(commodity_id_variant).strip_edges()
+		var rate := maxi(0, int((value as Dictionary).get(commodity_id_variant, 0)))
+		if not commodity_id.is_empty() and rate > 0:
+			result[commodity_id] = rate
+	return result
+
+
+func _rounded_units(milliunits: int) -> float:
+	return snappedf(float(maxi(0, milliunits)) / float(FIXED_POINT_SCALE), 0.001)
+
+
+func _rounded_units_per_minute(milliunits_per_minute: int) -> float:
+	return snappedf(float(maxi(0, milliunits_per_minute)) / float(FIXED_POINT_SCALE), 0.001)
+
+
+func _market_backlog_key(market_facility_id: String, commodity_id: String) -> String:
+	return "%s|%s" % [market_facility_id, commodity_id]
+
+
+func _market_backlog_total(records: Dictionary) -> int:
+	var total := 0
+	for record_variant in records.values():
+		if record_variant is Dictionary:
+			total += maxi(0, int((record_variant as Dictionary).get("unmet_backlog_milliunits", 0)))
+	return total
+
+
+func _market_backlog_state_valid(records: Dictionary) -> bool:
+	for key_variant in records.keys():
+		var key := str(key_variant)
+		var record_variant: Variant = records.get(key_variant, {})
+		if key.is_empty() or not (record_variant is Dictionary):
+			return false
+		var record: Dictionary = record_variant
+		var market_facility_id := str(record.get("market_facility_id", ""))
+		var commodity_id := str(record.get("commodity_id", ""))
+		if market_facility_id.is_empty() or commodity_id.is_empty() or key != _market_backlog_key(market_facility_id, commodity_id):
+			return false
+		for field_name in [
+			"steady_demand_rate_milliunits_per_minute",
+			"unmet_backlog_milliunits",
+			"backlog_cap_milliunits",
+			"backlog_recovery_budget_milliunits",
+			"steady_due_remainder",
+			"recovery_budget_remainder",
+			"backlog_revision",
+		]:
+			if int(record.get(field_name, -1)) < 0:
+				return false
+		if int(record.get("unmet_backlog_milliunits", 0)) > int(record.get("backlog_cap_milliunits", 0)):
+			return false
+	return true
+
+
+func _prune_market_backlog(records: Dictionary, facility_by_id: Dictionary, destroyed_facility_ids: Array) -> void:
+	var keys: Array = records.keys()
+	for key_variant in keys:
+		var record: Dictionary = _dictionary(records.get(key_variant, {}))
+		var market_facility_id := str(record.get("market_facility_id", ""))
+		var facility: Dictionary = _dictionary(facility_by_id.get(market_facility_id, {}))
+		if destroyed_facility_ids.has(market_facility_id) \
+			or facility.is_empty() \
+			or not bool(facility.get("active", false)) \
+			or str(facility.get("facility_type", "")) != "market":
+			records.erase(key_variant)
+
+
+func _region_is_live(region: Dictionary) -> bool:
+	if region.is_empty():
+		return false
+	if region.has("active") and not bool(region.get("active", false)):
+		return false
+	return not ["destroyed", "ruined", "retired"].has(str(region.get("lifecycle_state", "active")))
+
+
+func _region_is_land(region: Dictionary) -> bool:
+	var terrain_id := str(region.get("terrain_id", "")).to_lower()
+	return not (terrain_id.contains("water") or terrain_id.contains("ocean") or terrain_id.contains("sea"))
+
+
+func _proportional_cap_by_key(requested_by_key: Dictionary, capacity: int) -> Dictionary:
+	var result: Dictionary = {}
+	var keys: Array = requested_by_key.keys()
+	keys.sort()
+	var total_requested := 0
+	for key_variant in keys:
+		total_requested += maxi(0, int(requested_by_key.get(key_variant, 0)))
+	if capacity <= 0 or total_requested <= 0:
+		return result
+	if total_requested <= capacity:
+		for key_variant in keys:
+			result[key_variant] = maxi(0, int(requested_by_key.get(key_variant, 0)))
+		return result
+	var assigned := 0
+	var residual_rows: Array = []
+	for key_variant in keys:
+		var requested := maxi(0, int(requested_by_key.get(key_variant, 0)))
+		var numerator := requested * capacity
+		var granted := int(floor(float(numerator) / float(total_requested)))
+		result[key_variant] = granted
+		assigned += granted
+		residual_rows.append({"key": str(key_variant), "remainder": numerator % total_requested})
+	residual_rows.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		var left_remainder := int(left.get("remainder", 0))
+		var right_remainder := int(right.get("remainder", 0))
+		return left_remainder > right_remainder if left_remainder != right_remainder else str(left.get("key", "")) < str(right.get("key", ""))
+	)
+	var residual := capacity - assigned
+	for row_variant in residual_rows:
+		if residual <= 0:
+			break
+		var key := str((row_variant as Dictionary).get("key", ""))
+		if int(result.get(key, 0)) >= int(requested_by_key.get(key, 0)):
+			continue
+		result[key] = int(result.get(key, 0)) + 1
+		residual -= 1
+	return result
+
+
+func _remaining_production_claims(production_claims: Array, used_by_source: Dictionary) -> Array:
+	var result: Array = []
+	for claim_variant in production_claims:
+		if not (claim_variant is Dictionary):
+			continue
+		var claim: Dictionary = (claim_variant as Dictionary).duplicate(true)
+		var source_id := str(claim.get("installation_id", ""))
+		var remaining := maxi(0, int(claim.get("milliunits", 0)) - int(used_by_source.get(source_id, 0)))
+		if remaining <= 0:
+			continue
+		claim["milliunits"] = remaining
+		result.append(claim)
+	return result
+
+
+func _claim_by_id(claims: Array, claim_id: String) -> Dictionary:
+	for claim_variant in claims:
+		if claim_variant is Dictionary and str((claim_variant as Dictionary).get("installation_id", "")) == claim_id:
+			return (claim_variant as Dictionary).duplicate(true)
+	return {}
+
+
+func _prune_recent_events(events: Array, cutoff: float) -> void:
+	for event_index in range(events.size() - 1, -1, -1):
+		if not (events[event_index] is Dictionary) or float((events[event_index] as Dictionary).get("settled_at", 0.0)) < cutoff:
+			events.remove_at(event_index)
+
+
+func _stamp_flow_events(events: Array, public_revision: int) -> void:
+	for event_index in range(events.size()):
+		if not (events[event_index] is Dictionary):
+			continue
+		var event: Dictionary = (events[event_index] as Dictionary).duplicate(true)
+		event["flow_event_id"] = "commodity-flow-event-%010d-%04d" % [public_revision, event_index + 1]
+		event["public_revision"] = public_revision
+		events[event_index] = event
+
+
+func _route_available_milliunits(route: Dictionary, route_remaining_by_id: Dictionary, resource_remaining_by_id: Dictionary) -> int:
+	var route_id := str(route.get("route_id", ""))
+	if route_id.is_empty() or not route_remaining_by_id.has(route_id):
+		return 0
+	var available := mini(
+		maxi(0, int(route.get("capacity_milliunits", 0))),
+		maxi(0, int(route_remaining_by_id.get(route_id, 0)))
+	)
+	return mini(available, _route_capacity_resource_limit(route, resource_remaining_by_id, available))
+
+
+func _consume_route_capacity(route: Dictionary, route_remaining_by_id: Dictionary, resource_remaining_by_id: Dictionary, amount: int) -> void:
+	if amount <= 0:
+		return
+	var route_id := str(route.get("route_id", ""))
+	if not route_id.is_empty():
+		route_remaining_by_id[route_id] = maxi(0, int(route_remaining_by_id.get(route_id, 0)) - amount)
+	_consume_route_capacity_resources(route, resource_remaining_by_id, amount)
+
+
+func _scale_market_rate_groups_to_facility_capacity(groups: Dictionary, facility_by_id: Dictionary, region_by_id: Dictionary) -> void:
+	var keys_by_facility: Dictionary = {}
+	for key_variant in groups.keys():
+		var group: Dictionary = _dictionary(groups.get(key_variant, {}))
+		var facility_id := str(group.get("market_facility_id", ""))
+		if not keys_by_facility.has(facility_id):
+			keys_by_facility[facility_id] = []
+		(keys_by_facility[facility_id] as Array).append(str(key_variant))
+	var facility_ids: Array = keys_by_facility.keys()
+	facility_ids.sort()
+	for facility_id_variant in facility_ids:
+		var facility_id := str(facility_id_variant)
+		var facility: Dictionary = _dictionary(facility_by_id.get(facility_id, {}))
+		var region: Dictionary = _dictionary(region_by_id.get(str(facility.get("region_id", "")), {}))
+		if facility.is_empty() or not _region_is_live(region):
+			continue
+		var rank := clampi(int(facility.get("rank", 1)), 1, 4)
+		var integrity_bp := clampi(int(region.get("integrity_basis_points", BASIS_POINTS)), 0, BASIS_POINTS)
+		var capacity_rate := int(floor(
+			float(int(_factory_market_capacity_by_rank.get(rank, 0)) * FIXED_POINT_SCALE)
+			* float(integrity_bp)
+			/ float(BASIS_POINTS)
+		))
+		var requested: Dictionary = {}
+		for key_variant in keys_by_facility.get(facility_id, []):
+			var group: Dictionary = _dictionary(groups.get(key_variant, {}))
+			requested[str(key_variant)] = maxi(0, int(group.get("current_rate_milliunits_per_minute", 0)))
+		var capped := _proportional_cap_by_key(requested, capacity_rate)
+		for key_variant in keys_by_facility.get(facility_id, []):
+			var key := str(key_variant)
+			var group: Dictionary = _dictionary(groups.get(key, {}))
+			group["current_rate_milliunits_per_minute"] = maxi(0, int(capped.get(key, 0)))
+			groups[key] = group
+
+
+func _market_processing_capacity_milliunits(
+	facility: Dictionary,
+	region: Dictionary,
+	delta_milliseconds: int,
+	rate_remainders: Dictionary
+) -> int:
+	if facility.is_empty() or not _region_is_live(region):
+		return 0
+	var rank := clampi(int(facility.get("rank", 1)), 1, 4)
+	var integrity_bp := clampi(int(region.get("integrity_basis_points", BASIS_POINTS)), 0, BASIS_POINTS)
+	var rate_milliunits_per_minute := int(floor(
+		float(int(_factory_market_capacity_by_rank.get(rank, 0)) * FIXED_POINT_SCALE)
+		* float(integrity_bp)
+		/ float(BASIS_POINTS)
+	))
+	var remainder_key := "market-processing:%s" % str(facility.get("facility_id", ""))
+	var numerator := int(rate_remainders.get(remainder_key, 0)) + rate_milliunits_per_minute * delta_milliseconds
+	var capacity := int(floor(float(numerator) / float(MILLISECONDS_PER_MINUTE)))
+	rate_remainders[remainder_key] = numerator % MILLISECONDS_PER_MINUTE
+	return capacity
+
+
+func _build_market_requests(
+	delta_milliseconds: int,
+	facts: Dictionary,
+	market_rate_groups: Dictionary,
+	market_backlog: Dictionary,
+	rate_remainders: Dictionary,
+	pending_one_shot_demands: Dictionary
+) -> Dictionary:
+	var steady_by_commodity: Dictionary = {}
+	var recovery_by_commodity: Dictionary = {}
+	var one_shot_by_commodity: Dictionary = {}
+	var facility_by_id := _index_by_id(facts.get("facilities", []), "facility_id")
+	var region_by_id := _index_by_id(facts.get("regions", []), "region_id")
+	var valid_keys: Dictionary = {}
+	var keys_by_facility: Dictionary = {}
+	var group_keys: Array = market_rate_groups.keys()
+	group_keys.sort()
+	for key_variant in group_keys:
+		var key := str(key_variant)
+		var group: Dictionary = _dictionary(market_rate_groups.get(key, {}))
+		var market_facility_id := str(group.get("market_facility_id", ""))
+		var commodity_id := str(group.get("commodity_id", ""))
+		if market_facility_id.is_empty() or commodity_id.is_empty():
+			continue
+		valid_keys[key] = true
+		if not keys_by_facility.has(market_facility_id):
+			keys_by_facility[market_facility_id] = []
+		(keys_by_facility[market_facility_id] as Array).append(key)
+		var old_record: Dictionary = _dictionary(market_backlog.get(key, {}))
+		var old_backlog := maxi(0, int(old_record.get("unmet_backlog_milliunits", 0)))
+		var current_rate := maxi(0, int(group.get("current_rate_milliunits_per_minute", 0)))
+		var normal_rate := maxi(0, int(group.get("normal_rate_milliunits_per_minute", 0)))
+		var calculated_cap := int(floor(float(normal_rate) * float(_market_backlog_horizon_seconds) / 60.0))
+		var backlog_cap := maxi(calculated_cap, old_backlog)
+		var steady_numerator := maxi(0, int(old_record.get("steady_due_remainder", 0))) + current_rate * delta_milliseconds
+		var steady_due := int(floor(float(steady_numerator) / float(MILLISECONDS_PER_MINUTE)))
+		var recovery_denominator := MILLISECONDS_PER_MINUTE * BASIS_POINTS
+		var recovery_numerator := maxi(0, int(old_record.get("recovery_budget_remainder", 0))) \
+			+ current_rate * _market_backlog_recovery_extra_basis_points * delta_milliseconds
+		var recovery_rate_budget := int(floor(float(recovery_numerator) / float(recovery_denominator)))
+		market_backlog[key] = {
+			"market_facility_id": market_facility_id,
+			"region_id": str(group.get("region_id", "")),
+			"commodity_id": commodity_id,
+			"color": str(group.get("color", "")),
+			"installation_ids": (group.get("installation_ids", []) as Array).duplicate(true),
+			"steady_demand_rate_milliunits_per_minute": current_rate,
+			"normal_demand_rate_milliunits_per_minute": normal_rate,
+			"unmet_backlog_milliunits": old_backlog,
+			"backlog_cap_milliunits": backlog_cap,
+			"backlog_recovery_budget_milliunits": 0,
+			"steady_due_remainder": steady_numerator % MILLISECONDS_PER_MINUTE,
+			"recovery_budget_remainder": recovery_numerator % recovery_denominator,
+			"backlog_revision": maxi(0, int(old_record.get("backlog_revision", 0))),
+			"steady_due_milliunits": steady_due,
+			"backlog_before_tick_milliunits": old_backlog,
+			"recovery_rate_budget_milliunits": recovery_rate_budget,
+			"weather_contributions": _sanitize_weather_contributions(group.get("weather_contributions", [])),
+		}
+	var saved_keys: Array = market_backlog.keys()
+	for key_variant in saved_keys:
+		if not valid_keys.has(str(key_variant)):
+			market_backlog.erase(key_variant)
+	var pending_by_facility: Dictionary = {}
+	var pending_ids: Array = pending_one_shot_demands.keys()
+	pending_ids.sort()
+	for transaction_id_variant in pending_ids:
+		var claim: Dictionary = _dictionary(pending_one_shot_demands.get(transaction_id_variant, {}))
+		var market_facility_id := str(claim.get("market_facility_id", claim.get("facility_id", "")))
+		if market_facility_id.is_empty():
+			continue
+		if not pending_by_facility.has(market_facility_id):
+			pending_by_facility[market_facility_id] = []
+		(pending_by_facility[market_facility_id] as Array).append(claim)
+	var facility_ids: Array = keys_by_facility.keys()
+	for facility_id_variant in pending_by_facility.keys():
+		if not facility_ids.has(facility_id_variant):
+			facility_ids.append(facility_id_variant)
+	facility_ids.sort()
+	for facility_id_variant in facility_ids:
+		var facility_id := str(facility_id_variant)
+		var facility: Dictionary = _dictionary(facility_by_id.get(facility_id, {}))
+		var region: Dictionary = _dictionary(region_by_id.get(str(facility.get("region_id", "")), {}))
+		if facility.is_empty() \
+			or not bool(facility.get("active", false)) \
+			or str(facility.get("facility_type", "")) != "market" \
+			or not _region_is_live(region):
+			continue
+		var processing_capacity := _market_processing_capacity_milliunits(facility, region, delta_milliseconds, rate_remainders)
+		var steady_requested: Dictionary = {}
+		for key_variant in keys_by_facility.get(facility_id, []):
+			var key := str(key_variant)
+			var record: Dictionary = _dictionary(market_backlog.get(key, {}))
+			steady_requested[key] = maxi(0, int(record.get("steady_due_milliunits", 0)))
+		var steady_reserved := _proportional_cap_by_key(steady_requested, processing_capacity)
+		var remaining_capacity := maxi(0, processing_capacity - _dictionary_total(steady_reserved))
+		for key_variant in keys_by_facility.get(facility_id, []):
+			var key := str(key_variant)
+			var record: Dictionary = _dictionary(market_backlog.get(key, {}))
+			var amount := maxi(0, int(steady_reserved.get(key, 0)))
+			if amount <= 0:
+				continue
+			var commodity_id := str(record.get("commodity_id", ""))
+			if not steady_by_commodity.has(commodity_id):
+				steady_by_commodity[commodity_id] = []
+			(steady_by_commodity[commodity_id] as Array).append(_market_demand_claim(record, key, "steady", amount))
+		for one_shot_variant in pending_by_facility.get(facility_id, []):
+			if remaining_capacity <= 0:
+				break
+			var one_shot: Dictionary = (one_shot_variant as Dictionary).duplicate(true)
+			var amount := mini(maxi(0, int(one_shot.get("milliunits", 0))), remaining_capacity)
+			if amount <= 0:
+				continue
+			one_shot["milliunits"] = amount
+			one_shot["market_phase"] = "one_shot"
+			var commodity_id := str(one_shot.get("commodity_id", ""))
+			if not one_shot_by_commodity.has(commodity_id):
+				one_shot_by_commodity[commodity_id] = []
+			(one_shot_by_commodity[commodity_id] as Array).append(one_shot)
+			remaining_capacity -= amount
+		var recovery_requested: Dictionary = {}
+		for key_variant in keys_by_facility.get(facility_id, []):
+			var key := str(key_variant)
+			var record: Dictionary = _dictionary(market_backlog.get(key, {}))
+			recovery_requested[key] = mini(
+				maxi(0, int(record.get("backlog_before_tick_milliunits", 0))),
+				maxi(0, int(record.get("recovery_rate_budget_milliunits", 0)))
+			)
+		var recovery_reserved := _proportional_cap_by_key(recovery_requested, remaining_capacity)
+		for key_variant in keys_by_facility.get(facility_id, []):
+			var key := str(key_variant)
+			var record: Dictionary = _dictionary(market_backlog.get(key, {}))
+			var amount := maxi(0, int(recovery_reserved.get(key, 0)))
+			record["backlog_recovery_budget_milliunits"] = amount
+			market_backlog[key] = record
+			if amount <= 0:
+				continue
+			var commodity_id := str(record.get("commodity_id", ""))
+			if not recovery_by_commodity.has(commodity_id):
+				recovery_by_commodity[commodity_id] = []
+			(recovery_by_commodity[commodity_id] as Array).append(_market_demand_claim(record, key, "recovery", amount))
+	return {
+		"steady_by_commodity": steady_by_commodity,
+		"recovery_by_commodity": recovery_by_commodity,
+		"one_shot_by_commodity": one_shot_by_commodity,
+	}
+
+
+func _market_demand_claim(record: Dictionary, backlog_key: String, phase: String, amount: int) -> Dictionary:
+	return {
+		"installation_id": "market-%s:%s" % [phase, backlog_key],
+		"source_kind": "demand",
+		"commodity_id": str(record.get("commodity_id", "")),
+		"color": str(record.get("color", "")),
+		"player_index": -1,
+		"facility_id": str(record.get("market_facility_id", "")),
+		"market_facility_id": str(record.get("market_facility_id", "")),
+		"region_id": str(record.get("region_id", "")),
+		"milliunits": maxi(0, amount),
+		"market_phase": phase,
+		"backlog_key": backlog_key,
+		"weather_contributions": _sanitize_weather_contributions(record.get("weather_contributions", [])),
+	}
+
+
+func _apply_market_fulfillment(
+	market_backlog: Dictionary,
+	commodity_id: String,
+	steady_demand_claims: Array,
+	recovery_demand_claims: Array,
+	used_by_demand: Dictionary
+) -> void:
+	var steady_id_by_key: Dictionary = {}
+	for claim_variant in steady_demand_claims:
+		if claim_variant is Dictionary and not str((claim_variant as Dictionary).get("backlog_key", "")).is_empty():
+			steady_id_by_key[str((claim_variant as Dictionary).get("backlog_key", ""))] = str((claim_variant as Dictionary).get("installation_id", ""))
+	var recovery_id_by_key: Dictionary = {}
+	for claim_variant in recovery_demand_claims:
+		if claim_variant is Dictionary and not str((claim_variant as Dictionary).get("backlog_key", "")).is_empty():
+			recovery_id_by_key[str((claim_variant as Dictionary).get("backlog_key", ""))] = str((claim_variant as Dictionary).get("installation_id", ""))
+	var keys: Array = market_backlog.keys()
+	keys.sort()
+	for key_variant in keys:
+		var key := str(key_variant)
+		var record: Dictionary = _dictionary(market_backlog.get(key, {}))
+		if str(record.get("commodity_id", "")) != commodity_id:
+			continue
+		var old_backlog := maxi(0, int(record.get("backlog_before_tick_milliunits", record.get("unmet_backlog_milliunits", 0))))
+		var steady_due := maxi(0, int(record.get("steady_due_milliunits", 0)))
+		var steady_id := str(steady_id_by_key.get(key, ""))
+		var recovery_id := str(recovery_id_by_key.get(key, ""))
+		var fulfilled_steady := mini(steady_due, maxi(0, int(used_by_demand.get(steady_id, 0))))
+		var fulfilled_recovery := mini(old_backlog, maxi(0, int(used_by_demand.get(recovery_id, 0))))
+		var cap := maxi(0, int(record.get("backlog_cap_milliunits", 0)))
+		record["unmet_backlog_milliunits"] = clampi(
+			old_backlog - fulfilled_recovery + (steady_due - fulfilled_steady),
+			0,
+			cap
+		)
+		record["fulfilled_steady_milliunits"] = fulfilled_steady
+		record["fulfilled_recovery_milliunits"] = fulfilled_recovery
+		record["backlog_revision"] = maxi(0, int(record.get("backlog_revision", 0))) + 1
+		record.erase("backlog_before_tick_milliunits")
+		record.erase("recovery_rate_budget_milliunits")
+		market_backlog[key] = record
+
+
+func _initial_route_capacity_budgets(delta_milliseconds: int, facts: Dictionary) -> Dictionary:
+	var route_remaining_by_id: Dictionary = {}
+	var resource_remaining_by_id: Dictionary = {}
+	for route_variant in facts.get("route_candidates", []):
+		if not (route_variant is Dictionary):
+			continue
+		var route: Dictionary = route_variant
+		var route_id := str(route.get("route_id", ""))
+		if route_id.is_empty():
+			continue
+		var route_capacity := int(floor(
+			float(maxi(0, int(route.get("bottleneck_units_per_minute", 0))) * FIXED_POINT_SCALE * delta_milliseconds)
+			/ float(MILLISECONDS_PER_MINUTE)
+		))
+		if not route_remaining_by_id.has(route_id):
+			route_remaining_by_id[route_id] = route_capacity
+		else:
+			route_remaining_by_id[route_id] = mini(int(route_remaining_by_id.get(route_id, 0)), route_capacity)
+		for resource_variant in route.get("capacity_resources", []):
+			if not (resource_variant is Dictionary):
+				continue
+			var resource: Dictionary = resource_variant
+			var resource_id := str(resource.get("resource_id", ""))
+			if resource_id.is_empty():
+				continue
+			var capacity := int(floor(
+				float(maxi(0, int(resource.get("capacity_units_per_minute", 0))) * FIXED_POINT_SCALE * delta_milliseconds)
+				/ float(MILLISECONDS_PER_MINUTE)
+			))
+			if not resource_remaining_by_id.has(resource_id):
+				resource_remaining_by_id[resource_id] = capacity
+			else:
+				resource_remaining_by_id[resource_id] = mini(int(resource_remaining_by_id.get(resource_id, 0)), capacity)
+	return {
+		"route_remaining_by_id": route_remaining_by_id,
+		"resource_remaining_by_id": resource_remaining_by_id,
+	}
+
+
+func _build_ambient_claims(delta_milliseconds: int, facts: Dictionary, ambient_remainders: Dictionary) -> Dictionary:
+	var claims_by_commodity: Dictionary = {}
+	var product_ids: Array = PRODUCT_INDUSTRY_CATALOG.call("product_ids") if PRODUCT_INDUSTRY_CATALOG.has_method("product_ids") else []
+	product_ids.sort()
+	var regions: Array = facts.get("regions", []) if facts.get("regions", []) is Array else []
+	regions.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		return str(left.get("region_id", "")) < str(right.get("region_id", ""))
+	)
+	for region_variant in regions:
+		if not (region_variant is Dictionary):
+			continue
+		var region: Dictionary = region_variant
+		if not _region_is_live(region):
+			continue
+		var region_id := str(region.get("region_id", ""))
+		for commodity_id_variant in product_ids:
+			var commodity_id := str(commodity_id_variant)
+			var rate_units_per_minute := maxi(
+				0,
+				int(_ambient_consumption_units_per_minute_by_commodity.get(
+					commodity_id,
+					_ambient_consumption_default_units_per_minute
+				))
+			)
+			if rate_units_per_minute <= 0:
+				continue
+			var remainder_key := "%s|%s" % [region_id, commodity_id]
+			var numerator := int(ambient_remainders.get(remainder_key, 0)) \
+				+ rate_units_per_minute * FIXED_POINT_SCALE * delta_milliseconds
+			var due := int(floor(float(numerator) / float(MILLISECONDS_PER_MINUTE)))
+			ambient_remainders[remainder_key] = numerator % MILLISECONDS_PER_MINUTE
+			if not claims_by_commodity.has(commodity_id):
+				claims_by_commodity[commodity_id] = []
+			(claims_by_commodity[commodity_id] as Array).append({
+				"installation_id": "ambient:%s" % remainder_key,
+				"commodity_id": commodity_id,
+				"region_id": region_id,
+				"milliunits": due,
+			})
+	return {"claims_by_commodity": claims_by_commodity}
+
+
+func _ambient_source_eligible(source: Dictionary, ambient_claim: Dictionary, facts: Dictionary) -> bool:
+	var source_region_id := str(source.get("region_id", ""))
+	var consuming_region_id := str(ambient_claim.get("region_id", ""))
+	if source_region_id.is_empty() or consuming_region_id.is_empty():
+		return false
+	var region_by_id := _index_by_id(facts.get("regions", []), "region_id")
+	var source_region: Dictionary = _dictionary(region_by_id.get(source_region_id, {}))
+	var consuming_region: Dictionary = _dictionary(region_by_id.get(consuming_region_id, {}))
+	if not _region_is_live(source_region) or not _region_is_live(consuming_region):
+		return false
+	if source_region_id == consuming_region_id:
+		return true
+	if not _region_is_land(consuming_region):
+		return false
+	var consumer_neighbors: Array = consuming_region.get("neighbor_region_ids", []) if consuming_region.get("neighbor_region_ids", []) is Array else []
+	var source_neighbors: Array = source_region.get("neighbor_region_ids", []) if source_region.get("neighbor_region_ids", []) is Array else []
+	return consumer_neighbors.has(source_region_id) or source_neighbors.has(consuming_region_id)
+
+
 func _build_flow_plan(delta_milliseconds: int, facts: Dictionary) -> Dictionary:
 	var facility_by_id := _index_by_id(facts.get("facilities", []), "facility_id")
 	var region_by_id := _index_by_id(facts.get("regions", []), "region_id")
@@ -1397,7 +2193,12 @@ func _build_flow_plan(delta_milliseconds: int, facts: Dictionary) -> Dictionary:
 	var next_installations := _installations.duplicate(true)
 	var next_rate_remainders := _rate_remainders.duplicate(true)
 	var next_pair_remainders := _pair_remainders.duplicate(true)
-	var next_backpressured_milliunits_by_source := _backpressured_milliunits_by_source.duplicate(true)
+	var next_ambient_rate_remainders := _ambient_rate_remainders.duplicate(true)
+	var next_ambient_fairness_cursors := _ambient_fairness_cursor_by_region_commodity.duplicate(true)
+	var next_market_backlog := _market_backlog_by_key.duplicate(true)
+	var next_cumulative_waste_by_source := _cumulative_wasted_milliunits_by_source.duplicate(true)
+	var next_cumulative_waste_by_commodity := _cumulative_wasted_milliunits_by_commodity.duplicate(true)
+	var next_cumulative_waste_by_region := _cumulative_wasted_milliunits_by_region.duplicate(true)
 	var next_warehouse_inventory := _warehouse_inventory.duplicate(true)
 	var next_one_shot_receipts := _one_shot_transaction_receipts.duplicate(true)
 	var next_pending_one_shot := _pending_one_shot_supplies.duplicate(true)
@@ -1405,9 +2206,12 @@ func _build_flow_plan(delta_milliseconds: int, facts: Dictionary) -> Dictionary:
 	var next_pending_one_shot_demands := _pending_one_shot_demands.duplicate(true)
 	var next_card_effect_batch_journal := _card_effect_batch_journal.duplicate(true)
 	var destroyed_warehouse_loss := _prune_warehouse_inventory(next_warehouse_inventory, facility_by_id, destroyed_facility_ids)
+	_prune_market_backlog(next_market_backlog, facility_by_id, destroyed_facility_ids)
 	var accrued_warehouse_rent_cents := _accrue_warehouse_rent(delta_milliseconds, facts, next_warehouse_inventory)
 	var total_base_by_facility: Dictionary = {}
-	for installation_id_variant in next_installations.keys():
+	var installation_ids: Array = next_installations.keys()
+	installation_ids.sort()
+	for installation_id_variant in installation_ids:
 		var installation: Dictionary = next_installations[installation_id_variant]
 		if not bool(installation.get("active", false)):
 			continue
@@ -1420,9 +2224,9 @@ func _build_flow_plan(delta_milliseconds: int, facts: Dictionary) -> Dictionary:
 			continue
 		total_base_by_facility[facility_id] = int(total_base_by_facility.get(facility_id, 0)) + int(installation.get("base_units_per_minute", 0))
 	var production_claims_by_commodity: Dictionary = {}
-	var demand_claims_by_commodity: Dictionary = {}
+	var market_rate_groups: Dictionary = {}
 	var effective_rate_rows: Array = []
-	for installation_id_variant in next_installations.keys():
+	for installation_id_variant in installation_ids:
 		var installation_id := str(installation_id_variant)
 		var installation: Dictionary = next_installations[installation_id]
 		if not bool(installation.get("active", false)):
@@ -1433,7 +2237,7 @@ func _build_flow_plan(delta_milliseconds: int, facts: Dictionary) -> Dictionary:
 		var facility: Dictionary = facility_by_id[facility_id]
 		var region_id := str(installation.get("region_id", facility.get("region_id", "")))
 		var region: Dictionary = _dictionary(region_by_id.get(region_id, {}))
-		if str(region.get("lifecycle_state", "active")) == "destroyed" or not bool(facility.get("active", false)):
+		if not _region_is_live(region) or not bool(facility.get("active", false)):
 			continue
 		var rank := clampi(int(facility.get("rank", 1)), 1, 4)
 		var facility_capacity := int(_factory_market_capacity_by_rank.get(rank, 0))
@@ -1441,42 +2245,55 @@ func _build_flow_plan(delta_milliseconds: int, facts: Dictionary) -> Dictionary:
 		var capacity_bp := mini(BASIS_POINTS, int(floor(float(facility_capacity) * float(BASIS_POINTS) / float(facility_total_base))))
 		var integrity_bp := clampi(int(region.get("integrity_basis_points", 0)), 0, BASIS_POINTS)
 		var base_rate := maxi(0, int(installation.get("base_units_per_minute", 0)))
-		var baseline_rate_milli_per_minute := int(floor(float(base_rate * FIXED_POINT_SCALE) * float(capacity_bp) / float(BASIS_POINTS) * float(integrity_bp) / float(BASIS_POINTS)))
+		var normal_rate_milli_per_minute := int(floor(float(base_rate * FIXED_POINT_SCALE) * float(capacity_bp) / float(BASIS_POINTS)))
+		var baseline_rate_milli_per_minute := int(floor(float(normal_rate_milli_per_minute) * float(integrity_bp) / float(BASIS_POINTS)))
 		var direction := str(installation.get("direction", ""))
 		var weather_effect := _installation_weather_effect(installation, facility, region, direction)
 		var weather_multiplier := clampf(float(weather_effect.get("multiplier", 1.0)), WEATHER_ECONOMY_MULTIPLIER_MIN, WEATHER_ECONOMY_MULTIPLIER_MAX)
 		var weather_multiplier_bp := clampi(int(round(weather_multiplier * float(BASIS_POINTS))), int(WEATHER_ECONOMY_MULTIPLIER_MIN * BASIS_POINTS), int(WEATHER_ECONOMY_MULTIPLIER_MAX * BASIS_POINTS))
 		var effective_rate_milli_per_minute := int(floor(float(baseline_rate_milli_per_minute) * float(weather_multiplier_bp) / float(BASIS_POINTS)))
-		var numerator := int(next_rate_remainders.get(installation_id, 0)) + effective_rate_milli_per_minute * delta_milliseconds
-		var emitted_milliunits := int(floor(float(numerator) / float(MILLISECONDS_PER_MINUTE)))
-		next_rate_remainders[installation_id] = numerator % MILLISECONDS_PER_MINUTE
-		var local_baseline_budget_milliunits := _local_baseline_budget_milliunits(
-			installation_id,
-			direction,
-			effective_rate_milli_per_minute,
-			delta_milliseconds,
-			next_rate_remainders
-		)
-		var claim := {
-			"installation_id": installation_id,
-			"source_kind": "continuous" if direction == "production" else "demand",
-			"commodity_id": str(installation.get("commodity_id", "")),
-			"color": str(installation.get("color", "")),
-			"player_index": int(installation.get("installer_player_index", -1)),
-			"facility_id": facility_id,
-			"source_factory_id": facility_id if str(installation.get("direction", "")) == "production" else "",
-			"market_facility_id": facility_id if str(installation.get("direction", "")) == "demand" else "",
-			"region_id": region_id,
-			"milliunits": emitted_milliunits,
-			"local_baseline_budget_milliunits": local_baseline_budget_milliunits,
-			"weather_multiplier": weather_multiplier,
-			"weather_contributions": _sanitize_weather_contributions(weather_effect.get("contributions", [])),
-		}
-		var target := production_claims_by_commodity if direction == "production" else demand_claims_by_commodity
 		var commodity_id := str(installation.get("commodity_id", ""))
-		if not target.has(commodity_id):
-			target[commodity_id] = []
-		(target[commodity_id] as Array).append(claim)
+		if direction == "production":
+			var numerator := int(next_rate_remainders.get(installation_id, 0)) + effective_rate_milli_per_minute * delta_milliseconds
+			var emitted_milliunits := int(floor(float(numerator) / float(MILLISECONDS_PER_MINUTE)))
+			next_rate_remainders[installation_id] = numerator % MILLISECONDS_PER_MINUTE
+			if not production_claims_by_commodity.has(commodity_id):
+				production_claims_by_commodity[commodity_id] = []
+			(production_claims_by_commodity[commodity_id] as Array).append({
+				"installation_id": installation_id,
+				"source_kind": "continuous",
+				"commodity_id": commodity_id,
+				"color": str(installation.get("color", "")),
+				"player_index": int(installation.get("installer_player_index", -1)),
+				"facility_id": facility_id,
+				"source_factory_id": facility_id,
+				"region_id": region_id,
+				"milliunits": emitted_milliunits,
+				"weather_multiplier": weather_multiplier,
+				"weather_contributions": _sanitize_weather_contributions(weather_effect.get("contributions", [])),
+			})
+		else:
+			var backlog_key := _market_backlog_key(facility_id, commodity_id)
+			var group: Dictionary = _dictionary(market_rate_groups.get(backlog_key, {}))
+			if group.is_empty():
+				group = {
+					"market_facility_id": facility_id,
+					"region_id": region_id,
+					"commodity_id": commodity_id,
+					"color": str(installation.get("color", "")),
+					"current_rate_milliunits_per_minute": 0,
+					"normal_rate_milliunits_per_minute": 0,
+					"installation_ids": [],
+					"weather_contributions": [],
+				}
+			group["current_rate_milliunits_per_minute"] = int(group.get("current_rate_milliunits_per_minute", 0)) + effective_rate_milli_per_minute
+			group["normal_rate_milliunits_per_minute"] = int(group.get("normal_rate_milliunits_per_minute", 0)) + normal_rate_milli_per_minute
+			(group["installation_ids"] as Array).append(installation_id)
+			group["weather_contributions"] = _merge_weather_contributions([
+				group.get("weather_contributions", []),
+				weather_effect.get("contributions", []),
+			])
+			market_rate_groups[backlog_key] = group
 		effective_rate_rows.append({
 			"installation_id": installation_id,
 			"region_index": int(weather_effect.get("region_index", -1)),
@@ -1490,6 +2307,20 @@ func _build_flow_plan(delta_milliseconds: int, facts: Dictionary) -> Dictionary:
 			"weather_contributions": _sanitize_weather_contributions(weather_effect.get("contributions", [])),
 			"effective_milliunits_per_minute": effective_rate_milli_per_minute,
 		})
+	_scale_market_rate_groups_to_facility_capacity(market_rate_groups, facility_by_id, region_by_id)
+	var market_requests := _build_market_requests(
+		delta_milliseconds,
+		facts,
+		market_rate_groups,
+		next_market_backlog,
+		next_rate_remainders,
+		next_pending_one_shot_demands
+	)
+	var steady_demand_by_commodity: Dictionary = market_requests.get("steady_by_commodity", {})
+	var recovery_demand_by_commodity: Dictionary = market_requests.get("recovery_by_commodity", {})
+	var one_shot_demand_by_commodity: Dictionary = market_requests.get("one_shot_by_commodity", {})
+	var ambient_build := _build_ambient_claims(delta_milliseconds, facts, next_ambient_rate_remainders)
+	var ambient_claims_by_commodity: Dictionary = ambient_build.get("claims_by_commodity", {})
 	var warehouse_outflow := _warehouse_outflow_claims(delta_milliseconds, facts, next_warehouse_inventory)
 	for commodity_id_variant in (warehouse_outflow.get("claims_by_commodity", {}) as Dictionary).keys():
 		var commodity_id := str(commodity_id_variant)
@@ -1507,71 +2338,108 @@ func _build_flow_plan(delta_milliseconds: int, facts: Dictionary) -> Dictionary:
 		if not production_claims_by_commodity.has(commodity_id):
 			production_claims_by_commodity[commodity_id] = []
 		(production_claims_by_commodity[commodity_id] as Array).append(one_shot.duplicate(true))
-	var pending_demand_ids: Array = next_pending_one_shot_demands.keys()
-	pending_demand_ids.sort()
-	for transaction_id_variant in pending_demand_ids:
-		var one_shot_demand: Dictionary = next_pending_one_shot_demands[transaction_id_variant]
-		var commodity_id := str(one_shot_demand.get("commodity_id", ""))
-		if commodity_id.is_empty():
-			continue
-		if not demand_claims_by_commodity.has(commodity_id):
-			demand_claims_by_commodity[commodity_id] = []
-		(demand_claims_by_commodity[commodity_id] as Array).append(one_shot_demand.duplicate(true))
 	var receipts: Array = []
-	var total_backpressure := 0
+	var flow_events: Array = []
+	var flow_loss_events: Array = []
+	var wasted_current_by_source: Dictionary = {}
+	var wasted_rate_by_source: Dictionary = {}
+	var total_market_sold := 0
+	var total_ambient_consumed := 0
+	var total_wasted := 0
 	var total_stored := 0
-	var total_one_shot_lost := 0
 	var commodity_metrics: Array = []
 	var warehouse_inbound_remaining := _warehouse_throughput_budget(delta_milliseconds, facts)
+	var warehouse_outbound_remaining := _warehouse_throughput_budget(delta_milliseconds, facts)
+	var route_budgets := _initial_route_capacity_budgets(delta_milliseconds, facts)
+	var route_remaining_by_id: Dictionary = route_budgets.get("route_remaining_by_id", {})
+	var route_remaining_by_resource: Dictionary = route_budgets.get("resource_remaining_by_id", {})
+	for warehouse_id_variant in warehouse_outbound_remaining.keys():
+		var warehouse_id := str(warehouse_id_variant)
+		route_remaining_by_resource["warehouse-out:%s" % warehouse_id] = int(warehouse_outbound_remaining.get(warehouse_id_variant, 0))
 	var commodity_ids: Array = production_claims_by_commodity.keys()
-	for commodity_id_variant in demand_claims_by_commodity.keys():
-		if not commodity_ids.has(commodity_id_variant):
-			commodity_ids.append(commodity_id_variant)
+	for demand_map in [steady_demand_by_commodity, recovery_demand_by_commodity, one_shot_demand_by_commodity, ambient_claims_by_commodity]:
+		for commodity_id_variant in (demand_map as Dictionary).keys():
+			if not commodity_ids.has(commodity_id_variant):
+				commodity_ids.append(commodity_id_variant)
 	commodity_ids.sort()
 	var next_receipt_sequence := _receipt_sequence
 	for commodity_id_variant in commodity_ids:
 		var commodity_id := str(commodity_id_variant)
 		var production_claims: Array = (production_claims_by_commodity.get(commodity_id, []) as Array).duplicate(true)
-		var demand_claims: Array = (demand_claims_by_commodity.get(commodity_id, []) as Array).duplicate(true)
+		var steady_demand_claims: Array = (steady_demand_by_commodity.get(commodity_id, []) as Array).duplicate(true)
+		for one_shot_variant in (one_shot_demand_by_commodity.get(commodity_id, []) as Array):
+			steady_demand_claims.append((one_shot_variant as Dictionary).duplicate(true))
+		var recovery_demand_claims: Array = (recovery_demand_by_commodity.get(commodity_id, []) as Array).duplicate(true)
 		production_claims.sort_custom(func(left: Dictionary, right: Dictionary) -> bool: return str(left.get("installation_id", "")) < str(right.get("installation_id", "")))
-		demand_claims.sort_custom(func(left: Dictionary, right: Dictionary) -> bool: return str(left.get("installation_id", "")) < str(right.get("installation_id", "")))
-		var commodity_plan := _allocate_commodity(commodity_id, production_claims, demand_claims, delta_milliseconds, facts, next_pair_remainders, next_receipt_sequence)
-		next_receipt_sequence = int(commodity_plan.get("next_receipt_sequence", next_receipt_sequence))
-		for receipt_variant in commodity_plan.get("receipts", []):
+		steady_demand_claims.sort_custom(func(left: Dictionary, right: Dictionary) -> bool: return str(left.get("installation_id", "")) < str(right.get("installation_id", "")))
+		recovery_demand_claims.sort_custom(func(left: Dictionary, right: Dictionary) -> bool: return str(left.get("installation_id", "")) < str(right.get("installation_id", "")))
+		var steady_plan := _allocate_commodity(
+			commodity_id,
+			production_claims,
+			steady_demand_claims,
+			delta_milliseconds,
+			facts,
+			next_pair_remainders,
+			next_receipt_sequence,
+			route_remaining_by_id,
+			route_remaining_by_resource
+		)
+		next_receipt_sequence = int(steady_plan.get("next_receipt_sequence", next_receipt_sequence))
+		for receipt_variant in steady_plan.get("receipts", []):
 			receipts.append((receipt_variant as Dictionary).duplicate(true))
-		var used_by_source: Dictionary = commodity_plan.get("used_milliunits_by_source_id", {})
-		var used_by_demand: Dictionary = commodity_plan.get("used_milliunits_by_demand_id", {})
-		var production_baseline := _allocate_local_baseline(
-			"local_production_baseline",
+		for event_variant in steady_plan.get("flow_events", []):
+			flow_events.append((event_variant as Dictionary).duplicate(true))
+		var used_by_source: Dictionary = _dictionary(steady_plan.get("used_milliunits_by_source_id", {}))
+		var used_by_demand: Dictionary = _dictionary(steady_plan.get("used_milliunits_by_demand_id", {}))
+		var remaining_for_recovery := _remaining_production_claims(production_claims, used_by_source)
+		var recovery_plan := _allocate_commodity(
+			commodity_id,
+			remaining_for_recovery,
+			recovery_demand_claims,
+			delta_milliseconds,
+			facts,
+			next_pair_remainders,
+			next_receipt_sequence,
+			route_remaining_by_id,
+			route_remaining_by_resource
+		)
+		next_receipt_sequence = int(recovery_plan.get("next_receipt_sequence", next_receipt_sequence))
+		for receipt_variant in recovery_plan.get("receipts", []):
+			receipts.append((receipt_variant as Dictionary).duplicate(true))
+		for event_variant in recovery_plan.get("flow_events", []):
+			flow_events.append((event_variant as Dictionary).duplicate(true))
+		_merge_claim_usage(used_by_source, recovery_plan.get("used_milliunits_by_source_id", {}))
+		_merge_claim_usage(used_by_demand, recovery_plan.get("used_milliunits_by_demand_id", {}))
+		var storage_rent_settled: Dictionary = _dictionary(steady_plan.get("storage_rent_settled_by_source_id", {}))
+		_merge_claim_usage(storage_rent_settled, recovery_plan.get("storage_rent_settled_by_source_id", {}))
+		_apply_market_fulfillment(
+			next_market_backlog,
+			commodity_id,
+			steady_demand_claims,
+			recovery_demand_claims,
+			used_by_demand
+		)
+		var ambient_plan := _allocate_ambient(
 			commodity_id,
 			production_claims,
 			used_by_source,
+			(ambient_claims_by_commodity.get(commodity_id, []) as Array).duplicate(true),
 			facts,
 			next_pair_remainders,
+			next_ambient_fairness_cursors,
 			next_receipt_sequence
 		)
-		next_receipt_sequence = int(production_baseline.get("next_receipt_sequence", next_receipt_sequence))
-		for receipt_variant in production_baseline.get("receipts", []):
+		next_receipt_sequence = int(ambient_plan.get("next_receipt_sequence", next_receipt_sequence))
+		for receipt_variant in ambient_plan.get("receipts", []):
 			receipts.append((receipt_variant as Dictionary).duplicate(true))
-		_merge_claim_usage(used_by_source, production_baseline.get("used_milliunits_by_claim_id", {}))
-		var market_baseline := _allocate_local_baseline(
-			"local_market_baseline",
-			commodity_id,
-			demand_claims,
-			used_by_demand,
-			facts,
-			next_pair_remainders,
-			next_receipt_sequence
-		)
-		next_receipt_sequence = int(market_baseline.get("next_receipt_sequence", next_receipt_sequence))
-		for receipt_variant in market_baseline.get("receipts", []):
-			receipts.append((receipt_variant as Dictionary).duplicate(true))
-		_merge_claim_usage(used_by_demand, market_baseline.get("used_milliunits_by_claim_id", {}))
+		for event_variant in ambient_plan.get("flow_events", []):
+			flow_events.append((event_variant as Dictionary).duplicate(true))
+		_merge_claim_usage(used_by_source, ambient_plan.get("used_milliunits_by_source_id", {}))
 		_consume_warehouse_outflow(
 			next_warehouse_inventory,
 			production_claims,
 			used_by_source,
-			commodity_plan.get("storage_rent_settled_by_source_id", {})
+			storage_rent_settled
 		)
 		var storage := _store_unmatched_claims(
 			commodity_id,
@@ -1580,22 +2448,39 @@ func _build_flow_plan(delta_milliseconds: int, facts: Dictionary) -> Dictionary:
 			delta_milliseconds,
 			facts,
 			next_warehouse_inventory,
-			warehouse_inbound_remaining
+			warehouse_inbound_remaining,
+			route_remaining_by_id,
+			route_remaining_by_resource
 		)
-		total_backpressure += int(storage.get("backpressured_milliunits", 0))
-		_merge_claim_usage(next_backpressured_milliunits_by_source, storage.get("backpressured_by_source_id", {}))
+		for event_variant in storage.get("flow_events", []):
+			flow_events.append((event_variant as Dictionary).duplicate(true))
+		for loss_variant in storage.get("flow_loss_events", []):
+			flow_loss_events.append((loss_variant as Dictionary).duplicate(true))
+		var wasted_by_source: Dictionary = _dictionary(storage.get("wasted_by_source_id", {}))
+		for source_id_variant in wasted_by_source.keys():
+			var source_id := str(source_id_variant)
+			var amount := maxi(0, int(wasted_by_source.get(source_id_variant, 0)))
+			var claim := _claim_by_id(production_claims, source_id)
+			var source_kind := str(claim.get("source_kind", ""))
+			if source_kind == "continuous":
+				wasted_current_by_source[source_id] = int(wasted_current_by_source.get(source_id, 0)) + amount
+				wasted_rate_by_source[source_id] = int(round(float(amount) * float(MILLISECONDS_PER_MINUTE) / float(delta_milliseconds)))
+			next_cumulative_waste_by_source[source_id] = int(next_cumulative_waste_by_source.get(source_id, 0)) + amount
+			next_cumulative_waste_by_commodity[commodity_id] = int(next_cumulative_waste_by_commodity.get(commodity_id, 0)) + amount
+			var source_region_id := str(claim.get("region_id", ""))
+			next_cumulative_waste_by_region[source_region_id] = int(next_cumulative_waste_by_region.get(source_region_id, 0)) + amount
 		total_stored += int(storage.get("stored_milliunits", 0))
-		total_one_shot_lost += int(storage.get("one_shot_lost_milliunits", 0))
+		total_wasted += int(storage.get("wasted_milliunits", 0))
+		total_market_sold += int((steady_plan.get("metrics", {}) as Dictionary).get("allocated_milliunits", 0))
+		total_market_sold += int((recovery_plan.get("metrics", {}) as Dictionary).get("allocated_milliunits", 0))
+		total_ambient_consumed += int(ambient_plan.get("allocated_milliunits", 0))
 		_settle_one_shot_receipts(production_claims, used_by_source, storage, next_one_shot_receipts)
-		_settle_one_shot_demand_receipts(demand_claims, used_by_demand, next_one_shot_demand_receipts)
-		var metric_row: Dictionary = (commodity_plan.get("metrics", {}) as Dictionary).duplicate(true)
+		_settle_one_shot_demand_receipts(steady_demand_claims, used_by_demand, next_one_shot_demand_receipts)
+		var metric_row: Dictionary = (steady_plan.get("metrics", {}) as Dictionary).duplicate(true)
+		metric_row["recovery_allocated_milliunits"] = int((recovery_plan.get("metrics", {}) as Dictionary).get("allocated_milliunits", 0))
+		metric_row["ambient_consumed_milliunits"] = int(ambient_plan.get("allocated_milliunits", 0))
 		metric_row["stored_milliunits"] = int(storage.get("stored_milliunits", 0))
-		metric_row["backpressured_milliunits"] = int(storage.get("backpressured_milliunits", 0))
-		metric_row["one_shot_lost_milliunits"] = int(storage.get("one_shot_lost_milliunits", 0))
-		metric_row["local_production_baseline_milliunits"] = int(production_baseline.get("allocated_milliunits", 0))
-		metric_row["local_market_baseline_milliunits"] = int(market_baseline.get("allocated_milliunits", 0))
-		metric_row["local_production_baseline_receipt_count"] = (production_baseline.get("receipts", []) as Array).size()
-		metric_row["local_market_baseline_receipt_count"] = (market_baseline.get("receipts", []) as Array).size()
+		metric_row["wasted_milliunits"] = int(storage.get("wasted_milliunits", 0))
 		commodity_metrics.append(metric_row)
 	next_pending_one_shot.clear()
 	next_pending_one_shot_demands.clear()
@@ -1612,6 +2497,15 @@ func _build_flow_plan(delta_milliseconds: int, facts: Dictionary) -> Dictionary:
 	for receipt_index in range(next_recent_receipts.size() - 1, -1, -1):
 		if float((next_recent_receipts[receipt_index] as Dictionary).get("settled_at", 0.0)) < receipt_cutoff:
 			next_recent_receipts.remove_at(receipt_index)
+	_stamp_flow_events(flow_events, _flow_revision + 1)
+	var next_recent_flow_events := _recent_flow_events.duplicate(true)
+	for event_variant in flow_events:
+		next_recent_flow_events.append((event_variant as Dictionary).duplicate(true))
+	_prune_recent_events(next_recent_flow_events, receipt_cutoff)
+	var next_recent_loss_events := _recent_flow_loss_events.duplicate(true)
+	for loss_variant in flow_loss_events:
+		next_recent_loss_events.append((loss_variant as Dictionary).duplicate(true))
+	_prune_recent_events(next_recent_loss_events, receipt_cutoff)
 	var totals := _receipt_totals(receipts)
 	return {
 		"valid": true,
@@ -1621,7 +2515,16 @@ func _build_flow_plan(delta_milliseconds: int, facts: Dictionary) -> Dictionary:
 		"next_installations": next_installations,
 		"next_rate_remainders": next_rate_remainders,
 		"next_pair_remainders": next_pair_remainders,
-		"next_backpressured_milliunits_by_source": next_backpressured_milliunits_by_source,
+		"next_ambient_rate_remainders": next_ambient_rate_remainders,
+		"next_ambient_fairness_cursor_by_region_commodity": next_ambient_fairness_cursors,
+		"next_ambient_revision": _ambient_revision + 1,
+		"next_market_backlog_by_key": next_market_backlog,
+		"next_wasted_continuous_milliunits_by_source": wasted_current_by_source,
+		"next_wasted_continuous_milliunits_per_minute_by_source": wasted_rate_by_source,
+		"next_cumulative_wasted_milliunits_by_source": next_cumulative_waste_by_source,
+		"next_cumulative_wasted_milliunits_by_commodity": next_cumulative_waste_by_commodity,
+		"next_cumulative_wasted_milliunits_by_region": next_cumulative_waste_by_region,
+		"next_waste_revision": _waste_revision + 1,
 		"next_warehouse_inventory": next_warehouse_inventory,
 		"next_pending_one_shot_supplies": next_pending_one_shot,
 		"next_one_shot_transaction_receipts": next_one_shot_receipts,
@@ -1629,15 +2532,20 @@ func _build_flow_plan(delta_milliseconds: int, facts: Dictionary) -> Dictionary:
 		"next_one_shot_demand_transaction_receipts": next_one_shot_demand_receipts,
 		"next_card_effect_batch_journal": next_card_effect_batch_journal,
 		"next_recent_sale_receipts": next_recent_receipts,
+		"next_recent_flow_events": next_recent_flow_events,
+		"next_recent_flow_loss_events": next_recent_loss_events,
 		"settled_at": settled_at,
 		"receipts": receipts,
+		"flow_events": flow_events,
+		"flow_loss_events": flow_loss_events,
 		"gross_value": int(totals.get("gross_value", 0)),
 		"rent_value": int(totals.get("rent_value", 0)),
 		"owner_net_cash": int(totals.get("owner_net_cash", 0)),
 		"gdp_value": int(totals.get("gdp_value", 0)),
-		"backpressured_milliunits": total_backpressure,
+		"market_sold_milliunits": total_market_sold,
+		"ambient_consumed_milliunits": total_ambient_consumed,
 		"stored_milliunits": total_stored,
-		"one_shot_lost_milliunits": total_one_shot_lost,
+		"wasted_milliunits": total_wasted,
 		"warehouse_destroyed_loss_milliunits": destroyed_warehouse_loss,
 		"accrued_warehouse_rent_cents": accrued_warehouse_rent_cents,
 		"metrics": {
@@ -1646,10 +2554,12 @@ func _build_flow_plan(delta_milliseconds: int, facts: Dictionary) -> Dictionary:
 			"weather_contributions": _weather_contributions_from_rate_rows(effective_rate_rows),
 			"commodity_rows": commodity_metrics,
 			"sale_receipt_count": receipts.size(),
-			"backpressured_milliunits": total_backpressure,
+			"market_sold_milliunits": total_market_sold,
+			"ambient_consumed_milliunits": total_ambient_consumed,
+			"market_backlog_milliunits": _market_backlog_total(next_market_backlog),
 			"warehouse_stored_milliunits": _warehouse_inventory_total(next_warehouse_inventory),
 			"stored_this_tick_milliunits": total_stored,
-			"one_shot_lost_milliunits": total_one_shot_lost,
+			"wasted_milliunits": total_wasted,
 			"warehouse_destroyed_loss_milliunits": destroyed_warehouse_loss,
 			"accrued_warehouse_rent_cents": accrued_warehouse_rent_cents,
 			"warehouse_transition_pending": false,
@@ -1657,15 +2567,27 @@ func _build_flow_plan(delta_milliseconds: int, facts: Dictionary) -> Dictionary:
 	}
 
 
-func _allocate_commodity(commodity_id: String, production_claims: Array, demand_claims: Array, delta_milliseconds: int, facts: Dictionary, pair_remainders: Dictionary, receipt_sequence_start: int) -> Dictionary:
+func _allocate_commodity(
+	commodity_id: String,
+	production_claims: Array,
+	demand_claims: Array,
+	delta_milliseconds: int,
+	facts: Dictionary,
+	pair_remainders: Dictionary,
+	receipt_sequence_start: int,
+	route_remaining_by_id: Dictionary,
+	route_remaining_by_resource: Dictionary
+) -> Dictionary:
 	var total_production := _sum_claims(production_claims)
 	var total_demand := _sum_claims(demand_claims)
 	if total_production <= 0 or total_demand <= 0:
 		return {
 			"receipts": [],
+			"flow_events": [],
 			"next_receipt_sequence": receipt_sequence_start,
 			"used_milliunits_by_source_id": {},
 			"used_milliunits_by_demand_id": {},
+			"storage_rent_settled_by_source_id": {},
 			"metrics": {"commodity_id": commodity_id, "production_milliunits": total_production, "demand_milliunits": total_demand, "allocated_milliunits": 0},
 		}
 	var pair_rows: Array = []
@@ -1673,7 +2595,15 @@ func _allocate_commodity(commodity_id: String, production_claims: Array, demand_
 		var production: Dictionary = production_variant
 		for demand_variant in demand_claims:
 			var demand: Dictionary = demand_variant
-			var route := _best_route(commodity_id, production, demand, delta_milliseconds, facts)
+			var route := _best_route(
+				commodity_id,
+				production,
+				demand,
+				delta_milliseconds,
+				facts,
+				route_remaining_by_id,
+				route_remaining_by_resource
+			)
 			if route.is_empty():
 				continue
 			pair_rows.append({
@@ -1687,8 +2617,14 @@ func _allocate_commodity(commodity_id: String, production_claims: Array, demand_
 		return str(left.get("pair_id", "")) < str(right.get("pair_id", ""))
 	)
 	var target_milliunits := mini(total_production, total_demand)
-	var allocations := _proportional_pair_allocations(pair_rows, target_milliunits)
+	var allocations := _proportional_pair_allocations(
+		pair_rows,
+		target_milliunits,
+		route_remaining_by_id,
+		route_remaining_by_resource
+	)
 	var receipts: Array = []
+	var flow_events: Array = []
 	var used_production: Dictionary = {}
 	var used_demand: Dictionary = {}
 	var storage_rent_remaining_by_source: Dictionary = {}
@@ -1708,6 +2644,23 @@ func _allocate_commodity(commodity_id: String, production_claims: Array, demand_
 		used_production[production_id] = int(used_production.get(production_id, 0)) + allocated_milliunits
 		used_demand[demand_id] = int(used_demand.get(demand_id, 0)) + allocated_milliunits
 		allocated_total += allocated_milliunits
+		var demand_phase := str(demand.get("market_phase", "one_shot"))
+		flow_events.append({
+			"internal_flow_kind": "market",
+			"source_kind": str(production.get("source_kind", "")),
+			"commodity_id": commodity_id,
+			"source_region_id": str(production.get("region_id", "")),
+			"market_region_id": str(demand.get("region_id", "")),
+			"market_facility_id": str(demand.get("market_facility_id", demand.get("facility_id", ""))),
+			"route_id": str(route.get("route_id", "")),
+			"transport_modes": _unique_sorted_strings(route.get("mode_tags", [])),
+			"quantity_units": float(allocated_milliunits) / float(FIXED_POINT_SCALE),
+			"capacity_limited": allocated_milliunits < mini(
+				maxi(0, int(production.get("milliunits", 0))),
+				maxi(0, int(demand.get("milliunits", 0)))
+			),
+			"settled_at": float(facts.get("game_time", 0.0)),
+		})
 		var pair_id := str(pair.get("pair_id", ""))
 		var sale_milliunits := int(pair_remainders.get(pair_id, 0)) + allocated_milliunits
 		var whole_units := int(floor(float(sale_milliunits) / float(FIXED_POINT_SCALE)))
@@ -1724,6 +2677,7 @@ func _allocate_commodity(commodity_id: String, production_claims: Array, demand_
 					maxi(0, int(storage_rent_remaining_by_source.get(production_id, 0)))
 				)
 			var sale_receipt := _sale_receipt(receipt_sequence, commodity_id, production, demand, route, facts, requested_storage_rent_cents)
+			sale_receipt["market_demand_phase"] = demand_phase
 			if str(production.get("source_kind", "")) == "warehouse":
 				var actual_storage_rent_cents := _storage_rent_in_receipt(sale_receipt, str(production.get("warehouse_id", "")))
 				storage_rent_remaining_by_source[production_id] = int(storage_rent_remaining_by_source.get(production_id, 0)) - actual_storage_rent_cents
@@ -1731,6 +2685,7 @@ func _allocate_commodity(commodity_id: String, production_claims: Array, demand_
 			receipts.append(sale_receipt)
 	return {
 		"receipts": receipts,
+		"flow_events": flow_events,
 		"next_receipt_sequence": receipt_sequence,
 		"used_milliunits_by_source_id": used_production,
 		"used_milliunits_by_demand_id": used_demand,
@@ -1746,51 +2701,127 @@ func _allocate_commodity(commodity_id: String, production_claims: Array, demand_
 	}
 
 
-func _allocate_local_baseline(trade_kind: String, commodity_id: String, claims: Array, remotely_used: Dictionary, facts: Dictionary, pair_remainders: Dictionary, receipt_sequence_start: int) -> Dictionary:
+func _allocate_ambient(
+	commodity_id: String,
+	production_claims: Array,
+	already_used_by_source: Dictionary,
+	ambient_claims: Array,
+	facts: Dictionary,
+	pair_remainders: Dictionary,
+	fairness_cursors: Dictionary,
+	receipt_sequence_start: int
+) -> Dictionary:
 	var receipts: Array = []
-	var used_by_claim: Dictionary = {}
+	var flow_events: Array = []
+	var used_by_source: Dictionary = {}
 	var allocated_total := 0
 	var receipt_sequence := receipt_sequence_start
-	var expected_source_kind := "continuous" if trade_kind == "local_production_baseline" else "demand"
-	for claim_variant in claims:
+	var remaining_by_source: Dictionary = {}
+	var source_by_id: Dictionary = {}
+	for source_variant in production_claims:
+		if not (source_variant is Dictionary):
+			continue
+		var source: Dictionary = source_variant
+		if str(source.get("source_kind", "")) == "warehouse":
+			continue
+		var source_id := str(source.get("installation_id", ""))
+		var remaining := maxi(0, int(source.get("milliunits", 0)) - int(already_used_by_source.get(source_id, 0)))
+		if source_id.is_empty() or remaining <= 0:
+			continue
+		remaining_by_source[source_id] = remaining
+		source_by_id[source_id] = source
+	ambient_claims.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		return str(left.get("region_id", "")) < str(right.get("region_id", ""))
+	)
+	for claim_variant in ambient_claims:
 		if not (claim_variant is Dictionary):
 			continue
 		var claim: Dictionary = claim_variant
-		if str(claim.get("source_kind", "")) != expected_source_kind:
+		var due := maxi(0, int(claim.get("milliunits", 0)))
+		if due <= 0:
 			continue
-		var claim_id := str(claim.get("installation_id", ""))
-		var remaining_milliunits := maxi(0, int(claim.get("milliunits", 0)) - int(remotely_used.get(claim_id, 0)))
-		var budget_milliunits := maxi(0, int(claim.get("local_baseline_budget_milliunits", 0)))
-		var allocated_milliunits := mini(remaining_milliunits, budget_milliunits)
-		if claim_id.is_empty() or allocated_milliunits <= 0:
+		var eligible_source_ids: Array = []
+		var eligible_total := 0
+		var source_ids: Array = source_by_id.keys()
+		source_ids.sort()
+		for source_id_variant in source_ids:
+			var source_id := str(source_id_variant)
+			var source: Dictionary = source_by_id[source_id]
+			var available := maxi(0, int(remaining_by_source.get(source_id, 0)))
+			if available <= 0 or not _ambient_source_eligible(source, claim, facts):
+				continue
+			eligible_source_ids.append(source_id)
+			eligible_total += available
+		var target := mini(due, eligible_total)
+		if target <= 0 or eligible_source_ids.is_empty():
 			continue
-		used_by_claim[claim_id] = allocated_milliunits
-		allocated_total += allocated_milliunits
-		var remainder_key := "%s:%s" % [trade_kind, claim_id]
-		var sale_milliunits := int(pair_remainders.get(remainder_key, 0)) + allocated_milliunits
-		var whole_units := int(floor(float(sale_milliunits) / float(FIXED_POINT_SCALE)))
-		pair_remainders[remainder_key] = sale_milliunits % FIXED_POINT_SCALE
-		for _unit_index in range(whole_units):
-			receipt_sequence += 1
-			receipts.append(_local_baseline_sale_receipt(receipt_sequence, trade_kind, commodity_id, claim, facts))
+		var allocations: Dictionary = {}
+		var residual_rows: Array = []
+		var assigned := 0
+		for source_id_variant in eligible_source_ids:
+			var source_id := str(source_id_variant)
+			var available := maxi(0, int(remaining_by_source.get(source_id, 0)))
+			var numerator := target * available
+			var base := int(floor(float(numerator) / float(eligible_total)))
+			allocations[source_id] = base
+			assigned += base
+			residual_rows.append({
+				"source_id": source_id,
+				"remainder": numerator % eligible_total,
+			})
+		residual_rows.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+			var left_remainder := int(left.get("remainder", 0))
+			var right_remainder := int(right.get("remainder", 0))
+			return left_remainder > right_remainder if left_remainder != right_remainder else str(left.get("source_id", "")) < str(right.get("source_id", ""))
+		)
+		var cursor_key := "%s|%s" % [str(claim.get("region_id", "")), commodity_id]
+		var residual := target - assigned
+		var cursor := int(fairness_cursors.get(cursor_key, 0))
+		if not residual_rows.is_empty() and residual > 0:
+			for offset in range(residual_rows.size()):
+				if residual <= 0:
+					break
+				var row_index := (cursor + offset) % residual_rows.size()
+				var source_id := str((residual_rows[row_index] as Dictionary).get("source_id", ""))
+				if int(allocations.get(source_id, 0)) >= int(remaining_by_source.get(source_id, 0)):
+					continue
+				allocations[source_id] = int(allocations.get(source_id, 0)) + 1
+				residual -= 1
+			fairness_cursors[cursor_key] = (cursor + (target - assigned)) % residual_rows.size()
+		for source_id_variant in eligible_source_ids:
+			var source_id := str(source_id_variant)
+			var allocated := maxi(0, int(allocations.get(source_id, 0)))
+			if allocated <= 0:
+				continue
+			var source: Dictionary = source_by_id[source_id]
+			remaining_by_source[source_id] = maxi(0, int(remaining_by_source.get(source_id, 0)) - allocated)
+			used_by_source[source_id] = int(used_by_source.get(source_id, 0)) + allocated
+			allocated_total += allocated
+			var trade_kind := "ambient_local_consumption" if str(source.get("region_id", "")) == str(claim.get("region_id", "")) else "ambient_adjacent_land_consumption"
+			flow_events.append({
+				"internal_flow_kind": "ambient",
+				"ambient_kind": trade_kind,
+				"commodity_id": commodity_id,
+				"source_region_id": str(source.get("region_id", "")),
+				"consuming_region_id": str(claim.get("region_id", "")),
+				"quantity_units": float(allocated) / float(FIXED_POINT_SCALE),
+				"capacity_limited": false,
+				"settled_at": float(facts.get("game_time", 0.0)),
+			})
+			var remainder_key := "ambient:%s>%s|%s" % [source_id, str(claim.get("region_id", "")), commodity_id]
+			var sale_milliunits := int(pair_remainders.get(remainder_key, 0)) + allocated
+			var whole_units := int(floor(float(sale_milliunits) / float(FIXED_POINT_SCALE)))
+			pair_remainders[remainder_key] = sale_milliunits % FIXED_POINT_SCALE
+			for _unit_index in range(whole_units):
+				receipt_sequence += 1
+				receipts.append(_ambient_sale_receipt(receipt_sequence, trade_kind, commodity_id, source, claim, facts))
 	return {
 		"receipts": receipts,
+		"flow_events": flow_events,
 		"next_receipt_sequence": receipt_sequence,
-		"used_milliunits_by_claim_id": used_by_claim,
+		"used_milliunits_by_source_id": used_by_source,
 		"allocated_milliunits": allocated_total,
 	}
-
-
-func _local_baseline_budget_milliunits(installation_id: String, direction: String, effective_rate_milli_per_minute: int, delta_milliseconds: int, rate_remainders: Dictionary) -> int:
-	var configured_rate_milli_per_minute := (local_production_absorption_units_per_minute if direction == "production" else local_market_turnover_units_per_minute) * FIXED_POINT_SCALE
-	if direction == "production":
-		var production_cap_milli_per_minute := int(floor(float(maxi(0, effective_rate_milli_per_minute)) * float(local_production_absorption_rate_cap_basis_points) / float(BASIS_POINTS)))
-		configured_rate_milli_per_minute = mini(configured_rate_milli_per_minute, production_cap_milli_per_minute)
-	var remainder_key := "local_baseline_budget:%s:%s" % [direction, installation_id]
-	var numerator := int(rate_remainders.get(remainder_key, 0)) + maxi(0, configured_rate_milli_per_minute) * delta_milliseconds
-	var emitted := int(floor(float(numerator) / float(MILLISECONDS_PER_MINUTE)))
-	rate_remainders[remainder_key] = numerator % MILLISECONDS_PER_MINUTE
-	return emitted
 
 
 func _merge_claim_usage(target: Dictionary, additional_variant: Variant) -> void:
@@ -1801,7 +2832,12 @@ func _merge_claim_usage(target: Dictionary, additional_variant: Variant) -> void
 		target[claim_id] = int(target.get(claim_id, 0)) + maxi(0, int((additional_variant as Dictionary)[claim_id_variant]))
 
 
-func _proportional_pair_allocations(pair_rows: Array, target_milliunits: int) -> Dictionary:
+func _proportional_pair_allocations(
+	pair_rows: Array,
+	target_milliunits: int,
+	route_remaining: Dictionary,
+	capacity_resource_remaining: Dictionary
+) -> Dictionary:
 	var allocations: Dictionary = {}
 	if pair_rows.is_empty() or target_milliunits <= 0:
 		return allocations
@@ -1812,8 +2848,6 @@ func _proportional_pair_allocations(pair_rows: Array, target_milliunits: int) ->
 		return allocations
 	var production_remaining: Dictionary = {}
 	var demand_remaining: Dictionary = {}
-	var route_remaining: Dictionary = {}
-	var capacity_resource_remaining: Dictionary = {}
 	var remainders: Array = []
 	for pair_index in range(pair_rows.size()):
 		var pair: Dictionary = pair_rows[pair_index]
@@ -1825,15 +2859,9 @@ func _proportional_pair_allocations(pair_rows: Array, target_milliunits: int) ->
 		var route_id := str(route.get("route_id", ""))
 		production_remaining[production_id] = int(production.get("milliunits", 0))
 		demand_remaining[demand_id] = int(demand.get("milliunits", 0))
-		if not route_remaining.has(route_id):
-			route_remaining[route_id] = maxi(0, int(route.get("capacity_milliunits", target_milliunits)))
-		for resource_variant in route.get("capacity_resource_budgets", []):
-			if not (resource_variant is Dictionary):
-				continue
-			var resource_id := str((resource_variant as Dictionary).get("resource_id", ""))
-			var capacity_milliunits := maxi(0, int((resource_variant as Dictionary).get("capacity_milliunits", 0)))
-			if not resource_id.is_empty() and not capacity_resource_remaining.has(resource_id):
-				capacity_resource_remaining[resource_id] = capacity_milliunits
+		if route_id.is_empty() or not route_remaining.has(route_id):
+			allocations[pair_index] = 0
+			continue
 		var numerator := target_milliunits * int(pair.get("weight", 0))
 		var ideal := int(floor(float(numerator) / float(total_weight)))
 		allocations[pair_index] = ideal
@@ -1891,7 +2919,15 @@ func _proportional_pair_allocations(pair_rows: Array, target_milliunits: int) ->
 	return allocations
 
 
-func _best_route(commodity_id: String, production: Dictionary, demand: Dictionary, delta_milliseconds: int, facts: Dictionary) -> Dictionary:
+func _best_route(
+	commodity_id: String,
+	production: Dictionary,
+	demand: Dictionary,
+	delta_milliseconds: int,
+	facts: Dictionary,
+	route_remaining_by_id: Dictionary = {},
+	route_remaining_by_resource: Dictionary = {}
+) -> Dictionary:
 	if not _card_effect_pair_binding_matches(production, demand):
 		return {}
 	var source_region_id := str(production.get("region_id", ""))
@@ -1899,25 +2935,7 @@ func _best_route(commodity_id: String, production: Dictionary, demand: Dictionar
 	var price_cents := int((_dictionary(facts.get("price_cents_by_commodity", {}))).get(commodity_id, 0))
 	if source_region_id.is_empty() or market_region_id.is_empty() or price_cents <= 0:
 		return {}
-	var region_by_id := _index_by_id(facts.get("regions", []), "region_id")
-	var source_region: Dictionary = _dictionary(region_by_id.get(source_region_id, {}))
-	var neighbor_ids: Array = source_region.get("neighbor_region_ids", []) if source_region.get("neighbor_region_ids", []) is Array else []
 	var candidates: Array = []
-	if source_region_id == market_region_id or neighbor_ids.has(market_region_id):
-		var direct_distance := 0 if source_region_id == market_region_id else 1
-		candidates.append({
-			"route_id": "direct:%s>%s" % [source_region_id, market_region_id],
-			"commodity_id": commodity_id,
-			"source_region_id": source_region_id,
-			"market_region_id": market_region_id,
-			"ordered_legs": [] if direct_distance == 0 else [{"from_region_id": source_region_id, "to_region_id": market_region_id, "mode": "direct"}],
-			"mode_tags": ["local"] if direct_distance == 0 else ["direct"],
-			"facility_ids": [],
-			"shortest_legal_distance": direct_distance,
-			"bottleneck_units_per_minute": 1000000,
-			"expected_rents": [],
-			"region_revision_fingerprint": "%s>%s" % [int(source_region.get("revision", 0)), int((_dictionary(region_by_id.get(market_region_id, {}))).get("revision", 0))],
-		})
 	for route_variant in facts.get("route_candidates", []):
 		if not (route_variant is Dictionary):
 			continue
@@ -1964,6 +2982,12 @@ func _best_route(commodity_id: String, production: Dictionary, demand: Dictionar
 				"resource_id": str(resource.get("resource_id", "")),
 				"capacity_milliunits": int(floor(float(maxi(0, int(resource.get("capacity_units_per_minute", 0))) * FIXED_POINT_SCALE * delta_milliseconds) / float(MILLISECONDS_PER_MINUTE))),
 			})
+		if str(production.get("source_kind", "")) == "warehouse":
+			var outbound_resource_id := "warehouse-out:%s" % str(production.get("warehouse_id", ""))
+			resource_budgets.append({
+				"resource_id": outbound_resource_id,
+				"capacity_milliunits": maxi(0, int(route_remaining_by_resource.get(outbound_resource_id, 0))),
+			})
 		candidate["capacity_resource_budgets"] = resource_budgets
 		candidates[candidate_index] = candidate
 	candidates.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
@@ -1981,11 +3005,23 @@ func _best_route(commodity_id: String, production: Dictionary, demand: Dictionar
 			return left_transfers < right_transfers
 		return str(left.get("route_id", "")) < str(right.get("route_id", ""))
 	)
-	return (candidates[0] as Dictionary).duplicate(true)
+	for candidate_variant in candidates:
+		var candidate: Dictionary = candidate_variant
+		var route_id := str(candidate.get("route_id", ""))
+		var route_available := maxi(0, int(candidate.get("capacity_milliunits", 0)))
+		if not route_remaining_by_id.is_empty():
+			route_available = mini(route_available, maxi(0, int(route_remaining_by_id.get(route_id, 0))))
+		if not route_remaining_by_resource.is_empty():
+			route_available = mini(route_available, _route_capacity_resource_limit(candidate, route_remaining_by_resource, route_available))
+		if route_available > 0:
+			return candidate.duplicate(true)
+	return {}
 
 
 func _card_effect_pair_binding_matches(production: Dictionary, demand: Dictionary) -> bool:
 	if str(production.get("source_kind", "")) == "one_shot":
+		if bool(demand.get("storage_sink", false)):
+			return int(production.get("player_index", -1)) >= 0
 		return int(production.get("player_index", -1)) >= 0 \
 			and str(production.get("planned_source_factory_id", "")) == str(production.get("source_factory_id", production.get("facility_id", ""))) \
 			and str(production.get("planned_market_facility_id", "")) == str(demand.get("market_facility_id", demand.get("facility_id", "")))
@@ -2066,47 +3102,50 @@ func _sale_receipt(sequence: int, commodity_id: String, production: Dictionary, 
 	return result
 
 
-func _local_baseline_sale_receipt(sequence: int, trade_kind: String, commodity_id: String, claim: Dictionary, facts: Dictionary) -> Dictionary:
+func _ambient_sale_receipt(
+	sequence: int,
+	trade_kind: String,
+	commodity_id: String,
+	source: Dictionary,
+	ambient_claim: Dictionary,
+	facts: Dictionary
+) -> Dictionary:
 	var price_cents := maxi(0, int((_dictionary(facts.get("price_cents_by_commodity", {}))).get(commodity_id, 0)))
-	var value_basis_points := local_production_baseline_value_basis_points if trade_kind == "local_production_baseline" else local_market_baseline_value_basis_points
-	var gross_value := int(round(float(price_cents) * float(value_basis_points) / float(BASIS_POINTS)))
-	if price_cents > 0 and value_basis_points > 0:
+	var gross_value := int(round(float(price_cents) * float(_ambient_consumption_value_basis_points) / float(BASIS_POINTS)))
+	if price_cents > 0 and _ambient_consumption_value_basis_points > 0:
 		gross_value = maxi(1, gross_value)
-	var is_production := trade_kind == "local_production_baseline"
-	var economic_owner := int(claim.get("player_index", -1))
-	var neutral_public_market := not is_production and economic_owner < 0
-	var owner_net_cash := 0 if neutral_public_market else gross_value
-	var region_id := str(claim.get("region_id", ""))
+	var consuming_region_id := str(ambient_claim.get("region_id", ""))
 	var receipt_id := "commodity-sale-%010d" % sequence
 	return {
 		"receipt_id": receipt_id,
 		"trade_kind": trade_kind,
-		"commodity_owner": economic_owner,
-		"economic_owner_kind": "public_local" if neutral_public_market else ("production_owner" if is_production else "market_owner"),
+		"commodity_owner": int(source.get("player_index", -1)),
+		"economic_owner_kind": "production_owner",
 		"commodity_id": commodity_id,
-		"color": str(claim.get("color", "")),
+		"color": str(source.get("color", "")),
 		"units": 1,
-		"source_region_id": region_id,
-		"market_region_id": region_id,
+		"source_region_id": str(source.get("region_id", "")),
+		"market_region_id": consuming_region_id,
+		"consuming_region_id": consuming_region_id,
 		"route_id": "",
 		"base_unit_price_cents": price_cents,
 		"shortest_legal_distance": 0,
 		"distance_premium_basis_points": 0,
-		"value_basis_points": value_basis_points,
+		"value_basis_points": _ambient_consumption_value_basis_points,
 		"unit_price_cents": gross_value,
 		"gross_value": gross_value,
 		"rent_rows": [],
-		"owner_net_cash": owner_net_cash,
+		"owner_net_cash": gross_value,
 		"gdp_value": gross_value,
 		"settled_at": float(facts.get("game_time", 0.0)),
 		"value_unit": "currency_cents",
-		"weather_contributions": _sanitize_weather_contributions(claim.get("weather_contributions", [])),
-		"source_installation_id": str(claim.get("installation_id", "")) if is_production else "",
-		"demand_installation_id": "" if is_production else str(claim.get("installation_id", "")),
-		"source_factory_id": str(claim.get("source_factory_id", claim.get("facility_id", ""))) if is_production else "",
-		"market_facility_id": "" if is_production else str(claim.get("market_facility_id", claim.get("facility_id", ""))),
-		"supply_kind": "installed_production" if is_production else "public_local",
-		"demand_kind": "public_local" if is_production else "installed_market",
+		"weather_contributions": _sanitize_weather_contributions(source.get("weather_contributions", [])),
+		"source_installation_id": str(source.get("installation_id", "")),
+		"demand_installation_id": "",
+		"source_factory_id": str(source.get("source_factory_id", source.get("facility_id", ""))),
+		"market_facility_id": "",
+		"supply_kind": "fresh_output",
+		"demand_kind": "ambient_regional_consumption",
 		"observer_intents": [
 			{"observer": "cash", "receipt_id": receipt_id},
 			{"observer": "gdp", "receipt_id": receipt_id},
@@ -2184,7 +3223,16 @@ func _commit_flow_plan(plan: Dictionary) -> void:
 	_installations = (plan.get("next_installations", {}) as Dictionary).duplicate(true)
 	_rate_remainders = (plan.get("next_rate_remainders", {}) as Dictionary).duplicate(true)
 	_pair_remainders = (plan.get("next_pair_remainders", {}) as Dictionary).duplicate(true)
-	_backpressured_milliunits_by_source = (plan.get("next_backpressured_milliunits_by_source", {}) as Dictionary).duplicate(true)
+	_ambient_rate_remainders = (plan.get("next_ambient_rate_remainders", {}) as Dictionary).duplicate(true)
+	_ambient_fairness_cursor_by_region_commodity = (plan.get("next_ambient_fairness_cursor_by_region_commodity", {}) as Dictionary).duplicate(true)
+	_ambient_revision = int(plan.get("next_ambient_revision", _ambient_revision))
+	_market_backlog_by_key = (plan.get("next_market_backlog_by_key", {}) as Dictionary).duplicate(true)
+	_wasted_continuous_milliunits_by_source = (plan.get("next_wasted_continuous_milliunits_by_source", {}) as Dictionary).duplicate(true)
+	_wasted_continuous_milliunits_per_minute_by_source = (plan.get("next_wasted_continuous_milliunits_per_minute_by_source", {}) as Dictionary).duplicate(true)
+	_cumulative_wasted_milliunits_by_source = (plan.get("next_cumulative_wasted_milliunits_by_source", {}) as Dictionary).duplicate(true)
+	_cumulative_wasted_milliunits_by_commodity = (plan.get("next_cumulative_wasted_milliunits_by_commodity", {}) as Dictionary).duplicate(true)
+	_cumulative_wasted_milliunits_by_region = (plan.get("next_cumulative_wasted_milliunits_by_region", {}) as Dictionary).duplicate(true)
+	_waste_revision = int(plan.get("next_waste_revision", _waste_revision))
 	_warehouse_inventory = (plan.get("next_warehouse_inventory", {}) as Dictionary).duplicate(true)
 	_pending_one_shot_supplies = (plan.get("next_pending_one_shot_supplies", {}) as Dictionary).duplicate(true)
 	_one_shot_transaction_receipts = (plan.get("next_one_shot_transaction_receipts", {}) as Dictionary).duplicate(true)
@@ -2192,6 +3240,8 @@ func _commit_flow_plan(plan: Dictionary) -> void:
 	_one_shot_demand_transaction_receipts = (plan.get("next_one_shot_demand_transaction_receipts", {}) as Dictionary).duplicate(true)
 	_card_effect_batch_journal = (plan.get("next_card_effect_batch_journal", {}) as Dictionary).duplicate(true)
 	_recent_sale_receipts = (plan.get("next_recent_sale_receipts", []) as Array).duplicate(true)
+	_recent_flow_events = (plan.get("next_recent_flow_events", []) as Array).duplicate(true)
+	_recent_flow_loss_events = (plan.get("next_recent_flow_loss_events", []) as Array).duplicate(true)
 	_receipt_sequence = int(plan.get("next_receipt_sequence", _receipt_sequence))
 	_batch_sequence = int(plan.get("next_batch_sequence", _batch_sequence))
 	_current_game_time = maxf(_current_game_time, float(plan.get("settled_at", _current_game_time)))
@@ -2199,9 +3249,8 @@ func _commit_flow_plan(plan: Dictionary) -> void:
 	_last_flow_metrics = (plan.get("metrics", {}) as Dictionary).duplicate(true)
 
 
-func _warehouse_outflow_claims(delta_milliseconds: int, facts: Dictionary, inventory: Dictionary) -> Dictionary:
+func _warehouse_outflow_claims(_delta_milliseconds: int, _facts: Dictionary, inventory: Dictionary) -> Dictionary:
 	var claims_by_commodity: Dictionary = {}
-	var throughput_remaining := _warehouse_throughput_budget(delta_milliseconds, facts)
 	var bucket_ids: Array = inventory.keys()
 	bucket_ids.sort()
 	for bucket_id_variant in bucket_ids:
@@ -2209,11 +3258,8 @@ func _warehouse_outflow_claims(delta_milliseconds: int, facts: Dictionary, inven
 		var bucket: Dictionary = inventory[bucket_id_variant]
 		var warehouse_id := str(bucket.get("warehouse_id", ""))
 		var available := maxi(0, int(bucket.get("milliunits", 0)))
-		var throughput := maxi(0, int(throughput_remaining.get(warehouse_id, 0)))
-		var emitted := mini(available, throughput)
-		if emitted <= 0:
+		if available <= 0:
 			continue
-		throughput_remaining[warehouse_id] = throughput - emitted
 		var commodity_id := str(bucket.get("commodity_id", ""))
 		var whole_units := maxi(1, int(ceil(float(available) / float(FIXED_POINT_SCALE))))
 		var storage_rent_per_unit_cents := int(ceil(float(maxi(0, int(bucket.get("storage_rent_debt_cents", 0)))) / float(whole_units)))
@@ -2235,9 +3281,9 @@ func _warehouse_outflow_claims(delta_milliseconds: int, facts: Dictionary, inven
 			"source_factory_id": str(bucket.get("source_factory_id", "")),
 			"batch_transaction_id": str(bucket.get("batch_transaction_id", "")),
 			"region_id": str(bucket.get("region_id", "")),
-			"milliunits": emitted,
+			"milliunits": available,
 		})
-	return {"claims_by_commodity": claims_by_commodity, "throughput_remaining": throughput_remaining}
+	return {"claims_by_commodity": claims_by_commodity}
 
 
 func _warehouse_throughput_budget(delta_milliseconds: int, facts: Dictionary) -> Dictionary:
@@ -2258,7 +3304,17 @@ func _warehouse_throughput_budget(delta_milliseconds: int, facts: Dictionary) ->
 	return result
 
 
-func _store_unmatched_claims(commodity_id: String, production_claims: Array, used_by_source: Dictionary, delta_milliseconds: int, facts: Dictionary, inventory: Dictionary, inbound_remaining: Dictionary) -> Dictionary:
+func _store_unmatched_claims(
+	commodity_id: String,
+	production_claims: Array,
+	used_by_source: Dictionary,
+	delta_milliseconds: int,
+	facts: Dictionary,
+	inventory: Dictionary,
+	inbound_remaining: Dictionary,
+	route_remaining_by_id: Dictionary,
+	route_remaining_by_resource: Dictionary
+) -> Dictionary:
 	var warehouse_facilities: Array = []
 	var commodity_industry_id := str(PRODUCT_INDUSTRY_CATALOG.call("industry_for_product", commodity_id)) if PRODUCT_INDUSTRY_CATALOG.has_method("industry_for_product") else ""
 	var region_by_id := _index_by_id(facts.get("regions", []), "region_id")
@@ -2272,10 +3328,11 @@ func _store_unmatched_claims(commodity_id: String, production_claims: Array, use
 	)
 	var stored_by_source_id: Dictionary = {}
 	var lost_by_source_id: Dictionary = {}
-	var backpressured := 0
-	var backpressured_by_source_id: Dictionary = {}
+	var wasted_by_source_id: Dictionary = {}
+	var flow_events: Array = []
+	var flow_loss_events: Array = []
 	var total_stored := 0
-	var one_shot_lost := 0
+	var total_wasted := 0
 	for claim_variant in production_claims:
 		var claim: Dictionary = claim_variant
 		var source_kind := str(claim.get("source_kind", "continuous"))
@@ -2285,25 +3342,71 @@ func _store_unmatched_claims(commodity_id: String, production_claims: Array, use
 		var remaining := maxi(0, int(claim.get("milliunits", 0)) - int(used_by_source.get(source_id, 0)))
 		if remaining <= 0:
 			continue
+		var storage_candidates: Array = []
 		for facility_variant in warehouse_facilities:
-			if remaining <= 0:
-				break
 			var facility: Dictionary = facility_variant
 			var warehouse_id := str(facility.get("facility_id", ""))
 			var warehouse_region_id := str(facility.get("region_id", ""))
 			var region: Dictionary = _dictionary(region_by_id.get(warehouse_region_id, {}))
-			var integrity_bp := clampi(int(region.get("integrity_basis_points", BASIS_POINTS)), 0, BASIS_POINTS)
 			var rank := clampi(int(facility.get("rank", 1)), 1, 4)
-			var capacity := int(floor(float(int(_warehouse_capacity_by_rank.get(rank, 0)) * FIXED_POINT_SCALE) * float(integrity_bp) / float(BASIS_POINTS)))
+			var capacity := int(_warehouse_capacity_by_rank.get(rank, 0)) * FIXED_POINT_SCALE
+			var free_capacity := maxi(0, capacity - _warehouse_inventory_total(inventory, warehouse_id))
+			var inbound_capacity := maxi(0, int(inbound_remaining.get(warehouse_id, 0)))
+			if not _region_is_live(region) or free_capacity <= 0 or inbound_capacity <= 0:
+				continue
+			var warehouse_sink := {
+				"installation_id": "warehouse-in:%s" % warehouse_id,
+				"region_id": warehouse_region_id,
+				"storage_sink": true,
+			}
+			var route := _best_route(
+				commodity_id,
+				claim,
+				warehouse_sink,
+				delta_milliseconds,
+				facts,
+				route_remaining_by_id,
+				route_remaining_by_resource
+			)
+			if route.is_empty():
+				continue
+			storage_candidates.append({
+				"facility": facility,
+				"route": route,
+			})
+		storage_candidates.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+			var left_route: Dictionary = left.get("route", {})
+			var right_route: Dictionary = right.get("route", {})
+			var left_net := int(left_route.get("expected_owner_net_cash", 0))
+			var right_net := int(right_route.get("expected_owner_net_cash", 0))
+			if left_net != right_net:
+				return left_net > right_net
+			var left_arrival := float(left_route.get("arrival_seconds", 0.0))
+			var right_arrival := float(right_route.get("arrival_seconds", 0.0))
+			if not is_equal_approx(left_arrival, right_arrival):
+				return left_arrival < right_arrival
+			var left_facility: Dictionary = left.get("facility", {})
+			var right_facility: Dictionary = right.get("facility", {})
+			var left_id := "%s|%s" % [str(left_facility.get("facility_id", "")), str(left_route.get("route_id", ""))]
+			var right_id := "%s|%s" % [str(right_facility.get("facility_id", "")), str(right_route.get("route_id", ""))]
+			return left_id < right_id
+		)
+		for candidate_variant in storage_candidates:
+			if remaining <= 0:
+				break
+			var candidate: Dictionary = candidate_variant
+			var facility: Dictionary = candidate.get("facility", {})
+			var route: Dictionary = candidate.get("route", {})
+			var warehouse_id := str(facility.get("facility_id", ""))
+			var warehouse_region_id := str(facility.get("region_id", ""))
+			var rank := clampi(int(facility.get("rank", 1)), 1, 4)
+			var capacity := int(_warehouse_capacity_by_rank.get(rank, 0)) * FIXED_POINT_SCALE
 			var free_capacity := maxi(0, capacity - _warehouse_inventory_total(inventory, warehouse_id))
 			var inbound_capacity := maxi(0, int(inbound_remaining.get(warehouse_id, 0)))
 			if free_capacity <= 0 or inbound_capacity <= 0:
 				continue
-			var warehouse_sink := {"installation_id": "warehouse-in:%s" % warehouse_id, "region_id": warehouse_region_id}
-			var route := _best_route(commodity_id, claim, warehouse_sink, delta_milliseconds, facts)
-			if route.is_empty():
-				continue
-			var route_capacity := maxi(0, int(route.get("capacity_milliunits", 0)))
+			var route_capacity := _route_available_milliunits(route, route_remaining_by_id, route_remaining_by_resource)
+			var remaining_before_storage := remaining
 			var stored := mini(remaining, mini(free_capacity, mini(inbound_capacity, route_capacity)))
 			if stored <= 0:
 				continue
@@ -2333,23 +3436,42 @@ func _store_unmatched_claims(commodity_id: String, production_claims: Array, use
 			bucket["last_inbound_route_id"] = str(route.get("route_id", ""))
 			inventory[bucket_id] = bucket
 			inbound_remaining[warehouse_id] = inbound_capacity - stored
+			_consume_route_capacity(route, route_remaining_by_id, route_remaining_by_resource, stored)
 			remaining -= stored
 			total_stored += stored
 			stored_by_source_id[source_id] = int(stored_by_source_id.get(source_id, 0)) + stored
+			flow_events.append({
+				"internal_flow_kind": "warehouse_inbound",
+				"source_kind": source_kind,
+				"commodity_id": commodity_id,
+				"source_region_id": str(claim.get("region_id", "")),
+				"warehouse_region_id": warehouse_region_id,
+				"warehouse_facility_id": warehouse_id,
+				"route_id": str(route.get("route_id", "")),
+				"transport_modes": _unique_sorted_strings(route.get("mode_tags", [])),
+				"quantity_units": float(stored) / float(FIXED_POINT_SCALE),
+				"capacity_limited": stored < remaining_before_storage,
+				"settled_at": float(facts.get("game_time", 0.0)),
+			})
 		if remaining > 0:
-			if source_kind == "one_shot":
-				one_shot_lost += remaining
-				lost_by_source_id[source_id] = remaining
-			else:
-				backpressured += remaining
-				backpressured_by_source_id[source_id] = int(backpressured_by_source_id.get(source_id, 0)) + remaining
+			total_wasted += remaining
+			wasted_by_source_id[source_id] = int(wasted_by_source_id.get(source_id, 0)) + remaining
+			lost_by_source_id[source_id] = int(lost_by_source_id.get(source_id, 0)) + remaining
+			flow_loss_events.append({
+				"loss_kind": "浪费产能",
+				"commodity_id": commodity_id,
+				"source_region_id": str(claim.get("region_id", "")),
+				"quantity_units": float(remaining) / float(FIXED_POINT_SCALE),
+				"settled_at": float(facts.get("game_time", 0.0)),
+			})
 	return {
 		"stored_milliunits": total_stored,
-		"backpressured_milliunits": backpressured,
-		"backpressured_by_source_id": backpressured_by_source_id,
-		"one_shot_lost_milliunits": one_shot_lost,
+		"wasted_milliunits": total_wasted,
+		"wasted_by_source_id": wasted_by_source_id,
 		"stored_by_source_id": stored_by_source_id,
 		"lost_by_source_id": lost_by_source_id,
+		"flow_events": flow_events,
+		"flow_loss_events": flow_loss_events,
 	}
 
 
@@ -2693,25 +3815,6 @@ func _card_effect_legal_routes_for_pair(commodity_id: String, source_region: Dic
 	var source_region_id := str(source_region.get("region_id", ""))
 	var market_region_id := str(market_region.get("region_id", ""))
 	var routes_by_id: Dictionary = {}
-	var neighbor_ids: Array = source_region.get("neighbor_region_ids", []) if source_region.get("neighbor_region_ids", []) is Array else []
-	if source_region_id == market_region_id or neighbor_ids.has(market_region_id):
-		var direct_distance := 0 if source_region_id == market_region_id else 1
-		var direct_id := "direct:%s>%s" % [source_region_id, market_region_id]
-		routes_by_id[direct_id] = {
-			"route_id": direct_id,
-			"commodity_id": commodity_id,
-			"source_region_id": source_region_id,
-			"market_region_id": market_region_id,
-			"ordered_legs": [] if direct_distance == 0 else [{"from_region_id": source_region_id, "to_region_id": market_region_id, "mode": "direct"}],
-			"mode_tags": ["local"] if direct_distance == 0 else ["direct"],
-			"shortest_legal_distance": direct_distance,
-			"bottleneck_units_per_minute": 1000000,
-			"capacity_resources": [],
-			"expected_rents": [],
-			"arrival_seconds": 0.0,
-			"transfer_count": 0,
-			"topology_revision": "%s>%s" % [int(source_region.get("revision", 0)), int(market_region.get("revision", 0))],
-		}
 	for route_variant in facts.get("route_candidates", []):
 		if not (route_variant is Dictionary):
 			continue

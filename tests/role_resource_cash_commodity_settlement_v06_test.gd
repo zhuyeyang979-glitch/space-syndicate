@@ -166,7 +166,7 @@ func _player(product_id: String, amount: int) -> Dictionary:
 func _sale_receipt(receipt_id: String, owner_index: int, commodity_id: String, owner_net_cash: int) -> Dictionary:
 	return {
 		"receipt_id": receipt_id,
-		"trade_kind": "local_production_baseline",
+		"trade_kind": "ambient_local_consumption",
 		"commodity_owner": owner_index,
 		"commodity_id": commodity_id,
 		"market_region_id": "region.private",
