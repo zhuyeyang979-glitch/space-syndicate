@@ -17,6 +17,8 @@ builds/
 output/
 tmp/
 .tmp_*/
+.test-appdata-*/
+.test-localappdata-*/
 
 # OS/editor noise
 .DS_Store

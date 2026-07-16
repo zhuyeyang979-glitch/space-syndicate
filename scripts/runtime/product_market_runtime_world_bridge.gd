@@ -5,6 +5,7 @@ class_name ProductMarketRuntimeWorldBridge
 signal runtime_event_forwarded(event: Dictionary)
 
 var _world: Node
+var _rng_service: RunRngService
 var _world_call_count := 0
 var _failed_world_call_count := 0
 
@@ -13,15 +14,16 @@ func bind_world(world: Node) -> void:
 	_world = world
 
 
+func set_rng_service(service: RunRngService) -> void:
+	_rng_service = service
+
+
 func has_world() -> bool:
 	return _world != null and is_instance_valid(_world)
 
 
-func shared_rng() -> RandomNumberGenerator:
-	if not has_world():
-		return null
-	var value: Variant = _world.get("rng")
-	return value as RandomNumberGenerator if value is RandomNumberGenerator else null
+func shared_rng() -> RunRngService:
+	return _rng_service
 
 
 func world_snapshot() -> Dictionary:

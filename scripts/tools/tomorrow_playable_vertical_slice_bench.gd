@@ -138,10 +138,10 @@ func _instantiate_production_main() -> Node:
 	runtime_viewport.size = Vector2i(1600, 960)
 	runtime_viewport.add_child(main)
 	await _wait_frames(8)
-	var rng_variant: Variant = main.get("rng")
-	if rng_variant is RandomNumberGenerator:
-		(rng_variant as RandomNumberGenerator).seed = FIXED_SEED
 	_coordinator = main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
+	var runtime_rng := (_coordinator as GameRuntimeCoordinator).run_rng_service() if _coordinator is GameRuntimeCoordinator else null
+	if runtime_rng != null:
+		runtime_rng.seed = FIXED_SEED
 	return main
 
 

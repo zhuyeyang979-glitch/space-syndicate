@@ -1072,8 +1072,9 @@ func _release_runtime_main() -> void:
 	_runtime_monsters = null
 
 
-func _runtime_rng() -> RandomNumberGenerator:
-	return _runtime_main.get("rng") as RandomNumberGenerator
+func _runtime_rng() -> RunRngService:
+	var runtime_coordinator := _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	return runtime_coordinator.run_rng_service() if runtime_coordinator != null else null
 
 
 func _safe_district() -> int:

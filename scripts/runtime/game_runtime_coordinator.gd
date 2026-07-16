@@ -26,8 +26,13 @@ var _monster_card_effect_adapter_v06: Object
 var _ai_v06_economy_action_port: RefCounted
 
 
+func _ready() -> void:
+	_wire_run_rng_service()
+
+
 func configure(ruleset_snapshot: Dictionary) -> void:
 	_ruleset_id = str(ruleset_snapshot.get("ruleset_id", ""))
+	_wire_run_rng_service()
 	var world_clock := _world_effective_clock_runtime_controller_node()
 	if world_clock != null and world_clock.has_method("configure"):
 		world_clock.call("configure", {})
@@ -1012,6 +1017,29 @@ func world_effective_clock_snapshot() -> Dictionary:
 	var clock := _world_effective_clock_runtime_controller_node()
 	var value: Variant = clock.call("snapshot") if clock != null and clock.has_method("snapshot") else {}
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func run_rng_service() -> RunRngService:
+	return _run_rng_service_node()
+
+
+func _wire_run_rng_service() -> void:
+	var service := _run_rng_service_node()
+	if service == null:
+		return
+	service.configure({})
+	var ai_bridge := _ai_runtime_world_bridge_node()
+	var monster_bridge := _monster_runtime_world_bridge_node()
+	var weather_bridge := _weather_runtime_world_bridge_node()
+	var product_market_bridge := _product_market_runtime_world_bridge_node()
+	if ai_bridge is AiRuntimeWorldBridge:
+		(ai_bridge as AiRuntimeWorldBridge).set_rng_service(service)
+	if monster_bridge is MonsterRuntimeWorldBridge:
+		(monster_bridge as MonsterRuntimeWorldBridge).set_rng_service(service)
+	if weather_bridge is WeatherRuntimeWorldBridge:
+		(weather_bridge as WeatherRuntimeWorldBridge).set_rng_service(service)
+	if product_market_bridge is ProductMarketRuntimeWorldBridge:
+		(product_market_bridge as ProductMarketRuntimeWorldBridge).set_rng_service(service)
 
 
 func solar_public_presentation_snapshot() -> Dictionary:
@@ -4467,6 +4495,10 @@ func _card_play_world_bridge_node() -> Node:
 
 func _world_effective_clock_runtime_controller_node() -> Node:
 	return get_node_or_null("WorldEffectiveClockRuntimeController")
+
+
+func _run_rng_service_node() -> RunRngService:
+	return get_node_or_null("RunRngService") as RunRngService
 
 
 func _solar_availability_runtime_service_node() -> Node:

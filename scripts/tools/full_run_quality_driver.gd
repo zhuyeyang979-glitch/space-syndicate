@@ -329,10 +329,11 @@ func _start_fixed_seed_run(main_instance: Node, session: Node, run_seed: int) ->
 	main_instance.set("configured_roguelike_depth", 1)
 	main_instance.set("configured_role_indices", [0, 1, 2, 3])
 	main_instance.set("configured_starter_monster_indices", [0, 1, 2, 3])
-	var rng_variant: Variant = main_instance.get("rng")
-	if not (rng_variant is RandomNumberGenerator):
-		return {"started": false, "reason_code": "main_rng_unavailable"}
-	(rng_variant as RandomNumberGenerator).seed = run_seed
+	var runtime_coordinator := main_instance.get_node_or_null(COORDINATOR_PATH) as GameRuntimeCoordinator
+	var runtime_rng := runtime_coordinator.run_rng_service() if runtime_coordinator != null else null
+	if runtime_rng == null:
+		return {"started": false, "reason_code": "run_rng_service_unavailable"}
+	runtime_rng.seed = run_seed
 	main_instance.call("_confirm_start_new_run_from_setup")
 	await _wait_frames(10)
 	var players_variant: Variant = main_instance.get("players")

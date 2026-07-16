@@ -64,11 +64,11 @@ func _run() -> void:
 	var coordinator := main.get_node_or_null(RUNTIME_COORDINATOR_NODE_PATH)
 	if coordinator != null and coordinator.has_method("clear_runtime_scenario"):
 		coordinator.call("clear_runtime_scenario")
-	var rng_variant: Variant = main.get("rng")
-	if rng_variant is RandomNumberGenerator:
-		(rng_variant as RandomNumberGenerator).seed = QA_GAMEPLAY_SEED
+	var runtime_rng := (coordinator as GameRuntimeCoordinator).run_rng_service() if coordinator is GameRuntimeCoordinator else null
+	if runtime_rng != null:
+		runtime_rng.seed = QA_GAMEPLAY_SEED
 	else:
-		_fail("production Main RNG was unavailable for deterministic visual evidence")
+		_fail("production RunRngService was unavailable for deterministic visual evidence")
 	main.call("_new_game")
 	main.call("_close_menu")
 	await _pump_frames(24)

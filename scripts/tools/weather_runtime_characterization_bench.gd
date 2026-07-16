@@ -913,8 +913,8 @@ func _release_runtime_main() -> void:
 	_ai_controller = null
 
 
-func _rng() -> RandomNumberGenerator:
-	return _runtime_main.get("rng") as RandomNumberGenerator
+func _rng() -> RunRngService:
+	return (_runtime_coordinator as GameRuntimeCoordinator).run_rng_service() if _runtime_coordinator is GameRuntimeCoordinator else null
 
 
 func _restore_world_seconds(seconds: float) -> Dictionary:

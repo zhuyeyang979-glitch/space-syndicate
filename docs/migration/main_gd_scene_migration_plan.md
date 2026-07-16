@@ -23,7 +23,7 @@ classification.
 
 ## Dependency order
 
-1. Table selection state, run world state, topology, RNG and authoritative
+1. Run RNG, table selection state, run world state, topology and authoritative
    clocks.
 2. Runtime loop and deterministic controller tick ordering.
 3. Typed query/command ports replacing root-bound WorldBridges.
@@ -34,9 +34,27 @@ classification.
 8. Audio, diagnostics and final compatibility-surface deletion.
 9. Root composition cutover and physical deletion of `scripts/main.gd`.
 
-## First atomic cutover
+## First atomic cutover: complete
 
-The first production cutover is `TableSelectionState`. It is deliberately
+The first production cutover is `RunRngService`:
+
+- `RunRngService.tscn` is a real child of `GameRuntimeCoordinator.tscn`;
+- the service exclusively owns the gameplay RNG state and deterministic draw
+  API;
+- AI, monster, weather and product-market bridges receive the typed service
+  directly from the composition root;
+- Main's `rng` field and `_ai_runtime_rng_gateway` are physically deleted;
+- deterministic QA drivers seed the service instead of reading a Main
+  property;
+- the negative gate proves the old field and gateway are absent and that one
+  scene-owned service is composed.
+
+Current Main reduction from the frozen baseline: one top-level field and one
+method removed, with no replacement compatibility property.
+
+## Next atomic cutover
+
+The next production cutover is `TableSelectionState`. It is deliberately
 smaller than the world arrays:
 
 - remove Main ownership of selected/inspected player, selected district,
@@ -46,8 +64,8 @@ smaller than the world arrays:
 - prove the state node is the only writer and no compatibility property remains
   on Main.
 
-This establishes the typed owner pattern before moving the much larger
-`players` and `districts` graphs.
+This continues the typed owner pattern before moving the much larger `players`
+and `districts` graphs.
 
 ## Completion rule
 

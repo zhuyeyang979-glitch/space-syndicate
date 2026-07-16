@@ -1220,9 +1220,10 @@ func _acquire_for_player(player_index: int, card_id: String) -> bool:
 
 
 func _seed_runtime_rng(seed_value: int) -> void:
-	var rng_variant: Variant = _runtime_main.get("rng")
-	if rng_variant is RandomNumberGenerator:
-		(rng_variant as RandomNumberGenerator).seed = seed_value
+	var runtime_coordinator := _coordinator() as GameRuntimeCoordinator
+	var runtime_rng := runtime_coordinator.run_rng_service() if runtime_coordinator != null else null
+	if runtime_rng != null:
+		runtime_rng.seed = seed_value
 
 
 func _public_logs_hide_private_values(start_index: int, private_values: Array) -> bool:

@@ -7945,3 +7945,21 @@
 - Validation: architecture source gate 33 checks PASS; authority Bench 10
   checks PASS; Godot 4.7 MCP scene run completed with 0 script errors and a
   clean stop; UI text, visual contract, and smoke check-only PASS.
+
+# 2026-07-17 — Run RNG scene owner cutover
+
+- Added `RunRngService.tscn` under the production `GameRuntimeCoordinator`
+  composition. The service is the sole owner of the shared gameplay RNG state,
+  deterministic seed/state restore and random draw API.
+- AI, monster, weather and product-market runtime bridges now receive a typed
+  `RunRngService`; they no longer read an RNG property from Main.
+- Deleted Main's top-level `rng` field and the obsolete
+  `_ai_runtime_rng_gateway` method.
+- Migrated deterministic runtime characterization and visual-capture drivers
+  to seed the scene-owned service.
+- Fixed signed RNG-state save/load semantics: any non-zero engine state is
+  valid and reproduces the same sequence.
+- Main budget moved from 15,488 to 15,474 physical lines, from 916 to 915
+  methods and from 102 to 101 top-level fields.
+- Validation: RNG cutover test 19 checks PASS; scene Bench 9 checks PASS;
+  Main budget PASS; Godot 4.7 script errors 0.

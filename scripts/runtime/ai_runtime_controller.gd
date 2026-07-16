@@ -432,9 +432,7 @@ var resolved_card_history:
 
 var rng:
 	get:
-		return _world_value(&"rng", null)
-	set(value):
-		_write_world_value(&"rng", value)
+		return _world_bridge.shared_rng() if _world_bridge != null else null
 
 var selected_card_resolution_id:
 	get:

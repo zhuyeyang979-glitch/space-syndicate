@@ -147,7 +147,7 @@ var selected_district: int:
 	set(value):
 		_write_world_value(&"selected_district", value)
 
-var rng: RandomNumberGenerator:
+var rng: RunRngService:
 	get:
 		return _world_bridge.shared_rng() if _world_bridge != null else null
 

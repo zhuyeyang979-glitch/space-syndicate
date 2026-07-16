@@ -5,12 +5,21 @@ class_name AiRuntimeWorldBridge
 signal intent_routed(intent: Dictionary, receipt: Dictionary)
 
 var _world: Node
+var _rng_service: RunRngService
 var _routed_intent_count := 0
 var _failed_intent_count := 0
 
 
 func bind_world(world: Node) -> void:
 	_world = world
+
+
+func set_rng_service(service: RunRngService) -> void:
+	_rng_service = service
+
+
+func shared_rng() -> RunRngService:
+	return _rng_service
 
 
 func has_world() -> bool:
@@ -65,6 +74,7 @@ func route_intent(intent: Dictionary) -> Dictionary:
 func debug_snapshot() -> Dictionary:
 	return {
 		"bridge_ready": has_world(),
+		"rng_service_ready": _rng_service != null,
 		"routed_intent_count": _routed_intent_count,
 		"failed_intent_count": _failed_intent_count,
 		"owns_ai_state": false,

@@ -22,6 +22,7 @@ SCAN_EXCLUDES = (
     "scripts/diagnostics/runtime_authority_audit.gd",
     "scripts/tools/runtime_authority_audit_bench.gd",
     "scenes/tools/RuntimeAuthorityAuditBench.tscn",
+    "tests/run_rng_service_cutover_test.gd",
 )
 CALLER_PATTERNS = (
     re.compile(r"\b(?:main|_main)\.(?:call|get|set|has_method)\s*\("),

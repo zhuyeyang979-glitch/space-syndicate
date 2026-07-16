@@ -5,6 +5,7 @@ class_name WeatherRuntimeWorldBridge
 signal runtime_event_forwarded(event: Dictionary)
 
 var _world: Node
+var _rng_service: RunRngService
 var _world_call_count := 0
 var _failed_world_call_count := 0
 var _weather_region_fact_read_count := 0
@@ -13,6 +14,10 @@ var _monster_public_count_capability_available := false
 
 func bind_world(world: Node) -> void:
 	_world = world
+
+
+func set_rng_service(service: RunRngService) -> void:
+	_rng_service = service
 
 
 func has_world() -> bool:
@@ -42,11 +47,8 @@ func call_world(method_name: StringName, arguments: Array = []) -> Variant:
 	return _world.callv(method_name, arguments)
 
 
-func shared_rng() -> RandomNumberGenerator:
-	if not has_world():
-		return null
-	var value: Variant = _world.get("rng")
-	return value as RandomNumberGenerator if value is RandomNumberGenerator else null
+func shared_rng() -> RunRngService:
+	return _rng_service
 
 
 func districts_public_snapshot() -> Array:

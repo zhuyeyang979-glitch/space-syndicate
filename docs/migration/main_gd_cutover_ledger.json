@@ -28,11 +28,48 @@
       "status": "cut_over"
     },
     {
+      "domain": "run_rng_service",
+      "old_symbols": [
+        "rng",
+        "_ai_runtime_rng_gateway"
+      ],
+      "old_consumers": [
+        "AI runtime",
+        "monster runtime",
+        "weather runtime",
+        "product market runtime",
+        "new-game generation",
+        "save restore",
+        "deterministic QA drivers"
+      ],
+      "new_owner_scene": "res://scenes/runtime/RunRngService.tscn",
+      "new_owner_script": "res://scripts/runtime/run_rng_service.gd",
+      "new_public_api": [
+        "state",
+        "seed",
+        "randomize",
+        "randi",
+        "randi_range",
+        "randf",
+        "randf_range",
+        "to_save_data",
+        "apply_save_data"
+      ],
+      "tests": [
+        "res://tests/run_rng_service_cutover_test.gd",
+        "res://scenes/tools/RunRngServiceCutoverBench.tscn",
+        "res://tests/main_gd_architecture_gate_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "",
+      "status": "cut_over"
+    },
+    {
       "domain": "world_session_state",
       "old_symbols": [
         "players",
         "districts",
-        "rng",
         "game_time"
       ],
       "old_consumers": [

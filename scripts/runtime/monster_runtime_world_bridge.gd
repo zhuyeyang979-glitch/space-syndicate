@@ -27,6 +27,7 @@ const MONSTER_DEPLOY_PARTICIPANT_CAPABILITIES := [
 ]
 
 var _world: Node
+var _rng_service: RunRngService
 var _world_call_count := 0
 var _failed_world_call_count := 0
 var _monster_deploy_forward_count := 0
@@ -35,6 +36,10 @@ var _monster_deploy_failure_count := 0
 
 func bind_world(world: Node) -> void:
 	_world = world
+
+
+func set_rng_service(service: RunRngService) -> void:
+	_rng_service = service
 
 
 func has_world() -> bool:
@@ -65,10 +70,8 @@ func read_world_constant(constant_name: StringName, default_value: Variant = nul
 	return constants.get(str(constant_name), default_value)
 
 
-func shared_rng() -> RandomNumberGenerator:
-	if not has_world():
-		return null
-	return _world.get("rng") as RandomNumberGenerator
+func shared_rng() -> RunRngService:
+	return _rng_service
 
 
 func call_world(method_name: StringName, arguments: Array = []) -> Variant:

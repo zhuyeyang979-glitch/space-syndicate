@@ -863,7 +863,8 @@ func _ensure_runtime_main() -> bool:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	_disable_runtime_audio()
-	var runtime_rng := _runtime_main.get("rng") as RandomNumberGenerator
+	var runtime_coordinator := _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	var runtime_rng := runtime_coordinator.run_rng_service() if runtime_coordinator != null else null
 	if runtime_rng != null: runtime_rng.seed = FIXED_SEED
 	_runtime_main.call("_new_game")
 	_hide_runtime_canvas_layers()
@@ -904,7 +905,8 @@ func _reset_fixture() -> void:
 	_runtime_main.set("map_event_effects", [])
 	_runtime_main.set("movement_trails", [])
 	_runtime_main.set("runtime_visual_events", [])
-	var runtime_rng := _runtime_main.get("rng") as RandomNumberGenerator
+	var runtime_coordinator := _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	var runtime_rng := runtime_coordinator.run_rng_service() if runtime_coordinator != null else null
 	if runtime_rng != null: runtime_rng.seed = FIXED_SEED
 	var players: Array = (_runtime_main.get("players") as Array).duplicate(true)
 	for i in range(players.size()):

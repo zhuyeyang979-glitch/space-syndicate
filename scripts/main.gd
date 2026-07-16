@@ -411,7 +411,6 @@ const REALTIME_BALANCE := {
 	"special_monster_move_bonus": 0,
 }
 
-var rng := RandomNumberGenerator.new()
 var players := []
 var districts := []
 var _roguelike_economic_viability_dev_audit: Dictionary = {}
@@ -561,7 +560,7 @@ var runtime_visual_event_counter := 0
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
-	rng.randomize()
+	_game_runtime_coordinator_node().run_rng_service().randomize()
 	_load_settings()
 	_build_layout()
 	_build_developer_balance_greybox()
@@ -1499,19 +1498,6 @@ func _apply_ai_runtime_intent(intent: Dictionary) -> Dictionary:
 func _on_ai_runtime_event(event: Dictionary) -> void:
 	if bool(event.get("public", false)) and str(event.get("summary", "")) != "":
 		_log(str(event.get("summary", "")))
-
-
-func _ai_runtime_rng_gateway(operation: StringName, arguments: Array = []) -> Variant:
-	match operation:
-		&"randi_range":
-			return rng.randi_range(int(arguments[0]), int(arguments[1])) if arguments.size() >= 2 else 0
-		&"randf_range":
-			return rng.randf_range(float(arguments[0]), float(arguments[1])) if arguments.size() >= 2 else 0.0
-		&"randf":
-			return rng.randf()
-		&"state":
-			return rng.state
-	return null
 
 
 func _ai_runtime_world_constant_snapshot() -> Dictionary:
@@ -6584,7 +6570,7 @@ func _apply_run_domain_state_compatibility_adapter(state: Dictionary) -> int:
 	movement_trails = (state.get("movement_trails", []) as Array).duplicate(true)
 	action_callouts = (state.get("action_callouts", []) as Array).duplicate(true)
 	map_event_effects = (state.get("map_event_effects", []) as Array).duplicate(true)
-	rng.state = int(state.get("rng_state", rng.state))
+	_game_runtime_coordinator_node().run_rng_service().state = int(state.get("rng_state", _game_runtime_coordinator_node().run_rng_service().state))
 	if runtime_coordinator != null and runtime_coordinator.has_method("restore_world_effective_seconds"):
 		var migrated_clock_variant: Variant = runtime_coordinator.call("restore_world_effective_seconds", float(state.get("game_time", 0.0)))
 		var migrated_clock: Dictionary = migrated_clock_variant if migrated_clock_variant is Dictionary else {}
@@ -6693,7 +6679,7 @@ func _apply_run_domain_state_compatibility_adapter(state: Dictionary) -> int:
 	if not region_supply_applied:
 		var configure_variant: Variant = runtime_coordinator.call(
 			"configure_region_supply_from_world",
-			rng.state,
+			_game_runtime_coordinator_node().run_rng_service().state,
 			districts,
 			_current_run_card_pool(),
 			DISTRICT_CARD_CHOICE_MAX
@@ -6811,7 +6797,7 @@ func _generate_roguelike_districts() -> void:
 	var profile := _roguelike_planet_profile()
 	map_width_m = float(profile.get("width", MAP_WIDTH_METERS))
 	map_height_m = float(profile.get("height", MAP_HEIGHT_METERS))
-	var target_region_count := rng.randi_range(int(profile.get("region_min", MAP_REGION_COUNT_MIN)), int(profile.get("region_max", MAP_REGION_COUNT_MAX)))
+	var target_region_count := _game_runtime_coordinator_node().run_rng_service().randi_range(int(profile.get("region_min", MAP_REGION_COUNT_MIN)), int(profile.get("region_max", MAP_REGION_COUNT_MAX)))
 	var sites := _generate_region_sites(target_region_count)
 
 	for i in range(sites.size()):
@@ -6856,8 +6842,8 @@ func _generate_region_sites(count: int) -> Array:
 	while sites.size() < count and attempts < count * 80:
 		attempts += 1
 		var point := Vector2(
-			rng.randf_range(MAP_SITE_MARGIN_METERS, map_width_m - MAP_SITE_MARGIN_METERS),
-			rng.randf_range(MAP_SITE_MARGIN_METERS, map_height_m - MAP_SITE_MARGIN_METERS)
+			_game_runtime_coordinator_node().run_rng_service().randf_range(MAP_SITE_MARGIN_METERS, map_width_m - MAP_SITE_MARGIN_METERS),
+			_game_runtime_coordinator_node().run_rng_service().randf_range(MAP_SITE_MARGIN_METERS, map_height_m - MAP_SITE_MARGIN_METERS)
 		)
 		var too_close := false
 		for existing in sites:
@@ -6869,8 +6855,8 @@ func _generate_region_sites(count: int) -> Array:
 		sites.append(point)
 	while sites.size() < count:
 		sites.append(Vector2(
-			rng.randf_range(MAP_SITE_MARGIN_METERS, map_width_m - MAP_SITE_MARGIN_METERS),
-			rng.randf_range(MAP_SITE_MARGIN_METERS, map_height_m - MAP_SITE_MARGIN_METERS)
+			_game_runtime_coordinator_node().run_rng_service().randf_range(MAP_SITE_MARGIN_METERS, map_width_m - MAP_SITE_MARGIN_METERS),
+			_game_runtime_coordinator_node().run_rng_service().randf_range(MAP_SITE_MARGIN_METERS, map_height_m - MAP_SITE_MARGIN_METERS)
 		))
 	return sites
 
@@ -6903,7 +6889,7 @@ func _assign_district_neighbors() -> void:
 
 func _land_economic_focus() -> String:
 	var focuses := ["production", "transport", "consumption", "balanced"]
-	return String(focuses[rng.randi_range(0, focuses.size() - 1)])
+	return String(focuses[_game_runtime_coordinator_node().run_rng_service().randi_range(0, focuses.size() - 1)])
 
 
 func _district_economy_focus_label(focus: String) -> String:
@@ -6928,7 +6914,7 @@ func _assign_district_terrain_and_goods() -> void:
 	if districts.is_empty():
 		return
 	var ocean_indices := _roll_ocean_district_indices()
-	var ocean_name_offset := rng.randi_range(0, max(0, OCEAN_DISTRICT_NAME_POOL.size() - 1))
+	var ocean_name_offset := _game_runtime_coordinator_node().run_rng_service().randi_range(0, max(0, OCEAN_DISTRICT_NAME_POOL.size() - 1))
 	var ocean_name_count := 0
 	for i in range(districts.size()):
 		var district: Dictionary = districts[i]
@@ -7060,10 +7046,10 @@ func _roll_ocean_district_indices() -> Array:
 	var count := districts.size()
 	if count <= 2:
 		return result
-	var desired: int = clampi(int(round(float(count) * rng.randf_range(OCEAN_REGION_RATIO_MIN, OCEAN_REGION_RATIO_MAX))), 1, count - 1)
-	var seed_count: int = clampi(rng.randi_range(1, 3), 1, desired)
+	var desired: int = clampi(int(round(float(count) * _game_runtime_coordinator_node().run_rng_service().randf_range(OCEAN_REGION_RATIO_MIN, OCEAN_REGION_RATIO_MAX))), 1, count - 1)
+	var seed_count: int = clampi(_game_runtime_coordinator_node().run_rng_service().randi_range(1, 3), 1, desired)
 	while result.size() < seed_count:
-		var seed_index := rng.randi_range(0, count - 1)
+		var seed_index := _game_runtime_coordinator_node().run_rng_service().randi_range(0, count - 1)
 		if not result.has(seed_index):
 			result.append(seed_index)
 	var guard := 0
@@ -7082,7 +7068,7 @@ func _roll_ocean_district_indices() -> Array:
 					candidates.append(i)
 		if candidates.is_empty():
 			break
-		result.append(int(candidates[rng.randi_range(0, candidates.size() - 1)]))
+		result.append(int(candidates[_game_runtime_coordinator_node().run_rng_service().randi_range(0, candidates.size() - 1)]))
 	return result
 
 
@@ -7118,9 +7104,9 @@ func _random_product_names_from_pool(source_pool: Array, count_min: int, count_m
 			continue
 		pool.append(product_name)
 	var result := []
-	var count: int = min(pool.size(), rng.randi_range(count_min, count_max))
+	var count: int = min(pool.size(), _game_runtime_coordinator_node().run_rng_service().randi_range(count_min, count_max))
 	while result.size() < count and not pool.is_empty():
-		var pick := rng.randi_range(0, pool.size() - 1)
+		var pick := _game_runtime_coordinator_node().run_rng_service().randi_range(0, pool.size() - 1)
 		result.append(String(pool[pick]))
 		pool.remove_at(pick)
 	return result
@@ -7385,7 +7371,7 @@ func _new_game() -> void:
 	skill_market = _current_run_card_pool()
 	var supply_config_variant: Variant = coordinator.call(
 		"configure_region_supply_from_world",
-		rng.state,
+		_game_runtime_coordinator_node().run_rng_service().state,
 		districts,
 		skill_market,
 		DISTRICT_CARD_CHOICE_MAX
@@ -7423,7 +7409,7 @@ func _new_game() -> void:
 		coordinator.call("begin_session", {
 			"scenario_id": scenario_id,
 			"ruleset_id": "v0.4",
-			"seed": rng.state,
+			"seed": _game_runtime_coordinator_node().run_rng_service().state,
 			"player_count": players.size(),
 			"ai_player_count": _ai_runtime_call("_ai_player_count"),
 			"difficulty": _roguelike_depth_label(),
@@ -9570,7 +9556,7 @@ func _apply_rival_price_pump(player_index: int, action: Dictionary) -> bool:
 	if entry.is_empty():
 		return false
 	var before_price := _product_market_price(product_name)
-	var delta := rng.randi_range(RIVAL_BUSINESS_PRICE_DELTA_MIN, RIVAL_BUSINESS_PRICE_DELTA_MAX)
+	var delta := _game_runtime_coordinator_node().run_rng_service().randi_range(RIVAL_BUSINESS_PRICE_DELTA_MIN, RIVAL_BUSINESS_PRICE_DELTA_MAX)
 	_pay_rival_business_cost(player_index)
 	var pressure := maxi(1, int(ceil(float(delta) / 10.0)))
 	_product_market_runtime_call("apply_external_pressure", [product_name, pressure, 0, 0, true])
@@ -11454,7 +11440,7 @@ func _resolve_configured_role_indices_for_run() -> Array:
 					available.append(role_index)
 			if available.is_empty():
 				available.append(_player_role_template_index(slot))
-		var pick := rng.randi_range(0, available.size() - 1)
+		var pick := _game_runtime_coordinator_node().run_rng_service().randi_range(0, available.size() - 1)
 		var role_index := int(available[pick])
 		available.remove_at(pick)
 		resolved[slot] = role_index
@@ -12299,7 +12285,7 @@ func _preset_int(key: String) -> int:
 func _roll_timer(prefix: String) -> float:
 	var low: float = _preset_float("%s_min" % prefix)
 	var high: float = _preset_float("%s_max" % prefix)
-	return low + rng.randf_range(0.0, max(0.0, high - low))
+	return low + _game_runtime_coordinator_node().run_rng_service().randf_range(0.0, max(0.0, high - low))
 
 
 func _alive_district_indices() -> Array:
@@ -12321,7 +12307,7 @@ func _weighted_pick_index(weights: Array) -> int:
 	var total := _weight_total(weights)
 	if total <= 0:
 		return -1
-	var ticket := rng.randi_range(1, total)
+	var ticket := _game_runtime_coordinator_node().run_rng_service().randi_range(1, total)
 	var running := 0
 	for i in range(weights.size()):
 		running += max(0, int(weights[i]))
@@ -13384,7 +13370,7 @@ func _select_player_hand_interaction_slots(plan: Dictionary) -> Array:
 	for _draw_index in range(int(plan.get("selection_draw_count", 0))):
 		if remaining.is_empty():
 			break
-		var choice_index := rng.randi_range(0, remaining.size() - 1)
+		var choice_index := _game_runtime_coordinator_node().run_rng_service().randi_range(0, remaining.size() - 1)
 		selected_slots.append(int(remaining[choice_index]))
 		remaining.remove_at(choice_index)
 	return selected_slots

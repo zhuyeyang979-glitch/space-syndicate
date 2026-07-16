@@ -990,7 +990,7 @@ func _clean_region_indices(regions: Array, max_count: int = WeatherSystem.DEFAUL
 	return result
 
 
-func _shared_rng() -> RandomNumberGenerator:
+func _shared_rng() -> RunRngService:
 	return _world_bridge.shared_rng() if _world_bridge != null else null
 
 

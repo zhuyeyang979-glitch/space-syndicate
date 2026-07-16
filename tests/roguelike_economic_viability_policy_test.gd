@@ -277,9 +277,10 @@ func _check_real_depth_one_seed_60610() -> void:
 	main.set("configured_roguelike_depth", 1)
 	main.set("configured_role_indices", [0, 1, 2])
 	main.set("configured_starter_monster_indices", [0, 1, 2])
-	var rng_variant: Variant = main.get("rng")
-	if rng_variant is RandomNumberGenerator:
-		(rng_variant as RandomNumberGenerator).seed = 60610
+	var runtime_coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	var runtime_rng := runtime_coordinator.run_rng_service() if runtime_coordinator != null else null
+	if runtime_rng != null:
+		runtime_rng.seed = 60610
 	main.call("_open_new_game_setup_menu")
 	await _wait_frames(2)
 	main.call("_on_new_game_setup_action_requested", "setup_start")

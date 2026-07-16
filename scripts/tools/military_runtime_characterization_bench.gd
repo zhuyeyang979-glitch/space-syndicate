@@ -892,7 +892,8 @@ func _ensure_runtime_main() -> bool:
 	_hide_runtime_canvas_layers()
 	await get_tree().process_frame
 	await get_tree().process_frame
-	var runtime_rng := _runtime_main.get("rng") as RandomNumberGenerator
+	var runtime_coordinator := _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	var runtime_rng := runtime_coordinator.run_rng_service() if runtime_coordinator != null else null
 	if runtime_rng != null:
 		runtime_rng.seed = FIXED_SEED
 	_runtime_main.call("_new_game")
