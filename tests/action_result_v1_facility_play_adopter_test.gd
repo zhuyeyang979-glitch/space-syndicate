@@ -74,6 +74,24 @@ func _run() -> void:
 	var expansion_source: Dictionary = coordinator.call("economic_source_snapshot", actor_id)
 	var expansion_market := _first_available_market(coordinator, actor_id)
 	var expansion_listing: Dictionary = expansion_market.get("listing", {}) if expansion_market.get("listing", {}) is Dictionary else {}
+	var first_card: Dictionary = coordinator.call("v06_card_definition", str(listing.get("card_id", "")))
+	var first_machine: Dictionary = first_card.get("machine", {}) if first_card.get("machine", {}) is Dictionary else {}
+	var first_payload: Dictionary = first_machine.get("effect_payload", {}) if first_machine.get("effect_payload", {}) is Dictionary else {}
+	var expansion_listing_card: Dictionary = coordinator.call("v06_card_definition", str(expansion_listing.get("card_id", "")))
+	var expansion_listing_machine: Dictionary = expansion_listing_card.get("machine", {}) if expansion_listing_card.get("machine", {}) is Dictionary else {}
+	var expansion_listing_payload: Dictionary = expansion_listing_machine.get("effect_payload", {}) if expansion_listing_machine.get("effect_payload", {}) is Dictionary else {}
+	_expect(
+		str(expansion_listing_payload.get("industry_id", expansion_listing_machine.get("industry_id", ""))) == str(first_payload.get("industry_id", first_machine.get("industry_id", "")))
+			and str(expansion_listing_payload.get("facility_kind", "")) != str(first_payload.get("facility_kind", "")),
+		"first-table market rotates from a Rank-I facility to the same-industry complementary facility (%s/%s/%s -> %s/%s/%s)" % [
+			str(first_machine.get("card_id", "")),
+			str(first_payload.get("industry_id", first_machine.get("industry_id", ""))),
+			str(first_payload.get("facility_kind", "")),
+			str(expansion_listing_machine.get("card_id", "")),
+			str(expansion_listing_payload.get("industry_id", expansion_listing_machine.get("industry_id", ""))),
+			str(expansion_listing_payload.get("facility_kind", "")),
+		]
+	)
 	var expansion_player_before: Dictionary = coordinator.call("player_snapshot", actor_id)
 	var expansion_purchase: Dictionary = coordinator.call(
 		"purchase_rank_i_facility",
@@ -91,7 +109,11 @@ func _run() -> void:
 	var expansion_card_id := str(expansion_card.get("card_id", ""))
 	var expansion_result: Dictionary = coordinator.call("execute_v06_facility_play_action", actor_id, expansion_card_id, str(expansion_listing.get("target_region_id", "")))
 	_expect(bool(expansion_result.get("success", false)), "PlayerBoard GDP expansion reuses the same public ActionResult and authoritative facility owners")
-	_expect((infrastructure.call("facilities_snapshot", false) as Array).size() == facilities_before + 2 and (flow.call("installations_snapshot", false) as Array).size() == installations_before + 2, "explicit expansion creates exactly one additional facility and production installation")
+	_expect(
+		(infrastructure.call("facilities_snapshot", false) as Array).size() == facilities_before + 2
+			and (flow.call("installations_snapshot", false) as Array).size() == installations_before + 1,
+		"same-industry market expansion adds one facility while the factory remains the sole player production installation"
+	)
 	var receipts_before: Array = coordinator.call("commodity_flow_recent_receipts", 0)
 	var last_flow: Dictionary = {}
 	for second in range(1, 9):

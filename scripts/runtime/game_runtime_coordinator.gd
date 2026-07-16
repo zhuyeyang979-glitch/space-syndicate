@@ -1361,7 +1361,17 @@ func v06_rank_i_facility_cards() -> Array:
 			continue
 		result.append(card)
 	result.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		return str((a.get("machine", {}) as Dictionary).get("card_id", "")) < str((b.get("machine", {}) as Dictionary).get("card_id", ""))
+		var a_machine: Dictionary = a.get("machine", {}) if a.get("machine", {}) is Dictionary else {}
+		var b_machine: Dictionary = b.get("machine", {}) if b.get("machine", {}) is Dictionary else {}
+		var a_payload: Dictionary = a_machine.get("effect_payload", {}) if a_machine.get("effect_payload", {}) is Dictionary else {}
+		var b_payload: Dictionary = b_machine.get("effect_payload", {}) if b_machine.get("effect_payload", {}) is Dictionary else {}
+		var a_industry := str(a_payload.get("industry_id", a_machine.get("industry_id", "")))
+		var b_industry := str(b_payload.get("industry_id", b_machine.get("industry_id", "")))
+		var a_kind := str(a_payload.get("facility_kind", ""))
+		var b_kind := str(b_payload.get("facility_kind", ""))
+		var a_key := "%s:%d:%s" % [a_industry, 0 if a_kind == "factory" else 1, str(a_machine.get("card_id", ""))]
+		var b_key := "%s:%d:%s" % [b_industry, 0 if b_kind == "factory" else 1, str(b_machine.get("card_id", ""))]
+		return a_key < b_key
 	)
 	return result
 
@@ -1382,14 +1392,15 @@ func v06_first_table_facility_card() -> Dictionary:
 			var industry_id := str((product_variant as Dictionary).get("industry_id", ""))
 			if not industry_id.is_empty():
 				production_industries[industry_id] = true
-	for card_variant in cards:
-		if not (card_variant is Dictionary):
-			continue
+	var viable_factories := _v06_viable_facility_pair_factories(cards)
+	for card_variant in viable_factories:
 		var card: Dictionary = card_variant
 		var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
 		var payload: Dictionary = machine.get("effect_payload", {}) if machine.get("effect_payload", {}) is Dictionary else {}
-		if str(payload.get("facility_kind", "")) == "factory" and production_industries.has(str(machine.get("industry_id", payload.get("industry_id", "")))):
+		if production_industries.has(str(payload.get("industry_id", machine.get("industry_id", "")))):
 			return card.duplicate(true)
+	if not viable_factories.is_empty():
+		return (viable_factories[0] as Dictionary).duplicate(true)
 	return {}
 
 
@@ -1631,7 +1642,9 @@ func economic_source_snapshot(actor_id: String) -> Dictionary:
 			finalized_transaction_ids.append(str(transaction_id_variant))
 	finalized_transaction_ids.sort()
 	var source_card := _ai_v06_current_facility_card(normalized_actor_id)
-	var legal_region_ids := _ai_v06_legal_facility_region_ids(source_card, normalized_actor_id) if not source_card.is_empty() else []
+	var legal_region_ids: Array[String] = []
+	if not source_card.is_empty():
+		legal_region_ids = _ai_v06_legal_facility_region_ids(source_card, normalized_actor_id)
 	var infrastructure_debug := _region_infrastructure_runtime_debug_snapshot()
 	var flow_debug := _commodity_flow_runtime_debug_snapshot()
 	var revision := _ai_v06_binding_revision({
@@ -1739,34 +1752,34 @@ func _ai_v06_current_facility_card(actor_id: String) -> Dictionary:
 
 
 func _ai_v06_legal_facility_region_ids(card: Dictionary, _actor_id: String) -> Array[String]:
-	var result: Array[String] = []
+	var preferred: Array[String] = []
+	var fallback: Array[String] = []
 	if not _ai_v06_is_rank_i_facility_card(card):
-		return result
+		return preferred
 	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
 	var payload: Dictionary = machine.get("effect_payload", {}) if machine.get("effect_payload", {}) is Dictionary else {}
 	var facility_kind := str(payload.get("facility_kind", ""))
 	var industry_id := str(payload.get("industry_id", machine.get("industry_id", "")))
 	var allowed_states: Array = payload.get("allowed_region_states", []) if payload.get("allowed_region_states", []) is Array else []
 	if facility_kind.is_empty() or industry_id.is_empty() or allowed_states.is_empty():
-		return result
+		return preferred
 	var infrastructure := _region_infrastructure_runtime_controller_node()
 	var bridge := _region_infrastructure_world_bridge_node()
 	if infrastructure == null or bridge == null or not infrastructure.has_method("region_snapshot") \
 			or not infrastructure.has_method("slot_id") or not bridge.has_method("public_commodity_region_facts"):
-		return result
+		return preferred
 	var facts_variant: Variant = bridge.call("public_commodity_region_facts")
 	var facts_rows: Array = facts_variant if facts_variant is Array else []
+	var product_rows_key := "demand_products" if facility_kind == "market" else "production_products"
 	for facts_variant_item in facts_rows:
 		if not (facts_variant_item is Dictionary):
 			continue
 		var facts: Dictionary = facts_variant_item
 		var has_matching_product := false
-		for product_variant in facts.get("production_products", []) as Array:
+		for product_variant in facts.get(product_rows_key, []) as Array:
 			if product_variant is Dictionary and str((product_variant as Dictionary).get("industry_id", "")) == industry_id:
 				has_matching_product = true
 				break
-		if not has_matching_product:
-			continue
 		var region_id := str(facts.get("region_id", "")).strip_edges()
 		var region_variant: Variant = infrastructure.call("region_snapshot", region_id)
 		var region: Dictionary = region_variant if region_variant is Dictionary else {}
@@ -1783,9 +1796,14 @@ func _ai_v06_legal_facility_region_ids(card: Dictionary, _actor_id: String) -> A
 				occupied = true
 				break
 		if not occupied:
-			result.append(region_id)
-	result.sort()
-	return result
+			if has_matching_product:
+				preferred.append(region_id)
+			else:
+				fallback.append(region_id)
+	preferred.sort()
+	fallback.sort()
+	preferred.append_array(fallback)
+	return preferred
 
 
 func _ai_v06_inventory_transaction_result(transaction_id: String) -> Dictionary:
@@ -2118,19 +2136,56 @@ func _v06_next_rank_i_facility_card(current_card: Dictionary) -> Dictionary:
 	var cards := v06_rank_i_facility_cards()
 	if cards.is_empty():
 		return current_card.duplicate(true)
-	var current_id := str((current_card.get("machine", {}) as Dictionary).get("card_id", ""))
-	var current_index := -1
-	for index in range(cards.size()):
-		var candidate: Dictionary = cards[index] if cards[index] is Dictionary else {}
-		if str((candidate.get("machine", {}) as Dictionary).get("card_id", "")) == current_id:
-			current_index = index
-			break
-	for offset in range(1, cards.size() + 1):
-		var candidate_index := wrapi(current_index + offset, 0, cards.size())
-		var candidate: Dictionary = cards[candidate_index] if cards[candidate_index] is Dictionary else {}
-		if not _ai_v06_legal_facility_region_ids(candidate, "").is_empty():
-			return candidate.duplicate(true)
+	var current_machine: Dictionary = current_card.get("machine", {}) if current_card.get("machine", {}) is Dictionary else {}
+	var current_payload: Dictionary = current_machine.get("effect_payload", {}) if current_machine.get("effect_payload", {}) is Dictionary else {}
+	var current_industry := str(current_payload.get("industry_id", current_machine.get("industry_id", "")))
+	var current_kind := str(current_payload.get("facility_kind", ""))
+	if current_kind == "factory":
+		var market := _v06_facility_card_for_pair(cards, current_industry, "market")
+		if not market.is_empty() and not _ai_v06_legal_facility_region_ids(market, "").is_empty():
+			return market
+	var viable_factories := _v06_viable_facility_pair_factories(cards)
+	for index in range(viable_factories.size()):
+		var factory: Dictionary = viable_factories[index]
+		var machine: Dictionary = factory.get("machine", {}) if factory.get("machine", {}) is Dictionary else {}
+		var payload: Dictionary = machine.get("effect_payload", {}) if machine.get("effect_payload", {}) is Dictionary else {}
+		if str(payload.get("industry_id", machine.get("industry_id", ""))) == current_industry:
+			return (viable_factories[wrapi(index + 1, 0, viable_factories.size())] as Dictionary).duplicate(true)
+	if not viable_factories.is_empty():
+		return (viable_factories[0] as Dictionary).duplicate(true)
 	return current_card.duplicate(true)
+
+
+func _v06_viable_facility_pair_factories(cards: Array) -> Array:
+	var result: Array = []
+	for card_variant in cards:
+		if not (card_variant is Dictionary):
+			continue
+		var card: Dictionary = card_variant
+		var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+		var payload: Dictionary = machine.get("effect_payload", {}) if machine.get("effect_payload", {}) is Dictionary else {}
+		var industry_id := str(payload.get("industry_id", machine.get("industry_id", "")))
+		if str(payload.get("facility_kind", "")) != "factory" or industry_id.is_empty():
+			continue
+		var market := _v06_facility_card_for_pair(cards, industry_id, "market")
+		if not market.is_empty() \
+				and not _ai_v06_legal_facility_region_ids(card, "").is_empty() \
+				and not _ai_v06_legal_facility_region_ids(market, "").is_empty():
+			result.append(card.duplicate(true))
+	return result
+
+
+func _v06_facility_card_for_pair(cards: Array, industry_id: String, facility_kind: String) -> Dictionary:
+	for card_variant in cards:
+		if not (card_variant is Dictionary):
+			continue
+		var card: Dictionary = card_variant
+		var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+		var payload: Dictionary = machine.get("effect_payload", {}) if machine.get("effect_payload", {}) is Dictionary else {}
+		if str(payload.get("industry_id", machine.get("industry_id", ""))) == industry_id \
+				and str(payload.get("facility_kind", "")) == facility_kind:
+			return card.duplicate(true)
+	return {}
 
 
 func _v06_market_source_snapshot(_revision: int) -> Dictionary:
