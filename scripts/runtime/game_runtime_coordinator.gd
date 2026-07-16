@@ -367,6 +367,8 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		victory_controller.call("set_world_bridge", victory_world_bridge)
 	if victory_controller != null and victory_controller.has_method("configure"):
 		victory_controller.call("configure")
+	if contract_world_bridge != null and contract_world_bridge.has_method("set_region_control_runtime_dependencies"):
+		contract_world_bridge.call("set_region_control_runtime_dependencies", victory_controller, victory_world_bridge)
 	var bankruptcy_estate := _bankruptcy_neutral_estate_runtime_controller_node()
 	var bankruptcy_estate_bridge := _bankruptcy_neutral_estate_world_bridge_node()
 	if bankruptcy_estate_bridge != null and bankruptcy_estate_bridge.has_method("set_runtime_dependencies"):
@@ -1199,7 +1201,7 @@ func configure_region_supply(
 func configure_region_supply_from_world(
 	gameplay_seed: int,
 	district_rows: Array,
-	card_ids: Array,
+	_card_ids: Array,
 	slots_per_region := 4
 ) -> Dictionary:
 	var region_descriptors: Array = []
@@ -1219,12 +1221,34 @@ func configure_region_supply_from_world(
 				else [],
 		})
 	var card_descriptors: Array = []
-	for card_id_variant in card_ids:
-		var card_id := str(card_id_variant).strip_edges()
+	for card_id_variant in _v06_region_supply_market_card_ids():
+		var card_id := str(card_id_variant)
 		var descriptor := _region_supply_card_descriptor(card_id)
 		if not descriptor.is_empty():
 			card_descriptors.append(descriptor)
 	return configure_region_supply(gameplay_seed, region_descriptors, card_descriptors, slots_per_region)
+
+
+func _v06_region_supply_market_card_ids() -> Array:
+	var inventory := _commodity_card_inventory_runtime_controller_node()
+	var catalog: Resource = inventory.call("catalog") if inventory != null and inventory.has_method("catalog") else null
+	if catalog == null or not catalog.has_method("card_ids"):
+		return []
+	var ids_variant: Variant = catalog.call("card_ids")
+	var ids: Array = ids_variant if ids_variant is Array else []
+	var result: Array = []
+	for card_id_variant in ids:
+		var card_id := str(card_id_variant).strip_edges()
+		var card := v06_card_definition(card_id)
+		var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+		if int(machine.get("rank", 0)) != 1 \
+				or not bool(machine.get("available_for_acquisition", false)) \
+				or not ["dynamic_market_cash", "starter_or_dynamic_market_cash"].has(str(machine.get("acquisition_kind", ""))) \
+				or str(machine.get("category_id", "")) == "commodity":
+			continue
+		result.append(card_id)
+	result.sort()
+	return result
 
 
 func region_supply_public_rack(region_id := "") -> Dictionary:
@@ -1302,6 +1326,44 @@ func finalize_region_supply_slot_refill(transaction_id: String) -> Dictionary:
 
 ## Thin production facade. RegionSupply remains the sole rack/bag/RNG owner and
 ## CommodityCardInventory/CardFlow remains the sole purchase transaction owner.
+func v06_discardable_card_slots(actor_id: String) -> Array:
+	var inventory := _commodity_card_inventory_runtime_controller_node()
+	if inventory == null or not inventory.has_method("discardable_slots"):
+		return []
+	var value_variant: Variant = inventory.call(
+		"discardable_slots",
+		actor_id.strip_edges()
+	)
+	return (value_variant as Array).duplicate() if value_variant is Array else []
+
+
+func region_supply_receive_preview(
+	actor_id: String,
+	card_id: String,
+	discard_slot: int = -1
+) -> Dictionary:
+	var inventory := _commodity_card_inventory_runtime_controller_node()
+	if inventory == null \
+			or not inventory.has_method("region_supply_receive_preview"):
+		return {
+			"ready": false,
+			"requires_discard": false,
+			"reason_code": "region_supply_purchase_inventory_unavailable",
+			"discardable_slots": [],
+		}
+	var value_variant: Variant = inventory.call(
+		"region_supply_receive_preview",
+		actor_id.strip_edges(),
+		card_id.strip_edges(),
+		discard_slot
+	)
+	return (
+		(value_variant as Dictionary).duplicate(true)
+		if value_variant is Dictionary
+		else {}
+	)
+
+
 func purchase_region_supply_card(request: Dictionary) -> Dictionary:
 	var inventory := _commodity_card_inventory_runtime_controller_node()
 	if inventory == null or not inventory.has_method("purchase_region_supply_card"):
@@ -1324,7 +1386,8 @@ func purchase_region_supply_card(request: Dictionary) -> Dictionary:
 		int(request.get("player_revision", -1)),
 		str(request.get("supply_revision", "")).strip_edges(),
 		str(request.get("transaction_id", "")).strip_edges(),
-		quote_request
+		quote_request,
+		int(request.get("discard_slot", -1))
 	)
 	return (
 		(value_variant as Dictionary).duplicate(true)
@@ -1336,45 +1399,29 @@ func purchase_region_supply_card(request: Dictionary) -> Dictionary:
 	)
 
 
-func commit_district_purchase_with_region_supply(
-	player_state: Dictionary,
-	current_facts: Dictionary,
-	plan: Dictionary,
-	listing: Dictionary,
-	transaction_id: String
-) -> Dictionary:
-	if listing.is_empty() \
-			or str(listing.get("card_id", "")) != str(current_facts.get("card_id", "")):
-		return {"committed": false, "reason": "region_supply_listing_changed"}
-	var prepared := prepare_region_supply_slot_refill(
-		transaction_id,
-		str(listing.get("source_region_id", "")),
-		int(listing.get("slot_index", -1)),
-		str(listing.get("item_id", "")),
-		str(listing.get("supply_revision", ""))
+func grant_v06_runtime_card(request: Dictionary) -> Dictionary:
+	var inventory := _commodity_card_inventory_runtime_controller_node()
+	if inventory == null or not inventory.has_method("grant_card"):
+		return {
+			"committed": false,
+			"reason_code": "card_grant_inventory_unavailable",
+		}
+	var value_variant: Variant = inventory.call(
+		"grant_card",
+		str(request.get("actor_id", "")).strip_edges(),
+		str(request.get("card_id", "")).strip_edges(),
+		int(request.get("player_revision", -1)),
+		str(request.get("transaction_id", "")).strip_edges(),
+		str(request.get("grant_reason", "")).strip_edges()
 	)
-	if not bool(prepared.get("prepared", false)):
-		return {"committed": false, "reason": str(prepared.get("reason_code", "region_supply_prepare_failed"))}
-	var supply_commit := commit_region_supply_slot_refill(transaction_id)
-	if not bool(supply_commit.get("committed", false)):
-		rollback_region_supply_slot_refill(transaction_id)
-		return {"committed": false, "reason": str(supply_commit.get("reason_code", "region_supply_commit_failed"))}
-	var settlement := commit_district_purchase_settlement(player_state, current_facts, plan)
-	if not bool(settlement.get("committed", false)):
-		var rollback := rollback_region_supply_slot_refill(transaction_id)
-		if not bool(rollback.get("rolled_back", false)):
-			return {
-				"committed": false,
-				"reason": "district_purchase_failed_region_supply_rollback_failed",
-				"settlement": settlement,
-				"region_supply": rollback,
-			}
-		return settlement
-	var finalized := finalize_region_supply_slot_refill(transaction_id)
-	var result := settlement.duplicate(true)
-	result["region_supply"] = finalized
-	result["region_supply_finalized"] = bool(finalized.get("finalized", false))
-	return result
+	return (
+		(value_variant as Dictionary).duplicate(true)
+		if value_variant is Dictionary
+		else {
+			"committed": false,
+			"reason_code": "card_grant_result_invalid",
+		}
+	)
 
 
 func monster_runtime_controller() -> MonsterRuntimeController:
@@ -1552,65 +1599,6 @@ func v06_card_definition(card_id: String) -> Dictionary:
 	return (value_variant as Dictionary).duplicate(true) if value_variant is Dictionary else {}
 
 
-func v06_rank_i_facility_cards() -> Array:
-	var catalog := _v06_runtime_card_catalog()
-	if catalog == null or not catalog.has_method("card_ids"):
-		return []
-	var result: Array = []
-	var card_ids_variant: Variant = catalog.call("card_ids")
-	var card_ids: Array = card_ids_variant if card_ids_variant is Array else []
-	for card_id_variant in card_ids:
-		var card := v06_card_definition(str(card_id_variant))
-		var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
-		if str(machine.get("category_id", "")) != "facility" or int(machine.get("rank", 0)) != 1:
-			continue
-		if str(machine.get("effect_kind", "")) != "build_upgrade_or_repair_facility":
-			continue
-		result.append(card)
-	result.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		var a_machine: Dictionary = a.get("machine", {}) if a.get("machine", {}) is Dictionary else {}
-		var b_machine: Dictionary = b.get("machine", {}) if b.get("machine", {}) is Dictionary else {}
-		var a_payload: Dictionary = a_machine.get("effect_payload", {}) if a_machine.get("effect_payload", {}) is Dictionary else {}
-		var b_payload: Dictionary = b_machine.get("effect_payload", {}) if b_machine.get("effect_payload", {}) is Dictionary else {}
-		var a_industry := str(a_payload.get("industry_id", a_machine.get("industry_id", "")))
-		var b_industry := str(b_payload.get("industry_id", b_machine.get("industry_id", "")))
-		var a_kind := str(a_payload.get("facility_kind", ""))
-		var b_kind := str(b_payload.get("facility_kind", ""))
-		var a_key := "%s:%d:%s" % [a_industry, 0 if a_kind == "factory" else 1, str(a_machine.get("card_id", ""))]
-		var b_key := "%s:%d:%s" % [b_industry, 0 if b_kind == "factory" else 1, str(b_machine.get("card_id", ""))]
-		return a_key < b_key
-	)
-	return result
-
-
-func v06_first_table_facility_card() -> Dictionary:
-	var cards := v06_rank_i_facility_cards()
-	var bridge := _region_infrastructure_world_bridge_node()
-	if cards.is_empty() or bridge == null or not bridge.has_method("selected_region_commodity_facts"):
-		return {}
-	var facts_variant: Variant = bridge.call("selected_region_commodity_facts")
-	var facts: Dictionary = (facts_variant as Dictionary).duplicate(true) if facts_variant is Dictionary else {}
-	if not bool(facts.get("available", false)) or not bool(facts.get("authoritative", false)):
-		return {}
-	var production_industries: Dictionary = {}
-	var production_rows: Array = facts.get("production_products", []) if facts.get("production_products", []) is Array else []
-	for product_variant in production_rows:
-		if product_variant is Dictionary:
-			var industry_id := str((product_variant as Dictionary).get("industry_id", ""))
-			if not industry_id.is_empty():
-				production_industries[industry_id] = true
-	var viable_factories := _v06_viable_facility_pair_factories(cards)
-	for card_variant in viable_factories:
-		var card: Dictionary = card_variant
-		var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
-		var payload: Dictionary = machine.get("effect_payload", {}) if machine.get("effect_payload", {}) is Dictionary else {}
-		if production_industries.has(str(payload.get("industry_id", machine.get("industry_id", "")))):
-			return card.duplicate(true)
-	if not viable_factories.is_empty():
-		return (viable_factories[0] as Dictionary).duplicate(true)
-	return {}
-
-
 func v06_starter_monster_card_by_name(monster_name: String) -> Dictionary:
 	var catalog := _v06_runtime_card_catalog()
 	if catalog == null or not catalog.has_method("card_ids"):
@@ -1684,39 +1672,80 @@ func actor_id_for_player_index(player_index: int) -> Dictionary:
 
 func market_snapshot(actor_id: String) -> Dictionary:
 	var normalized_actor_id := actor_id.strip_edges()
-	var surface := v06_first_table_facility_market_snapshot(normalized_actor_id)
-	var market: Dictionary = surface.get("market", {}) if surface.get("market", {}) is Dictionary else {}
-	var listing: Dictionary = surface.get("listing", {}) if surface.get("listing", {}) is Dictionary else {}
-	var card: Dictionary = listing.get("card", {}) if listing.get("card", {}) is Dictionary else {}
-	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
-	var quote: Dictionary = surface.get("quote", {}) if surface.get("quote", {}) is Dictionary else {}
-	var revision := maxi(0, int(market.get("revision", 0)))
-	if not bool(surface.get("ready", false)) or card.is_empty():
-		return _ai_v06_economy_failure(str(surface.get("reason_code", "ai_v06_market_snapshot_unavailable")), revision)
-	if not bool(quote.get("confirmable", quote.get("eligible", false))):
-		return _ai_v06_economy_failure("ai_v06_market_source_dark", revision)
-	var legal_region_ids := _ai_v06_legal_facility_region_ids(card, normalized_actor_id)
-	if legal_region_ids.is_empty():
-		return _ai_v06_economy_failure("ai_v06_facility_authoritative_target_unavailable", revision)
+	if normalized_actor_id.is_empty() or _ai_v06_actor_player_index(normalized_actor_id) < 0:
+		return _ai_v06_economy_failure("ai_v06_actor_mapping_missing")
+	var public_rack := region_supply_public_rack()
+	var revision := maxi(0, int(public_rack.get("state_revision", 0)))
+	if not bool(public_rack.get("available", false)):
+		return _ai_v06_economy_failure(
+			str(public_rack.get("reason_code", "ai_v06_region_supply_unavailable")),
+			revision
+		)
+	var candidates: Array[Dictionary] = []
+	var region_rows: Array = public_rack.get("regions", []) if public_rack.get("regions", []) is Array else []
+	for region_variant in region_rows:
+		if not (region_variant is Dictionary):
+			continue
+		var region: Dictionary = region_variant
+		for slot_variant in region.get("slots", []) as Array:
+			if not (slot_variant is Dictionary):
+				continue
+			var source_listing: Dictionary = slot_variant
+			var card_id := str(source_listing.get("card_id", "")).strip_edges()
+			var card := v06_card_definition(card_id)
+			if not _ai_v06_is_rank_i_facility_card(card):
+				continue
+			var legal_region_ids := _ai_v06_legal_facility_region_ids(card, normalized_actor_id)
+			if legal_region_ids.is_empty():
+				continue
+			var preview := card_market_preview({
+				"district_index": int(source_listing.get("source_district_index", -1)),
+				"card_id": card_id,
+				"supply_revision": str(source_listing.get("supply_revision", "")),
+				"base_price": int(source_listing.get("price_cash", -1)),
+			})
+			if not bool(preview.get("purchasable", preview.get("eligible", false))):
+				continue
+			var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+			var payload: Dictionary = machine.get("effect_payload", {}) if machine.get("effect_payload", {}) is Dictionary else {}
+			var facility_kind := str(payload.get("facility_kind", ""))
+			candidates.append({
+				"sort_key": "%d|%09d|%09d|%s|%s" % [
+					0 if facility_kind == "factory" else 1,
+					maxi(0, int(source_listing.get("source_district_index", -1))),
+					maxi(0, int(source_listing.get("slot_index", -1))),
+					card_id,
+					str(source_listing.get("item_id", "")),
+				],
+				"canonical": true,
+				"bootstrap_eligible": true,
+				"item_id": str(source_listing.get("item_id", "")),
+				"card_id": card_id,
+				"category_id": str(machine.get("category_id", "")),
+				"rank": int(machine.get("rank", 0)),
+				"effect_kind": str(machine.get("effect_kind", "")),
+				"facility_kind": facility_kind,
+				"purchase_cash": int(preview.get("final_price", source_listing.get("price_cash", -1))),
+				"base_price_cash": int(source_listing.get("price_cash", -1)),
+				"source_district_index": int(source_listing.get("source_district_index", -1)),
+				"source_region_id": str(source_listing.get("source_region_id", "")),
+				"slot_index": int(source_listing.get("slot_index", -1)),
+				"supply_revision": str(source_listing.get("supply_revision", "")),
+				"target_region_id": str(legal_region_ids[0]),
+				"legal_region_ids": legal_region_ids.duplicate(),
+			})
+	if candidates.is_empty():
+		return _ai_v06_economy_failure("ai_v06_region_supply_facility_unavailable", revision)
+	candidates.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		return str(left.get("sort_key", "")) < str(right.get("sort_key", ""))
+	)
+	var listing := candidates[0].duplicate(true)
+	listing.erase("sort_key")
 	return {
 		"available": true,
 		"revision": revision,
-		"reason_code": "ai_v06_market_snapshot_ready",
-		"listing": {
-			"canonical": true,
-			"bootstrap_eligible": _ai_v06_is_rank_i_facility_card(card),
-			"item_id": str(listing.get("item_id", "")),
-			"card_id": str(machine.get("card_id", "")),
-			"category_id": str(machine.get("category_id", "")),
-			"rank": int(machine.get("rank", 0)),
-			"effect_kind": str(machine.get("effect_kind", "")),
-			"purchase_cash": int(quote.get("final_price", listing.get("price_cash", -1))),
-			"source_district_index": int(listing.get("source_district_index", -1)),
-			"source_region_id": str(listing.get("source_region_id", "")),
-			"supply_revision": str(listing.get("supply_revision", "")),
-			"target_region_id": str(legal_region_ids[0]),
-			"legal_region_ids": legal_region_ids.duplicate(),
-		},
+		"reason_code": "ai_v06_region_supply_facility_ready",
+		"listing": listing,
 	}
 
 
@@ -1732,7 +1761,7 @@ func purchase_rank_i_facility(
 	var normalized_transaction_id := transaction_id.strip_edges()
 	var terminal := _ai_v06_inventory_transaction_result(normalized_transaction_id)
 	if not terminal.is_empty():
-		if str(terminal.get("operation", "")) != "market_purchase" \
+		if str(terminal.get("operation", "")) != "region_supply_purchase" \
 				or str(terminal.get("actor_id", "")) != normalized_actor_id \
 				or str(terminal.get("source_item_id", "")) != item_id.strip_edges():
 			return _ai_v06_economy_failure("ai_v06_facility_purchase_transaction_collision")
@@ -1742,16 +1771,50 @@ func purchase_rank_i_facility(
 	var source := economic_source_snapshot(normalized_actor_id)
 	if not bool(source.get("available", false)) or int(source.get("revision", -1)) != expected_source_revision:
 		return _ai_v06_economy_failure("ai_v06_economic_source_revision_stale", maxi(0, int(source.get("revision", 0))))
-	var current_market := market_snapshot(normalized_actor_id)
-	var listing: Dictionary = current_market.get("listing", {}) if current_market.get("listing", {}) is Dictionary else {}
-	if not bool(current_market.get("available", false)) \
-			or int(current_market.get("revision", -1)) != expected_market_revision \
+	var current_supply := market_snapshot(normalized_actor_id)
+	var listing: Dictionary = current_supply.get("listing", {}) if current_supply.get("listing", {}) is Dictionary else {}
+	if not bool(current_supply.get("available", false)) \
+			or int(current_supply.get("revision", -1)) != expected_market_revision \
 			or str(listing.get("item_id", "")) != item_id.strip_edges():
-		return _ai_v06_economy_failure("ai_v06_facility_market_revision_stale", maxi(0, int(current_market.get("revision", 0))))
+		return _ai_v06_economy_failure("ai_v06_region_supply_revision_stale", maxi(0, int(current_supply.get("revision", 0))))
 	var current_player := player_snapshot(normalized_actor_id)
 	if not bool(current_player.get("available", false)) or int(current_player.get("revision", -1)) != expected_player_revision:
 		return _ai_v06_economy_failure("ai_v06_facility_player_revision_stale", maxi(0, int(current_player.get("revision", 0))))
-	var value_variant: Variant = purchase_v06_first_table_facility_card(normalized_actor_id, item_id, normalized_transaction_id)
+	var player_index := _ai_v06_actor_player_index(normalized_actor_id)
+	var quote := card_market_quote({
+		"actor_id": normalized_actor_id,
+		"player_index": player_index,
+		"district_index": int(listing.get("source_district_index", -1)),
+		"card_id": str(listing.get("card_id", "")),
+		"supply_revision": str(listing.get("supply_revision", "")),
+		"base_price": int(listing.get("base_price_cash", -1)),
+	})
+	if str(quote.get("quote_id", "")).is_empty() or not bool(quote.get("eligible", false)):
+		return _ai_v06_economy_failure(
+			str(quote.get("reason_code", "ai_v06_region_supply_quote_unavailable")),
+			expected_market_revision
+		)
+	var quote_request := quote.duplicate(true)
+	quote_request.merge({
+		"player_index": player_index,
+		"district_index": int(listing.get("source_district_index", -1)),
+		"card_id": str(listing.get("card_id", "")),
+		"supply_revision": str(listing.get("supply_revision", "")),
+		"source_region_id": str(listing.get("source_region_id", "")),
+		"slot_index": int(listing.get("slot_index", -1)),
+		"source_item_id": str(listing.get("item_id", "")),
+	}, true)
+	var value_variant: Variant = purchase_region_supply_card({
+		"actor_id": normalized_actor_id,
+		"region_id": str(listing.get("source_region_id", "")),
+		"slot_index": int(listing.get("slot_index", -1)),
+		"item_id": str(listing.get("item_id", "")),
+		"card_id": str(listing.get("card_id", "")),
+		"player_revision": expected_player_revision,
+		"supply_revision": str(listing.get("supply_revision", "")),
+		"transaction_id": normalized_transaction_id,
+		"quote_request": quote_request,
+	})
 	var result: Dictionary = (value_variant as Dictionary).duplicate(true) if value_variant is Dictionary else {}
 	return _ai_v06_owner_result(result, normalized_actor_id)
 
@@ -1948,14 +2011,7 @@ func _ai_v06_current_facility_card(actor_id: String) -> Dictionary:
 	for card_variant in slots:
 		if card_variant is Dictionary and _ai_v06_is_rank_i_facility_card(card_variant as Dictionary):
 			return (card_variant as Dictionary).duplicate(true)
-	var card_inventory := _commodity_card_inventory_runtime_controller_node()
-	var market_variant: Variant = card_inventory.call("market_snapshot") if card_inventory != null and card_inventory.has_method("market_snapshot") else {}
-	var market: Dictionary = market_variant if market_variant is Dictionary else {}
-	var listing: Dictionary = market.get("listing", {}) if market.get("listing", {}) is Dictionary else {}
-	var listing_card: Dictionary = listing.get("card", {}) if listing.get("card", {}) is Dictionary else {}
-	if _ai_v06_is_rank_i_facility_card(listing_card):
-		return listing_card.duplicate(true)
-	return v06_first_table_facility_card()
+	return {}
 
 
 func _ai_v06_legal_facility_region_ids(card: Dictionary, _actor_id: String) -> Array[String]:
@@ -2033,215 +2089,6 @@ func _ai_v06_binding_revision(binding: Dictionary) -> int:
 	return int(digest.substr(0, 7).hex_to_int()) if digest.length() >= 7 else 0
 
 
-func v06_first_table_facility_market_snapshot(actor_id: String) -> Dictionary:
-	var inventory := _commodity_card_inventory_runtime_controller_node()
-	if not _configured or inventory == null or not inventory.has_method("market_snapshot"):
-		return {"ready": false, "reason_code": "v06_card_runtime_not_ready"}
-	var card := v06_first_table_facility_card()
-	if card.is_empty():
-		return {"ready": false, "reason_code": "v06_rank_i_facility_unavailable"}
-	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
-	var price_cash := int(machine.get("purchase_cash", -1))
-	if price_cash < 0:
-		return {"ready": false, "reason_code": "v06_facility_price_invalid"}
-	var market_variant: Variant = inventory.call("market_snapshot")
-	var market: Dictionary = (market_variant as Dictionary).duplicate(true) if market_variant is Dictionary else {}
-	var revision := int(market.get("revision", 0))
-	var listing: Dictionary = market.get("listing", {}) if market.get("listing", {}) is Dictionary else {}
-	if listing.is_empty():
-		listing = _v06_first_table_facility_listing(card, revision)
-		if listing.is_empty():
-			return {"ready": false, "reason_code": "v06_market_listing_source_unavailable"}
-		var configured_variant: Variant = inventory.call("configure_market", revision, listing)
-		var configured: Dictionary = configured_variant if configured_variant is Dictionary else {}
-		if not bool(configured.get("configured", false)):
-			return {"ready": false, "reason_code": str(configured.get("reason_code", "v06_facility_market_configuration_failed"))}
-		market = (configured.get("market", {}) as Dictionary).duplicate(true) if configured.get("market", {}) is Dictionary else {}
-		listing = (market.get("listing", {}) as Dictionary).duplicate(true) if market.get("listing", {}) is Dictionary else {}
-	elif not _ai_v06_is_rank_i_facility_card(listing.get("card", {}) as Dictionary):
-		return {"ready": false, "reason_code": "v06_market_owned_by_other_listing"}
-	if int(listing.get("source_district_index", -1)) < 0 or str(listing.get("source_region_id", "")).is_empty() or str(listing.get("supply_revision", "")).is_empty():
-		return {"ready": false, "reason_code": "v06_market_listing_source_invalid"}
-	var player_index := _ai_v06_actor_player_index(actor_id)
-	if player_index < 0:
-		return {"ready": false, "reason_code": "v06_facility_player_binding_unavailable"}
-	var quote := card_market_quote({
-		"player_index": player_index,
-		"district_index": int(listing.get("source_district_index", -1)),
-		"card_id": str(machine.get("card_id", "")),
-		"supply_revision": str(listing.get("supply_revision", "")),
-		"base_price": int(listing.get("price_cash", price_cash)),
-	})
-	var player := v06_card_player_snapshot(actor_id)
-	return {
-		"ready": not player.is_empty() and not listing.is_empty() and bool(quote.get("viewable", false)),
-		"reason_code": "v06_first_table_facility_market_ready" if not player.is_empty() and not listing.is_empty() and bool(quote.get("viewable", false)) else "v06_facility_player_unavailable",
-		"market": market.duplicate(true),
-		"listing": listing.duplicate(true),
-		"player": player.duplicate(true),
-		"quote": quote.duplicate(true),
-	}
-
-
-func refresh_v06_first_table_facility_quote(actor_id: String, expected_card_id: String) -> Dictionary:
-	var snapshot := v06_first_table_facility_market_snapshot(actor_id)
-	var listing: Dictionary = snapshot.get("listing", {}) if snapshot.get("listing", {}) is Dictionary else {}
-	var card: Dictionary = listing.get("card", {}) if listing.get("card", {}) is Dictionary else {}
-	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
-	var listed_card_id := str(machine.get("card_id", "")).strip_edges()
-	if not bool(snapshot.get("ready", false)) or listed_card_id.is_empty() or listed_card_id != expected_card_id.strip_edges():
-		return {"confirmable": false, "reason_code": "market_listing_changed"}
-	var player_index := _ai_v06_actor_player_index(actor_id)
-	var controller := _card_market_pricing_runtime_controller_node()
-	if player_index < 0 or controller == null or not controller.has_method("refresh_quote_listing"):
-		return {"confirmable": false, "reason_code": "market_quote_unavailable"}
-	var value_variant: Variant = controller.call("refresh_quote_listing", {
-		"player_index": player_index,
-		"district_index": int(listing.get("source_district_index", -1)),
-		"card_id": listed_card_id,
-		"supply_revision": str(listing.get("supply_revision", "")),
-		"base_price": int(listing.get("price_cash", -1)),
-	})
-	var quote: Dictionary = (value_variant as Dictionary).duplicate(true) if value_variant is Dictionary else {}
-	if not str(quote.get("quote_id", "")).is_empty():
-		var purchase := _purchase_node()
-		if purchase != null and purchase.has_method("attach_quote"):
-			purchase.call("attach_quote", player_index, int(listing.get("source_district_index", -1)), quote)
-	return quote
-
-
-func purchase_v06_first_table_facility_card(actor_id: String, source_item_id: String, transaction_id: String) -> Dictionary:
-	var snapshot := v06_first_table_facility_market_snapshot(actor_id)
-	if not bool(snapshot.get("ready", false)):
-		return {"committed": false, "reason_code": str(snapshot.get("reason_code", "v06_facility_market_unavailable"))}
-	var inventory := _commodity_card_inventory_runtime_controller_node()
-	var market: Dictionary = snapshot.get("market", {}) if snapshot.get("market", {}) is Dictionary else {}
-	var listing: Dictionary = snapshot.get("listing", {}) if snapshot.get("listing", {}) is Dictionary else {}
-	var player: Dictionary = snapshot.get("player", {}) if snapshot.get("player", {}) is Dictionary else {}
-	if str(listing.get("item_id", "")) != source_item_id.strip_edges():
-		return {"committed": false, "reason_code": "market_listing_changed"}
-	var card: Dictionary = listing.get("card", {}) if listing.get("card", {}) is Dictionary else {}
-	var next_card := _v06_next_rank_i_facility_card(card)
-	var next_listing := _v06_first_table_facility_listing(next_card, int(market.get("revision", 0)) + 1)
-	if next_listing.is_empty():
-		return {"committed": false, "reason_code": "v06_market_listing_source_unavailable"}
-	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
-	var player_index := _ai_v06_actor_player_index(actor_id)
-	var quote := card_market_quote({
-		"player_index": player_index,
-		"district_index": int(listing.get("source_district_index", -1)),
-		"card_id": str(machine.get("card_id", "")),
-		"supply_revision": str(listing.get("supply_revision", "")),
-		"base_price": int(listing.get("price_cash", -1)),
-	})
-	var quote_request := {
-		"quote_id": str(quote.get("quote_id", "")),
-		"quote_fingerprint": str(quote.get("quote_fingerprint", "")),
-		"player_index": player_index,
-		"district_index": int(listing.get("source_district_index", -1)),
-		"card_id": str(machine.get("card_id", "")),
-		"supply_revision": str(listing.get("supply_revision", "")),
-	}
-	var value_variant: Variant = inventory.call(
-		"purchase_market_card",
-		actor_id.strip_edges(),
-		source_item_id.strip_edges(),
-		next_listing,
-		int(player.get("revision", -1)),
-		int(market.get("revision", -1)),
-		transaction_id.strip_edges(),
-		quote_request
-	)
-	var result: Dictionary = (value_variant as Dictionary).duplicate(true) if value_variant is Dictionary else {}
-	result["card_id"] = str(machine.get("card_id", ""))
-	result["canonical_price_cash"] = int(quote.get("final_price", -1))
-	result["base_price_cash"] = int(listing.get("price_cash", -1))
-	if bool(result.get("committed", false)):
-		result["public_receipt"] = {
-			"event_code": "anonymous_purchase_committed",
-			"district_index": int(listing.get("source_district_index", -1)),
-			"price_cash": int(result.get("canonical_price_cash", -1)),
-		}
-	return result
-
-
-func execute_v06_facility_purchase_action(actor_id: String, expected_card_id: String) -> Dictionary:
-	var snapshot := v06_first_table_facility_market_snapshot(actor_id)
-	if not bool(snapshot.get("ready", false)):
-		return compose_action_result_v1({
-			"schema_version": 1,
-			"action_id": "district_card_purchase",
-			"action_family": "card_market",
-			"failure_code": str(snapshot.get("reason_code", "v06_facility_market_unavailable")),
-		})
-	var market: Dictionary = snapshot.get("market", {}) if snapshot.get("market", {}) is Dictionary else {}
-	var listing: Dictionary = snapshot.get("listing", {}) if snapshot.get("listing", {}) is Dictionary else {}
-	var card: Dictionary = listing.get("card", {}) if listing.get("card", {}) is Dictionary else {}
-	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
-	if expected_card_id.strip_edges().is_empty() or str(machine.get("card_id", "")) != expected_card_id.strip_edges():
-		return compose_action_result_v1({
-			"schema_version": 1,
-			"action_id": "district_card_purchase",
-			"action_family": "card_market",
-			"failure_code": "market_listing_changed",
-		})
-	var source_item_id := str(listing.get("item_id", ""))
-	var transaction_id := "vs06-facility-purchase:%s:%s:%d" % [actor_id.strip_edges(), source_item_id, int(market.get("revision", 0))]
-	var owner_result := purchase_v06_first_table_facility_card(actor_id, source_item_id, transaction_id)
-	var action_source := {
-		"schema_version": 1,
-		"action_id": "district_card_purchase",
-		"action_family": "card_market",
-	}
-	if bool(owner_result.get("committed", false)):
-		action_source["public_receipt"] = (owner_result.get("public_receipt", {}) as Dictionary).duplicate(true) if owner_result.get("public_receipt", {}) is Dictionary else {}
-	else:
-		action_source["failure_code"] = str(owner_result.get("reason_code", "purchase_conflict"))
-	return compose_action_result_v1(action_source)
-
-
-func v06_facility_purchase_public_state(actor_id: String, expected_card_id: String) -> Dictionary:
-	var snapshot := v06_first_table_facility_market_snapshot(actor_id)
-	var listing: Dictionary = snapshot.get("listing", {}) if snapshot.get("listing", {}) is Dictionary else {}
-	var card: Dictionary = listing.get("card", {}) if listing.get("card", {}) is Dictionary else {}
-	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
-	var quote: Dictionary = snapshot.get("quote", {}) if snapshot.get("quote", {}) is Dictionary else {}
-	var player: Dictionary = snapshot.get("player", {}) if snapshot.get("player", {}) is Dictionary else {}
-	var normalized_card_id := expected_card_id.strip_edges()
-	var listed_card_id := str(machine.get("card_id", ""))
-	var reason_code := str(snapshot.get("reason_code", "v06_facility_market_unavailable"))
-	var listing_matches := not listed_card_id.is_empty() and (normalized_card_id.is_empty() or listed_card_id == normalized_card_id)
-	var price_cash := maxi(0, int(quote.get("final_price", listing.get("price_cash", 0))))
-	var quote_confirmable := bool(quote.get("confirmable", false))
-	var cash_ready := int(player.get("cash", 0)) >= price_cash
-	var confirmable := bool(snapshot.get("ready", false)) and listing_matches and quote_confirmable and cash_ready
-	if not listing_matches:
-		reason_code = "market_listing_changed"
-	elif not quote_confirmable:
-		var availability_kind := str(quote.get("availability_kind", "invalid"))
-		if not bool(quote.get("quote_active", false)):
-			reason_code = "quote_expired"
-		elif availability_kind == "dark":
-			reason_code = "source_region_dark"
-		elif availability_kind == "destroyed":
-			reason_code = "source_region_destroyed"
-		else:
-			reason_code = str(quote.get("reason_code", "market_quote_unavailable"))
-	elif not cash_ready:
-		reason_code = "cash_insufficient"
-	else:
-		reason_code = "facility_purchase_ready"
-	return {
-		"schema_version": 1,
-		"available": bool(snapshot.get("ready", false)) and listing_matches,
-		"actionable": confirmable,
-		"card_id": listed_card_id if listing_matches else "",
-		"price_cash": price_cash,
-		"availability_kind": str(quote.get("availability_kind", "invalid")),
-		"reason_code": reason_code,
-	}
-
-
 func execute_v06_facility_play_action(actor_id: String, card_id: String, region_id: String) -> Dictionary:
 	var action_source := {
 		"schema_version": 1,
@@ -2259,6 +2106,7 @@ func execute_v06_facility_play_action(actor_id: String, card_id: String, region_
 	var slots: Array = inventory.get("slots", []) if inventory.get("slots", []) is Array else []
 	var slot_index := -1
 	var runtime_instance_id := ""
+	var selected_card: Dictionary = {}
 	for index in range(slots.size()):
 		if not (slots[index] is Dictionary):
 			continue
@@ -2267,6 +2115,7 @@ func execute_v06_facility_play_action(actor_id: String, card_id: String, region_
 		if str(machine.get("card_id", "")).strip_edges() == normalized_card_id and _ai_v06_is_rank_i_facility_card(card):
 			slot_index = index
 			runtime_instance_id = str(card.get("runtime_instance_id", "")).strip_edges()
+			selected_card = card.duplicate(true)
 			break
 	if slot_index < 0 or runtime_instance_id.is_empty():
 		action_source["failure_code"] = "ai_v06_facility_card_binding_changed"
@@ -2298,9 +2147,16 @@ func execute_v06_facility_play_action(actor_id: String, card_id: String, region_
 		action_source["failure_code"] = str(owner_result.get("reason_code", "facility_play_settlement_unavailable"))
 		return compose_action_result_v1(action_source)
 	var source_after := economic_source_snapshot(normalized_actor_id)
-	if not bool(source_after.get("available", false)) or not bool(source_after.get("has_source", false)) \
-			or int(source_after.get("owned_facility_count", 0)) < 1 \
-			or int(source_after.get("production_installation_count", 0)) < 1:
+	var selected_machine: Dictionary = selected_card.get("machine", {}) if selected_card.get("machine", {}) is Dictionary else {}
+	var selected_payload: Dictionary = selected_machine.get("effect_payload", {}) if selected_machine.get("effect_payload", {}) is Dictionary else {}
+	var facility_kind := str(selected_payload.get("facility_kind", ""))
+	var facility_count_before := int(source.get("owned_facility_count", 0))
+	var facility_count_after := int(source_after.get("owned_facility_count", 0))
+	var production_count_before := int(source.get("production_installation_count", 0))
+	var production_count_after := int(source_after.get("production_installation_count", 0))
+	if not bool(source_after.get("available", false)) \
+			or facility_count_after <= facility_count_before \
+			or (facility_kind == "factory" and production_count_after <= production_count_before):
 		action_source["failure_code"] = "facility_play_settlement_unavailable"
 		return compose_action_result_v1(action_source)
 	action_source["public_receipt"] = {
@@ -2319,105 +2175,6 @@ func _v06_runtime_card_catalog() -> Resource:
 		return null
 	var value_variant: Variant = inventory.call("catalog")
 	return value_variant as Resource if value_variant is Resource else null
-
-
-func _v06_first_table_facility_listing(card: Dictionary, revision: int) -> Dictionary:
-	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
-	var source := _v06_market_source_snapshot(revision)
-	if source.is_empty():
-		return {}
-	var item_id := "vs06:first-table-facility:%d" % maxi(0, revision)
-	return {
-		"item_id": item_id,
-		"card": card.duplicate(true),
-		"price_cash": int(machine.get("purchase_cash", -1)),
-		"claimable": true,
-		"legal_actor_ids": [],
-		"source_district_index": int(source.get("district_index", -1)),
-		"source_region_id": str(source.get("region_id", "")),
-		"supply_revision": "v06-facility:%d:%s" % [maxi(0, revision), item_id],
-	}
-
-
-func _v06_next_rank_i_facility_card(current_card: Dictionary) -> Dictionary:
-	var cards := v06_rank_i_facility_cards()
-	if cards.is_empty():
-		return current_card.duplicate(true)
-	var current_machine: Dictionary = current_card.get("machine", {}) if current_card.get("machine", {}) is Dictionary else {}
-	var current_payload: Dictionary = current_machine.get("effect_payload", {}) if current_machine.get("effect_payload", {}) is Dictionary else {}
-	var current_industry := str(current_payload.get("industry_id", current_machine.get("industry_id", "")))
-	var current_kind := str(current_payload.get("facility_kind", ""))
-	if current_kind == "factory":
-		var market := _v06_facility_card_for_pair(cards, current_industry, "market")
-		if not market.is_empty() and not _ai_v06_legal_facility_region_ids(market, "").is_empty():
-			return market
-	var viable_factories := _v06_viable_facility_pair_factories(cards)
-	for index in range(viable_factories.size()):
-		var factory: Dictionary = viable_factories[index]
-		var machine: Dictionary = factory.get("machine", {}) if factory.get("machine", {}) is Dictionary else {}
-		var payload: Dictionary = machine.get("effect_payload", {}) if machine.get("effect_payload", {}) is Dictionary else {}
-		if str(payload.get("industry_id", machine.get("industry_id", ""))) == current_industry:
-			return (viable_factories[wrapi(index + 1, 0, viable_factories.size())] as Dictionary).duplicate(true)
-	if not viable_factories.is_empty():
-		return (viable_factories[0] as Dictionary).duplicate(true)
-	return current_card.duplicate(true)
-
-
-func _v06_viable_facility_pair_factories(cards: Array) -> Array:
-	var result: Array = []
-	for card_variant in cards:
-		if not (card_variant is Dictionary):
-			continue
-		var card: Dictionary = card_variant
-		var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
-		var payload: Dictionary = machine.get("effect_payload", {}) if machine.get("effect_payload", {}) is Dictionary else {}
-		var industry_id := str(payload.get("industry_id", machine.get("industry_id", "")))
-		if str(payload.get("facility_kind", "")) != "factory" or industry_id.is_empty():
-			continue
-		var market := _v06_facility_card_for_pair(cards, industry_id, "market")
-		if not market.is_empty() \
-				and not _ai_v06_legal_facility_region_ids(card, "").is_empty() \
-				and not _ai_v06_legal_facility_region_ids(market, "").is_empty():
-			result.append(card.duplicate(true))
-	return result
-
-
-func _v06_facility_card_for_pair(cards: Array, industry_id: String, facility_kind: String) -> Dictionary:
-	for card_variant in cards:
-		if not (card_variant is Dictionary):
-			continue
-		var card: Dictionary = card_variant
-		var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
-		var payload: Dictionary = machine.get("effect_payload", {}) if machine.get("effect_payload", {}) is Dictionary else {}
-		if str(payload.get("industry_id", machine.get("industry_id", ""))) == industry_id \
-				and str(payload.get("facility_kind", "")) == facility_kind:
-			return card.duplicate(true)
-	return {}
-
-
-func _v06_market_source_snapshot(_revision: int) -> Dictionary:
-	if _bound_world == null:
-		return {}
-	var authored := _first_table_authored_node()
-	if authored == null or not authored.has_method("market_listing_plan"):
-		return {}
-	var plan_variant: Variant = authored.call("market_listing_plan")
-	var plan: Dictionary = plan_variant if plan_variant is Dictionary else {}
-	if not bool(plan.get("ready", false)):
-		return {}
-	var districts_variant: Variant = _bound_world.get("districts")
-	var districts: Array = districts_variant if districts_variant is Array else []
-	var source_index := int(plan.get("source_district_index", -1))
-	if source_index < 0 or source_index >= districts.size() or not (districts[source_index] is Dictionary):
-		return {}
-	var source: Dictionary = districts[source_index]
-	var region_id := str(source.get("region_id", "")).strip_edges()
-	if bool(source.get("destroyed", false)) or region_id.is_empty():
-		return {}
-	return {
-		"district_index": source_index,
-		"region_id": region_id,
-	}
 
 
 func v06_runtime_card_route(card: Dictionary) -> Dictionary:
@@ -4398,54 +4155,59 @@ func _scheduler_node() -> Node:
 
 
 func _region_supply_card_descriptor(card_id: String) -> Dictionary:
-	if card_id.is_empty() or not card_exists(card_id):
-		return {}
-	var definition := card_definition(card_id)
-	var rank := card_rank(card_id)
-	if definition.is_empty() or rank != 1:
-		return {}
-	var kind := str(definition.get("kind", "ordinary"))
+	var definition := v06_card_definition(card_id)
 	var machine: Dictionary = definition.get("machine", {}) if definition.get("machine", {}) is Dictionary else {}
-	var machine_price := int(machine.get("purchase_cash", -1))
-	var purchase_cash := machine_price
+	var player: Dictionary = definition.get("player", {}) if definition.get("player", {}) is Dictionary else {}
+	var developer: Dictionary = definition.get("developer", {}) if definition.get("developer", {}) is Dictionary else {}
+	var payload: Dictionary = machine.get("effect_payload", {}) if machine.get("effect_payload", {}) is Dictionary else {}
+	var rank := int(machine.get("rank", 0))
+	var acquisition_kind := str(machine.get("acquisition_kind", ""))
+	var category_id := str(machine.get("category_id", ""))
+	if definition.is_empty() \
+			or str(machine.get("card_id", "")) != card_id \
+			or rank != 1 \
+			or not bool(machine.get("available_for_acquisition", false)) \
+			or not ["dynamic_market_cash", "starter_or_dynamic_market_cash"].has(acquisition_kind) \
+			or category_id == "commodity":
+		return {}
+	var purchase_cash := int(machine.get("purchase_cash", -1))
 	if purchase_cash < 0:
-		var balance_model := RUNTIME_BALANCE_MODEL_SCRIPT.new()
-		purchase_cash = int(balance_model.call("card_price_for_skill", definition))
+		return {}
 	var allowed_terrain: Array = []
-	if definition.get("allowed_terrain", []) is Array:
-		allowed_terrain = (definition.get("allowed_terrain", []) as Array).duplicate()
+	if machine.get("allowed_terrain", payload.get("allowed_terrain", [])) is Array:
+		allowed_terrain = (machine.get("allowed_terrain", payload.get("allowed_terrain", [])) as Array).duplicate()
 	var legal_region_ids: Array = []
-	if definition.get("legal_region_ids", []) is Array:
-		legal_region_ids = (definition.get("legal_region_ids", []) as Array).duplicate()
+	if machine.get("legal_region_ids", payload.get("legal_region_ids", [])) is Array:
+		legal_region_ids = (machine.get("legal_region_ids", payload.get("legal_region_ids", [])) as Array).duplicate()
 	var disabled_region_ids: Array = []
-	if definition.get("disabled_region_ids", []) is Array:
-		disabled_region_ids = (definition.get("disabled_region_ids", []) as Array).duplicate()
+	if machine.get("disabled_region_ids", payload.get("disabled_region_ids", [])) is Array:
+		disabled_region_ids = (machine.get("disabled_region_ids", payload.get("disabled_region_ids", [])) as Array).duplicate()
 	var required_mode_tags: Array = []
-	if definition.get("required_mode_tags", []) is Array:
-		required_mode_tags = (definition.get("required_mode_tags", []) as Array).duplicate()
+	if machine.get("required_mode_tags", payload.get("required_mode_tags", [])) is Array:
+		required_mode_tags = (machine.get("required_mode_tags", payload.get("required_mode_tags", [])) as Array).duplicate()
 	return {
 		"card_id": card_id,
-		"family_id": card_family_id(card_id),
-		"card_type": str(definition.get("card_type", kind)),
+		"family_id": str(machine.get("family_id", "")),
+		"card_type": category_id,
 		"rank": rank,
 		"name": card_id,
-		"display_name": str(definition.get("display_name", definition.get("name", card_id))),
+		"display_name": str(player.get("name", card_id)),
 		"price_cash": maxi(0, purchase_cash),
-		"target_type": str(definition.get("target_type", definition.get("target_kind", ""))),
-		"effect_text": str(definition.get("effect_text", definition.get("text", ""))),
-		"requirement_text": str(definition.get("requirement_text", definition.get("play_requirement_text", ""))),
-		"route_tags": (definition.get("route_tags", []) as Array).duplicate()
-			if definition.get("route_tags", []) is Array
+		"target_type": str(machine.get("target_kind", "")),
+		"effect_text": str(player.get("short_effect", player.get("effect", ""))),
+		"requirement_text": str(player.get("cost", "")),
+		"route_tags": (machine.get("route_tags", []) as Array).duplicate()
+			if machine.get("route_tags", []) is Array
 			else [],
-		"art_key": str(definition.get("art_key", card_id)),
-		"enabled": bool(definition.get("enabled", true)),
-		"retired": bool(definition.get("retired", false)),
+		"art_key": str(developer.get("art_key", card_id)),
+		"enabled": true,
+		"retired": false,
 		"valid": true,
-		"potential_target_exists": bool(definition.get("potential_target_exists", true)),
-		"is_commodity": kind in ["commodity", "installed_commodity"],
-		"region_supply_weight": maxi(1, int(definition.get("region_supply_weight", 1))),
-		"global_unique": bool(definition.get("global_unique", false)),
-		"unique_key": str(definition.get("unique_key", card_family_id(card_id))),
+		"potential_target_exists": true,
+		"is_commodity": false,
+		"region_supply_weight": maxi(1, int(machine.get("region_supply_weight", 1))),
+		"global_unique": bool(machine.get("global_unique", payload.get("global_unique", false))),
+		"unique_key": str(machine.get("unique_key", machine.get("family_id", card_id))),
 		"legal_region_ids": legal_region_ids,
 		"disabled_region_ids": disabled_region_ids,
 		"allowed_terrain": allowed_terrain,

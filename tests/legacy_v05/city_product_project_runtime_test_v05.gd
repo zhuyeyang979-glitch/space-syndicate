@@ -1,10 +1,10 @@
 extends SceneTree
 
-const PROJECT_STATE := preload("res://scripts/economy/city_product_project_state.gd")
-const PROJECT_BRIDGE := preload("res://scripts/economy/city_product_project_bridge.gd")
+const PROJECT_STATE := preload("res://tests/legacy_v05/economy/city_product_project_state_v05.gd")
+const PROJECT_BRIDGE := preload("res://tests/legacy_v05/economy/city_product_project_bridge_v05.gd")
 const REQUIREMENT_POLICY := preload("res://scripts/cards/card_play_requirement_policy.gd")
 const TEMPLATE_PACK_PATH := "res://resources/economy/core_city_development_pack.tres"
-const CONTROLLER_SCENE_PATH := "res://scenes/runtime/CityDevelopmentRuntimeController.tscn"
+const CONTROLLER_SCENE_PATH := "res://tests/legacy_v05/scenes/CityDevelopmentRuntimeControllerV05.tscn"
 const RULESET_BRIDGE_SCENE_PATH := "res://scenes/runtime/RulesetRuntimeBridge.tscn"
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const ROUNDTRIP_PATH := "user://space_syndicate_design_qa/city_product_project_runtime_test.save"

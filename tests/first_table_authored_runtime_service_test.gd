@@ -156,7 +156,6 @@ func _run() -> void:
 		"public_region_supply_rack_snapshot": composed_rack,
 		"city_present": true,
 		"owned_facilities": [{"facility_type": "market", "industry_id": "blue", "rank": 1}],
-		"public_projects": [{"product_id": "product.blue", "hidden_owner": 2, "ai_score": 99}],
 		"gdp_per_minute": 72,
 		"cashflow_paid_total": 18,
 		"public_clue_count": 3,
@@ -174,7 +173,7 @@ func _run() -> void:
 		and str(content.get("visible_monster_name", "")) == "实际在场怪兽",
 		"content reports actual visible monster pressure without selecting a fixed starter slot"
 	)
-	_expect(not JSON.stringify(content.get("public_projects", [])).contains("hidden_owner") and not JSON.stringify(content).contains("\"ai_score\""), "composed public content sanitizes hidden owner and AI fields")
+	_expect(not JSON.stringify(content).contains("hidden_owner") and not JSON.stringify(content).contains("\"ai_score\""), "composed public content excludes hidden owner and AI fields")
 
 	var no_rack_content: Dictionary = service.call("compose_runtime_content", {
 		"district_name": "无推荐区",

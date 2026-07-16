@@ -35,7 +35,7 @@ const TENDENCY_IDS := [
 	"intelligence_supply",
 ]
 const EVENT_KIND_TO_TENDENCY := {
-	"city_development_committed": "city_growth",
+	"public_facility_committed": "city_growth",
 	"market_position_resolved": "finance_speculation",
 	"public_interaction_resolved": "direct_interaction",
 	"monster_pressure_resolved": "monster_pressure",
@@ -43,7 +43,7 @@ const EVENT_KIND_TO_TENDENCY := {
 	"public_inference_resolved": "intelligence_supply",
 }
 const OUTCOME_CODES_BY_EVENT := {
-	"city_development_committed": ["city_built", "city_upgraded", "city_income_realized"],
+	"public_facility_committed": ["facility_built", "facility_upgraded", "facility_income_realized"],
 	"market_position_resolved": ["market_gain_realized", "market_loss_realized", "market_position_closed"],
 	"public_interaction_resolved": ["public_pressure_applied", "public_pressure_resisted"],
 	"monster_pressure_resolved": ["monster_pressure_created", "monster_damage_avoided", "monster_aftermath_resolved"],

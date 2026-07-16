@@ -175,6 +175,7 @@ func apply_state(data: Dictionary) -> void:
 		scenario_coach.call("set_coach", ui_data.get("scenario_coach", {}) if ui_data.get("scenario_coach", {}) is Dictionary else {})
 	if planet_board.has_method("set_board_state"):
 		planet_board.call("set_board_state", ui_data.get("planet", {}))
+	_sync_optional_route_public_surface(ui_data.get("optional_route_presentation", {}))
 	if right_inspector.has_method("set_context"):
 		var inspector: Dictionary = ui_data.get("right_inspector", {}) if ui_data.get("right_inspector", {}) is Dictionary else {}
 		right_inspector.call("set_context", inspector)
@@ -258,6 +259,22 @@ func clear_optional_route_public_snapshot() -> void:
 	for map_view in _optional_route_map_views():
 		if map_view.has_method("clear_optional_route_public_snapshot"):
 			map_view.call("clear_optional_route_public_snapshot")
+
+
+func _sync_optional_route_public_surface(value: Variant) -> void:
+	if not (value is Dictionary):
+		return
+	var source := value as Dictionary
+	if not bool(source.get("source_bound", false)):
+		return
+	if not bool(source.get("available", false)):
+		clear_optional_route_public_snapshot()
+		return
+	set_optional_route_public_snapshot(
+		source.get("public_flow_snapshot", {}) if source.get("public_flow_snapshot", {}) is Dictionary else {},
+		source.get("route_geometry_by_route_id", {}) if source.get("route_geometry_by_route_id", {}) is Dictionary else {},
+		float(source.get("world_effective_seconds", -1.0))
+	)
 
 
 func _optional_route_map_views() -> Array[Control]:

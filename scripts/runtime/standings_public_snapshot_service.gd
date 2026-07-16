@@ -55,7 +55,7 @@ func _summary_text(source: Dictionary) -> String:
 		"常规胜利需要控制%d个区域，并让其中Top-N个人归属GDP达到%d/min。" % [_required_regions(source), _required_gdp(source)],
 		_state_explanation(victory),
 		"资格保持10个有效游戏秒后启动120秒公开审计；终点依次比较Top-N归属GDP、控制区域总数和准确现金总账。",
-		"未进入审计名单的对手资产继续保密；名单席位公开准确经济资产，但手牌内容、私人情报和电脑对手计划仍不公开。",
+		"未进入审计名单的对手经济详情继续保密；名单席位只公开授权的胜利进度与准确现金总账，手牌、设施、商品库存、单位、合约、金融仓位、私人情报和电脑对手计划仍不公开。",
 	]
 	if bool(source.get("selected_available", false)):
 		lines.append("我的进度：Top-N GDP %d/%d｜控制区域 %d/%d｜%s。" % [
@@ -84,7 +84,7 @@ func _scoreboard_snapshot(source: Dictionary, seats: Array, overview_cards: Arra
 	var own_regions := int(source.get("selected_controlled_region_count", 0))
 	return {
 		"title": "局势记分板",
-		"title_tooltip": "只展示VictoryControl授权的胜利进度和审计资产。",
+		"title_tooltip": "只展示VictoryControl授权的胜利进度和审计现金；其他经济资产保持私密。",
 		"tooltip": "先看控制区域和Top-N GDP，再看资格、审计名单与剩余时间。",
 		"accent": Color("#facc15"),
 		"overview_columns": clampi(int(source.get("overview_columns", 3)), 1, 3),
@@ -95,11 +95,11 @@ func _scoreboard_snapshot(source: Dictionary, seats: Array, overview_cards: Arra
 		"kpis": [
 			{"title": "我的Top-N GDP", "value": "%d/%d" % [own_gdp, _required_gdp(source)], "meta": "还差%d GDP/min" % maxi(0, _required_gdp(source) - own_gdp), "accent": Color("#38bdf8"), "tooltip": "只统计受控区域中的个人归属GDP。"},
 			{"title": "我的控制区域", "value": "%d/%d区" % [own_regions, _required_regions(source)], "meta": "还差%d区" % maxi(0, _required_regions(source) - own_regions), "accent": Color("#4ade80"), "tooltip": "30%且唯一最高才计为控制。"},
-			{"title": "审计名单", "value": "%d席" % int((_victory_snapshot(source).get("audit_roster", []) as Array).size()), "meta": _state_label(str(_victory_snapshot(source).get("state", "idle"))), "accent": Color("#fb923c"), "tooltip": "加入后本次审计内持续公开经济资产。"},
+			{"title": "审计名单", "value": "%d席" % int((_victory_snapshot(source).get("audit_roster", []) as Array).size()), "meta": _state_label(str(_victory_snapshot(source).get("state", "idle"))), "accent": Color("#fb923c"), "tooltip": "加入后本次审计内持续公开胜利进度与准确现金总账。"},
 			{"title": "公开异动", "value": "%d条" % int(source.get("public_shift_count", 0)), "meta": "牌轨/地图/怪兽", "accent": Color("#c084fc"), "tooltip": "公开结果帮助判断GDP与控制变化。"},
 		],
 		"seats": _seat_snapshots(source, seats),
-		"hint": "审计名单席位显示准确经济资产；其他对手只显示公开状态。",
+		"hint": "审计名单席位显示授权的胜利进度与准确现金；其他经济资产仍保持私密。",
 	}
 
 
@@ -109,7 +109,7 @@ func _chip_snapshots(source: Dictionary) -> Array:
 		{"text": "控区%d" % _required_regions(source), "accent": Color("#bbf7d0"), "tooltip": "本局要求的控制区域数量。"},
 		{"text": "Top-N %d/min" % _required_gdp(source), "accent": Color("#bfdbfe"), "tooltip": "本局要求的Top-N个人归属GDP。"},
 		{"text": _short_text(str(source.get("countdown_text", "等待资格")), 26), "accent": Color("#fed7aa"), "tooltip": _state_explanation(victory)},
-		{"text": "名单明牌", "accent": Color("#c4b5fd"), "tooltip": "名单玩家公开经济资产；私人手牌内容与情报不公开。"},
+		{"text": "审计公开", "accent": Color("#c4b5fd"), "tooltip": "名单玩家公开胜利进度与准确现金总账；其他经济资产不公开。"},
 	]
 
 
@@ -124,7 +124,6 @@ func _seat_snapshots(source: Dictionary, seats: Array) -> Array:
 		var publicly_audited := not audit.is_empty()
 		var top_n_gdp := int(audit.get("top_n_gdp_per_minute", entry.get("top_n_gdp_per_minute", 0)))
 		var controlled_regions := int(audit.get("controlled_region_count", entry.get("controlled_region_count", 0)))
-		var assets: Dictionary = audit.get("economic_assets", {}) if audit.get("economic_assets", {}) is Dictionary else {}
 		var chips := []
 		if eliminated:
 			chips.append({"text": "已淘汰", "accent": Color("#fecdd3"), "tooltip": "该席位不能进入审计终点排名。"})
@@ -132,7 +131,6 @@ func _seat_snapshots(source: Dictionary, seats: Array) -> Array:
 			chips.append({"text": "Top-N %d" % top_n_gdp, "accent": Color("#bfdbfe"), "tooltip": "审计公开的Top-N归属GDP/min。"})
 			chips.append({"text": "控区%d" % controlled_regions, "accent": Color("#bbf7d0"), "tooltip": "审计公开的控制区域数量。"})
 			chips.append({"text": "账本¥%.2f" % (float(int(audit.get("cash_ledger_cents", 0))) / 100.0), "accent": Color("#fef3c7"), "tooltip": "准确现金总账=可用现金+托管现金。"})
-			chips.append({"text": "项目%d/合约%d/仓储%d/金融%d" % [_array_size(assets.get("project_positions", [])), _array_size(assets.get("contracts", [])), _array_size(assets.get("warehouses", [])), _array_size(assets.get("financial_positions", []))], "accent": Color("#c4b5fd"), "tooltip": "审计名单的经济资产明牌。"})
 		elif can_view_private:
 			chips.append({"text": "Top-N %d" % top_n_gdp, "accent": Color("#bfdbfe"), "tooltip": "你的精确Top-N归属GDP/min。"})
 			chips.append({"text": "控区%d" % controlled_regions, "accent": Color("#bbf7d0"), "tooltip": "你的精确控制区域数量。"})
@@ -140,6 +138,8 @@ func _seat_snapshots(source: Dictionary, seats: Array) -> Array:
 		else:
 			chips.append({"text": "未入审计", "accent": Color("#94a3b8"), "tooltip": "该席位的准确经济资产仍保持隐藏。"})
 			chips.append({"text": "看公开线索", "accent": Color("#c4b5fd"), "tooltip": "从牌轨、地图和公开事件推理。"})
+		if can_view_private:
+			chips.append_array(_private_v06_asset_chips(entry))
 		result.append({
 			"name": "P%d｜%s" % [player_index + 1, _short_text(str(entry.get("name", "玩家")), 10)],
 			"rank": "名单" if publicly_audited else ("出局" if eliminated else "在局"),
@@ -148,12 +148,33 @@ func _seat_snapshots(source: Dictionary, seats: Array) -> Array:
 			"score_color": Color("#fb7185") if eliminated else (Color("#fef3c7") if publicly_audited or can_view_private else Color("#94a3b8")),
 			"score_tooltip": "胜利进度来自VictoryControl快照。" if publicly_audited or can_view_private else "未获授权的对手精确进度不显示。",
 			"chips": chips,
-			"meta": "审计资产公开" if publicly_audited else ("已淘汰" if eliminated else "经济资产保密"),
+			"meta": "审计进度公开" if publicly_audited else ("已淘汰" if eliminated else "经济资产保密"),
 			"tooltip": "手牌内容、私人情报、隐藏怪兽关系和电脑对手计划始终不在该快照中。",
 			"eliminated": eliminated,
 			"accent": Color("#64748b") if eliminated else _seat_accent(player_index),
 		})
 	return result
+
+
+func _private_v06_asset_chips(entry: Dictionary) -> Array:
+	var assets: Dictionary = entry.get("own_economic_assets", {}) if entry.get("own_economic_assets", {}) is Dictionary else {}
+	if assets.is_empty():
+		return []
+	var first_line := "设施%d/安装%d/库存%d" % [
+		_array_size(assets.get("facilities", [])),
+		_array_size(assets.get("installations", [])),
+		_array_size(assets.get("commodity_inventory", [])),
+	]
+	var second_line := "彩色GDP%d/单位%d/合约%d/金融%d" % [
+		_dictionary_size(assets.get("color_gdp", {})),
+		_array_size(assets.get("units", [])),
+		_array_size(assets.get("contracts", [])),
+		_array_size(assets.get("financial_positions", [])),
+	]
+	return [
+		{"text": first_line, "accent": Color("#a7f3d0"), "tooltip": "仅你可见的v0.6设施、商品安装与库存摘要。"},
+		{"text": second_line, "accent": Color("#c4b5fd"), "tooltip": "仅你可见的v0.6彩色GDP、单位、合约与金融仓位摘要。"},
+	]
 
 
 func _victory_snapshot(source: Dictionary) -> Dictionary:
@@ -190,6 +211,10 @@ func _state_label(state: String) -> String:
 
 func _array_size(value: Variant) -> int:
 	return (value as Array).size() if value is Array else 0
+
+
+func _dictionary_size(value: Variant) -> int:
+	return (value as Dictionary).size() if value is Dictionary else 0
 
 
 func _seat_accent(player_index: int) -> Color:

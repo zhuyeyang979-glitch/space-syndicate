@@ -1,6 +1,8 @@
 extends RefCounted
 class_name CityProductProjectState
 
+# Historical v0.5 project-share fixture. Never preload from production v0.6.
+
 const PROJECT_SCHEMA_VERSION := "v0.5"
 const SHARE_BASIS_POINTS := 10000
 const MAX_PROJECT_RANK := 4

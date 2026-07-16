@@ -294,7 +294,10 @@ func _materialize_optional_route_geometry(markers: Array, district_source: Array
 				)
 			else:
 				var route_id := str(marker.get("route_id", ""))
-				points = _route_points(_optional_route_geometry_by_route_id.get(route_id, []))
+				points = _optional_route_geometry_points(
+					_optional_route_geometry_by_route_id.get(route_id, []),
+					district_source
+				)
 		if points.size() < 2:
 			continue
 		if str(marker.get("flow_kind", "")) == "ambient_consumption" and points.size() != 2:
@@ -302,6 +305,23 @@ func _materialize_optional_route_geometry(markers: Array, district_source: Array
 		marker["points"] = points
 		result.append(marker)
 	return result
+
+
+func _optional_route_geometry_points(value: Variant, district_source: Array) -> Array[Vector2]:
+	if value is Array:
+		return _route_points(value)
+	if not (value is Dictionary):
+		return []
+	var source := value as Dictionary
+	var points: Array[Vector2] = []
+	var ordered_region_ids: Array = source.get("ordered_region_ids", []) if source.get("ordered_region_ids", []) is Array else []
+	for region_id_variant in ordered_region_ids:
+		var center: Variant = _region_center_for_public_id(str(region_id_variant), district_source)
+		if center is Vector2:
+			points.append(center as Vector2)
+		else:
+			return []
+	return points
 
 
 func _ambient_region_points(from_region_id: String, to_region_id: String, district_source: Array = districts) -> Array[Vector2]:

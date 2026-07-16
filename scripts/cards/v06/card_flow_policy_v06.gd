@@ -82,6 +82,139 @@ func commit_receive(inventory: Dictionary, plan: Dictionary) -> Dictionary:
 	return {"committed": true, "reason_code": "committed", "operation": operation, "inventory": result, "target_slot": target_slot}
 
 
+func plan_receive_with_optional_discard(
+	inventory: Dictionary,
+	incoming_card: Dictionary,
+	catalog: CardRuntimeCatalogV06Resource,
+	discard_slot: int = -1
+) -> Dictionary:
+	var direct_plan := plan_receive(inventory, incoming_card, catalog)
+	if bool(direct_plan.get("ready", false)):
+		var direct_result := direct_plan.duplicate(true)
+		direct_result["discarded"] = false
+		direct_result["discard_slot"] = -1
+		direct_result["discardable_slots"] = discardable_counted_slots(inventory)
+		return direct_result
+	if str(direct_plan.get("reason_code", "")) != "hand_full_no_matching_merge":
+		return direct_plan
+	var fingerprint := inventory_fingerprint(inventory)
+	var discardable_slots := discardable_counted_slots(inventory)
+	if discard_slot < 0:
+		var required := _reject("hand_full_discard_required", fingerprint)
+		required["requires_discard"] = true
+		required["discardable_slots"] = discardable_slots
+		return required
+	if not discardable_slots.has(discard_slot):
+		var invalid := _reject("discard_slot_invalid", fingerprint)
+		invalid["requires_discard"] = true
+		invalid["discardable_slots"] = discardable_slots
+		return invalid
+	var slots := _slots(inventory)
+	var discarded_card: Dictionary = (slots[discard_slot] as Dictionary).duplicate(true)
+	slots[discard_slot] = null
+	var after_discard := inventory.duplicate(true)
+	after_discard["slots"] = slots
+	var receive_plan := plan_receive(after_discard, incoming_card, catalog)
+	if not bool(receive_plan.get("ready", false)):
+		return _reject(
+			str(receive_plan.get("reason_code", "inventory_commit_failed")),
+			fingerprint
+		)
+	return {
+		"ready": true,
+		"reason_code": "ready_discard_then_receive",
+		"operation": "discard_then_receive",
+		"inventory_fingerprint": fingerprint,
+		"discarded": true,
+		"discard_slot": discard_slot,
+		"discarded_card_id": str(_machine(discarded_card).get("card_id", "")),
+		"discarded_instance_id": str(discarded_card.get("runtime_instance_id", "")),
+		"discardable_slots": discardable_slots,
+		"receive_plan": receive_plan.duplicate(true),
+	}
+
+
+func commit_receive_with_optional_discard(
+	inventory: Dictionary,
+	plan: Dictionary
+) -> Dictionary:
+	if str(plan.get("operation", "")) != "discard_then_receive":
+		return commit_receive(inventory, plan)
+	if not bool(plan.get("ready", false)):
+		return {
+			"committed": false,
+			"reason_code": str(plan.get("reason_code", "plan_not_ready")),
+			"inventory": inventory.duplicate(true),
+		}
+	if str(plan.get("inventory_fingerprint", "")) != inventory_fingerprint(inventory):
+		return {
+			"committed": false,
+			"reason_code": "inventory_changed",
+			"inventory": inventory.duplicate(true),
+		}
+	var slots := _slots(inventory)
+	var discard_slot := int(plan.get("discard_slot", -1))
+	if discard_slot < 0 \
+			or discard_slot >= slots.size() \
+			or not (slots[discard_slot] is Dictionary):
+		return {
+			"committed": false,
+			"reason_code": "discard_slot_invalid",
+			"inventory": inventory.duplicate(true),
+		}
+	var discarded_card: Dictionary = slots[discard_slot]
+	if str(discarded_card.get("runtime_instance_id", "")) \
+			!= str(plan.get("discarded_instance_id", "")) \
+			or str(_machine(discarded_card).get("card_id", "")) \
+			!= str(plan.get("discarded_card_id", "")):
+		return {
+			"committed": false,
+			"reason_code": "discard_card_changed",
+			"inventory": inventory.duplicate(true),
+		}
+	slots[discard_slot] = null
+	var after_discard := inventory.duplicate(true)
+	after_discard["slots"] = slots
+	var receive_result := commit_receive(
+		after_discard,
+		plan.get("receive_plan", {}) as Dictionary
+	)
+	if not bool(receive_result.get("committed", false)):
+		return {
+			"committed": false,
+			"reason_code": str(
+				receive_result.get("reason_code", "inventory_commit_failed")
+			),
+			"inventory": inventory.duplicate(true),
+		}
+	var result := receive_result.duplicate(true)
+	result["operation"] = "discard_then_receive"
+	result["discarded"] = true
+	result["discard_slot"] = discard_slot
+	result["discarded_card_id"] = str(plan.get("discarded_card_id", ""))
+	result["discarded_instance_id"] = str(
+		plan.get("discarded_instance_id", "")
+	)
+	return result
+
+
+func discardable_counted_slots(inventory: Dictionary) -> Array:
+	var result: Array = []
+	var slots := _slots(inventory)
+	for slot_index in range(slots.size()):
+		if not (slots[slot_index] is Dictionary):
+			continue
+		var card: Dictionary = slots[slot_index]
+		if not bool(_machine(card).get("counts_toward_hand_limit", true)):
+			continue
+		if bool(card.get("queued_for_resolution", false)):
+			continue
+		if float(card.get("lock_left", 0.0)) > 0.0:
+			continue
+		result.append(slot_index)
+	return result
+
+
 func plan_manual_merge(inventory: Dictionary, first_slot: int, second_slot: int, catalog: CardRuntimeCatalogV06Resource) -> Dictionary:
 	if first_slot == second_slot:
 		return _reject("merge_requires_two_cards")

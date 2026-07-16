@@ -3,15 +3,15 @@ class_name CityDevelopmentSettlementRuntimeCharacterizationBench
 
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const MAIN_SCRIPT_PATH := "res://scripts/main.gd"
-const CITY_CONTROLLER_SCRIPT_PATH := "res://scripts/runtime/city_development_runtime_controller.gd"
-const CITY_WORLD_BRIDGE_SCRIPT_PATH := "res://scripts/runtime/city_development_world_bridge.gd"
+const CITY_CONTROLLER_SCRIPT_PATH := "res://tests/legacy_v05/runtime/city_development_runtime_controller_v05.gd"
+const CITY_WORLD_BRIDGE_SCRIPT_PATH := "res://tests/legacy_v05/runtime/city_development_world_bridge_v05.gd"
 const COORDINATOR_SCRIPT_PATH := "res://scripts/runtime/game_runtime_coordinator.gd"
 const NETWORK_CONTROLLER_SCRIPT_PATH := "res://scripts/runtime/city_trade_network_runtime_controller.gd"
 const GDP_CONTROLLER_SCRIPT_PATH := "res://scripts/runtime/gdp_formula_runtime_controller.gd"
 const PRODUCT_MARKET_SCRIPT_PATH := "res://scripts/runtime/product_market_runtime_controller.gd"
 const EXECUTION_SCRIPT_PATH := "res://scripts/runtime/card_resolution_execution_runtime_service.gd"
-const PROJECT_STATE_SCRIPT_PATH := "res://scripts/economy/city_product_project_state.gd"
-const PROJECT_BRIDGE_SCRIPT_PATH := "res://scripts/economy/city_product_project_bridge.gd"
+const PROJECT_STATE_SCRIPT_PATH := "res://tests/legacy_v05/economy/city_product_project_state_v05.gd"
+const PROJECT_BRIDGE_SCRIPT_PATH := "res://tests/legacy_v05/economy/city_product_project_bridge_v05.gd"
 const CORE_DEVELOPMENT_PACK_PATH := "res://resources/economy/core_city_development_pack.tres"
 const PROJECT_STATE := preload(PROJECT_STATE_SCRIPT_PATH)
 const PROJECT_BRIDGE := preload(PROJECT_BRIDGE_SCRIPT_PATH)

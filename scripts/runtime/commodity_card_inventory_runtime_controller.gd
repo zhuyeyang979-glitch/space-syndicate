@@ -294,6 +294,50 @@ func player_snapshot(actor_id: String) -> Dictionary:
 	return (value_variant as Dictionary).duplicate(true) if value_variant is Dictionary else {}
 
 
+func discardable_slots(actor_id: String) -> Array:
+	if not _service_ready() \
+			or not _transaction_service.has_method("discardable_slots"):
+		return []
+	var value_variant: Variant = _transaction_service.call(
+		"discardable_slots",
+		actor_id
+	)
+	return (value_variant as Array).duplicate() if value_variant is Array else []
+
+
+func region_supply_receive_preview(
+	actor_id: String,
+	card_id: String,
+	discard_slot: int = -1
+) -> Dictionary:
+	if not _service_ready() \
+			or not _transaction_service.has_method(
+				"region_supply_receive_preview"
+			):
+		return {
+			"ready": false,
+			"requires_discard": false,
+			"reason_code": "controller_not_ready",
+			"discardable_slots": [],
+		}
+	var value_variant: Variant = _transaction_service.call(
+		"region_supply_receive_preview",
+		actor_id,
+		card_id,
+		discard_slot
+	)
+	return (
+		(value_variant as Dictionary).duplicate(true)
+		if value_variant is Dictionary
+		else {
+			"ready": false,
+			"requires_discard": false,
+			"reason_code": "region_supply_receive_preview_invalid",
+			"discardable_slots": [],
+		}
+	)
+
+
 func claim_belt_card(
 	actor_id: String,
 	source_item_id: String,
@@ -364,7 +408,8 @@ func purchase_region_supply_card(
 	expected_player_revision: int,
 	expected_supply_revision: String,
 	transaction_id: String,
-	quote_request: Dictionary
+	quote_request: Dictionary,
+	discard_slot: int = -1
 ) -> Dictionary:
 	var intent := {
 		"operation": "region_supply_purchase",
@@ -377,6 +422,7 @@ func purchase_region_supply_card(
 		"expected_supply_revision": expected_supply_revision,
 		"quote_id": str(quote_request.get("quote_id", "")),
 		"quote_fingerprint": str(quote_request.get("quote_fingerprint", "")),
+		"discard_slot": discard_slot,
 	}
 	return _run_terminal_operation(transaction_id, intent, func() -> Dictionary:
 		var value_variant: Variant = _transaction_service.call(
@@ -389,13 +435,45 @@ func purchase_region_supply_card(
 			expected_player_revision,
 			expected_supply_revision,
 			transaction_id,
-			quote_request.duplicate(true)
+			quote_request.duplicate(true),
+			discard_slot
 		)
 		return (value_variant as Dictionary).duplicate(true) \
 			if value_variant is Dictionary \
 			else _failure("region_supply_purchase_invalid")
 	, func(previous_result: Dictionary) -> Dictionary:
 		return _retry_terminal_region_supply_finalization(previous_result)
+	)
+
+
+func grant_card(
+	actor_id: String,
+	card_id: String,
+	expected_player_revision: int,
+	transaction_id: String,
+	grant_reason: String = ""
+) -> Dictionary:
+	var intent := {
+		"operation": "grant_card",
+		"actor_id": actor_id,
+		"card_id": card_id,
+		"expected_player_revision": expected_player_revision,
+		"grant_reason": grant_reason,
+	}
+	return _run_terminal_operation(transaction_id, intent, func() -> Dictionary:
+		var value_variant: Variant = _transaction_service.call(
+			"grant_card",
+			actor_id,
+			card_id,
+			expected_player_revision,
+			transaction_id,
+			grant_reason
+		)
+		return (
+			(value_variant as Dictionary).duplicate(true)
+			if value_variant is Dictionary
+			else _failure("grant_card_invalid")
+		)
 	)
 
 

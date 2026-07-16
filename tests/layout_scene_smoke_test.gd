@@ -419,10 +419,10 @@ const CARD_TEXT_MIGRATION_REGISTRY_V05 := "res://resources/migrations/card_text_
 const PLAYER_TEXT_V05_FOUNDATION_BENCH_SCRIPT := "res://scripts/tools/player_text_v05_foundation_bench.gd"
 const PLAYER_TEXT_V05_FOUNDATION_BENCH_SCENE := "res://scenes/tools/PlayerTextV05FoundationBench.tscn"
 const PLAYER_TEXT_V05_FOUNDATION_OUTPUT_DIR := "user://space_syndicate_design_qa/player_text_v05_foundation/"
-const CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/city_development_runtime_controller.gd"
-const CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/CityDevelopmentRuntimeController.tscn"
-const CITY_DEVELOPMENT_WORLD_BRIDGE_SCRIPT := "res://scripts/runtime/city_development_world_bridge.gd"
-const CITY_DEVELOPMENT_WORLD_BRIDGE_SCENE := "res://scenes/runtime/CityDevelopmentWorldBridge.tscn"
+const CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCRIPT := "res://tests/legacy_v05/runtime/city_development_runtime_controller_v05.gd"
+const CITY_DEVELOPMENT_RUNTIME_CONTROLLER_SCENE := "res://tests/legacy_v05/scenes/CityDevelopmentRuntimeControllerV05.tscn"
+const CITY_DEVELOPMENT_WORLD_BRIDGE_SCRIPT := "res://tests/legacy_v05/runtime/city_development_world_bridge_v05.gd"
+const CITY_DEVELOPMENT_WORLD_BRIDGE_SCENE := "res://tests/legacy_v05/scenes/CityDevelopmentWorldBridgeV05.tscn"
 const CITY_DEVELOPMENT_RUNTIME_CUTOVER_DOC := "res://docs/city_development_runtime_cutover.md"
 const GAME_RUNTIME_COORDINATOR_SCRIPT := "res://scripts/runtime/game_runtime_coordinator.gd"
 const GAME_RUNTIME_COORDINATOR_SCENE := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
@@ -3817,7 +3817,7 @@ func _check_first_mission_runtime_main_bench_component() -> void:
 		main_instance.set_process(false)
 	_expect(main_instance != null and main_instance.has_method("start_first_mission_runtime"), "main.gd exposes a reusable first mission runtime start entry")
 	_expect(main_instance != null and main_instance.has_method("_first_table_runtime_content_snapshot") and main_instance.has_method("_first_table_resolved_content_catalog"), "main.gd retains only first_table world-content and runtime-catalog compatibility adapters")
-	_expect(ResourceLoader.exists("res://scripts/economy/city_product_project_state.gd") and ResourceLoader.exists("res://scripts/economy/city_product_project_bridge.gd") and ResourceLoader.exists("res://scripts/economy/city_development_card_template_resource.gd") and ResourceLoader.exists("res://scripts/economy/city_development_card_template_pack_resource.gd"), "city development project runtime scripts load")
+	_expect(not ResourceLoader.exists("res://scripts/economy/city_product_project_state.gd") and not ResourceLoader.exists("res://scripts/economy/city_product_project_bridge.gd") and ResourceLoader.exists("res://scripts/runtime/region_infrastructure_runtime_controller.gd") and ResourceLoader.exists("res://scripts/runtime/commodity_flow_runtime_controller.gd"), "v0.6 production omits legacy project-share owners and keeps facility plus commodity owners")
 	_expect(ResourceLoader.exists("res://resources/economy/core_city_development_pack.tres") and load("res://resources/economy/core_city_development_pack.tres") != null, "city development Inspector template pack loads")
 	var development_coordinator := main_instance.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if main_instance != null else null
 	var infrastructure := development_coordinator.get_node_or_null("RegionInfrastructureRuntimeController") if development_coordinator != null else null
@@ -8995,7 +8995,6 @@ func _check_district_purchase_settlement_and_presentation_preparation() -> void:
 			root.remove_child(drawer)
 			drawer.free()
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	var settlement_service_source := FileAccess.get_file_as_string(DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCRIPT)
 	_expect(not main_source.contains("var district_card_purchase_snapshot") and not main_source.contains("district_card_purchase_snapshot ="), "main.gd does not regain a parallel district-purchase state owner while the v0.6 owner cutover is pending")
 	var retired_drawer_tokens := ["DistrictSupplyMarketCardScene", "DistrictSupplyPreviewCardScene", "var district_supply_title_label", "var district_supply_access_label", "var district_supply_chip_row", "var district_supply_state_rail", "var district_supply_list_box", "var district_supply_preview_box", "func _add_district_supply_header_chips", "func _add_district_supply_summary_chip", "func _add_district_supply_market_status_rail", "func _sync_district_supply_market_focus_links", "func _add_district_supply_card_button", "func _add_district_supply_preview", "func _on_district_card_gui_input"]
 	var drawer_legacy_absent := main_source.contains("func _district_supply_snapshot_source") and main_source.contains("func _on_district_supply_action_requested") and main_source.contains("compose_district_supply_snapshot")
@@ -9010,9 +9009,16 @@ func _check_district_purchase_settlement_and_presentation_preparation() -> void:
 	var buy_start := main_source.find("func _buy_card_for_player_from_district(")
 	var buy_end := main_source.find("\nfunc ", buy_start + 5)
 	var buy_source := main_source.substr(buy_start, buy_end - buy_start) if buy_start >= 0 and buy_end > buy_start else ""
-	var settlement_adapters_present := buy_source.contains("plan_district_purchase_settlement") and buy_source.contains("commit_district_purchase_settlement") and main_source.contains("func _district_purchase_settlement_request(")
+	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
+	var production_purchase_cutover_present := buy_source.contains("purchase_region_supply_card") \
+		and buy_source.contains("v06_card_player_snapshot") \
+		and not buy_source.contains("plan_district_purchase_settlement") \
+		and not buy_source.contains("commit_district_purchase_settlement") \
+		and not main_source.contains("func _district_purchase_settlement_request(") \
+		and coordinator_source.contains("func purchase_region_supply_card(") \
+		and not coordinator_source.contains("func commit_district_purchase_with_region_supply(")
 	var legacy_settlement_absent := not buy_source.contains("player[\"cash\"] =") and not buy_source.contains("_record_player_card_spend(") and not buy_source.contains("card_purchase_count\"] =") and not main_source.contains("func _record_player_card_purchase(") and not main_source.contains("func _discard_card_from_player(") and not main_source.contains("func _find_previous_rank_card_slot(") and not main_source.contains("func _find_owned_card_slot(")
-	_expect(settlement_adapters_present and legacy_settlement_absent and settlement_service_source.contains("after_player[\"cash\"] =") and settlement_service_source.contains("after_player[\"card_purchase_count\"] ="), "Sprint 29 moves purchase cash/card/counter/ledger mutation to the settlement service and leaves one thin main adapter")
+	_expect(production_purchase_cutover_present and legacy_settlement_absent, "Region purchases use the single production CardFlow transaction while Main retains no cash, hand, or refill owner")
 	var audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
 	var audit: RefCounted = audit_script.new() if audit_script != null else null
 	if audit != null:
@@ -10044,10 +10050,10 @@ func _check_scenario_runtime_glue_cutover_component() -> void:
 			var phase: Dictionary = phase_variant if phase_variant is Dictionary else {}
 			phase_ids.append(str(phase.get("id", "")))
 			success_signals.append(str(phase.get("success_signal", "")))
-		var expected_phase_ids: Array[String] = ["select_district", "open_rack", "buy_development", "play_development", "establish_project", "check_economy", "buy_followup", "play_followup", "select_track_card", "observe_ai_public_action", "inspect_clues", "inspect_monster_pressure", "choose_route"]
-		var expected_success_signals: Array[String] = ["district_selected", "rack_opened", "card_bought", "card_played", "city_development_resolved", "economy_checked", "followup_card_bought", "followup_card_played", "track_selected", "ai_public_action_observed", "public_clue_read", "monster_pressure_observed", "route_chosen"]
+		var expected_phase_ids: Array[String] = ["select_district", "open_rack", "buy_development", "play_development", "observe_facility", "check_economy", "buy_followup", "play_followup", "select_track_card", "observe_ai_public_action", "inspect_clues", "inspect_monster_pressure", "choose_route"]
+		var expected_success_signals: Array[String] = ["district_selected", "rack_opened", "card_bought", "card_played", "public_facility_committed", "economy_checked", "followup_card_bought", "followup_card_played", "track_selected", "ai_public_action_observed", "public_clue_read", "monster_pressure_observed", "route_chosen"]
 		_expect(catalog.size() == 8 and phase_ids == expected_phase_ids and success_signals == expected_success_signals, "ScenarioRuntimeController reuses the real eight-scenario catalog and stable thirteen-phase first_table")
-		_expect(not phase_ids.has("first_summon") and not success_signals.has("monster_summoned") and phase_ids.find("open_rack") == 1 and phase_ids.find("buy_development") == 2 and phase_ids.find("establish_project") == 4 and phase_ids.find("check_economy") == 5, "voluntary monster summon stays outside the rack, buy, facility, and economy progression")
+		_expect(not phase_ids.has("first_summon") and not success_signals.has("monster_summoned") and phase_ids.find("open_rack") == 1 and phase_ids.find("buy_development") == 2 and phase_ids.find("observe_facility") == 4 and phase_ids.find("check_economy") == 5, "voluntary monster summon stays outside the rack, buy, facility, and economy progression")
 		coordinator.call("start_runtime_scenario", "first_table", 10.0)
 		var before: Dictionary = coordinator.call("runtime_scenario_progress", 10.0)
 		var rejected: Dictionary = coordinator.call("complete_runtime_scenario_signal", "monster_summoned", {"time": "00:11", "public_text": "out of order", "viewer_index": 0, "snapshot_key": "after_summon"}, 11.0)
@@ -10199,7 +10205,7 @@ func _check_first_table_authored_runtime_cutover_component() -> void:
 		var owner_facility_fact := {"facility_id": "facility.first_table.life", "region_id": "region.002", "facility_type": "factory", "industry_id": "life", "rank": 1, "lifecycle_state": "active"}
 		var owner_gdp_per_minute := 72
 		var owner_sale_receipt_cash_cents := 1800
-		var content: Dictionary = coordinator.call("first_table_compose_runtime_content", {"district_index": 2, "district_name": "曙光港", "public_region_supply_rack_snapshot": public_rack, "owned_facilities": [owner_facility_fact], "public_projects": [{"product_id": "life", "hidden_owner": 2}], "gdp_per_minute": owner_gdp_per_minute, "cashflow_paid_total": owner_sale_receipt_cash_cents, "visible_monster_name": "实际怪兽"}, catalog)
+		var content: Dictionary = coordinator.call("first_table_compose_runtime_content", {"district_index": 2, "district_name": "曙光港", "public_region_supply_rack_snapshot": public_rack, "owned_facilities": [owner_facility_fact], "gdp_per_minute": owner_gdp_per_minute, "cashflow_paid_total": owner_sale_receipt_cash_cents, "visible_monster_name": "实际怪兽"}, catalog)
 		var phase: Dictionary = coordinator.call("first_table_contextualize_phase", {"id": "check_economy"}, content)
 		var debug: Dictionary = service.call("debug_snapshot") if service != null else {}
 		var rack_recommendation: Dictionary = content.get("rack_recommendation", {}) if content.get("rack_recommendation", {}) is Dictionary else {}
@@ -10208,8 +10214,8 @@ func _check_first_table_authored_runtime_cutover_component() -> void:
 		var composed_facilities: Array = content.get("owned_facilities", []) if content.get("owned_facilities", []) is Array else []
 		var composed_facility: Dictionary = composed_facilities[0] if not composed_facilities.is_empty() and composed_facilities[0] is Dictionary else {}
 		var owner_gate_scripts_load := load("res://tests/region_infrastructure_atomic_lifecycle_v06_test.gd") is Script and load("res://tests/commodity_flow_local_baseline_demand_v06_test.gd") is Script and load("res://tests/vs06_facility_commodity_flow_integration_test.gd") is Script and load("res://tests/human_first_table_playability_v06_test.gd") is Script and load(MAIN_RUNTIME_COMPOSITION_TEST) is Script
-		_expect(bool(content.get("city_present", false)) and composed_facilities.size() == 1 and str(composed_facility.get("facility_type", "")) == "factory" and str(composed_facility.get("industry_id", "")) == "life" and str(content.get("urbanization_share_text", "")).contains("life") and str(content.get("urbanization_share_text", "")).contains("factory") and int(content.get("gdp_per_minute", -1)) == owner_gdp_per_minute and int(content.get("cashflow_paid_total", -1)) == owner_sale_receipt_cash_cents and bool(content.get("positive_income_observed", false)) and str(content.get("visible_monster_name", "")) == "实际怪兽" and str(phase.get("detail", "")).contains("GDP/min %d" % owner_gdp_per_minute) and str(phase.get("detail", "")).contains(str(owner_sale_receipt_cash_cents)) and int(debug.get("phase_count", 0)) == 13 and owner_gate_scripts_load, "FirstTableAuthoredRuntimeService presents observed RegionInfrastructure, CommodityFlow, and monster facts without selecting fixed rack content")
-		_expect(not JSON.stringify(content.get("public_projects", [])).contains("hidden_owner"), "service strips hidden ownership from public authored content")
+		_expect(bool(content.get("city_present", false)) and composed_facilities.size() == 1 and str(composed_facility.get("facility_type", "")) == "factory" and str(composed_facility.get("industry_id", "")) == "life" and str(content.get("facility_summary_text", "")).contains("life") and str(content.get("facility_summary_text", "")).contains("factory") and int(content.get("gdp_per_minute", -1)) == owner_gdp_per_minute and int(content.get("cashflow_paid_total", -1)) == owner_sale_receipt_cash_cents and bool(content.get("positive_income_observed", false)) and str(content.get("visible_monster_name", "")) == "实际怪兽" and str(phase.get("detail", "")).contains("GDP/min %d" % owner_gdp_per_minute) and str(phase.get("detail", "")).contains(str(owner_sale_receipt_cash_cents)) and int(debug.get("phase_count", 0)) == 13 and owner_gate_scripts_load, "FirstTableAuthoredRuntimeService presents observed RegionInfrastructure, CommodityFlow, and monster facts without selecting fixed rack content")
+		_expect(not JSON.stringify(content).contains("hidden_owner"), "service excludes hidden ownership from public authored content")
 		_expect(bool(debug.get("service_authoritative", false)) and not bool(debug.get("legacy_authored_fallback_used", true)) and not bool(debug.get("fixed_city_development_selection_active", true)) and not bool(debug.get("fixed_monster_selection_active", true)) and not bool(debug.get("followup_card_injection_active", true)) and not bool(debug.get("factory_before_market_assumption_active", true)), "first_table authored service is authoritative with fixed-slot and ordered-category fallbacks inactive")
 		_expect(not _variant_contains_callable(catalog) and not _variant_contains_object(catalog) and not _variant_contains_callable(content) and not _variant_contains_object(content), "first_table authored service boundary stays pure data")
 		coordinator.free()
@@ -12835,7 +12841,7 @@ func _check_standings_public_snapshot_cutover_component() -> void:
 	if service != null:
 		_expect(service.has_method("configure") and service.has_method("compose") and service.has_method("debug_snapshot"), "StandingsPublicSnapshotService exposes required pure-data APIs")
 		service.call("configure", {})
-		var snapshot: Dictionary = service.call("compose", {"valid": true, "selected_available": true, "selected_top_n_gdp_per_minute": 100, "selected_controlled_region_count": 3, "selected_cash": 80, "selected_city_count": 1, "selected_gdp_per_minute": 110, "selected_intel_summary": "情报待结算", "required_top_n_gdp_per_minute": 90, "required_controlled_region_count": 3, "victory_control": {"state": "audit", "audit_remaining_seconds": 90.0, "audit_roster": [0], "audit_entries": [{"player_index": 0, "top_n_gdp_per_minute": 100, "controlled_region_count": 3, "cash_ledger_cents": 8000, "economic_assets": {"project_positions": [], "contracts": [], "warehouses": [], "financial_positions": []}}]}, "countdown_text": "公开审计剩余90.0秒", "public_shift_count": 0, "seat_entries": [{"player_index": 0, "name": "玩家", "eliminated": false, "can_view_private": true, "cash": 80, "active_cities": 1, "top_n_gdp_per_minute": 100, "controlled_region_count": 3, "intel_summary": "情报待结算", "gdp_per_minute": 110}]})
+		var snapshot: Dictionary = service.call("compose", {"valid": true, "selected_available": true, "selected_top_n_gdp_per_minute": 100, "selected_controlled_region_count": 3, "selected_cash": 80, "selected_city_count": 1, "selected_gdp_per_minute": 110, "selected_intel_summary": "情报待结算", "required_top_n_gdp_per_minute": 90, "required_controlled_region_count": 3, "victory_control": {"state": "audit", "audit_remaining_seconds": 90.0, "audit_roster": [0], "audit_entries": [{"player_index": 0, "top_n_gdp_per_minute": 100, "controlled_region_count": 3, "cash_visibility": "public_audit", "cash_ledger_cents": 8000}]}, "countdown_text": "公开审计剩余90.0秒", "public_shift_count": 0, "seat_entries": [{"player_index": 0, "name": "玩家", "eliminated": false, "can_view_private": true, "cash": 80, "active_cities": 1, "top_n_gdp_per_minute": 100, "controlled_region_count": 3, "intel_summary": "情报待结算", "gdp_per_minute": 110, "own_economic_assets": {"facilities": [], "installations": [], "commodity_inventory": [], "color_gdp": {}, "units": [], "contracts": [], "financial_positions": []}}]})
 		_expect(snapshot.get("summary_text", "") is String and snapshot.get("overview_cards", []) is Array and snapshot.get("scoreboard", {}) is Dictionary and not _variant_contains_callable(snapshot) and not _variant_contains_object(snapshot), "StandingsPublicSnapshotService returns pure summary, overview-card, and scoreboard payloads")
 		var debug: Dictionary = service.call("debug_snapshot")
 		_expect(bool(debug.get("consumes_victory_snapshot", false)) and not bool(debug.get("calculates_region_control", true)) and not bool(debug.get("calculates_top_n_gdp", true)) and not bool(debug.get("sorts_final_rankings", true)) and not bool(debug.get("evaluates_private_truth", true)) and not bool(debug.get("reads_runtime_nodes", true)), "Standings formatter consumes VictoryControl facts and owns no victory, ranking, private-truth, or runtime-Node rules")

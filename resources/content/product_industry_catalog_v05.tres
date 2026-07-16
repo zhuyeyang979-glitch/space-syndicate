@@ -1,11 +1,30 @@
 [gd_resource type="Resource" script_class="ProductIndustryCatalogResource" format=3 uid="uid://dxv8l0p0pj4lp"]
 
-[ext_resource type="Script" uid="uid://blf50u4nhm3qm" path="res://scripts/content/product_industry_catalog_resource.gd" id="1_catalog"]
-[ext_resource type="Script" uid="uid://c37spi84vmnir" path="res://scripts/content/product_industry_definition_resource.gd" id="2_industry"]
-[ext_resource type="Script" uid="uid://cnko53wlro4vv" path="res://scripts/content/product_industry_entry_resource.gd" id="3_product"]
+[sub_resource type="GDScript" id="GDScript_4uugd"]
+script/source = "extends Resource
+class_name ProductIndustryDefinitionResource
+
+@export var industry_id: String = \"\"
+@export var display_name: String = \"\"
+@export var icon_key: String = \"\"
+@export var color_key: String = \"\"
+@export_multiline var gameplay_summary: String = \"\"
+@export var capacity_thresholds: Array[int] = [15, 40, 80, 140]
+
+
+func to_snapshot() -> Dictionary:
+	return {
+		\"industry_id\": industry_id,
+		\"display_name\": display_name,
+		\"icon_key\": icon_key,
+		\"color_key\": color_key,
+		\"gameplay_summary\": gameplay_summary,
+		\"capacity_thresholds\": capacity_thresholds.duplicate(),
+	}
+"
 
 [sub_resource type="Resource" id="Industry_life"]
-script = ExtResource("2_industry")
+script = SubResource("GDScript_4uugd")
 industry_id = "life"
 display_name = "生命"
 icon_key = "industry.life"
@@ -13,7 +32,7 @@ color_key = "industry_life_green"
 gameplay_summary = "生长、治疗、复兴与稳定收入。"
 
 [sub_resource type="Resource" id="Industry_energy"]
-script = ExtResource("2_industry")
+script = SubResource("GDScript_4uugd")
 industry_id = "energy"
 display_name = "能源"
 icon_key = "industry.energy"
@@ -21,7 +40,7 @@ color_key = "industry_energy_orange"
 gameplay_summary = "爆发 GDP、天气、怪兽强化与攻击。"
 
 [sub_resource type="Resource" id="Industry_industry"]
-script = ExtResource("2_industry")
+script = SubResource("GDScript_4uugd")
 industry_id = "industry"
 display_name = "工业"
 icon_key = "industry.industry"
@@ -29,7 +48,7 @@ color_key = "industry_industry_gray"
 gameplay_summary = "建筑、军队、护甲与项目升级。"
 
 [sub_resource type="Resource" id="Industry_technology"]
-script = ExtResource("2_industry")
+script = SubResource("GDScript_4uugd")
 industry_id = "technology"
 display_name = "科技"
 icon_key = "industry.technology"
@@ -37,7 +56,7 @@ color_key = "industry_technology_blue"
 gameplay_summary = "情报、反制、顺序与目标控制。"
 
 [sub_resource type="Resource" id="Industry_commerce"]
-script = ExtResource("2_industry")
+script = SubResource("GDScript_4uugd")
 industry_id = "commerce"
 display_name = "商贸"
 icon_key = "industry.commerce"
@@ -45,15 +64,36 @@ color_key = "industry_commerce_purple"
 gameplay_summary = "需求、合约、拍卖与金融。"
 
 [sub_resource type="Resource" id="Industry_shipping"]
-script = ExtResource("2_industry")
+script = SubResource("GDScript_4uugd")
 industry_id = "shipping"
 display_name = "航运"
 icon_key = "industry.shipping"
 color_key = "industry_shipping_cyan"
 gameplay_summary = "通商、路线、远程购买与转换。"
 
+[sub_resource type="GDScript" id="GDScript_rtxru"]
+script/source = "extends Resource
+class_name ProductIndustryEntryResource
+
+@export var product_id: String = \"\"
+@export var industry_id: String = \"\"
+@export var display_name: String = \"\"
+@export var icon_key: String = \"\"
+@export var optional_tags: Array[String] = []
+
+
+func to_snapshot() -> Dictionary:
+	return {
+		\"product_id\": product_id,
+		\"industry_id\": industry_id,
+		\"display_name\": display_name,
+		\"icon_key\": icon_key,
+		\"optional_tags\": optional_tags.duplicate(),
+	}
+"
+
 [sub_resource type="Resource" id="Product_001"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "星露莓"
 industry_id = "life"
 display_name = "星露莓"
@@ -61,7 +101,7 @@ icon_key = "product.life"
 optional_tags = Array[String](["runtime_product", "industry_life", "weather_biological", "weather_food"])
 
 [sub_resource type="Resource" id="Product_002"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "月壤葡萄"
 industry_id = "life"
 display_name = "月壤葡萄"
@@ -69,7 +109,7 @@ icon_key = "product.life"
 optional_tags = Array[String](["runtime_product", "industry_life", "weather_biological", "weather_food"])
 
 [sub_resource type="Resource" id="Product_003"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "孢子丝绸"
 industry_id = "life"
 display_name = "孢子丝绸"
@@ -77,7 +117,7 @@ icon_key = "product.life"
 optional_tags = Array[String](["runtime_product", "industry_life", "weather_biological"])
 
 [sub_resource type="Resource" id="Product_004"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "光合凝胶"
 industry_id = "life"
 display_name = "光合凝胶"
@@ -85,7 +125,7 @@ icon_key = "product.life"
 optional_tags = Array[String](["runtime_product", "industry_life", "weather_biological", "weather_medicine"])
 
 [sub_resource type="Resource" id="Product_005"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "轨道盆栽"
 industry_id = "life"
 display_name = "轨道盆栽"
@@ -93,7 +133,7 @@ icon_key = "product.life"
 optional_tags = Array[String](["runtime_product", "industry_life", "weather_biological"])
 
 [sub_resource type="Resource" id="Product_006"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "寒冠冰糖"
 industry_id = "life"
 display_name = "寒冠冰糖"
@@ -101,7 +141,7 @@ icon_key = "product.life"
 optional_tags = Array[String](["runtime_product", "industry_life", "weather_biological", "weather_food"])
 
 [sub_resource type="Resource" id="Product_007"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "深海菌毯"
 industry_id = "life"
 display_name = "深海菌毯"
@@ -109,7 +149,7 @@ icon_key = "product.life"
 optional_tags = Array[String](["runtime_product", "industry_life", "weather_biological", "weather_medicine"])
 
 [sub_resource type="Resource" id="Product_008"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "晨昏奶酪"
 industry_id = "life"
 display_name = "晨昏奶酪"
@@ -117,7 +157,7 @@ icon_key = "product.life"
 optional_tags = Array[String](["runtime_product", "industry_life", "weather_biological", "weather_food"])
 
 [sub_resource type="Resource" id="Product_009"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "北极薄荷"
 industry_id = "life"
 display_name = "北极薄荷"
@@ -125,7 +165,7 @@ icon_key = "product.life"
 optional_tags = Array[String](["runtime_product", "industry_life", "weather_biological", "weather_medicine", "weather_food"])
 
 [sub_resource type="Resource" id="Product_010"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "星尘面包"
 industry_id = "life"
 display_name = "星尘面包"
@@ -133,7 +173,7 @@ icon_key = "product.life"
 optional_tags = Array[String](["runtime_product", "industry_life", "weather_biological", "weather_food"])
 
 [sub_resource type="Resource" id="Product_011"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "梦游蘑菇"
 industry_id = "life"
 display_name = "梦游蘑菇"
@@ -141,7 +181,7 @@ icon_key = "product.life"
 optional_tags = Array[String](["runtime_product", "industry_life", "weather_biological"])
 
 [sub_resource type="Resource" id="Product_012"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "磁核榴莲"
 industry_id = "energy"
 display_name = "磁核榴莲"
@@ -149,7 +189,7 @@ icon_key = "product.energy"
 optional_tags = Array[String](["runtime_product", "industry_energy", "weather_energy", "weather_biological", "weather_food"])
 
 [sub_resource type="Resource" id="Product_013"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "彗尾柑"
 industry_id = "energy"
 display_name = "彗尾柑"
@@ -157,7 +197,7 @@ icon_key = "product.energy"
 optional_tags = Array[String](["runtime_product", "industry_energy", "weather_energy", "weather_biological", "weather_food"])
 
 [sub_resource type="Resource" id="Product_014"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "环晶电池"
 industry_id = "energy"
 display_name = "环晶电池"
@@ -165,7 +205,7 @@ icon_key = "product.energy"
 optional_tags = Array[String](["runtime_product", "industry_energy", "weather_energy", "weather_electronic", "weather_crystal"])
 
 [sub_resource type="Resource" id="Product_015"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "太阳鳞片"
 industry_id = "energy"
 display_name = "太阳鳞片"
@@ -173,7 +213,7 @@ icon_key = "product.energy"
 optional_tags = Array[String](["runtime_product", "industry_energy", "weather_energy"])
 
 [sub_resource type="Resource" id="Product_016"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "海底黑油"
 industry_id = "energy"
 display_name = "海底黑油"
@@ -181,7 +221,7 @@ icon_key = "product.energy"
 optional_tags = Array[String](["runtime_product", "industry_energy", "weather_energy"])
 
 [sub_resource type="Resource" id="Product_017"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "反物质茶"
 industry_id = "energy"
 display_name = "反物质茶"
@@ -189,7 +229,7 @@ icon_key = "product.energy"
 optional_tags = Array[String](["runtime_product", "industry_energy", "weather_energy", "weather_food"])
 
 [sub_resource type="Resource" id="Product_018"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "静电蜂蜜"
 industry_id = "energy"
 display_name = "静电蜂蜜"
@@ -197,7 +237,7 @@ icon_key = "product.energy"
 optional_tags = Array[String](["runtime_product", "industry_energy", "weather_energy", "weather_biological", "weather_food"])
 
 [sub_resource type="Resource" id="Product_019"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "等离子米"
 industry_id = "energy"
 display_name = "等离子米"
@@ -205,7 +245,7 @@ icon_key = "product.energy"
 optional_tags = Array[String](["runtime_product", "industry_energy", "weather_energy", "weather_biological", "weather_food"])
 
 [sub_resource type="Resource" id="Product_020"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "火山番茄"
 industry_id = "energy"
 display_name = "火山番茄"
@@ -213,7 +253,7 @@ icon_key = "product.energy"
 optional_tags = Array[String](["runtime_product", "industry_energy", "weather_energy", "weather_biological", "weather_food"])
 
 [sub_resource type="Resource" id="Product_021"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "潮汐电浆"
 industry_id = "energy"
 display_name = "潮汐电浆"
@@ -221,7 +261,7 @@ icon_key = "product.energy"
 optional_tags = Array[String](["runtime_product", "industry_energy", "weather_energy"])
 
 [sub_resource type="Resource" id="Product_022"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "重力陶瓷"
 industry_id = "industry"
 display_name = "重力陶瓷"
@@ -229,7 +269,7 @@ icon_key = "product.industry"
 optional_tags = Array[String](["runtime_product", "industry_industry", "weather_crystal"])
 
 [sub_resource type="Resource" id="Product_023"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "虹膜矿粉"
 industry_id = "industry"
 display_name = "虹膜矿粉"
@@ -237,7 +277,7 @@ icon_key = "product.industry"
 optional_tags = Array[String](["runtime_product", "industry_industry", "weather_crystal"])
 
 [sub_resource type="Resource" id="Product_024"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "引力棉"
 industry_id = "industry"
 display_name = "引力棉"
@@ -245,7 +285,7 @@ icon_key = "product.industry"
 optional_tags = Array[String](["runtime_product", "industry_industry", "weather_biological"])
 
 [sub_resource type="Resource" id="Product_025"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "钛壳贝"
 industry_id = "industry"
 display_name = "钛壳贝"
@@ -253,7 +293,7 @@ icon_key = "product.industry"
 optional_tags = Array[String](["runtime_product", "industry_industry", "weather_biological"])
 
 [sub_resource type="Resource" id="Product_026"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "陨铁酱料"
 industry_id = "industry"
 display_name = "陨铁酱料"
@@ -261,7 +301,7 @@ icon_key = "product.industry"
 optional_tags = Array[String](["runtime_product", "industry_industry", "weather_food"])
 
 [sub_resource type="Resource" id="Product_027"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "暗礁珊瑚"
 industry_id = "industry"
 display_name = "暗礁珊瑚"
@@ -269,7 +309,7 @@ icon_key = "product.industry"
 optional_tags = Array[String](["runtime_product", "industry_industry", "weather_biological"])
 
 [sub_resource type="Resource" id="Product_028"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "活体芯片"
 industry_id = "technology"
 display_name = "活体芯片"
@@ -277,7 +317,7 @@ icon_key = "product.technology"
 optional_tags = Array[String](["runtime_product", "industry_technology", "weather_electronic", "weather_biological"])
 
 [sub_resource type="Resource" id="Product_029"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "极光盐"
 industry_id = "technology"
 display_name = "极光盐"
@@ -285,7 +325,7 @@ icon_key = "product.technology"
 optional_tags = Array[String](["runtime_product", "industry_technology", "weather_food", "weather_crystal"])
 
 [sub_resource type="Resource" id="Product_030"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "轨迹墨水"
 industry_id = "technology"
 display_name = "轨迹墨水"
@@ -293,7 +333,7 @@ icon_key = "product.technology"
 optional_tags = Array[String](["runtime_product", "industry_technology", "weather_electronic"])
 
 [sub_resource type="Resource" id="Product_031"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "离岸水晶"
 industry_id = "technology"
 display_name = "离岸水晶"
@@ -301,7 +341,7 @@ icon_key = "product.technology"
 optional_tags = Array[String](["runtime_product", "industry_technology", "weather_crystal"])
 
 [sub_resource type="Resource" id="Product_032"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "量子蜜瓜"
 industry_id = "commerce"
 display_name = "量子蜜瓜"
@@ -309,7 +349,7 @@ icon_key = "product.commerce"
 optional_tags = Array[String](["runtime_product", "industry_commerce", "weather_biological", "weather_food"])
 
 [sub_resource type="Resource" id="Product_033"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "脉冲咖啡"
 industry_id = "commerce"
 display_name = "脉冲咖啡"
@@ -317,7 +357,7 @@ icon_key = "product.commerce"
 optional_tags = Array[String](["runtime_product", "industry_commerce", "weather_food"])
 
 [sub_resource type="Resource" id="Product_034"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "真空可可"
 industry_id = "commerce"
 display_name = "真空可可"
@@ -325,7 +365,7 @@ icon_key = "product.commerce"
 optional_tags = Array[String](["runtime_product", "industry_commerce", "weather_food"])
 
 [sub_resource type="Resource" id="Product_035"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "离子香料"
 industry_id = "commerce"
 display_name = "离子香料"
@@ -333,7 +373,7 @@ icon_key = "product.commerce"
 optional_tags = Array[String](["runtime_product", "industry_commerce", "weather_food"])
 
 [sub_resource type="Resource" id="Product_036"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "梦境香氛"
 industry_id = "commerce"
 display_name = "梦境香氛"
@@ -341,7 +381,7 @@ icon_key = "product.commerce"
 optional_tags = Array[String](["runtime_product", "industry_commerce", "weather_biological"])
 
 [sub_resource type="Resource" id="Product_037"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "零点饮料"
 industry_id = "commerce"
 display_name = "零点饮料"
@@ -349,7 +389,7 @@ icon_key = "product.commerce"
 optional_tags = Array[String](["runtime_product", "industry_commerce", "weather_food"])
 
 [sub_resource type="Resource" id="Product_038"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "云母玩具"
 industry_id = "commerce"
 display_name = "云母玩具"
@@ -357,7 +397,7 @@ icon_key = "product.commerce"
 optional_tags = Array[String](["runtime_product", "industry_commerce", "weather_crystal"])
 
 [sub_resource type="Resource" id="Product_039"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "风暴珍珠"
 industry_id = "commerce"
 display_name = "风暴珍珠"
@@ -365,7 +405,7 @@ icon_key = "product.commerce"
 optional_tags = Array[String](["runtime_product", "industry_commerce", "weather_crystal"])
 
 [sub_resource type="Resource" id="Product_040"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "赤道香草"
 industry_id = "commerce"
 display_name = "赤道香草"
@@ -373,7 +413,7 @@ icon_key = "product.commerce"
 optional_tags = Array[String](["runtime_product", "industry_commerce", "weather_biological", "weather_food"])
 
 [sub_resource type="Resource" id="Product_041"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "星鲸罐头"
 industry_id = "shipping"
 display_name = "星鲸罐头"
@@ -381,7 +421,7 @@ icon_key = "product.shipping"
 optional_tags = Array[String](["runtime_product", "industry_shipping", "weather_biological", "weather_food"])
 
 [sub_resource type="Resource" id="Product_042"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "星鳍鱼群"
 industry_id = "shipping"
 display_name = "星鳍鱼群"
@@ -389,7 +429,7 @@ icon_key = "product.shipping"
 optional_tags = Array[String](["runtime_product", "industry_shipping", "weather_biological", "weather_food"])
 
 [sub_resource type="Resource" id="Product_043"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "蓝潮藻"
 industry_id = "shipping"
 display_name = "蓝潮藻"
@@ -397,7 +437,7 @@ icon_key = "product.shipping"
 optional_tags = Array[String](["runtime_product", "industry_shipping", "weather_biological", "weather_food"])
 
 [sub_resource type="Resource" id="Product_044"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "巨藻纤维"
 industry_id = "shipping"
 display_name = "巨藻纤维"
@@ -405,7 +445,7 @@ icon_key = "product.shipping"
 optional_tags = Array[String](["runtime_product", "industry_shipping", "weather_biological"])
 
 [sub_resource type="Resource" id="Product_045"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "夜航香蕉"
 industry_id = "shipping"
 display_name = "夜航香蕉"
@@ -413,14 +453,142 @@ icon_key = "product.shipping"
 optional_tags = Array[String](["runtime_product", "industry_shipping", "weather_biological", "weather_food"])
 
 [sub_resource type="Resource" id="Product_046"]
-script = ExtResource("3_product")
+script = SubResource("GDScript_rtxru")
 product_id = "卫星坚果"
 industry_id = "shipping"
 display_name = "卫星坚果"
 icon_key = "product.shipping"
 optional_tags = Array[String](["runtime_product", "industry_shipping", "weather_biological", "weather_food"])
 
+[sub_resource type="GDScript" id="GDScript_dr0s3"]
+script/source = "extends Resource
+class_name ProductIndustryCatalogResource
+
+@export var schema_version: String = \"v0.5\"
+@export var industries: Array[ProductIndustryDefinitionResource] = []
+@export var products: Array[ProductIndustryEntryResource] = []
+
+
+func industry_ids() -> Array[String]:
+	var result: Array[String] = []
+	for definition in industries:
+		if definition != null:
+			result.append(definition.industry_id)
+	return result
+
+
+func product_ids() -> Array[String]:
+	var result: Array[String] = []
+	for entry in products:
+		if entry != null:
+			result.append(entry.product_id)
+	return result
+
+
+func industry_for_product(product_id: String) -> String:
+	for entry in products:
+		if entry != null and entry.product_id == product_id:
+			return entry.industry_id
+	return \"\"
+
+
+func tags_for_product(product_id: String) -> Array[String]:
+	for entry in products:
+		if entry != null and entry.product_id == product_id:
+			return entry.optional_tags.duplicate()
+	return []
+
+
+func product_snapshot(product_id: String) -> Dictionary:
+	for entry in products:
+		if entry != null and entry.product_id == product_id:
+			return entry.to_snapshot()
+	return {}
+
+
+func validation_snapshot(expected_product_ids: Array = []) -> Dictionary:
+	var errors: Array[String] = []
+	var known_industries: Dictionary = {}
+	var duplicate_industries: Array[String] = []
+	for definition in industries:
+		if definition == null or definition.industry_id.is_empty():
+			errors.append(\"industry_definition_missing_id\")
+			continue
+		if known_industries.has(definition.industry_id):
+			duplicate_industries.append(definition.industry_id)
+		else:
+			known_industries[definition.industry_id] = true
+		if definition.display_name.is_empty() or definition.icon_key.is_empty() or definition.color_key.is_empty():
+			errors.append(\"industry_metadata_incomplete:%s\" % definition.industry_id)
+		if definition.capacity_thresholds != [15, 40, 80, 140]:
+			errors.append(\"industry_thresholds_invalid:%s\" % definition.industry_id)
+	var seen_products: Dictionary = {}
+	var duplicate_products: Array[String] = []
+	var unknown_industry_products: Array[String] = []
+	for entry in products:
+		if entry == null or entry.product_id.is_empty():
+			errors.append(\"product_entry_missing_id\")
+			continue
+		if seen_products.has(entry.product_id):
+			duplicate_products.append(entry.product_id)
+		else:
+			seen_products[entry.product_id] = entry.industry_id
+		if not known_industries.has(entry.industry_id):
+			unknown_industry_products.append(entry.product_id)
+		if entry.display_name.is_empty() or entry.icon_key.is_empty():
+			errors.append(\"product_metadata_incomplete:%s\" % entry.product_id)
+	var missing_products: Array[String] = []
+	var unexpected_products: Array[String] = []
+	for expected_variant in expected_product_ids:
+		var expected_id := str(expected_variant)
+		if not seen_products.has(expected_id):
+			missing_products.append(expected_id)
+	for product_id_variant in seen_products.keys():
+		var product_id := str(product_id_variant)
+		if not expected_product_ids.is_empty() and not expected_product_ids.has(product_id):
+			unexpected_products.append(product_id)
+	if not duplicate_industries.is_empty():
+		errors.append(\"duplicate_industries\")
+	if not duplicate_products.is_empty():
+		errors.append(\"duplicate_products\")
+	if not unknown_industry_products.is_empty():
+		errors.append(\"unknown_industry_products\")
+	if not missing_products.is_empty():
+		errors.append(\"missing_products\")
+	if not unexpected_products.is_empty():
+		errors.append(\"unexpected_products\")
+	return {
+		\"valid\": errors.is_empty(),
+		\"schema_version\": schema_version,
+		\"industry_count\": known_industries.size(),
+		\"product_count\": seen_products.size(),
+		\"industry_ids\": industry_ids(),
+		\"duplicate_industries\": duplicate_industries,
+		\"duplicate_products\": duplicate_products,
+		\"unknown_industry_products\": unknown_industry_products,
+		\"missing_products\": missing_products,
+		\"unexpected_products\": unexpected_products,
+		\"errors\": errors,
+	}
+
+
+func debug_snapshot() -> Dictionary:
+	var industry_snapshots: Array[Dictionary] = []
+	for definition in industries:
+		if definition != null:
+			industry_snapshots.append(definition.to_snapshot())
+	var product_snapshots: Array[Dictionary] = []
+	for entry in products:
+		if entry != null:
+			product_snapshots.append(entry.to_snapshot())
+	return {
+		\"schema_version\": schema_version,
+		\"industries\": industry_snapshots,
+		\"products\": product_snapshots,
+	}
+"
+
 [resource]
-script = ExtResource("1_catalog")
-industries = Array[ExtResource("2_industry")]([SubResource("Industry_life"), SubResource("Industry_energy"), SubResource("Industry_industry"), SubResource("Industry_technology"), SubResource("Industry_commerce"), SubResource("Industry_shipping")])
-products = Array[ExtResource("3_product")]([SubResource("Product_001"), SubResource("Product_002"), SubResource("Product_003"), SubResource("Product_004"), SubResource("Product_005"), SubResource("Product_006"), SubResource("Product_007"), SubResource("Product_008"), SubResource("Product_009"), SubResource("Product_010"), SubResource("Product_011"), SubResource("Product_012"), SubResource("Product_013"), SubResource("Product_014"), SubResource("Product_015"), SubResource("Product_016"), SubResource("Product_017"), SubResource("Product_018"), SubResource("Product_019"), SubResource("Product_020"), SubResource("Product_021"), SubResource("Product_022"), SubResource("Product_023"), SubResource("Product_024"), SubResource("Product_025"), SubResource("Product_026"), SubResource("Product_027"), SubResource("Product_028"), SubResource("Product_029"), SubResource("Product_030"), SubResource("Product_031"), SubResource("Product_032"), SubResource("Product_033"), SubResource("Product_034"), SubResource("Product_035"), SubResource("Product_036"), SubResource("Product_037"), SubResource("Product_038"), SubResource("Product_039"), SubResource("Product_040"), SubResource("Product_041"), SubResource("Product_042"), SubResource("Product_043"), SubResource("Product_044"), SubResource("Product_045"), SubResource("Product_046")])
+script = SubResource("GDScript_dr0s3")
+industries = Array[SubResource("GDScript_4uugd")]([SubResource("Industry_life"), SubResource("Industry_energy"), SubResource("Industry_industry"), SubResource("Industry_technology"), SubResource("Industry_commerce"), SubResource("Industry_shipping")])
+products = Array[SubResource("GDScript_rtxru")]([SubResource("Product_001"), SubResource("Product_002"), SubResource("Product_003"), SubResource("Product_004"), SubResource("Product_005"), SubResource("Product_006"), SubResource("Product_007"), SubResource("Product_008"), SubResource("Product_009"), SubResource("Product_010"), SubResource("Product_011"), SubResource("Product_012"), SubResource("Product_013"), SubResource("Product_014"), SubResource("Product_015"), SubResource("Product_016"), SubResource("Product_017"), SubResource("Product_018"), SubResource("Product_019"), SubResource("Product_020"), SubResource("Product_021"), SubResource("Product_022"), SubResource("Product_023"), SubResource("Product_024"), SubResource("Product_025"), SubResource("Product_026"), SubResource("Product_027"), SubResource("Product_028"), SubResource("Product_029"), SubResource("Product_030"), SubResource("Product_031"), SubResource("Product_032"), SubResource("Product_033"), SubResource("Product_034"), SubResource("Product_035"), SubResource("Product_036"), SubResource("Product_037"), SubResource("Product_038"), SubResource("Product_039"), SubResource("Product_040"), SubResource("Product_041"), SubResource("Product_042"), SubResource("Product_043"), SubResource("Product_044"), SubResource("Product_045"), SubResource("Product_046")])

@@ -1,7 +1,24 @@
 # 太空辛迪加开发日志
 
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
-> 最新记录日期：2026-07-16。
+> 最新记录日期：2026-07-17。
+
+## 2026-07-17｜公开强制决策、牌序竞价与实际商路生产表面 C2
+
+- `GameTableViewModelRuntimeService` 新增统一 `viewer_surfaces` 契约，把 `ForcedDecisionRuntimeScheduler.active_decision(viewer_index)`、当前玩家可操作的 `public_bid` 快照、CommodityFlow 的公开实际流量与 RouteNetwork 公开路径合入同一 `TableSnapshot`；presentation 不读取运行时 owner，也不拥有计时、报价、现金、商品或路线。
+- `public_bid` 不再接受任意外部候选：Scheduler 只根据第二个权威阶段快照中的 `phase_id=public_bid`、active、visible 与单调 window sequence 派生最低优先级候选；planning/lock/idle、缺失 sequence 或伪造候选均 fail-closed。更高优先级的怪兽赌局、响应、合约和私人选择仍然覆盖竞价。
+- 新增 `OptionalRoutePublicSnapshot` 公共 allowlist。TableSnapshot 只保留 current/recent 已提交流量、对应真实 route id 和被实际流引用的几何；候选/未来路线、supplier/owner、安装绑定、交易指纹、AI 计划与评分递归剔除。推荐几何改为 `route_id -> ordered_region_ids`，由 `PlanetMapView` 对当前星球区域位置实时物化，避免把屏幕坐标塞进经济层。
+- `GameScreen.apply_state()` 现自动消费上述公开商路 payload；默认仍隐藏，玩家选择具体商品后才显示。私人强制决策对非 owner 只剩等待提示，不会显示选择内容或阻塞其普通操作。
+- 旧 `tests/card_presentation_viewmodel_runtime_test.gd` 已移除对退役 `main._runtime_table_snapshot` 的反射调用，改读现役 `RuntimeGameScreen.current_ui_data` 并通过 `TableSnapshot` 公共入口复核；异常后不退出的旧 oracle 已消除。
+- C2 没有修改 `main.gd`、Coordinator、CardFlow、RegionSupply、CommodityFlow、RouteNetwork 或经济公式。生产组合仍需上层做三项窄注入：把真实 card-window phase 传给 Scheduler、把 viewer-filtered decision/BidBoard 传入 `viewer_surfaces`、把 CommodityFlow actual-flow 与 RouteNetwork public region path 传入同一契约。详细边界见 `docs/public_gameplay_surface_wiring_v06.md`。
+
+### 本轮验证
+
+- `tests/public_gameplay_surface_wiring_v06_test.gd`：19/19 通过。
+- `tests/transient_gameplay_windows_v06_test.gd`：通过，新增权威阶段派生、伪造候选拒绝与 planning 清除 stale bid。
+- `tests/route_visibility_opt_in_v06_test.gd`：通过。
+- `tests/card_presentation_viewmodel_runtime_test.gd`：通过并正常输出完成 marker。
+- `scenes/tools/PublicGameplaySurfaceWiringV06Bench.tscn`：Godot 4.7 headless 8/8 通过；MCP 有头结果在本轮交接中记录。
 
 ## 2026-07-16｜可选实际商路与临时玩法窗口 C1
 

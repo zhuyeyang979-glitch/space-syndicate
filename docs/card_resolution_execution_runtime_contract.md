@@ -98,7 +98,7 @@ The observed generic sequence distinguishes opening evidence from outcome eviden
 7. Resolved-history append.
 8. Next queue entry start or batch promotion.
 
-`card_played` is a submission hook, not a second resolution hook. City-development rules own their distinct `city_development_resolved` and `city_built` hooks. The generic resolver does not duplicate them.
+`card_played` is a submission hook, not a second resolution hook. Facility settlement publishes `public_facility_committed` only after the authoritative facility transaction has finalized. The generic resolver does not duplicate that result.
 
 ## Representative real content
 

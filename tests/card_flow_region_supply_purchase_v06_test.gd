@@ -174,6 +174,7 @@ class RegionSupplyFixture:
 	var commit_calls := 0
 	var rollback_calls := 0
 	var finalize_calls := 0
+	var fail_commit := false
 	var fail_rollback := false
 	var finalize_failures_remaining := 0
 
@@ -236,6 +237,11 @@ class RegionSupplyFixture:
 
 	func commit_slot_refill(transaction_id: String) -> Dictionary:
 		commit_calls += 1
+		if fail_commit:
+			return {
+				"committed": false,
+				"reason_code": "simulated_region_supply_commit_failure",
+			}
 		if terminal.has(transaction_id):
 			return (terminal[transaction_id] as Dictionary).duplicate(true)
 		if not pending.has(transaction_id):
@@ -360,6 +366,7 @@ func _run() -> void:
 	await _verify_binding_failures_are_zero_effect(catalog)
 	await _verify_state_commit_rollback_and_recovery(catalog)
 	await _verify_finalize_retry_and_save_restore(catalog)
+	await _verify_full_hand_discard_atomicity(catalog)
 	_finish()
 
 
@@ -542,7 +549,315 @@ func _verify_finalize_retry_and_save_restore(catalog: Resource) -> void:
 	await _cleanup_controller(restored_controller, restored_state)
 
 
-func _setup_controller(catalog: Resource, register_players := true) -> Dictionary:
+func _verify_full_hand_discard_atomicity(catalog: Resource) -> void:
+	var full_hand := _distinct_full_hand(catalog)
+	var required_setup := await _setup_controller(
+		catalog,
+		true,
+		full_hand
+	)
+	var required_controller: Node = required_setup.controller
+	var required_state: StatePortNode = required_setup.state
+	var required_source: RegionSupplyFixture = required_setup.source
+	var required_listing: Dictionary = required_source.slots[0] as Dictionary
+	var required_quote := _bound_quote(
+		required_setup.quote_authority,
+		required_listing,
+		7
+	)
+	var required_player_before := JSON.stringify(_player(required_controller))
+	var required_source_before := JSON.stringify(required_source.to_save_data())
+	var required := _purchase(
+		required_controller,
+		required_listing,
+		0,
+		"tx-discard-required",
+		required_quote
+	)
+	if str(required.get("reason_code", "")) != "hand_full_discard_required":
+		print("DISCARD_REQUIRED_DIAG|%s" % JSON.stringify(required))
+	_expect(
+		str(required.get("reason_code", "")) == "hand_full_discard_required",
+		"full counted hand without a discard slot fails closed"
+	)
+	_expect(
+		JSON.stringify(_player(required_controller)) == required_player_before
+			and JSON.stringify(required_source.to_save_data())
+				== required_source_before,
+		"missing discard slot changes neither player nor RegionSupply"
+	)
+	await _cleanup_controller(required_controller, required_state)
+
+	var success_setup := await _setup_controller(catalog, true, full_hand)
+	var success_controller: Node = success_setup.controller
+	var success_state: StatePortNode = success_setup.state
+	var success_source: RegionSupplyFixture = success_setup.source
+	var success_listing: Dictionary = success_source.slots[0] as Dictionary
+	var success_quote := _bound_quote(
+		success_setup.quote_authority,
+		success_listing,
+		7
+	)
+	var discarded_id := _slot_card_id(_player(success_controller), 2)
+	var success := _purchase(
+		success_controller,
+		success_listing,
+		0,
+		"tx-discard-success",
+		success_quote,
+		2
+	)
+	if not bool(success.get("committed", false)):
+		print("DISCARD_SUCCESS_DIAG|%s" % JSON.stringify(success))
+	var success_player := _player(success_controller)
+	var private_receipt: Dictionary = success.get("private_receipt", {}) \
+		if success.get("private_receipt", {}) is Dictionary else {}
+	_expect(
+		bool(success.get("committed", false))
+			and bool(private_receipt.get("discarded", false))
+			and int(private_receipt.get("discard_slot", -1)) == 2,
+		"legal private discard commits inside the RegionSupply purchase"
+	)
+	_expect(
+		int(success_player.get("cash", -1)) == 93
+			and _card_count(success_player) == 5
+			and not _inventory_has_card(success_player, discarded_id)
+			and _inventory_has_card(success_player, CARD_ID),
+		"discard receive and cash debit form one player-state postimage"
+	)
+	var public_text := JSON.stringify(success.get("public_receipt", {}))
+	_expect(
+		not public_text.contains("discard")
+			and not public_text.contains(CARD_ID)
+			and not public_text.contains("hand")
+			and not public_text.contains("cash")
+			and not public_text.contains(ACTOR_ID),
+		"public purchase receipt leaks no discard card hand cash or actor"
+	)
+	var replay := _purchase(
+		success_controller,
+		required_listing,
+		0,
+		"tx-discard-success",
+		success_quote,
+		2
+	)
+	_expect(
+		bool(replay.get("committed", false))
+			and bool(replay.get("idempotent_replay", false))
+			and JSON.stringify(_player(success_controller))
+				== JSON.stringify(success_player)
+			and success_source.commit_calls == 1,
+		"replay does not discard charge receive or refill twice"
+	)
+	var success_save: Dictionary = success_controller.call("to_save_data")
+	var success_source_save := success_source.to_save_data()
+	await _cleanup_controller(success_controller, success_state)
+	var restored_setup := await _setup_controller(catalog, false)
+	var restored_controller: Node = restored_setup.controller
+	var restored_state: StatePortNode = restored_setup.state
+	var restored_source: RegionSupplyFixture = restored_setup.source
+	restored_source.apply_save_data(success_source_save)
+	var restored_apply: Dictionary = restored_controller.call(
+		"apply_save_data",
+		success_save
+	)
+	var restored_replay := _purchase(
+		restored_controller,
+		required_listing,
+		0,
+		"tx-discard-success",
+		success_quote,
+		2
+	)
+	_expect(
+		bool(restored_apply.get("applied", false))
+			and bool(restored_replay.get("idempotent_replay", false))
+			and JSON.stringify(_player(restored_controller))
+				== JSON.stringify(success_player)
+			and restored_source.commit_calls == 0,
+		"save-loaded replay does not repeat the private discard or source commit"
+	)
+	await _cleanup_controller(restored_controller, restored_state)
+
+	var invalid_setup := await _setup_controller(catalog, true, full_hand)
+	var invalid_controller: Node = invalid_setup.controller
+	var invalid_state: StatePortNode = invalid_setup.state
+	var invalid_source: RegionSupplyFixture = invalid_setup.source
+	var invalid_listing: Dictionary = invalid_source.slots[0] as Dictionary
+	var invalid_quote := _bound_quote(
+		invalid_setup.quote_authority,
+		invalid_listing,
+		7
+	)
+	var invalid_before := JSON.stringify(_player(invalid_controller))
+	var invalid_source_before := JSON.stringify(invalid_source.to_save_data())
+	var invalid := _purchase(
+		invalid_controller,
+		invalid_listing,
+		0,
+		"tx-discard-invalid",
+		invalid_quote,
+		99
+	)
+	if str(invalid.get("reason_code", "")) != "discard_slot_invalid":
+		print("DISCARD_INVALID_DIAG|%s" % JSON.stringify(invalid))
+	_expect(
+		str(invalid.get("reason_code", "")) == "discard_slot_invalid"
+			and JSON.stringify(_player(invalid_controller)) == invalid_before
+			and JSON.stringify(invalid_source.to_save_data())
+				== invalid_source_before,
+		"invalid discard slot has zero player and source side effects"
+	)
+	await _cleanup_controller(invalid_controller, invalid_state)
+
+	var merge_hand := _distinct_full_hand(catalog)
+	merge_hand[0] = catalog.call("card_snapshot", CARD_ID) as Dictionary
+	var merge_setup := await _setup_controller(catalog, true, merge_hand)
+	var merge_controller: Node = merge_setup.controller
+	var merge_state: StatePortNode = merge_setup.state
+	var merge_source: RegionSupplyFixture = merge_setup.source
+	var merge_listing: Dictionary = merge_source.slots[0] as Dictionary
+	var merge_quote := _bound_quote(
+		merge_setup.quote_authority,
+		merge_listing,
+		7
+	)
+	var protected_discard_id := _slot_card_id(_player(merge_controller), 3)
+	var merged := _purchase(
+		merge_controller,
+		merge_listing,
+		0,
+		"tx-merge-before-discard",
+		merge_quote,
+		3
+	)
+	if not bool(merged.get("committed", false)):
+		print("DISCARD_MERGE_DIAG|%s" % JSON.stringify(merged))
+	var merged_player := _player(merge_controller)
+	var merged_private: Dictionary = merged.get("private_receipt", {}) \
+		if merged.get("private_receipt", {}) is Dictionary else {}
+	_expect(
+		bool(merged.get("committed", false))
+			and not bool(merged_private.get("discarded", true))
+			and _inventory_has_card(merged_player, "facility.road.rank_2")
+			and _inventory_has_card(merged_player, protected_discard_id),
+		"same-rank merge takes priority and ignores the supplied discard slot"
+	)
+	await _cleanup_controller(merge_controller, merge_state)
+
+	var expiry_setup := await _setup_controller(catalog, true, full_hand)
+	var expiry_controller: Node = expiry_setup.controller
+	var expiry_state: StatePortNode = expiry_setup.state
+	var expiry_source: RegionSupplyFixture = expiry_setup.source
+	var expiry_listing: Dictionary = expiry_source.slots[0] as Dictionary
+	var expiry_quote := _bound_quote(
+		expiry_setup.quote_authority,
+		expiry_listing,
+		7
+	)
+	expiry_setup.quote_authority.now_world_us = 6_000_000
+	var expiry_before := JSON.stringify(_player(expiry_controller))
+	var expired := _purchase(
+		expiry_controller,
+		expiry_listing,
+		0,
+		"tx-discard-expired",
+		expiry_quote,
+		2
+	)
+	if str(expired.get("reason_code", "")) != "market_quote_unauthorized":
+		print("DISCARD_EXPIRED_DIAG|%s" % JSON.stringify(expired))
+	_expect(
+		str(expired.get("reason_code", "")) == "market_quote_unauthorized"
+			and JSON.stringify(_player(expiry_controller)) == expiry_before
+			and expiry_source.commit_calls == 0,
+		"expired quote never discards or commits the source"
+	)
+	await _cleanup_controller(expiry_controller, expiry_state)
+
+	var source_fail_setup := await _setup_controller(
+		catalog,
+		true,
+		full_hand
+	)
+	var source_fail_controller: Node = source_fail_setup.controller
+	var source_fail_state: StatePortNode = source_fail_setup.state
+	var source_fail_source: RegionSupplyFixture = source_fail_setup.source
+	source_fail_source.fail_commit = true
+	var source_fail_listing: Dictionary = source_fail_source.slots[0] as Dictionary
+	var source_fail_quote := _bound_quote(
+		source_fail_setup.quote_authority,
+		source_fail_listing,
+		7
+	)
+	var source_fail_before := JSON.stringify(_player(source_fail_controller))
+	var source_failed := _purchase(
+		source_fail_controller,
+		source_fail_listing,
+		0,
+		"tx-discard-source-fail",
+		source_fail_quote,
+		2
+	)
+	_expect(
+		not bool(source_failed.get("committed", true))
+			and str(source_failed.get("reason_code", ""))
+				== "simulated_region_supply_commit_failure"
+			and JSON.stringify(_player(source_fail_controller))
+				== source_fail_before
+			and str((source_fail_source.slots[0] as Dictionary).get(
+				"card_id",
+				""
+			)) == CARD_ID
+			and source_fail_source.commit_calls == 1
+			and source_fail_source.rollback_calls == 1,
+		"source commit failure leaves the discard and player state untouched"
+	)
+	await _cleanup_controller(source_fail_controller, source_fail_state)
+
+	var state_fail_setup := await _setup_controller(catalog, true, full_hand)
+	var state_fail_controller: Node = state_fail_setup.controller
+	var state_fail_state: StatePortNode = state_fail_setup.state
+	var state_fail_source: RegionSupplyFixture = state_fail_setup.source
+	state_fail_state.fail_commit = true
+	var state_fail_listing: Dictionary = state_fail_source.slots[0] as Dictionary
+	var state_fail_quote := _bound_quote(
+		state_fail_setup.quote_authority,
+		state_fail_listing,
+		7
+	)
+	var state_fail_player_before := JSON.stringify(_player(state_fail_controller))
+	var state_fail_source_before := JSON.stringify(state_fail_source.slots)
+	var state_failed := _purchase(
+		state_fail_controller,
+		state_fail_listing,
+		0,
+		"tx-discard-state-fail",
+		state_fail_quote,
+		2
+	)
+	_expect(
+		str(state_failed.get("reason_code", ""))
+			== "player_state_commit_failed"
+			and bool(state_failed.get("rolled_back", false))
+			and JSON.stringify(_player(state_fail_controller))
+				== state_fail_player_before
+			and JSON.stringify(state_fail_source.slots)
+				== state_fail_source_before
+			and state_fail_source.pending.is_empty()
+			and state_fail_source.commit_calls == 1
+			and state_fail_source.rollback_calls == 1,
+		"player commit failure restores the source without applying the discard"
+	)
+	await _cleanup_controller(state_fail_controller, state_fail_state)
+
+
+func _setup_controller(
+	catalog: Resource,
+	register_players := true,
+	initial_cards: Array = []
+) -> Dictionary:
 	var controller := INVENTORY_SCENE.instantiate() as CommodityCardInventoryRuntimeController
 	root.add_child(controller)
 	var state := StatePortNode.new()
@@ -556,7 +871,7 @@ func _setup_controller(catalog: Resource, register_players := true) -> Dictionar
 	controller.set_market_quote_authority(quote_authority)
 	controller.set_region_supply_source_port(source)
 	if register_players:
-		state.register_fixture(ACTOR_ID, _state(100, 0, []))
+		state.register_fixture(ACTOR_ID, _state(100, 0, initial_cards))
 		state.register_fixture("player.1", _state(987654, 1, [
 			catalog.call("card_snapshot", OTHER_CARD_ID) as Dictionary,
 		]))
@@ -598,7 +913,8 @@ func _purchase(
 	listing: Dictionary,
 	player_revision: int,
 	transaction_id: String,
-	quote_request: Dictionary
+	quote_request: Dictionary,
+	discard_slot: int = -1
 ) -> Dictionary:
 	return controller.call(
 		"purchase_region_supply_card",
@@ -610,11 +926,27 @@ func _purchase(
 		player_revision,
 		str(listing.get("supply_revision", "")),
 		transaction_id,
-		quote_request.duplicate(true)
+		quote_request.duplicate(true),
+		discard_slot
 	) as Dictionary
 
 
 func _state(cash: int, player_index: int, cards: Array) -> Dictionary:
+	var normalized_cards: Array = []
+	for slot_index in range(cards.size()):
+		if not (cards[slot_index] is Dictionary):
+			normalized_cards.append(cards[slot_index])
+			continue
+		var card: Dictionary = (cards[slot_index] as Dictionary).duplicate(true)
+		if str(card.get("runtime_instance_id", "")).strip_edges().is_empty():
+			var machine: Dictionary = card.get("machine", {}) \
+				if card.get("machine", {}) is Dictionary else {}
+			card["runtime_instance_id"] = "fixture:%d:%d:%s" % [
+				player_index,
+				slot_index,
+				str(machine.get("card_id", "card")),
+			]
+		normalized_cards.append(card)
 	return {
 		"revision": 0,
 		"cash": cash,
@@ -627,7 +959,7 @@ func _state(cash: int, player_index: int, cards: Array) -> Dictionary:
 			"commerce": 0,
 			"shipping": 0,
 		},
-		"inventory": {"hand_limit": 5, "slots": cards.duplicate(true)},
+		"inventory": {"hand_limit": 5, "slots": normalized_cards},
 	}
 
 
@@ -644,6 +976,52 @@ func _card_count(player: Dictionary) -> int:
 		if slot_variant is Dictionary:
 			count += 1
 	return count
+
+
+func _distinct_full_hand(catalog: Resource) -> Array:
+	var result: Array = []
+	for card_id in [
+		"facility.factory.life.rank_1",
+		"facility.market.life.rank_1",
+		"facility.seaport.rank_1",
+		"facility.spaceport.rank_1",
+		"facility.orbital_warehouse.rank_1",
+	]:
+		result.append(catalog.call("card_snapshot", card_id) as Dictionary)
+	return result
+
+
+func _slot_card_id(player: Dictionary, slot_index: int) -> String:
+	var inventory: Dictionary = player.get("inventory", {}) \
+		if player.get("inventory", {}) is Dictionary else {}
+	var slots: Array = inventory.get("slots", []) \
+		if inventory.get("slots", []) is Array else []
+	if slot_index < 0 \
+			or slot_index >= slots.size() \
+			or not (slots[slot_index] is Dictionary):
+		return ""
+	var machine: Dictionary = (slots[slot_index] as Dictionary).get(
+		"machine",
+		{}
+	) if (slots[slot_index] as Dictionary).get("machine", {}) is Dictionary else {}
+	return str(machine.get("card_id", ""))
+
+
+func _inventory_has_card(player: Dictionary, card_id: String) -> bool:
+	var inventory: Dictionary = player.get("inventory", {}) \
+		if player.get("inventory", {}) is Dictionary else {}
+	var slots: Array = inventory.get("slots", []) \
+		if inventory.get("slots", []) is Array else []
+	for slot_variant in slots:
+		if not (slot_variant is Dictionary):
+			continue
+		var machine: Dictionary = (slot_variant as Dictionary).get(
+			"machine",
+			{}
+		) if (slot_variant as Dictionary).get("machine", {}) is Dictionary else {}
+		if str(machine.get("card_id", "")) == card_id:
+			return true
+	return false
 
 
 func _cleanup_controller(controller: Node, state: Node) -> void:

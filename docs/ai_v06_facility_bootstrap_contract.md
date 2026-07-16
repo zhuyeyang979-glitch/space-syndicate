@@ -58,6 +58,15 @@ purchase_region_supply_card(request: Dictionary) -> Dictionary
 play_runtime_card(request: Dictionary) -> Dictionary
 ```
 
+The frozen v0.6 port retains the compatibility method name
+`market_snapshot(actor_id)`, but that method is now only a deterministic,
+viewer-safe projection of the current public `RegionSupply` racks. It is not a
+second facility market. Its `revision` is the authoritative RegionSupply state
+revision, and its selected listing is present in a currently revealed rack
+slot. The former fixed first-table facility listing, category rotation, and
+Inventory-owned facility-market source are physically retired from the
+production Coordinator.
+
 Every response is recursively pure data and includes:
 
 - `available: bool`;
@@ -226,7 +235,10 @@ pressure buckets or route plan.
    this avoids a second charge after a successful purchase and failed play.
 3. Otherwise lock the canonical listing through the existing five-second quote
    path. AI does not echo or override authored price.
-4. Submit the deterministic purchase transaction with expected revisions.
+4. Submit the deterministic purchase transaction through
+   `GameRuntimeCoordinator.purchase_region_supply_card`, which delegates to the
+   canonical Inventory/CardFlow transaction and RegionSupply slot-refill
+   lifecycle.
 5. Re-read the authoritative player snapshot after purchase.
 6. Locate the stable runtime card instance and submit the normal play request.
 7. Count success only from the canonical committed and terminal owner result.

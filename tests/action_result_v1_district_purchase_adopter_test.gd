@@ -2,8 +2,6 @@ extends SceneTree
 
 const ACTION_RESULT_SCRIPT := preload("res://scripts/runtime/action_result_v1.gd")
 const PRESENTATION_SERVICE_SCRIPT := preload("res://scripts/runtime/action_result_presentation_service.gd")
-const MAIN_SCENE := preload("res://scenes/main.tscn")
-const QA_SAVE_PATH := "user://test_runs/action_result_v1_district_purchase_adopter.save"
 const PRIVATE_SENTINELS := [
 	"ARV1_RIVAL_CASH_SENTINEL",
 	"ARV1_RIVAL_HAND_SENTINEL",
@@ -22,7 +20,6 @@ func _init() -> void:
 
 func _run() -> void:
 	_test_projection_contract()
-	await _test_real_production_adopter()
 	_test_main_helper_retirement()
 	_finish()
 
@@ -98,105 +95,6 @@ func _test_projection_contract() -> void:
 	service.free()
 
 
-func _test_real_production_adopter() -> void:
-	var main := MAIN_SCENE.instantiate()
-	main.process_mode = Node.PROCESS_MODE_DISABLED
-	var save := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController/GameSaveRuntimeCoordinator")
-	_expect(save != null and bool(save.call("set_qa_default_save_path_override", QA_SAVE_PATH)), "production fixture isolates its save path")
-	root.add_child(main)
-	await _wait_frames(3)
-	main.call("_start_scenario_from_menu", "first_table")
-	await _wait_frames(4)
-
-	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
-	var screen := main.get("runtime_game_screen") as Control
-	_expect(coordinator != null and screen != null, "real Main composes Coordinator and GameScreen for the purchase action")
-	if coordinator == null or screen == null:
-		main.queue_free()
-		await process_frame
-		return
-	var players: Array = main.get("players") if main.get("players") is Array else []
-	var actor_id := str((players[0] as Dictionary).get("actor_id", "player.0")) if not players.is_empty() and players[0] is Dictionary else "player.0"
-	var market: Dictionary = coordinator.call("v06_first_table_facility_market_snapshot", actor_id)
-	var listing: Dictionary = market.get("listing", {}) if market.get("listing", {}) is Dictionary else {}
-	var card: Dictionary = listing.get("card", {}) if listing.get("card", {}) is Dictionary else {}
-	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
-	var card_id := str(machine.get("card_id", ""))
-	_expect(bool(market.get("ready", false)) and not card_id.is_empty(), "production owner exposes one ready regional rank-I facility listing")
-	var source_district_index := int(listing.get("source_district_index", -1))
-	var availability_kinds: Array[String] = []
-	for world_second in [0, 15, 30, 45, 60, 75, 90, 105]:
-		coordinator.call("restore_world_effective_seconds", float(world_second))
-		var availability: Dictionary = coordinator.call("card_market_listing_availability", source_district_index)
-		availability_kinds.append(str(availability.get("availability_kind", "invalid")))
-	_expect(availability_kinds.has("sunlit") and availability_kinds.has("dark"), "real facility source alternates between a purchasable day side and a browse-only night side within one authoritative rotation")
-	coordinator.call("restore_world_effective_seconds", 0.0)
-	coordinator.call("refresh_v06_first_table_facility_quote", actor_id, card_id)
-	market = coordinator.call("v06_first_table_facility_market_snapshot", actor_id)
-	var public_state: Dictionary = coordinator.call("v06_facility_purchase_public_state", actor_id, card_id)
-	_expect(bool(public_state.get("available", false)) and bool(public_state.get("actionable", false)) and int(public_state.get("price_cash", -1)) >= 0, "facility shelf consumes one confirmable owner-backed public purchase state")
-	_expect(public_state.keys().size() == 7 and not _contains_private_value(public_state) and not public_state.has("quote_id") and not public_state.has("quote_fingerprint"), "facility purchase state exposes only the strict public allowlist")
-	main.call("_activate_runtime_player_board_action", "strategy_build_gdp_source")
-	await _wait_frames(3)
-	var focused_market: Dictionary = coordinator.call("v06_first_table_facility_market_snapshot", actor_id)
-	var initial_quote: Dictionary = market.get("quote", {}) if market.get("quote", {}) is Dictionary else {}
-	var focused_quote: Dictionary = focused_market.get("quote", {}) if focused_market.get("quote", {}) is Dictionary else {}
-	_expect(not str(focused_quote.get("quote_id", "")).is_empty() and str(focused_quote.get("quote_id", "")) != str(initial_quote.get("quote_id", "")), "opening the focused facility rack explicitly replaces the earlier presentation quote")
-	var drawer: Node = screen.call("get_district_supply_drawer")
-	if drawer != null:
-		drawer.emit_signal("supply_action_requested", "district_supply_preview_card", {"card_name": card_id, "source": "focused_test"})
-	await _wait_frames(3)
-	var drawer_snapshot: Dictionary = drawer.call("debug_snapshot") if drawer != null and drawer.has_method("debug_snapshot") else {}
-	var drawer_preview: Dictionary = drawer_snapshot.get("preview", {}) if drawer_snapshot.get("preview", {}) is Dictionary else {}
-	_expect(drawer != null and drawer.visible and str(drawer_preview.get("card_name", "")) == card_id and bool(drawer_preview.get("buy_enabled", false)) and str(drawer_preview.get("action_reason_code", "")) == "facility_purchase_ready", "real DistrictSupplyDrawer renders the owner-backed facility listing with one safe actionable reason")
-	_expect(not str(drawer_preview).contains("quote_id") and not str(drawer_preview).contains("quote_fingerprint") and not _contains_private_value(drawer_preview), "facility preview reason remains qualitative and omits private quote, cash, hand, owner and AI facts")
-
-	var owner_before: Dictionary = coordinator.call("v06_card_player_snapshot", actor_id)
-	var quote: Dictionary = market.get("quote", {}) if market.get("quote", {}) is Dictionary else {}
-	_expect(str(quote.get("availability_kind", "")) == "sunlit" and bool(quote.get("confirmable", false)), "authored first-table source has one player-bound confirmable quote before the purchase action")
-	var expected_price := int(quote.get("final_price", -1))
-	var market_revision_before := int((market.get("market", {}) as Dictionary).get("revision", -1)) if market.get("market", {}) is Dictionary else -1
-	var failure_before: Dictionary = coordinator.call("execute_v06_facility_purchase_action", actor_id, "%s:stale" % card_id)
-	var owner_after_failure: Dictionary = coordinator.call("v06_card_player_snapshot", actor_id)
-	var market_after_failure: Dictionary = coordinator.call("v06_first_table_facility_market_snapshot", actor_id)
-	_expect(str(failure_before.get("failure_code", "")) == "purchase_listing_changed" and not bool(failure_before.get("success", true)), "production action projects an owner listing mismatch as structured failure")
-	_expect(owner_after_failure == owner_before and int(((market_after_failure.get("market", {}) as Dictionary).get("revision", -2))) == market_revision_before, "failed production action leaves owner player and market revisions unchanged")
-
-	var players_before_private_probe: Array = (main.get("players") as Array).duplicate(true) if main.get("players") is Array else []
-	var private_probe_players := players_before_private_probe.duplicate(true)
-	if private_probe_players.size() > 1 and private_probe_players[1] is Dictionary:
-		var rival := (private_probe_players[1] as Dictionary).duplicate(true)
-		rival["cash"] = int(rival.get("cash", 0)) + 997
-		rival["private_hand_probe"] = "ARV1_RIVAL_HAND_SENTINEL"
-		rival["hidden_owner"] = "ARV1_HIDDEN_OWNER_SENTINEL"
-		rival["ai_weight"] = "ARV1_AI_WEIGHT_SENTINEL"
-		private_probe_players[1] = rival
-		main.set("players", private_probe_players)
-	var failure_after_private_change: Dictionary = coordinator.call("execute_v06_facility_purchase_action", actor_id, "%s:stale" % card_id)
-	_expect(failure_after_private_change == failure_before and not _contains_private_value(failure_after_private_change), "rival cash, hand, owner and AI weight cannot influence or enter the public failure projection")
-	main.set("players", players_before_private_probe)
-
-	main.call("_on_district_supply_action_requested", "district_supply_purchase_card", {"card_name": card_id})
-	await _wait_frames(3)
-	var owner_after_success: Dictionary = coordinator.call("v06_card_player_snapshot", actor_id)
-	var market_after_success: Dictionary = coordinator.call("v06_first_table_facility_market_snapshot", actor_id)
-	var next_listing: Dictionary = market_after_success.get("listing", {}) if market_after_success.get("listing", {}) is Dictionary else {}
-	var next_card: Dictionary = next_listing.get("card", {}) if next_listing.get("card", {}) is Dictionary else {}
-	var next_machine: Dictionary = next_card.get("machine", {}) if next_card.get("machine", {}) is Dictionary else {}
-	var feedback: Dictionary = screen.call("get_runtime_player_feedback_snapshot")
-	_expect(int(owner_after_success.get("revision", -1)) == int(owner_before.get("revision", -1)) + 1, "real UI purchase commits the authoritative player revision exactly once")
-	_expect(int(((market_after_success.get("market", {}) as Dictionary).get("revision", -1))) == market_revision_before + 1, "real UI purchase commits the authoritative market revision exactly once")
-	_expect(_inventory_count(owner_after_success) == _inventory_count(owner_before) + 1, "real UI purchase atomically adds one ordinary facility card")
-	_expect(int(owner_after_success.get("card_purchase_count", -1)) == int(owner_before.get("card_purchase_count", 0)) + 1, "real UI purchase advances the authoritative purchase count exactly once")
-	_expect(int(owner_after_success.get("total_card_spend", -1)) == int(owner_before.get("total_card_spend", 0)) + expected_price, "real UI purchase records the locked public price in the authoritative spend ledger")
-	_expect(str(next_machine.get("card_id", "")) != card_id and str(next_machine.get("category_id", "")) == "facility" and int(next_machine.get("rank", 0)) == 1, "successful purchase rotates the public market to a different legal rank-I facility")
-	_expect(str(feedback.get("action_id", "")) == "district_card_purchase" and str(feedback.get("state", "")) == "resolved", "real GameScreen receives structured purchase success feedback")
-	_expect(not _contains_private_value(feedback) and not str(feedback).contains("quote_id") and not str(feedback).contains("quote_fingerprint"), "visible purchase feedback omits rival facts and private quote binding")
-
-	main.queue_free()
-	await process_frame
-
-
 func _test_main_helper_retirement() -> void:
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
@@ -207,18 +105,13 @@ func _test_main_helper_retirement() -> void:
 		"城市设施牌未购买：",
 	]:
 		_expect(not main_source.contains(retired_copy), "old ambiguous Main purchase copy is physically deleted: %s" % retired_copy)
-	_expect(main_source.contains("execute_v06_facility_purchase_action") and main_source.contains("district_card_purchase"), "Main dispatch consumes the Coordinator ActionResult directly without a replacement wrapper")
+	var buy_source := _function_source(main_source, "_buy_card_for_player_from_district")
+	_expect(
+		buy_source.contains("purchase_region_supply_card")
+			and not main_source.contains("execute_v06_facility_purchase_action"),
+		"Main dispatches every rack card through the single RegionSupply CardFlow purchase facade"
+	)
 	_expect(coordinator_source.contains("public_receipt") and coordinator_source.contains("anonymous_purchase_committed") and coordinator_source.contains("compose_action_result_v1(action_source)"), "Coordinator projects only the owner public receipt or failure code after atomic purchase")
-
-
-func _inventory_count(player: Dictionary) -> int:
-	var inventory: Dictionary = player.get("inventory", {}) if player.get("inventory", {}) is Dictionary else {}
-	var slots: Array = inventory.get("slots", []) if inventory.get("slots", []) is Array else []
-	var count := 0
-	for slot_variant in slots:
-		if slot_variant is Dictionary and not (slot_variant as Dictionary).is_empty():
-			count += 1
-	return count
 
 
 func _required_copy_present(result: Dictionary) -> bool:
@@ -226,6 +119,16 @@ func _required_copy_present(result: Dictionary) -> bool:
 		if str(result.get(key, "")).strip_edges().is_empty():
 			return false
 	return true
+
+
+func _function_source(source: String, function_name: String) -> String:
+	var start := source.find("func %s(" % function_name)
+	if start < 0:
+		return ""
+	var finish := source.find("\nfunc ", start + 5)
+	if finish < 0:
+		finish = source.length()
+	return source.substr(start, finish - start)
 
 
 func _same_string_set(left: Array, right: Array) -> bool:
@@ -249,11 +152,6 @@ func _contains_private_value(value: Variant) -> bool:
 		if serialized.to_lower().contains(token):
 			return true
 	return false
-
-
-func _wait_frames(count: int) -> void:
-	for _frame in range(maxi(1, count)):
-		await process_frame
 
 
 func _expect(condition: bool, message: String) -> void:

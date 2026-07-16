@@ -2,7 +2,9 @@
 extends Node
 class_name CityDevelopmentWorldBridge
 
-const PROJECT_BRIDGE := preload("res://scripts/economy/city_product_project_bridge.gd")
+# Historical v0.5 fixture only. Production v0.6 has no city-project share bridge.
+
+const PROJECT_BRIDGE := preload("res://tests/legacy_v05/economy/city_product_project_bridge_v05.gd")
 
 var _world: Node
 var _network_controller: Node

@@ -82,8 +82,8 @@ func run_checks() -> Dictionary:
 		"thin_region_supply_purchase_facade_present"
 	)
 	_check(
-		coordinator.has_method("commit_district_purchase_with_region_supply"),
-		"legacy_bridge_retained_for_main_cutover"
+		not coordinator.has_method("commit_district_purchase_with_region_supply"),
+		"legacy_region_supply_purchase_bridge_retired"
 	)
 	if inventory == null or source == null:
 		coordinator.queue_free()

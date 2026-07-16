@@ -1,100 +1,156 @@
 [gd_resource type="Resource" script_class="ControllerStateVersionRegistryResource" format=3 uid="uid://ks35kbhop071"]
 
-[ext_resource type="Script" uid="uid://d1bhrwk52fsxg" path="res://scripts/rules/controller_state_version_registry_resource.gd" id="1_registry"]
-[ext_resource type="Script" uid="uid://ve6sdrut70u6" path="res://scripts/rules/controller_state_version_entry_resource.gd" id="2_entry"]
+[sub_resource type="GDScript" id="GDScript_4qy6n"]
+script/source = "extends Resource
+class_name ControllerStateVersionEntryResource
+
+@export var controller_id: String = \"\"
+@export var save_section: String = \"\"
+@export var state_version: int = 1
+@export var required: bool = true
+
+
+func to_snapshot() -> Dictionary:
+	return {
+		\"controller_id\": controller_id,
+		\"save_section\": save_section,
+		\"state_version\": state_version,
+		\"required\": required,
+	}
+"
 
 [sub_resource type="Resource" id="Controller_01"]
-script = ExtResource("2_entry")
+script = SubResource("GDScript_4qy6n")
 controller_id = "ruleset_runtime"
 save_section = "ruleset"
 
 [sub_resource type="Resource" id="Controller_02"]
-script = ExtResource("2_entry")
+script = SubResource("GDScript_4qy6n")
 controller_id = "game_session"
 save_section = "session"
 
 [sub_resource type="Resource" id="Controller_03"]
-script = ExtResource("2_entry")
+script = SubResource("GDScript_4qy6n")
 controller_id = "public_facility_region"
 save_section = "region_infrastructure"
 
 [sub_resource type="Resource" id="Controller_04"]
-script = ExtResource("2_entry")
+script = SubResource("GDScript_4qy6n")
 controller_id = "region_supply"
 save_section = "region_supply"
 
 [sub_resource type="Resource" id="Controller_05"]
-script = ExtResource("2_entry")
+script = SubResource("GDScript_4qy6n")
 controller_id = "route_network"
 save_section = "routes"
 
 [sub_resource type="Resource" id="Controller_06"]
-script = ExtResource("2_entry")
+script = SubResource("GDScript_4qy6n")
 controller_id = "commodity_flow"
 save_section = "commodity_flow"
 state_version = 2
 
 [sub_resource type="Resource" id="Controller_07"]
-script = ExtResource("2_entry")
+script = SubResource("GDScript_4qy6n")
 controller_id = "player_mana"
 save_section = "player_mana"
 
 [sub_resource type="Resource" id="Controller_08"]
-script = ExtResource("2_entry")
+script = SubResource("GDScript_4qy6n")
 controller_id = "commodity_belt_visibility"
 save_section = "commodity_belt_visibility"
 
 [sub_resource type="Resource" id="Controller_09"]
-script = ExtResource("2_entry")
+script = SubResource("GDScript_4qy6n")
 controller_id = "card_inventory"
 save_section = "card_inventory"
 
 [sub_resource type="Resource" id="Controller_10"]
-script = ExtResource("2_entry")
+script = SubResource("GDScript_4qy6n")
 controller_id = "card_resolution_queue"
 save_section = "card_resolution_queue"
 
 [sub_resource type="Resource" id="Controller_11"]
-script = ExtResource("2_entry")
+script = SubResource("GDScript_4qy6n")
 controller_id = "card_resolution_execution"
 save_section = "card_resolution_execution"
 
 [sub_resource type="Resource" id="Controller_12"]
-script = ExtResource("2_entry")
+script = SubResource("GDScript_4qy6n")
 controller_id = "monster_runtime"
 save_section = "monsters"
 
 [sub_resource type="Resource" id="Controller_13"]
-script = ExtResource("2_entry")
+script = SubResource("GDScript_4qy6n")
 controller_id = "military_runtime"
 save_section = "military"
 
 [sub_resource type="Resource" id="Controller_14"]
-script = ExtResource("2_entry")
+script = SubResource("GDScript_4qy6n")
 controller_id = "weather_runtime"
 save_section = "weather"
 
 [sub_resource type="Resource" id="Controller_15"]
-script = ExtResource("2_entry")
+script = SubResource("GDScript_4qy6n")
 controller_id = "ai_runtime"
 save_section = "ai"
 
 [sub_resource type="Resource" id="Controller_16"]
-script = ExtResource("2_entry")
+script = SubResource("GDScript_4qy6n")
 controller_id = "victory_control"
 save_section = "victory_control"
 
 [sub_resource type="Resource" id="Controller_17"]
-script = ExtResource("2_entry")
+script = SubResource("GDScript_4qy6n")
 controller_id = "player_organization"
 save_section = "player_organization"
 
 [sub_resource type="Resource" id="Controller_18"]
-script = ExtResource("2_entry")
+script = SubResource("GDScript_4qy6n")
 controller_id = "bankruptcy_neutral_estate"
 save_section = "bankruptcy_neutral_estate"
 
+[sub_resource type="GDScript" id="GDScript_i33y4"]
+script/source = "extends Resource
+class_name ControllerStateVersionRegistryResource
+
+@export var ruleset_id: String = \"v0.5\"
+@export var entries: Array[ControllerStateVersionEntryResource] = []
+
+
+func required_versions() -> Dictionary:
+	var result: Dictionary = {}
+	for entry in entries:
+		if entry != null and entry.required:
+			result[entry.controller_id] = entry.state_version
+	return result
+
+
+func validation_snapshot() -> Dictionary:
+	var errors: Array[String] = []
+	var seen: Dictionary = {}
+	for entry in entries:
+		if entry == null or entry.controller_id.is_empty() or entry.save_section.is_empty():
+			errors.append(\"controller_entry_incomplete\")
+			continue
+		if seen.has(entry.controller_id):
+			errors.append(\"duplicate_controller:%s\" % entry.controller_id)
+		else:
+			seen[entry.controller_id] = true
+		if entry.state_version <= 0:
+			errors.append(\"state_version_invalid:%s\" % entry.controller_id)
+	return {\"valid\": errors.is_empty(), \"errors\": errors, \"controller_count\": seen.size()}
+
+
+func debug_snapshot() -> Dictionary:
+	var snapshots: Array[Dictionary] = []
+	for entry in entries:
+		if entry != null:
+			snapshots.append(entry.to_snapshot())
+	return {\"ruleset_id\": ruleset_id, \"entries\": snapshots, \"required_versions\": required_versions()}
+"
+
 [resource]
-script = ExtResource("1_registry")
+script = SubResource("GDScript_i33y4")
 ruleset_id = "v0.6"
-entries = Array[ExtResource("2_entry")]([SubResource("Controller_01"), SubResource("Controller_02"), SubResource("Controller_03"), SubResource("Controller_04"), SubResource("Controller_05"), SubResource("Controller_06"), SubResource("Controller_07"), SubResource("Controller_08"), SubResource("Controller_09"), SubResource("Controller_10"), SubResource("Controller_11"), SubResource("Controller_12"), SubResource("Controller_13"), SubResource("Controller_14"), SubResource("Controller_15"), SubResource("Controller_16"), SubResource("Controller_17"), SubResource("Controller_18")])
+entries = Array[SubResource("GDScript_4qy6n")]([SubResource("Controller_01"), SubResource("Controller_02"), SubResource("Controller_03"), SubResource("Controller_04"), SubResource("Controller_05"), SubResource("Controller_06"), SubResource("Controller_07"), SubResource("Controller_08"), SubResource("Controller_09"), SubResource("Controller_10"), SubResource("Controller_11"), SubResource("Controller_12"), SubResource("Controller_13"), SubResource("Controller_14"), SubResource("Controller_15"), SubResource("Controller_16"), SubResource("Controller_17"), SubResource("Controller_18")])

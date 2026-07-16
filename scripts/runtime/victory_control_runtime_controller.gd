@@ -107,12 +107,12 @@ func evaluate_region_control(region_snapshot: Dictionary) -> Dictionary:
 	for player_index_variant in player_indices:
 		var player_index := int(player_index_variant)
 		var player_gdp_cents := maxi(0, int(player_gdp_by_index.get(str(player_index), player_gdp_by_index.get(player_index, 0))))
-		var share_basis_points := int(floor(float(player_gdp_cents) * 10000.0 / float(region_gdp_cents)))
+		var commodity_gdp_share_basis_points := int(floor(float(player_gdp_cents) * 10000.0 / float(region_gdp_cents)))
 		(result["player_results"] as Array).append({
 			"player_index": player_index,
 			"attributable_gdp_per_minute_cents": player_gdp_cents,
 			"attributable_gdp_per_minute": int(round(float(player_gdp_cents) / float(currency_scale))),
-			"share_basis_points": clampi(share_basis_points, 0, 10000),
+			"commodity_gdp_share_basis_points": clampi(commodity_gdp_share_basis_points, 0, 10000),
 		})
 		if player_gdp_cents > highest_gdp_cents:
 			highest_gdp_cents = player_gdp_cents
@@ -126,9 +126,18 @@ func evaluate_region_control(region_snapshot: Dictionary) -> Dictionary:
 		if not (player_result_variant is Dictionary):
 			continue
 		var player_result: Dictionary = player_result_variant
-		if int(player_result.get("player_index", -1)) == highest_player and int(player_result.get("share_basis_points", 0)) >= int(result["control_threshold_basis_points"]):
+		if int(player_result.get("player_index", -1)) == highest_player and int(player_result.get("commodity_gdp_share_basis_points", 0)) >= int(result["control_threshold_basis_points"]):
 			result["controller_player_index"] = highest_player
 			break
+	return result
+
+
+func region_control_snapshot(region_snapshot: Dictionary) -> Dictionary:
+	var result := evaluate_region_control(region_snapshot)
+	result["schema_version"] = "v0.6.region-control.1"
+	result["snapshot_kind"] = "commodity_gdp_region_control"
+	result["revision"] = _region_control_revision(region_snapshot)
+	result["visibility_scope"] = "public"
 	return result
 
 
@@ -174,7 +183,7 @@ func evaluate_candidates(world_snapshot: Dictionary) -> Array:
 			"player_index": player_index,
 			"eliminated": bool(player.get("eliminated", false)),
 			"controlled_regions": [],
-			"region_shares": [],
+			"region_control_rows": [],
 			"controlled_region_count": 0,
 			"top_k_gdp_per_minute_cents": 0,
 			"top_k_gdp_per_minute": 0,
@@ -195,13 +204,13 @@ func evaluate_candidates(world_snapshot: Dictionary) -> Array:
 			var player_index := int(player_key)
 			var share_row := _player_region_row(control, player_index)
 			var row: Dictionary = player_rows[player_key]
-			(row["region_shares"] as Array).append({
+			(row["region_control_rows"] as Array).append({
 				"region_id": str(control.get("region_id", "")),
 				"district_index": int(control.get("district_index", -1)),
 				"surviving": bool(control.get("surviving", false)),
 				"attributable_gdp_per_minute_cents": int(share_row.get("attributable_gdp_per_minute_cents", 0)),
 				"attributable_gdp_per_minute": int(share_row.get("attributable_gdp_per_minute", 0)),
-				"share_basis_points": int(share_row.get("share_basis_points", 0)),
+				"commodity_gdp_share_basis_points": int(share_row.get("commodity_gdp_share_basis_points", 0)),
 				"controls": int(control.get("controller_player_index", -1)) == player_index,
 			})
 			player_rows[player_key] = row
@@ -216,7 +225,7 @@ func evaluate_candidates(world_snapshot: Dictionary) -> Array:
 			"district_index": int(control.get("district_index", -1)),
 			"attributable_gdp_per_minute_cents": int(controlled_row.get("attributable_gdp_per_minute_cents", 0)),
 			"attributable_gdp_per_minute": int(controlled_row.get("attributable_gdp_per_minute", 0)),
-			"share_basis_points": int(controlled_row.get("share_basis_points", 0)),
+			"commodity_gdp_share_basis_points": int(controlled_row.get("commodity_gdp_share_basis_points", 0)),
 		})
 		player_rows[controller_key] = controller_result
 	var candidates: Array = []
@@ -577,6 +586,26 @@ func _capture_world_facts(world_snapshot: Dictionary) -> void:
 			_last_player_assets[str(player_index)] = _sanitize_private_assets(player.get("audit_assets", {}) as Dictionary if player.get("audit_assets", {}) is Dictionary else {})
 
 
+func _region_control_revision(region_snapshot: Dictionary) -> String:
+	var player_gdp: Dictionary = region_snapshot.get("player_gdp_by_index", {}) if region_snapshot.get("player_gdp_by_index", {}) is Dictionary else {}
+	var player_keys: Array = player_gdp.keys()
+	player_keys.sort_custom(func(left: Variant, right: Variant) -> bool:
+		return int(str(left)) < int(str(right))
+	)
+	var player_parts: Array[String] = []
+	for key_variant in player_keys:
+		var key := str(key_variant)
+		player_parts.append("%s:%d" % [key, int(player_gdp.get(key_variant, player_gdp.get(key, 0)))])
+	var source := "%s|%d|%s|%d|%s" % [
+		str(region_snapshot.get("region_id", "")),
+		int(region_snapshot.get("region_revision", 0)),
+		str(region_snapshot.get("lifecycle_state", "active")),
+		int(region_snapshot.get("region_gdp_per_minute_cents", 0)),
+		",".join(player_parts),
+	]
+	return source.sha256_text()
+
+
 func _player_region_row(control: Dictionary, player_index: int) -> Dictionary:
 	for row_variant in control.get("player_results", []):
 		if row_variant is Dictionary and int((row_variant as Dictionary).get("player_index", -1)) == player_index:
@@ -768,7 +797,7 @@ func _public_candidate_projection(candidate: Dictionary) -> Dictionary:
 		"top_n_gdp_per_minute": int(candidate.get("top_k_gdp_per_minute", 0)),
 		"controlled_region_count": int(candidate.get("controlled_region_count", 0)),
 		"controlled_regions": _safe_array(candidate.get("controlled_regions", [])),
-		"region_shares": _safe_array(candidate.get("region_shares", [])),
+		"region_control_rows": _safe_array(candidate.get("region_control_rows", [])),
 	}
 
 

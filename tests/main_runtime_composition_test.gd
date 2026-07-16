@@ -326,6 +326,9 @@ func _check_static_composition(main: Control) -> void:
 	var solar_camera := embedded_map.get_node_or_null("PlanetSolarCameraController") if embedded_map != null else null
 	_expect(embedded_map != null and embedded_map.scene_file_path == PLANET_MAP_VIEW_SCENE and solar_camera != null and solar_camera.scene_file_path == PLANET_SOLAR_CAMERA_CONTROLLER and solar_camera.has_method("apply_public_solar_snapshot") and solar_camera.has_method("request_return_to_sun") and not solar_camera.has_method("to_save_data") and not solar_camera.has_method("apply_save_data"), "PlanetMapView statically owns the non-saving solar camera presentation controller")
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var purchase_coordinator_source := FileAccess.get_file_as_string(
+		"res://scripts/runtime/game_runtime_coordinator.gd"
+	)
 	var map_injection_source := _function_source(main_source, "_set_map_view_data")
 	_expect(map_injection_source.contains("coordinator.solar_public_presentation_snapshot()") and map_injection_source.contains('target_view.call("set_solar_presentation_snapshot"') and map_injection_source.contains('target_view.call("set_solar_camera_motion_mode"') and not map_injection_source.contains("sun_turn_at") and not map_injection_source.contains("CardMarket"), "Main injects only Coordinator-owned public solar presentation and local motion preference into each runtime map")
 	_expect(balance_diagnostics != null and balance_diagnostics.scene_file_path == GAMEPLAY_BALANCE_DIAGNOSTICS_SERVICE and balance_diagnostics.has_method("development_routes") and balance_diagnostics.has_method("card_budget_report") and balance_diagnostics.has_method("build_balance_report") and balance_diagnostics.has_method("build_developer_panel_snapshot"), "GameRuntimeCoordinator owns the read-only GameplayBalanceDiagnosticsRuntimeService scene")
@@ -383,9 +386,13 @@ func _check_static_composition(main: Control) -> void:
 		and main_source.contains("func _district_supply_listing(")
 		and main_source.contains("func _district_supply_card_ids(")
 		and main_source.contains("func _district_supply_rack_revision(")
-		and buy_source.contains("plan_district_purchase_settlement")
-		and buy_source.contains("commit_district_purchase_with_region_supply")
+		and buy_source.contains("purchase_region_supply_card")
+		and buy_source.contains("v06_card_player_snapshot")
 		and buy_source.contains("_district_supply_listing")
+		and not buy_source.contains("plan_district_purchase_settlement")
+		and not buy_source.contains("commit_district_purchase_with_region_supply")
+		and not main_source.contains("func _district_purchase_settlement_request(")
+		and not purchase_coordinator_source.contains("func commit_district_purchase_with_region_supply(")
 		and not buy_source.contains("player[\"cash\"] =")
 		and not buy_source.contains("_record_player_card_spend(")
 		and not main_source.contains("func _assign_district_card_choices(")
@@ -447,6 +454,7 @@ func _check_static_composition(main: Control) -> void:
 	var first_table_service_source := FileAccess.get_file_as_string("res://scripts/runtime/first_table_authored_runtime_service.gd")
 	var first_table_content_source := _function_source(main_source, "_first_table_runtime_content_snapshot")
 	var first_table_buyable_source := _function_source(main_source, "_first_buyable_district_card")
+	var first_table_purchase_target_source := _function_source(main_source, "_first_run_coach_rack_purchase_target")
 	var retired_first_table_symbols := [
 		"FIRST_RUN_TEACHING_CARD_NAME",
 		"FIRST_RUN_TEACHING_CARD_SOURCE",
@@ -477,7 +485,9 @@ func _check_static_composition(main: Control) -> void:
 		first_table_legacy_absent
 		and first_table_content_source.contains("region_supply_public_rack")
 		and first_table_content_source.contains("public_region_supply_rack_snapshot")
-		and first_table_buyable_source.contains("followup_rack_recommendation")
+		and first_table_buyable_source.contains("_first_run_coach_rack_purchase_target")
+		and first_table_purchase_target_source.contains("followup_rack_recommendation")
+		and first_table_purchase_target_source.contains("region_supply_public_rack")
 		and first_table_service_source.contains('snapshot.get("regions", [])')
 		and first_table_service_source.contains('region.get("slots", [])')
 		and first_table_service_source.contains("PUBLIC_RACK_FORBIDDEN_KEYS"),

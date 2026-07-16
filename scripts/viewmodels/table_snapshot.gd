@@ -26,6 +26,7 @@ const RIGHT_INSPECTOR_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/right
 const TOP_BAR_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/top_bar_snapshot.gd")
 const FIRST_RUN_COACH_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/first_run_coach_snapshot.gd")
 const SCENARIO_COACH_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/scenario_coach_snapshot.gd")
+const OPTIONAL_ROUTE_PUBLIC_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/optional_route_public_snapshot.gd")
 
 var top_bar: Dictionary = {}
 var card_track: Array = []
@@ -35,6 +36,7 @@ var right_inspector: Dictionary = {}
 var player_board: Dictionary = {}
 var temporary_decision: Dictionary = {}
 var active_forced_decision: Dictionary = {}
+var optional_route_presentation: Dictionary = {}
 var first_run_coach: Dictionary = {}
 var scenario_coach: Dictionary = {}
 var visual_events: Array = []
@@ -67,6 +69,9 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	scenario_coach = SCENARIO_COACH_SNAPSHOT_SCRIPT.new().apply_dictionary(data.get("scenario_coach", {}) if data.get("scenario_coach", {}) is Dictionary else {}).to_ui_dictionary()
 	temporary_decision = _normalize_temporary_decision(data.get("temporary_decision", {}))
 	active_forced_decision = _normalize_active_forced_decision(data.get("active_forced_decision", {}))
+	optional_route_presentation = OPTIONAL_ROUTE_PUBLIC_SNAPSHOT_SCRIPT.new() \
+		.apply_dictionary(data.get("optional_route_presentation", {})) \
+		.to_ui_dictionary()
 	visual_events = (data.get("visual_events", []) as Array).duplicate(true) if data.get("visual_events", []) is Array else []
 	visual_event_key = str(data.get("visual_event_key", ""))
 	campaign_focus_mode = bool(data.get("campaign_focus_mode", false))
@@ -85,6 +90,7 @@ func to_ui_dictionary() -> Dictionary:
 		"scenario_coach": scenario_coach,
 		"temporary_decision": temporary_decision,
 		"active_forced_decision": active_forced_decision,
+		"optional_route_presentation": optional_route_presentation,
 		"visual_events": visual_events,
 		"visual_event_key": visual_event_key,
 		"campaign_focus_mode": campaign_focus_mode,

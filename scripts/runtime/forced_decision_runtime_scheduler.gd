@@ -8,6 +8,7 @@ const VALID_PRESENTATION_SURFACES := ["overlay", "card_resolution_track", "playe
 var _priority_order: Array[String] = []
 var _candidates: Array = []
 var _configured := false
+var _public_bid_phase_active := false
 
 
 func configure(priority_order: Array) -> void:
@@ -24,8 +25,9 @@ func configure(priority_order: Array) -> void:
 	_sort_candidates()
 
 
-func sync_candidates(candidates: Array) -> void:
+func sync_candidates(candidates: Array, public_bid_phase_snapshot: Dictionary = {}) -> void:
 	_candidates = []
+	_public_bid_phase_active = false
 	if not _configured:
 		return
 	for candidate_variant in candidates:
@@ -34,9 +36,15 @@ func sync_candidates(candidates: Array) -> void:
 		var candidate := _normalize_candidate(candidate_variant as Dictionary)
 		if str(candidate.get("id", "")) == "" or str(candidate.get("priority_group", "")) == "":
 			continue
+		if str(candidate.get("priority_group", "")) == "public_bid":
+			continue
 		if not _priority_order.has(str(candidate.get("priority_group", ""))):
 			continue
 		_candidates.append(candidate)
+	var public_bid_candidate := _public_bid_candidate(public_bid_phase_snapshot)
+	if not public_bid_candidate.is_empty():
+		_candidates.append(public_bid_candidate)
+		_public_bid_phase_active = true
 	_sort_candidates()
 
 
@@ -96,8 +104,13 @@ func debug_snapshot() -> Dictionary:
 		"active_priority_group": active_priority_group(),
 		"blocks_global_time": blocks_global_time(),
 		"blocks_card_resolution": blocks_card_resolution(),
+		"public_bid_phase_active": _public_bid_phase_active,
 		"candidates": candidate_snapshots,
 	}
+
+
+func public_bid_candidate(public_bid_phase_snapshot: Dictionary) -> Dictionary:
+	return _candidate_snapshot(_public_bid_candidate(public_bid_phase_snapshot))
 
 
 func _normalize_candidate(source: Dictionary) -> Dictionary:
@@ -144,6 +157,30 @@ func _priority_group_for_kind(kind: String) -> String:
 		"public_bid", "card_order_bid":
 			return "public_bid"
 	return ""
+
+
+func _public_bid_candidate(source: Dictionary) -> Dictionary:
+	if str(source.get("phase_id", "")).strip_edges() != "public_bid" \
+		or not bool(source.get("active", false)) \
+		or not bool(source.get("visible", true)):
+		return {}
+	var sequence := int(source.get("window_sequence", source.get("sequence", -1)))
+	if sequence < 0:
+		return {}
+	return {
+		"id": "public_bid_%d" % sequence,
+		"kind": "public_bid",
+		"priority_group": "public_bid",
+		"owner_player_index": -1,
+		"visibility_scope": "public",
+		"presentation_surface": "overlay",
+		"opened_sequence": float(sequence),
+		"blocks_global_time": false,
+		"blocks_player_actions": true,
+		"blocks_card_resolution": false,
+		"source_ref": "card_resolution_public_bid",
+		"notes": "Derived only from the authoritative public-bid phase snapshot.",
+	}
 
 
 func _sort_candidates() -> void:

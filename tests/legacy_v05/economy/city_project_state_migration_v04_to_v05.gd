@@ -1,7 +1,7 @@
 extends RefCounted
 class_name CityProjectStateMigrationV04ToV05
 
-const PROJECT_STATE := preload("res://scripts/economy/city_product_project_state.gd")
+const PROJECT_STATE := preload("res://tests/legacy_v05/economy/city_product_project_state_v05.gd")
 
 
 static func migrate_city(city_value: Dictionary, district_index: int, created_order_seed: int = 0, generation_by_slot_id: Dictionary = {}) -> Dictionary:

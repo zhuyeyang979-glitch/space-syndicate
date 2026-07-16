@@ -3,6 +3,8 @@ extends Node
 class_name GameTableViewModelRuntimeService
 
 const TABLE_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/table_snapshot.gd")
+const BID_BOARD_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/bid_board_snapshot.gd")
+const OPTIONAL_ROUTE_PUBLIC_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/optional_route_public_snapshot.gd")
 
 var _configured := false
 var _card_presentation_service: Node = null
@@ -23,6 +25,11 @@ func compose_table_source(source: Dictionary) -> Dictionary:
 	table_source["card_resolution_track"] = _dictionary(surfaces.get("card_resolution_track", {}))
 	var player_board := _dictionary(table_source.get("player_board", {}))
 	player_board["hand_cards"] = _array(surfaces.get("hand_cards", []))
+	var viewer_surfaces := _compose_viewer_surfaces(_dictionary(source.get("viewer_surfaces", {})))
+	if not viewer_surfaces.is_empty():
+		table_source["active_forced_decision"] = _dictionary(viewer_surfaces.get("active_forced_decision", {}))
+		player_board["bid_board"] = _dictionary(viewer_surfaces.get("public_bid", {}))
+		table_source["optional_route_presentation"] = _dictionary(viewer_surfaces.get("optional_route_presentation", {}))
 	table_source["player_board"] = player_board
 	table_source["right_inspector"] = _dictionary(surfaces.get("right_inspector", {}))
 	return table_source
@@ -99,12 +106,60 @@ func debug_snapshot() -> Dictionary:
 		"owns_public_track_viewmodels": true,
 		"owns_right_inspector_assembly": true,
 		"owns_resolution_overlay_badges": true,
+		"owns_viewer_surface_projection": true,
+		"viewer_surface_owner_reads_runtime_nodes": false,
 		"uses_existing_table_snapshot": true,
 		"calculates_play_legality": false,
 		"mutates_game_state": false,
 		"reads_runtime_nodes": false,
 		"legacy_main_snapshot_assembly_active": false,
 	}
+
+
+func compose_viewer_surfaces(source: Dictionary) -> Dictionary:
+	return _compose_viewer_surfaces(source)
+
+
+func _compose_viewer_surfaces(source: Dictionary) -> Dictionary:
+	if source.is_empty():
+		return {}
+	var active_forced: Dictionary = _normalize_active_forced_decision(source.get("active_forced_decision", {}))
+	var public_bid: Dictionary = _normalize_public_bid(source.get("public_bid", {}), active_forced)
+	var optional_route: Dictionary = OPTIONAL_ROUTE_PUBLIC_SNAPSHOT_SCRIPT.new() \
+		.apply_dictionary(source.get("optional_route_presentation", {})) \
+		.to_ui_dictionary()
+	return {
+		"active_forced_decision": active_forced,
+		"public_bid": public_bid,
+		"optional_route_presentation": optional_route,
+	}
+
+
+func _normalize_active_forced_decision(value: Variant) -> Dictionary:
+	var normalized: Dictionary = TABLE_SNAPSHOT_SCRIPT.new() \
+		.apply_dictionary({"active_forced_decision": value}) \
+		.to_ui_dictionary()
+	return _dictionary(normalized.get("active_forced_decision", {}))
+
+
+func _normalize_public_bid(value: Variant, active_forced: Dictionary) -> Dictionary:
+	if not (value is Dictionary):
+		return {}
+	var source := value as Dictionary
+	var active_kind := str(active_forced.get("kind", "")).strip_edges()
+	if not ["public_bid", "card_order_bid"].has(active_kind) \
+		or str(active_forced.get("priority_group", "")) != "public_bid" \
+		or not bool(active_forced.get("visible_to_viewer", false)) \
+		or str(active_forced.get("presentation_surface", "")) != "overlay" \
+		or str(source.get("phase_id", "")).strip_edges() != "public_bid" \
+		or not bool(source.get("active", false)) \
+		or not bool(source.get("visible", true)):
+		return {}
+	var result: Dictionary = BID_BOARD_SNAPSHOT_SCRIPT.new().apply_dictionary(source).to_ui_dictionary()
+	result["phase_id"] = "public_bid"
+	result["active"] = true
+	result["visible"] = true
+	return result
 
 
 func _compose_hand_cards(sources: Array) -> Array:

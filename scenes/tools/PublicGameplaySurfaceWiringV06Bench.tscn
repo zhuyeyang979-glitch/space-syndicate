@@ -1,0 +1,48 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/public_gameplay_surface_wiring_v06_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardPresentationRuntimeService.tscn" id="2_card_presentation"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/GameTableViewModelRuntimeService.tscn" id="3_table_service"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="4_scheduler"]
+[ext_resource type="PackedScene" path="res://scenes/ui/GameScreen.tscn" id="5_game_screen"]
+
+[node name="PublicGameplaySurfaceWiringV06Bench" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_bench")
+
+[node name="CardPresentationRuntimeService" parent="." instance=ExtResource("2_card_presentation")]
+unique_name_in_owner = true
+
+[node name="GameTableViewModelRuntimeService" parent="." instance=ExtResource("3_table_service")]
+unique_name_in_owner = true
+
+[node name="ForcedDecisionRuntimeScheduler" parent="." instance=ExtResource("4_scheduler")]
+unique_name_in_owner = true
+
+[node name="GameScreen" parent="." instance=ExtResource("5_game_screen")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="StatusPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 2
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -330.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = 44.0
+grow_horizontal = 0
+mouse_filter = 2
+
+[node name="StatusLabel" type="Label" parent="StatusPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "C2 Public Surface Wiring RUNNING"
+horizontal_alignment = 1
+vertical_alignment = 1

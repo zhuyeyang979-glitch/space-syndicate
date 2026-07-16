@@ -14,7 +14,7 @@ const RESPONSE_REJECTED := "rejected"
 const RESPONSE_TIMEOUT := "timeout"
 const CONTRACT_KIND := "area_trade_contract"
 const DEFAULT_DECISION_SECONDS := 5.0
-const SAVE_SCHEMA_V06 := 2
+const SAVE_SCHEMA_V06 := 3
 const EFFECT_OFFER_V06 := "contract_offer_v06"
 const EFFECT_RESPONSE_V06 := "contract_response_v06"
 const ACTION_OPEN_OFFER := "open_offer"
@@ -261,7 +261,7 @@ func select_source_district(index: int, selected_product: String = "") -> Dictio
 
 func select_target_district(index: int, selected_product: String = "") -> Dictionary:
 	if not valid_target_district(index):
-		return {"accepted": false, "reason": "target_district_invalid", "message": "需求区必须是一座存活城市群；公开展示结束后，目标商品控制者会获得独立签/拒窗口。"}
+		return {"accepted": false, "reason": "target_district_invalid", "message": "需求区必须是一座存活城市群；公开展示结束后，目标区域控制者会获得独立签/拒窗口。"}
 	selected_target_district = index
 	if selected_source_district == index:
 		selected_source_district = -1
@@ -269,7 +269,7 @@ func select_target_district(index: int, selected_product: String = "") -> Dictio
 	if product == "" and _world_bridge != null:
 		product = _world_bridge.default_trade_product(index)
 	_state_revision += 1
-	return {"accepted": true, "reason": "selected", "selected_product": product, "selection": selection_snapshot(), "message": "已把%s设为下一张区域供需合约的需求/签约区；真实商品控制者仍不公开。" % district_short_name(index)}
+	return {"accepted": true, "reason": "selected", "selected_product": product, "selection": selection_snapshot(), "message": "已把%s设为下一张区域供需合约的需求/签约区；真实区域控制者仍不公开。" % district_short_name(index)}
 
 
 func offer_context(skill: Dictionary, player_index: int, source_index: int = -2, target_index: int = -2, selected_product: String = "") -> Dictionary:
@@ -291,7 +291,8 @@ func offer_context(skill: Dictionary, player_index: int, source_index: int = -2,
 		"source": source,
 		"target": target,
 		"target_owner": int(plan.get("contract_target_owner", -1)),
-		"target_project_ids": (plan.get("contract_target_project_ids", []) as Array).duplicate(true) if plan.get("contract_target_project_ids", []) is Array else [],
+		"target_region_id": str(plan.get("contract_target_region_id", "")),
+		"target_control_revision": str(plan.get("contract_target_control_revision", "")),
 		"products": (plan.get("contract_products", []) as Array).duplicate(true) if plan.get("contract_products", []) is Array else [],
 		"context_revision": int(plan.get("context_revision", _state_revision)),
 	}
@@ -316,13 +317,13 @@ func plan_offer(request: Dictionary, facts: Dictionary) -> Dictionary:
 	var products := _contract_products(skill, facts)
 	if products.is_empty():
 		return _offer_rejection("contract_products_missing")
-	var authority := _target_project_authority(products, target)
+	var authority := _target_region_control_authority(facts, target_index)
 	if not bool(authority.get("resolved", false)):
-		return _offer_rejection(str(authority.get("reason", "target_project_controller_missing")), {"contract_products": products})
+		return _offer_rejection(str(authority.get("reason", "target_region_control_missing")), {"contract_products": products})
 	var target_controller := int(authority.get("controller_player_index", -1))
 	var player_count_value := int(facts.get("player_count", 0))
 	if target_controller < 0 or target_controller >= player_count_value:
-		return _offer_rejection("target_project_controller_invalid", {"contract_products": products})
+		return _offer_rejection("target_region_controller_invalid", {"contract_products": products})
 	var proposer := int(request.get("player_index", -1))
 	if proposer == target_controller and not bool(skill.get("contract_allow_self_sign", false)):
 		return _offer_rejection("self_sign_not_allowed", {"contract_products": products, "contract_target_owner": target_controller})
@@ -334,7 +335,8 @@ func plan_offer(request: Dictionary, facts: Dictionary) -> Dictionary:
 	offer["contract_target_district"] = target_index
 	offer["contract_target_owner"] = target_controller
 	offer["contract_source_owner"] = proposer
-	offer["contract_target_project_ids"] = (authority.get("project_ids", []) as Array).duplicate(true)
+	offer["contract_target_region_id"] = str(authority.get("region_id", ""))
+	offer["contract_target_control_revision"] = str(authority.get("revision", ""))
 	offer["contract_products"] = products.duplicate(true)
 	offer["contract_response"] = RESPONSE_PENDING
 	offer["contract_decision_timer"] = _decision_seconds
@@ -355,7 +357,8 @@ func plan_offer(request: Dictionary, facts: Dictionary) -> Dictionary:
 		"contract_source_district": source_index,
 		"contract_target_district": target_index,
 		"contract_target_owner": target_controller,
-		"contract_target_project_ids": (authority.get("project_ids", []) as Array).duplicate(true),
+		"contract_target_region_id": str(authority.get("region_id", "")),
+		"contract_target_control_revision": str(authority.get("revision", "")),
 		"contract_products": products.duplicate(true),
 		"transaction_id": str(request.get("transaction_id", "legacy-contract-offer:%d" % contract_id)),
 		"rule_snapshot": offer.get("rule_snapshot", {}) as Dictionary,
@@ -403,7 +406,7 @@ func open_offer(skill: Dictionary, entry: Dictionary) -> Dictionary:
 	var plan := plan_offer(request, _facts(source_index, target_index, selected_product))
 	var commit := commit_offer(plan)
 	if bool(commit.get("committed", false)):
-		_world_bridge.log_message("%s公开展示结束：目标商品控制者获得独立签约窗口；其他玩家可以继续出牌。" % str(skill.get("name", "区域供需合约")))
+		_world_bridge.log_message("%s公开展示结束：目标区域控制者获得独立签约窗口；其他玩家可以继续出牌。" % str(skill.get("name", "区域供需合约")))
 		_world_bridge.refresh_ui()
 	return {
 		"opened": bool(commit.get("committed", false)),
@@ -432,12 +435,15 @@ func plan_response(request: Dictionary, facts: Dictionary) -> Dictionary:
 	var expected_responder := int(offer.get("contract_target_owner", -1))
 	if not timeout and responder != expected_responder:
 		return {"planned": false, "reason": "response_not_authorized"}
-	var target: Dictionary = facts.get("target", {}) as Dictionary if facts.get("target", {}) is Dictionary else {}
-	var authority := _target_project_authority(offer.get("contract_products", []) as Array, target)
+	var authority := _target_region_control_authority(facts, int(offer.get("contract_target_district", -1)))
 	if not bool(authority.get("resolved", false)):
-		return {"planned": false, "reason": str(authority.get("reason", "target_project_controller_missing"))}
+		return {"planned": false, "reason": str(authority.get("reason", "target_region_control_missing"))}
+	if str(authority.get("region_id", "")) != str(offer.get("contract_target_region_id", "")):
+		return {"planned": false, "reason": "target_region_identity_drift"}
 	if int(authority.get("controller_player_index", -1)) != expected_responder:
-		return {"planned": false, "reason": "target_project_controller_drift"}
+		return {"planned": false, "reason": "target_region_controller_drift"}
+	if str(authority.get("revision", "")) != str(offer.get("contract_target_control_revision", "")):
+		return {"planned": false, "reason": "target_region_control_revision_drift"}
 	var response := RESPONSE_TIMEOUT if timeout else (RESPONSE_ACCEPTED if bool(request.get("accept", false)) else RESPONSE_REJECTED)
 	var transaction_id := str(request.get("transaction_id", "legacy-contract-response:%d:%s" % [contract_id, response]))
 	var response_id := str(request.get("response_id", transaction_id))
@@ -451,7 +457,8 @@ func plan_response(request: Dictionary, facts: Dictionary) -> Dictionary:
 	transaction["contract_response"] = response
 	transaction["contract_response_player"] = -1 if timeout else responder
 	transaction["contract_response_time"] = float(facts.get("game_time", 0.0))
-	transaction["contract_target_project_ids"] = (authority.get("project_ids", []) as Array).duplicate(true)
+	transaction["contract_target_region_id"] = str(authority.get("region_id", ""))
+	transaction["contract_target_control_revision"] = str(authority.get("revision", ""))
 	transaction["contract_accept_summary"] = accept_effect_summary(transaction.get("skill", {}) as Dictionary)
 	transaction["contract_decline_summary"] = decline_effect_summary(transaction.get("skill", {}) as Dictionary)
 	return {"planned": true, "reason": "ready", "offer_index": index, "offer_revision": int(offer.get("offer_revision", 0)), "transaction_id": transaction_id, "response_id": response_id, "transaction": transaction}
@@ -496,11 +503,11 @@ func respond_to_offer(player_index: int, contract_id: int, accept: bool, announc
 	var plan := plan_response({"player_index": player_index, "contract_offer_id": contract_id, "accept": accept, "timeout": timeout}, facts)
 	if not bool(plan.get("planned", false)):
 		if announce and str(plan.get("reason", "")) == "response_not_authorized":
-			_world_bridge.log_message("只有目标商品项目的控制者可以回应这份匿名合约。")
+			_world_bridge.log_message("只有目标区域控制者可以回应这份匿名合约。")
 		return {"committed": false, "reason": str(plan.get("reason", "response_rejected"))}
 	var result := commit_response(plan)
 	if announce:
-		_world_bridge.log_message("目标商品控制者已在展示后的独立签约窗口中%s匿名合约；合约发起者仍不公开。" % ("签署" if accept and not timeout else "拒绝"))
+		_world_bridge.log_message("目标区域控制者已在展示后的独立签约窗口中%s匿名合约；合约发起者仍不公开。" % ("签署" if accept and not timeout else "拒绝"))
 	_world_bridge.refresh_ui()
 	return result
 
@@ -533,7 +540,7 @@ func tick_visible_offer(delta: float, active_decision_id: String) -> Dictionary:
 		return {"ticked": true, "reason": "visible_timer_advanced", "contract_offer_id": contract_id, "remaining": remaining, "timed_out": false}
 	var timeout_result := respond_to_offer(int(offer.get("contract_target_owner", -1)), contract_id, false, false, true)
 	if bool(timeout_result.get("committed", false)):
-		_world_bridge.log_message("匿名合约的独立签约窗口结束：目标商品控制者未回应，按超时拒签处理。")
+		_world_bridge.log_message("匿名合约的独立签约窗口结束：目标区域控制者未回应，按超时拒签处理。")
 		_world_bridge.refresh_ui()
 	return {"ticked": true, "reason": str(timeout_result.get("reason", "timeout")), "contract_offer_id": contract_id, "remaining": 0.0, "timed_out": bool(timeout_result.get("committed", false))}
 
@@ -559,7 +566,7 @@ func forced_decision_candidates() -> Array:
 			"blocks_player_actions": true,
 			"blocks_card_resolution": false,
 			"source_ref": "contract_response",
-			"notes": "Only the target product-project controller receives this non-blocking response payload.",
+			"notes": "Only the authoritative target-region controller receives this non-blocking response payload.",
 		})
 	return result
 
@@ -613,9 +620,9 @@ func decision_snapshot(player_index: int) -> Dictionary:
 		"kind": "contract_response",
 		"title": "匿名合约签署窗口",
 		"body": "%s｜%s → %s｜商品：%s。签约：%s；拒绝：%s。" % [card_name, source_name, target_name, products, accept_summary, reject_summary],
-		"tooltip": "合约牌公开展示后，签约选择只发给目标商品项目控制者；发起者和回应者身份仍需从路线、商品和收益变化推理。",
+		"tooltip": "合约牌公开展示后，签约选择只发给目标区域控制者；发起者和回应者身份仍需从路线、商品和收益变化推理。",
 		"chips": [
-			{"text": "私密签约权", "tooltip": "只有目标商品项目控制者可操作。", "accent": "#bfdbfe"},
+			{"text": "私密签约权", "tooltip": "只有目标区域控制者可操作。", "accent": "#bfdbfe"},
 			{"text": "不阻塞", "tooltip": "不会阻塞其他玩家继续出牌。", "accent": "#fde68a"},
 			{"text": "%.0fs" % timer, "tooltip": "沙漏只在该窗口真正显示时倒计时；结束按拒签处理。", "accent": "#fbbf24"},
 		],
@@ -631,7 +638,7 @@ func decision_snapshot(player_index: int) -> Dictionary:
 			"reject": reject_summary,
 			"timer": timer,
 			"timer_text": "%.0fs" % timer,
-			"privacy": "签约选择只发给目标商品项目控制者；合约牌本身和公开条件仍在牌轨中供全场推理。",
+			"privacy": "签约选择只发给目标区域控制者；合约牌本身和公开条件仍在牌轨中供全场推理。",
 		},
 		"accent": "#fbbf24",
 	}
@@ -666,7 +673,7 @@ func response_public_label(entry: Dictionary) -> String:
 		RESPONSE_TIMEOUT: return "超时拒签"
 		RESPONSE_PENDING:
 			var contract_id := int(entry.get("contract_offer_id", entry.get("resolution_id", -1)))
-			return "签约窗口开放" if _offer_index(contract_id) >= 0 else "等待目标商品控制者"
+			return "签约窗口开放" if _offer_index(contract_id) >= 0 else "等待目标区域控制者"
 	return "无签约窗口"
 
 
@@ -713,7 +720,7 @@ func response_result_clue(entry: Dictionary) -> String:
 	var effect_summary := accept_effect_summary(entry.get("skill", {}) as Dictionary) if response == RESPONSE_ACCEPTED else decline_effect_summary(entry.get("skill", {}) as Dictionary)
 	if response == RESPONSE_PENDING:
 		effect_label = "待定影响"
-		effect_summary = "等待目标商品控制者回应"
+		effect_summary = "等待目标区域控制者回应"
 	return "合约%s｜%s→%s｜商品:%s｜%s:%s｜发起者和回应者仍需推理" % [response_public_label(entry), district_short_name(int(entry.get("contract_source_district", -1))), district_short_name(int(entry.get("contract_target_district", -1))), entry_product_text(entry), effect_label, effect_summary]
 
 
@@ -750,6 +757,7 @@ func apply_intel_contract_trace(viewer_index: int, preferred_resolution_id: int,
 
 func to_save_data() -> Dictionary:
 	return {
+		"contract_runtime_schema_version": SAVE_SCHEMA_V06,
 		"selected_contract_source_district": selected_source_district,
 		"selected_contract_target_district": selected_target_district,
 		"pending_contract_offers": pending_offers.duplicate(true),
@@ -759,18 +767,57 @@ func to_save_data() -> Dictionary:
 
 
 func apply_save_data(data: Dictionary) -> Dictionary:
-	selected_source_district = int(data.get("selected_contract_source_district", -1))
-	selected_target_district = int(data.get("selected_contract_target_district", -1))
-	pending_offers = (data.get("pending_contract_offers", []) as Array).duplicate(true) if data.get("pending_contract_offers", []) is Array else []
-	_state_revision = maxi(0, int(data.get("contract_runtime_revision", 0)))
-	_committed_transaction_ids.clear()
-	var transaction_ids: Variant = data.get("contract_committed_transaction_ids", [])
-	if transaction_ids is Array:
-		for id_variant in transaction_ids:
-			var transaction_id := str(id_variant)
-			if transaction_id != "" and not _committed_transaction_ids.has(transaction_id):
-				_committed_transaction_ids.append(transaction_id)
-	return {"applied": true, "pending_offer_count": pending_offers.size(), "revision": _state_revision}
+	if not _is_pure_data(data):
+		return {"applied": false, "reason": "contract_save_not_pure_data"}
+	var schema_version := SAVE_SCHEMA_V06
+	if data.has("contract_runtime_schema_version"):
+		if typeof(data.get("contract_runtime_schema_version")) != TYPE_INT:
+			return {"applied": false, "reason": "contract_save_schema_invalid"}
+		schema_version = int(data.get("contract_runtime_schema_version"))
+	elif not data.is_empty():
+		return {"applied": false, "reason": "legacy_contract_save_schema_rejected"}
+	if schema_version < SAVE_SCHEMA_V06:
+		return {"applied": false, "reason": "legacy_contract_save_schema_rejected"}
+	if schema_version != SAVE_SCHEMA_V06:
+		return {"applied": false, "reason": "contract_save_schema_invalid"}
+	var pending_variant: Variant = data.get("pending_contract_offers", [])
+	if not (pending_variant is Array):
+		return {"applied": false, "reason": "contract_pending_offers_invalid"}
+	var next_pending: Array = []
+	var seen_offer_ids: Dictionary = {}
+	for offer_variant in pending_variant:
+		if not (offer_variant is Dictionary):
+			return {"applied": false, "reason": "contract_pending_offer_invalid"}
+		var offer_validation := _validated_saved_offer(offer_variant as Dictionary)
+		if not bool(offer_validation.get("valid", false)):
+			return {"applied": false, "reason": str(offer_validation.get("reason", "contract_pending_offer_invalid"))}
+		var offer: Dictionary = offer_validation.get("offer", {}) as Dictionary
+		var offer_id := int(offer.get("contract_offer_id", offer.get("resolution_id", -1)))
+		if seen_offer_ids.has(str(offer_id)):
+			return {"applied": false, "reason": "contract_offer_id_duplicate"}
+		seen_offer_ids[str(offer_id)] = true
+		next_pending.append(offer)
+	var transaction_ids_variant: Variant = data.get("contract_committed_transaction_ids", [])
+	if not (transaction_ids_variant is Array):
+		return {"applied": false, "reason": "contract_transaction_ids_invalid"}
+	var next_transaction_ids: Array[String] = []
+	for id_variant in transaction_ids_variant:
+		var transaction_id := str(id_variant).strip_edges()
+		if transaction_id.is_empty():
+			return {"applied": false, "reason": "contract_transaction_id_invalid"}
+		if not next_transaction_ids.has(transaction_id):
+			next_transaction_ids.append(transaction_id)
+	var next_source := int(data.get("selected_contract_source_district", -1))
+	var next_target := int(data.get("selected_contract_target_district", -1))
+	var next_revision := int(data.get("contract_runtime_revision", 0))
+	if next_source < -1 or next_target < -1 or next_revision < 0:
+		return {"applied": false, "reason": "contract_save_scalar_invalid"}
+	selected_source_district = next_source
+	selected_target_district = next_target
+	pending_offers = next_pending
+	_state_revision = next_revision
+	_committed_transaction_ids = next_transaction_ids
+	return {"applied": true, "pending_offer_count": pending_offers.size(), "revision": _state_revision, "schema_version": SAVE_SCHEMA_V06}
 
 
 func debug_snapshot(viewer_index: int = -1) -> Dictionary:
@@ -784,8 +831,9 @@ func debug_snapshot(viewer_index: int = -1) -> Dictionary:
 		"viewer_offer_count": viewer_offer_count,
 		"selection_ready": selection_ready(),
 		"state_revision": _state_revision,
+		"save_schema_version": SAVE_SCHEMA_V06,
 		"committed_transaction_count": _committed_transaction_ids.size(),
-		"response_authority": "target_product_project_controller",
+		"response_authority": "target_region_commodity_gdp_controller",
 		"self_sign_default_allowed": false,
 		"visible_timer_only": true,
 		"blocks_card_resolution": false,
@@ -837,6 +885,7 @@ func _public_history_entry(entry: Dictionary) -> Dictionary:
 		"contract_response": str(entry.get("contract_response", "")),
 		"contract_source_district": int(entry.get("contract_source_district", -1)),
 		"contract_target_district": int(entry.get("contract_target_district", -1)),
+		"contract_target_region_id": str(entry.get("contract_target_region_id", "")),
 		"contract_products": (entry.get("contract_products", []) as Array).duplicate(true) if entry.get("contract_products", []) is Array else [],
 		"owner_hidden": true,
 	}
@@ -846,6 +895,7 @@ func _contract_rule_snapshot() -> Dictionary:
 	return {
 		"ruleset_id": str(_ruleset_snapshot.get("ruleset_id", "")),
 		"contract_window_seconds": _decision_seconds,
+		"response_authority": "target_region_commodity_gdp_controller",
 		"catalog_contract_entries_available": false,
 		"lifecycle_wip_fail_closed": true,
 	}
@@ -908,40 +958,32 @@ func _product_goal(skill: Dictionary) -> int:
 	return mini(requested, 1) if str(skill.get("contract_product_mode", "selected")) == "selected" else requested
 
 
-func _target_project_authority(products: Array, target: Dictionary) -> Dictionary:
-	var city: Dictionary = target.get("city", {}) as Dictionary if target.get("city", {}) is Dictionary else {}
-	var projects: Array = city.get("projects", []) as Array if city.get("projects", []) is Array else []
-	var controllers: Array = []
-	var project_ids: Array = []
-	for product_variant in products:
-		var product_id := str(product_variant)
-		var matching: Array = []
-		var demand_matching: Array = []
-		for project_variant in projects:
-			if not (project_variant is Dictionary):
-				continue
-			var project := project_variant as Dictionary
-			if not bool(project.get("active", true)) or str(project.get("product_id", "")) != product_id:
-				continue
-			matching.append(project)
-			if str(project.get("direction", "")) == "demand":
-				demand_matching.append(project)
-		var authoritative := demand_matching if not demand_matching.is_empty() else matching
-		if authoritative.is_empty():
-			return {"resolved": false, "reason": "missing_target_product_project", "product_id": product_id}
-		for project_variant in authoritative:
-			var project := project_variant as Dictionary
-			var controller := int(project.get("controller_player_index", -1))
-			if controller < 0:
-				return {"resolved": false, "reason": "target_project_controller_invalid", "product_id": product_id}
-			if not controllers.has(controller):
-				controllers.append(controller)
-			var project_id := str(project.get("project_id", ""))
-			if project_id != "" and not project_ids.has(project_id):
-				project_ids.append(project_id)
-	if controllers.size() != 1:
-		return {"resolved": false, "reason": "ambiguous_target_project_controller", "controller_count": controllers.size(), "project_ids": project_ids}
-	return {"resolved": true, "reason": "resolved", "controller_player_index": int(controllers[0]), "project_ids": project_ids}
+func _target_region_control_authority(facts: Dictionary, target_district_index: int) -> Dictionary:
+	var snapshot: Dictionary = facts.get("target_region_control", {}) as Dictionary if facts.get("target_region_control", {}) is Dictionary else {}
+	if snapshot.is_empty():
+		return {"resolved": false, "reason": "target_region_control_missing"}
+	if str(snapshot.get("schema_version", "")) != "v0.6.region-control.1" \
+			or str(snapshot.get("snapshot_kind", "")) != "commodity_gdp_region_control" \
+			or str(snapshot.get("visibility_scope", "")) != "public":
+		return {"resolved": false, "reason": "target_region_control_invalid"}
+	if int(snapshot.get("district_index", -1)) != target_district_index:
+		return {"resolved": false, "reason": "target_region_identity_mismatch"}
+	var region_id := str(snapshot.get("region_id", "")).strip_edges()
+	var revision := str(snapshot.get("revision", "")).strip_edges()
+	if region_id.is_empty() or revision.is_empty():
+		return {"resolved": false, "reason": "target_region_control_binding_missing"}
+	if not bool(snapshot.get("surviving", false)) or bool(snapshot.get("destroyed", true)):
+		return {"resolved": false, "reason": "target_region_destroyed"}
+	var controller_player_index := int(snapshot.get("controller_player_index", -1))
+	if controller_player_index < 0:
+		return {"resolved": false, "reason": "target_region_uncontrolled"}
+	return {
+		"resolved": true,
+		"reason": "resolved",
+		"region_id": region_id,
+		"revision": revision,
+		"controller_player_index": controller_player_index,
+	}
 
 
 func _public_offer_snapshot(offer: Dictionary) -> Dictionary:
@@ -950,6 +992,7 @@ func _public_offer_snapshot(offer: Dictionary) -> Dictionary:
 		"resolution_id": int(offer.get("resolution_id", offer.get("queued_order", -1))),
 		"contract_source_district": int(offer.get("contract_source_district", -1)),
 		"contract_target_district": int(offer.get("contract_target_district", -1)),
+		"contract_target_region_id": str(offer.get("contract_target_region_id", "")),
 		"contract_products": (offer.get("contract_products", []) as Array).duplicate(true) if offer.get("contract_products", []) is Array else [],
 		"contract_response": str(offer.get("contract_response", RESPONSE_PENDING)),
 		"contract_decision_timer": maxf(0.0, float(offer.get("contract_decision_timer", 0.0))),
@@ -971,6 +1014,27 @@ func _offer_rejection(reason: String, extra: Dictionary = {}) -> Dictionary:
 	return result
 
 
+func _validated_saved_offer(source: Dictionary) -> Dictionary:
+	var offer := source.duplicate(true)
+	var offer_id := int(offer.get("contract_offer_id", offer.get("resolution_id", -1)))
+	var target_district := int(offer.get("contract_target_district", -1))
+	var target_owner := int(offer.get("contract_target_owner", -1))
+	var target_region_id := str(offer.get("contract_target_region_id", "")).strip_edges()
+	var control_revision := str(offer.get("contract_target_control_revision", "")).strip_edges()
+	var response := str(offer.get("contract_response", RESPONSE_PENDING))
+	if offer_id < 0:
+		return {"valid": false, "reason": "contract_offer_id_invalid"}
+	if target_district < 0 or target_owner < 0:
+		return {"valid": false, "reason": "contract_region_control_binding_invalid"}
+	if target_region_id.is_empty() or control_revision.is_empty():
+		return {"valid": false, "reason": "contract_region_control_binding_missing"}
+	if response not in [RESPONSE_PENDING, RESPONSE_ACCEPTED, RESPONSE_REJECTED, RESPONSE_TIMEOUT]:
+		return {"valid": false, "reason": "contract_response_state_invalid"}
+	if response != RESPONSE_PENDING:
+		return {"valid": false, "reason": "contract_terminal_offer_not_pending"}
+	return {"valid": true, "offer": offer}
+
+
 func _reason_message(reason: String, skill: Dictionary) -> String:
 	var card_name := str(skill.get("name", "区域供需合约"))
 	match reason:
@@ -978,9 +1042,11 @@ func _reason_message(reason: String, skill: Dictionary) -> String:
 		"target_district_invalid": return "%s需要先在地图上设置一个有存活城市群的需求/签约区。" % card_name
 		"same_source_target": return "%s的供给区和需求区不能是同一区域。" % card_name
 		"contract_products_missing": return "%s没有可写入合约的商品。" % card_name
-		"missing_target_product_project": return "%s的目标商品没有可回应的城市商品项目。" % card_name
-		"ambiguous_target_project_controller": return "%s的目标商品由多个控制者管理，无法确定唯一签约权。" % card_name
-		"target_project_controller_invalid": return "%s找不到有效的目标商品项目控制者。" % card_name
+		"target_region_control_missing", "target_region_control_invalid", "target_region_control_binding_missing":
+			return "%s暂时无法读取目标区域的权威控制状态。" % card_name
+		"target_region_identity_mismatch": return "%s的目标区域身份已经失效。" % card_name
+		"target_region_destroyed": return "%s不能以已毁区域作为签约目标。" % card_name
+		"target_region_uncontrolled": return "%s的目标区域当前没有唯一控制者，无法确定签约权。" % card_name
 		"self_sign_not_allowed": return "%s不允许同一玩家自行签署供需两端。" % card_name
 	return "%s当前不能建立有效匿名合约。" % card_name
 

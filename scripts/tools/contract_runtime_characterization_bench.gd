@@ -15,7 +15,7 @@ const CONTRACT_CONTROLLER_SCRIPT_PATH := "res://scripts/runtime/contract_runtime
 const CONTRACT_BRIDGE_SCENE_PATH := "res://scenes/runtime/ContractRuntimeWorldBridge.tscn"
 const CONTRACT_BRIDGE_SCRIPT_PATH := "res://scripts/runtime/contract_runtime_world_bridge.gd"
 const COORDINATOR_SCENE_PATH := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
-const CITY_PROJECT_STATE := preload("res://scripts/economy/city_product_project_state.gd")
+const CITY_PROJECT_STATE := preload("res://tests/legacy_v05/economy/city_product_project_state_v05.gd")
 const CITY_FIXTURES := preload("res://tests/helpers/city_world_fixture_factory.gd")
 
 const OUTPUT_DIR := "user://space_syndicate_design_qa/contract_runtime_characterization/"

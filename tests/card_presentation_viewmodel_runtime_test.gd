@@ -3,6 +3,7 @@ extends SceneTree
 const MAIN_SCENE := "res://scenes/main.tscn"
 const CARD_PRESENTATION_SCENE := "res://scenes/runtime/CardPresentationRuntimeService.tscn"
 const TABLE_VIEWMODEL_SCENE := "res://scenes/runtime/GameTableViewModelRuntimeService.tscn"
+const TABLE_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/table_snapshot.gd")
 
 var failures: Array[String] = []
 
@@ -52,8 +53,13 @@ func _run() -> void:
 	main.set("configured_ai_player_count", 3)
 	main.call("_new_game")
 	await process_frame
-	var snapshot_variant: Variant = main.call("_runtime_table_snapshot")
-	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
+	var runtime_screen := main.get_node_or_null("RuntimeGameScreen") as Control
+	_expect(runtime_screen != null and runtime_screen.has_method("apply_state"), "current RuntimeGameScreen public presentation surface exists")
+	var current_ui_data: Dictionary = {}
+	if runtime_screen != null:
+		var current_variant: Variant = runtime_screen.get("current_ui_data")
+		current_ui_data = (current_variant as Dictionary).duplicate(true) if current_variant is Dictionary else {}
+	var snapshot: Dictionary = TABLE_SNAPSHOT_SCRIPT.new().apply_dictionary(current_ui_data).to_ui_dictionary()
 	_expect(not snapshot.is_empty() and _is_pure_data(snapshot), "runtime table snapshot is non-empty pure data")
 	var player_board: Dictionary = snapshot.get("player_board", {}) if snapshot.get("player_board", {}) is Dictionary else {}
 	var hand_cards: Array = player_board.get("hand_cards", []) if player_board.get("hand_cards", []) is Array else []
@@ -145,8 +151,8 @@ func _expect(condition: bool, message: String) -> void:
 
 func _finish() -> void:
 	if failures.is_empty():
-		print("CARD PRESENTATION VIEWMODEL PASS")
+		print("CARD_PRESENTATION_VIEWMODEL_RUNTIME_TEST|status=PASS|failures=0")
 		quit(0)
 		return
-	print("CARD PRESENTATION VIEWMODEL FAIL: %d" % failures.size())
+	print("CARD_PRESENTATION_VIEWMODEL_RUNTIME_TEST|status=FAIL|failures=%d" % failures.size())
 	quit(1)

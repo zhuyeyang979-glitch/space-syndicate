@@ -108,6 +108,55 @@ func player_snapshot(actor_id: String) -> Dictionary:
 	return (state_variant as Dictionary).duplicate(true) if state_variant is Dictionary else {}
 
 
+func discardable_slots(actor_id: String) -> Array:
+	var player := player_snapshot(actor_id.strip_edges())
+	if player.is_empty():
+		return []
+	return _policy.discardable_counted_slots(
+		player.get("inventory", {}) as Dictionary
+	)
+
+
+func region_supply_receive_preview(
+	actor_id: String,
+	card_id: String,
+	discard_slot: int = -1
+) -> Dictionary:
+	if not _catalog_ready():
+		return {
+			"ready": false,
+			"requires_discard": false,
+			"reason_code": "catalog_unavailable",
+			"discardable_slots": [],
+		}
+	var player := player_snapshot(actor_id.strip_edges())
+	var card := _catalog.card_snapshot(card_id.strip_edges())
+	if player.is_empty() or card.is_empty():
+		return {
+			"ready": false,
+			"requires_discard": false,
+			"reason_code": "incoming_card_invalid",
+			"discardable_slots": [],
+		}
+	var plan := _policy.plan_receive_with_optional_discard(
+		player.get("inventory", {}) as Dictionary,
+		card,
+		_catalog,
+		discard_slot
+	)
+	return {
+		"ready": bool(plan.get("ready", false)),
+		"requires_discard": bool(plan.get("requires_discard", false)),
+		"reason_code": str(plan.get("reason_code", "")),
+		"operation": str(plan.get("operation", "")),
+		"discard_slot": int(plan.get("discard_slot", -1)),
+		"discardable_slots": (
+			plan.get("discardable_slots", []) as Array
+		).duplicate() if plan.get("discardable_slots", []) is Array else [],
+		"player_revision": int(player.get("revision", -1)),
+	}
+
+
 func player_state_port() -> Object:
 	return _state_port
 
@@ -351,7 +400,8 @@ func purchase_region_supply_card(
 	expected_player_revision: int,
 	expected_supply_revision: String,
 	transaction_id: String,
-	quote_request: Dictionary
+	quote_request: Dictionary,
+	discard_slot: int = -1
 ) -> Dictionary:
 	var intent := {
 		"operation": "region_supply_purchase",
@@ -364,6 +414,7 @@ func purchase_region_supply_card(
 		"expected_supply_revision": expected_supply_revision,
 		"quote_id": str(quote_request.get("quote_id", "")),
 		"quote_fingerprint": str(quote_request.get("quote_fingerprint", "")),
+		"discard_slot": discard_slot,
 	}
 	var intent_hash := _intent_hash(intent)
 	var gate := _transaction_gate(transaction_id, intent_hash)
@@ -480,7 +531,12 @@ func purchase_region_supply_card(
 		canonical_card,
 		"region-supply:%s:%s" % [normalized_item_id, transaction_id]
 	)
-	var receive_plan := _policy.plan_receive(player.get("inventory", {}) as Dictionary, incoming_card, _catalog)
+	var receive_plan := _policy.plan_receive_with_optional_discard(
+		player.get("inventory", {}) as Dictionary,
+		incoming_card,
+		_catalog,
+		discard_slot
+	)
 	if not bool(receive_plan.get("ready", false)):
 		return _abort_and_finish_reject(
 			reservation,
@@ -490,7 +546,10 @@ func purchase_region_supply_card(
 			normalized_actor_id,
 			str(receive_plan.get("reason_code", "inventory_commit_failed"))
 		)
-	var receive_result := _policy.commit_receive(player.get("inventory", {}) as Dictionary, receive_plan)
+	var receive_result := _policy.commit_receive_with_optional_discard(
+		player.get("inventory", {}) as Dictionary,
+		receive_plan
+	)
 	if not bool(receive_result.get("committed", false)):
 		return _abort_and_finish_reject(
 			reservation,
@@ -651,6 +710,13 @@ func purchase_region_supply_card(
 	result["region_supply_receipt"] = source_commit.duplicate(true)
 	result["region_supply_finalization"] = _region_supply_finalization_result(finalization)
 	result["state_port_receipt"] = _compact_state_port_receipt(state_commit)
+	result["private_receipt"] = {
+		"discarded": bool(receive_result.get("discarded", false)),
+		"discard_slot": int(receive_result.get("discard_slot", -1)),
+		"discarded_card_id": str(
+			receive_result.get("discarded_card_id", "")
+		),
+	}
 	result["public_receipt"] = {
 		"event_code": "anonymous_purchase_committed",
 		"source_region_id": normalized_region_id,
@@ -721,6 +787,138 @@ func _actor_player_index(actor_id: String) -> int:
 	var value: Variant = _state_port.call("actor_player_indices")
 	var actor_map: Dictionary = value if value is Dictionary else {}
 	return int(actor_map.get(actor_id, -1))
+
+
+func grant_card(
+	actor_id: String,
+	card_id: String,
+	expected_player_revision: int,
+	transaction_id: String,
+	grant_reason: String = ""
+) -> Dictionary:
+	var normalized_card_id := card_id.strip_edges()
+	var intent := {
+		"operation": "grant_card",
+		"actor_id": actor_id,
+		"card_id": normalized_card_id,
+		"expected_player_revision": expected_player_revision,
+		"grant_reason": grant_reason.strip_edges(),
+	}
+	var intent_hash := _intent_hash(intent)
+	var gate := _transaction_gate(transaction_id, intent_hash)
+	if bool(gate.get("handled", false)):
+		return (gate.get("result", {}) as Dictionary).duplicate(true)
+	if not _catalog_ready():
+		return _finish_reject(
+			transaction_id,
+			intent_hash,
+			"grant_card",
+			actor_id,
+			"catalog_unavailable"
+		)
+	var incoming_card := _catalog.card_snapshot(normalized_card_id)
+	if incoming_card.is_empty():
+		return _finish_reject(
+			transaction_id,
+			intent_hash,
+			"grant_card",
+			actor_id,
+			"card_missing"
+		)
+	var reservation := _reserve_player_state(
+		actor_id,
+		expected_player_revision,
+		transaction_id,
+		intent_hash
+	)
+	if not bool(reservation.get("reserved", false)):
+		return _finish_reject(
+			transaction_id,
+			intent_hash,
+			"grant_card",
+			actor_id,
+			_reservation_failure_reason(reservation)
+		)
+	var player := _reservation_player_snapshot(reservation, actor_id)
+	if player.is_empty():
+		return _abort_and_finish_reject(
+			reservation,
+			transaction_id,
+			intent_hash,
+			"grant_card",
+			actor_id,
+			"player_missing"
+		)
+	var inventory: Dictionary = player.get("inventory", {}) as Dictionary
+	var plan := _policy.plan_receive(inventory, incoming_card, _catalog)
+	if not bool(plan.get("ready", false)):
+		return _abort_and_finish_reject(
+			reservation,
+			transaction_id,
+			intent_hash,
+			"grant_card",
+			actor_id,
+			str(plan.get("reason_code", "inventory_commit_failed"))
+		)
+	var commit := _policy.commit_receive(inventory, plan)
+	if not bool(commit.get("committed", false)):
+		return _abort_and_finish_reject(
+			reservation,
+			transaction_id,
+			intent_hash,
+			"grant_card",
+			actor_id,
+			str(commit.get("reason_code", "inventory_commit_failed"))
+		)
+	var next_player := player.duplicate(true)
+	next_player["inventory"] = (
+		commit.get("inventory", {}) as Dictionary
+	).duplicate(true)
+	_assign_result_instance(
+		next_player["inventory"] as Dictionary,
+		commit,
+		transaction_id
+	)
+	var mutation_prepare := _prepare_player_state_mutation(
+		reservation,
+		actor_id,
+		next_player
+	)
+	if not bool(mutation_prepare.get("prepared", false)):
+		return _abort_and_finish_reject(
+			reservation,
+			transaction_id,
+			intent_hash,
+			"grant_card",
+			actor_id,
+			str(mutation_prepare.get("reason_code", "player_state_prepare_failed"))
+		)
+	var state_commit := _commit_player_state(
+		reservation,
+		actor_id,
+		next_player,
+		_state_commit_receipt("grant_card", transaction_id, intent_hash)
+	)
+	if not bool(state_commit.get("committed", false)):
+		return _abort_and_finish_reject(
+			reservation,
+			transaction_id,
+			intent_hash,
+			"grant_card",
+			actor_id,
+			str(state_commit.get("reason_code", "player_state_commit_failed"))
+		)
+	var result := _success_result(
+		"grant_card",
+		actor_id,
+		transaction_id,
+		intent_hash
+	)
+	result["card_id"] = normalized_card_id
+	result["receive_operation"] = str(commit.get("operation", ""))
+	result["player_state"] = _committed_player_snapshot(state_commit, actor_id)
+	result["state_port_receipt"] = _compact_state_port_receipt(state_commit)
+	return _finish_transaction(transaction_id, intent_hash, result)
 
 
 func manual_merge(
@@ -1008,6 +1206,9 @@ func player_feedback(reason_code: String) -> Dictionary:
 		"merge_source_missing": ["用于自动合成的同名牌已经离开手牌。", "同步手牌后重新领取。"],
 		"operation_invalid": ["这项卡牌操作无法识别。", "取消当前操作并重新发起。"],
 		"inventory_commit_failed": ["手牌更新没有完成。", "本次不会扣费，请重新操作。"],
+		"hand_full_discard_required": ["普通手牌已满。", "私下选择一张旧普通牌弃掉后再完成购买。"],
+		"discard_slot_invalid": ["这张牌不能用于本次换购。", "请从当前可弃的旧普通牌中重新选择。"],
+		"discard_card_changed": ["准备弃掉的牌已经发生变化。", "查看最新手牌并重新选择弃牌。"],
 		"play_card_missing": ["要打出的牌已经不在该位置。", "从最新手牌重新选择。"],
 		"play_card_changed": ["预留的牌已经发生变化。", "重新选择这张牌并确认目标。"],
 		"effect_handler_unavailable": ["这张牌的效果尚未接入本局。", "本次不会消耗卡牌，请选择其他可用牌。"],

@@ -242,7 +242,7 @@ func _test_scheduler_public_bid_priority() -> void:
 	var scheduler := SCHEDULER_SCENE.instantiate()
 	root.add_child(scheduler)
 	scheduler.call("configure", [])
-	scheduler.call("sync_candidates", [_candidate("bid-unconfigured", "public_bid", "public_bid", 1.0)])
+	scheduler.call("sync_candidates", [], _bid_state("public_bid"))
 	var unconfigured_debug := scheduler.call("debug_snapshot") as Dictionary
 	_expect(not bool(unconfigured_debug.get("scheduler_ready", true)) and int(unconfigured_debug.get("candidate_count", -1)) == 0 and str(scheduler.call("active_priority_group")).is_empty(), "empty scheduler configuration stays fail-closed instead of retaining or enabling public_bid alone")
 	scheduler.call("configure", ["public_bid", "monster_wager", "counter_response", "contract_response", "other_choice"])
@@ -250,18 +250,22 @@ func _test_scheduler_public_bid_priority() -> void:
 	_expect((configured_debug.get("priority_order", []) as Array) == ["monster_wager", "counter_response", "contract_response", "other_choice", "public_bid"], "prelisted public_bid is normalized to the final lowest-priority slot")
 	scheduler.call("sync_candidates", [_candidate("forged-bid", "public_bid", "monster_wager", 1.0)])
 	_expect(str(scheduler.call("active_priority_group")).is_empty(), "public_bid cannot forge a higher scheduler priority group")
+	scheduler.call("sync_candidates", [_candidate("direct-bid", "public_bid", "public_bid", 1.0)])
+	_expect(str(scheduler.call("active_priority_group")).is_empty(), "public_bid cannot enter the scheduler as an arbitrary external candidate")
 	scheduler.call("sync_candidates", [_candidate("fixture-only", "fixture_only", "monster_wager", 1.0)])
 	_expect(str(scheduler.call("active_priority_group")).is_empty(), "unknown decision kinds cannot enter a configured scheduler priority group")
 	scheduler.call("configure", ["monster_wager", "counter_response", "contract_response", "other_choice"])
 	scheduler.call("sync_candidates", [
-		_candidate("bid", "public_bid", "public_bid", 50.0),
 		_candidate("choice", "monster_target_choice", "other_choice", 40.0),
-	])
+	], _bid_state("public_bid"))
 	_expect(str(scheduler.call("active_priority_group")) == "other_choice", "public_bid is lower priority than other real choices")
-	scheduler.call("sync_candidates", [_candidate("bid", "public_bid", "public_bid", 50.0)])
+	scheduler.call("sync_candidates", [], _bid_state("public_bid"))
 	_expect(str(scheduler.call("active_priority_group")) == "public_bid", "public_bid becomes active when no higher decision exists")
+	scheduler.call("sync_candidates", [], _bid_state("planning"))
+	_expect(str(scheduler.call("active_priority_group")).is_empty(), "planning cannot leave a stale public_bid candidate active")
+	scheduler.call("sync_candidates", [], _bid_state("public_bid"))
 	var debug := scheduler.call("debug_snapshot") as Dictionary
-	_expect((debug.get("priority_order", []) as Array) == ["monster_wager", "counter_response", "contract_response", "other_choice", "public_bid"], "scheduler appends public_bid as the lowest stable priority")
+	_expect((debug.get("priority_order", []) as Array) == ["monster_wager", "counter_response", "contract_response", "other_choice", "public_bid"] and bool(debug.get("public_bid_phase_active", false)), "scheduler appends the phase-derived public_bid as the lowest stable priority")
 	scheduler.queue_free()
 
 
@@ -375,6 +379,7 @@ func _bid_state(phase_id: String) -> Dictionary:
 		"status": "只使用 Card Resolution 的阶段与倒计时。",
 		"active": phase_id == "public_bid",
 		"visible": true,
+		"window_sequence": 4,
 		"chips": [{"label": "本阶段", "state": "待确认", "active": true}],
 		"track_links": [{"id": "track_select_1", "label": "领跑", "state": "展示组1", "active": true}],
 		"actions": [{"id": "card_group_ready", "label": "完成展示", "disabled": false}],

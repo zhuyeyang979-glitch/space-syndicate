@@ -267,9 +267,8 @@ func _run_case(case_id: String) -> Dictionary:
 		"public_project_privacy_sanitized":
 			var content := _compose({
 				"public_region_supply_rack_snapshot": _sample_rack(),
-				"public_projects": [{"product_id": "public.product", "hidden_owner": 2, "private_target": "secret", "ai_score": 99}],
 			})
-			var encoded := JSON.stringify(content.get("public_projects", []))
+			var encoded := JSON.stringify(content)
 			passed = not encoded.contains("hidden_owner") and not encoded.contains("private_target") and not encoded.contains("ai_score")
 			flags["privacy_checked"] = true
 			notes = "existing public project sanitizer remains intact"
@@ -325,7 +324,6 @@ func _compose(world: Dictionary) -> Dictionary:
 		"district_index": int(world.get("district_index", 2)),
 		"district_name": str(world.get("district_name", "曙光港")),
 		"public_region_supply_rack_snapshot": world.get("public_region_supply_rack_snapshot", {}),
-		"public_projects": world.get("public_projects", []),
 		"owned_facilities": world.get("owned_facilities", []),
 		"city_present": bool(world.get("city_present", false)),
 		"gdp_per_minute": int(world.get("gdp_per_minute", 0)),

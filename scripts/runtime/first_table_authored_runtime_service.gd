@@ -300,7 +300,7 @@ func compose_runtime_content(world_snapshot: Dictionary, resolved_catalog: Dicti
 	var teaching_card_ids: Array = [first_card_id] if first_card_id != "" else []
 	var owned_facilities := _data_array(world_snapshot.get("owned_facilities", []))
 	var city_present := bool(world_snapshot.get("city_present", false)) or not owned_facilities.is_empty()
-	var share_text := "尚未建立公共设施"
+	var facility_summary_text := "尚未建立公共设施"
 	if city_present:
 		var facility_labels: Array = []
 		for facility_variant in owned_facilities:
@@ -309,7 +309,7 @@ func compose_runtime_content(world_snapshot: Dictionary, resolved_catalog: Dicti
 			var facility: Dictionary = facility_variant
 			facility_labels.append("%s%s %d级" % [str(facility.get("industry_id", "通用")), str(facility.get("facility_type", "设施")), int(facility.get("rank", 1))])
 		if not facility_labels.is_empty():
-			share_text = "、".join(facility_labels)
+			facility_summary_text = "、".join(facility_labels)
 	var gdp_per_minute := maxi(0, int(world_snapshot.get("gdp_per_minute", 0))) if city_present else 0
 	var cashflow_paid_total := maxi(0, int(world_snapshot.get("cashflow_paid_total", 0))) if city_present else 0
 	var visible_monster_name := str(world_snapshot.get("visible_monster_name", "")).strip_edges()
@@ -338,9 +338,8 @@ func compose_runtime_content(world_snapshot: Dictionary, resolved_catalog: Dicti
 		"city_present": city_present,
 		"city_product_ids": _string_array(world_snapshot.get("city_product_ids", [])) if city_present else [],
 		"city_demand_ids": _string_array(world_snapshot.get("city_demand_ids", [])) if city_present else [],
-		"public_projects": _sanitize_public_array(world_snapshot.get("public_projects", [])),
 		"owned_facilities": owned_facilities,
-		"urbanization_share_text": share_text,
+		"facility_summary_text": facility_summary_text,
 		"gdp_per_minute": gdp_per_minute,
 		"cashflow_paid_total": cashflow_paid_total,
 		"positive_income_observed": gdp_per_minute > 0 or cashflow_paid_total > 0,
@@ -369,10 +368,10 @@ func contextualize_phase(phase_snapshot: Dictionary, content_snapshot: Dictionar
 			contextual["detail"] = "选择区域后打开该区当前公开随机牌架；推荐只读取公开挂牌，不改变牌位、刷新序号或下一张牌。"
 		"buy_development", "play_development":
 			contextual["detail"] = "当前牌架推荐：%s。先在 RightInspector 阅读公开条件；若它不适合当前计划，就%s。" % [recommended_label, GENERIC_RACK_HINT]
-		"establish_project":
-			contextual["detail"] = "观察刚购买卡牌的真实公开结算。当前我的设施：%s｜我的项目 GDP/min %d；其他玩家的私有状态保持隐藏。" % [str(content_snapshot.get("urbanization_share_text", "待建立")), int(content_snapshot.get("gdp_per_minute", 0))]
+		"observe_facility":
+			contextual["detail"] = "观察刚购买卡牌的真实公开结算。当前我的设施：%s｜当前商品 GDP/min %d；其他玩家的私有状态保持隐藏。" % [str(content_snapshot.get("facility_summary_text", "待建立")), int(content_snapshot.get("gdp_per_minute", 0))]
 		"check_economy":
-			contextual["detail"] = "%s 我的项目 GDP/min %d｜已结算项目分红 %d。" % [district_name, int(content_snapshot.get("gdp_per_minute", 0)), int(content_snapshot.get("cashflow_paid_total", 0))]
+			contextual["detail"] = "%s 当前商品 GDP/min %d｜已结算商品现金流 %d。" % [district_name, int(content_snapshot.get("gdp_per_minute", 0)), int(content_snapshot.get("cashflow_paid_total", 0))]
 		"buy_followup", "play_followup":
 			contextual["detail"] = "当前牌架的下一项公开推荐：%s。服务不会注入、预留或刷新任何挂牌；没有合适牌时就%s。" % [followup_label, GENERIC_RACK_HINT]
 		"observe_ai_public_action", "inspect_clues":

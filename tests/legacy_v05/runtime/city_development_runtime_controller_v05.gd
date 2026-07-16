@@ -2,8 +2,10 @@
 extends Node
 class_name CityDevelopmentRuntimeController
 
-const PROJECT_STATE := preload("res://scripts/economy/city_product_project_state.gd")
-const PROJECT_BRIDGE := preload("res://scripts/economy/city_product_project_bridge.gd")
+# Historical v0.5 fixture only. Production v0.6 uses RegionInfrastructureRuntimeController.
+
+const PROJECT_STATE := preload("res://tests/legacy_v05/economy/city_product_project_state_v05.gd")
+const PROJECT_BRIDGE := preload("res://tests/legacy_v05/economy/city_product_project_bridge_v05.gd")
 
 const LEGACY_DIRECT_BUILD_REASON := "v0.4 城市发展必须通过真实城市发展卡绑定商品项目，不能直接建城。"
 const LEGAL_SOURCE_KINDS := ["city_development_card", "product_project"]
