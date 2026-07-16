@@ -33,7 +33,7 @@ Preserve this loop unless the user explicitly changes it:
 3. Starter monster choice is independent from role identity.
 4. Players select and hold a starter monster card; summoning is voluntary and may happen at any later point.
 5. Players urbanize land districts into anonymous cities without a summon prerequisite.
-6. Players browse the global ordinary-card market; a listing is purchasable only while its source region is sunlit, and live monsters in or adjacent to that source raise its price for every buyer.
+6. Players browse region-specific ordinary-card racks. Every ordinary slot is dealt from one deterministic legal supply bag with no guaranteed factory, market, city-development, monster, or category order. A listing remains viewable even when it is not currently purchasable; purchase eligibility still comes from its authoritative source-region conditions, and live monsters in or adjacent to that source raise its price for every buyer.
 7. Cards enter an anonymous public reveal/auction/track system.
 8. Cities produce realtime GDP from production, demand, transport, routes, damage, contracts, and market pressure.
 9. Monsters and military units create visible map pressure and economic consequences.
@@ -46,7 +46,9 @@ Important rules:
 - Monsters are not continuously player-controlled. They auto-act from probability tables.
 - Monster cards can summon/upgrade/refresh monsters and grant reusable bound skills.
 - Starter-monster possession does not force an opening summon. Delaying or skipping summon must not block facilities, economy, or card-market access.
-- Ordinary-card listings remain globally viewable. Purchase eligibility is derived from the listing's authoritative source region and the shared 120-second `world_effective` solar rotation; camera position and zoom never affect it.
+- Every region's current ordinary-card rack is public and may be inspected without refreshing it. Opening, closing, hovering, scrolling, camera movement, and zoom never redraw the rack. Purchasing fills only the vacated slot from the authoritative deterministic supply bag.
+- Regional supply has no factory-first, market-after-factory, city-development guarantee, monster guarantee, or hidden category phase. AI may read the current public rack but never future bag order.
+- Purchase eligibility is derived from the listing's authoritative source region and the shared 120-second `world_effective` solar rotation; camera position and zoom never affect it.
 - Market quotes lock eligibility and price for exactly 5 `world_effective` seconds. Live monster ownership is irrelevant: same-region monsters add `1.0x` each, directly adjacent monsters add `0.5x` each, the total multiplier is capped at `5.0x`, and the final cash price rounds up.
 - Military units are weaker controlled forces that use reusable command cards.
 - Card play is anonymous unless later inference reveals ownership.
@@ -138,13 +140,17 @@ Ranks I-IV normally keep the rank-I purchase price.
 - Global public refreshes, such as broad supply/demand refresh, may happen every 30-60 seconds.
 - Market prices should move from supply/demand/pressure, not direct arbitrary player price-setting.
 - Monster damage and route damage should ultimately be visible through GDP, income, or city/route status changes.
+- Every surviving non-ruin region has low, non-accumulating ambient consumption for every active commodity. Only same-region fresh production or a directly adjacent producer feeding a land consumer may satisfy it.
+- Installed market demand accumulates unmet demand by market facility and commodity. Current steady demand is served before capped backlog recovery.
+- Fresh output is allocated in the authoritative order: explicit market demand, ambient consumption, compatible warehouse storage, then irreversible waste. Ambient consumption never drains strategic warehouse inventory.
+- Commodity routes run automatically in the economy but are hidden on the map by default. The player may opt into one commodity's actual or recently committed flows; candidate routes must not be presented as real traffic.
 
 ### AI
 
 AI should behave like a planned test opponent:
 
 - Establish an economic route without requiring an opening summon; deploy the held starter monster later when useful.
-- Buy globally listed ordinary cards when their authoritative source region is sunlit and the locked quote is affordable.
+- Inspect public regional racks, buy useful ordinary cards when their authoritative source-region conditions and locked quote are legal, and never inspect future supply-bag order.
 - Build around a product/economy route.
 - Use cards anonymously.
 - Defend owned income.
