@@ -294,7 +294,6 @@ func _table_scene_integrity(main: Node) -> Dictionary:
 		{"key": "RightInspector", "node_name": "RightInspector", "min_size": Vector2(280.0, 580.0)},
 		{"key": "PlayerBoard", "node_name": "PlayerBoard", "min_size": Vector2(1500.0, 185.0)},
 		{"key": "HandRack", "node_name": "HandRack", "min_size": Vector2(900.0, 120.0)},
-		{"key": "BidBoard", "node_name": "PlayerBidBoard", "min_size": Vector2(250.0, 44.0)},
 	]
 	var required_nodes := {}
 	var node_rects := {}
@@ -327,6 +326,13 @@ func _table_scene_integrity(main: Node) -> Dictionary:
 	var menu_hidden := menu_overlay == null or not menu_overlay.is_visible_in_tree()
 	if not menu_hidden:
 		failure_reasons.append("MenuModalOverlay is still covering the production table")
+	var retired_player_bid := main.find_child("PlayerBidBoard", true, false)
+	if retired_player_bid != null:
+		failure_reasons.append("retired permanent PlayerBidBoard is still present")
+	var transient_public_bid := main.find_child("PublicBidDecisionPanel", true, false) as Control
+	required_nodes["PublicBidDecisionPanel"] = _control_snapshot(transient_public_bid)
+	if transient_public_bid != null and transient_public_bid.is_visible_in_tree():
+		failure_reasons.append("PublicBidDecisionPanel is visible outside a structured public_bid decision")
 	return {
 		"passed": failure_reasons.is_empty(),
 		"failure_reasons": failure_reasons,
@@ -352,7 +358,7 @@ func _table_pixel_integrity_gate(case_id: String, metrics: Dictionary) -> Dictio
 	if float(whole.get("effective_coverage", 0.0)) < 0.18:
 		failure_reasons.append("whole-frame effective content below 18%")
 	var node_regions := metrics.get("node_regions", {}) as Dictionary
-	for node_key in ["TopBar", "LeftCardShelf", "RightInspector", "PlayerBoard", "HandRack", "BidBoard"]:
+	for node_key in ["TopBar", "LeftCardShelf", "RightInspector", "PlayerBoard", "HandRack"]:
 		var node_metrics := node_regions.get(node_key, {}) as Dictionary
 		if int(node_metrics.get("sample_count", 0)) <= 0:
 			failure_reasons.append("%s has no sampled screenshot pixels" % node_key)

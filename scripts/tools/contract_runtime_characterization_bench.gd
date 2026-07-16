@@ -639,9 +639,9 @@ func _case_preemption_boundary() -> Dictionary:
 	var candidates: Array = _runtime_main.call("_forced_decision_candidates")
 	var contract_candidate := _candidate_by_kind(candidates, "contract_response")
 	var priority: Array = (_scheduler.call("debug_snapshot") as Dictionary).get("priority_order", [])
-	var observed := priority == ["monster_wager", "counter_response", "contract_response", "other_choice"] and not contract_candidate.is_empty()
+	var observed := priority == ["monster_wager", "counter_response", "contract_response", "other_choice", "public_bid"] and not contract_candidate.is_empty()
 	var aligned := not bool(contract_candidate.get("blocks_card_resolution", true))
-	return _record("monster_wager_or_counter_preempts_contract", observed, aligned, "Priority order remains authoritative and contract candidates now report blocks_card_resolution=%s." % str(contract_candidate.get("blocks_card_resolution", null)), _flags_from_opened(opened).merged({"forced_decision_checked": true}, true))
+	return _record("monster_wager_or_counter_preempts_contract", observed, aligned, "Priority order remains authoritative with public_bid last; contract candidates report blocks_card_resolution=%s." % str(contract_candidate.get("blocks_card_resolution", null)), _flags_from_opened(opened).merged({"forced_decision_checked": true}, true))
 
 
 func _case_overlay_actions() -> Dictionary:

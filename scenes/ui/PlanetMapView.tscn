@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/planet_map_view.gd" id="1_planet_map_view"]
 [ext_resource type="PackedScene" path="res://scenes/ui/map/PlanetGlobeBackdrop.tscn" id="2_globe_backdrop"]
@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/map/PlanetMapScaleHint.tscn" id="5_scale_hint"]
 [ext_resource type="PackedScene" path="res://scenes/ui/map/PlanetSolarCameraController.tscn" id="6_solar_camera"]
 [ext_resource type="PackedScene" path="res://scenes/ui/weather/WeatherMapOverlay.tscn" id="7_weather_overlay"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/OptionalRoutePresentationRuntimeService.tscn" id="8_optional_route"]
 
 [node name="PlanetMapView" type="Control"]
 unique_name_in_owner = true
@@ -20,6 +21,9 @@ mouse_filter = 0
 clip_contents = false
 focus_mode = 2
 script = ExtResource("1_planet_map_view")
+
+[node name="OptionalRoutePresentationRuntimeService" parent="." instance=ExtResource("8_optional_route")]
+unique_name_in_owner = true
 
 [node name="BackdropLayer" type="Control" parent="."]
 unique_name_in_owner = true

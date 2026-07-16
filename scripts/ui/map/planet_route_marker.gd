@@ -24,14 +24,15 @@ func configure(data: Dictionary) -> void:
 		product_label.text = "%s ×%d" % [str(data.get("product", "通用商品")), route_count] if _compact_mode and route_count > 1 else str(data.get("product", "通用商品"))
 		product_label.add_theme_font_size_override("font_size", 10 if _compact_mode else 12)
 	if status_label != null:
-		status_label.text = "运输受阻" if bool(data.get("disrupted", false)) else "商路畅通"
+		status_label.text = _status_text(data)
 		status_label.visible = not _compact_mode
 	if length_label != null:
 		length_label.text = "路径节点 %d" % int(data.get("point_count", 0))
 		length_label.visible = not _compact_mode
-	tooltip_text = "%s｜%s｜%d 条路线｜代表路径 %d 个节点；放大查看每条路线标牌。" % [
+	tooltip_text = "%s｜%s｜%s｜%d 条真实流｜代表路径 %d 个节点。" % [
 		str(data.get("product", "通用商品")),
-		"运输受阻" if bool(data.get("disrupted", false)) else "商路畅通",
+		_status_text(data),
+		_transport_text(data),
 		int(data.get("route_count", 1)),
 		int(data.get("point_count", 0)),
 	]
@@ -48,6 +49,40 @@ func debug_snapshot() -> Dictionary:
 		"product": product_label.text if product_label != null else "",
 		"compact": _compact_mode,
 	}
+
+
+func _status_text(data: Dictionary) -> String:
+	if bool(data.get("congested", false)):
+		return "当前拥堵"
+	if bool(data.get("capacity_limited", false)):
+		return "容量受限"
+	match str(data.get("flow_kind", "market_sale")):
+		"warehouse_inbound":
+			return "仓库入库"
+		"warehouse_outbound":
+			return "仓库出库"
+		"ambient_consumption":
+			return "区域基础消费"
+	match str(data.get("strength", "weak")):
+		"strong":
+			return "当前流量较高"
+		"medium":
+			return "当前流量中等"
+	return "当前流量较低"
+
+
+func _transport_text(data: Dictionary) -> String:
+	if str(data.get("flow_kind", "")) == "ambient_consumption":
+		return "相邻陆地直供"
+	var value: Variant = data.get("transport_modes", [])
+	if not (value is Array):
+		return "运输方式未标注"
+	var modes: Array[String] = []
+	for mode_variant in value:
+		var mode := str(mode_variant).strip_edges()
+		if not mode.is_empty():
+			modes.append(mode)
+	return " / ".join(modes) if not modes.is_empty() else "运输方式未标注"
 
 
 func _refresh_style(accent: Color, disrupted: bool, compact: bool) -> void:

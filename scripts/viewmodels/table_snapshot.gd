@@ -1,6 +1,23 @@
 extends RefCounted
 class_name TableSnapshot
 
+const REAL_TEMPORARY_DECISION_KINDS := [
+	"monster_wager",
+	"counter_response",
+	"contract_response",
+	"discard_purchase",
+	"monster_target_choice",
+	"player_target_choice",
+]
+const VALID_FORCED_PRIORITY_GROUPS := [
+	"monster_wager",
+	"counter_response",
+	"contract_response",
+	"other_choice",
+	"public_bid",
+]
+const VALID_FORCED_PRESENTATION_SURFACES := ["overlay", "card_resolution_track", "player_hint"]
+
 const DISTRICT_VIEW_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/district_view_snapshot.gd")
 const PLAYER_BOARD_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/player_board_snapshot.gd")
 const PLANET_BOARD_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/planet_board_snapshot.gd")
@@ -17,6 +34,7 @@ var planet: Dictionary = {}
 var right_inspector: Dictionary = {}
 var player_board: Dictionary = {}
 var temporary_decision: Dictionary = {}
+var active_forced_decision: Dictionary = {}
 var first_run_coach: Dictionary = {}
 var scenario_coach: Dictionary = {}
 var visual_events: Array = []
@@ -48,6 +66,7 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	first_run_coach = FIRST_RUN_COACH_SNAPSHOT_SCRIPT.new().apply_dictionary(data.get("first_run_coach", {}) if data.get("first_run_coach", {}) is Dictionary else {}).to_ui_dictionary()
 	scenario_coach = SCENARIO_COACH_SNAPSHOT_SCRIPT.new().apply_dictionary(data.get("scenario_coach", {}) if data.get("scenario_coach", {}) is Dictionary else {}).to_ui_dictionary()
 	temporary_decision = _normalize_temporary_decision(data.get("temporary_decision", {}))
+	active_forced_decision = _normalize_active_forced_decision(data.get("active_forced_decision", {}))
 	visual_events = (data.get("visual_events", []) as Array).duplicate(true) if data.get("visual_events", []) is Array else []
 	visual_event_key = str(data.get("visual_event_key", ""))
 	campaign_focus_mode = bool(data.get("campaign_focus_mode", false))
@@ -65,6 +84,7 @@ func to_ui_dictionary() -> Dictionary:
 		"first_run_coach": first_run_coach,
 		"scenario_coach": scenario_coach,
 		"temporary_decision": temporary_decision,
+		"active_forced_decision": active_forced_decision,
 		"visual_events": visual_events,
 		"visual_event_key": visual_event_key,
 		"campaign_focus_mode": campaign_focus_mode,
@@ -88,6 +108,10 @@ func _normalize_temporary_decision(value: Variant) -> Dictionary:
 		return {}
 	var source: Dictionary = value
 	if source.is_empty():
+		return {}
+	var decision_id := str(source.get("id", "")).strip_edges()
+	var decision_kind := str(source.get("kind", "")).strip_edges()
+	if decision_id.is_empty() or not REAL_TEMPORARY_DECISION_KINDS.has(decision_kind):
 		return {}
 	var actions: Array = source.get("actions", []) if source.get("actions", []) is Array else []
 	var normalized_actions: Array = []
@@ -117,8 +141,8 @@ func _normalize_temporary_decision(value: Variant) -> Dictionary:
 			if chip_text != "":
 				normalized_chips.append({"text": chip_text, "tooltip": ""})
 	var result := {
-		"id": str(source.get("id", "")),
-		"kind": str(source.get("kind", "")),
+		"id": decision_id,
+		"kind": decision_kind,
 		"title": str(source.get("title", "临时决策")),
 		"body": str(source.get("body", source.get("summary", ""))),
 		"tooltip": str(source.get("tooltip", "")),
@@ -134,6 +158,55 @@ func _normalize_temporary_decision(value: Variant) -> Dictionary:
 	if sections is Array:
 		result["sections"] = (sections as Array).duplicate(true)
 	return result
+
+
+func _normalize_active_forced_decision(value: Variant) -> Dictionary:
+	if not (value is Dictionary):
+		return {}
+	var source := value as Dictionary
+	var decision_id := str(source.get("id", "")).strip_edges()
+	var kind := str(source.get("kind", "")).strip_edges()
+	var priority_group := str(source.get("priority_group", "")).strip_edges()
+	var presentation_surface := str(source.get("presentation_surface", "")).strip_edges()
+	var expected_priority_group := _priority_group_for_decision_kind(kind)
+	if decision_id.is_empty() \
+		or kind.is_empty() \
+		or priority_group.is_empty() \
+		or not VALID_FORCED_PRIORITY_GROUPS.has(priority_group) \
+		or not VALID_FORCED_PRESENTATION_SURFACES.has(presentation_surface):
+		return {}
+	if kind == "private_forced_decision":
+		if bool(source.get("visible_to_viewer", true)) or presentation_surface != "player_hint":
+			return {}
+	elif expected_priority_group.is_empty() or priority_group != expected_priority_group:
+		return {}
+	return {
+		"id": decision_id,
+		"kind": kind,
+		"priority_group": priority_group,
+		"visible_to_viewer": bool(source.get("visible_to_viewer", false)),
+		"presentation_surface": presentation_surface,
+		"blocks_global_time": bool(source.get("blocks_global_time", false)),
+		"blocks_player_actions": bool(source.get("blocks_player_actions", false)),
+		"blocks_card_resolution": bool(source.get("blocks_card_resolution", false)),
+	}
+
+
+func _priority_group_for_decision_kind(kind: String) -> String:
+	match kind:
+		"monster_wager":
+			return "monster_wager"
+		"counter_response":
+			return "counter_response"
+		"contract_response":
+			return "contract_response"
+		"discard_purchase", "monster_target_choice", "player_target_choice":
+			return "other_choice"
+		"public_bid", "card_order_bid":
+			return "public_bid"
+		"private_forced_decision":
+			return ""
+	return ""
 
 
 func _normalize_card_resolution_track(source: Dictionary, fallback_entries: Array) -> Dictionary:

@@ -127,14 +127,16 @@ func _ready() -> void:
 		player_board.connect("card_drag_released", Callable(self, "_on_card_drag_released"))
 	if player_board.has_signal("action_requested"):
 		player_board.connect("action_requested", Callable(self, "_on_action_requested"))
-	if player_board.has_signal("track_link_hovered"):
-		player_board.connect("track_link_hovered", Callable(self, "_on_track_link_hovered"))
-	if player_board.has_signal("track_link_unhovered"):
-		player_board.connect("track_link_unhovered", Callable(self, "_on_track_link_unhovered"))
 	if overlay_layer.has_signal("side_drawer_action_requested"):
 		overlay_layer.connect("side_drawer_action_requested", Callable(self, "_on_side_drawer_action_requested"))
 	if overlay_layer.has_signal("temporary_decision_action_requested"):
 		overlay_layer.connect("temporary_decision_action_requested", Callable(self, "_on_temporary_decision_action_requested"))
+	if overlay_layer.has_signal("public_bid_action_requested"):
+		overlay_layer.connect("public_bid_action_requested", Callable(self, "_on_public_bid_action_requested"))
+	if overlay_layer.has_signal("public_bid_track_link_hovered"):
+		overlay_layer.connect("public_bid_track_link_hovered", Callable(self, "_on_track_link_hovered"))
+	if overlay_layer.has_signal("public_bid_track_link_unhovered"):
+		overlay_layer.connect("public_bid_track_link_unhovered", Callable(self, "_on_track_link_unhovered"))
 	call_deferred("_sync_runtime_table_focus_order")
 
 
@@ -176,12 +178,17 @@ func apply_state(data: Dictionary) -> void:
 	if right_inspector.has_method("set_context"):
 		var inspector: Dictionary = ui_data.get("right_inspector", {}) if ui_data.get("right_inspector", {}) is Dictionary else {}
 		right_inspector.call("set_context", inspector)
+	var player_data: Dictionary = ui_data.get("player_board", {}) if ui_data.get("player_board", {}) is Dictionary else {}
 	if player_board.has_method("set_player_state"):
-		player_board.call("set_player_state", ui_data.get("player_board", {}))
+		player_board.call("set_player_state", player_data)
 	_sync_visual_events(ui_data)
 	if not _temporary_track_focus_active:
 		_sync_selected_track_focus_from_state()
-	_sync_temporary_decision_overlay(ui_data.get("temporary_decision", {}))
+	_sync_transient_gameplay_surfaces(
+		ui_data.get("temporary_decision", {}),
+		player_data.get("bid_board", {}),
+		ui_data.get("active_forced_decision", {})
+	)
 	_sync_focus_guide(ui_data)
 	call_deferred("_sync_focus_guide_from_current_state")
 	call_deferred("_sync_runtime_table_focus_order")
@@ -237,6 +244,32 @@ func get_embedded_map_view() -> Control:
 			return embedded as Control
 	var found := find_child("PlanetMapView", true, false) as Control
 	return found
+
+
+func set_optional_route_public_snapshot(snapshot: Dictionary, geometry_by_route_id: Dictionary = {}, world_effective_seconds := -1.0) -> void:
+	for map_view in _optional_route_map_views():
+		if map_view.has_method("set_optional_route_public_geometry"):
+			map_view.call("set_optional_route_public_geometry", geometry_by_route_id)
+		if map_view.has_method("set_optional_route_public_snapshot"):
+			map_view.call("set_optional_route_public_snapshot", snapshot, world_effective_seconds)
+
+
+func clear_optional_route_public_snapshot() -> void:
+	for map_view in _optional_route_map_views():
+		if map_view.has_method("clear_optional_route_public_snapshot"):
+			map_view.call("clear_optional_route_public_snapshot")
+
+
+func _optional_route_map_views() -> Array[Control]:
+	var result: Array[Control] = []
+	var embedded := get_embedded_map_view()
+	if embedded != null:
+		result.append(embedded)
+	if overlay_layer != null:
+		var fullscreen := overlay_layer.find_child("FullscreenPlanetMapView", true, false) as Control
+		if fullscreen != null and fullscreen != embedded:
+			result.append(fullscreen)
+	return result
 
 
 func get_overlay_host() -> Node:
@@ -318,7 +351,7 @@ func _runtime_table_focus_controls() -> Array[Control]:
 	_append_runtime_focus_control(result, _first_visible_control(["DistrictSupplySideDrawer", "DistrictSupplyPanel", "DistrictSupplySideDrawerOverlay", "DistrictSupplyDrawer", "SideDrawerPanel"]), "区域牌架")
 	_append_runtime_focus_control(result, _first_visible_control(["HandRack", "PlayerHandTableau", "PlayerBoard"]), "手牌")
 	_append_runtime_focus_control(result, _first_visible_control(["PlayerMainActionDock", "PlayerCommandTableau", "PlayerBoard"]), "当前行动")
-	_append_runtime_focus_control(result, _first_visible_control(["PlayerBidBoard", "PlayerCommandTableau"]), "竞价")
+	_append_runtime_focus_control(result, _first_visible_control(["PublicBidDecisionPanel"]), "牌序竞价")
 	return result
 
 
@@ -358,6 +391,9 @@ func _public_track_node() -> Node:
 
 
 func _on_end_turn_requested() -> void:
+	if _forced_surface_blocks_player_actions():
+		_show_player_action_feedback("end_turn", "blocked", "请先完成当前强制决策。")
+		return
 	_show_player_action_feedback("end_turn", "pending", "结束回合已提交，等待桌面进入下一阶段。")
 	end_turn_requested.emit()
 
@@ -367,6 +403,9 @@ func _on_menu_requested() -> void:
 
 
 func _on_action_requested(action_id: String) -> void:
+	if _forced_surface_blocks_player_actions():
+		_show_player_action_feedback(action_id, "blocked", "请先完成当前强制决策。")
+		return
 	if _should_open_detail_drawer(action_id):
 		_open_detail_drawer(action_id)
 	_show_player_action_feedback(action_id)
@@ -405,8 +444,10 @@ func _on_track_entry_unhovered(_entry: Dictionary) -> void:
 
 
 func _set_player_board_track_hover(action_id: String) -> void:
-	if player_board != null and player_board.has_method("set_hovered_track_action"):
-		player_board.call("set_hovered_track_action", action_id)
+	if overlay_layer != null:
+		var bid_panel := overlay_layer.find_child("PublicBidDecisionPanel", true, false)
+		if bid_panel != null and bid_panel.has_method("set_hovered_track_action"):
+			bid_panel.call("set_hovered_track_action", action_id)
 
 
 func _show_track_entry_hover_preview(entry: Dictionary) -> void:
@@ -425,12 +466,20 @@ func _show_track_action_hover_preview(action_id: String) -> void:
 
 
 func _on_side_drawer_action_requested(action_id: String) -> void:
+	if _forced_surface_blocks_player_actions():
+		_show_player_action_feedback(action_id, "blocked", "请先完成当前强制决策。")
+		return
 	_show_player_action_feedback(action_id, "resolved", "侧栏动作已提交。")
 	action_requested.emit(action_id)
 
 
 func _on_temporary_decision_action_requested(action_id: String) -> void:
 	_show_player_action_feedback(action_id, "resolved", "临时决策已提交，等待规则结算。")
+	action_requested.emit(action_id)
+
+
+func _on_public_bid_action_requested(action_id: String) -> void:
+	_show_player_action_feedback(action_id, "resolved", "牌序竞价选择已提交，等待牌序阶段推进。")
 	action_requested.emit(action_id)
 
 
@@ -459,7 +508,9 @@ func _should_ignore_quick_action_hotkey() -> bool:
 	if focused is LineEdit or focused is TextEdit:
 		return true
 	var decision: Dictionary = current_ui_data.get("temporary_decision", {}) if current_ui_data.get("temporary_decision", {}) is Dictionary else {}
-	return not decision.is_empty()
+	if not decision.is_empty():
+		return true
+	return overlay_layer != null and overlay_layer.has_method("public_bid_visible") and bool(overlay_layer.call("public_bid_visible"))
 
 
 func _quick_action_index_for_key(event: InputEventKey) -> int:
@@ -539,6 +590,9 @@ func _emit_track_action_request(action_id: String, detail: String) -> void:
 	var normalized_action_id := action_id.strip_edges()
 	if normalized_action_id == "":
 		return
+	if _forced_surface_blocks_player_actions():
+		_show_player_action_feedback(normalized_action_id, "blocked", "请先完成当前强制决策。")
+		return
 	var current_frame := Engine.get_process_frames()
 	if _last_track_action_bridge_id == normalized_action_id and _last_track_action_bridge_frame == current_frame:
 		return
@@ -549,6 +603,8 @@ func _emit_track_action_request(action_id: String, detail: String) -> void:
 
 
 func _on_card_drag_preview_started(card_data: Dictionary, screen_position: Vector2) -> void:
+	if _forced_surface_blocks_player_actions():
+		return
 	_hide_hand_hover_preview()
 	_show_card_drag_feedback(card_data, screen_position)
 	card_drag_preview_started.emit(card_data)
@@ -565,12 +621,17 @@ func _on_card_drag_preview_ended(card_data: Dictionary) -> void:
 
 
 func _on_card_drag_released(card_data: Dictionary, screen_position: Vector2) -> void:
+	if _forced_surface_blocks_player_actions():
+		return
 	if _card_drop_zone_contains(screen_position) and _card_can_drop_on_map(card_data):
 		card_drop_requested.emit(card_data, screen_position)
 
 
 func _show_card_drag_feedback(card_data: Dictionary, screen_position: Vector2) -> void:
 	if overlay_layer == null or not overlay_layer.has_method("show_drag_preview"):
+		return
+	if _forced_surface_blocks_player_actions():
+		overlay_layer.call("hide_drag_preview")
 		return
 	var over_map := _card_drop_zone_contains(screen_position)
 	var valid_drop := over_map and _card_can_drop_on_map(card_data)
@@ -956,7 +1017,7 @@ func _focus_target_control(focus_target: String) -> Control:
 		"action_dock":
 			return _first_visible_control(["PlayerMainActionDock", "PlayerCommandTableau", "PlayerBoard"])
 		"bid_board":
-			return _first_visible_control(["PlayerBidBoard", "PlayerCommandTableau"])
+			return _first_visible_control(["PublicBidDecisionPanel", "PlayerCommandTableau"])
 		"public_track":
 			return _public_track_node() as Control
 		"right_inspector", "economy_overview", "intel_dossier", "standings", "settlement":
@@ -1151,6 +1212,70 @@ func _sync_temporary_decision_overlay(value: Variant) -> void:
 	_show_temporary_decision_player_feedback(decision)
 
 
+func _sync_transient_gameplay_surfaces(decision_value: Variant, bid_value: Variant, active_forced_value: Variant = {}) -> void:
+	if overlay_layer == null:
+		return
+	var decision: Dictionary = decision_value if decision_value is Dictionary else {}
+	var bid_state: Dictionary = bid_value if bid_value is Dictionary else {}
+	var active_forced: Dictionary = active_forced_value if active_forced_value is Dictionary else {}
+	var active_priority := str(active_forced.get("priority_group", "")).strip_edges()
+	var temporary_decision_is_active := _temporary_decision_matches_active(decision, active_forced)
+	var public_bid_is_active := active_priority == "public_bid" \
+		and str(active_forced.get("kind", "")).strip_edges() in ["public_bid", "card_order_bid"] \
+		and bool(active_forced.get("visible_to_viewer", false)) \
+		and bool(active_forced.get("blocks_player_actions", false)) \
+		and str(active_forced.get("presentation_surface", "")).strip_edges() == "overlay"
+	if temporary_decision_is_active:
+		if overlay_layer.has_method("hide_public_bid"):
+			overlay_layer.call("hide_public_bid", false)
+		_sync_temporary_decision_overlay(decision)
+		return
+	_sync_temporary_decision_overlay({})
+	if public_bid_is_active and str(bid_state.get("phase_id", "")).strip_edges() == "public_bid":
+		if overlay_layer.has_method("show_public_bid"):
+			overlay_layer.call("show_public_bid", bid_state)
+	else:
+		if overlay_layer.has_method("hide_public_bid"):
+			overlay_layer.call("hide_public_bid")
+
+
+func _temporary_decision_matches_active(decision: Dictionary, active_forced: Dictionary) -> bool:
+	if decision.is_empty():
+		return false
+	if active_forced.is_empty():
+		return false
+	var kind := str(decision.get("kind", "")).strip_edges()
+	var active_kind := str(active_forced.get("kind", "")).strip_edges()
+	return str(decision.get("id", "")).strip_edges() == str(active_forced.get("id", "")).strip_edges() \
+		and not kind.is_empty() \
+		and kind == active_kind \
+		and str(active_forced.get("priority_group", "")).strip_edges() == _forced_priority_group_for_kind(kind) \
+		and bool(active_forced.get("visible_to_viewer", false)) \
+		and bool(active_forced.get("blocks_player_actions", false)) \
+		and str(active_forced.get("presentation_surface", "")).strip_edges() == "overlay"
+
+
+func _forced_priority_group_for_kind(kind: String) -> String:
+	match kind:
+		"monster_wager":
+			return "monster_wager"
+		"counter_response":
+			return "counter_response"
+		"contract_response":
+			return "contract_response"
+		"discard_purchase", "monster_target_choice", "player_target_choice":
+			return "other_choice"
+		"public_bid", "card_order_bid":
+			return "public_bid"
+	return ""
+
+
+func _forced_surface_blocks_player_actions() -> bool:
+	return overlay_layer != null \
+		and overlay_layer.has_method("forced_surface_active") \
+		and bool(overlay_layer.call("forced_surface_active"))
+
+
 func _show_player_action_feedback(action_id: String, state: String = "pending", detail: String = "") -> void:
 	var normalized_action_id := action_id.strip_edges()
 	if normalized_action_id == "":
@@ -1220,6 +1345,9 @@ func _action_label_for_id(action_id: String) -> String:
 	for key in ["actions", "quick_actions"]:
 		if player_data.get(key, []) is Array:
 			candidates.append_array(player_data.get(key, []))
+	var bid_state: Dictionary = player_data.get("bid_board", {}) if player_data.get("bid_board", {}) is Dictionary else {}
+	if bid_state.get("actions", []) is Array:
+		candidates.append_array(bid_state.get("actions", []))
 	if not _selected_hand_card_data.is_empty() and _selected_hand_card_data.get("actions", []) is Array:
 		candidates.append_array(_selected_hand_card_data.get("actions", []))
 	var inspector: Dictionary = current_ui_data.get("right_inspector", {}) if current_ui_data.get("right_inspector", {}) is Dictionary else {}

@@ -1141,7 +1141,7 @@ func _check_split_game_screen_structure() -> void:
 	var screen: Node = packed.instantiate()
 	root.add_child(screen)
 	await process_frame
-	for node_name in ["TopBar", "FirstGlanceRail", "IdentityChip", "CashChip", "GdpChip", "GoalChip", "SelectedDistrictChip", "PrimaryActionChip", "PublicTrack", "FirstRunCoach", "CoachPrimaryButton", "ScenarioCoach", "ScenarioCoachPrimaryButton", "TrackFocusRibbon", "TrackFocusLabel", "PlanetBoard", "PlanetStageViewport", "MapHost", "PlaytestFlowCompass", "PlaytestFlowCompassStepRail", "PlaytestFlowCompassNextLabel", "PlanetLeftSpaceRail", "PlanetRightSpaceRail", "LeftRailStack", "RightRailStack", "RightInspector", "InspectorReasonPanel", "InspectorRequirementChipRow", "DistrictInfoPanel", "CurrentActionPanel", "EventLogLabel", "InspectorDeepLinkRow", "PlayerBoard", "PlayerThreeSecondRail", "PlayerHandCountChip", "PlayerGoalBar", "PlayerBidBoard", "BidBoardChipRow", "BidBoardActionRow", "PlayerMainActionDock", "ActionDockQuickActionRow", "PlayerStatusLampRow", "PlayerReadinessChipRow", "OverlayLayer", "TooltipLayer", "SideDrawerLayer", "ModalLayer", "DragPreviewLayer", "SideDrawerPanel", "DragDropTargetPanel", "DragPreviewPanel", "MonsterWagerDecisionPanel", "ContractResponseDecisionPanel", "TemporaryChoiceDecisionPanel"]:
+	for node_name in ["TopBar", "FirstGlanceRail", "IdentityChip", "CashChip", "GdpChip", "GoalChip", "SelectedDistrictChip", "PrimaryActionChip", "PublicTrack", "FirstRunCoach", "CoachPrimaryButton", "ScenarioCoach", "ScenarioCoachPrimaryButton", "TrackFocusRibbon", "TrackFocusLabel", "PlanetBoard", "PlanetStageViewport", "MapHost", "PlaytestFlowCompass", "PlaytestFlowCompassStepRail", "PlaytestFlowCompassNextLabel", "PlanetLeftSpaceRail", "PlanetRightSpaceRail", "LeftRailStack", "RightRailStack", "RightInspector", "InspectorReasonPanel", "InspectorRequirementChipRow", "DistrictInfoPanel", "CurrentActionPanel", "EventLogLabel", "InspectorDeepLinkRow", "PlayerBoard", "PlayerThreeSecondRail", "PlayerHandCountChip", "PlayerGoalBar", "PublicBidDecisionPanel", "BidBoardChipRow", "BidBoardActionRow", "PlayerMainActionDock", "ActionDockQuickActionRow", "PlayerStatusLampRow", "PlayerReadinessChipRow", "OverlayLayer", "TooltipLayer", "SideDrawerLayer", "ModalLayer", "DragPreviewLayer", "SideDrawerPanel", "DragDropTargetPanel", "DragPreviewPanel", "MonsterWagerDecisionPanel", "ContractResponseDecisionPanel", "TemporaryChoiceDecisionPanel"]:
 		_expect(screen.find_child(node_name, true, false) != null, "split GameScreen contains %s" % node_name)
 	root.remove_child(screen)
 	screen.queue_free()
@@ -1157,6 +1157,14 @@ func _check_split_game_screen_data_binding() -> void:
 	_expect(screen.has_method("apply_state"), "split GameScreen exposes apply_state")
 	screen.call("apply_state", {
 		"top_bar": {"table_state": "竞价中", "tempo": "00:42", "identity": "赤港财团", "cash_text": "¥ 1300", "gdp_text": "+22/s", "goal_text": "5000", "selected_district": "雾港区", "primary_action": "牌架"},
+		"active_forced_decision": {
+			"id": "public_bid",
+			"kind": "public_bid",
+			"priority_group": "public_bid",
+			"visible_to_viewer": true,
+			"presentation_surface": "overlay",
+			"blocks_player_actions": true,
+		},
 		"card_track": [
 			{
 				"id": "track_42",
@@ -1254,9 +1262,10 @@ func _check_split_game_screen_data_binding() -> void:
 				{"text": "手牌 2/5", "active": false, "accent": Color("#c084fc")},
 			],
 			"bid_board": {
-				"title": "卡牌组确认",
-				"phase": "规划 4s",
-				"status": "规划阶段｜本组1/5张｜待确认",
+				"title": "牌序竞价",
+				"phase_id": "public_bid",
+				"phase": "公开竞价 4s",
+				"status": "公开竞价阶段｜本组1/5张｜待确认",
 				"active": true,
 				"chips": [
 					{"label": "我的组", "state": "1/5", "active": true, "accent": Color("#c084fc")},
@@ -1352,7 +1361,7 @@ func _check_split_game_screen_data_binding() -> void:
 	var drag_preview_panel := screen.find_child("DragPreviewPanel", true, false)
 	var player_goal_bar := screen.find_child("PlayerGoalBar", true, false) as ProgressBar
 	var player_hand_count_chip := screen.find_child("PlayerHandCountChip", true, false) as Label
-	var player_bid_board := screen.find_child("PlayerBidBoard", true, false)
+	var player_bid_board := screen.find_child("PublicBidDecisionPanel", true, false)
 	var bid_board_chip_row := screen.find_child("BidBoardChipRow", true, false)
 	var bid_board_action_row := screen.find_child("BidBoardActionRow", true, false)
 	var player_main_action_dock := player_board.find_child("PlayerMainActionDock", true, false) if player_board != null else null
@@ -1387,10 +1396,10 @@ func _check_split_game_screen_data_binding() -> void:
 	_expect(player_board != null, "split GameScreen player board survives data binding")
 	_expect(player_goal_bar != null and player_goal_bar.value > 25.0, "split PlayerBoard binds goal progress")
 	_expect(player_hand_count_chip != null and player_hand_count_chip.text.contains("手牌") and player_hand_count_chip.text.contains("2/5"), "split PlayerBoard exposes current hand count in the 3-second layer")
-	_expect(player_bid_board != null, "split PlayerBoard exposes a separate BidBoard above the main action dock")
+	_expect(player_bid_board != null and (player_board == null or player_board.find_child("PlayerBidBoard", true, false) == null), "split Overlay exposes the transient BidBoard while PlayerBoard reserves zero permanent bid space")
 	_expect(bid_board_chip_row != null and bid_board_chip_row.get_child_count() == 2, "split BidBoard binds only the current group and planning-confirmation chips")
 	_expect(bid_board_action_row != null and bid_board_action_row.get_child_count() == 1, "split BidBoard binds one planning confirmation action without retired fixed-bid controls")
-	_expect(player_bid_board != null and _node_tree_text(player_bid_board).contains("本批1") and _node_tree_text(player_bid_board).contains("本批2"), "split BidBoard shows compact public-track pointers beside the planning confirmation")
+	_expect(player_bid_board != null and _node_tree_text(player_bid_board).contains("本批1") and _node_tree_text(player_bid_board).contains("本批2"), "split transient BidBoard shows compact public-track pointers during structured public_bid")
 	_expect(player_main_action_dock != null, "split PlayerBoard exposes one main action dock")
 	_expect(player_quick_action_row != null and player_quick_action_row.get_child_count() == 4, "split PlayerBoard binds Build/Rack/Buy/Play scan buttons inside the single main action dock")
 	_expect(player_status_lamp_row != null and player_status_lamp_row.get_child_count() == 1, "split PlayerBoard binds table-state lamps from snapshot data")
@@ -1403,7 +1412,7 @@ func _check_split_game_screen_data_binding() -> void:
 	_expect(public_track_label != null and public_track_label.text.contains("公开牌"), "split PublicTrack binds the public card short label")
 	_expect(public_track_meta != null and public_track_meta.text.contains("待猜"), "split PublicTrack keeps ownership as a scan-first guess hint")
 	_expect(public_track != null and public_track.find_child("CardFace", true, false) == null, "split PublicTrack does not render full CardFace nodes")
-	_expect(track_focus_ribbon != null and track_focus_label != null and not track_focus_ribbon.visible, "split GameScreen owns a hidden table-focus ribbon for temporary public-track/BidBoard context")
+	_expect(track_focus_ribbon != null and track_focus_label != null and track_focus_ribbon.visible and track_focus_label.text.contains("竞价对照"), "structured public_bid focus opens the short table-focus ribbon for its active public-track pointer")
 	if public_track_slot != null:
 		var pre_hover_title := inspector_title.text if inspector_title != null else ""
 		var pre_hover_reason := reason_label.text if reason_label != null else ""
@@ -1423,6 +1432,10 @@ func _check_split_game_screen_data_binding() -> void:
 	_expect(_node_tree_text(right_rail_entries[0]).contains("怪兽") and _node_tree_text(right_rail_entries[2]).contains("牌轨"), "split PlanetBoard right rail shows scan-first outer pressure and public track state")
 	_expect(flow_compass != null and flow_compass.visible and flow_compass_step_rail != null and flow_compass_step_rail.get_child_count() == 8, "split PlanetBoard renders the full first-run flow compass through route choice beside the planet")
 	_expect(_node_tree_text(flow_compass).contains("✓点区") and _node_tree_text(flow_compass).contains("▶牌架") and _node_tree_text(flow_compass).contains("牌轨") and _node_tree_text(flow_compass).contains("经济") and _node_tree_text(flow_compass).contains("路线") and flow_compass_next_label != null and flow_compass_next_label.text.contains("下一步"), "split PlanetBoard flow compass keeps market and economy available without mandatory summon")
+	var split_overlay := screen.find_child("OverlayLayer", true, false)
+	if split_overlay != null and split_overlay.has_method("hide_public_bid"):
+		split_overlay.call("hide_public_bid")
+		await process_frame
 	_expect(hand_rack != null and hand_rack.get_child_count() == 2, "split HandRack receives card data")
 	if hand_rack != null and hand_rack.get_child_count() > 0:
 		var first_hand_card := hand_rack.get_child(0)
@@ -1708,6 +1721,7 @@ func _check_split_game_screen_data_binding() -> void:
 		await process_frame
 		_expect(action_ids.has("track_open_orbital_finance_i"), "double-clicking a split PublicTrack slot emits its card-detail open action")
 	screen.call("apply_state", {
+		"active_forced_decision": _forced_overlay_metadata("monster_wager_7", "monster_wager", "monster_wager"),
 		"temporary_decision": {
 			"id": "monster_wager_7",
 			"kind": "monster_wager",
@@ -1739,6 +1753,7 @@ func _check_split_game_screen_data_binding() -> void:
 		await process_frame
 		_expect(action_ids.has("monster_wager:7:a:5"), "MonsterWagerDecisionPanel forwards wager action ids through GameScreen")
 	screen.call("apply_state", {
+		"active_forced_decision": _forced_overlay_metadata("contract_response_42", "contract_response", "contract_response"),
 		"temporary_decision": {
 			"id": "contract_response_42",
 			"kind": "contract_response",
@@ -1767,6 +1782,7 @@ func _check_split_game_screen_data_binding() -> void:
 		await process_frame
 		_expect(action_ids.has("contract_accept_42"), "ContractResponseDecisionPanel forwards contract action ids through GameScreen")
 	screen.call("apply_state", {
+		"active_forced_decision": _forced_overlay_metadata("discard_purchase", "discard_purchase", "other_choice"),
 		"temporary_decision": {
 			"id": "discard_purchase",
 			"kind": "discard_purchase",
@@ -1796,6 +1812,7 @@ func _check_split_game_screen_data_binding() -> void:
 		await process_frame
 		_expect(action_ids.has("discard_purchase_0"), "TemporaryChoiceDecisionPanel forwards discard action ids through GameScreen")
 	screen.call("apply_state", {
+		"active_forced_decision": _forced_overlay_metadata("monster_target_choice", "monster_target_choice", "other_choice"),
 		"temporary_decision": {
 			"id": "monster_target_choice",
 			"kind": "monster_target_choice",
@@ -1826,6 +1843,7 @@ func _check_split_game_screen_data_binding() -> void:
 		await process_frame
 		_expect(action_ids.has("target_monster_0"), "TemporaryChoiceDecisionPanel forwards monster target action ids through GameScreen")
 	screen.call("apply_state", {
+		"active_forced_decision": _forced_overlay_metadata("player_target_choice", "player_target_choice", "other_choice"),
 		"temporary_decision": {
 			"id": "player_target_choice",
 			"kind": "player_target_choice",
@@ -4093,8 +4111,7 @@ func _check_temporary_decision_overlay_preview_component() -> void:
 	_expect(_visible_temporary_decision_panel_names(preview).is_empty(), "TemporaryDecisionOverlayPreview empty payload hides every decision panel")
 	preview.call("show_malformed_payload")
 	await process_frame
-	var fallback_panel := preview.find_child("TemporaryDecisionModal", true, false) as Control
-	_expect(fallback_panel != null and fallback_panel.visible and _node_tree_text(fallback_panel).contains("异常 payload"), "TemporaryDecisionOverlayPreview malformed payload falls back to the generic temporary decision panel")
+	_expect(_visible_temporary_decision_panel_names(preview).is_empty(), "TemporaryDecisionOverlayPreview malformed payload fails closed instead of creating a fixture-only generic decision panel")
 	preview.call("hide_overlay")
 	await process_frame
 	_expect(_visible_temporary_decision_panel_names(preview).is_empty(), "TemporaryDecisionOverlayPreview hide button clears the Overlay")
@@ -4280,6 +4297,33 @@ func _check_planet_map_sceneization_component() -> void:
 			_expect(map_view.has_method("set_map") and map_view.has_method("focus_district") and map_view.has_method("get_district_at_control_position") and map_view.has_method("get_district_control_position"), "PlanetMapView preserves MapView methods used by runtime input")
 			_expect(map_view.has_method("editable_layer_names") and map_view.has_method("get_sceneization_debug_snapshot") and map_view.has_method("get_sceneized_child_snapshot") and map_view.has_method("render_model_debug_payload"), "PlanetMapView exposes MCP sceneization debug helpers")
 			if map_view.has_method("set_map"):
+				map_view.call("set_optional_route_public_geometry", {
+					"qa:ore": [Vector2(240, 660), Vector2(520, 610), Vector2(760, 310)],
+				})
+				map_view.call("set_optional_route_public_snapshot", {
+					"available": true,
+					"public_revision": 1,
+					"selected_commodity_id": "ore",
+					"rows": [{
+						"flow_event_id": "qa-flow:ore",
+						"public_revision": 1,
+						"commodity_id": "ore",
+						"from_region_id": "qa.region.a",
+						"to_region_id": "qa.region.b",
+						"flow_kind": "market_sale",
+						"display_label": "QA actual ore flow",
+						"route_id": "qa:ore",
+						"transport_modes": ["land"],
+						"delivered_units_band": "medium",
+						"capacity_limited": false,
+						"congested": false,
+						"last_active_world_effective": 1.0,
+						"activity_state": "current_tick",
+						"ambient_one_hop": false,
+						"low_emphasis": false,
+					}],
+				}, 1.0)
+				map_view.call("set_optional_route_selection", "ore")
 				map_view.call("set_map", _map_view_projection_test_districts(), 1400.0, 950.0, 1, [
 					Color("#0ea5e9"),
 					Color("#22c55e"),
@@ -4338,19 +4382,24 @@ func _check_planet_map_sceneization_component() -> void:
 		var toolbar := toolbar_packed.instantiate() as Control
 		root.add_child(toolbar)
 		await process_frame
-		_expect(toolbar.has_method("set_controls") and toolbar.has_method("debug_snapshot") and toolbar.has_signal("control_action_requested"), "PlanetMapControlToolbar exposes pure snapshot input, QA snapshot, and action payload output")
+		_expect(toolbar.has_method("set_controls") and toolbar.has_method("debug_snapshot") and toolbar.has_signal("control_action_requested") and toolbar.has_signal("optional_route_selection_changed"), "PlanetMapControlToolbar exposes pure snapshot input, gameplay actions, and a separate local route-selection signal")
 		for node_name in ["MapReadingHintRail", "MapLayerFocusRail", "MapLayerAllButton", "MapLayerProductButton", "MapLayerRouteButton", "MapLayerIntelButton", "MapLayerWeatherButton", "MapLayerMonsterButton", "MapTradeProductSelector", "MapTradeStatusLabel", "MapContractSourceButton", "MapContractTargetButton", "MapContractStatusLabel"]:
 			_expect(toolbar.find_child(node_name, true, false) != null, "PlanetMapControlToolbar owns %s" % node_name)
 		var toolbar_actions: Array[String] = []
 		var toolbar_payloads: Array = []
+		var optional_route_selections: Array[String] = []
 		toolbar.connect("control_action_requested", func(action_id: String, payload: Dictionary) -> void:
 			toolbar_actions.append(action_id)
 			toolbar_payloads.append(payload.duplicate(true))
 		)
+		toolbar.connect("optional_route_selection_changed", func(product_id: String) -> void:
+			optional_route_selections.append(product_id)
+		)
 		toolbar.call("set_controls", {"layers": [{"id": "all", "label": "全", "text": "全图", "accent": "#fef3c7"}, {"id": "route", "label": "⇄", "text": "商路", "accent": "#f59e0b"}], "selected_layer_id": "all", "trade": {"options": [{"id": "", "label": "商路关闭"}, {"id": "食品", "label": "食品"}], "selected_product_id": ""}, "contract_source": {"disabled": true}, "contract_target": {"disabled": true}})
 		(toolbar.find_child("MapLayerRouteButton", true, false) as Button).emit_signal("pressed")
+		toolbar.call("_on_trade_product_selected", 1)
 		var toolbar_snapshot: Variant = toolbar.call("debug_snapshot")
-		_expect(toolbar_actions == ["map_layer_focus"] and toolbar_payloads.size() == 1 and str((toolbar_payloads[0] as Dictionary).get("layer_id", "")) == "route", "PlanetMapControlToolbar emits the stable layer action and pure layer payload")
+		_expect(toolbar_actions.is_empty() and optional_route_selections == ["食品"] and bool((toolbar_snapshot as Dictionary).get("route_view_enabled", false)), "route focus and commodity selection stay local instead of emitting legacy gameplay mutations")
 		_expect(toolbar_snapshot is Dictionary and not _variant_contains_callable(toolbar_snapshot) and not _variant_contains_object(toolbar_snapshot), "PlanetMapControlToolbar debug snapshot remains pure data")
 		root.remove_child(toolbar)
 		toolbar.queue_free()
@@ -4776,6 +4825,19 @@ func _action_list_has_id(actions: Array, action_id: String) -> bool:
 		if str(action.get("id", "")) == action_id:
 			return true
 	return false
+
+
+func _forced_overlay_metadata(decision_id: String, kind: String, priority_group: String) -> Dictionary:
+	return {
+		"id": decision_id,
+		"kind": kind,
+		"priority_group": priority_group,
+		"visible_to_viewer": true,
+		"presentation_surface": "overlay",
+		"blocks_global_time": kind == "monster_wager",
+		"blocks_player_actions": true,
+		"blocks_card_resolution": kind in ["monster_wager", "contract_response"],
+	}
 
 
 func _array_has_prefix(values: Array, prefix: String) -> bool:
@@ -6060,16 +6122,32 @@ func _check_runtime_table_snapshot_bridge() -> void:
 	_expect(auction_track_labels.has("本批1") and auction_track_labels.has("本批2"), "runtime BidBoard snapshot links both planning entries back to their public-track cards")
 	_expect(str(first_batch_link.get("id", "")) == "track_select_9001" and str(second_batch_link.get("id", "")) == "track_select_9002" and not str(first_batch_link.get("state", "")).contains("¥") and not str(second_batch_link.get("state", "")).contains("¥"), "runtime BidBoard public-track pointers expose batch order without retired fixed-bid amounts")
 	_expect(auction_bid_actions.size() == 1 and _action_list_has_id(auction_bid_actions, "card_group_ready") and not retired_fixed_bid_action_found, "runtime BidBoard exposes one planning-confirmation action and no retired fixed-bid authority")
+	var structured_bid_snapshot := auction_snapshot.duplicate(true)
+	var structured_bid_player: Dictionary = structured_bid_snapshot.get("player_board", {}) if structured_bid_snapshot.get("player_board", {}) is Dictionary else {}
+	var structured_bid_board: Dictionary = structured_bid_player.get("bid_board", {}) if structured_bid_player.get("bid_board", {}) is Dictionary else {}
+	structured_bid_board["phase_id"] = "public_bid"
+	structured_bid_board["phase"] = "公开竞价 5s"
+	structured_bid_board["status"] = "只在调度器选中 public_bid 时显示完整竞价。"
+	structured_bid_player["bid_board"] = structured_bid_board
+	structured_bid_snapshot["player_board"] = structured_bid_player
+	structured_bid_snapshot["active_forced_decision"] = {
+		"id": "public_bid",
+		"kind": "public_bid",
+		"priority_group": "public_bid",
+		"visible_to_viewer": true,
+		"presentation_surface": "overlay",
+		"blocks_player_actions": true,
+	}
 	if screen != null and screen.has_method("apply_state"):
-		screen.call("apply_state", auction_snapshot)
+		screen.call("apply_state", structured_bid_snapshot)
 		await process_frame
-		var auction_bid_board_node := screen.find_child("PlayerBidBoard", true, false)
+		var auction_bid_board_node := screen.find_child("PublicBidDecisionPanel", true, false)
 		var auction_bid_chip_row := screen.find_child("BidBoardChipRow", true, false)
 		var auction_bid_track_link_row := screen.find_child("BidBoardTrackLinkRow", true, false)
 		var auction_bid_action_row := screen.find_child("BidBoardActionRow", true, false)
 		var auction_bid_board_text := _node_tree_text(auction_bid_board_node) if auction_bid_board_node != null else ""
-		_expect(auction_bid_chip_row != null and auction_bid_chip_row.get_child_count() == 2, "split GameScreen renders the planning group and confirmation state inside the dedicated BidBoard")
-		_expect(auction_bid_board_text.contains("规划") and auction_bid_board_text.contains("我的组") and auction_bid_board_text.contains("本阶段") and auction_bid_board_text.contains("本批1") and not auction_bid_board_text.contains("最高") and not auction_bid_board_text.contains("组报价") and not auction_bid_board_text.contains("¥"), "split BidBoard keeps planning and public-track labels visible without retired fixed-bid copy")
+		_expect(auction_bid_chip_row != null and auction_bid_chip_row.get_child_count() == 2, "split GameScreen renders the structured public_bid group and confirmation state inside Overlay")
+		_expect(auction_bid_board_text.contains("公开竞价") and auction_bid_board_text.contains("我的组") and auction_bid_board_text.contains("本阶段") and auction_bid_board_text.contains("本批1") and not auction_bid_board_text.contains("最高") and not auction_bid_board_text.contains("组报价") and not auction_bid_board_text.contains("¥"), "split transient BidBoard keeps public-bid and public-track labels visible without retired fixed-bid copy")
 		_expect(auction_bid_track_link_row != null and auction_bid_track_link_row.get_child_count() >= 2, "split BidBoard renders clickable public-track pointer slots instead of burying them in the status sentence")
 		_expect(auction_bid_action_row != null and auction_bid_action_row.get_child_count() == 1, "split BidBoard renders one planning confirmation button without fixed priority-bid buttons")
 		var public_track_slot_for_hover := screen.find_child("PublicTrackSlot", true, false) as Control
@@ -6082,6 +6160,9 @@ func _check_runtime_table_snapshot_bridge() -> void:
 			await process_frame
 			hovered_bid_link_marker = screen.find_child("BidBoardTrackLinkHover", true, false)
 			_expect(hovered_bid_link_marker == null, "leaving a public-track slot clears the temporary BidBoard pointer highlight")
+	if runtime_screen != null and runtime_screen.has_method("apply_state"):
+		runtime_screen.call("apply_state", structured_bid_snapshot)
+		await process_frame
 	var runtime_first_batch_link_button := _find_visible_button_containing(runtime_screen, "本批1")
 	_expect(runtime_first_batch_link_button != null and not runtime_first_batch_link_button.disabled, "runtime BidBoard first-batch pointer is a clickable public-track selection control")
 	if runtime_first_batch_link_button != null and not runtime_first_batch_link_button.disabled:
@@ -6110,18 +6191,8 @@ func _check_runtime_table_snapshot_bridge() -> void:
 		runtime_track_focus_ribbon = runtime_screen.find_child("TrackFocusRibbon", true, false) as Control
 		runtime_track_focus_label = runtime_screen.find_child("TrackFocusLabel", true, false) as Label
 		_expect(runtime_track_focus_ribbon != null and runtime_track_focus_ribbon.visible and runtime_track_focus_label != null and runtime_track_focus_label.text.contains("已选牌轨"), "selected public-track cards keep a persistent short focus ribbon after a BidBoard pointer click")
-	var runtime_bid_action_row := runtime_screen.find_child("BidBoardActionRow", true, false)
-	var planning_action_labels: Array[String] = []
-	var planning_action_disabled_states: Array[bool] = []
-	var ready_button: Button = null
-	if runtime_bid_action_row != null:
-		for child in runtime_bid_action_row.get_children():
-			if child is Button:
-				planning_action_labels.append((child as Button).text)
-				planning_action_disabled_states.append((child as Button).disabled)
-				if (child as Button).text == "完成规划":
-					ready_button = child as Button
-	_expect(planning_action_labels == ["完成规划"] and ready_button != null and not ready_button.disabled, "runtime BidBoard exposes only the enabled planning confirmation action (labels=%s disabled=%s)" % [planning_action_labels, planning_action_disabled_states])
+	var runtime_bid_panel := runtime_screen.find_child("PublicBidDecisionPanel", true, false) as Control
+	_expect(runtime_bid_panel != null and not runtime_bid_panel.visible, "runtime resync removes the full BidBoard immediately when no structured public_bid scheduler candidate remains")
 	_clear_runtime_card_auction_fixture(main)
 	_force_runtime_screen_sync(main)
 	await process_frame
@@ -6196,7 +6267,7 @@ func _check_runtime_table_snapshot_bridge() -> void:
 	var physical_1280_path := "runtime main split GameScreen at physical 1280x720"
 	_check_named_controls_do_not_overlap(runtime_screen, ["TopBar", "PublicTrack", "TableArea", "PlayerBoard"], physical_1280_path, logical_canvas_size)
 	_check_named_controls_do_not_overlap(runtime_screen, ["PlanetBoard", "RightInspector"], physical_1280_path, logical_canvas_size)
-	_check_named_controls_inside_viewport(runtime_screen, ["TopBar", "PublicTrack", "TableArea", "PlayerBoard", "HandRack", "PlayerBidBoard", "PlayerMainActionDock", "PlayerStatusLampRow", "PlayerReadinessChipRow"], physical_1280_path, logical_canvas_size)
+	_check_named_controls_inside_viewport(runtime_screen, ["TopBar", "PublicTrack", "TableArea", "PlayerBoard", "HandRack", "PublicBidDecisionPanel", "PlayerMainActionDock", "PlayerStatusLampRow", "PlayerReadinessChipRow"], physical_1280_path, logical_canvas_size)
 	_check_visible_buttons_inside_viewport(runtime_screen, physical_1280_path, logical_canvas_size)
 	_check_planet_is_largest_runtime_surface(runtime_screen, physical_1280_path)
 	_check_planet_board_square_stage_priority(runtime_screen)
@@ -8640,7 +8711,9 @@ func _check_main_runtime_replacement_foundation_component() -> void:
 		var runtime_snapshot: Dictionary = coordinator.call("debug_snapshot")
 		var scheduler_snapshot: Dictionary = runtime_snapshot.get("forced_decision_scheduler", {}) if runtime_snapshot.get("forced_decision_scheduler", {}) is Dictionary else {}
 		_expect(str(active.get("priority_group", "")) == "monster_wager" and bool(coordinator.call("blocks_global_time")) and not bool(coordinator.call("allows_card_resolution_progress")), "v0.4 scheduler selects monster wager over counter, contract, and other choices")
-		_expect(scheduler_snapshot.get("priority_order", []) == ruleset_snapshot.get("forced_decision_priority", []) and scheduler_snapshot.get("priority_order", []) == ["monster_wager", "counter_response", "contract_response", "other_choice"], "ForcedDecisionRuntimeScheduler priority comes from RulesetRuntimeBridge")
+		var expected_scheduler_priority: Array = (ruleset_snapshot.get("forced_decision_priority", []) as Array).duplicate()
+		expected_scheduler_priority.append("public_bid")
+		_expect(scheduler_snapshot.get("priority_order", []) == expected_scheduler_priority and scheduler_snapshot.get("priority_order", []) == ["monster_wager", "counter_response", "contract_response", "other_choice", "public_bid"], "ForcedDecisionRuntimeScheduler preserves RulesetRuntimeBridge priority and appends public_bid last")
 		coordinator.call("sync_forced_decision_candidates", [candidates[1]])
 		var hidden: Dictionary = coordinator.call("active_forced_decision", 0)
 		var owner_visible: Dictionary = coordinator.call("active_forced_decision", 1)

@@ -10,8 +10,6 @@ signal card_drag_preview_moved(card_data: Dictionary, screen_position: Vector2)
 signal card_drag_preview_ended(card_data: Dictionary)
 signal card_drag_released(card_data: Dictionary, screen_position: Vector2)
 signal action_requested(action_id: String)
-signal track_link_hovered(action_id: String)
-signal track_link_unhovered(action_id: String)
 
 @onready var title_label: Label = %PlayerBoardTitle
 @onready var identity_chip: Label = %PlayerIdentityChip
@@ -25,7 +23,6 @@ signal track_link_unhovered(action_id: String)
 @onready var goal_bar: ProgressBar = %PlayerGoalBar
 @onready var hand_rack: Control = %HandRack
 @onready var action_hint_label: Label = %PlayerActionHint
-@onready var bid_board: Node = %PlayerBidBoard
 @onready var main_action_dock: Node = %PlayerMainActionDock
 @onready var status_lamp_row: Container = %PlayerStatusLampRow
 @onready var readiness_chip_row: Container = %PlayerReadinessChipRow
@@ -66,12 +63,6 @@ func _ready() -> void:
 		main_action_dock.call("set_compact_mode", true)
 	if main_action_dock != null and main_action_dock.has_signal("action_requested"):
 		main_action_dock.connect("action_requested", Callable(self, "_on_action_requested"))
-	if bid_board != null and bid_board.has_signal("action_requested"):
-		bid_board.connect("action_requested", Callable(self, "_on_action_requested"))
-	if bid_board != null and bid_board.has_signal("track_link_hovered"):
-		bid_board.connect("track_link_hovered", Callable(self, "_on_track_link_hovered"))
-	if bid_board != null and bid_board.has_signal("track_link_unhovered"):
-		bid_board.connect("track_link_unhovered", Callable(self, "_on_track_link_unhovered"))
 
 
 func _configure_pointer_filter_skeleton() -> void:
@@ -121,7 +112,6 @@ func set_player_state(data: Dictionary) -> void:
 	var status_lamps: Array = _first_array(data, ["table_state_lamps", "status_lamps", "table_lamps"])
 	var readiness_chips: Array = _first_array(data, ["readiness_chips", "action_readiness", "readiness"])
 	var progress_path: Array = _first_array(data, ["progress_path", "runtime_path", "path_steps"])
-	var bid_state: Dictionary = data.get("bid_board", data.get("auction_board", {})) if data.get("bid_board", data.get("auction_board", {})) is Dictionary else {}
 	_set_chip(identity_chip, "本席", identity_text, 118, 14)
 	_set_chip(cash_chip, "现金", cash_text, 92, 12)
 	_set_chip(gdp_chip, "GDP", gdp_text, 92, 12)
@@ -129,7 +119,6 @@ func set_player_state(data: Dictionary) -> void:
 	_set_chip(selected_district_chip, "选区", selected_text, 128, 14)
 	_set_chip(primary_action_chip, "下一步", primary_action, 122, 14)
 	goal_bar.value = clampf(float(data.get("goal_ratio", 0.0)) * 100.0, 0.0, 100.0)
-	_set_bid_board(bid_state)
 	_set_main_action_dock(quick_actions, actions)
 	_set_status_lamps(status_lamps)
 	_set_readiness_chips(readiness_chips)
@@ -148,12 +137,6 @@ func set_hand_cards(cards: Array) -> void:
 	if hand_rack == null or not hand_rack.has_method("set_cards"):
 		return
 	hand_rack.call("set_cards", cards)
-
-
-func set_hovered_track_action(action_id: String) -> void:
-	if bid_board == null or not bid_board.has_method("set_hovered_track_action"):
-		return
-	bid_board.call("set_hovered_track_action", action_id)
 
 
 func set_runtime_feedback(data: Dictionary) -> void:
@@ -218,14 +201,6 @@ func _on_action_requested(action_id: String) -> void:
 	action_requested.emit(action_id)
 
 
-func _on_track_link_hovered(action_id: String) -> void:
-	track_link_hovered.emit(action_id)
-
-
-func _on_track_link_unhovered(action_id: String) -> void:
-	track_link_unhovered.emit(action_id)
-
-
 func _first_enabled_card_action_id(card_data: Dictionary) -> String:
 	var actions: Array = card_data.get("actions", []) if card_data.get("actions", []) is Array else []
 	for action_variant in actions:
@@ -247,12 +222,6 @@ func _set_main_action_dock(quick_actions: Array, actions: Array) -> void:
 		"quick_actions": quick_actions,
 		"actions": actions,
 	})
-
-
-func _set_bid_board(data: Dictionary) -> void:
-	if bid_board == null or not bid_board.has_method("set_bid_state"):
-		return
-	bid_board.call("set_bid_state", data)
 
 
 func _set_status_lamps(entries: Array) -> void:

@@ -3,6 +3,7 @@ extends PanelContainer
 class_name SpaceSyndicatePlanetDistrictNode
 
 signal district_pressed(index: int)
+signal district_double_pressed(index: int)
 
 @onready var name_label: Label = %DistrictNameLabel
 @onready var meta_label: Label = %DistrictMetaLabel
@@ -96,7 +97,11 @@ func _on_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mouse_event := event as InputEventMouseButton
 		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
-			district_pressed.emit(_region_index)
+			if mouse_event.double_click:
+				district_double_pressed.emit(_region_index)
+			else:
+				district_pressed.emit(_region_index)
+			accept_event()
 
 
 func _as_vector2(value: Variant) -> Vector2:

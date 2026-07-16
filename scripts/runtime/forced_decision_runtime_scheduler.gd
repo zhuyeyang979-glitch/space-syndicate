@@ -14,19 +14,27 @@ func configure(priority_order: Array) -> void:
 	_priority_order = []
 	for priority_variant in priority_order:
 		var priority := str(priority_variant).strip_edges()
-		if priority != "" and not _priority_order.has(priority):
+		if priority != "" and priority != "public_bid" and not _priority_order.has(priority):
 			_priority_order.append(priority)
 	_configured = not _priority_order.is_empty()
+	if _configured:
+		_priority_order.append("public_bid")
+	else:
+		_candidates.clear()
 	_sort_candidates()
 
 
 func sync_candidates(candidates: Array) -> void:
 	_candidates = []
+	if not _configured:
+		return
 	for candidate_variant in candidates:
 		if not (candidate_variant is Dictionary):
 			continue
 		var candidate := _normalize_candidate(candidate_variant as Dictionary)
 		if str(candidate.get("id", "")) == "" or str(candidate.get("priority_group", "")) == "":
+			continue
+		if not _priority_order.has(str(candidate.get("priority_group", ""))):
 			continue
 		_candidates.append(candidate)
 	_sort_candidates()
@@ -94,7 +102,12 @@ func debug_snapshot() -> Dictionary:
 
 func _normalize_candidate(source: Dictionary) -> Dictionary:
 	var kind := str(source.get("kind", "")).strip_edges()
-	var priority_group := str(source.get("priority_group", _priority_group_for_kind(kind))).strip_edges()
+	var expected_priority_group := _priority_group_for_kind(kind)
+	if expected_priority_group.is_empty():
+		return {}
+	var priority_group := str(source.get("priority_group", expected_priority_group)).strip_edges()
+	if priority_group != expected_priority_group:
+		return {}
 	var owner_player_index := int(source.get("owner_player_index", -1))
 	var visibility_scope := str(source.get("visibility_scope", "public" if owner_player_index < 0 else "private"))
 	if not VALID_VISIBILITY_SCOPES.has(visibility_scope):
@@ -128,6 +141,8 @@ func _priority_group_for_kind(kind: String) -> String:
 			return "contract_response"
 		"discard_purchase", "monster_target_choice", "player_target_choice":
 			return "other_choice"
+		"public_bid", "card_order_bid":
+			return "public_bid"
 	return ""
 
 
@@ -155,7 +170,7 @@ func _priority_rank(priority_group: String) -> int:
 
 
 func _active_candidate() -> Dictionary:
-	if _candidates.is_empty():
+	if not _configured or _candidates.is_empty():
 		return {}
 	return _candidates[0] as Dictionary
 

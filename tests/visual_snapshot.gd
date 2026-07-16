@@ -62,10 +62,10 @@ func _run() -> void:
 	var overlay := _instantiate("res://scenes/ui/OverlayLayer.tscn")
 
 	_expect(_has_nodes(game_screen, ["Background", "TopBar", "PublicTrack", "PlanetBoard", "RightInspector", "PlayerBoard", "OverlayLayer"]), "GameScreen provides the complete scene-owned table composition")
-	_expect(_has_nodes(player_board, ["PlayerResourceTableau", "PlayerHandTableau", "HandRack", "PlayerCommandTableau", "PlayerBidBoard", "PlayerMainActionDock"]), "PlayerBoard has stable resource, hand, bid, and action regions")
+	_expect(_has_nodes(player_board, ["PlayerResourceTableau", "PlayerHandTableau", "HandRack", "PlayerCommandTableau", "PlayerMainActionDock"]) and player_board.find_child("PlayerBidBoard", true, false) == null, "PlayerBoard has stable resource, hand, and action regions with zero permanent bid footprint")
 	_expect(_has_nodes(planet_map, ["BackdropLayer", "OrbitLayer", "DistrictLayer", "RouteLayer", "MonsterLayer", "SelectionLayer", "EffectLayer", "CalloutLayer", "DebugOverlayLayer"]), "PlanetMapView exposes editable visual layers")
 	_expect(_has_nodes(card_track, ["HistoryRail", "ActiveResolutionSlot", "QueueRail", "NextQueueRail", "AuctionResponseLayer", "PrivacyHintLayer"]), "CardResolutionTrack exposes stable visual lanes and privacy feedback")
-	_expect(_has_nodes(overlay, ["SideDrawerLayer", "TooltipLayer", "DragPreviewLayer", "ModalLayer", "RuntimeSurfaceLayer"]), "OverlayLayer separates detail, pointer, decision, and runtime surfaces")
+	_expect(_has_nodes(overlay, ["SideDrawerLayer", "TooltipLayer", "DragPreviewLayer", "ModalLayer", "RuntimeSurfaceLayer", "PublicBidDecisionPanel"]), "OverlayLayer separates detail, pointer, transient bid, decision, and runtime surfaces")
 
 	var main_source := _source("res://scripts/main.gd")
 	var main_scene_source := _source("res://scenes/main.tscn")
