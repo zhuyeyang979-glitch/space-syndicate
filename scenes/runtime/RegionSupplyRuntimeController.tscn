@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/region_supply_runtime_controller.gd" id="1_controller"]
+
+[node name="RegionSupplyRuntimeController" type="Node"]
+script = ExtResource("1_controller")
+editor_description = "Unique v0.6 owner for deterministic regional ordinary-card racks, private shuffle-bag order, single-slot refill lifecycle, and exact save restoration. It owns no cash, inventory, quotes, UI, or AI state."

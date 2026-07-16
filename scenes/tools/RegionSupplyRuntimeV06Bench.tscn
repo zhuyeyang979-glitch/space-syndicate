@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/region_supply_runtime_v06_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RegionSupplyRuntimeController.tscn" id="2_controller"]
+
+[node name="RegionSupplyRuntimeV06Bench" type="Node"]
+script = ExtResource("1_bench")
+
+[node name="RegionSupplyRuntimeController" parent="." instance=ExtResource("2_controller")]
