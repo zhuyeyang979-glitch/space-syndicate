@@ -4,6 +4,13 @@
 
 `scripts/main.gd` is now a compatibility composition root, not a destination for new gameplay systems. New runtime ownership must live in scene-owned controllers. Changes to `main.gd` are limited to thin data adapters, delegation, and deletion of replaced code.
 
+All numbered Sprint result sections below are historical extraction evidence.
+Where their old timing, quote or ownership wording conflicts with
+`docs/tabletop_rulebook_v06.md`,
+`docs/region_supply_randomization_v06.md` or
+`docs/transient_gameplay_surface_v06.md`, the current v0.6 contracts win and
+the old behavior must not be restored.
+
 The Sprint 1 baseline was 47,146 non-empty source lines, 2,246 functions, 261 top-level variables, 349 constants, and 18 scene/script/test files with direct `main.gd` references. Non-empty source lines are used so normal spacing changes cannot distort the deletion metric.
 
 ## Sprint 1 result
@@ -20,7 +27,11 @@ After the cutover, `main.gd` has 46,677 non-empty source lines, 2,224 functions,
 
 ## Sprint 3 result: District Purchase Window Runtime Cutover
 
-District purchase-window ownership now lives under `GameRuntimeCoordinator/DistrictPurchaseRuntimeController`. The controller owns the v0.4 12-second qualification timer, one-window-per-player state, view-only/active/suspended/pending-discard/expired/closed transitions, locked access and price context, supply-revision reselection, purchase authorization, privacy-safe UI/debug snapshots, and the legacy v1 save adapter. `RulesetRuntimeBridge.timing_rules().purchase_window_seconds` is the only runtime duration source.
+Historical Sprint 3 moved the then-current district purchase window under
+`GameRuntimeCoordinator/DistrictPurchaseRuntimeController`. The active v0.6
+contract no longer uses that 12-second qualification model: browsing is
+untimed, preview creates no quote, and explicit purchase intent creates the
+existing 5-`world_effective`-second quote.
 
 `main.gd` retains a pure-data world qualification adapter and the existing payment, card acquisition/upgrade, economy ledger, hand-limit, and private-discard settlement functions. Player, AI, coach, and test purchase routes all pass through `authorize_district_purchase`; the controller never owns players, districts, cards, cash, monsters, or hands.
 
@@ -127,7 +138,13 @@ Existing handlers continue to own wager settlement, counter-card effects, contra
 
 `GameSaveRuntimeCoordinator` is the single owner for current-run save version, default path, Variant-binary envelope composition, validation, legacy `charge/control` normalization, file I/O, and saved-run menu metadata. Its debug snapshot never contains the full save payload.
 
-`DistrictPurchaseRuntimeController` is the single owner for district-rack purchase-window state. Opening an ineligible district creates a view-only record with no timer. Eligible opening locks the access type and final channel multiplier for 12 seconds; later monster movement, removal, or binding changes do not mutate that window. Switching district, closing the drawer, or timeout invalidates authorization. Rack inventory is never reserved, and a changed supply revision keeps the window open while requiring card reselection. Private snapshots may say `channel discount`, but never identify the source monster or its owner.
+`DistrictPurchaseRuntimeController` is the single owner for the player's rack
+browsing/quote session and pending-discard continuation. Opening a rack creates
+no quote. An explicit purchase intent locks the current public listing,
+eligibility and price for 5 `world_effective` seconds. Closing the drawer does
+not extend or cancel that quote; reopening may display its remaining time.
+Rack inventory and deterministic refill state belong to the regional supply
+owner, not to this session controller.
 
 `EconomyCashflowRuntimeController` is the single owner for realtime cadence and payout planning. Session pause, SceneTree/time pause, game over, and forced-decision global blocking preserve accumulated active time; ordinary overlays do not stop it. Inputs are pure income-source facts, outputs are pure payout events, and neither side carries runtime objects.
 
@@ -275,13 +292,22 @@ The existing `MenuShellRuntimeCutoverBench` is expanded instead of duplicated. I
 
 At the Sprint 26 boundary, `main.gd` retained `_district_supply_drawer_snapshot()`, `_on_district_supply_action_requested()`, open/close state, card/world fact adapters, and all existing purchase rules. It no longer preloaded the two repeated child scenes, mirrored six Drawer child nodes, created status chips or market/preview controls, or traversed market-card Nodes to build focus links. Sprint 27 below supersedes the temporary full-snapshot ownership while preserving the same action and purchase-rule boundary.
 
-`DistrictPurchaseRuntimeController` remains the only authority for the 12-second qualification window, locked access and price context, expiry, reselection, private discard continuation, and v1 save compatibility. Existing payment, acquisition, upgrade, hand-limit, card-effect, and temporary-decision settlement functions are unchanged. The expanded `DistrictPurchaseRuntimeCutoverBench` proves 33/33 controller and Drawer cases, including real-main open/render/close routing, disabled Buy behavior, focus, empty states, pure data, privacy, and permanent deletion. `main.gd` moves from 38,757 non-empty lines / 1,925 functions / 179 top-level variables / 313 constants to 38,726 / 1,924 / 173 / 311.
+At the historical Sprint 26 boundary the old qualification window remained.
+The active replacement gate now requires untimed browsing, explicit
+5-second quote creation, a deterministic one-slot supply refill and a
+transient Drawer that reserves no layout while closed. The older case totals
+do not prove those v0.6 rules.
 
 ## Sprint 27: District Supply Snapshot Service Cutover
 
 `GameRuntimeCoordinator/DistrictSupplySnapshotService` is now the single presentation formatter between district-supply facts and `DistrictSupplyDrawer.set_supply()`. `main.gd` evaluates each card's existing eligibility, locked price, play requirement, targeting, and public card facts once in `_district_supply_snapshot_source()`. The service receives only dictionaries, arrays, strings, numbers, and booleans, rejects runtime objects and private owner/hand-card/channel/plan/target/discard fields, and emits hexadecimal display colors.
 
-The service owns title/rule copy, header chips, market-state summary, market-card snapshots, selected preview, verdict and decision chips, scan sections, CardFace presentation, empty states, and privacy copy. It explicitly owns no purchase eligibility, price, cash, inventory, upgrade, hand-limit, private discard, or settlement behavior. `DistrictPurchaseRuntimeController` remains the sole 12-second qualification/window authority, while `DistrictSupplyDrawer` remains the sole node, focus, empty-state, and aggregate-action owner.
+The service owns title/rule copy, header chips, rack snapshots, selected
+preview, verdict and decision chips, scan sections, CardFace presentation,
+empty states and privacy copy. It owns no purchase eligibility, price, cash,
+inventory, bag/RNG, refill, upgrade, discard or settlement behavior.
+`DistrictPurchaseRuntimeController` owns the 5-second quote session;
+`DistrictSupplyDrawer` owns only nodes, focus and action intents.
 
 Nineteen legacy snapshot/formatting functions are permanently removed from `main.gd`; no formatter fallback remains there. The expanded `DistrictPurchaseRuntimeCutoverBench` proves 45/45 controller, service, source-contract, format-parity, privacy, real-main route, Drawer-interaction, and deletion cases. `main.gd` moves from 38,726 non-empty lines / 1,924 functions / 173 top-level variables / 311 constants to 38,282 / 1,908 / 173 / 311.
 

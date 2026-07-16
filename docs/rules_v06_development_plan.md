@@ -1,6 +1,8 @@
 # 《太空辛迪加》v0.6 运行时开发计划
 
-> 状态：SS06-05 已完成六色资产、8/6/2 卡窗与动态胜利切换，下一步 SS06-06，2026-07-14。
+> 状态：当前进入“随机区域牌架 + 基础消费/市场积压 + 仓库/浪费 +
+> 可选商路 + 临时玩法窗口”统一切换。共享卡窗为 30/20/5/5，
+> 2026-07-16。
 > 玩家行为语义：`docs/tabletop_rulebook_v06.md`。
 > 运行时边界：`docs/rules_v06_runtime_directive.md`。
 > v0.5 证据：`docs/rules_v05_development_plan.md`，只读历史基线。
@@ -36,8 +38,8 @@ SS05-05 的 64/64、Queue 56/56、Runtime Track 14/14 和 FirstMission 37/37 保
 | SS06-00 | 可恢复 pre-v0.6 基线、v0.6 Profile、controller/save 版本握手、Region Infrastructure characterization | 无；只冻结与刻画 | clean clone、哈希、Profile/characterization gate |
 | SS06-01 | Public Facility + Region Shared HP Hard Cutover | 五项目位 mutation、city/area/facility 独立 HP writer、项目墓碑生命周期 | 建造/升级/修复、共享伤害、废墟/复兴、mixed-owner 证据 |
 | SS06-02 | Installed Commodity + Continuous Economy + Sale Receipt | 一次性项目生产/需求、项目 GDP、并行现金/GDP 写入 | 固定点流量、瓶颈、公平分配、租金、单一成交回执守恒 |
-| SS06-03 | Multimodal Route + Warehouse Cutover | 路线牌所有权、抽象 route HP/damage、单模式假设 | 路径合法性、tag set、最短距离、重寻路、回压与溢出 |
-| SS06-04 | Six Mana + Card Cost + Card Window Alignment | IndustryCapacityRuntimeService、WorldBridge、Queue 容量预留、项目产业要求 | 六色恢复、商品免费打出、非商品法力支付、8/6/2、每人最多 3 张 |
+| SS06-03 | Multimodal Route + Warehouse Cutover | 路线牌所有权、抽象 route HP/damage、单模式假设 | 路径合法性、tag set、最短距离、重寻路、仓库缓冲与浪费 |
+| SS06-04 | Six Mana + Card Cost + Card Window Alignment | IndustryCapacityRuntimeService、WorldBridge、Queue 容量预留、项目产业要求 | 六色恢复、商品免费打出、非商品法力支付、30/20/5/5、普通1张/能力上限3张 |
 | SS06-05 | Dynamic Victory And Audit Ordering | 固定深度表、项目归属胜利输入 | ceil 覆盖率、动态摧毁/复兴、同刻事件顺序、审计隐私 |
 | SS06-06 | Commodity Inventory And Persistent Installation | 非商品式商品购买、默认同族自动升级 | 履带免费领取、手动合成、满手例外、永久安装 exact-once |
 | SS06-07 | Viewer-Scoped Commodity Belt | 全轨公开或仅视觉模糊的实现 | GDP 档位、同分、全零、颜色级删减、stale claim、AI 同视野 |
@@ -52,7 +54,9 @@ SS05-05 的 64/64、Queue 56/56、Runtime Track 14/14 和 FirstMission 37/37 保
 下一步只做基础和行为刻画，不提前迁移经济：
 
 1. 为当前 SS05-05 集成状态建立可恢复 commit、clean-clone 证据和不可变 baseline tag；名称必须说明它是 pre-v0.6 集成基线，不能冒充完整 v0.5 发布版。
-2. 新增 Inspector 可编辑的 v0.6 Ruleset Profile，至少收录设施生命贡献、40% 动态覆盖率、36 GDP/min 每区基准、8/6/2 卡窗、标准三张、30 秒 GDP/法力观察窗、六色法力上限和商品履带刷新参数。
+2. Inspector 可编辑的 v0.6 Ruleset Profile 至少收录设施生命贡献、40%
+   动态覆盖率、36 GDP/min 每区基准、30/20/5/5 共享卡窗、普通1张/能力
+   上限3张、30秒 GDP/资产观察窗、六色资产上限和商品履带刷新参数。
 3. 新增 Region Infrastructure characterization registry/bench，只读取真实 main/GameRuntimeCoordinator，刻画现有 city/project/HP writer、伤害调用图、建造/升级/修复、存档键和删除候选。
 4. 冻结 v0.6 Region、Facility、Installation、Route、SaleReceipt、Mana 与 BeltVisibility 的纯数据 schema；不在本轮接管 mutation。
 5. 新增 save handshake，明确 v0.6 必须新开局，旧 v0.4/v0.5 存档只能识别和备份，不能推断设施产权或续打。
@@ -90,6 +94,16 @@ SS05-05 的 64/64、Queue 56/56、Runtime Track 14/14 和 FirstMission 37/37 保
 
 ## 7. 下一步
 
-SS06-00 至 SS06-05 已完成：v0.6 Profile/save-v3 握手、公共设施与共享生命、固定点连续商品流、唯一 Sale Receipt、多式路线、六色仓库、背压、六色资产支付、8/6/2 卡窗和动态胜利均已有单一运行时 owner。`PlayerManaRuntimeController` 以成交回执恢复六色资产并提供 exact-once reserve/consume/release；Queue 只消费支付授权。`VictoryControlRuntimeController` 以当前存续区域数动态计算 `K=ceil(A*40%)` 与 `K*36 GDP/min`，并在攻击、流量、破产结算后的同帧检查点完成审计。SS06-04 聚焦门为 32/32，SS06-05 Victory 门为 54/54，Godot 场景可加载且无新增 parse/runtime error。
+当前基础 owner 已覆盖公共设施、共享生命、持续商品安装、Sale
+Receipt、多式路线、仓库、六色资产、30/20/5/5 共享出牌窗和动态胜利。
+本阶段不新增平行经济，而是在这些 owner 上完成五项硬切换：
 
-下一步进入 **SS06-06 Commodity Inventory And Persistent Installation**。继续保留 `CardInventoryRuntimeService` 的普通手牌/合成 ownership，并把商品履带免费领取、满手同名商品自动合成一次、商品永久安装、设施摧毁时安装量移除和 exact-once 安装 receipt 接到现有 `CommodityFlowRuntimeController` / Region Infrastructure 边界。不得复制另一位 agent 正在开发的 v0.6 Card Flow 或 CardUI；开始前先审计其最新提交和公开 API，再只迁移仍由旧 runtime 持有的商品库存与安装 ownership。
+1. 区域普通牌架改为确定性统一随机牌袋，删除固定类型槽和刷新阶段。
+2. CommodityFlow 改为“明确市场需求 → 区域基础消费 → 仓库 → 浪费”，
+   并保存具体商品市场积压。
+3. 旧 continuous backpressure 仅一次迁移为不可销售的浪费历史。
+4. 地图商路默认隐藏，只按玩家选择显示当前/最近真实流量。
+5. 区域购牌、牌序竞价、下注和响应只在正确时机进入 Overlay。
+
+完成门以 `docs/economy_network_acceptance_report.md` 为准；在 focused、
+MCP、存档、隐私、1280×720 layout 和完整 smoke 有证据前不得宣称通过。

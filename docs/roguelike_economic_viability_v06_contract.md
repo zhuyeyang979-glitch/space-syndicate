@@ -4,7 +4,10 @@
 
 The generated district map remains the only map owner. `RoguelikeEconomicViabilityPolicy` is a stateless pure-data normalizer/auditor invoked after terrain, topology, production, and demand are generated and before those facts are forwarded to RegionInfrastructure. It does not retain a map, create an economy ledger, install facilities, or calculate income.
 
-CommodityFlow owns local weak-GDP behavior and trade settlement. This policy never encodes a local baseline into district demand and never creates orders, routes, cash, GDP, or production capacity.
+CommodityFlow owns ambient regional consumption, concrete market backlog,
+automatic allocation, storage, waste and trade settlement. This policy never
+encodes ambient demand or market backlog into district demand and never creates
+orders, routes, cash, GDP, inventory, waste or production capacity.
 
 ## Input contract
 
@@ -44,4 +47,12 @@ The audit exposes:
 
 `main.gd` accepts only a complete valid result and rejects any patch set larger than one demand slot before applying it. RegionInfrastructure is initialized from the final district facts, so its authoritative production/demand snapshot must equal the map after the optional patch.
 
-The earlier C9 full-map direct-neighbor coverage contract and its `coverage_ratio_bp == 10000` oracle are retired as an overconstraint. They must not be restored. The focused test proves deterministic pure-data behavior, at-most-one mutation across seeded shapes, seed 60610 production integration, and RegionInfrastructure fact equality. Full vertical-slice trade and local weak-GDP behavior remain separate owner-level evidence.
+The earlier C9 full-map direct-neighbor coverage contract and its
+`coverage_ratio_bp == 10000` oracle are retired as an overconstraint. They
+must not be restored. No region is required to begin with a directly adjacent
+exact-product market: low ambient consumption already gives fresh production a
+small local outlet, while concrete markets may legally begin without supply and
+accumulate backlog. The focused test proves deterministic pure-data behavior,
+at-most-one mutation across seeded shapes, seed 60610 production integration,
+and RegionInfrastructure fact equality. Ambient/backlog/warehouse/waste
+behavior remains separate CommodityFlow owner evidence.

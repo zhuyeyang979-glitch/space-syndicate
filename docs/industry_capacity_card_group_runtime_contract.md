@@ -6,7 +6,10 @@
 - `IndustryCapacityWorldBridge` only reads private project GDP facts from `CityTradeNetworkRuntimeController`.
 - `CardPlayEligibilityRuntimeService` is the only owner of card requirement interpretation and reservation selection.
 - `CardResolutionQueueRuntimeService` is the only owner of cumulative capacity reservations, submission lock, group release, fixed priority bids, and the public wager-pool receipt.
-- `CardResolutionRuntimeController` is the only owner of the 8/6/2 clock and all-seats-ready early lock.
+- Historical SS05 evidence used an 8/6/2 clock. Active v0.6 timing is owned by
+  `CardResolutionRuntimeController` under
+  `docs/shared_card_window_cadence_v06.md` and is 30/20/5/5
+  (opening 45/35/5/5). This file must not be used to restore the old cadence.
 - UI surfaces only render snapshots and emit stable actions.
 
 ## Capacity
