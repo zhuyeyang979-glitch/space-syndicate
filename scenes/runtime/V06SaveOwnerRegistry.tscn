@@ -20,23 +20,34 @@ rollback_method = "apply_save_data"
 restore_mode = "transactional"
 unsupported_reason = ""
 
-[sub_resource type="Resource" id="BindingInstalledCommodities"]
+[sub_resource type="Resource" id="BindingRegionSupply"]
 script = ExtResource("2_binding")
-section_id = "installed_commodities"
-owner_id = "installed_commodity"
-unsupported_reason = "commodity_flow_section_split_missing"
+section_id = "region_supply"
+owner_id = "region_supply"
+owner_path = NodePath("../../RegionSupplyRuntimeController")
+capture_method = "to_save_data"
+apply_method = "apply_save_data"
+rollback_method = "apply_save_data"
+restore_mode = "transactional"
+unsupported_reason = ""
+
+[sub_resource type="Resource" id="BindingCommodityFlow"]
+script = ExtResource("2_binding")
+section_id = "commodity_flow"
+owner_id = "commodity_flow"
+state_version = 2
+owner_path = NodePath("../../CommodityFlowRuntimeController")
+capture_method = "to_save_data"
+apply_method = "apply_save_data"
+rollback_method = "apply_save_data"
+restore_mode = "transactional"
+unsupported_reason = ""
 
 [sub_resource type="Resource" id="BindingRoutes"]
 script = ExtResource("2_binding")
 section_id = "routes"
 owner_id = "route_network"
 unsupported_reason = "strict_preflight_and_exact_rollback_missing"
-
-[sub_resource type="Resource" id="BindingSaleReceipts"]
-script = ExtResource("2_binding")
-section_id = "sale_receipts"
-owner_id = "commodity_sale_receipt"
-unsupported_reason = "commodity_flow_section_split_missing"
 
 [sub_resource type="Resource" id="BindingPlayerMana"]
 script = ExtResource("2_binding")
@@ -154,5 +165,5 @@ unsupported_reason = ""
 [node name="V06SaveOwnerRegistry" type="Node"]
 script = ExtResource("1_registry")
 handshake_path = NodePath("../GameSaveRuntimeCoordinator/RulesetSaveHandshakeService")
-bindings = Array[ExtResource("2_binding")]([SubResource("BindingRuleset"), SubResource("BindingRegionInfrastructure"), SubResource("BindingInstalledCommodities"), SubResource("BindingRoutes"), SubResource("BindingSaleReceipts"), SubResource("BindingPlayerMana"), SubResource("BindingCommodityBelt"), SubResource("BindingCardInventory"), SubResource("BindingPlayerOrganization"), SubResource("BindingMonsters"), SubResource("BindingMilitary"), SubResource("BindingWeather"), SubResource("BindingCardQueue"), SubResource("BindingCardExecution"), SubResource("BindingAi"), SubResource("BindingBankruptcyNeutralEstate"), SubResource("BindingVictory"), SubResource("BindingSession")])
+bindings = Array[ExtResource("2_binding")]([SubResource("BindingRuleset"), SubResource("BindingRegionInfrastructure"), SubResource("BindingRegionSupply"), SubResource("BindingCommodityFlow"), SubResource("BindingRoutes"), SubResource("BindingPlayerMana"), SubResource("BindingCommodityBelt"), SubResource("BindingCardInventory"), SubResource("BindingPlayerOrganization"), SubResource("BindingMonsters"), SubResource("BindingMilitary"), SubResource("BindingWeather"), SubResource("BindingCardQueue"), SubResource("BindingCardExecution"), SubResource("BindingAi"), SubResource("BindingBankruptcyNeutralEstate"), SubResource("BindingVictory"), SubResource("BindingSession")])
 editor_description = "Unique v0.6 save-section owner registry. It captures no parallel gameplay state and rejects resume until every required owner has transactional preflight/apply/rollback capability."

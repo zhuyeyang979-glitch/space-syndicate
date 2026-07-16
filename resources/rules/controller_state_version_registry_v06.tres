@@ -20,8 +20,8 @@ save_section = "region_infrastructure"
 
 [sub_resource type="Resource" id="Controller_04"]
 script = ExtResource("2_entry")
-controller_id = "installed_commodity"
-save_section = "installed_commodities"
+controller_id = "region_supply"
+save_section = "region_supply"
 
 [sub_resource type="Resource" id="Controller_05"]
 script = ExtResource("2_entry")
@@ -30,8 +30,9 @@ save_section = "routes"
 
 [sub_resource type="Resource" id="Controller_06"]
 script = ExtResource("2_entry")
-controller_id = "commodity_sale_receipt"
-save_section = "sale_receipts"
+controller_id = "commodity_flow"
+save_section = "commodity_flow"
+state_version = 2
 
 [sub_resource type="Resource" id="Controller_07"]
 script = ExtResource("2_entry")

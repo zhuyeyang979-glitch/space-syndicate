@@ -1170,6 +1170,65 @@ func card_catalog_upgradeable_families() -> Array:
 	return (value as Array).duplicate(true) if value is Array else []
 
 
+func region_supply_runtime_controller() -> RegionSupplyRuntimeController:
+	return _region_supply_runtime_controller_node() as RegionSupplyRuntimeController
+
+
+func region_supply_runtime_call(method_name: StringName, arguments: Array = []) -> Variant:
+	var controller := _region_supply_runtime_controller_node()
+	if controller == null or not controller.has_method(method_name):
+		push_error("RegionSupplyRuntimeController method unavailable: %s" % method_name)
+		return null
+	return controller.callv(method_name, arguments)
+
+
+func configure_region_supply(
+	gameplay_seed: int,
+	region_descriptors: Array,
+	legal_card_descriptors: Array,
+	slots_per_region := 4
+) -> Dictionary:
+	var value: Variant = region_supply_runtime_call(
+		"configure",
+		[gameplay_seed, region_descriptors, legal_card_descriptors, slots_per_region]
+	)
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func region_supply_public_rack(region_id := "") -> Dictionary:
+	var value: Variant = region_supply_runtime_call("public_rack_snapshot", [region_id])
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func prepare_region_supply_slot_refill(
+	transaction_id: String,
+	region_id: String,
+	slot_index: int,
+	expected_supply_revision: String,
+	expected_card_id: String
+) -> Dictionary:
+	var value: Variant = region_supply_runtime_call(
+		"prepare_slot_refill",
+		[transaction_id, region_id, slot_index, expected_supply_revision, expected_card_id]
+	)
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func commit_region_supply_slot_refill(transaction_id: String) -> Dictionary:
+	var value: Variant = region_supply_runtime_call("commit_slot_refill", [transaction_id])
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func rollback_region_supply_slot_refill(transaction_id: String) -> Dictionary:
+	var value: Variant = region_supply_runtime_call("rollback_slot_refill", [transaction_id])
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func finalize_region_supply_slot_refill(transaction_id: String) -> Dictionary:
+	var value: Variant = region_supply_runtime_call("finalize_slot_refill", [transaction_id])
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
 func monster_runtime_controller() -> MonsterRuntimeController:
 	return _monster_runtime_controller_node() as MonsterRuntimeController
 
@@ -4195,6 +4254,10 @@ func _card_runtime_catalog_node() -> Node:
 
 func _card_runtime_definition_bridge_node() -> Node:
 	return get_node_or_null("CardRuntimeDefinitionWorldBridge")
+
+
+func _region_supply_runtime_controller_node() -> Node:
+	return get_node_or_null("RegionSupplyRuntimeController")
 
 
 func _gameplay_balance_diagnostics_node() -> Node:

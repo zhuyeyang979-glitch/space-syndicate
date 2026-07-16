@@ -55,7 +55,9 @@ func run_bench() -> Dictionary:
 	var production_snapshot: Dictionary = production_registry.registry_snapshot() if production_registry != null else {}
 	_check(bool(production_snapshot.get("valid", false)), "production_registry_matches_handshake_manifest")
 	_check(int(production_snapshot.get("required_section_count", 0)) == 18 and int(production_snapshot.get("binding_count", 0)) == 18, "production_registry_has_all_18_unique_sections")
-	_check(int(production_snapshot.get("transactional_section_count", 0)) == 8 and int(production_snapshot.get("unsupported_section_count", 0)) == 10 and not bool(production_snapshot.get("resume_ready", true)), "production_registry_declares_eight_auditable_transactional_owners")
+	_check(int(production_snapshot.get("transactional_section_count", 0)) == 10 and int(production_snapshot.get("unsupported_section_count", 0)) == 8 and not bool(production_snapshot.get("resume_ready", true)), "production_registry_declares_ten_auditable_transactional_owners")
+	_check(_binding_matches(production_registry, "region_supply", "region_supply", "../../RegionSupplyRuntimeController", 1), "region_supply_section_uses_the_unique_transactional_rack_owner")
+	_check(_binding_matches(production_registry, "commodity_flow", "commodity_flow", "../../CommodityFlowRuntimeController", 2), "commodity_flow_section_uses_the_unique_transactional_economy_owner")
 	_check(_bankruptcy_binding_is_transactional(production_registry), "bankruptcy_section_uses_the_unique_transactional_estate_owner")
 	_check(_weather_binding_is_transactional(production_registry), "weather_section_uses_the_unique_transactional_weather_owner")
 	_check(not bool(production_snapshot.get("captures_business_state", true)) and not bool(production_snapshot.get("stores_parallel_owner_state", true)), "registry_bindings_copy_no_bankruptcy_or_participant_journal_state")
@@ -145,6 +147,8 @@ func run_bench() -> Dictionary:
 		"production_transactional_sections": int(production_snapshot.get("transactional_section_count", 0)),
 		"production_unsupported_sections": int(production_snapshot.get("unsupported_section_count", 0)),
 		"production_resume_ready": bool(production_snapshot.get("resume_ready", true)),
+		"region_supply_section_transactional": _binding_is_transactional(production_registry, "region_supply"),
+		"commodity_flow_section_transactional": _binding_is_transactional(production_registry, "commodity_flow"),
 		"bankruptcy_section_registered": _bankruptcy_binding_is_transactional(production_registry),
 		"bankruptcy_section_transactional": _binding_is_transactional(production_registry, "bankruptcy_neutral_estate"),
 		"bankruptcy_unsupported_reason": _binding_unsupported_reason(production_registry, "bankruptcy_neutral_estate"),
@@ -228,6 +232,29 @@ func _weather_binding_is_transactional(registry: Node) -> bool:
 			and binding.restore_mode == BindingScript.RESTORE_TRANSACTIONAL \
 			and binding.unsupported_reason.is_empty() \
 			and str(binding.owner_path) == "../../WeatherRuntimeController" \
+			and binding.capture_method == "to_save_data" \
+			and binding.apply_method == "apply_save_data" \
+			and binding.rollback_method == "apply_save_data"
+	return false
+
+
+func _binding_matches(
+	registry: Node,
+	section_id: String,
+	owner_id: String,
+	owner_path: String,
+	state_version: int
+) -> bool:
+	if registry == null:
+		return false
+	for binding in registry.bindings:
+		if binding == null or binding.section_id != section_id:
+			continue
+		return binding.owner_id == owner_id \
+			and binding.state_version == state_version \
+			and binding.restore_mode == BindingScript.RESTORE_TRANSACTIONAL \
+			and binding.unsupported_reason.is_empty() \
+			and str(binding.owner_path) == owner_path \
 			and binding.capture_method == "to_save_data" \
 			and binding.apply_method == "apply_save_data" \
 			and binding.rollback_method == "apply_save_data"

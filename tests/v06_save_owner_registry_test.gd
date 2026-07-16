@@ -28,7 +28,8 @@ func _run() -> void:
 	_expect(bool(result.get("passed", false)), "save owner registry transaction and privacy checks pass: %s" % JSON.stringify(result.get("failures", [])))
 	_expect(int(result.get("checks", 0)) >= 20, "save owner registry Bench executes the complete contract matrix")
 	var evidence: Dictionary = result.get("evidence", {}) if result.get("evidence", {}) is Dictionary else {}
-	_expect(int(evidence.get("production_required_sections", 0)) == 18 and int(evidence.get("production_transactional_sections", 0)) == 8 and int(evidence.get("production_unsupported_sections", 0)) == 10, "production registry exposes the audited 8/10 capability boundary")
+	_expect(int(evidence.get("production_required_sections", 0)) == 18 and int(evidence.get("production_transactional_sections", 0)) == 10 and int(evidence.get("production_unsupported_sections", 0)) == 8, "production registry exposes the audited 10/8 capability boundary")
+	_expect(bool(evidence.get("region_supply_section_transactional", false)) and bool(evidence.get("commodity_flow_section_transactional", false)), "regional supply and commodity flow are bound to their unique transactional owners")
 	_expect(bool(evidence.get("bankruptcy_section_registered", false)) and bool(evidence.get("bankruptcy_section_transactional", false)) and str(evidence.get("bankruptcy_unsupported_reason", "")) == "", "bankruptcy neutral estate is bound to its unique transactional owner")
 	_expect(bool(evidence.get("weather_section_transactional", false)) and str(evidence.get("weather_unsupported_reason", "")) == "", "weather is bound to its unique transactional owner")
 	_expect(not bool(evidence.get("production_resume_ready", true)) and not bool(evidence.get("full_production_restore_claimed", true)), "production resume stays fail-closed and makes no full-restore claim")
@@ -45,5 +46,5 @@ func _expect(condition: bool, message: String) -> void:
 
 
 func _finish() -> void:
-	print("V06_SAVE_OWNER_REGISTRY_TEST|status=%s|checks=8|failures=%d" % ["PASS" if _failures.is_empty() else "FAIL", _failures.size()])
+	print("V06_SAVE_OWNER_REGISTRY_TEST|status=%s|checks=9|failures=%d" % ["PASS" if _failures.is_empty() else "FAIL", _failures.size()])
 	quit(0 if _failures.is_empty() else 1)
