@@ -169,9 +169,6 @@ historical-only classification by their owners before final acceptance:
 
 | Path | Baseline stale assertion |
 |---|---|
-| `docs/tabletop_rulebook_v06.md` | Isolated factory/market baseline, local self-sale and continuous backpressure |
-| `docs/rules_v06_runtime_directive.md` | Continuous unmatched production becomes backpressure |
-| `docs/rules_v06_development_plan.md` | The active cutover table still names backpressure as a route/warehouse target |
 | `docs/roguelike_economic_viability_v06_contract.md` | Refers to the old local weak-GDP behavior and district demand assumptions |
 | `scripts/tools/full_run_quality_driver.gd` and `tests/full_run_quality_driver_contract_test.gd` | Wait for a canonical factory/market pair |
 | `scripts/tools/tomorrow_playable_vertical_slice_bench.gd` | Accepts old `local_*` trade kinds and `backpressured_milliunits` metrics |

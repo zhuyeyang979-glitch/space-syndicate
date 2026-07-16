@@ -94,6 +94,12 @@ region_revision
 
 An installation persists until its facility is destroyed. Repeated and higher-rank commodity cards create additive installations.
 
+Concrete demand installed in a market also owns a commodity-specific demand
+record in `CommodityFlowRuntimeController`, keyed by
+`market_facility_id + commodity_id`. That record contains steady demand,
+unmet backlog, recovery budget/remainders, cap and revision. A bare market
+without a concrete commodity installation does not create high demand.
+
 ### Route snapshot
 
 ```text
@@ -179,7 +185,22 @@ Victory must not resolve before already-locked same-timestamp damage or reconstr
 - Store authored production/demand as rates per minute; integrate with fixed-point arithmetic over time.
 - Compute each installed product's effective rate as `product_base_rate * min(1, facility_rank_capacity / all_installed_base_rate) * regional_integrity`; perform the proportional facility-capacity limit before route allocation.
 - Do not evict existing warehouse contents merely because integrity lowers intake capacity; block/reroute new overflow. Destroy all local contents only when the region reaches zero HP.
-- When continuous production has no route or storage sink, apply upstream backpressure and do not materialize the excess. Only already-materialized one-shot supply goods can be lost for lack of storage.
+- For every commodity and authoritative tick, allocate in this order: concrete
+  market steady demand and permitted backlog recovery; non-accumulating
+  same-region/direct-adjacent-land ambient consumption using fresh output
+  only; matching reachable warehouse storage; then waste.
+- Every surviving non-ruin region has a low data-driven ambient demand for
+  every active commodity. Unfulfilled ambient demand expires at tick end and
+  never becomes market backlog.
+- Concrete market demand continues to accrue commodity-specific unmet backlog
+  when supply or a legal route is unavailable. Current steady demand is
+  fulfilled before old backlog; only extra delivery may recover backlog.
+- Warehouse inventory can satisfy concrete market demand but must never be
+  drained by ambient consumption.
+- Continuous output that cannot be sold or stored becomes non-saleable waste
+  and disappears. It creates no Sale Receipt, cash, GDP, asset or rent. Legacy
+  backpressure may migrate once into historical waste totals and must never
+  become inventory.
 - Aggregate demand at a bottleneck before proportional allocation. Never allocate by array iteration order.
 - Route selection optimizes expected commodity-owner net cash under current legal capacity, then uses arrival time, transfer count and stable route ID as tie breakers.
 - Lock distance premium to shortest legal economic distance. Later detours do not increase price.
@@ -194,7 +215,11 @@ Do not add a second hidden comeback currency. Preserve these explicit brakes:
 - Route bottlenecks and rent drain.
 - Storage cost and loss of overflow.
 - Non-commodity mana costs scale with persistence, range and disruption.
-- The ordinary 8-second card window accepts at most three submissions per player and locks its final two seconds; belt claims are outside the count, commodity installation is inside it.
+- The shared card window is 30 seconds: 20 seconds planning, 5 seconds public
+  card-order bidding and 5 seconds lock. The first three windows use the
+  authored 45/35/5/5 opening cadence. Ordinary capacity is one card; only an
+  authoritative organization capability may raise it, to a hard maximum of
+  three. Belt claims remain outside the ordinary-card count.
 - Regional integrity scales all facility efficiency.
 - Monster target scoring gives material weight to high-GDP, high-flow and storage-concentrated regions.
 - Audit reveals leading economic assets for counterplay.
@@ -223,7 +248,9 @@ Card text must never say “对一座设施造成 X 点生命伤害”. Unit att
 1. Freeze a recoverable v0.5 snapshot and mark its rules/resources as historical runtime evidence.
 2. Add the v0.6 Ruleset Resource and region-infrastructure authority without routing production gameplay through it yet.
 3. Cut over facilities, installed commodity rates and shared regional HP as one domain; delete area/city HP writers in the same change.
-4. Cut over continuous production, demand, multimodal routing, warehouse overflow and unique sale receipts.
+4. Cut over continuous production, concrete market backlog, ambient regional
+   consumption, multimodal routing, warehouse buffering, waste and unique
+   sale receipts.
 5. Cut over commodity GDP and six private mana pools; remove project GDP and industry capacity together.
 6. Cut over dynamic victory and audit ordering after region and commodity receipts are authoritative.
 7. Migrate inventory, persistent commodity placement, conditional order/supply cards and direct-interaction counters.
