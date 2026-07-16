@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/player_seat_public_source_service.gd" id="1_script"]
+
+[node name="PlayerSeatPublicSourceService" type="Node"]
+script = ExtResource("1_script")
+editor_description = "Scene-owned public player identity source for the planet seat host. Reads only existing public world accessors and never exposes cash, hands, hidden ownership, anonymous actor truth, or AI plans."

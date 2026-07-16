@@ -1,0 +1,49 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/planet_table/role_seat_fallback.gd" id="1_script"]
+
+[node name="RoleSeatFallback" type="PanelContainer"]
+custom_minimum_size = Vector2(112, 58)
+mouse_filter = 2
+script = ExtResource("1_script")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 7
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 7
+theme_override_constants/margin_bottom = 4
+
+[node name="Rows" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="PublicPlayerName" type="Label" parent="Margin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "玩家"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+theme_override_font_sizes/font_size = 11
+
+[node name="PublicRoleName" type="Label" parent="Margin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "外星辛迪加"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+theme_override_colors/font_color = Color(0.796, 0.835, 0.882, 1)
+theme_override_font_sizes/font_size = 9
+
+[node name="PublicStatus" type="Label" parent="Margin/Rows"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "等待"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+theme_override_font_sizes/font_size = 8

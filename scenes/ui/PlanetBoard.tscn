@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scripts/ui/planet_board.gd" id="2_planet_board"]
 [ext_resource type="PackedScene" path="res://scenes/ui/PlanetMapView.tscn" id="3_planet_map_view"]
 [ext_resource type="PackedScene" path="res://scenes/ui/weather/WeatherForecastStrip.tscn" id="4_weather_strip"]
+[ext_resource type="PackedScene" path="res://scenes/ui/planet_table/RoleSeatLayerHost.tscn" id="5_role_seat_host"]
 
 [node name="PlanetBoard" type="PanelContainer"]
 custom_minimum_size = Vector2(600, 300)
@@ -50,6 +51,23 @@ size_flags_vertical = 3
 clip_contents = false
 mouse_filter = 2
 
+[node name="RoleSeatLayerHost" parent="PlanetRows/PlanetStageViewport" instance=ExtResource("5_role_seat_host")]
+unique_name_in_owner = true
+stage_viewport_path = NodePath("..")
+back_seat_layer_path = NodePath("../BackSeatLayer")
+front_seat_layer_path = NodePath("../FrontSeatLayer")
+fallback_backdrop_path = NodePath("../MapHost/PlanetMapView/BackdropLayer/PlanetGlobeBackdrop")
+
+[node name="BackSeatLayer" type="Control" parent="PlanetRows/PlanetStageViewport"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
 [node name="MapHost" type="Control" parent="PlanetRows/PlanetStageViewport"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(220, 220)
@@ -59,6 +77,16 @@ mouse_filter = 1
 [node name="PlanetMapView" parent="PlanetRows/PlanetStageViewport/MapHost" instance=ExtResource("3_planet_map_view")]
 unique_name_in_owner = true
 layout_mode = 1
+
+[node name="FrontSeatLayer" type="Control" parent="PlanetRows/PlanetStageViewport"]
+layout_mode = 1
+unique_name_in_owner = true
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 
 [node name="PlaytestFlowCompass" type="PanelContainer" parent="PlanetRows/PlanetStageViewport"]
 unique_name_in_owner = true

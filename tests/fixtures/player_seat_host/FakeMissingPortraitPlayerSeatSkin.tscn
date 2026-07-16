@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/fixtures/player_seat_host/fake_missing_portrait_player_seat_skin.gd" id="1_script"]
+
+[node name="FakeMissingPortraitPlayerSeatSkin" type="Control"]
+custom_minimum_size = Vector2(118, 76)
+mouse_filter = 2
+script = ExtResource("1_script")

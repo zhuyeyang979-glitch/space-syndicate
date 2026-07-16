@@ -6,6 +6,9 @@ class_name SpaceSyndicatePlanetBoard
 @onready var weather_forecast_strip: Control = %WeatherForecastStrip
 @onready var stage_viewport: Control = %PlanetStageViewport
 @onready var map_host: Control = %MapHost
+@onready var role_seat_layer_host: Node = %RoleSeatLayerHost
+@onready var back_seat_layer: Control = %BackSeatLayer
+@onready var front_seat_layer: Control = %FrontSeatLayer
 @onready var embedded_map_view: Control = get_node_or_null("%PlanetMapView") as Control
 @onready var playtest_flow_compass: PanelContainer = %PlaytestFlowCompass
 @onready var playtest_flow_compass_title: Label = %PlaytestFlowCompassTitle
@@ -93,6 +96,8 @@ func set_board_state(data: Dictionary) -> void:
 	)
 	_set_weather_strip(data.get("weather", {}))
 	_set_flow_compass(data.get("flow_compass", {}))
+	if role_seat_layer_host != null and role_seat_layer_host.has_method("set_seat_descriptors"):
+		role_seat_layer_host.call("set_seat_descriptors", data.get("player_seats", []) if data.get("player_seats", []) is Array else [])
 	_configure_pointer_passthrough_layers()
 	call_deferred("_fit_square_stage")
 
@@ -131,6 +136,8 @@ func _configure_pointer_passthrough_layers() -> void:
 		playtest_flow_compass,
 		left_space_rail,
 		right_space_rail,
+		back_seat_layer,
+		front_seat_layer,
 	]:
 		_set_mouse_filter_recursive(node, Control.MOUSE_FILTER_IGNORE)
 
@@ -181,6 +188,10 @@ func _fit_square_stage() -> void:
 	map_host.position = map_rect.position
 	map_host.size = map_rect.size
 	map_host.custom_minimum_size = Vector2(min_square, min_square)
+	for seat_layer in [back_seat_layer, front_seat_layer]:
+		if seat_layer != null:
+			seat_layer.position = Vector2.ZERO
+			seat_layer.size = available
 	_layout_flow_compass(map_rect, available)
 	_layout_space_rail(left_space_rail, true, map_rect, available)
 	_layout_space_rail(right_space_rail, false, map_rect, available)
