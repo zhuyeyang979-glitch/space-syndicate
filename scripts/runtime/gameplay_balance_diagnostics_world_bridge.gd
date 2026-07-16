@@ -184,8 +184,9 @@ func _district_facts(selected_player: int) -> Array:
 	for district_index in range(source.size()):
 		var district: Dictionary = source[district_index] if source[district_index] is Dictionary else {}
 		var city := _world_dictionary_call(&"_district_city", [district_index])
+		var public_rack_card_ids := _world_array_call(&"_district_supply_card_ids", [district_index])
 		var monster_cards: Array = []
-		for card_variant in _array(district.get("card_choices", [])):
+		for card_variant in public_rack_card_ids:
 			var card_name := _world_string_call(&"_canonical_card_supply_name", [str(card_variant)])
 			if card_name == "":
 				card_name = str(card_variant)
@@ -198,10 +199,8 @@ func _district_facts(selected_player: int) -> Array:
 			"destroyed": bool(district.get("destroyed", false)),
 			"products": _array(district.get("products", [])),
 			"demands": _array(district.get("demands", [])),
-			"card_choices": _canonical_card_choices(district.get("card_choices", [])),
+			"public_rack_card_ids": _canonical_card_choices(public_rack_card_ids),
 			"monster_cards": monster_cards,
-			"card_sources": _dictionary(district.get("card_sources", {})),
-			"monster_guarantee_card": _canonical_card_id(str(district.get("monster_guarantee_card", ""))),
 			"availability_kind": _world_string_call(&"_district_market_availability_kind", [district_index]),
 			"city_active": bool(_world.call("_city_is_active", city)) if _world.has_method("_city_is_active") else not city.is_empty(),
 			"city_products": _world_array_call(&"_city_product_names", [city]),

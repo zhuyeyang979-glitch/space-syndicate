@@ -1195,21 +1195,91 @@ func configure_region_supply(
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
+func configure_region_supply_from_world(
+	gameplay_seed: int,
+	district_rows: Array,
+	card_ids: Array,
+	slots_per_region := 4
+) -> Dictionary:
+	var region_descriptors: Array = []
+	for district_index in range(district_rows.size()):
+		if not (district_rows[district_index] is Dictionary):
+			continue
+		var district: Dictionary = district_rows[district_index]
+		region_descriptors.append({
+			"region_id": str(district.get("region_id", "region.%03d" % district_index)),
+			"region_index": district_index,
+			"display_name": str(district.get("name", "区域%d" % (district_index + 1))),
+			"terrain": str(district.get("terrain", "")),
+			"active": not bool(district.get("destroyed", false)),
+			"destroyed": bool(district.get("destroyed", false)),
+			"mode_tags": (district.get("mode_tags", []) as Array).duplicate()
+				if district.get("mode_tags", []) is Array
+				else [],
+		})
+	var card_descriptors: Array = []
+	for card_id_variant in card_ids:
+		var card_id := str(card_id_variant).strip_edges()
+		var descriptor := _region_supply_card_descriptor(card_id)
+		if not descriptor.is_empty():
+			card_descriptors.append(descriptor)
+	return configure_region_supply(gameplay_seed, region_descriptors, card_descriptors, slots_per_region)
+
+
 func region_supply_public_rack(region_id := "") -> Dictionary:
 	var value: Variant = region_supply_runtime_call("public_rack_snapshot", [region_id])
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func region_supply_listing(region_id: String, card_id := "") -> Dictionary:
+	var snapshot := region_supply_public_rack(region_id)
+	var regions: Array = snapshot.get("regions", []) if snapshot.get("regions", []) is Array else []
+	if regions.is_empty() or not (regions[0] is Dictionary):
+		return {}
+	var slots: Array = (regions[0] as Dictionary).get("slots", []) if (regions[0] as Dictionary).get("slots", []) is Array else []
+	for listing_variant in slots:
+		if not (listing_variant is Dictionary):
+			continue
+		var listing: Dictionary = listing_variant
+		if card_id.is_empty() or str(listing.get("card_id", "")) == card_id:
+			return listing.duplicate(true)
+	return {}
+
+
+func region_supply_card_ids(region_id: String) -> Array:
+	var result: Array = []
+	var snapshot := region_supply_public_rack(region_id)
+	var regions: Array = snapshot.get("regions", []) if snapshot.get("regions", []) is Array else []
+	if regions.is_empty() or not (regions[0] is Dictionary):
+		return result
+	var slots: Array = (regions[0] as Dictionary).get("slots", []) if (regions[0] as Dictionary).get("slots", []) is Array else []
+	for listing_variant in slots:
+		if not (listing_variant is Dictionary):
+			continue
+		var card_id := str((listing_variant as Dictionary).get("card_id", ""))
+		if not card_id.is_empty():
+			result.append(card_id)
+	return result
+
+
+func region_supply_rack_revision(region_id: String) -> String:
+	var snapshot := region_supply_public_rack(region_id)
+	var regions: Array = snapshot.get("regions", []) if snapshot.get("regions", []) is Array else []
+	return str((regions[0] as Dictionary).get("rack_revision", "")) \
+		if not regions.is_empty() and regions[0] is Dictionary \
+		else ""
 
 
 func prepare_region_supply_slot_refill(
 	transaction_id: String,
 	region_id: String,
 	slot_index: int,
-	expected_supply_revision: String,
-	expected_card_id: String
+	expected_item_id: String,
+	expected_supply_revision: String
 ) -> Dictionary:
 	var value: Variant = region_supply_runtime_call(
 		"prepare_slot_refill",
-		[transaction_id, region_id, slot_index, expected_supply_revision, expected_card_id]
+		[region_id, slot_index, expected_item_id, expected_supply_revision, transaction_id]
 	)
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
@@ -1227,6 +1297,47 @@ func rollback_region_supply_slot_refill(transaction_id: String) -> Dictionary:
 func finalize_region_supply_slot_refill(transaction_id: String) -> Dictionary:
 	var value: Variant = region_supply_runtime_call("finalize_slot_refill", [transaction_id])
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func commit_district_purchase_with_region_supply(
+	player_state: Dictionary,
+	current_facts: Dictionary,
+	plan: Dictionary,
+	listing: Dictionary,
+	transaction_id: String
+) -> Dictionary:
+	if listing.is_empty() \
+			or str(listing.get("card_id", "")) != str(current_facts.get("card_id", "")):
+		return {"committed": false, "reason": "region_supply_listing_changed"}
+	var prepared := prepare_region_supply_slot_refill(
+		transaction_id,
+		str(listing.get("source_region_id", "")),
+		int(listing.get("slot_index", -1)),
+		str(listing.get("item_id", "")),
+		str(listing.get("supply_revision", ""))
+	)
+	if not bool(prepared.get("prepared", false)):
+		return {"committed": false, "reason": str(prepared.get("reason_code", "region_supply_prepare_failed"))}
+	var supply_commit := commit_region_supply_slot_refill(transaction_id)
+	if not bool(supply_commit.get("committed", false)):
+		rollback_region_supply_slot_refill(transaction_id)
+		return {"committed": false, "reason": str(supply_commit.get("reason_code", "region_supply_commit_failed"))}
+	var settlement := commit_district_purchase_settlement(player_state, current_facts, plan)
+	if not bool(settlement.get("committed", false)):
+		var rollback := rollback_region_supply_slot_refill(transaction_id)
+		if not bool(rollback.get("rolled_back", false)):
+			return {
+				"committed": false,
+				"reason": "district_purchase_failed_region_supply_rollback_failed",
+				"settlement": settlement,
+				"region_supply": rollback,
+			}
+		return settlement
+	var finalized := finalize_region_supply_slot_refill(transaction_id)
+	var result := settlement.duplicate(true)
+	result["region_supply"] = finalized
+	result["region_supply_finalized"] = bool(finalized.get("finalized", false))
+	return result
 
 
 func monster_runtime_controller() -> MonsterRuntimeController:
@@ -4246,6 +4357,62 @@ func debug_snapshot() -> Dictionary:
 
 func _scheduler_node() -> Node:
 	return get_node_or_null("ForcedDecisionRuntimeScheduler")
+
+
+func _region_supply_card_descriptor(card_id: String) -> Dictionary:
+	if card_id.is_empty() or not card_exists(card_id):
+		return {}
+	var definition := card_definition(card_id)
+	var rank := card_rank(card_id)
+	if definition.is_empty() or rank != 1:
+		return {}
+	var kind := str(definition.get("kind", "ordinary"))
+	var machine: Dictionary = definition.get("machine", {}) if definition.get("machine", {}) is Dictionary else {}
+	var machine_price := int(machine.get("purchase_cash", -1))
+	var purchase_cash := machine_price
+	if purchase_cash < 0:
+		var balance_model := RUNTIME_BALANCE_MODEL_SCRIPT.new()
+		purchase_cash = int(balance_model.call("card_price_for_skill", definition))
+	var allowed_terrain: Array = []
+	if definition.get("allowed_terrain", []) is Array:
+		allowed_terrain = (definition.get("allowed_terrain", []) as Array).duplicate()
+	var legal_region_ids: Array = []
+	if definition.get("legal_region_ids", []) is Array:
+		legal_region_ids = (definition.get("legal_region_ids", []) as Array).duplicate()
+	var disabled_region_ids: Array = []
+	if definition.get("disabled_region_ids", []) is Array:
+		disabled_region_ids = (definition.get("disabled_region_ids", []) as Array).duplicate()
+	var required_mode_tags: Array = []
+	if definition.get("required_mode_tags", []) is Array:
+		required_mode_tags = (definition.get("required_mode_tags", []) as Array).duplicate()
+	return {
+		"card_id": card_id,
+		"family_id": card_family_id(card_id),
+		"card_type": str(definition.get("card_type", kind)),
+		"rank": rank,
+		"name": card_id,
+		"display_name": str(definition.get("display_name", definition.get("name", card_id))),
+		"price_cash": maxi(0, purchase_cash),
+		"target_type": str(definition.get("target_type", definition.get("target_kind", ""))),
+		"effect_text": str(definition.get("effect_text", definition.get("text", ""))),
+		"requirement_text": str(definition.get("requirement_text", definition.get("play_requirement_text", ""))),
+		"route_tags": (definition.get("route_tags", []) as Array).duplicate()
+			if definition.get("route_tags", []) is Array
+			else [],
+		"art_key": str(definition.get("art_key", card_id)),
+		"enabled": bool(definition.get("enabled", true)),
+		"retired": bool(definition.get("retired", false)),
+		"valid": true,
+		"potential_target_exists": bool(definition.get("potential_target_exists", true)),
+		"is_commodity": kind in ["commodity", "installed_commodity"],
+		"region_supply_weight": maxi(1, int(definition.get("region_supply_weight", 1))),
+		"global_unique": bool(definition.get("global_unique", false)),
+		"unique_key": str(definition.get("unique_key", card_family_id(card_id))),
+		"legal_region_ids": legal_region_ids,
+		"disabled_region_ids": disabled_region_ids,
+		"allowed_terrain": allowed_terrain,
+		"required_mode_tags": required_mode_tags,
+	}
 
 
 func _card_runtime_catalog_node() -> Node:

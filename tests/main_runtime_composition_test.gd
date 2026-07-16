@@ -111,6 +111,7 @@ const ROUTE_NETWORK_RUNTIME_CONTROLLER := "res://scenes/runtime/RouteNetworkRunt
 const ROUTE_NETWORK_WORLD_BRIDGE := "res://scenes/runtime/RouteNetworkWorldBridge.tscn"
 const COMMODITY_FLOW_RUNTIME_CONTROLLER := "res://scenes/runtime/CommodityFlowRuntimeController.tscn"
 const COMMODITY_FLOW_WORLD_BRIDGE := "res://scenes/runtime/CommodityFlowWorldBridge.tscn"
+const REGION_SUPPLY_RUNTIME_CONTROLLER := "res://scenes/runtime/RegionSupplyRuntimeController.tscn"
 const PLAYER_MANA_RUNTIME_CONTROLLER := "res://scenes/runtime/PlayerManaRuntimeController.tscn"
 const COMMODITY_CARD_INVENTORY_RUNTIME_CONTROLLER := "res://scenes/runtime/CommodityCardInventoryRuntimeController.tscn"
 const PLANET_MAP_VIEW_SCENE := "res://scenes/ui/PlanetMapView.tscn"
@@ -296,6 +297,7 @@ func _check_static_composition(main: Control) -> void:
 	var route_network_bridge := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RouteNetworkWorldBridge")
 	var commodity_flow := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CommodityFlowRuntimeController")
 	var commodity_flow_bridge := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CommodityFlowWorldBridge")
+	var region_supply := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionSupplyRuntimeController")
 	var player_mana := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/PlayerManaRuntimeController")
 	var commodity_inventory := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CommodityCardInventoryRuntimeController")
 	var production_state_adapter := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardPlayerStateProductionAdapterV06")
@@ -361,6 +363,7 @@ func _check_static_composition(main: Control) -> void:
 	_expect(route_network_bridge != null and route_network_bridge.scene_file_path == ROUTE_NETWORK_WORLD_BRIDGE and route_network_bridge.has_method("bind_world") and route_network_bridge.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the non-owning RouteNetworkWorldBridge")
 	_expect(commodity_flow != null and commodity_flow.scene_file_path == COMMODITY_FLOW_RUNTIME_CONTROLLER and commodity_flow.has_method("install_commodity") and commodity_flow.has_method("advance_world") and commodity_flow.has_method("card_effect_candidates_snapshot") and commodity_flow.has_method("to_save_data"), "GameRuntimeCoordinator owns the authoritative v0.6 CommodityFlowRuntimeController")
 	_expect(commodity_flow_bridge != null and commodity_flow_bridge.scene_file_path == COMMODITY_FLOW_WORLD_BRIDGE and commodity_flow_bridge.has_method("bind_world") and commodity_flow_bridge.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the non-owning CommodityFlowWorldBridge")
+	_expect(region_supply != null and region_supply.scene_file_path == REGION_SUPPLY_RUNTIME_CONTROLLER and region_supply.has_method("configure") and region_supply.has_method("public_rack_snapshot") and region_supply.has_method("prepare_slot_refill") and region_supply.has_method("commit_slot_refill") and region_supply.has_method("rollback_slot_refill") and region_supply.has_method("finalize_slot_refill") and region_supply.has_method("to_save_data") and region_supply.has_method("apply_save_data"), "GameRuntimeCoordinator owns the authoritative deterministic RegionSupplyRuntimeController")
 	_expect(player_mana != null and player_mana.scene_file_path == PLAYER_MANA_RUNTIME_CONTROLLER and player_mana.has_method("advance") and player_mana.has_method("commit_reservation") and player_mana.has_method("to_save_data"), "GameRuntimeCoordinator owns the single v0.6 six-color asset owner")
 	_expect(commodity_inventory != null and commodity_inventory.scene_file_path == COMMODITY_CARD_INVENTORY_RUNTIME_CONTROLLER and commodity_inventory.has_method("configure_market") and commodity_inventory.has_method("purchase_market_card") and commodity_inventory.has_method("play_core_card") and commodity_inventory.has_method("player_snapshot"), "GameRuntimeCoordinator owns the single v0.6 card inventory transaction authority")
 	_expect(production_state_adapter != null and production_state_adapter.has_method("bind_world") and production_state_adapter.has_method("actor_player_indices") and production_state_adapter.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the only v0.6 production player-state port")
@@ -375,7 +378,24 @@ func _check_static_composition(main: Control) -> void:
 	var buy_start := main_source.find("func _buy_card_for_player_from_district(")
 	var buy_end := main_source.find("\nfunc ", buy_start + 5)
 	var buy_source := main_source.substr(buy_start, buy_end - buy_start) if buy_start >= 0 and buy_end > buy_start else ""
-	_expect(main_source.contains("func _buy_card_for_player_from_district(") and main_source.contains("func _acquire_card_for_player(") and main_source.contains("func _acquire_inventory_skill_for_player(") and buy_source.contains("plan_district_purchase_settlement") and buy_source.contains("commit_district_purchase_settlement") and main_source.contains("plan_card_inventory_receive") and main_source.contains("commit_card_inventory_receive") and not buy_source.contains("player[\"cash\"] =") and not buy_source.contains("_record_player_card_spend(") and not main_source.contains("func _record_player_card_purchase(") and not main_source.contains("func _discard_card_from_player("), "Sprint 31 keeps thin purchase and receive adapters while later interaction slot mutations route through scene services")
+	_expect(
+		main_source.contains("func _buy_card_for_player_from_district(")
+		and main_source.contains("func _district_supply_listing(")
+		and main_source.contains("func _district_supply_card_ids(")
+		and main_source.contains("func _district_supply_rack_revision(")
+		and buy_source.contains("plan_district_purchase_settlement")
+		and buy_source.contains("commit_district_purchase_with_region_supply")
+		and buy_source.contains("_district_supply_listing")
+		and not buy_source.contains("player[\"cash\"] =")
+		and not buy_source.contains("_record_player_card_spend(")
+		and not main_source.contains("func _assign_district_card_choices(")
+		and not main_source.contains("func _normalize_card_supply_state(")
+		and not main_source.contains("func _ensure_fixed_monster_card_supply(")
+		and not main_source.contains("func _inject_first_table_followup_card_supply(")
+		and not main_source.contains("district[\"card_choices\"]")
+		and not main_source.contains("district[\"card_sources\"]"),
+		"Main consumes the scene-owned RegionSupply rack and purchase refill lifecycle without restoring district shadow supply or guarantee-slot owners"
+	)
 	_expect(main_source.contains("func _apply_player_hand_disrupt(") and main_source.contains("func _apply_player_hand_steal(") and main_source.contains("func _resolve_player_hand_interaction(") and not main_source.contains("func _take_private_hand_card_from_player(") and not main_source.contains("func _lock_private_hand_card_for_player(") and not main_source.contains("func _transfer_private_hand_card_between_players("), "Sprint 33 keeps compatibility entry points while deleting the three legacy interaction mutation helpers")
 	var disrupt_source := _function_source(main_source, "_apply_player_hand_disrupt")
 	var steal_source := _function_source(main_source, "_apply_player_hand_steal")
