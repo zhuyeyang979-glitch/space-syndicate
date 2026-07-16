@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "baseline_commit": "689c77af4867e2f85fc1edf356e1f7abb295bc7a",
+  "main": {
+    "physical_lines": 15488,
+    "nonblank_lines": 13528,
+    "methods": 916,
+    "top_level_variables": 102,
+    "constants": 121,
+    "signals": 0,
+    "top_level_preloads": 15
+  },
+  "callers": {
+    "external_caller_files": 102,
+    "external_call_occurrences": 2313,
+    "production_reference_files": [
+      "addons/godot_mcp/runtime/mcp_runtime.gd",
+      "scenes/main.tscn",
+      "scripts/ai/ai_policy_resource_registry.gd"
+    ]
+  }
+}

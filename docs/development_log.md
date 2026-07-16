@@ -7929,3 +7929,19 @@
 - `tests/layout_scene_smoke_test.gd` 通过。
 - `tests/smoke_test.gd --check-only` 通过。
 - `tests/smoke_test.gd` 完整通过。
+# 2026-07-17 — Main.gd scene-first extinction gates
+
+- Froze `scripts/main.gd` in `AGENTS.md`: no new ownership, consumers,
+  dynamic calls, world binding, compatibility facade, or replacement monolith.
+- Added a monotonic Python budget gate for physical/nonblank lines, methods,
+  fields, constants, preloads, external callers, and production references.
+- Generated a deterministic production call graph covering all 916 Main
+  methods, top-level symbols, dynamic method strings, scene connections,
+  root-world binding sites, and `_process` edges.
+- Added the domain cutover ledger and dependency-ordered scene migration plan.
+- Added the scene-backed Runtime Authority Audit Bench. It detects duplicate
+  state/tick/signal/snapshot/save-writer/mutation authorities without owning
+  gameplay state.
+- Validation: architecture source gate 33 checks PASS; authority Bench 10
+  checks PASS; Godot 4.7 MCP scene run completed with 0 script errors and a
+  clean stop; UI text, visual contract, and smoke check-only PASS.

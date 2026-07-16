@@ -1,0 +1,230 @@
+{
+  "schema_version": 1,
+  "baseline_commit": "689c77af4867e2f85fc1edf356e1f7abb295bc7a",
+  "allowed_statuses": [
+    "pending",
+    "migrating",
+    "cut_over",
+    "blocked"
+  ],
+  "domains": [
+    {
+      "domain": "architecture_gates",
+      "old_symbols": [],
+      "old_consumers": [],
+      "new_owner_scene": "res://scenes/tools/RuntimeAuthorityAuditBench.tscn",
+      "new_owner_script": "res://scripts/diagnostics/runtime_authority_audit.gd",
+      "new_public_api": [
+        "register_authority",
+        "audit_snapshot"
+      ],
+      "tests": [
+        "res://tests/main_gd_architecture_gate_test.gd",
+        "res://scenes/tools/RuntimeAuthorityAuditBench.tscn"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "",
+      "status": "cut_over"
+    },
+    {
+      "domain": "world_session_state",
+      "old_symbols": [
+        "players",
+        "districts",
+        "rng",
+        "game_time"
+      ],
+      "old_consumers": [
+        "runtime world bridges",
+        "save restore",
+        "AI",
+        "map",
+        "card execution"
+      ],
+      "new_owner_scene": "",
+      "new_owner_script": "",
+      "new_public_api": [],
+      "tests": [],
+      "old_path_deleted": false,
+      "duplicate_execution_checked": false,
+      "commit_sha": "",
+      "status": "pending"
+    },
+    {
+      "domain": "table_selection_state",
+      "old_symbols": [
+        "selected_player",
+        "inspected_player",
+        "selected_district",
+        "selected_trade_product"
+      ],
+      "old_consumers": [
+        "GameScreen snapshot",
+        "PlanetBoard actions",
+        "PlayerBoard actions"
+      ],
+      "new_owner_scene": "",
+      "new_owner_script": "",
+      "new_public_api": [],
+      "tests": [],
+      "old_path_deleted": false,
+      "duplicate_execution_checked": false,
+      "commit_sha": "",
+      "status": "pending"
+    },
+    {
+      "domain": "runtime_loop",
+      "old_symbols": [
+        "_process"
+      ],
+      "old_consumers": [
+        "AI",
+        "weather",
+        "card queue",
+        "monster",
+        "military",
+        "economy",
+        "presentation"
+      ],
+      "new_owner_scene": "",
+      "new_owner_script": "",
+      "new_public_api": [],
+      "tests": [],
+      "old_path_deleted": false,
+      "duplicate_execution_checked": false,
+      "commit_sha": "",
+      "status": "pending"
+    },
+    {
+      "domain": "typed_world_ports",
+      "old_symbols": [
+        "GameRuntimeCoordinator.bind_ai_world",
+        "bind_*_world(self)"
+      ],
+      "old_consumers": [
+        "AI",
+        "monster",
+        "military",
+        "weather",
+        "economy",
+        "victory"
+      ],
+      "new_owner_scene": "",
+      "new_owner_script": "",
+      "new_public_api": [],
+      "tests": [],
+      "old_path_deleted": false,
+      "duplicate_execution_checked": false,
+      "commit_sha": "",
+      "status": "pending"
+    },
+    {
+      "domain": "card_execution",
+      "old_symbols": [
+        "_queue_skill_resolution",
+        "_complete_active_card_resolution",
+        "_apply_card_resolution_effect_request",
+        "_use_skill"
+      ],
+      "old_consumers": [
+        "HandRack",
+        "GameScreen",
+        "CardResolution services"
+      ],
+      "new_owner_scene": "",
+      "new_owner_script": "",
+      "new_public_api": [],
+      "tests": [],
+      "old_path_deleted": false,
+      "duplicate_execution_checked": false,
+      "commit_sha": "",
+      "status": "pending"
+    },
+    {
+      "domain": "new_game_setup",
+      "old_symbols": [
+        "_new_game",
+        "configured_player_count",
+        "configured_ai_player_count",
+        "configured_role_indices",
+        "configured_starter_monster_indices"
+      ],
+      "old_consumers": [
+        "NewGameSetupPage",
+        "normal session start"
+      ],
+      "new_owner_scene": "",
+      "new_owner_script": "",
+      "new_public_api": [],
+      "tests": [],
+      "old_path_deleted": false,
+      "duplicate_execution_checked": false,
+      "commit_sha": "",
+      "status": "pending"
+    },
+    {
+      "domain": "save_restore",
+      "old_symbols": [
+        "_apply_run_domain_state_compatibility_adapter",
+        "_load_run"
+      ],
+      "old_consumers": [
+        "current-run menu",
+        "GameSaveRuntimeCoordinator"
+      ],
+      "new_owner_scene": "",
+      "new_owner_script": "",
+      "new_public_api": [],
+      "tests": [],
+      "old_path_deleted": false,
+      "duplicate_execution_checked": false,
+      "commit_sha": "",
+      "status": "pending"
+    },
+    {
+      "domain": "presentation_action_routing",
+      "old_symbols": [
+        "_runtime_table_snapshot_source",
+        "_on_runtime_game_screen_action_requested"
+      ],
+      "old_consumers": [
+        "GameScreen",
+        "PlanetBoard",
+        "PlayerBoard",
+        "MenuOverlay"
+      ],
+      "new_owner_scene": "",
+      "new_owner_script": "",
+      "new_public_api": [],
+      "tests": [],
+      "old_path_deleted": false,
+      "duplicate_execution_checked": false,
+      "commit_sha": "",
+      "status": "pending"
+    },
+    {
+      "domain": "remaining_root_responsibilities",
+      "old_symbols": [
+        "audio",
+        "menu state",
+        "overlay glue",
+        "codex glue",
+        "_get",
+        "_set",
+        "fallback helpers"
+      ],
+      "old_consumers": [
+        "main scene composition"
+      ],
+      "new_owner_scene": "",
+      "new_owner_script": "",
+      "new_public_api": [],
+      "tests": [],
+      "old_path_deleted": false,
+      "duplicate_execution_checked": false,
+      "commit_sha": "",
+      "status": "pending"
+    }
+  ]
+}
