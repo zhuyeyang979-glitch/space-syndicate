@@ -1,0 +1,176 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/player_seat_portrait_skin_bench.gd" id="1_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleHost"]
+bg_color = Color(0.018, 0.036, 0.066, 0.92)
+corner_radius_top_left = 24
+corner_radius_top_right = 24
+corner_radius_bottom_left = 24
+corner_radius_bottom_right = 24
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.29, 0.62, 0.78, 0.42)
+
+[sub_resource type="StyleBoxFlat" id="StyleFallback"]
+bg_color = Color(0.04, 0.09, 0.15, 0.96)
+corner_radius_top_left = 50
+corner_radius_top_right = 50
+corner_radius_bottom_left = 50
+corner_radius_bottom_right = 50
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.98, 0.72, 0.16, 0.65)
+
+[node name="PlayerSeatPortraitSkinBench" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.004, 0.009, 0.022, 1)
+
+[node name="Header" type="VBoxContainer" parent="."]
+layout_mode = 0
+offset_left = 46.0
+offset_top = 34.0
+offset_right = 1036.0
+offset_bottom = 105.0
+mouse_filter = 2
+
+[node name="Title" type="Label" parent="Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.95, 1, 1)
+theme_override_font_sizes/font_size = 25
+text = "现有席位原位升级｜PlayerSeatPortraitSkin"
+
+[node name="Result" type="Label" parent="Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.45, 0.82, 0.92, 1)
+theme_override_font_sizes/font_size = 15
+text = "等待运行验证"
+
+[node name="Stage" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 120.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="RealSeatHost" type="Panel" parent="Stage"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -310.0
+offset_top = -140.0
+offset_right = -90.0
+offset_bottom = 140.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+theme_override_styles/panel = SubResource("StyleHost")
+
+[node name="LegacyAbstractFallback" type="Panel" parent="Stage/RealSeatHost"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -50.0
+offset_top = -50.0
+offset_right = 50.0
+offset_bottom = 50.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleFallback")
+
+[node name="Label" type="Label" parent="Stage/RealSeatHost"]
+layout_mode = 0
+offset_left = 14.0
+offset_top = 246.0
+offset_right = 206.0
+offset_bottom = 274.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.63, 0.8, 0.9, 1)
+text = "有图：只显示新 Skin"
+horizontal_alignment = 1
+
+[node name="PendingSeatHost" type="Panel" parent="Stage"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = 90.0
+offset_top = -140.0
+offset_right = 310.0
+offset_bottom = 140.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+theme_override_styles/panel = SubResource("StyleHost")
+
+[node name="LegacyAbstractFallback" type="Panel" parent="Stage/PendingSeatHost"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -50.0
+offset_top = -50.0
+offset_right = 50.0
+offset_bottom = 50.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleFallback")
+
+[node name="FallbackText" type="Label" parent="Stage/PendingSeatHost/LegacyAbstractFallback"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.47, 1)
+theme_override_font_sizes/font_size = 13
+text = "旧席位\n回退"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Label" type="Label" parent="Stage/PendingSeatHost"]
+layout_mode = 0
+offset_left = 14.0
+offset_top = 246.0
+offset_right = 206.0
+offset_bottom = 274.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.63, 0.8, 0.9, 1)
+text = "缺图：只显示旧回退"
+horizontal_alignment = 1

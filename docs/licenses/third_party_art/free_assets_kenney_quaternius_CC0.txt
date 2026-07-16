@@ -1,0 +1,21 @@
+Source repository:
+https://github.com/beep2bleep/FreeAssetsByKenneyNLandQuaternius
+
+Fixed source commit:
+dea756baf3b3a4889d8c245e456a4791f961578a
+
+Used upstream files:
+- FreeModels by Quaternius[Patreon]/Characters and Animals/Alien Animated - April 2019/FBX/Alien.fbx
+- FreeModels by Quaternius[Patreon]/Characters and Animals/Animated Robot - Oct 2018/FBX/Robot.fbx
+
+The adjacent upstream License.txt files are identical and state:
+
+LowPoly Models by @Quaternius
+License: CC0 1.0 Universal (CC0 1.0)
+Public Domain Dedication
+https://creativecommons.org/publicdomain/zero/1.0/
+
+The source files were enumerated with `git ls-tree` at the fixed commit. The
+art pipeline records the exact source model SHA-256 values and produces
+pre-rendered transparent PNG derivatives. The game runtime does not load the
+third-party FBX files.

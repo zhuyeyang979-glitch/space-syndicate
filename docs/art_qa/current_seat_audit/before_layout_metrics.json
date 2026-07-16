@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "capture_status": "not_applicable_functional_seat_nodes_absent",
+  "functional_seat_count": 0,
+  "decorative_marker_count": 8,
+  "markers_are_player_bound": false,
+  "markers_change_with_player_count": false,
+  "marker_formula": {
+    "angle_radians": "-PI/2 + TAU*(marker_index+0.5)/8",
+    "radius": "max(18, globe_radius+38-18)",
+    "draw_radius_px": 8,
+    "draw_width_px": 1.1,
+    "center_source": "PlanetGlobeBackdrop payload.globe_center",
+    "planet_radius_source": "PlanetGlobeBackdrop payload.globe_radius"
+  },
+  "normalized_marker_angles_degrees": [
+    -67.5,
+    -22.5,
+    22.5,
+    67.5,
+    112.5,
+    157.5,
+    202.5,
+    247.5
+  ],
+  "unavailable_metrics": [
+    "seat_center_by_player_count",
+    "seat_display_size",
+    "seat_anchor",
+    "seat_rotation",
+    "seat_z_index",
+    "seat_visibility",
+    "seat_to_player_mapping",
+    "seat_input_rect",
+    "local_player_anchor"
+  ],
+  "reason": "The current eight marks are custom-drawn decoration rather than functional seat Controls. Four player-count screenshots would be identical and would falsely imply a seat mapping contract."
+}
