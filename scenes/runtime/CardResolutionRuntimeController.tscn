@@ -4,7 +4,7 @@
 
 [node name="CardResolutionRuntimeController" type="Node"]
 unique_name_in_owner = true
-editor_description = "Scene-owned timing and phase controller for the shared card-resolution window. Settlement and card effects remain in main.gd."
+editor_description = "Scene-owned timing, ordered command identity, and exact-once lineage owner for the shared card-resolution window."
 script = ExtResource("1_controller")
 total_window_seconds = 30.0
 planning_seconds = 20.0

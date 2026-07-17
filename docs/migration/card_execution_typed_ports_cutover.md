@@ -1,6 +1,6 @@
 # Card Execution Typed Ports Cutover
 
-Status: **typed ports complete; transition sink still blocked pending its own atomic cutover**
+Status: **complete; transition sink cut over with persisted exact-once lineage**
 
 Branch: `codex/scene-first-remove-main-gd`
 
@@ -65,11 +65,11 @@ Resolved history has three explicit views:
 
 The production card track consumes the viewer projection instead of raw history. Public presentation strips player index, slot, cash, hand/discard, hidden owner and AI policy metadata. Ownership appears only after an explicit public reveal label exists.
 
-## Deliberately not completed here
+## Transition sink completion
 
-The card-frame transition sink remains a separate atomic change. `Main` still receives the current frame command array and temporarily calls the coordinator's typed `execute_active_card_resolution` entry. The next sink task must add producer-owned command IDs/revisions/order, persistent applied-command lineage, full 12-kind order tests and removal of the remaining transition switch/wrapper.
+The follow-up transition change adds one scene-owned `CardResolutionTransitionSink` between the frame driver and the typed execution/presentation ports. `Main` no longer receives a command array, switches on transition kinds, or drives completion. All twelve command kinds carry deterministic command IDs, batch revisions, contiguous order indices and payload fingerprints. Applied lineage is bounded, saved, restored and checked before replay.
 
-The typed ports do not create a second queue, world state, cash owner, card inventory or presentation layout owner.
+The typed ports and transition sink do not create a second queue, world state, cash owner, card inventory or presentation layout owner. The production table remains the temporary visual target; moving that source/target boundary is the next independent cutover.
 
 ## Acceptance evidence
 
@@ -78,6 +78,11 @@ The typed ports do not create a second queue, world state, cash owner, card inve
 - `scenes/tools/CardExecutionTypedPortsBench.tscn`
 - `scenes/tools/CardResolutionHistoryRuntimeServiceBench.tscn`
 - `tests/main_runtime_composition_test.gd`
+- `tests/card_resolution_transition_command_lineage_test.gd`
+- `tests/card_resolution_transition_sink_cutover_test.gd`
+- `tests/card_resolution_transition_gameplay_fault_injection_test.gd`
+- `tests/card_resolution_transition_persistence_registry_test.gd`
+- `scenes/tools/CardResolutionTransitionSinkBench.tscn`
 - `tools/architecture/check_main_gd_budget.py --json`
 
-The Transition Sink Cutover may now be retried against these typed boundaries, but it must remain red until the command/exact-once gates in its own specification pass.
+The next task is `Table Presentation Source/Target Cutover`. It must consume the public presentation port without restoring a Main callback or changing card execution ownership.

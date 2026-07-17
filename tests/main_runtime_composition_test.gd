@@ -182,6 +182,7 @@ func _check_static_composition(main: Control) -> void:
 		"RuntimeServices/RuntimeControllerHost",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardResolutionRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardResolutionFrameDriver",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardResolutionTransitionSink",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardCooldownRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/VisualCueRuntimeOwner",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/TablePresentationRefreshScheduler",
@@ -400,11 +401,10 @@ func _check_static_composition(main: Control) -> void:
 	var interaction_service_source := FileAccess.get_file_as_string("res://scripts/runtime/player_hand_interaction_runtime_service.gd")
 	_expect(effect_router_source.contains("_hand_interaction_service.plan_interaction") and effect_router_source.contains("_hand_interaction_service.commit_interaction") and interaction_service_source.contains("_inventory_service.call(\"commit_remove\"") and interaction_service_source.contains("_inventory_service.call(\"commit_lock\"") and interaction_service_source.contains("_inventory_service.call(\"commit_transfer\""), "typed effect router delegates all player-interaction slot mutation to CardInventoryRuntimeService")
 	var queue_submit_source := FileAccess.get_file_as_string("res://scripts/runtime/card_play_submission_runtime_controller.gd")
-	var queue_lock_source := _function_source(main_source, "_lock_card_resolution_batch")
-	var queue_start_source := _function_source(main_source, "_start_next_card_resolution")
-	var queue_promote_source := _function_source(main_source, "_promote_next_card_resolution_batch")
-	_expect(not main_source.contains("var card_resolution_queue := []") and not main_source.contains("var next_card_resolution_queue := []") and not main_source.contains("var active_card_resolution := {}") and not main_source.contains("var card_resolution_sequence := 0") and not main_source.contains("func _queue_skill_resolution(") and queue_submit_source.contains("plan_card_resolution_queue_submission") and queue_submit_source.contains("commit_card_inventory_queue_commit") and queue_submit_source.contains("commit_card_resolution_queue_submission") and queue_lock_source.contains("service.call(\"lock_batch\"") and queue_start_source.contains("service.call(\"start_next\"") and queue_promote_source.contains("service.call(\"promote_next_batch\""), "typed submission owns queue admission while the single queue service retains lifecycle storage")
-	var execution_complete_source := _function_source(main_source, "_complete_active_card_resolution")
+	var transition_sink_source := FileAccess.get_file_as_string("res://scripts/runtime/card_resolution_transition_sink.gd")
+	var execution_port_source := FileAccess.get_file_as_string("res://scripts/runtime/card_resolution_execution_world_bridge.gd")
+	_expect(not main_source.contains("var card_resolution_queue := []") and not main_source.contains("var next_card_resolution_queue := []") and not main_source.contains("var active_card_resolution := {}") and not main_source.contains("var card_resolution_sequence := 0") and not main_source.contains("func _queue_skill_resolution(") and queue_submit_source.contains("plan_card_resolution_queue_submission") and queue_submit_source.contains("commit_card_inventory_queue_commit") and queue_submit_source.contains("commit_card_resolution_queue_submission") and transition_sink_source.contains("func _lock_batch(") and transition_sink_source.contains("func _start_next(") and execution_port_source.contains("func lock_batch_transition(") and execution_port_source.contains("func start_next_transition("), "typed submission owns queue admission while TransitionSink routes lifecycle to the single queue service")
+	var execution_complete_source := transition_sink_source
 	var execution_effect_adapter_source := effect_router_source
 	var execution_service_source := FileAccess.get_file_as_string("res://scripts/runtime/card_resolution_execution_runtime_service.gd")
 	var family_service_source := FileAccess.get_file_as_string("res://scripts/runtime/card_economy_product_route_effect_runtime_service.gd")
@@ -427,7 +427,7 @@ func _check_static_composition(main: Control) -> void:
 	for function_name in retired_eligibility_functions:
 		eligibility_cutover_checked = eligibility_cutover_checked and not main_source.contains("func %s(" % function_name)
 	_expect(eligibility_cutover_checked, "Sprint 43 removes parallel card eligibility, requirement, target-trait, and counter-trait ownership from main.gd")
-	_expect(execution_complete_source.contains("execute_active_card_resolution") and execution_effect_adapter_source.contains("_resolve_targeted_skill") and execution_effect_adapter_source.contains("_resolve_player_interaction") and execution_service_source.contains("INTENT_RELEASE_ACTIVE") and execution_service_source.contains("INTENT_DISPATCH_EFFECT") and not main_source.contains("func _apply_card_resolution_effect_request("), "typed execution port routes lifecycle through Execution Service and scene-owned effect router")
+	_expect(execution_complete_source.contains("func _complete_active(") and execution_complete_source.contains("_execution.plan_execution") and execution_complete_source.contains("_execution.finalize_execution") and not main_source.contains("func _complete_active_card_resolution(") and execution_effect_adapter_source.contains("_resolve_targeted_skill") and execution_effect_adapter_source.contains("_resolve_player_interaction") and execution_service_source.contains("INTENT_RELEASE_ACTIVE") and execution_service_source.contains("INTENT_DISPATCH_EFFECT") and not main_source.contains("func _apply_card_resolution_effect_request("), "typed TransitionSink routes lifecycle through Execution Service and scene-owned effect router")
 	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
 	var v04_catalog_scene_source := FileAccess.get_file_as_string(CARD_RUNTIME_CATALOG_SERVICE)
 	var commodity_inventory_source := FileAccess.get_file_as_string("res://scripts/runtime/commodity_card_inventory_runtime_controller.gd")

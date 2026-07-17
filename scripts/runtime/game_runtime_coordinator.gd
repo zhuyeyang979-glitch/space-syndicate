@@ -32,9 +32,10 @@ func _ready() -> void:
 	_wire_table_selection_state()
 	_wire_world_session_state()
 	_wire_forced_decision_candidate_sources()
-	_wire_card_resolution_frame_driver()
 	_wire_card_cooldown_runtime_controller()
 	_wire_card_execution_typed_ports()
+	_wire_card_resolution_transition_sink()
+	_wire_card_resolution_frame_driver()
 
 
 func configure(ruleset_snapshot: Dictionary) -> void:
@@ -43,9 +44,10 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	_wire_table_selection_state()
 	_wire_world_session_state()
 	_wire_forced_decision_candidate_sources()
-	_wire_card_resolution_frame_driver()
 	_wire_card_cooldown_runtime_controller()
 	_wire_card_execution_typed_ports()
+	_wire_card_resolution_transition_sink()
+	_wire_card_resolution_frame_driver()
 	var world_clock := _world_effective_clock_runtime_controller_node()
 	if world_clock != null and world_clock.has_method("configure"):
 		world_clock.call("configure", {})
@@ -1126,30 +1128,6 @@ func select_card_resolution(resolution_id: int) -> Dictionary:
 	return {"selected": true, "resolution_id": state.selected_card_resolution_id}
 
 
-func execute_active_card_resolution(request: Dictionary) -> Dictionary:
-	var execution := _card_resolution_execution_node() as CardResolutionExecutionRuntimeService
-	var port := _card_resolution_execution_world_bridge_node() as CardResolutionExecutionWorldBridge
-	if execution == null or port == null:
-		return {"completed": false, "reason": "typed_execution_path_missing"}
-	var transaction := execution.plan_execution(request)
-	if not bool(transaction.get("ready", false)):
-		return {"completed": false, "reason": str(transaction.get("reason", "execution_plan_rejected")), "transaction": transaction}
-	var guard := 0
-	while not (transaction.get("next_intent", {}) as Dictionary).is_empty() and guard < 20:
-		guard += 1
-		var receipt := port.apply_intent(transaction)
-		transaction = execution.advance_execution(transaction, receipt)
-		if str(transaction.get("status", "")) != CardResolutionExecutionRuntimeService.STATUS_READY:
-			break
-	if guard >= 20 or str(transaction.get("status", "")) != CardResolutionExecutionRuntimeService.STATUS_READY:
-		return {"completed": false, "reason": str(transaction.get("failure_reason", transaction.get("reason", "intent_guard"))), "transaction": transaction}
-	var finalized := execution.finalize_execution(transaction)
-	if bool(finalized.get("completed", false)):
-		settle_card_mana_reservation((transaction.get("active_entry", {}) as Dictionary).duplicate(true) if transaction.get("active_entry", {}) is Dictionary else {}, finalized)
-	finalized["transaction"] = transaction
-	return finalized
-
-
 func _wire_run_rng_service() -> void:
 	var service := _run_rng_service_node()
 	if service == null:
@@ -1290,6 +1268,7 @@ func _wire_card_execution_typed_ports() -> void:
 	var counter := _card_counter_settlement_runtime_service_node()
 	var effect_router := _card_effect_runtime_router_node()
 	var submission := _card_play_submission_runtime_controller_node()
+	var execution := _card_resolution_execution_node() as CardResolutionExecutionRuntimeService
 	var economy_port := _card_economy_product_route_effect_world_bridge_node() as CardEconomyProductRouteEffectWorldBridge
 	if eligibility_facts != null:
 		eligibility_facts.set_runtime_dependencies(queue, resolution, target_choice, monster, military, contract, session, scheduler, commodity_flow)
@@ -1314,6 +1293,8 @@ func _wire_card_execution_typed_ports() -> void:
 	var execution_port := _card_resolution_execution_world_bridge_node() as CardResolutionExecutionWorldBridge
 	if execution_port != null:
 		execution_port.set_runtime_dependencies(queue, resolution, eligibility_facts, eligibility, counter, commitment, history, presentation, effect_router, self)
+	if execution != null:
+		execution.set_transition_checkpoint_owner(resolution)
 	if submission != null:
 		submission.set_dependencies(
 			world_state, selection, eligibility_facts, eligibility, queue, resolution,
@@ -3354,10 +3335,11 @@ func synchronize_forced_decisions() -> Dictionary:
 	return sources.synchronize()
 
 
-func advance_card_resolution_frame(delta: float) -> Array:
+func advance_card_resolution_frame(delta: float) -> Dictionary:
+	_wire_card_resolution_transition_sink()
 	_wire_card_resolution_frame_driver()
 	var driver := _card_resolution_frame_driver_node()
-	return driver.advance_world(delta) if driver != null else []
+	return driver.advance_world(delta) if driver != null else {"handled": false, "reason": "card_resolution_frame_driver_unavailable"}
 
 
 func card_resolution_frame_facts() -> Dictionary:
@@ -4759,6 +4741,26 @@ func _card_resolution_frame_driver_node() -> CardResolutionFrameDriver:
 	return get_node_or_null("CardResolutionFrameDriver") as CardResolutionFrameDriver
 
 
+func _card_resolution_transition_sink_node() -> Node:
+	return get_node_or_null("CardResolutionTransitionSink")
+
+
+func _wire_card_resolution_transition_sink() -> void:
+	var sink := _card_resolution_transition_sink_node()
+	if sink == null:
+		return
+	sink.configure(
+		_card_resolution_runtime_controller_node(),
+		_card_resolution_queue_node() as CardResolutionQueueRuntimeService,
+		_world_session_state_node(),
+		_card_resolution_execution_node() as CardResolutionExecutionRuntimeService,
+		_card_resolution_execution_world_bridge_node() as CardResolutionExecutionWorldBridge,
+		_card_resolution_presentation_port_node(),
+		_card_play_eligibility_node() as CardPlayEligibilityRuntimeService,
+		_monster_runtime_controller_node() as MonsterRuntimeController
+	)
+
+
 func _wire_card_resolution_frame_driver() -> void:
 	var driver := _card_resolution_frame_driver_node()
 	if driver == null:
@@ -4767,7 +4769,8 @@ func _wire_card_resolution_frame_driver() -> void:
 		_card_resolution_runtime_controller_node(),
 		_card_resolution_queue_node() as CardResolutionQueueRuntimeService,
 		_world_session_state_node(),
-		_card_play_eligibility_node() as CardPlayEligibilityRuntimeService
+		_card_play_eligibility_node() as CardPlayEligibilityRuntimeService,
+		_card_resolution_transition_sink_node()
 	)
 
 

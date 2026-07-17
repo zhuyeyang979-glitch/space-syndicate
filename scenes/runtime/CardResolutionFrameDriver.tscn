@@ -4,4 +4,4 @@
 
 [node name="CardResolutionFrameDriver" type="Node"]
 script = ExtResource("1")
-editor_description = "Unique scene-owned frame driver for card-resolution timing facts and ordered controller commands."
+editor_description = "Unique scene-owned frame driver for card-resolution timing facts and ordered delivery to CardResolutionTransitionSink. Commands never return to Main."

@@ -1,4 +1,4 @@
-[gd_scene load_steps=92 format=3]
+[gd_scene load_steps=93 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -89,6 +89,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardCommitmentRuntimeService.tscn" id="95_card_commitment_runtime"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardCounterSettlementRuntimeService.tscn" id="96_card_counter_settlement"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardPlaySubmissionRuntimeController.tscn" id="97_card_play_submission"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardResolutionTransitionSink.tscn" id="98_card_transition_sink"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -110,6 +111,9 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="CardResolutionFrameDriver" parent="." instance=ExtResource("87_card_frame_driver")]
+unique_name_in_owner = true
+
+[node name="CardResolutionTransitionSink" parent="." instance=ExtResource("98_card_transition_sink")]
 unique_name_in_owner = true
 
 [node name="CardCooldownRuntimeController" parent="." instance=ExtResource("88_card_cooldown_controller")]

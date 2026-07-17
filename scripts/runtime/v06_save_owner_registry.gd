@@ -292,6 +292,20 @@ func _preflight_envelope_internal(envelope: Dictionary) -> Dictionary:
 func _preflight_owner(owner: Node, binding: BindingScript, owner_state: Dictionary) -> Dictionary:
 	if owner == null:
 		return {"ok": false}
+	if not binding.preflight_method.is_empty():
+		var preflight_variant: Variant = owner.call(binding.preflight_method, owner_state.duplicate(true))
+		var preflight_receipt: Dictionary = preflight_variant if preflight_variant is Dictionary else {}
+		if not bool(preflight_receipt.get("accepted", false)):
+			return {"ok": false}
+		var preflight_normalized_state: Dictionary = (
+			(preflight_receipt.get("normalized_state", {}) as Dictionary).duplicate(true)
+			if preflight_receipt.get("normalized_state", {}) is Dictionary
+			else owner_state.duplicate(true)
+		)
+		var normalized_encoded := _encode_owner_state(preflight_normalized_state)
+		if not bool(normalized_encoded.get("ok", false)):
+			return {"ok": false}
+		return {"ok": true, "normalized_encoded_owner_state": normalized_encoded.get("value")}
 	var probe_variant: Variant = owner.duplicate()
 	if not (probe_variant is Node):
 		return {"ok": false}
@@ -419,6 +433,8 @@ func _registry_analysis() -> Dictionary:
 			if owner == null or binding.capture_method.is_empty() or binding.apply_method.is_empty() or binding.rollback_method.is_empty() \
 				or not owner.has_method(binding.capture_method) or not owner.has_method(binding.apply_method) or not owner.has_method(binding.rollback_method):
 				errors.append("transactional_owner_api_missing")
+			elif not binding.preflight_method.is_empty() and not owner.has_method(binding.preflight_method):
+				errors.append("transactional_owner_preflight_api_missing")
 			else:
 				var owner_instance_id := str(owner.get_instance_id())
 				if transactional_owner_instances.has(owner_instance_id):

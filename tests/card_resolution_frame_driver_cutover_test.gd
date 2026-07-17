@@ -1,11 +1,57 @@
 extends SceneTree
 
-const MAIN_SCENE := preload("res://scenes/main.tscn")
+const COORDINATOR_SCENE := preload("res://scenes/runtime/GameRuntimeCoordinator.tscn")
 const DRIVER_SCENE := preload("res://scenes/runtime/CardResolutionFrameDriver.tscn")
 const CONTROLLER_SCENE := preload("res://scenes/runtime/CardResolutionRuntimeController.tscn")
 const QUEUE_SCENE := preload("res://scenes/runtime/CardResolutionQueueRuntimeService.tscn")
 const WORLD_SCENE := preload("res://scenes/runtime/WorldSessionState.tscn")
 const ELIGIBILITY_SCENE := preload("res://scenes/runtime/CardPlayEligibilityRuntimeService.tscn")
+
+const EXPECTED_TRANSITIONS := [
+	"show_active",
+	"begin_counter",
+	"complete_active",
+	"start_next",
+	"show_group_window",
+	"enter_public_bid",
+	"enter_lock",
+	"all_ready_public_bid",
+	"all_ready_lock",
+	"all_ready_lock_batch",
+	"lock_batch",
+	"hide_overlay",
+]
+
+
+class FakeTransitionSink extends Node:
+	var batches: Array = []
+	var observed_transitions: Dictionary = {}
+
+	func apply_transition_batch(commands: Array) -> Dictionary:
+		var copied_commands := commands.duplicate(true)
+		batches.append(copied_commands)
+		var trace: Array[String] = []
+		var receipts: Array = []
+		for command_variant in copied_commands:
+			if not (command_variant is Dictionary):
+				continue
+			var command := command_variant as Dictionary
+			var transition := str(command.get("transition", ""))
+			trace.append(transition)
+			observed_transitions[transition] = true
+			receipts.append({
+				"handled": true,
+				"command_id": str(command.get("command_id", "")),
+				"transition": transition,
+			})
+		return {
+			"handled": true,
+			"reason": "",
+			"command_count": copied_commands.size(),
+			"receipts": receipts,
+			"trace": trace,
+		}
+
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -21,17 +67,18 @@ func _run() -> void:
 	var queue := QUEUE_SCENE.instantiate() as CardResolutionQueueRuntimeService
 	var world := WORLD_SCENE.instantiate() as WorldSessionState
 	var eligibility := ELIGIBILITY_SCENE.instantiate() as CardPlayEligibilityRuntimeService
-	for node in [driver, controller, queue, world, eligibility]:
+	var sink := FakeTransitionSink.new()
+	for node in [driver, controller, queue, world, eligibility, sink]:
 		root.add_child(node)
 	world.replace_players([
 		{"public_name": "local"},
 		{"public_name": "out", "eliminated": true},
 		{"public_name": "rival"},
 	], true)
-	driver.configure(controller, queue, world, eligibility)
+	driver.configure(controller, queue, world, eligibility, sink)
 
-	_expect(_transitions(driver.advance_world(0.25)) == ["hide_overlay"], "empty queue emits the complete ordered hide command")
-	_expect(driver.advance_world(0.25).is_empty(), "unchanged empty queue does not emit duplicate presentation work")
+	_expect_advance(driver, sink, 0.25, ["hide_overlay"], "empty queue")
+	_expect_advance(driver, sink, 0.25, [], "unchanged empty queue")
 	_expect(driver.facts_snapshot().get("active_player_indices", []) == [0, 2], "facts exclude eliminated seats without exposing player payloads")
 
 	queue.replace_active_entry({
@@ -39,55 +86,95 @@ func _run() -> void:
 		"skill": {"kind": "player_hand_disrupt", "name": "public interaction"},
 	})
 	controller.begin_active_display(1.0)
-	_expect(_transitions(driver.advance_world(1.0)) == ["show_active", "begin_counter"], "counterable reveal emits the exact ordered transition pair")
+	_expect_advance(driver, sink, 1.0, ["show_active", "begin_counter"], "counterable reveal")
 	_expect(bool(driver.facts_snapshot().get("active_counterable", false)), "field-driven eligibility marks public player interaction counterable")
-	_expect(_transitions(driver.advance_world(controller.counter_seconds)) == ["show_active", "complete_active"], "counter expiry emits show before completion")
-
-	queue.replace_active_entry({
-		"resolution_id": 8,
-		"skill": {"kind": "phase_counter", "name": "counter card"},
-	})
-	controller.begin_active_display(0.5)
-	_expect(not bool(driver.facts_snapshot().get("active_counterable", true)), "counter cards do not recursively open another counter window")
-	_expect(_transitions(driver.advance_world(0.5)) == ["show_active", "complete_active"], "non-counterable reveal completes in one ordered frame")
+	_expect_advance(driver, sink, controller.counter_seconds, ["show_active", "complete_active"], "counter expiry")
 
 	queue.replace_active_entry({})
 	queue.replace_current_queue([{"resolution_id": 9, "skill": {"kind": "public_facility"}}])
 	controller.reset_state()
-	controller.begin_group_window(-1.0, 0, 0)
-	_expect(_transitions(driver.advance_world(1.0)) == ["show_group_window"], "queued batch advances through the scene-owned frame driver")
+	controller.batch_locked = true
+	_expect_advance(driver, sink, 0.0, ["start_next"], "locked batch")
 
-	var debug_text := JSON.stringify(driver.debug_snapshot())
+	controller.reset_state()
+	controller.begin_group_window(-1.0, 0, 3)
+	_expect_advance(driver, sink, 0.0, ["show_group_window"], "planning window")
+
+	controller.reset_state()
+	controller.begin_group_window(-1.0, 0, 3)
+	_expect_advance(driver, sink, 60.0, ["enter_public_bid", "enter_lock", "show_group_window", "lock_batch"], "large delta window close")
+
+	controller.reset_state()
+	controller.begin_group_window(-1.0, 0, 3)
+	_set_all_ready(controller, [0, 2])
+	_expect_advance(driver, sink, 0.0, ["all_ready_public_bid", "enter_public_bid", "show_group_window"], "all ready planning")
+	_set_all_ready(controller, [0, 2])
+	_expect_advance(driver, sink, 0.0, ["all_ready_lock", "enter_lock", "show_group_window"], "all ready public bid")
+	_set_all_ready(controller, [0, 2])
+	_expect_advance(driver, sink, 0.0, ["all_ready_lock_batch", "lock_batch"], "all ready lock")
+
+	for transition in EXPECTED_TRANSITIONS:
+		_expect(sink.observed_transitions.has(transition), "transition %s is consumed inside the sink" % transition)
+	_expect(sink.observed_transitions.size() == EXPECTED_TRANSITIONS.size(), "sink consumes exactly the twelve frame-command kinds")
+
+	var debug_snapshot := driver.debug_snapshot()
+	var debug_text := JSON.stringify(debug_snapshot)
 	for forbidden in ["players", "cash", "hand", "skill", "owner", "hidden"]:
 		_expect(not debug_text.contains(forbidden), "driver debug omits private field %s" % forbidden)
-	_expect(int(driver.debug_snapshot().get("tick_count", -1)) == 6, "driver records exactly one controller tick per advance call")
+	_expect(bool(debug_snapshot.get("transition_sink_ready", false)), "driver configuration requires a transition sink")
+	_expect(not bool(debug_snapshot.get("returns_commands_to_main", true)), "driver reports that commands never leave through a legacy consumer")
+	_expect(int(debug_snapshot.get("tick_count", -1)) == 10, "driver records exactly one controller tick per advance call")
 
-	var main_source := FileAccess.get_file_as_string("res://scripts/%s.gd" % "main")
 	var driver_source := FileAccess.get_file_as_string("res://scripts/runtime/card_resolution_frame_driver.gd")
-	_expect(not main_source.contains("func _update_card_resolution_queue"), "Main no longer owns card-resolution frame ticking")
-	_expect(not main_source.contains("func _card_resolution_controller_facts"), "Main no longer assembles card-resolution frame facts")
-	_expect(not driver_source.contains("Main") and not driver_source.contains("current_scene") and not driver_source.contains("Callable"), "driver has no Main callback or scene locator")
+	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
+	_expect(driver_source.contains("transition_sink: Node"), "FrameDriver.configure explicitly requires the transition sink")
+	_expect(driver_source.contains("func advance_world(delta: float) -> Dictionary"), "FrameDriver returns a high-level Dictionary receipt")
+	_expect(not driver_source.contains("func advance_world(delta: float) -> Array"), "FrameDriver no longer returns a raw command Array")
+	_expect(coordinator_source.contains("func advance_card_resolution_frame(delta: float) -> Dictionary"), "coordinator forwards the high-level frame receipt")
+	_expect(not driver_source.contains("current_scene") and not driver_source.contains("Callable"), "driver has no scene-locator or callback fallback")
 
-	var main := MAIN_SCENE.instantiate()
-	main.process_mode = Node.PROCESS_MODE_DISABLED
-	root.add_child(main)
-	await process_frame
-	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
-	_expect(coordinator != null, "production main composes the runtime coordinator")
-	if coordinator != null:
-		_expect(coordinator.get_node_or_null("CardResolutionFrameDriver") != null, "production coordinator owns the frame driver")
-		_expect(coordinator.get_node_or_null("CardResolutionRuntimeController") != null, "production coordinator owns the card timing controller")
-	_expect(main.find_children("CardResolutionFrameDriver", "CardResolutionFrameDriver", true, false).size() == 1, "production scene has exactly one card frame driver")
-	_expect(main.find_children("CardResolutionRuntimeController", "CardResolutionRuntimeController", true, false).size() == 1, "production scene has exactly one card timing controller")
-	main.queue_free()
+	var coordinator := COORDINATOR_SCENE.instantiate()
+	root.add_child(coordinator)
+	_expect(coordinator.get_node_or_null("CardResolutionFrameDriver") != null, "production coordinator owns the frame driver")
+	_expect(coordinator.get_node_or_null("CardResolutionTransitionSink") != null, "production coordinator owns the transition sink")
+	_expect(coordinator.find_children("CardResolutionFrameDriver", "CardResolutionFrameDriver", true, false).size() == 1, "production coordinator has exactly one card frame driver")
+	_expect(coordinator.find_children("CardResolutionTransitionSink", "CardResolutionTransitionSink", true, false).size() == 1, "production coordinator has exactly one transition sink")
+	coordinator.queue_free()
 
-	for node in [driver, controller, queue, world, eligibility]:
+	for node in [driver, controller, queue, world, eligibility, sink]:
 		node.queue_free()
 	await process_frame
 	_finish()
 
 
-func _transitions(commands: Array) -> Array[String]:
+func _expect_advance(
+	driver: CardResolutionFrameDriver,
+	sink: FakeTransitionSink,
+	delta: float,
+	expected_transitions: Array,
+	label: String
+) -> void:
+	var batch_count_before := sink.batches.size()
+	var receipt_variant: Variant = driver.advance_world(delta)
+	_expect(receipt_variant is Dictionary, "%s returns a high-level Dictionary receipt" % label)
+	if not (receipt_variant is Dictionary):
+		return
+	var receipt := receipt_variant as Dictionary
+	_expect(bool(receipt.get("handled", false)), "%s receipt is handled by the sink" % label)
+	_expect(not receipt.has("commands"), "%s receipt does not expose the raw command Array" % label)
+	_expect(int(receipt.get("command_count", -1)) == expected_transitions.size(), "%s reports the consumed command count" % label)
+	_expect(receipt.get("sink_receipt", {}) is Dictionary, "%s contains a typed sink receipt" % label)
+	_expect(sink.batches.size() == batch_count_before + 1, "%s reaches the sink exactly once" % label)
+	if sink.batches.size() == batch_count_before + 1:
+		_expect(_transition_names(sink.batches[-1]) == expected_transitions, "%s commands are consumed by the sink in producer order" % label)
+
+
+func _set_all_ready(controller: CardResolutionRuntimeController, player_indices: Array) -> void:
+	for player_index_variant in player_indices:
+		controller.set_player_ready(int(player_index_variant), true, player_indices)
+
+
+func _transition_names(commands: Array) -> Array[String]:
 	var result: Array[String] = []
 	for command_variant in commands:
 		if command_variant is Dictionary:

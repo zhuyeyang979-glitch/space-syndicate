@@ -6,6 +6,7 @@ var _controller: CardResolutionRuntimeController
 var _queue: CardResolutionQueueRuntimeService
 var _world_session: WorldSessionState
 var _eligibility: CardPlayEligibilityRuntimeService
+var _transition_sink: Node
 var _configured := false
 var _tick_count := 0
 var _last_trace: Array[String] = []
@@ -13,21 +14,23 @@ var _last_trace: Array[String] = []
 
 func configure(
 		controller: CardResolutionRuntimeController,
-		queue: CardResolutionQueueRuntimeService,
-		world_session: WorldSessionState,
-		eligibility: CardPlayEligibilityRuntimeService
+	queue: CardResolutionQueueRuntimeService,
+	world_session: WorldSessionState,
+	eligibility: CardPlayEligibilityRuntimeService,
+	transition_sink: Node
 ) -> void:
 	_controller = controller
 	_queue = queue
 	_world_session = world_session
 	_eligibility = eligibility
-	_configured = _controller != null and _queue != null and _world_session != null and _eligibility != null
+	_transition_sink = transition_sink
+	_configured = _controller != null and _queue != null and _world_session != null and _eligibility != null and _transition_sink != null
 
 
-func advance_world(delta: float) -> Array:
+func advance_world(delta: float) -> Dictionary:
 	_last_trace = []
 	if not _configured:
-		return []
+		return {"handled": false, "reason": "frame_driver_not_configured", "trace": []}
 	_last_trace.append("build_facts")
 	var commands := _controller.tick(maxf(0.0, delta), facts_snapshot())
 	_last_trace.append("controller_tick")
@@ -35,7 +38,16 @@ func advance_world(delta: float) -> Array:
 	for command_variant in commands:
 		if command_variant is Dictionary:
 			_last_trace.append("command:%s" % str((command_variant as Dictionary).get("transition", "")))
-	return commands.duplicate(true)
+	var sink_variant: Variant = _transition_sink.call("apply_transition_batch", commands)
+	var sink_receipt: Dictionary = sink_variant if sink_variant is Dictionary else {"handled": false, "reason": "transition_sink_receipt_invalid"}
+	_last_trace.append("sink_applied" if bool(sink_receipt.get("handled", false)) else "sink_rejected")
+	return {
+		"handled": bool(sink_receipt.get("handled", false)),
+		"reason": str(sink_receipt.get("reason", "")),
+		"command_count": commands.size(),
+		"sink_receipt": sink_receipt,
+		"trace": _last_trace.duplicate(),
+	}
 
 
 func facts_snapshot() -> Dictionary:
@@ -75,4 +87,6 @@ func debug_snapshot() -> Dictionary:
 		"owns_timing": false,
 		"owns_effects": false,
 		"owns_presentation": false,
+		"returns_commands_to_main": false,
+		"transition_sink_ready": _transition_sink != null,
 	}

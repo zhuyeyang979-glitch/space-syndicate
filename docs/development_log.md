@@ -8100,3 +8100,35 @@
   execution and table/map presentation receipt consumption remain Main-only.
 - Recorded the minimum next owners as a scene-owned card transition executor
   and a table presentation source/target driver with a public log owner.
+
+# 2026-07-17 — Card-resolution transition sink cutover
+
+- Added one scene-owned `CardResolutionTransitionSink` and routed the frame
+  driver directly into it; Main no longer receives or switches on commands.
+- Froze all 12 transition kinds and 16 complete order traces with deterministic
+  command IDs, revisions, order indices and payload fingerprints.
+- Persisted bounded applied-command and execution lineage through the existing
+  v0.6 `card_resolution_execution` save-owner path. The registry now uses the
+  live owner's pure preflight API, and focused tests cover exact
+  preflight/apply/rollback together with retries before dispatch and after
+  handler execution.
+- Upgraded the execution section to save schema v3. Full resumable in-flight
+  transactions and pending settlements now survive save/load with deterministic
+  resolution/execution/outcome bindings. History or mana settlement failures
+  retry only the unfinished intent; release and gameplay effects remain exact
+  once.
+- Added negative recovery gates for forged settlement receipts, mismatched
+  finalized records, duplicate/reordered intent progress, contradictory status
+  flags and legacy-v1 loads into a controller with existing lineage.
+- This closes the card-resolution section contract only. Seven unrelated save
+  sections are still unsupported, so the complete v0.6 run envelope remains
+  intentionally fail-closed rather than claiming a false full-resume pass.
+- Physically deleted the Main transition switch, completion wrapper and queue
+  lifecycle helpers without restoring stale layout/AI fallbacks.
+- Focused, UI-text, visual and check-only gates are green. Full smoke currently
+  stops in its legacy starter-monster helper because it still calls the
+  retired `Main._use_skill`; the test fixture will be migrated to the typed
+  submission owner rather than reviving a Main compatibility path.
+- Next cutover: `Table Presentation Source/Target Cutover`.
+- Final focused evidence: command lineage 245/245, transition sink 70/70,
+  gameplay fault injection 61/61, persistence registry 12/12 and MCP Bench 7/7.

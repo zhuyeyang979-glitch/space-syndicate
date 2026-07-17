@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_resolution_transition_sink.gd" id="1_sink"]
+
+[node name="CardResolutionTransitionSink" type="Node"]
+script = ExtResource("1_sink")
+editor_description = "Unique scene-owned consumer for ordered card-resolution frame commands. It validates exact-once lineage and routes to typed owners without holding Main or UI nodes."

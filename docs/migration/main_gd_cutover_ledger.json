@@ -215,6 +215,15 @@
       "old_symbols": [
         "_queue_skill_resolution",
         "_complete_active_card_resolution",
+        "_apply_card_resolution_controller_transition",
+        "_begin_card_counter_response_window",
+        "_announce_card_counter_response_window",
+        "_start_next_card_resolution",
+        "_lock_card_resolution_batch",
+        "_finish_card_resolution_batch",
+        "_promote_next_card_resolution_batch",
+        "_reset_card_resolution_batch_state",
+        "_clear_queued_card_flag",
         "_apply_card_resolution_effect_request",
         "_use_skill"
       ],
@@ -223,12 +232,12 @@
         "GameScreen",
         "CardResolution services"
       ],
-      "new_owner_scene": "res://scenes/runtime/CardPlaySubmissionRuntimeController.tscn",
-      "new_owner_script": "res://scripts/runtime/card_play_submission_runtime_controller.gd",
+      "new_owner_scene": "res://scenes/runtime/CardResolutionTransitionSink.tscn",
+      "new_owner_script": "res://scripts/runtime/card_resolution_transition_sink.gd",
       "new_public_api": [
         "request_hand_card_play",
         "submit_card_play",
-        "execute_active_card_resolution",
+        "apply_transition_batch",
         "card_resolution_viewer_history_snapshot"
       ],
       "tests": [
@@ -236,12 +245,17 @@
         "res://scenes/tools/CardExecutionTypedPortsBench.tscn",
         "res://tests/card_resolution_history_runtime_service_test.gd",
         "res://scenes/tools/CardResolutionHistoryRuntimeServiceBench.tscn",
-        "res://tests/main_runtime_composition_test.gd"
+        "res://tests/main_runtime_composition_test.gd",
+        "res://tests/card_resolution_transition_command_lineage_test.gd",
+        "res://tests/card_resolution_transition_sink_cutover_test.gd",
+        "res://tests/card_resolution_transition_gameplay_fault_injection_test.gd",
+        "res://tests/card_resolution_transition_persistence_registry_test.gd",
+        "res://scenes/tools/CardResolutionTransitionSinkBench.tscn"
       ],
-      "old_path_deleted": false,
-      "duplicate_execution_checked": false,
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
       "commit_sha": "",
-      "status": "migrating"
+      "status": "cut_over"
     },
     {
       "domain": "new_game_setup",

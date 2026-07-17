@@ -98,7 +98,7 @@ Current Main reduction from the previous committed cutover: three top-level
 fields and three physical lines removed. External Main caller occurrences fell
 from 2,165 to 1,652, with no method, constant, preload or caller-file increase.
 
-### Card execution typed-port prerequisite
+### Card execution and transition sink: complete
 
 The dynamic card execution boundary now uses scene-owned typed ports. The
 former execution bridge's 35 `Main` call/get/set/node-lookup sites are zero;
@@ -107,19 +107,23 @@ history, commitment, counter, intel, effect routing and public presentation
 have narrow owners. `Main._use_skill` and `Main._queue_skill_resolution` are
 physically deleted.
 
-The `card_execution` ledger item remains `migrating`, not `cut_over`, because
-the separate Card Resolution Transition Sink must still remove Main's 12-kind
-frame-command switch and `_complete_active_card_resolution` wrapper with
-producer command lineage and full order/exact-once gates. See
-`docs/migration/card_execution_typed_ports_cutover.md`.
+The separate Card Resolution Transition Sink now consumes all twelve frame
+commands inside the runtime composition. Producer command lineage is
+deterministic and persisted, all sixteen complete order traces are frozen, and
+failure injection proves retries across dispatch, history and final settlement
+do not double-apply. Schema-v3 restore rejects forged bindings, contradictory
+intent progress and live-lineage contamination from legacy saves. Main's frame-command
+switch and `_complete_active_card_resolution` wrapper are physically deleted.
+This is a section-level persistence guarantee; the complete v0.6 envelope
+remains fail-closed while seven unrelated registry sections are unsupported.
+See `docs/migration/card_resolution_transition_sink_cutover.md`.
 
 ## Next atomic cutover
 
-The next recommended production cutover is the Card Resolution Transition
-Sink using the typed ports above. Once it removes the frame-command switch and
-passes persisted exact-once/order gates, the authoritative runtime loop and
-clock-driving boundary can be retried without moving topology generation,
-economy rules, AI policy or UI presentation into `WorldSessionState`.
+The next recommended production cutover is **Table Presentation Source/Target
+Cutover**. It must move the remaining table/map presentation receipt target
+out of Main without changing the now-frozen card command, execution, lineage
+or save ownership. RuntimeLoop is retried only after that boundary is green.
 
 ## Completion rule
 

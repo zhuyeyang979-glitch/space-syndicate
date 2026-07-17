@@ -10,6 +10,7 @@ const RESTORE_UNSUPPORTED := "unsupported"
 @export var state_version := 1
 @export var owner_path: NodePath
 @export var capture_method := ""
+@export var preflight_method := ""
 @export var apply_method := ""
 @export var rollback_method := ""
 @export_enum("transactional", "unsupported") var restore_mode := RESTORE_UNSUPPORTED
@@ -26,5 +27,6 @@ func contract_snapshot() -> Dictionary:
 		"owner_id": owner_id,
 		"state_version": state_version,
 		"restore_mode": restore_mode,
+		"preflight_method": preflight_method,
 		"unsupported_reason": "" if is_transactional() else unsupported_reason,
 	}

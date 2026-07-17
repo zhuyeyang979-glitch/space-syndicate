@@ -606,9 +606,7 @@ func _process(delta: float) -> void:
 		var clock_snapshot: Dictionary = clock_variant if clock_variant is Dictionary else {}
 		_game_runtime_coordinator_node().world_session_state().game_time = float(clock_snapshot.get("world_effective_seconds", _game_runtime_coordinator_node().world_session_state().game_time))
 	if coordinator == null or not coordinator.has_method("allows_card_resolution_progress") or bool(coordinator.call("allows_card_resolution_progress")):
-		for command_variant in _game_runtime_coordinator_node().advance_card_resolution_frame(scaled_delta):
-			if command_variant is Dictionary:
-				_apply_card_resolution_controller_transition(command_variant as Dictionary)
+		_game_runtime_coordinator_node().advance_card_resolution_frame(scaled_delta)
 	if coordinator != null and coordinator.has_method("tick_contract_runtime"):
 		coordinator.call("tick_contract_runtime", scaled_delta)
 	_game_runtime_coordinator_node().advance_card_cooldowns(scaled_delta)
@@ -13424,55 +13422,6 @@ func _card_can_open_counter_window(entry: Dictionary) -> bool:
 	return true
 
 
-func _begin_card_counter_response_window() -> void:
-	if _card_resolution_active_entry().is_empty():
-		return
-	if not _card_can_open_counter_window(_card_resolution_active_entry()):
-		_complete_active_card_resolution()
-		return
-	card_resolution_counter_window_active = true
-	card_resolution_counter_timer = _card_counter_response_duration()
-	_announce_card_counter_response_window()
-	if card_resolution_counter_timer <= 0.0:
-		_complete_active_card_resolution()
-
-
-func _announce_card_counter_response_window() -> void:
-	if _card_resolution_active_entry().is_empty():
-		return
-	var skill: Dictionary = _card_resolution_active_entry().get("skill", {}) as Dictionary
-	var label := _card_display_name(String(skill.get("name", "匿名牌")))
-	_log("%s展示结束，进入%.0f秒玩家互动响应窗口；相位否决只可取消这类直接互动牌。" % [label, _ruleset_timing_seconds(&"counter_window_seconds")])
-	_show_card_resolution_overlay(_card_resolution_active_entry(), card_resolution_counter_timer)
-
-
-func _apply_card_resolution_controller_transition(command: Dictionary) -> void:
-	match str(command.get("transition", "")):
-		"show_active":
-			_show_card_resolution_overlay(_card_resolution_active_entry(), maxf(0.0, float(command.get("remaining", 0.0))))
-		"begin_counter":
-			_announce_card_counter_response_window()
-		"complete_active":
-			_complete_active_card_resolution()
-		"start_next":
-			_start_next_card_resolution()
-		"show_group_window":
-			_show_card_batch_lobby_overlay()
-		"enter_public_bid":
-			_log("共享卡牌窗进入%d秒公开展示阶段：不能再提交普通牌，可确认本阶段准备。" % int(_card_group_cadence_snapshot().get("public_bid_seconds", 0)))
-		"enter_lock":
-			_log("共享卡牌窗进入%d秒锁牌阶段：不能再提交新牌或修改目标。" % int(_card_group_cadence_snapshot().get("lock_seconds", 0)))
-		"all_ready_public_bid":
-			_log("所有仍在局内的席位均已完成规划，窗口推进到公开展示阶段。")
-		"all_ready_lock":
-			_log("所有仍在局内的席位均已完成公开展示，窗口推进到锁牌阶段。")
-		"all_ready_lock_batch":
-			_log("所有仍在局内的席位均已确认锁牌，卡牌组窗口提前封盘。")
-		"lock_batch":
-			_lock_card_resolution_batch()
-		"hide_overlay":
-			_hide_card_resolution_overlay()
-
 func _queued_skill_from_entry(entry: Dictionary) -> Dictionary:
 	var player_index := int(entry.get("player_index", -1))
 	var slot_index := int(entry.get("slot_index", -1))
@@ -13510,71 +13459,6 @@ func _card_resolution_groups() -> Array:
 	var service := _card_resolution_queue_service_node()
 	var value: Variant = service.call("groups", card_resolution_batch_reference_player, _game_runtime_coordinator_node().world_session_state().players.size()) if service != null and service.has_method("groups") else []
 	return (value as Array).duplicate(true) if value is Array else []
-
-
-func _lock_card_resolution_batch() -> void:
-	if _card_resolution_current_queue().is_empty() or not _card_resolution_active_entry().is_empty():
-		return
-	var service := _card_resolution_queue_service_node()
-	var lock_variant: Variant = service.call("lock_batch", {
-		"reference_player": card_resolution_batch_reference_player,
-		"player_count": _game_runtime_coordinator_node().world_session_state().players.size(),
-	}) if service != null and service.has_method("lock_batch") else {}
-	var lock_result: Dictionary = lock_variant if lock_variant is Dictionary else {}
-	if not bool(lock_result.get("locked", false)):
-		return
-	card_resolution_auction_open = false
-	card_resolution_auction_timer = 0.0
-	card_resolution_simultaneous_timer = 0.0
-	card_resolution_batch_locked = true
-	var group_count := int(lock_result.get("group_count", 0))
-	_log("共享卡牌窗封盘：%d个匿名组、%d张牌按轮转席位与组内锁定顺序结算。" % [group_count, _card_resolution_current_queue().size()])
-	_start_next_card_resolution()
-
-
-func _start_next_card_resolution() -> void:
-	if not _card_resolution_active_entry().is_empty():
-		return
-	if not card_resolution_batch_locked:
-		return
-	if _card_resolution_current_queue().is_empty():
-		_finish_card_resolution_batch()
-		return
-	var skill_overrides := {}
-	for entry_variant in _card_resolution_current_queue():
-		if entry_variant is Dictionary:
-			var queued_entry := entry_variant as Dictionary
-			var queued_skill := _queued_skill_from_entry(queued_entry)
-			if not queued_skill.is_empty():
-				skill_overrides[str(int(queued_entry.get("resolution_id", queued_entry.get("queued_order", -1))))] = queued_skill
-	var service := _card_resolution_queue_service_node()
-	var start_variant: Variant = service.call("start_next", {
-		"game_time": _game_runtime_coordinator_node().world_session_state().game_time,
-		"skill_by_resolution_id": skill_overrides,
-	}) if service != null and service.has_method("start_next") else {}
-	var start_result: Dictionary = start_variant if start_variant is Dictionary else {}
-	for skipped_variant in start_result.get("skipped_entries", []):
-		if skipped_variant is Dictionary:
-			var skipped_entry := skipped_variant as Dictionary
-			_clear_queued_card_flag(skipped_entry)
-			var coordinator := _game_runtime_coordinator_node()
-			if coordinator != null and coordinator.has_method("settle_card_mana_reservation"):
-				coordinator.call("settle_card_mana_reservation", skipped_entry, {"resolved": false, "reason": "queue_entry_invalid"})
-	if not bool(start_result.get("started", false)):
-		if bool(start_result.get("batch_empty", false)):
-			_finish_card_resolution_batch()
-		return
-	var entry: Dictionary = start_result.get("active_entry", {}) if start_result.get("active_entry", {}) is Dictionary else {}
-	var skill: Dictionary = entry.get("skill", {}) if entry.get("skill", {}) is Dictionary else {}
-	card_resolution_visual_id = -1
-	card_resolution_visual_stage = -1
-	card_resolution_auction_open = false
-	card_resolution_counter_window_active = false
-	card_resolution_counter_timer = 0.0
-	card_resolution_timer = _card_resolution_duration(skill)
-	_show_card_resolution_overlay(_card_resolution_active_entry(), card_resolution_timer)
-	if card_resolution_timer <= 0.0:
-		_begin_card_counter_response_window()
 
 
 func _show_card_batch_lobby_overlay() -> void:
@@ -13812,93 +13696,6 @@ func _set_planet_right_rail_resolution_suppressed(enabled: bool) -> void:
 		return
 	rail.visible = not enabled
 	rail.set_meta("planet_side_lane_suppressed_for_resolution", enabled)
-
-
-
-func _card_resolution_execution_request(entry: Dictionary) -> Dictionary:
-	var skill := _queued_skill_from_entry(entry)
-	var target_status := _card_play_target_snapshot(skill) if not skill.is_empty() else {}
-	var target_kind := String(target_status.get("target_kind", "none"))
-	var contract_controller := _contract_runtime_controller_node()
-	var contract_selection := contract_controller.selection_snapshot() if contract_controller != null else {"source_district": -1, "target_district": -1}
-	return {
-		"active_entry": entry.duplicate(true),
-		"skill": skill.duplicate(true),
-		"target_kind": target_kind,
-		"forced_decision_count_before": monster_runtime_controller.active_monster_wagers.size(),
-		"selection_context": {
-			"selected_player": _game_runtime_coordinator_node().table_selection_state().selected_player,
-			"selected_district": _game_runtime_coordinator_node().table_selection_state().selected_district,
-			"selected_trade_product": _game_runtime_coordinator_node().table_selection_state().selected_trade_product,
-			"contract_source_district": int(contract_selection.get("source_district", -1)),
-			"contract_target_district": int(contract_selection.get("target_district", -1)),
-		},
-	}
-
-
-
-func _complete_active_card_resolution() -> void:
-	_game_runtime_coordinator_node().execute_active_card_resolution(_card_resolution_execution_request(_card_resolution_active_entry()))
-	_refresh_ui()
-
-func _finish_card_resolution_batch() -> void:
-	var previous_player := last_card_resolution_player_index
-	_reset_card_resolution_batch_state()
-	if not _card_resolution_next_queue().is_empty():
-		_promote_next_card_resolution_batch(previous_player)
-
-
-func _reset_card_resolution_batch_state() -> void:
-	card_resolution_auction_open = false
-	card_resolution_batch_locked = false
-	card_resolution_simultaneous_timer = 0.0
-	card_resolution_auction_timer = 0.0
-	card_resolution_batch_reference_player = -1
-	last_card_resolution_player_index = -1
-	var runtime_controller := _card_resolution_controller_node()
-	if runtime_controller != null and runtime_controller.has_method("clear_ready_players"):
-		runtime_controller.call("clear_ready_players")
-	_hide_card_resolution_overlay()
-
-
-func _promote_next_card_resolution_batch(previous_player: int) -> void:
-	if _card_resolution_next_queue().is_empty() or not _card_resolution_active_entry().is_empty() or not _card_resolution_current_queue().is_empty():
-		return
-	var service := _card_resolution_queue_service_node()
-	var promotion_variant: Variant = service.call("promote_next_batch", {
-		"window_sequence": card_group_window_sequence,
-		"game_time": _game_runtime_coordinator_node().world_session_state().game_time,
-		"previous_player": previous_player,
-		"player_count": _game_runtime_coordinator_node().world_session_state().players.size(),
-	}) if service != null and service.has_method("promote_next_batch") else {}
-	var promotion: Dictionary = promotion_variant if promotion_variant is Dictionary else {}
-	if not bool(promotion.get("promoted", false)):
-		return
-	card_group_window_sequence = int(promotion.get("window_sequence", card_group_window_sequence + 1))
-	card_resolution_batch_reference_player = int(promotion.get("reference_player", -1))
-	last_card_resolution_player_index = int(promotion.get("previous_player", -1))
-	card_resolution_batch_locked = false
-	_begin_card_group_window(card_resolution_batch_reference_player, card_group_window_sequence)
-	_log("上一批已经清空：等待牌进入新的%s。" % _card_group_window_cadence_text(card_group_window_sequence))
-	_show_card_batch_lobby_overlay()
-	if card_resolution_simultaneous_timer <= 0.0:
-		_lock_card_resolution_batch()
-
-
-func _clear_queued_card_flag(entry: Dictionary) -> void:
-	var player_index := int(entry.get("player_index", -1))
-	var slot_index := int(entry.get("slot_index", -1))
-	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return
-	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[player_index]
-	var slots: Array = player.get("slots", [])
-	if slot_index < 0 or slot_index >= slots.size() or not (slots[slot_index] is Dictionary):
-		return
-	var skill: Dictionary = slots[slot_index]
-	skill.erase("queued_for_resolution")
-	slots[slot_index] = skill
-	player["slots"] = slots
-	_game_runtime_coordinator_node().world_session_state().players[player_index] = player
 
 
 

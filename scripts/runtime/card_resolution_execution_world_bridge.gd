@@ -109,6 +109,69 @@ func apply_intent(transaction: Dictionary) -> Dictionary:
 	return {"intent_type": intent_type, "reason": "unsupported_intent"}
 
 
+func start_next_transition() -> Dictionary:
+	var receipt := _start_next_receipt()
+	if bool(receipt.get("started", false)):
+		return receipt
+	if str(receipt.get("reason", "")) != "batch_empty":
+		return receipt
+	_resolution_controller.finish_batch_state()
+	_presentation_port.set_overlay_state({"visible": false, "phase": "idle", "resolution_id": -1})
+	var promotion := _promote_next_batch_receipt() if not _queue_service.next_queue().is_empty() else {
+		"intent_type": "promote_next_batch",
+		"promoted": false,
+		"reason": "next_queue_empty",
+	}
+	return {
+		"intent_type": "start_next",
+		"started": false,
+		"batch_finished": true,
+		"promoted": bool(promotion.get("promoted", false)),
+		"reason": "batch_empty",
+	}
+
+
+func lock_batch_transition() -> Dictionary:
+	if _queue_service == null or _resolution_controller == null or _world_session_state == null:
+		return {"handled": false, "reason": "transition_dependencies_missing"}
+	var lock_receipt := _queue_service.lock_batch({
+		"reference_player": _resolution_controller.batch_reference_player,
+		"player_count": _world_session_state.players.size(),
+	})
+	if not bool(lock_receipt.get("locked", false)):
+		return {
+			"handled": false,
+			"reason": str(lock_receipt.get("reason", "queue_not_lockable")),
+			"lock_receipt": lock_receipt,
+		}
+	var start_receipt := start_next_transition()
+	return {
+		"handled": bool(start_receipt.get("started", false)) or bool(start_receipt.get("batch_finished", false)),
+		"reason": str(start_receipt.get("reason", "")),
+		"lock_receipt": lock_receipt,
+		"start_receipt": start_receipt,
+	}
+
+
+func settle_finalized_execution(transaction: Dictionary, finalized: Dictionary) -> Dictionary:
+	if not bool(finalized.get("completed", false)):
+		return {"settled": false, "reason": str(finalized.get("reason", "execution_not_completed"))}
+	if _runtime_coordinator == null:
+		return {"settled": false, "reason": "runtime_coordinator_missing"}
+	var entry := _dictionary(transaction.get("active_entry", {}))
+	var coordinator_receipt := _runtime_coordinator.settle_card_mana_reservation(entry, finalized)
+	if not coordinator_receipt is Dictionary:
+		return {"settled": false, "reason": "mana_settlement_receipt_invalid"}
+	var result := (coordinator_receipt as Dictionary).duplicate(true)
+	result["settled"] = bool(coordinator_receipt.get("settled", false))
+	result["reason"] = str(coordinator_receipt.get("reason", "" if bool(result["settled"]) else "mana_settlement_failed"))
+	result["resolution_id"] = int(finalized.get("resolution_id", -1))
+	result["execution_id"] = int(finalized.get("execution_id", -1))
+	result["settlement_binding"] = _dictionary(finalized.get("settlement_binding", {}))
+	result["settlement_binding_fingerprint"] = str(finalized.get("settlement_binding_fingerprint", ""))
+	return result
+
+
 func debug_snapshot() -> Dictionary:
 	return {
 		"bridge_ready": _world_session_state != null \

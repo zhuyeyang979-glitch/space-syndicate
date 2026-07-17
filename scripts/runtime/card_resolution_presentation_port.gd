@@ -14,7 +14,9 @@ const PUBLIC_KEYS := [
 const FORBIDDEN_KEYS := [
 	"player_index", "actor_player_index", "slot_index", "hand", "slots",
 	"discard", "cash", "true_owner", "hidden_owner", "owner_truth",
-	"ai_plan", "ai_reason", "ai_utility_score", "route_plan_score",
+	"target_player", "target_slot", "private_target", "hidden_owner_id",
+	"ai_plan", "ai_private_plan", "ai_reason", "ai_utility_score", "route_plan_score",
+	"pressure_bucket", "decision_samples", "learning_bonus",
 ]
 
 var _events: Array = []
