@@ -1,189 +1,186 @@
 # Standings application-flow privacy review
 
-Status: **BLOCKED — PRIVACY VIOLATION COUNT 1**
+Status: **FINAL REVIEW — GREEN, PRIVACY VIOLATION COUNT 0**
 
 Reviewed cutover commit: `e72d0a9f6c26f36646e91ce357339218d6f615af`
 
+Reviewed privacy fix commit: `b8ff349ca0b489ea3cfd7aa179a542aff9a31713`
+
 Required base fix: `50e424578afe50fd32953f5b727520df84f5cdf7`
 
-Scope: the new standings query port, application-flow controller, snapshot
-service, scoreboard renderer, final-settlement summary handoff and explicit
-production composition in `scenes/main.tscn`.
+Scope: the standings query port, application-flow controller, snapshot service,
+scoreboard renderer, final-settlement summary handoff, focused privacy gates and
+explicit production composition in `scenes/main.tscn`.
 
 This review is analysis-only. It changes no production code or tests and does
-not authorize integration.
+not authorize unrelated integration work.
 
 ## Decision
 
-The scene-first extraction is structurally sound, but it is **not privacy
-green**. One high-severity violation remains at the exact-cash disclosure
-boundary.
+The standings scene-first extraction is **GREEN** from the reviewed privacy
+boundary. Commit `b8ff349` closes `STANDINGS-AUDIT-CASH-01`; no remaining
+privacy violation was found.
 
-`StandingsPublicSnapshotService` treats any non-empty `audit_entries` row as a
-publicly audited row. It then prints `cash_ledger_cents`, defaulting a missing
-value to zero, without requiring the three authoritative facts that the
-Victory owner publishes:
+Exact audit cash now appears only when all four authorization gates agree:
 
-1. top-level `cash_visibility == "public_audit"`;
-2. the row's integer `player_index` is present in
+1. the Victory public envelope has `cash_visibility == "public_audit"`;
+2. the seat's integer `player_index` is present as an integer in
    `audit_revealed_player_indices`;
-3. the row itself carries `cash_visibility == "public_audit"` and an integer
-   `cash_ledger_cents`.
+3. the matched audit row has the same integer `player_index` and row-level
+   `cash_visibility == "public_audit"`;
+4. the matched row has an integer `cash_ledger_cents`.
 
-Therefore a markerless, stale or forged audit entry can produce an exact rival
-cash chip. A markerless row with no cash field still produces `账本¥0.00`,
-which is an unauthorized exact-cash assertion rather than a fail-closed hidden
-state. The formatter also accepts `economic_assets` from that same unvalidated
-row and publishes project/contract/warehouse/financial-position counts, even
-though those collections are not part of VictoryControl's public candidate
-projection and are not required by the final comparison rule.
+Missing, mismatched or non-integer gates fail closed. `game_over`, resolved
+state, winner status and mere cash-field presence do not authorize disclosure.
+Conflicting duplicate rows fail closed, identical duplicates collapse to one
+matched row and each seat produces at most one cash chip. A missing authorized
+cash value no longer renders the fabricated exact value `账本¥0.00`.
 
-Confirmed privacy violation count: **1**
+Confirmed privacy violation count: **0**
 
-Verdict: `STANDINGS_APPLICATION_FLOW_PRIVACY_BLOCKED`
+Verdict: `STANDINGS_APPLICATION_FLOW_PRIVACY_GREEN`
 
-## Blocking violation
+## Closure of `STANDINGS-AUDIT-CASH-01`
 
-### `STANDINGS-AUDIT-CASH-01` — audit row presence is used as disclosure authority
+The prior high-severity violation is closed by the following production
+behavior:
 
-Severity: **high**
+- `_authorized_audit_cash_cents()` enforces the four gates above and returns
+  `null` on any failure;
+- `_seat_snapshots()` adds an exact ledger chip only when the returned value is
+  non-null;
+- an authorized local player still receives their own private cash when public
+  audit authorization is absent;
+- `_audit_entry()` requires an integer matching player index and rejects
+  conflicting duplicate rows;
+- all `economic_assets` reads and project/contract/warehouse/financial-count
+  chips were removed from production standings formatting;
+- player-facing copy now distinguishes public audit progress from separately
+  authorized public cash.
 
-Evidence:
+The focused service test independently covers:
 
-- `scripts/runtime/standings_public_snapshot_service.gd:122-124` obtains an
-  audit row and defines `publicly_audited := not audit.is_empty()`.
-- `scripts/runtime/standings_public_snapshot_service.gd:131-135` exposes exact
-  ledger cash and economic-asset counts solely from that boolean.
-- `_audit_entry()` matches only `player_index`; it does not validate top-level
-  visibility, the revealed-index allowlist, row visibility or integer cash.
-- `tests/standings_public_snapshot_service_test.gd:60` supplies a markerless
-  audit entry with `cash_ledger_cents` and `economic_assets`. The test therefore
-  normalizes the unsafe input shape instead of proving fail-closed behavior.
-- The cutover query forwards `victory_public.duplicate(true)` wholesale at
-  `scripts/runtime/standings_public_query_port.gd:114`, leaving the formatter
-  as the last disclosure gate. That gate currently trusts row presence.
+- a fully authorized rival cash row;
+- missing top-level cash visibility;
+- missing revealed-player allowlist;
+- wrong player allowlist;
+- missing row cash visibility;
+- non-integer audit cash;
+- conflicting duplicate audit rows;
+- `game_over` and winner status without authorization;
+- markerless and otherwise injected `economic_assets`;
+- absence of the rival cash sentinel, raw-cent sentinel, `账本¥0.00` and asset
+  sentinel in serialized snapshots;
+- absence of the same sentinels in recursively collected visible text and every
+  `Control.tooltip_text` in the instantiated scoreboard.
 
-Impact:
+No production `economic_assets` consumer remains in the standings query,
+formatter, controller or renderer.
 
-- exact opponent cash may be displayed without authoritative public-audit
-  authorization if the public snapshot is incomplete, stale or malformed;
-- a missing cash value is rendered as an exact zero rather than hidden;
-- unallowlisted economic-asset counts can enter player-facing chips through
-  the same row.
+## Viewer isolation
 
-Required closure:
+The original viewer boundary remains intact:
 
-- derive an `authorized_public_audit_cash_by_player` map only when all three
-  Victory markers agree;
-- render exact cash only from that map and otherwise omit the cash chip or show
-  a non-numeric privacy label;
-- do not read `economic_assets` in standings unless VictoryControl adds a
-  separately documented public allowlist and explicit visibility marker;
-- add rival-sentinel negative tests for missing top-level visibility, missing
-  roster, missing row marker, wrong player index, non-integer cash, conflicting
-  duplicate rows, `game_over=true`, winner status and markerless
-  `economic_assets`;
-- recursively assert that visible text, tooltip text and serialized scoreboard
-  data contain none of the rejected sentinels.
-
-## Viewer-isolation review
-
-The viewer route is otherwise correct:
-
-- `StandingsPublicQueryPort` obtains identity from
-  `TablePresentationQueryPorts.viewer_context()` and requires `authorized`;
-- the private query is self-only:
+- viewer identity comes from
+  `TablePresentationQueryPorts.viewer_context()` and must be authorized;
+- the only private request is
   `private_world_projection(viewer_index, viewer_index)`;
-- opponent rows are built only from `WorldSessionPublicProjection.players`;
-- exact local cash comes only from the authorized private player projection;
-- local Top-N GDP and controlled-region progress come only from
-  `VictoryControlRuntimeController.private_snapshot(viewer_index)` after
-  viewer authorization;
-- table selection, hovered/inspected seat and session finish are not used as
-  authorization;
-- opening standings does not refresh routes or mutate world state.
+- opponent rows come only from `WorldSessionPublicProjection.players`;
+- local exact cash comes only from the authorized self projection;
+- local Top-N GDP and controlled-region progress come from VictoryControl's
+  private self projection after authorization;
+- table selection, hover/inspection state, AI/human seat labels, game end and
+  winner status do not grant private access;
+- opening standings remains read-only and does not refresh routes, mutate the
+  world, advance RNG or write a public/private log.
 
-No viewer-isolation violation was found in this path.
+No viewer-isolation violation was found.
 
-## Forbidden information review
+## Forbidden information
 
-The source adapter does not copy any opponent:
+Opponent hand contents, hand count/size, discard contents/choice, private
+intelligence, hidden owner, anonymous actor truth and AI plan/score/pressure/
+route/learning metadata do not enter the standings source, serialized snapshot,
+visible labels or tooltips. Public-log data is reduced to an entry count; no
+event payload or actor identity is forwarded.
 
-- cash outside the defective audit-row path;
-- hand cards, hand count or hand size;
-- discard cards or discard choice;
-- private intelligence or inference state;
-- hidden owner or owner truth;
-- anonymous card actor truth;
-- AI plan, pressure bucket, route plan, score, utility or learning metadata.
+The injected hidden-owner/private-plan and economic-asset fixtures are omitted
+from output. The renderer consumes only the already sanitized scoreboard
+dictionary and performs no runtime query.
 
-The only private projection requested is the authorized local player's own
-projection, and the composed source extracts only own cash and own victory
-progress. Public-log content is reduced to an entry count; no event payload or
-actor identity reaches the standings source.
+## Tooltip and accessibility text
 
-## Tooltip and accessibility review
+The scoreboard test instantiates the real `StandingsScoreboard.tscn`, applies
+every negative cash case and recursively collects:
 
-The scoreboard consumes only the already formatted scoreboard dictionary and
-does not query runtime state. Its shell, overview cards, KPI cards, seat cards,
-rank labels, score labels and chips use static or already-authorized tooltip
-copy. No hidden owner, anonymous actor, opponent hand/discard/intel or AI
-metadata is interpolated into visible or tooltip text.
+- `Label.text`;
+- `RichTextLabel.text`;
+- `Button.text`;
+- every `Control.tooltip_text`;
+- all descendant nodes.
 
-The blocking exact-cash chip is also copied into tooltip-adjacent rendered UI,
-so closing `STANDINGS-AUDIT-CASH-01` must include a recursive rendered-tree
-sentinel check. No separate tooltip/accessibility violation was found.
+Rival cash, raw cents, fabricated zero-ledger copy and asset sentinels are absent
+from the rendered text/tooltip surface. Static tooltips contain no opponent
+hand/discard/intel, hidden owner, anonymous actor or AI metadata.
 
-## Final-settlement visibility review
+No tooltip/accessibility-text violation was found.
 
-The standings query requests `latest_public_summary()` only after the Victory
-public snapshot contains an outcome receipt. The final-settlement composition
-builds that summary from its public source adapter, whose cash path requires
-top-level public-audit visibility plus the revealed-player allowlist. It does
-not read raw players, private hands or AI plans.
+## Final-settlement visibility
 
-No additional final-settlement privacy violation was found. As a correctness
-hardening item, the summary should eventually be coupled to the current
-`outcome_id` (or reset between sessions) so a stale public summary cannot be
-shown for a different resolved run; the reviewed path does not turn session
-finish itself into a new disclosure grant.
+The standings query reads `latest_public_summary()` only after the Victory
+public snapshot contains an outcome receipt. Final-settlement exact cash is
+already constrained by its own top-level public-audit visibility and
+revealed-player allowlist, while raw players, private hands and AI plans are
+forbidden from its composition context.
 
-## Pure-data and composition review
+The standings fix does not infer new visibility from outcome presence and does
+not weaken the final-settlement sanitizer. The earlier non-blocking correctness
+hardening remains: couple a cached final summary to its current `outcome_id` or
+reset it between sessions to prevent stale public copy from being shown for a
+different run.
 
-- The composed standings source is checked by
+No final-settlement privacy violation was found.
+
+## Pure data and production composition
+
+- `StandingsPublicQueryPort` validates the composed source with
   `TablePresentationPureDataPolicy.is_pure_data()` before formatting.
-- Its legal values are detached dictionaries/arrays and scalar Godot variants;
-  no `Object`, `Node`, `Resource`, `RID` or `Callable` reaches the source or
-  scoreboard snapshot.
-- The renderer receives a dictionary and creates presentation nodes locally;
-  it does not retain a world/controller object in the data contract.
-- `scenes/main.tscn` explicitly composes one query port and one application
-  controller and connects the dedicated `standings_requested` signal.
-- `ApplicationFlowPort.submit_action("standings")` does not also emit the
-  generic action signal, so there is no standings fallback through `Main`.
+- Source and result contain only detached arrays/dictionaries and allowed
+  scalar Godot variants; no `Object`, `Node`, `Resource`, `RID` or `Callable`
+  enters the presentation data contract.
+- The scoreboard creates local UI nodes from the sanitized dictionary and does
+  not store a runtime/controller object in the snapshot.
+- `scenes/main.tscn` composes one `StandingsPublicQueryPort` and one
+  `StandingsApplicationFlowController` and connects the dedicated
+  `standings_requested` signal.
+- `ApplicationFlowPort.submit_action("standings")` does not emit the generic
+  action signal, so no standings request falls back through `Main`.
 - The removed standings-specific `Main` methods and preload remain absent.
 
 No pure-data or production-composition violation was found.
 
 ## Verification evidence
 
-- Godot MCP project inspection: Godot `4.7.stable` and the specified isolated
-  worktree.
-- Godot MCP runtime:
-  `res://scenes/tools/StandingsPublicSnapshotCutoverBench.tscn` passed `20/20`;
-  real scene-owned open was `28ms`; the project was stopped cleanly. The debug
-  stream contained existing project-wide script warnings and no standings
-  runtime error.
-- Source inspection covered the query port, controller, snapshot service,
-  scoreboard, production scene, Victory public markers, final-settlement
-  adapter/composition and the two focused standings tests.
-- The existing bench and tests do not exercise the missing-marker rival-cash
-  cases above; their green result does not close this review.
+Independent focused runs on Godot `4.7.stable.official.5b4e0cb0f`:
+
+- `standings_public_snapshot_service_test.gd`: PASS;
+- `standings_application_flow_cutover_test.gd`: PASS `17/17`;
+- `main_application_flow_handler_extraction_test.gd`: PASS `27/27`;
+- `victory_control_public_projection_privacy_v06_test.gd`: PASS `47/47`;
+- `final_settlement_public_privacy_v06_test.gd`: PASS `31/31`;
+- `final_settlement_public_snapshot_service_test.gd`: PASS.
+
+Godot MCP runtime:
+
+- scene: `res://scenes/tools/StandingsPublicSnapshotCutoverBench.tscn`;
+- result: PASS `20/20`;
+- real scene-owned open: `27ms`;
+- standings runtime errors: `0`;
+- stop result: clean;
+- debug stream: existing project-wide script warnings only.
 
 ## Integration gate
 
-Do not integrate `e72d0a9` as privacy-green until
-`STANDINGS-AUDIT-CASH-01` is fixed and the negative marker/sentinel matrix is
-green. After that change, rerun the standings focused tests, the real MCP bench,
-the Victory public-projection privacy tests, final-settlement privacy tests and
-a rendered-tree tooltip/text scan.
+`b8ff349` is privacy-green for the reviewed standings application flow.
+Integration still depends on the coordinator's non-privacy regression and
+branch-management gates; this review does not waive unrelated existing debt.

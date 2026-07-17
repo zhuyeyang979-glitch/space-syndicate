@@ -1,70 +1,58 @@
 {
-  "schema_version": "v0.6.standings-application-flow-privacy-review.1",
-  "status": "STANDINGS_APPLICATION_FLOW_PRIVACY_BLOCKED",
-  "reviewed_head_sha": "e72d0a9f6c26f36646e91ce357339218d6f615af",
+  "schema_version": "v0.6.standings-application-flow-privacy-review.2",
+  "status": "STANDINGS_APPLICATION_FLOW_PRIVACY_GREEN",
+  "reviewed_cutover_sha": "e72d0a9f6c26f36646e91ce357339218d6f615af",
+  "reviewed_privacy_fix_sha": "b8ff349ca0b489ea3cfd7aa179a542aff9a31713",
   "required_base_fix_sha": "50e424578afe50fd32953f5b727520df84f5cdf7",
   "analysis_only": true,
-  "production_modified": false,
-  "tests_modified": false,
-  "privacy_violation_count": 1,
-  "verdict": "BLOCKED",
-  "scope": [
-    "scripts/runtime/standings_public_query_port.gd",
-    "scripts/runtime/standings_application_flow_controller.gd",
-    "scripts/runtime/standings_public_snapshot_service.gd",
-    "scripts/ui/standings_scoreboard.gd",
-    "scripts/runtime/victory_control_runtime_controller.gd",
-    "scripts/runtime/final_settlement_runtime_composition.gd",
-    "scripts/runtime/final_settlement_public_source_adapter.gd",
-    "scenes/main.tscn",
-    "tests/standings_application_flow_cutover_test.gd",
-    "tests/standings_public_snapshot_service_test.gd"
-  ],
-  "violations": [
+  "production_modified_by_review": false,
+  "tests_modified_by_review": false,
+  "privacy_violation_count": 0,
+  "verdict": "GREEN",
+  "closed_violations": [
     {
       "id": "STANDINGS-AUDIT-CASH-01",
-      "severity": "high",
-      "title": "audit row presence is used as disclosure authority",
-      "file": "scripts/runtime/standings_public_snapshot_service.gd",
-      "evidence_lines": [122, 124, 131, 134, 135],
-      "unsafe_predicate": "publicly_audited = not audit.is_empty()",
-      "unsafe_outputs": [
-        "cash_ledger_cents rendered as exact ledger cash",
-        "missing cash rendered as exact zero",
-        "economic_assets collection counts"
-      ],
-      "required_authority_predicates": [
+      "previous_severity": "high",
+      "status": "closed",
+      "closure_commit": "b8ff349ca0b489ea3cfd7aa179a542aff9a31713",
+      "authority_gates": [
         "victory_control.cash_visibility == public_audit",
-        "player_index is an integer member of victory_control.audit_revealed_player_indices",
-        "audit_entry.cash_visibility == public_audit",
-        "audit_entry.cash_ledger_cents is an integer from the authoritative Victory public projection"
+        "integer player_index is an integer member of victory_control.audit_revealed_player_indices",
+        "audit_entry has the same integer player_index and cash_visibility == public_audit",
+        "audit_entry.cash_ledger_cents is an integer"
       ],
-      "impact": "markerless, stale or malformed audit rows can disclose or fabricate exact rival cash and forward unallowlisted economic-asset counts",
-      "test_gap": {
-        "file": "tests/standings_public_snapshot_service_test.gd",
-        "line": 60,
-        "detail": "fixture supplies cash_ledger_cents and economic_assets without authoritative public-audit markers"
+      "fail_closed_cases": [
+        "missing top-level cash visibility",
+        "missing revealed-player allowlist",
+        "wrong player allowlist",
+        "missing row cash visibility",
+        "non-integer audit cash",
+        "conflicting duplicate audit rows",
+        "game_over and winner status without markers",
+        "markerless economic_assets"
+      ],
+      "duplicate_policy": {
+        "conflicting_rows": "reject matched audit entry",
+        "identical_rows": "collapse to one matched row",
+        "cash_chips_per_seat_max": 1
       },
-      "required_fix": [
-        "build a fail-closed authorized public-audit cash map from all authoritative markers",
-        "omit numeric cash when any marker or integer value is absent or conflicting",
-        "remove economic_assets consumption unless a separate public allowlist and visibility marker are defined",
-        "add rival sentinel tests for every missing, mismatched and conflicting marker case",
-        "scan serialized output and rendered visible/tooltip text recursively"
-      ]
+      "missing_cash_behavior": "omit exact ledger chip; never fabricate ledger zero",
+      "economic_assets_production_consumer": false
     }
   ],
+  "remaining_violations": [],
   "viewer_isolation": {
     "status": "pass",
     "viewer_source": "TablePresentationQueryPorts.viewer_context",
     "authorization_required": true,
     "private_subject_rule": "viewer_index_equals_subject_index",
+    "opponent_private_projection_requested": false,
     "table_selection_grants_visibility": false,
     "session_finish_grants_visibility": false,
-    "opponent_private_projection_requested": false
+    "world_mutation_on_open": false
   },
   "forbidden_information": {
-    "opponent_cash": "blocked_except_STANDINGS-AUDIT-CASH-01",
+    "opponent_cash": "absent_unless_all_authoritative_public_audit_gates_pass",
     "opponent_hand": "absent",
     "opponent_hand_count": "absent",
     "opponent_discard": "absent",
@@ -72,20 +60,32 @@
     "hidden_owner": "absent",
     "anonymous_actor_truth": "absent",
     "ai_metadata": "absent",
+    "economic_assets": "ignored",
     "public_log_payload": "not_consumed_only_public_count"
   },
-  "tooltip_accessibility": {
-    "status": "pass_with_blocking_cash_output_in_rendered_tree",
-    "runtime_queries_in_renderer": false,
-    "hidden_identity_interpolation": false,
-    "required_regression_gate": "recursive visible and tooltip text sentinel scan"
+  "rendered_privacy": {
+    "status": "pass",
+    "real_scoreboard_instantiated": true,
+    "recursively_scanned": [
+      "Label.text",
+      "RichTextLabel.text",
+      "Button.text",
+      "Control.tooltip_text",
+      "all descendants"
+    ],
+    "rejected_sentinels": [
+      "rival formatted cash",
+      "rival raw cash cents",
+      "ledger zero fabrication",
+      "economic asset sentinel"
+    ]
   },
   "final_settlement_visibility": {
     "status": "pass",
     "requires_public_outcome_presence": true,
     "cash_authority_source": "FinalSettlementPublicSourceAdapter authoritative public-audit allowlist",
     "session_finish_used_as_disclosure_grant": false,
-    "hardening_note": "couple latest_public_summary to current outcome_id or reset it between sessions"
+    "hardening_note": "couple latest_public_summary to current outcome_id or reset between sessions"
   },
   "pure_data": {
     "status": "pass",
@@ -106,40 +106,51 @@
     ],
     "dedicated_signal": "ApplicationFlowPort.standings_requested",
     "generic_main_fallback": false,
-    "dual_route": false,
-    "world_mutation_on_open": false
+    "dual_route": false
   },
   "verification": [
     {
-      "kind": "godot_mcp_project_info",
-      "godot_version": "4.7.stable.official.5b4e0cb0f",
+      "kind": "headless_test",
+      "test": "res://tests/standings_public_snapshot_service_test.gd",
+      "result": "PASS"
+    },
+    {
+      "kind": "headless_test",
+      "test": "res://tests/standings_application_flow_cutover_test.gd",
+      "result": "PASS 17/17"
+    },
+    {
+      "kind": "headless_test",
+      "test": "res://tests/main_application_flow_handler_extraction_test.gd",
+      "result": "PASS 27/27"
+    },
+    {
+      "kind": "headless_test",
+      "test": "res://tests/victory_control_public_projection_privacy_v06_test.gd",
+      "result": "PASS 47/47"
+    },
+    {
+      "kind": "headless_test",
+      "test": "res://tests/final_settlement_public_privacy_v06_test.gd",
+      "result": "PASS 31/31"
+    },
+    {
+      "kind": "headless_test",
+      "test": "res://tests/final_settlement_public_snapshot_service_test.gd",
       "result": "PASS"
     },
     {
       "kind": "godot_mcp_scene",
       "scene": "res://scenes/tools/StandingsPublicSnapshotCutoverBench.tscn",
       "result": "PASS 20/20",
-      "real_open_ms": 28,
+      "real_open_ms": 27,
       "standings_runtime_errors": 0,
       "stop_result": "clean"
-    },
-    {
-      "kind": "source_review",
-      "result": "BLOCKED",
-      "reason": "existing automated coverage omits markerless rival audit-cash cases"
     }
   ],
   "integration_gate": {
-    "allowed": false,
-    "blocking_ids": [
-      "STANDINGS-AUDIT-CASH-01"
-    ],
-    "required_reruns": [
-      "standings focused tests",
-      "StandingsPublicSnapshotCutoverBench through Godot MCP",
-      "Victory public-projection privacy tests",
-      "final-settlement privacy tests",
-      "rendered-tree visible and tooltip text sentinel scan"
-    ]
+    "privacy_allowed": true,
+    "blocking_ids": [],
+    "condition": "coordinator non-privacy regression and branch-management gates remain required"
   }
 }
