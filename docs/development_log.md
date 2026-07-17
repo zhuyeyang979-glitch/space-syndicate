@@ -8347,3 +8347,15 @@
   fail-closed behavior are covered without introducing a second monster owner.
 - Focused special-action tests pass 11/11 and the Godot 4.7 migration Bench
   passes 4/4. Existing movement behavior remains covered by its 11/11 test.
+
+## 2026-07-18 — Main composition root audit
+
+- Added a repeatable production composition audit for the formal
+  `main.tscn -> RuntimeServices -> GameRuntimeCoordinator` tree.
+- The audit proves one RuntimeLoop, one RuntimeCommandPipeline, one
+  SimulationMutationAuthority, one MonsterRuntimeController and one sink per
+  autonomous monster command type. It also rejects root-scene discovery and
+  dynamic Main fallbacks in runtime production scripts.
+- Main composition audit passes 20/20; the Godot 4.7 audit Bench passes 6/6.
+- This is an architecture gate, not a claim that `scripts/main.gd` has already
+  been physically deleted; future cutovers must continue to reduce its budget.
