@@ -8077,3 +8077,12 @@
 - The scheduler emits ordered real-time due receipts and owns no gameplay
   facts, UI nodes or Main callbacks. Main remains the temporary presentation
   target consumer pending the dedicated presentation routing cutover.
+
+# 2026-07-17 — RuntimeLoop second preflight
+
+- Re-ran the authoritative frame-path audit after all five requested
+  prerequisites were production-composed.
+- Kept `runtime_loop` pending and created no second tick path: card transition
+  execution and table/map presentation receipt consumption remain Main-only.
+- Recorded the minimum next owners as a scene-owned card transition executor
+  and a table presentation source/target driver with a public log owner.

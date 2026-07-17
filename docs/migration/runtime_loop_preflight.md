@@ -1,223 +1,179 @@
-# Authoritative Runtime Loop Cutover Preflight
+# Authoritative Runtime Loop Cutover Preflight — second pass
 
 Status: **RUNTIME_LOOP_PREFLIGHT_BLOCKED**
 
 - Branch: `codex/scene-first-remove-main-gd`
-- Start SHA: `297ed167bd0e656aef00a08c68b1edfcadd59474`
+- Original task start: `297ed167bd0e656aef00a08c68b1edfcadd59474`
+- Audited prerequisite/test head: `8af35b1ed8c3637f2222a844147e4566360071d5`
 - Audited path: `res://scripts/main.gd::_process`
 - Production `RuntimeLoop` created: **no**
-- Main/New-loop double run created: **no**
+- Main/new-loop double run created: **no**
 
-The frame order is understood, and most domain ticks already have a scene-owned controller or an explicit `GameRuntimeCoordinator` API. The cutover is nevertheless a No-Go because four required frame responsibilities still exist only as Main-private state or Main-private mutation paths. Creating `RuntimeLoop` now would require a Main callback, duplicate ticking, missing behavior, or moving card/UI domain logic into the loop.
+The requested prerequisites are now scene-owned and production-composed:
 
-The machine-readable step inventory is in `runtime_loop_preflight.json`.
+1. `ForcedDecisionCandidateSources`
+2. `CardResolutionFrameDriver`
+3. `CardCooldownRuntimeController`
+4. `VisualCueRuntimeOwner`
+5. `TablePresentationRefreshScheduler`
 
-## Go/No-Go result
+The second Go/No-Go still fails. Card timing now produces ordered transition commands, but applying those commands still enters Main-private card execution and presentation methods. Refresh timing now produces ordered due receipts, but the real table, map and developer presentation targets are still Main-private. Moving `_process` now would therefore require a callback to Main, skip behavior, or create a second execution path.
 
-Time semantics pass their own gate:
+The machine-readable inventory is in `runtime_loop_preflight.json`.
 
-- Current player-facing production pacing is only running or paused (`1/0`).
-- `GameSessionRuntimeController` can be the ordinary-pause authority.
-- `WorldEffectiveClockRuntimeController` is the only world-clock owner.
-- `WorldSessionState.game_time` is a projection of that clock, not a second clock.
-- Test-driver multipliers `16/128` are QA-only acceleration.
-- The legacy `time_scale` restore and target-choice pause mirrors should eventually be deleted; they do not justify a production `RuntimePacingState`.
+## What is green now
 
-The complete runtime-loop gate still fails because unresolved `ROOT_ONLY_BLOCKER` entries exist.
+### Frame-front and blocked-time ownership
 
-## Current ordered frame path
+- Forced-decision candidates are composed from scene owners through `GameRuntimeCoordinator.synchronize_forced_decisions()`.
+- Monster wagers remain the only global-time blocker and continue to tick with real delta.
+- Visual cue lifetimes are owned by `VisualCueRuntimeOwner`; global block uses real delta and active play uses world delta.
+- Refresh accumulators are owned by `TablePresentationRefreshScheduler`; it accepts real delta and emits `live`, `map`, `full`, `developer` receipts in deterministic order.
 
-### Frame front and blocked branch
+### Active-world ownership
+
+- `CardResolutionFrameDriver` owns the single timing tick and fact assembly.
+- `CardCooldownRuntimeController` owns card/action cooldown ageing while `WorldSessionState.players` remains the state/save owner.
+- The world-effective clock remains unique and is advanced once by the current frame path.
+- Existing explicit coordinator APIs cover contracts, weather, wagers, AI, monsters, military, commodity flow, product market and victory control.
+
+## Current deterministic order
 
 | Order | Step | Delta | Classification |
 |---:|---|---|---|
 | 1 | Session-finished gate | none | `EXISTING_COORDINATOR_API` |
-| 2 | Synchronize forced-decision candidates | none | `ROOT_ONLY_BLOCKER` |
-| 3 | Global-time block check | none | `EXISTING_COORDINATOR_API` |
+| 2 | Synchronize forced decisions | none | `EXISTING_COORDINATOR_API` |
+| 3 | Global-time block gate | none | `EXISTING_COORDINATOR_API` |
 | 4 | Blocked wager tick | real | `EXISTING_COORDINATOR_API` |
-| 5 | Blocked visual-cue ageing | real | `ROOT_ONLY_BLOCKER` |
-| 6 | Blocked presentation refresh | real | `ROOT_ONLY_BLOCKER` |
-| 7 | Ordinary pause gate | none | `READY_SCENE_OWNER` |
-| 8 | Calculate world delta | world | `READY_SCENE_OWNER` |
+| 5 | Blocked visual-cue ageing | real | `EXISTING_COORDINATOR_API` |
+| 6 | Blocked refresh cadence | real | `PRESENTATION_CADENCE` |
+| 7 | Apply blocked refresh receipt | none | `ROOT_ONLY_BLOCKER` |
+| 8 | Ordinary pause gate | none | `READY_SCENE_OWNER` |
+| 9 | Calculate world delta | world | `READY_SCENE_OWNER` |
+| 10 | Advance world-effective clock | world | `EXISTING_COORDINATOR_API` |
+| 11 | Synchronize `WorldSessionState.game_time` | world | `READY_SCENE_OWNER` |
+| 12 | Card-resolution progress gate | none | `EXISTING_COORDINATOR_API` |
+| 13 | Card-resolution frame driver | world | `EXISTING_COORDINATOR_API` |
+| 14 | Apply card transition commands | none | `ROOT_ONLY_BLOCKER` |
+| 15 | Contract tick | world | `EXISTING_COORDINATOR_API` |
+| 16 | Card/action cooldown ageing | world | `EXISTING_COORDINATOR_API` |
+| 17 | GDP derivative timers | world | `READY_SCENE_OWNER` |
+| 18 | Futures timers | world | `READY_SCENE_OWNER` |
+| 19 | Weather tick | world | `EXISTING_COORDINATOR_API` |
+| 20 | Economic-boon ageing | world | `READY_SCENE_OWNER` |
+| 21 | Monster-wager tick | world | `EXISTING_COORDINATOR_API` |
+| 22 | AI tick | world | `EXISTING_COORDINATOR_API` |
+| 23 | Monster motion | world | `EXISTING_COORDINATOR_API` |
+| 24 | Military tick | world | `EXISTING_COORDINATOR_API` |
+| 25 | Monster actions | world | `EXISTING_COORDINATOR_API` |
+| 26 | Monster durations | world | `EXISTING_COORDINATOR_API` |
+| 27 | Visual-cue ageing | world | `EXISTING_COORDINATOR_API` |
+| 28 | Monster revivals | world | `EXISTING_COORDINATOR_API` |
+| 29 | Continuous commodity flow | world | `EXISTING_COORDINATOR_API` |
+| 30 | Flow-result early-return gate | none | `EXISTING_COORDINATOR_API` |
+| 31 | Post-flow session-finished gate | none | `EXISTING_COORDINATOR_API` |
+| 32 | Product-market cycle | world | `EXISTING_COORDINATOR_API` |
+| 33 | Victory-control advance | world | `EXISTING_COORDINATOR_API` |
+| 34 | Victory state-change presentation | none | `ROOT_ONLY_BLOCKER` |
+| 35 | Post-victory session-finished gate | none | `EXISTING_COORDINATOR_API` |
+| 36 | Frame-end refresh cadence | real | `PRESENTATION_CADENCE` |
+| 37 | Apply frame-end refresh receipt | none | `ROOT_ONLY_BLOCKER` |
 
-The current early-return behavior is intentional: a global monster-wager block continues wager, visual, and presentation real-time work without advancing the world clock. An ordinary pause returns without those updates.
+## Remaining ROOT_ONLY_BLOCKER domains
 
-### Active world
+### 1. Card transition execution and presentation sink
 
-| Order | Step | Delta | Classification |
-|---:|---|---|---|
-| 9 | Advance world-effective clock | world | `EXISTING_COORDINATOR_API` |
-| 10 | Synchronize `WorldSessionState.game_time` | world | `READY_SCENE_OWNER` |
-| 11 | Card-resolution progress gate | none | `EXISTING_COORDINATOR_API` |
-| 12 | Card-resolution tick and transitions | world | `ROOT_ONLY_BLOCKER` |
-| 13 | Contract tick | world | `EXISTING_COORDINATOR_API` |
-| 14 | Player/card cooldown ageing | world | `ROOT_ONLY_BLOCKER` |
-| 15 | GDP derivative timers | world | `READY_SCENE_OWNER` |
-| 16 | Futures timers | world | `READY_SCENE_OWNER` |
-| 17 | Weather tick | world | `EXISTING_COORDINATOR_API` |
-| 18 | Economic-boon ageing | world | `READY_SCENE_OWNER` |
-| 19 | Monster-wager tick | world | `EXISTING_COORDINATOR_API` |
-| 20 | AI tick | world | `EXISTING_COORDINATOR_API` |
-| 21 | Monster motion | world | `EXISTING_COORDINATOR_API` |
-| 22 | Military tick | world | `EXISTING_COORDINATOR_API` |
-| 23 | Monster action timers | world | `EXISTING_COORDINATOR_API` |
-| 24 | Monster duration ageing | world | `EXISTING_COORDINATOR_API` |
-| 25 | Visual-cue ageing | world | `ROOT_ONLY_BLOCKER` |
-| 26 | Monster revival tick | world | `EXISTING_COORDINATOR_API` |
-| 27 | Continuous commodity flow | world | `EXISTING_COORDINATOR_API` |
-| 28 | Flow-result early-return gate | none | `EXISTING_COORDINATOR_API` |
-| 29 | Post-flow session-finished gate | none | `EXISTING_COORDINATOR_API` |
-| 30 | Product-market cycle | world | `EXISTING_COORDINATOR_API` |
-| 31 | Victory control | world | `EXISTING_COORDINATOR_API` |
-| 32 | Post-victory session-finished gate | none | `EXISTING_COORDINATOR_API` |
-| 33 | Frame-end presentation refresh | real | `ROOT_ONLY_BLOCKER` |
+`GameRuntimeCoordinator.advance_card_resolution_frame(world_delta)` now returns deterministic commands, but Main still consumes each command through `_apply_card_resolution_controller_transition()`. That path can start/complete resolutions, finish played skills, update queues and open/close presentation surfaces. It belongs to the explicitly separate `card_execution` domain.
 
-This order matches the current source and the expected order in the task specification.
+Minimum prerequisite:
 
-## ROOT_ONLY_BLOCKER inventory
+- create one scene-owned `CardResolutionTransitionSink` or extend the existing execution service with a typed `apply_transition(command)` API;
+- route gameplay mutations to existing card/economy/monster/military owners;
+- route public presentation receipts to the card presentation service/overlay port;
+- migrate all production consumers;
+- prove exact-once execution and remove `_apply_card_resolution_controller_transition()` plus its now-dead Main helpers in the same atomic change.
 
-### 1. Forced-decision candidate sources
+Forbidden shortcut: a sink signal, `Callable`, method table, or fallback that invokes Main.
 
-`Main._forced_decision_candidates()` composes candidates from:
+### 2. Table/map/developer presentation targets
 
-- the active monster wager;
-- the card counter window;
-- pending replacement discard;
-- pending monster target choice;
-- pending player target choice;
-- contract candidates.
+`TablePresentationRefreshScheduler` owns cadence only. Main still applies due receipts through `_refresh_live_ui()`, `_refresh_board()`, `_refresh_ui()` and `_refresh_developer_balance_greybox()`. Those methods assemble world/public view-model inputs and target `GameScreen`, map, overlays and the developer panel.
 
-`GameRuntimeCoordinator.sync_forced_decision_candidates()` and `ForcedDecisionRuntimeScheduler` only accept and arbitrate an already-built candidate array. They do not own the source facts. A RuntimeLoop cannot query those Main-private fields or call Main to build them.
+Minimum prerequisite:
 
-Minimum missing owner: a typed `ForcedDecisionCandidateSources` composition whose domain owners publish candidate snapshots. The scheduler should remain arbitration-only.
+- create a scene-owned `TablePresentationSourceOwner` that builds visibility-safe public/current-player snapshots from typed owners;
+- expose typed refresh targets on `GameScreen`, `PlanetBoard`/map and the developer-only panel;
+- create a narrow `TablePresentationRefreshPort` that consumes scheduler receipts without discovering Main;
+- migrate direct refresh requests from domain controllers to the port;
+- remove the four Main refresh targets and verify hidden information remains absent.
 
-### 2. Card-resolution frame driver
+The scheduler must remain cadence-only and must not absorb snapshot assembly or UI layout logic.
 
-`CardResolutionRuntimeController.tick()` already returns transition commands, but Main still:
+#### Victory state-change presentation side effects
 
-- builds the authoritative frame facts;
-- interprets every transition;
-- opens and closes overlays;
-- performs card completion and starts the next resolution;
-- locks batches and emits public logs.
+`GameRuntimeCoordinator.advance_victory_control()` owns the authoritative outcome and session finish, but Main's `_update_victory_control()` still compares before/after state, writes the public log and requests an immediate refresh. A future RuntimeLoop cannot silently drop those visible state-change receipts.
 
-This is part of the separately scheduled `card_execution` domain. Moving it into RuntimeLoop would violate this round's boundary.
+Minimum prerequisite: have victory control emit a visibility-safe state-change receipt consumed by the same scene-owned presentation port. This is part of blocker domain 2, not a third owner program, and must not give RuntimeLoop UI responsibilities.
 
-Minimum missing owner: a scene-owned `CardResolutionFrameDriver` that owns the tick/transition boundary and exposes one explicit scheduling API.
+## Commodity flow is not a blocker
 
-### 3. Realtime cooldown mutation
+The current Main helper adds only public/session facts and checks the returned bankruptcy checkpoint. `GameRuntimeCoordinator.advance_commodity_flow(delta, facts)` already owns the real operation and returns the exact early-exit receipt. A future RuntimeLoop can obtain `game_over`, pause state, world-effective time and player count from existing scene owners without a Main callback. No new commodity owner is required.
 
-`Main._update_realtime_cooldowns()` directly mutates every player's `action_cooldown` and each slot's `cooldown_left`/`lock_left`. There is no scene-owned cooldown owner or Coordinator tick API.
+## Time and pause verdict
 
-Minimum missing owner: `CardCooldownRuntimeController.tick_world(delta_seconds)` or an equivalent API on the current authoritative card-state owner. RuntimeLoop must never iterate player slots.
+The current product semantics remain binary running/paused:
 
-### 4. Visual cues and presentation cadence
-
-Main owns and ages `movement_trails`, `action_callouts`, and `map_event_effects`. The same visual helper also mutates district `pulse`, so it is not a clean presentation-only call. The arrays still participate in legacy save/restore paths, which are explicitly outside this round.
-
-Main also owns all live/map/full/developer refresh accumulators and calls Main-private refresh methods. There is no scene-owned presentation request API that can preserve behavior without calling Main.
-
-Minimum missing owners:
-
-- a visual-cue state owner that separates presentation lifetimes from district pulse mutation;
-- a `TablePresentationRefreshScheduler` that requests refresh from typed presentation consumers rather than Main.
-
-## Existing APIs that are ready
-
-The following existing APIs can be consumed by a future RuntimeLoop without expanding Main:
-
-- `session_is_finished`
-- `blocks_global_time`
-- `allows_card_resolution_progress`
-- `advance_world_effective_clock`
-- `tick_contract_runtime`
-- `tick_weather`
-- `tick_monster_wagers`
-- `tick_ai`
-- `tick_monster_motion`
-- `tick_military`
-- `tick_monster_actions`
-- `tick_monster_durations`
-- `tick_monster_revivals`
-- `advance_commodity_flow`
-- `tick_product_market_cycle`
-- `advance_victory_control`
-- scene-owned timer methods on `CityGdpDerivativeRuntimeController` and `ProductMarketRuntimeController`.
-
-Their already-existing world bridges remain `typed_world_ports` debt. This preflight does not add bridge methods, add Main methods, or claim those domains are detached from Main.
-
-## Time and pause semantics
-
-| Situation | Wager | Visual/presentation | World clock | World gameplay |
+| Situation | Wager | Visual | Refresh cadence | World clock/gameplay |
 |---|---|---|---|---|
 | Session finished | stopped | stopped | stopped | stopped |
-| Monster-wager global block | real delta | real delta | stopped | stopped |
-| Ordinary pause/menu | stopped | stopped | stopped | stopped |
-| Running | world delta | visual world delta; cadence real delta | once | once, ordered |
+| Monster-wager global block | real delta | real delta | real delta | stopped |
+| Ordinary menu/pause | stopped | stopped | stopped | stopped |
+| Running | world delta | world delta | real delta | once, ordered |
 
-Contract, counter, discard and target-choice decisions do not globally freeze world time. They can block the relevant player's actions or card progress through the scheduler.
+`GameSessionRuntimeController` is the future pause authority. The remaining Main `time_scale`/menu mirror is legacy presentation/save debt; no `RuntimePacingState` is justified by current rules. QA-only acceleration uses test drivers and does not define production pacing.
 
-## Forbidden shortcuts
+## Existing typed-world-port debt
 
-The following do not satisfy the cutover:
+AI, monster, military, weather, economy/product/route, victory and card-resolution bridges still contain pre-existing Main access. None of the five prerequisite cutovers added bridge capabilities or new production Main reference files. These remain the next `typed_world_ports` program after the RuntimeLoop can be cut over; they are not claimed as migrated here.
 
-- Callable or signal callback into Main;
-- a `MainRuntimeLoopPort`;
-- dictionary or string method tables targeting Main;
-- `get_tree().current_scene` or `/root/Main` lookup;
-- copying the Main mutation loops into RuntimeLoop;
-- starting a new RuntimeLoop while leaving Main `_process` active;
-- having the Coordinator or a presentation scheduler become a second gameplay process owner.
+## Go/No-Go verdict
 
-## Recommended prerequisite
+Because `ROOT_ONLY_BLOCKER` entries remain:
 
-Run one atomic `ForcedDecisionCandidateSources Cutover` first because candidate synchronization is the first unresolved step of every frame.
+- no `RuntimeLoop.tscn` or `runtime_loop.gd` was created;
+- Main `_process` remains the only gameplay tick path;
+- no double tick or second world clock exists;
+- `runtime_loop` remains `pending` in the cutover ledger;
+- the prohibited full RuntimeLoop production commit was not created.
 
-Required result:
+Recommended next prerequisite: **Card Resolution Transition Sink Cutover**, followed by **Table Presentation Source/Target Cutover**. Then rerun this preflight a third time.
 
-1. Monster owner publishes wager candidates.
-2. Card-resolution owner publishes counter candidates.
-3. Contract owner continues publishing contract candidates.
-4. District-purchase/hand owner publishes discard candidates.
-5. A target-choice scene owner publishes target candidates.
-6. The scheduler receives typed snapshots and Main's two candidate methods are deleted.
+## Current budget
 
-After that cutover, rerun this preflight. Card-resolution frame driving, cooldown ownership, and presentation/visual ownership will still require independent prerequisites; they must not be hidden inside RuntimeLoop.
+`python tools/architecture/check_main_gd_budget.py --json` at `8af35b1e` passes:
 
-## Future acceptance contract
-
-When all prerequisites exist, the cutover test must compare complete trace arrays for:
-
-1. already finished;
-2. forced global block;
-3. ordinary pause;
-4. complete active frame;
-5. card-resolution blocked;
-6. commodity-flow failure;
-7. session finished after flow;
-8. session finished after victory.
-
-Every trace entry must carry `delta_domain = real | world | none`. Each active frame must advance the world clock exactly once and synchronize `WorldSessionState.game_time` exactly once. No step may run twice.
-
-`RuntimeAuthorityAudit` is a manual registry and is not sufficient alone. A future cutover must combine it with production-scene and source gates proving:
-
-- exactly one RuntimeLoop instance;
-- Main and Coordinator have no gameplay `_process`;
-- no Main lookup or callback exists in RuntimeLoop/presentation scheduler;
-- the clock scene has one production instance;
-- registering a fake second tick owner makes the authority audit fail.
-
-## Budget snapshot
-
-`python tools/architecture/check_main_gd_budget.py --json` at the preflight SHA reports:
-
-- physical lines: 15,469
-- nonblank lines: 13,511
-- methods: 915
-- top-level variables: 94
-- constants: 121
+- physical lines: 15,126
+- nonblank lines: 13,212
+- methods: 894
+- top-level variables: 79
+- constants: 111
 - top-level preloads: 15
-- external Main caller occurrences: 1,652
+- external Main caller occurrences: 1,647
+- external Main caller files: 102
 - production Main reference files: 3
 
-No production code was changed, so the runtime-loop ledger remains `pending`. No RuntimeLoop scene, script, test fixture, or double execution path was created.
+Compared with the first preflight, every tracked Main metric decreased and no production Main reference file was added.
+
+## Validation status
+
+Green gates:
+
+- Forced-decision, card-frame, cooldown, visual-cue and refresh-cadence focused tests
+- Godot MCP production/Bench runs for each prerequisite
+- Main architecture and budget gates
+- Main runtime composition
+- UI text smoke
+- visual snapshot
+- `smoke_test.gd --check-only`
+
+The isolated full smoke run is **not green**: 284 assertions pass and 95 fail across existing AI policy, card-handler coverage, economy fixtures and legacy UI expectations. The test was migrated so deleted `_update_card_resolution_queue`, `movement_trails`, `action_callouts` and `map_event_effects` Main surfaces produce zero missing-access errors; no compatibility fields were restored. Because the RuntimeLoop Go/No-Go is blocked before production implementation, this report does not mislabel the broad full-smoke baseline as a RuntimeLoop regression or as completed acceptance.
