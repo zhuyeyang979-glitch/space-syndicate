@@ -93,6 +93,7 @@ func _run() -> void:
 	_verify_belt_concurrency_and_full_hand_merge(catalog)
 	_verify_market_atomic_refresh_and_journal(catalog)
 	_verify_authoritative_manual_merge(catalog)
+	_verify_authoritative_grant_card(catalog)
 	_verify_effect_two_phase_success(catalog)
 	_verify_effect_receipt_and_rollback(catalog)
 	_verify_injected_state_port_and_cross_player_lock(catalog)
@@ -195,6 +196,94 @@ func _verify_authoritative_manual_merge(catalog: CardRuntimeCatalogV06Resource) 
 	var player := service.player_snapshot("A")
 	_expect(int(player.get("revision", -1)) == 6 and _card_count(player) == 1, "manual merge advances one player revision and removes one card")
 	_expect(_family_rank_count(player, "commodity.ring_crystal_battery", 2) == 1, "manual merge resolves the catalog rank-II result")
+
+
+func _verify_authoritative_grant_card(catalog: CardRuntimeCatalogV06Resource) -> void:
+	var service = SERVICE_SCRIPT.new(catalog)
+	var road := catalog.card_snapshot("facility.road.rank_1")
+	var ring := catalog.card_snapshot("commodity.ring_crystal_battery.rank_1")
+	service.register_player("A", _state([], 12))
+	var granted := service.grant_card(
+		"A",
+		"facility.road.rank_1",
+		0,
+		"tx-grant-road",
+		"role_bonus_product_purchase"
+	)
+	_expect(bool(granted.get("committed", false)), "authoritative free grant commits through CardFlow")
+	var player_a := service.player_snapshot("A")
+	_expect(
+		int(player_a.get("cash", -1)) == 12
+			and int(player_a.get("card_purchase_count", -1)) == 0
+			and _card_count(player_a) == 1,
+		"free grant changes only inventory and does not masquerade as a purchase"
+	)
+	var replay := service.grant_card(
+		"A",
+		"facility.road.rank_1",
+		0,
+		"tx-grant-road",
+		"role_bonus_product_purchase"
+	)
+	_expect(
+		bool(replay.get("committed", false))
+			and bool(replay.get("idempotent_replay", false))
+			and _card_count(service.player_snapshot("A")) == 1,
+		"free grant replay is exact-once"
+	)
+	var collision := service.grant_card(
+		"A",
+		"commodity.ring_crystal_battery.rank_1",
+		1,
+		"tx-grant-road",
+		"role_bonus_product_purchase"
+	)
+	_expect(
+		str(collision.get("reason_code", "")) == "transaction_intent_collision",
+		"free grant transaction id cannot be reused for another card"
+	)
+
+	var full_cards := [
+		ring,
+		catalog.card_snapshot("commodity.star_dew_berry.rank_1"),
+		road,
+		catalog.card_snapshot("interaction.phase_veto.rank_1"),
+		catalog.card_snapshot("unit.monster.spore_tide_emperor.rank_1"),
+	]
+	service.register_player("B", _state(full_cards, 7))
+	var merged := service.grant_card(
+		"B",
+		"commodity.ring_crystal_battery.rank_1",
+		0,
+		"tx-grant-merge",
+		"role_bonus_product_purchase"
+	)
+	var player_b := service.player_snapshot("B")
+	_expect(
+		bool(merged.get("committed", false))
+			and _card_count(player_b) == 5
+			and _family_rank_count(
+				player_b,
+				"commodity.ring_crystal_battery",
+				2
+			) == 1,
+		"free grant uses the normal duplicate auto-merge rule at full hand"
+	)
+	var before_blocked := JSON.stringify(player_b)
+	var blocked := service.grant_card(
+		"B",
+		"facility.seaport.rank_1",
+		int(player_b.get("revision", -1)),
+		"tx-grant-blocked",
+		"role_bonus_product_purchase"
+	)
+	_expect(
+		not bool(blocked.get("committed", true))
+			and str(blocked.get("reason_code", ""))
+				== "hand_full_no_matching_merge"
+			and JSON.stringify(service.player_snapshot("B")) == before_blocked,
+		"free grant fails closed at full hand when no automatic merge exists"
+	)
 
 
 func _verify_effect_two_phase_success(catalog: CardRuntimeCatalogV06Resource) -> void:

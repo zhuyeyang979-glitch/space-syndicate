@@ -1,0 +1,113 @@
+{
+  "schema_version": "v0.6.legacy-city-share-audit.2",
+  "baseline_sha": "fa7ca46ede14c9149ca4d94827b4003134bd98fe",
+  "finding": "No Godot city-share signal declaration or connection exists. The legacy surface was a scenario-intent and project-authority data chain.",
+  "forbidden_signal_search": {
+    "city_share_changed": 0,
+    "project_share_changed": 0,
+    "urbanization_share_changed": 0,
+    "ownership_share_changed": 0,
+    "scene_connections": 0
+  },
+  "references": [
+    {
+      "path": "tests/legacy_v05/runtime/city_development_runtime_controller_v05.gd",
+      "classification": "legacy_fixture",
+      "semantic_class": "legacy_city_project_ownership",
+      "reference_kind": "emitter",
+      "symbols": ["city_development_resolved", "city_built"],
+      "production_status": "isolated"
+    },
+    {
+      "path": "tests/legacy_v05/economy/city_product_project_state_v05.gd",
+      "classification": "legacy_fixture",
+      "semantic_class": "legacy_city_project_ownership",
+      "reference_kind": "serialized_state",
+      "symbols": ["contribution_by_player", "share_basis_points_by_player", "controller_player_index"],
+      "production_status": "isolated"
+    },
+    {
+      "path": "scripts/runtime/contract_runtime_controller.gd",
+      "classification": "consumer",
+      "semantic_class": "commodity_gdp_region_control",
+      "reference_kind": "region_control_snapshot",
+      "symbols": ["contract_target_region_id", "contract_target_control_revision", "contract_target_owner"],
+      "production_status": "migrated"
+    },
+    {
+      "path": "scripts/runtime/contract_runtime_world_bridge.gd",
+      "classification": "consumer",
+      "semantic_class": "commodity_gdp_region_control",
+      "reference_kind": "snapshot_field",
+      "symbols": ["target_region_control", "region_control_snapshot", "controller_player_index"],
+      "production_status": "migrated"
+    },
+    {
+      "path": "scripts/runtime/first_table_authored_runtime_service.gd",
+      "classification": "ui_text",
+      "semantic_class": "public_facility_and_commodity_gdp",
+      "reference_kind": "snapshot_field",
+      "symbols": ["facility_summary_text", "owned_facilities", "gdp_per_minute"],
+      "production_status": "migrated"
+    },
+    {
+      "path": "scripts/runtime/commodity_flow_runtime_controller.gd",
+      "classification": "snapshot_field",
+      "semantic_class": "commodity_gdp_share",
+      "reference_kind": "authoritative_ledger",
+      "symbols": ["region_gdp_snapshot", "player_region_gdp_share_basis_points"],
+      "production_status": "keep"
+    },
+    {
+      "path": "scripts/runtime/victory_control_runtime_controller.gd",
+      "classification": "consumer",
+      "semantic_class": "commodity_gdp_share",
+      "reference_kind": "region_control_snapshot",
+      "symbols": ["region_control_snapshot", "commodity_gdp_share_basis_points", "controller_player_index"],
+      "production_status": "keep"
+    },
+    {
+      "path": "scripts/runtime/victory_control_world_bridge.gd",
+      "classification": "snapshot_field",
+      "semantic_class": "commodity_gdp_share",
+      "reference_kind": "authoritative_projection",
+      "symbols": ["CommodityFlowRuntimeController.sale_receipts", "region_gdp_snapshot"],
+      "production_status": "keep"
+    },
+    {
+      "path": "data/scenarios/first_table.json",
+      "classification": "legacy_fixture",
+      "semantic_class": "public_facility",
+      "reference_kind": "test",
+      "symbols": ["public_facility_committed", "observe_facility", "after_facility"],
+      "production_status": "migrated"
+    },
+    {
+      "path": "data/campaigns/tutorial_campaign.json",
+      "classification": "documentation",
+      "semantic_class": "public_facility",
+      "reference_kind": "ui_text",
+      "symbols": ["public_facility_committed"],
+      "production_status": "migrated"
+    }
+  ],
+  "final_production_search": {
+    "active_contract_runtime_project_binding_tokens": 0,
+    "repository_production_project_binding_tokens": 1,
+    "remaining_production_path": "scripts/main.gd:16597",
+    "remaining_legacy_bench_paths": [
+      "scripts/tools/contract_runtime_characterization_bench.gd:939",
+      "scripts/tools/contract_runtime_characterization_bench.gd:1173"
+    ],
+    "legacy_signal_tokens": 0,
+    "legacy_city_development_runtime_paths": 0
+  },
+  "authoritative_flow": [
+    "CommodityFlowRuntimeController Sale Receipt",
+    "region_gdp_snapshot",
+    "VictoryControlWorldBridge",
+    "VictoryControlRuntimeController.region_control_snapshot",
+    "typed public consumers"
+  ],
+  "legacy_save_policy": "Reject or isolate old project-share state. Never convert it into facility ownership or commodity GDP."
+}

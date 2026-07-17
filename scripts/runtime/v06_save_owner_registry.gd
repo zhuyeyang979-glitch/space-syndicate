@@ -25,9 +25,9 @@ const PUBLIC_REASON_CODES := [
 const FIXED_SECTION_ORDER := [
 	"ruleset",
 	"region_infrastructure",
-	"installed_commodities",
+	"region_supply",
+	"commodity_flow",
 	"routes",
-	"sale_receipts",
 	"player_mana",
 	"commodity_belt_visibility",
 	"card_inventory",

@@ -98,7 +98,12 @@ func _compose_facility_card_play(request: Dictionary) -> Dictionary:
 		affected_entity_ids.append("region:%s" % region_id)
 	var consequence := str(copy.get("consequence", "设施、生产与手牌均未改变。"))
 	if success:
-		consequence = "此前的设施事务已确认，未重复建设。" if replay else "目标区域已新增城市设施与持续生产；当前共有%d座设施、%d个生产安装。" % [facility_count, production_count]
+		if replay:
+			consequence = "此前的设施事务已确认，未重复建设。"
+		elif production_count > 0:
+			consequence = "目标区域已新增城市设施并接入持续生产；当前共有%d座设施、%d个生产安装。" % [facility_count, production_count]
+		else:
+			consequence = "目标区域已新增城市设施；当前共有%d座设施。该设施不会凭空生成生产安装。" % facility_count
 	return ACTION_RESULT_V1.sanitize_public_result({
 		"schema_version": ACTION_RESULT_V1.SCHEMA_VERSION,
 		"action_id": "facility_card_play",
@@ -278,10 +283,10 @@ func _facility_card_play_copy(outcome_code: String) -> Dictionary:
 		"facility_play_committed":
 			return {
 				"title": "城市设施已部署",
-				"explanation": "现役卡牌事务已完成设施建设并接入持续生产。",
-				"consequence": "设施与生产安装已经由各自权威 owner 提交。",
-				"suggested_action": "让时间推进并查看经济总览中的生产与GDP变化。",
-				"relevant_requirement": "设施牌、目标区域与生产安装必须在同一原子事务中完成。",
+				"explanation": "现役卡牌事务已完成设施建设；工厂牌会同时接入对应生产安装。",
+				"consequence": "设施以及卡牌明确要求的附属安装已经由权威运行时提交。",
+				"suggested_action": "查看区域详情和经济总览，确认该设施提供的具体能力。",
+				"relevant_requirement": "设施牌、目标区域与牌面要求的附属效果必须在同一事务中完成。",
 			}
 		"facility_play_request_invalid":
 			return {

@@ -1,8 +1,13 @@
 extends CanvasLayer
 class_name SpaceSyndicateOverlayLayer
 
+const FOCUS_TOOLS := preload("res://scripts/ui/focus_tools.gd")
+
 signal side_drawer_action_requested(action_id: String)
 signal temporary_decision_action_requested(action_id: String)
+signal public_bid_action_requested(action_id: String)
+signal public_bid_track_link_hovered(action_id: String)
+signal public_bid_track_link_unhovered(action_id: String)
 
 @onready var tooltip_panel: PanelContainer = %TooltipPanel
 @onready var tooltip_label: Label = %TooltipLabel
@@ -14,6 +19,7 @@ signal temporary_decision_action_requested(action_id: String)
 @onready var monster_wager_decision_panel: Control = %MonsterWagerDecisionPanel
 @onready var contract_response_decision_panel: Control = %ContractResponseDecisionPanel
 @onready var temporary_choice_decision_panel: Control = %TemporaryChoiceDecisionPanel
+@onready var public_bid_decision_panel: Control = %PublicBidDecisionPanel
 @onready var side_drawer_panel: PanelContainer = %SideDrawerPanel
 @onready var side_drawer_title: Label = %SideDrawerTitle
 @onready var side_drawer_close_button: Button = %SideDrawerCloseButton
@@ -26,6 +32,7 @@ signal temporary_decision_action_requested(action_id: String)
 @onready var drag_drop_target_label: Label = %DragDropTargetLabel
 @onready var drag_preview_panel: PanelContainer = %DragPreviewPanel
 @onready var drag_preview_label: Label = %DragPreviewLabel
+@onready var district_supply_drawer: Control = %DistrictSupplySideDrawerOverlay
 
 const DRAG_PREVIEW_SIZE := Vector2(176.0, 118.0)
 const DRAG_PREVIEW_SIDE_GAP := 12.0
@@ -41,13 +48,61 @@ const TEMP_DECISION_CONTRACT_RESPONSE := "contract_response"
 const TEMP_DECISION_DISCARD := "discard_purchase"
 const TEMP_DECISION_MONSTER_TARGET := "monster_target_choice"
 const TEMP_DECISION_PLAYER_TARGET := "player_target_choice"
+const REAL_TEMPORARY_DECISION_KINDS := [
+	TEMP_DECISION_MONSTER_WAGER,
+	"counter_response",
+	TEMP_DECISION_CONTRACT_RESPONSE,
+	TEMP_DECISION_DISCARD,
+	TEMP_DECISION_MONSTER_TARGET,
+	TEMP_DECISION_PLAYER_TARGET,
+]
+const SURFACE_CONFIRM := "confirm"
+const SURFACE_SIDE_DRAWER := "side_drawer"
+const SURFACE_DISTRICT_SUPPLY := "district_supply"
+const SURFACE_ROUTE_VIEW := "route_view"
+
+var _surface_stack: Array[Dictionary] = []
+var _surface_context_revision := 0
+var _active_forced_surface_id := ""
+var _forced_focus_restore_path := ""
 
 
 func _ready() -> void:
+	add_to_group("optional_route_overlay")
+	set_process_input(true)
 	_configure_pointer_passthrough_skeleton()
 	_dock_confirm_to_planet_side_lane()
 	side_drawer_close_button.pressed.connect(hide_side_drawer)
 	_connect_specialized_temporary_decision_panels()
+	_connect_public_bid_panel()
+	if district_supply_drawer != null and not district_supply_drawer.visibility_changed.is_connected(_on_district_supply_visibility_changed):
+		district_supply_drawer.visibility_changed.connect(_on_district_supply_visibility_changed)
+
+
+func _input(event: InputEvent) -> void:
+	if event == null or not _is_back_event(event):
+		return
+	if handle_back_request():
+		get_viewport().set_input_as_handled()
+
+
+func handle_back_request() -> bool:
+	if tooltip_panel != null and tooltip_panel.visible:
+		hide_tooltip()
+		return true
+	var top := _top_surface_entry()
+	if not top.is_empty():
+		if bool(top.get("forced", false)):
+			return true
+		if bool(top.get("dismissible", false)):
+			_dismiss_surface(str(top.get("surface_id", "")))
+			return true
+	if _active_forced_surface_id != "":
+		return true
+	if district_supply_drawer != null and district_supply_drawer.visible:
+		_request_district_supply_close()
+		return true
+	return false
 
 
 func _configure_pointer_passthrough_skeleton() -> void:
@@ -77,6 +132,8 @@ func hide_tooltip() -> void:
 
 
 func show_confirm(text: String) -> void:
+	if forced_surface_active():
+		return
 	_dock_confirm_to_planet_side_lane()
 	_hide_specialized_temporary_decision_panels()
 	confirm_panel.name = "ConfirmPanel"
@@ -87,29 +144,45 @@ func show_confirm(text: String) -> void:
 	_set_label_chip_row(confirm_chip_row, [])
 	_set_temporary_decision_action_row([])
 	confirm_panel.visible = true
+	_push_surface(SURFACE_CONFIRM, "confirmation", confirm_panel, null, true, false, "show_confirm")
 
 
-func hide_confirm() -> void:
+func hide_confirm(restore_focus := true) -> void:
 	confirm_panel.visible = false
 	confirm_panel.name = "ConfirmPanel"
 	_hide_specialized_temporary_decision_panels()
+	var removed_forced := false
+	if _active_forced_surface_id != "" and _active_forced_surface_id != "forced:public_bid":
+		_remove_surface(_active_forced_surface_id, restore_focus)
+		_active_forced_surface_id = ""
+		removed_forced = true
+	_remove_surface(SURFACE_CONFIRM, restore_focus)
+	if removed_forced and restore_focus:
+		_forced_focus_restore_path = ""
 
 
 func show_temporary_decision(data: Dictionary) -> void:
 	if data.is_empty():
 		hide_confirm()
 		return
+	var kind := str(data.get("kind", "")).strip_edges()
+	if not REAL_TEMPORARY_DECISION_KINDS.has(kind):
+		hide_confirm()
+		return
+	hide_public_bid(false)
 	_dock_confirm_to_planet_side_lane()
 	_hide_specialized_temporary_decision_panels()
-	var kind := str(data.get("kind", ""))
 	if kind == TEMP_DECISION_MONSTER_WAGER and _show_specialized_temporary_decision(monster_wager_decision_panel, data):
 		confirm_panel.visible = false
+		_activate_forced_surface(data, monster_wager_decision_panel)
 		return
 	if kind == TEMP_DECISION_CONTRACT_RESPONSE and _show_specialized_temporary_decision(contract_response_decision_panel, data):
 		confirm_panel.visible = false
+		_activate_forced_surface(data, contract_response_decision_panel)
 		return
 	if [TEMP_DECISION_DISCARD, TEMP_DECISION_MONSTER_TARGET, TEMP_DECISION_PLAYER_TARGET].has(kind) and _show_specialized_temporary_decision(temporary_choice_decision_panel, data):
 		confirm_panel.visible = false
+		_activate_forced_surface(data, temporary_choice_decision_panel)
 		return
 	var title := str(data.get("title", "临时决策")).strip_edges()
 	var body := str(data.get("body", data.get("summary", ""))).strip_edges()
@@ -124,12 +197,78 @@ func show_temporary_decision(data: Dictionary) -> void:
 	_set_temporary_decision_action_row(data.get("actions", []))
 	confirm_panel.add_theme_stylebox_override("panel", _panel_style(_entry_color(data, Color("#facc15")), Color("#020617").lerp(_entry_color(data, Color("#facc15")), 0.12), 2, 10))
 	confirm_panel.visible = true
+	_activate_forced_surface(data, confirm_panel)
+
+
+func show_public_bid(data: Dictionary) -> bool:
+	if str(data.get("phase_id", "")).strip_edges() != "public_bid":
+		hide_public_bid()
+		return false
+	hide_confirm(false)
+	_dock_confirm_to_planet_side_lane()
+	var snapshot := data.duplicate(true)
+	snapshot["visible"] = true
+	snapshot["title"] = "牌序竞价"
+	if public_bid_decision_panel == null or not public_bid_decision_panel.has_method("set_bid_state"):
+		return false
+	public_bid_decision_panel.call("set_bid_state", snapshot)
+	public_bid_decision_panel.visible = true
+	_activate_forced_surface({
+		"id": "public_bid",
+		"kind": "public_bid",
+		"opened_by_action_id": "card_resolution_public_bid",
+	}, public_bid_decision_panel)
+	return true
+
+
+func hide_public_bid(restore_focus := true) -> void:
+	if public_bid_decision_panel != null:
+		if public_bid_decision_panel.has_method("set_bid_state"):
+			public_bid_decision_panel.call("set_bid_state", {"visible": false})
+		public_bid_decision_panel.visible = false
+	var surface_id := "forced:public_bid"
+	if _active_forced_surface_id == surface_id:
+		_active_forced_surface_id = ""
+	_remove_surface(surface_id, restore_focus)
+	if restore_focus:
+		_forced_focus_restore_path = ""
+
+
+func public_bid_visible() -> bool:
+	return public_bid_decision_panel != null and public_bid_decision_panel.visible
+
+
+func forced_surface_active() -> bool:
+	return not _active_forced_surface_id.is_empty()
 
 
 func _connect_specialized_temporary_decision_panels() -> void:
 	for panel in [monster_wager_decision_panel, contract_response_decision_panel, temporary_choice_decision_panel]:
 		if panel != null and panel.has_signal("action_requested"):
 			panel.connect("action_requested", Callable(self, "_on_specialized_temporary_decision_action_requested"))
+
+
+func _connect_public_bid_panel() -> void:
+	if public_bid_decision_panel == null:
+		return
+	if public_bid_decision_panel.has_signal("action_requested"):
+		public_bid_decision_panel.connect("action_requested", Callable(self, "_on_public_bid_action_requested"))
+	if public_bid_decision_panel.has_signal("track_link_hovered"):
+		public_bid_decision_panel.connect("track_link_hovered", Callable(self, "_on_public_bid_track_link_hovered"))
+	if public_bid_decision_panel.has_signal("track_link_unhovered"):
+		public_bid_decision_panel.connect("track_link_unhovered", Callable(self, "_on_public_bid_track_link_unhovered"))
+
+
+func _on_public_bid_action_requested(action_id: String) -> void:
+	public_bid_action_requested.emit(action_id)
+
+
+func _on_public_bid_track_link_hovered(action_id: String) -> void:
+	public_bid_track_link_hovered.emit(action_id)
+
+
+func _on_public_bid_track_link_unhovered(action_id: String) -> void:
+	public_bid_track_link_unhovered.emit(action_id)
 
 
 func _on_specialized_temporary_decision_action_requested(action_id: String) -> void:
@@ -150,7 +289,9 @@ func _hide_specialized_temporary_decision_panels() -> void:
 			panel.visible = false
 
 
-func show_side_drawer(data: Dictionary) -> void:
+func show_side_drawer(data: Dictionary) -> bool:
+	if forced_surface_active():
+		return false
 	side_drawer_title.text = _short_text(str(data.get("title", "详情抽屉")), 18)
 	var sections: Array = data.get("sections", []) if data.get("sections", []) is Array else []
 	side_drawer_summary.text = _short_text(str(data.get("body", data.get("summary", ""))), SIDE_DRAWER_SUMMARY_LIMIT)
@@ -159,12 +300,42 @@ func show_side_drawer(data: Dictionary) -> void:
 	_set_label_chip_row(side_drawer_chip_row, data.get("chips", []))
 	_set_side_drawer_action_row(data.get("actions", data.get("links", [])))
 	side_drawer_panel.visible = true
+	_push_surface(SURFACE_SIDE_DRAWER, "player_opened", side_drawer_panel, null, true, false, str(data.get("opened_by_action_id", "side_drawer")))
 	if side_drawer_body_scroll != null:
 		side_drawer_body_scroll.scroll_vertical = 0
+	return true
 
 
 func hide_side_drawer() -> void:
 	side_drawer_panel.visible = false
+	_remove_surface(SURFACE_SIDE_DRAWER, true)
+
+
+func activate_optional_route_view(opener: Control = null) -> bool:
+	if forced_surface_active():
+		return false
+	_push_surface(SURFACE_ROUTE_VIEW, "player_opened", null, opener, true, false, "optional_route_presentation_open")
+	return true
+
+
+func deactivate_optional_route_view(restore_focus := true) -> void:
+	_remove_surface(SURFACE_ROUTE_VIEW, restore_focus)
+
+
+func transient_surface_stack_snapshot() -> Dictionary:
+	var entries: Array = []
+	for entry in _surface_stack:
+		var safe := (entry as Dictionary).duplicate(true)
+		safe.erase("control")
+		entries.append(safe)
+	return {
+		"stack_depth": entries.size(),
+		"entries": entries,
+		"active_forced_surface_id": _active_forced_surface_id,
+		"public_bid_visible": public_bid_visible(),
+		"side_drawer_visible": side_drawer_panel.visible if side_drawer_panel != null else false,
+		"district_supply_visible": district_supply_drawer.visible if district_supply_drawer != null else false,
+	}
 
 
 func show_drag_preview(text: String, screen_position: Vector2 = Vector2.ZERO, drop_hint: Dictionary = {}) -> void:
@@ -431,3 +602,206 @@ func _panel_style(accent: Color, fill: Color, border_width: int, radius: int) ->
 	style.set_border_width_all(border_width)
 	style.set_corner_radius_all(radius)
 	return style
+
+
+func _is_back_event(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		var key_event := event as InputEventKey
+		if not key_event.pressed or key_event.echo:
+			return false
+	return event.is_action_pressed("ui_cancel") \
+		or (event is InputEventKey and (event as InputEventKey).pressed and (event as InputEventKey).keycode == KEY_ESCAPE)
+
+
+func _activate_forced_surface(data: Dictionary, control: Control) -> void:
+	var decision_id := str(data.get("id", data.get("kind", "decision"))).strip_edges()
+	if decision_id.is_empty():
+		decision_id = "decision"
+	var surface_id := "forced:%s" % decision_id
+	if _forced_focus_restore_path.is_empty():
+		_forced_focus_restore_path = _forced_restore_path_candidate()
+	_close_player_opened_surfaces_for_forced()
+	if _active_forced_surface_id != "" and _active_forced_surface_id != surface_id:
+		_remove_surface(_active_forced_surface_id, false)
+	_active_forced_surface_id = surface_id
+	_push_surface(
+		surface_id,
+		str(data.get("kind", "forced_decision")),
+		control,
+		null,
+		false,
+		true,
+		str(data.get("opened_by_action_id", decision_id)),
+		_forced_focus_restore_path
+	)
+
+
+func _push_surface(
+	surface_id: String,
+	surface_kind: String,
+	control: Control,
+	opener: Control,
+	dismissible: bool,
+	forced: bool,
+	opened_by_action_id: String,
+	focus_restore_path_override := ""
+) -> void:
+	if surface_id.is_empty():
+		return
+	for index in range(_surface_stack.size() - 1, -1, -1):
+		var existing: Dictionary = _surface_stack[index]
+		if str(existing.get("surface_id", "")) != surface_id:
+			continue
+		existing["surface_kind"] = surface_kind
+		existing["control"] = control
+		existing["dismissible"] = dismissible
+		existing["forced"] = forced
+		existing["context_revision"] = _surface_context_revision
+		_surface_stack[index] = existing
+		var focused := _current_focus_control()
+		if control != null and (focused == null or (focused != control and not control.is_ancestor_of(focused))):
+			call_deferred("_focus_surface", control)
+		return
+	_surface_context_revision += 1
+	var restore_control := opener if opener != null else _current_focus_control()
+	var restore_path := focus_restore_path_override
+	if restore_path.is_empty():
+		restore_path = str(restore_control.get_path()) if restore_control != null and restore_control.is_inside_tree() else ""
+	_surface_stack.append({
+		"surface_id": surface_id,
+		"surface_kind": surface_kind,
+		"focus_restore_path": restore_path,
+		"opened_by_action_id": opened_by_action_id,
+		"context_revision": _surface_context_revision,
+		"dismissible": dismissible,
+		"forced": forced,
+		"control": control,
+	})
+	if control != null:
+		call_deferred("_focus_surface", control)
+
+
+func _remove_surface(surface_id: String, restore_focus: bool) -> void:
+	if surface_id.is_empty():
+		return
+	for index in range(_surface_stack.size() - 1, -1, -1):
+		var entry: Dictionary = _surface_stack[index]
+		if str(entry.get("surface_id", "")) != surface_id:
+			continue
+		_surface_stack.remove_at(index)
+		var control: Control = entry.get("control", null) as Control
+		_release_surface_focus(control)
+		if restore_focus:
+			_restore_surface_focus(str(entry.get("focus_restore_path", "")))
+		return
+
+
+func _top_surface_entry() -> Dictionary:
+	if _surface_stack.is_empty():
+		return {}
+	return (_surface_stack[_surface_stack.size() - 1] as Dictionary).duplicate(true)
+
+
+func _dismiss_surface(surface_id: String) -> void:
+	match surface_id:
+		SURFACE_CONFIRM:
+			hide_confirm()
+		SURFACE_SIDE_DRAWER:
+			hide_side_drawer()
+		SURFACE_DISTRICT_SUPPLY:
+			_request_district_supply_close()
+		SURFACE_ROUTE_VIEW:
+			get_tree().call_group("optional_route_presentation_views", "hide_optional_route_presentation")
+			get_tree().call_group("optional_route_presentation_toolbars", "sync_optional_route_hidden")
+			deactivate_optional_route_view()
+		_:
+			_remove_surface(surface_id, true)
+
+
+func _focus_surface(control: Control) -> void:
+	if control == null or not control.is_inside_tree() or not control.is_visible_in_tree():
+		return
+	FOCUS_TOOLS.focus_first_enabled(control)
+
+
+func _current_focus_control() -> Control:
+	if get_viewport() == null:
+		return null
+	return get_viewport().gui_get_focus_owner()
+
+
+func _forced_restore_path_candidate() -> String:
+	for index in range(_surface_stack.size() - 1, -1, -1):
+		var entry: Dictionary = _surface_stack[index]
+		if bool(entry.get("forced", false)):
+			continue
+		var restore_path := str(entry.get("focus_restore_path", ""))
+		if not restore_path.is_empty():
+			return restore_path
+	var focused := _current_focus_control()
+	return str(focused.get_path()) if focused != null and focused.is_inside_tree() else ""
+
+
+func _close_player_opened_surfaces_for_forced() -> void:
+	if confirm_panel != null and confirm_panel.visible and confirm_panel.name == "ConfirmPanel":
+		confirm_panel.visible = false
+		_remove_surface(SURFACE_CONFIRM, false)
+	if side_drawer_panel != null and side_drawer_panel.visible:
+		side_drawer_panel.visible = false
+		_remove_surface(SURFACE_SIDE_DRAWER, false)
+	if district_supply_drawer != null and district_supply_drawer.visible:
+		_remove_surface(SURFACE_DISTRICT_SUPPLY, false)
+		_request_district_supply_close()
+	if _surface_stack.any(func(entry: Dictionary) -> bool: return str(entry.get("surface_id", "")) == SURFACE_ROUTE_VIEW):
+		get_tree().call_group("optional_route_presentation_views", "hide_optional_route_presentation")
+		get_tree().call_group("optional_route_presentation_toolbars", "sync_optional_route_hidden")
+		_remove_surface(SURFACE_ROUTE_VIEW, false)
+
+
+func _release_surface_focus(control: Control) -> void:
+	if control == null:
+		return
+	var focused := _current_focus_control()
+	if focused == null:
+		return
+	if focused == control or control.is_ancestor_of(focused):
+		focused.release_focus()
+
+
+func _restore_surface_focus(path: String) -> void:
+	if path.is_empty():
+		return
+	var target := get_node_or_null(NodePath(path)) as Control
+	if target != null and target.is_inside_tree() and target.is_visible_in_tree() and target.focus_mode != Control.FOCUS_NONE:
+		target.grab_focus()
+		return
+	var parent_path := path.get_base_dir()
+	while not parent_path.is_empty() and parent_path != "." and parent_path != "/":
+		var parent := get_node_or_null(NodePath(parent_path))
+		if parent != null and parent.is_inside_tree():
+			var fallback := FOCUS_TOOLS.focus_first_enabled(parent)
+			if fallback != null:
+				return
+		parent_path = parent_path.get_base_dir()
+
+
+func _on_district_supply_visibility_changed() -> void:
+	if district_supply_drawer == null:
+		return
+	if district_supply_drawer.visible:
+		if forced_surface_active():
+			_request_district_supply_close()
+			return
+		_push_surface(SURFACE_DISTRICT_SUPPLY, "player_opened", district_supply_drawer, null, true, false, "open_district_supply")
+	else:
+		_remove_surface(SURFACE_DISTRICT_SUPPLY, true)
+
+
+func _request_district_supply_close() -> void:
+	if district_supply_drawer == null:
+		_remove_surface(SURFACE_DISTRICT_SUPPLY, true)
+		return
+	if district_supply_drawer.has_signal("supply_action_requested"):
+		district_supply_drawer.emit_signal("supply_action_requested", "district_supply_close", {})
+	else:
+		district_supply_drawer.visible = false

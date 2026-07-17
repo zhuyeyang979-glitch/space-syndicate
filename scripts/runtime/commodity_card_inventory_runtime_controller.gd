@@ -13,6 +13,7 @@ var _configured := false
 var _world: Node
 var _state_port: Node
 var _market_quote_authority: Object
+var _region_supply_source_port: Object
 var _flow_controller: Node
 var _infrastructure_controller: Node
 var _transaction_service: Object
@@ -24,6 +25,25 @@ var _last_reason := ""
 
 func set_market_quote_authority(authority: Object) -> void:
 	_market_quote_authority = authority
+
+
+func set_region_supply_source_port(source_port: Object) -> Dictionary:
+	_region_supply_source_port = source_port
+	if _transaction_service != null \
+			and _transaction_service.has_method("set_region_supply_source_port"):
+		var value_variant: Variant = _transaction_service.call(
+			"set_region_supply_source_port",
+			source_port
+		)
+		return (value_variant as Dictionary).duplicate(true) \
+			if value_variant is Dictionary \
+			else _failure("region_supply_source_unavailable")
+	return {
+		"configured": _region_supply_source_api_ready(),
+		"reason_code": "region_supply_source_staged" \
+			if _region_supply_source_api_ready() \
+			else "region_supply_source_unavailable",
+	}
 
 
 class EffectTransactionBoundary:
@@ -193,6 +213,7 @@ func configure(
 		and _infrastructure_controller.has_method("region_snapshot")
 	)
 	_transaction_service = TRANSACTION_SERVICE_SCRIPT.new(CATALOG, _state_port, _market_quote_authority) if _configured else null
+	_attach_region_supply_source_port()
 	_refresh_effect_bridge()
 	return {
 		"configured": _configured,
@@ -216,6 +237,7 @@ func reset_state() -> void:
 	if _state_port != null and _state_port.has_method("reset_state"):
 		_state_port.call("reset_state")
 	_transaction_service = TRANSACTION_SERVICE_SCRIPT.new(CATALOG, _state_port, _market_quote_authority) if _configured else null
+	_attach_region_supply_source_port()
 	_refresh_effect_bridge()
 
 
@@ -258,6 +280,10 @@ func transaction_journal_snapshot() -> Dictionary:
 		if runtime_variant is Dictionary:
 			for transaction_id_variant in (runtime_variant as Dictionary).keys():
 				journal[str(transaction_id_variant)] = ((runtime_variant as Dictionary).get(transaction_id_variant, {}) as Dictionary).duplicate(true)
+	for transaction_id_variant in _terminal_operations.keys():
+		var terminal_variant: Variant = _terminal_operations.get(transaction_id_variant, {})
+		if terminal_variant is Dictionary:
+			journal[str(transaction_id_variant)] = (terminal_variant as Dictionary).duplicate(true)
 	return journal
 
 
@@ -266,6 +292,50 @@ func player_snapshot(actor_id: String) -> Dictionary:
 		return {}
 	var value_variant: Variant = _transaction_service.call("player_snapshot", actor_id)
 	return (value_variant as Dictionary).duplicate(true) if value_variant is Dictionary else {}
+
+
+func discardable_slots(actor_id: String) -> Array:
+	if not _service_ready() \
+			or not _transaction_service.has_method("discardable_slots"):
+		return []
+	var value_variant: Variant = _transaction_service.call(
+		"discardable_slots",
+		actor_id
+	)
+	return (value_variant as Array).duplicate() if value_variant is Array else []
+
+
+func region_supply_receive_preview(
+	actor_id: String,
+	card_id: String,
+	discard_slot: int = -1
+) -> Dictionary:
+	if not _service_ready() \
+			or not _transaction_service.has_method(
+				"region_supply_receive_preview"
+			):
+		return {
+			"ready": false,
+			"requires_discard": false,
+			"reason_code": "controller_not_ready",
+			"discardable_slots": [],
+		}
+	var value_variant: Variant = _transaction_service.call(
+		"region_supply_receive_preview",
+		actor_id,
+		card_id,
+		discard_slot
+	)
+	return (
+		(value_variant as Dictionary).duplicate(true)
+		if value_variant is Dictionary
+		else {
+			"ready": false,
+			"requires_discard": false,
+			"reason_code": "region_supply_receive_preview_invalid",
+			"discardable_slots": [],
+		}
+	)
 
 
 func claim_belt_card(
@@ -326,6 +396,84 @@ func purchase_market_card(
 			quote_request.duplicate(true)
 		)
 		return (value_variant as Dictionary).duplicate(true) if value_variant is Dictionary else _failure("market_purchase_invalid")
+	)
+
+
+func purchase_region_supply_card(
+	actor_id: String,
+	region_id: String,
+	slot_index: int,
+	source_item_id: String,
+	card_id: String,
+	expected_player_revision: int,
+	expected_supply_revision: String,
+	transaction_id: String,
+	quote_request: Dictionary,
+	discard_slot: int = -1
+) -> Dictionary:
+	var intent := {
+		"operation": "region_supply_purchase",
+		"actor_id": actor_id,
+		"region_id": region_id,
+		"slot_index": slot_index,
+		"source_item_id": source_item_id,
+		"card_id": card_id,
+		"expected_player_revision": expected_player_revision,
+		"expected_supply_revision": expected_supply_revision,
+		"quote_id": str(quote_request.get("quote_id", "")),
+		"quote_fingerprint": str(quote_request.get("quote_fingerprint", "")),
+		"discard_slot": discard_slot,
+	}
+	return _run_terminal_operation(transaction_id, intent, func() -> Dictionary:
+		var value_variant: Variant = _transaction_service.call(
+			"purchase_region_supply_card",
+			actor_id,
+			region_id,
+			slot_index,
+			source_item_id,
+			card_id,
+			expected_player_revision,
+			expected_supply_revision,
+			transaction_id,
+			quote_request.duplicate(true),
+			discard_slot
+		)
+		return (value_variant as Dictionary).duplicate(true) \
+			if value_variant is Dictionary \
+			else _failure("region_supply_purchase_invalid")
+	, func(previous_result: Dictionary) -> Dictionary:
+		return _retry_terminal_region_supply_finalization(previous_result)
+	)
+
+
+func grant_card(
+	actor_id: String,
+	card_id: String,
+	expected_player_revision: int,
+	transaction_id: String,
+	grant_reason: String = ""
+) -> Dictionary:
+	var intent := {
+		"operation": "grant_card",
+		"actor_id": actor_id,
+		"card_id": card_id,
+		"expected_player_revision": expected_player_revision,
+		"grant_reason": grant_reason,
+	}
+	return _run_terminal_operation(transaction_id, intent, func() -> Dictionary:
+		var value_variant: Variant = _transaction_service.call(
+			"grant_card",
+			actor_id,
+			card_id,
+			expected_player_revision,
+			transaction_id,
+			grant_reason
+		)
+		return (
+			(value_variant as Dictionary).duplicate(true)
+			if value_variant is Dictionary
+			else _failure("grant_card_invalid")
+		)
 	)
 
 
@@ -503,6 +651,7 @@ func debug_snapshot() -> Dictionary:
 		"belt_item_count": (belt_snapshot().get("items", {}) as Dictionary).size() if belt_snapshot().get("items", {}) is Dictionary else 0,
 		"market_revision": int(market_snapshot().get("revision", 0)),
 		"market_listing_present": not (market_snapshot().get("listing", {}) as Dictionary).is_empty() if market_snapshot().get("listing", {}) is Dictionary else false,
+		"region_supply_source_ready": _region_supply_source_api_ready(),
 		"transaction_journal_count": transaction_journal_snapshot().size(),
 		"terminal_operation_count": _terminal_operations.size(),
 		"checkpoint": checkpoint,
@@ -517,32 +666,73 @@ func debug_snapshot() -> Dictionary:
 
 
 func checkpoint_status() -> Dictionary:
-	var pending_finalization_ids: Array = []
+	var pending_effect_finalization_ids: Array = []
+	var pending_region_supply_finalization_ids: Array = []
+	var pending_other_recovery_ids: Array = []
 	var transaction_ids: Array = _terminal_operations.keys()
 	transaction_ids.sort()
 	for transaction_id_variant in transaction_ids:
 		var transaction_id := str(transaction_id_variant)
 		var terminal_variant: Variant = _terminal_operations.get(transaction_id, {})
 		if not (terminal_variant is Dictionary):
-			pending_finalization_ids.append(transaction_id)
+			pending_other_recovery_ids.append(transaction_id)
 			continue
 		var terminal: Dictionary = terminal_variant
 		var result: Dictionary = terminal.get("result", {}) if terminal.get("result", {}) is Dictionary else {}
 		if not bool(result.get("committed", false)):
 			if bool(result.get("compensation_failed", false)) or bool(result.get("recovery_required", false)):
-				pending_finalization_ids.append(transaction_id)
+				if result.get("region_supply_receipt", {}) is Dictionary \
+						and not (result.get("region_supply_receipt", {}) as Dictionary).is_empty():
+					pending_region_supply_finalization_ids.append(transaction_id)
+				elif result.get("effect_receipt", {}) is Dictionary \
+						and not (result.get("effect_receipt", {}) as Dictionary).is_empty():
+					pending_effect_finalization_ids.append(transaction_id)
+				else:
+					pending_other_recovery_ids.append(transaction_id)
 			continue
 		var effect_receipt: Dictionary = result.get("effect_receipt", {}) if result.get("effect_receipt", {}) is Dictionary else {}
-		if effect_receipt.is_empty():
-			continue
-		var finalization: Dictionary = result.get("effect_finalization", {}) if result.get("effect_finalization", {}) is Dictionary else {}
-		if not bool(finalization.get("finalized", false)):
-			pending_finalization_ids.append(transaction_id)
+		if not effect_receipt.is_empty():
+			var finalization: Dictionary = result.get("effect_finalization", {}) if result.get("effect_finalization", {}) is Dictionary else {}
+			if not bool(finalization.get("finalized", false)):
+				pending_effect_finalization_ids.append(transaction_id)
+				continue
+		var region_supply_receipt: Dictionary = result.get("region_supply_receipt", {}) \
+			if result.get("region_supply_receipt", {}) is Dictionary else {}
+		if not region_supply_receipt.is_empty():
+			var region_supply_finalization: Dictionary = result.get(
+				"region_supply_finalization",
+				{}
+			) if result.get("region_supply_finalization", {}) is Dictionary else {}
+			if not bool(region_supply_finalization.get("finalized", false)):
+				pending_region_supply_finalization_ids.append(transaction_id)
+	var pending_finalization_ids: Array = []
+	for pending_id in (
+		pending_effect_finalization_ids
+		+ pending_region_supply_finalization_ids
+		+ pending_other_recovery_ids
+	):
+		if not pending_finalization_ids.has(pending_id):
+			pending_finalization_ids.append(pending_id)
+	var reason_code := "commodity_card_inventory_checkpoint_ready"
+	if not pending_finalization_ids.is_empty():
+		if not pending_region_supply_finalization_ids.is_empty() \
+				and pending_effect_finalization_ids.is_empty() \
+				and pending_other_recovery_ids.is_empty():
+			reason_code = "region_supply_purchase_finalization_pending"
+		elif not pending_effect_finalization_ids.is_empty() \
+				and pending_region_supply_finalization_ids.is_empty() \
+				and pending_other_recovery_ids.is_empty():
+			reason_code = "core_card_effect_finalization_pending"
+		else:
+			reason_code = "card_flow_multiple_finalizations_pending"
 	return {
 		"can_checkpoint": pending_finalization_ids.is_empty(),
-		"reason_code": "commodity_card_inventory_checkpoint_ready" if pending_finalization_ids.is_empty() else "core_card_effect_finalization_pending",
+		"reason_code": reason_code,
 		"pending_finalization_count": pending_finalization_ids.size(),
 		"pending_finalization_transaction_ids": pending_finalization_ids,
+		"pending_effect_finalization_transaction_ids": pending_effect_finalization_ids,
+		"pending_region_supply_finalization_transaction_ids": pending_region_supply_finalization_ids,
+		"pending_other_recovery_transaction_ids": pending_other_recovery_ids,
 	}
 
 
@@ -634,6 +824,46 @@ func _retry_terminal_effect_finalization(previous_result: Dictionary, effect_han
 	return next_result
 
 
+func _retry_terminal_region_supply_finalization(previous_result: Dictionary) -> Dictionary:
+	if not bool(previous_result.get("committed", false)):
+		return previous_result
+	var prior_finalization: Dictionary = previous_result.get(
+		"region_supply_finalization",
+		{}
+	) if previous_result.get("region_supply_finalization", {}) is Dictionary else {}
+	if bool(prior_finalization.get("finalized", false)):
+		return previous_result
+	var source_receipt: Dictionary = previous_result.get(
+		"region_supply_receipt",
+		{}
+	) if previous_result.get("region_supply_receipt", {}) is Dictionary else {}
+	if source_receipt.is_empty() or not _region_supply_source_api_ready():
+		return previous_result
+	var transaction_id := str(previous_result.get("transaction_id", ""))
+	var value_variant: Variant = _region_supply_source_port.call(
+		"finalize_slot_refill",
+		transaction_id
+	)
+	var owner_result: Dictionary = (value_variant as Dictionary).duplicate(true) \
+		if value_variant is Dictionary else {}
+	var finalized := bool(owner_result.get("finalized", false))
+	var next_result := previous_result.duplicate(true)
+	next_result["region_supply_finalization"] = {
+		"supported": true,
+		"finalized": finalized,
+		"finalization_failed": not finalized,
+		"reason_code": "region_supply_finalized" if finalized else str(owner_result.get(
+			"reason_code",
+			"region_supply_finalize_failed"
+		)),
+		"owner_result": owner_result,
+	}
+	if finalized:
+		next_result.erase("recovery_required")
+		next_result["reason_code"] = "committed"
+	return next_result
+
+
 func _service_ready() -> bool:
 	return _configured and _transaction_service != null and _state_port != null and effect_bridge != null
 
@@ -653,6 +883,31 @@ func _state_port_api_ready() -> bool:
 		"apply_save_data",
 	]:
 		if not _state_port.has_method(method_name):
+			return false
+	return true
+
+
+func _attach_region_supply_source_port() -> void:
+	if _transaction_service == null \
+			or not _transaction_service.has_method("set_region_supply_source_port"):
+		return
+	_transaction_service.call(
+		"set_region_supply_source_port",
+		_region_supply_source_port
+	)
+
+
+func _region_supply_source_api_ready() -> bool:
+	if _region_supply_source_port == null:
+		return false
+	for method_name in [
+		"public_rack_snapshot",
+		"prepare_slot_refill",
+		"commit_slot_refill",
+		"rollback_slot_refill",
+		"finalize_slot_refill",
+	]:
+		if not _region_supply_source_port.has_method(method_name):
 			return false
 	return true
 

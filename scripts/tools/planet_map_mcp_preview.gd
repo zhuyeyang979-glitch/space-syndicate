@@ -62,6 +62,7 @@ func apply_fixture(id: String) -> bool:
 	if map_view == null or not map_view.has_method("set_map"):
 		_set_status("PlanetMapView missing")
 		return false
+	_sync_optional_route_fixture(map_view, data)
 	map_view.call(
 		"set_map",
 		_convert_districts(data.get("districts", [])),
@@ -89,6 +90,54 @@ func apply_fixture(id: String) -> bool:
 		map_view.call("focus_district", focus_index)
 	_set_status(_fixture_status_text(id, _convert_districts(data.get("districts", [])).size()))
 	return true
+
+
+func _sync_optional_route_fixture(map_view: Control, data: Dictionary) -> void:
+	if map_view == null:
+		return
+	var trade_product := str(data.get("trade_product", "")).strip_edges()
+	var routes := _convert_route_markers(data.get("trade_routes", []))
+	if trade_product.is_empty() or routes.is_empty():
+		if map_view.has_method("clear_optional_route_public_snapshot"):
+			map_view.call("clear_optional_route_public_snapshot")
+		if map_view.has_method("set_optional_route_selection"):
+			map_view.call("set_optional_route_selection", "")
+		return
+	var rows: Array = []
+	var geometry: Dictionary = {}
+	for index in range(routes.size()):
+		var route: Dictionary = routes[index] if routes[index] is Dictionary else {}
+		var route_id := "qa:%s:%d" % [str(data.get("id", "fixture")), index]
+		geometry[route_id] = (route.get("points", []) as Array).duplicate(true)
+		rows.append({
+			"flow_event_id": "qa-flow:%s:%d" % [str(data.get("id", "fixture")), index],
+			"public_revision": index + 1,
+			"commodity_id": str(route.get("product", trade_product)),
+			"from_region_id": "qa.region.%d.a" % index,
+			"to_region_id": "qa.region.%d.b" % index,
+			"flow_kind": "market_sale",
+			"display_label": "QA actual flow",
+			"route_id": route_id,
+			"transport_modes": ["land"],
+			"delivered_units_band": "medium",
+			"capacity_limited": false,
+			"congested": bool(route.get("disrupted", false)),
+			"last_active_world_effective": 1.0,
+			"activity_state": "current_tick",
+			"ambient_one_hop": false,
+			"low_emphasis": false,
+		})
+	if map_view.has_method("set_optional_route_public_geometry"):
+		map_view.call("set_optional_route_public_geometry", geometry)
+	if map_view.has_method("set_optional_route_public_snapshot"):
+		map_view.call("set_optional_route_public_snapshot", {
+			"available": true,
+			"public_revision": rows.size(),
+			"selected_commodity_id": "",
+			"rows": rows,
+		}, 1.0)
+	if map_view.has_method("set_optional_route_selection"):
+		map_view.call("set_optional_route_selection", trade_product)
 
 
 func _connect_static_buttons() -> void:

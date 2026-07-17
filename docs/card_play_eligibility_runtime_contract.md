@@ -6,7 +6,13 @@
 
 `CardPresentationRuntimeService` maps `reason_code` and `reason_args` to player-facing labels, details, accents, and disabled reasons. It does not decide legality.
 
-`CardResolutionRuntimeController` owns the active 8/6/2 card-window clock and ready state. `CardResolutionQueueRuntimeService` owns the current v0.5 tutorial/standard 1/2 group limits, fixed priority bids, cumulative capacity reservations, queue placement, and submission transaction. `CardResolutionExecutionRuntimeService` remains the lifecycle owner. None of these services duplicates eligibility rules.
+`CardResolutionRuntimeController` owns the active 30/20/5/5 card-window clock
+and ready state, including the 45/35/5/5 opening cadence.
+`CardResolutionQueueRuntimeService` owns the ordinary one-card limit,
+authoritative organization-capability expansion to a hard maximum of three,
+card-order bid ordering, queue placement and submission transaction.
+`CardResolutionExecutionRuntimeService` remains the lifecycle owner. None of
+these services duplicates eligibility rules.
 
 ## Result Envelope
 

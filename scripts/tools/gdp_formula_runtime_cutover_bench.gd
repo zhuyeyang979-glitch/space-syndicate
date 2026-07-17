@@ -1,14 +1,14 @@
 extends Control
 class_name GdpFormulaRuntimeCutoverBench
 
-const PROJECT_STATE := preload("res://scripts/economy/city_product_project_state.gd")
-const PROJECT_BRIDGE := preload("res://scripts/economy/city_product_project_bridge.gd")
+const PROJECT_STATE := preload("res://tests/legacy_v05/economy/city_product_project_state_v05.gd")
+const PROJECT_BRIDGE := preload("res://tests/legacy_v05/economy/city_product_project_bridge_v05.gd")
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const CONTROLLER_SCENE_PATH := "res://scenes/runtime/GdpFormulaRuntimeController.tscn"
 const CONTROLLER_SCRIPT_PATH := "res://scripts/runtime/gdp_formula_runtime_controller.gd"
 const NETWORK_SCRIPT_PATH := "res://scripts/runtime/city_trade_network_runtime_controller.gd"
-const PROJECT_STATE_PATH := "res://scripts/economy/city_product_project_state.gd"
-const PROJECT_BRIDGE_PATH := "res://scripts/economy/city_product_project_bridge.gd"
+const PROJECT_STATE_PATH := "res://tests/legacy_v05/economy/city_product_project_state_v05.gd"
+const PROJECT_BRIDGE_PATH := "res://tests/legacy_v05/economy/city_product_project_bridge_v05.gd"
 const CASHFLOW_SCRIPT_PATH := "res://scripts/runtime/economy_cashflow_runtime_controller.gd"
 const PROFILE_PATH := "res://resources/economy/space_syndicate_gdp_formula_v05.tres"
 const OUTPUT_DIR := "user://space_syndicate_design_qa/gdp_formula_runtime_cutover/"

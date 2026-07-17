@@ -71,9 +71,9 @@ func _complete_chapter_01(main: Node) -> void:
 	await _wait_frames(4)
 	var play_handled := bool(main.call("_activate_first_run_coach_action", "coach_play_card"))
 	_expect(play_handled, "chapter 01 submits the real city development card")
-	await _advance_until_signal(main, "city_development_resolved", 480)
+	await _advance_until_signal(main, "public_facility_committed", 480)
 	chapter_signals = _scenario_state(main).get("completed_signals", {})
-	_expect(bool(chapter_signals.get("city_development_resolved", false)), "chapter 01 resolves a product-bound city development project")
+	_expect(bool(chapter_signals.get("public_facility_committed", false)), "chapter 01 resolves a current public facility")
 	await _wait_for_reward(main, "01_first_table")
 
 

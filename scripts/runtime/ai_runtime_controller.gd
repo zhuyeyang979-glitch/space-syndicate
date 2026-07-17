@@ -1087,6 +1087,10 @@ func _catalog_entry(index: int) -> Dictionary:
 func _canonical_card_supply_name(skill_name: String) -> String:
 	return _call_world(&"_canonical_card_supply_name", [skill_name])
 
+func _district_supply_card_ids(district_index: int) -> Array:
+	var value: Variant = _call_world(&"_district_supply_card_ids", [district_index])
+	return (value as Array).duplicate() if value is Array else []
+
 func _alive_district_indices() -> Array:
 	return _call_world(&"_alive_district_indices")
 
@@ -5236,7 +5240,7 @@ func _ai_monster_card_landing_score(player_index: int, skill: Dictionary, distri
 	for product_variant in district.get("products", []):
 		score += int(round(float(_product_price(String(product_variant))) / 8.0))
 	score += int(round(float(district.get("transport_score", 1.0)) * 15.0))
-	score += (district.get("card_choices", []) as Array).size() * 7
+	score += _district_supply_card_ids(district_index).size() * 7
 	var city := _district_city(district_index)
 	if _city_is_active(city):
 		if int(city.get("owner", -1)) == player_index:
@@ -6845,7 +6849,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 	elif kind == "supply_draw":
 		context["district"] = -1
 		for i in range(districts.size()):
-			if _market_listing_purchasable(i) and not (districts[i].get("card_choices", []) as Array).is_empty():
+			if _market_listing_purchasable(i) and not _district_supply_card_ids(i).is_empty():
 				context["district"] = i
 				break
 		if int(context["district"]) < 0:
@@ -7018,7 +7022,7 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 	for district_index in range(districts.size()):
 		if not _market_listing_purchasable(district_index) or bool(districts[district_index].get("destroyed", false)):
 			continue
-		for card_variant in districts[district_index].get("card_choices", []):
+		for card_variant in _district_supply_card_ids(district_index):
 			var card_name := _canonical_card_supply_name(String(card_variant))
 			if card_name == "" or not _player_can_receive_card_with_discard(player, card_name):
 				continue

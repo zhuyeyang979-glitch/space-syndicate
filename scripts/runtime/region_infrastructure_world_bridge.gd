@@ -170,7 +170,10 @@ func region_codex_public_facts(legacy_index: int) -> Dictionary:
 	var district := districts[legacy_index] as Dictionary
 	var products_result := _region_codex_public_string_array(district.get("products", []))
 	var demands_result := _region_codex_public_string_array(district.get("demands", []))
-	var cards_result := _region_codex_public_string_array(district.get("card_choices", []))
+	var public_rack_variant: Variant = _world.call("_district_supply_card_ids", legacy_index) \
+		if _world.has_method("_district_supply_card_ids") \
+		else []
+	var cards_result := _region_codex_public_string_array(public_rack_variant)
 	var neighbors_result := _region_codex_public_index_array(district.get("neighbors", []), districts.size())
 	for result_variant: Variant in [products_result, demands_result, cards_result, neighbors_result]:
 		var result := result_variant as Dictionary

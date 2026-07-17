@@ -191,7 +191,7 @@ func _run_case(case_id: String) -> Dictionary:
 	var player_board := screen.find_child("PlayerBoard", true, false) if screen != null else null
 	var hand_rack := screen.find_child("HandRack", true, false) if screen != null else null
 	var action_dock := screen.find_child("PlayerMainActionDock", true, false) if screen != null else null
-	var bid_board := screen.find_child("PlayerBidBoard", true, false) if screen != null else null
+	var bid_board := screen.find_child("PublicBidDecisionPanel", true, false) if screen != null else null
 	var coordinator := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if _main != null else null
 	var card_presentation_service := coordinator.get_node_or_null("CardPresentationRuntimeService") if coordinator != null else null
 	var table_viewmodel_service := coordinator.get_node_or_null("GameTableViewModelRuntimeService") if coordinator != null else null
@@ -213,9 +213,9 @@ func _run_case(case_id: String) -> Dictionary:
 			flags["scene_checked"] = true
 			notes = "ActionDock owns player command rendering"
 		"sceneized_bid_board_present":
-			passed = bid_board != null and bid_board.scene_file_path == "res://scenes/ui/BidBoard.tscn"
+			passed = bid_board != null and bid_board.scene_file_path == "res://scenes/ui/BidBoard.tscn" and player_board.find_child("PlayerBidBoard", true, false) == null
 			flags["scene_checked"] = true
-			notes = "BidBoard owns public bid controls"
+			notes = "BidBoard owns transient public-bid controls under Overlay while PlayerBoard reserves zero permanent space"
 		"legacy_player_refresh_absent":
 			passed = _tokens_absent(["func _refresh_player_panel", "func _player_panel_structure_signature", "func _refresh_player_panel_live_values", "player_panel_signature", "func _add_table_goal_prompt", "func _table_goal_condition_entries", "func _goal_hint_chip_entries"])
 			flags["deletion_checked"] = true

@@ -1,5 +1,34 @@
 # Contract Runtime Ownership Contract
 
+## v0.6 region-control authority cutover
+
+The active contract response authority is the target region's public commodity-GDP
+controller from `VictoryControlRuntimeController.region_control_snapshot()`.
+Contract code does not read `district.city.projects`, calculate ownership, or keep
+project identifiers.
+
+The production dependency chain is:
+
+`VictoryControlWorldBridge.capture_world_snapshot`
+→ `VictoryControlRuntimeController.region_control_snapshot`
+→ `ContractRuntimeWorldBridge.target_region_control_snapshot`
+→ `ContractRuntimeController`.
+
+Each pending offer binds:
+
+- `contract_target_region_id`;
+- `contract_target_control_revision`;
+- `contract_target_owner`, the controller at offer creation.
+
+Response planning re-reads the authoritative snapshot. A changed region identity,
+controller, or revision fails closed before settlement. This prevents an offer
+from being accepted after the economic facts that granted signing authority have
+changed.
+
+Contract save schema 3 preserves only the region-control binding. Earlier contract
+schemas are rejected with `legacy_contract_save_schema_rejected`; they are never
+converted into a facility owner or commodity-GDP controller.
+
 ## Sprint 51 status
 
 Sprint 51 completed the single-owner hard cutover. `ContractRuntimeController`
@@ -54,6 +83,9 @@ An offer retains the queue entry fields and adds or normalizes these fields:
 - `contract_source_district` / `contract_target_district`.
 - `contract_products`: selected, automatic, fixed, or multi-product result.
 - `contract_target_owner`: current runtime response authority.
+- `contract_target_region_id`: authoritative stable target region.
+- `contract_target_control_revision`: VictoryControl snapshot revision locked when
+  the offer opens.
 - `contract_response`: `pending`, `accepted`, `rejected`, or `timeout`.
 - `contract_decision_timer`: ruleset bridge `contract_window_seconds`, currently 5.0.
 - `contract_decision_started_time`: `game_time` when the offer is appended.
@@ -62,10 +94,10 @@ An offer retains the queue entry fields and adds or normalizes these fields:
   `contract_decline_summary`, `contract_result_clue`, `aftermath_clue`,
   `aftermath_style`, and `resolved_time`.
 
-Missing save data defaults to an empty offer array. Current save data preserves
+Missing save data defaults to an empty offer array. Schema-3 save data preserves
 the complete array, including a partially elapsed timer. Restored expired offers
-remain data-compatible and are consumed by the normal timeout tick; Sprint 51
-must preserve this behavior unless a migration is explicitly versioned.
+remain data-compatible and are consumed by the normal timeout tick. Older offers
+that contain project-id authority are rejected before replacing live state.
 
 ## Creation and continuation order
 
@@ -73,7 +105,8 @@ Observed order for an area-trade contract is:
 
 1. Eligibility and queue owners validate normal card submission.
 2. Card Resolution Execution releases the active entry before effect dispatch.
-3. The contract effect derives source, target, product context, and response authority.
+3. The contract effect derives source, target, product context, and the target
+   region-control snapshot.
 4. `ContractRuntimeController.open_offer()` deep-copies the resolution entry.
 5. The offer receives its id, `pending` response, five-second timer, and start time.
 6. The independent offer is appended; the released entry receives matching summary fields.
@@ -105,7 +138,8 @@ arithmetic already owned by `CardEconomyProductRouteFormulaRuntimeService`.
 Explicit accept and reject use `ContractRuntimeController.respond_to_offer()`:
 
 1. Locate the offer by `contract_offer_id` or resolution id.
-2. Verify the responding player against the stored response authority.
+2. Re-read VictoryControl and verify target region identity, controller, and
+   control revision against the stored binding.
 3. Remove the offer before settlement, preventing duplicate responses.
 4. Set response, response player, and response time.
 5. Plan a stable transaction and route it once through the non-owning WorldBridge.
@@ -123,7 +157,7 @@ Accept currently commits in this observed order:
 3. Append public city clues.
 4. Apply source production and target transport/consumption deltas.
 5. Apply target route-flow boon through the Formula Service result.
-6. Grant the target response authority the authored cash reward.
+6. Grant the bound target-region controller the authored cash reward.
 7. Refresh city networks, then product-market prices.
 8. Update selected trade product, map pulses, callout, and public log.
 
@@ -175,12 +209,11 @@ All Bench manifest, report, UI snapshot, save preview, and debug data are limite
 to Dictionary, Array, String, Number, Bool, and null. No Callable, Node, Object,
 or Resource is allowed.
 
-## Ruleset v0.4 decisions locked in Sprint 51
+## Current response-authority decisions
 
-1. **Project-controller authority**: the target product project's unique
-   `controller_player_index` receives the response. Missing authority returns
-   `missing_target_product_project`; multiple controllers return
-   `ambiguous_target_project_controller` without mutation.
+1. **Commodity-GDP region control**: the target region's unique controller from
+   VictoryControl receives the response. An uncontrolled, tied, destroyed, stale,
+   or mismatched region rejects without mutation.
 2. **Explicit self-sign permission**: a player controlling both endpoints may sign
    only when the card sets `contract_allow_self_sign=true`.
 3. **Visible-time guarantee**: the five-second timer decreases only while that exact

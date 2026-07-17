@@ -9,7 +9,7 @@ const FIRST_TABLE_SIGNALS := [
 	"rack_opened",
 	"card_bought",
 	"card_played",
-	"city_development_resolved",
+	"public_facility_committed",
 	"economy_checked",
 	"followup_card_bought",
 	"followup_card_played",

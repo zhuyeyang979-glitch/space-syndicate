@@ -26,7 +26,7 @@ func _run() -> void:
 
 func _case_six_public_event_contracts() -> void:
 	var events := [
-		["city_development_committed", "city_built", "city_growth"],
+		["public_facility_committed", "facility_built", "city_growth"],
 		["market_position_resolved", "market_gain_realized", "finance_speculation"],
 		["public_interaction_resolved", "public_pressure_applied", "direct_interaction"],
 		["monster_pressure_resolved", "monster_damage_avoided", "monster_pressure"],
@@ -44,23 +44,23 @@ func _case_six_public_event_contracts() -> void:
 
 
 func _case_strict_schema_and_typed_deltas() -> void:
-	var wrong_schema := _receipt(1, "city_development_committed", "city_built")
+	var wrong_schema := _receipt(1, "public_facility_committed", "facility_built")
 	wrong_schema["schema_version"] = "v0.6.public-match-receipt.999"
 	_expect(_failure_code(wrong_schema) == "schema_version", "wrong schema version fails closed")
-	var unknown_field := _receipt(1, "city_development_committed", "city_built")
+	var unknown_field := _receipt(1, "public_facility_committed", "facility_built")
 	unknown_field["notes"] = "public"
 	_expect(_failure_code(unknown_field) == "receipt_fields", "unknown top-level field fails exact allowlist")
-	var unknown_event := _receipt(1, "unknown_event", "city_built")
+	var unknown_event := _receipt(1, "unknown_event", "facility_built")
 	_expect(_failure_code(unknown_event) == "event_kind", "unknown event kind fails closed")
-	var wrong_outcome := _receipt(1, "city_development_committed", "route_income_realized")
+	var wrong_outcome := _receipt(1, "public_facility_committed", "route_income_realized")
 	_expect(_failure_code(wrong_outcome) == "public_outcome_code", "outcome must belong to its event kind")
-	var unknown_delta := _receipt(1, "city_development_committed", "city_built")
+	var unknown_delta := _receipt(1, "public_facility_committed", "facility_built")
 	unknown_delta["typed_deltas"] = {"cash": 99}
 	_expect(_failure_code(unknown_delta) == "forbidden_or_non_data_input", "cash-like delta is rejected before allowlisting")
-	var narrative_delta := _receipt(1, "city_development_committed", "city_built")
+	var narrative_delta := _receipt(1, "public_facility_committed", "facility_built")
 	narrative_delta["typed_deltas"] = {"story": "great move"}
 	_expect(_failure_code(narrative_delta) == "typed_delta_key", "free-form narrative delta is rejected")
-	var float_delta := _receipt(1, "city_development_committed", "city_built")
+	var float_delta := _receipt(1, "public_facility_committed", "facility_built")
 	float_delta["typed_deltas"] = {"gdp_cents_per_minute_delta": 1.5}
 	_expect(_failure_code(float_delta) == "typed_delta_value", "public deltas require bounded integer units")
 

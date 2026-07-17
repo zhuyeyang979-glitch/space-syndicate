@@ -1,4 +1,4 @@
-[gd_scene load_steps=74 format=3]
+[gd_scene load_steps=75 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -25,6 +25,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/PlayerHandInteractionRuntimeService.tscn" id="21_hand_interaction"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardResolutionQueueRuntimeService.tscn" id="22_resolution_queue"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ActionResultPresentationService.tscn" id="79_action_result"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RegionSupplyRuntimeController.tscn" id="80_region_supply"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardResolutionExecutionRuntimeService.tscn" id="23_resolution_execution"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardResolutionExecutionWorldBridge.tscn" id="24_resolution_world_bridge"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardEconomyProductRouteEffectRuntimeService.tscn" id="25_economy_product_route_effect"]
@@ -94,6 +95,9 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="CardRuntimeDefinitionWorldBridge" parent="." instance=ExtResource("47_card_definition_bridge")]
+unique_name_in_owner = true
+
+[node name="RegionSupplyRuntimeController" parent="." instance=ExtResource("80_region_supply")]
 unique_name_in_owner = true
 
 [node name="GameplayBalanceDiagnosticsRuntimeService" parent="." instance=ExtResource("48_balance_diagnostics")]

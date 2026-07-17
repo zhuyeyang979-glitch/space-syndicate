@@ -64,7 +64,7 @@ func flow_cases() -> Array:
 		_case("land_rack_guarantees_city_development", "rack_guarantee", "", "Verify every live land rack keeps one real city_development card from the Inspector resource pack."),
 		_case("buy_city_development_card", "coach_action", "coach_buy_card", "Buy the real local-product city development card through existing purchase rules."),
 		_case("inspect_and_play_city_development", "coach_action", "coach_play_card", "Inspect and submit the development card through the real anonymous resolution track."),
-		_case("create_first_product_project_share", "project_resolution", "", "Resolve the development card into a real product project and private player share."),
+		_case("observe_first_public_facility", "facility_resolution", "", "Resolve the purchased economic card into a real public facility."),
 		_case("receive_first_positive_gdp_or_cash_tick", "positive_income", "coach_check_economy", "Settle project-share realtime cashflow and inspect the real economy overview."),
 		_case("buy_followup_business_card", "coach_action", "coach_buy_followup_card", "Buy the real 城市融资1 follow-up after the first project exists."),
 		_case("play_followup_business_card", "coach_action", "coach_play_followup_card", "Submit the follow-up business card through the existing action and signal flow."),
@@ -284,7 +284,7 @@ func _run_case(main: Control, flow_case: Dictionary) -> Dictionary:
 			project_checked = await _wait_for_player_project(main)
 			var project_content := _authored_content_snapshot(main)
 			_followup_prepositioned_observed = _followup_present_in_project_supply(main, project_content)
-			content_checked = _authored_runtime_ids_checked(project_content) and bool(project_content.get("city_present", false)) and not str(project_content.get("urbanization_share_text", "")).contains("尚未")
+			content_checked = _authored_runtime_ids_checked(project_content) and bool(project_content.get("city_present", false)) and not str(project_content.get("facility_summary_text", "")).contains("尚未")
 			coach_checked = _coach_surface_checked(main)
 			player_board_checked = _player_board_checked(main)
 			track_checked = _track_checked(main, true)
@@ -803,7 +803,7 @@ func _timed_signals_ordered(runtime_state: Dictionary) -> bool:
 	if not (completed_times_variant is Dictionary):
 		return false
 	var completed_times: Dictionary = completed_times_variant
-	var expected_signals := ["district_selected", "monster_summoned", "rack_opened", "card_bought", "card_played", "city_development_resolved", "economy_checked", "followup_card_bought", "followup_card_played", "track_selected", "ai_public_action_observed", "public_clue_read", "monster_pressure_observed", "route_chosen"]
+	var expected_signals := ["district_selected", "monster_summoned", "rack_opened", "card_bought", "card_played", "public_facility_committed", "economy_checked", "followup_card_bought", "followup_card_played", "track_selected", "ai_public_action_observed", "public_clue_read", "monster_pressure_observed", "route_chosen"]
 	var previous_time := float(runtime_state.get("scenario_started_at", 0.0))
 	for signal_id_variant in expected_signals:
 		var signal_id := str(signal_id_variant)
@@ -974,10 +974,10 @@ func _wait_for_player_city(main: Control, max_frames: int = 180) -> bool:
 func _wait_for_player_project(main: Control, max_frames: int = 480) -> bool:
 	for _frame in range(maxi(1, max_frames)):
 		var content := _authored_content_snapshot(main)
-		var own_shares: Array = content.get("own_project_shares", []) if content.get("own_project_shares", []) is Array else []
-		if bool(content.get("city_present", false)) and not own_shares.is_empty():
+		var owned_facilities: Array = content.get("owned_facilities", []) if content.get("owned_facilities", []) is Array else []
+		if bool(content.get("city_present", false)) and not owned_facilities.is_empty():
 			var signals: Dictionary = _scenario_state(main).get("completed_signals", {})
-			if bool(signals.get("city_development_resolved", false)):
+			if bool(signals.get("public_facility_committed", false)):
 				return true
 		if main.has_method("_update_card_resolution_queue"):
 			main.call("_update_card_resolution_queue", 0.5)
@@ -1453,7 +1453,7 @@ func _build_markdown_report(manifest: Dictionary) -> String:
 		"- Passed: %d/%d" % [int(manifest.get("passed_count", 0)), int(manifest.get("case_count", 0))],
 		"- Runtime content: `%s` / `%s` / `%s`" % [str(authored_content.get("teaching_card_id", "")), str(authored_content.get("teaching_product_id", "")), str(authored_content.get("starter_monster_id", ""))],
 		"- Follow-up card set: `%s`" % ", ".join(authored_content.get("featured_card_ids", []) as Array),
-		"- Economy result: `%s` / GDP `%d` per minute / cashflow paid `%d`" % [str(authored_content.get("urbanization_share_text", "")), int(authored_content.get("gdp_per_minute", 0)), int(authored_content.get("cashflow_paid_total", 0))],
+		"- Economy result: `%s` / GDP `%d` per minute / cashflow paid `%d`" % [str(authored_content.get("facility_summary_text", "")), int(authored_content.get("gdp_per_minute", 0)), int(authored_content.get("cashflow_paid_total", 0))],
 		"- Public evidence: `%d` clue(s); no hidden owner fields are written." % int(authored_content.get("public_clue_count", 0)),
 		"- Human pacing window: `%d-%d` seconds; authored target `%d` seconds." % [int(pacing_profile.get("recommended_min_seconds", 0)), int(pacing_profile.get("recommended_max_seconds", 0)), int(pacing_profile.get("target_duration_seconds", 0))],
 		"- Automated real-main observation: `%0.2f` seconds; status `%s`." % [float(pacing_evaluation.get("completion_elapsed_seconds", -1.0)), str(pacing_evaluation.get("recommended_window_status", "pending"))],

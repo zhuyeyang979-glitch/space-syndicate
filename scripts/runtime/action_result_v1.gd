@@ -273,7 +273,7 @@ static func _sanitize_facility_card_play_request(source: Dictionary) -> Dictiona
 			return {}
 		if not (receipt.get("owned_facility_count") is int) or int(receipt.get("owned_facility_count")) < 1:
 			return {}
-		if not (receipt.get("production_installation_count") is int) or int(receipt.get("production_installation_count")) < 1:
+		if not (receipt.get("production_installation_count") is int) or int(receipt.get("production_installation_count")) < 0:
 			return {}
 		if not (receipt.get("idempotent_replay") is bool):
 			return {}

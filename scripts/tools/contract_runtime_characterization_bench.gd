@@ -15,7 +15,7 @@ const CONTRACT_CONTROLLER_SCRIPT_PATH := "res://scripts/runtime/contract_runtime
 const CONTRACT_BRIDGE_SCENE_PATH := "res://scenes/runtime/ContractRuntimeWorldBridge.tscn"
 const CONTRACT_BRIDGE_SCRIPT_PATH := "res://scripts/runtime/contract_runtime_world_bridge.gd"
 const COORDINATOR_SCENE_PATH := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
-const CITY_PROJECT_STATE := preload("res://scripts/economy/city_product_project_state.gd")
+const CITY_PROJECT_STATE := preload("res://tests/legacy_v05/economy/city_product_project_state_v05.gd")
 const CITY_FIXTURES := preload("res://tests/helpers/city_world_fixture_factory.gd")
 
 const OUTPUT_DIR := "user://space_syndicate_design_qa/contract_runtime_characterization/"
@@ -639,9 +639,9 @@ func _case_preemption_boundary() -> Dictionary:
 	var candidates: Array = _runtime_main.call("_forced_decision_candidates")
 	var contract_candidate := _candidate_by_kind(candidates, "contract_response")
 	var priority: Array = (_scheduler.call("debug_snapshot") as Dictionary).get("priority_order", [])
-	var observed := priority == ["monster_wager", "counter_response", "contract_response", "other_choice"] and not contract_candidate.is_empty()
+	var observed := priority == ["monster_wager", "counter_response", "contract_response", "other_choice", "public_bid"] and not contract_candidate.is_empty()
 	var aligned := not bool(contract_candidate.get("blocks_card_resolution", true))
-	return _record("monster_wager_or_counter_preempts_contract", observed, aligned, "Priority order remains authoritative and contract candidates now report blocks_card_resolution=%s." % str(contract_candidate.get("blocks_card_resolution", null)), _flags_from_opened(opened).merged({"forced_decision_checked": true}, true))
+	return _record("monster_wager_or_counter_preempts_contract", observed, aligned, "Priority order remains authoritative with public_bid last; contract candidates report blocks_card_resolution=%s." % str(contract_candidate.get("blocks_card_resolution", null)), _flags_from_opened(opened).merged({"forced_decision_checked": true}, true))
 
 
 func _case_overlay_actions() -> Dictionary:

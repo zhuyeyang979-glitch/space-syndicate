@@ -15,8 +15,8 @@ const PRODUCT_MARKET_SCRIPT_PATH := "res://scripts/runtime/product_market_runtim
 const CONTRACT_BRIDGE_SCRIPT_PATH := "res://scripts/runtime/contract_runtime_world_bridge.gd"
 const MILITARY_SCRIPT_PATH := "res://scripts/runtime/military_runtime_controller.gd"
 const WEATHER_SCRIPT_PATH := "res://scripts/runtime/weather_runtime_controller.gd"
-const PROJECT_STATE_SCRIPT_PATH := "res://scripts/economy/city_product_project_state.gd"
-const PROJECT_BRIDGE_SCRIPT_PATH := "res://scripts/economy/city_product_project_bridge.gd"
+const PROJECT_STATE_SCRIPT_PATH := "res://tests/legacy_v05/economy/city_product_project_state_v05.gd"
+const PROJECT_BRIDGE_SCRIPT_PATH := "res://tests/legacy_v05/economy/city_product_project_bridge_v05.gd"
 const CITY_PROJECT_STATE := preload(PROJECT_STATE_SCRIPT_PATH)
 const CITY_PROJECT_BRIDGE := preload(PROJECT_BRIDGE_SCRIPT_PATH)
 const CITY_FIXTURES := preload("res://tests/helpers/city_world_fixture_factory.gd")
@@ -808,7 +808,7 @@ func _case_cross_system_refresh() -> Dictionary:
 
 func _case_market_refresh_separate() -> Dictionary:
 	var refresh_source := _function_source(str(_sources.get("main", "")), "_refresh_city_networks")
-	var development_source := _function_source(FileAccess.get_file_as_string("res://scripts/runtime/city_development_world_bridge.gd"), "apply_settlement_plan")
+	var development_source := _function_source(FileAccess.get_file_as_string("res://tests/legacy_v05/runtime/city_development_world_bridge_v05.gd"), "apply_settlement_plan")
 	var observed := not refresh_source.contains("refresh_prices") and _tokens_in_order(development_source, ["refresh_networks", "refresh_prices"])
 	return _record("product_market_refresh_separate", observed, observed, "Network refresh does not own market prices; the city-development transaction requests market refresh explicitly afterward.", {"refresh_order_checked": true})
 

@@ -2,7 +2,7 @@ extends Control
 class_name EconomyCashflowRuntimeCutoverBench
 
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
-const PROJECT_BRIDGE := preload("res://scripts/economy/city_product_project_bridge.gd")
+const PROJECT_BRIDGE := preload("res://tests/legacy_v05/economy/city_product_project_bridge_v05.gd")
 const CITY_FIXTURES := preload("res://tests/helpers/city_world_fixture_factory.gd")
 const OUTPUT_DIR := "user://space_syndicate_design_qa/economy_cashflow_runtime_cutover/"
 const MANIFEST_PATH := OUTPUT_DIR + "manifest.json"

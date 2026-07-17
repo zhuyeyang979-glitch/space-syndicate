@@ -1298,7 +1298,7 @@ func _case_ledger_and_action_log_exactly_once() -> Dictionary:
 
 func _case_scenario_and_coach_hooks_exactly_once() -> Dictionary:
 	var effect_adapter := _function_source(_main_source(), "_apply_card_resolution_effect_request")
-	var city_handler := _function_source(FileAccess.get_file_as_string("res://scripts/runtime/city_development_runtime_controller.gd"), "finalize_settlement")
+	var city_handler := _function_source(FileAccess.get_file_as_string("res://tests/legacy_v05/runtime/city_development_runtime_controller_v05.gd"), "finalize_settlement")
 	var submit := _function_source(_main_source(), "_queue_skill_resolution")
 	var hook_count := city_handler.count('"signal_id"')
 	var separated := not effect_adapter.contains("_complete_scenario_signal(") and submit.contains("_complete_scenario_signal(\"card_played\"") and hook_count == 2

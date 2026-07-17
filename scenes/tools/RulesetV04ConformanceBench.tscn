@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/tools/ruleset_v04_conformance_bench.gd" id="1_bench"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/RulesetRuntimeBridge.tscn" id="2_bridge"]
-[ext_resource type="PackedScene" path="res://scenes/runtime/CityDevelopmentRuntimeController.tscn" id="3_city_controller"]
+[ext_resource type="PackedScene" path="res://tests/legacy_v05/scenes/CityDevelopmentRuntimeControllerV05.tscn" id="3_city_controller"]
 
 [node name="RulesetV04ConformanceBench" type="Control"]
 layout_mode = 3

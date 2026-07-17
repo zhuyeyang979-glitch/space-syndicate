@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/optional_route_presentation_runtime_service.gd" id="1_service"]
+
+[node name="OptionalRoutePresentationRuntimeService" type="Node"]
+script = ExtResource("1_service")
+editor_description = "Local-only opt-in route presentation. Consumes viewer-safe actual/recent public flow summaries and never owns economic routes, receipts, inventory, AI, or save truth."

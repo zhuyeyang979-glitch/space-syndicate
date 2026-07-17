@@ -1,11 +1,25 @@
 extends SceneTree
 
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
+const MAIN_SCRIPT_PATH := "res://scripts/main.gd"
 const OPTIONAL_SUMMON_FOCUSED_ARG := "--first-table-optional-summon-only"
+const STAGE_ARG_PREFIX := "--commercial-stage="
+const QA_SAVE_PATH := "user://test_runs/commercial_playability_gate.save"
+const FIXED_SEED := 60623
 const VIEWPORT_SIZES := [
 	Vector2i(1280, 720),
 	Vector2i(1600, 960),
 	Vector2i(1920, 1080),
+]
+const STAGE_IDS := [
+	"documentation",
+	"layout_1280",
+	"layout_1600",
+	"layout_1920",
+	"cta_open_rack",
+	"cta_buy_recovery",
+	"optional_summon",
+	"action_chain",
 ]
 
 const FORBIDDEN_PLAYER_FACING_TOKENS := [
@@ -33,6 +47,8 @@ const FORBIDDEN_PLAYER_FACING_TOKENS := [
 ]
 
 var _failures: Array[String] = []
+var _active_stage_id := ""
+var _active_stage_started_msec := 0
 
 
 func _init() -> void:
@@ -40,17 +56,74 @@ func _init() -> void:
 
 
 func _run() -> void:
-	if OS.get_cmdline_user_args().has(OPTIONAL_SUMMON_FOCUSED_ARG):
-		await _check_first_table_optional_summon_after_economy()
+	var requested_stage := _requested_stage_id()
+	if _command_line_has(OPTIONAL_SUMMON_FOCUSED_ARG):
+		requested_stage = "optional_summon"
+	if not requested_stage.is_empty():
+		if not STAGE_IDS.has(requested_stage):
+			_expect(false, "commercial gate stage is known: %s" % requested_stage)
+		else:
+			await _run_stage(requested_stage)
 		_finish()
 		return
-	_check_gate_documentation()
-	for viewport_size in VIEWPORT_SIZES:
-		await _check_first_table_runtime_layout(viewport_size)
-	await _check_first_run_cta_forgives_missing_region()
-	await _check_first_table_optional_summon_after_economy()
-	await _check_first_ten_minute_action_chain()
+	for stage_id_variant in STAGE_IDS:
+		await _run_stage(str(stage_id_variant))
 	_finish()
+
+
+func _run_stage(stage_id: String) -> void:
+	_active_stage_id = stage_id
+	_active_stage_started_msec = Time.get_ticks_msec()
+	print("COMMERCIAL_GATE_STAGE_START|stage=%s" % stage_id)
+	match stage_id:
+		"documentation":
+			_check_gate_documentation()
+		"layout_1280":
+			await _check_first_table_runtime_layout(Vector2i(1280, 720))
+		"layout_1600":
+			await _check_first_table_runtime_layout(Vector2i(1600, 960))
+		"layout_1920":
+			await _check_first_table_runtime_layout(Vector2i(1920, 1080))
+		"cta_open_rack":
+			await _check_first_run_open_rack_recovery()
+		"cta_buy_recovery":
+			await _check_first_run_buy_recovery()
+		"optional_summon":
+			await _check_first_table_optional_summon_after_economy()
+		"action_chain":
+			await _check_first_ten_minute_action_chain()
+	print("COMMERCIAL_GATE_STAGE_END|stage=%s|duration_ms=%d|failures=%d" % [
+		stage_id,
+		Time.get_ticks_msec() - _active_stage_started_msec,
+		_failures.size(),
+	])
+	_active_stage_id = ""
+	_active_stage_started_msec = 0
+
+
+func _requested_stage_id() -> String:
+	for argument in _all_command_line_arguments():
+		var text := str(argument)
+		if text.begins_with(STAGE_ARG_PREFIX):
+			return text.substr(STAGE_ARG_PREFIX.length()).strip_edges()
+	return ""
+
+
+func _command_line_has(expected: String) -> bool:
+	return _all_command_line_arguments().has(expected)
+
+
+func _all_command_line_arguments() -> Array[String]:
+	var result: Array[String] = []
+	for argument in OS.get_cmdline_args():
+		var text := str(argument)
+		if not result.has(text):
+			result.append(text)
+	for argument in OS.get_cmdline_user_args():
+		var text := str(argument)
+		if not result.has(text):
+			result.append(text)
+	return result
 
 
 func _check_gate_documentation() -> void:
@@ -58,6 +131,11 @@ func _check_gate_documentation() -> void:
 	var source := FileAccess.get_file_as_string("res://docs/commercial_playability_gate.md")
 	for marker in ["真人首局", "真实 RuntimeGameScreen", "单主 CTA", "隐藏信息", "1280×720"]:
 		_expect(source.contains(marker), "commercial gate document explains %s" % marker)
+	var transient_source := FileAccess.get_file_as_string("res://tests/transient_gameplay_windows_v06_test.gd")
+	_expect(
+		transient_source.contains("public_bid") and transient_source.contains("竞价"),
+		"transient gameplay gate, not the base focus order, owns public-bid visibility",
+	)
 
 
 func _check_first_table_runtime_layout(viewport_size: Vector2i) -> void:
@@ -73,7 +151,7 @@ func _check_first_table_runtime_layout(viewport_size: Vector2i) -> void:
 	_expect(runtime != null and runtime.visible, "%s first-table chapter enters real RuntimeGameScreen" % _size_label(viewport_size))
 	if runtime != null:
 		_check_core_table_regions(main, runtime, viewport_size)
-		_check_runtime_focus_order(runtime, ["顶部状态", "牌轨", "星球地图", "右侧详情", "手牌", "当前行动", "竞价"], "%s closed-rack table" % _size_label(viewport_size))
+		_check_runtime_focus_order(runtime, ["顶部状态", "牌轨", "星球地图", "右侧详情", "手牌", "当前行动"], "%s closed-rack table" % _size_label(viewport_size))
 		_check_single_primary_campaign_cta(main, viewport_size)
 		_check_player_facing_privacy(runtime, viewport_size)
 	root.remove_child(main)
@@ -91,9 +169,8 @@ func _check_first_table_optional_summon_after_economy() -> void:
 	main.set_process(false)
 	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
 	var monster_owner: Object = coordinator.call("monster_runtime_controller") if coordinator != null and coordinator.has_method("monster_runtime_controller") else null
-	var infrastructure := coordinator.get_node_or_null("RegionInfrastructureRuntimeController") if coordinator != null else null
-	_expect(coordinator != null and monster_owner != null and infrastructure != null, "optional-summon gate composes current Coordinator, Monster owner, and RegionInfrastructure owner")
-	if coordinator == null or monster_owner == null or infrastructure == null:
+	_expect(coordinator != null and monster_owner != null, "optional-summon gate composes current Coordinator and Monster owner")
+	if coordinator == null or monster_owner == null:
 		root.remove_child(main)
 		main.queue_free()
 		await _wait_frames(1)
@@ -109,33 +186,51 @@ func _check_first_table_optional_summon_after_economy() -> void:
 	var monster_before: Dictionary = monster_owner.call("unit_card_snapshot_v06", "monster")
 	var monster_save_before: Dictionary = monster_owner.call("to_save_data")
 	var journal_before: Dictionary = monster_save_before.get("monster_card_atomic_terminal_journal", {}) if monster_save_before.get("monster_card_atomic_terminal_journal", {}) is Dictionary else {}
-	var facilities_before := (infrastructure.call("facilities_snapshot", false) as Array).size()
-	var market: Dictionary = coordinator.call("v06_first_table_facility_market_snapshot", actor_id)
-	var listing: Dictionary = market.get("listing", {}) if market.get("listing", {}) is Dictionary else {}
-	var source_item_id := str(listing.get("item_id", ""))
-	var purchase: Dictionary = coordinator.call("purchase_v06_first_table_facility_card", actor_id, source_item_id, "commercial-v06:facility-purchase:%s" % actor_id)
+	var choice := _find_purchasable_region_supply_choice(main, coordinator)
+	_expect(not choice.is_empty(), "first_table finds one current stable public RegionSupply listing before any summon")
+	if choice.is_empty():
+		root.remove_child(main)
+		main.queue_free()
+		await _wait_frames(1)
+		return
+	var listing: Dictionary = choice.get("listing", {}) if choice.get("listing", {}) is Dictionary else {}
+	var purchase_district := int(choice.get("district_index", -1))
+	var card_id := str(listing.get("card_id", ""))
+	_expect(
+		_is_stable_v06_card_id(card_id)
+			and not (coordinator.call("v06_card_definition", card_id) as Dictionary).is_empty(),
+		"the pre-summon listing is a current stable v0.6 card, not a side-market teaching card",
+	)
+	var player_before_purchase: Dictionary = coordinator.call("v06_card_player_snapshot", actor_id)
+	var inventory_before := JSON.stringify(player_before_purchase.get("inventory", {}))
+	var purchased := bool(main.call(
+		"_buy_card_for_player_from_district",
+		0,
+		purchase_district,
+		card_id,
+		false,
+		true,
+		-1,
+		"",
+	))
 	var player_after_purchase: Dictionary = coordinator.call("v06_card_player_snapshot", actor_id)
-	var purchased_card_id := str(purchase.get("card_id", ""))
-	var slot_index := _find_v06_card_slot(player_after_purchase, purchased_card_id)
-	var play_request := {
-		"actor_id": actor_id,
-		"slot_index": slot_index,
-		"transaction_id": "commercial-v06:facility-play:%s" % actor_id,
-		"region_id": _selected_region_id(main),
-		"game_time": float(main.get("game_time")),
-	}
-	var play: Dictionary = coordinator.call("play_v06_runtime_card", play_request) if bool(purchase.get("committed", false)) and slot_index >= 0 else {}
-	var play_finalization: Dictionary = play.get("effect_finalization", {}) if play.get("effect_finalization", {}) is Dictionary else {}
-	_expect(bool(purchase.get("committed", false)) and slot_index >= 0, "first_table purchases the current Rank-I facility before any summon")
-	_expect(bool(play.get("committed", false)) and bool(play_finalization.get("finalized", false)), "first_table finalizes that facility through the current CardFlow owner before any summon")
-	_expect((infrastructure.call("facilities_snapshot", false) as Array).size() == facilities_before + 1, "first_table facility play mutates the unique RegionInfrastructure owner once")
+	_expect(
+		purchased
+			and int(player_after_purchase.get("card_purchase_count", -1))
+				== int(player_before_purchase.get("card_purchase_count", 0)) + 1,
+		"first_table purchases one current stable RegionSupply card before any summon",
+	)
+	_expect(
+		JSON.stringify(player_after_purchase.get("inventory", {})) != inventory_before,
+		"the pre-summon purchase mutates the single production inventory owner",
+	)
 	var monster_after_economy: Dictionary = monster_owner.call("unit_card_snapshot_v06", "monster")
-	_expect(int(monster_after_economy.get("monster_count", -1)) == int(monster_before.get("monster_count", -1)), "facility purchase and economic establishment do not implicitly summon the held starter")
+	_expect(int(monster_after_economy.get("monster_count", -1)) == int(monster_before.get("monster_count", -1)), "regional card purchase does not implicitly summon the held starter")
 
 	main.call("_open_economy_overview_menu")
 	await _wait_frames(3)
 	var economy_title := main.find_child("MenuTitleLabel", true, false) as Label
-	_expect(economy_title != null and economy_title.text == "经济总览", "economy review remains available before the optional summon")
+	_expect(economy_title != null and economy_title.text == "经济总览", "economy review remains available after a regional purchase and before the optional summon")
 	main.call("_close_menu")
 	await _wait_frames(2)
 
@@ -159,6 +254,7 @@ func _check_first_ten_minute_action_chain() -> void:
 	var main := await _instantiate_main()
 	if main == null:
 		return
+	_stage_checkpoint("main_ready")
 	main.set("card_resolution_force_duration", 0.05)
 	main.set("card_resolution_force_simultaneous_window", 0.0)
 	for timer_name in ["monster_timer", "special_monster_timer"]:
@@ -170,6 +266,7 @@ func _check_first_ten_minute_action_chain() -> void:
 		market_controller.call("apply_save_data", market_state)
 	main.call("_start_scenario_from_menu", "first_table")
 	await _wait_frames(16)
+	_stage_checkpoint("scenario_started")
 	_expect(str(_runtime_scenario_state(main).get("active_scenario_id", "")) == "first_table", "first ten-minute path starts the authored first_table scenario")
 	_expect(bool(main.call("_activate_first_run_coach_action", "coach_select_district")), "first ten-minute path selects the recommended district from coach")
 	await _wait_frames(4)
@@ -182,23 +279,72 @@ func _check_first_ten_minute_action_chain() -> void:
 	var runtime := main.find_child("RuntimeGameScreen", true, false) as Control
 	var ui_text := _node_text(runtime)
 	_expect(ui_text.contains("牌架") and ui_text.contains("手牌"), "first ten-minute path keeps card rack and hand concepts visible together")
-	_check_runtime_focus_order(runtime, ["顶部状态", "牌轨", "星球地图", "右侧详情", "区域牌架", "手牌", "当前行动", "竞价"], "first ten-minute opened-rack table")
+	_check_runtime_focus_order(runtime, ["顶部状态", "牌轨", "星球地图", "右侧详情", "区域牌架", "手牌", "当前行动"], "first ten-minute opened-rack table")
 	var purchase_count_before := _local_card_purchase_count(main)
-	_expect(bool(main.call("_activate_first_run_coach_action", "coach_buy_card")), "first ten-minute path buys a real regional city-development card from coach")
+	var first_purchase_requested := bool(main.call("_activate_first_run_coach_action", "coach_buy_card"))
+	_expect(first_purchase_requested, "first ten-minute path buys a real current public regional card from coach")
+	if not first_purchase_requested:
+		_stage_checkpoint("coach_buy_card_rejected")
+		root.remove_child(main)
+		main.queue_free()
+		await _wait_frames(1)
+		return
 	await _wait_for_local_card_purchase(main, purchase_count_before)
+	_stage_checkpoint("first_purchase_wait_complete")
 	var progress_after_buy: Dictionary = main.call("_first_run_coach_progress", 0)
 	_expect(_local_card_purchase_count(main) > purchase_count_before, "first ten-minute path records a real regional card purchase")
 	_expect(bool(progress_after_buy.get("has_bought_card", false)), "first ten-minute path marks first purchase only after the development card enters hand")
-	_expect(int(main.call("_first_table_city_development_hand_slot", 0)) >= 0, "first ten-minute purchase leaves a directly playable city-development card")
-	_expect(bool(main.call("_activate_first_run_coach_action", "coach_play_card")), "first ten-minute path submits the city-development card through the existing card action")
-	var project_resolved := await _wait_for_first_table_project(main)
+	_expect(int(main.call("_first_actionable_hand_slot", 0)) >= 0, "first ten-minute purchase leaves a currently actionable public-rack card")
+	var first_play_requested := bool(
+		main.call("_activate_first_run_coach_action", "coach_play_card")
+	)
+	if not first_play_requested:
+		var first_slot := int(main.call("_first_actionable_hand_slot", 0))
+		var players_variant: Variant = main.get("players")
+		var local_player: Dictionary = (
+			players_variant[0]
+			if players_variant is Array
+				and not (players_variant as Array).is_empty()
+				and players_variant[0] is Dictionary
+			else {}
+		)
+		var local_slots: Array = (
+			local_player.get("slots", []) as Array
+			if local_player.get("slots", []) is Array
+			else []
+		)
+		var first_card: Dictionary = (
+			(local_slots[first_slot] as Dictionary).duplicate(true)
+			if first_slot >= 0
+				and first_slot < local_slots.size()
+				and local_slots[first_slot] is Dictionary
+			else {}
+		)
+		print(
+			"COMMERCIAL_GATE_FIRST_PLAY_DIAG|selected=%d|slot=%d|card=%s|logs=%s"
+			% [
+				int(main.get("selected_district")),
+				first_slot,
+				JSON.stringify(first_card),
+				JSON.stringify(main.get("log_lines")),
+			]
+		)
+	_expect(first_play_requested, "first ten-minute path submits the purchased economic card through the existing card action")
+	if not first_play_requested:
+		_stage_checkpoint("coach_play_card_rejected")
+		root.remove_child(main)
+		main.queue_free()
+		await _wait_frames(1)
+		return
+	var facility_resolved := await _wait_for_first_table_facility(main)
+	_stage_checkpoint("first_project_wait_complete")
 	await _drain_card_resolution(main)
 	var progress_after_play: Dictionary = main.call("_first_run_coach_progress", 0)
-	var project_content: Dictionary = main.call("_first_table_runtime_content_snapshot", 0)
-	var own_project_shares: Array = project_content.get("own_project_shares", []) if project_content.get("own_project_shares", []) is Array else []
+	var facility_content: Dictionary = main.call("_first_table_runtime_content_snapshot", 0)
+	var owned_facilities: Array = facility_content.get("owned_facilities", []) if facility_content.get("owned_facilities", []) is Array else []
 	_expect(bool(progress_after_play.get("has_played_card", false)), "first ten-minute path marks the real development card play")
-	_expect(project_resolved and bool(project_content.get("city_present", false)) and not own_project_shares.is_empty(), "first ten-minute path creates a real product project and the current player's private share")
-	_expect(str(main.call("_first_run_coach_stage", progress_after_play)) == "check_economy", "first_table reaches economy review only after city-development resolution")
+	_expect(facility_resolved and bool(facility_content.get("city_present", false)) and not owned_facilities.is_empty(), "first ten-minute path creates a real public facility owned by the local player")
+	_expect(str(main.call("_first_run_coach_stage", progress_after_play)) == "check_economy", "first_table reaches economy review only after facility resolution")
 	if market_controller != null:
 		market_controller.call("market_tick")
 	if main.has_method("_settle_city_cashflow_seconds"):
@@ -209,18 +355,28 @@ func _check_first_ten_minute_action_chain() -> void:
 	var economy_title := main.find_child("MenuTitleLabel", true, false) as Label
 	_expect(bool(progress_after_economy.get("has_checked_economy", false)), "first ten-minute path records economy overview inspection")
 	_expect(economy_title != null and economy_title.text == "经济总览", "first ten-minute path opens the economy overview dashboard")
-	project_content = main.call("_first_table_runtime_content_snapshot", 0)
-	_expect(int(project_content.get("gdp_per_minute", 0)) > 0 or int(project_content.get("cashflow_paid_total", 0)) > 0, "first ten-minute project produces positive GDP or settled cashflow")
-	_expect(str(main.call("_first_run_coach_stage", progress_after_economy)) == "buy_followup", "first ten-minute path moves from first project income to a second low-barrier business card")
+	facility_content = main.call("_first_table_runtime_content_snapshot", 0)
+	_expect(facility_content.has("gdp_per_minute") and facility_content.has("cashflow_paid_total") and int(facility_content.get("gdp_per_minute", -1)) >= 0 and int(facility_content.get("cashflow_paid_total", -1)) >= 0, "first ten-minute economic review reports current GDP and cashflow even when the first random facility has not produced income yet")
+	_expect(str(main.call("_first_run_coach_stage", progress_after_economy)) == "buy_followup", "first ten-minute path moves from first facility feedback to a second current-rack purchase")
 	if main.has_method("_close_menu"):
 		main.call("_close_menu")
 	await _wait_frames(4)
 	var followup_purchase_before := _local_card_purchase_count(main)
-	_expect(bool(main.call("_activate_first_run_coach_action", "coach_buy_followup_card")), "first ten-minute path can buy the real 城市融资1 follow-up card")
+	var followup_purchase_requested := bool(main.call("_activate_first_run_coach_action", "coach_buy_card"))
+	_expect(followup_purchase_requested, "first ten-minute path can buy a second currently public regional listing")
+	if not followup_purchase_requested:
+		_stage_checkpoint("followup_coach_buy_card_rejected")
+		root.remove_child(main)
+		main.queue_free()
+		await _wait_frames(1)
+		return
 	await _wait_for_local_card_purchase(main, followup_purchase_before)
-	_expect(int(main.call("_first_table_followup_hand_slot", 0)) >= 0, "first ten-minute path keeps 城市融资1 actionable after project creation")
-	_expect(bool(main.call("_activate_first_run_coach_action", "coach_play_followup_card")), "first ten-minute path can submit the follow-up business card")
-	_expect(await _wait_for_scenario_signal(main, "followup_card_played"), "first ten-minute path records the real follow-up card on the public resolution flow")
+	_stage_checkpoint("followup_purchase_wait_complete")
+	_expect(await _wait_for_scenario_signal(main, "followup_card_bought"), "first ten-minute path records a successful local-human second purchase without checking a fixed card name")
+	_expect(int(main.call("_first_actionable_hand_slot", 0)) >= 0, "first ten-minute path keeps the newly bought current-rack card actionable")
+	_expect(bool(main.call("_activate_first_run_coach_action", "coach_play_card")), "first ten-minute path can submit the second current-rack card")
+	_expect(await _wait_for_scenario_signal(main, "followup_card_played"), "first ten-minute path records the successful second local-human queue submission")
+	_stage_checkpoint("followup_play_signal_wait_complete")
 	_expect(bool(main.call("_activate_first_run_coach_action", "coach_inspect_track")), "first ten-minute path can inspect the public card track after both real card submissions")
 	await _wait_frames(8)
 	var progress_after_track: Dictionary = main.call("_first_run_coach_progress", 0)
@@ -250,7 +406,7 @@ func _check_first_ten_minute_action_chain() -> void:
 	await _wait_frames(1)
 
 
-func _check_first_run_cta_forgives_missing_region() -> void:
+func _check_first_run_open_rack_recovery() -> void:
 	root.size = Vector2i(1600, 960)
 	var main := await _instantiate_main()
 	if main == null:
@@ -267,33 +423,96 @@ func _check_first_run_cta_forgives_missing_region() -> void:
 	var open_player := int(main.get("district_supply_open_player"))
 	_expect(selected >= 0 and open_district == selected and open_player == 0, "first-run rack CTA lands on the selected recommended region for the local player selected=%d open=%d player=%d" % [selected, open_district, open_player])
 	_expect_first_run_focus_pulse(main, "district_supply", "牌架", "first-run rack CTA enters a strong focus state on the opened card rack")
-	var snapshot_variant: Variant = main.call("_runtime_table_snapshot") if main.has_method("_runtime_table_snapshot") else {}
-	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
-	var coach: Dictionary = snapshot.get("first_run_coach", {}) if snapshot.get("first_run_coach", {}) is Dictionary else {}
-	_expect(str(coach.get("focus_target", "")).strip_edges() != "", "first-run coach keeps a focus target after auto-positioning")
-	_expect(str(coach.get("stuck_state", "")).strip_edges() == "strong" and bool(coach.get("pulse_focus", false)), "first-run coach data exposes a temporary strong focus state after CTA auto-positioning")
 	await _expect_runtime_map_centered_on_district(main, open_district, "first-run rack CTA rotates the central planet to the opened region")
 	root.remove_child(main)
 	main.queue_free()
 	await _wait_frames(1)
 
+
+func _check_first_run_buy_recovery() -> void:
+	root.size = Vector2i(1600, 960)
 	var buy_main := await _instantiate_main()
 	if buy_main == null:
 		return
 	buy_main.call("_new_game")
 	await _wait_frames(12)
+	var coordinator := buy_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
+	_expect(coordinator != null, "first-run Buy CTA uses the production RegionSupply coordinator")
+	if coordinator == null:
+		root.remove_child(buy_main)
+		buy_main.queue_free()
+		await _wait_frames(1)
+		return
+	var expected_choice := _find_purchasable_region_supply_choice(buy_main, coordinator)
+	_expect(not expected_choice.is_empty(), "first-run Buy CTA has one current public rack listing with a legal quote state")
+	if expected_choice.is_empty():
+		root.remove_child(buy_main)
+		buy_main.queue_free()
+		await _wait_frames(1)
+		return
 	var wrong_district := _first_non_buyable_district(buy_main)
+	_expect(wrong_district >= 0, "first-run Buy CTA fixture contains a public rack that is currently browse-only")
 	if wrong_district >= 0:
+		var expected_district := int(expected_choice.get("district_index", -1))
+		var expected_listing: Dictionary = expected_choice.get("listing", {}) if expected_choice.get("listing", {}) is Dictionary else {}
+		var expected_region_id := str(expected_listing.get("source_region_id", ""))
+		var rack_before: Dictionary = coordinator.call(
+			"region_supply_public_rack",
+			expected_region_id
+		)
 		buy_main.set("selected_district", wrong_district)
 		buy_main.set("district_supply_open_district", -1)
 		buy_main.set("district_supply_open_player", -1)
 		var hand_before := _local_hand_size(buy_main)
-		_expect(bool(buy_main.call("_activate_first_run_coach_action", "coach_buy_card")), "first-run Buy CTA can recover from a non-buyable selected region")
+		var purchase_count_before := _local_card_purchase_count(buy_main)
+		var recovery_requested := bool(buy_main.call("_activate_first_run_coach_action", "coach_buy_card"))
+		_expect(recovery_requested, "first-run Buy CTA can recover from a browse-only selected region")
+		if not recovery_requested:
+			print(
+				"COMMERCIAL_GATE_BUY_RECOVERY_DIAG|wrong=%d|expected=%s|fallback=%d|expected_target=%s|expected_card=%s|logs=%s"
+				% [
+					wrong_district,
+					JSON.stringify(expected_choice),
+					int(buy_main.call("_first_buyable_district_for_player", 0)),
+					JSON.stringify(
+						buy_main.call(
+							"_first_run_coach_rack_purchase_target",
+							0,
+							expected_district
+						)
+					),
+					str(
+						buy_main.call(
+							"_first_buyable_district_card",
+							expected_district,
+							0
+						)
+					),
+					JSON.stringify(buy_main.get("log_lines")),
+				]
+			)
+			_stage_checkpoint("cta_buy_recovery_rejected")
+			root.remove_child(buy_main)
+			buy_main.queue_free()
+			await _wait_frames(1)
+			return
 		await _wait_frames(12)
-		var recovered_district := int(buy_main.get("district_supply_open_district"))
-		_expect(recovered_district >= 0 and bool(buy_main.call("_can_buy_card_from_district", recovered_district, 0)), "first-run Buy CTA reopens a legal sunlight-available card rack without requiring a summon")
-		await _expect_runtime_map_centered_on_district(buy_main, recovered_district, "first-run Buy CTA rotates the central planet to the recovered legal rack")
-		_expect_first_run_focus_pulse(buy_main, "district_supply", "牌架", "first-run Buy CTA pulses the recovered legal card rack")
+		var selected_after := int(buy_main.get("selected_district"))
+		var rack_after: Dictionary = coordinator.call("region_supply_public_rack", expected_region_id)
+		_expect(
+			selected_after == expected_district
+				and _local_card_purchase_count(buy_main) == purchase_count_before + 1,
+			"first-run Buy CTA rotates to a legal public listing and completes one production purchase",
+		)
+		_expect(
+			_changed_region_supply_slot_count(
+				rack_before,
+				rack_after
+			) == 1,
+			"first-run Buy CTA consumes and refills only the selected public RegionSupply slot",
+		)
+		await _expect_runtime_map_centered_on_district(buy_main, expected_district, "first-run Buy CTA rotates the central planet to the purchased listing")
+		_expect_first_run_focus_pulse(buy_main, "player_hand", "手牌", "first-run Buy CTA pulses the resulting hand")
 		_expect(_local_hand_size(buy_main) >= hand_before, "first-run Buy CTA does not lose local hand cards while recovering from the wrong region")
 	root.remove_child(buy_main)
 	buy_main.queue_free()
@@ -315,13 +534,29 @@ func _expect_first_run_focus_pulse(main: Node, expected_target: String, label_hi
 
 
 func _instantiate_main() -> Node:
+	var main_script := load(MAIN_SCRIPT_PATH) as Script
+	_expect(main_script != null and main_script.can_instantiate(), "main.gd and its current dependencies compile for the commercial gate")
+	if main_script == null or not main_script.can_instantiate():
+		return null
 	var packed := load(MAIN_SCENE_PATH) as PackedScene
 	_expect(packed != null, "main.tscn loads for commercial playability gate")
 	if packed == null:
 		return null
 	var main := packed.instantiate()
+	_expect(main.get_script() != null and main.has_method("_new_game"), "main.tscn instantiates the real scripted Main runtime")
+	if main.get_script() == null or not main.has_method("_new_game"):
+		main.free()
+		return null
+	var save := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController/GameSaveRuntimeCoordinator")
+	_expect(save != null and bool(save.call("set_qa_default_save_path_override", QA_SAVE_PATH)), "commercial gate installs an isolated QA run-save path before Main enters the tree")
+	var rng_variant: Variant = main.get("rng")
+	if rng_variant is RandomNumberGenerator:
+		(rng_variant as RandomNumberGenerator).seed = FIXED_SEED
 	root.add_child(main)
 	await _wait_frames(8)
+	rng_variant = main.get("rng")
+	if rng_variant is RandomNumberGenerator:
+		(rng_variant as RandomNumberGenerator).seed = FIXED_SEED
 	main.set("campaign_completed_chapter_ids", [])
 	main.set("selected_campaign_chapter_id", "")
 	main.set("active_campaign_chapter_id", "")
@@ -330,12 +565,104 @@ func _instantiate_main() -> Node:
 
 func _first_non_buyable_district(main: Node) -> int:
 	var districts: Array = main.get("districts") as Array
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
+	if coordinator == null:
+		return -1
 	for i in range(districts.size()):
 		if bool((districts[i] as Dictionary).get("destroyed", false)):
 			continue
-		if not bool(main.call("_can_buy_card_from_district", i, 0)):
+		var region_id := str((districts[i] as Dictionary).get("region_id", "region.%03d" % i))
+		var rack: Dictionary = coordinator.call("region_supply_public_rack", region_id)
+		if _region_supply_slots(rack).is_empty():
+			continue
+		var availability: Dictionary = coordinator.call("card_market_listing_availability", i)
+		if not bool(availability.get("purchasable", false)):
 			return i
 	return -1
+
+
+func _find_purchasable_region_supply_choice(main: Node, coordinator: Node) -> Dictionary:
+	var players: Array = main.get("players") as Array
+	if players.is_empty() or not (players[0] is Dictionary):
+		return {}
+	var actor_id := _actor_id(players, 0)
+	var player: Dictionary = coordinator.call("v06_card_player_snapshot", actor_id)
+	var available_cash := int(player.get("cash", (players[0] as Dictionary).get("cash", 0)))
+	var districts: Array = main.get("districts") as Array
+	for district_index in range(districts.size()):
+		if not (districts[district_index] is Dictionary) or bool((districts[district_index] as Dictionary).get("destroyed", false)):
+			continue
+		var availability: Dictionary = coordinator.call("card_market_listing_availability", district_index)
+		if not bool(availability.get("purchasable", false)):
+			continue
+		var region_id := str((districts[district_index] as Dictionary).get("region_id", "region.%03d" % district_index))
+		var rack: Dictionary = coordinator.call("region_supply_public_rack", region_id)
+		for listing_variant in _region_supply_slots(rack):
+			if not (listing_variant is Dictionary):
+				continue
+			var listing: Dictionary = listing_variant
+			var card_id := str(listing.get("card_id", ""))
+			var preview_variant: Variant = main.call("_card_market_preview", card_id, district_index)
+			var preview: Dictionary = preview_variant if preview_variant is Dictionary else {}
+			if bool(preview.get("purchasable", preview.get("eligible", false))) \
+					and int(preview.get("final_price", -1)) >= 0 \
+					and int(preview.get("final_price", -1)) <= available_cash:
+				return {
+					"actor_id": actor_id,
+					"district_index": district_index,
+					"listing": listing.duplicate(true),
+				}
+	return {}
+
+
+func _region_supply_slots(snapshot: Dictionary) -> Array:
+	var regions: Array = snapshot.get("regions", []) if snapshot.get("regions", []) is Array else []
+	if regions.is_empty() or not (regions[0] is Dictionary):
+		return []
+	return ((regions[0] as Dictionary).get("slots", []) as Array).duplicate(true) \
+		if (regions[0] as Dictionary).get("slots", []) is Array else []
+
+
+func _region_supply_slot(snapshot: Dictionary, slot_index: int) -> Dictionary:
+	var slots := _region_supply_slots(snapshot)
+	if slot_index < 0 or slot_index >= slots.size() or not (slots[slot_index] is Dictionary):
+		return {}
+	return (slots[slot_index] as Dictionary).duplicate(true)
+
+
+func _changed_region_supply_slot_count(
+	before_snapshot: Dictionary,
+	after_snapshot: Dictionary
+) -> int:
+	var before_slots := _region_supply_slots(before_snapshot)
+	var after_slots := _region_supply_slots(after_snapshot)
+	if before_slots.size() != after_slots.size():
+		return maxi(before_slots.size(), after_slots.size())
+	var changed := 0
+	for slot_index in range(before_slots.size()):
+		var before_item := (
+			str((before_slots[slot_index] as Dictionary).get("item_id", ""))
+			if before_slots[slot_index] is Dictionary
+			else ""
+		)
+		var after_item := (
+			str((after_slots[slot_index] as Dictionary).get("item_id", ""))
+			if after_slots[slot_index] is Dictionary
+			else ""
+		)
+		if before_item != after_item:
+			changed += 1
+	return changed
+
+
+func _is_stable_v06_card_id(card_id: String) -> bool:
+	if card_id.is_empty():
+		return false
+	var allowed := "abcdefghijklmnopqrstuvwxyz0123456789._-"
+	for index in range(card_id.length()):
+		if not allowed.contains(card_id.substr(index, 1)):
+			return false
+	return true
 
 
 func _local_hand_size(main: Node) -> int:
@@ -356,20 +683,24 @@ func _wait_for_local_card_purchase(main: Node, count_before: int, max_frames: in
 	for _frame_index in range(maxi(1, max_frames)):
 		if _local_card_purchase_count(main) > count_before:
 			return true
+		if _frame_index > 0 and _frame_index % 60 == 0:
+			_stage_wait_heartbeat("local_card_purchase", _frame_index, max_frames)
 		await process_frame
 	return false
 
 
-func _wait_for_first_table_project(main: Node, max_frames: int = 480) -> bool:
+func _wait_for_first_table_facility(main: Node, max_frames: int = 480) -> bool:
 	for _frame_index in range(maxi(1, max_frames)):
 		var content_variant: Variant = main.call("_first_table_runtime_content_snapshot", 0)
 		var content: Dictionary = content_variant if content_variant is Dictionary else {}
-		var own_shares: Array = content.get("own_project_shares", []) if content.get("own_project_shares", []) is Array else []
+		var owned_facilities: Array = content.get("owned_facilities", []) if content.get("owned_facilities", []) is Array else []
 		var signals: Dictionary = _runtime_scenario_state(main).get("completed_signals", {})
-		if bool(content.get("city_present", false)) and not own_shares.is_empty() and bool(signals.get("city_development_resolved", false)):
+		if bool(content.get("city_present", false)) and not owned_facilities.is_empty() and bool(signals.get("public_facility_committed", false)):
 			return true
 		if main.has_method("_update_card_resolution_queue"):
 			main.call("_update_card_resolution_queue", 0.5)
+		if _frame_index > 0 and _frame_index % 60 == 0:
+			_stage_wait_heartbeat("first_table_facility", _frame_index, max_frames)
 		await process_frame
 	return false
 
@@ -379,6 +710,8 @@ func _wait_for_scenario_signal(main: Node, signal_id: String, max_frames: int = 
 		var signals: Dictionary = _runtime_scenario_state(main).get("completed_signals", {})
 		if bool(signals.get(signal_id, false)):
 			return true
+		if _frame_index > 0 and _frame_index % 60 == 0:
+			_stage_wait_heartbeat("scenario_signal:%s" % signal_id, _frame_index, max_frames)
 		await process_frame
 	return false
 
@@ -389,6 +722,8 @@ func _drain_card_resolution(main: Node, frame_count: int = 24) -> void:
 			return
 		if main.has_method("_update_card_resolution_queue"):
 			main.call("_update_card_resolution_queue", 0.5)
+		if _frame_index > 0 and _frame_index % 60 == 0:
+			_stage_wait_heartbeat("card_resolution_drain", _frame_index, frame_count)
 		await process_frame
 
 
@@ -633,6 +968,24 @@ func _runtime_scenario_state(main: Node) -> Dictionary:
 func _wait_frames(count: int) -> void:
 	for _i in range(maxi(1, count)):
 		await process_frame
+
+
+func _stage_checkpoint(checkpoint_id: String) -> void:
+	print("COMMERCIAL_GATE_CHECKPOINT|stage=%s|checkpoint=%s|elapsed_ms=%d" % [
+		_active_stage_id,
+		checkpoint_id,
+		Time.get_ticks_msec() - _active_stage_started_msec,
+	])
+
+
+func _stage_wait_heartbeat(wait_id: String, current_frame: int, max_frames: int) -> void:
+	print("COMMERCIAL_GATE_WAIT|stage=%s|wait=%s|frame=%d|max_frames=%d|elapsed_ms=%d" % [
+		_active_stage_id,
+		wait_id,
+		current_frame,
+		max_frames,
+		Time.get_ticks_msec() - _active_stage_started_msec,
+	])
 
 
 func _expect(condition: bool, message: String) -> void:

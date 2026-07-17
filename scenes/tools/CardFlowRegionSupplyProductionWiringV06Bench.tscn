@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/card_flow_region_supply_production_wiring_v06_bench.gd" id="1_bench"]
+
+[node name="CardFlowRegionSupplyProductionWiringV06Bench" type="Node"]
+script = ExtResource("1_bench")
+editor_description = "Production-scene wiring gate for the single RegionSupply source port and CommodityCardInventory/CardFlow purchase facade. Uses no player save path."

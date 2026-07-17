@@ -4,9 +4,4 @@
 
 [node name="CommodityFlowRuntimeController" type="Node"]
 script = ExtResource("1_controller")
-local_production_absorption_units_per_minute = 1
-local_market_turnover_units_per_minute = 1
-local_production_absorption_rate_cap_basis_points = 1000
-local_production_baseline_value_basis_points = 1000
-local_market_baseline_value_basis_points = 500
-editor_description = "Unique v0.6 owner for remote-first commodity flow, capped local production/market baselines, backpressure, and exact-once Sale Receipts."
+editor_description = "Unique v0.6 owner for market backlog, ambient regional consumption, warehouse inventory, waste accounting, and exact-once Sale Receipts."

@@ -2,7 +2,9 @@
 extends Node
 class_name CityDevelopmentWorldBridge
 
-const PROJECT_BRIDGE := preload("res://scripts/economy/city_product_project_bridge.gd")
+# Historical v0.5 fixture only. Production v0.6 has no city-project share bridge.
+
+const PROJECT_BRIDGE := preload("res://tests/legacy_v05/economy/city_product_project_bridge_v05.gd")
 
 var _world: Node
 var _network_controller: Node
@@ -293,9 +295,6 @@ func apply_post_commit_intents(finalized: Dictionary) -> Dictionary:
 		if callout_variant is Dictionary and _world.has_method("_add_action_callout"):
 			var callout: Dictionary = callout_variant
 			_world.call("_add_action_callout", str(callout.get("title", "")), str(callout.get("badge", "")), str(callout.get("detail", "")), Color.from_string(str(callout.get("accent", "#67e8f9")), Color("#67e8f9")), _point(callout.get("position", {})))
-	var district_index := int(finalized.get("district_index", -1))
-	if bool(intents.get("first_table_followup", false)) and str(_world.call("_active_runtime_scenario_id")) == "first_table" and int(finalized.get("player_index", -1)) == int(_world.get("selected_player")) and _world.has_method("_inject_first_table_followup_card_supply"):
-		_world.call("_inject_first_table_followup_card_supply", district_index)
 	for signal_variant in intents.get("scenario_signals", []):
 		if signal_variant is Dictionary and _world.has_method("_complete_scenario_signal"):
 			var signal_intent: Dictionary = signal_variant

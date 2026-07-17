@@ -40,7 +40,7 @@ The current contract cannot attribute an observation to a particular AI. It only
 
 `ObservableStrategyTelemetryService` reduces verified receipts into six fixed anonymous totals:
 
-1. `city_growth`
+1. `city_growth`（由 `public_facility_committed` 等公开设施结果驱动）
 2. `finance_speculation`
 3. `direct_interaction`
 4. `monster_pressure`

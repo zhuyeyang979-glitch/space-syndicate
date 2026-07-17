@@ -111,6 +111,7 @@ const ROUTE_NETWORK_RUNTIME_CONTROLLER := "res://scenes/runtime/RouteNetworkRunt
 const ROUTE_NETWORK_WORLD_BRIDGE := "res://scenes/runtime/RouteNetworkWorldBridge.tscn"
 const COMMODITY_FLOW_RUNTIME_CONTROLLER := "res://scenes/runtime/CommodityFlowRuntimeController.tscn"
 const COMMODITY_FLOW_WORLD_BRIDGE := "res://scenes/runtime/CommodityFlowWorldBridge.tscn"
+const REGION_SUPPLY_RUNTIME_CONTROLLER := "res://scenes/runtime/RegionSupplyRuntimeController.tscn"
 const PLAYER_MANA_RUNTIME_CONTROLLER := "res://scenes/runtime/PlayerManaRuntimeController.tscn"
 const COMMODITY_CARD_INVENTORY_RUNTIME_CONTROLLER := "res://scenes/runtime/CommodityCardInventoryRuntimeController.tscn"
 const PLANET_MAP_VIEW_SCENE := "res://scenes/ui/PlanetMapView.tscn"
@@ -296,6 +297,7 @@ func _check_static_composition(main: Control) -> void:
 	var route_network_bridge := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RouteNetworkWorldBridge")
 	var commodity_flow := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CommodityFlowRuntimeController")
 	var commodity_flow_bridge := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CommodityFlowWorldBridge")
+	var region_supply := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionSupplyRuntimeController")
 	var player_mana := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/PlayerManaRuntimeController")
 	var commodity_inventory := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CommodityCardInventoryRuntimeController")
 	var production_state_adapter := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardPlayerStateProductionAdapterV06")
@@ -324,6 +326,9 @@ func _check_static_composition(main: Control) -> void:
 	var solar_camera := embedded_map.get_node_or_null("PlanetSolarCameraController") if embedded_map != null else null
 	_expect(embedded_map != null and embedded_map.scene_file_path == PLANET_MAP_VIEW_SCENE and solar_camera != null and solar_camera.scene_file_path == PLANET_SOLAR_CAMERA_CONTROLLER and solar_camera.has_method("apply_public_solar_snapshot") and solar_camera.has_method("request_return_to_sun") and not solar_camera.has_method("to_save_data") and not solar_camera.has_method("apply_save_data"), "PlanetMapView statically owns the non-saving solar camera presentation controller")
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var purchase_coordinator_source := FileAccess.get_file_as_string(
+		"res://scripts/runtime/game_runtime_coordinator.gd"
+	)
 	var map_injection_source := _function_source(main_source, "_set_map_view_data")
 	_expect(map_injection_source.contains("coordinator.solar_public_presentation_snapshot()") and map_injection_source.contains('target_view.call("set_solar_presentation_snapshot"') and map_injection_source.contains('target_view.call("set_solar_camera_motion_mode"') and not map_injection_source.contains("sun_turn_at") and not map_injection_source.contains("CardMarket"), "Main injects only Coordinator-owned public solar presentation and local motion preference into each runtime map")
 	_expect(balance_diagnostics != null and balance_diagnostics.scene_file_path == GAMEPLAY_BALANCE_DIAGNOSTICS_SERVICE and balance_diagnostics.has_method("development_routes") and balance_diagnostics.has_method("card_budget_report") and balance_diagnostics.has_method("build_balance_report") and balance_diagnostics.has_method("build_developer_panel_snapshot"), "GameRuntimeCoordinator owns the read-only GameplayBalanceDiagnosticsRuntimeService scene")
@@ -361,6 +366,7 @@ func _check_static_composition(main: Control) -> void:
 	_expect(route_network_bridge != null and route_network_bridge.scene_file_path == ROUTE_NETWORK_WORLD_BRIDGE and route_network_bridge.has_method("bind_world") and route_network_bridge.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the non-owning RouteNetworkWorldBridge")
 	_expect(commodity_flow != null and commodity_flow.scene_file_path == COMMODITY_FLOW_RUNTIME_CONTROLLER and commodity_flow.has_method("install_commodity") and commodity_flow.has_method("advance_world") and commodity_flow.has_method("card_effect_candidates_snapshot") and commodity_flow.has_method("to_save_data"), "GameRuntimeCoordinator owns the authoritative v0.6 CommodityFlowRuntimeController")
 	_expect(commodity_flow_bridge != null and commodity_flow_bridge.scene_file_path == COMMODITY_FLOW_WORLD_BRIDGE and commodity_flow_bridge.has_method("bind_world") and commodity_flow_bridge.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the non-owning CommodityFlowWorldBridge")
+	_expect(region_supply != null and region_supply.scene_file_path == REGION_SUPPLY_RUNTIME_CONTROLLER and region_supply.has_method("configure") and region_supply.has_method("public_rack_snapshot") and region_supply.has_method("prepare_slot_refill") and region_supply.has_method("commit_slot_refill") and region_supply.has_method("rollback_slot_refill") and region_supply.has_method("finalize_slot_refill") and region_supply.has_method("to_save_data") and region_supply.has_method("apply_save_data"), "GameRuntimeCoordinator owns the authoritative deterministic RegionSupplyRuntimeController")
 	_expect(player_mana != null and player_mana.scene_file_path == PLAYER_MANA_RUNTIME_CONTROLLER and player_mana.has_method("advance") and player_mana.has_method("commit_reservation") and player_mana.has_method("to_save_data"), "GameRuntimeCoordinator owns the single v0.6 six-color asset owner")
 	_expect(commodity_inventory != null and commodity_inventory.scene_file_path == COMMODITY_CARD_INVENTORY_RUNTIME_CONTROLLER and commodity_inventory.has_method("configure_market") and commodity_inventory.has_method("purchase_market_card") and commodity_inventory.has_method("play_core_card") and commodity_inventory.has_method("player_snapshot"), "GameRuntimeCoordinator owns the single v0.6 card inventory transaction authority")
 	_expect(production_state_adapter != null and production_state_adapter.has_method("bind_world") and production_state_adapter.has_method("actor_player_indices") and production_state_adapter.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the only v0.6 production player-state port")
@@ -375,7 +381,28 @@ func _check_static_composition(main: Control) -> void:
 	var buy_start := main_source.find("func _buy_card_for_player_from_district(")
 	var buy_end := main_source.find("\nfunc ", buy_start + 5)
 	var buy_source := main_source.substr(buy_start, buy_end - buy_start) if buy_start >= 0 and buy_end > buy_start else ""
-	_expect(main_source.contains("func _buy_card_for_player_from_district(") and main_source.contains("func _acquire_card_for_player(") and main_source.contains("func _acquire_inventory_skill_for_player(") and buy_source.contains("plan_district_purchase_settlement") and buy_source.contains("commit_district_purchase_settlement") and main_source.contains("plan_card_inventory_receive") and main_source.contains("commit_card_inventory_receive") and not buy_source.contains("player[\"cash\"] =") and not buy_source.contains("_record_player_card_spend(") and not main_source.contains("func _record_player_card_purchase(") and not main_source.contains("func _discard_card_from_player("), "Sprint 31 keeps thin purchase and receive adapters while later interaction slot mutations route through scene services")
+	_expect(
+		main_source.contains("func _buy_card_for_player_from_district(")
+		and main_source.contains("func _district_supply_listing(")
+		and main_source.contains("func _district_supply_card_ids(")
+		and main_source.contains("func _district_supply_rack_revision(")
+		and buy_source.contains("purchase_region_supply_card")
+		and buy_source.contains("v06_card_player_snapshot")
+		and buy_source.contains("_district_supply_listing")
+		and not buy_source.contains("plan_district_purchase_settlement")
+		and not buy_source.contains("commit_district_purchase_with_region_supply")
+		and not main_source.contains("func _district_purchase_settlement_request(")
+		and not purchase_coordinator_source.contains("func commit_district_purchase_with_region_supply(")
+		and not buy_source.contains("player[\"cash\"] =")
+		and not buy_source.contains("_record_player_card_spend(")
+		and not main_source.contains("func _assign_district_card_choices(")
+		and not main_source.contains("func _normalize_card_supply_state(")
+		and not main_source.contains("func _ensure_fixed_monster_card_supply(")
+		and not main_source.contains("func _inject_first_table_followup_card_supply(")
+		and not main_source.contains("district[\"card_choices\"]")
+		and not main_source.contains("district[\"card_sources\"]"),
+		"Main consumes the scene-owned RegionSupply rack and purchase refill lifecycle without restoring district shadow supply or guarantee-slot owners"
+	)
 	_expect(main_source.contains("func _apply_player_hand_disrupt(") and main_source.contains("func _apply_player_hand_steal(") and main_source.contains("func _resolve_player_hand_interaction(") and not main_source.contains("func _take_private_hand_card_from_player(") and not main_source.contains("func _lock_private_hand_card_for_player(") and not main_source.contains("func _transfer_private_hand_card_between_players("), "Sprint 33 keeps compatibility entry points while deleting the three legacy interaction mutation helpers")
 	var disrupt_source := _function_source(main_source, "_apply_player_hand_disrupt")
 	var steal_source := _function_source(main_source, "_apply_player_hand_steal")
@@ -424,6 +451,57 @@ func _check_static_composition(main: Control) -> void:
 	_expect(not main_source.contains("func _lowest_level_city_product_index(") and not main_source.contains("func _product_futures_balance_") and not main_source.contains("PRODUCT_FUTURES_PAYOUT_UNIT") and not execution_service_source.contains("CardEconomyProductRouteFormulaRuntimeService"), "retired formula ownership stays absent from main and the Execution Service remains formula-agnostic")
 	_expect(scenario != null and scenario.scene_file_path == "res://scenes/runtime/ScenarioRuntimeController.tscn" and scenario.has_method("start_scenario") and scenario.has_method("complete_signal") and scenario.has_method("viewer_action_log"), "GameRuntimeCoordinator owns the editable ScenarioRuntimeController scene")
 	_expect(first_table_authored != null and first_table_authored.scene_file_path == "res://scenes/runtime/FirstTableAuthoredRuntimeService.tscn" and first_table_authored.has_method("resolve_content_catalog") and first_table_authored.has_method("compose_runtime_content") and first_table_authored.has_method("contextualize_phase") and first_table_authored.has_method("pacing_profile") and first_table_authored.has_method("evaluate_pacing") and first_table_authored.has_method("supply_plan"), "GameRuntimeCoordinator owns the editable FirstTableAuthoredRuntimeService scene and its authored pacing API")
+	var first_table_service_source := FileAccess.get_file_as_string("res://scripts/runtime/first_table_authored_runtime_service.gd")
+	var first_table_content_source := _function_source(main_source, "_first_table_runtime_content_snapshot")
+	var first_table_buyable_source := _function_source(main_source, "_first_buyable_district_card")
+	var first_table_purchase_target_source := _function_source(main_source, "_first_run_coach_rack_purchase_target")
+	var retired_first_table_symbols := [
+		"FIRST_RUN_TEACHING_CARD_NAME",
+		"FIRST_RUN_TEACHING_CARD_SOURCE",
+		"FIRST_TABLE_FOLLOWUP_CARD_SOURCE",
+		"_first_table_resolved_content_catalog",
+		"_first_table_followup_card_name",
+		"_first_table_teaching_product_for_district",
+		"_first_table_starter_monster_name",
+		"_first_actionable_teachable_hand_slot",
+		"_first_table_accessible_land_district",
+		"_first_table_followup_hand_slot",
+		"_buy_first_table_followup_card",
+		"_first_teachable_buyable_district_card",
+		"_first_run_teaching_card_name",
+		"_ensure_first_run_teaching_card_supply",
+		"_first_run_card_is_teachable_after_purchase",
+		"_first_run_skill_has_direct_teaching_profile",
+		"_first_run_skill_is_direct_teachable",
+		"_ensure_first_run_teachable_hand_card",
+		"_first_teachable_buyable_district_for_player",
+		"coach_buy_followup_card",
+		"coach_play_followup_card",
+	]
+	var first_table_legacy_absent := true
+	for retired_symbol in retired_first_table_symbols:
+		first_table_legacy_absent = first_table_legacy_absent and not main_source.contains(str(retired_symbol))
+	_expect(
+		first_table_legacy_absent
+		and first_table_content_source.contains("region_supply_public_rack")
+		and first_table_content_source.contains("public_region_supply_rack_snapshot")
+		and first_table_buyable_source.contains("_first_run_coach_rack_purchase_target")
+		and first_table_purchase_target_source.contains("followup_rack_recommendation")
+		and first_table_purchase_target_source.contains("region_supply_public_rack")
+		and first_table_service_source.contains('snapshot.get("regions", [])')
+		and first_table_service_source.contains('region.get("slots", [])')
+		and first_table_service_source.contains("PUBLIC_RACK_FORBIDDEN_KEYS"),
+		"First-table content reads the native public RegionSupply rack and physically removes the fixed-card teaching chain"
+	)
+	_expect(
+		buy_source.contains('first_table_phase_before_purchase == "buy_followup"')
+		and queue_submit_source.contains('first_table_phase_before_play == "play_followup"')
+		and buy_source.find("first_table_phase_before_purchase =") < buy_source.find('_complete_scenario_signal("card_bought"')
+		and queue_submit_source.find("first_table_phase_before_play =") < queue_submit_source.find('_complete_scenario_signal("card_played"')
+		and not buy_source.contains("card_family_id")
+		and not queue_submit_source.contains("_first_table_followup_card_name"),
+		"First-table follow-up signals depend on the local-human phase before successful purchase/queue advancement, never on a fixed card name"
+	)
 	_expect(codex_navigation != null and codex_navigation.scene_file_path == "res://scenes/runtime/CodexNavigationRuntimeController.tscn" and codex_navigation.has_method("navigation_snapshot") and codex_navigation.has_method("to_legacy_save_snapshot") and codex_navigation.has_method("apply_legacy_save_snapshot"), "GameRuntimeCoordinator owns the editable CodexNavigationRuntimeController scene")
 	_expect(codex_public_snapshot != null and codex_public_snapshot.scene_file_path == "res://scenes/runtime/CodexPublicSnapshotService.tscn" and codex_public_snapshot.has_method("compose_role") and codex_public_snapshot.has_method("compose_region"), "GameRuntimeCoordinator owns the editable CodexPublicSnapshotService scene")
 	_expect(monster_codex_public_snapshot != null and monster_codex_public_snapshot.scene_file_path == "res://scenes/runtime/MonsterCodexPublicSnapshotService.tscn" and monster_codex_public_snapshot.has_method("compose"), "GameRuntimeCoordinator owns the editable MonsterCodexPublicSnapshotService scene")
@@ -481,7 +559,7 @@ func _check_runtime_snapshot(main: Control, phase: String) -> void:
 	var first_table_snapshot: Dictionary = coordinator_snapshot.get("first_table_authored_runtime", {}) if coordinator_snapshot.get("first_table_authored_runtime", {}) is Dictionary else {}
 	var card_presentation_snapshot: Dictionary = coordinator_snapshot.get("card_presentation", {}) if coordinator_snapshot.get("card_presentation", {}) is Dictionary else {}
 	var table_viewmodel_snapshot: Dictionary = coordinator_snapshot.get("game_table_viewmodel", {}) if coordinator_snapshot.get("game_table_viewmodel", {}) is Dictionary else {}
-	_expect(scheduler_snapshot.get("priority_order", []) == ["monster_wager", "counter_response", "contract_response", "other_choice"], "%s configures forced-decision priority from RulesetRuntimeBridge" % phase)
+	_expect(scheduler_snapshot.get("priority_order", []) == ["monster_wager", "counter_response", "contract_response", "other_choice", "public_bid"], "%s preserves RulesetRuntimeBridge priorities and appends public_bid as the lowest forced-decision priority" % phase)
 	_expect(bool(session_snapshot.get("session_ready", false)) and bool(session_snapshot.get("session_authoritative", false)), "%s configures scene-owned session/save authority" % phase)
 	_expect(bool(purchase_snapshot.get("controller_ready", false)) and bool(purchase_snapshot.get("controller_authoritative", false)) and bool(purchase_snapshot.get("session_authority_only", false)) and not bool(purchase_snapshot.get("pricing_authority", true)) and not bool(purchase_snapshot.get("access_authority", true)) and bool(purchase_snapshot.get("legacy_monster_gate_retired", false)), "%s configures DistrictPurchase as session-only while CardMarketPricing owns eligibility and quotes" % phase)
 	_expect(bool(card_inventory_snapshot.get("service_ready", false)) and bool(card_inventory_snapshot.get("service_authoritative", false)) and int(card_inventory_snapshot.get("ordinary_hand_limit", 0)) == 5 and int(card_inventory_snapshot.get("maximum_card_rank", 0)) == 4 and not bool(card_inventory_snapshot.get("purchase_cash_authority", true)) and not bool(card_inventory_snapshot.get("ledger_authority", true)) and not bool(card_inventory_snapshot.get("legacy_inventory_fallback_used", true)), "%s configures CardInventoryRuntimeService as the v0.4 slot-mutation authority without moving cash or ledger ownership" % phase)

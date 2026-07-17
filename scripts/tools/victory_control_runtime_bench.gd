@@ -520,7 +520,7 @@ func _candidate(candidates: Array, player_index: int) -> Dictionary:
 func _share_for(control: Dictionary, player_index: int) -> int:
 	for row_variant in control.get("player_results", []):
 		if row_variant is Dictionary and int((row_variant as Dictionary).get("player_index", -1)) == player_index:
-			return int((row_variant as Dictionary).get("share_basis_points", -1))
+			return int((row_variant as Dictionary).get("commodity_gdp_share_basis_points", -1))
 	return -1
 
 

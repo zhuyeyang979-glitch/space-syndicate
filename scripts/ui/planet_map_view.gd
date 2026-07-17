@@ -28,6 +28,7 @@ const PlanetMapRenderModelScript := preload("res://scripts/ui/map/planet_map_ren
 @onready var focus_range_overlay: Control = get_node_or_null("SelectionLayer/PlanetFocusRangeOverlay") as Control
 @onready var scale_hint: Control = get_node_or_null("DebugOverlayLayer/PlanetMapScaleHint") as Control
 @onready var solar_camera_controller: Control = get_node_or_null("PlanetSolarCameraController") as Control
+@onready var optional_route_presentation_service: Node = get_node_or_null("%OptionalRoutePresentationRuntimeService")
 
 const EDITABLE_LAYER_NAMES := [
 	"BackdropLayer",
@@ -60,10 +61,21 @@ var _sceneized_sync_queued := false
 var _sceneized_dynamic_sync_queued := false
 var _sceneized_projection_signature := ""
 var _render_model: RefCounted = PlanetMapRenderModelScript.new()
+var _optional_route_public_snapshot: Dictionary = {
+	"available": false,
+	"public_revision": -1,
+	"selected_commodity_id": "",
+	"rows": [],
+}
+var _optional_route_world_effective_seconds := -1.0
+var _optional_route_source_explicit := false
+var _optional_route_geometry_by_route_id: Dictionary = {}
+var _last_legacy_trade_product := ""
 
 
 func _ready() -> void:
 	super._ready()
+	add_to_group("optional_route_presentation_views")
 	_configure_editable_layers()
 	if solar_camera_controller != null and solar_camera_controller.has_method("bind_map_view"):
 		solar_camera_controller.call("bind_map_view", self)
@@ -118,6 +130,9 @@ func set_map(
 	new_trade_product: String = "",
 	new_visual_layer_focus: String = "all"
 ) -> void:
+	_last_legacy_trade_product = new_trade_product
+	var visible_route_markers := _compose_optional_route_markers(new_districts)
+	var visible_trade_product := _optional_route_selected_product()
 	var previous_map_signature := _map_signature
 	var previous_visual_signature := _visual_payload_signature
 	var previous_structural_signature := _sceneized_structural_payload_signature(
@@ -139,8 +154,8 @@ func set_map(
 		event_effects,
 		monster_markers,
 		new_city_markers,
-		new_trade_route_markers,
-		new_trade_product,
+		visible_route_markers,
+		visible_trade_product,
 		new_visual_layer_focus
 	)
 	if previous_map_signature == _map_signature and previous_visual_signature == _visual_payload_signature:
@@ -158,6 +173,214 @@ func set_map(
 		_queue_sceneized_sync()
 	else:
 		_queue_sceneized_dynamic_sync()
+
+
+func set_optional_route_selection(product_id: String) -> bool:
+	if optional_route_presentation_service == null:
+		return false
+	var selected := false
+	if product_id.strip_edges().is_empty():
+		if optional_route_presentation_service.has_method("hide_routes"):
+			optional_route_presentation_service.call("hide_routes")
+	else:
+		selected = bool(optional_route_presentation_service.call("select_product", product_id)) if optional_route_presentation_service.has_method("select_product") else false
+	_apply_optional_route_presentation()
+	return selected
+
+
+func hide_optional_route_presentation() -> void:
+	set_optional_route_selection("")
+
+
+func reset_optional_route_presentation_for_new_run() -> void:
+	_optional_route_public_snapshot = {
+		"available": false,
+		"public_revision": -1,
+		"selected_commodity_id": "",
+		"rows": [],
+	}
+	_optional_route_world_effective_seconds = -1.0
+	_optional_route_source_explicit = false
+	_optional_route_geometry_by_route_id = {}
+	if optional_route_presentation_service != null and optional_route_presentation_service.has_method("reset_for_new_run"):
+		optional_route_presentation_service.call("reset_for_new_run")
+	_apply_optional_route_presentation()
+
+
+func set_optional_route_public_snapshot(snapshot: Dictionary, world_effective_seconds := -1.0) -> void:
+	_optional_route_public_snapshot = snapshot.duplicate(true)
+	_optional_route_world_effective_seconds = world_effective_seconds
+	_optional_route_source_explicit = true
+	_apply_optional_route_presentation()
+
+
+func set_optional_route_public_summaries(summaries: Array, world_effective_seconds := -1.0) -> void:
+	var public_revision := 0
+	for summary_variant in summaries:
+		if summary_variant is Dictionary:
+			public_revision = maxi(public_revision, int((summary_variant as Dictionary).get("public_revision", 0)))
+	set_optional_route_public_snapshot({
+		"available": true,
+		"public_revision": public_revision,
+		"selected_commodity_id": "",
+		"rows": summaries,
+	}, world_effective_seconds)
+
+
+func clear_optional_route_public_snapshot() -> void:
+	_optional_route_public_snapshot = {
+		"available": false,
+		"public_revision": -1,
+		"selected_commodity_id": "",
+		"rows": [],
+	}
+	_optional_route_world_effective_seconds = -1.0
+	_optional_route_source_explicit = false
+	_apply_optional_route_presentation()
+
+
+func clear_optional_route_public_summaries() -> void:
+	clear_optional_route_public_snapshot()
+
+
+func set_optional_route_public_geometry(geometry_by_route_id: Dictionary) -> void:
+	_optional_route_geometry_by_route_id = geometry_by_route_id.duplicate(true)
+	_apply_optional_route_presentation()
+
+
+func optional_route_presentation_snapshot() -> Dictionary:
+	var local_state: Dictionary = {}
+	var service_debug: Dictionary = {}
+	if optional_route_presentation_service != null:
+		if optional_route_presentation_service.has_method("local_state_snapshot"):
+			local_state = optional_route_presentation_service.call("local_state_snapshot") as Dictionary
+		if optional_route_presentation_service.has_method("debug_snapshot"):
+			service_debug = optional_route_presentation_service.call("debug_snapshot") as Dictionary
+	return {
+		"local_state": local_state.duplicate(true),
+		"service": service_debug.duplicate(true),
+		"visible_route_count": trade_route_markers.size(),
+		"visible_product_id": trade_product,
+		"legacy_input_product_id": _last_legacy_trade_product,
+		"explicit_public_source": _optional_route_source_explicit,
+	}
+
+
+func _compose_optional_route_markers(district_source: Array = districts) -> Array:
+	if optional_route_presentation_service == null or not optional_route_presentation_service.has_method("compose_visible_snapshot"):
+		return []
+	var value: Variant = optional_route_presentation_service.call(
+		"compose_visible_snapshot",
+		_optional_route_public_snapshot,
+		_optional_route_world_effective_seconds
+	)
+	return _materialize_optional_route_geometry((value as Array).duplicate(true), district_source) if value is Array else []
+
+
+func _materialize_optional_route_geometry(markers: Array, district_source: Array = districts) -> Array:
+	var result: Array = []
+	for marker_variant in markers:
+		if not (marker_variant is Dictionary):
+			continue
+		var marker := (marker_variant as Dictionary).duplicate(true)
+		var points := _route_points(marker.get("points", []))
+		if points.size() < 2:
+			var flow_kind := str(marker.get("flow_kind", ""))
+			if flow_kind == "ambient_consumption":
+				points = _ambient_region_points(
+					str(marker.get("from_region_id", "")),
+					str(marker.get("to_region_id", "")),
+					district_source
+				)
+			else:
+				var route_id := str(marker.get("route_id", ""))
+				points = _optional_route_geometry_points(
+					_optional_route_geometry_by_route_id.get(route_id, []),
+					district_source
+				)
+		if points.size() < 2:
+			continue
+		if str(marker.get("flow_kind", "")) == "ambient_consumption" and points.size() != 2:
+			continue
+		marker["points"] = points
+		result.append(marker)
+	return result
+
+
+func _optional_route_geometry_points(value: Variant, district_source: Array) -> Array[Vector2]:
+	if value is Array:
+		return _route_points(value)
+	if not (value is Dictionary):
+		return []
+	var source := value as Dictionary
+	var points: Array[Vector2] = []
+	var ordered_region_ids: Array = source.get("ordered_region_ids", []) if source.get("ordered_region_ids", []) is Array else []
+	for region_id_variant in ordered_region_ids:
+		var center: Variant = _region_center_for_public_id(str(region_id_variant), district_source)
+		if center is Vector2:
+			points.append(center as Vector2)
+		else:
+			return []
+	return points
+
+
+func _ambient_region_points(from_region_id: String, to_region_id: String, district_source: Array = districts) -> Array[Vector2]:
+	var from_position: Variant = _region_center_for_public_id(from_region_id, district_source)
+	var to_position: Variant = _region_center_for_public_id(to_region_id, district_source)
+	if from_position == null or to_position == null:
+		return []
+	var points: Array[Vector2] = []
+	points.append(from_position as Vector2)
+	points.append(to_position as Vector2)
+	return points
+
+
+func _region_center_for_public_id(region_id: String, district_source: Array = districts) -> Variant:
+	if region_id.is_empty():
+		return null
+	for index in range(district_source.size()):
+		if not (district_source[index] is Dictionary):
+			continue
+		var district := district_source[index] as Dictionary
+		var candidate_id := ""
+		for key in ["region_id", "district_id", "id"]:
+			candidate_id = str(district.get(key, "")).strip_edges()
+			if not candidate_id.is_empty():
+				break
+		if candidate_id != region_id:
+			continue
+		var center_variant: Variant = district.get("center", null)
+		if center_variant is Vector2:
+			return center_variant
+	return null
+
+
+func _optional_route_selected_product() -> String:
+	if optional_route_presentation_service == null:
+		return ""
+	return str(optional_route_presentation_service.get("selected_trade_product_id")) if bool(optional_route_presentation_service.get("route_view_enabled")) else ""
+
+
+func _apply_optional_route_presentation() -> void:
+	var visible_route_markers := _compose_optional_route_markers()
+	var visible_trade_product := _optional_route_selected_product()
+	super.set_map(
+		districts,
+		map_width_m,
+		map_height_m,
+		selected_district,
+		palette,
+		movement_trails,
+		action_callouts,
+		map_event_effects,
+		auto_monster_markers,
+		city_markers,
+		visible_route_markers,
+		visible_trade_product,
+		visual_layer_focus
+	)
+	_sceneized_projection_signature = _current_sceneized_projection_signature()
+	_queue_sceneized_sync()
 
 
 func reset_to_planet_overview() -> void:
@@ -247,6 +470,7 @@ func get_sceneization_debug_snapshot() -> Dictionary:
 	}
 	snapshot["solar_camera"] = solar_camera_debug_snapshot()
 	snapshot["weather_overlay"] = weather_overlay_debug_snapshot()
+	snapshot["optional_route_presentation"] = optional_route_presentation_snapshot()
 	snapshot.merge(get_sceneized_child_snapshot(), true)
 	return snapshot
 
@@ -408,6 +632,8 @@ func _sync_district_nodes() -> void:
 		})
 		if node.has_signal("district_pressed"):
 			node.connect("district_pressed", Callable(self, "_on_sceneized_district_pressed"))
+		if node.has_signal("district_double_pressed"):
+			node.connect("district_double_pressed", Callable(self, "_on_sceneized_district_double_pressed"))
 		_sceneized_district_nodes.append(node)
 
 
@@ -583,6 +809,12 @@ func _sync_route_segments() -> void:
 				"to_position": segment.get("to_position", Vector2.ZERO),
 				"product": str(route.get("product", trade_product)),
 				"disrupted": bool(route.get("disrupted", false)),
+				"flow_kind": str(route.get("flow_kind", "market_sale")),
+				"strength": str(route.get("strength", "weak")),
+				"low_emphasis": bool(route.get("low_emphasis", false)),
+				"capacity_limited": bool(route.get("capacity_limited", false)),
+				"congested": bool(route.get("congested", false)),
+				"transport_modes": route.get("transport_modes", []),
 				"segment_index": segment_index,
 				"accent": _route_accent_hex(str(route.get("product", trade_product))),
 			})
@@ -627,6 +859,11 @@ func _sync_route_markers() -> void:
 			"screen_position": _sceneized_route_midpoint(points),
 			"product": _route_product_display(route),
 			"disrupted": bool(route.get("disrupted", false)),
+			"flow_kind": str(route.get("flow_kind", "market_sale")),
+			"strength": str(route.get("strength", "weak")),
+			"capacity_limited": bool(route.get("capacity_limited", false)),
+			"congested": bool(route.get("congested", false)),
+			"transport_modes": route.get("transport_modes", []),
 			"point_count": points.size(),
 			"accent": _route_accent_hex(_route_product_display(route)),
 			"compact": overview_compact,
@@ -922,6 +1159,13 @@ func _on_sceneized_district_pressed(index: int) -> void:
 	if index < 0:
 		return
 	district_selected.emit(index)
+
+
+func _on_sceneized_district_double_pressed(index: int) -> void:
+	if index < 0:
+		return
+	district_selected.emit(index)
+	district_double_clicked.emit(index)
 
 
 func _sceneized_world_to_control(value: Variant) -> Vector2:

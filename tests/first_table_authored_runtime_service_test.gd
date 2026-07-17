@@ -1,9 +1,20 @@
 extends SceneTree
 
 const SERVICE_SCENE_PATH := "res://scenes/runtime/FirstTableAuthoredRuntimeService.tscn"
+const SCENARIO_PATH := "res://data/scenarios/first_table.json"
 const SCENARIO_LOADER_SCRIPT := preload("res://scripts/scenarios/scenario_loader.gd")
-const CARD_CATALOG_PATH := "res://resources/cards/runtime/card_runtime_catalog_v04.tres"
 
+const LEGACY_FIXED_KEYS := [
+	"facility_market_source_district_index",
+	"teaching_card_ids",
+	"teaching_card_kind",
+	"followup_card_ids",
+	"featured_card_ids",
+	"starter_monster_ids",
+	"preferred_product_ids",
+]
+
+var _checks := 0
 var _failures: Array[String] = []
 
 
@@ -22,76 +33,295 @@ func _run() -> void:
 	var definition: Dictionary = SCENARIO_LOADER_SCRIPT.new().load_by_id("first_table")
 	service.call("configure", {"scenario_definition": definition})
 	var debug: Dictionary = service.call("debug_snapshot")
-	_expect(bool(debug.get("service_ready", false)) and int(debug.get("phase_count", 0)) == 14, "real first_table definition configures fourteen phases")
-	var catalog: Dictionary = service.call("resolve_content_catalog", _catalog())
-	_expect((catalog.get("runtime_card_ids", []) as Array).has("活体芯片生产1") and (catalog.get("runtime_card_ids", []) as Array).has("环晶电池生产城1") and (catalog.get("runtime_card_ids", []) as Array).has("城市融资1"), "catalog resolves preferred, local-product, and follow-up cards")
-	_expect((catalog.get("featured_card_ids", []) as Array).size() == 20 and (catalog.get("followup_card_ids", []) as Array).size() == 4 and (catalog.get("starter_monster_ids", []) as Array).size() == 4 and (catalog.get("preferred_product_ids", []) as Array).size() == 3, "catalog resolves the authored core set, teaching sequence, monsters, and products")
-	var product_id := str(service.call("select_teaching_product", {"district_product_ids": ["普通矿"], "district_demand_ids": ["轨迹墨水"], "remote_demand_product_ids": ["普通矿"]}, catalog))
-	_expect(product_id == "轨迹墨水", "authored preferred product wins over generic trade-chain fallback")
+	var fixture: Dictionary = service.call("fixture_snapshot")
+	_expect(bool(debug.get("service_ready", false)) and int(debug.get("phase_count", 0)) == 13, "real first_table definition configures thirteen unchanged success phases")
+	_expect(_contains_none(fixture, LEGACY_FIXED_KEYS), "active fixture exposes no fixed card, monster, product, or source-district selectors")
+	_expect(
+		bool(debug.get("selects_from_current_public_rack_only", false))
+		and not bool(debug.get("mutates_region_supply_rack", true))
+		and not bool(debug.get("fixed_city_development_selection_active", true))
+		and not bool(debug.get("fixed_monster_selection_active", true))
+		and not bool(debug.get("followup_card_injection_active", true))
+		and not bool(debug.get("factory_before_market_assumption_active", true)),
+		"debug boundary declares public-rack-only, read-only recommendation ownership"
+	)
+
+	var legacy_definition := definition.duplicate(true)
+	var legacy_fixture: Dictionary = (legacy_definition.get("fixture", {}) as Dictionary).duplicate(true)
+	legacy_fixture["facility_market_source_district_index"] = 5
+	legacy_fixture["followup_card_ids"] = ["城市融资1"]
+	legacy_fixture["starter_monster_ids"] = ["固定怪兽"]
+	legacy_fixture["preferred_product_ids"] = ["固定商品"]
+	legacy_definition["fixture"] = legacy_fixture
+	service.call("configure", {"scenario_definition": legacy_definition})
+	var legacy_debug: Dictionary = service.call("debug_snapshot")
+	_expect(
+		_contains_none(service.call("fixture_snapshot"), LEGACY_FIXED_KEYS)
+		and int(legacy_debug.get("legacy_fixed_fixture_field_count", 0)) == 4,
+		"legacy fixed fixture fields are explicitly ignored instead of entering recommendation state"
+	)
+	service.call("configure", {"scenario_definition": definition})
+
+	var catalog: Dictionary = service.call("resolve_content_catalog", {
+		"card_ids": ["城市融资1", "card.market.green.rank_1", "card.factory.green.rank_1"],
+		"monster_ids": ["固定怪兽"],
+		"product_ids": ["固定商品"],
+	})
+	_expect(
+		int(catalog.get("available_card_count", -1)) == 0
+		and bool(catalog.get("catalog_input_ignored", false))
+		and (catalog.get("catalog_card_ids", []) as Array).is_empty()
+		and (catalog.get("runtime_card_ids", []) as Array).is_empty()
+		and str(catalog.get("followup_card_id", "")).is_empty()
+		and (catalog.get("starter_monster_ids", []) as Array).is_empty()
+		and not bool(catalog.get("legacy_fixed_catalog_selection_active", true)),
+		"catalog compatibility call records availability but authors no fixed teaching sequence"
+	)
+
+	var market_first := _rack([
+		_card("card.market.green.rank_1", "市场 I", "facility", "market", 1),
+		_card("card.factory.green.rank_1", "工厂 I", "facility", "factory", 1),
+	], 11)
+	var market_before_factory: Dictionary = service.call("recommend_rack_item", market_first)
+	_expect(
+		str(market_before_factory.get("card_id", "")) == "card.market.green.rank_1"
+		and int(market_before_factory.get("slot_index", -1)) == 0
+		and not str(market_before_factory.get("item_id", "")).is_empty()
+		and not str(market_before_factory.get("supply_revision", "")).is_empty()
+		and not bool(market_before_factory.get("mutates_rack", true)),
+		"native RegionSupply listing identity is preserved and market may precede factory in current rack order"
+	)
+	var factory_first := _rack([
+		_card("card.factory.green.rank_1", "工厂 I", "facility", "factory", 1),
+		_card("card.market.green.rank_1", "市场 I", "facility", "market", 1),
+	], 12)
+	_expect(
+		str((service.call("recommend_rack_item", factory_first) as Dictionary).get("card_id", "")) == "card.factory.green.rank_1",
+		"factory may also be recommended first without a category-order branch"
+	)
+
+	var ranked_rack := _rack([
+		_card("card.route.rank_2", "二级路线牌", "strategy", "", 2),
+		_card("card.weather.rank_1", "一级天气牌", "weather", "", 1),
+	], 13)
+	_expect(
+		str((service.call("recommend_rack_item", ranked_rack) as Dictionary).get("card_id", "")) == "card.weather.rank_1",
+		"public rank may improve a recommendation while equal-score market and factory cards preserve rack order"
+	)
+
+	var no_suitable := _rack([], 14)
+	var generic: Dictionary = service.call("recommend_rack_item", no_suitable)
+	_expect(
+		not bool(generic.get("available", true))
+		and str(generic.get("label", "")) == "浏览当前牌架"
+		and str(generic.get("action_hint", "")) == "浏览当前牌架",
+		"no suitable card returns the generic browse-current-rack hint"
+	)
+
+	var private_rack := market_first.duplicate(true)
+	private_rack["purchase_window"] = {"quote": "private"}
+	private_rack["player_cash"] = 999999
+	var private_regions: Array = private_rack.get("regions", [])
+	var private_region: Dictionary = private_regions[0]
+	var private_slots: Array = private_region.get("slots", [])
+	var private_listing: Dictionary = private_slots[0]
+	var private_card: Dictionary = private_listing.get("card", {})
+	private_card["true_owner"] = 7
+	private_listing["card"] = private_card
+	private_slots[0] = private_listing
+	private_region["slots"] = private_slots
+	private_regions[0] = private_region
+	private_rack["regions"] = private_regions
+	var rejected_private: Dictionary = service.call("recommend_rack_item", private_rack)
+	_expect(
+		not bool(rejected_private.get("available", true))
+		and str(rejected_private.get("reason_code", "")) == "public_rack_private_field_rejected"
+		and not JSON.stringify(rejected_private).contains("999999")
+		and not JSON.stringify(rejected_private).contains("true_owner"),
+		"recursive viewer-private cash, quote and owner fields fail closed without leaking into guidance"
+	)
+
+	var mutation_probe := ranked_rack.duplicate(true)
+	var mutation_before := JSON.stringify(mutation_probe)
+	service.call("recommend_rack_item", mutation_probe)
+	_expect(JSON.stringify(mutation_probe) == mutation_before, "recommendation leaves the caller rack snapshot byte-equivalent as data")
+
+	var composed_rack := _rack([
+		_card("card.market.blue.rank_1", "蓝色市场", "facility", "market", 1),
+		_card("card.route.rank_1", "短程商路", "route", "", 1),
+	], 21)
 	var content: Dictionary = service.call("compose_runtime_content", {
 		"district_index": 2,
 		"district_name": "曙光港",
-		"teaching_product_id": "活体芯片",
-		"teaching_card_id": "活体芯片生产1",
-		"starter_monster_id": "镜像猎兵",
+		"public_region_supply_rack_snapshot": composed_rack,
 		"city_present": true,
-		"city_product_ids": ["活体芯片"],
-		"city_demand_ids": ["轨迹墨水"],
-		"public_projects": [{"product_id": "活体芯片", "hidden_owner": 2}],
-		"own_project_shares": [{"product_id": "活体芯片", "direction_label": "生产", "own_share_percent": 25.0}],
+		"owned_facilities": [{"facility_type": "market", "industry_id": "blue", "rank": 1}],
 		"gdp_per_minute": 72,
 		"cashflow_paid_total": 18,
 		"public_clue_count": 3,
-		"monster_pressure_visible": true,
-		"visible_monster_name": "镜像猎兵",
+		"visible_monster_name": "实际在场怪兽",
 	}, catalog)
-	_expect(str(content.get("urbanization_share_text", "")).contains("25.00%") and int(content.get("gdp_per_minute", 0)) == 72 and bool(content.get("positive_income_observed", false)), "content composes private share and income summary")
-	_expect(not JSON.stringify(content.get("public_projects", [])).contains("hidden_owner"), "public project payload removes hidden ownership")
-	var phase: Dictionary = service.call("contextualize_phase", {"id": "check_economy", "label": "收入"}, content)
-	_expect(str(phase.get("detail", "")).contains("72") and str(phase.get("detail", "")).contains("18"), "phase context uses real GDP and payout facts")
-	_expect(str(service.call("completion_summary", content)).contains("整局仍继续"), "completion copy preserves mission-not-match boundary")
+	_expect(
+		str(content.get("teaching_card_id", "")) == "card.market.blue.rank_1"
+		and str(content.get("followup_card_id", "")) == "card.route.rank_1"
+		and str(content.get("rack_public_revision", "")) == "region:region.test:21",
+		"runtime content derives first and second recommendations only from the current public rack"
+	)
+	_expect(
+		(content.get("starter_monster_ids", []) as Array).is_empty()
+		and str(content.get("starter_monster_id", "")).is_empty()
+		and str(content.get("visible_monster_name", "")) == "实际在场怪兽",
+		"content reports actual visible monster pressure without selecting a fixed starter slot"
+	)
+	_expect(not JSON.stringify(content).contains("hidden_owner") and not JSON.stringify(content).contains("\"ai_score\""), "composed public content excludes hidden owner and AI fields")
+
+	var no_rack_content: Dictionary = service.call("compose_runtime_content", {
+		"district_name": "无推荐区",
+		"public_region_supply_rack_snapshot": _rack([], 22),
+	}, catalog)
+	_expect(
+		str(no_rack_content.get("rack_guidance", "")).contains("浏览当前牌架")
+		and str(no_rack_content.get("visible_monster_name", "")) == "场上怪兽",
+		"empty current rack and absent monster facts produce generic non-fabricated guidance"
+	)
+
+	var buy_phase: Dictionary = service.call("contextualize_phase", {"id": "buy_development"}, content)
+	var followup_phase: Dictionary = service.call("contextualize_phase", {"id": "buy_followup"}, no_rack_content)
+	_expect(
+		str(buy_phase.get("detail", "")).contains("蓝色市场")
+		and str(followup_phase.get("detail", "")).contains("浏览当前牌架")
+		and not str(followup_phase.get("detail", "")).contains("保证槽")
+		and not str(followup_phase.get("detail", "")).contains("城市融资1"),
+		"phase copy uses live recommendations or generic browsing and never promises a fixed follow-up"
+	)
+
+	var supply: Dictionary = service.call("supply_plan", composed_rack)
+	var listing_plan: Dictionary = service.call("market_listing_plan")
+	_expect(
+		bool(supply.get("ready", false))
+		and str(supply.get("operation", "")) == "read_only_recommendation"
+		and str(supply.get("followup_card_id", "")).is_empty()
+		and str(supply.get("inject_after_signal", "")).is_empty()
+		and not bool(supply.get("mutates_rack", true))
+		and not bool(listing_plan.get("ready", true))
+		and not bool(listing_plan.get("mutates_rack", true)),
+		"legacy supply and listing APIs are inert read-only boundaries with no injection or fixed source district"
+	)
+
+	var product_id := str(service.call("select_teaching_product", {"public_region_supply_rack_snapshot": composed_rack}, catalog))
+	var rack_score := int(service.call("score_district", {"public_region_supply_rack_snapshot": composed_rack}, catalog))
+	var no_rack_score := int(service.call("score_district", {"product_ids": ["固定商品"], "transport_score": 99.0}, catalog))
+	_expect(product_id.is_empty() and rack_score == 1 and no_rack_score == -1000000, "legacy product and district adapters now depend only on native public rack facts")
+
 	var pacing: Dictionary = service.call("pacing_profile")
-	_expect(float(pacing.get("recommended_min_seconds", 0.0)) == 900.0 and float(pacing.get("target_duration_seconds", 0.0)) == 1200.0 and float(pacing.get("recommended_max_seconds", 0.0)) == 1800.0 and (pacing.get("milestones", []) as Array).size() == 6, "first_table authors a 15-30 minute pacing profile")
-	var evaluation: Dictionary = service.call("evaluate_pacing", {"scenario_started_at": 100.0, "elapsed_seconds": 1200.0, "completed_signal_times": {"card_bought": 320.0, "economy_checked": 540.0, "followup_card_bought": 760.0, "public_clue_read": 980.0, "monster_pressure_observed": 1120.0, "route_chosen": 1300.0}})
-	_expect(bool(evaluation.get("pacing_gate_passed", false)) and str(evaluation.get("recommended_window_status", "")) == "within_window", "pacing evaluation accepts an ordered twenty-minute playthrough")
-	var supply: Dictionary = service.call("supply_plan", catalog)
-	_expect(bool(supply.get("ready", false)) and str(supply.get("followup_card_id", "")) == "城市融资1" and str(supply.get("inject_after_signal", "")) == "city_development_resolved", "authored supply plan prepositions the second card after project resolution")
-	var score := int(service.call("score_district", {"build_allowed": true, "product_ids": ["活体芯片"], "demand_ids": ["轨迹墨水"], "transport_score": 1.5, "remote_demand_product_ids": ["活体芯片"]}, catalog))
-	_expect(score == 194, "district authored score preserves characterized weights")
-	_expect(_is_data_only(catalog) and _is_data_only(content) and _is_data_only(pacing) and _is_data_only(evaluation) and _is_data_only(supply) and _is_data_only(debug), "all service outputs stay pure data")
+	var evaluation: Dictionary = service.call("evaluate_pacing", {
+		"scenario_started_at": 100.0,
+		"elapsed_seconds": 1200.0,
+		"completed_signal_times": {
+			"card_bought": 320.0,
+			"economy_checked": 540.0,
+			"followup_card_bought": 760.0,
+			"public_clue_read": 980.0,
+			"monster_pressure_observed": 1120.0,
+			"route_chosen": 1300.0,
+		},
+	})
+	_expect((pacing.get("milestones", []) as Array).size() == 6 and bool(evaluation.get("pacing_gate_passed", false)), "pacing and unchanged success-signal evaluation remain intact")
+
+	var scenario_source := FileAccess.get_file_as_string(SCENARIO_PATH)
+	var service_source := FileAccess.get_file_as_string("res://scripts/runtime/first_table_authored_runtime_service.gd")
+	_expect(
+		not scenario_source.contains("\"followup_card_ids\"")
+		and not scenario_source.contains("\"starter_monster_ids\"")
+		and not scenario_source.contains("城市融资1")
+		and not scenario_source.contains("保证槽")
+		and not service_source.contains("first_table_pacing_guarantee"),
+		"active scenario and service contain no fixed supply, starter, guarantee-slot, or named injection payload"
+	)
+	_expect(
+		_is_data_only(fixture)
+		and _is_data_only(catalog)
+		and _is_data_only(content)
+		and _is_data_only(supply)
+		and _is_data_only(debug),
+		"all service outputs remain recursively pure data"
+	)
 	service.queue_free()
+	await process_frame
 	_finish()
 
 
-func _catalog() -> Dictionary:
-	var catalog_resource: Resource = load(CARD_CATALOG_PATH)
-	var card_ids: Array = catalog_resource.call("ordered_card_ids") if catalog_resource != null else []
-	if not card_ids.has("活体芯片生产1"):
-		card_ids.append("活体芯片生产1")
-	if not card_ids.has("环晶电池生产城1"):
-		card_ids.append("环晶电池生产城1")
+func _rack(cards: Array, revision: int) -> Dictionary:
+	var slots: Array = []
+	for slot_index in range(cards.size()):
+		var card: Dictionary = cards[slot_index] if cards[slot_index] is Dictionary else {}
+		var card_id := str(card.get("card_id", ""))
+		slots.append({
+			"item_id": "region-supply:region.test:%d:%d:%s" % [slot_index, revision, card_id],
+			"card_id": card_id,
+			"card": card.duplicate(true),
+			"source_region_id": "region.test",
+			"source_district_index": 2,
+			"slot_index": slot_index,
+			"price_cash": 100,
+			"supply_revision": "region:region.test:slot:%d:revision:%d" % [slot_index, revision],
+		})
 	return {
-		"card_ids": card_ids,
-		"city_development_cards": [{"card_id": "活体芯片生产1", "rank": 1, "product_id": "活体芯片"}, {"card_id": "环晶电池生产城1", "rank": 1, "product_id": "环晶电池"}],
-		"monster_ids": ["镜像猎兵", "蓝锋骑士", "流星哨兵", "绿洲修复体"],
-		"product_ids": ["活体芯片", "轨迹墨水", "等离子米"],
+		"available": true,
+		"reason_code": "region_supply_public_snapshot",
+		"state_revision": revision,
+		"regions": [{
+			"region_id": "region.test",
+			"region_index": 2,
+			"display_name": "测试区",
+			"rack_revision": "region:region.test:%d" % revision,
+			"slots": slots,
+		}],
 	}
 
 
+func _card(
+	card_id: String,
+	display_name: String,
+	kind: String,
+	_facility_type: String,
+	rank: int,
+	_tags: Array = [],
+	_product_id := "",
+	_tutorial_eligible := true
+) -> Dictionary:
+	return {
+		"card_id": card_id,
+		"display_name": display_name,
+		"card_type": kind,
+		"rank": rank,
+		"effect_text": "公开卡面条件",
+		"requirement_text": "公开条件",
+	}
+
+
+func _contains_none(value: Dictionary, keys: Array) -> bool:
+	for key_variant in keys:
+		if value.has(str(key_variant)):
+			return false
+	return true
+
+
 func _expect(condition: bool, message: String) -> void:
+	_checks += 1
 	if condition:
-		print("PASS: %s" % message)
-	else:
-		_failures.append(message)
-		push_error("FAIL: %s" % message)
+		return
+	_failures.append(message)
+	push_error("FAIL: %s" % message)
 
 
 func _finish() -> void:
-	if _failures.is_empty():
-		print("FirstTableAuthoredRuntimeServiceTest: PASS")
-	else:
-		print("FirstTableAuthoredRuntimeServiceTest: FAIL (%d)" % _failures.size())
-	quit(0 if _failures.is_empty() else 1)
+	print("FIRST_TABLE_PUBLIC_RACK_RECOMMENDATION_V06_TEST|status=%s|checks=%d|failures=%d" % [
+		"PASS" if _failures.is_empty() else "FAIL",
+		_checks,
+		_failures.size(),
+	])
+	quit(_failures.size())
 
 
 func _is_data_only(value: Variant) -> bool:

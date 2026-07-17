@@ -1,8 +1,8 @@
 extends RefCounted
 class_name CityProductProjectBridge
 
-const PROJECT_STATE := preload("res://scripts/economy/city_product_project_state.gd")
-const V04_MIGRATION := preload("res://scripts/economy/city_project_state_migration_v04_to_v05.gd")
+const PROJECT_STATE := preload("res://tests/legacy_v05/economy/city_product_project_state_v05.gd")
+const V04_MIGRATION := preload("res://tests/legacy_v05/economy/city_project_state_migration_v04_to_v05.gd")
 
 
 static func normalize_city(city_value: Dictionary, district_index: int, created_order_seed: int = 0, generation_by_slot_id: Dictionary = {}) -> Dictionary:

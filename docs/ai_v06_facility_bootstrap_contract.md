@@ -1,192 +1,306 @@
-# AI v0.6 Facility Bootstrap Contract
+# AI v0.6 Facility and Commodity-Network Bootstrap Contract
 
-Status: production Coordinator wiring active; actor identity and all mutations remain owner-routed.
+## Status
 
-## Purpose and ownership
+This contract removes the factory-first bootstrap assumption. A market-first
+opening is legal and may be strategically useful when it is paired with a
+concrete commodity-demand installation plan.
 
-`AiRuntimeController` may decide that an AI seat needs its first rank-I facility. It never owns or mutates cash, cards, market listings, facilities, economic sources, transaction journals, or queues.
+`AiRuntimeController` chooses intents. It never owns or mutates cash, cards,
+regional supply listings, facilities, production rates, market backlog, routes,
+warehouse inventory, waste, transaction journals or queues.
 
-The only mutation path is:
+## Owner-routed mutation
+
+The only mutation path remains:
 
 ```text
 AiRuntimeController
   -> AiV06EconomyActionPort
-  -> production Coordinator adapter (B5b/A)
-  -> canonical Inventory/CardFlow owners
-  -> RegionInfrastructure / CommodityFlow owners
+  -> production Coordinator adapter
+  -> canonical CardFlow / inventory owner
+  -> RegionInfrastructureRuntimeController
+  -> CommodityFlowRuntimeController / RouteNetworkRuntimeController
 ```
 
-The port is a pure-data forwarding boundary. Holding a delegate reference is not business-state ownership. Missing capability, malformed response, stale revision, or non-pure data fails closed.
+The port is a pure-data forwarding boundary. A delegate reference is not state
+ownership. Missing capability, malformed data, stale revision or non-pure data
+fails closed.
 
-## Required port surface
+`ProductMarketRuntimeController` remains the price/trend/financial-market
+owner. AI may read its viewer-safe price facts but must not treat it as the
+owner of market-facility backlog.
+
+The AI must not:
+
+- write a facility directly;
+- write a demand installation or backlog;
+- draw or replace a regional supply slot;
+- inspect the future regional supply bag;
+- create a manual source-to-demand order;
+- draw a route or change player route-visibility preferences;
+- release warehouse inventory with a private shortcut;
+- recreate a local economy or settlement formula.
+
+## Read surfaces
+
+The production action port may normalize the following owner snapshots. Method
+names may be adapted to existing production conventions, but responsibilities
+must remain separate.
 
 ```gdscript
 actor_id_for_player_index(player_index: int) -> Dictionary
-
-market_snapshot(actor_id: String) -> Dictionary
-
-purchase_rank_i_facility(
-    actor_id: String,
-    item_id: String,
-    transaction_id: String,
-    expected_market_revision: int,
-    expected_player_revision: int,
-    expected_source_revision: int
-) -> Dictionary
-
+current_region_supply_snapshot(actor_id: String) -> Dictionary
 player_snapshot(actor_id: String) -> Dictionary
-
+commodity_flow_opportunity_snapshot(actor_id: String) -> Dictionary
+route_network_opportunity_snapshot(actor_id: String) -> Dictionary
+purchase_region_supply_card(request: Dictionary) -> Dictionary
 play_runtime_card(request: Dictionary) -> Dictionary
-
-economic_source_snapshot(actor_id: String) -> Dictionary
 ```
 
-Every response must be recursively pure data and contain:
+The frozen v0.6 port retains the compatibility method name
+`market_snapshot(actor_id)`, but that method is now only a deterministic,
+viewer-safe projection of the current public `RegionSupply` racks. It is not a
+second facility market. Its `revision` is the authoritative RegionSupply state
+revision, and its selected listing is present in a currently revealed rack
+slot. The former fixed first-table facility listing, category rotation, and
+Inventory-owned facility-market source are physically retired from the
+production Coordinator.
+
+Every response is recursively pure data and includes:
 
 - `available: bool`;
 - `revision: int >= 0`;
-- non-empty `reason_code: String`.
+- non-empty stable `reason_code`.
 
-The port rejects Objects, Callables, missing fields, negative revisions, empty reasons, and unavailable methods.
+### Current regional supply
 
-`actor_id_for_player_index()` is the only identity source used by the AI facility policy. The Coordinator reverses the sole `CardPlayerStateProductionAdapterV06.actor_player_indices()` map and returns exactly one actor or fails closed. The AI must not read or fall back to a world-player `actor_id` field.
+The AI may read only the same currently revealed regional rack slots that are
+legally public to players. A normalized listing may include:
 
-## Normalized snapshots
+- region and slot identity;
+- card identity, family, rank and enabled mode;
+- purchase price and current legal target conditions;
+- quote and source revisions;
+- current purchase eligibility.
 
-### Market
+It excludes:
 
-```gdscript
-{
-    "available": true,
-    "revision": 7,
-    "reason_code": "...",
-    "listing": {
-        "canonical": true,
-        "bootstrap_eligible": true,
-        "item_id": "...",
-        "card_id": "facility....rank_1",
-        "category_id": "facility",
-        "rank": 1,
-        "effect_kind": "build_upgrade_or_repair_facility",
-        "purchase_cash": 4,
-        "target_region_id": "region.alpha",
-        "legal_region_ids": ["region.alpha"]
-    }
-}
-```
+- future shuffle-bag order;
+- RNG state;
+- hidden supply weights;
+- other players' private quotes or purchase intents.
 
-`purchase_cash` is read only for eligibility. AI must not echo price or card payload to the purchase owner.
+The AI evaluates whatever card is currently revealed. A market card does not
+need a prior factory card, and a factory card does not need a prior market
+card. Temporary inability to afford or play a listing lowers or blocks the
+current action; it does not cause the AI to treat that card family as illegal.
 
-### Private player snapshot
+### Commodity-flow opportunity
 
-```gdscript
-{
-    "available": true,
-    "revision": 12,
-    "reason_code": "...",
-    "cash": 20,
-    "cards": [{
-        "slot_index": 0,
-        "runtime_instance_id": "...",
-        "card_id": "facility....rank_1",
-        "category_id": "facility",
-        "rank": 1,
-        "effect_kind": "build_upgrade_or_repair_facility",
-        "bootstrap_eligible": true
-    }]
-}
-```
+A viewer-scoped flow snapshot may contain:
 
-This snapshot is AI-private. It is never returned by the controller's public-safe snapshot.
+- public market backlog by `market_facility_id` and `commodity_id`;
+- public steady-demand and capacity status;
+- public production, ambient-consumption, warehouse-capacity and waste
+  summaries;
+- the acting AI's own commodity ownership and warehouse inventory only where
+  normal player visibility permits it;
+- public revisions and stable reason codes.
 
-### Economic source
+It does not contain supplier identities for public backlog, rival commodity
+owners, rival cash or hands, pair candidates, fixed-point remainders, route
+candidate internals or future flow plans.
 
-```gdscript
-{
-    "available": true,
-    "revision": 3,
-    "reason_code": "...",
-    "has_source": false,
-    "bootstrap_finalized": false,
-    "target_region_id": "",
-    "legal_region_ids": ["region.alpha"]
-}
-```
+### Route opportunity
 
-`bootstrap_finalized` is authoritative and remains true after the one-time bootstrap transaction, even if the built facility is later damaged or destroyed. Rebuilding belongs to a future policy, not another bootstrap purchase.
+The route snapshot exposes legally visible current topology, facilities,
+capacity status and reachability facts from `RouteNetworkRuntimeController`.
+The AI may evaluate whether building or repairing infrastructure would connect
+an existing source or warehouse to a backlog market.
+
+The snapshot is independent from the local human player's “查看商路” toggle.
+AI behavior must be identical whether map routes are visible or hidden.
+
+## Legal opening strategies
+
+The AI policy recognizes all of the following as legal:
+
+### Market-first preparation
+
+The AI may build a market before any corresponding factory exists. A useful
+market-first candidate should identify a concrete commodity demand that can be
+installed now or through a visible/owned follow-up card.
+
+A bare market color alone does not create high demand or backlog for every
+commodity of that industry. The AI must not fabricate that demand when scoring
+the action.
+
+Once a concrete demand installation exists, lack of supply or route is not an
+illegality. It is a preparation state in which backlog can accumulate.
+
+### Supply for known backlog
+
+The AI may value a matching factory when a public market has backlog for that
+commodity. The market and factory may have different owners. Factory ownership
+is not required to satisfy the market.
+
+### Route connection for known backlog
+
+The AI may value a road, seaport, spaceport, repair or other existing route
+facility when it would create or restore a legal route between:
+
+- fresh production and a backlog market; or
+- matching warehouse inventory and a backlog market.
+
+The AI submits only the normal facility/card intent. Automatic logistics, route
+choice and backlog fulfillment remain owner-controlled.
+
+### Warehouse buffer
+
+The AI may value a matching warehouse when expected fresh surplus would
+otherwise become waste. It may value route infrastructure that lets its legally
+visible inventory reach explicit market demand.
+
+The AI must not expect low-value ambient consumption to empty warehouse stock.
+
+### Factory-first and infrastructure-first
+
+Factory-first remains legal, as do openings that temporarily reveal or buy only
+transport, warehouse, tactical or unit cards. There is no required economic
+family sequence.
 
 ## Candidate policy
 
-A candidate exists only when all of these hold:
+A facility/network candidate exists only when:
 
-1. the controller, world bridge, Monster starter owner, and economy port are available;
-2. the seat is a live AI seat;
-3. `MonsterRuntimeController.monster_starter_state_snapshot_v06(actor_id)` is authoritative and reports `summoned` with a positive UID;
-4. economic source reports neither `has_source` nor `bootstrap_finalized`;
-5. an authoritative player snapshot is available;
-6. the canonical listing or source snapshot supplies a production-authoritative `target_region_id` or ordered `legal_region_ids` candidate;
-7. the hand already contains a normalized bootstrap-eligible rank-I facility, or the market exposes a canonical one;
-8. when purchase is required, authoritative cash covers `purchase_cash`;
-9. normal mode respects the seat action cooldown. `force=true` bypasses only this scheduling gate.
+1. the seat is a live AI seat and actor identity resolves through the canonical
+   production map;
+2. all required owner snapshots are authoritative and revisions are current;
+3. the card is present in a current revealed regional slot or the acting AI's
+   legal private hand;
+4. the card and target are enabled, not retired and have at least one
+   authoritative legal target;
+5. purchase cash and normal action rules permit the action;
+6. the candidate uses only current public facts plus that AI seat's own private
+   facts;
+7. mutation can be submitted through the canonical purchase/play owner.
 
-The internal candidate is field-driven and may contain `policy_kind`, `action_kind`, actor, item, target region, and expected revisions. Target selection prefers the canonical listing, then the source snapshot, and preserves the production-provided order. The AI never guesses an industry from a card name, scans legacy `card_choices`, or selects the lexicographically first map region. If no authoritative target candidate exists, it fails before purchase. The candidate never contains raw owner snapshots, a card payload, an owner receipt, or a caller-selected price. Internal candidate/scoring data is not public API.
+The policy must not require:
+
+- a starter monster summon;
+- an existing factory before market construction;
+- an existing market before factory construction;
+- current supply before a concrete market demand installation;
+- an open UI window;
+- a player-drawn route;
+- a one-to-one order.
+
+Internal candidates may carry strategy kind, commodity, target region, current
+listing ID and expected revisions. They never contain raw owner snapshots,
+future rack order, caller-selected prices, owner receipts or presentation
+state.
+
+## Evaluation inputs
+
+The AI may compare, without publishing its score:
+
+- current public backlog quantity and steady demand;
+- market facility headroom and damage;
+- matching public production availability;
+- current legal route reachability and bottlenecks;
+- acting-seat inventory that could serve explicit demand;
+- warehouse space that could prevent acting-seat waste;
+- purchase/play cost and ordinary strategic risk;
+- time-to-connect based on current legal infrastructure.
+
+Backlog is an opportunity signal, not a promise of exclusive profit. The
+snapshot does not identify which supplier will win allocation.
+
+The policy must distinguish:
+
+- **market normal demand** from **market unmet demand**;
+- **backlog recovery headroom** from current steady demand;
+- **ambient regional consumption** from normal market sales;
+- **stored inventory** from fresh output;
+- **waste** from inventory or delayed supply.
+
+No player-facing surface receives the score, rejected candidate details,
+pressure buckets or route plan.
 
 ## Transaction flow
 
-1. Read source and player revisions.
-2. Prefer an already-owned bootstrap-eligible rank-I facility card. This prevents a prior successful purchase followed by a failed play from becoming a second charge.
-3. If absent, read the canonical market listing, require an authoritative legal target, and submit a deterministic purchase transaction bound to actor, item, and all expected revisions.
-4. After purchase, discard the old player snapshot and read the authoritative player snapshot again.
-5. Locate the purchased card by canonical card ID and require its stable `runtime_instance_id` and slot.
-6. Submit `play_runtime_card()` with only actor, slot, runtime instance, region, transaction ID, and expected player/source revisions.
-7. Count success only when the shared owner returns both `committed=true` and terminal finalization.
-8. Read `economic_source_snapshot()` on later ticks. A finalized marker prevents repeat bootstrap; no local AI journal is created.
+1. Read actor, current supply, player, flow and route revisions.
+2. Prefer a legal already-owned card when normal policy considers it better;
+   this avoids a second charge after a successful purchase and failed play.
+3. Otherwise lock the canonical listing through the existing five-second quote
+   path. AI does not echo or override authored price.
+4. Submit the deterministic purchase transaction through
+   `GameRuntimeCoordinator.purchase_region_supply_card`, which delegates to the
+   canonical Inventory/CardFlow transaction and RegionSupply slot-refill
+   lifecycle.
+5. Re-read the authoritative player snapshot after purchase.
+6. Locate the stable runtime card instance and submit the normal play request.
+7. Count success only from the canonical committed and terminal owner result.
+8. Re-read owner snapshots on later ticks; no local AI journal marks facilities,
+   backlog, inventory or route completion.
 
-Purchase and play transaction IDs are deterministic hashes of their immutable bindings. Retrying an unchanged binding reuses the same transaction ID; changed authoritative revisions require a newly evaluated candidate.
+Transaction IDs bind immutable actor, listing/card, target and expected
+revisions. Retrying the same intent reuses the same ID; a changed authoritative
+revision requires reevaluation.
 
 ## Scheduling
 
-`_update_ai_decisions()` calls `execute_v06_facility_bootstrap_cycle(false)` at the existing card-decision timer. If one facility finalizes, the legacy card decision pass is skipped for that timer event. The bootstrap loop stops after the first successful seat, allowing another AI seat to proceed on a later timer event.
+Facility/network evaluation runs on the existing AI decision cadence. It does
+not pause the world and does not depend on OverlayLayer visibility.
 
-Focused/vertical-slice code must call the same `execute_v06_facility_bootstrap_cycle(true)` action. It must not restore `_auto_expand_rival_syndicates`, write `district.city`, or construct a direct facility mutation.
+The policy may alternate among market preparation, supply, route and storage
+opportunities as public facts change. It must not cache a permanent
+factory-first phase or infer the next regional listing family from the last
+purchased card.
 
-## Public and private data
+## Privacy
 
-`execute_v06_facility_bootstrap_cycle()` and `ai_v06_facility_bootstrap_public_snapshot()` contain only port availability, coarse state/reason, and aggregate action counts. Exact candidate rejection reasons remain internal so an opponent cannot infer whether an AI lacks cash, a card, a starter, or a source. The public-safe surfaces exclude:
+Public AI snapshots expose only coarse availability, aggregate action counts
+and sanitized outcome/reason families. They exclude:
 
-- actor IDs and hidden ownership;
-- transaction IDs;
-- cash, hand, slot, or card-instance data;
-- AI scores, routes, plans, pressure, and training metadata;
-- raw owner receipts or errors.
+- actor identity where hidden;
+- cash, hand, discard and card-instance data;
+- transaction IDs and exact owner receipts;
+- future regional supply order or RNG state;
+- supplier identity behind backlog or flow;
+- AI scores, rankings, route plans, pressure, training metadata and rejection
+  reasons;
+- another player's local route-visibility preference.
 
-The focused test independently scans this snapshot for forbidden private keys.
+The AI itself receives no greater rival-private visibility than the same seat's
+normal legal viewer scope.
 
-## B5b production adapter requirements
+## Persistence
 
-The future adapter must normalize, not duplicate, these production owners:
+AI save state does not copy regional rack slots, future bag order, market
+backlog, route candidates, warehouse inventory, waste totals or Sale Receipts.
+Those values restore only through their authoritative owners.
 
-- market: Coordinator canonical rank-I facility market facade;
-- purchase: existing Inventory/CardFlow market transaction;
-- player: authoritative production player snapshot;
-- play: existing `play_v06_runtime_card` facade;
-- source: A6's authoritative facility/CommodityFlow source projection, including persistent `bootstrap_finalized` lineage and legal target candidates for an already-owned bootstrap card.
+After load, the AI re-reads current owner snapshots and revisions before
+choosing another intent. A restored cooldown or general learned policy may
+continue under its existing AI owner, but no saved candidate score or route
+plan may override the restored economy.
 
-The listing/source adapter must derive `target_region_id` or ordered `legal_region_ids` from production region commodity/industry facts. In particular, it must exclude targets that would fail `region_production_product_industry_mismatch`. If A6 cannot yet expose those candidates, B5b must leave the action fail-closed; the AI controller will not fall back to arbitrary map order.
+## Acceptance
 
-The adapter must revalidate expected market, player, and source revisions immediately before delegation. It may not trust an AI-supplied price, card body, effect kind, owner receipt, or finalized flag.
+Focused AI and integration gates must prove:
 
-## B5b production wiring status
-
-The Coordinator now implements the six delegate capabilities and injects one `AiV06EconomyActionPort` into `AiRuntimeController`. The delegate owns no player, card, market, facility, flow, or bootstrap state. It derives:
-
-- actor identity by reversing the sole production adapter actor map;
-- player/card/cash state from `CommodityCardInventoryRuntimeController` and its production player-state adapter;
-- market revisions and purchase exact-once results from the existing CardFlow journal;
-- facility ownership from `RegionInfrastructureRuntimeController`;
-- production installations from `CommodityFlowRuntimeController`;
-- `bootstrap_finalized` and lineage from finalized `play_card` records in the existing Inventory/CardFlow transaction journal.
-
-Legal target candidates require an authoritative production product whose industry matches the facility card, an allowed region lifecycle state, and an unoccupied unique facility slot. An explicit demand endpoint or remote route is not a construction prerequisite. CommodityFlow remains the sole owner of local absorption, local GDP, remote-route preference, warehouse storage, and backpressure. Current authoritative trade kinds include `local_production_baseline`, `local_market_baseline`, and remote-route kinds; the AI adapter neither computes nor fabricates them.
-
-The vertical-slice oracle accepts any authoritative positive-income trade kind. It records the actual `trade_kind`, local sold units, backpressured milliunits, and warehouse stored milliunits, but does not require all production capacity to sell.
+- a currently revealed market can be selected before any factory exists;
+- concrete demand installed in that market accumulates backlog without supply;
+- the AI can later value a matching factory, route connection or owned
+  warehouse opportunity;
+- a bare market color does not fabricate all-commodity backlog;
+- factory-first remains legal but is not a mandatory phase;
+- current unaffordable/unplayable listings remain visible inputs;
+- future regional supply order is absent from every AI snapshot;
+- hidden-route presentation state does not change AI decisions;
+- no AI mutation bypasses CardFlow, `RegionInfrastructureRuntimeController`,
+  `RouteNetworkRuntimeController` or `CommodityFlowRuntimeController`;
+- save/load restores no AI-owned copy of rack, backlog, inventory or waste;
+- public AI output reveals no score, hand, cash, supplier or private plan.

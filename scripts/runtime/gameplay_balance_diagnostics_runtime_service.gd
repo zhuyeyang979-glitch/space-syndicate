@@ -607,7 +607,7 @@ func card_supply_product_filter_audit(world_snapshot: Dictionary = {}) -> Dictio
 	for district_variant in _array(snapshot.get("districts", [])):
 		var district: Dictionary = district_variant if district_variant is Dictionary else {}
 		var local_products := _district_products(district)
-		for card_name_variant in _array(district.get("card_choices", [])):
+		for card_name_variant in _array(district.get("public_rack_card_ids", [])):
 			var card_name := str(card_name_variant)
 			var card := _card_fact(card_name, snapshot)
 			if card.is_empty():
@@ -617,10 +617,7 @@ func card_supply_product_filter_audit(world_snapshot: Dictionary = {}) -> Dictio
 				violations.append("%s出现在%s，但不属于本局卡池" % [card_name, str(district.get("name", "区域"))])
 			var skill := _dictionary(card.get("skill", {}))
 			if str(skill.get("kind", "")) == "monster_card":
-				if str(district.get("monster_guarantee_card", "")) == card_name:
-					fixed_fallbacks += 1
-				else:
-					local_product_cards += 1
+				local_product_cards += 1
 			else:
 				var required := _fixed_product_requirements(skill)
 				if not required.is_empty() and _products_available(required, local_products):
@@ -640,47 +637,33 @@ func card_supply_layer_report(world_snapshot: Dictionary = {}) -> Dictionary:
 	for district_variant in _array(snapshot.get("districts", [])):
 		var district: Dictionary = district_variant if district_variant is Dictionary else {}
 		var accessible := str(district.get("availability_kind", "")) == "sunlit"
-		var sources := _dictionary(district.get("card_sources", {}))
-		for card_variant in _array(district.get("card_choices", [])):
+		for card_variant in _array(district.get("public_rack_card_ids", [])):
 			var card_name := str(card_variant)
 			district_count += 1
 			_append_unique(unique_cards, card_name)
 			if accessible:
 				accessible_count += 1
-			var source := str(sources.get(card_name, "区域补给"))
-			source_counts[source] = int(source_counts.get(source, 0)) + 1
+			source_counts["随机区域牌架"] = int(source_counts.get("随机区域牌架", 0)) + 1
 	return {"codex_count": _cards(snapshot).size(), "run_pool_count": _array(snapshot.get("run_pool", [])).size(), "district_supply_count": district_count, "district_unique_count": unique_cards.size(), "accessible_supply_count": accessible_count, "run_product_count": _array(audit.get("run_products", [])).size(), "local_product_card_count": int(audit.get("local_product_card_count", 0)), "filtered_fixed_count": _array(audit.get("excluded_fixed_cards", [])).size(), "filtered_monster_count": 0, "filter_violation_count": _array(audit.get("violations", [])).size(), "source_counts": source_counts}
 
 
 func district_reserved_supply_audit(world_snapshot: Dictionary = {}) -> Dictionary:
 	var snapshot := _snapshot_or(world_snapshot, false)
 	var issues: Array = []
-	var monster_occurrences := {}
 	var districts := _array(snapshot.get("districts", []))
 	for district_variant in districts:
 		var district: Dictionary = district_variant if district_variant is Dictionary else {}
-		var monster_cards: Array = _array(district.get("monster_cards", []))
-		var guaranteed_monster_card := str(district.get("monster_guarantee_card", ""))
-		for card_variant in _array(district.get("card_choices", [])):
-			var card_name := str(card_variant)
-			if monster_cards.has(card_name):
-				continue
-			var skill := _dictionary(_card_fact(card_name, snapshot).get("skill", {}))
-			if card_name == guaranteed_monster_card or str(skill.get("kind", "")) == "monster_card":
-				monster_cards.append(card_name)
-		if monster_cards.size() != 1:
-			issues.append("%s固定怪兽槽=%d" % [str(district.get("name", "区域")), monster_cards.size()])
-		elif not monster_cards.is_empty():
-			monster_occurrences[monster_cards[0]] = int(monster_occurrences.get(monster_cards[0], 0)) + 1
-		var choice_count := _array(district.get("card_choices", [])).size()
-		if choice_count < 4 or choice_count > 5:
+		var choice_count := _array(district.get("public_rack_card_ids", [])).size()
+		if choice_count <= 0:
 			issues.append("%s牌架数量=%d" % [str(district.get("name", "区域")), choice_count])
-	var duplicate_monsters: Array = []
-	for card_variant in monster_occurrences.keys():
-		if int(monster_occurrences[card_variant]) > 1:
-			duplicate_monsters.append(str(card_variant))
-	var capacity_shortfall := maxi(0, districts.size() - _array(snapshot.get("allowed_monster_cards", [])).size())
-	return {"ok": issues.is_empty() and (capacity_shortfall > 0 or duplicate_monsters.is_empty()), "issues": issues, "district_count": districts.size(), "monster_slot_count": _sum_dictionary_values(monster_occurrences), "unique_monster_card_count": monster_occurrences.size(), "duplicate_monster_cards": duplicate_monsters, "monster_unique_capacity_shortfall": capacity_shortfall, "monster_uniqueness_capacity_limited": capacity_shortfall > 0}
+	return {
+		"ok": issues.is_empty(),
+		"issues": issues,
+		"district_count": districts.size(),
+		"fixed_monster_slots": 0,
+		"fixed_city_development_slots": 0,
+		"unified_random_rack": true,
+	}
 
 
 func card_one_glance_audit_report(world_snapshot: Dictionary = {}) -> Dictionary:

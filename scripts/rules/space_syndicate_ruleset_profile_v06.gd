@@ -49,6 +49,12 @@ class_name SpaceSyndicateRulesetProfileV06
 @export var distance_premium_maximum_bp: int = 12000
 @export var non_storage_rent_cap_bp: int = 3500
 @export var order_supply_units_by_rank: Dictionary = {"I": 20, "II": 40, "III": 80, "IV": 160}
+@export var commodity_flow_terms_version: int = 2
+@export var ambient_consumption_default_units_per_minute: int = 1
+@export var ambient_consumption_units_per_minute_by_commodity: Dictionary = {}
+@export var ambient_consumption_value_basis_points: int = 1000
+@export var market_backlog_horizon_seconds: int = 120
+@export var market_backlog_recovery_extra_basis_points: int = 10000
 
 @export_group("Monster And Wager")
 @export var monster_battle_limit_seconds: int = 60
@@ -86,6 +92,7 @@ func validation_snapshot() -> Dictionary:
 		"region_control_threshold_bp": region_control_threshold_bp,
 		"dynamic_victory_coverage_bp": dynamic_victory_coverage_bp,
 		"gdp_per_required_region_per_minute": gdp_per_required_region_per_minute,
+		"commodity_flow_terms_version": commodity_flow_terms_version,
 		"maximum_facility_rank": maximum_facility_rank,
 		"maximum_card_rank": maximum_card_rank,
 		"minimum_player_count": minimum_player_count,
@@ -154,6 +161,12 @@ func commodity_rules() -> Dictionary:
 		"distance_premium_maximum_bp": distance_premium_maximum_bp,
 		"non_storage_rent_cap_bp": non_storage_rent_cap_bp,
 		"order_supply_units_by_rank": order_supply_units_by_rank.duplicate(true),
+		"commodity_flow_terms_version": commodity_flow_terms_version,
+		"ambient_consumption_default_units_per_minute": ambient_consumption_default_units_per_minute,
+		"ambient_consumption_units_per_minute_by_commodity": ambient_consumption_units_per_minute_by_commodity.duplicate(true),
+		"ambient_consumption_value_basis_points": ambient_consumption_value_basis_points,
+		"market_backlog_horizon_seconds": market_backlog_horizon_seconds,
+		"market_backlog_recovery_extra_basis_points": market_backlog_recovery_extra_basis_points,
 	}
 
 

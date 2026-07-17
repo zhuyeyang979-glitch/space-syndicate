@@ -1,7 +1,43 @@
 # 太空辛迪加开发日志
 
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
-> 最新记录日期：2026-07-15。
+> 最新记录日期：2026-07-17。
+
+## 2026-07-17｜公开强制决策、牌序竞价与实际商路生产表面 C2
+
+- `GameTableViewModelRuntimeService` 新增统一 `viewer_surfaces` 契约，把 `ForcedDecisionRuntimeScheduler.active_decision(viewer_index)`、当前玩家可操作的 `public_bid` 快照、CommodityFlow 的公开实际流量与 RouteNetwork 公开路径合入同一 `TableSnapshot`；presentation 不读取运行时 owner，也不拥有计时、报价、现金、商品或路线。
+- `public_bid` 不再接受任意外部候选：Scheduler 只根据第二个权威阶段快照中的 `phase_id=public_bid`、active、visible 与单调 window sequence 派生最低优先级候选；planning/lock/idle、缺失 sequence 或伪造候选均 fail-closed。更高优先级的怪兽赌局、响应、合约和私人选择仍然覆盖竞价。
+- 新增 `OptionalRoutePublicSnapshot` 公共 allowlist。TableSnapshot 只保留 current/recent 已提交流量、对应真实 route id 和被实际流引用的几何；候选/未来路线、supplier/owner、安装绑定、交易指纹、AI 计划与评分递归剔除。推荐几何改为 `route_id -> ordered_region_ids`，由 `PlanetMapView` 对当前星球区域位置实时物化，避免把屏幕坐标塞进经济层。
+- `GameScreen.apply_state()` 现自动消费上述公开商路 payload；默认仍隐藏，玩家选择具体商品后才显示。私人强制决策对非 owner 只剩等待提示，不会显示选择内容或阻塞其普通操作。
+- 旧 `tests/card_presentation_viewmodel_runtime_test.gd` 已移除对退役 `main._runtime_table_snapshot` 的反射调用，改读现役 `RuntimeGameScreen.current_ui_data` 并通过 `TableSnapshot` 公共入口复核；异常后不退出的旧 oracle 已消除。
+- C2 没有修改 `main.gd`、Coordinator、CardFlow、RegionSupply、CommodityFlow、RouteNetwork 或经济公式。生产组合仍需上层做三项窄注入：把真实 card-window phase 传给 Scheduler、把 viewer-filtered decision/BidBoard 传入 `viewer_surfaces`、把 CommodityFlow actual-flow 与 RouteNetwork public region path 传入同一契约。详细边界见 `docs/public_gameplay_surface_wiring_v06.md`。
+
+### 本轮验证
+
+- `tests/public_gameplay_surface_wiring_v06_test.gd`：19/19 通过。
+- `tests/transient_gameplay_windows_v06_test.gd`：通过，新增权威阶段派生、伪造候选拒绝与 planning 清除 stale bid。
+- `tests/route_visibility_opt_in_v06_test.gd`：通过。
+- `tests/card_presentation_viewmodel_runtime_test.gd`：通过并正常输出完成 marker。
+- `scenes/tools/PublicGameplaySurfaceWiringV06Bench.tscn`：Godot 4.7 headless 8/8 通过；MCP 有头结果在本轮交接中记录。
+
+## 2026-07-16｜可选实际商路与临时玩法窗口 C1
+
+- 新增场景化 `OptionalRoutePresentationRuntimeService`。商路展示是纯本地、非存档、非经济/AI 状态：新局默认隐藏且不选商品；普通地图刷新保留玩家的本地选择；全屏地图不会因打开或同步而自动显示商路。
+- 地图只接受 CommodityFlow 的严格公开实际流量投影：外层 wrapper 和每行字段均 fail-closed 校验，只显示由 CommodityFlow 标记为 current tick 或 recent 的所选商品流量，不另设 UI 侧秒数 freshness；候选路线、供应商/owner、安装意图、AI、指纹和过期流量递归拒绝。市场/仓储流量必须带真实 route id 与 transport modes，环境相邻直供不得伪造路线或运输方式，几何信息另行注入。
+- `PlanetMapView`、主桌与全屏地图统一消费同一公开快照和独立几何字典；工具栏的“商路”按钮改为本地显式 opt-in。仓储/受扰动虚线也保留方向箭头，避免把真实流向画成无向候选线。
+- `public_bid` 作为 `ForcedDecisionRuntimeScheduler` 的最低优先级候选加入仲裁；完整 BidBoard 从永久 `PlayerBoard` 移到 `OverlayLayer`，只有 bid snapshot 的 `phase_id=public_bid` 且当前 viewer 可见的 scheduler candidate 同时成立时才显示。怪兽赌局、反制、合约和其它真实强制窗口始终优先。
+- Overlay 现统一管理焦点与 Back 栈：可关闭的玩家窗口会恢复原焦点或首个可用按钮；强制窗口不能被 Back 绕过；重复快照刷新不抢焦点。区域/市场卡单击只选择或预览，双击或显式购买才进入报价；首个有效受光选择显示“获取报价”，暗面或无效状态继续 fail-closed。
+- C1 没有修改 `main.gd`、Coordinator、CommodityFlow、RouteNetwork、区域购买 owner、AI 或公式。后续生产接线只需由现有 owner 在真实 `public_bid` 阶段提供 scheduler candidate 与 viewer-filtered `active_forced_decision`，并把 CommodityFlow 的公开实际流量快照及 RouteNetwork 公开几何传给 `GameScreen`；不得新增第二个规则 owner。
+
+### 本轮验证
+
+- `tests/route_visibility_opt_in_v06_test.gd`：19/19 通过。
+- `tests/transient_gameplay_windows_v06_test.gd`：40/40 通过。
+- `tests/focus_guide_gate_test.gd`、`tests/visual_snapshot.gd`、`tests/ui_text_smoke_test.gd`、`tests/main_runtime_composition_test.gd`、`tests/district_supply_drawer_live_refresh_test.gd`、`tests/player_board_strategy_action_port_test.gd` 通过。
+- `tests/smoke_test.gd --check-only` 通过。
+- 两个 Godot 4.7 exact-1280×720 Bench 通过：可选商路为嵌入 2 条/全屏 2 条且无遮挡；临时窗口保持主行动清晰、星球可辨识且 PlayerBoard 无永久竞价占位。
+- Funplay MCP 8795 有头运行并人工检查两个 Bench：可选商路状态为 `PASS｜嵌入 2 条｜全图 2 条｜1280×720 无遮挡`；`PublicBidDecisionPanel` 为 `336×176`、全局位置约 `(1180,392)`，处于 `1600×960` 主桌范围内。截图完成后 clean stop，`is_playing_scene=false`。
+- 完整 layout 仍因既有 CardEconomy/Formula/Sale Receipt/GDP/Monster owner 红灯及其后续玩法 setup 级联以 exit 1 结束；另有 3 项真实 private-discard 展示等待 C2 把 viewer-filtered `active_forced_decision` 接入 Main 的 TableSnapshot。C1 新增的 route、Overlay、scheduler、焦点、BidBoard 退役、fail-closed fixture 和 1280 门均通过。完整 smoke 仍命中已知 `_capture_run_state` 删除后的旧 AI/save oracle 与大量历史级联；未为旧门恢复退役 API。
 
 ## 2026-07-15｜1280 经济总览与顶栏信息层级
 

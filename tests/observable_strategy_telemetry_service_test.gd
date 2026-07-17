@@ -51,17 +51,17 @@ func _case_six_actorless_tendencies() -> void:
 
 func _case_exact_once_and_immutable_ingest() -> void:
 	var service: RefCounted = SERVICE_SCRIPT.new()
-	var candidate := _receipt(1, "city_development_committed", "city_built", {"gdp_cents_per_minute_delta": 100})
+	var candidate := _receipt(1, "public_facility_committed", "facility_built", {"gdp_cents_per_minute_delta": 100})
 	var first := service.call("ingest_public_receipt", candidate) as Dictionary
 	(candidate["typed_deltas"] as Dictionary)["gdp_cents_per_minute_delta"] = 9999
-	var duplicate := _receipt(1, "city_development_committed", "city_built", {"gdp_cents_per_minute_delta": 100})
+	var duplicate := _receipt(1, "public_facility_committed", "facility_built", {"gdp_cents_per_minute_delta": 100})
 	var duplicate_result := service.call("ingest_public_receipt", duplicate) as Dictionary
 	var snapshot := service.call("aggregate_snapshot") as Dictionary
 	var city := (snapshot.get("tendencies", []) as Array)[0] as Dictionary
 	_expect(bool(first.get("accepted", false)) and bool(duplicate_result.get("accepted", false)) and bool(duplicate_result.get("duplicate", false)), "same immutable receipt id is exact-once idempotent")
 	_expect(int(snapshot.get("accepted_receipt_count", 0)) == 1 and int(snapshot.get("duplicate_receipt_count", 0)) == 1, "duplicate receipt never increments evidence count")
 	_expect(int((city.get("typed_delta_totals", {}) as Dictionary).get("gdp_cents_per_minute_delta", 0)) == 100, "stored evidence is detached from caller mutation")
-	var conflict := _receipt(1, "city_development_committed", "city_built", {"gdp_cents_per_minute_delta": 101})
+	var conflict := _receipt(1, "public_facility_committed", "facility_built", {"gdp_cents_per_minute_delta": 101})
 	var conflict_result := service.call("ingest_public_receipt", conflict) as Dictionary
 	_expect(not bool(conflict_result.get("accepted", true)) and str(conflict_result.get("failure_code", "")) == "receipt_id_conflict", "same receipt id with changed body fails closed")
 
@@ -75,7 +75,7 @@ func _case_out_of_order_determinism() -> void:
 	for index in [5, 1, 4, 0, 3, 2]:
 		shuffled.call("ingest_public_receipt", (receipts[index] as Dictionary).duplicate(true))
 	_expect(ordered.call("aggregate_snapshot") == shuffled.call("aggregate_snapshot"), "out-of-order ingestion produces a byte-stable sequence aggregate")
-	var sequence_conflict := _receipt(6, "city_development_committed", "city_upgraded", {"controlled_regions_delta": 1})
+	var sequence_conflict := _receipt(6, "public_facility_committed", "facility_upgraded", {"controlled_regions_delta": 1})
 	sequence_conflict["receipt_id"] = "pub.match.sequence-conflict"
 	var conflict_result := shuffled.call("ingest_public_receipt", sequence_conflict) as Dictionary
 	_expect(not bool(conflict_result.get("accepted", true)) and str(conflict_result.get("failure_code", "")) == "sequence_conflict", "different receipt ids cannot claim the same sequence")
@@ -98,7 +98,7 @@ func _case_invalid_and_recursive_private_input() -> void:
 func _case_overflow_marks_incomplete_without_eviction() -> void:
 	var service: RefCounted = SERVICE_SCRIPT.new()
 	_expect(bool(service.call("configure_receipt_capacity", 2)), "test service accepts a bounded capacity")
-	var first := _receipt(1, "city_development_committed", "city_built", {"gdp_cents_per_minute_delta": 10})
+	var first := _receipt(1, "public_facility_committed", "facility_built", {"gdp_cents_per_minute_delta": 10})
 	var second := _receipt(2, "route_contract_resolved", "route_income_realized", {"route_income_cents_delta": 20})
 	var third := _receipt(3, "monster_pressure_resolved", "monster_damage_avoided", {"monster_damage_avoided_cents_delta": 30})
 	service.call("ingest_public_receipt", first)
@@ -123,7 +123,7 @@ func _case_pure_non_owner_boundary() -> void:
 
 func _six_receipts() -> Array:
 	return [
-		_receipt(1, "city_development_committed", "city_built", {"gdp_cents_per_minute_delta": 120, "controlled_regions_delta": 1}),
+		_receipt(1, "public_facility_committed", "facility_built", {"gdp_cents_per_minute_delta": 120, "controlled_regions_delta": 1}),
 		_receipt(2, "market_position_resolved", "market_gain_realized", {"weather_value_cents_delta": 40}),
 		_receipt(3, "public_interaction_resolved", "public_pressure_applied", {"military_spend_cents_delta": 75}),
 		_receipt(4, "monster_pressure_resolved", "monster_damage_avoided", {"monster_damage_avoided_cents_delta": 95}),

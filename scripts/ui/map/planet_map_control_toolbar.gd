@@ -2,6 +2,7 @@ extends VBoxContainer
 class_name PlanetMapControlToolbar
 
 signal control_action_requested(action_id: String, payload: Dictionary)
+signal optional_route_selection_changed(product_id: String)
 
 const LAYER_IDS := ["all", "product", "route", "intel", "weather", "monster", "city"]
 
@@ -19,9 +20,12 @@ const LAYER_IDS := ["all", "product", "route", "intel", "weather", "monster", "c
 
 var _layer_buttons: Dictionary = {}
 var _applying_snapshot := false
+var _route_view_enabled := false
+var _local_selected_trade_product_id := ""
 
 
 func _ready() -> void:
+	add_to_group("optional_route_presentation_toolbars")
 	_layer_buttons = {
 		"all": %MapLayerAllButton,
 		"product": %MapLayerProductButton,
@@ -45,6 +49,7 @@ func _ready() -> void:
 
 
 func set_controls(snapshot: Dictionary) -> void:
+	_sync_route_state_from_views()
 	_applying_snapshot = true
 	_apply_reading_hints(snapshot.get("reading_hints", []))
 	_apply_label(district_status_label, snapshot.get("district_status", {}), "⌖ 未选区", "当前未选择区域。")
@@ -86,6 +91,7 @@ func debug_snapshot() -> Dictionary:
 		"layer_status": layer_status_label.text,
 		"trade_options": trade_options,
 		"selected_trade_product_id": _selected_trade_product_id(),
+		"route_view_enabled": _route_view_enabled,
 		"trade_status": trade_status_label.text,
 		"contract_source": _button_snapshot(contract_source_button),
 		"contract_target": _button_snapshot(contract_target_button),
@@ -129,25 +135,42 @@ func _apply_trade(trade_variant: Variant) -> void:
 	var options: Array = trade.get("options", []) if trade.get("options", []) is Array else []
 	trade_product_selector.clear()
 	var selected_index := 0
-	var selected_product_id := str(trade.get("selected_product_id", ""))
+	var selected_product_id := _local_selected_trade_product_id if _route_view_enabled else ""
+	var has_hidden_option := false
 	for option_variant: Variant in options:
 		if not (option_variant is Dictionary):
 			continue
 		var option := option_variant as Dictionary
 		var product_id := str(option.get("id", ""))
-		trade_product_selector.add_item(str(option.get("label", product_id)))
+		if product_id.is_empty():
+			has_hidden_option = true
+		trade_product_selector.add_item("隐藏商路" if product_id.is_empty() else str(option.get("label", product_id)))
 		var item_index := trade_product_selector.item_count - 1
 		trade_product_selector.set_item_metadata(item_index, product_id)
 		trade_product_selector.set_item_disabled(item_index, bool(option.get("disabled", false)))
 		if product_id == selected_product_id:
 			selected_index = item_index
+	if not has_hidden_option:
+		trade_product_selector.add_item("隐藏商路")
+		trade_product_selector.set_item_metadata(trade_product_selector.item_count - 1, "")
+		if selected_product_id.is_empty():
+			selected_index = trade_product_selector.item_count - 1
 	if trade_product_selector.item_count == 0:
-		trade_product_selector.add_item("商路关闭")
+		trade_product_selector.add_item("隐藏商路")
 		trade_product_selector.set_item_metadata(0, "")
 	trade_product_selector.select(clampi(selected_index, 0, trade_product_selector.item_count - 1))
 	trade_product_selector.disabled = bool(trade.get("disabled", false))
-	trade_product_selector.tooltip_text = str(trade.get("tooltip", "选择要在地图上显示运输路径的商品。"))
-	_apply_label(trade_status_label, trade.get("status", {}), "⇄ 商路关", "当前地图不显示商品运输路径。")
+	trade_product_selector.tooltip_text = "主动选择商品后，仅显示当前或近期真实流量；候选路线不会上图。"
+	if _route_view_enabled and not _local_selected_trade_product_id.is_empty():
+		_apply_label(trade_status_label, {
+			"text": "⇄ %s" % _short_product(_local_selected_trade_product_id),
+			"tooltip": "当前仅显示%s的实际或近期公开流量；隐藏不会影响经济结算。" % _local_selected_trade_product_id,
+		}, "⇄ 商路", "")
+	else:
+		_apply_label(trade_status_label, {
+			"text": "商路已隐藏",
+			"tooltip": "新局默认隐藏；全图模式也不会自动显示商品流线。",
+		}, "商路已隐藏", "")
 
 
 func _apply_label(label: Label, entry_variant: Variant, fallback_text: String, fallback_tooltip: String) -> void:
@@ -168,16 +191,39 @@ func _apply_button(button: Button, entry_variant: Variant, fallback_text: String
 func _on_trade_product_selected(item_index: int) -> void:
 	if _applying_snapshot or trade_product_selector.disabled or item_index < 0 or item_index >= trade_product_selector.item_count or trade_product_selector.is_item_disabled(item_index):
 		return
+	var overlay := _optional_route_overlay()
+	if overlay != null and overlay.has_method("forced_surface_active") and bool(overlay.call("forced_surface_active")):
+		_sync_route_state_from_views()
+		_select_trade_option(_selected_trade_product_id())
+		return
 	var product_id := ""
 	if item_index >= 0 and item_index < trade_product_selector.item_count:
 		product_id = str(trade_product_selector.get_item_metadata(item_index))
-	_emit_control_action("map_trade_product_select", {"product_id": product_id})
+	_route_view_enabled = not product_id.is_empty()
+	_local_selected_trade_product_id = product_id
+	get_tree().call_group("optional_route_presentation_views", "set_optional_route_selection", product_id)
+	if product_id.is_empty():
+		if overlay != null and overlay.has_method("deactivate_optional_route_view"):
+			overlay.call("deactivate_optional_route_view")
+	else:
+		if overlay != null and overlay.has_method("activate_optional_route_view"):
+			overlay.call("activate_optional_route_view", trade_product_selector)
+	optional_route_selection_changed.emit(product_id)
 
 
 func _emit_layer_focus(layer_id: String) -> void:
 	var button := _layer_buttons.get(layer_id) as Button
-	if button != null and button.visible and not button.disabled:
-		_emit_control_action("map_layer_focus", {"layer_id": layer_id})
+	if button == null or not button.visible or button.disabled:
+		return
+	if layer_id == "route":
+		var overlay := _optional_route_overlay()
+		if overlay != null and overlay.has_method("forced_surface_active") and bool(overlay.call("forced_surface_active")):
+			return
+		if overlay != null and overlay.has_method("activate_optional_route_view"):
+			overlay.call("activate_optional_route_view", button)
+		trade_product_selector.call_deferred("grab_focus")
+		return
+	_emit_control_action("map_layer_focus", {"layer_id": layer_id})
 
 
 func _emit_contract_endpoint(action_id: String, button: Button) -> void:
@@ -191,8 +237,46 @@ func _emit_control_action(action_id: String, payload: Dictionary) -> void:
 
 
 func _selected_trade_product_id() -> String:
-	var item_index := trade_product_selector.selected
-	return str(trade_product_selector.get_item_metadata(item_index)) if item_index >= 0 and item_index < trade_product_selector.item_count else ""
+	return _local_selected_trade_product_id if _route_view_enabled else ""
+
+
+func sync_optional_route_hidden() -> void:
+	_route_view_enabled = false
+	_local_selected_trade_product_id = ""
+	for item_index in range(trade_product_selector.item_count):
+		if str(trade_product_selector.get_item_metadata(item_index)).is_empty():
+			trade_product_selector.select(item_index)
+			break
+	trade_status_label.text = "商路已隐藏"
+	trade_status_label.tooltip_text = "路线呈现已关闭；经济与物流继续运行。"
+
+
+func _select_trade_option(product_id: String) -> void:
+	for item_index in range(trade_product_selector.item_count):
+		if str(trade_product_selector.get_item_metadata(item_index)) == product_id:
+			trade_product_selector.select(item_index)
+			return
+
+
+func _sync_route_state_from_views() -> void:
+	if get_tree() == null:
+		return
+	var map_view := get_tree().get_first_node_in_group("optional_route_presentation_views")
+	if map_view == null or not map_view.has_method("optional_route_presentation_snapshot"):
+		return
+	var snapshot_variant: Variant = map_view.call("optional_route_presentation_snapshot")
+	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
+	var local_state: Dictionary = snapshot.get("local_state", {}) if snapshot.get("local_state", {}) is Dictionary else {}
+	_route_view_enabled = bool(local_state.get("route_view_enabled", false))
+	_local_selected_trade_product_id = str(local_state.get("selected_trade_product_id", "")) if _route_view_enabled else ""
+
+
+func _optional_route_overlay() -> Node:
+	return get_tree().get_first_node_in_group("optional_route_overlay") if get_tree() != null else null
+
+
+func _short_product(value: String) -> String:
+	return value if value.length() <= 6 else "%s…" % value.substr(0, 5)
 
 
 func _button_snapshot(button: Button) -> Dictionary:

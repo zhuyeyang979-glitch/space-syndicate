@@ -106,9 +106,9 @@ func _run() -> void:
 		coordinator_source.contains("CommodityFlowRuntimeController.tscn")
 		and coordinator_source.contains("CommodityFlowWorldBridge.tscn")
 		and not coordinator_source.contains("EconomyCashflowRuntimeController.tscn")
-		and contract_source.contains("applies cash and facility rent deltas once")
-		and contract_source.contains("Public receipt snapshots remove commodity owner")
-		and contract_source.contains("Old v0.4/v0.5 characterization tests"),
+		and contract_source.contains("Apply the cash batch atomically through the non-owning bridge.")
+		and contract_source.contains("Public receipt projection removes commodity-owner identity")
+		and contract_source.contains("active focused gates must replace old baseline/backpressure oracles"),
 		"composition and focused contract preserve atomic cash, privacy, and retirement boundaries"
 	)
 

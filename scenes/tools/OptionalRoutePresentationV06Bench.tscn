@@ -1,0 +1,118 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/optional_route_presentation_v06_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/ui/PlanetMapView.tscn" id="2_map"]
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="3_theme"]
+
+[node name="OptionalRoutePresentationV06Bench" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("3_theme")
+script = ExtResource("1_bench")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.008, 0.02, 0.055, 1)
+
+[node name="BenchMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 18.0
+offset_top = 14.0
+offset_right = -18.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Rows" type="VBoxContainer" parent="BenchMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="BenchMargin/Rows"]
+layout_mode = 2
+text = "可选商路呈现 v0.6｜实际流量才上图"
+theme_override_font_sizes/font_size = 22
+
+[node name="Controls" type="HBoxContainer" parent="BenchMargin/Rows"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="HideRoutesButton" type="Button" parent="BenchMargin/Rows/Controls"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(112, 32)
+layout_mode = 2
+text = "隐藏商路"
+
+[node name="CrystalRouteButton" type="Button" parent="BenchMargin/Rows/Controls"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(112, 32)
+layout_mode = 2
+text = "查看晶雾"
+
+[node name="AlgaeRouteButton" type="Button" parent="BenchMargin/Rows/Controls"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(112, 32)
+layout_mode = 2
+text = "查看氦藻"
+
+[node name="RouteBenchStatus" type="Label" parent="BenchMargin/Rows/Controls"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "等待检查"
+horizontal_alignment = 2
+
+[node name="MapColumns" type="HBoxContainer" parent="BenchMargin/Rows"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="EmbeddedPanel" type="PanelContainer" parent="BenchMargin/Rows/MapColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="EmbeddedRows" type="VBoxContainer" parent="BenchMargin/Rows/MapColumns/EmbeddedPanel"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="BenchMargin/Rows/MapColumns/EmbeddedPanel/EmbeddedRows"]
+layout_mode = 2
+text = "主桌地图｜默认隐藏"
+horizontal_alignment = 1
+
+[node name="EmbeddedRouteMap" parent="BenchMargin/Rows/MapColumns/EmbeddedPanel/EmbeddedRows" instance=ExtResource("2_map")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 560)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="FullscreenPanel" type="PanelContainer" parent="BenchMargin/Rows/MapColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="FullscreenRows" type="VBoxContainer" parent="BenchMargin/Rows/MapColumns/FullscreenPanel"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="BenchMargin/Rows/MapColumns/FullscreenPanel/FullscreenRows"]
+layout_mode = 2
+text = "全屏地图｜同样不自动显示"
+horizontal_alignment = 1
+
+[node name="FullscreenRouteMap" parent="BenchMargin/Rows/MapColumns/FullscreenPanel/FullscreenRows" instance=ExtResource("2_map")]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 560)
+layout_mode = 2
+size_flags_vertical = 3
