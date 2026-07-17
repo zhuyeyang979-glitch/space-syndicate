@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "date": "2026-07-18",
+  "defect": {
+    "legacy_binding": "PlayerSeatPublicSourceService was bound to Main and read unavailable players through dynamic calls.",
+    "real_path_omission": "TablePresentationViewModelQuery._planet_source omitted public_player_seat_sources."
+  },
+  "repair": {
+    "source": "WorldSessionPublicProjection",
+    "viewer": "authorized_local_viewer_index",
+    "injection": "GameRuntimeCoordinator -> TablePresentationViewModelQuery -> planet.public_player_seat_sources",
+    "cache": "public_roster_signature",
+    "main_dynamic_lookup_removed": true
+  },
+  "coverage": {
+    "pre_session_seat_count": 0,
+    "active_seat_counts": [3, 4, 6, 8],
+    "unique_indices": true,
+    "exactly_one_local": true,
+    "public_fields": ["player_index", "public_player_name", "role_name", "player_color", "public_status"],
+    "eliminated_status": true,
+    "anonymous_actor_hidden": true,
+    "stable_nodes_on_unchanged_frames": true,
+    "skin_fallback_exclusive": true
+  },
+  "forbidden_facts_absent": [
+    "cash",
+    "hand",
+    "hand_count",
+    "discard",
+    "hidden_owner",
+    "real_actor",
+    "ai_plan",
+    "private_intel"
+  ],
+  "remaining_main_debt": "Legacy public player colors still have no typed identity owner outside Main; the seat adapter carries the matching palette until that owner exists.",
+  "gate_0_claimed": false
+}

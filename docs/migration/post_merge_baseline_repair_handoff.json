@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "date": "2026-07-18",
+  "worktree": "C:/Users/zhuye/Documents/New project/space-syndicate-post-merge-repair-9629ce7",
+  "branch": "codex/post-merge-baseline-repair-9629ce7",
+  "base": "9629ce7ff7555ed19d8f657c01db4a19ffff819b",
+  "commits": [
+    "549e3815dec0cb8a4b0a3663e64cc4220bf8a9c0",
+    "b0bbf0cf4e57145d77094149c74b4d1c36135473"
+  ],
+  "focused_status": "passed_with_one_recorded_scene_timeout",
+  "recorded_timeout": {
+    "target": "res://scenes/tools/TablePresentationSourceTargetBench.tscn",
+    "run_id": "20260717-231912-880-TablePresentationSourceTargetBench-7a3cde99",
+    "timeout_seconds": 300,
+    "script_error_count": 0,
+    "remaining_runtime_process_ids": []
+  },
+  "mcp": {
+    "port": 8825,
+    "project_root_verified": true,
+    "godot_version": "4.7-stable (official)",
+    "scene": "res://scenes/tools/PlayerSeatPortraitSkinBench.tscn",
+    "runtime_error_events": 0,
+    "skin_available": true,
+    "fallback_available": true,
+    "double_display": false,
+    "play_state_after_stop": false,
+    "editor_stopped": true,
+    "port_open_after_stop": false
+  },
+  "full_gate_0_claimed": false,
+  "fetch_rebase_push_performed": false
+}
