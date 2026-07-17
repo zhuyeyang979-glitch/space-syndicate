@@ -32,6 +32,7 @@ func _ready() -> void:
 	_wire_table_selection_state()
 	_wire_world_session_state()
 	_wire_forced_decision_candidate_sources()
+	_wire_card_resolution_frame_driver()
 
 
 func configure(ruleset_snapshot: Dictionary) -> void:
@@ -40,6 +41,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	_wire_table_selection_state()
 	_wire_world_session_state()
 	_wire_forced_decision_candidate_sources()
+	_wire_card_resolution_frame_driver()
 	var world_clock := _world_effective_clock_runtime_controller_node()
 	if world_clock != null and world_clock.has_method("configure"):
 		world_clock.call("configure", {})
@@ -3182,6 +3184,23 @@ func synchronize_forced_decisions() -> Dictionary:
 	return sources.synchronize()
 
 
+func advance_card_resolution_frame(delta: float) -> Array:
+	_wire_card_resolution_frame_driver()
+	var driver := _card_resolution_frame_driver_node()
+	return driver.advance_world(delta) if driver != null else []
+
+
+func card_resolution_frame_facts() -> Dictionary:
+	_wire_card_resolution_frame_driver()
+	var driver := _card_resolution_frame_driver_node()
+	return driver.facts_snapshot() if driver != null else {}
+
+
+func card_resolution_frame_driver_debug() -> Dictionary:
+	var driver := _card_resolution_frame_driver_node()
+	return driver.debug_snapshot() if driver != null else {}
+
+
 func active_forced_decision(viewer_index: int = -1) -> Dictionary:
 	synchronize_forced_decisions()
 	var scheduler := _scheduler_node()
@@ -4435,18 +4454,34 @@ func _wire_forced_decision_candidate_sources() -> void:
 	var sources := _forced_decision_candidate_sources_node()
 	if sources == null:
 		return
-	var card_resolution_source: CardResolutionRuntimeController
-	var host := get_parent()
-	if host != null:
-		card_resolution_source = host.get_node_or_null("CardResolutionRuntimeController") as CardResolutionRuntimeController
 	sources.configure(
 		_monster_runtime_controller_node() as MonsterRuntimeController,
-		card_resolution_source,
+		_card_resolution_runtime_controller_node(),
 		_card_resolution_queue_node(),
 		_contract_runtime_controller_node() as ContractRuntimeController,
 		_purchase_node() as DistrictPurchaseRuntimeController,
 		_card_target_choice_runtime_controller_node(),
 		_scheduler_node() as ForcedDecisionRuntimeScheduler
+	)
+
+
+func _card_resolution_runtime_controller_node() -> CardResolutionRuntimeController:
+	return get_node_or_null("CardResolutionRuntimeController") as CardResolutionRuntimeController
+
+
+func _card_resolution_frame_driver_node() -> CardResolutionFrameDriver:
+	return get_node_or_null("CardResolutionFrameDriver") as CardResolutionFrameDriver
+
+
+func _wire_card_resolution_frame_driver() -> void:
+	var driver := _card_resolution_frame_driver_node()
+	if driver == null:
+		return
+	driver.configure(
+		_card_resolution_runtime_controller_node(),
+		_card_resolution_queue_node() as CardResolutionQueueRuntimeService,
+		_world_session_state_node(),
+		_card_play_eligibility_node() as CardPlayEligibilityRuntimeService
 	)
 
 

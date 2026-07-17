@@ -642,7 +642,9 @@ func _process(delta: float) -> void:
 		var clock_snapshot: Dictionary = clock_variant if clock_variant is Dictionary else {}
 		_game_runtime_coordinator_node().world_session_state().game_time = float(clock_snapshot.get("world_effective_seconds", _game_runtime_coordinator_node().world_session_state().game_time))
 	if coordinator == null or not coordinator.has_method("allows_card_resolution_progress") or bool(coordinator.call("allows_card_resolution_progress")):
-		_update_card_resolution_queue(scaled_delta)
+		for command_variant in _game_runtime_coordinator_node().advance_card_resolution_frame(scaled_delta):
+			if command_variant is Dictionary:
+				_apply_card_resolution_controller_transition(command_variant as Dictionary)
 	if coordinator != null and coordinator.has_method("tick_contract_runtime"):
 		coordinator.call("tick_contract_runtime", scaled_delta)
 	_update_realtime_cooldowns(scaled_delta)
@@ -1739,7 +1741,7 @@ func _card_resolution_controller_node() -> Node:
 		return card_resolution_runtime_controller
 	card_resolution_runtime_controller = null
 	card_resolution_runtime_controller_bound = false
-	var found := get_node_or_null("RuntimeServices/RuntimeControllerHost/CardResolutionRuntimeController")
+	var found := _game_runtime_coordinator_node().get_node_or_null("CardResolutionRuntimeController")
 	if found != null:
 		card_resolution_runtime_controller = found
 	return card_resolution_runtime_controller
@@ -1794,23 +1796,6 @@ func _bind_card_resolution_runtime_controller() -> void:
 	card_resolution_controller_missing = false
 	card_resolution_controller_missing_context = ""
 	card_resolution_controller_missing_reported = false
-
-
-func _card_resolution_controller_facts() -> Dictionary:
-	var active_player_indices: Array = []
-	for player_index in range(_game_runtime_coordinator_node().world_session_state().players.size()):
-		if not _player_is_eliminated(player_index):
-			active_player_indices.append(player_index)
-	return {
-		"queue_empty": _card_resolution_current_queue().is_empty(),
-		"active_present": not _card_resolution_active_entry().is_empty(),
-		"active_counterable": _card_can_open_counter_window(_card_resolution_active_entry()),
-		"active_id": str(_card_resolution_active_entry().get("resolution_id", _card_resolution_active_entry().get("queued_order", ""))),
-		"lock_duration": _card_group_lock_duration(),
-		"public_bid_duration": _card_group_public_bid_duration(),
-		"counter_duration": _card_counter_response_duration(),
-		"active_player_indices": active_player_indices,
-	}
 
 
 func _bind_runtime_game_screen(screen: Control) -> void:
@@ -12550,7 +12535,7 @@ func _set_selected_player_card_group_ready() -> Dictionary:
 					if success_candidate.is_empty() or not bool(success_candidate.get("success", false)):
 						outcome_code = "ready_rejected"
 					else:
-						var active_players: Array = _card_resolution_controller_facts().get("active_player_indices", []) as Array
+						var active_players: Array = _game_runtime_coordinator_node().card_resolution_frame_facts().get("active_player_indices", []) as Array
 						var result_variant: Variant = controller.call("set_player_ready", _game_runtime_coordinator_node().table_selection_state().selected_player, true, active_players)
 						var result: Dictionary = result_variant if result_variant is Dictionary else {}
 						outcome_code = "group_ready_committed" if bool(result.get("changed", false)) else "ready_rejected"
@@ -13625,7 +13610,7 @@ func _begin_card_group_window(reference_player: int, sequence: int) -> bool:
 func _card_group_window_phase() -> String:
 	var controller := _card_resolution_controller_node()
 	if controller != null and controller.has_method("current_phase"):
-		return str(controller.call("current_phase", _card_resolution_controller_facts()))
+		return str(controller.call("current_phase", _game_runtime_coordinator_node().card_resolution_frame_facts()))
 	_mark_card_resolution_controller_missing("window phase", true)
 	return "controller_missing"
 
@@ -13633,7 +13618,7 @@ func _card_group_window_phase() -> String:
 func _card_group_submissions_open() -> bool:
 	var controller := _card_resolution_controller_node()
 	if controller != null and controller.has_method("submissions_open"):
-		return bool(controller.call("submissions_open", _card_resolution_controller_facts()))
+		return bool(controller.call("submissions_open", _game_runtime_coordinator_node().card_resolution_frame_facts()))
 	_mark_card_resolution_controller_missing("submission gate", true)
 	return false
 
@@ -13699,18 +13684,6 @@ func _announce_card_counter_response_window() -> void:
 	var label := _card_display_name(String(skill.get("name", "匿名牌")))
 	_log("%s展示结束，进入%.0f秒玩家互动响应窗口；相位否决只可取消这类直接互动牌。" % [label, _ruleset_timing_seconds(&"counter_window_seconds")])
 	_show_card_resolution_overlay(_card_resolution_active_entry(), card_resolution_counter_timer)
-
-
-func _update_card_resolution_queue(delta: float) -> void:
-	var controller := _card_resolution_controller_node()
-	if controller == null or not controller.has_method("tick"):
-		_mark_card_resolution_controller_missing("runtime tick", true)
-		return
-	var commands_variant: Variant = controller.call("tick", delta, _card_resolution_controller_facts())
-	var commands: Array = commands_variant if commands_variant is Array else []
-	for command_variant in commands:
-		var command: Dictionary = command_variant if command_variant is Dictionary else {}
-		_apply_card_resolution_controller_transition(command)
 
 
 func _apply_card_resolution_controller_transition(command: Dictionary) -> void:
@@ -13940,7 +13913,7 @@ func _queue_skill_resolution(player_index: int, slot_index: int, target_slot: in
 	_pay_skill_play_cost(player_index, skill)
 	var runtime_controller := _card_resolution_controller_node()
 	if runtime_controller != null and runtime_controller.has_method("set_player_ready"):
-		runtime_controller.call("set_player_ready", player_index, false, (_card_resolution_controller_facts().get("active_player_indices", []) as Array))
+		runtime_controller.call("set_player_ready", player_index, false, (_game_runtime_coordinator_node().card_resolution_frame_facts().get("active_player_indices", []) as Array))
 	var begins_new_batch := bool(queue_commit.get("begins_new_batch", false))
 	if begins_new_batch:
 		card_resolution_batch_reference_player = int(queue_commit.get("reference_player", player_index))

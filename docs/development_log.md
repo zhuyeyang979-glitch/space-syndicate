@@ -8031,3 +8031,16 @@
 - Removed Main's candidate aggregation functions, pending discard shadow, and
   five pending target-choice fields without adding a compatibility callback.
 - Godot 4.7 focused evidence: 28/28 test checks and 7/7 MCP Bench checks.
+
+# 2026-07-17 — Card-resolution frame driver cutover
+
+- Moved card-resolution timing fact assembly and the single per-frame
+  `CardResolutionRuntimeController.tick()` call into a scene-owned
+  `CardResolutionFrameDriver` under `GameRuntimeCoordinator`.
+- Moved the unique production card-resolution timing controller into the same
+  coordinator composition and removed the old direct Main sibling instance.
+- Deleted Main's `_update_card_resolution_queue()` and
+  `_card_resolution_controller_facts()` methods. Main temporarily remains the
+  consumer of ordered transition commands until the separate card-execution
+  and presentation sink cutovers are complete.
+- Godot 4.7 focused evidence: 24/24 test checks and 7/7 MCP Bench checks.

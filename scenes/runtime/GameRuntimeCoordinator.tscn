@@ -1,4 +1,4 @@
-[gd_scene load_steps=78 format=3]
+[gd_scene load_steps=80 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -77,6 +77,8 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/WorldSessionState.tscn" id="83_world_session"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardTargetChoiceRuntimeController.tscn" id="84_target_choice"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionCandidateSources.tscn" id="85_forced_sources"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardResolutionRuntimeController.tscn" id="86_card_resolution_controller"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardResolutionFrameDriver.tscn" id="87_card_frame_driver"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -92,6 +94,12 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="WorldEffectiveClockRuntimeController" parent="." instance=ExtResource("69_world_clock")]
+unique_name_in_owner = true
+
+[node name="CardResolutionRuntimeController" parent="." instance=ExtResource("86_card_resolution_controller")]
+unique_name_in_owner = true
+
+[node name="CardResolutionFrameDriver" parent="." instance=ExtResource("87_card_frame_driver")]
 unique_name_in_owner = true
 
 [node name="SolarAvailabilityRuntimeService" parent="." instance=ExtResource("70_solar_availability")]

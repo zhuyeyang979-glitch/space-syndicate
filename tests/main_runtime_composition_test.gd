@@ -180,7 +180,8 @@ func _check_static_composition(main: Control) -> void:
 		"RuntimeServices/FinalSettlementRuntimeComposition",
 		"RuntimeServices/TableAudioHost",
 		"RuntimeServices/RuntimeControllerHost",
-		"RuntimeServices/RuntimeControllerHost/CardResolutionRuntimeController",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardResolutionRuntimeController",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardResolutionFrameDriver",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardRuntimeCatalogService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardRuntimeDefinitionWorldBridge",
@@ -254,8 +255,8 @@ func _check_static_composition(main: Control) -> void:
 	var ruleset_bridge := main.get_node_or_null("RuntimeServices/RulesetRuntimeBridge")
 	_expect(ruleset_bridge != null and ruleset_bridge.scene_file_path == "res://scenes/runtime/RulesetRuntimeBridge.tscn", "RuntimeServices owns the editable RulesetRuntimeBridge scene")
 	_expect(ruleset_bridge != null and ruleset_bridge.has_method("timing_rules") and ruleset_bridge.has_method("capability_rules") and ruleset_bridge.has_method("card_inventory_rules") and ruleset_bridge.has_method("debug_snapshot"), "RulesetRuntimeBridge exposes pure-data runtime APIs including card inventory policy")
-	var card_controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/CardResolutionRuntimeController")
-	_expect(card_controller != null and card_controller.scene_file_path == "res://scenes/runtime/CardResolutionRuntimeController.tscn", "RuntimeControllerHost owns the editable CardResolutionRuntimeController scene")
+	var card_controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardResolutionRuntimeController")
+	_expect(card_controller != null and card_controller.scene_file_path == "res://scenes/runtime/CardResolutionRuntimeController.tscn", "GameRuntimeCoordinator owns the editable CardResolutionRuntimeController scene")
 	_expect(card_controller != null and card_controller.has_method("tick") and card_controller.has_method("to_save_data") and card_controller.has_method("debug_snapshot"), "CardResolutionRuntimeController exposes timing, save, and debug APIs")
 	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
 	var solar_availability := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/SolarAvailabilityRuntimeService")
@@ -536,7 +537,7 @@ func _check_runtime_signal_bindings(main: Control) -> void:
 
 
 func _check_runtime_controller_authority(main: Control) -> void:
-	var controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/CardResolutionRuntimeController")
+	var controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardResolutionRuntimeController")
 	if controller == null:
 		return
 	_expect(is_equal_approx(float(controller.get("total_window_seconds")), 30.0) and is_equal_approx(float(controller.get("planning_seconds")), 20.0) and is_equal_approx(float(controller.get("public_bid_seconds")), 5.0) and is_equal_approx(float(controller.get("lock_seconds")), 5.0) and is_equal_approx(float(controller.get("opening_total_window_seconds")), 45.0) and is_equal_approx(float(controller.get("opening_planning_seconds")), 35.0), "production main consumes the v0.6 standard and opening shared-window cadence")

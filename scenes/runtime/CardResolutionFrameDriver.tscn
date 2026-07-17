@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_resolution_frame_driver.gd" id="1"]
+
+[node name="CardResolutionFrameDriver" type="Node"]
+script = ExtResource("1")
+editor_description = "Unique scene-owned frame driver for card-resolution timing facts and ordered controller commands."
