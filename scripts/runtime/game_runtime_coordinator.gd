@@ -34,6 +34,7 @@ func _ready() -> void:
 	_wire_forced_decision_candidate_sources()
 	_wire_card_resolution_frame_driver()
 	_wire_card_cooldown_runtime_controller()
+	_wire_card_execution_typed_ports()
 
 
 func configure(ruleset_snapshot: Dictionary) -> void:
@@ -44,6 +45,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	_wire_forced_decision_candidate_sources()
 	_wire_card_resolution_frame_driver()
 	_wire_card_cooldown_runtime_controller()
+	_wire_card_execution_typed_ports()
 	var world_clock := _world_effective_clock_runtime_controller_node()
 	if world_clock != null and world_clock.has_method("configure"):
 		world_clock.call("configure", {})
@@ -97,6 +99,9 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var card_resolution_queue := _card_resolution_queue_node()
 	if card_resolution_queue != null and card_resolution_queue.has_method("configure"):
 		card_resolution_queue.call("configure", _v06_card_group_runtime_snapshot())
+	var card_resolution_history := _card_resolution_history_runtime_service_node()
+	if card_resolution_history != null:
+		card_resolution_history.configure({"history_limit": 24})
 	var action_result_presentation := _action_result_presentation_node()
 	if action_result_presentation != null and action_result_presentation.has_method("configure"):
 		action_result_presentation.call("configure", {})
@@ -1053,6 +1058,98 @@ func world_session_state() -> WorldSessionState:
 	return _world_session_state_node()
 
 
+func card_resolution_history_service() -> CardResolutionHistoryRuntimeService:
+	return _card_resolution_history_runtime_service_node()
+
+
+func card_play_submission_controller() -> CardPlaySubmissionRuntimeController:
+	return _card_play_submission_runtime_controller_node()
+
+
+func submit_card_play(request: Dictionary) -> Dictionary:
+	var controller := _card_play_submission_runtime_controller_node()
+	return controller.submit_card_play(request) if controller != null else {"accepted": false, "reason": "submission_controller_missing"}
+
+
+func request_hand_card_play(request: Dictionary) -> Dictionary:
+	var controller := _card_play_submission_runtime_controller_node()
+	return controller.request_hand_play(request) if controller != null else {"accepted": false, "reason": "submission_controller_missing"}
+
+
+func card_resolution_history_snapshot() -> Array:
+	var service := _card_resolution_history_runtime_service_node()
+	return service.history_snapshot() if service != null else []
+
+
+func card_resolution_public_history_snapshot() -> Array:
+	var service := _card_resolution_history_runtime_service_node()
+	return service.public_history_snapshot() if service != null else []
+
+
+func card_resolution_viewer_history_snapshot(viewer_index: int) -> Array:
+	var service := _card_resolution_history_runtime_service_node()
+	return service.private_viewer_snapshot(viewer_index) if service != null else []
+
+
+func card_resolution_history_entry(resolution_id: int) -> Dictionary:
+	var service := _card_resolution_history_runtime_service_node()
+	return service.entry_by_id(resolution_id) if service != null else {}
+
+
+func patch_card_resolution_history_entry(resolution_id: int, entry: Dictionary) -> Dictionary:
+	var service := _card_resolution_history_runtime_service_node()
+	if service == null:
+		return {"patched": false, "reason": "history_service_missing"}
+	var patch := entry.duplicate(true)
+	patch.erase("resolution_id")
+	patch.erase("queued_order")
+	patch.erase("player_index")
+	return service.patch_entry(resolution_id, patch)
+
+
+func replace_card_resolution_legacy_history(entries: Array) -> Dictionary:
+	var service := _card_resolution_history_runtime_service_node()
+	return service.replace_legacy_entries(entries) if service != null else {"applied": false, "reason": "history_service_missing"}
+
+
+func reset_card_resolution_history() -> void:
+	var service := _card_resolution_history_runtime_service_node()
+	if service != null:
+		service.reset_state()
+
+
+func select_card_resolution(resolution_id: int) -> Dictionary:
+	var state := _table_selection_state_node()
+	if state == null:
+		return {"selected": false, "reason": "selection_state_missing"}
+	state.selected_card_resolution_id = resolution_id
+	return {"selected": true, "resolution_id": state.selected_card_resolution_id}
+
+
+func execute_active_card_resolution(request: Dictionary) -> Dictionary:
+	var execution := _card_resolution_execution_node() as CardResolutionExecutionRuntimeService
+	var port := _card_resolution_execution_world_bridge_node() as CardResolutionExecutionWorldBridge
+	if execution == null or port == null:
+		return {"completed": false, "reason": "typed_execution_path_missing"}
+	var transaction := execution.plan_execution(request)
+	if not bool(transaction.get("ready", false)):
+		return {"completed": false, "reason": str(transaction.get("reason", "execution_plan_rejected")), "transaction": transaction}
+	var guard := 0
+	while not (transaction.get("next_intent", {}) as Dictionary).is_empty() and guard < 20:
+		guard += 1
+		var receipt := port.apply_intent(transaction)
+		transaction = execution.advance_execution(transaction, receipt)
+		if str(transaction.get("status", "")) != CardResolutionExecutionRuntimeService.STATUS_READY:
+			break
+	if guard >= 20 or str(transaction.get("status", "")) != CardResolutionExecutionRuntimeService.STATUS_READY:
+		return {"completed": false, "reason": str(transaction.get("failure_reason", transaction.get("reason", "intent_guard"))), "transaction": transaction}
+	var finalized := execution.finalize_execution(transaction)
+	if bool(finalized.get("completed", false)):
+		settle_card_mana_reservation((transaction.get("active_entry", {}) as Dictionary).duplicate(true) if transaction.get("active_entry", {}) is Dictionary else {}, finalized)
+	finalized["transaction"] = transaction
+	return finalized
+
+
 func _wire_run_rng_service() -> void:
 	var service := _run_rng_service_node()
 	if service == null:
@@ -1169,6 +1266,68 @@ func _wire_world_session_state() -> void:
 		(card_player_state as CardPlayerStateProductionAdapterV06).set_world_session_state(state)
 	if card_inventory is CommodityCardInventoryRuntimeController:
 		(card_inventory as CommodityCardInventoryRuntimeController).set_world_session_state(state)
+
+
+func _wire_card_execution_typed_ports() -> void:
+	var world_state := _world_session_state_node()
+	var selection := _table_selection_state_node()
+	var queue := _card_resolution_queue_node() as CardResolutionQueueRuntimeService
+	var resolution := _card_resolution_runtime_controller_node()
+	var target_choice := _card_target_choice_runtime_controller_node()
+	var eligibility_facts := _card_play_world_bridge_node() as CardPlayEligibilityWorldBridge
+	var eligibility := _card_play_eligibility_node() as CardPlayEligibilityRuntimeService
+	var monster := _monster_runtime_controller_node() as MonsterRuntimeController
+	var military := _military_runtime_controller_node() as MilitaryRuntimeController
+	var weather := _weather_runtime_controller_node() as WeatherRuntimeController
+	var contract := _contract_runtime_controller_node() as ContractRuntimeController
+	var session := _session_node() as GameSessionRuntimeController
+	var scheduler := _scheduler_node() as ForcedDecisionRuntimeScheduler
+	var commodity_flow := _commodity_flow_runtime_controller_node() as CommodityFlowRuntimeController
+	var history := _card_resolution_history_runtime_service_node()
+	var presentation := _card_resolution_presentation_port_node()
+	var intel := _card_intel_runtime_service_node()
+	var commitment := _card_commitment_runtime_service_node()
+	var counter := _card_counter_settlement_runtime_service_node()
+	var effect_router := _card_effect_runtime_router_node()
+	var submission := _card_play_submission_runtime_controller_node()
+	var economy_port := _card_economy_product_route_effect_world_bridge_node() as CardEconomyProductRouteEffectWorldBridge
+	if eligibility_facts != null:
+		eligibility_facts.set_runtime_dependencies(queue, resolution, target_choice, monster, military, contract, session, scheduler, commodity_flow)
+	if economy_port != null:
+		economy_port.set_contract_runtime_controller(contract)
+	if intel != null:
+		intel.set_dependencies(world_state, selection, history, contract)
+	if commitment != null:
+		commitment.set_dependencies(world_state, _card_cooldown_runtime_controller_node(), _weather_telemetry_runtime_service_node() as WeatherTelemetryRuntimeService, eligibility_facts, eligibility)
+	if effect_router != null:
+		effect_router.set_dependencies(
+			world_state, selection, monster, military, weather, contract,
+			_player_hand_interaction_node() as PlayerHandInteractionRuntimeService,
+			_card_economy_product_route_effect_node() as CardEconomyProductRouteEffectRuntimeService,
+			economy_port, intel, presentation, self
+		)
+	var diagnostics_bridge := _gameplay_balance_diagnostics_world_bridge_node() as GameplayBalanceDiagnosticsWorldBridge
+	if diagnostics_bridge != null:
+		diagnostics_bridge.set_card_effect_router(effect_router)
+	if counter != null:
+		counter.set_dependencies(queue, eligibility_facts, eligibility, commitment, history, presentation, self, world_state)
+	var execution_port := _card_resolution_execution_world_bridge_node() as CardResolutionExecutionWorldBridge
+	if execution_port != null:
+		execution_port.set_runtime_dependencies(queue, resolution, eligibility_facts, eligibility, counter, commitment, history, presentation, effect_router, self)
+	if submission != null:
+		submission.set_dependencies(
+			world_state, selection, eligibility_facts, eligibility, queue, resolution,
+			target_choice, contract,
+			_product_market_runtime_controller_node() as ProductMarketRuntimeController,
+			_city_gdp_derivative_runtime_controller_node() as CityGdpDerivativeRuntimeController,
+			self
+		)
+	var ai := _ai_runtime_controller_node() as AiRuntimeController
+	if ai != null:
+		ai.set_card_execution_dependencies(submission, history, selection)
+	var contract_bridge := _contract_runtime_world_bridge_node() as ContractRuntimeWorldBridge
+	if contract_bridge != null:
+		contract_bridge.set_card_resolution_history_service(history, queue)
 
 
 func solar_public_presentation_snapshot() -> Dictionary:
@@ -4864,6 +5023,34 @@ func _card_play_world_bridge_node() -> Node:
 
 func _card_resolution_execution_world_bridge_node() -> Node:
 	return get_node_or_null("CardResolutionExecutionWorldBridge")
+
+
+func _card_resolution_history_runtime_service_node() -> CardResolutionHistoryRuntimeService:
+	return get_node_or_null("CardResolutionHistoryRuntimeService") as CardResolutionHistoryRuntimeService
+
+
+func _card_resolution_presentation_port_node() -> CardResolutionPresentationPort:
+	return get_node_or_null("CardResolutionPresentationPort") as CardResolutionPresentationPort
+
+
+func _card_intel_runtime_service_node() -> CardIntelRuntimeService:
+	return get_node_or_null("CardIntelRuntimeService") as CardIntelRuntimeService
+
+
+func _card_effect_runtime_router_node() -> CardEffectRuntimeRouter:
+	return get_node_or_null("CardEffectRuntimeRouter") as CardEffectRuntimeRouter
+
+
+func _card_commitment_runtime_service_node() -> CardCommitmentRuntimeService:
+	return get_node_or_null("CardCommitmentRuntimeService") as CardCommitmentRuntimeService
+
+
+func _card_counter_settlement_runtime_service_node() -> CardCounterSettlementRuntimeService:
+	return get_node_or_null("CardCounterSettlementRuntimeService") as CardCounterSettlementRuntimeService
+
+
+func _card_play_submission_runtime_controller_node() -> CardPlaySubmissionRuntimeController:
+	return get_node_or_null("CardPlaySubmissionRuntimeController") as CardPlaySubmissionRuntimeController
 
 
 func _world_effective_clock_runtime_controller_node() -> Node:

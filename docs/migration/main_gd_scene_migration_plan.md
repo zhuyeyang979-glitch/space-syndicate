@@ -98,13 +98,28 @@ Current Main reduction from the previous committed cutover: three top-level
 fields and three physical lines removed. External Main caller occurrences fell
 from 2,165 to 1,652, with no method, constant, preload or caller-file increase.
 
+### Card execution typed-port prerequisite
+
+The dynamic card execution boundary now uses scene-owned typed ports. The
+former execution bridge's 35 `Main` call/get/set/node-lookup sites are zero;
+human and AI submissions share one `CardPlaySubmissionRuntimeController`; and
+history, commitment, counter, intel, effect routing and public presentation
+have narrow owners. `Main._use_skill` and `Main._queue_skill_resolution` are
+physically deleted.
+
+The `card_execution` ledger item remains `migrating`, not `cut_over`, because
+the separate Card Resolution Transition Sink must still remove Main's 12-kind
+frame-command switch and `_complete_active_card_resolution` wrapper with
+producer command lineage and full order/exact-once gates. See
+`docs/migration/card_execution_typed_ports_cutover.md`.
+
 ## Next atomic cutover
 
-The next recommended production cutover is the authoritative runtime loop and
-clock-driving boundary. It should move deterministic tick ordering out of
-Main without moving topology generation, economy rules, AI policy or UI
-presentation into `WorldSessionState`. Typed world ports can then retire the
-remaining root-bound method routing in smaller domain slices.
+The next recommended production cutover is the Card Resolution Transition
+Sink using the typed ports above. Once it removes the frame-command switch and
+passes persisted exact-once/order gates, the authoritative runtime loop and
+clock-driving boundary can be retried without moving topology generation,
+economy rules, AI policy or UI presentation into `WorldSessionState`.
 
 ## Completion rule
 

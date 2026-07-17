@@ -207,8 +207,9 @@ func _check_main_supply_retirement_contract() -> void:
 			stale_symbols.append(symbol)
 	_expect(stale_symbols.is_empty(), "main has no fixed-slot, category-order, or named teaching-card guarantee symbols: %s" % str(stale_symbols))
 	_expect(
-		source.contains("region_supply_public_rack")
-			and source.contains("public_region_supply_rack_snapshot"),
+		source.contains("region_supply_listing")
+			and source.contains("region_supply_card_ids")
+			and source.contains("region_supply_rack_revision"),
 		"main consumes the scene-owned public RegionSupply rack instead of shadow supply fields"
 	)
 

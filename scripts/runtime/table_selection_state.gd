@@ -8,6 +8,7 @@ var _selected_player := 0
 var _inspected_player := 0
 var _selected_district := 0
 var _selected_trade_product := ""
+var _selected_card_resolution_id := -1
 var _revision := 0
 
 var selected_player: int:
@@ -34,6 +35,12 @@ var selected_trade_product: String:
 	set(value):
 		_set_value(&"selected_trade_product", value)
 
+var selected_card_resolution_id: int:
+	get:
+		return _selected_card_resolution_id
+	set(value):
+		_set_value(&"selected_card_resolution_id", value)
+
 
 func reset() -> Dictionary:
 	return restore({
@@ -41,6 +48,7 @@ func reset() -> Dictionary:
 		"inspected_player": 0,
 		"selected_district": 0,
 		"selected_trade_product": "",
+		"selected_card_resolution_id": -1,
 	})
 
 
@@ -58,14 +66,17 @@ func restore(data: Dictionary) -> Dictionary:
 	var next_inspected := int(data.get("inspected_player", _inspected_player))
 	var next_district := int(data.get("selected_district", _selected_district))
 	var next_product := str(data.get("selected_trade_product", _selected_trade_product))
+	var next_resolution_id := int(data.get("selected_card_resolution_id", _selected_card_resolution_id))
 	var changed := next_player != _selected_player \
 		or next_inspected != _inspected_player \
 		or next_district != _selected_district \
-		or next_product != _selected_trade_product
+		or next_product != _selected_trade_product \
+		or next_resolution_id != _selected_card_resolution_id
 	_selected_player = next_player
 	_inspected_player = next_inspected
 	_selected_district = next_district
 	_selected_trade_product = next_product
+	_selected_card_resolution_id = next_resolution_id
 	if changed:
 		_revision += 1
 		selection_changed.emit(snapshot())
@@ -79,6 +90,7 @@ func snapshot() -> Dictionary:
 		"inspected_player": _inspected_player,
 		"selected_district": _selected_district,
 		"selected_trade_product": _selected_trade_product,
+		"selected_card_resolution_id": _selected_card_resolution_id,
 		"revision": _revision,
 	}
 
@@ -97,6 +109,7 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	_inspected_player = int(data.get("inspected_player", _selected_player))
 	_selected_district = int(data.get("selected_district", 0))
 	_selected_trade_product = str(data.get("selected_trade_product", ""))
+	_selected_card_resolution_id = int(data.get("selected_card_resolution_id", -1))
 	_revision = maxi(0, int(data.get("revision", 0)))
 	var restored := snapshot()
 	selection_changed.emit(restored)
@@ -133,6 +146,10 @@ func _set_value(property_name: StringName, value: Variant) -> void:
 			var normalized_product := str(value)
 			changed = normalized_product != _selected_trade_product
 			_selected_trade_product = normalized_product
+		&"selected_card_resolution_id":
+			var normalized_resolution_id := int(value)
+			changed = normalized_resolution_id != _selected_card_resolution_id
+			_selected_card_resolution_id = normalized_resolution_id
 	if changed:
 		_revision += 1
 		selection_changed.emit(snapshot())

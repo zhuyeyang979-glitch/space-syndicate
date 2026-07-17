@@ -1,0 +1,111 @@
+{
+  "review_kind": "analysis_only_boundary_review",
+  "baseline_sha": "dfcd841e51a2ae72d319a4aea2cb44bbe3f18922",
+  "branch": "codex/scene-first-remove-main-gd",
+  "status": "CARD_RESOLUTION_TRANSITION_SINK_CUTOVER_BLOCKED",
+  "baseline_transition_command_kinds": [
+    "show_active",
+    "begin_counter",
+    "complete_active",
+    "start_next",
+    "show_group_window",
+    "enter_public_bid",
+    "enter_lock",
+    "all_ready_public_bid",
+    "all_ready_lock",
+    "all_ready_lock_batch",
+    "lock_batch",
+    "hide_overlay"
+  ],
+  "baseline_violations": [
+    "commands_are_untyped_dictionaries",
+    "main_process_receives_and_iterates_commands",
+    "main_dispatches_transition_kind",
+    "main_owns_queue_and_execution_side_effects",
+    "main_directly_mutates_card_presentation",
+    "legacy_execution_bridge_receives_main_object"
+  ],
+  "acceptance_gates": {
+    "scene_owned_single_sink": false,
+    "typed_command_contract": false,
+    "typed_receipt_contract": false,
+    "sink_is_not_gameplay_monolith": false,
+    "sink_has_no_ui_node_access": false,
+    "sink_has_no_main_reference_callback_or_fallback": false,
+    "main_does_not_receive_commands": false,
+    "no_dual_execution": false,
+    "deterministic_command_ids": false,
+    "ordered_synchronous_application": false,
+    "duplicate_commands_do_not_reapply": false,
+    "stale_revisions_fail_closed": false,
+    "presentation_receipts_are_visibility_safe": false,
+    "recursive_hidden_information_scan": false,
+    "runtime_loop_remains_absent": true
+  },
+  "forbidden_public_fields": [
+    "player_index",
+    "slot_index",
+    "cash",
+    "hand",
+    "discard",
+    "true_owner",
+    "hidden_owner",
+    "owner_truth",
+    "ai_plan",
+    "ai_private_plan",
+    "ai_reason",
+    "ai_utility_score"
+  ],
+  "blocker": {
+    "transition_kind": "complete_active",
+    "main_method": "Main._complete_active_card_resolution",
+    "legacy_bridge_call": "CardResolutionExecutionWorldBridge.apply_intent(self, transaction)",
+    "main_object_passed_to_bridge": true,
+    "dynamic_world_dependencies": 35,
+    "dynamic_world_dependency_breakdown": {
+      "call": 27,
+      "get": 1,
+      "set": 5,
+      "get_node_or_null": 2
+    },
+    "covered_intents": [
+      "counter_check",
+      "release_active",
+      "finish_presentation",
+      "revalidate_requirement",
+      "revalidate_target",
+      "dispatch_effect",
+      "finish_card_commitment",
+      "create_aftermath",
+      "restore_context",
+      "append_history",
+      "start_next",
+      "finish_batch",
+      "promote_next_batch"
+    ]
+  },
+  "missing_prerequisites": [
+    "typed_execution_command_and_receipt",
+    "requirement_target_revalidation_port",
+    "counter_queue_batch_lifecycle_port",
+    "domain_owner_effect_dispatcher",
+    "intel_effect_port",
+    "commitment_history_aftermath_owner",
+    "selection_context_restoration_port",
+    "visibility_safe_card_presentation_consumer",
+    "producer_deterministic_command_lineage"
+  ],
+  "recommended_next_cutover": "CARD_EXECUTION_TYPED_PORTS_CUTOVER",
+  "no_half_line_verification": {
+    "production_files_modified_by_attempt": 0,
+    "sink_added": false,
+    "typed_transition_contract_partially_added": false,
+    "coordinator_composition_changed": false,
+    "second_card_tick_added": false,
+    "second_transition_apply_path_added": false,
+    "runtime_loop_added": false,
+    "new_main_callback_or_fallback_added": false,
+    "legacy_single_path_preserved": true
+  },
+  "requires_final_diff_review": false
+}

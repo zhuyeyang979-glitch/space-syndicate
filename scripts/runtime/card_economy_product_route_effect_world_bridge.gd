@@ -7,6 +7,7 @@ var _city_gdp_derivative_runtime_controller: CityGdpDerivativeRuntimeController
 var _formula_runtime_service: CardEconomyProductRouteFormulaRuntimeService
 var _table_selection_state: TableSelectionState
 var _world_session_state: WorldSessionState
+var _contract_runtime_controller: ContractRuntimeController
 
 
 func set_product_market_runtime_controller(controller: ProductMarketRuntimeController) -> void:
@@ -29,6 +30,10 @@ func set_world_session_state(state: WorldSessionState) -> void:
 	_world_session_state = state
 
 
+func set_contract_runtime_controller(controller: ContractRuntimeController) -> void:
+	_contract_runtime_controller = controller
+
+
 func world_session_state() -> WorldSessionState:
 	return _world_session_state
 
@@ -37,10 +42,8 @@ func table_selection_state() -> TableSelectionState:
 	return _table_selection_state
 
 
-func apply_effect(world: Node, plan: Dictionary) -> Dictionary:
+func apply_effect(plan: Dictionary) -> Dictionary:
 	var handler_id := str(plan.get("handler_id", ""))
-	if world == null:
-		return _receipt(handler_id, false, "world_missing")
 	if str(plan.get("status", "")) != "ready" or not bool(plan.get("supported", false)):
 		return _receipt(handler_id, false, "effect_plan_not_ready")
 	var payload: Dictionary = plan.get("effect_payload", {}) as Dictionary
@@ -58,19 +61,18 @@ func apply_effect(world: Node, plan: Dictionary) -> Dictionary:
 		"product_futures":
 			resolved = _product_market_runtime_controller.apply_futures(player_index, skill) if _product_market_runtime_controller != null else false
 		"city_gdp_derivative":
-			var district_index: int = _table_selection_state.selected_district if _table_selection_state != null else -1
+			var district_index := int(entry.get("selected_district", -1))
 			var derivative_receipt := _city_gdp_derivative_runtime_controller.open_position(player_index, skill, district_index) if _city_gdp_derivative_runtime_controller != null else {"committed": false}
 			resolved = bool(derivative_receipt.get("committed", false))
 		"product_contract_boon":
 			resolved = _product_market_runtime_controller.apply_product_contract_boon(player_index, skill) if _product_market_runtime_controller != null else false
 		"area_trade_contract":
-			var contract_controller := _contract_runtime_controller(world)
-			var contract_result := contract_controller.open_offer(skill, entry) if contract_controller != null else {"opened": false, "reason": "contract_controller_missing"}
+			var contract_result := _contract_runtime_controller.open_offer(skill, entry) if _contract_runtime_controller != null else {"opened": false, "reason": "contract_controller_missing"}
 			resolved = bool(contract_result.get("opened", false))
 		"market_stabilize":
 			resolved = _product_market_runtime_controller.apply_market_stabilize(skill) if _product_market_runtime_controller != null else false
 		"news_event":
-			return _apply_news_event(world, handler_id, skill)
+			return _apply_news_event(handler_id, skill, int(entry.get("selected_district", -1)))
 		"product_growth_boon":
 			resolved = _product_market_runtime_controller.apply_product_growth_boon(skill) if _product_market_runtime_controller != null else false
 		_:
@@ -89,17 +91,17 @@ func debug_snapshot() -> Dictionary:
 		"product_market_controller_bound": _product_market_runtime_controller != null,
 		"city_gdp_derivative_controller_bound": _city_gdp_derivative_runtime_controller != null,
 		"formula_runtime_service_bound": _formula_runtime_service != null,
+		"contract_runtime_controller_bound": _contract_runtime_controller != null,
 	}
 
 
-func _apply_news_event(world: Node, handler_id: String, skill: Dictionary) -> Dictionary:
+func _apply_news_event(handler_id: String, skill: Dictionary, district_index: int) -> Dictionary:
 	if _formula_runtime_service == null or _product_market_runtime_controller == null:
 		return _receipt(handler_id, false, "news_event_owner_unavailable")
 	var districts_variant: Variant = _world_session_state.districts if _world_session_state != null else []
-	if not (districts_variant is Array) or _table_selection_state == null:
+	if not (districts_variant is Array):
 		return _receipt(handler_id, false, "news_event_world_facts_unavailable")
 	var districts := (districts_variant as Array).duplicate(true)
-	var district_index: int = _table_selection_state.selected_district
 	if district_index < 0 or district_index >= districts.size() or not (districts[district_index] is Dictionary):
 		return _receipt(handler_id, false, "news_event_target_invalid")
 	var effect := _news_effect_allowlist(skill)
@@ -174,10 +176,6 @@ func _append_news_public_clue(district: Dictionary, receipt: Dictionary) -> void
 		clues.pop_front()
 	city["public_clues"] = clues
 	district["city"] = city
-
-
-func _contract_runtime_controller(world: Node) -> ContractRuntimeController:
-	return world.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ContractRuntimeController") as ContractRuntimeController
 
 
 func _receipt(handler_id: String, resolved: bool, reason: String, dispatched: bool = false) -> Dictionary:

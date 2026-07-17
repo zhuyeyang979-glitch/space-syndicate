@@ -2,8 +2,22 @@
 extends Node
 class_name CardResolutionExecutionWorldBridge
 
-var _table_selection_state: TableSelectionState
+## Historical scene name retained for composition stability. This is now a
+## typed execution port: it never receives, stores, discovers, or reflects Main.
+
 var _world_session_state: WorldSessionState
+var _table_selection_state: TableSelectionState
+var _queue_service: CardResolutionQueueRuntimeService
+var _resolution_controller: CardResolutionRuntimeController
+var _eligibility_facts: CardPlayEligibilityWorldBridge
+var _eligibility_service: CardPlayEligibilityRuntimeService
+var _counter_service: CardCounterSettlementRuntimeService
+var _commitment_service: CardCommitmentRuntimeService
+var _history_service: CardResolutionHistoryRuntimeService
+var _presentation_port: CardResolutionPresentationPort
+var _effect_router: CardEffectRuntimeRouter
+var _runtime_coordinator: GameRuntimeCoordinator
+var _apply_count := 0
 
 
 func set_table_selection_state(state: TableSelectionState) -> void:
@@ -14,6 +28,30 @@ func set_world_session_state(state: WorldSessionState) -> void:
 	_world_session_state = state
 
 
+func set_runtime_dependencies(
+	queue_service: CardResolutionQueueRuntimeService,
+	resolution_controller: CardResolutionRuntimeController,
+	eligibility_facts: CardPlayEligibilityWorldBridge,
+	eligibility_service: CardPlayEligibilityRuntimeService,
+	counter_service: CardCounterSettlementRuntimeService,
+	commitment_service: CardCommitmentRuntimeService,
+	history_service: CardResolutionHistoryRuntimeService,
+	presentation_port: CardResolutionPresentationPort,
+	effect_router: CardEffectRuntimeRouter,
+	runtime_coordinator: GameRuntimeCoordinator
+) -> void:
+	_queue_service = queue_service
+	_resolution_controller = resolution_controller
+	_eligibility_facts = eligibility_facts
+	_eligibility_service = eligibility_service
+	_counter_service = counter_service
+	_commitment_service = commitment_service
+	_history_service = history_service
+	_presentation_port = presentation_port
+	_effect_router = effect_router
+	_runtime_coordinator = runtime_coordinator
+
+
 func world_session_state() -> WorldSessionState:
 	return _world_session_state
 
@@ -22,57 +60,66 @@ func table_selection_state() -> TableSelectionState:
 	return _table_selection_state
 
 
-func apply_intent(world: Node, transaction: Dictionary) -> Dictionary:
-	if world == null or not is_instance_valid(world):
-		return {"intent_type": "", "reason": "world_missing"}
-	var next_intent: Dictionary = transaction.get("next_intent", {}) as Dictionary
+func apply_intent(transaction: Dictionary) -> Dictionary:
+	_apply_count += 1
+	var next_intent: Dictionary = _dictionary(transaction.get("next_intent", {}))
 	var intent_type := str(next_intent.get("intent_type", ""))
 	match intent_type:
 		"counter_check":
-			var entry: Dictionary = (transaction.get("active_entry", {}) as Dictionary).duplicate(true)
-			world.set("last_card_resolution_player_index", int(entry.get("player_index", world.get("last_card_resolution_player_index"))))
-			var counter_variant: Variant = world.call("_resolve_reactive_counter_for_entry", entry)
-			var counter_entry: Dictionary = counter_variant if counter_variant is Dictionary else {}
-			var counter_skill: Dictionary = counter_entry.get("skill", {}) as Dictionary
-			return {"intent_type": intent_type, "countered": not counter_entry.is_empty(), "counter_resolution_id": int(counter_entry.get("resolution_id", -1)), "counter_card_name": str(counter_skill.get("name", "相位否决"))}
+			var entry := _dictionary(transaction.get("active_entry", {}))
+			_resolution_controller.record_resolving_player(int(entry.get("player_index", -1)))
+			return _counter_service.resolve_counter(entry)
 		"release_active":
-			var queue_service: Node = world.call("_card_resolution_queue_service_node") as Node
-			var release_variant: Variant = queue_service.call("complete_active", int(transaction.get("resolution_id", -1)), {}) if queue_service != null and queue_service.has_method("complete_active") else {}
-			var release: Dictionary = (release_variant as Dictionary).duplicate(true) if release_variant is Dictionary else {}
+			var release := _queue_service.complete_active(int(transaction.get("resolution_id", -1)), {})
 			release["intent_type"] = intent_type
 			return release
 		"finish_presentation":
-			world.set("card_resolution_auction_open", false)
-			world.set("card_resolution_timer", 0.0)
-			world.set("card_resolution_counter_window_active", false)
-			world.set("card_resolution_counter_timer", 0.0)
-			world.call("_hide_card_resolution_overlay")
+			_resolution_controller.finish_active_presentation()
+			_presentation_port.set_overlay_state({"visible": false, "phase": "idle", "resolution_id": -1})
 			return {"intent_type": intent_type, "finished": true}
-		"revalidate_requirement": return _requirement_receipt(world, transaction)
-		"revalidate_target": return _target_receipt(world, transaction)
-		"dispatch_effect": return world.call("_apply_card_resolution_effect_request", transaction) as Dictionary
-		"finish_card_commitment": return world.call("_card_resolution_commitment_receipt", transaction) as Dictionary
-		"create_aftermath": return _aftermath_receipt(world, transaction)
-		"restore_context": return _restore_context_receipt(world, transaction)
-		"append_history": return world.call("_card_resolution_history_receipt", transaction) as Dictionary
+		"revalidate_requirement":
+			return _requirement_receipt(transaction)
+		"revalidate_target":
+			return _target_receipt(transaction)
+		"dispatch_effect":
+			return _effect_router.dispatch(transaction)
+		"finish_card_commitment":
+			return _commitment_service.finalize_commitment({
+				"transaction_id": "card-commitment:%d" % int(transaction.get("resolution_id", -1)),
+				"entry": _dictionary(transaction.get("active_entry", {})),
+				"skill": _dictionary(transaction.get("skill", {})),
+				"selected_district": int(_dictionary(transaction.get("active_entry", {})).get("selected_district", -1)),
+			})
+		"create_aftermath":
+			return _aftermath_receipt(transaction)
+		"restore_context":
+			# Revalidation and routing consume the immutable queue context directly;
+			# global table selection is therefore never borrowed and needs no restore.
+			return {"intent_type": intent_type, "restored": true, "selection_unchanged": true}
+		"append_history":
+			return _history_receipt(transaction)
 		"start_next":
-			world.call("_start_next_card_resolution")
-			var active_variant: Variant = world.call("_card_resolution_active_entry")
-			return {"intent_type": intent_type, "started": active_variant is Dictionary and not (active_variant as Dictionary).is_empty()}
+			return _start_next_receipt()
 		"finish_batch":
-			world.call("_reset_card_resolution_batch_state")
-			var next_variant: Variant = world.call("_card_resolution_next_queue")
-			return {"intent_type": intent_type, "finished": true, "next_queue_count": (next_variant as Array).size() if next_variant is Array else 0}
+			_resolution_controller.finish_batch_state()
+			_presentation_port.set_overlay_state({"visible": false, "phase": "idle", "resolution_id": -1})
+			return {"intent_type": intent_type, "finished": true, "next_queue_count": _queue_service.next_queue().size()}
 		"promote_next_batch":
-			world.call("_promote_next_card_resolution_batch", int((transaction.get("active_entry", {}) as Dictionary).get("player_index", -1)))
-			var current_variant: Variant = world.call("_card_resolution_current_queue")
-			return {"intent_type": intent_type, "promoted": current_variant is Array and not (current_variant as Array).is_empty()}
+			return _promote_next_batch_receipt()
 	return {"intent_type": intent_type, "reason": "unsupported_intent"}
 
 
 func debug_snapshot() -> Dictionary:
 	return {
-		"bridge_ready": true,
+		"bridge_ready": _world_session_state != null \
+			and _table_selection_state != null \
+			and _queue_service != null \
+			and _counter_service != null \
+			and _effect_router != null,
+		"typed_execution_port": true,
+		"holds_main_reference": false,
+		"dynamic_main_access_count": 0,
+		"apply_count": _apply_count,
 		"intent_execution_authority": false,
 		"execution_order_authority": false,
 		"queue_authority": false,
@@ -81,133 +128,165 @@ func debug_snapshot() -> Dictionary:
 	}
 
 
-func _requirement_receipt(world: Node, transaction: Dictionary) -> Dictionary:
-	var entry: Dictionary = (transaction.get("active_entry", {}) as Dictionary).duplicate(true)
-	var skill: Dictionary = (transaction.get("skill", {}) as Dictionary).duplicate(true)
+func _requirement_receipt(transaction: Dictionary) -> Dictionary:
+	var entry := _dictionary(transaction.get("active_entry", {}))
+	var skill := _dictionary(transaction.get("skill", {}))
 	var player_index := int(entry.get("player_index", -1))
-	if _world_session_state == null:
-		return {"intent_type": "apply_cash_cost", "applied": false, "reason": "world_session_state_missing"}
-	var players: Array = _world_session_state.players
-	if player_index < 0 or player_index >= players.size():
+	if _world_session_state == null or player_index < 0 or player_index >= _world_session_state.players.size():
 		return {"intent_type": "revalidate_requirement", "valid": false, "reason": "invalid_player", "skill": skill}
 	if skill.is_empty():
-		world.call("_log", "一张匿名候补卡缺少卡面快照，结算取消。")
 		return {"intent_type": "revalidate_requirement", "valid": false, "reason": "missing_skill", "skill": skill}
 	skill.erase("queued_for_resolution")
-	var player: Dictionary = players[player_index]
-	var slots: Array = player.get("slots", [])
-	var consumed_on_queue := bool(entry.get("consumed_on_queue", false))
-	var slot_index := int(entry.get("slot_index", -1))
-	if not consumed_on_queue and slot_index >= 0 and slot_index < slots.size() and slots[slot_index] is Dictionary:
-		slots[slot_index] = skill
-		player["slots"] = slots
-	players[player_index] = player
-	_world_session_state.players = players
-	if str(skill.get("kind", "")) == "area_trade_contract":
-		var contract_controller := _contract_runtime_controller(world)
-		if contract_controller != null:
-			var selection := contract_controller.selection_snapshot()
-			contract_controller.set_selection_state(
-				int(entry.get("contract_source_district", selection.get("source_district", -1))),
-				int(entry.get("contract_target_district", selection.get("target_district", -1)))
-			)
-	skill["play_requirement_district"] = int(entry.get("play_requirement_district", -1))
-	var valid := bool(world.call("_authorize_card_play", player_index, skill, true, "rule"))
-	skill.erase("play_requirement_district")
-	if not valid:
-		var display_name := str(world.call("_card_display_name", str(skill.get("name", "卡牌"))))
-		world.call("_log", "%s公开展示后未能满足结算条件；%s本次不生效。" % [display_name, "已离手的一次性牌不会返还，" if consumed_on_queue else "固定技能保留，"])
-	return {"intent_type": "revalidate_requirement", "valid": valid, "reason": "valid" if valid else "requirement_invalid", "skill": skill}
+	var context := _entry_context(entry)
+	var facts := _eligibility_facts.build_facts(player_index, skill, context)
+	if _runtime_coordinator != null:
+		facts["commodity_color_flow"] = _runtime_coordinator.commodity_color_flow_snapshot(player_index)
+		facts["player_mana"] = _runtime_coordinator.player_mana_availability(player_index)
+	var result := _eligibility_service.evaluate_play({
+		"player_index": player_index,
+		"skill": skill,
+		"evaluation_mode": "rule",
+	}, facts)
+	var valid := bool(result.get("allowed", false))
+	return {
+		"intent_type": "revalidate_requirement",
+		"valid": valid,
+		"reason": "valid" if valid else str(result.get("reason_code", "requirement_invalid")),
+		"skill": skill,
+	}
 
 
-func _target_receipt(world: Node, transaction: Dictionary) -> Dictionary:
-	var entry: Dictionary = transaction.get("active_entry", {}) as Dictionary
-	var skill: Dictionary = transaction.get("skill", {}) as Dictionary
-	if _world_session_state == null:
-		return {"intent_type": "revalidate_target", "valid": false, "reason": "world_session_state_missing"}
-	var players: Array = _world_session_state.players
-	var districts: Array = _world_session_state.districts
+func _target_receipt(transaction: Dictionary) -> Dictionary:
+	var entry := _dictionary(transaction.get("active_entry", {}))
+	var skill := _dictionary(transaction.get("skill", {}))
 	var player_index := int(entry.get("player_index", -1))
-	if player_index < 0 or player_index >= players.size() or skill.is_empty():
-		return {"intent_type": "revalidate_target", "valid": false, "reason": "invalid_actor"}
-	if _table_selection_state == null:
-		return {"intent_type": "revalidate_target", "valid": false, "reason": "table_selection_state_missing"}
-	_table_selection_state.set_active_context(
-		player_index,
-		clampi(int(entry.get("selected_district", _table_selection_state.selected_district)), 0, max(0, districts.size() - 1)),
-		str(entry.get("selected_trade_product", _table_selection_state.selected_trade_product))
-	)
-	var card_label := str(world.call("_card_display_name", str(skill.get("name", ""))))
-	if card_label == "":
-		card_label = str(skill.get("name", "卡牌"))
-	var requirement_variant: Variant = world.call("_card_play_requirement_snapshot", player_index, skill)
-	var requirement: Dictionary = requirement_variant if requirement_variant is Dictionary else {}
-	world.call("_log", "匿名卡牌结算：%s（%s）。" % [card_label, str(requirement.get("requirement_text", "条件：无"))])
-	var monster_controller := _monster_runtime_controller(world)
-	var focused_variant: Variant = monster_controller.call("selected_actor_snapshot", true) if monster_controller != null and monster_controller.has_method("selected_actor_snapshot") else {}
-	var focused_actor: Dictionary = focused_variant if focused_variant is Dictionary else {}
-	var effect_position: Vector2 = world.call("_entity_world_position", focused_actor) as Vector2 if not focused_actor.is_empty() else world.call("_district_center", _table_selection_state.selected_district) as Vector2
-	var presentation_variant: Variant = world.call("_card_resolution_presentation_snapshot", skill, entry, -1.0, true)
-	var presentation: Dictionary = presentation_variant if presentation_variant is Dictionary else {}
-	world.call("_add_action_callout", "匿名卡牌", card_label, str(presentation.get("animation_text", "卡面公开，效果等待结算。")), Color("#fb7185"), effect_position)
 	var target_kind := str(transaction.get("target_kind", "none"))
-	var valid := true
-	var reason := "valid"
-	if target_kind == "monster":
-		var monsters_variant: Variant = monster_controller.call("roster_snapshot", true) if monster_controller != null and monster_controller.has_method("roster_snapshot") else []
-		var monsters: Array = monsters_variant if monsters_variant is Array else []
+	var valid := player_index >= 0 and _world_session_state != null and player_index < _world_session_state.players.size() and not skill.is_empty()
+	var reason := "valid" if valid else "invalid_actor"
+	if valid and target_kind == "monster":
+		var monsters := _eligibility_facts.monster_roster_snapshot()
 		var target_slot := int(entry.get("target_slot", -1))
-		valid = target_slot >= 0 and target_slot < monsters.size() and not bool((monsters[target_slot] as Dictionary).get("down", false))
-		if not valid:
-			reason = "target_monster_invalid"
-			world.call("_log", "%s的目标怪兽已失效；%s未产生效果。" % [card_label, "已离手的一次性牌" if bool(entry.get("consumed_on_queue", false)) else "固定技能"])
-	elif target_kind == "player":
+		valid = target_slot >= 0 and target_slot < monsters.size() and monsters[target_slot] is Dictionary and not bool((monsters[target_slot] as Dictionary).get("down", false))
+		reason = "valid" if valid else "target_monster_invalid"
+	elif valid and target_kind == "player":
 		var target_player := int(entry.get("target_player", -1))
-		valid = target_player >= 0 and target_player < players.size() and target_player != player_index
-		if not valid:
-			reason = "target_player_invalid"
-			world.call("_log", "%s的目标玩家已失效，本次未产生效果。" % card_label)
+		valid = target_player >= 0 and target_player < _world_session_state.players.size() and target_player != player_index
+		reason = "valid" if valid else "target_player_invalid"
+	_presentation_port.publish_public_event({
+		"event_id": "card-target:%d" % int(entry.get("resolution_id", entry.get("queued_order", -1))),
+		"event_kind": "card_target_check",
+		"resolution_id": int(entry.get("resolution_id", entry.get("queued_order", -1))),
+		"card_name": str(skill.get("name", "卡牌")),
+		"target_kind": target_kind,
+		"status": "valid" if valid else "invalid",
+		"summary": "目标有效，效果开始结算。" if valid else "目标已失效，本次不产生效果。",
+		"district_index": int(entry.get("selected_district", -1)),
+	})
 	return {"intent_type": "revalidate_target", "valid": valid, "reason": reason}
 
 
-func _monster_runtime_controller(world: Node) -> Node:
-	return world.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterRuntimeController")
-
-
-func _aftermath_receipt(world: Node, transaction: Dictionary) -> Dictionary:
-	var entry: Dictionary = (transaction.get("active_entry", {}) as Dictionary).duplicate(true)
-	var skill: Dictionary = transaction.get("skill", {}) as Dictionary
+func _aftermath_receipt(transaction: Dictionary) -> Dictionary:
+	var entry := _dictionary(transaction.get("active_entry", {}))
+	var skill := _dictionary(transaction.get("skill", {}))
+	var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
+	var clue := ""
 	if bool(transaction.get("countered", false)):
 		entry["countered"] = true
 		entry["countered_by_resolution_id"] = int(transaction.get("counter_resolution_id", -1))
-		entry["aftermath_clue"] = "被%s反制，未结算。" % str(world.call("_card_display_name", str(transaction.get("counter_card_name", "相位否决"))))
-	elif not skill.is_empty():
-		world.call("_add_card_resolution_aftermath_clue", entry, skill, bool(transaction.get("resolved", false)))
+		clue = "被%s反制，未结算。" % str(transaction.get("counter_card_name", "相位否决"))
+	elif bool(transaction.get("resolved", false)):
+		clue = "%s已经完成结算。" % str(skill.get("name", "卡牌"))
+	else:
+		clue = "%s未能产生效果。" % str(skill.get("name", "卡牌"))
+	entry["aftermath_clue"] = clue
+	_presentation_port.publish_public_event({
+		"event_id": "card-aftermath:%d" % resolution_id,
+		"event_kind": "card_aftermath",
+		"resolution_id": resolution_id,
+		"card_name": str(skill.get("name", "卡牌")),
+		"status": "resolved" if bool(transaction.get("resolved", false)) else "not_resolved",
+		"aftermath_clue": clue,
+		"summary": clue,
+		"district_index": int(entry.get("selected_district", -1)),
+	})
 	return {"intent_type": "create_aftermath", "entry_patch": entry}
 
 
-func _restore_context_receipt(world: Node, transaction: Dictionary) -> Dictionary:
-	var context: Dictionary = transaction.get("selection_context", {}) as Dictionary
-	if _world_session_state == null:
-		return {"intent_type": "restore_context", "restored": false, "reason": "world_session_state_missing"}
-	var players: Array = _world_session_state.players
-	var districts: Array = _world_session_state.districts
-	if _table_selection_state == null:
-		return {"intent_type": "restore_context", "restored": false, "reason": "table_selection_state_missing"}
-	_table_selection_state.set_active_context(
-		clampi(int(context.get("selected_player", _table_selection_state.selected_player)), 0, max(0, players.size() - 1)),
-		clampi(int(context.get("selected_district", _table_selection_state.selected_district)), 0, max(0, districts.size() - 1)),
-		str(context.get("selected_trade_product", _table_selection_state.selected_trade_product))
-	)
-	var contract_controller := _contract_runtime_controller(world)
-	if contract_controller != null:
-		var selection := contract_controller.selection_snapshot()
-		contract_controller.set_selection_state(
-			int(context.get("contract_source_district", selection.get("source_district", -1))),
-			int(context.get("contract_target_district", selection.get("target_district", -1)))
-		)
-	return {"intent_type": "restore_context", "restored": true}
+func _history_receipt(transaction: Dictionary) -> Dictionary:
+	var entry := _dictionary(transaction.get("active_entry", {}))
+	entry["resolved_time"] = _world_session_state.game_time if _world_session_state != null else 0.0
+	var append := _history_service.append_resolved(entry)
+	return {
+		"intent_type": "append_history",
+		"appended": bool(append.get("appended", false)) or bool(append.get("duplicate", false)),
+		"reason": str(append.get("reason", "history_append_failed")),
+		"current_queue_count": _queue_service.current_queue().size(),
+	}
 
 
-func _contract_runtime_controller(world: Node) -> ContractRuntimeController:
-	return world.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ContractRuntimeController") as ContractRuntimeController
+func _start_next_receipt() -> Dictionary:
+	var start := _queue_service.start_next({"game_time": _world_session_state.game_time if _world_session_state != null else 0.0})
+	for skipped_variant in start.get("skipped_entries", []):
+		if skipped_variant is Dictionary:
+			_clear_queued_flag(skipped_variant as Dictionary)
+			_runtime_coordinator.settle_card_mana_reservation(skipped_variant as Dictionary, {"resolved": false, "reason": "queue_entry_invalid"})
+	if not bool(start.get("started", false)):
+		return {"intent_type": "start_next", "started": false, "reason": str(start.get("reason", "batch_empty"))}
+	var entry := _dictionary(start.get("active_entry", {}))
+	var skill := _dictionary(entry.get("skill", {}))
+	_resolution_controller.begin_active_display(float(skill.get("display_seconds", _resolution_controller.display_seconds)))
+	_presentation_port.set_overlay_state({
+		"visible": true,
+		"phase": "reveal",
+		"resolution_id": int(entry.get("resolution_id", -1)),
+		"remaining_seconds": _resolution_controller.active_display_timer,
+		"card_name": str(skill.get("name", "卡牌")),
+	})
+	return {"intent_type": "start_next", "started": true}
+
+
+func _promote_next_batch_receipt() -> Dictionary:
+	var previous_player := _resolution_controller.last_resolution_player_index
+	var promotion := _queue_service.promote_next_batch({
+		"window_sequence": _resolution_controller.window_sequence,
+		"game_time": _world_session_state.game_time if _world_session_state != null else 0.0,
+		"previous_player": previous_player,
+		"player_count": _world_session_state.players.size() if _world_session_state != null else 0,
+	})
+	if bool(promotion.get("promoted", false)):
+		_resolution_controller.begin_group_window(-1.0, int(promotion.get("reference_player", -1)), int(promotion.get("window_sequence", _resolution_controller.window_sequence + 1)))
+	return {"intent_type": "promote_next_batch", "promoted": bool(promotion.get("promoted", false)), "reason": str(promotion.get("reason", ""))}
+
+
+func _clear_queued_flag(entry: Dictionary) -> void:
+	if _world_session_state == null or bool(entry.get("consumed_on_queue", false)):
+		return
+	var player_index := int(entry.get("player_index", -1))
+	var slot_index := int(entry.get("slot_index", -1))
+	var players := _world_session_state.players
+	if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary):
+		return
+	var player := (players[player_index] as Dictionary).duplicate(true)
+	var slots: Array = player.get("slots", []) if player.get("slots", []) is Array else []
+	if slot_index < 0 or slot_index >= slots.size() or not (slots[slot_index] is Dictionary):
+		return
+	var skill := (slots[slot_index] as Dictionary).duplicate(true)
+	skill.erase("queued_for_resolution")
+	slots[slot_index] = skill
+	player["slots"] = slots
+	players[player_index] = player
+	_world_session_state.players = players
+
+
+func _entry_context(entry: Dictionary) -> Dictionary:
+	return {
+		"selected_district": int(entry.get("selected_district", -1)),
+		"selected_trade_product": str(entry.get("selected_trade_product", "")),
+		"contract_source_district": int(entry.get("contract_source_district", -1)),
+		"contract_target_district": int(entry.get("contract_target_district", -1)),
+		"play_requirement_district": int(entry.get("play_requirement_district", -1)),
+	}
+
+
+func _dictionary(value: Variant) -> Dictionary:
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}

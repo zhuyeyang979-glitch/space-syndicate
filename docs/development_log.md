@@ -1,7 +1,21 @@
 # 太空辛迪加开发日志
 
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
-> 最新记录日期：2026-07-16。
+> 最新记录日期：2026-07-17。
+
+## 2026-07-17｜卡牌执行类型化端口前置切换
+
+- `GameRuntimeCoordinator` 现组合唯一的真人/AI 共用提交入口，以及条件/目标复核、效果路由、反制结算、承诺结算、情报、历史与公开展示的窄场景 owner；历史提供内部、公开和当前查看者三种投影。
+- 旧执行 WorldBridge 中 35 个对 `Main` 的动态 `call/get/set/get_node_or_null` 访问点已降为 0；`Main._use_skill`、`Main._queue_skill_resolution` 及相邻效果/历史适配器已物理删除，没有保留反射回退。
+- 规则语义固定为“匿名提交即承诺”：一次性牌提交后离手，出牌现金在入队时支付；之后被反制或条件失效也不返牌、不免除已付费用，最终承诺不会重复收费。
+- 当前仅完成 Transition Sink 的前置端口。Main 仍临时消费 12 类帧 transition；下一原子任务必须增加命令 ID/revision/order、持久 exact-once lineage 与全顺序/故障注入门禁后，才能删除剩余 switch。
+
+### 本轮验证
+
+- Card execution typed-ports 聚焦测试、resolved-history 聚焦测试、Main composition、Main architecture、card play requirement 与 smoke `--check-only` 通过。
+- `ui_text_smoke_test`、`visual_snapshot` 通过；Godot 4.7 MCP 的 `CardExecutionTypedPortsBench.tscn` 为 12/12，正式 `main.tscn` 可启动，无本轮新增解析或运行错误。
+- Main 预算通过：14,467 行、12,599 非空行、872 个方法；外部 Main caller 文件/出现次数没有增加。
+- 完整 layout 仍被多项既有陈旧断言阻塞，包括已退役战役 ViewModel、旧 owner 数量和旧 Sprint 文案；未为其恢复任何旧 Main 路径。
 
 ## 2026-07-16｜可选实际商路与临时玩法窗口 C1
 

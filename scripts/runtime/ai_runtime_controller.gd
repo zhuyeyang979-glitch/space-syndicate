@@ -24,6 +24,9 @@ var _gameplay_balance_diagnostics_service: GameplayBalanceDiagnosticsRuntimeServ
 var _victory_control_runtime_controller: VictoryControlRuntimeController
 var _route_network_runtime_controller: RouteNetworkRuntimeController
 var _visual_cue_runtime_owner: VisualCueRuntimeOwner
+var _card_play_submission_controller: CardPlaySubmissionRuntimeController
+var _card_resolution_history_service: CardResolutionHistoryRuntimeService
+var _table_selection_state: TableSelectionState
 var _v06_economy_action_port: RefCounted
 var _ruleset_snapshot: Dictionary = {}
 var _policy_main_payload: Dictionary = {}
@@ -87,6 +90,16 @@ func set_route_network_runtime_controller(controller: RouteNetworkRuntimeControl
 
 func set_visual_cue_runtime_owner(cue_owner: VisualCueRuntimeOwner) -> void:
 	_visual_cue_runtime_owner = cue_owner
+
+
+func set_card_execution_dependencies(
+	submission_controller: CardPlaySubmissionRuntimeController,
+	history_service: CardResolutionHistoryRuntimeService,
+	table_selection_state: TableSelectionState
+) -> void:
+	_card_play_submission_controller = submission_controller
+	_card_resolution_history_service = history_service
+	_table_selection_state = table_selection_state
 
 
 func set_v06_economy_action_port(port: RefCounted) -> Dictionary:
@@ -296,6 +309,8 @@ func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 		"weather_controller_bound": _weather_runtime_controller != null,
 		"contract_controller_bound": _contract_runtime_controller != null,
 		"victory_control_controller_bound": _victory_control_runtime_controller != null,
+		"typed_card_submission_bound": _card_play_submission_controller != null,
+		"typed_card_history_bound": _card_resolution_history_service != null,
 		"private_plan_exposed": false,
 	}
 
@@ -431,9 +446,7 @@ var product_market:
 
 var resolved_card_history:
 	get:
-		return _world_value(&"resolved_card_history", [])
-	set(value):
-		_write_world_value(&"resolved_card_history", value)
+		return _card_resolution_history_service.history_snapshot() if _card_resolution_history_service != null else []
 
 var rng:
 	get:
@@ -441,9 +454,10 @@ var rng:
 
 var selected_card_resolution_id:
 	get:
-		return _world_value(&"selected_card_resolution_id", 0)
+		return _table_selection_state.selected_card_resolution_id if _table_selection_state != null else -1
 	set(value):
-		_write_world_value(&"selected_card_resolution_id", value)
+		if _table_selection_state != null:
+			_table_selection_state.selected_card_resolution_id = int(value)
 
 var selected_contract_source_district:
 	get:
@@ -1214,7 +1228,15 @@ func _card_resolution_entry_card_label(entry: Dictionary) -> String:
 	return _call_world(&"_card_resolution_entry_card_label", [entry])
 
 func _queue_skill_resolution(player_index: int, slot_index: int, target_slot: int = -1, target_player: int = -1) -> bool:
-	return _call_world(&"_queue_skill_resolution", [player_index, slot_index, target_slot, target_player])
+	if _card_play_submission_controller == null:
+		return false
+	return bool(_card_play_submission_controller.submit_card_play({
+		"player_index": player_index,
+		"slot_index": slot_index,
+		"target_slot": target_slot,
+		"target_player": target_player,
+		"submission_source": "ai",
+	}).get("accepted", false))
 
 func _is_counter_skill(skill: Dictionary) -> bool:
 	var value: Variant = _call_world(&"_card_play_target_snapshot", [skill])

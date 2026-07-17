@@ -15,6 +15,8 @@ var _world_session_state: WorldSessionState
 var _product_market_runtime_controller: ProductMarketRuntimeController
 var _route_network_runtime_controller: RouteNetworkRuntimeController
 var _contract_atomic_effect_owner_v06: Object
+var _card_resolution_history_service: CardResolutionHistoryRuntimeService
+var _card_resolution_queue_service: CardResolutionQueueRuntimeService
 var _world_call_count := 0
 var _failed_world_call_count := 0
 
@@ -49,6 +51,14 @@ func set_route_network_runtime_controller(controller: RouteNetworkRuntimeControl
 
 func set_contract_atomic_effect_owner_v06(owner: Object) -> void:
 	_contract_atomic_effect_owner_v06 = owner
+
+
+func set_card_resolution_history_service(
+	history_service: CardResolutionHistoryRuntimeService,
+	queue_service: CardResolutionQueueRuntimeService = null
+) -> void:
+	_card_resolution_history_service = history_service
+	_card_resolution_queue_service = queue_service
 
 
 func has_world() -> bool:
@@ -90,14 +100,13 @@ func default_trade_product(district_index: int) -> String:
 
 func contract_history_entries(preferred_resolution_id: int = -1, limit: int = 1) -> Array:
 	var result: Array = []
-	if not has_world():
+	if _card_resolution_history_service == null:
 		return result
 	if preferred_resolution_id >= 0:
 		var preferred := _entry_by_id(preferred_resolution_id)
 		if _is_contract_entry(preferred):
 			result.append(preferred)
-	var history_variant: Variant = _world.get("resolved_card_history")
-	var history: Array = history_variant if history_variant is Array else []
+	var history := _card_resolution_history_service.history_snapshot()
 	for index in range(history.size() - 1, -1, -1):
 		if result.size() >= maxi(1, limit):
 			break
@@ -113,7 +122,7 @@ func contract_history_entries(preferred_resolution_id: int = -1, limit: int = 1)
 
 
 func remember_contract_parties(viewer_index: int, entry: Dictionary, source: String) -> bool:
-	if not has_world():
+	if _world_session_state == null:
 		return false
 	var players_variant: Variant = _world_session_state.players if _world_session_state != null else []
 	var players: Array = players_variant if players_variant is Array else []
@@ -258,7 +267,7 @@ func contract_effect_checkpoint_status_v06() -> Dictionary:
 
 
 func store_contract_result(entry: Dictionary) -> bool:
-	if not has_world() or not _is_pure_data(entry):
+	if _card_resolution_history_service == null or not _is_pure_data(entry):
 		return false
 	var stored := _entry_by_id(int(entry.get("resolution_id", entry.get("queued_order", -1))))
 	if stored.is_empty():
@@ -278,16 +287,17 @@ func store_contract_result(entry: Dictionary) -> bool:
 	var presentation_variant: Variant = _call_world(&"_card_resolution_presentation_snapshot", [stored.get("skill", {}) as Dictionary, stored])
 	if presentation_variant is Dictionary:
 		stored["aftermath_style"] = str((presentation_variant as Dictionary).get("effect_style", stored.get("aftermath_style", "generic")))
-	var stored_variant: Variant = _call_world(&"_store_card_resolution_entry", [stored])
-	if bool(stored_variant):
+	if _card_resolution_queue_service != null and _card_resolution_queue_service.store_entry(stored):
 		return true
-	var history_variant: Variant = _world.get("resolved_card_history")
-	var history: Array = history_variant if history_variant is Array else []
-	history.append(stored.duplicate(true))
-	while history.size() > HISTORY_LIMIT:
-		history.pop_front()
-	_world.set("resolved_card_history", history)
-	return true
+	var resolution_id := int(stored.get("resolution_id", stored.get("queued_order", -1)))
+	var existing := _history_entry_by_id(resolution_id)
+	if existing.is_empty():
+		return bool(_card_resolution_history_service.append_resolved(stored).get("appended", false))
+	var patch := stored.duplicate(true)
+	patch.erase("resolution_id")
+	patch.erase("queued_order")
+	patch.erase("player_index")
+	return bool(_card_resolution_history_service.patch_entry(resolution_id, patch).get("patched", false))
 
 
 func refresh_ui() -> void:
@@ -639,8 +649,20 @@ func _limited_names(values: Array, limit: int, fallback: String = "") -> String:
 
 
 func _entry_by_id(resolution_id: int) -> Dictionary:
-	var value: Variant = _call_world(&"_card_resolution_entry_by_id", [resolution_id])
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+	if _card_resolution_queue_service != null:
+		var queued := _card_resolution_queue_service.entry_by_id(resolution_id)
+		if not queued.is_empty():
+			return queued
+	return _history_entry_by_id(resolution_id)
+
+
+func _history_entry_by_id(resolution_id: int) -> Dictionary:
+	if _card_resolution_history_service == null:
+		return {}
+	for entry_variant in _card_resolution_history_service.history_snapshot():
+		if entry_variant is Dictionary and int((entry_variant as Dictionary).get("resolution_id", (entry_variant as Dictionary).get("queued_order", -1))) == resolution_id:
+			return (entry_variant as Dictionary).duplicate(true)
+	return {}
 
 
 func _is_contract_entry(entry: Dictionary) -> bool:

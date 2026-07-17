@@ -1,4 +1,4 @@
-[gd_scene load_steps=85 format=3]
+[gd_scene load_steps=92 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -82,6 +82,13 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardCooldownRuntimeController.tscn" id="88_card_cooldown_controller"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/VisualCueRuntimeOwner.tscn" id="89_visual_cue_owner"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/TablePresentationRefreshScheduler.tscn" id="90_presentation_refresh_scheduler"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardResolutionHistoryRuntimeService.tscn" id="91_card_resolution_history"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardResolutionPresentationPort.tscn" id="92_card_resolution_presentation_port"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardIntelRuntimeService.tscn" id="93_card_intel_runtime"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardEffectRuntimeRouter.tscn" id="94_card_effect_router"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardCommitmentRuntimeService.tscn" id="95_card_commitment_runtime"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardCounterSettlementRuntimeService.tscn" id="96_card_counter_settlement"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardPlaySubmissionRuntimeController.tscn" id="97_card_play_submission"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -273,6 +280,27 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="CardResolutionExecutionWorldBridge" parent="." instance=ExtResource("24_resolution_world_bridge")]
+unique_name_in_owner = true
+
+[node name="CardResolutionHistoryRuntimeService" parent="." instance=ExtResource("91_card_resolution_history")]
+unique_name_in_owner = true
+
+[node name="CardResolutionPresentationPort" parent="." instance=ExtResource("92_card_resolution_presentation_port")]
+unique_name_in_owner = true
+
+[node name="CardIntelRuntimeService" parent="." instance=ExtResource("93_card_intel_runtime")]
+unique_name_in_owner = true
+
+[node name="CardEffectRuntimeRouter" parent="." instance=ExtResource("94_card_effect_router")]
+unique_name_in_owner = true
+
+[node name="CardCommitmentRuntimeService" parent="." instance=ExtResource("95_card_commitment_runtime")]
+unique_name_in_owner = true
+
+[node name="CardCounterSettlementRuntimeService" parent="." instance=ExtResource("96_card_counter_settlement")]
+unique_name_in_owner = true
+
+[node name="CardPlaySubmissionRuntimeController" parent="." instance=ExtResource("97_card_play_submission")]
 unique_name_in_owner = true
 
 [node name="CardEconomyProductRouteEffectRuntimeService" parent="." instance=ExtResource("25_economy_product_route_effect")]

@@ -7,6 +7,7 @@ const MonsterCatalogV06 := preload("res://scripts/runtime/monster_catalog_v06.gd
 var _world: Node
 var _table_selection_state: TableSelectionState
 var _world_session_state: WorldSessionState
+var _card_effect_router: CardEffectRuntimeRouter
 var _build_count := 0
 
 
@@ -20,6 +21,10 @@ func set_table_selection_state(state: TableSelectionState) -> void:
 
 func set_world_session_state(state: WorldSessionState) -> void:
 	_world_session_state = state
+
+
+func set_card_effect_router(router: CardEffectRuntimeRouter) -> void:
+	_card_effect_router = router
 
 
 func world_session_state() -> WorldSessionState:
@@ -119,7 +124,7 @@ func _card_facts(coordinator: Node, selected_player: int, sample_only: bool) -> 
 			"requirement": requirement,
 			"target": target,
 			"play_product": _world_string_call(&"_skill_play_product", [skill, selected_player]),
-			"resolution_handler": bool(_world.call("_skill_has_resolution_handler", skill)) if _world.has_method("_skill_has_resolution_handler") else false,
+			"resolution_handler": _card_effect_router != null and _card_effect_router.supports_skill(skill),
 			"in_run_pool": run_pool.has(card_id),
 		})
 	return result

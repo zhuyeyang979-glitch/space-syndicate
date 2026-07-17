@@ -504,8 +504,6 @@ var last_card_resolution_player_index: int:
 		_set_card_resolution_controller_value(&"last_resolution_player_index", int(value))
 var card_resolution_visual_id := -1
 var card_resolution_visual_stage := -1
-var resolved_card_history := []
-var selected_card_resolution_id := -1
 var card_resolution_overlay: Control
 var card_resolution_title_label: Label
 var card_resolution_body_label: Label
@@ -1888,7 +1886,12 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 			elif action_id.begins_with("play_"):
 				var slot_index := int(action_id.substr("play_".length()))
 				selected_runtime_card_slot = slot_index
-				_use_skill(slot_index)
+				var play_receipt := _game_runtime_coordinator_node().request_hand_card_play({
+					"player_index": _game_runtime_coordinator_node().table_selection_state().selected_player,
+					"slot_index": slot_index,
+					"submission_source": "human",
+				})
+				_log(str(play_receipt.get("player_message", "卡牌操作已处理。")))
 				handled = true
 			elif action_id.begins_with("discard_purchase_"):
 				var discard_slot := int(action_id.substr("discard_purchase_".length()))
@@ -1914,7 +1917,7 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 			elif action_id.begins_with("track_intel_"):
 				var intel_resolution_id := int(action_id.substr("track_intel_".length()))
 				selected_runtime_card_slot = -1
-				selected_card_resolution_id = intel_resolution_id
+				_game_runtime_coordinator_node().select_card_resolution(intel_resolution_id)
 				_open_intel_dossier_menu()
 				handled = true
 			elif action_id.begins_with("track_open_"):
@@ -1985,7 +1988,12 @@ func _on_runtime_game_screen_card_drop_requested(card_data: Dictionary, screen_p
 	if not _runtime_drop_position_targets_map(screen_position):
 		return
 	selected_runtime_card_slot = slot_index
-	_use_skill(slot_index)
+	var receipt := _game_runtime_coordinator_node().request_hand_card_play({
+		"player_index": _game_runtime_coordinator_node().table_selection_state().selected_player,
+		"slot_index": slot_index,
+		"submission_source": "human_drag",
+	})
+	_log(str(receipt.get("player_message", "卡牌操作已处理。")))
 	_sync_runtime_game_screen(true)
 
 
@@ -2087,7 +2095,12 @@ func _activate_runtime_quick_action(action_id: String) -> bool:
 			if slot_index < 0:
 				return false
 			selected_runtime_card_slot = slot_index
-			_use_skill(slot_index)
+			var receipt := _game_runtime_coordinator_node().request_hand_card_play({
+				"player_index": player_index,
+				"slot_index": slot_index,
+				"submission_source": "human_quick_action",
+			})
+			_log(str(receipt.get("player_message", "卡牌操作已处理。")))
 			return true
 	return false
 
@@ -2290,14 +2303,15 @@ func _track_status_badge(text: String, text_color: Color, bg_color: Color) -> Pa
 
 
 func _select_card_resolution_track_entry(resolution_id: int) -> void:
-	selected_card_resolution_id = -1 if selected_card_resolution_id == resolution_id else resolution_id
-	if selected_card_resolution_id >= 0:
-		_focus_card_resolution_target_region(selected_card_resolution_id)
+	var selection := _game_runtime_coordinator_node().table_selection_state()
+	selection.selected_card_resolution_id = -1 if selection.selected_card_resolution_id == resolution_id else resolution_id
+	if selection.selected_card_resolution_id >= 0:
+		_focus_card_resolution_target_region(selection.selected_card_resolution_id)
 	_sync_runtime_game_screen(true)
 
 
 func _focus_card_resolution_track_entry(resolution_id: int) -> void:
-	selected_card_resolution_id = resolution_id
+	_game_runtime_coordinator_node().select_card_resolution(resolution_id)
 	_focus_card_resolution_target_region(resolution_id)
 	_sync_runtime_game_screen(true)
 
@@ -2350,12 +2364,7 @@ func _card_resolution_entry_by_id(resolution_id: int) -> Dictionary:
 		var queued_variant: Variant = service.call("entry_by_id", resolution_id)
 		if queued_variant is Dictionary and not (queued_variant as Dictionary).is_empty():
 			return (queued_variant as Dictionary).duplicate(true)
-	for entry_variant in resolved_card_history:
-		if entry_variant is Dictionary:
-			var resolved_entry := entry_variant as Dictionary
-			if int(resolved_entry.get("resolution_id", resolved_entry.get("queued_order", -1))) == resolution_id:
-				return resolved_entry.duplicate(true)
-	return {}
+	return _game_runtime_coordinator_node().card_resolution_history_entry(resolution_id)
 
 
 func _store_card_resolution_entry(entry: Dictionary) -> bool:
@@ -2365,12 +2374,7 @@ func _store_card_resolution_entry(entry: Dictionary) -> bool:
 	var service := _card_resolution_queue_service_node()
 	if service != null and service.has_method("store_entry") and bool(service.call("store_entry", entry.duplicate(true))):
 		return true
-	for i in range(resolved_card_history.size()):
-		var resolved: Dictionary = resolved_card_history[i]
-		if int(resolved.get("resolution_id", resolved.get("queued_order", -1))) == resolution_id:
-			resolved_card_history[i] = entry.duplicate(true)
-			return true
-	return false
+	return bool(_game_runtime_coordinator_node().patch_card_resolution_history_entry(resolution_id, entry).get("patched", false))
 
 
 func _card_owner_guess_stake_for_player(viewer_index: int) -> int:
@@ -3758,7 +3762,7 @@ func _intel_card_guess_entries(viewer_index: int, limit: int = 5) -> Array:
 			"style": String(resolution_presentation.get("effect_style_label", "卡牌")),
 			"time": time_value,
 			"revealed": owner_revealed,
-			"focused": resolution_id >= 0 and resolution_id == selected_card_resolution_id,
+			"focused": resolution_id >= 0 and resolution_id == _game_runtime_coordinator_node().table_selection_state().selected_card_resolution_id,
 		})
 	entries.sort_custom(Callable(self, "_sort_intel_card_guess_entry"))
 	return _first_entries(entries, limit)
@@ -3790,7 +3794,7 @@ func _intel_card_guess_track_state(entry: Dictionary, resolution_id: int) -> Str
 			var next_entry := next_variant as Dictionary
 			if int(next_entry.get("resolution_id", next_entry.get("queued_order", -1))) == resolution_id:
 				return "下批等待%d" % (i + 1)
-	for history_variant in resolved_card_history:
+	for history_variant in _game_runtime_coordinator_node().card_resolution_history_snapshot():
 		if history_variant is Dictionary:
 			var history_entry := history_variant as Dictionary
 			if int(history_entry.get("resolution_id", history_entry.get("queued_order", -1))) == resolution_id:
@@ -3880,10 +3884,11 @@ func _city_public_status_tags(city: Dictionary) -> Array:
 
 func _economy_card_aftermath_entries(limit: int = 5) -> Array:
 	var entries := []
-	for i in range(resolved_card_history.size() - 1, -1, -1):
+	var history := _game_runtime_coordinator_node().card_resolution_history_snapshot()
+	for i in range(history.size() - 1, -1, -1):
 		if entries.size() >= limit:
 			break
-		var entry_variant: Variant = resolved_card_history[i]
+		var entry_variant: Variant = history[i]
 		if not (entry_variant is Dictionary):
 			continue
 		var entry := entry_variant as Dictionary
@@ -4080,7 +4085,7 @@ func _economy_inference_public_card_owner_line() -> String:
 
 func _public_card_resolution_owner_entries() -> Array:
 	var entries := []
-	for entry_variant in resolved_card_history:
+	for entry_variant in _game_runtime_coordinator_node().card_resolution_history_snapshot():
 		if entry_variant is Dictionary:
 			entries.append(entry_variant)
 	if not _card_resolution_active_entry().is_empty():
@@ -4122,10 +4127,11 @@ func _recent_card_requirement_entries(limit: int = 3) -> Array:
 			return entries
 		if entry_variant is Dictionary:
 			entries.append(entry_variant)
-	for i in range(resolved_card_history.size() - 1, -1, -1):
+	var history := _game_runtime_coordinator_node().card_resolution_history_snapshot()
+	for i in range(history.size() - 1, -1, -1):
 		if entries.size() >= limit:
 			break
-		var entry_variant: Variant = resolved_card_history[i]
+		var entry_variant: Variant = history[i]
 		if entry_variant is Dictionary:
 			entries.append(entry_variant)
 	return entries
@@ -6545,8 +6551,8 @@ func _apply_run_domain_state_compatibility_adapter(state: Dictionary) -> int:
 		"last_card_resolution_player_index": int(state.get("last_card_resolution_player_index", -1)),
 	}
 	runtime_controller.call("apply_save_data", controller_state)
-	resolved_card_history = (state.get("resolved_card_history", []) as Array).duplicate(true)
-	selected_card_resolution_id = int(state.get("selected_card_resolution_id", -1))
+	_game_runtime_coordinator_node().replace_card_resolution_legacy_history((state.get("resolved_card_history", []) as Array).duplicate(true))
+	_game_runtime_coordinator_node().select_card_resolution(int(state.get("selected_card_resolution_id", -1)))
 	configured_player_count = clampi(int(state.get("configured_player_count", DEFAULT_PLAYER_COUNT)), MIN_PLAYER_COUNT, MAX_PLAYER_COUNT)
 	configured_ai_player_count = int(state.get("configured_ai_player_count", min(DEFAULT_AI_PLAYER_COUNT, configured_player_count - 1)))
 	_ensure_configured_ai_player_count()
@@ -7191,8 +7197,8 @@ func _new_game() -> void:
 	last_card_resolution_player_index = -1
 	card_resolution_visual_id = -1
 	card_resolution_visual_stage = -1
-	resolved_card_history = []
-	selected_card_resolution_id = -1
+	_game_runtime_coordinator_node().reset_card_resolution_history()
+	_game_runtime_coordinator_node().select_card_resolution(-1)
 	_product_market_runtime_call("reset_state")
 	_city_gdp_derivative_runtime_call("reset_state")
 	skill_market = _monster_market_skills()
@@ -8375,7 +8381,7 @@ func _runtime_bid_board_track_links(player_index: int) -> Array:
 
 func _runtime_bid_board_track_link(label: String, entry: Dictionary, state_text: String, active: bool) -> Dictionary:
 	var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
-	var selected := resolution_id >= 0 and resolution_id == selected_card_resolution_id
+	var selected := resolution_id >= 0 and resolution_id == _game_runtime_coordinator_node().table_selection_state().selected_card_resolution_id
 	var card_label := _short_card_text(_card_resolution_entry_card_label(entry), 7)
 	var state := state_text
 	if card_label != "":
@@ -8559,7 +8565,7 @@ func _runtime_card_viewmodel_source(player_index: int, district_snapshot: Dictio
 		"hand_cards": _runtime_hand_card_fact_sources(player_index),
 		"track": _runtime_card_track_model_source(),
 		"selected_hand_slot": selected_runtime_card_slot,
-		"selected_resolution_id": selected_card_resolution_id,
+		"selected_resolution_id": _game_runtime_coordinator_node().table_selection_state().selected_card_resolution_id,
 		"district": district_snapshot,
 		"fallback_why": _runtime_selected_context_why(player_index),
 		"fallback_requirements": _runtime_requirement_chip_snapshots(player_index),
@@ -8602,13 +8608,14 @@ func _runtime_card_track_model_source() -> Dictionary:
 	var current_queue := _card_resolution_current_queue()
 	var next_queue := _card_resolution_next_queue()
 	var active_entry := _card_resolution_active_entry()
+	var viewer_index := _runtime_snapshot_player_index()
 	return {
-		"history": _runtime_enriched_card_track_entries(resolved_card_history),
+		"history": _runtime_enriched_card_track_entries(_game_runtime_coordinator_node().card_resolution_viewer_history_snapshot(viewer_index)),
 		"active": _runtime_enriched_card_track_entry(active_entry),
 		"queue": _runtime_enriched_card_track_entries(current_queue),
 		"next_queue": _runtime_enriched_card_track_entries(next_queue),
 		"events": _recent_table_event_entries(),
-		"selected_resolution_id": selected_card_resolution_id,
+		"selected_resolution_id": _game_runtime_coordinator_node().table_selection_state().selected_card_resolution_id,
 		"selected_player": _game_runtime_coordinator_node().table_selection_state().selected_player,
 		"auction_open": card_resolution_auction_open,
 		"batch_locked": card_resolution_batch_locked,
@@ -9615,10 +9622,11 @@ func _traceable_card_entries(preferred_resolution_id: int = -1, limit: int = 1) 
 		var preferred := _card_resolution_entry_by_id(preferred_resolution_id)
 		if not preferred.is_empty() and not bool(preferred.get("public_owner_revealed", false)):
 			result.append(preferred)
-	for i in range(resolved_card_history.size() - 1, -1, -1):
+	var history := _game_runtime_coordinator_node().card_resolution_history_snapshot()
+	for i in range(history.size() - 1, -1, -1):
 		if result.size() >= limit:
 			return result
-		var entry_variant: Variant = resolved_card_history[i]
+		var entry_variant: Variant = history[i]
 		if not (entry_variant is Dictionary):
 			continue
 		var entry := entry_variant as Dictionary
@@ -9692,7 +9700,7 @@ func _apply_intel_city_reveal(_player: Dictionary, skill: Dictionary) -> bool:
 func _apply_intel_card_trace(_player: Dictionary, skill: Dictionary) -> bool:
 	var traced := _trace_card_owner_for_player(
 		_game_runtime_coordinator_node().table_selection_state().selected_player,
-		selected_card_resolution_id,
+		_game_runtime_coordinator_node().table_selection_state().selected_card_resolution_id,
 		maxi(1, int(skill.get("trace_card_count", 1))),
 		String(skill.get("name", "出牌追帧"))
 	)
@@ -9720,7 +9728,7 @@ func _apply_intel_card_trace(_player: Dictionary, skill: Dictionary) -> bool:
 	if contract_count > 0:
 		var contract_controller := _contract_runtime_controller_node()
 		if contract_controller != null:
-			contract_traced = contract_controller.trace_contract_parties(_game_runtime_coordinator_node().table_selection_state().selected_player, selected_card_resolution_id, contract_count, String(skill.get("name", "线索悬赏")))
+			contract_traced = contract_controller.trace_contract_parties(_game_runtime_coordinator_node().table_selection_state().selected_player, _game_runtime_coordinator_node().table_selection_state().selected_card_resolution_id, contract_count, String(skill.get("name", "线索悬赏")))
 	if revealed > 0 or contract_traced > 0:
 		_log("%s追加私有悬赏线索：城市%d条，合约%d条；答案不公开。" % [
 			String(skill.get("name", "线索悬赏")),
@@ -9878,7 +9886,11 @@ func _table_goal_primary_action(player_index: int, body: String) -> Dictionary:
 			"detail": "起始怪兽牌已在手中；可随时召唤，不影响购牌、设施或经济行动。",
 			"accent": Color("#fb7185"),
 			"disabled": not can_summon,
-			"target": Callable(self, "_use_skill").bind(starter_slot),
+			"target": Callable(_game_runtime_coordinator_node(), "request_hand_card_play").bind({
+				"player_index": player_index,
+				"slot_index": starter_slot,
+				"submission_source": "human_primary_action",
+			}),
 		}
 	if _district_city(_game_runtime_coordinator_node().table_selection_state().selected_district).is_empty():
 		return {
@@ -9910,7 +9922,11 @@ func _table_goal_primary_action(player_index: int, body: String) -> Dictionary:
 			"detail": "使用第一张当前可打手牌；需要目标的牌会先打开目标选择。",
 			"accent": _card_presentation_color(skill),
 			"disabled": false,
-			"target": Callable(self, "_use_skill").bind(slot),
+			"target": Callable(_game_runtime_coordinator_node(), "request_hand_card_play").bind({
+				"player_index": player_index,
+				"slot_index": slot,
+				"submission_source": "human_primary_action",
+			}),
 		}
 	return {
 		"id": "primary_review_rack",
@@ -10251,41 +10267,6 @@ func _emit_card_resolution_stage_visual(entry: Dictionary, skill: Dictionary, pr
 	_game_runtime_coordinator_node().add_visual_map_event(kind, effect_position, color, String(presentation.get("stage_effect_label", "%s%s" % [String(presentation.get("effect_style_label", "卡牌")), stage_label])), 1.25, float(presentation.get("effect_radius", 75.0)), style)
 	_game_runtime_coordinator_node().add_visual_action_callout("匿名卡牌", "%s分镜" % stage_label, detail, color, effect_position, 2.25)
 
-
-func _add_card_resolution_aftermath_clue(entry: Dictionary, skill: Dictionary, resolved: bool) -> void:
-	if skill.is_empty():
-		return
-	var card_name := String(skill.get("name", "卡牌"))
-	var card_label := _card_display_name(card_name)
-	if card_label == "":
-		card_label = card_name
-	var presentation := _card_resolution_presentation_snapshot(skill, entry, -1.0, resolved)
-	var style := String(presentation.get("effect_style", "generic"))
-	var style_label := String(presentation.get("effect_style_label", "卡牌"))
-	var clue := String(presentation.get("aftermath_clue", "公开结果留下匿名推理痕迹"))
-	entry["aftermath_clue"] = clue
-	entry["aftermath_style"] = style
-	var effect_position := _card_resolution_effect_position(skill, entry)
-	var color := _card_presentation_color(skill)
-	if not resolved:
-		color = color.darkened(0.28)
-	var status := "已结算" if resolved else "未生效"
-	var detail := "%s｜%s演出｜%s｜%s；轨道仍可竞猜归属。" % [
-		status,
-		style_label,
-		String(presentation.get("target_text", "目标未知")),
-		clue,
-	]
-	_game_runtime_coordinator_node().add_visual_action_callout("卡牌余波", card_label, detail, color, effect_position, CARD_RESOLUTION_AFTERMATH_SECONDS)
-	_game_runtime_coordinator_node().add_visual_map_event(
-		"card_afterglow",
-		effect_position,
-		color,
-		"余波%s" % style_label,
-		CARD_RESOLUTION_AFTERMATH_SECONDS,
-		float(presentation.get("effect_radius", 75.0)) * 1.12,
-		style
-	)
 
 
 func _card_resolution_effect_position(skill: Dictionary, entry: Dictionary = {}) -> Vector2:
@@ -10942,7 +10923,15 @@ func _choose_pending_target_monster(slot: int) -> void:
 		_log("目标怪兽无效，请重新选择。")
 		_refresh_ui()
 		return
-	if _queue_skill_resolution(player_index, slot_index, slot):
+	var receipt := _game_runtime_coordinator_node().submit_card_play({
+		"player_index": player_index,
+		"slot_index": slot_index,
+		"target_slot": slot,
+		"target_player": -1,
+		"submission_source": "human_target_choice",
+	})
+	_log(str(receipt.get("player_message", "卡牌提交已处理。")))
+	if bool(receipt.get("accepted", false)):
 		_clear_pending_target_choice(true)
 	_refresh_ui()
 
@@ -10975,7 +10964,15 @@ func _choose_pending_target_player(target_player: int) -> void:
 		_log("目标玩家无效，请重新选择。")
 		_refresh_ui()
 		return
-	if _queue_skill_resolution(player_index, slot_index, -1, target_player):
+	var receipt := _game_runtime_coordinator_node().submit_card_play({
+		"player_index": player_index,
+		"slot_index": slot_index,
+		"target_slot": -1,
+		"target_player": target_player,
+		"submission_source": "human_target_choice",
+	})
+	_log(str(receipt.get("player_message", "卡牌提交已处理。")))
+	if bool(receipt.get("accepted", false)):
 		_clear_pending_player_target_choice()
 	_refresh_ui()
 
@@ -11000,7 +10997,15 @@ func _queue_monster_card_as_counter(player_index: int, slot_index: int, source_s
 	slots[slot_index] = counter_skill
 	player["slots"] = slots
 	_game_runtime_coordinator_node().world_session_state().players[player_index] = player
-	var queued := _queue_skill_resolution(player_index, slot_index, -1)
+	var counter_receipt := _game_runtime_coordinator_node().submit_card_play({
+		"player_index": player_index,
+		"slot_index": slot_index,
+		"target_slot": -1,
+		"target_player": -1,
+		"submission_source": "role_counter_conversion",
+	})
+	_log(str(counter_receipt.get("player_message", "卡牌提交已处理。")))
+	var queued := bool(counter_receipt.get("accepted", false))
 	if queued:
 		_log("%s触发角色被动：一张怪兽牌被临时改写为相位否决并进入匿名反制等待。" % _player_name(player_index))
 		return true
@@ -11012,11 +11017,6 @@ func _queue_monster_card_as_counter(player_index: int, slot_index: int, source_s
 		_game_runtime_coordinator_node().world_session_state().players[player_index] = player
 	return false
 
-
-func _resolve_targeted_skill(skill: Dictionary, player: Dictionary, target_slot: int, acting_player_index: int = -1) -> bool:
-	if String(skill.get("kind", "")) == "military_command":
-		return military_runtime_controller.trigger_command(skill, target_slot, acting_player_index)
-	return monster_runtime_controller.resolve_targeted_skill(skill, player, target_slot, acting_player_index, _game_runtime_coordinator_node().table_selection_state().selected_district)
 
 
 func _cycle_district(step: int) -> void:
@@ -12770,7 +12770,7 @@ func _player_has_committed_or_resolved_card(player_index: int) -> bool:
 		return false
 	if int(_card_resolution_active_entry().get("player_index", -1)) == player_index and _card_entry_counts_for_tableau(_card_resolution_active_entry()):
 		return true
-	for queue_variant in [_card_resolution_current_queue(), _card_resolution_next_queue(), resolved_card_history]:
+	for queue_variant in [_card_resolution_current_queue(), _card_resolution_next_queue(), _game_runtime_coordinator_node().card_resolution_history_snapshot()]:
 		for entry_variant in queue_variant:
 			if entry_variant is Dictionary and int((entry_variant as Dictionary).get("player_index", -1)) == player_index and _card_entry_counts_for_tableau(entry_variant as Dictionary):
 				return true
@@ -12792,7 +12792,7 @@ func _player_tableau_progress_entries(player_index: int) -> Array:
 			{"text": "公开线索", "state": _player_visible_city_text(player_index, viewer_index), "accent": Color("#38bdf8"), "active": true, "tip": "对手城市业主仍靠标注和公开线索推理。"},
 			{"text": "明怪", "state": "%d" % _player_visible_monster_count(player_index, viewer_index), "accent": Color("#fb7185"), "active": _player_visible_monster_count(player_index, viewer_index) > 0, "tip": "只统计已公开归属或本席可见的怪兽。"},
 			{"text": "明军", "state": "%d" % military_runtime_controller.visible_unit_count(player_index, viewer_index), "accent": Color("#67e8f9"), "active": military_runtime_controller.visible_unit_count(player_index, viewer_index) > 0, "tip": "只显示公开归属的军队线索。"},
-			{"text": "牌轨", "state": "看公开", "accent": Color("#c084fc"), "active": not resolved_card_history.is_empty() or not _card_resolution_current_queue().is_empty(), "tip": "只能从匿名牌轨、公开展示、准备状态和结算结果推理。"},
+			{"text": "牌轨", "state": "看公开", "accent": Color("#c084fc"), "active": not _game_runtime_coordinator_node().card_resolution_history_snapshot().is_empty() or not _card_resolution_current_queue().is_empty(), "tip": "只能从匿名牌轨、公开展示、准备状态和结算结果推理。"},
 			{"text": "资金/手牌", "state": "隐私", "accent": Color("#94a3b8"), "active": false, "tip": "对手现金、真实手牌数量、弃牌和AI内部计划不显示。"},
 		]
 	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[player_index]
@@ -13094,143 +13094,6 @@ func _interaction_target_label(player_index: int) -> String:
 	return "玩家%d" % (player_index + 1) if player_index >= 0 and player_index < _game_runtime_coordinator_node().world_session_state().players.size() else "未知玩家"
 
 
-func _apply_player_hand_disrupt(acting_player_index: int, target_player_index: int, skill: Dictionary) -> bool:
-	return _resolve_player_hand_interaction(acting_player_index, target_player_index, skill)
-
-
-func _apply_player_hand_steal(acting_player_index: int, target_player_index: int, skill: Dictionary) -> bool:
-	return _resolve_player_hand_interaction(acting_player_index, target_player_index, skill)
-
-
-func _resolve_player_hand_interaction(acting_player_index: int, target_player_index: int, skill: Dictionary) -> bool:
-	var source := String(skill.get("name", "星链拆解" if str(skill.get("kind", "")) == "player_hand_disrupt" else "影仓牵引"))
-	if acting_player_index < 0 or acting_player_index >= _game_runtime_coordinator_node().world_session_state().players.size() or target_player_index < 0 or target_player_index >= _game_runtime_coordinator_node().world_session_state().players.size() or target_player_index == acting_player_index:
-		_log("%s需要指定一名其他玩家。" % source)
-		return false
-	var runtime_coordinator := _game_runtime_coordinator_node()
-	if runtime_coordinator == null or not runtime_coordinator.has_method("plan_player_hand_interaction") or not runtime_coordinator.has_method("commit_player_hand_interaction"):
-		_mark_game_runtime_coordinator_missing(true)
-		_log("%s结算失败：玩家手牌互动服务不可用。" % source)
-		return false
-	var acting_player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[acting_player_index]
-	var target_player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[target_player_index]
-	var request := _player_hand_interaction_request(acting_player_index, target_player_index, skill, acting_player, target_player)
-	var plan_variant: Variant = runtime_coordinator.call("plan_player_hand_interaction", request)
-	var plan: Dictionary = plan_variant if plan_variant is Dictionary else {}
-	if str(plan.get("status", "")) != "ready":
-		_log("%s结算失败：互动计划被拒绝（%s）。" % [source, str(plan.get("reason", "unknown"))])
-		return false
-	plan["selected_slots"] = _select_player_hand_interaction_slots(plan)
-	var result_variant: Variant = runtime_coordinator.call("commit_player_hand_interaction", acting_player, target_player, request, plan)
-	var result: Dictionary = result_variant if result_variant is Dictionary else {}
-	if not bool(result.get("committed", false)):
-		_log("%s结算失败：互动事务未提交（%s）。" % [source, str(result.get("reason", "unknown"))])
-		return false
-	_game_runtime_coordinator_node().world_session_state().players[acting_player_index] = acting_player
-	_game_runtime_coordinator_node().world_session_state().players[target_player_index] = target_player
-	_forward_player_hand_interaction_private_intents(acting_player_index, target_player_index, result.get("private_event_intents", []))
-	_forward_player_hand_interaction_public_intents(skill, result.get("public_event_intents", []), result.get("action_callout_intents", []))
-	if not bool(result.get("resolution_success", false)):
-		var affected_text := "可牵取" if str(skill.get("kind", "")) == "player_hand_steal" else "可影响"
-		_log("%s结算失败：%s没有%s的普通手牌。" % [source, _interaction_target_label(target_player_index), affected_text])
-	return bool(result.get("resolution_success", false))
-
-
-func _player_hand_interaction_request(acting_player_index: int, target_player_index: int, skill: Dictionary, acting_player: Dictionary, target_player: Dictionary) -> Dictionary:
-	return {
-		"actor_player_index": acting_player_index,
-		"target_player_index": target_player_index,
-		"skill": skill.duplicate(true),
-		"actor_inventory": _card_inventory_snapshot(acting_player),
-		"target_inventory": _card_inventory_snapshot(target_player),
-		"card_catalog": _player_hand_interaction_card_catalog(acting_player, target_player),
-	}
-
-
-func _player_hand_interaction_card_catalog(acting_player: Dictionary, target_player: Dictionary) -> Dictionary:
-	var catalog := {}
-	for player_variant in [acting_player, target_player]:
-		var player_state: Dictionary = player_variant
-		for skill_variant in player_state.get("slots", []):
-			if not (skill_variant is Dictionary):
-				continue
-			var card_id := str((skill_variant as Dictionary).get("name", ""))
-			while not card_id.is_empty() and not catalog.has(card_id):
-				var card := _make_skill(card_id)
-				if card.is_empty():
-					break
-				var next_upgrade_id := _next_upgrade_name(card_id)
-				catalog[card_id] = {
-					"family": _game_runtime_coordinator_node().card_family_id(card_id),
-					"rank": maxi(1, _game_runtime_coordinator_node().card_rank(card_id)),
-					"counts_toward_hand_limit": _counts_toward_hand_limit(card),
-					"next_upgrade_id": next_upgrade_id,
-					"next_upgrade_card": _make_skill(next_upgrade_id) if not next_upgrade_id.is_empty() else {},
-				}
-				card_id = next_upgrade_id
-	return catalog
-
-
-func _select_player_hand_interaction_slots(plan: Dictionary) -> Array:
-	var remaining: Array = (plan.get("candidate_slots", []) as Array).duplicate() if plan.get("candidate_slots", []) is Array else []
-	var selected_slots: Array = []
-	for _draw_index in range(int(plan.get("selection_draw_count", 0))):
-		if remaining.is_empty():
-			break
-		var choice_index := _game_runtime_coordinator_node().run_rng_service().randi_range(0, remaining.size() - 1)
-		selected_slots.append(int(remaining[choice_index]))
-		remaining.remove_at(choice_index)
-	return selected_slots
-
-
-func _forward_player_hand_interaction_private_intents(acting_player_index: int, target_player_index: int, intents_variant: Variant) -> void:
-	var intents: Array = intents_variant if intents_variant is Array else []
-	for intent_variant in intents:
-		if not (intent_variant is Dictionary):
-			continue
-		var intent: Dictionary = intent_variant
-		var source := str(intent.get("source_label", "互动卡牌"))
-		var card_id := str(intent.get("card_id", ""))
-		match str(intent.get("intent_kind", "")):
-			"target_card_lost":
-				_record_player_economic_event(target_player_index, "直接互动", "手牌被影响", 0, "%s使你失去%s；这条具体牌名只在你的私人流水中可见。" % [source, _card_display_name(card_id)])
-			"target_card_locked":
-				_record_player_economic_event(target_player_index, "直接互动", "手牌被封锁", 0, "%s使%s被封锁%s；具体牌名只在你的私人流水中可见。" % [source, _card_display_name(card_id), _duration_short_text(float(intent.get("duration_seconds", 0.0)))])
-			"actor_card_received":
-				_record_player_economic_event(acting_player_index, "直接互动", "牵取手牌", 0, "%s牵取到%s；来源目标对全员不可见。" % [source, _card_display_name(card_id)])
-			"target_card_spend":
-				_record_player_card_spend(target_player_index, int(intent.get("amount", 0)), str(intent.get("label", "直接互动重组成本")), source)
-			"actor_card_income":
-				_record_player_card_income(acting_player_index, int(intent.get("amount", 0)), str(intent.get("label", source)), str(intent.get("detail", "牵取失败补偿")))
-
-
-func _forward_player_hand_interaction_public_intents(skill: Dictionary, public_variant: Variant, callout_variant: Variant) -> void:
-	var public_intents: Array = public_variant if public_variant is Array else []
-	for intent_variant in public_intents:
-		if not (intent_variant is Dictionary):
-			continue
-		var intent: Dictionary = intent_variant
-		var source := str(intent.get("source_label", skill.get("name", "互动卡牌")))
-		var target_label := _interaction_target_label(int(intent.get("target_player_index", -1)))
-		if str(intent.get("interaction_kind", "")) == "player_hand_disrupt":
-			_log("%s匿名影响%s：拆掉%d张普通手牌%s%s；具体牌名和手牌数量仍为私密。" % [source, target_label, int(intent.get("removed_count", 0)), "，并封锁1张手牌" if int(intent.get("locked_count", 0)) > 0 else "", "，目标支付重组成本¥%d" % int(intent.get("target_cash_penalty", 0)) if int(intent.get("target_cash_penalty", 0)) > 0 else ""])
-		else:
-			_log("%s匿名影响%s：牵取%d张、拆除转化%d张%s；具体牌名、手牌数量和收牌者仍为私密。" % [source, target_label, int(intent.get("transferred_count", 0)), int(intent.get("converted_count", 0)), "，并封锁1张手牌" if int(intent.get("locked_count", 0)) > 0 else ""])
-	var callout_intents: Array = callout_variant if callout_variant is Array else []
-	for intent_variant in callout_intents:
-		if not (intent_variant is Dictionary):
-			continue
-		var intent: Dictionary = intent_variant
-		var target_label := _interaction_target_label(int(intent.get("target_player_index", -1)))
-		var disrupt := str(intent.get("interaction_kind", "")) == "player_hand_disrupt"
-		_game_runtime_coordinator_node().add_visual_action_callout("直接互动", str(intent.get("source_label", skill.get("name", "互动卡牌"))), "%s被%s；%s" % [target_label, "拆牌" if disrupt else "牵牌", "来源匿名，手牌细节私密。" if disrupt else "目标公开，来源匿名。"], _card_presentation_color(skill), _district_center(_game_runtime_coordinator_node().table_selection_state().selected_district))
-
-
-
-
-
-
-
 
 func _district_purchase_settlement_request(player_index: int, district_index: int, skill_name: String, price: int, supply_revision: String, authorization: Dictionary, discard_slot: int = -1) -> Dictionary:
 	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size() or district_index < 0 or district_index >= _game_runtime_coordinator_node().world_session_state().districts.size():
@@ -13410,66 +13273,6 @@ func _buy_card_for_player_from_district(player_index: int, district_index: int, 
 	runtime_coordinator.call("record_weather_public_response", district_index, "buy_after_forecast")
 	return true
 
-
-func _non_target_skill_resolution_kinds() -> Array:
-	return [
-		"monster_card",
-		"monster_bound_action",
-		"public_facility",
-		"city_revenue_boost",
-		"product_speculation",
-		"product_futures",
-		"city_gdp_derivative",
-		"product_contract_boon",
-		"area_trade_contract",
-		"market_stabilize",
-		"product_growth_boon",
-		"weather_control",
-		"intel_city_reveal",
-		"intel_card_trace",
-		"intel_contract_trace",
-		"supply_draw",
-		"card_counter",
-		"military_force",
-		"military_command",
-	]
-
-
-func _skill_has_resolution_handler(skill: Dictionary) -> bool:
-	var kind := String(skill.get("kind", ""))
-	if kind == "":
-		return false
-	var target_status := _card_play_target_snapshot(skill)
-	if bool(target_status.get("targets_monster", false)):
-		return true
-	if bool(target_status.get("targets_player", false)):
-		return true
-	return _non_target_skill_resolution_kinds().has(kind)
-
-
-func _finish_played_skill(player_index: int, slot_index: int, skill: Dictionary, cooldown: float = COMMAND_COOLDOWN) -> void:
-	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return
-	# Shared-window submission is a commitment: normal queued cards pay on submit.
-	# Direct/legacy callers still pay here, while this private marker prevents doubles.
-	if not bool(skill.get("_play_cost_paid_on_queue", false)):
-		_pay_skill_play_cost(player_index, skill)
-	skill.erase("_play_cost_paid_on_queue")
-	if slot_index >= 0 and slot_index < (_game_runtime_coordinator_node().world_session_state().players[player_index].get("slots", []) as Array).size():
-		if bool(skill.get("persistent", false)):
-			_game_runtime_coordinator_node().arm_persistent_card_cooldown(
-				player_index,
-				slot_index,
-				str(skill.get("runtime_instance_id", "")),
-				float(skill.get("cooldown", DEFAULT_SKILL_COOLDOWN))
-			)
-		else:
-			_game_runtime_coordinator_node().world_session_state().players[player_index]["slots"][slot_index] = null
-	_game_runtime_coordinator_node().arm_player_action_cooldown(player_index, cooldown)
-	var response_region := int(skill.get("target_district", _game_runtime_coordinator_node().table_selection_state().selected_district))
-	if response_region >= 0:
-		var response_category := "build_after_forecast" if str(skill.get("kind", "")) in ["public_facility", "city_development", "city_product_upgrade", "city_product_shift"] else "play_after_forecast"
-		_game_runtime_coordinator_node().record_weather_public_response(response_region, response_category)
 
 
 func _card_resolution_duration(_skill: Dictionary) -> float:
@@ -13707,190 +13510,6 @@ func _card_resolution_groups() -> Array:
 	var service := _card_resolution_queue_service_node()
 	var value: Variant = service.call("groups", card_resolution_batch_reference_player, _game_runtime_coordinator_node().world_session_state().players.size()) if service != null and service.has_method("groups") else []
 	return (value as Array).duplicate(true) if value is Array else []
-
-
-func _queue_skill_resolution(player_index: int, slot_index: int, target_slot: int = -1, target_player: int = -1) -> bool:
-	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return false
-	if _player_is_eliminated(player_index):
-		_log("%s已经破产出局，不能继续提交匿名卡牌。" % _player_name(player_index))
-		return false
-	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[player_index]
-	var slots: Array = player.get("slots", [])
-	if slot_index < 0 or slot_index >= slots.size():
-		return false
-	if not (slots[slot_index] is Dictionary):
-		return false
-	var skill: Dictionary = slots[slot_index]
-	if _is_v06_runtime_card(skill):
-		return _play_v06_runtime_card_for_player(player_index, slot_index)
-	var card_label := _card_display_name(String(skill.get("name", "")))
-	if card_label == "":
-		card_label = String(skill.get("name", "卡牌"))
-	if bool(skill.get("queued_for_resolution", false)):
-		_log("%s已经在结算队列中，不能重复提交。" % card_label)
-		return false
-	var eligibility := _card_play_eligibility_snapshot(player_index, skill, "rule")
-	var target_status: Dictionary = eligibility.get("target_status", {}) as Dictionary
-	var reactive_counter := bool(target_status.get("is_counter", false)) and card_resolution_counter_window_active and not _card_resolution_active_entry().is_empty()
-	if not bool(eligibility.get("allowed", false)):
-		_log_card_play_rejection(eligibility, skill)
-		return false
-	var contract_context := {}
-	if String(skill.get("kind", "")) == "area_trade_contract":
-		var contract_controller := _contract_runtime_controller_node()
-		var contract_selection := contract_controller.selection_snapshot() if contract_controller != null else {"source_district": -1, "target_district": -1}
-		contract_context = contract_controller.offer_context(skill, player_index, int(contract_selection.get("source_district", -1)), int(contract_selection.get("target_district", -1)), _game_runtime_coordinator_node().table_selection_state().selected_trade_product) if contract_controller != null else {"error": "合约运行时控制器不可用", "reason": "contract_controller_missing"}
-		var contract_error := String(contract_context.get("error", ""))
-		if contract_error != "":
-			_log(contract_error)
-			return false
-	var play_cash_cost := int(eligibility.get("cash_cost", 0))
-	var requirement_status: Dictionary = eligibility.get("requirement_status", {}) as Dictionary
-	var queued_skill := skill.duplicate(true)
-	if String(queued_skill.get("kind", "")) == "product_futures":
-		var market_controller := _product_market_runtime_controller_node()
-		if market_controller == null:
-			_log("%s未提交：商品期货条款控制器不可用。" % card_label)
-			return false
-		queued_skill = market_controller.skill_with_terms(String(queued_skill.get("name", "")), queued_skill)
-		if queued_skill.has("futures_terms_error"):
-			_log("%s未提交：商品期货条款不可用（%s）。" % [card_label, str(queued_skill.get("futures_terms_error", "terms_missing"))])
-			return false
-	if String(queued_skill.get("kind", "")) == "city_gdp_derivative":
-		var derivative_controller := _city_gdp_derivative_runtime_controller_node()
-		if derivative_controller == null:
-			_log("%s未提交：城市GDP衍生品条款控制器不可用。" % card_label)
-			return false
-		queued_skill = derivative_controller.skill_with_terms(String(queued_skill.get("name", "")), queued_skill)
-		if queued_skill.has("gdp_derivative_terms_error"):
-			_log("%s未提交：城市GDP衍生品条款不可用（%s）。" % [card_label, str(queued_skill.get("gdp_derivative_terms_error", "terms_missing"))])
-			return false
-	if String(queued_skill.get("kind", "")) == "public_facility":
-		queued_skill["target_region_index"] = _game_runtime_coordinator_node().table_selection_state().selected_district
-	var entry_context := {
-		"target_slot": target_slot,
-		"target_player": target_player,
-		"selected_district": _game_runtime_coordinator_node().table_selection_state().selected_district,
-		"selected_trade_product": _game_runtime_coordinator_node().table_selection_state().selected_trade_product,
-		"contract_source_district": int(contract_context.get("source", -1)),
-		"contract_target_district": int(contract_context.get("target", -1)),
-		"contract_target_owner": int(contract_context.get("target_owner", -1)),
-		"contract_target_project_ids": (contract_context.get("target_project_ids", []) as Array).duplicate(true),
-		"contract_products": (contract_context.get("products", []) as Array).duplicate(true),
-		"contract_response": ContractRuntimeController.RESPONSE_PENDING if String(skill.get("kind", "")) == "area_trade_contract" else "",
-		"contract_response_player": -1,
-		"contract_response_time": -1.0,
-		"queued_time": _game_runtime_coordinator_node().world_session_state().game_time,
-		"play_requirement_kind": String(requirement_status.get("kind", "none")),
-		"play_requirement_scope": String(requirement_status.get("scope", "")),
-		"play_requirement_gdp_share_percent": int(requirement_status.get("required_share_percent", 0)),
-		"play_requirement_district": int(requirement_status.get("qualifying_district", -1)),
-		# Legacy save keys remain neutral so old readers never invent a product gate.
-		"play_requirement_product": "",
-		"play_requirement_flow": 0,
-		"play_requirement_text": String(requirement_status.get("requirement_text", "条件：无")),
-	}
-	var coordinator := _game_runtime_coordinator_node()
-	if coordinator == null or not coordinator.has_method("plan_card_resolution_queue_submission") or not coordinator.has_method("commit_card_resolution_queue_submission"):
-		_mark_game_runtime_coordinator_missing(true)
-		return false
-	var queue_plan_variant: Variant = coordinator.call("plan_card_resolution_queue_submission", {
-		"player_index": player_index,
-		"slot_index": slot_index,
-		"already_queued": bool(skill.get("queued_for_resolution", false)),
-		"reactive_counter": reactive_counter,
-		"group_card_limit": _card_group_limit_for_player(player_index),
-		"play_cash_cost_cents": play_cash_cost * 100,
-		"financial_margin_cents": int(eligibility.get("financial_margin_cash", 0)) * 100,
-		"financial_terms_version": str(eligibility.get("financial_terms_version", "")),
-		"available_cash_cents": int(player.get("cash", 0)) * 100,
-		"cash_revision": "%d" % int(player.get("cash", 0)),
-		"asset_cost": (eligibility.get("asset_cost", queued_skill.get("asset_cost", {})) as Dictionary).duplicate(true) if eligibility.get("asset_cost", queued_skill.get("asset_cost", {})) is Dictionary else {},
-		"skill": queued_skill,
-		"entry_context": entry_context,
-	}, {
-		"player_count": _game_runtime_coordinator_node().world_session_state().players.size(),
-		"counter_window_active": card_resolution_counter_window_active,
-		"batch_locked": card_resolution_batch_locked,
-		"simultaneous_timer": card_resolution_simultaneous_timer,
-		"lock_duration": _card_group_lock_duration(),
-		"public_bid_duration": _card_group_public_bid_duration(),
-		"window_sequence": card_group_window_sequence,
-		"reference_player": card_resolution_batch_reference_player,
-	})
-	var queue_plan: Dictionary = queue_plan_variant if queue_plan_variant is Dictionary else {}
-	if not bool(queue_plan.get("accepted", false)):
-		var rejection := str(queue_plan.get("reason", "queue_service_missing"))
-		match rejection:
-			"group_full": _log("%s未提交：本窗口卡牌组已达到%d张上限。" % [card_label, int(queue_plan.get("card_limit", _card_group_limit_for_player(player_index)))])
-			"public_bid_phase": _log("%s未提交：共享卡牌窗正在公开展示，不能再加入普通牌；卡牌保留在手牌。" % card_label)
-			"lock_phase", "window_closed": _log("%s未提交：共享卡牌窗已进入锁牌阶段；卡牌保留在手牌。" % card_label)
-			"active_resolution": _log("%s未提交：当前卡牌组正在连续结算，下一共享窗尚未开始；卡牌保留在手牌。" % card_label)
-			"counter_already_submitted": _log("当前玩家已经提交一张响应牌；同一5秒响应窗不能重复提交。")
-			"insufficient_play_cost": _log("%s无法进入共享卡牌窗：当前现金不足以支付打出费用¥%d。" % [card_label, play_cash_cost])
-			"insufficient_financial_margin": _log("%s无法进入共享卡牌窗：打出费用与金融保证金合计资金不足。" % card_label)
-			"asset_insufficient", "generic_asset_insufficient": _log("%s未提交：当前六色资产不足；卡牌仍保留在手中。" % card_label)
-			_: _log("%s未提交：卡牌队列服务拒绝请求（%s）。" % [card_label, rejection])
-		return false
-	var committed_entry: Dictionary = queue_plan.get("entry", {}) if queue_plan.get("entry", {}) is Dictionary else {}
-	var committed_skill: Dictionary = committed_entry.get("skill", {}) if committed_entry.get("skill", {}) is Dictionary else {}
-	var inventory_request := {
-		"inventory": _card_inventory_snapshot(player),
-		"target_slot": slot_index,
-		"queued_skill": committed_skill,
-		"consumed_on_queue": bool(queue_plan.get("consumed_on_queue", false)),
-	}
-	var inventory_plan_variant: Variant = coordinator.call("plan_card_inventory_queue_commit", inventory_request) if coordinator.has_method("plan_card_inventory_queue_commit") else {}
-	var inventory_plan: Dictionary = inventory_plan_variant if inventory_plan_variant is Dictionary else {}
-	if not bool(inventory_plan.get("ready", false)):
-		_log("%s未提交：卡槽状态已变化（%s）。" % [card_label, str(inventory_plan.get("reason", "inventory_service_missing"))])
-		return false
-	var prepared_player := player.duplicate(true)
-	var inventory_commit_variant: Variant = coordinator.call("commit_card_inventory_queue_commit", prepared_player, inventory_request, inventory_plan) if coordinator.has_method("commit_card_inventory_queue_commit") else {}
-	var inventory_commit: Dictionary = inventory_commit_variant if inventory_commit_variant is Dictionary else {}
-	if not bool(inventory_commit.get("committed", false)):
-		_log("%s未提交：卡槽提交失败（%s）。" % [card_label, str(inventory_commit.get("reason", "inventory_commit_failed"))])
-		return false
-	var financial_margin_cents := maxi(0, int(queue_plan.get("financial_margin_cents", 0)))
-	var total_cash_authorized_cents := play_cash_cost * 100 + financial_margin_cents
-	var queue_commit_variant: Variant = coordinator.call("commit_card_resolution_queue_submission", queue_plan, {
-		"authorized": true,
-		"inventory_committed": true,
-		"play_cost_authorized": int(player.get("cash", 0)) * 100 >= total_cash_authorized_cents,
-		"financial_margin_authorized": int(player.get("cash", 0)) * 100 >= total_cash_authorized_cents,
-		"asset_authorized": true,
-	})
-	var queue_commit: Dictionary = queue_commit_variant if queue_commit_variant is Dictionary else {}
-	if not bool(queue_commit.get("committed", false)):
-		_log("%s未提交：队列提交失败（%s）。" % [card_label, str(queue_commit.get("reason", "queue_commit_failed"))])
-		return false
-	prepared_player["queued_card_tip"] = 0
-	_game_runtime_coordinator_node().world_session_state().players[player_index] = prepared_player
-	_pay_skill_play_cost(player_index, skill)
-	var runtime_controller := _card_resolution_controller_node()
-	if runtime_controller != null and runtime_controller.has_method("set_player_ready"):
-		runtime_controller.call("set_player_ready", player_index, false, (_game_runtime_coordinator_node().card_resolution_frame_facts().get("active_player_indices", []) as Array))
-	var begins_new_batch := bool(queue_commit.get("begins_new_batch", false))
-	if begins_new_batch:
-		card_resolution_batch_reference_player = int(queue_commit.get("reference_player", player_index))
-		last_card_resolution_player_index = -1
-		card_group_window_sequence = int(queue_commit.get("next_window_sequence", card_group_window_sequence + 1))
-		_begin_card_group_window(card_resolution_batch_reference_player, card_group_window_sequence)
-	var queue_to_next_batch := str(queue_commit.get("route", "current")) == "next"
-	if queue_to_next_batch:
-		_log("匿名响应牌已承诺：%s进入当前5秒相位响应通道。" % card_label)
-		_refresh_ui()
-		return true
-	var current_group_count := _card_group_count_for_player(player_index)
-	if current_group_count > 1:
-		_log("匿名组追加第%d张卡：%s；同组会按玩家锁定顺序连续结算。" % [current_group_count, card_label])
-	else:
-		_log("匿名卡牌进入%s：%s；普通玩家本窗最多%d张牌。" % [_card_group_window_cadence_text(card_group_window_sequence), card_label, _card_group_limit_for_player(player_index)])
-		_show_card_batch_lobby_overlay()
-	if card_resolution_simultaneous_timer <= 0.0:
-		_lock_card_resolution_batch()
-	return true
 
 
 func _lock_card_resolution_batch() -> void:
@@ -14195,86 +13814,6 @@ func _set_planet_right_rail_resolution_suppressed(enabled: bool) -> void:
 	rail.set_meta("planet_side_lane_suppressed_for_resolution", enabled)
 
 
-func _counter_entry_can_cancel(counter_entry: Dictionary, target_entry: Dictionary) -> bool:
-	if counter_entry.is_empty() or target_entry.is_empty():
-		return false
-	var counter_skill: Dictionary = counter_entry.get("skill", {}) as Dictionary
-	var target_skill: Dictionary = target_entry.get("skill", {}) as Dictionary
-	if counter_skill.is_empty() or target_skill.is_empty():
-		return false
-	var counter_target_status := _card_play_target_snapshot(counter_skill)
-	var target_status := _card_play_target_snapshot(target_skill)
-	if not bool(counter_target_status.get("is_counter", false)):
-		return false
-	if bool(target_status.get("is_counter", false)):
-		return false
-	if not bool(target_status.get("counterable_player_interaction", false)):
-		return false
-	if bool(target_entry.get("countered", false)):
-		return false
-	var counter_player := int(counter_entry.get("player_index", -1))
-	if counter_player < 0 or counter_player >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return false
-	return bool(_card_play_eligibility_snapshot(counter_player, counter_skill, "rule").get("allowed", false))
-
-
-func _pop_counter_entry_from_queue(target_entry: Dictionary) -> Dictionary:
-	var service := _card_resolution_queue_service_node()
-	if service == null or not service.has_method("remove_entry_by_id"):
-		return {}
-	for entries in [_card_resolution_next_queue(), _card_resolution_current_queue()]:
-		for entry_variant in entries:
-			if not (entry_variant is Dictionary):
-				continue
-			var counter_entry := entry_variant as Dictionary
-			if _counter_entry_can_cancel(counter_entry, target_entry):
-				var resolution_id := int(counter_entry.get("resolution_id", counter_entry.get("queued_order", -1)))
-				var removed_variant: Variant = service.call("remove_entry_by_id", resolution_id)
-				return (removed_variant as Dictionary).duplicate(true) if removed_variant is Dictionary else {}
-	return {}
-
-
-func _resolve_reactive_counter_for_entry(target_entry: Dictionary) -> Dictionary:
-	var counter_entry := _pop_counter_entry_from_queue(target_entry)
-	if counter_entry.is_empty():
-		return {}
-	var counter_player := int(counter_entry.get("player_index", -1))
-	var counter_skill: Dictionary = counter_entry.get("skill", {}) as Dictionary
-	var target_skill: Dictionary = target_entry.get("skill", {}) as Dictionary
-	var counter_label := _card_display_name(String(counter_skill.get("name", "相位否决")))
-	var target_label := _card_display_name(String(target_skill.get("name", "匿名牌")))
-	if counter_label == "":
-		counter_label = "相位否决"
-	if target_label == "":
-		target_label = "匿名牌"
-	if not bool(counter_entry.get("play_cost_paid_on_queue", false)):
-		_pay_skill_play_cost(counter_player, counter_skill)
-	_game_runtime_coordinator_node().arm_player_action_cooldown(counter_player, COMMAND_COOLDOWN)
-	var refund := maxi(0, int(counter_skill.get("counter_refund", 0)))
-	if refund > 0:
-		_game_runtime_coordinator_node().world_session_state().players[counter_player]["cash"] = int(_game_runtime_coordinator_node().world_session_state().players[counter_player].get("cash", 0)) + refund
-		_record_player_card_income(counter_player, refund, String(counter_skill.get("name", "相位否决")), "反制押金回收")
-	var source_card := String(counter_skill.get("source_card_name", ""))
-	var source_text := "；由%s改写" % _card_display_name(source_card) if source_card != "" else ""
-	_log("匿名反制生效：%s取消了%s的结算%s。反制者仍不公开。" % [counter_label, target_label, source_text])
-	_game_runtime_coordinator_node().add_visual_action_callout(
-		"匿名反制",
-		counter_label,
-		"%s被相位折叠，原牌不产生效果；反制者不公开。" % target_label,
-		Color("#a78bfa"),
-		_district_center(int(target_entry.get("selected_district", _game_runtime_coordinator_node().table_selection_state().selected_district)))
-	)
-	counter_entry["resolved_time"] = _game_runtime_coordinator_node().world_session_state().game_time
-	counter_entry["countered_resolution_id"] = int(target_entry.get("resolution_id", -1))
-	counter_entry["aftermath_clue"] = "反制成功：%s被取消%s。" % [target_label, source_text]
-	resolved_card_history.append(counter_entry)
-	while resolved_card_history.size() > CARD_RESOLUTION_HISTORY_LIMIT:
-		resolved_card_history.pop_front()
-	var coordinator := _game_runtime_coordinator_node()
-	if coordinator != null and coordinator.has_method("settle_card_mana_reservation"):
-		coordinator.call("settle_card_mana_reservation", counter_entry, {"resolved": true, "reason": "counter_resolved"})
-	return counter_entry
-
 
 func _card_resolution_execution_request(entry: Dictionary) -> Dictionary:
 	var skill := _queued_skill_from_entry(entry)
@@ -14297,72 +13836,10 @@ func _card_resolution_execution_request(entry: Dictionary) -> Dictionary:
 	}
 
 
-func _apply_card_resolution_execution_intent(transaction: Dictionary) -> Dictionary:
-	var bridge := _card_resolution_execution_world_bridge_node()
-	var receipt_variant: Variant = bridge.call("apply_intent", self, transaction) if bridge != null and bridge.has_method("apply_intent") else {}
-	return (receipt_variant as Dictionary).duplicate(true) if receipt_variant is Dictionary else {"intent_type": "", "reason": "world_bridge_missing"}
-
-
-func _card_resolution_commitment_receipt(transaction: Dictionary) -> Dictionary:
-	var entry: Dictionary = transaction.get("active_entry", {}) as Dictionary
-	var skill: Dictionary = transaction.get("skill", {}) as Dictionary
-	var player_index := int(entry.get("player_index", -1))
-	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size() or skill.is_empty():
-		return {"intent_type": "finish_card_commitment", "committed": false, "reason": "commitment_context_missing"}
-	var finish_slot_index := -1 if bool(entry.get("consumed_on_queue", false)) else int(entry.get("slot_index", -1))
-	_finish_played_skill(player_index, finish_slot_index, skill, COMMAND_COOLDOWN)
-	return {"intent_type": "finish_card_commitment", "committed": true}
-
-
-func _card_resolution_history_receipt(transaction: Dictionary) -> Dictionary:
-	var entry: Dictionary = (transaction.get("active_entry", {}) as Dictionary).duplicate(true)
-	entry["resolved_time"] = _game_runtime_coordinator_node().world_session_state().game_time
-	resolved_card_history.append(entry)
-	while resolved_card_history.size() > CARD_RESOLUTION_HISTORY_LIMIT:
-		resolved_card_history.pop_front()
-	return {
-		"intent_type": "append_history",
-		"appended": true,
-		"current_queue_count": _card_resolution_current_queue().size(),
-	}
-
 
 func _complete_active_card_resolution() -> void:
-	var entry := _card_resolution_active_entry()
-	if entry.is_empty():
-		return
-	var coordinator := _game_runtime_coordinator_node()
-	if coordinator == null or not coordinator.has_method("plan_card_resolution_execution"):
-		_mark_game_runtime_coordinator_missing(true)
-		return
-	var transaction_variant: Variant = coordinator.call("plan_card_resolution_execution", _card_resolution_execution_request(entry))
-	var transaction: Dictionary = (transaction_variant as Dictionary).duplicate(true) if transaction_variant is Dictionary else {}
-	if not bool(transaction.get("ready", false)):
-		push_error("CardResolutionExecutionRuntimeService rejected active resolution %d: %s" % [
-			int(entry.get("resolution_id", entry.get("queued_order", -1))),
-			str(transaction.get("reason", "unknown")),
-		])
-		return
-	var guard := 0
-	while not (transaction.get("next_intent", {}) as Dictionary).is_empty() and guard < 20:
-		guard += 1
-		var receipt := _apply_card_resolution_execution_intent(transaction)
-		var advanced_variant: Variant = coordinator.call("advance_card_resolution_execution", transaction, receipt)
-		transaction = (advanced_variant as Dictionary).duplicate(true) if advanced_variant is Dictionary else {}
-		if str(transaction.get("status", "")) != "ready":
-			break
-	if guard >= 20 or str(transaction.get("status", "")) != "ready":
-		push_error("Card resolution execution aborted: %s" % str(transaction.get("failure_reason", transaction.get("reason", "intent_guard"))))
-		_refresh_ui()
-		return
-	var finalized_variant: Variant = coordinator.call("finalize_card_resolution_execution", transaction)
-	var finalized: Dictionary = finalized_variant if finalized_variant is Dictionary else {}
-	if not bool(finalized.get("completed", false)):
-		push_error("Card resolution execution did not finalize: %s" % str(finalized.get("reason", "unknown")))
-	elif coordinator.has_method("settle_card_mana_reservation"):
-		coordinator.call("settle_card_mana_reservation", transaction.get("active_entry", {}) as Dictionary, finalized)
+	_game_runtime_coordinator_node().execute_active_card_resolution(_card_resolution_execution_request(_card_resolution_active_entry()))
 	_refresh_ui()
-
 
 func _finish_card_resolution_batch() -> void:
 	var previous_player := last_card_resolution_player_index
@@ -14422,142 +13899,6 @@ func _clear_queued_card_flag(entry: Dictionary) -> void:
 	slots[slot_index] = skill
 	player["slots"] = slots
 	_game_runtime_coordinator_node().world_session_state().players[player_index] = player
-
-
-func _apply_card_resolution_effect_request(transaction: Dictionary) -> Dictionary:
-	var entry: Dictionary = transaction.get("active_entry", {}) as Dictionary
-	var skill: Dictionary = transaction.get("skill", {}) as Dictionary
-	var player_index := int(entry.get("player_index", -1))
-	var card_label := _card_display_name(String(skill.get("name", "")))
-	if card_label == "":
-		card_label = String(skill.get("name", "卡牌"))
-	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size() or skill.is_empty():
-		return {"intent_type": "dispatch_effect", "dispatched": false, "resolved": false, "reason": "effect_context_missing", "continuation_kind": "normal"}
-	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[player_index]
-	var resolved := true
-	var handler_id := String(transaction.get("handler_id", String(skill.get("kind", ""))))
-	var continuation_kind := "normal"
-	if handler_id == "target_monster":
-		resolved = _resolve_targeted_skill(skill, player, int(entry.get("target_slot", -1)), player_index)
-	elif handler_id == "target_player":
-		var target_player := int(entry.get("target_player", -1))
-		match String(skill.get("kind", "")):
-			"player_hand_disrupt":
-				resolved = _apply_player_hand_disrupt(player_index, target_player, skill)
-			"player_hand_steal":
-				resolved = _apply_player_hand_steal(player_index, target_player, skill)
-			_:
-				resolved = false
-				_log("%s的目标玩家互动结算器尚未接入。" % card_label)
-	else:
-		var coordinator := _game_runtime_coordinator_node()
-		var family_plan_variant: Variant = coordinator.call("plan_card_economy_product_route_effect", {
-			"handler_id": handler_id,
-			"active_entry": entry.duplicate(true),
-			"skill": skill.duplicate(true),
-		}) if coordinator != null and coordinator.has_method("plan_card_economy_product_route_effect") else {}
-		var family_plan: Dictionary = family_plan_variant if family_plan_variant is Dictionary else {}
-		if bool(family_plan.get("supported", false)):
-			var bridge := _card_economy_product_route_effect_world_bridge_node()
-			var receipt_variant: Variant = bridge.call("apply_effect", self, family_plan) if bridge != null and bridge.has_method("apply_effect") else {"handler_id": handler_id, "dispatched": false, "resolved": false, "reason": "effect_family_world_bridge_missing"}
-			var receipt: Dictionary = receipt_variant if receipt_variant is Dictionary else {}
-			var family_result_variant: Variant = coordinator.call("finalize_card_economy_product_route_effect", family_plan, receipt) if coordinator != null and coordinator.has_method("finalize_card_economy_product_route_effect") else {}
-			var family_result: Dictionary = family_result_variant if family_result_variant is Dictionary else {}
-			resolved = bool(family_result.get("resolved", false))
-			continuation_kind = str(family_result.get("continuation_kind", "normal"))
-		else:
-			match handler_id:
-				"monster_card":
-					resolved = monster_runtime_controller._summon_monster_from_card(player, skill)
-				"public_facility":
-					var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
-					var facility_result_variant: Variant = coordinator.call("submit_public_facility_card", {
-						"transaction_id": "card-resolution-%d-public-facility" % resolution_id if resolution_id >= 0 else "",
-						"player_index": player_index,
-						"target_region_index": int(skill.get("target_region_index", _game_runtime_coordinator_node().table_selection_state().selected_district)),
-						"occurred_at": _game_runtime_coordinator_node().world_session_state().game_time,
-						"skill": skill,
-					}) if coordinator != null and coordinator.has_method("submit_public_facility_card") else {}
-					var facility_result: Dictionary = facility_result_variant if facility_result_variant is Dictionary else {}
-					resolved = bool(facility_result.get("committed", false))
-					if not resolved:
-						_log("公共设施牌结算失败：%s。" % str(facility_result.get("reason", "region_infrastructure_unavailable")))
-				"monster_bound_action":
-					resolved = monster_runtime_controller._trigger_bound_monster_skill(skill, player)
-				"military_force":
-					resolved = military_runtime_controller.summon_from_card(player_index, skill)
-				"military_command":
-					resolved = military_runtime_controller.trigger_command(skill, -1, player_index)
-				"card_counter":
-					resolved = false
-					_log("%s没有处在有效相位响应窗口内，未产生反制效果。" % card_label)
-				"weather_control":
-					resolved = weather_runtime_controller.apply_weather_control_at(skill, _game_runtime_coordinator_node().table_selection_state().selected_district)
-				"intel_city_reveal":
-					resolved = _apply_intel_city_reveal(player, skill)
-				"intel_card_trace":
-					resolved = _apply_intel_card_trace(player, skill)
-				"intel_contract_trace":
-					var contract_controller := _contract_runtime_controller_node()
-					resolved = contract_controller.apply_intel_contract_trace(_game_runtime_coordinator_node().table_selection_state().selected_player, selected_card_resolution_id, skill) if contract_controller != null else false
-				"supply_draw":
-					_draw_extra_district_cards(player, int(skill.get("draw_amount", 1)), skill["name"])
-				_:
-					resolved = false
-					_log("%s暂未接入结算器，本次公开提交按承诺成本结算但不产生效果。" % card_label)
-	if resolved and handler_id == "area_trade_contract":
-		continuation_kind = "contract_response"
-	elif monster_runtime_controller.active_monster_wagers.size() > int(transaction.get("forced_decision_count_before", monster_runtime_controller.active_monster_wagers.size())):
-		continuation_kind = "forced_decision_handoff"
-	return {
-		"intent_type": "dispatch_effect",
-		"dispatched": true,
-		"resolved": resolved,
-		"reason": "resolved" if resolved else "effect_not_resolved",
-		"continuation_kind": continuation_kind,
-	}
-
-
-func _use_skill(slot_index: int) -> void:
-	if _has_pending_target_choice():
-		_log("请先完成当前卡牌的目标怪兽选择。")
-		return
-	if _has_pending_player_target_choice():
-		_log("请先完成当前卡牌的目标玩家选择。")
-		return
-	if not _can_selected_player_act():
-		return
-	if _game_runtime_coordinator_node().table_selection_state().selected_player < 0 or _game_runtime_coordinator_node().table_selection_state().selected_player >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return
-	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[_game_runtime_coordinator_node().table_selection_state().selected_player]
-	var slots: Array = player.get("slots", [])
-	if slot_index < 0 or slot_index >= slots.size() or not (slots[slot_index] is Dictionary):
-		return
-	var skill: Dictionary = slots[slot_index]
-	if _is_v06_runtime_card(skill):
-		_queue_skill_resolution(_game_runtime_coordinator_node().table_selection_state().selected_player, slot_index, -1)
-		_refresh_ui()
-		return
-	var card_label := _card_display_name(String(skill.get("name", "")))
-	if card_label == "":
-		card_label = String(skill.get("name", "卡牌"))
-	var eligibility := _card_play_eligibility_snapshot(_game_runtime_coordinator_node().table_selection_state().selected_player, skill, "hand")
-	if String(eligibility.get("reason_code", "")) == "counter_conversion_ready":
-		_queue_monster_card_as_counter(_game_runtime_coordinator_node().table_selection_state().selected_player, slot_index, skill)
-		_refresh_ui()
-		return
-	if not bool(eligibility.get("allowed", false)):
-		_log_card_play_rejection(eligibility, skill)
-		return
-	if bool(eligibility.get("requires_target_monster", false)):
-		_begin_target_monster_choice(slot_index)
-		return
-	if bool(eligibility.get("requires_target_player", false)):
-		_begin_target_player_choice(slot_index)
-		return
-	_queue_skill_resolution(_game_runtime_coordinator_node().table_selection_state().selected_player, slot_index, -1)
-	_refresh_ui()
-
 
 
 

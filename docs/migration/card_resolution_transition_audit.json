@@ -1,0 +1,318 @@
+{
+  "schema_version": "v0.6.card-resolution-transition-audit.1",
+  "status": "analysis_complete_production_not_modified",
+  "branch": "codex/scene-first-remove-main-gd",
+  "audited_head_sha": "dfcd841e51a2ae72d319a4aea2cb44bbe3f18922",
+  "production_runtime_loop_exists": false,
+  "current_chain": [
+    "Main._process",
+    "GameRuntimeCoordinator.advance_card_resolution_frame",
+    "CardResolutionFrameDriver.advance_world",
+    "CardResolutionRuntimeController.tick",
+    "Main._apply_card_resolution_controller_transition"
+  ],
+  "command_contract": {
+    "current_type": "Dictionary",
+    "declaration": "res://scripts/runtime/card_resolution_runtime_controller.gd::_command",
+    "producer": "res://scripts/runtime/card_resolution_runtime_controller.gd::tick",
+    "driver": "res://scripts/runtime/card_resolution_frame_driver.gd::advance_world",
+    "current_fields": ["transition", "phase", "stage?", "remaining?", "window_phase?"],
+    "missing_fields": [
+      "deterministic_command_id",
+      "frame_or_batch_revision",
+      "order_index",
+      "resolution_id",
+      "window_sequence",
+      "visibility_scope",
+      "requires_gameplay_mutation",
+      "requires_presentation_receipt"
+    ],
+    "producer_tick_count_in_command": false,
+    "sink_exact_once_identity_available": false
+  },
+  "transition_commands": [
+    {
+      "kind": "show_active",
+      "producer_order": "first on every active reveal/counter frame",
+      "current_consumer": "Main._show_card_resolution_overlay",
+      "classification": "presentation_receipt",
+      "world_mutation": false,
+      "queue_mutation": false,
+      "inventory_mutation": false,
+      "presentation_side_effect": true,
+      "public_log_side_effect": false,
+      "save_replay_implication": "transient replaceable presentation; must not duplicate gameplay"
+    },
+    {
+      "kind": "begin_counter",
+      "producer_order": "after show_active when counterable reveal expires",
+      "current_consumer": "Main._announce_card_counter_response_window",
+      "classification": "public_log_and_presentation_receipt",
+      "world_mutation": false,
+      "queue_mutation": false,
+      "inventory_mutation": false,
+      "presentation_side_effect": true,
+      "public_log_side_effect": true,
+      "save_replay_implication": "controller timing is saved; public announcement needs deduplication"
+    },
+    {
+      "kind": "complete_active",
+      "producer_order": "after show_active, and after begin_counter only for zero-duration counter",
+      "current_consumer": "Main._complete_active_card_resolution",
+      "classification": "gameplay_queue_inventory_presentation_orchestration",
+      "world_mutation": true,
+      "queue_mutation": true,
+      "inventory_mutation": true,
+      "presentation_side_effect": true,
+      "public_log_side_effect": true,
+      "save_replay_implication": "highest replay risk; current execution journal is not saved"
+    },
+    {
+      "kind": "start_next",
+      "producer_order": "sole command when batch is locked and no active entry exists",
+      "current_consumer": "Main._start_next_card_resolution",
+      "classification": "queue_mutation_and_presentation",
+      "world_mutation": false,
+      "queue_mutation": true,
+      "inventory_mutation": false,
+      "presentation_side_effect": true,
+      "public_log_side_effect": false,
+      "save_replay_implication": "queue active entry and controller display state must remain aligned"
+    },
+    {
+      "kind": "hide_overlay",
+      "producer_order": "sole command when queue is empty and hide latch is clear",
+      "current_consumer": "Main._hide_card_resolution_overlay",
+      "classification": "presentation_receipt",
+      "world_mutation": false,
+      "queue_mutation": false,
+      "inventory_mutation": false,
+      "presentation_side_effect": true,
+      "public_log_side_effect": false,
+      "save_replay_implication": "transient and idempotent if new port models desired state"
+    },
+    {
+      "kind": "show_group_window",
+      "producer_order": "last phase-display command before optional lock_batch",
+      "current_consumer": "Main._show_card_batch_lobby_overlay",
+      "classification": "presentation_receipt",
+      "world_mutation": false,
+      "queue_mutation": false,
+      "inventory_mutation": false,
+      "presentation_side_effect": true,
+      "public_log_side_effect": false,
+      "save_replay_implication": "transient; derives from saved queue/controller state"
+    },
+    {
+      "kind": "enter_public_bid",
+      "producer_order": "before show_group_window on boundary crossing or unanimous planning readiness",
+      "current_consumer": "Main._log",
+      "classification": "public_log_receipt",
+      "world_mutation": false,
+      "queue_mutation": false,
+      "inventory_mutation": false,
+      "presentation_side_effect": false,
+      "public_log_side_effect": true,
+      "save_replay_implication": "controller saves entry-announced latch; sink still needs duplicate protection"
+    },
+    {
+      "kind": "enter_lock",
+      "producer_order": "before show_group_window on lock crossing or unanimous public-bid readiness",
+      "current_consumer": "Main._log",
+      "classification": "public_log_receipt",
+      "world_mutation": false,
+      "queue_mutation": false,
+      "inventory_mutation": false,
+      "presentation_side_effect": false,
+      "public_log_side_effect": true,
+      "save_replay_implication": "controller saves entry-announced latch; sink still needs duplicate protection"
+    },
+    {
+      "kind": "all_ready_public_bid",
+      "producer_order": "first in all_ready_public_bid, enter_public_bid, show_group_window",
+      "current_consumer": "Main._log",
+      "classification": "public_log_receipt",
+      "world_mutation": false,
+      "queue_mutation": false,
+      "inventory_mutation": false,
+      "presentation_side_effect": false,
+      "public_log_side_effect": true,
+      "save_replay_implication": "needs command identity to avoid duplicate log"
+    },
+    {
+      "kind": "all_ready_lock",
+      "producer_order": "first in all_ready_lock, enter_lock, show_group_window",
+      "current_consumer": "Main._log",
+      "classification": "public_log_receipt",
+      "world_mutation": false,
+      "queue_mutation": false,
+      "inventory_mutation": false,
+      "presentation_side_effect": false,
+      "public_log_side_effect": true,
+      "save_replay_implication": "needs command identity to avoid duplicate log"
+    },
+    {
+      "kind": "all_ready_lock_batch",
+      "producer_order": "first in all_ready_lock_batch, lock_batch",
+      "current_consumer": "Main._log",
+      "classification": "public_log_receipt",
+      "world_mutation": false,
+      "queue_mutation": false,
+      "inventory_mutation": false,
+      "presentation_side_effect": false,
+      "public_log_side_effect": true,
+      "save_replay_implication": "paired with mutating lock command; both need ordered IDs"
+    },
+    {
+      "kind": "lock_batch",
+      "producer_order": "after show_group_window on timeout or after all_ready_lock_batch",
+      "current_consumer": "Main._lock_card_resolution_batch",
+      "classification": "queue_mutation_public_log_and_start",
+      "world_mutation": false,
+      "queue_mutation": true,
+      "inventory_mutation": false,
+      "presentation_side_effect": true,
+      "public_log_side_effect": true,
+      "save_replay_implication": "must reject duplicate/stale queue revision before starting first card"
+    }
+  ],
+  "declared_execution_intents": [
+    "counter_check",
+    "release_active",
+    "finish_presentation",
+    "revalidate_requirement",
+    "revalidate_target",
+    "dispatch_effect",
+    "finish_card_commitment",
+    "create_aftermath",
+    "restore_context",
+    "append_history",
+    "start_next",
+    "finish_batch",
+    "promote_next_batch"
+  ],
+  "execution_intents": [
+    {"kind": "counter_check", "current_consumer": "CardResolutionExecutionWorldBridge -> Main._resolve_reactive_counter_for_entry", "mutations": ["queue", "cash", "ledger", "cooldown", "mana", "history"], "presentation": ["public_log", "visual_callout"], "owner_gap": "typed counter settlement and history receipt port"},
+    {"kind": "release_active", "current_consumer": "CardResolutionQueueRuntimeService.complete_active via Main lookup", "mutations": ["queue"], "presentation": [], "owner_gap": "remove Main queue discovery"},
+    {"kind": "finish_presentation", "current_consumer": "Main timing setters and hide overlay", "mutations": ["timing_state"], "presentation": ["hide_overlay"], "owner_gap": "typed timing and card presentation ports"},
+    {"kind": "revalidate_requirement", "current_consumer": "WorldBridge plus Main eligibility/log helpers", "mutations": ["persistent_inventory_restore", "table_or_contract_selection"], "presentation": ["rejection_log"], "owner_gap": "typed eligibility/inventory/context/log ports"},
+    {"kind": "revalidate_target", "current_consumer": "WorldBridge plus Main target/log/presentation helpers", "mutations": ["table_selection"], "presentation": ["resolution_log", "visual_callout"], "owner_gap": "typed target validator and visibility-safe presentation receipt"},
+    {"kind": "dispatch_effect", "current_consumer": "Main._apply_card_resolution_effect_request", "mutations": ["domain_specific_world_effect"], "presentation": ["failure_log_or_owner_receipts"], "owner_gap": "typed concrete effect router"},
+    {"kind": "finish_card_commitment", "current_consumer": "Main._card_resolution_commitment_receipt", "mutations": ["inventory", "cash_if_legacy", "cooldown", "weather_response"], "presentation": [], "owner_gap": "typed commitment finalizer"},
+    {"kind": "create_aftermath", "current_consumer": "WorldBridge plus Main aftermath helper", "mutations": ["history_entry_patch"], "presentation": ["visual_callout", "map_event"], "owner_gap": "history owner and public card presentation port"},
+    {"kind": "restore_context", "current_consumer": "WorldBridge restores TableSelectionState and contract selection", "mutations": ["selection_context"], "presentation": [], "owner_gap": "inject typed owners; remove world lookup"},
+    {"kind": "append_history", "current_consumer": "Main._card_resolution_history_receipt", "mutations": ["resolved_card_history"], "presentation": [], "owner_gap": "scene-owned history owner with save/public projections"},
+    {"kind": "start_next", "current_consumer": "Main._start_next_card_resolution", "mutations": ["queue", "timing"], "presentation": ["show_overlay"], "owner_gap": "typed queue/timing/presentation orchestration"},
+    {"kind": "finish_batch", "current_consumer": "Main._reset_card_resolution_batch_state", "mutations": ["timing_and_batch_state"], "presentation": ["hide_overlay"], "owner_gap": "typed timing/presentation orchestration"},
+    {"kind": "promote_next_batch", "current_consumer": "Main._promote_next_card_resolution_batch", "mutations": ["queue", "timing"], "presentation": ["public_log", "show_group_window"], "owner_gap": "typed queue/timing/public presentation orchestration"}
+  ],
+  "execution_branch_sequences": {
+    "normal_resolved": ["counter_check", "release_active", "finish_presentation", "revalidate_requirement", "revalidate_target", "dispatch_effect", "finish_card_commitment", "create_aftermath", "restore_context", "append_history", "start_next_or_finish_batch", "optional_promote_next_batch"],
+    "countered": ["counter_check", "release_active", "finish_presentation", "finish_card_commitment", "create_aftermath", "restore_context", "append_history", "continuation"],
+    "requirement_invalid": ["counter_check", "release_active", "finish_presentation", "revalidate_requirement", "finish_card_commitment", "restore_context", "append_history", "continuation"],
+    "target_invalid": ["counter_check", "release_active", "finish_presentation", "revalidate_requirement", "revalidate_target", "finish_card_commitment", "create_aftermath", "restore_context", "append_history", "continuation"]
+  },
+  "effect_handlers": {
+    "typed_economy_product_route_service": ["product_speculation", "product_futures", "city_gdp_derivative", "product_contract_boon", "area_trade_contract", "market_stabilize", "news_event", "product_growth_boon"],
+    "main_target_router": ["target_monster", "target_player"],
+    "main_direct_router": ["monster_card", "public_facility", "monster_bound_action", "military_force", "military_command", "card_counter", "weather_control", "intel_city_reveal", "intel_card_trace", "intel_contract_trace", "supply_draw"],
+    "unknown_policy": "fail_closed_unresolved"
+  },
+  "entrypoints": {
+    "_apply_card_resolution_controller_transition": {"role": "frame command switch", "must_delete": true},
+    "_complete_active_card_resolution": {"role": "execution intent loop and finalization", "must_delete": true},
+    "_apply_card_resolution_effect_request": {"role": "concrete effect switch", "must_delete": true},
+    "_queue_skill_resolution": {"role": "submission transaction and group-window start", "must_delete_for_full_card_execution_cutover": true},
+    "_use_skill": {"role": "human action, eligibility, target choice and submission", "must_delete_for_full_card_execution_cutover": true}
+  },
+  "dynamic_main_dependencies": {
+    "bridge": "res://scripts/runtime/card_resolution_execution_world_bridge.gd",
+    "dynamic_call_count": 27,
+    "dynamic_get_count": 1,
+    "dynamic_set_count": 5,
+    "hard_coded_node_lookup_count": 2,
+    "method_symbols": [
+      "_add_action_callout",
+      "_add_card_resolution_aftermath_clue",
+      "_apply_card_resolution_effect_request",
+      "_authorize_card_play",
+      "_card_display_name",
+      "_card_play_requirement_snapshot",
+      "_card_resolution_active_entry",
+      "_card_resolution_commitment_receipt",
+      "_card_resolution_current_queue",
+      "_card_resolution_history_receipt",
+      "_card_resolution_next_queue",
+      "_card_resolution_presentation_snapshot",
+      "_card_resolution_queue_service_node",
+      "_district_center",
+      "_entity_world_position",
+      "_hide_card_resolution_overlay",
+      "_log",
+      "_promote_next_card_resolution_batch",
+      "_reset_card_resolution_batch_state",
+      "_resolve_reactive_counter_for_entry",
+      "_start_next_card_resolution"
+    ],
+    "property_symbols": [
+      "last_card_resolution_player_index",
+      "card_resolution_auction_open",
+      "card_resolution_timer",
+      "card_resolution_counter_window_active",
+      "card_resolution_counter_timer"
+    ],
+    "additional_live_dependencies": [
+      "AiRuntimeController._call_world(_queue_skill_resolution)",
+      "Main action snapshots Callable(self, _use_skill)",
+      "ContractRuntimeWorldBridge Main resolved_card_history get/set and refresh callback"
+    ]
+  },
+  "save_replay": {
+    "timing_owner_saved": true,
+    "queue_owner_saved": true,
+    "player_inventory_saved": true,
+    "mana_owner_saved": true,
+    "resolved_history_saved_by_main": true,
+    "execution_inflight_and_completed_ids_saved": false,
+    "recover_from_active_has_production_caller": false,
+    "risk": "active execution may replay a world mutation across save/load without a persisted applied-command or transaction journal"
+  },
+  "minimum_ports": [
+    "typed CardResolutionTransitionCommand",
+    "CardResolutionTransitionSink ordered batch API",
+    "CardResolutionHistoryOwner",
+    "CardResolutionPresentationPort",
+    "typed card effect router",
+    "typed commitment finalizer",
+    "typed CardPlaySubmissionPort shared by human and AI"
+  ],
+  "blockers": [
+    {"id": "untyped_commands", "detail": "No deterministic command ID, revision or order index."},
+    {"id": "main_dynamic_execution_bridge", "detail": "Existing execution bridge requires Main and dynamic method/property access."},
+    {"id": "main_concrete_effect_router", "detail": "Concrete effect handler switch remains in Main."},
+    {"id": "main_history_owner", "detail": "Resolved card history and multiple consumers remain Main-owned."},
+    {"id": "missing_card_presentation_receipt_port", "detail": "Overlay/log/aftermath side effects are not consumed by a narrow scene-owned port."},
+    {"id": "dynamic_ai_submission", "detail": "AI submits through a string-named Main world call."},
+    {"id": "human_callable_submission", "detail": "Human action snapshots still capture Callable(self, _use_skill)."},
+    {"id": "execution_journal_not_saved", "detail": "Execution exact-once guards are in-memory only."}
+  ],
+  "negative_gates": [
+    "no Main parameter or fallback in transition sink",
+    "no Main command-array consumer",
+    "no dynamic card transition method names",
+    "no legacy and new dual execution",
+    "no duplicate queue/inventory/cash/mana/history/presentation mutation",
+    "no anonymous actor or private player facts in public receipts",
+    "save/load does not replay an already applied mutation"
+  ],
+  "recommended_order": [
+    "typed command identity and order",
+    "scene-owned history and card presentation ports",
+    "typed execution-intent ports",
+    "typed concrete-effect router",
+    "typed human and AI submission port",
+    "Coordinator applies ordered transitions internally",
+    "remove Main card transition/execution/submission/action helpers",
+    "run negative dependency, exact-once, save/replay and privacy gates"
+  ]
+}

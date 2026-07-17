@@ -151,6 +151,47 @@ func begin_counter(duration: float = -1.0) -> void:
 	_completion_requested = false
 
 
+func card_play_fact_snapshot() -> Dictionary:
+	return {
+		"simultaneous_timer": simultaneous_timer,
+		"auction_timer": auction_timer,
+		"auction_open": auction_open,
+		"batch_locked": batch_locked,
+		"counter_window_active": counter_window_active,
+		"counter_timer": counter_timer,
+		"active_display_timer": active_display_timer,
+		"window_sequence": window_sequence,
+		"batch_reference_player": batch_reference_player,
+		"last_resolution_player_index": last_resolution_player_index,
+	}
+
+
+func record_resolving_player(player_index: int) -> Dictionary:
+	last_resolution_player_index = player_index
+	return {"recorded": player_index >= 0, "player_index": last_resolution_player_index}
+
+
+func finish_active_presentation() -> Dictionary:
+	auction_open = false
+	auction_timer = 0.0
+	counter_window_active = false
+	counter_timer = 0.0
+	active_display_timer = 0.0
+	return {"finished": true, "window_sequence": window_sequence}
+
+
+func finish_batch_state() -> Dictionary:
+	auction_open = false
+	batch_locked = false
+	simultaneous_timer = 0.0
+	auction_timer = 0.0
+	batch_reference_player = -1
+	last_resolution_player_index = -1
+	clear_ready_players()
+	_reset_transition_latches()
+	return {"finished": true, "window_sequence": window_sequence}
+
+
 func tick(delta: float, facts: Dictionary) -> Array:
 	_last_facts = _sanitize_facts(facts)
 	_prepare_transition_latches(_last_facts)

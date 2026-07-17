@@ -223,14 +223,25 @@
         "GameScreen",
         "CardResolution services"
       ],
-      "new_owner_scene": "",
-      "new_owner_script": "",
-      "new_public_api": [],
-      "tests": [],
+      "new_owner_scene": "res://scenes/runtime/CardPlaySubmissionRuntimeController.tscn",
+      "new_owner_script": "res://scripts/runtime/card_play_submission_runtime_controller.gd",
+      "new_public_api": [
+        "request_hand_card_play",
+        "submit_card_play",
+        "execute_active_card_resolution",
+        "card_resolution_viewer_history_snapshot"
+      ],
+      "tests": [
+        "res://tests/card_execution_typed_ports_cutover_test.gd",
+        "res://scenes/tools/CardExecutionTypedPortsBench.tscn",
+        "res://tests/card_resolution_history_runtime_service_test.gd",
+        "res://scenes/tools/CardResolutionHistoryRuntimeServiceBench.tscn",
+        "res://tests/main_runtime_composition_test.gd"
+      ],
       "old_path_deleted": false,
       "duplicate_execution_checked": false,
       "commit_sha": "",
-      "status": "pending"
+      "status": "migrating"
     },
     {
       "domain": "new_game_setup",
