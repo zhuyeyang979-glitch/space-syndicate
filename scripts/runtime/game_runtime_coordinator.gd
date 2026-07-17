@@ -3308,6 +3308,26 @@ func visual_cue_debug_snapshot() -> Dictionary:
 	return cue_owner.debug_snapshot() if cue_owner != null else {}
 
 
+func advance_presentation_refresh_cadence(real_delta: float, developer_surface_visible: bool = false) -> Dictionary:
+	var scheduler := _table_presentation_refresh_scheduler_node()
+	return scheduler.advance(real_delta, developer_surface_visible) if scheduler != null else {"advanced": false, "reason": "presentation_refresh_scheduler_unavailable", "due": []}
+
+
+func reset_presentation_refresh_cadence() -> Dictionary:
+	var scheduler := _table_presentation_refresh_scheduler_node()
+	return scheduler.reset_table_cadence() if scheduler != null else {"reset": false, "reason": "presentation_refresh_scheduler_unavailable"}
+
+
+func request_immediate_presentation_refresh(kind: StringName) -> Dictionary:
+	var scheduler := _table_presentation_refresh_scheduler_node()
+	return scheduler.request_immediate(kind) if scheduler != null else {"accepted": false, "reason": "presentation_refresh_scheduler_unavailable"}
+
+
+func presentation_refresh_cadence_debug_snapshot() -> Dictionary:
+	var scheduler := _table_presentation_refresh_scheduler_node()
+	return scheduler.debug_snapshot() if scheduler != null else {}
+
+
 func active_forced_decision(viewer_index: int = -1) -> Dictionary:
 	synchronize_forced_decisions()
 	var scheduler := _scheduler_node()
@@ -4598,6 +4618,10 @@ func _card_cooldown_runtime_controller_node() -> CardCooldownRuntimeController:
 
 func _visual_cue_runtime_owner_node() -> VisualCueRuntimeOwner:
 	return get_node_or_null("VisualCueRuntimeOwner") as VisualCueRuntimeOwner
+
+
+func _table_presentation_refresh_scheduler_node() -> Node:
+	return get_node_or_null("TablePresentationRefreshScheduler")
 
 
 func _wire_card_cooldown_runtime_controller() -> void:

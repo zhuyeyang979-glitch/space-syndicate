@@ -8066,3 +8066,14 @@
   of visual callbacks through their Main world bridges.
 - Preserved callout SFX through injected scene-owned audio players without
   giving the visual owner a Main reference.
+
+# 2026-07-17 — Table presentation refresh cadence cutover
+
+- Moved live HUD, map, full-table and developer-only refresh accumulators into
+  a scene-owned `TablePresentationRefreshScheduler` under the runtime
+  coordinator.
+- Removed the four cadence fields, three cadence constants and
+  `_update_process_ui_refresh()` from Main.
+- The scheduler emits ordered real-time due receipts and owns no gameplay
+  facts, UI nodes or Main callbacks. Main remains the temporary presentation
+  target consumer pending the dedicated presentation routing cutover.

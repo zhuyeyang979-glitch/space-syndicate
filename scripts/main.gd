@@ -44,9 +44,6 @@ const CITY_PUBLIC_CLUE_HISTORY_LIMIT := 6
 const DISTRICT_CARD_CHOICE_MIN := 4
 const DISTRICT_CARD_CHOICE_MAX := 5
 const CARD_INGRESS_CALLOUT_DURATION := 6.5
-const UI_LIVE_REFRESH_SECONDS := 0.18
-const UI_MAP_REFRESH_SECONDS := 0.16
-const UI_FULL_REFRESH_SECONDS := 1.80
 const AUTO_MONSTER_MOVE_RATIO := 0.72
 const EMBER_RING_BOMB_SELF_DAMAGE := 3
 const STARTING_CASH := 2000
@@ -422,10 +419,6 @@ var map_width_m := MAP_WIDTH_METERS
 var map_height_m := MAP_HEIGHT_METERS
 var district_lookup := {}
 
-var ui_timer := 0.0
-var ui_map_refresh_timer := 0.0
-var ui_full_refresh_timer := 0.0
-
 var runtime_game_screen: Control
 var ruleset_runtime_bridge: Node
 var ruleset_runtime_bridge_bound := false
@@ -524,7 +517,6 @@ var card_resolution_timer_label: Label
 var bottom_countdown_overlay: Control
 var bottom_countdown_panel: PanelContainer
 var developer_balance_panel: Control
-var developer_balance_refresh_timer := 0.0
 var table_bgm_player: AudioStreamPlayer
 var table_sfx_players := {}
 var runtime_visual_events: Array = []
@@ -592,7 +584,20 @@ func _process(delta: float) -> void:
 		if coordinator.has_method("tick_monster_wagers"):
 			coordinator.call("tick_monster_wagers", delta)
 		_game_runtime_coordinator_node().advance_visual_cues(delta)
-		_update_process_ui_refresh(delta)
+		var refresh_receipt := _game_runtime_coordinator_node().advance_presentation_refresh_cadence(
+			delta,
+			developer_balance_panel != null and developer_balance_panel.visible
+		)
+		for refresh_kind_variant in refresh_receipt.get("due", []):
+			match StringName(refresh_kind_variant):
+				&"live":
+					_refresh_live_ui()
+				&"map":
+					_refresh_board()
+				&"full":
+					_refresh_ui()
+				&"developer":
+					_refresh_developer_balance_greybox()
 		return
 	if time_scale <= 0.0:
 		return
@@ -640,27 +645,20 @@ func _process(delta: float) -> void:
 	if _runtime_session_finished():
 		return
 
-	_update_process_ui_refresh(delta)
-
-
-func _update_process_ui_refresh(delta: float) -> void:
-	ui_timer -= delta
-	ui_map_refresh_timer -= delta
-	ui_full_refresh_timer -= delta
-	if ui_timer <= 0.0:
-		_refresh_live_ui()
-		ui_timer = UI_LIVE_REFRESH_SECONDS
-	if ui_map_refresh_timer <= 0.0:
-		_refresh_board()
-		ui_map_refresh_timer = UI_MAP_REFRESH_SECONDS
-	if ui_full_refresh_timer <= 0.0:
-		_refresh_ui()
-		ui_full_refresh_timer = UI_FULL_REFRESH_SECONDS
-	if developer_balance_panel != null and developer_balance_panel.visible:
-		developer_balance_refresh_timer -= delta
-		if developer_balance_refresh_timer <= 0.0:
-			_refresh_developer_balance_greybox()
-			developer_balance_refresh_timer = UI_FULL_REFRESH_SECONDS
+	var refresh_receipt := _game_runtime_coordinator_node().advance_presentation_refresh_cadence(
+		delta,
+		developer_balance_panel != null and developer_balance_panel.visible
+	)
+	for refresh_kind_variant in refresh_receipt.get("due", []):
+		match StringName(refresh_kind_variant):
+			&"live":
+				_refresh_live_ui()
+			&"map":
+				_refresh_board()
+			&"full":
+				_refresh_ui()
+			&"developer":
+				_refresh_developer_balance_greybox()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -6581,7 +6579,7 @@ func _apply_run_domain_state_compatibility_adapter(state: Dictionary) -> int:
 				"ai_card_decision_enabled": true,
 			}
 		runtime_coordinator.call("apply_ai_save_data", ai_state)
-	ui_timer = 0.0
+	_game_runtime_coordinator_node().request_immediate_presentation_refresh(&"live")
 	if runtime_coordinator != null and runtime_coordinator.has_method("apply_monster_save_data"):
 		runtime_coordinator.call("apply_monster_save_data", state)
 	if runtime_coordinator != null and runtime_coordinator.has_method("apply_military_save_data"):
@@ -7802,9 +7800,7 @@ func _toggle_pause() -> void:
 
 
 func _refresh_ui() -> void:
-	ui_timer = UI_LIVE_REFRESH_SECONDS
-	ui_map_refresh_timer = UI_MAP_REFRESH_SECONDS
-	ui_full_refresh_timer = UI_FULL_REFRESH_SECONDS
+	_game_runtime_coordinator_node().reset_presentation_refresh_cadence()
 	if menu_overlay != null and menu_overlay.visible:
 		_refresh_menu_layout()
 	_refresh_board()

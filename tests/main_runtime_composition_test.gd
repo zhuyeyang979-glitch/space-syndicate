@@ -184,6 +184,7 @@ func _check_static_composition(main: Control) -> void:
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardResolutionFrameDriver",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardCooldownRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/VisualCueRuntimeOwner",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/TablePresentationRefreshScheduler",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardRuntimeCatalogService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardRuntimeDefinitionWorldBridge",
@@ -322,6 +323,8 @@ func _check_static_composition(main: Control) -> void:
 	var solar_camera := embedded_map.get_node_or_null("PlanetSolarCameraController") if embedded_map != null else null
 	_expect(embedded_map != null and embedded_map.scene_file_path == PLANET_MAP_VIEW_SCENE and solar_camera != null and solar_camera.scene_file_path == PLANET_SOLAR_CAMERA_CONTROLLER and solar_camera.has_method("apply_public_solar_snapshot") and solar_camera.has_method("request_return_to_sun") and not solar_camera.has_method("to_save_data") and not solar_camera.has_method("apply_save_data"), "PlanetMapView statically owns the non-saving solar camera presentation controller")
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	for retired_cadence_symbol in ["var ui_timer", "var ui_map_refresh_timer", "var ui_full_refresh_timer", "var developer_balance_refresh_timer", "func _update_process_ui_refresh"]:
+		_expect(not main_source.contains(retired_cadence_symbol), "presentation cadence cutover retires main.gd symbol: %s" % retired_cadence_symbol)
 	var map_injection_source := _function_source(main_source, "_set_map_view_data")
 	_expect(map_injection_source.contains("coordinator.solar_public_presentation_snapshot()") and map_injection_source.contains('target_view.call("set_solar_presentation_snapshot"') and map_injection_source.contains('target_view.call("set_solar_camera_motion_mode"') and not map_injection_source.contains("sun_turn_at") and not map_injection_source.contains("CardMarket"), "Main injects only Coordinator-owned public solar presentation and local motion preference into each runtime map")
 	_expect(balance_diagnostics != null and balance_diagnostics.scene_file_path == GAMEPLAY_BALANCE_DIAGNOSTICS_SERVICE and balance_diagnostics.has_method("development_routes") and balance_diagnostics.has_method("card_budget_report") and balance_diagnostics.has_method("build_balance_report") and balance_diagnostics.has_method("build_developer_panel_snapshot"), "GameRuntimeCoordinator owns the read-only GameplayBalanceDiagnosticsRuntimeService scene")
