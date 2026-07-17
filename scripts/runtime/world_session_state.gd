@@ -114,6 +114,17 @@ func public_world_geometry_snapshot() -> Dictionary:
 	}
 
 
+func public_lifecycle_snapshot() -> Dictionary:
+	return {
+		"available": not _players.is_empty(),
+		"session_revision": _world_geometry_revision,
+		"world_time": _game_time,
+		"session_state": "empty" if _players.is_empty() else "active",
+		"session_finished": false,
+		"visibility_scope": "public",
+	}
+
+
 func restore(data: Dictionary, duplicate_collections := true) -> Dictionary:
 	var next_players: Array = data.get("players", []) if data.get("players", []) is Array else []
 	var next_districts: Array = data.get("districts", []) if data.get("districts", []) is Array else []

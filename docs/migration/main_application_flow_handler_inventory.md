@@ -7,8 +7,8 @@ Status: `MAIN_APPLICATION_FLOW_HANDLER_EXTRACTION_GREEN`
 | Action | Before | Current owner | State | Mutation risk |
 | --- | --- | --- | --- | --- |
 | `rules` | `Main._on_menu_quick_nav_action_requested` → `_open_rules_menu` → rules board | `ApplicationFlowController.open_rules` | migrated | none; static read-only reference content |
-| `standings` | Main snapshot adapter + menu/scoreboard composition | Main adapter + existing public snapshot service | pending | read-only public query; keep visibility boundary |
-| `economy` | Main dashboard source adapter + menu/economy surface | Main adapter + `EconomyDashboardPublicSnapshotService` | pending | read-only public query; no cash mutation |
+| `standings` | Main snapshot adapter + menu/scoreboard composition | `StandingsApplicationFlowController` + `StandingsPublicQueryPort` | migrated | viewer-authorized read-only query |
+| `economy` | Main dashboard source adapter + menu/economy surface | `EconomyApplicationFlowController` + `EconomyDashboardViewerQueryPort` | migrated | public facts plus authorized viewer's own private economy; cached-only |
 | `intel` | Main dossier source/action bridge | Main adapter + `IntelDossierPublicSnapshotService` | pending | action bridge can enter gameplay inference; separate cutover |
 | `compendium` | Main catalog navigation/action routing | Codex controllers/services plus Main route adapter | pending | read-only pages with separate navigation state |
 | `setup` | Main new-game/setup actions | Main + setup scene | pending | session-start transaction; do not move into a UI-only handler |

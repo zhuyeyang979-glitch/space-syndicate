@@ -2,6 +2,9 @@
 extends Node
 class_name EconomyDashboardPublicSnapshotService
 
+## Formats a viewer-scoped presentation source containing public facts plus the
+## authorized viewer's own private facts. This service never decides access.
+
 var _configured := false
 var _compose_count := 0
 
@@ -12,354 +15,139 @@ func configure(_config: Dictionary = {}) -> void:
 
 func compose(source: Dictionary) -> Dictionary:
 	_compose_count += 1
-	if not bool(source.get("valid", false)):
-		return _empty_snapshot()
-	var products := _dictionary_array(source.get("product_entries", []), 64)
-	var cold_products := products.duplicate(true)
-	cold_products.sort_custom(Callable(self, "_sort_cold_product"))
-	var cities := _dictionary_array(source.get("city_entries", []), 64)
-	var aftermath := _dictionary_array(source.get("card_aftermath_entries", []), 8)
-	var city_clues := _dictionary_array(source.get("city_clue_entries", []), 8)
-	var monster_clues := _dictionary_array(source.get("monster_clue_entries", []), 8)
-	var warehouses := _dictionary_array(source.get("warehouse_entries", []), 8)
-	var cash_entries := _dictionary_array(source.get("player_cash_entries", []), 8)
-	var inference_lines := _string_array(source.get("inference_lines", []), 12)
-	var public_summary := _public_situation_summary(source, aftermath, city_clues, monster_clues, warehouses)
+	if not _source_valid(source):
+		return _empty_snapshot(str(source.get("reason_code", "data_unavailable")))
+	var own := source.get("own_private_economy", {}) as Dictionary
+	var commodities := _dictionary_array(source.get("public_commodity_entries", []), 64)
+	var regions := _dictionary_array(source.get("public_region_economy_entries", []), 64)
+	var integrity := _dictionary_array(source.get("public_region_integrity_entries", []), 64)
+	var facilities := _dictionary_array(source.get("public_facility_entries", []), 128)
+	var routes := _dictionary_array(source.get("public_route_summaries", []), 64)
+	var warehouse_risk := _dictionary_array(source.get("public_warehouse_risk_entries", []), 32)
+	var monsters := _dictionary_array(source.get("public_monster_pressure", []), 16)
+	var logs := _dictionary_array(source.get("public_log_clues", []), 8)
+	var layout := source.get("layout", {}) as Dictionary
+	var weather := source.get("public_weather", {}) as Dictionary
+	var own_receipts := _dictionary_array(own.get("sale_receipts", []), 8)
+	var own_warehouses := _dictionary_array(own.get("warehouses", []), 8)
+	var own_facilities := _dictionary_array(own.get("facilities", []), 32)
+	var dashboard := {
+		"title": "经济仪表板",
+		"title_tooltip": "公共市场、设施、运输与区域完整度；现金和流水仅显示你自己的。",
+		"tooltip": "经济仪表板：查看商品生产、需求、销售收据、公共设施和实际运输压力。",
+		"accent": Color("#4ade80"),
+		"kpi_columns": clampi(int(layout.get("kpi_columns", 4)), 1, 4),
+		"lane_columns": clampi(int(layout.get("lane_columns", 3)), 1, 3),
+		"overview_columns": clampi(int(layout.get("overview_columns", 4)), 1, 4),
+		"chips": [
+			{"text": "商品%d" % commodities.size(), "accent": Color("#facc15"), "tooltip": "只读公共商品目录与价格压力。"},
+			{"text": "设施%d" % facilities.size(), "accent": Color("#4ade80"), "tooltip": "公共设施类型、等级及明确公开的所有权。"},
+			{"text": _short_text(str(weather.get("short_text", weather.get("status_text", "天气稳定"))), 18), "accent": Color("#38bdf8"), "tooltip": "公共天气对生产、需求和运输的影响。"},
+		],
+		"kpis": [
+			{"title": "我的现金", "value": "%d" % int(own.get("exact_cash", 0)), "meta": str(own.get("name", "当前玩家")), "accent": Color("#4ade80"), "tooltip": "仅当前授权玩家可见的准确现金。"},
+			{"title": "我的商品GDP/min", "value": "%d" % int(own.get("commodity_gdp_per_minute", 0)), "meta": "来自商品销售收据", "accent": Color("#86efac"), "tooltip": "商品销售同时产生净现金和商品GDP；此处不重复换算。"},
+			{"title": "公共区域GDP", "value": "%d" % _sum_int(regions, "commodity_gdp_per_minute"), "meta": "%d个区域" % regions.size(), "accent": Color("#facc15"), "tooltip": "区域商品GDP是公共销售活动的汇总，不含对手私人拆解。"},
+			{"title": "怪兽压力", "value": "%d" % monsters.size(), "meta": "公开在场状态", "accent": Color("#fb7185"), "tooltip": "只显示公开怪兽位置与状态，不显示资金池或隐藏归属。"},
+		],
+		"overview_cards": [
+			{"title": "商品与销售", "body": "先对照生产、需求、积压和浪费，再看商品销售收据。", "accent": Color("#facc15"), "tooltip": "销售收据记录商品GDP与净现金。"},
+			{"title": "公共设施", "body": "设施类型、等级、租金和区域完整度决定经济承载力。", "accent": Color("#4ade80"), "tooltip": "区域可以包含多个不同所有者的设施。"},
+			{"title": "运输吞吐", "body": "实际流量、容量、天气与拥堵共同形成物流瓶颈。", "accent": Color("#38bdf8"), "tooltip": "页面只读取已缓存路线，不会重新计算网络。"},
+			{"title": "隐私边界", "body": "对手现金、账本、库存和隐藏所有权不会出现在本页。", "accent": Color("#c084fc"), "tooltip": "终局也不会自动解除这一边界。"},
+		],
+		"decisions": [
+			{"title": "补供给", "body": "关注高需求、低供给商品。", "keyword": "生产｜需求｜积压", "accent": Color("#facc15"), "tooltip": "从公开供需判断设施布局。"},
+			{"title": "保吞吐", "body": "关注低完整度区域与运输瓶颈。", "keyword": "设施｜完整度｜运输", "accent": Color("#38bdf8"), "tooltip": "运输设施和区域完整度影响实际流量。"},
+			{"title": "核流水", "body": "用自己的销售收据核对净现金与GDP。", "keyword": "收据｜租金｜仓储", "accent": Color("#4ade80"), "tooltip": "只显示当前玩家自己的详细流水。"},
+		],
+		"lanes": [
+			{"title": "公共商品", "lines": _commodity_lines(commodities), "accent": Color("#facc15"), "tooltip": "公共价格、供给、需求与压力。"},
+			{"title": "区域GDP与完整度", "lines": _region_lines(regions, integrity), "accent": Color("#4ade80"), "tooltip": "公共区域商品GDP和设施完整度。"},
+			{"title": "公共运输", "lines": _route_lines(routes), "accent": Color("#38bdf8"), "tooltip": "只读缓存中的实际运输能力与瓶颈。"},
+			{"title": "我的销售收据", "lines": _receipt_lines(own_receipts), "accent": Color("#86efac"), "tooltip": "仅当前玩家可见的商品GDP、净现金与设施租金。"},
+			{"title": "我的设施与仓库", "lines": _own_asset_lines(own_facilities, own_warehouses), "accent": Color("#a78bfa"), "tooltip": "仅当前玩家自己的设施和仓库库存。"},
+			{"title": "公开压力与线索", "lines": _pressure_lines(monsters, warehouse_risk, logs), "accent": Color("#fb7185"), "tooltip": "公开怪兽、匿名仓储风险和公开日志；不反推出隐藏所有权。"},
+		],
+	}
 	return {
-		"summary_text": _summary_text(source, products, cold_products, cities, aftermath, city_clues, monster_clues, warehouses, cash_entries, inference_lines, public_summary),
-		"overview_cards": _overview_cards(public_summary),
-		"dashboard": _dashboard_snapshot(source, products, cold_products, cities, aftermath, monster_clues, warehouses, public_summary),
+		"summary_text": "经济总览｜公共商品%d｜公共设施%d｜区域GDP %d｜我的商品GDP/min %d｜我的现金%d。对手私人经济保持隐藏。" % [commodities.size(), facilities.size(), _sum_int(regions, "commodity_gdp_per_minute"), int(own.get("commodity_gdp_per_minute", 0)), int(own.get("exact_cash", 0))],
+		"overview_cards": dashboard["overview_cards"],
+		"dashboard": dashboard,
 	}
 
 
 func debug_snapshot() -> Dictionary:
-	return {
-		"service_ready": _configured,
-		"service_authoritative": _configured,
-		"supported_domain": "economy_dashboard_public_presentation",
-		"compose_count": _compose_count,
-		"calculates_product_prices": false,
-		"calculates_city_income": false,
-		"calculates_cashflow": false,
-		"evaluates_private_truth": false,
-		"reads_runtime_nodes": false,
-		"bounded_input_lists": true,
-		"legacy_main_formatter_active": false,
-	}
+	return {"service_ready": _configured, "supported_domain": "viewer_scoped_economy_dashboard_presentation", "compose_count": _compose_count, "formats_public_plus_authorized_own_private": true, "calculates_product_prices": false, "calculates_city_income": false, "calculates_cashflow": false, "evaluates_private_truth": false, "reads_runtime_nodes": false, "bounded_input_lists": true, "legacy_main_formatter_active": false}
 
 
-func _empty_snapshot() -> Dictionary:
-	return {
-		"summary_text": "还没有当前局经济数据。开始新局并建城后，这里会显示GDP、商品、商路和公开线索。",
-		"overview_cards": [
-			{"title": "暂无经济数据", "body": "开始新局并建造城市后，这里会显示GDP、商品、商路和线索摘要。", "accent": Color("#38bdf8"), "tooltip": "经济事实尚未初始化。"},
-		],
-		"dashboard": {
-			"title": "经济仪表板",
-			"accent": Color("#4ade80"),
-			"chips": [],
-			"kpis": [],
-			"decisions": [],
-			"lanes": [],
-		},
-	}
+func _source_valid(source: Dictionary) -> bool:
+	if not bool(source.get("valid", false)) or str(source.get("contract_version", "")) != "economy_dashboard_viewer_source.v1": return false
+	var context: Dictionary = source.get("viewer_context", {}) if source.get("viewer_context", {}) is Dictionary else {}
+	var own: Dictionary = source.get("own_private_economy", {}) if source.get("own_private_economy", {}) is Dictionary else {}
+	var viewer := int(context.get("viewer_index", -1))
+	return bool(context.get("authorized", false)) and bool(own.get("authorized_private", false)) and viewer >= 0 and int(own.get("viewer_index", -1)) == viewer and int(own.get("subject_index", -1)) == viewer and TablePresentationPureDataPolicy.is_pure_data(source)
 
 
-func _dashboard_snapshot(source: Dictionary, products: Array, cold_products: Array, cities: Array, aftermath: Array, monster_clues: Array, warehouses: Array, public_summary: String) -> Dictionary:
-	var selected_name := str(source.get("selected_name", "当前玩家"))
-	var clue_count := int(source.get("clue_count", 0))
-	return {
-		"title": "经济仪表板",
-		"title_tooltip": "先看现金流、商品、城市、线索四块；细节用悬停查看。",
-		"tooltip": "经济仪表板：看三件事：钱从哪座城来、哪种商品变热、公开线索指向哪里。",
-		"accent": Color("#4ade80"),
-		"kpi_columns": clampi(int(source.get("kpi_columns", 4)), 1, 4),
-		"lane_columns": clampi(int(source.get("lane_columns", 3)), 1, 3),
-		"overview_columns": clampi(int(source.get("overview_columns", 4)), 1, 4),
-		"overview_cards": _overview_cards(public_summary),
-		"chips": [
-			{"text": "刷新%d" % int(source.get("business_cycle_count", 0)), "accent": Color("#86efac"), "tooltip": "公开供需、天气和市场类信息按全局刷新节奏更新。"},
-			{"text": "怪兽%d" % int(source.get("monster_count", 0)), "accent": Color("#fb7185"), "tooltip": "怪兽落点会影响购牌来源、破坏、赌局和资源吸引。"},
-			{"text": _short_text(str(source.get("weather_text", "天气稳定")), 14), "accent": Color("#38bdf8"), "tooltip": "天气会影响受波及区域的生产、交通和消费。"},
-		],
-		"kpis": [
-			{"title": "GDP/min", "value": "%d" % int(source.get("selected_gdp_per_minute", 0)), "meta": selected_name, "accent": Color("#4ade80"), "tooltip": "当前玩家可见城市现金流，按秒进入现金。"},
-			{"title": "商品热度", "value": _top_product_value(products), "meta": "价格/供需/趋势", "accent": Color("#facc15"), "tooltip": "供给压价；需求、合约和天气可能抬价。"},
-			{"title": "城市前景", "value": _top_city_value(cities), "meta": "收入/断路/业主视角", "accent": Color("#38bdf8"), "tooltip": "城市GDP受生产、需求、交通、损伤、竞争和商路影响。"},
-			{"title": "公开线索", "value": "%d" % clue_count, "meta": "卡牌/城市/怪兽", "accent": Color("#c084fc"), "tooltip": "只汇总公开证据，不揭示隐藏现金、手牌或真实业主。"},
-		],
-		"decisions": _decision_cards(products, cities, clue_count),
-		"lanes": [
-			{"title": "商品热榜", "lines": _compact_product_lines(products, false), "accent": Color("#facc15"), "tooltip": "哪些商品正在变贵、变热或被需求拉动。"},
-			{"title": "低价机会", "lines": _compact_product_lines(cold_products, true), "accent": Color("#93c5fd"), "tooltip": "供给过剩或价格受压的商品，适合买低、改需求或布局期货。"},
-			{"title": "城市现金流", "lines": _compact_city_lines(cities), "accent": Color("#4ade80"), "tooltip": "可见城市收入前景；真实业主仍按情报规则隐藏。"},
-			{"title": "匿名余波", "lines": _card_aftermath_lines(aftermath, 4), "accent": Color("#f472b6"), "tooltip": "匿名出牌后的公开结果，是猜牌主和经济反推的素材。"},
-			{"title": "怪兽/仓储风险", "lines": _risk_lines(monster_clues, warehouses), "accent": Color("#fb7185"), "tooltip": "怪兽资金损失、仓储靶标和可被做空的经济点。"},
-			{"title": "下一步读法", "lines": ["热商品：扩需求、保运输、买涨。", "高GDP城：保护、保险、修商路。", "可疑异动：对照牌轨、天气、怪兽落点。", "落后时：做空、断路、引怪兽压领先城。"], "accent": Color("#a78bfa"), "tooltip": "先看热商品，再看高GDP城市，最后用牌轨和地图结果找匿名线索。"},
-		],
-	}
+func _empty_snapshot(reason: String) -> Dictionary:
+	return {"summary_text": "还没有可显示的经济数据。商品目录、对局或当前玩家授权尚未准备好。", "reason_code": reason, "overview_cards": [{"title": "暂无经济数据", "body": "开始新局并等待权威经济系统完成配置。打开本页不会初始化目录或刷新路线。", "accent": Color("#38bdf8"), "tooltip": "只读页面采用失败关闭策略。"}], "dashboard": {"title": "经济仪表板", "accent": Color("#4ade80"), "chips": [], "kpis": [], "decisions": [], "lanes": []}}
 
 
-func _overview_cards(public_summary: String) -> Array:
-	var summary := public_summary
-	if summary == "":
-		summary = "公开异动：暂无明显场面结果；继续观察商品价格、城市GDP、怪兽落点和匿名卡牌轨道。"
-	return [
-		{"title": "经济速览", "body": "GDP/min按秒进钱；城市受商品、商路、天气、合约和破坏影响。", "accent": Color("#4ade80"), "tooltip": "先看现金流。"},
-		{"title": "商品热榜", "body": "高价商品适合扩需求或做多；低价/供给压制适合买低、转产或做空。", "accent": Color("#facc15"), "tooltip": "供需决定价格。"},
-		{"title": "公开异动", "body": summary, "accent": Color("#f472b6"), "tooltip": "只显示场面结果。"},
-		{"title": "匿名线索", "body": "牌轨条件、怪兽受伤、城市GDP跳变、合约签拒和仓储暴露都可反推身份。", "accent": Color("#c084fc"), "tooltip": "不揭示隐藏真相。"},
-	]
+func _commodity_lines(entries: Array) -> Array:
+	var lines: Array = []
+	for entry in entries.slice(0, 6): lines.append("%s｜价格%d（%s）｜供给%d｜需求%d｜压力%+d｜%s" % [str(entry.get("name", entry.get("commodity_id", "商品"))), int(entry.get("price", 0)), str(entry.get("price_band_label", "未知")), int(entry.get("supply", 0)), int(entry.get("demand", 0)), int(entry.get("pressure", 0)), str(entry.get("weather_summary", "无天气影响"))])
+	return lines if not lines.is_empty() else ["暂无公共商品报价。"]
 
 
-func _decision_cards(products: Array, cities: Array, clue_count: int) -> Array:
-	var top_product := "热商品"
-	if not products.is_empty():
-		top_product = _short_text(str((products[0] as Dictionary).get("name", top_product)), 8)
-	var top_city := "高GDP城"
-	if not cities.is_empty():
-		top_city = _short_text(str((cities[0] as Dictionary).get("name", top_city)), 7)
-	var clue_text := "%d条公开线索" % clue_count if clue_count > 0 else "牌轨/地图"
-	return [
-		{"title": "扩GDP", "body": "围绕%s补生产/需求/交通。" % top_product, "keyword": "建城｜产业｜合约", "accent": Color("#4ade80"), "tooltip": "赚钱路线：让一个商品从生产、需求、交通三端流起来，GDP才会按秒变成钱。"},
-		{"title": "护商路", "body": "保护%s，修断路或买保险。" % top_city, "keyword": "修复｜保险｜防卫", "accent": Color("#38bdf8"), "tooltip": "防守路线：高收入城市和运输节点被破坏后，GDP会下滑；先保住现金流。"},
-		{"title": "压竞争", "body": "用%s找目标，做空或引怪。" % clue_text, "keyword": "情报｜做空｜怪兽", "accent": Color("#f472b6"), "tooltip": "进攻路线：只根据公开牌轨、城市变化、怪兽落点和商品条件反推，不显示隐藏业主。"},
-	]
+func _region_lines(gdp_entries: Array, integrity_entries: Array) -> Array:
+	var gdp_by_region: Dictionary = {}
+	for entry in gdp_entries: gdp_by_region[str(entry.get("region_id", ""))] = int(entry.get("commodity_gdp_per_minute", 0))
+	var lines: Array = []
+	for entry in integrity_entries.slice(0, 6): lines.append("%s｜商品GDP/min %d｜完整度%d%%｜设施%d｜%s" % [str(entry.get("region_id", "区域")), int(gdp_by_region.get(str(entry.get("region_id", "")), 0)), int(round(float(int(entry.get("integrity_basis_points", 0))) / 100.0)), int(entry.get("facility_count", 0)), "废墟" if str(entry.get("lifecycle_state", "")) == "ruined" else "存续"])
+	return lines if not lines.is_empty() else ["暂无公共区域经济数据。"]
 
 
-func _summary_text(source: Dictionary, products: Array, cold_products: Array, cities: Array, aftermath: Array, city_clues: Array, monster_clues: Array, warehouses: Array, cash_entries: Array, inference_lines: Array, public_summary: String) -> String:
-	var lines := [
-		"经济总览",
-		"看三件事：钱从哪座城来，哪个商品在变贵，哪些公开动作留下线索。",
-		"城市现金按秒进账；商品供需、天气和商路会改变GDP/min；对手现金、手牌和私密推理保持隐藏。",
-		"情报现金只在终局兑现；当前页只整理公开证据和当前玩家自己的经济流水，不验证隐藏真相。",
-		"经济天气:%s｜卡牌余波:%d条｜城市线索商品:%s｜怪兽资金线索:%d条。" % [
-			_short_text(str(source.get("weather_text", "天气稳定")), 28),
-			aftermath.size(),
-			_limited_names(source.get("current_product_names", []) as Array, 3, "暂无"),
-			monster_clues.size(),
-		],
-		"商品热榜｜%s" % _joined_or(_product_detail_lines(products, 3), "暂无商品价格；先等待市场刷新或建城生产。"),
-		"低价/供给压制｜%s" % _joined_or(_product_detail_lines(cold_products, 2), "暂无低价商品。"),
-		"商路收入前景｜玩家经济隐私：对手现金、手牌和私密流水不公开｜%s" % _joined_or(_city_detail_lines(cities, 3), "暂无城市；先城市化陆地。"),
-		public_summary,
-		"最近卡牌余波｜%s" % _joined_or(_card_aftermath_lines(aftermath, 5), "暂无匿名卡余波；看顶部牌轨等待公开结果。"),
-		"最近城市公开线索｜%s" % _joined_or(_city_clue_lines(city_clues, 4), "类型:暂无｜线索商品:暂无｜等待城市公开线索。"),
-		"最近怪兽资金线索｜最大生命比例决定归属方掉钱幅度｜%s" % _joined_or(_monster_clue_lines(monster_clues, 4), "暂无伤害资金线索。"),
-		"仓储靶标｜匿名仓储会把期货收益绑定到可被攻击的城市｜%s" % _joined_or(_warehouse_lines(warehouses, 3), "暂无匿名仓储靶标。"),
-		"当前玩家推理板",
-	]
-	for inference_line: String in inference_lines:
-		lines.append(inference_line)
-	lines.append("玩家经济流水｜%s" % _joined_or(_player_cash_lines(cash_entries), "暂无玩家经济流水。"))
-	lines.append("下方仪表板只显示可扫读信息；悬停每一行可看完整证据。")
-	lines.append("刷新%d｜当前玩家：%s｜怪兽%d只｜%s" % [int(source.get("business_cycle_count", 0)), str(source.get("selected_name", "无")), int(source.get("monster_count", 0)), _short_text(str(source.get("weather_text", "天气稳定")), 24)])
-	return "\n".join(lines)
+func _route_lines(entries: Array) -> Array:
+	var lines: Array = []
+	for entry in entries.slice(0, 6): lines.append("%s→%s｜%s｜吞吐%d/min｜天气×%.2f｜%s" % [str(entry.get("source_region_id", "?")), str(entry.get("market_region_id", "?")), str(entry.get("transport_mode", "land")), int(entry.get("capacity_units_per_minute", 0)), float(entry.get("weather_multiplier", 1.0)), "瓶颈" if bool(entry.get("bottleneck", false)) else "可用"])
+	return lines if not lines.is_empty() else ["路线缓存尚未准备好；本页不会主动刷新。"]
 
 
-func _public_situation_summary(source: Dictionary, aftermath: Array, city_clues: Array, monster_clues: Array, warehouses: Array) -> String:
-	var pieces := []
-	if not aftermath.is_empty(): pieces.append("匿名卡牌余波%d条" % aftermath.size())
-	if not city_clues.is_empty(): pieces.append("城市公开线索%d条" % city_clues.size())
-	if not monster_clues.is_empty(): pieces.append("怪兽资金线索%d条" % monster_clues.size())
-	if not warehouses.is_empty(): pieces.append("匿名仓储%d城" % warehouses.size())
-	var monster_count := int(source.get("monster_count", 0))
-	if monster_count > 0: pieces.append("场上怪兽%d只" % monster_count)
-	var weather_text := _short_text(str(source.get("weather_text", "")), 32)
-	if weather_text != "": pieces.append("天气:%s" % weather_text)
-	if pieces.is_empty():
-		return "公开异动：暂无明显场面结果；继续观察商品价格、城市GDP、怪兽落点和匿名卡牌轨道。"
-	return "公开异动：%s。页面只汇总场面结果；对手现金、手牌和私密推理保持隐藏。" % "；".join(pieces)
+func _receipt_lines(entries: Array) -> Array:
+	var lines: Array = []
+	for entry in entries.slice(0, 4): lines.append("%s｜商品GDP %d｜净现金%+d｜设施租金%d" % [str(entry.get("commodity_id", "商品")), int(entry.get("gdp_value", 0)), int(entry.get("owner_net_cash", 0)), int(entry.get("storage_rent_cents", 0))])
+	return lines if not lines.is_empty() else ["暂无自己的商品销售收据。"]
 
 
-func _top_product_value(entries: Array) -> String:
-	if entries.is_empty(): return "—"
-	var entry := entries[0] as Dictionary
-	return "%s ¥%d" % [_short_text(str(entry.get("name", "商品")), 8), int(entry.get("price", 0))]
+func _own_asset_lines(facilities: Array, warehouses: Array) -> Array:
+	var lines: Array = []
+	for entry in facilities.slice(0, 2): lines.append("我的设施｜%s｜%s %s｜等级%d" % [str(entry.get("region_id", "区域")), str(entry.get("facility_type", "设施")), str(entry.get("industry_id", "")), int(entry.get("rank", 1))])
+	for entry in warehouses.slice(0, 2): lines.append("我的仓库｜%s｜%s｜库存%s" % [str(entry.get("region_id", "区域")), str(entry.get("commodity_id", "商品")), str(entry.get("quantity_milliunits", entry.get("units", 0)))])
+	return lines if not lines.is_empty() else ["暂无自己的设施或仓库库存。"]
 
 
-func _top_city_value(entries: Array) -> String:
-	if entries.is_empty(): return "—"
-	var entry := entries[0] as Dictionary
-	return "%s +%d" % [_short_text(str(entry.get("name", "城市")), 7), int(entry.get("income", 0))]
+func _pressure_lines(monsters: Array, warehouses: Array, logs: Array) -> Array:
+	var lines: Array = []
+	for entry in monsters.slice(0, 2): lines.append("怪兽｜%s %d级｜区域%d｜%s" % [str(entry.get("name", "怪兽")), int(entry.get("rank", 1)), int(entry.get("region_index", -1)), str(entry.get("pressure_label", "在场压力"))])
+	for entry in warehouses.slice(0, 1): lines.append("匿名仓储风险｜%s｜设施%d" % [str(entry.get("region_id", "区域")), int(entry.get("public_warehouse_count", 0))])
+	for entry in logs.slice(0, 1): lines.append("公开日志｜%s" % str(entry.get("message", entry.get("public_text", "经济异动"))))
+	return lines if not lines.is_empty() else ["暂无公开压力或经济线索。"]
 
 
-func _compact_product_lines(entries: Array, cold: bool) -> Array:
-	var lines := []
-	for entry_variant: Variant in entries.slice(0, mini(4, entries.size())):
-		var entry := entry_variant as Dictionary
-		var weather := str(entry.get("weather", "无"))
-		lines.append("%s ¥%d｜供%d/需%d｜%s%s｜天气%s" % [str(entry.get("name", "商品")), int(entry.get("price", 0)), int(entry.get("supply", 0)), int(entry.get("demand", 0)), "受压" if cold else "趋势", _signed_int(int(entry.get("trend", 0))), weather])
-	return lines
-
-
-func _compact_city_lines(entries: Array) -> Array:
-	var lines := []
-	for entry_variant: Variant in entries.slice(0, mini(4, entries.size())):
-		var entry := entry_variant as Dictionary
-		lines.append("%s｜%s｜收入%d｜断%d｜天气%s" % [str(entry.get("name", "城市")), str(entry.get("owner_view", "未知业主")), int(entry.get("income", 0)), int(entry.get("disrupted", 0)), _weather_income_contribution_text(entry.get("weather_contributions", []))])
-	if lines.is_empty(): lines.append("暂无城市；先城市化陆地。")
-	return lines
-
-
-func _product_detail_lines(entries: Array, limit: int) -> Array:
-	var lines := []
-	for entry_variant: Variant in entries.slice(0, mini(limit, entries.size())):
-		var entry := entry_variant as Dictionary
-		var weather := str(entry.get("weather", "无"))
-		weather = "天气无" if weather == "无" else "天气%s" % weather
-		lines.append("%s ¥%d（%s｜偏离%s｜趋势%s｜供%d/需%d/断%d｜波%d｜%s｜公开状态%s｜路径%s）" % [str(entry.get("name", "商品")), int(entry.get("price", 0)), str(entry.get("tier", "未定价")), _signed_int(int(entry.get("gap", 0))), _signed_int(int(entry.get("trend", 0))), int(entry.get("supply", 0)), int(entry.get("demand", 0)), int(entry.get("disrupted", 0)), int(entry.get("volatility", 0)), weather, _status_text(entry.get("status_tags", []) as Array), str(entry.get("path", ""))])
-	return lines
-
-
-func _city_detail_lines(entries: Array, limit: int) -> Array:
-	var lines := []
-	for entry_variant: Variant in entries.slice(0, mini(limit, entries.size())):
-		var entry := entry_variant as Dictionary
-		lines.append("%s｜%s｜%s｜潜在收入%d｜上次%d｜%s｜收入拆解%s｜天气%s｜公开状态%s｜合约%s｜供给%d/%d｜断路%d｜竞争%d｜流通%s｜生产%s｜需求%s" % [str(entry.get("name", "城市")), str(entry.get("owner_view", "未知业主")), str(entry.get("intel_hint", "情报：无")), int(entry.get("income", 0)), int(entry.get("last_income", 0)), str(entry.get("gdp_trend", "GDP趋势：暂无历史")), str(entry.get("breakdown", "")), _weather_income_contribution_text(entry.get("weather_contributions", [])), _status_text(entry.get("status_tags", []) as Array), str(entry.get("contract", "无")), int(entry.get("supplied", 0)), int(entry.get("demand_count", 0)), int(entry.get("disrupted", 0)), int(entry.get("competition", 0)), str(entry.get("flow", "无")), _limited_names(entry.get("products", []) as Array, 3, "无"), _limited_names(entry.get("demands", []) as Array, 3, "无")])
-	return lines
-
-
-func _weather_income_contribution_text(value: Variant) -> String:
-	if not (value is Array) or (value as Array).is_empty():
-		return "无"
-	var parts: Array[String] = []
-	for row_variant in value as Array:
-		if not (row_variant is Dictionary):
-			continue
-		var row := row_variant as Dictionary
-		var direction := "生产" if str(row.get("direction", "")) == "production" else "需求"
-		var multiplier := float(row.get("multiplier", 1.0))
-		parts.append("%s%s%+d%%" % [str(row.get("weather_label", row.get("weather_id", "天气"))), direction, int(round((multiplier - 1.0) * 100.0))])
-		if parts.size() >= 3:
-			break
-	return "、".join(parts) if not parts.is_empty() else "无"
-
-
-func _card_aftermath_lines(entries: Array, limit: int) -> Array:
-	var lines := []
-	for entry_variant: Variant in entries.slice(0, mini(limit, entries.size())):
-		var entry := entry_variant as Dictionary
-		var resolved_time := float(entry.get("resolved_time", -1.0))
-		var time_text := "T+%.1fs" % resolved_time if resolved_time >= 0.0 else "时间未知"
-		var owner_text := "归属已公开" if bool(entry.get("owner_known", false)) else "归属待猜"
-		var tip_clue := str(entry.get("tip_clue", ""))
-		var tip_text := "｜竞价:%s" % tip_clue if tip_clue != "" else ""
-		lines.append("%s｜%s演出｜%s｜%s｜%s｜线索:%s%s" % [time_text, str(entry.get("style", "卡牌")), str(entry.get("card", "卡牌")), str(entry.get("target", "目标未知")), owner_text, str(entry.get("clue", "公开结果留下推理痕迹")), tip_text])
-	return lines
-
-
-func _city_clue_lines(entries: Array, limit: int) -> Array:
-	var lines := []
-	for entry_variant: Variant in entries.slice(0, mini(limit, entries.size())):
-		var entry := entry_variant as Dictionary
-		var time_value := float(entry.get("time", -1.0))
-		var time_text := "T+%.0fs" % time_value if time_value >= 0.0 else "时间未知"
-		lines.append("%s｜%s｜%s｜类型:%s｜线索商品:%s｜上次收入%d｜生产:%s｜需求:%s｜线索:%s" % [time_text, str(entry.get("district", "城市")), "己方城市" if bool(entry.get("owner_visible", false)) else "业主未知", str(entry.get("kind", "公开")), _limited_names(entry.get("clue_products", []) as Array, 3, "无"), int(entry.get("income", 0)), _limited_names(entry.get("products", []) as Array, 3, "无"), _limited_names(entry.get("demands", []) as Array, 3, "无"), str(entry.get("clue", ""))])
-	return lines
-
-
-func _monster_clue_lines(entries: Array, limit: int) -> Array:
-	var lines := []
-	for entry_variant: Variant in entries.slice(0, mini(limit, entries.size())):
-		var entry := entry_variant as Dictionary
-		var recent_time := float(entry.get("recent_time", -1.0))
-		var time_text := "T+%.1fs" % recent_time if recent_time >= 0.0 else "等待伤害"
-		var recent_loss := int(entry.get("recent_loss", 0))
-		var recent_text := "最近未产生现金损失"
-		if recent_loss > 0:
-			recent_text = "最近损失¥%d/%d伤害" % [recent_loss, int(entry.get("recent_damage", 0))]
-			if str(entry.get("recent_source", "")) != "": recent_text += "（%s）" % str(entry.get("recent_source", ""))
-		lines.append("%s｜怪%d·%s%s｜%s｜%s｜累计损失¥%d｜资金池余¥%d/%d｜%s｜线索:%s" % [time_text, int(entry.get("slot", 0)) + 1, str(entry.get("name", "怪兽")), _roman(clampi(int(entry.get("rank", 1)), 1, 4)), str(entry.get("owner_text", "归属未公开")), recent_text, int(entry.get("total_lost", 0)), int(entry.get("cash_pool", 0)), int(entry.get("cash_total", 0)), "倒地" if bool(entry.get("down", false)) else "在场", str(entry.get("clue", "暂无公开资金线索"))])
-	return lines
-
-
-func _warehouse_lines(entries: Array, limit: int) -> Array:
-	var lines := []
-	for entry_variant: Variant in entries.slice(0, mini(limit, entries.size())):
-		var entry := entry_variant as Dictionary
-		var seconds_left := float(entry.get("seconds_left", -1.0))
-		var duration_text := "%ds" % ceili(seconds_left) if seconds_left >= 0.0 else "未知"
-		lines.append("%s｜%s｜%s｜仓储风险%d｜%d笔/%d单位｜商品:%s｜到期:%s｜GDP/min %d｜反制:做空/齐射/军队/引怪｜线索:%s" % [str(entry.get("name", "仓储城市")), str(entry.get("owner_view", "业主未知")), str(entry.get("intel_hint", "情报：无")), int(entry.get("pressure", 0)), int(entry.get("count", 0)), int(entry.get("units", 0)), _limited_names(entry.get("products", []) as Array, 3, "未知商品"), duration_text, int(entry.get("potential_income", 0)), str(entry.get("latest_clue", "暂无公开线索"))])
-	return lines
-
-
-func _risk_lines(monster_entries: Array, warehouse_entries: Array) -> Array:
-	var lines := _monster_clue_lines(monster_entries, 2)
-	lines.append_array(_warehouse_lines(warehouse_entries, 2))
-	if lines.is_empty(): lines.append("暂无高风险仓储或怪兽资金线索。")
-	return lines
-
-
-func _player_cash_lines(entries: Array) -> Array:
-	var lines := []
-	for entry_variant: Variant in entries:
-		var entry := entry_variant as Dictionary
-		var player_name := str(entry.get("name", "玩家"))
-		if bool(entry.get("eliminated", false)):
-			lines.append("%s｜破产出局：现金归零，停止行动和城市现金流；历史手牌、弃牌与私密计划仍不公开。" % player_name)
-		elif bool(entry.get("private", false)):
-			lines.append("%s｜现金、结算预估、城市资产、现金流、资金轨迹与流水均为私人信息；只能从公开行动自行推测。" % player_name)
-		else:
-			lines.append("%s｜%s%d｜现金%d｜城市%d｜%s｜实时现金流%s｜角色累计+%d｜潜在GDP/min %d｜最近%s｜窗口%s｜轨迹%s｜流水%s" % [player_name, str(entry.get("score_label", "可见预估")), int(entry.get("visible_score", 0)), int(entry.get("visible_cash", 0)), int(entry.get("city_count", 0)), str(entry.get("intel_summary", "")), _signed_int(int(entry.get("last_cycle", 0))), int(entry.get("role_income", 0)), int(entry.get("gdp_per_minute", 0)), _signed_int(int(entry.get("recent_delta", 0))), _signed_int(int(entry.get("window_delta", 0))), str(entry.get("path", "")), str(entry.get("ledger", "暂无"))])
-	return lines
-
-
-func _sort_cold_product(a: Dictionary, b: Dictionary) -> bool:
-	var cold_a := int(a.get("cold_score", 0))
-	var cold_b := int(b.get("cold_score", 0))
-	if cold_a != cold_b: return cold_a > cold_b
-	var price_a := int(a.get("price", 0))
-	var price_b := int(b.get("price", 0))
-	if price_a != price_b: return price_a < price_b
-	return str(a.get("name", "")) < str(b.get("name", ""))
+func _sum_int(entries: Array, key: String) -> int:
+	var total := 0
+	for entry in entries: total += int(entry.get(key, 0))
+	return total
 
 
 func _dictionary_array(value: Variant, limit: int) -> Array:
-	var result := []
-	if not (value is Array): return result
-	for entry_variant: Variant in value:
-		if entry_variant is Dictionary:
-			result.append((entry_variant as Dictionary).duplicate(true))
-		if result.size() >= limit: break
+	var result: Array = []
+	if value is Array:
+		for entry in value:
+			if entry is Dictionary: result.append((entry as Dictionary).duplicate(true))
+			if result.size() >= limit: break
 	return result
-
-
-func _string_array(value: Variant, limit: int) -> Array:
-	var result := []
-	if not (value is Array): return result
-	for entry_variant: Variant in value:
-		var text := str(entry_variant).strip_edges()
-		if text != "": result.append(text)
-		if result.size() >= limit: break
-	return result
-
-
-func _joined_or(lines: Array, fallback: String) -> String:
-	return "；".join(lines) if not lines.is_empty() else fallback
-
-
-func _limited_names(values: Array, limit: int, fallback: String) -> String:
-	var result := []
-	for value_variant: Variant in values:
-		var text := str(value_variant).strip_edges()
-		if text != "": result.append(text)
-		if result.size() >= limit: break
-	return "、".join(result) if not result.is_empty() else fallback
-
-
-func _status_text(values: Array) -> String:
-	return _limited_names(values, 5, "无")
-
-
-func _signed_int(value: int) -> String:
-	return "+%d" % value if value > 0 else "%d" % value
-
-
-func _roman(rank: int) -> String:
-	return ["I", "II", "III", "IV"][clampi(rank, 1, 4) - 1]
 
 
 func _short_text(value: String, limit: int) -> String:
-	if limit <= 0 or value.length() <= limit: return value
-	return value.substr(0, maxi(0, limit - 1)) + "…"
+	return value if limit <= 0 or value.length() <= limit else value.substr(0, limit - 1) + "…"

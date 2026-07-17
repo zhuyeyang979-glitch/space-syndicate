@@ -117,6 +117,32 @@ func all_route_candidates(commodity_id := "*") -> Array:
 	return result
 
 
+func public_cached_route_snapshot() -> Dictionary:
+	## Read-only presentation projection. It intentionally does not call
+	## _ensure_cache(), refresh_routes(), or the world bridge.
+	var rows: Array = []
+	for candidate_variant in _cached_all_candidates:
+		if not (candidate_variant is Dictionary):
+			continue
+		var candidate := candidate_variant as Dictionary
+		rows.append({
+			"source_region_id": str(candidate.get("source_region_id", "")),
+			"market_region_id": str(candidate.get("market_region_id", "")),
+			"transport_mode": str(candidate.get("transport_mode", candidate.get("mode", "land"))),
+			"capacity_units_per_minute": maxi(0, int(candidate.get("capacity_units_per_minute", candidate.get("throughput_units_per_minute", 0)))),
+			"weather_multiplier": maxf(0.0, float(candidate.get("weather_multiplier", 1.0))),
+			"bottleneck": bool(candidate.get("rent_rate_pending", false)) or maxi(0, int(candidate.get("capacity_units_per_minute", 0))) == 0,
+		})
+	return {
+		"available": _configured and not _cached_topology_revision.is_empty(),
+		"visibility_scope": "public",
+		"topology_revision": _cached_topology_revision,
+		"rows": rows,
+		"refresh_count": _refresh_count,
+		"rebuild_count": _rebuild_count,
+	}
+
+
 func active_region_legacy_indices() -> Array:
 	var topology := _topology_snapshot()
 	var result: Array = []

@@ -8400,3 +8400,10 @@ deleted. Evidence and the remaining action inventory are recorded in
   methods.
 - Replaced obsolete player-facing GDP-share card-condition copy with the active
   v0.6 public-condition wording from the rules quick-reference owner.
+# 2026-07-18 — Economy viewer-scoped application-flow cutover
+
+- Added a dedicated economy application intent, scene-owned flow controller and viewer-authorized read-only query port.
+- Economy presentation now reads initialized public market/facility/route/weather/monster projections plus only the local viewer's exact cash, receipts, facilities and warehouses.
+- Removed Main's five economy page methods and dashboard preload; Intel's link now submits the application intent.
+- Opening the page no longer initializes the product catalog or refreshes route caches, and missing data fails closed.
+- Replaced retired economy text with v0.6 sale-receipt, commodity GDP, facility, throughput and regional-integrity semantics.

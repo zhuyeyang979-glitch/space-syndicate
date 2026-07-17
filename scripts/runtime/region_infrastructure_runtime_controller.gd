@@ -854,6 +854,60 @@ func facilities_snapshot(include_tombstones := false) -> Array:
 	return result
 
 
+func public_economy_snapshot() -> Dictionary:
+	var public_regions: Array = []
+	for region_variant in regions_snapshot():
+		if not (region_variant is Dictionary):
+			continue
+		var region := region_variant as Dictionary
+		public_regions.append({
+			"region_id": str(region.get("region_id", "")),
+			"lifecycle_state": str(region.get("lifecycle_state", "undeveloped")),
+			"facility_count": maxi(0, int(region.get("facility_count", 0))),
+			"current_hp": maxi(0, int(region.get("derived_current_hp", 0))),
+			"max_hp": maxi(0, int(region.get("derived_max_hp", 0))),
+			"integrity_basis_points": clampi(int(region.get("integrity_basis_points", 0)), 0, 10000),
+		})
+	var public_facilities: Array = []
+	for facility_variant in facilities_snapshot(false):
+		if not (facility_variant is Dictionary):
+			continue
+		var facility := facility_variant as Dictionary
+		var row := {
+			"region_id": str(facility.get("region_id", "")),
+			"facility_type": str(facility.get("facility_type", "")),
+			"industry_id": str(facility.get("industry_id", "")),
+			"rank": clampi(int(facility.get("rank", 1)), 1, 4),
+			"active": bool(facility.get("active", false)),
+			"owner_visibility": "hidden",
+		}
+		if bool(facility.get("owner_public", facility.get("owner_revealed", false))):
+			row["owner_visibility"] = "public"
+			row["owner_player_index"] = int(facility.get("owner_player_index", -1))
+		public_facilities.append(row)
+	return {"available": _configured, "revision": _revision, "visibility_scope": "public", "regions": public_regions, "facilities": public_facilities}
+
+
+func own_facilities_snapshot(viewer_index: int) -> Dictionary:
+	if viewer_index < 0:
+		return {"authorized": false, "viewer_index": viewer_index, "subject_index": -1, "facilities": []}
+	var rows: Array = []
+	for facility_variant in facilities_snapshot(false):
+		if not (facility_variant is Dictionary):
+			continue
+		var facility := facility_variant as Dictionary
+		if str(facility.get("owner_kind", "")) != "player" or int(facility.get("owner_player_index", -1)) != viewer_index:
+			continue
+		rows.append({
+			"region_id": str(facility.get("region_id", "")),
+			"facility_type": str(facility.get("facility_type", "")),
+			"industry_id": str(facility.get("industry_id", "")),
+			"rank": clampi(int(facility.get("rank", 1)), 1, 4),
+			"active": bool(facility.get("active", false)),
+		})
+	return {"authorized": true, "viewer_index": viewer_index, "subject_index": viewer_index, "visibility_scope": "viewer_private", "facilities": rows}
+
+
 func to_save_data() -> Dictionary:
 	var region_records: Array = []
 	var region_ids: Array = _regions.keys()

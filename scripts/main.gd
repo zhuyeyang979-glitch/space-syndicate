@@ -8,7 +8,6 @@ const SharedCardGroupWindowScript := preload("res://scripts/cards/shared_card_gr
 const RoguelikeEconomicViabilityPolicyScript := preload("res://scripts/runtime/roguelike_economic_viability_policy.gd")
 const MenuRootLobbyScene := preload("res://scenes/ui/MenuRootLobby.tscn")
 const CompendiumHubSnapshotScript := preload("res://scripts/viewmodels/compendium_hub_snapshot.gd")
-const EconomyDashboardScene := preload("res://scenes/ui/EconomyDashboard.tscn")
 const IntelDossierBoardScene := preload("res://scenes/ui/IntelDossierBoard.tscn")
 const NewGameSetupPageScene := preload("res://scenes/ui/NewGameSetupPage.tscn")
 const PlayerBoardStrategyActionSnapshotScript := preload("res://scripts/viewmodels/player_board_strategy_action_snapshot.gd")
@@ -2617,8 +2616,6 @@ func _on_menu_quick_nav_action_requested(action_id: String) -> void:
 	match action_id:
 		"setup":
 			_start_new_run_from_menu()
-		"economy":
-			_open_economy_overview_menu()
 		"intel":
 			_open_intel_dossier_menu()
 		"compendium":
@@ -2832,98 +2829,6 @@ func _populate_pause_menu_summary_cards() -> void:
 	], "暂停速览｜先决定继续、复查、查资料还是重开")
 
 
-func _open_economy_overview_menu() -> void:
-	var snapshot := _economy_dashboard_public_snapshot()
-	_show_menu("经济总览", String(snapshot.get("summary_text", "还没有当前局经济数据。")), not _runtime_session_finished())
-	_populate_economy_overview_summary_cards(snapshot)
-
-
-func _populate_economy_overview_summary_cards(snapshot: Dictionary = {}) -> void:
-	if menu_preview_box == null:
-		return
-	if snapshot.is_empty():
-		snapshot = _economy_dashboard_public_snapshot()
-	menu_overlay.call("clear_preview")
-	menu_preview_box.visible = true
-	_add_economy_dashboard_panel(menu_preview_box, snapshot.get("dashboard", {}) as Dictionary)
-
-
-func _add_economy_dashboard_panel(parent: Container, dashboard_snapshot: Dictionary) -> void:
-	var dashboard := EconomyDashboardScene.instantiate() as Control
-	if dashboard == null or not dashboard.has_method("set_dashboard"):
-		_report_required_ui_scene_missing("EconomyDashboard", "set_dashboard")
-		return
-	dashboard.name = "EconomyDashboardPanel"
-	dashboard.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	parent.add_child(dashboard)
-	dashboard.call("set_dashboard", dashboard_snapshot)
-
-
-func _economy_dashboard_public_source_snapshot() -> Dictionary:
-	if _game_runtime_coordinator_node().world_session_state().players.is_empty() or _game_runtime_coordinator_node().world_session_state().districts.is_empty():
-		return {"valid": false}
-	_product_market_runtime_call("ensure_catalog")
-	_refresh_route_network()
-	var card_aftermath_entries := _economy_card_aftermath_entries(5)
-	var city_clue_entries := _economy_city_public_clue_entries(6)
-	var monster_clue_entries := _economy_monster_cash_clue_entries(5)
-	var warehouse_entries := _economy_warehouse_risk_entries(5, _game_runtime_coordinator_node().table_selection_state().selected_player)
-	var safe_cash_entries: Array = []
-	for entry_variant: Variant in _economy_player_cash_entries():
-		if not (entry_variant is Dictionary):
-			continue
-		var entry := entry_variant as Dictionary
-		var is_private := bool(entry.get("private", false))
-		var safe_entry := {
-			"name": String(entry.get("name", "玩家")),
-			"private": is_private,
-			"eliminated": bool(entry.get("eliminated", false)),
-		}
-		if not is_private:
-			safe_entry.merge({
-				"score_label": String(entry.get("score_label", "可见预估")),
-				"visible_score": int(entry.get("score", 0)),
-				"visible_cash": int(entry.get("cash", 0)),
-				"city_count": int(entry.get("city_count", 0)),
-				"intel_summary": String(entry.get("intel_summary", "")),
-				"last_cycle": int(entry.get("last_cycle", 0)),
-				"role_income": int(entry.get("role_income", 0)),
-				"gdp_per_minute": int(entry.get("gdp_per_minute", 0)),
-				"recent_delta": int(entry.get("recent_delta", 0)),
-				"window_delta": int(entry.get("window_delta", 0)),
-				"path": String(entry.get("path", "")),
-				"ledger": String(entry.get("ledger", "暂无")),
-			}, true)
-		safe_cash_entries.append(safe_entry)
-	return {
-		"valid": true,
-		"selected_name": String(_game_runtime_coordinator_node().world_session_state().players[_game_runtime_coordinator_node().table_selection_state().selected_player].get("name", "玩家")) if _game_runtime_coordinator_node().table_selection_state().selected_player >= 0 and _game_runtime_coordinator_node().table_selection_state().selected_player < _game_runtime_coordinator_node().world_session_state().players.size() else "当前玩家",
-		"selected_gdp_per_minute": _player_gdp_per_minute(_game_runtime_coordinator_node().table_selection_state().selected_player),
-		"business_cycle_count": _product_market_cycle(),
-		"monster_count": monster_runtime_controller.auto_monsters.size(),
-		"weather_text": weather_runtime_controller.status_text(),
-		"clue_count": city_clue_entries.size() + card_aftermath_entries.size() + monster_clue_entries.size(),
-		"kpi_columns": clampi(int(floor(_menu_available_content_width() / 220.0)), 1, 4),
-		"lane_columns": clampi(int(floor(_menu_available_content_width() / 300.0)), 1, 3),
-		"overview_columns": clampi(int(floor(_menu_available_content_width() / 280.0)), 1, 4),
-		"current_product_names": _current_run_product_names().duplicate(true),
-		"product_entries": _economy_product_entries(),
-		"city_entries": _economy_city_income_entries(),
-		"card_aftermath_entries": card_aftermath_entries,
-		"city_clue_entries": city_clue_entries,
-		"monster_clue_entries": monster_clue_entries,
-		"warehouse_entries": warehouse_entries,
-		"player_cash_entries": safe_cash_entries,
-		"inference_lines": _first_entries(_economy_inference_board_lines(_game_runtime_coordinator_node().table_selection_state().selected_player), 12),
-	}
-
-
-func _economy_dashboard_public_snapshot() -> Dictionary:
-	var coordinator := _game_runtime_coordinator_node()
-	var value: Variant = coordinator.call("compose_economy_dashboard_snapshot", _economy_dashboard_public_source_snapshot()) if coordinator != null and coordinator.has_method("compose_economy_dashboard_snapshot") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
 func _final_settlement_runtime_composition_node() -> Node:
 	return get_node_or_null("RuntimeServices/FinalSettlementRuntimeComposition")
 
@@ -3012,8 +2917,10 @@ func _on_intel_dossier_board_action_requested(action_id: String) -> void:
 		_open_intel_product_codex_link(action_id.substr("intel_open_product_".length()))
 		handled = true
 	elif action_id == "intel_open_economy":
-		_open_economy_overview_menu()
-		handled = true
+		var application_flow_port := get_node_or_null("RuntimeServices/ApplicationFlowPort") as ApplicationFlowPort
+		handled = application_flow_port != null and application_flow_port.submit_action("economy")
+		if handled:
+			return
 	if handled:
 		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
@@ -3138,122 +3045,6 @@ func _first_entries(entries: Array, limit: int) -> Array:
 	return result
 
 
-func _economy_product_entries() -> Array:
-	var entries := []
-	for product_variant in ProductMarketRuntimeController.PRODUCT_CATALOG:
-		var product_name := String(product_variant)
-		var entry := _product_market_entry_snapshot(product_name)
-		if entry.is_empty():
-			continue
-		var price := int(entry.get("price", entry.get("base_price", 0)))
-		var base_price := int(entry.get("base_price", price))
-		var gap := price - base_price
-		var trend := int(entry.get("trend", 0))
-		var supply := int(entry.get("supply", 0))
-		var demand := int(entry.get("demand", 0))
-		var disrupted := int(entry.get("disrupted", 0))
-		var growth_multiplier := float(entry.get("growth_multiplier", 1.0))
-		var route_flow_multiplier := float(entry.get("route_flow_multiplier", 1.0))
-		var heat_score := int(round(
-			float(gap) * 1.25
-			+ float(trend) * 1.5
-			+ float(demand) * 9.0
-			+ float(disrupted) * 14.0
-			+ maxf(0.0, growth_multiplier - 1.0) * 28.0
-			+ maxf(0.0, route_flow_multiplier - 1.0) * 16.0
-			- float(supply) * 4.0
-		))
-		var cold_score := int(round(
-			float(-gap) * 1.2
-			+ float(supply) * 7.0
-			- float(demand) * 4.0
-			- float(disrupted) * 5.0
-			- maxf(0.0, growth_multiplier - 1.0) * 12.0
-		))
-		entries.append({
-			"name": product_name,
-			"price": price,
-			"base_price": base_price,
-			"gap": gap,
-			"trend": trend,
-			"tier": String(entry.get("tier", _product_market_tier(product_name))),
-			"supply": supply,
-			"demand": demand,
-			"disrupted": disrupted,
-			"volatility": int(entry.get("volatility", 0)),
-			"weather": _product_market_boon_text(product_name),
-			"status_tags": _product_public_status_tags(product_name),
-			"path": _product_market_price_path_text(entry, 5),
-			"heat_score": heat_score,
-			"cold_score": cold_score,
-		})
-	entries.sort_custom(Callable(self, "_sort_economy_product_hot_entry"))
-	return entries
-
-
-func _sort_economy_product_hot_entry(a: Dictionary, b: Dictionary) -> bool:
-	var heat_a := int(a.get("heat_score", 0))
-	var heat_b := int(b.get("heat_score", 0))
-	if heat_a != heat_b:
-		return heat_a > heat_b
-	var price_a := int(a.get("price", 0))
-	var price_b := int(b.get("price", 0))
-	if price_a != price_b:
-		return price_a > price_b
-	return String(a.get("name", "")) < String(b.get("name", ""))
-
-
-func _economy_city_income_entries() -> Array:
-	var entries := []
-	var weather_projection_variant: Variant = _commodity_flow_runtime_call("public_weather_contribution_snapshot")
-	var weather_projection: Dictionary = weather_projection_variant if weather_projection_variant is Dictionary else {}
-	var public_weather_rows: Array = weather_projection.get("contributions", []) if weather_projection.get("contributions", []) is Array else []
-	for index_variant in _active_city_district_indices():
-		var index := int(index_variant)
-		var city := _district_city(index)
-		var competition := _city_competition_matches(index)
-		var breakdown := _city_cycle_income_breakdown(index, competition)
-		var potential_income := int(breakdown.get("net", 0))
-		var city_weather_rows: Array = []
-		for weather_row_variant in public_weather_rows:
-			if weather_row_variant is Dictionary and int((weather_row_variant as Dictionary).get("region_index", -1)) == index:
-				city_weather_rows.append((weather_row_variant as Dictionary).duplicate(true))
-		entries.append({
-			"district_index": index,
-			"name": String(_game_runtime_coordinator_node().world_session_state().districts[index].get("name", "区域%d" % (index + 1))),
-			"owner_view": _city_owner_view_text_for_player(index, _game_runtime_coordinator_node().table_selection_state().selected_player),
-			"intel_hint": _city_intel_hint_for_player(index, _game_runtime_coordinator_node().table_selection_state().selected_player),
-			"income": potential_income,
-			"last_income": int(city.get("last_income", 0)),
-			"gdp_trend": _city_gdp_trend_text(city),
-			"products": _city_product_names(city),
-			"demands": _city_demand_names(city),
-			"supplied": int(city.get("supplied_demands", 0)),
-			"demand_count": (city.get("demands", []) as Array).size(),
-			"disrupted": int(city.get("trade_disrupted_routes", 0)),
-			"competition": competition,
-			"flow": _city_route_flow_status_text(city),
-			"contract": _city_contract_status_text(city),
-			"status_tags": _city_public_status_tags(city),
-			"breakdown": _city_income_breakdown_summary(breakdown),
-			"weather_contributions": city_weather_rows,
-		})
-	entries.sort_custom(Callable(self, "_sort_economy_city_income_entry"))
-	return entries
-
-
-func _sort_economy_city_income_entry(a: Dictionary, b: Dictionary) -> bool:
-	var income_a := int(a.get("income", 0))
-	var income_b := int(b.get("income", 0))
-	if income_a != income_b:
-		return income_a > income_b
-	var disrupted_a := int(a.get("disrupted", 0))
-	var disrupted_b := int(b.get("disrupted", 0))
-	if disrupted_a != disrupted_b:
-		return disrupted_a < disrupted_b
-	return String(a.get("name", "")) < String(b.get("name", ""))
-
-
 func _city_owner_view_text_for_player(city_index: int, viewer_index: int) -> String:
 	if city_index < 0 or city_index >= _game_runtime_coordinator_node().world_session_state().districts.size():
 		return "无城市"
@@ -3269,6 +3060,22 @@ func _city_owner_view_text_for_player(city_index: int, viewer_index: int) -> Str
 		if guess >= 0:
 			return "我的推测:玩家%d" % (guess + 1)
 	return "未知业主"
+
+
+func _public_card_resolution_owner_entries() -> Array:
+	var entries := []
+	for entry_variant in _game_runtime_coordinator_node().card_resolution_history_snapshot():
+		if entry_variant is Dictionary:
+			entries.append(entry_variant)
+	if not _card_resolution_active_entry().is_empty():
+		entries.append(_card_resolution_active_entry())
+	for entry_variant in _card_resolution_current_queue():
+		if entry_variant is Dictionary:
+			entries.append(entry_variant)
+	for entry_variant in _card_resolution_next_queue():
+		if entry_variant is Dictionary:
+			entries.append(entry_variant)
+	return entries
 
 
 func _economy_warehouse_risk_entries(limit: int = 5, viewer_index: int = -1) -> Array:
@@ -3631,44 +3438,6 @@ func _city_public_status_tags(city: Dictionary) -> Array:
 	return tags
 
 
-func _economy_card_aftermath_entries(limit: int = 5) -> Array:
-	var entries := []
-	var history := _game_runtime_coordinator_node().card_resolution_history_snapshot()
-	for i in range(history.size() - 1, -1, -1):
-		if entries.size() >= limit:
-			break
-		var entry_variant: Variant = history[i]
-		if not (entry_variant is Dictionary):
-			continue
-		var entry := entry_variant as Dictionary
-		var clue := String(entry.get("aftermath_clue", ""))
-		if clue == "":
-			continue
-		var skill: Dictionary = entry.get("skill", {}) as Dictionary
-		if skill.is_empty():
-			continue
-		var card_name := String(skill.get("name", "匿名卡牌"))
-		var card_label := _card_display_name(card_name)
-		if card_label == "":
-			card_label = card_name
-		var public_target := "目标未知"
-		if int(entry.get("target_player", -1)) >= 0:
-			public_target = "玩家%d" % (int(entry.get("target_player", -1)) + 1)
-		elif int(entry.get("target_slot", -1)) >= 0:
-			public_target = "怪兽%d" % (int(entry.get("target_slot", -1)) + 1)
-		elif int(entry.get("selected_district", -1)) >= 0:
-			public_target = "区域%d" % (int(entry.get("selected_district", -1)) + 1)
-		entries.append({
-			"card": card_label,
-			"style": "卡牌",
-			"clue": clue,
-			"target": public_target,
-			"resolved_time": float(entry.get("resolved_time", -1.0)),
-			"owner_known": bool(entry.get("public_owner_revealed", false)),
-		})
-	return entries
-
-
 func _economy_city_public_clue_entries(limit: int = 6, product_filter: String = "") -> Array:
 	var entries := []
 	for city_index_variant in _active_city_district_indices():
@@ -3759,227 +3528,6 @@ func _sort_economy_monster_cash_clue_entry(a: Dictionary, b: Dictionary) -> bool
 	if lost_a != lost_b:
 		return lost_a > lost_b
 	return int(a.get("slot", 0)) < int(b.get("slot", 0))
-
-
-func _economy_inference_board_lines(viewer_index: int) -> Array:
-	if viewer_index < 0 or viewer_index >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return ["无当前玩家，暂不能生成推理板。"]
-	return [
-		_economy_inference_city_guess_line(viewer_index),
-		_economy_inference_public_card_owner_line(),
-		_economy_inference_card_requirement_line(viewer_index),
-		_economy_inference_public_monster_owner_line(),
-		"交叉提示｜把城市私标、公开卡牌归属、怪兽资金线索、商品/商路变化一起比对；没有一项单独等于真相。",
-	]
-
-
-func _economy_inference_city_guess_line(viewer_index: int) -> String:
-	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[viewer_index]
-	var guesses: Dictionary = player.get("city_guesses", {})
-	var guess_counts := {}
-	var own_city_count := 0
-	var unmarked_unknown_count := 0
-	for index_variant in _active_city_district_indices():
-		var index := int(index_variant)
-		var city := _district_city(index)
-		var city_owner := int(city.get("owner", -1))
-		if city_owner == viewer_index:
-			own_city_count += 1
-			continue
-		var guess := int(guesses.get(index, -1))
-		if guess >= 0 and guess < _game_runtime_coordinator_node().world_session_state().players.size():
-			guess_counts[guess] = int(guess_counts.get(guess, 0)) + 1
-		else:
-			unmarked_unknown_count += 1
-	var pieces := []
-	for player_index in range(_game_runtime_coordinator_node().world_session_state().players.size()):
-		var count := int(guess_counts.get(player_index, 0))
-		if count > 0:
-			pieces.append("玩家%d×%d" % [player_index + 1, count])
-	var guess_text := "暂无标注" if pieces.is_empty() else " / ".join(pieces)
-	return "城市私标｜%s｜未标注陌生城市%d｜己方城市%d｜只显示我的私人标注，不验证正误" % [
-		guess_text,
-		unmarked_unknown_count,
-		own_city_count,
-	]
-
-
-func _economy_inference_public_card_owner_line() -> String:
-	var counts := {}
-	var examples := {}
-	for entry_variant in _public_card_resolution_owner_entries():
-		if not (entry_variant is Dictionary):
-			continue
-		var entry := entry_variant as Dictionary
-		if not bool(entry.get("public_owner_revealed", false)):
-			continue
-		var entry_owner := int(entry.get("player_index", -1))
-		if entry_owner < 0 or entry_owner >= _game_runtime_coordinator_node().world_session_state().players.size():
-			continue
-		counts[entry_owner] = int(counts.get(entry_owner, 0)) + 1
-		if not examples.has(entry_owner):
-			examples[entry_owner] = []
-		var owner_examples: Array = examples[entry_owner]
-		if owner_examples.size() < 2:
-			owner_examples.append(_card_resolution_entry_card_label(entry))
-			examples[entry_owner] = owner_examples
-	var pieces := []
-	for player_index in range(_game_runtime_coordinator_node().world_session_state().players.size()):
-		var count := int(counts.get(player_index, 0))
-		if count <= 0:
-			continue
-		var owner_examples: Array = examples.get(player_index, []) as Array
-		var example_text := ""
-		if not owner_examples.is_empty():
-			example_text = "（%s）" % _limited_name_list(owner_examples, 2)
-		pieces.append("玩家%d×%d%s" % [player_index + 1, count, example_text])
-	if pieces.is_empty():
-		return "公开卡牌归属｜暂无被竞猜揭晓的卡牌"
-	return "公开卡牌归属｜%s｜只统计已经贴公开归属标签的匿名卡" % " / ".join(pieces)
-
-
-func _public_card_resolution_owner_entries() -> Array:
-	var entries := []
-	for entry_variant in _game_runtime_coordinator_node().card_resolution_history_snapshot():
-		if entry_variant is Dictionary:
-			entries.append(entry_variant)
-	if not _card_resolution_active_entry().is_empty():
-		entries.append(_card_resolution_active_entry())
-	for entry_variant in _card_resolution_current_queue():
-		if entry_variant is Dictionary:
-			entries.append(entry_variant)
-	for entry_variant in _card_resolution_next_queue():
-		if entry_variant is Dictionary:
-			entries.append(entry_variant)
-	return entries
-
-
-func _economy_inference_card_requirement_line(viewer_index: int) -> String:
-	var pieces := []
-	for entry_variant in _recent_card_requirement_entries(3):
-		if not (entry_variant is Dictionary):
-			continue
-		var entry := entry_variant as Dictionary
-		var text := _card_requirement_inference_text(entry, viewer_index)
-		if text != "":
-			pieces.append(text)
-	if pieces.is_empty():
-		return "卡牌条件反推｜暂无公开匿名牌条件"
-	return "卡牌条件反推｜%s｜只对照我方GDP份额，不扫描对手经济" % "；".join(pieces)
-
-
-func _recent_card_requirement_entries(limit: int = 3) -> Array:
-	var entries := []
-	if not _card_resolution_active_entry().is_empty():
-		entries.append(_card_resolution_active_entry())
-	for entry_variant in _card_resolution_current_queue():
-		if entries.size() >= limit:
-			return entries
-		if entry_variant is Dictionary:
-			entries.append(entry_variant)
-	for entry_variant in _card_resolution_next_queue():
-		if entries.size() >= limit:
-			return entries
-		if entry_variant is Dictionary:
-			entries.append(entry_variant)
-	var history := _game_runtime_coordinator_node().card_resolution_history_snapshot()
-	for i in range(history.size() - 1, -1, -1):
-		if entries.size() >= limit:
-			break
-		var entry_variant: Variant = history[i]
-		if entry_variant is Dictionary:
-			entries.append(entry_variant)
-	return entries
-
-
-func _card_requirement_inference_text(entry: Dictionary, viewer_index: int) -> String:
-	var skill: Dictionary = entry.get("skill", {}) as Dictionary
-	if skill.is_empty():
-		return ""
-	var card_label := _card_resolution_entry_card_label(entry)
-	var owner_text := "归属待猜"
-	if bool(entry.get("public_owner_revealed", false)):
-		var owner_index := int(entry.get("player_index", -1))
-		if owner_index >= 0 and owner_index < _game_runtime_coordinator_node().world_session_state().players.size():
-			owner_text = "归属玩家%d" % (owner_index + 1)
-	var printed_requirement := _card_play_requirement_snapshot(int(entry.get("player_index", -1)), skill)
-	var required := int(entry.get("play_requirement_gdp_share_percent", printed_requirement.get("required_share_percent", 0)))
-	var scope := String(entry.get("play_requirement_scope", printed_requirement.get("scope", CardPlayRequirementPolicyScript.SCOPE_OWN_BEST_REGION)))
-	var cash_cost := int(entry.get("play_cash_cost", printed_requirement.get("cash_cost", 0)))
-	var requirement_text := "免GDP门槛"
-	if required > 0:
-		var viewer_skill := skill.duplicate(true)
-		if scope != CardPlayRequirementPolicyScript.SCOPE_OWN_BEST_REGION:
-			viewer_skill["play_requirement_district"] = int(entry.get("play_requirement_district", entry.get("selected_district", -1)))
-		var viewer_status := _card_play_requirement_snapshot(viewer_index, viewer_skill)
-		var availability_text := "我方可满足" if bool(viewer_status.get("requirement_satisfied", false)) else "我方不足"
-		requirement_text = "%sGDP≥%d%%｜%s" % [CardPlayRequirementPolicyScript.scope_label(scope), required, availability_text]
-	if cash_cost > 0:
-		requirement_text += "｜费用¥%d" % cash_cost
-	return "%s:%s｜%s" % [
-		_short_card_text(card_label, 10),
-		requirement_text,
-		owner_text,
-	]
-
-
-func _economy_inference_public_monster_owner_line() -> String:
-	var counts := {}
-	var examples := {}
-	for slot in range(monster_runtime_controller.auto_monsters.size()):
-		var actor: Dictionary = monster_runtime_controller.auto_monsters[slot]
-		var monster_owner := int(actor.get("owner", -1))
-		if not bool(actor.get("owner_revealed", false)) or monster_owner < 0 or monster_owner >= _game_runtime_coordinator_node().world_session_state().players.size():
-			continue
-		counts[monster_owner] = int(counts.get(monster_owner, 0)) + 1
-		if not examples.has(monster_owner):
-			examples[monster_owner] = []
-		var owner_examples: Array = examples[monster_owner]
-		if owner_examples.size() < 2:
-			owner_examples.append("%s%s累计¥%d" % [
-				String(actor.get("name", "怪兽")),
-				_level_text(clampi(int(actor.get("rank", 1)), 1, 4)),
-				int(actor.get("owner_damage_cash_lost", 0)),
-			])
-			examples[monster_owner] = owner_examples
-	var pieces := []
-	for player_index in range(_game_runtime_coordinator_node().world_session_state().players.size()):
-		var count := int(counts.get(player_index, 0))
-		if count <= 0:
-			continue
-		var owner_examples: Array = examples.get(player_index, []) as Array
-		var example_text := ""
-		if not owner_examples.is_empty():
-			example_text = "（%s）" % _limited_name_list(owner_examples, 2)
-		pieces.append("玩家%d×%d%s" % [player_index + 1, count, example_text])
-	if pieces.is_empty():
-		return "公开怪兽归属｜暂无因受伤资金线索而公开的怪兽"
-	return "公开怪兽归属｜%s｜归属来自公开资金损失，不显示无关现金总额" % " / ".join(pieces)
-
-
-func _economy_player_cash_entries() -> Array:
-	var entries := []
-	for i in range(_game_runtime_coordinator_node().world_session_state().players.size()):
-		var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[i]
-		entries.append({
-			"player_index": i,
-			"name": String(player.get("name", "玩家%d" % (i + 1))),
-			"cash": int(player.get("cash", 0)),
-			"score": _victory_player_progress_metric(i),
-			"score_label": "前K区商品GDP/min",
-			"intel_summary": _player_intel_display_summary(i),
-			"last_cycle": _player_commodity_sale_income(i),
-			"role_income": int(player.get("total_role_income", 0)),
-			"gdp_per_minute": _player_gdp_per_minute(i),
-			"recent_delta": _player_recent_cash_delta(player),
-			"window_delta": _player_cash_window_delta(player),
-			"path": _player_cash_path_text(player, 6),
-			"ledger": _player_economic_ledger_text(player, 2) if i == _game_runtime_coordinator_node().table_selection_state().selected_player else "私人账本（不公开）",
-			"city_count": _player_active_city_count(i),
-			"private": not _runtime_session_finished() and i != _game_runtime_coordinator_node().table_selection_state().selected_player,
-			"eliminated": _player_is_eliminated(i),
-		})
-	return _order_entries_by_victory_rank(entries) if _runtime_session_finished() else entries
 
 
 func _open_compendium_menu() -> void:
@@ -4538,8 +4086,6 @@ func _back_from_catalog_menu() -> void:
 			_open_compendium_menu()
 		"intel":
 			_open_intel_dossier_menu()
-		"economy":
-			_open_economy_overview_menu()
 		"game":
 			_close_menu()
 		_:
@@ -4552,8 +4098,6 @@ func _catalog_back_button_text() -> String:
 			return "返回图鉴"
 		"intel":
 			return "返回情报档案"
-		"economy":
-			return "返回经济总览"
 		"game":
 			return "返回牌桌"
 		_:

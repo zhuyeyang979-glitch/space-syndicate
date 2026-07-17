@@ -1129,6 +1129,26 @@ func region_gdp_snapshot(region_id: String) -> Dictionary:
 	}
 
 
+func public_regional_gdp_snapshot() -> Dictionary:
+	var region_ids: Dictionary = {}
+	for receipt_variant in _recent_sale_receipts:
+		if receipt_variant is Dictionary:
+			var region_id := str((receipt_variant as Dictionary).get("market_region_id", ""))
+			if not region_id.is_empty():
+				region_ids[region_id] = true
+	var rows: Array = []
+	var ordered_ids: Array = region_ids.keys()
+	ordered_ids.sort()
+	for region_id_variant in ordered_ids:
+		var snapshot := region_gdp_snapshot(str(region_id_variant))
+		rows.append({
+			"region_id": str(region_id_variant),
+			"observation_window_seconds": float(snapshot.get("observation_window_seconds", 0.0)),
+			"commodity_gdp_per_minute": maxi(0, int(snapshot.get("region_gdp_per_minute", 0))),
+		})
+	return {"available": _configured, "visibility_scope": "public", "flow_revision": _flow_revision, "rows": rows}
+
+
 func player_region_gdp_share_basis_points(player_index: int, region_id: String) -> int:
 	var snapshot := region_gdp_snapshot(region_id)
 	var total_cents := int(snapshot.get("region_gdp_per_minute_cents", 0))

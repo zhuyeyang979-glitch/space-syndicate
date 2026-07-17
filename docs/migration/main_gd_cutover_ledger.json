@@ -520,6 +520,19 @@
       "status": "cut_over"
     },
     {
+      "domain": "economy_application_flow",
+      "old_symbols": ["EconomyDashboardScene", "_open_economy_overview_menu", "_populate_economy_overview_summary_cards", "_add_economy_dashboard_panel", "_economy_dashboard_public_source_snapshot", "_economy_dashboard_public_snapshot"],
+      "old_consumers": ["ApplicationFlowPort generic action signal", "MenuOverlay economy quick navigation", "IntelDossier economy link", "catalog return target"],
+      "new_owner_scene": "res://scenes/runtime/EconomyApplicationFlowController.tscn + res://scenes/runtime/EconomyDashboardViewerQueryPort.tscn",
+      "new_owner_script": "res://scripts/runtime/economy_application_flow_controller.gd + res://scripts/runtime/economy_dashboard_viewer_query_port.gd",
+      "new_public_api": ["ApplicationFlowPort.economy_requested", "EconomyApplicationFlowController.open_economy", "EconomyDashboardViewerQueryPort.snapshot_for_authorized_viewer"],
+      "tests": ["res://tests/economy_application_flow_cutover_test.gd", "res://tests/economy_dashboard_public_snapshot_service_test.gd", "res://scenes/tools/EconomyDashboardViewerQueryCutoverBench.tscn"],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
+    },
+    {
       "domain": "presentation_action_routing",
       "old_symbols": [
         "_runtime_table_snapshot_source",

@@ -742,7 +742,14 @@ func runtime_state_snapshot() -> Dictionary:
 func public_market_snapshot() -> Dictionary:
 	var public_market := {}
 	for product_variant in product_market.keys(): public_market[product_variant] = _sanitize_entry(product_market[product_variant] as Dictionary)
-	return {"product_market": public_market, "business_cycle_count": business_cycle_count, "market_timer": market_timer}
+	return {
+		"catalog_ready": _configured and not product_market.is_empty(),
+		"visibility_scope": "public",
+		"market_revision": business_cycle_count,
+		"product_market": public_market,
+		"business_cycle_count": business_cycle_count,
+		"market_timer": market_timer,
+	}
 
 
 func product_weather_contribution_snapshot(product_name: String) -> Dictionary:

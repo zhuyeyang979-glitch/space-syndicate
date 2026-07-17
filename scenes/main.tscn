@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/ui/GameScreen.tscn" id="2_game_screen"]
@@ -13,6 +13,8 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/ApplicationFlowController.tscn" id="12_application_flow_controller"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/StandingsPublicQueryPort.tscn" id="13_standings_query"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/StandingsApplicationFlowController.tscn" id="14_standings_controller"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/EconomyDashboardViewerQueryPort.tscn" id="15_economy_query"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/EconomyApplicationFlowController.tscn" id="16_economy_controller"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -85,6 +87,23 @@ unique_name_in_owner = true
 menu_overlay_path = NodePath("../../RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay")
 query_port_path = NodePath("../StandingsPublicQueryPort")
 
+[node name="EconomyDashboardViewerQueryPort" parent="RuntimeServices" instance=ExtResource("15_economy_query")]
+unique_name_in_owner = true
+table_query_ports_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/TablePresentationQueryPorts")
+world_session_state_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/WorldSessionState")
+product_market_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/ProductMarketRuntimeController")
+commodity_flow_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/CommodityFlowRuntimeController")
+route_network_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/RouteNetworkRuntimeController")
+region_infrastructure_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/RegionInfrastructureRuntimeController")
+weather_runtime_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/WeatherRuntimeController")
+monster_runtime_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/MonsterRuntimeController")
+snapshot_service_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/EconomyDashboardPublicSnapshotService")
+
+[node name="EconomyApplicationFlowController" parent="RuntimeServices" instance=ExtResource("16_economy_controller")]
+unique_name_in_owner = true
+menu_overlay_path = NodePath("../../RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay")
+query_port_path = NodePath("../EconomyDashboardViewerQueryPort")
+
 [node name="RuntimeFallbackHost" type="Node" parent="RuntimeServices"]
 unique_name_in_owner = true
 editor_description = "Explicit host for compatibility fallbacks created only when scene-owned composition is unavailable."
@@ -95,6 +114,7 @@ editor_description = "Explicit host for compatibility fallbacks created only whe
 [connection signal="menu_requested" from="RuntimeServices/ApplicationFlowPort" to="." method="_show_menu"]
 [connection signal="rules_requested" from="RuntimeServices/ApplicationFlowPort" to="RuntimeServices/ApplicationFlowController" method="open_rules"]
 [connection signal="standings_requested" from="RuntimeServices/ApplicationFlowPort" to="RuntimeServices/StandingsApplicationFlowController" method="open_standings"]
+[connection signal="economy_requested" from="RuntimeServices/ApplicationFlowPort" to="RuntimeServices/EconomyApplicationFlowController" method="open_economy"]
 [connection signal="quick_nav_action_requested" from="RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay" to="RuntimeServices/ApplicationFlowPort" method="submit_action"]
 [connection signal="public_log_receipt_requested" from="RuntimeServices/FinalSettlementRuntimeComposition" to="RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator" method="append_public_log_receipt"]
 [connection signal="victory_presentation_receipt_ready" from="RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator" to="RuntimeServices/FinalSettlementRuntimeComposition" method="present_victory_receipt"]
