@@ -205,3 +205,19 @@ A ledger domain becomes `cut_over` only when its Main fields, methods,
 constants, preloads, wrappers and dynamic callbacks are physically deleted and
 the negative scan reports zero references for that domain. A reference Bench
 or a new owner without old-path deletion is not completion.
+
+## Standings application-flow cutover: complete
+
+The standings page now enters through the dedicated
+`ApplicationFlowPort.standings_requested` signal. A scene-owned
+`StandingsApplicationFlowController` owns only the menu surface and scoreboard
+mount, while `StandingsPublicQueryPort` composes the existing authorized public
+world, current-viewer private, Victory public/private and final-settlement public
+projections. Opening the page no longer refreshes routes, reads table selection
+as authorization, or reveals all seats after session finish.
+
+Main's standings handler, source builder, formatter proxy, scoreboard mount,
+private all-seat materializer and scoreboard preload are physically deleted.
+The shared victory-order helper remains because its non-standings migration is
+outside this atomic boundary. The broader `presentation_action_routing` ledger
+domain remains pending.

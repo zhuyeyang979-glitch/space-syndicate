@@ -81,8 +81,9 @@ func _run() -> void:
 	var public_source: Dictionary = composition.call("compose_public_source", public_context)
 	var public_snapshot: Dictionary = coordinator.call("compose_final_settlement_snapshot", public_source)
 	var public_summary := str(composition.call("latest_public_summary"))
-	var standings_source: Dictionary = main.call("_standings_public_source_snapshot")
-	var root_summary := str(standings_source.get("final_summary_text", ""))
+	var standings_query := main.get_node_or_null("RuntimeServices/StandingsPublicQueryPort")
+	var standings_snapshot: Dictionary = standings_query.call("snapshot_for_authorized_viewer", 960.0) if standings_query != null else {}
+	var root_summary := str(standings_snapshot.get("summary_text", ""))
 
 	var key_paths: Array[String] = []
 	for named_value in [

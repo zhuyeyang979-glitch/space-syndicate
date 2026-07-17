@@ -10,7 +10,6 @@ const MenuRootLobbyScene := preload("res://scenes/ui/MenuRootLobby.tscn")
 const CompendiumHubSnapshotScript := preload("res://scripts/viewmodels/compendium_hub_snapshot.gd")
 const EconomyDashboardScene := preload("res://scenes/ui/EconomyDashboard.tscn")
 const IntelDossierBoardScene := preload("res://scenes/ui/IntelDossierBoard.tscn")
-const StandingsScoreboardScene := preload("res://scenes/ui/StandingsScoreboard.tscn")
 const NewGameSetupPageScene := preload("res://scenes/ui/NewGameSetupPage.tscn")
 const PlayerBoardStrategyActionSnapshotScript := preload("res://scripts/viewmodels/player_board_strategy_action_snapshot.gd")
 const TABLE_SFX_KEYS := ["card", "impact", "storm"]
@@ -2618,8 +2617,6 @@ func _on_menu_quick_nav_action_requested(action_id: String) -> void:
 	match action_id:
 		"setup":
 			_start_new_run_from_menu()
-		"standings":
-			_open_standings_menu()
 		"economy":
 			_open_economy_overview_menu()
 		"intel":
@@ -2835,98 +2832,10 @@ func _populate_pause_menu_summary_cards() -> void:
 	], "暂停速览｜先决定继续、复查、查资料还是重开")
 
 
-func _open_standings_menu() -> void:
-	var snapshot := _standings_public_snapshot()
-	_show_menu("局势排名", String(snapshot.get("summary_text", "还没有可用玩家数据。")), not _runtime_session_finished())
-	_populate_standings_summary_cards(snapshot)
-
-
 func _open_economy_overview_menu() -> void:
 	var snapshot := _economy_dashboard_public_snapshot()
 	_show_menu("经济总览", String(snapshot.get("summary_text", "还没有当前局经济数据。")), not _runtime_session_finished())
 	_populate_economy_overview_summary_cards(snapshot)
-
-
-func _populate_standings_summary_cards(snapshot: Dictionary = {}) -> void:
-	if menu_preview_box == null:
-		return
-	if snapshot.is_empty():
-		snapshot = _standings_public_snapshot()
-	menu_overlay.call("clear_preview")
-	menu_preview_box.visible = true
-	_add_standings_scoreboard_panel(menu_preview_box, snapshot.get("scoreboard", {}) as Dictionary)
-
-
-func _add_standings_scoreboard_panel(parent: Container, scoreboard_snapshot: Dictionary) -> void:
-	var scoreboard := StandingsScoreboardScene.instantiate() as Control
-	if scoreboard == null or not scoreboard.has_method("set_scoreboard"):
-		_report_required_ui_scene_missing("StandingsScoreboard", "set_scoreboard")
-		return
-	parent.add_child(scoreboard)
-	scoreboard.call("set_scoreboard", scoreboard_snapshot)
-
-
-func _standings_public_source_snapshot() -> Dictionary:
-	if _game_runtime_coordinator_node().world_session_state().players.is_empty():
-		return {"valid": false}
-	_refresh_route_network()
-	var victory_snapshot := _victory_control_public_snapshot()
-	var victory_rule: Dictionary = victory_snapshot.get("victory_rule", {}) if victory_snapshot.get("victory_rule", {}) is Dictionary else _victory_dynamic_rule()
-	var selected_candidate := _victory_player_candidate(_game_runtime_coordinator_node().table_selection_state().selected_player)
-	var selected_available := _game_runtime_coordinator_node().table_selection_state().selected_player >= 0 and _game_runtime_coordinator_node().table_selection_state().selected_player < _game_runtime_coordinator_node().world_session_state().players.size()
-	var safe_seats: Array = []
-	for entry_variant: Variant in _standing_entries():
-		if not (entry_variant is Dictionary):
-			continue
-		var entry := entry_variant as Dictionary
-		var player_index := int(entry.get("player_index", safe_seats.size()))
-		var can_view_private := _runtime_session_finished() or player_index == _game_runtime_coordinator_node().table_selection_state().selected_player
-		var safe_entry := {
-			"player_index": player_index,
-			"name": String(entry.get("name", "玩家")),
-			"eliminated": bool(entry.get("eliminated", false)),
-			"can_view_private": can_view_private,
-		}
-		if can_view_private:
-			var candidate := _victory_player_candidate(player_index)
-			safe_entry.merge({
-				"cash": int(entry.get("cash", 0)),
-				"active_cities": int(entry.get("active_cities", 0)),
-				"top_n_gdp_per_minute": int(candidate.get("top_n_gdp_per_minute", entry.get("score", 0))),
-				"controlled_region_count": int(candidate.get("controlled_region_count", 0)),
-				"intel_summary": String(entry.get("intel_summary", "情报待结算")),
-				"gdp_per_minute": int(entry.get("gdp_per_minute", 0)),
-			}, true)
-		safe_seats.append(safe_entry)
-	return {
-		"valid": true,
-		"game_over": _runtime_session_finished(),
-		"selected_available": selected_available,
-		"selected_top_n_gdp_per_minute": int(selected_candidate.get("top_n_gdp_per_minute", 0)) if selected_available else 0,
-		"selected_controlled_region_count": int(selected_candidate.get("controlled_region_count", 0)) if selected_available else 0,
-		"selected_cash": int(_game_runtime_coordinator_node().world_session_state().players[_game_runtime_coordinator_node().table_selection_state().selected_player].get("cash", 0)) if selected_available else 0,
-		"selected_city_count": _player_active_city_count(_game_runtime_coordinator_node().table_selection_state().selected_player) if selected_available else 0,
-		"selected_gdp_per_minute": _player_gdp_per_minute(_game_runtime_coordinator_node().table_selection_state().selected_player) if selected_available else 0,
-		"selected_intel_summary": _player_intel_display_summary(_game_runtime_coordinator_node().table_selection_state().selected_player) if selected_available else "情报待结算",
-		"required_top_n_gdp_per_minute": int(victory_rule.get("required_top_k_gdp_per_minute", 0)),
-		"required_controlled_region_count": int(victory_rule.get("required_region_count", 0)),
-		"intel_correct_reward": INTEL_CORRECT_GUESS_CASH,
-		"intel_wrong_cost": INTEL_WRONG_GUESS_COST,
-		"victory_control": victory_snapshot,
-		"countdown_text": _victory_control_status_text(),
-		"public_shift_count": _economy_card_aftermath_entries(5).size() + _economy_monster_cash_clue_entries(5).size(),
-		"overview_columns": clampi(int(floor(_menu_available_content_width() / 280.0)), 1, 3),
-		"kpi_columns": clampi(int(floor(_menu_available_content_width() / 230.0)), 1, 4),
-		"seat_columns": clampi(int(floor(_menu_available_content_width() / 260.0)), 1, 4),
-		"seat_entries": safe_seats,
-		"final_summary_text": str(_final_settlement_runtime_composition_node().call("latest_public_summary")) if _runtime_session_finished() and _final_settlement_runtime_composition_node() != null and _final_settlement_runtime_composition_node().has_method("latest_public_summary") else "",
-	}
-
-
-func _standings_public_snapshot() -> Dictionary:
-	var coordinator := _game_runtime_coordinator_node()
-	var value: Variant = coordinator.call("compose_standings_snapshot", _standings_public_source_snapshot()) if coordinator != null and coordinator.has_method("compose_standings_snapshot") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
 func _populate_economy_overview_summary_cards(snapshot: Dictionary = {}) -> void:
@@ -4105,31 +4014,6 @@ func _menu_action_accent_for_text(button_text: String) -> Color:
 	return Color("#93c5fd")
 
 
-func _standing_entries() -> Array:
-	var entries := []
-	for i in range(_game_runtime_coordinator_node().world_session_state().players.size()):
-		var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[i]
-		var active_city_count := _player_active_city_count(i)
-		var gdp_per_minute := _player_gdp_per_minute(i)
-		var intel_stats := _player_intel_stats(i)
-		var intel_cash := int(intel_stats.get("cash", 0))
-		entries.append({
-			"player_index": i,
-			"name": String(player.get("name", "玩家%d" % (i + 1))),
-			"cash": int(player.get("cash", 0)),
-			"active_cities": active_city_count,
-			"score": _victory_player_progress_metric(i),
-			"score_label": "前K区商品GDP/min",
-			"intel_cash": intel_cash if _runtime_session_finished() else 0,
-			"intel_summary": _player_intel_display_summary(i),
-			"gdp_per_minute": gdp_per_minute,
-			"total_income": _player_commodity_sale_income(i),
-			"cities_built": int(player.get("cities_built", 0)),
-			"eliminated": _player_is_eliminated(i),
-		})
-	return _order_entries_by_victory_rank(entries) if _runtime_session_finished() else entries
-
-
 func _order_entries_by_victory_rank(entries: Array) -> Array:
 	var by_player := {}
 	for entry_variant in entries:
@@ -4656,8 +4540,6 @@ func _back_from_catalog_menu() -> void:
 			_open_intel_dossier_menu()
 		"economy":
 			_open_economy_overview_menu()
-		"standings":
-			_open_standings_menu()
 		"game":
 			_close_menu()
 		_:
@@ -4672,8 +4554,6 @@ func _catalog_back_button_text() -> String:
 			return "返回情报档案"
 		"economy":
 			return "返回经济总览"
-		"standings":
-			return "返回局势排名"
 		"game":
 			return "返回牌桌"
 		_:
@@ -7128,7 +7008,7 @@ func _new_game() -> void:
 	_game_runtime_coordinator_node().record_legacy_viewer_feedback("星球随机生成陆地与海洋：陆地和海洋都会出现本地商品；海洋偏向鱼群、巨藻、海底能源和潮汐电力，并继续承担高价值商路运输；合约牌可继续改写供需。")
 	_game_runtime_coordinator_node().record_legacy_viewer_feedback("每个城市群初始生产1种商品、需求1种商品；后续通过匿名供需合约扩张或替换经营结构。同类商品越多，竞争扣减越高。保护自己的城市，同时借怪兽摧毁竞争城市。")
 	_game_runtime_coordinator_node().record_legacy_viewer_feedback("本局地图：%.0fm×%.0fm球面投影星球，生成%d个随机陆海区域。" % [_game_runtime_coordinator_node().world_session_state().map_width_m, _game_runtime_coordinator_node().world_session_state().map_height_m, _game_runtime_coordinator_node().world_session_state().districts.size()])
-	_game_runtime_coordinator_node().record_legacy_viewer_feedback("本局区域牌架从统一合法牌池确定性随机抽取；购买花钱，I级牌大多可直接打出，高阶牌检查地区GDP份额。每个区域提供%d个随机挂牌。" % DISTRICT_CARD_CHOICE_MAX)
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("本局区域牌架从统一合法牌池确定性随机抽取；购买花钱，I级牌是路线入口，其他牌按卡面公开条件检查。每个区域提供%d个随机挂牌。" % DISTRICT_CARD_CHOICE_MAX)
 	if coordinator != null and coordinator.has_method("begin_session"):
 		var scenario_id := ""
 		coordinator.call("begin_session", {

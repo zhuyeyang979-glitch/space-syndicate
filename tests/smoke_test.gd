@@ -641,7 +641,7 @@ func _run() -> void:
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "游戏规则", "rules menu opens from the main scene")
 	_expect(menu_continue_button != null and not menu_continue_button.visible and menu_back_button != null and menu_back_button.visible, "rules subpage shows return navigation without a global continue button")
-	_expect(menu_body_label != null and menu_body_label.text.contains("读桌顺序") and menu_body_label.text.contains("公开角色") and menu_body_label.text.contains("高阶牌检查地区GDP份额") and not menu_body_label.text.contains("Lv"), "rules menu opens with the current core loop in compact player language")
+	_expect(menu_body_label != null and menu_body_label.text.contains("读桌顺序") and menu_body_label.text.contains("公开角色") and menu_body_label.text.contains("按牌面写明的公开条件检查") and not menu_body_label.text.contains("Lv"), "rules menu opens with the current core loop in compact player language")
 	_expect(menu_body_label != null and not menu_body_label.text.contains("所有牌都会公开展示") and not menu_body_label.text.contains("怪兽受伤会让归属玩家掉钱"), "rules top body no longer repeats dense detail prose")
 	_expect(menu_body_label != null and menu_body_label.text.contains("开局：") and not menu_body_label.text.contains("Y切预设") and not menu_body_label.text.contains("AI训练") and not menu_body_label.text.contains("当前原型规则"), "rules menu removes development history, AI training, and obsolete debug controls")
 	_expect(menu_body_label != null and not menu_body_label.text.contains("经营周期") and not menu_body_label.text.contains("经济周期"), "rules menu avoids cycle wording")
@@ -654,14 +654,14 @@ func _run() -> void:
 	main.call("_open_economy_overview_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "经济总览", "economy overview remains reachable from menu actions")
-	main.call("_open_standings_menu")
+	var standings_controller := main.get_node_or_null("RuntimeServices/StandingsApplicationFlowController")
+	if standings_controller != null:
+		standings_controller.call("open_standings")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "局势排名", "standings menu opens from the main scene")
-	_expect(menu_body_label != null and menu_body_label.text.contains("预估结算资金"), "standings menu explains estimated settlement money")
-	_expect(menu_body_label != null and menu_body_label.text.contains("公开异动") and menu_body_label.text.contains("对手现金、手牌和私密推理保持隐藏") and not menu_body_label.text.contains("对手计划") and not menu_body_label.text.contains("AI对局压力") and not menu_body_label.text.contains("反制建议") and not menu_body_label.text.contains("推荐卡牌路线"), "standings menu shows only public situation clues and hides AI route/bucket data")
-	_expect(menu_body_label != null and menu_body_label.text.contains("情报待结算"), "standings keeps intelligence cash pending until final settlement")
-	_expect(menu_body_label != null and menu_body_label.text.contains("存活城市1×"), "standings menu reflects built city assets")
-	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "局势速览") and _container_label_text_contains(menu_preview_box, "终局条件") and _container_label_text_contains(menu_preview_box, "我的可见资金"), "standings menu exposes compact victory and cash summary cards")
+	_expect(menu_body_label != null and menu_body_label.text.contains("Top-N个人归属GDP") and menu_body_label.text.contains("公开审计"), "standings menu explains the current victory race")
+	_expect(menu_body_label != null and menu_body_label.text.contains("对手资产继续保密") and not menu_body_label.text.contains("对手计划") and not menu_body_label.text.contains("AI对局压力") and not menu_body_label.text.contains("反制建议") and not menu_body_label.text.contains("推荐卡牌路线"), "standings menu shows only authorized public clues")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "局势记分板") and _container_label_text_contains(menu_preview_box, "胜利门槛") and _container_label_text_contains(menu_preview_box, "我的Top-N GDP"), "standings menu renders the scene-owned scoreboard")
 	main.call("_open_economy_overview_menu")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "经济总览", "economy overview opens from the main scene")
@@ -4164,7 +4164,8 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 		or not bool(main.call("_runtime_session_finished")):
 		failures.append("victory receipt mismatch %s" % str(outcome_receipt))
 		ok = false
-	var standings_text := String((main.call("_standings_public_snapshot") as Dictionary).get("summary_text", ""))
+	var standings_query := main.get_node_or_null("RuntimeServices/StandingsPublicQueryPort")
+	var standings_text := String((standings_query.call("snapshot_for_authorized_viewer", 960.0) as Dictionary).get("summary_text", "")) if standings_query != null else ""
 	if not standings_text.contains("终局总结") or not standings_text.contains("公开线索") or standings_text.contains("对手计划") or standings_text.contains("内部决策") or standings_text.contains("AI路线") or standings_text.contains("发展路线") or not standings_text.contains("关键卡牌") or not standings_text.contains("玩家概览") or not standings_text.contains("城收") or not standings_text.contains("情报"):
 		failures.append("missing final summary")
 		ok = false

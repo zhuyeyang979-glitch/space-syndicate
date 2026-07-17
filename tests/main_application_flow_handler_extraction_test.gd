@@ -21,8 +21,11 @@ func _init() -> void:
 	await process_frame
 	var port := main.get_node_or_null("RuntimeServices/ApplicationFlowPort")
 	var controller := main.get_node_or_null("RuntimeServices/ApplicationFlowController")
+	var standings_controller := main.get_node_or_null("RuntimeServices/StandingsApplicationFlowController")
+	var standings_query := main.get_node_or_null("RuntimeServices/StandingsPublicQueryPort")
 	_check(port != null, "one production ApplicationFlowPort is composed")
 	_check(controller != null, "one production ApplicationFlowController is composed")
+	_check(standings_controller != null and standings_query != null, "one production standings controller and query port are composed")
 	_check(main.get_node_or_null("RuntimeServices/ApplicationFlowController") == controller, "controller is not duplicated")
 	if port != null and controller != null:
 		var controller_debug := controller.call("debug_snapshot") as Dictionary
@@ -34,15 +37,21 @@ func _init() -> void:
 		var opened := int((controller.call("debug_snapshot") as Dictionary).get("rules_open_count", 0))
 		_check(opened == 1, "rules action reaches the real ApplicationFlowController")
 		_check(not bool(port.call("submit_action", "invalid_action")), "invalid action is rejected")
+		var generic_before := int((port.call("debug_snapshot") as Dictionary).get("action_emission_count", 0))
+		_check(bool(port.call("submit_action", "standings")), "standings action remains allow-listed")
+		var port_debug := port.call("debug_snapshot") as Dictionary
+		_check(int(port_debug.get("standings_emission_count", 0)) == 1 and int(port_debug.get("action_emission_count", 0)) == generic_before, "standings bypasses the generic Main action signal")
 		_check(not bool(port.call("request_menu", "", "", false)), "empty menu request is rejected")
 	var main_scene_source := FileAccess.get_file_as_string(MAIN_SCENE)
 	_check(main_scene_source.contains("ApplicationFlowController.tscn"), "main scene explicitly composes the handler")
 	_check(main_scene_source.contains('to=\"RuntimeServices/ApplicationFlowController\" method=\"open_rules\"'), "rules port signal targets the handler")
+	_check(main_scene_source.contains('to=\"RuntimeServices/StandingsApplicationFlowController\" method=\"open_standings\"'), "standings port signal targets the scene-owned handler")
 	_check(not main_scene_source.contains('to=\".\" method=\"_open_rules_menu\"'), "production scene has no direct rules-to-Main connection")
 	var main_source := FileAccess.get_file_as_string(MAIN_SOURCE)
 	_check(not main_source.contains("func _open_rules_menu("), "Main rules handler is physically deleted")
 	_check(not main_source.contains("func _populate_rules_summary_cards("), "Main rules population helper is physically deleted")
 	_check(not main_source.contains("func _add_rules_quick_reference_board("), "Main rules board builder is physically deleted")
+	_check(not main_source.contains("func _open_standings_menu(") and not main_source.contains("func _standings_public_source_snapshot(") and not main_source.contains("func _standings_public_snapshot("), "Main standings source and handler are physically deleted")
 	var controller_source := FileAccess.get_file_as_string("res://scripts/runtime/application_flow_controller.gd")
 	_check(not controller_source.contains("/root/" + "Main") and not controller_source.contains("current_scene"), "handler has no Main or current-scene fallback")
 	_check(not controller_source.contains("RuntimeCommandPipeline") and not controller_source.contains("SimulationMutationAuthority") and not controller_source.contains("RunRngService"), "handler has no simulation authority dependency")

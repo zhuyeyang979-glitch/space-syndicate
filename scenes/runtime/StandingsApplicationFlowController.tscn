@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/standings_application_flow_controller.gd" id="1_controller"]
+
+[node name="StandingsApplicationFlowController" type="Node"]
+script = ExtResource("1_controller")
+editor_description = "Scene-owned standings page flow. Presentation-only and backed by StandingsPublicQueryPort."

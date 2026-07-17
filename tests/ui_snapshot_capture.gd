@@ -122,7 +122,9 @@ func _capture_size_suite(packed: PackedScene, layout_demo_packed: PackedScene, c
 	_clear_active_scenario_state(main)
 	main.call("_new_game")
 	if capture_size == Vector2i(1600, 960):
-		main.call("_open_standings_menu")
+		var standings_controller := main.get_node_or_null("RuntimeServices/StandingsApplicationFlowController")
+		if standings_controller != null:
+			standings_controller.call("open_standings")
 		await _pump_frames(8)
 		await _save_viewport_snapshot("standings_runtime_%s.png" % suffix)
 		main.call("_open_economy_overview_menu")

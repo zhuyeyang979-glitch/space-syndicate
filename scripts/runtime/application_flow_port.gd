@@ -7,11 +7,13 @@ class_name ApplicationFlowPort
 
 signal action_requested(action_id: StringName)
 signal rules_requested()
+signal standings_requested()
 signal menu_requested(title: String, summary: String, can_continue: bool)
 
 const ALLOWED_ACTIONS := [&"setup", &"standings", &"economy", &"intel", &"rules", &"compendium"]
 
 var _action_emission_count := 0
+var _standings_emission_count := 0
 var _menu_emission_count := 0
 
 
@@ -19,10 +21,13 @@ func submit_action(action_id: String) -> bool:
 	var normalized := StringName(action_id)
 	if not ALLOWED_ACTIONS.has(normalized):
 		return false
-	_action_emission_count += 1
 	if normalized == &"rules":
 		rules_requested.emit()
+	elif normalized == &"standings":
+		_standings_emission_count += 1
+		standings_requested.emit()
 	else:
+		_action_emission_count += 1
 		action_requested.emit(normalized)
 	return true
 
@@ -40,6 +45,9 @@ func debug_snapshot() -> Dictionary:
 		"boundary_id": "application_flow_port_v06",
 		"allowed_action_count": ALLOWED_ACTIONS.size(),
 		"action_emission_count": _action_emission_count,
+		"standings_emission_count": _standings_emission_count,
+		"standings_uses_dedicated_signal": true,
+		"standings_uses_generic_action_signal": false,
 		"rules_signal_boundary": true,
 		"menu_emission_count": _menu_emission_count,
 		"owns_gameplay_state": false,

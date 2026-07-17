@@ -9302,7 +9302,7 @@ func _check_standings_public_snapshot_cutover_component() -> void:
 		root.remove_child(bench)
 		bench.queue_free()
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	_expect(main_source.contains("func _standings_public_source_snapshot(") and main_source.contains("func _standings_public_snapshot(") and main_source.contains("compose_standings_snapshot") and not main_source.contains("func _standings_text("), "main.gd keeps one Standings public-fact adapter and delegates all presentation")
+	_expect(not main_source.contains("func _standings_public_source_snapshot(") and not main_source.contains("func _standings_public_snapshot(") and not main_source.contains("func _open_standings_menu(") and not main_source.contains("func _standings_text("), "main.gd has physically retired the Standings application flow")
 	var nonblank := 0
 	var function_count := 0
 	var variable_count := 0

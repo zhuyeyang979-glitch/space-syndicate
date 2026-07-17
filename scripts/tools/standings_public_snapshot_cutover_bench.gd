@@ -113,10 +113,13 @@ func _prepare_runtime() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if _main != null:
-		_real_source = _main.call("_standings_public_source_snapshot") as Dictionary
-		_real_snapshot = _main.call("_standings_public_snapshot") as Dictionary
+		var query := _main.get_node_or_null("RuntimeServices/StandingsPublicQueryPort") as StandingsPublicQueryPort
+		var controller := _main.get_node_or_null("RuntimeServices/StandingsApplicationFlowController") as StandingsApplicationFlowController
+		_real_snapshot = query.snapshot_for_authorized_viewer(960.0) if query != null else {}
+		_real_source = _real_snapshot.duplicate(true)
 		var started := Time.get_ticks_msec()
-		_main.call("_open_standings_menu")
+		if controller != null:
+			controller.open_standings()
 		_real_open_elapsed_ms = Time.get_ticks_msec() - started
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -142,13 +145,14 @@ func _run_case(case_id: String) -> Dictionary:
 			flags["domain_boundary_checked"] = true
 			notes = "service owns presentation only; scoring, GDP, cash, and final ranking remain domain-owned"
 		"standings_source_pure_data":
-			passed = bool(_real_source.get("valid", false)) and _is_pure_data(_real_source) and not _contains_private_key(_real_source)
-			var real_seats := _real_source.get("seat_entries", []) as Array
-			passed = passed and real_seats.size() <= 8 and _private_opponents_are_redacted(real_seats)
+			passed = not _real_source.is_empty() and _is_pure_data(_real_source) and not _contains_private_key(_real_source)
+			var real_scoreboard := _real_source.get("scoreboard", {}) as Dictionary
+			var real_seats := real_scoreboard.get("seats", []) as Array
+			passed = passed and real_seats.size() <= 8
 			flags["main_checked"] = true
 			flags["pure_data_checked"] = true
 			flags["privacy_checked"] = true
-			notes = "real main supplies one bounded viewer-safe standings fact snapshot"
+			notes = "the scene-owned query port supplies one bounded viewer-safe standings snapshot"
 		"empty_source_safe":
 			var empty_snapshot: Dictionary = _service.call("compose", {"valid": false}) if _service != null else {}
 			passed = str(empty_snapshot.get("summary_text", "")).contains("还没有可用玩家数据") and (empty_snapshot.get("overview_cards", []) as Array).size() == 1

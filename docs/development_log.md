@@ -8388,3 +8388,15 @@ surface and requests the existing Coordinator pause without owning gameplay or
 simulation state. Main's three rules helpers and two rules preloads were
 deleted. Evidence and the remaining action inventory are recorded in
 `docs/migration/main_application_flow_handler_extraction_handoff.md`.
+
+## 2026-07-18 — Standings application-flow extraction
+
+- Added a dedicated `standings_requested` application boundary, a scene-owned
+  standings handler and a viewer-authorized read-only query port.
+- Opening standings no longer refreshes routes, uses table selection as viewer
+  authority, or treats session finish as permission to reveal every seat.
+- Removed seven standings-only Main symbols plus the scoreboard preload and
+  generic standings dispatch branch; Main fell by 120 physical lines and six
+  methods.
+- Replaced obsolete player-facing GDP-share card-condition copy with the active
+  v0.6 public-condition wording from the rules quick-reference owner.

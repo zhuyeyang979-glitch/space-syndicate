@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/ui/GameScreen.tscn" id="2_game_screen"]
@@ -11,6 +11,8 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/GameRuntimeCoordinator.tscn" id="10_game_runtime_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ApplicationFlowPort.tscn" id="11_application_flow"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ApplicationFlowController.tscn" id="12_application_flow_controller"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/StandingsPublicQueryPort.tscn" id="13_standings_query"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/StandingsApplicationFlowController.tscn" id="14_standings_controller"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -71,6 +73,18 @@ unique_name_in_owner = true
 menu_overlay_path = NodePath("../../RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay")
 coordinator_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator")
 
+[node name="StandingsPublicQueryPort" parent="RuntimeServices" instance=ExtResource("13_standings_query")]
+unique_name_in_owner = true
+table_query_ports_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/TablePresentationQueryPorts")
+victory_controller_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/VictoryControlRuntimeController")
+final_settlement_path = NodePath("../FinalSettlementRuntimeComposition")
+snapshot_service_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/StandingsPublicSnapshotService")
+
+[node name="StandingsApplicationFlowController" parent="RuntimeServices" instance=ExtResource("14_standings_controller")]
+unique_name_in_owner = true
+menu_overlay_path = NodePath("../../RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay")
+query_port_path = NodePath("../StandingsPublicQueryPort")
+
 [node name="RuntimeFallbackHost" type="Node" parent="RuntimeServices"]
 unique_name_in_owner = true
 editor_description = "Explicit host for compatibility fallbacks created only when scene-owned composition is unavailable."
@@ -80,6 +94,7 @@ editor_description = "Explicit host for compatibility fallbacks created only whe
 [connection signal="action_requested" from="RuntimeServices/ApplicationFlowPort" to="." method="_on_menu_quick_nav_action_requested"]
 [connection signal="menu_requested" from="RuntimeServices/ApplicationFlowPort" to="." method="_show_menu"]
 [connection signal="rules_requested" from="RuntimeServices/ApplicationFlowPort" to="RuntimeServices/ApplicationFlowController" method="open_rules"]
+[connection signal="standings_requested" from="RuntimeServices/ApplicationFlowPort" to="RuntimeServices/StandingsApplicationFlowController" method="open_standings"]
 [connection signal="quick_nav_action_requested" from="RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay" to="RuntimeServices/ApplicationFlowPort" method="submit_action"]
 [connection signal="public_log_receipt_requested" from="RuntimeServices/FinalSettlementRuntimeComposition" to="RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator" method="append_public_log_receipt"]
 [connection signal="victory_presentation_receipt_ready" from="RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator" to="RuntimeServices/FinalSettlementRuntimeComposition" method="present_victory_receipt"]

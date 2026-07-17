@@ -485,6 +485,41 @@
       "status": "cut_over"
     },
     {
+      "domain": "standings_application_flow",
+      "old_symbols": [
+        "StandingsScoreboardScene",
+        "_open_standings_menu",
+        "_populate_standings_summary_cards",
+        "_add_standings_scoreboard_panel",
+        "_standings_public_source_snapshot",
+        "_standings_public_snapshot",
+        "_standing_entries"
+      ],
+      "old_consumers": [
+        "ApplicationFlowPort generic action signal",
+        "MenuOverlay standings quick navigation",
+        "FinalSettlement standings action"
+      ],
+      "new_owner_scene": "res://scenes/runtime/StandingsApplicationFlowController.tscn + res://scenes/runtime/StandingsPublicQueryPort.tscn",
+      "new_owner_script": "res://scripts/runtime/standings_application_flow_controller.gd + res://scripts/runtime/standings_public_query_port.gd",
+      "new_public_api": [
+        "ApplicationFlowPort.standings_requested",
+        "StandingsApplicationFlowController.open_standings",
+        "StandingsPublicQueryPort.snapshot_for_authorized_viewer"
+      ],
+      "tests": [
+        "res://tests/standings_application_flow_cutover_test.gd",
+        "res://tests/main_application_flow_handler_extraction_test.gd",
+        "res://tests/standings_public_snapshot_service_test.gd",
+        "res://tests/main_victory_public_privacy_v06_test.gd",
+        "res://tests/rules_quick_reference_snapshot_v06_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "",
+      "status": "cut_over"
+    },
+    {
       "domain": "presentation_action_routing",
       "old_symbols": [
         "_runtime_table_snapshot_source",
