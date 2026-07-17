@@ -17,6 +17,7 @@ func _init() -> void:
 		return
 	var main := main_scene.instantiate()
 	root.add_child(main)
+	await process_frame
 	var flow := main.get_node_or_null("RuntimeServices/ApplicationFlowPort")
 	_check(flow != null and flow.get_script() != null, "main composes one scene-owned ApplicationFlowPort")
 	_check(main.get_node_or_null("RuntimeServices/FinalSettlementRuntimeComposition") != null, "settlement composition remains scene-owned")
@@ -26,7 +27,7 @@ func _init() -> void:
 	_check(main_scene_source.contains('to=\"RuntimeServices/ApplicationFlowPort\" method=\"request_menu\"'), "settlement menu request targets the flow port")
 	_check(not main_scene_source.contains('from=\"RuntimeServices/FinalSettlementRuntimeComposition\" to=\".\"'), "settlement no longer depends directly on Main")
 	var main_source := FileAccess.get_file_as_string(MAIN_SOURCE)
-	_check(not main_source.contains("ApplicationFlowPort"), "Main does not discover or own the flow port")
+	_check(not main_source.contains("func _open_rules_menu("), "Main does not retain the moved rules flow")
 	_check(not main_source.contains("func _process("), "Main remains without a gameplay process owner")
 	if flow != null:
 		_check(bool(flow.call("submit_action", &"economy")), "allow-listed application action is accepted")

@@ -6,6 +6,7 @@ class_name ApplicationFlowPort
 ## it never owns gameplay state, timing, or presentation snapshots.
 
 signal action_requested(action_id: StringName)
+signal rules_requested()
 signal menu_requested(title: String, summary: String, can_continue: bool)
 
 const ALLOWED_ACTIONS := [&"setup", &"standings", &"economy", &"intel", &"rules", &"compendium"]
@@ -14,11 +15,15 @@ var _action_emission_count := 0
 var _menu_emission_count := 0
 
 
-func submit_action(action_id: StringName) -> bool:
-	if not ALLOWED_ACTIONS.has(action_id):
+func submit_action(action_id: String) -> bool:
+	var normalized := StringName(action_id)
+	if not ALLOWED_ACTIONS.has(normalized):
 		return false
 	_action_emission_count += 1
-	action_requested.emit(action_id)
+	if normalized == &"rules":
+		rules_requested.emit()
+	else:
+		action_requested.emit(normalized)
 	return true
 
 
@@ -35,6 +40,7 @@ func debug_snapshot() -> Dictionary:
 		"boundary_id": "application_flow_port_v06",
 		"allowed_action_count": ALLOWED_ACTIONS.size(),
 		"action_emission_count": _action_emission_count,
+		"rules_signal_boundary": true,
 		"menu_emission_count": _menu_emission_count,
 		"owns_gameplay_state": false,
 		"owns_world_clock": false,

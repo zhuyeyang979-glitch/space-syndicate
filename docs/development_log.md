@@ -8379,3 +8379,12 @@ handler. It owns no gameplay state, clock, RNG, command pipeline, snapshot, or
 save data. The full caller inventory and migration queue are recorded in
 `docs/migration/main_dependency_inventory.md` and
 `docs/migration/main_dependency_direction_migration_report.md`.
+## 2026-07-18 — Main application-flow handler extraction
+
+The rules page is now a real production application-flow slice owned by
+`ApplicationFlowController`. MenuOverlay and MenuRootLobby send the `rules`
+intent through `ApplicationFlowPort`; the handler opens the existing rules
+surface and requests the existing Coordinator pause without owning gameplay or
+simulation state. Main's three rules helpers and two rules preloads were
+deleted. Evidence and the remaining action inventory are recorded in
+`docs/migration/main_application_flow_handler_extraction_handoff.md`.

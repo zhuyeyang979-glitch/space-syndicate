@@ -1,6 +1,6 @@
 # Main dependency direction inventory
 
-Status: `MAIN_DEPENDENCY_DIRECTION_MIGRATION_GREEN`
+Status: `MAIN_APPLICATION_FLOW_HANDLER_EXTRACTION_GREEN`
 
 This inventory distinguishes application-flow dependencies from runtime
 authority dependencies. The latter must never point at `scripts/main.gd`.
@@ -11,6 +11,7 @@ authority dependencies. The latter must never point at `scripts/main.gd`.
 | --- | --- | --- | --- |
 | `scenes/main.tscn` | owns the application root and declares the Main script | retain | scene bootstrap → Main composition root |
 | `RuntimeServices/FinalSettlementRuntimeComposition` | previously connected its menu/action signals directly to Main | migrated | settlement composition → `ApplicationFlowPort` → application flow handler |
+| `MenuOverlay` / `MenuRootLobby` rules action | previously entered Main's rules helpers | migrated | UI → `ApplicationFlowPort` → `ApplicationFlowController` → RulesQuickReferenceBoard |
 | `scripts/ai/ai_policy_resource_registry.gd` | reads Main source only for a development parity report | test/dev only | remains outside gameplay runtime; no runtime owner dependency |
 | tests and characterization Benches | inspect Main source or instantiate the formal scene | test/dev only | remain evidence consumers, never gameplay callers |
 | Godot MCP runtime | tooling integration | tooling only | does not participate in simulation authority |

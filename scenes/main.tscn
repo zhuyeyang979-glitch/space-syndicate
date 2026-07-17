@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/ui/GameScreen.tscn" id="2_game_screen"]
@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/FinalSettlementRuntimeComposition.tscn" id="9_final_settlement_runtime_composition"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/GameRuntimeCoordinator.tscn" id="10_game_runtime_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ApplicationFlowPort.tscn" id="11_application_flow"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/ApplicationFlowController.tscn" id="12_application_flow_controller"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -65,6 +66,11 @@ presentation_game_screen_path = NodePath("../../../RuntimeGameScreen")
 [node name="ApplicationFlowPort" parent="RuntimeServices" instance=ExtResource("11_application_flow")]
 unique_name_in_owner = true
 
+[node name="ApplicationFlowController" parent="RuntimeServices" instance=ExtResource("12_application_flow_controller")]
+unique_name_in_owner = true
+menu_overlay_path = NodePath("../../RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay")
+coordinator_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator")
+
 [node name="RuntimeFallbackHost" type="Node" parent="RuntimeServices"]
 unique_name_in_owner = true
 editor_description = "Explicit host for compatibility fallbacks created only when scene-owned composition is unavailable."
@@ -73,5 +79,7 @@ editor_description = "Explicit host for compatibility fallbacks created only whe
 [connection signal="menu_open_requested" from="RuntimeServices/FinalSettlementRuntimeComposition" to="RuntimeServices/ApplicationFlowPort" method="request_menu"]
 [connection signal="action_requested" from="RuntimeServices/ApplicationFlowPort" to="." method="_on_menu_quick_nav_action_requested"]
 [connection signal="menu_requested" from="RuntimeServices/ApplicationFlowPort" to="." method="_show_menu"]
+[connection signal="rules_requested" from="RuntimeServices/ApplicationFlowPort" to="RuntimeServices/ApplicationFlowController" method="open_rules"]
+[connection signal="quick_nav_action_requested" from="RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay" to="RuntimeServices/ApplicationFlowPort" method="submit_action"]
 [connection signal="public_log_receipt_requested" from="RuntimeServices/FinalSettlementRuntimeComposition" to="RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator" method="append_public_log_receipt"]
 [connection signal="victory_presentation_receipt_ready" from="RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator" to="RuntimeServices/FinalSettlementRuntimeComposition" method="present_victory_receipt"]

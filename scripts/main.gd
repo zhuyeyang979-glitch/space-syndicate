@@ -7,8 +7,6 @@ const CardPlayRequirementPolicyScript := preload("res://scripts/cards/card_play_
 const SharedCardGroupWindowScript := preload("res://scripts/cards/shared_card_group_window.gd")
 const RoguelikeEconomicViabilityPolicyScript := preload("res://scripts/runtime/roguelike_economic_viability_policy.gd")
 const MenuRootLobbyScene := preload("res://scenes/ui/MenuRootLobby.tscn")
-const RulesQuickReferenceBoardScene := preload("res://scenes/ui/RulesQuickReferenceBoard.tscn")
-const RulesQuickReferenceSnapshotV06Script := preload("res://scripts/viewmodels/rules_quick_reference_snapshot_v06.gd")
 const CompendiumHubSnapshotScript := preload("res://scripts/viewmodels/compendium_hub_snapshot.gd")
 const EconomyDashboardScene := preload("res://scenes/ui/EconomyDashboard.tscn")
 const IntelDossierBoardScene := preload("res://scenes/ui/IntelDossierBoard.tscn")
@@ -2541,7 +2539,6 @@ func _bind_menu_overlay_scene() -> void:
 		"main_menu_requested": Callable(self, "_open_main_menu"),
 		"catalog_step_requested": Callable(self, "_cycle_menu_catalog"),
 		"catalog_back_requested": Callable(self, "_back_from_catalog_menu"),
-		"quick_nav_action_requested": Callable(self, "_on_menu_quick_nav_action_requested"),
 		"codex_action_requested": Callable(self, "_on_codex_surface_action_requested"),
 	}
 	for signal_name_variant: Variant in signal_routes:
@@ -2627,8 +2624,6 @@ func _on_menu_quick_nav_action_requested(action_id: String) -> void:
 			_open_economy_overview_menu()
 		"intel":
 			_open_intel_dossier_menu()
-		"rules":
-			_open_rules_menu()
 		"compendium":
 			_open_compendium_menu()
 
@@ -2787,8 +2782,6 @@ func _on_menu_root_lobby_action_requested(action_id: String) -> void:
 			_close_menu()
 		"compendium":
 			_open_compendium_menu()
-		"rules":
-			_open_rules_menu()
 		"load_run":
 			_load_run_from_menu()
 		"quit":
@@ -2801,6 +2794,9 @@ func _add_main_menu_planet_lobby_panel(parent: Container) -> void:
 		return
 	if lobby.has_signal("action_requested"):
 		lobby.connect("action_requested", Callable(self, "_on_menu_root_lobby_action_requested"))
+	var application_flow_port := get_node_or_null("RuntimeServices/ApplicationFlowPort")
+	if application_flow_port != null and lobby.has_signal("rules_requested"):
+		lobby.connect("rules_requested", Callable(application_flow_port, "submit_action").bind("rules"))
 	parent.add_child(lobby)
 	if lobby.has_method("set_lobby"):
 		lobby.call("set_lobby", _main_menu_root_lobby_snapshot())
@@ -2839,20 +2835,6 @@ func _populate_pause_menu_summary_cards() -> void:
 	], "暂停速览｜先决定继续、复查、查资料还是重开")
 
 
-func _open_rules_menu() -> void:
-	var lines := []
-	lines.append("读桌顺序：钱 → 城 → 牌 → 怪兽 → 线索。")
-	lines.append("开局：公开角色，选起始怪兽，先把怪兽压到星球。")
-	lines.append("赚钱：城市化份额吃GDP；商品、商路和破坏会改现金流。")
-	lines.append("出牌：买牌花钱；高阶牌检查地区GDP份额，公开牌轨留下线索。")
-	_show_menu(
-		"游戏规则",
-		"\n".join(lines),
-		not _runtime_session_finished()
-	)
-	_populate_rules_summary_cards()
-
-
 func _open_standings_menu() -> void:
 	var snapshot := _standings_public_snapshot()
 	_show_menu("局势排名", String(snapshot.get("summary_text", "还没有可用玩家数据。")), not _runtime_session_finished())
@@ -2863,23 +2845,6 @@ func _open_economy_overview_menu() -> void:
 	var snapshot := _economy_dashboard_public_snapshot()
 	_show_menu("经济总览", String(snapshot.get("summary_text", "还没有当前局经济数据。")), not _runtime_session_finished())
 	_populate_economy_overview_summary_cards(snapshot)
-
-
-func _populate_rules_summary_cards() -> void:
-	if menu_preview_box == null:
-		return
-	menu_overlay.call("clear_preview")
-	menu_preview_box.visible = true
-	_add_rules_quick_reference_board(menu_preview_box)
-
-
-func _add_rules_quick_reference_board(parent: Container) -> void:
-	var board := RulesQuickReferenceBoardScene.instantiate() as Control
-	if board == null or not board.has_method("set_board"):
-		_report_required_ui_scene_missing("RulesQuickReferenceBoard", "set_board")
-		return
-	parent.add_child(board)
-	board.call("set_board", RulesQuickReferenceSnapshotV06Script.compose(_menu_available_content_width()))
 
 
 func _populate_standings_summary_cards(snapshot: Dictionary = {}) -> void:
