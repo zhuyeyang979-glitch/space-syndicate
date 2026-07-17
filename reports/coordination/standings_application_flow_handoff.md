@@ -27,3 +27,16 @@ compendium, setup and save application flows remain outside this cutover. The
 broad layout smoke was also run and reached the standings checks without a
 standings failure, but remains red on 19 pre-existing campaign/runtime/legacy
 fixture assertions; none was weakened or restored through Main.
+
+Follow-up privacy closure:
+
+- exact rival cash now requires all authoritative Victory public-audit markers;
+- missing, mismatched, non-integer markers and conflicting duplicate rows fail closed;
+- markerless `economic_assets` are ignored;
+- serialized and real rendered scoreboard text/tooltips are sentinel-scanned;
+- standings service PASS, application-flow cutover 17/17, handler extraction
+  27/27, Victory public-projection privacy 47 checks, final-settlement privacy
+  31 checks and final-settlement snapshot service PASS;
+- Godot 4.7 MCP Bench PASS 20/20, real open 27ms;
+- the unrelated legacy `main_victory_public_privacy_v06_test.gd` still hangs
+  without output and was stopped without restoring a Main fallback.

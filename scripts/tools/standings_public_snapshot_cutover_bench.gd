@@ -202,7 +202,8 @@ func _run_case(case_id: String) -> Dictionary:
 			final_source["final_summary_text"] = "终局总结｜公开结算完成"
 			var final_victory := final_source.get("victory_control", {}) as Dictionary
 			final_victory["audit_roster"] = [0, 1]
-			(final_victory.get("audit_entries", []) as Array).append({"player_index": 1, "top_n_gdp_per_minute": 120, "controlled_region_count": 3, "cash_ledger_cents": 73000, "economic_assets": {"project_positions": [], "contracts": [], "warehouses": [], "financial_positions": []}})
+			final_victory["audit_revealed_player_indices"] = [0, 1]
+			(final_victory.get("audit_entries", []) as Array).append({"player_index": 1, "cash_visibility": "public_audit", "top_n_gdp_per_minute": 120, "controlled_region_count": 3, "cash_ledger_cents": 73000})
 			var final_snapshot: Dictionary = _service.call("compose", final_source) if _service != null else {}
 			var final_board := final_snapshot.get("scoreboard", {}) as Dictionary
 			var final_output_seats := final_board.get("seats", []) as Array
@@ -271,7 +272,7 @@ func _source() -> Dictionary:
 		"selected_controlled_region_count": 4, "selected_cash": 610, "selected_city_count": 2,
 		"selected_gdp_per_minute": 180, "selected_intel_summary": "情报待结算",
 		"required_top_n_gdp_per_minute": 130, "required_controlled_region_count": 4,
-		"victory_control": {"state": "audit", "audit_remaining_seconds": 90.0, "audit_roster": [0], "audit_entries": [{"player_index": 0, "top_n_gdp_per_minute": 145, "controlled_region_count": 4, "cash_ledger_cents": 61000, "economic_assets": {"project_positions": [{"slot_id": "production:0"}], "contracts": [], "warehouses": [], "financial_positions": []}}]},
+		"victory_control": {"state": "audit", "audit_remaining_seconds": 90.0, "audit_roster": [0], "cash_visibility": "public_audit", "audit_revealed_player_indices": [0], "audit_entries": [{"player_index": 0, "cash_visibility": "public_audit", "top_n_gdp_per_minute": 145, "controlled_region_count": 4, "cash_ledger_cents": 61000}]},
 		"countdown_text": "公开审计剩余90.0秒", "public_shift_count": 5, "overview_columns": 3, "kpi_columns": 4, "seat_columns": 3,
 		"seat_entries": [
 			{"player_index": 0, "name": "测试玩家", "eliminated": false, "can_view_private": true, "cash": 610, "active_cities": 2, "top_n_gdp_per_minute": 145, "controlled_region_count": 4, "intel_summary": "情报待结算", "gdp_per_minute": 180},
