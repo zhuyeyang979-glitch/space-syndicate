@@ -34,21 +34,21 @@ class PresentationLoopPort extends RuntimePresentationPort:
 
 class PresentationLoopPorts extends RuntimeWorldPorts:
 	func _init(coordinator: GameRuntimeCoordinator) -> void:
-		lifecycle = PresentationLoopLifecyclePort.new()
-		lifecycle.name = "RuntimeLifecyclePort"; add_child(lifecycle)
-		card = PresentationLoopCardPort.new()
-		card.name = "RuntimeCardPort"; add_child(card)
-		economy = PresentationLoopEconomyPort.new()
-		economy.name = "RuntimeEconomyPort"; add_child(economy)
-		actors = PresentationLoopActorPort.new()
-		actors.name = "RuntimeActorPort"; add_child(actors)
-		monster = PresentationLoopMonsterPort.new()
-		monster.name = "RuntimeMonsterPort"; add_child(monster)
-		presentation = PresentationLoopPort.new()
-		presentation.name = "RuntimePresentationPort"; add_child(presentation)
-		(presentation as PresentationLoopPort).coordinator = coordinator
-		victory = PresentationLoopVictoryPort.new()
-		victory.name = "RuntimeVictoryPort"; add_child(victory)
+		var lifecycle_port := PresentationLoopLifecyclePort.new()
+		lifecycle_port.name = "RuntimeLifecyclePort"; add_child(lifecycle_port)
+		var card_port := PresentationLoopCardPort.new()
+		card_port.name = "RuntimeCardPort"; add_child(card_port)
+		var economy_port := PresentationLoopEconomyPort.new()
+		economy_port.name = "RuntimeEconomyPort"; add_child(economy_port)
+		var actor_port := PresentationLoopActorPort.new()
+		actor_port.name = "RuntimeActorPort"; add_child(actor_port)
+		var monster_port := PresentationLoopMonsterPort.new()
+		monster_port.name = "RuntimeMonsterPort"; add_child(monster_port)
+		var presentation_port := PresentationLoopPort.new()
+		presentation_port.name = "RuntimePresentationPort"; add_child(presentation_port)
+		presentation_port.coordinator = coordinator
+		var victory_port := PresentationLoopVictoryPort.new()
+		victory_port.name = "RuntimeVictoryPort"; add_child(victory_port)
 	func is_ready() -> bool: return true
 
 @export var auto_run := true
