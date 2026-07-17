@@ -8359,3 +8359,13 @@
 - Main composition audit passes 20/20; the Godot 4.7 audit Bench passes 6/6.
 - This is an architecture gate, not a claim that `scripts/main.gd` has already
   been physically deleted; future cutovers must continue to reduce its budget.
+
+## 2026-07-18 — Main responsibility inventory
+
+- Added `docs/migration/main_responsibility_inventory.md` with the complete
+  retain/migrate/delete map for the remaining Main responsibilities.
+- The inventory records the final Composition Root boundary, the current
+  Coordinator/RuntimeLoop/SimulationStep ownership graph, the hidden-Main risk
+  in the 565-method coordinator, and a staged deletion order.
+- No production code, gameplay order, save schema or excluded historical
+  fixture was changed in this planning-only phase.

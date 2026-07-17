@@ -5796,20 +5796,6 @@ func _best_player_gdp_share_district(player_index: int) -> int:
 	return best_district
 
 
-func _pay_skill_play_cost(player_index: int, skill: Dictionary) -> void:
-	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return
-	var requirement := _card_play_requirement_snapshot(player_index, skill)
-	var cash_cost := int(requirement.get("cash_cost", 0))
-	if cash_cost <= 0:
-		return
-	_game_runtime_coordinator_node().world_session_state().players[player_index]["cash"] = max(0, int(_game_runtime_coordinator_node().world_session_state().players[player_index].get("cash", 0)) - cash_cost)
-	var card_label := _card_display_name(String(skill.get("name", "")))
-	if card_label == "":
-		card_label = "卡牌"
-	_record_player_card_spend(player_index, cash_cost, "打出%s" % card_label, String(requirement.get("requirement_text", "条件：无")))
-
-
 func _signed_int_text(value: int) -> String:
 	if value > 0:
 		return "+%d" % value
@@ -6909,19 +6895,6 @@ func _random_product_names_from_pool(source_pool: Array, count_min: int, count_m
 	return result
 
 
-func _product_market_price_label(product_name: String) -> String:
-	if product_name == "":
-		return "无商品"
-	var entry := _product_market_entry_snapshot(product_name)
-	var trend := int(entry.get("trend", 0))
-	var trend_text := "持平"
-	if trend > 0:
-		trend_text = "+%d" % trend
-	elif trend < 0:
-		trend_text = "%d" % trend
-	return "%s ¥%d｜%s｜%s" % [product_name, _product_market_price(product_name), _product_market_tier(product_name), trend_text]
-
-
 func _voronoi_polygon_for_site(site_index: int, sites: Array) -> Array:
 	var polygon := [
 		Vector2(0.0, 0.0),
@@ -7521,11 +7494,6 @@ func _player_role_card_for_index(player_index: int) -> Dictionary:
 		return {}
 	var role_variant: Variant = (_game_runtime_coordinator_node().world_session_state().players[player_index] as Dictionary).get("role_card", {})
 	return role_variant as Dictionary if role_variant is Dictionary else {}
-
-
-func _role_can_use_monster_card_as_counter(player_index: int) -> bool:
-	var role := _player_role_card_for_index(player_index)
-	return bool(role.get("monster_cards_as_counter", false))
 
 
 func _role_runtime_copy_fields() -> Array:
@@ -10615,17 +10583,6 @@ func _product_requirements_available(required_products: Array, run_products: Arr
 		if not run_products.has(String(product_variant)):
 			return false
 	return true
-
-
-func _skill_uses_current_product(skill: Dictionary) -> bool:
-	var kind := String(skill.get("kind", ""))
-	if ["product_speculation", "product_futures", "product_contract_boon", "product_growth_boon", "market_stabilize", "city_product_shift", "city_demand_shift"].has(kind):
-		return true
-	if kind == "area_trade_contract" and String(skill.get("contract_product_mode", "selected")) != "fixed":
-		return true
-	if int(skill.get("market_demand_pressure", 0)) != 0 or int(skill.get("market_supply_pressure", 0)) != 0:
-		return true
-	return false
 
 
 func _card_allowed_by_run_products(skill_name: String) -> bool:

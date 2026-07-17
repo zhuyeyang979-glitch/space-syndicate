@@ -47,9 +47,12 @@ The remaining Main responsibilities are tracked by the scene-first migration
 ledger and are not silently reintroduced by this audit. The next deletions
 must continue to reduce Main's physical lines, methods and callers.
 
+The complete responsibility classification and staged deletion order are in
+[`main_responsibility_inventory.md`](main_responsibility_inventory.md).
+
 ## Evidence
 
-- `tests/main_composition_root_audit_test.gd`
+- `tests/composition_root_audit_test.gd`
 - `scenes/tools/MainCompositionRootAuditBench.tscn`
 - `tests/main_runtime_composition_test.gd`
 - `tests/main_gd_architecture_gate_test.gd`

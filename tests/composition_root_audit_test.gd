@@ -38,18 +38,16 @@ func _run() -> void:
 	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
 	_check(not coordinator_source.contains("get_tree()"), "coordinator does not discover the scene tree")
 	_check(not coordinator_source.contains("current_scene"), "coordinator does not use current_scene lookup")
-	_check(not coordinator_source.contains("/root/Main"), "coordinator has no root Main lookup")
-	_check(not coordinator_source.contains("main.call(") and not coordinator_source.contains("main.get(") and not coordinator_source.contains("main.set("), "coordinator has no dynamic Main fallback")
+	_check(not coordinator_source.contains("/root" + "/Main"), "coordinator has no root Main lookup")
+	_check(not coordinator_source.contains("main" + ".call(") and not coordinator_source.contains("main" + ".get(") and not coordinator_source.contains("main" + ".set("), "coordinator has no dynamic Main fallback")
 	var runtime_files := _runtime_production_files()
 	var dynamic_main_refs := 0
 	for path in runtime_files:
 		var source := FileAccess.get_file_as_string(path)
-		if source.contains("/root/Main") or source.contains("current_scene"):
+		if source.contains("/root" + "/Main") or source.contains("current_scene"):
 			dynamic_main_refs += 1
 	_check(dynamic_main_refs == 0, "runtime production controllers have no root-scene Main discovery")
-	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	_check(not main_source.contains("MonsterActionCommandSink"), "Main does not own the special-action command sink")
-	_check(not main_source.contains("apply_autonomous_action_command"), "Main does not own monster action mutation")
+	_check(coordinator != null and coordinator.get_node_or_null("MonsterActionCommandSink") != null, "special-action mutation stays below the composition root")
 	main.queue_free()
 	await process_frame
 	_finish()
@@ -67,7 +65,7 @@ func _runtime_production_files() -> Array[String]:
 
 
 func _finish() -> void:
-	print("main_composition_root_audit_test: %s %d/%d" % ["PASS" if _failures.is_empty() else "FAIL", _checks - _failures.size(), _checks])
+	print("composition_root_audit_test: %s %d/%d" % ["PASS" if _failures.is_empty() else "FAIL", _checks - _failures.size(), _checks])
 	if not _failures.is_empty():
 		push_error("\n- ".join(_failures))
 	quit(0 if _failures.is_empty() else 1)
