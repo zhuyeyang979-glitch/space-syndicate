@@ -1,0 +1,277 @@
+{
+  "schema_version": 1,
+  "generated_at_utc": "2026-07-16T18:28:45.029798+00:00",
+  "generator": "tools/art_pipeline/build_source_asset_index.py",
+  "model_extensions": [
+    ".blend",
+    ".fbx",
+    ".glb",
+    ".gltf",
+    ".obj"
+  ],
+  "packs": [
+    {
+      "pack_id": "free_assets_fixed_commit",
+      "source_status": "indexed",
+      "model_count": 2,
+      "license_path": "docs/licenses/third_party_art/free_assets_kenney_quaternius_CC0.txt",
+      "license_sha256": "bd4e3160c59bc65e64db532b81c1a11e3f1ccc6ef7b3209fdf2cdfbc4cb8b24f"
+    },
+    {
+      "pack_id": "universal_base_characters_standard",
+      "source_status": "manual_official_download_required",
+      "model_count": 0,
+      "license_path": "docs/licenses/third_party_art/CC0-1.0-legalcode.txt",
+      "license_sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+    },
+    {
+      "pack_id": "ultimate_monsters",
+      "source_status": "manual_official_download_required",
+      "model_count": 0,
+      "license_path": "docs/licenses/third_party_art/quaternius_ultimate_monsters_CC0.txt",
+      "license_sha256": "de990ef6fc68cffd7fd1ae342c4d0c823b541b8848d8f76bca5d3339f4de6f6e"
+    },
+    {
+      "pack_id": "ultimate_space_kit",
+      "source_status": "manual_official_download_required",
+      "model_count": 0,
+      "license_path": "docs/licenses/third_party_art/quaternius_ultimate_space_kit_CC0.txt",
+      "license_sha256": "de990ef6fc68cffd7fd1ae342c4d0c823b541b8848d8f76bca5d3339f4de6f6e"
+    },
+    {
+      "pack_id": "scifi_essentials_standard",
+      "source_status": "manual_official_download_required",
+      "model_count": 0,
+      "license_path": "docs/licenses/third_party_art/CC0-1.0-legalcode.txt",
+      "license_sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+    },
+    {
+      "pack_id": "animated_fish",
+      "source_status": "indexed",
+      "model_count": 7,
+      "license_path": "docs/licenses/third_party_art/quaternius_animated_fish_CC0.txt",
+      "license_sha256": "2832c27ece15255677c5a6d7437ed05d6a2f49ccb73d867ab13d2be3f93e84e2"
+    }
+  ],
+  "records": [
+    {
+      "asset_id": "free_assets_fixed_commit--alien--ce50bb2da6",
+      "pack_id": "free_assets_fixed_commit",
+      "source_path": "art_sources/unpacked/free_assets_fixed_commit/alien_animated/Alien.fbx",
+      "model_name": "Alien",
+      "format": "fbx",
+      "source_sha256": "ce50bb2da6b94f43bf5867abee152bf7afbf7ca93c1e1d0e4c5bc92f323da269",
+      "license_path": "docs/licenses/third_party_art/free_assets_kenney_quaternius_CC0.txt",
+      "license_sha256": "bd4e3160c59bc65e64db532b81c1a11e3f1ccc6ef7b3209fdf2cdfbc4cb8b24f",
+      "candidate_tags": [],
+      "preview_path": "docs/art_qa/source_candidates/previews/free_assets_fixed_commit--alien--ce50bb2da6.png"
+    },
+    {
+      "asset_id": "free_assets_fixed_commit--robot--38afb56db7",
+      "pack_id": "free_assets_fixed_commit",
+      "source_path": "art_sources/unpacked/free_assets_fixed_commit/animated_robot/Robot.fbx",
+      "model_name": "Robot",
+      "format": "fbx",
+      "source_sha256": "38afb56db7fb17a74d30f0afc8adb5f00441a94e65d6b8ac1958732480f79eb8",
+      "license_path": "docs/licenses/third_party_art/free_assets_kenney_quaternius_CC0.txt",
+      "license_sha256": "bd4e3160c59bc65e64db532b81c1a11e3f1ccc6ef7b3209fdf2cdfbc4cb8b24f",
+      "candidate_tags": [
+        "robot"
+      ],
+      "preview_path": "docs/art_qa/source_candidates/previews/free_assets_fixed_commit--robot--38afb56db7.png"
+    },
+    {
+      "asset_id": "animated_fish--dolphin--4b6f1ff948",
+      "pack_id": "animated_fish",
+      "source_path": "art_sources/unpacked/animated_fish/FBX/Dolphin.fbx",
+      "model_name": "Dolphin",
+      "format": "fbx",
+      "source_sha256": "4b6f1ff9487bf25bd3dd7e3397723a356579ee9e3d62e915f978c003ee41644f",
+      "license_path": "docs/licenses/third_party_art/quaternius_animated_fish_CC0.txt",
+      "license_sha256": "2832c27ece15255677c5a6d7437ed05d6a2f49ccb73d867ab13d2be3f93e84e2",
+      "candidate_tags": [
+        "dolphin",
+        "fish"
+      ],
+      "preview_path": "docs/art_qa/source_candidates/previews/animated_fish--dolphin--4b6f1ff948.png",
+      "preview_transform": {
+        "rotation_degrees": [
+          90.0,
+          90.0,
+          0.0
+        ],
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": 1.0
+      }
+    },
+    {
+      "asset_id": "animated_fish--fish1--1adea1cca2",
+      "pack_id": "animated_fish",
+      "source_path": "art_sources/unpacked/animated_fish/FBX/Fish1.fbx",
+      "model_name": "Fish1",
+      "format": "fbx",
+      "source_sha256": "1adea1cca2f02f351cf524b60d2448502e3acb3ef2965f74a21c45a5dfce77e3",
+      "license_path": "docs/licenses/third_party_art/quaternius_animated_fish_CC0.txt",
+      "license_sha256": "2832c27ece15255677c5a6d7437ed05d6a2f49ccb73d867ab13d2be3f93e84e2",
+      "candidate_tags": [
+        "fish"
+      ],
+      "preview_path": "docs/art_qa/source_candidates/previews/animated_fish--fish1--1adea1cca2.png",
+      "preview_transform": {
+        "rotation_degrees": [
+          90.0,
+          90.0,
+          0.0
+        ],
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": 1.0
+      }
+    },
+    {
+      "asset_id": "animated_fish--fish2--ab12853cbd",
+      "pack_id": "animated_fish",
+      "source_path": "art_sources/unpacked/animated_fish/FBX/Fish2.fbx",
+      "model_name": "Fish2",
+      "format": "fbx",
+      "source_sha256": "ab12853cbd9c205a3aeb1d2cff1fd0cced44e5faa707020637bfd41634201509",
+      "license_path": "docs/licenses/third_party_art/quaternius_animated_fish_CC0.txt",
+      "license_sha256": "2832c27ece15255677c5a6d7437ed05d6a2f49ccb73d867ab13d2be3f93e84e2",
+      "candidate_tags": [
+        "fish"
+      ],
+      "preview_path": "docs/art_qa/source_candidates/previews/animated_fish--fish2--ab12853cbd.png",
+      "preview_transform": {
+        "rotation_degrees": [
+          90.0,
+          90.0,
+          0.0
+        ],
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": 1.0
+      }
+    },
+    {
+      "asset_id": "animated_fish--fish3--142bb6559b",
+      "pack_id": "animated_fish",
+      "source_path": "art_sources/unpacked/animated_fish/FBX/Fish3.fbx",
+      "model_name": "Fish3",
+      "format": "fbx",
+      "source_sha256": "142bb6559b928c61ff839eecbba4ee0cfafa964df37720db6a6ba3a90b4ed639",
+      "license_path": "docs/licenses/third_party_art/quaternius_animated_fish_CC0.txt",
+      "license_sha256": "2832c27ece15255677c5a6d7437ed05d6a2f49ccb73d867ab13d2be3f93e84e2",
+      "candidate_tags": [
+        "fish"
+      ],
+      "preview_path": "docs/art_qa/source_candidates/previews/animated_fish--fish3--142bb6559b.png",
+      "preview_transform": {
+        "rotation_degrees": [
+          90.0,
+          90.0,
+          0.0
+        ],
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": 1.0
+      }
+    },
+    {
+      "asset_id": "animated_fish--manta-ray--bde315d4f3",
+      "pack_id": "animated_fish",
+      "source_path": "art_sources/unpacked/animated_fish/FBX/Manta ray.fbx",
+      "model_name": "Manta ray",
+      "format": "fbx",
+      "source_sha256": "bde315d4f35205215e1c0a2443f8256e7f5b3641c765686c941040530aaa81ec",
+      "license_path": "docs/licenses/third_party_art/quaternius_animated_fish_CC0.txt",
+      "license_sha256": "2832c27ece15255677c5a6d7437ed05d6a2f49ccb73d867ab13d2be3f93e84e2",
+      "candidate_tags": [
+        "fish",
+        "manta"
+      ],
+      "preview_path": "docs/art_qa/source_candidates/previews/animated_fish--manta-ray--bde315d4f3.png",
+      "preview_transform": {
+        "rotation_degrees": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": 1.0
+      }
+    },
+    {
+      "asset_id": "animated_fish--shark--fee1cfe578",
+      "pack_id": "animated_fish",
+      "source_path": "art_sources/unpacked/animated_fish/FBX/Shark.fbx",
+      "model_name": "Shark",
+      "format": "fbx",
+      "source_sha256": "fee1cfe578643cefb06457332b5d323f4883eba2515eb255ae0f2abb497a75c9",
+      "license_path": "docs/licenses/third_party_art/quaternius_animated_fish_CC0.txt",
+      "license_sha256": "2832c27ece15255677c5a6d7437ed05d6a2f49ccb73d867ab13d2be3f93e84e2",
+      "candidate_tags": [
+        "fish",
+        "shark"
+      ],
+      "preview_path": "docs/art_qa/source_candidates/previews/animated_fish--shark--fee1cfe578.png",
+      "preview_transform": {
+        "rotation_degrees": [
+          90.0,
+          90.0,
+          0.0
+        ],
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": 1.0
+      }
+    },
+    {
+      "asset_id": "animated_fish--whale--56cbdb5a6e",
+      "pack_id": "animated_fish",
+      "source_path": "art_sources/unpacked/animated_fish/FBX/Whale.fbx",
+      "model_name": "Whale",
+      "format": "fbx",
+      "source_sha256": "56cbdb5a6eeb8f9d334440fe384b7849eb84fba1ce03d8df9a997be981cbb8d9",
+      "license_path": "docs/licenses/third_party_art/quaternius_animated_fish_CC0.txt",
+      "license_sha256": "2832c27ece15255677c5a6d7437ed05d6a2f49ccb73d867ab13d2be3f93e84e2",
+      "candidate_tags": [
+        "fish",
+        "whale"
+      ],
+      "preview_path": "docs/art_qa/source_candidates/previews/animated_fish--whale--56cbdb5a6e.png",
+      "preview_transform": {
+        "rotation_degrees": [
+          90.0,
+          90.0,
+          0.0
+        ],
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": 1.0
+      }
+    }
+  ]
+}

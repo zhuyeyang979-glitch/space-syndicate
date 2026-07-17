@@ -1,0 +1,213 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/role_table_portrait_preview.gd" id="1_script"]
+[ext_resource type="Shader" path="res://shaders/role_table_planet.gdshader" id="2_planet_shader"]
+
+[sub_resource type="Gradient" id="GradientBackdrop"]
+offsets = PackedFloat32Array(0, 0.48, 1)
+colors = PackedColorArray(0.006, 0.012, 0.03, 1, 0.018, 0.05, 0.095, 1, 0.004, 0.008, 0.022, 1)
+
+[sub_resource type="GradientTexture2D" id="TextureBackdrop"]
+gradient = SubResource("GradientBackdrop")
+width = 1600
+height = 960
+fill_from = Vector2(0.5, 0)
+fill_to = Vector2(0.5, 1)
+
+[sub_resource type="ShaderMaterial" id="MaterialPlanet"]
+shader = ExtResource("2_planet_shader")
+
+[sub_resource type="StyleBoxFlat" id="StyleTopChrome"]
+bg_color = Color(0.015, 0.03, 0.055, 0.88)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_left = 12
+corner_radius_bottom_right = 12
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.26, 0.62, 0.78, 0.32)
+
+[sub_resource type="StyleBoxFlat" id="StyleButton"]
+bg_color = Color(0.04, 0.1, 0.16, 0.96)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_left = 8
+corner_radius_bottom_right = 8
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3, 0.68, 0.82, 0.45)
+
+[node name="RoleTablePortraitPreview" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="SpaceBackdrop" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("TextureBackdrop")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="BackSeatLayer" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="PlanetLayer" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="PlanetGlow" type="ColorRect" parent="PlanetLayer"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -346.0
+offset_top = -302.0
+offset_right = 346.0
+offset_bottom = 302.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 1)
+material = SubResource("MaterialPlanet")
+
+[node name="PlanetTableLabel" type="Label" parent="PlanetLayer"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -190.0
+offset_top = 210.0
+offset_right = 190.0
+offset_bottom = 251.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.7, 0.91, 1, 0.84)
+theme_override_font_sizes/font_size = 17
+text = "中央星球就是牌桌"
+horizontal_alignment = 1
+
+[node name="FrontSeatLayer" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="TopChrome" type="PanelContainer" parent="."]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 18.0
+offset_right = 583.0
+offset_bottom = 85.0
+theme_override_styles/panel = SubResource("StyleTopChrome")
+
+[node name="ChromeMargin" type="MarginContainer" parent="TopChrome"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 10
+
+[node name="ChromeRows" type="VBoxContainer" parent="TopChrome/ChromeMargin"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="Title" type="Label" parent="TopChrome/ChromeMargin/ChromeRows"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.96, 1, 1)
+theme_override_font_sizes/font_size = 18
+text = "太空辛迪加｜桌边角色场景化预览"
+
+[node name="DebugLabel" type="Label" parent="TopChrome/ChromeMargin/ChromeRows"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.78, 0.9, 1)
+theme_override_font_sizes/font_size = 12
+text = "4席｜中央星球牌桌｜程序占位"
+
+[node name="LayoutControls" type="HBoxContainer" parent="."]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 99.0
+offset_right = 632.0
+offset_bottom = 137.0
+theme_override_constants/separation = 7
+
+[node name="Players3" type="Button" parent="LayoutControls"]
+custom_minimum_size = Vector2(58, 34)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleButton")
+text = "3席"
+
+[node name="Players4" type="Button" parent="LayoutControls"]
+custom_minimum_size = Vector2(58, 34)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleButton")
+text = "4席"
+
+[node name="Players6" type="Button" parent="LayoutControls"]
+custom_minimum_size = Vector2(58, 34)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleButton")
+text = "6席"
+
+[node name="Players8" type="Button" parent="LayoutControls"]
+custom_minimum_size = Vector2(58, 34)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleButton")
+text = "8席"
+
+[node name="AnonymousToggle" type="CheckButton" parent="LayoutControls"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.9, 1, 1)
+text = "模拟匿名出牌"
+
+[node name="PrivacyNote" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -486.0
+offset_top = -52.0
+offset_right = -22.0
+offset_bottom = -18.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.51, 0.7, 0.82, 0.88)
+theme_override_font_sizes/font_size = 12
+text = "只呈现公开角色与公开状态｜匿名牌仍从中立轨道进入"
+horizontal_alignment = 2

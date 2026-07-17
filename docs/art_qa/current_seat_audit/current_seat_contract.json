@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "audit_timestamp": "2026-07-17T02:30:00+09:00",
+  "source_of_truth": "read_only_shared_worktree",
+  "source_worktree": "C:/Users/Administrator/Documents/New project/space-syndicate-sync",
+  "baseline_worktree": "C:/Users/Administrator/Documents/New project/space-syndicate-role-table-art-20260717-012745",
+  "audit_verdict": "decorative_eight_markers_only_no_functional_seat_system_found",
+  "seat_root_path": null,
+  "seat_slot_paths": [],
+  "seat_count": 0,
+  "decorative_marker_count": 8,
+  "decorative_marker_owner": "PlanetMapView/BackdropLayer/PlanetGlobeBackdrop custom draw",
+  "decorative_marker_source": "scripts/ui/map/planet_globe_backdrop.gd::_draw_table_ring",
+  "anchor_ids": [],
+  "procedural_marker_indices": [0, 1, 2, 3, 4, 5, 6, 7],
+  "seat_index_to_anchor": {},
+  "active_seats_by_player_count": {},
+  "local_player_anchor": null,
+  "position_source": {
+    "kind": "decorative_formula_only",
+    "formula": "angle=-PI/2+TAU*(marker+0.5)/8; radius=max(18, globe_radius+38-18)",
+    "functional_layout_owner": null
+  },
+  "state_source": null,
+  "public_fields": [],
+  "private_fields": [],
+  "input_contract": {
+    "marker_input": "none",
+    "marker_owner_mouse_filter": "IGNORE",
+    "planet_map_input_owner": "PlanetMapView",
+    "planet_map_mouse_filter": "STOP",
+    "preserve_map_click_drag_zoom": true
+  },
+  "z_order_contract": {
+    "marker_layer": "BackdropLayer/PlanetGlobeBackdrop",
+    "marker_kind": "custom_draw_under_planet_and_map_overlays",
+    "functional_seat_z_order": null
+  },
+  "placeholder_visual_nodes": [
+    "PlanetMapView/BackdropLayer/PlanetGlobeBackdrop::_draw_table_ring decorative arcs",
+    "legacy scripts/map_view.gd::_draw_betting_table_edge_chips decorative arcs"
+  ],
+  "shared_files": [
+    "scripts/ui/map/planet_globe_backdrop.gd",
+    "scripts/map_view.gd",
+    "scripts/ui/planet_map_view.gd",
+    "scenes/ui/PlanetMapView.tscn",
+    "scenes/ui/PlanetBoard.tscn",
+    "scenes/ui/GameScreen.tscn"
+  ],
+  "shared_file_sha256": {
+    "scripts/ui/map/planet_globe_backdrop.gd": "2b7f27fb2c15da3cfa2f9a69749ef69ffb4f1386daf73b4a3cf3fed9239db62b",
+    "scripts/map_view.gd": "d4efde3c7880fed3b47598b878cb23350c716552060500f5e503ef9237751a2b",
+    "scripts/ui/planet_map_view.gd": "f0388dcdc1e0ee1f0a749472a12591b6bb49b7ce185d47a3fb6ca0324ce3dc59",
+    "scenes/ui/PlanetMapView.tscn": "d10e5c806ec1711f7484e599a765e12d89704ac9a9b1ffd25714fc7fb95119bd",
+    "scenes/ui/PlanetBoard.tscn": "783d9c3aed2726862cbadc676edb17a63bfe67c41269f51da450566684f27f59",
+    "scenes/ui/GameScreen.tscn": "f203fdca00a96199b8ddbb03efa4a32b977e81bab3f2e4e156a646264c399ba7"
+  },
+  "files_owned_by_other_codex": [
+    "scripts/ui/game_screen.gd",
+    "scripts/ui/planet_map_view.gd",
+    "scripts/runtime/game_table_viewmodel_runtime_service.gd",
+    "scripts/viewmodels/table_snapshot.gd",
+    "tests/layout_scene_smoke_test.gd",
+    "scenes/ui/PlanetMapView.tscn",
+    "scenes/ui/PlayerBoard.tscn",
+    "scripts/ui/player_board.gd"
+  ],
+  "safe_extension_points": [
+    "scenes/ui/player_seat/PlayerSeatPortraitSkin.tscn",
+    "scripts/ui/player_seat/player_seat_portrait_skin.gd",
+    "scripts/presentation/role_portrait_catalog.gd"
+  ],
+  "formal_integration_gate": {
+    "status": "blocked_by_missing_host_and_concurrent_red_paths",
+    "required_future_host_contract": [
+      "eight persistent seat roots or one authoritative seat host",
+      "stable seat_index to existing anchor mapping",
+      "3-8 active-seat visibility mapping",
+      "local-player anchor",
+      "public-only seat view model",
+      "existing input and tooltip area",
+      "existing state animation triggers"
+    ],
+    "must_not_use": "scripts/ui/planet_seat_layout.gd QA-only independent algorithm"
+  }
+}

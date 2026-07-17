@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "allowed_license_markers": [
+    "CC0",
+    "CC0 1.0",
+    "CC0 1.0 Universal",
+    "Creative Commons Zero",
+    "Public Domain Dedication"
+  ],
+  "packs": [
+    {
+      "pack_id": "free_assets_fixed_commit",
+      "display_name": "Free Assets by Kenney NL and Quaternius — selected role models",
+      "author": "Quaternius",
+      "official_page": "https://github.com/beep2bleep/FreeAssetsByKenneyNLandQuaternius",
+      "official_download": "https://github.com/beep2bleep/FreeAssetsByKenneyNLandQuaternius/tree/dea756baf3b3a4889d8c245e456a4791f961578a",
+      "source_commit": "dea756baf3b3a4889d8c245e456a4791f961578a",
+      "expected_archive_names": [],
+      "unpacked_root": "art_sources/unpacked/free_assets_fixed_commit",
+      "license_kind": "CC0 1.0 Universal",
+      "license_association_evidence": "The Alien Animated and Animated Robot folders each contain an identical License.txt declaring CC0 1.0 Universal.",
+      "license_path": "docs/licenses/third_party_art/free_assets_kenney_quaternius_CC0.txt",
+      "license_sha256": "bd4e3160c59bc65e64db532b81c1a11e3f1ccc6ef7b3209fdf2cdfbc4cb8b24f",
+      "source_status": "fixed_commit_selected_models"
+    },
+    {
+      "pack_id": "universal_base_characters_standard",
+      "display_name": "Universal Base Characters Standard",
+      "author": "Quaternius",
+      "official_page": "https://quaternius.itch.io/universal-base-characters",
+      "official_download": "https://quaternius.itch.io/universal-base-characters/purchase",
+      "expected_archive_names": [
+        "Universal Base Characters[Standard].zip"
+      ],
+      "unpacked_root": "art_sources/unpacked/universal_base_characters_standard",
+      "license_kind": "CC0 1.0 Universal",
+      "license_association_evidence": "Official itch.io page: Free low poly base characters (CC0 License); Asset license Creative Commons Zero v1.0 Universal.",
+      "license_path": "docs/licenses/third_party_art/CC0-1.0-legalcode.txt",
+      "license_sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+      "source_status": "manual_official_download_required"
+    },
+    {
+      "pack_id": "ultimate_monsters",
+      "display_name": "Ultimate Monsters",
+      "author": "Quaternius",
+      "official_page": "https://quaternius.com/packs/ultimatemonsters.html",
+      "official_download": "https://drive.google.com/drive/folders/18m4KpzpEzhC9wl7jzr6dUc0N8Jozr79C?usp=sharing",
+      "expected_archive_names": [],
+      "unpacked_root": "art_sources/unpacked/ultimate_monsters",
+      "license_kind": "CC0 1.0 Universal",
+      "license_association_evidence": "Official Quaternius pack page marks the pack CC0 and links the official Drive folder.",
+      "license_path": "docs/licenses/third_party_art/quaternius_ultimate_monsters_CC0.txt",
+      "license_sha256": "de990ef6fc68cffd7fd1ae342c4d0c823b541b8848d8f76bca5d3339f4de6f6e",
+      "source_status": "manual_official_download_required"
+    },
+    {
+      "pack_id": "ultimate_space_kit",
+      "display_name": "Ultimate Space Kit",
+      "author": "Quaternius",
+      "official_page": "https://quaternius.com/packs/ultimatespacekit.html",
+      "official_download": "https://drive.google.com/drive/folders/17F8HlI2zPTlo32aieW5YPPwOk78xo-2m?usp=sharing",
+      "expected_archive_names": [],
+      "unpacked_root": "art_sources/unpacked/ultimate_space_kit",
+      "license_kind": "CC0 1.0 Universal",
+      "license_association_evidence": "Official Quaternius pack page marks the pack CC0 and links the official Drive folder.",
+      "license_path": "docs/licenses/third_party_art/quaternius_ultimate_space_kit_CC0.txt",
+      "license_sha256": "de990ef6fc68cffd7fd1ae342c4d0c823b541b8848d8f76bca5d3339f4de6f6e",
+      "source_status": "manual_official_download_required"
+    },
+    {
+      "pack_id": "scifi_essentials_standard",
+      "display_name": "Sci-Fi Essentials Kit Standard",
+      "author": "Quaternius",
+      "official_page": "https://quaternius.itch.io/sci-fi-essentials-kit",
+      "official_download": "https://quaternius.itch.io/sci-fi-essentials-kit/purchase",
+      "expected_archive_names": [
+        "Sci-Fi Essentials Kit[Standard].zip"
+      ],
+      "unpacked_root": "art_sources/unpacked/scifi_essentials_standard",
+      "license_kind": "CC0 1.0 Universal",
+      "license_association_evidence": "Official itch.io page marks the Standard kit CC0; Asset license Creative Commons Zero v1.0 Universal.",
+      "license_path": "docs/licenses/third_party_art/CC0-1.0-legalcode.txt",
+      "license_sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+      "source_status": "manual_official_download_required"
+    },
+    {
+      "pack_id": "animated_fish",
+      "display_name": "Animated Fish Pack",
+      "author": "Quaternius",
+      "official_page": "https://quaternius.com/packs/animatedfish.html",
+      "official_download": "https://drive.google.com/drive/folders/1SvlOveJJjmhSn-FgCRyojc1T5QHjjGkF?usp=sharing",
+      "official_itch_download": "https://quaternius.itch.io/lowpoly-animated-fish/purchase",
+      "expected_archive_names": [
+        "Fish Pack Animated by Quaternius.zip"
+      ],
+      "unpacked_root": "art_sources/unpacked/animated_fish",
+      "license_kind": "CC0 1.0 Universal",
+      "license_association_evidence": "Official Quaternius pack page marks the pack CC0 and links the official Drive folder.",
+      "license_path": "docs/licenses/third_party_art/quaternius_animated_fish_CC0.txt",
+      "license_sha256": "2832c27ece15255677c5a6d7437ed05d6a2f49ccb73d867ab13d2be3f93e84e2",
+      "source_status": "manual_official_download_required"
+    }
+  ]
+}

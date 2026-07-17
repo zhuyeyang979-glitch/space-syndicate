@@ -1,0 +1,5 @@
+# Keep official archives and extracted third-party model caches local.
+inbox/*
+!inbox/README.md
+unpacked/*
+!unpacked/.gitkeep
