@@ -1,4 +1,4 @@
-[gd_scene load_steps=93 format=3]
+[gd_scene load_steps=94 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -90,6 +90,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardCounterSettlementRuntimeService.tscn" id="96_card_counter_settlement"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardPlaySubmissionRuntimeController.tscn" id="97_card_play_submission"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardResolutionTransitionSink.tscn" id="98_card_transition_sink"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/TablePresentationQueryPorts.tscn" id="99_table_presentation_query_ports"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -102,6 +103,9 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="WorldSessionState" parent="." instance=ExtResource("83_world_session")]
+unique_name_in_owner = true
+
+[node name="TablePresentationQueryPorts" parent="." instance=ExtResource("99_table_presentation_query_ports")]
 unique_name_in_owner = true
 
 [node name="WorldEffectiveClockRuntimeController" parent="." instance=ExtResource("69_world_clock")]

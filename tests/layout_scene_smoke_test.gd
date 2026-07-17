@@ -3402,14 +3402,14 @@ func _runtime_player_has_card_family(main: Node, player_index: int, card_name: S
 
 
 func _runtime_public_log_count(main: Node) -> int:
-	var logs_variant: Variant = main.get("log_lines")
-	var logs: Array = logs_variant if logs_variant is Array else []
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	var logs: Array = coordinator.presentation_recent_public_log_messages(90) if coordinator != null else []
 	return logs.size()
 
 
 func _runtime_public_log_slice_has_secret(main: Node, start_index: int, needles: Array) -> bool:
-	var logs_variant: Variant = main.get("log_lines")
-	var logs: Array = logs_variant if logs_variant is Array else []
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	var logs: Array = coordinator.presentation_recent_public_log_messages(90) if coordinator != null else []
 	for i in range(maxi(0, start_index), logs.size()):
 		var line := String(logs[i])
 		for needle_variant in needles:

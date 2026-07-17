@@ -1,0 +1,345 @@
+{
+  "schema_version": 1,
+  "status": "analysis_complete",
+  "audit_baseline": "89d541d547a5839de14ecdcf2fede87b357fc905",
+  "scope": "table_presentation_source_target_cutover",
+  "scheduler": {
+    "scene": "res://scenes/runtime/TablePresentationRefreshScheduler.tscn",
+    "script": "res://scripts/runtime/table_presentation_refresh_scheduler.gd",
+    "owner_path": "GameRuntimeCoordinator/TablePresentationRefreshScheduler",
+    "cadence_only": true,
+    "receipt_is_typed": false,
+    "receipt_fields": ["advanced", "real_delta", "due", "advance_count", "revision"],
+    "ordered_kinds": ["live", "map", "full", "developer"],
+    "interval_seconds": {
+      "live": 0.18,
+      "map": 0.16,
+      "full": 1.8,
+      "developer": 1.8
+    },
+    "semantics": {
+      "session_finished": "no_advance",
+      "global_time_blocked": "advance_with_real_delta",
+      "ordinary_pause": "no_advance",
+      "running": "advance_with_real_delta",
+      "developer_hidden": "developer_accumulator_frozen",
+      "large_delta": "each_kind_at_most_once",
+      "initial_advance": ["live", "map", "full"],
+      "initial_developer_when_visible": true,
+      "reset_table_cadence": ["live", "map", "full"],
+      "request_immediate": "sets_only_requested_kind_remaining_to_zero"
+    },
+    "evidence": [
+      "scripts/runtime/table_presentation_refresh_scheduler.gd:5-74",
+      "scripts/runtime/game_runtime_coordinator.gd:3452-3469",
+      "scripts/main.gd:576-657"
+    ]
+  },
+  "main_roots": {
+    "combined_call_graph_closure_method_count": 250,
+    "closure_counts": {
+      "_runtime_table_snapshot_source": 195,
+      "_refresh_live_ui": 206,
+      "_refresh_board": 15,
+      "_refresh_ui": 247,
+      "_refresh_developer_balance_greybox": 2,
+      "_update_victory_control": 248
+    },
+    "verdict": "do_not_copy_closure_into_replacement_monolith"
+  },
+  "pipelines": [
+    {
+      "kind": "live",
+      "order": [
+        "Main._process",
+        "GameRuntimeCoordinator.advance_presentation_refresh_cadence",
+        "TablePresentationRefreshScheduler.advance",
+        "Main._refresh_live_ui",
+        "Main._refresh_bottom_countdown_bar",
+        "Main._sync_runtime_game_screen",
+        "Main._runtime_table_snapshot_source",
+        "GameTableViewModelRuntimeService.compose_table_source",
+        "GameScreen.apply_state"
+      ],
+      "evidence": ["scripts/main.gd:585-598", "scripts/main.gd:644-657", "scripts/main.gd:7817-7829", "scripts/main.gd:1824-1840"]
+    },
+    {
+      "kind": "map",
+      "order": [
+        "TablePresentationRefreshScheduler.advance",
+        "Main._refresh_board",
+        "Main._set_map_view_data",
+        "PlanetMapView.set_map",
+        "PlanetMapView.set_solar_presentation_snapshot",
+        "PlanetMapView.set_weather_overlay_view_model"
+      ],
+      "evidence": ["scripts/main.gd:9162-9197", "scripts/ui/planet_map_view.gd:118-150"]
+    },
+    {
+      "kind": "full",
+      "order": [
+        "Main._refresh_ui",
+        "TablePresentationRefreshScheduler.reset_table_cadence",
+        "Main._refresh_menu_layout_if_visible",
+        "Main._refresh_board",
+        "Main._refresh_map_controls",
+        "Main._refresh_district_supply_overlay",
+        "Main._refresh_bottom_countdown_bar",
+        "Main._sync_runtime_game_screen"
+      ],
+      "evidence": ["scripts/main.gd:7806-7814"]
+    },
+    {
+      "kind": "developer",
+      "order": [
+        "Main._refresh_developer_balance_greybox",
+        "DeveloperBalancePanel.set_diagnostics_service",
+        "DeveloperBalancePanel.refresh_report",
+        "GameplayBalanceDiagnosticsRuntimeService.build_developer_panel_snapshot",
+        "DeveloperBalancePanel.set_report"
+      ],
+      "evidence": ["scripts/main.gd:1793-1821", "scripts/ui/developer_balance_panel.gd:10-45"]
+    },
+    {
+      "kind": "victory_state_change",
+      "order": [
+        "Main._update_victory_control.before_state",
+        "GameRuntimeCoordinator.advance_victory_control",
+        "VictoryControlRuntimeController.advance_world_effective",
+        "Main._update_victory_control.after_state",
+        "Main._log",
+        "Main._refresh_ui"
+      ],
+      "evidence": ["scripts/main.gd:4577-4590", "scripts/runtime/game_runtime_coordinator.gd:950-958"]
+    },
+    {
+      "kind": "victory_outcome",
+      "order": [
+        "GameRuntimeCoordinator._apply_victory_outcome_receipt",
+        "VictoryControlWorldBridge.apply_outcome_receipt",
+        "Main._on_victory_outcome_applied",
+        "FinalSettlementRuntimeComposition.present",
+        "AiRuntimeController.finalize_victory_outcome_learning",
+        "Main._log_optional"
+      ],
+      "evidence": ["scripts/runtime/game_runtime_coordinator.gd:1364-1372", "scripts/runtime/victory_control_world_bridge.gd:118-129", "scripts/main.gd:13926-13948"]
+    }
+  ],
+  "source_assembly": {
+    "root": "scripts/main.gd:7824-7851",
+    "builders": [
+      {"symbol": "_runtime_top_bar_snapshot_source", "evidence": "scripts/main.gd:7867-7884"},
+      {"symbol": "_runtime_player_board_snapshot_source", "evidence": "scripts/main.gd:7908-7931"},
+      {"symbol": "_runtime_temporary_decision_snapshot_source", "evidence": "scripts/main.gd:7934-7952"},
+      {"symbol": "_runtime_card_viewmodel_source", "evidence": "scripts/main.gd:8561-8573"},
+      {"symbol": "_runtime_hand_card_fact_sources", "evidence": "scripts/main.gd:8587-8602"},
+      {"symbol": "_runtime_card_track_model_source", "evidence": "scripts/main.gd:8605-8628"},
+      {"symbol": "_runtime_selected_district_snapshot_source", "evidence": "scripts/main.gd:8665-8745"},
+      {"symbol": "_runtime_planet_snapshot_source", "evidence": "scripts/main.gd:8762-8787"},
+      {"symbol": "_runtime_public_log_snapshot", "evidence": "scripts/main.gd:9002-9013"},
+      {"symbol": "_set_map_view_data", "evidence": "scripts/main.gd:9170-9197"}
+    ],
+    "existing_normalizer": "res://scripts/runtime/game_table_viewmodel_runtime_service.gd",
+    "existing_normalizer_is_source_owner": false,
+    "existing_normalizer_debug_claim_inaccurate": "legacy_main_snapshot_assembly_active=false"
+  },
+  "typed_source_risk": {
+    "blocked_capability": "viewer_scoped_read_only_world_presentation_query",
+    "world_session_mutable_collections": ["players", "districts"],
+    "world_session_internal_snapshot_is_private_full_state": true,
+    "evidence": ["scripts/runtime/world_session_state.gd:14-24", "scripts/runtime/world_session_state.gd:87-94"],
+    "required_resolution": "bind TablePresentationSourceOwner to narrow typed public and current-viewer projections; do not inject WorldSessionState collections"
+  },
+  "targets": [
+    {
+      "name": "GameScreen",
+      "current_api": "apply_state(Dictionary)",
+      "evidence": "scripts/ui/game_screen.gd:131-162",
+      "issue": "untyped full table state; live and full scopes not separated"
+    },
+    {
+      "name": "PlanetBoard",
+      "current_api": "set_board_state(Dictionary)",
+      "evidence": "scripts/ui/planet_board.gd:65-88",
+      "issue": "map data bypasses board target"
+    },
+    {
+      "name": "PlanetMapView",
+      "current_api": "set_map(13 arguments) plus separate solar/weather calls",
+      "evidence": "scripts/ui/planet_map_view.gd:118-150",
+      "issue": "legacy multi-argument untyped target"
+    },
+    {
+      "name": "DeveloperBalancePanel",
+      "current_api": "set_diagnostics_service + refresh_report",
+      "evidence": "scripts/ui/developer_balance_panel.gd:38-45",
+      "issue": "UI pulls service rather than accepting gated snapshot"
+    },
+    {
+      "name": "PublicLog",
+      "current_api": "Main._log + Main.log_lines",
+      "evidence": "scripts/main.gd:406,14260-14264",
+      "issue": "no scene-owned typed exact-once owner"
+    }
+  ],
+  "immediate_full_refresh_callers": [
+    "_guess_card_resolution_owner_for_player",
+    "_on_map_control_toolbar_action_requested",
+    "_update_victory_control",
+    "_close_menu",
+    "_load_run_from_menu",
+    "_apply_run_domain_state_compatibility_adapter",
+    "_save_settings",
+    "_new_game",
+    "_toggle_pause",
+    "_mark_selected_city_guess",
+    "_preview_district_card",
+    "_select_district_card_for_quote",
+    "_close_district_supply_overlay",
+    "_open_district_supply_from_map",
+    "_preview_v06_facility_card",
+    "_on_district_supply_action_requested",
+    "_select_player",
+    "_select_district",
+    "_begin_target_monster_choice",
+    "_begin_target_player_choice",
+    "_cancel_pending_target_choice",
+    "_cancel_pending_player_target_choice",
+    "_choose_pending_target_monster",
+    "_choose_pending_target_player",
+    "_cycle_district",
+    "_set_configured_player_count",
+    "_set_configured_ai_player_count",
+    "_set_configured_roguelike_depth",
+    "_set_configured_role_for_player",
+    "_set_configured_starter_monster_for_player",
+    "_claim_district_card",
+    "_cycle_selected_district_card",
+    "_move_card_within_group",
+    "_set_selected_player_card_group_ready",
+    "_cancel_discard_purchase",
+    "_confirm_discard_purchase",
+    "_buy_selected_skill",
+    "_buy_card_for_player_from_district"
+  ],
+  "immediate_map_refresh_callers": [
+    "_set_map_layer_focus",
+    "_on_map_control_toolbar_action_requested",
+    "_open_fullscreen_map",
+    "_close_fullscreen_map",
+    "_toggle_selected_trade_route",
+    "_cycle_trade_product"
+  ],
+  "domain_main_dependencies": [
+    {
+      "path": "scripts/runtime/contract_runtime_world_bridge.gd",
+      "methods": ["_refresh_ui", "_log"],
+      "evidence": ["scripts/runtime/contract_runtime_world_bridge.gd:303-310"]
+    },
+    {
+      "path": "scripts/runtime/military_runtime_controller.gd",
+      "methods": ["_refresh_ui", "_log"],
+      "evidence": ["scripts/runtime/military_runtime_controller.gd:633", "scripts/runtime/military_runtime_controller.gd:750", "scripts/runtime/military_runtime_controller.gd:1030"]
+    },
+    {
+      "path": "scripts/runtime/monster_runtime_controller.gd",
+      "methods": ["_refresh_ui", "_log"],
+      "evidence": ["scripts/runtime/monster_runtime_controller.gd:5333", "scripts/runtime/monster_runtime_controller.gd:5405-5406"]
+    },
+    {
+      "path": "scripts/runtime/ai_runtime_controller.gd",
+      "methods": ["indirect_monster_refresh_ui"],
+      "evidence": ["scripts/runtime/ai_runtime_controller.gd:1003-1004"]
+    },
+    {
+      "path": "scripts/runtime/weather_runtime_controller.gd",
+      "methods": ["_log"],
+      "evidence": ["scripts/runtime/weather_runtime_controller.gd:1024"]
+    }
+  ],
+  "connections_and_discovery": {
+    "production_tscn_connections_to_main": [
+      {
+        "signal": "FinalSettlementRuntimeComposition.public_log_entry_requested",
+        "target": "Main._log",
+        "evidence": "scenes/main.tscn:69"
+      }
+    ],
+    "dynamic_target_operations": ["get_node_or_null", "find_child", "has_method", "call", "Callable signal binding"],
+    "production_current_scene_presentation_lookup_found": false,
+    "production_root_main_presentation_lookup_found": false,
+    "action_routing_out_of_scope": [
+      "GameScreen action/card signals to Main",
+      "PlanetMapView district selection signals to Main"
+    ]
+  },
+  "public_log": {
+    "current_owner": "Main.log_lines",
+    "append_api": "Main._log",
+    "snapshot_api": "Main._runtime_public_log_snapshot",
+    "final_settlement_signal_targets_main": true,
+    "exact_once_lineage": false
+  },
+  "victory": {
+    "authoritative_owner": "VictoryControlRuntimeController",
+    "public_projection_exists": true,
+    "main_before_after_comparison_active": true,
+    "internal_outcome_callback_to_main_active": true,
+    "required_split": [
+      "visibility_safe VictoryPresentationStateChangeReceipt",
+      "scene-owned public log and immediate refresh consumer",
+      "non-presentation AI outcome learning path"
+    ]
+  },
+  "classification": [
+    {"concern": "cadence", "current_owner": "TablePresentationRefreshScheduler", "classification": "scene_owned_retain"},
+    {"concern": "receipt_application", "current_owner": "Main._process", "classification": "main_blocker"},
+    {"concern": "live_full_snapshot_source", "current_owner": "Main_250_method_closure", "classification": "main_blocker"},
+    {"concern": "map_snapshot_source", "current_owner": "Main._set_map_view_data", "classification": "main_blocker"},
+    {"concern": "game_screen_target", "current_owner": "Main_dynamic_call", "classification": "main_blocker"},
+    {"concern": "planet_target", "current_owner": "Main_dynamic_call", "classification": "main_blocker"},
+    {"concern": "developer_target", "current_owner": "Main_and_diagnostics_service", "classification": "split"},
+    {"concern": "public_log", "current_owner": "Main", "classification": "main_blocker"},
+    {"concern": "victory_authority", "current_owner": "VictoryControlRuntimeController", "classification": "scene_owned_retain"},
+    {"concern": "victory_presentation", "current_owner": "Main", "classification": "main_blocker"},
+    {"concern": "input_action_routing", "current_owner": "Main", "classification": "out_of_scope"},
+    {"concern": "stale_tests", "current_owner": "tests", "classification": "dead_compatibility_do_not_restore"}
+  ],
+  "minimum_typed_apis": {
+    "source_owner": [
+      "build_live_snapshot(viewer, source_revision)",
+      "build_full_snapshot(viewer, source_revision)",
+      "build_map_snapshot(viewer, source_revision)",
+      "build_developer_snapshot(source_revision)"
+    ],
+    "refresh_port": [
+      "apply_ordered_refresh_receipts(receipts)",
+      "request_refresh(typed_invalidation_request)"
+    ],
+    "targets": [
+      "apply_live_presentation(TableLivePresentationSnapshot)",
+      "apply_full_presentation(TableFullPresentationSnapshot)",
+      "apply_map_presentation(MapPresentationSnapshot)",
+      "apply_developer_presentation(DeveloperBalancePresentationSnapshot)"
+    ],
+    "victory_and_log": [
+      "advance_victory_and_collect_presentation(delta)",
+      "apply_victory_presentation(VictoryPresentationStateChangeReceipt)",
+      "append_public_event(PublicLogPresentationEvent)"
+    ]
+  },
+  "negative_requirements": [
+    "no Main reference or callback",
+    "no mutable full players or districts injection",
+    "no replacement monolith",
+    "no dynamic Object target or method-name string",
+    "no new and legacy dual refresh",
+    "no current_scene or /root/Main discovery",
+    "no gameplay mutation in source, port or targets"
+  ],
+  "stale_test_debt": [
+    "tests/human_normal_table_playability_v06_test.gd",
+    "tests/layout_scene_smoke_test.gd",
+    "tests/smoke_test.gd"
+  ]
+}

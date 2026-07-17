@@ -1,0 +1,338 @@
+{
+  "schema_version": "table-presentation-privacy-review.v1",
+  "review_status": "pre_implementation_blockers_identified",
+  "cutover_status_allowed": false,
+  "scope": [
+    "table_live",
+    "table_full",
+    "map",
+    "developer",
+    "victory_state_change",
+    "public_log"
+  ],
+  "mandatory_visibility_scopes": [
+    "public",
+    "viewer_private",
+    "developer_only"
+  ],
+  "blocking_findings": [
+    {
+      "id": "mutable_world_state_source",
+      "severity": "blocker",
+      "evidence": "WorldSessionState exposes complete mutable players/districts; no broad presentation owner may bind them.",
+      "required_fix": "Provide typed read-only public and viewer-private projections before TablePresentationSourceOwner composition."
+    },
+    {
+      "id": "main_private_authorization",
+      "severity": "blocker",
+      "evidence": "Main._can_view_player_private_hand authorizes any non-AI seat and Main._runtime_snapshot_player_index uses selection/inspection fallbacks.",
+      "required_fix": "Require explicit locally-authorized viewer_player_index == subject_player_index and bind the target to that viewer."
+    },
+    {
+      "id": "mixed_public_private_log",
+      "severity": "blocker",
+      "evidence": "Main._runtime_public_log_snapshot reads one log_lines buffer that also receives private guess, intel, discard and purchase feedback.",
+      "required_fix": "Use typed public-log receipts and a separate viewer-private feedback target; do not sanitize the mixed buffer into public state."
+    },
+    {
+      "id": "raw_card_track_entry",
+      "severity": "blocker",
+      "evidence": "Main._runtime_enriched_card_track_entry duplicates the raw queue entry, including true player_index, before late UI redaction.",
+      "required_fix": "Construct a strict public track allowlist from an authoritative viewer/public projection before the source boundary."
+    },
+    {
+      "id": "developer_release_gate",
+      "severity": "high",
+      "evidence": "The current developer panel can be enabled by environment variable alone.",
+      "required_fix": "Require an explicit debug/developer build capability plus opt-in; keep the target absent/disabled in release composition."
+    }
+  ],
+  "viewer_private_binding": {
+    "required_fields": [
+      "visibility_scope",
+      "viewer_player_index",
+      "subject_player_index",
+      "viewer_revision",
+      "viewer_authorized"
+    ],
+    "required_predicates": [
+      "visibility_scope == viewer_private",
+      "viewer_authorized == true",
+      "viewer_player_index >= 0",
+      "viewer_player_index == subject_player_index",
+      "target.viewer_player_index == viewer_player_index"
+    ],
+    "not_authority": [
+      "not_ai",
+      "selected_player",
+      "inspected_player",
+      "hovered_player",
+      "first_human_player",
+      "session_finished"
+    ]
+  },
+  "forbidden_key_families": {
+    "rival_economy": [
+      "cash",
+      "cash_cents",
+      "cash_ledger_cents",
+      "available_cash",
+      "escrow_cash",
+      "private_income_ledger",
+      "private_spend_ledger"
+    ],
+    "hand_discard": [
+      "hand",
+      "hand_cards",
+      "hand_count",
+      "hand_size",
+      "ordinary_hand_count",
+      "discard",
+      "discard_choice",
+      "discard_card"
+    ],
+    "ownership_truth": [
+      "hidden_owner",
+      "hidden_owner_id",
+      "true_owner",
+      "owner_truth",
+      "private_owner",
+      "owner_actor_id",
+      "unrevealed_owner_player_index"
+    ],
+    "anonymous_actor_truth": [
+      "actor_player_index",
+      "source_player_index",
+      "submitted_by",
+      "played_by",
+      "unrevealed_queue_player_index"
+    ],
+    "private_target": [
+      "private_target",
+      "target_player_binding",
+      "unrevealed_target_player_index",
+      "private_target_options"
+    ],
+    "ai_learning": [
+      "ai_plan",
+      "ai_reason",
+      "ai_utility_score",
+      "route_plan_score",
+      "pressure_bucket",
+      "decision_samples",
+      "learning_bonus",
+      "candidate_weights",
+      "score_decomposition"
+    ],
+    "internal_lineage": [
+      "transaction_fingerprint",
+      "inventory_instance_id",
+      "private_receipt_id",
+      "source_installation_id",
+      "source_factory_id",
+      "hidden_facility_id",
+      "save_owner_key",
+      "private_replay_lineage"
+    ],
+    "obscured_commodity_identity": [
+      "card_id",
+      "commodity_id",
+      "commodity_name",
+      "name_key",
+      "rank",
+      "art_key",
+      "effect",
+      "tooltip",
+      "accessible_text",
+      "identity_encoded_action_id",
+      "stable_internal_instance_id"
+    ]
+  },
+  "snapshot_contracts": {
+    "public_live": {
+      "allowed": [
+        "schema_version",
+        "visibility_scope",
+        "source_revision",
+        "public_table_phase",
+        "public_clock",
+        "public_countdowns",
+        "public_weather",
+        "public_selected_region",
+        "public_region_status",
+        "public_card_track",
+        "public_forced_decision_summary",
+        "public_action_availability",
+        "public_log_entries"
+      ],
+      "forbidden": [
+        "rival_cash",
+        "rival_hand",
+        "rival_hand_count",
+        "private_purchase_state",
+        "private_target_or_discard_actions",
+        "is_viewer_card",
+        "raw_queue_entry",
+        "raw_skill",
+        "developer_diagnostics"
+      ]
+    },
+    "viewer_private_live": {
+      "allowed": [
+        "visibility_scope",
+        "viewer_player_index",
+        "subject_player_index",
+        "viewer_revision",
+        "own_cash",
+        "own_gdp",
+        "own_goal_progress",
+        "own_hand_card_viewmodels",
+        "own_legal_actions",
+        "own_discard_target_contract_decision",
+        "own_purchase_quote_status",
+        "own_map_guesses",
+        "own_selected_card_state"
+      ]
+    },
+    "map_public": {
+      "allowed": [
+        "public_region_id_or_index",
+        "public_geometry",
+        "terrain",
+        "integrity_or_ruin_state",
+        "authorized_public_facility_facts",
+        "public_weather",
+        "public_solar",
+        "public_unit_markers",
+        "public_visual_cues",
+        "public_actual_or_recent_routes",
+        "public_selection_focus"
+      ],
+      "forbidden": [
+        "hidden_city_owner",
+        "hidden_monster_owner",
+        "hidden_unit_owner",
+        "supplier_identity",
+        "route_candidate",
+        "future_route_plan",
+        "private_economic_attribution",
+        "ai_target_or_path_score"
+      ]
+    },
+    "developer_only": {
+      "required_gate": "debug_build_capability_and_local_opt_in",
+      "allowed": [
+        "sanitized_aggregate_balance_metrics",
+        "source_revision",
+        "diagnostic_version",
+        "test_dev_health_counters"
+      ],
+      "must_not_enter": [
+        "table_live",
+        "table_full",
+        "map",
+        "public_log",
+        "save",
+        "replay",
+        "release_target"
+      ]
+    }
+  },
+  "victory_presentation_receipt_allowlist": [
+    "schema_version",
+    "public_event_id",
+    "revision",
+    "sequence",
+    "visibility_scope",
+    "change_kind",
+    "public_state",
+    "public_player_identifiers",
+    "public_region_identifiers",
+    "qualification_remaining_seconds",
+    "audit_remaining_seconds",
+    "cooldown_remaining_seconds",
+    "public_result_code",
+    "localization_key",
+    "allowlisted_format_values",
+    "immediate_refresh_mask"
+  ],
+  "victory_cash_disclosure_predicates": [
+    "cash_visibility == public_audit",
+    "player_index in audit_revealed_player_indices",
+    "cash value originates from Victory public projection"
+  ],
+  "public_log_receipt_allowlist": [
+    "schema_version",
+    "public_event_id",
+    "sequence",
+    "public_timestamp",
+    "visibility_scope",
+    "event_kind",
+    "localization_key",
+    "event_specific_allowlisted_values",
+    "explicitly_revealed_public_identifiers"
+  ],
+  "obscured_commodity_allowlist": [
+    "belt_position",
+    "motion_or_progress",
+    "commodity_color",
+    "generic_redacted_copy"
+  ],
+  "serialization": {
+    "forbidden_types": [
+      "Node",
+      "Object",
+      "Resource",
+      "RID",
+      "Callable"
+    ],
+    "detached_nested_values_required": true,
+    "public_private_cache_separation_required": true,
+    "private_cache_key_requires_viewer_revision": true,
+    "cache_is_not_saved": true,
+    "cache_is_not_gameplay_authority": true
+  },
+  "required_privacy_tests": [
+    "public_live_rejects_rival_cash",
+    "public_live_rejects_rival_hand",
+    "public_live_rejects_rival_hand_count",
+    "public_full_rejects_rival_discard",
+    "map_rejects_hidden_owner_truth",
+    "public_track_rejects_true_anonymous_actor",
+    "public_track_rejects_is_viewer_card",
+    "public_rejects_private_target_binding",
+    "public_rejects_ai_learning_fields_recursively",
+    "obscured_commodity_is_color_only",
+    "obscured_accessibility_and_actions_do_not_encode_identity",
+    "viewer_a_snapshot_rejected_by_viewer_b_target",
+    "viewer_cache_isolated",
+    "selection_does_not_authorize_private_state",
+    "map_own_guess_unknown_without_owner_truth",
+    "route_snapshot_has_no_supplier_identity",
+    "developer_target_disabled_in_release",
+    "developer_data_absent_from_player_snapshots",
+    "victory_receipt_exact_allowlist",
+    "resolved_state_does_not_reveal_unauthorized_cash",
+    "audit_cash_requires_all_authoritative_predicates",
+    "public_log_rejects_mixed_main_text",
+    "victory_public_log_exact_once",
+    "duplicate_stale_public_log_rejected",
+    "snapshot_contains_no_runtime_objects",
+    "snapshot_is_detached_from_source",
+    "public_track_redacted_before_ui",
+    "no_main_or_service_locator_dependency"
+  ],
+  "green_requirements": [
+    "no_source_access_to_complete_mutable_player_or_district_state",
+    "public_and_viewer_private_typed_contracts_are_separate",
+    "viewer_subject_target_equality_enforced_at_source_and_port",
+    "public_track_pre_redacted_before_game_screen",
+    "public_log_does_not_read_main_log_lines",
+    "private_feedback_has_separate_viewer_target",
+    "developer_target_is_non_release_and_optional",
+    "victory_cash_uses_authoritative_audit_allowlist_only",
+    "obscured_commodity_is_color_only",
+    "all_outputs_are_detached_presentation_data",
+    "privacy_violation_count_is_zero"
+  ]
+}

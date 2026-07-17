@@ -824,7 +824,7 @@ func _case_public_private_boundary() -> Dictionary:
 	_seed_runtime_rng(30019)
 	var source_before := _player_probe(0)
 	var target_before := _player_probe(1)
-	var logs_before: Array = (_runtime_main.get("log_lines") as Array).duplicate()
+	var logs_before: Array = (_coordinator() as GameRuntimeCoordinator).presentation_recent_public_log_messages(90)
 	var actor_name := str(_player(0).get("name", ""))
 	var applied := bool(_runtime_main.call("_apply_player_hand_steal", 0, 1, steal_skill)) if not steal_skill.is_empty() else false
 	var source_after := _player_probe(0)
@@ -1227,7 +1227,7 @@ func _seed_runtime_rng(seed_value: int) -> void:
 
 
 func _public_logs_hide_private_values(start_index: int, private_values: Array) -> bool:
-	var logs: Array = _runtime_main.get("log_lines") as Array
+	var logs: Array = (_coordinator() as GameRuntimeCoordinator).presentation_recent_public_log_messages(90)
 	for index in range(maxi(0, start_index), logs.size()):
 		var line := str(logs[index])
 		for value_variant in private_values:

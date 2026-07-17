@@ -1533,7 +1533,7 @@ func _reset_runtime_main() -> void:
 	_runtime_main.set("resolved_card_history", [])
 	if _contract_controller() != null:
 		_contract_controller().call("reset_state")
-	_runtime_main.set("log_lines", [])
+	(_coordinator() as GameRuntimeCoordinator).reset_public_log()
 	_runtime_main.set("action_callouts", [])
 	_runtime_main.set("runtime_visual_events", [])
 	_runtime_main.set("runtime_visual_event_counter", 0)
@@ -1720,9 +1720,7 @@ func _array_size(property_name: String) -> int:
 
 
 func _logs_contain(fragment: String) -> bool:
-	var value: Variant = _runtime_main.get("log_lines")
-	if not (value is Array):
-		return false
+	var value: Array = (_coordinator() as GameRuntimeCoordinator).presentation_recent_public_log_messages(90)
 	for line_variant in value:
 		if str(line_variant).contains(fragment):
 			return true

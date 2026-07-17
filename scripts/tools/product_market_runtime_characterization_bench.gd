@@ -1010,9 +1010,9 @@ func _case_tick_order() -> Dictionary:
 func _case_empty_city_tick() -> Dictionary:
 	_set_no_active_cities()
 	_set_market_property("business_cycle_count", 0)
-	_runtime_main.set("log_lines", [])
+	(_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).reset_public_log()
 	_market_controller.call("market_tick")
-	var logs := "\n".join(_string_array(_runtime_main.get("log_lines") as Array))
+	var logs := "\n".join(_string_array((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).presentation_recent_public_log_messages(90)))
 	var observed := int(_market_state().get("business_cycle_count", 0)) == 1 and logs.contains("没有存活城市群")
 	return _record("no_active_city_safe_tick", observed, observed, "An empty-city refresh increments the cycle, revalues public supply/demand, and logs the safe state without crashing.", {"cycle_before": 0, "cycle_after": 1})
 
@@ -1296,7 +1296,7 @@ func _reset_fixture() -> void:
 	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).inspected_player = 0
 	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = SAMPLE_PRODUCT
 	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = _fixture_district_index()
-	_runtime_main.set("log_lines", [])
+	(_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).reset_public_log()
 	_runtime_main.set("action_callouts", [])
 	_runtime_main.set("map_event_effects", [])
 	_runtime_main.set("movement_trails", [])

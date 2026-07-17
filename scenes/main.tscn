@@ -66,4 +66,5 @@ editor_description = "Explicit host for compatibility fallbacks created only whe
 
 [connection signal="action_requested" from="RuntimeServices/FinalSettlementRuntimeComposition" to="." method="_on_menu_quick_nav_action_requested"]
 [connection signal="menu_open_requested" from="RuntimeServices/FinalSettlementRuntimeComposition" to="." method="_show_menu"]
-[connection signal="public_log_entry_requested" from="RuntimeServices/FinalSettlementRuntimeComposition" to="." method="_log"]
+[connection signal="public_log_receipt_requested" from="RuntimeServices/FinalSettlementRuntimeComposition" to="RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator" method="append_public_log_receipt"]
+[connection signal="victory_presentation_receipt_ready" from="RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator" to="RuntimeServices/FinalSettlementRuntimeComposition" method="present_victory_receipt"]

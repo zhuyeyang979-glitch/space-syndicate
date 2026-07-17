@@ -1,0 +1,54 @@
+{
+  "status": "TABLE_PRESENTATION_QUERY_PORTS_CUTOVER_GREEN",
+  "date": "2026-07-17",
+  "runtime_loop_created": false,
+  "source_target_cutover_started": false,
+  "owner_scene": "res://scenes/runtime/presentation/TablePresentationQueryPorts.tscn",
+  "owner_script": "res://scripts/presentation/table_presentation_query_ports.gd",
+  "production_path": "Main/RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/TablePresentationQueryPorts",
+  "owners": [
+    "LocalViewerAuthorization",
+    "WorldSessionPresentationQuery",
+    "TableActionPresentationQuery",
+    "TablePublicMapQuery",
+    "PublicLogPresentationOwner",
+    "PublicLogProducerPort",
+    "VictoryPresentationReceiptService"
+  ],
+  "removed_main_symbols": [
+    "log_lines",
+    "_on_victory_outcome_applied",
+    "_city_markers_for_selected_player",
+    "_trade_route_markers_for_selected_product",
+    "_auto_monster_markers",
+    "_auto_monster_color"
+  ],
+  "removed_dynamic_bridge_symbols": [
+    "VictoryControlWorldBridge.apply_outcome_receipt"
+  ],
+  "privacy_violation_count": 0,
+  "duplicate_public_log_count_in_acceptance": 0,
+  "main_fallback_count": 0,
+  "tests": {
+    "table_presentation_query_ports_cutover_test": "PASS 28/28",
+    "TablePresentationQueryPortsBench": "PASS 10/10",
+    "main_gd_architecture_gate_test": "PASS 52",
+    "final_settlement_runtime_composition_v06_test": "PASS 7/7",
+    "main_victory_public_privacy_v06_test": "PASS 21/21",
+    "main_runtime_composition_test": "PASS",
+    "ui_text_smoke_test": "PASS",
+    "smoke_check_only": "PASS",
+    "full_smoke": "BOUNDED_TIMEOUT_5_MINUTES_NO_RESULT"
+  },
+  "main_budget_after": {
+    "physical_lines": 14116,
+    "nonblank_lines": 12280,
+    "methods": 856,
+    "top_level_variables": 76,
+    "constants": 110,
+    "top_level_preloads": 15,
+    "external_caller_files": 102,
+    "external_call_occurrences": 1598
+  },
+  "next_boundary": "TABLE_PRESENTATION_SOURCE_TARGET_CUTOVER"
+}

@@ -14,8 +14,6 @@ var _product_market_controller: Node
 var _city_gdp_derivative_controller: Node
 var _military_controller: Node
 var _capture_count := 0
-var _apply_count := 0
-var _applied_outcome_ids: Dictionary = {}
 
 
 func bind_world(world: Node) -> void:
@@ -45,8 +43,6 @@ func has_world() -> bool:
 
 func reset_state() -> void:
 	_capture_count = 0
-	_apply_count = 0
-	_applied_outcome_ids = {}
 
 
 func capture_world_snapshot(clock_pause: Dictionary = {}, settlement_checkpoint := "read_only") -> Dictionary:
@@ -115,28 +111,11 @@ func capture_world_snapshot(clock_pause: Dictionary = {}, settlement_checkpoint 
 	}
 
 
-func apply_outcome_receipt(receipt: Dictionary) -> Dictionary:
-	if not has_world() or not _is_data_only(receipt):
-		return {"applied": false, "reason": "world_or_receipt_invalid"}
-	var outcome_id := str(receipt.get("outcome_id", ""))
-	if outcome_id.is_empty():
-		return {"applied": false, "reason": "outcome_id_missing"}
-	if _applied_outcome_ids.has(outcome_id):
-		return {"applied": true, "duplicate": true, "outcome_id": outcome_id}
-	_applied_outcome_ids[outcome_id] = true
-	_apply_count += 1
-	if _world.has_method("_on_victory_outcome_applied"):
-		_world.call("_on_victory_outcome_applied", receipt.duplicate(true))
-	return {"applied": true, "duplicate": false, "outcome_id": outcome_id}
-
-
 func debug_snapshot() -> Dictionary:
 	return {
 		"bridge_id": BRIDGE_ID,
 		"bridge_ready": has_world() and _region_infrastructure_controller != null and _commodity_flow_controller != null,
 		"capture_count": _capture_count,
-		"apply_count": _apply_count,
-		"applied_outcome_count": _applied_outcome_ids.size(),
 		"owns_gdp_formula": false,
 		"region_lifecycle_source": "RegionInfrastructureRuntimeController",
 		"gdp_source": "CommodityFlowRuntimeController.sale_receipts",

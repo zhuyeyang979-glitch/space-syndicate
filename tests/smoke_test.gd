@@ -2350,7 +2350,7 @@ func _verify_role_passive_runtime(main: Node) -> bool:
 		return false
 	var saved_player := (players[0] as Dictionary).duplicate(true)
 	var saved_district := (districts[district_index] as Dictionary).duplicate(true)
-	var saved_logs := _as_array(main.get("log_lines")).duplicate(true)
+	var saved_logs := _public_log_messages(main).duplicate(true)
 	var saved_callouts := _visual_cue_array(main, "action_callouts").duplicate(true)
 	var test_player := saved_player.duplicate(true)
 	test_player["cash"] = 1000
@@ -2391,7 +2391,7 @@ func _verify_role_passive_runtime(main: Node) -> bool:
 	districts[district_index] = saved_district
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
-	main.set("log_lines", saved_logs)
+	_replace_public_log_messages(main, saved_logs)
 	_set_visual_cue_array(main, "action_callouts", saved_callouts)
 	return passed
 
@@ -4503,7 +4503,7 @@ func _active_bound_skill_count_for_uid(players: Array, player_index: int, monste
 func _verify_field_monster_card_upgrade_refreshes_state(main: Node) -> bool:
 	var previous_players := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players).duplicate(true)
 	var previous_monsters := _as_array(main.get("auto_monsters")).duplicate(true)
-	var previous_logs := _as_array(main.get("log_lines")).duplicate(true)
+	var previous_logs := _public_log_messages(main).duplicate(true)
 	var previous_callouts := _visual_cue_array(main, "action_callouts").duplicate(true)
 	var previous_selected_player := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player)
 	var previous_selected_district := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
@@ -4538,7 +4538,7 @@ func _verify_field_monster_card_upgrade_refreshes_state(main: Node) -> bool:
 	monsters[0] = actor
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 	main.set("auto_monsters", monsters)
-	main.set("log_lines", [])
+	_replace_public_log_messages(main, [])
 	_set_visual_cue_array(main, "action_callouts", [])
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = owner
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = -1
@@ -4553,7 +4553,7 @@ func _verify_field_monster_card_upgrade_refreshes_state(main: Node) -> bool:
 	if after_monsters.is_empty():
 		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = previous_players
 		main.set("auto_monsters", previous_monsters)
-		main.set("log_lines", previous_logs)
+		_replace_public_log_messages(main, previous_logs)
 		_set_visual_cue_array(main, "action_callouts", previous_callouts)
 		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = previous_selected_player
 		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = previous_selected_district
@@ -4595,7 +4595,7 @@ func _verify_field_monster_card_upgrade_refreshes_state(main: Node) -> bool:
 		and int(damaged_actor.get("last_owner_damage_amount", 0)) == 1
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = previous_players
 	main.set("auto_monsters", previous_monsters)
-	main.set("log_lines", previous_logs)
+	_replace_public_log_messages(main, previous_logs)
 	_set_visual_cue_array(main, "action_callouts", previous_callouts)
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = previous_selected_player
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = previous_selected_district
@@ -4606,7 +4606,7 @@ func _verify_field_monster_card_upgrade_refreshes_state(main: Node) -> bool:
 func _verify_single_owned_monster_limit_and_rank_iv_refresh(main: Node) -> bool:
 	var previous_players := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players).duplicate(true)
 	var previous_monsters := _as_array(main.get("auto_monsters")).duplicate(true)
-	var previous_logs := _as_array(main.get("log_lines")).duplicate(true)
+	var previous_logs := _public_log_messages(main).duplicate(true)
 	var previous_callouts := _visual_cue_array(main, "action_callouts").duplicate(true)
 	var previous_selected_player := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player)
 	var previous_selected_district := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
@@ -4661,7 +4661,7 @@ func _verify_single_owned_monster_limit_and_rank_iv_refresh(main: Node) -> bool:
 		and is_equal_approx(float(refreshed_actor.get("duration", 0.0)), float(rank_four_card.get("duration", -2.0)))
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = previous_players
 	main.set("auto_monsters", previous_monsters)
-	main.set("log_lines", previous_logs)
+	_replace_public_log_messages(main, previous_logs)
 	_set_visual_cue_array(main, "action_callouts", previous_callouts)
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = previous_selected_player
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = previous_selected_district
@@ -6351,7 +6351,7 @@ func _log_after_marker_hides_player(main: Node, marker: String, card_name: Strin
 	var after_marker := false
 	var found_card := false
 	var visible_name := String(main.call("_card_display_name", card_name)) if main.has_method("_card_display_name") else ""
-	for line_variant in _as_array(main.get("log_lines")):
+	for line_variant in _public_log_messages(main):
 		var line := String(line_variant)
 		if line.contains(marker):
 			after_marker = true
@@ -6464,7 +6464,7 @@ func _callouts_contain(callouts: Array, needle: String) -> bool:
 
 
 func _log_contains(main: Node, needle: String) -> bool:
-	for line_variant in _as_array(main.get("log_lines")):
+	for line_variant in _public_log_messages(main):
 		if String(line_variant).contains(needle):
 			return true
 	return false
@@ -6906,7 +6906,10 @@ func _first_rival_city_index(main: Node, active_player_index: int) -> int:
 
 
 func _city_markers_include_unknown_rival(main: Node) -> bool:
-	for marker_variant in _as_array(main.call("_city_markers_for_selected_player")):
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	var viewer_index := coordinator.presentation_authorized_viewer_index() if coordinator != null else -1
+	var projection := coordinator.presentation_public_map_projection(viewer_index) if coordinator != null else TablePublicMapProjection.new()
+	for marker_variant in projection.city_markers:
 		var marker := marker_variant as Dictionary
 		if String(marker.get("tag", "")) == "?":
 			return true
@@ -7515,7 +7518,7 @@ func _as_string_array(items: Array) -> Array:
 func _verify_card_play_flow_gate_and_one_shot(main: Node, district_index: int) -> bool:
 	var previous_players := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players).duplicate(true)
 	var previous_districts := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts).duplicate(true)
-	var previous_log_lines := _as_array(main.get("log_lines")).duplicate(true)
+	var previous_log_lines := _public_log_messages(main).duplicate(true)
 	var previous_callouts := _visual_cue_array(main, "action_callouts").duplicate(true)
 	var previous_selected_player := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player)
 	var previous_selected_district := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
@@ -7605,7 +7608,7 @@ func _verify_card_play_flow_gate_and_one_shot(main: Node, district_index: int) -
 		and _player_cash(players_after_blocked, 0) == cash_before_blocked
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = previous_players
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = previous_districts
-	main.set("log_lines", previous_log_lines)
+	_replace_public_log_messages(main, previous_log_lines)
 	_set_visual_cue_array(main, "action_callouts", previous_callouts)
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = previous_selected_player
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = previous_selected_district
@@ -7619,7 +7622,7 @@ func _verify_realtime_gdp_directionality_pack(main: Node, district_index: int) -
 	var previous_market := _product_market_for_test(main)
 	var previous_selected_district := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
 	var previous_selected_product := String(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product)
-	var previous_log_lines := _as_array(main.get("log_lines")).duplicate(true)
+	var previous_log_lines := _public_log_messages(main).duplicate(true)
 	var ok := true
 	var districts := previous_districts.duplicate(true)
 	if district_index < 0 or district_index >= districts.size() or districts.size() < 2:
@@ -7773,7 +7776,7 @@ func _verify_realtime_gdp_directionality_pack(main: Node, district_index: int) -
 	_replace_product_market_for_test(main, previous_market)
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = previous_selected_district
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = previous_selected_product
-	main.set("log_lines", previous_log_lines)
+	_replace_public_log_messages(main, previous_log_lines)
 	main.call("_refresh_ui")
 	return ok
 
@@ -8195,7 +8198,7 @@ func _settle_all_active_monster_wagers(main: Node, reason: String) -> void:
 func _verify_special_monster_passives(main: Node) -> void:
 	var saved_auto_monsters := _as_array(main.get("auto_monsters")).duplicate(true)
 	var saved_special_monster_timer := float(main.get("special_monster_timer"))
-	var saved_log_lines := _as_array(main.get("log_lines")).duplicate(true)
+	var saved_log_lines := _public_log_messages(main).duplicate(true)
 	var saved_action_callouts := _visual_cue_array(main, "action_callouts").duplicate(true)
 	var start_district := maxi(0, int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district))
 
@@ -8228,7 +8231,7 @@ func _verify_special_monster_passives(main: Node) -> void:
 
 	main.set("auto_monsters", saved_auto_monsters)
 	main.set("special_monster_timer", saved_special_monster_timer)
-	main.set("log_lines", saved_log_lines)
+	_replace_public_log_messages(main, saved_log_lines)
 	_set_visual_cue_array(main, "action_callouts", saved_action_callouts)
 
 
@@ -8474,6 +8477,17 @@ func _reset_contract_runtime(main: Node) -> void:
 
 func _as_array(value: Variant) -> Array:
 	return value as Array if value is Array else []
+
+
+func _public_log_messages(main: Node) -> Array:
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	return coordinator.presentation_recent_public_log_messages(90) if coordinator != null else []
+
+
+func _replace_public_log_messages(main: Node, messages: Array) -> void:
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	if coordinator != null:
+		coordinator.import_legacy_public_log(messages)
 
 
 func _map_effects_contain(main: Node, kind: String) -> bool:

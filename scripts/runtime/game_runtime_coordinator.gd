@@ -2,6 +2,8 @@
 extends Node
 class_name GameRuntimeCoordinator
 
+signal victory_presentation_receipt_ready(receipt: VictoryPresentationStateChangeReceipt)
+
 const RULESET_V06_PROFILE := preload("res://resources/rules/space_syndicate_ruleset_v06.tres")
 const MONSTER_CARD_EFFECT_ADAPTER_V06 := preload("res://scripts/cards/v06/units/monster_card_effect_adapter_v06.gd")
 const AI_V06_ECONOMY_ACTION_PORT := preload("res://scripts/runtime/ai_v06_economy_action_port.gd")
@@ -36,6 +38,7 @@ func _ready() -> void:
 	_wire_card_execution_typed_ports()
 	_wire_card_resolution_transition_sink()
 	_wire_card_resolution_frame_driver()
+	_wire_table_presentation_query_ports()
 
 
 func configure(ruleset_snapshot: Dictionary) -> void:
@@ -48,6 +51,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	_wire_card_execution_typed_ports()
 	_wire_card_resolution_transition_sink()
 	_wire_card_resolution_frame_driver()
+	_wire_table_presentation_query_ports()
 	var world_clock := _world_effective_clock_runtime_controller_node()
 	if world_clock != null and world_clock.has_method("configure"):
 		world_clock.call("configure", {})
@@ -403,6 +407,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	if commodity_flow_bridge != null and commodity_flow_bridge.has_method("set_bankruptcy_estate_controller"):
 		commodity_flow_bridge.call("set_bankruptcy_estate_controller", bankruptcy_estate)
 	_last_v06_player_binding_result = refresh_v06_production_player_bindings()
+	_wire_table_presentation_query_ports()
 	var session_snapshot := _session_debug_snapshot()
 	var purchase_snapshot := _purchase_debug_snapshot()
 	var card_inventory_snapshot := _card_inventory_debug_snapshot()
@@ -954,6 +959,9 @@ func advance_victory_control(delta_seconds: float, clock_pause: Dictionary = {})
 	var world_snapshot := victory_control_world_snapshot(clock_pause, "post_world_settlement")
 	var value: Variant = controller.call("advance_world_effective", delta_seconds, world_snapshot)
 	var result: Dictionary = (value as Dictionary).duplicate(true) if value is Dictionary else {}
+	var query_ports := _table_presentation_query_ports_node()
+	if query_ports != null:
+		query_ports.capture_victory_advance(result)
 	_apply_victory_outcome_receipt(result.get("outcome_receipt", {}) as Dictionary if result.get("outcome_receipt", {}) is Dictionary else {})
 	return result
 
@@ -973,6 +981,79 @@ func victory_control_public_snapshot(viewer_index := -1) -> Dictionary:
 	var controller := _victory_control_runtime_controller_node()
 	var value: Variant = controller.call("public_snapshot", viewer_index) if controller != null and controller.has_method("public_snapshot") else {}
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func table_presentation_query_ports() -> TablePresentationQueryPorts:
+	return _table_presentation_query_ports_node()
+
+
+func presentation_authorized_viewer_index() -> int:
+	var ports := _table_presentation_query_ports_node()
+	return ports.authorized_viewer_index() if ports != null else -1
+
+
+func presentation_can_view_private_subject(subject_index: int) -> bool:
+	var ports := _table_presentation_query_ports_node()
+	var viewer_index := ports.authorized_viewer_index() if ports != null else -1
+	return ports.can_view_private_subject(viewer_index, subject_index) if ports != null else false
+
+
+func presentation_public_world_projection() -> WorldSessionPublicProjection:
+	var ports := _table_presentation_query_ports_node()
+	return ports.public_world_projection() if ports != null else WorldSessionPublicProjection.new()
+
+
+func presentation_private_world_projection(viewer_index: int, subject_index: int) -> WorldSessionPrivateProjection:
+	var ports := _table_presentation_query_ports_node()
+	return ports.private_world_projection(viewer_index, subject_index) if ports != null else WorldSessionPrivateProjection.new()
+
+
+func presentation_action_projection(viewer_index: int) -> TableActionPresentationProjection:
+	var ports := _table_presentation_query_ports_node()
+	return ports.action_projection(viewer_index) if ports != null else TableActionPresentationProjection.new()
+
+
+func presentation_public_map_projection(viewer_index: int, commodity_id := "") -> TablePublicMapProjection:
+	var ports := _table_presentation_query_ports_node()
+	return ports.public_map_projection(viewer_index, commodity_id) if ports != null else TablePublicMapProjection.new()
+
+
+func record_public_log_event(
+	event_kind: StringName,
+	localization_key: StringName,
+	public_values: Dictionary,
+	source_revision: int,
+	world_time: float,
+	receipt_id := ""
+) -> Dictionary:
+	var ports := _table_presentation_query_ports_node()
+	return ports.publish_public_log(event_kind, localization_key, public_values, source_revision, world_time, receipt_id) if ports != null else {"applied": false, "reason_code": "table_presentation_query_ports_missing"}
+
+
+func append_public_log_receipt(receipt: PublicLogReceipt) -> Dictionary:
+	var ports := _table_presentation_query_ports_node()
+	return ports.append_public_log_receipt(receipt) if ports != null else {"applied": false, "reason_code": "table_presentation_query_ports_missing"}
+
+
+func presentation_recent_public_log_messages(limit := 6) -> Array:
+	var ports := _table_presentation_query_ports_node()
+	return ports.recent_public_log_messages(limit) if ports != null else []
+
+
+func presentation_recent_public_log_entries(limit := 6) -> Array:
+	var ports := _table_presentation_query_ports_node()
+	return ports.recent_public_log_entries(limit) if ports != null else []
+
+
+func import_legacy_public_log(messages: Array) -> Dictionary:
+	var ports := _table_presentation_query_ports_node()
+	return ports.import_legacy_public_log(messages) if ports != null else {"applied": 0, "reason_code": "table_presentation_query_ports_missing"}
+
+
+func reset_public_log() -> void:
+	var ports := _table_presentation_query_ports_node()
+	if ports != null:
+		ports.reset_public_log()
 
 
 func victory_control_private_snapshot(viewer_index: int) -> Dictionary:
@@ -1364,12 +1445,18 @@ func reset_runtime_session() -> void:
 func _apply_victory_outcome_receipt(receipt: Dictionary) -> void:
 	if receipt.is_empty():
 		return
-	var session := _session_node()
-	if session != null and session.has_method("finish_session"):
-		session.call("finish_session", receipt)
-	var bridge := _victory_control_world_bridge_node()
-	if bridge != null and bridge.has_method("apply_outcome_receipt"):
-		bridge.call("apply_outcome_receipt", receipt)
+	var session := _session_node() as GameSessionRuntimeController
+	if session == null or session.is_finished():
+		return
+	session.finish_session(receipt)
+	if not session.is_finished():
+		return
+	var ai_runtime := _ai_runtime_controller_node() as AiRuntimeController
+	if ai_runtime != null:
+		ai_runtime.finalize_victory_outcome_learning(receipt)
+	var ports := _table_presentation_query_ports_node()
+	if ports != null:
+		ports.capture_victory_outcome(victory_control_public_snapshot(-1))
 
 
 func card_runtime_catalog_service() -> CardRuntimeCatalogService:
@@ -3534,6 +3621,9 @@ func reset_state() -> void:
 		"ready": false,
 		"reason_code": "production_players_not_bound",
 	}
+	var presentation_query_ports := _table_presentation_query_ports_node()
+	if presentation_query_ports != null:
+		presentation_query_ports.reset_state()
 	var scheduler := _scheduler_node()
 	if scheduler != null:
 		scheduler.sync_candidates([])
@@ -4638,6 +4728,7 @@ func debug_snapshot() -> Dictionary:
 	var contract_runtime_snapshot := _contract_runtime_debug_snapshot()
 	var victory_control_runtime_snapshot := _victory_control_runtime_debug_snapshot()
 	var victory_control_world_bridge_snapshot := _victory_control_world_bridge_debug_snapshot()
+	var table_presentation_query_ports_snapshot := _table_presentation_query_ports_node().debug_snapshot() if _table_presentation_query_ports_node() != null else {}
 	return {
 		"coordinator_ready": _configured,
 		"coordinator_composition_ready": _composition_ready,
@@ -4703,6 +4794,7 @@ func debug_snapshot() -> Dictionary:
 		"contract_runtime": contract_runtime_snapshot,
 		"victory_control_runtime": victory_control_runtime_snapshot,
 		"victory_control_world_bridge": victory_control_world_bridge_snapshot,
+		"table_presentation_query_ports": table_presentation_query_ports_snapshot,
 	}
 
 
@@ -4774,6 +4866,32 @@ func _wire_card_resolution_frame_driver() -> void:
 	)
 
 
+func _wire_table_presentation_query_ports() -> void:
+	var ports := _table_presentation_query_ports_node()
+	if ports == null:
+		return
+	ports.configure(
+		_world_session_state_node(),
+		_table_selection_state_node(),
+		_scheduler_node() as ForcedDecisionRuntimeScheduler,
+		_purchase_node() as DistrictPurchaseRuntimeController,
+		_card_target_choice_runtime_controller_node(),
+		_card_resolution_runtime_controller_node(),
+		_card_resolution_queue_node() as CardResolutionQueueRuntimeService,
+		_card_resolution_history_runtime_service_node(),
+		_monster_runtime_controller_node() as MonsterRuntimeController,
+		_military_runtime_controller_node() as MilitaryRuntimeController,
+		_commodity_flow_runtime_controller_node() as CommodityFlowRuntimeController,
+		_victory_control_runtime_controller_node() as VictoryControlRuntimeController
+	)
+	if not ports.victory_presentation_receipt_ready.is_connected(_on_victory_presentation_receipt_ready):
+		ports.victory_presentation_receipt_ready.connect(_on_victory_presentation_receipt_ready)
+
+
+func _on_victory_presentation_receipt_ready(receipt: VictoryPresentationStateChangeReceipt) -> void:
+	victory_presentation_receipt_ready.emit(receipt)
+
+
 func _card_cooldown_runtime_controller_node() -> CardCooldownRuntimeController:
 	return get_node_or_null("CardCooldownRuntimeController") as CardCooldownRuntimeController
 
@@ -4784,6 +4902,10 @@ func _visual_cue_runtime_owner_node() -> VisualCueRuntimeOwner:
 
 func _table_presentation_refresh_scheduler_node() -> Node:
 	return get_node_or_null("TablePresentationRefreshScheduler")
+
+
+func _table_presentation_query_ports_node() -> TablePresentationQueryPorts:
+	return get_node_or_null("TablePresentationQueryPorts") as TablePresentationQueryPorts
 
 
 func _wire_card_cooldown_runtime_controller() -> void:

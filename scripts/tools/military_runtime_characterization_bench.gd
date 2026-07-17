@@ -762,9 +762,10 @@ func _case_public_events() -> Dictionary:
 	var district_index := _first_district("land")
 	var deployed := _deploy("行星防卫军1", 0, district_index)
 	var callouts: Array = _runtime_main.get("action_callouts")
-	var logs: Array = _runtime_main.get("log_lines")
+	var coordinator := _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	var logs: Array = coordinator.presentation_recent_public_log_messages(90) if coordinator != null else []
 	var public_text := JSON.stringify({"callouts": _plain_public_events(callouts), "logs": logs})
-	var markers: Array = _runtime_main.call("_auto_monster_markers")
+	var markers: Array = coordinator.presentation_public_map_projection(coordinator.presentation_authorized_viewer_index()).unit_markers if coordinator != null else []
 	var marker_safe := true
 	for marker_variant in markers:
 		if marker_variant is Dictionary and str((marker_variant as Dictionary).get("name", "")).begins_with("匿名"):
@@ -779,7 +780,8 @@ func _case_privacy() -> Dictionary:
 	var deployed := _deploy("轨道轰炸机1", 0, district_index)
 	var owner_view := _military_controller.visible_unit_count(0, 0)
 	var rival_view := _military_controller.visible_unit_count(0, 1)
-	var markers: Array = _runtime_main.call("_auto_monster_markers")
+	var coordinator := _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	var markers: Array = coordinator.presentation_public_map_projection(coordinator.presentation_authorized_viewer_index()).unit_markers if coordinator != null else []
 	var serialized := JSON.stringify(_plain_public_events(markers)).to_lower()
 	var observed := deployed and owner_view == 1 and rival_view == 0 and not _contains_any(serialized, ["owner", "player_index", "private", "ai_plan", "target_player"])
 	return _record("private_owner_and_ai_plan_not_exposed", observed, observed, "Owner can count its own unit; an unrevealed rival cannot. Public marker data carries no owner or AI-plan field.", {"card_id": "轨道轰炸机1", "privacy_checked": true, "ai_route_checked": true})
@@ -925,7 +927,7 @@ func _reset_fixture() -> void:
 	_runtime_main.set("movement_trails", [])
 	_runtime_main.set("action_callouts", [])
 	_runtime_main.set("map_event_effects", [])
-	_runtime_main.set("log_lines", [])
+	(_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).reset_public_log()
 	if _monster_controller.has_method("reset_state"):
 		_monster_controller.call("reset_state")
 	else:

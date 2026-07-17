@@ -118,8 +118,9 @@ func _on_menu_open_requested(title: String, summary: String, can_continue: bool)
 	})
 
 
-func _on_public_log_entry_requested(text: String) -> void:
-	_log_entries.append(text)
+func _on_public_log_receipt_requested(receipt: PublicLogReceipt) -> void:
+	if receipt != null and receipt.is_valid():
+		_log_entries.append(str(receipt.public_values.get("message", "")))
 
 
 func _on_action_requested(action_id: String) -> void:

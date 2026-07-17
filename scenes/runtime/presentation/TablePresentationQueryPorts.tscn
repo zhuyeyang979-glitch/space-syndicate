@@ -1,0 +1,34 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/table_presentation_query_ports.gd" id="1_root"]
+[ext_resource type="Script" path="res://scripts/presentation/local_viewer_authorization.gd" id="2_viewer"]
+[ext_resource type="Script" path="res://scripts/presentation/world_session_presentation_query.gd" id="3_world"]
+[ext_resource type="Script" path="res://scripts/presentation/table_action_presentation_query.gd" id="4_action"]
+[ext_resource type="Script" path="res://scripts/presentation/table_public_map_query.gd" id="5_map"]
+[ext_resource type="Script" path="res://scripts/presentation/public_log_presentation_owner.gd" id="6_log_owner"]
+[ext_resource type="Script" path="res://scripts/presentation/public_log_producer_port.gd" id="7_log_port"]
+[ext_resource type="Script" path="res://scripts/presentation/victory_presentation_receipt_service.gd" id="8_victory"]
+
+[node name="TablePresentationQueryPorts" type="Node"]
+script = ExtResource("1_root")
+
+[node name="LocalViewerAuthorization" type="Node" parent="."]
+script = ExtResource("2_viewer")
+
+[node name="WorldSessionPresentationQuery" type="Node" parent="."]
+script = ExtResource("3_world")
+
+[node name="TableActionPresentationQuery" type="Node" parent="."]
+script = ExtResource("4_action")
+
+[node name="TablePublicMapQuery" type="Node" parent="."]
+script = ExtResource("5_map")
+
+[node name="PublicLogPresentationOwner" type="Node" parent="."]
+script = ExtResource("6_log_owner")
+
+[node name="PublicLogProducerPort" type="Node" parent="."]
+script = ExtResource("7_log_port")
+
+[node name="VictoryPresentationReceiptService" type="Node" parent="."]
+script = ExtResource("8_victory")

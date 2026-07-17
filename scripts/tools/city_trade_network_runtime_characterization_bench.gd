@@ -1502,7 +1502,7 @@ func _reset_fixture() -> void:
 	_controller.call("apply_save_data", {"city_trade_network_runtime": {"terms_version": "v0.5.structured-project-gdp.1", "project_sequence": _baseline_project_sequence, "generation_by_slot_id": {}, "project_tombstones": []}})
 	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = 100.0
 	_runtime_main.set("game_over", false)
-	_runtime_main.set("log_lines", [])
+	(_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).reset_public_log()
 	_runtime_main.set("action_callouts", [])
 	_runtime_main.set("map_event_effects", [])
 	_runtime_main.set("movement_trails", [])

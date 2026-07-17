@@ -396,7 +396,8 @@ func _case_actor_creation_shape() -> Dictionary:
 func _case_actor_owner_hidden_initially() -> Dictionary:
 	var actor := _make_actor(0, _safe_district(), 0, 1)
 	_set_monsters([actor])
-	var markers: Array = _runtime_main.call("_auto_monster_markers")
+	var coordinator := _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	var markers: Array = coordinator.presentation_public_map_projection(coordinator.presentation_authorized_viewer_index()).unit_markers if coordinator != null else []
 	var marker: Dictionary = markers[0] if not markers.is_empty() and markers[0] is Dictionary else {}
 	var aligned := int(actor.get("owner", -1)) == 0 and not bool(actor.get("owner_revealed", true)) and not marker.has("owner") and not marker.has("owner_index")
 	return _record("actor_owner_hidden_initially", true, aligned, "Binding exists in private world state but the public map marker excludes owner fields.", {"fixture_id": "hidden-binding", "privacy_checked": true})
@@ -846,7 +847,8 @@ func _case_public_marker_and_report_privacy_boundary() -> Dictionary:
 	actor["owner_revealed"] = false
 	actor["owner_clue"] = "private qa clue"
 	_set_monsters([actor])
-	var markers: Array = _runtime_main.call("_auto_monster_markers")
+	var coordinator := _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	var markers: Array = coordinator.presentation_public_map_projection(coordinator.presentation_authorized_viewer_index()).unit_markers if coordinator != null else []
 	var marker: Dictionary = markers[0] if not markers.is_empty() and markers[0] is Dictionary else {}
 	var forbidden := ["owner", "owner_index", "owner_clue", "hidden_owner", "private_target", "private_discard", "ai_private_plan"]
 	var aligned := not marker.is_empty() and _dictionary_excludes_keys(marker, forbidden) and not JSON.stringify(marker).contains(str(_player(0).get("name", "__private__")))

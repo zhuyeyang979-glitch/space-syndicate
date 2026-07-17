@@ -8132,3 +8132,13 @@
 - Next cutover: `Table Presentation Source/Target Cutover`.
 - Final focused evidence: command lineage 245/245, transition sink 70/70,
   gameplay fault injection 61/61, persistence registry 12/12 and MCP Bench 7/7.
+
+## 2026-07-17 — Table Presentation Query Ports Cutover
+
+- Added one scene-owned presentation query composition under `GameRuntimeCoordinator`.
+- Added fail-closed local viewer authorization and separate public/current-player-private projections.
+- Replaced Main's map marker construction with a visibility-safe map projection.
+- Moved public log storage to a typed exact-once owner.
+- Moved Victory state/outcome presentation to typed receipts and removed the dynamic Victory bridge callback to Main.
+- Removed six Main symbols/fields and kept the Main extinction budget green.
+- Godot 4.7 focused suite and MCP bench pass; full smoke remains an explicitly bounded timeout rather than a claimed pass.

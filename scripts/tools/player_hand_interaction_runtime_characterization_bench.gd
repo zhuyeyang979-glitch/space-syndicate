@@ -982,13 +982,13 @@ func _seed_runtime_rng(seed_value: int) -> void:
 
 
 func _public_log_count() -> int:
-	var logs_variant: Variant = _runtime_main.get("log_lines")
-	return (logs_variant as Array).size() if logs_variant is Array else 0
+	var runtime_coordinator := _coordinator() as GameRuntimeCoordinator
+	return runtime_coordinator.presentation_recent_public_log_messages(90).size() if runtime_coordinator != null else 0
 
 
 func _public_logs_hide_private_values(start_index: int, private_values: Array) -> bool:
-	var logs_variant: Variant = _runtime_main.get("log_lines")
-	var logs: Array = logs_variant if logs_variant is Array else []
+	var runtime_coordinator := _coordinator() as GameRuntimeCoordinator
+	var logs: Array = runtime_coordinator.presentation_recent_public_log_messages(90) if runtime_coordinator != null else []
 	for index in range(maxi(0, start_index), logs.size()):
 		var line := str(logs[index])
 		for value_variant in private_values:

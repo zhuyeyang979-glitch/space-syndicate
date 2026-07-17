@@ -299,6 +299,48 @@
       "status": "pending"
     },
     {
+      "domain": "table_presentation_query_ports",
+      "old_symbols": [
+        "log_lines",
+        "_on_victory_outcome_applied",
+        "_city_markers_for_selected_player",
+        "_trade_route_markers_for_selected_product",
+        "_auto_monster_markers",
+        "VictoryControlWorldBridge.apply_outcome_receipt"
+      ],
+      "old_consumers": [
+        "GameScreen table presentation",
+        "Planet map presentation",
+        "Final settlement presentation",
+        "Victory public log"
+      ],
+      "new_owner_scene": "res://scenes/runtime/presentation/TablePresentationQueryPorts.tscn",
+      "new_owner_script": "res://scripts/presentation/table_presentation_query_ports.gd",
+      "new_public_api": [
+        "authorized_viewer_index",
+        "can_view_private_subject",
+        "public_world_projection",
+        "private_world_projection",
+        "action_projection",
+        "public_map_projection",
+        "publish_public_log",
+        "append_public_log_receipt",
+        "capture_victory_advance",
+        "capture_victory_outcome"
+      ],
+      "tests": [
+        "res://tests/table_presentation_query_ports_cutover_test.gd",
+        "res://scenes/tools/TablePresentationQueryPortsBench.tscn",
+        "res://tests/main_gd_architecture_gate_test.gd",
+        "res://tests/main_victory_public_privacy_v06_test.gd",
+        "res://tests/main_runtime_composition_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "",
+      "status": "cut_over"
+    },
+    {
       "domain": "presentation_action_routing",
       "old_symbols": [
         "_runtime_table_snapshot_source",

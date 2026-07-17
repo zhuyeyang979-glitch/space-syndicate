@@ -120,10 +120,17 @@ See `docs/migration/card_resolution_transition_sink_cutover.md`.
 
 ## Next atomic cutover
 
+The prerequisite **Table Presentation Query Ports Cutover** is complete.
+Viewer authorization, public/current-player private queries, map redaction,
+typed public logging and Victory presentation receipts now live below the
+scene-owned `TablePresentationQueryPorts` composition. Main no longer owns the
+public log array, public map marker assembly or Victory outcome presentation.
+
 The next recommended production cutover is **Table Presentation Source/Target
-Cutover**. It must move the remaining table/map presentation receipt target
-out of Main without changing the now-frozen card command, execution, lineage
-or save ownership. RuntimeLoop is retried only after that boundary is green.
+Cutover**. It must consume the typed query ports while moving the remaining
+table/map presentation receipt targets out of Main, without changing the
+now-frozen card command, execution, lineage or save ownership. RuntimeLoop is
+retried only after that boundary is green.
 
 ## Completion rule
 

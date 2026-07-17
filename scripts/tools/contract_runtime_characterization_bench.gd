@@ -824,7 +824,8 @@ func _case_intel_trace() -> Dictionary:
 	var players: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players
 	var known: Dictionary = (players[2] as Dictionary).get("known_contract_parties", {})
 	var private_entry: Dictionary = known.get(str(offer_id), {})
-	var public_logs := "\n".join(_runtime_main.get("log_lines") as Array)
+	var coordinator := _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	var public_logs := "\n".join(coordinator.presentation_recent_public_log_messages(90)) if coordinator != null else ""
 	var private_ok := int(private_entry.get("proposer", -1)) == 0 and int(private_entry.get("target_owner", -1)) == int(opened.get("target_owner", -2))
 	var public_ok := not public_logs.contains("出牌方玩家1，目标业主玩家2")
 	var observed := traced == 1 and private_ok and public_ok
@@ -1100,7 +1101,7 @@ func _reset_fixture() -> void:
 	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).inspected_player = 0
 	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = 100.0
 	_runtime_main.set("game_over", false)
-	_runtime_main.set("log_lines", [])
+	(_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).reset_public_log()
 	_runtime_main.set("action_callouts", [])
 	_runtime_main.set("map_event_effects", [])
 	_runtime_main.set("movement_trails", [])
@@ -1266,7 +1267,7 @@ func _contract_world_metrics(opened: Dictionary) -> Dictionary:
 		"route_damage": int(city.get("trade_route_damage", 0)),
 		"pending_count": _contract_controller.pending_offers_snapshot(true).size(),
 		"history_count": (_runtime_main.get("resolved_card_history") as Array).size(),
-		"public_events": (_runtime_main.get("log_lines") as Array).size() + (_runtime_main.get("action_callouts") as Array).size(),
+		"public_events": (_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).presentation_recent_public_log_messages(90).size() + (_runtime_main.get("action_callouts") as Array).size(),
 		"private_events": ((players[target_owner] as Dictionary).get("economic_ledger", []) as Array).size() if target_owner >= 0 and target_owner < players.size() else 0,
 	}
 

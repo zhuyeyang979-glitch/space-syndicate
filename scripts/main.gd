@@ -101,13 +101,6 @@ const COMMAND_COOLDOWN := 1.0
 const DEFAULT_SKILL_COOLDOWN := 3.0
 const SETTINGS_PATH := "user://space_syndicate_settings.cfg"
 
-const AUTO_MONSTER_COLORS := [
-	Color("#ef4444"),
-	Color("#38bdf8"),
-	Color("#f59e0b"),
-	Color("#a855f7"),
-]
-
 const PLAYER_COLORS := [
 	Color("#38bdf8"),
 	Color("#f472b6"),
@@ -403,7 +396,6 @@ const REALTIME_BALANCE := {
 
 var _roguelike_economic_viability_dev_audit: Dictionary = {}
 var skill_market := []
-var log_lines := []
 
 var time_scale := 1.0
 var selected_market_skill := ""
@@ -2200,8 +2192,9 @@ func _recent_table_event_accent(text: String) -> Color:
 
 func _recent_table_event_entries() -> Array:
 	var entries := []
-	for i in range(log_lines.size() - 1, -1, -1):
-		var raw := String(log_lines[i])
+	var public_messages := _game_runtime_coordinator_node().presentation_recent_public_log_messages(90)
+	for i in range(public_messages.size() - 1, -1, -1):
+		var raw := String(public_messages[i])
 		var text := _recent_table_event_clean_text(raw)
 		if text == "":
 			continue
@@ -4578,16 +4571,9 @@ func _update_victory_control(delta: float) -> void:
 	if _runtime_session_finished() or _game_runtime_coordinator_node().world_session_state().players.is_empty():
 		return
 	var coordinator := _game_runtime_coordinator_node()
-	if coordinator == null or not coordinator.has_method("advance_victory_control"):
+	if coordinator == null:
 		return
-	var before_state := str(_victory_control_public_snapshot().get("state", "idle"))
-	var result_variant: Variant = coordinator.call("advance_victory_control", delta, {})
-	var result: Dictionary = result_variant if result_variant is Dictionary else {}
-	var public_snapshot: Dictionary = result.get("public_snapshot", {}) if result.get("public_snapshot", {}) is Dictionary else {}
-	var after_state := str(public_snapshot.get("state", before_state))
-	if after_state != before_state:
-		_log("胜利控制状态：%s。" % _victory_control_status_text())
-		_refresh_ui()
+	coordinator.advance_victory_control(delta, {})
 
 
 func _open_fullscreen_map() -> void:
@@ -6499,7 +6485,7 @@ func _apply_run_domain_state_compatibility_adapter(state: Dictionary) -> int:
 			"business_cycle_count": int(state.get("business_cycle_count", 0)),
 			"market_timer": float(state.get("market_timer", 8.0)),
 		})
-	log_lines = (state.get("log_lines", []) as Array).duplicate(true)
+	_game_runtime_coordinator_node().import_legacy_public_log((state.get("log_lines", []) as Array).duplicate(true))
 	_game_runtime_coordinator_node().import_legacy_visual_cues(state)
 	_game_runtime_coordinator_node().run_rng_service().state = int(state.get("rng_state", _game_runtime_coordinator_node().run_rng_service().state))
 	if runtime_coordinator != null and runtime_coordinator.has_method("restore_world_effective_seconds"):
@@ -7200,7 +7186,7 @@ func _new_game() -> void:
 	_product_market_runtime_call("reset_state")
 	_city_gdp_derivative_runtime_call("reset_state")
 	skill_market = _monster_market_skills()
-	log_lines = []
+	_game_runtime_coordinator_node().reset_public_log()
 	_game_runtime_coordinator_node().reset_visual_cues()
 	if coordinator != null and coordinator.has_method("restore_world_effective_seconds"):
 		coordinator.call("restore_world_effective_seconds", 0.0)
@@ -9000,14 +8986,7 @@ func _runtime_deep_link_snapshots() -> Array:
 
 
 func _runtime_public_log_snapshot() -> Array:
-	var logs: Array = []
-	var start_index: int = maxi(0, log_lines.size() - 6)
-	for i in range(start_index, log_lines.size()):
-		logs.append(String(log_lines[i]))
-	var composition := _final_settlement_runtime_composition_node()
-	if composition != null and composition.has_method("sanitize_public_log_entries"):
-		var sanitized_variant: Variant = composition.call("sanitize_public_log_entries", logs)
-		logs = (sanitized_variant as Array).duplicate(true) if sanitized_variant is Array else []
+	var logs: Array = _game_runtime_coordinator_node().presentation_recent_public_log_messages(6)
 	if logs.is_empty():
 		logs.append(_card_resolution_status_text())
 	return logs
@@ -9171,19 +9150,24 @@ func _set_map_view_data(target_view: Control) -> void:
 	var coordinator := _game_runtime_coordinator_node()
 	coordinator.configure_visual_cue_world_bounds(map_width_m, map_height_m)
 	var cue_snapshot := coordinator.visual_cue_public_snapshot()
+	var viewer_index := coordinator.presentation_authorized_viewer_index()
+	var map_projection := coordinator.presentation_public_map_projection(
+		viewer_index,
+		coordinator.table_selection_state().selected_trade_product
+	)
 	target_view.set_map(
-		coordinator.visual_cue_districts_with_pulses(coordinator.world_session_state().districts),
+		coordinator.visual_cue_districts_with_pulses(map_projection.districts),
 		map_width_m,
 		map_height_m,
-		_game_runtime_coordinator_node().table_selection_state().selected_district,
+		coordinator.table_selection_state().selected_district,
 		DISTRICT_PALETTE,
 		cue_snapshot.get("movement_trails", []),
 		cue_snapshot.get("action_callouts", []),
 		cue_snapshot.get("map_event_effects", []),
-		_auto_monster_markers(),
-		_city_markers_for_selected_player(),
-		_trade_route_markers_for_selected_product(),
-		_game_runtime_coordinator_node().table_selection_state().selected_trade_product,
+		map_projection.unit_markers,
+		map_projection.city_markers,
+		map_projection.route_markers,
+		map_projection.selected_trade_product,
 		selected_map_layer_focus
 	)
 	if coordinator != null and target_view.has_method("set_solar_presentation_snapshot"):
@@ -9775,31 +9759,6 @@ func _refresh_fullscreen_map_hud() -> void:
 		district_label.text = "选区:%s" % _short_card_text(String(_game_runtime_coordinator_node().world_session_state().districts[_game_runtime_coordinator_node().table_selection_state().selected_district].get("name", "未选")) if _game_runtime_coordinator_node().table_selection_state().selected_district >= 0 and _game_runtime_coordinator_node().table_selection_state().selected_district < _game_runtime_coordinator_node().world_session_state().districts.size() else "未选", 10)
 		district_label.tooltip_text = _selected_district_status_text(_game_runtime_coordinator_node().table_selection_state().selected_player) if _game_runtime_coordinator_node().table_selection_state().selected_district >= 0 and _game_runtime_coordinator_node().table_selection_state().selected_district < _game_runtime_coordinator_node().world_session_state().districts.size() else "当前未选择区域。"
 
-
-func _city_markers_for_selected_player() -> Array:
-	var result := []
-	var guesses: Dictionary = _game_runtime_coordinator_node().world_session_state().players[_game_runtime_coordinator_node().table_selection_state().selected_player].get("city_guesses", {}) if _game_runtime_coordinator_node().table_selection_state().selected_player >= 0 and _game_runtime_coordinator_node().table_selection_state().selected_player < _game_runtime_coordinator_node().world_session_state().players.size() else {}
-	for i in range(_game_runtime_coordinator_node().world_session_state().districts.size()):
-		var city := _district_city(i)
-		if city.is_empty():
-			continue
-		var city_owner := int(city.get("owner", -1))
-		var is_own := city_owner == _game_runtime_coordinator_node().table_selection_state().selected_player
-		var guess := int(guesses.get(i, -1))
-		var tag := "己" if is_own else ("?" if guess < 0 else "猜%d" % (guess + 1))
-		var tag_color := _player_color(city_owner) if is_own else (Color("#94a3b8") if guess < 0 else _player_color(guess))
-		result.append({
-			"district": i,
-			"position": _district_center(i),
-			"level": int(city.get("level", 1)),
-			"active": bool(city.get("active", true)),
-			"tag": tag,
-			"tag_color": tag_color,
-			"products": _city_product_names(city),
-			"competition": int(city.get("competition_matches", 0)),
-			"rise": 1.0,
-		})
-	return result
 
 func _first_actionable_hand_slot(player_index: int) -> int:
 	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
@@ -12751,16 +12710,11 @@ func _confirm_discard_purchase(slot_index: int) -> void:
 
 
 func _can_view_player_private_hand(player_index: int) -> bool:
-	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return false
-	return not _player_is_ai(player_index)
+	return _game_runtime_coordinator_node().presentation_can_view_private_subject(player_index)
 
 
 func _local_human_player_index() -> int:
-	for i in range(_game_runtime_coordinator_node().world_session_state().players.size()):
-		if not _player_is_ai(i):
-			return i
-	return 0
+	return _game_runtime_coordinator_node().presentation_authorized_viewer_index()
 
 
 func _player_has_committed_or_resolved_card(player_index: int) -> bool:
@@ -13843,41 +13797,6 @@ func _route_network_routes_for_product(product_name: String) -> Array:
 	return (value as Array).duplicate(true) if value is Array else []
 
 
-func _trade_route_markers_for_selected_product() -> Array:
-	var result := []
-	var district_index_by_region_id: Dictionary = {}
-	for district_index in range(_game_runtime_coordinator_node().world_session_state().districts.size()):
-		var district: Dictionary = _game_runtime_coordinator_node().world_session_state().districts[district_index]
-		district_index_by_region_id[str(district.get("region_id", "region.%03d" % district_index))] = district_index
-	for route_variant in _route_network_routes_for_product(_game_runtime_coordinator_node().table_selection_state().selected_trade_product):
-		var route: Dictionary = route_variant
-		var ordered_region_ids: Array = route.get("ordered_region_ids", []) if route.get("ordered_region_ids", []) is Array else []
-		if ordered_region_ids.is_empty():
-			ordered_region_ids = [str(route.get("source_region_id", "")), str(route.get("market_region_id", ""))]
-		var route_points: Array = []
-		var legacy_indices: Array = []
-		for region_id_variant in ordered_region_ids:
-			var region_id := str(region_id_variant)
-			if not district_index_by_region_id.has(region_id):
-				continue
-			var district_index := int(district_index_by_region_id[region_id])
-			legacy_indices.append(district_index)
-			route_points.append(_district_center(district_index))
-		if legacy_indices.is_empty():
-			continue
-		result.append({
-			"product": _game_runtime_coordinator_node().table_selection_state().selected_trade_product,
-			"from": int(legacy_indices.front()),
-			"to": int(legacy_indices.back()),
-			"points": route_points,
-			"disrupted": int(route.get("bottleneck_units_per_minute", 0)) <= 0,
-			"source_type": "multimodal_route_network",
-			"mode_tags": (route.get("mode_tags", []) as Array).duplicate(),
-			"flow_multiplier": 1.0,
-		})
-	return result
-
-
 func _advance_continuous_commodity_flow(delta_seconds: float) -> bool:
 	if _runtime_session_finished() or delta_seconds <= 0.0:
 		return true
@@ -13921,76 +13840,6 @@ func _append_unique_district_index(result: Array, index: int) -> void:
 
 
 
-
-
-func _on_victory_outcome_applied(receipt: Dictionary) -> void:
-	var composition := _final_settlement_runtime_composition_node()
-	if receipt.is_empty() or composition == null or not composition.has_method("present"):
-		return
-	var coordinator := _game_runtime_coordinator_node()
-	var victory_public_variant: Variant = coordinator.call("victory_control_public_snapshot", -1) if coordinator != null and coordinator.has_method("victory_control_public_snapshot") else {}
-	var victory_public: Dictionary = (victory_public_variant as Dictionary).duplicate(true) if victory_public_variant is Dictionary else {}
-	var public_outcome_variant: Variant = victory_public.get("outcome_receipt", {})
-	var public_outcome: Dictionary = (public_outcome_variant as Dictionary).duplicate(true) if public_outcome_variant is Dictionary else {}
-	if str(receipt.get("outcome_id", "")).strip_edges().is_empty() or str(receipt.get("outcome_id", "")) != str(public_outcome.get("outcome_id", "")):
-		return
-	var participant_names := {}
-	for player_index in range(_game_runtime_coordinator_node().world_session_state().players.size()):
-		participant_names[str(player_index)] = _player_name(player_index)
-	var presentation_variant: Variant = composition.call("present", {
-		"victory_public_snapshot": victory_public,
-		"participant_names": participant_names,
-	})
-	if not (presentation_variant is Dictionary) or not bool((presentation_variant as Dictionary).get("accepted", false)):
-		return
-	var learned_samples := int(_ai_runtime_call("finalize_victory_outcome_learning", [receipt]))
-	if learned_samples > 0:
-		_log("AI终局训练：已使用版本化 outcome receipt 回写%d条决策样本。" % learned_samples)
-
-
-func _auto_monster_color(slot: int) -> Color:
-	if AUTO_MONSTER_COLORS.is_empty():
-		return Color("#ef4444")
-	return AUTO_MONSTER_COLORS[slot % AUTO_MONSTER_COLORS.size()] as Color
-
-
-func _auto_monster_markers() -> Array:
-	var result := []
-	for i in range(monster_runtime_controller.auto_monsters.size()):
-		var actor: Dictionary = monster_runtime_controller.auto_monsters[i]
-		var monster_name := String(actor.get("name", "怪兽"))
-		var profile := MonsterCatalogV06.art_profile(monster_name)
-		result.append({
-			"position": _entity_world_position(actor),
-			"label": "%d" % (i + 1),
-			"name": monster_name,
-			"color": profile.get("accent", _auto_monster_color(i)),
-			"slot_color": _auto_monster_color(i),
-			"secondary": profile.get("secondary", Color("#e2e8f0")),
-			"glyph": String(profile.get("glyph", "怪")),
-			"motif": String(profile.get("motif", "beast")),
-			"upstream_source_id": String(profile.get("upstream_source_id", "")),
-			"visual_source_id": String(profile.get("visual_source_id", "")),
-			"sprite_key": String(profile.get("sprite_key", "")),
-			"sprite_cell": String(profile.get("sprite_cell", "")),
-			"down": bool(actor.get("down", false)),
-		})
-	var military_roster := military_runtime_controller.roster_snapshot(true)
-	for i in range(military_roster.size()):
-		var unit: Dictionary = military_roster[i]
-		var unit_label := military_runtime_controller.unit_type_label(unit)
-		result.append({
-			"position": _entity_world_position(unit),
-			"label": military_runtime_controller.unit_type_glyph(unit),
-			"name": "匿名%s" % unit_label,
-			"color": military_runtime_controller.unit_color(unit),
-			"slot_color": Color("#facc15"),
-			"secondary": Color("#bfdbfe"),
-			"glyph": military_runtime_controller.unit_type_glyph(unit),
-			"motif": military_runtime_controller.unit_motif(unit),
-			"down": false,
-		})
-	return result
 
 
 func _district_center(index: int) -> Vector2:
@@ -14258,7 +14107,10 @@ func _clear_children(node: Node) -> void:
 
 
 func _log(message: String) -> void:
-	var line := "[%s] %s" % [_format_time(_game_runtime_coordinator_node().world_session_state().game_time), message]
-	log_lines.append(line)
-	while log_lines.size() > 90:
-		log_lines.pop_front()
+	_game_runtime_coordinator_node().record_public_log_event(
+		&"legacy_public_event",
+		&"public.legacy.message",
+		{"message": message},
+		0,
+		_game_runtime_coordinator_node().world_session_state().game_time
+	)

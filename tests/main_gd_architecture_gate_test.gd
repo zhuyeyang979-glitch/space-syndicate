@@ -25,6 +25,10 @@ func _run() -> void:
 
 	var main_source := FileAccess.get_file_as_string(MAIN_PATH) if FileAccess.file_exists(MAIN_PATH) else ""
 	var metrics := _main_metrics(main_source)
+	_expect(not main_source.contains("func _on_victory_outcome_applied") and not main_source.contains("var log_lines"), "Main owns neither victory presentation nor public log storage")
+	_expect(not main_source.contains("func _city_markers_for_selected_player") and not main_source.contains("func _auto_monster_markers"), "Main no longer assembles public map markers")
+	var victory_bridge_source := FileAccess.get_file_as_string("res://scripts/runtime/victory_control_world_bridge.gd")
+	_expect(not victory_bridge_source.contains("apply_outcome_receipt") and not victory_bridge_source.contains("_on_victory_outcome_applied"), "victory fact bridge has no Main presentation callback")
 	var baseline_metrics: Dictionary = baseline.get("main", {})
 	for key in [
 		"physical_lines",
