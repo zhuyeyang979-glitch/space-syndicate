@@ -444,7 +444,7 @@ func _case_movement_start() -> Dictionary:
 	var unit := _make_unit("制空战斗机2", 0, start, 46001)
 	unit["remaining_time"] = 999.0
 	_military_controller.replace_runtime_state([unit], 46002)
-	_runtime_main.set("selected_district", target)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = target
 	var before: Vector2 = unit.get("world_position", Vector2.ZERO)
 	var command := _military_controller.make_command_skill("move", 2, 46001, "制空战斗机2")
 	var resolved := _military_controller.trigger_command(command, -1, 0)
@@ -460,7 +460,7 @@ func _case_movement_arrival() -> Dictionary:
 	var unit := _make_unit("制空战斗机2", 0, start, 46002)
 	unit["remaining_time"] = 999.0
 	_military_controller.replace_runtime_state([unit], 46003)
-	_runtime_main.set("selected_district", target)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = target
 	var command := _military_controller.make_command_skill("move", 2, 46002, "制空战斗机2")
 	var resolved := _military_controller.trigger_command(command, -1, 0)
 	var moving: Dictionary = _units()[0] if not _units().is_empty() else {}
@@ -520,17 +520,17 @@ func _case_commands_granted() -> Dictionary:
 
 
 func _case_fixed_hand_exemption() -> Dictionary:
-	var players: Array = _runtime_main.get("players")
+	var players: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players
 	var player: Dictionary = (players[0] as Dictionary).duplicate(true)
 	var slots: Array = []
 	for _index in range(5):
 		slots.append(_runtime_main.call("_make_skill", "轨道融资1"))
 	player["slots"] = slots
 	players[0] = player
-	_runtime_main.set("players", players)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 	var before := int(_runtime_main.call("_player_counted_hand_size", player))
 	var granted := _military_controller.grant_bound_commands(0, 46005, 1, "行星防卫军1", 1)
-	var after_player: Dictionary = (_runtime_main.get("players") as Array)[0]
+	var after_player: Dictionary = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array)[0]
 	var after := int(_runtime_main.call("_player_counted_hand_size", after_player))
 	var observed := before == 5 and granted.size() == 1 and after == 5 and (after_player.get("slots", []) as Array).size() == 6
 	return _record("fixed_commands_do_not_consume_normal_hand_limit", observed, observed, "A fixed military command can be received at five ordinary cards and does not increase counted hand size.", {"card_id": "行星防卫军1", "unit_uid": 46005, "inventory_checked": true})
@@ -553,7 +553,7 @@ func _case_command_cooldown() -> Dictionary:
 	var unit := _make_unit("行星防卫军2", 0, district_index, 46007)
 	unit["range"] = 99999.0
 	_military_controller.replace_runtime_state([unit], 46008)
-	_runtime_main.set("selected_district", district_index)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
 	var command := _military_controller.make_command_skill("guard", 2, 46007, "行星防卫军2")
 	var first := _military_controller.trigger_command(command, -1, 0)
 	var cooldown := float((_units()[0] as Dictionary).get("cooldown_left", 0.0))
@@ -570,22 +570,22 @@ func _case_move_no_damage() -> Dictionary:
 	var unit := _make_unit("制空战斗机2", 0, start, 46008)
 	unit["remaining_time"] = 999.0
 	_military_controller.replace_runtime_state([unit], 46009)
-	_runtime_main.set("selected_district", target)
-	var before_district: Dictionary = ((_runtime_main.get("districts") as Array)[target] as Dictionary).duplicate(true)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = target
+	var before_district: Dictionary = ((((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array)[target] as Dictionary).duplicate(true)
 	var command := _military_controller.make_command_skill("move", 2, 46008, "制空战斗机2")
 	var resolved := _military_controller.trigger_command(command, -1, 0)
 	var moving: Dictionary = _units()[0] if not _units().is_empty() else {}
 	var distance := float(_runtime_main.call("_wrapped_distance", moving.get("world_position", Vector2.ZERO), moving.get("linear_move_target_position", Vector2.ZERO)))
 	var speed := maxf(1.0, float(moving.get("linear_move_speed_mps", 1.0)))
 	_military_controller.tick(distance / speed + 0.2)
-	var after: Dictionary = (_runtime_main.get("districts") as Array)[target]
+	var after: Dictionary = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array)[target]
 	var observed := resolved and int(after.get("damage", 0)) == int(before_district.get("damage", 0)) and str(after.get("last_damage_source", "")) == str(before_district.get("last_damage_source", ""))
 	return _record("move_command_causes_no_implicit_damage", observed, observed, "Move arrival may apply declared GDP pressure but never causes district or route strike damage.", {"card_id": "制空战斗机2", "unit_uid": 46008, "command": "move", "start_district": start, "target_district": target, "district_damage_delta": int(after.get("damage", 0)) - int(before_district.get("damage", 0))})
 
 
 func _case_guard() -> Dictionary:
 	var district_index := _prepare_city(0)
-	var districts: Array = _runtime_main.get("districts")
+	var districts: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts
 	var district: Dictionary = (districts[district_index] as Dictionary).duplicate(true)
 	district["damage"] = 4
 	district["panic"] = 20
@@ -593,14 +593,14 @@ func _case_guard() -> Dictionary:
 	city["trade_route_damage"] = 3
 	district["city"] = city
 	districts[district_index] = district
-	_runtime_main.set("districts", districts)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 	var unit := _make_unit("行星防卫军3", 0, district_index, 46009)
 	unit["range"] = 99999.0
 	_military_controller.replace_runtime_state([unit], 46010)
-	_runtime_main.set("selected_district", district_index)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
 	var command := _military_controller.make_command_skill("guard", 3, 46009, "行星防卫军3")
 	var resolved := _military_controller.trigger_command(command, -1, 0)
-	var after: Dictionary = (_runtime_main.get("districts") as Array)[district_index]
+	var after: Dictionary = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array)[district_index]
 	var after_city: Dictionary = after.get("city", {})
 	var observed := resolved and int(after.get("damage", 0)) < 4 and int(after.get("panic", 0)) < 20 and int(after_city.get("trade_route_damage", 0)) < 3
 	return _record("guard_command_behavior", observed, observed, "Guard explicitly repairs district and route pressure and reduces panic; it does not run autonomously.", {"card_id": "行星防卫军3", "unit_uid": 46009, "command": "guard", "target_district": district_index})
@@ -610,9 +610,9 @@ func _case_gdp_once() -> Dictionary:
 	var district_index := _prepare_city(0)
 	var unit := _make_unit("轨道轰炸机3", 0, district_index, 46010)
 	var first: int = int(_military_controller.apply_gdp_pressure(unit, district_index, "strike_district", "anonymous-test"))
-	var city_first: Dictionary = ((_runtime_main.get("districts") as Array)[district_index] as Dictionary).get("city", {})
+	var city_first: Dictionary = ((((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array)[district_index] as Dictionary).get("city", {})
 	var second: int = int(_military_controller.apply_gdp_pressure(unit, district_index, "strike_district", "anonymous-test"))
-	var city_second: Dictionary = ((_runtime_main.get("districts") as Array)[district_index] as Dictionary).get("city", {})
+	var city_second: Dictionary = ((((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array)[district_index] as Dictionary).get("city", {})
 	var observed: bool = first > 0 and second == first and int(city_first.get("military_gdp_penalty", 0)) == first and int(city_second.get("military_gdp_penalty", 0)) == first and is_equal_approx(float(city_first.get("military_pressure_until", 0.0)), float(city_second.get("military_pressure_until", 0.0)))
 	return _record("gdp_pressure_applies_once", observed, observed, "Repeated pressure uses max semantics rather than stacking the same penalty additively.", {"card_id": "轨道轰炸机3", "unit_uid": 46010, "command": "strike_district", "target_district": district_index, "gdp_pressure_delta": first})
 
@@ -621,13 +621,13 @@ func _case_gdp_expiry() -> Dictionary:
 	var district_index := _prepare_city(0)
 	var unit := _make_unit("制空战斗机1", 0, district_index, 46011)
 	var pressure: int = int(_military_controller.apply_gdp_pressure(unit, district_index, "move", "anonymous-test"))
-	var city: Dictionary = ((_runtime_main.get("districts") as Array)[district_index] as Dictionary).get("city", {})
+	var city: Dictionary = ((((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array)[district_index] as Dictionary).get("city", {})
 	var until := float(city.get("military_pressure_until", 0.0))
-	_runtime_main.set("game_time", until + 0.1)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = until + 0.1
 	var market_controller := _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ProductMarketRuntimeController")
 	if market_controller != null:
 		market_controller.call("age_economic_boons", 0.1)
-	var expired_city: Dictionary = ((_runtime_main.get("districts") as Array)[district_index] as Dictionary).get("city", {})
+	var expired_city: Dictionary = ((((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array)[district_index] as Dictionary).get("city", {})
 	var observed: bool = pressure > 0 and until > 0.0 and int(expired_city.get("military_gdp_penalty", -1)) == 0 and str(expired_city.get("military_pressure_source", "x")) == ""
 	return _record("gdp_pressure_duration_and_expiry", observed, observed, "Military GDP pressure records an absolute expiry and the existing economy aging pass clears penalty and source after it elapses.", {"card_id": "制空战斗机1", "unit_uid": 46011, "gdp_pressure_delta": pressure, "duration_delta": until})
 
@@ -645,12 +645,12 @@ func _strike_case(route_case: bool) -> Dictionary:
 	var unit := _make_unit("轨道轰炸机3", 0, district_index, 46012 if not route_case else 46013)
 	unit["range"] = 99999.0
 	_military_controller.replace_runtime_state([unit], int(unit.get("uid", 0)) + 1)
-	_runtime_main.set("selected_district", district_index)
-	var before: Dictionary = ((_runtime_main.get("districts") as Array)[district_index] as Dictionary).duplicate(true)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
+	var before: Dictionary = ((((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array)[district_index] as Dictionary).duplicate(true)
 	var before_city: Dictionary = (before.get("city", {}) as Dictionary).duplicate(true)
 	var command := _military_controller.make_command_skill("strike_district", 3, int(unit.get("uid", 0)), "轨道轰炸机3")
 	var resolved := _military_controller.trigger_command(command, -1, 0)
-	var after: Dictionary = (_runtime_main.get("districts") as Array)[district_index]
+	var after: Dictionary = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array)[district_index]
 	var after_city: Dictionary = after.get("city", {})
 	var damage_delta := int(after.get("damage", 0)) - int(before.get("damage", 0))
 	var route_delta := int(after_city.get("trade_route_damage", 0)) - int(before_city.get("trade_route_damage", 0))
@@ -704,17 +704,17 @@ func _case_binding_invalidated() -> Dictionary:
 
 func _case_player_ai_route() -> Dictionary:
 	var district_index := _prepare_city(0)
-	var players: Array = _runtime_main.get("players")
+	var players: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players
 	var ai_player: Dictionary = (players[1] as Dictionary).duplicate(true)
 	ai_player["is_ai"] = true
 	players[1] = ai_player
-	_runtime_main.set("players", players)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 	var player_unit := _make_unit("行星防卫军2", 0, district_index, 46017)
 	var ai_unit := _make_unit("行星防卫军2", 1, district_index, 46018)
 	player_unit["range"] = 99999.0
 	ai_unit["range"] = 99999.0
 	_military_controller.replace_runtime_state([player_unit, ai_unit], 46019)
-	_runtime_main.set("selected_district", district_index)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
 	var player_command := _military_controller.make_command_skill("guard", 2, 46017, "行星防卫军2")
 	var ai_command := _military_controller.make_command_skill("guard", 2, 46018, "行星防卫军2")
 	var player_result := _military_controller.trigger_command(player_command, -1, 0)
@@ -762,9 +762,10 @@ func _case_public_events() -> Dictionary:
 	var district_index := _first_district("land")
 	var deployed := _deploy("行星防卫军1", 0, district_index)
 	var callouts: Array = _runtime_main.get("action_callouts")
-	var logs: Array = _runtime_main.get("log_lines")
+	var coordinator := _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	var logs: Array = coordinator.presentation_recent_public_log_messages(90) if coordinator != null else []
 	var public_text := JSON.stringify({"callouts": _plain_public_events(callouts), "logs": logs})
-	var markers: Array = _runtime_main.call("_auto_monster_markers")
+	var markers: Array = coordinator.presentation_public_map_projection(coordinator.presentation_authorized_viewer_index()).unit_markers if coordinator != null else []
 	var marker_safe := true
 	for marker_variant in markers:
 		if marker_variant is Dictionary and str((marker_variant as Dictionary).get("name", "")).begins_with("匿名"):
@@ -779,7 +780,8 @@ func _case_privacy() -> Dictionary:
 	var deployed := _deploy("轨道轰炸机1", 0, district_index)
 	var owner_view := _military_controller.visible_unit_count(0, 0)
 	var rival_view := _military_controller.visible_unit_count(0, 1)
-	var markers: Array = _runtime_main.call("_auto_monster_markers")
+	var coordinator := _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	var markers: Array = coordinator.presentation_public_map_projection(coordinator.presentation_authorized_viewer_index()).unit_markers if coordinator != null else []
 	var serialized := JSON.stringify(_plain_public_events(markers)).to_lower()
 	var observed := deployed and owner_view == 1 and rival_view == 0 and not _contains_any(serialized, ["owner", "player_index", "private", "ai_plan", "target_player"])
 	return _record("private_owner_and_ai_plan_not_exposed", observed, observed, "Owner can count its own unit; an unrevealed rival cannot. Public marker data carries no owner or AI-plan field.", {"card_id": "轨道轰炸机1", "privacy_checked": true, "ai_route_checked": true})
@@ -892,7 +894,8 @@ func _ensure_runtime_main() -> bool:
 	_hide_runtime_canvas_layers()
 	await get_tree().process_frame
 	await get_tree().process_frame
-	var runtime_rng := _runtime_main.get("rng") as RandomNumberGenerator
+	var runtime_coordinator := _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	var runtime_rng := runtime_coordinator.run_rng_service() if runtime_coordinator != null else null
 	if runtime_rng != null:
 		runtime_rng.seed = FIXED_SEED
 	_runtime_main.call("_new_game")
@@ -905,31 +908,31 @@ func _ensure_runtime_main() -> bool:
 	_ai_controller = _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/AiRuntimeController")
 	_inventory_service = _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardInventoryRuntimeService")
 	_product_market_controller = _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ProductMarketRuntimeController")
-	_baseline_players = (_runtime_main.get("players") as Array).duplicate(true)
-	_baseline_districts = (_runtime_main.get("districts") as Array).duplicate(true)
+	_baseline_players = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
+	_baseline_districts = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	_baseline_product_market = (_product_market_controller.call("to_save_data") as Dictionary).duplicate(true) if _product_market_controller != null else {}
 	return _monster_controller != null and _military_controller != null and _ai_controller != null and _inventory_service != null and _product_market_controller != null and not _baseline_players.is_empty() and not _baseline_districts.is_empty()
 
 
 func _reset_fixture() -> void:
 	_runtime_main.set_process(false)
-	_runtime_main.set("players", _baseline_players.duplicate(true))
-	_runtime_main.set("districts", _baseline_districts.duplicate(true))
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = _baseline_players.duplicate(true)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = _baseline_districts.duplicate(true)
 	_product_market_controller.call("apply_save_data", _baseline_product_market.duplicate(true))
 	_military_controller.reset_state()
-	_runtime_main.set("selected_player", 0)
-	_runtime_main.set("selected_district", _first_district("land"))
-	_runtime_main.set("game_time", 0.0)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = _first_district("land")
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = 0.0
 	_runtime_main.set("game_over", false)
 	_runtime_main.set("movement_trails", [])
 	_runtime_main.set("action_callouts", [])
 	_runtime_main.set("map_event_effects", [])
-	_runtime_main.set("log_lines", [])
+	(_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).reset_public_log()
 	if _monster_controller.has_method("reset_state"):
 		_monster_controller.call("reset_state")
 	else:
 		_monster_controller.set("auto_monsters", [])
-	var players: Array = (_runtime_main.get("players") as Array).duplicate(true)
+	var players: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
 	for index in range(players.size()):
 		var player: Dictionary = (players[index] as Dictionary).duplicate(true)
 		player["slots"] = []
@@ -938,7 +941,7 @@ func _reset_fixture() -> void:
 		player["is_ai"] = false
 		player["action_cooldown"] = 0.0
 		players[index] = player
-	_runtime_main.set("players", players)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 
 
 func _hide_runtime_canvas_layers() -> void:
@@ -963,8 +966,8 @@ func _release_runtime_main() -> void:
 
 
 func _deploy(card_id: String, player_index: int, district_index: int) -> bool:
-	_runtime_main.set("selected_player", player_index)
-	_runtime_main.set("selected_district", district_index)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = player_index
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
 	var skill: Dictionary = _runtime_main.call("_make_skill", card_id)
 	return _military_controller.summon_from_card(player_index, skill)
 
@@ -1011,27 +1014,27 @@ func _prepare_city(owner_index: int) -> int:
 
 
 func _set_role(player_index: int, role_name: String) -> bool:
-	var players: Array = (_runtime_main.get("players") as Array).duplicate(true)
+	var players: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
 	if player_index < 0 or player_index >= players.size():
 		return false
 	var player: Dictionary = (players[player_index] as Dictionary).duplicate(true)
 	if role_name == "":
 		player["role_card"] = {}
 		players[player_index] = player
-		_runtime_main.set("players", players)
+		((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 		return true
 	for role_index in range(int(_runtime_main.call("_player_role_catalog_size"))):
 		var role: Dictionary = _runtime_main.call("_make_player_role_card", player_index, role_index)
 		if str(role.get("name", "")) == role_name:
 			player["role_card"] = role
 			players[player_index] = player
-			_runtime_main.set("players", players)
+			((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 			return true
 	return false
 
 
 func _first_district(terrain: String = "") -> int:
-	var districts: Array = _runtime_main.get("districts") if _runtime_main != null else _baseline_districts
+	var districts: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts if _runtime_main != null else _baseline_districts
 	for index in range(districts.size()):
 		var district: Dictionary = districts[index]
 		if bool(district.get("destroyed", false)):
@@ -1042,7 +1045,7 @@ func _first_district(terrain: String = "") -> int:
 
 
 func _different_district(start_index: int, terrain: String = "", excluded: Array = []) -> int:
-	var districts: Array = _runtime_main.get("districts")
+	var districts: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts
 	for index in range(districts.size()):
 		if index == start_index or excluded.has(index):
 			continue
@@ -1060,7 +1063,7 @@ func _units() -> Array:
 
 func _bound_commands(player_index: int, uid: int) -> Array:
 	var result: Array = []
-	var players: Array = _runtime_main.get("players")
+	var players: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players
 	if player_index < 0 or player_index >= players.size():
 		return result
 	for skill_variant in (players[player_index] as Dictionary).get("slots", []):
@@ -1071,7 +1074,7 @@ func _bound_commands(player_index: int, uid: int) -> Array:
 
 func _invalidated_command_count(player_index: int) -> int:
 	var count := 0
-	var players: Array = _runtime_main.get("players")
+	var players: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players
 	if player_index < 0 or player_index >= players.size():
 		return count
 	for skill_variant in (players[player_index] as Dictionary).get("slots", []):

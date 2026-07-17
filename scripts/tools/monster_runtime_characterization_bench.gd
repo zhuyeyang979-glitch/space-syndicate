@@ -396,7 +396,8 @@ func _case_actor_creation_shape() -> Dictionary:
 func _case_actor_owner_hidden_initially() -> Dictionary:
 	var actor := _make_actor(0, _safe_district(), 0, 1)
 	_set_monsters([actor])
-	var markers: Array = _runtime_main.call("_auto_monster_markers")
+	var coordinator := _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	var markers: Array = coordinator.presentation_public_map_projection(coordinator.presentation_authorized_viewer_index()).unit_markers if coordinator != null else []
 	var marker: Dictionary = markers[0] if not markers.is_empty() and markers[0] is Dictionary else {}
 	var aligned := int(actor.get("owner", -1)) == 0 and not bool(actor.get("owner_revealed", true)) and not marker.has("owner") and not marker.has("owner_index")
 	return _record("actor_owner_hidden_initially", true, aligned, "Binding exists in private world state but the public map marker excludes owner fields.", {"fixture_id": "hidden-binding", "privacy_checked": true})
@@ -404,8 +405,8 @@ func _case_actor_owner_hidden_initially() -> Dictionary:
 
 func _case_first_summon_free_placement() -> Dictionary:
 	var district_index := _safe_district()
-	_runtime_main.set("selected_player", 0)
-	_runtime_main.set("selected_district", district_index)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
 	var skill := _monster_skill(0, 1)
 	skill["starter_play_free"] = true
 	var accepted := bool(_runtime_monsters.call("_summon_monster_from_card", _player(0), skill))
@@ -422,8 +423,8 @@ func _case_control_limit_rejects_second_bound_monster() -> Dictionary:
 	for index in range(mini(limit, maxi(0, catalog_size - 1))):
 		seeded.append(_make_actor(index, _safe_district(), 0, 1))
 	_set_monsters(seeded)
-	_runtime_main.set("selected_player", 0)
-	_runtime_main.set("selected_district", _safe_district())
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = _safe_district()
 	var requested_index := mini(limit, catalog_size - 1)
 	var skill := _monster_skill(requested_index, 1)
 	skill["starter_play_free"] = true
@@ -513,9 +514,9 @@ func _case_action_table_and_rank_weights() -> Dictionary:
 
 func _case_destroyed_district_excluded_from_target_candidates() -> Dictionary:
 	var excluded := _safe_district()
-	var districts := (_runtime_main.get("districts") as Array).duplicate(true)
+	var districts := (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	districts[excluded]["destroyed"] = true
-	_runtime_main.set("districts", districts)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 	var candidates: Array = _runtime_monsters.call("_auto_monster_target_candidates", _make_actor(0, _other_district(excluded), -1, 1))
 	var absent := true
 	for candidate_variant in candidates:
@@ -544,7 +545,7 @@ func _case_alive_target_has_positive_weight() -> Dictionary:
 	var candidates: Array = _runtime_monsters.call("_auto_monster_target_candidates", actor)
 	var positive_alive_target := false
 	var target_district := -1
-	var districts: Array = _runtime_main.get("districts") as Array
+	var districts: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array
 	for candidate_variant: Variant in candidates:
 		if not (candidate_variant is Dictionary):
 			continue
@@ -648,7 +649,7 @@ func _case_movement_mode_and_terrain_multiplier() -> Dictionary:
 	aquatic["movement_traits"] = ["aquatic"]
 	var walker := flying.duplicate(true)
 	walker["movement_traits"] = []
-	walker["terrain_move_multiplier"] = {"default": 1.0, str((_runtime_main.get("districts") as Array)[district_index].get("terrain", "land")): 1.5}
+	walker["terrain_move_multiplier"] = {"default": 1.0, str((((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array)[district_index].get("terrain", "land")): 1.5}
 	var multiplier := float(_runtime_monsters.call("_monster_terrain_move_multiplier", walker, district_index))
 	var aligned := str(_runtime_monsters.call("_auto_monster_movement_mode", flying)) == "fly" and str(_runtime_monsters.call("_auto_monster_movement_mode", aquatic)) == "aquatic" and str(_runtime_monsters.call("_auto_monster_movement_mode", walker)) == "walk" and is_equal_approx(multiplier, 1.5)
 	return _record("movement_mode_and_terrain_multiplier", true, aligned, "Movement mode follows ecology traits and terrain speed uses the actor's authored multiplier.", {"fixture_id": "movement-ecology", "action_kind": "movement"})
@@ -799,7 +800,7 @@ func _case_wager_percentage_and_public_bet_contract() -> Dictionary:
 func _case_wager_timeout_refunds_no_damage_and_retains_pool() -> Dictionary:
 	var wager_id := _open_qa_wager(123)
 	var cash_before: Array = []
-	for index in range((_runtime_main.get("players") as Array).size()):
+	for index in range((((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).size()):
 		cash_before.append(_player_cash(index))
 	_runtime_monsters.call("_force_monster_wager_missing_bets", wager_id, "QA timeout")
 	var cash_restored := true
@@ -846,7 +847,8 @@ func _case_public_marker_and_report_privacy_boundary() -> Dictionary:
 	actor["owner_revealed"] = false
 	actor["owner_clue"] = "private qa clue"
 	_set_monsters([actor])
-	var markers: Array = _runtime_main.call("_auto_monster_markers")
+	var coordinator := _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	var markers: Array = coordinator.presentation_public_map_projection(coordinator.presentation_authorized_viewer_index()).unit_markers if coordinator != null else []
 	var marker: Dictionary = markers[0] if not markers.is_empty() and markers[0] is Dictionary else {}
 	var forbidden := ["owner", "owner_index", "owner_clue", "hidden_owner", "private_target", "private_discard", "ai_private_plan"]
 	var aligned := not marker.is_empty() and _dictionary_excludes_keys(marker, forbidden) and not JSON.stringify(marker).contains(str(_player(0).get("name", "__private__")))
@@ -1015,15 +1017,15 @@ func _ensure_runtime_main() -> bool:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	_runtime_main.set_process(false)
-	_baseline_players = (_runtime_main.get("players") as Array).duplicate(true)
-	_baseline_districts = (_runtime_main.get("districts") as Array).duplicate(true)
+	_baseline_players = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
+	_baseline_districts = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	return _runtime_monsters != null and not _baseline_players.is_empty() and not _baseline_districts.is_empty()
 
 
 func _reset_fixture() -> void:
 	_runtime_main.set_process(false)
-	_runtime_main.set("players", _baseline_players.duplicate(true))
-	_runtime_main.set("districts", _baseline_districts.duplicate(true))
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = _baseline_players.duplicate(true)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = _baseline_districts.duplicate(true)
 	_runtime_main.set("auto_monsters", [])
 	_runtime_main.set("next_auto_monster_uid", 1)
 	_runtime_main.set("next_special_monster_slot", 0)
@@ -1036,12 +1038,12 @@ func _reset_fixture() -> void:
 	_runtime_main.set("special_monster_timer", 5.0)
 	_runtime_main.set("opening_guide_dismissed", true)
 	_runtime_main.set("game_over", false)
-	_runtime_main.set("selected_player", 0)
-	_runtime_main.set("selected_district", _safe_district())
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = _safe_district()
 	_runtime_main.set("movement_trails", [])
 	_runtime_main.set("action_callouts", [])
 	_runtime_main.set("map_event_effects", [])
-	var players := (_runtime_main.get("players") as Array).duplicate(true)
+	var players := (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
 	for index in range(players.size()):
 		var player: Dictionary = (players[index] as Dictionary).duplicate(true)
 		player["is_ai"] = false
@@ -1050,7 +1052,7 @@ func _reset_fixture() -> void:
 		player["economic_ledger"] = []
 		player["eliminated"] = false
 		players[index] = player
-	_runtime_main.set("players", players)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 	_runtime_rng().seed = FIXED_SEED
 
 
@@ -1072,12 +1074,13 @@ func _release_runtime_main() -> void:
 	_runtime_monsters = null
 
 
-func _runtime_rng() -> RandomNumberGenerator:
-	return _runtime_main.get("rng") as RandomNumberGenerator
+func _runtime_rng() -> RunRngService:
+	var runtime_coordinator := _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	return runtime_coordinator.run_rng_service() if runtime_coordinator != null else null
 
 
 func _safe_district() -> int:
-	var districts: Array = _runtime_main.get("districts") as Array
+	var districts: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array
 	for index in range(districts.size()):
 		if districts[index] is Dictionary and not bool((districts[index] as Dictionary).get("destroyed", false)):
 			return index
@@ -1085,7 +1088,7 @@ func _safe_district() -> int:
 
 
 func _other_district(origin: int) -> int:
-	var districts: Array = _runtime_main.get("districts") as Array
+	var districts: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array
 	for index in range(districts.size()):
 		if index != origin and districts[index] is Dictionary and not bool((districts[index] as Dictionary).get("destroyed", false)):
 			return index
@@ -1094,7 +1097,7 @@ func _other_district(origin: int) -> int:
 
 func _prepare_public_target_factor_fixture() -> Dictionary:
 	var district_index := _safe_district()
-	var districts := (_runtime_main.get("districts") as Array).duplicate(true)
+	var districts := (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	var district := (districts[district_index] as Dictionary).duplicate(true)
 	district["destroyed"] = false
 	district["miasma"] = true
@@ -1112,7 +1115,7 @@ func _prepare_public_target_factor_fixture() -> Dictionary:
 		"warehouse_stockpile_products": [focus_product],
 	}
 	districts[district_index] = district
-	_runtime_main.set("districts", districts)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 	var actor := _make_actor(0, district_index, 0, 1)
 	actor["name"] = "QA Public Alpha"
 	actor["resource_focus"] = [focus_product]
@@ -1170,7 +1173,7 @@ func _monster(slot: int) -> Dictionary:
 
 
 func _player(player_index: int) -> Dictionary:
-	var players: Array = _runtime_main.get("players") as Array
+	var players: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array
 	if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary):
 		return {}
 	return (players[player_index] as Dictionary).duplicate(true)
@@ -1181,12 +1184,12 @@ func _player_cash(player_index: int) -> int:
 
 
 func _set_player_cash(player_index: int, cash: int) -> void:
-	var players := (_runtime_main.get("players") as Array).duplicate(true)
+	var players := (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
 	var player: Dictionary = (players[player_index] as Dictionary).duplicate(true)
 	player["cash"] = cash
 	player["cash_history"] = [cash]
 	players[player_index] = player
-	_runtime_main.set("players", players)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 
 
 func _prepare_wager_pair(public_pool: int) -> void:

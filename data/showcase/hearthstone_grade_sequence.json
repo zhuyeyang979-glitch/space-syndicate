@@ -2,13 +2,6 @@
   "id": "hearthstone_grade_vertical_slice_v1",
   "duration_seconds": 45,
   "scenarios": ["first_table", "monster_pressure", "public_track_intro", "bid_practice"],
-  "scenario_lab_bridge": {
-    "owner": "Codex B Scenario Lab",
-    "consumer": "Codex A commercial presentation",
-    "visual_events_field": "visual_events",
-    "no_core_scenario_mutation": true,
-    "hidden_information_policy": "public labels, anonymous cards, public bids, local showcase data only"
-  },
   "scenario_segments": [
     {
       "id": "first_table",

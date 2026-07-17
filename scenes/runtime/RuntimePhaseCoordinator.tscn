@@ -1,0 +1,34 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/runtime_phase_coordinator.gd" id="1_root"]
+[ext_resource type="Script" path="res://scripts/runtime/runtime_lifecycle_phase_coordinator.gd" id="2_lifecycle"]
+[ext_resource type="Script" path="res://scripts/runtime/runtime_command_phase_coordinator.gd" id="3_command"]
+[ext_resource type="Script" path="res://scripts/runtime/runtime_simulation_phase_coordinator.gd" id="4_simulation"]
+[ext_resource type="Script" path="res://scripts/runtime/runtime_resolution_phase_coordinator.gd" id="5_resolution"]
+[ext_resource type="Script" path="res://scripts/runtime/runtime_state_commit_coordinator.gd" id="6_commit"]
+[ext_resource type="Script" path="res://scripts/runtime/runtime_presentation_schedule_coordinator.gd" id="7_presentation"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RuntimeSimulationStep.tscn" id="8_step"]
+
+[node name="RuntimePhaseCoordinator" type="Node"]
+script = ExtResource("1_root")
+editor_description = "Owns the deterministic runtime phase order. It coordinates narrow typed ports and owns no gameplay state or rules."
+
+[node name="RuntimeLifecyclePhaseCoordinator" type="Node" parent="."]
+script = ExtResource("2_lifecycle")
+
+[node name="RuntimeCommandPhaseCoordinator" type="Node" parent="."]
+script = ExtResource("3_command")
+
+[node name="RuntimeSimulationPhaseCoordinator" type="Node" parent="."]
+script = ExtResource("4_simulation")
+
+[node name="RuntimeResolutionPhaseCoordinator" type="Node" parent="."]
+script = ExtResource("5_resolution")
+
+[node name="RuntimeStateCommitCoordinator" type="Node" parent="."]
+script = ExtResource("6_commit")
+
+[node name="RuntimePresentationScheduleCoordinator" type="Node" parent="."]
+script = ExtResource("7_presentation")
+
+[node name="RuntimeSimulationStep" parent="." instance=ExtResource("8_step")]

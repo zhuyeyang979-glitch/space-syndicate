@@ -89,7 +89,7 @@ func _coordinator() -> Node:
 func _mutate_private_viewer_state() -> void:
 	if _main == null:
 		return
-	var players_variant: Variant = _main.get("players")
+	var players_variant: Variant = ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players
 	if players_variant is Array and not (players_variant as Array).is_empty():
 		var players := players_variant as Array
 		var player := (players[0] as Dictionary).duplicate(true) if players[0] is Dictionary else {}
@@ -100,9 +100,9 @@ func _mutate_private_viewer_state() -> void:
 		player["hidden_owner"] = "PRIVATE_SENTINEL_OWNER"
 		player["ai_plan"] = "PRIVATE_SENTINEL_AI"
 		players[0] = player
-		_main.set("players", players)
-	_main.set("selected_player", 2)
-	_main.set("selected_district", 3)
+		((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
+	((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 2
+	((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = 3
 
 
 func _is_pure_data(value: Variant) -> bool:

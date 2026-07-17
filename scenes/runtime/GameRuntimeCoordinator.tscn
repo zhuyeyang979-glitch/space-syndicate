@@ -1,11 +1,9 @@
-[gd_scene load_steps=76 format=3]
+[gd_scene load_steps=104 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/GameSessionRuntimeController.tscn" id="3_session"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/DistrictPurchaseRuntimeController.tscn" id="4_purchase"]
-[ext_resource type="PackedScene" path="res://scenes/runtime/ScenarioRuntimeController.tscn" id="6_scenario"]
-[ext_resource type="PackedScene" path="res://scenes/runtime/FirstTableAuthoredRuntimeService.tscn" id="8_first_table_authored"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CodexNavigationRuntimeController.tscn" id="9_codex_navigation"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CodexPublicSnapshotService.tscn" id="10_codex_public_snapshot"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/MonsterCodexPublicSnapshotService.tscn" id="11_monster_codex_public_snapshot"]
@@ -75,12 +73,105 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/SolarAvailabilityRuntimeService.tscn" id="70_solar_availability"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardMarketPricingRuntimeController.tscn" id="71_card_market_pricing"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardMarketPolicyWorldBridge.tscn" id="72_card_market_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RunRngService.tscn" id="81_run_rng"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/TableSelectionState.tscn" id="82_table_selection"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/WorldSessionState.tscn" id="83_world_session"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardTargetChoiceRuntimeController.tscn" id="84_target_choice"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionCandidateSources.tscn" id="85_forced_sources"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardResolutionRuntimeController.tscn" id="86_card_resolution_controller"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardResolutionFrameDriver.tscn" id="87_card_frame_driver"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardCooldownRuntimeController.tscn" id="88_card_cooldown_controller"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/VisualCueRuntimeOwner.tscn" id="89_visual_cue_owner"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/TablePresentationRefreshScheduler.tscn" id="90_presentation_refresh_scheduler"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardResolutionHistoryRuntimeService.tscn" id="91_card_resolution_history"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardResolutionPresentationPort.tscn" id="92_card_resolution_presentation_port"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardIntelRuntimeService.tscn" id="93_card_intel_runtime"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardEffectRuntimeRouter.tscn" id="94_card_effect_router"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardCommitmentRuntimeService.tscn" id="95_card_commitment_runtime"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardCounterSettlementRuntimeService.tscn" id="96_card_counter_settlement"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardPlaySubmissionRuntimeController.tscn" id="97_card_play_submission"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardResolutionTransitionSink.tscn" id="98_card_transition_sink"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/TablePresentationQueryPorts.tscn" id="99_table_presentation_query_ports"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/TablePresentationSourceOwner.tscn" id="100_table_presentation_source"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/TablePresentationRefreshPort.tscn" id="101_table_presentation_refresh_port"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/DeveloperBalancePresentationTarget.tscn" id="102_developer_presentation_target"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/TablePresentationViewModelQuery.tscn" id="103_table_presentation_viewmodel_query"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RuntimeLoop.tscn" id="104_runtime_loop"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RuntimeWorldPorts.tscn" id="105_runtime_world_ports"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RuntimePhaseCoordinator.tscn" id="106_runtime_phase_coordinator"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RuntimeCommandPipeline.tscn" id="107_runtime_command_pipeline"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/MilitaryMonsterDamageCommandSink.tscn" id="108_military_monster_damage_sink"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/MonsterMoveCommandSink.tscn" id="109_monster_move_sink"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/MonsterActionCommandSink.tscn" id="110_monster_action_sink"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
 editor_description = "Thin replacement-foundation coordinator. It composes runtime services without owning economy, card, monster, AI decision, or UI rules."
 
+[node name="RunRngService" parent="." instance=ExtResource("81_run_rng")]
+unique_name_in_owner = true
+
+[node name="TableSelectionState" parent="." instance=ExtResource("82_table_selection")]
+unique_name_in_owner = true
+
+[node name="WorldSessionState" parent="." instance=ExtResource("83_world_session")]
+unique_name_in_owner = true
+
+[node name="RuntimeLoop" parent="." instance=ExtResource("104_runtime_loop")]
+unique_name_in_owner = true
+
+[node name="RuntimeWorldPorts" parent="." instance=ExtResource("105_runtime_world_ports")]
+unique_name_in_owner = true
+
+[node name="RuntimePhaseCoordinator" parent="." instance=ExtResource("106_runtime_phase_coordinator")]
+unique_name_in_owner = true
+
+[node name="RuntimeCommandPipeline" parent="." instance=ExtResource("107_runtime_command_pipeline")]
+unique_name_in_owner = true
+
+[node name="MilitaryMonsterDamageCommandSink" parent="." instance=ExtResource("108_military_monster_damage_sink")]
+unique_name_in_owner = true
+
+[node name="MonsterMoveCommandSink" parent="." instance=ExtResource("109_monster_move_sink")]
+unique_name_in_owner = true
+
+[node name="MonsterActionCommandSink" parent="." instance=ExtResource("110_monster_action_sink")]
+unique_name_in_owner = true
+
+[node name="TablePresentationQueryPorts" parent="." instance=ExtResource("99_table_presentation_query_ports")]
+unique_name_in_owner = true
+
+[node name="TablePresentationViewModelQuery" parent="." instance=ExtResource("103_table_presentation_viewmodel_query")]
+unique_name_in_owner = true
+
+[node name="TablePresentationSourceOwner" parent="." instance=ExtResource("100_table_presentation_source")]
+unique_name_in_owner = true
+
+[node name="TablePresentationRefreshPort" parent="." instance=ExtResource("101_table_presentation_refresh_port")]
+unique_name_in_owner = true
+
+[node name="DeveloperBalancePresentationTarget" parent="." instance=ExtResource("102_developer_presentation_target")]
+unique_name_in_owner = true
+
 [node name="WorldEffectiveClockRuntimeController" parent="." instance=ExtResource("69_world_clock")]
+unique_name_in_owner = true
+
+[node name="CardResolutionRuntimeController" parent="." instance=ExtResource("86_card_resolution_controller")]
+unique_name_in_owner = true
+
+[node name="CardResolutionFrameDriver" parent="." instance=ExtResource("87_card_frame_driver")]
+unique_name_in_owner = true
+
+[node name="CardResolutionTransitionSink" parent="." instance=ExtResource("98_card_transition_sink")]
+unique_name_in_owner = true
+
+[node name="CardCooldownRuntimeController" parent="." instance=ExtResource("88_card_cooldown_controller")]
+unique_name_in_owner = true
+
+[node name="VisualCueRuntimeOwner" parent="." instance=ExtResource("89_visual_cue_owner")]
+unique_name_in_owner = true
+
+[node name="TablePresentationRefreshScheduler" parent="." instance=ExtResource("90_presentation_refresh_scheduler")]
 unique_name_in_owner = true
 
 [node name="SolarAvailabilityRuntimeService" parent="." instance=ExtResource("70_solar_availability")]
@@ -220,6 +311,12 @@ unique_name_in_owner = true
 [node name="ForcedDecisionRuntimeScheduler" parent="." instance=ExtResource("2_scheduler")]
 unique_name_in_owner = true
 
+[node name="CardTargetChoiceRuntimeController" parent="." instance=ExtResource("84_target_choice")]
+unique_name_in_owner = true
+
+[node name="ForcedDecisionCandidateSources" parent="." instance=ExtResource("85_forced_sources")]
+unique_name_in_owner = true
+
 [node name="GameSessionRuntimeController" parent="." instance=ExtResource("3_session")]
 unique_name_in_owner = true
 
@@ -241,6 +338,27 @@ unique_name_in_owner = true
 [node name="CardResolutionExecutionWorldBridge" parent="." instance=ExtResource("24_resolution_world_bridge")]
 unique_name_in_owner = true
 
+[node name="CardResolutionHistoryRuntimeService" parent="." instance=ExtResource("91_card_resolution_history")]
+unique_name_in_owner = true
+
+[node name="CardResolutionPresentationPort" parent="." instance=ExtResource("92_card_resolution_presentation_port")]
+unique_name_in_owner = true
+
+[node name="CardIntelRuntimeService" parent="." instance=ExtResource("93_card_intel_runtime")]
+unique_name_in_owner = true
+
+[node name="CardEffectRuntimeRouter" parent="." instance=ExtResource("94_card_effect_router")]
+unique_name_in_owner = true
+
+[node name="CardCommitmentRuntimeService" parent="." instance=ExtResource("95_card_commitment_runtime")]
+unique_name_in_owner = true
+
+[node name="CardCounterSettlementRuntimeService" parent="." instance=ExtResource("96_card_counter_settlement")]
+unique_name_in_owner = true
+
+[node name="CardPlaySubmissionRuntimeController" parent="." instance=ExtResource("97_card_play_submission")]
+unique_name_in_owner = true
+
 [node name="CardEconomyProductRouteEffectRuntimeService" parent="." instance=ExtResource("25_economy_product_route_effect")]
 unique_name_in_owner = true
 
@@ -254,12 +372,6 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="DistrictPurchaseSettlementRuntimeService" parent="." instance=ExtResource("19_purchase_settlement")]
-unique_name_in_owner = true
-
-[node name="ScenarioRuntimeController" parent="." instance=ExtResource("6_scenario")]
-unique_name_in_owner = true
-
-[node name="FirstTableAuthoredRuntimeService" parent="." instance=ExtResource("8_first_table_authored")]
 unique_name_in_owner = true
 
 [node name="CodexNavigationRuntimeController" parent="." instance=ExtResource("9_codex_navigation")]

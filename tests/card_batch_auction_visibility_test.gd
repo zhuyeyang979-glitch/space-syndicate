@@ -27,7 +27,7 @@ func _run() -> void:
 	main.set("card_resolution_auction_open", true)
 	main.set("card_resolution_auction_timer", 5.0)
 	main.set("card_resolution_batch_locked", false)
-	main.set("selected_player", 0)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
 	main.set("selected_card_resolution_id", 703)
 	var track_entries: Array = main.call("_runtime_card_track_snapshot_source") as Array
 	var auction_track_count := 0

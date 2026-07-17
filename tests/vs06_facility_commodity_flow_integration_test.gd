@@ -210,21 +210,21 @@ func _verify_real_main_facility_income_chain() -> void:
 	_expect(str(cardinality_reject.get("reason_code", "")) == "public_demand_group_cardinality_unsupported", "multi-product public demand group fails closed before owner mutation")
 	_expect(before_cardinality_infrastructure == JSON.stringify(infrastructure.call("to_save_data")) and before_cardinality_flow == JSON.stringify(flow.call("to_save_data")), "multi-product rejection leaves both owner journals and revisions unchanged")
 
-	var players: Array = main.get("players") if main.get("players") is Array else []
+	var players: Array = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players if ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players is Array else []
 	var actor_id := str((players[0] as Dictionary).get("actor_id", "player.0")) if not players.is_empty() and players[0] is Dictionary else ""
-	var district := int(main.call("_first_run_recommended_start_district", 0))
+	var district := _first_playable_district(main)
 	main.call("_select_district", district)
 	coordinator.call("refresh_v06_production_player_bindings", main)
 	var public_demands := _installations(flow, "demand", "public")
 	_expect(not public_demands.is_empty(), "map demand facts bootstrap neutral public demand installations")
 	var stable_refresh_before := JSON.stringify({"infrastructure": infrastructure.call("to_save_data"), "flow": flow.call("to_save_data")})
-	main.set("game_time", 91.0)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = 91.0
 	var repeated_refresh: Dictionary = coordinator.call("refresh_v06_production_player_bindings", main)
 	_expect(bool(repeated_refresh.get("public_demand_ready", false)), "public demand bootstrap replays after world time advances")
 	_expect(stable_refresh_before == JSON.stringify({"infrastructure": infrastructure.call("to_save_data"), "flow": flow.call("to_save_data")}), "stable public-demand transaction IDs do not bind changing world time")
-	var market_surface: Dictionary = coordinator.call("v06_first_table_facility_market_snapshot", actor_id)
+	var market_surface: Dictionary = coordinator.call("v06_facility_market_snapshot", actor_id)
 	var listing: Dictionary = market_surface.get("listing", {}) if market_surface.get("listing", {}) is Dictionary else {}
-	var purchase: Dictionary = coordinator.call("purchase_v06_first_table_facility_card", actor_id, str(listing.get("item_id", "")), "vs06-a6:purchase")
+	var purchase: Dictionary = coordinator.call("purchase_v06_facility_card", actor_id, str(listing.get("item_id", "")), "vs06-a6:purchase")
 	_expect(bool(purchase.get("committed", false)), "canonical matching rank-I facility is purchased")
 	var player_before_play: Dictionary = coordinator.call("v06_card_player_snapshot", actor_id)
 	var slot_index := _find_card_slot(player_before_play, str(purchase.get("card_id", "")))
@@ -234,7 +234,7 @@ func _verify_real_main_facility_income_chain() -> void:
 		"slot_index": slot_index,
 		"transaction_id": "vs06-a6:facility-play",
 		"region_id": region_id,
-		"game_time": float(main.get("game_time")),
+		"game_time": float(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time),
 	}
 	var facilities_before := (infrastructure.call("facilities_snapshot", false) as Array).size()
 	var play: Dictionary = coordinator.call("play_v06_runtime_card", play_request)
@@ -263,7 +263,7 @@ func _verify_real_main_facility_income_chain() -> void:
 	var first_five_receipts := 0
 	var sixth_result: Dictionary = {}
 	for second in range(1, 7):
-		main.set("game_time", float(second))
+		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = float(second)
 		var tick: Dictionary = flow.call("advance_world", 1.0, {})
 		if second <= 5:
 			first_five_receipts += int(tick.get("receipt_count", 0))
@@ -318,20 +318,29 @@ func _find_card_slot(player: Dictionary, card_id: String) -> int:
 
 
 func _selected_region_id(main: Node, district: int) -> String:
-	var districts: Array = main.get("districts") if main.get("districts") is Array else []
+	var districts: Array = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts if ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts is Array else []
 	if district < 0 or district >= districts.size() or not (districts[district] is Dictionary):
 		return ""
 	return str((districts[district] as Dictionary).get("region_id", "region.%03d" % district))
 
 
+func _first_playable_district(main: Node) -> int:
+	var districts: Array = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts if ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts is Array else []
+	for index in range(districts.size()):
+		var district: Dictionary = districts[index] if districts[index] is Dictionary else {}
+		if not bool(district.get("is_ocean", false)) and not str(district.get("region_id", "")).is_empty():
+			return index
+	return -1
+
+
 func _player_cash_cents(main: Node, player_index: int) -> int:
-	var players: Array = main.get("players") if main.get("players") is Array else []
+	var players: Array = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players if ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players is Array else []
 	var player: Dictionary = players[player_index] if player_index >= 0 and player_index < players.size() and players[player_index] is Dictionary else {}
 	return int(player.get("cash_cents", int(player.get("cash", 0)) * 100))
 
 
 func _player_ledger(main: Node, player_index: int) -> Array:
-	var players: Array = main.get("players") if main.get("players") is Array else []
+	var players: Array = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players if ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players is Array else []
 	var player: Dictionary = players[player_index] if player_index >= 0 and player_index < players.size() and players[player_index] is Dictionary else {}
 	return (player.get("v06_transaction_ledger", []) as Array).duplicate(true) if player.get("v06_transaction_ledger", []) is Array else []
 

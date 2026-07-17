@@ -35,7 +35,7 @@ func _run() -> void:
 	var timing: Dictionary = main.call("_ruleset_timing_rules")
 	var cooldown := float(timing.get("monster_wager_reopen_cooldown_seconds", -1.0))
 	_expect(is_equal_approx(cooldown, 20.0), "ruleset owns a 20-second wager reopen cooldown")
-	var district_index := maxi(0, int(main.get("selected_district")))
+	var district_index := maxi(0, int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district))
 	var actor_a := monsters.call("_make_auto_monster", 0, 0, district_index, 0, 1) as Dictionary
 	var actor_b := monsters.call("_make_auto_monster", 1, 1, district_index, 1, 1) as Dictionary
 	actor_a["slot"] = 0
@@ -45,7 +45,7 @@ func _run() -> void:
 	monsters.set("auto_monsters", [actor_a, actor_b])
 	monsters.set("active_monster_wagers", [])
 	monsters.set("resolved_monster_wager_history", [])
-	main.set("game_time", 100.0)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = 100.0
 
 	var wager_id := int(monsters.call("_open_monster_wager_for_pair", 0, 1, "QA cooldown"))
 	_expect(wager_id > 0, "first eligible monster wager opens")
@@ -54,9 +54,9 @@ func _run() -> void:
 	_expect(history.size() == 1 and is_equal_approx(float((history[0] as Dictionary).get("resolved_at", -1.0)), 100.0), "settlement history records the authoritative reopen anchor")
 	_expect(int(monsters.call("_open_monster_wager_for_pair", 0, 1, "QA immediate reopen")) == -1, "immediate serial wager is blocked")
 
-	main.set("game_time", 100.0 + cooldown - 0.001)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = 100.0 + cooldown - 0.001
 	_expect(int(monsters.call("_open_monster_wager_for_pair", 0, 1, "QA boundary before")) == -1, "half-open cooldown remains active immediately before its boundary")
-	main.set("game_time", 100.0 + cooldown)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = 100.0 + cooldown
 	_expect(int(monsters.call("_open_monster_wager_for_pair", 0, 1, "QA boundary")) > wager_id, "a new wager may open exactly at the cooldown boundary")
 	_expect(not (history[0] as Dictionary).has("reopen_cooldown_remaining"), "cooldown is derived from existing history without duplicate mutable state")
 

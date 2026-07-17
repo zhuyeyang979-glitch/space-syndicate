@@ -622,12 +622,12 @@ func _case_extra_district_supply_receive() -> Dictionary:
 	var before := _player_probe(0)
 	var debug_before := _inventory_debug()
 	if not fixture.is_empty():
-		_runtime_main.set("selected_district", int(fixture.get("district_index", -1)))
-		var players: Array = _runtime_main.get("players") as Array
+		((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = int(fixture.get("district_index", -1))
+		var players: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array
 		var player: Dictionary = players[0]
 		_runtime_main.call("_draw_extra_district_cards", player, 1, "characterization")
 		players[0] = player
-		_runtime_main.set("players", players)
+		((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 	var after := _player_probe(0)
 	var debug_after := _inventory_debug()
 	var service_route := int(debug_after.get("receive_plan_count", 0)) > int(debug_before.get("receive_plan_count", 0)) and int(debug_after.get("committed_count", 0)) - int(debug_before.get("committed_count", 0)) == 1
@@ -645,7 +645,7 @@ func _case_hand_steal_receive_success() -> Dictionary:
 	var steal_skill := _interaction_skill("player_hand_steal")
 	_reset_player(0, [])
 	_reset_player(1, [_make_skill(card_id)])
-	_runtime_main.set("selected_district", int(_first_supply_fixture().get("district_index", 0)))
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = int(_first_supply_fixture().get("district_index", 0))
 	_seed_runtime_rng(30012)
 	var source_before := _player_probe(0)
 	var target_before := _player_probe(1)
@@ -670,7 +670,7 @@ func _case_hand_steal_receive_failure_conversion() -> Dictionary:
 	var steal_skill := _interaction_skill("player_hand_steal")
 	_reset_player(0, [_make_skill(max_id)])
 	_reset_player(1, [_make_skill(card_id)])
-	_runtime_main.set("selected_district", int(_first_supply_fixture().get("district_index", 0)))
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = int(_first_supply_fixture().get("district_index", 0))
 	_seed_runtime_rng(30013)
 	var source_before := _player_probe(0)
 	var target_before := _player_probe(1)
@@ -732,9 +732,9 @@ func _case_private_hand_lock() -> Dictionary:
 	var result: Dictionary = result_variant if result_variant is Dictionary else {}
 	var locked := bool(result.get("committed", false))
 	if locked:
-		var players: Array = (_runtime_main.get("players") as Array).duplicate(true)
+		var players: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
 		players[1] = player
-		_runtime_main.set("players", players)
+		((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 	var after := _player_probe(1)
 	var debug_after := _inventory_debug()
 	var service_route := int(debug_after.get("lock_plan_count", 0)) - int(debug_before.get("lock_plan_count", 0)) == 1 and int(debug_after.get("committed_count", 0)) - int(debug_before.get("committed_count", 0)) == 1
@@ -781,12 +781,12 @@ func _case_inventory_fingerprint_drift() -> Dictionary:
 	var before := _player_probe(0)
 	var current_variant: Variant = _runtime_main.call("_district_purchase_inventory_snapshot", _player(0), card_id, -1)
 	var current: Dictionary = current_variant if current_variant is Dictionary else {}
-	var players: Array = _runtime_main.get("players") as Array
+	var players: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array
 	var player: Dictionary = players[0]
 	var result_variant: Variant = coordinator.call("commit_card_inventory_receive", player, current, plan) if coordinator != null else {}
 	var result: Dictionary = result_variant if result_variant is Dictionary else {}
 	players[0] = player
-	_runtime_main.set("players", players)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 	var after := _player_probe(0)
 	return _record("inventory_fingerprint_drift", "commit_card_inventory_receive", "drift_rejection", before, after, {}, {}, {
 		"observed": not initial.is_empty() and not plan.is_empty() and not current.is_empty(),
@@ -820,11 +820,11 @@ func _case_public_private_boundary() -> Dictionary:
 	var steal_skill := _interaction_skill("player_hand_steal")
 	_reset_player(0, [])
 	_reset_player(1, [_make_skill(card_id)])
-	_runtime_main.set("selected_district", int(_first_supply_fixture().get("district_index", 0)))
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = int(_first_supply_fixture().get("district_index", 0))
 	_seed_runtime_rng(30019)
 	var source_before := _player_probe(0)
 	var target_before := _player_probe(1)
-	var logs_before: Array = (_runtime_main.get("log_lines") as Array).duplicate()
+	var logs_before: Array = (_coordinator() as GameRuntimeCoordinator).presentation_recent_public_log_messages(90)
 	var actor_name := str(_player(0).get("name", ""))
 	var applied := bool(_runtime_main.call("_apply_player_hand_steal", 0, 1, steal_skill)) if not steal_skill.is_empty() else false
 	var source_after := _player_probe(0)
@@ -990,14 +990,14 @@ func _inventory_debug() -> Dictionary:
 func _player(player_index: int) -> Dictionary:
 	if _runtime_main == null:
 		return {}
-	var players: Array = _runtime_main.get("players") as Array
+	var players: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array
 	if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary):
 		return {}
 	return (players[player_index] as Dictionary).duplicate(true)
 
 
 func _reset_player(player_index: int, slots: Array, cash: int = 999999) -> void:
-	var players: Array = (_runtime_main.get("players") as Array).duplicate(true)
+	var players: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
 	if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary):
 		return
 	var player: Dictionary = (players[player_index] as Dictionary).duplicate(true)
@@ -1010,15 +1010,15 @@ func _reset_player(player_index: int, slots: Array, cash: int = 999999) -> void:
 	player["eliminated"] = false
 	player["action_cooldown"] = 0.0
 	players[player_index] = player
-	_runtime_main.set("players", players)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 
 
 func _set_slots(player_index: int, slots: Array) -> void:
 	var player := _player(player_index)
 	player["slots"] = slots.duplicate(true)
-	var players: Array = _runtime_main.get("players") as Array
+	var players: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array
 	players[player_index] = player
-	_runtime_main.set("players", players)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 
 
 func _player_probe(player_index: int) -> Dictionary:
@@ -1139,7 +1139,7 @@ func _interaction_skill(kind: String) -> Dictionary:
 
 
 func _first_supply_fixture() -> Dictionary:
-	var districts: Array = _runtime_main.get("districts") as Array
+	var districts: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array
 	var coordinator := _coordinator()
 	for district_index in range(districts.size()):
 		if not (districts[district_index] is Dictionary) or bool((districts[district_index] as Dictionary).get("destroyed", false)):
@@ -1166,8 +1166,8 @@ func _prepare_purchase_fixture(player_index: int) -> Dictionary:
 	var district_index := int(fixture.get("district_index", -1))
 	var card_id := str(fixture.get("card_id", ""))
 	_reset_player(player_index, [])
-	_runtime_main.set("selected_player", player_index)
-	_runtime_main.set("selected_district", district_index)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = player_index
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
 	_runtime_main.set("selected_market_skill", card_id)
 	_runtime_main.set("previewed_district_card", card_id)
 	_runtime_main.call("_open_district_card_purchase_window", district_index, player_index)
@@ -1190,43 +1190,44 @@ func _role_bonus_fixture() -> Dictionary:
 	var product_id := str(role.get("bonus_card_product", ""))
 	if product_id.is_empty():
 		return {}
-	var players: Array = (_runtime_main.get("players") as Array).duplicate(true)
+	var players: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
 	var player: Dictionary = (players[player_index] as Dictionary).duplicate(true)
 	player["role_card"] = role.duplicate(true)
 	players[player_index] = player
-	_runtime_main.set("players", players)
-	var districts: Array = (_runtime_main.get("districts") as Array).duplicate(true)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
+	var districts: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	var district: Dictionary = (districts[district_index] as Dictionary).duplicate(true)
 	var products: Array = (district.get("products", []) as Array).duplicate()
 	if not products.has(product_id):
 		products.append(product_id)
 	district["products"] = products
 	districts[district_index] = district
-	_runtime_main.set("districts", districts)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 	return {"player_index": player_index, "district_index": district_index, "bought_card_id": str(supply.get("card_id", ""))}
 
 
 func _acquire_for_player(player_index: int, card_id: String) -> bool:
 	if card_id.is_empty():
 		return false
-	var players: Array = _runtime_main.get("players") as Array
+	var players: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array
 	if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary):
 		return false
 	var player: Dictionary = players[player_index]
-	var acquired := bool(_runtime_main.call("_acquire_card_for_player", player, card_id, int(_runtime_main.get("selected_district")), "characterization", true))
+	var acquired := bool(_runtime_main.call("_acquire_card_for_player", player, card_id, int(((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district), "characterization", true))
 	players[player_index] = player
-	_runtime_main.set("players", players)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 	return acquired
 
 
 func _seed_runtime_rng(seed_value: int) -> void:
-	var rng_variant: Variant = _runtime_main.get("rng")
-	if rng_variant is RandomNumberGenerator:
-		(rng_variant as RandomNumberGenerator).seed = seed_value
+	var runtime_coordinator := _coordinator() as GameRuntimeCoordinator
+	var runtime_rng := runtime_coordinator.run_rng_service() if runtime_coordinator != null else null
+	if runtime_rng != null:
+		runtime_rng.seed = seed_value
 
 
 func _public_logs_hide_private_values(start_index: int, private_values: Array) -> bool:
-	var logs: Array = _runtime_main.get("log_lines") as Array
+	var logs: Array = (_coordinator() as GameRuntimeCoordinator).presentation_recent_public_log_messages(90)
 	for index in range(maxi(0, start_index), logs.size()):
 		var line := str(logs[index])
 		for value_variant in private_values:

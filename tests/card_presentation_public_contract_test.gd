@@ -116,7 +116,7 @@ func _compose_card_facts(card_name: String) -> Dictionary:
 
 
 func _reset_private_fixture() -> void:
-	var players := _array(_main.get("players"))
+	var players := _array(((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players)
 	for index in range(players.size()):
 		var player := (players[index] as Dictionary).duplicate(true)
 		player["cash"] = 100000 + index
@@ -127,11 +127,11 @@ func _reset_private_fixture() -> void:
 		player["city_guesses"] = {}
 		player["ai_private_plan"] = "CARD_PRESENTATION_PRIVATE_AI_PLAN_SENTINEL"
 		players[index] = player
-	_main.set("players", players)
+	((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 
 
 func _mutate_private_state() -> void:
-	var players := _array(_main.get("players"))
+	var players := _array(((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players)
 	if players.size() < 2:
 		return
 	var player := (players[1] as Dictionary).duplicate(true)
@@ -143,7 +143,7 @@ func _mutate_private_state() -> void:
 	player["city_guesses"] = {0: "CARD_PRESENTATION_PRIVATE_CITY_GUESS_SENTINEL"}
 	player["ai_private_plan"] = "CARD_PRESENTATION_PRIVATE_AI_PLAN_SENTINEL"
 	players[1] = player
-	_main.set("players", players)
+	((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 
 
 func _public_projection(snapshot: Dictionary) -> Dictionary:

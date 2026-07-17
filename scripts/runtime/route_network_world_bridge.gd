@@ -3,12 +3,21 @@ extends Node
 class_name RouteNetworkWorldBridge
 
 var _world: Node
+var _world_session_state: WorldSessionState
 var _region_infrastructure_controller: Node
 var _capture_count := 0
 
 
 func bind_world(world: Node) -> void:
 	_world = world
+
+
+func set_world_session_state(state: WorldSessionState) -> void:
+	_world_session_state = state
+
+
+func world_session_state() -> WorldSessionState:
+	return _world_session_state
 
 
 func set_region_infrastructure_controller(controller: Node) -> void:
@@ -26,8 +35,8 @@ func capture_route_topology() -> Dictionary:
 	var regions: Array = _region_infrastructure_controller.call("regions_snapshot") if _region_infrastructure_controller.has_method("regions_snapshot") else []
 	var facilities: Array = _region_infrastructure_controller.call("facilities_snapshot", false) if _region_infrastructure_controller.has_method("facilities_snapshot") else []
 	var legacy_by_index: Dictionary = {}
-	if has_world():
-		var districts_variant: Variant = _world.get("districts")
+	if _world_session_state != null:
+		var districts_variant: Variant = _world_session_state.districts
 		if districts_variant is Array:
 			for legacy_index in range((districts_variant as Array).size()):
 				var district: Dictionary = (districts_variant as Array)[legacy_index] if (districts_variant as Array)[legacy_index] is Dictionary else {}
@@ -61,6 +70,7 @@ func debug_snapshot() -> Dictionary:
 	return {
 		"bridge_ready": _region_infrastructure_controller != null,
 		"world_bound": has_world(),
+		"world_session_state_ready": _world_session_state != null,
 		"capture_count": _capture_count,
 		"bridge_role": "region_and_facility_facts_for_route_derivation",
 		"owns_runtime_state": false,

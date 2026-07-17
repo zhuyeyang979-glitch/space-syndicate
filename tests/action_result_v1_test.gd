@@ -308,9 +308,11 @@ func _test_main_success_and_failures() -> void:
 
 	var unavailable_fixture := _fixture(_entry(0, 101), true)
 	var unavailable_main := unavailable_fixture.get("main") as Control
-	var unavailable_players: Array = unavailable_main.get("players")
+	var unavailable_coordinator := unavailable_fixture.get("coordinator") as GameRuntimeCoordinator
+	var unavailable_state := unavailable_coordinator.world_session_state()
+	var unavailable_players: Array = unavailable_state.players
 	(unavailable_players[0] as Dictionary)["eliminated"] = true
-	unavailable_main.set("players", unavailable_players)
+	unavailable_state.players = unavailable_players
 	_assert_main_failure(unavailable_fixture, "player_unavailable")
 	_dispose_fixture(unavailable_fixture)
 
@@ -364,11 +366,11 @@ func _fixture(entry: Dictionary, open_window: bool) -> Dictionary:
 	var coordinator := harness.coordinator_for(main)
 	var queue := coordinator.get_node_or_null("CardResolutionQueueRuntimeService") if coordinator != null else null
 	_expect(controller != null and coordinator != null and queue != null, "ready fixture owns controller, coordinator, and queue services")
-	main.set("players", [
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = [
 		{"name": "玩家1", "eliminated": false, "slots": [], "action_cooldown": 0.0},
 		{"name": "玩家2", "eliminated": false, "slots": [], "action_cooldown": 0.0},
-	])
-	main.set("selected_player", 0)
+	]
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
 	queue.call("reset_state")
 	queue.call("replace_current_queue", [entry])
 	controller.call("reset_state")
@@ -414,7 +416,7 @@ func _gameplay_snapshot(main: Control, controller: Node, queue: Node) -> Diction
 		"ready_players": (controller_debug.get("ready_players", {}) as Dictionary).duplicate(true) if controller_debug.get("ready_players", {}) is Dictionary else {},
 		"phase": phase,
 		"timer": timer,
-		"players": (main.get("players") as Array).duplicate(true),
+		"players": (((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true),
 	}
 
 

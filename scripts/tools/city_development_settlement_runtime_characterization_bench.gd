@@ -21,7 +21,7 @@ const MANIFEST_PATH := OUTPUT_DIR + "manifest.json"
 const REPORT_PATH := OUTPUT_DIR + "report.md"
 const SCREENSHOT_PATH := "user://space_syndicate_design_qa/city_development_settlement_hard_cutover_sprint_66.png"
 const RULESET_ID := "v0.4"
-const CASE_COUNT := 64
+const CASE_COUNT := 62
 const FIXED_SEED := 650065
 const BASELINE_MAIN_SHA256 := "B8174D78AA08BE2883E7EA5C7A5568CB8C5ED902D1945BCE0EAE8F7D3AD3CC67"
 const BASELINE_MAIN_METRICS := {
@@ -67,7 +67,6 @@ const CASE_IDS := [
 	"lifecycle_opened_resolved",
 	"economic_event_exact_once",
 	"public_callout_anonymous",
-	"player_ai_first_table_same_route",
 	"public_private_project_privacy",
 	"current_and_migration_save_shape",
 	"downstream_refresh_atomicity_characterized",
@@ -90,7 +89,6 @@ const CASE_IDS := [
 	"lifecycle_events_exact_once",
 	"player_route_uses_coordinator",
 	"ai_route_uses_coordinator",
-	"first_table_route_uses_coordinator",
 	"save_compatibility_cutover",
 	"public_receipt_privacy",
 	"reflected_tests_migrated",
@@ -286,7 +284,6 @@ func _run_case(case_id: String) -> Dictionary:
 		"lifecycle_opened_resolved": return _case_lifecycle()
 		"economic_event_exact_once": return _case_economic_event()
 		"public_callout_anonymous": return _case_public_callout()
-		"player_ai_first_table_same_route": return _case_shared_route()
 		"public_private_project_privacy": return _case_privacy()
 		"current_and_migration_save_shape": return _case_save_shape()
 		"downstream_refresh_atomicity_characterized": return _case_downstream_atomicity()
@@ -309,7 +306,6 @@ func _run_case(case_id: String) -> Dictionary:
 		"lifecycle_events_exact_once": return _case_lifecycle_events_exact_once()
 		"player_route_uses_coordinator": return _case_route_source("player")
 		"ai_route_uses_coordinator": return _case_route_source("ai")
-		"first_table_route_uses_coordinator": return _case_route_source("first_table")
 		"save_compatibility_cutover": return _rename_record("save_compatibility_cutover", _case_save_shape())
 		"public_receipt_privacy": return _case_public_receipt_privacy()
 		"reflected_tests_migrated": return _case_reflected_tests_migrated()
@@ -458,7 +454,7 @@ func _case_hp_and_repair() -> Dictionary:
 func _case_built_at_visual() -> Dictionary:
 	var fixture := _development_fixture("production")
 	var district_index := int(fixture.get("district_index", -1))
-	_runtime_main.set("game_time", 321.5)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = 321.5
 	var before_effects := (_runtime_main.get("map_event_effects") as Array).size()
 	var applied := _apply_fixture(fixture, 0)
 	var city: Dictionary = _runtime_main.call("_district_city", district_index)
@@ -619,15 +615,6 @@ func _case_public_callout() -> Dictionary:
 	return _record("public_callout_anonymous", observed, observed, "Public callout exposes project/product evidence but keeps the contributor anonymous.", {"district_index": int(fixture.get("district_index", -1)), "event_checked": true, "privacy_checked": true})
 
 
-func _case_shared_route() -> Dictionary:
-	var main_source := str(_sources.get("main", ""))
-	var dispatch := _function_source(main_source, "_apply_card_resolution_effect_request")
-	var ai_route := _function_source(main_source, "_perform_first_table_authored_ai_city_action")
-	var first_table_source := _function_source(main_source, "_buy_first_table_city_development_card") + _function_source(main_source, "_activate_first_run_coach_action")
-	var observed := dispatch.contains("execute_city_development") and ai_route.contains("execute_city_development") and first_table_source.contains("city_development") and not main_source.contains("func _apply_city_development_card(")
-	return _record("player_ai_first_table_same_route", observed, observed, "Player Queue resolution and authored AI converge on Coordinator; First Table supplies the same real city-development cards.", {"event_checked": true})
-
-
 func _case_privacy() -> Dictionary:
 	var fixture := _development_fixture("production")
 	var first := _apply_fixture(fixture, 0)
@@ -778,9 +765,8 @@ func _case_route_source(route_kind: String) -> Dictionary:
 	var source := ""
 	match route_kind:
 		"player": source = _function_source(main_source, "_apply_card_resolution_effect_request")
-		"ai": source = _function_source(main_source, "_perform_first_table_authored_ai_city_action")
-		"first_table": source = _function_source(main_source, "_buy_first_table_city_development_card") + _function_source(main_source, "_perform_first_table_authored_ai_city_action")
-	var observed := source.contains("execute_city_development") if route_kind != "first_table" else source.contains("city_development") and main_source.contains("execute_city_development")
+		"ai": source = FileAccess.get_file_as_string("res://scripts/runtime/ai_runtime_controller.gd")
+	var observed := source.contains("execute_city_development")
 	return _record("%s_route_uses_coordinator" % route_kind, observed, observed, "%s route reaches the shared Coordinator settlement API without a private formula." % route_kind, {"main_adapter_checked": true})
 
 
@@ -877,7 +863,8 @@ func _ensure_runtime_main() -> bool:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	_disable_runtime_audio()
-	var runtime_rng := _runtime_main.get("rng") as RandomNumberGenerator
+	var runtime_coordinator := _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	var runtime_rng := runtime_coordinator.run_rng_service() if runtime_coordinator != null else null
 	if runtime_rng != null: runtime_rng.seed = FIXED_SEED
 	_runtime_main.call("_new_game")
 	_hide_runtime_canvas_layers()
@@ -892,8 +879,8 @@ func _ensure_runtime_main() -> bool:
 	_network_controller = _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CityTradeNetworkRuntimeController")
 	_gdp_controller = _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GdpFormulaRuntimeController")
 	_product_market = _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ProductMarketRuntimeController")
-	_baseline_players = (_runtime_main.get("players") as Array).duplicate(true)
-	_baseline_districts = (_runtime_main.get("districts") as Array).duplicate(true)
+	_baseline_players = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
+	_baseline_districts = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	_baseline_city_cards = (_runtime_main.get("city_development_runtime_cards") as Dictionary).duplicate(true)
 	_baseline_project_sequence = int(_network_controller.call("project_sequence")) if _network_controller != null else 1
 	_baseline_market_save = _product_market.call("to_save_data") if _product_market != null and _product_market.has_method("to_save_data") else {}
@@ -902,25 +889,26 @@ func _ensure_runtime_main() -> bool:
 
 func _reset_fixture() -> void:
 	_runtime_main.set_process(false)
-	_runtime_main.set("players", _baseline_players.duplicate(true))
-	_runtime_main.set("districts", _baseline_districts.duplicate(true))
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = _baseline_players.duplicate(true)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = _baseline_districts.duplicate(true)
 	_runtime_main.set("city_development_runtime_cards", _baseline_city_cards.duplicate(true))
 	_network_controller.call("apply_save_data", {"city_trade_network_runtime": {"project_sequence": _baseline_project_sequence}})
 	if _product_market.has_method("apply_save_data"):
 		_product_market.call("apply_save_data", _baseline_market_save.duplicate(true))
 	_city_controller.call("reset_state")
 	_city_world_bridge.call("reset_state")
-	_runtime_main.set("game_time", 100.0)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = 100.0
 	_runtime_main.set("game_over", false)
-	_runtime_main.set("selected_player", 0)
-	_runtime_main.set("log_lines", [])
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	(_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).reset_public_log()
 	_runtime_main.set("action_callouts", [])
 	_runtime_main.set("map_event_effects", [])
 	_runtime_main.set("movement_trails", [])
 	_runtime_main.set("runtime_visual_events", [])
-	var runtime_rng := _runtime_main.get("rng") as RandomNumberGenerator
+	var runtime_coordinator := _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	var runtime_rng := runtime_coordinator.run_rng_service() if runtime_coordinator != null else null
 	if runtime_rng != null: runtime_rng.seed = FIXED_SEED
-	var players: Array = (_runtime_main.get("players") as Array).duplicate(true)
+	var players: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
 	for i in range(players.size()):
 		var player: Dictionary = (players[i] as Dictionary).duplicate(true)
 		player["cash"] = 2000
@@ -928,12 +916,12 @@ func _reset_fixture() -> void:
 		player["cities_built"] = 0
 		player["economic_ledger"] = []
 		players[i] = player
-	_runtime_main.set("players", players)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 	_isolate_map()
 
 
 func _development_fixture(direction: String) -> Dictionary:
-	var districts: Array = _runtime_main.get("districts")
+	var districts: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts
 	var cards: Dictionary = _runtime_main.get("city_development_runtime_cards")
 	var names: Array = cards.keys()
 	names.sort()
@@ -958,8 +946,8 @@ func _apply_fixture(fixture: Dictionary, player_index: int) -> bool:
 	if fixture.is_empty(): return false
 	var skill: Dictionary = (fixture.get("skill", {}) as Dictionary).duplicate(true)
 	skill["development_target_district"] = int(fixture.get("district_index", -1))
-	_runtime_main.set("selected_player", player_index)
-	_runtime_main.set("selected_district", int(fixture.get("district_index", -1)))
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = player_index
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = int(fixture.get("district_index", -1))
 	var result: Dictionary = _coordinator.call("execute_city_development", {"player_index": player_index, "district_index": int(fixture.get("district_index", -1)), "skill": skill})
 	return bool(result.get("resolved", false))
 
@@ -1011,10 +999,10 @@ func _gdp_row(project: Dictionary, amount: int, source_kind: String) -> Dictiona
 
 func _mutation_signature() -> String:
 	var city_counts: Array = []
-	for player_variant in _runtime_main.get("players") as Array:
+	for player_variant in ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array:
 		city_counts.append(int((player_variant as Dictionary).get("cities_built", 0)))
 	var district_state: Array = []
-	for district_variant in _runtime_main.get("districts") as Array:
+	for district_variant in ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array:
 		var district: Dictionary = district_variant
 		district_state.append({
 			"city": (district.get("city", {}) as Dictionary).duplicate(true),
@@ -1027,36 +1015,36 @@ func _mutation_signature() -> String:
 
 
 func _isolate_map() -> void:
-	var districts: Array = (_runtime_main.get("districts") as Array).duplicate(true)
+	var districts: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	for i in range(districts.size()):
 		var district: Dictionary = (districts[i] as Dictionary).duplicate(true)
 		district["city"] = {}
 		district["destroyed"] = false
 		districts[i] = district
-	_runtime_main.set("districts", districts)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 
 
 func _set_district_field(district_index: int, key: String, value: Variant) -> void:
-	var districts: Array = (_runtime_main.get("districts") as Array).duplicate(true)
+	var districts: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	if district_index < 0 or district_index >= districts.size(): return
 	var district: Dictionary = (districts[district_index] as Dictionary).duplicate(true)
 	district[key] = value
 	districts[district_index] = district
-	_runtime_main.set("districts", districts)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 
 
 func _district_at(district_index: int) -> Dictionary:
-	var districts: Array = _runtime_main.get("districts")
+	var districts: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts
 	return (districts[district_index] as Dictionary).duplicate(true) if district_index >= 0 and district_index < districts.size() else {}
 
 
 func _player_cities_built(player_index: int) -> int:
-	var players: Array = _runtime_main.get("players")
+	var players: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players
 	return int((players[player_index] as Dictionary).get("cities_built", 0)) if player_index >= 0 and player_index < players.size() else -1
 
 
 func _player_ledger(player_index: int) -> Array:
-	var players: Array = _runtime_main.get("players")
+	var players: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players
 	return ((players[player_index] as Dictionary).get("economic_ledger", []) as Array).duplicate(true) if player_index >= 0 and player_index < players.size() else []
 
 

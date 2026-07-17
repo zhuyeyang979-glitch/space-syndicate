@@ -367,3 +367,45 @@ If a design choice is ambiguous:
 3. Preserve data-driven card/economy/AI fields.
 4. Prefer Terraforming Mars / Gaia Project style board-game clarity over debug density.
 5. Make a small reversible change with tests instead of a broad rewrite.
+
+## main.gd Extinction Policy
+
+`scripts/main.gd` is frozen legacy code.
+
+No production task may:
+
+- add a new method, field, constant, preload, signal, or branch to `main.gd`;
+- add a new consumer of Main;
+- call Main through `call`, `get`, `set`, `has_method`, or string method names;
+- bind a runtime world bridge to Main;
+- create a compatibility facade that keeps both old and new paths alive;
+- copy or rename `main.gd` into another monolithic controller.
+
+When a task needs any symbol currently owned by `main.gd`:
+
+1. Stop the feature implementation.
+2. Identify the real domain owner.
+3. Create or extend a scene-owned typed owner.
+4. Migrate every production consumer.
+5. Validate that only the new path executes.
+6. Delete the old `main.gd` symbol in the same change.
+7. Run negative dependency and duplicate-execution gates.
+8. Only then resume the original feature.
+
+Every change touching `main.gd` must monotonically reduce its:
+
+- physical line count;
+- method count;
+- fields and constants;
+- external callers.
+
+Independent tasks may proceed only when they do not touch or depend on
+`main.gd`.
+
+The end state is:
+
+- `scenes/main.tscn` as composition;
+- no `scripts/main.gd`;
+- no replacement monolith;
+- an optional application bootstrap of at most 120 lines containing no
+  gameplay or UI-domain logic.

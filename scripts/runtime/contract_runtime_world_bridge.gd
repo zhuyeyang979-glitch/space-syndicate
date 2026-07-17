@@ -10,17 +10,45 @@ const ROUTE_FLOW_MULTIPLIER_MAX := 2.8
 const HISTORY_LIMIT := 24
 
 var _world: Node
+var _table_selection_state: TableSelectionState
+var _world_session_state: WorldSessionState
 var _product_market_runtime_controller: ProductMarketRuntimeController
 var _route_network_runtime_controller: RouteNetworkRuntimeController
-var _victory_control_runtime_controller: Object
-var _victory_control_world_bridge: Object
 var _contract_atomic_effect_owner_v06: Object
+var _card_resolution_history_service: CardResolutionHistoryRuntimeService
+var _card_resolution_queue_service: CardResolutionQueueRuntimeService
+var _card_presentation_service: CardPresentationRuntimeService
 var _world_call_count := 0
 var _failed_world_call_count := 0
+var _table_presentation_refresh_port: TablePresentationRefreshPort
+var _public_log_producer_port: PublicLogProducerPort
+var _presentation_world_clock: WorldEffectiveClockRuntimeController
 
 
 func bind_world(world: Node) -> void:
 	_world = world
+
+
+func set_table_presentation_ports(refresh_port: TablePresentationRefreshPort, log_port: PublicLogProducerPort, clock: WorldEffectiveClockRuntimeController) -> void:
+	_table_presentation_refresh_port = refresh_port
+	_public_log_producer_port = log_port
+	_presentation_world_clock = clock
+
+
+func set_table_selection_state(state: TableSelectionState) -> void:
+	_table_selection_state = state
+
+
+func set_world_session_state(state: WorldSessionState) -> void:
+	_world_session_state = state
+
+
+func world_session_state() -> WorldSessionState:
+	return _world_session_state
+
+
+func table_selection_state() -> TableSelectionState:
+	return _table_selection_state
 
 
 func set_product_market_runtime_controller(controller: ProductMarketRuntimeController) -> void:
@@ -31,13 +59,20 @@ func set_route_network_runtime_controller(controller: RouteNetworkRuntimeControl
 	_route_network_runtime_controller = controller
 
 
-func set_region_control_runtime_dependencies(controller: Object, world_bridge: Object) -> void:
-	_victory_control_runtime_controller = controller
-	_victory_control_world_bridge = world_bridge
-
-
 func set_contract_atomic_effect_owner_v06(owner: Object) -> void:
 	_contract_atomic_effect_owner_v06 = owner
+
+
+func set_card_resolution_history_service(
+	history_service: CardResolutionHistoryRuntimeService,
+	queue_service: CardResolutionQueueRuntimeService = null
+) -> void:
+	_card_resolution_history_service = history_service
+	_card_resolution_queue_service = queue_service
+
+
+func set_card_presentation_service(service: CardPresentationRuntimeService) -> void:
+	_card_presentation_service = service
 
 
 func has_world() -> bool:
@@ -45,11 +80,11 @@ func has_world() -> bool:
 
 
 func game_time() -> float:
-	return float(_world.get("game_time")) if has_world() else 0.0
+	return _world_session_state.game_time if _world_session_state != null else 0.0
 
 
 func player_count() -> int:
-	var value: Variant = _world.get("players") if has_world() else []
+	var value: Variant = _world_session_state.players if _world_session_state != null else []
 	return (value as Array).size() if value is Array else 0
 
 
@@ -65,32 +100,7 @@ func contract_facts(source_index: int, target_index: int, selected_product: Stri
 		"product_catalog": _product_catalog(),
 		"source": _district_fact(source_index),
 		"target": _district_fact(target_index),
-		"target_region_control": target_region_control_snapshot(target_index),
 	}
-
-
-func target_region_control_snapshot(district_index: int) -> Dictionary:
-	if _victory_control_runtime_controller == null \
-			or not _victory_control_runtime_controller.has_method("region_control_snapshot") \
-			or _victory_control_world_bridge == null \
-			or not _victory_control_world_bridge.has_method("capture_world_snapshot"):
-		return {}
-	var world_variant: Variant = _victory_control_world_bridge.call("capture_world_snapshot", {}, "read_only")
-	if not (world_variant is Dictionary):
-		return {}
-	var world_snapshot: Dictionary = world_variant
-	for region_variant in world_snapshot.get("regions", []):
-		if not (region_variant is Dictionary):
-			continue
-		var region: Dictionary = region_variant
-		if int(region.get("district_index", -1)) != district_index:
-			continue
-		var control_variant: Variant = _victory_control_runtime_controller.call("region_control_snapshot", region)
-		if not (control_variant is Dictionary):
-			return {}
-		var control: Dictionary = (control_variant as Dictionary).duplicate(true)
-		return control if _is_valid_region_control_snapshot(control, district_index) else {}
-	return {}
 
 
 func default_trade_product(district_index: int) -> String:
@@ -104,14 +114,13 @@ func default_trade_product(district_index: int) -> String:
 
 func contract_history_entries(preferred_resolution_id: int = -1, limit: int = 1) -> Array:
 	var result: Array = []
-	if not has_world():
+	if _card_resolution_history_service == null:
 		return result
 	if preferred_resolution_id >= 0:
 		var preferred := _entry_by_id(preferred_resolution_id)
 		if _is_contract_entry(preferred):
 			result.append(preferred)
-	var history_variant: Variant = _world.get("resolved_card_history")
-	var history: Array = history_variant if history_variant is Array else []
+	var history := _card_resolution_history_service.history_snapshot()
 	for index in range(history.size() - 1, -1, -1):
 		if result.size() >= maxi(1, limit):
 			break
@@ -127,9 +136,9 @@ func contract_history_entries(preferred_resolution_id: int = -1, limit: int = 1)
 
 
 func remember_contract_parties(viewer_index: int, entry: Dictionary, source: String) -> bool:
-	if not has_world():
+	if _world_session_state == null:
 		return false
-	var players_variant: Variant = _world.get("players")
+	var players_variant: Variant = _world_session_state.players if _world_session_state != null else []
 	var players: Array = players_variant if players_variant is Array else []
 	if viewer_index < 0 or viewer_index >= players.size() or not (players[viewer_index] is Dictionary):
 		return false
@@ -151,8 +160,9 @@ func remember_contract_parties(viewer_index: int, entry: Dictionary, source: Str
 	}
 	viewer["known_contract_parties"] = known
 	players[viewer_index] = viewer
-	_world.set("players", players)
-	_call_world(&"_record_player_economic_event", [viewer_index, "情报", source, 0, "私下查明轨道#%d合约：出牌方玩家%d，目标区域控制者玩家%d。" % [resolution_id, proposer + 1, target_controller + 1]])
+	if _world_session_state != null:
+		_world_session_state.players = players
+	_call_world(&"_record_player_economic_event", [viewer_index, "情报", source, 0, "私下查明轨道#%d合约：出牌方玩家%d，目标商品控制者玩家%d。" % [resolution_id, proposer + 1, target_controller + 1]])
 	return true
 
 
@@ -271,15 +281,14 @@ func contract_effect_checkpoint_status_v06() -> Dictionary:
 
 
 func store_contract_result(entry: Dictionary) -> bool:
-	if not has_world() or not _is_pure_data(entry):
+	if _card_resolution_history_service == null or not _is_pure_data(entry):
 		return false
 	var stored := _entry_by_id(int(entry.get("resolution_id", entry.get("queued_order", -1))))
 	if stored.is_empty():
 		stored = entry.duplicate(true)
 	else:
 		for field_variant in [
-			"contract_offer_id", "contract_target_owner", "contract_target_region_id",
-			"contract_target_control_revision",
+			"contract_offer_id", "contract_target_owner", "contract_target_project_ids",
 			"contract_response", "contract_response_player", "contract_response_time",
 			"contract_decision_timer", "contract_decision_started_time", "contract_products",
 			"contract_source_district", "contract_target_district", "contract_accept_summary",
@@ -289,29 +298,60 @@ func store_contract_result(entry: Dictionary) -> bool:
 			var field := str(field_variant)
 			if entry.has(field):
 				stored[field] = entry[field]
-	var presentation_variant: Variant = _call_world(&"_card_resolution_presentation_snapshot", [stored.get("skill", {}) as Dictionary, stored])
-	if presentation_variant is Dictionary:
-		stored["aftermath_style"] = str((presentation_variant as Dictionary).get("effect_style", stored.get("aftermath_style", "generic")))
-	var stored_variant: Variant = _call_world(&"_store_card_resolution_entry", [stored])
-	if bool(stored_variant):
+	if _card_presentation_service != null:
+		var presentation := _card_presentation_service.compose_resolution(_contract_card_resolution_presentation_source(stored))
+		stored["aftermath_style"] = str(presentation.get("effect_style", stored.get("aftermath_style", "generic")))
+	if _card_resolution_queue_service != null and _card_resolution_queue_service.store_entry(stored):
 		return true
-	var history_variant: Variant = _world.get("resolved_card_history")
-	var history: Array = history_variant if history_variant is Array else []
-	history.append(stored.duplicate(true))
-	while history.size() > HISTORY_LIMIT:
-		history.pop_front()
-	_world.set("resolved_card_history", history)
-	return true
+	var resolution_id := int(stored.get("resolution_id", stored.get("queued_order", -1)))
+	var existing := _history_entry_by_id(resolution_id)
+	if existing.is_empty():
+		return bool(_card_resolution_history_service.append_resolved(stored).get("appended", false))
+	var patch := stored.duplicate(true)
+	patch.erase("resolution_id")
+	patch.erase("queued_order")
+	patch.erase("player_index")
+	return bool(_card_resolution_history_service.patch_entry(resolution_id, patch).get("patched", false))
+
+
+func _contract_card_resolution_presentation_source(entry: Dictionary) -> Dictionary:
+	var skill: Dictionary = (entry.get("skill", {}) as Dictionary).duplicate(true) if entry.get("skill", {}) is Dictionary else {}
+	var card_name := str(skill.get("name", "合约卡牌"))
+	return {
+		"card": {
+			"card_name": card_name,
+			"display_name": str(skill.get("display_name", card_name)),
+			"skill": skill,
+			"targets_monster": false,
+		},
+		"seconds_left": -1.0,
+		"display_duration": 1.0,
+		"resolved": true,
+		"effect_style": str(entry.get("aftermath_style", "")),
+		"targets_monster": false,
+		"target_facts": {
+			"is_contract": true,
+			"contract_source": "区域%d" % (int(entry.get("contract_source_district", -1)) + 1),
+			"contract_target": "区域%d" % (int(entry.get("contract_target_district", -1)) + 1),
+			"contract_product": " / ".join(entry.get("contract_products", []) as Array) if entry.get("contract_products", []) is Array else "未指定商品",
+		},
+		"animation_facts": {},
+	}
 
 
 func refresh_ui() -> void:
-	if has_world() and _world.has_method("_refresh_ui"):
-		_world.call("_refresh_ui")
+	if _table_presentation_refresh_port != null:
+		_table_presentation_refresh_port.request_immediate(&"full", &"contract_state_changed")
 
 
 func log_message(message: String) -> void:
-	if message != "":
-		_call_world(&"_log", [message])
+	if message != "" and _public_log_producer_port != null:
+		var revision := _presentation_world_clock.world_effective_micros() if _presentation_world_clock != null else 0
+		var world_time := _presentation_world_clock.world_effective_seconds() if _presentation_world_clock != null else 0.0
+		_public_log_producer_port.publish(
+			&"contract_public_update", &"public.contract.updated",
+			{"action_kind": "contract", "public_status": "updated"}, revision, world_time
+		)
 
 
 func forward_runtime_event(event: Dictionary) -> void:
@@ -326,10 +366,6 @@ func forward_runtime_event(event: Dictionary) -> void:
 func debug_snapshot() -> Dictionary:
 	return {
 		"bridge_ready": has_world(),
-		"region_control_authority_ready": _victory_control_runtime_controller != null \
-			and _victory_control_runtime_controller.has_method("region_control_snapshot") \
-			and _victory_control_world_bridge != null \
-			and _victory_control_world_bridge.has_method("capture_world_snapshot"),
 		"world_call_count": _world_call_count,
 		"failed_world_call_count": _failed_world_call_count,
 		"owns_contract_state": false,
@@ -415,14 +451,12 @@ func _apply_accept(transaction: Dictionary, skill: Dictionary, products: Array) 
 	if _product_market_runtime_controller != null:
 		_product_market_runtime_controller.refresh_prices()
 	if not products.is_empty():
-		_world.set("selected_trade_product", str(products[0]))
-	_call_world(&"_pulse_district", [source_index, Color("#fbbf24")])
-	_call_world(&"_pulse_district", [target_index, Color("#f59e0b")])
-	_call_world(&"_add_action_callout", ["匿名合约", source_label, "%s→%s签约：%s。" % [_district_name(source_index), _district_name(target_index), _limited_names(products, 4)], Color("#fbbf24"), _district_center(target_index)])
+		if _table_selection_state != null:
+			_table_selection_state.selected_trade_product = str(products[0])
 	var changed := cash_gain > 0 or route_flow_changed or bool(source_delta.get("changed", false)) or bool(target_delta.get("changed", false))
 	changed = changed or not added_district_products.is_empty() or not added_city_products.is_empty() or not added_district_demands.is_empty() or not added_city_demands.is_empty()
 	changed = changed or not removed_source_products.is_empty() or not removed_source_city_products.is_empty() or not removed_target_demands.is_empty() or not removed_target_city_demands.is_empty()
-	var summary := "%s匿名签约生效：%s供给区接入%s，%s需求区接入%s；签约奖励%s。出牌者和真实区域控制者仍按规则隐藏。" % [source_label, _district_name(source_index), _limited_names(added_district_products + added_city_products, 4, "无新增"), _district_name(target_index), _limited_names(added_district_demands + added_city_demands, 4, "无新增"), str(transaction.get("contract_accept_summary", "无额外奖励"))]
+	var summary := "%s匿名签约生效：%s供给区接入%s，%s需求区接入%s；签约奖励%s。出牌者和真实商品控制者仍按规则隐藏。" % [source_label, _district_name(source_index), _limited_names(added_district_products + added_city_products, 4, "无新增"), _district_name(target_index), _limited_names(added_district_demands + added_city_demands, 4, "无新增"), str(transaction.get("contract_accept_summary", "无额外奖励"))]
 	log_message(summary)
 	return {
 		"applied": true,
@@ -453,8 +487,6 @@ func _apply_decline(transaction: Dictionary, skill: Dictionary, products: Array)
 		_route_network_runtime_controller.refresh_routes()
 	if _product_market_runtime_controller != null:
 		_product_market_runtime_controller.refresh_prices()
-	_call_world(&"_pulse_district", [target_index, Color("#fb7185")])
-	_call_world(&"_add_action_callout", ["匿名合约", "超时拒签" if response == ContractRuntimeController.RESPONSE_TIMEOUT else "拒签惩罚", "%s拒绝%s，惩罚：%s。" % [_district_name(target_index), source_label, str(transaction.get("contract_decline_summary", "无额外惩罚"))], Color("#fb7185"), _district_center(target_index)])
 	var summary := "%s匿名合约%s：%s未接入%s；拒签惩罚%s，实际罚款¥%d。出牌者仍不公开。" % [source_label, "超时拒签" if response == ContractRuntimeController.RESPONSE_TIMEOUT else "被拒签", _district_name(target_index), _limited_names(products, 4), str(transaction.get("contract_decline_summary", "无额外惩罚")), penalty_paid]
 	log_message(summary)
 	return {
@@ -493,7 +525,8 @@ func _apply_region_delta(index: int, production_delta: int, transport_delta: int
 		city = _append_city_clue(city, "%s使区域经营参数变化：生产%d→%d、交通%d→%d、消费%d→%d。" % [source, before_production, after_production, before_transport, after_transport, before_consumption, after_consumption])
 		district["city"] = city
 	districts[index] = district
-	_world.set("districts", districts)
+	if _world_session_state != null:
+		_world_session_state.districts = districts
 	result = {
 		"changed": before_production != after_production or before_transport != after_transport or before_consumption != after_consumption,
 		"before_production": before_production, "after_production": after_production,
@@ -525,7 +558,8 @@ func _grant_cash(player_index: int, amount: int, label: String, detail: String) 
 	var player := (players[player_index] as Dictionary).duplicate(true)
 	player["cash"] = int(player.get("cash", 0)) + amount
 	players[player_index] = player
-	_world.set("players", players)
+	if _world_session_state != null:
+		_world_session_state.players = players
 	_call_world(&"_record_player_card_income", [player_index, amount, label, detail])
 	return amount
 
@@ -540,7 +574,8 @@ func _pay_penalty(player_index: int, amount: int, label: String, detail: String)
 		return 0
 	player["cash"] = int(player.get("cash", 0)) - paid
 	players[player_index] = player
-	_world.set("players", players)
+	if _world_session_state != null:
+		_world_session_state.players = players
 	_call_world(&"_record_player_card_spend", [player_index, paid, label, detail])
 	return paid
 
@@ -557,6 +592,18 @@ func _district_fact(index: int) -> Dictionary:
 			city_products.append(str((product_variant as Dictionary).get("name", "")))
 		else:
 			city_products.append(str(product_variant))
+	var projects: Array = []
+	for project_variant in city.get("projects", []):
+		if not (project_variant is Dictionary):
+			continue
+		var project := project_variant as Dictionary
+		projects.append({
+			"project_id": str(project.get("project_id", "")),
+			"product_id": str(project.get("product_id", "")),
+			"direction": str(project.get("direction", "")),
+			"active": bool(project.get("active", true)),
+			"controller_player_index": int(project.get("controller_player_index", -1)),
+		})
 	return {
 		"index": index,
 		"valid": true,
@@ -569,6 +616,7 @@ func _district_fact(index: int) -> Dictionary:
 			"active": _city_active(city),
 			"products": city_products,
 			"demands": _string_array(city.get("demands", [])),
+			"projects": projects,
 		},
 	}
 
@@ -589,12 +637,12 @@ func _product_catalog() -> Array:
 
 
 func _districts() -> Array:
-	var value: Variant = _world.get("districts") if has_world() else []
+	var value: Variant = _world_session_state.districts if _world_session_state != null else []
 	return (value as Array).duplicate(true) if value is Array else []
 
 
 func _players() -> Array:
-	var value: Variant = _world.get("players") if has_world() else []
+	var value: Variant = _world_session_state.players if _world_session_state != null else []
 	return (value as Array).duplicate(true) if value is Array else []
 
 
@@ -612,7 +660,8 @@ func _set_city(index: int, city: Dictionary) -> void:
 	var district := (districts[index] as Dictionary).duplicate(true)
 	district["city"] = city.duplicate(true)
 	districts[index] = district
-	_world.set("districts", districts)
+	if _world_session_state != null:
+		_world_session_state.districts = districts
 
 
 func _city_active(city: Dictionary) -> bool:
@@ -639,21 +688,24 @@ func _limited_names(values: Array, limit: int, fallback: String = "") -> String:
 
 
 func _entry_by_id(resolution_id: int) -> Dictionary:
-	var value: Variant = _call_world(&"_card_resolution_entry_by_id", [resolution_id])
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+	if _card_resolution_queue_service != null:
+		var queued := _card_resolution_queue_service.entry_by_id(resolution_id)
+		if not queued.is_empty():
+			return queued
+	return _history_entry_by_id(resolution_id)
+
+
+func _history_entry_by_id(resolution_id: int) -> Dictionary:
+	if _card_resolution_history_service == null:
+		return {}
+	for entry_variant in _card_resolution_history_service.history_snapshot():
+		if entry_variant is Dictionary and int((entry_variant as Dictionary).get("resolution_id", (entry_variant as Dictionary).get("queued_order", -1))) == resolution_id:
+			return (entry_variant as Dictionary).duplicate(true)
+	return {}
 
 
 func _is_contract_entry(entry: Dictionary) -> bool:
 	return not entry.is_empty() and str((entry.get("skill", {}) as Dictionary).get("kind", "")) == "area_trade_contract"
-
-
-func _is_valid_region_control_snapshot(snapshot: Dictionary, district_index: int) -> bool:
-	return str(snapshot.get("schema_version", "")) == "v0.6.region-control.1" \
-		and str(snapshot.get("snapshot_kind", "")) == "commodity_gdp_region_control" \
-		and str(snapshot.get("visibility_scope", "")) == "public" \
-		and int(snapshot.get("district_index", -1)) == district_index \
-		and not str(snapshot.get("region_id", "")).is_empty() \
-		and not str(snapshot.get("revision", "")).is_empty()
 
 
 func _array_call(method_name: StringName, arguments: Array = []) -> Array:

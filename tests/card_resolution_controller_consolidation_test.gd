@@ -77,7 +77,7 @@ func _run() -> void:
 
 	var bare_main_script := load(MAIN_SCRIPT_PATH) as Script
 	var bare_main := bare_main_script.new() as Control if bare_main_script != null else null
-	var missing_controller := bare_main == null or bare_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/CardResolutionRuntimeController") == null
+	var missing_controller := bare_main == null or bare_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardResolutionRuntimeController") == null
 	_expect(missing_controller and not main_source.contains("legacy_state_fallback_used"), "a bare main has no hidden fallback timing state machine")
 	if bare_main != null:
 		bare_main.free()

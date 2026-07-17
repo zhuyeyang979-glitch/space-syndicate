@@ -28,7 +28,7 @@ const ASSET_TRANSACTION_PREFIX := "card-player-state-v06"
 
 var _catalog: Resource
 var _asset_controller: Node
-var _world: Node
+var _world_session_state: WorldSessionState
 var _configured := false
 var _reservations: Dictionary = {}
 var _prepared_mutations: Dictionary = {}
@@ -58,11 +58,11 @@ func configure(catalog: Resource, asset_controller: Node) -> Dictionary:
 	}
 
 
-func bind_world(world: Node) -> Dictionary:
-	_world = world
+func set_world_session_state(state: WorldSessionState) -> Dictionary:
+	_world_session_state = state
 	return {
 		"bound": _world_has_players(),
-		"reason_code": "world_bound" if _world_has_players() else "production_world_missing",
+		"reason_code": "world_session_state_bound" if _world_has_players() else "production_world_missing",
 	}
 
 
@@ -1147,24 +1147,19 @@ func _player_index(actor_id: String) -> int:
 
 
 func _world_has_players() -> bool:
-	if _world == null:
-		return false
-	for property_variant in _world.get_property_list():
-		if property_variant is Dictionary and str((property_variant as Dictionary).get("name", "")) == "players":
-			return _world.get("players") is Array
-	return false
+	return _world_session_state != null
 
 
 func _world_players() -> Array:
 	if not _world_has_players():
 		return []
-	var value: Variant = _world.get("players")
+	var value: Variant = _world_session_state.players
 	return (value as Array).duplicate(true) if value is Array else []
 
 
 func _write_world_players(players: Array) -> void:
 	if _world_has_players():
-		_world.set("players", players.duplicate(true))
+		_world_session_state.players = players.duplicate(true)
 
 
 func _world_card_id(card: Dictionary) -> String:

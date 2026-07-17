@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/table_presentation_refresh_port.gd" id="1"]
+
+[node name="TablePresentationRefreshPort" type="Node"]
+script = ExtResource("1")
+editor_description = "Consumes ordered typed refresh receipts and applies one scoped snapshot to one explicit target."

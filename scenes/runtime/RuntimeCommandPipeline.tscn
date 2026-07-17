@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/runtime_command_pipeline.gd" id="1_pipeline"]
+
+[node name="RuntimeCommandPipeline" type="Node"]
+script = ExtResource("1_pipeline")
+editor_description = "Local typed command boundary for deterministic card-resolution transition batches. It owns no gameplay state or rules."

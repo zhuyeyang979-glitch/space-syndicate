@@ -645,7 +645,7 @@ func _case_finish_batch_promotes_next_queue() -> Dictionary:
 
 func _case_promotion_rewrites_window_group_and_order() -> Dictionary:
 	_prepare_players([[], [], []], [1000, 1000, 1000])
-	_runtime_main.set("game_time", 77.0)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = 77.0
 	_runtime_main.set("card_group_window_sequence", 9)
 	_runtime_main.set("next_card_resolution_queue", [_next_entry(0, 51, 1), _next_entry(0, 52, 2), _next_entry(1, 53, 1)])
 	_runtime_main.call("_promote_next_card_resolution_batch", 2)
@@ -1159,7 +1159,7 @@ func _prepare_counter_fixture(counter_count: int) -> void:
 
 
 func _prepare_players(slot_sets: Array, cash_values: Array) -> void:
-	var player_states: Array = (_runtime_main.get("players") as Array).duplicate(true)
+	var player_states: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
 	for player_index in range(mini(player_states.size(), slot_sets.size())):
 		if not (player_states[player_index] is Dictionary):
 			continue
@@ -1177,10 +1177,10 @@ func _prepare_players(slot_sets: Array, cash_values: Array) -> void:
 		player_state["eliminated"] = false
 		player_state["is_ai"] = false
 		player_states[player_index] = player_state
-	_runtime_main.set("players", player_states)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = player_states
 	_runtime_main.set("game_over", false)
-	_runtime_main.set("selected_player", 0)
-	_runtime_main.set("selected_district", 0)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = 0
 
 
 func _clear_queue_state() -> void:
@@ -1322,7 +1322,7 @@ func _resolution_ids(entries: Array) -> Array:
 
 
 func _player(player_index: int) -> Dictionary:
-	var player_states: Array = _runtime_main.get("players") as Array
+	var player_states: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array
 	if player_index < 0 or player_index >= player_states.size() or not (player_states[player_index] is Dictionary):
 		return {}
 	return (player_states[player_index] as Dictionary).duplicate(true)
@@ -1351,13 +1351,13 @@ func _slot_queued(player_index: int, slot_index: int) -> bool:
 
 
 func _set_player_field(player_index: int, key: String, value: Variant) -> void:
-	var player_states: Array = (_runtime_main.get("players") as Array).duplicate(true)
+	var player_states: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
 	if player_index < 0 or player_index >= player_states.size() or not (player_states[player_index] is Dictionary):
 		return
 	var player_state: Dictionary = (player_states[player_index] as Dictionary).duplicate(true)
 	player_state[key] = _duplicate_data(value)
 	player_states[player_index] = player_state
-	_runtime_main.set("players", player_states)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = player_states
 
 
 func _queue_metrics(accepted: bool, cash_delta: int = 0, hand_delta: int = 0) -> Dictionary:

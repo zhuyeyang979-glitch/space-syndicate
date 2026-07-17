@@ -75,11 +75,11 @@ func _run() -> void:
 	var coordinator := main.get_node_or_null(RUNTIME_COORDINATOR_NODE_PATH)
 	if coordinator != null and coordinator.has_method("clear_runtime_scenario"):
 		coordinator.call("clear_runtime_scenario")
-	var qa_rng_variant: Variant = main.get("rng")
-	if qa_rng_variant is RandomNumberGenerator:
-		(qa_rng_variant as RandomNumberGenerator).seed = QA_GAMEPLAY_SEED
+	var runtime_rng := (coordinator as GameRuntimeCoordinator).run_rng_service() if coordinator is GameRuntimeCoordinator else null
+	if runtime_rng != null:
+		runtime_rng.seed = QA_GAMEPLAY_SEED
 	else:
-		_fail("production Main RNG was unavailable for deterministic visual evidence")
+		_fail("production RunRngService was unavailable for deterministic visual evidence")
 	print("E_1280_CAPTURE_STAGE|new_game_begin")
 	main.call("_new_game")
 	print("E_1280_CAPTURE_STAGE|new_game_returned")
@@ -134,7 +134,7 @@ func _run() -> void:
 
 func _first_live_districts(main: Node, count: int) -> Array[int]:
 	var result: Array[int] = []
-	var districts_variant: Variant = main.get("districts")
+	var districts_variant: Variant = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts
 	if not (districts_variant is Array):
 		_fail("production district list was unavailable")
 		return result

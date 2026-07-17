@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/world_session_state.gd" id="1_state"]
+
+[node name="WorldSessionState" type="Node"]
+script = ExtResource("1_state")
+editor_description = "Authoritative scene-owned storage for the current run's player records, district records and elapsed gameplay time. It owns no topology generation, rules, economy formulas, AI policy or presentation."

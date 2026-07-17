@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "status": "hardening_required",
+  "branch": "codex/scene-first-remove-main-gd",
+  "start_sha": "2c4ea4a1f68a37659e01a9e8be91eaf6aeafcba0",
+  "runtime_loop_tick_owner_count": 1,
+  "main_process_owner_count": 0,
+  "current_boundary": {
+    "adapter": "AuthoritativeRuntimeFramePort",
+    "operation_count": 28,
+    "parent_traversal_count": 2,
+    "main_dependency_count": 0
+  },
+  "coordinator_inventory": {
+    "explicit_node_lookup_count": 95,
+    "historical_world_bridge_file_count": 21,
+    "scope_note": "Only active authoritative-frame coupling is migrated in this atomic hardening."
+  },
+  "access_groups": [
+    {"port": "lifecycle", "classification": ["query", "mutation", "lifecycle"], "operations": 7},
+    {"port": "card", "classification": ["mutation"], "operations": 3},
+    {"port": "economy", "classification": ["query", "mutation"], "operations": 6},
+    {"port": "actors", "classification": ["mutation"], "operations": 3},
+    {"port": "monster", "classification": ["mutation"], "operations": 5},
+    {"port": "presentation", "classification": ["presentation"], "operations": 2},
+    {"port": "victory", "classification": ["query", "mutation", "lifecycle", "presentation"], "operations": 1}
+  ],
+  "forbidden_dependencies": {
+    "main": 0,
+    "current_scene": 0,
+    "root_main": 0,
+    "autoload_service_locator": 0,
+    "universal_world_manager": 0
+  },
+  "decision": "replace_broad_adapter_with_explicit_narrow_ports"
+}

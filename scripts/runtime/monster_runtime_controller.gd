@@ -61,6 +61,7 @@ var _product_market_runtime_controller: ProductMarketRuntimeController
 var _card_runtime_catalog_service: CardRuntimeCatalogService
 var _weather_runtime_controller: WeatherRuntimeController
 var _weather_telemetry_runtime_service: Node
+var _visual_cue_runtime_owner: VisualCueRuntimeOwner
 var _ruleset_snapshot: Dictionary = {}
 var _configured := false
 
@@ -80,6 +81,12 @@ var _monster_starter_state_v06: Dictionary = {}
 var _monster_card_reservations_v06: Dictionary = {}
 var _monster_card_terminal_journal_v06: Dictionary = {}
 var _monster_card_presentation_journal_v06: Dictionary = {}
+var _table_presentation_refresh_port: TablePresentationRefreshPort
+var _public_log_producer_port: PublicLogProducerPort
+var _presentation_world_clock: WorldEffectiveClockRuntimeController
+var _runtime_command_pipeline: RuntimeCommandPipeline
+var _autonomous_move_sequence := 0
+var auto_monster_action_sequence := 0
 var _bankruptcy_estate_journal: Dictionary = {}
 var _monster_codex_public_catalog_cache_v06: Array = []
 var _monster_codex_public_catalog_summary_cache_v06: Dictionary = {}
@@ -115,6 +122,14 @@ func set_weather_runtime_controller(controller: WeatherRuntimeController) -> voi
 func set_weather_telemetry_runtime_service(service: Node) -> void:
 	_weather_telemetry_runtime_service = service
 
+
+func set_visual_cue_runtime_owner(cue_owner: VisualCueRuntimeOwner) -> void:
+	_visual_cue_runtime_owner = cue_owner
+
+
+func set_runtime_command_pipeline(pipeline: RuntimeCommandPipeline) -> void:
+	_runtime_command_pipeline = pipeline
+
 var players: Array:
 	get:
 		var value: Variant = _world_value(&"players", [])
@@ -137,17 +152,23 @@ var game_time: float:
 
 var selected_player: int:
 	get:
-		return int(_world_value(&"selected_player", -1))
+		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
+		return state.selected_player if state != null else -1
 	set(value):
-		_write_world_value(&"selected_player", value)
+		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
+		if state != null:
+			state.selected_player = value
 
 var selected_district: int:
 	get:
-		return int(_world_value(&"selected_district", -1))
+		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
+		return state.selected_district if state != null else -1
 	set(value):
-		_write_world_value(&"selected_district", value)
+		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
+		if state != null:
+			state.selected_district = value
 
-var rng: RandomNumberGenerator:
+var rng: RunRngService:
 	get:
 		return _world_bridge.shared_rng() if _world_bridge != null else null
 
@@ -284,6 +305,12 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	else:
 		_monster_codex_public_catalog_cache_v06.clear()
 		_monster_codex_public_catalog_summary_cache_v06.clear()
+
+
+func set_table_presentation_ports(refresh_port: TablePresentationRefreshPort, log_port: PublicLogProducerPort, clock: WorldEffectiveClockRuntimeController) -> void:
+	_table_presentation_refresh_port = refresh_port
+	_public_log_producer_port = log_port
+	_presentation_world_clock = clock
 
 
 func reset_state() -> void:
@@ -493,11 +520,177 @@ func select_slot(slot: int) -> int:
 	return selected_auto_monster_slot
 
 
-func take_external_damage(target_slot: int, damage: int, source: String) -> bool:
-	if target_slot < 0 or target_slot >= auto_monsters.size() or bool((auto_monsters[target_slot] as Dictionary).get("down", false)):
-		return false
-	_auto_monster_take_damage(target_slot, maxi(0, damage), source, -1)
-	return true
+func simulation_mutation_snapshot_by_uid(target_uid: int) -> Dictionary:
+	var slot := _auto_monster_slot_by_uid(target_uid)
+	if slot < 0:
+		return {}
+	var actor: Dictionary = auto_monsters[slot] as Dictionary
+	var world_position := _entity_world_position(actor)
+	return {
+		"target_monster_uid": target_uid,
+		"slot": slot,
+		"hp": int(actor.get("hp", 0)),
+		"armor": int(actor.get("armor", 0)),
+		"down": bool(actor.get("down", false)),
+		"owner_damage_cash_pool": int(actor.get("owner_damage_cash_pool", 0)),
+		"owner_damage_cash_lost": int(actor.get("owner_damage_cash_lost", 0)),
+		"position": int(actor.get("position", -1)),
+		"world_position_x": snappedf(world_position.x, 0.001),
+		"world_position_y": snappedf(world_position.y, 0.001),
+		"linear_move_target_district": int(actor.get("linear_move_target_district", -1)),
+		"linear_move_speed_mps": snappedf(float(actor.get("linear_move_speed_mps", 0.0)), 0.001),
+		"linear_move_elapsed": snappedf(float(actor.get("linear_move_elapsed", 0.0)), 0.001),
+		"linear_move_distance": snappedf(float(actor.get("linear_move_distance", 0.0)), 0.001),
+		"linear_move_arrival_action": str(actor.get("linear_move_arrival_action", "")),
+		"lure_target_district": int(actor.get("lure_target_district", -1)),
+		"lure_moves_left": int(actor.get("lure_moves_left", 0)),
+		"region_infrastructure": _simulation_region_mutation_projection(),
+	}
+
+
+func _simulation_region_mutation_projection() -> Array:
+	var result: Array = []
+	if _region_infrastructure_world_bridge == null or not _region_infrastructure_world_bridge.has_method("region_snapshot_for_legacy_index"):
+		return result
+	for index in range(districts.size()):
+		var snapshot_variant: Variant = _region_infrastructure_world_bridge.call("region_snapshot_for_legacy_index", index)
+		if not (snapshot_variant is Dictionary):
+			continue
+		var snapshot := snapshot_variant as Dictionary
+		result.append({
+			"legacy_index": index,
+			"region_id": str(snapshot.get("region_id", "")),
+			"damage_taken": int(snapshot.get("damage_taken", 0)),
+			"derived_current_hp": int(snapshot.get("derived_current_hp", 0)),
+			"integrity_basis_points": int(snapshot.get("integrity_basis_points", 10000)),
+			"facility_count": int(snapshot.get("facility_count", 0)),
+		})
+	return result
+
+
+func apply_autonomous_move_command(command: Dictionary) -> Dictionary:
+	var target_uid := int(command.get("actor_uid", -1))
+	var slot := _auto_monster_slot_by_uid(target_uid)
+	if slot < 0:
+		return {"accepted": false, "reason": "monster_move_actor_uid_not_found"}
+	var operation := str(command.get("operation", ""))
+	var actor: Dictionary = auto_monsters[slot] as Dictionary
+	if operation == "clear":
+		if _entity_has_linear_motion(actor):
+			_clear_entity_linear_motion(actor)
+			auto_monsters[slot] = actor
+		return {"accepted": true, "moved": 0.0, "arrived": false, "slot": slot}
+	if operation == "start":
+		if bool(actor.get("down", false)) or _entity_has_linear_motion(actor):
+			return {"accepted": false, "reason": "monster_move_start_not_available"}
+		var target_district := int(command.get("target_district", -1))
+		if target_district < 0 or target_district >= districts.size() or bool(districts[target_district].get("destroyed", false)):
+			return {"accepted": false, "reason": "monster_move_target_invalid"}
+		if bool(command.get("consume_lure", false)):
+			actor = _consume_auto_monster_lure(actor)
+		var target_position := _district_center(target_district)
+		var distance := _start_entity_linear_motion(
+			actor,
+			target_position,
+			maxf(0.1, float(command.get("speed_mps", 0.0))),
+			str(command.get("source", "自动移动")),
+			str(command.get("movement_mode", _auto_monster_movement_mode(actor))),
+			-1.0,
+			str(command.get("arrival_action", "auto_move"))
+		)
+		auto_monsters[slot] = actor
+		return {"accepted": distance > 0.5, "moved": 0.0, "planned_distance": distance, "arrived": false, "slot": slot}
+	if operation == "settle":
+		if bool(command.get("consume_lure", false)):
+			actor = _consume_auto_monster_lure(actor)
+		var current_district := int(actor.get("position", -1))
+		if current_district < 0 or current_district >= districts.size():
+			return {"accepted": false, "reason": "monster_move_settle_position_invalid"}
+		var landing_damage := _auto_monster_move_damage(actor, _auto_monster_movement_mode(actor))
+		if landing_damage > 0:
+			_damage_district(current_district, landing_damage, "%s自动破坏" % String(actor.get("name", "怪兽")))
+		_auto_monster_resource_drain(actor, current_district, "自动移动")
+		auto_monsters[slot] = actor
+		_resolve_auto_monster_encounter(slot, "同区遭遇")
+		return {"accepted": true, "moved": 0.0, "arrived": true, "slot": slot}
+	if operation == "advance":
+		if bool(actor.get("down", false)) or not _entity_has_linear_motion(actor):
+			return {"accepted": false, "reason": "monster_move_advance_not_available"}
+		var info := _advance_entity_linear_motion(actor, maxf(0.0, float(command.get("delta_seconds", 0.0))))
+		var moved := float(info.get("moved", 0.0))
+		if moved > 0.5:
+			_apply_auto_monster_linear_path_effects(
+				actor,
+				info.get("before", _entity_world_position(actor)),
+				info.get("after", _entity_world_position(actor)),
+				str(info.get("source", "线性移动")),
+				str(info.get("mode", "")),
+				AUTO_MONSTER_KNOCKBACK_DAMAGE_MAX_REGIONS if str(info.get("arrival_action", "")) == "knockback" else AUTO_MONSTER_PATH_DAMAGE_MAX_REGIONS
+			)
+		var arrived := bool(info.get("arrived", false))
+		if arrived:
+			var target_district := int(info.get("target_district", actor.get("position", -1)))
+			if target_district < 0 or target_district >= districts.size():
+				target_district = int(actor.get("position", _nearest_district_to(_entity_world_position(actor))))
+			actor["world_position"] = info.get("target", actor.get("world_position", Vector2.ZERO))
+			actor["position"] = target_district
+			var source := str(info.get("source", "线性移动"))
+			var arrival_action := str(info.get("arrival_action", ""))
+			var mode := str(info.get("mode", ""))
+			var landing_damage := _auto_monster_move_damage(actor, mode)
+			if landing_damage > 0 and mode != "fly" and not _monster_has_trait(actor, "flying"):
+				_damage_district(target_district, landing_damage, "%s·%s抵达冲击" % [String(actor.get("name", "怪兽")), source])
+			var arrival_damage := maxi(0, int(actor.get("linear_move_arrival_damage", 0)))
+			if arrival_damage > 0:
+				_damage_district(target_district, arrival_damage, str(actor.get("linear_move_arrival_damage_source", source)))
+			_auto_monster_resource_drain(actor, target_district, source)
+			_clear_entity_linear_motion(actor)
+			auto_monsters[slot] = actor
+			_resolve_auto_monster_encounter(slot, "线性移动抵达")
+		else:
+			auto_monsters[slot] = actor
+		return {"accepted": true, "moved": moved, "arrived": arrived, "slot": slot}
+	return {"accepted": false, "reason": "monster_move_operation_unknown"}
+
+
+func dispatch_autonomous_move_command(command: Dictionary) -> Dictionary:
+	if _runtime_command_pipeline == null:
+		return {"handled": false, "reason": "monster_move_pipeline_unavailable"}
+	return _runtime_command_pipeline.dispatch_monster_move(command)
+
+
+func dispatch_autonomous_action_command(command: Dictionary) -> Dictionary:
+	if _runtime_command_pipeline == null:
+		return {"handled": false, "reason": "monster_action_pipeline_unavailable"}
+	return _runtime_command_pipeline.dispatch_monster_action(command)
+
+
+func _next_autonomous_move_command_id(actor_uid: int, operation: String, occurred_at_world_us: int) -> Dictionary:
+	_autonomous_move_sequence += 1
+	return {
+		"command_id": "monster-move:%d:%s:%d:%d" % [actor_uid, operation, occurred_at_world_us, _autonomous_move_sequence],
+		"sequence": _autonomous_move_sequence,
+	}
+
+
+func apply_external_damage_by_uid(command: Dictionary) -> Dictionary:
+	var target_uid := int(command.get("target_monster_uid", -1))
+	var slot := _auto_monster_slot_by_uid(target_uid)
+	var damage := maxi(0, int(command.get("damage", 0)))
+	var source := str(command.get("source", "军队命令"))
+	if slot < 0:
+		return {"accepted": false, "reason": "monster_target_uid_not_found", "applied_damage": 0}
+	if damage <= 0:
+		return {"accepted": false, "reason": "monster_damage_invalid", "applied_damage": 0}
+	if bool((auto_monsters[slot] as Dictionary).get("down", false)):
+		return {"accepted": false, "reason": "monster_target_down", "applied_damage": 0}
+	var applied := _auto_monster_take_damage(slot, damage, source, -1)
+	return {
+		"accepted": true,
+		"reason": "",
+		"target_monster_uid": target_uid,
+		"applied_damage": applied,
+	}
 
 
 func roster_snapshot(include_private: bool = true) -> Array:
@@ -955,6 +1148,79 @@ func selected_actor_snapshot(include_private: bool = true) -> Dictionary:
 
 func active_wagers_snapshot() -> Array:
 	return active_monster_wagers.duplicate(true)
+
+
+func monster_wager_presentation_for_viewer(viewer_index: int) -> Dictionary:
+	if viewer_index < 0 or viewer_index >= players.size():
+		return {}
+	var entry := _latest_active_monster_wager()
+	if entry.is_empty():
+		return {}
+	var wager_id := int(entry.get("wager_id", -1))
+	if wager_id < 0:
+		return {}
+	var decision := _monster_wager_player_decision(entry, viewer_index)
+	var base_percent := _monster_wager_base_percent(entry)
+	var actions: Array = []
+	var matchup: Array = []
+	var damage: Array = []
+	for competitor_variant in _monster_wager_competitors(entry):
+		if not (competitor_variant is Dictionary):
+			continue
+		var competitor := competitor_variant as Dictionary
+		var side := str(competitor.get("side", "")).strip_edges()
+		if side.is_empty():
+			continue
+		var label := _monster_wager_side_label(entry, side)
+		matchup.append({"side": side, "name": label})
+		damage.append({"side": side, "name": label, "damage": _monster_wager_damage_for_side(entry, side)})
+		for percent_variant in _monster_wager_percent_options(entry):
+			var percent := int(percent_variant)
+			actions.append({
+				"id": "monster_wager:%d:%s:%d" % [wager_id, side, percent],
+				"side": side,
+				"label": label,
+				"stake_percent": percent,
+				"stake": _monster_wager_amount_for_percent(viewer_index, percent),
+				"disabled": not decision.is_empty(),
+			})
+	var viewer_bet := _monster_wager_player_bet(entry, viewer_index)
+	var public_bets: Array = []
+	for bet_variant in entry.get("public_bets", []):
+		if not (bet_variant is Dictionary):
+			continue
+		var bet := bet_variant as Dictionary
+		public_bets.append({
+			"player_index": int(bet.get("player_index", -1)),
+			"side": str(bet.get("side", "")),
+			"stake": maxi(0, int(bet.get("stake", 0))),
+			"stake_percent": maxi(0, _monster_wager_bet_percent(bet)),
+			"forced": bool(bet.get("forced", false)),
+		})
+	return {
+		"schema_version": 1,
+		"visibility_scope": "viewer_private",
+		"viewer_index": viewer_index,
+		"active": true,
+		"wager_id": wager_id,
+		"base_percent": base_percent,
+		"remaining_seconds": maxf(0.0, float(entry.get("remaining_seconds", 0.0))),
+		"seconds_total": maxf(0.0, float(entry.get("seconds_total", 0.0))),
+		"context": str(entry.get("context", "怪兽遭遇")),
+		"matchup": matchup,
+		"damage": damage,
+		"pool": _monster_wager_total_stake(entry),
+		"decision_count": _monster_wager_decision_count(entry),
+		"seat_count": players.size(),
+		"viewer_decision": {
+			"decided": not decision.is_empty(),
+			"side": decision,
+			"stake": maxi(0, int(viewer_bet.get("stake", 0))),
+			"stake_percent": maxi(0, _monster_wager_bet_percent(viewer_bet)),
+		},
+		"actions": actions,
+		"public_bets": public_bets,
+	}
 
 
 func resolved_wagers_snapshot() -> Array:
@@ -3316,7 +3582,7 @@ func _upgrade_field_monster_from_card(player_index: int, skill: Dictionary) -> b
 		_monster_card_duration_text(upgraded_card),
 		_limited_name_list(granted, 4, "无"),
 	])
-	_refresh_ui()
+	request_table_presentation_refresh()
 	return true
 
 func _summon_monster_from_card(_player: Dictionary, skill: Dictionary) -> bool:
@@ -3387,7 +3653,7 @@ func _summon_monster_from_card(_player: Dictionary, skill: Dictionary) -> bool:
 	])
 	if selected_player >= 0 and selected_player < players.size():
 		_complete_scenario_signal("monster_summoned", "首召怪兽：%s降落在%s。" % [String(actor.get("name", "怪兽")), String(districts[selected_district].get("name", "区域"))], "after_summon", "scenario_coach")
-	_refresh_ui()
+	request_table_presentation_refresh()
 	return true
 
 func _player_monster_control_limit(player_index: int) -> int:
@@ -3600,7 +3866,6 @@ func _auto_monster_movement_tick() -> void:
 		var was_lured := lure_target >= 0
 		if was_lured:
 			target = lure_target
-			actor = _consume_auto_monster_lure(actor)
 		if target < 0:
 			continue
 		var before := _entity_world_position(actor)
@@ -3611,7 +3876,24 @@ func _auto_monster_movement_tick() -> void:
 			var movement_label := "怪%d诱导" % (slot + 1) if was_lured else "怪%d自动" % (slot + 1)
 			var movement_reason := "被%s诱导" % lure_source if was_lured else _auto_monster_target_factor_summary(actor, target)
 			var speed_mps := _auto_monster_movement_speed_mps(actor, target)
-			planned_distance = _start_entity_linear_motion(actor, _district_center(target), speed_mps, "诱导移动" if was_lured else "自动移动", movement_mode, -1.0, "auto_move")
+			var start_context := _next_autonomous_move_command_id(int(actor.get("uid", -1)), "start", int(maxf(1.0, game_time * 1000000.0)))
+			var start_command := {
+				"command_id": start_context["command_id"],
+				"sequence": start_context["sequence"],
+				"source": "monster_ai",
+				"source_kind": "autonomous_monster",
+				"actor_uid": int(actor.get("uid", -1)),
+				"operation": "start",
+				"target_district": target,
+				"speed_mps": speed_mps,
+				"movement_mode": movement_mode,
+				"arrival_action": "auto_move",
+				"consume_lure": was_lured,
+				"occurred_at_world_us": int(maxf(1.0, game_time * 1000000.0)),
+			}
+			var start_receipt := dispatch_autonomous_move_command(start_command)
+			var start_sink: Dictionary = start_receipt.get("sink_receipt", {}) if start_receipt.get("sink_receipt", {}) is Dictionary else {}
+			planned_distance = float(start_sink.get("planned_distance", 0.0))
 			if planned_distance > 0.5:
 				started_linear_move = true
 				_add_visual_trail(before, _district_center(target), _auto_monster_color(slot), movement_label)
@@ -3636,7 +3918,6 @@ func _auto_monster_movement_tick() -> void:
 					_auto_monster_color(slot),
 					before
 				)
-				auto_monsters[slot] = actor
 				acted += 1
 				continue
 		if not started_linear_move:
@@ -3657,17 +3938,23 @@ func _auto_monster_movement_tick() -> void:
 				_auto_monster_color(slot),
 				_entity_world_position(actor)
 			)
-		var landing_damage := _auto_monster_move_damage(actor, _auto_monster_movement_mode(actor))
-		if landing_damage > 0:
-			_damage_district(int(actor["position"]), landing_damage, "%s自动破坏" % String(actor.get("name", "怪兽")))
-		_auto_monster_resource_drain(actor, int(actor["position"]), "自动移动")
-		auto_monsters[slot] = actor
-		_resolve_auto_monster_encounter(slot, "同区遭遇")
-		acted += 1
+		var settle_context := _next_autonomous_move_command_id(int(actor.get("uid", -1)), "settle", int(maxf(1.0, game_time * 1000000.0)))
+		var settle_receipt := dispatch_autonomous_move_command({
+			"command_id": settle_context["command_id"],
+			"sequence": settle_context["sequence"],
+			"source": "monster_ai",
+			"source_kind": "autonomous_monster",
+			"actor_uid": int(actor.get("uid", -1)),
+			"operation": "settle",
+			"consume_lure": was_lured,
+			"occurred_at_world_us": int(maxf(1.0, game_time * 1000000.0)),
+		})
+		if bool(settle_receipt.get("handled", false)):
+			acted += 1
 	if acted <= 0:
 		_log("当前没有可行动怪兽；城市经营继续，等待怪兽复活、到期离场或后续召唤。")
 		return
-	_refresh_ui()
+	request_table_presentation_refresh()
 
 func _next_active_auto_monster_slot() -> int:
 	if auto_monsters.is_empty():
@@ -3689,7 +3976,7 @@ func _auto_special_monster_tick() -> void:
 		_log("当前没有可执行特殊行动的怪兽；计时器等待下一只活跃怪兽。")
 		return
 	_auto_special_monster_tick_for_slot(slot)
-	_refresh_ui()
+	request_table_presentation_refresh()
 
 func _auto_special_monster_tick_for_slot(slot: int) -> void:
 	var actor: Dictionary = auto_monsters[slot]
@@ -3709,6 +3996,43 @@ func _auto_special_monster_tick_for_slot(slot: int) -> void:
 	var target := _weighted_auto_monster_target(actor)
 	if target < 0:
 		return
+	var command := {
+		"actor_uid": int(actor.get("uid", actor.get("runtime_instance_id", -1))),
+		"action_index": action_index,
+		"action": action.duplicate(true),
+		"target_district": target,
+		"target_slot": -1,
+		"weights": weights.duplicate(true),
+		"weight_total": total,
+		"any_destroyed": any_destroyed,
+		"source": "monster_ai",
+		"occurred_at_world_us": maxi(1, int(round(game_time * 1000000.0))),
+		"sequence": int(auto_monster_action_sequence),
+	}
+	auto_monster_action_sequence += 1
+	var dispatch := dispatch_autonomous_action_command(command)
+	if not bool(dispatch.get("handled", false)):
+		_log("怪%d·%s特殊行动命令未执行：%s。" % [slot + 1, String(actor.get("name", "怪兽")), str(dispatch.get("reason", "unknown"))])
+
+
+func apply_autonomous_action_command(command: Dictionary) -> Dictionary:
+	var target_uid := int(command.get("actor_uid", -1))
+	var slot := _auto_monster_slot_by_uid(target_uid)
+	if slot < 0 or slot >= auto_monsters.size():
+		return {"accepted": false, "reason": "monster_action_actor_uid_not_found"}
+	var actor: Dictionary = auto_monsters[slot]
+	if bool(actor.get("down", false)):
+		return {"accepted": false, "reason": "monster_action_actor_down"}
+	var action: Dictionary = command.get("action", {}) as Dictionary
+	if action.is_empty():
+		return {"accepted": false, "reason": "monster_action_definition_missing"}
+	var target := int(command.get("target_district", actor.get("position", -1)))
+	if target < 0 or target >= districts.size():
+		return {"accepted": false, "reason": "monster_action_target_invalid"}
+	var weights: Array = command.get("weights", []) as Array
+	var total := float(command.get("weight_total", _weight_total(weights)))
+	var any_destroyed := bool(command.get("any_destroyed", false))
+	var action_index := int(command.get("action_index", 0))
 	var before := _entity_world_position(actor)
 	var required_range: float = float(action.get("range", 0.0))
 	var move_budget: float = _auto_monster_movement_speed_mps(actor, target, float(action.get("move_override", -1.0)))
@@ -3732,7 +4056,7 @@ func _auto_special_monster_tick_for_slot(slot: int) -> void:
 				before
 			)
 			auto_monsters[slot] = actor
-			return
+			return {"accepted": true, "slot": slot, "target_district": target, "action_index": action_index, "moving": true}
 	var target_after_move: int = target
 	if required_range <= 0.0:
 		target_after_move = int(actor.get("position", target))
@@ -3784,6 +4108,7 @@ func _auto_special_monster_tick_for_slot(slot: int) -> void:
 		_resolve_auto_monster_encounter(slot, "资源争夺")
 	if self_damage > 0:
 		_auto_monster_take_damage(slot, self_damage, "%s反冲" % String(action.get("name", "行动")), -1)
+	return {"accepted": true, "slot": slot, "target_district": target_after_move, "action_index": action_index}
 
 func _monster_has_trait(actor: Dictionary, trait_name: String) -> bool:
 	var traits: Array = actor.get("movement_traits", []) as Array
@@ -3910,56 +4235,38 @@ func _update_auto_monster_linear_movement(delta: float) -> void:
 	var any_changed := false
 	for slot in range(auto_monsters.size()):
 		var actor: Dictionary = auto_monsters[slot]
+		var actor_uid := int(actor.get("uid", -1))
 		if bool(actor.get("down", false)):
 			if _entity_has_linear_motion(actor):
-				_clear_entity_linear_motion(actor)
-				auto_monsters[slot] = actor
+				var clear_context := _next_autonomous_move_command_id(actor_uid, "clear", int(maxf(1.0, game_time * 1000000.0)))
+				dispatch_autonomous_move_command({
+					"command_id": clear_context["command_id"],
+					"sequence": clear_context["sequence"],
+					"source": "monster_ai",
+					"source_kind": "autonomous_monster",
+					"actor_uid": actor_uid,
+					"operation": "clear",
+					"occurred_at_world_us": int(maxf(1.0, game_time * 1000000.0)),
+				})
 			continue
 		if not _entity_has_linear_motion(actor):
 			continue
-		var info := _advance_entity_linear_motion(actor, delta)
-		var moved := float(info.get("moved", 0.0))
-		if moved > 0.5:
-			_apply_auto_monster_linear_path_effects(
-				actor,
-				info.get("before", _entity_world_position(actor)),
-				info.get("after", _entity_world_position(actor)),
-				String(info.get("source", "线性移动")),
-				String(info.get("mode", "")),
-				AUTO_MONSTER_KNOCKBACK_DAMAGE_MAX_REGIONS if String(info.get("arrival_action", "")) == "knockback" else AUTO_MONSTER_PATH_DAMAGE_MAX_REGIONS
-			)
-			any_changed = true
-		if bool(info.get("arrived", false)):
-			var target_district := int(info.get("target_district", actor.get("position", -1)))
-			if target_district < 0 or target_district >= districts.size():
-				target_district = int(actor.get("position", _nearest_district_to(_entity_world_position(actor))))
-			actor["world_position"] = info.get("target", actor.get("world_position", Vector2.ZERO))
-			actor["position"] = target_district
-			var source := String(info.get("source", "线性移动"))
-			var arrival_action := String(info.get("arrival_action", ""))
-			var mode := String(info.get("mode", ""))
-			var landing_damage := _auto_monster_move_damage(actor, mode)
-			if landing_damage > 0 and mode != "fly" and not _monster_has_trait(actor, "flying"):
-				_damage_district(target_district, landing_damage, "%s·%s抵达冲击" % [String(actor.get("name", "怪兽")), source])
-			var arrival_damage := maxi(0, int(actor.get("linear_move_arrival_damage", 0)))
-			if arrival_damage > 0:
-				_damage_district(target_district, arrival_damage, String(actor.get("linear_move_arrival_damage_source", source)))
-			_auto_monster_resource_drain(actor, target_district, source)
-			_add_action_callout(
-				"自动怪兽%d·%s" % [slot + 1, String(actor.get("name", "怪兽"))],
-				"击退落点" if arrival_action == "knockback" else "移动抵达",
-				"%s抵达%s；移动按米/秒线性结算。" % [source, String(districts[target_district].get("name", "区域"))],
-				_auto_monster_color(slot),
-				_entity_world_position(actor)
-			)
-			_clear_entity_linear_motion(actor)
-			auto_monsters[slot] = actor
-			_resolve_auto_monster_encounter(slot, "线性移动抵达")
-			any_changed = true
-		else:
-			auto_monsters[slot] = actor
+		var command_context := _next_autonomous_move_command_id(actor_uid, "advance", int(maxf(1.0, game_time * 1000000.0)))
+		var advance_receipt := dispatch_autonomous_move_command({
+			"command_id": command_context["command_id"],
+			"sequence": command_context["sequence"],
+			"source": "monster_ai",
+			"source_kind": "autonomous_monster",
+			"actor_uid": actor_uid,
+			"operation": "advance",
+			"delta_seconds": maxf(0.0, delta),
+			"occurred_at_world_us": int(maxf(1.0, game_time * 1000000.0)),
+		})
+		if bool(advance_receipt.get("handled", false)):
+			var advance_sink: Dictionary = advance_receipt.get("sink_receipt", {}) if advance_receipt.get("sink_receipt", {}) is Dictionary else {}
+			any_changed = any_changed or float(advance_sink.get("moved", 0.0)) > 0.5 or bool(advance_sink.get("arrived", false))
 	if any_changed:
-		_refresh_ui()
+		request_table_presentation_refresh()
 
 func _place_auto_miasma(_actor: Dictionary, center_index: int, max_tokens: int, source: String) -> void:
 	if max_tokens <= 0:
@@ -4172,6 +4479,29 @@ func _latest_active_monster_wager() -> Dictionary:
 			return entry.duplicate(true)
 	return {}
 
+
+func forced_decision_candidates() -> Array:
+	var wager := _latest_active_monster_wager()
+	if wager.is_empty():
+		return []
+	var wager_id := int(wager.get("wager_id", -1))
+	if wager_id < 0:
+		return []
+	return [{
+		"id": "monster_wager_%d" % wager_id,
+		"kind": "monster_wager",
+		"priority_group": "monster_wager",
+		"owner_player_index": -1,
+		"visibility_scope": "public",
+		"presentation_surface": "overlay",
+		"opened_sequence": float(wager_id),
+		"blocks_global_time": true,
+		"blocks_player_actions": true,
+		"blocks_card_resolution": true,
+		"source_ref": "monster_wager",
+		"notes": "Public wager freezes the table until every bet or timeout resolves.",
+	}]
+
 func _monster_wager_current_slot(entry: Dictionary, side: String) -> int:
 	for competitor_variant in _monster_wager_competitors(entry):
 		var competitor := competitor_variant as Dictionary
@@ -4381,8 +4711,6 @@ func _try_finish_monster_wager_if_ready(wager_id: int) -> bool:
 func _open_monster_wager_for_pair(slot_a: int, slot_b: int, context: String = "怪兽遭遇", pending_attack: Dictionary = {}) -> int:
 	if slot_a < 0 or slot_a >= auto_monsters.size() or slot_b < 0 or slot_b >= auto_monsters.size() or slot_a == slot_b:
 		return -1
-	if _first_run_should_defer_monster_wager():
-		return -1
 	if _monster_wager_reopen_cooldown_active():
 		return -1
 	var existing_index := _active_monster_wager_index_for_pair(slot_a, slot_b)
@@ -4447,7 +4775,7 @@ func _open_monster_wager_for_pair(slot_a: int, slot_b: int, context: String = "�
 	)
 	_ai_runtime_call("_auto_ai_monster_wagers_for_entry", [monster_wager_sequence])
 	_try_finish_monster_wager_if_ready(monster_wager_sequence)
-	_refresh_ui()
+	request_table_presentation_refresh()
 	return monster_wager_sequence
 
 
@@ -4577,7 +4905,7 @@ func _place_monster_wager(wager_id: int, side: String, stake: int = 0, player_in
 		_monster_wager_side_label(entry, side),
 	])
 	_try_finish_monster_wager_if_ready(wager_id)
-	_refresh_ui()
+	request_table_presentation_refresh()
 	return true
 
 func _monster_wager_actor_expected_damage_score(actor: Dictionary) -> int:
@@ -4766,7 +5094,7 @@ func _settle_monster_wager_at_index(index: int, reason: String) -> bool:
 		Color("#fde68a"),
 		anchor_position
 	)
-	_refresh_ui()
+	request_table_presentation_refresh()
 	return true
 
 func _auto_monster_use_action_on_other(slot: int, target_slot: int, action: Dictionary, context: String, allow_wager: bool = true) -> bool:
@@ -5162,16 +5490,20 @@ func _auto_monster_target_factor_summary(actor: Dictionary, index: int) -> Strin
 	return " / ".join(picked)
 
 func _add_action_callout(actor: String, action: String, detail: String, color: Color, world_position: Vector2, duration: float = ACTION_CALLOUT_DURATION) -> void:
-	_world_call(&"_add_action_callout", [actor, action, detail, color, world_position, duration])
+	if _visual_cue_runtime_owner != null:
+		_visual_cue_runtime_owner.add_action_callout(actor, action, detail, color, world_position, duration)
 
 func _add_map_event_effect(kind: String, world_position: Vector2, color: Color, label: String = "", duration: float = MAP_EVENT_EFFECT_DURATION, radius_m: float = 70.0, card_style: String = "") -> void:
-	_world_call(&"_add_map_event_effect", [kind, world_position, color, label, duration, radius_m, card_style])
+	if _visual_cue_runtime_owner != null:
+		_visual_cue_runtime_owner.add_map_event_effect(kind, world_position, color, label, duration, radius_m, card_style)
 
 func _add_monster_attack_effect(from_position: Vector2, to_position: Vector2, source: String, range_limit_m: float, color: Color, is_ranged: bool = false, action_profile: Dictionary = {}) -> void:
-	_world_call(&"_add_monster_attack_effect", [from_position, to_position, source, range_limit_m, color, is_ranged, action_profile])
+	if _visual_cue_runtime_owner != null:
+		_visual_cue_runtime_owner.add_monster_attack_effect(from_position, to_position, source, range_limit_m, color, is_ranged, action_profile)
 
 func _add_visual_trail(from_position: Vector2, to_position: Vector2, color: Color, label: String, duration: float = VISUAL_TRAIL_DURATION, style: String = "movement") -> void:
-	_world_call(&"_add_visual_trail", [from_position, to_position, color, label, duration, style])
+	if _visual_cue_runtime_owner != null:
+		_visual_cue_runtime_owner.add_visual_trail(from_position, to_position, color, label, duration, style)
 
 func _advance_entity_linear_motion(entity: Dictionary, delta_seconds: float) -> Dictionary:
 	var baseline_speed := maxf(0.0, float(entity.get("linear_move_speed_mps", 0.0)))
@@ -5284,9 +5616,6 @@ func _entity_world_position(entity: Dictionary) -> Vector2:
 func _first_empty_or_new_slot(player: Dictionary) -> int:
 	return _world_call(&"_first_empty_or_new_slot", [player])
 
-func _first_run_should_defer_monster_wager() -> bool:
-	return _world_call(&"_first_run_should_defer_monster_wager", [])
-
 func _has_destroyed_district() -> bool:
 	return _world_call(&"_has_destroyed_district", [])
 
@@ -5297,7 +5626,16 @@ func _limited_name_list(names: Array, limit: int = 6, empty_text: String = "无"
 	return _world_call(&"_limited_name_list", [names, limit, empty_text])
 
 func _log(message: String) -> void:
-	_world_call(&"_log", [message])
+	publish_public_log_message(message)
+
+
+func publish_public_log_message(message: String) -> void:
+	if _public_log_producer_port != null and not message.is_empty():
+		_public_log_producer_port.publish(
+			&"monster_public_update", &"public.monster.updated",
+			{"action_kind": "monster", "public_status": "updated"},
+			_presentation_source_revision(), _presentation_world_time()
+		)
 
 func _make_skill(skill_name: String) -> Dictionary:
 	return _world_call(&"_make_skill", [skill_name])
@@ -5353,7 +5691,8 @@ func _probability_text(weight: int, total: int) -> String:
 	return MONSTER_CATALOG_V06.probability_text(weight, total)
 
 func _pulse_district(index: int, color: Color) -> void:
-	_world_call(&"_pulse_district", [index, color])
+	if _visual_cue_runtime_owner != null:
+		_visual_cue_runtime_owner.pulse_district(index, color)
 
 func _ranked_action_weights(source_weights: Array, rank: int) -> Array:
 	return MONSTER_CATALOG_V06.ranked_action_weights(source_weights, rank)
@@ -5368,8 +5707,15 @@ func _refresh_product_market_prices() -> void:
 	if _product_market_runtime_controller != null:
 		_product_market_runtime_controller.refresh_prices()
 
-func _refresh_ui() -> void:
-	_world_call(&"_refresh_ui", [])
+func request_table_presentation_refresh() -> void:
+	if _table_presentation_refresh_port != null:
+		_table_presentation_refresh_port.request_immediate(&"full", &"monster_state_changed")
+
+func _presentation_source_revision() -> int:
+	return _presentation_world_clock.world_effective_micros() if _presentation_world_clock != null else 0
+
+func _presentation_world_time() -> float:
+	return _presentation_world_clock.world_effective_seconds() if _presentation_world_clock != null else 0.0
 
 func _ruleset_timing_seconds(rule_id: StringName) -> float:
 	return _world_call(&"_ruleset_timing_seconds", [rule_id])
@@ -5667,7 +6013,7 @@ func _apply_monster_takeover(skill: Dictionary, target_slot: int, player_index: 
 		("未知" if old_owner < 0 else "已被覆盖"),
 		_limited_name_list(granted, 4, "无"),
 	])
-	_refresh_ui()
+	request_table_presentation_refresh()
 	return true
 
 func _command_auto_monster_attack(slot: int, skill: Dictionary) -> bool:

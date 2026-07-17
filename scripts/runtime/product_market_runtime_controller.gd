@@ -2,6 +2,14 @@
 extends Node
 class_name ProductMarketRuntimeController
 
+var _public_log_producer_port: PublicLogProducerPort
+var _presentation_world_clock: WorldEffectiveClockRuntimeController
+
+
+func set_table_presentation_log_port(log_port: PublicLogProducerPort, clock: WorldEffectiveClockRuntimeController) -> void:
+	_public_log_producer_port = log_port
+	_presentation_world_clock = clock
+
 const CONTROLLER_ID := "product_market_runtime_v1"
 const ECONOMY_LEGACY_TURN_SECONDS := 30.0
 const PRODUCT_PRICE_MIN := 26
@@ -734,7 +742,14 @@ func runtime_state_snapshot() -> Dictionary:
 func public_market_snapshot() -> Dictionary:
 	var public_market := {}
 	for product_variant in product_market.keys(): public_market[product_variant] = _sanitize_entry(product_market[product_variant] as Dictionary)
-	return {"product_market": public_market, "business_cycle_count": business_cycle_count, "market_timer": market_timer}
+	return {
+		"catalog_ready": _configured and not product_market.is_empty(),
+		"visibility_scope": "public",
+		"market_revision": business_cycle_count,
+		"product_market": public_market,
+		"business_cycle_count": business_cycle_count,
+		"market_timer": market_timer,
+	}
 
 
 func product_weather_contribution_snapshot(product_name: String) -> Dictionary:
@@ -864,7 +879,7 @@ func _world_snapshot() -> Dictionary:
 	return _world_bridge.world_snapshot() if _world_bridge != null else {}
 
 
-func _shared_rng() -> RandomNumberGenerator:
+func _shared_rng() -> RunRngService:
 	return _world_bridge.shared_rng() if _world_bridge != null else null
 
 
@@ -874,11 +889,19 @@ func _default_product() -> String:
 
 
 func _set_selected_product(product_name: String) -> void:
-	if _world_bridge != null: _world_bridge.write_world_value("selected_trade_product", product_name)
+	var selection := _world_bridge.table_selection_state() if _world_bridge != null else null
+	if selection != null:
+		selection.selected_trade_product = product_name
 
 
 func _log(message: String) -> void:
-	if _world_bridge != null: _world_bridge.call_world("_log", [message])
+	if _public_log_producer_port != null and not message.is_empty():
+		var revision := _presentation_world_clock.world_effective_micros() if _presentation_world_clock != null else 0
+		var world_time := _presentation_world_clock.world_effective_seconds() if _presentation_world_clock != null else 0.0
+		_public_log_producer_port.publish(
+			&"market_public_update", &"public.market.updated",
+			{"action_kind": "market", "public_status": "updated"}, revision, world_time
+		)
 
 
 func _district_city(world: Dictionary, district_index: int) -> Dictionary:

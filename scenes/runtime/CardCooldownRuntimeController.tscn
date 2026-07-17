@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_cooldown_runtime_controller.gd" id="1"]
+
+[node name="CardCooldownRuntimeController" type="Node"]
+script = ExtResource("1")
+editor_description = "Unique scene-owned mutator for player action and persistent-card realtime cooldown fields stored in WorldSessionState."

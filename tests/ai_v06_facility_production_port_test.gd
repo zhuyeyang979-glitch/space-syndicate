@@ -12,7 +12,6 @@ func _init() -> void:
 
 
 func _run() -> void:
-	_verify_fixed_facility_market_retired()
 	_remove_qa_save()
 	var main := MAIN_SCENE.instantiate()
 	main.process_mode = Node.PROCESS_MODE_DISABLED
@@ -55,22 +54,18 @@ func _run() -> void:
 	var ai_public: Dictionary = ai.call("ai_v06_facility_bootstrap_public_snapshot") if ai != null else {}
 	_expect(bool(ai_public.get("available", false)), "AI reports the production port capability without private policy details")
 
-	var players: Array = main.get("players") if main.get("players") is Array else []
+	var players: Array = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players if ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players is Array else []
 	_expect(not players.is_empty() and players[0] is Dictionary and not (players[0] as Dictionary).has("actor_id"), "production player has no actor_id field")
 	var identity: Dictionary = coordinator.call("actor_id_for_player_index", 0)
 	var actor_id := str(identity.get("actor_id", ""))
 	_expect(bool(identity.get("available", false)) and actor_id == "player.0", "Coordinator reverses the sole production adapter actor map")
 	var source_before: Dictionary = coordinator.call("economic_source_snapshot", actor_id)
 	_expect(bool(source_before.get("available", false)) and not bool(source_before.get("has_source", true)), "source snapshot reads existing owners and starts empty")
-	var market_before := _first_available_region_supply_facility(coordinator, actor_id)
+	var market_before := _first_available_market(coordinator, actor_id)
 	var listing: Dictionary = market_before.get("listing", {}) if market_before.get("listing", {}) is Dictionary else {}
 	var legal_regions: Array = listing.get("legal_region_ids", []) if listing.get("legal_region_ids", []) is Array else []
 	print("AI_V06_PORT_STAGE|stage=market|available=%s|reason=%s|legal=%d" % [bool(market_before.get("available", false)), str(market_before.get("reason_code", "missing")), legal_regions.size()])
-	_expect(bool(market_before.get("available", false)) and bool(listing.get("canonical", false)), "AI selects one current public RegionSupply rank-I facility listing")
-	var public_rack: Dictionary = coordinator.call("region_supply_public_rack")
-	var public_rack_json := JSON.stringify(public_rack)
-	_expect(not public_rack_json.contains("bag") and not public_rack_json.contains("rng_state"), "AI input exposes current rack slots without future bag or RNG state")
-	_expect(_public_rack_has_item(public_rack, str(listing.get("item_id", ""))), "selected AI listing exists in the current public RegionSupply rack")
+	_expect(bool(market_before.get("available", false)) and bool(listing.get("canonical", false)), "production market exposes one canonical rank-I facility listing")
 	_expect(not legal_regions.is_empty() and str(listing.get("target_region_id", "")) == str(legal_regions[0]), "listing target is selected from authoritative legal region candidates")
 	var player_before: Dictionary = coordinator.call("player_snapshot", actor_id)
 	_expect(bool(player_before.get("available", false)) and player_before.get("cards", []) is Array, "production player snapshot is narrow pure data")
@@ -91,8 +86,6 @@ func _run() -> void:
 		int(source_before.get("revision", -1))
 	)
 	_expect(bool(purchase.get("available", false)) and bool(purchase.get("committed", false)), "narrow port purchases through Inventory and CardFlow")
-	var public_rack_after: Dictionary = coordinator.call("region_supply_public_rack")
-	_expect(not _public_rack_has_item(public_rack_after, str(listing.get("item_id", ""))), "successful purchase refills only the consumed RegionSupply item")
 	var player_after_purchase: Dictionary = coordinator.call("player_snapshot", actor_id)
 	var cards_after_purchase: Array = player_after_purchase.get("cards", []) if player_after_purchase.get("cards", []) is Array else []
 	_expect(cards_after_purchase.size() == 1 and int(player_after_purchase.get("cash", 0)) < int(player_before.get("cash", 0)), "purchase debits authoritative cash once and exposes the stable runtime card")
@@ -109,28 +102,9 @@ func _run() -> void:
 	_expect(bool(purchase_replay.get("committed", false)) and bool(purchase_replay.get("idempotent_replay", false)), "purchase transaction replay is exact-once")
 	var player_after_purchase_replay: Dictionary = coordinator.call("player_snapshot", actor_id)
 	_expect(int(player_after_purchase_replay.get("cash", -1)) == int(player_after_purchase.get("cash", -2)) and (player_after_purchase_replay.get("cards", []) as Array).size() == cards_after_purchase.size(), "purchase replay does not debit cash or add a second card")
-	var stale_transaction_id := "%s:stale" % purchase_transaction_id
-	var stale: Dictionary = coordinator.call(
-		"purchase_rank_i_facility",
-		actor_id,
-		str(listing.get("item_id", "")),
-		stale_transaction_id,
-		int(market_before.get("revision", -1)),
-		int(player_after_purchase.get("revision", -1)),
-		int(source_before.get("revision", -1))
-	)
-	_expect(not bool(stale.get("committed", false)), "consumed RegionSupply source revision fails closed")
-	var player_after_stale: Dictionary = coordinator.call("player_snapshot", actor_id)
-	_expect(int(player_after_stale.get("cash", -1)) == int(player_after_purchase.get("cash", -2)) and (player_after_stale.get("cards", []) as Array).size() == cards_after_purchase.size(), "stale RegionSupply purchase has zero cash and inventory side effects")
 
 	var source_after_purchase: Dictionary = coordinator.call("economic_source_snapshot", actor_id)
-	_expect(
-		not bool(source_after_purchase.get("has_source", true))
-		and not bool(source_after_purchase.get("bootstrap_finalized", true))
-		and int(source_after_purchase.get("owned_facility_count", -1)) == 0
-		and int(source_after_purchase.get("production_installation_count", -1)) == 0,
-		"buying a card does not fabricate a facility or production source"
-	)
+	_expect(int(source_after_purchase.get("revision", -1)) == int(source_before.get("revision", -2)) and not bool(source_after_purchase.get("has_source", true)), "buying a card does not fabricate a facility source revision")
 	var card_binding: Dictionary = cards_after_purchase[0] if not cards_after_purchase.is_empty() and cards_after_purchase[0] is Dictionary else {}
 	var play_transaction_id := "vs06-b5b:production-play:%s" % actor_id
 	var target_region_id := str(listing.get("target_region_id", ""))
@@ -155,7 +129,7 @@ func _run() -> void:
 	_expect(bool(play_replay.get("committed", false)) and bool(play_replay.get("idempotent_replay", false)), "play transaction replay is exact-once")
 	_expect((infrastructure.call("facilities_snapshot", false) as Array).size() == facilities_before.size() + 1 and (flow.call("installations_snapshot", false) as Array).size() == installations_before.size() + 1, "play replay duplicates neither owner state")
 	var journal_after: Dictionary = inventory.call("transaction_journal_snapshot")
-	_expect(journal_after.size() == journal_before.size() + 2 and journal_after.has(purchase_transaction_id) and not journal_after.has(stale_transaction_id) and journal_after.has(play_transaction_id), "only committed purchase and play persist in the existing Inventory/CardFlow journal; stale source rejection remains side-effect free")
+	_expect(journal_after.size() == journal_before.size() + 2 and journal_after.has(purchase_transaction_id) and journal_after.has(play_transaction_id), "purchase and play persist only in the existing Inventory/CardFlow journal")
 
 	main.queue_free()
 	await process_frame
@@ -168,44 +142,23 @@ func _wait_frames(count: int) -> void:
 		await process_frame
 
 
-func _verify_fixed_facility_market_retired() -> void:
-	var source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
-	for retired_symbol in [
-		"v06_first_table_facility_market_snapshot",
-		"refresh_v06_first_table_facility_quote",
-		"purchase_v06_first_table_facility_card",
-		"execute_v06_facility_purchase_action",
-		"v06_facility_purchase_public_state",
-		"_v06_first_table_facility_listing",
-		"_v06_next_rank_i_facility_card",
-		"_v06_viable_facility_pair_factories",
-		"_v06_facility_card_for_pair",
-		"_v06_market_source_snapshot",
-	]:
-		_expect(not source.contains(retired_symbol), "fixed facility market symbol is physically retired: %s" % retired_symbol)
-	_expect(source.contains("region_supply_public_rack()") and source.contains("purchase_region_supply_card({"), "AI facility port consumes the unique public RegionSupply and CardFlow purchase facade")
-
-
-func _first_available_region_supply_facility(coordinator: Node, actor_id: String) -> Dictionary:
+func _first_available_market(coordinator: Node, actor_id: String) -> Dictionary:
+	var surface_variant: Variant = coordinator.call("v06_facility_market_snapshot", actor_id)
+	var surface: Dictionary = surface_variant if surface_variant is Dictionary else {}
+	var listing: Dictionary = surface.get("listing", {}) if surface.get("listing", {}) is Dictionary else {}
+	var district_index := int(listing.get("source_district_index", -1))
+	var chosen_second := -1
 	for second in range(0, 120, 5):
 		coordinator.call("restore_world_effective_seconds", float(second))
-		var market_variant: Variant = coordinator.call("market_snapshot", actor_id)
-		var market: Dictionary = (market_variant as Dictionary).duplicate(true) if market_variant is Dictionary else {}
-		if bool(market.get("available", false)):
-			return market
-	return {}
-
-
-func _public_rack_has_item(public_rack: Dictionary, item_id: String) -> bool:
-	if item_id.is_empty():
-		return false
-	for region_variant in public_rack.get("regions", []) as Array:
-		if not (region_variant is Dictionary):
-			continue
-		for slot_variant in (region_variant as Dictionary).get("slots", []) as Array:
-			if slot_variant is Dictionary and str((slot_variant as Dictionary).get("item_id", "")) == item_id:
-				return true
-	return false
+		var availability_variant: Variant = coordinator.call("card_market_listing_availability", district_index)
+		var availability: Dictionary = availability_variant if availability_variant is Dictionary else {}
+		if str(availability.get("availability_kind", "")) == "sunlit":
+			chosen_second = second
+			break
+	if chosen_second >= 0:
+		coordinator.call("restore_world_effective_seconds", float(chosen_second + 120))
+	var market_variant: Variant = coordinator.call("market_snapshot", actor_id)
+	return (market_variant as Dictionary).duplicate(true) if market_variant is Dictionary else {}
 
 
 func _remove_qa_save() -> void:

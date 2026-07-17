@@ -6,6 +6,7 @@ const WORLD_BRIDGE_SCENE_PATH := "res://scenes/runtime/VictoryControlWorldBridge
 const COORDINATOR_SCENE_PATH := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const MAIN_SCRIPT_PATH := "res://scripts/main.gd"
+const RUNTIME_LOOP_SCRIPT_PATH := "res://scripts/runtime/runtime_loop.gd"
 const CONTROLLER_SCRIPT_PATH := "res://scripts/runtime/victory_control_runtime_controller.gd"
 const BRIDGE_SCRIPT_PATH := "res://scripts/runtime/victory_control_world_bridge.gd"
 const OUTPUT_DIR := "user://space_syndicate_design_qa/victory_control_runtime/"
@@ -297,16 +298,13 @@ func _run_case(case_id: String) -> Dictionary:
 			passed = no_receipt and not (controller.call("outcome_receipt") as Dictionary).is_empty()
 			notes = "audit cannot settle from a pre-mutation snapshot"
 		"main_same_tick_order_is_v06":
-			var source := FileAccess.get_file_as_string(MAIN_SCRIPT_PATH)
-			var start := source.find("func _process(delta: float)")
-			var finish := source.find("func _update_process_ui_refresh", start)
-			var process_source := source.substr(start, finish - start) if start >= 0 and finish > start else ""
+			var process_source := FileAccess.get_file_as_string(RUNTIME_LOOP_SCRIPT_PATH)
 			var attack_pos := process_source.find("tick_monster_actions")
-			var flow_pos := process_source.find("_advance_continuous_commodity_flow")
-			var bankruptcy_pos := process_source.find("_check_bankruptcy_eliminations", flow_pos)
-			var victory_pos := process_source.find("_update_victory_control")
-			passed = attack_pos >= 0 and attack_pos < flow_pos and flow_pos < bankruptcy_pos and bankruptcy_pos < victory_pos
-			notes = "same-tick order is attack/lifecycle, flow/sales, bankruptcy, then victory"
+			var flow_pos := process_source.find("advance_commodity_flow")
+			var market_pos := process_source.find("tick_product_market_cycle", flow_pos)
+			var victory_pos := process_source.find("advance_victory_control", market_pos)
+			passed = attack_pos >= 0 and attack_pos < flow_pos and flow_pos < market_pos and market_pos < victory_pos
+			notes = "same-tick order is attack/lifecycle, finalized flow and bankruptcy checkpoint, market, then victory"
 		"menu_pause_freezes_clock":
 			passed = _pause_case(controller, "menu_paused")
 			notes = "menu pause consumes no qualification time"

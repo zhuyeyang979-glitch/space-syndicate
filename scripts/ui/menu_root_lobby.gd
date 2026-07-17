@@ -2,6 +2,7 @@ extends PanelContainer
 class_name SpaceSyndicateMenuRootLobby
 
 signal action_requested(action_id: String)
+signal rules_requested()
 
 @onready var title_label: Label = %MainMenuLobbyTitle
 @onready var status_label: Label = %MainMenuLobbyStatus
@@ -200,7 +201,10 @@ func _action_button(entry: Dictionary, accent: Color, primary: bool) -> Button:
 	_style_button(button, accent, primary and not button.disabled)
 	if action_id != "":
 		_buttons_by_id[action_id] = button
-		button.pressed.connect(_emit_action.bind(action_id))
+		if action_id == "rules":
+			button.pressed.connect(_emit_rules)
+		else:
+			button.pressed.connect(_emit_action.bind(action_id))
 	return button
 
 
@@ -225,6 +229,10 @@ func _add_chip(entry: Dictionary) -> void:
 
 func _emit_action(action_id: String) -> void:
 	action_requested.emit(action_id)
+
+
+func _emit_rules() -> void:
+	rules_requested.emit()
 
 
 func _style_button(button: Button, accent: Color, active: bool) -> void:

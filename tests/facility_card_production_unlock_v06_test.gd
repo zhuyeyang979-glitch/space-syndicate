@@ -18,8 +18,7 @@ var _failures: Array[String] = []
 
 
 class RuntimeWorld:
-	extends Node
-	var players: Array = []
+	extends WorldSessionState
 
 
 class LegacyInfrastructurePort:
@@ -246,11 +245,11 @@ func _production_fixture(label: String, infrastructure_port: Node = null, existi
 	var world := RuntimeWorld.new()
 	world.players = [_player(_card("facility.factory.life.rank_1", "%s-card" % label))]
 	root.add_child(world)
-	_expect(bool(state.bind_world(world).get("bound", false)), "%s production state port binds real player facts" % label)
+	_expect(bool(state.set_world_session_state(world).get("bound", false)), "%s production state port binds real player facts" % label)
 	var inventory := INVENTORY_SCENE.instantiate() as CommodityCardInventoryRuntimeController
 	root.add_child(inventory)
 	_expect(bool(inventory.configure(PROFILE.debug_snapshot(), state, flow, port).get("configured", false)), "%s commodity inventory controller configures" % label)
-	inventory.bind_world(world)
+	inventory.set_world_session_state(world)
 	var core := CORE_ADAPTER_SCRIPT.new() as CoreEconomicCardRuntimeAdapterV06
 	root.add_child(core)
 	_expect(bool(core.configure(inventory, flow, port, {"A": 0}).get("configured", false)), "%s core effect adapter configures" % label)
@@ -267,7 +266,7 @@ func _transaction_fixture(label: String, advance_owner: bool) -> Dictionary:
 	world.players = [_player(_card("facility.factory.life.rank_2", "%s-card" % label))]
 	root.add_child(world)
 	state.configure(CATALOG, assets)
-	state.bind_world(world)
+	state.set_world_session_state(world)
 	var failing := FailingStatePort.new(state, infrastructure, advance_owner)
 	root.add_child(failing)
 	var facility_adapter := FACILITY_ADAPTER_SCRIPT.new()

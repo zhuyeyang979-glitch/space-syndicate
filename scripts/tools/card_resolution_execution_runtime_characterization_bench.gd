@@ -497,14 +497,14 @@ func _cutover_paid_cost_marker_preserved() -> Dictionary:
 
 func _cutover_selection_context_restored() -> Dictionary:
 	_prepare_players([[], []], [1000, 1000])
-	var original_player := mini(1, (_runtime_main.get("players") as Array).size() - 1)
-	var original_district := mini(1, (_runtime_main.get("districts") as Array).size() - 1)
+	var original_player := mini(1, (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).size() - 1)
+	var original_district := mini(1, (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).size() - 1)
 	var original_product := _first_runtime_product()
-	_runtime_main.set("selected_player", original_player)
-	_runtime_main.set("selected_district", original_district)
-	_runtime_main.set("selected_trade_product", original_product)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = original_player
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = original_district
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = original_product
 	_complete_entry_twice(_entry(CASH_CARD_ID, 3716, 0, -1, -1, 0))
-	var checked := int(_runtime_main.get("selected_player")) == original_player and int(_runtime_main.get("selected_district")) == original_district and str(_runtime_main.get("selected_trade_product")) == original_product
+	var checked := int(((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player) == original_player and int(((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district) == original_district and str(((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product) == original_product
 	return _cutover_record("selection_context_restored", {"observed": _history_count_for_resolution(3716) == 1, "contract_aligned": checked, "world_adapter_checked": checked, "notes": "Actor/district/product selection is captured in the pure plan and restored before history continuation."})
 
 
@@ -1042,7 +1042,7 @@ func _case_immediate_economy_effect_applies_once() -> Dictionary:
 
 func _case_city_or_product_effect_applies_once() -> Dictionary:
 	_prepare_players([[], []], [1000, 1000])
-	_runtime_main.set("selected_trade_product", _first_runtime_product())
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = _first_runtime_product()
 	var before_cash := _player_cash(0)
 	var skill := _real_skill(PRODUCT_CARD_ID)
 	_complete_entry_twice(_entry_with_skill(skill, 3610))
@@ -1063,7 +1063,7 @@ func _case_city_or_product_effect_applies_once() -> Dictionary:
 func _case_route_or_district_effect_applies_once() -> Dictionary:
 	_prepare_players([[], []], [1000, 1000])
 	var district_index := _first_alive_district()
-	_runtime_main.set("selected_district", district_index)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
 	var before := _district_public_metrics(district_index)
 	_complete_entry_twice(_entry(DISTRICT_CARD_ID, 3611, 0, -1, -1, district_index))
 	var after := _district_public_metrics(district_index)
@@ -1533,7 +1533,7 @@ func _reset_runtime_main() -> void:
 	_runtime_main.set("resolved_card_history", [])
 	if _contract_controller() != null:
 		_contract_controller().call("reset_state")
-	_runtime_main.set("log_lines", [])
+	(_coordinator() as GameRuntimeCoordinator).reset_public_log()
 	_runtime_main.set("action_callouts", [])
 	_runtime_main.set("runtime_visual_events", [])
 	_runtime_main.set("runtime_visual_event_counter", 0)
@@ -1575,7 +1575,7 @@ func _release_runtime_main() -> void:
 
 
 func _prepare_players(slot_sets: Array, cash_values: Array) -> void:
-	var player_states: Array = (_runtime_main.get("players") as Array).duplicate(true)
+	var player_states: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
 	for player_index in range(mini(player_states.size(), slot_sets.size())):
 		if not (player_states[player_index] is Dictionary):
 			continue
@@ -1593,9 +1593,9 @@ func _prepare_players(slot_sets: Array, cash_values: Array) -> void:
 		player_state["eliminated"] = false
 		player_state["is_ai"] = false
 		player_states[player_index] = player_state
-	_runtime_main.set("players", player_states)
-	_runtime_main.set("selected_player", 0)
-	_runtime_main.set("selected_district", _first_alive_district())
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = player_states
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = _first_alive_district()
 
 
 func _real_skill(card_id: String) -> Dictionary:
@@ -1694,7 +1694,7 @@ func _service_debug(service: Node) -> Dictionary:
 
 
 func _player(player_index: int) -> Dictionary:
-	var player_states: Array = _runtime_main.get("players") as Array
+	var player_states: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array
 	return (player_states[player_index] as Dictionary).duplicate(true) if player_index >= 0 and player_index < player_states.size() and player_states[player_index] is Dictionary else {}
 
 
@@ -1720,9 +1720,7 @@ func _array_size(property_name: String) -> int:
 
 
 func _logs_contain(fragment: String) -> bool:
-	var value: Variant = _runtime_main.get("log_lines")
-	if not (value is Array):
-		return false
+	var value: Array = (_coordinator() as GameRuntimeCoordinator).presentation_recent_public_log_messages(90)
 	for line_variant in value:
 		if str(line_variant).contains(fragment):
 			return true
@@ -1738,7 +1736,7 @@ func _history_count_for_resolution(resolution_id: int) -> int:
 
 
 func _first_alive_district() -> int:
-	var districts: Array = _runtime_main.get("districts") as Array
+	var districts: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array
 	for index in range(districts.size()):
 		if districts[index] is Dictionary and not bool((districts[index] as Dictionary).get("destroyed", false)):
 			return index
@@ -1746,7 +1744,7 @@ func _first_alive_district() -> int:
 
 
 func _district_public_metrics(district_index: int) -> Dictionary:
-	var districts: Array = _runtime_main.get("districts") as Array
+	var districts: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array
 	if district_index < 0 or district_index >= districts.size() or not (districts[district_index] is Dictionary):
 		return {}
 	var district := districts[district_index] as Dictionary
@@ -1780,7 +1778,7 @@ func _first_runtime_product() -> String:
 	var products_variant: Variant = _runtime_main.get("run_product_ids")
 	if products_variant is Array and not (products_variant as Array).is_empty():
 		return str((products_variant as Array)[0])
-	var districts: Array = _runtime_main.get("districts") as Array
+	var districts: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array
 	for district_variant in districts:
 		if district_variant is Dictionary:
 			var products: Array = (district_variant as Dictionary).get("products", []) as Array
@@ -1790,7 +1788,7 @@ func _first_runtime_product() -> String:
 
 
 func _runtime_city_development_card_id() -> String:
-	var districts_variant: Variant = _runtime_main.get("districts")
+	var districts_variant: Variant = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts
 	var districts: Array = districts_variant if districts_variant is Array else []
 	for district_index in range(districts.size()):
 		var district_variant: Variant = districts[district_index]

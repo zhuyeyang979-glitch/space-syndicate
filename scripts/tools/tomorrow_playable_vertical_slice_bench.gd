@@ -138,10 +138,10 @@ func _instantiate_production_main() -> Node:
 	runtime_viewport.size = Vector2i(1600, 960)
 	runtime_viewport.add_child(main)
 	await _wait_frames(8)
-	var rng_variant: Variant = main.get("rng")
-	if rng_variant is RandomNumberGenerator:
-		(rng_variant as RandomNumberGenerator).seed = FIXED_SEED
 	_coordinator = main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
+	var runtime_rng := (_coordinator as GameRuntimeCoordinator).run_rng_service() if _coordinator is GameRuntimeCoordinator else null
+	if runtime_rng != null:
+		runtime_rng.seed = FIXED_SEED
 	return main
 
 
@@ -240,10 +240,17 @@ func _stage_human_optional_summon_after_economy() -> void:
 	var before_save: Dictionary = monster.call("to_save_data") if monster != null and monster.has_method("to_save_data") else {}
 	var before_journal: Dictionary = before_save.get("monster_card_atomic_terminal_journal", {}) if before_save.get("monster_card_atomic_terminal_journal", {}) is Dictionary else {}
 
-	var district := int(_main.call("_first_run_recommended_start_district", 0))
+	var district := _first_playable_district()
 	if district >= 0:
 		_main.call("_select_district", district)
-	var submitted := bool(_main.call("_activate_first_run_coach_action", "coach_first_summon"))
+	var submitted := false
+	var action_entries: Array = _main.call("_runtime_snapshot_action_entries", 0)
+	for entry_variant in action_entries:
+		var entry: Dictionary = entry_variant if entry_variant is Dictionary else {}
+		if str(entry.get("id", "")) == "primary_summon_monster" and not bool(entry.get("disabled", true)):
+			_main.call("_on_runtime_game_screen_action_requested", "primary_summon_monster")
+			submitted = true
+			break
 	var drained := await _drain_card_resolution(240)
 	var after_snapshot: Dictionary = monster.call("unit_card_snapshot_v06", "monster") if monster != null and monster.has_method("unit_card_snapshot_v06") else {}
 	var after_save: Dictionary = monster.call("to_save_data") if monster != null and monster.has_method("to_save_data") else {}
@@ -304,11 +311,11 @@ func _stage_public_facility_dispatch() -> void:
 	var inventory := _commodity_inventory_owner()
 	var core := _core_economic_owner()
 	var infrastructure := _infrastructure_owner()
-	var canonical_card: Dictionary = _coordinator.call("v06_first_table_facility_card") if _coordinator != null and _coordinator.has_method("v06_first_table_facility_card") else {}
+	var canonical_card: Dictionary = _coordinator.call("v06_facility_card") if _coordinator != null and _coordinator.has_method("v06_facility_card") else {}
 	var canonical_machine: Dictionary = canonical_card.get("machine", {}) if canonical_card.get("machine", {}) is Dictionary else {}
 	var canonical_player_text: Dictionary = canonical_card.get("player", {}) if canonical_card.get("player", {}) is Dictionary else {}
 	var canonical_card_id := str(canonical_machine.get("card_id", ""))
-	var market_surface: Dictionary = _coordinator.call("v06_first_table_facility_market_snapshot", actor_id) if _coordinator != null and _coordinator.has_method("v06_first_table_facility_market_snapshot") else {}
+	var market_surface: Dictionary = _coordinator.call("v06_facility_market_snapshot", actor_id) if _coordinator != null and _coordinator.has_method("v06_facility_market_snapshot") else {}
 	var before_market: Dictionary = market_surface.get("market", {}) if market_surface.get("market", {}) is Dictionary else {}
 	var listing: Dictionary = market_surface.get("listing", {}) if market_surface.get("listing", {}) is Dictionary else {}
 	var listing_card: Dictionary = listing.get("card", {}) if listing.get("card", {}) is Dictionary else {}
@@ -322,14 +329,14 @@ func _stage_public_facility_dispatch() -> void:
 
 	var purchase_transaction_id := "vs06-c:facility-purchase:%s" % actor_id
 	var purchase: Dictionary = _coordinator.call(
-		"purchase_v06_first_table_facility_card",
+		"purchase_v06_facility_card",
 		actor_id,
 		source_item_id,
 		purchase_transaction_id
-	) if _coordinator != null and _coordinator.has_method("purchase_v06_first_table_facility_card") else {}
+	) if _coordinator != null and _coordinator.has_method("purchase_v06_facility_card") else {}
 	var after_purchase_player: Dictionary = _coordinator.call("v06_card_player_snapshot", actor_id) if _coordinator != null and _coordinator.has_method("v06_card_player_snapshot") else {}
 	var after_purchase_facilities: Array = infrastructure.call("facilities_snapshot", false) if infrastructure != null and infrastructure.has_method("facilities_snapshot") else []
-	var after_purchase_surface: Dictionary = _coordinator.call("v06_first_table_facility_market_snapshot", actor_id) if _coordinator != null and _coordinator.has_method("v06_first_table_facility_market_snapshot") else {}
+	var after_purchase_surface: Dictionary = _coordinator.call("v06_facility_market_snapshot", actor_id) if _coordinator != null and _coordinator.has_method("v06_facility_market_snapshot") else {}
 	var after_purchase_market: Dictionary = after_purchase_surface.get("market", {}) if after_purchase_surface.get("market", {}) is Dictionary else {}
 	var slot_index := _find_v06_card_slot(after_purchase_player, canonical_card_id)
 	var region_id := _selected_v06_region_id()
@@ -339,14 +346,14 @@ func _stage_public_facility_dispatch() -> void:
 		"slot_index": slot_index,
 		"transaction_id": play_transaction_id,
 		"region_id": region_id,
-		"game_time": float(_main.get("game_time")),
+		"game_time": float(((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time),
 	}
 	var play: Dictionary = _coordinator.call("play_v06_runtime_card", play_request) if bool(purchase.get("committed", false)) and slot_index >= 0 and not region_id.is_empty() and _coordinator != null and _coordinator.has_method("play_v06_runtime_card") else {}
 	var play_effect_finalization: Dictionary = play.get("effect_finalization", {}) if play.get("effect_finalization", {}) is Dictionary else {}
 	if bool(play.get("committed", false)) and bool(play_effect_finalization.get("finalized", false)):
 		_stage4_facility_region_id = region_id
 	var after_player: Dictionary = _coordinator.call("v06_card_player_snapshot", actor_id) if _coordinator != null and _coordinator.has_method("v06_card_player_snapshot") else {}
-	var after_play_surface: Dictionary = _coordinator.call("v06_first_table_facility_market_snapshot", actor_id) if _coordinator != null and _coordinator.has_method("v06_first_table_facility_market_snapshot") else {}
+	var after_play_surface: Dictionary = _coordinator.call("v06_facility_market_snapshot", actor_id) if _coordinator != null and _coordinator.has_method("v06_facility_market_snapshot") else {}
 	var after_market: Dictionary = after_play_surface.get("market", {}) if after_play_surface.get("market", {}) is Dictionary else {}
 	var after_journal: Dictionary = inventory.call("transaction_journal_snapshot") if inventory != null and inventory.has_method("transaction_journal_snapshot") else {}
 	var after_facilities: Array = infrastructure.call("facilities_snapshot", false) if infrastructure != null and infrastructure.has_method("facilities_snapshot") else []
@@ -367,7 +374,7 @@ func _stage_public_facility_dispatch() -> void:
 	# Replay the same public request, rather than merely draining an already-empty queue.
 	var replay: Dictionary = _coordinator.call("play_v06_runtime_card", play_request) if bool(play.get("committed", false)) and _coordinator != null and _coordinator.has_method("play_v06_runtime_card") else {}
 	var replay_player: Dictionary = _coordinator.call("v06_card_player_snapshot", actor_id) if _coordinator != null and _coordinator.has_method("v06_card_player_snapshot") else {}
-	var replay_market_surface: Dictionary = _coordinator.call("v06_first_table_facility_market_snapshot", actor_id) if _coordinator != null and _coordinator.has_method("v06_first_table_facility_market_snapshot") else {}
+	var replay_market_surface: Dictionary = _coordinator.call("v06_facility_market_snapshot", actor_id) if _coordinator != null and _coordinator.has_method("v06_facility_market_snapshot") else {}
 	var replay_market: Dictionary = replay_market_surface.get("market", {}) if replay_market_surface.get("market", {}) is Dictionary else {}
 	var replay_journal: Dictionary = inventory.call("transaction_journal_snapshot") if inventory != null and inventory.has_method("transaction_journal_snapshot") else {}
 	var replay_facilities: Array = infrastructure.call("facilities_snapshot", false) if infrastructure != null and infrastructure.has_method("facilities_snapshot") else []
@@ -439,8 +446,8 @@ func _stage_realtime_income() -> void:
 	var before_cash := _player_cash_cents(players, 0)
 	var before_receipts: Array = flow.call("recent_sale_receipts_snapshot", -1) if flow != null and flow.has_method("recent_sale_receipts_snapshot") else []
 	for _second in range(120):
-		_main.set("game_time", float(_main.get("game_time")) + 1.0)
-		_main.call("_advance_continuous_commodity_flow", 1.0)
+		((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = float(((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time) + 1.0
+		(_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).advance_runtime_commodity_flow(1.0)
 		if _second % 10 == 0:
 			await get_tree().process_frame
 	players = _array_property(_main, "players")
@@ -499,7 +506,7 @@ func _stage_ai_progress() -> void:
 		player["action_cooldown"] = 0.0
 		if player_index < players.size():
 			players[player_index] = player
-	_main.set("players", players)
+	((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 	var infrastructure := _infrastructure_owner()
 	var flow := _commodity_flow_owner()
 	var before_facilities: Array = infrastructure.call("facilities_snapshot", false) if infrastructure != null and infrastructure.has_method("facilities_snapshot") else []
@@ -528,8 +535,8 @@ func _stage_ai_progress() -> void:
 		if not before_facility_ids.has(str(facility.get("facility_id", ""))) and [1, 2].has(int(facility.get("owner_player_index", -1))):
 			built += 1
 	for _second in range(120):
-		_main.set("game_time", float(_main.get("game_time")) + 1.0)
-		_main.call("_advance_continuous_commodity_flow", 1.0)
+		((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = float(((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time) + 1.0
+		(_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).advance_runtime_commodity_flow(1.0)
 		if _second % 20 == 0:
 			await get_tree().process_frame
 	players = _array_property(_main, "players")
@@ -681,8 +688,8 @@ func _stage_privacy() -> void:
 		ai_player["ai_memory"] = {"route_plan": "VS06_AI_PLAN_SENTINEL"}
 		ai_player["hidden_owner"] = "VS06_TRUE_OWNER_SENTINEL"
 		players[1] = ai_player
-		_main.set("players", players)
-	var district := int(_main.get("selected_district"))
+		((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
+	var district := int(((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
 	var ai_supply: Dictionary = {}
 	if district >= 0 and _main.has_method("_district_supply_snapshot_source"):
 		ai_supply = _main.call("_district_supply_snapshot_source", district, 1) as Dictionary
@@ -702,7 +709,7 @@ func _stage_privacy() -> void:
 	var unknown_audit_cash_path_rejected := _victory_unknown_audit_cash_path_rejected(victory_public)
 	_scan_public_value(_final_settlement_snapshot, "settlement.public")
 	_scan_visible_controls(_main, "main.visible")
-	_main.set("players", player_backup)
+	((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = player_backup
 	_record(
 		"player_facing_privacy",
 		_privacy_leaks.is_empty() and unknown_audit_cash_path_rejected,
@@ -980,12 +987,23 @@ func _selected_v06_region_id() -> String:
 	if _main == null:
 		return ""
 	var districts := _array_property(_main, "districts")
-	var district_index := int(_main.get("selected_district"))
-	if (district_index < 0 or district_index >= districts.size()) and _main.has_method("_first_run_recommended_start_district"):
-		district_index = int(_main.call("_first_run_recommended_start_district", 0))
+	var district_index := int(((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
+	if district_index < 0 or district_index >= districts.size():
+		district_index = _first_playable_district()
 	if district_index < 0 or district_index >= districts.size() or not (districts[district_index] is Dictionary):
 		return ""
 	return str((districts[district_index] as Dictionary).get("region_id", "")).strip_edges()
+
+
+func _first_playable_district() -> int:
+	if _main == null:
+		return -1
+	var districts := _array_property(_main, "districts")
+	for index in range(districts.size()):
+		var district: Dictionary = districts[index] if districts[index] is Dictionary else {}
+		if not bool(district.get("is_ocean", false)) and not bool(district.get("destroyed", false)):
+			return index
+	return -1
 
 
 func _asset_total(value: Variant) -> int:
@@ -1033,7 +1051,7 @@ func _eligible_victory_world(checkpoint: String) -> Dictionary:
 func _scenario_state() -> Dictionary:
 	if _coordinator == null or not _coordinator.has_method("runtime_scenario_state"):
 		return {}
-	var value: Variant = _coordinator.call("runtime_scenario_state", float(_main.get("game_time")))
+	var value: Variant = _coordinator.call("runtime_scenario_state", float(((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time))
 	return value as Dictionary if value is Dictionary else {}
 
 

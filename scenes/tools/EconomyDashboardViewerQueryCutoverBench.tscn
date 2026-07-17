@@ -1,0 +1,16 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/economy_dashboard_viewer_query_cutover_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/EconomyDashboardViewerQueryPort.tscn" id="2_query"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/EconomyDashboardPublicSnapshotService.tscn" id="3_service"]
+[ext_resource type="PackedScene" path="res://scenes/ui/EconomyDashboard.tscn" id="4_dashboard"]
+
+[node name="EconomyDashboardViewerQueryCutoverBench" type="Node"]
+script = ExtResource("1_bench")
+
+[node name="EconomyDashboardViewerQueryPort" parent="." instance=ExtResource("2_query")]
+snapshot_service_path = NodePath("../EconomyDashboardPublicSnapshotService")
+
+[node name="EconomyDashboardPublicSnapshotService" parent="." instance=ExtResource("3_service")]
+
+[node name="EconomyDashboard" parent="." instance=ExtResource("4_dashboard")]

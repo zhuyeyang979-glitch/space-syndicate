@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/table_presentation_refresh_scheduler.gd" id="1"]
+
+[node name="TablePresentationRefreshScheduler" type="Node"]
+script = ExtResource("1")
+editor_description = "Scene-owned real-time cadence for public table refresh requests. It owns no gameplay facts or presentation targets."

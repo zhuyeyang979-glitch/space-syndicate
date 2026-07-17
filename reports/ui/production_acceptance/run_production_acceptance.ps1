@@ -260,7 +260,7 @@ $ReportLines = @(
     "",
     "| Gate | Result | Evidence |",
     "| --- | --- | --- |",
-    "| First-run core table | $(if ($null -ne $Acceptance -and $Acceptance.core_table.runtime_game_screen_visible) { 'PASS' } else { 'FAIL' }) | ``01_first_run_core_table_1280x720.png`` |",
+    "| Normal core table | $(if ($null -ne $Acceptance -and $Acceptance.core_table.runtime_game_screen_visible) { 'PASS' } else { 'FAIL' }) | ``01_normal_core_table_1280x720.png`` |",
     "| Weather forecast | $(if ($null -ne $Weather -and $Weather.forecast.pass) { 'PASS' } else { 'FAIL' }) | ``02_weather_forecast_1280x720.png`` |",
     "| Weather active-only review frame | $(if ($null -ne $Weather -and $Weather.active.pass) { 'PASS' } else { 'FAIL' }) | ``03_weather_active_1280x720.png`` |",
     "| Weather active + forecast dual | $(if ($null -ne $Weather -and $Weather.dual.pass) { 'PASS' } else { 'FAIL' }) | ``04_weather_dual_1280x720.png`` |",

@@ -10,7 +10,7 @@ const TRANSACTION_SERVICE_SCRIPT := preload("res://scripts/cards/v06/card_flow_t
 @onready var effect_bridge: CommodityCardEffectRuntimeBridge = %CommodityCardEffectRuntimeBridge
 
 var _configured := false
-var _world: Node
+var _world_session_state: WorldSessionState
 var _state_port: Node
 var _market_quote_authority: Object
 var _region_supply_source_port: Object
@@ -222,10 +222,10 @@ func configure(
 	}
 
 
-func bind_world(world: Node) -> void:
-	_world = world
-	if _state_port != null and _state_port.has_method("bind_world"):
-		_state_port.call("bind_world", world)
+func set_world_session_state(state: WorldSessionState) -> void:
+	_world_session_state = state
+	if _state_port is CardPlayerStateProductionAdapterV06:
+		(_state_port as CardPlayerStateProductionAdapterV06).set_world_session_state(state)
 	_refresh_effect_bridge()
 
 

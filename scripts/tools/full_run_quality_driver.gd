@@ -289,7 +289,7 @@ func _run() -> void:
 					_record_reason("scripted_ui_action_disabled")
 				elif bool(decision.get("active", false)) and bool(decision.get("blocks_global_time", false)):
 					failure_code = "forced_decision_has_no_visible_action"
-				elif exact_phase == "play" or exact_phase == "finished" or exact_phase.begins_with("first_run.done"):
+				elif exact_phase == "play" or exact_phase == "finished":
 					failure_code = "scripted_guidance_exhausted_before_settlement"
 				else:
 					failure_code = "scripted_ui_action_unavailable:%s" % exact_phase
@@ -322,24 +322,21 @@ func _run() -> void:
 
 
 func _start_fixed_seed_run(main_instance: Node, session: Node, run_seed: int) -> Dictionary:
-	if not main_instance.has_method("_first_run_recommended_setup") or not main_instance.has_method("_confirm_start_new_run_from_setup"):
+	if not main_instance.has_method("_confirm_start_new_run_from_setup"):
 		return {"started": false, "reason_code": "main_setup_api_unavailable"}
-	var setup_variant: Variant = main_instance.call("_first_run_recommended_setup")
-	var setup: Dictionary = setup_variant if setup_variant is Dictionary else {}
-	if int(setup.get("player_count", 0)) != RECOMMENDED_PLAYER_COUNT or int(setup.get("ai_count", 0)) != RECOMMENDED_AI_COUNT:
-		return {"started": false, "reason_code": "recommended_setup_invalid"}
 	main_instance.set("configured_player_count", RECOMMENDED_PLAYER_COUNT)
 	main_instance.set("configured_ai_player_count", RECOMMENDED_AI_COUNT)
 	main_instance.set("configured_roguelike_depth", 1)
-	main_instance.set("configured_role_indices", (setup.get("role_indices", []) as Array).duplicate(true))
-	main_instance.set("configured_starter_monster_indices", (setup.get("starter_monster_indices", []) as Array).duplicate(true))
-	var rng_variant: Variant = main_instance.get("rng")
-	if not (rng_variant is RandomNumberGenerator):
-		return {"started": false, "reason_code": "main_rng_unavailable"}
-	(rng_variant as RandomNumberGenerator).seed = run_seed
+	main_instance.set("configured_role_indices", [0, 1, 2, 3])
+	main_instance.set("configured_starter_monster_indices", [0, 1, 2, 3])
+	var runtime_coordinator := main_instance.get_node_or_null(COORDINATOR_PATH) as GameRuntimeCoordinator
+	var runtime_rng := runtime_coordinator.run_rng_service() if runtime_coordinator != null else null
+	if runtime_rng == null:
+		return {"started": false, "reason_code": "run_rng_service_unavailable"}
+	runtime_rng.seed = run_seed
 	main_instance.call("_confirm_start_new_run_from_setup")
 	await _wait_frames(10)
-	var players_variant: Variant = main_instance.get("players")
+	var players_variant: Variant = ((main_instance.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players
 	var players: Array = players_variant if players_variant is Array else []
 	var ai_count := 0
 	for player_variant in players:
@@ -348,7 +345,7 @@ func _start_fixed_seed_run(main_instance: Node, session: Node, run_seed: int) ->
 	var session_state := _session_state(session)
 	return {
 		"started": players.size() == RECOMMENDED_PLAYER_COUNT and ai_count == RECOMMENDED_AI_COUNT and session_state == "running",
-		"reason_code": "" if players.size() == RECOMMENDED_PLAYER_COUNT and ai_count == RECOMMENDED_AI_COUNT and session_state == "running" else "recommended_session_not_running",
+		"reason_code": "" if players.size() == RECOMMENDED_PLAYER_COUNT and ai_count == RECOMMENDED_AI_COUNT and session_state == "running" else "normal_session_not_running",
 	}
 
 
@@ -371,7 +368,7 @@ func _capability_preflight(main_instance: Node, coordinator: Node, session: Node
 	var session_ready := session != null and session.has_method("session_summary")
 	var settlement_ready := settlement_composition != null and settlement_composition.has_method("debug_snapshot") and settlement_composition.has_method("last_public_snapshot")
 	var scripted_ui_port_ready := runtime_screen != null and runtime_screen.has_signal("action_requested")
-	var setup_ready := main_instance.has_method("_first_run_recommended_setup") and main_instance.has_method("_confirm_start_new_run_from_setup")
+	var setup_ready := main_instance.has_method("_confirm_start_new_run_from_setup")
 	var registry_valid := bool(registry_snapshot.get("valid", false)) and qa_path_ready
 	var required_sections := int(registry_snapshot.get("required_section_count", 0))
 	var transactional_sections := int(registry_snapshot.get("transactional_section_count", 0))
@@ -523,16 +520,6 @@ func _scripted_ui_action(runtime_screen: Node, exhausted_navigation_actions: Dic
 				"id": str(temporary_action.get("id", "")),
 				"phase": "decision_window.%s" % str(temporary.get("kind", "choice")),
 				"disabled": bool(temporary_action.get("disabled", false)),
-			}
-	var coach: Dictionary = ui.get("first_run_coach", {}) if ui.get("first_run_coach", {}) is Dictionary else {}
-	if not coach.is_empty():
-		var primary: Dictionary = coach.get("primary_action", {}) if coach.get("primary_action", {}) is Dictionary else {}
-		var stage := str(coach.get("stage", "play"))
-		if not str(primary.get("id", "")).is_empty() and not bool(primary.get("disabled", false)):
-			return {
-				"id": str(primary.get("id", "")),
-				"phase": "first_run.%s" % stage,
-				"disabled": false,
 			}
 	var source_established := false
 	var strategy_actions: Array[Dictionary] = []

@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "status": "TABLE_PRESENTATION_SOURCE_TARGET_CUTOVER_BLOCKED",
+  "branch": "codex/scene-first-remove-main-gd",
+  "base_sha": "89d541d547a5839de14ecdcf2fede87b357fc905",
+  "production_code_changed": false,
+  "runtime_loop_created": false,
+  "main_process_remains_unique": true,
+  "scheduler_remains_cadence_only": true,
+  "card_transition_sink_touched": false,
+  "main_presentation_root_closure_method_count": 250,
+  "blockers": [
+    {
+      "id": "table_action_and_decision_facts",
+      "refresh_kinds": ["live", "full"],
+      "main_methods": [
+        "_runtime_table_snapshot_source",
+        "_runtime_table_viewmodel_source",
+        "_runtime_snapshot_action_entries",
+        "_runtime_temporary_decision_snapshot_source",
+        "_runtime_player_board_snapshot_source"
+      ],
+      "consumers": ["GameTableViewModelRuntimeService", "GameScreen", "PlayerBoard", "RightInspector", "PublicTrack", "OverlayLayer"],
+      "gameplay_facts_without_typed_query": ["card_play_authorization", "selected_district_action_legality", "purchase_discard_legality", "target_choice_facts", "card_group_timing_facts"],
+      "missing_typed_apis": ["TableActionAvailabilityQuery.snapshot_for_viewer", "ForcedDecisionPresentationQuery.snapshot_for_viewer", "CardTablePresentationQuery.live_snapshot_for_viewer"]
+    },
+    {
+      "id": "public_map_projection",
+      "refresh_kinds": ["map"],
+      "main_methods": ["_refresh_board", "_set_map_view_data", "_auto_monster_markers", "_city_markers_for_selected_player", "_trade_route_markers_for_selected_product"],
+      "consumers": ["PlanetBoard", "PlanetMapView", "FullscreenPlanetMapView"],
+      "gameplay_facts_without_typed_query": ["monster_public_markers", "military_public_markers", "viewer_scoped_city_ownership", "actual_trade_route_flow"],
+      "missing_typed_apis": ["MonsterPublicMapQuery.snapshot_for_viewer", "MilitaryPublicMapQuery.snapshot_for_viewer", "DistrictPublicMapQuery.snapshot_for_viewer", "TradeRoutePublicMapQuery.snapshot_for_product", "MapPresentationSnapshot"]
+    },
+    {
+      "id": "viewer_authorization_and_world_projection",
+      "refresh_kinds": ["live", "map", "full"],
+      "main_methods": ["_can_view_player_private_hand", "_local_human_player_index"],
+      "consumers": ["all_table_snapshot_builders"],
+      "unsafe_existing_api": "WorldSessionState.internal_snapshot",
+      "missing_typed_apis": ["LocalViewerAuthorization.authorized_viewer_index", "WorldSessionPublicQuery.public_table_snapshot", "WorldSessionPrivateViewerQuery.snapshot"]
+    },
+    {
+      "id": "public_log_owner",
+      "refresh_kinds": ["live", "full", "victory_immediate"],
+      "main_methods": ["_log", "_runtime_public_log_snapshot"],
+      "main_fields": ["log_lines"],
+      "consumers": ["table_snapshot", "monster", "military", "weather", "product_market", "ai", "contract", "final_settlement"],
+      "missing_typed_apis": ["PublicLogPresentationOwner.append", "PublicLogReceipt", "PublicLogPresentationOwner.public_recent_snapshot"]
+    },
+    {
+      "id": "victory_presentation_receipt",
+      "refresh_kinds": ["victory_immediate", "full"],
+      "main_methods": ["_update_victory_control", "_victory_control_status_text"],
+      "consumers": ["public_log", "GameScreen"],
+      "missing_typed_apis": ["VictoryPresentationStateChangeReceipt", "VictoryPresentationBridge.consume_advance_result"]
+    },
+    {
+      "id": "typed_invalidation_and_targets",
+      "refresh_kinds": ["live", "map", "full", "developer"],
+      "main_methods": ["_refresh_live_ui", "_refresh_board", "_refresh_ui", "_refresh_developer_balance_greybox"],
+      "observed_direct_call_counts": {"full": 54, "map": 9, "live": 2, "developer": 3},
+      "legacy_domain_producers": ["MonsterRuntimeController", "MilitaryRuntimeController", "AiRuntimeController", "ContractRuntimeWorldBridge"],
+      "missing_typed_apis": ["TablePresentationInvalidationPort.request", "GameScreenLiveTarget.apply_live_presentation", "GameScreenFullTarget.apply_full_presentation", "PlanetMapTarget.apply_map_presentation", "DeveloperPresentationTarget.apply_developer_presentation"]
+    }
+  ],
+  "prohibited_shortcuts": [
+    "main_callable_or_method_table",
+    "dynamic_main_call_get_set",
+    "current_scene_or_root_main_lookup",
+    "mutable_world_session_collections_in_presentation",
+    "replacement_presentation_monolith",
+    "presentation_gameplay_formula_copy",
+    "reduced_snapshot_that_drops_current_actions_or_map_facts",
+    "legacy_and_new_dual_refresh"
+  ],
+  "required_prerequisite": {
+    "name": "TABLE_PRESENTATION_QUERY_PORTS_CUTOVER",
+    "deliverables": [
+      "explicit_local_viewer_authorization",
+      "public_and_viewer_private_world_queries",
+      "table_action_and_forced_decision_presentation_queries",
+      "redacted_monster_military_district_route_card_track_projections",
+      "typed_public_log_owner_and_producer_ports",
+      "visibility_safe_victory_state_change_receipt",
+      "negative_privacy_tests"
+    ]
+  },
+  "ledger_domain": "table_presentation_source_target",
+  "ledger_status": "pending",
+  "next_boundary": "TABLE_PRESENTATION_QUERY_PORTS_CUTOVER"
+}

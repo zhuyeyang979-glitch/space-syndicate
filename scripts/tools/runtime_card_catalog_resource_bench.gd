@@ -63,7 +63,7 @@ const HISTORICAL_CASE_IDS := [
 	"hand_interaction_card_shape", "counter_card_shape", "intel_card_shape",
 	"product_futures_terms_external", "city_gdp_terms_external", "eligibility_consumer_map",
 	"queue_consumer_map", "execution_and_effect_consumer_map", "ai_consumer_map",
-	"military_monster_weather_contract_consumer_map", "first_mission_and_scenario_ids_exist",
+	"military_monster_weather_contract_consumer_map", "required_runtime_card_ids_exist",
 	"save_name_compatibility", "public_private_boundary", "proposed_resource_snapshot_is_pure_data",
 	"sprint58_deletion_candidates_complete",
 ]
@@ -340,8 +340,8 @@ func _historical_pass(case_id: String) -> bool:
 			return _source_has("res://scripts/runtime/ai_runtime_controller.gd", "_card_definition_bridge") and not _source_has("res://scripts/runtime/ai_runtime_controller.gd", "_call_world(&\"_skill_definition\"")
 		"military_monster_weather_contract_consumer_map":
 			return _source_has("res://scripts/runtime/military_runtime_controller.gd", "_card_runtime_catalog_service") and not _source_has("res://scripts/runtime/military_runtime_controller.gd", "SKILL_CATALOG")
-		"first_mission_and_scenario_ids_exist":
-			return _service.has_card("轨道融资1") and FileAccess.get_file_as_string("res://data/scenarios/first_table.json").contains("first_table")
+		"required_runtime_card_ids_exist":
+			return _service.has_card("轨道融资1")
 		"save_name_compatibility":
 			return _service.ordered_card_ids() == _fixture_card_ids_in_order()
 		"public_private_boundary":

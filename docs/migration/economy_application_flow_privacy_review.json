@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "status": "ECONOMY_APPLICATION_FLOW_PRIVACY_GREEN",
+  "privacy_violation_count": 0,
+  "viewer_source": "TablePresentationQueryPorts.viewer_context",
+  "private_subject_rule": "viewer_index_equals_subject_index",
+  "public_fields": ["commodities", "regional_gdp_totals", "facilities", "regional_integrity", "cached_routes", "actual_flow", "weather", "monster_pressure", "anonymous_warehouse_risk", "public_log_clues"],
+  "own_private_fields": ["exact_cash", "commodity_gdp_per_minute", "six_color_gdp", "sale_receipts", "facilities", "warehouses"],
+  "forbidden_fields_absent": ["opponent_exact_cash", "opponent_ledger", "opponent_income_path", "opponent_gdp_breakdown", "opponent_warehouse_inventory", "hands", "discards", "hidden_owner", "anonymous_actor_truth", "private_intel", "ai_metadata"],
+  "session_finish_grants_visibility": false,
+  "rendered_recursive_scan": true
+}

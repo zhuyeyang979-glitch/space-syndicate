@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/monster_action_command_sink.gd" id="1_sink"]
+
+[node name="MonsterActionCommandSink" type="Node"]
+script = ExtResource("1_sink")

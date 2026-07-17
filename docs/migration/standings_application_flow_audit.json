@@ -1,0 +1,220 @@
+{
+  "schema_version": 1,
+  "status": "STANDINGS_APPLICATION_FLOW_AUDIT_COMPLETE",
+  "baseline_sha": "3ceda392f949670bcf339961bfa6f0e73152b3a7",
+  "scope": "analysis_only",
+  "production_changes": false,
+  "tests_changed": false,
+  "current_flow": [
+    "MenuModalOverlay.quick_nav_action_requested",
+    "ApplicationFlowPort.submit_action",
+    "ApplicationFlowPort.action_requested",
+    "Main._on_menu_quick_nav_action_requested",
+    "Main._open_standings_menu",
+    "Main._standings_public_snapshot",
+    "Main._standings_public_source_snapshot",
+    "GameRuntimeCoordinator.compose_standings_snapshot",
+    "StandingsPublicSnapshotService.compose",
+    "Main._show_menu",
+    "Main._populate_standings_summary_cards",
+    "Main._add_standings_scoreboard_panel",
+    "StandingsScoreboard.set_scoreboard"
+  ],
+  "main_symbols": [
+    {
+      "symbol": "StandingsScoreboardScene",
+      "kind": "preload",
+      "standings_only": true,
+      "disposition": "move_to_scene_owned_handler_then_delete"
+    },
+    {
+      "symbol": "_on_menu_quick_nav_action_requested:standings",
+      "kind": "branch",
+      "standings_only": true,
+      "disposition": "replace_with_typed_application_flow_signal"
+    },
+    {
+      "symbol": "_open_standings_menu",
+      "kind": "method",
+      "standings_only": true,
+      "disposition": "delete_after_handler_cutover"
+    },
+    {
+      "symbol": "_populate_standings_summary_cards",
+      "kind": "method",
+      "standings_only": true,
+      "disposition": "delete_after_handler_cutover"
+    },
+    {
+      "symbol": "_add_standings_scoreboard_panel",
+      "kind": "method",
+      "standings_only": true,
+      "disposition": "delete_after_handler_cutover"
+    },
+    {
+      "symbol": "_standings_public_source_snapshot",
+      "kind": "method",
+      "standings_only": true,
+      "disposition": "replace_with_typed_authorized_query_then_delete"
+    },
+    {
+      "symbol": "_standings_public_snapshot",
+      "kind": "method",
+      "standings_only": true,
+      "disposition": "delete_after_query_cutover"
+    },
+    {
+      "symbol": "_standing_entries",
+      "kind": "method",
+      "standings_only": true,
+      "disposition": "delete_private_materialization_path"
+    },
+    {
+      "symbol": "_order_entries_by_victory_rank",
+      "kind": "method",
+      "standings_only": false,
+      "disposition": "retain_for_other_legacy_consumer"
+    }
+  ],
+  "existing_components": {
+    "snapshot_service": {
+      "scene_path": "res://scenes/runtime/StandingsPublicSnapshotService.tscn",
+      "script_path": "res://scripts/runtime/standings_public_snapshot_service.gd",
+      "retain": true,
+      "reads_runtime_nodes": false,
+      "calculates_victory_facts": false,
+      "required_change": "typed_or_validated_source_contract"
+    },
+    "scoreboard": {
+      "scene_path": "res://scenes/ui/StandingsScoreboard.tscn",
+      "script_path": "res://scripts/ui/standings_scoreboard.gd",
+      "retain": true,
+      "presentation_only": true
+    },
+    "query_ports": {
+      "script_path": "res://scripts/presentation/table_presentation_query_ports.gd",
+      "viewer_authorization": "LocalViewerAuthorization",
+      "public_projection": "WorldSessionPublicProjection",
+      "private_projection": "WorldSessionPrivateProjection"
+    }
+  },
+  "privacy_findings": [
+    {
+      "id": "selection_used_as_authorization",
+      "severity": "high",
+      "current_expression": "TableSelectionState.selected_player",
+      "required_boundary": "TablePresentationQueryPorts.authorized_viewer_index"
+    },
+    {
+      "id": "session_finish_reveals_all_seats",
+      "severity": "high",
+      "current_expression": "session_finished || player_index == selected_player",
+      "required_boundary": "own_private_or_authoritative_public_audit_only"
+    },
+    {
+      "id": "private_all_seat_materialization_before_redaction",
+      "severity": "high",
+      "current_expression": "Main._standing_entries",
+      "required_boundary": "public_rows_plus_authorized_own_private_projection"
+    },
+    {
+      "id": "direct_mutable_world_selected_cash_read",
+      "severity": "high",
+      "current_expression": "WorldSessionState.players[selected_player].cash",
+      "required_boundary": "WorldSessionPrivateProjection"
+    },
+    {
+      "id": "visibility_inferred_from_game_over_or_field_presence",
+      "severity": "high",
+      "required_boundary": "explicit_visibility_scope_and_victory_audit_markers"
+    }
+  ],
+  "allowed_public_sources": [
+    "WorldSessionPublicProjection.players",
+    "VictoryControlRuntimeController.public_snapshot.victory_rule",
+    "VictoryControlRuntimeController.public_snapshot.state",
+    "VictoryControlRuntimeController.public_snapshot.audit_roster",
+    "VictoryControlRuntimeController.public_snapshot.audit_entries",
+    "VictoryControlRuntimeController.public_snapshot.outcome_receipt",
+    "FinalSettlementRuntimeComposition.latest_public_summary"
+  ],
+  "private_source_rule": {
+    "viewer_source": "LocalViewerAuthorization.authorized_viewer_index",
+    "subject_rule": "viewer_index_equals_subject_index",
+    "projection": "WorldSessionPrivateProjection",
+    "opponent_private_access": false
+  },
+  "route_refresh_calls": [
+    {
+      "line": 1295,
+      "context": "gameplay_economic_boon_ageing",
+      "standings_cutover_action": "retain"
+    },
+    {
+      "line": 2872,
+      "context": "standings_read_only_open",
+      "standings_cutover_action": "remove"
+    },
+    {
+      "line": 2957,
+      "context": "economy_dashboard_read_only_open",
+      "standings_cutover_action": "out_of_scope_existing_debt"
+    },
+    {
+      "line": 3127,
+      "context": "intel_dossier_read_only_open",
+      "standings_cutover_action": "out_of_scope_existing_debt"
+    },
+    {
+      "line": 6448,
+      "context": "lifecycle_or_restore",
+      "standings_cutover_action": "retain"
+    }
+  ],
+  "shared_helpers": [
+    "_victory_player_candidate",
+    "_victory_control_public_snapshot",
+    "_victory_dynamic_rule",
+    "_runtime_session_finished",
+    "_player_active_city_count",
+    "_player_gdp_per_minute",
+    "_player_intel_display_summary",
+    "_victory_control_status_text",
+    "_economy_card_aftermath_entries",
+    "_economy_monster_cash_clue_entries",
+    "_menu_available_content_width",
+    "_order_entries_by_victory_rank"
+  ],
+  "recommended_cutover": {
+    "handler": "StandingsApplicationFlowController",
+    "entry": "typed standings_requested application-flow signal",
+    "source": "typed authorized standings presentation query",
+    "formatter": "retain StandingsPublicSnapshotService with tightened source contract",
+    "renderer": "retain StandingsScoreboard",
+    "main_fallback": false,
+    "dual_path": false,
+    "world_mutation_on_open": false
+  },
+  "negative_gates": [
+    "no_standings_signal_targeting_main",
+    "no_main_or_current_scene_lookup_in_standings_handler",
+    "standings_open_does_not_refresh_routes",
+    "standings_open_does_not_change_world_revision",
+    "table_selection_does_not_grant_private_visibility",
+    "session_finish_does_not_reveal_non_audit_opponent",
+    "only_authorized_local_viewer_gets_own_private_projection",
+    "public_audit_cash_requires_authoritative_visibility_markers",
+    "no_opponent_hand_hand_count_discard_intel_cash_hidden_owner_or_ai_metadata",
+    "pure_detached_data_only",
+    "one_request_one_shell_one_scoreboard",
+    "no_legacy_new_dual_route",
+    "main_budget_monotonically_decreases"
+  ],
+  "out_of_scope_debt": [
+    "economy_dashboard_route_refresh_on_open",
+    "intel_dossier_route_refresh_on_open",
+    "other_application_flow_handlers",
+    "gameplay_route_refresh_ownership"
+  ],
+  "ready_for_atomic_cutover": true
+}

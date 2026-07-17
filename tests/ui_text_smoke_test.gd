@@ -55,7 +55,7 @@ func _run() -> void:
 	var district_supply := roots.get("district_supply") as Node
 
 	_expect(_has_nodes(game_screen, ["TopBar", "PublicTrack", "PlanetBoard", "RightInspector", "PlayerBoard", "OverlayLayer"]), "GameScreen composes the real table scenes")
-	_expect(_has_nodes(game_screen, ["FirstRunCoach", "ScenarioCoach", "RuntimeVisualEventLayer"]), "GameScreen owns the coach and runtime feedback surfaces")
+	_expect(_has_nodes(game_screen, ["RuntimeVisualEventLayer"]) and not _has_nodes(game_screen, ["FirstRunCoach", "ScenarioCoach"]), "GameScreen keeps runtime feedback and removes legacy coach surfaces")
 	_expect(_has_nodes(player_board, ["PlayerResourceTableau", "HandRack", "PlayerMainActionDock"]) and player_board.find_child("PlayerBidBoard", true, false) == null, "PlayerBoard owns resources, hand, and actions without reserving a permanent bid surface")
 	_expect(_has_nodes(card_track, ["HistoryRail", "ActiveResolutionSlot", "QueueRail", "NextQueueRail", "AuctionResponseLayer", "PrivacyHintLayer", "EmptyStateLayer"]), "CardResolutionTrack owns its complete public resolution surface")
 	_expect(_has_nodes(overlay, ["ConfirmPanel", "MonsterWagerDecisionPanel", "ContractResponseDecisionPanel", "TemporaryChoiceDecisionPanel", "PublicBidDecisionPanel"]), "OverlayLayer owns every temporary decision panel, including structured public_bid")
@@ -66,6 +66,8 @@ func _run() -> void:
 	var main_scene_source := _source("res://scenes/main.tscn")
 	var game_screen_source := _source("res://scripts/ui/game_screen.gd")
 	var player_board_source := _source("res://scripts/ui/player_board.gd")
+	var public_log_source := _source("res://scripts/presentation/public_log_presentation_owner.gd")
+	var presentation_query_source := _source("res://scripts/presentation/table_presentation_viewmodel_query.gd")
 	var hand_rack_source := _source("res://scripts/ui/hand_rack.gd")
 	var action_dock_source := _source("res://scripts/ui/action_dock.gd")
 	var bid_board_source := _source("res://scripts/ui/bid_board.gd")
@@ -77,6 +79,8 @@ func _run() -> void:
 	_expect(game_screen_source.contains("func apply_state(data: Dictionary)") and game_screen_source.contains("TABLE_SNAPSHOT_SCRIPT"), "GameScreen consumes the table snapshot bridge")
 	_expect(game_screen_source.contains("signal action_requested") and game_screen_source.contains("signal card_selected") and game_screen_source.contains("temporary_decision_action_requested"), "GameScreen forwards player and decision signals")
 	_expect(player_board_source.contains("func set_player_state(data: Dictionary)") and player_board_source.contains("func set_hand_cards(cards: Array)"), "PlayerBoard exposes structured state and hand APIs")
+	_expect(public_log_source.contains("LOCALIZED_MESSAGES") and public_log_source.contains("公开局势已更新") and not public_log_source.contains("var message := str(receipt.localization_key)"), "public log renders closed player copy instead of raw localization keys")
+	_expect(presentation_query_source.contains('_phase_label(table_phase)') and not presentation_query_source.contains('"state": str(track.get("phase", "空闲"))'), "table state lamp localizes raw runtime phases")
 	_expect(hand_rack_source.contains("signal card_selected") and hand_rack_source.contains("signal card_drag_released") and hand_rack_source.contains("func set_cards(cards: Array)"), "HandRack owns card selection and drag interaction")
 	_expect(action_dock_source.contains("signal action_requested") and action_dock_source.contains("func set_dock(data: Dictionary)"), "ActionDock owns actionable commands")
 	_expect(bid_board_source.contains("signal action_requested") and bid_board_source.contains("func set_bid_state(data: Dictionary)"), "BidBoard owns bid presentation and actions")
@@ -84,7 +88,7 @@ func _run() -> void:
 	_expect(overlay_source.contains("signal temporary_decision_action_requested") and overlay_source.contains("func show_temporary_decision(data: Dictionary)"), "OverlayLayer owns temporary decision routing")
 	_expect(table_snapshot_source.contains("PLAYER_BOARD_SNAPSHOT_SCRIPT") and table_snapshot_source.contains("func apply_dictionary(data: Dictionary)"), "TableSnapshot remains the pure-data UI boundary")
 
-	_expect(main_source.contains("func _runtime_table_snapshot_source") and main_source.contains("func _sync_runtime_game_screen") and main_source.contains("func _on_runtime_game_screen_action_requested"), "main.gd keeps only the runtime snapshot and action bridges")
+	_expect(not main_source.contains("func _runtime_table_snapshot_source") and not main_source.contains("func _sync_runtime_game_screen") and main_source.contains("func _on_runtime_game_screen_action_requested"), "main.gd keeps action routing while scene-owned presentation owns snapshots and targets")
 	_expect(not main_source.contains("BUILD_LEGACY_RUNTIME_TABLE") and not main_scene_source.contains("LegacyRuntimeTable"), "legacy runtime table composition stays retired")
 	for helper_variant: Variant in RETIRED_PLAYER_SURFACE_HELPERS:
 		var helper_name := str(helper_variant)

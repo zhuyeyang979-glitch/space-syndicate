@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/economy_dashboard_viewer_query_port.gd" id="1_query"]
+
+[node name="EconomyDashboardViewerQueryPort" type="Node"]
+script = ExtResource("1_query")
+editor_description = "Viewer-authorized, cached-only economy dashboard query. It never initializes catalogs or refreshes routes."

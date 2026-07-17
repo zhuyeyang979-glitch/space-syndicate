@@ -1,7 +1,0 @@
-[gd_scene load_steps=2 format=3]
-
-[ext_resource type="Script" path="res://scripts/runtime/first_table_authored_runtime_service.gd" id="1_service"]
-
-[node name="FirstTableAuthoredRuntimeService" type="Node"]
-script = ExtResource("1_service")
-editor_description = "Scene-owned first_table authored-content interpreter. It receives pure world facts and owns catalog filtering, contextual coach copy, completion copy, and authored district scoring without executing gameplay."

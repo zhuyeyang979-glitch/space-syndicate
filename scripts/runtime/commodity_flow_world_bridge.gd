@@ -7,6 +7,7 @@ const PRODUCT_INDUSTRY_CATALOG := preload("res://resources/content/product_indus
 const ROLE_RESOURCE_CASH_SETTLEMENT_SERVICE := preload("res://scripts/runtime/role_resource_cash_settlement_runtime_service.gd")
 
 var _world: Node
+var _world_session_state: WorldSessionState
 var _controller: Node
 var _region_infrastructure_controller: Node
 var _product_market_controller: Node
@@ -34,6 +35,14 @@ func set_bankruptcy_estate_controller(controller: Node) -> void:
 
 func bind_world(world: Node) -> void:
 	_world = world
+
+
+func set_world_session_state(state: WorldSessionState) -> void:
+	_world_session_state = state
+
+
+func world_session_state() -> WorldSessionState:
+	return _world_session_state
 
 
 func has_world() -> bool:
@@ -64,7 +73,7 @@ func enriched_installation_request(request: Dictionary) -> Dictionary:
 	result["facility"] = facility
 	result["region_id"] = region_id
 	result["region_revision"] = maxi(0, int(region.get("revision", 0)))
-	result["game_time"] = float(_world.get("game_time")) if has_world() else 0.0
+	result["game_time"] = _world_session_state.game_time if _world_session_state != null else 0.0
 	return result
 
 
@@ -98,7 +107,7 @@ func capture_flow_facts() -> Dictionary:
 		if route_variant is Array:
 			route_candidates = (route_variant as Array).duplicate(true)
 	return {
-		"game_time": float(_world.get("game_time")),
+		"game_time": _world_session_state.game_time if _world_session_state != null else 0.0,
 		"regions": regions.duplicate(true),
 		"facilities": active_facilities.duplicate(true),
 		"destroyed_facility_ids": destroyed_facility_ids,
@@ -115,7 +124,7 @@ func apply_sale_receipt_batch(batch: Dictionary) -> Dictionary:
 		return {"applied": false, "reason": "batch_id_missing"}
 	if _applied_batch_ids.has(batch_id):
 		return {"applied": true, "duplicate": true, "batch_id": batch_id, "receipt_count": int(_applied_batch_ids[batch_id])}
-	var players_variant: Variant = _world.get("players")
+	var players_variant: Variant = _world_session_state.players if _world_session_state != null else []
 	if not (players_variant is Array):
 		return {"applied": false, "reason": "players_missing"}
 	var prepared_players: Array = (players_variant as Array).duplicate(true)
@@ -209,7 +218,9 @@ func apply_sale_receipt_batch(batch: Dictionary) -> Dictionary:
 		var credit: Dictionary = (credit_variant as Dictionary).duplicate(true) if credit_variant is Dictionary else {}
 		if not bool(credit.get("credited", false)):
 			return {"applied": false, "reason": str(credit.get("reason_code", "neutral_rent_credit_failed"))}
-	_world.set("players", prepared_players)
+	if _world_session_state == null:
+		return {"applied": false, "reason": "world_session_state_missing"}
+	_world_session_state.players = prepared_players
 	_applied_batch_ids[batch_id] = receipts.size()
 	_apply_count += 1
 	return {"applied": true, "duplicate": false, "batch_id": batch_id, "receipt_count": receipts.size(), "player_delta_count": deltas_by_player.size()}
@@ -225,6 +236,7 @@ func debug_snapshot() -> Dictionary:
 		"bridge_ready": has_world() and _controller != null and _region_infrastructure_controller != null and _product_market_controller != null and _route_network_controller != null and _bankruptcy_estate_controller != null,
 		"runtime_owner": "none",
 		"bridge_role": "commodity_flow_world_facts_and_atomic_cash_apply",
+		"world_session_state_ready": _world_session_state != null,
 		"capture_count": _capture_count,
 		"apply_count": _apply_count,
 		"applied_batch_count": _applied_batch_ids.size(),

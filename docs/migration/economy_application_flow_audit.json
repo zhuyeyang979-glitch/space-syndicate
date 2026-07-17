@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "status": "ECONOMY_APPLICATION_FLOW_AUDIT_COMPLETE",
+  "baseline_sha": "c274af87faa1aeb5ea85af9d28849ff5f7e16270",
+  "old_flow": ["ApplicationFlowPort.action_requested", "Main._open_economy_overview_menu", "Main._economy_dashboard_public_source_snapshot"],
+  "old_open_mutations": ["ProductMarketRuntimeController.ensure_catalog", "Main._refresh_route_network"],
+  "old_privacy_faults": ["selected_player_used_as_viewer", "game_over_reveals_all", "raw_players_and_warehouse_materialized"],
+  "new_flow": ["ApplicationFlowPort.economy_requested", "EconomyApplicationFlowController.open_economy", "EconomyDashboardViewerQueryPort.snapshot_for_authorized_viewer", "EconomyDashboardPublicSnapshotService.compose", "EconomyDashboard.set_dashboard"],
+  "main_fallback": false,
+  "catalog_initialization_on_open": false,
+  "route_refresh_on_open": false
+}

@@ -16,7 +16,11 @@ It does not own Victory rules, rankings, cash, save data, or settlement calculat
 - `board_node() -> Control`
 - `debug_snapshot() -> Dictionary`
 
-The scene emits `menu_open_requested`, `public_log_entry_requested`, and `action_requested`. `main.tscn` connects these signals to existing menu, log, and global navigation entry points.
+The scene emits `menu_open_requested`, `public_log_entry_requested`, and
+`action_requested`. In production, menu and navigation requests first cross the
+scene-owned `ApplicationFlowPort`; public log receipts still target the typed
+Coordinator log consumer. This keeps the composition independent from Main's
+runtime-service surface while preserving the existing application-flow result.
 
 ## Privacy
 

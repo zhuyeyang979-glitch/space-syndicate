@@ -164,7 +164,7 @@ func _check_ai_metadata(main: Node) -> void:
 		"kind": "city_revenue_boost",
 		"policy_kind": "city_revenue_boost",
 	})
-	var ai_player := (main.get("players") as Array)[1] as Dictionary
+	var ai_player := (((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array)[1] as Dictionary
 	var samples := ((ai_player.get("ai_memory", {}) as Dictionary).get("decision_samples", []) as Array)
 	_expect(not samples.is_empty(), "AI decision metadata writes a training sample")
 	if not samples.is_empty():
@@ -207,8 +207,9 @@ func _check_main_supply_retirement_contract() -> void:
 			stale_symbols.append(symbol)
 	_expect(stale_symbols.is_empty(), "main has no fixed-slot, category-order, or named teaching-card guarantee symbols: %s" % str(stale_symbols))
 	_expect(
-		source.contains("region_supply_public_rack")
-			and source.contains("public_region_supply_rack_snapshot"),
+		source.contains("region_supply_listing")
+			and source.contains("region_supply_card_ids")
+			and source.contains("region_supply_rack_revision"),
 		"main consumes the scene-owned public RegionSupply rack instead of shadow supply fields"
 	)
 

@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/card_resolution_history_runtime_service_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardResolutionHistoryRuntimeService.tscn" id="2_service"]
+
+[node name="CardResolutionHistoryRuntimeServiceBench" type="Node"]
+script = ExtResource("1_bench")
+
+[node name="CardResolutionHistoryRuntimeService" parent="." instance=ExtResource("2_service")]

@@ -11,24 +11,26 @@ var _failures := 0
 
 
 class FixtureWorld:
-	extends Node
+	extends WorldSessionState
 	var selected_district := 0
 	var selected_trade_product := "星露莓"
-	var game_time := 12.0
 	var rng := RandomNumberGenerator.new()
-	var players := [{"cash": 999, "hand": ["PRIVATE_HAND_SENTINEL"]}]
-	var districts := [{
-		"name": "北环区",
-		"destroyed": false,
-		"terrain": "land",
-		"panic": 12,
-		"production_level": 3,
-		"transport_level": 2,
-		"consumption_level": 4,
-		"products": ["星露莓"],
-		"demands": ["磁核榴莲"],
-		"city": {"active": true, "trade_route_damage": 2, "owner": 0, "private_note": "PRIVATE_CITY_SENTINEL"},
-	}]
+
+	func _init() -> void:
+		players = [{"cash": 999, "hand": ["PRIVATE_HAND_SENTINEL"]}]
+		districts = [{
+			"name": "北环区",
+			"destroyed": false,
+			"terrain": "land",
+			"panic": 12,
+			"production_level": 3,
+			"transport_level": 2,
+			"consumption_level": 4,
+			"products": ["星露莓"],
+			"demands": ["磁核榴莲"],
+			"city": {"active": true, "trade_route_damage": 2, "owner": 0, "private_note": "PRIVATE_CITY_SENTINEL"},
+		}]
+		game_time = 12.0
 
 	func _default_economy_product() -> String: return selected_trade_product
 
@@ -60,15 +62,23 @@ func _initialize() -> void:
 	var formula := FORMULA_SCENE.instantiate()
 	var market := RecordingMarket.new()
 	var world := FixtureWorld.new()
+	var table_selection := TableSelectionState.new()
 	root.add_child(service)
 	root.add_child(bridge)
 	root.add_child(formula)
 	root.add_child(market)
 	root.add_child(world)
+	root.add_child(table_selection)
+	table_selection.restore({
+		"selected_district": 0,
+		"selected_trade_product": "星露莓",
+	})
 	service.configure({"ruleset_id": "v0.4"})
 	formula.configure({"ruleset_id": "v0.4"})
 	bridge.set_product_market_runtime_controller(market)
 	bridge.set_formula_runtime_service(formula)
+	bridge.set_table_selection_state(table_selection)
+	bridge.set_world_session_state(world)
 
 	var skill := {
 		"name": "监管风暴1",
@@ -112,6 +122,7 @@ func _initialize() -> void:
 	root.add_child(invalid_world)
 	var invalid_before := invalid_world.districts.duplicate(true)
 	var pressure_before := market.pressure_calls
+	bridge.set_world_session_state(invalid_world)
 	var invalid_receipt: Dictionary = bridge.apply_effect(invalid_world, plan)
 	_expect(not bool(invalid_receipt.get("resolved", true)) and str(invalid_receipt.get("reason", "")) == "district_destroyed", "destroyed target fails closed")
 	_expect(invalid_world.districts == invalid_before and market.pressure_calls == pressure_before, "invalid target mutates no region or market owner")
@@ -126,6 +137,8 @@ func _initialize() -> void:
 	root.add_child(market_world)
 	market_formula.configure({"ruleset_id": "v0.4"})
 	market_bridge.bind_world(market_world)
+	market_bridge.set_table_selection_state(table_selection)
+	market_bridge.set_world_session_state(market_world)
 	real_market.set_world_bridge(market_bridge)
 	real_market.product_market = {"星露莓": {"base_price": 50, "price": 50, "volatility": 4, "temporary_demand_pressure": 0, "temporary_supply_pressure": 0, "price_history": [50]}}
 	var real_market_receipt: Dictionary = real_market.apply_news_market_pressure({"market_demand_pressure": 2, "market_supply_pressure": 1, "volatility_delta": 1})

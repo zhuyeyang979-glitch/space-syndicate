@@ -1,0 +1,133 @@
+{
+  "schema_version": "v0.6.card-transition-qa-review.1",
+  "status": "CARD_RESOLUTION_TRANSITION_SINK_CUTOVER_BLOCKED",
+  "branch": "codex/scene-first-remove-main-gd",
+  "reviewed_head_sha": "dfcd841e51a2ae72d319a4aea2cb44bbe3f18922",
+  "analysis_only": true,
+  "production_modified": false,
+  "test_assertions_modified": false,
+  "full_smoke_run": false,
+  "full_smoke_reason": "No production cutover occurred; focused safety and blocking evidence was sufficient.",
+  "no_half_line": {
+    "tracked_script_scene_test_changes": 0,
+    "transition_sink_present": false,
+    "typed_transition_command_present": false,
+    "typed_transition_receipt_present": false,
+    "runtime_loop_present": false,
+    "second_card_frame_tick_present": false,
+    "second_transition_apply_path_present": false,
+    "coordinator_composition_changed": false,
+    "legacy_single_path_preserved": true
+  },
+  "blocking_chain": [
+    "Main._process",
+    "GameRuntimeCoordinator.advance_card_resolution_frame",
+    "CardResolutionFrameDriver.advance_world",
+    "CardResolutionRuntimeController.tick",
+    "Main._apply_card_resolution_controller_transition",
+    "Main._complete_active_card_resolution",
+    "Main._apply_card_resolution_execution_intent",
+    "CardResolutionExecutionWorldBridge.apply_intent(Main, transaction)"
+  ],
+  "frame_transition_command_kinds": [
+    "show_active",
+    "begin_counter",
+    "complete_active",
+    "start_next",
+    "show_group_window",
+    "enter_public_bid",
+    "enter_lock",
+    "all_ready_public_bid",
+    "all_ready_lock",
+    "all_ready_lock_batch",
+    "lock_batch",
+    "hide_overlay"
+  ],
+  "frame_transition_command_kind_count": 12,
+  "frame_command_type": "Dictionary",
+  "frame_command_lineage": {
+    "deterministic_command_id": false,
+    "frame_or_batch_revision": false,
+    "order_index": false,
+    "resolution_id": false,
+    "visibility_scope": false,
+    "persistent_exact_once_lineage": false
+  },
+  "execution_intent_kinds": [
+    "counter_check",
+    "release_active",
+    "finish_presentation",
+    "revalidate_requirement",
+    "revalidate_target",
+    "dispatch_effect",
+    "finish_card_commitment",
+    "create_aftermath",
+    "restore_context",
+    "append_history",
+    "start_next",
+    "finish_batch",
+    "promote_next_batch"
+  ],
+  "execution_intent_kind_count": 13,
+  "dynamic_main_dependencies": {
+    "file": "res://scripts/runtime/card_resolution_execution_world_bridge.gd",
+    "world_call_sites": 27,
+    "world_get_sites": 1,
+    "world_set_sites": 5,
+    "world_get_node_or_null_sites": 2,
+    "literal_dynamic_invocation_sites": 35,
+    "unique_dynamic_main_method_names": 21,
+    "unique_dynamic_main_properties": 5,
+    "hard_coded_scene_paths": 2,
+    "boundary_review_reported_count": 31,
+    "count_reconciliation": "The current literal source total is 27 + 1 + 5 + 2 = 35; 31 is not the invocation-site count."
+  },
+  "additional_live_main_callbacks": [
+    "AiRuntimeController._call_world(_queue_skill_resolution)",
+    "Main Callable(self, _use_skill) x2"
+  ],
+  "main_budget": {
+    "physical_lines": 15126,
+    "nonblank_lines": 13212,
+    "methods": 894,
+    "top_level_variables": 79,
+    "constants": 111,
+    "top_level_preloads": 15,
+    "external_main_caller_occurrences": 1624,
+    "external_main_caller_files": 102,
+    "production_main_reference_files": 3,
+    "budget_gate_ok": true
+  },
+  "tests": [
+    {
+      "kind": "static_budget",
+      "command": "python tools/architecture/check_main_gd_budget.py --json",
+      "result": "PASS"
+    },
+    {
+      "kind": "architecture_gate",
+      "command": "Godot 4.7 headless --script res://tests/main_gd_architecture_gate_test.gd",
+      "result": "PASS 43/43"
+    },
+    {
+      "kind": "godot_mcp_scene",
+      "scene": "res://scenes/tools/CardResolutionFrameDriverBench.tscn",
+      "result": "PASS 7/7",
+      "script_errors": 0
+    },
+    {
+      "kind": "godot_mcp_scene",
+      "scene": "res://scenes/tools/CardResolutionExecutionRuntimeCharacterizationBench.tscn",
+      "result": "BLOCKED_BY_EXISTING_MISSING_ACCESS",
+      "script_error": "CardResolutionExecutionWorldBridge._target_receipt dynamically called missing Main._add_action_callout"
+    }
+  ],
+  "blocker": {
+    "frame_transition_kind": "complete_active",
+    "current_main_method": "Main._complete_active_card_resolution",
+    "current_caller": "Main._apply_card_resolution_controller_transition",
+    "missing_owner_api": "typed card execution ports for revalidation, queue/counter lifecycle, effect routing, commitment/history/aftermath, context restore and human/AI submission",
+    "missing_presentation_receipt": "visibility-safe CardResolutionPresentationPort receipt",
+    "next_smallest_atomic_cutover": "CARD_EXECUTION_TYPED_PORTS_CUTOVER"
+  }
+}

@@ -1,24 +1,74 @@
 # 太空辛迪加开发日志
 
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
-> 最新记录日期：2026-07-17。
+> 最新记录日期：2026-07-18。
 
-## 2026-07-17｜公开强制决策、牌序竞价与实际商路生产表面 C2
+## 2026-07-18｜命令管线边界加固
 
-- `GameTableViewModelRuntimeService` 新增统一 `viewer_surfaces` 契约，把 `ForcedDecisionRuntimeScheduler.active_decision(viewer_index)`、当前玩家可操作的 `public_bid` 快照、CommodityFlow 的公开实际流量与 RouteNetwork 公开路径合入同一 `TableSnapshot`；presentation 不读取运行时 owner，也不拥有计时、报价、现金、商品或路线。
-- `public_bid` 不再接受任意外部候选：Scheduler 只根据第二个权威阶段快照中的 `phase_id=public_bid`、active、visible 与单调 window sequence 派生最低优先级候选；planning/lock/idle、缺失 sequence 或伪造候选均 fail-closed。更高优先级的怪兽赌局、响应、合约和私人选择仍然覆盖竞价。
-- 新增 `OptionalRoutePublicSnapshot` 公共 allowlist。TableSnapshot 只保留 current/recent 已提交流量、对应真实 route id 和被实际流引用的几何；候选/未来路线、supplier/owner、安装绑定、交易指纹、AI 计划与评分递归剔除。推荐几何改为 `route_id -> ordered_region_ids`，由 `PlanetMapView` 对当前星球区域位置实时物化，避免把屏幕坐标塞进经济层。
-- `GameScreen.apply_state()` 现自动消费上述公开商路 payload；默认仍隐藏，玩家选择具体商品后才显示。私人强制决策对非 owner 只剩等待提示，不会显示选择内容或阻塞其普通操作。
-- 旧 `tests/card_presentation_viewmodel_runtime_test.gd` 已移除对退役 `main._runtime_table_snapshot` 的反射调用，改读现役 `RuntimeGameScreen.current_ui_data` 并通过 `TableSnapshot` 公共入口复核；异常后不退出的旧 oracle 已消除。
-- C2 没有修改 `main.gd`、Coordinator、CardFlow、RegionSupply、CommodityFlow、RouteNetwork 或经济公式。生产组合仍需上层做三项窄注入：把真实 card-window phase 传给 Scheduler、把 viewer-filtered decision/BidBoard 传入 `viewer_surfaces`、把 CommodityFlow actual-flow 与 RouteNetwork public region path 传入同一契约。详细边界见 `docs/public_gameplay_surface_wiring_v06.md`。
+- 新增局部、场景化 `RuntimeCommandPipeline` 与纯数据
+  `RuntimeCommandEnvelope`。当前只接收一个明确命令族：卡牌结算转换；没有建立
+  全局命令总线、Autoload、事件总线或万能调度器。
+- `CardResolutionFrameDriver` 不再直接调用转换 Sink；它在既有 command phase 内将
+  有序命令批次交给命令管线。管线验证 schema、类型、ID、producer revision、连续
+  order、payload binding 和稳定 fingerprint，再精确转发给既有
+  `CardResolutionTransitionSink`。领域 owner、精确一次 lineage 和保存归属均未改变。
+- 前置审计明确保留同步语义：真人目标选择、AI 和角色反制依赖即时卡牌提交回执，
+  本轮没有将其伪装成异步命令，也没有改玩法、AI、经济、怪兽或展示逻辑。
 
 ### 本轮验证
 
-- `tests/public_gameplay_surface_wiring_v06_test.gd`：19/19 通过。
-- `tests/transient_gameplay_windows_v06_test.gd`：通过，新增权威阶段派生、伪造候选拒绝与 planning 清除 stale bid。
-- `tests/route_visibility_opt_in_v06_test.gd`：通过。
-- `tests/card_presentation_viewmodel_runtime_test.gd`：通过并正常输出完成 marker。
-- `scenes/tools/PublicGameplaySurfaceWiringV06Bench.tscn`：Godot 4.7 headless 8/8 通过；MCP 有头结果在本轮交接中记录。
+- command boundary 31/31、CommandPipeline Bench 5/5、card frame driver 104 checks、
+  card transition 70/70、gameplay fault injection 61 checks 通过。
+- Runtime phase 50/50、RuntimeLoop 28/28、typed world ports 80/80、presentation
+  Source/Target 20/20、ViewModel parity 106/106、query ports 65/65、scheduler 8/8、
+  victory privacy 47/47、Main architecture 76 checks、composition、UI text、visual、
+  smoke `--check-only` 全部通过。
+- 完整 smoke 使用隔离 APPDATA 运行到既有历史债务：旧 AI 军事断言、退役 Main
+  测试入口、角色/情报 fixture 和怪兽颜色 WorldBridge 缺口；没有出现新的命令管线
+  解析、顺序或重复 mutation 失败，也没有恢复兼容回退。
+- Godot 4.7 MCP 启动正式 `main.tscn`，没有本轮新增运行异常；输出仅含既有源码
+  warning。命令 Bench 同时由 Godot 4.7 运行并通过。
+
+## 2026-07-17｜牌桌展示 Source/Target 场景化切换
+
+- `TablePresentationRefreshScheduler` 继续只负责刷新节奏；新增场景化
+  `TablePresentationSourceOwner` 和 `TablePresentationRefreshPort`，按 live、
+  full、map、developer 范围构建最小快照并精确一次应用到 typed target。
+- `Main` 已物理删除四个旧 `_refresh_*` 方法及其牌桌、地图、当前玩家、牌轨、
+  开发者快照构建链；`Main._process` 只调用 Coordinator 的高层展示推进 API，
+  不再读取 receipt、构建 snapshot、选择 target、写公开日志或处理胜利展示。
+- Victory 变化通过 visibility-safe typed receipt 进入公开日志和即时刷新；旧自由文本
+  公共日志入口已删除。私人反馈仅进入获授权 viewer 的 full snapshot，不进入 public/live。
+- Main 从 14,116/12,280 行、856 方法降为 13,243/11,490 行、822 方法；
+  architecture budget 通过，外部 caller 与 preload 均未增加。
+
+### 本轮验证
+
+- Query ports/封闭玩家日志文案 65/65、Source/Target 20/20、生产 ViewModel/恶意隐私注入/桌态本地化/Contract callback-negative parity 106/106、scheduler trace 8/8、Godot MCP
+  Bench 45/45；306 个脚本扫描 0 错，Main architecture 58 checks，composition、
+  UI text、visual snapshot、smoke `--check-only` 通过。
+- `WorldSessionState` 现唯一拥有星球宽高与 revision，几何配置、公开投影及
+  save/load roundtrip 聚焦门 11/11；Main 两个重复字段和旧 scheduler-only 即时请求已删除。
+- 隐私复审为 0 violation；重复 refresh 为 0，stale receipt 明确拒绝。
+- 完整 layout 仍被历史战役/owner/经济/怪兽断言阻塞；完整 smoke 的首个业务失败
+  是旧 AI 军事命令 fixture，首个 missing access 是 `_capture_run_state`，随后卡在既有
+  `_auto_monster_color` typed-world-port 债务。本轮没有恢复 Main 兼容线路。
+- 第三轮 RuntimeLoop preflight 为 GREEN；下一原子边界是
+  `AUTHORITATIVE_RUNTIME_LOOP_CUTOVER`，当前没有创建 RuntimeLoop 或第二帧路径。
+
+## 2026-07-17｜卡牌执行类型化端口前置切换
+
+- `GameRuntimeCoordinator` 现组合唯一的真人/AI 共用提交入口，以及条件/目标复核、效果路由、反制结算、承诺结算、情报、历史与公开展示的窄场景 owner；历史提供内部、公开和当前查看者三种投影。
+- 旧执行 WorldBridge 中 35 个对 `Main` 的动态 `call/get/set/get_node_or_null` 访问点已降为 0；`Main._use_skill`、`Main._queue_skill_resolution` 及相邻效果/历史适配器已物理删除，没有保留反射回退。
+- 规则语义固定为“匿名提交即承诺”：一次性牌提交后离手，出牌现金在入队时支付；之后被反制或条件失效也不返牌、不免除已付费用，最终承诺不会重复收费。
+- 当前仅完成 Transition Sink 的前置端口。Main 仍临时消费 12 类帧 transition；下一原子任务必须增加命令 ID/revision/order、持久 exact-once lineage 与全顺序/故障注入门禁后，才能删除剩余 switch。
+
+### 本轮验证
+
+- Card execution typed-ports 聚焦测试、resolved-history 聚焦测试、Main composition、Main architecture、card play requirement 与 smoke `--check-only` 通过。
+- `ui_text_smoke_test`、`visual_snapshot` 通过；Godot 4.7 MCP 的 `CardExecutionTypedPortsBench.tscn` 为 12/12，正式 `main.tscn` 可启动，无本轮新增解析或运行错误。
+- Main 预算通过：14,467 行、12,599 非空行、872 个方法；外部 Main caller 文件/出现次数没有增加。
+- 完整 layout 仍被多项既有陈旧断言阻塞，包括已退役战役 ViewModel、旧 owner 数量和旧 Sprint 文案；未为其恢复任何旧 Main 路径。
 
 ## 2026-07-16｜可选实际商路与临时玩法窗口 C1
 
@@ -7946,17 +7996,414 @@
 - `tests/layout_scene_smoke_test.gd` 通过。
 - `tests/smoke_test.gd --check-only` 通过。
 - `tests/smoke_test.gd` 完整通过。
+# 2026-07-17 — Main.gd scene-first extinction gates
 
-## 2026-07-17｜正式八席玩家宿主与公开席位契约
+- Froze `scripts/main.gd` in `AGENTS.md`: no new ownership, consumers,
+  dynamic calls, world binding, compatibility facade, or replacement monolith.
+- Added a monotonic Python budget gate for physical/nonblank lines, methods,
+  fields, constants, preloads, external callers, and production references.
+- Generated a deterministic production call graph covering all 916 Main
+  methods, top-level symbols, dynamic method strings, scene connections,
+  root-world binding sites, and `_process` edges.
+- Added the domain cutover ledger and dependency-ordered scene migration plan.
+- Added the scene-backed Runtime Authority Audit Bench. It detects duplicate
+  state/tick/signal/snapshot/save-writer/mutation authorities without owning
+  gameplay state.
+- Validation: architecture source gate 33 checks PASS; authority Bench 10
+  checks PASS; Godot 4.7 MCP scene run completed with 0 script errors and a
+  clean stop; UI text, visual contract, and smoke check-only PASS.
 
-- 在真实 `PlanetBoard` 中加入语义化的 `RoleSeatLayerHost`，并用独立 `BackSeatLayer / FrontSeatLayer` 建立星球前后景席位层级。
-- 新增 3–8 席确定性映射；本地玩家固定在底部，坐标使用 `PlanetStageViewport` 实际尺寸和座舱底部中心枢轴计算。
-- 新增 `PlayerSeatPublicSourceService` 和 `PublicPlayerSeatSnapshot`：
-  - 只消费公开玩家名、公开角色名、颜色、公开状态和本地席位；
-  - 不转发现金、手牌、隐藏归属、匿名出牌真相或 AI 私有计划；
-  - 匿名行动不会触发真实玩家高亮。
-- `main.gd` 不再组装席位描述，也不再负责把席位数据接入星球快照；正式组合由 `GameRuntimeCoordinator` 完成。
-- 为未来 `PlayerSeatPortraitSkin.tscn` 建立动态入口：
-  - 资源不存在、类型不符、公开模型应用失败或图片不可用时，逐席保留抽象 fallback；
-  - 只有成功挂载 Skin 的席位才隐藏对应旧装饰弧，不会全局关闭 fallback。
-- 新增正式生产场景聚焦测试和 3/4/6/8 席截图；截图来自真实 `GameScreen`，不是独立 QA Bench。
+# 2026-07-17 — Run RNG scene owner cutover
+
+- Added `RunRngService.tscn` under the production `GameRuntimeCoordinator`
+  composition. The service is the sole owner of the shared gameplay RNG state,
+  deterministic seed/state restore and random draw API.
+- AI, monster, weather and product-market runtime bridges now receive a typed
+  `RunRngService`; they no longer read an RNG property from Main.
+- Deleted Main's top-level `rng` field and the obsolete
+  `_ai_runtime_rng_gateway` method.
+- Migrated deterministic runtime characterization and visual-capture drivers
+  to seed the scene-owned service.
+- Fixed signed RNG-state save/load semantics: any non-zero engine state is
+  valid and reproduces the same sequence.
+- Main budget moved from 15,488 to 15,474 physical lines, from 916 to 915
+  methods and from 102 to 101 top-level fields.
+- Validation: RNG cutover test 19 checks PASS; scene Bench 9 checks PASS;
+  Main budget PASS; Godot 4.7 script errors 0.
+
+# 2026-07-17 — Table selection state scene owner cutover
+
+- Added the production `TableSelectionState.tscn` owner under
+  `GameRuntimeCoordinator.tscn`.
+- Moved selected/inspected player, selected district and selected trade product
+  out of `scripts/main.gd`; all four old top-level fields were physically
+  deleted without compatibility properties or dynamic Main access.
+- Wired one typed owner into AI, monster, military, product market, contract,
+  card eligibility/resolution, infrastructure, economy-effect and balance
+  diagnostics bridges.
+- Migrated active tests and characterization Benches away from
+  `Main.get/set("selected_*")`.
+- Added atomic restore/save, one revision, a privacy-safe debug snapshot,
+  `table_selection_state_cutover_test.gd` and a production-composition MCP
+  Bench.
+- Main budget moved from 15,474 to 15,472 physical lines and from 101 to 97
+  top-level fields. External Main caller occurrences dropped from 2,309 to
+  2,165.
+- Validation: TableSelectionState cutover 29 checks PASS; MCP Bench 13 checks
+  PASS; Godot 4.7 script errors 0 after editor reload; main runtime composition,
+  ActionResult v1, runtime pointer input, news-event owner, UI text, visual
+  contract and smoke check-only PASS.
+- Known pre-existing/stale broad-gate failures were not repaired by restoring
+  retired architecture: layout smoke still references removed campaign
+  snapshots and older owner-count/Main-adapter expectations; the legacy AI
+  phase fixture still calls the removed `_start_scenario_from_menu`; the human
+  facility playability fixture assumes a facility listing that the current
+  fully-random regional supply no longer guarantees.
+
+# 2026-07-17 — World session state scene owner cutover
+
+- Added `WorldSessionState.tscn` under the production
+  `GameRuntimeCoordinator` composition as the only live owner of player
+  records, district records and session time.
+- Physically deleted Main's top-level `players`, `districts` and `game_time`
+  fields without adding compatibility properties, wrappers or dynamic
+  fallbacks.
+- Wired the typed state owner into AI, monster, military, weather, product
+  market, contract, card eligibility/resolution, infrastructure, commodity
+  flow, route, GDP derivative, victory, bankruptcy and card-market bridges.
+- Migrated the v0.6 production player-state adapter and commodity-card
+  inventory away from `bind_world(Main)` to the typed state owner.
+- Migrated active tests, visual capture drivers and characterization Benches
+  away from dynamic Main state access. Standalone weather/news fixtures now
+  inject a real `WorldSessionState`, so missing state continues to fail closed
+  instead of silently falling back to a fake root.
+- Added deterministic reset/replace/time-advance/save APIs, a privacy-safe
+  count-only debug projection, a 48-check focused test and a production
+  composition Bench.
+- Main budget moved from 15,472 to 15,469 physical lines and from 97 to 94
+  top-level fields. External Main caller occurrences dropped from 2,165 to
+  1,652.
+- Validation: focused cutover 48/48 PASS; production MCP Bench 19/19 PASS;
+  Godot 4.7 MCP script scan 386 files with 0 errors; main composition,
+  ActionResult v1, card-player state, facility unlock, news owner, weather
+  presentation, monster lifecycle, UI text, visual snapshot, layout smoke and
+  smoke check-only all exited successfully. Layout smoke retains one existing
+  non-fatal focus warning (`grab_focus` outside tree).
+# 2026-07-17 — Forced decision candidate sources cutover
+
+- Moved monster wager, counter response, contract response, purchase discard,
+  and card target-choice candidate projection out of `scripts/main.gd`.
+- Added a scene-owned private target-choice controller and a typed, privacy-safe
+  candidate source feeding the existing scheduler.
+- Removed Main's candidate aggregation functions, pending discard shadow, and
+  five pending target-choice fields without adding a compatibility callback.
+- Godot 4.7 focused evidence: 28/28 test checks and 7/7 MCP Bench checks.
+
+# 2026-07-17 — Card-resolution frame driver cutover
+
+- Moved card-resolution timing fact assembly and the single per-frame
+  `CardResolutionRuntimeController.tick()` call into a scene-owned
+  `CardResolutionFrameDriver` under `GameRuntimeCoordinator`.
+- Moved the unique production card-resolution timing controller into the same
+  coordinator composition and removed the old direct Main sibling instance.
+- Deleted Main's `_update_card_resolution_queue()` and
+  `_card_resolution_controller_facts()` methods. Main temporarily remains the
+  consumer of ordered transition commands until the separate card-execution
+  and presentation sink cutovers are complete.
+- Godot 4.7 focused evidence: 24/24 test checks and 7/7 MCP Bench checks.
+
+# 2026-07-17 — Card cooldown runtime owner cutover
+
+- Added a unique `CardCooldownRuntimeController` under the production runtime
+  coordinator while keeping `WorldSessionState.players` as the only state and
+  save owner.
+- Deleted Main's `_update_realtime_cooldowns()` and replaced the two remaining
+  direct action-cooldown writes with explicit owner APIs.
+- Persistent-card arming now validates the runtime card identity before
+  mutating a reused slot; military cooldowns remain outside this domain.
+
+# 2026-07-17 — Visual cue runtime owner cutover
+
+- Moved movement trails, action callouts, map effects and district pulses into
+  one transient `VisualCueRuntimeOwner` scene.
+- Removed the three visual arrays, visual ageing helpers and pulse mutation
+  from Main; newly generated authoritative districts no longer contain pulse
+  fields.
+- Monster, military, weather and AI producers now use the typed owner instead
+  of visual callbacks through their Main world bridges.
+- Preserved callout SFX through injected scene-owned audio players without
+  giving the visual owner a Main reference.
+
+# 2026-07-17 — Table presentation refresh cadence cutover
+
+- Moved live HUD, map, full-table and developer-only refresh accumulators into
+  a scene-owned `TablePresentationRefreshScheduler` under the runtime
+  coordinator.
+- Removed the four cadence fields, three cadence constants and
+  `_update_process_ui_refresh()` from Main.
+- The scheduler emits ordered real-time due receipts and owns no gameplay
+  facts, UI nodes or Main callbacks. Main remains the temporary presentation
+  target consumer pending the dedicated presentation routing cutover.
+
+# 2026-07-17 — RuntimeLoop second preflight
+
+- Re-ran the authoritative frame-path audit after all five requested
+  prerequisites were production-composed.
+- Kept `runtime_loop` pending and created no second tick path: card transition
+  execution and table/map presentation receipt consumption remain Main-only.
+- Recorded the minimum next owners as a scene-owned card transition executor
+  and a table presentation source/target driver with a public log owner.
+
+# 2026-07-17 — Card-resolution transition sink cutover
+
+- Added one scene-owned `CardResolutionTransitionSink` and routed the frame
+  driver directly into it; Main no longer receives or switches on commands.
+- Froze all 12 transition kinds and 16 complete order traces with deterministic
+  command IDs, revisions, order indices and payload fingerprints.
+- Persisted bounded applied-command and execution lineage through the existing
+  v0.6 `card_resolution_execution` save-owner path. The registry now uses the
+  live owner's pure preflight API, and focused tests cover exact
+  preflight/apply/rollback together with retries before dispatch and after
+  handler execution.
+- Upgraded the execution section to save schema v3. Full resumable in-flight
+  transactions and pending settlements now survive save/load with deterministic
+  resolution/execution/outcome bindings. History or mana settlement failures
+  retry only the unfinished intent; release and gameplay effects remain exact
+  once.
+- Added negative recovery gates for forged settlement receipts, mismatched
+  finalized records, duplicate/reordered intent progress, contradictory status
+  flags and legacy-v1 loads into a controller with existing lineage.
+- This closes the card-resolution section contract only. Seven unrelated save
+  sections are still unsupported, so the complete v0.6 run envelope remains
+  intentionally fail-closed rather than claiming a false full-resume pass.
+- Physically deleted the Main transition switch, completion wrapper and queue
+  lifecycle helpers without restoring stale layout/AI fallbacks.
+- Focused, UI-text, visual and check-only gates are green. Full smoke currently
+  stops in its legacy starter-monster helper because it still calls the
+  retired `Main._use_skill`; the test fixture will be migrated to the typed
+  submission owner rather than reviving a Main compatibility path.
+- Next cutover: `Table Presentation Source/Target Cutover`.
+- Final focused evidence: command lineage 245/245, transition sink 70/70,
+  gameplay fault injection 61/61, persistence registry 12/12 and MCP Bench 7/7.
+
+## 2026-07-17 — Table Presentation Query Ports Cutover
+
+- Added one scene-owned presentation query composition under `GameRuntimeCoordinator`.
+- Added fail-closed local viewer authorization and separate public/current-player-private projections.
+- Replaced Main's map marker construction with a visibility-safe map projection.
+- Moved public log storage to a typed exact-once owner.
+- Moved Victory state/outcome presentation to typed receipts and removed the dynamic Victory bridge callback to Main.
+- Removed six Main symbols/fields and kept the Main extinction budget green.
+- Godot 4.7 focused suite and MCP bench pass; full smoke remains an explicitly bounded timeout rather than a claimed pass.
+
+## 2026-07-18 — Authoritative RuntimeLoop cutover
+
+- Added one production `RuntimeLoop` beneath `GameRuntimeCoordinator` and a
+  narrow typed frame port to the already-composed domain owners.
+- Preserved the characterized frame order and delta domains, including
+  real-time wager/presentation work during the global wager block, one
+  world-effective clock advance during active play, and the commodity-flow and
+  session-finished early-return gates.
+- Physically deleted `Main._process`, `_update_victory_control` and
+  `_advance_continuous_commodity_flow`; Main has no process-forwarding wrapper.
+- Runtime authority and full-order trace tests prove one production tick owner,
+  no duplicate mutation path, and no dependency from RuntimeLoop to Main or
+  concrete UI targets.
+- Godot 4.7 focused tests, UI text, visual snapshot and check-only smoke pass.
+  Full smoke reaches its established legacy debts (`_capture_run_state`, AI
+  military fixtures and `_auto_monster_color`) and is not reported as green;
+  no Main compatibility path was restored.
+- Main budget changed from 13,243/11,490 lines and 822 methods to
+  13,159/11,414 lines and 819 methods. Next boundary: `typed_world_ports`.
+
+## 2026-07-18 — Typed world ports boundary hardening
+
+- Replaced the broad, parent-discovering `AuthoritativeRuntimeFramePort` with
+  one explicitly composed `RuntimeWorldPorts` scene containing seven narrow
+  typed ports for lifecycle, card, economy, actors, monster, presentation and
+  victory intents.
+- RuntimeLoop now receives its ports by typed injection and has no Main,
+  coordinator, scene traversal, root lookup or dynamic-call dependency.
+- Existing domain controllers remain the state and rule owners. The new ports
+  only sequence typed operations and do not store world state or reimplement
+  formulas.
+- Preserved the complete frame trace, single clock advance, commodity-flow
+  early exit, victory ordering and presentation cadence. Architecture and
+  authority tests report zero duplicate mutation paths.
+- Focused boundary tests pass 78/78, RuntimeLoop passes 24/24 and the Godot 4.7
+  production-composition Bench passes 7/7. UI text, visual snapshot, privacy
+  and check-only smoke remain green.
+- Full smoke still exposes established unrelated debts in retired Main test
+  fixtures, AI military characterization and `_auto_monster_color`; no
+  compatibility fallback was restored. The broader `typed_world_ports`
+  ledger domain remains pending for the 21 historical WorldBridge files.
+
+## 2026-07-18 — Runtime coordination phase decomposition
+
+- Added one scene-owned `RuntimePhaseCoordinator` containing explicit
+  lifecycle, command, simulation, resolution, state-commit and presentation
+  schedule coordinators.
+- RuntimeLoop now owns only the engine callback, frame counter/receipt and one
+  typed phase invocation. It decreased from 140 to 57 physical lines and no
+  longer names any card, weather, AI, monster, military, economy, victory or
+  presentation port operation.
+- Preserved the complete active, blocked, paused and terminal frame traces.
+  Typed fake tests prove exact phase order, one execution per phase and
+  deterministic replay for identical delta sequences.
+- GameRuntimeCoordinator remains the explicit composition root but no longer
+  exposes the unused `runtime_loop_can_advance` facade. It decreased from
+  6,008 lines/560 methods to 6,005 lines/559 methods; dynamic-call debt did not
+  increase.
+- Godot 4.7 focused gates, card exact-once, presentation parity, privacy, UI
+  text, visual snapshot and check-only smoke pass. MCP production runtime adds
+  no runtime error; only established source warnings remain.
+- Bounded full smoke reaches the same historical AI/retired-Main/monster
+  WorldBridge debt. No deleted Main API or compatibility route was restored.
+
+## 2026-07-18 — Simulation determinism foundation
+
+- Added one scene-owned `RuntimeSimulationStep` between engine-frame scheduling
+  and the existing command/simulation/resolution/state-commit phase owners.
+  `RuntimeLoop` remains unchanged as the sole `_process` owner; current
+  production behavior remains one active step per active frame without adding
+  a fixed timestep or accumulator.
+- Added an internal `SimulationStateIdentity` that accepts only explicitly
+  supplied pure-data simulation projections, preserves semantic array and
+  typed-key ordering, canonicalizes common Godot value types, rejects
+  Node/Object/Callable references, and emits SHA-256 identities without
+  becoming a presentation source.
+- Added a non-owning `SimulationRandomnessBoundary`. The existing
+  `RunRngService` remains the sole shared gameplay RNG owner; uncontrolled
+  world-mutating randomness and visual randomness with mutation capability are
+  rejected by focused tests.
+- Synthetic determinism gates prove that the same initial state and ordered
+  card-transition commands produce the same phase trace, mutation trace and
+  state fingerprint, while a meaningful order change produces a different
+  result. Different engine-frame/UI metadata do not enter simulation identity.
+- Godot 4.7 focused runtime, command, exact-once, typed-port, presentation,
+  privacy, composition, UI-text, visual and check-only gates pass. The MCP
+  production-phase Bench passes 6/6. The legacy layout mega-test and bounded
+  full smoke still expose pre-existing retired-Main/old-fixture debt; no
+  compatibility API was restored.
+# 2026-07-18 — Simulation determinism consumption layer
+
+- Added a pure-data `SimulationTraceContract` with ordered command results, phase transitions, before/after SHA-256 identities, and allowlisted mutation summaries.
+- Added a bounded development-only `SimulationDeterminismAudit` under `RuntimeSimulationStep`; it owns no clock, save data, presentation, RNG, or world state.
+- Added stable pure-data serialization to `SimulationStateIdentity` and step-level audit accessors without changing runtime timing or gameplay order.
+- Added same-stream, order-divergence, rejection, deterministic-error, RNG-boundary, privacy, and production-composition tests plus a Godot MCP Bench.
+- Centralized the existing region-supply weighted shuffle implementation in `RunRngService`; per-region bag state and ordering stay unchanged, while direct RNG construction outside the authoritative service is now forbidden by test.
+- Focused consumption test passed 33/33; Bench passed 8/8; all dependent runtime/command/card/presentation/privacy/architecture gates and smoke `--check-only` passed.
+- No replay, rollback, multiplayer synchronization, new save format, fixed-step scheduler, or Main compatibility path was introduced.
+
+## 2026-07-18 — Simulation authority coverage migration
+
+- Added the pure-data `SimulationStateProjectionContract` and documented the
+  required authoritative entities, resources, phase, pending-command and
+  deterministic-timer sections. Current missing domains remain explicit rather
+  than being hidden behind a partial hash.
+- Added a development-only `SimulationMutationAuthority` inside the existing
+  `RuntimeSimulationStep`, plus bounded before/after mutation records in
+  `SimulationDeterminismAudit`.
+- Migrated the military attack-monster path to a UID-bound typed
+  `military_monster_damage` command and exact-once sink. It fails closed outside
+  an active simulation step and rejects duplicate command ids.
+- Automatic monster behavior, non-attack military behavior, infrastructure,
+  weather, AI and other direct domain ticks remain listed as future command
+  coverage; no second mutation store or compatibility Main path was added.
+- Focused authority migration passed 12/12 and its Godot 4.7 Bench passed 7/7.
+  Foundation 30/30, consumption 33/33, command pipeline 31/31, card frame
+  104/104, transition sink 70/70, fault injection 61/61, phase 50/50 and
+  RuntimeLoop 28/28 remain green. Existing RuntimeWorldPorts lifecycle and
+  market-facts fixture debts remain unchanged.
+
+## 2026-07-18 — Autonomous monster movement command migration
+
+- Added the pure-data `monster_move` command and a scene-owned
+  `MonsterMoveCommandSink` beside the existing command pipeline.
+- Monster behavior still decides its target using the existing rules and
+  RunRngService boundary, but autonomous start, per-step advance, same-region
+  settlement and downed cleanup now mutate only inside an active
+  `RuntimeSimulationStep` command window.
+- The sink records UID-bound before/after fingerprints in the existing bounded
+  mutation audit and rejects runtime objects, stale/out-of-step commands and
+  duplicate command ids.
+- RuntimeLoop, phase order, world-delta formula, save format and gameplay
+  movement rules were unchanged. No replay, rollback or multiplayer layer was
+  introduced.
+- Autonomous focused tests pass 11/11; the Godot CLI Bench passes 3/3. All
+  determinism, authority, command, card, phase, typed-port, Main architecture,
+  UI-text, visual and check-only gates remain green. Broad layout and full-smoke
+  historical fixture debt remains documented without restoring compatibility
+  paths.
+
+## 2026-07-18 — Autonomous monster special-action command migration
+
+- Added the pure-data `monster_action` envelope and a scene-owned
+  `MonsterActionCommandSink` to the existing `RuntimeCommandPipeline`.
+- Special-action decisions retain their existing weighted target/action choice
+  and RunRngService boundary, then submit the chosen action once; the sink
+  performs the existing effect sequence inside `SimulationMutationAuthority`.
+- Before/after UID snapshots, duplicate-command rejection and out-of-step
+  fail-closed behavior are covered without introducing a second monster owner.
+- Focused special-action tests pass 11/11 and the Godot 4.7 migration Bench
+  passes 4/4. Existing movement behavior remains covered by its 11/11 test.
+
+## 2026-07-18 — Main composition root audit
+
+- Added a repeatable production composition audit for the formal
+  `main.tscn -> RuntimeServices -> GameRuntimeCoordinator` tree.
+- The audit proves one RuntimeLoop, one RuntimeCommandPipeline, one
+  SimulationMutationAuthority, one MonsterRuntimeController and one sink per
+  autonomous monster command type. It also rejects root-scene discovery and
+  dynamic Main fallbacks in runtime production scripts.
+- Main composition audit passes 20/20; the Godot 4.7 audit Bench passes 6/6.
+- This is an architecture gate, not a claim that `scripts/main.gd` has already
+  been physically deleted; future cutovers must continue to reduce its budget.
+
+## 2026-07-18 — Main responsibility inventory
+
+- Added `docs/migration/main_responsibility_inventory.md` with the complete
+  retain/migrate/delete map for the remaining Main responsibilities.
+- The inventory records the final Composition Root boundary, the current
+  Coordinator/RuntimeLoop/SimulationStep ownership graph, the hidden-Main risk
+  in the 565-method coordinator, and a staged deletion order.
+- No production code, gameplay order, save schema or excluded historical
+  fixture was changed in this planning-only phase.
+## 2026-07-18 — Main dependency direction migration
+
+The final-settlement presentation composition no longer targets `Main` directly
+for menu and navigation requests. A scene-owned `ApplicationFlowPort` now
+accepts only allow-listed application actions and public menu requests, rejects
+invalid input, and forwards the boundary to the existing application flow
+handler. It owns no gameplay state, clock, RNG, command pipeline, snapshot, or
+save data. The full caller inventory and migration queue are recorded in
+`docs/migration/main_dependency_inventory.md` and
+`docs/migration/main_dependency_direction_migration_report.md`.
+## 2026-07-18 — Main application-flow handler extraction
+
+The rules page is now a real production application-flow slice owned by
+`ApplicationFlowController`. MenuOverlay and MenuRootLobby send the `rules`
+intent through `ApplicationFlowPort`; the handler opens the existing rules
+surface and requests the existing Coordinator pause without owning gameplay or
+simulation state. Main's three rules helpers and two rules preloads were
+deleted. Evidence and the remaining action inventory are recorded in
+`docs/migration/main_application_flow_handler_extraction_handoff.md`.
+
+## 2026-07-18 — Standings application-flow extraction
+
+- Added a dedicated `standings_requested` application boundary, a scene-owned
+  standings handler and a viewer-authorized read-only query port.
+- Opening standings no longer refreshes routes, uses table selection as viewer
+  authority, or treats session finish as permission to reveal every seat.
+- Removed seven standings-only Main symbols plus the scoreboard preload and
+  generic standings dispatch branch; Main fell by 120 physical lines and six
+  methods.
+- Replaced obsolete player-facing GDP-share card-condition copy with the active
+  v0.6 public-condition wording from the rules quick-reference owner.
+# 2026-07-18 — Economy viewer-scoped application-flow cutover
+
+- Added a dedicated economy application intent, scene-owned flow controller and viewer-authorized read-only query port.
+- Economy presentation now reads initialized public market/facility/route/weather/monster projections plus only the local viewer's exact cash, receipts, facilities and warehouses.
+- Removed Main's five economy page methods and dashboard preload; Intel's link now submits the application intent.
+- Opening the page no longer initializes the product catalog or refreshes route caches, and missing data fails closed.
+- Replaced retired economy text with v0.6 sale-receipt, commodity GDP, facility, throughput and regional-integrity semantics.

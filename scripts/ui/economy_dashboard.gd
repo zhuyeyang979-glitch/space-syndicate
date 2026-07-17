@@ -16,10 +16,10 @@ func _ready() -> void:
 
 func set_dashboard(data: Dictionary) -> void:
 	var accent := _dictionary_color(data, "accent", Color("#4ade80"))
-	tooltip_text = str(data.get("tooltip", "经济仪表板：看三件事：钱从哪座城来、哪种商品变热、公开线索指向哪里。"))
+	tooltip_text = str(data.get("tooltip", "经济仪表板：查看商品、公共设施、运输压力和自己的销售收据。"))
 	add_theme_stylebox_override("panel", _card_style(accent, Color("#020617").lerp(accent, 0.07), 1, 8))
 	title_label.text = str(data.get("title", "经济仪表板"))
-	title_label.tooltip_text = str(data.get("title_tooltip", "先看现金流、商品、城市、线索四块；细节用悬停查看。"))
+	title_label.tooltip_text = str(data.get("title_tooltip", "先看商品、设施、运输和自己的流水；细节用悬停查看。"))
 	kpi_grid.columns = clampi(int(data.get("kpi_columns", 4)), 1, 4)
 	overview_grid.columns = clampi(int(data.get("overview_columns", 4)), 1, 4)
 	lane_grid.columns = clampi(int(data.get("lane_columns", 3)), 1, 3)

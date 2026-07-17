@@ -159,54 +159,6 @@ layout_mode = 2
 text = "Open First Round Output Folder"
 tooltip_text = "Open user://space_syndicate_design_qa/first_round_runtime_playable_loop/"
 
-[node name="FirstMissionSpineBenchActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="OpenFirstMissionSpineBenchButton" type="Button" parent="DockMargin/DockRows/FirstMissionSpineBenchActionRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Open Mission Spine"
-tooltip_text = "Open res://scenes/tools/FirstMissionSpineBench.tscn"
-
-[node name="RunFirstMissionSpineBenchButton" type="Button" parent="DockMargin/DockRows/FirstMissionSpineBenchActionRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Run Mission Spine"
-tooltip_text = "Run the First Mission Spine QA bench"
-
-[node name="OpenFirstMissionSpineOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Open Mission Spine Output Folder"
-tooltip_text = "Open user://space_syndicate_design_qa/first_mission_spine/"
-
-[node name="FirstMissionRuntimeMainActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="OpenFirstMissionRuntimeMainBenchButton" type="Button" parent="DockMargin/DockRows/FirstMissionRuntimeMainActionRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Open Runtime Mission"
-tooltip_text = "Open res://scenes/tools/FirstMissionRuntimeMainBench.tscn"
-
-[node name="RunFirstMissionRuntimeMainBenchButton" type="Button" parent="DockMargin/DockRows/FirstMissionRuntimeMainActionRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Run Runtime Mission"
-tooltip_text = "Run the First Mission Runtime Main QA bench"
-
-[node name="OpenFirstMissionRuntimeMainOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Open Runtime Mission Output Folder"
-tooltip_text = "Open user://space_syndicate_design_qa/first_mission_runtime_main/"
-
 [node name="PlanetMapPreviewActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
 layout_mode = 2
 theme_override_constants/separation = 6
@@ -943,56 +895,6 @@ size_flags_horizontal = 3
 text = "Open GDP Formula Output"
 tooltip_text = "Open user://space_syndicate_design_qa/gdp_formula_runtime_cutover/"
 
-[node name="ScenarioRuntimeActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="OpenScenarioRuntimeControllerButton" type="Button" parent="DockMargin/DockRows/ScenarioRuntimeActionRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Open Scenario Controller"
-tooltip_text = "Open res://scenes/runtime/ScenarioRuntimeController.tscn"
-
-[node name="RunScenarioRuntimeGlueCutoverBenchButton" type="Button" parent="DockMargin/DockRows/ScenarioRuntimeActionRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Run Scenario QA"
-tooltip_text = "Run res://scenes/tools/ScenarioRuntimeGlueCutoverBench.tscn"
-
-[node name="OpenScenarioRuntimeGlueCutoverOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Open Scenario Output"
-tooltip_text = "Open user://space_syndicate_design_qa/scenario_runtime_glue_cutover/"
-
-[node name="FirstTableAuthoredRuntimeActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="OpenFirstTableAuthoredRuntimeServiceButton" type="Button" parent="DockMargin/DockRows/FirstTableAuthoredRuntimeActionRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Open First Table Service"
-tooltip_text = "Open res://scenes/runtime/FirstTableAuthoredRuntimeService.tscn"
-
-[node name="RunFirstTableAuthoredRuntimeCutoverBenchButton" type="Button" parent="DockMargin/DockRows/FirstTableAuthoredRuntimeActionRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Run First Table QA"
-tooltip_text = "Run res://scenes/tools/FirstTableAuthoredRuntimeCutoverBench.tscn"
-
-[node name="OpenFirstTableAuthoredRuntimeCutoverOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Open First Table Output"
-tooltip_text = "Open user://space_syndicate_design_qa/first_table_authored_runtime_cutover/"
-
 [node name="LegacyRuntimeSurfaceRetirementActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
 layout_mode = 2
 theme_override_constants/separation = 6
@@ -1103,31 +1005,6 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "Open Eligibility Output"
 tooltip_text = "Open user://space_syndicate_design_qa/card_play_eligibility/"
-
-[node name="MenuShellRuntimeCutoverActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="OpenMenuShellRuntimeCutoverBenchButton" type="Button" parent="DockMargin/DockRows/MenuShellRuntimeCutoverActionRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Open Menu Shell QA"
-tooltip_text = "Open res://scenes/tools/MenuShellRuntimeCutoverBench.tscn"
-
-[node name="RunMenuShellRuntimeCutoverBenchButton" type="Button" parent="DockMargin/DockRows/MenuShellRuntimeCutoverActionRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Run Menu Shell QA"
-tooltip_text = "Run the 24-case Menu Shell gate plus the 32-case Global Navigation characterization"
-
-[node name="OpenMenuShellRuntimeCutoverOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Open Menu Shell Output"
-tooltip_text = "Open Menu Shell output; Global Navigation evidence is written to the sibling global_ui_navigation_characterization folder"
 
 [node name="CodexSceneHardCutoverActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
 layout_mode = 2

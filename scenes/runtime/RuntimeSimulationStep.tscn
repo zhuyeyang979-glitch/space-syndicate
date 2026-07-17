@@ -1,0 +1,19 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/runtime_simulation_step.gd" id="1_step"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/SimulationStateIdentity.tscn" id="2_identity"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/SimulationRandomnessBoundary.tscn" id="3_randomness"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/SimulationDeterminismAudit.tscn" id="4_audit"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/SimulationMutationAuthority.tscn" id="5_authority"]
+
+[node name="RuntimeSimulationStep" type="Node"]
+script = ExtResource("1_step")
+editor_description = "Owns one deterministic active-world simulation step. Engine frames remain owned by RuntimeLoop; presentation cadence remains outside this boundary."
+
+[node name="SimulationStateIdentity" parent="." instance=ExtResource("2_identity")]
+
+[node name="SimulationRandomnessBoundary" parent="." instance=ExtResource("3_randomness")]
+
+[node name="SimulationDeterminismAudit" parent="." instance=ExtResource("4_audit")]
+
+[node name="SimulationMutationAuthority" parent="." instance=ExtResource("5_authority")]

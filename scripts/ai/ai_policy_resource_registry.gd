@@ -61,7 +61,6 @@ const RUNTIME_CASES := [
 	["failed_intent_no_partial_mutation", "World Bridge"],
 	["public_private_boundary", "Privacy"],
 	["three_ai_players_complete_cycle", "Runtime Flow"],
-	["first_mission_ai_public_action", "Runtime Flow"],
 	["main_ai_algorithms_absent", "Main Deletion"],
 	["main_ai_adapter_under_300_lines", "Main Deletion"],
 	["execution_service_unchanged", "Ownership Boundary"],
@@ -201,13 +200,12 @@ func _runtime_case_passed(case_id: String, controller: String, bridge: String, c
 		"candidate_legality_preserved": return controller.contains("_skill_play_requirement_status") and controller.contains("_market_listing_purchasable") and coordinator_source.contains("func card_market_listing_availability(") and coordinator_source.contains("func card_market_preview(") and coordinator_source.contains("func request_card_market_quote(") and coordinator_source.contains("func authorize_card_market_purchase(")
 		"score_order_preserved": return controller.contains("func _ai_pick_candidate(") and controller.contains("sort_custom")
 		"deterministic_tie_break": return controller.contains("func _candidate_stable_id(")
-		"shared_rng_order_preserved": return controller.contains("return _world_value(&\"rng\"") and not controller.contains("RandomNumberGenerator.new") and main_source.contains("func _ai_runtime_rng_gateway(")
+		"shared_rng_order_preserved": return controller.contains("return _world_bridge.shared_rng()") and bridge.contains("func shared_rng() -> RunRngService") and not controller.contains("RandomNumberGenerator.new") and coordinator_source.contains("func run_rng_service() -> RunRngService")
 		"fallback_order_preserved": return controller.contains("func _ai_pick_candidate(") and controller.contains("exploration")
 		"ai_intent_routes_once": return bridge_ready and bridge.contains("_routed_intent_count += 1")
 		"failed_intent_no_partial_mutation": return bridge.contains("world_or_intent_invalid") and bridge.contains("_failed_intent_count += 1")
 		"public_private_boundary": return controller.contains("private_plan_exposed\": false") and bridge.contains("func _public_intent(")
 		"three_ai_players_complete_cycle": return controller.contains("func _update_ai_decisions(") and controller.contains("func _ai_player_indices(")
-		"first_mission_ai_public_action": return main_source.contains("func _ensure_first_table_ai_public_action(") and main_source.contains("_ai_runtime_call")
 		"main_ai_algorithms_absent": return no_main_algorithms
 		"main_ai_adapter_under_300_lines": return _main_ai_adapter_line_count(main_source) <= 300
 		"execution_service_unchanged": return not FileAccess.get_file_as_string("res://scripts/runtime/card_resolution_execution_runtime_service.gd").contains("AiRuntimeController")
@@ -289,7 +287,7 @@ func _main_ai_algorithm_function_count(source: String) -> int:
 
 func _main_ai_adapter_line_count(source: String) -> int:
 	var total := 0
-	for method_name in ["_ai_runtime_controller_node", "_ai_runtime_call", "_ai_runtime_world_snapshot", "_apply_ai_runtime_intent", "_on_ai_runtime_event", "_ai_runtime_rng_gateway", "_ai_runtime_world_constant_snapshot"]:
+	for method_name in ["_ai_runtime_controller_node", "_ai_runtime_call", "_ai_runtime_world_snapshot", "_apply_ai_runtime_intent", "_on_ai_runtime_event", "_ai_runtime_world_constant_snapshot"]:
 		var start := source.find("func %s(" % method_name)
 		if start < 0:
 			continue

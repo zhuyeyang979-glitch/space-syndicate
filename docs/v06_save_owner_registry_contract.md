@@ -103,7 +103,8 @@ Apply uses this fixed sequence:
 
 1. Validate the registry against the authoritative 18-section manifest.
 2. Validate the complete envelope through `RulesetSaveHandshakeService`.
-3. Decode exact wrappers and run every owner apply on a detached probe.
+3. Decode exact wrappers and run each owner's declared pure live-owner preflight,
+   or a detached-probe apply when the owner has no explicit preflight API.
 4. Reject unknown fields, non-finite values, invalid revisions, duplicate lineage or
    cross-section identity mismatch before live mutation.
 5. Capture every live owner's rollback checkpoint.
@@ -113,7 +114,8 @@ Apply uses this fixed sequence:
    in exact reverse order.
 9. Re-capture every rolled-back owner and require exact encoded equality with its checkpoint.
 
-No live owner is mutated until the complete envelope and all detached preflights succeed.
+No live owner is mutated until the complete envelope and every pure or detached
+preflight succeeds.
 A registry-busy request fails closed.
 
 ## Cross-section consistency
@@ -169,20 +171,26 @@ They must not expose:
 
 ## Current capability baseline
 
-At `main@b2441cc`, the production registry still uses the pre-target section split and reports
-8 transactional / 10 unsupported bindings. Transactional bindings are:
+The production registry currently reports 11 transactional / 7 unsupported
+bindings. Transactional bindings are:
 
 - `region_infrastructure`
+- `region_supply`
 - `player_mana`
 - `player_organization`
 - `monsters`
 - `weather`
 - `bankruptcy_neutral_estate`
+- `commodity_flow`
+- `card_resolution_execution`
 - `victory_control`
 - `session`
 
-Full resume therefore remains fail-closed. This document defines the required migration and
-does not claim that the production registry already implements the target manifest.
+The seven unsupported bindings are `ruleset`, `routes`,
+`commodity_belt_visibility`, `card_inventory`, `military`,
+`card_resolution_queue`, and `ai`. Full resume therefore remains fail-closed;
+the ready transactional sections do not imply that the complete envelope can
+already be captured or restored.
 
 ## Gates
 
@@ -194,7 +202,7 @@ Required focused evidence after implementation:
 - `tests/commodity_flow_public_privacy_v06_test.gd`
 - `tests/full_run_quality_driver_contract_test.gd`
 
-The gates must prove exact manifest mapping, detached preflight, zero-mutation rejection,
-fixed-order apply, reverse-order rollback, exact checkpoint restoration, no reshuffle,
-no duplicate backlog tick, no duplicate Sale Receipt, exact warehouse/waste restoration
-and public privacy.
+The gates must prove exact manifest mapping, pure or detached preflight,
+zero-mutation rejection, fixed-order apply, reverse-order rollback, exact
+checkpoint restoration, no reshuffle, no duplicate backlog tick, no duplicate
+Sale Receipt, exact warehouse/waste restoration and public privacy.

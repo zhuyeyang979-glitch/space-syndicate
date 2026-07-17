@@ -3,11 +3,20 @@ extends Node
 class_name CardMarketPolicyWorldBridge
 
 var _world: Node
+var _world_session_state: WorldSessionState
 var _capture_count := 0
 
 
 func bind_world(world: Node) -> void:
 	_world = world
+
+
+func set_world_session_state(state: WorldSessionState) -> void:
+	_world_session_state = state
+
+
+func world_session_state() -> WorldSessionState:
+	return _world_session_state
 
 
 func has_world() -> bool:
@@ -18,7 +27,7 @@ func capture_market_facts(source_district_index: int) -> Dictionary:
 	_capture_count += 1
 	if not has_world():
 		return {}
-	var districts_variant: Variant = _world.get("districts")
+	var districts_variant: Variant = _world_session_state.districts if _world_session_state != null else []
 	if not (districts_variant is Array):
 		return {}
 	var districts := districts_variant as Array
@@ -46,7 +55,7 @@ func capture_market_facts(source_district_index: int) -> Dictionary:
 	return {
 		"source_district_index": source_district_index,
 		"source_center_x": center.x,
-		"world_width": float(_world.get("map_width_m")),
+		"world_width": _world_session_state.map_width_m,
 		"source_destroyed": bool(district.get("destroyed", false)),
 		"direct_neighbors": (district.get("neighbors", []) as Array).duplicate() if district.get("neighbors", []) is Array else [],
 		"monsters": monsters,
@@ -57,6 +66,7 @@ func debug_snapshot() -> Dictionary:
 	return {
 		"bridge_ready": has_world(),
 		"capture_count": _capture_count,
+		"world_session_state_ready": _world_session_state != null,
 		"owns_world_state": false,
 		"camera_fields_read": false,
 		"private_player_fields_read": false,

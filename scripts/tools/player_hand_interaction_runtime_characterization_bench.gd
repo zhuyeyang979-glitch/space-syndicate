@@ -557,7 +557,7 @@ func _case_public_private_event_boundary() -> Dictionary:
 func _case_save_action_and_signal_compatibility() -> Dictionary:
 	var card := _queue_ready_interaction_skill("星链拆解1")
 	_reset_player(0, [card], 1000)
-	_runtime_main.set("selected_player", 0)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
 	_runtime_main.call("_begin_target_player_choice", 0)
 	var snapshot_variant: Variant = _runtime_main.call("_runtime_player_target_decision_snapshot_source", 0)
 	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
@@ -591,7 +591,7 @@ func _case_save_action_and_signal_compatibility() -> Dictionary:
 func _execute_interaction(card_id: String, actor_slots: Array, target_slots: Array, actor_cash: int, target_cash: int, seed_value: int) -> Dictionary:
 	_reset_player(0, actor_slots, actor_cash)
 	_reset_player(1, target_slots, target_cash)
-	_runtime_main.set("selected_district", 0)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = 0
 	_seed_runtime_rng(seed_value)
 	var skill := _make_skill(card_id)
 	var source_before := _player_probe(0)
@@ -651,8 +651,8 @@ func _execute_queued_route(actor_index: int, target_index: int, actor_is_ai: boo
 	if target_index == 0:
 		target_ai_override = false
 	_reset_player(target_index, target_slots, 1000, target_ai_override)
-	_runtime_main.set("selected_player", actor_index)
-	_runtime_main.set("selected_district", 0)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = actor_index
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = 0
 	_runtime_main.set("card_resolution_queue", [])
 	_runtime_main.set("next_card_resolution_queue", [])
 	_runtime_main.set("active_card_resolution", {})
@@ -823,14 +823,14 @@ func _interaction_debug() -> Dictionary:
 func _player(player_index: int) -> Dictionary:
 	if _runtime_main == null:
 		return {}
-	var players: Array = _runtime_main.get("players") as Array
+	var players: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array
 	if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary):
 		return {}
 	return (players[player_index] as Dictionary).duplicate(true)
 
 
 func _reset_player(player_index: int, slots: Array, cash: int = 1000, ai_override: Variant = null) -> void:
-	var players: Array = (_runtime_main.get("players") as Array).duplicate(true)
+	var players: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
 	if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary):
 		return
 	var player: Dictionary = (players[player_index] as Dictionary).duplicate(true)
@@ -843,7 +843,7 @@ func _reset_player(player_index: int, slots: Array, cash: int = 1000, ai_overrid
 	if ai_override is bool:
 		player["is_ai"] = bool(ai_override)
 	players[player_index] = player
-	_runtime_main.set("players", players)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 
 
 func _player_probe(player_index: int) -> Dictionary:
@@ -975,19 +975,20 @@ func _private_ledger_contains(player_index: int, card_id: String) -> bool:
 
 
 func _seed_runtime_rng(seed_value: int) -> void:
-	var rng_variant: Variant = _runtime_main.get("rng")
-	if rng_variant is RandomNumberGenerator:
-		(rng_variant as RandomNumberGenerator).seed = seed_value
+	var runtime_coordinator := _coordinator() as GameRuntimeCoordinator
+	var runtime_rng := runtime_coordinator.run_rng_service() if runtime_coordinator != null else null
+	if runtime_rng != null:
+		runtime_rng.seed = seed_value
 
 
 func _public_log_count() -> int:
-	var logs_variant: Variant = _runtime_main.get("log_lines")
-	return (logs_variant as Array).size() if logs_variant is Array else 0
+	var runtime_coordinator := _coordinator() as GameRuntimeCoordinator
+	return runtime_coordinator.presentation_recent_public_log_messages(90).size() if runtime_coordinator != null else 0
 
 
 func _public_logs_hide_private_values(start_index: int, private_values: Array) -> bool:
-	var logs_variant: Variant = _runtime_main.get("log_lines")
-	var logs: Array = logs_variant if logs_variant is Array else []
+	var runtime_coordinator := _coordinator() as GameRuntimeCoordinator
+	var logs: Array = runtime_coordinator.presentation_recent_public_log_messages(90) if runtime_coordinator != null else []
 	for index in range(maxi(0, start_index), logs.size()):
 		var line := str(logs[index])
 		for value_variant in private_values:

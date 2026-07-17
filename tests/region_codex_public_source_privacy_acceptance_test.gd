@@ -52,8 +52,8 @@ func _run() -> void:
 	_coordinator = _main.get_node_or_null(COORDINATOR_PATH)
 	_source_service = _coordinator.get_node_or_null(SOURCE_SERVICE_NAME) if _coordinator != null else null
 	_monster_owner = _main.get("monster_runtime_controller") as Node
-	var districts: Array = _main.get("districts") if _main.get("districts") is Array else []
-	var players: Array = _main.get("players") if _main.get("players") is Array else []
+	var districts: Array = ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts if ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts is Array else []
+	var players: Array = ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players if ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players is Array else []
 	_district_index = _first_live_district(districts)
 	_expect(_coordinator != null and _coordinator.has_method("region_codex_public_snapshot"), "production_coordinator_region_composition_reachable")
 	_expect(_source_service != null and _source_service.has_method("compose_source"), "production_region_public_source_service_reachable")
@@ -103,13 +103,13 @@ func _test_sanitized_public_clue_delta() -> void:
 	_reset_private_fixture()
 	var before_source := _region_source()
 	var before_snapshot := _region_snapshot(before_source)
-	var districts: Array = _main.get("districts")
+	var districts: Array = ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts
 	var district := (districts[_district_index] as Dictionary).duplicate(true)
 	var city := (district.get("city", {}) as Dictionary).duplicate(true)
 	city["last_public_clue"] = PUBLIC_CLUE
 	district["city"] = city
 	districts[_district_index] = district
-	_main.set("districts", districts)
+	((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 	var after_source := _region_source()
 	var after_snapshot := _region_snapshot(after_source)
 	var source_paths: Array[String] = []
@@ -183,9 +183,9 @@ func _test_private_intel_callers_remain_owned() -> void:
 
 
 func _reset_private_fixture() -> void:
-	_main.set("selected_player", 0)
-	_main.set("selected_district", _district_index)
-	var players: Array = _main.get("players")
+	((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = _district_index
+	var players: Array = ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players
 	for player_index in range(players.size()):
 		var player := (players[player_index] as Dictionary).duplicate(true)
 		player["cash"] = 900000 + player_index
@@ -196,9 +196,9 @@ func _reset_private_fixture() -> void:
 		player["ai_private_plan"] = "REGION_PRIVATE_AI_PLAN_A"
 		player["ai_memory"] = {"private_plan": "REGION_PRIVATE_AI_PLAN_A"}
 		players[player_index] = player
-	_main.set("players", players)
+	((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 
-	var districts: Array = _main.get("districts")
+	var districts: Array = ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts
 	var district := (districts[_district_index] as Dictionary).duplicate(true)
 	district["city"] = {
 		"active": true,
@@ -213,7 +213,7 @@ func _reset_private_fixture() -> void:
 		"last_public_clue": "",
 	}
 	districts[_district_index] = district
-	_main.set("districts", districts)
+	((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 
 	var actor_variant: Variant = _monster_owner.call("_make_auto_monster", 0, 0, _district_index, 2, 1)
 	var actor: Dictionary = actor_variant if actor_variant is Dictionary else {}
@@ -225,36 +225,36 @@ func _reset_private_fixture() -> void:
 func _apply_private_mutation(mutation_id: String) -> void:
 	match mutation_id:
 		"selected_player":
-			_main.set("selected_player", 1)
+			((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 1
 		"city_guesses":
-			var players: Array = _main.get("players")
+			var players: Array = ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players
 			var player := (players[0] as Dictionary).duplicate(true)
 			player["city_guesses"] = {_district_index: 1}
 			players[0] = player
-			_main.set("players", players)
+			((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 		"exact_cash":
-			var players: Array = _main.get("players")
+			var players: Array = ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players
 			var player := (players[0] as Dictionary).duplicate(true)
 			player["cash"] = 987654321
 			player["cash_cents"] = 98765432100
 			players[0] = player
-			_main.set("players", players)
+			((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 		"hand_discard":
-			var players: Array = _main.get("players")
+			var players: Array = ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players
 			var player := (players[0] as Dictionary).duplicate(true)
 			player["slots"] = [{"name": "REGION_PRIVATE_HAND_B", "kind": "private_test"}]
 			player["private_discard"] = ["REGION_PRIVATE_DISCARD_B"]
 			players[0] = player
-			_main.set("players", players)
+			((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 		"hidden_city_owner":
-			var districts: Array = _main.get("districts")
+			var districts: Array = ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts
 			var district := (districts[_district_index] as Dictionary).duplicate(true)
 			var city := (district.get("city", {}) as Dictionary).duplicate(true)
 			city["owner"] = 0
 			city["hidden_owner"] = "REGION_PRIVATE_CITY_OWNER_B"
 			district["city"] = city
 			districts[_district_index] = district
-			_main.set("districts", districts)
+			((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 		"hidden_monster_owner":
 			var actors: Array = _monster_owner.get("auto_monsters")
 			var actor := (actors[0] as Dictionary).duplicate(true)
@@ -264,12 +264,12 @@ func _apply_private_mutation(mutation_id: String) -> void:
 			actors[0] = actor
 			_monster_owner.set("auto_monsters", actors)
 		"ai_private_plan":
-			var players: Array = _main.get("players")
+			var players: Array = ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players
 			var player := (players[0] as Dictionary).duplicate(true)
 			player["ai_private_plan"] = "REGION_PRIVATE_AI_PLAN_B"
 			player["ai_memory"] = {"private_plan": "REGION_PRIVATE_AI_PLAN_B"}
 			players[0] = player
-			_main.set("players", players)
+			((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 
 
 func _region_source() -> Dictionary:

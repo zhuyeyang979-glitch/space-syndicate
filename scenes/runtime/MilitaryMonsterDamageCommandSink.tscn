@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/military_monster_damage_command_sink.gd" id="1_sink"]
+
+[node name="MilitaryMonsterDamageCommandSink" type="Node"]
+script = ExtResource("1_sink")
+editor_description = "Typed military-to-monster command sink. It mutates only the Monster owner while the RuntimeSimulationStep authority is active."

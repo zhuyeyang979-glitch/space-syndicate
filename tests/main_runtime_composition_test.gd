@@ -77,9 +77,6 @@ const RUNTIME_CARD_AUTHORING_WORKFLOW_BENCH := "res://scenes/tools/RuntimeCardAu
 const RUNTIME_CARD_AUTHORING_SERVICE := "res://scripts/cards/card_runtime_authoring_service.gd"
 const RUNTIME_CARD_AUTHORING_INSPECTOR_PLUGIN := "res://addons/space_syndicate_design_qa/card_runtime_authoring_inspector_plugin.gd"
 const RUNTIME_CARD_AUTHORING_WORKFLOW_DOC := "res://docs/runtime_card_authoring_workflow.md"
-const GLOBAL_UI_NAVIGATION_CHARACTERIZATION_REGISTRY := "res://scripts/tools/global_ui_navigation_characterization_registry.gd"
-const GLOBAL_UI_NAVIGATION_RUNTIME_CONTRACT := "res://docs/global_ui_navigation_runtime_contract.md"
-const MENU_SHELL_RUNTIME_CUTOVER_BENCH := "res://scenes/tools/MenuShellRuntimeCutoverBench.tscn"
 const RULESET_V05_PROFILE := "res://resources/rules/space_syndicate_ruleset_v05.tres"
 const PRODUCT_INDUSTRY_CATALOG_V05 := "res://resources/content/product_industry_catalog_v05.tres"
 const CARD_RUNTIME_CATALOG_V05 := "res://resources/cards/runtime/card_runtime_catalog_v05.tres"
@@ -142,7 +139,6 @@ func _run() -> void:
 	_check_city_gdp_derivative_assets()
 	_check_runtime_card_catalog_resource_assets()
 	_check_runtime_card_authoring_assets()
-	_check_global_ui_navigation_characterization_assets()
 	_check_ruleset_v05_foundation_assets()
 	_check_player_text_v05_foundation_assets()
 	_check_victory_control_runtime_assets()
@@ -184,7 +180,12 @@ func _check_static_composition(main: Control) -> void:
 		"RuntimeServices/FinalSettlementRuntimeComposition",
 		"RuntimeServices/TableAudioHost",
 		"RuntimeServices/RuntimeControllerHost",
-		"RuntimeServices/RuntimeControllerHost/CardResolutionRuntimeController",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardResolutionRuntimeController",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardResolutionFrameDriver",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardResolutionTransitionSink",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardCooldownRuntimeController",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/VisualCueRuntimeOwner",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/TablePresentationRefreshScheduler",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardRuntimeCatalogService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardRuntimeDefinitionWorldBridge",
@@ -224,7 +225,6 @@ func _check_static_composition(main: Control) -> void:
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionInfrastructureWorldBridge",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/VictoryControlRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/VictoryControlWorldBridge",
-		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ScenarioRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CodexNavigationRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CodexPublicSnapshotService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterCodexPublicSnapshotService",
@@ -259,8 +259,8 @@ func _check_static_composition(main: Control) -> void:
 	var ruleset_bridge := main.get_node_or_null("RuntimeServices/RulesetRuntimeBridge")
 	_expect(ruleset_bridge != null and ruleset_bridge.scene_file_path == "res://scenes/runtime/RulesetRuntimeBridge.tscn", "RuntimeServices owns the editable RulesetRuntimeBridge scene")
 	_expect(ruleset_bridge != null and ruleset_bridge.has_method("timing_rules") and ruleset_bridge.has_method("capability_rules") and ruleset_bridge.has_method("card_inventory_rules") and ruleset_bridge.has_method("debug_snapshot"), "RulesetRuntimeBridge exposes pure-data runtime APIs including card inventory policy")
-	var card_controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/CardResolutionRuntimeController")
-	_expect(card_controller != null and card_controller.scene_file_path == "res://scenes/runtime/CardResolutionRuntimeController.tscn", "RuntimeControllerHost owns the editable CardResolutionRuntimeController scene")
+	var card_controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardResolutionRuntimeController")
+	_expect(card_controller != null and card_controller.scene_file_path == "res://scenes/runtime/CardResolutionRuntimeController.tscn", "GameRuntimeCoordinator owns the editable CardResolutionRuntimeController scene")
 	_expect(card_controller != null and card_controller.has_method("tick") and card_controller.has_method("to_save_data") and card_controller.has_method("debug_snapshot"), "CardResolutionRuntimeController exposes timing, save, and debug APIs")
 	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
 	var solar_availability := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/SolarAvailabilityRuntimeService")
@@ -305,8 +305,6 @@ func _check_static_composition(main: Control) -> void:
 	var hand_interaction := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/PlayerHandInteractionRuntimeService")
 	var purchase_settlement := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictPurchaseSettlementRuntimeService")
 	var district_supply_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictSupplySnapshotService")
-	var scenario := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ScenarioRuntimeController")
-	var first_table_authored := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/FirstTableAuthoredRuntimeService")
 	var codex_navigation := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CodexNavigationRuntimeController")
 	var codex_public_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CodexPublicSnapshotService")
 	var monster_codex_public_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterCodexPublicSnapshotService")
@@ -326,11 +324,9 @@ func _check_static_composition(main: Control) -> void:
 	var solar_camera := embedded_map.get_node_or_null("PlanetSolarCameraController") if embedded_map != null else null
 	_expect(embedded_map != null and embedded_map.scene_file_path == PLANET_MAP_VIEW_SCENE and solar_camera != null and solar_camera.scene_file_path == PLANET_SOLAR_CAMERA_CONTROLLER and solar_camera.has_method("apply_public_solar_snapshot") and solar_camera.has_method("request_return_to_sun") and not solar_camera.has_method("to_save_data") and not solar_camera.has_method("apply_save_data"), "PlanetMapView statically owns the non-saving solar camera presentation controller")
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	var purchase_coordinator_source := FileAccess.get_file_as_string(
-		"res://scripts/runtime/game_runtime_coordinator.gd"
-	)
-	var map_injection_source := _function_source(main_source, "_set_map_view_data")
-	_expect(map_injection_source.contains("coordinator.solar_public_presentation_snapshot()") and map_injection_source.contains('target_view.call("set_solar_presentation_snapshot"') and map_injection_source.contains('target_view.call("set_solar_camera_motion_mode"') and not map_injection_source.contains("sun_turn_at") and not map_injection_source.contains("CardMarket"), "Main injects only Coordinator-owned public solar presentation and local motion preference into each runtime map")
+	for retired_cadence_symbol in ["var ui_timer", "var ui_map_refresh_timer", "var ui_full_refresh_timer", "var developer_balance_refresh_timer", "func _update_process_ui_refresh"]:
+		_expect(not main_source.contains(retired_cadence_symbol), "presentation cadence cutover retires main.gd symbol: %s" % retired_cadence_symbol)
+	_expect(not main_source.contains("func _set_map_view_data") and coordinator.has_method("advance_table_presentation") and coordinator.get_node_or_null("TablePresentationSourceOwner") != null and coordinator.get_node_or_null("TablePresentationRefreshPort") != null, "scene-owned presentation source and port replace Main map injection")
 	_expect(balance_diagnostics != null and balance_diagnostics.scene_file_path == GAMEPLAY_BALANCE_DIAGNOSTICS_SERVICE and balance_diagnostics.has_method("development_routes") and balance_diagnostics.has_method("card_budget_report") and balance_diagnostics.has_method("build_balance_report") and balance_diagnostics.has_method("build_developer_panel_snapshot"), "GameRuntimeCoordinator owns the read-only GameplayBalanceDiagnosticsRuntimeService scene")
 	_expect(balance_diagnostics_world_bridge != null and balance_diagnostics_world_bridge.scene_file_path == GAMEPLAY_BALANCE_DIAGNOSTICS_WORLD_BRIDGE and balance_diagnostics_world_bridge.has_method("bind_world") and balance_diagnostics_world_bridge.has_method("build_world_snapshot") and balance_diagnostics_world_bridge.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the non-mutating GameplayBalanceDiagnosticsWorldBridge scene")
 	var diagnostics_debug: Dictionary = balance_diagnostics.call("debug_snapshot") if balance_diagnostics != null else {}
@@ -369,7 +365,7 @@ func _check_static_composition(main: Control) -> void:
 	_expect(region_supply != null and region_supply.scene_file_path == REGION_SUPPLY_RUNTIME_CONTROLLER and region_supply.has_method("configure") and region_supply.has_method("public_rack_snapshot") and region_supply.has_method("prepare_slot_refill") and region_supply.has_method("commit_slot_refill") and region_supply.has_method("rollback_slot_refill") and region_supply.has_method("finalize_slot_refill") and region_supply.has_method("to_save_data") and region_supply.has_method("apply_save_data"), "GameRuntimeCoordinator owns the authoritative deterministic RegionSupplyRuntimeController")
 	_expect(player_mana != null and player_mana.scene_file_path == PLAYER_MANA_RUNTIME_CONTROLLER and player_mana.has_method("advance") and player_mana.has_method("commit_reservation") and player_mana.has_method("to_save_data"), "GameRuntimeCoordinator owns the single v0.6 six-color asset owner")
 	_expect(commodity_inventory != null and commodity_inventory.scene_file_path == COMMODITY_CARD_INVENTORY_RUNTIME_CONTROLLER and commodity_inventory.has_method("configure_market") and commodity_inventory.has_method("purchase_market_card") and commodity_inventory.has_method("play_core_card") and commodity_inventory.has_method("player_snapshot"), "GameRuntimeCoordinator owns the single v0.6 card inventory transaction authority")
-	_expect(production_state_adapter != null and production_state_adapter.has_method("bind_world") and production_state_adapter.has_method("actor_player_indices") and production_state_adapter.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the only v0.6 production player-state port")
+	_expect(production_state_adapter != null and production_state_adapter.has_method("set_world_session_state") and production_state_adapter.has_method("actor_player_indices") and production_state_adapter.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the only v0.6 production player-state port and consumes the scene-owned session state")
 	_expect(core_economic_adapter != null and core_economic_adapter.has_method("configure") and core_economic_adapter.has_method("play_card") and core_economic_adapter.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the shared v0.6 core-economic dispatch adapter")
 	_expect(hand_interaction != null and hand_interaction.scene_file_path == "res://scenes/runtime/PlayerHandInteractionRuntimeService.tscn" and hand_interaction.has_method("plan_interaction") and hand_interaction.has_method("commit_interaction") and hand_interaction.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the editable PlayerHandInteractionRuntimeService scene and orchestration/cash/event-intent API")
 	_expect(purchase_settlement != null and purchase_settlement.scene_file_path == "res://scenes/runtime/DistrictPurchaseSettlementRuntimeService.tscn" and purchase_settlement.has_method("plan_purchase") and purchase_settlement.has_method("commit_purchase") and purchase_settlement.has_method("validate_discard"), "GameRuntimeCoordinator owns the editable DistrictPurchaseSettlementRuntimeService scene")
@@ -386,13 +382,9 @@ func _check_static_composition(main: Control) -> void:
 		and main_source.contains("func _district_supply_listing(")
 		and main_source.contains("func _district_supply_card_ids(")
 		and main_source.contains("func _district_supply_rack_revision(")
-		and buy_source.contains("purchase_region_supply_card")
-		and buy_source.contains("v06_card_player_snapshot")
+		and buy_source.contains("plan_district_purchase_settlement")
+		and buy_source.contains("commit_district_purchase_with_region_supply")
 		and buy_source.contains("_district_supply_listing")
-		and not buy_source.contains("plan_district_purchase_settlement")
-		and not buy_source.contains("commit_district_purchase_with_region_supply")
-		and not main_source.contains("func _district_purchase_settlement_request(")
-		and not purchase_coordinator_source.contains("func commit_district_purchase_with_region_supply(")
 		and not buy_source.contains("player[\"cash\"] =")
 		and not buy_source.contains("_record_player_card_spend(")
 		and not main_source.contains("func _assign_district_card_choices(")
@@ -403,19 +395,16 @@ func _check_static_composition(main: Control) -> void:
 		and not main_source.contains("district[\"card_sources\"]"),
 		"Main consumes the scene-owned RegionSupply rack and purchase refill lifecycle without restoring district shadow supply or guarantee-slot owners"
 	)
-	_expect(main_source.contains("func _apply_player_hand_disrupt(") and main_source.contains("func _apply_player_hand_steal(") and main_source.contains("func _resolve_player_hand_interaction(") and not main_source.contains("func _take_private_hand_card_from_player(") and not main_source.contains("func _lock_private_hand_card_for_player(") and not main_source.contains("func _transfer_private_hand_card_between_players("), "Sprint 33 keeps compatibility entry points while deleting the three legacy interaction mutation helpers")
-	var disrupt_source := _function_source(main_source, "_apply_player_hand_disrupt")
-	var steal_source := _function_source(main_source, "_apply_player_hand_steal")
-	var interaction_adapter_source := _function_source(main_source, "_resolve_player_hand_interaction")
+	var effect_router_source := FileAccess.get_file_as_string("res://scripts/runtime/card_effect_runtime_router.gd")
+	_expect(not main_source.contains("func _apply_player_hand_disrupt(") and not main_source.contains("func _apply_player_hand_steal(") and not main_source.contains("func _resolve_player_hand_interaction(") and effect_router_source.contains("func _resolve_player_interaction("), "typed effect routing deletes the three legacy Main interaction entry points")
 	var interaction_service_source := FileAccess.get_file_as_string("res://scripts/runtime/player_hand_interaction_runtime_service.gd")
-	_expect(disrupt_source.contains("_resolve_player_hand_interaction") and steal_source.contains("_resolve_player_hand_interaction") and interaction_adapter_source.contains("plan_player_hand_interaction") and interaction_adapter_source.contains("commit_player_hand_interaction") and not disrupt_source.contains("target_cash_penalty") and not steal_source.contains("steal_fail_cash") and interaction_service_source.contains("_inventory_service.call(\"commit_remove\"") and interaction_service_source.contains("_inventory_service.call(\"commit_lock\"") and interaction_service_source.contains("_inventory_service.call(\"commit_transfer\""), "Player-hand interaction entry points are thin and the scene service delegates all slot mutation to CardInventoryRuntimeService")
-	var queue_submit_source := _function_source(main_source, "_queue_skill_resolution")
-	var queue_lock_source := _function_source(main_source, "_lock_card_resolution_batch")
-	var queue_start_source := _function_source(main_source, "_start_next_card_resolution")
-	var queue_promote_source := _function_source(main_source, "_promote_next_card_resolution_batch")
-	_expect(not main_source.contains("var card_resolution_queue := []") and not main_source.contains("var next_card_resolution_queue := []") and not main_source.contains("var active_card_resolution := {}") and not main_source.contains("var card_resolution_sequence := 0") and queue_submit_source.contains("plan_card_resolution_queue_submission") and queue_submit_source.contains("commit_card_inventory_queue_commit") and queue_submit_source.contains("commit_card_resolution_queue_submission") and queue_lock_source.contains("service.call(\"lock_batch\"") and queue_start_source.contains("service.call(\"start_next\"") and queue_promote_source.contains("service.call(\"promote_next_batch\""), "Sprint 35 deletes main.gd queue storage and routes queue lifecycle through the single scene service")
-	var execution_complete_source := _function_source(main_source, "_complete_active_card_resolution")
-	var execution_effect_adapter_source := _function_source(main_source, "_apply_card_resolution_effect_request")
+	_expect(effect_router_source.contains("_hand_interaction_service.plan_interaction") and effect_router_source.contains("_hand_interaction_service.commit_interaction") and interaction_service_source.contains("_inventory_service.call(\"commit_remove\"") and interaction_service_source.contains("_inventory_service.call(\"commit_lock\"") and interaction_service_source.contains("_inventory_service.call(\"commit_transfer\""), "typed effect router delegates all player-interaction slot mutation to CardInventoryRuntimeService")
+	var queue_submit_source := FileAccess.get_file_as_string("res://scripts/runtime/card_play_submission_runtime_controller.gd")
+	var transition_sink_source := FileAccess.get_file_as_string("res://scripts/runtime/card_resolution_transition_sink.gd")
+	var execution_port_source := FileAccess.get_file_as_string("res://scripts/runtime/card_resolution_execution_world_bridge.gd")
+	_expect(not main_source.contains("var card_resolution_queue := []") and not main_source.contains("var next_card_resolution_queue := []") and not main_source.contains("var active_card_resolution := {}") and not main_source.contains("var card_resolution_sequence := 0") and not main_source.contains("func _queue_skill_resolution(") and queue_submit_source.contains("plan_card_resolution_queue_submission") and queue_submit_source.contains("commit_card_inventory_queue_commit") and queue_submit_source.contains("commit_card_resolution_queue_submission") and transition_sink_source.contains("func _lock_batch(") and transition_sink_source.contains("func _start_next(") and execution_port_source.contains("func lock_batch_transition(") and execution_port_source.contains("func start_next_transition("), "typed submission owns queue admission while TransitionSink routes lifecycle to the single queue service")
+	var execution_complete_source := transition_sink_source
+	var execution_effect_adapter_source := effect_router_source
 	var execution_service_source := FileAccess.get_file_as_string("res://scripts/runtime/card_resolution_execution_runtime_service.gd")
 	var family_service_source := FileAccess.get_file_as_string("res://scripts/runtime/card_economy_product_route_effect_runtime_service.gd")
 	var formula_service_source := FileAccess.get_file_as_string("res://scripts/runtime/card_economy_product_route_formula_runtime_service.gd")
@@ -437,71 +426,18 @@ func _check_static_composition(main: Control) -> void:
 	for function_name in retired_eligibility_functions:
 		eligibility_cutover_checked = eligibility_cutover_checked and not main_source.contains("func %s(" % function_name)
 	_expect(eligibility_cutover_checked, "Sprint 43 removes parallel card eligibility, requirement, target-trait, and counter-trait ownership from main.gd")
-	_expect(execution_complete_source.contains("plan_card_resolution_execution") and execution_complete_source.contains("advance_card_resolution_execution") and execution_complete_source.contains("finalize_card_resolution_execution") and execution_effect_adapter_source.contains("_resolve_targeted_skill") and execution_effect_adapter_source.contains("_apply_player_hand_disrupt") and execution_service_source.contains("INTENT_RELEASE_ACTIVE") and execution_service_source.contains("INTENT_DISPATCH_EFFECT"), "Sprint 37 routes lifecycle through Execution Service while main retains concrete world adapters")
+	_expect(execution_complete_source.contains("func _complete_active(") and execution_complete_source.contains("_execution.plan_execution") and execution_complete_source.contains("_execution.finalize_execution") and not main_source.contains("func _complete_active_card_resolution(") and execution_effect_adapter_source.contains("_resolve_targeted_skill") and execution_effect_adapter_source.contains("_resolve_player_interaction") and execution_service_source.contains("INTENT_RELEASE_ACTIVE") and execution_service_source.contains("INTENT_DISPATCH_EFFECT") and not main_source.contains("func _apply_card_resolution_effect_request("), "typed TransitionSink routes lifecycle through Execution Service and scene-owned effect router")
 	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
 	var v04_catalog_scene_source := FileAccess.get_file_as_string(CARD_RUNTIME_CATALOG_SERVICE)
 	var commodity_inventory_source := FileAccess.get_file_as_string("res://scripts/runtime/commodity_card_inventory_runtime_controller.gd")
 	var core_economic_adapter_source := FileAccess.get_file_as_string("res://scripts/cards/v06/production/core_economic_card_runtime_adapter_v06.gd")
-	var namespace_cutover_checked := execution_effect_adapter_source.contains("plan_card_economy_product_route_effect") and execution_effect_adapter_source.contains("finalize_card_economy_product_route_effect") and family_service_source.contains("HANDLER_FAMILIES")
+	var namespace_cutover_checked := execution_effect_adapter_source.contains("_economy_service.plan_effect") and execution_effect_adapter_source.contains("_economy_service.finalize_effect") and family_service_source.contains("HANDLER_FAMILIES")
 	namespace_cutover_checked = namespace_cutover_checked and formula_service_source.contains("FORMULA_IDS") and not execution_service_source.contains("CoreEconomicCardRuntimeAdapterV06") and not execution_service_source.contains("CommodityCardInventoryRuntimeController")
 	namespace_cutover_checked = namespace_cutover_checked and v04_catalog_scene_source.contains("card_runtime_catalog_v04.tres") and not v04_catalog_scene_source.contains("card_runtime_catalog_v06")
 	namespace_cutover_checked = namespace_cutover_checked and coordinator_source.contains("func play_v06_runtime_card(") and coordinator_source.contains('== "core_economic_card_runtime"') and coordinator_source.contains('inventory.call("play_core_card"')
 	namespace_cutover_checked = namespace_cutover_checked and commodity_inventory_source.contains("func play_core_card(") and core_economic_adapter_source.contains("func play_card(") and main_source.contains("func _play_v06_runtime_card_for_player(")
 	_expect(namespace_cutover_checked, "legacy v0.4 effect/formula services stay isolated while v0.6 core cards use the single CardFlow transaction facade")
 	_expect(not main_source.contains("func _lowest_level_city_product_index(") and not main_source.contains("func _product_futures_balance_") and not main_source.contains("PRODUCT_FUTURES_PAYOUT_UNIT") and not execution_service_source.contains("CardEconomyProductRouteFormulaRuntimeService"), "retired formula ownership stays absent from main and the Execution Service remains formula-agnostic")
-	_expect(scenario != null and scenario.scene_file_path == "res://scenes/runtime/ScenarioRuntimeController.tscn" and scenario.has_method("start_scenario") and scenario.has_method("complete_signal") and scenario.has_method("viewer_action_log"), "GameRuntimeCoordinator owns the editable ScenarioRuntimeController scene")
-	_expect(first_table_authored != null and first_table_authored.scene_file_path == "res://scenes/runtime/FirstTableAuthoredRuntimeService.tscn" and first_table_authored.has_method("resolve_content_catalog") and first_table_authored.has_method("compose_runtime_content") and first_table_authored.has_method("contextualize_phase") and first_table_authored.has_method("pacing_profile") and first_table_authored.has_method("evaluate_pacing") and first_table_authored.has_method("supply_plan"), "GameRuntimeCoordinator owns the editable FirstTableAuthoredRuntimeService scene and its authored pacing API")
-	var first_table_service_source := FileAccess.get_file_as_string("res://scripts/runtime/first_table_authored_runtime_service.gd")
-	var first_table_content_source := _function_source(main_source, "_first_table_runtime_content_snapshot")
-	var first_table_buyable_source := _function_source(main_source, "_first_buyable_district_card")
-	var first_table_purchase_target_source := _function_source(main_source, "_first_run_coach_rack_purchase_target")
-	var retired_first_table_symbols := [
-		"FIRST_RUN_TEACHING_CARD_NAME",
-		"FIRST_RUN_TEACHING_CARD_SOURCE",
-		"FIRST_TABLE_FOLLOWUP_CARD_SOURCE",
-		"_first_table_resolved_content_catalog",
-		"_first_table_followup_card_name",
-		"_first_table_teaching_product_for_district",
-		"_first_table_starter_monster_name",
-		"_first_actionable_teachable_hand_slot",
-		"_first_table_accessible_land_district",
-		"_first_table_followup_hand_slot",
-		"_buy_first_table_followup_card",
-		"_first_teachable_buyable_district_card",
-		"_first_run_teaching_card_name",
-		"_ensure_first_run_teaching_card_supply",
-		"_first_run_card_is_teachable_after_purchase",
-		"_first_run_skill_has_direct_teaching_profile",
-		"_first_run_skill_is_direct_teachable",
-		"_ensure_first_run_teachable_hand_card",
-		"_first_teachable_buyable_district_for_player",
-		"coach_buy_followup_card",
-		"coach_play_followup_card",
-	]
-	var first_table_legacy_absent := true
-	for retired_symbol in retired_first_table_symbols:
-		first_table_legacy_absent = first_table_legacy_absent and not main_source.contains(str(retired_symbol))
-	_expect(
-		first_table_legacy_absent
-		and first_table_content_source.contains("region_supply_public_rack")
-		and first_table_content_source.contains("public_region_supply_rack_snapshot")
-		and first_table_buyable_source.contains("_first_run_coach_rack_purchase_target")
-		and first_table_purchase_target_source.contains("followup_rack_recommendation")
-		and first_table_purchase_target_source.contains("region_supply_public_rack")
-		and first_table_service_source.contains('snapshot.get("regions", [])')
-		and first_table_service_source.contains('region.get("slots", [])')
-		and first_table_service_source.contains("PUBLIC_RACK_FORBIDDEN_KEYS"),
-		"First-table content reads the native public RegionSupply rack and physically removes the fixed-card teaching chain"
-	)
-	_expect(
-		buy_source.contains('first_table_phase_before_purchase == "buy_followup"')
-		and queue_submit_source.contains('first_table_phase_before_play == "play_followup"')
-		and buy_source.find("first_table_phase_before_purchase =") < buy_source.find('_complete_scenario_signal("card_bought"')
-		and queue_submit_source.find("first_table_phase_before_play =") < queue_submit_source.find('_complete_scenario_signal("card_played"')
-		and not buy_source.contains("card_family_id")
-		and not queue_submit_source.contains("_first_table_followup_card_name"),
-		"First-table follow-up signals depend on the local-human phase before successful purchase/queue advancement, never on a fixed card name"
-	)
 	_expect(codex_navigation != null and codex_navigation.scene_file_path == "res://scenes/runtime/CodexNavigationRuntimeController.tscn" and codex_navigation.has_method("navigation_snapshot") and codex_navigation.has_method("to_legacy_save_snapshot") and codex_navigation.has_method("apply_legacy_save_snapshot"), "GameRuntimeCoordinator owns the editable CodexNavigationRuntimeController scene")
 	_expect(codex_public_snapshot != null and codex_public_snapshot.scene_file_path == "res://scenes/runtime/CodexPublicSnapshotService.tscn" and codex_public_snapshot.has_method("compose_role") and codex_public_snapshot.has_method("compose_region"), "GameRuntimeCoordinator owns the editable CodexPublicSnapshotService scene")
 	_expect(monster_codex_public_snapshot != null and monster_codex_public_snapshot.scene_file_path == "res://scenes/runtime/MonsterCodexPublicSnapshotService.tscn" and monster_codex_public_snapshot.has_method("compose"), "GameRuntimeCoordinator owns the editable MonsterCodexPublicSnapshotService scene")
@@ -555,8 +491,6 @@ func _check_runtime_snapshot(main: Control, phase: String) -> void:
 	var core_economic_snapshot: Dictionary = coordinator_snapshot.get("core_economic_card_runtime_adapter_v06", {}) if coordinator_snapshot.get("core_economic_card_runtime_adapter_v06", {}) is Dictionary else {}
 	var region_snapshot: Dictionary = coordinator_snapshot.get("region_infrastructure_runtime", {}) if coordinator_snapshot.get("region_infrastructure_runtime", {}) is Dictionary else {}
 	var victory_snapshot: Dictionary = coordinator_snapshot.get("victory_control_runtime", {}) if coordinator_snapshot.get("victory_control_runtime", {}) is Dictionary else {}
-	var scenario_snapshot: Dictionary = coordinator_snapshot.get("scenario_runtime", {}) if coordinator_snapshot.get("scenario_runtime", {}) is Dictionary else {}
-	var first_table_snapshot: Dictionary = coordinator_snapshot.get("first_table_authored_runtime", {}) if coordinator_snapshot.get("first_table_authored_runtime", {}) is Dictionary else {}
 	var card_presentation_snapshot: Dictionary = coordinator_snapshot.get("card_presentation", {}) if coordinator_snapshot.get("card_presentation", {}) is Dictionary else {}
 	var table_viewmodel_snapshot: Dictionary = coordinator_snapshot.get("game_table_viewmodel", {}) if coordinator_snapshot.get("game_table_viewmodel", {}) is Dictionary else {}
 	_expect(scheduler_snapshot.get("priority_order", []) == ["monster_wager", "counter_response", "contract_response", "other_choice", "public_bid"], "%s preserves RulesetRuntimeBridge priorities and appends public_bid as the lowest forced-decision priority" % phase)
@@ -576,8 +510,6 @@ func _check_runtime_snapshot(main: Control, phase: String) -> void:
 	_expect(bool(region_snapshot.get("controller_ready", false)) and str(region_snapshot.get("ruleset_id", "")) == "v0.6" and bool(region_snapshot.get("facility_rollback_atomic_ready", false)) and not bool(region_snapshot.get("has_heat_state", true)), "%s configures RegionInfrastructure as the v0.6 facility/shared-life owner" % phase)
 	_expect(bool(victory_snapshot.get("controller_ready", false)) and str(victory_snapshot.get("ruleset_id", "")) == "v0.6" and bool(victory_snapshot.get("dynamic_denominator_enabled", false)) and not bool(victory_snapshot.get("fixed_depth_table_present", true)), "%s configures the unique v0.6 Victory owner" % phase)
 	_expect(not coordinator_snapshot.has("city_development_runtime") and not coordinator_snapshot.has("economy_cashflow") and not coordinator_snapshot.has("industry_capacity_runtime"), "%s does not revive retired city-project, parallel cashflow, or industry-capacity owners" % phase)
-	_expect(bool(scenario_snapshot.get("controller_ready", false)) and bool(scenario_snapshot.get("controller_authoritative", false)), "%s finds and configures the scene-owned scenario runtime authority" % phase)
-	_expect(bool(first_table_snapshot.get("service_ready", false)) and bool(first_table_snapshot.get("service_authoritative", false)) and not bool(first_table_snapshot.get("legacy_authored_fallback_used", true)), "%s configures scene-owned first_table authored runtime authority" % phase)
 	_expect(bool(card_presentation_snapshot.get("service_ready", false)) and bool(card_presentation_snapshot.get("service_authoritative", false)) and bool(card_presentation_snapshot.get("owns_card_use_case", false)) and bool(card_presentation_snapshot.get("owns_hand_card_viewmodel", false)) and not bool(card_presentation_snapshot.get("calculates_card_price", true)) and not bool(card_presentation_snapshot.get("calculates_play_legality", true)) and not bool(card_presentation_snapshot.get("mutates_game_state", true)), "%s configures scene-owned card presentation without moving price, legality, or mutation rules" % phase)
 	_expect(bool(table_viewmodel_snapshot.get("service_ready", false)) and bool(table_viewmodel_snapshot.get("service_authoritative", false)) and bool(table_viewmodel_snapshot.get("owns_table_snapshot_normalization", false)) and bool(table_viewmodel_snapshot.get("owns_right_inspector_assembly", false)) and bool(table_viewmodel_snapshot.get("owns_public_track_viewmodels", false)) and bool(table_viewmodel_snapshot.get("owns_resolution_overlay_badges", false)) and not bool(table_viewmodel_snapshot.get("calculates_play_legality", true)) and not bool(table_viewmodel_snapshot.get("mutates_game_state", true)), "%s configures scene-owned TableSnapshot, public track, resolution-overlay badge, and RightInspector assembly" % phase)
 	_expect(bool(card_presentation_snapshot.get("owns_resolution_presentation", false)), "%s configures scene-owned card-resolution cinematic presentation" % phase)
@@ -607,7 +539,7 @@ func _check_runtime_signal_bindings(main: Control) -> void:
 
 
 func _check_runtime_controller_authority(main: Control) -> void:
-	var controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/CardResolutionRuntimeController")
+	var controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardResolutionRuntimeController")
 	if controller == null:
 		return
 	_expect(is_equal_approx(float(controller.get("total_window_seconds")), 30.0) and is_equal_approx(float(controller.get("planning_seconds")), 20.0) and is_equal_approx(float(controller.get("public_bid_seconds")), 5.0) and is_equal_approx(float(controller.get("lock_seconds")), 5.0) and is_equal_approx(float(controller.get("opening_total_window_seconds")), 45.0) and is_equal_approx(float(controller.get("opening_planning_seconds")), 35.0), "production main consumes the v0.6 standard and opening shared-window cadence")
@@ -808,29 +740,6 @@ func _check_runtime_card_authoring_assets() -> void:
 	var workflow_doc := FileAccess.get_file_as_string(RUNTIME_CARD_AUTHORING_WORKFLOW_DOC)
 	ready = ready and workflow_doc.contains("36/36") and workflow_doc.contains("editor-only") and workflow_doc.contains("CardRuntimeCatalogService")
 	_expect(ready, "Sprint 59 provides Inspector validation, Workspace navigation, and user-scoped change review while staying outside main/Coordinator runtime composition")
-
-
-func _check_global_ui_navigation_characterization_assets() -> void:
-	var ready := ResourceLoader.exists(GLOBAL_UI_NAVIGATION_CHARACTERIZATION_REGISTRY) and FileAccess.file_exists(GLOBAL_UI_NAVIGATION_RUNTIME_CONTRACT) and ResourceLoader.exists(MENU_SHELL_RUNTIME_CUTOVER_BENCH)
-	var registry_script := load(GLOBAL_UI_NAVIGATION_CHARACTERIZATION_REGISTRY) as Script
-	var registry: RefCounted = registry_script.new() if registry_script != null else null
-	var cases: Array = registry.call("characterization_cases") if registry != null and registry.has_method("characterization_cases") else []
-	var surfaces: Array = registry.call("surface_registry") if registry != null and registry.has_method("surface_registry") else []
-	var deletion_candidates: Array = registry.call("deletion_candidates") if registry != null and registry.has_method("deletion_candidates") else []
-	ready = ready and cases.size() == 32 and surfaces.size() >= 15 and deletion_candidates.size() == 8 and _is_pure_data(cases) and _is_pure_data(surfaces) and _is_pure_data(deletion_candidates)
-	var bench_packed := load(MENU_SHELL_RUNTIME_CUTOVER_BENCH) as PackedScene
-	var bench := bench_packed.instantiate() if bench_packed != null else null
-	var preview: Dictionary = bench.call("build_global_navigation_manifest_preview") if bench != null and bench.has_method("build_global_navigation_manifest_preview") else {}
-	ready = ready and bench != null and bench.has_method("global_navigation_cases") and int(preview.get("record_count", 0)) == 32 and _is_pure_data(preview)
-	if bench != null:
-		bench.free()
-	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	var input_source := _function_source(main_source, "_unhandled_input")
-	ready = ready and input_source.contains("full_map_overlay") and input_source.contains("menu_overlay") and input_source.contains("_open_pause_menu()") and not input_source.contains("ui_cancel")
-	ready = ready and not main_source.contains("GlobalUiNavigationRuntimeController") and not main_source.contains("func global_navigation_snapshot(")
-	var contract := FileAccess.get_file_as_string(GLOBAL_UI_NAVIGATION_RUNTIME_CONTRACT)
-	ready = ready and contract.contains("32/32 cases observed") and contract.contains("19/32 cases already aligned") and contract.contains("Sprint 68 deletion gate")
-	_expect(ready, "Sprint 67 characterizes 32 real global navigation cases without adding a parallel runtime owner or changing main.gd behavior")
 
 
 func _check_ruleset_v05_foundation_assets() -> void:

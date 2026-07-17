@@ -46,7 +46,7 @@ func _run() -> void:
 	var adapter_debug: Dictionary = adapter.call("debug_snapshot")
 	_expect(not bool(adapter_debug.get("owns_victory_rules", true)) and not bool(adapter_debug.get("owns_cash", true)) and not bool(adapter_debug.get("exposes_exact_cash", true)), "public source adapter owns no victory, cash, or exact-balance state")
 
-	var players: Array = (main.get("players") as Array).duplicate(true)
+	var players: Array = (((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
 	_expect(players.size() >= 2 and bool((players[1] as Dictionary).get("is_ai", false)), "real new game provides an AI seat for the private cash sentinel")
 	if players.size() < 2:
 		main.queue_free()
@@ -57,7 +57,7 @@ func _run() -> void:
 	ai_player["cash"] = int(PRIVATE_CASH_CENTS / 100)
 	ai_player["cash_cents"] = PRIVATE_CASH_CENTS
 	players[1] = ai_player
-	main.set("players", players)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 
 	var controller := coordinator.call("victory_control_runtime_controller") as Node
 	var world: Dictionary = coordinator.call("victory_control_world_snapshot")
@@ -81,8 +81,9 @@ func _run() -> void:
 	var public_source: Dictionary = composition.call("compose_public_source", public_context)
 	var public_snapshot: Dictionary = coordinator.call("compose_final_settlement_snapshot", public_source)
 	var public_summary := str(composition.call("latest_public_summary"))
-	var standings_source: Dictionary = main.call("_standings_public_source_snapshot")
-	var root_summary := str(standings_source.get("final_summary_text", ""))
+	var standings_query := main.get_node_or_null("RuntimeServices/StandingsPublicQueryPort")
+	var standings_snapshot: Dictionary = standings_query.call("snapshot_for_authorized_viewer", 960.0) if standings_query != null else {}
+	var root_summary := str(standings_snapshot.get("summary_text", ""))
 
 	var key_paths: Array[String] = []
 	for named_value in [
@@ -119,16 +120,19 @@ func _run() -> void:
 	var forged_log: Dictionary = adapter.call("public_outcome_log_payload", forged_public, participant_names)
 	_expect(not _contains_exact_value(forged_source, PRIVATE_CASH_CENTS) and not _contains_exact_value(forged_log, PRIVATE_CASH_TEXT), "cash injected without the authoritative visibility state fails closed")
 
-	var raw_log_count := (main.get("log_lines") as Array).size()
-	main.call("_on_victory_outcome_applied", receipt)
+	var raw_log_count := (coordinator.call("presentation_recent_public_log_entries", 90) as Array).size()
+	var first_outcome_count := int(((coordinator.table_presentation_query_ports().debug_snapshot().get("victory_receipts", {}) as Dictionary)).get("outcome_receipt_count", 0))
+	coordinator.call("_apply_victory_outcome_receipt", receipt)
 	var replay_logs: Array = main.call("_runtime_public_log_snapshot")
 	var replay_paths: Array[String] = []
 	_collect_exact_value_paths(replay_logs, [PRIVATE_CASH_CENTS, PRIVATE_CASH_TEXT, str(PRIVATE_CASH_CENTS), "987654321"], "replay_logs", replay_paths)
-	_expect((main.get("log_lines") as Array).size() >= raw_log_count and replay_paths.is_empty(), "reapplying an outcome never adds a sensitive public log")
-	var invalid_log_count := (main.get("log_lines") as Array).size()
-	main.call("_on_victory_outcome_applied", {})
-	main.call("_on_victory_outcome_applied", {"outcome_id": "invalid", "rankings": []})
-	_expect((main.get("log_lines") as Array).size() == invalid_log_count, "empty and malformed outcomes fail closed without public logs")
+	_expect((coordinator.call("presentation_recent_public_log_entries", 90) as Array).size() >= raw_log_count and replay_paths.is_empty(), "reapplying an outcome never adds a sensitive public log")
+	var replay_outcome_count := int(((coordinator.table_presentation_query_ports().debug_snapshot().get("victory_receipts", {}) as Dictionary)).get("outcome_receipt_count", 0))
+	_expect(first_outcome_count == 1 and replay_outcome_count == first_outcome_count, "session outcome, AI learning handoff, and victory presentation remain exact-once on replay")
+	var invalid_log_count := (coordinator.call("presentation_recent_public_log_entries", 90) as Array).size()
+	coordinator.call("_apply_victory_outcome_receipt", {})
+	coordinator.call("_apply_victory_outcome_receipt", {"outcome_id": "invalid", "rankings": []})
+	_expect((coordinator.call("presentation_recent_public_log_entries", 90) as Array).size() == invalid_log_count, "empty and malformed outcomes fail closed without public logs")
 
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 	var main_scene_source := FileAccess.get_file_as_string(MAIN_SCENE_PATH)

@@ -62,8 +62,8 @@ func _test_anonymous_simultaneous_card_policy(main: Node, ai: Node, queue: Node,
 		card.erase("player")
 		player["slots"] = [card]
 		players[player_index] = player
-	main.set("players", players)
-	main.set("selected_district", _first_alive_district(main))
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = _first_alive_district(main)
 	main.set("card_resolution_force_duration", 5.0)
 	main.set("card_resolution_force_simultaneous_window", 0.5)
 	ai.set("ai_card_decision_enabled", true)
@@ -102,7 +102,7 @@ func _test_phase_counter_response(main: Node, ai: Node, queue: Node, timing: Nod
 	_expect(own_index >= 0 and rival_index >= 0, "counter fixture finds two live land districts")
 	if own_index < 0 or rival_index < 0:
 		return
-	var districts: Array = (main.get("districts") as Array).duplicate(true)
+	var districts: Array = (((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	var own_district := (districts[own_index] as Dictionary).duplicate(true)
 	var own_city := _city_fixture(1, "J反制自城", 840, 2)
 	own_district["city"] = own_city
@@ -112,7 +112,7 @@ func _test_phase_counter_response(main: Node, ai: Node, queue: Node, timing: Nod
 	var rival_district := (districts[rival_index] as Dictionary).duplicate(true)
 	rival_district["city"] = _city_fixture(2, "J反制竞城", 420, 0)
 	districts[rival_index] = rival_district
-	main.set("districts", districts)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 	_expect(not (main.call("_district_city", own_index) as Dictionary).is_empty(), "counter fixture exposes the AI defended city to the live owner")
 	_expect(not (main.call("_district_city", rival_index) as Dictionary).is_empty(), "counter fixture exposes the rival city to the live owner")
 
@@ -130,7 +130,7 @@ func _test_phase_counter_response(main: Node, ai: Node, queue: Node, timing: Nod
 	human["slots"] = [{"name": PRIVATE_HAND_SENTINEL, "kind": "private_test_only"}]
 	human["discard"] = [{"name": PRIVATE_DISCARD_SENTINEL, "kind": "private_test_only"}]
 	players[0] = human
-	main.set("players", players)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 
 	var active_entry := {
 		"player_index": 2,
@@ -157,7 +157,7 @@ func _test_phase_counter_response(main: Node, ai: Node, queue: Node, timing: Nod
 	changed_human["slots"] = [{"name": "%s_CHANGED" % PRIVATE_HAND_SENTINEL, "kind": "private_test_only"}]
 	changed_human["discard"] = [{"name": "%s_CHANGED" % PRIVATE_DISCARD_SENTINEL, "kind": "private_test_only"}]
 	players_changed[0] = changed_human
-	main.set("players", players_changed)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players_changed
 	var plan_after: Dictionary = ai.call("build_response_plan", "counter_response", 1, {})
 	_expect(bool(plan_before.get("planned", false)) and plan_before == plan_after, "phase-response plan is invariant to another player's private hand and discard")
 	_expect(str((plan_before.get("selected", {}) as Dictionary).get("policy_kind", "")) == "counter_response", "AI owner selects the live counter-response policy")
@@ -174,12 +174,12 @@ func _test_phase_counter_response(main: Node, ai: Node, queue: Node, timing: Nod
 
 
 func _players(main: Node) -> Array:
-	var value: Variant = main.get("players")
+	var value: Variant = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players
 	return (value as Array).duplicate(true) if value is Array else []
 
 
 func _first_alive_district(main: Node) -> int:
-	var districts: Array = main.get("districts") if main.get("districts") is Array else []
+	var districts: Array = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts if ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts is Array else []
 	for index in range(districts.size()):
 		if districts[index] is Dictionary and not bool((districts[index] as Dictionary).get("destroyed", false)):
 			return index
@@ -187,7 +187,7 @@ func _first_alive_district(main: Node) -> int:
 
 
 func _first_empty_land_district(main: Node, excluded: Array) -> int:
-	var districts: Array = main.get("districts") if main.get("districts") is Array else []
+	var districts: Array = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts if ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts is Array else []
 	for index in range(districts.size()):
 		if excluded.has(index) or not (districts[index] is Dictionary):
 			continue

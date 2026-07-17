@@ -5,6 +5,9 @@ class_name AiRuntimeWorldBridge
 signal intent_routed(intent: Dictionary, receipt: Dictionary)
 
 var _world: Node
+var _rng_service: RunRngService
+var _table_selection_state: TableSelectionState
+var _world_session_state: WorldSessionState
 var _routed_intent_count := 0
 var _failed_intent_count := 0
 
@@ -13,11 +16,42 @@ func bind_world(world: Node) -> void:
 	_world = world
 
 
+func set_rng_service(service: RunRngService) -> void:
+	_rng_service = service
+
+
+func set_table_selection_state(state: TableSelectionState) -> void:
+	_table_selection_state = state
+
+
+func set_world_session_state(state: WorldSessionState) -> void:
+	_world_session_state = state
+
+
+func world_session_state() -> WorldSessionState:
+	return _world_session_state
+
+
+func shared_rng() -> RunRngService:
+	return _rng_service
+
+
+func table_selection_state() -> TableSelectionState:
+	return _table_selection_state
+
+
 func has_world() -> bool:
 	return _world != null and is_instance_valid(_world)
 
 
 func read_world_value(property_name: StringName, default_value: Variant = null) -> Variant:
+	match property_name:
+		&"players":
+			return _world_session_state.players if _world_session_state != null else default_value
+		&"districts":
+			return _world_session_state.districts if _world_session_state != null else default_value
+		&"game_time":
+			return _world_session_state.game_time if _world_session_state != null else default_value
 	if not has_world():
 		return default_value
 	var value: Variant = _world.get(property_name)
@@ -25,6 +59,22 @@ func read_world_value(property_name: StringName, default_value: Variant = null) 
 
 
 func write_world_value(property_name: StringName, value: Variant) -> bool:
+	match property_name:
+		&"players":
+			if _world_session_state != null and value is Array:
+				_world_session_state.players = value
+				return true
+			return false
+		&"districts":
+			if _world_session_state != null and value is Array:
+				_world_session_state.districts = value
+				return true
+			return false
+		&"game_time":
+			if _world_session_state != null:
+				_world_session_state.game_time = float(value)
+				return true
+			return false
 	if not has_world():
 		return false
 	_world.set(property_name, value)
@@ -65,6 +115,9 @@ func route_intent(intent: Dictionary) -> Dictionary:
 func debug_snapshot() -> Dictionary:
 	return {
 		"bridge_ready": has_world(),
+		"rng_service_ready": _rng_service != null,
+		"table_selection_state_ready": _table_selection_state != null,
+		"world_session_state_ready": _world_session_state != null,
 		"routed_intent_count": _routed_intent_count,
 		"failed_intent_count": _failed_intent_count,
 		"owns_ai_state": false,

@@ -1,0 +1,122 @@
+{
+  "schema_version": 2,
+  "status": "RUNTIME_LOOP_PREFLIGHT_BLOCKED",
+  "branch": "codex/scene-first-remove-main-gd",
+  "start_sha": "297ed167bd0e656aef00a08c68b1edfcadd59474",
+  "audited_head_sha": "8af35b1ed8c3637f2222a844147e4566360071d5",
+  "audited_main_process": "res://scripts/main.gd::_process",
+  "production_runtime_loop_created": false,
+  "double_run_path_created": false,
+  "prerequisites": [
+    {"id": "forced_decision_candidate_sources", "status": "cut_over", "commit": "90d2989"},
+    {"id": "card_resolution_frame_driver", "status": "cut_over", "commit": "94cbdce"},
+    {"id": "card_cooldown_runtime_owner", "status": "cut_over", "commit": "0eeed48"},
+    {"id": "visual_cue_runtime_owner", "status": "cut_over", "commit": "ddfeacd"},
+    {"id": "table_presentation_refresh_scheduler", "status": "cut_over", "commit": "6383646"}
+  ],
+  "time_semantics": {
+    "status": "GO",
+    "production_multiplier_values": [0, 1],
+    "runtime_pacing_state_required": false,
+    "ordinary_pause_owner": "GameSessionRuntimeController",
+    "world_clock_owner": "WorldEffectiveClockRuntimeController",
+    "game_time_projection_owner": "WorldSessionState",
+    "qa_acceleration_is_not_production_pacing": true,
+    "notes": "The remaining Main time_scale/menu mirror is legacy presentation/save debt; current product pacing is binary running/paused."
+  },
+  "steps": [
+    {"order": 1, "current_expression": "_runtime_session_finished()", "semantic_step": "session finished pre-frame gate", "delta_domain": "none", "current_owner": "GameSessionRuntimeController", "current_api": "GameRuntimeCoordinator.session_is_finished", "classification": "EXISTING_COORDINATOR_API", "runtime_loop_target_api": "GameRuntimeCoordinator.session_is_finished", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 2, "current_expression": "coordinator.synchronize_forced_decisions()", "semantic_step": "synchronize scene-owned forced-decision candidates", "delta_domain": "none", "current_owner": "ForcedDecisionCandidateSources + ForcedDecisionRuntimeScheduler", "current_api": "GameRuntimeCoordinator.synchronize_forced_decisions", "classification": "EXISTING_COORDINATOR_API", "runtime_loop_target_api": "GameRuntimeCoordinator.synchronize_forced_decisions", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 3, "current_expression": "coordinator.blocks_global_time()", "semantic_step": "global forced-decision block gate", "delta_domain": "none", "current_owner": "ForcedDecisionRuntimeScheduler", "current_api": "GameRuntimeCoordinator.blocks_global_time", "classification": "EXISTING_COORDINATOR_API", "runtime_loop_target_api": "GameRuntimeCoordinator.blocks_global_time", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 4, "current_expression": "coordinator.tick_monster_wagers(delta)", "semantic_step": "blocked-frame wager tick", "delta_domain": "real", "current_owner": "MonsterRuntimeController", "current_api": "GameRuntimeCoordinator.tick_monster_wagers", "classification": "EXISTING_COORDINATOR_API", "runtime_loop_target_api": "GameRuntimeCoordinator.tick_monster_wagers", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 5, "current_expression": "coordinator.advance_visual_cues(delta)", "semantic_step": "blocked-frame visual cue ageing", "delta_domain": "real", "current_owner": "VisualCueRuntimeOwner", "current_api": "GameRuntimeCoordinator.advance_visual_cues", "classification": "EXISTING_COORDINATOR_API", "runtime_loop_target_api": "GameRuntimeCoordinator.advance_visual_cues", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 6, "current_expression": "coordinator.advance_presentation_refresh_cadence(delta, developer_visible)", "semantic_step": "blocked-frame refresh cadence", "delta_domain": "real", "current_owner": "TablePresentationRefreshScheduler", "current_api": "GameRuntimeCoordinator.advance_presentation_refresh_cadence", "classification": "PRESENTATION_CADENCE", "runtime_loop_target_api": "GameRuntimeCoordinator.advance_presentation_refresh_cadence", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 7, "current_expression": "Main matches due receipt and calls _refresh_live_ui/_refresh_board/_refresh_ui/_refresh_developer_balance_greybox", "semantic_step": "apply blocked-frame presentation receipt", "delta_domain": "none", "current_owner": "Main private presentation targets", "current_api": "none", "classification": "ROOT_ONLY_BLOCKER", "runtime_loop_target_api": "TablePresentationRefreshPort.apply_due_receipt", "adds_new_main_dependency": false, "blocker": "Cadence is scene-owned but the real public snapshot sources and UI targets remain Main-private."},
+    {"order": 8, "current_expression": "time_scale <= 0.0", "semantic_step": "ordinary pause gate", "delta_domain": "none", "current_owner": "GameSessionRuntimeController with legacy Main mirror", "current_api": "GameSessionRuntimeController.session_state", "classification": "READY_SCENE_OWNER", "runtime_loop_target_api": "GameSessionRuntimeController.session_state", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 9, "current_expression": "scaled_delta = delta * time_scale", "semantic_step": "calculate world delta", "delta_domain": "world", "current_owner": "binary running/paused semantics", "current_api": "real delta when session is running", "classification": "READY_SCENE_OWNER", "runtime_loop_target_api": "RuntimeLoop world-delta boundary", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 10, "current_expression": "coordinator.advance_world_effective_clock(scaled_delta)", "semantic_step": "advance authoritative world-effective clock", "delta_domain": "world", "current_owner": "WorldEffectiveClockRuntimeController", "current_api": "GameRuntimeCoordinator.advance_world_effective_clock", "classification": "EXISTING_COORDINATOR_API", "runtime_loop_target_api": "GameRuntimeCoordinator.advance_world_effective_clock", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 11, "current_expression": "WorldSessionState.game_time = clock_snapshot.world_effective_seconds", "semantic_step": "synchronize game-time projection", "delta_domain": "world", "current_owner": "WorldSessionState", "current_api": "WorldSessionState.game_time", "classification": "READY_SCENE_OWNER", "runtime_loop_target_api": "WorldSessionState.set_game_time", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 12, "current_expression": "coordinator.allows_card_resolution_progress()", "semantic_step": "card-resolution progress gate", "delta_domain": "none", "current_owner": "ForcedDecisionRuntimeScheduler", "current_api": "GameRuntimeCoordinator.allows_card_resolution_progress", "classification": "EXISTING_COORDINATOR_API", "runtime_loop_target_api": "GameRuntimeCoordinator.allows_card_resolution_progress", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 13, "current_expression": "coordinator.advance_card_resolution_frame(scaled_delta)", "semantic_step": "card-resolution timing and ordered transition generation", "delta_domain": "world", "current_owner": "CardResolutionFrameDriver", "current_api": "GameRuntimeCoordinator.advance_card_resolution_frame", "classification": "EXISTING_COORDINATOR_API", "runtime_loop_target_api": "GameRuntimeCoordinator.advance_card_resolution_frame", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 14, "current_expression": "_apply_card_resolution_controller_transition(command)", "semantic_step": "apply card transition gameplay and presentation effects", "delta_domain": "none", "current_owner": "Main private card execution/presentation sink", "current_api": "none", "classification": "ROOT_ONLY_BLOCKER", "runtime_loop_target_api": "CardResolutionTransitionSink.apply_transition", "adds_new_main_dependency": false, "blocker": "Frame driver is scene-owned, but command application still enters Main-private card execution and overlay paths."},
+    {"order": 15, "current_expression": "coordinator.tick_contract_runtime(scaled_delta)", "semantic_step": "contract tick", "delta_domain": "world", "current_owner": "ContractRuntimeController", "current_api": "GameRuntimeCoordinator.tick_contract_runtime", "classification": "EXISTING_COORDINATOR_API", "runtime_loop_target_api": "GameRuntimeCoordinator.tick_contract_runtime", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 16, "current_expression": "coordinator.advance_card_cooldowns(scaled_delta)", "semantic_step": "card and player-action cooldown ageing", "delta_domain": "world", "current_owner": "CardCooldownRuntimeController", "current_api": "GameRuntimeCoordinator.advance_card_cooldowns", "classification": "EXISTING_COORDINATOR_API", "runtime_loop_target_api": "GameRuntimeCoordinator.advance_card_cooldowns", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 17, "current_expression": "CityGdpDerivativeRuntimeController.update_timers()", "semantic_step": "GDP derivative timers", "delta_domain": "world", "current_owner": "CityGdpDerivativeRuntimeController", "current_api": "update_timers", "classification": "READY_SCENE_OWNER", "runtime_loop_target_api": "CityGdpDerivativeRuntimeController.update_timers", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 18, "current_expression": "ProductMarketRuntimeController.update_futures_timers()", "semantic_step": "futures timers", "delta_domain": "world", "current_owner": "ProductMarketRuntimeController", "current_api": "update_futures_timers", "classification": "READY_SCENE_OWNER", "runtime_loop_target_api": "ProductMarketRuntimeController.update_futures_timers", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 19, "current_expression": "coordinator.tick_weather(scaled_delta)", "semantic_step": "weather tick", "delta_domain": "world", "current_owner": "WeatherRuntimeController", "current_api": "GameRuntimeCoordinator.tick_weather", "classification": "EXISTING_COORDINATOR_API", "runtime_loop_target_api": "GameRuntimeCoordinator.tick_weather", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 20, "current_expression": "ProductMarketRuntimeController.age_economic_boons(scaled_delta)", "semantic_step": "economic-boon ageing", "delta_domain": "world", "current_owner": "ProductMarketRuntimeController", "current_api": "age_economic_boons", "classification": "READY_SCENE_OWNER", "runtime_loop_target_api": "ProductMarketRuntimeController.age_economic_boons", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 21, "current_expression": "coordinator.tick_monster_wagers(scaled_delta)", "semantic_step": "monster-wager tick", "delta_domain": "world", "current_owner": "MonsterRuntimeController", "current_api": "GameRuntimeCoordinator.tick_monster_wagers", "classification": "EXISTING_COORDINATOR_API", "runtime_loop_target_api": "GameRuntimeCoordinator.tick_monster_wagers", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 22, "current_expression": "coordinator.tick_ai(scaled_delta)", "semantic_step": "AI tick", "delta_domain": "world", "current_owner": "AiRuntimeController", "current_api": "GameRuntimeCoordinator.tick_ai", "classification": "EXISTING_COORDINATOR_API", "runtime_loop_target_api": "GameRuntimeCoordinator.tick_ai", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 23, "current_expression": "coordinator.tick_monster_motion(scaled_delta)", "semantic_step": "monster linear motion", "delta_domain": "world", "current_owner": "MonsterRuntimeController", "current_api": "GameRuntimeCoordinator.tick_monster_motion", "classification": "EXISTING_COORDINATOR_API", "runtime_loop_target_api": "GameRuntimeCoordinator.tick_monster_motion", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 24, "current_expression": "coordinator.tick_military(scaled_delta)", "semantic_step": "military tick", "delta_domain": "world", "current_owner": "MilitaryRuntimeController", "current_api": "GameRuntimeCoordinator.tick_military", "classification": "EXISTING_COORDINATOR_API", "runtime_loop_target_api": "GameRuntimeCoordinator.tick_military", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 25, "current_expression": "coordinator.tick_monster_actions(scaled_delta)", "semantic_step": "monster action timers", "delta_domain": "world", "current_owner": "MonsterRuntimeController", "current_api": "GameRuntimeCoordinator.tick_monster_actions", "classification": "EXISTING_COORDINATOR_API", "runtime_loop_target_api": "GameRuntimeCoordinator.tick_monster_actions", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 26, "current_expression": "coordinator.tick_monster_durations(scaled_delta)", "semantic_step": "monster duration ageing", "delta_domain": "world", "current_owner": "MonsterRuntimeController", "current_api": "GameRuntimeCoordinator.tick_monster_durations", "classification": "EXISTING_COORDINATOR_API", "runtime_loop_target_api": "GameRuntimeCoordinator.tick_monster_durations", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 27, "current_expression": "coordinator.advance_visual_cues(scaled_delta)", "semantic_step": "active-frame visual cue ageing", "delta_domain": "world", "current_owner": "VisualCueRuntimeOwner", "current_api": "GameRuntimeCoordinator.advance_visual_cues", "classification": "EXISTING_COORDINATOR_API", "runtime_loop_target_api": "GameRuntimeCoordinator.advance_visual_cues", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 28, "current_expression": "coordinator.tick_monster_revivals(scaled_delta)", "semantic_step": "monster revival tick", "delta_domain": "world", "current_owner": "MonsterRuntimeController", "current_api": "GameRuntimeCoordinator.tick_monster_revivals", "classification": "EXISTING_COORDINATOR_API", "runtime_loop_target_api": "GameRuntimeCoordinator.tick_monster_revivals", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 29, "current_expression": "_advance_continuous_commodity_flow(scaled_delta)", "semantic_step": "continuous commodity flow", "delta_domain": "world", "current_owner": "CommodityFlowRuntimeController", "current_api": "GameRuntimeCoordinator.advance_commodity_flow", "classification": "EXISTING_COORDINATOR_API", "runtime_loop_target_api": "GameRuntimeCoordinator.advance_commodity_flow", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 30, "current_expression": "commodity result advanced && bankruptcy_checkpoint.finalized", "semantic_step": "flow-result early-return gate", "delta_domain": "none", "current_owner": "CommodityFlow result contract", "current_api": "GameRuntimeCoordinator.advance_commodity_flow receipt", "classification": "EXISTING_COORDINATOR_API", "runtime_loop_target_api": "RuntimeLoop receipt gate", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 31, "current_expression": "_runtime_session_finished()", "semantic_step": "post-flow session-finished gate", "delta_domain": "none", "current_owner": "GameSessionRuntimeController", "current_api": "GameRuntimeCoordinator.session_is_finished", "classification": "EXISTING_COORDINATOR_API", "runtime_loop_target_api": "GameRuntimeCoordinator.session_is_finished", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 32, "current_expression": "coordinator.tick_product_market_cycle(scaled_delta)", "semantic_step": "product-market cycle", "delta_domain": "world", "current_owner": "ProductMarketRuntimeController", "current_api": "GameRuntimeCoordinator.tick_product_market_cycle", "classification": "EXISTING_COORDINATOR_API", "runtime_loop_target_api": "GameRuntimeCoordinator.tick_product_market_cycle", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 33, "current_expression": "coordinator.advance_victory_control(scaled_delta, {})", "semantic_step": "victory-control advance and authoritative outcome application", "delta_domain": "world", "current_owner": "VictoryControlRuntimeController + GameSessionRuntimeController", "current_api": "GameRuntimeCoordinator.advance_victory_control", "classification": "EXISTING_COORDINATOR_API", "runtime_loop_target_api": "GameRuntimeCoordinator.advance_victory_control", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 34, "current_expression": "_update_victory_control compares state, logs and refreshes", "semantic_step": "victory state-change presentation", "delta_domain": "none", "current_owner": "Main private presentation side effects", "current_api": "none", "classification": "ROOT_ONLY_BLOCKER", "runtime_loop_target_api": "TablePresentationRefreshPort.apply_victory_state_change", "adds_new_main_dependency": false, "blocker": "Authoritative victory is scene-owned, but the visible transition receipt is still synthesized and consumed in Main."},
+    {"order": 35, "current_expression": "_runtime_session_finished()", "semantic_step": "post-victory session-finished gate", "delta_domain": "none", "current_owner": "GameSessionRuntimeController", "current_api": "GameRuntimeCoordinator.session_is_finished", "classification": "EXISTING_COORDINATOR_API", "runtime_loop_target_api": "GameRuntimeCoordinator.session_is_finished", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 36, "current_expression": "coordinator.advance_presentation_refresh_cadence(delta, developer_visible)", "semantic_step": "frame-end refresh cadence", "delta_domain": "real", "current_owner": "TablePresentationRefreshScheduler", "current_api": "GameRuntimeCoordinator.advance_presentation_refresh_cadence", "classification": "PRESENTATION_CADENCE", "runtime_loop_target_api": "GameRuntimeCoordinator.advance_presentation_refresh_cadence", "adds_new_main_dependency": false, "blocker": ""},
+    {"order": 37, "current_expression": "Main matches due receipt and calls _refresh_live_ui/_refresh_board/_refresh_ui/_refresh_developer_balance_greybox", "semantic_step": "apply frame-end presentation receipt", "delta_domain": "none", "current_owner": "Main private presentation targets", "current_api": "none", "classification": "ROOT_ONLY_BLOCKER", "runtime_loop_target_api": "TablePresentationRefreshPort.apply_due_receipt", "adds_new_main_dependency": false, "blocker": "Cadence is scene-owned but the real public snapshot sources and UI targets remain Main-private."}
+  ],
+  "root_only_blockers": [
+    {
+      "id": "card_resolution_transition_sink",
+      "main_symbols": ["_apply_card_resolution_controller_transition"],
+      "minimum_owner": "CardResolutionTransitionSink",
+      "minimum_api": "apply_transition(command) -> receipt",
+      "forbidden_shortcut": "Callable/signal/dictionary/string fallback into Main",
+      "recommended_program": "card_execution"
+    },
+    {
+      "id": "table_presentation_sources_targets_and_victory_receipts",
+      "main_symbols": ["_refresh_live_ui", "_refresh_board", "_refresh_ui", "_refresh_developer_balance_greybox", "_update_victory_control"],
+      "minimum_owner": "TablePresentationSourceOwner + TablePresentationRefreshPort",
+      "minimum_api": "public_snapshot/current_player_snapshot + apply_due_receipt(receipt) + apply_victory_state_change(receipt)",
+      "forbidden_shortcut": "Scheduler/victory callback into Main",
+      "recommended_program": "presentation_action_routing"
+    }
+  ],
+  "commodity_flow_verdict": {
+    "blocked": false,
+    "reason": "The existing coordinator API owns the operation and exact early-return receipt; required facts are available from scene-owned session/world state."
+  },
+  "remaining_world_bridge_debt": ["ai", "monster", "military", "weather", "economy_product_route", "victory", "card_resolution"],
+  "budget": {
+    "physical_lines": 15126,
+    "nonblank_lines": 13212,
+    "methods": 894,
+    "top_level_variables": 79,
+    "constants": 111,
+    "top_level_preloads": 15,
+    "external_main_caller_occurrences": 1647,
+    "external_main_caller_files": 102,
+    "production_main_reference_files": 3,
+    "gate_passed": true
+  },
+  "validation": {
+    "focused_prerequisite_gates_passed": true,
+    "godot_mcp_benches_passed": true,
+    "main_architecture_gate_passed": true,
+    "main_runtime_composition_passed": true,
+    "ui_text_smoke_passed": true,
+    "visual_snapshot_passed": true,
+    "smoke_check_only_passed": true,
+    "full_smoke_passed": false,
+    "full_smoke_pass_count": 284,
+    "full_smoke_failure_count": 95,
+    "deleted_card_driver_missing_call_count": 0,
+    "deleted_visual_main_field_missing_access_count": 0,
+    "notes": "Broad failures remain in existing AI/card/economy/UI fixtures; no Main compatibility fields were restored."
+  },
+  "recommended_next_prerequisites": [
+    "Card Resolution Transition Sink Cutover",
+    "Table Presentation Source/Target Cutover",
+    "rerun Authoritative Runtime Loop Cutover preflight"
+  ],
+  "ledger_runtime_loop_status": "pending"
+}

@@ -56,7 +56,7 @@ func _run() -> void:
 
 
 func _install_fixture(main: Node, ai: Node, market: Node) -> Dictionary:
-	var districts: Array = (main.get("districts") as Array).duplicate(true)
+	var districts: Array = (((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	var own_index := -1
 	for index in range(districts.size()):
 		var district: Dictionary = districts[index]
@@ -76,7 +76,7 @@ func _install_fixture(main: Node, ai: Node, market: Node) -> Dictionary:
 	if own_index < 0 or rival_index < 0:
 		return {"ready": false}
 
-	var players: Array = (main.get("players") as Array).duplicate(true)
+	var players: Array = (((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
 	if players.size() < 3:
 		return {"ready": false}
 	for player_index in range(players.size()):
@@ -100,7 +100,7 @@ func _install_fixture(main: Node, ai: Node, market: Node) -> Dictionary:
 				ai.call("_make_skill", STOCKPILE_CARD),
 			]
 		players[player_index] = player
-	main.set("players", players)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 
 	var own_district: Dictionary = districts[own_index]
 	own_district["destroyed"] = false
@@ -119,8 +119,8 @@ func _install_fixture(main: Node, ai: Node, market: Node) -> Dictionary:
 	rival_district["demands"] = ["轨迹墨水"]
 	rival_district["city"] = _city(2, "AI期货竞品城", PRODUCT, "轨迹墨水", 1180, 4)
 	districts[rival_index] = rival_district
-	main.set("districts", districts)
-	main.set("selected_trade_product", PRODUCT)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = PRODUCT
 
 	var market_save := market.call("to_save_data") as Dictionary
 	var product_market: Dictionary = (market_save.get("product_market", {}) as Dictionary).duplicate(true)
@@ -222,22 +222,22 @@ func _check_buy_candidates(_main: Node, ai: Node, fixture: Dictionary) -> void:
 
 
 func _check_budget_discipline(main: Node, ai: Node) -> void:
-	var players: Array = (main.get("players") as Array).duplicate(true)
+	var players: Array = (((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
 	var buyer: Dictionary = players[1]
 	var original_cash := int(buyer.get("cash", 0))
 	var original_cash_cents := int(buyer.get("cash_cents", original_cash * 100))
 	buyer["cash"] = 0
 	buyer["cash_cents"] = 0
 	players[1] = buyer
-	main.set("players", players)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 	var blocked := ai.call("_ai_card_buy_candidates", 1) as Array
 	_expect(_candidate(blocked, LONG_CARD).is_empty() and _candidate(blocked, STOCKPILE_CARD).is_empty(), "AI budget reserve blocks unaffordable futures purchases")
-	players = (main.get("players") as Array).duplicate(true)
+	players = (((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
 	buyer = players[1]
 	buyer["cash"] = original_cash
 	buyer["cash_cents"] = original_cash_cents
 	players[1] = buyer
-	main.set("players", players)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 
 
 func _check_training_metadata(ai: Node, fixture: Dictionary) -> void:
@@ -251,7 +251,7 @@ func _check_training_metadata(ai: Node, fixture: Dictionary) -> void:
 
 func _check_private_state_invariance(main: Node, ai: Node, fixture: Dictionary) -> void:
 	var before := _decision_projection(ai.call("_ai_card_play_context", 1, 0, fixture.long_skill) as Dictionary)
-	var players: Array = (main.get("players") as Array).duplicate(true)
+	var players: Array = (((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
 	var rival: Dictionary = players[2]
 	rival["cash"] = 987654321
 	rival["cash_cents"] = 98765432100
@@ -260,7 +260,7 @@ func _check_private_state_invariance(main: Node, ai: Node, fixture: Dictionary) 
 	rival["city_guesses"] = {"PRIVATE_GUESS_SENTINEL": {"owner": 1}}
 	rival["ai_private_plan"] = {"target": PRODUCT, "score": 999999}
 	players[2] = rival
-	main.set("players", players)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 	var after := _decision_projection(ai.call("_ai_card_play_context", 1, 0, fixture.long_skill) as Dictionary)
 	_expect(before == after, "rival cash, hand, discard, guesses, and private AI plan do not alter the futures decision projection")
 	_expect(not JSON.stringify(after).contains("PRIVATE_"), "futures decision metadata contains no rival-private sentinel")

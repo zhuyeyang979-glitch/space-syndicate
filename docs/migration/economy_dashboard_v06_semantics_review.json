@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "status": "ECONOMY_DASHBOARD_V06_SEMANTICS_GREEN",
+  "removed_terms": ["urbanization_share", "project_share", "investment_unit", "legacy_project_gdp", "contract_accept_reject", "trade_route_card", "abstract_route_life", "route_damage_repair", "cash_target_victory", "single_city_owner"],
+  "renamed_fields": {"city_entries": "public_region_economy_entries", "tier": "price_band_label", "player_cash_entries": "own_private_economy_and_public_player_summaries"},
+  "retained_terms": ["commodity_price", "production", "demand", "sale_receipt", "commodity_gdp", "facility_rent", "transport_throughput", "warehouse_capacity", "regional_integrity", "weather", "monster_pressure", "six_color_assets"],
+  "formula_changes": false,
+  "tooltip_and_visible_text_share_filtered_snapshot": true
+}

@@ -5,6 +5,9 @@ class_name ProductMarketRuntimeWorldBridge
 signal runtime_event_forwarded(event: Dictionary)
 
 var _world: Node
+var _rng_service: RunRngService
+var _table_selection_state: TableSelectionState
+var _world_session_state: WorldSessionState
 var _world_call_count := 0
 var _failed_world_call_count := 0
 
@@ -13,27 +16,47 @@ func bind_world(world: Node) -> void:
 	_world = world
 
 
+func set_rng_service(service: RunRngService) -> void:
+	_rng_service = service
+
+
+func set_table_selection_state(state: TableSelectionState) -> void:
+	_table_selection_state = state
+
+
+func set_world_session_state(state: WorldSessionState) -> void:
+	_world_session_state = state
+
+
+func world_session_state() -> WorldSessionState:
+	return _world_session_state
+
+
 func has_world() -> bool:
 	return _world != null and is_instance_valid(_world)
 
 
-func shared_rng() -> RandomNumberGenerator:
-	if not has_world():
-		return null
-	var value: Variant = _world.get("rng")
-	return value as RandomNumberGenerator if value is RandomNumberGenerator else null
+func shared_rng() -> RunRngService:
+	return _rng_service
+
+
+func table_selection_state() -> TableSelectionState:
+	return _table_selection_state
 
 
 func world_snapshot() -> Dictionary:
 	if not has_world():
 		return {}
-	var districts_variant: Variant = _world.get("districts")
-	var players_variant: Variant = _world.get("players")
+	if _world_session_state == null:
+		return {}
+	var districts_variant: Variant = _world_session_state.districts
+	var players_variant: Variant = _world_session_state.players
+	var selection := _table_selection_state
 	return {
-		"game_time": float(_world.get("game_time")),
-		"selected_player": int(_world.get("selected_player")),
-		"selected_district": int(_world.get("selected_district")),
-		"selected_trade_product": str(_world.get("selected_trade_product")),
+		"game_time": _world_session_state.game_time,
+		"selected_player": selection.selected_player if selection != null else -1,
+		"selected_district": selection.selected_district if selection != null else -1,
+		"selected_trade_product": selection.selected_trade_product if selection != null else "",
 		"districts": (districts_variant as Array).duplicate(true) if districts_variant is Array else [],
 		"player_count": (players_variant as Array).size() if players_variant is Array else 0,
 	}
@@ -42,7 +65,7 @@ func world_snapshot() -> Dictionary:
 func player_cash(player_index: int) -> int:
 	if not has_world():
 		return -1
-	var players_variant: Variant = _world.get("players")
+	var players_variant: Variant = _world_session_state.players if _world_session_state != null else []
 	if not (players_variant is Array):
 		return -1
 	var players := players_variant as Array
@@ -107,6 +130,8 @@ func debug_snapshot() -> Dictionary:
 	return {
 		"bridge_ready": has_world(),
 		"shared_rng_available": shared_rng() != null,
+		"table_selection_state_ready": _table_selection_state != null,
+		"world_session_state_ready": _world_session_state != null,
 		"cash_adapter_available": has_world() and _world.has_method("_commit_product_market_cash_delta"),
 		"world_call_count": _world_call_count,
 		"failed_world_call_count": _failed_world_call_count,

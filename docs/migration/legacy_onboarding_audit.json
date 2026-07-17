@@ -1,0 +1,121 @@
+{
+  "schema": "space_syndicate_legacy_onboarding_audit_v1",
+  "baseline": "fa7ca46",
+  "authority": [
+    "docs/tabletop_rulebook_v06.md",
+    "docs/rules_v06_runtime_directive.md"
+  ],
+  "status": "legacy_onboarding_purged_main_gd_removal_blocked",
+  "classifications": {
+    "A": {
+      "decision": "delete",
+      "groups": [
+        "data/campaigns/*.json",
+        "data/scenarios/*.json",
+        "data/recommendations/tutorial_recommended_set.json",
+        "scenes/ui/{Campaign*,FirstRunCoach,ScenarioCoach,TutorialQuickStartBoard,MatchRecapPanel}.tscn",
+        "scripts/main.gd campaign/first_run/scenario production routes"
+      ]
+    },
+    "B": {
+      "decision": "delete",
+      "groups": [
+        "scripts/campaign/*.gd",
+        "scripts/recommendations/recommended_start_service.gd",
+        "scripts/scenarios/*.gd",
+        "scripts/ui/{campaign_*,first_run_coach,scenario_*,tutorial_quick_start_board,match_recap_panel}.gd",
+        "scripts/viewmodels/{campaign_*,first_run_coach,scenario_*,match_recap}.gd",
+        "user://campaign_progress.save schema and writers",
+        "first-run fields in the normal-run save dictionary"
+      ]
+    },
+    "C": {
+      "decision": "keep_without_onboarding_edges",
+      "groups": [
+        "scenes/ui/GameScreen.tscn",
+        "scenes/ui/PlanetBoard.tscn",
+        "scenes/ui/PlayerBoard.tscn",
+        "scenes/ui/MenuRootLobby.tscn",
+        "scenes/ui/NewGameSetupPage.tscn",
+        "scripts/runtime/game_runtime_coordinator.gd",
+        "scenes/runtime/GameRuntimeCoordinator.tscn",
+        "scenes/runtime/FinalSettlementRuntimeComposition.tscn"
+      ],
+      "real_consumers": [
+        "normal new game",
+        "continue current table",
+        "v0.6 gameplay",
+        "rules and compendium",
+        "normal final settlement"
+      ]
+    },
+    "D": {
+      "decision": "keep",
+      "groups": [
+        "v0.6 card/economy/facility/route runtime",
+        "monster/military/weather runtime",
+        "normal save/load",
+        "victory and final settlement"
+      ]
+    },
+    "E": {
+      "decision": "historical_only",
+      "groups": [
+        "docs/tutorial_campaign_spec.md",
+        "docs/campaign_chapter_settings.md",
+        "docs/campaign_runtime_path_v2_acceptance.md",
+        "historical development-log entries"
+      ]
+    },
+    "F": {
+      "decision": "delete_or_remove_from_active_gate",
+      "groups": [
+        "tests/campaign_*",
+        "tests/first_run_coach_purchase_recovery_test.gd",
+        "tests/first_table_authored_runtime_service_test.gd",
+        "tests/human_first_table_playability_v06_test.gd",
+        "campaign and first-mission tools/benches/captures"
+      ]
+    }
+  },
+  "production_entry_action_ids_to_remove": [
+    "campaign",
+    "quick_start",
+    "first_mission",
+    "scenario_lab",
+    "campaign_settings",
+    "campaign_*",
+    "scenario_*",
+    "coach_*"
+  ],
+  "save_fields_to_remove": [
+    "first_run_coach_district_seen_players",
+    "first_run_coach_supply_seen_players",
+    "first_run_coach_public_track_seen_players",
+    "first_run_coach_ai_public_action_seen_players",
+    "first_run_coach_monster_pressure_seen_players",
+    "first_run_coach_route_choice_players",
+    "first_run_coach_clues_seen_players",
+    "campaign_id",
+    "selected_campaign_chapter_id",
+    "active_campaign_chapter_id",
+    "campaign_completed_chapter_ids",
+    "campaign_last_reward",
+    "campaign_last_recap",
+    "campaign_completion_pending_chapter_id"
+  ],
+  "migration_policy": {
+    "progress_migration": false,
+    "reward_migration": false,
+    "dual_path": false,
+    "placeholder_button": false
+  },
+  "post_removal": {
+    "production_entry_count": 0,
+    "production_runtime_reference_count": 0,
+    "save_field_count": 0,
+    "dual_path_count": 0,
+    "art_metadata_exception": "data/art first_run_art_focus is illustration-only and has no onboarding consumer",
+    "final_status": "LEGACY_ONBOARDING_PURGED_MAIN_GD_REMOVAL_BLOCKED"
+  }
+}

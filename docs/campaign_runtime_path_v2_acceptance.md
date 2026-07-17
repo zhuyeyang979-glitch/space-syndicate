@@ -1,5 +1,7 @@
 # Campaign Runtime Path v2 验收目标
 
+> Historical / legacy / removed. This document is not runtime authority.
+
 本轮只做真实运行路径，不继续堆菜单外壳、不改规则公式、不改 MapView/BidBoard/CardTrack/VisualEventLayer 主逻辑。
 
 硬性验收：

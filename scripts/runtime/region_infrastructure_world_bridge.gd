@@ -14,6 +14,8 @@ const REGION_CODEX_PRIVATE_SENTINEL_MARKERS_V06 := [
 
 var _controller: Node
 var _world: Node
+var _table_selection_state: TableSelectionState
+var _world_session_state: WorldSessionState
 var _request_sequence := 0
 var _forward_count := 0
 var _failure_count := 0
@@ -31,6 +33,22 @@ func set_controller(controller: Node) -> void:
 
 func bind_world(world: Node) -> void:
 	_world = world
+
+
+func set_table_selection_state(state: TableSelectionState) -> void:
+	_table_selection_state = state
+
+
+func set_world_session_state(state: WorldSessionState) -> void:
+	_world_session_state = state
+
+
+func world_session_state() -> WorldSessionState:
+	return _world_session_state
+
+
+func table_selection_state() -> TableSelectionState:
+	return _table_selection_state
 
 
 func initialize_from_legacy_map(region_definitions: Array) -> Dictionary:
@@ -87,7 +105,7 @@ func submit_weather_damage_by_legacy_index(legacy_index: int, event_id: int, amo
 func weather_intervention_snapshot_for_legacy_index(legacy_index: int) -> Dictionary:
 	if _world == null or not is_instance_valid(_world):
 		return {"available": false, "weather_resistance": 0.0, "reason": "world_missing"}
-	var districts_variant: Variant = _world.get("districts")
+	var districts_variant: Variant = _world_session_state.districts if _world_session_state != null else []
 	if not (districts_variant is Array) or legacy_index < 0 or legacy_index >= (districts_variant as Array).size():
 		return {"available": false, "weather_resistance": 0.0, "reason": "region_missing"}
 	var district_variant: Variant = (districts_variant as Array)[legacy_index]
@@ -161,7 +179,7 @@ func region_codex_public_facts(legacy_index: int) -> Dictionary:
 	_region_codex_public_projection_count += 1
 	if _world == null or not is_instance_valid(_world):
 		return _region_codex_public_unavailable(legacy_index, "region_codex_public_world_unavailable")
-	var districts_variant: Variant = _world.get("districts")
+	var districts_variant: Variant = _world_session_state.districts if _world_session_state != null else []
 	if not (districts_variant is Array):
 		return _region_codex_public_unavailable(legacy_index, "region_codex_public_regions_invalid")
 	var districts := districts_variant as Array
@@ -236,7 +254,7 @@ func region_commodity_facts(region_id: String) -> Dictionary:
 	var normalized_id := region_id.strip_edges()
 	if normalized_id.is_empty() or _controller == null or _world == null or not is_instance_valid(_world):
 		return {"available": false, "authoritative": false, "reason_code": "region_commodity_facts_unavailable"}
-	var districts_variant: Variant = _world.get("districts")
+	var districts_variant: Variant = _world_session_state.districts if _world_session_state != null else []
 	if not (districts_variant is Array):
 		return {"available": false, "authoritative": false, "reason_code": "region_district_facts_missing"}
 	var district: Dictionary = {}
@@ -296,8 +314,8 @@ func public_commodity_region_facts() -> Array:
 func selected_region_commodity_facts() -> Dictionary:
 	if _world == null or not is_instance_valid(_world):
 		return {"available": false, "authoritative": false, "reason_code": "region_commodity_facts_unavailable"}
-	var selected_index := int(_world.get("selected_district"))
-	var districts_variant: Variant = _world.get("districts")
+	var selected_index := _table_selection_state.selected_district if _table_selection_state != null else -1
+	var districts_variant: Variant = _world_session_state.districts if _world_session_state != null else []
 	if not (districts_variant is Array) or selected_index < 0 or selected_index >= (districts_variant as Array).size():
 		return {"available": false, "authoritative": false, "reason_code": "selected_region_missing"}
 	var district_variant: Variant = (districts_variant as Array)[selected_index]

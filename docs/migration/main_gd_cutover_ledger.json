@@ -1,0 +1,580 @@
+{
+  "schema_version": 1,
+  "baseline_commit": "689c77af4867e2f85fc1edf356e1f7abb295bc7a",
+  "allowed_statuses": [
+    "pending",
+    "migrating",
+    "cut_over",
+    "blocked"
+  ],
+  "domains": [
+    {
+      "domain": "architecture_gates",
+      "old_symbols": [],
+      "old_consumers": [],
+      "new_owner_scene": "res://scenes/tools/RuntimeAuthorityAuditBench.tscn",
+      "new_owner_script": "res://scripts/diagnostics/runtime_authority_audit.gd",
+      "new_public_api": [
+        "register_authority",
+        "audit_snapshot"
+      ],
+      "tests": [
+        "res://tests/main_gd_architecture_gate_test.gd",
+        "res://scenes/tools/RuntimeAuthorityAuditBench.tscn"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "",
+      "status": "cut_over"
+    },
+    {
+      "domain": "run_rng_service",
+      "old_symbols": [
+        "rng",
+        "_ai_runtime_rng_gateway"
+      ],
+      "old_consumers": [
+        "AI runtime",
+        "monster runtime",
+        "weather runtime",
+        "product market runtime",
+        "new-game generation",
+        "save restore",
+        "deterministic QA drivers"
+      ],
+      "new_owner_scene": "res://scenes/runtime/RunRngService.tscn",
+      "new_owner_script": "res://scripts/runtime/run_rng_service.gd",
+      "new_public_api": [
+        "state",
+        "seed",
+        "randomize",
+        "randi",
+        "randi_range",
+        "randf",
+        "randf_range",
+        "to_save_data",
+        "apply_save_data"
+      ],
+      "tests": [
+        "res://tests/run_rng_service_cutover_test.gd",
+        "res://scenes/tools/RunRngServiceCutoverBench.tscn",
+        "res://tests/main_gd_architecture_gate_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "",
+      "status": "cut_over"
+    },
+    {
+      "domain": "world_session_state",
+      "old_symbols": [
+        "players",
+        "districts",
+        "game_time"
+      ],
+      "old_consumers": [
+        "runtime world bridges",
+        "save restore",
+        "AI",
+        "map",
+        "card execution"
+      ],
+      "new_owner_scene": "res://scenes/runtime/WorldSessionState.tscn",
+      "new_owner_script": "res://scripts/runtime/world_session_state.gd",
+      "new_public_api": [
+        "players",
+        "districts",
+        "game_time",
+        "reset",
+        "replace_players",
+        "replace_districts",
+        "set_game_time",
+        "advance_game_time",
+        "restore",
+        "internal_snapshot",
+        "to_save_data",
+        "apply_save_data"
+      ],
+      "tests": [
+        "res://tests/world_session_state_cutover_test.gd",
+        "res://scenes/tools/WorldSessionStateCutoverBench.tscn",
+        "res://tests/main_runtime_composition_test.gd",
+        "res://tests/card_player_state_production_adapter_v06_test.gd",
+        "res://tests/facility_card_production_unlock_v06_test.gd",
+        "res://tests/news_event_runtime_owner_test.gd",
+        "res://tests/weather_presentation_runtime_service_test.gd",
+        "res://tests/monster_deploy_atomic_lifecycle_v06_test.gd",
+        "res://tests/ui_text_smoke_test.gd",
+        "res://tests/visual_snapshot.gd",
+        "res://tests/layout_scene_smoke_test.gd",
+        "res://tests/smoke_test.gd --check-only"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "",
+      "status": "cut_over"
+    },
+    {
+      "domain": "table_selection_state",
+      "old_symbols": [
+        "selected_player",
+        "inspected_player",
+        "selected_district",
+        "selected_trade_product"
+      ],
+      "old_consumers": [
+        "GameScreen snapshot",
+        "PlanetBoard actions",
+        "PlayerBoard actions",
+        "AI runtime",
+        "monster runtime",
+        "military runtime",
+        "product market runtime",
+        "contract runtime",
+        "card eligibility and resolution",
+        "infrastructure and balance diagnostics",
+        "save restore",
+        "active tests and characterization benches"
+      ],
+      "new_owner_scene": "res://scenes/runtime/TableSelectionState.tscn",
+      "new_owner_script": "res://scripts/runtime/table_selection_state.gd",
+      "new_public_api": [
+        "selected_player",
+        "inspected_player",
+        "selected_district",
+        "selected_trade_product",
+        "reset",
+        "set_active_context",
+        "restore",
+        "snapshot",
+        "to_save_data",
+        "apply_save_data"
+      ],
+      "tests": [
+        "res://tests/table_selection_state_cutover_test.gd",
+        "res://scenes/tools/TableSelectionStateCutoverBench.tscn",
+        "res://tests/main_runtime_composition_test.gd",
+        "res://tests/runtime_pointer_input_layer_test.gd",
+        "res://tests/ui_text_smoke_test.gd",
+        "res://tests/visual_snapshot.gd",
+        "res://tests/smoke_test.gd --check-only"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "",
+      "status": "cut_over"
+    },
+    {
+      "domain": "runtime_loop",
+      "old_symbols": [
+        "_process"
+      ],
+      "old_consumers": [
+        "AI",
+        "weather",
+        "card queue",
+        "monster",
+        "military",
+        "economy",
+        "presentation"
+      ],
+      "new_owner_scene": "res://scenes/runtime/RuntimeLoop.tscn",
+      "new_owner_script": "res://scripts/runtime/runtime_loop.gd",
+      "new_public_api": [
+        "last_frame_receipt",
+        "debug_snapshot"
+      ],
+      "tests": [
+        "res://tests/runtime_loop_cutover_test.gd",
+        "res://scenes/tools/RuntimeLoopCutoverBench.tscn",
+        "res://tests/main_gd_architecture_gate_test.gd",
+        "res://tests/main_runtime_composition_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
+    },
+    {
+      "domain": "typed_world_ports",
+      "old_symbols": [
+        "GameRuntimeCoordinator.bind_ai_world",
+        "bind_*_world(self)"
+      ],
+      "old_consumers": [
+        "AI",
+        "monster",
+        "military",
+        "weather",
+        "economy",
+        "victory"
+      ],
+      "new_owner_scene": "",
+      "new_owner_script": "",
+      "new_public_api": [],
+      "tests": [],
+      "old_path_deleted": false,
+      "duplicate_execution_checked": false,
+      "commit_sha": "",
+      "status": "pending"
+    },
+    {
+      "domain": "typed_world_ports_boundary_hardening",
+      "old_symbols": [
+        "AuthoritativeRuntimeFramePort",
+        "authoritative_runtime_frame_port.gd"
+      ],
+      "old_consumers": [
+        "RuntimeLoop (historical direct consumer)"
+      ],
+      "new_owner_scene": "res://scenes/runtime/RuntimeWorldPorts.tscn",
+      "new_owner_script": "res://scripts/runtime/runtime_world_ports.gd",
+      "new_public_api": [
+        "RuntimePhaseCoordinator.bind_ports",
+        "RuntimeLifecyclePort",
+        "RuntimeCardPort",
+        "RuntimeEconomyPort",
+        "RuntimeActorPort",
+        "RuntimeMonsterPort",
+        "RuntimePresentationPort",
+        "RuntimeVictoryPort"
+      ],
+      "tests": [
+        "res://tests/typed_world_ports_boundary_test.gd",
+        "res://scenes/tools/TypedWorldPortsBoundaryBench.tscn",
+        "res://tests/runtime_loop_cutover_test.gd",
+        "res://tests/main_gd_architecture_gate_test.gd",
+        "res://tests/main_runtime_composition_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
+    },
+    {
+      "domain": "runtime_coordination_phase_decomposition",
+      "old_symbols": [
+        "RuntimeLoop concrete port schedule",
+        "GameRuntimeCoordinator.runtime_loop_can_advance"
+      ],
+      "old_consumers": [
+        "RuntimeLoop"
+      ],
+      "new_owner_scene": "res://scenes/runtime/RuntimePhaseCoordinator.tscn",
+      "new_owner_script": "res://scripts/runtime/runtime_phase_coordinator.gd",
+      "new_public_api": [
+        "RuntimeLoop.bind_phase_coordinator",
+        "RuntimePhaseCoordinator.bind_ports",
+        "RuntimePhaseCoordinator.advance_frame"
+      ],
+      "tests": [
+        "res://tests/runtime_coordination_phase_decomposition_test.gd",
+        "res://scenes/tools/RuntimeCoordinationPhaseDecompositionBench.tscn",
+        "res://tests/runtime_loop_cutover_test.gd",
+        "res://tests/typed_world_ports_boundary_test.gd",
+        "res://tests/main_gd_architecture_gate_test.gd",
+        "res://tests/main_runtime_composition_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
+    },
+    {
+      "domain": "card_execution",
+      "old_symbols": [
+        "_queue_skill_resolution",
+        "_complete_active_card_resolution",
+        "_apply_card_resolution_controller_transition",
+        "_begin_card_counter_response_window",
+        "_announce_card_counter_response_window",
+        "_start_next_card_resolution",
+        "_lock_card_resolution_batch",
+        "_finish_card_resolution_batch",
+        "_promote_next_card_resolution_batch",
+        "_reset_card_resolution_batch_state",
+        "_clear_queued_card_flag",
+        "_apply_card_resolution_effect_request",
+        "_use_skill"
+      ],
+      "old_consumers": [
+        "HandRack",
+        "GameScreen",
+        "CardResolution services"
+      ],
+      "new_owner_scene": "res://scenes/runtime/CardResolutionTransitionSink.tscn",
+      "new_owner_script": "res://scripts/runtime/card_resolution_transition_sink.gd",
+      "new_public_api": [
+        "request_hand_card_play",
+        "submit_card_play",
+        "apply_transition_batch",
+        "card_resolution_viewer_history_snapshot"
+      ],
+      "tests": [
+        "res://tests/card_execution_typed_ports_cutover_test.gd",
+        "res://scenes/tools/CardExecutionTypedPortsBench.tscn",
+        "res://tests/card_resolution_history_runtime_service_test.gd",
+        "res://scenes/tools/CardResolutionHistoryRuntimeServiceBench.tscn",
+        "res://tests/main_runtime_composition_test.gd",
+        "res://tests/card_resolution_transition_command_lineage_test.gd",
+        "res://tests/card_resolution_transition_sink_cutover_test.gd",
+        "res://tests/card_resolution_transition_gameplay_fault_injection_test.gd",
+        "res://tests/card_resolution_transition_persistence_registry_test.gd",
+        "res://scenes/tools/CardResolutionTransitionSinkBench.tscn"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "",
+      "status": "cut_over"
+    },
+    {
+      "domain": "new_game_setup",
+      "old_symbols": [
+        "_new_game",
+        "configured_player_count",
+        "configured_ai_player_count",
+        "configured_role_indices",
+        "configured_starter_monster_indices"
+      ],
+      "old_consumers": [
+        "NewGameSetupPage",
+        "normal session start"
+      ],
+      "new_owner_scene": "",
+      "new_owner_script": "",
+      "new_public_api": [],
+      "tests": [],
+      "old_path_deleted": false,
+      "duplicate_execution_checked": false,
+      "commit_sha": "",
+      "status": "pending"
+    },
+    {
+      "domain": "save_restore",
+      "old_symbols": [
+        "_apply_run_domain_state_compatibility_adapter",
+        "_load_run"
+      ],
+      "old_consumers": [
+        "current-run menu",
+        "GameSaveRuntimeCoordinator"
+      ],
+      "new_owner_scene": "",
+      "new_owner_script": "",
+      "new_public_api": [],
+      "tests": [],
+      "old_path_deleted": false,
+      "duplicate_execution_checked": false,
+      "commit_sha": "",
+      "status": "pending"
+    },
+    {
+      "domain": "table_presentation_query_ports",
+      "old_symbols": [
+        "log_lines",
+        "_on_victory_outcome_applied",
+        "_city_markers_for_selected_player",
+        "_trade_route_markers_for_selected_product",
+        "_auto_monster_markers",
+        "VictoryControlWorldBridge.apply_outcome_receipt"
+      ],
+      "old_consumers": [
+        "GameScreen table presentation",
+        "Planet map presentation",
+        "Final settlement presentation",
+        "Victory public log"
+      ],
+      "new_owner_scene": "res://scenes/runtime/presentation/TablePresentationQueryPorts.tscn",
+      "new_owner_script": "res://scripts/presentation/table_presentation_query_ports.gd",
+      "new_public_api": [
+        "authorized_viewer_index",
+        "can_view_private_subject",
+        "public_world_projection",
+        "private_world_projection",
+        "action_projection",
+        "public_map_projection",
+        "publish_public_log",
+        "append_public_log_receipt",
+        "capture_victory_advance",
+        "capture_victory_outcome"
+      ],
+      "tests": [
+        "res://tests/table_presentation_query_ports_cutover_test.gd",
+        "res://scenes/tools/TablePresentationQueryPortsBench.tscn",
+        "res://tests/main_gd_architecture_gate_test.gd",
+        "res://tests/main_victory_public_privacy_v06_test.gd",
+        "res://tests/main_runtime_composition_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "",
+      "status": "cut_over"
+    },
+    {
+      "domain": "table_presentation_source_target",
+      "old_symbols": [
+        "_refresh_live_ui",
+        "_refresh_board",
+        "_refresh_ui",
+        "_refresh_developer_balance_greybox",
+        "_runtime_table_snapshot_source",
+        "Main victory presentation comparison",
+        "Main public-log presentation wrapper"
+      ],
+      "old_consumers": [
+        "TablePresentationRefreshScheduler receipts",
+        "GameScreen live/full refresh",
+        "PlanetBoard map refresh",
+        "developer balance refresh",
+        "Victory public log and immediate refresh"
+      ],
+      "new_owner_scene": "res://scenes/runtime/presentation/TablePresentationSourceOwner.tscn + res://scenes/runtime/presentation/TablePresentationRefreshPort.tscn",
+      "new_owner_script": "res://scripts/presentation/table_presentation_source_owner.gd + res://scripts/presentation/table_presentation_refresh_port.gd",
+      "new_public_api": [
+        "capture_live_snapshot",
+        "capture_full_snapshot",
+        "capture_map_snapshot",
+        "capture_developer_snapshot",
+        "apply_ordered_refresh_receipts",
+        "request_immediate",
+        "advance_table_presentation"
+      ],
+      "tests": [
+        "res://tests/table_presentation_refresh_scheduler_trace_test.gd",
+        "res://tests/table_presentation_source_target_cutover_test.gd",
+        "res://tests/table_presentation_viewmodel_parity_test.gd",
+        "res://tests/world_session_geometry_owner_cutover_test.gd",
+        "res://scenes/tools/TablePresentationSourceTargetBench.tscn",
+        "res://tests/table_presentation_query_ports_cutover_test.gd",
+        "res://tests/main_gd_architecture_gate_test.gd",
+        "res://tests/main_runtime_composition_test.gd",
+        "res://tests/ui_text_smoke_test.gd",
+        "res://tests/visual_snapshot.gd",
+        "res://tests/smoke_test.gd --check-only"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "",
+      "status": "cut_over"
+    },
+    {
+      "domain": "command_pipeline_boundary",
+      "old_symbols": [
+        "CardResolutionFrameDriver direct transition-sink dispatch"
+      ],
+      "old_consumers": [
+        "card-resolution frame transition batches"
+      ],
+      "new_owner_scene": "res://scenes/runtime/RuntimeCommandPipeline.tscn",
+      "new_owner_script": "res://scripts/runtime/runtime_command_pipeline.gd + res://scripts/runtime/runtime_command_envelope.gd",
+      "new_public_api": [
+        "dispatch_card_transition_batch",
+        "RuntimeCommandEnvelope.from_card_transition",
+        "RuntimeCommandEnvelope.validate"
+      ],
+      "tests": [
+        "res://tests/command_pipeline_boundary_hardening_test.gd",
+        "res://tests/card_resolution_frame_driver_cutover_test.gd",
+        "res://tests/card_resolution_transition_sink_cutover_test.gd",
+        "res://tests/card_resolution_transition_gameplay_fault_injection_test.gd",
+        "res://scenes/tools/CommandPipelineBoundaryHardeningBench.tscn"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "",
+      "status": "cut_over"
+    },
+    {
+      "domain": "standings_application_flow",
+      "old_symbols": [
+        "StandingsScoreboardScene",
+        "_open_standings_menu",
+        "_populate_standings_summary_cards",
+        "_add_standings_scoreboard_panel",
+        "_standings_public_source_snapshot",
+        "_standings_public_snapshot",
+        "_standing_entries"
+      ],
+      "old_consumers": [
+        "ApplicationFlowPort generic action signal",
+        "MenuOverlay standings quick navigation",
+        "FinalSettlement standings action"
+      ],
+      "new_owner_scene": "res://scenes/runtime/StandingsApplicationFlowController.tscn + res://scenes/runtime/StandingsPublicQueryPort.tscn",
+      "new_owner_script": "res://scripts/runtime/standings_application_flow_controller.gd + res://scripts/runtime/standings_public_query_port.gd",
+      "new_public_api": [
+        "ApplicationFlowPort.standings_requested",
+        "StandingsApplicationFlowController.open_standings",
+        "StandingsPublicQueryPort.snapshot_for_authorized_viewer"
+      ],
+      "tests": [
+        "res://tests/standings_application_flow_cutover_test.gd",
+        "res://tests/main_application_flow_handler_extraction_test.gd",
+        "res://tests/standings_public_snapshot_service_test.gd",
+        "res://tests/main_victory_public_privacy_v06_test.gd",
+        "res://tests/rules_quick_reference_snapshot_v06_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "",
+      "status": "cut_over"
+    },
+    {
+      "domain": "economy_application_flow",
+      "old_symbols": ["EconomyDashboardScene", "_open_economy_overview_menu", "_populate_economy_overview_summary_cards", "_add_economy_dashboard_panel", "_economy_dashboard_public_source_snapshot", "_economy_dashboard_public_snapshot"],
+      "old_consumers": ["ApplicationFlowPort generic action signal", "MenuOverlay economy quick navigation", "IntelDossier economy link", "catalog return target"],
+      "new_owner_scene": "res://scenes/runtime/EconomyApplicationFlowController.tscn + res://scenes/runtime/EconomyDashboardViewerQueryPort.tscn",
+      "new_owner_script": "res://scripts/runtime/economy_application_flow_controller.gd + res://scripts/runtime/economy_dashboard_viewer_query_port.gd",
+      "new_public_api": ["ApplicationFlowPort.economy_requested", "EconomyApplicationFlowController.open_economy", "EconomyDashboardViewerQueryPort.snapshot_for_authorized_viewer"],
+      "tests": ["res://tests/economy_application_flow_cutover_test.gd", "res://tests/economy_dashboard_public_snapshot_service_test.gd", "res://scenes/tools/EconomyDashboardViewerQueryCutoverBench.tscn"],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
+    },
+    {
+      "domain": "presentation_action_routing",
+      "old_symbols": [
+        "_runtime_table_snapshot_source",
+        "_on_runtime_game_screen_action_requested"
+      ],
+      "old_consumers": [
+        "GameScreen",
+        "PlanetBoard",
+        "PlayerBoard",
+        "MenuOverlay"
+      ],
+      "new_owner_scene": "",
+      "new_owner_script": "",
+      "new_public_api": [],
+      "tests": [],
+      "old_path_deleted": false,
+      "duplicate_execution_checked": false,
+      "commit_sha": "",
+      "status": "pending"
+    },
+    {
+      "domain": "remaining_root_responsibilities",
+      "old_symbols": [
+        "audio",
+        "menu state",
+        "overlay glue",
+        "codex glue",
+        "_get",
+        "_set",
+        "fallback helpers"
+      ],
+      "old_consumers": [
+        "main scene composition"
+      ],
+      "new_owner_scene": "",
+      "new_owner_script": "",
+      "new_public_api": [],
+      "tests": [],
+      "old_path_deleted": false,
+      "duplicate_execution_checked": false,
+      "commit_sha": "",
+      "status": "pending"
+    }
+  ]
+}

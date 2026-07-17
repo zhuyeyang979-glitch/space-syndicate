@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/simulation_mutation_authority.gd" id="1_authority"]
+
+[node name="SimulationMutationAuthority" type="Node"]
+script = ExtResource("1_authority")
+editor_description = "Scene-owned gate for deterministic mutation commands. It authorizes only while RuntimeSimulationStep is active and owns no world state."

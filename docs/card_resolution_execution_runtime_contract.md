@@ -5,9 +5,9 @@
 This contract records the Sprint 36 observed behavior and the Sprint 37 ownership cutover for one active card from public reveal through effect completion.
 
 - Ruleset reference: `v0.4`, especially sections 4, 9, 12, 13, 15, 17, and 21.
-- Runtime entry point: `main.gd::_complete_active_card_resolution()`.
+- Runtime entry point: `CardResolutionTransitionSink.apply_transition_batch()`.
 - Orchestration owner: `CardResolutionExecutionRuntimeService.tscn`.
-- Concrete world adapter: `main.gd::_apply_card_resolution_effect_request()`.
+- Concrete effect routing: `CardEffectRuntimeRouter` through typed family ports.
 - Characterization/cutover gate: `CardResolutionExecutionRuntimeCharacterizationBench.tscn`.
 - Sprint 37 gate: 28/28 observed, 28/28 aligned, and 28/28 cutover.
 
@@ -30,7 +30,7 @@ The current runtime order is:
 13. Append one resolved-history entry.
 14. Execution Service chooses `start_next` or `finish_batch`/`promote_next_batch`; Queue Service performs the mutation.
 
-The active entry is deliberately cleared before concrete effect dispatch. Exactly-once behavior is enforced by both Queue Service release and the Execution Service inflight/completed resolution gates.
+The active entry is deliberately cleared before concrete effect dispatch. Exactly-once behavior is enforced by Queue Service release, the Execution Service in-flight/completed resolution gates, and the persisted pending-settlement boundary. A retry after history or mana-settlement failure resumes the same unfinished intent and cannot release the card or dispatch its effect again.
 
 ## Submission versus resolution
 
@@ -151,17 +151,20 @@ Sprint 36 loads real runtime definitions rather than fabricated IDs:
 
 Economy, city development, product, route, monster, military, contract, intelligence, weather, scenario, and privacy logic remain in their current owners. Sprint 37 does not move or rewrite these algorithms.
 
-### main.gd after Sprint 37
+### Current scene-first boundary
 
-Retains only:
+`CardResolutionTransitionSink` now consumes all twelve authored frame commands
+and invokes only typed execution and presentation ports. `main.gd` no longer
+owns the transition switch, active-card completion wrapper, queue lifecycle
+helpers or `_use_skill` submission fallback. The production table remains the
+temporary presentation target until the separate Table Presentation
+Source/Target Cutover; that remaining UI debt is not an execution fallback.
 
-- Pure world-fact request construction.
-- Generic intent application requested by Execution Service.
-- Requirement/target checks that depend on live world state.
-- Concrete effect-owner invocation through `_apply_card_resolution_effect_request()`.
-- Existing UI, log, scenario, privacy, and visual-event forwarding.
-
-It no longer owns the lifecycle sequence, continuation choice, or a legacy `_resolve_queued_skill()` shell.
+Execution persistence uses schema v3. Full in-flight transactions and pending
+settlements are validated for ordered intent progress, flag consistency,
+resolution/execution binding and outcome fingerprint before restore. Public
+debug projections expose counts and summaries only, never private transaction
+payloads.
 
 ## Sprint 38 effect-family boundary
 
@@ -214,9 +217,10 @@ Moved as one orchestration unit:
 - Completion, aftermath, history, and continuation intents.
 - Counter/contract continuation classification.
 
-Deleted or reduced after the 56/56 gate proved parity:
+Deleted or reduced after the execution and transition gates proved parity:
 
-- `_complete_active_card_resolution()` is now a thin plan/intent/finalize runner.
+- `_complete_active_card_resolution()` is physically deleted from Main.
+- `CardResolutionTransitionSink` is the sole ordered plan/intent/finalize runner.
 - `_resolve_queued_skill()` is absent.
 - Completion, aftermath, history, and active-path continuation order are Service-owned.
 

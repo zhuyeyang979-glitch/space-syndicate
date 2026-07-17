@@ -20,10 +20,6 @@ signal open_first_playable_loop_bench_requested(scene_path: String)
 signal run_first_playable_loop_bench_requested(scene_path: String)
 signal open_first_round_runtime_playable_loop_bench_requested(scene_path: String)
 signal run_first_round_runtime_playable_loop_bench_requested(scene_path: String)
-signal open_first_mission_spine_bench_requested(scene_path: String)
-signal run_first_mission_spine_bench_requested(scene_path: String)
-signal open_first_mission_runtime_main_bench_requested(scene_path: String)
-signal run_first_mission_runtime_main_bench_requested(scene_path: String)
 signal open_planet_map_preview_requested(scene_path: String)
 signal run_planet_map_preview_requested(scene_path: String)
 signal open_planet_map_view_requested(scene_path: String)
@@ -112,10 +108,6 @@ signal open_economy_cashflow_runtime_controller_requested(scene_path: String)
 signal run_economy_cashflow_runtime_cutover_bench_requested(scene_path: String)
 signal open_gdp_formula_runtime_controller_requested(scene_path: String)
 signal run_gdp_formula_runtime_cutover_bench_requested(scene_path: String)
-signal open_scenario_runtime_controller_requested(scene_path: String)
-signal run_scenario_runtime_glue_cutover_bench_requested(scene_path: String)
-signal open_first_table_authored_runtime_service_requested(scene_path: String)
-signal run_first_table_authored_runtime_cutover_bench_requested(scene_path: String)
 signal open_sceneized_main_requested(scene_path: String)
 signal run_legacy_runtime_surface_retirement_bench_requested(scene_path: String)
 signal open_legacy_player_surface_retirement_bench_requested(scene_path: String)
@@ -126,8 +118,6 @@ signal open_card_play_eligibility_runtime_service_requested(scene_path: String)
 signal open_card_play_eligibility_world_bridge_requested(scene_path: String)
 signal open_card_play_eligibility_runtime_bench_requested(scene_path: String)
 signal run_card_play_eligibility_runtime_bench_requested(scene_path: String)
-signal open_menu_shell_runtime_cutover_bench_requested(scene_path: String)
-signal run_menu_shell_runtime_cutover_bench_requested(scene_path: String)
 signal open_codex_scene_hard_cutover_bench_requested(scene_path: String)
 signal run_codex_scene_hard_cutover_bench_requested(scene_path: String)
 signal open_codex_atlas_scene_cutover_bench_requested(scene_path: String)
@@ -210,8 +200,6 @@ const PLAYER_TURN_INTERACTION_BENCH_SCENE_PATH := "res://scenes/tools/PlayerTurn
 const RUNTIME_PLAYER_FLOW_BENCH_SCENE_PATH := "res://scenes/tools/RuntimePlayerTurnFlowBench.tscn"
 const FIRST_PLAYABLE_LOOP_BENCH_SCENE_PATH := "res://scenes/tools/FirstPlayableLoopBench.tscn"
 const FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_BENCH_SCENE_PATH := "res://scenes/tools/FirstRoundRuntimePlayableLoopBench.tscn"
-const FIRST_MISSION_SPINE_BENCH_SCENE_PATH := "res://scenes/tools/FirstMissionSpineBench.tscn"
-const FIRST_MISSION_RUNTIME_MAIN_BENCH_SCENE_PATH := "res://scenes/tools/FirstMissionRuntimeMainBench.tscn"
 const PLANET_MAP_PREVIEW_SCENE_PATH := "res://scenes/tools/PlanetMapMcpPreview.tscn"
 const PLANET_MAP_VIEW_SCENE_PATH := "res://scenes/ui/PlanetMapView.tscn"
 const PLANET_DISTRICT_NODE_SCENE_PATH := "res://scenes/ui/map/PlanetDistrictNode.tscn"
@@ -285,10 +273,6 @@ const ECONOMY_CASHFLOW_RUNTIME_CONTROLLER_SCENE_PATH := "res://scenes/runtime/Ec
 const ECONOMY_CASHFLOW_RUNTIME_CUTOVER_BENCH_SCENE_PATH := "res://scenes/tools/EconomyCashflowRuntimeCutoverBench.tscn"
 const GDP_FORMULA_RUNTIME_CONTROLLER_SCENE_PATH := "res://scenes/runtime/GdpFormulaRuntimeController.tscn"
 const GDP_FORMULA_RUNTIME_CUTOVER_BENCH_SCENE_PATH := "res://scenes/tools/GdpFormulaRuntimeCutoverBench.tscn"
-const SCENARIO_RUNTIME_CONTROLLER_SCENE_PATH := "res://scenes/runtime/ScenarioRuntimeController.tscn"
-const SCENARIO_RUNTIME_GLUE_CUTOVER_BENCH_SCENE_PATH := "res://scenes/tools/ScenarioRuntimeGlueCutoverBench.tscn"
-const FIRST_TABLE_AUTHORED_RUNTIME_SERVICE_SCENE_PATH := "res://scenes/runtime/FirstTableAuthoredRuntimeService.tscn"
-const FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_BENCH_SCENE_PATH := "res://scenes/tools/FirstTableAuthoredRuntimeCutoverBench.tscn"
 const SCENEIZED_MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const LEGACY_RUNTIME_SURFACE_RETIREMENT_BENCH_SCENE_PATH := "res://scenes/tools/LegacyRuntimeSurfaceRetirementBench.tscn"
 const LEGACY_PLAYER_SURFACE_RETIREMENT_BENCH_SCENE_PATH := "res://scenes/tools/LegacyPlayerSurfaceRetirementBench.tscn"
@@ -297,7 +281,6 @@ const GAME_TABLE_VIEWMODEL_RUNTIME_SERVICE_SCENE_PATH := "res://scenes/runtime/G
 const CARD_PLAY_ELIGIBILITY_RUNTIME_SERVICE_SCENE_PATH := "res://scenes/runtime/CardPlayEligibilityRuntimeService.tscn"
 const CARD_PLAY_ELIGIBILITY_WORLD_BRIDGE_SCENE_PATH := "res://scenes/runtime/CardPlayEligibilityWorldBridge.tscn"
 const CARD_PLAY_ELIGIBILITY_RUNTIME_BENCH_SCENE_PATH := "res://scenes/tools/CardPlayEligibilityRuntimeBench.tscn"
-const MENU_SHELL_RUNTIME_CUTOVER_BENCH_SCENE_PATH := "res://scenes/tools/MenuShellRuntimeCutoverBench.tscn"
 const CODEX_SCENE_HARD_CUTOVER_BENCH_SCENE_PATH := "res://scenes/tools/CodexSceneHardCutoverBench.tscn"
 const CODEX_ATLAS_SCENE_CUTOVER_BENCH_SCENE_PATH := "res://scenes/tools/CodexAtlasSceneCutoverBench.tscn"
 const CODEX_NAVIGATION_RUNTIME_CONTROLLER_SCENE_PATH := "res://scenes/runtime/CodexNavigationRuntimeController.tscn"
@@ -365,8 +348,6 @@ const PLAYER_TURN_INTERACTION_QA_OUTPUT_DIR := "user://space_syndicate_design_qa
 const RUNTIME_PLAYER_FLOW_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/runtime_player_turn_flow/"
 const FIRST_PLAYABLE_LOOP_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/first_playable_loop/"
 const FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/first_round_runtime_playable_loop/"
-const FIRST_MISSION_SPINE_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/first_mission_spine/"
-const FIRST_MISSION_RUNTIME_MAIN_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/first_mission_runtime_main/"
 const PLANET_MAP_RENDER_CUTOVER_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/planet_map_render_cutover/"
 const PLANET_MAP_INTERACTION_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/planet_map_interactions/"
 const CARD_RESOLUTION_TRACK_INTERACTION_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/card_resolution_track_interactions/"
@@ -390,12 +371,9 @@ const CARD_RESOLUTION_QUEUE_RUNTIME_CHARACTERIZATION_QA_OUTPUT_DIR := "user://sp
 const CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/card_resolution_execution_characterization/"
 const ECONOMY_CASHFLOW_RUNTIME_CUTOVER_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/economy_cashflow_runtime_cutover/"
 const GDP_FORMULA_RUNTIME_CUTOVER_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/gdp_formula_runtime_cutover/"
-const SCENARIO_RUNTIME_GLUE_CUTOVER_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/scenario_runtime_glue_cutover/"
-const FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/first_table_authored_runtime_cutover/"
 const LEGACY_RUNTIME_SURFACE_RETIREMENT_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/legacy_runtime_surface_retirement/"
 const LEGACY_PLAYER_SURFACE_RETIREMENT_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/legacy_player_surface_retirement/"
 const CARD_PLAY_ELIGIBILITY_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/card_play_eligibility/"
-const MENU_SHELL_RUNTIME_CUTOVER_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/menu_shell_runtime_cutover/"
 const CODEX_SCENE_HARD_CUTOVER_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/codex_scene_hard_cutover/"
 const CODEX_ATLAS_SCENE_CUTOVER_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/codex_atlas_scene_cutover/"
 const CODEX_NAVIGATION_RUNTIME_CUTOVER_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/codex_navigation_runtime_cutover/"
@@ -456,12 +434,6 @@ const PANEL_BY_FIXTURE_ID := {
 @onready var open_first_round_runtime_playable_loop_bench_button: Button = %OpenFirstRoundRuntimePlayableLoopBenchButton
 @onready var run_first_round_runtime_playable_loop_bench_button: Button = %RunFirstRoundRuntimePlayableLoopBenchButton
 @onready var open_first_round_runtime_playable_loop_output_folder_button: Button = %OpenFirstRoundRuntimePlayableLoopOutputFolderButton
-@onready var open_first_mission_spine_bench_button: Button = %OpenFirstMissionSpineBenchButton
-@onready var run_first_mission_spine_bench_button: Button = %RunFirstMissionSpineBenchButton
-@onready var open_first_mission_spine_output_folder_button: Button = %OpenFirstMissionSpineOutputFolderButton
-@onready var open_first_mission_runtime_main_bench_button: Button = %OpenFirstMissionRuntimeMainBenchButton
-@onready var run_first_mission_runtime_main_bench_button: Button = %RunFirstMissionRuntimeMainBenchButton
-@onready var open_first_mission_runtime_main_output_folder_button: Button = %OpenFirstMissionRuntimeMainOutputFolderButton
 @onready var open_planet_map_preview_button: Button = %OpenPlanetMapPreviewButton
 @onready var run_planet_map_preview_button: Button = %RunPlanetMapPreviewButton
 @onready var open_planet_map_view_button: Button = %OpenPlanetMapViewButton
@@ -573,12 +545,6 @@ const PANEL_BY_FIXTURE_ID := {
 @onready var open_gdp_formula_runtime_controller_button: Button = %OpenGdpFormulaRuntimeControllerButton
 @onready var run_gdp_formula_runtime_cutover_bench_button: Button = %RunGdpFormulaRuntimeCutoverBenchButton
 @onready var open_gdp_formula_runtime_cutover_output_folder_button: Button = %OpenGdpFormulaRuntimeCutoverOutputFolderButton
-@onready var open_scenario_runtime_controller_button: Button = %OpenScenarioRuntimeControllerButton
-@onready var run_scenario_runtime_glue_cutover_bench_button: Button = %RunScenarioRuntimeGlueCutoverBenchButton
-@onready var open_scenario_runtime_glue_cutover_output_folder_button: Button = %OpenScenarioRuntimeGlueCutoverOutputFolderButton
-@onready var open_first_table_authored_runtime_service_button: Button = %OpenFirstTableAuthoredRuntimeServiceButton
-@onready var run_first_table_authored_runtime_cutover_bench_button: Button = %RunFirstTableAuthoredRuntimeCutoverBenchButton
-@onready var open_first_table_authored_runtime_cutover_output_folder_button: Button = %OpenFirstTableAuthoredRuntimeCutoverOutputFolderButton
 @onready var open_sceneized_main_button: Button = %OpenSceneizedMainButton
 @onready var run_legacy_runtime_surface_retirement_bench_button: Button = %RunLegacyRuntimeSurfaceRetirementBenchButton
 @onready var open_legacy_runtime_surface_retirement_output_folder_button: Button = %OpenLegacyRuntimeSurfaceRetirementOutputFolderButton
@@ -592,9 +558,6 @@ const PANEL_BY_FIXTURE_ID := {
 @onready var open_card_play_eligibility_runtime_bench_button: Button = %OpenCardPlayEligibilityRuntimeBenchButton
 @onready var run_card_play_eligibility_runtime_bench_button: Button = %RunCardPlayEligibilityRuntimeBenchButton
 @onready var open_card_play_eligibility_output_folder_button: Button = %OpenCardPlayEligibilityOutputFolderButton
-@onready var open_menu_shell_runtime_cutover_bench_button: Button = %OpenMenuShellRuntimeCutoverBenchButton
-@onready var run_menu_shell_runtime_cutover_bench_button: Button = %RunMenuShellRuntimeCutoverBenchButton
-@onready var open_menu_shell_runtime_cutover_output_folder_button: Button = %OpenMenuShellRuntimeCutoverOutputFolderButton
 @onready var open_codex_scene_hard_cutover_bench_button: Button = %OpenCodexSceneHardCutoverBenchButton
 @onready var run_codex_scene_hard_cutover_bench_button: Button = %RunCodexSceneHardCutoverBenchButton
 @onready var open_codex_scene_hard_cutover_output_folder_button: Button = %OpenCodexSceneHardCutoverOutputFolderButton
@@ -749,14 +712,6 @@ func first_playable_loop_bench_scene_path() -> String:
 
 func first_round_runtime_playable_loop_bench_scene_path() -> String:
 	return FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_BENCH_SCENE_PATH
-
-
-func first_mission_spine_bench_scene_path() -> String:
-	return FIRST_MISSION_SPINE_BENCH_SCENE_PATH
-
-
-func first_mission_runtime_main_bench_scene_path() -> String:
-	return FIRST_MISSION_RUNTIME_MAIN_BENCH_SCENE_PATH
 
 
 func planet_map_preview_scene_path() -> String:
@@ -1039,22 +994,6 @@ func gdp_formula_runtime_cutover_bench_scene_path() -> String:
 	return GDP_FORMULA_RUNTIME_CUTOVER_BENCH_SCENE_PATH
 
 
-func scenario_runtime_controller_scene_path() -> String:
-	return SCENARIO_RUNTIME_CONTROLLER_SCENE_PATH
-
-
-func scenario_runtime_glue_cutover_bench_scene_path() -> String:
-	return SCENARIO_RUNTIME_GLUE_CUTOVER_BENCH_SCENE_PATH
-
-
-func first_table_authored_runtime_service_scene_path() -> String:
-	return FIRST_TABLE_AUTHORED_RUNTIME_SERVICE_SCENE_PATH
-
-
-func first_table_authored_runtime_cutover_bench_scene_path() -> String:
-	return FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_BENCH_SCENE_PATH
-
-
 func sceneized_main_scene_path() -> String:
 	return SCENEIZED_MAIN_SCENE_PATH
 
@@ -1085,10 +1024,6 @@ func card_play_eligibility_world_bridge_scene_path() -> String:
 
 func card_play_eligibility_runtime_bench_scene_path() -> String:
 	return CARD_PLAY_ELIGIBILITY_RUNTIME_BENCH_SCENE_PATH
-
-
-func menu_shell_runtime_cutover_bench_scene_path() -> String:
-	return MENU_SHELL_RUNTIME_CUTOVER_BENCH_SCENE_PATH
 
 
 func codex_scene_hard_cutover_bench_scene_path() -> String:
@@ -1351,14 +1286,6 @@ func first_round_runtime_playable_loop_qa_output_dir() -> String:
 	return FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_QA_OUTPUT_DIR
 
 
-func first_mission_spine_qa_output_dir() -> String:
-	return FIRST_MISSION_SPINE_QA_OUTPUT_DIR
-
-
-func first_mission_runtime_main_qa_output_dir() -> String:
-	return FIRST_MISSION_RUNTIME_MAIN_QA_OUTPUT_DIR
-
-
 func planet_map_render_cutover_qa_output_dir() -> String:
 	return PLANET_MAP_RENDER_CUTOVER_QA_OUTPUT_DIR
 
@@ -1451,14 +1378,6 @@ func economy_cashflow_runtime_cutover_qa_output_dir() -> String:
 	return ECONOMY_CASHFLOW_RUNTIME_CUTOVER_QA_OUTPUT_DIR
 
 
-func scenario_runtime_glue_cutover_qa_output_dir() -> String:
-	return SCENARIO_RUNTIME_GLUE_CUTOVER_QA_OUTPUT_DIR
-
-
-func first_table_authored_runtime_cutover_qa_output_dir() -> String:
-	return FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_QA_OUTPUT_DIR
-
-
 func legacy_runtime_surface_retirement_qa_output_dir() -> String:
 	return LEGACY_RUNTIME_SURFACE_RETIREMENT_QA_OUTPUT_DIR
 
@@ -1469,10 +1388,6 @@ func legacy_player_surface_retirement_qa_output_dir() -> String:
 
 func card_play_eligibility_qa_output_dir() -> String:
 	return CARD_PLAY_ELIGIBILITY_QA_OUTPUT_DIR
-
-
-func menu_shell_runtime_cutover_qa_output_dir() -> String:
-	return MENU_SHELL_RUNTIME_CUTOVER_QA_OUTPUT_DIR
 
 
 func codex_scene_hard_cutover_qa_output_dir() -> String:
@@ -1763,38 +1678,6 @@ func run_first_round_runtime_playable_loop_bench_scene() -> void:
 	else:
 		run_first_round_runtime_playable_loop_bench_requested.emit(FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_BENCH_SCENE_PATH)
 	_set_status("Run first-round runtime playable loop bench: %s" % FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_BENCH_SCENE_PATH)
-
-
-func open_first_mission_spine_bench_scene() -> void:
-	if _editor_plugin != null and _editor_plugin.has_method("open_scene"):
-		_editor_plugin.call("open_scene", FIRST_MISSION_SPINE_BENCH_SCENE_PATH)
-	else:
-		open_first_mission_spine_bench_requested.emit(FIRST_MISSION_SPINE_BENCH_SCENE_PATH)
-	_set_status("Open first mission spine bench: %s" % FIRST_MISSION_SPINE_BENCH_SCENE_PATH)
-
-
-func run_first_mission_spine_bench_scene() -> void:
-	if _editor_plugin != null and _editor_plugin.has_method("run_scene"):
-		_editor_plugin.call("run_scene", FIRST_MISSION_SPINE_BENCH_SCENE_PATH)
-	else:
-		run_first_mission_spine_bench_requested.emit(FIRST_MISSION_SPINE_BENCH_SCENE_PATH)
-	_set_status("Run first mission spine bench: %s" % FIRST_MISSION_SPINE_BENCH_SCENE_PATH)
-
-
-func open_first_mission_runtime_main_bench_scene() -> void:
-	if _editor_plugin != null and _editor_plugin.has_method("open_scene"):
-		_editor_plugin.call("open_scene", FIRST_MISSION_RUNTIME_MAIN_BENCH_SCENE_PATH)
-	else:
-		open_first_mission_runtime_main_bench_requested.emit(FIRST_MISSION_RUNTIME_MAIN_BENCH_SCENE_PATH)
-	_set_status("Open first mission runtime main bench: %s" % FIRST_MISSION_RUNTIME_MAIN_BENCH_SCENE_PATH)
-
-
-func run_first_mission_runtime_main_bench_scene() -> void:
-	if _editor_plugin != null and _editor_plugin.has_method("run_scene"):
-		_editor_plugin.call("run_scene", FIRST_MISSION_RUNTIME_MAIN_BENCH_SCENE_PATH)
-	else:
-		run_first_mission_runtime_main_bench_requested.emit(FIRST_MISSION_RUNTIME_MAIN_BENCH_SCENE_PATH)
-	_set_status("Run first mission runtime main bench: %s" % FIRST_MISSION_RUNTIME_MAIN_BENCH_SCENE_PATH)
 
 
 func open_planet_map_preview_scene() -> void:
@@ -2501,38 +2384,6 @@ func run_gdp_formula_runtime_cutover_bench_scene() -> void:
 	_set_status("Run GDP Formula Runtime Cutover bench: %s" % GDP_FORMULA_RUNTIME_CUTOVER_BENCH_SCENE_PATH)
 
 
-func open_scenario_runtime_controller_scene() -> void:
-	if _editor_plugin != null and _editor_plugin.has_method("open_scene"):
-		_editor_plugin.call("open_scene", SCENARIO_RUNTIME_CONTROLLER_SCENE_PATH)
-	else:
-		open_scenario_runtime_controller_requested.emit(SCENARIO_RUNTIME_CONTROLLER_SCENE_PATH)
-	_set_status("Open Scenario Runtime Controller: %s" % SCENARIO_RUNTIME_CONTROLLER_SCENE_PATH)
-
-
-func run_scenario_runtime_glue_cutover_bench_scene() -> void:
-	if _editor_plugin != null and _editor_plugin.has_method("run_scene"):
-		_editor_plugin.call("run_scene", SCENARIO_RUNTIME_GLUE_CUTOVER_BENCH_SCENE_PATH)
-	else:
-		run_scenario_runtime_glue_cutover_bench_requested.emit(SCENARIO_RUNTIME_GLUE_CUTOVER_BENCH_SCENE_PATH)
-	_set_status("Run Scenario Runtime Glue Cutover bench: %s" % SCENARIO_RUNTIME_GLUE_CUTOVER_BENCH_SCENE_PATH)
-
-
-func open_first_table_authored_runtime_service_scene() -> void:
-	if _editor_plugin != null and _editor_plugin.has_method("open_scene"):
-		_editor_plugin.call("open_scene", FIRST_TABLE_AUTHORED_RUNTIME_SERVICE_SCENE_PATH)
-	else:
-		open_first_table_authored_runtime_service_requested.emit(FIRST_TABLE_AUTHORED_RUNTIME_SERVICE_SCENE_PATH)
-	_set_status("Open First Table Authored Runtime Service: %s" % FIRST_TABLE_AUTHORED_RUNTIME_SERVICE_SCENE_PATH)
-
-
-func run_first_table_authored_runtime_cutover_bench_scene() -> void:
-	if _editor_plugin != null and _editor_plugin.has_method("run_scene"):
-		_editor_plugin.call("run_scene", FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_BENCH_SCENE_PATH)
-	else:
-		run_first_table_authored_runtime_cutover_bench_requested.emit(FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_BENCH_SCENE_PATH)
-	_set_status("Run First Table Authored Runtime Cutover bench: %s" % FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_BENCH_SCENE_PATH)
-
-
 func open_sceneized_main_scene() -> void:
 	if _editor_plugin != null and _editor_plugin.has_method("open_scene"):
 		_editor_plugin.call("open_scene", SCENEIZED_MAIN_SCENE_PATH)
@@ -2611,22 +2462,6 @@ func run_card_play_eligibility_runtime_bench_scene() -> void:
 	else:
 		run_card_play_eligibility_runtime_bench_requested.emit(CARD_PLAY_ELIGIBILITY_RUNTIME_BENCH_SCENE_PATH)
 	_set_status("Run Card Play Eligibility Runtime bench: %s" % CARD_PLAY_ELIGIBILITY_RUNTIME_BENCH_SCENE_PATH)
-
-
-func open_menu_shell_runtime_cutover_bench_scene() -> void:
-	if _editor_plugin != null and _editor_plugin.has_method("open_scene"):
-		_editor_plugin.call("open_scene", MENU_SHELL_RUNTIME_CUTOVER_BENCH_SCENE_PATH)
-	else:
-		open_menu_shell_runtime_cutover_bench_requested.emit(MENU_SHELL_RUNTIME_CUTOVER_BENCH_SCENE_PATH)
-	_set_status("Open Menu Shell Runtime Cutover bench: %s" % MENU_SHELL_RUNTIME_CUTOVER_BENCH_SCENE_PATH)
-
-
-func run_menu_shell_runtime_cutover_bench_scene() -> void:
-	if _editor_plugin != null and _editor_plugin.has_method("run_scene"):
-		_editor_plugin.call("run_scene", MENU_SHELL_RUNTIME_CUTOVER_BENCH_SCENE_PATH)
-	else:
-		run_menu_shell_runtime_cutover_bench_requested.emit(MENU_SHELL_RUNTIME_CUTOVER_BENCH_SCENE_PATH)
-	_set_status("Run Menu 24-case gate + Global Navigation 32-case characterization: %s" % MENU_SHELL_RUNTIME_CUTOVER_BENCH_SCENE_PATH)
 
 
 func open_codex_scene_hard_cutover_bench_scene() -> void:
@@ -3259,24 +3094,6 @@ func open_first_round_runtime_playable_loop_qa_output_folder() -> void:
 		_set_status("First-round runtime playable loop QA output folder: %s" % FIRST_ROUND_RUNTIME_PLAYABLE_LOOP_QA_OUTPUT_DIR)
 
 
-func open_first_mission_spine_qa_output_folder() -> void:
-	var absolute_path := ProjectSettings.globalize_path(FIRST_MISSION_SPINE_QA_OUTPUT_DIR)
-	var error := OS.shell_open(absolute_path)
-	if error == OK:
-		_set_status("Open first mission spine QA output folder: %s" % FIRST_MISSION_SPINE_QA_OUTPUT_DIR)
-	else:
-		_set_status("First mission spine QA output folder: %s" % FIRST_MISSION_SPINE_QA_OUTPUT_DIR)
-
-
-func open_first_mission_runtime_main_qa_output_folder() -> void:
-	var absolute_path := ProjectSettings.globalize_path(FIRST_MISSION_RUNTIME_MAIN_QA_OUTPUT_DIR)
-	var error := OS.shell_open(absolute_path)
-	if error == OK:
-		_set_status("Open first mission runtime main QA output folder: %s" % FIRST_MISSION_RUNTIME_MAIN_QA_OUTPUT_DIR)
-	else:
-		_set_status("First mission runtime main QA output folder: %s" % FIRST_MISSION_RUNTIME_MAIN_QA_OUTPUT_DIR)
-
-
 func open_planet_render_cutover_qa_output_folder() -> void:
 	var absolute_path := ProjectSettings.globalize_path(PLANET_MAP_RENDER_CUTOVER_QA_OUTPUT_DIR)
 	var error := OS.shell_open(absolute_path)
@@ -3484,24 +3301,6 @@ func open_gdp_formula_runtime_cutover_output_folder() -> void:
 		_set_status("GDP Formula output folder: %s" % GDP_FORMULA_RUNTIME_CUTOVER_QA_OUTPUT_DIR)
 
 
-func open_scenario_runtime_glue_cutover_output_folder() -> void:
-	var absolute_path := ProjectSettings.globalize_path(SCENARIO_RUNTIME_GLUE_CUTOVER_QA_OUTPUT_DIR)
-	var error := OS.shell_open(absolute_path)
-	if error == OK:
-		_set_status("Open Scenario Runtime output folder: %s" % SCENARIO_RUNTIME_GLUE_CUTOVER_QA_OUTPUT_DIR)
-	else:
-		_set_status("Scenario Runtime output folder: %s" % SCENARIO_RUNTIME_GLUE_CUTOVER_QA_OUTPUT_DIR)
-
-
-func open_first_table_authored_runtime_cutover_output_folder() -> void:
-	var absolute_path := ProjectSettings.globalize_path(FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_QA_OUTPUT_DIR)
-	var error := OS.shell_open(absolute_path)
-	if error == OK:
-		_set_status("Open First Table Authored Runtime output folder: %s" % FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_QA_OUTPUT_DIR)
-	else:
-		_set_status("First Table Authored Runtime output folder: %s" % FIRST_TABLE_AUTHORED_RUNTIME_CUTOVER_QA_OUTPUT_DIR)
-
-
 func open_legacy_runtime_surface_retirement_output_folder() -> void:
 	var absolute_path := ProjectSettings.globalize_path(LEGACY_RUNTIME_SURFACE_RETIREMENT_QA_OUTPUT_DIR)
 	var error := OS.shell_open(absolute_path)
@@ -3527,15 +3326,6 @@ func open_card_play_eligibility_output_folder() -> void:
 		_set_status("Open Card Play Eligibility output folder: %s" % CARD_PLAY_ELIGIBILITY_QA_OUTPUT_DIR)
 	else:
 		_set_status("Card Play Eligibility output folder: %s" % CARD_PLAY_ELIGIBILITY_QA_OUTPUT_DIR)
-
-
-func open_menu_shell_runtime_cutover_output_folder() -> void:
-	var absolute_path := ProjectSettings.globalize_path(MENU_SHELL_RUNTIME_CUTOVER_QA_OUTPUT_DIR)
-	var error := OS.shell_open(absolute_path)
-	if error == OK:
-		_set_status("Open Menu Shell Runtime Cutover output folder: %s" % MENU_SHELL_RUNTIME_CUTOVER_QA_OUTPUT_DIR)
-	else:
-		_set_status("Menu Shell Runtime Cutover output folder: %s" % MENU_SHELL_RUNTIME_CUTOVER_QA_OUTPUT_DIR)
 
 
 func open_codex_scene_hard_cutover_output_folder() -> void:
@@ -3800,12 +3590,6 @@ func _connect_buttons() -> void:
 	_connect_button(open_first_round_runtime_playable_loop_bench_button, "open_first_round_runtime_playable_loop_bench_scene")
 	_connect_button(run_first_round_runtime_playable_loop_bench_button, "run_first_round_runtime_playable_loop_bench_scene")
 	_connect_button(open_first_round_runtime_playable_loop_output_folder_button, "open_first_round_runtime_playable_loop_qa_output_folder")
-	_connect_button(open_first_mission_spine_bench_button, "open_first_mission_spine_bench_scene")
-	_connect_button(run_first_mission_spine_bench_button, "run_first_mission_spine_bench_scene")
-	_connect_button(open_first_mission_spine_output_folder_button, "open_first_mission_spine_qa_output_folder")
-	_connect_button(open_first_mission_runtime_main_bench_button, "open_first_mission_runtime_main_bench_scene")
-	_connect_button(run_first_mission_runtime_main_bench_button, "run_first_mission_runtime_main_bench_scene")
-	_connect_button(open_first_mission_runtime_main_output_folder_button, "open_first_mission_runtime_main_qa_output_folder")
 	_connect_button(open_planet_map_preview_button, "open_planet_map_preview_scene")
 	_connect_button(run_planet_map_preview_button, "run_planet_map_preview_scene")
 	_connect_button(open_planet_map_view_button, "open_planet_map_view_scene")
@@ -3917,12 +3701,6 @@ func _connect_buttons() -> void:
 	_connect_button(open_gdp_formula_runtime_controller_button, "open_gdp_formula_runtime_controller_scene")
 	_connect_button(run_gdp_formula_runtime_cutover_bench_button, "run_gdp_formula_runtime_cutover_bench_scene")
 	_connect_button(open_gdp_formula_runtime_cutover_output_folder_button, "open_gdp_formula_runtime_cutover_output_folder")
-	_connect_button(open_scenario_runtime_controller_button, "open_scenario_runtime_controller_scene")
-	_connect_button(run_scenario_runtime_glue_cutover_bench_button, "run_scenario_runtime_glue_cutover_bench_scene")
-	_connect_button(open_scenario_runtime_glue_cutover_output_folder_button, "open_scenario_runtime_glue_cutover_output_folder")
-	_connect_button(open_first_table_authored_runtime_service_button, "open_first_table_authored_runtime_service_scene")
-	_connect_button(run_first_table_authored_runtime_cutover_bench_button, "run_first_table_authored_runtime_cutover_bench_scene")
-	_connect_button(open_first_table_authored_runtime_cutover_output_folder_button, "open_first_table_authored_runtime_cutover_output_folder")
 	_connect_button(open_sceneized_main_button, "open_sceneized_main_scene")
 	_connect_button(run_legacy_runtime_surface_retirement_bench_button, "run_legacy_runtime_surface_retirement_bench_scene")
 	_connect_button(open_legacy_runtime_surface_retirement_output_folder_button, "open_legacy_runtime_surface_retirement_output_folder")
@@ -3936,9 +3714,6 @@ func _connect_buttons() -> void:
 	_connect_button(open_card_play_eligibility_runtime_bench_button, "open_card_play_eligibility_runtime_bench_scene")
 	_connect_button(run_card_play_eligibility_runtime_bench_button, "run_card_play_eligibility_runtime_bench_scene")
 	_connect_button(open_card_play_eligibility_output_folder_button, "open_card_play_eligibility_output_folder")
-	_connect_button(open_menu_shell_runtime_cutover_bench_button, "open_menu_shell_runtime_cutover_bench_scene")
-	_connect_button(run_menu_shell_runtime_cutover_bench_button, "run_menu_shell_runtime_cutover_bench_scene")
-	_connect_button(open_menu_shell_runtime_cutover_output_folder_button, "open_menu_shell_runtime_cutover_output_folder")
 	_connect_button(open_codex_scene_hard_cutover_bench_button, "open_codex_scene_hard_cutover_bench_scene")
 	_connect_button(run_codex_scene_hard_cutover_bench_button, "run_codex_scene_hard_cutover_bench_scene")
 	_connect_button(open_codex_scene_hard_cutover_output_folder_button, "open_codex_scene_hard_cutover_output_folder")

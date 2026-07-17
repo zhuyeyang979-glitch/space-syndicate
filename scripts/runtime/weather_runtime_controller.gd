@@ -2,6 +2,10 @@
 extends Node
 class_name WeatherRuntimeController
 
+var _table_presentation_refresh_port: TablePresentationRefreshPort
+var _public_log_producer_port: PublicLogProducerPort
+var _presentation_world_clock: WorldEffectiveClockRuntimeController
+
 const DEFAULT_DEFINITION_CATALOG := preload("res://resources/weather/weather_definition_catalog_v1.tres")
 
 const FORECAST_LEAD_MIN_SECONDS := WeatherSystem.FORECAST_LEAD_MIN_SECONDS
@@ -29,6 +33,7 @@ var _product_market_runtime_controller: ProductMarketRuntimeController
 var _route_network_runtime_controller: RouteNetworkRuntimeController
 var _region_infrastructure_world_bridge: RegionInfrastructureWorldBridge
 var _weather_telemetry_runtime_service: Node
+var _visual_cue_runtime_owner: VisualCueRuntimeOwner
 var _world_effective_clock: Node
 var _ruleset_snapshot: Dictionary = {}
 var _configured := false
@@ -82,11 +87,21 @@ func set_weather_telemetry_runtime_service(service: Node) -> void:
 	_weather_telemetry_runtime_service = service
 
 
+func set_visual_cue_runtime_owner(cue_owner: VisualCueRuntimeOwner) -> void:
+	_visual_cue_runtime_owner = cue_owner
+
+
 func configure(ruleset_snapshot: Dictionary) -> void:
 	_ruleset_snapshot = ruleset_snapshot.duplicate(true)
 	_bind_clock_from_scene()
 	_configured = _compute_configured()
 	_refresh_legacy_projection()
+
+
+func set_table_presentation_ports(refresh_port: TablePresentationRefreshPort, log_port: PublicLogProducerPort, clock: WorldEffectiveClockRuntimeController) -> void:
+	_table_presentation_refresh_port = refresh_port
+	_public_log_producer_port = log_port
+	_presentation_world_clock = clock
 
 
 func reset_state() -> void:
@@ -990,7 +1005,7 @@ func _clean_region_indices(regions: Array, max_count: int = WeatherSystem.DEFAUL
 	return result
 
 
-func _shared_rng() -> RandomNumberGenerator:
+func _shared_rng() -> RunRngService:
 	return _world_bridge.shared_rng() if _world_bridge != null else null
 
 
@@ -1016,11 +1031,25 @@ func _refresh_weather_dependents() -> void:
 
 
 func _log(message: String) -> void:
-	_world_call(&"_log", [message])
+	if _public_log_producer_port != null and not message.is_empty():
+		_public_log_producer_port.publish(
+			&"weather_public_update", &"public.weather.updated",
+			{"action_kind": "weather", "public_status": "updated"},
+			_presentation_source_revision(), _presentation_world_time()
+		)
+
+
+func _presentation_source_revision() -> int:
+	return _presentation_world_clock.world_effective_micros() if _presentation_world_clock != null else 0
+
+
+func _presentation_world_time() -> float:
+	return _presentation_world_clock.world_effective_seconds() if _presentation_world_clock != null else 0.0
 
 
 func _add_action_callout(source: String, title: String, detail: String, accent: Color, world_position: Vector2, duration: float = 5.0) -> void:
-	_world_call(&"_add_action_callout", [source, title, detail, accent, world_position, duration])
+	if _visual_cue_runtime_owner != null:
+		_visual_cue_runtime_owner.add_action_callout(source, title, detail, accent, world_position, duration)
 
 
 func _announce_forecast(event: Dictionary, definition: WeatherDefinition) -> void:

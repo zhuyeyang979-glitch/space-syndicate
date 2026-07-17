@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_target_choice_runtime_controller.gd" id="1"]
+
+[node name="CardTargetChoiceRuntimeController" type="Node"]
+script = ExtResource("1")
+editor_description = "Authoritative owner of private pre-track monster/player target-choice bindings."

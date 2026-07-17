@@ -425,7 +425,7 @@ func _case_destroyed_exclusion() -> Dictionary:
 	var districts := _baseline_districts.duplicate(true)
 	var destroyed := int(_alive_indices().back())
 	(districts[destroyed] as Dictionary)["destroyed"] = true
-	_runtime_main.set("districts", districts)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 	var picked := _weather_controller.pick_districts(_first_alive_district(), 5)
 	var observed := not picked.has(destroyed)
 	return _record("destroyed_districts_excluded", observed, observed, "Destroyed districts remain excluded from weather zones.", {"district_count": picked.size()})
@@ -647,26 +647,27 @@ func _case_activation_refresh(kind: String) -> Dictionary:
 func _case_realtime_tick() -> Dictionary:
 	var district_index := _first_alive_district()
 	_weather_controller.replace_runtime_state({"id": 1, "type": "ion_storm", "districts": [district_index], "created_at": 0.0, "starts_at": 0.5, "duration": 45.0, "source": "test", "forced": false}, [], 1)
-	_runtime_main.call("_process", 0.5)
-	var observed := float(_runtime_main.get("game_time")) >= 0.5 and _weather_controller.active_zone_count() == 1
-	return _record("normal_realtime_tick_continues", observed, observed, "Normal main._process advances the Controller through Coordinator.tick_weather.", {"timing_checked": true, "active_zone_count": _weather_controller.active_zone_count()})
+	(_runtime_coordinator.get_node_or_null("RuntimeLoop") as RuntimeLoop).advance_frame_for_test(0.5)
+	var observed := float(((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time) >= 0.5 and _weather_controller.active_zone_count() == 1
+	return _record("normal_realtime_tick_continues", observed, observed, "The scene-owned RuntimeLoop advances the Controller through Coordinator.tick_weather.", {"timing_checked": true, "active_zone_count": _weather_controller.active_zone_count()})
 
 
 func _case_wager_freeze() -> Dictionary:
 	var district_index := _first_alive_district()
 	_weather_controller.replace_runtime_state({"id": 1, "type": "ion_storm", "districts": [district_index], "created_at": 0.0, "starts_at": 0.5, "duration": 45.0, "source": "test", "forced": false}, [], 1)
 	_monster_controller.active_monster_wagers = [{"wager_id": 99, "resolved": false, "remaining_seconds": 20.0, "seconds_total": 20.0, "competitors": []}]
-	_runtime_main.call("_process", 0.5)
-	var observed := is_zero_approx(float(_runtime_main.get("game_time"))) and _weather_controller.active_zone_count() == 0
+	(_runtime_coordinator.get_node_or_null("RuntimeLoop") as RuntimeLoop).advance_frame_for_test(0.5)
+	var observed := is_zero_approx(float(((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time)) and _weather_controller.active_zone_count() == 0
 	return _record("monster_wager_freezes_weather", observed, observed, "The existing forced-decision boundary still freezes weather time.", {"timing_checked": true})
 
 
 func _case_pause_freeze() -> Dictionary:
 	var district_index := _first_alive_district()
 	_weather_controller.replace_runtime_state({"id": 1, "type": "ion_storm", "districts": [district_index], "created_at": 0.0, "starts_at": 0.5, "duration": 45.0, "source": "test", "forced": false}, [], 1)
-	_runtime_main.set("time_scale", 0.0)
-	_runtime_main.call("_process", 1.0)
-	var observed := is_zero_approx(float(_runtime_main.get("game_time"))) and _weather_controller.active_zone_count() == 0
+	_runtime_coordinator.pause_session()
+	(_runtime_coordinator.get_node_or_null("RuntimeLoop") as RuntimeLoop).advance_frame_for_test(1.0)
+	_runtime_coordinator.resume_session()
+	var observed := is_zero_approx(float(((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time)) and _weather_controller.active_zone_count() == 0
 	return _record("readonly_pause_freezes_weather", observed, observed, "Readonly pause still freezes the weather clock.", {"timing_checked": true})
 
 
@@ -865,23 +866,23 @@ func _ensure_runtime_main() -> bool:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	_runtime_main.set_process(false)
-	_baseline_players = (_runtime_main.get("players") as Array).duplicate(true)
-	_baseline_districts = (_runtime_main.get("districts") as Array).duplicate(true)
+	_baseline_players = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
+	_baseline_districts = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	_baseline_product_market = _product_market_controller.to_save_data().duplicate(true)
 	return not _baseline_players.is_empty() and not _baseline_districts.is_empty() and bool(_weather_controller.debug_snapshot().get("controller_ready", false))
 
 
 func _reset_fixture() -> void:
 	_runtime_main.set_process(false)
-	_runtime_main.set("players", _baseline_players.duplicate(true))
-	_runtime_main.set("districts", _baseline_districts.duplicate(true))
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = _baseline_players.duplicate(true)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = _baseline_districts.duplicate(true)
 	_product_market_controller.apply_save_data(_baseline_product_market.duplicate(true))
-	_runtime_main.set("game_time", 0.0)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = 0.0
 	_runtime_main.set("time_scale", 1.0)
 	_runtime_main.set("game_over", false)
-	_runtime_main.set("selected_player", 0)
-	_runtime_main.set("selected_district", _first_alive_district())
-	_runtime_main.set("log_lines", [])
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = _first_alive_district()
+	(_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).reset_public_log()
 	_runtime_main.set("action_callouts", [])
 	_runtime_main.set("map_event_effects", [])
 	_weather_controller.reset_state()
@@ -913,21 +914,21 @@ func _release_runtime_main() -> void:
 	_ai_controller = null
 
 
-func _rng() -> RandomNumberGenerator:
-	return _runtime_main.get("rng") as RandomNumberGenerator
+func _rng() -> RunRngService:
+	return (_runtime_coordinator as GameRuntimeCoordinator).run_rng_service() if _runtime_coordinator is GameRuntimeCoordinator else null
 
 
 func _restore_world_seconds(seconds: float) -> Dictionary:
 	if _runtime_coordinator != null and _runtime_coordinator.has_method("restore_world_effective_seconds"):
 		var value: Variant = _runtime_coordinator.call("restore_world_effective_seconds", seconds)
 		return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-	_runtime_main.set("game_time", seconds)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = seconds
 	return {"world_effective_seconds": seconds}
 
 
 func _alive_indices() -> Array:
 	var result: Array = []
-	var districts: Array = _runtime_main.get("districts")
+	var districts: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts
 	for index in range(districts.size()):
 		if not bool((districts[index] as Dictionary).get("destroyed", false)):
 			result.append(index)
@@ -940,7 +941,7 @@ func _first_alive_district() -> int:
 
 
 func _first_district_by_terrain(terrain: String) -> int:
-	var districts: Array = _runtime_main.get("districts")
+	var districts: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts
 	for index in range(districts.size()):
 		var district := districts[index] as Dictionary
 		if not bool(district.get("destroyed", false)) and str(district.get("terrain", "land")) == terrain:
@@ -949,7 +950,7 @@ func _first_district_by_terrain(terrain: String) -> int:
 
 
 func _district_with_neighbor() -> int:
-	var districts: Array = _runtime_main.get("districts")
+	var districts: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts
 	for index in _alive_indices():
 		if not ((districts[int(index)] as Dictionary).get("neighbors", []) as Array).is_empty():
 			return int(index)

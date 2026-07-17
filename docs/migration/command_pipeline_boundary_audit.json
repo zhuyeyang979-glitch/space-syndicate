@@ -1,0 +1,28 @@
+{
+  "baseline_status": "RUNTIME_COORDINATION_PHASE_DECOMPOSITION_GREEN",
+  "selected_atomic_cutover": "card_resolution_transition_batch",
+  "action_families": [
+    {"id":"card_resolution_transition","classification":"already_command_driven","owner":"CardResolutionRuntimeController/CardResolutionTransitionSink","migrate_now":true},
+    {"id":"card_play_submission","classification":"direct_mutation_path","owner":"CardPlaySubmissionRuntimeController","migrate_now":false,"reason":"synchronous acceptance and rollback contract"},
+    {"id":"region_supply_purchase","classification":"direct_transaction_path","owner":"region supply and purchase settlement owners","migrate_now":false},
+    {"id":"facility_purchase_install","classification":"direct_transaction_path","owner":"inventory/facility/infrastructure owners","migrate_now":false},
+    {"id":"monster_deploy_upgrade","classification":"direct_transaction_path","owner":"MonsterRuntimeController","migrate_now":false},
+    {"id":"contract_offer_response","classification":"direct_transaction_path","owner":"ContractRuntimeController","migrate_now":false},
+    {"id":"monster_wager_choice","classification":"direct_mutation_path","owner":"MonsterRuntimeController","migrate_now":false},
+    {"id":"military_player_command","classification":"direct_mutation_path","owner":"CardEffectRuntimeRouter/MilitaryRuntimeController","migrate_now":false},
+    {"id":"autonomous_actor_ticks","classification":"phase_driven_not_command_driven","owner":"RuntimeSimulationPhaseCoordinator typed ports","migrate_now":false},
+    {"id":"economy_resolution","classification":"phase_driven_not_command_driven","owner":"RuntimeResolutionPhaseCoordinator typed ports","migrate_now":false},
+    {"id":"market_victory_commit","classification":"phase_driven_not_command_driven","owner":"RuntimeStateCommitCoordinator typed ports","migrate_now":false},
+    {"id":"table_map_refresh","classification":"presentation_only","owner":"presentation source/target owners","migrate_now":false},
+    {"id":"visual_cues_public_logs","classification":"presentation_only","owner":"presentation owners","migrate_now":false}
+  ],
+  "baseline_metrics": {
+    "explicit_command_families": 1,
+    "scene_owned_command_pipeline_families": 0,
+    "recorded_direct_or_transactional_intent_families": 7,
+    "recorded_phase_driven_families": 3,
+    "recorded_presentation_only_families": 2,
+    "global_command_buses": 0,
+    "command_autoloads": 0
+  }
+}

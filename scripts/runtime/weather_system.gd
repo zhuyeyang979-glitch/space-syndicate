@@ -50,13 +50,13 @@ func intensity(event: Dictionary, now_us: int) -> float:
 	return 0.0
 
 
-func random_duration_us(rng: RandomNumberGenerator, minimum_us: int, maximum_us: int) -> int:
+func random_duration_us(rng, minimum_us: int, maximum_us: int) -> int:
 	if rng == null:
 		return minimum_us
 	return rng.randi_range(minimum_us, maximum_us)
 
 
-func next_generation_us(now_us: int, rng: RandomNumberGenerator) -> int:
+func next_generation_us(now_us: int, rng) -> int:
 	return now_us + random_duration_us(rng, GENERATION_MIN_US, GENERATION_MAX_US)
 
 
@@ -64,7 +64,7 @@ func can_generate_natural(now_us: int, next_generation_world_us: int, new_foreca
 	return new_forecasts_allowed and now_us >= START_GRACE_US and now_us >= next_generation_world_us and unended_count < MAX_UNENDED_EVENTS
 
 
-func select_definition_id(definition_ids: Array, rng: RandomNumberGenerator) -> String:
+func select_definition_id(definition_ids: Array, rng) -> String:
 	if definition_ids.is_empty():
 		return ""
 	if rng == null:
@@ -72,7 +72,7 @@ func select_definition_id(definition_ids: Array, rng: RandomNumberGenerator) -> 
 	return str(definition_ids[rng.randi_range(0, definition_ids.size() - 1)])
 
 
-func select_region(region_facts: Array, occupied_regions: Array, region_history: Dictionary, rng: RandomNumberGenerator) -> int:
+func select_region(region_facts: Array, occupied_regions: Array, region_history: Dictionary, rng) -> int:
 	var best_score := -INF
 	var best_regions: Array = []
 	for fact_variant in region_facts:

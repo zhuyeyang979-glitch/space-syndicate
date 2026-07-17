@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/table_presentation_source_owner.gd" id="1"]
+
+[node name="TablePresentationSourceOwner" type="Node"]
+script = ExtResource("1")
+editor_description = "Scene-owned, visibility-safe composition of typed table presentation snapshots. Owns no cadence or gameplay state."

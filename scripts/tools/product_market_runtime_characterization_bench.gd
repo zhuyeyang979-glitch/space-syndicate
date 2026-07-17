@@ -4,6 +4,7 @@ class_name ProductMarketRuntimeCharacterizationBench
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const MAIN_SCRIPT_PATH := "res://scripts/main.gd"
 const COORDINATOR_SCENE_PATH := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
+const RUNTIME_LOOP_SCRIPT_PATH := "res://scripts/runtime/runtime_loop.gd"
 const FORMULA_SERVICE_SCRIPT_PATH := "res://scripts/runtime/card_economy_product_route_formula_runtime_service.gd"
 const CASHFLOW_CONTROLLER_SCRIPT_PATH := "res://scripts/runtime/economy_cashflow_runtime_controller.gd"
 const GDP_CONTROLLER_SCRIPT_PATH := "res://scripts/runtime/gdp_formula_runtime_controller.gd"
@@ -123,7 +124,7 @@ const CUTOVER_CASE_IDS := [
 	"ai_risk_adjusted_terms",
 	"presentation_shows_financial_terms",
 	"no_parallel_futures_fallback",
-	"first_mission_runtime_default_unchanged",
+	"main_scene_runtime_default_unchanged",
 ]
 const DESIGN_DECISIONS := [
 	{"decision_id": "cost_or_margin", "question": "Is the existing cost a non-refundable action fee or refundable margin?", "options": ["Treat purchase cost as the only cost", "Add a separate refundable margin", "Add both action fee and margin"], "recommendation": "Keep purchase cost separate and add an explicit refundable margin field."},
@@ -264,7 +265,7 @@ const CASE_IDS := [
 	"ai_risk_adjusted_terms",
 	"presentation_shows_financial_terms",
 	"no_parallel_futures_fallback",
-	"first_mission_runtime_default_unchanged",
+	"main_scene_runtime_default_unchanged",
 ]
 
 @export var auto_run := true
@@ -531,7 +532,7 @@ func _run_cutover_case(case_id: String) -> Dictionary:
 		"ai_risk_adjusted_terms": return _case_ai_risk_adjusted_terms()
 		"presentation_shows_financial_terms": return _case_presentation_shows_financial_terms()
 		"no_parallel_futures_fallback": return _case_no_parallel_futures_fallback()
-		"first_mission_runtime_default_unchanged": return _case_first_mission_runtime_default_unchanged()
+		"main_scene_runtime_default_unchanged": return _case_main_scene_runtime_default_unchanged()
 	return _record(case_id, false, false, "Unknown Sprint 55 cutover case.")
 
 
@@ -639,7 +640,7 @@ func _case_zero_delta_refunds_margin() -> Dictionary:
 
 
 func _case_expiry_settlement_exact_once_v04() -> Dictionary:
-	_configure_market_fixture("empty"); _runtime_main.set("game_time", 100.0)
+	_configure_market_fixture("empty"); ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = 100.0
 	var cash_before := _player_cash(0); var open := _market_controller.open_futures_position(0, _skill("商品看涨1"))
 	var state := _market_state(); var market: Dictionary = state.get("product_market", {}) as Dictionary; var entry: Dictionary = market[SAMPLE_PRODUCT]; var positions: Array = entry.get("futures_positions", []) as Array
 	if not bool(open.get("committed", false)) or positions.is_empty():
@@ -722,10 +723,10 @@ func _case_no_parallel_futures_fallback() -> Dictionary:
 	return _live_record("no_parallel_futures_fallback", observed, "No positive-only payout, warehouse clear-only branch, or main.gd financial fallback remains.")
 
 
-func _case_first_mission_runtime_default_unchanged() -> Dictionary:
-	var scene_exists := ResourceLoader.exists("res://scenes/tools/FirstMissionRuntimeMainBench.tscn") and ResourceLoader.exists(MAIN_SCENE_PATH)
-	var source := str(_sources.get("main", "")); var observed := scene_exists and source.contains("first_table") and source.contains("_product_market_runtime_controller")
-	return _live_record("first_mission_runtime_default_unchanged", observed, "First mission keeps its existing main/runtime route; the dedicated 17-case regression remains the release gate.")
+func _case_main_scene_runtime_default_unchanged() -> Dictionary:
+	var scene_exists := ResourceLoader.exists(MAIN_SCENE_PATH)
+	var source := str(_sources.get("main", "")); var observed := scene_exists and source.contains("_product_market_runtime_controller")
+	return _live_record("main_scene_runtime_default_unchanged", observed, "The normal main scene keeps the current product-market runtime route.")
 
 
 func _live_record(case_id: String, observed: bool, notes: String, flags: Dictionary = {}) -> Dictionary:
@@ -746,14 +747,14 @@ func _position_from_terms(terms: Dictionary, baseline_price: int) -> Dictionary:
 
 
 func _player_cash(player_index: int) -> int:
-	var players: Array = _runtime_main.get("players") as Array
+	var players: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array
 	return int((players[player_index] as Dictionary).get("cash", 0)) if player_index >= 0 and player_index < players.size() else -1
 
 
 func _set_player_cash(player_index: int, amount: int) -> void:
-	var players: Array = (_runtime_main.get("players") as Array).duplicate(true)
+	var players: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
 	if player_index < 0 or player_index >= players.size(): return
-	var player: Dictionary = (players[player_index] as Dictionary).duplicate(true); player["cash"] = amount; players[player_index] = player; _runtime_main.set("players", players)
+	var player: Dictionary = (players[player_index] as Dictionary).duplicate(true); player["cash"] = amount; players[player_index] = player; ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 
 
 func _case_call_graph() -> Dictionary:
@@ -795,7 +796,7 @@ func _case_state_shape() -> Dictionary:
 
 
 func _case_seeded_generation() -> Dictionary:
-	var runtime_rng := _runtime_main.get("rng") as RandomNumberGenerator
+	var runtime_rng := (_coordinator as GameRuntimeCoordinator).run_rng_service()
 	runtime_rng.seed = FIXED_SEED
 	var first: Dictionary = _market_controller.call("generate_product_market")
 	var first_state := runtime_rng.state
@@ -937,7 +938,7 @@ func _case_contract_pressure_expiry() -> Dictionary:
 
 func _case_rng_order() -> Dictionary:
 	var source := _function_source(str(_sources.get("market_controller", "")), "generate_product_market")
-	var runtime_rng := _runtime_main.get("rng") as RandomNumberGenerator
+	var runtime_rng := (_coordinator as GameRuntimeCoordinator).run_rng_service()
 	runtime_rng.seed = FIXED_SEED
 	var first: Dictionary = _market_controller.call("generate_product_market")
 	var final_state := runtime_rng.state
@@ -979,17 +980,17 @@ func _case_history_limit() -> Dictionary:
 
 
 func _case_timer_cadence() -> Dictionary:
-	var process_source := _function_source(str(_sources.get("main", "")), "_process")
+	var process_source := _function_source(str(_sources.get("runtime_loop", "")), "_advance_authoritative_frame")
 	var controller_source := _function_source(str(_sources.get("market_controller", "")), "tick_market_cycle")
-	var observed := _tokens_in_order(process_source, ["advance_world_effective_clock", "game_time = float(clock_snapshot", "age_economic_boons", "_advance_continuous_commodity_flow", "tick_product_market_cycle"]) and _tokens_in_order(controller_source, ["market_timer -=", "market_tick()", "next_market_interval"])
+	var observed := _tokens_in_order(process_source, ["advance_world_time", "advance_economic_boons", "advance_commodity_flow", "tick_product_market_cycle"]) and _tokens_in_order(controller_source, ["market_timer -=", "market_tick()", "next_market_interval"])
 	return _record("market_timer_realtime_cadence", observed, observed, "The authoritative world-effective clock advances before boons, continuous flow, and the market timer rolls its next interval.", {"timing_checked": true})
 
 
 func _case_timer_freeze() -> Dictionary:
-	var process_source := _function_source(str(_sources.get("main", "")), "_process")
-	var forced_return := _tokens_in_order(process_source, ["blocks_global_time", "return", "if time_scale <= 0.0:", "return", "tick_product_market_cycle"])
+	var process_source := _function_source(str(_sources.get("runtime_loop", "")), "_advance_authoritative_frame")
+	var forced_return := _tokens_in_order(process_source, ["blocks_global_time", "return _finish_frame(receipt)", "session_is_paused", "return _finish_frame(receipt)", "tick_product_market_cycle"])
 	var observed := forced_return
-	return _record("paused_or_forced_block_freezes_market_timer", observed, observed, "Global forced-decision blocking and readonly time_scale pause both return before market_timer decrement.", {"timing_checked": true})
+	return _record("paused_or_forced_block_freezes_market_timer", observed, observed, "Global forced-decision blocking and the scene-owned session pause both return before market_timer decrement.", {"timing_checked": true})
 
 
 func _case_market_tick_increment() -> Dictionary:
@@ -1010,9 +1011,9 @@ func _case_tick_order() -> Dictionary:
 func _case_empty_city_tick() -> Dictionary:
 	_set_no_active_cities()
 	_set_market_property("business_cycle_count", 0)
-	_runtime_main.set("log_lines", [])
+	(_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).reset_public_log()
 	_market_controller.call("market_tick")
-	var logs := "\n".join(_string_array(_runtime_main.get("log_lines") as Array))
+	var logs := "\n".join(_string_array((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).presentation_recent_public_log_messages(90)))
 	var observed := int(_market_state().get("business_cycle_count", 0)) == 1 and logs.contains("没有存活城市群")
 	return _record("no_active_city_safe_tick", observed, observed, "An empty-city refresh increments the cycle, revalues public supply/demand, and logs the safe state without crashing.", {"cycle_before": 0, "cycle_after": 1})
 
@@ -1046,13 +1047,13 @@ func _case_speculation(up: bool) -> Dictionary:
 	_configure_market_fixture("empty")
 	var card_id := "价格套利1" if up else "商品做空1"
 	var skill := _skill(card_id)
-	var players: Array = _runtime_main.get("players")
+	var players: Array = ((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players
 	var player: Dictionary = players[0]
 	var cash_before := int(player.get("cash", 0))
 	var applied := bool(_market_controller.call("apply_speculation", 0, skill))
 	var entry := _entry(SAMPLE_PRODUCT)
 	var pressure_key := "temporary_demand_pressure" if up else "temporary_supply_pressure"
-	var cash_after := int((_runtime_main.get("players") as Array)[0].get("cash", 0))
+	var cash_after := int((((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array)[0].get("cash", 0))
 	var observed := applied and cash_after - cash_before == int(skill.get("cash", 0)) and int(entry.get(pressure_key, 0)) > 0
 	var case_id := "speculation_up_adds_demand" if up else "speculation_down_adds_supply"
 	return _record(case_id, observed, observed, "%s grants its authored cash once and adds %s pressure; price remains refresh-derived." % [card_id, "demand" if up else "supply"], _entry_flags(SAMPLE_PRODUCT).merged({"card_id": card_id, "cash_delta": cash_after - cash_before, "formula_service_checked": true}, true))
@@ -1095,7 +1096,7 @@ func _case_futures_position(direction: String) -> Dictionary:
 	var applied := bool(_market_controller.call("apply_futures", 0, _skill(card_id)))
 	var futures: Array = _entry(SAMPLE_PRODUCT).get("futures_positions", [])
 	var futures_position: Dictionary = futures[0] if futures.size() == 1 else {}
-	var observed := applied and futures.size() == 1 and str(futures_position.get("direction", "")) == direction and int(futures_position.get("owner", -1)) == 0 and float(futures_position.get("expires_at", 0.0)) > float(_runtime_main.get("game_time"))
+	var observed := applied and futures.size() == 1 and str(futures_position.get("direction", "")) == direction and int(futures_position.get("owner", -1)) == 0 and float(futures_position.get("expires_at", 0.0)) > float(((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time)
 	var case_id := "futures_up_position_created" if direction == "up" else "futures_down_position_created"
 	return _record(case_id, observed, observed, "%s creates one private %s position with baseline, expiry, multiplier, units, and owner." % [card_id, direction], _entry_flags(SAMPLE_PRODUCT).merged({"card_id": card_id, "futures_count_after": futures.size(), "timing_checked": true}, true))
 
@@ -1105,13 +1106,13 @@ func _case_warehouse_requirement() -> Dictionary:
 	var card := _skill("港仓囤货1")
 	var without_city := bool(_market_controller.call("apply_futures", 0, card))
 	var district_index := _fixture_district_index()
-	var districts: Array = (_runtime_main.get("districts") as Array).duplicate(true)
+	var districts: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	var district: Dictionary = (districts[district_index] as Dictionary).duplicate(true)
 	district["destroyed"] = false
 	district["city"] = _simple_city(0)
 	districts[district_index] = district
-	_runtime_main.set("districts", districts)
-	_runtime_main.set("selected_district", district_index)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
 	var with_city := bool(_market_controller.call("apply_futures", 0, card))
 	var futures: Array = _entry(SAMPLE_PRODUCT).get("futures_positions", [])
 	var warehouse := int((futures[0] as Dictionary).get("warehouse_district", -1)) if futures.size() == 1 else -1
@@ -1221,6 +1222,7 @@ func _case_pure_data() -> Dictionary:
 func _load_sources() -> void:
 	_sources = {
 		"main": FileAccess.get_file_as_string(MAIN_SCRIPT_PATH),
+		"runtime_loop": FileAccess.get_file_as_string(RUNTIME_LOOP_SCRIPT_PATH),
 		"coordinator_scene": FileAccess.get_file_as_string(COORDINATOR_SCENE_PATH),
 		"formula": FileAccess.get_file_as_string(FORMULA_SERVICE_SCRIPT_PATH),
 		"cashflow": FileAccess.get_file_as_string(CASHFLOW_CONTROLLER_SCRIPT_PATH),
@@ -1255,7 +1257,8 @@ func _ensure_runtime_main() -> bool:
 	_hide_runtime_canvas_layers()
 	await get_tree().process_frame
 	await get_tree().process_frame
-	var runtime_rng := _runtime_main.get("rng") as RandomNumberGenerator
+	var runtime_coordinator := _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	var runtime_rng := runtime_coordinator.run_rng_service() if runtime_coordinator != null else null
 	if runtime_rng != null:
 		runtime_rng.seed = FIXED_SEED
 	_runtime_main.call("_new_game")
@@ -1276,33 +1279,33 @@ func _ensure_runtime_main() -> bool:
 	_queue_service = _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardResolutionQueueRuntimeService")
 	_eligibility_service = _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardPlayEligibilityRuntimeService")
 	_presentation_service = _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardPresentationRuntimeService")
-	_baseline_players = (_runtime_main.get("players") as Array).duplicate(true)
-	_baseline_districts = (_runtime_main.get("districts") as Array).duplicate(true)
+	_baseline_players = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
+	_baseline_districts = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	_baseline_product_market = (_market_state().get("product_market", {}) as Dictionary).duplicate(true)
 	return _coordinator != null and _market_controller != null and _formula_service != null and _queue_service != null and _eligibility_service != null and _presentation_service != null and _cashflow_controller != null and _gdp_controller != null and _ai_controller != null and _weather_controller != null and _monster_controller != null and _military_controller != null and _contract_controller != null and not _baseline_players.is_empty() and not _baseline_districts.is_empty() and not _baseline_product_market.is_empty()
 
 
 func _reset_fixture() -> void:
 	_runtime_main.set_process(false)
-	_runtime_main.set("players", _baseline_players.duplicate(true))
-	_runtime_main.set("districts", _baseline_districts.duplicate(true))
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = _baseline_players.duplicate(true)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = _baseline_districts.duplicate(true)
 	_market_controller.apply_save_data({"product_market": _baseline_product_market.duplicate(true), "business_cycle_count": 0, "market_timer": 8.0})
 	_queue_service.reset_state()
-	_runtime_main.set("game_time", 100.0)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = 100.0
 	_runtime_main.set("time_scale", 1.0)
 	_runtime_main.set("game_over", false)
-	_runtime_main.set("selected_player", 0)
-	_runtime_main.set("inspected_player", 0)
-	_runtime_main.set("selected_trade_product", SAMPLE_PRODUCT)
-	_runtime_main.set("selected_district", _fixture_district_index())
-	_runtime_main.set("log_lines", [])
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).inspected_player = 0
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = SAMPLE_PRODUCT
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = _fixture_district_index()
+	(_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).reset_public_log()
 	_runtime_main.set("action_callouts", [])
 	_runtime_main.set("map_event_effects", [])
 	_runtime_main.set("movement_trails", [])
-	var runtime_rng := _runtime_main.get("rng") as RandomNumberGenerator
+	var runtime_rng := (_coordinator as GameRuntimeCoordinator).run_rng_service()
 	if runtime_rng != null:
 		runtime_rng.seed = FIXED_SEED
-	var players: Array = (_runtime_main.get("players") as Array).duplicate(true)
+	var players: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
 	for player_index in range(players.size()):
 		var player: Dictionary = (players[player_index] as Dictionary).duplicate(true)
 		player["cash"] = 5000
@@ -1310,7 +1313,7 @@ func _reset_fixture() -> void:
 		player["eliminated"] = false
 		player["economic_ledger"] = []
 		players[player_index] = player
-	_runtime_main.set("players", players)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 
 
 func _configure_market_fixture(kind: String) -> void:
@@ -1338,9 +1341,9 @@ func _configure_market_fixture(kind: String) -> void:
 			city["trade_routes"] = [{"product": SAMPLE_PRODUCT, "from": index, "to": index, "path": [index], "disrupted": true}]
 		fixture["city"] = city
 	districts[index] = fixture
-	_runtime_main.set("districts", districts)
-	_runtime_main.set("selected_district", index)
-	_runtime_main.set("selected_trade_product", SAMPLE_PRODUCT)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = index
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = SAMPLE_PRODUCT
 	var market: Dictionary = (_baseline_product_market as Dictionary).duplicate(true)
 	for product_variant in market.keys():
 		var entry: Dictionary = (market[product_variant] as Dictionary).duplicate(true)
@@ -1383,13 +1386,13 @@ func _simple_city(owner_index: int) -> Dictionary:
 
 
 func _set_no_active_cities() -> void:
-	var districts: Array = (_runtime_main.get("districts") as Array).duplicate(true)
+	var districts: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	for district_index in range(districts.size()):
 		var district: Dictionary = (districts[district_index] as Dictionary).duplicate(true)
 		district["destroyed"] = true
 		district["city"] = {}
 		districts[district_index] = district
-	_runtime_main.set("districts", districts)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 
 
 func _fixture_district_index() -> int:
@@ -1528,14 +1531,14 @@ func _open_position(card_id: String, warehouse := false, reset_market := true) -
 
 func _configure_owned_warehouse_city(owner_index: int) -> void:
 	var district_index := _fixture_district_index()
-	var districts: Array = (_runtime_main.get("districts") as Array).duplicate(true)
+	var districts: Array = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	var district: Dictionary = (districts[district_index] as Dictionary).duplicate(true)
 	district["destroyed"] = false
 	district["damage"] = 0
 	district["city"] = _simple_city(owner_index)
 	districts[district_index] = district
-	_runtime_main.set("districts", districts)
-	_runtime_main.set("selected_district", district_index)
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
+	((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
 
 
 func _other_product(excluded_product: String) -> String:

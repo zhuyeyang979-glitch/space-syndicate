@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "status": "decomposition_required",
+  "branch": "codex/scene-first-remove-main-gd",
+  "start_sha": "2c4ea4a1f68a37659e01a9e8be91eaf6aeafcba0",
+  "before_metrics": {
+    "runtime_loop": {"physical_lines": 140, "nonblank_lines": 121, "methods": 7, "concrete_port_operations": 27},
+    "game_runtime_coordinator": {"physical_lines": 6008, "nonblank_lines": 4886, "methods": 560, "node_lookups": 103, "dynamic_call_markers": 955}
+  },
+  "classifications": {
+    "frame_orchestration": ["RuntimeLoop._process", "frame index", "frame receipt"],
+    "phase_orchestration": ["ordered typed-port calls", "pause branches", "flow/victory early returns"],
+    "gameplay_authority": ["existing domain controllers"],
+    "world_ownership": ["existing session/card/economy/actor/monster/victory owners"],
+    "presentation_ownership": ["existing presentation scheduler/source/refresh targets"]
+  },
+  "target_phases": [
+    "lifecycle",
+    "command",
+    "simulation",
+    "resolution",
+    "state_commit",
+    "presentation_schedule"
+  ],
+  "go_decision": "GO",
+  "requires_main_callback": false,
+  "requires_second_loop": false,
+  "requires_gameplay_rule_change": false
+}

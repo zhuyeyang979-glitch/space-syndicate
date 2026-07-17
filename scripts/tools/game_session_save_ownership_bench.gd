@@ -245,8 +245,8 @@ func _run_case(case_id: String) -> Dictionary:
 			notes = "real main save wrapper delegates file I/O to GameSaveRuntimeCoordinator"
 		"real_main_load_delegates_to_controller":
 			if _real_main != null:
-				_real_main.set("game_time", 99.0)
-				passed = int(_real_main.call("_load_run", REAL_MAIN_PATH)) == OK and not is_equal_approx(float(_real_main.get("game_time")), 99.0)
+				((_real_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = 99.0
+				passed = int(_real_main.call("_load_run", REAL_MAIN_PATH)) == OK and not is_equal_approx(float(((_real_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time), 99.0)
 			flags["main_delegation_checked"] = true
 			notes = "real main load wrapper applies payload returned by the new coordinator"
 		"controller_state_survives_save_roundtrip":

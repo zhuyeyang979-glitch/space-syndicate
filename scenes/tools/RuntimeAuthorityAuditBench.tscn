@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/runtime_authority_audit_bench.gd" id="1_bench"]
+[ext_resource type="Script" path="res://scripts/diagnostics/runtime_authority_audit.gd" id="2_audit"]
+
+[node name="RuntimeAuthorityAuditBench" type="Node"]
+script = ExtResource("1_bench")
+
+[node name="RuntimeAuthorityAudit" type="Node" parent="."]
+script = ExtResource("2_audit")

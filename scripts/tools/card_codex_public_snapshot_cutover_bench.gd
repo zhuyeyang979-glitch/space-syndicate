@@ -504,9 +504,9 @@ func _coordinator_detail() -> Dictionary:
 func _mutate_private_viewer_state() -> void:
 	if _main == null:
 		return
-	_main.set("selected_player", 1)
-	_main.set("selected_district", 3)
-	var players_variant: Variant = _main.get("players")
+	((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 1
+	((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = 3
+	var players_variant: Variant = ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players
 	if not (players_variant is Array):
 		return
 	var players := players_variant as Array
@@ -520,7 +520,7 @@ func _mutate_private_viewer_state() -> void:
 		player["hidden_owner"] = "private-owner-%d" % player_index
 		player["city_guesses"] = {"region.001": player_index}
 		player["ai_private_plan"] = "private-route-%d" % player_index
-	var districts_variant: Variant = _main.get("districts")
+	var districts_variant: Variant = ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts
 	if districts_variant is Array:
 		for district_variant: Variant in (districts_variant as Array):
 			if not (district_variant is Dictionary):

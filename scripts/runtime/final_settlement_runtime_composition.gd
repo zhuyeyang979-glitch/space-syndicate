@@ -2,9 +2,9 @@
 extends Node
 class_name FinalSettlementRuntimeComposition
 
-signal action_requested(action_id: String)
+signal action_requested(action_id: StringName)
 signal menu_open_requested(title: String, summary: String, can_continue: bool)
-signal public_log_entry_requested(text: String)
+signal public_log_receipt_requested(receipt: PublicLogReceipt)
 
 const COMPOSITION_ID := "final_settlement_runtime_composition_v06"
 const FORBIDDEN_CONTEXT_KEYS := [
@@ -27,6 +27,12 @@ var _last_public_summary := ""
 var _logged_outcome_ids := {}
 var _present_count := 0
 var _action_emission_count := 0
+
+
+func present_victory_receipt(receipt: VictoryPresentationStateChangeReceipt) -> Dictionary:
+	if receipt == null or not receipt.is_valid():
+		return _rejected("victory_presentation_receipt_invalid")
+	return present(receipt.public_context())
 
 
 func present(public_context: Dictionary) -> Dictionary:
@@ -205,8 +211,20 @@ func _emit_public_log_once(log_payload: Dictionary) -> void:
 	if outcome_id.is_empty() or _logged_outcome_ids.has(outcome_id):
 		return
 	_logged_outcome_ids[outcome_id] = true
-	for entry_variant in _array(log_payload.get("entries", [])):
-		public_log_entry_requested.emit(str(entry_variant))
+	var entries := _array(log_payload.get("entries", []))
+	for entry_index in range(entries.size()):
+		var text := str(entries[entry_index]).strip_edges()
+		if text.is_empty():
+			continue
+		var receipt := PublicLogReceipt.create(
+			"final-settlement-%s-%d" % [outcome_id.sha256_text().left(16), entry_index],
+			&"final_settlement",
+			&"victory.public.final_settlement",
+			{"message": text},
+			entry_index,
+			0.0
+		)
+		public_log_receipt_requested.emit(receipt)
 
 
 func _on_board_action_requested(action_id: String) -> void:
@@ -214,7 +232,7 @@ func _on_board_action_requested(action_id: String) -> void:
 	if not ["standings", "economy", "setup"].has(routed_action):
 		return
 	_action_emission_count += 1
-	action_requested.emit(routed_action)
+	action_requested.emit(StringName(routed_action))
 
 
 func _snapshot_service() -> Node:
