@@ -36,6 +36,11 @@ const DEFAULT_FLOW_STEPS := ["点区", "首召", "建城", "买牌", "出牌", "
 var left_rail_signature: String = ""
 var right_rail_signature: String = ""
 var right_rail_suppressed := false
+var _map_presentation_target_revision := 0
+var _map_presentation_target_count := 0
+var _presentation_authorized_viewer_index := -1
+var _presentation_authorization_revision := 0
+var _fullscreen_map_target: SpaceSyndicatePlanetMapView
 
 
 func _ready() -> void:
@@ -86,6 +91,66 @@ func set_board_state(data: Dictionary) -> void:
 	_set_flow_compass(data.get("flow_compass", {}))
 	_configure_pointer_passthrough_layers()
 	call_deferred("_fit_square_stage")
+
+
+func apply_map_presentation(snapshot: MapPresentationSnapshot) -> int:
+	if snapshot == null or not snapshot.is_valid() \
+		or snapshot.viewer_index != _presentation_authorized_viewer_index \
+		or snapshot.authorization_revision != _presentation_authorization_revision:
+		return _map_presentation_target_revision
+	var target := get_embedded_map_view() as SpaceSyndicatePlanetMapView
+	if target == null:
+		return _map_presentation_target_revision
+	_apply_map_snapshot_to_target(target, snapshot)
+	if _fullscreen_map_target != null and _fullscreen_map_target != target:
+		_apply_map_snapshot_to_target(_fullscreen_map_target, snapshot)
+	set_weather_presentation(snapshot.weather_forecast, snapshot.weather_overlay, snapshot.motion_mode)
+	_map_presentation_target_revision += 1
+	_map_presentation_target_count += 1
+	return _map_presentation_target_revision
+
+
+func bind_fullscreen_map_target(target: SpaceSyndicatePlanetMapView) -> void:
+	_fullscreen_map_target = target
+
+
+func _apply_map_snapshot_to_target(target: SpaceSyndicatePlanetMapView, snapshot: MapPresentationSnapshot) -> void:
+	target.set_map(
+		snapshot.districts,
+		snapshot.width_m,
+		snapshot.height_m,
+		snapshot.selected_district,
+		snapshot.palette,
+		snapshot.movement_trails,
+		snapshot.action_callouts,
+		snapshot.map_event_effects,
+		snapshot.unit_markers,
+		snapshot.city_markers,
+		snapshot.route_markers,
+		snapshot.selected_trade_product,
+		snapshot.selected_map_layer_focus
+	)
+	target.set_solar_presentation_snapshot(snapshot.solar_presentation)
+	target.set_weather_overlay_view_model(snapshot.weather_overlay)
+	target.set_weather_overlay_motion_mode(snapshot.motion_mode)
+	target.set_solar_camera_motion_mode(snapshot.motion_mode)
+
+
+func bind_presentation_viewer(viewer_index: int, authorization_revision: int) -> void:
+	_presentation_authorized_viewer_index = viewer_index
+	_presentation_authorization_revision = authorization_revision
+
+
+func map_presentation_target_debug_snapshot() -> Dictionary:
+	return {
+		"target_revision": _map_presentation_target_revision,
+		"apply_count": _map_presentation_target_count,
+		"mouse_filter": mouse_filter,
+		"authorized_viewer_index": _presentation_authorized_viewer_index,
+		"authorization_revision": _presentation_authorization_revision,
+		"fullscreen_target_bound": _fullscreen_map_target != null,
+		"owns_gameplay_state": false,
+	}
 
 
 func _draw() -> void:

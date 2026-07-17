@@ -17,12 +17,22 @@ var _route_network_runtime_controller: RouteNetworkRuntimeController
 var _contract_atomic_effect_owner_v06: Object
 var _card_resolution_history_service: CardResolutionHistoryRuntimeService
 var _card_resolution_queue_service: CardResolutionQueueRuntimeService
+var _card_presentation_service: CardPresentationRuntimeService
 var _world_call_count := 0
 var _failed_world_call_count := 0
+var _table_presentation_refresh_port: TablePresentationRefreshPort
+var _public_log_producer_port: PublicLogProducerPort
+var _presentation_world_clock: WorldEffectiveClockRuntimeController
 
 
 func bind_world(world: Node) -> void:
 	_world = world
+
+
+func set_table_presentation_ports(refresh_port: TablePresentationRefreshPort, log_port: PublicLogProducerPort, clock: WorldEffectiveClockRuntimeController) -> void:
+	_table_presentation_refresh_port = refresh_port
+	_public_log_producer_port = log_port
+	_presentation_world_clock = clock
 
 
 func set_table_selection_state(state: TableSelectionState) -> void:
@@ -59,6 +69,10 @@ func set_card_resolution_history_service(
 ) -> void:
 	_card_resolution_history_service = history_service
 	_card_resolution_queue_service = queue_service
+
+
+func set_card_presentation_service(service: CardPresentationRuntimeService) -> void:
+	_card_presentation_service = service
 
 
 func has_world() -> bool:
@@ -284,9 +298,9 @@ func store_contract_result(entry: Dictionary) -> bool:
 			var field := str(field_variant)
 			if entry.has(field):
 				stored[field] = entry[field]
-	var presentation_variant: Variant = _call_world(&"_card_resolution_presentation_snapshot", [stored.get("skill", {}) as Dictionary, stored])
-	if presentation_variant is Dictionary:
-		stored["aftermath_style"] = str((presentation_variant as Dictionary).get("effect_style", stored.get("aftermath_style", "generic")))
+	if _card_presentation_service != null:
+		var presentation := _card_presentation_service.compose_resolution(_contract_card_resolution_presentation_source(stored))
+		stored["aftermath_style"] = str(presentation.get("effect_style", stored.get("aftermath_style", "generic")))
 	if _card_resolution_queue_service != null and _card_resolution_queue_service.store_entry(stored):
 		return true
 	var resolution_id := int(stored.get("resolution_id", stored.get("queued_order", -1)))
@@ -300,14 +314,44 @@ func store_contract_result(entry: Dictionary) -> bool:
 	return bool(_card_resolution_history_service.patch_entry(resolution_id, patch).get("patched", false))
 
 
+func _contract_card_resolution_presentation_source(entry: Dictionary) -> Dictionary:
+	var skill: Dictionary = (entry.get("skill", {}) as Dictionary).duplicate(true) if entry.get("skill", {}) is Dictionary else {}
+	var card_name := str(skill.get("name", "合约卡牌"))
+	return {
+		"card": {
+			"card_name": card_name,
+			"display_name": str(skill.get("display_name", card_name)),
+			"skill": skill,
+			"targets_monster": false,
+		},
+		"seconds_left": -1.0,
+		"display_duration": 1.0,
+		"resolved": true,
+		"effect_style": str(entry.get("aftermath_style", "")),
+		"targets_monster": false,
+		"target_facts": {
+			"is_contract": true,
+			"contract_source": "区域%d" % (int(entry.get("contract_source_district", -1)) + 1),
+			"contract_target": "区域%d" % (int(entry.get("contract_target_district", -1)) + 1),
+			"contract_product": " / ".join(entry.get("contract_products", []) as Array) if entry.get("contract_products", []) is Array else "未指定商品",
+		},
+		"animation_facts": {},
+	}
+
+
 func refresh_ui() -> void:
-	if has_world() and _world.has_method("_refresh_ui"):
-		_world.call("_refresh_ui")
+	if _table_presentation_refresh_port != null:
+		_table_presentation_refresh_port.request_immediate(&"full", &"contract_state_changed")
 
 
 func log_message(message: String) -> void:
-	if message != "":
-		_call_world(&"_log", [message])
+	if message != "" and _public_log_producer_port != null:
+		var revision := _presentation_world_clock.world_effective_micros() if _presentation_world_clock != null else 0
+		var world_time := _presentation_world_clock.world_effective_seconds() if _presentation_world_clock != null else 0.0
+		_public_log_producer_port.publish(
+			&"contract_public_update", &"public.contract.updated",
+			{"action_kind": "contract", "public_status": "updated"}, revision, world_time
+		)
 
 
 func forward_runtime_event(event: Dictionary) -> void:
@@ -409,9 +453,6 @@ func _apply_accept(transaction: Dictionary, skill: Dictionary, products: Array) 
 	if not products.is_empty():
 		if _table_selection_state != null:
 			_table_selection_state.selected_trade_product = str(products[0])
-	_call_world(&"_pulse_district", [source_index, Color("#fbbf24")])
-	_call_world(&"_pulse_district", [target_index, Color("#f59e0b")])
-	_call_world(&"_add_action_callout", ["匿名合约", source_label, "%s→%s签约：%s。" % [_district_name(source_index), _district_name(target_index), _limited_names(products, 4)], Color("#fbbf24"), _district_center(target_index)])
 	var changed := cash_gain > 0 or route_flow_changed or bool(source_delta.get("changed", false)) or bool(target_delta.get("changed", false))
 	changed = changed or not added_district_products.is_empty() or not added_city_products.is_empty() or not added_district_demands.is_empty() or not added_city_demands.is_empty()
 	changed = changed or not removed_source_products.is_empty() or not removed_source_city_products.is_empty() or not removed_target_demands.is_empty() or not removed_target_city_demands.is_empty()
@@ -446,8 +487,6 @@ func _apply_decline(transaction: Dictionary, skill: Dictionary, products: Array)
 		_route_network_runtime_controller.refresh_routes()
 	if _product_market_runtime_controller != null:
 		_product_market_runtime_controller.refresh_prices()
-	_call_world(&"_pulse_district", [target_index, Color("#fb7185")])
-	_call_world(&"_add_action_callout", ["匿名合约", "超时拒签" if response == ContractRuntimeController.RESPONSE_TIMEOUT else "拒签惩罚", "%s拒绝%s，惩罚：%s。" % [_district_name(target_index), source_label, str(transaction.get("contract_decline_summary", "无额外惩罚"))], Color("#fb7185"), _district_center(target_index)])
 	var summary := "%s匿名合约%s：%s未接入%s；拒签惩罚%s，实际罚款¥%d。出牌者仍不公开。" % [source_label, "超时拒签" if response == ContractRuntimeController.RESPONSE_TIMEOUT else "被拒签", _district_name(target_index), _limited_names(products, 4), str(transaction.get("contract_decline_summary", "无额外惩罚")), penalty_paid]
 	log_message(summary)
 	return {

@@ -245,9 +245,12 @@ func _run() -> void:
 		"player panel exposes public-seat context without leaking private hands or cash"
 	)
 	if _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players).size() > 1:
-		var viewer_snapshot := main.call("_runtime_table_snapshot_source") as Dictionary
+		var presentation_coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+		var presentation_query := presentation_coordinator.get_node_or_null("TablePresentationViewModelQuery") as TablePresentationViewModelQuery if presentation_coordinator != null else null
+		var viewer_snapshot := presentation_query.compose_table_state(0, true) if presentation_query != null else {}
 		_expect(
-			int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player) == 0
+			presentation_coordinator != null
+			and int(presentation_coordinator.table_selection_state().selected_player) == 0
 			and viewer_snapshot.get("player_board", {}) is Dictionary
 			and not viewer_snapshot.has("players")
 			and not viewer_snapshot.has("districts")
@@ -8487,7 +8490,7 @@ func _public_log_messages(main: Node) -> Array:
 func _replace_public_log_messages(main: Node, messages: Array) -> void:
 	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
 	if coordinator != null:
-		coordinator.import_legacy_public_log(messages)
+		coordinator.import_legacy_viewer_feedback(messages)
 
 
 func _map_effects_contain(main: Node, kind: String) -> bool:

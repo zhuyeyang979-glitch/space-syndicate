@@ -2,6 +2,10 @@
 extends Node
 class_name MilitaryRuntimeController
 
+var _table_presentation_refresh_port: TablePresentationRefreshPort
+var _public_log_producer_port: PublicLogProducerPort
+var _presentation_world_clock: WorldEffectiveClockRuntimeController
+
 const RuntimeBalanceModelScript := preload("res://scripts/balance/runtime_balance_model.gd")
 
 const UNIT_DEFAULT_DURATION_SECONDS := 28.0
@@ -67,6 +71,12 @@ func set_visual_cue_runtime_owner(cue_owner: VisualCueRuntimeOwner) -> void:
 func configure(ruleset_snapshot: Dictionary) -> void:
 	_ruleset_snapshot = ruleset_snapshot.duplicate(true)
 	_configured = str(_ruleset_snapshot.get("ruleset_id", "")) == "v0.4" and _world_bridge != null and _inventory_service != null and _monster_runtime_controller != null and _card_runtime_catalog_service != null
+
+
+func set_table_presentation_ports(refresh_port: TablePresentationRefreshPort, log_port: PublicLogProducerPort, clock: WorldEffectiveClockRuntimeController) -> void:
+	_table_presentation_refresh_port = refresh_port
+	_public_log_producer_port = log_port
+	_presentation_world_clock = clock
 
 
 func reset_state() -> void:
@@ -630,7 +640,8 @@ func summon_from_card(player_index: int, skill: Dictionary) -> bool:
 		mobility_summary(unit),
 		str(_world_call(&"_limited_name_list", [granted, 4, "无"])),
 	])
-	_world_call(&"_refresh_ui")
+	if _table_presentation_refresh_port != null:
+		_table_presentation_refresh_port.request_immediate(&"full", &"military_state_changed")
 	return true
 
 
@@ -747,7 +758,8 @@ func trigger_command(skill: Dictionary, target_slot: int = -1, acting_player_ind
 		_route_network_runtime_controller.refresh_routes()
 	if _product_market_runtime_controller != null:
 		_product_market_runtime_controller.refresh_prices()
-	_world_call(&"_refresh_ui")
+	if _table_presentation_refresh_port != null:
+		_table_presentation_refresh_port.request_immediate(&"full", &"military_state_changed")
 	return true
 
 
@@ -1027,7 +1039,20 @@ func _make_skill(card_name: String) -> Dictionary:
 
 
 func _log(message: String) -> void:
-	_world_call(&"_log", [message])
+	if _public_log_producer_port != null and not message.is_empty():
+		_public_log_producer_port.publish(
+			&"military_public_update", &"public.military.updated",
+			{"action_kind": "military", "public_status": "updated"},
+			_presentation_source_revision(), _presentation_world_time()
+		)
+
+
+func _presentation_source_revision() -> int:
+	return _presentation_world_clock.world_effective_micros() if _presentation_world_clock != null else 0
+
+
+func _presentation_world_time() -> float:
+	return _presentation_world_clock.world_effective_seconds() if _presentation_world_clock != null else 0.0
 
 
 func _world_value(property_name: StringName, default_value: Variant = null) -> Variant:

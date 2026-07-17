@@ -33,6 +33,9 @@ signal public_bid_track_link_unhovered(action_id: String)
 @onready var drag_preview_panel: PanelContainer = %DragPreviewPanel
 @onready var drag_preview_label: Label = %DragPreviewLabel
 @onready var district_supply_drawer: Control = %DistrictSupplySideDrawerOverlay
+@onready var fullscreen_planet_map_view: SpaceSyndicatePlanetMapView = get_node_or_null(
+	"RuntimeSurfaceLayer/FullscreenMapOverlay/FullscreenMapMargin/FullscreenMapRows/FullscreenMapHost/FullscreenPlanetMapView"
+) as SpaceSyndicatePlanetMapView
 
 const DRAG_PREVIEW_SIZE := Vector2(176.0, 118.0)
 const DRAG_PREVIEW_SIDE_GAP := 12.0
@@ -103,6 +106,10 @@ func handle_back_request() -> bool:
 		_request_district_supply_close()
 		return true
 	return false
+
+
+func presentation_fullscreen_planet_target() -> SpaceSyndicatePlanetMapView:
+	return fullscreen_planet_map_view
 
 
 func _configure_pointer_passthrough_skeleton() -> void:

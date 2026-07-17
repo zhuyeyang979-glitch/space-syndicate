@@ -78,6 +78,17 @@ func public_map_facts() -> Dictionary:
 	}
 
 
+func monster_wager_presentation_for_viewer(viewer_index: int) -> Dictionary:
+	if _authorization == null \
+		or not _authorization.can_view_subject(viewer_index, viewer_index) \
+		or _monster == null:
+		return {}
+	var result := _monster.monster_wager_presentation_for_viewer(viewer_index)
+	if not TablePresentationPureDataPolicy.is_pure_data(result):
+		return {}
+	return TablePresentationPureDataPolicy.detached_copy(result) as Dictionary
+
+
 func debug_snapshot() -> Dictionary:
 	return {
 		"configured": _world_query != null and _authorization != null,

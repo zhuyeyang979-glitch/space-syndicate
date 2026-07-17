@@ -1000,8 +1000,8 @@ func _skill_exists(skill_name: String) -> bool:
 func _skill_definition(skill_name: String) -> Dictionary:
 	return _card_definition_bridge.resolve_definition(skill_name) if _card_definition_bridge != null else {}
 
-func _refresh_ui() -> void:
-	return _call_monster(&"_refresh_ui")
+func _request_table_presentation_refresh() -> void:
+	return _call_monster(&"request_table_presentation_refresh")
 
 func _district_city(index: int) -> Dictionary:
 	return _call_monster(&"_district_city", [index])
@@ -1321,7 +1321,7 @@ func _meters_text(value: float) -> String:
 	return _call_monster(&"_meters_text", [value])
 
 func _log(message: String) -> void:
-	return _call_monster(&"_log", [message])
+	return _call_monster(&"publish_public_log_message", [message])
 
 # Migrated AI decision ownership.
 
@@ -1700,7 +1700,7 @@ func _auto_rival_business_actions(force: bool = false) -> int:
 			acted += 1
 	if acted > 0:
 		_log("经营暗流：%d次匿名商业行动留下公开线索，但没有揭示真实业主。" % acted)
-		_refresh_ui()
+		_request_table_presentation_refresh()
 	return acted
 func _ai_development_route_preference_audit() -> Dictionary:
 	var coverage := {}

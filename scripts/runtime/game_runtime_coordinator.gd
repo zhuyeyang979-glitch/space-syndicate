@@ -4,6 +4,8 @@ class_name GameRuntimeCoordinator
 
 signal victory_presentation_receipt_ready(receipt: VictoryPresentationStateChangeReceipt)
 
+@export var presentation_game_screen_path: NodePath
+
 const RULESET_V06_PROFILE := preload("res://resources/rules/space_syndicate_ruleset_v06.tres")
 const MONSTER_CARD_EFFECT_ADAPTER_V06 := preload("res://scripts/cards/v06/units/monster_card_effect_adapter_v06.gd")
 const AI_V06_ECONOMY_ACTION_PORT := preload("res://scripts/runtime/ai_v06_economy_action_port.gd")
@@ -39,6 +41,7 @@ func _ready() -> void:
 	_wire_card_resolution_transition_sink()
 	_wire_card_resolution_frame_driver()
 	_wire_table_presentation_query_ports()
+	call_deferred("_wire_table_presentation_source_target")
 
 
 func configure(ruleset_snapshot: Dictionary) -> void:
@@ -52,6 +55,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	_wire_card_resolution_transition_sink()
 	_wire_card_resolution_frame_driver()
 	_wire_table_presentation_query_ports()
+	call_deferred("_wire_table_presentation_source_target")
 	var world_clock := _world_effective_clock_runtime_controller_node()
 	if world_clock != null and world_clock.has_method("configure"):
 		world_clock.call("configure", {})
@@ -1030,6 +1034,14 @@ func record_public_log_event(
 	return ports.publish_public_log(event_kind, localization_key, public_values, source_revision, world_time, receipt_id) if ports != null else {"applied": false, "reason_code": "table_presentation_query_ports_missing"}
 
 
+func record_legacy_viewer_feedback(message: String) -> Dictionary:
+	var ports := _table_presentation_query_ports_node()
+	if ports == null:
+		return {"applied": false, "reason_code": "presentation_query_ports_missing"}
+	var viewer := ports.authorized_viewer_index()
+	return ports.record_viewer_private_feedback(viewer, message)
+
+
 func append_public_log_receipt(receipt: PublicLogReceipt) -> Dictionary:
 	var ports := _table_presentation_query_ports_node()
 	return ports.append_public_log_receipt(receipt) if ports != null else {"applied": false, "reason_code": "table_presentation_query_ports_missing"}
@@ -1045,9 +1057,9 @@ func presentation_recent_public_log_entries(limit := 6) -> Array:
 	return ports.recent_public_log_entries(limit) if ports != null else []
 
 
-func import_legacy_public_log(messages: Array) -> Dictionary:
+func import_legacy_viewer_feedback(messages: Array) -> Dictionary:
 	var ports := _table_presentation_query_ports_node()
-	return ports.import_legacy_public_log(messages) if ports != null else {"applied": 0, "reason_code": "table_presentation_query_ports_missing"}
+	return ports.import_legacy_viewer_feedback(messages) if ports != null else {"applied": 0, "reason_code": "table_presentation_query_ports_missing"}
 
 
 func reset_public_log() -> void:
@@ -1390,6 +1402,7 @@ func _wire_card_execution_typed_ports() -> void:
 	var contract_bridge := _contract_runtime_world_bridge_node() as ContractRuntimeWorldBridge
 	if contract_bridge != null:
 		contract_bridge.set_card_resolution_history_service(history, queue)
+		contract_bridge.set_card_presentation_service(_card_presentation_node() as CardPresentationRuntimeService)
 
 
 func solar_public_presentation_snapshot() -> Dictionary:
@@ -3541,6 +3554,25 @@ func advance_presentation_refresh_cadence(real_delta: float, developer_surface_v
 	return scheduler.advance(real_delta, developer_surface_visible) if scheduler != null else {"advanced": false, "reason": "presentation_refresh_scheduler_unavailable", "due": []}
 
 
+func advance_table_presentation(real_delta: float) -> Array[TablePresentationApplyReceipt]:
+	_wire_table_presentation_source_target()
+	var scheduler := _table_presentation_refresh_scheduler_node()
+	var port := _table_presentation_refresh_port_node()
+	if scheduler == null or port == null:
+		return []
+	var developer_target := _developer_balance_presentation_target_node()
+	var developer_visible := developer_target != null and developer_target.enabled
+	return port.apply_ordered_refresh_receipts(scheduler.advance_typed(real_delta, developer_visible))
+
+
+func request_table_presentation_refresh(kind: StringName, _reason: StringName = &"state_changed") -> TablePresentationApplyReceipt:
+	_wire_table_presentation_source_target()
+	var port := _table_presentation_refresh_port_node()
+	if port == null:
+		return TablePresentationApplyReceipt.new()
+	return port.request_immediate(kind, _reason)
+
+
 func reset_presentation_refresh_cadence() -> Dictionary:
 	var scheduler := _table_presentation_refresh_scheduler_node()
 	return scheduler.reset_table_cadence() if scheduler != null else {"reset": false, "reason": "presentation_refresh_scheduler_unavailable"}
@@ -3554,6 +3586,22 @@ func request_immediate_presentation_refresh(kind: StringName) -> Dictionary:
 func presentation_refresh_cadence_debug_snapshot() -> Dictionary:
 	var scheduler := _table_presentation_refresh_scheduler_node()
 	return scheduler.debug_snapshot() if scheduler != null else {}
+
+
+func table_presentation_source_target_debug_snapshot() -> Dictionary:
+	return {
+		"source": _table_presentation_source_owner_node().debug_snapshot() if _table_presentation_source_owner_node() != null else {},
+		"port": _table_presentation_refresh_port_node().debug_snapshot() if _table_presentation_refresh_port_node() != null else {},
+		"developer_target": _developer_balance_presentation_target_node().debug_snapshot() if _developer_balance_presentation_target_node() != null else {},
+	}
+
+
+func bind_developer_balance_presentation_panel(panel: DeveloperBalancePanel) -> void:
+	var target := _developer_balance_presentation_target_node()
+	if target == null:
+		return
+	target.bind_panel(panel)
+	target.enabled = panel != null
 
 
 func active_forced_decision(viewer_index: int = -1) -> Dictionary:
@@ -4888,7 +4936,79 @@ func _wire_table_presentation_query_ports() -> void:
 		ports.victory_presentation_receipt_ready.connect(_on_victory_presentation_receipt_ready)
 
 
+func _wire_table_presentation_source_target() -> void:
+	if Engine.is_editor_hint():
+		return
+	var source := _table_presentation_source_owner_node()
+	var viewmodel_query := _table_presentation_viewmodel_query_node()
+	var port := _table_presentation_refresh_port_node()
+	var game_screen := get_node_or_null(presentation_game_screen_path) as SpaceSyndicateGameScreen if not presentation_game_screen_path.is_empty() else null
+	if source == null or viewmodel_query == null or port == null or game_screen == null:
+		return
+	var developer_target := _developer_balance_presentation_target_node()
+	var developer_diagnostics := _gameplay_balance_diagnostics_node() as GameplayBalanceDiagnosticsRuntimeService \
+		if developer_target != null and developer_target.is_available() else null
+	viewmodel_query.configure(
+		_table_presentation_query_ports_node(),
+		_table_selection_state_node(),
+		_table_viewmodel_node() as GameTableViewModelRuntimeService,
+		_card_runtime_catalog_node() as CardRuntimeCatalogService,
+		_card_play_world_bridge_node() as CardPlayEligibilityWorldBridge,
+		_card_play_eligibility_node() as CardPlayEligibilityRuntimeService,
+		_region_supply_runtime_controller_node() as RegionSupplyRuntimeController,
+		_region_infrastructure_runtime_controller_node() as RegionInfrastructureRuntimeController,
+		_weather_presentation_runtime_service_node() as WeatherPresentationRuntimeService,
+		_victory_control_runtime_controller_node() as VictoryControlRuntimeController,
+		_contract_runtime_controller_node() as ContractRuntimeController,
+		_purchase_node() as DistrictPurchaseRuntimeController,
+		_card_target_choice_runtime_controller_node(),
+		_monster_runtime_controller_node() as MonsterRuntimeController,
+		_military_runtime_controller_node() as MilitaryRuntimeController,
+		_commodity_flow_runtime_controller_node() as CommodityFlowRuntimeController,
+		_player_mana_runtime_controller_node() as PlayerManaRuntimeController,
+		_card_resolution_runtime_controller_node(),
+		_card_resolution_queue_node() as CardResolutionQueueRuntimeService,
+		_card_resolution_history_runtime_service_node(),
+		_card_resolution_presentation_port_node()
+	)
+	source.configure(
+		_table_presentation_query_ports_node(),
+		viewmodel_query,
+		developer_diagnostics,
+		_visual_cue_runtime_owner_node() as VisualCueRuntimeOwner,
+		_solar_availability_runtime_service_node() as SolarAvailabilityRuntimeService,
+		_world_effective_clock_runtime_controller_node() as WorldEffectiveClockRuntimeController,
+		_weather_presentation_runtime_service_node() as WeatherPresentationRuntimeService
+	)
+	port.configure(source, game_screen, game_screen.presentation_planet_target(), developer_target, _table_presentation_refresh_scheduler_node())
+	_wire_domain_presentation_ports(port, _table_presentation_query_ports_node().public_log_port)
+
+
+func _wire_domain_presentation_ports(refresh_port: TablePresentationRefreshPort, public_log_port: PublicLogProducerPort) -> void:
+	var clock := _world_effective_clock_runtime_controller_node() as WorldEffectiveClockRuntimeController
+	var monster := _monster_runtime_controller_node()
+	var military := _military_runtime_controller_node()
+	var weather := _weather_runtime_controller_node()
+	var contract_bridge := _contract_runtime_world_bridge_node()
+	if monster != null:
+		monster.set_table_presentation_ports(refresh_port, public_log_port, clock)
+	if military != null:
+		military.set_table_presentation_ports(refresh_port, public_log_port, clock)
+	if weather != null:
+		weather.set_table_presentation_ports(refresh_port, public_log_port, clock)
+	if contract_bridge != null:
+		contract_bridge.set_table_presentation_ports(refresh_port, public_log_port, clock)
+	var product_market := _product_market_runtime_controller_node() as ProductMarketRuntimeController
+	if product_market != null:
+		product_market.set_table_presentation_log_port(public_log_port, clock)
+
+
 func _on_victory_presentation_receipt_ready(receipt: VictoryPresentationStateChangeReceipt) -> void:
+	if receipt != null and receipt.is_valid():
+		var port := _table_presentation_refresh_port_node()
+		if port != null:
+			for kind in receipt.immediate_refresh_mask:
+				port.request_immediate(kind, &"victory_state_changed")
 	victory_presentation_receipt_ready.emit(receipt)
 
 
@@ -4900,8 +5020,24 @@ func _visual_cue_runtime_owner_node() -> VisualCueRuntimeOwner:
 	return get_node_or_null("VisualCueRuntimeOwner") as VisualCueRuntimeOwner
 
 
-func _table_presentation_refresh_scheduler_node() -> Node:
-	return get_node_or_null("TablePresentationRefreshScheduler")
+func _table_presentation_refresh_scheduler_node() -> TablePresentationRefreshScheduler:
+	return get_node_or_null("TablePresentationRefreshScheduler") as TablePresentationRefreshScheduler
+
+
+func _table_presentation_source_owner_node() -> TablePresentationSourceOwner:
+	return get_node_or_null("TablePresentationSourceOwner") as TablePresentationSourceOwner
+
+
+func _table_presentation_viewmodel_query_node() -> TablePresentationViewModelQuery:
+	return get_node_or_null("TablePresentationViewModelQuery") as TablePresentationViewModelQuery
+
+
+func _table_presentation_refresh_port_node() -> TablePresentationRefreshPort:
+	return get_node_or_null("TablePresentationRefreshPort") as TablePresentationRefreshPort
+
+
+func _developer_balance_presentation_target_node() -> DeveloperBalancePresentationTarget:
+	return get_node_or_null("DeveloperBalancePresentationTarget") as DeveloperBalancePresentationTarget
 
 
 func _table_presentation_query_ports_node() -> TablePresentationQueryPorts:

@@ -1,4 +1,4 @@
-[gd_scene load_steps=94 format=3]
+[gd_scene load_steps=98 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -91,6 +91,10 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardPlaySubmissionRuntimeController.tscn" id="97_card_play_submission"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardResolutionTransitionSink.tscn" id="98_card_transition_sink"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/presentation/TablePresentationQueryPorts.tscn" id="99_table_presentation_query_ports"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/TablePresentationSourceOwner.tscn" id="100_table_presentation_source"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/TablePresentationRefreshPort.tscn" id="101_table_presentation_refresh_port"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/DeveloperBalancePresentationTarget.tscn" id="102_developer_presentation_target"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/TablePresentationViewModelQuery.tscn" id="103_table_presentation_viewmodel_query"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -106,6 +110,18 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="TablePresentationQueryPorts" parent="." instance=ExtResource("99_table_presentation_query_ports")]
+unique_name_in_owner = true
+
+[node name="TablePresentationViewModelQuery" parent="." instance=ExtResource("103_table_presentation_viewmodel_query")]
+unique_name_in_owner = true
+
+[node name="TablePresentationSourceOwner" parent="." instance=ExtResource("100_table_presentation_source")]
+unique_name_in_owner = true
+
+[node name="TablePresentationRefreshPort" parent="." instance=ExtResource("101_table_presentation_refresh_port")]
+unique_name_in_owner = true
+
+[node name="DeveloperBalancePresentationTarget" parent="." instance=ExtResource("102_developer_presentation_target")]
 unique_name_in_owner = true
 
 [node name="WorldEffectiveClockRuntimeController" parent="." instance=ExtResource("69_world_clock")]

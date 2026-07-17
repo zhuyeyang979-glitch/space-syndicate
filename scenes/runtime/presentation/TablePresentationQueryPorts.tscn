@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/presentation/table_presentation_query_ports.gd" id="1_root"]
 [ext_resource type="Script" path="res://scripts/presentation/local_viewer_authorization.gd" id="2_viewer"]
@@ -8,6 +8,7 @@
 [ext_resource type="Script" path="res://scripts/presentation/public_log_presentation_owner.gd" id="6_log_owner"]
 [ext_resource type="Script" path="res://scripts/presentation/public_log_producer_port.gd" id="7_log_port"]
 [ext_resource type="Script" path="res://scripts/presentation/victory_presentation_receipt_service.gd" id="8_victory"]
+[ext_resource type="Script" path="res://scripts/presentation/viewer_private_feedback_owner.gd" id="9_private_feedback"]
 
 [node name="TablePresentationQueryPorts" type="Node"]
 script = ExtResource("1_root")
@@ -32,3 +33,6 @@ script = ExtResource("7_log_port")
 
 [node name="VictoryPresentationReceiptService" type="Node" parent="."]
 script = ExtResource("8_victory")
+
+[node name="ViewerPrivateFeedbackOwner" type="Node" parent="."]
+script = ExtResource("9_private_feedback")

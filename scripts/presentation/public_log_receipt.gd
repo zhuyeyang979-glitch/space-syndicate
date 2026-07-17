@@ -9,7 +9,6 @@ const ALLOWED_PUBLIC_KEYS := [
 	"commodity_id",
 	"countdown_seconds",
 	"level",
-	"message",
 	"military_unit_name",
 	"monster_name",
 	"player_index",
@@ -78,7 +77,8 @@ func is_valid() -> bool:
 	return not receipt_id.is_empty() \
 		and not str(event_kind).is_empty() \
 		and not str(localization_key).is_empty() \
-		and _public_values_valid(public_values)
+		and _public_values_valid(public_values) \
+		and _event_contract_valid()
 
 
 func to_dictionary() -> Dictionary:
@@ -112,3 +112,11 @@ func _public_values_valid(value: Variant) -> bool:
 				return false
 		return true
 	return ALLOWED_VALUE_TYPES.has(typeof(value))
+
+
+func _event_contract_valid() -> bool:
+	if event_kind == &"victory_state_changed":
+		for key_variant in public_values.keys():
+			if not ["previous_state", "state"].has(str(key_variant)):
+				return false
+	return true

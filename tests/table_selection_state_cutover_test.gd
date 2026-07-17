@@ -25,14 +25,18 @@ func _run() -> void:
 		"inspected_player": 1,
 		"selected_district": 7,
 		"selected_trade_product": "环晶电池",
+		"selected_hand_slot": 3,
+		"selected_map_layer_focus": "weather",
 	})
 	_expect(int(signal_count[0]) == 1, "atomic restore emits one selection change")
 	_expect(
 		int(restored.get("selected_player", -1)) == 2
 		and int(restored.get("inspected_player", -1)) == 1
 		and int(restored.get("selected_district", -1)) == 7
-		and str(restored.get("selected_trade_product", "")) == "环晶电池",
-		"atomic restore preserves all four table-selection values"
+		and str(restored.get("selected_trade_product", "")) == "环晶电池"
+		and int(restored.get("selected_hand_slot", -1)) == 3
+		and str(restored.get("selected_map_layer_focus", "")) == "weather",
+		"atomic restore preserves all table-selection values"
 	)
 	var saved := state.to_save_data()
 	state.set_active_context(3, 4, "星露莓")
@@ -77,9 +81,11 @@ func _run() -> void:
 	var coordinator_scene := FileAccess.get_file_as_string("res://scenes/runtime/GameRuntimeCoordinator.tscn")
 	_expect(coordinator_scene.count("TableSelectionState.tscn") == 1, "production scene composes exactly one TableSelectionState")
 
-	var encoded := JSON.stringify(state.debug_snapshot())
-	for forbidden in ["cash", "hand", "discard", "hidden_owner", "owner_truth", "ai_plan"]:
-		_expect(not encoded.contains(forbidden), "selection snapshot excludes private field %s" % forbidden)
+	var debug_snapshot := state.debug_snapshot()
+	_expect(typeof(debug_snapshot.get("selected_hand_slot", null)) == TYPE_INT, "selection snapshot exposes only the selected hand-slot index")
+	_expect(typeof(debug_snapshot.get("selected_map_layer_focus", null)) == TYPE_STRING, "selection snapshot exposes the public map-layer focus")
+	for forbidden_key in ["cash", "hand", "hands", "hand_cards", "cards", "discard", "hidden_owner", "owner_truth", "ai_plan"]:
+		_expect(not debug_snapshot.has(forbidden_key), "selection snapshot excludes private field %s" % forbidden_key)
 
 	coordinator.queue_free()
 	await process_frame

@@ -2,6 +2,10 @@
 extends Node
 class_name WeatherRuntimeController
 
+var _table_presentation_refresh_port: TablePresentationRefreshPort
+var _public_log_producer_port: PublicLogProducerPort
+var _presentation_world_clock: WorldEffectiveClockRuntimeController
+
 const DEFAULT_DEFINITION_CATALOG := preload("res://resources/weather/weather_definition_catalog_v1.tres")
 
 const FORECAST_LEAD_MIN_SECONDS := WeatherSystem.FORECAST_LEAD_MIN_SECONDS
@@ -92,6 +96,12 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	_bind_clock_from_scene()
 	_configured = _compute_configured()
 	_refresh_legacy_projection()
+
+
+func set_table_presentation_ports(refresh_port: TablePresentationRefreshPort, log_port: PublicLogProducerPort, clock: WorldEffectiveClockRuntimeController) -> void:
+	_table_presentation_refresh_port = refresh_port
+	_public_log_producer_port = log_port
+	_presentation_world_clock = clock
 
 
 func reset_state() -> void:
@@ -1021,7 +1031,20 @@ func _refresh_weather_dependents() -> void:
 
 
 func _log(message: String) -> void:
-	_world_call(&"_log", [message])
+	if _public_log_producer_port != null and not message.is_empty():
+		_public_log_producer_port.publish(
+			&"weather_public_update", &"public.weather.updated",
+			{"action_kind": "weather", "public_status": "updated"},
+			_presentation_source_revision(), _presentation_world_time()
+		)
+
+
+func _presentation_source_revision() -> int:
+	return _presentation_world_clock.world_effective_micros() if _presentation_world_clock != null else 0
+
+
+func _presentation_world_time() -> float:
+	return _presentation_world_clock.world_effective_seconds() if _presentation_world_clock != null else 0.0
 
 
 func _add_action_callout(source: String, title: String, detail: String, accent: Color, world_position: Vector2, duration: float = 5.0) -> void:

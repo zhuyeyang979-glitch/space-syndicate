@@ -53,7 +53,7 @@ func capture_advance_result(result: Dictionary) -> VictoryPresentationStateChang
 		_public_log.publish(
 			&"victory_state_changed",
 			&"victory.public.state_changed",
-			{"message": "胜利控制状态：%s。" % _state_label(next_state), "state": next_state},
+			{"previous_state": receipt.previous_state, "state": next_state},
 			_revision,
 			_world_time(),
 			receipt.receipt_id + "-log"
@@ -99,9 +99,13 @@ func _receipt(kind: StringName, previous: String, next: String, public_snapshot:
 	receipt.previous_state = previous
 	receipt.state = next
 	receipt.world_time = _world_time()
-	receipt.public_snapshot = public_snapshot.duplicate(true)
-	receipt.participant_names = _world_query.public_participant_names() if _world_query != null else {}
-	receipt.public_map_facts = _map_query.public_map_facts() if _map_query != null else {}
+	receipt.public_snapshot = VictoryPresentationStateChangeReceipt.project_public_snapshot(public_snapshot)
+	receipt.participant_names = VictoryPresentationStateChangeReceipt.project_participant_names(
+		_world_query.public_participant_names() if _world_query != null else {}
+	)
+	receipt.public_map_facts = VictoryPresentationStateChangeReceipt.project_public_map_facts(
+		_map_query.public_map_facts() if _map_query != null else {}
+	)
 	receipt.immediate_refresh_mask = [&"live", &"full"]
 	return receipt
 

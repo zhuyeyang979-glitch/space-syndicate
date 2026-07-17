@@ -59,6 +59,7 @@ unique_name_in_owner = true
 editor_description = "Scene-owned runtime controllers and bridges."
 
 [node name="GameRuntimeCoordinator" parent="RuntimeServices/RuntimeControllerHost" instance=ExtResource("10_game_runtime_coordinator")]
+presentation_game_screen_path = NodePath("../../../RuntimeGameScreen")
 
 [node name="RuntimeFallbackHost" type="Node" parent="RuntimeServices"]
 unique_name_in_owner = true

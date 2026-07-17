@@ -21,6 +21,7 @@ var _remaining_by_kind: Dictionary = {
 }
 var _advance_count := 0
 var _revision := 0
+var _receipt_sequence := 0
 
 
 func configure_intervals(live_seconds: float, map_seconds: float, full_seconds: float, developer_seconds: float = -1.0) -> void:
@@ -73,6 +74,39 @@ func advance(real_delta: float, developer_surface_visible: bool = false) -> Dict
 	}
 
 
+func advance_typed(real_delta: float, developer_surface_visible: bool = false) -> Array[TablePresentationRefreshReceipt]:
+	var cadence := advance(real_delta, developer_surface_visible)
+	var result: Array[TablePresentationRefreshReceipt] = []
+	for kind_variant in cadence.get("due", []):
+		var kind: StringName = StringName(str(kind_variant))
+		if not ORDERED_KINDS.has(kind):
+			continue
+		_receipt_sequence += 1
+		var receipt := TablePresentationRefreshReceipt.new()
+		receipt.receipt_id = "table-refresh-%d-%s" % [_receipt_sequence, str(kind)]
+		receipt.sequence = _receipt_sequence
+		receipt.kind = kind
+		receipt.source_revision = int(cadence.get("revision", _revision))
+		receipt.real_delta = float(cadence.get("real_delta", 0.0))
+		result.append(receipt)
+	return result
+
+
+func immediate_typed(kind: StringName) -> TablePresentationRefreshReceipt:
+	if not ORDERED_KINDS.has(kind):
+		return null
+	_receipt_sequence += 1
+	_revision += 1
+	var receipt := TablePresentationRefreshReceipt.new()
+	receipt.receipt_id = "table-refresh-%d-%s-immediate" % [_receipt_sequence, str(kind)]
+	receipt.sequence = _receipt_sequence
+	receipt.kind = kind
+	receipt.source_revision = _revision
+	receipt.real_delta = 0.0
+	_remaining_by_kind[kind] = _interval_for(kind)
+	return receipt
+
+
 func debug_snapshot() -> Dictionary:
 	return {
 		"tick_owner": false,
@@ -87,6 +121,7 @@ func debug_snapshot() -> Dictionary:
 		"remaining": _remaining_by_kind.duplicate(true),
 		"advance_count": _advance_count,
 		"revision": _revision,
+		"receipt_sequence": _receipt_sequence,
 	}
 
 

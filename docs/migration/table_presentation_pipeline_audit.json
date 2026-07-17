@@ -341,5 +341,236 @@
     "tests/human_normal_table_playability_v06_test.gd",
     "tests/layout_scene_smoke_test.gd",
     "tests/smoke_test.gd"
-  ]
+  ],
+  "reaudit_after_query_ports": {
+    "baseline_sha": "5b5b11ef123962553ca34c2483f57a32e392f3f0",
+    "decision": "NO_GO",
+    "scheduler": {
+      "ordered_kinds": ["live", "map", "full", "developer"],
+      "interval_seconds": {"live": 0.18, "map": 0.16, "full": 1.8, "developer": 1.8},
+      "global_monster_wager_block": "real_delta",
+      "ordinary_pause": "no_advance",
+      "session_finished": "no_advance",
+      "large_delta": "each_kind_at_most_once"
+    },
+    "eliminated_blockers": [
+      "local_viewer_authorization",
+      "public_world_projection",
+      "viewer_private_world_projection",
+      "viewer_scoped_action_and_card_track_projection",
+      "owner_safe_public_map_markers",
+      "exact_once_public_log_owner",
+      "visibility_safe_victory_state_change_receipt",
+      "victory_outcome_callback_to_main",
+      "main_owned_city_route_monster_map_marker_builders"
+    ],
+    "root_only_blockers": [
+      {
+        "id": "world_map_geometry",
+        "main_fields": ["map_width_m", "map_height_m"],
+        "main_consumer": "_set_map_view_data",
+        "missing_api": "public_map_geometry_projection() -> WorldMapGeometryProjection",
+        "required_owner": "scene_owned_world_topology_or_session_owner",
+        "forbidden_workaround": "Main injection, polygon inference, or presentation-owned duplicate geometry"
+      },
+      {
+        "id": "monster_wager_viewer_projection",
+        "main_method": "_runtime_monster_wager_decision_snapshot_source",
+        "private_dependencies": [
+          "MonsterRuntimeController._latest_active_monster_wager",
+          "MonsterRuntimeController._monster_wager_player_decision",
+          "MonsterRuntimeController._monster_wager_competitors",
+          "MonsterRuntimeController._monster_wager_percent_options",
+          "MonsterRuntimeController._monster_wager_amount_for_percent"
+        ],
+        "missing_api": "monster_wager_presentation_for_viewer(viewer_index) -> MonsterWagerPresentationProjection",
+        "forbidden_workaround": "consume active_wagers_snapshot raw dictionaries"
+      }
+    ],
+    "remaining_main_refresh_methods": [
+      "_refresh_live_ui",
+      "_refresh_board",
+      "_refresh_ui",
+      "_refresh_developer_balance_greybox",
+      "_sync_runtime_game_screen",
+      "_refresh_bottom_countdown_bar",
+      "_set_map_view_data"
+    ],
+    "remaining_main_source_methods": [
+      "_runtime_table_snapshot_source",
+      "_runtime_table_viewmodel_source",
+      "_runtime_top_bar_snapshot_source",
+      "_runtime_player_board_snapshot_source",
+      "_runtime_temporary_decision_snapshot_source",
+      "_runtime_card_viewmodel_source",
+      "_runtime_hand_card_fact_sources",
+      "_runtime_card_track_model_source",
+      "_runtime_selected_district_snapshot_source",
+      "_runtime_planet_snapshot_source",
+      "_runtime_public_log_snapshot"
+    ],
+    "remaining_thin_main_wrappers": ["_log", "_can_view_player_private_hand", "_local_human_player_index"],
+    "in_scope_not_prerequisite": [
+      "typed live/full/map/developer snapshot types",
+      "TablePresentationSourceOwner",
+      "TablePresentationRefreshPort",
+      "typed GameScreen, PlanetBoard/map and developer targets",
+      "selected_runtime_card_slot presentation selection state",
+      "selected_map_layer_focus presentation selection state",
+      "domain refresh invalidation migration",
+      "victory immediate refresh consumption"
+    ],
+    "next_boundary": "WORLD_MAP_GEOMETRY_AND_MONSTER_WAGER_PRESENTATION_QUERY_PREREQUISITES"
+  },
+  "final_frozen_diff_review": {
+    "status": "SUPERSEDED_BY_POST_FIX_GREEN",
+    "verified_green": {
+      "main_blocked_branch_high_level_advance_count": 1,
+      "main_running_branch_high_level_advance_count": 1,
+      "main_reads_presentation_receipts": false,
+      "legacy_main_refresh_snapshot_log_victory_presentation_helper_count": 0,
+      "scheduler_cadence_only": true,
+      "typed_targets": [
+        "SpaceSyndicateGameScreen.apply_live_presentation",
+        "SpaceSyndicateGameScreen.apply_full_presentation",
+        "SpaceSyndicatePlanetBoard.apply_map_presentation",
+        "DeveloperBalancePresentationTarget.apply_developer_presentation"
+      ],
+      "refresh_port_exact_once_guards": [
+        "receipt_id_duplicate_rejection",
+        "monotonic_sequence_stale_rejection",
+        "viewer_authorization_revision_validation",
+        "one_kind_specific_snapshot_build",
+        "one_kind_specific_target_apply"
+      ],
+      "monster_wager_root_blocker_removed": true,
+      "runtime_loop_created": false,
+      "main_fallback_count": 0,
+      "second_scheduler_created": false
+    },
+    "blocking_findings": [
+      {
+        "id": "world_map_geometry_not_authoritative",
+        "path": "scripts/presentation/world_session_presentation_query.gd",
+        "method": "public_map_geometry_projection",
+        "finding": "width and height are inferred from district polygon/center bounds rather than forwarded from a scene-owned authoritative topology/session owner",
+        "risk": "presentation map dimensions can diverge from gameplay wrap, distance, unit and route coordinates",
+        "required_fix": "authoritative typed WorldMapGeometryProjection containing width_m, height_m, world_rect and revision",
+        "forbidden_fix": "district-bounds inference or Main injection"
+      },
+      {
+        "id": "legacy_scheduler_request_path_survives",
+        "path": "scripts/main.gd",
+        "line": 6517,
+        "symbol": "request_immediate_presentation_refresh",
+        "finding": "one Main caller still uses the old scheduler-only request API while migrated callers use request_table_presentation_refresh",
+        "required_fix": "replace with the typed request and retire or test-confine the unused legacy coordinator request/cadence facades"
+      }
+    ],
+    "typed_world_ports_debt": [
+      {
+        "id": "developer_balance_diagnostics_world_bridge",
+        "release_player_facing": false,
+        "gated": true,
+        "note": "Developer snapshot receives a typed diagnostics service whose existing bridge still binds Main facts"
+      },
+      "pre-existing AI, monster, military, weather, product and other gameplay world bridges remain outside this presentation cutover"
+    ],
+    "action_routing_debt": [
+      "GameScreen and map input signals still route actions through Main",
+      "Main state-change handlers remain typed invalidation producers through request_table_presentation_refresh",
+      "these paths do not build snapshots or apply UI targets"
+    ],
+    "non_blocking_notes": [
+      "legacy save key log_lines is imported as viewer-private feedback and is not public-log ownership",
+      "Main._update_victory_control remains gameplay-only and has no presentation side effects"
+    ],
+    "acceptance_decision": "SUPERSEDED_BY_POST_FIX_GREEN"
+  },
+  "post_fix_final_acceptance": {
+    "status": "TABLE_PRESENTATION_SOURCE_TARGET_CUTOVER_GREEN",
+    "root_only_blockers_remaining": 0,
+    "geometry": {
+      "owner": "WorldSessionState",
+      "owner_count": 1,
+      "configure_api": "configure_world_geometry(width_m, height_m)",
+      "public_projection_api": "public_world_geometry_snapshot()",
+      "query_api": "WorldSessionPresentationQuery.public_map_geometry_projection()",
+      "save_load_fields": ["map_width_m", "map_height_m", "world_geometry_revision"],
+      "query_derives_from_district_bounds": false,
+      "main_duplicate_fields": 0,
+      "card_market_reads_same_owner": true
+    },
+    "monster_wager": {
+      "typed_viewer_projection": "MonsterRuntimeController.monster_wager_presentation_for_viewer(viewer_index)",
+      "query_port_forwarded": true,
+      "raw_wager_state_used_by_source_owner": false
+    },
+    "frame_entry": {
+      "runtime_loop_created": false,
+      "main_process_remains_unique": true,
+      "global_block_high_level_advance_count": 1,
+      "running_high_level_advance_count": 1,
+      "main_reads_receipt": false,
+      "main_matches_refresh_kind": false
+    },
+    "production_path": {
+      "scheduler_instances": 1,
+      "source_owner_instances": 1,
+      "refresh_port_instances": 1,
+      "legacy_main_refresh_snapshot_log_victory_presentation_helpers": 0,
+      "old_request_immediate_production_callers": 0,
+      "new_typed_request_used_by_main": true,
+      "main_fallback_count": 0,
+      "second_production_cadence": false,
+      "second_target_apply_path": false
+    },
+    "scheduler": {
+      "cadence_only": true,
+      "ordered_kinds": ["live", "map", "full", "developer"],
+      "owns_snapshots": false,
+      "owns_targets": false,
+      "owns_gameplay_state": false
+    },
+    "source_owner": {
+      "typed_query_ports": true,
+      "references_main": false,
+      "receives_mutable_world_session_collections": false,
+      "additional_typed_scene_services": ["VisualCueRuntimeOwner", "SolarAvailabilityRuntimeService", "WorldEffectiveClockRuntimeController", "WeatherPresentationRuntimeService"],
+      "developer_only_typed_service": "GameplayBalanceDiagnosticsRuntimeService"
+    },
+    "refresh_port": {
+      "duplicate_rejection": true,
+      "stale_rejection": true,
+      "authorization_revision_validation": true,
+      "kind_specific_snapshot_build": true,
+      "single_typed_target_apply": true,
+      "references_main": false
+    },
+    "typed_targets": [
+      "SpaceSyndicateGameScreen.apply_live_presentation",
+      "SpaceSyndicateGameScreen.apply_full_presentation",
+      "SpaceSyndicatePlanetBoard.apply_map_presentation",
+      "DeveloperBalancePresentationTarget.apply_developer_presentation"
+    ],
+    "non_blocking_debt": {
+      "typed_world_ports": [
+        "developer diagnostics retains a pre-existing Main-backed world bridge",
+        "other gameplay controllers retain pre-existing Main-backed world bridges",
+        "card-market monster access remains on its pre-existing world bridge"
+      ],
+      "presentation_action_routing": [
+        "GameScreen and map input actions still route through Main",
+        "Main gameplay handlers remain typed invalidation producers"
+      ],
+      "save_restore": [
+        "Main still orchestrates legacy compatibility but geometry owner and persistence are WorldSessionState"
+      ],
+      "historical_test_facades": [
+        "advance_presentation_refresh_cadence",
+        "request_immediate_presentation_refresh"
+      ]
+    },
+    "acceptance_decision": "GREEN"
+  }
 }

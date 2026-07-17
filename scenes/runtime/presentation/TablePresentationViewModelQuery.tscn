@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/table_presentation_viewmodel_query.gd" id="1"]
+
+[node name="TablePresentationViewModelQuery" type="Node"]
+script = ExtResource("1")
+editor_description = "Viewer-scoped table ViewModel query. Composes existing typed gameplay facts through CardPresentation and GameTableViewModel services; owns no gameplay or cadence."

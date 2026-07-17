@@ -454,3 +454,276 @@ helpers, the correct outcome is
 `TABLE_PRESENTATION_SOURCE_TARGET_CUTOVER_BLOCKED`, with that missing query
 listed as the next prerequisite. A Main callback or replacement monolith is
 not an acceptable workaround.
+
+## Re-audit after Table Presentation Query Ports cutover
+
+Baseline: `5b5b11ef123962553ca34c2483f57a32e392f3f0`
+
+Decision: `NO_GO`
+
+The Query Ports cutover removed the original broad visibility blocker. The
+production composition now provides typed local-viewer authorization, public
+and viewer-private world projections, viewer-scoped action/card-track facts,
+public map markers, an exact-once public log owner, and visibility-safe Victory
+presentation receipts. `Main._update_victory_control()` no longer compares
+presentation state, logs transitions, or requests a refresh; it only advances
+the authoritative controller through `GameRuntimeCoordinator`.
+
+The source/target cutover is still blocked by two narrower facts that have no
+non-Main, visibility-safe query:
+
+1. `map_width_m` and `map_height_m` remain authoritative world-geometry state
+   in Main. `_set_map_view_data()` needs them, and other gameplay/world bridges
+   also read them. A presentation source must not infer them from district
+   polygons, copy them into a presentation cache, or receive them from Main.
+2. The monster-wager decision surface still uses
+   `_runtime_monster_wager_decision_snapshot_source()` and Monster private
+   helpers. `MonsterRuntimeController.active_wagers_snapshot()` returns the raw
+   wager collection rather than a viewer-safe presentation projection.
+
+These are `ROOT_ONLY_BLOCKER` items. They require the following prerequisite
+queries before the production SourceOwner can be created:
+
+```gdscript
+func public_map_geometry_projection() -> WorldMapGeometryProjection
+func monster_wager_presentation_for_viewer(viewer_index: int) -> MonsterWagerPresentationProjection
+```
+
+The geometry projection must be owned by a scene-owned world topology/session
+owner and contain at least `width_m`, `height_m` and `revision`. The wager
+projection must expose only the public pool/matchup/timer plus the authorized
+viewer decision/actions; it must not expose other players' private decision
+state or raw wager dictionaries.
+
+### Current scheduler and Main consumption chain
+
+The cadence is unchanged: `live -> map -> full -> developer`, with intervals
+`0.18 / 0.16 / 1.8 / 1.8` seconds. The scheduler still emits each due kind at
+most once per `advance()`. Global monster-wager blocking advances cadence with
+real delta; ordinary pause and finished sessions do not advance it.
+
+Main still consumes the scheduler receipt twice in `_process()` and dispatches
+to `_refresh_live_ui`, `_refresh_board`, `_refresh_ui`, or
+`_refresh_developer_balance_greybox`. The remaining presentation roots are:
+
+- `_sync_runtime_game_screen`
+- `_runtime_table_snapshot_source`
+- `_runtime_table_viewmodel_source`
+- `_runtime_top_bar_snapshot_source`
+- `_runtime_player_board_snapshot_source`
+- `_runtime_temporary_decision_snapshot_source`
+- `_runtime_card_viewmodel_source`
+- `_runtime_hand_card_fact_sources`
+- `_runtime_card_track_model_source`
+- `_runtime_selected_district_snapshot_source`
+- `_runtime_planet_snapshot_source`
+- `_runtime_public_log_snapshot`
+- `_refresh_bottom_countdown_bar`
+- `_set_map_view_data`
+- `_log`, `_can_view_player_private_hand`, and `_local_human_player_index`
+  (thin Query Ports wrappers that must be physically removed with consumers).
+
+The Query Ports cutover already removed the Main-owned city/route/monster map
+marker builders and the Victory outcome callback. The remaining dynamic
+GameScreen, map, countdown, and developer-panel calls are target migration work,
+not additional prerequisite owners. Likewise, `selected_runtime_card_slot` and
+`selected_map_layer_focus` are presentation selection state that can move into
+the new typed presentation composition in the same cutover.
+
+### Minimum APIs after the two prerequisites
+
+```gdscript
+# Source owner
+func build_live_snapshot(viewer: TablePresentationViewerContext, source_revision: int) -> TableLivePresentationSnapshot
+func build_full_snapshot(viewer: TablePresentationViewerContext, source_revision: int) -> TableFullPresentationSnapshot
+func build_map_snapshot(viewer: TablePresentationViewerContext, source_revision: int) -> MapPresentationSnapshot
+func build_developer_snapshot(source_revision: int) -> DeveloperBalancePresentationSnapshot
+
+# Refresh port
+func apply_ordered_refresh_receipts(receipts: Array[TablePresentationRefreshReceipt]) -> TablePresentationApplyBatchReceipt
+func request_immediate_refresh(request: TablePresentationInvalidationRequest) -> TablePresentationRequestReceipt
+func apply_victory_receipt(receipt: VictoryPresentationStateChangeReceipt) -> TablePresentationApplyBatchReceipt
+
+# Explicit targets
+func apply_live_presentation(snapshot: TableLivePresentationSnapshot) -> TablePresentationTargetReceipt
+func apply_full_presentation(snapshot: TableFullPresentationSnapshot) -> TablePresentationTargetReceipt
+func apply_map_presentation(snapshot: MapPresentationSnapshot) -> TablePresentationTargetReceipt
+func apply_developer_presentation(snapshot: DeveloperBalancePresentationSnapshot) -> TablePresentationTargetReceipt
+```
+
+Once the two prerequisite projections exist, the remaining source formatting,
+typed targets, duplicate/stale rejection, victory immediate refresh, public-log
+consumption, and domain invalidation migration are all inside the intended
+Source/Target cutover boundary. Until then, creating a production SourceOwner
+would require a forbidden Main injection or a replacement monolith.
+
+## Superseded pre-fix read-only review
+
+Status: `SUPERSEDED_BY_POST_FIX_GREEN`
+
+The production cutover has made substantial, correct progress:
+
+- both global-block and running branches of `Main._process()` call
+  `GameRuntimeCoordinator.advance_table_presentation(delta)` exactly once;
+- Main does not inspect scheduler receipts or dispatch refresh kinds;
+- the old Main live/map/full/developer refresh roots, table/map snapshot
+  builders, public-log wrapper, and Victory presentation callback are absent;
+- `TablePresentationRefreshScheduler` owns cadence and typed receipt sequence,
+  but no snapshot, target, world state, or UI node;
+- `TablePresentationRefreshPort` validates receipt ID, monotonic sequence, and
+  viewer authorization before building exactly one kind-specific snapshot and
+  applying exactly one typed target;
+- GameScreen exposes typed live/full targets, PlanetBoard exposes the typed map
+  target, and the developer target is explicitly debug/environment gated;
+- the monster-wager blocker is resolved through
+  `MonsterRuntimeController.monster_wager_presentation_for_viewer()` and the
+  authorized Query Ports projection;
+- no RuntimeLoop, second process owner, Main fallback, or current-scene service
+  lookup was introduced.
+
+The cutover cannot yet be accepted as final because the following frozen-diff
+issues remain.
+
+### 1. Map geometry is inferred, not authoritative
+
+`WorldSessionPresentationQuery.public_map_geometry_projection()` derives
+`width_m` and `height_m` from public district polygon/center bounds. It does not
+read the authoritative `Main.map_width_m` / `Main.map_height_m`, nor a
+scene-owned topology/session owner. Districts are not required to touch the
+world boundary, so this projection can shrink the presentation world, clip
+routes/units, and diverge from gameplay distance and wrap semantics.
+
+This is the exact polygon-inference workaround rejected by the previous
+preflight. The `world_map_geometry` ROOT_ONLY blocker is therefore not actually
+closed. The minimum repair is still a scene-owned authoritative geometry owner
+or typed topology projection containing `width_m`, `height_m`, `world_rect`,
+and `revision`; Query Ports should forward that projection without deriving it.
+
+### 2. One old scheduler-only request path remains in Main
+
+`scripts/main.gd:6517` still calls
+`request_immediate_presentation_refresh(&"live")`, while the migrated paths use
+`request_table_presentation_refresh(...)`. The old API only arms scheduler
+cadence and bypasses the typed immediate apply receipt. It leaves two request
+semantics alive and must be replaced by the new typed request before claiming
+no dual path. The legacy coordinator APIs
+`advance_presentation_refresh_cadence()` and
+`request_immediate_presentation_refresh()` have no other production consumer
+and can then be retired or explicitly confined to historical tests/tools.
+
+### 3. Developer diagnostics remains a typed-world-port debt
+
+The release table source is Query-Ports-based and visibility-scoped. The
+developer-only snapshot additionally receives
+`GameplayBalanceDiagnosticsRuntimeService`, whose world bridge still binds to
+Main for several diagnostic facts. It is correctly debug/environment gated and
+does not create a player-facing leak, but it is not evidence that the developer
+source is fully independent of Main. Record it under `typed_world_ports`; do not
+copy those diagnostic calls into Query Ports or the SourceOwner.
+
+### Non-blocking debt outside this cutover
+
+- `typed_world_ports`: diagnostics and other existing gameplay world bridges
+  still call pre-existing Main facts; this review found no new presentation
+  fallback through them.
+- `presentation_action_routing`: GameScreen/map input signals and the many Main
+  calls to the new typed `request_table_presentation_refresh()` remain action
+  routing/invalidation producers, not snapshot or target ownership.
+- `save_restore`: the literal `log_lines` key remains only as legacy save import
+  data and is routed to viewer-private feedback; it is not Main public-log
+  ownership.
+- `_update_victory_control()` remains in Main only as authoritative gameplay
+  advancement and has no presentation comparison, logging, or target call.
+
+Final decision: the target/source architecture is otherwise coherent, but the
+authoritative geometry defect and surviving legacy request path must be fixed
+before `TABLE_PRESENTATION_SOURCE_TARGET_CUTOVER_GREEN` is supportable.
+
+## Post-fix final acceptance review
+
+Status: `TABLE_PRESENTATION_SOURCE_TARGET_CUTOVER_GREEN`
+
+The two blocking findings above are resolved in the current frozen production
+diff.
+
+### Authoritative geometry is now single-owned
+
+`WorldSessionState` is the only owner of map width, height and geometry
+revision. It provides `configure_world_geometry()` and
+`public_world_geometry_snapshot()`, persists all three values through
+`to_save_data()` / `apply_save_data()`, and emits an explicit geometry-change
+signal. Main no longer declares duplicate map-width or map-height fields; it
+configures and consumes the scene-owned state. The card-market bridge reads the
+same `WorldSessionState` geometry.
+
+`WorldSessionPresentationQuery.public_map_geometry_projection()` now forwards
+that authoritative snapshot. It no longer derives geometry from district
+polygons, centers or radii. The `world_map_geometry` ROOT_ONLY blocker is closed.
+
+### Production presentation path is singular
+
+Both allowed frame branches in `Main._process()` call only
+`GameRuntimeCoordinator.advance_table_presentation(delta)`, once per branch.
+Main does not read, iterate, match or apply refresh receipts. The only Main
+state-change requests use `request_table_presentation_refresh(kind, reason)`;
+the old `request_immediate_presentation_refresh()` has zero production caller.
+
+The older coordinator cadence/request facades remain defined for historical
+focused tests and tools, but no production scene or runtime script calls them.
+They do not form a second production execution path. Their eventual deletion is
+test-harness cleanup, not a blocker for this cutover.
+
+Production composition contains exactly one instance each of:
+
+- `TablePresentationRefreshScheduler`
+- `TablePresentationSourceOwner`
+- `TablePresentationRefreshPort`
+
+No `RuntimeLoop`, second `_process` owner, second scheduler, Main fallback,
+current-scene lookup or `/root/Main` presentation lookup exists.
+
+### Source, port and target ownership
+
+The SourceOwner obtains visibility-scoped world, action, wager, public-log and
+map facts through typed `TablePresentationQueryPorts`. Its additional map cue,
+solar, world-clock, weather and debug-only diagnostics dependencies are
+scene-owned typed services; it does not receive Main, mutable WorldSessionState
+collections, an arbitrary Object, a Callable or a method-name string.
+
+`TablePresentationRefreshPort` rejects invalid, duplicate and stale receipt
+lineage before snapshot construction; revalidates viewer authorization revision;
+builds only the snapshot matching the receipt kind; and applies it to exactly
+one explicit typed target. Its debug contract reports
+`main_fallback_count == 0` and `references_main == false`.
+
+Typed targets are:
+
+- `SpaceSyndicateGameScreen.apply_live_presentation()`
+- `SpaceSyndicateGameScreen.apply_full_presentation()`
+- `SpaceSyndicatePlanetBoard.apply_map_presentation()`
+- `DeveloperBalancePresentationTarget.apply_developer_presentation()`
+
+Victory state changes create typed visibility-safe receipts, write the public
+log through the exact-once log port, and request immediate live/full presentation
+through the same refresh port. Final-settlement presentation is connected
+directly to the coordinator receipt signal, not Main.
+
+### Remaining debt outside this cutover
+
+- `typed_world_ports`: developer diagnostics and several gameplay controllers
+  still use pre-existing Main-backed world bridges for non-presentation facts.
+  Card-market still uses its old world bridge for monster access, although map
+  geometry now comes from `WorldSessionState`.
+- `presentation_action_routing`: GameScreen/map actions and many Main gameplay
+  handlers remain producers of typed presentation invalidations. They do not
+  own snapshots, cadence or targets.
+- `save_restore`: Main still orchestrates legacy save compatibility and invokes
+  `WorldSessionState.configure_world_geometry()` during restore; geometry
+  storage and restoration authority is nevertheless scene-owned.
+- historical scheduler facades used only by tests/tools can be deleted when
+  those harnesses migrate to typed receipts.
+
+Final decision: `GREEN`. The Source/Target cutover has one production cadence,
+one typed source/port path, authoritative geometry, exact-once target
+application, and no Main presentation fallback. It is safe to proceed to the
+next scene-first boundary without recreating this presentation migration.

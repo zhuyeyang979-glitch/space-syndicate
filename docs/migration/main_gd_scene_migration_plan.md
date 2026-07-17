@@ -118,19 +118,23 @@ This is a section-level persistence guarantee; the complete v0.6 envelope
 remains fail-closed while seven unrelated registry sections are unsupported.
 See `docs/migration/card_resolution_transition_sink_cutover.md`.
 
-## Next atomic cutover
+## Table Presentation Source/Target cutover: complete
 
-The prerequisite **Table Presentation Query Ports Cutover** is complete.
+The query-port prerequisite and the source/target cutover are both complete.
 Viewer authorization, public/current-player private queries, map redaction,
-typed public logging and Victory presentation receipts now live below the
-scene-owned `TablePresentationQueryPorts` composition. Main no longer owns the
-public log array, public map marker assembly or Victory outcome presentation.
+typed public logging and Victory presentation receipts live below the
+scene-owned presentation composition. `TablePresentationSourceOwner` builds
+minimal typed snapshots; `TablePresentationRefreshPort` applies ordered
+scheduler receipts exactly once to typed GameScreen, PlanetBoard and gated
+developer targets. Main no longer owns the public log, snapshot assembly,
+refresh receipt dispatch or Victory presentation comparison.
+World geometry is now configured, projected and saved by the existing
+`WorldSessionState`; Main's duplicate width/height fields are deleted.
 
-The next recommended production cutover is **Table Presentation Source/Target
-Cutover**. It must consume the typed query ports while moving the remaining
-table/map presentation receipt targets out of Main, without changing the
-now-frozen card command, execution, lineage or save ownership. RuntimeLoop is
-retried only after that boundary is green.
+The third RuntimeLoop preflight is **GREEN**. No production RuntimeLoop or
+second frame path has been created. The next recommended production cutover is
+**AUTHORITATIVE_RUNTIME_LOOP_CUTOVER**. `presentation_action_routing` remains a
+separate pending domain and must not be marked complete by this cutover.
 
 ## Completion rule
 

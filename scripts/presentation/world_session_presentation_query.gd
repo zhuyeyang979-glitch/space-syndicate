@@ -29,11 +29,14 @@ func public_projection() -> WorldSessionPublicProjection:
 		row["public_player_name"] = str(source.get("name", "玩家%d" % (index + 1)))
 		row["role_name"] = str((source.get("role_card", {}) as Dictionary).get("name", "")) if source.get("role_card", {}) is Dictionary else ""
 		row.erase("role_card")
-		players.append(row)
+		if TablePresentationPureDataPolicy.is_pure_data(row):
+			players.append(TablePresentationPureDataPolicy.detached_copy(row))
 	var districts: Array = []
 	for index in range(_world_session_state.districts.size()):
 		var source: Dictionary = _world_session_state.districts[index] if _world_session_state.districts[index] is Dictionary else {}
-		districts.append(_public_district(source, index))
+		var district := _public_district(source, index)
+		if TablePresentationPureDataPolicy.is_pure_data(district):
+			districts.append(TablePresentationPureDataPolicy.detached_copy(district))
 	var fingerprint := JSON.stringify([players, districts, _world_session_state.game_time])
 	if fingerprint != _last_public_fingerprint:
 		_last_public_fingerprint = fingerprint
@@ -63,8 +66,22 @@ func private_projection(viewer_index: int, subject_index: int) -> WorldSessionPr
 	player["public_player_name"] = str(source.get("name", "玩家%d" % (subject_index + 1)))
 	player["hand"] = _private_hand(source.get("slots", []))
 	player["discard"] = _private_hand(source.get("discard", source.get("discarded_cards", [])))
+	if not TablePresentationPureDataPolicy.is_pure_data(player):
+		return projection
 	projection.authorized = true
-	projection.player = player
+	projection.player = TablePresentationPureDataPolicy.detached_copy(player)
+	return projection
+
+
+func public_map_geometry_projection() -> WorldMapGeometryProjection:
+	var projection := WorldMapGeometryProjection.new()
+	if _world_session_state == null:
+		return projection
+	var geometry := _world_session_state.public_world_geometry_snapshot()
+	projection.revision = int(geometry.get("revision", 0))
+	projection.width_m = maxf(1.0, float(geometry.get("width_m", 1.0)))
+	projection.height_m = maxf(1.0, float(geometry.get("height_m", 1.0)))
+	projection.world_rect = Rect2(Vector2.ZERO, Vector2(projection.width_m, projection.height_m))
 	return projection
 
 
@@ -148,11 +165,7 @@ func _allowlist(source: Dictionary, keys: Array) -> Dictionary:
 
 
 func _safe_copy(value: Variant) -> Variant:
-	if value is Dictionary:
-		return (value as Dictionary).duplicate(true)
-	if value is Array:
-		return (value as Array).duplicate(true)
-	return value
+	return TablePresentationPureDataPolicy.detached_copy(value)
 
 
 func _string_array(value: Variant) -> Array:

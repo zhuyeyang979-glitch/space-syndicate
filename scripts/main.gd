@@ -401,14 +401,11 @@ var time_scale := 1.0
 var selected_market_skill := ""
 var previewed_district_card := ""
 var selected_guess_player := -1
-var selected_map_layer_focus := "all"
 var configured_player_count := DEFAULT_PLAYER_COUNT
 var configured_ai_player_count := DEFAULT_AI_PLAYER_COUNT
 var configured_roguelike_depth := DEFAULT_ROGUELIKE_DEPTH
 var configured_role_indices := []
 var configured_starter_monster_indices := []
-var map_width_m := MAP_WIDTH_METERS
-var map_height_m := MAP_HEIGHT_METERS
 var district_lookup := {}
 
 var runtime_game_screen: Control
@@ -428,8 +425,6 @@ var card_resolution_runtime_controller_bound := false
 var card_resolution_controller_missing := false
 var card_resolution_controller_missing_context := ""
 var card_resolution_controller_missing_reported := false
-var runtime_game_screen_snapshot_signature := ""
-var selected_runtime_card_slot := -1
 var map_view: Control
 var menu_overlay: Control
 var menu_preview_box: VBoxContainer
@@ -494,8 +489,6 @@ var last_card_resolution_player_index: int:
 		return int(_card_resolution_controller_value(&"last_resolution_player_index", -1))
 	set(value):
 		_set_card_resolution_controller_value(&"last_resolution_player_index", int(value))
-var card_resolution_visual_id := -1
-var card_resolution_visual_stage := -1
 var card_resolution_overlay: Control
 var card_resolution_title_label: Label
 var card_resolution_body_label: Label
@@ -509,9 +502,6 @@ var bottom_countdown_panel: PanelContainer
 var developer_balance_panel: Control
 var table_bgm_player: AudioStreamPlayer
 var table_sfx_players := {}
-var runtime_visual_events: Array = []
-var runtime_visual_event_key := ""
-var runtime_visual_event_counter := 0
 
 
 func _ready() -> void:
@@ -521,7 +511,7 @@ func _ready() -> void:
 	_build_layout()
 	_build_developer_balance_greybox()
 	_build_table_audio()
-	_log("点击开局准备后确认玩家角色与起始怪兽牌；怪兽由怪兽卡匿名召唤，场上数量没有硬上限。")
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("点击开局准备后确认玩家角色与起始怪兽牌；怪兽由怪兽卡匿名召唤，场上数量没有硬上限。")
 	_open_main_menu()
 	_start_table_bgm()
 
@@ -574,20 +564,7 @@ func _process(delta: float) -> void:
 		if coordinator.has_method("tick_monster_wagers"):
 			coordinator.call("tick_monster_wagers", delta)
 		_game_runtime_coordinator_node().advance_visual_cues(delta)
-		var refresh_receipt := _game_runtime_coordinator_node().advance_presentation_refresh_cadence(
-			delta,
-			developer_balance_panel != null and developer_balance_panel.visible
-		)
-		for refresh_kind_variant in refresh_receipt.get("due", []):
-			match StringName(refresh_kind_variant):
-				&"live":
-					_refresh_live_ui()
-				&"map":
-					_refresh_board()
-				&"full":
-					_refresh_ui()
-				&"developer":
-					_refresh_developer_balance_greybox()
+		_game_runtime_coordinator_node().advance_table_presentation(delta)
 		return
 	if time_scale <= 0.0:
 		return
@@ -633,20 +610,7 @@ func _process(delta: float) -> void:
 	if _runtime_session_finished():
 		return
 
-	var refresh_receipt := _game_runtime_coordinator_node().advance_presentation_refresh_cadence(
-		delta,
-		developer_balance_panel != null and developer_balance_panel.visible
-	)
-	for refresh_kind_variant in refresh_receipt.get("due", []):
-		match StringName(refresh_kind_variant):
-			&"live":
-				_refresh_live_ui()
-			&"map":
-				_refresh_board()
-			&"full":
-				_refresh_ui()
-			&"developer":
-				_refresh_developer_balance_greybox()
+	_game_runtime_coordinator_node().advance_table_presentation(delta)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -935,13 +899,13 @@ func _on_region_infrastructure_receipt(receipt: Dictionary) -> void:
 	if bool(receipt.get("region_ruined", false)):
 		_product_market_settle_destroyed_warehouse(district_index, str(receipt.get("source_entity_id", "unit")), receipt)
 		_game_runtime_coordinator_node().add_visual_district_damage(district_index, _district_center(district_index), float((_game_runtime_coordinator_node().world_session_state().districts[district_index] as Dictionary).get("radius_m", 70.0)), str(receipt.get("source_entity_id", "unit")), Color("#ef4444"))
-		_log("%s的公共设施共享生命归零，区域进入废墟。" % str((_game_runtime_coordinator_node().world_session_state().districts[district_index] as Dictionary).get("name", "区域")))
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s的公共设施共享生命归零，区域进入废墟。" % str((_game_runtime_coordinator_node().world_session_state().districts[district_index] as Dictionary).get("name", "区域")))
 	elif str(receipt.get("receipt_kind", "")) == "unit_damage":
 		_game_runtime_coordinator_node().add_visual_district_damage(district_index, _district_center(district_index), float((_game_runtime_coordinator_node().world_session_state().districts[district_index] as Dictionary).get("radius_m", 70.0)), str(receipt.get("source_entity_id", "unit")), Color("#fb7185"))
-		_log("%s的共享生命-%d。" % [str((_game_runtime_coordinator_node().world_session_state().districts[district_index] as Dictionary).get("name", "区域")), int(receipt.get("applied_damage", 0))])
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s的共享生命-%d。" % [str((_game_runtime_coordinator_node().world_session_state().districts[district_index] as Dictionary).get("name", "区域")), int(receipt.get("applied_damage", 0))])
 	elif str(receipt.get("receipt_kind", "")) == "region_repair":
 		_game_runtime_coordinator_node().pulse_visual_district(district_index, Color("#22c55e"))
-		_log("%s的共享生命修复%d。" % [str((_game_runtime_coordinator_node().world_session_state().districts[district_index] as Dictionary).get("name", "区域")), int(receipt.get("applied_repair", 0))])
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s的共享生命修复%d。" % [str((_game_runtime_coordinator_node().world_session_state().districts[district_index] as Dictionary).get("name", "区域")), int(receipt.get("applied_repair", 0))])
 	elif str(receipt.get("receipt_kind", "")) == "facility_action":
 		_game_runtime_coordinator_node().pulse_visual_district(district_index, Color("#38bdf8"))
 
@@ -1207,17 +1171,17 @@ func _military_runtime_controller_node() -> MilitaryRuntimeController:
 
 func _on_military_runtime_event(event: Dictionary) -> void:
 	if bool(event.get("public", false)) and str(event.get("summary", "")) != "":
-		_log(str(event.get("summary", "")))
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(event.get("summary", "")))
 
 
 func _on_monster_runtime_event(event: Dictionary) -> void:
 	if bool(event.get("public", false)) and str(event.get("summary", "")) != "":
-		_log(str(event.get("summary", "")))
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(event.get("summary", "")))
 
 
 func _on_product_market_runtime_event(event: Dictionary) -> void:
 	if bool(event.get("public", false)) and str(event.get("summary", "")) != "":
-		_log(str(event.get("summary", "")))
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(event.get("summary", "")))
 
 
 func _commit_product_market_cash_delta(player_index: int, cash_delta: int, source: String, product_name: String, reason_code: String, income_amount: int = 0) -> Dictionary:
@@ -1314,7 +1278,7 @@ func _present_city_gdp_derivative_opened(derivative_position: Dictionary) -> voi
 		int(derivative_position.get("maximum_loss", 0)),
 	]
 	_game_runtime_coordinator_node().add_visual_action_callout("匿名GDP衍生品", str(derivative_position.get("card_id", "城市GDP衍生品")), detail, Color("#38bdf8"), _district_center(district_index) if district_index >= 0 else _economy_effect_callout_position())
-	_log("匿名GDP衍生品建仓：%s；出资方保持私密。" % detail)
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("匿名GDP衍生品建仓：%s；出资方保持私密。" % detail)
 
 
 func _present_city_gdp_derivative_settlement(district_index: int, reason: String, public_receipts: Array) -> void:
@@ -1329,7 +1293,7 @@ func _present_city_gdp_derivative_settlement(district_index: int, reason: String
 			loss_total += maxi(0, int((receipt_variant as Dictionary).get("loss", 0)))
 	var summary := "%s｜结算%d笔｜公开收益¥%d｜公开损失¥%d｜持有人不公开" % [district_label, public_receipts.size(), gain_total, loss_total]
 	_game_runtime_coordinator_node().add_visual_action_callout("GDP衍生品结算", reason, summary, Color("#22d3ee"), _district_center(district_index) if district_index >= 0 else _economy_effect_callout_position())
-	_log("%s：%s。" % [reason, summary])
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s：%s。" % [reason, summary])
 
 
 func _append_product_futures_warehouse_clue(district_index: int, source: String, direction: String, product_name: String, units: int, duration_seconds: float) -> bool:
@@ -1352,21 +1316,21 @@ func _present_product_futures_opened(source: String, product_name: String, direc
 		int(terms.get("maximum_loss", 0)),
 	]
 	_game_runtime_coordinator_node().add_visual_action_callout("匿名商品期货", source, "%s%s｜%s｜基准¥%d｜%s｜%s" % [product_name, warehouse_text, "看涨" if direction == "up" else "看跌", before_price, _duration_short_text(duration_seconds), risk_text], Color("#22d3ee"), _district_center(_game_runtime_coordinator_node().table_selection_state().selected_district))
-	_log("匿名商品期货建仓：%s围绕%s%s建立%s头寸，基准价¥%d，持仓%s，%s；价格仍由供需、商路、天气和合约决定。" % [source, product_name, warehouse_text, "看涨" if direction == "up" else "看跌", before_price, _duration_short_text(duration_seconds), risk_text])
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("匿名商品期货建仓：%s围绕%s%s建立%s头寸，基准价¥%d，持仓%s，%s；价格仍由供需、商路、天气和合约决定。" % [source, product_name, warehouse_text, "看涨" if direction == "up" else "看跌", before_price, _duration_short_text(duration_seconds), risk_text])
 
 
 func _present_product_growth_boon(source: String, product_name: String) -> void:
 	if _game_runtime_coordinator_node().table_selection_state().selected_district >= 0 and _game_runtime_coordinator_node().table_selection_state().selected_district < _game_runtime_coordinator_node().world_session_state().districts.size():
 		_game_runtime_coordinator_node().pulse_visual_district(_game_runtime_coordinator_node().table_selection_state().selected_district, Color("#f59e0b"))
 	_game_runtime_coordinator_node().add_visual_action_callout("商品经济", source, "%s：%s" % [product_name, _product_market_boon_text(product_name)], Color("#f59e0b"), _economy_effect_callout_position())
-	_log("%s催化%s：%s。" % [source, product_name, _product_market_boon_text(product_name)])
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s催化%s：%s。" % [source, product_name, _product_market_boon_text(product_name)])
 
 
 func _present_product_contract_boon(source: String, product_name: String, before_price: int, after_price: int, before_volatility: int, after_volatility: int, cash_gain: int) -> void:
 	if _game_runtime_coordinator_node().table_selection_state().selected_district >= 0 and _game_runtime_coordinator_node().table_selection_state().selected_district < _game_runtime_coordinator_node().world_session_state().districts.size():
 		_game_runtime_coordinator_node().pulse_visual_district(_game_runtime_coordinator_node().table_selection_state().selected_district, Color("#f59e0b"))
 	_game_runtime_coordinator_node().add_visual_action_callout("商品合约", source, "%s：%s，¥%d→¥%d。" % [product_name, _product_market_boon_text(product_name), before_price, after_price], Color("#f59e0b"), _economy_effect_callout_position())
-	_log("%s签下%s商品合约：%s，价格¥%d→¥%d，波动%d→%d，获得¥%d。" % [source, product_name, _product_market_boon_text(product_name), before_price, after_price, before_volatility, after_volatility, maxi(0, cash_gain)])
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s签下%s商品合约：%s，价格¥%d→¥%d，波动%d→%d，获得¥%d。" % [source, product_name, _product_market_boon_text(product_name), before_price, after_price, before_volatility, after_volatility, maxi(0, cash_gain)])
 
 
 func _age_product_market_world_boons(delta_seconds: float) -> bool:
@@ -1393,7 +1357,7 @@ func _age_product_market_world_boons(delta_seconds: float) -> bool:
 
 
 func _on_product_market_cycle_completed(cycle_count: int) -> void:
-	_log("全局市场刷新%d：商品公开基础价格已更新；现金与GDP只由实际成交回执产生。" % cycle_count)
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("全局市场刷新%d：商品公开基础价格已更新；现金与GDP只由实际成交回执产生。" % cycle_count)
 	_ai_runtime_call("_auto_rival_business_actions", [false])
 	_ai_runtime_call("_finalize_ai_decision_rewards")
 	for player_index in range(_game_runtime_coordinator_node().world_session_state().players.size()):
@@ -1431,7 +1395,7 @@ func _apply_ai_runtime_intent(intent: Dictionary) -> Dictionary:
 
 func _on_ai_runtime_event(event: Dictionary) -> void:
 	if bool(event.get("public", false)) and str(event.get("summary", "")) != "":
-		_log(str(event.get("summary", "")))
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(event.get("summary", "")))
 
 
 func _ai_runtime_world_constant_snapshot() -> Dictionary:
@@ -1800,36 +1764,8 @@ func _build_developer_balance_greybox() -> void:
 	panel.visible = true
 	developer_balance_panel = panel
 	_runtime_overlay_parent().add_child(panel)
-	_refresh_developer_balance_greybox()
-
-
-func _refresh_developer_balance_greybox() -> void:
-	if developer_balance_panel == null or not developer_balance_panel.visible:
-		return
-	var diagnostics := _game_runtime_coordinator_node().gameplay_balance_diagnostics_service()
-	if developer_balance_panel.has_method("set_diagnostics_service"):
-		developer_balance_panel.call("set_diagnostics_service", diagnostics)
-	if developer_balance_panel.has_method("refresh_report"):
-		developer_balance_panel.call("refresh_report", true)
-
-
-func _sync_runtime_game_screen(force: bool = false) -> void:
-	if runtime_game_screen == null or not runtime_game_screen.has_method("apply_state"):
-		return
-	var coordinator := _game_runtime_coordinator_node()
-	if coordinator != null and runtime_game_screen.has_method("set_weather_presentation"):
-		runtime_game_screen.call(
-			"set_weather_presentation",
-			coordinator.weather_forecast_view_model(),
-			coordinator.weather_map_overlay_view_model(),
-			"full"
-		)
-	var table_state := _runtime_table_snapshot_source()
-	var signature := var_to_str(table_state)
-	if not force and signature == runtime_game_screen_snapshot_signature:
-		return
-	runtime_game_screen_snapshot_signature = signature
-	runtime_game_screen.call("apply_state", table_state)
+	_game_runtime_coordinator_node().bind_developer_balance_presentation_panel(panel as DeveloperBalancePanel)
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"developer", &"main_state_changed")
 
 
 func _on_runtime_game_screen_action_requested(action_id: String) -> void:
@@ -1875,13 +1811,13 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 				handled = _activate_runtime_district_action(action_id)
 			elif action_id.begins_with("play_"):
 				var slot_index := int(action_id.substr("play_".length()))
-				selected_runtime_card_slot = slot_index
+				_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = slot_index
 				var play_receipt := _game_runtime_coordinator_node().request_hand_card_play({
 					"player_index": _game_runtime_coordinator_node().table_selection_state().selected_player,
 					"slot_index": slot_index,
 					"submission_source": "human",
 				})
-				_log(str(play_receipt.get("player_message", "卡牌操作已处理。")))
+				_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(play_receipt.get("player_message", "卡牌操作已处理。")))
 				handled = true
 			elif action_id.begins_with("discard_purchase_"):
 				var discard_slot := int(action_id.substr("discard_purchase_".length()))
@@ -1889,35 +1825,35 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 				handled = true
 			elif action_id.begins_with("track_return_"):
 				var return_resolution_id := int(action_id.substr("track_return_".length()))
-				selected_runtime_card_slot = -1
+				_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
 				_focus_card_resolution_track_entry(return_resolution_id)
 				_close_menu()
 				handled = true
 			elif action_id.begins_with("track_guess_"):
 				var guess_resolution_id := int(action_id.substr("track_guess_".length()))
-				selected_runtime_card_slot = -1
+				_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
 				_focus_card_resolution_track_entry(guess_resolution_id)
 				_close_menu()
 				handled = true
 			elif action_id.begins_with("track_select_"):
 				var resolution_id := int(action_id.substr("track_select_".length()))
-				selected_runtime_card_slot = -1
+				_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
 				_select_card_resolution_track_entry(resolution_id)
 				handled = true
 			elif action_id.begins_with("track_intel_"):
 				var intel_resolution_id := int(action_id.substr("track_intel_".length()))
-				selected_runtime_card_slot = -1
+				_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
 				_game_runtime_coordinator_node().select_card_resolution(intel_resolution_id)
 				_open_intel_dossier_menu()
 				handled = true
 			elif action_id.begins_with("track_open_"):
 				var card_name := action_id.substr("track_open_".length()).strip_edges()
 				if card_name != "":
-					selected_runtime_card_slot = -1
+					_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
 					_open_card_codex_by_name(card_name)
 					handled = true
 	if handled:
-		_sync_runtime_game_screen(true)
+		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _activate_runtime_temporary_decision_action(action_id: String) -> bool:
@@ -1960,15 +1896,15 @@ func _activate_runtime_temporary_decision_action(action_id: String) -> bool:
 
 
 func _on_runtime_game_screen_end_turn_requested() -> void:
-	_sync_runtime_game_screen(true)
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _on_runtime_game_screen_card_selected(card_data: Dictionary) -> void:
-	selected_runtime_card_slot = -1
+	_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
 	var card_id := String(card_data.get("id", ""))
 	if card_id.begins_with("hand_"):
-		selected_runtime_card_slot = int(card_id.substr("hand_".length()))
-	_sync_runtime_game_screen(true)
+		_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = int(card_id.substr("hand_".length()))
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _on_runtime_game_screen_card_drop_requested(card_data: Dictionary, screen_position: Vector2) -> void:
@@ -1977,14 +1913,14 @@ func _on_runtime_game_screen_card_drop_requested(card_data: Dictionary, screen_p
 		return
 	if not _runtime_drop_position_targets_map(screen_position):
 		return
-	selected_runtime_card_slot = slot_index
+	_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = slot_index
 	var receipt := _game_runtime_coordinator_node().request_hand_card_play({
 		"player_index": _game_runtime_coordinator_node().table_selection_state().selected_player,
 		"slot_index": slot_index,
 		"submission_source": "human_drag",
 	})
-	_log(str(receipt.get("player_message", "卡牌操作已处理。")))
-	_sync_runtime_game_screen(true)
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(receipt.get("player_message", "卡牌操作已处理。")))
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _runtime_hand_slot_from_card_data(card_data: Dictionary) -> int:
@@ -2084,13 +2020,13 @@ func _activate_runtime_quick_action(action_id: String) -> bool:
 			var slot_index := _first_actionable_hand_slot(player_index)
 			if slot_index < 0:
 				return false
-			selected_runtime_card_slot = slot_index
+			_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = slot_index
 			var receipt := _game_runtime_coordinator_node().request_hand_card_play({
 				"player_index": player_index,
 				"slot_index": slot_index,
 				"submission_source": "human_quick_action",
 			})
-			_log(str(receipt.get("player_message", "卡牌操作已处理。")))
+			_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(receipt.get("player_message", "卡牌操作已处理。")))
 			return true
 	return false
 
@@ -2156,7 +2092,7 @@ func _build_layout() -> void:
 		return
 	_build_runtime_map_view()
 	_bind_runtime_overlay_surfaces()
-	_sync_runtime_game_screen(true)
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 func _bind_runtime_overlay_surfaces() -> void:
 	_build_full_map_overlay()
@@ -2298,13 +2234,13 @@ func _select_card_resolution_track_entry(resolution_id: int) -> void:
 	selection.selected_card_resolution_id = -1 if selection.selected_card_resolution_id == resolution_id else resolution_id
 	if selection.selected_card_resolution_id >= 0:
 		_focus_card_resolution_target_region(selection.selected_card_resolution_id)
-	_sync_runtime_game_screen(true)
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _focus_card_resolution_track_entry(resolution_id: int) -> void:
 	_game_runtime_coordinator_node().select_card_resolution(resolution_id)
 	_focus_card_resolution_target_region(resolution_id)
-	_sync_runtime_game_screen(true)
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _focus_card_resolution_target_region(resolution_id: int) -> bool:
@@ -2394,17 +2330,17 @@ func _guess_card_resolution_owner_for_player(viewer_index: int, resolution_id: i
 		return false
 	if viewer_index == actual_owner:
 		if announce:
-			_log("你不能竞猜自己打出的匿名卡牌。")
+			_game_runtime_coordinator_node().record_legacy_viewer_feedback("你不能竞猜自己打出的匿名卡牌。")
 		return false
 	var guessers: Array = (entry.get("guessers", []) as Array).duplicate()
 	if guessers.has(viewer_index):
 		if announce:
-			_log("当前玩家已经竞猜过这张牌；每人每张牌只有一次机会。")
+			_game_runtime_coordinator_node().record_legacy_viewer_feedback("当前玩家已经竞猜过这张牌；每人每张牌只有一次机会。")
 		return false
 	var stake := _card_owner_guess_stake_for_player(viewer_index)
 	if int((_game_runtime_coordinator_node().world_session_state().players[viewer_index] as Dictionary).get("cash", 0)) < stake:
 		if announce:
-			_log("当前视角至少需要¥%d才能进行卡牌归属竞猜。" % stake)
+			_game_runtime_coordinator_node().record_legacy_viewer_feedback("当前视角至少需要¥%d才能进行卡牌归属竞猜。" % stake)
 		return false
 	guessers.append(viewer_index)
 	entry["guessers"] = guessers
@@ -2422,7 +2358,7 @@ func _guess_card_resolution_owner_for_player(viewer_index: int, resolution_id: i
 		entry["public_owner_label"] = "归属：玩家%d" % (actual_owner + 1)
 		entry["owner_revealed_time"] = _game_runtime_coordinator_node().world_session_state().game_time
 		if announce:
-			_log("归属竞猜命中：这张牌公开贴上“玩家%d”标签；竞猜者获得¥%d，双方当前资金仍不公开。" % [actual_owner + 1, payout])
+			_game_runtime_coordinator_node().record_legacy_viewer_feedback("归属竞猜命中：这张牌公开贴上“玩家%d”标签；竞猜者获得¥%d，双方当前资金仍不公开。" % [actual_owner + 1, payout])
 	else:
 		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["cash"] = int(_game_runtime_coordinator_node().world_session_state().players[viewer_index].get("cash", 0)) - stake
 		_game_runtime_coordinator_node().world_session_state().players[actual_owner]["cash"] = int(_game_runtime_coordinator_node().world_session_state().players[actual_owner].get("cash", 0)) + stake
@@ -2433,11 +2369,11 @@ func _guess_card_resolution_owner_for_player(viewer_index: int, resolution_id: i
 		_record_player_cash_snapshot(viewer_index)
 		_record_player_cash_snapshot(actual_owner)
 		if announce:
-			_log("一次匿名归属竞猜失败并私下结算¥%d；真实出牌者仍未揭晓。" % stake)
+			_game_runtime_coordinator_node().record_legacy_viewer_feedback("一次匿名归属竞猜失败并私下结算¥%d；真实出牌者仍未揭晓。" % stake)
 	_store_card_resolution_entry(entry)
 	if not _card_resolution_active_entry().is_empty():
 		_show_card_resolution_overlay(_card_resolution_active_entry(), card_resolution_timer)
-	_refresh_ui()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 	return true
 
 
@@ -2550,14 +2486,14 @@ func _map_layer_focus_label(layer_id: String) -> String:
 
 
 func _set_map_layer_focus(layer_id: String) -> void:
-	selected_map_layer_focus = String(_map_layer_entry(layer_id).get("id", "all"))
-	if selected_map_layer_focus == "route" and _game_runtime_coordinator_node().table_selection_state().selected_trade_product == "":
+	_game_runtime_coordinator_node().table_selection_state().selected_map_layer_focus = String(_map_layer_entry(layer_id).get("id", "all"))
+	if _game_runtime_coordinator_node().table_selection_state().selected_map_layer_focus == "route" and _game_runtime_coordinator_node().table_selection_state().selected_trade_product == "":
 		_game_runtime_coordinator_node().table_selection_state().selected_trade_product = _default_trade_product_for_selected_district()
 		if _game_runtime_coordinator_node().table_selection_state().selected_trade_product == "" and not ProductMarketRuntimeController.PRODUCT_CATALOG.is_empty():
 			_game_runtime_coordinator_node().table_selection_state().selected_trade_product = String(ProductMarketRuntimeController.PRODUCT_CATALOG[0])
-	_log("地图图层切换：%s。" % _map_layer_focus_label(selected_map_layer_focus))
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("地图图层切换：%s。" % _map_layer_focus_label(_game_runtime_coordinator_node().table_selection_state().selected_map_layer_focus))
 	_refresh_map_controls()
-	_refresh_board()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"map", &"main_state_changed")
 
 
 func _map_control_toolbar_snapshot() -> Dictionary:
@@ -2576,7 +2512,7 @@ func _map_control_toolbar_snapshot() -> Dictionary:
 		var route_count := _route_network_routes_for_product(_game_runtime_coordinator_node().table_selection_state().selected_trade_product).size()
 		trade_text = "⇄ %s｜%d" % [_short_card_text(_game_runtime_coordinator_node().table_selection_state().selected_trade_product, 6), route_count]
 		trade_tooltip = "当前显示%s的运输路径，共%d条。" % [_game_runtime_coordinator_node().table_selection_state().selected_trade_product, route_count]
-	var selected_layer := _map_layer_entry(selected_map_layer_focus)
+	var selected_layer := _map_layer_entry(_game_runtime_coordinator_node().table_selection_state().selected_map_layer_focus)
 	var can_set_contract_source := contract_controller != null and contract_controller.valid_source_district(_game_runtime_coordinator_node().table_selection_state().selected_district)
 	var can_set_contract_target := contract_controller != null and contract_controller.valid_target_district(_game_runtime_coordinator_node().table_selection_state().selected_district)
 	var contract_summary := contract_controller.selection_summary(_game_runtime_coordinator_node().table_selection_state().selected_trade_product, _default_trade_product_for_selected_district()) if contract_controller != null else "合约运行时不可用"
@@ -2589,8 +2525,8 @@ func _map_control_toolbar_snapshot() -> Dictionary:
 		],
 		"district_status": {"text": "⌖ %s" % _short_card_text(district_status, 18), "tooltip": district_status},
 		"layers": _map_layer_focus_entries(),
-		"selected_layer_id": selected_map_layer_focus,
-		"layer_status": {"text": "图层:%s" % _map_layer_focus_label(selected_map_layer_focus), "tooltip": str(selected_layer.get("tip", "当前地图图层焦点。"))},
+		"selected_layer_id": _game_runtime_coordinator_node().table_selection_state().selected_map_layer_focus,
+		"layer_status": {"text": "图层:%s" % _map_layer_focus_label(_game_runtime_coordinator_node().table_selection_state().selected_map_layer_focus), "tooltip": str(selected_layer.get("tip", "当前地图图层焦点。"))},
 		"trade": {
 			"options": product_options,
 			"selected_product_id": _game_runtime_coordinator_node().table_selection_state().selected_trade_product,
@@ -2621,7 +2557,7 @@ func _on_map_control_toolbar_action_requested(action_id: String, payload: Dictio
 			if product_id != "" and not ProductMarketRuntimeController.PRODUCT_CATALOG.has(product_id):
 				return
 			_game_runtime_coordinator_node().table_selection_state().selected_trade_product = product_id
-			_refresh_board()
+			_game_runtime_coordinator_node().request_table_presentation_refresh(&"map", &"main_state_changed")
 			_refresh_map_controls()
 		"map_contract_source_select":
 			var contract_controller := _contract_runtime_controller_node()
@@ -2629,16 +2565,16 @@ func _on_map_control_toolbar_action_requested(action_id: String, payload: Dictio
 				var result := contract_controller.select_source_district(_game_runtime_coordinator_node().table_selection_state().selected_district, _game_runtime_coordinator_node().table_selection_state().selected_trade_product)
 				if bool(result.get("accepted", false)):
 					_game_runtime_coordinator_node().table_selection_state().selected_trade_product = str(result.get("selected_product", _game_runtime_coordinator_node().table_selection_state().selected_trade_product))
-				_log(str(result.get("message", "供给区选择失败。")))
-				_refresh_ui()
+				_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(result.get("message", "供给区选择失败。")))
+				_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 		"map_contract_target_select":
 			var contract_controller := _contract_runtime_controller_node()
 			if contract_controller != null:
 				var result := contract_controller.select_target_district(_game_runtime_coordinator_node().table_selection_state().selected_district, _game_runtime_coordinator_node().table_selection_state().selected_trade_product)
 				if bool(result.get("accepted", false)):
 					_game_runtime_coordinator_node().table_selection_state().selected_trade_product = str(result.get("selected_product", _game_runtime_coordinator_node().table_selection_state().selected_trade_product))
-				_log(str(result.get("message", "需求区选择失败。")))
-				_refresh_ui()
+				_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(result.get("message", "需求区选择失败。")))
+				_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _bind_menu_overlay_scene() -> void:
@@ -3206,26 +3142,26 @@ func _on_intel_dossier_board_action_requested(action_id: String) -> void:
 	var handled := false
 	if action_id.begins_with("track_return_"):
 		var return_resolution_id := int(action_id.substr("track_return_".length()))
-		selected_runtime_card_slot = -1
+		_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
 		_focus_card_resolution_track_entry(return_resolution_id)
 		_close_menu()
 		handled = true
 	elif action_id.begins_with("track_guess_"):
 		var guess_resolution_id := int(action_id.substr("track_guess_".length()))
-		selected_runtime_card_slot = -1
+		_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
 		_focus_card_resolution_track_entry(guess_resolution_id)
 		_close_menu()
 		handled = true
 	elif action_id.begins_with("track_select_"):
 		var resolution_id := int(action_id.substr("track_select_".length()))
-		selected_runtime_card_slot = -1
+		_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
 		_focus_card_resolution_track_entry(resolution_id)
 		_close_menu()
 		handled = true
 	elif action_id.begins_with("track_open_"):
 		var card_name := action_id.substr("track_open_".length()).strip_edges()
 		if card_name != "":
-			selected_runtime_card_slot = -1
+			_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
 			_open_card_codex_by_name(card_name)
 			handled = true
 	elif action_id.begins_with("intel_city_mark_"):
@@ -3263,7 +3199,7 @@ func _on_intel_dossier_board_action_requested(action_id: String) -> void:
 		_open_economy_overview_menu()
 		handled = true
 	if handled:
-		_sync_runtime_game_screen(true)
+		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _intel_dossier_public_snapshot(viewer_index: int = -1) -> Dictionary:
@@ -3739,18 +3675,24 @@ func _intel_card_guess_entries(viewer_index: int, limit: int = 5) -> Array:
 		elif viewer_index >= 0 and guessers.has(viewer_index):
 			status = "我已押注｜真实归属待确认"
 		var time_value := float(entry.get("resolved_time", entry.get("queued_order", -1.0)))
-		var resolution_presentation := _card_resolution_presentation_snapshot(skill, entry)
+		var public_target := "目标未知"
+		if int(entry.get("target_player", -1)) >= 0:
+			public_target = "玩家%d" % (int(entry.get("target_player", -1)) + 1)
+		elif int(entry.get("target_slot", -1)) >= 0:
+			public_target = "怪兽%d" % (int(entry.get("target_slot", -1)) + 1)
+		elif int(entry.get("selected_district", -1)) >= 0:
+			public_target = "区域%d" % (int(entry.get("selected_district", -1)) + 1)
 		entries.append({
 			"resolution_id": resolution_id,
 			"card": _card_resolution_entry_card_label(entry),
 			"card_name": card_name,
 			"track_state": _intel_card_guess_track_state(entry, resolution_id),
 			"status": status,
-			"target": String(resolution_presentation.get("target_text", "目标未知")),
+			"target": public_target,
 			"requirement": _card_resolution_play_requirement_text(entry).replace("打出条件：", ""),
 			"tip": _card_resolution_order_clue_text(entry),
 			"aftermath": String(entry.get("aftermath_clue", "")),
-			"style": String(resolution_presentation.get("effect_style_label", "卡牌")),
+			"style": "卡牌",
 			"time": time_value,
 			"revealed": owner_revealed,
 			"focused": resolution_id >= 0 and resolution_id == _game_runtime_coordinator_node().table_selection_state().selected_card_resolution_id,
@@ -3893,12 +3835,18 @@ func _economy_card_aftermath_entries(limit: int = 5) -> Array:
 		var card_label := _card_display_name(card_name)
 		if card_label == "":
 			card_label = card_name
-		var resolution_presentation := _card_resolution_presentation_snapshot(skill, entry)
+		var public_target := "目标未知"
+		if int(entry.get("target_player", -1)) >= 0:
+			public_target = "玩家%d" % (int(entry.get("target_player", -1)) + 1)
+		elif int(entry.get("target_slot", -1)) >= 0:
+			public_target = "怪兽%d" % (int(entry.get("target_slot", -1)) + 1)
+		elif int(entry.get("selected_district", -1)) >= 0:
+			public_target = "区域%d" % (int(entry.get("selected_district", -1)) + 1)
 		entries.append({
 			"card": card_label,
-			"style": String(resolution_presentation.get("effect_style_label", "卡牌")),
+			"style": "卡牌",
 			"clue": clue,
-			"target": String(resolution_presentation.get("target_text", "目标未知")),
+			"target": public_target,
 			"resolved_time": float(entry.get("resolved_time", -1.0)),
 			"owner_known": bool(entry.get("public_owner_revealed", false)),
 		})
@@ -4581,14 +4529,14 @@ func _open_fullscreen_map() -> void:
 		return
 	full_map_overlay.visible = true
 	_refresh_map_controls()
-	_refresh_board()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"map", &"main_state_changed")
 
 
 func _close_fullscreen_map() -> void:
 	if full_map_overlay == null:
 		return
 	full_map_overlay.visible = false
-	_refresh_board()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"map", &"main_state_changed")
 
 
 func _menu_context_text(title_text: String, show_main_actions: bool = false) -> String:
@@ -5873,7 +5821,7 @@ func _log_card_play_rejection(eligibility: Dictionary, skill: Dictionary) -> voi
 	var presentation := _card_play_presentation_snapshot(eligibility, skill)
 	var log_message := String(presentation.get("log_message", ""))
 	if log_message != "":
-		_log(log_message)
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback(log_message)
 
 
 func _skill_play_product(skill: Dictionary, player_index: int) -> String:
@@ -6059,7 +6007,7 @@ func _close_menu() -> void:
 		var runtime_coordinator := _game_runtime_coordinator_node()
 		if runtime_coordinator != null and runtime_coordinator.has_method("resume_session"):
 			runtime_coordinator.call("resume_session")
-	_refresh_ui()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _start_new_run_from_menu() -> void:
@@ -6379,7 +6327,7 @@ func _starter_monster_setup_summary(starter_card: Dictionary) -> String:
 
 
 func _confirm_start_new_run_from_setup() -> void:
-	_log("开始新局：%d席外星辛迪加入局，其中真人/本地%d席，电脑对手%d席；怪兽将通过起始怪兽牌和后续怪兽卡匿名召唤，场上数量没有硬上限。" % [
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("开始新局：%d席外星辛迪加入局，其中真人/本地%d席，电脑对手%d席；怪兽将通过起始怪兽牌和后续怪兽卡匿名召唤，场上数量没有硬上限。" % [
 		configured_player_count,
 		_configured_human_player_count(),
 		configured_ai_player_count,
@@ -6392,11 +6340,11 @@ func _confirm_start_new_run_from_setup() -> void:
 func _load_run_from_menu() -> void:
 	var err := _load_run()
 	if err == OK:
-		_log("已读取保存局面。")
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("已读取保存局面。")
 		_open_main_menu()
 	else:
-		_log("局面读取失败：%s。" % error_string(err))
-		_refresh_ui()
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("局面读取失败：%s。" % error_string(err))
+		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _load_run(path: String = "") -> int:
@@ -6485,7 +6433,7 @@ func _apply_run_domain_state_compatibility_adapter(state: Dictionary) -> int:
 			"business_cycle_count": int(state.get("business_cycle_count", 0)),
 			"market_timer": float(state.get("market_timer", 8.0)),
 		})
-	_game_runtime_coordinator_node().import_legacy_public_log((state.get("log_lines", []) as Array).duplicate(true))
+	_game_runtime_coordinator_node().import_legacy_viewer_feedback((state.get("log_lines", []) as Array).duplicate(true))
 	_game_runtime_coordinator_node().import_legacy_visual_cues(state)
 	_game_runtime_coordinator_node().run_rng_service().state = int(state.get("rng_state", _game_runtime_coordinator_node().run_rng_service().state))
 	if runtime_coordinator != null and runtime_coordinator.has_method("restore_world_effective_seconds"):
@@ -6517,7 +6465,7 @@ func _apply_run_domain_state_compatibility_adapter(state: Dictionary) -> int:
 	if runtime_coordinator != null and runtime_coordinator.has_method("restore_district_purchase_legacy_state"):
 		runtime_coordinator.call("restore_district_purchase_legacy_state", state.get("district_card_purchase_snapshot", {}) as Dictionary, _game_runtime_coordinator_node().world_session_state().game_time, state.get("pending_discard_purchase", {}) as Dictionary)
 	selected_guess_player = int(state.get("selected_guess_player", -1))
-	selected_map_layer_focus = String(_map_layer_entry(String(state.get("selected_map_layer_focus", "all"))).get("id", "all"))
+	_game_runtime_coordinator_node().table_selection_state().selected_map_layer_focus = String(_map_layer_entry(String(state.get("selected_map_layer_focus", "all"))).get("id", "all"))
 	if runtime_coordinator != null and runtime_coordinator.has_method("apply_contract_save_data"):
 		runtime_coordinator.call("apply_contract_save_data", state)
 	if runtime_coordinator != null and runtime_coordinator.has_method("apply_card_resolution_queue_legacy_save_snapshot"):
@@ -6550,8 +6498,10 @@ func _apply_run_domain_state_compatibility_adapter(state: Dictionary) -> int:
 	_ai_runtime_call("_ensure_player_ai_state")
 	if runtime_coordinator != null and runtime_coordinator.has_method("apply_victory_control_save_data"):
 		runtime_coordinator.call("apply_victory_control_save_data", state.get("victory_control_runtime", {}) as Dictionary)
-	map_width_m = float(state.get("map_width_m", MAP_WIDTH_METERS))
-	map_height_m = float(state.get("map_height_m", MAP_HEIGHT_METERS))
+	_game_runtime_coordinator_node().world_session_state().configure_world_geometry(
+		float(state.get("map_width_m", MAP_WIDTH_METERS)),
+		float(state.get("map_height_m", MAP_HEIGHT_METERS))
+	)
 	if runtime_coordinator != null and runtime_coordinator.has_method("apply_weather_save_data"):
 		runtime_coordinator.call("apply_weather_save_data", {
 			"weather_forecast": (state.get("weather_forecast", {}) as Dictionary).duplicate(true),
@@ -6569,7 +6519,7 @@ func _apply_run_domain_state_compatibility_adapter(state: Dictionary) -> int:
 				"ai_card_decision_enabled": true,
 			}
 		runtime_coordinator.call("apply_ai_save_data", ai_state)
-	_game_runtime_coordinator_node().request_immediate_presentation_refresh(&"live")
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"live", &"save_restored")
 	if runtime_coordinator != null and runtime_coordinator.has_method("apply_monster_save_data"):
 		runtime_coordinator.call("apply_monster_save_data", state)
 	if runtime_coordinator != null and runtime_coordinator.has_method("apply_military_save_data"):
@@ -6618,7 +6568,7 @@ func _apply_run_domain_state_compatibility_adapter(state: Dictionary) -> int:
 		_show_card_batch_lobby_overlay()
 	else:
 		_hide_card_resolution_overlay()
-	_refresh_ui()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 	return OK
 
 
@@ -6641,10 +6591,10 @@ func _save_settings(show_log: bool) -> void:
 	if not show_log:
 		return
 	if err == OK:
-		_log("开局设置已保存到本地用户配置。")
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("开局设置已保存到本地用户配置。")
 	else:
-		_log("开局设置保存失败：%s。" % error_string(err))
-	_refresh_ui()
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("开局设置保存失败：%s。" % error_string(err))
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _load_settings() -> void:
@@ -6709,8 +6659,10 @@ func _generate_roguelike_districts() -> void:
 	_game_runtime_coordinator_node().world_session_state().districts = []
 	district_lookup = {}
 	var profile := _roguelike_planet_profile()
-	map_width_m = float(profile.get("width", MAP_WIDTH_METERS))
-	map_height_m = float(profile.get("height", MAP_HEIGHT_METERS))
+	_game_runtime_coordinator_node().world_session_state().configure_world_geometry(
+		float(profile.get("width", MAP_WIDTH_METERS)),
+		float(profile.get("height", MAP_HEIGHT_METERS))
+	)
 	var target_region_count := _game_runtime_coordinator_node().run_rng_service().randi_range(int(profile.get("region_min", MAP_REGION_COUNT_MIN)), int(profile.get("region_max", MAP_REGION_COUNT_MAX)))
 	var sites := _generate_region_sites(target_region_count)
 
@@ -6754,8 +6706,8 @@ func _generate_region_sites(count: int) -> Array:
 	while sites.size() < count and attempts < count * 80:
 		attempts += 1
 		var point := Vector2(
-			_game_runtime_coordinator_node().run_rng_service().randf_range(MAP_SITE_MARGIN_METERS, map_width_m - MAP_SITE_MARGIN_METERS),
-			_game_runtime_coordinator_node().run_rng_service().randf_range(MAP_SITE_MARGIN_METERS, map_height_m - MAP_SITE_MARGIN_METERS)
+			_game_runtime_coordinator_node().run_rng_service().randf_range(MAP_SITE_MARGIN_METERS, _game_runtime_coordinator_node().world_session_state().map_width_m - MAP_SITE_MARGIN_METERS),
+			_game_runtime_coordinator_node().run_rng_service().randf_range(MAP_SITE_MARGIN_METERS, _game_runtime_coordinator_node().world_session_state().map_height_m - MAP_SITE_MARGIN_METERS)
 		)
 		var too_close := false
 		for existing in sites:
@@ -6767,8 +6719,8 @@ func _generate_region_sites(count: int) -> Array:
 		sites.append(point)
 	while sites.size() < count:
 		sites.append(Vector2(
-			_game_runtime_coordinator_node().run_rng_service().randf_range(MAP_SITE_MARGIN_METERS, map_width_m - MAP_SITE_MARGIN_METERS),
-			_game_runtime_coordinator_node().run_rng_service().randf_range(MAP_SITE_MARGIN_METERS, map_height_m - MAP_SITE_MARGIN_METERS)
+			_game_runtime_coordinator_node().run_rng_service().randf_range(MAP_SITE_MARGIN_METERS, _game_runtime_coordinator_node().world_session_state().map_width_m - MAP_SITE_MARGIN_METERS),
+			_game_runtime_coordinator_node().run_rng_service().randf_range(MAP_SITE_MARGIN_METERS, _game_runtime_coordinator_node().world_session_state().map_height_m - MAP_SITE_MARGIN_METERS)
 		))
 	return sites
 
@@ -7040,9 +6992,9 @@ func _product_market_price_label(product_name: String) -> String:
 func _voronoi_polygon_for_site(site_index: int, sites: Array) -> Array:
 	var polygon := [
 		Vector2(0.0, 0.0),
-		Vector2(map_width_m, 0.0),
-		Vector2(map_width_m, map_height_m),
-		Vector2(0.0, map_height_m),
+		Vector2(_game_runtime_coordinator_node().world_session_state().map_width_m, 0.0),
+		Vector2(_game_runtime_coordinator_node().world_session_state().map_width_m, _game_runtime_coordinator_node().world_session_state().map_height_m),
+		Vector2(0.0, _game_runtime_coordinator_node().world_session_state().map_height_m),
 	]
 	var site: Vector2 = sites[site_index]
 	for i in range(sites.size()):
@@ -7179,8 +7131,6 @@ func _new_game() -> void:
 	card_resolution_batch_reference_player = -1
 	card_group_window_sequence = 0
 	last_card_resolution_player_index = -1
-	card_resolution_visual_id = -1
-	card_resolution_visual_stage = -1
 	_game_runtime_coordinator_node().reset_card_resolution_history()
 	_game_runtime_coordinator_node().select_card_resolution(-1)
 	_product_market_runtime_call("reset_state")
@@ -7194,12 +7144,12 @@ func _new_game() -> void:
 	time_scale = 1.0
 	_game_runtime_coordinator_node().table_selection_state().selected_player = 0
 	_game_runtime_coordinator_node().table_selection_state().inspected_player = 0
-	selected_runtime_card_slot = -1
+	_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
 	selected_market_skill = skill_market[0] if not skill_market.is_empty() else ""
 	previewed_district_card = selected_market_skill
 	selected_guess_player = -1
 	_game_runtime_coordinator_node().table_selection_state().selected_trade_product = ""
-	selected_map_layer_focus = "all"
+	_game_runtime_coordinator_node().table_selection_state().selected_map_layer_focus = "all"
 	if coordinator != null and coordinator.has_method("reset_victory_control_runtime"):
 		coordinator.call("reset_victory_control_runtime")
 	_prime_timers_for_new_game()
@@ -7284,7 +7234,7 @@ func _new_game() -> void:
 		_mark_game_runtime_coordinator_missing(true)
 		return
 	_product_market_runtime_call("refresh_prices")
-	var center := Vector2(map_width_m * 0.5, map_height_m * 0.5)
+	var center := Vector2(_game_runtime_coordinator_node().world_session_state().map_width_m * 0.5, _game_runtime_coordinator_node().world_session_state().map_height_m * 0.5)
 	_game_runtime_coordinator_node().table_selection_state().selected_district = _nearest_district_to(center)
 	if _game_runtime_coordinator_node().table_selection_state().selected_district < 0:
 		_game_runtime_coordinator_node().table_selection_state().selected_district = 0
@@ -7296,18 +7246,18 @@ func _new_game() -> void:
 	_product_market_runtime_call("refresh_prices")
 	_start_card_ingress_animation()
 
-	_log("星球牌局开始：%d席玩家，其中真人/本地%d席、电脑对手%d席；本局怪兽由怪兽卡匿名召唤，场上数量没有硬上限。" % [
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("星球牌局开始：%d席玩家，其中真人/本地%d席、电脑对手%d席；本局怪兽由怪兽卡匿名召唤，场上数量没有硬上限。" % [
 		configured_player_count,
 		_human_player_count(),
 		_ai_runtime_call("_ai_player_count"),
 	])
-	_log("电脑对手已入局：会围绕城市GDP、商品竞争、商路价值、怪兽风险与匿名情报做出行动。")
-	_log("星球牌局开始：%s；达到动态区域控制与前K区商品GDP门槛并持续10秒后，进入120秒公开审计。" % _roguelike_planet_profile_text())
-	_log("城市化规则启动：玩家在区域秘密建城；建筑公开出现，但对手看不到真实业主，只能保存私人推测。")
-	_log("星球随机生成陆地与海洋：陆地和海洋都会出现本地商品；海洋偏向鱼群、巨藻、海底能源和潮汐电力，并继续承担高价值商路运输；合约牌可继续改写供需。")
-	_log("每个城市群初始生产1种商品、需求1种商品；后续通过匿名供需合约扩张或替换经营结构。同类商品越多，竞争扣减越高。保护自己的城市，同时借怪兽摧毁竞争城市。")
-	_log("本局地图：%.0fm×%.0fm球面投影星球，生成%d个随机陆海区域。" % [map_width_m, map_height_m, _game_runtime_coordinator_node().world_session_state().districts.size()])
-	_log("本局区域牌架从统一合法牌池确定性随机抽取；购买花钱，I级牌大多可直接打出，高阶牌检查地区GDP份额。每个区域提供%d个随机挂牌。" % DISTRICT_CARD_CHOICE_MAX)
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("电脑对手已入局：会围绕城市GDP、商品竞争、商路价值、怪兽风险与匿名情报做出行动。")
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("星球牌局开始：%s；达到动态区域控制与前K区商品GDP门槛并持续10秒后，进入120秒公开审计。" % _roguelike_planet_profile_text())
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("城市化规则启动：玩家在区域秘密建城；建筑公开出现，但对手看不到真实业主，只能保存私人推测。")
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("星球随机生成陆地与海洋：陆地和海洋都会出现本地商品；海洋偏向鱼群、巨藻、海底能源和潮汐电力，并继续承担高价值商路运输；合约牌可继续改写供需。")
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("每个城市群初始生产1种商品、需求1种商品；后续通过匿名供需合约扩张或替换经营结构。同类商品越多，竞争扣减越高。保护自己的城市，同时借怪兽摧毁竞争城市。")
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("本局地图：%.0fm×%.0fm球面投影星球，生成%d个随机陆海区域。" % [_game_runtime_coordinator_node().world_session_state().map_width_m, _game_runtime_coordinator_node().world_session_state().map_height_m, _game_runtime_coordinator_node().world_session_state().districts.size()])
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("本局区域牌架从统一合法牌池确定性随机抽取；购买花钱，I级牌大多可直接打出，高阶牌检查地区GDP份额。每个区域提供%d个随机挂牌。" % DISTRICT_CARD_CHOICE_MAX)
 	if coordinator != null and coordinator.has_method("begin_session"):
 		var scenario_id := ""
 		coordinator.call("begin_session", {
@@ -7320,13 +7270,13 @@ func _new_game() -> void:
 			"mission_title": scenario_id if scenario_id != "" else "自由牌局",
 		})
 	_save_settings(false)
-	_refresh_ui()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _start_card_ingress_animation() -> void:
 	if _game_runtime_coordinator_node().world_session_state().districts.is_empty():
 		return
-	var planet_center := Vector2(map_width_m * 0.5, map_height_m * 0.5)
+	var planet_center := Vector2(_game_runtime_coordinator_node().world_session_state().map_width_m * 0.5, _game_runtime_coordinator_node().world_session_state().map_height_m * 0.5)
 	_game_runtime_coordinator_node().add_visual_action_callout(
 		"区域补给网",
 		"卡池生成",
@@ -7338,7 +7288,7 @@ func _start_card_ingress_animation() -> void:
 		planet_center,
 		CARD_INGRESS_CALLOUT_DURATION
 	)
-	_log("区域补给网完成：%d张合法I级牌进入确定性牌袋；每个区域生成%d个随机挂牌。" % [
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("区域补给网完成：%d张合法I级牌进入确定性牌袋；每个区域生成%d个随机挂牌。" % [
 		_current_run_card_pool().size(),
 		DISTRICT_CARD_CHOICE_MAX,
 	])
@@ -7410,7 +7360,7 @@ func _play_v06_runtime_card_for_player(player_index: int, slot_index: int) -> bo
 		region_id = str((_game_runtime_coordinator_node().world_session_state().districts[_game_runtime_coordinator_node().table_selection_state().selected_district] as Dictionary).get("region_id", "region.%03d" % _game_runtime_coordinator_node().table_selection_state().selected_district))
 	var coordinator := _game_runtime_coordinator_node()
 	if coordinator == null or not coordinator.has_method("play_v06_runtime_card"):
-		_log("%s尚未接入本局卡牌事务。" % label)
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s尚未接入本局卡牌事务。" % label)
 		return false
 	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
 	if str(machine.get("effect_kind", "")) == "build_upgrade_or_repair_facility":
@@ -7424,7 +7374,7 @@ func _play_v06_runtime_card_for_player(player_index: int, slot_index: int) -> bo
 		var succeeded := bool(action_result.get("success", false))
 		if runtime_game_screen != null and runtime_game_screen.has_method("present_action_result"):
 			runtime_game_screen.call("present_action_result", action_result)
-		_log("%s｜%s" % [str(action_result.get("title", "城市设施未部署")), str(action_result.get("consequence", "设施与生产状态未改变。"))])
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s｜%s" % [str(action_result.get("title", "城市设施未部署")), str(action_result.get("consequence", "设施与生产状态未改变。"))])
 		if succeeded:
 			if _district_supply_is_open():
 				_close_district_supply_overlay()
@@ -7447,7 +7397,7 @@ func _play_v06_runtime_card_for_player(player_index: int, slot_index: int) -> bo
 				authoritative_instance_id = str(production_card.get("runtime_instance_id", "")).strip_edges()
 				break
 	if authoritative_slot_index < 0:
-		_log("%s未打出：权威手牌槽位已变化，请刷新手牌后重试。" % label)
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s未打出：权威手牌槽位已变化，请刷新手牌后重试。" % label)
 		return false
 	var instance_id := authoritative_instance_id if not authoritative_instance_id.is_empty() else str(card.get("runtime_instance_id", "slot:%d" % slot_index))
 	var transaction_id := "v06-play:%s:%s:%s" % [actor_id, instance_id, region_id]
@@ -7463,7 +7413,7 @@ func _play_v06_runtime_card_for_player(player_index: int, slot_index: int) -> bo
 	var effect_finalization: Dictionary = result.get("effect_finalization", {}) if result.get("effect_finalization", {}) is Dictionary else {}
 	var play_finalized := bool(result.get("committed", false)) and bool(effect_finalization.get("finalized", result.get("finalized", false)))
 	if play_finalized:
-		_log("%s已通过v0.6卡牌事务完成。" % label)
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s已通过v0.6卡牌事务完成。" % label)
 		if runtime_game_screen != null and runtime_game_screen.has_method("_show_player_action_feedback"):
 			runtime_game_screen.call(
 				"_show_player_action_feedback",
@@ -7474,7 +7424,7 @@ func _play_v06_runtime_card_for_player(player_index: int, slot_index: int) -> bo
 		return true
 	var reason := str(feedback.get("reason", effect_finalization.get("reason_code", result.get("reason_code", "这张牌当前没有生效。"))))
 	var next_step := str(feedback.get("next_step", "请检查目标与当前状态后重试。"))
-	_log("%s未打出：%s %s" % [label, reason, next_step])
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s未打出：%s %s" % [label, reason, next_step])
 	if runtime_game_screen != null and runtime_game_screen.has_method("_show_player_action_feedback"):
 		runtime_game_screen.call("_show_player_action_feedback", "play_v06_runtime_card", "blocked", "%s｜%s" % [reason, next_step])
 	return false
@@ -7721,7 +7671,7 @@ func _grant_role_bonus_card_on_purchase(player_index: int, district_index: int, 
 		return false
 	_game_runtime_coordinator_node().world_session_state().players[player_index] = player
 	_record_player_economic_event(player_index, "角色收益", "额外拿牌", 0, "%s区域购牌｜免费获得%s" % [product_name, _card_display_name(bonus_card)])
-	_log("一次匿名区域购牌触发%s的额外补给条件；具体买家、卡牌和手牌状态不公开。" % [
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("一次匿名区域购牌触发%s的额外补给条件；具体买家、卡牌和手牌状态不公开。" % [
 		String(role.get("name", "角色卡")),
 	])
 	return true
@@ -7746,7 +7696,7 @@ func _apply_role_monster_upgrade_cash(player_index: int, monster_name: String, o
 		Color("#fde68a"),
 		world_position
 	)
-	_log("%s触发%s：%s升级，获得¥%d。" % [
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s触发%s：%s升级，获得¥%d。" % [
 		_game_runtime_coordinator_node().world_session_state().players[player_index]["name"],
 		String(role.get("name", "角色卡")),
 		monster_name,
@@ -7786,55 +7736,7 @@ func _toggle_pause() -> void:
 		time_scale = 0.0
 		if coordinator != null and coordinator.has_method("pause_session"):
 			coordinator.call("pause_session")
-	_refresh_ui()
-
-
-func _refresh_ui() -> void:
-	_game_runtime_coordinator_node().reset_presentation_refresh_cadence()
-	if menu_overlay != null and menu_overlay.visible:
-		_refresh_menu_layout()
-	_refresh_board()
-	_refresh_map_controls()
-	_refresh_district_supply_overlay()
-	_refresh_bottom_countdown_bar()
-	_sync_runtime_game_screen()
-
-
-func _refresh_live_ui() -> void:
-	if menu_overlay != null and menu_overlay.visible:
-		return
-	_refresh_bottom_countdown_bar()
-	_sync_runtime_game_screen()
-
-
-func _runtime_table_snapshot_source() -> Dictionary:
-	var coordinator := _game_runtime_coordinator_node()
-	if coordinator == null or not coordinator.has_method("compose_game_table_source"):
-		return {}
-	var value: Variant = coordinator.call("compose_game_table_source", _runtime_table_viewmodel_source())
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func _runtime_table_viewmodel_source() -> Dictionary:
-	var player_index: int = _runtime_snapshot_player_index()
-	var district_snapshot: Dictionary = _runtime_selected_district_snapshot_source(player_index)
-	var action_entries: Array = _runtime_snapshot_action_entries(player_index)
-	var logs: Array = _runtime_public_log_snapshot()
-	var table_source := {
-		"top_bar": _runtime_top_bar_snapshot_source(player_index),
-		"planet": _runtime_planet_snapshot_source(),
-		"district": district_snapshot,
-		"actions": action_entries,
-		"player_board": _runtime_player_board_snapshot_source(player_index, action_entries),
-		"temporary_decision": _runtime_temporary_decision_snapshot_source(player_index),
-		"visual_events": runtime_visual_events,
-		"visual_event_key": runtime_visual_event_key,
-		"logs": logs,
-	}
-	return {
-		"table_source": table_source,
-		"card_surfaces": _runtime_card_viewmodel_source(player_index, district_snapshot, action_entries, logs),
-	}
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _runtime_snapshot_player_index() -> int:
@@ -7848,324 +7750,6 @@ func _runtime_snapshot_player_index() -> int:
 	if not _game_runtime_coordinator_node().world_session_state().players.is_empty():
 		return 0
 	return -1
-
-
-func _runtime_top_bar_snapshot_source(player_index: int) -> Dictionary:
-	var progress_gdp := _victory_player_progress_metric(player_index)
-	var target_gdp := _victory_required_gdp()
-	var table_state := _runtime_top_bar_table_state_text()
-	var table_clock := _format_time(_game_runtime_coordinator_node().world_session_state().game_time) if _game_runtime_coordinator_node().world_session_state().game_time > 0.0 else "00:00"
-	return {
-		"table_state": table_state,
-		"tempo": table_clock,
-		"phase": table_state,
-		"turn": table_clock,
-		"identity": _player_name(player_index) if _runtime_player_is_valid(player_index) else "未入席",
-		"cash_text": _runtime_player_cash_text(player_index),
-		"gdp_text": _runtime_player_gdp_text(player_index),
-		"goal_text": "Top-N %d/%d" % [progress_gdp, target_gdp],
-		"selected_district": _runtime_selected_district_title(),
-		"primary_action": _runtime_primary_action_label(player_index),
-		"weather_status": weather_runtime_controller.status_text(),
-	}
-
-
-func _runtime_top_bar_table_state_text() -> String:
-	if _game_runtime_coordinator_node().world_session_state().players.is_empty():
-		return "主菜单"
-	var queue_count := _card_resolution_current_queue().size() + _card_resolution_next_queue().size()
-	if card_resolution_auction_open:
-		return "锁牌中"
-	if card_resolution_simultaneous_timer > 0.0:
-		return "短窗"
-	if card_resolution_counter_window_active:
-		return "响应中"
-	if not _card_resolution_active_entry().is_empty():
-		return "揭示中"
-	if queue_count > 0:
-		return "牌队%d" % queue_count
-	if _victory_control_is_active():
-		return "终局"
-	if _district_supply_is_open():
-		return "牌架"
-	return "经营中"
-
-
-func _runtime_player_board_snapshot_source(player_index: int, action_entries: Array) -> Dictionary:
-	var progress_gdp := _victory_player_progress_metric(player_index)
-	var target_gdp := _victory_required_gdp()
-	var goal_ratio := 0.0
-	if target_gdp > 0:
-		goal_ratio = clampf(float(progress_gdp) / float(target_gdp), 0.0, 1.0)
-	return {
-		"title": "玩家板｜手牌",
-		"hint": _runtime_player_board_hint(player_index),
-		"identity": _player_name(player_index) if _runtime_player_is_valid(player_index) else "未开局",
-		"cash_text": _runtime_player_cash_text(player_index),
-		"gdp_text": _runtime_player_gdp_text(player_index),
-		"goal_text": "Top-N %d/%d" % [progress_gdp, target_gdp],
-		"goal_ratio": goal_ratio,
-		"selected_district_summary": _runtime_selected_district_summary(player_index),
-		"region_infrastructure": _region_infrastructure_snapshot_for_district(_game_runtime_coordinator_node().table_selection_state().selected_district),
-		"primary_action": _runtime_primary_action_label(player_index),
-		"quick_actions": _runtime_player_board_quick_actions(player_index),
-		"table_state_lamps": _runtime_player_board_table_state_lamps(player_index),
-		"readiness_chips": _runtime_player_board_readiness_chips(player_index),
-		"progress_path": _player_tableau_progress_entries(player_index),
-		"bid_board": _runtime_player_board_bid_board(player_index),
-		"actions": _runtime_player_board_action_entries(action_entries),
-	}
-
-
-func _runtime_temporary_decision_snapshot_source(player_index: int) -> Dictionary:
-	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return {}
-	var active := _game_runtime_coordinator_node().active_forced_decision(player_index)
-	if active.is_empty() or not bool(active.get("visible_to_viewer", false)) or str(active.get("presentation_surface", "")) != "overlay":
-		return {}
-	match str(active.get("source_ref", "")):
-		"monster_wager":
-			return _runtime_monster_wager_decision_snapshot_source(player_index)
-		"contract_response":
-			var contract_controller := _contract_runtime_controller_node()
-			return contract_controller.decision_snapshot(player_index) if contract_controller != null else {}
-		"discard_purchase":
-			return _runtime_discard_purchase_decision_snapshot_source(player_index)
-		"monster_target_choice":
-			return _runtime_monster_target_decision_snapshot_source(player_index)
-		"player_target_choice":
-			return _runtime_player_target_decision_snapshot_source(player_index)
-	return {}
-
-
-func _runtime_discard_purchase_decision_snapshot_source(player_index: int) -> Dictionary:
-	var pending := _pending_discard_purchase_for_player(player_index)
-	if pending.is_empty() or not _can_view_player_private_hand(player_index):
-		return {}
-	var skill_name := String(pending.get("skill_name", ""))
-	var district_index := int(pending.get("district_index", -1))
-	var price := int(pending.get("price", _card_price(skill_name, district_index, player_index)))
-	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[player_index]
-	var actions: Array = []
-	for slot_variant in _discardable_hand_slots_for_purchase(player):
-		var slot_index := int(slot_variant)
-		var skill: Dictionary = player["slots"][slot_index]
-		var old_name := String(skill.get("name", "旧牌"))
-		actions.append({
-			"id": "discard_purchase_%d" % slot_index,
-			"label": "弃掉 %s" % _short_card_text(_card_display_name(old_name), 10),
-			"tooltip": "私密弃掉这张旧普通牌，然后完成换购。",
-		})
-	actions.append({
-		"id": "discard_purchase_cancel",
-		"label": "取消换购",
-		"tooltip": "取消本次购牌，不公开弃牌信息。",
-	})
-	var discard_choice_count := maxi(0, actions.size() - 1)
-	return {
-		"id": "discard_purchase",
-		"kind": TEMP_DECISION_DISCARD,
-		"title": "私密弃牌确认",
-		"body": "手牌已满。弃1张旧牌，接收%s（约¥%d）。" % [
-			_card_display_name(skill_name),
-			price,
-		],
-		"tooltip": "这是购牌窗口锁定后的私密选择，不会进入匿名卡牌轨道。",
-		"chips": [
-			{"text": "私密", "tooltip": "只有当前玩家可见。", "accent": Color("#bfdbfe")},
-			{"text": "不公开", "tooltip": "公开日志不会写手牌或弃牌。", "accent": Color("#facc15")},
-			{"text": "换购", "tooltip": "弃旧牌后接收新牌。", "accent": Color("#22c55e")},
-		],
-		"actions": actions,
-		"choice": {
-			"mode": "discard",
-			"mode_label": "私密换购",
-			"card": _card_display_name(skill_name),
-			"summary": "手牌已满；从%d张可弃旧普通牌中选1张，再接收新牌。" % discard_choice_count,
-			"context": "价格约¥%d｜普通手牌上限%d张" % [price, PLAYER_HAND_LIMIT],
-			"privacy": "弃牌选择只在当前玩家私有流水中记录；公开日志不会写手牌或弃掉哪张牌。",
-			"public_after": "换购完成后只体现经济结果，不公开弃牌名称。",
-			"option_count": discard_choice_count,
-		},
-		"accent": Color("#facc15"),
-	}
-
-
-func _runtime_monster_target_decision_snapshot_source(player_index: int) -> Dictionary:
-	var choice := _game_runtime_coordinator_node().card_target_choice_snapshot(TEMP_DECISION_MONSTER_TARGET)
-	if choice.is_empty() or int(choice.get("player_index", -1)) != player_index or not _can_view_player_private_hand(player_index):
-		return {}
-	var pending_skill := _pending_target_skill()
-	var card_name := _card_display_name(String(pending_skill.get("name", "这张卡")))
-	var actions: Array = []
-	for i in range(monster_runtime_controller.auto_monsters.size()):
-		var actor: Dictionary = monster_runtime_controller.auto_monsters[i]
-		var monster_name := String(actor.get("name", "怪兽"))
-		actions.append({
-			"id": "target_monster_%d" % i,
-			"label": "怪%d %s" % [i + 1, _short_card_text(monster_name, 8)],
-			"tooltip": "指定%s作为%s的怪兽目标；目标会公开，出牌者仍匿名。" % [monster_name, card_name],
-			"disabled": bool(actor.get("down", false)),
-		})
-	actions.append({
-		"id": "target_monster_cancel",
-		"label": "取消",
-		"tooltip": "取消目标选择，卡牌留在手牌。",
-	})
-	var available_target_count := 0
-	for actor_variant in monster_runtime_controller.auto_monsters:
-		if actor_variant is Dictionary and not bool((actor_variant as Dictionary).get("down", false)):
-			available_target_count += 1
-	return {
-		"id": "monster_target_choice",
-		"kind": TEMP_DECISION_MONSTER_TARGET,
-		"title": "请选择目标怪兽",
-		"body": "%s需要先指定目标怪兽；进入公开牌轨后，卡面和目标会向所有人展示。" % card_name,
-		"tooltip": "这是入轨道前的私密目标选择。规则书强调：目标与效果公开，出牌者仍匿名，其他玩家需要从线索推理。",
-		"chips": [
-			{"text": "私密", "tooltip": "只有当前出牌玩家操作。", "accent": Color("#bfdbfe")},
-			{"text": "阻塞出牌", "tooltip": "选定目标后才会提交到公开牌轨。", "accent": Color("#fecdd3")},
-			{"text": "目标公开", "tooltip": "目标会成为后续推理线索。", "accent": Color("#fda4af")},
-		],
-		"actions": actions,
-		"choice": {
-			"mode": "monster_target",
-			"mode_label": "怪兽目标",
-			"card": card_name,
-			"summary": "先选目标怪兽，再把卡牌送入公开牌轨。",
-			"context": "可选目标%d/%d只｜倒下目标不可选" % [available_target_count, monster_runtime_controller.auto_monsters.size()],
-			"privacy": "选择动作只给当前出牌者；卡牌进入轨道后仍隐藏出牌者。",
-			"public_after": "卡面和目标怪兽会公开，成为全场推理线索。",
-			"target_count": monster_runtime_controller.auto_monsters.size(),
-			"enabled_count": available_target_count,
-		},
-		"accent": Color("#fb7185"),
-	}
-
-
-func _runtime_player_target_decision_snapshot_source(player_index: int) -> Dictionary:
-	var choice := _game_runtime_coordinator_node().card_target_choice_snapshot(TEMP_DECISION_PLAYER_TARGET)
-	if choice.is_empty() or int(choice.get("player_index", -1)) != player_index or not _can_view_player_private_hand(player_index):
-		return {}
-	var pending_skill := _pending_player_target_skill()
-	var card_name := _card_display_name(String(pending_skill.get("name", "这张卡")))
-	var actions: Array = []
-	for i in range(_game_runtime_coordinator_node().world_session_state().players.size()):
-		if i == player_index:
-			continue
-		actions.append({
-			"id": "target_player_%d" % i,
-			"label": "玩家%d" % (i + 1),
-			"tooltip": "把%s作为%s的目标；目标会公开，出牌者仍匿名。" % [_player_name(i), card_name],
-		})
-	actions.append({
-		"id": "target_player_cancel",
-		"label": "取消",
-		"tooltip": "取消目标玩家选择，卡牌留在手牌。",
-	})
-	var target_seat_count := maxi(0, _game_runtime_coordinator_node().world_session_state().players.size() - 1)
-	return {
-		"id": "player_target_choice",
-		"kind": TEMP_DECISION_PLAYER_TARGET,
-		"title": "请选择目标玩家",
-		"body": "%s会影响一名玩家；结算时目标和影响公开，但出牌者仍保持匿名。" % card_name,
-		"tooltip": "直接互动牌先在桌边选目标，再进入公开牌轨；目标玩家、影响类型和时间都会变成推理线索。",
-		"chips": [
-			{"text": "私密", "tooltip": "只有当前出牌玩家操作。", "accent": Color("#bfdbfe")},
-			{"text": "直接互动", "tooltip": "目标玩家会成为公开线索。", "accent": Color("#93c5fd")},
-			{"text": "匿名入轨", "tooltip": "卡牌提交后仍隐藏出牌者。", "accent": Color("#60a5fa")},
-		],
-		"actions": actions,
-		"choice": {
-			"mode": "player_target",
-			"mode_label": "玩家目标",
-			"card": card_name,
-			"summary": "选择一名其他席位作为直接互动目标。",
-			"context": "可选目标%d名｜不能选择自己" % target_seat_count,
-			"privacy": "选择动作只给当前出牌者；卡牌提交后仍隐藏出牌者。",
-			"public_after": "目标玩家和影响会公开，成为后续收益变化的线索。",
-			"target_count": target_seat_count,
-		},
-		"accent": Color("#60a5fa"),
-	}
-
-
-func _runtime_monster_wager_decision_snapshot_source(player_index: int) -> Dictionary:
-	if monster_runtime_controller.active_monster_wagers.is_empty() or player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return {}
-	var entry := monster_runtime_controller._latest_active_monster_wager()
-	if entry.is_empty():
-		return {}
-	var wager_id := int(entry.get("wager_id", -1))
-	var decision := monster_runtime_controller._monster_wager_player_decision(entry, player_index)
-	var base_percent := monster_runtime_controller._monster_wager_base_percent(entry)
-	var actions: Array = []
-	for competitor_variant in monster_runtime_controller._monster_wager_competitors(entry):
-		if not (competitor_variant is Dictionary):
-			continue
-		var competitor := competitor_variant as Dictionary
-		var side := String(competitor.get("side", ""))
-		if side == "":
-			continue
-		var label := monster_runtime_controller._monster_wager_side_label(entry, side)
-		for percent_variant in monster_runtime_controller._monster_wager_percent_options(entry):
-			var percent := int(percent_variant)
-			var stake := monster_runtime_controller._monster_wager_amount_for_percent(player_index, percent)
-			var raise_text := "底注" if percent == base_percent else "+%d%%" % (percent - base_percent)
-			actions.append({
-				"id": "monster_wager:%d:%s:%d" % [wager_id, side, percent],
-				"label": "押%s %d%%" % [_short_card_text(label, 7), percent],
-				"tooltip": "%s：以%s身份公开下注%d%%（约¥%d）支持%s；身份、方向、百分比和金额都会公开。" % [raise_text, _player_name(player_index), percent, stake, label],
-				"disabled": decision != "",
-			})
-	var side_hint := "你尚未下注；本局底注%d%%，可加码；全员决定后提前开战结算。" % base_percent
-	if decision != "":
-		var bet := monster_runtime_controller._monster_wager_player_bet(entry, player_index)
-		side_hint = "你已公开下注%d%%支持%s；本轮决定已锁定。" % [monster_runtime_controller._monster_wager_bet_percent(bet), monster_runtime_controller._monster_wager_side_label(entry, decision)]
-	var timer := maxf(0.0, float(entry.get("remaining_seconds", entry.get("seconds_total", _ruleset_timing_seconds(&"monster_wager_default_seconds")))))
-	var matchup_text := monster_runtime_controller._monster_wager_matchup_text(entry)
-	var damage_text := monster_runtime_controller._monster_wager_damage_score_text(entry)
-	var public_decision_summary := monster_runtime_controller._monster_wager_public_decision_summary(entry)
-	var context_text := String(entry.get("context", "怪兽遭遇"))
-	var pool_total := monster_runtime_controller._monster_wager_total_stake(entry)
-	var decision_count := monster_runtime_controller._monster_wager_decision_count(entry)
-	return {
-		"id": "monster_wager_%d" % wager_id,
-		"kind": TEMP_DECISION_MONSTER_WAGER,
-		"title": "怪兽赌局 #%d" % wager_id,
-		"body": "%s｜伤害%s。全场冻结，底注%d%%；下注身份、方向、百分比和金额公开。%s" % [
-			matchup_text,
-			damage_text,
-			base_percent,
-			side_hint,
-		],
-		"tooltip": "怪兽遭遇触发公开百分比下注。公开决定：%s。触发：%s。" % [
-			public_decision_summary,
-			context_text,
-		],
-		"chips": [
-			{"text": "全场冻结", "tooltip": "下注结束前暂停常规出牌。", "accent": Color("#fb7185")},
-			{"text": "底注%d%%" % base_percent, "tooltip": "底注按当前现金百分比计算。", "accent": Color("#fb923c")},
-			{"text": "已押 %d/%d" % [decision_count, _game_runtime_coordinator_node().world_session_state().players.size()], "tooltip": "全员下注后提前结算。", "accent": Color("#c4b5fd")},
-			{"text": "奖池¥%d" % pool_total, "tooltip": "押中最高伤害方的玩家平分奖池。", "accent": Color("#fde68a")},
-			{"text": "%.0fs" % timer, "tooltip": "剩余下注时间。", "accent": Color("#fed7aa")},
-		],
-		"actions": actions,
-		"wager": {
-			"matchup": matchup_text,
-			"damage": damage_text,
-			"public_decisions": public_decision_summary,
-			"context": context_text,
-			"base_percent": base_percent,
-			"pool": pool_total,
-			"decided": decision_count,
-			"seat_count": _game_runtime_coordinator_node().world_session_state().players.size(),
-			"timer": timer,
-			"timer_text": "%.0fs" % timer,
-			"side_hint": side_hint,
-		},
-		"accent": Color("#fb923c"),
-	}
 
 
 func _runtime_player_board_action_entries(action_entries: Array) -> Array:
@@ -8456,64 +8040,6 @@ func _card_presentation_source(card_name: String, supplied_skill: Dictionary = {
 	}
 
 
-func _card_resolution_presentation_source(skill: Dictionary, entry: Dictionary = {}, seconds_left: float = -1.0, resolved: bool = true) -> Dictionary:
-	var card_name := String(skill.get("name", "匿名卡牌"))
-	var display_duration := card_resolution_force_duration if card_resolution_force_duration > 0.0 else CARD_RESOLUTION_DISPLAY_SECONDS
-	return {
-		"card": _card_presentation_source(card_name, skill, _game_runtime_coordinator_node().table_selection_state().selected_player, _game_runtime_coordinator_node().table_selection_state().selected_district),
-		"seconds_left": seconds_left,
-		"display_duration": display_duration,
-		"resolved": resolved,
-		"effect_style": String(entry.get("aftermath_style", "")),
-		"targets_monster": bool(_card_play_target_snapshot(skill).get("targets_monster", false)),
-		"target_facts": _card_resolution_target_facts(skill, entry),
-		"animation_facts": {
-			"family": _game_runtime_coordinator_node().card_family_id(card_name),
-			"monster_name": String(skill.get("monster_name", _monster_name_from_card_name(card_name))),
-			"monster_move_text": _meters_text(float(skill.get("move", 0.0))),
-			"monster_duration_text": _monster_card_duration_text(skill, true),
-			"military_unit_type_label": military_runtime_controller.unit_type_label(skill),
-			"military_hp": military_runtime_controller.unit_hp(skill),
-			"military_damage": military_runtime_controller.unit_damage(skill),
-			"military_move_text": _meters_text(military_runtime_controller.unit_move(skill)),
-			"military_duration_text": _duration_short_text(military_runtime_controller.unit_duration(skill)),
-			"military_mobility_summary": military_runtime_controller.mobility_summary(skill),
-			"military_command_label": military_runtime_controller.command_label(String(skill.get("military_command", ""))),
-			"military_range": military_runtime_controller.unit_range(skill),
-		},
-	}
-
-
-func _card_resolution_target_facts(skill: Dictionary, entry: Dictionary = {}) -> Dictionary:
-	var target_slot := int(entry.get("target_slot", -1))
-	var target_player := int(entry.get("target_player", -1))
-	var district_index := int(entry.get("selected_district", -1))
-	var monster_name := ""
-	if target_slot >= 0 and target_slot < monster_runtime_controller.auto_monsters.size():
-		monster_name = String((monster_runtime_controller.auto_monsters[target_slot] as Dictionary).get("name", "怪兽"))
-	var contract_controller := _contract_runtime_controller_node()
-	return {
-		"monster_slot": target_slot if target_slot >= 0 and target_slot < monster_runtime_controller.auto_monsters.size() else -1,
-		"monster_name": monster_name,
-		"player_index": target_player if target_player >= 0 and target_player < _game_runtime_coordinator_node().world_session_state().players.size() else -1,
-		"is_contract": String(skill.get("kind", "")) == "area_trade_contract",
-		"contract_source": contract_controller.district_short_name(int(entry.get("contract_source_district", -1))) if contract_controller != null else "未设",
-		"contract_target": contract_controller.district_short_name(int(entry.get("contract_target_district", -1))) if contract_controller != null else "未设",
-		"contract_product": contract_controller.entry_product_text(entry) if contract_controller != null else "未指定商品",
-		"district_name": String(_game_runtime_coordinator_node().world_session_state().districts[district_index].get("name", "区域")) if district_index >= 0 and district_index < _game_runtime_coordinator_node().world_session_state().districts.size() else "",
-		"trade_product": String(entry.get("selected_trade_product", "")),
-		"requires_monster_target": bool(_card_play_target_snapshot(skill).get("requires_target_monster", false)),
-	}
-
-
-func _card_resolution_presentation_snapshot(skill: Dictionary, entry: Dictionary = {}, seconds_left: float = -1.0, resolved: bool = true) -> Dictionary:
-	var coordinator := _game_runtime_coordinator_node()
-	if coordinator == null or not coordinator.has_method("compose_card_resolution_presentation"):
-		return {}
-	var value: Variant = coordinator.call("compose_card_resolution_presentation", _card_resolution_presentation_source(skill, entry, seconds_left, resolved))
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
 func _card_presentation_snapshot(card_name: String, supplied_skill: Dictionary = {}, player_index: int = -1, district_index: int = -1) -> Dictionary:
 	var coordinator := _game_runtime_coordinator_node()
 	if coordinator == null or not coordinator.has_method("compose_card_presentation"):
@@ -8542,235 +8068,6 @@ func _card_presentation_detail_tooltip(card_name: String, district_index: int = 
 	if card_name == "" or not _game_runtime_coordinator_node().card_exists(card_name):
 		return ""
 	return _card_presentation_text(_game_runtime_coordinator_node().card_definition(card_name), "detail_tooltip", card_name, _game_runtime_coordinator_node().table_selection_state().selected_player, district_index)
-
-
-func _runtime_card_viewmodel_source(player_index: int, district_snapshot: Dictionary, action_entries: Array, logs: Array) -> Dictionary:
-	return {
-		"hand_cards": _runtime_hand_card_fact_sources(player_index),
-		"track": _runtime_card_track_model_source(),
-		"selected_hand_slot": selected_runtime_card_slot,
-		"selected_resolution_id": _game_runtime_coordinator_node().table_selection_state().selected_card_resolution_id,
-		"district": district_snapshot,
-		"fallback_why": _runtime_selected_context_why(player_index),
-		"fallback_requirements": _runtime_requirement_chip_snapshots(player_index),
-		"fallback_actions": action_entries,
-		"fallback_deep_links": _runtime_deep_link_snapshots(),
-		"logs": logs,
-	}
-
-
-func _runtime_card_surfaces_snapshot(player_index: int = -1) -> Dictionary:
-	var resolved_player := player_index if player_index >= 0 else _runtime_snapshot_player_index()
-	var district_snapshot := _runtime_selected_district_snapshot_source(resolved_player)
-	var actions := _runtime_snapshot_action_entries(resolved_player)
-	var coordinator := _game_runtime_coordinator_node()
-	if coordinator == null or not coordinator.has_method("compose_game_card_surfaces"):
-		return {}
-	var value: Variant = coordinator.call("compose_game_card_surfaces", _runtime_card_viewmodel_source(resolved_player, district_snapshot, actions, _runtime_public_log_snapshot()))
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func _runtime_hand_card_fact_sources(player_index: int) -> Array:
-	var result: Array = []
-	if not _runtime_player_is_valid(player_index) or not _can_view_player_private_hand(player_index):
-		return result
-	var slots: Array = (_game_runtime_coordinator_node().world_session_state().players[player_index] as Dictionary).get("slots", [])
-	for slot_index in range(slots.size()):
-		if not (slots[slot_index] is Dictionary):
-			continue
-		var skill := slots[slot_index] as Dictionary
-		var card_name := String(skill.get("name", ""))
-		result.append({
-			"slot": slot_index,
-			"card": _card_presentation_source(card_name, skill, player_index, _game_runtime_coordinator_node().table_selection_state().selected_district),
-			"eligibility": _card_play_eligibility_snapshot(player_index, skill, "hand"),
-		})
-	return result
-
-
-func _runtime_card_track_model_source() -> Dictionary:
-	var current_queue := _card_resolution_current_queue()
-	var next_queue := _card_resolution_next_queue()
-	var active_entry := _card_resolution_active_entry()
-	var viewer_index := _runtime_snapshot_player_index()
-	return {
-		"history": _runtime_enriched_card_track_entries(_game_runtime_coordinator_node().card_resolution_viewer_history_snapshot(viewer_index)),
-		"active": _runtime_enriched_card_track_entry(active_entry),
-		"queue": _runtime_enriched_card_track_entries(current_queue),
-		"next_queue": _runtime_enriched_card_track_entries(next_queue),
-		"events": _recent_table_event_entries(),
-		"selected_resolution_id": _game_runtime_coordinator_node().table_selection_state().selected_card_resolution_id,
-		"selected_player": _game_runtime_coordinator_node().table_selection_state().selected_player,
-		"auction_open": card_resolution_auction_open,
-		"batch_locked": card_resolution_batch_locked,
-		"counter_window_active": card_resolution_counter_window_active,
-		"group_phase": _card_group_window_phase(),
-		"group_phase_remaining_seconds": _card_group_phase_remaining_seconds(),
-		"group_cadence": _card_group_cadence_snapshot(),
-		"group_count": _card_resolution_groups().size(),
-		"pending_decision": not _runtime_temporary_decision_snapshot_source(_runtime_snapshot_player_index()).is_empty() if _runtime_snapshot_player_index() >= 0 else false,
-		"status_text": _card_resolution_status_text(),
-		"history_window": 10,
-	}
-
-
-func _runtime_enriched_card_track_entries(entries: Array) -> Array:
-	var result: Array = []
-	for entry_variant in entries:
-		if entry_variant is Dictionary:
-			result.append(_runtime_enriched_card_track_entry(entry_variant as Dictionary))
-	return result
-
-
-func _runtime_enriched_card_track_entry(entry: Dictionary) -> Dictionary:
-	if entry.is_empty():
-		return {}
-	var skill: Dictionary = entry.get("skill", {}) as Dictionary
-	var card_name := String(skill.get("name", _card_resolution_entry_card_label(entry)))
-	var owner_index := int(entry.get("player_index", -1))
-	var public_entry := entry.duplicate(true)
-	public_entry["is_viewer_card"] = owner_index == _game_runtime_coordinator_node().table_selection_state().selected_player
-	var resolution_presentation := _card_resolution_presentation_snapshot(skill, entry)
-	var facility_label := ""
-	if String(skill.get("kind", "")) == "public_facility":
-		facility_label = "%s%s" % [String(skill.get("industry_id", "通用")), String(skill.get("facility_type", "设施"))]
-	return {
-		"entry": public_entry,
-		"card": _card_presentation_source(card_name, skill, _game_runtime_coordinator_node().table_selection_state().selected_player, _game_runtime_coordinator_node().table_selection_state().selected_district),
-		"card_label": _card_resolution_entry_card_label(entry),
-		"effect_text": _skill_display_text(skill),
-		"requirement_text": _card_resolution_play_requirement_text(entry),
-		"target_text": String(resolution_presentation.get("target_text", "")),
-		"animation_text": String(resolution_presentation.get("animation_text", "")),
-		"order_clue": _card_resolution_order_clue_text(entry),
-		"facility_label": facility_label,
-		"can_reorder": owner_index == _game_runtime_coordinator_node().table_selection_state().selected_player and _card_group_submissions_open(),
-	}
-
-
-func _runtime_selected_district_snapshot_source(player_index: int) -> Dictionary:
-	if _game_runtime_coordinator_node().table_selection_state().selected_district < 0 or _game_runtime_coordinator_node().table_selection_state().selected_district >= _game_runtime_coordinator_node().world_session_state().districts.size():
-		return {
-			"id": "",
-			"title": "未选区",
-			"summary": "先点星球区域。",
-			"detail": "先点星球区域。",
-			"full_detail": "点星球区域，查看城市、牌架和行动。",
-			"chips": [{"text": "未选择"}],
-		}
-	var district: Dictionary = _game_runtime_coordinator_node().world_session_state().districts[_game_runtime_coordinator_node().table_selection_state().selected_district]
-	var chips: Array = [{"text": "区域 %d" % (_game_runtime_coordinator_node().table_selection_state().selected_district + 1)}]
-	var infrastructure := _region_infrastructure_snapshot_for_district(_game_runtime_coordinator_node().table_selection_state().selected_district)
-	for facility_variant in infrastructure.get("facilities", []):
-		var facility: Dictionary = facility_variant as Dictionary
-		chips.append({
-			"text": "%s%s｜%s" % [
-				String(facility.get("industry_id", "")).to_upper(),
-				String(facility.get("facility_type", "facility")),
-				_level_text(int(facility.get("rank", 1))),
-			],
-			"tooltip": "公共设施类型、等级和产权公开。",
-		})
-		if chips.size() >= 5:
-			break
-	for lamp_variant in _selected_district_action_lamp_entries(player_index):
-		if not (lamp_variant is Dictionary):
-			continue
-		var lamp: Dictionary = lamp_variant
-		chips.append({"text": "%s:%s" % [String(lamp.get("text", "")), String(lamp.get("state", ""))]})
-		if chips.size() >= 8:
-			break
-	var district_summary := _runtime_selected_district_summary(player_index)
-	var supply_summary := _selected_district_supply_text(player_index)
-	var infrastructure_lines := ["共享生命：%d/%d｜%s" % [
-		int(infrastructure.get("derived_current_hp", 0)),
-		int(infrastructure.get("derived_max_hp", 0)),
-		String(infrastructure.get("lifecycle_state", "undeveloped")),
-	]]
-	for facility_variant in infrastructure.get("facilities", []):
-		var facility: Dictionary = facility_variant as Dictionary
-		infrastructure_lines.append("公共设施：%s %s｜%s｜业主席位%d" % [
-			String(facility.get("industry_id", "通用")),
-			String(facility.get("facility_type", "facility")),
-			_level_text(int(facility.get("rank", 1))),
-			int(facility.get("owner_player_index", -1)) + 1,
-		])
-	var coordinator := _game_runtime_coordinator_node()
-	var weather_detail: Dictionary = coordinator.weather_region_detail_snapshot(_game_runtime_coordinator_node().table_selection_state().selected_district) if coordinator != null and coordinator.has_method("weather_region_detail_snapshot") else {}
-	if not weather_detail.is_empty() and str(weather_detail.get("phase", "clear")) != "clear":
-		var phase_label: String = str({"queued": "等待中", "forecast": "预报中", "active": "生效中", "fading": "正在消退"}.get(str(weather_detail.get("phase", "")), "未知"))
-		var remaining_seconds := float(int(weather_detail.get("remaining_us", 0))) / 1_000_000.0
-		chips.insert(1, {
-			"text": "%s｜%s" % [str(weather_detail.get("display_name", "区域天气")), phase_label],
-			"tooltip": str(weather_detail.get("accessible_text", "")),
-			"color": Color("#7dd3fc"),
-		})
-		infrastructure_lines.append("天气：%s｜%s｜剩余%s" % [
-			str(weather_detail.get("display_name", "区域天气")),
-			phase_label,
-			_duration_short_text(remaining_seconds),
-		])
-		for effect_variant in weather_detail.get("effects", []):
-			var effect := effect_variant as Dictionary
-			infrastructure_lines.append("天气影响：%s %s" % [str(effect.get("label", "影响")), str(effect.get("value_text", ""))])
-		infrastructure_lines.append("利用：%s" % str(weather_detail.get("exploitation_hint", "维持当前计划")))
-		infrastructure_lines.append("应对：%s" % str(weather_detail.get("counterplay_hint", "无需额外部署")))
-	var full_detail := "%s\n%s%s" % [
-		district_summary,
-		supply_summary,
-		"\n%s" % "\n".join(infrastructure_lines),
-	]
-	var table_summary := _short_card_text("%s｜%s" % [district_summary, supply_summary], 40)
-	return {
-		"id": str(_game_runtime_coordinator_node().table_selection_state().selected_district),
-		"title": String(district.get("name", "区域")),
-		"summary": table_summary,
-		"detail": table_summary,
-		"full_detail": full_detail,
-		"chips": chips,
-	}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-func _runtime_planet_snapshot_source() -> Dictionary:
-	return {
-		"title": "星球牌桌",
-		"hint": "区域 %d｜怪兽 %d｜军队 %d｜选区 %s" % [
-			_game_runtime_coordinator_node().world_session_state().districts.size(),
-			monster_runtime_controller.auto_monsters.size(),
-			military_runtime_controller.roster_snapshot(true).size(),
-			_runtime_selected_district_title(),
-		],
-		"left_rail": {
-			"title": "地表情报",
-			"entries": _runtime_planet_surface_rail_entries(_game_runtime_coordinator_node().table_selection_state().selected_player),
-		},
-		"right_rail": {
-			"title": "外围压力",
-			"entries": _runtime_planet_outer_rail_entries(),
-			"hidden": _card_resolution_side_lane_focus_active(),
-		},
-		"weather": {
-			"active": weather_runtime_controller.active_ui_text(),
-			"forecast": weather_runtime_controller.forecast_ui_text(),
-			"impact": weather_runtime_controller.impact_ui_text(),
-			"tooltip": weather_runtime_controller.status_text(),
-		},
-		"flow_compass": _runtime_planet_flow_compass_source(),
-	}
 
 
 func _runtime_planet_flow_compass_source() -> Dictionary:
@@ -8885,29 +8182,6 @@ func _runtime_requirement_chip_snapshots(player_index: int) -> Array:
 	return chips
 
 
-func _runtime_snapshot_action_entries(player_index: int) -> Array:
-	var primary: Dictionary = _runtime_primary_action_entry(player_index)
-	var primary_source := _runtime_public_player_board_action(primary)
-	var context_actions: Array = []
-	if player_index >= 0 and _game_runtime_coordinator_node().table_selection_state().selected_district >= 0 and _game_runtime_coordinator_node().table_selection_state().selected_district < _game_runtime_coordinator_node().world_session_state().districts.size():
-		var district_actions: Array = _selected_district_action_entries(player_index)
-		for entry_variant in district_actions:
-			if not (entry_variant is Dictionary):
-				continue
-			context_actions.append(_runtime_public_player_board_action(entry_variant as Dictionary))
-	var source_snapshot := _runtime_player_economic_source_snapshot(player_index)
-	var actions: Array = PlayerBoardStrategyActionSnapshotScript.compose({
-		"primary": primary_source,
-		"has_economic_source": bool(source_snapshot.get("has_source", false)),
-		"expansion_available": bool(source_snapshot.get("expansion_available", false)),
-		"source_revision": int(source_snapshot.get("revision", 0)),
-		"context_actions": context_actions,
-	})
-	if actions.is_empty():
-		actions.append({"id": "inspect", "label": "看星球", "state": "可看", "kind": "inspect", "disabled": false, "tooltip": "选择区域，或打开图鉴深读。"})
-	return actions
-
-
 func _runtime_public_player_board_action(entry: Dictionary) -> Dictionary:
 	var result := {}
 	for key in ["id", "label", "text", "state", "disabled", "tooltip", "detail", "kind", "strategy_route", "consequence", "suggested_action", "focus_target", "relevant_cost", "relevant_requirement"]:
@@ -8983,13 +8257,6 @@ func _runtime_deep_link_snapshots() -> Array:
 		{"id": "detail_cards", "label": "卡牌/牌架"},
 		{"id": "detail_intel", "label": "情报详情"},
 	]
-
-
-func _runtime_public_log_snapshot() -> Array:
-	var logs: Array = _game_runtime_coordinator_node().presentation_recent_public_log_messages(6)
-	if logs.is_empty():
-		logs.append(_card_resolution_status_text())
-	return logs
 
 
 func _runtime_player_board_hint(player_index: int) -> String:
@@ -9111,84 +8378,14 @@ func _active_bottom_countdown_state() -> Dictionary:
 	return {"visible": false}
 
 
-func _refresh_bottom_countdown_bar() -> void:
-	if bottom_countdown_overlay == null:
-		return
-	var state := _active_bottom_countdown_state()
-	if bottom_countdown_overlay.has_method("set_state"):
-		bottom_countdown_overlay.call("set_state", state)
-		return
-	if card_resolution_timer_bar == null or card_resolution_timer_label == null:
-		return
-	if not bool(state.get("visible", false)):
-		bottom_countdown_overlay.visible = false
-		return
-	var accent: Color = state.get("accent", Color("#fde68a")) as Color
-	var remaining := maxf(0.0, float(state.get("remaining", 0.0)))
-	var total := maxf(0.001, float(state.get("total", 1.0)))
-	var ratio := clampf(remaining / total, 0.0, 1.0)
-	bottom_countdown_overlay.visible = true
-	card_resolution_timer_label.text = String(state.get("label", "牌桌沙漏"))
-	card_resolution_timer_label.add_theme_color_override("font_color", accent.lightened(0.16))
-	card_resolution_timer_label.tooltip_text = "当前需要全桌注意的窗口。"
-	card_resolution_timer_bar.value = ratio * 100.0
-	card_resolution_timer_bar.tooltip_text = "条越短，当前窗口越接近结束。"
-	card_resolution_timer_bar.add_theme_stylebox_override("fill", _menu_card_style(accent, Color("#020617").lerp(accent, 0.72), 0, 6))
-	if bottom_countdown_panel != null:
-		bottom_countdown_panel.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.16), 1, 12))
-
-
-func _refresh_board() -> void:
-	if map_view == null:
-		return
-	_set_map_view_data(map_view)
-	if full_map_overlay != null and full_map_overlay.visible and full_map_view != null:
-		_set_map_view_data(full_map_view)
-
-
-func _set_map_view_data(target_view: Control) -> void:
-	var coordinator := _game_runtime_coordinator_node()
-	coordinator.configure_visual_cue_world_bounds(map_width_m, map_height_m)
-	var cue_snapshot := coordinator.visual_cue_public_snapshot()
-	var viewer_index := coordinator.presentation_authorized_viewer_index()
-	var map_projection := coordinator.presentation_public_map_projection(
-		viewer_index,
-		coordinator.table_selection_state().selected_trade_product
-	)
-	target_view.set_map(
-		coordinator.visual_cue_districts_with_pulses(map_projection.districts),
-		map_width_m,
-		map_height_m,
-		coordinator.table_selection_state().selected_district,
-		DISTRICT_PALETTE,
-		cue_snapshot.get("movement_trails", []),
-		cue_snapshot.get("action_callouts", []),
-		cue_snapshot.get("map_event_effects", []),
-		map_projection.unit_markers,
-		map_projection.city_markers,
-		map_projection.route_markers,
-		map_projection.selected_trade_product,
-		selected_map_layer_focus
-	)
-	if coordinator != null and target_view.has_method("set_solar_presentation_snapshot"):
-		target_view.call("set_solar_presentation_snapshot", coordinator.solar_public_presentation_snapshot())
-	if coordinator != null and target_view.has_method("set_weather_overlay_view_model"):
-		target_view.call("set_weather_overlay_view_model", coordinator.weather_map_overlay_view_model())
-	if target_view.has_method("set_solar_camera_motion_mode"):
-		var solar_motion_mode := "full"
-		target_view.call("set_solar_camera_motion_mode", solar_motion_mode)
-		if target_view.has_method("set_weather_overlay_motion_mode"):
-			target_view.call("set_weather_overlay_motion_mode", solar_motion_mode)
-
-
 func _focus_runtime_map_on_district(district_index: int) -> void:
 	if district_index < 0 or district_index >= _game_runtime_coordinator_node().world_session_state().districts.size():
 		return
 	if map_view != null and map_view.has_method("focus_district"):
-		_set_map_view_data(map_view)
+		_game_runtime_coordinator_node().request_table_presentation_refresh(&"map", &"main_state_changed")
 		map_view.call("focus_district", district_index)
 	if full_map_view != null and full_map_view.has_method("focus_district"):
-		_set_map_view_data(full_map_view)
+		_game_runtime_coordinator_node().request_table_presentation_refresh(&"map", &"main_state_changed")
 		full_map_view.call("focus_district", district_index)
 
 
@@ -9197,7 +8394,7 @@ func _jump_to_district_on_table(district_index: int, clear_card_selection: bool 
 		return false
 	_game_runtime_coordinator_node().table_selection_state().selected_district = district_index
 	if clear_card_selection:
-		selected_runtime_card_slot = -1
+		_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
 	_focus_runtime_map_on_district(district_index)
 	return true
 
@@ -9378,7 +8575,7 @@ func _apply_rival_price_pump(player_index: int, action: Dictionary) -> bool:
 		Color("#f59e0b"),
 		_district_center(own_city_index)
 	)
-	_log("%s" % clue)
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s" % clue)
 	return true
 
 
@@ -9406,7 +8603,7 @@ func _toggle_selected_trade_route() -> void:
 		_game_runtime_coordinator_node().table_selection_state().selected_trade_product = _default_trade_product_for_selected_district()
 		if _game_runtime_coordinator_node().table_selection_state().selected_trade_product == "" and not ProductMarketRuntimeController.PRODUCT_CATALOG.is_empty():
 			_game_runtime_coordinator_node().table_selection_state().selected_trade_product = String(ProductMarketRuntimeController.PRODUCT_CATALOG[0])
-	_refresh_board()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"map", &"main_state_changed")
 	_refresh_map_controls()
 	if _game_runtime_coordinator_node().table_selection_state().selected_district >= 0:
 		_game_runtime_coordinator_node().record_weather_public_response(_game_runtime_coordinator_node().table_selection_state().selected_district, "route_after_forecast")
@@ -9425,7 +8622,7 @@ func _cycle_trade_product(step: int) -> void:
 			index = 0
 		index = wrapi(index + step, 0, ProductMarketRuntimeController.PRODUCT_CATALOG.size())
 		_game_runtime_coordinator_node().table_selection_state().selected_trade_product = String(ProductMarketRuntimeController.PRODUCT_CATALOG[index])
-	_refresh_board()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"map", &"main_state_changed")
 	_refresh_map_controls()
 
 
@@ -9463,7 +8660,7 @@ func _load_selected_district_guess() -> void:
 
 func _mark_selected_city_guess() -> void:
 	if _mark_city_guess_for_player(_game_runtime_coordinator_node().table_selection_state().selected_player, _game_runtime_coordinator_node().table_selection_state().selected_district, selected_guess_player):
-		_refresh_ui()
+		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _mark_city_guess_for_player(viewer_index: int, city_index: int, guessed_player: int, confidence: int = CITY_GUESS_CONFIDENCE_DEFAULT, reason: String = CITY_GUESS_REASON_DEFAULT) -> bool:
@@ -9473,7 +8670,7 @@ func _mark_city_guess_for_player(viewer_index: int, city_index: int, guessed_pla
 		return false
 	var city := _district_city(city_index)
 	if not _city_is_active(city):
-		_log("选中区域没有可标注的存活城市群。")
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("选中区域没有可标注的存活城市群。")
 		return false
 	var city_owner := int(city.get("owner", -1))
 	var guesses: Dictionary = _game_runtime_coordinator_node().world_session_state().players[viewer_index].get("city_guesses", {})
@@ -9486,7 +8683,7 @@ func _mark_city_guess_for_player(viewer_index: int, city_index: int, guessed_pla
 		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guesses"] = guesses
 		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guess_confidence"] = confidences
 		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guess_reasons"] = reasons
-		_log("这是%s自己的城市，不需要推测归属。" % _game_runtime_coordinator_node().world_session_state().players[viewer_index]["name"])
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("这是%s自己的城市，不需要推测归属。" % _game_runtime_coordinator_node().world_session_state().players[viewer_index]["name"])
 	elif guessed_player < 0:
 		guesses.erase(city_index)
 		confidences.erase(city_index)
@@ -9494,7 +8691,7 @@ func _mark_city_guess_for_player(viewer_index: int, city_index: int, guessed_pla
 		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guesses"] = guesses
 		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guess_confidence"] = confidences
 		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guess_reasons"] = reasons
-		_log("%s清除了对%s城市归属的私人标注。" % [_game_runtime_coordinator_node().world_session_state().players[viewer_index]["name"], _game_runtime_coordinator_node().world_session_state().districts[city_index]["name"]])
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s清除了对%s城市归属的私人标注。" % [_game_runtime_coordinator_node().world_session_state().players[viewer_index]["name"], _game_runtime_coordinator_node().world_session_state().districts[city_index]["name"]])
 	elif guessed_player == viewer_index:
 		guesses.erase(city_index)
 		confidences.erase(city_index)
@@ -9502,7 +8699,7 @@ func _mark_city_guess_for_player(viewer_index: int, city_index: int, guessed_pla
 		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guesses"] = guesses
 		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guess_confidence"] = confidences
 		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guess_reasons"] = reasons
-		_log("%s不能把陌生城市标成自己；已清除该私人标注。" % _game_runtime_coordinator_node().world_session_state().players[viewer_index]["name"])
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s不能把陌生城市标成自己；已清除该私人标注。" % _game_runtime_coordinator_node().world_session_state().players[viewer_index]["name"])
 	elif guessed_player >= _game_runtime_coordinator_node().world_session_state().players.size():
 		return false
 	else:
@@ -9514,7 +8711,7 @@ func _mark_city_guess_for_player(viewer_index: int, city_index: int, guessed_pla
 		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guesses"] = guesses
 		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guess_confidence"] = confidences
 		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guess_reasons"] = reasons
-		_log("%s将%s私人标注为：推测属于玩家%d（置信:%s｜理由:%s）。情报现金终局才揭晓：猜对+¥%d，猜错-¥%d。" % [
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s将%s私人标注为：推测属于玩家%d（置信:%s｜理由:%s）。情报现金终局才揭晓：猜对+¥%d，猜错-¥%d。" % [
 			_game_runtime_coordinator_node().world_session_state().players[viewer_index]["name"],
 			_game_runtime_coordinator_node().world_session_state().districts[city_index]["name"],
 			guessed_player + 1,
@@ -9533,13 +8730,13 @@ func _set_city_guess_confidence_for_player(viewer_index: int, city_index: int, c
 		return false
 	var guesses: Dictionary = _game_runtime_coordinator_node().world_session_state().players[viewer_index].get("city_guesses", {})
 	if int(guesses.get(city_index, -1)) < 0:
-		_log("请先给%s设置业主标注，再调整置信度。" % String(_game_runtime_coordinator_node().world_session_state().districts[city_index].get("name", "城市")))
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("请先给%s设置业主标注，再调整置信度。" % String(_game_runtime_coordinator_node().world_session_state().districts[city_index].get("name", "城市")))
 		return false
 	var normalized_confidence := _normalized_city_guess_confidence(confidence)
 	var confidences: Dictionary = _game_runtime_coordinator_node().world_session_state().players[viewer_index].get("city_guess_confidence", {})
 	confidences[city_index] = normalized_confidence
 	_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guess_confidence"] = confidences
-	_log("%s把%s的私人标注置信度调为%s；这只影响推理记录，不改变终局奖惩。" % [
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s把%s的私人标注置信度调为%s；这只影响推理记录，不改变终局奖惩。" % [
 		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["name"],
 		String(_game_runtime_coordinator_node().world_session_state().districts[city_index].get("name", "城市")),
 		_city_guess_confidence_label(normalized_confidence),
@@ -9554,13 +8751,13 @@ func _set_city_guess_reason_for_player(viewer_index: int, city_index: int, reaso
 		return false
 	var guesses: Dictionary = _game_runtime_coordinator_node().world_session_state().players[viewer_index].get("city_guesses", {})
 	if int(guesses.get(city_index, -1)) < 0:
-		_log("请先给%s设置业主标注，再记录标注理由。" % String(_game_runtime_coordinator_node().world_session_state().districts[city_index].get("name", "城市")))
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("请先给%s设置业主标注，再记录标注理由。" % String(_game_runtime_coordinator_node().world_session_state().districts[city_index].get("name", "城市")))
 		return false
 	var normalized_reason := _normalized_city_guess_reason(reason)
 	var reasons: Dictionary = _game_runtime_coordinator_node().world_session_state().players[viewer_index].get("city_guess_reasons", {})
 	reasons[city_index] = normalized_reason
 	_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guess_reasons"] = reasons
-	_log("%s把%s的私人标注理由记为%s；这只影响推理备忘，不改变终局奖惩。" % [
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s把%s的私人标注理由记为%s；这只影响推理备忘，不改变终局奖惩。" % [
 		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["name"],
 		String(_game_runtime_coordinator_node().world_session_state().districts[city_index].get("name", "城市")),
 		_city_guess_reason_label(normalized_reason),
@@ -9627,7 +8824,7 @@ func _trace_card_owner_for_player(viewer_index: int, preferred_resolution_id: in
 		var entry := entry_variant as Dictionary
 		if _remember_card_owner_for_player(viewer_index, entry, source):
 			traced += 1
-			_log("%s获得一条匿名卡牌归属线索：轨道#%d《%s》的真实出牌者已写入私人情报。" % [
+			_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s获得一条匿名卡牌归属线索：轨道#%d《%s》的真实出牌者已写入私人情报。" % [
 				String((_game_runtime_coordinator_node().world_session_state().players[viewer_index] as Dictionary).get("name", "玩家")),
 				int(entry.get("resolution_id", entry.get("queued_order", -1))),
 				_card_resolution_entry_card_label(entry),
@@ -9672,7 +8869,7 @@ func _apply_intel_city_reveal(_player: Dictionary, skill: Dictionary) -> bool:
 			break
 		if _reveal_city_owner_by_intel_card(_game_runtime_coordinator_node().table_selection_state().selected_player, int(district_variant), String(skill.get("name", "业主透镜"))):
 			revealed += 1
-			_log("线索牌%s：%s真实业主已写入当前玩家私人地图标注。" % [
+			_game_runtime_coordinator_node().record_legacy_viewer_feedback("线索牌%s：%s真实业主已写入当前玩家私人地图标注。" % [
 				String(skill.get("name", "业主透镜")),
 				String(_game_runtime_coordinator_node().world_session_state().districts[int(district_variant)].get("name", "区域")),
 			])
@@ -9712,7 +8909,7 @@ func _apply_intel_card_trace(_player: Dictionary, skill: Dictionary) -> bool:
 		if contract_controller != null:
 			contract_traced = contract_controller.trace_contract_parties(_game_runtime_coordinator_node().table_selection_state().selected_player, _game_runtime_coordinator_node().table_selection_state().selected_card_resolution_id, contract_count, String(skill.get("name", "线索悬赏")))
 	if revealed > 0 or contract_traced > 0:
-		_log("%s追加私有悬赏线索：城市%d条，合约%d条；答案不公开。" % [
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s追加私有悬赏线索：城市%d条，合约%d条；答案不公开。" % [
 			String(skill.get("name", "线索悬赏")),
 			revealed,
 			contract_traced,
@@ -9746,8 +8943,8 @@ func _refresh_fullscreen_map_hud() -> void:
 		return
 	var layer_label := fullscreen_map_hud_labels.get("layer", null) as Label
 	if layer_label != null:
-		var entry := _map_layer_entry(selected_map_layer_focus)
-		layer_label.text = "图层:%s" % _map_layer_focus_label(selected_map_layer_focus)
+		var entry := _map_layer_entry(_game_runtime_coordinator_node().table_selection_state().selected_map_layer_focus)
+		layer_label.text = "图层:%s" % _map_layer_focus_label(_game_runtime_coordinator_node().table_selection_state().selected_map_layer_focus)
 		layer_label.tooltip_text = String(entry.get("tip", "当前全屏地图图层。"))
 	var product_label := fullscreen_map_hud_labels.get("product", null) as Label
 	if product_label != null:
@@ -10184,67 +9381,6 @@ func _can_summon_monster_card_at_district(skill: Dictionary, district_index: int
 
 
 
-func _sync_card_resolution_stage_visual(entry: Dictionary, skill: Dictionary, seconds_left: float) -> void:
-	if entry.is_empty() or skill.is_empty():
-		return
-	var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
-	var presentation := _card_resolution_presentation_snapshot(skill, entry, seconds_left)
-	var stage_index := int(presentation.get("stage_index", 0))
-	if card_resolution_visual_id == resolution_id and card_resolution_visual_stage >= stage_index:
-		return
-	card_resolution_visual_id = resolution_id
-	card_resolution_visual_stage = stage_index
-	_emit_card_resolution_stage_visual(entry, skill, presentation)
-
-
-func _emit_card_resolution_stage_visual(entry: Dictionary, skill: Dictionary, presentation: Dictionary) -> void:
-	var card_name := String(skill.get("name", "卡牌"))
-	var card_label := _card_display_name(card_name)
-	if card_label == "":
-		card_label = card_name
-	var stage_index := int(presentation.get("stage_index", 0))
-	var stage_label := String(presentation.get("stage_label", "开场"))
-	var effect_position := _card_resolution_effect_position(skill, entry)
-	var color := _card_presentation_color(skill)
-	var style := String(presentation.get("effect_style", "generic"))
-	var kind := "card_open"
-	var detail := "匿名卡牌进入公开展示，出牌者仍隐藏。"
-	match clampi(stage_index, 0, 2):
-		0:
-			kind = "card_open"
-			detail = "%s开场：卡面公开，目标位置被照亮。" % card_label
-			var orbit_position := _wrap_world_position(effect_position + Vector2(map_width_m * 0.08, -map_height_m * 0.06))
-			_game_runtime_coordinator_node().add_visual_trail(orbit_position, effect_position, color, "匿名卡牌", 1.20, "card_ingress")
-		1:
-			kind = "card_resolve"
-			detail = "%s结算：效果正写入地图/经济/怪兽状态。" % card_label
-		2:
-			kind = "card_afterglow"
-			detail = "%s余波：公开结果留下推理线索。" % card_label
-	_game_runtime_coordinator_node().add_visual_map_event(kind, effect_position, color, String(presentation.get("stage_effect_label", "%s%s" % [String(presentation.get("effect_style_label", "卡牌")), stage_label])), 1.25, float(presentation.get("effect_radius", 75.0)), style)
-	_game_runtime_coordinator_node().add_visual_action_callout("匿名卡牌", "%s分镜" % stage_label, detail, color, effect_position, 2.25)
-
-
-
-func _card_resolution_effect_position(skill: Dictionary, entry: Dictionary = {}) -> Vector2:
-	var target_slot := int(entry.get("target_slot", -1))
-	if target_slot >= 0 and target_slot < monster_runtime_controller.auto_monsters.size():
-		var actor: Dictionary = monster_runtime_controller.auto_monsters[target_slot]
-		return _entity_world_position(actor)
-	if String(skill.get("kind", "")) == "area_trade_contract":
-		var target_index := int(entry.get("contract_target_district", -1))
-		if target_index >= 0 and target_index < _game_runtime_coordinator_node().world_session_state().districts.size():
-			return _district_center(target_index)
-	if bool(_card_play_target_snapshot(skill).get("targets_player", false)) and _game_runtime_coordinator_node().table_selection_state().selected_district >= 0 and _game_runtime_coordinator_node().table_selection_state().selected_district < _game_runtime_coordinator_node().world_session_state().districts.size():
-		return _district_center(_game_runtime_coordinator_node().table_selection_state().selected_district)
-	var district_index := int(entry.get("selected_district", _game_runtime_coordinator_node().table_selection_state().selected_district))
-	if district_index >= 0 and district_index < _game_runtime_coordinator_node().world_session_state().districts.size():
-		return _district_center(district_index)
-	if not monster_runtime_controller.auto_monsters.is_empty():
-		return _entity_world_position(monster_runtime_controller.auto_monsters[0] as Dictionary)
-	return Vector2(map_width_m * 0.5, map_height_m * 0.5)
-
-
 func _short_card_text(text: String, max_len: int) -> String:
 	if text.length() <= max_len:
 		return text
@@ -10259,7 +9395,7 @@ func _preview_district_card(card_name: String, refresh: bool = true) -> void:
 		return
 	previewed_district_card = card_name
 	if refresh:
-		_refresh_ui()
+		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _select_district_card_for_quote(card_name: String, refresh: bool = true) -> void:
@@ -10276,7 +9412,7 @@ func _select_district_card_for_quote(card_name: String, refresh: bool = true) ->
 		runtime_coordinator.call("acknowledge_district_purchase_selection", purchase_player, context_district, card_name, _district_supply_rack_revision(context_district))
 		_request_card_market_quote(card_name, context_district, purchase_player)
 	if refresh:
-		_refresh_ui()
+		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _close_district_supply_overlay() -> void:
@@ -10290,7 +9426,7 @@ func _close_district_supply_overlay() -> void:
 		runtime_coordinator.call("close_district_purchase_window", closing_player, "drawer_closed")
 	district_supply_open_district = -1
 	district_supply_open_player = -1
-	_refresh_ui()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _district_supply_is_open() -> bool:
@@ -10319,7 +9455,7 @@ func _open_district_supply_from_map(district_index: int, focus_v06_facility: boo
 			_preview_v06_facility_card(facility_card_id)
 	if district_supply_overlay != null:
 		district_supply_overlay.visible = true
-	_refresh_ui()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 func _refresh_district_supply_overlay() -> void:
 	if district_supply_overlay == null or not district_supply_overlay.visible:
 		return
@@ -10530,7 +9666,7 @@ func _preview_v06_facility_card(card_id: String) -> void:
 		coordinator.call("refresh_v06_facility_quote", _v06_actor_id(_local_human_player_index()), card_id)
 	previewed_district_card = card_id
 	selected_market_skill = card_id
-	_refresh_ui()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _district_supply_card_source(district_index: int, card_name: String, player_index: int, selected: bool) -> Dictionary:
@@ -10614,8 +9750,8 @@ func _on_district_supply_action_requested(action_id: String, payload: Dictionary
 					var detail := "%s %s %s" % [str(action_result.get("explanation", "")), str(action_result.get("consequence", "")), str(action_result.get("suggested_action", ""))]
 					if runtime_game_screen != null and runtime_game_screen.has_method("_show_player_action_feedback"):
 						runtime_game_screen.call("_show_player_action_feedback", "district_card_purchase", "resolved" if bool(action_result.get("success", false)) else "blocked", detail.strip_edges())
-					_log("%s｜%s" % [str(action_result.get("title", "区域购牌状态")), str(action_result.get("explanation", ""))])
-					_refresh_ui()
+					_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s｜%s" % [str(action_result.get("title", "区域购牌状态")), str(action_result.get("explanation", ""))])
+					_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 			else:
 				_claim_district_card(card_id)
 
@@ -10724,12 +9860,12 @@ func _select_player(index: int) -> void:
 		return
 	_game_runtime_coordinator_node().table_selection_state().selected_player = index
 	_game_runtime_coordinator_node().table_selection_state().inspected_player = index
-	selected_runtime_card_slot = -1
+	_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
 	if district_supply_overlay != null and district_supply_overlay.visible and district_supply_open_district >= 0:
 		district_supply_open_player = _local_human_player_index()
 		_open_district_card_purchase_window(district_supply_open_district, district_supply_open_player)
 	_load_selected_district_guess()
-	_refresh_ui()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _select_district(index: int) -> void:
@@ -10737,7 +9873,7 @@ func _select_district(index: int) -> void:
 		return
 	_sync_selected_district_card()
 	_load_selected_district_guess()
-	_refresh_ui()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _has_pending_target_choice() -> bool:
@@ -10800,8 +9936,8 @@ func _begin_target_monster_choice(slot_index: int) -> void:
 	if not _authorize_card_play(_game_runtime_coordinator_node().table_selection_state().selected_player, skill as Dictionary, true):
 		return
 	_game_runtime_coordinator_node().begin_card_target_choice(TEMP_DECISION_MONSTER_TARGET, _game_runtime_coordinator_node().table_selection_state().selected_player, slot_index)
-	_log("匿名打出%s：请选择一个目标怪兽；选定后会进入全局卡牌结算队列。" % _card_display_name(String(skill["name"])))
-	_refresh_ui()
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("匿名打出%s：请选择一个目标怪兽；选定后会进入全局卡牌结算队列。" % _card_display_name(String(skill["name"])))
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _begin_target_player_choice(slot_index: int) -> void:
@@ -10816,8 +9952,8 @@ func _begin_target_player_choice(slot_index: int) -> void:
 	if not _authorize_card_play(_game_runtime_coordinator_node().table_selection_state().selected_player, skill as Dictionary, true):
 		return
 	_game_runtime_coordinator_node().begin_card_target_choice(TEMP_DECISION_PLAYER_TARGET, _game_runtime_coordinator_node().table_selection_state().selected_player, slot_index)
-	_log("匿名打出%s：请选择一个目标玩家；目标会公开，出牌者仍匿名。" % _card_display_name(String(skill["name"])))
-	_refresh_ui()
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("匿名打出%s：请选择一个目标玩家；目标会公开，出牌者仍匿名。" % _card_display_name(String(skill["name"])))
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _clear_pending_target_choice(_resume_time := true) -> void:
@@ -10835,9 +9971,9 @@ func _cancel_pending_target_choice() -> void:
 	var card_label := _card_display_name(String(skill.get("name", "")))
 	if card_label == "":
 		card_label = "卡牌"
-	_log("已取消%s的目标选择，卡牌未消耗。" % card_label)
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("已取消%s的目标选择，卡牌未消耗。" % card_label)
 	_clear_pending_target_choice()
-	_refresh_ui()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _cancel_pending_player_target_choice() -> void:
@@ -10847,9 +9983,9 @@ func _cancel_pending_player_target_choice() -> void:
 	var card_label := _card_display_name(String(skill.get("name", "")))
 	if card_label == "":
 		card_label = "卡牌"
-	_log("已取消%s的目标玩家选择，卡牌未消耗。" % card_label)
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("已取消%s的目标玩家选择，卡牌未消耗。" % card_label)
 	_clear_pending_player_target_choice()
-	_refresh_ui()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _choose_pending_target_monster(slot: int) -> void:
@@ -10860,25 +9996,25 @@ func _choose_pending_target_monster(slot: int) -> void:
 	var slot_index := int(choice.get("slot_index", -1))
 	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
 		_clear_pending_target_choice()
-		_refresh_ui()
+		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 		return
 	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[player_index]
 	if slot_index < 0 or slot_index >= player["slots"].size():
 		_clear_pending_target_choice()
-		_refresh_ui()
+		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 		return
 	var skill = player["slots"][slot_index]
 	if skill == null:
 		_clear_pending_target_choice()
-		_refresh_ui()
+		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 		return
 	if not _authorize_card_play(player_index, skill as Dictionary, true):
 		_clear_pending_target_choice()
-		_refresh_ui()
+		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 		return
 	if slot < 0 or slot >= monster_runtime_controller.auto_monsters.size() or bool((monster_runtime_controller.auto_monsters[slot] as Dictionary).get("down", false)):
-		_log("目标怪兽无效，请重新选择。")
-		_refresh_ui()
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("目标怪兽无效，请重新选择。")
+		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 		return
 	var receipt := _game_runtime_coordinator_node().submit_card_play({
 		"player_index": player_index,
@@ -10887,10 +10023,10 @@ func _choose_pending_target_monster(slot: int) -> void:
 		"target_player": -1,
 		"submission_source": "human_target_choice",
 	})
-	_log(str(receipt.get("player_message", "卡牌提交已处理。")))
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(receipt.get("player_message", "卡牌提交已处理。")))
 	if bool(receipt.get("accepted", false)):
 		_clear_pending_target_choice(true)
-	_refresh_ui()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _choose_pending_target_player(target_player: int) -> void:
@@ -10901,25 +10037,25 @@ func _choose_pending_target_player(target_player: int) -> void:
 	var slot_index := int(choice.get("slot_index", -1))
 	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
 		_clear_pending_player_target_choice()
-		_refresh_ui()
+		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 		return
 	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[player_index]
 	if slot_index < 0 or slot_index >= player["slots"].size():
 		_clear_pending_player_target_choice()
-		_refresh_ui()
+		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 		return
 	var skill = player["slots"][slot_index]
 	if skill == null:
 		_clear_pending_player_target_choice()
-		_refresh_ui()
+		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 		return
 	if not _authorize_card_play(player_index, skill as Dictionary, true):
 		_clear_pending_player_target_choice()
-		_refresh_ui()
+		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 		return
 	if target_player < 0 or target_player >= _game_runtime_coordinator_node().world_session_state().players.size() or target_player == player_index:
-		_log("目标玩家无效，请重新选择。")
-		_refresh_ui()
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("目标玩家无效，请重新选择。")
+		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 		return
 	var receipt := _game_runtime_coordinator_node().submit_card_play({
 		"player_index": player_index,
@@ -10928,10 +10064,10 @@ func _choose_pending_target_player(target_player: int) -> void:
 		"target_player": target_player,
 		"submission_source": "human_target_choice",
 	})
-	_log(str(receipt.get("player_message", "卡牌提交已处理。")))
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(receipt.get("player_message", "卡牌提交已处理。")))
 	if bool(receipt.get("accepted", false)):
 		_clear_pending_player_target_choice()
-	_refresh_ui()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _queue_monster_card_as_counter(player_index: int, slot_index: int, source_skill: Dictionary) -> bool:
@@ -10961,10 +10097,10 @@ func _queue_monster_card_as_counter(player_index: int, slot_index: int, source_s
 		"target_player": -1,
 		"submission_source": "role_counter_conversion",
 	})
-	_log(str(counter_receipt.get("player_message", "卡牌提交已处理。")))
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(counter_receipt.get("player_message", "卡牌提交已处理。")))
 	var queued := bool(counter_receipt.get("accepted", false))
 	if queued:
-		_log("%s触发角色被动：一张怪兽牌被临时改写为相位否决并进入匿名反制等待。" % _player_name(player_index))
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s触发角色被动：一张怪兽牌被临时改写为相位否决并进入匿名反制等待。" % _player_name(player_index))
 		return true
 	player = _game_runtime_coordinator_node().world_session_state().players[player_index]
 	slots = player.get("slots", [])
@@ -10982,7 +10118,7 @@ func _cycle_district(step: int) -> void:
 	_jump_to_district_on_table(wrapi(_game_runtime_coordinator_node().table_selection_state().selected_district + step, 0, _game_runtime_coordinator_node().world_session_state().districts.size()))
 	_sync_selected_district_card()
 	_load_selected_district_guess()
-	_refresh_ui()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _set_configured_player_count(count: int) -> void:
@@ -10991,8 +10127,8 @@ func _set_configured_player_count(count: int) -> void:
 	_ensure_configured_role_indices()
 	_ensure_configured_starter_monster_indices()
 	_save_settings(false)
-	_log("下次开局玩家数设置为：%d席，其中AI %d个。" % [configured_player_count, configured_ai_player_count])
-	_refresh_ui()
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("下次开局玩家数设置为：%d席，其中AI %d个。" % [configured_player_count, configured_ai_player_count])
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _ensure_configured_ai_player_count() -> void:
@@ -11007,8 +10143,8 @@ func _set_configured_ai_player_count(count: int) -> void:
 	configured_ai_player_count = clampi(count, MIN_AI_PLAYER_COUNT, max_ai)
 	_ensure_configured_role_indices()
 	_save_settings(false)
-	_log("下次开局电脑对手数设置为：%d个；真人/本地玩家席位%d个。" % [configured_ai_player_count, _configured_human_player_count()])
-	_refresh_ui()
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("下次开局电脑对手数设置为：%d个；真人/本地玩家席位%d个。" % [configured_ai_player_count, _configured_human_player_count()])
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _ensure_configured_roguelike_depth() -> void:
@@ -11019,14 +10155,14 @@ func _set_configured_roguelike_depth(depth: int) -> void:
 	configured_roguelike_depth = clampi(depth, ROGUELIKE_DEPTH_MIN, ROGUELIKE_DEPTH_MAX)
 	_save_settings(false)
 	var profile := _roguelike_planet_profile(configured_roguelike_depth)
-	_log("下次开局挑战层级设为%s：约%d-%d区；本局胜利门槛将按当前存续区域动态计算，当前为控制%d区且前K区GDP达到%d/min。" % [
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("下次开局挑战层级设为%s：约%d-%d区；本局胜利门槛将按当前存续区域动态计算，当前为控制%d区且前K区GDP达到%d/min。" % [
 		_roguelike_depth_label(configured_roguelike_depth),
 		int(profile.get("region_min", MAP_REGION_COUNT_MIN)),
 		int(profile.get("region_max", MAP_REGION_COUNT_MAX)),
 		_victory_required_regions(),
 		_victory_required_gdp(),
 	])
-	_refresh_ui()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _configured_human_player_count() -> int:
@@ -11160,8 +10296,8 @@ func _set_configured_role_for_player(player_index: int, role_index: int) -> void
 	else:
 		configured_role_indices[player_index] = _next_available_configured_role_index(role_index, _configured_role_used_by_other(player_index))
 	_save_settings(false)
-	_log("玩家%d下次开局角色设置为：%s。" % [player_index + 1, _configured_role_selection_label(player_index)])
-	_refresh_ui()
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("玩家%d下次开局角色设置为：%s。" % [player_index + 1, _configured_role_selection_label(player_index)])
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _cycle_configured_role_for_player(player_index: int, step: int) -> void:
@@ -11223,11 +10359,11 @@ func _set_configured_starter_monster_for_player(player_index: int, monster_index
 	_ensure_configured_starter_monster_indices()
 	configured_starter_monster_indices[player_index] = wrapi(monster_index, 0, max(1, _catalog_size()))
 	_save_settings(false)
-	_log("玩家%d下次开局起始怪兽设置为：%s。" % [
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("玩家%d下次开局起始怪兽设置为：%s。" % [
 		player_index + 1,
 		String(_catalog_entry(_configured_starter_monster_index(player_index)).get("name", "怪兽")),
 	])
-	_refresh_ui()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _cycle_configured_starter_monster_for_player(player_index: int, step: int) -> void:
@@ -12167,18 +11303,18 @@ func _claim_district_card(skill_name: String) -> void:
 	if context_district < 0 or context_district >= _game_runtime_coordinator_node().world_session_state().districts.size():
 		return
 	if _game_runtime_coordinator_node().world_session_state().districts[context_district]["destroyed"]:
-		_log("%s已被破坏，不能从这里获取卡牌。" % _game_runtime_coordinator_node().world_session_state().districts[context_district]["name"])
-		_refresh_ui()
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s已被破坏，不能从这里获取卡牌。" % _game_runtime_coordinator_node().world_session_state().districts[context_district]["name"])
+		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 		return
 	if not _district_has_card(context_district, skill_name):
-		_log("%s不是当前区域的候选卡。%s" % [_card_display_name(skill_name), _card_choice_location_summary(skill_name)])
-		_refresh_ui()
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s不是当前区域的候选卡。%s" % [_card_display_name(skill_name), _card_choice_location_summary(skill_name)])
+		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 		return
 	selected_market_skill = skill_name
 	_game_runtime_coordinator_node().table_selection_state().selected_player = purchase_player
 	district_supply_open_player = purchase_player
 	_buy_card_for_player_from_district(purchase_player, context_district, selected_market_skill, false, true)
-	_refresh_ui()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 	_focus_runtime_map_on_district(context_district)
 
 
@@ -12212,14 +11348,14 @@ func _cycle_selected_district_card(step: int = 1) -> void:
 	if choices.is_empty():
 		selected_market_skill = ""
 		previewed_district_card = ""
-		_log("当前区域暂无可获取卡牌。")
-		_refresh_ui()
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("当前区域暂无可获取卡牌。")
+		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 		return
 	var current := choices.find(selected_market_skill)
 	current = 0 if current < 0 else wrapi(current + step, 0, choices.size())
 	selected_market_skill = String(choices[current])
 	previewed_district_card = selected_market_skill
-	_refresh_ui()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _district_has_card(district_index: int, skill_name: String) -> bool:
@@ -12327,17 +11463,17 @@ func _can_selected_player_act() -> bool:
 	if _runtime_session_finished():
 		return false
 	if _game_runtime_coordinator_node().table_selection_state().selected_player < 0 or _game_runtime_coordinator_node().table_selection_state().selected_player >= _game_runtime_coordinator_node().world_session_state().players.size() or _player_is_eliminated(_game_runtime_coordinator_node().table_selection_state().selected_player):
-		_log("当前席位已经破产出局，不能继续操作。")
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("当前席位已经破产出局，不能继续操作。")
 		return false
 	if _has_pending_target_choice():
-		_log("请先完成当前卡牌的目标怪兽选择。")
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("请先完成当前卡牌的目标怪兽选择。")
 		return false
 	if _has_pending_player_target_choice():
-		_log("请先完成当前卡牌的目标玩家选择。")
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("请先完成当前卡牌的目标玩家选择。")
 		return false
 	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[_game_runtime_coordinator_node().table_selection_state().selected_player]
 	if player["action_cooldown"] > 0.0:
-		_log("%s操作冷却中，还需%.1fs。" % [player["name"], player["action_cooldown"]])
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s操作冷却中，还需%.1fs。" % [player["name"], player["action_cooldown"]])
 		return false
 	return true
 
@@ -12400,8 +11536,8 @@ func _move_card_within_group(resolution_id: int, direction: int) -> bool:
 	var result: Dictionary = result_variant if result_variant is Dictionary else {}
 	if not bool(result.get("moved", false)):
 		return false
-	_log("卡牌组内部顺序已调整；同组牌会按新的1-%d顺序连续结算。" % int(result.get("group_size", 0)))
-	_refresh_ui()
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("卡牌组内部顺序已调整；同组牌会按新的1-%d顺序连续结算。" % int(result.get("group_size", 0)))
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 	return true
 
 
@@ -12470,9 +11606,9 @@ func _set_selected_player_card_group_ready() -> Dictionary:
 	]
 	if runtime_game_screen != null and runtime_game_screen.has_method("_show_player_action_feedback"):
 		runtime_game_screen.call("_show_player_action_feedback", "card_group_ready", "resolved" if bool(action_result.get("success", false)) else "blocked", detail.strip_edges())
-	_log("%s｜%s" % [str(action_result.get("title", "牌组准备状态")), str(action_result.get("explanation", ""))])
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s｜%s" % [str(action_result.get("title", "牌组准备状态")), str(action_result.get("explanation", ""))])
 	if bool(action_result.get("success", false)):
-		_refresh_ui()
+		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 	return action_result
 
 
@@ -12690,7 +11826,7 @@ func _cancel_discard_purchase() -> void:
 	var runtime_coordinator := _game_runtime_coordinator_node()
 	if player_index >= 0 and runtime_coordinator != null and runtime_coordinator.has_method("resolve_district_purchase_discard"):
 		runtime_coordinator.call("resolve_district_purchase_discard", {"player_index": player_index, "reason": "discard_cancelled"})
-	_refresh_ui()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _confirm_discard_purchase(slot_index: int) -> void:
@@ -12706,7 +11842,7 @@ func _confirm_discard_purchase(slot_index: int) -> void:
 	var runtime_coordinator := _game_runtime_coordinator_node()
 	if player_index >= 0 and runtime_coordinator != null and runtime_coordinator.has_method("resolve_district_purchase_discard"):
 		runtime_coordinator.call("resolve_district_purchase_discard", {"player_index": player_index, "reason": "discard_confirmed" if bought else "discard_purchase_failed"})
-	_refresh_ui()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _can_view_player_private_hand(player_index: int) -> bool:
@@ -13031,7 +12167,7 @@ func _city_contract_status_text(city: Dictionary) -> String:
 func _economy_effect_callout_position() -> Vector2:
 	if _game_runtime_coordinator_node().table_selection_state().selected_district >= 0 and _game_runtime_coordinator_node().table_selection_state().selected_district < _game_runtime_coordinator_node().world_session_state().districts.size():
 		return _district_center(_game_runtime_coordinator_node().table_selection_state().selected_district)
-	return Vector2(map_width_m * 0.5, map_height_m * 0.5)
+	return Vector2(_game_runtime_coordinator_node().world_session_state().map_width_m * 0.5, _game_runtime_coordinator_node().world_session_state().map_height_m * 0.5)
 
 
 
@@ -13094,14 +12230,14 @@ func _buy_selected_skill() -> void:
 	if _runtime_session_finished():
 		return
 	if _has_pending_target_choice():
-		_log("请先完成当前卡牌的目标怪兽选择。")
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("请先完成当前卡牌的目标怪兽选择。")
 		return
 	if _has_pending_player_target_choice():
-		_log("请先完成当前卡牌的目标玩家选择。")
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("请先完成当前卡牌的目标玩家选择。")
 		return
 	_sync_selected_district_card()
 	_buy_card_for_player_from_district(_game_runtime_coordinator_node().table_selection_state().selected_player, _game_runtime_coordinator_node().table_selection_state().selected_district, selected_market_skill, false, true)
-	_refresh_ui()
+	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _buy_card_for_player_from_district(player_index: int, district_index: int, skill_name: String, anonymous: bool = false, ignore_cooldown: bool = false, discard_slot: int = -1, locked_quote_id: String = "") -> bool:
@@ -13109,18 +12245,18 @@ func _buy_card_for_player_from_district(player_index: int, district_index: int, 
 		return false
 	if _player_is_eliminated(player_index):
 		if not anonymous:
-			_log("%s已经破产出局，不能继续购买卡牌。" % _player_name(player_index))
+			_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s已经破产出局，不能继续购买卡牌。" % _player_name(player_index))
 		return false
 	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[player_index]
 	var actor_label := "匿名财团" if anonymous else String(player.get("name", "玩家"))
 	skill_name = _canonical_card_supply_name(skill_name)
 	if skill_name == "" or not _game_runtime_coordinator_node().card_exists(skill_name):
 		if not anonymous:
-			_log("没有可获取的选中卡牌。")
+			_game_runtime_coordinator_node().record_legacy_viewer_feedback("没有可获取的选中卡牌。")
 		return false
 	if district_index < 0 or district_index >= _game_runtime_coordinator_node().world_session_state().districts.size() or bool(_game_runtime_coordinator_node().world_session_state().districts[district_index].get("destroyed", false)):
 		if not anonymous:
-			_log("目标区域无效或已被破坏，不能从这里获取卡牌。")
+			_game_runtime_coordinator_node().record_legacy_viewer_feedback("目标区域无效或已被破坏，不能从这里获取卡牌。")
 		return false
 	var runtime_coordinator := _game_runtime_coordinator_node()
 	if runtime_coordinator == null \
@@ -13128,7 +12264,7 @@ func _buy_card_for_player_from_district(player_index: int, district_index: int, 
 			or not runtime_coordinator.has_method("plan_district_purchase_settlement") \
 			or not runtime_coordinator.has_method("commit_district_purchase_with_region_supply"):
 		if not anonymous:
-			_log("购买窗口或结算服务尚未就绪。")
+			_game_runtime_coordinator_node().record_legacy_viewer_feedback("购买窗口或结算服务尚未就绪。")
 		return false
 	if not runtime_coordinator.has_method("district_purchase_window_active") or not bool(runtime_coordinator.call("district_purchase_window_active", player_index, district_index)):
 		_open_district_card_purchase_window(district_index, player_index, discard_slot >= 0)
@@ -13156,11 +12292,11 @@ func _buy_card_for_player_from_district(player_index: int, district_index: int, 
 	if not bool(authorization.get("authorized", false)):
 		if not anonymous:
 			var failure_reason := str(authorization.get("reason", "quote_unavailable"))
-			_log("报价未授权本次操作：%s。" % failure_reason)
+			_game_runtime_coordinator_node().record_legacy_viewer_feedback("报价未授权本次操作：%s。" % failure_reason)
 		return false
 	if not _district_has_card(district_index, skill_name):
 		if not anonymous:
-			_log("%s不在当前区域候选中；%s。" % [_card_display_name(skill_name), _card_choice_location_summary(skill_name)])
+			_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s不在当前区域候选中；%s。" % [_card_display_name(skill_name), _card_choice_location_summary(skill_name)])
 		return false
 	var price := int(authorization.get("final_price", -1))
 	if price < 0:
@@ -13176,19 +12312,19 @@ func _buy_card_for_player_from_district(player_index: int, district_index: int, 
 	if str(settlement_plan.get("status", "")) == "requires_discard" and discard_slot < 0:
 		_open_discard_purchase_choice(player_index, district_index, skill_name, price, quote_id, ignore_cooldown)
 		if not anonymous:
-			_refresh_ui()
+			_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 		return false
 	if str(settlement_plan.get("status", "")) != "ready":
 		if not anonymous:
 			var plan_reason := str(settlement_plan.get("reason", "purchase_rejected"))
 			if plan_reason == "insufficient_cash":
-				_log("%s资金不足，购买%s需要¥%d，当前只有¥%d。" % [actor_label, _card_display_name(skill_name), price, int(player.get("cash", 0))])
+				_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s资金不足，购买%s需要¥%d，当前只有¥%d。" % [actor_label, _card_display_name(skill_name), price, int(player.get("cash", 0))])
 			elif plan_reason == "invalid_discard_slot":
 				_record_player_economic_event(player_index, "手牌整理", "弃牌选择失效", 0, "私密弃牌选择已经失效，请重新发起购牌。")
-				_log("一次购牌未完成：具体玩家手牌状态、牌名和弃牌情况不公开。")
+				_game_runtime_coordinator_node().record_legacy_viewer_feedback("一次购牌未完成：具体玩家手牌状态、牌名和弃牌情况不公开。")
 			else:
 				_record_player_economic_event(player_index, "卡牌购买", "购买未完成", 0, "%s暂不能接收；可能已达最高级，或没有可私密弃掉的普通手牌。" % _card_display_name(skill_name))
-				_log("一次购牌未完成：具体玩家手牌状态、牌名和弃牌情况不公开。")
+				_game_runtime_coordinator_node().record_legacy_viewer_feedback("一次购牌未完成：具体玩家手牌状态、牌名和弃牌情况不公开。")
 		return false
 	var current_authorization_variant: Variant = runtime_coordinator.call("authorize_card_market_purchase", {
 		"quote_id": quote_id,
@@ -13214,13 +12350,13 @@ func _buy_card_for_player_from_district(player_index: int, district_index: int, 
 	if not bool(commit_result.get("committed", false)):
 		if not anonymous:
 			_record_player_economic_event(player_index, "卡牌购买", "购买未完成", 0, "购买提交前状态发生变化，请重新发起购牌。")
-			_log("一次购牌未完成：结算前状态已变化，具体玩家手牌、现金和弃牌情况不公开。")
+			_game_runtime_coordinator_node().record_legacy_viewer_feedback("一次购牌未完成：结算前状态已变化，具体玩家手牌、现金和弃牌情况不公开。")
 		return false
 	_game_runtime_coordinator_node().world_session_state().players[player_index] = player
 	var pending_discard := _pending_discard_purchase_for_player(player_index)
 	if String(pending_discard.get("skill_name", "")) == skill_name:
 		runtime_coordinator.call("resolve_district_purchase_discard", {"player_index": player_index, "reason": "purchase_committed"})
-	_log("一次匿名购牌在%s完成；买家、具体卡牌、手牌数量和弃牌情况不公开。" % _game_runtime_coordinator_node().world_session_state().districts[district_index]["name"])
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("一次匿名购牌在%s完成；买家、具体卡牌、手牌数量和弃牌情况不公开。" % _game_runtime_coordinator_node().world_session_state().districts[district_index]["name"])
 	_grant_role_bonus_card_on_purchase(player_index, district_index, skill_name, anonymous)
 	runtime_coordinator.call("record_weather_public_response", district_index, "buy_after_forecast")
 	return true
@@ -13508,7 +12644,6 @@ func _show_card_resolution_overlay(entry: Dictionary, seconds_left: float) -> vo
 		card_resolution_status_label.text = _card_resolution_phase_text(entry, seconds_left)
 	_update_card_resolution_timer_bar("counter" if card_resolution_counter_window_active else "reveal", seconds_left, entry)
 	_refresh_card_resolution_overlay_badges(entry)
-	_sync_card_resolution_stage_visual(entry, skill, seconds_left)
 	if card_resolution_art != null and card_resolution_art.has_method("set_card"):
 		card_resolution_art.call(
 			"set_card",
@@ -13531,8 +12666,7 @@ func _card_resolution_overlay_compact_body_text(entry: Dictionary, seconds_left:
 		return "响应窗口｜可相位否决\n效果：%s" % [
 			_short_card_text(_skill_display_text(skill).replace("\n", " / "), 48),
 		]
-	var resolution_presentation := _card_resolution_presentation_snapshot(skill, entry, seconds_left)
-	var animation_line := _short_card_text(String(resolution_presentation.get("animation_text", "")).replace("\n", " / "), 48)
+	var animation_line := _short_card_text(String(entry.get("aftermath_clue", "")).replace("\n", " / "), 48)
 	if animation_line == "":
 		animation_line = "展示中"
 	var effect_line := "效果：%s" % _short_card_text(_skill_display_text(skill).replace("\n", " / "), 48)
@@ -13551,8 +12685,7 @@ func _card_resolution_overlay_detail_text(entry: Dictionary, seconds_left: float
 		"%s｜出牌者%s" % [card_label, "已揭晓" if bool(entry.get("public_owner_revealed", false)) else "未知"],
 		_card_resolution_phase_text(entry, seconds_left),
 	]
-	var resolution_presentation := _card_resolution_presentation_snapshot(skill, entry, seconds_left)
-	var animation_text := String(resolution_presentation.get("animation_text", ""))
+	var animation_text := String(entry.get("aftermath_clue", ""))
 	if animation_text != "":
 		lines.append("演出：%s" % _short_card_text(animation_text, 120))
 	lines.append("效果：%s" % _short_card_text(_skill_display_text(skill), 120))
@@ -13563,7 +12696,13 @@ func _card_resolution_overlay_detail_text(entry: Dictionary, seconds_left: float
 	var requirement_text := _card_resolution_play_requirement_text(entry)
 	if requirement_text != "":
 		lines.append(requirement_text)
-	var target_text := String(resolution_presentation.get("target_text", ""))
+	var target_text := ""
+	if int(entry.get("target_player", -1)) >= 0:
+		target_text = "玩家%d" % (int(entry.get("target_player", -1)) + 1)
+	elif int(entry.get("target_slot", -1)) >= 0:
+		target_text = "怪兽%d" % (int(entry.get("target_slot", -1)) + 1)
+	elif int(entry.get("selected_district", -1)) >= 0:
+		target_text = "区域%d" % (int(entry.get("selected_district", -1)) + 1)
 	if target_text != "":
 		lines.append("目标：%s" % _short_card_text(target_text, 100))
 	var order_text := _card_resolution_order_clue_text(entry)
@@ -13636,8 +12775,6 @@ func _hide_card_resolution_overlay() -> void:
 		card_resolution_overlay.visible = false
 	_set_planet_right_rail_resolution_suppressed(false)
 	_refresh_card_resolution_overlay_badges({})
-	card_resolution_visual_id = -1
-	card_resolution_visual_stage = -1
 
 
 func _set_planet_right_rail_resolution_suppressed(enabled: bool) -> void:
@@ -13654,7 +12791,7 @@ func _set_planet_right_rail_resolution_suppressed(enabled: bool) -> void:
 
 
 func _draw_extra_district_cards(player: Dictionary, amount: int, source: String) -> void:
-	_log("%s的额外拿牌暂不可用：必须等待统一牌架批量事务接线，不能复制当前挂牌。" % source)
+	_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s的额外拿牌暂不可用：必须等待统一牌架批量事务接线，不能复制当前挂牌。" % source)
 
 
 
@@ -13853,8 +12990,8 @@ func _entity_world_position(entity: Dictionary) -> Vector2:
 
 
 func _wrap_world_position(world_position: Vector2) -> Vector2:
-	var width: float = max(1.0, map_width_m)
-	var height: float = max(1.0, map_height_m)
+	var width: float = max(1.0, _game_runtime_coordinator_node().world_session_state().map_width_m)
+	var height: float = max(1.0, _game_runtime_coordinator_node().world_session_state().map_height_m)
 	var x := world_position.x
 	var y := world_position.y
 	var guard := 0
@@ -13871,8 +13008,8 @@ func _wrap_world_position(world_position: Vector2) -> Vector2:
 
 func _wrapped_delta(from_position: Vector2, to_position: Vector2) -> Vector2:
 	var delta := _wrap_world_position(to_position) - _wrap_world_position(from_position)
-	if abs(delta.x) > map_width_m * 0.5:
-		delta.x -= sign(delta.x) * map_width_m
+	if abs(delta.x) > _game_runtime_coordinator_node().world_session_state().map_width_m * 0.5:
+		delta.x -= sign(delta.x) * _game_runtime_coordinator_node().world_session_state().map_width_m
 	return delta
 
 
@@ -13883,15 +13020,15 @@ func _wrapped_distance(from_position: Vector2, to_position: Vector2) -> float:
 func _world_to_lon_lat(world_position: Vector2) -> Vector2:
 	var wrapped := _wrap_world_position(world_position)
 	return Vector2(
-		fposmod(wrapped.x / max(1.0, map_width_m) * TAU, TAU),
-		PI * 0.5 - wrapped.y / max(1.0, map_height_m) * PI
+		fposmod(wrapped.x / max(1.0, _game_runtime_coordinator_node().world_session_state().map_width_m) * TAU, TAU),
+		PI * 0.5 - wrapped.y / max(1.0, _game_runtime_coordinator_node().world_session_state().map_height_m) * PI
 	)
 
 
 func _lon_lat_to_world(lon: float, lat: float) -> Vector2:
 	return _wrap_world_position(Vector2(
-		fposmod(lon, TAU) / TAU * max(1.0, map_width_m),
-		(PI * 0.5 - clamp(lat, -PI * 0.5, PI * 0.5)) / PI * max(1.0, map_height_m)
+		fposmod(lon, TAU) / TAU * max(1.0, _game_runtime_coordinator_node().world_session_state().map_width_m),
+		(PI * 0.5 - clamp(lat, -PI * 0.5, PI * 0.5)) / PI * max(1.0, _game_runtime_coordinator_node().world_session_state().map_height_m)
 	))
 
 
@@ -13903,7 +13040,7 @@ func _sphere_unit(world_position: Vector2) -> Vector3:
 
 
 func _sphere_radius_m() -> float:
-	return max(1.0, map_width_m / TAU)
+	return max(1.0, _game_runtime_coordinator_node().world_session_state().map_width_m / TAU)
 
 
 func _spherical_distance(from_position: Vector2, to_position: Vector2) -> float:
@@ -14104,13 +13241,3 @@ func _clear_children(node: Node) -> void:
 	for child in node.get_children():
 		node.remove_child(child)
 		child.queue_free()
-
-
-func _log(message: String) -> void:
-	_game_runtime_coordinator_node().record_public_log_event(
-		&"legacy_public_event",
-		&"public.legacy.message",
-		{"message": message},
-		0,
-		_game_runtime_coordinator_node().world_session_state().game_time
-	)

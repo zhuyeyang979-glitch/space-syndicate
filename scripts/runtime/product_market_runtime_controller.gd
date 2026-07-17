@@ -2,6 +2,14 @@
 extends Node
 class_name ProductMarketRuntimeController
 
+var _public_log_producer_port: PublicLogProducerPort
+var _presentation_world_clock: WorldEffectiveClockRuntimeController
+
+
+func set_table_presentation_log_port(log_port: PublicLogProducerPort, clock: WorldEffectiveClockRuntimeController) -> void:
+	_public_log_producer_port = log_port
+	_presentation_world_clock = clock
+
 const CONTROLLER_ID := "product_market_runtime_v1"
 const ECONOMY_LEGACY_TURN_SECONDS := 30.0
 const PRODUCT_PRICE_MIN := 26
@@ -880,7 +888,13 @@ func _set_selected_product(product_name: String) -> void:
 
 
 func _log(message: String) -> void:
-	if _world_bridge != null: _world_bridge.call_world("_log", [message])
+	if _public_log_producer_port != null and not message.is_empty():
+		var revision := _presentation_world_clock.world_effective_micros() if _presentation_world_clock != null else 0
+		var world_time := _presentation_world_clock.world_effective_seconds() if _presentation_world_clock != null else 0.0
+		_public_log_producer_port.publish(
+			&"market_public_update", &"public.market.updated",
+			{"action_kind": "market", "public_status": "updated"}, revision, world_time
+		)
 
 
 func _district_city(world: Dictionary, district_index: int) -> Dictionary:

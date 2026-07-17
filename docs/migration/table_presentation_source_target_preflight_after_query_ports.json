@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "status": "NO_GO",
+  "baseline_sha": "5b5b11ef123962553ca34c2483f57a32e392f3f0",
+  "production_code_changed": false,
+  "runtime_loop_created": false,
+  "main_process_remains_unique": true,
+  "scheduler_order": ["live", "map", "full", "developer"],
+  "eliminated_by_query_ports": [
+    "local_viewer_authorization",
+    "public_and_viewer_private_world_projection",
+    "viewer_action_and_card_track_projection",
+    "owner_safe_public_map_markers",
+    "exact_once_public_log_owner",
+    "visibility_safe_victory_receipts"
+  ],
+  "root_only_blockers": [
+    {
+      "id": "world_map_geometry",
+      "owner_now": "Main",
+      "symbols": ["map_width_m", "map_height_m", "_set_map_view_data"],
+      "required_api": "public_map_geometry_projection() -> WorldMapGeometryProjection"
+    },
+    {
+      "id": "monster_wager_viewer_projection",
+      "owner_now": "Main plus Monster private helpers",
+      "symbols": ["_runtime_monster_wager_decision_snapshot_source", "MonsterRuntimeController.active_wagers_snapshot"],
+      "required_api": "monster_wager_presentation_for_viewer(viewer_index) -> MonsterWagerPresentationProjection"
+    }
+  ],
+  "minimum_source_owner_api": [
+    "build_live_snapshot(viewer, source_revision)",
+    "build_full_snapshot(viewer, source_revision)",
+    "build_map_snapshot(viewer, source_revision)",
+    "build_developer_snapshot(source_revision)"
+  ],
+  "minimum_refresh_port_api": [
+    "apply_ordered_refresh_receipts(receipts)",
+    "request_immediate_refresh(request)",
+    "apply_victory_receipt(receipt)"
+  ],
+  "minimum_target_api": [
+    "apply_live_presentation(snapshot)",
+    "apply_full_presentation(snapshot)",
+    "apply_map_presentation(snapshot)",
+    "apply_developer_presentation(snapshot)"
+  ],
+  "next_boundary": "WORLD_MAP_GEOMETRY_AND_MONSTER_WAGER_PRESENTATION_QUERY_PREREQUISITES"
+}

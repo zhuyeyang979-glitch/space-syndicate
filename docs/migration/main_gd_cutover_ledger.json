@@ -341,6 +341,53 @@
       "status": "cut_over"
     },
     {
+      "domain": "table_presentation_source_target",
+      "old_symbols": [
+        "_refresh_live_ui",
+        "_refresh_board",
+        "_refresh_ui",
+        "_refresh_developer_balance_greybox",
+        "_runtime_table_snapshot_source",
+        "Main victory presentation comparison",
+        "Main public-log presentation wrapper"
+      ],
+      "old_consumers": [
+        "TablePresentationRefreshScheduler receipts",
+        "GameScreen live/full refresh",
+        "PlanetBoard map refresh",
+        "developer balance refresh",
+        "Victory public log and immediate refresh"
+      ],
+      "new_owner_scene": "res://scenes/runtime/presentation/TablePresentationSourceOwner.tscn + res://scenes/runtime/presentation/TablePresentationRefreshPort.tscn",
+      "new_owner_script": "res://scripts/presentation/table_presentation_source_owner.gd + res://scripts/presentation/table_presentation_refresh_port.gd",
+      "new_public_api": [
+        "capture_live_snapshot",
+        "capture_full_snapshot",
+        "capture_map_snapshot",
+        "capture_developer_snapshot",
+        "apply_ordered_refresh_receipts",
+        "request_immediate",
+        "advance_table_presentation"
+      ],
+      "tests": [
+        "res://tests/table_presentation_refresh_scheduler_trace_test.gd",
+        "res://tests/table_presentation_source_target_cutover_test.gd",
+        "res://tests/table_presentation_viewmodel_parity_test.gd",
+        "res://tests/world_session_geometry_owner_cutover_test.gd",
+        "res://scenes/tools/TablePresentationSourceTargetBench.tscn",
+        "res://tests/table_presentation_query_ports_cutover_test.gd",
+        "res://tests/main_gd_architecture_gate_test.gd",
+        "res://tests/main_runtime_composition_test.gd",
+        "res://tests/ui_text_smoke_test.gd",
+        "res://tests/visual_snapshot.gd",
+        "res://tests/smoke_test.gd --check-only"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "",
+      "status": "cut_over"
+    },
+    {
       "domain": "presentation_action_routing",
       "old_symbols": [
         "_runtime_table_snapshot_source",

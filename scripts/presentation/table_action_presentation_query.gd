@@ -42,8 +42,11 @@ func configure(
 func snapshot_for_viewer(viewer_index: int) -> TableActionPresentationProjection:
 	var projection := TableActionPresentationProjection.new()
 	projection.viewer_index = viewer_index
+	var context := _authorization.context() if _authorization != null else TablePresentationViewerContext.denied()
+	projection.authorization_revision = context.authorization_revision
 	if _authorization == null or not _authorization.can_view_subject(viewer_index, viewer_index):
 		return projection
+	projection.authorized = true
 	var public_world := _world_query.public_projection() if _world_query != null else WorldSessionPublicProjection.new()
 	var selected_district := _selection.selected_district if _selection != null else -1
 	var district_exists := selected_district >= 0 and selected_district < public_world.districts.size()
@@ -67,9 +70,9 @@ func snapshot_for_viewer(viewer_index: int) -> TableActionPresentationProjection
 		"blocks_player_actions": blocks_player_actions,
 		"selected_district": selected_district,
 	}
-	projection.forced_decision = forced.duplicate(true)
-	projection.purchase = _purchase.private_ui_snapshot(viewer_index) if _purchase != null else {}
-	projection.target_choices = _target_choice.private_snapshot(viewer_index) if _target_choice != null else {}
+	projection.forced_decision = _pure_dictionary(forced)
+	projection.purchase = _pure_dictionary(_purchase.private_ui_snapshot(viewer_index) if _purchase != null else {})
+	projection.target_choices = _pure_dictionary(_target_choice.private_snapshot(viewer_index) if _target_choice != null else {})
 	projection.card_track = {
 		"queue": queue_snapshot.duplicate(true),
 		"history": _history.private_viewer_snapshot(viewer_index) if _history != null else [],
@@ -84,12 +87,22 @@ func snapshot_for_viewer(viewer_index: int) -> TableActionPresentationProjection
 	return projection
 
 
+func _pure_dictionary(value: Variant) -> Dictionary:
+	if not (value is Dictionary) or not TablePresentationPureDataPolicy.is_pure_data(value):
+		return {}
+	return TablePresentationPureDataPolicy.detached_copy(value) as Dictionary
+
+
 func public_card_track_snapshot() -> Dictionary:
 	return {
 		"queue": _queue.public_snapshot() if _queue != null else {},
 		"history": _history.public_history_snapshot() if _history != null else [],
 		"visibility_scope": "public",
 	}
+
+
+func selected_map_layer_focus() -> String:
+	return _selection.selected_map_layer_focus if _selection != null else "all"
 
 
 func debug_snapshot() -> Dictionary:

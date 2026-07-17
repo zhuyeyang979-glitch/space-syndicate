@@ -81,6 +81,9 @@ var _monster_starter_state_v06: Dictionary = {}
 var _monster_card_reservations_v06: Dictionary = {}
 var _monster_card_terminal_journal_v06: Dictionary = {}
 var _monster_card_presentation_journal_v06: Dictionary = {}
+var _table_presentation_refresh_port: TablePresentationRefreshPort
+var _public_log_producer_port: PublicLogProducerPort
+var _presentation_world_clock: WorldEffectiveClockRuntimeController
 var _bankruptcy_estate_journal: Dictionary = {}
 var _monster_codex_public_catalog_cache_v06: Array = []
 var _monster_codex_public_catalog_summary_cache_v06: Dictionary = {}
@@ -295,6 +298,12 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	else:
 		_monster_codex_public_catalog_cache_v06.clear()
 		_monster_codex_public_catalog_summary_cache_v06.clear()
+
+
+func set_table_presentation_ports(refresh_port: TablePresentationRefreshPort, log_port: PublicLogProducerPort, clock: WorldEffectiveClockRuntimeController) -> void:
+	_table_presentation_refresh_port = refresh_port
+	_public_log_producer_port = log_port
+	_presentation_world_clock = clock
 
 
 func reset_state() -> void:
@@ -966,6 +975,79 @@ func selected_actor_snapshot(include_private: bool = true) -> Dictionary:
 
 func active_wagers_snapshot() -> Array:
 	return active_monster_wagers.duplicate(true)
+
+
+func monster_wager_presentation_for_viewer(viewer_index: int) -> Dictionary:
+	if viewer_index < 0 or viewer_index >= players.size():
+		return {}
+	var entry := _latest_active_monster_wager()
+	if entry.is_empty():
+		return {}
+	var wager_id := int(entry.get("wager_id", -1))
+	if wager_id < 0:
+		return {}
+	var decision := _monster_wager_player_decision(entry, viewer_index)
+	var base_percent := _monster_wager_base_percent(entry)
+	var actions: Array = []
+	var matchup: Array = []
+	var damage: Array = []
+	for competitor_variant in _monster_wager_competitors(entry):
+		if not (competitor_variant is Dictionary):
+			continue
+		var competitor := competitor_variant as Dictionary
+		var side := str(competitor.get("side", "")).strip_edges()
+		if side.is_empty():
+			continue
+		var label := _monster_wager_side_label(entry, side)
+		matchup.append({"side": side, "name": label})
+		damage.append({"side": side, "name": label, "damage": _monster_wager_damage_for_side(entry, side)})
+		for percent_variant in _monster_wager_percent_options(entry):
+			var percent := int(percent_variant)
+			actions.append({
+				"id": "monster_wager:%d:%s:%d" % [wager_id, side, percent],
+				"side": side,
+				"label": label,
+				"stake_percent": percent,
+				"stake": _monster_wager_amount_for_percent(viewer_index, percent),
+				"disabled": not decision.is_empty(),
+			})
+	var viewer_bet := _monster_wager_player_bet(entry, viewer_index)
+	var public_bets: Array = []
+	for bet_variant in entry.get("public_bets", []):
+		if not (bet_variant is Dictionary):
+			continue
+		var bet := bet_variant as Dictionary
+		public_bets.append({
+			"player_index": int(bet.get("player_index", -1)),
+			"side": str(bet.get("side", "")),
+			"stake": maxi(0, int(bet.get("stake", 0))),
+			"stake_percent": maxi(0, _monster_wager_bet_percent(bet)),
+			"forced": bool(bet.get("forced", false)),
+		})
+	return {
+		"schema_version": 1,
+		"visibility_scope": "viewer_private",
+		"viewer_index": viewer_index,
+		"active": true,
+		"wager_id": wager_id,
+		"base_percent": base_percent,
+		"remaining_seconds": maxf(0.0, float(entry.get("remaining_seconds", 0.0))),
+		"seconds_total": maxf(0.0, float(entry.get("seconds_total", 0.0))),
+		"context": str(entry.get("context", "怪兽遭遇")),
+		"matchup": matchup,
+		"damage": damage,
+		"pool": _monster_wager_total_stake(entry),
+		"decision_count": _monster_wager_decision_count(entry),
+		"seat_count": players.size(),
+		"viewer_decision": {
+			"decided": not decision.is_empty(),
+			"side": decision,
+			"stake": maxi(0, int(viewer_bet.get("stake", 0))),
+			"stake_percent": maxi(0, _monster_wager_bet_percent(viewer_bet)),
+		},
+		"actions": actions,
+		"public_bets": public_bets,
+	}
 
 
 func resolved_wagers_snapshot() -> Array:
@@ -3327,7 +3409,7 @@ func _upgrade_field_monster_from_card(player_index: int, skill: Dictionary) -> b
 		_monster_card_duration_text(upgraded_card),
 		_limited_name_list(granted, 4, "无"),
 	])
-	_refresh_ui()
+	request_table_presentation_refresh()
 	return true
 
 func _summon_monster_from_card(_player: Dictionary, skill: Dictionary) -> bool:
@@ -3398,7 +3480,7 @@ func _summon_monster_from_card(_player: Dictionary, skill: Dictionary) -> bool:
 	])
 	if selected_player >= 0 and selected_player < players.size():
 		_complete_scenario_signal("monster_summoned", "首召怪兽：%s降落在%s。" % [String(actor.get("name", "怪兽")), String(districts[selected_district].get("name", "区域"))], "after_summon", "scenario_coach")
-	_refresh_ui()
+	request_table_presentation_refresh()
 	return true
 
 func _player_monster_control_limit(player_index: int) -> int:
@@ -3678,7 +3760,7 @@ func _auto_monster_movement_tick() -> void:
 	if acted <= 0:
 		_log("当前没有可行动怪兽；城市经营继续，等待怪兽复活、到期离场或后续召唤。")
 		return
-	_refresh_ui()
+	request_table_presentation_refresh()
 
 func _next_active_auto_monster_slot() -> int:
 	if auto_monsters.is_empty():
@@ -3700,7 +3782,7 @@ func _auto_special_monster_tick() -> void:
 		_log("当前没有可执行特殊行动的怪兽；计时器等待下一只活跃怪兽。")
 		return
 	_auto_special_monster_tick_for_slot(slot)
-	_refresh_ui()
+	request_table_presentation_refresh()
 
 func _auto_special_monster_tick_for_slot(slot: int) -> void:
 	var actor: Dictionary = auto_monsters[slot]
@@ -3970,7 +4052,7 @@ func _update_auto_monster_linear_movement(delta: float) -> void:
 		else:
 			auto_monsters[slot] = actor
 	if any_changed:
-		_refresh_ui()
+		request_table_presentation_refresh()
 
 func _place_auto_miasma(_actor: Dictionary, center_index: int, max_tokens: int, source: String) -> void:
 	if max_tokens <= 0:
@@ -4479,7 +4561,7 @@ func _open_monster_wager_for_pair(slot_a: int, slot_b: int, context: String = "�
 	)
 	_ai_runtime_call("_auto_ai_monster_wagers_for_entry", [monster_wager_sequence])
 	_try_finish_monster_wager_if_ready(monster_wager_sequence)
-	_refresh_ui()
+	request_table_presentation_refresh()
 	return monster_wager_sequence
 
 
@@ -4609,7 +4691,7 @@ func _place_monster_wager(wager_id: int, side: String, stake: int = 0, player_in
 		_monster_wager_side_label(entry, side),
 	])
 	_try_finish_monster_wager_if_ready(wager_id)
-	_refresh_ui()
+	request_table_presentation_refresh()
 	return true
 
 func _monster_wager_actor_expected_damage_score(actor: Dictionary) -> int:
@@ -4798,7 +4880,7 @@ func _settle_monster_wager_at_index(index: int, reason: String) -> bool:
 		Color("#fde68a"),
 		anchor_position
 	)
-	_refresh_ui()
+	request_table_presentation_refresh()
 	return true
 
 func _auto_monster_use_action_on_other(slot: int, target_slot: int, action: Dictionary, context: String, allow_wager: bool = true) -> bool:
@@ -5330,7 +5412,16 @@ func _limited_name_list(names: Array, limit: int = 6, empty_text: String = "无"
 	return _world_call(&"_limited_name_list", [names, limit, empty_text])
 
 func _log(message: String) -> void:
-	_world_call(&"_log", [message])
+	publish_public_log_message(message)
+
+
+func publish_public_log_message(message: String) -> void:
+	if _public_log_producer_port != null and not message.is_empty():
+		_public_log_producer_port.publish(
+			&"monster_public_update", &"public.monster.updated",
+			{"action_kind": "monster", "public_status": "updated"},
+			_presentation_source_revision(), _presentation_world_time()
+		)
 
 func _make_skill(skill_name: String) -> Dictionary:
 	return _world_call(&"_make_skill", [skill_name])
@@ -5402,8 +5493,15 @@ func _refresh_product_market_prices() -> void:
 	if _product_market_runtime_controller != null:
 		_product_market_runtime_controller.refresh_prices()
 
-func _refresh_ui() -> void:
-	_world_call(&"_refresh_ui", [])
+func request_table_presentation_refresh() -> void:
+	if _table_presentation_refresh_port != null:
+		_table_presentation_refresh_port.request_immediate(&"full", &"monster_state_changed")
+
+func _presentation_source_revision() -> int:
+	return _presentation_world_clock.world_effective_micros() if _presentation_world_clock != null else 0
+
+func _presentation_world_time() -> float:
+	return _presentation_world_clock.world_effective_seconds() if _presentation_world_clock != null else 0.0
 
 func _ruleset_timing_seconds(rule_id: StringName) -> float:
 	return _world_call(&"_ruleset_timing_seconds", [rule_id])
@@ -5701,7 +5799,7 @@ func _apply_monster_takeover(skill: Dictionary, target_slot: int, player_index: 
 		("未知" if old_owner < 0 else "已被覆盖"),
 		_limited_name_list(granted, 4, "无"),
 	])
-	_refresh_ui()
+	request_table_presentation_refresh()
 	return true
 
 func _command_auto_monster_attack(slot: int, skill: Dictionary) -> bool:

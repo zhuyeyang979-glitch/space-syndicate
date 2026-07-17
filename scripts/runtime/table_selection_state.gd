@@ -9,6 +9,8 @@ var _inspected_player := 0
 var _selected_district := 0
 var _selected_trade_product := ""
 var _selected_card_resolution_id := -1
+var _selected_hand_slot := -1
+var _selected_map_layer_focus := "all"
 var _revision := 0
 
 var selected_player: int:
@@ -41,6 +43,18 @@ var selected_card_resolution_id: int:
 	set(value):
 		_set_value(&"selected_card_resolution_id", value)
 
+var selected_hand_slot: int:
+	get:
+		return _selected_hand_slot
+	set(value):
+		_set_value(&"selected_hand_slot", value)
+
+var selected_map_layer_focus: String:
+	get:
+		return _selected_map_layer_focus
+	set(value):
+		_set_value(&"selected_map_layer_focus", value)
+
 
 func reset() -> Dictionary:
 	return restore({
@@ -49,6 +63,8 @@ func reset() -> Dictionary:
 		"selected_district": 0,
 		"selected_trade_product": "",
 		"selected_card_resolution_id": -1,
+		"selected_hand_slot": -1,
+		"selected_map_layer_focus": "all",
 	})
 
 
@@ -67,16 +83,22 @@ func restore(data: Dictionary) -> Dictionary:
 	var next_district := int(data.get("selected_district", _selected_district))
 	var next_product := str(data.get("selected_trade_product", _selected_trade_product))
 	var next_resolution_id := int(data.get("selected_card_resolution_id", _selected_card_resolution_id))
+	var next_hand_slot := int(data.get("selected_hand_slot", _selected_hand_slot))
+	var next_map_layer_focus := _normalize_map_layer_focus(str(data.get("selected_map_layer_focus", _selected_map_layer_focus)))
 	var changed := next_player != _selected_player \
 		or next_inspected != _inspected_player \
 		or next_district != _selected_district \
 		or next_product != _selected_trade_product \
-		or next_resolution_id != _selected_card_resolution_id
+		or next_resolution_id != _selected_card_resolution_id \
+		or next_hand_slot != _selected_hand_slot \
+		or next_map_layer_focus != _selected_map_layer_focus
 	_selected_player = next_player
 	_inspected_player = next_inspected
 	_selected_district = next_district
 	_selected_trade_product = next_product
 	_selected_card_resolution_id = next_resolution_id
+	_selected_hand_slot = next_hand_slot
+	_selected_map_layer_focus = next_map_layer_focus
 	if changed:
 		_revision += 1
 		selection_changed.emit(snapshot())
@@ -91,6 +113,8 @@ func snapshot() -> Dictionary:
 		"selected_district": _selected_district,
 		"selected_trade_product": _selected_trade_product,
 		"selected_card_resolution_id": _selected_card_resolution_id,
+		"selected_hand_slot": _selected_hand_slot,
+		"selected_map_layer_focus": _selected_map_layer_focus,
 		"revision": _revision,
 	}
 
@@ -110,6 +134,8 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	_selected_district = int(data.get("selected_district", 0))
 	_selected_trade_product = str(data.get("selected_trade_product", ""))
 	_selected_card_resolution_id = int(data.get("selected_card_resolution_id", -1))
+	_selected_hand_slot = int(data.get("selected_hand_slot", -1))
+	_selected_map_layer_focus = _normalize_map_layer_focus(str(data.get("selected_map_layer_focus", "all")))
 	_revision = maxi(0, int(data.get("revision", 0)))
 	var restored := snapshot()
 	selection_changed.emit(restored)
@@ -150,6 +176,19 @@ func _set_value(property_name: StringName, value: Variant) -> void:
 			var normalized_resolution_id := int(value)
 			changed = normalized_resolution_id != _selected_card_resolution_id
 			_selected_card_resolution_id = normalized_resolution_id
+		&"selected_hand_slot":
+			var normalized_hand_slot := int(value)
+			changed = normalized_hand_slot != _selected_hand_slot
+			_selected_hand_slot = normalized_hand_slot
+		&"selected_map_layer_focus":
+			var normalized_map_layer_focus := _normalize_map_layer_focus(str(value))
+			changed = normalized_map_layer_focus != _selected_map_layer_focus
+			_selected_map_layer_focus = normalized_map_layer_focus
 	if changed:
 		_revision += 1
 		selection_changed.emit(snapshot())
+
+
+func _normalize_map_layer_focus(value: String) -> String:
+	var normalized := value.strip_edges().to_lower()
+	return normalized if normalized in ["all", "economy", "route", "monster", "military", "weather", "intel"] else "all"

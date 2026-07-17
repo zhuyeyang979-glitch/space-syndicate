@@ -3,6 +3,33 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-17。
 
+## 2026-07-17｜牌桌展示 Source/Target 场景化切换
+
+- `TablePresentationRefreshScheduler` 继续只负责刷新节奏；新增场景化
+  `TablePresentationSourceOwner` 和 `TablePresentationRefreshPort`，按 live、
+  full、map、developer 范围构建最小快照并精确一次应用到 typed target。
+- `Main` 已物理删除四个旧 `_refresh_*` 方法及其牌桌、地图、当前玩家、牌轨、
+  开发者快照构建链；`Main._process` 只调用 Coordinator 的高层展示推进 API，
+  不再读取 receipt、构建 snapshot、选择 target、写公开日志或处理胜利展示。
+- Victory 变化通过 visibility-safe typed receipt 进入公开日志和即时刷新；旧自由文本
+  公共日志入口已删除。私人反馈仅进入获授权 viewer 的 full snapshot，不进入 public/live。
+- Main 从 14,116/12,280 行、856 方法降为 13,243/11,490 行、822 方法；
+  architecture budget 通过，外部 caller 与 preload 均未增加。
+
+### 本轮验证
+
+- Query ports/封闭玩家日志文案 65/65、Source/Target 20/20、生产 ViewModel/恶意隐私注入/桌态本地化/Contract callback-negative parity 106/106、scheduler trace 8/8、Godot MCP
+  Bench 45/45；306 个脚本扫描 0 错，Main architecture 58 checks，composition、
+  UI text、visual snapshot、smoke `--check-only` 通过。
+- `WorldSessionState` 现唯一拥有星球宽高与 revision，几何配置、公开投影及
+  save/load roundtrip 聚焦门 11/11；Main 两个重复字段和旧 scheduler-only 即时请求已删除。
+- 隐私复审为 0 violation；重复 refresh 为 0，stale receipt 明确拒绝。
+- 完整 layout 仍被历史战役/owner/经济/怪兽断言阻塞；完整 smoke 的首个业务失败
+  是旧 AI 军事命令 fixture，首个 missing access 是 `_capture_run_state`，随后卡在既有
+  `_auto_monster_color` typed-world-port 债务。本轮没有恢复 Main 兼容线路。
+- 第三轮 RuntimeLoop preflight 为 GREEN；下一原子边界是
+  `AUTHORITATIVE_RUNTIME_LOOP_CUTOVER`，当前没有创建 RuntimeLoop 或第二帧路径。
+
 ## 2026-07-17｜卡牌执行类型化端口前置切换
 
 - `GameRuntimeCoordinator` 现组合唯一的真人/AI 共用提交入口，以及条件/目标复核、效果路由、反制结算、承诺结算、情报、历史与公开展示的窄场景 owner；历史提供内部、公开和当前查看者三种投影。

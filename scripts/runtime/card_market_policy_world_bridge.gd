@@ -55,7 +55,7 @@ func capture_market_facts(source_district_index: int) -> Dictionary:
 	return {
 		"source_district_index": source_district_index,
 		"source_center_x": center.x,
-		"world_width": float(_world.get("map_width_m")),
+		"world_width": _world_session_state.map_width_m,
 		"source_destroyed": bool(district.get("destroyed", false)),
 		"direct_neighbors": (district.get("neighbors", []) as Array).duplicate() if district.get("neighbors", []) is Array else [],
 		"monsters": monsters,

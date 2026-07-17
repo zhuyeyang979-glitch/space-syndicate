@@ -65,8 +65,14 @@ var _last_runtime_player_feedback: Dictionary = {}
 var _last_track_action_bridge_id := ""
 var _last_track_action_bridge_frame := -1
 var _last_visual_event_key := ""
+var _presentation_target_revision := 0
+var _live_presentation_target_count := 0
+var _full_presentation_target_count := 0
+var _presentation_authorized_viewer_index := -1
+var _presentation_authorization_revision := 0
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
+	_bind_presentation_map_targets()
 	_configure_pointer_passthrough_hosts()
 	_configure_track_focus_ribbon()
 	_configure_hand_hover_preview()
@@ -160,6 +166,59 @@ func apply_state(data: Dictionary) -> void:
 		ui_data.get("active_forced_decision", {})
 	)
 	call_deferred("_sync_runtime_table_focus_order")
+
+
+func apply_live_presentation(snapshot: TableLivePresentationSnapshot) -> int:
+	if snapshot == null or not snapshot.is_valid() or not _presentation_authorization_matches(snapshot.viewer_index, snapshot.authorization_revision):
+		return _presentation_target_revision
+	apply_state(snapshot.to_dictionary())
+	_presentation_target_revision += 1
+	_live_presentation_target_count += 1
+	return _presentation_target_revision
+
+
+func apply_full_presentation(snapshot: TableFullPresentationSnapshot) -> int:
+	if snapshot == null or not snapshot.is_valid() or not _presentation_authorization_matches(snapshot.viewer_index, snapshot.authorization_revision):
+		return _presentation_target_revision
+	apply_state(snapshot.to_dictionary())
+	_presentation_target_revision += 1
+	_full_presentation_target_count += 1
+	return _presentation_target_revision
+
+
+func presentation_planet_target() -> SpaceSyndicatePlanetBoard:
+	var target := planet_board as SpaceSyndicatePlanetBoard
+	if target != null:
+		_bind_presentation_map_targets()
+	return target
+
+
+func _bind_presentation_map_targets() -> void:
+	var target := planet_board as SpaceSyndicatePlanetBoard
+	var overlays := overlay_layer as SpaceSyndicateOverlayLayer
+	if target != null and overlays != null:
+		target.bind_fullscreen_map_target(overlays.presentation_fullscreen_planet_target())
+
+
+func bind_presentation_viewer(viewer_index: int, authorization_revision: int) -> void:
+	_presentation_authorized_viewer_index = viewer_index
+	_presentation_authorization_revision = authorization_revision
+	if planet_board is SpaceSyndicatePlanetBoard:
+		(planet_board as SpaceSyndicatePlanetBoard).bind_presentation_viewer(viewer_index, authorization_revision)
+
+
+func _presentation_authorization_matches(viewer_index: int, authorization_revision: int) -> bool:
+	return viewer_index >= 0 and viewer_index == _presentation_authorized_viewer_index \
+		and authorization_revision > 0 and authorization_revision == _presentation_authorization_revision
+
+
+func presentation_target_debug_snapshot() -> Dictionary:
+	return {
+		"target_revision": _presentation_target_revision,
+		"live_target_count": _live_presentation_target_count,
+		"full_target_count": _full_presentation_target_count,
+		"owns_gameplay_state": false,
+	}
 
 
 func _set_overlay_anchor_rect(control: Control, left: float, top: float, right: float, bottom: float) -> void:

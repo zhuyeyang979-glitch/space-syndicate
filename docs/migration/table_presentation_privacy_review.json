@@ -1,7 +1,12 @@
 {
   "schema_version": "table-presentation-privacy-review.v1",
-  "review_status": "pre_implementation_blockers_identified",
-  "cutover_status_allowed": false,
+  "review_status": "final_source_target_cutover_green",
+  "reviewed_query_ports_commit": "5b5b11e",
+  "reviewed_source_target_state": "uncommitted_worktree_after_5b5b11e",
+  "decision": "GO_PRIVACY_VIOLATION_COUNT_ZERO",
+  "privacy_violation_count": 0,
+  "privacy_violation_count_is_conservative": false,
+  "cutover_status_allowed": true,
   "scope": [
     "table_live",
     "table_full",
@@ -15,37 +20,91 @@
     "viewer_private",
     "developer_only"
   ],
-  "blocking_findings": [
+  "blocking_findings": [],
+  "closed_final_findings": [
     {
-      "id": "mutable_world_state_source",
-      "severity": "blocker",
-      "evidence": "WorldSessionState exposes complete mutable players/districts; no broad presentation owner may bind them.",
-      "required_fix": "Provide typed read-only public and viewer-private projections before TablePresentationSourceOwner composition."
+      "id": "LOG-01",
+      "status": "closed",
+      "evidence": "All 99 former Main legacy log calls use authorized viewer-private feedback; PublicLog has no legacy free-text producer/import and sixteen sensitive fixtures add zero public entries."
     },
     {
-      "id": "main_private_authorization",
-      "severity": "blocker",
-      "evidence": "Main._can_view_player_private_hand authorizes any non-AI seat and Main._runtime_snapshot_player_index uses selection/inspection fallbacks.",
-      "required_fix": "Require explicit locally-authorized viewer_player_index == subject_player_index and bind the target to that viewer."
+      "id": "DEVELOPER-RELEASE-01",
+      "status": "closed",
+      "evidence": "Developer target requires enabled plus OS.is_debug_build plus explicit developer-presentation environment opt-in; release composition binds no diagnostics."
     },
     {
-      "id": "mixed_public_private_log",
-      "severity": "blocker",
-      "evidence": "Main._runtime_public_log_snapshot reads one log_lines buffer that also receives private guess, intel, discard and purchase feedback.",
-      "required_fix": "Use typed public-log receipts and a separate viewer-private feedback target; do not sanitize the mixed buffer into public state."
+      "id": "VIEWER-TARGET-01",
+      "status": "closed",
+      "evidence": "Live/full/map snapshots carry viewer and authorization revision; refresh port, GameScreen and PlanetBoard reject mismatches before UI mutation."
     },
     {
-      "id": "raw_card_track_entry",
-      "severity": "blocker",
-      "evidence": "Main._runtime_enriched_card_track_entry duplicates the raw queue entry, including true player_index, before late UI redaction.",
-      "required_fix": "Construct a strict public track allowlist from an authoritative viewer/public projection before the source boundary."
-    },
-    {
-      "id": "developer_release_gate",
-      "severity": "high",
-      "evidence": "The current developer panel can be enabled by environment variable alone.",
-      "required_fix": "Require an explicit debug/developer build capability plus opt-in; keep the target absent/disabled in release composition."
+      "id": "CARD-VISUAL-01",
+      "status": "closed",
+      "evidence": "Card-resolution public events derive a closed localization key from event kind/status, discard arbitrary summary/aftermath text, and retain owner/target labels only behind their explicit reveal flags; malicious sentinel parity is green."
     }
+  ],
+  "original_blocker_status": {
+    "PURE-DATA-01": "closed",
+    "VIEWER-01": "closed",
+    "VICTORY-01": "closed_for_authoritative_production_path",
+    "LOG-01": "closed",
+    "LOG-02": "closed"
+  },
+  "resolved_by_query_ports": [
+    "scene_owned_single_query_facade",
+    "explicit_single_local_viewer_authorization",
+    "viewer_equals_subject_for_world_private_projection",
+    "public_private_world_projection_separation",
+    "public_map_owner_truth_redaction",
+    "public_card_track_uses_public_owner_projection",
+    "typed_public_log_owner_and_receipt_type"
+  ],
+  "sole_legal_source_dependencies": [
+    "TablePresentationQueryPorts.public_world_projection -> WorldSessionPublicProjection",
+    "TablePresentationQueryPorts.private_world_projection -> authorized WorldSessionPrivateProjection",
+    "TablePresentationQueryPorts.action_projection -> authorized TableActionPresentationProjection",
+    "TablePresentationQueryPorts.public_card_track_snapshot -> public typed projection",
+    "TablePresentationQueryPorts.public_map_projection -> viewer-isolated TablePublicMapProjection",
+    "TablePresentationQueryPorts.recent_public_log_entries -> hardened PublicLogReceipt rows",
+    "TablePresentationQueryPorts victory_presentation_receipt_ready -> strict VictoryPresentationStateChangeReceipt"
+  ],
+  "forbidden_source_dependencies": [
+    "WorldSessionState",
+    "Main",
+    "current_scene",
+    "/root/Main",
+    "raw mutable player arrays",
+    "raw mutable district arrays",
+    "domain controller debug_snapshot",
+    "TablePresentationQueryPorts.debug_snapshot",
+    "import_legacy_public_log",
+    "raw roster snapshots",
+    "raw commodity flow snapshots",
+    "UI nodes"
+  ],
+  "historical_private_legacy_log_call_sites_now_viewer_private": [
+    2342,
+    2347,
+    2352,
+    2381,
+    8747,
+    8755,
+    8792,
+    8813,
+    8880,
+    8925,
+    8965,
+    10088,
+    10100,
+    10130,
+    10171,
+    12435
+  ],
+  "residual_non_blocking_privacy_debt": [
+    "victory_public_map_facts_key_city_requires_a_nested_allowlist_before_future_nonempty_use",
+    "public_log_tombstone_save_owner_composition_is_outside_this_cutover_and_should_remain_explicit",
+    "viewer_private_feedback_is_current_viewer_only_and_should_gain_subject_typed_receipts_when_multi_human_hotseat_is_designed",
+    "developer_panel_shell_can_still_be_instantiated_by_the_old_env_gate_but_release_cannot_bind_or_apply_diagnostics"
   ],
   "viewer_private_binding": {
     "required_fields": [
@@ -292,6 +351,20 @@
     "cache_is_not_saved": true,
     "cache_is_not_gameplay_authority": true
   },
+  "final_evidence": {
+    "query_ports_focused": "PASS 65/65",
+    "source_target_static": "PASS 20/20",
+    "viewmodel_privacy_parity": "PASS 106/106",
+    "godot_mcp_bench": "PASS 45/45",
+    "script_scan": "PASS 306 scripts / 0 errors",
+    "sensitive_private_feedback_samples": 16,
+    "sensitive_samples_added_to_public_log": 0,
+    "main_legacy_public_log_calls": 0,
+    "public_log_legacy_free_text_api": 0,
+    "developer_release_diagnostics_bindings": 0,
+    "viewer_target_mismatch_applications": 0,
+    "card_visual_private_sentinel_leaks": 0
+  },
   "required_privacy_tests": [
     "public_live_rejects_rival_cash",
     "public_live_rejects_rival_hand",
@@ -320,7 +393,23 @@
     "snapshot_contains_no_runtime_objects",
     "snapshot_is_detached_from_source",
     "public_track_redacted_before_ui",
-    "no_main_or_service_locator_dependency"
+    "no_main_or_service_locator_dependency",
+    "query_ports_reject_node_object_resource_callable_rid_recursively",
+    "unauthorized_action_projection_is_denied_and_empty",
+    "action_projection_authorization_revision_invalidates_cache",
+    "viewer_subject_target_equality_enforced",
+    "map_guess_cache_isolated_per_viewer",
+    "victory_receipt_rejects_direct_and_nested_private_key_families",
+    "victory_exact_cash_requires_public_audit_and_revealed_roster",
+    "public_log_rejects_private_sentinel_embedded_in_message",
+    "private_feedback_has_zero_public_log_appends",
+    "production_has_zero_legacy_public_log_import_calls",
+    "public_log_duplicate_rejected_after_visible_window_eviction",
+    "public_log_exact_once_lineage_survives_save_restore",
+    "developer_snapshot_not_built_without_debug_capability",
+    "developer_payload_hash_absent_from_live_full_map_and_log",
+    "source_owner_consumes_only_table_presentation_query_ports",
+    "refresh_port_consumes_no_raw_world_or_controller_snapshot"
   ],
   "green_requirements": [
     "no_source_access_to_complete_mutable_player_or_district_state",
@@ -333,6 +422,11 @@
     "victory_cash_uses_authoritative_audit_allowlist_only",
     "obscured_commodity_is_color_only",
     "all_outputs_are_detached_presentation_data",
-    "privacy_violation_count_is_zero"
+    "privacy_violation_count_is_zero",
+    "PURE-DATA-01_closed",
+    "VIEWER-01_closed",
+    "VICTORY-01_closed",
+    "LOG-01_closed",
+    "LOG-02_closed"
   ]
 }
