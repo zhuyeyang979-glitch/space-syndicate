@@ -2,42 +2,73 @@
 extends Node
 class_name PlayerSeatPublicSourceService
 
-var _world: Node
+const PLAYER_COLORS: Array[Color] = [
+	Color("#38bdf8"),
+	Color("#f472b6"),
+	Color("#facc15"),
+	Color("#4ade80"),
+	Color("#c084fc"),
+	Color("#fb7185"),
+	Color("#2dd4bf"),
+	Color("#fb923c"),
+]
+
+var _cached_signature := ""
+var _cached_sources: Array = []
+var _last_public_revision := -1
+var _compose_count := 0
+var _rebuild_count := 0
 
 
-func bind_world(world: Node) -> void:
-	_world = world
+func compose_sources(public_world: WorldSessionPublicProjection, local_player_index: int) -> Array:
+	_compose_count += 1
+	var players := public_world.players if public_world != null else []
+	var public_revision := public_world.revision if public_world != null else 0
+	var signature := _source_signature(players, local_player_index)
+	_last_public_revision = public_revision
+	if signature == _cached_signature:
+		return _cached_sources.duplicate(true)
+	_cached_signature = signature
+	_cached_sources = _compose_uncached(players, local_player_index)
+	_rebuild_count += 1
+	return _cached_sources.duplicate(true)
 
 
-func compose_sources() -> Array:
-	if _world == null or not is_instance_valid(_world):
+func _compose_uncached(players: Array, local_player_index: int) -> Array:
+	if players.size() < 3 or players.size() > 8 or local_player_index < 0:
 		return []
-	var players_variant: Variant = _world.get("players")
-	var seat_count := (players_variant as Array).size() if players_variant is Array else 0
-	if seat_count < 3 or seat_count > 8:
-		return []
-	var local_player_index := int(_safe_world_call(&"_local_human_player_index", [], 0))
 	var result: Array = []
-	for player_index in range(seat_count):
-		var role_variant: Variant = _safe_world_call(&"_player_role_card_for_index", [player_index], {})
-		var role: Dictionary = role_variant if role_variant is Dictionary else {}
+	var seen := {}
+	var has_local_player := false
+	for source_index in range(players.size()):
+		var player: Dictionary = players[source_index] if players[source_index] is Dictionary else {}
+		var player_index := int(player.get("player_index", source_index))
+		if player_index < 0 or seen.has(player_index):
+			return []
+		seen[player_index] = true
+		has_local_player = has_local_player or player_index == local_player_index
 		result.append({
 			"player_index": player_index,
-			"public_player_name": str(_safe_world_call(&"_player_name", [player_index], "玩家%d" % (player_index + 1))),
-			"role_name": str(role.get("name", "外星辛迪加")),
-			"player_color": _safe_world_call(&"_player_color", [player_index], Color.WHITE),
+			"public_player_name": str(player.get("public_player_name", "玩家%d" % (player_index + 1))),
+			"role_name": str(player.get("role_name", "外星辛迪加")),
+			"player_color": PLAYER_COLORS[wrapi(player_index, 0, PLAYER_COLORS.size())],
 			"is_local_player": player_index == local_player_index,
-			"public_status": &"eliminated" if bool(_safe_world_call(&"_player_is_eliminated", [player_index], false)) else &"ready",
+			"public_status": _public_status(player),
 			"is_publicly_active": false,
 			"public_activity_is_anonymous": true,
 		})
-	return result
+	return result if has_local_player else []
 
 
 func debug_snapshot() -> Dictionary:
 	return {
-		"service_ready": _world != null and is_instance_valid(_world),
-		"reads_public_accessors_only": true,
+		"service_ready": true,
+		"uses_public_world_projection": true,
+		"last_public_revision": _last_public_revision,
+		"compose_count": _compose_count,
+		"rebuild_count": _rebuild_count,
+		"cached_seat_count": _cached_sources.size(),
+		"references_main": false,
 		"reads_private_cash": false,
 		"reads_private_hand": false,
 		"reads_hidden_owner": false,
@@ -45,7 +76,22 @@ func debug_snapshot() -> Dictionary:
 	}
 
 
-func _safe_world_call(method: StringName, args: Array, fallback: Variant) -> Variant:
-	if _world == null or not _world.has_method(method):
-		return fallback
-	return _world.callv(method, args)
+func _source_signature(players: Array, local_player_index: int) -> String:
+	var rows: Array = []
+	for source_index in range(players.size()):
+		var player: Dictionary = players[source_index] if players[source_index] is Dictionary else {}
+		rows.append({
+			"player_index": int(player.get("player_index", source_index)),
+			"public_player_name": str(player.get("public_player_name", "")),
+			"role_name": str(player.get("role_name", "")),
+			"public_status": str(player.get("public_status", "")),
+			"eliminated": bool(player.get("eliminated", false)),
+		})
+	return JSON.stringify({"local_player_index": local_player_index, "players": rows})
+
+
+func _public_status(player: Dictionary) -> StringName:
+	if bool(player.get("eliminated", false)):
+		return &"eliminated"
+	var status := StringName(str(player.get("public_status", "ready")))
+	return status if status in [&"ready", &"waiting", &"disconnected", &"eliminated"] else &"ready"
