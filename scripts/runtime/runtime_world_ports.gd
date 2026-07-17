@@ -1,13 +1,20 @@
 extends Node
 class_name RuntimeWorldPorts
 
-@onready var lifecycle: RuntimeLifecyclePort = $RuntimeLifecyclePort
-@onready var card: RuntimeCardPort = $RuntimeCardPort
-@onready var economy: RuntimeEconomyPort = $RuntimeEconomyPort
-@onready var actors: RuntimeActorPort = $RuntimeActorPort
-@onready var monster: RuntimeMonsterPort = $RuntimeMonsterPort
-@onready var presentation: RuntimePresentationPort = $RuntimePresentationPort
-@onready var victory: RuntimeVictoryPort = $RuntimeVictoryPort
+var lifecycle: RuntimeLifecyclePort:
+	get: return get_node_or_null("RuntimeLifecyclePort") as RuntimeLifecyclePort
+var card: RuntimeCardPort:
+	get: return get_node_or_null("RuntimeCardPort") as RuntimeCardPort
+var economy: RuntimeEconomyPort:
+	get: return get_node_or_null("RuntimeEconomyPort") as RuntimeEconomyPort
+var actors: RuntimeActorPort:
+	get: return get_node_or_null("RuntimeActorPort") as RuntimeActorPort
+var monster: RuntimeMonsterPort:
+	get: return get_node_or_null("RuntimeMonsterPort") as RuntimeMonsterPort
+var presentation: RuntimePresentationPort:
+	get: return get_node_or_null("RuntimePresentationPort") as RuntimePresentationPort
+var victory: RuntimeVictoryPort:
+	get: return get_node_or_null("RuntimeVictoryPort") as RuntimeVictoryPort
 
 
 func is_ready() -> bool:

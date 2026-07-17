@@ -69,7 +69,7 @@ func _run() -> void:
 	var encoded := JSON.stringify(privacy_descriptors)
 	_expect(not encoded.contains("true_owner") and not encoded.contains("hidden_owner") and not encoded.contains("cash") and not encoded.contains("hand") and not encoded.contains("ai_plan"), "seat descriptors strip private and hidden fields")
 	_expect(not bool(_seat(privacy_descriptors, 1).get("is_publicly_active", true)), "anonymous card activity cannot reveal the true actor through seat highlight")
-	_expect(not ResourceLoader.exists("res://scenes/ui/player_seat/PlayerSeatPortraitSkin.tscn"), "host test branch does not require the future Skin resource")
+	_expect(ResourceLoader.exists("res://scenes/ui/player_seat/PlayerSeatPortraitSkin.tscn"), "merged production includes the reusable player seat Skin resource")
 	screen.call("apply_state", {
 		"planet": {"public_player_seat_sources": privacy_sources},
 		"player_board": {"identity": "本地玩家", "hand_cards": []},
@@ -80,7 +80,7 @@ func _run() -> void:
 	for seat_variant in (host.call("layout_debug_snapshot") as Dictionary).get("seats", []):
 		if seat_variant is Dictionary and not bool((seat_variant as Dictionary).get("using_skin", true)):
 			fallback_count += 1
-	_expect(fallback_count == 3, "missing Skin keeps one independent fallback visual per active seat")
+	_expect(fallback_count == 3, "unmatched portrait roles keep one independent fallback visual per active seat")
 	var fallback_snapshot: Dictionary = host.call("layout_debug_snapshot")
 	_expect(_visible_decoration_count(fallback_snapshot) == 3, "missing Skin keeps fallback decoration visible per active seat, not globally")
 	host.set("skin_scene_path", "res://tests/fixtures/player_seat_host/FakeMissingPortraitPlayerSeatSkin.tscn")
@@ -115,9 +115,8 @@ func _run() -> void:
 	_expect(public_sources.size() == 4 and bool((public_sources[2] as Dictionary).get("is_local_player", false)), "formal public source service reads authoritative public player accessors")
 	var source_text := JSON.stringify(public_sources)
 	_expect(not source_text.contains("private_plan") and not source_text.contains("cash") and not source_text.contains("hand"), "formal public source service does not forward private player state")
-	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	_expect(not main_source.contains("func _runtime_public_player_seat_sources"), "main.gd no longer assembles player seat descriptors")
-	_expect(not main_source.contains("public_player_seat_sources"), "main.gd no longer wires the production seat source")
+	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
+	_expect(coordinator_source.contains("func public_player_seat_sources"), "Coordinator exposes the scene-owned public seat source without a Main adapter")
 	source_service.free()
 	fake_world.queue_free()
 	screen.queue_free()

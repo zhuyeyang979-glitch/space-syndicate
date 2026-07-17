@@ -1,15 +1,10 @@
 [gd_resource type="Resource" script_class="CardRuntimeFamilyResource" format=3 uid="uid://bowy2a65mal7s"]
 
-[sub_resource type="GDScript" id="GDScript_hlnsd"]
-script/source = "@tool
-extends CardRuntimeDefinitionResource
-class_name CardRuntimeRankResource
-
-# One authored rank lives as a subresource inside its family asset.
-"
+[ext_resource type="Script" uid="uid://del2iids3jj1s" path="res://scripts/cards/card_runtime_rank_resource.gd" id="1_4wp5i"]
+[ext_resource type="Script" uid="uid://i6pbkr7turjw" path="res://scripts/cards/card_runtime_family_resource.gd" id="2_8b5lk"]
 
 [sub_resource type="Resource" id="Resource_5s416"]
-script = SubResource("GDScript_hlnsd")
+script = ExtResource("1_4wp5i")
 card_id = "军需临单1"
 family_id = "军需临单"
 kind = &"city_contract_boon"
@@ -26,7 +21,7 @@ effect_parameters = {
 }
 
 [sub_resource type="Resource" id="Resource_y232l"]
-script = SubResource("GDScript_hlnsd")
+script = ExtResource("1_4wp5i")
 card_id = "军需临单2"
 family_id = "军需临单"
 rank = 2
@@ -43,188 +38,8 @@ effect_parameters = {
 "panic": 24
 }
 
-[sub_resource type="GDScript" id="GDScript_mrg06"]
-script/source = "@tool
-extends Resource
-class_name CardRuntimeFamilyResource
-
-const INTEGER_GROWTH_FIELDS := [
-	\"damage\", \"armor\", \"guard\", \"ranged_guard\", \"panic\", \"revenue_amount\", \"cash\",
-	\"draw_amount\", \"repair_routes\", \"route_damage\", \"contract_income\", \"market_demand_pressure\",
-	\"market_supply_pressure\", \"miasma_count\", \"reclaim_count\", \"product_level\", \"product_shift\",
-	\"demand_shift\", \"contract_add_products\", \"contract_add_demands\", \"contract_remove_products\",
-	\"contract_remove_demands\", \"accept_cash\", \"decline_cash_penalty\", \"decline_route_damage\",
-	\"stabilize_amount\", \"reveal_city_count\", \"trace_card_count\", \"trace_contract_count\",
-	\"card_access_extra_hops\", \"weather_zone_count\", \"hand_discard_count\", \"hand_steal_count\",
-	\"target_cash_penalty\", \"control_gdp_penalty\", \"global_barrage_damage\",
-	\"global_barrage_target_count\", \"global_barrage_route_damage\",
-]
-const SIGNED_INTEGER_GROWTH_FIELDS := [
-	\"price_delta\", \"volatility_delta\", \"production_delta\", \"transport_delta\", \"consumption_delta\",
-	\"accept_production_delta\", \"accept_transport_delta\", \"accept_consumption_delta\",
-	\"decline_production_delta\", \"decline_transport_delta\", \"decline_consumption_delta\",
-]
-const FLOAT_GROWTH_FIELDS := [
-	\"move\", \"range\", \"knockback\", \"delay\", \"lure_speedup\", \"card_access_seconds\",
-	\"contract_seconds\", \"market_contract_seconds\", \"growth_seconds\", \"route_flow_seconds\",
-	\"weather_duration_seconds\", \"hand_lock_seconds\", \"control_block_seconds\",
-]
-const MULTIPLIER_GROWTH_FIELDS := [
-	\"growth_multiplier\", \"route_flow_multiplier\", \"accept_route_flow_multiplier\",
-	\"extended_card_price_multiplier\", \"global_card_price_multiplier\",
-]
-const TURN_GROWTH_FIELDS := [\"contract_turns\", \"market_contract_turns\", \"growth_turns\", \"route_flow_turns\"]
-
-@export var family_id := \"\"
-@export var pack_id: StringName = &\"\"
-@export var authored_ranks: Array[Resource] = []
-@export var derivation_enabled := true
-@export var derivation_policy_id: StringName = &\"nearest_lower_rank_growth_35\"
-@export var public_pool_eligible := false
-@export var upgradeable_family := false
-
-
-func authored_card_ids() -> Array:
-	var result: Array = []
-	for rank_resource in authored_ranks:
-		if rank_resource != null:
-			result.append(str(rank_resource.get(\"card_id\")))
-	return result
-
-
-func exact_rank_resource(requested_rank: int) -> CardRuntimeRankResource:
-	for rank_resource in authored_ranks:
-		var authored := rank_resource as CardRuntimeRankResource
-		if authored != null and authored.rank == requested_rank:
-			return authored
-	return null
-
-
-func exact_definition(requested_rank: int) -> Dictionary:
-	var authored := exact_rank_resource(requested_rank)
-	return authored.to_dictionary() if authored != null else {}
-
-
-func definition(requested_rank: int) -> Dictionary:
-	var exact := exact_definition(requested_rank)
-	if not exact.is_empty():
-		return exact
-	return derived_definition(requested_rank)
-
-
-func derived_definition(requested_rank: int) -> Dictionary:
-	var safe_rank := clampi(requested_rank, 1, 4)
-	var base := exact_definition(1)
-	if base.is_empty() or not derivation_enabled:
-		return {}
-	var source_rank := 1
-	var source := base.duplicate(true)
-	for candidate_rank in range(safe_rank - 1, 0, -1):
-		var candidate := exact_definition(candidate_rank)
-		if candidate.is_empty():
-			continue
-		source_rank = candidate_rank
-		source = candidate
-		break
-	var steps := safe_rank - source_rank
-	if steps <= 0:
-		return source
-	var result := source.duplicate(true)
-	var source_text := str(source.get(\"text\", base.get(\"text\", \"\")))
-	result[\"text\"] = \"%s（%s：从%s继续成长；同名同级牌可主动合并升级，购买价仍按I级。）\" % [
-		source_text,
-		_level_text(safe_rank),
-		_level_text(source_rank),
-	]
-	result[\"rank\"] = safe_rank
-	result[\"derived_from_rank\"] = source_rank
-	var tags: Array = (source.get(\"tags\", base.get(\"tags\", [])) as Array).duplicate(true)
-	if not tags.has(\"升级\"):
-		tags.append(\"升级\")
-	result[\"tags\"] = tags
-	var base_cost := maxi(1, int(base.get(\"cost\", 1)))
-	var source_cost := maxi(base_cost, int(source.get(\"cost\", base_cost)))
-	result[\"cost\"] = source_cost + maxi(1, ceili(float(base_cost) * 0.35)) * steps
-	_apply_integer_growth(result, source, base, steps)
-	_apply_signed_integer_growth(result, source, base, steps)
-	_apply_float_growth(result, source, base, steps)
-	_apply_multiplier_growth(result, source, base, steps)
-	for key in TURN_GROWTH_FIELDS:
-		if source.has(key) or base.has(key):
-			result[key] = maxi(1, int(source.get(key, base.get(key, 1)))) + steps
-	return result
-
-
-func _apply_integer_growth(result: Dictionary, source: Dictionary, base: Dictionary, steps: int) -> void:
-	for key in INTEGER_GROWTH_FIELDS:
-		if not source.has(key) and not base.has(key):
-			continue
-		var current_value := int(source.get(key, base.get(key, 0)))
-		var reference_value := int(base.get(key, current_value))
-		if current_value == 0:
-			current_value = reference_value
-		if current_value == 0:
-			continue
-		var growth_anchor := maxi(abs(reference_value), abs(current_value))
-		var growth_step := maxi(1, ceili(float(growth_anchor) * 0.35))
-		result[key] = current_value + growth_step * steps
-
-
-func _apply_signed_integer_growth(result: Dictionary, source: Dictionary, base: Dictionary, steps: int) -> void:
-	for key in SIGNED_INTEGER_GROWTH_FIELDS:
-		if not source.has(key) and not base.has(key):
-			continue
-		var current_delta := int(source.get(key, base.get(key, 0)))
-		var reference_delta := int(base.get(key, current_delta))
-		if current_delta == 0:
-			current_delta = reference_delta
-		if current_delta == 0:
-			continue
-		var direction := 1 if current_delta > 0 else -1
-		var delta_anchor := maxi(abs(reference_delta), abs(current_delta))
-		var delta_step := maxi(1, ceili(float(delta_anchor) * 0.35))
-		result[key] = current_delta + direction * delta_step * steps
-
-
-func _apply_float_growth(result: Dictionary, source: Dictionary, base: Dictionary, steps: int) -> void:
-	for key in FLOAT_GROWTH_FIELDS:
-		if not source.has(key) and not base.has(key):
-			continue
-		var current_float := float(source.get(key, base.get(key, 0.0)))
-		var reference_float := float(base.get(key, current_float))
-		if is_zero_approx(current_float):
-			current_float = reference_float
-		if is_zero_approx(current_float):
-			continue
-		var direction := 1.0 if current_float > 0.0 else -1.0
-		var anchor := maxf(absf(reference_float), absf(current_float))
-		result[key] = current_float + direction * maxf(0.1, anchor * 0.35) * float(steps)
-
-
-func _apply_multiplier_growth(result: Dictionary, source: Dictionary, base: Dictionary, steps: int) -> void:
-	for key in MULTIPLIER_GROWTH_FIELDS:
-		if not source.has(key) and not base.has(key):
-			continue
-		var current_multiplier := float(source.get(key, base.get(key, 1.0)))
-		var reference_multiplier := float(base.get(key, current_multiplier))
-		var current_offset := current_multiplier - 1.0
-		var reference_offset := reference_multiplier - 1.0
-		if is_zero_approx(current_offset):
-			current_offset = reference_offset
-		if is_zero_approx(current_offset):
-			continue
-		var direction := 1.0 if current_offset > 0.0 else -1.0
-		var anchor := maxf(absf(reference_offset), absf(current_offset))
-		result[key] = 1.0 + current_offset + direction * maxf(0.01, anchor * 0.35) * float(steps)
-
-
-func _level_text(value: int) -> String:
-	const ROMAN := [\"I\", \"II\", \"III\", \"IV\"]
-	return \"%s级\" % ROMAN[clampi(value, 1, 4) - 1]
-"
-
 [resource]
-script = SubResource("GDScript_mrg06")
+script = ExtResource("2_8b5lk")
 family_id = "军需临单"
 pack_id = &"contracts"
 authored_ranks = Array[Resource]([SubResource("Resource_5s416"), SubResource("Resource_y232l")])
