@@ -435,6 +435,9 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 
 func bind_ai_world(world: Node) -> void:
 	_bound_world = world
+	var player_seat_source := _player_seat_public_source_node()
+	if player_seat_source != null and player_seat_source.has_method("bind_world"):
+		player_seat_source.call("bind_world", world)
 	var card_market_bridge := _card_market_policy_world_bridge_node()
 	if card_market_bridge != null and card_market_bridge.has_method("bind_world"):
 		card_market_bridge.call("bind_world", world)
@@ -3982,8 +3985,20 @@ func compose_game_table_source(source: Dictionary) -> Dictionary:
 	if service == null or not service.has_method("compose_table_source"):
 		push_error("GameRuntimeCoordinator requires GameTableViewModelRuntimeService.")
 		return {}
-	var value: Variant = service.call("compose_table_source", source)
+	var enriched_source := source.duplicate(true)
+	var table_source: Dictionary = enriched_source.get("table_source", {}) if enriched_source.get("table_source", {}) is Dictionary else {}
+	var planet_source: Dictionary = table_source.get("planet", {}) if table_source.get("planet", {}) is Dictionary else {}
+	planet_source["public_player_seat_sources"] = public_player_seat_sources()
+	table_source["planet"] = planet_source
+	enriched_source["table_source"] = table_source
+	var value: Variant = service.call("compose_table_source", enriched_source)
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func public_player_seat_sources() -> Array:
+	var service := _player_seat_public_source_node()
+	var value: Variant = service.call("compose_sources") if service != null and service.has_method("compose_sources") else []
+	return (value as Array).duplicate(true) if value is Array else []
 
 
 func compose_game_card_surfaces(source: Dictionary) -> Dictionary:
@@ -4521,6 +4536,10 @@ func _card_presentation_node() -> Node:
 
 func _table_viewmodel_node() -> Node:
 	return get_node_or_null("GameTableViewModelRuntimeService")
+
+
+func _player_seat_public_source_node() -> Node:
+	return get_node_or_null("PlayerSeatPublicSourceService")
 
 
 func _ai_runtime_debug_snapshot() -> Dictionary:

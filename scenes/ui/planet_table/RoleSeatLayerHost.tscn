@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/planet_table/role_seat_layer_host.gd" id="1_script"]
+
+[node name="RoleSeatLayerHost" type="Node"]
+script = ExtResource("1_script")

@@ -1,4 +1,4 @@
-[gd_scene load_steps=75 format=3]
+[gd_scene load_steps=76 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -35,6 +35,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiRuntimeWorldBridge.tscn" id="29_ai_world_bridge"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardPresentationRuntimeService.tscn" id="30_card_presentation"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/GameTableViewModelRuntimeService.tscn" id="31_table_viewmodel"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/PlayerSeatPublicSourceService.tscn" id="81_player_seat_source"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardPlayEligibilityRuntimeService.tscn" id="32_card_play_eligibility"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardPlayEligibilityWorldBridge.tscn" id="33_card_play_world_bridge"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/MonsterRuntimeController.tscn" id="34_monster_runtime"]
@@ -211,6 +212,9 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="GameTableViewModelRuntimeService" parent="." instance=ExtResource("31_table_viewmodel")]
+unique_name_in_owner = true
+
+[node name="PlayerSeatPublicSourceService" parent="." instance=ExtResource("81_player_seat_source")]
 unique_name_in_owner = true
 
 [node name="ForcedDecisionRuntimeScheduler" parent="." instance=ExtResource("2_scheduler")]

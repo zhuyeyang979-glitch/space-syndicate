@@ -7946,3 +7946,17 @@
 - `tests/layout_scene_smoke_test.gd` 通过。
 - `tests/smoke_test.gd --check-only` 通过。
 - `tests/smoke_test.gd` 完整通过。
+
+## 2026-07-17｜正式八席玩家宿主与公开席位契约
+
+- 在真实 `PlanetBoard` 中加入语义化的 `RoleSeatLayerHost`，并用独立 `BackSeatLayer / FrontSeatLayer` 建立星球前后景席位层级。
+- 新增 3–8 席确定性映射；本地玩家固定在底部，坐标使用 `PlanetStageViewport` 实际尺寸和座舱底部中心枢轴计算。
+- 新增 `PlayerSeatPublicSourceService` 和 `PublicPlayerSeatSnapshot`：
+  - 只消费公开玩家名、公开角色名、颜色、公开状态和本地席位；
+  - 不转发现金、手牌、隐藏归属、匿名出牌真相或 AI 私有计划；
+  - 匿名行动不会触发真实玩家高亮。
+- `main.gd` 不再组装席位描述，也不再负责把席位数据接入星球快照；正式组合由 `GameRuntimeCoordinator` 完成。
+- 为未来 `PlayerSeatPortraitSkin.tscn` 建立动态入口：
+  - 资源不存在、类型不符、公开模型应用失败或图片不可用时，逐席保留抽象 fallback；
+  - 只有成功挂载 Skin 的席位才隐藏对应旧装饰弧，不会全局关闭 fallback。
+- 新增正式生产场景聚焦测试和 3/4/6/8 席截图；截图来自真实 `GameScreen`，不是独立 QA Bench。
