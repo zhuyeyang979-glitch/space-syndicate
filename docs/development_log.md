@@ -1,7 +1,33 @@
 # 太空辛迪加开发日志
 
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
-> 最新记录日期：2026-07-17。
+> 最新记录日期：2026-07-18。
+
+## 2026-07-18｜命令管线边界加固
+
+- 新增局部、场景化 `RuntimeCommandPipeline` 与纯数据
+  `RuntimeCommandEnvelope`。当前只接收一个明确命令族：卡牌结算转换；没有建立
+  全局命令总线、Autoload、事件总线或万能调度器。
+- `CardResolutionFrameDriver` 不再直接调用转换 Sink；它在既有 command phase 内将
+  有序命令批次交给命令管线。管线验证 schema、类型、ID、producer revision、连续
+  order、payload binding 和稳定 fingerprint，再精确转发给既有
+  `CardResolutionTransitionSink`。领域 owner、精确一次 lineage 和保存归属均未改变。
+- 前置审计明确保留同步语义：真人目标选择、AI 和角色反制依赖即时卡牌提交回执，
+  本轮没有将其伪装成异步命令，也没有改玩法、AI、经济、怪兽或展示逻辑。
+
+### 本轮验证
+
+- command boundary 31/31、CommandPipeline Bench 5/5、card frame driver 104 checks、
+  card transition 70/70、gameplay fault injection 61 checks 通过。
+- Runtime phase 50/50、RuntimeLoop 28/28、typed world ports 80/80、presentation
+  Source/Target 20/20、ViewModel parity 106/106、query ports 65/65、scheduler 8/8、
+  victory privacy 47/47、Main architecture 76 checks、composition、UI text、visual、
+  smoke `--check-only` 全部通过。
+- 完整 smoke 使用隔离 APPDATA 运行到既有历史债务：旧 AI 军事断言、退役 Main
+  测试入口、角色/情报 fixture 和怪兽颜色 WorldBridge 缺口；没有出现新的命令管线
+  解析、顺序或重复 mutation 失败，也没有恢复兼容回退。
+- Godot 4.7 MCP 启动正式 `main.tscn`，没有本轮新增运行异常；输出仅含既有源码
+  warning。命令 Bench 同时由 Godot 4.7 运行并通过。
 
 ## 2026-07-17｜牌桌展示 Source/Target 场景化切换
 
@@ -8169,3 +8195,143 @@
 - Moved Victory state/outcome presentation to typed receipts and removed the dynamic Victory bridge callback to Main.
 - Removed six Main symbols/fields and kept the Main extinction budget green.
 - Godot 4.7 focused suite and MCP bench pass; full smoke remains an explicitly bounded timeout rather than a claimed pass.
+
+## 2026-07-18 — Authoritative RuntimeLoop cutover
+
+- Added one production `RuntimeLoop` beneath `GameRuntimeCoordinator` and a
+  narrow typed frame port to the already-composed domain owners.
+- Preserved the characterized frame order and delta domains, including
+  real-time wager/presentation work during the global wager block, one
+  world-effective clock advance during active play, and the commodity-flow and
+  session-finished early-return gates.
+- Physically deleted `Main._process`, `_update_victory_control` and
+  `_advance_continuous_commodity_flow`; Main has no process-forwarding wrapper.
+- Runtime authority and full-order trace tests prove one production tick owner,
+  no duplicate mutation path, and no dependency from RuntimeLoop to Main or
+  concrete UI targets.
+- Godot 4.7 focused tests, UI text, visual snapshot and check-only smoke pass.
+  Full smoke reaches its established legacy debts (`_capture_run_state`, AI
+  military fixtures and `_auto_monster_color`) and is not reported as green;
+  no Main compatibility path was restored.
+- Main budget changed from 13,243/11,490 lines and 822 methods to
+  13,159/11,414 lines and 819 methods. Next boundary: `typed_world_ports`.
+
+## 2026-07-18 — Typed world ports boundary hardening
+
+- Replaced the broad, parent-discovering `AuthoritativeRuntimeFramePort` with
+  one explicitly composed `RuntimeWorldPorts` scene containing seven narrow
+  typed ports for lifecycle, card, economy, actors, monster, presentation and
+  victory intents.
+- RuntimeLoop now receives its ports by typed injection and has no Main,
+  coordinator, scene traversal, root lookup or dynamic-call dependency.
+- Existing domain controllers remain the state and rule owners. The new ports
+  only sequence typed operations and do not store world state or reimplement
+  formulas.
+- Preserved the complete frame trace, single clock advance, commodity-flow
+  early exit, victory ordering and presentation cadence. Architecture and
+  authority tests report zero duplicate mutation paths.
+- Focused boundary tests pass 78/78, RuntimeLoop passes 24/24 and the Godot 4.7
+  production-composition Bench passes 7/7. UI text, visual snapshot, privacy
+  and check-only smoke remain green.
+- Full smoke still exposes established unrelated debts in retired Main test
+  fixtures, AI military characterization and `_auto_monster_color`; no
+  compatibility fallback was restored. The broader `typed_world_ports`
+  ledger domain remains pending for the 21 historical WorldBridge files.
+
+## 2026-07-18 — Runtime coordination phase decomposition
+
+- Added one scene-owned `RuntimePhaseCoordinator` containing explicit
+  lifecycle, command, simulation, resolution, state-commit and presentation
+  schedule coordinators.
+- RuntimeLoop now owns only the engine callback, frame counter/receipt and one
+  typed phase invocation. It decreased from 140 to 57 physical lines and no
+  longer names any card, weather, AI, monster, military, economy, victory or
+  presentation port operation.
+- Preserved the complete active, blocked, paused and terminal frame traces.
+  Typed fake tests prove exact phase order, one execution per phase and
+  deterministic replay for identical delta sequences.
+- GameRuntimeCoordinator remains the explicit composition root but no longer
+  exposes the unused `runtime_loop_can_advance` facade. It decreased from
+  6,008 lines/560 methods to 6,005 lines/559 methods; dynamic-call debt did not
+  increase.
+- Godot 4.7 focused gates, card exact-once, presentation parity, privacy, UI
+  text, visual snapshot and check-only smoke pass. MCP production runtime adds
+  no runtime error; only established source warnings remain.
+- Bounded full smoke reaches the same historical AI/retired-Main/monster
+  WorldBridge debt. No deleted Main API or compatibility route was restored.
+
+## 2026-07-18 — Simulation determinism foundation
+
+- Added one scene-owned `RuntimeSimulationStep` between engine-frame scheduling
+  and the existing command/simulation/resolution/state-commit phase owners.
+  `RuntimeLoop` remains unchanged as the sole `_process` owner; current
+  production behavior remains one active step per active frame without adding
+  a fixed timestep or accumulator.
+- Added an internal `SimulationStateIdentity` that accepts only explicitly
+  supplied pure-data simulation projections, preserves semantic array and
+  typed-key ordering, canonicalizes common Godot value types, rejects
+  Node/Object/Callable references, and emits SHA-256 identities without
+  becoming a presentation source.
+- Added a non-owning `SimulationRandomnessBoundary`. The existing
+  `RunRngService` remains the sole shared gameplay RNG owner; uncontrolled
+  world-mutating randomness and visual randomness with mutation capability are
+  rejected by focused tests.
+- Synthetic determinism gates prove that the same initial state and ordered
+  card-transition commands produce the same phase trace, mutation trace and
+  state fingerprint, while a meaningful order change produces a different
+  result. Different engine-frame/UI metadata do not enter simulation identity.
+- Godot 4.7 focused runtime, command, exact-once, typed-port, presentation,
+  privacy, composition, UI-text, visual and check-only gates pass. The MCP
+  production-phase Bench passes 6/6. The legacy layout mega-test and bounded
+  full smoke still expose pre-existing retired-Main/old-fixture debt; no
+  compatibility API was restored.
+# 2026-07-18 — Simulation determinism consumption layer
+
+- Added a pure-data `SimulationTraceContract` with ordered command results, phase transitions, before/after SHA-256 identities, and allowlisted mutation summaries.
+- Added a bounded development-only `SimulationDeterminismAudit` under `RuntimeSimulationStep`; it owns no clock, save data, presentation, RNG, or world state.
+- Added stable pure-data serialization to `SimulationStateIdentity` and step-level audit accessors without changing runtime timing or gameplay order.
+- Added same-stream, order-divergence, rejection, deterministic-error, RNG-boundary, privacy, and production-composition tests plus a Godot MCP Bench.
+- Centralized the existing region-supply weighted shuffle implementation in `RunRngService`; per-region bag state and ordering stay unchanged, while direct RNG construction outside the authoritative service is now forbidden by test.
+- Focused consumption test passed 33/33; Bench passed 8/8; all dependent runtime/command/card/presentation/privacy/architecture gates and smoke `--check-only` passed.
+- No replay, rollback, multiplayer synchronization, new save format, fixed-step scheduler, or Main compatibility path was introduced.
+
+## 2026-07-18 — Simulation authority coverage migration
+
+- Added the pure-data `SimulationStateProjectionContract` and documented the
+  required authoritative entities, resources, phase, pending-command and
+  deterministic-timer sections. Current missing domains remain explicit rather
+  than being hidden behind a partial hash.
+- Added a development-only `SimulationMutationAuthority` inside the existing
+  `RuntimeSimulationStep`, plus bounded before/after mutation records in
+  `SimulationDeterminismAudit`.
+- Migrated the military attack-monster path to a UID-bound typed
+  `military_monster_damage` command and exact-once sink. It fails closed outside
+  an active simulation step and rejects duplicate command ids.
+- Automatic monster behavior, non-attack military behavior, infrastructure,
+  weather, AI and other direct domain ticks remain listed as future command
+  coverage; no second mutation store or compatibility Main path was added.
+- Focused authority migration passed 12/12 and its Godot 4.7 Bench passed 7/7.
+  Foundation 30/30, consumption 33/33, command pipeline 31/31, card frame
+  104/104, transition sink 70/70, fault injection 61/61, phase 50/50 and
+  RuntimeLoop 28/28 remain green. Existing RuntimeWorldPorts lifecycle and
+  market-facts fixture debts remain unchanged.
+
+## 2026-07-18 — Autonomous monster movement command migration
+
+- Added the pure-data `monster_move` command and a scene-owned
+  `MonsterMoveCommandSink` beside the existing command pipeline.
+- Monster behavior still decides its target using the existing rules and
+  RunRngService boundary, but autonomous start, per-step advance, same-region
+  settlement and downed cleanup now mutate only inside an active
+  `RuntimeSimulationStep` command window.
+- The sink records UID-bound before/after fingerprints in the existing bounded
+  mutation audit and rejects runtime objects, stale/out-of-step commands and
+  duplicate command ids.
+- RuntimeLoop, phase order, world-delta formula, save format and gameplay
+  movement rules were unchanged. No replay, rollback or multiplayer layer was
+  introduced.
+- Autonomous focused tests pass 11/11; the Godot CLI Bench passes 3/3. All
+  determinism, authority, command, card, phase, typed-port, Main architecture,
+  UI-text, visual and check-only gates remain green. Broad layout and full-smoke
+  historical fixture debt remains documented without restoring compatibility
+  paths.

@@ -1,4 +1,4 @@
-[gd_scene load_steps=98 format=3]
+[gd_scene load_steps=102 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -95,6 +95,12 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/presentation/TablePresentationRefreshPort.tscn" id="101_table_presentation_refresh_port"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/presentation/DeveloperBalancePresentationTarget.tscn" id="102_developer_presentation_target"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/presentation/TablePresentationViewModelQuery.tscn" id="103_table_presentation_viewmodel_query"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RuntimeLoop.tscn" id="104_runtime_loop"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RuntimeWorldPorts.tscn" id="105_runtime_world_ports"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RuntimePhaseCoordinator.tscn" id="106_runtime_phase_coordinator"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RuntimeCommandPipeline.tscn" id="107_runtime_command_pipeline"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/MilitaryMonsterDamageCommandSink.tscn" id="108_military_monster_damage_sink"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/MonsterMoveCommandSink.tscn" id="109_monster_move_sink"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -107,6 +113,24 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="WorldSessionState" parent="." instance=ExtResource("83_world_session")]
+unique_name_in_owner = true
+
+[node name="RuntimeLoop" parent="." instance=ExtResource("104_runtime_loop")]
+unique_name_in_owner = true
+
+[node name="RuntimeWorldPorts" parent="." instance=ExtResource("105_runtime_world_ports")]
+unique_name_in_owner = true
+
+[node name="RuntimePhaseCoordinator" parent="." instance=ExtResource("106_runtime_phase_coordinator")]
+unique_name_in_owner = true
+
+[node name="RuntimeCommandPipeline" parent="." instance=ExtResource("107_runtime_command_pipeline")]
+unique_name_in_owner = true
+
+[node name="MilitaryMonsterDamageCommandSink" parent="." instance=ExtResource("108_military_monster_damage_sink")]
+unique_name_in_owner = true
+
+[node name="MonsterMoveCommandSink" parent="." instance=ExtResource("109_monster_move_sink")]
 unique_name_in_owner = true
 
 [node name="TablePresentationQueryPorts" parent="." instance=ExtResource("99_table_presentation_query_ports")]

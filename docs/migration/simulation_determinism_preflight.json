@@ -1,0 +1,30 @@
+{
+  "status": "go",
+  "baseline": "COMMAND_PIPELINE_BOUNDARY_HARDENING_GREEN",
+  "engine_frame_owner": "RuntimeLoop",
+  "simulation_step_target": "RuntimeSimulationStep",
+  "production_behavior": {
+    "active_steps_per_active_frame": 1,
+    "fixed_step_enabled": false,
+    "world_clock_owner_changed": false,
+    "phase_order_changed": false
+  },
+  "advancement": [
+    {"domain": "lifecycle_gates", "classification": "lifecycle_only", "owner": "RuntimeLifecyclePhaseCoordinator"},
+    {"domain": "world_clock", "classification": "deterministic_simulation_mutation", "owner": "WorldEffectiveClockRuntimeController"},
+    {"domain": "card_contract_cooldown", "classification": "deterministic_simulation_mutation", "owner": "RuntimeCommandPhaseCoordinator"},
+    {"domain": "weather_ai_monster_military", "classification": "deterministic_simulation_mutation", "owner": "typed_domain_ports"},
+    {"domain": "commodity_market_victory", "classification": "deterministic_simulation_commit", "owner": "typed_economy_and_victory_ports"},
+    {"domain": "visual_and_table_refresh", "classification": "presentation_only", "owner": "RuntimePresentationScheduleCoordinator"},
+    {"domain": "save_restore", "classification": "external_lifecycle_input", "owner": "existing_save_owners"}
+  ],
+  "randomness": [
+    {"source": "RunRngService", "classification": "seeded_simulation", "seedable": true, "reproducible": true, "owns_world_state": false},
+    {"source": "RegionSupplyRuntimeController.bag_rng_state", "classification": "seeded_simulation", "seedable": true, "reproducible": true, "owns_world_state": true},
+    {"source": "RunRngService.randomize_new_run", "classification": "external_initialization", "inside_simulation_step": false},
+    {"source": "presentation_ui_scan", "classification": "visual_only", "direct_random_sources_found": 0},
+    {"source": "uncontrolled_world_rng", "classification": "uncontrolled", "approved": false}
+  ],
+  "root_only_blockers": [],
+  "scope_exclusions": ["replay", "networking", "multiplayer", "save_redesign", "fixed_step_scheduler"]
+}

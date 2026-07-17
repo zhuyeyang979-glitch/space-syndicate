@@ -1,0 +1,35 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/runtime_world_ports.gd" id="1_ports"]
+[ext_resource type="Script" path="res://scripts/runtime/runtime_lifecycle_port.gd" id="2_lifecycle"]
+[ext_resource type="Script" path="res://scripts/runtime/runtime_card_port.gd" id="3_card"]
+[ext_resource type="Script" path="res://scripts/runtime/runtime_economy_port.gd" id="4_economy"]
+[ext_resource type="Script" path="res://scripts/runtime/runtime_actor_port.gd" id="5_actors"]
+[ext_resource type="Script" path="res://scripts/runtime/runtime_monster_port.gd" id="6_monster"]
+[ext_resource type="Script" path="res://scripts/runtime/runtime_presentation_port.gd" id="7_presentation"]
+[ext_resource type="Script" path="res://scripts/runtime/runtime_victory_port.gd" id="8_victory"]
+
+[node name="RuntimeWorldPorts" type="Node"]
+script = ExtResource("1_ports")
+editor_description = "Seven narrow typed runtime boundaries. They forward frame intent to existing owners without owning world state or discovering Main."
+
+[node name="RuntimeLifecyclePort" type="Node" parent="."]
+script = ExtResource("2_lifecycle")
+
+[node name="RuntimeCardPort" type="Node" parent="."]
+script = ExtResource("3_card")
+
+[node name="RuntimeEconomyPort" type="Node" parent="."]
+script = ExtResource("4_economy")
+
+[node name="RuntimeActorPort" type="Node" parent="."]
+script = ExtResource("5_actors")
+
+[node name="RuntimeMonsterPort" type="Node" parent="."]
+script = ExtResource("6_monster")
+
+[node name="RuntimePresentationPort" type="Node" parent="."]
+script = ExtResource("7_presentation")
+
+[node name="RuntimeVictoryPort" type="Node" parent="."]
+script = ExtResource("8_victory")

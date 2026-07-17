@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/simulation_autonomous_behavior_command_migration_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/GameRuntimeCoordinator.tscn" id="2_coordinator"]
+
+[node name="SimulationAutonomousBehaviorCommandMigrationBench" type="Node"]
+script = ExtResource("1_bench")
+
+[node name="GameRuntimeCoordinator" parent="." instance=ExtResource("2_coordinator")]

@@ -56,7 +56,7 @@ func dispatch(transaction: Dictionary) -> Dictionary:
 	var resolved := false
 	var continuation_kind := "normal"
 	if handler_id == "target_monster":
-		resolved = _resolve_targeted_skill(skill, player, int(entry.get("target_slot", -1)), player_index, int(entry.get("selected_district", -1)))
+		resolved = _resolve_targeted_skill(skill, player, int(entry.get("target_slot", -1)), player_index, int(entry.get("selected_district", -1)), entry)
 	elif handler_id == "target_player":
 		resolved = _resolve_player_interaction(player_index, int(entry.get("target_player", -1)), skill)
 	else:
@@ -137,7 +137,7 @@ func _dispatch_domain_handler(handler_id: String, player_index: int, player: Dic
 		"military_force":
 			return _military_controller != null and _military_controller.summon_from_card(player_index, skill)
 		"military_command":
-			return _military_controller != null and _military_controller.trigger_command(skill, -1, player_index)
+			return _military_controller != null and _military_controller.trigger_command(skill, -1, player_index, {"resolution_id": int(entry.get("resolution_id", entry.get("queued_order", -1)))})
 		"card_counter":
 			return false
 		"weather_control":
@@ -149,9 +149,9 @@ func _dispatch_domain_handler(handler_id: String, player_index: int, player: Dic
 	return false
 
 
-func _resolve_targeted_skill(skill: Dictionary, player: Dictionary, target_slot: int, player_index: int, selected_district: int) -> bool:
+func _resolve_targeted_skill(skill: Dictionary, player: Dictionary, target_slot: int, player_index: int, selected_district: int, entry: Dictionary = {}) -> bool:
 	if str(skill.get("kind", "")) == "military_command":
-		return _military_controller != null and _military_controller.trigger_command(skill, target_slot, player_index)
+		return _military_controller != null and _military_controller.trigger_command(skill, target_slot, player_index, {"resolution_id": int(entry.get("resolution_id", entry.get("queued_order", -1)))})
 	return _monster_controller != null and _monster_controller.resolve_targeted_skill(skill, player, target_slot, player_index, selected_district)
 
 

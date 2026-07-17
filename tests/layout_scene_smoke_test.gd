@@ -10376,6 +10376,7 @@ func _check_empty_player_board_affordance() -> void:
 func _check_main_player_panel_refresh_contract() -> void:
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 	var coordinator_source := FileAccess.get_file_as_string(GAME_RUNTIME_COORDINATOR_SCRIPT)
+	var presentation_query_source := FileAccess.get_file_as_string("res://scripts/presentation/table_presentation_viewmodel_query.gd")
 	var player_board_source := FileAccess.get_file_as_string("res://scripts/ui/player_board.gd")
 	var hand_rack_source := FileAccess.get_file_as_string("res://scripts/ui/hand_rack.gd")
 	_expect(not main_source.contains("var player_panel_signature") and not main_source.contains("func _uses_split_runtime_table") and not main_source.contains("func _refresh_split_compatibility_player_panel") and not main_source.contains("func _player_panel_structure_signature") and not main_source.contains("func _refresh_player_panel_live_values"), "main.gd no longer owns the generated or compatibility PlayerBoard renderer")

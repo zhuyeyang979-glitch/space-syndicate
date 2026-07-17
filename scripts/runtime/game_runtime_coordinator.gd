@@ -39,8 +39,10 @@ func _ready() -> void:
 	_wire_card_cooldown_runtime_controller()
 	_wire_card_execution_typed_ports()
 	_wire_card_resolution_transition_sink()
+	_wire_runtime_command_pipeline()
 	_wire_card_resolution_frame_driver()
 	_wire_table_presentation_query_ports()
+	_wire_runtime_world_ports()
 	call_deferred("_wire_table_presentation_source_target")
 
 
@@ -53,8 +55,10 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	_wire_card_cooldown_runtime_controller()
 	_wire_card_execution_typed_ports()
 	_wire_card_resolution_transition_sink()
+	_wire_runtime_command_pipeline()
 	_wire_card_resolution_frame_driver()
 	_wire_table_presentation_query_ports()
+	_wire_runtime_world_ports()
 	call_deferred("_wire_table_presentation_source_target")
 	var world_clock := _world_effective_clock_runtime_controller_node()
 	if world_clock != null and world_clock.has_method("configure"):
@@ -926,6 +930,63 @@ func _v06_world_game_time() -> float:
 
 func _refresh_coordinator_readiness() -> void:
 	_configured = _composition_ready and bool(_last_v06_player_binding_result.get("ready", false))
+	var ports := _runtime_world_ports_node()
+	if ports != null and ports.lifecycle != null:
+		ports.lifecycle.set_composition_ready(_bound_world != null and is_instance_valid(_bound_world) and _configured)
+
+
+func _wire_runtime_world_ports() -> void:
+	var ports := _runtime_world_ports_node()
+	var phases := get_node_or_null("RuntimePhaseCoordinator") as RuntimePhaseCoordinator
+	var loop := _runtime_loop_node()
+	if ports == null or phases == null or loop == null:
+		return
+	ports.lifecycle.bind_dependencies(
+		_session_node() as GameSessionRuntimeController,
+		_scheduler_node() as ForcedDecisionRuntimeScheduler,
+		_forced_decision_candidate_sources_node(),
+		_world_effective_clock_runtime_controller_node() as WorldEffectiveClockRuntimeController,
+		_world_session_state_node()
+	)
+	ports.card.bind_dependencies(
+		_card_resolution_frame_driver_node(),
+		_contract_runtime_controller_node() as ContractRuntimeController,
+		_card_cooldown_runtime_controller_node(),
+		_scheduler_node() as ForcedDecisionRuntimeScheduler
+	)
+	ports.economy.bind_dependencies(
+		_city_gdp_derivative_runtime_controller_node() as CityGdpDerivativeRuntimeController,
+		_product_market_runtime_controller_node() as ProductMarketRuntimeController,
+		_commodity_flow_runtime_controller_node() as CommodityFlowRuntimeController,
+		_bankruptcy_neutral_estate_runtime_controller_node() as BankruptcyNeutralEstateRuntimeController,
+		_player_mana_runtime_controller_node() as PlayerManaRuntimeController,
+		_session_node() as GameSessionRuntimeController,
+		_scheduler_node() as ForcedDecisionRuntimeScheduler,
+		_world_session_state_node()
+	)
+	ports.actors.bind_dependencies(
+		_weather_runtime_controller_node() as WeatherRuntimeController,
+		_ai_runtime_controller_node() as AiRuntimeController,
+		_military_runtime_controller_node() as MilitaryRuntimeController,
+		_victory_control_runtime_controller_node() as VictoryControlRuntimeController
+	)
+	ports.monster.bind_dependency(_monster_runtime_controller_node() as MonsterRuntimeController)
+	ports.presentation.bind_dependencies(
+		_visual_cue_runtime_owner_node(),
+		_table_presentation_refresh_scheduler_node(),
+		_table_presentation_refresh_port_node(),
+		_developer_balance_presentation_target_node()
+	)
+	ports.victory.bind_dependencies(
+		_victory_control_runtime_controller_node() as VictoryControlRuntimeController,
+		_victory_control_world_bridge_node() as VictoryControlWorldBridge,
+		_session_node() as GameSessionRuntimeController,
+		_ai_runtime_controller_node() as AiRuntimeController,
+		_table_presentation_query_ports_node()
+	)
+	phases.bind_ports(ports)
+	loop.bind_phase_coordinator(phases)
+	ports.lifecycle.set_composition_ready(_bound_world != null and is_instance_valid(_bound_world) and _configured)
 
 
 func _refresh_monster_card_effect_adapter_v06() -> bool:
@@ -957,17 +1018,11 @@ func victory_control_world_snapshot(clock_pause: Dictionary = {}, settlement_che
 
 
 func advance_victory_control(delta_seconds: float, clock_pause: Dictionary = {}) -> Dictionary:
-	var controller := _victory_control_runtime_controller_node()
-	if controller == null or not controller.has_method("advance_world_effective"):
-		return {"valid": false, "reason": "victory_controller_unavailable"}
-	var world_snapshot := victory_control_world_snapshot(clock_pause, "post_world_settlement")
-	var value: Variant = controller.call("advance_world_effective", delta_seconds, world_snapshot)
-	var result: Dictionary = (value as Dictionary).duplicate(true) if value is Dictionary else {}
-	var query_ports := _table_presentation_query_ports_node()
-	if query_ports != null:
-		query_ports.capture_victory_advance(result)
-	_apply_victory_outcome_receipt(result.get("outcome_receipt", {}) as Dictionary if result.get("outcome_receipt", {}) is Dictionary else {})
-	return result
+	var ports := _runtime_world_ports_node()
+	return ports.victory.advance_victory_control(delta_seconds, clock_pause) if ports != null and ports.victory != null else {
+		"valid": false,
+		"reason": "runtime_victory_port_unavailable",
+	}
 
 
 func resolve_victory_outcome(reason_code: String, clock_pause: Dictionary = {}) -> Dictionary:
@@ -1107,8 +1162,13 @@ func reset_victory_control_runtime() -> void:
 
 
 func session_is_finished() -> bool:
-	var session := _session_node()
-	return bool(session.call("is_finished")) if session != null and session.has_method("is_finished") else false
+	var ports := _runtime_world_ports_node()
+	return ports.lifecycle.session_is_finished() if ports != null and ports.lifecycle != null else true
+
+
+func session_is_paused() -> bool:
+	var ports := _runtime_world_ports_node()
+	return ports.lifecycle.session_is_paused() if ports != null and ports.lifecycle != null else true
 
 
 func session_to_save_data() -> Dictionary:
@@ -1127,6 +1187,14 @@ func advance_world_effective_clock(delta_seconds: float) -> Dictionary:
 	var clock := _world_effective_clock_runtime_controller_node()
 	var value: Variant = clock.call("advance", delta_seconds) if clock != null and clock.has_method("advance") else {}
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func advance_runtime_world_time(delta_seconds: float) -> Dictionary:
+	var ports := _runtime_world_ports_node()
+	return ports.lifecycle.advance_world_time(delta_seconds) if ports != null and ports.lifecycle != null else {
+		"advanced": false,
+		"reason": "runtime_lifecycle_port_unavailable",
+	}
 
 
 func restore_world_effective_seconds(seconds: float) -> Dictionary:
@@ -1842,8 +1910,23 @@ func reset_product_market_runtime() -> Dictionary:
 
 
 func tick_product_market_cycle(delta: float) -> Dictionary:
-	var value: Variant = product_market_runtime_call("tick_market_cycle", [delta])
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+	var ports := _runtime_world_ports_node()
+	return ports.economy.tick_product_market_cycle(delta) if ports != null and ports.economy != null else {
+		"advanced": false,
+		"reason": "runtime_economy_port_unavailable",
+	}
+
+
+func advance_product_futures_timers() -> void:
+	var ports := _runtime_world_ports_node()
+	if ports != null and ports.economy != null:
+		ports.economy.advance_product_futures_timers()
+
+
+func advance_economic_boons(delta_seconds: float) -> void:
+	var ports := _runtime_world_ports_node()
+	if ports != null and ports.economy != null:
+		ports.economy.advance_economic_boons(delta_seconds)
 
 
 func city_gdp_derivative_runtime_controller() -> CityGdpDerivativeRuntimeController:
@@ -1871,6 +1954,14 @@ func apply_city_gdp_derivative_save_data(data: Dictionary, legacy_positions_by_d
 func reset_city_gdp_derivative_runtime() -> Dictionary:
 	var value: Variant = city_gdp_derivative_runtime_call("reset_state")
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func advance_city_gdp_derivative_timers() -> Dictionary:
+	var ports := _runtime_world_ports_node()
+	return ports.economy.advance_city_gdp_derivative_timers() if ports != null and ports.economy != null else {
+		"updated": false,
+		"reason": "runtime_economy_port_unavailable",
+	}
 
 
 func route_network_runtime_controller() -> RouteNetworkRuntimeController:
@@ -3170,15 +3261,11 @@ func apply_contract_save_data(data: Dictionary) -> Dictionary:
 
 
 func tick_contract_runtime(delta: float) -> Dictionary:
-	var controller := _contract_runtime_controller_node()
-	var scheduler := _scheduler_node()
-	if controller == null or scheduler == null or not controller.has_method("tick_visible_offer") or not scheduler.has_method("debug_snapshot"):
-		return {"ticked": false, "reason": "contract_runtime_unavailable"}
-	var scheduler_snapshot: Dictionary = scheduler.call("debug_snapshot") as Dictionary
-	var candidates: Array = scheduler_snapshot.get("candidates", []) as Array if scheduler_snapshot.get("candidates", []) is Array else []
-	var active_id := str((candidates[0] as Dictionary).get("id", "")) if not candidates.is_empty() and candidates[0] is Dictionary else ""
-	var value: Variant = controller.call("tick_visible_offer", delta, active_id)
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+	var ports := _runtime_world_ports_node()
+	return ports.card.tick_contract_runtime(delta) if ports != null and ports.card != null else {
+		"ticked": false,
+		"reason": "runtime_card_port_unavailable",
+	}
 
 
 func weather_runtime_call(method_name: StringName, arguments: Array = []) -> Variant:
@@ -3202,14 +3289,9 @@ func apply_weather_save_data(data: Dictionary) -> Dictionary:
 
 
 func tick_weather(delta: float) -> void:
-	var controller := _weather_runtime_controller_node()
-	if controller == null:
-		return
-	if controller.has_method("set_new_forecasts_allowed"):
-		var victory_state := str(victory_control_public_snapshot().get("state", "idle"))
-		controller.call("set_new_forecasts_allowed", victory_state == "idle")
-	if controller.has_method("tick"):
-		controller.call("tick", delta)
+	var ports := _runtime_world_ports_node()
+	if ports != null and ports.actors != null:
+		ports.actors.tick_weather(delta)
 
 
 func weather_runtime_public_projection() -> Dictionary:
@@ -3288,9 +3370,9 @@ func apply_military_save_data(data: Dictionary) -> Dictionary:
 
 
 func tick_military(delta: float) -> void:
-	var controller := _military_runtime_controller_node()
-	if controller != null and controller.has_method("tick"):
-		controller.call("tick", delta)
+	var ports := _runtime_world_ports_node()
+	if ports != null and ports.actors != null:
+		ports.actors.tick_military(delta)
 
 
 func monster_runtime_call(method_name: StringName, arguments: Array = []) -> Variant:
@@ -3360,15 +3442,15 @@ func apply_monster_save_data(data: Dictionary) -> Dictionary:
 
 
 func tick_monster_wagers(delta: float) -> void:
-	var controller := _monster_runtime_controller_node()
-	if controller != null:
-		controller.call("tick_wagers", delta)
+	var ports := _runtime_world_ports_node()
+	if ports != null and ports.monster != null:
+		ports.monster.tick_wagers(delta)
 
 
 func tick_monster_motion(delta: float) -> void:
-	var controller := _monster_runtime_controller_node()
-	if controller != null:
-		controller.call("tick_motion", delta)
+	var ports := _runtime_world_ports_node()
+	if ports != null and ports.monster != null:
+		ports.monster.tick_motion(delta)
 
 
 func tick_monster_lifecycle(delta: float) -> void:
@@ -3378,27 +3460,27 @@ func tick_monster_lifecycle(delta: float) -> void:
 
 
 func tick_monster_durations(delta: float) -> void:
-	var controller := _monster_runtime_controller_node()
-	if controller != null:
-		controller.call("tick_durations", delta)
+	var ports := _runtime_world_ports_node()
+	if ports != null and ports.monster != null:
+		ports.monster.tick_durations(delta)
 
 
 func tick_monster_revivals(delta: float) -> void:
-	var controller := _monster_runtime_controller_node()
-	if controller != null:
-		controller.call("tick_revivals", delta)
+	var ports := _runtime_world_ports_node()
+	if ports != null and ports.monster != null:
+		ports.monster.tick_revivals(delta)
 
 
 func tick_monster_actions(delta: float) -> void:
-	var controller := _monster_runtime_controller_node()
-	if controller != null:
-		controller.call("tick_action_timers", delta)
+	var ports := _runtime_world_ports_node()
+	if ports != null and ports.monster != null:
+		ports.monster.tick_actions(delta)
 
 
 func tick_ai(delta: float) -> void:
-	var controller := _ai_runtime_controller_node()
-	if controller != null and controller.has_method("tick"):
-		controller.call("tick", delta)
+	var ports := _runtime_world_ports_node()
+	if ports != null and ports.actors != null:
+		ports.actors.tick_ai(delta)
 
 
 func ai_runtime_call(method_name: StringName, arguments: Array = []) -> Variant:
@@ -3428,18 +3510,19 @@ func ai_policy_snapshot() -> Dictionary:
 
 
 func synchronize_forced_decisions() -> Dictionary:
-	_wire_forced_decision_candidate_sources()
-	var sources := _forced_decision_candidate_sources_node()
-	if sources == null:
-		return {"synchronized": false, "reason": "forced_decision_sources_unavailable"}
-	return sources.synchronize()
+	var ports := _runtime_world_ports_node()
+	return ports.lifecycle.synchronize_forced_decisions() if ports != null and ports.lifecycle != null else {
+		"synchronized": false,
+		"reason": "runtime_lifecycle_port_unavailable",
+	}
 
 
 func advance_card_resolution_frame(delta: float) -> Dictionary:
-	_wire_card_resolution_transition_sink()
-	_wire_card_resolution_frame_driver()
-	var driver := _card_resolution_frame_driver_node()
-	return driver.advance_world(delta) if driver != null else {"handled": false, "reason": "card_resolution_frame_driver_unavailable"}
+	var ports := _runtime_world_ports_node()
+	return ports.card.advance_card_resolution_frame(delta) if ports != null and ports.card != null else {
+		"handled": false,
+		"reason": "runtime_card_port_unavailable",
+	}
 
 
 func card_resolution_frame_facts() -> Dictionary:
@@ -3454,9 +3537,11 @@ func card_resolution_frame_driver_debug() -> Dictionary:
 
 
 func advance_card_cooldowns(delta: float) -> Dictionary:
-	_wire_card_cooldown_runtime_controller()
-	var controller := _card_cooldown_runtime_controller_node()
-	return controller.advance_world(delta) if controller != null else {"advanced": false, "reason": "card_cooldown_controller_unavailable"}
+	var ports := _runtime_world_ports_node()
+	return ports.card.advance_card_cooldowns(delta) if ports != null and ports.card != null else {
+		"advanced": false,
+		"reason": "runtime_card_port_unavailable",
+	}
 
 
 func arm_player_action_cooldown(player_index: int, seconds: float) -> Dictionary:
@@ -3500,8 +3585,11 @@ func import_legacy_visual_cues(state: Dictionary) -> Dictionary:
 
 
 func advance_visual_cues(delta: float) -> Dictionary:
-	var cue_owner := _visual_cue_runtime_owner_node()
-	return cue_owner.advance(delta) if cue_owner != null else {"advanced": false, "reason": "visual_cue_owner_unavailable"}
+	var ports := _runtime_world_ports_node()
+	return ports.presentation.advance_visual_cues(delta) if ports != null and ports.presentation != null else {
+		"advanced": false,
+		"reason": "runtime_presentation_port_unavailable",
+	}
 
 
 func visual_cue_public_snapshot() -> Dictionary:
@@ -3555,14 +3643,8 @@ func advance_presentation_refresh_cadence(real_delta: float, developer_surface_v
 
 
 func advance_table_presentation(real_delta: float) -> Array[TablePresentationApplyReceipt]:
-	_wire_table_presentation_source_target()
-	var scheduler := _table_presentation_refresh_scheduler_node()
-	var port := _table_presentation_refresh_port_node()
-	if scheduler == null or port == null:
-		return []
-	var developer_target := _developer_balance_presentation_target_node()
-	var developer_visible := developer_target != null and developer_target.enabled
-	return port.apply_ordered_refresh_receipts(scheduler.advance_typed(real_delta, developer_visible))
+	var ports := _runtime_world_ports_node()
+	return ports.presentation.advance_table_presentation(real_delta) if ports != null and ports.presentation != null else [] as Array[TablePresentationApplyReceipt]
 
 
 func request_table_presentation_refresh(kind: StringName, _reason: StringName = &"state_changed") -> TablePresentationApplyReceipt:
@@ -3614,8 +3696,8 @@ func active_forced_decision(viewer_index: int = -1) -> Dictionary:
 
 
 func blocks_global_time() -> bool:
-	var scheduler := _scheduler_node()
-	return scheduler != null and scheduler.has_method("blocks_global_time") and bool(scheduler.call("blocks_global_time"))
+	var ports := _runtime_world_ports_node()
+	return ports.lifecycle.blocks_global_time() if ports != null and ports.lifecycle != null else false
 
 
 func blocks_player_actions(player_index: int) -> bool:
@@ -3624,8 +3706,8 @@ func blocks_player_actions(player_index: int) -> bool:
 
 
 func allows_card_resolution_progress() -> bool:
-	var scheduler := _scheduler_node()
-	return scheduler == null or not scheduler.has_method("blocks_card_resolution") or not bool(scheduler.call("blocks_card_resolution"))
+	var ports := _runtime_world_ports_node()
+	return ports.lifecycle.allows_card_resolution_progress() if ports != null and ports.lifecycle != null else false
 
 
 func begin_card_target_choice(kind: String, player_index: int, slot_index: int) -> Dictionary:
@@ -4245,45 +4327,17 @@ func apply_commodity_card_inventory_save_data(data: Dictionary) -> Dictionary:
 
 
 func advance_commodity_flow(delta_seconds: float, blocking_snapshot: Dictionary = {}) -> Dictionary:
-	var controller := _commodity_flow_runtime_controller_node()
-	if controller == null or not controller.has_method("advance_world"):
-		return {"advanced": false, "reason": "commodity_flow_runtime_missing", "receipt_count": 0}
-	var merged := blocking_snapshot.duplicate(true)
-	var session := _session_node()
-	merged["global_blocked"] = bool(merged.get("global_blocked", false)) or blocks_global_time()
-	merged["session_paused"] = bool(merged.get("session_paused", false)) or (session != null and session.has_method("session_state") and str(session.call("session_state")) == "paused")
-	var value: Variant = controller.call("advance_world", delta_seconds, merged)
-	var flow_result: Dictionary = (value as Dictionary).duplicate(true) if value is Dictionary else {}
-	if not bool(flow_result.get("advanced", false)):
-		return flow_result
-	var bankruptcy_estate := _bankruptcy_neutral_estate_runtime_controller_node()
-	if bankruptcy_estate == null or not bankruptcy_estate.has_method("settle_checkpoint"):
-		flow_result["bankruptcy_checkpoint"] = {"finalized": false, "reason_code": "bankruptcy_checkpoint_missing"}
-		return flow_result
-	var bankruptcy_variant: Variant = bankruptcy_estate.call("settle_checkpoint", {
-		"transaction_id": "bankruptcy:%s" % str(flow_result.get("batch_id", "")),
-		"reason_code": "post_sale_receipt",
-		"occurred_at": float(merged.get("game_time", 0.0)),
-	})
-	flow_result["bankruptcy_checkpoint"] = (bankruptcy_variant as Dictionary).duplicate(true) if bankruptcy_variant is Dictionary else {}
-	if not bool((flow_result.get("bankruptcy_checkpoint", {}) as Dictionary).get("finalized", false)):
-		return flow_result
-	var player_count := maxi(0, int(merged.get("player_count", 0)))
-	var color_gdp_by_player: Dictionary = {}
-	for player_index in range(player_count):
-		color_gdp_by_player[str(player_index)] = commodity_color_flow_snapshot(player_index)
-	var mana := _player_mana_runtime_controller_node()
-	if mana == null or not mana.has_method("advance"):
-		flow_result["asset_recovery"] = {"advanced": false, "reason": "player_mana_runtime_missing"}
-		return flow_result
-	var recovery_variant: Variant = mana.call(
-		"advance",
-		maxi(1, int(round(delta_seconds * 1000.0))),
-		float(merged.get("game_time", 0.0)),
-		color_gdp_by_player
-	)
-	flow_result["asset_recovery"] = (recovery_variant as Dictionary).duplicate(true) if recovery_variant is Dictionary else {}
-	return flow_result
+	var ports := _runtime_world_ports_node()
+	return ports.economy.advance_commodity_flow(delta_seconds, blocking_snapshot) if ports != null and ports.economy != null else {
+		"advanced": false,
+		"reason": "runtime_economy_port_unavailable",
+		"receipt_count": 0,
+	}
+
+
+func advance_runtime_commodity_flow(delta_seconds: float) -> bool:
+	var ports := _runtime_world_ports_node()
+	return ports.economy.advance_runtime_commodity_flow(delta_seconds) if ports != null and ports.economy != null else false
 
 
 func commodity_flow_to_save_data() -> Dictionary:
@@ -4850,6 +4904,14 @@ func _scheduler_node() -> Node:
 	return get_node_or_null("ForcedDecisionRuntimeScheduler")
 
 
+func _runtime_loop_node() -> RuntimeLoop:
+	return get_node_or_null("RuntimeLoop") as RuntimeLoop
+
+
+func _runtime_world_ports_node() -> RuntimeWorldPorts:
+	return get_node_or_null("RuntimeWorldPorts") as RuntimeWorldPorts
+
+
 func _card_target_choice_runtime_controller_node() -> CardTargetChoiceRuntimeController:
 	return get_node_or_null("CardTargetChoiceRuntimeController") as CardTargetChoiceRuntimeController
 
@@ -4881,8 +4943,24 @@ func _card_resolution_frame_driver_node() -> CardResolutionFrameDriver:
 	return get_node_or_null("CardResolutionFrameDriver") as CardResolutionFrameDriver
 
 
-func _card_resolution_transition_sink_node() -> Node:
-	return get_node_or_null("CardResolutionTransitionSink")
+func _card_resolution_transition_sink_node() -> CardResolutionTransitionSink:
+	return get_node_or_null("CardResolutionTransitionSink") as CardResolutionTransitionSink
+
+
+func _runtime_command_pipeline_node() -> RuntimeCommandPipeline:
+	return get_node_or_null("RuntimeCommandPipeline") as RuntimeCommandPipeline
+
+
+func _military_monster_damage_command_sink_node() -> MilitaryMonsterDamageCommandSink:
+	return get_node_or_null("MilitaryMonsterDamageCommandSink") as MilitaryMonsterDamageCommandSink
+
+
+func _monster_move_command_sink_node() -> MonsterMoveCommandSink:
+	return get_node_or_null("MonsterMoveCommandSink") as MonsterMoveCommandSink
+
+
+func _simulation_mutation_authority_node() -> SimulationMutationAuthority:
+	return get_node_or_null("RuntimePhaseCoordinator/RuntimeSimulationStep/SimulationMutationAuthority") as SimulationMutationAuthority
 
 
 func _wire_card_resolution_transition_sink() -> void:
@@ -4901,6 +4979,26 @@ func _wire_card_resolution_transition_sink() -> void:
 	)
 
 
+func _wire_runtime_command_pipeline() -> void:
+	var pipeline := _runtime_command_pipeline_node()
+	if pipeline != null:
+		pipeline.bind_card_transition_sink(_card_resolution_transition_sink_node())
+		var damage_sink := _military_monster_damage_command_sink_node()
+		if damage_sink != null:
+			damage_sink.configure(_simulation_mutation_authority_node(), _monster_runtime_controller_node() as MonsterRuntimeController)
+			pipeline.bind_military_monster_damage_sink(damage_sink)
+		var move_sink := _monster_move_command_sink_node()
+		if move_sink != null:
+			move_sink.configure(_simulation_mutation_authority_node(), _monster_runtime_controller_node() as MonsterRuntimeController)
+			pipeline.bind_monster_move_sink(move_sink)
+		var military := _military_runtime_controller_node()
+		if military != null:
+			military.set_runtime_command_pipeline(pipeline)
+		var monster := _monster_runtime_controller_node() as MonsterRuntimeController
+		if monster != null:
+			monster.set_runtime_command_pipeline(pipeline)
+
+
 func _wire_card_resolution_frame_driver() -> void:
 	var driver := _card_resolution_frame_driver_node()
 	if driver == null:
@@ -4910,7 +5008,7 @@ func _wire_card_resolution_frame_driver() -> void:
 		_card_resolution_queue_node() as CardResolutionQueueRuntimeService,
 		_world_session_state_node(),
 		_card_play_eligibility_node() as CardPlayEligibilityRuntimeService,
-		_card_resolution_transition_sink_node()
+		_runtime_command_pipeline_node()
 	)
 
 

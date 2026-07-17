@@ -4,6 +4,7 @@ class_name ProductMarketRuntimeCharacterizationBench
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const MAIN_SCRIPT_PATH := "res://scripts/main.gd"
 const COORDINATOR_SCENE_PATH := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
+const RUNTIME_LOOP_SCRIPT_PATH := "res://scripts/runtime/runtime_loop.gd"
 const FORMULA_SERVICE_SCRIPT_PATH := "res://scripts/runtime/card_economy_product_route_formula_runtime_service.gd"
 const CASHFLOW_CONTROLLER_SCRIPT_PATH := "res://scripts/runtime/economy_cashflow_runtime_controller.gd"
 const GDP_CONTROLLER_SCRIPT_PATH := "res://scripts/runtime/gdp_formula_runtime_controller.gd"
@@ -979,17 +980,17 @@ func _case_history_limit() -> Dictionary:
 
 
 func _case_timer_cadence() -> Dictionary:
-	var process_source := _function_source(str(_sources.get("main", "")), "_process")
+	var process_source := _function_source(str(_sources.get("runtime_loop", "")), "_advance_authoritative_frame")
 	var controller_source := _function_source(str(_sources.get("market_controller", "")), "tick_market_cycle")
-	var observed := _tokens_in_order(process_source, ["advance_world_effective_clock", "game_time = float(clock_snapshot", "age_economic_boons", "_advance_continuous_commodity_flow", "tick_product_market_cycle"]) and _tokens_in_order(controller_source, ["market_timer -=", "market_tick()", "next_market_interval"])
+	var observed := _tokens_in_order(process_source, ["advance_world_time", "advance_economic_boons", "advance_commodity_flow", "tick_product_market_cycle"]) and _tokens_in_order(controller_source, ["market_timer -=", "market_tick()", "next_market_interval"])
 	return _record("market_timer_realtime_cadence", observed, observed, "The authoritative world-effective clock advances before boons, continuous flow, and the market timer rolls its next interval.", {"timing_checked": true})
 
 
 func _case_timer_freeze() -> Dictionary:
-	var process_source := _function_source(str(_sources.get("main", "")), "_process")
-	var forced_return := _tokens_in_order(process_source, ["blocks_global_time", "return", "if time_scale <= 0.0:", "return", "tick_product_market_cycle"])
+	var process_source := _function_source(str(_sources.get("runtime_loop", "")), "_advance_authoritative_frame")
+	var forced_return := _tokens_in_order(process_source, ["blocks_global_time", "return _finish_frame(receipt)", "session_is_paused", "return _finish_frame(receipt)", "tick_product_market_cycle"])
 	var observed := forced_return
-	return _record("paused_or_forced_block_freezes_market_timer", observed, observed, "Global forced-decision blocking and readonly time_scale pause both return before market_timer decrement.", {"timing_checked": true})
+	return _record("paused_or_forced_block_freezes_market_timer", observed, observed, "Global forced-decision blocking and the scene-owned session pause both return before market_timer decrement.", {"timing_checked": true})
 
 
 func _case_market_tick_increment() -> Dictionary:
@@ -1221,6 +1222,7 @@ func _case_pure_data() -> Dictionary:
 func _load_sources() -> void:
 	_sources = {
 		"main": FileAccess.get_file_as_string(MAIN_SCRIPT_PATH),
+		"runtime_loop": FileAccess.get_file_as_string(RUNTIME_LOOP_SCRIPT_PATH),
 		"coordinator_scene": FileAccess.get_file_as_string(COORDINATOR_SCENE_PATH),
 		"formula": FileAccess.get_file_as_string(FORMULA_SERVICE_SCRIPT_PATH),
 		"cashflow": FileAccess.get_file_as_string(CASHFLOW_CONTROLLER_SCRIPT_PATH),

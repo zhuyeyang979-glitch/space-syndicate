@@ -555,64 +555,6 @@ func _start_table_bgm() -> void:
 	table_bgm_player.play()
 
 
-func _process(delta: float) -> void:
-	if _runtime_session_finished():
-		return
-	_game_runtime_coordinator_node().synchronize_forced_decisions()
-	var coordinator := _game_runtime_coordinator_node()
-	if coordinator != null and coordinator.has_method("blocks_global_time") and bool(coordinator.call("blocks_global_time")):
-		if coordinator.has_method("tick_monster_wagers"):
-			coordinator.call("tick_monster_wagers", delta)
-		_game_runtime_coordinator_node().advance_visual_cues(delta)
-		_game_runtime_coordinator_node().advance_table_presentation(delta)
-		return
-	if time_scale <= 0.0:
-		return
-
-	var scaled_delta := delta * time_scale
-	if coordinator != null and coordinator.has_method("advance_world_effective_clock"):
-		var clock_variant: Variant = coordinator.call("advance_world_effective_clock", scaled_delta)
-		var clock_snapshot: Dictionary = clock_variant if clock_variant is Dictionary else {}
-		_game_runtime_coordinator_node().world_session_state().game_time = float(clock_snapshot.get("world_effective_seconds", _game_runtime_coordinator_node().world_session_state().game_time))
-	if coordinator == null or not coordinator.has_method("allows_card_resolution_progress") or bool(coordinator.call("allows_card_resolution_progress")):
-		_game_runtime_coordinator_node().advance_card_resolution_frame(scaled_delta)
-	if coordinator != null and coordinator.has_method("tick_contract_runtime"):
-		coordinator.call("tick_contract_runtime", scaled_delta)
-	_game_runtime_coordinator_node().advance_card_cooldowns(scaled_delta)
-	_city_gdp_derivative_runtime_call("update_timers")
-	_product_market_runtime_call("update_futures_timers")
-	if coordinator != null and coordinator.has_method("tick_weather"):
-		coordinator.call("tick_weather", scaled_delta)
-	_product_market_runtime_call("age_economic_boons", [scaled_delta])
-	if coordinator != null and coordinator.has_method("tick_monster_wagers"):
-		coordinator.call("tick_monster_wagers", scaled_delta)
-	var runtime_coordinator := _game_runtime_coordinator_node()
-	if runtime_coordinator != null and runtime_coordinator.has_method("tick_ai"):
-		runtime_coordinator.call("tick_ai", scaled_delta)
-	if coordinator != null and coordinator.has_method("tick_monster_motion"):
-		coordinator.call("tick_monster_motion", scaled_delta)
-	if coordinator != null and coordinator.has_method("tick_military"):
-		coordinator.call("tick_military", scaled_delta)
-	if coordinator != null and coordinator.has_method("tick_monster_actions"):
-		coordinator.call("tick_monster_actions", scaled_delta)
-	if coordinator != null and coordinator.has_method("tick_monster_durations"):
-		coordinator.call("tick_monster_durations", scaled_delta)
-	_game_runtime_coordinator_node().advance_visual_cues(scaled_delta)
-	if coordinator != null and coordinator.has_method("tick_monster_revivals"):
-		coordinator.call("tick_monster_revivals", scaled_delta)
-	if not _advance_continuous_commodity_flow(scaled_delta):
-		return
-	if _runtime_session_finished():
-		return
-	if runtime_coordinator != null and runtime_coordinator.has_method("tick_product_market_cycle"):
-		runtime_coordinator.call("tick_product_market_cycle", scaled_delta)
-	_update_victory_control(scaled_delta)
-	if _runtime_session_finished():
-		return
-
-	_game_runtime_coordinator_node().advance_table_presentation(delta)
-
-
 func _unhandled_input(event: InputEvent) -> void:
 	if not (event is InputEventKey):
 		return
@@ -4513,15 +4455,6 @@ func _victory_control_status_text() -> String:
 		"resolved":
 			return "胜利审计：已完成"
 	return "胜利资格：%s" % target
-
-
-func _update_victory_control(delta: float) -> void:
-	if _runtime_session_finished() or _game_runtime_coordinator_node().world_session_state().players.is_empty():
-		return
-	var coordinator := _game_runtime_coordinator_node()
-	if coordinator == null:
-		return
-	coordinator.advance_victory_control(delta, {})
 
 
 func _open_fullscreen_map() -> void:
@@ -12932,23 +12865,6 @@ func _refresh_route_network() -> void:
 func _route_network_routes_for_product(product_name: String) -> Array:
 	var value: Variant = _route_network_runtime_call("routes_for_product", [product_name])
 	return (value as Array).duplicate(true) if value is Array else []
-
-
-func _advance_continuous_commodity_flow(delta_seconds: float) -> bool:
-	if _runtime_session_finished() or delta_seconds <= 0.0:
-		return true
-	var runtime_coordinator := _game_runtime_coordinator_node()
-	if runtime_coordinator == null or not runtime_coordinator.has_method("advance_commodity_flow"):
-		return false
-	var result_variant: Variant = runtime_coordinator.call("advance_commodity_flow", delta_seconds, {
-		"game_over": _runtime_session_finished(),
-		"time_paused": time_scale <= 0.0,
-		"game_time": _game_runtime_coordinator_node().world_session_state().game_time,
-		"player_count": _game_runtime_coordinator_node().world_session_state().players.size(),
-	})
-	var result: Dictionary = result_variant if result_variant is Dictionary else {}
-	var checkpoint: Dictionary = result.get("bankruptcy_checkpoint", {}) if result.get("bankruptcy_checkpoint", {}) is Dictionary else {}
-	return bool(result.get("advanced", false)) and bool(checkpoint.get("finalized", false))
 
 
 func _on_commodity_flow_receipt_batch(batch: Dictionary) -> void:

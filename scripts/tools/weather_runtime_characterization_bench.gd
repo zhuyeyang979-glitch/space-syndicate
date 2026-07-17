@@ -647,16 +647,16 @@ func _case_activation_refresh(kind: String) -> Dictionary:
 func _case_realtime_tick() -> Dictionary:
 	var district_index := _first_alive_district()
 	_weather_controller.replace_runtime_state({"id": 1, "type": "ion_storm", "districts": [district_index], "created_at": 0.0, "starts_at": 0.5, "duration": 45.0, "source": "test", "forced": false}, [], 1)
-	_runtime_main.call("_process", 0.5)
+	(_runtime_coordinator.get_node_or_null("RuntimeLoop") as RuntimeLoop).advance_frame_for_test(0.5)
 	var observed := float(((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time) >= 0.5 and _weather_controller.active_zone_count() == 1
-	return _record("normal_realtime_tick_continues", observed, observed, "Normal main._process advances the Controller through Coordinator.tick_weather.", {"timing_checked": true, "active_zone_count": _weather_controller.active_zone_count()})
+	return _record("normal_realtime_tick_continues", observed, observed, "The scene-owned RuntimeLoop advances the Controller through Coordinator.tick_weather.", {"timing_checked": true, "active_zone_count": _weather_controller.active_zone_count()})
 
 
 func _case_wager_freeze() -> Dictionary:
 	var district_index := _first_alive_district()
 	_weather_controller.replace_runtime_state({"id": 1, "type": "ion_storm", "districts": [district_index], "created_at": 0.0, "starts_at": 0.5, "duration": 45.0, "source": "test", "forced": false}, [], 1)
 	_monster_controller.active_monster_wagers = [{"wager_id": 99, "resolved": false, "remaining_seconds": 20.0, "seconds_total": 20.0, "competitors": []}]
-	_runtime_main.call("_process", 0.5)
+	(_runtime_coordinator.get_node_or_null("RuntimeLoop") as RuntimeLoop).advance_frame_for_test(0.5)
 	var observed := is_zero_approx(float(((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time)) and _weather_controller.active_zone_count() == 0
 	return _record("monster_wager_freezes_weather", observed, observed, "The existing forced-decision boundary still freezes weather time.", {"timing_checked": true})
 
@@ -664,8 +664,9 @@ func _case_wager_freeze() -> Dictionary:
 func _case_pause_freeze() -> Dictionary:
 	var district_index := _first_alive_district()
 	_weather_controller.replace_runtime_state({"id": 1, "type": "ion_storm", "districts": [district_index], "created_at": 0.0, "starts_at": 0.5, "duration": 45.0, "source": "test", "forced": false}, [], 1)
-	_runtime_main.set("time_scale", 0.0)
-	_runtime_main.call("_process", 1.0)
+	_runtime_coordinator.pause_session()
+	(_runtime_coordinator.get_node_or_null("RuntimeLoop") as RuntimeLoop).advance_frame_for_test(1.0)
+	_runtime_coordinator.resume_session()
 	var observed := is_zero_approx(float(((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time)) and _weather_controller.active_zone_count() == 0
 	return _record("readonly_pause_freezes_weather", observed, observed, "Readonly pause still freezes the weather clock.", {"timing_checked": true})
 

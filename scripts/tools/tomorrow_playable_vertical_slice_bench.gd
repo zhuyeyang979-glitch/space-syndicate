@@ -447,7 +447,7 @@ func _stage_realtime_income() -> void:
 	var before_receipts: Array = flow.call("recent_sale_receipts_snapshot", -1) if flow != null and flow.has_method("recent_sale_receipts_snapshot") else []
 	for _second in range(120):
 		((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = float(((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time) + 1.0
-		_main.call("_advance_continuous_commodity_flow", 1.0)
+		(_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).advance_runtime_commodity_flow(1.0)
 		if _second % 10 == 0:
 			await get_tree().process_frame
 	players = _array_property(_main, "players")
@@ -536,7 +536,7 @@ func _stage_ai_progress() -> void:
 			built += 1
 	for _second in range(120):
 		((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = float(((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time) + 1.0
-		_main.call("_advance_continuous_commodity_flow", 1.0)
+		(_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).advance_runtime_commodity_flow(1.0)
 		if _second % 20 == 0:
 			await get_tree().process_frame
 	players = _array_property(_main, "players")

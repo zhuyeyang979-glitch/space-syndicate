@@ -5,6 +5,7 @@ class_name MilitaryRuntimeController
 var _table_presentation_refresh_port: TablePresentationRefreshPort
 var _public_log_producer_port: PublicLogProducerPort
 var _presentation_world_clock: WorldEffectiveClockRuntimeController
+var _runtime_command_pipeline: RuntimeCommandPipeline
 
 const RuntimeBalanceModelScript := preload("res://scripts/balance/runtime_balance_model.gd")
 
@@ -66,6 +67,10 @@ func set_card_runtime_catalog_service(service: CardRuntimeCatalogService) -> voi
 
 func set_visual_cue_runtime_owner(cue_owner: VisualCueRuntimeOwner) -> void:
 	_visual_cue_runtime_owner = cue_owner
+
+
+func set_runtime_command_pipeline(pipeline: RuntimeCommandPipeline) -> void:
+	_runtime_command_pipeline = pipeline
 
 
 func configure(ruleset_snapshot: Dictionary) -> void:
@@ -657,7 +662,7 @@ func remove_unit(index: int, reason: String) -> bool:
 	return true
 
 
-func trigger_command(skill: Dictionary, target_slot: int = -1, acting_player_index: int = -1) -> bool:
+func trigger_command(skill: Dictionary, target_slot: int = -1, acting_player_index: int = -1, command_context: Dictionary = {}) -> bool:
 	var players := _players()
 	var districts := _districts()
 	var selection: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
@@ -743,11 +748,31 @@ func trigger_command(skill: Dictionary, target_slot: int = -1, acting_player_ind
 			if distance > command_range:
 				_log("%s目标怪%d·%s距离%s，超过军队火力半径%s。" % [str(skill.get("name", "军令")), target_slot + 1, str(target_actor.get("name", "怪兽")), _meters_text(distance), _meters_text(command_range)])
 				return false
+			if _runtime_command_pipeline == null:
+				_log("%s未连接到权威模拟命令管线。" % str(skill.get("name", "军令")))
+				return false
+			var occurred_at_world_us := _presentation_world_clock.world_effective_micros() if _presentation_world_clock != null else maxi(1, int(round(float(_world_value(&"game_time", 0.0)) * 1000000.0)))
+			var resolution_id := int(command_context.get("resolution_id", -1))
+			var source_entity_id := "resolution:%d" % resolution_id if resolution_id >= 0 else source
+			var damage_command := {
+				"source": source,
+				"source_kind": "military_command",
+				"source_entity_id": source_entity_id,
+				"unit_uid": int(unit.get("uid", 0)),
+				"target_monster_uid": int(target_actor.get("uid", -1)),
+				"damage": damage,
+				"acting_player_index": player_index,
+				"occurred_at_world_us": occurred_at_world_us,
+			}
+			var damage_command_receipt := _runtime_command_pipeline.dispatch_military_monster_damage(damage_command)
+			if not bool(damage_command_receipt.get("handled", false)):
+				_log("%s的攻击命令被权威模拟拒绝：%s。" % [str(skill.get("name", "军令")), str(damage_command_receipt.get("reason", "command_rejected"))])
+				return false
 			if _visual_cue_runtime_owner != null:
 				_visual_cue_runtime_owner.add_monster_attack_effect(_entity_world_position(unit), _entity_world_position(target_actor), source, command_range, unit_color(unit), true)
-			_monster_runtime_controller.take_external_damage(target_slot, damage, source)
+			var applied_damage := int(damage_command_receipt.get("sink_receipt", {}).get("applied_damage", 0))
 			if _visual_cue_runtime_owner != null:
-				_visual_cue_runtime_owner.add_action_callout("匿名%s" % label, "攻击怪兽", "%s向怪%d·%s开火，造成%d点伤害。" % [label, target_slot + 1, str(target_actor.get("name", "怪兽")), damage], unit_color(unit), _entity_world_position(target_actor))
+				_visual_cue_runtime_owner.add_action_callout("匿名%s" % label, "攻击怪兽", "%s向怪%d·%s开火，造成%d点伤害。" % [label, target_slot + 1, str(target_actor.get("name", "怪兽")), applied_damage], unit_color(unit), _entity_world_position(target_actor))
 		_:
 			_log("%s尚未接入军令结算。" % str(skill.get("name", "军令")))
 			return false

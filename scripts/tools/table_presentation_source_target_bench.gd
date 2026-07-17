@@ -2,6 +2,55 @@ extends Node
 
 const SCREENSHOT_PATH := "res://docs/ui_qa/table_presentation/table_presentation_production.png"
 
+class PresentationLoopLifecyclePort extends RuntimeLifecyclePort:
+	func is_ready() -> bool: return true
+	func session_is_finished() -> bool: return false
+	func session_is_paused() -> bool: return false
+	func synchronize_forced_decisions() -> Dictionary: return {"synchronized": true}
+	func blocks_global_time() -> bool: return true
+
+class PresentationLoopMonsterPort extends RuntimeMonsterPort:
+	func is_ready() -> bool: return true
+	func tick_wagers(_delta_seconds: float) -> void: pass
+
+class PresentationLoopCardPort extends RuntimeCardPort:
+	func is_ready() -> bool: return true
+
+class PresentationLoopEconomyPort extends RuntimeEconomyPort:
+	func is_ready() -> bool: return true
+
+class PresentationLoopActorPort extends RuntimeActorPort:
+	func is_ready() -> bool: return true
+
+class PresentationLoopVictoryPort extends RuntimeVictoryPort:
+	func is_ready() -> bool: return true
+
+class PresentationLoopPort extends RuntimePresentationPort:
+	var coordinator: GameRuntimeCoordinator
+	func is_ready() -> bool: return true
+	func advance_visual_cues(_delta_seconds: float) -> Dictionary: return {}
+	func advance_table_presentation(real_delta_seconds: float) -> Array[TablePresentationApplyReceipt]:
+		return coordinator.advance_table_presentation(real_delta_seconds)
+
+class PresentationLoopPorts extends RuntimeWorldPorts:
+	func _init(coordinator: GameRuntimeCoordinator) -> void:
+		lifecycle = PresentationLoopLifecyclePort.new()
+		lifecycle.name = "RuntimeLifecyclePort"; add_child(lifecycle)
+		card = PresentationLoopCardPort.new()
+		card.name = "RuntimeCardPort"; add_child(card)
+		economy = PresentationLoopEconomyPort.new()
+		economy.name = "RuntimeEconomyPort"; add_child(economy)
+		actors = PresentationLoopActorPort.new()
+		actors.name = "RuntimeActorPort"; add_child(actors)
+		monster = PresentationLoopMonsterPort.new()
+		monster.name = "RuntimeMonsterPort"; add_child(monster)
+		presentation = PresentationLoopPort.new()
+		presentation.name = "RuntimePresentationPort"; add_child(presentation)
+		(presentation as PresentationLoopPort).coordinator = coordinator
+		victory = PresentationLoopVictoryPort.new()
+		victory.name = "RuntimeVictoryPort"; add_child(victory)
+	func is_ready() -> bool: return true
+
 @export var auto_run := true
 
 var checks := 0
@@ -22,6 +71,9 @@ func run_bench() -> Dictionary:
 	_check(game_screen != null, "production GameScreen exists")
 	if coordinator == null or game_screen == null:
 		return _finish()
+	var runtime_loop := coordinator.get_node_or_null("RuntimeLoop") as RuntimeLoop
+	if runtime_loop != null:
+		runtime_loop.set_process(false)
 	_configure_presentation_dependencies(coordinator)
 	var catalog := coordinator.card_runtime_catalog_service()
 	var card_ids := catalog.ordered_card_ids()
@@ -159,9 +211,38 @@ func run_bench() -> Dictionary:
 	_check(int(port_debug.get("stale_receipt_count", 0)) == 1, "stale diagnostic count is exact")
 	_check(int(port_debug.get("main_fallback_count", -1)) == 0 and not bool(port_debug.get("references_main", true)), "refresh port has no Main fallback")
 	_check(not bool(source_debug.get("owns_refresh_cadence", true)) and not bool(source_debug.get("owns_gameplay_state", true)), "source owns neither cadence nor gameplay state")
+	_check(runtime_loop != null, "production RuntimeLoop is available for presentation regression")
+	if runtime_loop != null:
+		var loop_ports := PresentationLoopPorts.new(coordinator)
+		var loop_phases := _bind_loop_to_phases(runtime_loop, loop_ports)
+		scheduler.reset_table_cadence()
+		scheduler.request_immediate(&"live")
+		var loop_build_before := int((source.debug_snapshot().get("snapshot_build_count_by_kind", {}) as Dictionary).get("live", 0))
+		var loop_apply_before := int(game_screen.presentation_target_debug_snapshot().get("live_target_count", 0))
+		var loop_receipt := runtime_loop.advance_frame_for_test(0.0)
+		_check(str(loop_receipt.get("path", "")) == "global_blocked", "RuntimeLoop uses the frozen global-block presentation path")
+		_check(int((source.debug_snapshot().get("snapshot_build_count_by_kind", {}) as Dictionary).get("live", 0)) == loop_build_before + 1, "one RuntimeLoop cadence receipt builds one live snapshot")
+		_check(int(game_screen.presentation_target_debug_snapshot().get("live_target_count", 0)) == loop_apply_before + 1, "one RuntimeLoop cadence receipt applies the live target once")
+		loop_phases.queue_free()
+		loop_ports.free()
 	await get_tree().process_frame
 	_check(_save_production_screenshot(), "production GameScreen screenshot is captured without a Main presentation path")
 	return _finish()
+
+
+func _bind_loop_to_phases(loop: RuntimeLoop, ports: RuntimeWorldPorts) -> RuntimePhaseCoordinator:
+	var packed := load("res://scenes/runtime/RuntimePhaseCoordinator.tscn") as PackedScene
+	var phases := packed.instantiate() as RuntimePhaseCoordinator
+	phases.lifecycle = phases.get_node("RuntimeLifecyclePhaseCoordinator") as RuntimeLifecyclePhaseCoordinator
+	phases.command = phases.get_node("RuntimeCommandPhaseCoordinator") as RuntimeCommandPhaseCoordinator
+	phases.simulation = phases.get_node("RuntimeSimulationPhaseCoordinator") as RuntimeSimulationPhaseCoordinator
+	phases.resolution = phases.get_node("RuntimeResolutionPhaseCoordinator") as RuntimeResolutionPhaseCoordinator
+	phases.state_commit = phases.get_node("RuntimeStateCommitCoordinator") as RuntimeStateCommitCoordinator
+	phases.presentation_schedule = phases.get_node("RuntimePresentationScheduleCoordinator") as RuntimePresentationScheduleCoordinator
+	phases.bind_ports(ports)
+	loop.add_child(phases)
+	loop.bind_phase_coordinator(phases)
+	return phases
 
 
 func _configure_presentation_dependencies(coordinator: GameRuntimeCoordinator) -> void:

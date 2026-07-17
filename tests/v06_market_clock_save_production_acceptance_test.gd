@@ -138,12 +138,13 @@ func _test_true_pause_and_open_market_clock_domain() -> void:
 	var opened: Dictionary = coordinator.call("open_district_purchase_window", 0, source_district, {"supply_revision": "qa-pause-open-market"}) if coordinator != null and source_district >= 0 else {}
 	_expect(coordinator != null and bool(opened.get("active", false)), "real first-table composition opens a market window without changing the clock domain")
 	if coordinator != null and bool(opened.get("active", false)):
+		var runtime_loop := coordinator.get_node_or_null("RuntimeLoop") as RuntimeLoop
 		var before_pause: Dictionary = coordinator.call("world_effective_clock_snapshot")
-		main.set("time_scale", 0.0)
-		main.call("_process", 0.25)
+		coordinator.call("pause_session")
+		runtime_loop.advance_frame_for_test(0.25)
 		var after_pause: Dictionary = coordinator.call("world_effective_clock_snapshot")
-		main.set("time_scale", 1.0)
-		main.call("_process", 0.25)
+		coordinator.call("resume_session")
+		runtime_loop.advance_frame_for_test(0.25)
 		var after_market_tick: Dictionary = coordinator.call("world_effective_clock_snapshot")
 		_expect(after_pause == before_pause, "true pause freezes world_effective time")
 		_expect(int(after_market_tick.get("world_effective_us", 0)) > int(after_pause.get("world_effective_us", 0)), "an open market does not freeze world_effective time")

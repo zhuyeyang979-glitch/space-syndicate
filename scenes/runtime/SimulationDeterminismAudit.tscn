@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/simulation_determinism_audit.gd" id="1_audit"]
+
+[node name="SimulationDeterminismAudit" type="Node"]
+script = ExtResource("1_audit")
+editor_description = "Bounded development-only deterministic trace consumer. It stores no world snapshot, owns no save data, and never participates in simulation mutation."

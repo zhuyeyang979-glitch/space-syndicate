@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/runtime_loop.gd" id="1_runtime_loop"]
+
+[node name="RuntimeLoop" type="Node"]
+script = ExtResource("1_runtime_loop")
+editor_description = "The single scene-owned production frame entry. It invokes one typed phase coordinator and owns no phase, gameplay, world, or presentation-domain state."

@@ -25,6 +25,18 @@ func _run() -> void:
 
 	var main_source := FileAccess.get_file_as_string(MAIN_PATH) if FileAccess.file_exists(MAIN_PATH) else ""
 	var metrics := _main_metrics(main_source)
+	_expect(not main_source.contains("func _process("), "Main no longer owns the authoritative frame callback")
+	_expect(not main_source.contains("func _physics_process("), "Main has no physics-process replacement loop")
+	var runtime_loop_source := FileAccess.get_file_as_string("res://scripts/runtime/runtime_loop.gd")
+	var runtime_ports_source := FileAccess.get_file_as_string("res://scripts/runtime/runtime_world_ports.gd")
+	var runtime_phases_source := FileAccess.get_file_as_string("res://scripts/runtime/runtime_phase_coordinator.gd")
+	var coordinator_scene := FileAccess.get_file_as_string("res://scenes/runtime/GameRuntimeCoordinator.tscn")
+	_expect(runtime_loop_source.contains("func _process(real_delta: float)"), "scene-owned RuntimeLoop owns the frame callback")
+	_expect(not runtime_loop_source.contains("/root/Main") and not runtime_loop_source.contains("current_scene") and not runtime_loop_source.contains("scripts/main.gd"), "RuntimeLoop has no Main callback or lookup")
+	_expect(not runtime_loop_source.contains("get_node") and not runtime_loop_source.contains("get_parent") and runtime_loop_source.contains("RuntimePhaseCoordinator") and not runtime_loop_source.contains("RuntimeWorldPorts"), "RuntimeLoop depends only on one explicitly injected phase coordinator")
+	_expect(coordinator_scene.count("[node name=\"RuntimeLoop\"") == 1, "production composition contains exactly one RuntimeLoop")
+	_expect(coordinator_scene.count("[node name=\"RuntimeWorldPorts\"") == 1 and runtime_ports_source.contains("port_count\": 7"), "production composition contains one seven-port boundary")
+	_expect(coordinator_scene.count("[node name=\"RuntimePhaseCoordinator\"") == 1 and runtime_phases_source.contains("phase_count\": 6"), "production composition contains one six-phase coordination boundary")
 	_expect(not main_source.contains("func _on_victory_outcome_applied") and not main_source.contains("var log_lines"), "Main owns neither victory presentation nor public log storage")
 	_expect(not main_source.contains("func _city_markers_for_selected_player") and not main_source.contains("func _auto_monster_markers"), "Main no longer assembles public map markers")
 	_expect(not main_source.contains("_card_resolution_presentation_source") and not main_source.contains("_card_resolution_presentation_snapshot"), "Main no longer owns card-resolution presentation source or snapshot methods")

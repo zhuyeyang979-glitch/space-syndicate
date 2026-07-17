@@ -302,10 +302,12 @@ func _test_production_cutover_contract() -> void:
 	_expect(sinks.size() == 1 and drivers.size() == 1, "production composition contains exactly one frame driver and one transition sink")
 	var sink_source := FileAccess.get_file_as_string("res://scripts/runtime/card_resolution_transition_sink.gd")
 	var main_source := FileAccess.get_file_as_string("res://scripts/" + "main.gd")
+	var runtime_loop_source := FileAccess.get_file_as_string("res://scripts/runtime/runtime_loop.gd")
+	var command_phase_source := FileAccess.get_file_as_string("res://scripts/runtime/runtime_command_phase_coordinator.gd")
 	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
 	_expect(not sink_source.contains("func _process(") and not sink_source.contains("Main") and not sink_source.contains("current_scene"), "transition sink is not a second tick owner and never discovers Main")
 	_expect(coordinator_source.contains("func advance_card_resolution_frame(delta: float) -> Dictionary"), "Coordinator exposes one high-level receipt instead of a command Array")
-	_expect(main_source.contains("advance_card_resolution_frame(scaled_delta)") and not main_source.contains("for command_variant in _game_runtime_coordinator_node().advance_card_resolution_frame"), "Main performs one high-level advance and never sees frame commands")
+	_expect(runtime_loop_source.contains("_phase_coordinator.advance_frame(real_delta)") and command_phase_source.contains("_card.advance_card_resolution_frame(context.world_delta)") and not main_source.contains("advance_card_resolution_frame("), "command phase performs one typed card-port advance while RuntimeLoop and Main never see frame commands")
 	for retired in ["_apply_card_resolution_controller_transition", "_complete_active_card_resolution", "_start_next_card_resolution", "_lock_card_resolution_batch", "_finish_card_resolution_batch", "_promote_next_card_resolution_batch", "_announce_card_counter_response_window"]:
 		_expect(not main_source.contains("func %s(" % retired), "retired Main frame path is physically absent: %s" % retired)
 	coordinator.free()

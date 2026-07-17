@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/simulation_randomness_boundary.gd" id="1_boundary"]
+
+[node name="SimulationRandomnessBoundary" type="Node"]
+script = ExtResource("1_boundary")
+editor_description = "Audits declared randomness capability. It owns no RNG; seeded gameplay draws remain owned by RunRngService."

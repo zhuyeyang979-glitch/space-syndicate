@@ -532,28 +532,20 @@ func _draw_from_region_state(
 
 
 func _build_region_bag(region_id: String, rng_state: int, claimed_unique_keys: Dictionary) -> Dictionary:
-	var rng := RandomNumberGenerator.new()
-	rng.state = maxi(1, rng_state)
-	var weighted_rows: Array = []
+	var weighted_rows: Array[Dictionary] = []
 	for card_id in _card_order:
 		if not _card_legal_for_region(card_id, region_id, claimed_unique_keys):
 			continue
 		var card: Dictionary = _cards_by_id.get(card_id, {})
-		var weight := maxi(1, int(card.get("region_supply_weight", 1)))
-		var uniform := clampf(rng.randf(), 0.000001, 0.999999)
-		var weighted_key := pow(uniform, 1.0 / float(weight))
-		weighted_rows.append({"card_id": card_id, "weighted_key": weighted_key})
-	weighted_rows.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
-		var left_key := float(left.get("weighted_key", 0.0))
-		var right_key := float(right.get("weighted_key", 0.0))
-		if not is_equal_approx(left_key, right_key):
-			return left_key > right_key
-		return str(left.get("card_id", "")) < str(right.get("card_id", ""))
-	)
-	var bag: Array = []
-	for row_variant in weighted_rows:
-		bag.append(str((row_variant as Dictionary).get("card_id", "")))
-	return {"bag": bag, "rng_state": rng.state}
+		weighted_rows.append({
+			"item_id": card_id,
+			"weight": maxi(1, int(card.get("region_supply_weight", 1))),
+		})
+	var draw := RunRngService.deterministic_weighted_shuffle(weighted_rows, rng_state)
+	return {
+		"bag": (draw.get("items", []) as Array).duplicate(),
+		"rng_state": int(draw.get("rng_state", maxi(1, rng_state))),
+	}
 
 
 func _card_legal_for_region(card_id: String, region_id: String, claimed_unique_keys: Dictionary) -> bool:

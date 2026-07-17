@@ -136,6 +136,69 @@ second frame path has been created. The next recommended production cutover is
 **AUTHORITATIVE_RUNTIME_LOOP_CUTOVER**. `presentation_action_routing` remains a
 separate pending domain and must not be marked complete by this cutover.
 
+## Fourth atomic cutover: complete
+
+`RuntimeLoop` is now the sole scene-owned authoritative gameplay frame owner:
+
+- `RuntimeLoop.tscn` is composed exactly once under
+  `GameRuntimeCoordinator.tscn`;
+- one scene-owned `RuntimeWorldPorts` composition exposes seven narrow typed
+  ports and contains no Main, root-scene, UI-target or dynamic-call lookup;
+- the frozen forced-decision, pause, real-time, world-time, card, contract,
+  weather, AI, monster, military, commodity, market, victory and presentation
+  order is covered by complete trace tests;
+- the world-effective clock advances once per active frame and projects the
+  same value to `WorldSessionState.game_time` through the existing owner;
+- Main's `_process`, `_update_victory_control` and
+  `_advance_continuous_commodity_flow` methods are physically deleted, with no
+  forwarding wrapper or fallback;
+- the authority audit reports zero duplicate tick, signal, snapshot,
+  save-writer and mutation owners.
+
+The cutover preserves the pre-existing typed-world-bridge debt rather than
+expanding bridge capability. Main decreased by 84 physical lines, 76 nonblank
+lines and 3 methods from the task start, while external Main occurrences fell
+from 1,597 to 1,591. The next recommended production boundary is
+**typed_world_ports**.
+
+## Runtime typed-port boundary hardening: complete
+
+The active authoritative frame path no longer uses the broad,
+parent-discovering `AuthoritativeRuntimeFramePort`. `RuntimeWorldPorts.tscn`
+is explicitly composed beside `RuntimeLoop` and contains seven intent-sized
+ports: lifecycle, card, economy, actors, monster, presentation and victory.
+The coordinator binds existing domain owners once; the explicit phase graph
+receives the port composition through `bind_ports()` and performs no scene
+traversal or dynamic dispatch.
+
+This hardening preserves the frozen frame order and one-mutation-path
+guarantee. It does not claim the full `typed_world_ports` ledger domain is
+complete: 21 historical WorldBridge files and setup-time dynamic composition
+remain separate migration debt. The next boundary should retire those bridges
+domain by domain rather than expanding the new ports into a service locator.
+
+## Runtime coordination phase decomposition: complete
+
+`RuntimeLoop` no longer knows individual port families or gameplay systems.
+It invokes exactly one scene-owned `RuntimePhaseCoordinator`, which preserves
+the frozen order through six explicit child coordinators:
+
+1. lifecycle;
+2. command;
+3. simulation;
+4. resolution;
+5. state commit;
+6. presentation schedule.
+
+Each phase coordinator consumes only the narrow typed ports it needs. They
+own no world state, gameplay formulas, AI policy, combat rules, UI snapshots or
+save schema. Existing domain controllers remain the only mutation owners.
+RuntimeLoop decreased from 140 to 57 physical lines, while
+GameRuntimeCoordinator decreased from 6,008/560 lines-methods to 6,005/559;
+its one extra node lookup is the explicit phase-scene composition, not a new
+service-locator path. Full trace and deterministic replay gates prove that the
+phase split changes ownership boundaries without changing frame behavior.
+
 ## Completion rule
 
 A ledger domain becomes `cut_over` only when its Main fields, methods,

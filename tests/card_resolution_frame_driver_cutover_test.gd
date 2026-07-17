@@ -23,7 +23,7 @@ const EXPECTED_TRANSITIONS := [
 ]
 
 
-class FakeTransitionSink extends Node:
+class FakeTransitionSink extends CardResolutionTransitionSink:
 	var batches: Array = []
 	var observed_transitions: Dictionary = {}
 
@@ -75,7 +75,10 @@ func _run() -> void:
 		{"public_name": "out", "eliminated": true},
 		{"public_name": "rival"},
 	], true)
-	driver.configure(controller, queue, world, eligibility, sink)
+	var command_pipeline := RuntimeCommandPipeline.new()
+	root.add_child(command_pipeline)
+	command_pipeline.bind_card_transition_sink(sink)
+	driver.configure(controller, queue, world, eligibility, command_pipeline)
 
 	_expect_advance(driver, sink, 0.25, ["hide_overlay"], "empty queue")
 	_expect_advance(driver, sink, 0.25, [], "unchanged empty queue")
@@ -121,13 +124,13 @@ func _run() -> void:
 	var debug_text := JSON.stringify(debug_snapshot)
 	for forbidden in ["players", "cash", "hand", "skill", "owner", "hidden"]:
 		_expect(not debug_text.contains(forbidden), "driver debug omits private field %s" % forbidden)
-	_expect(bool(debug_snapshot.get("transition_sink_ready", false)), "driver configuration requires a transition sink")
+	_expect(bool(debug_snapshot.get("command_pipeline_ready", false)), "driver configuration requires the explicit command pipeline")
 	_expect(not bool(debug_snapshot.get("returns_commands_to_main", true)), "driver reports that commands never leave through a legacy consumer")
 	_expect(int(debug_snapshot.get("tick_count", -1)) == 10, "driver records exactly one controller tick per advance call")
 
 	var driver_source := FileAccess.get_file_as_string("res://scripts/runtime/card_resolution_frame_driver.gd")
 	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
-	_expect(driver_source.contains("transition_sink: Node"), "FrameDriver.configure explicitly requires the transition sink")
+	_expect(driver_source.contains("command_pipeline: RuntimeCommandPipeline"), "FrameDriver.configure explicitly requires the typed command pipeline")
 	_expect(driver_source.contains("func advance_world(delta: float) -> Dictionary"), "FrameDriver returns a high-level Dictionary receipt")
 	_expect(not driver_source.contains("func advance_world(delta: float) -> Array"), "FrameDriver no longer returns a raw command Array")
 	_expect(coordinator_source.contains("func advance_card_resolution_frame(delta: float) -> Dictionary"), "coordinator forwards the high-level frame receipt")
@@ -137,11 +140,12 @@ func _run() -> void:
 	root.add_child(coordinator)
 	_expect(coordinator.get_node_or_null("CardResolutionFrameDriver") != null, "production coordinator owns the frame driver")
 	_expect(coordinator.get_node_or_null("CardResolutionTransitionSink") != null, "production coordinator owns the transition sink")
+	_expect(coordinator.get_node_or_null("RuntimeCommandPipeline") != null, "production coordinator owns the command pipeline")
 	_expect(coordinator.find_children("CardResolutionFrameDriver", "CardResolutionFrameDriver", true, false).size() == 1, "production coordinator has exactly one card frame driver")
 	_expect(coordinator.find_children("CardResolutionTransitionSink", "CardResolutionTransitionSink", true, false).size() == 1, "production coordinator has exactly one transition sink")
 	coordinator.queue_free()
 
-	for node in [driver, controller, queue, world, eligibility, sink]:
+	for node in [driver, controller, queue, world, eligibility, sink, command_pipeline]:
 		node.queue_free()
 	await process_frame
 	_finish()

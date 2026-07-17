@@ -60,6 +60,39 @@ func randf_range(from: float, to: float) -> float:
 	return _rng.randf_range(from, to)
 
 
+static func deterministic_weighted_shuffle(rows: Array, rng_state: int) -> Dictionary:
+	var derived_rng := RandomNumberGenerator.new()
+	derived_rng.state = maxi(1, rng_state)
+	var weighted_rows: Array[Dictionary] = []
+	for row_variant in rows:
+		if not (row_variant is Dictionary):
+			continue
+		var row := row_variant as Dictionary
+		var item_id := str(row.get("item_id", ""))
+		if item_id.is_empty():
+			continue
+		var weight := maxi(1, int(row.get("weight", 1)))
+		var uniform := clampf(derived_rng.randf(), 0.000001, 0.999999)
+		weighted_rows.append({
+			"item_id": item_id,
+			"weighted_key": pow(uniform, 1.0 / float(weight)),
+		})
+	weighted_rows.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		var left_key := float(left.get("weighted_key", 0.0))
+		var right_key := float(right.get("weighted_key", 0.0))
+		if not is_equal_approx(left_key, right_key):
+			return left_key > right_key
+		return str(left.get("item_id", "")) < str(right.get("item_id", ""))
+	)
+	var ordered_items: Array[String] = []
+	for row in weighted_rows:
+		ordered_items.append(str(row.get("item_id", "")))
+	return {
+		"items": ordered_items,
+		"rng_state": derived_rng.state,
+	}
+
+
 func to_save_data() -> Dictionary:
 	return {
 		"schema_version": 1,

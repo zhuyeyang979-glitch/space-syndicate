@@ -178,14 +178,22 @@
         "economy",
         "presentation"
       ],
-      "new_owner_scene": "",
-      "new_owner_script": "",
-      "new_public_api": [],
-      "tests": [],
-      "old_path_deleted": false,
-      "duplicate_execution_checked": false,
-      "commit_sha": "",
-      "status": "pending"
+      "new_owner_scene": "res://scenes/runtime/RuntimeLoop.tscn",
+      "new_owner_script": "res://scripts/runtime/runtime_loop.gd",
+      "new_public_api": [
+        "last_frame_receipt",
+        "debug_snapshot"
+      ],
+      "tests": [
+        "res://tests/runtime_loop_cutover_test.gd",
+        "res://scenes/tools/RuntimeLoopCutoverBench.tscn",
+        "res://tests/main_gd_architecture_gate_test.gd",
+        "res://tests/main_runtime_composition_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
     },
     {
       "domain": "typed_world_ports",
@@ -209,6 +217,68 @@
       "duplicate_execution_checked": false,
       "commit_sha": "",
       "status": "pending"
+    },
+    {
+      "domain": "typed_world_ports_boundary_hardening",
+      "old_symbols": [
+        "AuthoritativeRuntimeFramePort",
+        "authoritative_runtime_frame_port.gd"
+      ],
+      "old_consumers": [
+        "RuntimeLoop (historical direct consumer)"
+      ],
+      "new_owner_scene": "res://scenes/runtime/RuntimeWorldPorts.tscn",
+      "new_owner_script": "res://scripts/runtime/runtime_world_ports.gd",
+      "new_public_api": [
+        "RuntimePhaseCoordinator.bind_ports",
+        "RuntimeLifecyclePort",
+        "RuntimeCardPort",
+        "RuntimeEconomyPort",
+        "RuntimeActorPort",
+        "RuntimeMonsterPort",
+        "RuntimePresentationPort",
+        "RuntimeVictoryPort"
+      ],
+      "tests": [
+        "res://tests/typed_world_ports_boundary_test.gd",
+        "res://scenes/tools/TypedWorldPortsBoundaryBench.tscn",
+        "res://tests/runtime_loop_cutover_test.gd",
+        "res://tests/main_gd_architecture_gate_test.gd",
+        "res://tests/main_runtime_composition_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
+    },
+    {
+      "domain": "runtime_coordination_phase_decomposition",
+      "old_symbols": [
+        "RuntimeLoop concrete port schedule",
+        "GameRuntimeCoordinator.runtime_loop_can_advance"
+      ],
+      "old_consumers": [
+        "RuntimeLoop"
+      ],
+      "new_owner_scene": "res://scenes/runtime/RuntimePhaseCoordinator.tscn",
+      "new_owner_script": "res://scripts/runtime/runtime_phase_coordinator.gd",
+      "new_public_api": [
+        "RuntimeLoop.bind_phase_coordinator",
+        "RuntimePhaseCoordinator.bind_ports",
+        "RuntimePhaseCoordinator.advance_frame"
+      ],
+      "tests": [
+        "res://tests/runtime_coordination_phase_decomposition_test.gd",
+        "res://scenes/tools/RuntimeCoordinationPhaseDecompositionBench.tscn",
+        "res://tests/runtime_loop_cutover_test.gd",
+        "res://tests/typed_world_ports_boundary_test.gd",
+        "res://tests/main_gd_architecture_gate_test.gd",
+        "res://tests/main_runtime_composition_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
     },
     {
       "domain": "card_execution",
@@ -381,6 +451,33 @@
         "res://tests/ui_text_smoke_test.gd",
         "res://tests/visual_snapshot.gd",
         "res://tests/smoke_test.gd --check-only"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "",
+      "status": "cut_over"
+    },
+    {
+      "domain": "command_pipeline_boundary",
+      "old_symbols": [
+        "CardResolutionFrameDriver direct transition-sink dispatch"
+      ],
+      "old_consumers": [
+        "card-resolution frame transition batches"
+      ],
+      "new_owner_scene": "res://scenes/runtime/RuntimeCommandPipeline.tscn",
+      "new_owner_script": "res://scripts/runtime/runtime_command_pipeline.gd + res://scripts/runtime/runtime_command_envelope.gd",
+      "new_public_api": [
+        "dispatch_card_transition_batch",
+        "RuntimeCommandEnvelope.from_card_transition",
+        "RuntimeCommandEnvelope.validate"
+      ],
+      "tests": [
+        "res://tests/command_pipeline_boundary_hardening_test.gd",
+        "res://tests/card_resolution_frame_driver_cutover_test.gd",
+        "res://tests/card_resolution_transition_sink_cutover_test.gd",
+        "res://tests/card_resolution_transition_gameplay_fault_injection_test.gd",
+        "res://scenes/tools/CommandPipelineBoundaryHardeningBench.tscn"
       ],
       "old_path_deleted": true,
       "duplicate_execution_checked": true,
