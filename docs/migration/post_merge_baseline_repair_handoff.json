@@ -8,13 +8,42 @@
     "549e3815dec0cb8a4b0a3663e64cc4220bf8a9c0",
     "b0bbf0cf4e57145d77094149c74b4d1c36135473"
   ],
-  "focused_status": "passed_with_one_recorded_scene_timeout",
+  "focused_status": "focused_follow_up_passed",
   "recorded_timeout": {
     "target": "res://scenes/tools/TablePresentationSourceTargetBench.tscn",
     "run_id": "20260717-231912-880-TablePresentationSourceTargetBench-7a3cde99",
     "timeout_seconds": 300,
+    "observed_result": "FAIL 45/49",
+    "runner_exit_code": 124,
     "script_error_count": 0,
-    "remaining_runtime_process_ids": []
+    "remaining_runtime_process_ids": [],
+    "classification": {
+      "fixture": "six phase nodes were assigned before tree entry and the production scene-owned RuntimeSimulationStep was omitted, causing three RuntimeLoop/cadence failures",
+      "runner": "deferred auto-run never called get_tree().quit, so the process timed out after printing its result",
+      "rendering_environment": "the headless dummy viewport had no texture and was incorrectly treated as a headed screenshot failure"
+    }
+  },
+  "follow_up": {
+    "target": "res://scenes/tools/TablePresentationSourceTargetBench.tscn",
+    "run_id": "20260717-234159-484-TablePresentationSourceTargetBench-c8962899",
+    "status": "passed",
+    "checks_passed": 49,
+    "checks_total": 49,
+    "process_exit_code": 0,
+    "runner_exit_code": 0,
+    "duration_seconds": 7.839,
+    "timed_out": false,
+    "script_error_count": 0,
+    "headless_screenshot_mode": "dummy_renderer_skipped",
+    "cleanup_process_ids": [],
+    "remaining_runtime_process_ids": [],
+    "regression_runs": {
+      "runtime_loop_cutover_test": "20260717-234244-436-runtime_loop_cutover_test-8b271d79",
+      "runtime_loop_cutover_bench": "20260717-234250-977-RuntimeLoopCutoverBench-91450cc5",
+      "table_presentation_source_target_cutover_test": "20260717-234258-214-table_presentation_source_target_cutover_test-7c16997a",
+      "player_seat_public_source_wiring_test": "20260717-234300-970-player_seat_public_source_wiring_test-9b2820fe",
+      "smoke_check_only": "20260717-234310-354-smoke_test-b32cf3ed"
+    }
   },
   "mcp": {
     "port": 8825,
@@ -27,7 +56,18 @@
     "double_display": false,
     "play_state_after_stop": false,
     "editor_stopped": true,
-    "port_open_after_stop": false
+    "port_open_after_stop": false,
+    "follow_up_scene": "res://scenes/tools/TablePresentationSourceTargetBench.tscn",
+    "follow_up_checks": "49/49",
+    "follow_up_headed_capture": true,
+    "follow_up_screenshot_save_error": 0,
+    "follow_up_screenshot_width": 1528,
+    "follow_up_screenshot_height": 917,
+    "follow_up_screenshot_sha256": "A8E6B234488FA0C19071909B4F5405B7223F93E26E43C191502A5EDB0C0EBA58",
+    "follow_up_runtime_events": ["ready", "exit"],
+    "follow_up_play_state_after_run": false,
+    "follow_up_editor_pid": 17540,
+    "follow_up_port_open_after_stop": false
   },
   "full_gate_0_claimed": false,
   "fetch_rebase_push_performed": false

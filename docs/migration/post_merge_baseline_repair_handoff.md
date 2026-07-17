@@ -15,7 +15,15 @@ Date: 2026-07-18
 - PlayerSeat host production/Skin/fallback: PASS, zero script errors.
 - Presentation source-target cutover, query ports, viewmodel parity, refresh scheduler, Main runtime composition, composition root reduction, portrait component, and portrait Skin tests: PASS.
 - UI text smoke, visual snapshot, and smoke `--check-only`: PASS.
-- `TablePresentationSourceTargetBench.tscn`: bounded runner timeout at 300 seconds after the fixture repair; script errors 0 and runner cleanup left no runtime process. It was not rerun again and is not claimed as passed.
+- Original `TablePresentationSourceTargetBench.tscn` audit: run `20260717-231912-880-TablePresentationSourceTargetBench-7a3cde99` printed `FAIL 45/49`, then timed out at 300 seconds with runner exit `124`. Three failures came from a stale fixture that bound six phases but omitted the production scene-owned `RuntimeSimulationStep`; the fourth came from treating an unavailable dummy-renderer viewport texture as a headed screenshot failure. The deferred scene runner also never called `get_tree().quit`, which independently caused the timeout. Script error count was 0 and cleanup left no runtime process.
+
+## Follow-Up Verification
+
+- The bench now adds the production `RuntimePhaseCoordinator` scene to the tree before binding ports, so its scene-owned `RuntimeSimulationStep` participates in readiness. No simulation rule was copied and the three RuntimeLoop/cadence assertions were not relaxed.
+- Deferred `auto_run=true` execution is one-shot and exits with the returned bench result. Direct or MCP/manual `run_bench()` still returns its `Dictionary` without requesting an exit.
+- Screenshot evidence is environment-aware: headless/dummy runs explicitly record `dummy_renderer_skipped`; headed runs wait for frame draw, save the PNG, and verify the saved file. The headed artifact generated for inspection was restored to `HEAD` after its hash and dimensions were recorded.
+- Hardened Godot 4.7 scene run `20260717-234159-484-TablePresentationSourceTargetBench-c8962899`: PASS `49/49`, process/runner exit `0`, duration `7.839s`, script errors 0, not timed out, cleanup PIDs empty, remaining runtime PIDs empty.
+- Required reruns all passed with exit `0` and script errors 0: RuntimeLoop test `20260717-234244-436-runtime_loop_cutover_test-8b271d79`; RuntimeLoop bench `20260717-234250-977-RuntimeLoopCutoverBench-91450cc5`; source-target cutover `20260717-234258-214-table_presentation_source_target_cutover_test-7c16997a`; PlayerSeat wiring `20260717-234300-970-player_seat_public_source_wiring_test-9b2820fe`; smoke `--check-only` `20260717-234310-354-smoke_test-b32cf3ed`.
 
 ## MCP Evidence
 
@@ -28,6 +36,9 @@ Date: 2026-07-18
 - Runtime events: bridge ready and successful node query only; no error event.
 - Play mode exited and `is_playing_scene=false` was verified.
 - The dedicated editor stopped normally and port `8825` was closed.
+- Follow-up headed scene: `res://scenes/tools/TablePresentationSourceTargetBench.tscn`; editable scene tree showed the production coordinator, loop, phase coordinator, and typed ports.
+- Follow-up console: `PASS 49/49`; headed screenshot mode, Windows display, Vulkan renderer, `save_error=0`, and no Godot error entry. The captured PNG was `1528x917`, 272453 bytes, SHA-256 `A8E6B234488FA0C19071909B4F5405B7223F93E26E43C191502A5EDB0C0EBA58` before restoration.
+- Follow-up runtime events contained only bridge ready/exit, play state returned to false, the editor PID `17540` stopped, and port `8825` closed.
 
 ## Scope And Review
 

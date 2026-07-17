@@ -55,14 +55,26 @@ class PresentationLoopPorts extends RuntimeWorldPorts:
 
 var checks := 0
 var failures: Array[String] = []
+var _run_started := false
+var _last_result: Dictionary = {}
 
 
 func _ready() -> void:
-	if auto_run:
-		call_deferred("run_bench")
+	if auto_run and not Engine.is_editor_hint():
+		call_deferred("_run_auto_bench")
+
+
+func _run_auto_bench() -> void:
+	if _run_started:
+		return
+	var result := await run_bench()
+	get_tree().quit(0 if bool(result.get("passed", false)) else 1)
 
 
 func run_bench() -> Dictionary:
+	if _run_started:
+		return _last_result.duplicate(true)
+	_run_started = true
 	checks = 0
 	failures.clear()
 	var coordinator := get_node_or_null("GameRuntimeCoordinator") as GameRuntimeCoordinator
@@ -226,21 +238,16 @@ func run_bench() -> Dictionary:
 		loop_phases.queue_free()
 		loop_ports.free()
 	await get_tree().process_frame
-	_check(_save_production_screenshot(), "production GameScreen screenshot is captured without a Main presentation path")
+	var screenshot_evidence := await _capture_production_screenshot()
+	_check(bool(screenshot_evidence.get("passed", false)), "production GameScreen screenshot evidence follows the headed/dummy contract without a Main path")
 	return _finish()
 
 
 func _bind_loop_to_phases(loop: RuntimeLoop, ports: RuntimeWorldPorts) -> RuntimePhaseCoordinator:
 	var packed := load("res://scenes/runtime/RuntimePhaseCoordinator.tscn") as PackedScene
 	var phases := packed.instantiate() as RuntimePhaseCoordinator
-	phases.lifecycle = phases.get_node("RuntimeLifecyclePhaseCoordinator") as RuntimeLifecyclePhaseCoordinator
-	phases.command = phases.get_node("RuntimeCommandPhaseCoordinator") as RuntimeCommandPhaseCoordinator
-	phases.simulation = phases.get_node("RuntimeSimulationPhaseCoordinator") as RuntimeSimulationPhaseCoordinator
-	phases.resolution = phases.get_node("RuntimeResolutionPhaseCoordinator") as RuntimeResolutionPhaseCoordinator
-	phases.state_commit = phases.get_node("RuntimeStateCommitCoordinator") as RuntimeStateCommitCoordinator
-	phases.presentation_schedule = phases.get_node("RuntimePresentationScheduleCoordinator") as RuntimePresentationScheduleCoordinator
-	phases.bind_ports(ports)
 	loop.add_child(phases)
+	phases.bind_ports(ports)
 	loop.bind_phase_coordinator(phases)
 	return phases
 
@@ -303,19 +310,52 @@ func _track_entry(resolution_id: int, card_id: String, skill: Dictionary) -> Dic
 
 func _finish() -> Dictionary:
 	var result := {"passed": failures.is_empty(), "checks": checks, "failures": failures.duplicate()}
+	_last_result = result.duplicate(true)
 	print("TablePresentationSourceTargetBench: %s %d/%d" % ["PASS" if failures.is_empty() else "FAIL", checks - failures.size(), checks])
 	if not failures.is_empty():
 		push_error("TablePresentationSourceTargetBench failures:\n- " + "\n- ".join(failures))
 	return result
 
 
-func _save_production_screenshot() -> bool:
-	var image := get_viewport().get_texture().get_image()
+func _capture_production_screenshot() -> Dictionary:
+	var display_name := DisplayServer.get_name().to_lower()
+	var rendering_driver := RenderingServer.get_current_rendering_driver_name().to_lower()
+	if display_name == "headless" or rendering_driver == "dummy":
+		var skipped := {
+			"passed": true,
+			"mode": "dummy_renderer_skipped",
+			"display": display_name,
+			"rendering_driver": rendering_driver,
+		}
+		print("TablePresentationSourceTargetBench screenshot: dummy renderer skip %s" % JSON.stringify(skipped))
+		return skipped
+	await RenderingServer.frame_post_draw
+	var viewport := get_viewport()
+	var texture := viewport.get_texture() if viewport != null else null
+	var image := texture.get_image() if texture != null else null
 	if image == null or image.is_empty():
-		return false
+		var unavailable := {
+			"passed": false,
+			"mode": "headed_capture_failed",
+			"display": display_name,
+			"rendering_driver": rendering_driver,
+			"reason": "viewport_image_unavailable",
+		}
+		print("TablePresentationSourceTargetBench screenshot: %s" % JSON.stringify(unavailable))
+		return unavailable
 	var absolute_path := ProjectSettings.globalize_path(SCREENSHOT_PATH)
 	DirAccess.make_dir_recursive_absolute(absolute_path.get_base_dir())
-	return image.save_png(absolute_path) == OK
+	var save_error := image.save_png(absolute_path)
+	var captured := {
+		"passed": save_error == OK and FileAccess.file_exists(absolute_path),
+		"mode": "headed_capture",
+		"display": display_name,
+		"rendering_driver": rendering_driver,
+		"path": absolute_path,
+		"save_error": save_error,
+	}
+	print("TablePresentationSourceTargetBench screenshot: %s" % JSON.stringify(captured))
+	return captured
 
 
 func _check(condition: bool, message: String) -> void:
