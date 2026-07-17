@@ -8335,3 +8335,15 @@
   UI-text, visual and check-only gates remain green. Broad layout and full-smoke
   historical fixture debt remains documented without restoring compatibility
   paths.
+
+## 2026-07-18 — Autonomous monster special-action command migration
+
+- Added the pure-data `monster_action` envelope and a scene-owned
+  `MonsterActionCommandSink` to the existing `RuntimeCommandPipeline`.
+- Special-action decisions retain their existing weighted target/action choice
+  and RunRngService boundary, then submit the chosen action once; the sink
+  performs the existing effect sequence inside `SimulationMutationAuthority`.
+- Before/after UID snapshots, duplicate-command rejection and out-of-step
+  fail-closed behavior are covered without introducing a second monster owner.
+- Focused special-action tests pass 11/11 and the Godot 4.7 migration Bench
+  passes 4/4. Existing movement behavior remains covered by its 11/11 test.

@@ -86,6 +86,7 @@ var _public_log_producer_port: PublicLogProducerPort
 var _presentation_world_clock: WorldEffectiveClockRuntimeController
 var _runtime_command_pipeline: RuntimeCommandPipeline
 var _autonomous_move_sequence := 0
+var auto_monster_action_sequence := 0
 var _bankruptcy_estate_journal: Dictionary = {}
 var _monster_codex_public_catalog_cache_v06: Array = []
 var _monster_codex_public_catalog_summary_cache_v06: Dictionary = {}
@@ -656,6 +657,12 @@ func dispatch_autonomous_move_command(command: Dictionary) -> Dictionary:
 	if _runtime_command_pipeline == null:
 		return {"handled": false, "reason": "monster_move_pipeline_unavailable"}
 	return _runtime_command_pipeline.dispatch_monster_move(command)
+
+
+func dispatch_autonomous_action_command(command: Dictionary) -> Dictionary:
+	if _runtime_command_pipeline == null:
+		return {"handled": false, "reason": "monster_action_pipeline_unavailable"}
+	return _runtime_command_pipeline.dispatch_monster_action(command)
 
 
 func _next_autonomous_move_command_id(actor_uid: int, operation: String, occurred_at_world_us: int) -> Dictionary:
@@ -3989,6 +3996,43 @@ func _auto_special_monster_tick_for_slot(slot: int) -> void:
 	var target := _weighted_auto_monster_target(actor)
 	if target < 0:
 		return
+	var command := {
+		"actor_uid": int(actor.get("uid", actor.get("runtime_instance_id", -1))),
+		"action_index": action_index,
+		"action": action.duplicate(true),
+		"target_district": target,
+		"target_slot": -1,
+		"weights": weights.duplicate(true),
+		"weight_total": total,
+		"any_destroyed": any_destroyed,
+		"source": "monster_ai",
+		"occurred_at_world_us": maxi(1, int(round(game_time * 1000000.0))),
+		"sequence": int(auto_monster_action_sequence),
+	}
+	auto_monster_action_sequence += 1
+	var dispatch := dispatch_autonomous_action_command(command)
+	if not bool(dispatch.get("handled", false)):
+		_log("怪%d·%s特殊行动命令未执行：%s。" % [slot + 1, String(actor.get("name", "怪兽")), str(dispatch.get("reason", "unknown"))])
+
+
+func apply_autonomous_action_command(command: Dictionary) -> Dictionary:
+	var target_uid := int(command.get("actor_uid", -1))
+	var slot := _auto_monster_slot_by_uid(target_uid)
+	if slot < 0 or slot >= auto_monsters.size():
+		return {"accepted": false, "reason": "monster_action_actor_uid_not_found"}
+	var actor: Dictionary = auto_monsters[slot]
+	if bool(actor.get("down", false)):
+		return {"accepted": false, "reason": "monster_action_actor_down"}
+	var action: Dictionary = command.get("action", {}) as Dictionary
+	if action.is_empty():
+		return {"accepted": false, "reason": "monster_action_definition_missing"}
+	var target := int(command.get("target_district", actor.get("position", -1)))
+	if target < 0 or target >= districts.size():
+		return {"accepted": false, "reason": "monster_action_target_invalid"}
+	var weights: Array = command.get("weights", []) as Array
+	var total := float(command.get("weight_total", _weight_total(weights)))
+	var any_destroyed := bool(command.get("any_destroyed", false))
+	var action_index := int(command.get("action_index", 0))
 	var before := _entity_world_position(actor)
 	var required_range: float = float(action.get("range", 0.0))
 	var move_budget: float = _auto_monster_movement_speed_mps(actor, target, float(action.get("move_override", -1.0)))
@@ -4012,7 +4056,7 @@ func _auto_special_monster_tick_for_slot(slot: int) -> void:
 				before
 			)
 			auto_monsters[slot] = actor
-			return
+			return {"accepted": true, "slot": slot, "target_district": target, "action_index": action_index, "moving": true}
 	var target_after_move: int = target
 	if required_range <= 0.0:
 		target_after_move = int(actor.get("position", target))
@@ -4064,6 +4108,7 @@ func _auto_special_monster_tick_for_slot(slot: int) -> void:
 		_resolve_auto_monster_encounter(slot, "资源争夺")
 	if self_damage > 0:
 		_auto_monster_take_damage(slot, self_damage, "%s反冲" % String(action.get("name", "行动")), -1)
+	return {"accepted": true, "slot": slot, "target_district": target_after_move, "action_index": action_index}
 
 func _monster_has_trait(actor: Dictionary, trait_name: String) -> bool:
 	var traits: Array = actor.get("movement_traits", []) as Array

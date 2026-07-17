@@ -4959,6 +4959,10 @@ func _monster_move_command_sink_node() -> MonsterMoveCommandSink:
 	return get_node_or_null("MonsterMoveCommandSink") as MonsterMoveCommandSink
 
 
+func _monster_action_command_sink_node() -> MonsterActionCommandSink:
+	return get_node_or_null("MonsterActionCommandSink") as MonsterActionCommandSink
+
+
 func _simulation_mutation_authority_node() -> SimulationMutationAuthority:
 	return get_node_or_null("RuntimePhaseCoordinator/RuntimeSimulationStep/SimulationMutationAuthority") as SimulationMutationAuthority
 
@@ -4991,6 +4995,10 @@ func _wire_runtime_command_pipeline() -> void:
 		if move_sink != null:
 			move_sink.configure(_simulation_mutation_authority_node(), _monster_runtime_controller_node() as MonsterRuntimeController)
 			pipeline.bind_monster_move_sink(move_sink)
+		var action_sink := _monster_action_command_sink_node()
+		if action_sink != null:
+			action_sink.configure(_simulation_mutation_authority_node(), _monster_runtime_controller_node() as MonsterRuntimeController)
+			pipeline.bind_monster_action_sink(action_sink)
 		var military := _military_runtime_controller_node()
 		if military != null:
 			military.set_runtime_command_pipeline(pipeline)

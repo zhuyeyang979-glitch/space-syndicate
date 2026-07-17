@@ -14,6 +14,8 @@ RuntimeLoop
       -> RuntimeCommandPipeline
         -> CardResolutionTransitionSink
         -> MilitaryMonsterDamageCommandSink
+        -> MonsterMoveCommandSink
+        -> MonsterActionCommandSink
     -> existing typed world ports / domain controllers
 ```
 
@@ -31,7 +33,7 @@ does not become a second world store.
 | Monster autonomous movement start/advance/settle/clear | A | monster behavior decision -> typed `monster_move` command -> `MonsterMoveCommandSink` -> `MonsterRuntimeController` | Command-covered in active simulation step, audited by UID | Special monster actions remain direct |
 | Region card purchase | A | Region supply / CardFlow transaction owners | Existing typed transaction | Historical fixture coverage remains separate |
 | Commodity sale / installation | A | CommodityFlow and owner transaction boundaries | Existing typed transaction | No new migration here |
-| Monster automatic special actions | B | Monster owner tick through phase ports | Movement is covered; attacks/effects are not | Migrate action choice/result without changing phase order |
+| Monster automatic special actions | A | monster behavior decision -> typed `monster_action` command -> `MonsterActionCommandSink` -> `MonsterRuntimeController` | Command-covered in active simulation step, audited by UID | Follow-up actions spawned by a resolved action must remain explicitly bounded |
 | Military movement and non-attack effects | B | Military runtime controller | Not command-covered | Define command types without changing phase order |
 | Region damage/repair and facilities | B | RegionInfrastructure owner | Not command-covered | Requires typed damage/repair command contract |
 | Weather transitions | B | Weather runtime owner | Not command-covered | Randomness must remain RunRngService-only |

@@ -6,6 +6,7 @@ const SCHEMA_VERSION := 1
 const TYPE_CARD_RESOLUTION_TRANSITION := &"card_resolution_transition"
 const TYPE_MILITARY_MONSTER_DAMAGE := &"military_monster_damage"
 const TYPE_MONSTER_MOVE := &"monster_move"
+const TYPE_MONSTER_ACTION := &"monster_action"
 
 
 static func from_card_transition(command: Dictionary) -> Dictionary:
@@ -40,13 +41,27 @@ static func from_monster_move(command: Dictionary) -> Dictionary:
 	return _from_payload(String(TYPE_MONSTER_MOVE), command_payload)
 
 
+static func from_monster_action(command: Dictionary) -> Dictionary:
+	var command_payload := command.duplicate(true)
+	var occurred_at_world_us := maxi(1, int(command_payload.get("occurred_at_world_us", 0)))
+	var actor_uid := int(command_payload.get("actor_uid", -1))
+	var action_index := int(command_payload.get("action_index", -1))
+	var sequence := int(command_payload.get("sequence", 0))
+	if str(command_payload.get("command_id", "")).is_empty():
+		command_payload["command_id"] = "monster-action:%d:%d:%d:%d" % [actor_uid, action_index, occurred_at_world_us, sequence]
+	command_payload["batch_revision"] = occurred_at_world_us
+	command_payload["order_index"] = 0
+	command_payload["command_fingerprint"] = _payload_fingerprint(command_payload)
+	return _from_payload(String(TYPE_MONSTER_ACTION), command_payload)
+
+
 static func validate(envelope: Dictionary) -> Dictionary:
 	if not _is_pure_data(envelope):
 		return {"valid": false, "reason": "command_contains_runtime_object"}
 	if int(envelope.get("schema_version", -1)) != SCHEMA_VERSION:
 		return {"valid": false, "reason": "command_schema_unsupported"}
 	var command_type := StringName(str(envelope.get("command_type", "")))
-	if command_type not in [TYPE_CARD_RESOLUTION_TRANSITION, TYPE_MILITARY_MONSTER_DAMAGE, TYPE_MONSTER_MOVE]:
+	if command_type not in [TYPE_CARD_RESOLUTION_TRANSITION, TYPE_MILITARY_MONSTER_DAMAGE, TYPE_MONSTER_MOVE, TYPE_MONSTER_ACTION]:
 		return {"valid": false, "reason": "command_type_unsupported"}
 	if str(envelope.get("command_id", "")).is_empty():
 		return {"valid": false, "reason": "command_id_missing"}
@@ -74,6 +89,11 @@ static func validate(envelope: Dictionary) -> Dictionary:
 			return {"valid": false, "reason": "monster_move_payload_invalid"}
 		if operation == "advance" and float(payload_dictionary.get("delta_seconds", 0.0)) <= 0.0:
 			return {"valid": false, "reason": "monster_move_delta_invalid"}
+	if command_type == TYPE_MONSTER_ACTION:
+		if int(payload_dictionary.get("actor_uid", -1)) < 0 or int(payload_dictionary.get("action_index", -1)) < 0:
+			return {"valid": false, "reason": "monster_action_payload_invalid"}
+		if not (payload_dictionary.get("action", {}) is Dictionary):
+			return {"valid": false, "reason": "monster_action_definition_invalid"}
 	var expected := _fingerprint(envelope)
 	if str(envelope.get("envelope_fingerprint", "")) != expected:
 		return {"valid": false, "reason": "command_envelope_fingerprint_mismatch"}

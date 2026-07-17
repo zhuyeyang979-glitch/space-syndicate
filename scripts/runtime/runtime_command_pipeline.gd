@@ -5,6 +5,7 @@ class_name RuntimeCommandPipeline
 var _card_transition_sink: CardResolutionTransitionSink
 var _military_monster_damage_sink: MilitaryMonsterDamageCommandSink
 var _monster_move_sink: MonsterMoveCommandSink
+var _monster_action_sink: MonsterActionCommandSink
 var _dispatch_batch_count := 0
 var _dispatched_command_count := 0
 var _rejected_batch_count := 0
@@ -22,6 +23,10 @@ func bind_military_monster_damage_sink(sink: MilitaryMonsterDamageCommandSink) -
 
 func bind_monster_move_sink(sink: MonsterMoveCommandSink) -> void:
 	_monster_move_sink = sink
+
+
+func bind_monster_action_sink(sink: MonsterActionCommandSink) -> void:
+	_monster_action_sink = sink
 
 
 func is_ready() -> bool:
@@ -101,6 +106,40 @@ func dispatch_monster_move(command: Dictionary) -> Dictionary:
 	return result
 
 
+func dispatch_monster_action(command: Dictionary) -> Dictionary:
+	var saved_trace := _last_command_trace.duplicate(true)
+	var saved_receipt := _last_receipt.duplicate(true)
+	var result := _dispatch_monster_action_internal(command)
+	_last_command_trace = saved_trace
+	_last_receipt = saved_receipt
+	return result
+
+
+func _dispatch_monster_action_internal(command: Dictionary) -> Dictionary:
+	if _monster_action_sink == null:
+		return _reject("monster_action_sink_unavailable")
+	var envelope := RuntimeCommandEnvelope.from_monster_action(command)
+	var validation := RuntimeCommandEnvelope.validate(envelope)
+	if not bool(validation.get("valid", false)):
+		return _reject(str(validation.get("reason", "monster_action_invalid")))
+	_dispatch_batch_count += 1
+	var payload := RuntimeCommandEnvelope.extract_payload(envelope)
+	var receipt := _monster_action_sink.apply_command(payload, envelope)
+	var handled := bool(receipt.get("handled", false))
+	if handled:
+		_dispatched_command_count += 1
+	else:
+		_rejected_batch_count += 1
+	return {
+		"handled": handled,
+		"reason": str(receipt.get("reason", "" if handled else "monster_action_rejected")),
+		"command_type": String(RuntimeCommandEnvelope.TYPE_MONSTER_ACTION),
+		"command_id": str(envelope.get("command_id", "")),
+		"command_trace": [RuntimeCommandEnvelope.trace_entry(envelope)],
+		"sink_receipt": receipt.duplicate(true) if receipt is Dictionary else {},
+	}
+
+
 func _dispatch_monster_move_internal(command: Dictionary) -> Dictionary:
 	if _monster_move_sink == null:
 		return _reject("monster_move_sink_unavailable")
@@ -154,10 +193,11 @@ func _dispatch_military_monster_damage_internal(command: Dictionary) -> Dictiona
 func debug_snapshot() -> Dictionary:
 	return {
 		"ready": is_ready(),
-		"supported_command_types": [String(RuntimeCommandEnvelope.TYPE_CARD_RESOLUTION_TRANSITION), String(RuntimeCommandEnvelope.TYPE_MILITARY_MONSTER_DAMAGE), String(RuntimeCommandEnvelope.TYPE_MONSTER_MOVE)],
-		"supported_command_type_count": 3,
+		"supported_command_types": [String(RuntimeCommandEnvelope.TYPE_CARD_RESOLUTION_TRANSITION), String(RuntimeCommandEnvelope.TYPE_MILITARY_MONSTER_DAMAGE), String(RuntimeCommandEnvelope.TYPE_MONSTER_MOVE), String(RuntimeCommandEnvelope.TYPE_MONSTER_ACTION)],
+		"supported_command_type_count": 4,
 		"military_monster_damage_ready": _military_monster_damage_sink != null,
 		"monster_move_ready": _monster_move_sink != null,
+		"monster_action_ready": _monster_action_sink != null,
 		"dispatch_batch_count": _dispatch_batch_count,
 		"dispatched_command_count": _dispatched_command_count,
 		"rejected_batch_count": _rejected_batch_count,

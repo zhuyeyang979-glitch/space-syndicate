@@ -101,6 +101,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/RuntimeCommandPipeline.tscn" id="107_runtime_command_pipeline"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/MilitaryMonsterDamageCommandSink.tscn" id="108_military_monster_damage_sink"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/MonsterMoveCommandSink.tscn" id="109_monster_move_sink"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/MonsterActionCommandSink.tscn" id="110_monster_action_sink"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -131,6 +132,9 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="MonsterMoveCommandSink" parent="." instance=ExtResource("109_monster_move_sink")]
+unique_name_in_owner = true
+
+[node name="MonsterActionCommandSink" parent="." instance=ExtResource("110_monster_action_sink")]
 unique_name_in_owner = true
 
 [node name="TablePresentationQueryPorts" parent="." instance=ExtResource("99_table_presentation_query_ports")]
