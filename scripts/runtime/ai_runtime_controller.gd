@@ -23,6 +23,7 @@ var _card_definition_bridge: CardRuntimeDefinitionWorldBridge
 var _gameplay_balance_diagnostics_service: GameplayBalanceDiagnosticsRuntimeService
 var _victory_control_runtime_controller: VictoryControlRuntimeController
 var _route_network_runtime_controller: RouteNetworkRuntimeController
+var _visual_cue_runtime_owner: VisualCueRuntimeOwner
 var _v06_economy_action_port: RefCounted
 var _ruleset_snapshot: Dictionary = {}
 var _policy_main_payload: Dictionary = {}
@@ -82,6 +83,10 @@ func set_victory_control_runtime_controller(controller: VictoryControlRuntimeCon
 
 func set_route_network_runtime_controller(controller: RouteNetworkRuntimeController) -> void:
 	_route_network_runtime_controller = controller
+
+
+func set_visual_cue_runtime_owner(cue_owner: VisualCueRuntimeOwner) -> void:
+	_visual_cue_runtime_owner = cue_owner
 
 
 func set_v06_economy_action_port(port: RefCounted) -> Dictionary:
@@ -1266,7 +1271,8 @@ func _city_cycle_income_breakdown(district_index: int, competition_matches: int)
 	return _call_world(&"_city_cycle_income_breakdown", [district_index, competition_matches])
 
 func _add_action_callout(actor: String, action: String, detail: String, color: Color, world_position: Vector2, duration: float = ACTION_CALLOUT_DURATION) -> void:
-	return _call_monster(&"_add_action_callout", [actor, action, detail, color, world_position, duration])
+	if _visual_cue_runtime_owner != null:
+		_visual_cue_runtime_owner.add_action_callout(actor, action, detail, color, world_position, duration)
 
 func _auto_monster_target_weight_parts(actor: Dictionary, index: int) -> Dictionary:
 	return _call_monster(&"_auto_monster_target_weight_parts", [actor, index])

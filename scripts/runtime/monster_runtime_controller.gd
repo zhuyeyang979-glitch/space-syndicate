@@ -61,6 +61,7 @@ var _product_market_runtime_controller: ProductMarketRuntimeController
 var _card_runtime_catalog_service: CardRuntimeCatalogService
 var _weather_runtime_controller: WeatherRuntimeController
 var _weather_telemetry_runtime_service: Node
+var _visual_cue_runtime_owner: VisualCueRuntimeOwner
 var _ruleset_snapshot: Dictionary = {}
 var _configured := false
 
@@ -114,6 +115,10 @@ func set_weather_runtime_controller(controller: WeatherRuntimeController) -> voi
 
 func set_weather_telemetry_runtime_service(service: Node) -> void:
 	_weather_telemetry_runtime_service = service
+
+
+func set_visual_cue_runtime_owner(cue_owner: VisualCueRuntimeOwner) -> void:
+	_visual_cue_runtime_owner = cue_owner
 
 var players: Array:
 	get:
@@ -5189,16 +5194,20 @@ func _auto_monster_target_factor_summary(actor: Dictionary, index: int) -> Strin
 	return " / ".join(picked)
 
 func _add_action_callout(actor: String, action: String, detail: String, color: Color, world_position: Vector2, duration: float = ACTION_CALLOUT_DURATION) -> void:
-	_world_call(&"_add_action_callout", [actor, action, detail, color, world_position, duration])
+	if _visual_cue_runtime_owner != null:
+		_visual_cue_runtime_owner.add_action_callout(actor, action, detail, color, world_position, duration)
 
 func _add_map_event_effect(kind: String, world_position: Vector2, color: Color, label: String = "", duration: float = MAP_EVENT_EFFECT_DURATION, radius_m: float = 70.0, card_style: String = "") -> void:
-	_world_call(&"_add_map_event_effect", [kind, world_position, color, label, duration, radius_m, card_style])
+	if _visual_cue_runtime_owner != null:
+		_visual_cue_runtime_owner.add_map_event_effect(kind, world_position, color, label, duration, radius_m, card_style)
 
 func _add_monster_attack_effect(from_position: Vector2, to_position: Vector2, source: String, range_limit_m: float, color: Color, is_ranged: bool = false, action_profile: Dictionary = {}) -> void:
-	_world_call(&"_add_monster_attack_effect", [from_position, to_position, source, range_limit_m, color, is_ranged, action_profile])
+	if _visual_cue_runtime_owner != null:
+		_visual_cue_runtime_owner.add_monster_attack_effect(from_position, to_position, source, range_limit_m, color, is_ranged, action_profile)
 
 func _add_visual_trail(from_position: Vector2, to_position: Vector2, color: Color, label: String, duration: float = VISUAL_TRAIL_DURATION, style: String = "movement") -> void:
-	_world_call(&"_add_visual_trail", [from_position, to_position, color, label, duration, style])
+	if _visual_cue_runtime_owner != null:
+		_visual_cue_runtime_owner.add_visual_trail(from_position, to_position, color, label, duration, style)
 
 func _advance_entity_linear_motion(entity: Dictionary, delta_seconds: float) -> Dictionary:
 	var baseline_speed := maxf(0.0, float(entity.get("linear_move_speed_mps", 0.0)))
@@ -5377,7 +5386,8 @@ func _probability_text(weight: int, total: int) -> String:
 	return MONSTER_CATALOG_V06.probability_text(weight, total)
 
 func _pulse_district(index: int, color: Color) -> void:
-	_world_call(&"_pulse_district", [index, color])
+	if _visual_cue_runtime_owner != null:
+		_visual_cue_runtime_owner.pulse_district(index, color)
 
 func _ranked_action_weights(source_weights: Array, rank: int) -> Array:
 	return MONSTER_CATALOG_V06.ranked_action_weights(source_weights, rank)

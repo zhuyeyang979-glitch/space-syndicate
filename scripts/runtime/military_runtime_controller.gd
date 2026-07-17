@@ -19,6 +19,7 @@ var _weather_runtime_controller: WeatherRuntimeController
 var _product_market_runtime_controller: ProductMarketRuntimeController
 var _inventory_service: CardInventoryRuntimeService
 var _card_runtime_catalog_service: CardRuntimeCatalogService
+var _visual_cue_runtime_owner: VisualCueRuntimeOwner
 var _ruleset_snapshot: Dictionary = {}
 var _configured := false
 
@@ -57,6 +58,10 @@ func set_inventory_service(service: CardInventoryRuntimeService) -> void:
 
 func set_card_runtime_catalog_service(service: CardRuntimeCatalogService) -> void:
 	_card_runtime_catalog_service = service
+
+
+func set_visual_cue_runtime_owner(cue_owner: VisualCueRuntimeOwner) -> void:
+	_visual_cue_runtime_owner = cue_owner
 
 
 func configure(ruleset_snapshot: Dictionary) -> void:
@@ -607,14 +612,15 @@ func summon_from_card(player_index: int, skill: Dictionary) -> bool:
 		military_units.append(unit)
 	var label := unit_type_label(unit)
 	var granted := grant_bound_commands(player_index, int(unit.get("uid", 0)), rank, str(skill.get("name", label)), int(skill.get("fixed_skill_count", rank)))
-	_world_call(&"_add_visual_trail", [_district_center(selected_district) + Vector2(0, -70), _district_center(selected_district), unit_color(unit), label])
-	_world_call(&"_add_action_callout", [
+	if _visual_cue_runtime_owner != null:
+		_visual_cue_runtime_owner.add_visual_trail(_district_center(selected_district) + Vector2(0, -70), _district_center(selected_district), unit_color(unit), label)
+		_visual_cue_runtime_owner.add_action_callout(
 		"匿名军队牌",
 		("部署%s" % label) if existing_index < 0 else ("刷新%s" % label),
 		"%s出现%s%s；%s，不会自主行动，只响应私有军令牌。" % [str((districts[selected_district] as Dictionary).get("name", "选区")), label, str(_world_call(&"_level_text", [rank])), mobility_summary(unit)],
 		unit_color(unit),
 		_entity_world_position(unit),
-	])
+		)
 	_log("匿名军队牌结算：%s在%s%s一支%s；该玩家军队上限%d；%s。新军令：%s。" % [
 		str(skill.get("name", label)),
 		str((districts[selected_district] as Dictionary).get("name", "区域")),
@@ -633,7 +639,8 @@ func remove_unit(index: int, reason: String) -> bool:
 		return false
 	var unit := military_units[index] as Dictionary
 	_invalidate_bound_commands(int(unit.get("uid", 0)))
-	_world_call(&"_add_action_callout", ["匿名%s" % unit_type_label(unit), "撤离", reason, Color("#94a3b8"), _entity_world_position(unit)])
+	if _visual_cue_runtime_owner != null:
+		_visual_cue_runtime_owner.add_action_callout("匿名%s" % unit_type_label(unit), "撤离", reason, Color("#94a3b8"), _entity_world_position(unit))
 	_log("匿名%s撤离：%s" % [unit_type_label(unit), reason])
 	military_units.remove_at(index)
 	return true
@@ -686,8 +693,9 @@ func trigger_command(skill: Dictionary, target_slot: int = -1, acting_player_ind
 				_log("%s已经在目标附近。" % str(skill.get("name", "军令")))
 				return false
 			unit["linear_move_unit_label"] = label
-			_world_call(&"_add_visual_trail", [before, _district_center(selected_district), unit_color(unit), "军令前进"])
-			_world_call(&"_add_action_callout", ["匿名%s" % label, "前进", "%s向%s推进%s（地形×%.2f）%s。" % [label, str((districts[selected_district] as Dictionary).get("name", "区域")), _meters_text(move_speed_mps) + "/秒", terrain_multiplier, "预计%s抵达" % _duration_short_text(moved / maxf(1.0, move_speed_mps))], unit_color(unit), _entity_world_position(unit)])
+			if _visual_cue_runtime_owner != null:
+				_visual_cue_runtime_owner.add_visual_trail(before, _district_center(selected_district), unit_color(unit), "军令前进")
+				_visual_cue_runtime_owner.add_action_callout("匿名%s" % label, "前进", "%s向%s推进%s（地形×%.2f）%s。" % [label, str((districts[selected_district] as Dictionary).get("name", "区域")), _meters_text(move_speed_mps) + "/秒", terrain_multiplier, "预计%s抵达" % _duration_short_text(moved / maxf(1.0, move_speed_mps))], unit_color(unit), _entity_world_position(unit))
 		"guard":
 			if not _valid_target_district(selected_district, districts):
 				_log("%s需要选中一个未毁区域作为保卫目标。" % str(skill.get("name", "军令")))
@@ -698,7 +706,8 @@ func trigger_command(skill: Dictionary, target_slot: int = -1, acting_player_ind
 			var repair_variant: Variant = _region_infrastructure_world_bridge.call("submit_legacy_index_repair", selected_district, maxi(1, int(skill.get("rank", 1))), "military", source, float(_world_value(&"game_time", 0.0))) if _region_infrastructure_world_bridge != null and _region_infrastructure_world_bridge.has_method("submit_legacy_index_repair") else {"committed": false, "reason": "region_infrastructure_bridge_missing"}
 			var repair_receipt: Dictionary = repair_variant if repair_variant is Dictionary else {"committed": false, "reason": "region_infrastructure_receipt_invalid"}
 			var repaired := int(repair_receipt.get("applied_repair", 0))
-			_world_call(&"_add_action_callout", ["匿名%s" % label, "保卫区域", "%s获得%s支援：共享生命修复%d。" % [str((districts[selected_district] as Dictionary).get("name", "区域")), label, repaired], unit_color(unit), _district_center(selected_district)])
+			if _visual_cue_runtime_owner != null:
+				_visual_cue_runtime_owner.add_action_callout("匿名%s" % label, "保卫区域", "%s获得%s支援：共享生命修复%d。" % [str((districts[selected_district] as Dictionary).get("name", "区域")), label, repaired], unit_color(unit), _district_center(selected_district))
 		"strike_district":
 			if not _valid_target_district(selected_district, districts):
 				_log("%s需要选中一个未毁区域作为摧毁目标。" % str(skill.get("name", "军令")))
@@ -706,11 +715,13 @@ func trigger_command(skill: Dictionary, target_slot: int = -1, acting_player_ind
 			if _entity_distance_to_district(unit, selected_district) > command_range:
 				_log("%s目标距离%s，超过军队火力半径%s。" % [str(skill.get("name", "军令")), _entity_distance_to_district_label(unit, selected_district), _meters_text(command_range)])
 				return false
-			_world_call(&"_add_monster_attack_effect", [_entity_world_position(unit), _district_center(selected_district), source, command_range, unit_color(unit), true])
+			if _visual_cue_runtime_owner != null:
+				_visual_cue_runtime_owner.add_monster_attack_effect(_entity_world_position(unit), _district_center(selected_district), source, command_range, unit_color(unit), true)
 			var damage_variant: Variant = _region_infrastructure_world_bridge.call("submit_legacy_index_unit_damage", selected_district, damage, "military", source, float(_world_value(&"game_time", 0.0))) if _region_infrastructure_world_bridge != null and _region_infrastructure_world_bridge.has_method("submit_legacy_index_unit_damage") else {"committed": false, "reason": "region_infrastructure_bridge_missing"}
 			var damage_receipt: Dictionary = damage_variant if damage_variant is Dictionary else {"committed": false, "reason": "region_infrastructure_receipt_invalid"}
 			var applied_damage := int(damage_receipt.get("applied_damage", 0))
-			_world_call(&"_add_action_callout", ["匿名%s" % label, "摧毁区域", "%s轰击%s，共享生命-%d。" % [label, str((districts[selected_district] as Dictionary).get("name", "区域")), applied_damage], unit_color(unit), _district_center(selected_district)])
+			if _visual_cue_runtime_owner != null:
+				_visual_cue_runtime_owner.add_action_callout("匿名%s" % label, "摧毁区域", "%s轰击%s，共享生命-%d。" % [label, str((districts[selected_district] as Dictionary).get("name", "区域")), applied_damage], unit_color(unit), _district_center(selected_district))
 		"attack_monster":
 			var monsters := _monster_runtime_controller.roster_snapshot(true)
 			if target_slot < 0 or target_slot >= monsters.size() or bool((monsters[target_slot] as Dictionary).get("down", false)):
@@ -721,9 +732,11 @@ func trigger_command(skill: Dictionary, target_slot: int = -1, acting_player_ind
 			if distance > command_range:
 				_log("%s目标怪%d·%s距离%s，超过军队火力半径%s。" % [str(skill.get("name", "军令")), target_slot + 1, str(target_actor.get("name", "怪兽")), _meters_text(distance), _meters_text(command_range)])
 				return false
-			_world_call(&"_add_monster_attack_effect", [_entity_world_position(unit), _entity_world_position(target_actor), source, command_range, unit_color(unit), true])
+			if _visual_cue_runtime_owner != null:
+				_visual_cue_runtime_owner.add_monster_attack_effect(_entity_world_position(unit), _entity_world_position(target_actor), source, command_range, unit_color(unit), true)
 			_monster_runtime_controller.take_external_damage(target_slot, damage, source)
-			_world_call(&"_add_action_callout", ["匿名%s" % label, "攻击怪兽", "%s向怪%d·%s开火，造成%d点伤害。" % [label, target_slot + 1, str(target_actor.get("name", "怪兽")), damage], unit_color(unit), _entity_world_position(target_actor)])
+			if _visual_cue_runtime_owner != null:
+				_visual_cue_runtime_owner.add_action_callout("匿名%s" % label, "攻击怪兽", "%s向怪%d·%s开火，造成%d点伤害。" % [label, target_slot + 1, str(target_actor.get("name", "怪兽")), damage], unit_color(unit), _entity_world_position(target_actor))
 		_:
 			_log("%s尚未接入军令结算。" % str(skill.get("name", "军令")))
 			return false
@@ -914,7 +927,8 @@ func _update_units(delta: float) -> void:
 				if district_index < 0 or district_index >= districts.size():
 					district_index = int(unit.get("position", _world_call(&"_nearest_district_to", [_entity_world_position(unit)])))
 				var label := unit_type_label(unit)
-				_world_call(&"_add_action_callout", ["匿名%s" % label, "抵达", "%s抵达%s。" % [label, str((districts[district_index] as Dictionary).get("name", "区域"))], unit_color(unit), _entity_world_position(unit)])
+				if _visual_cue_runtime_owner != null:
+					_visual_cue_runtime_owner.add_action_callout("匿名%s" % label, "抵达", "%s抵达%s。" % [label, str((districts[district_index] as Dictionary).get("name", "区域"))], unit_color(unit), _entity_world_position(unit))
 				_world_call(&"_clear_entity_linear_motion", [unit])
 		unit["remaining_time"] = maxf(0.0, float(unit.get("remaining_time", 0.0)) - delta)
 		unit["cooldown_left"] = maxf(0.0, float(unit.get("cooldown_left", 0.0)) - delta)

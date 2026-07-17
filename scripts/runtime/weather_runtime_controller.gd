@@ -29,6 +29,7 @@ var _product_market_runtime_controller: ProductMarketRuntimeController
 var _route_network_runtime_controller: RouteNetworkRuntimeController
 var _region_infrastructure_world_bridge: RegionInfrastructureWorldBridge
 var _weather_telemetry_runtime_service: Node
+var _visual_cue_runtime_owner: VisualCueRuntimeOwner
 var _world_effective_clock: Node
 var _ruleset_snapshot: Dictionary = {}
 var _configured := false
@@ -80,6 +81,10 @@ func set_region_infrastructure_world_bridge(bridge: RegionInfrastructureWorldBri
 
 func set_weather_telemetry_runtime_service(service: Node) -> void:
 	_weather_telemetry_runtime_service = service
+
+
+func set_visual_cue_runtime_owner(cue_owner: VisualCueRuntimeOwner) -> void:
+	_visual_cue_runtime_owner = cue_owner
 
 
 func configure(ruleset_snapshot: Dictionary) -> void:
@@ -1020,7 +1025,8 @@ func _log(message: String) -> void:
 
 
 func _add_action_callout(source: String, title: String, detail: String, accent: Color, world_position: Vector2, duration: float = 5.0) -> void:
-	_world_call(&"_add_action_callout", [source, title, detail, accent, world_position, duration])
+	if _visual_cue_runtime_owner != null:
+		_visual_cue_runtime_owner.add_action_callout(source, title, detail, accent, world_position, duration)
 
 
 func _announce_forecast(event: Dictionary, definition: WeatherDefinition) -> void:

@@ -8054,3 +8054,15 @@
   direct action-cooldown writes with explicit owner APIs.
 - Persistent-card arming now validates the runtime card identity before
   mutating a reused slot; military cooldowns remain outside this domain.
+
+# 2026-07-17 — Visual cue runtime owner cutover
+
+- Moved movement trails, action callouts, map effects and district pulses into
+  one transient `VisualCueRuntimeOwner` scene.
+- Removed the three visual arrays, visual ageing helpers and pulse mutation
+  from Main; newly generated authoritative districts no longer contain pulse
+  fields.
+- Monster, military, weather and AI producers now use the typed owner instead
+  of visual callbacks through their Main world bridges.
+- Preserved callout SFX through injected scene-owned audio players without
+  giving the visual owner a Main reference.

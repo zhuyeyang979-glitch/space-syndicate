@@ -251,6 +251,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var contract_world_bridge := _contract_runtime_world_bridge_node()
 	var ai_controller := _ai_runtime_controller_node()
 	var ai_world_bridge := _ai_runtime_world_bridge_node()
+	var visual_cue_owner := _visual_cue_runtime_owner_node()
 	var victory_controller := _victory_control_runtime_controller_node()
 	var victory_world_bridge := _victory_control_world_bridge_node()
 	if economy_product_route_effect != null and economy_product_route_effect.has_method("set_product_market_runtime_controller"):
@@ -274,6 +275,8 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		weather_controller.call("set_region_infrastructure_world_bridge", region_infrastructure_bridge)
 	if weather_controller != null and weather_controller.has_method("set_weather_telemetry_runtime_service"):
 		weather_controller.call("set_weather_telemetry_runtime_service", weather_telemetry)
+	if weather_controller != null and weather_controller.has_method("set_visual_cue_runtime_owner"):
+		weather_controller.call("set_visual_cue_runtime_owner", visual_cue_owner)
 	if weather_controller != null and weather_controller.has_method("configure"):
 		weather_controller.call("configure", ruleset_snapshot)
 	var weather_presentation := _weather_presentation_runtime_service_node()
@@ -305,6 +308,8 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		ai_controller.call("set_victory_control_runtime_controller", victory_controller)
 	if ai_controller != null and ai_controller.has_method("set_route_network_runtime_controller"):
 		ai_controller.call("set_route_network_runtime_controller", route_network_controller)
+	if ai_controller != null and ai_controller.has_method("set_visual_cue_runtime_owner"):
+		ai_controller.call("set_visual_cue_runtime_owner", visual_cue_owner)
 	if ai_controller != null and ai_controller.has_method("configure"):
 		ai_controller.call("configure", ruleset_snapshot, ai_controller.get("policy_profile"))
 	_refresh_ai_v06_economy_action_port()
@@ -320,6 +325,8 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		monster_controller.call("set_weather_runtime_controller", weather_controller)
 	if monster_controller != null and monster_controller.has_method("set_weather_telemetry_runtime_service"):
 		monster_controller.call("set_weather_telemetry_runtime_service", weather_telemetry)
+	if monster_controller != null and monster_controller.has_method("set_visual_cue_runtime_owner"):
+		monster_controller.call("set_visual_cue_runtime_owner", visual_cue_owner)
 	if monster_controller != null and monster_controller.has_method("set_card_runtime_catalog_service"):
 		monster_controller.call("set_card_runtime_catalog_service", card_runtime_catalog)
 	if monster_controller != null and monster_controller.has_method("configure"):
@@ -356,6 +363,8 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		military_controller.call("set_weather_runtime_controller", weather_controller)
 	if military_controller != null and military_controller.has_method("set_card_runtime_catalog_service"):
 		military_controller.call("set_card_runtime_catalog_service", card_runtime_catalog)
+	if military_controller != null and military_controller.has_method("set_visual_cue_runtime_owner"):
+		military_controller.call("set_visual_cue_runtime_owner", visual_cue_owner)
 	if military_controller != null and military_controller.has_method("configure"):
 		military_controller.call("configure", ruleset_snapshot)
 	if weather_controller != null and weather_controller.has_method("set_product_market_runtime_controller"):
@@ -3226,6 +3235,79 @@ func card_cooldown_debug_snapshot() -> Dictionary:
 	return controller.debug_snapshot() if controller != null else {}
 
 
+func configure_visual_cue_world_bounds(width_m: float, height_m: float) -> void:
+	var cue_owner := _visual_cue_runtime_owner_node()
+	if cue_owner != null:
+		cue_owner.configure_world_bounds(width_m, height_m)
+
+
+func bind_visual_cue_sfx_players(players: Dictionary) -> void:
+	var cue_owner := _visual_cue_runtime_owner_node()
+	if cue_owner != null:
+		cue_owner.bind_sfx_players(players)
+
+
+func reset_visual_cues() -> void:
+	var cue_owner := _visual_cue_runtime_owner_node()
+	if cue_owner != null:
+		cue_owner.reset_state()
+
+
+func import_legacy_visual_cues(state: Dictionary) -> Dictionary:
+	var cue_owner := _visual_cue_runtime_owner_node()
+	return cue_owner.import_legacy_state(state, _world_session_state_node().districts) if cue_owner != null else {"imported": false, "reason": "visual_cue_owner_unavailable"}
+
+
+func advance_visual_cues(delta: float) -> Dictionary:
+	var cue_owner := _visual_cue_runtime_owner_node()
+	return cue_owner.advance(delta) if cue_owner != null else {"advanced": false, "reason": "visual_cue_owner_unavailable"}
+
+
+func visual_cue_public_snapshot() -> Dictionary:
+	var cue_owner := _visual_cue_runtime_owner_node()
+	return cue_owner.public_snapshot() if cue_owner != null else {}
+
+
+func visual_cue_districts_with_pulses(districts: Array) -> Array:
+	var cue_owner := _visual_cue_runtime_owner_node()
+	return cue_owner.districts_with_pulses(districts) if cue_owner != null else districts.duplicate(true)
+
+
+func add_visual_action_callout(actor: String, action: String, detail: String, color: Color, world_position: Vector2, duration: float = VisualCueRuntimeOwner.ACTION_CALLOUT_DURATION) -> Dictionary:
+	var cue_owner := _visual_cue_runtime_owner_node()
+	return cue_owner.add_action_callout(actor, action, detail, color, world_position, duration) if cue_owner != null else {}
+
+
+func add_visual_trail(from_position: Vector2, to_position: Vector2, color: Color, label: String, duration: float = VisualCueRuntimeOwner.VISUAL_TRAIL_DURATION, style: String = "movement") -> Dictionary:
+	var cue_owner := _visual_cue_runtime_owner_node()
+	return cue_owner.add_visual_trail(from_position, to_position, color, label, duration, style) if cue_owner != null else {}
+
+
+func add_visual_map_event(kind: String, world_position: Vector2, color: Color, label: String = "", duration: float = VisualCueRuntimeOwner.MAP_EVENT_EFFECT_DURATION, radius_m: float = 70.0, card_style: String = "") -> Dictionary:
+	var cue_owner := _visual_cue_runtime_owner_node()
+	return cue_owner.add_map_event_effect(kind, world_position, color, label, duration, radius_m, card_style) if cue_owner != null else {}
+
+
+func add_visual_attack_effect(kind: String, from_position: Vector2, to_position: Vector2, color: Color, label: String = "", duration: float = 0.95, radius_m: float = 80.0, action_profile: Dictionary = {}) -> Dictionary:
+	var cue_owner := _visual_cue_runtime_owner_node()
+	return cue_owner.add_attack_effect(kind, from_position, to_position, color, label, duration, radius_m, action_profile) if cue_owner != null else {}
+
+
+func add_visual_district_damage(index: int, center: Vector2, radius_m: float, source: String, color: Color = Color("#f97316")) -> Dictionary:
+	var cue_owner := _visual_cue_runtime_owner_node()
+	return cue_owner.add_district_damage_effect(index, center, radius_m, source, color) if cue_owner != null else {}
+
+
+func pulse_visual_district(index: int, color: Color) -> Dictionary:
+	var cue_owner := _visual_cue_runtime_owner_node()
+	return cue_owner.pulse_district(index, color) if cue_owner != null else {"pulsed": false, "reason": "visual_cue_owner_unavailable"}
+
+
+func visual_cue_debug_snapshot() -> Dictionary:
+	var cue_owner := _visual_cue_runtime_owner_node()
+	return cue_owner.debug_snapshot() if cue_owner != null else {}
+
+
 func active_forced_decision(viewer_index: int = -1) -> Dictionary:
 	synchronize_forced_decisions()
 	var scheduler := _scheduler_node()
@@ -4512,6 +4594,10 @@ func _wire_card_resolution_frame_driver() -> void:
 
 func _card_cooldown_runtime_controller_node() -> CardCooldownRuntimeController:
 	return get_node_or_null("CardCooldownRuntimeController") as CardCooldownRuntimeController
+
+
+func _visual_cue_runtime_owner_node() -> VisualCueRuntimeOwner:
+	return get_node_or_null("VisualCueRuntimeOwner") as VisualCueRuntimeOwner
 
 
 func _wire_card_cooldown_runtime_controller() -> void:

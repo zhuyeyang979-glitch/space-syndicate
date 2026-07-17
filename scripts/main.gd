@@ -37,16 +37,9 @@ const MAP_SITE_MARGIN_METERS := 70.0
 const MAP_REGION_COUNT_MIN := 6
 const MAP_REGION_COUNT_MAX := 54
 const MONSTER_COMMAND_MOVE_METERS := 220.0
-const MELEE_RANGE_METERS := 110.0
 const NEARBY_RADIUS_METERS := 240.0
 const DEFAULT_AOE_RADIUS_METERS := 180.0
-const VISUAL_TRAIL_DURATION := 1.8
-const DISTRICT_PULSE_DURATION := 1.2
-const MAX_VISUAL_TRAILS := 18
 const ACTION_CALLOUT_DURATION := 4.5
-const MAX_ACTION_CALLOUTS := 8
-const MAP_EVENT_EFFECT_DURATION := 1.35
-const MAX_MAP_EVENT_EFFECTS := 32
 const CITY_PUBLIC_CLUE_HISTORY_LIMIT := 6
 const DISTRICT_CARD_CHOICE_MIN := 4
 const DISTRICT_CARD_CHOICE_MAX := 5
@@ -414,9 +407,6 @@ const REALTIME_BALANCE := {
 var _roguelike_economic_viability_dev_audit: Dictionary = {}
 var skill_market := []
 var log_lines := []
-var movement_trails := []
-var action_callouts := []
-var map_event_effects := []
 
 var time_scale := 1.0
 var selected_market_skill := ""
@@ -537,7 +527,6 @@ var developer_balance_panel: Control
 var developer_balance_refresh_timer := 0.0
 var table_bgm_player: AudioStreamPlayer
 var table_sfx_players := {}
-var table_sfx_last_time := {}
 var runtime_visual_events: Array = []
 var runtime_visual_event_key := ""
 var runtime_visual_event_counter := 0
@@ -557,7 +546,6 @@ func _ready() -> void:
 
 func _build_table_audio() -> void:
 	_bind_runtime_audio_nodes()
-	table_sfx_last_time = {}
 	if table_bgm_player == null:
 		push_error("Static TableAudioHost must provide NightPatrolTableBgm.")
 	for key_variant in TABLE_SFX_KEYS:
@@ -584,6 +572,7 @@ func _bind_runtime_audio_nodes() -> void:
 		var player := host.get_node_or_null("NightPatrolSfx_%s" % key) as AudioStreamPlayer
 		if player != null:
 			table_sfx_players[key] = player
+	_game_runtime_coordinator_node().bind_visual_cue_sfx_players(table_sfx_players)
 	if table_bgm_player != null and table_bgm_player.stream != null and table_bgm_player.stream.get("loop") != null:
 		table_bgm_player.stream.set("loop", true)
 
@@ -594,34 +583,6 @@ func _start_table_bgm() -> void:
 	table_bgm_player.play()
 
 
-func _play_table_sfx(key: String, min_gap_seconds: float = 0.18) -> void:
-	var player := table_sfx_players.get(key, null) as AudioStreamPlayer
-	if player == null or player.stream == null:
-		return
-	var now := Time.get_ticks_msec() / 1000.0
-	var last := float(table_sfx_last_time.get(key, -999.0))
-	if now - last < min_gap_seconds:
-		return
-	table_sfx_last_time[key] = now
-	player.stop()
-	player.play()
-
-
-func _sfx_key_for_action_callout(actor: String, action: String, detail: String) -> String:
-	var text := "%s %s %s" % [actor, action, detail]
-	if text.contains("赌局") or text.contains("下注") or text.contains("奖池"):
-		return "impact"
-	if text.contains("天气") or text.contains("警报") or text.contains("闪电") or text.contains("风暴") or text.contains("电磁"):
-		return "storm"
-	if text.contains("攻击") or text.contains("伤害") or text.contains("摧毁") or text.contains("轰击") or text.contains("击退"):
-		return "impact"
-	if text.contains("卡牌") or text.contains("合约") or text.contains("竞价") or text.contains("公开") or text.contains("签约"):
-		return "card"
-	if text.contains("建造") or text.contains("城市") or text.contains("购买"):
-		return "card"
-	return ""
-
-
 func _process(delta: float) -> void:
 	if _runtime_session_finished():
 		return
@@ -630,7 +591,7 @@ func _process(delta: float) -> void:
 	if coordinator != null and coordinator.has_method("blocks_global_time") and bool(coordinator.call("blocks_global_time")):
 		if coordinator.has_method("tick_monster_wagers"):
 			coordinator.call("tick_monster_wagers", delta)
-		_update_visual_cues(delta)
+		_game_runtime_coordinator_node().advance_visual_cues(delta)
 		_update_process_ui_refresh(delta)
 		return
 	if time_scale <= 0.0:
@@ -666,7 +627,7 @@ func _process(delta: float) -> void:
 		coordinator.call("tick_monster_actions", scaled_delta)
 	if coordinator != null and coordinator.has_method("tick_monster_durations"):
 		coordinator.call("tick_monster_durations", scaled_delta)
-	_update_visual_cues(scaled_delta)
+	_game_runtime_coordinator_node().advance_visual_cues(scaled_delta)
 	if coordinator != null and coordinator.has_method("tick_monster_revivals"):
 		coordinator.call("tick_monster_revivals", scaled_delta)
 	if not _advance_continuous_commodity_flow(scaled_delta):
@@ -987,16 +948,16 @@ func _on_region_infrastructure_receipt(receipt: Dictionary) -> void:
 		return
 	if bool(receipt.get("region_ruined", false)):
 		_product_market_settle_destroyed_warehouse(district_index, str(receipt.get("source_entity_id", "unit")), receipt)
-		_add_district_damage_effect(district_index, str(receipt.get("source_entity_id", "unit")), Color("#ef4444"))
+		_game_runtime_coordinator_node().add_visual_district_damage(district_index, _district_center(district_index), float((_game_runtime_coordinator_node().world_session_state().districts[district_index] as Dictionary).get("radius_m", 70.0)), str(receipt.get("source_entity_id", "unit")), Color("#ef4444"))
 		_log("%s的公共设施共享生命归零，区域进入废墟。" % str((_game_runtime_coordinator_node().world_session_state().districts[district_index] as Dictionary).get("name", "区域")))
 	elif str(receipt.get("receipt_kind", "")) == "unit_damage":
-		_add_district_damage_effect(district_index, str(receipt.get("source_entity_id", "unit")), Color("#fb7185"))
+		_game_runtime_coordinator_node().add_visual_district_damage(district_index, _district_center(district_index), float((_game_runtime_coordinator_node().world_session_state().districts[district_index] as Dictionary).get("radius_m", 70.0)), str(receipt.get("source_entity_id", "unit")), Color("#fb7185"))
 		_log("%s的共享生命-%d。" % [str((_game_runtime_coordinator_node().world_session_state().districts[district_index] as Dictionary).get("name", "区域")), int(receipt.get("applied_damage", 0))])
 	elif str(receipt.get("receipt_kind", "")) == "region_repair":
-		_pulse_district(district_index, Color("#22c55e"))
+		_game_runtime_coordinator_node().pulse_visual_district(district_index, Color("#22c55e"))
 		_log("%s的共享生命修复%d。" % [str((_game_runtime_coordinator_node().world_session_state().districts[district_index] as Dictionary).get("name", "区域")), int(receipt.get("applied_repair", 0))])
 	elif str(receipt.get("receipt_kind", "")) == "facility_action":
-		_pulse_district(district_index, Color("#38bdf8"))
+		_game_runtime_coordinator_node().pulse_visual_district(district_index, Color("#38bdf8"))
 
 
 func monster_deploy_cross_owner_capabilities_v06() -> Dictionary:
@@ -1366,7 +1327,7 @@ func _present_city_gdp_derivative_opened(derivative_position: Dictionary) -> voi
 		int(derivative_position.get("maximum_gain", 0)),
 		int(derivative_position.get("maximum_loss", 0)),
 	]
-	_add_action_callout("匿名GDP衍生品", str(derivative_position.get("card_id", "城市GDP衍生品")), detail, Color("#38bdf8"), _district_center(district_index) if district_index >= 0 else _economy_effect_callout_position())
+	_game_runtime_coordinator_node().add_visual_action_callout("匿名GDP衍生品", str(derivative_position.get("card_id", "城市GDP衍生品")), detail, Color("#38bdf8"), _district_center(district_index) if district_index >= 0 else _economy_effect_callout_position())
 	_log("匿名GDP衍生品建仓：%s；出资方保持私密。" % detail)
 
 
@@ -1381,7 +1342,7 @@ func _present_city_gdp_derivative_settlement(district_index: int, reason: String
 			gain_total += maxi(0, int((receipt_variant as Dictionary).get("gain", 0)))
 			loss_total += maxi(0, int((receipt_variant as Dictionary).get("loss", 0)))
 	var summary := "%s｜结算%d笔｜公开收益¥%d｜公开损失¥%d｜持有人不公开" % [district_label, public_receipts.size(), gain_total, loss_total]
-	_add_action_callout("GDP衍生品结算", reason, summary, Color("#22d3ee"), _district_center(district_index) if district_index >= 0 else _economy_effect_callout_position())
+	_game_runtime_coordinator_node().add_visual_action_callout("GDP衍生品结算", reason, summary, Color("#22d3ee"), _district_center(district_index) if district_index >= 0 else _economy_effect_callout_position())
 	_log("%s：%s。" % [reason, summary])
 
 
@@ -1404,21 +1365,21 @@ func _present_product_futures_opened(source: String, product_name: String, direc
 		int(terms.get("maximum_gain", 0)),
 		int(terms.get("maximum_loss", 0)),
 	]
-	_add_action_callout("匿名商品期货", source, "%s%s｜%s｜基准¥%d｜%s｜%s" % [product_name, warehouse_text, "看涨" if direction == "up" else "看跌", before_price, _duration_short_text(duration_seconds), risk_text], Color("#22d3ee"), _district_center(_game_runtime_coordinator_node().table_selection_state().selected_district))
+	_game_runtime_coordinator_node().add_visual_action_callout("匿名商品期货", source, "%s%s｜%s｜基准¥%d｜%s｜%s" % [product_name, warehouse_text, "看涨" if direction == "up" else "看跌", before_price, _duration_short_text(duration_seconds), risk_text], Color("#22d3ee"), _district_center(_game_runtime_coordinator_node().table_selection_state().selected_district))
 	_log("匿名商品期货建仓：%s围绕%s%s建立%s头寸，基准价¥%d，持仓%s，%s；价格仍由供需、商路、天气和合约决定。" % [source, product_name, warehouse_text, "看涨" if direction == "up" else "看跌", before_price, _duration_short_text(duration_seconds), risk_text])
 
 
 func _present_product_growth_boon(source: String, product_name: String) -> void:
 	if _game_runtime_coordinator_node().table_selection_state().selected_district >= 0 and _game_runtime_coordinator_node().table_selection_state().selected_district < _game_runtime_coordinator_node().world_session_state().districts.size():
-		_pulse_district(_game_runtime_coordinator_node().table_selection_state().selected_district, Color("#f59e0b"))
-	_add_action_callout("商品经济", source, "%s：%s" % [product_name, _product_market_boon_text(product_name)], Color("#f59e0b"), _economy_effect_callout_position())
+		_game_runtime_coordinator_node().pulse_visual_district(_game_runtime_coordinator_node().table_selection_state().selected_district, Color("#f59e0b"))
+	_game_runtime_coordinator_node().add_visual_action_callout("商品经济", source, "%s：%s" % [product_name, _product_market_boon_text(product_name)], Color("#f59e0b"), _economy_effect_callout_position())
 	_log("%s催化%s：%s。" % [source, product_name, _product_market_boon_text(product_name)])
 
 
 func _present_product_contract_boon(source: String, product_name: String, before_price: int, after_price: int, before_volatility: int, after_volatility: int, cash_gain: int) -> void:
 	if _game_runtime_coordinator_node().table_selection_state().selected_district >= 0 and _game_runtime_coordinator_node().table_selection_state().selected_district < _game_runtime_coordinator_node().world_session_state().districts.size():
-		_pulse_district(_game_runtime_coordinator_node().table_selection_state().selected_district, Color("#f59e0b"))
-	_add_action_callout("商品合约", source, "%s：%s，¥%d→¥%d。" % [product_name, _product_market_boon_text(product_name), before_price, after_price], Color("#f59e0b"), _economy_effect_callout_position())
+		_game_runtime_coordinator_node().pulse_visual_district(_game_runtime_coordinator_node().table_selection_state().selected_district, Color("#f59e0b"))
+	_game_runtime_coordinator_node().add_visual_action_callout("商品合约", source, "%s：%s，¥%d→¥%d。" % [product_name, _product_market_boon_text(product_name), before_price, after_price], Color("#f59e0b"), _economy_effect_callout_position())
 	_log("%s签下%s商品合约：%s，价格¥%d→¥%d，波动%d→%d，获得¥%d。" % [source, product_name, _product_market_boon_text(product_name), before_price, after_price, before_volatility, after_volatility, maxi(0, cash_gain)])
 
 
@@ -4197,7 +4158,7 @@ func _card_requirement_inference_text(entry: Dictionary, viewer_index: int) -> S
 	if cash_cost > 0:
 		requirement_text += "｜费用¥%d" % cash_cost
 	return "%s:%s｜%s" % [
-		_short_event_label(card_label, 10),
+		_short_card_text(card_label, 10),
 		requirement_text,
 		owner_text,
 	]
@@ -6537,9 +6498,7 @@ func _apply_run_domain_state_compatibility_adapter(state: Dictionary) -> int:
 			"market_timer": float(state.get("market_timer", 8.0)),
 		})
 	log_lines = (state.get("log_lines", []) as Array).duplicate(true)
-	movement_trails = (state.get("movement_trails", []) as Array).duplicate(true)
-	action_callouts = (state.get("action_callouts", []) as Array).duplicate(true)
-	map_event_effects = (state.get("map_event_effects", []) as Array).duplicate(true)
+	_game_runtime_coordinator_node().import_legacy_visual_cues(state)
 	_game_runtime_coordinator_node().run_rng_service().state = int(state.get("rng_state", _game_runtime_coordinator_node().run_rng_service().state))
 	if runtime_coordinator != null and runtime_coordinator.has_method("restore_world_effective_seconds"):
 		var migrated_clock_variant: Variant = runtime_coordinator.call("restore_world_effective_seconds", float(state.get("game_time", 0.0)))
@@ -6788,8 +6747,6 @@ func _generate_roguelike_districts() -> void:
 			"last_damage_time": -1.0,
 			"destroyed": false,
 			"miasma": false,
-			"pulse": 0.0,
-			"pulse_color": Color("#facc15"),
 			"terrain": "land",
 			"terrain_label": "陆地",
 			"products": [],
@@ -7242,9 +7199,7 @@ func _new_game() -> void:
 	_city_gdp_derivative_runtime_call("reset_state")
 	skill_market = _monster_market_skills()
 	log_lines = []
-	movement_trails = []
-	action_callouts = []
-	map_event_effects = []
+	_game_runtime_coordinator_node().reset_visual_cues()
 	if coordinator != null and coordinator.has_method("restore_world_effective_seconds"):
 		coordinator.call("restore_world_effective_seconds", 0.0)
 	_game_runtime_coordinator_node().world_session_state().game_time = 0.0
@@ -7384,7 +7339,7 @@ func _start_card_ingress_animation() -> void:
 	if _game_runtime_coordinator_node().world_session_state().districts.is_empty():
 		return
 	var planet_center := Vector2(map_width_m * 0.5, map_height_m * 0.5)
-	_add_action_callout(
+	_game_runtime_coordinator_node().add_visual_action_callout(
 		"区域补给网",
 		"卡池生成",
 		"%d个区域各生成%d个随机挂牌；购买一张只补该空槽，查看牌架不会重抽。" % [
@@ -7796,7 +7751,7 @@ func _apply_role_monster_upgrade_cash(player_index: int, monster_name: String, o
 	_game_runtime_coordinator_node().world_session_state().players[player_index]["total_role_income"] = int(_game_runtime_coordinator_node().world_session_state().players[player_index].get("total_role_income", 0)) + amount
 	_record_player_economic_event(player_index, "角色收益", String(role.get("name", "角色卡")), amount, "%s从%s升至%s" % [monster_name, _level_text(old_rank), _level_text(new_rank)])
 	_record_player_cash_snapshot(player_index)
-	_add_action_callout(
+	_game_runtime_coordinator_node().add_visual_action_callout(
 		"角色收益",
 		String(role.get("name", "角色卡")),
 		"%s升级触发返现：¥+%d。" % [monster_name, amount],
@@ -9212,22 +9167,24 @@ func _refresh_board() -> void:
 
 
 func _set_map_view_data(target_view: Control) -> void:
+	var coordinator := _game_runtime_coordinator_node()
+	coordinator.configure_visual_cue_world_bounds(map_width_m, map_height_m)
+	var cue_snapshot := coordinator.visual_cue_public_snapshot()
 	target_view.set_map(
-		_game_runtime_coordinator_node().world_session_state().districts,
+		coordinator.visual_cue_districts_with_pulses(coordinator.world_session_state().districts),
 		map_width_m,
 		map_height_m,
 		_game_runtime_coordinator_node().table_selection_state().selected_district,
 		DISTRICT_PALETTE,
-		movement_trails,
-		action_callouts,
-		map_event_effects,
+		cue_snapshot.get("movement_trails", []),
+		cue_snapshot.get("action_callouts", []),
+		cue_snapshot.get("map_event_effects", []),
 		_auto_monster_markers(),
 		_city_markers_for_selected_player(),
 		_trade_route_markers_for_selected_product(),
 		_game_runtime_coordinator_node().table_selection_state().selected_trade_product,
 		selected_map_layer_focus
 	)
-	var coordinator := _game_runtime_coordinator_node()
 	if coordinator != null and target_view.has_method("set_solar_presentation_snapshot"):
 		target_view.call("set_solar_presentation_snapshot", coordinator.solar_public_presentation_snapshot())
 	if coordinator != null and target_view.has_method("set_weather_overlay_view_model"):
@@ -9429,7 +9386,7 @@ func _apply_rival_price_pump(player_index: int, action: Dictionary) -> bool:
 		after_price,
 	]
 	_set_city_public_clue(own_city_index, clue)
-	_add_action_callout(
+	_game_runtime_coordinator_node().add_visual_action_callout(
 		"匿名商业",
 		"需求造势",
 		"%s需求压力+%d，价格由供需重算；可能暴露生产方利益。" % [product_name, pressure],
@@ -10288,15 +10245,15 @@ func _emit_card_resolution_stage_visual(entry: Dictionary, skill: Dictionary, pr
 			kind = "card_open"
 			detail = "%s开场：卡面公开，目标位置被照亮。" % card_label
 			var orbit_position := _wrap_world_position(effect_position + Vector2(map_width_m * 0.08, -map_height_m * 0.06))
-			_add_visual_trail(orbit_position, effect_position, color, "匿名卡牌", 1.20, "card_ingress")
+			_game_runtime_coordinator_node().add_visual_trail(orbit_position, effect_position, color, "匿名卡牌", 1.20, "card_ingress")
 		1:
 			kind = "card_resolve"
 			detail = "%s结算：效果正写入地图/经济/怪兽状态。" % card_label
 		2:
 			kind = "card_afterglow"
 			detail = "%s余波：公开结果留下推理线索。" % card_label
-	_add_map_event_effect(kind, effect_position, color, String(presentation.get("stage_effect_label", "%s%s" % [String(presentation.get("effect_style_label", "卡牌")), stage_label])), 1.25, float(presentation.get("effect_radius", 75.0)), style)
-	_add_action_callout("匿名卡牌", "%s分镜" % stage_label, detail, color, effect_position, 2.25)
+	_game_runtime_coordinator_node().add_visual_map_event(kind, effect_position, color, String(presentation.get("stage_effect_label", "%s%s" % [String(presentation.get("effect_style_label", "卡牌")), stage_label])), 1.25, float(presentation.get("effect_radius", 75.0)), style)
+	_game_runtime_coordinator_node().add_visual_action_callout("匿名卡牌", "%s分镜" % stage_label, detail, color, effect_position, 2.25)
 
 
 func _add_card_resolution_aftermath_clue(entry: Dictionary, skill: Dictionary, resolved: bool) -> void:
@@ -10323,8 +10280,8 @@ func _add_card_resolution_aftermath_clue(entry: Dictionary, skill: Dictionary, r
 		String(presentation.get("target_text", "目标未知")),
 		clue,
 	]
-	_add_action_callout("卡牌余波", card_label, detail, color, effect_position, CARD_RESOLUTION_AFTERMATH_SECONDS)
-	_add_map_event_effect(
+	_game_runtime_coordinator_node().add_visual_action_callout("卡牌余波", card_label, detail, color, effect_position, CARD_RESOLUTION_AFTERMATH_SECONDS)
+	_game_runtime_coordinator_node().add_visual_map_event(
 		"card_afterglow",
 		effect_position,
 		color,
@@ -13270,7 +13227,7 @@ func _forward_player_hand_interaction_public_intents(skill: Dictionary, public_v
 		var intent: Dictionary = intent_variant
 		var target_label := _interaction_target_label(int(intent.get("target_player_index", -1)))
 		var disrupt := str(intent.get("interaction_kind", "")) == "player_hand_disrupt"
-		_add_action_callout("直接互动", str(intent.get("source_label", skill.get("name", "互动卡牌"))), "%s被%s；%s" % [target_label, "拆牌" if disrupt else "牵牌", "来源匿名，手牌细节私密。" if disrupt else "目标公开，来源匿名。"], _card_presentation_color(skill), _district_center(_game_runtime_coordinator_node().table_selection_state().selected_district))
+		_game_runtime_coordinator_node().add_visual_action_callout("直接互动", str(intent.get("source_label", skill.get("name", "互动卡牌"))), "%s被%s；%s" % [target_label, "拆牌" if disrupt else "牵牌", "来源匿名，手牌细节私密。" if disrupt else "目标公开，来源匿名。"], _card_presentation_color(skill), _district_center(_game_runtime_coordinator_node().table_selection_state().selected_district))
 
 
 
@@ -14304,7 +14261,7 @@ func _resolve_reactive_counter_for_entry(target_entry: Dictionary) -> Dictionary
 	var source_card := String(counter_skill.get("source_card_name", ""))
 	var source_text := "；由%s改写" % _card_display_name(source_card) if source_card != "" else ""
 	_log("匿名反制生效：%s取消了%s的结算%s。反制者仍不公开。" % [counter_label, target_label, source_text])
-	_add_action_callout(
+	_game_runtime_coordinator_node().add_visual_action_callout(
 		"匿名反制",
 		counter_label,
 		"%s被相位折叠，原牌不产生效果；反制者不公开。" % target_label,
@@ -14816,147 +14773,9 @@ func _on_commodity_flow_receipt_batch(batch: Dictionary) -> void:
 		var breakdown := _city_gdp_per_minute_breakdown(district_index, 0)
 		_sync_commodity_gdp_city_presentation(district_index, breakdown)
 		_city_gdp_derivative_runtime_call("settle_district", [district_index, int(breakdown.get("net", 0)), "商品成交回执", false])
-		_pulse_district(district_index, Color("#2dd4bf"))
+		_game_runtime_coordinator_node().pulse_visual_district(district_index, Color("#2dd4bf"))
 	for player_index in range(_game_runtime_coordinator_node().world_session_state().players.size()):
 		_record_player_cash_snapshot(player_index)
-
-
-func _update_visual_cues(delta: float) -> void:
-	for i in range(movement_trails.size() - 1, -1, -1):
-		var trail: Dictionary = movement_trails[i]
-		trail["life"] = float(trail.get("life", 0.0)) - delta
-		if float(trail["life"]) <= 0.0:
-			movement_trails.remove_at(i)
-	for i in range(action_callouts.size() - 1, -1, -1):
-		var callout: Dictionary = action_callouts[i]
-		callout["life"] = float(callout.get("life", 0.0)) - delta
-		if float(callout["life"]) <= 0.0:
-			action_callouts.remove_at(i)
-	for i in range(map_event_effects.size() - 1, -1, -1):
-		var effect: Dictionary = map_event_effects[i]
-		effect["life"] = float(effect.get("life", 0.0)) - delta
-		if float(effect["life"]) <= 0.0:
-			map_event_effects.remove_at(i)
-	for district in _game_runtime_coordinator_node().world_session_state().districts:
-		district["pulse"] = max(0.0, float(district.get("pulse", 0.0)) - delta)
-
-
-func _add_action_callout(actor: String, action: String, detail: String, color: Color, world_position: Vector2, duration: float = ACTION_CALLOUT_DURATION) -> void:
-	var resolved_duration: float = max(0.1, duration)
-	action_callouts.append({
-		"actor": actor,
-		"action": action,
-		"detail": detail,
-		"color": color,
-		"world_position": world_position,
-		"life": resolved_duration,
-		"duration": resolved_duration,
-	})
-	while action_callouts.size() > MAX_ACTION_CALLOUTS:
-		action_callouts.pop_front()
-	var sfx_key := _sfx_key_for_action_callout(actor, action, detail)
-	if sfx_key != "":
-		_play_table_sfx(sfx_key)
-
-
-func _add_visual_trail(from_position: Vector2, to_position: Vector2, color: Color, label: String, duration: float = VISUAL_TRAIL_DURATION, style: String = "movement") -> void:
-	if _wrapped_distance(from_position, to_position) <= 0.5:
-		return
-	var resolved_duration: float = max(0.1, duration)
-	movement_trails.append({
-		"from": from_position,
-		"to": to_position,
-		"color": color,
-		"label": label,
-		"life": resolved_duration,
-		"duration": resolved_duration,
-		"style": style,
-	})
-	while movement_trails.size() > MAX_VISUAL_TRAILS:
-		movement_trails.pop_front()
-
-
-func _add_map_event_effect(kind: String, world_position: Vector2, color: Color, label: String = "", duration: float = MAP_EVENT_EFFECT_DURATION, radius_m: float = 70.0, card_style: String = "") -> void:
-	_push_map_event_effect({
-		"kind": kind,
-		"position": _wrap_world_position(world_position),
-		"from": _wrap_world_position(world_position),
-		"to": _wrap_world_position(world_position),
-		"color": color,
-		"label": _short_event_label(label),
-		"life": max(0.1, duration),
-		"duration": max(0.1, duration),
-		"radius_m": max(1.0, radius_m),
-		"card_style": card_style,
-	})
-
-
-func _add_map_event_attack_effect(kind: String, from_position: Vector2, to_position: Vector2, color: Color, label: String = "", duration: float = 0.95, radius_m: float = 80.0, action_profile: Dictionary = {}) -> void:
-	_push_map_event_effect({
-		"kind": kind,
-		"position": _wrap_world_position(to_position),
-		"from": _wrap_world_position(from_position),
-		"to": _wrap_world_position(to_position),
-		"color": color,
-		"label": _short_event_label(label),
-		"life": max(0.1, duration),
-		"duration": max(0.1, duration),
-		"radius_m": max(1.0, radius_m),
-		"motion_family": String(action_profile.get("motion_family", "")),
-		"pose_key": String(action_profile.get("pose_key", "")),
-		"effect_layer": String(action_profile.get("effect_layer", "")),
-		"profile_key": String(action_profile.get("profile_key", "")),
-		"range_meters": float(action_profile.get("range_meters", radius_m)),
-		"knockback_meters": float(action_profile.get("knockback_meters", 0.0)),
-		"throw_meters": float(action_profile.get("throw_meters", 0.0)),
-		"impact_seconds": float(action_profile.get("impact_seconds", 0.45)),
-	})
-
-
-func _push_map_event_effect(effect: Dictionary) -> void:
-	map_event_effects.append(effect)
-	while map_event_effects.size() > MAX_MAP_EVENT_EFFECTS:
-		map_event_effects.pop_front()
-
-
-func _add_monster_attack_effect(from_position: Vector2, to_position: Vector2, source: String, range_limit_m: float, color: Color, is_ranged: bool = false, action_profile: Dictionary = {}) -> void:
-	var kind := "laser" if is_ranged or _source_looks_ranged(source, range_limit_m) else "melee"
-	_add_map_event_attack_effect(kind, from_position, to_position, color, source, 1.05 if kind == "laser" else 0.82, range_limit_m, action_profile)
-
-
-func _add_district_damage_effect(index: int, source: String, color: Color = Color("#f97316")) -> void:
-	if index < 0 or index >= _game_runtime_coordinator_node().world_session_state().districts.size():
-		return
-	var district: Dictionary = _game_runtime_coordinator_node().world_session_state().districts[index]
-	var kind := _district_damage_effect_kind(source)
-	_add_map_event_effect(kind, _district_center(index), color, source, 1.05 if kind == "stomp" else 0.90, float(district.get("radius_m", 70.0)))
-
-
-func _district_damage_effect_kind(source: String) -> String:
-	var text := source.to_lower()
-	if text.contains("移动") or text.contains("冲撞") or text.contains("碾") or text.contains("践踏") or text.contains("自动破坏") or text.contains("暴走") or text.contains("资源吸取") or text.contains("落点") or text.contains("击退"):
-		return "stomp"
-	return "impact"
-
-
-func _source_looks_ranged(source: String, range_limit_m: float) -> bool:
-	var text := source.to_lower()
-	if range_limit_m > MELEE_RANGE_METERS + 1.0:
-		return true
-	return text.contains("光线") or text.contains("射线") or text.contains("激光") or text.contains("火花") or text.contains("炮") or text.contains("炸弹") or text.contains("breath") or text.contains("shot") or text.contains("beam")
-
-
-func _short_event_label(text: String, max_len: int = 9) -> String:
-	if text.length() <= max_len:
-		return text
-	return text.left(max(1, max_len - 1)) + "…"
-
-
-func _pulse_district(index: int, color: Color) -> void:
-	if index < 0 or index >= _game_runtime_coordinator_node().world_session_state().districts.size():
-		return
-	_game_runtime_coordinator_node().world_session_state().districts[index]["pulse"] = DISTRICT_PULSE_DURATION
-	_game_runtime_coordinator_node().world_session_state().districts[index]["pulse_color"] = color
 
 
 func _append_unique_district_index(result: Array, index: int) -> void:

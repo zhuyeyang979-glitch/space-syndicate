@@ -1,4 +1,4 @@
-[gd_scene load_steps=82 format=3]
+[gd_scene load_steps=84 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -80,6 +80,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardResolutionRuntimeController.tscn" id="86_card_resolution_controller"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardResolutionFrameDriver.tscn" id="87_card_frame_driver"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardCooldownRuntimeController.tscn" id="88_card_cooldown_controller"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/VisualCueRuntimeOwner.tscn" id="89_visual_cue_owner"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -104,6 +105,9 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="CardCooldownRuntimeController" parent="." instance=ExtResource("88_card_cooldown_controller")]
+unique_name_in_owner = true
+
+[node name="VisualCueRuntimeOwner" parent="." instance=ExtResource("89_visual_cue_owner")]
 unique_name_in_owner = true
 
 [node name="SolarAvailabilityRuntimeService" parent="." instance=ExtResource("70_solar_availability")]
