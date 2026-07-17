@@ -327,9 +327,10 @@ generic bridge and use a narrow typed request/consumer.
 
 ## Signals, dynamic discovery, and compatibility
 
-- `scenes/main.tscn:69` connects
-  `FinalSettlementRuntimeComposition.public_log_entry_requested` directly to
-  Main `_log`. This is the production `.tscn` presentation-to-Main connection.
+- `scenes/main.tscn` connects the final-settlement menu/action signals to the
+  scene-owned `ApplicationFlowPort`; public log receipts continue to target
+  the typed Coordinator log consumer. The former direct presentation-to-Main
+  navigation edge is retired by `MAIN_DEPENDENCY_DIRECTION_MIGRATION_GREEN`.
 - GameScreen action signals connect dynamically to Main in
   `_bind_runtime_game_screen` (`main.gd:1756-1773`). They are input/action
   routing, not refresh targets, and should not be accidentally marked cut over

@@ -8369,3 +8369,13 @@
   in the 565-method coordinator, and a staged deletion order.
 - No production code, gameplay order, save schema or excluded historical
   fixture was changed in this planning-only phase.
+## 2026-07-18 — Main dependency direction migration
+
+The final-settlement presentation composition no longer targets `Main` directly
+for menu and navigation requests. A scene-owned `ApplicationFlowPort` now
+accepts only allow-listed application actions and public menu requests, rejects
+invalid input, and forwards the boundary to the existing application flow
+handler. It owns no gameplay state, clock, RNG, command pipeline, snapshot, or
+save data. The full caller inventory and migration queue are recorded in
+`docs/migration/main_dependency_inventory.md` and
+`docs/migration/main_dependency_direction_migration_report.md`.

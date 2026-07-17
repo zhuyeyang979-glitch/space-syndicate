@@ -2,7 +2,7 @@
 extends Node
 class_name FinalSettlementRuntimeComposition
 
-signal action_requested(action_id: String)
+signal action_requested(action_id: StringName)
 signal menu_open_requested(title: String, summary: String, can_continue: bool)
 signal public_log_receipt_requested(receipt: PublicLogReceipt)
 
@@ -232,7 +232,7 @@ func _on_board_action_requested(action_id: String) -> void:
 	if not ["standings", "economy", "setup"].has(routed_action):
 		return
 	_action_emission_count += 1
-	action_requested.emit(routed_action)
+	action_requested.emit(StringName(routed_action))
 
 
 func _snapshot_service() -> Node:
