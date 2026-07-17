@@ -8044,3 +8044,13 @@
   consumer of ordered transition commands until the separate card-execution
   and presentation sink cutovers are complete.
 - Godot 4.7 focused evidence: 24/24 test checks and 7/7 MCP Bench checks.
+
+# 2026-07-17 — Card cooldown runtime owner cutover
+
+- Added a unique `CardCooldownRuntimeController` under the production runtime
+  coordinator while keeping `WorldSessionState.players` as the only state and
+  save owner.
+- Deleted Main's `_update_realtime_cooldowns()` and replaced the two remaining
+  direct action-cooldown writes with explicit owner APIs.
+- Persistent-card arming now validates the runtime card identity before
+  mutating a reused slot; military cooldowns remain outside this domain.

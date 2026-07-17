@@ -182,6 +182,7 @@ func _check_static_composition(main: Control) -> void:
 		"RuntimeServices/RuntimeControllerHost",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardResolutionRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardResolutionFrameDriver",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardCooldownRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardRuntimeCatalogService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardRuntimeDefinitionWorldBridge",

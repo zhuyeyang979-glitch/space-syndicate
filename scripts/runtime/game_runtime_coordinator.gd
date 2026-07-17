@@ -33,6 +33,7 @@ func _ready() -> void:
 	_wire_world_session_state()
 	_wire_forced_decision_candidate_sources()
 	_wire_card_resolution_frame_driver()
+	_wire_card_cooldown_runtime_controller()
 
 
 func configure(ruleset_snapshot: Dictionary) -> void:
@@ -42,6 +43,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	_wire_world_session_state()
 	_wire_forced_decision_candidate_sources()
 	_wire_card_resolution_frame_driver()
+	_wire_card_cooldown_runtime_controller()
 	var world_clock := _world_effective_clock_runtime_controller_node()
 	if world_clock != null and world_clock.has_method("configure"):
 		world_clock.call("configure", {})
@@ -3201,6 +3203,29 @@ func card_resolution_frame_driver_debug() -> Dictionary:
 	return driver.debug_snapshot() if driver != null else {}
 
 
+func advance_card_cooldowns(delta: float) -> Dictionary:
+	_wire_card_cooldown_runtime_controller()
+	var controller := _card_cooldown_runtime_controller_node()
+	return controller.advance_world(delta) if controller != null else {"advanced": false, "reason": "card_cooldown_controller_unavailable"}
+
+
+func arm_player_action_cooldown(player_index: int, seconds: float) -> Dictionary:
+	_wire_card_cooldown_runtime_controller()
+	var controller := _card_cooldown_runtime_controller_node()
+	return controller.arm_player_action(player_index, seconds) if controller != null else {"armed": false, "reason": "card_cooldown_controller_unavailable"}
+
+
+func arm_persistent_card_cooldown(player_index: int, slot_index: int, expected_runtime_instance_id: String, seconds: float) -> Dictionary:
+	_wire_card_cooldown_runtime_controller()
+	var controller := _card_cooldown_runtime_controller_node()
+	return controller.arm_persistent_card(player_index, slot_index, expected_runtime_instance_id, seconds) if controller != null else {"armed": false, "reason": "card_cooldown_controller_unavailable"}
+
+
+func card_cooldown_debug_snapshot() -> Dictionary:
+	var controller := _card_cooldown_runtime_controller_node()
+	return controller.debug_snapshot() if controller != null else {}
+
+
 func active_forced_decision(viewer_index: int = -1) -> Dictionary:
 	synchronize_forced_decisions()
 	var scheduler := _scheduler_node()
@@ -4483,6 +4508,16 @@ func _wire_card_resolution_frame_driver() -> void:
 		_world_session_state_node(),
 		_card_play_eligibility_node() as CardPlayEligibilityRuntimeService
 	)
+
+
+func _card_cooldown_runtime_controller_node() -> CardCooldownRuntimeController:
+	return get_node_or_null("CardCooldownRuntimeController") as CardCooldownRuntimeController
+
+
+func _wire_card_cooldown_runtime_controller() -> void:
+	var controller := _card_cooldown_runtime_controller_node()
+	if controller != null:
+		controller.configure(_world_session_state_node())
 
 
 func _region_supply_card_descriptor(card_id: String) -> Dictionary:

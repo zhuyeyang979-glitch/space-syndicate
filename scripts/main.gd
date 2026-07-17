@@ -647,7 +647,7 @@ func _process(delta: float) -> void:
 				_apply_card_resolution_controller_transition(command_variant as Dictionary)
 	if coordinator != null and coordinator.has_method("tick_contract_runtime"):
 		coordinator.call("tick_contract_runtime", scaled_delta)
-	_update_realtime_cooldowns(scaled_delta)
+	_game_runtime_coordinator_node().advance_card_cooldowns(scaled_delta)
 	_city_gdp_derivative_runtime_call("update_timers")
 	_product_market_runtime_call("update_futures_timers")
 	if coordinator != null and coordinator.has_method("tick_weather"):
@@ -13504,11 +13504,15 @@ func _finish_played_skill(player_index: int, slot_index: int, skill: Dictionary,
 	skill.erase("_play_cost_paid_on_queue")
 	if slot_index >= 0 and slot_index < (_game_runtime_coordinator_node().world_session_state().players[player_index].get("slots", []) as Array).size():
 		if bool(skill.get("persistent", false)):
-			skill["cooldown_left"] = max(float(skill.get("cooldown_left", 0.0)), float(skill.get("cooldown", DEFAULT_SKILL_COOLDOWN)))
-			_game_runtime_coordinator_node().world_session_state().players[player_index]["slots"][slot_index] = skill
+			_game_runtime_coordinator_node().arm_persistent_card_cooldown(
+				player_index,
+				slot_index,
+				str(skill.get("runtime_instance_id", "")),
+				float(skill.get("cooldown", DEFAULT_SKILL_COOLDOWN))
+			)
 		else:
 			_game_runtime_coordinator_node().world_session_state().players[player_index]["slots"][slot_index] = null
-	_game_runtime_coordinator_node().world_session_state().players[player_index]["action_cooldown"] = max(float(_game_runtime_coordinator_node().world_session_state().players[player_index].get("action_cooldown", 0.0)), cooldown)
+	_game_runtime_coordinator_node().arm_player_action_cooldown(player_index, cooldown)
 	var response_region := int(skill.get("target_district", _game_runtime_coordinator_node().table_selection_state().selected_district))
 	if response_region >= 0:
 		var response_category := "build_after_forecast" if str(skill.get("kind", "")) in ["public_facility", "city_development", "city_product_upgrade", "city_product_shift"] else "play_after_forecast"
@@ -14292,7 +14296,7 @@ func _resolve_reactive_counter_for_entry(target_entry: Dictionary) -> Dictionary
 		target_label = "匿名牌"
 	if not bool(counter_entry.get("play_cost_paid_on_queue", false)):
 		_pay_skill_play_cost(counter_player, counter_skill)
-	_game_runtime_coordinator_node().world_session_state().players[counter_player]["action_cooldown"] = max(float(_game_runtime_coordinator_node().world_session_state().players[counter_player].get("action_cooldown", 0.0)), COMMAND_COOLDOWN)
+	_game_runtime_coordinator_node().arm_player_action_cooldown(counter_player, COMMAND_COOLDOWN)
 	var refund := maxi(0, int(counter_skill.get("counter_refund", 0)))
 	if refund > 0:
 		_game_runtime_coordinator_node().world_session_state().players[counter_player]["cash"] = int(_game_runtime_coordinator_node().world_session_state().players[counter_player].get("cash", 0)) + refund
@@ -14815,16 +14819,6 @@ func _on_commodity_flow_receipt_batch(batch: Dictionary) -> void:
 		_pulse_district(district_index, Color("#2dd4bf"))
 	for player_index in range(_game_runtime_coordinator_node().world_session_state().players.size()):
 		_record_player_cash_snapshot(player_index)
-
-
-func _update_realtime_cooldowns(delta: float) -> void:
-	for p in _game_runtime_coordinator_node().world_session_state().players:
-		p["action_cooldown"] = max(0.0, p["action_cooldown"] - delta)
-		for skill in p["slots"]:
-			if skill == null:
-				continue
-			skill["cooldown_left"] = max(0.0, float(skill.get("cooldown_left", 0.0)) - delta)
-			skill["lock_left"] = max(0.0, float(skill.get("lock_left", 0.0)) - delta)
 
 
 func _update_visual_cues(delta: float) -> void:
