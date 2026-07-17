@@ -21,7 +21,7 @@ func open_rules() -> bool:
 	var coordinator := _coordinator()
 	if coordinator != null and coordinator.has_method("pause_session"):
 		coordinator.pause_session()
-	var body := "读桌顺序：钱 → 城 → 牌 → 怪兽 → 线索。\n开局：公开角色，选起始怪兽，先把怪兽压到星球。\n赚钱：城市化份额吃GDP；商品、商路和破坏会改现金流。\n出牌：买牌花钱；高阶牌检查地区GDP份额，公开牌轨留下线索。"
+	var body := str(RULES_SNAPSHOT_SCRIPT.player_summary_text())
 	overlay.call("present_menu_shell", {
 		"title": "游戏规则",
 		"body": body,

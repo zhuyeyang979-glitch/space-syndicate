@@ -4,6 +4,7 @@ const RulesSnapshot := preload("res://scripts/viewmodels/rules_quick_reference_s
 const RulesBoardScene := preload("res://scenes/ui/RulesQuickReferenceBoard.tscn")
 const SNAPSHOT_SOURCE_PATH := "res://scripts/viewmodels/rules_quick_reference_snapshot_v06.gd"
 const PLAYER_COPY_PATHS := [
+	"res://scripts/runtime/application_flow_controller.gd",
 	"res://scripts/runtime/card_presentation_runtime_service.gd",
 	"res://scripts/cards/card_runtime_family_resource.gd",
 	"res://scripts/runtime/card_codex_public_snapshot_service.gd",
@@ -65,9 +66,10 @@ func _check_player_copy_contract() -> void:
 		var source := FileAccess.get_file_as_string(path)
 		_expect(not source.is_empty(), "player-copy source is readable: %s" % path)
 		combined += "\n" + source
-	for retired_claim in ["重复获得同系列卡自动升级", "重复获得会自动合成升级", "重复获得同系列牌会自动升级", "重复牌会升级", "满手时私密弃一张", "私密弃牌", "弃牌后购买", "需弃牌"]:
+	for retired_claim in ["重复获得同系列卡自动升级", "重复获得会自动合成升级", "重复获得同系列牌会自动升级", "重复牌会升级", "满手时私密弃一张", "私密弃牌", "弃牌后购买", "需弃牌", "城市化份额吃GDP", "高阶牌检查地区GDP份额"]:
 		_expect(not combined.contains(retired_claim), "non-main player copy rejects retired claim: %s" % retired_claim)
 	_expect(combined.contains("同名同级牌可主动合并升级"), "ordinary player copy teaches manual same-name same-rank merge")
+	_expect(FileAccess.get_file_as_string(SNAPSHOT_SOURCE_PATH).contains("高阶牌按牌面写明的公开条件检查"), "application rules copy consumes the current card-condition contract")
 	var supply_source := FileAccess.get_file_as_string("res://scripts/runtime/district_supply_snapshot_service.gd")
 	_expect(supply_source.contains("满5张") and supply_source.contains("合法同名可升级商品牌") and supply_source.contains("自动合并一次"), "supply-specific copy states the complete full-hand commodity exception")
 

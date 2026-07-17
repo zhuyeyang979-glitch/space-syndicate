@@ -4,6 +4,16 @@ class_name RulesQuickReferenceSnapshotV06
 const RULEBOOK_PATH := "res://docs/tabletop_rulebook_v06.md"
 
 
+static func player_summary_text() -> String:
+	return "\n".join([
+		"读桌顺序：钱 → 城 → 牌 → 怪兽 → 线索。",
+		"开局：公开角色并领取起始怪兽牌；召唤时点由你决定。",
+		"赚钱：建设设施、生产商品并连接真实需求；区域控制只统计自己的商品 GDP。",
+		"出牌：I 级牌是路线入口；高阶牌按牌面写明的公开条件检查，不使用旧城市份额门槛。",
+		"获胜：控制本局要求的区域数，并让其中前 K 区商品 GDP 达到动态门槛。",
+	])
+
+
 static func compose(content_width: float = 1120.0) -> Dictionary:
 	return {
 		"schema_version": "rules_quick_reference.v06",
