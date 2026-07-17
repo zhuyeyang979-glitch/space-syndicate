@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/forced_decision_candidate_sources.gd" id="1"]
+
+[node name="ForcedDecisionCandidateSources" type="Node"]
+script = ExtResource("1")
+editor_description = "Typed, privacy-safe projection of authoritative forced-decision sources into the scheduler."

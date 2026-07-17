@@ -2853,7 +2853,7 @@ func _check_runtime_full_hand_private_discard_purchase(main: Node, runtime_scree
 	_double_click_card_control(market_card)
 	await process_frame
 	await process_frame
-	var pending: Dictionary = main.get("pending_discard_purchase") if main.get("pending_discard_purchase") is Dictionary else {}
+	var pending: Dictionary = (main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).district_purchase_pending_discard_private_snapshot(0)
 	_expect(not pending.is_empty() and String(pending.get("skill_name", "")) == incoming_card, "double-clicking a full-hand market card opens a pending private discard purchase")
 	_force_runtime_screen_sync(main)
 	await process_frame
@@ -2868,7 +2868,7 @@ func _check_runtime_full_hand_private_discard_purchase(main: Node, runtime_scree
 	await process_frame
 	await process_frame
 	var names_after := _runtime_player_card_names(main, 0)
-	var pending_after: Dictionary = main.get("pending_discard_purchase") if main.get("pending_discard_purchase") is Dictionary else {}
+	var pending_after: Dictionary = (main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).district_purchase_pending_discard_private_snapshot(0)
 	var decision_after := runtime_screen.find_child("TemporaryChoiceDecisionPanel", true, false) as Control
 	_expect(pending_after.is_empty(), "clicking the private discard button clears the pending discard purchase")
 	_expect(_runtime_player_counted_hand_size(main, 0) == hand_before, "private discard purchase keeps the counted hand at the limit after replacing one old card")
@@ -3114,7 +3114,7 @@ func _prepare_runtime_full_hand_purchase(main: Node, district_index: int, incomi
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
 	main.set("selected_market_skill", incoming_card)
 	main.set("previewed_district_card", incoming_card)
-	main.set("pending_discard_purchase", {})
+	(main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).resolve_district_purchase_discard({"player_index": 0, "reason": "test_reset"})
 
 
 func _first_runtime_alive_district(main: Node) -> int:
@@ -5569,7 +5569,7 @@ func _check_main_runtime_replacement_foundation_component() -> void:
 	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
 	var bridge := bridge_packed.instantiate() if bridge_packed != null else null
 	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
-	_expect(coordinator != null and coordinator.has_method("configure") and coordinator.has_method("sync_forced_decision_candidates") and coordinator.has_method("active_forced_decision") and coordinator.has_method("blocks_global_time") and coordinator.has_method("blocks_player_actions") and coordinator.has_method("allows_card_resolution_progress") and coordinator.has_method("debug_snapshot"), "GameRuntimeCoordinator exposes thin replacement-foundation APIs")
+	_expect(coordinator != null and coordinator.has_method("configure") and coordinator.has_method("synchronize_forced_decisions") and coordinator.has_method("active_forced_decision") and coordinator.has_method("blocks_global_time") and coordinator.has_method("blocks_player_actions") and coordinator.has_method("allows_card_resolution_progress") and coordinator.has_method("debug_snapshot"), "GameRuntimeCoordinator exposes thin replacement-foundation APIs")
 	if coordinator != null and bridge != null:
 		var ruleset_snapshot: Dictionary = bridge.call("debug_snapshot")
 		coordinator.call("configure", ruleset_snapshot)
@@ -5581,17 +5581,17 @@ func _check_main_runtime_replacement_foundation_component() -> void:
 			{"id": "counter", "kind": "counter_response", "priority_group": "counter_response", "owner_player_index": -1, "visibility_scope": "public", "presentation_surface": "card_resolution_track", "opened_sequence": 3.0, "blocks_global_time": false, "blocks_player_actions": false, "blocks_card_resolution": false, "source_ref": "card_resolution_counter", "notes": "test"},
 			{"id": "wager", "kind": "monster_wager", "priority_group": "monster_wager", "owner_player_index": -1, "visibility_scope": "public", "presentation_surface": "overlay", "opened_sequence": 4.0, "blocks_global_time": true, "blocks_player_actions": true, "blocks_card_resolution": true, "source_ref": "monster_wager", "notes": "test"},
 		]
-		coordinator.call("sync_forced_decision_candidates", candidates)
-		var active: Dictionary = coordinator.call("active_forced_decision", 0)
+		scheduler.call("sync_candidates", candidates)
+		var active: Dictionary = scheduler.call("active_decision", 0)
 		var runtime_snapshot: Dictionary = coordinator.call("debug_snapshot")
 		var scheduler_snapshot: Dictionary = runtime_snapshot.get("forced_decision_scheduler", {}) if runtime_snapshot.get("forced_decision_scheduler", {}) is Dictionary else {}
 		_expect(str(active.get("priority_group", "")) == "monster_wager" and bool(coordinator.call("blocks_global_time")) and not bool(coordinator.call("allows_card_resolution_progress")), "v0.4 scheduler selects monster wager over counter, contract, and other choices")
 		var expected_scheduler_priority: Array = (ruleset_snapshot.get("forced_decision_priority", []) as Array).duplicate()
 		expected_scheduler_priority.append("public_bid")
 		_expect(scheduler_snapshot.get("priority_order", []) == expected_scheduler_priority and scheduler_snapshot.get("priority_order", []) == ["monster_wager", "counter_response", "contract_response", "other_choice", "public_bid"], "ForcedDecisionRuntimeScheduler preserves RulesetRuntimeBridge priority and appends public_bid last")
-		coordinator.call("sync_forced_decision_candidates", [candidates[1]])
-		var hidden: Dictionary = coordinator.call("active_forced_decision", 0)
-		var owner_visible: Dictionary = coordinator.call("active_forced_decision", 1)
+		scheduler.call("sync_candidates", [candidates[1]])
+		var hidden: Dictionary = scheduler.call("active_decision", 0)
+		var owner_visible: Dictionary = scheduler.call("active_decision", 1)
 		var private_snapshot: Dictionary = coordinator.call("debug_snapshot")
 		_expect(not bool(hidden.get("visible_to_viewer", true)) and str(hidden.get("presentation_surface", "")) == "player_hint" and bool(owner_visible.get("visible_to_viewer", false)), "private forced decision is visible only to its owner")
 		_expect(not var_to_str(private_snapshot).contains("owner_player_index") and not _variant_contains_callable(private_snapshot) and not _variant_contains_object(private_snapshot), "Coordinator and Scheduler debug snapshots omit owner identity and remain pure data")
@@ -5606,7 +5606,7 @@ func _check_main_runtime_replacement_foundation_component() -> void:
 		if main != null:
 			main.free()
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	_expect(main_source.contains("func _forced_decision_candidates() -> Array:") and main_source.contains("func _sync_forced_decision_runtime() -> void:") and main_source.contains("coordinator.call(\"sync_forced_decision_candidates\", _forced_decision_candidates())"), "main.gd supplies only pure candidate facts to the scene-owned coordinator")
+	_expect(not main_source.contains("func _forced_decision_candidates() -> Array:") and not main_source.contains("func _sync_forced_decision_runtime() -> void:") and not main_source.contains("pending_target_player_index") and main_source.contains("synchronize_forced_decisions"), "main.gd consumes the scene-owned forced-decision projection without owning candidates")
 	_expect(not main_source.contains("var sources: Array = [\n\t\t_runtime_monster_wager_decision_snapshot_source") and not main_source.contains("func _temporary_decision_blueprint") and not main_source.contains("func _add_temporary_decision_panel"), "main.gd no longer owns hard-coded decision order or dynamic temporary-decision controls")
 	var bench_packed := load(FORCED_DECISION_RUNTIME_SCHEDULER_BENCH_SCENE) as PackedScene
 	if bench_packed != null:

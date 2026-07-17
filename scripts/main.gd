@@ -421,7 +421,6 @@ var map_event_effects := []
 var time_scale := 1.0
 var selected_market_skill := ""
 var previewed_district_card := ""
-var pending_discard_purchase := {}
 var selected_guess_player := -1
 var selected_map_layer_focus := "all"
 var configured_player_count := DEFAULT_PLAYER_COUNT
@@ -436,13 +435,6 @@ var district_lookup := {}
 var ui_timer := 0.0
 var ui_map_refresh_timer := 0.0
 var ui_full_refresh_timer := 0.0
-
-var pending_target_player_index := -1
-var pending_target_slot_index := -1
-var pending_target_paused_time := false
-var pending_player_target_player_index := -1
-var pending_player_target_slot_index := -1
-var speed_before_target_choice := 1.0
 
 var runtime_game_screen: Control
 var ruleset_runtime_bridge: Node
@@ -633,7 +625,7 @@ func _sfx_key_for_action_callout(actor: String, action: String, detail: String) 
 func _process(delta: float) -> void:
 	if _runtime_session_finished():
 		return
-	_sync_forced_decision_runtime()
+	_game_runtime_coordinator_node().synchronize_forced_decisions()
 	var coordinator := _game_runtime_coordinator_node()
 	if coordinator != null and coordinator.has_method("blocks_global_time") and bool(coordinator.call("blocks_global_time")):
 		if coordinator.has_method("tick_monster_wagers"):
@@ -6590,9 +6582,8 @@ func _apply_run_domain_state_compatibility_adapter(state: Dictionary) -> int:
 	})
 	selected_market_skill = _canonical_card_supply_name(String(state.get("selected_market_skill", "")))
 	previewed_district_card = _canonical_card_supply_name(String(state.get("previewed_district_card", selected_market_skill)))
-	pending_discard_purchase = (state.get("pending_discard_purchase", {}) as Dictionary).duplicate(true)
 	if runtime_coordinator != null and runtime_coordinator.has_method("restore_district_purchase_legacy_state"):
-		runtime_coordinator.call("restore_district_purchase_legacy_state", state.get("district_card_purchase_snapshot", {}) as Dictionary, _game_runtime_coordinator_node().world_session_state().game_time, pending_discard_purchase)
+		runtime_coordinator.call("restore_district_purchase_legacy_state", state.get("district_card_purchase_snapshot", {}) as Dictionary, _game_runtime_coordinator_node().world_session_state().game_time, state.get("pending_discard_purchase", {}) as Dictionary)
 	selected_guess_player = int(state.get("selected_guess_player", -1))
 	selected_map_layer_focus = String(_map_layer_entry(String(state.get("selected_map_layer_focus", "all"))).get("id", "all"))
 	if runtime_coordinator != null and runtime_coordinator.has_method("apply_contract_save_data"):
@@ -6651,12 +6642,8 @@ func _apply_run_domain_state_compatibility_adapter(state: Dictionary) -> int:
 		runtime_coordinator.call("apply_monster_save_data", state)
 	if runtime_coordinator != null and runtime_coordinator.has_method("apply_military_save_data"):
 		runtime_coordinator.call("apply_military_save_data", state)
-	pending_target_player_index = int(state.get("pending_target_player_index", -1))
-	pending_target_slot_index = int(state.get("pending_target_slot_index", -1))
-	pending_target_paused_time = bool(state.get("pending_target_paused_time", false))
-	pending_player_target_player_index = int(state.get("pending_player_target_player_index", -1))
-	pending_player_target_slot_index = int(state.get("pending_player_target_slot_index", -1))
-	speed_before_target_choice = float(state.get("speed_before_target_choice", 1.0))
+	if runtime_coordinator != null and runtime_coordinator.has_method("apply_card_target_choice_legacy_state"):
+		runtime_coordinator.call("apply_card_target_choice_legacy_state", state)
 	if runtime_coordinator != null and runtime_coordinator.has_method("apply_codex_navigation_legacy_save_snapshot"):
 		runtime_coordinator.call("apply_codex_navigation_legacy_save_snapshot", state)
 	var normalized_market: Array = []
@@ -7252,11 +7239,6 @@ func _new_game() -> void:
 		coordinator.call("reset_state")
 	_game_runtime_coordinator_node().world_session_state().players = []
 	_game_runtime_coordinator_node().world_session_state().districts = []
-	pending_target_player_index = -1
-	pending_target_slot_index = -1
-	pending_target_paused_time = false
-	pending_player_target_player_index = -1
-	pending_player_target_slot_index = -1
 	card_resolution_timer = 0.0
 	card_resolution_counter_window_active = false
 	card_resolution_counter_timer = 0.0
@@ -7287,7 +7269,6 @@ func _new_game() -> void:
 	selected_runtime_card_slot = -1
 	selected_market_skill = skill_market[0] if not skill_market.is_empty() else ""
 	previewed_district_card = selected_market_skill
-	pending_discard_purchase = {}
 	selected_guess_player = -1
 	_game_runtime_coordinator_node().table_selection_state().selected_trade_product = ""
 	selected_map_layer_focus = "all"
@@ -8010,113 +7991,10 @@ func _runtime_player_board_snapshot_source(player_index: int, action_entries: Ar
 	}
 
 
-func _forced_decision_candidates() -> Array:
-	var candidates: Array = []
-	var wager := monster_runtime_controller._latest_active_monster_wager()
-	if not wager.is_empty():
-		var wager_id := int(wager.get("wager_id", -1))
-		candidates.append({
-			"id": "monster_wager_%d" % wager_id,
-			"kind": TEMP_DECISION_MONSTER_WAGER,
-			"priority_group": "monster_wager",
-			"owner_player_index": -1,
-			"visibility_scope": "public",
-			"presentation_surface": "overlay",
-			"opened_sequence": float(wager_id),
-			"blocks_global_time": true,
-			"blocks_player_actions": true,
-			"blocks_card_resolution": true,
-			"source_ref": "monster_wager",
-			"notes": "Public wager freezes the table until every bet or timeout resolves.",
-		})
-	if card_resolution_counter_window_active and not _card_resolution_active_entry().is_empty():
-		var resolution_id := int(_card_resolution_active_entry().get("resolution_id", _card_resolution_active_entry().get("queued_order", -1)))
-		candidates.append({
-			"id": "counter_response_%d" % resolution_id,
-			"kind": "counter_response",
-			"priority_group": "counter_response",
-			"owner_player_index": -1,
-			"visibility_scope": "public",
-			"presentation_surface": "card_resolution_track",
-			"opened_sequence": float(resolution_id),
-			"blocks_global_time": false,
-			"blocks_player_actions": false,
-			"blocks_card_resolution": false,
-			"source_ref": "card_resolution_counter",
-			"notes": "The card controller must keep ticking while response cards remain playable.",
-		})
-	var contract_controller := _contract_runtime_controller_node()
-	if contract_controller != null:
-		candidates.append_array(contract_controller.forced_decision_candidates())
-	if not pending_discard_purchase.is_empty():
-		candidates.append({
-			"id": "discard_purchase",
-			"kind": TEMP_DECISION_DISCARD,
-			"priority_group": "other_choice",
-			"owner_player_index": int(pending_discard_purchase.get("player_index", -1)),
-			"visibility_scope": "private",
-			"presentation_surface": "overlay",
-			"opened_sequence": float(pending_discard_purchase.get("opened_at", 0.0)),
-			"blocks_global_time": false,
-			"blocks_player_actions": true,
-			"blocks_card_resolution": false,
-			"source_ref": "discard_purchase",
-			"notes": "Private replacement discard; card identity remains owner-only.",
-		})
-	if _has_pending_target_choice():
-		candidates.append({
-			"id": "monster_target_choice",
-			"kind": TEMP_DECISION_MONSTER_TARGET,
-			"priority_group": "other_choice",
-			"owner_player_index": pending_target_player_index,
-			"visibility_scope": "private",
-			"presentation_surface": "overlay",
-			"opened_sequence": float(pending_target_slot_index),
-			"blocks_global_time": false,
-			"blocks_player_actions": true,
-			"blocks_card_resolution": false,
-			"source_ref": "monster_target_choice",
-			"notes": "Private target selection happens before the card enters the public track.",
-		})
-	if _has_pending_player_target_choice():
-		candidates.append({
-			"id": "player_target_choice",
-			"kind": TEMP_DECISION_PLAYER_TARGET,
-			"priority_group": "other_choice",
-			"owner_player_index": pending_player_target_player_index,
-			"visibility_scope": "private",
-			"presentation_surface": "overlay",
-			"opened_sequence": float(pending_player_target_slot_index),
-			"blocks_global_time": false,
-			"blocks_player_actions": true,
-			"blocks_card_resolution": false,
-			"source_ref": "player_target_choice",
-			"notes": "Private acting-player choice; only the eventual public target is revealed.",
-		})
-	return candidates
-
-
-func _sync_forced_decision_runtime() -> void:
-	var coordinator := _game_runtime_coordinator_node()
-	if coordinator == null or not coordinator.has_method("sync_forced_decision_candidates"):
-		_mark_game_runtime_coordinator_missing(true)
-		return
-	coordinator.call("sync_forced_decision_candidates", _forced_decision_candidates())
-
-
-func _active_forced_decision(player_index: int = -1) -> Dictionary:
-	_sync_forced_decision_runtime()
-	var coordinator := _game_runtime_coordinator_node()
-	if coordinator == null or not coordinator.has_method("active_forced_decision"):
-		return {}
-	var decision_variant: Variant = coordinator.call("active_forced_decision", player_index)
-	return (decision_variant as Dictionary).duplicate(true) if decision_variant is Dictionary else {}
-
-
 func _runtime_temporary_decision_snapshot_source(player_index: int) -> Dictionary:
 	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
 		return {}
-	var active := _active_forced_decision(player_index)
+	var active := _game_runtime_coordinator_node().active_forced_decision(player_index)
 	if active.is_empty() or not bool(active.get("visible_to_viewer", false)) or str(active.get("presentation_surface", "")) != "overlay":
 		return {}
 	match str(active.get("source_ref", "")):
@@ -8188,7 +8066,8 @@ func _runtime_discard_purchase_decision_snapshot_source(player_index: int) -> Di
 
 
 func _runtime_monster_target_decision_snapshot_source(player_index: int) -> Dictionary:
-	if not _has_pending_target_choice() or pending_target_player_index != player_index or not _can_view_player_private_hand(player_index):
+	var choice := _game_runtime_coordinator_node().card_target_choice_snapshot(TEMP_DECISION_MONSTER_TARGET)
+	if choice.is_empty() or int(choice.get("player_index", -1)) != player_index or not _can_view_player_private_hand(player_index):
 		return {}
 	var pending_skill := _pending_target_skill()
 	var card_name := _card_display_name(String(pending_skill.get("name", "这张卡")))
@@ -8239,7 +8118,8 @@ func _runtime_monster_target_decision_snapshot_source(player_index: int) -> Dict
 
 
 func _runtime_player_target_decision_snapshot_source(player_index: int) -> Dictionary:
-	if not _has_pending_player_target_choice() or pending_player_target_player_index != player_index or not _can_view_player_private_hand(player_index):
+	var choice := _game_runtime_coordinator_node().card_target_choice_snapshot(TEMP_DECISION_PLAYER_TARGET)
+	if choice.is_empty() or int(choice.get("player_index", -1)) != player_index or not _can_view_player_private_hand(player_index):
 		return {}
 	var pending_skill := _pending_player_target_skill()
 	var card_name := _card_display_name(String(pending_skill.get("name", "这张卡")))
@@ -9246,7 +9126,7 @@ func _runtime_player_is_valid(player_index: int) -> bool:
 
 
 func _active_bottom_countdown_state() -> Dictionary:
-	var forced_decision := _active_forced_decision(_game_runtime_coordinator_node().table_selection_state().selected_player)
+	var forced_decision := _game_runtime_coordinator_node().active_forced_decision(_game_runtime_coordinator_node().table_selection_state().selected_player)
 	match str(forced_decision.get("priority_group", "")):
 		"monster_wager":
 			var wager := monster_runtime_controller._latest_active_monster_wager()
@@ -10534,7 +10414,6 @@ func _close_district_supply_overlay() -> void:
 		runtime_coordinator.call("close_district_purchase_window", closing_player, "drawer_closed")
 	district_supply_open_district = -1
 	district_supply_open_player = -1
-	pending_discard_purchase = {}
 	_refresh_ui()
 
 
@@ -10944,11 +10823,7 @@ func _resolved_card_market_player_index(player_index: int = -1) -> int:
 
 func _open_district_card_purchase_window(district_index: int, player_index: int = -1, preserve_pending_discard: bool = false) -> void:
 	var resolved_player := _resolved_card_market_player_index(player_index)
-	if not preserve_pending_discard and not pending_discard_purchase.is_empty():
-		var pending_player := int(pending_discard_purchase.get("player_index", -1))
-		var pending_district := int(pending_discard_purchase.get("district_index", -1))
-		if pending_player != resolved_player or pending_district != district_index:
-			pending_discard_purchase = {}
+	var pending_discard := _pending_discard_purchase_for_player(resolved_player)
 	if district_index < 0 or district_index >= _game_runtime_coordinator_node().world_session_state().districts.size() or resolved_player < 0 or resolved_player >= _game_runtime_coordinator_node().world_session_state().players.size():
 		return
 	if district_supply_overlay != null and district_supply_overlay.visible:
@@ -10960,12 +10835,12 @@ func _open_district_card_purchase_window(district_index: int, player_index: int 
 	runtime_coordinator.call("open_district_purchase_window", resolved_player, district_index, {
 		"supply_revision": _district_supply_rack_revision(district_index),
 	})
-	if preserve_pending_discard and not pending_discard_purchase.is_empty() and runtime_coordinator.has_method("reserve_district_purchase_discard"):
-		runtime_coordinator.call("reserve_district_purchase_discard", {
-			"player_index": resolved_player,
-			"district_index": district_index,
-			"card_id": str(pending_discard_purchase.get("skill_name", "")),
-		})
+	if preserve_pending_discard and not pending_discard.is_empty() and runtime_coordinator.has_method("reserve_district_purchase_discard"):
+		var restored_pending := pending_discard.duplicate(true)
+		restored_pending["player_index"] = resolved_player
+		restored_pending["district_index"] = district_index
+		restored_pending["card_id"] = str(pending_discard.get("skill_name", pending_discard.get("card_id", "")))
+		runtime_coordinator.call("reserve_district_purchase_discard", restored_pending)
 
 
 func _select_player(index: int) -> void:
@@ -10990,15 +10865,15 @@ func _select_district(index: int) -> void:
 
 
 func _has_pending_target_choice() -> bool:
-	return pending_target_player_index >= 0 and pending_target_slot_index >= 0
+	return not _game_runtime_coordinator_node().card_target_choice_snapshot(TEMP_DECISION_MONSTER_TARGET).is_empty()
 
 
 func _has_pending_player_target_choice() -> bool:
-	return pending_player_target_player_index >= 0 and pending_player_target_slot_index >= 0
+	return not _game_runtime_coordinator_node().card_target_choice_snapshot(TEMP_DECISION_PLAYER_TARGET).is_empty()
 
 
 func _has_pending_blocking_decision() -> bool:
-	_sync_forced_decision_runtime()
+	_game_runtime_coordinator_node().synchronize_forced_decisions()
 	var coordinator := _game_runtime_coordinator_node()
 	if coordinator == null:
 		return false
@@ -11008,24 +10883,30 @@ func _has_pending_blocking_decision() -> bool:
 
 
 func _pending_target_skill() -> Dictionary:
-	if pending_target_player_index < 0 or pending_target_player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
+	var choice := _game_runtime_coordinator_node().card_target_choice_snapshot(TEMP_DECISION_MONSTER_TARGET)
+	var player_index := int(choice.get("player_index", -1))
+	var slot_index := int(choice.get("slot_index", -1))
+	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
 		return {}
-	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[pending_target_player_index]
-	if pending_target_slot_index < 0 or pending_target_slot_index >= player["slots"].size():
+	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[player_index]
+	if slot_index < 0 or slot_index >= player["slots"].size():
 		return {}
-	var skill = player["slots"][pending_target_slot_index]
+	var skill = player["slots"][slot_index]
 	if skill == null:
 		return {}
 	return skill as Dictionary
 
 
 func _pending_player_target_skill() -> Dictionary:
-	if pending_player_target_player_index < 0 or pending_player_target_player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
+	var choice := _game_runtime_coordinator_node().card_target_choice_snapshot(TEMP_DECISION_PLAYER_TARGET)
+	var player_index := int(choice.get("player_index", -1))
+	var slot_index := int(choice.get("slot_index", -1))
+	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
 		return {}
-	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[pending_player_target_player_index]
-	if pending_player_target_slot_index < 0 or pending_player_target_slot_index >= player["slots"].size():
+	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[player_index]
+	if slot_index < 0 or slot_index >= player["slots"].size():
 		return {}
-	var skill = player["slots"][pending_player_target_slot_index]
+	var skill = player["slots"][slot_index]
 	if skill == null:
 		return {}
 	return skill as Dictionary
@@ -11042,9 +10923,7 @@ func _begin_target_monster_choice(slot_index: int) -> void:
 		return
 	if not _authorize_card_play(_game_runtime_coordinator_node().table_selection_state().selected_player, skill as Dictionary, true):
 		return
-	pending_target_player_index = _game_runtime_coordinator_node().table_selection_state().selected_player
-	pending_target_slot_index = slot_index
-	pending_target_paused_time = false
+	_game_runtime_coordinator_node().begin_card_target_choice(TEMP_DECISION_MONSTER_TARGET, _game_runtime_coordinator_node().table_selection_state().selected_player, slot_index)
 	_log("匿名打出%s：请选择一个目标怪兽；选定后会进入全局卡牌结算队列。" % _card_display_name(String(skill["name"])))
 	_refresh_ui()
 
@@ -11060,23 +10939,17 @@ func _begin_target_player_choice(slot_index: int) -> void:
 		return
 	if not _authorize_card_play(_game_runtime_coordinator_node().table_selection_state().selected_player, skill as Dictionary, true):
 		return
-	pending_player_target_player_index = _game_runtime_coordinator_node().table_selection_state().selected_player
-	pending_player_target_slot_index = slot_index
+	_game_runtime_coordinator_node().begin_card_target_choice(TEMP_DECISION_PLAYER_TARGET, _game_runtime_coordinator_node().table_selection_state().selected_player, slot_index)
 	_log("匿名打出%s：请选择一个目标玩家；目标会公开，出牌者仍匿名。" % _card_display_name(String(skill["name"])))
 	_refresh_ui()
 
 
-func _clear_pending_target_choice(resume_time := true) -> void:
-	pending_target_player_index = -1
-	pending_target_slot_index = -1
-	if resume_time and pending_target_paused_time and not _runtime_session_finished() and (menu_overlay == null or not menu_overlay.visible):
-		time_scale = max(1.0, speed_before_target_choice)
-	pending_target_paused_time = false
+func _clear_pending_target_choice(_resume_time := true) -> void:
+	_game_runtime_coordinator_node().clear_card_target_choice(TEMP_DECISION_MONSTER_TARGET)
 
 
 func _clear_pending_player_target_choice() -> void:
-	pending_player_target_player_index = -1
-	pending_player_target_slot_index = -1
+	_game_runtime_coordinator_node().clear_card_target_choice(TEMP_DECISION_PLAYER_TARGET)
 
 
 func _cancel_pending_target_choice() -> void:
@@ -11106,21 +10979,24 @@ func _cancel_pending_player_target_choice() -> void:
 func _choose_pending_target_monster(slot: int) -> void:
 	if not _has_pending_target_choice():
 		return
-	if pending_target_player_index < 0 or pending_target_player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
+	var choice := _game_runtime_coordinator_node().card_target_choice_snapshot(TEMP_DECISION_MONSTER_TARGET)
+	var player_index := int(choice.get("player_index", -1))
+	var slot_index := int(choice.get("slot_index", -1))
+	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
 		_clear_pending_target_choice()
 		_refresh_ui()
 		return
-	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[pending_target_player_index]
-	if pending_target_slot_index < 0 or pending_target_slot_index >= player["slots"].size():
+	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[player_index]
+	if slot_index < 0 or slot_index >= player["slots"].size():
 		_clear_pending_target_choice()
 		_refresh_ui()
 		return
-	var skill = player["slots"][pending_target_slot_index]
+	var skill = player["slots"][slot_index]
 	if skill == null:
 		_clear_pending_target_choice()
 		_refresh_ui()
 		return
-	if not _authorize_card_play(pending_target_player_index, skill as Dictionary, true):
+	if not _authorize_card_play(player_index, skill as Dictionary, true):
 		_clear_pending_target_choice()
 		_refresh_ui()
 		return
@@ -11128,7 +11004,7 @@ func _choose_pending_target_monster(slot: int) -> void:
 		_log("目标怪兽无效，请重新选择。")
 		_refresh_ui()
 		return
-	if _queue_skill_resolution(pending_target_player_index, pending_target_slot_index, slot):
+	if _queue_skill_resolution(player_index, slot_index, slot):
 		_clear_pending_target_choice(true)
 	_refresh_ui()
 
@@ -11136,29 +11012,32 @@ func _choose_pending_target_monster(slot: int) -> void:
 func _choose_pending_target_player(target_player: int) -> void:
 	if not _has_pending_player_target_choice():
 		return
-	if pending_player_target_player_index < 0 or pending_player_target_player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
+	var choice := _game_runtime_coordinator_node().card_target_choice_snapshot(TEMP_DECISION_PLAYER_TARGET)
+	var player_index := int(choice.get("player_index", -1))
+	var slot_index := int(choice.get("slot_index", -1))
+	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
 		_clear_pending_player_target_choice()
 		_refresh_ui()
 		return
-	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[pending_player_target_player_index]
-	if pending_player_target_slot_index < 0 or pending_player_target_slot_index >= player["slots"].size():
+	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[player_index]
+	if slot_index < 0 or slot_index >= player["slots"].size():
 		_clear_pending_player_target_choice()
 		_refresh_ui()
 		return
-	var skill = player["slots"][pending_player_target_slot_index]
+	var skill = player["slots"][slot_index]
 	if skill == null:
 		_clear_pending_player_target_choice()
 		_refresh_ui()
 		return
-	if not _authorize_card_play(pending_player_target_player_index, skill as Dictionary, true):
+	if not _authorize_card_play(player_index, skill as Dictionary, true):
 		_clear_pending_player_target_choice()
 		_refresh_ui()
 		return
-	if target_player < 0 or target_player >= _game_runtime_coordinator_node().world_session_state().players.size() or target_player == pending_player_target_player_index:
+	if target_player < 0 or target_player >= _game_runtime_coordinator_node().world_session_state().players.size() or target_player == player_index:
 		_log("目标玩家无效，请重新选择。")
 		_refresh_ui()
 		return
-	if _queue_skill_resolution(pending_player_target_player_index, pending_player_target_slot_index, -1, target_player):
+	if _queue_skill_resolution(player_index, slot_index, -1, target_player):
 		_clear_pending_player_target_choice()
 	_refresh_ui()
 
@@ -12878,30 +12757,26 @@ func _purchase_requires_discard(player: Dictionary, skill_name: String) -> bool:
 
 
 func _pending_discard_purchase_for_player(player_index: int) -> Dictionary:
-	if int(pending_discard_purchase.get("player_index", -1)) != player_index:
-		return {}
-	return pending_discard_purchase
+	var coordinator := _game_runtime_coordinator_node()
+	return coordinator.district_purchase_pending_discard_private_snapshot(player_index) if coordinator != null else {}
 
 
 func _open_discard_purchase_choice(player_index: int, district_index: int, skill_name: String, price: int, quote_id: String, ignore_cooldown: bool = false) -> void:
 	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
 		return
 	var runtime_coordinator := _game_runtime_coordinator_node()
-	pending_discard_purchase = {
+	var pending_discard := {
 		"player_index": player_index,
 		"district_index": district_index,
 		"skill_name": _canonical_card_supply_name(skill_name),
+		"card_id": _canonical_card_supply_name(skill_name),
 		"price": price,
 		"quote_id": quote_id,
 		"ignore_cooldown": ignore_cooldown,
 		"opened_at": _game_runtime_coordinator_node().world_session_state().game_time,
 	}
 	if runtime_coordinator != null and runtime_coordinator.has_method("reserve_district_purchase_discard"):
-		runtime_coordinator.call("reserve_district_purchase_discard", {
-			"player_index": player_index,
-			"district_index": district_index,
-			"card_id": str(pending_discard_purchase.get("skill_name", "")),
-		})
+		runtime_coordinator.call("reserve_district_purchase_discard", pending_discard)
 	_record_player_economic_event(
 		player_index,
 		"手牌整理",
@@ -12915,8 +12790,8 @@ func _open_discard_purchase_choice(player_index: int, district_index: int, skill
 
 
 func _cancel_discard_purchase() -> void:
-	var player_index := int(pending_discard_purchase.get("player_index", -1))
-	pending_discard_purchase = {}
+	var pending := _pending_discard_purchase_for_player(_local_human_player_index())
+	var player_index := int(pending.get("player_index", -1))
 	var runtime_coordinator := _game_runtime_coordinator_node()
 	if player_index >= 0 and runtime_coordinator != null and runtime_coordinator.has_method("resolve_district_purchase_discard"):
 		runtime_coordinator.call("resolve_district_purchase_discard", {"player_index": player_index, "reason": "discard_cancelled"})
@@ -12924,7 +12799,7 @@ func _cancel_discard_purchase() -> void:
 
 
 func _confirm_discard_purchase(slot_index: int) -> void:
-	var pending := pending_discard_purchase.duplicate(true)
+	var pending := _pending_discard_purchase_for_player(_local_human_player_index())
 	if pending.is_empty():
 		return
 	var player_index := int(pending.get("player_index", -1))
@@ -12932,7 +12807,6 @@ func _confirm_discard_purchase(slot_index: int) -> void:
 	var skill_name := String(pending.get("skill_name", ""))
 	var quote_id := String(pending.get("quote_id", ""))
 	var ignore_cooldown := bool(pending.get("ignore_cooldown", false))
-	pending_discard_purchase = {}
 	var bought := _buy_card_for_player_from_district(player_index, district_index, skill_name, false, ignore_cooldown, slot_index, quote_id)
 	var runtime_coordinator := _game_runtime_coordinator_node()
 	if player_index >= 0 and runtime_coordinator != null and runtime_coordinator.has_method("resolve_district_purchase_discard"):
@@ -13590,8 +13464,9 @@ func _buy_card_for_player_from_district(player_index: int, district_index: int, 
 			_log("一次购牌未完成：结算前状态已变化，具体玩家手牌、现金和弃牌情况不公开。")
 		return false
 	_game_runtime_coordinator_node().world_session_state().players[player_index] = player
-	if int(pending_discard_purchase.get("player_index", -1)) == player_index and String(pending_discard_purchase.get("skill_name", "")) == skill_name:
-		pending_discard_purchase = {}
+	var pending_discard := _pending_discard_purchase_for_player(player_index)
+	if String(pending_discard.get("skill_name", "")) == skill_name:
+		runtime_coordinator.call("resolve_district_purchase_discard", {"player_index": player_index, "reason": "purchase_committed"})
 	_log("一次匿名购牌在%s完成；买家、具体卡牌、手牌数量和弃牌情况不公开。" % _game_runtime_coordinator_node().world_session_state().districts[district_index]["name"])
 	_grant_role_bonus_card_on_purchase(player_index, district_index, skill_name, anonymous)
 	runtime_coordinator.call("record_weather_public_response", district_index, "buy_after_forecast")

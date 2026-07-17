@@ -266,6 +266,25 @@ func bidding_open(facts: Dictionary = {}) -> bool:
 		and SharedCardGroupWindowScript.bidding_open(simultaneous_timer, _effective_lock_seconds(state_facts), _effective_public_bid_seconds(state_facts))
 
 
+func forced_decision_candidates(active_resolution_id: int) -> Array:
+	if not counter_window_active or active_resolution_id < 0:
+		return []
+	return [{
+		"id": "counter_response_%d" % active_resolution_id,
+		"kind": "counter_response",
+		"priority_group": "counter_response",
+		"owner_player_index": -1,
+		"visibility_scope": "public",
+		"presentation_surface": "card_resolution_track",
+		"opened_sequence": float(active_resolution_id),
+		"blocks_global_time": false,
+		"blocks_player_actions": false,
+		"blocks_card_resolution": false,
+		"source_ref": "card_resolution_counter",
+		"notes": "The card controller keeps ticking while response cards remain playable.",
+	}]
+
+
 func to_save_data() -> Dictionary:
 	return {
 		"card_group_cadence_version": CADENCE_VERSION,

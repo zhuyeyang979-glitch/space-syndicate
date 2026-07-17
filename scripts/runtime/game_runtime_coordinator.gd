@@ -31,6 +31,7 @@ func _ready() -> void:
 	_wire_run_rng_service()
 	_wire_table_selection_state()
 	_wire_world_session_state()
+	_wire_forced_decision_candidate_sources()
 
 
 func configure(ruleset_snapshot: Dictionary) -> void:
@@ -38,6 +39,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	_wire_run_rng_service()
 	_wire_table_selection_state()
 	_wire_world_session_state()
+	_wire_forced_decision_candidate_sources()
 	var world_clock := _world_effective_clock_runtime_controller_node()
 	if world_clock != null and world_clock.has_method("configure"):
 		world_clock.call("configure", {})
@@ -3172,13 +3174,16 @@ func ai_policy_snapshot() -> Dictionary:
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
-func sync_forced_decision_candidates(candidates: Array) -> void:
-	var scheduler := _scheduler_node()
-	if scheduler != null and scheduler.has_method("sync_candidates"):
-		scheduler.call("sync_candidates", candidates)
+func synchronize_forced_decisions() -> Dictionary:
+	_wire_forced_decision_candidate_sources()
+	var sources := _forced_decision_candidate_sources_node()
+	if sources == null:
+		return {"synchronized": false, "reason": "forced_decision_sources_unavailable"}
+	return sources.synchronize()
 
 
 func active_forced_decision(viewer_index: int = -1) -> Dictionary:
+	synchronize_forced_decisions()
 	var scheduler := _scheduler_node()
 	if scheduler == null or not scheduler.has_method("active_decision"):
 		return {}
@@ -3201,13 +3206,53 @@ func allows_card_resolution_progress() -> bool:
 	return scheduler == null or not scheduler.has_method("blocks_card_resolution") or not bool(scheduler.call("blocks_card_resolution"))
 
 
+func begin_card_target_choice(kind: String, player_index: int, slot_index: int) -> Dictionary:
+	var target_choice_owner := _card_target_choice_runtime_controller_node()
+	return target_choice_owner.begin_choice(kind, player_index, slot_index) if target_choice_owner != null else {"accepted": false, "reason": "target_choice_owner_unavailable"}
+
+
+func card_target_choice_snapshot(kind: String) -> Dictionary:
+	var target_choice_owner := _card_target_choice_runtime_controller_node()
+	return target_choice_owner.choice_snapshot(kind) if target_choice_owner != null else {}
+
+
+func card_target_choice_private_snapshot(viewer_index: int) -> Dictionary:
+	var target_choice_owner := _card_target_choice_runtime_controller_node()
+	return target_choice_owner.private_snapshot(viewer_index) if target_choice_owner != null else {}
+
+
+func clear_card_target_choice(kind: String) -> Dictionary:
+	var target_choice_owner := _card_target_choice_runtime_controller_node()
+	return target_choice_owner.clear_choice(kind) if target_choice_owner != null else {"cleared": false, "reason": "target_choice_owner_unavailable"}
+
+
+func apply_card_target_choice_legacy_state(data: Dictionary) -> Dictionary:
+	var target_choice_owner := _card_target_choice_runtime_controller_node()
+	return target_choice_owner.apply_legacy_state(data) if target_choice_owner != null else {"applied": false, "reason": "target_choice_owner_unavailable"}
+
+
+func district_purchase_pending_discard_private_snapshot(viewer_index: int) -> Dictionary:
+	var purchase := _purchase_node()
+	return purchase.pending_discard_private_snapshot(viewer_index) if purchase != null else {}
+
+
+func forced_decision_sources_debug() -> Dictionary:
+	var sources := _forced_decision_candidate_sources_node()
+	return sources.debug_snapshot() if sources != null else {}
+
+
 func reset_state() -> void:
 	_configured = false
 	_last_v06_player_binding_result = {
 		"ready": false,
 		"reason_code": "production_players_not_bound",
 	}
-	sync_forced_decision_candidates([])
+	var scheduler := _scheduler_node()
+	if scheduler != null:
+		scheduler.sync_candidates([])
+	var target_choice := _card_target_choice_runtime_controller_node()
+	if target_choice != null:
+		target_choice.reset_state()
 	var world_clock := _world_effective_clock_runtime_controller_node()
 	if world_clock != null and world_clock.has_method("reset_state"):
 		world_clock.call("reset_state")
@@ -3681,7 +3726,9 @@ func apply_district_purchase_legacy_save_snapshot(snapshot: Dictionary, current_
 func restore_district_purchase_legacy_state(snapshot: Dictionary, current_game_time: float, pending_discard: Dictionary = {}) -> Dictionary:
 	var restored := apply_district_purchase_legacy_save_snapshot(snapshot, current_game_time)
 	if not pending_discard.is_empty():
-		reserve_district_purchase_discard({"player_index": int(pending_discard.get("player_index", -1)), "district_index": int(pending_discard.get("district_index", -1)), "card_id": str(pending_discard.get("skill_name", ""))})
+		var migrated_pending := pending_discard.duplicate(true)
+		migrated_pending["card_id"] = str(pending_discard.get("skill_name", pending_discard.get("card_id", "")))
+		reserve_district_purchase_discard(migrated_pending)
 	return restored
 
 
@@ -4374,6 +4421,33 @@ func debug_snapshot() -> Dictionary:
 
 func _scheduler_node() -> Node:
 	return get_node_or_null("ForcedDecisionRuntimeScheduler")
+
+
+func _card_target_choice_runtime_controller_node() -> CardTargetChoiceRuntimeController:
+	return get_node_or_null("CardTargetChoiceRuntimeController") as CardTargetChoiceRuntimeController
+
+
+func _forced_decision_candidate_sources_node() -> ForcedDecisionCandidateSources:
+	return get_node_or_null("ForcedDecisionCandidateSources") as ForcedDecisionCandidateSources
+
+
+func _wire_forced_decision_candidate_sources() -> void:
+	var sources := _forced_decision_candidate_sources_node()
+	if sources == null:
+		return
+	var card_resolution_source: CardResolutionRuntimeController
+	var host := get_parent()
+	if host != null:
+		card_resolution_source = host.get_node_or_null("CardResolutionRuntimeController") as CardResolutionRuntimeController
+	sources.configure(
+		_monster_runtime_controller_node() as MonsterRuntimeController,
+		card_resolution_source,
+		_card_resolution_queue_node(),
+		_contract_runtime_controller_node() as ContractRuntimeController,
+		_purchase_node() as DistrictPurchaseRuntimeController,
+		_card_target_choice_runtime_controller_node(),
+		_scheduler_node() as ForcedDecisionRuntimeScheduler
+	)
 
 
 func _region_supply_card_descriptor(card_id: String) -> Dictionary:

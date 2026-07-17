@@ -4178,6 +4178,29 @@ func _latest_active_monster_wager() -> Dictionary:
 			return entry.duplicate(true)
 	return {}
 
+
+func forced_decision_candidates() -> Array:
+	var wager := _latest_active_monster_wager()
+	if wager.is_empty():
+		return []
+	var wager_id := int(wager.get("wager_id", -1))
+	if wager_id < 0:
+		return []
+	return [{
+		"id": "monster_wager_%d" % wager_id,
+		"kind": "monster_wager",
+		"priority_group": "monster_wager",
+		"owner_player_index": -1,
+		"visibility_scope": "public",
+		"presentation_surface": "overlay",
+		"opened_sequence": float(wager_id),
+		"blocks_global_time": true,
+		"blocks_player_actions": true,
+		"blocks_card_resolution": true,
+		"source_ref": "monster_wager",
+		"notes": "Public wager freezes the table until every bet or timeout resolves.",
+	}]
+
 func _monster_wager_current_slot(entry: Dictionary, side: String) -> int:
 	for competitor_variant in _monster_wager_competitors(entry):
 		var competitor := competitor_variant as Dictionary

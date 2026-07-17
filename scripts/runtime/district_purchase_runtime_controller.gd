@@ -12,6 +12,7 @@ const STATE_CLOSED := "closed"
 var _configured := false
 var _quote_authority: Node
 var _windows_by_player: Dictionary = {}
+var _decision_sequence := 0
 
 
 func set_quote_authority(authority: Node) -> void:
@@ -26,11 +27,13 @@ func configure(_timing_rules: Dictionary = {}) -> void:
 
 func reset_state() -> void:
 	_windows_by_player.clear()
+	_decision_sequence = 0
 
 
 func open_window(player_index: int, district_index: int, session_snapshot: Dictionary = {}) -> Dictionary:
 	if not _configured or player_index < 0 or district_index < 0 or not _is_data_only(session_snapshot) or str(session_snapshot.get("supply_revision", "")).is_empty():
 		return {}
+	_decision_sequence += 1
 	var record := {
 		"player_index": player_index,
 		"district_index": district_index,
@@ -43,6 +46,8 @@ func open_window(player_index: int, district_index: int, session_snapshot: Dicti
 		"active_quote_id": "",
 		"active_quote": {},
 		"close_reason": "",
+		"decision_sequence": _decision_sequence,
+		"pending_payload": {},
 	}
 	_windows_by_player[player_index] = record
 	window_opened.emit(player_index, district_index)
@@ -141,6 +146,7 @@ func reserve_pending_discard(request_snapshot: Dictionary) -> Dictionary:
 		return {}
 	record["state"] = STATE_PENDING_DISCARD
 	record["reserved_card_id"] = card_id
+	record["pending_payload"] = request_snapshot.duplicate(true)
 	_windows_by_player[player_index] = record
 	return _safe_window_snapshot(record, true)
 
@@ -151,6 +157,7 @@ func resolve_pending_discard(result_snapshot: Dictionary) -> Dictionary:
 	if str(record.get("state", "")) != STATE_PENDING_DISCARD:
 		return {}
 	record["reserved_card_id"] = ""
+	record["pending_payload"] = {}
 	if bool(result_snapshot.get("close_window", false)):
 		record["state"] = STATE_CLOSED
 		record["active_quote_id"] = ""
@@ -160,6 +167,39 @@ func resolve_pending_discard(result_snapshot: Dictionary) -> Dictionary:
 		record["state"] = STATE_ACTIVE
 	_windows_by_player[player_index] = record
 	return _safe_window_snapshot(record, true)
+
+
+func pending_discard_private_snapshot(viewer_index: int) -> Dictionary:
+	var record := active_window(viewer_index)
+	if str(record.get("state", "")) != STATE_PENDING_DISCARD:
+		return {}
+	var payload: Dictionary = record.get("pending_payload", {}) if record.get("pending_payload", {}) is Dictionary else {}
+	return payload.duplicate(true)
+
+
+func forced_decision_candidates() -> Array:
+	var result: Array = []
+	for player_variant in _windows_by_player.keys():
+		var player_index := int(player_variant)
+		var record := active_window(player_index)
+		if str(record.get("state", "")) != STATE_PENDING_DISCARD:
+			continue
+		var sequence := int(record.get("decision_sequence", 0))
+		result.append({
+			"id": "discard_choice_%d" % sequence,
+			"kind": "discard_purchase",
+			"priority_group": "other_choice",
+			"owner_player_index": player_index,
+			"visibility_scope": "private",
+			"presentation_surface": "overlay",
+			"opened_sequence": float(sequence),
+			"blocks_global_time": false,
+			"blocks_player_actions": true,
+			"blocks_card_resolution": false,
+			"source_ref": "discard_purchase",
+			"notes": "Private replacement discard; card identity remains owner-only.",
+		})
+	return result
 
 
 func to_legacy_save_snapshot(player_index: int) -> Dictionary:
@@ -181,6 +221,8 @@ func to_legacy_save_snapshot(player_index: int) -> Dictionary:
 		"selected_supply_revision": str(record.get("selected_supply_revision", "")),
 		"requires_reselection": bool(record.get("requires_reselection", false)),
 		"reserved_card_id": str(record.get("reserved_card_id", "")),
+		"decision_sequence": int(record.get("decision_sequence", 0)),
+		"pending_payload": (record.get("pending_payload", {}) as Dictionary).duplicate(true) if record.get("pending_payload", {}) is Dictionary else {},
 		"active_quote": quote_snapshot.duplicate(true),
 	}
 
@@ -209,6 +251,8 @@ func apply_legacy_save_snapshot(snapshot: Dictionary, _current_game_time: float 
 		"active_quote_id": "",
 		"active_quote": {},
 		"close_reason": "",
+		"decision_sequence": int(snapshot.get("decision_sequence", 0)),
+		"pending_payload": (snapshot.get("pending_payload", {}) as Dictionary).duplicate(true) if snapshot.get("pending_payload", {}) is Dictionary else {},
 	}
 	var quote_snapshot: Dictionary = snapshot.get("active_quote", {}) if snapshot.get("active_quote", {}) is Dictionary else {}
 	if not quote_snapshot.is_empty():
@@ -231,6 +275,7 @@ func apply_legacy_save_snapshot(snapshot: Dictionary, _current_game_time: float 
 		if str(record.get("reserved_card_id", "")).is_empty() or str(record.get("active_quote_id", "")).is_empty() or str(record.get("reserved_card_id", "")) != str(quote_snapshot.get("card_id", "")):
 			return {"restored": false, "reason": "pending_discard_quote_invalid"}
 	_windows_by_player[player_index] = record
+	_decision_sequence = maxi(_decision_sequence, int(record.get("decision_sequence", 0)))
 	return {"restored": true, "quote_restored": not str(record.get("active_quote_id", "")).is_empty(), "window": _safe_window_snapshot(record, true)}
 
 

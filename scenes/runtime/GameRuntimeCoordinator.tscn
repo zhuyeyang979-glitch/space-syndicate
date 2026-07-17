@@ -1,4 +1,4 @@
-[gd_scene load_steps=76 format=3]
+[gd_scene load_steps=78 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -75,6 +75,8 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/RunRngService.tscn" id="81_run_rng"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/TableSelectionState.tscn" id="82_table_selection"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/WorldSessionState.tscn" id="83_world_session"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardTargetChoiceRuntimeController.tscn" id="84_target_choice"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionCandidateSources.tscn" id="85_forced_sources"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -224,6 +226,12 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="ForcedDecisionRuntimeScheduler" parent="." instance=ExtResource("2_scheduler")]
+unique_name_in_owner = true
+
+[node name="CardTargetChoiceRuntimeController" parent="." instance=ExtResource("84_target_choice")]
+unique_name_in_owner = true
+
+[node name="ForcedDecisionCandidateSources" parent="." instance=ExtResource("85_forced_sources")]
 unique_name_in_owner = true
 
 [node name="GameSessionRuntimeController" parent="." instance=ExtResource("3_session")]

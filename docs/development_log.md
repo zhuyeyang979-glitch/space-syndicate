@@ -8022,3 +8022,12 @@
   presentation, monster lifecycle, UI text, visual snapshot, layout smoke and
   smoke check-only all exited successfully. Layout smoke retains one existing
   non-fatal focus warning (`grab_focus` outside tree).
+# 2026-07-17 — Forced decision candidate sources cutover
+
+- Moved monster wager, counter response, contract response, purchase discard,
+  and card target-choice candidate projection out of `scripts/main.gd`.
+- Added a scene-owned private target-choice controller and a typed, privacy-safe
+  candidate source feeding the existing scheduler.
+- Removed Main's candidate aggregation functions, pending discard shadow, and
+  five pending target-choice fields without adding a compatibility callback.
+- Godot 4.7 focused evidence: 28/28 test checks and 7/7 MCP Bench checks.
