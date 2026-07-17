@@ -419,7 +419,7 @@ func _run() -> void:
 		and not product_strategy_counts.is_empty(),
 		"product ecosystem report exposes current-run goods, land/ocean split, supply/demand slots, and strategy opportunities"
 	)
-	_expect(_as_array(main.get("movement_trails")).size() > 0, "summoning starting monsters creates visible summon trails")
+	_expect(_visual_cue_array(main, "movement_trails").size() > 0, "summoning starting monsters creates visible summon trails")
 	_expect(_log_contains(main, "区域补给网完成"), "new game announces card pool generation")
 
 	var terrain_counts := _count_terrain(districts)
@@ -2351,7 +2351,7 @@ func _verify_role_passive_runtime(main: Node) -> bool:
 	var saved_player := (players[0] as Dictionary).duplicate(true)
 	var saved_district := (districts[district_index] as Dictionary).duplicate(true)
 	var saved_logs := _as_array(main.get("log_lines")).duplicate(true)
-	var saved_callouts := _as_array(main.get("action_callouts")).duplicate(true)
+	var saved_callouts := _visual_cue_array(main, "action_callouts").duplicate(true)
 	var test_player := saved_player.duplicate(true)
 	test_player["cash"] = 1000
 	test_player["cash_history"] = [1000]
@@ -2392,7 +2392,7 @@ func _verify_role_passive_runtime(main: Node) -> bool:
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
 	main.set("log_lines", saved_logs)
-	main.set("action_callouts", saved_callouts)
+	_set_visual_cue_array(main, "action_callouts", saved_callouts)
 	return passed
 
 
@@ -3635,7 +3635,7 @@ func _verify_ai_strategy_route_diversification_policy(main: Node) -> bool:
 
 func _drain_card_resolution_queue_for_test(main: Node, max_steps: int = 80) -> void:
 	for _i in range(max_steps):
-		main.call("_update_card_resolution_queue", 1.0)
+		_advance_card_resolution_frame_for_test(main, 1.0)
 		if _as_array(main.get("card_resolution_queue")).is_empty() \
 			and _as_array(main.get("next_card_resolution_queue")).is_empty() \
 			and (main.get("active_card_resolution") as Dictionary).is_empty():
@@ -4504,7 +4504,7 @@ func _verify_field_monster_card_upgrade_refreshes_state(main: Node) -> bool:
 	var previous_players := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players).duplicate(true)
 	var previous_monsters := _as_array(main.get("auto_monsters")).duplicate(true)
 	var previous_logs := _as_array(main.get("log_lines")).duplicate(true)
-	var previous_callouts := _as_array(main.get("action_callouts")).duplicate(true)
+	var previous_callouts := _visual_cue_array(main, "action_callouts").duplicate(true)
 	var previous_selected_player := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player)
 	var previous_selected_district := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
 	if previous_players.is_empty() or previous_monsters.is_empty():
@@ -4539,7 +4539,7 @@ func _verify_field_monster_card_upgrade_refreshes_state(main: Node) -> bool:
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 	main.set("auto_monsters", monsters)
 	main.set("log_lines", [])
-	main.set("action_callouts", [])
+	_set_visual_cue_array(main, "action_callouts", [])
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = owner
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = -1
 	var active_bound_before := _active_bound_skill_count_for_uid(players, owner, monster_uid)
@@ -4554,7 +4554,7 @@ func _verify_field_monster_card_upgrade_refreshes_state(main: Node) -> bool:
 		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = previous_players
 		main.set("auto_monsters", previous_monsters)
 		main.set("log_lines", previous_logs)
-		main.set("action_callouts", previous_callouts)
+		_set_visual_cue_array(main, "action_callouts", previous_callouts)
 		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = previous_selected_player
 		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = previous_selected_district
 		return false
@@ -4578,7 +4578,7 @@ func _verify_field_monster_card_upgrade_refreshes_state(main: Node) -> bool:
 		and int(upgraded_actor.get("last_owner_damage_cash_loss", -1)) == 0 \
 		and active_bound_after >= expected_fixed_skill_count \
 		and active_bound_after >= active_bound_before \
-		and _callouts_contain(_as_array(main.get("action_callouts")), "升级")
+		and _callouts_contain(_visual_cue_array(main, "action_callouts"), "升级")
 	var cash_before_damage := int((after_players[owner] as Dictionary).get("cash", 0))
 	var max_hp := maxi(1, int(upgraded_actor.get("max_hp", 1)))
 	var expected_loss := mini(total_after_upgrade, maxi(1, int(round(float(total_after_upgrade) / float(max_hp)))))
@@ -4596,7 +4596,7 @@ func _verify_field_monster_card_upgrade_refreshes_state(main: Node) -> bool:
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = previous_players
 	main.set("auto_monsters", previous_monsters)
 	main.set("log_lines", previous_logs)
-	main.set("action_callouts", previous_callouts)
+	_set_visual_cue_array(main, "action_callouts", previous_callouts)
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = previous_selected_player
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = previous_selected_district
 	main.call("_refresh_ui")
@@ -4607,7 +4607,7 @@ func _verify_single_owned_monster_limit_and_rank_iv_refresh(main: Node) -> bool:
 	var previous_players := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players).duplicate(true)
 	var previous_monsters := _as_array(main.get("auto_monsters")).duplicate(true)
 	var previous_logs := _as_array(main.get("log_lines")).duplicate(true)
-	var previous_callouts := _as_array(main.get("action_callouts")).duplicate(true)
+	var previous_callouts := _visual_cue_array(main, "action_callouts").duplicate(true)
 	var previous_selected_player := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player)
 	var previous_selected_district := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
 	var districts := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts)
@@ -4662,7 +4662,7 @@ func _verify_single_owned_monster_limit_and_rank_iv_refresh(main: Node) -> bool:
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = previous_players
 	main.set("auto_monsters", previous_monsters)
 	main.set("log_lines", previous_logs)
-	main.set("action_callouts", previous_callouts)
+	_set_visual_cue_array(main, "action_callouts", previous_callouts)
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = previous_selected_player
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = previous_selected_district
 	main.call("_refresh_ui")
@@ -6207,7 +6207,7 @@ func _verify_monster_lure_replaces_control_window(_main: Node) -> bool:
 			if int(lured_actor.get("lure_moves_left", 0)) != 1:
 				failures.append("lure move count was not stored")
 				ok = false
-			var lure_callout_seen := _callouts_contain(_as_array(main.get("action_callouts")), "诱导")
+			var lure_callout_seen := _callouts_contain(_visual_cue_array(main, "action_callouts"), "诱导")
 			_monster_controller(main).call("_auto_monster_movement_tick")
 			_monster_controller(main).call("_update_auto_monster_linear_movement", 1.0)
 			actors = _as_array(main.get("auto_monsters"))
@@ -6222,7 +6222,7 @@ func _verify_monster_lure_replaces_control_window(_main: Node) -> bool:
 			if not _log_contains(main, "匿名诱导"):
 				failures.append("lure log missing")
 				ok = false
-			if not lure_callout_seen and not _callouts_contain(_as_array(main.get("action_callouts")), "诱导"):
+			if not lure_callout_seen and not _callouts_contain(_visual_cue_array(main, "action_callouts"), "诱导"):
 				failures.append("lure callout missing")
 				ok = false
 	if not failures.is_empty():
@@ -6367,7 +6367,7 @@ func _log_after_marker_hides_player(main: Node, marker: String, card_name: Strin
 func _card_callouts_hide_player(main: Node, card_name: String, player_name: String) -> bool:
 	var found_card := false
 	var visible_name := String(main.call("_card_display_name", card_name)) if main.has_method("_card_display_name") else ""
-	for callout_variant in _as_array(main.get("action_callouts")):
+	for callout_variant in _visual_cue_array(main, "action_callouts"):
 		var callout := callout_variant as Dictionary
 		var text := "%s %s %s" % [callout.get("actor", ""), callout.get("action", ""), callout.get("detail", "")]
 		if not text.contains(card_name) and not (visible_name != "" and text.contains(visible_name)):
@@ -7516,7 +7516,7 @@ func _verify_card_play_flow_gate_and_one_shot(main: Node, district_index: int) -
 	var previous_players := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players).duplicate(true)
 	var previous_districts := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts).duplicate(true)
 	var previous_log_lines := _as_array(main.get("log_lines")).duplicate(true)
-	var previous_callouts := _as_array(main.get("action_callouts")).duplicate(true)
+	var previous_callouts := _visual_cue_array(main, "action_callouts").duplicate(true)
 	var previous_selected_player := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player)
 	var previous_selected_district := int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
 	var previous_selected_trade_product := String(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product)
@@ -7606,7 +7606,7 @@ func _verify_card_play_flow_gate_and_one_shot(main: Node, district_index: int) -
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = previous_players
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = previous_districts
 	main.set("log_lines", previous_log_lines)
-	main.set("action_callouts", previous_callouts)
+	_set_visual_cue_array(main, "action_callouts", previous_callouts)
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = previous_selected_player
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = previous_selected_district
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = previous_selected_trade_product
@@ -8196,7 +8196,7 @@ func _verify_special_monster_passives(main: Node) -> void:
 	var saved_auto_monsters := _as_array(main.get("auto_monsters")).duplicate(true)
 	var saved_special_monster_timer := float(main.get("special_monster_timer"))
 	var saved_log_lines := _as_array(main.get("log_lines")).duplicate(true)
-	var saved_action_callouts := _as_array(main.get("action_callouts")).duplicate(true)
+	var saved_action_callouts := _visual_cue_array(main, "action_callouts").duplicate(true)
 	var start_district := maxi(0, int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district))
 
 	var ember_ring_index := int(main.call("_monster_catalog_index_by_name", "焰环幼星"))
@@ -8229,7 +8229,7 @@ func _verify_special_monster_passives(main: Node) -> void:
 	main.set("auto_monsters", saved_auto_monsters)
 	main.set("special_monster_timer", saved_special_monster_timer)
 	main.set("log_lines", saved_log_lines)
-	main.set("action_callouts", saved_action_callouts)
+	_set_visual_cue_array(main, "action_callouts", saved_action_callouts)
 
 
 func _verify_card_art_script() -> void:
@@ -8342,6 +8342,34 @@ func _runtime_coordinator(main: Node) -> Node:
 	return coordinator
 
 
+func _visual_cue_array(main: Node, key: String) -> Array:
+	var coordinator := _runtime_coordinator(main)
+	var snapshot_variant: Variant = coordinator.call("visual_cue_public_snapshot") if coordinator != null else {}
+	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
+	return _as_array(snapshot.get(key, [])).duplicate(true)
+
+
+func _set_visual_cue_array(main: Node, key: String, value: Array) -> void:
+	var coordinator := _runtime_coordinator(main)
+	if coordinator == null:
+		return
+	var snapshot_variant: Variant = coordinator.call("visual_cue_public_snapshot")
+	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
+	snapshot[key] = value.duplicate(true)
+	coordinator.call("import_legacy_visual_cues", snapshot)
+
+
+func _advance_card_resolution_frame_for_test(main: Node, delta_seconds: float) -> void:
+	var coordinator := _runtime_coordinator(main)
+	if coordinator == null:
+		return
+	var commands_variant: Variant = coordinator.call("advance_card_resolution_frame", delta_seconds)
+	var commands: Array = commands_variant if commands_variant is Array else []
+	for command_variant in commands:
+		if command_variant is Dictionary and main.has_method("_apply_card_resolution_controller_transition"):
+			main.call("_apply_card_resolution_controller_transition", command_variant as Dictionary)
+
+
 func _victory_controller(main: Node) -> Node:
 	var controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/VictoryControlRuntimeController")
 	if controller == null:
@@ -8449,7 +8477,7 @@ func _as_array(value: Variant) -> Array:
 
 
 func _map_effects_contain(main: Node, kind: String) -> bool:
-	for effect_variant in _as_array(main.get("map_event_effects")):
+	for effect_variant in _visual_cue_array(main, "map_event_effects"):
 		if not (effect_variant is Dictionary):
 			continue
 		var effect := effect_variant as Dictionary
@@ -8459,7 +8487,7 @@ func _map_effects_contain(main: Node, kind: String) -> bool:
 
 
 func _map_effects_contain_style(main: Node, kind: String, style: String) -> bool:
-	for effect_variant in _as_array(main.get("map_event_effects")):
+	for effect_variant in _visual_cue_array(main, "map_event_effects"):
 		if not (effect_variant is Dictionary):
 			continue
 		var effect := effect_variant as Dictionary
@@ -8469,7 +8497,7 @@ func _map_effects_contain_style(main: Node, kind: String, style: String) -> bool
 
 
 func _map_effects_contain_min_duration(main: Node, kind: String, min_duration: float) -> bool:
-	for effect_variant in _as_array(main.get("map_event_effects")):
+	for effect_variant in _visual_cue_array(main, "map_event_effects"):
 		if not (effect_variant is Dictionary):
 			continue
 		var effect := effect_variant as Dictionary
@@ -8820,9 +8848,9 @@ func _verify_area_trade_contract_accept_and_decline(_main: Node) -> bool:
 		ok = ok and bool(main.call("_queue_skill_resolution", 0, 0, -1))
 		ok = ok and _contract_pending_offers(main).is_empty()
 		ok = ok and (main.get("active_card_resolution") as Dictionary).is_empty()
-		main.call("_update_card_resolution_queue", 0.49)
+		_advance_card_resolution_frame_for_test(main, 0.49)
 		ok = ok and _contract_pending_offers(main).is_empty()
-		main.call("_update_card_resolution_queue", 0.02)
+		_advance_card_resolution_frame_for_test(main, 0.02)
 		var active_contract_reveal := main.get("active_card_resolution") as Dictionary
 		ok = ok and not active_contract_reveal.is_empty()
 		ok = ok and int(active_contract_reveal.get("contract_source_district", -1)) == source_index
@@ -8832,10 +8860,10 @@ func _verify_area_trade_contract_accept_and_decline(_main: Node) -> bool:
 		main.call("_refresh_ui")
 		player_box = main.get("player_box") as VBoxContainer
 		ok = ok and player_box != null and not _container_label_text_contains(player_box, "匿名合约签署窗口")
-		main.call("_update_card_resolution_queue", 4.90)
+		_advance_card_resolution_frame_for_test(main, 4.90)
 		ok = ok and _contract_pending_offers(main).is_empty()
 		ok = ok and not (main.get("active_card_resolution") as Dictionary).is_empty()
-		main.call("_update_card_resolution_queue", 0.20)
+		_advance_card_resolution_frame_for_test(main, 0.20)
 		var pending_offers := _contract_pending_offers(main)
 		ok = ok and pending_offers.size() == 1
 		ok = ok and not bool(main.call("_is_card_resolution_busy"))
