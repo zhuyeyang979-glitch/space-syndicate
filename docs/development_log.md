@@ -8430,3 +8430,19 @@ deleted. Evidence and the remaining action inventory are recorded in
 - Removed Main's five economy page methods and dashboard preload; Intel's link now submits the application intent.
 - Opening the page no longer initializes the product catalog or refreshes route caches, and missing data fails closed.
 - Replaced retired economy text with v0.6 sale-receipt, commodity GDP, facility, throughput and regional-integrity semantics.
+
+## 2026-07-19 — World-session envelope and cold annotation restore
+
+- Upgraded the existing `session` section to schema v2 without adding a save
+  section or a second state owner. The stateless composite coordinates
+  `WorldSessionState`, `CardHistoryPrivateAnnotationService`, and
+  `GameSessionRuntimeController` transactionally.
+- Added registry-level cross-section validation between the normalized
+  `card_resolution_history` section and private annotation references. True
+  cold restore now rebuilds subscriptions silently after public history and
+  rejects missing references before any owner apply.
+- Removed Main's formal v3 payload compatibility path. Main now consumes only
+  the high-level envelope/registry load receipt; active legacy v1 sessions fail
+  closed instead of fabricating a world.
+- The registry remains 19 sections (12 transactional, 7 unsupported), so this
+  boundary deliberately makes no full-run-resume claim.

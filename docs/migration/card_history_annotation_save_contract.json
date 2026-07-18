@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "runtime_owner": "CardHistoryPrivateAnnotationService",
+  "registry_owner": false,
+  "standalone_section": false,
+  "persisted_fields": [
+    "annotations_by_viewer",
+    "role_usage_by_viewer",
+    "revision"
+  ],
+  "persisted_annotation_fields": [
+    "note_text",
+    "private_tags",
+    "suspected_player_indices",
+    "private_confidence",
+    "excluded_player_indices",
+    "subscribed"
+  ],
+  "excluded_fields": [
+    "notification_count",
+    "subscription_fingerprints",
+    "public_evidence_summary",
+    "verified_by_public_reveal",
+    "updated_at_public_revision",
+    "reward",
+    "penalty",
+    "gdp",
+    "payout",
+    "hidden_actor"
+  ],
+  "max_subscriptions_per_viewer": 2,
+  "role_usage_limits": {
+    "residual_catalog": 2,
+    "public_exclusion": 3
+  },
+  "missing_public_history_id_policy": "fail_closed",
+  "structural_preflight_reads_live_history": false,
+  "cross_section_preflight_source": "normalized_card_resolution_history_section",
+  "public_history_section": "card_resolution_history",
+  "public_history_section_position": 15,
+  "session_section_position": 19,
+  "public_history_restore_mode": "transactional",
+  "history_restored_before_annotation_apply": true,
+  "silent_restore": true,
+  "restore_notification_delta": 0,
+  "restore_revision_delta": 0,
+  "restore_role_charge_delta": 0,
+  "full_run_resume_claim": false
+}

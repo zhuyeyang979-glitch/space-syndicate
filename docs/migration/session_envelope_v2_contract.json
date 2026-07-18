@@ -1,0 +1,48 @@
+{
+  "schema_version": 2,
+  "root_fields": [
+    "schema_version",
+    "game_session_runtime",
+    "world_session_state",
+    "card_history_private_annotations"
+  ],
+  "data_only": true,
+  "exact_root_allowlist": true,
+  "world_session_codec_schema": 1,
+  "city_guess_encoding": "sorted_records_with_runtime_int_key_restore",
+  "normal_confidence_min": 1,
+  "normal_confidence_max": 3,
+  "authorized_reveal_confidence_sentinel": 100,
+  "apply_order": [
+    "world_session_state",
+    "card_history_private_annotations",
+    "game_session_runtime"
+  ],
+  "registry_section_count": 19,
+  "registry_dependency_preflight": {
+    "reads_live_history": false,
+    "history_section": "card_resolution_history",
+    "history_position": 15,
+    "session_position": 19,
+    "missing_reference_policy": "fail_closed_before_apply"
+  },
+  "restore_signal_order": [
+    "players_replaced",
+    "districts_replaced",
+    "game_time_changed",
+    "world_geometry_changed",
+    "session_restored"
+  ],
+  "fault_stages": [
+    "world_before",
+    "world_after",
+    "annotation_before",
+    "annotation_after",
+    "session_before",
+    "session_after"
+  ],
+  "capture_mutates_state": false,
+  "restore_settles_city_guesses": false,
+  "restore_consumes_role_charge": false,
+  "restore_appends_public_log": false
+}

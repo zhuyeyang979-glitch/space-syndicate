@@ -129,6 +129,24 @@ func run_bench() -> Dictionary:
 	_check(bool(success.get("ok", false)) and success.get("applied_section_ids", []) == fixed_order and int(success.get("apply_count", 0)) == 19, "owners_apply_once_in_fixed_order")
 	_check(_owner_values_match(harness, fixed_order, 100), "successful_apply_commits_all_normalized_owner_states")
 	_check(_public_receipt_safe(registry.public_operation_receipt(success)), "success_public_receipt_omits_sections_balances_hands_owner_truth_and_ai_plan")
+	var dependency_before := _owner_states(harness, fixed_order)
+	var dependency_apply_counts_before := _owner_apply_counts(harness, fixed_order)
+	var missing_dependency_envelope := success_envelope.duplicate(true)
+	var dependency_sections: Dictionary = missing_dependency_envelope.get("sections", {})
+	var session_wrapper: Dictionary = (dependency_sections.get("session", {}) as Dictionary).duplicate(true)
+	var session_decoded: Dictionary = handshake.call("decode_codec_value", session_wrapper.get("owner_state"))
+	var session_owner_state: Dictionary = (session_decoded.get("value", {}) as Dictionary).duplicate(true)
+	var annotation_state: Dictionary = session_owner_state.get("card_history_private_annotations", {})
+	annotation_state["annotations_by_viewer"] = {"0": {"card-history:999": {}}}
+	session_owner_state["card_history_private_annotations"] = annotation_state
+	var session_encoded: Dictionary = handshake.call("encode_codec_value", session_owner_state)
+	session_wrapper["owner_state"] = session_encoded.get("value")
+	dependency_sections["session"] = session_wrapper
+	missing_dependency_envelope["sections"] = dependency_sections
+	var missing_dependency: Dictionary = registry.apply_envelope(missing_dependency_envelope)
+	_check(not bool(missing_dependency.get("ok", true)) and str(missing_dependency.get("reason_code", "")) == "cross_section_dependency_rejected" and int(missing_dependency.get("preflight_count", 0)) == fixed_order.size(), "missing_history_reference_rejects_after_all_structural_preflights_and_before_apply")
+	_check(_same_data(dependency_before, _owner_states(harness, fixed_order)) and _same_data(dependency_apply_counts_before, _owner_apply_counts(harness, fixed_order)), "cross_section_dependency_rejection_mutates_zero_live_owners")
+	_check(_public_receipt_safe(registry.public_operation_receipt(missing_dependency)), "cross_section_rejection_public_receipt_exposes_no_private_payload")
 
 	var before_rejections := _owner_states(harness, fixed_order)
 	var before_rejection_apply_counts := _owner_apply_counts(harness, fixed_order)
@@ -332,8 +350,13 @@ func _envelope_with_values(handshake: Node, source: Dictionary, order: Array[Str
 		var wrapper: Dictionary = (sections.get(section_id, {}) as Dictionary).duplicate(true)
 		var decoded: Dictionary = handshake.call("decode_codec_value", wrapper.get("owner_state"))
 		var owner_state: Dictionary = (decoded.get("value", {}) as Dictionary).duplicate(true)
-		owner_state["value"] = base_value + index
-		owner_state["position"] = Vector2(base_value + index, base_value + index + 1)
+		if section_id == "card_resolution_history":
+			owner_state["revision"] = base_value + index
+		elif section_id == "session":
+			owner_state["fixture_value"] = base_value + index
+		else:
+			owner_state["value"] = base_value + index
+			owner_state["position"] = Vector2(base_value + index, base_value + index + 1)
 		var encoded: Dictionary = handshake.call("encode_codec_value", owner_state)
 		wrapper["owner_state"] = encoded.get("value")
 		sections[section_id] = wrapper
