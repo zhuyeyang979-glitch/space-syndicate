@@ -19,6 +19,7 @@ func _run() -> void:
 		"player_display_name": "公开席位",
 		"public_role_name": "星鲸餐饮垄断",
 		"player_color": Color("#22d3ee"),
+		"is_local_player": true,
 		"is_publicly_active": true,
 		"public_status": "public_actor",
 		"inward_direction": "left",
@@ -36,6 +37,8 @@ func _run() -> void:
 	_check(int(public.get("mouse_filter", -1)) == Control.MOUSE_FILTER_IGNORE, "skin root ignores mouse input")
 	_check(not JSON.stringify(public).contains("999999") and not JSON.stringify(public).contains("secret"), "private request fields do not leak")
 	_check(not bool(public.get("flip_horizontal", true)), "left-side seat uses the authored inward-facing portrait")
+	_check(bool(public.get("local_marker_visible", false)), "local seat uses the public 你 marker")
+	_check(str((skin.get_node("VisualRoot/SeatPodFront/PublicStatusBadge") as Label).text).contains("你"), "local marker is visible in the compact status badge")
 	skin.apply_public_view_model({
 		"seat_index": 1,
 		"player_display_name": "公开席位",

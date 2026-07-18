@@ -5,12 +5,16 @@ class_name RoleSeatLayerHost
 const DEFAULT_SKIN_SCENE_PATH := "res://scenes/ui/player_seat/PlayerSeatPortraitSkin.tscn"
 const FALLBACK_SCENE := preload("res://scenes/ui/planet_table/RoleSeatFallback.tscn")
 const DEFAULT_SEAT_SIZE := Vector2(132.0, 92.0)
-const ALL_SEAT_POSITIONS := [
+const ORBIT_DECORATION_POSITIONS := [
 	&"top", &"left_high", &"left_mid", &"left_low",
 	&"right_high", &"right_mid", &"right_low", &"bottom",
 ]
-const LEFT_COLUMN_POSITIONS := [&"left_high", &"left_mid", &"left_low", &"bottom"]
-const RIGHT_COLUMN_POSITIONS := [&"top", &"right_high", &"right_mid", &"right_low"]
+const LEFT_COLUMN_POSITIONS := [&"left_high", &"left_mid_high", &"left_mid_low", &"left_low"]
+const RIGHT_COLUMN_POSITIONS := [&"right_high", &"right_mid_high", &"right_mid_low", &"right_low"]
+const SIDE_SEAT_POSITIONS := [
+	&"left_low", &"right_low", &"left_mid_low", &"right_mid_low",
+	&"left_mid_high", &"right_mid_high", &"left_high", &"right_high",
+]
 const COLUMN_GAP := 8.0
 const ROW_GAP := 6.0
 const EDGE_MARGIN := 8.0
@@ -73,6 +77,7 @@ func layout_debug_snapshot() -> Dictionary:
 		if node == null:
 			continue
 		seats.append({
+			"seat_index": int(descriptor.get("seat_index", -1)),
 			"player_index": player_index,
 			"seat_position": descriptor.get("seat_position", &""),
 			"depth_group": descriptor.get("depth_group", &""),
@@ -85,6 +90,7 @@ func layout_debug_snapshot() -> Dictionary:
 			"column": _seat_column(StringName(descriptor.get("seat_position", &"bottom"))),
 			"column_row": _seat_column_row(StringName(descriptor.get("seat_position", &"bottom"))),
 			"presentation_scale": node.scale.x,
+			"visual_scale": float(descriptor.get("visual_scale", 1.0)),
 			"resolved_inward_direction": _skin_inward_direction(StringName(descriptor.get("seat_position", &"bottom"))),
 			"render_layer": node.get_parent().name if node.get_parent() != null else &"",
 			"using_skin": bool(_using_skin_by_player.get(player_index, false)),
@@ -236,12 +242,12 @@ func _apply_skin_descriptor(node: Control, descriptor: Dictionary) -> bool:
 
 
 func _skin_view_model(descriptor: Dictionary) -> Dictionary:
-	var seat_position := StringName(descriptor.get("seat_position", &"bottom"))
+	var seat_position := StringName(descriptor.get("seat_position", &"left_low"))
 	var public_status := StringName(descriptor.get("public_status", &"waiting"))
 	var is_public_actor := bool(descriptor.get("is_publicly_active", false))
 	var anonymous_action := bool(descriptor.get("public_activity_is_anonymous", false))
 	return {
-		"seat_index": int(descriptor.get("player_index", -1)),
+		"seat_index": int(descriptor.get("seat_index", -1)),
 		"player_display_name": str(descriptor.get("public_player_name", "玩家")),
 		"public_role_name": str(descriptor.get("role_name", "外星辛迪加")),
 		"player_color": descriptor.get("player_color", Color.WHITE),
@@ -278,7 +284,7 @@ func _sync_fallback_decorations() -> void:
 	if fallback_backdrop == null or not fallback_backdrop.has_method("set_seat_decoration_visibility"):
 		return
 	var visibility := {}
-	for seat_position in ALL_SEAT_POSITIONS:
+	for seat_position in ORBIT_DECORATION_POSITIONS:
 		visibility[str(seat_position)] = false
 	# Side-column cards provide the fallback themselves. The old orbit pips would
 	# otherwise leave a second, circular seat presentation around the globe.
@@ -299,24 +305,37 @@ func _layout_column(descriptors: Array, column: StringName, stage_size: Vector2,
 		return
 	var side_width := map_rect.position.x - COLUMN_GAP - EDGE_MARGIN if column == &"left" else stage_size.x - map_rect.end.x - COLUMN_GAP - EDGE_MARGIN
 	var row_space := stage_size.y - EDGE_MARGIN * 2.0 - ROW_GAP * float(maxi(0, descriptors.size() - 1))
-	var horizontal_scale := side_width / DEFAULT_SEAT_SIZE.x
-	var vertical_scale := row_space / (DEFAULT_SEAT_SIZE.y * float(descriptors.size()))
+	var scale_weight := 0.0
+	var max_multiplier := 1.0
+	for descriptor_variant in descriptors:
+		var multiplier := _descriptor_scale_multiplier(descriptor_variant as Dictionary)
+		scale_weight += multiplier
+		max_multiplier = maxf(max_multiplier, multiplier)
+	var horizontal_scale := side_width / (DEFAULT_SEAT_SIZE.x * max_multiplier)
+	var vertical_scale := row_space / (DEFAULT_SEAT_SIZE.y * scale_weight)
 	var scale_factor := minf(1.0, minf(horizontal_scale, vertical_scale))
 	scale_factor = maxf(0.1, scale_factor)
-	var display_size := DEFAULT_SEAT_SIZE * scale_factor
-	var column_height := display_size.y * float(descriptors.size()) + ROW_GAP * float(maxi(0, descriptors.size() - 1))
+	var column_height := DEFAULT_SEAT_SIZE.y * scale_factor * scale_weight + ROW_GAP * float(maxi(0, descriptors.size() - 1))
 	var start_y := maxf(EDGE_MARGIN, (stage_size.y - column_height) * 0.5)
-	var x := map_rect.position.x - COLUMN_GAP - display_size.x if column == &"left" else map_rect.end.x + COLUMN_GAP
-	x = clampf(x, EDGE_MARGIN, maxf(EDGE_MARGIN, stage_size.x - display_size.x - EDGE_MARGIN))
+	var y := start_y
 	for row in range(descriptors.size()):
 		var descriptor: Dictionary = descriptors[row]
 		var node := _seat_nodes_by_player.get(int(descriptor.get("player_index", -1))) as Control
 		if node == null:
 			continue
+		var node_scale := scale_factor * _descriptor_scale_multiplier(descriptor)
+		var display_size := DEFAULT_SEAT_SIZE * node_scale
+		var x := map_rect.position.x - COLUMN_GAP - display_size.x if column == &"left" else map_rect.end.x + COLUMN_GAP
+		x = clampf(x, EDGE_MARGIN, maxf(EDGE_MARGIN, stage_size.x - display_size.x - EDGE_MARGIN))
 		node.size = DEFAULT_SEAT_SIZE
-		node.scale = Vector2.ONE * scale_factor
+		node.scale = Vector2.ONE * node_scale
 		node.pivot_offset = Vector2.ZERO
-		node.position = Vector2(x, start_y + float(row) * (display_size.y + ROW_GAP)).round()
+		node.position = Vector2(x, y).round()
+		y += display_size.y + ROW_GAP
+
+
+func _descriptor_scale_multiplier(descriptor: Dictionary) -> float:
+	return clampf(float(descriptor.get("visual_scale", 1.0)), 1.0, 1.10)
 
 
 func _column_descriptors(column: StringName) -> Array:
@@ -349,15 +368,19 @@ func _map_visual_rect(stage_size: Vector2) -> Rect2:
 
 func _validated_descriptors(value: Array) -> Array:
 	var result: Array = []
-	var seen := {}
+	var seen_players := {}
+	var seen_positions := {}
 	for descriptor_variant in value:
 		if not (descriptor_variant is Dictionary):
 			continue
 		var descriptor: Dictionary = descriptor_variant
 		var player_index := int(descriptor.get("player_index", -1))
-		if player_index < 0 or seen.has(player_index):
+		var seat_position := StringName(descriptor.get("seat_position", &""))
+		if player_index < 0 or seen_players.has(player_index) \
+				or seat_position not in SIDE_SEAT_POSITIONS or seen_positions.has(seat_position):
 			continue
-		seen[player_index] = true
+		seen_players[player_index] = true
+		seen_positions[seat_position] = true
 		result.append(descriptor.duplicate(true))
 	return result.slice(0, 8)
 

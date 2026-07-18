@@ -66,8 +66,8 @@ func _run() -> void:
 	for player_count in [3, 4, 5, 6, 7, 8]:
 		var specs: Array[Dictionary] = LayoutScript.resolve(player_count, Vector2(1600, 960))
 		_check(specs.size() == player_count, "%d player layout has exact seats" % player_count)
-		_check(str(specs[0].get("slot_name", "")) == "bottom", "%d player layout keeps local player bottom" % player_count)
-		_check(bool(specs[0].get("local_player", false)), "%d player bottom is local" % player_count)
+		_check(str(specs[0].get("slot_name", "")) == "left_low", "%d player layout keeps local player at left_low" % player_count)
+		_check(bool(specs[0].get("local_player", false)), "%d player left_low seat is local" % player_count)
 		var slots: Dictionary = {}
 		for spec in specs:
 			slots[str(spec.get("slot_name", ""))] = true
