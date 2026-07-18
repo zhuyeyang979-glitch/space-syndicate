@@ -28,6 +28,7 @@ func _run() -> void:
 		"owner_truth": "secret-owner",
 	})
 	_check(available and skin.visible, "rendered portrait enables the skin")
+	_check(skin.get_combined_minimum_size().is_equal_approx(Vector2(132, 92)), "production portrait skin uses the compact 132x92 side-card frame")
 	var public: Dictionary = skin.public_debug_snapshot()
 	_check(public.get("owns_layout", true) == false, "skin owns no layout")
 	_check(public.get("owns_player_mapping", true) == false, "skin owns no player mapping")

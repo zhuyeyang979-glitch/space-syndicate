@@ -30,6 +30,7 @@ const SAFE_PUBLIC_FIELDS := [
 @onready var visual_root: Control = $VisualRoot
 @onready var portrait_back_glow: Panel = $VisualRoot/PortraitBackGlow
 @onready var portrait_shadow: Panel = $VisualRoot/PortraitShadow
+@onready var portrait_clip: Panel = $VisualRoot/PortraitClip
 @onready var portrait_texture: TextureRect = $VisualRoot/PortraitClip/PortraitTexture
 @onready var seat_pod_back: Panel = $VisualRoot/SeatPodBack
 @onready var seat_pod_front: Panel = $VisualRoot/SeatPodFront
@@ -139,6 +140,7 @@ func _apply_visual_state() -> void:
 	role_badge.text = _public_role_name
 	name_plate.text = _player_display_name
 	public_status_badge.text = _status_label()
+	_apply_compact_direction_layout()
 	var tint := Color.WHITE
 	match _public_status:
 		STATUS_WAITING:
@@ -164,23 +166,29 @@ func _apply_depth_style() -> void:
 			visual_root.modulate = Color(0.92, 0.95, 1.0, 1.0)
 
 
+func _apply_compact_direction_layout() -> void:
+	var portrait_on_right := _inward_direction == "right"
+	portrait_clip.position.x = 76.0 if portrait_on_right else 4.0
+	portrait_shadow.position.x = 74.0 if portrait_on_right else 2.0
+	portrait_back_glow.position.x = 72.0 if portrait_on_right else 0.0
+	var text_left := 5.0 if portrait_on_right else 58.0
+	var text_right := 74.0 if portrait_on_right else 127.0
+	for label in [role_badge, name_plate, public_status_badge]:
+		label.position.x = text_left
+		label.size.x = text_right - text_left
+
+
 func _update_glow() -> void:
 	var actor_visible := _is_publicly_active and not _anonymous_action_active and _public_status != STATUS_BANKRUPT
 	var glow := StyleBoxFlat.new()
 	glow.bg_color = Color(_player_color, 0.10 if actor_visible else 0.035)
-	glow.corner_radius_top_left = 42
-	glow.corner_radius_top_right = 42
-	glow.corner_radius_bottom_left = 46
-	glow.corner_radius_bottom_right = 46
+	glow.set_corner_radius_all(8)
 	glow.shadow_color = Color(_player_color, 0.36 if actor_visible else 0.10)
 	glow.shadow_size = 20 if actor_visible else 10
 	portrait_back_glow.add_theme_stylebox_override("panel", glow)
 	var shadow := StyleBoxFlat.new()
 	shadow.bg_color = Color(0.0, 0.0, 0.0, 0.0)
-	shadow.corner_radius_top_left = 28
-	shadow.corner_radius_top_right = 28
-	shadow.corner_radius_bottom_left = 36
-	shadow.corner_radius_bottom_right = 36
+	shadow.set_corner_radius_all(7)
 	shadow.shadow_color = Color(0.0, 0.0, 0.0, 0.62)
 	shadow.shadow_size = 12
 	shadow.border_width_left = 1

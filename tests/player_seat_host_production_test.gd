@@ -20,6 +20,8 @@ func _run() -> void:
 	var planet_board := screen.find_child("PlanetBoard", true, false) as Control
 	var host := screen.find_child("RoleSeatLayerHost", true, false)
 	var map_host := screen.find_child("MapHost", true, false) as Control
+	var map_view := screen.find_child("PlanetMapView", true, false) as Control
+	var stage_viewport := screen.find_child("PlanetStageViewport", true, false) as Control
 	_expect(planet_board != null and host != null and map_host != null, "production GameScreen loads PlanetBoard, map and RoleSeatLayerHost")
 	if planet_board == null or host == null or map_host == null:
 		_finish()
@@ -45,15 +47,35 @@ func _run() -> void:
 		_expect(_seat(seats, 2).get("seat_position", &"") == &"bottom", "%d-player local player is fixed at bottom" % seat_count)
 		_expect(_right_seats_fit(seats, snapshot.get("host_global_rect", Rect2()) as Rect2), "%d-player right seats stay inside PlanetStageViewport" % seat_count)
 		_expect(_seat_rects_are_bounded(seats), "%d-player seat fallback rects stay compact" % seat_count)
+		_expect(_column_count(seats, &"left") == _expected_left_count(seat_count), "%d-player semantic positions resolve into the left side column" % seat_count)
+		_expect(_column_count(seats, &"right") == seat_count - _expected_left_count(seat_count), "%d-player semantic positions resolve into the right side column" % seat_count)
+		_expect(_seat_display_rects_do_not_overlap(seats), "%d-player side cards do not overlap one another" % seat_count)
+		_expect(_seats_stay_outside_map(seats, _control_rect_in(stage_viewport, map_view)), "%d-player side cards do not cover the planet" % seat_count)
+		_expect(_resolved_directions_face_inward(seats), "%d-player portraits face inward from both side columns" % seat_count)
 		_expect(_all_ignore_mouse(seats), "%d-player seat surfaces ignore map input" % seat_count)
 		if seat_count in [4, 6, 8]:
 			var top := _seat_by_position(seats, &"top")
-			_expect(str(top.get("depth_group", "")) == "back", "%d-player top seat is in BackSeatLayer" % seat_count)
+			_expect(str(top.get("render_layer", "")) == "FrontSeatLayer", "%d-player former top seat renders in the right-side front layer" % seat_count)
 		var bottom := _seat_by_position(seats, &"bottom")
-		_expect(str(bottom.get("depth_group", "")) == "front", "%d-player bottom seat is in FrontSeatLayer" % seat_count)
+		_expect(str(bottom.get("render_layer", "")) == "FrontSeatLayer", "%d-player former bottom seat renders in the left-side front layer" % seat_count)
 		_expect(_left_variants_are_inward(seats), "%d-player left seats use side_inward portraits" % seat_count)
 		_expect(_right_seats_are_mirrored(seats), "%d-player right seats request horizontal mirroring" % seat_count)
 		_expect(map_host.size.is_equal_approx(original_map_size), "%d-player host does not shrink the central planet" % seat_count)
+		_expect(_side_utilities_are_suppressed(screen), "%d-player side columns do not overlap utility rails or FlowCompass" % seat_count)
+	if screen.get_parent() == get_root():
+		for resolution in [Vector2(1280, 720), Vector2(1600, 960), Vector2(1920, 1080)]:
+			screen.size = resolution
+			screen.call("apply_state", {
+				"planet": {"public_player_seat_sources": _sources(8)},
+				"player_board": {"identity": "本地玩家", "hand_cards": []},
+			})
+			await process_frame
+			await process_frame
+			var resolution_snapshot: Dictionary = host.call("layout_debug_snapshot")
+			var resolution_seats: Array = resolution_snapshot.get("seats", []) if resolution_snapshot.get("seats", []) is Array else []
+			_expect(resolution_seats.size() == 8, "%dx%d renders all eight side seats" % [int(resolution.x), int(resolution.y)])
+			_expect(_seat_display_rects_do_not_overlap(resolution_seats), "%dx%d keeps side seats separated" % [int(resolution.x), int(resolution.y)])
+			_expect(_seats_stay_outside_map(resolution_seats, _control_rect_in(stage_viewport, map_view)), "%dx%d preserves planet input area" % [int(resolution.x), int(resolution.y)])
 	var privacy_sources := _sources(3)
 	(privacy_sources[1] as Dictionary).merge({
 		"true_owner": 1,
@@ -81,17 +103,17 @@ func _run() -> void:
 			fallback_count += 1
 	_expect(fallback_count == 3, "unmatched portrait roles keep one independent fallback visual per active seat")
 	var fallback_snapshot: Dictionary = host.call("layout_debug_snapshot")
-	_expect(_visible_decoration_count(fallback_snapshot) == 3, "missing Skin keeps fallback decoration visible per active seat, not globally")
+	_expect(_visible_decoration_count(fallback_snapshot) == 0, "side-column fallback cards retire the old orbit seat decorations")
 	host.set("skin_scene_path", "res://tests/fixtures/player_seat_host/FakeMissingPortraitPlayerSeatSkin.tscn")
 	host.call("set_seat_descriptors", privacy_descriptors)
 	await process_frame
 	var missing_portrait_snapshot: Dictionary = host.call("layout_debug_snapshot")
-	_expect(_using_skin_count(missing_portrait_snapshot) == 0 and _visible_decoration_count(missing_portrait_snapshot) == 3, "existing Skin scene with missing portrait falls back per seat")
+	_expect(_using_skin_count(missing_portrait_snapshot) == 0 and _visible_decoration_count(missing_portrait_snapshot) == 0, "existing Skin scene with missing portrait falls back in the side column")
 	host.set("skin_scene_path", "res://tests/fixtures/player_seat_host/InvalidPlayerSeatSkin.tscn")
 	host.call("set_seat_descriptors", privacy_descriptors)
 	await process_frame
 	var invalid_skin_snapshot: Dictionary = host.call("layout_debug_snapshot")
-	_expect(_using_skin_count(invalid_skin_snapshot) == 0 and _visible_decoration_count(invalid_skin_snapshot) == 3, "Skin scene load/type failure falls back per seat")
+	_expect(_using_skin_count(invalid_skin_snapshot) == 0 and _visible_decoration_count(invalid_skin_snapshot) == 0, "Skin scene load/type failure falls back in the side column")
 	host.set("skin_scene_path", "res://tests/fixtures/player_seat_host/FakeAvailablePlayerSeatSkin.tscn")
 	host.call("set_seat_descriptors", privacy_descriptors)
 	await process_frame
@@ -184,8 +206,71 @@ func _all_ignore_mouse(seats: Array) -> bool:
 func _seat_rects_are_bounded(seats: Array) -> bool:
 	for seat_variant in seats:
 		var rect: Rect2 = (seat_variant as Dictionary).get("rect", Rect2()) as Rect2
-		if rect.size.x > 160.0 or rect.size.y > 100.0:
+		var display_rect: Rect2 = (seat_variant as Dictionary).get("display_rect", Rect2()) as Rect2
+		if rect.size.x > 132.0 or rect.size.y > 92.0 or display_rect.size.x > 132.5 or display_rect.size.y > 92.5:
 			print("UNBOUNDED_SEAT: ", seat_variant)
+			return false
+	return true
+
+
+func _expected_left_count(seat_count: int) -> int:
+	match seat_count:
+		3, 4:
+			return 2
+		6:
+			return 3
+		8:
+			return 4
+	return int(ceil(float(seat_count) * 0.5))
+
+
+func _column_count(seats: Array, column: StringName) -> int:
+	var count := 0
+	for seat_variant in seats:
+		if StringName((seat_variant as Dictionary).get("column", &"")) == column:
+			count += 1
+	return count
+
+
+func _seat_display_rects_do_not_overlap(seats: Array) -> bool:
+	for first_index in range(seats.size()):
+		var first_rect: Rect2 = (seats[first_index] as Dictionary).get("display_rect", Rect2()) as Rect2
+		for second_index in range(first_index + 1, seats.size()):
+			var second_rect: Rect2 = (seats[second_index] as Dictionary).get("display_rect", Rect2()) as Rect2
+			if first_rect.intersects(second_rect):
+				return false
+	return true
+
+
+func _seats_stay_outside_map(seats: Array, map_rect: Rect2) -> bool:
+	for seat_variant in seats:
+		var seat: Dictionary = seat_variant
+		var rect: Rect2 = seat.get("display_rect", Rect2()) as Rect2
+		if rect.intersects(map_rect):
+			return false
+	return true
+
+
+func _control_rect_in(ancestor: Control, child: Control) -> Rect2:
+	if ancestor == null or child == null:
+		return Rect2()
+	return Rect2(child.global_position - ancestor.global_position, child.size * child.scale)
+
+
+func _resolved_directions_face_inward(seats: Array) -> bool:
+	for seat_variant in seats:
+		var seat: Dictionary = seat_variant
+		var column := StringName(seat.get("column", &""))
+		var direction := str(seat.get("resolved_inward_direction", ""))
+		if direction != ("left" if column == &"left" else "right"):
+			return false
+	return true
+
+
+func _side_utilities_are_suppressed(screen: Node) -> bool:
+	for node_name in ["PlaytestFlowCompass", "PlanetLeftSpaceRail", "PlanetRightSpaceRail"]:
+		var utility := screen.find_child(node_name, true, false) as Control
+		if utility == null or utility.visible or not bool(utility.get_meta("suppressed_for_player_side_columns", false)):
 			return false
 	return true
 

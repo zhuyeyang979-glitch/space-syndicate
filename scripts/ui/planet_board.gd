@@ -44,6 +44,7 @@ var _map_presentation_target_count := 0
 var _presentation_authorized_viewer_index := -1
 var _presentation_authorization_revision := 0
 var _fullscreen_map_target: SpaceSyndicatePlanetMapView
+var _seat_side_column_count := 0
 
 
 func _ready() -> void:
@@ -60,6 +61,8 @@ func _ready() -> void:
 	if stage_viewport != null:
 		stage_viewport.clip_contents = false
 		stage_viewport.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if role_seat_layer_host != null and role_seat_layer_host.has_method("set_map_visual_target"):
+		role_seat_layer_host.call("set_map_visual_target", embedded_map_view)
 	call_deferred("_fit_square_stage")
 	queue_redraw()
 
@@ -92,8 +95,10 @@ func set_board_state(data: Dictionary) -> void:
 	)
 	_set_weather_strip(data.get("weather", {}))
 	_set_flow_compass(data.get("flow_compass", {}))
+	var seat_descriptors: Array = data.get("player_seats", []) if data.get("player_seats", []) is Array else []
+	_seat_side_column_count = seat_descriptors.size()
 	if role_seat_layer_host != null and role_seat_layer_host.has_method("set_seat_descriptors"):
-		role_seat_layer_host.call("set_seat_descriptors", data.get("player_seats", []) if data.get("player_seats", []) is Array else [])
+		role_seat_layer_host.call("set_seat_descriptors", seat_descriptors)
 	_configure_pointer_passthrough_layers()
 	call_deferred("_fit_square_stage")
 
@@ -183,6 +188,8 @@ func attach_runtime_map(map_node: Control) -> void:
 	map_node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	map_host.add_child(map_node)
 	embedded_map_view = map_node
+	if role_seat_layer_host != null and role_seat_layer_host.has_method("set_map_visual_target"):
+		role_seat_layer_host.call("set_map_visual_target", map_node)
 	map_node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_fit_square_stage()
 
@@ -248,9 +255,18 @@ func _fit_square_stage() -> void:
 		if seat_layer != null:
 			seat_layer.position = Vector2.ZERO
 			seat_layer.size = available
-	_layout_flow_compass(map_rect, available)
-	_layout_space_rail(left_space_rail, true, map_rect, available)
-	_layout_space_rail(right_space_rail, false, map_rect, available)
+	var side_columns_active := _seat_side_column_count >= 3
+	if side_columns_active:
+		for utility in [playtest_flow_compass, left_space_rail, right_space_rail]:
+			if utility != null:
+				utility.visible = false
+				utility.set_meta("suppressed_for_player_side_columns", true)
+	else:
+		_layout_flow_compass(map_rect, available)
+		_layout_space_rail(left_space_rail, true, map_rect, available)
+		_layout_space_rail(right_space_rail, false, map_rect, available)
+	if role_seat_layer_host != null and role_seat_layer_host.has_method("request_layout"):
+		role_seat_layer_host.call("request_layout")
 
 
 func _layout_flow_compass(map_rect: Rect2, _available: Vector2) -> void:

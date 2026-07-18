@@ -54,6 +54,8 @@ mouse_filter = 2
 [node name="RoleSeatLayerHost" parent="PlanetRows/PlanetStageViewport" instance=ExtResource("5_role_seat_host")]
 unique_name_in_owner = true
 stage_viewport_path = NodePath("..")
+map_host_path = NodePath("../MapHost")
+map_view_path = NodePath("../MapHost/PlanetMapView")
 back_seat_layer_path = NodePath("../BackSeatLayer")
 front_seat_layer_path = NodePath("../FrontSeatLayer")
 fallback_backdrop_path = NodePath("../MapHost/PlanetMapView/BackdropLayer/PlanetGlobeBackdrop")
