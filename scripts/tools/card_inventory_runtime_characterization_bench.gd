@@ -809,7 +809,7 @@ func _case_save_shape_unchanged() -> Dictionary:
 	var service_is_stateless := inventory_service != null and not inventory_service.has_method("to_save_data") and not inventory_service.has_method("apply_save_data")
 	return _record("save_shape_unchanged", "ControllerStateVersionRegistryV06", "save_shape_audit", {}, {}, {}, {}, {
 		"observed": not registry_snapshot.is_empty() and inventory_service != null,
-		"contract_aligned": int(registry_snapshot.get("entries", []).size()) == 18 and inventory_section_count == 1 and no_runtime_service_reference and service_is_stateless and not _contains_runtime_object(registry_snapshot),
+		"contract_aligned": int(registry_snapshot.get("entries", []).size()) == 19 and inventory_section_count == 1 and no_runtime_service_reference and service_is_stateless and not _contains_runtime_object(registry_snapshot),
 		"save_shape_checked": true,
 		"notes": "the strict v0.6 registry keeps one card-inventory business section; the stateless slot service contributes no second section or runtime service reference",
 	})

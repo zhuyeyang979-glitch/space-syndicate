@@ -3,6 +3,29 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-18。
 
+## 2026-07-18｜卡牌结算履历正式存档 Owner
+
+- 将既有唯一 `CardResolutionHistoryRuntimeService` 注册为 v0.6 第19个 required
+  section，固定顺序为 execution → history → AI，`session` 继续最后应用。Registry
+  能力边界由 11/7 变为 12 transactional / 7 unsupported，完整恢复仍 fail-closed。
+- History owner 新增严格纯 `preflight_save_data()`；capture、preflight 和 apply
+  共享五字段 schema、规范 lineage、纯数据和递归隐私门禁。旧 owner/actor 字段只做
+  单向移除，AI/owner 私密字段拒绝导入。
+- 新增无状态 `CardHistoryRestoreDependencyContract`，从候选 history 生成稳定公共
+  entry ID 与 deterministic fingerprint，使后续 annotation restore 不再依赖 live
+  history 查询。Execution 与 session 均未复制 history，`main.gd` 未修改。
+- 旧18-section v3 envelope 因 manifest 改变明确 fail-closed；本轮不宣称完整 run
+  resume 已可用。生产-wiring History Bench 改为真实 Coordinator 场景并自行退出。
+- Godot 4.7 阻塞门禁：History save owner `49/49`（run
+  `20260718-222416-576-card_resolution_history_save_owner_test-44d5ad5f`）、Registry
+  （run `20260718-222423-100-v06_save_owner_registry_test-8a345e25`）、Envelope、
+  GameSession `owner_sections=19`、transition persistence/sink、annotation privacy、
+  Main architecture/composition 与 smoke `--check-only` 均 ExitCode 0。
+- 独占 Funplay MCP `8845` 核对 worktree 身份，项目扫描 `877/877`、errors `0`；
+  正式 History/Registry 场景可打开，生产-wiring Bench 输出
+  `CARD_RESOLUTION_HISTORY_SAVE_OWNER_BENCH|status=PASS|checks=17|failures=0`，
+  console errors `0`，随后 clean-stop，端口与本 worktree Godot 进程均为 `0`。
+
 ## 2026-07-18｜命令管线边界加固
 
 - 新增局部、场景化 `RuntimeCommandPipeline` 与纯数据

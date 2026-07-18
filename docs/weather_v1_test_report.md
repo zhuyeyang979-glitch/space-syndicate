@@ -8,7 +8,7 @@
 
 ## 结论
 
-区域天气 v1 已形成可运行的最小闭环：六种天气全部由资源定义，使用唯一 `world_effective_us` 时钟完成预报、生效、线性消退和结束；经济、路线、怪兽、军事/情报、区域伤害与三处公共 UI 消费同一结构化效果和解释。存档继续使用现有 18-owner envelope 中的 `weather` section，没有增加第二时钟或第 19 个存档 owner。
+区域天气 v1 已形成可运行的最小闭环：六种天气全部由资源定义，使用唯一 `world_effective_us` 时钟完成预报、生效、线性消退和结束；经济、路线、怪兽、军事/情报、区域伤害与三处公共 UI 消费同一结构化效果和解释。存档继续使用现有 19-owner envelope 中的 `weather` section，没有增加第二时钟或第 20 个存档 owner。
 
 Focused 天气门禁全部通过。完整 `layout_scene_smoke_test.gd` 当前为 52 条红灯；Monster Codex 三条陈旧 oracle 已退出失败列表，最早脚本问题是 `military_runtime_characterization_bench.gd` 的类型推断失败，随后还有已退役 Coordinator API 与真实 1280x720 越界问题。完整 `smoke_test.gd` 在 240 秒门槛超时回收；它已通过 Monster Codex 公开 I/IV 概率门，随后首个业务失败是角色图鉴，首个脚本错误是调用已删除的 Main `_capture_run_state`。两次 runner 均确认本工作树残留运行进程为 0，因此二者都不能报告为通过。Godot 引擎级 `--check-only` 独立通过。
 

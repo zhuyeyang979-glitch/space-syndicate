@@ -63,7 +63,7 @@ func _run() -> void:
 	var registry := coordinator.get_node_or_null("GameSessionRuntimeController/V06SaveOwnerRegistry")
 	var snapshot: Dictionary = registry.registry_snapshot() if registry != null else {}
 	_expect(registry != null and bool(snapshot.get("valid", false)), "production registry remains structurally valid")
-	_expect(int(snapshot.get("transactional_section_count", 0)) == 8 and int(snapshot.get("unsupported_section_count", 0)) == 10, "weather advances the honest production boundary to 8 transactional and 10 unsupported sections")
+	_expect(int(snapshot.get("transactional_section_count", 0)) == 12 and int(snapshot.get("unsupported_section_count", 0)) == 7, "history registration advances the honest production boundary to 12 transactional and 7 unsupported sections")
 	var weather_binding: Resource
 	if registry != null:
 		for binding in registry.bindings:
@@ -71,7 +71,7 @@ func _run() -> void:
 				weather_binding = binding
 				break
 	_expect(weather_binding != null and weather_binding.is_transactional() and str(weather_binding.owner_path) == "../../WeatherRuntimeController", "registry binds weather to the unique production owner")
-	_expect(not bool(snapshot.get("resume_ready", true)) and int(snapshot.get("required_section_count", 0)) == 18, "full resume remains fail-closed without a nineteenth save section")
+	_expect(not bool(snapshot.get("resume_ready", true)) and int(snapshot.get("required_section_count", 0)) == 19 and int(snapshot.get("unsupported_section_count", 0)) == 7, "full resume remains fail-closed while seven required sections are unsupported")
 	coordinator.queue_free()
 	await process_frame
 	_finish()

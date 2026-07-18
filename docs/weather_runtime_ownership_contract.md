@@ -54,7 +54,7 @@ Presentation consumes pure public snapshots. The map overlay renders below distr
 
 ## Save and privacy
 
-Weather save schema v2 remains inside the existing 18-owner v0.6 envelope. It stores validated event timestamps/phases, affected regions, queue, next generation, sequence, recent-hit history, and lifecycle counters. It does not persist presentation state or outcome telemetry sessions. Malformed payloads fail closed; legacy flat weather state may be conservatively cleared but must not resurrect retired timing or multiplier rules.
+Weather save schema v2 remains inside the existing 19-owner v0.6 envelope. It stores validated event timestamps/phases, affected regions, queue, next generation, sequence, recent-hit history, and lifecycle counters. It does not persist presentation state or outcome telemetry sessions, and the new history section does not duplicate weather state. Malformed payloads fail closed; legacy flat weather state may be conservatively cleared but must not resurrect retired timing or multiplier rules.
 
 Public/debug snapshots and reports must remain pure data and viewer-invariant. The authoritative privacy gates reject private keys and sentinel values recursively.
 

@@ -25,12 +25,12 @@ The current driver:
 - emits NDJSON containing only public/aggregate fields;
 - uses bounded test-only acceleration without adding a production speed control.
 
-Fresh-run preflight requires a valid 18-binding registry and all runtime composition ports,
+Fresh-run preflight requires a valid 19-binding registry and all runtime composition ports,
 but does not pretend incomplete resume support is complete. At `main@b2441cc` the registry
 reports 8 transactional / 10 unsupported bindings; capture correctly fails closed with
 `restore_capability_incomplete`.
 
-The round is not complete until resume preflight reaches 18/18 and the driver performs a
+The round is not complete until resume preflight reaches 19/19 and the driver performs a
 real save, fresh-world restore and continued settlement.
 
 ## Required run stages
@@ -212,7 +212,7 @@ The implementation round requires all of:
 
 The round may be marked complete only when:
 
-- the production registry is 18/18 transactional;
+- the production registry is 19/19 transactional;
 - all ten focused tests named by the round pass;
 - every required full-run stage is observed or an exact seed-specific failure is reported;
 - save/restore continuation passes with zero duplicate demand, receipt or draw;

@@ -3,7 +3,8 @@ extends Node
 class_name CardResolutionHistoryRuntimeService
 
 const DEFAULT_HISTORY_LIMIT := 24
-const SAVE_SCHEMA := "v0.6.card-resolution-history.1"
+const RestoreDependencyContract := preload("res://scripts/runtime/card_history_restore_dependency_contract.gd")
+const SAVE_SCHEMA := RestoreDependencyContract.HISTORY_SAVE_SCHEMA
 
 const PUBLIC_ENTRY_FIELDS := [
 	"resolution_id",
@@ -26,31 +27,8 @@ const PUBLIC_ENTRY_FIELDS := [
 	"resolution_outcome",
 ]
 
-const FORBIDDEN_PRIVATE_KEYS := {
-	"true_owner": true,
-	"hidden_owner": true,
-	"hidden_owner_id": true,
-	"owner_truth": true,
-	"ai_plan": true,
-	"ai_private_plan": true,
-	"ai_reason": true,
-	"ai_utility_score": true,
-	"route_plan_score": true,
-	"pressure_bucket": true,
-	"decision_samples": true,
-	"learning_bonus": true,
-}
-
-const RETIRED_CARD_OWNER_FIELDS := [
-	"guessers",
-	"public_owner_revealed",
-	"public_owner_label",
-	"owner_revealed_time",
-	"authoritative_actor",
-	"hidden_actor",
-	"hidden_owner",
-	"true_owner",
-]
+const FORBIDDEN_PRIVATE_KEYS := RestoreDependencyContract.FORBIDDEN_PRIVATE_KEYS
+const RETIRED_CARD_OWNER_FIELDS := RestoreDependencyContract.RETIRED_CARD_OWNER_FIELDS
 
 var _history: Array = []
 var _appended_resolution_ids: Dictionary = {}
@@ -100,11 +78,14 @@ func append_resolved(entry: Dictionary) -> Dictionary:
 		}
 	var stored := entry.duplicate(true)
 	_strip_retired_card_owner_fields(stored)
+	_strip_forbidden_private_fields(stored)
 	stored["resolution_id"] = resolution_id
 	_history.append(stored)
 	_appended_resolution_ids[id_key] = true
 	while _history.size() > _history_limit:
-		_history.pop_front()
+		var removed_variant: Variant = _history.pop_front()
+		if removed_variant is Dictionary:
+			_appended_resolution_ids.erase(str(_entry_id(removed_variant as Dictionary)))
 	_revision += 1
 	_append_count += 1
 	_last_reason = "appended"
@@ -123,7 +104,7 @@ func patch_entry(resolution_id: int, patch: Dictionary) -> Dictionary:
 		return _mutation_rejection("service_not_configured", resolution_id)
 	if resolution_id < 0 or patch.is_empty() or not _is_data_only(patch):
 		return _mutation_rejection("invalid_patch", resolution_id)
-	if patch.has("resolution_id") or patch.has("queued_order") or patch.has("player_index") or _contains_retired_card_owner_field(patch):
+	if patch.has("resolution_id") or patch.has("queued_order") or patch.has("player_index") or _contains_retired_card_owner_field(patch) or _contains_forbidden_private_field(patch):
 		return _mutation_rejection("identity_patch_forbidden", resolution_id)
 	var entry_index := _history_index(resolution_id)
 	if entry_index < 0:
@@ -190,59 +171,41 @@ func private_viewer_snapshot(_viewer_index: int) -> Array:
 
 
 func to_save_data() -> Dictionary:
-	return {
+	var candidate := {
 		"schema": SAVE_SCHEMA,
 		"history_limit": _history_limit,
 		"history": _history.duplicate(true),
 		"appended_resolution_ids": _sorted_resolution_ids(),
 		"revision": _revision,
 	}
+	var normalized := RestoreDependencyContract.normalize_history_state(candidate)
+	return (normalized.get("normalized_state", {}) as Dictionary).duplicate(true) if bool(normalized.get("accepted", false)) else candidate
+
+
+func preflight_save_data(data: Dictionary) -> Dictionary:
+	return RestoreDependencyContract.normalize_history_state(data)
 
 
 func apply_save_data(data: Dictionary) -> Dictionary:
 	if not _configured:
-		return {"applied": false, "reason": "service_not_configured", "revision": _revision}
-	if not _is_data_only(data):
-		return {"applied": false, "reason": "save_not_data_only", "revision": _revision}
-	var schema := str(data.get("schema", SAVE_SCHEMA))
-	if schema != SAVE_SCHEMA:
-		return {"applied": false, "reason": "save_schema_mismatch", "revision": _revision}
-	var restored_limit := maxi(1, int(data.get("history_limit", _history_limit)))
-	var restored_history_variant: Variant = data.get("history", [])
-	var restored_ids_variant: Variant = data.get("appended_resolution_ids", [])
-	if not (restored_history_variant is Array) or not (restored_ids_variant is Array):
-		return {"applied": false, "reason": "save_shape_invalid", "revision": _revision}
-	var restored_history: Array = []
+		return {"applied": false, "reason": "service_not_configured", "reason_code": "service_not_configured", "revision": _revision}
+	var preflight := preflight_save_data(data)
+	if not bool(preflight.get("accepted", false)):
+		var rejection := str(preflight.get("reason_code", "history_state_invalid"))
+		return {"applied": false, "reason": rejection, "reason_code": rejection, "revision": _revision}
+	var normalized: Dictionary = (preflight.get("normalized_state", {}) as Dictionary).duplicate(true)
 	var restored_ids: Dictionary = {}
-	for id_variant in restored_ids_variant as Array:
-		var resolution_id := int(id_variant)
-		if resolution_id < 0 or restored_ids.has(str(resolution_id)):
-			return {"applied": false, "reason": "save_lineage_invalid", "revision": _revision}
-		restored_ids[str(resolution_id)] = true
-	for entry_variant in restored_history_variant as Array:
-		if not (entry_variant is Dictionary):
-			return {"applied": false, "reason": "save_entry_invalid", "revision": _revision}
-		var entry := (entry_variant as Dictionary).duplicate(true)
-		_strip_retired_card_owner_fields(entry)
-		var resolution_id := _entry_id(entry)
-		if resolution_id < 0 or not restored_ids.has(str(resolution_id)):
-			return {"applied": false, "reason": "save_history_lineage_mismatch", "revision": _revision}
-		for existing_variant in restored_history:
-			if _entry_id(existing_variant as Dictionary) == resolution_id:
-				return {"applied": false, "reason": "save_history_duplicate", "revision": _revision}
-		entry["resolution_id"] = resolution_id
-		restored_history.append(entry)
-	while restored_history.size() > restored_limit:
-		restored_history.pop_front()
-	_history_limit = restored_limit
-	_history = restored_history
+	for id_variant in normalized.get("appended_resolution_ids", []) as Array:
+		restored_ids[str(int(id_variant))] = true
+	_history_limit = int(normalized.get("history_limit"))
+	_history = (normalized.get("history", []) as Array).duplicate(true)
 	_appended_resolution_ids = restored_ids
-	_revision = maxi(0, int(data.get("revision", 0)))
+	_revision = int(normalized.get("revision"))
 	_append_count = 0
 	_duplicate_append_count = 0
 	_patch_count = 0
 	_last_reason = "save_applied"
-	return {"applied": true, "reason": _last_reason, "history_count": _history.size(), "revision": _revision}
+	return {"applied": true, "reason": _last_reason, "reason_code": _last_reason, "history_count": _history.size(), "revision": _revision}
 
 
 func debug_snapshot() -> Dictionary:
@@ -350,6 +313,20 @@ func _strip_retired_card_owner_fields(entry: Dictionary) -> void:
 					_strip_retired_card_owner_fields(child_variant as Dictionary)
 
 
+func _strip_forbidden_private_fields(value: Variant) -> void:
+	if value is Dictionary:
+		var dictionary := value as Dictionary
+		for key_variant in dictionary.keys():
+			var key := str(key_variant).to_lower()
+			if FORBIDDEN_PRIVATE_KEYS.has(key):
+				dictionary.erase(key_variant)
+				continue
+			_strip_forbidden_private_fields(dictionary.get(key_variant))
+	elif value is Array:
+		for child_variant in value as Array:
+			_strip_forbidden_private_fields(child_variant)
+
+
 func _contains_retired_card_owner_field(value: Variant) -> bool:
 	if value is Dictionary:
 		for key_variant in (value as Dictionary).keys():
@@ -362,12 +339,28 @@ func _contains_retired_card_owner_field(value: Variant) -> bool:
 	return false
 
 
+func _contains_forbidden_private_field(value: Variant) -> bool:
+	if value is Dictionary:
+		for key_variant in (value as Dictionary).keys():
+			if FORBIDDEN_PRIVATE_KEYS.has(str(key_variant).to_lower()) or _contains_forbidden_private_field((value as Dictionary)[key_variant]):
+				return true
+	elif value is Array:
+		for child in value:
+			if _contains_forbidden_private_field(child):
+				return true
+	return false
+
+
 func _duplicate_data(value: Variant) -> Variant:
 	return value.duplicate(true) if value is Array or value is Dictionary else value
 
 
 func _is_data_only(value: Variant) -> bool:
-	if value == null or value is String or value is StringName or value is bool or value is int or value is float:
+	if value is Callable or value is Object:
+		return false
+	if typeof(value) == TYPE_FLOAT:
+		return is_finite(float(value))
+	if typeof(value) in [TYPE_NIL, TYPE_BOOL, TYPE_INT, TYPE_STRING]:
 		return true
 	if value is Array:
 		for item in value:
@@ -376,7 +369,7 @@ func _is_data_only(value: Variant) -> bool:
 		return true
 	if value is Dictionary:
 		for key_variant in value.keys():
-			if not _is_data_only(key_variant) or not _is_data_only(value[key_variant]):
+			if typeof(key_variant) != TYPE_STRING or not _is_data_only(value[key_variant]):
 				return false
 		return true
 	return false

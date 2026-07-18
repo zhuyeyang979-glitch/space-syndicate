@@ -37,6 +37,7 @@ const FIXED_SECTION_ORDER := [
 	"weather",
 	"card_resolution_queue",
 	"card_resolution_execution",
+	"card_resolution_history",
 	"ai",
 	"bankruptcy_neutral_estate",
 	"victory_control",

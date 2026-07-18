@@ -25,7 +25,7 @@ Every weather event must:
 - `WeatherForecastViewModel`: public presentation snapshots;
 - `WeatherTelemetry`: local-only event and outcome aggregation.
 
-These helpers do not own an independent clock, save section, world state, or UI nodes. The existing `weather` section remains one of the 18 v0.6 save-owner sections. `main.gd` may coordinate and forward only; it must not contain weather definitions, lifecycle transitions, tag inference, price formulas, or UI construction.
+These helpers do not own an independent clock, save section, world state, or UI nodes. The existing `weather` section remains one of the 19 v0.6 save-owner sections. `main.gd` may coordinate and forward only; it must not contain weather definitions, lifecycle transitions, tag inference, price formulas, or UI construction.
 
 ## Time Contract
 

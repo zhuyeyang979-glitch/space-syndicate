@@ -70,7 +70,7 @@ func _run() -> void:
 	_test_card_payment_authority_cutover()
 	_test_reference_market_math()
 	_test_reference_solar_clock_and_quote_boundary()
-	_test_registry_stays_eighteen_and_fail_closed()
+	_test_registry_stays_nineteen_and_fail_closed()
 	_finish()
 
 
@@ -171,7 +171,7 @@ func _test_reference_solar_clock_and_quote_boundary() -> void:
 	_expect(_advance_world_effective_us(10, 7, true) == 10, "true pause freezes world-effective clock")
 
 
-func _test_registry_stays_eighteen_and_fail_closed() -> void:
+func _test_registry_stays_nineteen_and_fail_closed() -> void:
 	var packed := load(COORDINATOR_SCENE_PATH) as PackedScene
 	_expect(packed != null, "GameRuntimeCoordinator production scene loads")
 	if packed == null:
@@ -203,8 +203,8 @@ func _test_registry_stays_eighteen_and_fail_closed() -> void:
 				forbidden_solar_section = forbidden_solar_section or lowered.contains(token)
 		var registry_snapshot: Dictionary = registry.call("registry_snapshot")
 		var capture: Dictionary = registry.call("capture_resume_envelope", {"envelope_id": "qa-only", "write_id": "qa-only"})
-		_expect(manifest.size() == 18 and order.size() == 18 and owner_ids.size() == 18, "integrated registry has exactly eighteen unique owners")
-		_expect(not forbidden_solar_section, "solar derivation does not become a nineteenth save section")
+		_expect(manifest.size() == 19 and order.size() == 19 and owner_ids.size() == 19, "integrated registry has exactly nineteen unique owners")
+		_expect(not forbidden_solar_section, "solar derivation does not become a twentieth save section")
 		_expect(bool(registry_snapshot.get("valid", false)) and not bool(registry_snapshot.get("resume_ready", true)), "registry remains structurally valid and explicitly not resume-ready")
 		_expect(not bool(capture.get("ok", true)) and str(capture.get("reason_code", "")) == "restore_capability_incomplete", "incomplete owner capability fails closed instead of fabricating a resumable envelope")
 		var save_snapshot: Dictionary = save.call("operation_snapshot")
