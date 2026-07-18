@@ -96,11 +96,19 @@ func capture_flow_facts() -> Dictionary:
 		if not facility_id.is_empty() and not active_ids.has(facility_id):
 			destroyed_facility_ids.append(facility_id)
 	var price_cents_by_commodity: Dictionary = {}
+	var volatility_by_commodity: Dictionary = {}
+	var market_cycle_revision := 0
+	var public_market_variant: Variant = _product_market_controller.call("public_market_snapshot") if _product_market_controller.has_method("public_market_snapshot") else {}
+	var public_market: Dictionary = public_market_variant if public_market_variant is Dictionary else {}
+	market_cycle_revision = maxi(0, int(public_market.get("market_revision", public_market.get("business_cycle_count", 0))))
+	var public_entries: Dictionary = public_market.get("product_market", {}) if public_market.get("product_market", {}) is Dictionary else {}
 	if PRODUCT_INDUSTRY_CATALOG != null and PRODUCT_INDUSTRY_CATALOG.has_method("product_ids"):
 		for commodity_id_variant in PRODUCT_INDUSTRY_CATALOG.call("product_ids"):
 			var commodity_id := str(commodity_id_variant)
 			var unit_price := int(_product_market_controller.call("product_price", commodity_id)) if _product_market_controller.has_method("product_price") else 0
 			price_cents_by_commodity[commodity_id] = maxi(0, unit_price * CURRENCY_SCALE)
+			var public_entry: Dictionary = public_entries.get(commodity_id, {}) if public_entries.get(commodity_id, {}) is Dictionary else {}
+			volatility_by_commodity[commodity_id] = maxi(0, int(public_entry.get("volatility", 0)))
 	var route_candidates: Array = []
 	if _route_network_controller != null and _route_network_controller.has_method("all_route_candidates"):
 		var route_variant: Variant = _route_network_controller.call("all_route_candidates", "*")
@@ -112,6 +120,8 @@ func capture_flow_facts() -> Dictionary:
 		"facilities": active_facilities.duplicate(true),
 		"destroyed_facility_ids": destroyed_facility_ids,
 		"price_cents_by_commodity": price_cents_by_commodity,
+		"volatility_by_commodity": volatility_by_commodity,
+		"market_cycle_revision": market_cycle_revision,
 		"route_candidates": route_candidates,
 	}
 
@@ -131,6 +141,7 @@ func apply_sale_receipt_batch(batch: Dictionary) -> Dictionary:
 	var deltas_by_player: Dictionary = {}
 	var ledger_rows_by_player: Dictionary = {}
 	var role_counter_deltas_by_player: Dictionary = {}
+	var planned_role_transactions: Dictionary = {}
 	var receipt_ids: Dictionary = {}
 	var authorized_negative_players: Dictionary = {}
 	var neutral_rent_rows: Array = []
@@ -158,15 +169,21 @@ func apply_sale_receipt_batch(batch: Dictionary) -> Dictionary:
 		_append_player_delta(deltas_by_player, ledger_rows_by_player, owner_index, owner_net_cash, receipt_id, "commodity_sale")
 		if active_storage_debt and owner_net_cash < 0:
 			authorized_negative_players[owner_index] = true
-		var role_plan: Dictionary = _role_resource_cash_settlement.plan_for_sale_receipt(
+		var role_plans: Array[Dictionary] = _role_resource_cash_settlement.plans_for_sale_receipt(
 			prepared_players[owner_index] as Dictionary,
 			owner_index,
 			receipt
 		)
-		if bool(role_plan.get("eligible", false)) and not bool(role_plan.get("duplicate", false)):
+		for role_plan in role_plans:
+			if bool(role_plan.get("duplicate", false)):
+				continue
 			var role_ledger_variant: Variant = role_plan.get("ledger_receipt", {})
 			if not (role_ledger_variant is Dictionary) or str((role_ledger_variant as Dictionary).get("transaction_id", "")).is_empty():
 				return {"applied": false, "reason": "role_resource_cash_plan_invalid"}
+			var role_transaction_id := str((role_ledger_variant as Dictionary).get("transaction_id", ""))
+			if planned_role_transactions.has(role_transaction_id):
+				continue
+			planned_role_transactions[role_transaction_id] = true
 			_append_private_ledger_receipt(
 				deltas_by_player,
 				ledger_rows_by_player,

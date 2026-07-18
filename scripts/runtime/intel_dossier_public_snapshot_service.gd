@@ -153,7 +153,6 @@ func _focused_actions(entry: Dictionary) -> Array:
 		return []
 	var actions: Array = [
 		{"id": "track_return_%d" % resolution_id, "label": "回到牌轨", "accent": Color("#38bdf8"), "tooltip": "关闭情报档案并保持这张牌为已选牌轨。"},
-		{"id": "track_guess_%d" % resolution_id, "label": "竞猜", "accent": Color("#c084fc"), "tooltip": "回到主桌的归属竞猜面板。"},
 	]
 	var card_name := str(entry.get("card_name", "")).strip_edges()
 	if card_name != "":

@@ -74,7 +74,6 @@ const PLAYER_HAND_LIMIT := 5
 const CARD_RESOLUTION_DISPLAY_SECONDS := 5.0
 const CARD_RESOLUTION_AFTERMATH_SECONDS := 8.0
 const CARD_RESOLUTION_HISTORY_LIMIT := 24
-const CARD_OWNER_GUESS_STAKE := 100
 const TEMP_DECISION_DISCARD := "discard_purchase"
 const TEMP_DECISION_MONSTER_TARGET := "monster_target_choice"
 const TEMP_DECISION_PLAYER_TARGET := "player_target_choice"
@@ -1519,12 +1518,6 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 				_focus_card_resolution_track_entry(return_resolution_id)
 				_close_menu()
 				handled = true
-			elif action_id.begins_with("track_guess_"):
-				var guess_resolution_id := int(action_id.substr("track_guess_".length()))
-				_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
-				_focus_card_resolution_track_entry(guess_resolution_id)
-				_close_menu()
-				handled = true
 			elif action_id.begins_with("track_select_"):
 				var resolution_id := int(action_id.substr("track_select_".length()))
 				_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
@@ -1991,79 +1984,6 @@ func _store_card_resolution_entry(entry: Dictionary) -> bool:
 	if service != null and service.has_method("store_entry") and bool(service.call("store_entry", entry.duplicate(true))):
 		return true
 	return bool(_game_runtime_coordinator_node().patch_card_resolution_history_entry(resolution_id, entry).get("patched", false))
-
-
-func _card_owner_guess_stake_for_player(viewer_index: int) -> int:
-	if viewer_index < 0 or viewer_index >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return CARD_OWNER_GUESS_STAKE
-	var role := _player_role_card_for_index(viewer_index)
-	var discount := maxi(0, int(role.get("card_owner_guess_discount", 0)))
-	return maxi(20, CARD_OWNER_GUESS_STAKE - discount)
-
-
-func _card_owner_guess_payout_for_player(viewer_index: int) -> int:
-	if viewer_index < 0 or viewer_index >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return CARD_OWNER_GUESS_STAKE
-	var role := _player_role_card_for_index(viewer_index)
-	return CARD_OWNER_GUESS_STAKE + maxi(0, int(role.get("card_owner_guess_bonus", 0)))
-
-
-func _guess_card_resolution_owner_for_player(viewer_index: int, resolution_id: int, guessed_player: int, announce: bool = true) -> bool:
-	if _runtime_session_finished() or viewer_index < 0 or viewer_index >= _game_runtime_coordinator_node().world_session_state().players.size() or guessed_player < 0 or guessed_player >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return false
-	var entry := _card_resolution_entry_by_id(resolution_id)
-	if entry.is_empty() or bool(entry.get("public_owner_revealed", false)):
-		return false
-	var actual_owner := int(entry.get("player_index", -1))
-	if actual_owner < 0 or actual_owner >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return false
-	if viewer_index == actual_owner:
-		if announce:
-			_game_runtime_coordinator_node().record_legacy_viewer_feedback("你不能竞猜自己打出的匿名卡牌。")
-		return false
-	var guessers: Array = (entry.get("guessers", []) as Array).duplicate()
-	if guessers.has(viewer_index):
-		if announce:
-			_game_runtime_coordinator_node().record_legacy_viewer_feedback("当前玩家已经竞猜过这张牌；每人每张牌只有一次机会。")
-		return false
-	var stake := _card_owner_guess_stake_for_player(viewer_index)
-	if int((_game_runtime_coordinator_node().world_session_state().players[viewer_index] as Dictionary).get("cash", 0)) < stake:
-		if announce:
-			_game_runtime_coordinator_node().record_legacy_viewer_feedback("当前视角至少需要¥%d才能进行卡牌归属竞猜。" % stake)
-		return false
-	guessers.append(viewer_index)
-	entry["guessers"] = guessers
-	if guessed_player == actual_owner:
-		var payout := _card_owner_guess_payout_for_player(viewer_index)
-		_game_runtime_coordinator_node().world_session_state().players[actual_owner]["cash"] = int(_game_runtime_coordinator_node().world_session_state().players[actual_owner].get("cash", 0)) - payout
-		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["cash"] = int(_game_runtime_coordinator_node().world_session_state().players[viewer_index].get("cash", 0)) + payout
-		_game_runtime_coordinator_node().world_session_state().players[actual_owner]["total_card_spend"] = int(_game_runtime_coordinator_node().world_session_state().players[actual_owner].get("total_card_spend", 0)) + payout
-		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["total_card_income"] = int(_game_runtime_coordinator_node().world_session_state().players[viewer_index].get("total_card_income", 0)) + payout
-		_record_player_economic_event(actual_owner, "归属竞猜", "身份被识破", -payout, "一张匿名卡牌的归属被猜中。")
-		_record_player_economic_event(viewer_index, "归属竞猜", "命中归属", payout, "正确猜中玩家%d打出的卡牌。" % (actual_owner + 1))
-		_record_player_cash_snapshot(actual_owner)
-		_record_player_cash_snapshot(viewer_index)
-		entry["public_owner_revealed"] = true
-		entry["public_owner_label"] = "归属：玩家%d" % (actual_owner + 1)
-		entry["owner_revealed_time"] = _game_runtime_coordinator_node().world_session_state().game_time
-		if announce:
-			_game_runtime_coordinator_node().record_legacy_viewer_feedback("归属竞猜命中：这张牌公开贴上“玩家%d”标签；竞猜者获得¥%d，双方当前资金仍不公开。" % [actual_owner + 1, payout])
-	else:
-		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["cash"] = int(_game_runtime_coordinator_node().world_session_state().players[viewer_index].get("cash", 0)) - stake
-		_game_runtime_coordinator_node().world_session_state().players[actual_owner]["cash"] = int(_game_runtime_coordinator_node().world_session_state().players[actual_owner].get("cash", 0)) + stake
-		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["total_card_spend"] = int(_game_runtime_coordinator_node().world_session_state().players[viewer_index].get("total_card_spend", 0)) + stake
-		_game_runtime_coordinator_node().world_session_state().players[actual_owner]["total_card_income"] = int(_game_runtime_coordinator_node().world_session_state().players[actual_owner].get("total_card_income", 0)) + stake
-		_record_player_economic_event(viewer_index, "归属竞猜", "猜错归属", -stake, "错误竞猜被私下结算；真实归属仍隐藏。")
-		_record_player_economic_event(actual_owner, "归属竞猜", "匿名竞猜收入", stake, "有人猜错了你打出的卡牌；竞猜者不公开。")
-		_record_player_cash_snapshot(viewer_index)
-		_record_player_cash_snapshot(actual_owner)
-		if announce:
-			_game_runtime_coordinator_node().record_legacy_viewer_feedback("一次匿名归属竞猜失败并私下结算¥%d；真实出牌者仍未揭晓。" % stake)
-	_store_card_resolution_entry(entry)
-	if not _card_resolution_active_entry().is_empty():
-		_show_card_resolution_overlay(_card_resolution_active_entry(), card_resolution_timer)
-	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
-	return true
 
 
 func _build_full_map_overlay() -> void:
@@ -2613,12 +2533,6 @@ func _on_intel_dossier_board_action_requested(action_id: String) -> void:
 		_focus_card_resolution_track_entry(return_resolution_id)
 		_close_menu()
 		handled = true
-	elif action_id.begins_with("track_guess_"):
-		var guess_resolution_id := int(action_id.substr("track_guess_".length()))
-		_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
-		_focus_card_resolution_track_entry(guess_resolution_id)
-		_close_menu()
-		handled = true
 	elif action_id.begins_with("track_select_"):
 		var resolution_id := int(action_id.substr("track_select_".length()))
 		_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
@@ -2722,7 +2636,6 @@ func _intel_dossier_public_source_snapshot(viewer_index: int) -> Dictionary:
 		"game_over": _runtime_session_finished(),
 		"correct_guess_cash": INTEL_CORRECT_GUESS_CASH,
 		"wrong_guess_cost": INTEL_WRONG_GUESS_COST,
-		"card_guess_stake": CARD_OWNER_GUESS_STAKE,
 		"victory_control": _victory_control_public_snapshot(),
 		"stats": _player_intel_exposure_stats(viewer_index),
 		"city_entries": city_entries,
@@ -3007,17 +2920,14 @@ func _intel_card_guess_entries(viewer_index: int, limit: int = 5) -> Array:
 		var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
 		var owner_index := int(entry.get("player_index", -1))
 		var owner_revealed := bool(entry.get("public_owner_revealed", false))
-		var guessers: Array = entry.get("guessers", []) as Array
 		var known_owner := _private_known_card_owner_for_entry(viewer_index, entry)
-		var status := "归属待猜，可押注¥%d" % _card_owner_guess_stake_for_player(viewer_index)
+		var status := "公共行动履历｜归属保持匿名"
 		if owner_revealed:
 			status = String(entry.get("public_owner_label", "归属已公开"))
 		elif known_owner >= 0 and known_owner < _game_runtime_coordinator_node().world_session_state().players.size():
 			status = "我已查明：玩家%d｜尚未公开" % (known_owner + 1)
 		elif viewer_index == owner_index:
 			status = "我打出的牌｜仅当前视角可知"
-		elif viewer_index >= 0 and guessers.has(viewer_index):
-			status = "我已押注｜真实归属待确认"
 		var time_value := float(entry.get("resolved_time", entry.get("queued_order", -1.0)))
 		var public_target := "目标未知"
 		if int(entry.get("target_player", -1)) >= 0:
@@ -5792,11 +5702,13 @@ func _role_runtime_copy_fields() -> Array:
 		"bonus_card_product",
 		"monster_upgrade_cash",
 		"intel_city_reveal_charges",
-		"intel_card_trace_charges",
+		"card_history_residual_catalog_charges",
+		"card_history_public_exclusion_charges",
 		"intel_contract_trace_charges",
 		"city_guess_reward_bonus",
-		"card_owner_guess_discount",
-		"card_owner_guess_bonus",
+		"high_volatility_sale_threshold",
+		"high_volatility_first_sale_bonus",
+		"high_volatility_bonus_once_per_market_cycle",
 		"contract_flow_discount",
 		"monster_cards_as_counter",
 		"monster_control_limit_bonus",
@@ -7061,47 +6973,6 @@ func _apply_intel_city_reveal(_player: Dictionary, skill: Dictionary) -> bool:
 				String(_game_runtime_coordinator_node().world_session_state().districts[int(district_variant)].get("name", "区域")),
 			])
 	return revealed > 0
-
-
-func _apply_intel_card_trace(_player: Dictionary, skill: Dictionary) -> bool:
-	var traced := _trace_card_owner_for_player(
-		_game_runtime_coordinator_node().table_selection_state().selected_player,
-		_game_runtime_coordinator_node().table_selection_state().selected_card_resolution_id,
-		maxi(1, int(skill.get("trace_card_count", 1))),
-		String(skill.get("name", "出牌追帧"))
-	)
-	var revealed := 0
-	var reveal_count := maxi(0, int(skill.get("reveal_city_count", 0)))
-	if reveal_count > 0:
-		var districts_to_check := []
-		if _game_runtime_coordinator_node().table_selection_state().selected_district >= 0 and _game_runtime_coordinator_node().table_selection_state().selected_district < _game_runtime_coordinator_node().world_session_state().districts.size():
-			districts_to_check.append(_game_runtime_coordinator_node().table_selection_state().selected_district)
-		for entry_variant in _intel_city_guess_entries(_game_runtime_coordinator_node().table_selection_state().selected_player, 12):
-			if districts_to_check.size() >= reveal_count * 3:
-				break
-			if not (entry_variant is Dictionary):
-				continue
-			var district_index := int((entry_variant as Dictionary).get("district_index", -1))
-			if district_index >= 0 and not districts_to_check.has(district_index):
-				districts_to_check.append(district_index)
-		for district_variant in districts_to_check:
-			if revealed >= reveal_count:
-				break
-			if _reveal_city_owner_by_intel_card(_game_runtime_coordinator_node().table_selection_state().selected_player, int(district_variant), String(skill.get("name", "线索悬赏"))):
-				revealed += 1
-	var contract_traced := 0
-	var contract_count := maxi(0, int(skill.get("trace_contract_count", 0)))
-	if contract_count > 0:
-		var contract_controller := _contract_runtime_controller_node()
-		if contract_controller != null:
-			contract_traced = contract_controller.trace_contract_parties(_game_runtime_coordinator_node().table_selection_state().selected_player, _game_runtime_coordinator_node().table_selection_state().selected_card_resolution_id, contract_count, String(skill.get("name", "线索悬赏")))
-	if revealed > 0 or contract_traced > 0:
-		_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s追加私有悬赏线索：城市%d条，合约%d条；答案不公开。" % [
-			String(skill.get("name", "线索悬赏")),
-			revealed,
-			contract_traced,
-		])
-	return traced > 0 or revealed > 0 or contract_traced > 0
 
 
 func _selected_city_owner_view_text() -> String:
@@ -9329,7 +9200,7 @@ func _derived_skill_tags(kind: String) -> Array:
 			return ["区域", "GDP"]
 		"intel_city_reveal":
 			return ["情报", "区域"]
-		"intel_card_trace":
+		"card_history_public_review", "card_history_subscription":
 			return ["情报", "卡牌"]
 		"intel_contract_trace":
 			return ["情报", "合约"]

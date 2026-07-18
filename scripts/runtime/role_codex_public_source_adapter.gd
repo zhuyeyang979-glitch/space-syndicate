@@ -4,8 +4,9 @@ class_name RoleCodexPublicSourceAdapter
 const ROLE_FIELDS := [
 	"name", "species", "trait", "passive", "flavor", "starting_cash_bonus", "bonus_card_product",
 	"resource_cash_product", "resource_cash_amount", "monster_upgrade_cash", "intel_city_reveal_charges",
-	"intel_card_trace_charges", "intel_contract_trace_charges", "city_guess_reward_bonus",
-	"card_owner_guess_discount", "card_owner_guess_bonus", "contract_flow_discount",
+	"intel_contract_trace_charges", "city_guess_reward_bonus", "card_history_residual_catalog_charges",
+	"card_history_public_exclusion_charges", "high_volatility_sale_threshold",
+	"high_volatility_first_sale_bonus", "high_volatility_bonus_once_per_market_cycle", "contract_flow_discount",
 	"monster_control_limit_bonus", "military_control_limit_bonus", "monster_cards_as_counter",
 ]
 const FACE_FIELDS := ["name", "cost", "effect", "type", "rank", "card_kind", "card_stats", "accent", "minimum_width", "minimum_height"]

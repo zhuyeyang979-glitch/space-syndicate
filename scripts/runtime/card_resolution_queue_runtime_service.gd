@@ -133,7 +133,6 @@ func plan_submission(request: Dictionary, facts: Dictionary) -> Dictionary:
 		"asset_reservation_required": false,
 		"public_owner_revealed": false,
 		"public_owner_label": "",
-		"guessers": [],
 		"consumed_on_queue": consumed_on_queue,
 		"skill": queued_skill,
 	}, true)
