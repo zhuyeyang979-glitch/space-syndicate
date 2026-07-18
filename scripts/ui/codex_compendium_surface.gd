@@ -38,6 +38,12 @@ var _last_page: Dictionary = {}
 var _contract_errors: Array[String] = []
 var _monster_card_name := ""
 var _rejected_page_count := 0
+var _full_page_apply_count := 0
+var _monster_preview_apply_count := 0
+var _monster_preview_rejected_count := 0
+var _monster_preview_request_count := 0
+var _monster_detail_request_count := 0
+var _monster_card_deep_link_count := 0
 
 
 func _ready() -> void:
@@ -56,6 +62,7 @@ func set_page(data: Dictionary) -> bool:
 		_show_empty({"title": "资料页已拒绝", "body": "页面包含非公开运行时对象，未进行渲染。"})
 		visible = true
 		return false
+	_full_page_apply_count += 1
 	_last_page = data.duplicate(true)
 	_mode = str(data.get("mode", ""))
 	_view = str(data.get("view", "browser"))
@@ -96,6 +103,18 @@ func set_page(data: Dictionary) -> bool:
 	return rendered
 
 
+func apply_monster_preview(data: Dictionary) -> bool:
+	if not _is_pure_data(data) or _mode != "monster" or _view != "browser" or bestiary_browser == null or not bestiary_browser.has_method("apply_monster_preview"):
+		_monster_preview_rejected_count += 1
+		return false
+	if not bool(bestiary_browser.call("apply_monster_preview", data.duplicate(true))):
+		_monster_preview_rejected_count += 1
+		return false
+	_last_page["browser"] = data.duplicate(true)
+	_monster_preview_apply_count += 1
+	return true
+
+
 func contracts_ready() -> bool:
 	return _contract_errors.is_empty()
 
@@ -110,6 +129,12 @@ func debug_snapshot() -> Dictionary:
 		"visible_surfaces": _visible_surface_names(),
 		"page_is_pure_data": _is_pure_data(_last_page),
 		"rejected_page_count": _rejected_page_count,
+		"full_page_apply_count": _full_page_apply_count,
+		"monster_preview_apply_count": _monster_preview_apply_count,
+		"monster_preview_rejected_count": _monster_preview_rejected_count,
+		"monster_preview_request_count": _monster_preview_request_count,
+		"monster_detail_request_count": _monster_detail_request_count,
+		"monster_card_deep_link_count": _monster_card_deep_link_count,
 	}
 
 
@@ -213,10 +238,12 @@ func _on_monster_page_step_requested(delta: int) -> void:
 
 
 func _on_monster_preview_requested(catalog_index: int) -> void:
+	_monster_preview_request_count += 1
 	action_requested.emit("monster_preview", {"catalog_index": catalog_index})
 
 
 func _on_monster_detail_requested(catalog_index: int) -> void:
+	_monster_detail_request_count += 1
 	action_requested.emit("monster_detail", {"catalog_index": catalog_index})
 
 
@@ -234,6 +261,7 @@ func _on_product_detail_requested(catalog_index: int) -> void:
 
 func _on_monster_card_link_pressed() -> void:
 	if _monster_card_name != "":
+		_monster_card_deep_link_count += 1
 		action_requested.emit("card_deep_link", {"card_name": _monster_card_name})
 
 

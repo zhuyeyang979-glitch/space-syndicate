@@ -45,8 +45,10 @@ func _on_gui_input(event: InputEvent) -> void:
 		return
 	if mouse_event.double_click:
 		detail_requested.emit(_catalog_index)
-	else:
-		preview_requested.emit(_catalog_index)
+		accept_event()
+		return
+	preview_requested.emit(_catalog_index)
+	accept_event()
 
 
 func _card_style(accent: Color, fill: Color, border_width: int) -> StyleBoxFlat:

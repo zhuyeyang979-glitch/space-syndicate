@@ -216,11 +216,12 @@ func _test_exact_once_counters(before: Dictionary, after: Dictionary) -> void:
 	var transition_delta := int(after.get("flow_navigation", 0)) - int(before.get("flow_navigation", 0))
 	var query_delta := int(after.get("flow_query", 0)) - int(before.get("flow_query", 0))
 	var apply_delta := int(after.get("flow_apply", 0)) - int(before.get("flow_apply", 0))
+	var preview_apply_delta := int(after.get("flow_preview_apply", 0)) - int(before.get("flow_preview_apply", 0))
 	var resolve_delta := int(after.get("query_resolve", 0)) - int(before.get("query_resolve", 0))
 	var compose_delta := int(after.get("query_compose", 0)) - int(before.get("query_compose", 0))
 	var owner_delta := int(after.get("owner_transition", 0)) - int(before.get("owner_transition", 0))
 	_expect(accepted_delta > 0 and accepted_delta == input_delta, "each_accepted_request_reaches_flow_once")
-	_expect(input_delta == transition_delta and input_delta == query_delta and input_delta == apply_delta, "input_navigation_query_and_page_apply_are_exact_once")
+	_expect(input_delta == transition_delta and input_delta == query_delta and input_delta == apply_delta + preview_apply_delta, "input_navigation_query_and_page_or_preview_apply_are_exact_once")
 	_expect(input_delta == resolve_delta and input_delta == compose_delta and input_delta == owner_delta, "query_resolution_and_navigation_owner_transition_are_exact_once")
 	_expect(int(after.get("flow_duplicate", 0)) == int(before.get("flow_duplicate", 0)), "internal_navigation_has_no_duplicate_page_apply")
 
@@ -324,6 +325,7 @@ func _counter_snapshot() -> Dictionary:
 		"flow_navigation": int(flow.get("navigation_transition_count", 0)),
 		"flow_query": int(flow.get("query_count", 0)),
 		"flow_apply": int(flow.get("page_apply_count", 0)),
+		"flow_preview_apply": int(flow.get("monster_preview_apply_count", 0)),
 		"flow_duplicate": int(flow.get("duplicate_apply_count", 0)),
 		"query_resolve": int(query.get("resolve_count", 0)),
 		"query_compose": int(query.get("query_count", 0)),

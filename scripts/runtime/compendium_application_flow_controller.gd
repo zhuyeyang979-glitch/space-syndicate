@@ -20,6 +20,7 @@ var _input_count := 0
 var _navigation_count := 0
 var _query_count := 0
 var _page_apply_count := 0
+var _monster_preview_apply_count := 0
 var _rejected_count := 0
 var _duplicate_apply_count := 0
 var _return_count := 0
@@ -58,6 +59,13 @@ func handle_navigation_request(request: CODEX_OPEN_REQUEST_SCRIPT) -> bool:
 		_rejected_count += 1
 		return false
 	_query_count += 1
+	if request.domain == "monster" and request.view == "preview":
+		if not _apply_monster_preview(overlay, result):
+			_rejected_count += 1
+			return false
+		_last_applied_revision = request.request_revision
+		_monster_preview_apply_count += 1
+		return true
 	var scroll_value := overlay.content_scroll_value()
 	if not _present_result(overlay, result, request.view == "preview"):
 		_rejected_count += 1
@@ -144,11 +152,23 @@ func debug_snapshot() -> Dictionary:
 		"controller_id": "compendium_application_flow_controller_v06",
 		"input_count": _input_count, "navigation_transition_count": _navigation_count,
 		"query_count": _query_count, "page_apply_count": _page_apply_count,
+		"monster_preview_apply_count": _monster_preview_apply_count,
 		"rejected_count": _rejected_count, "duplicate_apply_count": _duplicate_apply_count,
 		"return_count": _return_count, "last_applied_revision": _last_applied_revision,
 		"references_main": false, "owns_navigation_state": false, "owns_gameplay_state": false,
 		"exact_once_page_apply": _duplicate_apply_count == 0,
 	}
+
+
+func _apply_monster_preview(overlay: SpaceSyndicateMenuOverlay, result: Dictionary) -> bool:
+	if not overlay.visible or not result.get("page", {}) is Dictionary:
+		return false
+	var page := result.get("page", {}) as Dictionary
+	var browser_variant: Variant = page.get("browser", {})
+	if not (browser_variant is Dictionary):
+		return false
+	var surface := overlay.get_codex_surface()
+	return surface != null and surface.has_method("apply_monster_preview") and bool(surface.call("apply_monster_preview", (browser_variant as Dictionary).duplicate(true)))
 
 
 func _present_result(overlay: SpaceSyndicateMenuOverlay, result: Dictionary, preserve_scroll: bool) -> bool:
