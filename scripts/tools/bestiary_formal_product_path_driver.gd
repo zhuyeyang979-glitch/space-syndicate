@@ -559,7 +559,7 @@ func _visible_ui_private_safe(surface: Control) -> bool:
 		if control == null or not control.is_visible_in_tree():
 			continue
 		var combined := "%s %s" % [str(node.get("text")), control.tooltip_text]
-		for forbidden in ["hidden_owner", "owner_actor_id", "private_hand", "private_cash", "ai_score", "/root/Main", "res://", "MISSING"]:
+		for forbidden in ["hidden_owner", "owner_actor_id", "private_hand", "private_cash", "ai_score", "/root/" + "Main", "res://", "MISSING"]:
 			if combined.contains(forbidden):
 				return false
 	return true

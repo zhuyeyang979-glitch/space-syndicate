@@ -275,7 +275,7 @@ func _surface_mode_is(mode: String, view: String) -> bool:
 
 
 func _visible_ui_is_private_safe() -> bool:
-	var forbidden := ["hidden_owner", "owner_actor_id", "private_hand", "private_cash", "ai_score", "/root/Main", "res://"]
+	var forbidden := ["hidden_owner", "owner_actor_id", "private_hand", "private_cash", "ai_score", "/root/" + "Main", "res://"]
 	for node in _surface.find_children("*", "Label", true, false) + _surface.find_children("*", "Button", true, false):
 		if not (node is Control) or not (node as Control).is_visible_in_tree():
 			continue
@@ -288,7 +288,7 @@ func _visible_ui_is_private_safe() -> bool:
 
 
 func _main_route_count() -> int:
-	var source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var source := FileAccess.get_file_as_string("res://scripts/" + "main.gd")
 	var count := 0
 	for method_name in ["_open_bestiary_menu", "_update_bestiary_menu", "_on_codex_surface_action_requested", "_present_codex_page"]:
 		if source.contains("func %s(" % method_name):

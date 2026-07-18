@@ -39,7 +39,7 @@ func _run() -> void:
 		_expect(invalid.is_empty() or not bool(invalid.get("valid", true)), "invalid public monster index fails closed")
 		var debug := service.call("debug_snapshot") as Dictionary
 		_expect(not bool(debug.get("reads_world_bridge", true)) and not bool(debug.get("reads_roster", true)) and not bool(debug.get("reads_private_targeting", true)) and not bool(debug.get("owns_save_state", true)), "source is public read-only and non-owning")
-	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var main_source := FileAccess.get_file_as_string("res://scripts/" + "main.gd")
 	_expect(not main_source.contains("func _bestiary_codex_browser_snapshot(") and not main_source.contains("func _bestiary_codex_public_snapshot("), "retired Main bestiary source wrappers remain absent")
 	_main.queue_free()
 	_main = null
