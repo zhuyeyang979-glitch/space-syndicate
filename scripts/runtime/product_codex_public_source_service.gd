@@ -4,11 +4,12 @@ class_name ProductCodexPublicSourceService
 
 const SOURCE_ADAPTER_SCRIPT := preload("res://scripts/runtime/product_codex_public_source_adapter.gd")
 const MONSTER_CATALOG_V06 := preload("res://scripts/runtime/monster_catalog_v06.gd")
-const DEPENDENCY_KEYS := ["product_market", "snapshot", "card_catalog", "region_public_bridge"]
+const DEPENDENCY_KEYS := ["product_market", "snapshot", "region_public_bridge"]
+
+@export var public_card_catalog_v06: CardRuntimeCatalogV06Resource
 
 var _product_market: ProductMarketRuntimeController
 var _snapshot: ProductCodexPublicSnapshotService
-var _card_catalog: CardRuntimeCatalogService
 var _region_public_bridge: Node
 var _adapter: RefCounted = SOURCE_ADAPTER_SCRIPT.new()
 var _configured := false
@@ -26,15 +27,14 @@ func configure(dependencies: Dictionary) -> Dictionary:
 			return debug_snapshot()
 	_product_market = dependencies.get("product_market") as ProductMarketRuntimeController
 	_snapshot = dependencies.get("snapshot") as ProductCodexPublicSnapshotService
-	_card_catalog = dependencies.get("card_catalog") as CardRuntimeCatalogService
 	_region_public_bridge = dependencies.get("region_public_bridge") as Node
 	var missing: Array[String] = []
-	if _product_market == null or not _product_market.has_method("market_entry") or not _product_market.has_method("product_price") or not _product_market.has_method("futures_public_text"):
+	if _product_market == null or not _product_market.has_method("public_market_snapshot"):
 		missing.append("product_market")
 	if _snapshot == null or not _snapshot.has_method("compose"):
 		missing.append("snapshot")
-	if _card_catalog == null or not _card_catalog.has_method("ordered_card_ids") or not _card_catalog.has_method("authored_definition"):
-		missing.append("card_catalog")
+	if public_card_catalog_v06 == null or not bool(public_card_catalog_v06.validation_report().get("valid", false)):
+		missing.append("public_card_catalog_v06")
 	if _region_public_bridge == null or not _region_public_bridge.has_method("public_commodity_region_facts") or not _region_public_bridge.has_method("region_codex_public_facts"):
 		missing.append("region_public_bridge")
 	if not missing.is_empty():
@@ -57,13 +57,15 @@ func compose_detail_source(product_name: String, catalog_index: int = -1, select
 	var safe_index := ProductMarketRuntimeController.PRODUCT_CATALOG.find(product_id)
 	if catalog_index >= 0 and catalog_index < ProductMarketRuntimeController.PRODUCT_CATALOG.size() and str(ProductMarketRuntimeController.PRODUCT_CATALOG[catalog_index]) == product_id:
 		safe_index = catalog_index
-	if _product_market.has_method("ensure_catalog"):
-		_product_market.call("ensure_catalog")
-	var entry_variant: Variant = _product_market.call("market_entry", product_id, false)
+	var public_market := _public_market_snapshot()
+	if not bool(public_market.get("catalog_ready", false)):
+		return {"valid": false, "name": product_id, "index": safe_index, "total": ProductMarketRuntimeController.PRODUCT_CATALOG.size(), "unavailable_reason": "market_not_configured"}
+	var market_entries: Dictionary = public_market.get("product_market", {}) if public_market.get("product_market", {}) is Dictionary else {}
+	var entry_variant: Variant = market_entries.get(product_id, {})
 	var market_entry := (entry_variant as Dictionary).duplicate(true) if entry_variant is Dictionary else {}
 	if market_entry.is_empty():
-		return {"valid": false, "name": product_id, "index": safe_index, "total": ProductMarketRuntimeController.PRODUCT_CATALOG.size()}
-	var current_price := int(_product_market.call("product_price", product_id))
+		return {"valid": false, "name": product_id, "index": safe_index, "total": ProductMarketRuntimeController.PRODUCT_CATALOG.size(), "unavailable_reason": "market_entry_unavailable"}
+	var current_price := int(market_entry.get("price", market_entry.get("base_price", 0)))
 	var base_price := int(market_entry.get("base_price", current_price))
 	var source := {
 		"valid": true,
@@ -75,19 +77,15 @@ func compose_detail_source(product_name: String, catalog_index: int = -1, select
 		"market": {
 			"current_price": current_price,
 			"base_price": base_price,
-			"tier": str(market_entry.get("tier", _product_tier(product_id))),
+			"tier": str(market_entry.get("tier", "未定价")),
 			"trend_text": _trend_text(market_entry),
 			"price_path_text": _price_path_text(market_entry),
 			"supply": int(market_entry.get("supply", 0)),
 			"demand": int(market_entry.get("demand", 0)),
-			"disrupted": int(market_entry.get("disrupted", 0)),
 			"volatility": int(market_entry.get("volatility", 0)),
 			"weather_text": _market_public_driver_text(market_entry),
 		},
 		"strategy_rankings": [],
-		"futures_public_full": str(_product_market.call("futures_public_text", product_id, false)),
-		"futures_public_compact": str(_product_market.call("futures_public_text", product_id, true)),
-		"warehouse_public_entries": [],
 		"monster_focus_names": _monster_focus_names(product_id, 6),
 		"related_card_names": _related_card_names(product_id, 8),
 		"supply_district_names": _related_region_names(product_id, "production_products", 6),
@@ -124,6 +122,22 @@ func compose_browser_snapshot(request: Dictionary) -> Dictionary:
 	return _compose_browser(request, true)
 
 
+func ordered_product_ids() -> Array[String]:
+	var result: Array[String] = []
+	for product_variant: Variant in ProductMarketRuntimeController.PRODUCT_CATALOG:
+		result.append(str(product_variant))
+	return result
+
+
+func resolve_product_id(product_identity: String) -> String:
+	var identity := product_identity.strip_edges()
+	return identity if ProductMarketRuntimeController.PRODUCT_CATALOG.has(identity) else ""
+
+
+func index_by_product_id(product_id: String) -> int:
+	return ProductMarketRuntimeController.PRODUCT_CATALOG.find(resolve_product_id(product_id))
+
+
 func public_field_schema() -> Dictionary:
 	var value: Variant = _adapter.call("public_field_schema")
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
@@ -153,11 +167,13 @@ func debug_snapshot() -> Dictionary:
 		"reads_camera": false,
 		"reads_solar": false,
 		"uses_product_market_public_owner": _product_market != null,
-		"uses_card_catalog_public_owner": _card_catalog != null,
+		"uses_v06_card_catalog_resource": public_card_catalog_v06 != null,
 		"uses_region_public_projection": _region_public_bridge != null,
 		"uses_existing_snapshot_formatter": _snapshot != null,
 		"strategy_scores_fail_closed": true,
-		"warehouse_pressure_fail_closed": true,
+		"private_futures_and_warehouse_excluded": true,
+		"catalog_initialization_on_read": false,
+		"uses_read_only_market_snapshot": true,
 		"adapter": adapter_debug.duplicate(true),
 	}
 
@@ -200,20 +216,20 @@ func _compose_browser(request: Dictionary, final_snapshot: bool) -> Dictionary:
 func _browser_summary_text(request: Dictionary, total_count: int, start_index: int, end_index: int) -> String:
 	var page_label := str(request.get("page_label", ""))
 	if page_label != "":
-		return "商品目录｜%s\n公开商品市场只显示目录、价格、供需、期货和地图公开线索；现金、手牌、城市猜测与AI计划保持隐藏。" % page_label
-	return "商品目录｜%d种商品｜本页%d-%d\n公开商品市场只显示目录、价格、供需、期货和地图公开线索；现金、手牌、城市猜测与AI计划保持隐藏。" % [total_count, start_index + 1, end_index]
+		return "商品目录｜%s\n公开商品市场只显示目录、价格、供需、天气和地图公开线索；私人仓储、期货持仓、现金与手牌保持隐藏。" % page_label
+	return "商品目录｜%d种商品｜本页%d-%d\n公开商品市场只显示目录、价格、供需、天气和地图公开线索；私人仓储、期货持仓、现金与手牌保持隐藏。" % [total_count, start_index + 1, end_index]
 
 
 func _browser_summaries() -> Array:
-	var market_variant: Variant = _product_market.call("public_market_snapshot") if _product_market.has_method("public_market_snapshot") else {}
-	var market: Dictionary = ((market_variant as Dictionary).get("product_market", {}) as Dictionary).duplicate(true) if market_variant is Dictionary and (market_variant as Dictionary).get("product_market", {}) is Dictionary else {}
+	var market_snapshot := _public_market_snapshot()
+	var market: Dictionary = (market_snapshot.get("product_market", {}) as Dictionary).duplicate(true) if market_snapshot.get("product_market", {}) is Dictionary else {}
 	var run_count := (market as Dictionary).size() if market is Dictionary else 0
 	var route_counts := _profile_count("route")
 	var category_counts := _profile_count("category")
 	return [
 		{"title": "公开商品目录", "body": "图鉴%d种｜本局%d种" % [ProductMarketRuntimeController.PRODUCT_CATALOG.size(), run_count], "meta": "商品市场 owner 提供公开价格；本页不读取玩家私密状态。", "accent": Color("#22c55e")},
 		{"title": "商品路线分布", "body": _count_summary(route_counts, 5), "meta": "品类:%s" % _count_summary(category_counts, 4), "accent": Color("#38bdf8")},
-		{"title": "牌路连接", "body": "相关卡、供需区和怪兽偏好来自公开目录/投影。", "meta": "策略评分、仓库压力、私密城市线索本切片不复制。", "accent": Color("#c084fc")},
+		{"title": "牌路连接", "body": "相关卡、供需区和怪兽偏好来自公开目录/投影。", "meta": "策略评分、私人仓储、私密区域标注不会进入本页。", "accent": Color("#c084fc")},
 	]
 
 
@@ -232,10 +248,6 @@ func _product_profile(product_id: String) -> Dictionary:
 		"accent": Color("#22c55e"),
 		"secondary": Color("#f8fafc"),
 	}
-
-
-func _product_tier(product_id: String) -> String:
-	return str(_product_market.call("product_tier", product_id)) if _product_market.has_method("product_tier") else "未定价"
 
 
 func _trend_text(market_entry: Dictionary) -> String:
@@ -269,30 +281,42 @@ func _market_public_driver_text(market_entry: Dictionary) -> String:
 	var route_multiplier := float(market_entry.get("route_flow_multiplier", 1.0))
 	if route_multiplier > 1.001:
 		pieces.append("流通×%.2f" % route_multiplier)
-	var demand := int(market_entry.get("market_contract_demand", 0))
-	var supply := int(market_entry.get("market_contract_supply", 0))
-	if demand > 0 or supply > 0:
-		pieces.append("合约需+%d/供+%d" % [demand, supply])
 	return "；".join(pieces) if not pieces.is_empty() else "暂无经济天气"
 
 
 func _related_card_names(product_id: String, limit: int) -> Array:
 	var names: Array = []
-	if _card_catalog == null:
+	if public_card_catalog_v06 == null:
 		return names
-	for card_variant: Variant in _card_catalog.call("ordered_card_ids"):
-		var card_id := str(card_variant)
-		var definition_variant: Variant = _card_catalog.call("authored_definition", card_id)
-		var definition := definition_variant as Dictionary if definition_variant is Dictionary else {}
-		var matches := str(definition.get("play_product", "")) == product_id
-		var contract_products_variant: Variant = definition.get("contract_products", [])
-		if not matches and contract_products_variant is Array:
-			matches = (contract_products_variant as Array).has(product_id)
-		if matches:
-			names.append(card_id)
+	var catalog := public_card_catalog_v06.catalog_snapshot()
+	for card_variant: Variant in catalog.get("cards", []) as Array:
+		if not (card_variant is Dictionary):
+			continue
+		var card := card_variant as Dictionary
+		var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+		if not _public_payload_references_product(machine.get("effect_payload", {}), product_id):
+			continue
+		var player: Dictionary = card.get("player", {}) if card.get("player", {}) is Dictionary else {}
+		var display_name := "%s %s" % [str(player.get("name", machine.get("card_id", "卡牌"))), str(player.get("rank", "I"))]
+		if not names.has(display_name):
+			names.append(display_name)
 		if names.size() >= limit:
 			break
 	return names
+
+
+func _public_payload_references_product(value: Variant, product_id: String) -> bool:
+	if value is String or value is StringName:
+		return str(value) == product_id
+	if value is Array:
+		for item_variant: Variant in value:
+			if _public_payload_references_product(item_variant, product_id):
+				return true
+	if value is Dictionary:
+		for item_variant: Variant in (value as Dictionary).values():
+			if _public_payload_references_product(item_variant, product_id):
+				return true
+	return false
 
 
 func _monster_focus_names(product_id: String, limit: int) -> Array:
@@ -410,7 +434,6 @@ func _product_at_index(index: int) -> String:
 func _clear_dependencies() -> void:
 	_product_market = null
 	_snapshot = null
-	_card_catalog = null
 	_region_public_bridge = null
 	_configured = false
 
@@ -420,3 +443,10 @@ func _require_ready() -> bool:
 		return true
 	_last_error = "dependencies_not_configured"
 	return false
+
+
+func _public_market_snapshot() -> Dictionary:
+	if _product_market == null or not _product_market.has_method("public_market_snapshot"):
+		return {"catalog_ready": false, "product_market": {}}
+	var value: Variant = _product_market.call("public_market_snapshot")
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {"catalog_ready": false, "product_market": {}}

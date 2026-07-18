@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/compendium_readonly_query_port.gd" id="1_query"]
+
+[node name="CompendiumReadOnlyQueryPort" type="Node"]
+script = ExtResource("1_query")
+editor_description = "Pure-data, read-only public Compendium query boundary. It resolves stable public IDs and composes pages without Main, private world state, or runtime mutation."

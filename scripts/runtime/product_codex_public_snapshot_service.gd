@@ -30,20 +30,18 @@ func compose(source: Dictionary) -> Dictionary:
 	var category := str(profile.get("category", "商品"))
 	var route := str(profile.get("route", "商业线"))
 	var terrain := str(profile.get("terrain", "通用"))
-	var use_text := str(profile.get("use", "观察供需、合约、仓储和怪兽偏好。"))
+	var use_text := str(profile.get("use", "观察供需、天气、运输吞吐和怪兽偏好。"))
 	var accent := _color(profile.get("accent", Color("#22c55e")), Color("#22c55e"))
 	var secondary := _color(profile.get("secondary", Color("#f8fafc")), Color("#f8fafc"))
 	var strategy_summary := _strategy_summary(source.get("strategy_rankings", []) as Array)
 	var primary_strategy := _primary_strategy_tag(source.get("strategy_rankings", []) as Array)
-	var futures_warehouse_compact := _futures_warehouse_text(source, true)
-	var futures_warehouse_full := _futures_warehouse_text(source, false)
 	var monster_focus_compact := _monster_focus_text(source.get("monster_focus_names", []) as Array, true)
 	var monster_focus_full := _monster_focus_text(source.get("monster_focus_names", []) as Array, false)
 	var related_cards := _limited_names(source.get("related_card_names", []) as Array, 4, "无固定门槛；可通过当前商路商品类卡牌临时选用")
 	var supply_districts := _limited_names(source.get("supply_district_names", []) as Array, 6, "开局后显示")
 	var demand_districts := _limited_names(source.get("demand_district_names", []) as Array, 6, "开局后显示")
-	var clue_summary := _limited_names(source.get("public_clue_lines", []) as Array, 3, "暂无直接城市线索", " / ")
-	var clue_summary_full := _limited_names(source.get("public_clue_lines", []) as Array, 4, "暂无直接城市线索", " / ")
+	var clue_summary := _limited_names(source.get("public_clue_lines", []) as Array, 3, "暂无公开区域事件", " / ")
+	var clue_summary_full := _limited_names(source.get("public_clue_lines", []) as Array, 4, "暂无公开区域事件", " / ")
 	var clue_preview := _limited_names(source.get("public_clue_labels", []) as Array, 2, "暂无", "；")
 	var weather_text := str(market.get("weather_text", "暂无经济天气"))
 	var trend_text := str(market.get("trend_text", "0"))
@@ -54,10 +52,9 @@ func compose(source: Dictionary) -> Dictionary:
 		"profile": "%s｜%s" % [category, route],
 		"terrain": "地形:%s" % terrain,
 		"price": "¥%d｜基准¥%d｜%s" % [current_price, base_price, trend_text],
-		"meter": "供%d 需%d 断%d 波%d" % [
+		"meter": "供%d 需%d 波%d" % [
 			int(market.get("supply", 0)),
 			int(market.get("demand", 0)),
-			int(market.get("disrupted", 0)),
 			int(market.get("volatility", 0)),
 		],
 		"weather": _short_text(weather_text, 80),
@@ -67,14 +64,14 @@ func compose(source: Dictionary) -> Dictionary:
 	}
 	var preview_text := "\n".join([
 		"◇ 商品：%s / %s｜地形:%s｜符号:%s" % [category, route, terrain, str(profile.get("glyph", "◇"))],
-		"价格带：%s｜当前价¥%d｜基准¥%d｜供%d 需%d 断%d 波%d" % [tier_text, current_price, base_price, int(market.get("supply", 0)), int(market.get("demand", 0)), int(market.get("disrupted", 0)), int(market.get("volatility", 0))],
+		"价格带：%s｜当前价¥%d｜基准¥%d｜供%d 需%d 波%d" % [tier_text, current_price, base_price, int(market.get("supply", 0)), int(market.get("demand", 0)), int(market.get("volatility", 0))],
 		"策略:%s" % strategy_summary,
-		"期货仓储：%s" % futures_warehouse_compact,
+		"公开边界：只显示聚合市场；私人仓储和期货持仓保持隐藏。",
 		"怪兽：%s" % monster_focus_compact,
 		"相关卡：%s" % related_cards,
 		"天气：%s" % _short_text(weather_text, 84),
 		"供给区：%s｜需求区：%s" % [_limited_names(source.get("supply_district_names", []) as Array, 3, "开局后显示"), _limited_names(source.get("demand_district_names", []) as Array, 3, "开局后显示")],
-		"城市线索：%s" % clue_preview,
+		"区域公开事件：%s" % clue_preview,
 		"用途：%s" % _short_text(use_text, 92),
 		"牌路：%s" % _short_text(str(profile.get("hook", "")), 92),
 	])
@@ -82,25 +79,25 @@ func compose(source: Dictionary) -> Dictionary:
 	var detail := {
 		"title": "%s｜%s" % [product_name, route],
 		"subtitle": "%s｜地形:%s｜%s" % [category, terrain, use_text],
-		"tooltip": "商品市场板：先看价格、供需、路线、期货仓储、怪兽偏好和地图入口。",
+		"tooltip": "商品市场板：先看价格、供需、天气、运输、怪兽偏好和地图入口。",
 		"accent": accent,
 		"secondary": secondary,
 		"badge": badge,
 		"chips": _detail_chips(market, current_price, base_price),
 		"kpis": _detail_kpis(market, current_price, primary_strategy, strategy_summary, weather_text, related_cards),
-		"strategies": _strategy_cards(profile, strategy_summary, futures_warehouse_compact, futures_warehouse_full, monster_focus_compact, monster_focus_full, supply_districts, demand_districts, clue_summary, clue_summary_full),
+		"strategies": _strategy_cards(profile, strategy_summary, monster_focus_compact, monster_focus_full, supply_districts, demand_districts, clue_summary, clue_summary_full),
 	}
 	var summary_text := "\n".join([
 		"商品详情｜第%d/%d种｜%s｜%s｜%s｜地形:%s" % [index + 1, total, product_name, tier_text, category, terrain],
-		"看下方商品市场板：价格、供需、趋势、主策略、期货/仓储、怪兽偏好、相关卡牌和地图入口。",
+		"看下方商品市场板：价格、供需、趋势、天气、怪兽偏好、相关卡牌和地图入口。",
 		"当前价¥%d｜基准¥%d｜偏离%s｜趋势%s｜商业线:%s｜符号:%s" % [current_price, base_price, _signed_int_text(current_price - base_price), trend_text, route, str(profile.get("glyph", "◇"))],
-		"供%d｜需%d｜断%d｜波%d；供给压价，需求和断路抬价，全局刷新会重新修正。" % [int(market.get("supply", 0)), int(market.get("demand", 0)), int(market.get("disrupted", 0)), int(market.get("volatility", 0))],
+		"供%d｜需%d｜波%d；供给、需求、天气与真实运输吞吐共同解释公开价格变化。" % [int(market.get("supply", 0)), int(market.get("demand", 0)), int(market.get("volatility", 0))],
 		"【商品卡】价格带:%s｜当前价¥%d｜基准¥%d｜地形:%s。" % [tier_text, current_price, base_price, terrain],
-		"【市场面板】供%d｜需%d｜断%d｜波%d｜经济天气:%s。" % [int(market.get("supply", 0)), int(market.get("demand", 0)), int(market.get("disrupted", 0)), int(market.get("volatility", 0)), weather_text],
+		"【市场面板】供%d｜需%d｜波%d｜经济天气:%s。" % [int(market.get("supply", 0)), int(market.get("demand", 0)), int(market.get("volatility", 0)), weather_text],
 		"【策略面板】策略摘要：%s" % strategy_summary,
-		"【金融与天气】期货/仓储：%s｜经济天气：%s" % [futures_warehouse_compact, weather_text],
-		"【生态与卡牌】怪兽偏好：%s｜相关卡牌：%s｜商品相关城市线索：%s" % [monster_focus_compact, related_cards, clue_summary],
-		"玩家身份、现金和手牌仍保密；用城市线索、牌轨条件、怪兽偏好和价格变化反推。",
+		"【天气与运输】经济天气：%s｜运输影响只显示公开聚合；私人仓储和期货持仓保持隐藏。" % weather_text,
+		"【生态与卡牌】怪兽偏好：%s｜相关卡牌：%s｜商品相关公开事件：%s" % [monster_focus_compact, related_cards, clue_summary],
+		"玩家现金、手牌、私人库存与期货位置保持隐藏；只用公开事件、怪兽偏好和价格变化判断。",
 	])
 	return {
 		"summary_text": summary_text,
@@ -136,8 +133,7 @@ func _detail_chips(market: Dictionary, current_price: int, base_price: int) -> A
 		{"text": str(market.get("trend_text", "0")), "fg": Color("#fef3c7"), "accent": Color("#fef3c7"), "tooltip": "最近价格趋势。"},
 		{"text": "供%d" % int(market.get("supply", 0)), "fg": Color("#4ade80"), "accent": Color("#4ade80"), "tooltip": "公开供给越多，价格越容易下行。"},
 		{"text": "需%d" % int(market.get("demand", 0)), "fg": Color("#fb7185"), "accent": Color("#fb7185"), "tooltip": "公开需求越多，价格越容易上行。"},
-		{"text": "断%d" % int(market.get("disrupted", 0)), "fg": Color("#f97316"), "accent": Color("#f97316"), "tooltip": "商路断损会改变相关GDP和价格。"},
-		{"text": "波%d" % int(market.get("volatility", 0)), "fg": Color("#c084fc"), "accent": Color("#c084fc"), "tooltip": "波动越高，金融/期货判断越敏感。"},
+		{"text": "波%d" % int(market.get("volatility", 0)), "fg": Color("#c084fc"), "accent": Color("#c084fc"), "tooltip": "波动越高，公开价格变化越敏感。"},
 	]
 
 
@@ -150,14 +146,14 @@ func _detail_kpis(market: Dictionary, current_price: int, primary_strategy: Stri
 	]
 
 
-func _strategy_cards(profile: Dictionary, strategy_summary: String, futures_compact: String, futures_full: String, monster_compact: String, monster_full: String, supply_districts: String, demand_districts: String, clue_summary: String, clue_summary_full: String) -> Array:
+func _strategy_cards(profile: Dictionary, strategy_summary: String, monster_compact: String, monster_full: String, supply_districts: String, demand_districts: String, clue_summary: String, clue_summary_full: String) -> Array:
 	return [
 		{"title": "策略用途", "body": _short_text(str(profile.get("hook", "当前没有额外牌路。")), 82), "tooltip": strategy_summary, "accent": Color("#fde68a")},
-		{"title": "期货/仓储", "body": _short_text(futures_compact, 82), "tooltip": futures_full, "accent": Color("#f97316")},
+		{"title": "公开市场", "body": "价格、供需、天气与运输聚合可见", "tooltip": "私人仓储、库存单位、期货方向、位置与到期时间不属于公共图鉴。", "accent": Color("#f97316")},
 		{"title": "怪兽偏好", "body": _short_text(monster_compact, 82), "tooltip": monster_full, "accent": Color("#fb923c")},
 		{"title": "地图供给", "body": _short_text(supply_districts, 82), "tooltip": "本地供给区域：%s" % supply_districts, "accent": Color("#4ade80")},
 		{"title": "地图需求", "body": _short_text(demand_districts, 82), "tooltip": "本地需求区域：%s" % demand_districts, "accent": Color("#fb7185")},
-		{"title": "城市线索", "body": _short_text(clue_summary, 82), "tooltip": clue_summary_full, "accent": Color("#f0abfc")},
+		{"title": "区域事件", "body": _short_text(clue_summary, 82), "tooltip": clue_summary_full, "accent": Color("#f0abfc")},
 	]
 
 
@@ -174,27 +170,6 @@ func _primary_strategy_tag(rankings: Array) -> String:
 		return "主策略:观察0"
 	var first := _dictionary(rankings[0])
 	return "主策略:%s%d" % [str(first.get("label", "观察")), int(first.get("score", 0))]
-
-
-func _futures_warehouse_text(source: Dictionary, compact: bool) -> String:
-	var futures_text := str(source.get("futures_public_compact" if compact else "futures_public_full", ""))
-	var warehouse_text := _warehouse_text(source.get("warehouse_public_entries", []) as Array, 2 if compact else 4)
-	if futures_text == "" and warehouse_text == "":
-		return "暂无公开期货/仓储；可用商品看涨、商品看跌或港仓囤货制造价格窗口。"
-	var pieces := []
-	if futures_text != "":
-		pieces.append(futures_text)
-	if warehouse_text != "":
-		pieces.append("仓库:%s" % warehouse_text)
-	return (" / " if compact else "；").join(pieces)
-
-
-func _warehouse_text(entries: Array, limit: int) -> String:
-	var pieces := []
-	for i in range(mini(limit, entries.size())):
-		var entry := _dictionary(entries[i])
-		pieces.append("%s 风险%d %d笔/%d单位 %s" % [str(entry.get("name", "城市")), int(entry.get("pressure", 0)), int(entry.get("count", 0)), int(entry.get("units", 0)), str(entry.get("duration", "未知"))])
-	return "；".join(pieces)
 
 
 func _monster_focus_text(names: Array, compact: bool) -> String:

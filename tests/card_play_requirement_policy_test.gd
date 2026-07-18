@@ -404,7 +404,7 @@ func _requirement_fixture(fixture_id: String, kind: String, rank: int) -> Dictio
 func _audit_requests(main: Node) -> Array:
 	var result: Array = []
 	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
-	var names_variant: Variant = main.call("_card_codex_names", "all")
+	var names_variant: Variant = (main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).card_runtime_catalog_service().ordered_card_ids()
 	var names: Array = (names_variant as Array).duplicate() if names_variant is Array else []
 	var development_cards_variant: Variant = main.get("city_development_runtime_cards")
 	if development_cards_variant is Dictionary:

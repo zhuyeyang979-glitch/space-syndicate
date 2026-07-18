@@ -8,6 +8,7 @@ var _world: Node
 var _table_selection_state: TableSelectionState
 var _world_session_state: WorldSessionState
 var _card_effect_router: CardEffectRuntimeRouter
+var _role_catalog: RoleCatalogRuntimeService
 var _build_count := 0
 
 
@@ -25,6 +26,10 @@ func set_world_session_state(state: WorldSessionState) -> void:
 
 func set_card_effect_router(router: CardEffectRuntimeRouter) -> void:
 	_card_effect_router = router
+
+
+func set_role_catalog(role_catalog: RoleCatalogRuntimeService) -> void:
+	_role_catalog = role_catalog
 
 
 func world_session_state() -> WorldSessionState:
@@ -131,10 +136,11 @@ func _card_facts(coordinator: Node, selected_player: int, sample_only: bool) -> 
 
 
 func _role_facts() -> Array:
-	var count := int(_world.call("_player_role_catalog_size")) if _world.has_method("_player_role_catalog_size") else 0
 	var roles: Array = []
-	for role_index in range(count):
-		var role := _world_dictionary_call(&"_player_role_template", [role_index, role_index])
+	if _role_catalog == null:
+		return roles
+	for role_index in range(_role_catalog.role_count()):
+		var role := _role_catalog.definition_at(role_index)
 		role["role_index"] = role_index
 		roles.append(role)
 	return roles

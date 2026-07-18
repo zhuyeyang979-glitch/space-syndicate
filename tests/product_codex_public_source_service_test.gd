@@ -47,6 +47,14 @@ func _run() -> void:
 	_expect(bool(debug.get("service_ready", false)) and bool(debug.get("service_authoritative", false)), "Product source service is configured through Coordinator")
 	_expect(not bool(debug.get("owns_rules", true)) and not bool(debug.get("owns_save_state", true)) and not bool(debug.get("reads_player_state", true)) and not bool(debug.get("reads_private_inventory", true)) and not bool(debug.get("reads_ai_plan", true)) and not bool(debug.get("reads_market_quote", true)) and not bool(debug.get("reads_camera", true)) and not bool(debug.get("reads_solar", true)), "Product source service owns no rules/save/private/quote/camera/solar state")
 	var product_name := str(ProductMarketRuntimeController.PRODUCT_CATALOG[0])
+	var market_controller := coordinator.get_node_or_null("ProductMarketRuntimeController") if coordinator != null else null
+	var rng_service := coordinator.get_node_or_null("RunRngService") if coordinator != null else null
+	var route_controller := coordinator.get_node_or_null("RouteNetworkRuntimeController") if coordinator != null else null
+	var session_controller := coordinator.get_node_or_null("GameSessionRuntimeController") if coordinator != null else null
+	var market_before_read := JSON.stringify(market_controller.call("runtime_state_snapshot"))
+	var rng_before_read := JSON.stringify(rng_service.call("debug_snapshot"))
+	var route_before_read := JSON.stringify(route_controller.call("debug_snapshot"))
+	var session_before_read := JSON.stringify(session_controller.call("debug_snapshot"))
 	var source: Dictionary = service.call("compose_detail_source", product_name, 0, true)
 	var detail: Dictionary = coordinator.call("product_codex_public_detail_snapshot", product_name, 0, true)
 	var browser: Dictionary = coordinator.call("product_codex_public_browser_snapshot", {
@@ -61,11 +69,17 @@ func _run() -> void:
 	_expect(_is_pure_data(source) and _is_pure_data(detail) and _is_pure_data(browser), "Product source/detail/browser snapshots are pure data")
 	_expect(not _contains_private_key(source) and not _contains_private_key(detail) and not _contains_private_key(browser), "Product public outputs recursively exclude private keys")
 	_expect(not (browser.get("entries", []) as Array).is_empty() and browser.get("preview", {}) is Dictionary, "browser snapshot has entries and preview")
+	_expect(market_before_read == JSON.stringify(market_controller.call("runtime_state_snapshot")), "opening Product Codex does not initialize or mutate ProductMarket")
+	_expect(rng_before_read == JSON.stringify(rng_service.call("debug_snapshot")), "opening Product Codex consumes no RNG")
+	_expect(route_before_read == JSON.stringify(route_controller.call("debug_snapshot")), "opening Product Codex rebuilds no route topology")
+	_expect(session_before_read == JSON.stringify(session_controller.call("debug_snapshot")), "opening Product Codex does not dirty save/session state")
+	_expect(not _contains_private_market_position(source) and not _contains_private_market_position(detail) and not _contains_private_market_position(browser), "futures and warehouse positions never enter Product Codex output")
+	var source_script := FileAccess.get_file_as_string("res://scripts/runtime/product_codex_public_source_service.gd")
+	_expect(not source_script.contains("ensure_catalog") and not source_script.contains("market_entry(") and not source_script.contains("product_price("), "Product Codex uses a read-only market projection only")
 	var before := JSON.stringify(detail)
 	_mutate_private_viewer_state()
 	var after: Dictionary = coordinator.call("product_codex_public_detail_snapshot", product_name, 0, true)
 	_expect(before == JSON.stringify(after), "cash/hand/discard/hidden owner/city guesses/AI plan/selected state do not change public Product Codex detail")
-	var market_controller := coordinator.get_node_or_null("ProductMarketRuntimeController") if coordinator != null else null
 	var before_market: Dictionary = coordinator.call("product_codex_public_detail_snapshot", product_name, 0, true)
 	if market_controller != null and market_controller.has_method("apply_product_market_boon"):
 		market_controller.call("apply_product_market_boon", product_name, 1.25, 1.0, 5, "product_codex_public_test", false, 30.0)
@@ -133,6 +147,21 @@ func _contains_private_key(value: Variant) -> bool:
 				return true
 	elif value is String or value is StringName:
 		return str(value).find("PRIVATE_SENTINEL") >= 0
+	return false
+
+
+func _contains_private_market_position(value: Variant) -> bool:
+	if value is Dictionary:
+		for key_variant: Variant in value:
+			var key := str(key_variant).to_lower()
+			if key.contains("futures") or key.contains("warehouse") or key in ["units", "location", "expiry", "expires_at"]:
+				return true
+			if _contains_private_market_position(value[key_variant]):
+				return true
+	elif value is Array:
+		for item_variant: Variant in value:
+			if _contains_private_market_position(item_variant):
+				return true
 	return false
 
 

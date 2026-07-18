@@ -11,8 +11,9 @@ const CATALOG_SCENE := preload("res://scenes/runtime/CardRuntimeCatalogService.t
 const SNAPSHOT_SCENE := preload("res://scenes/runtime/CodexPublicSnapshotService.tscn")
 const SURFACE_SCENE := preload("res://scenes/ui/CodexCompendiumSurface.tscn")
 const ADAPTER_SCRIPT := preload("res://scripts/runtime/region_codex_public_source_adapter.gd")
-const REGION_FIELDS := ["available", "card_ids", "city", "contract_version", "demands", "destroyed", "economic_focus_label", "hp_now", "hp_total", "index", "name", "neighbor_indices", "products", "public_clue", "reason_code", "region_id", "terrain", "terrain_label", "total"]
+const REGION_FIELDS := ["available", "card_ids", "city", "contract_version", "demands", "destroyed", "economic_focus_label", "facilities", "hp_now", "hp_total", "index", "name", "neighbor_indices", "products", "public_clue", "reason_code", "region_id", "terrain", "terrain_label", "total"]
 const CITY_FIELDS := ["active", "last_income", "level", "present"]
+const FACILITY_FIELDS := ["facility_type", "industry_id", "owner_kind", "owner_player_index", "rank"]
 const PRIVATE_SENTINELS := ["PRIVATE_SENTINEL", "SECRET_SENTINEL", "CASH_SENTINEL", "HAND_SENTINEL", "DISCARD_SENTINEL", "OWNER_SENTINEL", "AI_PLAN_SENTINEL", "DO_NOT_LEAK"]
 
 @export var auto_run := true
@@ -31,6 +32,7 @@ var _checks := 0
 var _failures: Array[String] = []
 var _results: Array[String] = []
 var _world: RegionWorld
+var _session_state: WorldSessionState
 var _region_bridge: Node
 var _monster_bridge: Node
 var _monster: Node
@@ -62,6 +64,7 @@ class RegionWorld:
 	extends Node
 	var districts: Array = []
 	var players: Array = []
+	var session_state: WorldSessionState
 	var selected_player := 0
 	var selected_district := 0
 	var rng := RandomNumberGenerator.new()
@@ -94,6 +97,23 @@ class RegionWorld:
 			{"region_id": "region.001", "name": "远港区", "terrain": "ocean", "terrain_label": "海域", "economic_focus_label": "航运", "hp": 100, "damage": 0, "destroyed": false, "miasma": false, "center": Vector2(3000, 0), "products": [], "demands": [], "neighbors": [0], "card_choices": [], "city": {}},
 			{"region_id": "region.002", "name": "灰丘区", "terrain": "desert", "terrain_label": "荒漠", "economic_focus_label": "资源", "hp": 100, "damage": 0, "destroyed": false, "miasma": false, "center": Vector2(0, 3000), "products": [], "demands": [], "neighbors": [0], "card_choices": [], "city": {}},
 		]
+		_sync_session_state()
+
+	func bind_session_state(state: WorldSessionState) -> void:
+		session_state = state
+		_sync_session_state()
+
+	func _sync_session_state() -> void:
+		if session_state == null:
+			return
+		session_state.replace_players(players)
+		session_state.replace_districts(districts)
+
+	func _district_supply_card_ids(index: int) -> Array:
+		if index < 0 or index >= districts.size() or not (districts[index] is Dictionary):
+			return []
+		var choices_variant: Variant = (districts[index] as Dictionary).get("card_choices", [])
+		return (choices_variant as Array).duplicate(true) if choices_variant is Array else []
 
 	func _district_city(index: int) -> Dictionary:
 		if index < 0 or index >= districts.size() or not (districts[index] is Dictionary):
@@ -185,12 +205,17 @@ func _reset_bench() -> void:
 func _build_runtime() -> void:
 	_world = RegionWorld.new()
 	add_child(_world)
+	_session_state = WorldSessionState.new()
+	add_child(_session_state)
+	_world.bind_session_state(_session_state)
 	_region_bridge = REGION_BRIDGE_SCENE.instantiate()
 	add_child(_region_bridge)
 	_region_bridge.call("bind_world", _world)
+	_region_bridge.call("set_world_session_state", _session_state)
 	_monster_bridge = MONSTER_BRIDGE_SCENE.instantiate()
 	add_child(_monster_bridge)
 	_monster_bridge.call("bind_world", _world)
+	_monster_bridge.call("set_world_session_state", _session_state)
 	_catalog = CATALOG_SCENE.instantiate()
 	add_child(_catalog)
 	_catalog.call("configure", {"ruleset_id": "v0.4"})
@@ -227,7 +252,17 @@ func _bridge_schema_exact() -> bool:
 	var city := facts.get("city", {}) as Dictionary
 	var city_keys := city.keys()
 	city_keys.sort()
-	return keys == expected and city_keys == CITY_FIELDS and bool(facts.get("available", false)) and str(facts.get("contract_version", "")) == "region_codex_public_facts_v06" and not _contains_sentinel(facts)
+	var facilities_valid := facts.get("facilities", []) is Array
+	for facility_variant: Variant in facts.get("facilities", []) as Array:
+		if not (facility_variant is Dictionary):
+			facilities_valid = false
+			break
+		var facility_keys := (facility_variant as Dictionary).keys()
+		facility_keys.sort()
+		if facility_keys != FACILITY_FIELDS:
+			facilities_valid = false
+			break
+	return keys == expected and city_keys == CITY_FIELDS and facilities_valid and bool(facts.get("available", false)) and str(facts.get("contract_version", "")) == "region_codex_public_facts_v06" and not _contains_sentinel(facts)
 
 
 func _active_city_without_public_clue() -> bool:
@@ -283,7 +318,7 @@ func _adapter_forbidden_input_fail_closed() -> bool:
 	var adapter: RefCounted = ADAPTER_SCRIPT.new()
 	var region := _bridge_facts()
 	var monster := _monster_facts()
-	for forbidden_key in ["viewer_index", "player_index", "selected_player", "selected_district", "city_guesses", "cash", "hand", "discard", "owner", "hidden_owner", "private", "ai_plan", "target_plan", "developer", "raw_actor", "facilities", "facility_owner"]:
+	for forbidden_key in ["viewer_index", "player_index", "selected_player", "selected_district", "city_guesses", "cash", "hand", "discard", "owner", "hidden_owner", "private", "ai_plan", "target_plan", "developer", "raw_actor", "warehouse_inventory", "facility_owner"]:
 		var nested := region.duplicate(true)
 		var private_leaf := {}
 		private_leaf[str(forbidden_key)] = "DO_NOT_LEAK"
@@ -384,7 +419,7 @@ func _architecture_and_save_boundary() -> bool:
 	var projection_start := bridge_source.find("func region_codex_public_facts")
 	var projection_end := bridge_source.find("func region_commodity_facts", projection_start)
 	var projection_source := bridge_source.substr(projection_start, projection_end - projection_start) if projection_start >= 0 and projection_end > projection_start else ""
-	var bridge_clean := not projection_source.contains("selected_player") and not projection_source.contains("selected_district") and not projection_source.contains("players") and not projection_source.contains("facilities") and not projection_source.contains("owner")
+	var bridge_clean := not projection_source.contains("selected_player") and not projection_source.contains("selected_district") and not projection_source.contains("players") and projection_source.contains("public_economy_snapshot") and projection_source.contains("owner_player_index") and not projection_source.contains("city_guesses") and not projection_source.contains("warehouse_inventory")
 	return adapter_clean and service_clean and bridge_clean and not _service.has_method("to_save_data") and not _service.has_method("apply_save_data") and bool((_service.call("debug_snapshot") as Dictionary).get("commodity_flow_aggregate_omitted", false)) and bool((_service.call("debug_snapshot") as Dictionary).get("contract_aggregate_omitted", false))
 
 
@@ -424,7 +459,7 @@ func _mask_public_clue(snapshot: Dictionary) -> Dictionary:
 	var detail := result.get("detail", {}) as Dictionary
 	var clues := detail.get("clues", []) as Array
 	for index in range(clues.size()):
-		if clues[index] is Dictionary and str((clues[index] as Dictionary).get("title", "")) == "公开线索":
+		if clues[index] is Dictionary and str((clues[index] as Dictionary).get("title", "")) == "公开事件":
 			var entry := (clues[index] as Dictionary).duplicate(true)
 			entry["body"] = "<clue>"
 			clues[index] = entry

@@ -1,0 +1,115 @@
+{
+	"actual_card_id": "unit.monster.spore_tide_emperor.rank_1",
+	"card_id_resolver_used": true,
+	"checks": 29,
+	"expected_card_id": "unit.monster.spore_tide_emperor.rank_1",
+	"failures": [],
+	"metrics": {
+		"formal_scenario_a": "PASS",
+		"formal_scenario_b": "PASS",
+		"scenario_a_counters": {
+			"double_click_detail_count": 1,
+			"duplicate_card_apply_count": 0,
+			"duplicate_detail_apply_count": 0,
+			"monster_card_deep_link_count": 1,
+			"preview_full_page_rebuild_count": 0,
+			"second_click_preview_count": 0
+		},
+		"scenario_a_navigation": {
+			"controller_authoritative": true,
+			"controller_ready": true,
+			"external_return_target": "main",
+			"history_duplicate_count": 0,
+			"history_frames": [],
+			"history_invalid_count": 0,
+			"history_pop_count": 4,
+			"history_push_count": 4,
+			"legacy_main_authority_active": false,
+			"legacy_save": {
+				"bestiary_grid_page": 0,
+				"bestiary_index": 1,
+				"bestiary_show_detail": false,
+				"card_codex_filter": "all",
+				"card_codex_index": 256,
+				"previewed_bestiary_index": 1,
+				"previewed_product_codex_index": 0,
+				"product_codex_grid_page": 0,
+				"product_codex_index": 0,
+				"product_codex_show_detail": false,
+				"region_codex_index": 0,
+				"role_codex_index": 0
+			},
+			"location_stack_depth": 0,
+			"navigation": {
+				"card": {
+					"filter_id": "all",
+					"page_index": 25,
+					"preview_id": "unit.monster.spore_tide_emperor.rank_1",
+					"selected_index": 256,
+					"show_detail": true
+				},
+				"catalog_mode": "compendium",
+				"current_view": "hub",
+				"external_return_target": "main",
+				"monster": {
+					"page_index": 0,
+					"preview_index": 1,
+					"selected_index": 1,
+					"show_detail": false
+				},
+				"product": {
+					"page_index": 0,
+					"preview_index": 0,
+					"selected_index": 0,
+					"show_detail": false
+				},
+				"region": {
+					"selected_index": 0
+				},
+				"return_target": "main",
+				"role": {
+					"selected_index": 0
+				},
+				"stable_item_id": "hub",
+				"stack_depth": 0
+			},
+			"owns_navigation_stack": true,
+			"reads_gameplay_world": false,
+			"rejected_transition_count": 0,
+			"transition_count": 11
+		},
+		"scenario_b_external_return_consumed_count": 1,
+		"total_formal_qa_seconds": 6.504
+	},
+	"status": "PASS",
+	"timings": {
+		"card_detail_seconds": 0.162,
+		"intel_return_seconds": 1.836,
+		"monster_browser_seconds": 0.564,
+		"monster_detail_seconds": 0.101,
+		"monster_preview_seconds": 0.389,
+		"session_start_seconds": 1.505,
+		"stage_card_detail_visible_seconds": 0.002,
+		"stage_first_monster_detail_restored_seconds": 0.002,
+		"stage_first_monster_detail_visible_seconds": 0.007,
+		"stage_hub_visible_seconds": 0.014,
+		"stage_intel_compendium_visible_seconds": 0.01,
+		"stage_intel_returned_seconds": 0.003,
+		"stage_intel_visible_seconds": 0.025,
+		"stage_menu_paused_seconds": 0.001,
+		"stage_monster_browser_restored_seconds": 0.003,
+		"stage_monster_browser_visible_seconds": 0.002,
+		"stage_preview_visible_seconds": 0.01,
+		"stage_scenario_a_hub_restored_seconds": 0.002,
+		"stage_scenario_a_main_menu_ready_seconds": 0.056,
+		"stage_scenario_a_setup_ready_seconds": 0.002,
+		"stage_scenario_b_hub_restored_seconds": 0.002,
+		"stage_scenario_b_main_menu_ready_seconds": 0.032,
+		"stage_scenario_b_menu_paused_seconds": 0.002,
+		"stage_scenario_b_monster_browser_visible_seconds": 0.003,
+		"stage_scenario_b_setup_ready_seconds": 0.002,
+		"stage_second_monster_browser_restored_seconds": 0.003,
+		"stage_second_monster_detail_visible_seconds": 0.002,
+		"stage_session_ready_seconds": 0.101
+	}
+}

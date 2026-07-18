@@ -24,9 +24,9 @@ func set_action(data: Dictionary, action_index: int = 0, fallback_accent: Color 
 	tags_label.text = _short_text(tags_text, 18)
 	tags_label.tooltip_text = tags_text
 	tags_label.add_theme_color_override("font_color", accent.lightened(0.14))
-	var probability_text := str(data.get("probability", "I --/-- | IV --/--"))
-	probability_label.text = probability_text
-	probability_label.tooltip_text = str(data.get("probability_tooltip", probability_text))
+	var disclosure_text := str(data.get("disclosure", "公开效果｜权重隐藏"))
+	probability_label.text = disclosure_text
+	probability_label.tooltip_text = "图鉴只展示公开行动效果，不展示内部权重、随机签或预选目标。"
 	var facts_text := str(data.get("facts", "Move / pressure"))
 	facts_label.text = _short_text(facts_text, 72)
 	facts_label.tooltip_text = facts_text

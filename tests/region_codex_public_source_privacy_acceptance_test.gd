@@ -177,7 +177,7 @@ func _test_future_region_attraction_owner_api() -> void:
 
 func _test_private_intel_callers_remain_owned() -> void:
 	var source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	for caller_name in ["_economy_city_income_entries", "_economy_warehouse_risk_entries", "_intel_city_guess_entries"]:
+	for caller_name in ["_economy_warehouse_risk_entries", "_intel_city_guess_entries"]:
 		var caller_source := _function_source(source, caller_name)
 		_expect(caller_source.contains("_city_intel_hint_for_player("), "viewer_private_intel_caller_retained|caller=%s" % caller_name)
 

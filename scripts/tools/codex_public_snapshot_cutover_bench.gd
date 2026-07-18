@@ -138,12 +138,12 @@ func _run_case(case_id: String) -> Dictionary:
 			flags["service_checked"] = true
 			notes = "service exposes Role, Region, route-label, and debug contracts"
 		"role_source_pure_data":
-			var role_card: Dictionary = _main.call("_make_player_role_card", 0) if _main != null else {}
-			var source: Dictionary = _main.call("_role_codex_public_source_snapshot", role_card, 0, 1) if _main != null else {}
-			passed = not source.is_empty() and _is_pure_data(source)
+			var coordinator := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if _main != null else null
+			var snapshot: Dictionary = coordinator.call("role_codex_public_snapshot", 0, {}) if coordinator != null else {}
+			passed = not snapshot.is_empty() and _is_pure_data(snapshot)
 			flags["role_checked"] = true
 			flags["pure_data_checked"] = true
-			notes = "main gathers public role facts without Node, Resource, Object, or Callable"
+			notes = "the role catalog source owner composes public role facts without Node, Resource, Object, or Callable"
 		"role_summary_parity":
 			var snapshot: Dictionary = _service.call("compose_role", _role_source()) if _service != null else {}
 			passed = str(snapshot.get("summary_text", "")).contains("角色卡｜第1/8张｜星港金融团｜轨道商人")
@@ -194,14 +194,14 @@ func _run_case(case_id: String) -> Dictionary:
 			notes = "scene-owned Region source service exposes viewer-invariant public facts only"
 		"region_summary_city":
 			var snapshot: Dictionary = _service.call("compose_region", _region_source(true)) if _service != null else {}
-			passed = str(snapshot.get("summary_text", "")).contains("GDP趋势:+20") and str(snapshot.get("summary_text", "")).contains("商路加成 +20")
+			passed = str(snapshot.get("summary_text", "")).contains("公开设施：") and str(snapshot.get("summary_text", "")).contains("区域GDP公开汇总:180/min")
 			flags["region_checked"] = true
-			notes = "active-city summary retains public flow, contract, trend, and income detail"
+			notes = "developed-region summary exposes public facilities and aggregate regional GDP"
 		"region_summary_no_city":
 			var snapshot: Dictionary = _service.call("compose_region", _region_source(false)) if _service != null else {}
-			passed = str(snapshot.get("summary_text", "")).contains("收入拆解：待城市化") and str(snapshot.get("summary_text", "")).contains("环晶电池")
+			passed = str(snapshot.get("summary_text", "")).contains("公开设施：暂无") and str(snapshot.get("summary_text", "")).contains("环晶电池")
 			flags["region_checked"] = true
-			notes = "non-city region preserves the safe production and pending-development summary"
+			notes = "undeveloped region preserves public production without inventing a city owner"
 		"region_detail_shape":
 			var snapshot: Dictionary = _service.call("compose_region", _region_source(true)) if _service != null else {}
 			var detail: Dictionary = snapshot.get("detail", {}) if snapshot.get("detail", {}) is Dictionary else {}
@@ -219,10 +219,10 @@ func _run_case(case_id: String) -> Dictionary:
 			source["hidden_owner"] = 2
 			source["private_target"] = "secret"
 			var snapshot: Dictionary = _service.call("compose_region", source) if _service != null else {}
-			passed = not _contains_private_key(snapshot) and str(snapshot.get("summary_text", "")).contains("真实业主不公开")
+			passed = not _contains_private_key(snapshot) and str(snapshot.get("summary_text", "")).contains("现金、手牌、私密库存")
 			flags["region_checked"] = true
 			flags["privacy_checked"] = true
-			notes = "public clue output states the boundary and strips injected private keys"
+			notes = "public clue output states the v0.6 privacy boundary and strips injected private keys"
 		"coordinator_scene_composition":
 			var node := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CodexPublicSnapshotService") if _main != null else null
 			passed = node != null and node.scene_file_path == SERVICE_SCENE and _region_source_service != null and _region_source_service.scene_file_path == REGION_SOURCE_SERVICE_SCENE
@@ -238,7 +238,8 @@ func _run_case(case_id: String) -> Dictionary:
 			notes = "coordinator proxies duplicated pure-data snapshots only"
 		"real_main_role_route":
 			var role_card: Dictionary = _main.call("_make_player_role_card", 0) if _main != null else {}
-			var snapshot: Dictionary = _main.call("_role_codex_public_snapshot", role_card, 0, 1) if _main != null else {}
+			var coordinator := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if _main != null else null
+			var snapshot: Dictionary = coordinator.call("role_codex_public_snapshot", 0, {}) if coordinator != null else {}
 			passed = not snapshot.is_empty() and snapshot.get("board", {}) is Dictionary and str(snapshot.get("summary_text", "")).contains(str(role_card.get("name", "")))
 			flags["main_checked"] = true
 			flags["role_checked"] = true
@@ -281,12 +282,16 @@ func _role_source() -> Dictionary:
 func _region_source(city_active: bool) -> Dictionary:
 	return {
 		"valid": true, "index": 1, "total": 12, "name": "极光港", "terrain": "ice", "terrain_label": "冰原", "economic_focus_label": "工业",
-		"destroyed": false, "selected": true, "hp_total": 12, "hp_now": 8, "panic": 2, "transport_speed": 1.15, "trade_route_load": 2,
-		"card_count": 4, "city_present": city_active, "city_active": city_active, "city_level": 2, "city_last_income": 180,
+		"destroyed": false, "hp_total": 12, "hp_now": 8, "trade_route_load": 2,
+		"card_count": 4, "facility_count": 2 if city_active else 0, "city_last_income": 180 if city_active else 0,
+		"facility_entries": [
+			{"facility_id": "facility:test:0", "facility_type": "生产设施", "rank": 2, "owner_kind": "player", "owner_player_index": 0},
+			{"facility_id": "facility:test:1", "facility_type": "物流设施", "rank": 1, "owner_kind": "player", "owner_player_index": 1},
+		] if city_active else [],
 		"supply_text": "环晶电池 ¥90", "demand_text": "深海菌毯 ¥120", "weather_text": "极光风暴", "connection_summary": "连接3区",
 		"card_choice_summary": "轨道融资1、城市经营1", "monster_entries": [{"ordinal": 1, "name": "岩甲兽", "reason": "偏好仓储"}],
-		"public_clue": "公开牌轨显示工业投资。", "card_names": ["轨道融资1", "城市经营1"], "route_flow_status": "稳定",
-		"contract_status": "1份公开合约", "gdp_trend": "+20", "income_detail_lines": ["基础GDP 160", "商路加成 +20"] if city_active else [],
+		"public_clue": "公开牌轨显示工业投资。", "card_names": ["轨道融资1", "城市经营1"],
+		"income_detail_lines": ["公开生产贡献 160", "公开吞吐贡献 +20"] if city_active else [],
 		"products": ["环晶电池"],
 	}
 

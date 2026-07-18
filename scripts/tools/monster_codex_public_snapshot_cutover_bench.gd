@@ -57,7 +57,7 @@ func cutover_cases() -> Array:
 	return [
 		"required_service_assets_load", "service_scene_contract", "source_service_scene_contract", "qa_save_isolated", "monster_source_pure_data", "monster_catalog_world_invariant", "coordinator_browser_detail_world_call_free", "public_catalog_source_scan", "monster_summary_parity",
 		"browser_entry_shape", "detail_shape", "detail_chip_contract", "detail_kpi_contract",
-		"action_probability_board", "action_probability_tooltip", "bound_monster_card_preview", "ecology_identity_contract",
+		"action_public_disclosure", "action_internal_weights_hidden", "bound_monster_card_preview", "ecology_identity_contract",
 		"empty_source_safe", "privacy_boundary", "coordinator_scene_composition", "coordinator_pure_data_proxy",
 		"real_main_browser_route", "real_main_detail_route", "legacy_monster_formatters_absent", "deletion_metrics_and_privacy",
 	]
@@ -173,7 +173,7 @@ func _run_case(case_id: String) -> Dictionary:
 			flags["monster_checked"] = true
 			flags["pure_data_checked"] = true
 			flags["privacy_checked"] = true
-			notes = "MonsterCodexPublicSourceService gathers owner catalog, probability, and bound-card public facts only"
+			notes = "MonsterCodexPublicSourceService gathers owner catalog, public action, and bound-card facts only"
 		"monster_catalog_world_invariant":
 			var monster := _coordinator.get_node_or_null("MonsterRuntimeController") if _coordinator != null else null
 			var bridge := _coordinator.get_node_or_null("MonsterRuntimeWorldBridge") if _coordinator != null else null
@@ -242,18 +242,18 @@ func _run_case(case_id: String) -> Dictionary:
 			passed = kpis.size() == 4 and _array_has_title(kpis, "生态位") and _array_has_title(kpis, "固定技能成长")
 			flags["monster_checked"] = true
 			notes = "ecology, economy, action role, and bound-skill KPIs retain prior shape"
-		"action_probability_board":
+		"action_public_disclosure":
 			var detail: Dictionary = (_service.call("compose", _source()) as Dictionary).get("detail", {}) if _service != null else {}
 			var action: Dictionary = (detail.get("actions", []) as Array)[0] as Dictionary
-			passed = str(action.get("probability", "")) == "I 25%/30%｜IV 35%/40%" and str(action.get("facts", "")).contains("伤害5")
+			passed = str(action.get("disclosure", "")) == "公开效果｜权重隐藏" and str(action.get("facts", "")).contains("伤害5") and not action.has("probability")
 			flags["probability_checked"] = true
-			notes = "service formats supplied I/IV open/destroyed probability facts without recalculating"
-		"action_probability_tooltip":
+			notes = "service renders public action facts and an explicit hidden-weight boundary"
+		"action_internal_weights_hidden":
 			var detail: Dictionary = (_service.call("compose", _source()) as Dictionary).get("detail", {}) if _service != null else {}
 			var action: Dictionary = (detail.get("actions", []) as Array)[0] as Dictionary
-			passed = str(action.get("probability_tooltip", "")).contains("IV破坏后40%") and str(action.get("tooltip", "")).contains("攻击城市")
+			passed = not action.has("probability_tooltip") and not _canonical_text(action).contains("25%") and str(action.get("tooltip", "")).contains("预选目标不公开")
 			flags["probability_checked"] = true
-			notes = "probability tooltip and action body preserve public explanation"
+			notes = "action tooltip keeps internal weights, RNG and preselected targets hidden"
 		"bound_monster_card_preview":
 			var snapshot: Dictionary = _service.call("compose", _source()) if _service != null else {}
 			passed = str(snapshot.get("card_preview_text", "")).contains("岩甲兽 I") and str(snapshot.get("card_preview_text", "")).contains("¥260")
@@ -281,12 +281,12 @@ func _run_case(case_id: String) -> Dictionary:
 			var real_source: Dictionary = _source_service.call("compose_detail_source", 0, true) if _source_service != null else {}
 			var final_snapshot: Dictionary = _coordinator.call("monster_codex_public_detail_snapshot", 0, true) if _coordinator != null else {}
 			passed = rejected.is_empty() and not _contains_private_key(real_source) and _is_pure_data(real_source)
-			passed = passed and _public_probability_facts_present(owner_source) and _public_probability_facts_present(real_source) and _public_probability_facts_present(final_snapshot)
+			passed = passed and not _public_probability_facts_present(owner_source) and not _public_probability_facts_present(real_source) and not _public_probability_facts_present(final_snapshot)
 			passed = passed and not _contains_public_weight_leak(owner_source) and not _contains_public_weight_leak(real_source) and not _contains_public_weight_leak(final_snapshot)
 			flags["privacy_checked"] = true
 			flags["probability_checked"] = true
 			flags["pure_data_checked"] = true
-			notes = "adapter fail-closes private injected input while owner/source/snapshot keep public probabilities without raw weights"
+			notes = "adapter fail-closes private input while owner/source/snapshot omit probabilities and raw weights"
 		"coordinator_scene_composition":
 			var source_node := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterCodexPublicSourceService") if _main != null else null
 			var snapshot_node := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterCodexPublicSnapshotService") if _main != null else null
@@ -327,7 +327,7 @@ func _run_case(case_id: String) -> Dictionary:
 			passed = passed and not bool(debug.get("calculates_action_weights", true)) and not bool(debug.get("legacy_main_formatter_active", true)) and not _contains_private_key(debug)
 			flags["deletion_checked"] = true
 			flags["privacy_checked"] = true
-			notes = "Sprint 15 shrinks main while probability authority remains outside the formatter"
+			notes = "Sprint 15 shrinks main while internal probability authority remains outside public presentation"
 	return _record(case_id, passed, notes, flags)
 
 
@@ -335,9 +335,9 @@ func _source() -> Dictionary:
 	return {
 		"valid": true, "index": 0, "total": 8, "selected": true,
 		"entry": {"name": "岩甲兽", "style": "重装陆行怪兽。", "hp": 18, "armor": 3, "resource_focus": ["环晶电池"]},
-		"ecology": {"movement_archetype": "陆行", "movement_traits": ["重装"], "role_tags": ["破坏", "仓储压力"], "bound_skill_counts": [1, 2, 2, 3], "summon_access": "monster_zone", "resource_drain": 2, "max_damage": 5, "economy_boon": {"label": "矿脉富集"}, "rank_iv_probability_shift": "撞击上升10个百分点"},
-		"profile": {"accent": Color("#fb7185")}, "accent": Color("#fb7185"), "move_text": "80m/s", "art_move_text": "80m/s", "ecology_move_text": "80m/s", "max_range_text": "120m", "encounter_range_text": "50m", "mobility_summary": "陆地稳定移动", "action_summary": "撞击/掠夺", "rank_iv_probability_summary": "撞击上升10个百分点", "level_labels": ["I", "II", "III", "IV"],
-		"actions": [{"name": "撞击", "text": "攻击城市并制造热度。", "tags": ["攻击"], "facts": "伤害5｜热度+1", "i_open": "25%", "i_destroyed": "30%", "iv_open": "35%", "iv_destroyed": "40%", "probability_tooltip": "I开局25% / I破坏后30%\nIV开局35% / IV破坏后40%"}],
+		"ecology": {"movement_archetype": "陆行", "movement_traits": ["重装"], "role_tags": ["破坏", "仓储压力"], "bound_skill_counts": [1, 2, 2, 3], "summon_access": "monster_zone", "resource_drain": 2, "max_damage": 5, "economy_boon": {"label": "矿脉富集"}},
+		"profile": {"accent": Color("#fb7185")}, "accent": Color("#fb7185"), "move_text": "80m/s", "art_move_text": "80m/s", "ecology_move_text": "80m/s", "max_range_text": "120m", "encounter_range_text": "50m", "mobility_summary": "陆地稳定移动", "action_summary": "撞击/掠夺", "level_labels": ["I", "II", "III", "IV"],
+		"actions": [{"name": "撞击", "text": "攻击区域并制造公开压力。", "tags": ["攻击"], "facts": "伤害5｜压力+1"}],
 		"monster_card": {"valid": true, "display_name": "岩甲兽 I", "price": 260, "region_text": "不限区"},
 	}
 
@@ -404,14 +404,15 @@ func _contains_public_weight_leak(value: Variant) -> bool:
 				return true
 	elif value is String:
 		var text := str(value)
-		if text.contains("权重") or text.contains("numerator") or text.contains("denominator") or text.contains("分子") or text.contains("分母") or text.contains("号+"):
+		var weight_disclosure_only := text.contains("权重") and (text.contains("隐藏") or text.contains("不公开"))
+		if (text.contains("权重") and not weight_disclosure_only) or text.contains("numerator") or text.contains("denominator") or text.contains("分子") or text.contains("分母") or text.contains("号+"):
 			return true
 	return false
 
 
 func _public_probability_facts_present(value: Variant) -> bool:
 	var text := _canonical_text(value)
-	return text.contains("I") and text.contains("IV") and text.contains("%") and text.contains("开局") and text.contains("破坏后")
+	return text.contains("i_open") or text.contains("iv_open") or text.contains("probability_tooltip") or text.contains("rank_iv_probability")
 
 
 func _mutate_private_world_for_catalog_gate() -> Dictionary:

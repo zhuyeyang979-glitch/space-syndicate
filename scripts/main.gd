@@ -7,7 +7,6 @@ const CardPlayRequirementPolicyScript := preload("res://scripts/cards/card_play_
 const SharedCardGroupWindowScript := preload("res://scripts/cards/shared_card_group_window.gd")
 const RoguelikeEconomicViabilityPolicyScript := preload("res://scripts/runtime/roguelike_economic_viability_policy.gd")
 const MenuRootLobbyScene := preload("res://scenes/ui/MenuRootLobby.tscn")
-const CompendiumHubSnapshotScript := preload("res://scripts/viewmodels/compendium_hub_snapshot.gd")
 const IntelDossierBoardScene := preload("res://scenes/ui/IntelDossierBoard.tscn")
 const NewGameSetupPageScene := preload("res://scenes/ui/NewGameSetupPage.tscn")
 const PlayerBoardStrategyActionSnapshotScript := preload("res://scripts/viewmodels/player_board_strategy_action_snapshot.gd")
@@ -108,237 +107,6 @@ const PLAYER_COLORS := [
 	Color("#fb923c"),
 ]
 
-const PLAYER_ROLE_CATALOG := [
-	{
-		"name": "环港走私议会",
-		"species": "蜂冠商族",
-		"trait": "高速物流与电池黑市专家；喜欢把怪兽登陆伪装成货运事故。",
-		"passive": "开局资金+¥80；在含环晶电池的区域购牌时，免费额外获得1张同区候选牌。",
-		"starting_cash_bonus": 80,
-		"bonus_card_product": "环晶电池",
-		"flavor": "他们总能把第一只怪兽包装成一次普通货运事故。",
-	},
-	{
-		"name": "深海菌毯使团",
-		"species": "雾鳃孢子人",
-		"trait": "擅长把资源偏好伪装成生态灾害；靠菌毯副产物结算现金。",
-		"passive": "开局资金+¥80；己方含深海菌毯的城市每分钟现金流额外+¥55。",
-		"starting_cash_bonus": 80,
-		"resource_cash_product": "深海菌毯",
-		"resource_cash_amount": 55,
-		"flavor": "他们的合同像潮湿的孢子一样扩散，没人知道真正的客户是谁。",
-	},
-	{
-		"name": "重力矿联董事会",
-		"species": "岩壳重核族",
-		"trait": "矿业城市与重物流保护伞；用重力陶瓷抵押城市现金流。",
-		"passive": "开局资金+¥90；己方含重力陶瓷的城市每分钟现金流额外+¥45。",
-		"starting_cash_bonus": 90,
-		"resource_cash_product": "重力陶瓷",
-		"resource_cash_amount": 45,
-		"flavor": "他们称一切破坏为地质调整，并且会给调整开票。",
-	},
-	{
-		"name": "离子军购局",
-		"species": "蓝焰档案体",
-		"trait": "军需订单与能量食品投标人；怪兽升级会变成采购预算。",
-		"passive": "己方怪兽升级时获得¥160。",
-		"monster_upgrade_cash": 160,
-		"flavor": "他们从不发动战争，只是提前出售战争会需要的东西。",
-	},
-	{
-		"name": "光合修复会",
-		"species": "藤冠共生体",
-		"trait": "避难产业和修复商品联盟；把光合凝胶做成灾后保险。",
-		"passive": "开局资金+¥120；己方含光合凝胶的城市每分钟现金流额外+¥40。",
-		"starting_cash_bonus": 120,
-		"resource_cash_product": "光合凝胶",
-		"resource_cash_amount": 40,
-		"flavor": "他们的城市总在灾后重建合同签好之后才被灾难发现。",
-	},
-	{
-		"name": "虹膜数据券商",
-		"species": "棱眼账本体",
-		"trait": "把活体芯片写进每笔交易的影子账本；擅长从情报商品区顺手拿牌。",
-		"passive": "开局资金+¥60；在含活体芯片的区域购牌时，免费额外获得1张同区候选牌。",
-		"starting_cash_bonus": 60,
-		"bonus_card_product": "活体芯片",
-		"flavor": "他们不偷情报，他们只是提前拥有账本的下一页。",
-	},
-	{
-		"name": "星鲸餐饮垄断",
-		"species": "鲸胃星民",
-		"trait": "星鲸罐头连锁供应商；怪兽每次变强都会顺便带火一次联名营销。",
-		"passive": "己方含星鲸罐头的城市每分钟现金流额外+¥50；己方怪兽升级时获得¥60。",
-		"resource_cash_product": "星鲸罐头",
-		"resource_cash_amount": 50,
-		"monster_upgrade_cash": 60,
-		"flavor": "他们坚称每一次怪兽袭击都只是一次过于成功的试吃会。",
-	},
-	{
-		"name": "静电蜂巢银行",
-		"species": "金翼蜂群意志",
-		"trait": "用静电蜂蜜给黑市信用背书；越靠近甜味商路，越容易多拿一张牌。",
-		"passive": "在含静电蜂蜜的区域购牌时，免费额外获得1张同区候选牌；卡牌归属竞猜押注成本-¥20。",
-		"bonus_card_product": "静电蜂蜜",
-		"card_owner_guess_discount": 20,
-		"flavor": "他们发出的不是贷款通知，是一整座蜂巢的低频催收。",
-	},
-	{
-		"name": "星图审计庭",
-		"species": "银环观测官",
-		"trait": "把每一座城市的施工轨迹写进星图账本；擅长直接锁定陌生区域业主。",
-		"passive": "每局可用2次身份侦测：直接查明当前选中陌生城市的真实业主，并以高置信写入私人标注；城市归属终局命中奖励+¥40。",
-		"intel_city_reveal_charges": 2,
-		"city_guess_reward_bonus": 40,
-		"flavor": "他们从不问“是谁造的”，只问“为什么发票没有经过审计庭”。",
-	},
-	{
-		"name": "幽幕播报社",
-		"species": "暗频主持群",
-		"trait": "专门购买匿名出牌瞬间的影像残帧；可以追溯卡牌轨道上的历史归属。",
-		"passive": "每局可用1次身份追帧：私下查明一张轨道匿名牌是谁打出的；卡牌归属竞猜押注成本-¥40。",
-		"intel_card_trace_charges": 1,
-		"card_owner_guess_discount": 40,
-		"flavor": "所有画面都是雪花屏，只有他们听得见雪花里谁在结账。",
-	},
-	{
-		"name": "双边密约公证团",
-		"species": "镜面章鱼律师",
-		"trait": "从合约墨迹里读出双方的影子；知道更多，但不能免费公开证明。",
-		"passive": "每局可用2次合约回溯：私下查明最近一份合约的出牌方与目标业主；合约牌GDP份额门槛-5个百分点。",
-		"intel_contract_trace_charges": 2,
-		"contract_flow_discount": 1,
-		"flavor": "他们盖章时会伸出第三只触手，专门握住真正签字的人。",
-	},
-	{
-		"name": "碎光私探行会",
-		"species": "棱镜游民",
-		"trait": "靠半真半假的线索套利；不一定知道答案，但下注成本更低。",
-		"passive": "卡牌归属竞猜押注成本-¥30，猜中额外获得¥30。",
-		"card_owner_guess_discount": 30,
-		"card_owner_guess_bonus": 30,
-		"flavor": "他们卖出的每条线索都闪闪发光，尤其是错的那条。",
-	},
-	{
-		"name": "星门补给商会",
-		"species": "折跃仓储人",
-		"trait": "把恒星晨昏线当作移动仓储时刻表；总能提前准备下一次采购。",
-		"passive": "开局资金+¥40。普通牌市场的日照资格与怪兽压力报价对所有玩家一致。",
-		"starting_cash_bonus": 40,
-		"flavor": "他们的仓库门永远开在晨昏线到来前一秒。",
-	},
-	{
-		"name": "赤环航运托拉斯",
-		"species": "红环渡航民",
-		"trait": "经营海洋保险、航道租赁和绕行合同；最擅长从运输瓶颈里抽佣。",
-		"passive": "己方含风暴珍珠的城市每分钟现金流额外+¥35；合约牌GDP份额门槛-5个百分点；开局资金+¥50。",
-		"starting_cash_bonus": 50,
-		"resource_cash_product": "风暴珍珠",
-		"resource_cash_amount": 35,
-		"contract_flow_discount": 1,
-		"flavor": "他们不拥有海洋，只拥有所有必须穿过海洋的发票。",
-	},
-	{
-		"name": "霓虹需求剧院",
-		"species": "幕光拟态族",
-		"trait": "把消费欲望包装成演出；适合做需求城市、会展和短期订单。",
-		"passive": "己方含梦境香氛的城市每分钟现金流额外+¥45；在含梦境香氛的区域购牌时，免费额外获得1张同区候选牌。",
-		"resource_cash_product": "梦境香氛",
-		"resource_cash_amount": 45,
-		"bonus_card_product": "梦境香氛",
-		"flavor": "他们出售的不是商品，是观众相信自己需要商品的那一秒。",
-	},
-	{
-		"name": "极昼农业云",
-		"species": "日冕叶群",
-		"trait": "喜欢低价稳定商品和长线现金流；抗压但爆发较慢。",
-		"passive": "开局资金+¥110；己方含星露莓的城市每分钟现金流额外+¥35；城市归属终局命中奖励+¥20。",
-		"starting_cash_bonus": 110,
-		"resource_cash_product": "星露莓",
-		"resource_cash_amount": 35,
-		"city_guess_reward_bonus": 20,
-		"flavor": "极昼温室从不休息，账本也不休息。",
-	},
-	{
-		"name": "黑潮风险基金",
-		"species": "墨鳍量化体",
-		"trait": "以灾害波动和匿名押注为食；适合金融买涨/做空与情报竞猜混合路线。",
-		"passive": "开局资金+¥70；卡牌归属竞猜押注成本-¥20；猜中额外获得¥40。",
-		"starting_cash_bonus": 70,
-		"card_owner_guess_discount": 20,
-		"card_owner_guess_bonus": 40,
-		"flavor": "他们看见怪兽时先问：这次波动能不能加杠杆？",
-	},
-	{
-		"name": "白噪安保公司",
-		"species": "噪羽守密者",
-		"trait": "保护运输、擦除痕迹、低调收钱；适合领先后的防守与保险路线。",
-		"passive": "己方含轨迹墨水的城市每分钟现金流额外+¥40；卡牌归属竞猜押注成本-¥25；开局资金+¥40。",
-		"starting_cash_bonus": 40,
-		"resource_cash_product": "轨迹墨水",
-		"resource_cash_amount": 40,
-		"card_owner_guess_discount": 25,
-		"flavor": "白噪声里什么都能消失，包括一张过于关键的发票。",
-	},
-	{
-		"name": "钛壳互助清算所",
-		"species": "钛壳贝群",
-		"trait": "把城市修复、保险和低风险商品做成互助池；收益稳但依赖城市存活。",
-		"passive": "开局资金+¥60；己方含钛壳贝的城市每分钟现金流额外+¥55。",
-		"starting_cash_bonus": 60,
-		"resource_cash_product": "钛壳贝",
-		"resource_cash_amount": 55,
-		"flavor": "他们愿意赔付一切损失，只要损失发生前你已经买了他们的下一份合约。",
-	},
-	{
-		"name": "暗礁公证黑市",
-		"species": "珊瑚印章群",
-		"trait": "专门处理不该被看见的合约副本；擅长追溯签约关系。",
-		"passive": "每局可用1次合约回溯：私下查明最近一份合约的出牌方与目标业主；合约牌GDP份额门槛-5个百分点；开局资金+¥30。",
-		"starting_cash_bonus": 30,
-		"intel_contract_trace_charges": 1,
-		"contract_flow_discount": 1,
-		"flavor": "他们的印章长在暗礁上，只有退潮时才露出真正的名字。",
-	},
-	{
-		"name": "太阳鳞片王朝",
-		"species": "金鳞恒温族",
-		"trait": "偏好高价值奢侈品、公开市场动向和终局现金冲刺；很容易成为被盯上的富目标。",
-		"passive": "开局资金+¥150；己方含太阳鳞片的城市每分钟现金流额外+¥30。",
-		"starting_cash_bonus": 150,
-		"resource_cash_product": "太阳鳞片",
-		"resource_cash_amount": 30,
-		"flavor": "他们从不隐藏财富，只隐藏财富旁边的怪兽脚印。",
-	},
-	{
-		"name": "孪星兽栏同盟",
-		"species": "双核驯灾族",
-		"trait": "把灾害承包给成对的轨道兽栏；适合同时铺两条怪兽压力线，但资金线索也会翻倍暴露。",
-		"passive": "怪兽归属上限+1：可同时拥有2只在场怪兽。第二只怪兽仍自动行动，受伤时照常让归属者按生命比例失去资金并公开线索；同名怪兽牌仍优先升级/刷新场上同名怪兽。",
-		"monster_control_limit_bonus": 1,
-		"starting_cash_bonus": 30,
-		"flavor": "他们从不问哪只怪兽更忠诚，只问哪只怪兽离竞品城市更近。",
-	},
-	{
-		"name": "蜂巢防务议会",
-		"species": "群巢参谋体",
-		"trait": "把军队拆成多个匿名战术节点；适合一支保卫收益线，一支压制竞争区。",
-		"passive": "军队归属上限+1：可同时维持2支短时防卫军。每支军队各自绑定私有军令牌；军队仍不会自主行动，且军令执行不公开下令者。",
-		"military_control_limit_bonus": 1,
-		"starting_cash_bonus": 30,
-		"flavor": "蜂巢的命令从不来自一个脑袋，所以也没人知道该追查哪一个脑袋。",
-	},
-	{
-		"name": "悖论兽契社",
-		"species": "逆相契约体",
-		"trait": "把怪兽召唤契约改写成相位保险；擅长用怪兽牌抵消关键匿名行动。",
-		"passive": "直接玩家互动牌展示后会出现相位响应沙漏；窗口内可把任意手中怪兽牌当作相位否决打出。会消耗该怪兽牌，但不暴露原本归属。",
-		"monster_cards_as_counter": true,
-		"starting_cash_bonus": 40,
-		"flavor": "他们相信怪兽不是武器，而是一份足够荒谬的撤销条款。",
-	},
-]
 
 const OCEAN_PRODUCT_CATALOG := [
 	"星鲸罐头", "星鳍鱼群", "蓝潮藻", "巨藻纤维", "风暴珍珠", "深海菌毯",
@@ -1538,21 +1306,6 @@ func _intel_dossier_public_snapshot_service_node() -> Node:
 	return coordinator.get_node_or_null("IntelDossierPublicSnapshotService") if coordinator != null else null
 
 
-func _codex_page_count(total_count: int, entries_per_page: int) -> int:
-	var controller := _codex_navigation_controller_node()
-	return int(controller.call("page_count", total_count, entries_per_page)) if controller != null else 1
-
-
-func _codex_page_for_index(index: int, total_count: int, entries_per_page: int) -> int:
-	var controller := _codex_navigation_controller_node()
-	return int(controller.call("page_for_index", index, total_count, entries_per_page)) if controller != null else 0
-
-
-func _codex_first_index_on_page(page_index: int, total_count: int, entries_per_page: int) -> int:
-	var controller := _codex_navigation_controller_node()
-	return int(controller.call("first_index_on_page", page_index, total_count, entries_per_page)) if controller != null else 0
-
-
 func _mark_game_runtime_coordinator_missing(report_error: bool = false) -> void:
 	game_runtime_coordinator_missing = true
 	if report_error and not game_runtime_coordinator_missing_reported:
@@ -1710,19 +1463,18 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 	var handled := false
 	match action_id:
 		"codex_region":
-			_codex_navigation_controller_node().return_target = "game"
-			_open_region_codex_menu(_game_runtime_coordinator_node().table_selection_state().selected_district)
-			handled = true
+			var region_index := _game_runtime_coordinator_node().table_selection_state().selected_district
+			var navigation_port := get_node_or_null("RuntimeServices/CompendiumNavigationPort")
+			handled = navigation_port != null and bool(navigation_port.call("request_open", "region", "detail", "region:%d" % region_index, region_index, "", 0, "game", {"origin": "game"}))
 		"codex_cards":
-			_codex_navigation_controller_node().return_target = "game"
-			_open_card_codex_menu()
-			handled = true
+			var navigation_port := get_node_or_null("RuntimeServices/CompendiumNavigationPort")
+			handled = navigation_port != null and bool(navigation_port.call("request_open", "card", "browser", "catalog", -1, "all", 0, "game", {"origin": "game"}))
 		"codex_intel":
 			_open_intel_dossier_menu()
 			handled = true
 		"inspect":
-			_open_compendium_menu()
-			handled = true
+			var application_flow_port := get_node_or_null("RuntimeServices/ApplicationFlowPort")
+			handled = application_flow_port != null and bool(application_flow_port.call("submit_action", "compendium"))
 		"menu":
 			_open_pause_menu()
 			handled = true
@@ -1787,9 +1539,8 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 			elif action_id.begins_with("track_open_"):
 				var card_name := action_id.substr("track_open_".length()).strip_edges()
 				if card_name != "":
-					_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
-					_open_card_codex_by_name(card_name)
-					handled = true
+					var navigation_port := get_node_or_null("RuntimeServices/CompendiumNavigationPort")
+					handled = navigation_port != null and bool(navigation_port.call("request_open", "card", "detail", card_name, -1, "all", 0, "game", {"origin": "game"}))
 	if handled:
 		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
@@ -2535,9 +2286,6 @@ func _bind_menu_overlay_scene() -> void:
 	var signal_routes := {
 		"continue_requested": Callable(self, "_close_menu"),
 		"main_menu_requested": Callable(self, "_open_main_menu"),
-		"catalog_step_requested": Callable(self, "_cycle_menu_catalog"),
-		"catalog_back_requested": Callable(self, "_back_from_catalog_menu"),
-		"codex_action_requested": Callable(self, "_on_codex_surface_action_requested"),
 	}
 	for signal_name_variant: Variant in signal_routes:
 		var signal_name := str(signal_name_variant)
@@ -2618,8 +2366,6 @@ func _on_menu_quick_nav_action_requested(action_id: String) -> void:
 			_start_new_run_from_menu()
 		"intel":
 			_open_intel_dossier_menu()
-		"compendium":
-			_open_compendium_menu()
 
 
 func _menu_summary_grid_columns() -> int:
@@ -2774,8 +2520,6 @@ func _on_menu_root_lobby_action_requested(action_id: String) -> void:
 			_start_new_run_from_menu()
 		"continue":
 			_close_menu()
-		"compendium":
-			_open_compendium_menu()
 		"load_run":
 			_load_run_from_menu()
 		"quit":
@@ -2791,6 +2535,8 @@ func _add_main_menu_planet_lobby_panel(parent: Container) -> void:
 	var application_flow_port := get_node_or_null("RuntimeServices/ApplicationFlowPort")
 	if application_flow_port != null and lobby.has_signal("rules_requested"):
 		lobby.connect("rules_requested", Callable(application_flow_port, "submit_action").bind("rules"))
+	if application_flow_port != null and lobby.has_signal("compendium_requested"):
+		lobby.connect("compendium_requested", Callable(application_flow_port, "submit_action").bind("compendium"))
 	parent.add_child(lobby)
 	if lobby.has_method("set_lobby"):
 		lobby.call("set_lobby", _main_menu_root_lobby_snapshot())
@@ -2882,9 +2628,8 @@ func _on_intel_dossier_board_action_requested(action_id: String) -> void:
 	elif action_id.begins_with("track_open_"):
 		var card_name := action_id.substr("track_open_".length()).strip_edges()
 		if card_name != "":
-			_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
-			_open_card_codex_by_name(card_name)
-			handled = true
+			var navigation_port := get_node_or_null("RuntimeServices/CompendiumNavigationPort")
+			handled = navigation_port != null and bool(navigation_port.call("request_open", "card", "detail", card_name, -1, "all", 0, "intel", {"origin": "intel"}))
 	elif action_id.begins_with("intel_city_mark_"):
 		var values := action_id.substr("intel_city_mark_".length()).split("_", false, 1)
 		if values.size() == 2:
@@ -2905,17 +2650,21 @@ func _on_intel_dossier_board_action_requested(action_id: String) -> void:
 			_set_city_guess_reason_from_intel(int(payload.substr(0, separator)), payload.substr(separator + 1))
 			handled = true
 	elif action_id.begins_with("intel_open_region_"):
-		_open_intel_region_codex_link(int(action_id.substr("intel_open_region_".length())))
-		handled = true
+		var region_index := int(action_id.substr("intel_open_region_".length()))
+		var navigation_port := get_node_or_null("RuntimeServices/CompendiumNavigationPort")
+		handled = navigation_port != null and bool(navigation_port.call("request_open", "region", "detail", "region:%d" % region_index, region_index, "", 0, "intel", {"origin": "intel"}))
 	elif action_id.begins_with("intel_open_card_"):
-		_open_intel_card_codex_link(action_id.substr("intel_open_card_".length()))
-		handled = true
+		var card_name := action_id.substr("intel_open_card_".length())
+		var navigation_port := get_node_or_null("RuntimeServices/CompendiumNavigationPort")
+		handled = navigation_port != null and bool(navigation_port.call("request_open", "card", "detail", card_name, -1, "all", 0, "intel", {"origin": "intel"}))
 	elif action_id.begins_with("intel_open_monster_"):
-		_open_intel_monster_codex_link(int(action_id.substr("intel_open_monster_".length())))
-		handled = true
+		var monster_index := int(action_id.substr("intel_open_monster_".length()))
+		var navigation_port := get_node_or_null("RuntimeServices/CompendiumNavigationPort")
+		handled = navigation_port != null and bool(navigation_port.call("request_open", "monster", "detail", "monster:%d" % monster_index, monster_index, "", 0, "intel", {"origin": "intel"}))
 	elif action_id.begins_with("intel_open_product_"):
-		_open_intel_product_codex_link(action_id.substr("intel_open_product_".length()))
-		handled = true
+		var product_name := action_id.substr("intel_open_product_".length())
+		var navigation_port := get_node_or_null("RuntimeServices/CompendiumNavigationPort")
+		handled = navigation_port != null and bool(navigation_port.call("request_open", "product", "detail", product_name, -1, "", 0, "intel", {"origin": "intel"}))
 	elif action_id == "intel_open_economy":
 		var application_flow_port := get_node_or_null("RuntimeServices/ApplicationFlowPort") as ApplicationFlowPort
 		handled = application_flow_port != null and application_flow_port.submit_action("economy")
@@ -3008,34 +2757,6 @@ func _set_city_guess_reason_from_intel(city_index: int, reason: String) -> void:
 	if _set_city_guess_reason_for_player(_game_runtime_coordinator_node().table_selection_state().selected_player, city_index, reason):
 		_jump_to_district_on_table(city_index)
 		_open_intel_dossier_menu()
-
-
-func _open_intel_region_codex_link(index: int) -> void:
-	_codex_navigation_controller_node().return_target = "intel"
-	if index >= 0 and index < _game_runtime_coordinator_node().world_session_state().districts.size():
-		_codex_navigation_controller_node().region_codex_index = index
-		_jump_to_district_on_table(index)
-	_update_region_codex_menu()
-
-
-func _open_intel_card_codex_link(card_name: String) -> void:
-	_codex_navigation_controller_node().return_target = "intel"
-	_open_card_codex_by_name(card_name)
-
-
-func _open_intel_monster_codex_link(monster_index: int) -> void:
-	_codex_navigation_controller_node().return_target = "intel"
-	_open_bestiary_menu(monster_index)
-
-
-func _open_intel_product_codex_link(product_name: String) -> void:
-	_codex_navigation_controller_node().return_target = "intel"
-	if ProductMarketRuntimeController.PRODUCT_CATALOG.has(product_name):
-		_codex_navigation_controller_node().product_codex_index = ProductMarketRuntimeController.PRODUCT_CATALOG.find(product_name)
-		_codex_navigation_controller_node().previewed_product_codex_index = _codex_navigation_controller_node().product_codex_index
-		_codex_navigation_controller_node().product_codex_grid_page = _codex_page_for_index(_codex_navigation_controller_node().product_codex_index, ProductMarketRuntimeController.PRODUCT_CATALOG.size(), _product_codex_entries_per_page())
-		_codex_navigation_controller_node().product_codex_show_detail = true
-	_update_product_codex_menu()
 
 
 func _first_entries(entries: Array, limit: int) -> Array:
@@ -3530,20 +3251,6 @@ func _sort_economy_monster_cash_clue_entry(a: Dictionary, b: Dictionary) -> bool
 	return int(a.get("slot", 0)) < int(b.get("slot", 0))
 
 
-func _open_compendium_menu() -> void:
-	_codex_navigation_controller_node().return_target = "main"
-	_present_codex_page(
-		"图鉴",
-		"资料大厅：角色、卡牌、商品、区域与怪兽生态都在这里查看。怪兽牌属于卡牌图鉴；怪兽生态档案展示场上怪兽的行动、偏好和破坏方式。\n图鉴分支：角色图鉴｜怪兽生态档案｜卡牌图鉴｜商品图鉴｜区域图鉴。",
-		{
-			"mode": "compendium",
-			"view": "hub",
-			"hub": CompendiumHubSnapshotScript.compose(_menu_available_content_width()),
-			"navigation": _codex_navigation_data(false, false, _catalog_back_button_text()),
-		}
-	)
-
-
 func _menu_action_accent_for_text(button_text: String) -> Color:
 	if button_text.contains("经济"):
 		return Color("#4ade80")
@@ -3975,607 +3682,9 @@ func _show_menu(title_text: String, body_text: String, can_continue: bool, show_
 	call_deferred("_refresh_menu_layout")
 
 
-func _present_codex_page(title_text: String, body_text: String, page: Dictionary) -> void:
-	_show_menu(title_text, body_text, false)
-	var mode := str(page.get("mode", ""))
-	_codex_navigation_controller_node().catalog_mode = mode
-	if menu_overlay == null or not menu_overlay.has_method("present_codex_page"):
-		push_error("MenuOverlay must present the scene-owned CodexCompendiumSurface.")
-		return
-	menu_overlay.call("present_codex_page", page.duplicate(true))
-
-
-func _codex_navigation_data(prev_visible: bool, next_visible: bool, back_text: String, back_visible: bool = true) -> Dictionary:
-	return {
-		"prev_text": "上一个",
-		"next_text": "下一个",
-		"back_text": back_text,
-		"prev_visible": prev_visible,
-		"next_visible": next_visible,
-		"back_visible": back_visible,
-	}
-
-
-func _on_codex_surface_action_requested(action_id: String, payload: Dictionary) -> void:
-	match action_id:
-		"hub_action":
-			match str(payload.get("action_id", "")):
-				"role":
-					_open_role_codex_from_compendium()
-				"monster":
-					_open_bestiary_from_compendium()
-				"card":
-					_open_card_codex_from_compendium()
-				"product":
-					_open_product_codex_from_compendium()
-				"region":
-					_open_region_codex_from_compendium()
-				"main":
-					_open_main_menu()
-		"card_filter":
-			_set_card_codex_filter(str(payload.get("filter_id", "all")))
-		"card_page_step":
-			_turn_card_codex_grid_page(int(payload.get("delta", 0)))
-		"card_preview":
-			_preview_card_codex_card(str(payload.get("card_name", "")))
-		"card_detail":
-			_open_card_codex_detail(str(payload.get("card_name", "")))
-		"card_deep_link":
-			_open_card_codex_by_name(str(payload.get("card_name", "")))
-		"monster_page_step":
-			_turn_bestiary_grid_page(int(payload.get("delta", 0)))
-		"monster_preview":
-			_preview_bestiary_entry(int(payload.get("catalog_index", -1)))
-		"monster_detail":
-			_open_bestiary_detail(int(payload.get("catalog_index", -1)))
-		"product_page_step":
-			_turn_product_codex_grid_page(int(payload.get("delta", 0)))
-		"product_preview":
-			_preview_product_codex_entry(int(payload.get("catalog_index", -1)))
-		"product_detail":
-			_open_product_codex_detail(int(payload.get("catalog_index", -1)))
-
-
-func _open_bestiary_from_compendium() -> void:
-	_codex_navigation_controller_node().return_target = "compendium"
-	_codex_navigation_controller_node().bestiary_show_detail = false
-	_codex_navigation_controller_node().bestiary_grid_page = 0
-	_codex_navigation_controller_node().previewed_bestiary_index = 0
-	_open_bestiary_menu()
-
-
-func _open_card_codex_from_compendium() -> void:
-	_codex_navigation_controller_node().return_target = "compendium"
-	_codex_navigation_controller_node().card_codex_filter = "all"
-	_codex_navigation_controller_node().card_codex_grid_page = 0
-	_codex_navigation_controller_node().card_codex_show_detail = false
-	_codex_navigation_controller_node().previewed_card_codex_card = ""
-	_open_card_codex_menu()
-
-
-func _open_role_codex_from_compendium() -> void:
-	_codex_navigation_controller_node().return_target = "compendium"
-	_open_role_codex_menu()
-
-
-func _open_product_codex_from_compendium() -> void:
-	_codex_navigation_controller_node().return_target = "compendium"
-	_open_product_codex_menu()
-
-
-func _open_region_codex_from_compendium() -> void:
-	_codex_navigation_controller_node().return_target = "compendium"
-	_open_region_codex_menu()
-
-
-func _back_from_catalog_menu() -> void:
-	if _codex_navigation_controller_node().catalog_mode == "card" and _codex_navigation_controller_node().card_codex_show_detail:
-		_codex_navigation_controller_node().card_codex_show_detail = false
-		_update_card_codex_menu()
-		return
-	if _codex_navigation_controller_node().catalog_mode == "monster" and _codex_navigation_controller_node().bestiary_show_detail:
-		_codex_navigation_controller_node().bestiary_show_detail = false
-		_update_bestiary_menu()
-		return
-	if _codex_navigation_controller_node().catalog_mode == "product" and _codex_navigation_controller_node().product_codex_show_detail:
-		_codex_navigation_controller_node().product_codex_show_detail = false
-		_update_product_codex_menu()
-		return
-	match _codex_navigation_controller_node().return_target:
-		"compendium":
-			_open_compendium_menu()
-		"intel":
-			_open_intel_dossier_menu()
-		"game":
-			_close_menu()
-		_:
-			_open_main_menu()
-
-
-func _catalog_back_button_text() -> String:
-	match _codex_navigation_controller_node().return_target:
-		"compendium":
-			return "返回图鉴"
-		"intel":
-			return "返回情报档案"
-		"game":
-			return "返回牌桌"
-		_:
-			return "返回主菜单"
-
-
-func _open_bestiary_menu(index: int = -1) -> void:
-	_codex_navigation_controller_node().bestiary_show_detail = index >= 0
-	if index >= 0:
-		_codex_navigation_controller_node().bestiary_index = index
-		_codex_navigation_controller_node().previewed_bestiary_index = _valid_bestiary_index(index)
-		_codex_navigation_controller_node().bestiary_grid_page = _codex_page_for_index(_codex_navigation_controller_node().bestiary_index, _catalog_size(), _bestiary_entries_per_page())
-	_update_bestiary_menu()
-
-
-func _open_card_codex_menu(index: int = -1) -> void:
-	_codex_navigation_controller_node().card_codex_show_detail = index >= 0
-	if index >= 0:
-		_codex_navigation_controller_node().card_codex_index = index
-		_codex_navigation_controller_node().card_codex_grid_page = _codex_page_for_index(_codex_navigation_controller_node().card_codex_index, _card_codex_names().size(), _card_codex_cards_per_page())
-		var names := _card_codex_names()
-		if _codex_navigation_controller_node().card_codex_index >= 0 and _codex_navigation_controller_node().card_codex_index < names.size():
-			_codex_navigation_controller_node().previewed_card_codex_card = String(names[_codex_navigation_controller_node().card_codex_index])
-	_update_card_codex_menu()
-
-
-func _open_card_codex_by_name(card_name: String) -> void:
-	_codex_navigation_controller_node().card_codex_show_detail = false
-	var direct_skill := _game_runtime_coordinator_node().card_definition(card_name)
-	if not direct_skill.is_empty():
-		_codex_navigation_controller_node().card_codex_filter = str(_card_presentation_snapshot(card_name, direct_skill).get("category_id", "other"))
-	var names := _card_codex_names()
-	var index := names.find(card_name)
-	if index < 0:
-		var family_name := "%s1" % _game_runtime_coordinator_node().card_family_id(card_name)
-		index = names.find(family_name)
-	if index >= 0:
-		_codex_navigation_controller_node().card_codex_index = index
-		_codex_navigation_controller_node().card_codex_show_detail = true
-		_codex_navigation_controller_node().card_codex_grid_page = _codex_page_for_index(_codex_navigation_controller_node().card_codex_index, _card_codex_names().size(), _card_codex_cards_per_page())
-		_codex_navigation_controller_node().previewed_card_codex_card = String(names[_codex_navigation_controller_node().card_codex_index])
-	else:
-		_codex_navigation_controller_node().card_codex_filter = "all"
-		names = _card_codex_names()
-		index = names.find(card_name)
-		if index < 0:
-			index = names.find("%s1" % _game_runtime_coordinator_node().card_family_id(card_name))
-	if index >= 0:
-		_codex_navigation_controller_node().card_codex_index = index
-		_codex_navigation_controller_node().card_codex_show_detail = true
-		_codex_navigation_controller_node().card_codex_grid_page = _codex_page_for_index(_codex_navigation_controller_node().card_codex_index, _card_codex_names().size(), _card_codex_cards_per_page())
-		_codex_navigation_controller_node().previewed_card_codex_card = String(names[_codex_navigation_controller_node().card_codex_index])
-	_update_card_codex_menu()
-
-
-func _open_role_codex_menu(index: int = -1) -> void:
-	if index >= 0:
-		_codex_navigation_controller_node().role_codex_index = index
-	_update_role_codex_menu()
-
-
-func _cycle_role_codex(step: int) -> void:
-	if PLAYER_ROLE_CATALOG.is_empty():
-		return
-	_codex_navigation_controller_node().role_codex_index = wrapi(_codex_navigation_controller_node().role_codex_index + step, 0, PLAYER_ROLE_CATALOG.size())
-	_update_role_codex_menu()
-
-
-func _update_role_codex_menu() -> void:
-	if PLAYER_ROLE_CATALOG.is_empty():
-		_show_catalog_empty_page("角色图鉴", "还没有角色卡资料。")
-		return
-	_codex_navigation_controller_node().role_codex_index = wrapi(_codex_navigation_controller_node().role_codex_index, 0, PLAYER_ROLE_CATALOG.size())
-	var role_index: int = int(_codex_navigation_controller_node().role_codex_index)
-	var role_card := _make_player_role_card(role_index)
-	var public_snapshot := _role_codex_public_snapshot(role_card, role_index, PLAYER_ROLE_CATALOG.size())
-	_present_codex_page("角色图鉴", str(public_snapshot.get("summary_text", "")), {
-		"mode": "role",
-		"view": "detail",
-		"detail": public_snapshot.get("board", {}),
-		"navigation": _codex_navigation_data(true, true, _catalog_back_button_text()),
-	})
-
-
-func _cycle_menu_catalog(step: int) -> void:
-	match _codex_navigation_controller_node().catalog_mode:
-		"card":
-			_cycle_card_codex(step)
-		"product":
-			_cycle_product_codex(step)
-		"region":
-			_cycle_region_codex(step)
-		"role":
-			_cycle_role_codex(step)
-		_:
-			_cycle_bestiary(step)
-
-
-func _cycle_bestiary(step: int) -> void:
-	if _catalog_size() <= 0:
-		return
-	if _codex_navigation_controller_node().bestiary_show_detail:
-		_codex_navigation_controller_node().bestiary_index = wrapi(_codex_navigation_controller_node().bestiary_index + step, 0, _catalog_size())
-		_codex_navigation_controller_node().previewed_bestiary_index = _codex_navigation_controller_node().bestiary_index
-		_codex_navigation_controller_node().bestiary_grid_page = _codex_page_for_index(_codex_navigation_controller_node().bestiary_index, _catalog_size(), _bestiary_entries_per_page())
-	else:
-		var page_count := _codex_page_count(_catalog_size(), _bestiary_entries_per_page())
-		_codex_navigation_controller_node().bestiary_grid_page = wrapi(_codex_navigation_controller_node().bestiary_grid_page + step, 0, page_count)
-		var first_index := _codex_first_index_on_page(_codex_navigation_controller_node().bestiary_grid_page, _catalog_size(), _bestiary_entries_per_page())
-		_codex_navigation_controller_node().bestiary_index = first_index
-		_codex_navigation_controller_node().previewed_bestiary_index = first_index
-	_update_bestiary_menu()
-
-
-func _update_bestiary_menu() -> void:
-	if _catalog_size() <= 0:
-		return
-	_codex_navigation_controller_node().bestiary_index = wrapi(_codex_navigation_controller_node().bestiary_index, 0, _catalog_size())
-	_codex_navigation_controller_node().previewed_bestiary_index = _valid_bestiary_index(_codex_navigation_controller_node().previewed_bestiary_index)
-	_codex_navigation_controller_node().bestiary_grid_page = clampi(_codex_navigation_controller_node().bestiary_grid_page, 0, _codex_page_count(_catalog_size(), _bestiary_entries_per_page()) - 1)
-	var public_snapshot := _game_runtime_coordinator_node().monster_codex_public_detail_snapshot(_codex_navigation_controller_node().bestiary_index, true)
-	var body_text := str(public_snapshot.get("summary_text", "")) if _codex_navigation_controller_node().bestiary_show_detail else _bestiary_grid_text()
-	var page := {
-		"mode": "monster",
-		"view": "detail" if _codex_navigation_controller_node().bestiary_show_detail else "browser",
-		"navigation": _codex_navigation_data(
-			_codex_navigation_controller_node().bestiary_show_detail,
-			_codex_navigation_controller_node().bestiary_show_detail,
-			"返回缩略图" if _codex_navigation_controller_node().bestiary_show_detail else _catalog_back_button_text()
-		),
-	}
-	if _codex_navigation_controller_node().bestiary_show_detail:
-		page["detail"] = public_snapshot.get("detail", {})
-		page["monster_card_link"] = public_snapshot.get("monster_card_link", {})
-	else:
-		page["browser"] = _bestiary_codex_browser_snapshot()
-	_present_codex_page("怪兽生态档案", body_text, page)
-
-
-func _valid_bestiary_index(index: int) -> int:
-	return clampi(index, 0, max(0, _catalog_size() - 1))
-
-
-func _bestiary_grid_columns() -> int:
-	return clampi(int(floor(_menu_available_content_width() / 180.0)), 2, 5)
-
-
-func _bestiary_grid_rows() -> int:
-	return clampi(int(floor(_menu_available_content_height() / 176.0)), 1, 4)
-
-
-func _bestiary_entries_per_page() -> int:
-	return maxi(1, _bestiary_grid_columns() * _bestiary_grid_rows())
-
-
-func _bestiary_grid_text() -> String:
-	var page_count := _codex_page_count(_catalog_size(), _bestiary_entries_per_page())
-	return "怪兽生态｜第%d/%d页｜本页%d×%d\n看画像、速度、偏好、行动概率和招式。悬停预览，双击详情；怪兽牌在卡牌图鉴。" % [
-		_codex_navigation_controller_node().bestiary_grid_page + 1,
-		page_count,
-		_bestiary_grid_columns(),
-		_bestiary_grid_rows(),
-	]
-
-
-func _turn_bestiary_grid_page(step: int) -> void:
-	if _catalog_size() <= 0:
-		return
-	var page_count := _codex_page_count(_catalog_size(), _bestiary_entries_per_page())
-	_codex_navigation_controller_node().bestiary_grid_page = wrapi(_codex_navigation_controller_node().bestiary_grid_page + step, 0, page_count)
-	var first_index := _codex_first_index_on_page(_codex_navigation_controller_node().bestiary_grid_page, _catalog_size(), _bestiary_entries_per_page())
-	_codex_navigation_controller_node().bestiary_index = first_index
-	_codex_navigation_controller_node().previewed_bestiary_index = first_index
-	_codex_navigation_controller_node().bestiary_show_detail = false
-	_update_bestiary_menu()
-
-
-func _bestiary_codex_browser_snapshot() -> Dictionary:
-	var total_count := _catalog_size()
-	var page_count := _codex_page_count(total_count, _bestiary_entries_per_page())
-	_codex_navigation_controller_node().bestiary_grid_page = clampi(_codex_navigation_controller_node().bestiary_grid_page, 0, max(0, page_count - 1))
-	var per_page := _bestiary_entries_per_page()
-	var start_index: int = int(_codex_navigation_controller_node().bestiary_grid_page) * per_page
-	var end_index := mini(total_count, start_index + per_page)
-	if start_index >= total_count:
-		start_index = _codex_first_index_on_page(_codex_navigation_controller_node().bestiary_grid_page, total_count, _bestiary_entries_per_page())
-		end_index = mini(total_count, start_index + per_page)
-	if _codex_navigation_controller_node().previewed_bestiary_index < start_index or _codex_navigation_controller_node().previewed_bestiary_index >= end_index:
-		_codex_navigation_controller_node().previewed_bestiary_index = start_index
-		_codex_navigation_controller_node().bestiary_index = start_index
-	return _game_runtime_coordinator_node().monster_codex_public_browser_snapshot({
-		"start_index": start_index,
-		"end_index": end_index,
-		"columns": _bestiary_grid_columns(),
-		"selected_index": _codex_navigation_controller_node().previewed_bestiary_index,
-		"can_page": page_count > 1,
-		"page_label": "第%d/%d页｜%d只怪兽｜本页%d-%d" % [_codex_navigation_controller_node().bestiary_grid_page + 1, page_count, total_count, start_index + 1, end_index],
-	})
-
-
-func _preview_bestiary_entry(catalog_index: int, refresh: bool = true) -> void:
-	if _catalog_size() <= 0:
-		return
-	_codex_navigation_controller_node().previewed_bestiary_index = _valid_bestiary_index(catalog_index)
-	_codex_navigation_controller_node().bestiary_index = _codex_navigation_controller_node().previewed_bestiary_index
-	if refresh:
-		var saved_scroll := int(menu_overlay.call("content_scroll_value")) if menu_overlay != null and menu_overlay.has_method("content_scroll_value") else 0
-		_update_bestiary_menu()
-		_queue_restore_menu_scroll(saved_scroll)
-
-
-func _open_bestiary_detail(catalog_index: int) -> void:
-	_preview_bestiary_entry(catalog_index, false)
-	_codex_navigation_controller_node().bestiary_show_detail = true
-	_codex_navigation_controller_node().bestiary_grid_page = _codex_page_for_index(_codex_navigation_controller_node().bestiary_index, _catalog_size(), _bestiary_entries_per_page())
-	_update_bestiary_menu()
-
-
-func _cycle_card_codex(step: int) -> void:
-	var names := _card_codex_names()
-	if names.is_empty():
-		return
-	if _codex_navigation_controller_node().card_codex_show_detail:
-		_codex_navigation_controller_node().card_codex_index = wrapi(_codex_navigation_controller_node().card_codex_index + step, 0, names.size())
-		_codex_navigation_controller_node().previewed_card_codex_card = String(names[_codex_navigation_controller_node().card_codex_index])
-		_codex_navigation_controller_node().card_codex_grid_page = _codex_page_for_index(_codex_navigation_controller_node().card_codex_index, _card_codex_names().size(), _card_codex_cards_per_page())
-	else:
-		var page_count := _codex_page_count(names.size(), _card_codex_cards_per_page())
-		_codex_navigation_controller_node().card_codex_grid_page = wrapi(_codex_navigation_controller_node().card_codex_grid_page + step, 0, page_count)
-		var first_index := _codex_first_index_on_page(_codex_navigation_controller_node().card_codex_grid_page, names.size(), _card_codex_cards_per_page())
-		_codex_navigation_controller_node().card_codex_index = first_index
-		_codex_navigation_controller_node().previewed_card_codex_card = String(names[first_index])
-	_update_card_codex_menu()
-
-
-func _update_card_codex_menu() -> void:
-	var names := _card_codex_names()
-	if names.is_empty():
-		_show_catalog_empty_page("卡牌图鉴", "当前分类没有卡牌。")
-		return
-	_codex_navigation_controller_node().card_codex_index = wrapi(_codex_navigation_controller_node().card_codex_index, 0, names.size())
-	var page_count := _codex_page_count(names.size(), _card_codex_cards_per_page())
-	_codex_navigation_controller_node().card_codex_grid_page = clampi(_codex_navigation_controller_node().card_codex_grid_page, 0, max(0, page_count - 1))
-	if _codex_navigation_controller_node().previewed_card_codex_card == "" or not names.has(_codex_navigation_controller_node().previewed_card_codex_card):
-		_codex_navigation_controller_node().previewed_card_codex_card = String(names[mini(_codex_navigation_controller_node().card_codex_index, names.size() - 1)])
-	var card_name := String(names[_codex_navigation_controller_node().card_codex_index])
-	var coordinator := _game_runtime_coordinator_node()
-	var public_snapshot: Dictionary
-	if _codex_navigation_controller_node().card_codex_show_detail:
-		public_snapshot = coordinator.card_codex_public_detail_snapshot(card_name, _codex_navigation_controller_node().card_codex_index, names.size())
-	else:
-		var filters: Array = []
-		for option_variant in _card_codex_filter_options():
-			var option: Dictionary = option_variant
-			var filter_id := str(option.get("id", "all"))
-			var label := str(option.get("label", filter_id))
-			filters.append({"id": filter_id, "label": label, "count": _card_codex_names(filter_id).size(), "accent": _menu_action_accent_for_text(label)})
-		var layer_report := coordinator.gameplay_balance_diagnostics_service().card_supply_layer_report()
-		public_snapshot = coordinator.card_codex_public_browser_snapshot({
-			"names": names,
-			"columns": _card_codex_grid_columns(),
-			"rows": _card_codex_grid_rows(),
-			"page_index": _codex_navigation_controller_node().card_codex_grid_page,
-			"filter_id": _codex_navigation_controller_node().card_codex_filter,
-			"filter_label": _card_codex_filter_label(),
-			"selected_card": _codex_navigation_controller_node().previewed_card_codex_card,
-			"run_pool_count": int(layer_report.get("run_pool_count", 0)),
-			"district_supply_count": int(layer_report.get("district_supply_count", 0)),
-			"filters": filters,
-		})
-		_codex_navigation_controller_node().card_codex_grid_page = int(public_snapshot.get("page_index", _codex_navigation_controller_node().card_codex_grid_page))
-		_codex_navigation_controller_node().previewed_card_codex_card = str(public_snapshot.get("selected_card", _codex_navigation_controller_node().previewed_card_codex_card))
-		_codex_navigation_controller_node().card_codex_index = int(public_snapshot.get("selected_index", _codex_navigation_controller_node().card_codex_index))
-	var body_text := str(public_snapshot.get("summary_text", ""))
-	_present_codex_page("卡牌图鉴", body_text, {
-		"mode": "card",
-		"view": "detail" if _codex_navigation_controller_node().card_codex_show_detail else "browser",
-		"detail": public_snapshot.get("detail", {}) if _codex_navigation_controller_node().card_codex_show_detail else {},
-		"browser": public_snapshot if not _codex_navigation_controller_node().card_codex_show_detail else {},
-		"navigation": _codex_navigation_data(
-			_codex_navigation_controller_node().card_codex_show_detail,
-			_codex_navigation_controller_node().card_codex_show_detail,
-			"返回缩略图" if _codex_navigation_controller_node().card_codex_show_detail else _catalog_back_button_text()
-		),
-	})
-
-
-func _card_codex_grid_columns() -> int:
-	return clampi(int(floor(_menu_available_content_width() / 185.0)), 2, 5)
-
-
-func _card_codex_grid_rows() -> int:
-	return clampi(int(floor(_menu_available_content_height() / 230.0)), 1, 4)
-
-
-func _card_codex_cards_per_page() -> int:
-	return maxi(1, _card_codex_grid_columns() * _card_codex_grid_rows())
-
-
-func _turn_card_codex_grid_page(step: int) -> void:
-	var names := _card_codex_names()
-	if names.is_empty():
-		return
-	var page_count := _codex_page_count(names.size(), _card_codex_cards_per_page())
-	_codex_navigation_controller_node().card_codex_grid_page = wrapi(_codex_navigation_controller_node().card_codex_grid_page + step, 0, page_count)
-	var first_index := _codex_first_index_on_page(_codex_navigation_controller_node().card_codex_grid_page, names.size(), _card_codex_cards_per_page())
-	_codex_navigation_controller_node().card_codex_index = first_index
-	_codex_navigation_controller_node().previewed_card_codex_card = String(names[first_index])
-	_codex_navigation_controller_node().card_codex_show_detail = false
-	_update_card_codex_menu()
-
-
-func _preview_card_codex_card(card_name: String, refresh: bool = true) -> void:
-	var names := _card_codex_names()
-	if card_name == "" or not names.has(card_name):
-		return
-	_codex_navigation_controller_node().previewed_card_codex_card = card_name
-	_codex_navigation_controller_node().card_codex_index = names.find(card_name)
-	if refresh:
-		var saved_scroll := int(menu_overlay.call("content_scroll_value")) if menu_overlay != null and menu_overlay.has_method("content_scroll_value") else 0
-		_update_card_codex_menu()
-		_queue_restore_menu_scroll(saved_scroll)
-
-
-func _queue_restore_menu_scroll(value: int) -> void:
-	_restore_menu_scroll(value)
-	call_deferred("_restore_menu_scroll", value)
-	_queue_restore_menu_scroll_on_next_frame(value, 0)
-
-
-func _queue_restore_menu_scroll_on_next_frame(value: int, pass_index: int) -> void:
-	if get_tree() == null:
-		return
-	var callback := Callable(self, "_restore_menu_scroll_frame_step").bind(value, pass_index)
-	if not get_tree().process_frame.is_connected(callback):
-		get_tree().process_frame.connect(callback, CONNECT_ONE_SHOT)
-
-
-func _restore_menu_scroll_frame_step(value: int, pass_index: int) -> void:
-	_restore_menu_scroll(value)
-	if pass_index < 4:
-		_queue_restore_menu_scroll_on_next_frame(value, pass_index + 1)
-
-
-func _restore_menu_scroll(value: int) -> void:
-	if menu_overlay != null and menu_overlay.has_method("set_content_scroll_value"):
-		menu_overlay.call("set_content_scroll_value", value)
-
-
-func _open_card_codex_detail(card_name: String) -> void:
-	_preview_card_codex_card(card_name, false)
-	if _codex_navigation_controller_node().card_codex_index < 0:
-		return
-	_codex_navigation_controller_node().card_codex_show_detail = true
-	_codex_navigation_controller_node().card_codex_grid_page = _codex_page_for_index(_codex_navigation_controller_node().card_codex_index, _card_codex_names().size(), _card_codex_cards_per_page())
-	_update_card_codex_menu()
-
-
 func _codex_role_route_label(role_card: Dictionary) -> String:
 	var coordinator := _game_runtime_coordinator_node()
 	return str(coordinator.call("codex_role_route_label", role_card.duplicate(true), _role_starting_cash_delta(role_card))) if coordinator != null and coordinator.has_method("codex_role_route_label") else "通用经营"
-
-
-func _role_codex_public_source_snapshot(role_card: Dictionary, index: int, total: int) -> Dictionary:
-	var content_width := _menu_available_content_width()
-	return {
-		"role_card": role_card.duplicate(true),
-		"index": index,
-		"total": total,
-		"passive_text": _role_passive_text(role_card),
-		"starting_cash_delta": _role_starting_cash_delta(role_card),
-		"accent": _role_card_presentation_color(role_card),
-		"kpi_columns": clampi(int(floor(content_width / 210.0)), 1, 4),
-		"route_columns": clampi(int(floor(content_width / 300.0)), 1, 3),
-		"face": _new_game_setup_role_card_face_snapshot(role_card),
-		"face_effect": _role_card_face_text(role_card, false),
-	}
-
-
-func _role_codex_public_snapshot(role_card: Dictionary, index: int, total: int) -> Dictionary:
-	var coordinator := _game_runtime_coordinator_node()
-	var source := _role_codex_public_source_snapshot(role_card, index, total)
-	var value: Variant = coordinator.call("compose_codex_role_snapshot", source) if coordinator != null and coordinator.has_method("compose_codex_role_snapshot") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func _open_product_codex_menu(index: int = -1) -> void:
-	if _codex_navigation_controller_node().return_target == "":
-		_codex_navigation_controller_node().return_target = "compendium"
-	_codex_navigation_controller_node().product_codex_show_detail = index >= 0
-	if index >= 0:
-		_codex_navigation_controller_node().product_codex_index = index
-		_codex_navigation_controller_node().previewed_product_codex_index = _valid_product_codex_index(index)
-		_codex_navigation_controller_node().product_codex_grid_page = _codex_page_for_index(_codex_navigation_controller_node().product_codex_index, ProductMarketRuntimeController.PRODUCT_CATALOG.size(), _product_codex_entries_per_page())
-	elif _game_runtime_coordinator_node().table_selection_state().selected_trade_product != "" and ProductMarketRuntimeController.PRODUCT_CATALOG.has(_game_runtime_coordinator_node().table_selection_state().selected_trade_product):
-		_codex_navigation_controller_node().product_codex_index = ProductMarketRuntimeController.PRODUCT_CATALOG.find(_game_runtime_coordinator_node().table_selection_state().selected_trade_product)
-		_codex_navigation_controller_node().previewed_product_codex_index = _codex_navigation_controller_node().product_codex_index
-		_codex_navigation_controller_node().product_codex_grid_page = _codex_page_for_index(_codex_navigation_controller_node().product_codex_index, ProductMarketRuntimeController.PRODUCT_CATALOG.size(), _product_codex_entries_per_page())
-	_update_product_codex_menu()
-
-
-func _cycle_product_codex(step: int) -> void:
-	if ProductMarketRuntimeController.PRODUCT_CATALOG.is_empty():
-		return
-	if _codex_navigation_controller_node().product_codex_show_detail:
-		_codex_navigation_controller_node().product_codex_index = wrapi(_codex_navigation_controller_node().product_codex_index + step, 0, ProductMarketRuntimeController.PRODUCT_CATALOG.size())
-		_codex_navigation_controller_node().previewed_product_codex_index = _codex_navigation_controller_node().product_codex_index
-		_codex_navigation_controller_node().product_codex_grid_page = _codex_page_for_index(_codex_navigation_controller_node().product_codex_index, ProductMarketRuntimeController.PRODUCT_CATALOG.size(), _product_codex_entries_per_page())
-	else:
-		var page_count := _codex_page_count(ProductMarketRuntimeController.PRODUCT_CATALOG.size(), _product_codex_entries_per_page())
-		_codex_navigation_controller_node().product_codex_grid_page = wrapi(_codex_navigation_controller_node().product_codex_grid_page + step, 0, page_count)
-		var first_index := _codex_first_index_on_page(_codex_navigation_controller_node().product_codex_grid_page, ProductMarketRuntimeController.PRODUCT_CATALOG.size(), _product_codex_entries_per_page())
-		_codex_navigation_controller_node().product_codex_index = first_index
-		_codex_navigation_controller_node().previewed_product_codex_index = first_index
-	_update_product_codex_menu()
-
-
-func _update_product_codex_menu() -> void:
-	if ProductMarketRuntimeController.PRODUCT_CATALOG.is_empty():
-		_show_catalog_empty_page("商品图鉴", "当前没有商品资料。")
-		return
-	_product_market_runtime_call("ensure_catalog")
-	var total_count := ProductMarketRuntimeController.PRODUCT_CATALOG.size()
-	var per_page := _product_codex_entries_per_page()
-	var page_count := _codex_page_count(total_count, per_page)
-	_codex_navigation_controller_node().product_codex_index = wrapi(_codex_navigation_controller_node().product_codex_index, 0, total_count)
-	_codex_navigation_controller_node().previewed_product_codex_index = _valid_product_codex_index(_codex_navigation_controller_node().previewed_product_codex_index)
-	_codex_navigation_controller_node().product_codex_grid_page = clampi(_codex_navigation_controller_node().product_codex_grid_page, 0, page_count - 1)
-	var start_index: int = int(_codex_navigation_controller_node().product_codex_grid_page) * per_page
-	var end_index := mini(total_count, start_index + per_page)
-	if start_index >= total_count:
-		start_index = _codex_first_index_on_page(_codex_navigation_controller_node().product_codex_grid_page, total_count, per_page)
-		end_index = mini(total_count, start_index + per_page)
-	if not _codex_navigation_controller_node().product_codex_show_detail and (_codex_navigation_controller_node().previewed_product_codex_index < start_index or _codex_navigation_controller_node().previewed_product_codex_index >= end_index):
-		_codex_navigation_controller_node().previewed_product_codex_index = start_index
-		_codex_navigation_controller_node().product_codex_index = start_index
-	var product_name := String(ProductMarketRuntimeController.PRODUCT_CATALOG[_codex_navigation_controller_node().product_codex_index])
-	var coordinator := _game_runtime_coordinator_node()
-	var product_snapshot: Dictionary = coordinator.call("product_codex_public_detail_snapshot", product_name, _codex_navigation_controller_node().product_codex_index, true) if coordinator != null and coordinator.has_method("product_codex_public_detail_snapshot") else {}
-	var browser_snapshot := {}
-	if not _codex_navigation_controller_node().product_codex_show_detail:
-		var browser_value: Variant = coordinator.call("product_codex_public_browser_snapshot", {
-			"start_index": start_index,
-			"end_index": end_index,
-			"selected_index": _codex_navigation_controller_node().previewed_product_codex_index,
-			"columns": _product_codex_grid_columns(),
-			"can_page": page_count > 1,
-			"page_label": "第%d/%d页｜%d种商品｜本页%d-%d" % [_codex_navigation_controller_node().product_codex_grid_page + 1, page_count, total_count, start_index + 1, end_index],
-		}) if coordinator != null and coordinator.has_method("product_codex_public_browser_snapshot") else {}
-		browser_snapshot = (browser_value as Dictionary).duplicate(true) if browser_value is Dictionary else {}
-	var body_text := str(product_snapshot.get("summary_text", "")) if _codex_navigation_controller_node().product_codex_show_detail else str(browser_snapshot.get("summary_text", "商品目录"))
-	_present_codex_page("商品图鉴", body_text, {
-		"mode": "product",
-		"view": "detail" if _codex_navigation_controller_node().product_codex_show_detail else "browser",
-		"detail": product_snapshot.get("detail", {}) if _codex_navigation_controller_node().product_codex_show_detail else {},
-		"browser": browser_snapshot if not _codex_navigation_controller_node().product_codex_show_detail else {},
-		"navigation": _codex_navigation_data(
-			_codex_navigation_controller_node().product_codex_show_detail,
-			_codex_navigation_controller_node().product_codex_show_detail,
-			"返回缩略图" if _codex_navigation_controller_node().product_codex_show_detail else _catalog_back_button_text()
-		),
-	})
-
-
-func _valid_product_codex_index(index: int) -> int:
-	return clampi(index, 0, max(0, ProductMarketRuntimeController.PRODUCT_CATALOG.size() - 1))
-
-
-func _product_codex_grid_columns() -> int:
-	return clampi(int(floor(_menu_available_content_width() / 170.0)), 2, 5)
-
-
-func _product_codex_grid_rows() -> int:
-	return clampi(int(floor(_menu_available_content_height() / 150.0)), 1, 4)
-
-
-func _product_codex_entries_per_page() -> int:
-	return maxi(1, _product_codex_grid_columns() * _product_codex_grid_rows())
 
 
 func _product_count_summary(counts: Dictionary, limit: int = 4, empty_text: String = "暂无") -> String:
@@ -4597,18 +3706,6 @@ func _sort_product_count_entry_desc(a: Dictionary, b: Dictionary) -> bool:
 	if count_a != count_b:
 		return count_a > count_b
 	return String(a.get("label", "")) < String(b.get("label", ""))
-
-
-func _turn_product_codex_grid_page(step: int) -> void:
-	if ProductMarketRuntimeController.PRODUCT_CATALOG.is_empty():
-		return
-	var page_count := _codex_page_count(ProductMarketRuntimeController.PRODUCT_CATALOG.size(), _product_codex_entries_per_page())
-	_codex_navigation_controller_node().product_codex_grid_page = wrapi(_codex_navigation_controller_node().product_codex_grid_page + step, 0, page_count)
-	var first_index := _codex_first_index_on_page(_codex_navigation_controller_node().product_codex_grid_page, ProductMarketRuntimeController.PRODUCT_CATALOG.size(), _product_codex_entries_per_page())
-	_codex_navigation_controller_node().product_codex_index = first_index
-	_codex_navigation_controller_node().previewed_product_codex_index = first_index
-	_codex_navigation_controller_node().product_codex_show_detail = false
-	_update_product_codex_menu()
 
 
 func _product_strategy_scores(product_name: String) -> Dictionary:
@@ -4723,209 +3820,6 @@ func _product_related_card_count(product_name: String) -> int:
 		if matches:
 			count += 1
 	return count
-
-
-func _preview_product_codex_entry(catalog_index: int, refresh: bool = true) -> void:
-	if ProductMarketRuntimeController.PRODUCT_CATALOG.is_empty():
-		return
-	_codex_navigation_controller_node().previewed_product_codex_index = _valid_product_codex_index(catalog_index)
-	_codex_navigation_controller_node().product_codex_index = _codex_navigation_controller_node().previewed_product_codex_index
-	if refresh:
-		var saved_scroll := int(menu_overlay.call("content_scroll_value")) if menu_overlay != null and menu_overlay.has_method("content_scroll_value") else 0
-		_update_product_codex_menu()
-		_queue_restore_menu_scroll(saved_scroll)
-
-
-func _open_product_codex_detail(catalog_index: int) -> void:
-	_preview_product_codex_entry(catalog_index, false)
-	_codex_navigation_controller_node().product_codex_show_detail = true
-	_codex_navigation_controller_node().product_codex_grid_page = _codex_page_for_index(_codex_navigation_controller_node().product_codex_index, ProductMarketRuntimeController.PRODUCT_CATALOG.size(), _product_codex_entries_per_page())
-	_update_product_codex_menu()
-
-
-func _open_region_codex_menu(index: int = -1) -> void:
-	if _codex_navigation_controller_node().return_target == "":
-		_codex_navigation_controller_node().return_target = "compendium"
-	if index >= 0 and index < _game_runtime_coordinator_node().world_session_state().districts.size():
-		_codex_navigation_controller_node().region_codex_index = index
-		_jump_to_district_on_table(index)
-	_update_region_codex_menu()
-
-
-func _cycle_region_codex(step: int) -> void:
-	if _game_runtime_coordinator_node().world_session_state().districts.is_empty():
-		return
-	_codex_navigation_controller_node().region_codex_index = wrapi(_codex_navigation_controller_node().region_codex_index + step, 0, _game_runtime_coordinator_node().world_session_state().districts.size())
-	_jump_to_district_on_table(_codex_navigation_controller_node().region_codex_index)
-	_update_region_codex_menu()
-
-
-func _update_region_codex_menu() -> void:
-	if _game_runtime_coordinator_node().world_session_state().districts.is_empty():
-		_show_catalog_empty_page("区域图鉴", "开局后会在这里列出本局随机星球的全部区域：陆地/海洋、公开供需、城市公开状态、区域卡池和邻接关系。")
-		return
-	_codex_navigation_controller_node().region_codex_index = wrapi(_codex_navigation_controller_node().region_codex_index, 0, _game_runtime_coordinator_node().world_session_state().districts.size())
-	var region_snapshot := _game_runtime_coordinator_node().region_codex_public_snapshot(_codex_navigation_controller_node().region_codex_index)
-	_present_codex_page("区域图鉴", str(region_snapshot.get("summary_text", "区域不存在。")), {
-		"mode": "region",
-		"view": "detail",
-		"detail": region_snapshot.get("detail", {}),
-		"navigation": _codex_navigation_data(true, true, _catalog_back_button_text()),
-	})
-
-
-func _show_catalog_empty_page(title_text: String, body_text: String) -> void:
-	var mode := "product"
-	match title_text:
-		"区域图鉴":
-			mode = "region"
-		"角色图鉴":
-			mode = "role"
-		"卡牌图鉴":
-			mode = "card"
-		"怪兽生态档案":
-			mode = "monster"
-	_present_codex_page(title_text, body_text, {
-		"mode": mode,
-		"view": "empty",
-		"empty": {"title": title_text, "body": body_text},
-		"navigation": _codex_navigation_data(false, false, _catalog_back_button_text()),
-	})
-
-
-func _card_codex_filter_options() -> Array:
-	return [
-		{"id": "all", "label": "全部"},
-		{"id": "monster", "label": "怪兽牌"},
-		{"id": "monster_skill", "label": "怪兽技能"},
-		{"id": "military", "label": "军队/军令"},
-		{"id": "interaction", "label": "玩家互动"},
-		{"id": "city", "label": "城市经营"},
-		{"id": "commodity", "label": "商品经营"},
-		{"id": "futures", "label": "商品期货"},
-		{"id": "finance", "label": "金融/GDP"},
-		{"id": "contract", "label": "合约"},
-		{"id": "intel", "label": "情报推理"},
-		{"id": "supply", "label": "补给/采购"},
-		{"id": "tactic", "label": "怪兽诱导"},
-		{"id": "news", "label": "新闻事件"},
-		{"id": "weather", "label": "天气干预"},
-		{"id": "other", "label": "其他"},
-	]
-
-
-func _card_codex_filter_label(filter_id: String = "") -> String:
-	if filter_id == "":
-		filter_id = _codex_navigation_controller_node().card_codex_filter
-	if filter_id.begins_with("route:"):
-		return "路线:%s" % _game_runtime_coordinator_node().gameplay_balance_diagnostics_service().route_label(filter_id.trim_prefix("route:"))
-	for option_variant in _card_codex_filter_options():
-		var option: Dictionary = option_variant
-		if String(option.get("id", "")) == filter_id:
-			return String(option.get("label", filter_id))
-	match filter_id:
-		"economy":
-			return "经济聚合"
-		"business":
-			return "经营/合约"
-		"combat":
-			return "战斗/指令"
-	return "全部"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-func _set_card_codex_filter(filter_id: String) -> void:
-	_codex_navigation_controller_node().card_codex_filter = filter_id
-	_codex_navigation_controller_node().card_codex_index = 0
-	_codex_navigation_controller_node().card_codex_grid_page = 0
-	_codex_navigation_controller_node().card_codex_show_detail = false
-	_codex_navigation_controller_node().previewed_card_codex_card = ""
-	_update_card_codex_menu()
-
-
-func _card_codex_filter_category_ids(filter_id: String) -> Array:
-	match filter_id:
-		"all":
-			return []
-		"economy":
-			return ["city", "commodity", "futures", "finance", "contract"]
-		"business":
-			return ["city", "contract"]
-		"combat":
-			return ["monster_skill", "military", "tactic"]
-		_:
-			return [filter_id]
-
-
-func _card_codex_filter_matches(filter_id: String, category_id: String) -> bool:
-	if filter_id == "all":
-		return true
-	return _card_codex_filter_category_ids(filter_id).has(category_id)
-
-
-func _card_is_in_district_supply(card_name: String) -> bool:
-	var canonical_name := _canonical_card_supply_name(card_name)
-	if canonical_name == "":
-		return false
-	for district_index in range(_game_runtime_coordinator_node().world_session_state().districts.size()):
-		for choice_variant in _district_supply_card_ids(district_index):
-			if _canonical_card_supply_name(String(choice_variant)) == canonical_name:
-				return true
-	return false
-
-
-func _card_supply_layer_for_card(card_name: String) -> String:
-	var canonical_name := _canonical_card_supply_name(card_name)
-	if canonical_name == "":
-		return "全部卡牌"
-	if _card_is_in_district_supply(canonical_name):
-		return "区域补给"
-	if _current_run_card_pool().has(canonical_name):
-		return "本局星球牌池"
-	return "全部卡牌"
-
-
-func _card_codex_names(filter_id: String = "") -> Array:
-	if filter_id == "":
-		filter_id = _codex_navigation_controller_node().card_codex_filter
-	var route_filter := ""
-	if filter_id.begins_with("route:"):
-		route_filter = filter_id.trim_prefix("route:")
-	var names := []
-	for monster_card_variant in _monster_card_names(1):
-		var monster_card_name := String(monster_card_variant)
-		var monster_skill := _game_runtime_coordinator_node().card_definition(monster_card_name)
-		if _card_codex_filter_matches(filter_id, "monster") or (route_filter != "" and _game_runtime_coordinator_node().gameplay_balance_diagnostics_service().route_id_for_card(monster_skill) == route_filter):
-			monster_runtime_controller._append_unique_string(names, monster_card_name)
-	for name_variant in _game_runtime_coordinator_node().card_catalog_ordered_ids():
-		var card_name := _canonical_card_supply_name(String(name_variant))
-		if card_name == "" or names.has(card_name):
-			continue
-		var skill := _game_runtime_coordinator_node().card_definition(card_name)
-		var category := str(_card_presentation_snapshot(card_name, skill).get("category_id", "other"))
-		if _card_codex_filter_matches(filter_id, category) or (route_filter != "" and _game_runtime_coordinator_node().gameplay_balance_diagnostics_service().route_id_for_card(skill) == route_filter):
-			monster_runtime_controller._append_unique_string(names, card_name)
-	names.sort()
-	return names
 
 
 func _product_market_price_path_text(entry: Dictionary, limit: int = 7) -> String:
@@ -6737,22 +5631,25 @@ func _district_index_for_region_id(region_id: String) -> int:
 
 
 func _player_role_template_index(player_index: int) -> int:
-	if PLAYER_ROLE_CATALOG.is_empty():
+	var role_count := _player_role_catalog_size()
+	if role_count <= 0:
 		return 0
-	return wrapi(player_index, 0, PLAYER_ROLE_CATALOG.size())
+	return wrapi(player_index, 0, role_count)
 
 
 func _player_role_catalog_size() -> int:
-	return PLAYER_ROLE_CATALOG.size()
+	var catalog := _game_runtime_coordinator_node().role_catalog_runtime_service()
+	return catalog.role_count() if catalog != null else 0
 
 
 func _player_role_template(player_index: int, role_index: int = -1) -> Dictionary:
-	if PLAYER_ROLE_CATALOG.is_empty():
+	if _player_role_catalog_size() <= 0:
 		return {}
 	var template_index := _player_role_template_index(player_index)
 	if role_index >= 0:
 		template_index = _clamp_role_index(role_index)
-	return (PLAYER_ROLE_CATALOG[template_index] as Dictionary).duplicate(true)
+	var catalog := _game_runtime_coordinator_node().role_catalog_runtime_service()
+	return catalog.definition_at(template_index) if catalog != null else {}
 
 
 func _role_starting_cash_delta(role_card: Dictionary) -> int:
@@ -9522,11 +8419,12 @@ func _ensure_configured_role_indices() -> void:
 
 
 func _next_available_configured_role_index(start_index: int, used: Dictionary) -> int:
-	if PLAYER_ROLE_CATALOG.is_empty():
+	var role_count := _player_role_catalog_size()
+	if role_count <= 0:
 		return 0
 	var start := _clamp_role_index(start_index)
-	for offset in range(PLAYER_ROLE_CATALOG.size()):
-		var candidate := wrapi(start + offset, 0, PLAYER_ROLE_CATALOG.size())
+	for offset in range(role_count):
+		var candidate := wrapi(start + offset, 0, role_count)
 		if not used.has(candidate):
 			return candidate
 	return start
@@ -9555,9 +8453,10 @@ func _ensure_configured_starter_monster_indices() -> void:
 
 
 func _clamp_role_index(index: int) -> int:
-	if PLAYER_ROLE_CATALOG.is_empty():
+	var role_count := _player_role_catalog_size()
+	if role_count <= 0:
 		return 0
-	return wrapi(index, 0, PLAYER_ROLE_CATALOG.size())
+	return wrapi(index, 0, role_count)
 
 
 func _configured_role_index(player_index: int) -> int:
@@ -9623,14 +8522,15 @@ func _resolve_configured_role_indices_for_run() -> Array:
 		resolved.append(role_index)
 		used[role_index] = true
 	var available := []
-	for role_index in range(PLAYER_ROLE_CATALOG.size()):
+	var role_count := _player_role_catalog_size()
+	for role_index in range(role_count):
 		if not used.has(role_index):
 			available.append(role_index)
 	for slot_variant in random_slots:
 		var slot := int(slot_variant)
 		if available.is_empty():
 			available = []
-			for role_index in range(PLAYER_ROLE_CATALOG.size()):
+			for role_index in range(role_count):
 				if not used.has(role_index):
 					available.append(role_index)
 			if available.is_empty():

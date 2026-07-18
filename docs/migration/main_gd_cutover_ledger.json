@@ -533,6 +533,80 @@
       "status": "cut_over"
     },
     {
+      "domain": "role_catalog_owner",
+      "old_symbols": [
+        "PLAYER_ROLE_CATALOG"
+      ],
+      "old_consumers": [
+        "new-game setup role order",
+        "AI role selection",
+        "role passive lookup",
+        "role save identity",
+        "role Codex public source"
+      ],
+      "new_owner_scene": "res://scenes/runtime/RoleCatalogRuntimeService.tscn",
+      "new_owner_script": "res://scripts/runtime/role_catalog_runtime_service.gd",
+      "new_public_api": [
+        "role_count",
+        "ordered_role_names",
+        "definition_at",
+        "definition_by_name",
+        "index_by_name",
+        "public_definition_at",
+        "validate_catalog"
+      ],
+      "tests": [
+        "res://tests/role_catalog_runtime_service_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "32ddfa41a2578242ba9e236082b53fab34bf1f27",
+      "status": "cut_over"
+    },
+    {
+      "domain": "compendium_readonly_navigation",
+      "old_symbols": [
+        "_open_compendium_menu",
+        "_on_codex_surface_action_requested",
+        "_cycle_menu_catalog",
+        "_back_from_catalog_menu",
+        "_open_card_codex_by_name",
+        "_update_card_codex_menu",
+        "_open_bestiary_menu",
+        "_update_bestiary_menu",
+        "_update_product_codex_menu",
+        "_update_region_codex_menu",
+        "_update_role_codex_menu",
+        "_present_codex_page"
+      ],
+      "old_consumers": [
+        "MenuOverlay catalog navigation",
+        "CodexCompendiumSurface actions",
+        "Intel public deep links",
+        "map/public detail deep links"
+      ],
+      "new_owner_scene": "res://scenes/runtime/CompendiumApplicationFlowController.tscn + res://scenes/runtime/CompendiumNavigationPort.tscn + res://scenes/runtime/presentation/CompendiumReadOnlyQueryPort.tscn",
+      "new_owner_script": "res://scripts/runtime/compendium_application_flow_controller.gd + res://scripts/runtime/compendium_navigation_port.gd + res://scripts/presentation/compendium_readonly_query_port.gd",
+      "new_public_api": [
+        "ApplicationFlowPort.compendium_requested",
+        "CompendiumNavigationPort.submit_request",
+        "CompendiumApplicationFlowController.open_hub",
+        "CompendiumApplicationFlowController.handle_navigation_request",
+        "CompendiumReadOnlyQueryPort.compose_page"
+      ],
+      "tests": [
+        "res://tests/compendium_readonly_navigation_cutover_test.gd",
+        "res://scenes/tools/CodexNavigationRuntimeCutoverBench.tscn",
+        "res://scenes/tools/CodexSceneHardCutoverBench.tscn",
+        "res://scenes/tools/CodexAtlasSceneCutoverBench.tscn",
+        "res://scenes/tools/CodexPublicSnapshotCutoverBench.tscn"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
+    },
+    {
       "domain": "presentation_action_routing",
       "old_symbols": [
         "_runtime_table_snapshot_source",
@@ -559,7 +633,7 @@
         "audio",
         "menu state",
         "overlay glue",
-        "codex glue",
+        "intel/query glue",
         "_get",
         "_set",
         "fallback helpers"

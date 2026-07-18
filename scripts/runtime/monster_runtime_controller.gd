@@ -750,7 +750,6 @@ func _build_monster_codex_public_catalog_source_v06(catalog_index: int, total: i
 		"encounter_range_text": MONSTER_CATALOG_V06.meters_text(AUTO_MONSTER_ENCOUNTER_RANGE_METERS),
 		"mobility_summary": _monster_codex_mobility_summary_v06(ecology.get("movement_traits", []) as Array, ecology.get("terrain_move_multiplier", {}) as Dictionary),
 		"action_summary": _monster_codex_action_summary_v06(catalog_index),
-		"rank_iv_probability_summary": _monster_codex_rank_iv_probability_summary_v06(catalog_index, false),
 		"actions": _monster_codex_public_action_sources_v06(catalog_index),
 		"monster_card": {
 			"valid": monster_card_name != "",
@@ -849,7 +848,6 @@ func _monster_codex_public_ecology_v06(catalog_index: int, entry: Dictionary) ->
 		"max_range": max_range,
 		"max_move": max_move,
 		"resource_drain": int(_catalog_entry(catalog_index).get("resource_drain", 0)),
-		"rank_iv_probability_shift": _monster_codex_rank_iv_probability_summary_v06(catalog_index, false),
 	}
 
 
@@ -865,17 +863,11 @@ func _monster_codex_public_action_sources_v06(catalog_index: int) -> Array:
 	var result: Array = []
 	for action_index in range(mini(actions.size(), 6)):
 		var action: Dictionary = actions[action_index] if actions[action_index] is Dictionary else {}
-		var probability_facts := _monster_codex_action_probability_facts_v06(catalog_index, action_index)
 		result.append({
 			"name": str(action.get("name", "行动")),
 			"text": str(action.get("text", "自动行动。")),
 			"tags": _monster_action_role_tags(action),
 			"facts": _monster_codex_action_numeric_facts_v06(action),
-			"i_open": str(probability_facts.get("i_open", "0%")),
-			"i_destroyed": str(probability_facts.get("i_destroyed", "0%")),
-			"iv_open": str(probability_facts.get("iv_open", "0%")),
-			"iv_destroyed": str(probability_facts.get("iv_destroyed", "0%")),
-			"probability_tooltip": str(probability_facts.get("tooltip", "")),
 		})
 	return result
 

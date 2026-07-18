@@ -89,6 +89,8 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		card_definition_bridge.call("set_catalog_service", card_runtime_catalog)
 	var balance_diagnostics := _gameplay_balance_diagnostics_node()
 	var balance_diagnostics_bridge := _gameplay_balance_diagnostics_world_bridge_node()
+	if balance_diagnostics_bridge != null and balance_diagnostics_bridge.has_method("set_role_catalog"):
+		balance_diagnostics_bridge.call("set_role_catalog", _role_catalog_runtime_service_node())
 	if balance_diagnostics != null and balance_diagnostics.has_method("set_world_bridge"):
 		balance_diagnostics.call("set_world_bridge", balance_diagnostics_bridge)
 	if balance_diagnostics != null and balance_diagnostics.has_method("configure"):
@@ -203,6 +205,12 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var codex_public_snapshot := _codex_public_snapshot_node()
 	if codex_public_snapshot != null and codex_public_snapshot.has_method("configure"):
 		codex_public_snapshot.call("configure", {})
+	var role_codex_public_source := _role_codex_public_source_node()
+	if role_codex_public_source != null and role_codex_public_source.has_method("configure"):
+		role_codex_public_source.call("configure", {
+			"catalog": _role_catalog_runtime_service_node(),
+			"snapshot": codex_public_snapshot,
+		})
 	var monster_codex_public_snapshot := _monster_codex_public_snapshot_node()
 	if monster_codex_public_snapshot != null and monster_codex_public_snapshot.has_method("configure"):
 		monster_codex_public_snapshot.call("configure", {})
@@ -214,7 +222,6 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		product_codex_public_source.call("configure", {
 			"product_market": product_market_controller,
 			"snapshot": product_codex_public_snapshot,
-			"card_catalog": card_runtime_catalog,
 			"region_public_bridge": region_infrastructure_bridge,
 		})
 	var card_codex_public_snapshot := _card_codex_public_snapshot_node()
@@ -252,12 +259,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var card_codex_public_source := _card_codex_public_source_node()
 	if card_codex_public_source != null and card_codex_public_source.has_method("configure"):
 		card_codex_public_source.call("configure", {
-			"catalog": card_runtime_catalog,
-			"presentation": card_presentation,
-			"eligibility": card_play_eligibility,
-			"diagnostics": balance_diagnostics,
 			"snapshot": card_codex_public_snapshot,
-			"runtime_balance_model": RUNTIME_BALANCE_MODEL_SCRIPT.new(),
 		})
 	var table_viewmodel := _table_viewmodel_node()
 	if table_viewmodel != null and table_viewmodel.has_method("configure"):
@@ -483,6 +485,8 @@ func bind_ai_world(world: Node) -> void:
 	var balance_diagnostics_bridge := _gameplay_balance_diagnostics_world_bridge_node()
 	if balance_diagnostics_bridge != null and balance_diagnostics_bridge.has_method("bind_world"):
 		balance_diagnostics_bridge.call("bind_world", world)
+	if balance_diagnostics_bridge != null and balance_diagnostics_bridge.has_method("set_role_catalog"):
+		balance_diagnostics_bridge.call("set_role_catalog", _role_catalog_runtime_service_node())
 	var balance_diagnostics := _gameplay_balance_diagnostics_node()
 	if balance_diagnostics != null and balance_diagnostics.has_method("set_world_bridge"):
 		balance_diagnostics.call("set_world_bridge", balance_diagnostics_bridge)
@@ -1544,6 +1548,10 @@ func _apply_victory_outcome_receipt(receipt: Dictionary) -> void:
 
 func card_runtime_catalog_service() -> CardRuntimeCatalogService:
 	return _card_runtime_catalog_node() as CardRuntimeCatalogService
+
+
+func role_catalog_runtime_service() -> RoleCatalogRuntimeService:
+	return _role_catalog_runtime_service_node() as RoleCatalogRuntimeService
 
 
 func card_runtime_definition_bridge() -> CardRuntimeDefinitionWorldBridge:
@@ -4534,6 +4542,12 @@ func compose_codex_role_snapshot(source: Dictionary) -> Dictionary:
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
+func role_codex_public_snapshot(role_index: int, presentation: Dictionary = {}) -> Dictionary:
+	var service := _role_codex_public_source_node()
+	var value: Variant = service.call("compose_snapshot", role_index, presentation) if service != null and service.has_method("compose_snapshot") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
 func codex_role_route_label(role_card: Dictionary, starting_cash_delta: int = 0) -> String:
 	var service := _codex_public_snapshot_node()
 	return str(service.call("role_route_label", role_card, starting_cash_delta)) if service != null and service.has_method("role_route_label") else "通用经营"
@@ -4579,6 +4593,31 @@ func card_codex_public_browser_snapshot(request: Dictionary) -> Dictionary:
 	var service := _card_codex_public_source_node()
 	var value: Variant = service.call("compose_browser", request) if service != null and service.has_method("compose_browser") else {}
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func card_codex_public_card_ids(filter_id: String = "all") -> Array[String]:
+	var service := _card_codex_public_source_node()
+	if service == null or not service.has_method("ordered_card_ids"):
+		return []
+	var value: Variant = service.call("ordered_card_ids", filter_id)
+	var result: Array[String] = []
+	if value is Array:
+		for item_variant: Variant in value:
+			result.append(str(item_variant))
+	return result
+
+
+func card_codex_public_filter_options() -> Array:
+	var service := _card_codex_public_source_node()
+	if service == null or not service.has_method("public_filter_options"):
+		return []
+	var value: Variant = service.call("public_filter_options")
+	return (value as Array).duplicate(true) if value is Array else []
+
+
+func resolve_card_codex_public_id(card_identity: String) -> String:
+	var service := _card_codex_public_source_node()
+	return str(service.call("resolve_card_id", card_identity)) if service != null and service.has_method("resolve_card_id") else ""
 
 
 func card_codex_public_detail_snapshot(card_name: String, index: int, total: int) -> Dictionary:
@@ -5254,6 +5293,10 @@ func _card_runtime_catalog_node() -> Node:
 	return get_node_or_null("CardRuntimeCatalogService")
 
 
+func _role_catalog_runtime_service_node() -> Node:
+	return get_node_or_null("RoleCatalogRuntimeService")
+
+
 func _card_runtime_definition_bridge_node() -> Node:
 	return get_node_or_null("CardRuntimeDefinitionWorldBridge")
 
@@ -5539,6 +5582,10 @@ func _codex_navigation_node() -> Node:
 
 func _codex_public_snapshot_node() -> Node:
 	return get_node_or_null("CodexPublicSnapshotService")
+
+
+func _role_codex_public_source_node() -> Node:
+	return get_node_or_null("RoleCodexPublicSourceService")
 
 
 func _monster_codex_public_snapshot_node() -> Node:

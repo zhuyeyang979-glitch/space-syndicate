@@ -1,0 +1,21 @@
+{
+  "status": "MAIN_COMPENDIUM_READ_ONLY_NAVIGATION_EXTRACTION_GREEN",
+  "application_flow_port": "res://scripts/runtime/application_flow_port.gd",
+  "navigation_port": "res://scripts/runtime/compendium_navigation_port.gd",
+  "flow_controller": "res://scripts/runtime/compendium_application_flow_controller.gd",
+  "query_port": "res://scripts/presentation/compendium_readonly_query_port.gd",
+  "navigation_owner": "res://scripts/runtime/codex_navigation_runtime_controller.gd",
+  "surface": "res://scripts/ui/codex_compendium_surface.gd",
+  "typed_request": "res://scripts/runtime/codex_open_request.gd",
+  "main_route_count": 0,
+  "main_fallback_count": 0,
+  "gameplay_mutation_count": 0,
+  "selection_mutation_count": 0,
+  "duplicate_page_apply_count": 0,
+  "privacy_violation_count": 0,
+  "focused_gate": {
+    "path": "res://tests/compendium_readonly_navigation_cutover_test.gd",
+    "checks": 66,
+    "failures": 0
+  }
+}

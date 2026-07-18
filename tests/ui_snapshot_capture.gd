@@ -83,27 +83,27 @@ func _capture_size_suite(packed: PackedScene, layout_demo_packed: PackedScene, c
 		await _pump_frames(8)
 		await _save_viewport_snapshot("rules_quick_reference_%s.png" % suffix)
 
-		main.call("_open_compendium_menu")
+		_request_compendium_hub(main)
 		await _pump_frames(8)
 		await _save_viewport_snapshot("compendium_hub_%s.png" % suffix)
 
-		main.call("_open_role_codex_menu", 0)
+		_request_compendium_page(main, "role", "detail", "catalog", 0)
 		await _pump_frames(8)
 		await _save_viewport_snapshot("role_codex_detail_%s.png" % suffix)
 
-		main.call("_open_card_codex_menu")
+		_request_compendium_page(main, "card", "browser", "catalog", -1, "all")
 		await _pump_frames(8)
 		await _save_viewport_snapshot("card_codex_grid_%s.png" % suffix)
 
-		main.call("_open_card_codex_menu", 0)
+		_request_compendium_page(main, "card", "detail", "catalog", 0, "all")
 		await _pump_frames(8)
 		await _save_viewport_snapshot("card_codex_detail_%s.png" % suffix)
 
-		main.call("_open_product_codex_menu", 0)
+		_request_compendium_page(main, "product", "detail", "catalog", 0)
 		await _pump_frames(8)
 		await _save_viewport_snapshot("product_codex_detail_%s.png" % suffix)
 
-		main.call("_open_bestiary_menu", 0)
+		_request_compendium_page(main, "monster", "detail", "catalog", 0)
 		await _pump_frames(8)
 		await _save_viewport_snapshot("bestiary_detail_%s.png" % suffix)
 
@@ -647,6 +647,25 @@ func _game_runtime_coordinator(root_node: Node) -> GameRuntimeCoordinator:
 	if root_node == null:
 		return null
 	return root_node.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+
+
+func _request_compendium_hub(root_node: Node) -> bool:
+	var application_flow_port := root_node.get_node_or_null("RuntimeServices/ApplicationFlowPort")
+	var accepted := application_flow_port != null and bool(application_flow_port.call("submit_action", "compendium"))
+	if not accepted:
+		_capture_failures.append("dedicated compendium action was unavailable")
+	return accepted
+
+
+func _request_compendium_page(root_node: Node, domain: String, view: String, stable_item_id: String, optional_index: int, filter_id: String = "") -> bool:
+	var navigation_port := root_node.get_node_or_null("RuntimeServices/CompendiumNavigationPort")
+	var accepted := navigation_port != null and bool(navigation_port.call(
+		"request_open", domain, view, stable_item_id, optional_index, filter_id, 0,
+		"compendium", {"origin": "compendium"}
+	))
+	if not accepted:
+		_capture_failures.append("compendium request failed: %s/%s/%s" % [domain, view, stable_item_id])
+	return accepted
 
 
 func _world_session_state(root_node: Node) -> WorldSessionState:

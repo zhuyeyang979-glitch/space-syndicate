@@ -4310,7 +4310,7 @@ func _check_bestiary_detail_component() -> void:
 			{"title": "行动定位", "value": "机动、控制", "meta": "最高伤3｜射程120m", "accent": Color("#38bdf8")},
 			{"title": "固定技能成长", "value": "I:1张 / II:2张", "meta": "IV概率:危险行动更容易出现", "accent": Color("#fde047")},
 		],
-		"action_title": "行动概率板｜I级/IV级｜开局/破坏后",
+		"action_title": "公开行动板｜类别与效果",
 		"actions": [
 			{
 				"index": "01",

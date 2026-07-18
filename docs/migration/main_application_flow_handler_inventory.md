@@ -10,7 +10,7 @@ Status: `MAIN_APPLICATION_FLOW_HANDLER_EXTRACTION_GREEN`
 | `standings` | Main snapshot adapter + menu/scoreboard composition | `StandingsApplicationFlowController` + `StandingsPublicQueryPort` | migrated | viewer-authorized read-only query |
 | `economy` | Main dashboard source adapter + menu/economy surface | `EconomyApplicationFlowController` + `EconomyDashboardViewerQueryPort` | migrated | public facts plus authorized viewer's own private economy; cached-only |
 | `intel` | Main dossier source/action bridge | Main adapter + `IntelDossierPublicSnapshotService` | pending | action bridge can enter gameplay inference; separate cutover |
-| `compendium` | Main catalog navigation/action routing | Codex controllers/services plus Main route adapter | pending | read-only pages with separate navigation state |
+| `compendium` | Main catalog navigation/action routing | `CompendiumApplicationFlowController` + `CompendiumNavigationPort` + `CompendiumReadOnlyQueryPort` | migrated | typed, read-only, exact-once pages; no Main route or gameplay mutation |
 | `setup` | Main new-game/setup actions | Main + setup scene | pending | session-start transaction; do not move into a UI-only handler |
 
 ## Classification
@@ -23,10 +23,10 @@ world state or decide any gameplay rule.
 
 ### B. Read-only presentation queries
 
-Standings, economy, intel and compendium currently use existing visibility-safe
-snapshot services, but Main still assembles some source facts. They require
-separate query-port cutovers rather than copying those adapters into the flow
-handler.
+Standings, economy and compendium now use scene-owned query/application-flow
+ports. Intel still uses a Main source/action bridge because it mixes public
+evidence with viewer-private guesses; it requires a separate query/command
+split rather than copying that adapter into a read-only flow handler.
 
 ### C. Simulation/world mutation
 

@@ -59,11 +59,11 @@ func compose_role(source: Dictionary) -> Dictionary:
 			{"title": "角色特征", "body": _short_text(str(role_card.get("trait", "暂无特征")), 92), "tooltip": str(role_card.get("trait", "暂无特征")), "accent": accent},
 			{"title": "信息边界", "body": privacy_line, "tooltip": privacy_line, "accent": Color("#f0abfc")},
 			{"title": "开局打法", "body": _short_text(opening_hint, 92), "tooltip": opening_hint, "accent": Color("#4ade80")},
-			{"title": "选择提醒", "body": "角色与起始怪兽牌分别选择；怪兽归属要靠场上线索推理。", "tooltip": "角色公开、召唤自愿、起始怪兽牌属性只看怪兽牌。", "accent": Color("#38bdf8")},
+			{"title": "选择提醒", "body": "角色与起始怪兽牌分别选择；怪兽归属不会由图鉴披露。", "tooltip": "角色公开、召唤自愿、起始怪兽牌属性只看怪兽牌。", "accent": Color("#38bdf8")},
 			{"title": "风味", "body": _short_text(str(role_card.get("flavor", "暂无设定")), 92), "tooltip": str(role_card.get("flavor", "暂无设定")), "accent": Color("#fb923c")},
 		],
 	}
-	var summary_text := "角色卡｜第%d/%d张｜%s｜%s\n特征：%s\n被动：%s\n看下方公开身份牌；角色卡公开；怪兽归属仍靠场上线索推理。\n起始怪兽牌独立持有；召唤自愿，不暴露怪兽归属。" % [
+	var summary_text := "角色卡｜第%d/%d张｜%s｜%s\n特征：%s\n被动：%s\n看下方公开身份牌；角色卡公开，怪兽归属不由图鉴披露。\n起始怪兽牌独立持有；召唤自愿。" % [
 		index + 1,
 		total,
 		str(role_card.get("name", "外星辛迪加")),
@@ -87,25 +87,25 @@ func compose_region(source: Dictionary) -> Dictionary:
 	var region_name := str(source.get("name", "区域"))
 	var terrain_label := str(source.get("terrain_label", "区域"))
 	var economic_focus_label := str(source.get("economic_focus_label", "均衡"))
-	var city_status := _region_city_status(source)
+	var development_status := _region_development_status(source)
 	var accent := _region_accent(source)
 	var icon := _region_icon(source)
-	var income_preview := _region_income_preview(source, city_status)
+	var facility_summary := _region_facility_summary(source)
 	var monster_attraction := _region_monster_attraction(source.get("monster_entries", []) as Array)
 	var hp_total := int(source.get("hp_total", 0))
 	var hp_now := maxi(0, int(source.get("hp_now", hp_total)))
 	var low_hp := hp_total > 0 and hp_now <= int(float(hp_total) / 2.0)
 	var hp_color := Color("#fecaca") if low_hp else Color("#bbf7d0")
 	var chips: Array = [
-		{"text": "HP %d/%d" % [hp_now, hp_total], "fg": hp_color, "accent": hp_color, "bg": Color("#020617"), "tooltip": "区域耐久；破坏会影响城市、商路和部分牌效。"},
+		{"text": "完整度 %d/%d" % [hp_now, hp_total], "fg": hp_color, "accent": hp_color, "bg": Color("#020617"), "tooltip": "所有玩家共享同一块区域生命；归零后区域成为废墟并清除本地设施。"},
 		{"text": "公开资料", "fg": Color("#fef3c7"), "accent": Color("#fef3c7"), "bg": Color("#020617"), "tooltip": "区域图鉴只消费公开区域事实；玩家私有标注留在情报档案。"},
-		{"text": "交通×%.2f" % float(source.get("transport_speed", 1.0)), "fg": Color("#bfdbfe"), "accent": Color("#bfdbfe"), "bg": Color("#020617"), "tooltip": "交通影响流通速度和城市收入。"},
-		{"text": "商路 %d" % int(source.get("trade_route_load", 0)), "fg": Color("#c4b5fd"), "accent": Color("#c4b5fd"), "bg": Color("#020617"), "tooltip": "途经或使用该区域的商路数量。"},
+		{"text": "设施 %d" % int(source.get("facility_count", 0)), "fg": Color("#fde68a"), "accent": Color("#fde68a"), "bg": Color("#020617"), "tooltip": "设施类型、等级和所有者均为公开信息。"},
+		{"text": "吞吐关联 %d" % int(source.get("trade_route_load", 0)), "fg": Color("#c4b5fd"), "accent": Color("#c4b5fd"), "bg": Color("#020617"), "tooltip": "该数字表示公开物流关联，不是可受损的抽象路线生命。"},
 		{"text": "牌架 %d" % int(source.get("card_count", 0)), "fg": Color("#a7f3d0"), "accent": Color("#a7f3d0"), "bg": Color("#020617"), "tooltip": "普通牌全局可浏览；来源区域受光时才能锁定报价。"},
-		{"text": "公开市场", "fg": Color("#67e8f9"), "accent": Color("#67e8f9"), "bg": Color("#020617"), "tooltip": "区域页只列公开牌源，不读取现金、手牌或玩家归属。"},
+		{"text": "公开市场", "fg": Color("#67e8f9"), "accent": Color("#67e8f9"), "bg": Color("#020617"), "tooltip": "区域页只列公开牌源，不读取现金、手牌或私密库存。"},
 	]
 	var kpis := [
-		{"title": "城市", "value": city_status, "meta": income_preview, "accent": Color("#facc15")},
+		{"title": "设施", "value": development_status, "meta": facility_summary, "accent": Color("#facc15")},
 		{"title": "供给", "value": _short_text(str(source.get("supply_text", "无")), 32), "meta": "生产/商品价格线索", "accent": Color("#4ade80")},
 		{"title": "需求", "value": _short_text(str(source.get("demand_text", "无")), 32), "meta": "需求会抬高商品价格", "accent": Color("#fb7185")},
 		{"title": "天气", "value": _short_text(str(source.get("weather_text", "暂无")), 32), "meta": "影响产/交/消", "accent": Color("#38bdf8")},
@@ -113,37 +113,37 @@ func compose_region(source: Dictionary) -> Dictionary:
 	var trade_route_load := int(source.get("trade_route_load", 0))
 	var connection_summary := str(source.get("connection_summary", "暂无"))
 	var clues := [
-		{"title": "商路", "body": "途经/使用 %d条｜毁坏会拖累相关城市GDP" % trade_route_load, "tooltip": connection_summary, "accent": Color("#93c5fd")},
+		{"title": "运输吞吐", "body": "当前关联 %d条公开物流记录" % trade_route_load, "tooltip": "%s；显示物流事实，不创建抽象路线生命。" % connection_summary, "accent": Color("#93c5fd")},
 		{"title": "牌架", "body": _short_text(str(source.get("card_choice_summary", "无")), 76), "tooltip": "双击地图区域可浏览牌架；来源区域受光时可显式锁定5秒报价。", "accent": Color("#a78bfa")},
 		{"title": "怪兽吸引", "body": _short_text(monster_attraction, 76), "tooltip": "这里只显示非数值公开因素；内部权重、随机签和预选目标保持隐藏。", "accent": Color("#fb923c")},
-		{"title": "公开线索", "body": _short_text(str(source.get("public_clue", "暂无")), 76), "tooltip": "这是可见证据，不等于真实业主。", "accent": Color("#f0abfc")},
+		{"title": "公开事件", "body": _short_text(str(source.get("public_clue", "暂无")), 76), "tooltip": "这里只显示公开事件与结算结果；私密调查不会进入区域图鉴。", "accent": Color("#f0abfc")},
 		{"title": "邻接", "body": _short_text(connection_summary, 76), "tooltip": "购牌、怪兽移动和商路都依赖邻接关系。", "accent": Color("#67e8f9")},
-		{"title": "读法", "body": "先看城市状态，再看供需/商路/怪兽，最后决定建城、买牌或标注。", "tooltip": "区域页只显示公开信息；当前玩家的私有标注只在情报档案中显示。", "accent": Color("#fde68a")},
+		{"title": "读法", "body": "先看共享完整度和设施，再比较供需、天气、吞吐与怪兽压力。", "tooltip": "设施所有者公开；当前玩家的私有调查只在情报档案中显示。", "accent": Color("#fde68a")},
 	]
 	var detail := {
 		"icon": icon,
 		"icon_tooltip": "地块符号：⬡陆地/≈海域/▣城市/✕废墟。",
 		"title": "%s｜第%d/%d区" % [region_name, index + 1, total],
-		"subtitle": "%s｜%s｜%s" % [terrain_label, economic_focus_label, city_status],
+		"subtitle": "%s｜%s｜%s" % [terrain_label, economic_focus_label, development_status],
 		"chips": chips,
 		"kpis": kpis,
 		"clues": clues,
 		"accent": accent,
-		"tooltip": "区域地块板：像读桌游地图板块一样，先扫HP、城市、供需、商路、牌架和公开线索。",
+		"tooltip": "区域地块板：先扫共享完整度、公开设施、供需、天气、运输吞吐、牌架与怪兽压力。",
 	}
 	var state_text := "已破坏" if bool(source.get("destroyed", false)) else "未破坏"
 	var lines := [
 		"第%d/%d区｜%s｜%s｜%s" % [index + 1, total, region_name, terrain_label, state_text],
-		"看下方区域地块板：城市/GDP、供给、需求、天气、商路、牌架、怪兽吸引和公开线索。",
-		"真实业主不公开；现金和手牌也不在这里直接揭示，结合牌轨、怪兽受伤、合约和商品变化推理。",
+		"看下方区域地块板：共享完整度、公开设施与所有者、供给、需求、天气、吞吐、牌架和怪兽压力。",
+		"设施所有权、类型和等级公开；现金、手牌、私密库存、怪兽归属与内部权重不在这里披露。",
 		"区域可提供卡牌：%s。" % _limited_names(source.get("card_names", []) as Array, 5, "暂无"),
 	]
-	if bool(source.get("city_active", false)):
-		lines.append("流通加速：%s｜合约:%s｜GDP趋势:%s" % [str(source.get("route_flow_status", "暂无")), str(source.get("contract_status", "暂无")), _short_text(str(source.get("gdp_trend", "暂无")), 64)])
+	if int(source.get("facility_count", 0)) > 0:
+		lines.append("公开设施：%s｜区域GDP公开汇总:%d/min" % [facility_summary, int(source.get("city_last_income", 0))])
 		for detail_variant in source.get("income_detail_lines", []) as Array:
 			lines.append(str(detail_variant))
 	else:
-		lines.append("流通加速：无城市｜收入拆解：待城市化｜生产明细：%s｜GDP趋势：暂无。" % _limited_names(source.get("products", []) as Array, 4, "暂无"))
+		lines.append("公开设施：暂无｜生产资源：%s｜区域GDP公开汇总：暂无。" % _limited_names(source.get("products", []) as Array, 4, "暂无"))
 	return {"summary_text": "\n".join(lines), "detail": detail}
 
 
@@ -176,27 +176,27 @@ func _region_accent(source: Dictionary) -> Color:
 func _region_icon(source: Dictionary) -> String:
 	if bool(source.get("destroyed", false)):
 		return "✕"
-	if bool(source.get("city_active", false)):
+	if int(source.get("facility_count", 0)) > 0:
 		return "▣"
 	return "≈" if str(source.get("terrain", "land")) == "ocean" else "⬡"
 
 
-func _region_city_status(source: Dictionary) -> String:
-	if bool(source.get("city_active", false)):
-		return "城市Lv.%d｜GDP/min %d" % [int(source.get("city_level", 1)), int(source.get("city_last_income", 0))]
-	return "城市废墟" if bool(source.get("city_present", false)) else "未城市化"
+func _region_development_status(source: Dictionary) -> String:
+	if bool(source.get("destroyed", false)):
+		return "区域废墟"
+	var facility_count := maxi(0, int(source.get("facility_count", 0)))
+	return "%d处公开设施" % facility_count if facility_count > 0 else "暂无设施"
 
 
-func _region_income_preview(source: Dictionary, city_status: String) -> String:
-	if not bool(source.get("city_active", false)):
-		return city_status
-	var detail_lines: Array = source.get("income_detail_lines", []) if source.get("income_detail_lines", []) is Array else []
-	if detail_lines.is_empty():
-		return "GDP/min %d｜暂无拆解" % int(source.get("city_last_income", 0))
-	var compact := []
-	for i in range(mini(2, detail_lines.size())):
-		compact.append(_short_text(str(detail_lines[i]).replace("\n", " / "), 52))
-	return " / ".join(compact)
+func _region_facility_summary(source: Dictionary) -> String:
+	var pieces: Array[String] = []
+	for facility_variant: Variant in source.get("facility_entries", []) as Array:
+		if not (facility_variant is Dictionary):
+			continue
+		var facility := facility_variant as Dictionary
+		var owner_text := "玩家%d" % (int(facility.get("owner_player_index", -1)) + 1) if str(facility.get("owner_kind", "neutral")) == "player" else "中立"
+		pieces.append("%s·%s·Lv.%d" % [owner_text, str(facility.get("facility_type", "设施")), int(facility.get("rank", 1))])
+	return _limited_names(pieces, 3, "暂无公开设施")
 
 
 func _region_monster_attraction(entries: Array) -> String:
@@ -272,9 +272,9 @@ func _role_opening_hint(role_card: Dictionary, tags: Array) -> String:
 func _role_privacy_line(role_card: Dictionary) -> String:
 	if bool(role_card.get("monster_cards_as_counter", false)): return "角色公开；反制来源仍匿名，原怪兽牌不公开。"
 	if int(role_card.get("intel_city_reveal_charges", 0)) > 0 or int(role_card.get("intel_card_trace_charges", 0)) > 0 or int(role_card.get("intel_contract_trace_charges", 0)) > 0: return "角色公开；侦测结果进入私人情报，不自动公开。"
-	if int(role_card.get("monster_control_limit_bonus", 0)) > 0: return "角色公开；怪兽归属仍等受伤资金线索暴露。"
+	if int(role_card.get("monster_control_limit_bonus", 0)) > 0: return "角色公开；怪兽归属、内部权重和预选目标不由图鉴披露。"
 	if int(role_card.get("military_control_limit_bonus", 0)) > 0: return "角色公开；军令来源不公开，军队行动结果公开。"
-	return "角色公开；未召唤的起始怪兽牌、手牌、现金和城市业主仍靠线索推理。"
+	return "角色与设施所有者公开；未召唤的起始怪兽牌、手牌、现金和私密调查不由图鉴披露。"
 
 
 func _short_text(text: String, limit: int) -> String:

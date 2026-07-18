@@ -71,7 +71,7 @@ theme_override_constants/v_separation = 7
 [node name="BestiaryMonsterActionBoardTitle" type="Label" parent="BestiaryMonsterMargin/BestiaryMonsterStack"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "行动概率板｜I级/IV级｜开局/破坏后"
+text = "公开行动板｜类别与效果"
 
 [node name="BestiaryMonsterActionGrid" type="GridContainer" parent="BestiaryMonsterMargin/BestiaryMonsterStack"]
 unique_name_in_owner = true

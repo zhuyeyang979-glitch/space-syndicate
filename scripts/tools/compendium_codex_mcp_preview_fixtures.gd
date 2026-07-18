@@ -182,7 +182,7 @@ func _monster_bestiary_detail() -> Dictionary:
 		"id": "monster_bestiary_detail",
 		"view": "bestiary_detail",
 		"title": "Monster Bestiary Detail",
-		"summary": "Monster art, KPI cards, action probability cards, and public ecology copy.",
+		"summary": "Monster art, KPI cards, public action effects, and ecology copy.",
 		"expected_component": "BestiaryDetail",
 		"payload": {
 			"accent": "#fb7185",
@@ -204,8 +204,8 @@ func _monster_bestiary_detail() -> Dictionary:
 				{"title": "Tell", "value": "Public", "meta": "No hidden owner leak", "accent": "#f472b6"},
 			],
 			"actions": [
-				{"index": "01", "name": "Orbit Crush", "tags": "move", "probability": "I 2/6 | IV 3/6", "facts": "Moves toward a profitable route.", "body": "Pressure appears as public route callout.", "accent": "#fb7185"},
-				{"index": "02", "name": "Market Roar", "tags": "event", "probability": "I 1/6 | IV 2/6", "facts": "Raises volatility on adjacent product.", "body": "Effect is public and anonymized.", "accent": "#facc15"},
+				{"index": "01", "name": "Orbit Crush", "tags": "move", "disclosure": "Public effect | weights hidden", "facts": "Moves toward a profitable route.", "body": "Pressure appears as public route callout.", "accent": "#fb7185"},
+				{"index": "02", "name": "Market Roar", "tags": "event", "disclosure": "Public effect | weights hidden", "facts": "Raises volatility on adjacent product.", "body": "Effect is public and anonymized.", "accent": "#facc15"},
 			],
 		},
 	}
@@ -225,7 +225,7 @@ func _mixed_compendium_hub() -> Dictionary:
 			"kpis": [
 				{"title": "Cards", "body": "Thumbnail browser and detail page.", "meta": "Sceneized entries", "accent": "#38bdf8"},
 				{"title": "Products", "body": "Badge, KPI, and strategy cards.", "meta": "Sceneized entries", "accent": "#22c55e"},
-				{"title": "Bestiary", "body": "KPI and action probability cards.", "meta": "Sceneized entries", "accent": "#fb7185"},
+				{"title": "Bestiary", "body": "KPI and public action-effect cards.", "meta": "Sceneized entries", "accent": "#fb7185"},
 			],
 			"actions": [
 				{"id": "codex_cards", "title": "Cards", "body": "Open card reference.", "accent": "#38bdf8"},

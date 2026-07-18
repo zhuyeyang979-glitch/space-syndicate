@@ -22,16 +22,16 @@ func _run() -> void:
 	var snapshot: Dictionary = service.call("compose", _source())
 	_expect(str(snapshot.get("summary_text", "")).contains("环晶电池"), "summary names the product")
 	_expect(str(snapshot.get("summary_text", "")).contains("策略摘要"), "summary includes supplied strategy presentation")
-	_expect(str(snapshot.get("preview_text", "")).contains("匿名期货"), "preview includes supplied public futures facts")
+	_expect(str(snapshot.get("preview_text", "")).contains("私人仓储和期货持仓保持隐藏"), "preview states the public market boundary")
 	var browser_entry := snapshot.get("browser_entry", {}) as Dictionary
 	_expect(int(browser_entry.get("catalog_index", -1)) == 2 and bool(browser_entry.get("selected", false)), "browser entry contract is stable")
 	var detail := snapshot.get("detail", {}) as Dictionary
-	_expect((detail.get("chips", []) as Array).size() == 7, "detail exposes seven market chips")
+	_expect((detail.get("chips", []) as Array).size() == 6, "detail exposes six read-only public market chips")
 	_expect((detail.get("kpis", []) as Array).size() == 4, "detail exposes four KPI cards")
 	_expect((detail.get("strategies", []) as Array).size() == 6, "detail exposes six public strategy cards")
 	var strategies := detail.get("strategies", []) as Array
-	_expect(str((strategies[0] as Dictionary).get("tooltip", "")).contains("看涨"), "strategy copy is composed from supplied rankings")
-	_expect(str((strategies[1] as Dictionary).get("tooltip", "")).contains("临港城"), "warehouse locations stay public and readable")
+	_expect(str((strategies[0] as Dictionary).get("tooltip", "")).contains("看涨"), "strategy copy is composed from supplied public rankings")
+	_expect(str((strategies[1] as Dictionary).get("body", "")).contains("价格、供需、天气与运输聚合可见"), "public market policy excludes private positions")
 	var debug_snapshot := service.call("debug_snapshot") as Dictionary
 	_expect(not bool(debug_snapshot.get("calculates_market_price", true)), "service does not calculate market prices")
 	_expect(not bool(debug_snapshot.get("calculates_strategy_scores", true)), "service does not calculate strategy scores")
@@ -69,7 +69,6 @@ func _source() -> Dictionary:
 			"price_path_text": "70→78→92",
 			"supply": 2,
 			"demand": 5,
-			"disrupted": 1,
 			"volatility": 4,
 			"weather_text": "太阳风令能源需求上升。",
 		},
@@ -77,9 +76,6 @@ func _source() -> Dictionary:
 			{"label": "看涨", "score": 88, "hint": "需求和断路正在支撑价格。"},
 			{"label": "囤货", "score": 63, "hint": "仓储公开但仍有收益窗口。"},
 		],
-		"futures_public_full": "匿名期货 看涨2 / 看跌1",
-		"futures_public_compact": "匿名期货 ↑2 ↓1",
-		"warehouse_public_entries": [{"name": "临港城", "pressure": 7, "count": 2, "units": 4, "duration": "18s"}],
 		"monster_focus_names": ["岩甲兽", "电弧兽"],
 		"related_card_names": ["商品看涨1", "港仓囤货1"],
 		"supply_district_names": ["临港区"],

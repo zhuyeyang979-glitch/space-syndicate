@@ -198,7 +198,8 @@ func _ensure_main() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	_overlay = _main.get("menu_overlay") as Control
-	var names_variant: Variant = _main.call("_card_codex_names") if _main.has_method("_card_codex_names") else []
+	var coordinator := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
+	var names_variant: Variant = coordinator.call("card_codex_public_card_ids", "all") if coordinator != null else []
 	_card_names = names_variant if names_variant is Array else []
 
 
@@ -246,8 +247,7 @@ func _run_case(case_id: String) -> Dictionary:
 			flags["scene_checked"] = true
 			notes = "one MenuOverlay owns one static CodexCompendiumSurface"
 		"card_browser_scene_required":
-			if _main != null:
-				_main.call("_open_card_codex_from_compendium")
+			_request_codex("card", "browser", "catalog", -1, "all")
 			var browser := _preview_child("CardCodexBrowserPanel")
 			passed = browser != null and browser.scene_file_path == str(REQUIRED_SCENES.get("card_browser", "")) and browser.has_signal("card_detail_requested")
 			flags["scene_checked"] = true
@@ -267,29 +267,25 @@ func _run_case(case_id: String) -> Dictionary:
 			flags["scene_checked"] = true
 			notes = "card detail has no generated fallback surface"
 		"bestiary_detail_scene_required":
-			if _main != null:
-				_main.call("_open_bestiary_menu", 0)
+			_request_codex("monster", "detail", "catalog", 0)
 			var detail := _preview_child("BestiaryMonsterBoardPanel")
 			passed = detail != null and detail.scene_file_path == str(REQUIRED_SCENES.get("bestiary_detail", ""))
 			flags["scene_checked"] = true
 			notes = "monster detail uses BestiaryDetail.tscn"
 		"product_detail_scene_required":
-			if _main != null:
-				_main.call("_open_product_codex_detail", 0)
+			_request_codex("product", "detail", "catalog", 0)
 			var detail := _preview_child("ProductCodexMarketBoardPanel")
 			passed = detail != null and detail.scene_file_path == str(REQUIRED_SCENES.get("product_detail", ""))
 			flags["scene_checked"] = true
 			notes = "product detail uses ProductCodexDetail.tscn"
 		"region_detail_scene_required":
-			if _main != null:
-				_main.call("_open_region_codex_menu", 0)
+			_request_codex("region", "detail", "catalog", 0)
 			var detail := _preview_child("RegionCodexTileBoardPanel")
 			passed = detail != null and detail.scene_file_path == str(REQUIRED_SCENES.get("region_detail", ""))
 			flags["scene_checked"] = true
 			notes = "region detail uses RegionCodexDetail.tscn"
 		"role_detail_scene_required":
-			if _main != null:
-				_main.call("_open_role_codex_menu", 0)
+			_request_codex("role", "detail", "catalog", 0)
 			var detail := _preview_child("RoleCodexIdentityBoardPanel")
 			passed = detail != null and detail.scene_file_path == str(REQUIRED_SCENES.get("role_detail", ""))
 			flags["scene_checked"] = true
@@ -321,6 +317,7 @@ func _run_case(case_id: String) -> Dictionary:
 		"required_scene_error_boundary_present":
 			var surface_source := FileAccess.get_file_as_string(CODEX_SURFACE_SCRIPT_PATH)
 			var overlay_source := FileAccess.get_file_as_string("res://scripts/ui/menu_overlay.gd")
+			var flow_source := FileAccess.get_file_as_string("res://scripts/runtime/compendium_application_flow_controller.gd")
 			passed = surface_source.contains("generated fallbacks are disabled") and surface_source.contains("func _contract_surfaces()") and not surface_source.contains("find_child(")
 			for component_name in ["CompendiumHubBoardPanel", "CardCodexBrowserPanel", "CardCodexDetailPanel", "BestiaryCodexBrowser", "BestiaryMonsterBoardPanel", "ProductCodexBrowser", "ProductCodexMarketBoardPanel", "RegionCodexTileBoardPanel", "RoleCodexIdentityBoardPanel"]:
 				passed = passed and surface_source.contains("\"%s\"" % component_name)
@@ -328,13 +325,11 @@ func _run_case(case_id: String) -> Dictionary:
 				passed = passed and not _main_source.contains(str(scene_path_variant))
 			passed = passed and _functions_absent(PRESENTATION_RETIRED_FUNCTIONS)
 			passed = passed and overlay_source.contains("child.is_in_group(\"persistent_menu_surface\")")
-			passed = passed and _main_source.count("menu_overlay.call(\"clear_preview\")") >= 17
-			passed = passed and _main_source.count("menu_overlay.call(\"clear_preview\")\n\tmenu_preview_box.visible = true") >= 15
-			passed = passed and _main_source.contains("menu_overlay.call(\"clear_preview\")\n\t\tmenu_preview_box.visible = true")
+			passed = passed and flow_source.contains("overlay.present_codex_page") and not flow_source.contains("/root/Main") and not flow_source.contains("current_scene")
 			passed = passed and not _main_source.contains("child.is_in_group(\"persistent_menu_surface\")")
 			flags["bridge_checked"] = true
 			flags["deletion_checked"] = true
-			notes = "MenuOverlay owns static Surface cleanup while main has no Codex scene preload, UI-group policy, or legacy renderer"
+			notes = "MenuOverlay owns static Surface cleanup and scene-owned Compendium flow applies pages without Main discovery or legacy renderers"
 		"codex_snapshots_pure_data":
 			var snapshots := _codex_snapshots()
 			passed = snapshots.size() == 7 and _is_pure_data(snapshots)
@@ -360,14 +355,14 @@ func _codex_snapshots() -> Array:
 		return []
 	var card_name := str(_card_names[0]) if not _card_names.is_empty() else ""
 	var coordinator := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
-	var role_card: Dictionary = _main.call("_make_player_role_card", 0)
 	var region_snapshot := coordinator.call("region_codex_public_snapshot", 0) as Dictionary if coordinator != null else {}
-	var role_snapshot := _main.call("_role_codex_public_snapshot", role_card, 0, 1) as Dictionary
+	var role_snapshot := coordinator.call("role_codex_public_snapshot", 0, {}) as Dictionary if coordinator != null else {}
 	var hub_script := load(COMPENDIUM_HUB_SNAPSHOT_SCRIPT_PATH) as Script
 	var hub_snapshot: Dictionary = hub_script.call("compose", 960.0) as Dictionary if hub_script != null else {}
 	var card_browser := coordinator.call("card_codex_public_browser_snapshot", {"names": _card_names, "columns": 3, "rows": 2, "page_index": 0, "filter_id": "all", "filter_label": "全部牌", "selected_card": card_name, "filters": []}) as Dictionary if coordinator != null else {}
 	var card_detail := coordinator.call("card_codex_public_detail_snapshot", card_name, 0, maxi(1, _card_names.size())) as Dictionary if coordinator != null and card_name != "" else {}
-	var product_names := _main.call("_product_catalog_names") as Array
+	var product_source := coordinator.get_node_or_null("ProductCodexPublicSourceService") if coordinator != null else null
+	var product_names: Array = product_source.call("ordered_product_ids") if product_source != null else []
 	var product_detail := coordinator.call("product_codex_public_detail_snapshot", str(product_names[0]), 0, true) as Dictionary if coordinator != null and not product_names.is_empty() else {}
 	return [
 		hub_snapshot,
@@ -378,6 +373,16 @@ func _codex_snapshots() -> Array:
 		region_snapshot.get("detail", {}),
 		role_snapshot.get("board", {}),
 	]
+
+
+func _request_codex(domain: String, view: String, stable_item_id: String, optional_index: int, filter_id: String = "") -> bool:
+	if _main == null:
+		return false
+	var port := _main.get_node_or_null("RuntimeServices/CompendiumNavigationPort")
+	return port != null and bool(port.call(
+		"request_open", domain, view, stable_item_id, optional_index, filter_id, 0,
+		"compendium", {"origin": "compendium"}
+	))
 
 
 func _functions_absent(function_names: Array) -> bool:

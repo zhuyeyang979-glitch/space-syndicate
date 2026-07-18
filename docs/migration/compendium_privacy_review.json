@@ -1,0 +1,17 @@
+{
+  "status": "GREEN",
+  "pure_data_required": true,
+  "surface_fails_closed_on_object": true,
+  "session_finished_expands_visibility": false,
+  "forbidden_domains": [
+    "cash",
+    "hand_discard",
+    "private_warehouse_futures",
+    "hidden_owner_target",
+    "intel_guess",
+    "ai_plan_score",
+    "rng",
+    "monster_internal_weight"
+  ],
+  "privacy_violation_count": 0
+}

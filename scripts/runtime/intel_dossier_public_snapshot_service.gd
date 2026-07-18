@@ -223,7 +223,7 @@ func _link_actions(city_entries: Array, card_entries: Array, monster_entries: Ar
 		var entry := entry_variant as Dictionary
 		var catalog_index := int(entry.get("catalog_index", -1))
 		if catalog_index >= 0:
-			links.append({"id": "intel_open_monster_%d" % catalog_index, "label": "查看怪兽线索：怪%d·%s" % [int(entry.get("slot", 0)) + 1, str(entry.get("name", "怪兽"))], "accent": Color("#fb7185"), "tooltip": "查看怪兽行动概率、资源偏好和伤害数据。"})
+			links.append({"id": "intel_open_monster_%d" % catalog_index, "label": "查看怪兽线索：怪%d·%s" % [int(entry.get("slot", 0)) + 1, str(entry.get("name", "怪兽"))], "accent": Color("#fb7185"), "tooltip": "查看怪兽公开行动类别、资源偏好和伤害数据。"})
 	var linked_products := {}
 	for entry_variant in city_clue_entries:
 		var product_name := str((entry_variant as Dictionary).get("linked_product", "")).strip_edges()
