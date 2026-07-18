@@ -12,6 +12,7 @@ save_section = "ruleset"
 script = ExtResource("2_entry")
 controller_id = "game_session"
 save_section = "session"
+state_version = 2
 
 [sub_resource type="Resource" id="Controller_03"]
 script = ExtResource("2_entry")

@@ -9,6 +9,17 @@ const STATE_PAUSED := "paused"
 const STATE_LOADING := "loading"
 const STATE_FINISHED := "finished"
 const STATE_ERROR := "error"
+const SAVE_PAYLOAD_FIELDS := [
+	"schema_version",
+	"ruleset_id",
+	"session_state",
+	"session_id",
+	"scenario_id",
+	"seed",
+	"setup",
+	"outcome_receipt",
+	"world_effective_us",
+]
 
 var _configured := false
 var _ruleset_id := ""
@@ -134,34 +145,22 @@ func to_save_data() -> Dictionary:
 
 
 func apply_save_data(data: Dictionary) -> Dictionary:
-	var payload: Dictionary = data.get("game_session_runtime", data) if data.get("game_session_runtime", data) is Dictionary else {}
-	if payload.is_empty():
-		return {"applied": true, "legacy_default": true, "session_state": _session_state}
-	if not _is_data_only(payload) or int(payload.get("schema_version", 0)) != 1:
-		return {"applied": false, "reason": "session_save_invalid"}
-	var restored_state := str(payload.get("session_state", STATE_RUNNING))
-	if restored_state not in [STATE_IDLE, STATE_STARTING, STATE_RUNNING, STATE_PAUSED, STATE_LOADING, STATE_FINISHED, STATE_ERROR]:
-		return {"applied": false, "reason": "session_state_invalid"}
-	var has_world_clock := payload.has("world_effective_us")
-	if has_world_clock and not (payload.get("world_effective_us") is int):
-		return {"applied": false, "reason": "world_effective_clock_invalid"}
-	var restored_world_us := int(payload.get("world_effective_us", -1))
-	if has_world_clock and (restored_world_us < 0 or _world_effective_clock == null or not _world_effective_clock.has_method("restore_micros")):
-		return {"applied": false, "reason": "world_effective_clock_invalid"}
-	if not (payload.get("ruleset_id", _ruleset_id) is String) \
-			or not (payload.get("session_id", _session_id) is String) \
-			or not (payload.get("scenario_id", _scenario_id) is String) \
-			or not (payload.get("seed", _seed) is int) \
-			or not (payload.get("setup", {}) is Dictionary) \
-			or not (payload.get("outcome_receipt", {}) is Dictionary):
-		return {"applied": false, "reason": "session_payload_invalid"}
-	var next_session_id := str(payload.get("session_id", _session_id))
-	var next_scenario_id := str(payload.get("scenario_id", _scenario_id))
-	var next_seed := int(payload.get("seed", _seed))
-	var next_setup := (payload.get("setup", {}) as Dictionary).duplicate(true) if payload.get("setup", {}) is Dictionary else {}
-	var next_outcome := (payload.get("outcome_receipt", {}) as Dictionary).duplicate(true) if payload.get("outcome_receipt", {}) is Dictionary else {}
-	if payload.has("world_effective_us"):
-		_world_effective_clock.call("restore_micros", restored_world_us)
+	var normalization := _normalize_save_data(data)
+	if not bool(normalization.get("accepted", false)):
+		return {
+			"applied": false,
+			"reason": str(normalization.get("reason_code", "session_save_invalid")),
+			"reason_code": str(normalization.get("reason_code", "session_save_invalid")),
+		}
+	var payload: Dictionary = normalization.get("normalized_state", {})
+	var restored_state := str(payload.get("session_state", STATE_IDLE))
+	var restored_world_us := int(payload.get("world_effective_us", 0))
+	var next_session_id := str(payload.get("session_id", ""))
+	var next_scenario_id := str(payload.get("scenario_id", ""))
+	var next_seed := int(payload.get("seed", 0))
+	var next_setup := (payload.get("setup", {}) as Dictionary).duplicate(true)
+	var next_outcome := (payload.get("outcome_receipt", {}) as Dictionary).duplicate(true)
+	_world_effective_clock.call("restore_micros", restored_world_us)
 	_session_state = restored_state
 	_session_id = next_session_id
 	_scenario_id = next_scenario_id
@@ -170,7 +169,21 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	_outcome_receipt = next_outcome
 	_save_state = "clean"
 	_dirty_reason = ""
-	return {"applied": true, "legacy_default": false, "session_state": _session_state}
+	return {"applied": true, "legacy_default": false, "session_state": _session_state, "reason_code": "session_runtime_restored"}
+
+
+func preflight_save_data(data: Dictionary) -> Dictionary:
+	var normalization := _normalize_save_data(data)
+	if not bool(normalization.get("accepted", false)):
+		return {
+			"accepted": false,
+			"reason_code": str(normalization.get("reason_code", "session_save_invalid")),
+		}
+	return {
+		"accepted": true,
+		"reason_code": "session_runtime_save_valid",
+		"normalized_state": (normalization.get("normalized_state", {}) as Dictionary).duplicate(true),
+	}
 
 
 func request_save(path: String, envelope: Dictionary, authorization: Dictionary = {}) -> Dictionary:
@@ -380,4 +393,51 @@ func _is_data_only(value: Variant) -> bool:
 		for item_variant in value:
 			if not _is_data_only(item_variant):
 				return false
+	return true
+
+
+func _normalize_save_data(data: Dictionary) -> Dictionary:
+	var payload_variant: Variant = data.get("game_session_runtime", data)
+	if not (payload_variant is Dictionary):
+		return {"accepted": false, "reason_code": "session_save_invalid"}
+	var payload := payload_variant as Dictionary
+	if not _has_exact_keys(payload, SAVE_PAYLOAD_FIELDS) or not _is_data_only(payload) or int(payload.get("schema_version", 0)) != 1:
+		return {"accepted": false, "reason_code": "session_save_invalid"}
+	if not (payload.get("ruleset_id") is String) \
+			or str(payload.get("ruleset_id", "")) not in ["v0.4", "v0.6"] \
+			or not (payload.get("session_state") is String) \
+			or str(payload.get("session_state", "")) not in [STATE_IDLE, STATE_STARTING, STATE_RUNNING, STATE_PAUSED, STATE_LOADING, STATE_FINISHED, STATE_ERROR] \
+			or not (payload.get("session_id") is String) \
+			or not (payload.get("scenario_id") is String) \
+			or not (payload.get("seed") is int) \
+			or not (payload.get("setup") is Dictionary) \
+			or not (payload.get("outcome_receipt") is Dictionary):
+		return {"accepted": false, "reason_code": "session_payload_invalid"}
+	if not (payload.get("world_effective_us") is int) \
+			or int(payload.get("world_effective_us", -1)) < 0 \
+			or _world_effective_clock == null \
+			or not _world_effective_clock.has_method("restore_micros"):
+		return {"accepted": false, "reason_code": "world_effective_clock_invalid"}
+	return {
+		"accepted": true,
+		"normalized_state": {
+			"schema_version": 1,
+			"ruleset_id": str(payload.get("ruleset_id", "")),
+			"session_state": str(payload.get("session_state", STATE_IDLE)),
+			"session_id": str(payload.get("session_id", "")),
+			"scenario_id": str(payload.get("scenario_id", "")),
+			"seed": int(payload.get("seed", 0)),
+			"setup": (payload.get("setup", {}) as Dictionary).duplicate(true),
+			"outcome_receipt": (payload.get("outcome_receipt", {}) as Dictionary).duplicate(true),
+			"world_effective_us": int(payload.get("world_effective_us", 0)),
+		},
+	}
+
+
+func _has_exact_keys(dictionary: Dictionary, fields: Array) -> bool:
+	if dictionary.keys().size() != fields.size():
+		return false
+	for field_variant in fields:
+		if not dictionary.has(str(field_variant)):
+			return false
 	return true

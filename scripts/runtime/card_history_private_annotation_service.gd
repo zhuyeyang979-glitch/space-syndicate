@@ -3,6 +3,22 @@ extends Node
 class_name CardHistoryPrivateAnnotationService
 
 const MAX_SUBSCRIPTIONS := 2
+const SAVE_SCHEMA_VERSION := 1
+const MAX_RESIDUAL_CATALOG_USAGE := 2
+const MAX_PUBLIC_EXCLUSION_USAGE := 3
+const SAVE_ROOT_FIELDS := ["schema_version", "revision", "annotations_by_viewer", "role_usage_by_viewer"]
+const SAVE_ANNOTATION_FIELDS := [
+	"note_text",
+	"private_tags",
+	"suspected_player_indices",
+	"private_confidence",
+	"excluded_player_indices",
+	"subscribed",
+]
+const ROLE_USAGE_LIMITS := {
+	"residual_catalog": MAX_RESIDUAL_CATALOG_USAGE,
+	"public_exclusion": MAX_PUBLIC_EXCLUSION_USAGE,
+}
 const EDITABLE_FIELDS := [
 	"note_text",
 	"private_tags",
@@ -46,10 +62,11 @@ func reset_state() -> void:
 
 
 func annotation_for_viewer(viewer_index: int, history_entry_id: String) -> Dictionary:
-	if viewer_index < 0 or history_entry_id.strip_edges().is_empty():
+	var normalized_id := history_entry_id.strip_edges()
+	if viewer_index < 0 or normalized_id.is_empty():
 		return {}
 	var viewer_rows: Dictionary = _annotations_by_viewer.get(str(viewer_index), {}) if _annotations_by_viewer.get(str(viewer_index), {}) is Dictionary else {}
-	var row_variant: Variant = viewer_rows.get(history_entry_id, {})
+	var row_variant: Variant = viewer_rows.get(normalized_id, {})
 	return (row_variant as Dictionary).duplicate(true) if row_variant is Dictionary else {}
 
 
@@ -70,10 +87,11 @@ func viewer_snapshot(viewer_index: int) -> Dictionary:
 
 
 func apply_annotation(viewer_index: int, history_entry_id: String, patch: Dictionary) -> Dictionary:
-	var public_entry := _public_entry(history_entry_id)
+	var normalized_id := history_entry_id.strip_edges()
+	var public_entry := _public_entry(normalized_id)
 	if viewer_index < 0 or public_entry.is_empty() or patch.is_empty() or not _valid_patch(patch):
 		return {"applied": false, "reason_code": "annotation_request_invalid", "revision": _revision}
-	var before := annotation_for_viewer(viewer_index, history_entry_id)
+	var before := annotation_for_viewer(viewer_index, normalized_id)
 	var after := _base_annotation(viewer_index, public_entry) if before.is_empty() else before.duplicate(true)
 	for field_variant in EDITABLE_FIELDS:
 		var field := str(field_variant)
@@ -86,8 +104,8 @@ func apply_annotation(viewer_index: int, history_entry_id: String, patch: Dictio
 	after["updated_at_public_revision"] = int(public_entry.get("public_revision", 0))
 	if after == before:
 		return {"applied": true, "changed": false, "reason_code": "unchanged", "revision": _revision, "annotation": after}
-	_store_annotation(viewer_index, history_entry_id, after)
-	_subscription_fingerprints[_subscription_key(viewer_index, history_entry_id)] = _public_fingerprint(public_entry)
+	_store_annotation(viewer_index, normalized_id, after)
+	_subscription_fingerprints[_subscription_key(viewer_index, normalized_id)] = _public_fingerprint(public_entry)
 	_revision += 1
 	return {"applied": true, "changed": true, "reason_code": "annotation_updated", "revision": _revision, "annotation": after.duplicate(true)}
 
@@ -192,6 +210,158 @@ func refresh_subscriptions() -> Dictionary:
 	return {"refreshed": true, "changed_entry_ids": changed_ids, "notification_count": changed_ids.size(), "revision": _revision}
 
 
+func capture_save_checkpoint(valid_viewer_count: int) -> Dictionary:
+	var validation := validate_save_checkpoint(_durable_checkpoint(), valid_viewer_count)
+	if not bool(validation.get("accepted", false)):
+		return validation
+	return {
+		"accepted": true,
+		"reason_code": "card_annotation_checkpoint_ready",
+		"checkpoint": (validation.get("normalized_state", {}) as Dictionary).duplicate(true),
+	}
+
+
+func validate_save_checkpoint(data: Dictionary, valid_viewer_count: int) -> Dictionary:
+	if valid_viewer_count < 0 or not _has_exact_keys(data, SAVE_ROOT_FIELDS) \
+			or int(data.get("schema_version", -1)) != SAVE_SCHEMA_VERSION \
+			or not (data.get("revision") is int) \
+			or int(data.get("revision", -1)) < 0 \
+			or not (data.get("annotations_by_viewer") is Dictionary) \
+			or not (data.get("role_usage_by_viewer") is Dictionary):
+		return _checkpoint_rejection("card_annotation_checkpoint_schema_invalid")
+	var normalized_annotations: Dictionary = {}
+	var annotation_buckets: Dictionary = data.get("annotations_by_viewer", {})
+	for viewer_key_variant in annotation_buckets.keys():
+		var viewer_result := _validated_viewer_key(viewer_key_variant, valid_viewer_count)
+		if not bool(viewer_result.get("accepted", false)):
+			return viewer_result
+		var viewer_index := int(viewer_result.get("viewer_index", -1))
+		if not (annotation_buckets[viewer_key_variant] is Dictionary):
+			return _checkpoint_rejection("card_annotation_viewer_rows_invalid")
+		var rows: Dictionary = annotation_buckets[viewer_key_variant]
+		var normalized_rows: Dictionary = {}
+		var subscription_count := 0
+		for history_id_variant in rows.keys():
+			if not (history_id_variant is String):
+				return _checkpoint_rejection("card_annotation_history_id_invalid")
+			var history_entry_id := str(history_id_variant)
+			if not _canonical_history_entry_id(history_entry_id) or not (rows[history_id_variant] is Dictionary):
+				return _checkpoint_rejection("card_annotation_history_id_invalid")
+			var row_result := _normalize_saved_annotation(rows[history_id_variant] as Dictionary, valid_viewer_count)
+			if not bool(row_result.get("accepted", false)):
+				return row_result
+			var normalized_row: Dictionary = row_result.get("normalized_row", {})
+			if bool(normalized_row.get("subscribed", false)):
+				subscription_count += 1
+			normalized_rows[history_entry_id] = normalized_row
+		if subscription_count > MAX_SUBSCRIPTIONS:
+			return _checkpoint_rejection("card_annotation_subscription_limit_invalid")
+		normalized_annotations[str(viewer_index)] = normalized_rows
+	var normalized_role_usage: Dictionary = {}
+	var role_usage_buckets: Dictionary = data.get("role_usage_by_viewer", {})
+	for viewer_key_variant in role_usage_buckets.keys():
+		var viewer_result := _validated_viewer_key(viewer_key_variant, valid_viewer_count)
+		if not bool(viewer_result.get("accepted", false)):
+			return viewer_result
+		var viewer_index := int(viewer_result.get("viewer_index", -1))
+		if not (role_usage_buckets[viewer_key_variant] is Dictionary):
+			return _checkpoint_rejection("card_annotation_role_usage_invalid")
+		var usage: Dictionary = role_usage_buckets[viewer_key_variant]
+		var normalized_usage: Dictionary = {}
+		for ability_variant in usage.keys():
+			var ability_id := str(ability_variant)
+			if not ROLE_USAGE_LIMITS.has(ability_id) \
+					or not (usage[ability_variant] is int) \
+					or int(usage[ability_variant]) < 0 \
+					or int(usage[ability_variant]) > int(ROLE_USAGE_LIMITS[ability_id]):
+				return _checkpoint_rejection("card_annotation_role_usage_invalid")
+			normalized_usage[ability_id] = int(usage[ability_variant])
+		normalized_role_usage[str(viewer_index)] = normalized_usage
+	return {
+		"accepted": true,
+		"reason_code": "card_annotation_checkpoint_valid",
+		"normalized_state": {
+			"schema_version": SAVE_SCHEMA_VERSION,
+			"revision": int(data.get("revision", 0)),
+			"annotations_by_viewer": normalized_annotations,
+			"role_usage_by_viewer": normalized_role_usage,
+		},
+	}
+
+
+func apply_save_checkpoint(data: Dictionary, valid_viewer_count: int) -> Dictionary:
+	var validation := validate_save_checkpoint(data, valid_viewer_count)
+	if not bool(validation.get("accepted", false)):
+		return {
+			"applied": false,
+			"reason_code": str(validation.get("reason_code", "card_annotation_checkpoint_invalid")),
+		}
+	var normalized: Dictionary = validation.get("normalized_state", {})
+	var rebuilt_annotations: Dictionary = {}
+	var rebuilt_fingerprints: Dictionary = {}
+	var saved_annotations: Dictionary = normalized.get("annotations_by_viewer", {})
+	for viewer_key_variant in saved_annotations.keys():
+		var viewer_index := int(str(viewer_key_variant))
+		var saved_rows: Dictionary = saved_annotations[viewer_key_variant]
+		var rebuilt_rows: Dictionary = {}
+		for history_id_variant in saved_rows.keys():
+			var history_entry_id := str(history_id_variant)
+			var public_entry := _public_entry(history_entry_id)
+			if public_entry.is_empty():
+				return {"applied": false, "reason_code": "card_annotation_public_history_missing"}
+			var rebuilt := _base_annotation(viewer_index, public_entry)
+			var saved_row: Dictionary = saved_rows[history_id_variant]
+			for field_variant in SAVE_ANNOTATION_FIELDS:
+				var field := str(field_variant)
+				rebuilt[field] = _duplicate_data(saved_row[field])
+			rebuilt_rows[history_entry_id] = rebuilt
+			if bool(rebuilt.get("subscribed", false)):
+				rebuilt_fingerprints[_subscription_key(viewer_index, history_entry_id)] = _public_fingerprint(public_entry)
+		rebuilt_annotations[str(viewer_index)] = rebuilt_rows
+	_annotations_by_viewer = rebuilt_annotations
+	_role_usage_by_viewer = (normalized.get("role_usage_by_viewer", {}) as Dictionary).duplicate(true)
+	_subscription_fingerprints = rebuilt_fingerprints
+	_revision = int(normalized.get("revision", 0))
+	return {
+		"applied": true,
+		"reason_code": "card_annotation_checkpoint_restored",
+		"revision": _revision,
+	}
+
+
+func empty_save_checkpoint() -> Dictionary:
+	return {
+		"schema_version": SAVE_SCHEMA_VERSION,
+		"revision": 0,
+		"annotations_by_viewer": {},
+		"role_usage_by_viewer": {},
+	}
+
+
+func capture_runtime_checkpoint() -> Dictionary:
+	return {
+		"annotations_by_viewer": _annotations_by_viewer.duplicate(true),
+		"role_usage_by_viewer": _role_usage_by_viewer.duplicate(true),
+		"subscription_fingerprints": _subscription_fingerprints.duplicate(true),
+		"revision": _revision,
+		"notification_count": _notification_count,
+	}
+
+
+func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	for key in ["annotations_by_viewer", "role_usage_by_viewer", "subscription_fingerprints"]:
+		if not (checkpoint.get(key) is Dictionary):
+			return {"applied": false, "reason_code": "card_annotation_runtime_checkpoint_invalid"}
+	if not (checkpoint.get("revision") is int) or not (checkpoint.get("notification_count") is int):
+		return {"applied": false, "reason_code": "card_annotation_runtime_checkpoint_invalid"}
+	_annotations_by_viewer = (checkpoint.get("annotations_by_viewer", {}) as Dictionary).duplicate(true)
+	_role_usage_by_viewer = (checkpoint.get("role_usage_by_viewer", {}) as Dictionary).duplicate(true)
+	_subscription_fingerprints = (checkpoint.get("subscription_fingerprints", {}) as Dictionary).duplicate(true)
+	_revision = int(checkpoint.get("revision", 0))
+	_notification_count = int(checkpoint.get("notification_count", 0))
+	return {"applied": true, "reason_code": "card_annotation_runtime_checkpoint_restored"}
+
+
 func debug_snapshot() -> Dictionary:
 	return {
 		"service_ready": _public_query != null,
@@ -205,7 +375,9 @@ func debug_snapshot() -> Dictionary:
 		"reads_hidden_actor": false,
 		"public_broadcast_count": 0,
 		"owns_save_schema": false,
-		"save_debt": "session_scoped_until_existing_card_execution_owner_can_version_annotations",
+		"checkpoint_persisted_by_session_owner": true,
+		"notification_state_persisted": false,
+		"preflight_reads_live_history": false,
 	}
 
 
@@ -234,6 +406,130 @@ func _store_annotation(viewer_index: int, history_entry_id: String, annotation: 
 	var rows: Dictionary = _annotations_by_viewer.get(viewer_key, {}) if _annotations_by_viewer.get(viewer_key, {}) is Dictionary else {}
 	rows[history_entry_id] = annotation.duplicate(true)
 	_annotations_by_viewer[viewer_key] = rows
+
+
+func _durable_checkpoint() -> Dictionary:
+	var annotations: Dictionary = {}
+	for viewer_key_variant in _annotations_by_viewer.keys():
+		var rows_variant: Variant = _annotations_by_viewer[viewer_key_variant]
+		if not (rows_variant is Dictionary):
+			annotations[viewer_key_variant] = rows_variant
+			continue
+		var durable_rows: Dictionary = {}
+		for history_id_variant in (rows_variant as Dictionary).keys():
+			var row_variant: Variant = (rows_variant as Dictionary)[history_id_variant]
+			if not (row_variant is Dictionary):
+				durable_rows[history_id_variant] = row_variant
+				continue
+			var durable_row: Dictionary = {}
+			for field_variant in SAVE_ANNOTATION_FIELDS:
+				var field := str(field_variant)
+				durable_row[field] = _duplicate_data((row_variant as Dictionary).get(field))
+			durable_rows[history_id_variant] = durable_row
+		annotations[viewer_key_variant] = durable_rows
+	return {
+		"schema_version": SAVE_SCHEMA_VERSION,
+		"revision": _revision,
+		"annotations_by_viewer": annotations,
+		"role_usage_by_viewer": _role_usage_by_viewer.duplicate(true),
+	}
+
+
+func _normalize_saved_annotation(row: Dictionary, valid_viewer_count: int) -> Dictionary:
+	if not _has_exact_keys(row, SAVE_ANNOTATION_FIELDS) \
+			or not (row.get("note_text") is String) \
+			or str(row.get("note_text", "")).length() > 240 \
+			or not (row.get("private_tags") is Array) \
+			or not (row.get("suspected_player_indices") is Array) \
+			or not (row.get("excluded_player_indices") is Array) \
+			or not (row.get("private_confidence") is int) \
+			or int(row.get("private_confidence", -1)) < 0 \
+			or int(row.get("private_confidence", -1)) > 3 \
+			or not (row.get("subscribed") is bool):
+		return _checkpoint_rejection("card_annotation_row_invalid")
+	var tags: Array[String] = []
+	for tag_variant in row.get("private_tags", []) as Array:
+		if not (tag_variant is String):
+			return _checkpoint_rejection("card_annotation_tags_invalid")
+		var tag := str(tag_variant)
+		if tag.strip_edges() != tag or tag.is_empty() or tag.length() > 32 or tags.has(tag) or tags.size() >= 8:
+			return _checkpoint_rejection("card_annotation_tags_invalid")
+		tags.append(tag)
+	var suspects_result := _validated_saved_indices(row.get("suspected_player_indices", []), valid_viewer_count)
+	var excluded_result := _validated_saved_indices(row.get("excluded_player_indices", []), valid_viewer_count)
+	if not bool(suspects_result.get("accepted", false)):
+		return suspects_result
+	if not bool(excluded_result.get("accepted", false)):
+		return excluded_result
+	var suspects: Array = suspects_result.get("values", [])
+	var excluded: Array = excluded_result.get("values", [])
+	for player_index_variant in suspects:
+		if excluded.has(player_index_variant):
+			return _checkpoint_rejection("card_annotation_indices_overlap")
+	return {
+		"accepted": true,
+		"normalized_row": {
+			"note_text": str(row.get("note_text", "")),
+			"private_tags": tags,
+			"suspected_player_indices": suspects,
+			"private_confidence": int(row.get("private_confidence", 0)),
+			"excluded_player_indices": excluded,
+			"subscribed": bool(row.get("subscribed", false)),
+		},
+	}
+
+
+func _validated_saved_indices(value: Variant, valid_viewer_count: int) -> Dictionary:
+	if not (value is Array):
+		return _checkpoint_rejection("card_annotation_indices_invalid")
+	var result: Array[int] = []
+	for index_variant in value as Array:
+		if not (index_variant is int):
+			return _checkpoint_rejection("card_annotation_indices_invalid")
+		var player_index := int(index_variant)
+		if player_index < 0 or player_index >= valid_viewer_count or result.has(player_index):
+			return _checkpoint_rejection("card_annotation_indices_invalid")
+		result.append(player_index)
+	var sorted := result.duplicate()
+	sorted.sort()
+	if result != sorted:
+		return _checkpoint_rejection("card_annotation_indices_not_canonical")
+	return {"accepted": true, "values": result}
+
+
+func _validated_viewer_key(value: Variant, valid_viewer_count: int) -> Dictionary:
+	if not (value is String) or not str(value).is_valid_int():
+		return _checkpoint_rejection("card_annotation_viewer_invalid")
+	var viewer_index := int(str(value))
+	if str(viewer_index) != str(value) or viewer_index < 0 or viewer_index >= valid_viewer_count:
+		return _checkpoint_rejection("card_annotation_viewer_invalid")
+	return {"accepted": true, "viewer_index": viewer_index}
+
+
+func _canonical_history_entry_id(value: String) -> bool:
+	if value.strip_edges() != value or not value.begins_with("card-history:"):
+		return false
+	var suffix := value.trim_prefix("card-history:")
+	return suffix.is_valid_int() and int(suffix) >= 0 and str(int(suffix)) == suffix
+
+
+func _has_exact_keys(dictionary: Dictionary, fields: Array) -> bool:
+	if dictionary.keys().size() != fields.size():
+		return false
+	for field_variant in fields:
+		if not dictionary.has(str(field_variant)):
+			return false
+	return true
+
+
+func _checkpoint_rejection(reason_code: String) -> Dictionary:
+	return {"accepted": false, "reason_code": reason_code}
+
+
+func _duplicate_data(value: Variant) -> Variant:
+	if value is Dictionary or value is Array:
+		return value.duplicate(true)
+	return value
 
 
 func _valid_patch(patch: Dictionary) -> bool:
