@@ -25,6 +25,7 @@ var _card_resolution: CardResolutionRuntimeController
 var _queue: CardResolutionQueueRuntimeService
 var _history: CardResolutionHistoryRuntimeService
 var _card_resolution_presentation: CardResolutionPresentationPort
+var _player_seat_sources: PlayerSeatPublicSourceService
 var _revision := 0
 var _compose_count := 0
 var _last_visual_event_revision := 0
@@ -51,7 +52,8 @@ func configure(
 	card_resolution: CardResolutionRuntimeController,
 	queue: CardResolutionQueueRuntimeService,
 	history: CardResolutionHistoryRuntimeService,
-	card_resolution_presentation: CardResolutionPresentationPort
+	card_resolution_presentation: CardResolutionPresentationPort,
+	player_seat_sources: PlayerSeatPublicSourceService = null
 ) -> void:
 	_ports = ports
 	_selection = selection
@@ -74,12 +76,14 @@ func configure(
 	_queue = queue
 	_history = history
 	_card_resolution_presentation = card_resolution_presentation
+	_player_seat_sources = player_seat_sources
 
 
 func compose_table_state(viewer_index: int, include_full: bool) -> Dictionary:
 	if not _viewer_is_authorized(viewer_index) or _table_viewmodel == null:
 		return {}
-	var public_world := _ports.public_world_projection().to_dictionary()
+	var public_projection := _ports.public_world_projection()
+	var public_world := public_projection.to_dictionary()
 	var private_world := _ports.private_world_projection(viewer_index, viewer_index).to_dictionary()
 	var action := _ports.action_projection(viewer_index).to_dictionary()
 	if public_world.is_empty() or private_world.is_empty() or action.is_empty():
@@ -90,7 +94,7 @@ func compose_table_state(viewer_index: int, include_full: bool) -> Dictionary:
 	var visual_surface := _next_card_resolution_visual_surface(public_world)
 	var table_source := {
 		"top_bar": _top_bar_source(viewer_index, public_world, private_world, action, district),
-		"planet": _planet_source(public_world, action, district),
+		"planet": _planet_source(public_world, action, district, public_projection, viewer_index),
 		"district": district,
 		"actions": actions,
 		"player_board": _player_board_source(viewer_index, public_world, private_world, action, district, actions),
@@ -162,6 +166,7 @@ func debug_snapshot() -> Dictionary:
 		"uses_card_play_eligibility_facts": true,
 		"uses_public_queue_and_history": true,
 		"card_visual_event_revision": _last_visual_event_revision,
+		"uses_public_player_seat_projection": _player_seat_sources != null,
 		"supports_decision_kinds": ["monster_wager", "contract_response", "discard_purchase", "monster_target_choice", "player_target_choice"],
 		"references_main": false,
 		"mutates_gameplay": false,
@@ -495,7 +500,13 @@ func action_choices(viewer_index: int) -> Dictionary:
 	return _dictionary(snapshot.get("choices", {}))
 
 
-func _planet_source(public_world: Dictionary, _action: Dictionary, district: Dictionary) -> Dictionary:
+func _planet_source(
+	public_world: Dictionary,
+	_action: Dictionary,
+	district: Dictionary,
+	public_projection: WorldSessionPublicProjection,
+	viewer_index: int
+) -> Dictionary:
 	var districts := _array(public_world.get("districts", []))
 	var queue_public := _queue.public_snapshot() if _queue != null else {}
 	var card_facts := _card_resolution.card_play_fact_snapshot() if _card_resolution != null else {}
@@ -520,6 +531,7 @@ func _planet_source(public_world: Dictionary, _action: Dictionary, district: Dic
 			or bool(queue_public.get("active_present", false))},
 		"weather": {"active": _weather_status_text(), "forecast": _weather_forecast_text(), "impact": _weather_impact_text(), "tooltip": _weather_status_text()},
 		"flow_compass": {},
+		"public_player_seat_sources": _player_seat_sources.compose_sources(public_projection, viewer_index) if _player_seat_sources != null else [],
 		"selected_map_layer_focus": _selection.selected_map_layer_focus if _selection != null else "all",
 	}
 

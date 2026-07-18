@@ -13,7 +13,7 @@ func _ready() -> void:
 	var phases := coordinator.get_node_or_null("RuntimePhaseCoordinator") as RuntimePhaseCoordinator
 	_check(loop != null, "production coordinator mounts RuntimeLoop")
 	_check(ports != null and ports.get_child_count() == 7, "production coordinator mounts seven narrow typed ports")
-	_check(phases != null and phases.get_child_count() == 6, "production coordinator mounts six explicit phase coordinators")
+	_check(phases != null and phases.get_child_count() == 7, "production coordinator mounts six phases and one typed simulation step")
 	_check(coordinator.find_children("RuntimeLoop", "RuntimeLoop", true, false).size() == 1, "production composition contains one RuntimeLoop")
 	_check(loop != null and loop.is_processing(), "RuntimeLoop owns an enabled process callback")
 	var snapshot := loop.debug_snapshot() if loop != null else {}

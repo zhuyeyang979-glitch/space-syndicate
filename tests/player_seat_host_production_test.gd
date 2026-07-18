@@ -3,7 +3,6 @@ extends SceneTree
 const GAME_SCREEN_SCENE := preload("res://scenes/ui/GameScreen.tscn")
 const SEAT_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/public_player_seat_snapshot.gd")
 const SEAT_SOURCE_SERVICE_SCRIPT := preload("res://scripts/runtime/player_seat_public_source_service.gd")
-const FAKE_PUBLIC_WORLD_SCRIPT := preload("res://tests/fixtures/player_seat_host/fake_public_player_world.gd")
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -108,17 +107,20 @@ func _run() -> void:
 	var front_layer := screen.find_child("FrontSeatLayer", true, false) as Control
 	_expect(back_layer != null and front_layer != null and back_layer.mouse_filter == Control.MOUSE_FILTER_IGNORE and front_layer.mouse_filter == Control.MOUSE_FILTER_IGNORE, "both production seat layers ignore pointer input")
 	var source_service := SEAT_SOURCE_SERVICE_SCRIPT.new()
-	var fake_world := FAKE_PUBLIC_WORLD_SCRIPT.new()
-	get_root().add_child(fake_world)
-	source_service.bind_world(fake_world)
-	var public_sources: Array = source_service.compose_sources()
-	_expect(public_sources.size() == 4 and bool((public_sources[2] as Dictionary).get("is_local_player", false)), "formal public source service reads authoritative public player accessors")
+	var empty_projection := WorldSessionPublicProjection.new()
+	_expect(source_service.compose_sources(empty_projection, -1).is_empty(), "formal public source service allows zero pre-session seats")
+	var public_projection := WorldSessionPublicProjection.new()
+	public_projection.revision = 1
+	public_projection.players = _sources(4)
+	var public_sources: Array = source_service.compose_sources(public_projection, 2)
+	_expect(public_sources.size() == 4 and bool((public_sources[2] as Dictionary).get("is_local_player", false)), "formal public source service reads the authoritative public session projection")
 	var source_text := JSON.stringify(public_sources)
 	_expect(not source_text.contains("private_plan") and not source_text.contains("cash") and not source_text.contains("hand"), "formal public source service does not forward private player state")
 	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
-	_expect(coordinator_source.contains("func public_player_seat_sources"), "Coordinator exposes the scene-owned public seat source without a Main adapter")
+	var service_source := FileAccess.get_file_as_string("res://scripts/runtime/player_seat_public_source_service.gd")
+	_expect(not service_source.contains("bind_world") and not service_source.contains("_safe_world_call") and not service_source.contains("_player_role_card_for_index"), "public seat service has no dynamic Main world or role lookup")
+	_expect(coordinator_source.contains("_player_seat_public_source_node() as PlayerSeatPublicSourceService"), "Coordinator injects the scene-owned seat source into the real presentation query")
 	source_service.free()
-	fake_world.queue_free()
 	screen.queue_free()
 	await process_frame
 	_finish()

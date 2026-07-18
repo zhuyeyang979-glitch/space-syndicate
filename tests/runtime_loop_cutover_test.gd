@@ -110,20 +110,20 @@ class FakePorts extends RuntimeWorldPorts:
 	var state: TraceState
 	func _init(value: TraceState) -> void:
 		state = value
-		lifecycle = FakeLifecyclePort.new(state)
-		lifecycle.name = "RuntimeLifecyclePort"; add_child(lifecycle)
-		card = FakeCardPort.new(state)
-		card.name = "RuntimeCardPort"; add_child(card)
-		economy = FakeEconomyPort.new(state)
-		economy.name = "RuntimeEconomyPort"; add_child(economy)
-		actors = FakeActorPort.new(state)
-		actors.name = "RuntimeActorPort"; add_child(actors)
-		monster = FakeMonsterPort.new(state)
-		monster.name = "RuntimeMonsterPort"; add_child(monster)
-		presentation = FakePresentationPort.new(state)
-		presentation.name = "RuntimePresentationPort"; add_child(presentation)
-		victory = FakeVictoryPort.new(state)
-		victory.name = "RuntimeVictoryPort"; add_child(victory)
+		var lifecycle_port := FakeLifecyclePort.new(state)
+		lifecycle_port.name = "RuntimeLifecyclePort"; add_child(lifecycle_port)
+		var card_port := FakeCardPort.new(state)
+		card_port.name = "RuntimeCardPort"; add_child(card_port)
+		var economy_port := FakeEconomyPort.new(state)
+		economy_port.name = "RuntimeEconomyPort"; add_child(economy_port)
+		var actor_port := FakeActorPort.new(state)
+		actor_port.name = "RuntimeActorPort"; add_child(actor_port)
+		var monster_port := FakeMonsterPort.new(state)
+		monster_port.name = "RuntimeMonsterPort"; add_child(monster_port)
+		var presentation_port := FakePresentationPort.new(state)
+		presentation_port.name = "RuntimePresentationPort"; add_child(presentation_port)
+		var victory_port := FakeVictoryPort.new(state)
+		victory_port.name = "RuntimeVictoryPort"; add_child(victory_port)
 	func is_ready() -> bool: return true
 
 
