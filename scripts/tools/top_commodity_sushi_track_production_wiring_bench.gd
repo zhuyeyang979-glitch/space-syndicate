@@ -34,7 +34,7 @@ func _ready() -> void:
 
 func _run_auto() -> void:
 	var result := await run_checks()
-	if quit_on_finish:
+	if quit_on_finish or DisplayServer.get_name().to_lower() == "headless":
 		get_tree().quit(0 if bool(result.get("passed", false)) else 1)
 
 

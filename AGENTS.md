@@ -120,7 +120,7 @@ Useful field categories include:
 - `price_delta`, `market_demand_pressure`, `market_supply_pressure`, `growth_multiplier`
 - `gdp_bet_direction`, `gdp_bet_multiplier`, `gdp_bet_turns`, `gdp_bet_destroy_bonus`
 - `damage`, `route_damage`, `region_damage`, `knockback`
-- `intel_city_reveal`, `intel_card_trace`, `intel_contract_trace`
+- `intel_city_reveal`, `card_history_public_review`, `card_history_subscription`, `intel_contract_trace`
 - `weather_control`
 - `military_force`, `military_command`
 - `generic_effect_bonus`

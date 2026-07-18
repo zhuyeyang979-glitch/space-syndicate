@@ -71,7 +71,7 @@ func _run() -> void:
 
 	coordinator.call("_apply_victory_outcome_receipt", receipt)
 	await _wait_frames(3)
-	var public_log: Array = main.call("_runtime_public_log_snapshot")
+	var public_log: Array = coordinator.call("presentation_recent_public_log_entries", 90)
 	var participant_names := _participant_names(main, players.size())
 	var public_context := {
 		"victory_public_snapshot": coordinator.call("victory_control_public_snapshot", -1),
@@ -123,7 +123,7 @@ func _run() -> void:
 	var raw_log_count := (coordinator.call("presentation_recent_public_log_entries", 90) as Array).size()
 	var first_outcome_count := int(((coordinator.table_presentation_query_ports().debug_snapshot().get("victory_receipts", {}) as Dictionary)).get("outcome_receipt_count", 0))
 	coordinator.call("_apply_victory_outcome_receipt", receipt)
-	var replay_logs: Array = main.call("_runtime_public_log_snapshot")
+	var replay_logs: Array = coordinator.call("presentation_recent_public_log_entries", 90)
 	var replay_paths: Array[String] = []
 	_collect_exact_value_paths(replay_logs, [PRIVATE_CASH_CENTS, PRIVATE_CASH_TEXT, str(PRIVATE_CASH_CENTS), "987654321"], "replay_logs", replay_paths)
 	_expect((coordinator.call("presentation_recent_public_log_entries", 90) as Array).size() >= raw_log_count and replay_paths.is_empty(), "reapplying an outcome never adds a sensitive public log")

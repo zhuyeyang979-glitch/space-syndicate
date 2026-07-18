@@ -583,7 +583,7 @@ func runtime_balance_rule_loophole_rows():
 
 
 func skill_balance_numeric_field_names():
-	return ["cash", "revenue_amount", "contract_income", "accept_cash", "decline_cash_penalty", "production_delta", "transport_delta", "consumption_delta", "market_demand_pressure", "market_supply_pressure", "price_delta", "growth_multiplier", "route_flow_multiplier", "repair_routes", "route_damage", "damage", "panic", "draw_amount", "trace_card_count", "reveal_city_count", "trace_contract_count", "hand_discard_count", "hand_steal_count", "counter_strength", "counter_trace", "global_barrage_damage", "global_barrage_target_count", "global_barrage_route_damage", "hp", "fixed_skill_count", "military_hp", "military_damage", "military_gdp_penalty", "military_strike_route_damage", "weather_zone_count", "weather_duration_seconds"]
+	return ["cash", "revenue_amount", "contract_income", "accept_cash", "decline_cash_penalty", "production_delta", "transport_delta", "consumption_delta", "market_demand_pressure", "market_supply_pressure", "price_delta", "growth_multiplier", "route_flow_multiplier", "repair_routes", "route_damage", "damage", "panic", "draw_amount", "history_review_count", "history_subscription_count", "reveal_city_count", "trace_contract_count", "hand_discard_count", "hand_steal_count", "counter_strength", "counter_trace", "global_barrage_damage", "global_barrage_target_count", "global_barrage_route_damage", "hp", "fixed_skill_count", "military_hp", "military_damage", "military_gdp_penalty", "military_strike_route_damage", "weather_zone_count", "weather_duration_seconds"]
 
 
 func skill_balance_feature_vector(card_name: String, skill: Dictionary, rank: int = 1, family: String = "", price: int = 0, route_id: String = "", route_label: String = ""):

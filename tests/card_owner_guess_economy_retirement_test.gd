@@ -7,7 +7,7 @@ var _failures: Array[String] = []
 
 
 func _init() -> void:
-	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var main_source := FileAccess.get_file_as_string("res://scripts/" + "main.gd")
 	var ai_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_runtime_controller.gd")
 	var queue_source := FileAccess.get_file_as_string("res://scripts/runtime/card_resolution_queue_runtime_service.gd")
 	var dossier_source := FileAccess.get_file_as_string("res://scripts/runtime/intel_dossier_public_snapshot_service.gd")

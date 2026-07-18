@@ -243,8 +243,13 @@ func _check_static_composition(main: Control) -> void:
 		_expect(main.get_node_or_null(node_path) != null, "main.tscn owns %s" % node_path)
 	var screen := main.get_node_or_null("RuntimeGameScreen") as Control
 	_expect(screen != null and screen.scene_file_path == "res://scenes/ui/GameScreen.tscn", "RuntimeGameScreen is the editable GameScreen scene instance")
-	for node_name in ["TopBar", "PublicTrack", "PlanetBoard", "PlanetMapView", "RightInspector", "PlayerBoard", "OverlayLayer"]:
+	for node_name in ["TopBar", "PlanetBoard", "PlanetMapView", "RightInspector", "PlayerBoard", "OverlayLayer"]:
 		_expect(screen != null and screen.find_child(node_name, true, false) != null, "RuntimeGameScreen contains %s" % node_name)
+	var commodity_tracks := screen.find_children("TopCommoditySushiTrack", "PanelContainer", true, false) if screen != null else []
+	var retired_public_tracks := screen.find_children("PublicTrack", "", true, false) if screen != null else []
+	var retired_focus_ribbons := screen.find_children("TrackFocusRibbon", "", true, false) if screen != null else []
+	_expect(commodity_tracks.size() == 1 and (commodity_tracks[0] as Node).scene_file_path == "res://scenes/ui/table/TopCommoditySushiTrack.tscn", "RuntimeGameScreen owns exactly one formal TopCommoditySushiTrack scene")
+	_expect(retired_public_tracks.is_empty() and retired_focus_ribbons.is_empty(), "RuntimeGameScreen owns zero retired persistent card-track nodes")
 	for node_name in ["FullscreenMapOverlay", "FullscreenPlanetMapView", "PlanetMapControlToolbar", "CardResolutionTableBannerOverlay", "BottomCountdownOverlay", "DistrictSupplySideDrawerOverlay", "MenuModalOverlay"]:
 		var node := screen.find_child(node_name, true, false) as Control if screen != null else null
 		_expect(node != null, "OverlayLayer owns %s" % node_name)

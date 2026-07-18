@@ -112,7 +112,7 @@ Sprint 36 loads real runtime definitions rather than fabricated IDs:
 | `诱导电波1` | `monster_lure` | Monster target recheck and monster-rule dispatch |
 | `星链拆解1` | `player_hand_disrupt` | Existing hand-interaction service route |
 | `区域供需合约1` | `area_trade_contract` | Independent contract response window |
-| `出牌追帧1` | `intel_card_trace` | Private/public information boundary |
+| `出牌追帧1`（现名“残帧复盘 I”） | `card_history_public_review` | Uses public history evidence only; any conclusion remains a viewer-private annotation |
 | `相位否决1` | `card_counter` | Five-second counter response |
 | Runtime-generated city development card | `city_development` | Scenario hook ownership |
 | Runtime-generated bound monster technique | `monster_bound_action` | Persistent-card boundary |
