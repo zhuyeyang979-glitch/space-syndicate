@@ -10,10 +10,12 @@ signal detail_requested(catalog_index: int)
 @onready var identity_label: Label = %BestiaryThumbnailIdentity
 
 var _catalog_index := -1
+var _hover_preview_emitted := false
 
 
 func _ready() -> void:
 	mouse_entered.connect(_on_mouse_entered)
+	mouse_exited.connect(_on_mouse_exited)
 	gui_input.connect(_on_gui_input)
 
 
@@ -34,7 +36,12 @@ func set_entry(data: Dictionary) -> void:
 
 func _on_mouse_entered() -> void:
 	if _catalog_index >= 0:
+		_hover_preview_emitted = true
 		preview_requested.emit(_catalog_index)
+
+
+func _on_mouse_exited() -> void:
+	_hover_preview_emitted = false
 
 
 func _on_gui_input(event: InputEvent) -> void:
@@ -47,7 +54,8 @@ func _on_gui_input(event: InputEvent) -> void:
 		detail_requested.emit(_catalog_index)
 		accept_event()
 		return
-	preview_requested.emit(_catalog_index)
+	if not _hover_preview_emitted:
+		preview_requested.emit(_catalog_index)
 	accept_event()
 
 
