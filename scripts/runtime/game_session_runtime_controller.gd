@@ -218,31 +218,71 @@ func request_save(path: String, envelope: Dictionary, authorization: Dictionary 
 
 func request_load(path: String = "") -> Dictionary:
 	var save_node := _save_coordinator_node()
-	if not _configured or save_node == null:
-		_session_state = STATE_ERROR
-		_save_state = "failed"
-		return _error_result(ERR_UNCONFIGURED, path, "save_coordinator_unavailable")
+	var owner_registry := _owner_registry_node()
+	if not _configured or save_node == null or owner_registry == null:
+		return _load_result(false, false, ERR_UNCONFIGURED, "save_runtime_unavailable", "存档：运行时恢复服务不可用。")
 	_begin_operation("read", "", path)
-	_session_state = STATE_LOADING
-	_save_state = "loading"
 	var result_variant: Variant = save_node.call("read_and_validate", path) if save_node.has_method("read_and_validate") else {}
 	var result: Dictionary = result_variant if result_variant is Dictionary else _error_result(ERR_INVALID_DATA, path, "save_read_invalid")
 	if not bool(result.get("ok", false)):
-		_session_state = STATE_ERROR
-		_save_state = "failed"
-	_finish_operation(result)
-	return result.duplicate(true)
+		var read_failure := _load_result(
+			false,
+			false,
+			int(result.get("error_code", ERR_INVALID_DATA)),
+			str(result.get("reason_code", "save_read_invalid")),
+			"存档：局面文件不存在、损坏或版本不兼容。"
+		)
+		_copy_load_classification(result, read_failure)
+		_finish_operation(read_failure)
+		return read_failure
+	var envelope_variant: Variant = result.get("envelope", {})
+	if not (envelope_variant is Dictionary) or not owner_registry.has_method("apply_envelope"):
+		var envelope_failure := _load_result(false, false, ERR_INVALID_DATA, "validated_envelope_missing", "存档：已读取文件，但缺少可应用的 v0.6 信封。")
+		_finish_operation(envelope_failure)
+		return envelope_failure
+	var apply_variant: Variant = owner_registry.call("apply_envelope", (envelope_variant as Dictionary).duplicate(true))
+	var apply_receipt: Dictionary = apply_variant if apply_variant is Dictionary else {}
+	var applied := bool(apply_receipt.get("ok", false))
+	var reason_code := str(apply_receipt.get("reason_code", "owner_registry_apply_failed"))
+	var error_code := OK if applied else ERR_UNAVAILABLE
+	var summary := "存档：已通过 v0.6 Owner Registry 完成事务恢复。" if applied else _registry_unavailable_summary(owner_registry, reason_code)
+	var receipt := _load_result(applied, applied, error_code, reason_code, summary)
+	receipt["registry_apply_count"] = 1
+	_finish_operation(receipt)
+	return receipt
+
+
+func inspect_save(path: String = "") -> Dictionary:
+	var save_node := _save_coordinator_node()
+	var owner_registry := _owner_registry_node()
+	if not _configured or save_node == null or owner_registry == null:
+		return _load_result(false, false, ERR_UNCONFIGURED, "save_runtime_unavailable", "存档：运行时恢复服务不可用。")
+	var result_variant: Variant = save_node.call("read_and_validate", path) if save_node.has_method("read_and_validate") else {}
+	var result: Dictionary = result_variant if result_variant is Dictionary else {}
+	if not bool(result.get("ok", false)):
+		var error_code := int(result.get("error_code", ERR_INVALID_DATA))
+		var summary := "存档：暂无已保存局面。" if error_code == ERR_FILE_NOT_FOUND else "存档：存在局面文件，但版本或内容无法读取。"
+		var rejected := _load_result(false, false, error_code, str(result.get("reason_code", "save_read_invalid")), summary)
+		_copy_load_classification(result, rejected)
+		return rejected
+	var envelope_variant: Variant = result.get("envelope", {})
+	if not (envelope_variant is Dictionary) or not owner_registry.has_method("preflight_envelope"):
+		return _load_result(true, false, ERR_UNAVAILABLE, "owner_registry_preflight_unavailable", "存档：格式有效，但运行时恢复服务尚未就绪。")
+	var preflight_variant: Variant = owner_registry.call("preflight_envelope", (envelope_variant as Dictionary).duplicate(true))
+	var preflight: Dictionary = preflight_variant if preflight_variant is Dictionary else {}
+	var applicable := bool(preflight.get("ok", false))
+	var reason_code := str(preflight.get("reason_code", "owner_registry_preflight_failed"))
+	var summary := "存档：格式有效，可以继续本局。" if applicable else _registry_unavailable_summary(owner_registry, reason_code)
+	return _load_result(true, applicable, OK if applicable else ERR_UNAVAILABLE, reason_code, summary)
 
 
 func complete_load(error_code: int) -> void:
 	if error_code == OK:
-		if _session_state != STATE_FINISHED:
+		if _session_state == STATE_LOADING:
 			_session_state = STATE_RUNNING
-		_save_state = "clean"
-		_dirty_reason = ""
-		return
-	_session_state = STATE_ERROR
-	_save_state = "failed"
+			_save_state = "clean"
+			_dirty_reason = ""
+	return
 
 
 func read_save(path: String = "") -> Dictionary:
@@ -337,6 +377,10 @@ func _save_coordinator_node() -> Node:
 	return get_node_or_null("GameSaveRuntimeCoordinator")
 
 
+func _owner_registry_node() -> Node:
+	return get_node_or_null("V06SaveOwnerRegistry")
+
+
 func _save_operation_snapshot() -> Dictionary:
 	var save_node := _save_coordinator_node()
 	if save_node != null and save_node.has_method("operation_snapshot"):
@@ -362,6 +406,32 @@ func _error_result(error_code: int, path: String, reason_code: String = "session
 		"reason_code": reason_code,
 		"path": path,
 	}
+
+
+func _load_result(ok: bool, applied: bool, error_code: int, reason_code: String, summary: String) -> Dictionary:
+	return {
+		"ok": ok,
+		"applied": applied,
+		"error_code": error_code,
+		"reason_code": reason_code,
+		"summary": summary,
+	}
+
+
+func _copy_load_classification(source: Dictionary, target: Dictionary) -> void:
+	if source.has("classification"):
+		target["classification"] = str(source.get("classification", "unknown"))
+	if source.has("requires_backup"):
+		target["requires_backup"] = bool(source.get("requires_backup", true))
+
+
+func _registry_unavailable_summary(owner_registry: Node, reason_code: String) -> String:
+	var registry_snapshot_variant: Variant = owner_registry.call("registry_snapshot") if owner_registry.has_method("registry_snapshot") else {}
+	var registry_snapshot: Dictionary = registry_snapshot_variant if registry_snapshot_variant is Dictionary else {}
+	var unsupported_count := int(registry_snapshot.get("unsupported_section_count", 0))
+	if reason_code == "restore_capability_incomplete" and unsupported_count > 0:
+		return "存档：格式有效，但仍有%d个运行时分区未完成恢复；当前保持只读并禁止继续。" % unsupported_count
+	return "存档：格式有效，但 Owner Registry 拒绝应用（%s）。" % reason_code
 
 
 func _begin_operation(kind: String, operation_id: String, path: String) -> void:

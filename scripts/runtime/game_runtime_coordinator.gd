@@ -4489,8 +4489,16 @@ func request_run_save(path: String, domain_sections: Dictionary) -> Dictionary:
 func request_run_load(path: String = "") -> Dictionary:
 	var session := _session_node()
 	if session == null or not session.has_method("request_load"):
-		return {"ok": false, "error_code": ERR_UNCONFIGURED, "payload": {}}
+		return {"ok": false, "applied": false, "error_code": ERR_UNCONFIGURED, "reason_code": "session_runtime_unavailable", "summary": "存档：运行时恢复服务不可用。"}
 	var result_variant: Variant = session.call("request_load", path)
+	return (result_variant as Dictionary).duplicate(true) if result_variant is Dictionary else {}
+
+
+func inspect_run_save(path: String = "") -> Dictionary:
+	var session := _session_node()
+	if session == null or not session.has_method("inspect_save"):
+		return {"ok": false, "applied": false, "error_code": ERR_UNCONFIGURED, "reason_code": "session_runtime_unavailable", "summary": "存档：运行时恢复服务不可用。"}
+	var result_variant: Variant = session.call("inspect_save", path)
 	return (result_variant as Dictionary).duplicate(true) if result_variant is Dictionary else {}
 
 
