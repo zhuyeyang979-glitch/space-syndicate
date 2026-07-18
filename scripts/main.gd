@@ -4428,238 +4428,29 @@ func _confirm_start_new_run_from_setup() -> void:
 
 
 func _load_run_from_menu() -> void:
-	var err := _load_run()
-	if err == OK:
+	var coordinator := _game_runtime_coordinator_node()
+	var result_variant: Variant = coordinator.call("request_run_load", "") if coordinator != null and coordinator.has_method("request_run_load") else {}
+	var result: Dictionary = result_variant if result_variant is Dictionary else {}
+	var err := int(result.get("error_code", ERR_INVALID_DATA))
+	if bool(result.get("ok", false)) and bool(result.get("applied", false)) and err == OK:
 		_game_runtime_coordinator_node().record_legacy_viewer_feedback("已读取保存局面。")
 		_open_main_menu()
 	else:
-		_game_runtime_coordinator_node().record_legacy_viewer_feedback("局面读取失败：%s。" % error_string(err))
+		var detail := str(result.get("summary", result.get("reason_code", error_string(err))))
+		_game_runtime_coordinator_node().record_legacy_viewer_feedback("局面读取失败：%s" % detail)
 		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
-
-
-func _load_run(path: String = "") -> int:
-	var coordinator := _game_runtime_coordinator_node()
-	if coordinator == null or not coordinator.has_method("request_run_load"):
-		return ERR_UNCONFIGURED
-	var result_variant: Variant = coordinator.call("request_run_load", path)
-	var result: Dictionary = result_variant if result_variant is Dictionary else {}
-	var read_error := int(result.get("error_code", ERR_INVALID_DATA))
-	if read_error != OK:
-		return read_error
-	var state_variant: Variant = result.get("payload", {})
-	if not (state_variant is Dictionary):
-		coordinator.call("complete_run_load", ERR_INVALID_DATA)
-		return ERR_INVALID_DATA
-	var apply_error := _apply_run_domain_state_compatibility_adapter(state_variant as Dictionary)
-	coordinator.call("complete_run_load", apply_error)
-	return apply_error
+	_refresh_run_save_menu_state()
 
 
 func _refresh_run_save_menu_state() -> void:
 	var coordinator := _game_runtime_coordinator_node()
-	var has_save := coordinator != null and coordinator.has_method("has_valid_run_save") and bool(coordinator.call("has_valid_run_save", ""))
+	var inspection_variant: Variant = coordinator.call("inspect_run_save", "") if coordinator != null and coordinator.has_method("inspect_run_save") else {}
+	var inspection: Dictionary = inspection_variant if inspection_variant is Dictionary else {}
+	var has_save := bool(inspection.get("ok", false)) and bool(inspection.get("applied", false))
 	if menu_load_run_button != null:
 		menu_load_run_button.disabled = not has_save
 	if menu_overlay != null and menu_overlay.has_method("set_run_save_summary"):
-		menu_overlay.call("set_run_save_summary", _run_save_summary_text())
-
-
-func _run_save_summary_text(path: String = "") -> String:
-	var coordinator := _game_runtime_coordinator_node()
-	if coordinator == null or not coordinator.has_method("read_run_save"):
-		return "存档：运行时存档服务不可用。"
-	var result_variant: Variant = coordinator.call("read_run_save", path)
-	var result: Dictionary = result_variant if result_variant is Dictionary else {}
-	var state_variant: Variant = result.get("payload", {})
-	var state: Dictionary = state_variant if state_variant is Dictionary else {}
-	if not bool(result.get("ok", false)) or state.is_empty():
-		if bool(result.get("exists", false)):
-			return "存档：存在局面文件，但版本或内容无法读取。请重新保存当前局面。"
-		return "存档：暂无已保存局面。保存局面后，可从这里继续。"
-	var summary_variant: Variant = coordinator.call("build_run_save_summary", state, {})
-	var summary: Dictionary = summary_variant if summary_variant is Dictionary else {}
-	return "存档：可读取｜时间%s｜市场刷新%d｜玩家%d｜存活城市%d｜领先 %s" % [
-		_format_time(float(summary.get("game_time", 0.0))),
-		int(summary.get("business_cycle_count", 0)),
-		int(summary.get("player_count", 0)),
-		int(summary.get("active_city_total", 0)),
-		str(summary.get("leader_text", "暂无")),
-	]
-
-
-func _extract_legacy_city_gdp_derivative_positions() -> Dictionary:
-	var legacy_positions := {}
-	for district_index in range(_game_runtime_coordinator_node().world_session_state().districts.size()):
-		if not (_game_runtime_coordinator_node().world_session_state().districts[district_index] is Dictionary):
-			continue
-		var district := (_game_runtime_coordinator_node().world_session_state().districts[district_index] as Dictionary).duplicate(true)
-		var city_variant: Variant = district.get("city", {})
-		if not (city_variant is Dictionary):
-			continue
-		var city := (city_variant as Dictionary).duplicate(true)
-		var positions_variant: Variant = city.get("gdp_derivatives", [])
-		if positions_variant is Array and not (positions_variant as Array).is_empty():
-			legacy_positions[str(district_index)] = (positions_variant as Array).duplicate(true)
-		city.erase("gdp_derivatives")
-		district["city"] = city
-		_game_runtime_coordinator_node().world_session_state().districts[district_index] = district
-	return legacy_positions
-
-
-func _apply_run_domain_state_compatibility_adapter(state: Dictionary) -> int:
-	var runtime_controller := _card_resolution_controller_node()
-	if runtime_controller == null or not runtime_controller.has_method("apply_save_data"):
-		_mark_card_resolution_controller_missing("save restore", true)
-		return ERR_UNCONFIGURED
-	_game_runtime_coordinator_node().world_session_state().players = (state.get("players", []) as Array).duplicate(true)
-	_ensure_player_role_cards()
-	_game_runtime_coordinator_node().world_session_state().districts = (state.get("districts", []) as Array).duplicate(true)
-	var legacy_city_gdp_derivative_positions := _extract_legacy_city_gdp_derivative_positions()
-	skill_market = (state.get("skill_market", []) as Array).duplicate(true)
-	var runtime_coordinator := _game_runtime_coordinator_node()
-	if runtime_coordinator != null and runtime_coordinator.has_method("apply_product_market_save_data"):
-		runtime_coordinator.call("apply_product_market_save_data", {
-			"product_market": (state.get("product_market", {}) as Dictionary).duplicate(true),
-			"business_cycle_count": int(state.get("business_cycle_count", 0)),
-			"market_timer": float(state.get("market_timer", 8.0)),
-		})
-	_game_runtime_coordinator_node().import_legacy_viewer_feedback((state.get("log_lines", []) as Array).duplicate(true))
-	_game_runtime_coordinator_node().import_legacy_visual_cues(state)
-	_game_runtime_coordinator_node().run_rng_service().state = int(state.get("rng_state", _game_runtime_coordinator_node().run_rng_service().state))
-	if runtime_coordinator != null and runtime_coordinator.has_method("restore_world_effective_seconds"):
-		var migrated_clock_variant: Variant = runtime_coordinator.call("restore_world_effective_seconds", float(state.get("game_time", 0.0)))
-		var migrated_clock: Dictionary = migrated_clock_variant if migrated_clock_variant is Dictionary else {}
-		_game_runtime_coordinator_node().world_session_state().game_time = float(migrated_clock.get("world_effective_seconds", 0.0))
-	if runtime_coordinator != null and runtime_coordinator.has_method("apply_session_save_data"):
-		runtime_coordinator.call("apply_session_save_data", state.get("game_session_runtime", {}) as Dictionary)
-		if runtime_coordinator.has_method("world_effective_clock_snapshot"):
-			var restored_clock_variant: Variant = runtime_coordinator.call("world_effective_clock_snapshot")
-			var restored_clock: Dictionary = restored_clock_variant if restored_clock_variant is Dictionary else {}
-			_game_runtime_coordinator_node().world_session_state().game_time = float(restored_clock.get("world_effective_seconds", _game_runtime_coordinator_node().world_session_state().game_time))
-	var commodity_flow_state_variant: Variant = state.get("commodity_flow_runtime", {})
-	if commodity_flow_state_variant is Dictionary and not (commodity_flow_state_variant as Dictionary).is_empty() and runtime_coordinator != null and runtime_coordinator.has_method("apply_commodity_flow_save_data"):
-		runtime_coordinator.call("apply_commodity_flow_save_data", (commodity_flow_state_variant as Dictionary).duplicate(true))
-	if runtime_coordinator != null and runtime_coordinator.has_method("apply_city_gdp_derivative_save_data"):
-		var derivative_state_variant: Variant = state.get("city_gdp_derivative_runtime", {})
-		var derivative_state := (derivative_state_variant as Dictionary).duplicate(true) if derivative_state_variant is Dictionary else {}
-		runtime_coordinator.call("apply_city_gdp_derivative_save_data", derivative_state, legacy_city_gdp_derivative_positions)
-	time_scale = float(state.get("time_scale", 1.0))
-	_game_runtime_coordinator_node().table_selection_state().restore({
-		"selected_player": clampi(int(state.get("selected_player", 0)), 0, max(0, _game_runtime_coordinator_node().world_session_state().players.size() - 1)),
-		"inspected_player": clampi(int(state.get("inspected_player", state.get("selected_player", 0))), 0, max(0, _game_runtime_coordinator_node().world_session_state().players.size() - 1)),
-		"selected_district": clampi(int(state.get("selected_district", 0)), 0, max(0, _game_runtime_coordinator_node().world_session_state().districts.size() - 1)),
-		"selected_trade_product": String(state.get("selected_trade_product", "")),
-	})
-	selected_market_skill = _canonical_card_supply_name(String(state.get("selected_market_skill", "")))
-	previewed_district_card = _canonical_card_supply_name(String(state.get("previewed_district_card", selected_market_skill)))
-	if runtime_coordinator != null and runtime_coordinator.has_method("restore_district_purchase_legacy_state"):
-		runtime_coordinator.call("restore_district_purchase_legacy_state", state.get("district_card_purchase_snapshot", {}) as Dictionary, _game_runtime_coordinator_node().world_session_state().game_time, state.get("pending_discard_purchase", {}) as Dictionary)
-	selected_guess_player = int(state.get("selected_guess_player", -1))
-	_game_runtime_coordinator_node().table_selection_state().selected_map_layer_focus = String(_map_layer_entry(String(state.get("selected_map_layer_focus", "all"))).get("id", "all"))
-	if runtime_coordinator != null and runtime_coordinator.has_method("apply_contract_save_data"):
-		runtime_coordinator.call("apply_contract_save_data", state)
-	if runtime_coordinator != null and runtime_coordinator.has_method("apply_card_resolution_queue_legacy_save_snapshot"):
-		runtime_coordinator.call("apply_card_resolution_queue_legacy_save_snapshot", state)
-	var controller_state := {
-		"card_resolution_timer": maxf(0.0, float(state.get("card_resolution_timer", 0.0))),
-		"card_resolution_counter_window_active": bool(state.get("card_resolution_counter_window_active", false)),
-		"card_resolution_counter_timer": maxf(0.0, float(state.get("card_resolution_counter_timer", 0.0))),
-		"card_resolution_simultaneous_timer": maxf(0.0, float(state.get("card_resolution_simultaneous_timer", 0.0))),
-		"card_resolution_auction_timer": maxf(0.0, float(state.get("card_resolution_auction_timer", 0.0))),
-		"card_resolution_auction_open": bool(state.get("card_resolution_auction_open", false)),
-		"card_resolution_batch_locked": bool(state.get("card_resolution_batch_locked", false)),
-		"card_resolution_batch_reference_player": int(state.get("card_resolution_batch_reference_player", -1)),
-		"card_group_window_sequence": int(state.get("card_group_window_sequence", 0)),
-		"last_card_resolution_player_index": int(state.get("last_card_resolution_player_index", -1)),
-	}
-	runtime_controller.call("apply_save_data", controller_state)
-	_game_runtime_coordinator_node().replace_card_resolution_legacy_history((state.get("resolved_card_history", []) as Array).duplicate(true))
-	_game_runtime_coordinator_node().select_card_resolution(int(state.get("selected_card_resolution_id", -1)))
-	configured_player_count = clampi(int(state.get("configured_player_count", DEFAULT_PLAYER_COUNT)), MIN_PLAYER_COUNT, MAX_PLAYER_COUNT)
-	configured_ai_player_count = int(state.get("configured_ai_player_count", min(DEFAULT_AI_PLAYER_COUNT, configured_player_count - 1)))
-	_ensure_configured_ai_player_count()
-	configured_roguelike_depth = clampi(int(state.get("configured_roguelike_depth", DEFAULT_ROGUELIKE_DEPTH)), ROGUELIKE_DEPTH_MIN, ROGUELIKE_DEPTH_MAX)
-	var saved_role_indices: Variant = state.get("configured_role_indices", [])
-	configured_role_indices = (saved_role_indices as Array).duplicate(true) if saved_role_indices is Array else []
-	_ensure_configured_role_indices()
-	var saved_starter_monster_indices: Variant = state.get("configured_starter_monster_indices", [])
-	configured_starter_monster_indices = (saved_starter_monster_indices as Array).duplicate(true) if saved_starter_monster_indices is Array else []
-	_ensure_configured_starter_monster_indices()
-	_ai_runtime_call("_ensure_player_ai_state")
-	if runtime_coordinator != null and runtime_coordinator.has_method("apply_victory_control_save_data"):
-		runtime_coordinator.call("apply_victory_control_save_data", state.get("victory_control_runtime", {}) as Dictionary)
-	_game_runtime_coordinator_node().world_session_state().configure_world_geometry(
-		float(state.get("map_width_m", MAP_WIDTH_METERS)),
-		float(state.get("map_height_m", MAP_HEIGHT_METERS))
-	)
-	if runtime_coordinator != null and runtime_coordinator.has_method("apply_weather_save_data"):
-		runtime_coordinator.call("apply_weather_save_data", {
-			"weather_forecast": (state.get("weather_forecast", {}) as Dictionary).duplicate(true),
-			"active_weather_zones": (state.get("active_weather_zones", []) as Array).duplicate(true),
-			"weather_sequence": int(state.get("weather_sequence", 0)),
-		})
-	if runtime_coordinator != null and runtime_coordinator.has_method("apply_ai_save_data"):
-		var ai_state_variant: Variant = state.get("ai_runtime_state", {})
-		var ai_state: Dictionary = (ai_state_variant as Dictionary).duplicate(true) if ai_state_variant is Dictionary else {}
-		if ai_state.is_empty():
-			ai_state = {
-				"ai_card_decision_timer": float(state.get("ai_card_decision_timer", 0.0)),
-				"ai_auction_reaction_timer": float(state.get("ai_auction_reaction_timer", 0.0)),
-				"ai_intel_decision_timer": float(state.get("ai_intel_decision_timer", 0.0)),
-				"ai_card_decision_enabled": true,
-			}
-		runtime_coordinator.call("apply_ai_save_data", ai_state)
-	_game_runtime_coordinator_node().request_table_presentation_refresh(&"live", &"save_restored")
-	if runtime_coordinator != null and runtime_coordinator.has_method("apply_monster_save_data"):
-		runtime_coordinator.call("apply_monster_save_data", state)
-	if runtime_coordinator != null and runtime_coordinator.has_method("apply_military_save_data"):
-		runtime_coordinator.call("apply_military_save_data", state)
-	if runtime_coordinator != null and runtime_coordinator.has_method("apply_card_target_choice_legacy_state"):
-		runtime_coordinator.call("apply_card_target_choice_legacy_state", state)
-	if runtime_coordinator != null and runtime_coordinator.has_method("apply_codex_navigation_legacy_save_snapshot"):
-		runtime_coordinator.call("apply_codex_navigation_legacy_save_snapshot", state)
-	var normalized_market: Array = []
-	_append_unique_cards(normalized_market, skill_market)
-	skill_market = normalized_market if not normalized_market.is_empty() else _current_run_card_pool()
-	var region_supply_state: Dictionary = state.get("region_supply_runtime", {}) \
-		if state.get("region_supply_runtime", {}) is Dictionary \
-		else {}
-	var region_supply_applied := false
-	if not region_supply_state.is_empty() \
-			and runtime_coordinator != null \
-			and runtime_coordinator.has_method("region_supply_runtime_call"):
-		var apply_variant: Variant = runtime_coordinator.call("region_supply_runtime_call", &"apply_save_data", [region_supply_state])
-		region_supply_applied = apply_variant is Dictionary and bool((apply_variant as Dictionary).get("applied", false))
-	if not region_supply_applied:
-		var configure_variant: Variant = runtime_coordinator.call(
-			"configure_region_supply_from_world",
-			_game_runtime_coordinator_node().run_rng_service().state,
-			_game_runtime_coordinator_node().world_session_state().districts,
-			_current_run_card_pool(),
-			DISTRICT_CARD_CHOICE_MAX
-		) if runtime_coordinator != null and runtime_coordinator.has_method("configure_region_supply_from_world") else {}
-		if not (configure_variant is Dictionary) or not bool((configure_variant as Dictionary).get("configured", false)):
-			return ERR_UNCONFIGURED
-
-	if skill_market.is_empty():
-		skill_market = _monster_market_skills()
-	_product_market_runtime_call("ensure_catalog")
-	if selected_market_skill == "" and not skill_market.is_empty():
-		var first_market_variant: Variant = skill_market[0]
-		selected_market_skill = _canonical_card_supply_name(
-			String((first_market_variant as Dictionary).get("name", ""))
-			if first_market_variant is Dictionary
-			else String(first_market_variant)
-		)
-	_refresh_route_network()
-	if not _card_resolution_active_entry().is_empty():
-		_show_card_resolution_overlay(_card_resolution_active_entry(), card_resolution_timer)
-	elif not _card_resolution_current_queue().is_empty() and not card_resolution_batch_locked:
-		_show_card_batch_lobby_overlay()
-	else:
-		_hide_card_resolution_overlay()
-	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
-	return OK
+		menu_overlay.call("set_run_save_summary", str(inspection.get("summary", "存档：运行时恢复服务不可用。")))
 
 
 func _quit_game() -> void:

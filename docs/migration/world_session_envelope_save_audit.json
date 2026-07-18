@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "date": "2026-07-19",
+  "baseline_sha": "b2ddcf823bfb00ed9333757dd56f6ffb1889c6e8",
+  "section_count_before": 19,
+  "section_count_after": 19,
+  "new_section_count": 0,
+  "transactional_section_count": 12,
+  "unsupported_section_count": 7,
+  "card_resolution_history_position": 15,
+  "session_section_position": 19,
+  "session_binding": {
+    "section_id": "session",
+    "owner_id": "game_session",
+    "state_version_before": 1,
+    "state_version_after": 2,
+    "restore_mode": "transactional",
+    "owner_scene": "res://scenes/runtime/SessionEnvelopeSaveOwner.tscn",
+    "owner_script": "res://scripts/runtime/session_envelope_save_owner.gd"
+  },
+  "child_state_owners": [
+    "GameSessionRuntimeController",
+    "WorldSessionState",
+    "CardHistoryPrivateAnnotationService"
+  ],
+  "composite_owns_gameplay_state": false,
+  "second_world_session_owner_count": 0,
+  "second_intel_save_owner_count": 0,
+  "apply_order": [
+    "world_session_state",
+    "card_history_private_annotations",
+    "game_session_runtime"
+  ],
+  "rollback_order": "reverse_of_touched_children",
+  "annotation_structural_preflight_reads_live_history": false,
+  "cross_section_annotation_reference_validation": true,
+  "active_v1_resume_allowed": false,
+  "active_v1_reason_code": "session_v1_world_state_missing",
+  "full_run_resume_claim": false,
+  "remaining_unsupported_sections": [
+    "ruleset",
+    "routes",
+    "commodity_belt_visibility",
+    "card_inventory",
+    "military",
+    "card_resolution_queue",
+    "ai"
+  ],
+  "focused_test": "res://tests/session_envelope_save_owner_test.gd",
+  "production_bench": "res://scenes/tools/SessionEnvelopeSaveOwnerBench.tscn"
+}

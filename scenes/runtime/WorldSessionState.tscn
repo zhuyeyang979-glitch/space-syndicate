@@ -4,4 +4,5 @@
 
 [node name="WorldSessionState" type="Node"]
 script = ExtResource("1_state")
+role_catalog_path = NodePath("../RoleCatalogRuntimeService")
 editor_description = "Authoritative scene-owned storage for the current run's player records, district records and elapsed gameplay time. It owns no topology generation, rules, economy formulas, AI policy or presentation."

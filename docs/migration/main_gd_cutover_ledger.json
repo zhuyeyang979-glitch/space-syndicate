@@ -607,6 +607,83 @@
       "status": "cut_over"
     },
     {
+      "domain": "world_session_envelope_save_owner",
+      "old_symbols": [
+        "session section bound directly to GameSessionRuntimeController"
+      ],
+      "old_consumers": [
+        "V06SaveOwnerRegistry session binding"
+      ],
+      "new_owner_scene": "res://scenes/runtime/SessionEnvelopeSaveOwner.tscn",
+      "new_owner_script": "res://scripts/runtime/session_envelope_save_owner.gd + res://scripts/runtime/world_session_envelope_codec.gd",
+      "new_public_api": [
+        "preflight_save_data",
+        "to_save_data",
+        "apply_save_data",
+        "rollback_save_data"
+      ],
+      "tests": [
+        "res://tests/session_envelope_save_owner_test.gd",
+        "res://tests/v06_save_owner_registry_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
+    },
+    {
+      "domain": "card_history_private_annotation_checkpoint",
+      "old_symbols": [
+        "volatile annotations_by_viewer",
+        "volatile role_usage_by_viewer"
+      ],
+      "old_consumers": [
+        "CardHistoryPrivateAnnotationService"
+      ],
+      "new_owner_scene": "res://scenes/runtime/CardHistoryPrivateAnnotationService.tscn",
+      "new_owner_script": "res://scripts/runtime/card_history_private_annotation_service.gd",
+      "new_public_api": [
+        "capture_save_checkpoint",
+        "preflight_save_checkpoint",
+        "apply_save_checkpoint",
+        "restore_runtime_checkpoint"
+      ],
+      "tests": [
+        "res://tests/card_history_public_annotation_test.gd",
+        "res://tests/session_envelope_save_owner_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
+    },
+    {
+      "domain": "main_v3_envelope_load_path",
+      "old_symbols": [
+        "_load_run",
+        "_run_save_summary_text",
+        "_extract_legacy_city_gdp_derivative_positions",
+        "_apply_run_domain_state_compatibility_adapter"
+      ],
+      "old_consumers": [
+        "formal v3 load menu"
+      ],
+      "new_owner_scene": "res://scenes/runtime/GameRuntimeCoordinator.tscn",
+      "new_owner_script": "res://scripts/runtime/game_runtime_coordinator.gd + res://scripts/runtime/game_save_runtime_coordinator.gd",
+      "new_public_api": [
+        "request_run_load",
+        "inspect_run_save"
+      ],
+      "tests": [
+        "res://tests/session_envelope_save_owner_test.gd",
+        "res://tests/main_runtime_composition_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
+    },
+    {
       "domain": "presentation_action_routing",
       "old_symbols": [
         "_runtime_table_snapshot_source",

@@ -58,6 +58,14 @@ func _run() -> void:
 
 	var debug_text := JSON.stringify(annotations.debug_snapshot())
 	_expect(debug_text.contains("\"economic_reward_count\":0") and debug_text.contains("\"gdp_reward_count\":0"), "annotation service reports zero cash and GDP rewards")
+	var checkpoint_receipt: Dictionary = annotations.capture_save_checkpoint(4)
+	var checkpoint: Dictionary = checkpoint_receipt.get("checkpoint", {}) if checkpoint_receipt.get("checkpoint", {}) is Dictionary else {}
+	history.reset_state()
+	var structural_preflight: Dictionary = annotations.validate_save_checkpoint(checkpoint, 4)
+	_expect(bool(structural_preflight.get("accepted", false)), "annotation structural preflight does not query live public history")
+	var defensive_apply: Dictionary = annotations.apply_save_checkpoint(checkpoint, 4)
+	_expect(not bool(defensive_apply.get("applied", true)) and str(defensive_apply.get("reason_code", "")) == "card_annotation_public_history_missing", "annotation apply retains a defensive live-history assertion")
+	_expect(not bool(annotations.debug_snapshot().get("preflight_reads_live_history", true)), "annotation debug contract freezes structural-only preflight")
 	var annotation_source := FileAccess.get_file_as_string("res://scripts/runtime/card_history_private_annotation_service.gd")
 	_expect(not annotation_source.contains("func to_save_data") and not annotation_source.contains("func apply_save_data"), "session annotation service creates no nineteenth save owner")
 	var role_source := FileAccess.get_file_as_string("res://scripts/runtime/role_catalog_runtime_service.gd")

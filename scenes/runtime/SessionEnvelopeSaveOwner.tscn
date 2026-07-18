@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/session_envelope_save_owner.gd" id="1_owner"]
+
+[node name="SessionEnvelopeSaveOwner" type="Node"]
+script = ExtResource("1_owner")
+game_session_path = NodePath("..")
+world_session_path = NodePath("../../WorldSessionState")
+card_annotation_path = NodePath("../../CardHistoryPrivateAnnotationService")
+editor_description = "Stateless transaction adapter for the existing session, world-session, and private card-history owners. It owns no gameplay state and creates no additional save section."

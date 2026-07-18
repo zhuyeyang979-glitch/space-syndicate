@@ -3,6 +3,7 @@ extends Node
 class_name V06SaveOwnerRegistry
 
 const BindingScript := preload("res://scripts/runtime/v06_save_owner_binding_resource.gd")
+const CardHistoryRestoreDependencyContractScript := preload("res://scripts/runtime/card_history_restore_dependency_contract.gd")
 const REGISTRY_ID := "v06_save_owner_registry"
 const REGISTRY_VERSION := 1
 const SECTION_WRAPPER_KEYS := ["schema_version", "owner_id", "owner_state"]
@@ -17,6 +18,7 @@ const PUBLIC_REASON_CODES := [
 	"envelope_validation_failed",
 	"section_wrapper_invalid",
 	"owner_preflight_rejected",
+	"cross_section_dependency_rejected",
 	"all_owner_preflights_passed",
 	"owner_checkpoint_capture_failed",
 	"owner_apply_failed",
@@ -49,6 +51,8 @@ const FIXED_SECTION_ORDER := [
 
 var _operation_in_progress := false
 var _operation_sequence := 0
+var _cross_section_preflight_count := 0
+var _cross_section_rejection_count := 0
 
 
 func fixed_section_order() -> Array[String]:
@@ -200,6 +204,10 @@ func debug_snapshot() -> Dictionary:
 	snapshot["operation_sequence"] = _operation_sequence
 	snapshot["pure_data_capture"] = true
 	snapshot["global_preflight_before_apply"] = true
+	snapshot["cross_section_preflight_before_apply"] = true
+	snapshot["cross_section_preflight_count"] = _cross_section_preflight_count
+	snapshot["cross_section_rejection_count"] = _cross_section_rejection_count
+	snapshot["cross_section_preflight_reads_live_owners"] = false
 	snapshot["reverse_order_rollback"] = true
 	snapshot["public_receipt_allowlisted"] = true
 	return snapshot
@@ -277,9 +285,20 @@ func _preflight_envelope_internal(envelope: Dictionary) -> Dictionary:
 			return {"ok": false, "reason_code": "owner_preflight_rejected", "envelope_valid": true, "preflight_complete": false, "preflight_count": preflight_count}
 		plan[section_id] = {
 			"decoded_owner_state": (decoded.get("owner_state", {}) as Dictionary).duplicate(true),
+			"normalized_owner_state": (owner_preflight.get("normalized_owner_state", {}) as Dictionary).duplicate(true),
 			"normalized_encoded_owner_state": owner_preflight.get("normalized_encoded_owner_state"),
 		}
 		preflight_count += 1
+	var dependency_preflight := _preflight_cross_section_dependencies(plan)
+	if not bool(dependency_preflight.get("accepted", false)):
+		_cross_section_rejection_count += 1
+		return {
+			"ok": false,
+			"reason_code": "cross_section_dependency_rejected",
+			"envelope_valid": true,
+			"preflight_complete": false,
+			"preflight_count": preflight_count,
+		}
 	return {
 		"ok": true,
 		"reason_code": "all_owner_preflights_passed",
@@ -306,7 +325,11 @@ func _preflight_owner(owner: Node, binding: BindingScript, owner_state: Dictiona
 		var normalized_encoded := _encode_owner_state(preflight_normalized_state)
 		if not bool(normalized_encoded.get("ok", false)):
 			return {"ok": false}
-		return {"ok": true, "normalized_encoded_owner_state": normalized_encoded.get("value")}
+		return {
+			"ok": true,
+			"normalized_owner_state": preflight_normalized_state,
+			"normalized_encoded_owner_state": normalized_encoded.get("value"),
+		}
 	var probe_variant: Variant = owner.duplicate()
 	if not (probe_variant is Node):
 		return {"ok": false}
@@ -322,7 +345,34 @@ func _preflight_owner(owner: Node, binding: BindingScript, owner_state: Dictiona
 	probe.free()
 	if not bool(encoded.get("ok", false)):
 		return {"ok": false}
-	return {"ok": true, "normalized_encoded_owner_state": encoded.get("value")}
+	return {
+		"ok": true,
+		"normalized_owner_state": normalized_state,
+		"normalized_encoded_owner_state": encoded.get("value"),
+	}
+
+
+func _preflight_cross_section_dependencies(plan: Dictionary) -> Dictionary:
+	_cross_section_preflight_count += 1
+	var history_plan_variant: Variant = plan.get("card_resolution_history")
+	var session_plan_variant: Variant = plan.get("session")
+	if not (history_plan_variant is Dictionary) or not (session_plan_variant is Dictionary):
+		return {"accepted": false}
+	var history_state_variant: Variant = (history_plan_variant as Dictionary).get("normalized_owner_state")
+	var session_state_variant: Variant = (session_plan_variant as Dictionary).get("normalized_owner_state")
+	if not (history_state_variant is Dictionary) or not (session_state_variant is Dictionary):
+		return {"accepted": false}
+	var annotation_state_variant: Variant = (session_state_variant as Dictionary).get("card_history_private_annotations")
+	if not (annotation_state_variant is Dictionary):
+		return {"accepted": false}
+	var dependency: Dictionary = CardHistoryRestoreDependencyContractScript.validate_annotation_dependency(
+		(annotation_state_variant as Dictionary).duplicate(true),
+		(history_state_variant as Dictionary).duplicate(true)
+	)
+	return {
+		"accepted": bool(dependency.get("accepted", false)),
+		"reason_code": "cross_section_dependencies_valid" if bool(dependency.get("accepted", false)) else "cross_section_dependency_rejected",
+	}
 
 
 func _capture_owner_checkpoint(binding: BindingScript) -> Dictionary:

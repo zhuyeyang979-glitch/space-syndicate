@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "formal_reader_field": "envelope",
+  "registry_apply_count": 1,
+  "main_payload_read_count": 0,
+  "main_compatibility_apply_count": 0,
+  "main_receipt_fields": [
+    "ok",
+    "applied",
+    "error_code",
+    "reason_code",
+    "summary"
+  ],
+  "removed_main_methods": [
+    "_load_run",
+    "_run_save_summary_text",
+    "_extract_legacy_city_gdp_derivative_positions",
+    "_apply_run_domain_state_compatibility_adapter"
+  ],
+  "main_budget_before": {
+    "physical_lines": 11180,
+    "nonblank_lines": 9681,
+    "methods": 706,
+    "constants": 103,
+    "top_level_preloads": 10,
+    "fields": 66
+  },
+  "main_budget_after": {
+    "physical_lines": 10971,
+    "nonblank_lines": 9481,
+    "methods": 702,
+    "constants": 103,
+    "top_level_preloads": 10,
+    "fields": 66
+  },
+  "full_run_resume_claim": false,
+  "remaining_unsupported_sections": [
+    "ruleset",
+    "routes",
+    "commodity_belt_visibility",
+    "card_inventory",
+    "military",
+    "card_resolution_queue",
+    "ai"
+  ]
+}

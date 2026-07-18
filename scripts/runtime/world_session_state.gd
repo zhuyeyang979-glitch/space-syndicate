@@ -2,6 +2,8 @@
 extends Node
 class_name WorldSessionState
 
+const EnvelopeCodec := preload("res://scripts/runtime/world_session_envelope_codec.gd")
+
 signal players_replaced(player_count: int)
 signal districts_replaced(district_count: int)
 signal game_time_changed(game_time: float)
@@ -10,6 +12,8 @@ signal session_restored(summary: Dictionary)
 
 const DEFAULT_MAP_WIDTH_M := 1400.0
 const DEFAULT_MAP_HEIGHT_M := 950.0
+
+@export var role_catalog_path: NodePath
 
 var _players: Array = []
 var _districts: Array = []
@@ -159,6 +163,43 @@ func to_save_data() -> Dictionary:
 	return internal_snapshot()
 
 
+func capture_envelope_save_data() -> Dictionary:
+	return EnvelopeCodec.capture(internal_snapshot(), _ordered_role_names())
+
+
+func preflight_envelope_save_data(data: Dictionary) -> Dictionary:
+	return EnvelopeCodec.normalize(data, _ordered_role_names())
+
+
+func apply_envelope_save_data(data: Dictionary) -> Dictionary:
+	var normalization := EnvelopeCodec.normalize(data, _ordered_role_names())
+	if not bool(normalization.get("accepted", false)):
+		return {
+			"applied": false,
+			"reason_code": str(normalization.get("reason_code", "world_session_envelope_invalid")),
+		}
+	var runtime_state: Dictionary = normalization.get("runtime_state", {})
+	var summary := restore(runtime_state, true)
+	return {
+		"applied": true,
+		"reason_code": "world_session_envelope_restored",
+		"summary": summary,
+	}
+
+
+func capture_runtime_checkpoint() -> Dictionary:
+	return internal_snapshot()
+
+
+func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	if int(checkpoint.get("schema_version", -1)) != 1 \
+			or not (checkpoint.get("players", []) is Array) \
+			or not (checkpoint.get("districts", []) is Array):
+		return {"applied": false, "reason_code": "world_session_checkpoint_invalid"}
+	restore(checkpoint, true)
+	return {"applied": true, "reason_code": "world_session_checkpoint_restored"}
+
+
 func apply_save_data(data: Dictionary) -> Dictionary:
 	if int(data.get("schema_version", -1)) != 1:
 		return {
@@ -186,3 +227,16 @@ func debug_snapshot() -> Dictionary:
 		"owns_world_session_state": true,
 		"private_payload_exposed": false,
 	}
+
+
+func _ordered_role_names() -> Array[String]:
+	var catalog := get_node_or_null(role_catalog_path)
+	if catalog == null or not catalog.has_method("ordered_role_names"):
+		return []
+	var names_variant: Variant = catalog.call("ordered_role_names")
+	if not (names_variant is Array):
+		return []
+	var names: Array[String] = []
+	for name_variant in names_variant as Array:
+		names.append(str(name_variant))
+	return names

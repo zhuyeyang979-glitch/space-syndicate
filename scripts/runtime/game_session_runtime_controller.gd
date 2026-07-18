@@ -9,6 +9,17 @@ const STATE_PAUSED := "paused"
 const STATE_LOADING := "loading"
 const STATE_FINISHED := "finished"
 const STATE_ERROR := "error"
+const SAVE_PAYLOAD_FIELDS := [
+	"schema_version",
+	"ruleset_id",
+	"session_state",
+	"session_id",
+	"scenario_id",
+	"seed",
+	"setup",
+	"outcome_receipt",
+	"world_effective_us",
+]
 
 var _configured := false
 var _ruleset_id := ""
@@ -134,34 +145,22 @@ func to_save_data() -> Dictionary:
 
 
 func apply_save_data(data: Dictionary) -> Dictionary:
-	var payload: Dictionary = data.get("game_session_runtime", data) if data.get("game_session_runtime", data) is Dictionary else {}
-	if payload.is_empty():
-		return {"applied": true, "legacy_default": true, "session_state": _session_state}
-	if not _is_data_only(payload) or int(payload.get("schema_version", 0)) != 1:
-		return {"applied": false, "reason": "session_save_invalid"}
-	var restored_state := str(payload.get("session_state", STATE_RUNNING))
-	if restored_state not in [STATE_IDLE, STATE_STARTING, STATE_RUNNING, STATE_PAUSED, STATE_LOADING, STATE_FINISHED, STATE_ERROR]:
-		return {"applied": false, "reason": "session_state_invalid"}
-	var has_world_clock := payload.has("world_effective_us")
-	if has_world_clock and not (payload.get("world_effective_us") is int):
-		return {"applied": false, "reason": "world_effective_clock_invalid"}
-	var restored_world_us := int(payload.get("world_effective_us", -1))
-	if has_world_clock and (restored_world_us < 0 or _world_effective_clock == null or not _world_effective_clock.has_method("restore_micros")):
-		return {"applied": false, "reason": "world_effective_clock_invalid"}
-	if not (payload.get("ruleset_id", _ruleset_id) is String) \
-			or not (payload.get("session_id", _session_id) is String) \
-			or not (payload.get("scenario_id", _scenario_id) is String) \
-			or not (payload.get("seed", _seed) is int) \
-			or not (payload.get("setup", {}) is Dictionary) \
-			or not (payload.get("outcome_receipt", {}) is Dictionary):
-		return {"applied": false, "reason": "session_payload_invalid"}
-	var next_session_id := str(payload.get("session_id", _session_id))
-	var next_scenario_id := str(payload.get("scenario_id", _scenario_id))
-	var next_seed := int(payload.get("seed", _seed))
-	var next_setup := (payload.get("setup", {}) as Dictionary).duplicate(true) if payload.get("setup", {}) is Dictionary else {}
-	var next_outcome := (payload.get("outcome_receipt", {}) as Dictionary).duplicate(true) if payload.get("outcome_receipt", {}) is Dictionary else {}
-	if payload.has("world_effective_us"):
-		_world_effective_clock.call("restore_micros", restored_world_us)
+	var normalization := _normalize_save_data(data)
+	if not bool(normalization.get("accepted", false)):
+		return {
+			"applied": false,
+			"reason": str(normalization.get("reason_code", "session_save_invalid")),
+			"reason_code": str(normalization.get("reason_code", "session_save_invalid")),
+		}
+	var payload: Dictionary = normalization.get("normalized_state", {})
+	var restored_state := str(payload.get("session_state", STATE_IDLE))
+	var restored_world_us := int(payload.get("world_effective_us", 0))
+	var next_session_id := str(payload.get("session_id", ""))
+	var next_scenario_id := str(payload.get("scenario_id", ""))
+	var next_seed := int(payload.get("seed", 0))
+	var next_setup := (payload.get("setup", {}) as Dictionary).duplicate(true)
+	var next_outcome := (payload.get("outcome_receipt", {}) as Dictionary).duplicate(true)
+	_world_effective_clock.call("restore_micros", restored_world_us)
 	_session_state = restored_state
 	_session_id = next_session_id
 	_scenario_id = next_scenario_id
@@ -170,7 +169,21 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	_outcome_receipt = next_outcome
 	_save_state = "clean"
 	_dirty_reason = ""
-	return {"applied": true, "legacy_default": false, "session_state": _session_state}
+	return {"applied": true, "legacy_default": false, "session_state": _session_state, "reason_code": "session_runtime_restored"}
+
+
+func preflight_save_data(data: Dictionary) -> Dictionary:
+	var normalization := _normalize_save_data(data)
+	if not bool(normalization.get("accepted", false)):
+		return {
+			"accepted": false,
+			"reason_code": str(normalization.get("reason_code", "session_save_invalid")),
+		}
+	return {
+		"accepted": true,
+		"reason_code": "session_runtime_save_valid",
+		"normalized_state": (normalization.get("normalized_state", {}) as Dictionary).duplicate(true),
+	}
 
 
 func request_save(path: String, envelope: Dictionary, authorization: Dictionary = {}) -> Dictionary:
@@ -205,31 +218,71 @@ func request_save(path: String, envelope: Dictionary, authorization: Dictionary 
 
 func request_load(path: String = "") -> Dictionary:
 	var save_node := _save_coordinator_node()
-	if not _configured or save_node == null:
-		_session_state = STATE_ERROR
-		_save_state = "failed"
-		return _error_result(ERR_UNCONFIGURED, path, "save_coordinator_unavailable")
+	var owner_registry := _owner_registry_node()
+	if not _configured or save_node == null or owner_registry == null:
+		return _load_result(false, false, ERR_UNCONFIGURED, "save_runtime_unavailable", "存档：运行时恢复服务不可用。")
 	_begin_operation("read", "", path)
-	_session_state = STATE_LOADING
-	_save_state = "loading"
 	var result_variant: Variant = save_node.call("read_and_validate", path) if save_node.has_method("read_and_validate") else {}
 	var result: Dictionary = result_variant if result_variant is Dictionary else _error_result(ERR_INVALID_DATA, path, "save_read_invalid")
 	if not bool(result.get("ok", false)):
-		_session_state = STATE_ERROR
-		_save_state = "failed"
-	_finish_operation(result)
-	return result.duplicate(true)
+		var read_failure := _load_result(
+			false,
+			false,
+			int(result.get("error_code", ERR_INVALID_DATA)),
+			str(result.get("reason_code", "save_read_invalid")),
+			"存档：局面文件不存在、损坏或版本不兼容。"
+		)
+		_copy_load_classification(result, read_failure)
+		_finish_operation(read_failure)
+		return read_failure
+	var envelope_variant: Variant = result.get("envelope", {})
+	if not (envelope_variant is Dictionary) or not owner_registry.has_method("apply_envelope"):
+		var envelope_failure := _load_result(false, false, ERR_INVALID_DATA, "validated_envelope_missing", "存档：已读取文件，但缺少可应用的 v0.6 信封。")
+		_finish_operation(envelope_failure)
+		return envelope_failure
+	var apply_variant: Variant = owner_registry.call("apply_envelope", (envelope_variant as Dictionary).duplicate(true))
+	var apply_receipt: Dictionary = apply_variant if apply_variant is Dictionary else {}
+	var applied := bool(apply_receipt.get("ok", false))
+	var reason_code := str(apply_receipt.get("reason_code", "owner_registry_apply_failed"))
+	var error_code := OK if applied else ERR_UNAVAILABLE
+	var summary := "存档：已通过 v0.6 Owner Registry 完成事务恢复。" if applied else _registry_unavailable_summary(owner_registry, reason_code)
+	var receipt := _load_result(applied, applied, error_code, reason_code, summary)
+	receipt["registry_apply_count"] = 1
+	_finish_operation(receipt)
+	return receipt
+
+
+func inspect_save(path: String = "") -> Dictionary:
+	var save_node := _save_coordinator_node()
+	var owner_registry := _owner_registry_node()
+	if not _configured or save_node == null or owner_registry == null:
+		return _load_result(false, false, ERR_UNCONFIGURED, "save_runtime_unavailable", "存档：运行时恢复服务不可用。")
+	var result_variant: Variant = save_node.call("read_and_validate", path) if save_node.has_method("read_and_validate") else {}
+	var result: Dictionary = result_variant if result_variant is Dictionary else {}
+	if not bool(result.get("ok", false)):
+		var error_code := int(result.get("error_code", ERR_INVALID_DATA))
+		var summary := "存档：暂无已保存局面。" if error_code == ERR_FILE_NOT_FOUND else "存档：存在局面文件，但版本或内容无法读取。"
+		var rejected := _load_result(false, false, error_code, str(result.get("reason_code", "save_read_invalid")), summary)
+		_copy_load_classification(result, rejected)
+		return rejected
+	var envelope_variant: Variant = result.get("envelope", {})
+	if not (envelope_variant is Dictionary) or not owner_registry.has_method("preflight_envelope"):
+		return _load_result(true, false, ERR_UNAVAILABLE, "owner_registry_preflight_unavailable", "存档：格式有效，但运行时恢复服务尚未就绪。")
+	var preflight_variant: Variant = owner_registry.call("preflight_envelope", (envelope_variant as Dictionary).duplicate(true))
+	var preflight: Dictionary = preflight_variant if preflight_variant is Dictionary else {}
+	var applicable := bool(preflight.get("ok", false))
+	var reason_code := str(preflight.get("reason_code", "owner_registry_preflight_failed"))
+	var summary := "存档：格式有效，可以继续本局。" if applicable else _registry_unavailable_summary(owner_registry, reason_code)
+	return _load_result(true, applicable, OK if applicable else ERR_UNAVAILABLE, reason_code, summary)
 
 
 func complete_load(error_code: int) -> void:
 	if error_code == OK:
-		if _session_state != STATE_FINISHED:
+		if _session_state == STATE_LOADING:
 			_session_state = STATE_RUNNING
-		_save_state = "clean"
-		_dirty_reason = ""
-		return
-	_session_state = STATE_ERROR
-	_save_state = "failed"
+			_save_state = "clean"
+			_dirty_reason = ""
+	return
 
 
 func read_save(path: String = "") -> Dictionary:
@@ -324,6 +377,10 @@ func _save_coordinator_node() -> Node:
 	return get_node_or_null("GameSaveRuntimeCoordinator")
 
 
+func _owner_registry_node() -> Node:
+	return get_node_or_null("V06SaveOwnerRegistry")
+
+
 func _save_operation_snapshot() -> Dictionary:
 	var save_node := _save_coordinator_node()
 	if save_node != null and save_node.has_method("operation_snapshot"):
@@ -349,6 +406,32 @@ func _error_result(error_code: int, path: String, reason_code: String = "session
 		"reason_code": reason_code,
 		"path": path,
 	}
+
+
+func _load_result(ok: bool, applied: bool, error_code: int, reason_code: String, summary: String) -> Dictionary:
+	return {
+		"ok": ok,
+		"applied": applied,
+		"error_code": error_code,
+		"reason_code": reason_code,
+		"summary": summary,
+	}
+
+
+func _copy_load_classification(source: Dictionary, target: Dictionary) -> void:
+	if source.has("classification"):
+		target["classification"] = str(source.get("classification", "unknown"))
+	if source.has("requires_backup"):
+		target["requires_backup"] = bool(source.get("requires_backup", true))
+
+
+func _registry_unavailable_summary(owner_registry: Node, reason_code: String) -> String:
+	var registry_snapshot_variant: Variant = owner_registry.call("registry_snapshot") if owner_registry.has_method("registry_snapshot") else {}
+	var registry_snapshot: Dictionary = registry_snapshot_variant if registry_snapshot_variant is Dictionary else {}
+	var unsupported_count := int(registry_snapshot.get("unsupported_section_count", 0))
+	if reason_code == "restore_capability_incomplete" and unsupported_count > 0:
+		return "存档：格式有效，但仍有%d个运行时分区未完成恢复；当前保持只读并禁止继续。" % unsupported_count
+	return "存档：格式有效，但 Owner Registry 拒绝应用（%s）。" % reason_code
 
 
 func _begin_operation(kind: String, operation_id: String, path: String) -> void:
@@ -380,4 +463,51 @@ func _is_data_only(value: Variant) -> bool:
 		for item_variant in value:
 			if not _is_data_only(item_variant):
 				return false
+	return true
+
+
+func _normalize_save_data(data: Dictionary) -> Dictionary:
+	var payload_variant: Variant = data.get("game_session_runtime", data)
+	if not (payload_variant is Dictionary):
+		return {"accepted": false, "reason_code": "session_save_invalid"}
+	var payload := payload_variant as Dictionary
+	if not _has_exact_keys(payload, SAVE_PAYLOAD_FIELDS) or not _is_data_only(payload) or int(payload.get("schema_version", 0)) != 1:
+		return {"accepted": false, "reason_code": "session_save_invalid"}
+	if not (payload.get("ruleset_id") is String) \
+			or str(payload.get("ruleset_id", "")) not in ["v0.4", "v0.6"] \
+			or not (payload.get("session_state") is String) \
+			or str(payload.get("session_state", "")) not in [STATE_IDLE, STATE_STARTING, STATE_RUNNING, STATE_PAUSED, STATE_LOADING, STATE_FINISHED, STATE_ERROR] \
+			or not (payload.get("session_id") is String) \
+			or not (payload.get("scenario_id") is String) \
+			or not (payload.get("seed") is int) \
+			or not (payload.get("setup") is Dictionary) \
+			or not (payload.get("outcome_receipt") is Dictionary):
+		return {"accepted": false, "reason_code": "session_payload_invalid"}
+	if not (payload.get("world_effective_us") is int) \
+			or int(payload.get("world_effective_us", -1)) < 0 \
+			or _world_effective_clock == null \
+			or not _world_effective_clock.has_method("restore_micros"):
+		return {"accepted": false, "reason_code": "world_effective_clock_invalid"}
+	return {
+		"accepted": true,
+		"normalized_state": {
+			"schema_version": 1,
+			"ruleset_id": str(payload.get("ruleset_id", "")),
+			"session_state": str(payload.get("session_state", STATE_IDLE)),
+			"session_id": str(payload.get("session_id", "")),
+			"scenario_id": str(payload.get("scenario_id", "")),
+			"seed": int(payload.get("seed", 0)),
+			"setup": (payload.get("setup", {}) as Dictionary).duplicate(true),
+			"outcome_receipt": (payload.get("outcome_receipt", {}) as Dictionary).duplicate(true),
+			"world_effective_us": int(payload.get("world_effective_us", 0)),
+		},
+	}
+
+
+func _has_exact_keys(dictionary: Dictionary, fields: Array) -> bool:
+	if dictionary.keys().size() != fields.size():
+		return false
+	for field_variant in fields:
+		if not dictionary.has(str(field_variant)):
+			return false
 	return true
