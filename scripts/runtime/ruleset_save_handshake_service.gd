@@ -147,6 +147,15 @@ func inspect_envelope(payload: Dictionary, target_ruleset_id: String = V06_RULES
 		result["legacy_structure_valid"] = bool(legacy_validation.get("valid", false))
 		return result
 	if save_version == V06_SAVE_VERSION and source_ruleset_id == V06_RULESET_ID:
+		if _is_previous_v06_manifest(payload):
+			return _inspection(
+				"v06_previous_manifest",
+				V06_RULESET_ID,
+				target_ruleset_id,
+				false,
+				true,
+				"v06_previous_manifest_resume_forbidden"
+			)
 		var validation := validate_v06_envelope(payload)
 		return {
 			"recognized": true,
@@ -159,6 +168,23 @@ func inspect_envelope(payload: Dictionary, target_ruleset_id: String = V06_RULES
 			"validation": validation,
 		}
 	return _inspection("unknown", source_ruleset_id, target_ruleset_id, false, true, "unknown_save_envelope")
+
+
+func _is_previous_v06_manifest(payload: Dictionary) -> bool:
+	var sections_variant: Variant = payload.get("sections")
+	if not (sections_variant is Dictionary):
+		return false
+	var sections := sections_variant as Dictionary
+	var current_manifest := required_section_manifest()
+	if current_manifest.size() != 19 or sections.size() != 18 or sections.has("card_resolution_history"):
+		return false
+	for section_id_variant in current_manifest.keys():
+		var section_id := str(section_id_variant)
+		if section_id == "card_resolution_history":
+			continue
+		if not sections.has(section_id):
+			return false
+	return true
 
 
 func inspect_legacy(payload: Dictionary) -> Dictionary:
