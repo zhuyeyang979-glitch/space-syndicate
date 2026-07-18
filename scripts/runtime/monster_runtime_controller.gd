@@ -5536,7 +5536,15 @@ func _auto_monster_action_probability_text(actor: Dictionary, action_index: int,
 	return _world_call(&"_auto_monster_action_probability_text", [actor, action_index, weights, total, any_destroyed])
 
 func _auto_monster_color(slot: int) -> Color:
-	return _world_call(&"_auto_monster_color", [slot])
+	var fallback: Color = MONSTER_CATALOG_V06.art_profile("").get("accent", Color.WHITE)
+	if slot < 0 or slot >= auto_monsters.size():
+		return fallback
+	var actor_variant: Variant = auto_monsters[slot]
+	if not (actor_variant is Dictionary):
+		return fallback
+	var profile := MONSTER_CATALOG_V06.art_profile(str((actor_variant as Dictionary).get("name", "")))
+	var accent: Variant = profile.get("accent", fallback)
+	return accent if accent is Color else fallback
 
 func _auto_monster_movement_speed_mps(actor: Dictionary, target_index: int, action_speed_mps: float = -1.0) -> float:
 	return _world_call(&"_auto_monster_movement_speed_mps", [actor, target_index, action_speed_mps])

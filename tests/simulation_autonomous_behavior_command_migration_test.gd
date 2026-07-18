@@ -1,6 +1,7 @@
 extends SceneTree
 
 const STEP_SCENE := preload("res://scenes/runtime/RuntimeSimulationStep.tscn")
+const MONSTER_CATALOG := preload("res://scripts/runtime/monster_catalog_v06.gd")
 
 
 class TestMonster extends MonsterRuntimeController:
@@ -36,6 +37,9 @@ class TestMonster extends MonsterRuntimeController:
 			return {"accepted": true, "moved": 0.0, "arrived": false}
 		return {"accepted": false, "reason": "test_operation_invalid"}
 
+	func color_for_slot(slot: int) -> Color:
+		return _auto_monster_color(slot)
+
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -48,6 +52,7 @@ func _init() -> void:
 func _run() -> void:
 	_test_command_authority()
 	_test_deterministic_command_identity()
+	_test_monster_color_owner()
 	_test_production_composition_and_negative_gate()
 	print("simulation_autonomous_behavior_command_migration_test: %s %d/%d" % ["PASS" if _failures.is_empty() else "FAIL", _checks - _failures.size(), _checks])
 	if not _failures.is_empty():
@@ -110,6 +115,19 @@ func _test_deterministic_command_identity() -> void:
 	(invalid["payload"] as Dictionary)["node"] = Node.new()
 	_check(not bool(RuntimeCommandEnvelope.validate(invalid).get("valid", true)), "autonomous command rejects runtime object payloads")
 	(invalid["payload"] as Dictionary)["node"].free()
+
+
+func _test_monster_color_owner() -> void:
+	var monster := TestMonster.new()
+	monster.auto_monsters = [{"uid": 19, "name": "孢雾海皇"}]
+	var expected_accent: Color = MONSTER_CATALOG.art_profile("孢雾海皇").get("accent", Color.WHITE)
+	var expected_fallback: Color = MONSTER_CATALOG.art_profile("").get("accent", Color.WHITE)
+	_check(monster.color_for_slot(0) is Color and monster.color_for_slot(0) == expected_accent, "valid monster slot resolves its catalog art-profile accent as Color")
+	_check(monster.color_for_slot(-1) is Color and monster.color_for_slot(99) is Color and monster.color_for_slot(-1) == expected_fallback and monster.color_for_slot(99) == expected_fallback, "invalid monster slots return the stable catalog fallback Color")
+	var monster_source := FileAccess.get_file_as_string("res://scripts/runtime/monster_runtime_controller.gd")
+	var color_body := _function_body(monster_source, "func _auto_monster_color(slot: int) -> Color:", "func _auto_monster_movement_speed_mps")
+	_check(color_body.contains("MONSTER_CATALOG_V06.art_profile") and color_body.contains("auto_monsters[slot]") and not color_body.contains("_world_call"), "Monster owner resolves visual color locally without a Main world call")
+	monster.free()
 
 
 func _test_production_composition_and_negative_gate() -> void:
