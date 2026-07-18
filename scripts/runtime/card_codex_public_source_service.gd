@@ -3,128 +3,313 @@ extends Node
 class_name CardCodexPublicSourceService
 
 const SOURCE_ADAPTER_SCRIPT := preload("res://scripts/runtime/card_codex_public_source_adapter.gd")
-const DEPENDENCY_KEYS := [
-	"catalog",
-	"presentation",
-	"eligibility",
-	"diagnostics",
-	"snapshot",
-	"runtime_balance_model",
-]
+const DEPENDENCY_KEYS := ["snapshot"]
+const CATEGORY_LABELS := {
+	"commodity": "商品牌",
+	"facility": "公共设施",
+	"supply_demand": "供需订单",
+	"monster": "怪兽单位",
+	"military": "军队单位",
+	"interaction": "玩家互动",
+	"organization": "组织升级",
+}
+const CATEGORY_ICONS := {
+	"commodity": "◇",
+	"facility": "▣",
+	"supply_demand": "↔",
+	"monster": "怪",
+	"military": "◆",
+	"interaction": "✦",
+	"organization": "◎",
+}
+const INDUSTRY_COLORS := {
+	"life": Color("#4ade80"),
+	"energy": Color("#facc15"),
+	"industry": Color("#94a3b8"),
+	"technology": Color("#38bdf8"),
+	"commerce": Color("#c084fc"),
+	"shipping": Color("#06b6d4"),
+	"generic": Color("#fde68a"),
+}
 
-var _catalog: CardRuntimeCatalogService
-var _presentation: CardPresentationRuntimeService
-var _eligibility: CardPlayEligibilityRuntimeService
-var _diagnostics: GameplayBalanceDiagnosticsRuntimeService
+@export var public_catalog_v06: CardRuntimeCatalogV06Resource
+
 var _snapshot: CardCodexPublicSnapshotService
-var _runtime_balance_model: RefCounted
 var _adapter: RefCounted = SOURCE_ADAPTER_SCRIPT.new()
 var _configured := false
 var _last_error := "dependencies_not_configured"
+var _source_compose_count := 0
+var _browser_compose_count := 0
+var _detail_compose_count := 0
 
 
 func configure(dependencies: Dictionary) -> Dictionary:
 	_clear_dependencies()
-	for key_variant: Variant in dependencies:
-		if not DEPENDENCY_KEYS.has(str(key_variant)):
-			_last_error = "unexpected_dependency:%s" % str(key_variant)
-			return debug_snapshot()
-	_catalog = dependencies.get("catalog") as CardRuntimeCatalogService
-	_presentation = dependencies.get("presentation") as CardPresentationRuntimeService
-	_eligibility = dependencies.get("eligibility") as CardPlayEligibilityRuntimeService
-	_diagnostics = dependencies.get("diagnostics") as GameplayBalanceDiagnosticsRuntimeService
+	var keys := dependencies.keys()
+	keys.sort()
+	var expected := DEPENDENCY_KEYS.duplicate()
+	expected.sort()
+	if keys != expected:
+		_last_error = "dependency_keys_invalid"
+		return debug_snapshot()
 	_snapshot = dependencies.get("snapshot") as CardCodexPublicSnapshotService
-	_runtime_balance_model = dependencies.get("runtime_balance_model") as RefCounted
-	var missing: Array[String] = []
-	if _catalog == null: missing.append("catalog")
-	if _presentation == null: missing.append("presentation")
-	if _eligibility == null: missing.append("eligibility")
-	if _diagnostics == null: missing.append("diagnostics")
-	if _snapshot == null: missing.append("snapshot")
-	if _runtime_balance_model == null or not _runtime_balance_model.has_method("card_price_for_skill"): missing.append("runtime_balance_model")
-	if not missing.is_empty():
+	if _snapshot == null or not _snapshot.has_method("compose_browser") or not _snapshot.has_method("compose_detail"):
+		_last_error = "snapshot_service_invalid"
 		_clear_dependencies()
-		_last_error = "missing_or_invalid_dependencies:%s" % ",".join(missing)
+		return debug_snapshot()
+	if public_catalog_v06 == null:
+		_last_error = "v06_public_catalog_missing"
+		_clear_dependencies()
+		return debug_snapshot()
+	var report := public_catalog_v06.validation_report()
+	if not bool(report.get("valid", false)) or int(report.get("card_count", 0)) != 348:
+		_last_error = "v06_public_catalog_invalid"
+		_clear_dependencies()
 		return debug_snapshot()
 	_configured = true
 	_last_error = ""
 	return debug_snapshot()
 
 
+func ordered_card_ids(filter_id: String = "all") -> Array[String]:
+	if not _require_ready() or not _valid_filter_id(filter_id):
+		return []
+	var result: Array[String] = []
+	for card_variant: Variant in _catalog_cards():
+		if not (card_variant is Dictionary):
+			continue
+		var machine := _dictionary((card_variant as Dictionary).get("machine", {}))
+		if not bool(machine.get("available_for_acquisition", false)):
+			continue
+		if not _filter_matches(filter_id, str(machine.get("category_id", ""))):
+			continue
+		var card_id := str(machine.get("card_id", ""))
+		if card_id != "":
+			result.append(card_id)
+	return result
+
+
+func public_filter_options() -> Array:
+	var result: Array = [{"id": "all", "label": "全部", "short_label": "全部", "icon": "□", "accent": Color("#93c5fd")}]
+	for category_id in ["commodity", "facility", "supply_demand", "monster", "military", "interaction", "organization"]:
+		result.append({
+			"id": category_id,
+			"label": str(CATEGORY_LABELS.get(category_id, category_id)),
+			"short_label": str(CATEGORY_LABELS.get(category_id, category_id)),
+			"icon": str(CATEGORY_ICONS.get(category_id, "□")),
+			"accent": _category_accent(category_id),
+		})
+	return result
+
+
+func resolve_card_id(card_identity: String) -> String:
+	if not _require_ready():
+		return ""
+	var identity := card_identity.strip_edges()
+	if identity == "":
+		return ""
+	if not public_catalog_v06.card_snapshot(identity).is_empty():
+		return identity
+	var monster_name := ""
+	var requested_rank := 0
+	if identity.begins_with("怪兽·") and identity.length() > 4:
+		var legacy := identity.trim_prefix("怪兽·")
+		if legacy.right(1).is_valid_int():
+			requested_rank = int(legacy.right(1))
+			monster_name = legacy.left(legacy.length() - 1)
+	for card_variant: Variant in _catalog_cards():
+		if not (card_variant is Dictionary):
+			continue
+		var card := card_variant as Dictionary
+		var machine := _dictionary(card.get("machine", {}))
+		var player := _dictionary(card.get("player", {}))
+		var card_id := str(machine.get("card_id", ""))
+		var rank := int(machine.get("rank", 1))
+		var display_name := str(player.get("name", ""))
+		var rank_label := str(player.get("rank", _roman_rank(rank)))
+		if identity in [display_name, "%s %s" % [display_name, rank_label], "%s%d" % [display_name, rank]]:
+			if rank == 1 or identity != display_name:
+				return card_id
+		if monster_name != "" and str(machine.get("category_id", "")) == "monster" and display_name == monster_name and rank == requested_rank:
+			return card_id
+	return ""
+
+
 func compose_browser_source(request: Dictionary) -> Dictionary:
-	if not _require_ready() or not _accepts_public_input(request):
+	if not _require_ready() or not bool(_adapter.call("accepts_public_input", request)):
+		_last_error = "browser_request_rejected"
 		return {}
-	var names := _string_array(request.get("names", []))
+	var filter_id := str(request.get("filter_id", "all"))
+	if not _valid_filter_id(filter_id):
+		_last_error = "filter_id_invalid"
+		return {}
+	var requested_names := _string_array(request.get("names", []))
+	var names: Array[String] = ordered_card_ids(filter_id) if requested_names.is_empty() else requested_names
+	for card_id in names:
+		if resolve_card_id(card_id) != card_id or not _filter_matches(filter_id, str(_machine_for_card(card_id).get("category_id", ""))):
+			_last_error = "browser_card_id_invalid"
+			return {}
 	var cards: Array = []
 	for card_index in range(names.size()):
-		var facts := compose_card_facts(str(names[card_index]), card_index)
-		if bool(facts.get("valid", false)):
-			cards.append(facts)
-	var preview_name := str(request.get("selected_card", ""))
-	if preview_name == "" or not names.has(preview_name):
-		preview_name = str(names[0]) if not names.is_empty() else ""
-	var preview_facts := compose_card_facts(preview_name, names.find(preview_name)) if preview_name != "" else {}
-	var source_request := request.duplicate(true)
-	source_request["names"] = names
-	source_request["selected_card"] = preview_name
-	source_request["columns"] = clampi(int(request.get("columns", 3)), 1, 6)
-	source_request["rows"] = maxi(1, int(request.get("rows", 1)))
-	source_request["page_index"] = maxi(0, int(request.get("page_index", 0)))
-	source_request["filter_id"] = str(request.get("filter_id", "all"))
-	source_request["filter_label"] = str(request.get("filter_label", _filter_label(str(source_request["filter_id"]))))
-	source_request["icon_legend"] = str(request.get("icon_legend", _presentation.icon_legend_text()))
-	source_request["run_pool_count"] = maxi(0, int(request.get("run_pool_count", 0)))
-	source_request["district_supply_count"] = maxi(0, int(request.get("district_supply_count", 0)))
-	var value: Variant = _adapter.call("compose_browser_source", source_request, cards, preview_facts, _public_filters(request.get("filters", [])))
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+		var facts := compose_card_facts(names[card_index], card_index)
+		if not bool(facts.get("valid", false)):
+			_last_error = "browser_card_facts_invalid"
+			return {}
+		cards.append(facts)
+	var selected_card := str(request.get("selected_card", ""))
+	if selected_card == "" and not names.is_empty():
+		selected_card = names[0]
+	if selected_card != "" and not names.has(selected_card):
+		_last_error = "selected_card_not_in_page"
+		return {}
+	var preview := compose_card_facts(selected_card, names.find(selected_card)) if selected_card != "" else {}
+	var source_request := {
+		"names": names,
+		"columns": clampi(int(request.get("columns", 3)), 1, 6),
+		"rows": maxi(1, int(request.get("rows", 1))),
+		"page_index": maxi(0, int(request.get("page_index", 0))),
+		"filter_id": filter_id,
+		"filter_label": _filter_label(filter_id),
+		"selected_card": selected_card,
+		"icon_legend": "◇商品免费｜▣设施｜怪兽｜◆军队｜✦互动｜◎组织",
+		"run_pool_count": maxi(0, int(request.get("run_pool_count", 0))),
+		"district_supply_count": maxi(0, int(request.get("district_supply_count", 0))),
+		"filters": _filters_with_counts(request.get("filters", [])),
+	}
+	var value: Variant = _adapter.call("compose_browser_source", source_request, cards, preview, source_request["filters"])
+	var result := (value as Dictionary).duplicate(true) if value is Dictionary else {}
+	if not result.is_empty():
+		_source_compose_count += 1
+		_last_error = ""
+	return result
 
 
 func compose_browser(request: Dictionary) -> Dictionary:
 	var source := compose_browser_source(request)
-	return _snapshot.compose_browser(source) if not source.is_empty() else {}
+	if source.is_empty():
+		return {}
+	_browser_compose_count += 1
+	return _snapshot.compose_browser(source)
 
 
-func compose_card_facts(card_name: String, card_index: int = -1) -> Dictionary:
-	return _compose_card_facts(card_name, card_index, true)
+func compose_card_facts(card_identity: String, card_index: int = -1) -> Dictionary:
+	if not _require_ready():
+		return {}
+	var card_id := resolve_card_id(card_identity)
+	if card_id == "":
+		return {"valid": false, "card_name": card_identity, "index": card_index}
+	var card := public_catalog_v06.card_snapshot(card_id)
+	var machine := _dictionary(card.get("machine", {}))
+	var player := _dictionary(card.get("player", {}))
+	if machine.is_empty() or player.is_empty():
+		return {"valid": false, "card_name": card_id, "index": card_index}
+	var category_id := str(machine.get("category_id", ""))
+	var industry_id := str(machine.get("industry_id", "generic"))
+	var rank := clampi(int(machine.get("rank", 1)), 1, 4)
+	var purchase_cash := maxi(0, int(machine.get("purchase_cash", 0)))
+	var asset_cost := _public_asset_cost(machine.get("asset_cost", {}))
+	var keyword_chips := _keyword_chips(player.get("keywords", []))
+	var target_kind := str(machine.get("target_kind", ""))
+	var acquisition_kind := str(machine.get("acquisition_kind", ""))
+	var source := {
+		"valid": true,
+		"index": card_index,
+		"card_name": card_id,
+		"display_name": "%s %s" % [str(player.get("name", "卡牌")), str(player.get("rank", _roman_rank(rank)))],
+		"icon": str(CATEGORY_ICONS.get(category_id, "□")),
+		"family": str(machine.get("family_id", "")),
+		"kind": str(machine.get("effect_kind", "")),
+		"rank": rank,
+		"rank_label": str(player.get("rank", _roman_rank(rank))),
+		"tag_text": _keyword_text(player.get("keywords", [])),
+		"accent": INDUSTRY_COLORS.get(industry_id, Color("#93c5fd")),
+		"price": purchase_cash,
+		"purchase_cost_text": "免费领取" if acquisition_kind == "commodity_belt_free" else "购买现金 ¥%d" % purchase_cash,
+		"play_cost_text": "打出免费" if _asset_total(asset_cost) == 0 else "打出 %s" % _asset_cost_text(asset_cost),
+		"category_label": str(CATEGORY_LABELS.get(category_id, "公开卡牌")),
+		"category_id": category_id,
+		"industry_label": str(player.get("industry", "通用")),
+		"icon_route_label": "%s｜%s" % [str(CATEGORY_LABELS.get(category_id, "公开卡牌")), str(player.get("industry", "通用"))],
+		"subtype_label": str(player.get("type", "公开卡牌")),
+		"source_type_label": "商品带" if acquisition_kind == "commodity_belt_free" else "全局普通牌市场",
+		"supply_layer": "商品带免费领取" if acquisition_kind == "commodity_belt_free" else "全局普通牌市场",
+		"art_stats": "%s｜%s" % [str(player.get("timing", "普通出牌窗口")), str(player.get("duration", "立即结算"))],
+		"use_case": str(player.get("next_step", "确认卡面目标")),
+		"strategy_route_label": str(player.get("type", "公开卡牌")),
+		"strategy_summary": str(player.get("short_effect", "")),
+		"strategy_use_text": str(player.get("next_step", "确认卡面目标")),
+		"quick_effect_compact": str(player.get("short_effect", "")),
+		"quick_effect_full": str(player.get("short_effect", "")),
+		"full_effect_text": str(player.get("effect", "")),
+		"rules_text_compact": "%s｜目标:%s｜%s" % [str(player.get("timing", "普通出牌窗口")), str(player.get("target", "按卡面")), str(player.get("duration", "立即结算"))],
+		"level_gradient_text": _level_gradient_text(str(machine.get("family_id", ""))),
+		"detail_tooltip": "%s\n%s\n目标:%s\n%s" % [str(player.get("name", "卡牌")), str(player.get("cost", "")), str(player.get("target", "按卡面")), str(player.get("effect", ""))],
+		"face_route_text": "%s｜%s" % [str(player.get("type", "公开卡牌")), str(player.get("industry", "通用"))],
+		"type_label": str(player.get("type", "公开卡牌")),
+		"requires_target": target_kind not in ["", "none", "self", "self_organization_slot", "global_matching_goods"],
+		"requires_target_monster": target_kind.contains("monster"),
+		"targets_player": target_kind.contains("opponent") or target_kind.contains("player"),
+		"targets_monster": target_kind.contains("monster"),
+		"target_text": str(player.get("target", "按卡面")),
+		"timing_text": str(player.get("timing", "普通出牌窗口")),
+		"duration_text": str(player.get("duration", "立即结算")),
+		"visibility_text": str(player.get("visibility", "卡面与结算回执公开")),
+		"play_requirement_text": "%s｜%s" % [str(player.get("timing", "普通出牌窗口")), str(player.get("cost", ""))],
+		"key_rule_facts": _key_rule_facts(player),
+		"read_chips": keyword_chips,
+		"resolution_animation_text": str(player.get("short_effect", "")),
+	}
+	var value: Variant = _adapter.call("compose_card_facts", source)
+	var result := (value as Dictionary).duplicate(true) if value is Dictionary else {}
+	if not result.is_empty():
+		_source_compose_count += 1
+		_last_error = ""
+	return result
 
 
-func compose_upgrades(card_name: String) -> Array:
+func compose_upgrades(card_identity: String) -> Array:
 	if not _require_ready():
 		return []
-	var upgrades: Array = []
-	var family := _catalog.family_id(card_name)
-	for level in range(1, 5):
-		var level_name := "%s%d" % [family, level]
-		if not _catalog.has_card(level_name):
+	var card_id := resolve_card_id(card_identity)
+	var machine := _machine_for_card(card_id)
+	var family_id := str(machine.get("family_id", ""))
+	if family_id == "":
+		return []
+	var result: Array = []
+	for rank in range(1, 5):
+		var ranked_id := "%s.rank_%d" % [family_id, rank]
+		var card := public_catalog_v06.card_snapshot(ranked_id)
+		if card.is_empty():
 			continue
-		var facts := _compose_card_facts(level_name, level - 1, false)
-		var preview := _join_facts(facts.get("key_rule_facts", []) as Array, 4)
-		if preview == "":
-			preview = str(facts.get("full_effect_text", ""))
-		var points := _diagnostics.card_budget_points(_catalog.definition(level_name))
-		var accent: Color = facts.get("accent", Color("#94a3b8")) as Color
-		upgrades.append({
-			"roman": _roman_rank(level),
-			"price": _rank_one_price(level_name),
-			"strength_band": _diagnostics.card_budget_band_text(points),
-			"preview": preview,
-			"display_name": _display_name(level_name),
-			"full_effect_text": str(facts.get("full_effect_text", "")),
-			"accent": accent.lerp(Color("#fef3c7"), 0.08 * float(level - 1)),
-			"fill_weight": 0.10 + 0.03 * float(level - 1),
+		var ranked_machine := _dictionary(card.get("machine", {}))
+		var player := _dictionary(card.get("player", {}))
+		result.append({
+			"roman": str(player.get("rank", _roman_rank(rank))),
+			"price": maxi(0, int(ranked_machine.get("purchase_cash", 0))),
+			"purchase_cost_text": "免费领取" if str(ranked_machine.get("acquisition_kind", "")) == "commodity_belt_free" else "购买现金 ¥%d" % int(ranked_machine.get("purchase_cash", 0)),
+			"play_cost_text": "打出免费" if _asset_total(ranked_machine.get("asset_cost", {})) == 0 else "打出 %s" % _asset_cost_text(ranked_machine.get("asset_cost", {})),
+			"strength_band": "公开等级 %s" % str(player.get("rank", _roman_rank(rank))),
+			"preview": str(player.get("short_effect", "")),
+			"display_name": "%s %s" % [str(player.get("name", "卡牌")), str(player.get("rank", _roman_rank(rank)))],
+			"full_effect_text": str(player.get("effect", "")),
+			"accent": INDUSTRY_COLORS.get(str(ranked_machine.get("industry_id", "generic")), Color("#93c5fd")),
+			"fill_weight": 0.10 + 0.03 * float(rank - 1),
 		})
-	return upgrades
+	return result
 
 
-func compose_detail(card_name: String, index: int, total: int) -> Dictionary:
+func compose_detail(card_identity: String, index: int, total: int) -> Dictionary:
 	if not _require_ready():
 		return {}
-	var facts := compose_card_facts(card_name, index)
+	var facts := compose_card_facts(card_identity, index)
 	if not bool(facts.get("valid", false)):
 		return {}
-	var value: Variant = _adapter.call("compose_detail_source", facts, compose_upgrades(card_name), total)
+	var value: Variant = _adapter.call("compose_detail_source", facts, compose_upgrades(str(facts.get("card_name", ""))), total)
 	var source := (value as Dictionary).duplicate(true) if value is Dictionary else {}
-	return _snapshot.compose_detail(source) if not source.is_empty() else {}
+	if source.is_empty():
+		return {}
+	_detail_compose_count += 1
+	return _snapshot.compose_detail(source)
 
 
 func public_field_schema() -> Dictionary:
@@ -133,13 +318,19 @@ func public_field_schema() -> Dictionary:
 
 
 func debug_snapshot() -> Dictionary:
-	var adapter_debug: Dictionary = _adapter.call("debug_snapshot") as Dictionary
+	var report := public_catalog_v06.validation_report() if public_catalog_v06 != null else {}
 	return {
 		"service_ready": _configured,
 		"service_authoritative": _configured,
 		"last_error": _last_error,
 		"dependency_allowlist": DEPENDENCY_KEYS.duplicate(),
 		"dependency_count": DEPENDENCY_KEYS.size() if _configured else 0,
+		"public_catalog_schema": str(public_catalog_v06.schema_version) if public_catalog_v06 != null else "",
+		"public_catalog_card_count": int(report.get("card_count", 0)),
+		"public_catalog_family_count": int(report.get("family_count", 0)),
+		"source_compose_count": _source_compose_count,
+		"browser_compose_count": _browser_compose_count,
+		"detail_compose_count": _detail_compose_count,
 		"owns_public_source_assembly": true,
 		"owns_rules": false,
 		"owns_save_state": false,
@@ -147,205 +338,165 @@ func debug_snapshot() -> Dictionary:
 		"reads_world_bridge": false,
 		"reads_private_world": false,
 		"reads_player_state": false,
-		"uses_snapshot_service_for_viewmodels": _snapshot != null,
-		"uses_runtime_balance_rank_one_price": _runtime_balance_model != null,
-		"adapter": adapter_debug.duplicate(true),
+		"reads_legacy_v04_catalog": false,
+		"uses_v06_player_contract": true,
+		"uses_v06_machine_identity_and_cost": true,
+		"adapter": _adapter.call("debug_snapshot"),
 	}
 
 
-func _compose_card_facts(card_name: String, card_index: int, include_gradient: bool) -> Dictionary:
-	if not _require_ready():
-		return {}
-	var skill := _catalog.definition(card_name)
-	if card_name == "" or skill.is_empty():
-		return {"valid": false, "card_name": card_name, "index": card_index}
-	var requirement := _eligibility.requirement_status({"skill": skill}, {})
-	var target := _eligibility.target_status({"skill": skill}, {"player_count": 2, "monster_count": 1})
-	var price := _rank_one_price(card_name)
-	var presentation := _presentation.compose_card({
-		"card_name": card_name,
-		"skill": skill,
-		"display_name": _display_name(card_name),
-		"display_text": str(skill.get("text", "")),
-		"tag_text": _tag_text(skill),
-		"rank": maxi(1, _catalog.rank(card_name)),
-		"price": price,
-		"play_requirement_text": str(requirement.get("requirement_text", "条件：无")),
-		"required_share_percent": int(requirement.get("required_share_percent", 0)),
-		"play_cash_cost": int(requirement.get("cash_cost", 0)),
-		"targets_monster": bool(target.get("targets_monster", false)),
-		"targets_player": bool(target.get("targets_player", false)),
-		"requires_target_monster": bool(target.get("requires_target_monster", false)),
-		"requires_target_player": bool(target.get("requires_target_player", false)),
-		"is_monster_card": str(skill.get("kind", "")) == "monster_card",
-		"is_direct_monster_skill": bool(target.get("targets_monster", false)) and not ["monster_lure", "special_monster_delay", "mudslide", "monster_takeover", "military_command"].has(str(skill.get("kind", ""))),
-	})
-	if presentation.is_empty():
-		return {}
-	var read_chips: Array = []
-	for entry_variant: Variant in presentation.get("chips", []):
-		if not (entry_variant is Dictionary):
-			continue
-		var entry := entry_variant as Dictionary
-		var accent: Color = entry.get("fg", Color("#e2e8f0")) as Color
-		read_chips.append({"text": str(entry.get("text", "")), "tooltip": str(entry.get("tip", "")), "fg": accent, "bg": entry.get("bg", Color("#020617")), "accent": accent})
-	var resolution := _presentation.compose_resolution({
-		"card": presentation.merged({"skill": skill}, true),
-		"skill": skill,
-		"resolved": true,
-		"animation_facts": {
-			"family": _catalog.family_id(card_name),
-			"monster_name": str(skill.get("monster_name", "")),
-			"monster_move_text": "%.0fm" % float(skill.get("move", 0.0)),
-			"monster_duration_text": _duration_text(float(skill.get("duration", -1.0))),
-			"military_hp": int(skill.get("military_hp", 0)),
-			"military_damage": int(skill.get("military_damage", 0)),
-			"military_range": float(skill.get("range", 0.0)),
-		},
-	})
-	var source := {
-		"valid": true,
-		"index": card_index,
-		"card_name": card_name,
-		"display_name": str(presentation.get("display_name", _display_name(card_name))),
-		"icon": str(presentation.get("icon", "□")),
-		"family": _catalog.family_id(card_name),
-		"kind": str(skill.get("kind", "")),
-		"rank": maxi(1, _catalog.rank(card_name)),
-		"rank_label": str(presentation.get("rank_label", _roman_rank(_catalog.rank(card_name)))),
-		"tag_text": _tag_text(skill),
-		"accent": presentation.get("accent", Color("#94a3b8")),
-		"price": price,
-		"category_label": _filter_label(str(presentation.get("category_id", "other"))),
-		"icon_route_label": str(presentation.get("icon_route_label", "□ 即时战术")),
-		"subtype_label": str(presentation.get("subtype_label", "即时战术")),
-		"source_type_label": _source_type_label(skill),
-		"supply_layer": "公开牌池" if _catalog.public_pool().has(card_name) else "完整资料库",
-		"art_stats": str(presentation.get("art_stats", "")),
-		"use_case": str(presentation.get("use_case", "")),
-		"strategy_route_label": str(presentation.get("strategy_route_label", "即时战术")),
-		"strategy_summary": str(presentation.get("strategy_summary", "")),
-		"strategy_use_text": str(presentation.get("strategy_use_text", "")),
-		"quick_effect_compact": str(presentation.get("quick_effect_compact", "")),
-		"quick_effect_full": str(presentation.get("quick_effect_full", "")),
-		"full_effect_text": str(skill.get("text", "")),
-		"rules_text_compact": str(presentation.get("rules_text_compact", "")),
-		"level_gradient_text": _level_gradient_text(card_name) if include_gradient else "",
-		"detail_tooltip": str(presentation.get("detail_tooltip", "")),
-		"face_route_text": str(presentation.get("face_route_full", "")),
-		"type_label": str(presentation.get("icon_type_label", "□ 卡牌")),
-		"requires_target_monster": bool(target.get("requires_target_monster", false)),
-		"targets_player": bool(target.get("targets_player", false)),
-		"targets_monster": bool(target.get("targets_monster", false)),
-		"play_region_share_required": int(requirement.get("required_share_percent", 0)),
-		"play_region_scope_label": str(requirement.get("scope_label", "任一经营区")),
-		"route_damage": int(skill.get("route_damage", 0)),
-		"persistent": bool(skill.get("persistent", false)),
-		"play_requirement_text": str(requirement.get("requirement_text", "条件：无")),
-		"key_rule_facts": (presentation.get("key_rule_facts", []) as Array).duplicate(true),
-		"read_chips": read_chips,
-		"resolution_animation_text": str(resolution.get("animation_catalog_text", "")).replace("\n", " / "),
-	}
-	var value: Variant = _adapter.call("compose_card_facts", source)
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+func _catalog_cards() -> Array:
+	if public_catalog_v06 == null:
+		return []
+	var catalog := public_catalog_v06.catalog_snapshot()
+	return (catalog.get("cards", []) as Array).duplicate(true) if catalog.get("cards", []) is Array else []
 
 
-func _public_filters(value: Variant) -> Array:
+func _machine_for_card(card_id: String) -> Dictionary:
+	if public_catalog_v06 == null or card_id == "":
+		return {}
+	var card := public_catalog_v06.card_snapshot(card_id)
+	return _dictionary(card.get("machine", {})).duplicate(true)
+
+
+func _filters_with_counts(request_filters: Variant) -> Array:
+	var supplied: Dictionary = {}
+	if request_filters is Array:
+		for entry_variant: Variant in request_filters:
+			if entry_variant is Dictionary:
+				supplied[str((entry_variant as Dictionary).get("id", ""))] = entry_variant
 	var result: Array = []
-	if not (value is Array): return result
-	for entry_variant: Variant in value:
-		if not (entry_variant is Dictionary): continue
-		var entry := entry_variant as Dictionary
-		var filter_id := str(entry.get("id", "all"))
-		result.append({"id": filter_id, "label": str(entry.get("label", _filter_label(filter_id))), "short_label": str(entry.get("short_label", _short_filter_label(filter_id))), "icon": _presentation.category_icon(filter_id), "count": maxi(0, int(entry.get("count", 0))), "accent": entry.get("accent", Color("#93c5fd"))})
+	for option_variant: Variant in public_filter_options():
+		var option := (option_variant as Dictionary).duplicate(true)
+		var filter_id := str(option.get("id", "all"))
+		option["count"] = ordered_card_ids(filter_id).size()
+		if supplied.has(filter_id):
+			var supplied_entry := supplied[filter_id] as Dictionary
+			option["label"] = str(supplied_entry.get("label", option.get("label", filter_id)))
+		result.append(option)
 	return result
 
 
+func _valid_filter_id(filter_id: String) -> bool:
+	return filter_id == "all" or CATEGORY_LABELS.has(filter_id)
+
+
+func _filter_matches(filter_id: String, category_id: String) -> bool:
+	return filter_id == "all" or filter_id == category_id
+
+
 func _filter_label(filter_id: String) -> String:
-	if filter_id.begins_with("route:"):
-		return "路线:%s" % _diagnostics.route_label(filter_id.trim_prefix("route:"))
-	return str({"all":"全部牌", "monster":"怪兽牌", "monster_skill":"怪兽技能", "military":"军队/军令", "interaction":"玩家互动", "city":"城市经营", "commodity":"商品经营", "futures":"商品期货", "finance":"金融/GDP", "contract":"合约", "intel":"情报推理", "supply":"补给/采购", "tactic":"怪兽诱导", "news":"新闻事件", "weather":"天气干预", "other":"其他", "economy":"经济聚合", "business":"经营/合约", "combat":"战斗/指令"}.get(filter_id, "全部牌"))
+	return "全部" if filter_id == "all" else str(CATEGORY_LABELS.get(filter_id, ""))
 
 
-func _short_filter_label(filter_id: String) -> String:
-	return str({"all":"全部", "monster":"怪兽", "monster_skill":"兽技", "military":"军队", "interaction":"互动", "city":"城市", "commodity":"商品", "futures":"期货", "finance":"金融", "contract":"合约", "intel":"情报", "supply":"补给", "tactic":"诱导", "news":"新闻", "weather":"天气", "other":"其他"}.get(filter_id, _filter_label(filter_id)))
+func _category_accent(category_id: String) -> Color:
+	return {
+		"commodity": Color("#4ade80"),
+		"facility": Color("#facc15"),
+		"supply_demand": Color("#06b6d4"),
+		"monster": Color("#fb7185"),
+		"military": Color("#94a3b8"),
+		"interaction": Color("#c084fc"),
+		"organization": Color("#f59e0b"),
+	}.get(category_id, Color("#93c5fd")) as Color
 
 
-func _display_name(card_name: String) -> String:
-	return "%s %s级" % [_catalog.family_id(card_name), _roman_rank(maxi(1, _catalog.rank(card_name)))] if card_name != "" else ""
+func _keyword_chips(value: Variant) -> Array:
+	var result: Array = []
+	if not (value is Array):
+		return result
+	for keyword_variant: Variant in value as Array:
+		if not (keyword_variant is Dictionary):
+			continue
+		var keyword := keyword_variant as Dictionary
+		var text_value := str(keyword.get("text", "")).strip_edges()
+		if text_value == "":
+			continue
+		var accent := Color(str(keyword.get("accent", "#93c5fd")))
+		result.append({"text": text_value, "tooltip": str(keyword.get("tooltip", "")), "fg": accent, "bg": Color("#020617"), "accent": accent})
+	return result
 
 
-func _tag_text(skill: Dictionary) -> String:
+func _keyword_text(value: Variant) -> String:
 	var labels: Array[String] = []
-	for tag_variant: Variant in skill.get("tags", []) as Array:
-		var tag := str(tag_variant)
-		if tag != "": labels.append(tag)
+	for chip_variant: Variant in _keyword_chips(value):
+		labels.append(str((chip_variant as Dictionary).get("text", "")))
 	return " / ".join(labels)
 
 
-func _source_type_label(skill: Dictionary) -> String:
-	match str(skill.get("kind", "")):
-		"monster_card": return "怪兽牌"
-		"monster_bound_action": return "怪兽固定技能"
-	return "固定技能" if bool(skill.get("persistent", false)) else "公共卡牌"
+func _key_rule_facts(player: Dictionary) -> Array:
+	return [
+		"费用：%s" % str(player.get("cost", "")),
+		"时机：%s" % str(player.get("timing", "")),
+		"目标：%s" % str(player.get("target", "")),
+		"持续：%s" % str(player.get("duration", "")),
+		"公开：%s" % str(player.get("visibility", "")),
+	]
 
 
-func _rank_one_price(card_name: String) -> int:
-	var price_card_name := "%s1" % _catalog.family_id(card_name)
-	if not _catalog.has_card(price_card_name): price_card_name = card_name
-	var price_skill := _catalog.definition(price_card_name)
-	return int(_runtime_balance_model.call("card_price_for_skill", price_skill)) if not price_skill.is_empty() else 0
+func _public_asset_cost(value: Variant) -> Dictionary:
+	var source := _dictionary(value)
+	var result := {}
+	for key in ["life", "energy", "industry", "technology", "commerce", "shipping", "generic"]:
+		result[key] = maxi(0, int(source.get(key, 0)))
+	return result
 
 
-func _level_gradient_text(card_name: String) -> String:
+func _asset_total(value: Variant) -> int:
+	var total := 0
+	for amount_variant: Variant in _dictionary(value).values():
+		total += maxi(0, int(amount_variant))
+	return total
+
+
+func _asset_cost_text(value: Variant) -> String:
+	var labels := {"life":"生命", "energy":"能源", "industry":"工业", "technology":"科技", "commerce":"商业", "shipping":"航运", "generic":"通用"}
+	var parts: Array[String] = []
+	for key in ["life", "energy", "industry", "technology", "commerce", "shipping", "generic"]:
+		var amount := maxi(0, int(_dictionary(value).get(key, 0)))
+		if amount > 0:
+			parts.append("%d %s资产" % [amount, str(labels[key])])
+	return " + ".join(parts) if not parts.is_empty() else "免费"
+
+
+func _level_gradient_text(family_id: String) -> String:
 	var lines: Array[String] = []
-	for entry_variant: Variant in compose_upgrades(card_name):
-		if entry_variant is Dictionary:
-			var entry := entry_variant as Dictionary
-			lines.append("%s  ¥%d  %s｜%s" % [str(entry.get("roman", "")), int(entry.get("price", 0)), str(entry.get("strength_band", "")), str(entry.get("preview", ""))])
-	return "\n".join(lines) if not lines.is_empty() else "该卡暂无I→IV强化。"
-
-
-func _join_facts(facts: Array, max_count: int) -> String:
-	var pieces: Array[String] = []
-	for index in range(mini(maxi(0, max_count), facts.size())):
-		var fact := str(facts[index])
-		if fact != "": pieces.append(fact)
-	return "｜".join(pieces)
+	for rank in range(1, 5):
+		var card := public_catalog_v06.card_snapshot("%s.rank_%d" % [family_id, rank]) if public_catalog_v06 != null else {}
+		if card.is_empty():
+			continue
+		var machine := _dictionary(card.get("machine", {}))
+		var player := _dictionary(card.get("player", {}))
+		var purchase := "免费领取" if str(machine.get("acquisition_kind", "")) == "commodity_belt_free" else "购买¥%d" % int(machine.get("purchase_cash", 0))
+		lines.append("%s｜%s｜%s" % [str(player.get("rank", _roman_rank(rank))), purchase, str(player.get("short_effect", ""))])
+	return "\n".join(lines)
 
 
 func _roman_rank(rank: int) -> String:
 	return str({1:"I", 2:"II", 3:"III", 4:"IV"}.get(clampi(rank, 1, 4), "I"))
 
 
-func _duration_text(seconds: float) -> String:
-	return "常驻" if seconds < 0.0 else "%.0fs" % seconds
-
-
-func _string_array(value: Variant) -> Array:
-	var result: Array = []
-	if not (value is Array): return result
-	for entry_variant: Variant in value:
-		var entry := str(entry_variant)
-		if entry != "": result.append(entry)
+func _string_array(value: Variant) -> Array[String]:
+	var result: Array[String] = []
+	if value is Array or value is PackedStringArray:
+		for item_variant: Variant in value:
+			var item := str(item_variant).strip_edges()
+			if item != "":
+				result.append(item)
 	return result
 
 
-func _accepts_public_input(value: Variant) -> bool:
-	return bool(_adapter.call("accepts_public_input", value))
+func _dictionary(value: Variant) -> Dictionary:
+	return value as Dictionary if value is Dictionary else {}
 
 
 func _require_ready() -> bool:
-	if _configured: return true
+	if _configured:
+		return true
 	_last_error = "dependencies_not_configured"
 	return false
 
 
 func _clear_dependencies() -> void:
-	_catalog = null
-	_presentation = null
-	_eligibility = null
-	_diagnostics = null
 	_snapshot = null
-	_runtime_balance_model = null
 	_configured = false

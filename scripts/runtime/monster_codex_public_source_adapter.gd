@@ -1,7 +1,7 @@
 extends RefCounted
 class_name MonsterCodexPublicSourceAdapter
 
-const SCHEMA_VERSION := 1
+const SCHEMA_VERSION := 2
 const FORBIDDEN_PRIVATE_KEYS := {
 	"viewer": true,
 	"viewer_index": true,
@@ -69,7 +69,7 @@ const FORBIDDEN_VALUE_SENTINELS := [
 const TOP_LEVEL_FIELDS := [
 	"schema_version", "contract_version", "valid", "index", "total", "selected", "entry", "ecology",
 	"profile", "accent", "move_text", "art_move_text", "ecology_move_text", "max_range_text",
-	"encounter_range_text", "mobility_summary", "action_summary", "rank_iv_probability_summary", "actions",
+	"encounter_range_text", "mobility_summary", "action_summary", "actions",
 	"monster_card", "monster_card_link", "level_labels",
 ]
 const ENTRY_FIELDS := [
@@ -79,14 +79,11 @@ const ENTRY_FIELDS := [
 const ECOLOGY_FIELDS := [
 	"movement_archetype", "movement_traits", "terrain_move_multiplier", "role_tags",
 	"bound_skill_counts", "summon_access", "resource_drain", "max_damage", "max_range", "move",
-	"economy_boon", "rank_iv_probability_shift",
+	"economy_boon",
 ]
 const ECOLOGY_BOON_FIELDS := ["label", "text"]
 const PROFILE_FIELDS := ["accent", "secondary", "glyph", "motif", "subtitle", "sprite_key", "sprite_cell", "visual_source_id"]
-const ACTION_FIELDS := [
-	"name", "text", "tags", "facts", "i_open", "i_destroyed", "iv_open", "iv_destroyed",
-	"probability_tooltip",
-]
+const ACTION_FIELDS := ["name", "text", "tags", "facts"]
 const MONSTER_CARD_FIELDS := ["valid", "card_name", "display_name", "price", "region_text"]
 const MONSTER_CARD_LINK_FIELDS := ["visible", "card_name", "label", "button_text", "tooltip"]
 

@@ -37,6 +37,7 @@ var _view := ""
 var _last_page: Dictionary = {}
 var _contract_errors: Array[String] = []
 var _monster_card_name := ""
+var _rejected_page_count := 0
 
 
 func _ready() -> void:
@@ -46,6 +47,15 @@ func _ready() -> void:
 
 
 func set_page(data: Dictionary) -> bool:
+	if not _is_pure_data(data):
+		_rejected_page_count += 1
+		_last_page.clear()
+		_mode = ""
+		_view = ""
+		_hide_all_surfaces()
+		_show_empty({"title": "资料页已拒绝", "body": "页面包含非公开运行时对象，未进行渲染。"})
+		visible = true
+		return false
 	_last_page = data.duplicate(true)
 	_mode = str(data.get("mode", ""))
 	_view = str(data.get("view", "browser"))
@@ -99,6 +109,7 @@ func debug_snapshot() -> Dictionary:
 		"contract_errors": _contract_errors.duplicate(),
 		"visible_surfaces": _visible_surface_names(),
 		"page_is_pure_data": _is_pure_data(_last_page),
+		"rejected_page_count": _rejected_page_count,
 	}
 
 

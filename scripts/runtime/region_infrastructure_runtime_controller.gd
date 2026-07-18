@@ -879,11 +879,10 @@ func public_economy_snapshot() -> Dictionary:
 			"industry_id": str(facility.get("industry_id", "")),
 			"rank": clampi(int(facility.get("rank", 1)), 1, 4),
 			"active": bool(facility.get("active", false)),
-			"owner_visibility": "hidden",
+			"owner_visibility": "public",
+			"owner_kind": str(facility.get("owner_kind", "neutral")),
+			"owner_player_index": int(facility.get("owner_player_index", -1)),
 		}
-		if bool(facility.get("owner_public", facility.get("owner_revealed", false))):
-			row["owner_visibility"] = "public"
-			row["owner_player_index"] = int(facility.get("owner_player_index", -1))
 		public_facilities.append(row)
 	return {"available": _configured, "revision": _revision, "visibility_scope": "public", "regions": public_regions, "facilities": public_facilities}
 

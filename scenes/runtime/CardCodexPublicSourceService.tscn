@@ -1,7 +1,9 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/card_codex_public_source_service.gd" id="1_service"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/card_runtime_catalog_v06.tres" id="2_catalog_v06"]
 
 [node name="CardCodexPublicSourceService" type="Node"]
 script = ExtResource("1_service")
-editor_description = "Scene-owned public Card Codex source assembler. It consumes only injected catalog, presentation, eligibility, diagnostics, snapshot, and balance services; no world bridge or private player state."
+public_catalog_v06 = ExtResource("2_catalog_v06")
+editor_description = "Scene-owned public Card Codex source assembler. It reads only the v0.6 catalog player contract plus allowlisted machine identity/cost fields; gameplay catalogs, world bridges and private player state remain outside this presentation boundary."

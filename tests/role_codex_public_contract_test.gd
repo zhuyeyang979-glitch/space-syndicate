@@ -70,12 +70,14 @@ func _run() -> void:
 
 
 func _test_role_codex_public_owner_contract() -> void:
-	_expect(_coordinator != null and _coordinator.has_method("compose_codex_role_snapshot"), "coordinator_exposes_role_codex_public_composition")
+	_expect(_coordinator != null and _coordinator.has_method("role_codex_public_snapshot"), "coordinator_exposes scene-owned role Codex public source")
 	_expect(_diagnostics != null and _diagnostics.has_method("role_balance_audit"), "diagnostics_owner_exposes_role_balance_audit")
 	if _coordinator == null or _diagnostics == null:
 		return
 	var role_count := int(_main.call("_player_role_catalog_size"))
-	_expect(role_count >= 24, "role_catalog_current_minimum_24")
+	_expect(role_count == 24, "role_catalog_exactly_24")
+	var source_service := _coordinator.get_node_or_null("RoleCodexPublicSourceService")
+	_expect(source_service != null and bool((source_service.call("debug_snapshot") as Dictionary).get("uses_role_catalog_public_projection", false)), "role Codex consumes RoleCatalog public projection")
 	var audit: Dictionary = _diagnostics.call("role_balance_audit")
 	_expect(int(audit.get("role_count", 0)) == role_count, "diagnostics_role_count_matches_catalog")
 	_expect(_array(audit.get("duplicate_names", [])).is_empty(), "diagnostics_reports_no_duplicate_roles")
@@ -102,6 +104,9 @@ func _test_role_codex_public_owner_contract() -> void:
 		saw_control = saw_control or tags.has("monster") or tags.has("military") or tags.has("counter")
 	_expect(names.size() == role_count, "all_public_role_names_are_distinct")
 	_expect(saw_supply and saw_intel and saw_control, "role_catalog_keeps_supply_intel_and_control_routes")
+	var rejected := _coordinator.call("role_codex_public_snapshot", 0, {"hidden_owner": "DO_NOT_LEAK"}) as Dictionary
+	_expect(rejected.is_empty(), "private presentation input fails closed")
+	_expect(not FileAccess.get_file_as_string("res://scripts/main.gd").contains("func _role_codex_public_source_snapshot("), "retired Main role source helper is physically absent")
 
 
 func _test_random_role_resolution_without_run_state_wrapper() -> void:
@@ -136,8 +141,13 @@ func _test_random_role_resolution_without_run_state_wrapper() -> void:
 
 
 func _compose_role_snapshot(role: Dictionary, index: int, total: int) -> Dictionary:
-	var source: Dictionary = _main.call("_role_codex_public_source_snapshot", role, index, total)
-	var value: Variant = _coordinator.call("compose_codex_role_snapshot", source)
+	var value: Variant = _coordinator.call("role_codex_public_snapshot", index, {
+		"accent": Color("#38bdf8"),
+		"kpi_columns": 2,
+		"route_columns": 2,
+		"face": {"name": str(role.get("name", "角色")), "effect": str(role.get("passive", "")), "type": "公开角色", "rank": str(role.get("species", "角色"))},
+		"face_effect": str(role.get("passive", "")),
+	})
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 

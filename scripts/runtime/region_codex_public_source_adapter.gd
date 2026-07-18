@@ -1,15 +1,16 @@
 extends RefCounted
 class_name RegionCodexPublicSourceAdapter
 
-const SCHEMA_VERSION := 1
+const SCHEMA_VERSION := 2
 const REGION_CONTRACT := "region_codex_public_facts_v06"
 const MONSTER_CONTRACT := "monster_region_public_attraction_v06"
 const REGION_FIELDS := [
 	"available", "card_ids", "city", "contract_version", "demands", "destroyed", "economic_focus_label",
-	"hp_now", "hp_total", "index", "name", "neighbor_indices", "products", "public_clue", "reason_code",
+	"facilities", "hp_now", "hp_total", "index", "name", "neighbor_indices", "products", "public_clue", "reason_code",
 	"region_id", "terrain", "terrain_label", "total",
 ]
 const CITY_FIELDS := ["active", "last_income", "level", "present"]
+const FACILITY_FIELDS := ["facility_type", "industry_id", "owner_kind", "owner_player_index", "rank"]
 const MONSTER_FIELDS := ["available", "contract_version", "entries", "reason_code", "region_index"]
 const MONSTER_ENTRY_FIELDS := ["factor_codes", "name", "ordinal", "reason"]
 const MONSTER_FACTOR_CODES := ["distance", "city", "competition", "warehouse", "resource", "miasma", "other_monster"]
@@ -17,13 +18,13 @@ const FORBIDDEN_PRIVATE_KEYS := {
 	"viewer": true, "viewer_index": true, "selected": true, "selected_player": true, "selected_district": true,
 	"player": true, "players": true, "player_index": true, "actor_id": true, "raw_actor": true,
 	"city_guesses": true, "cash": true, "exact_cash": true, "cash_cents": true, "hand": true,
-	"discard": true, "owner": true, "owner_id": true, "owner_index": true, "owner_player_index": true,
+	"discard": true, "owner": true, "owner_id": true, "owner_index": true,
 	"owner_actor_id": true, "hidden_owner": true, "true_owner": true, "owner_truth": true,
 	"private": true, "private_text": true, "private_clue": true, "private_plan": true,
 	"ai_plan": true, "ai_private_plan": true, "ai_route_plan": true, "ai_score": true, "target_plan": true,
 	"plan": true, "score": true, "target": true, "actual_target": true, "target_score": true,
 	"developer": true, "developer_text": true, "developer_fields": true, "observer_intent": true,
-	"observer_intents": true, "facilities": true, "facility_owner": true, "warehouses": true,
+	"observer_intents": true, "facility_owner": true, "warehouses": true,
 	"warehouse_inventory": true,
 }
 const FORBIDDEN_VALUE_MARKERS := [
@@ -50,6 +51,10 @@ func compose_source(region_facts: Dictionary, monster_facts: Dictionary, weather
 	var demands := _string_array(region_facts.get("demands", []))
 	var card_ids := _string_array(region_facts.get("card_ids", []))
 	var neighbors := _index_array(region_facts.get("neighbor_indices", []))
+	var facility_entries: Array = []
+	for facility_variant: Variant in region_facts.get("facilities", []) as Array:
+		var facility := facility_variant as Dictionary
+		facility_entries.append(_allowlist_dictionary(facility, FACILITY_FIELDS))
 	var monster_entries: Array = []
 	for entry_variant: Variant in monster_facts.get("entries", []) as Array:
 		var entry := entry_variant as Dictionary
@@ -76,6 +81,8 @@ func compose_source(region_facts: Dictionary, monster_facts: Dictionary, weather
 		"city_active": bool(city.get("active", false)),
 		"city_level": maxi(0, int(city.get("level", 0))),
 		"city_last_income": maxi(0, int(city.get("last_income", 0))),
+		"facility_entries": facility_entries,
+		"facility_count": facility_entries.size(),
 		"supply_text": _limited_names(products, 3, "无"),
 		"demand_text": _limited_names(demands, 3, "无"),
 		"weather_text": weather_text if not weather_text.is_empty() else "暂无",
@@ -106,6 +113,7 @@ func public_field_schema() -> Dictionary:
 		"monster_contract": MONSTER_CONTRACT,
 		"region_fields": REGION_FIELDS.duplicate(),
 		"city_fields": CITY_FIELDS.duplicate(),
+		"facility_fields": FACILITY_FIELDS.duplicate(),
 		"monster_fields": MONSTER_FIELDS.duplicate(),
 		"monster_entry_fields": MONSTER_ENTRY_FIELDS.duplicate(),
 		"monster_factor_codes": MONSTER_FACTOR_CODES.duplicate(),
@@ -133,6 +141,14 @@ func _valid_region_facts(value: Dictionary) -> bool:
 		return false
 	if not (value.get("city", {}) is Dictionary) or not _keys_exact(value.get("city", {}) as Dictionary, CITY_FIELDS):
 		return false
+	if not (value.get("facilities", []) is Array):
+		return false
+	for facility_variant: Variant in value.get("facilities", []) as Array:
+		if not (facility_variant is Dictionary) or not _keys_exact(facility_variant as Dictionary, FACILITY_FIELDS):
+			return false
+		var facility := facility_variant as Dictionary
+		if str(facility.get("owner_kind", "")) not in ["player", "neutral"] or int(facility.get("owner_player_index", -1)) < -1:
+			return false
 	return _is_string_array(value.get("products", [])) and _is_string_array(value.get("demands", [])) and _is_string_array(value.get("card_ids", [])) and _is_index_array(value.get("neighbor_indices", []))
 
 
@@ -177,6 +193,15 @@ func _keys_exact(value: Dictionary, expected: Array) -> bool:
 	var fields := expected.duplicate()
 	fields.sort()
 	return keys == fields
+
+
+func _allowlist_dictionary(source: Dictionary, fields: Array) -> Dictionary:
+	var result := {}
+	for field_variant: Variant in fields:
+		var field := str(field_variant)
+		if source.has(field):
+			result[field] = source[field]
+	return result
 
 
 func _accepts_public_input(value: Variant) -> bool:

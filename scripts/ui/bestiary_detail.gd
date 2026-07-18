@@ -22,14 +22,14 @@ func _ready() -> void:
 
 func set_monster(data: Dictionary) -> void:
 	var accent := _dictionary_color(data, "accent", Color("#fb7185"))
-	tooltip_text = str(data.get("tooltip", "怪兽档案板：先看画像、HP、速度、偏好、生态位和行动概率。"))
+	tooltip_text = str(data.get("tooltip", "怪兽档案板：先看画像、HP、速度、偏好、生态位和公开行动效果。"))
 	add_theme_stylebox_override("panel", _card_style(accent, Color("#020617").lerp(accent, 0.10), 1, 8))
 	art_slot.add_theme_stylebox_override("panel", _card_style(accent, Color("#0b1120").lerp(accent, 0.16), 1, 8))
 	title_label.text = str(data.get("title", "怪兽单位档案"))
 	subtitle_label.text = _short_text(str(data.get("subtitle", "自动怪兽。")), 96)
 	subtitle_label.tooltip_text = str(data.get("subtitle", "自动怪兽。"))
 	subtitle_label.add_theme_color_override("font_color", accent.lightened(0.18))
-	action_title_label.text = str(data.get("action_title", "行动概率板｜I级/IV级｜开局/破坏后"))
+	action_title_label.text = str(data.get("action_title", "公开行动板｜I级/IV级｜开局/破坏后"))
 	action_title_label.tooltip_text = str(data.get("action_tooltip", "怪兽仍会自动行动；召唤者只能用绑定技能牌做一次性指令。"))
 	_render_art(data.get("art", {}), accent)
 	_render_chips(data.get("chips", []))

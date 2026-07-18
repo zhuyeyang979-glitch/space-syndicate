@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/role_codex_public_source_service.gd" id="1_service"]
+
+[node name="RoleCodexPublicSourceService" type="Node"]
+script = ExtResource("1_service")
+editor_description = "Scene-owned strict public role Codex source. It reads only RoleCatalogRuntimeService.public_definition_at and pure presentation context."

@@ -51,6 +51,7 @@ const PRIVATE_VALUE_SENTINELS := [
 
 const TOP_LEVEL_KEYS := [
 	"valid",
+	"unavailable_reason",
 	"index",
 	"total",
 	"selected",
@@ -58,9 +59,6 @@ const TOP_LEVEL_KEYS := [
 	"profile",
 	"market",
 	"strategy_rankings",
-	"futures_public_full",
-	"futures_public_compact",
-	"warehouse_public_entries",
 	"monster_focus_names",
 	"related_card_names",
 	"supply_district_names",
@@ -93,7 +91,6 @@ func compose_source(source: Dictionary) -> Dictionary:
 	result["profile"] = _dictionary(result.get("profile", {})).duplicate(true)
 	result["market"] = _dictionary(result.get("market", {})).duplicate(true)
 	result["strategy_rankings"] = _array(result.get("strategy_rankings", [])).duplicate(true)
-	result["warehouse_public_entries"] = _array(result.get("warehouse_public_entries", [])).duplicate(true)
 	result["monster_focus_names"] = _string_array(result.get("monster_focus_names", []))
 	result["related_card_names"] = _string_array(result.get("related_card_names", []))
 	result["supply_district_names"] = _string_array(result.get("supply_district_names", []))

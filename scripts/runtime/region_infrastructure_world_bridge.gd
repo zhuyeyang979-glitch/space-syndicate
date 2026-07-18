@@ -227,6 +227,22 @@ func region_codex_public_facts(legacy_index: int) -> Dictionary:
 		"level": maxi(0, int(city.get("level", 0))) if city_present else 0,
 		"last_income": maxi(0, int(city.get("last_income", 0))) if city_present else 0,
 	}
+	var facility_rows: Array = []
+	var infrastructure_public_variant: Variant = _controller.call("public_economy_snapshot") if _controller != null and _controller.has_method("public_economy_snapshot") else {}
+	var infrastructure_public := infrastructure_public_variant as Dictionary if infrastructure_public_variant is Dictionary else {}
+	for facility_variant: Variant in infrastructure_public.get("facilities", []) as Array:
+		if not (facility_variant is Dictionary):
+			continue
+		var facility := facility_variant as Dictionary
+		if str(facility.get("region_id", "")) != str(region_id_variant) or not bool(facility.get("active", false)):
+			continue
+		facility_rows.append({
+			"facility_type": str(facility.get("facility_type", "")),
+			"industry_id": str(facility.get("industry_id", "")),
+			"rank": clampi(int(facility.get("rank", 1)), 1, 4),
+			"owner_kind": str(facility.get("owner_kind", "neutral")),
+			"owner_player_index": int(facility.get("owner_player_index", -1)),
+		})
 	return {
 		"available": true,
 		"contract_version": REGION_CODEX_PUBLIC_FACTS_CONTRACT_V06,
@@ -246,6 +262,7 @@ func region_codex_public_facts(legacy_index: int) -> Dictionary:
 		"card_ids": (cards_result.get("values", []) as Array).duplicate(),
 		"neighbor_indices": (neighbors_result.get("values", []) as Array).duplicate(),
 		"city": city_public,
+		"facilities": facility_rows,
 		"public_clue": _region_codex_public_clue(city),
 	}
 
@@ -364,6 +381,7 @@ func _region_codex_public_unavailable(legacy_index: int, reason_code: String, to
 		"card_ids": [],
 		"neighbor_indices": [],
 		"city": {"present": false, "active": false, "level": 0, "last_income": 0},
+		"facilities": [],
 		"public_clue": REGION_CODEX_PUBLIC_CLUE_EMPTY_V06,
 	}
 

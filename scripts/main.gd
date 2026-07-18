@@ -3895,25 +3895,13 @@ func _open_card_codex_menu(index: int = -1) -> void:
 
 func _open_card_codex_by_name(card_name: String) -> void:
 	_codex_navigation_controller_node().card_codex_show_detail = false
-	var direct_skill := _game_runtime_coordinator_node().card_definition(card_name)
-	if not direct_skill.is_empty():
-		_codex_navigation_controller_node().card_codex_filter = str(_card_presentation_snapshot(card_name, direct_skill).get("category_id", "other"))
+	var resolved_card_id := _game_runtime_coordinator_node().resolve_card_codex_public_id(card_name)
+	if resolved_card_id == "":
+		_update_card_codex_menu()
+		return
+	_codex_navigation_controller_node().card_codex_filter = "all"
 	var names := _card_codex_names()
-	var index := names.find(card_name)
-	if index < 0:
-		var family_name := "%s1" % _game_runtime_coordinator_node().card_family_id(card_name)
-		index = names.find(family_name)
-	if index >= 0:
-		_codex_navigation_controller_node().card_codex_index = index
-		_codex_navigation_controller_node().card_codex_show_detail = true
-		_codex_navigation_controller_node().card_codex_grid_page = _codex_page_for_index(_codex_navigation_controller_node().card_codex_index, _card_codex_names().size(), _card_codex_cards_per_page())
-		_codex_navigation_controller_node().previewed_card_codex_card = String(names[_codex_navigation_controller_node().card_codex_index])
-	else:
-		_codex_navigation_controller_node().card_codex_filter = "all"
-		names = _card_codex_names()
-		index = names.find(card_name)
-		if index < 0:
-			index = names.find("%s1" % _game_runtime_coordinator_node().card_family_id(card_name))
+	var index := names.find(resolved_card_id)
 	if index >= 0:
 		_codex_navigation_controller_node().card_codex_index = index
 		_codex_navigation_controller_node().card_codex_show_detail = true
@@ -4026,7 +4014,7 @@ func _bestiary_entries_per_page() -> int:
 
 func _bestiary_grid_text() -> String:
 	var page_count := _codex_page_count(_catalog_size(), _bestiary_entries_per_page())
-	return "怪兽生态｜第%d/%d页｜本页%d×%d\n看画像、速度、偏好、行动概率和招式。悬停预览，双击详情；怪兽牌在卡牌图鉴。" % [
+	return "怪兽生态｜第%d/%d页｜本页%d×%d\n看画像、速度、偏好、公开行动类别和招式。悬停预览，双击详情；怪兽牌在卡牌图鉴。" % [
 		_codex_navigation_controller_node().bestiary_grid_page + 1,
 		page_count,
 		_bestiary_grid_columns(),
@@ -4232,26 +4220,17 @@ func _codex_role_route_label(role_card: Dictionary) -> String:
 	return str(coordinator.call("codex_role_route_label", role_card.duplicate(true), _role_starting_cash_delta(role_card))) if coordinator != null and coordinator.has_method("codex_role_route_label") else "通用经营"
 
 
-func _role_codex_public_source_snapshot(role_card: Dictionary, index: int, total: int) -> Dictionary:
+func _role_codex_public_snapshot(role_card: Dictionary, index: int, total: int) -> Dictionary:
+	var coordinator := _game_runtime_coordinator_node()
 	var content_width := _menu_available_content_width()
-	return {
-		"role_card": role_card.duplicate(true),
-		"index": index,
-		"total": total,
-		"passive_text": _role_passive_text(role_card),
-		"starting_cash_delta": _role_starting_cash_delta(role_card),
+	var presentation := {
 		"accent": _role_card_presentation_color(role_card),
 		"kpi_columns": clampi(int(floor(content_width / 210.0)), 1, 4),
 		"route_columns": clampi(int(floor(content_width / 300.0)), 1, 3),
 		"face": _new_game_setup_role_card_face_snapshot(role_card),
 		"face_effect": _role_card_face_text(role_card, false),
 	}
-
-
-func _role_codex_public_snapshot(role_card: Dictionary, index: int, total: int) -> Dictionary:
-	var coordinator := _game_runtime_coordinator_node()
-	var source := _role_codex_public_source_snapshot(role_card, index, total)
-	var value: Variant = coordinator.call("compose_codex_role_snapshot", source) if coordinator != null and coordinator.has_method("compose_codex_role_snapshot") else {}
+	var value: Variant = coordinator.call("role_codex_public_snapshot", index, presentation) if coordinator != null and coordinator.has_method("role_codex_public_snapshot") else {}
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
@@ -4290,7 +4269,6 @@ func _update_product_codex_menu() -> void:
 	if ProductMarketRuntimeController.PRODUCT_CATALOG.is_empty():
 		_show_catalog_empty_page("商品图鉴", "当前没有商品资料。")
 		return
-	_product_market_runtime_call("ensure_catalog")
 	var total_count := ProductMarketRuntimeController.PRODUCT_CATALOG.size()
 	var per_page := _product_codex_entries_per_page()
 	var page_count := _codex_page_count(total_count, per_page)
@@ -4565,24 +4543,7 @@ func _show_catalog_empty_page(title_text: String, body_text: String) -> void:
 
 
 func _card_codex_filter_options() -> Array:
-	return [
-		{"id": "all", "label": "全部"},
-		{"id": "monster", "label": "怪兽牌"},
-		{"id": "monster_skill", "label": "怪兽技能"},
-		{"id": "military", "label": "军队/军令"},
-		{"id": "interaction", "label": "玩家互动"},
-		{"id": "city", "label": "城市经营"},
-		{"id": "commodity", "label": "商品经营"},
-		{"id": "futures", "label": "商品期货"},
-		{"id": "finance", "label": "金融/GDP"},
-		{"id": "contract", "label": "合约"},
-		{"id": "intel", "label": "情报推理"},
-		{"id": "supply", "label": "补给/采购"},
-		{"id": "tactic", "label": "怪兽诱导"},
-		{"id": "news", "label": "新闻事件"},
-		{"id": "weather", "label": "天气干预"},
-		{"id": "other", "label": "其他"},
-	]
+	return _game_runtime_coordinator_node().card_codex_public_filter_options()
 
 
 func _card_codex_filter_label(filter_id: String = "") -> String:
@@ -4678,25 +4639,7 @@ func _card_supply_layer_for_card(card_name: String) -> String:
 func _card_codex_names(filter_id: String = "") -> Array:
 	if filter_id == "":
 		filter_id = _codex_navigation_controller_node().card_codex_filter
-	var route_filter := ""
-	if filter_id.begins_with("route:"):
-		route_filter = filter_id.trim_prefix("route:")
-	var names := []
-	for monster_card_variant in _monster_card_names(1):
-		var monster_card_name := String(monster_card_variant)
-		var monster_skill := _game_runtime_coordinator_node().card_definition(monster_card_name)
-		if _card_codex_filter_matches(filter_id, "monster") or (route_filter != "" and _game_runtime_coordinator_node().gameplay_balance_diagnostics_service().route_id_for_card(monster_skill) == route_filter):
-			monster_runtime_controller._append_unique_string(names, monster_card_name)
-	for name_variant in _game_runtime_coordinator_node().card_catalog_ordered_ids():
-		var card_name := _canonical_card_supply_name(String(name_variant))
-		if card_name == "" or names.has(card_name):
-			continue
-		var skill := _game_runtime_coordinator_node().card_definition(card_name)
-		var category := str(_card_presentation_snapshot(card_name, skill).get("category_id", "other"))
-		if _card_codex_filter_matches(filter_id, category) or (route_filter != "" and _game_runtime_coordinator_node().gameplay_balance_diagnostics_service().route_id_for_card(skill) == route_filter):
-			monster_runtime_controller._append_unique_string(names, card_name)
-	names.sort()
-	return names
+	return _game_runtime_coordinator_node().card_codex_public_card_ids(filter_id)
 
 
 func _product_market_price_path_text(entry: Dictionary, limit: int = 7) -> String:

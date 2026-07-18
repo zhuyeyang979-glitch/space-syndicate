@@ -24,14 +24,13 @@ func compose(source: Dictionary) -> Dictionary:
 	var card_preview_text := _card_preview_text(source.get("monster_card", {}) as Dictionary)
 	var detail_tooltip := "%s\n%s\n%s\n操作：悬停/单击预览；双击进入完整怪兽详情。" % [monster_name, preview_text, card_preview_text]
 	var accent: Color = source.get("accent", Color("#fb7185")) as Color
-	var summary_text := "怪兽详情｜第%d/%d只｜%s\n看下方怪兽档案板：画像、HP/速度、资源偏好、破坏、行动概率、固定技能成长。\n偏好:%s｜定位:%s｜怪兽牌在卡牌图鉴。\n正面经济天气：%s｜IV级概率变化：%s。" % [
+	var summary_text := "怪兽详情｜第%d/%d只｜%s\n看下方怪兽档案板：画像、HP/速度、资源偏好、公开行动与固定技能成长。\n偏好:%s｜定位:%s｜怪兽牌在卡牌图鉴。\n正面经济天气：%s。内部权重、随机签与预选目标保持隐藏。" % [
 		int(source.get("index", 0)) + 1,
 		maxi(1, int(source.get("total", 1))),
 		monster_name,
 		resource_text,
 		_short_text("、".join(ecology.get("role_tags", []) as Array), 36),
 		str((ecology.get("economy_boon", {}) as Dictionary).get("label", "暂无")),
-		str(ecology.get("rank_iv_probability_shift", "危险行动更容易出现")),
 	]
 	var detail := {
 		"title": "%s｜怪兽单位档案" % monster_name,
@@ -48,8 +47,8 @@ func compose(source: Dictionary) -> Dictionary:
 		},
 		"chips": _detail_chips(source, entry, ecology, resource_text),
 		"kpis": _detail_kpis(source, entry, ecology, resource_text, ladder_text),
-		"action_title": "行动概率板｜I级/IV级｜开局/破坏后",
-		"action_tooltip": "怪兽仍会自动行动；召唤者只能用绑定技能牌做一次性指令。",
+		"action_title": "公开行动板｜类别与效果",
+		"action_tooltip": "怪兽仍会自动行动；图鉴不公开内部权重、随机签或预选目标。",
 		"actions": _detail_actions(source.get("actions", []) as Array, accent),
 	}
 	var browser_entry := {
@@ -102,9 +101,9 @@ func _bound_ladder_text(ecology: Dictionary, level_labels: Array) -> String:
 
 
 func _preview_text(source: Dictionary, entry: Dictionary, resource_text: String) -> String:
-	return "HP:%d｜护甲:%d｜移动:%s｜资源偏好:%s｜行动:%s｜IV级概率:%s" % [
+	return "HP:%d｜护甲:%d｜移动:%s｜资源偏好:%s｜公开行动:%s" % [
 		int(entry.get("hp", 0)), int(entry.get("armor", 0)), str(source.get("move_text", "0m/s")), resource_text,
-		str(source.get("action_summary", "暂无")), str(source.get("rank_iv_probability_summary", "无变化")),
+		str(source.get("action_summary", "暂无")),
 	]
 
 
@@ -116,7 +115,7 @@ func _card_preview_text(card: Dictionary) -> String:
 
 func _detail_chips(source: Dictionary, entry: Dictionary, ecology: Dictionary, resource_text: String) -> Array:
 	return [
-		{"text": "HP%d" % int(entry.get("hp", 0)), "fg": Color("#fecdd3"), "accent": Color("#fecdd3"), "tooltip": "怪兽生命值。受伤会让召唤者按比例损失钱，并可能暴露归属。"},
+		{"text": "HP%d" % int(entry.get("hp", 0)), "fg": Color("#fecdd3"), "accent": Color("#fecdd3"), "tooltip": "怪兽公开生命值；图鉴不披露召唤者或隐藏归属。"},
 		{"text": "甲%d" % int(entry.get("armor", 0)), "fg": Color("#bfdbfe"), "accent": Color("#bfdbfe"), "tooltip": "护甲越高，越不容易被军队或其他怪兽快速清掉。"},
 		{"text": "速%s" % str(source.get("move_text", "0m/s")), "fg": Color("#fdba74"), "accent": Color("#fdba74"), "tooltip": "移动按米/秒线性推进；飞行/水栖会影响路径破坏与地形速度。"},
 		{"text": str(ecology.get("movement_archetype", "通用")), "fg": Color("#93c5fd"), "accent": Color("#93c5fd"), "tooltip": str(source.get("mobility_summary", "通用移动"))},
@@ -133,7 +132,7 @@ func _detail_kpis(source: Dictionary, _entry: Dictionary, ecology: Dictionary, r
 		{"title": "生态位", "value": "%s｜%s" % [str(ecology.get("movement_archetype", "通用")), str(source.get("mobility_summary", "通用移动"))], "meta": "召唤:%s｜移动%s" % [str(ecology.get("summon_access", "monster_zone")), str(source.get("ecology_move_text", source.get("move_text", "0m/s")))], "accent": Color("#fb923c")},
 		{"title": "资源与经济", "value": _short_text(resource_text, 34), "meta": "吸取%d｜%s" % [int(ecology.get("resource_drain", 0)), economy_text], "accent": Color("#4ade80")},
 		{"title": "行动定位", "value": _short_text(role_tags, 34), "meta": "最高伤%d｜射程%s" % [int(ecology.get("max_damage", 0)), str(source.get("max_range_text", "0m"))], "accent": Color("#38bdf8")},
-		{"title": "固定技能成长", "value": ladder_text, "meta": "IV概率:%s" % str(ecology.get("rank_iv_probability_shift", "无变化")), "accent": Color("#fde047")},
+		{"title": "固定技能成长", "value": ladder_text, "meta": "各等级公开绑定技能数量", "accent": Color("#fde047")},
 	]
 
 
@@ -143,13 +142,11 @@ func _detail_actions(action_sources: Array, accent: Color) -> Array:
 		var action: Dictionary = action_sources[index] if action_sources[index] is Dictionary else {}
 		var action_accent := accent.lerp(Color("#fde68a"), clampf(float(index) / 7.0, 0.0, 0.45))
 		var action_text := str(action.get("text", "自动行动。"))
-		var tooltip := str(action.get("probability_tooltip", ""))
 		var facts := str(action.get("facts", ""))
 		result.append({
 			"index": "%02d" % (index + 1), "name": str(action.get("name", "行动")), "tags": "、".join(action.get("tags", []) as Array),
-			"probability": "I %s/%s｜IV %s/%s" % [str(action.get("i_open", "0%")), str(action.get("i_destroyed", "0%")), str(action.get("iv_open", "0%")), str(action.get("iv_destroyed", "0%"))],
-			"probability_tooltip": tooltip, "facts": facts, "body": _short_text(action_text, 72),
-			"tooltip": "%s\n%s\n%s\n%s" % [str(action.get("name", "行动")), tooltip, facts, action_text], "accent": action_accent,
+			"disclosure": "公开效果｜权重隐藏", "facts": facts, "body": _short_text(action_text, 72),
+			"tooltip": "%s\n%s\n%s\n内部权重、随机签与预选目标不公开。" % [str(action.get("name", "行动")), facts, action_text], "accent": action_accent,
 		})
 	return result
 
