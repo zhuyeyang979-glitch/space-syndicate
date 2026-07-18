@@ -272,7 +272,7 @@ func _run_case(case_id: String) -> Dictionary:
 
 func _role_source() -> Dictionary:
 	return {
-		"role_card": {"name": "星港金融团", "species": "轨道商人", "trait": "融资网络", "flavor": "公开经营，隐藏收益。", "bonus_card_product": "环晶电池", "monster_control_limit_bonus": 1, "intel_card_trace_charges": 1},
+		"role_card": {"name": "星港金融团", "species": "轨道商人", "trait": "融资网络", "flavor": "公开经营，隐藏收益。", "bonus_card_product": "环晶电池", "monster_control_limit_bonus": 1, "card_history_residual_catalog_charges": 2},
 		"index": 0, "total": 8, "passive_text": "每轮第一次商品购牌获得折扣。", "starting_cash_delta": 50,
 		"accent": Color("#38bdf8"), "kpi_columns": 4, "route_columns": 3,
 		"face": {"name": "星港金融团", "effect": "测试", "type": "角色", "rank": "轨道商人"}, "face_effect": "公开身份牌效果。",

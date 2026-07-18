@@ -3,6 +3,10 @@ class_name SpaceSyndicateGameScreen
 
 const TABLE_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/table_snapshot.gd")
 const OVERLAY_LAYER_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/overlay_layer_snapshot.gd")
+const COMMODITY_CLAIM_REQUEST_SCRIPT := preload("res://scripts/runtime/commodity_sushi_track_claim_request.gd")
+const COMMODITY_ITEM_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/commodity_sushi_track_item_snapshot.gd")
+const COMMODITY_TRACK_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/commodity_sushi_track_snapshot.gd")
+const COMMODITY_TRACK_SCRIPT := preload("res://scripts/ui/table/top_commodity_sushi_track.gd")
 const HAND_HOVER_PREVIEW_LEFT := 0.020
 const HAND_HOVER_PREVIEW_TOP := 0.350
 const HAND_HOVER_PREVIEW_RIGHT := 0.190
@@ -42,12 +46,10 @@ signal card_unselected(card_data: Dictionary)
 signal card_drag_preview_started(card_data: Dictionary)
 signal card_drag_preview_ended(card_data: Dictionary)
 signal card_drop_requested(card_data: Dictionary, screen_position: Vector2)
+signal commodity_claim_requested(request: COMMODITY_CLAIM_REQUEST_SCRIPT)
 
 @onready var top_bar: Node = %TopBar
-@onready var public_track: Node = get_node_or_null("%PublicTrack")
-@onready var card_track: Node = get_node_or_null("%CardTrack")
-@onready var track_focus_ribbon: PanelContainer = get_node_or_null("%TrackFocusRibbon") as PanelContainer
-@onready var track_focus_label: Label = get_node_or_null("%TrackFocusLabel") as Label
+@onready var commodity_sushi_track: COMMODITY_TRACK_SCRIPT = %TopCommoditySushiTrack
 @onready var planet_board: Node = %PlanetBoard
 @onready var right_inspector: Node = %RightInspector
 @onready var player_board: Node = %PlayerBoard
@@ -65,6 +67,10 @@ var _last_runtime_player_feedback: Dictionary = {}
 var _last_track_action_bridge_id := ""
 var _last_track_action_bridge_frame := -1
 var _last_visual_event_key := ""
+var _selected_commodity_slot_id := ""
+var _selected_commodity_item_data: Dictionary = {}
+var _last_commodity_action_result: Dictionary = {}
+var _commodity_claim_request_revision := 1
 var _presentation_target_revision := 0
 var _live_presentation_target_count := 0
 var _full_presentation_target_count := 0
@@ -74,23 +80,14 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	_bind_presentation_map_targets()
 	_configure_pointer_passthrough_hosts()
-	_configure_track_focus_ribbon()
 	_configure_hand_hover_preview()
 	if top_bar.has_signal("end_turn_requested"):
 		top_bar.connect("end_turn_requested", Callable(self, "_on_end_turn_requested"))
 	if top_bar.has_signal("menu_requested"):
 		top_bar.connect("menu_requested", Callable(self, "_on_menu_requested"))
-	var track_node := _public_track_node()
-	if track_node != null and track_node.has_signal("track_entry_selected"):
-		track_node.connect("track_entry_selected", Callable(self, "_on_track_entry_selected"))
-	if track_node != null and track_node.has_signal("track_entry_opened"):
-		track_node.connect("track_entry_opened", Callable(self, "_on_track_entry_opened"))
-	if track_node != null and track_node.has_signal("track_action_requested"):
-		track_node.connect("track_action_requested", Callable(self, "_on_track_action_requested"))
-	if track_node != null and track_node.has_signal("track_entry_hovered"):
-		track_node.connect("track_entry_hovered", Callable(self, "_on_track_entry_hovered"))
-	if track_node != null and track_node.has_signal("track_entry_unhovered"):
-		track_node.connect("track_entry_unhovered", Callable(self, "_on_track_entry_unhovered"))
+	if commodity_sushi_track != null:
+		commodity_sushi_track.item_focused.connect(_on_commodity_item_focused)
+		commodity_sushi_track.claim_requested.connect(_on_commodity_claim_requested)
 	if right_inspector.has_signal("action_requested"):
 		right_inspector.connect("action_requested", Callable(self, "_on_action_requested"))
 	if player_board.has_signal("card_selected"):
@@ -139,16 +136,10 @@ func apply_state(data: Dictionary) -> void:
 	current_ui_data = ui_data
 	if top_bar.has_method("set_state"):
 		top_bar.call("set_state", ui_data.get("top_bar", {}))
-	var track_node := _public_track_node()
-	if track_node != null and track_node.has_method("set_track_state"):
-		var track_state: Dictionary = ui_data.get("card_resolution_track", {}) if ui_data.get("card_resolution_track", {}) is Dictionary else {}
-		if track_state.is_empty():
-			var fallback_entries: Variant = ui_data.get("card_track", [])
-			track_state = {"entries": fallback_entries if fallback_entries is Array else []}
-		track_node.call("set_track_state", track_state)
-	elif track_node != null and track_node.has_method("set_entries"):
-		var track_entries: Variant = ui_data.get("card_track", [])
-		track_node.call("set_entries", track_entries if track_entries is Array else [])
+	if commodity_sushi_track != null:
+		commodity_sushi_track.set_snapshot_dictionary(
+			ui_data.get("commodity_sushi_track", {}) if ui_data.get("commodity_sushi_track", {}) is Dictionary else {}
+		)
 	if planet_board.has_method("set_board_state"):
 		planet_board.call("set_board_state", ui_data.get("planet", {}))
 	_sync_optional_route_public_surface(ui_data.get("optional_route_presentation", {}))
@@ -159,7 +150,7 @@ func apply_state(data: Dictionary) -> void:
 	if player_board.has_method("set_player_state"):
 		player_board.call("set_player_state", player_data)
 	_sync_visual_events(ui_data)
-	if not _temporary_track_focus_active:
+	if not _restore_selected_commodity_focus() and not _temporary_track_focus_active:
 		_sync_selected_track_focus_from_state()
 	_sync_transient_gameplay_surfaces(
 		ui_data.get("temporary_decision", {}),
@@ -202,6 +193,10 @@ func _bind_presentation_map_targets() -> void:
 
 
 func bind_presentation_viewer(viewer_index: int, authorization_revision: int) -> void:
+	if _presentation_authorized_viewer_index != viewer_index:
+		_selected_commodity_slot_id = ""
+		_selected_commodity_item_data = {}
+		_last_commodity_action_result = {}
 	_presentation_authorized_viewer_index = viewer_index
 	_presentation_authorization_revision = authorization_revision
 	if planet_board is SpaceSyndicatePlanetBoard:
@@ -368,7 +363,7 @@ func _sync_runtime_table_focus_order() -> void:
 func _runtime_table_focus_controls() -> Array[Control]:
 	var result: Array[Control] = []
 	_append_runtime_focus_control(result, top_bar as Control, "顶部状态")
-	_append_runtime_focus_control(result, _public_track_node() as Control, "牌轨")
+	_append_runtime_focus_control(result, commodity_sushi_track as Control, "公共商品带")
 	_append_runtime_focus_control(result, _runtime_map_focus_control(), "星球地图")
 	_append_runtime_focus_control(result, right_inspector as Control, "右侧详情")
 	_append_runtime_focus_control(result, _first_visible_control(["DistrictSupplySideDrawer", "DistrictSupplyPanel", "DistrictSupplySideDrawerOverlay", "DistrictSupplyDrawer", "SideDrawerPanel"]), "区域牌架")
@@ -418,7 +413,71 @@ func _sync_visual_events(ui_data: Dictionary) -> void:
 
 
 func _public_track_node() -> Node:
-	return public_track if public_track != null else card_track
+	return null
+
+
+func _on_commodity_item_focused(item: COMMODITY_ITEM_SNAPSHOT_SCRIPT) -> void:
+	if item == null or not item.is_valid():
+		return
+	_selected_hand_card_data = {}
+	_selected_commodity_slot_id = item.commodity_slot_id
+	_selected_commodity_item_data = item.to_dictionary()
+	_last_commodity_action_result = {}
+	if right_inspector != null and right_inspector.has_method("show_public_commodity"):
+		right_inspector.call("show_public_commodity", _selected_commodity_item_data, {})
+
+
+func _on_commodity_claim_requested(item: COMMODITY_ITEM_SNAPSHOT_SCRIPT) -> void:
+	_on_commodity_item_focused(item)
+	_submit_selected_commodity_claim()
+
+
+func _submit_selected_commodity_claim() -> void:
+	if _selected_commodity_slot_id.is_empty() or _selected_commodity_item_data.is_empty():
+		return
+	if _forced_surface_blocks_player_actions():
+		_show_player_action_feedback("commodity_claim", "blocked", "请先完成当前强制决策。")
+		return
+	var track_state: Dictionary = current_ui_data.get("commodity_sushi_track", {}) \
+		if current_ui_data.get("commodity_sushi_track", {}) is Dictionary else {}
+	var request: COMMODITY_CLAIM_REQUEST_SCRIPT = COMMODITY_CLAIM_REQUEST_SCRIPT.new()
+	request.viewer_index = _presentation_authorized_viewer_index
+	request.commodity_slot_id = _selected_commodity_slot_id
+	request.commodity_card_id = str(_selected_commodity_item_data.get("commodity_card_id", ""))
+	request.snapshot_revision = int(track_state.get("snapshot_revision", -1))
+	request.belt_revision = int(track_state.get("belt_revision", -1))
+	request.visibility_revision = int(track_state.get("visibility_revision", -1))
+	request.request_revision = _commodity_claim_request_revision
+	_commodity_claim_request_revision += 1
+	if not bool(request.validation_report().get("valid", false)):
+		return
+	commodity_claim_requested.emit(request)
+
+
+func apply_commodity_claim_result(result: Dictionary, snapshot: COMMODITY_TRACK_SNAPSHOT_SCRIPT) -> void:
+	_last_commodity_action_result = result.duplicate(true)
+	if snapshot != null and snapshot.is_valid():
+		var snapshot_data := snapshot.to_dictionary()
+		current_ui_data["commodity_sushi_track"] = snapshot_data
+		if commodity_sushi_track != null:
+			commodity_sushi_track.set_snapshot(snapshot)
+	if right_inspector != null and right_inspector.has_method("show_public_commodity") \
+			and not _selected_commodity_item_data.is_empty():
+		right_inspector.call("show_public_commodity", _selected_commodity_item_data, _last_commodity_action_result)
+
+
+func _restore_selected_commodity_focus() -> bool:
+	if _selected_commodity_item_data.is_empty() or right_inspector == null \
+			or not right_inspector.has_method("show_public_commodity"):
+		return false
+	var current_item := commodity_sushi_track.item_snapshot_by_id(_selected_commodity_slot_id) \
+		if commodity_sushi_track != null and not _selected_commodity_slot_id.is_empty() else null
+	if current_item != null:
+		_selected_commodity_item_data = current_item.to_dictionary()
+	elif _last_commodity_action_result.is_empty():
+		return false
+	right_inspector.call("show_public_commodity", _selected_commodity_item_data, _last_commodity_action_result)
+	return true
 
 
 func _on_end_turn_requested() -> void:
@@ -434,6 +493,9 @@ func _on_menu_requested() -> void:
 
 
 func _on_action_requested(action_id: String) -> void:
+	if action_id == "commodity_claim_selected":
+		_submit_selected_commodity_claim()
+		return
 	if _forced_surface_blocks_player_actions():
 		_show_player_action_feedback(action_id, "blocked", "请先完成当前强制决策。")
 		return
@@ -563,6 +625,9 @@ func _quick_action_id_at(index: int) -> String:
 
 
 func _on_card_selected(card_data: Dictionary) -> void:
+	_selected_commodity_slot_id = ""
+	_selected_commodity_item_data = {}
+	_last_commodity_action_result = {}
 	_selected_hand_card_data = card_data.duplicate(true)
 	if right_inspector.has_method("show_card"):
 		right_inspector.call("show_card", card_data)
@@ -582,18 +647,23 @@ func _on_card_unhovered() -> void:
 		right_inspector.call("show_card", _selected_hand_card_data)
 	else:
 		_restore_right_inspector_context()
-		_sync_selected_track_focus_from_state()
+		if not _restore_selected_commodity_focus():
+			_sync_selected_track_focus_from_state()
 	card_unhovered.emit()
 
 
 func _on_card_unselected(card_data: Dictionary) -> void:
 	_selected_hand_card_data = {}
 	_restore_right_inspector_context()
-	_sync_selected_track_focus_from_state()
+	if not _restore_selected_commodity_focus():
+		_sync_selected_track_focus_from_state()
 	card_unselected.emit(card_data)
 
 
 func _on_track_entry_selected(entry: Dictionary) -> void:
+	_selected_commodity_slot_id = ""
+	_selected_commodity_item_data = {}
+	_last_commodity_action_result = {}
 	_clear_hand_detail_focus_for_track()
 	if right_inspector.has_method("set_context"):
 		right_inspector.call("set_context", _track_entry_inspector_context(entry))
@@ -696,6 +766,9 @@ func _restore_right_inspector_context() -> void:
 
 func _clear_hand_detail_focus_for_track() -> void:
 	_selected_hand_card_data = {}
+	_selected_commodity_slot_id = ""
+	_selected_commodity_item_data = {}
+	_last_commodity_action_result = {}
 	_hide_hand_hover_preview()
 
 
@@ -704,7 +777,7 @@ func _track_entry_inspector_context(entry: Dictionary) -> Dictionary:
 	var requirements: Array = (public_entry.get("requirements", []) as Array).duplicate(true) if public_entry.get("requirements", []) is Array else []
 	var actions: Array = (public_entry.get("actions", []) as Array).duplicate(true) if public_entry.get("actions", []) is Array else []
 	var deep_links: Array = (public_entry.get("deep_links", []) as Array).duplicate(true) if public_entry.get("deep_links", []) is Array else []
-	_append_track_action_if_missing(actions, _track_select_action(public_entry), "选中竞猜", "把这张公开牌设为当前归属竞猜对象。")
+	_append_track_action_if_missing(actions, _track_select_action(public_entry), "查看履历", "把这条公共动作设为当前查看对象。")
 	_append_track_action_if_missing(actions, _track_intel_action(public_entry), "线索档案", "打开情报档案并置顶这张公开牌。")
 	_append_track_action_if_missing(deep_links, _track_intel_action(public_entry), "线索档案", "打开情报档案并置顶这张公开牌。")
 	_append_track_action_if_missing(actions, _track_open_action(public_entry), "卡牌详情", "打开这张公开牌的图鉴详情。")
@@ -824,16 +897,6 @@ func _safe_public_track_text(value: String) -> String:
 		if lower.contains(token):
 			return "匿名线索"
 	return value
-
-
-func _configure_track_focus_ribbon() -> void:
-	if track_focus_ribbon == null:
-		return
-	track_focus_ribbon.visible = false
-	track_focus_ribbon.add_theme_stylebox_override("panel", _track_focus_style())
-	if track_focus_label != null:
-		track_focus_label.add_theme_font_size_override("font_size", 10)
-		track_focus_label.add_theme_color_override("font_color", Color("#fde68a"))
 
 
 func _configure_hand_hover_preview() -> void:
@@ -1004,31 +1067,15 @@ func _track_entry_matches_action(entry: Dictionary, action_id: String) -> bool:
 
 
 func _show_track_focus_for_entry(entry: Dictionary, prefix: String, temporary: bool) -> void:
-	if track_focus_ribbon == null or track_focus_label == null:
-		return
-	var public_entry := _safe_public_track_entry(entry)
 	_temporary_track_focus_active = temporary
-	track_focus_label.text = _track_focus_text(public_entry, prefix)
-	track_focus_label.tooltip_text = str(public_entry.get("tooltip", public_entry.get("detail", "")))
-	track_focus_ribbon.visible = true
 
 
 func _show_track_focus_for_action(action_id: String, temporary: bool) -> void:
-	if track_focus_ribbon == null or track_focus_label == null:
-		return
 	_temporary_track_focus_active = temporary
-	track_focus_label.text = _short_track_focus_text("竞价对照｜%s" % action_id)
-	track_focus_label.tooltip_text = "该竞价指针正在对照顶部公开牌轨。"
-	track_focus_ribbon.visible = true
 
 
 func _clear_track_focus_ribbon() -> void:
 	_temporary_track_focus_active = false
-	if track_focus_ribbon != null:
-		track_focus_ribbon.visible = false
-	if track_focus_label != null:
-		track_focus_label.text = ""
-		track_focus_label.tooltip_text = ""
 
 
 func _track_focus_text(entry: Dictionary, prefix: String) -> String:

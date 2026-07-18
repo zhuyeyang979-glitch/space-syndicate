@@ -7,17 +7,17 @@
 script = ExtResource("1_qj1ak")
 card_id = "线索悬赏1"
 family_id = "线索悬赏"
-kind = &"intel_card_trace"
+display_name = "线索订阅 I"
+kind = &"card_history_subscription"
 purchase_cost = 3
-rules_text = "私下追溯1张匿名牌，并尝试查明1座高价值陌生城市业主；答案只进入当前玩家的私人情报。"
-tags = PackedStringArray("情报", "悬赏")
+rules_text = "选择1条公共卡牌履历作为私人订阅；其公开状态变化时只通知当前玩家并更新私人标注。"
+tags = PackedStringArray("情报", "订阅")
 play_product = "活体芯片"
 play_flow_required = 1
-authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "trace_card_count", "reveal_city_count", "damage", "move", "range", "tags", "text")
+authored_keys = PackedStringArray("cost", "display_name", "kind", "play_product", "play_flow_required", "history_subscription_count", "damage", "move", "range", "tags", "text")
 integer_core_fields = PackedStringArray()
 effect_parameters = {
-"reveal_city_count": 1,
-"trace_card_count": 1
+"history_subscription_count": 1
 }
 
 [sub_resource type="Resource" id="Resource_vd06q"]
@@ -25,18 +25,17 @@ script = ExtResource("1_qj1ak")
 card_id = "线索悬赏2"
 family_id = "线索悬赏"
 rank = 2
-kind = &"intel_card_trace"
+display_name = "线索订阅 II"
+kind = &"card_history_subscription"
 purchase_cost = 5
-rules_text = "追溯2张匿名牌，尝试查明1座陌生城市业主，并回溯1份合约；适合把轨道信息转成押注依据。"
-tags = PackedStringArray("情报", "悬赏", "升级")
+rules_text = "选择最多2条公共卡牌履历作为私人订阅；公开状态变化时只通知当前玩家。"
+tags = PackedStringArray("情报", "订阅", "升级")
 play_product = "活体芯片"
 play_flow_required = 2
-authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "trace_card_count", "reveal_city_count", "trace_contract_count", "damage", "move", "range", "tags", "text")
+authored_keys = PackedStringArray("cost", "display_name", "kind", "play_product", "play_flow_required", "history_subscription_count", "damage", "move", "range", "tags", "text")
 integer_core_fields = PackedStringArray()
 effect_parameters = {
-"reveal_city_count": 1,
-"trace_card_count": 2,
-"trace_contract_count": 1
+"history_subscription_count": 2
 }
 
 [sub_resource type="Resource" id="Resource_nrs0k"]
@@ -44,18 +43,17 @@ script = ExtResource("1_qj1ak")
 card_id = "线索悬赏3"
 family_id = "线索悬赏"
 rank = 3
-kind = &"intel_card_trace"
+display_name = "线索订阅 III"
+kind = &"card_history_subscription"
 purchase_cost = 7
-rules_text = "核心情报牌：追溯3张匿名牌，查明最多2座陌生城市业主，并补一条合约回溯线索。"
-tags = PackedStringArray("情报", "悬赏", "核心")
+rules_text = "核心订阅牌：选择最多2条公共履历；公开卡名、目标、结果或 reveal state 变化时自动更新私人标注。"
+tags = PackedStringArray("情报", "订阅", "核心")
 play_product = "活体芯片"
 play_flow_required = 3
-authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "trace_card_count", "reveal_city_count", "trace_contract_count", "damage", "move", "range", "tags", "text")
+authored_keys = PackedStringArray("cost", "display_name", "kind", "play_product", "play_flow_required", "history_subscription_count", "damage", "move", "range", "tags", "text")
 integer_core_fields = PackedStringArray()
 effect_parameters = {
-"reveal_city_count": 2,
-"trace_card_count": 3,
-"trace_contract_count": 1
+"history_subscription_count": 2
 }
 
 [sub_resource type="Resource" id="Resource_n53xa"]
@@ -63,18 +61,17 @@ script = ExtResource("1_qj1ak")
 card_id = "线索悬赏4"
 family_id = "线索悬赏"
 rank = 4
-kind = &"intel_card_trace"
+display_name = "线索订阅 IV"
+kind = &"card_history_subscription"
 purchase_cost = 9
-rules_text = "终端线索悬赏IV：追溯4张牌、2座陌生城市和2份合约；强力破局，但高GDP份额门槛会缩小嫌疑范围。"
-tags = PackedStringArray("情报", "悬赏", "IV")
+rules_text = "终端私人订阅：选择最多2条公共履历；未来公开变化自动更新标注，但不判断归属、不产生奖励。"
+tags = PackedStringArray("情报", "订阅", "IV")
 play_product = "活体芯片"
 play_flow_required = 4
-authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "trace_card_count", "reveal_city_count", "trace_contract_count", "damage", "move", "range", "tags", "text")
+authored_keys = PackedStringArray("cost", "display_name", "kind", "play_product", "play_flow_required", "history_subscription_count", "damage", "move", "range", "tags", "text")
 integer_core_fields = PackedStringArray()
 effect_parameters = {
-"reveal_city_count": 2,
-"trace_card_count": 4,
-"trace_contract_count": 2
+"history_subscription_count": 2
 }
 
 [resource]

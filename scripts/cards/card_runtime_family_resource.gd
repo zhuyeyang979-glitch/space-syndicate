@@ -8,7 +8,7 @@ const INTEGER_GROWTH_FIELDS := [
 	"market_supply_pressure", "miasma_count", "reclaim_count", "product_level", "product_shift",
 	"demand_shift", "contract_add_products", "contract_add_demands", "contract_remove_products",
 	"contract_remove_demands", "accept_cash", "decline_cash_penalty", "decline_route_damage",
-	"stabilize_amount", "reveal_city_count", "trace_card_count", "trace_contract_count",
+	"stabilize_amount", "reveal_city_count", "history_review_count", "history_subscription_count", "trace_contract_count",
 	"card_access_extra_hops", "weather_zone_count", "hand_discard_count", "hand_steal_count",
 	"target_cash_penalty", "control_gdp_penalty", "global_barrage_damage",
 	"global_barrage_target_count", "global_barrage_route_damage",

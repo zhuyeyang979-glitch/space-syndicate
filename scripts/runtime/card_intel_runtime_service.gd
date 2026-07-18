@@ -4,19 +4,22 @@ class_name CardIntelRuntimeService
 
 var _world_session_state: WorldSessionState
 var _table_selection_state: TableSelectionState
-var _history_service: CardResolutionHistoryRuntimeService
+var _history_query: Node
+var _annotation_service: Node
 var _contract_controller: ContractRuntimeController
 
 
 func set_dependencies(
 	world_session_state: WorldSessionState,
 	table_selection_state: TableSelectionState,
-	history_service: CardResolutionHistoryRuntimeService,
+	history_query: Node,
+	annotation_service: Node,
 	contract_controller: ContractRuntimeController
 ) -> void:
 	_world_session_state = world_session_state
 	_table_selection_state = table_selection_state
-	_history_service = history_service
+	_history_query = history_query
+	_annotation_service = annotation_service
 	_contract_controller = contract_controller
 
 
@@ -26,8 +29,10 @@ func apply_intel_effect(player_index: int, skill: Dictionary, context: Dictionar
 	match str(skill.get("kind", "")):
 		"intel_city_reveal":
 			return _reveal_city_owners(player_index, maxi(1, int(skill.get("reveal_city_count", 1))), str(skill.get("name", "业主透镜")), int(context.get("selected_district", -1)))
-		"intel_card_trace":
-			return _trace_cards_and_optional_clues(player_index, skill, context)
+		"card_history_public_review":
+			return _review_public_history(player_index, skill, context)
+		"card_history_subscription":
+			return _subscribe_public_history(player_index, skill, context)
 		"intel_contract_trace":
 			var count := maxi(1, int(skill.get("trace_contract_count", 1)))
 			var traced := _contract_controller.trace_contract_parties(player_index, int(context.get("selected_card_resolution_id", _table_selection_state.selected_card_resolution_id)), count, str(skill.get("name", "合约追溯"))) if _contract_controller != null else 0
@@ -37,62 +42,55 @@ func apply_intel_effect(player_index: int, skill: Dictionary, context: Dictionar
 
 func debug_snapshot() -> Dictionary:
 	return {
-		"service_ready": _world_session_state != null and _table_selection_state != null and _history_service != null,
+		"service_ready": _world_session_state != null and _table_selection_state != null and _history_query != null and _annotation_service != null,
 		"private_intel_authority": true,
 		"public_owner_truth_exposed": false,
+		"reads_hidden_actor": false,
+		"economic_reward_count": 0,
 	}
 
 
-func _trace_cards_and_optional_clues(player_index: int, skill: Dictionary, context: Dictionary) -> Dictionary:
-	var selected_resolution_id := int(context.get("selected_card_resolution_id", _table_selection_state.selected_card_resolution_id))
-	var traced := _trace_card_owners(player_index, maxi(1, int(skill.get("trace_card_count", 1))), selected_resolution_id)
-	var revealed := 0
-	if int(skill.get("reveal_city_count", 0)) > 0:
-		revealed = int(_reveal_city_owners(player_index, int(skill.get("reveal_city_count", 0)), str(skill.get("name", "线索悬赏")), int(context.get("selected_district", -1))).get("city_reveal_count", 0))
-	var contract_traced := 0
-	if int(skill.get("trace_contract_count", 0)) > 0 and _contract_controller != null:
-		contract_traced = _contract_controller.trace_contract_parties(
-			player_index,
-			selected_resolution_id,
-			int(skill.get("trace_contract_count", 0)),
-			str(skill.get("name", "线索悬赏"))
-		)
-	return _receipt(traced + revealed + contract_traced > 0, "resolved" if traced + revealed + contract_traced > 0 else "no_traceable_intel", {
-		"card_trace_count": traced,
-		"city_reveal_count": revealed,
-		"contract_trace_count": contract_traced,
-	})
+func _review_public_history(player_index: int, skill: Dictionary, context: Dictionary) -> Dictionary:
+	if _history_query == null or _annotation_service == null:
+		return _receipt(false, "history_services_unavailable")
+	var targets := _history_targets(int(context.get("selected_card_resolution_id", _table_selection_state.selected_card_resolution_id)), maxi(1, int(skill.get("history_review_count", 1))))
+	var public_players: Array = []
+	for index in range(_world_session_state.players.size()):
+		public_players.append(index)
+	var reviewed := 0
+	for history_entry_id_variant in targets:
+		var result: Dictionary = _annotation_service.create_public_evidence_review(player_index, str(history_entry_id_variant), public_players)
+		if bool(result.get("applied", false)):
+			reviewed += 1
+	return _receipt(reviewed > 0, "resolved" if reviewed > 0 else "no_public_history_target", {"history_review_count": reviewed})
 
 
-func _trace_card_owners(player_index: int, count: int, selected_id: int) -> int:
-	if _history_service == null:
-		return 0
-	var history: Array = _history_service.history_snapshot()
-	var candidates: Array = []
-	for entry_variant in history:
-		if not (entry_variant is Dictionary):
-			continue
-		var entry: Dictionary = entry_variant
-		if selected_id >= 0 and int(entry.get("resolution_id", -1)) == selected_id:
-			candidates.push_front(entry)
-		else:
-			candidates.append(entry)
-	var player: Dictionary = _world_session_state.players[player_index]
-	var known: Dictionary = player.get("known_card_owners", {}) if player.get("known_card_owners", {}) is Dictionary else {}
-	var traced := 0
-	for index in range(candidates.size() - 1, -1, -1):
-		if traced >= count:
+func _subscribe_public_history(player_index: int, skill: Dictionary, context: Dictionary) -> Dictionary:
+	if _history_query == null or _annotation_service == null:
+		return _receipt(false, "history_services_unavailable")
+	var targets := _history_targets(int(context.get("selected_card_resolution_id", _table_selection_state.selected_card_resolution_id)), clampi(int(skill.get("history_subscription_count", 1)), 1, 2))
+	var result: Dictionary = _annotation_service.subscribe_entries(player_index, targets)
+	return _receipt(bool(result.get("applied", false)), str(result.get("reason_code", "no_subscription_target")), {"history_subscription_count": (result.get("history_entry_ids", []) as Array).size()})
+
+
+func _history_targets(selected_resolution_id: int, count: int) -> Array:
+	var entries: Array = _history_query.compose_history().get("entries", []) if _history_query != null else []
+	var result: Array[String] = []
+	var selected_id := "card-history:%d" % selected_resolution_id if selected_resolution_id >= 0 else ""
+	if not selected_id.is_empty():
+		for entry_variant in entries:
+			if entry_variant is Dictionary and str((entry_variant as Dictionary).get("history_entry_id", "")) == selected_id:
+				result.append(selected_id)
+				break
+	for index in range(entries.size() - 1, -1, -1):
+		if result.size() >= count:
 			break
-		var entry: Dictionary = candidates[index]
-		var resolution_id := int(entry.get("resolution_id", -1))
-		var owner_index := int(entry.get("player_index", -1))
-		if resolution_id < 0 or owner_index < 0 or owner_index == player_index or known.has(str(resolution_id)):
+		if not (entries[index] is Dictionary):
 			continue
-		known[str(resolution_id)] = owner_index
-		traced += 1
-	player["known_card_owners"] = known
-	_world_session_state.players[player_index] = player
-	return traced
+		var entry_id := str((entries[index] as Dictionary).get("history_entry_id", ""))
+		if not entry_id.is_empty() and not result.has(entry_id):
+			result.append(entry_id)
+	return result
 
 
 func _reveal_city_owners(player_index: int, count: int, source: String, selected_district: int) -> Dictionary:

@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/ui/GameScreen.tscn" id="2_game_screen"]
@@ -18,6 +18,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/CompendiumNavigationPort.tscn" id="17_compendium_navigation_port"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/presentation/CompendiumReadOnlyQueryPort.tscn" id="18_compendium_query"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CompendiumApplicationFlowController.tscn" id="19_compendium_controller"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CommoditySushiTrackApplicationFlowController.tscn" id="20_commodity_sushi_controller"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -131,6 +132,12 @@ navigation_port_path = NodePath("../CompendiumNavigationPort")
 navigation_owner_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/CodexNavigationRuntimeController")
 query_port_path = NodePath("../CompendiumReadOnlyQueryPort")
 
+[node name="CommoditySushiTrackApplicationFlowController" parent="RuntimeServices" instance=ExtResource("20_commodity_sushi_controller")]
+unique_name_in_owner = true
+service_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/CommoditySushiTrackRuntimeService")
+game_screen_path = NodePath("../../RuntimeGameScreen")
+refresh_port_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/TablePresentationRefreshPort")
+
 [node name="RuntimeFallbackHost" type="Node" parent="RuntimeServices"]
 unique_name_in_owner = true
 editor_description = "Explicit host for compatibility fallbacks created only when scene-owned composition is unavailable."
@@ -148,5 +155,6 @@ editor_description = "Explicit host for compatibility fallbacks created only whe
 [connection signal="catalog_back_requested" from="RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay" to="RuntimeServices/CompendiumApplicationFlowController" method="back_from_catalog"]
 [connection signal="codex_action_requested" from="RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay" to="RuntimeServices/CompendiumApplicationFlowController" method="handle_surface_action"]
 [connection signal="navigation_requested" from="RuntimeServices/CompendiumNavigationPort" to="RuntimeServices/CompendiumApplicationFlowController" method="handle_navigation_request"]
+[connection signal="commodity_claim_requested" from="RuntimeGameScreen" to="RuntimeServices/CommoditySushiTrackApplicationFlowController" method="handle_claim_request"]
 [connection signal="public_log_receipt_requested" from="RuntimeServices/FinalSettlementRuntimeComposition" to="RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator" method="append_public_log_receipt"]
 [connection signal="victory_presentation_receipt_ready" from="RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator" to="RuntimeServices/FinalSettlementRuntimeComposition" method="present_victory_receipt"]

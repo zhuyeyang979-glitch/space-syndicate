@@ -78,7 +78,7 @@ func supported_handler_ids() -> Array:
 		"target_monster", "target_player", "monster_card", "public_facility",
 		"monster_bound_action", "military_force", "military_command",
 		"card_counter", "weather_control", "intel_city_reveal",
-		"intel_card_trace", "intel_contract_trace", "supply_draw",
+		"card_history_public_review", "card_history_subscription", "intel_contract_trace", "supply_draw",
 	] + (_economy_service.supported_handlers() if _economy_service != null else [])
 
 
@@ -142,7 +142,7 @@ func _dispatch_domain_handler(handler_id: String, player_index: int, player: Dic
 			return false
 		"weather_control":
 			return _weather_controller != null and _weather_controller.apply_weather_control_at(skill, int(entry.get("selected_district", -1)))
-		"intel_city_reveal", "intel_card_trace", "intel_contract_trace":
+		"intel_city_reveal", "card_history_public_review", "card_history_subscription", "intel_contract_trace":
 			return _intel_service != null and bool(_intel_service.apply_intel_effect(player_index, skill, entry).get("resolved", false))
 		"supply_draw":
 			return false

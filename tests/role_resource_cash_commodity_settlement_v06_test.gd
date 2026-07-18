@@ -78,6 +78,7 @@ func _init() -> void:
 	var debug: Dictionary = bridge.call("debug_snapshot")
 	var service_debug: Dictionary = debug.get("role_resource_cash_settlement", {}) if debug.get("role_resource_cash_settlement", {}) is Dictionary else {}
 	_expect(bool(service_debug.get("service_authoritative", false)) and (service_debug.get("public_receipt_fields_added", []) as Array).is_empty(), "explicit service owns the rule and declares a zero-field public projection")
+	_verify_high_volatility_role_bonus()
 	_verify_real_commodity_flow_chain()
 
 	world.queue_free()
@@ -85,6 +86,63 @@ func _init() -> void:
 	bridge.queue_free()
 	print("ROLE_RESOURCE_CASH_COMMODITY_SETTLEMENT_V06_TEST|status=%s|checks=%d|failures=%d" % ["PASS" if _failures.is_empty() else "FAIL", _checks, _failures.size()])
 	quit(_failures.size())
+
+
+func _verify_high_volatility_role_bonus() -> void:
+	var world := RuntimeWorld.new()
+	var state := WorldSessionState.new()
+	var player := _player("", 0)
+	player["role_card"] = {
+		"name": "黑潮风险基金",
+		"high_volatility_sale_threshold": 12,
+		"high_volatility_first_sale_bonus": 40,
+		"high_volatility_bonus_once_per_market_cycle": true,
+	}
+	state.replace_players([player], true)
+	root.add_child(world)
+	root.add_child(state)
+	var bridge := BRIDGE_SCRIPT.new()
+	root.add_child(bridge)
+	bridge.call("bind_world", world)
+	bridge.call("set_world_session_state", state)
+	var cycle_seven_batch := {
+		"batch_id": "black-tide-cycle-7",
+		"receipts": [
+			_high_volatility_receipt("black-tide-7-a", 0, "反物质茶", 100, 7, 12),
+			_high_volatility_receipt("black-tide-7-b", 0, "离子香料", 200, 7, 18),
+		],
+	}
+	var public_before := cycle_seven_batch.duplicate(true)
+	var first: Dictionary = bridge.call("apply_sale_receipt_batch", cycle_seven_batch)
+	var settled: Dictionary = state.players[0]
+	_expect(bool(first.get("applied", false)), "Black Tide authoritative Sale Receipt batch applies")
+	_expect(int(settled.get("cash_cents", 0)) == 10000 + 100 + 200 + 4000, "Black Tide pays exactly one 40-cash bonus for two high-volatility sales in one cycle")
+	var rows := _ledger_rows(settled, "role_high_volatility_sale")
+	_expect(rows.size() == 1 and int((rows[0] as Dictionary).get("market_cycle_revision", -1)) == 7, "Black Tide exact-once ledger is bound to market cycle 7")
+	_expect(cycle_seven_batch == public_before, "Black Tide settlement does not mutate the authoritative Sale Receipt input")
+	var same_cycle: Dictionary = bridge.call("apply_sale_receipt_batch", {
+		"batch_id": "black-tide-cycle-7-later",
+		"receipts": [_high_volatility_receipt("black-tide-7-c", 0, "磁核榴莲", 300, 7, 20)],
+	})
+	settled = state.players[0]
+	_expect(bool(same_cycle.get("applied", false)) and int(settled.get("cash_cents", 0)) == 10000 + 100 + 200 + 300 + 4000, "later sale in the same market cycle receives no second bonus")
+	var below_threshold: Dictionary = bridge.call("apply_sale_receipt_batch", {
+		"batch_id": "black-tide-cycle-8-low",
+		"receipts": [_high_volatility_receipt("black-tide-8-low", 0, "寒冠冰糖", 100, 8, 11)],
+	})
+	settled = state.players[0]
+	_expect(bool(below_threshold.get("applied", false)) and _ledger_rows(settled, "role_high_volatility_sale").size() == 1, "volatility below 12 does not consume the next cycle bonus")
+	var next_cycle: Dictionary = bridge.call("apply_sale_receipt_batch", {
+		"batch_id": "black-tide-cycle-8-high",
+		"receipts": [_high_volatility_receipt("black-tide-8-high", 0, "反物质茶", 100, 8, 12)],
+	})
+	settled = state.players[0]
+	rows = _ledger_rows(settled, "role_high_volatility_sale")
+	_expect(bool(next_cycle.get("applied", false)) and rows.size() == 2, "first qualifying sale in the next market cycle receives a fresh bonus")
+	_expect(int((rows[1] as Dictionary).get("public_volatility", -1)) == 12 and int(settled.get("total_role_income", 0)) == 80, "Black Tide threshold and private role-income counters are exact")
+	bridge.queue_free()
+	world.queue_free()
+	state.queue_free()
 
 
 func _verify_real_commodity_flow_chain() -> void:
@@ -181,6 +239,13 @@ func _sale_receipt(receipt_id: String, owner_index: int, commodity_id: String, o
 		"owner_net_cash": owner_net_cash,
 		"rent_rows": [],
 	}
+
+
+func _high_volatility_receipt(receipt_id: String, owner_index: int, commodity_id: String, owner_net_cash: int, market_cycle_revision: int, public_volatility: int) -> Dictionary:
+	var receipt := _sale_receipt(receipt_id, owner_index, commodity_id, owner_net_cash)
+	receipt["market_cycle_revision"] = market_cycle_revision
+	receipt["public_volatility"] = public_volatility
+	return receipt
 
 
 func _ledger_rows(player: Dictionary, category: String) -> Array:

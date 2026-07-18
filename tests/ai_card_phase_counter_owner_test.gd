@@ -21,20 +21,20 @@ func _run() -> void:
 	_expect(save != null and bool(save.call("set_qa_default_save_path_override", QA_SAVE_PATH)), "fixture isolates the production save path")
 	root.add_child(main)
 	await _wait_frames(3)
-	_expect(main.has_method("_start_scenario_from_menu"), "production Main script is loaded before the owner fixture starts")
-	if not main.has_method("_start_scenario_from_menu"):
+	_expect(main.has_method("_new_game"), "production Main exposes the current new-game entry before the owner fixture starts")
+	if not main.has_method("_new_game"):
 		main.queue_free()
 		await _wait_frames(2)
 		_remove_qa_save()
 		_finish()
 		return
-	main.call("_start_scenario_from_menu", "first_table")
+	main.call("_new_game")
 	await _wait_frames(5)
 
 	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
 	var ai := coordinator.get_node_or_null("AiRuntimeController") if coordinator != null else null
 	var queue := coordinator.get_node_or_null("CardResolutionQueueRuntimeService") if coordinator != null else null
-	var timing := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/CardResolutionRuntimeController")
+	var timing := coordinator.get_node_or_null("CardResolutionRuntimeController") if coordinator != null else null
 	_expect(coordinator != null and ai != null and queue != null and timing != null, "real Main composes AI, queue and timing owners")
 	if coordinator != null and ai != null and queue != null and timing != null:
 		_test_anonymous_simultaneous_card_policy(main, ai, queue, timing)
@@ -143,8 +143,6 @@ func _test_phase_counter_response(main: Node, ai: Node, queue: Node, timing: Nod
 		"group_id": "group_4_2",
 		"group_order": 1,
 		"group_size": 1,
-		"public_owner_revealed": false,
-		"public_owner_label": "",
 		"skill": main.call("_make_skill", "轨道齐射1"),
 	}
 	queue.call("replace_active_entry", active_entry)
@@ -206,7 +204,7 @@ func _city_fixture(owner: int, label: String, last_income: int, route_damage: in
 		"trade_route_damage": route_damage,
 		"trade_disrupted_routes": route_damage,
 		"products": [{"name": "轨迹墨水", "level": 1}],
-		"demands": [{"name": "环晶电池", "level": 1}],
+		"demands": ["环晶电池"],
 		"warehouses": [],
 	}
 
@@ -233,7 +231,7 @@ func _all_entries_anonymous(entries: Array) -> bool:
 		if not (entry_variant is Dictionary):
 			return false
 		var entry: Dictionary = entry_variant
-		if bool(entry.get("public_owner_revealed", true)) or str(entry.get("public_owner_label", "hidden")) != "":
+		if entry.has("player_index") or entry.has("public_owner_revealed") or entry.has("public_owner_label"):
 			return false
 	return true
 

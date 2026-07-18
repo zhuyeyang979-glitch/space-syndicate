@@ -196,7 +196,7 @@ func _run() -> void:
 		var injected_json := JSON.stringify(injected_event)
 		_expect(bool(injected.get("published", false)), "malicious public event is normalized through the typed visibility gate")
 		_expect(not injected_event.has("summary") and not injected_event.has("aftermath_clue"), "free-text summary and aftermath fields are absent from the public event")
-		_expect(not injected_event.has("public_owner_label") and not injected_event.has("target_label"), "owner and target labels require explicit public reveal gates")
+		_expect(not injected_event.has("public_owner_label") and not injected_event.has("target_label"), "retired actor labels are discarded and target labels require an explicit public reveal gate")
 		_expect(str(injected_event.get("localization_key", "")) == "card_resolution.aftermath.resolved", "localization key is derived from the allowlisted event kind and status")
 		for sentinel in [owner_sentinel, target_sentinel, cash_sentinel]:
 			_expect(not injected_json.contains(sentinel), "malicious sentinel cannot enter the public event: %s" % sentinel)
@@ -215,7 +215,7 @@ func _run() -> void:
 			"target_label": "已公开区域",
 		})
 		var revealed_event := _dictionary(revealed.get("event", {}))
-		_expect(str(revealed_event.get("public_owner_label", "")) == "已公开席位" and str(revealed_event.get("target_label", "")) == "已公开区域", "explicit public reveal gates preserve allowlisted owner and target labels")
+		_expect(not revealed_event.has("public_owner_label") and str(revealed_event.get("target_label", "")) == "已公开区域", "card-history presentation retires actor labels while preserving explicitly public target labels")
 
 	var contract_bridge := coordinator.get_node_or_null("ContractRuntimeWorldBridge") as ContractRuntimeWorldBridge
 	var history := coordinator.get_node_or_null("CardResolutionHistoryRuntimeService") as CardResolutionHistoryRuntimeService

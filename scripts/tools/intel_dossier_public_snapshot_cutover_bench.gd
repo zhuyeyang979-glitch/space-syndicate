@@ -58,7 +58,7 @@ func cutover_cases() -> Array:
 	return [
 		"required_service_assets_load", "service_scene_contract", "intel_source_pure_data", "empty_source_safe",
 		"summary_privacy_contract", "header_chip_contract", "kpi_contract", "focused_evidence_contract",
-		"track_action_compatibility", "city_mark_action_ids", "confidence_action_ids", "reason_action_ids",
+		"history_annotation_actions", "city_mark_action_ids", "confidence_action_ids", "reason_action_ids",
 		"public_link_action_ids", "board_signal_forwarding", "coordinator_scene_composition", "coordinator_pure_data_proxy",
 		"real_main_route_and_render", "open_performance_contract", "legacy_builders_absent_and_metrics", "private_input_rejection",
 	]
@@ -160,15 +160,15 @@ func _run_case(case_id: String) -> Dictionary:
 			notes = "empty dossier remains readable and keeps a safe economy link"
 		"summary_privacy_contract":
 			var text := str(fixture.get("summary_text", ""))
-			passed = text.contains("情报换钱") and text.contains("当前不揭示正误") and text.contains("不扫描对手现金/手牌") and not text.contains("真实业主")
+			passed = text.contains("公共卡牌履历") and text.contains("不奖励现金或GDP") and text.contains("不扫描对手现金/手牌") and not text.contains("真实出牌者")
 			flags["summary_checked"] = true
 			flags["privacy_checked"] = true
-			notes = "summary explains settlement and evidence without revealing hidden truth"
+			notes = "summary explains public history and viewer-private annotations without revealing hidden truth"
 		"header_chip_contract":
 			var chips := board.get("chips", []) as Array
-			passed = chips.size() == 4 and str((chips[0] as Dictionary).get("text", "")).contains("已选牌轨") and str((chips[2] as Dictionary).get("text", "")).contains("即时竞猜")
+			passed = chips.size() == 4 and str((chips[0] as Dictionary).get("text", "")).contains("履历") and str((chips[2] as Dictionary).get("text", "")).contains("卡牌履历只读")
 			flags["board_checked"] = true
-			notes = "focused-track, settlement, stake, and privacy chips are scene payloads"
+			notes = "focused history, city settlement, read-only, and privacy chips are scene payloads"
 		"kpi_contract":
 			var kpis := board.get("kpis", []) as Array
 			passed = kpis.size() == 4 and JSON.stringify(kpis).contains("城市标注") and JSON.stringify(kpis).contains("公开资金线索")
@@ -176,13 +176,13 @@ func _run_case(case_id: String) -> Dictionary:
 			notes = "four compact intel KPIs come from the service"
 		"focused_evidence_contract":
 			var clues := board.get("clues", []) as Array
-			passed = clues.size() == 7 and JSON.stringify(clues[0]).contains("已选牌轨证据链") and JSON.stringify(clues[0]).contains("出价记录") and JSON.stringify(clues[0]).contains("私人推理")
+			passed = clues.size() == 7 and JSON.stringify(clues[0]).contains("公共卡牌履历证据链") and JSON.stringify(clues[0]).contains("公开结果") and JSON.stringify(clues[0]).contains("私人推理")
 			flags["board_checked"] = true
-			notes = "focused anonymous-card evidence remains first and viewer-scoped"
-		"track_action_compatibility":
-			passed = ids.has("track_return_42") and ids.has("track_guess_42") and ids.has("track_open_轨道融资1")
+			notes = "focused public-history evidence remains first and viewer-scoped"
+		"history_annotation_actions":
+			passed = ids.has("history_return_42") and ids.has("history_subscribe_42") and ids.has("history_suspect_42_1") and ids.has("history_clear_42") and ids.has("track_open_轨道融资1") and not JSON.stringify(ids).contains("track_guess")
 			flags["action_id_checked"] = true
-			notes = "existing track_return, track_guess, and track_open ids remain unchanged"
+			notes = "history actions only request viewer-private annotation, subscription, clear, return, and public card detail"
 		"city_mark_action_ids":
 			passed = ids.has("intel_city_mark_3_1") and ids.has("intel_city_mark_3_2") and ids.has("intel_city_clear_3")
 			flags["action_id_checked"] = true
@@ -320,13 +320,13 @@ func _compose_fixture() -> Dictionary:
 func _source() -> Dictionary:
 	return {
 		"valid": true, "viewer_index": 0, "viewer_name": "测试玩家", "business_cycle_count": 3,
-		"correct_guess_cash": 120, "wrong_guess_cost": 60, "card_guess_stake": 100, "city_final_value": 200,
+		"correct_guess_cash": 120, "wrong_guess_cost": 60, "city_final_value": 200,
 		"stats": {"total_foreign": 2, "guessed": 1, "unmarked": 1, "best_cash": 120, "worst_cash": -60},
 		"player_options": [{"player_index": 1, "label": "标玩家2"}, {"player_index": 2, "label": "标玩家3"}],
 		"confidence_options": [{"value": 1, "label": "低"}, {"value": 2, "label": "中"}, {"value": 3, "label": "高"}],
 		"reason_options": [{"id": "product", "label": "商品竞争"}, {"id": "card", "label": "卡牌条件"}],
 		"city_entries": [{"district_index": 3, "name": "环城港", "guess": 1, "marked": true, "confidence": 2, "confidence_label": "中", "reason": "card", "reason_label": "卡牌条件", "priority": 88, "potential_income": 210, "warehouse_pressure": 24, "latest_clue": "活体芯片需求上升"}],
-		"card_entries": [{"resolution_id": 42, "card": "轨道融资1", "card_name": "轨道融资1", "track_state": "已结算", "status": "归属待猜，可押注¥100", "target": "环城港", "requirement": "城市化份额10%", "tip": "报价¥20", "aftermath": "GDP上升", "style": "经济", "time": 12.5, "revealed": false, "focused": true}],
+		"card_entries": [{"resolution_id": 42, "history_entry_id": "card-history:42", "card": "轨道融资1", "card_name": "轨道融资1", "track_state": "已结算", "status": "我的私人标注", "target": "环城港", "requirement": "公开履历只记录已经发生的动作和结果", "tip": "公开证据复盘", "aftermath": "GDP上升", "style": "经济", "time": 12.5, "revealed": false, "focused": true}],
 		"monster_entries": [{"slot": 0, "name": "吞星兽", "catalog_index": 2, "owner_text": "归属未公开", "recent_loss": 30, "total_lost": 60, "cash_pool": 140, "cash_total": 200, "clue": "受伤资金线索"}],
 		"warehouse_entries": [{"name": "环城港", "owner_view": "未知业主", "pressure": 24, "count": 1, "units": 3, "products": ["活体芯片"], "latest_clue": "匿名仓储3单位"}],
 		"city_clue_entries": [{"district": "环城港", "kind": "需求", "clue_products": ["活体芯片"], "linked_product": "活体芯片", "owner_visible": false, "income": 80, "clue": "需求上升"}],

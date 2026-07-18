@@ -542,10 +542,6 @@ var AI_INTEL_MIN_CITY_SCORE:
 	get:
 		return int(_policy_value("selection", "intel_min_city_score", 78))
 
-var AI_INTEL_MIN_CARD_SCORE:
-	get:
-		return int(_policy_value("selection", "intel_min_card_score", 125))
-
 var AI_INTEL_ACTIONS_PER_TICK:
 	get:
 		return int(_policy_value("selection", "intel_actions_per_tick", 2))
@@ -792,12 +788,6 @@ func _card_resolution_active_entry() -> Dictionary:
 func _store_card_resolution_entry(entry: Dictionary) -> bool:
 	return _call_world(&"_store_card_resolution_entry", [entry])
 
-func _card_owner_guess_stake_for_player(viewer_index: int) -> int:
-	return _call_world(&"_card_owner_guess_stake_for_player", [viewer_index])
-
-func _guess_card_resolution_owner_for_player(viewer_index: int, resolution_id: int, guessed_player: int, announce: bool = true) -> bool:
-	return _call_world(&"_guess_card_resolution_owner_for_player", [viewer_index, resolution_id, guessed_player, announce])
-
 func _intel_city_guess_entries(viewer_index: int, limit: int = 6) -> Array:
 	return _call_world(&"_intel_city_guess_entries", [viewer_index, limit])
 
@@ -806,9 +796,6 @@ func _city_intel_priority_score(entry: Dictionary) -> int:
 
 func _normalized_city_guess_confidence(confidence: int) -> int:
 	return _call_world(&"_normalized_city_guess_confidence", [confidence])
-
-func _public_card_resolution_owner_entries() -> Array:
-	return _call_world(&"_public_card_resolution_owner_entries")
 
 func _victory_public_snapshot() -> Dictionary:
 	if _victory_control_runtime_controller == null or not _victory_control_runtime_controller.has_method("public_snapshot"):
@@ -1023,12 +1010,6 @@ func _apply_rival_business_action(player_index: int, action: Dictionary) -> bool
 
 func _mark_city_guess_for_player(viewer_index: int, city_index: int, guessed_player: int, confidence: int = CITY_GUESS_CONFIDENCE_DEFAULT, reason: String = CITY_GUESS_REASON_DEFAULT) -> bool:
 	return _call_world(&"_mark_city_guess_for_player", [viewer_index, city_index, guessed_player, confidence, reason])
-
-func _private_known_card_owner_for_entry(viewer_index: int, entry: Dictionary) -> int:
-	return _call_world(&"_private_known_card_owner_for_entry", [viewer_index, entry])
-
-func _traceable_card_entries(preferred_resolution_id: int = -1, limit: int = 1) -> Array:
-	return _call_world(&"_traceable_card_entries", [preferred_resolution_id, limit])
 
 func _traceable_contract_entries(preferred_resolution_id: int = -1, limit: int = 1) -> Array:
 	return _contract_runtime_controller.traceable_contract_entries(preferred_resolution_id, limit) if _contract_runtime_controller != null else []
@@ -3191,31 +3172,6 @@ func _ai_best_pressure_target_city(player_index: int) -> int:
 func _ai_direct_interaction_target_player(player_index: int) -> int:
 	var plan := _ai_direct_player_interaction_plan(player_index, {})
 	return int(plan.get("target_player", -1))
-func _ai_public_card_owner_signal_for_player(viewer_index: int, target_player: int) -> int:
-	if viewer_index < 0 or viewer_index >= players.size() or target_player < 0 or target_player >= players.size():
-		return 0
-	var score := 0
-	var scanned := 0
-	for i in range(resolved_card_history.size() - 1, -1, -1):
-		var entry_variant: Variant = resolved_card_history[i]
-		if not (entry_variant is Dictionary):
-			continue
-		var entry: Dictionary = entry_variant
-		var known_owner := int(entry.get("player_index", -1)) if bool(entry.get("public_owner_revealed", false)) else _private_known_card_owner_for_entry(viewer_index, entry)
-		if known_owner != target_player:
-			continue
-		var skill: Dictionary = entry.get("skill", {}) as Dictionary
-		var card_name := String(skill.get("name", entry.get("card_name", "")))
-		var kind := String(skill.get("kind", ""))
-		score += 18 + mini(95, int(float(_card_strength_budget_points(card_name)) / 3.0))
-		if _ai_pressure_kind(kind, skill):
-			score += 26
-		if _ai_defense_kind(kind, skill):
-			score += 18
-		scanned += 1
-		if scanned >= 5:
-			break
-	return score
 func _ai_direct_player_interaction_plan(player_index: int, skill: Dictionary) -> Dictionary:
 	if player_index < 0 or player_index >= players.size() or players.size() <= 1:
 		return {}
@@ -3246,7 +3202,6 @@ func _ai_direct_player_interaction_plan(player_index: int, skill: Dictionary) ->
 		var settlement_gap := settlement - self_estimate
 		var city_pressure := _player_active_city_count(i) * 74
 		var monster_pressure := _ai_owned_active_monster_count(i) * 42
-		var public_signal := _ai_public_card_owner_signal_for_player(player_index, i)
 		var leader_bonus := 0
 		if i == leader_index:
 			leader_bonus = 245 + int(float(_ai_endgame_urgency_score(player_index)) / 2.0)
@@ -3260,7 +3215,6 @@ func _ai_direct_player_interaction_plan(player_index: int, skill: Dictionary) ->
 			+ int(float(maxi(0, settlement_gap)) / 10.0) \
 			+ city_pressure \
 			+ monster_pressure \
-			+ public_signal \
 			+ leader_bonus \
 			+ posture_bonus \
 			+ hand_effect_pressure \
@@ -3269,8 +3223,6 @@ func _ai_direct_player_interaction_plan(player_index: int, skill: Dictionary) ->
 		var role := "pressure_high_value_player"
 		if i == leader_index:
 			role = "pressure_leader_hand"
-		elif public_signal >= 80:
-			role = "pressure_revealed_operator"
 		elif city_pressure >= 140:
 			role = "pressure_city_operator"
 		elif monster_pressure >= 84:
@@ -3287,14 +3239,12 @@ func _ai_direct_player_interaction_plan(player_index: int, skill: Dictionary) ->
 				"direct_target_gap": settlement_gap,
 				"direct_target_city_pressure": city_pressure,
 				"direct_target_monster_pressure": monster_pressure,
-				"direct_target_public_card_signal": public_signal,
 				"direct_effect_pressure": hand_effect_pressure,
 				"score": score,
-				"reason": "直接互动%s｜%s｜估值差%d｜公开牌线索%d｜效果压强%d" % [
+				"reason": "直接互动%s｜%s｜估值差%d｜效果压强%d" % [
 					_interaction_target_label(i),
 					role,
 					settlement_gap,
-					public_signal,
 					hand_effect_pressure,
 				],
 			}
@@ -3751,7 +3701,6 @@ func _ai_intel_policy_candidates_for_audit(player_index: int) -> Array:
 	if not _player_is_ai(player_index):
 		return result
 	result.append_array(_ai_city_guess_candidates(player_index))
-	result.append_array(_ai_card_guess_candidates(player_index))
 	return result
 func _ai_monster_wager_policy_candidates_for_audit(player_index: int) -> Array:
 	var result := []
@@ -4552,7 +4501,7 @@ func _ai_development_route_for_kind(kind: String, skill: Dictionary = {}) -> Str
 			return "finance_speculation"
 		"monster_card", "monster_bound_action", "monster_lure", "monster_takeover", "mudslide", "special_monster_delay", "news_event", "weather_control", "route_sabotage", "panic_shift":
 			return "monster_pressure"
-		"intel_city_reveal", "intel_card_trace", "intel_contract_trace", "supply_draw":
+		"intel_city_reveal", "card_history_public_review", "card_history_subscription", "intel_contract_trace", "supply_draw":
 			return "intel_supply"
 		"player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage", "card_counter":
 			return "direct_interaction"
@@ -6179,7 +6128,8 @@ func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, distric
 	var warehouse_pressure := _city_warehouse_stockpile_pressure(target_city) if _city_is_active(target_city) else 0
 	score += int(float(int(skill.get("cash", 0))) / 4.0)
 	score += int(skill.get("draw_amount", 0)) * 45
-	score += int(skill.get("trace_card_count", 0)) * 42
+	score += int(skill.get("history_review_count", 0)) * 28
+	score += int(skill.get("history_subscription_count", 0)) * 24
 	score += int(skill.get("reveal_city_count", 0)) * 48
 	score += int(skill.get("trace_contract_count", 0)) * 45
 	score += int(skill.get("hand_discard_count", 0)) * (82 if harmful_target or target_owner == -999 else -30)
@@ -6871,11 +6821,11 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 			return {}
 		context["district"] = rival_city
 		context["score"] = int(context["score"]) + 88 + _city_intel_priority_score({"potential_income": int(_district_city(rival_city).get("last_income", 0)), "last_income": int(_district_city(rival_city).get("last_income", 0)), "competition": _city_competition_matches(rival_city), "disrupted": int(_district_city(rival_city).get("trade_disrupted_routes", 0)), "products": _city_product_names(_district_city(rival_city)), "demands": _city_demand_names(_district_city(rival_city)), "marked": false})
-	elif kind == "intel_card_trace":
-		if _traceable_card_entries(selected_card_resolution_id, 1).is_empty():
+	elif ["card_history_public_review", "card_history_subscription"].has(kind):
+		if resolved_card_history.is_empty():
 			return {}
 		context["district"] = _ai_first_alive_district()
-		context["score"] = int(context["score"]) + 95 + resolved_card_history.size() * 4
+		context["score"] = int(context["score"]) + 70 + mini(36, resolved_card_history.size() * 3)
 	elif kind == "intel_contract_trace":
 		if _traceable_contract_entries(selected_card_resolution_id, 1).is_empty():
 			return {}
@@ -8150,17 +8100,6 @@ func _ai_public_player_product_signal(viewer_index: int, guessed_player: int, pr
 			var clue := _normalize_city_public_clue_entry(clue_variant)
 			if (clue.get("products", []) as Array).has(product_name):
 				signal_score += 8 + confidence * 3
-	for entry_variant in _public_card_resolution_owner_entries():
-		if not (entry_variant is Dictionary):
-			continue
-		var entry := entry_variant as Dictionary
-		if not bool(entry.get("public_owner_revealed", false)) or int(entry.get("player_index", -1)) != guessed_player:
-			continue
-		if String(entry.get("play_requirement_product", "")) == product_name:
-			signal_score += 34
-		var skill: Dictionary = entry.get("skill", {}) as Dictionary
-		if String(skill.get("play_product", "")) == product_name:
-			signal_score += 24
 	return signal_score
 func _ai_city_guess_owner_candidate(viewer_index: int, city_entry: Dictionary, guessed_player: int) -> Dictionary:
 	var city_index := int(city_entry.get("district_index", -1))
@@ -8266,118 +8205,6 @@ func _ai_apply_city_guess_candidate(player_index: int, candidate: Dictionary, al
 		}
 	)
 	return true
-func _ai_card_guess_candidate_for_owner(player_index: int, entry: Dictionary, guessed_player: int) -> Dictionary:
-	var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
-	if resolution_id < 0 or guessed_player < 0 or guessed_player >= players.size() or guessed_player == player_index:
-		return {}
-	if bool(entry.get("public_owner_revealed", false)):
-		return {}
-	var actual_owner := int(entry.get("player_index", -1))
-	if actual_owner == player_index:
-		return {}
-	var guessers: Array = entry.get("guessers", [])
-	if guessers.has(player_index):
-		return {}
-	var stake := _card_owner_guess_stake_for_player(player_index)
-	if int((players[player_index] as Dictionary).get("cash", 0)) < stake + AI_CARD_BUY_MIN_CASH_RESERVE:
-		return {}
-	var score := 48
-	var reason_bits := []
-	var private_known := _private_known_card_owner_for_entry(player_index, entry)
-	if private_known == guessed_player:
-		score += 180
-		reason_bits.append("私有追帧命中")
-	elif private_known >= 0:
-		score -= 90
-	var product_name := String(entry.get("play_requirement_product", ""))
-	if product_name != "":
-		var product_signal := _ai_public_player_product_signal(player_index, guessed_player, product_name)
-		if product_signal > 0:
-			score += product_signal + 20
-			reason_bits.append("%s区域亲和" % product_name)
-	var selected_city := int(entry.get("selected_district", -1))
-	if selected_city >= 0 and selected_city < districts.size():
-		var guesses: Dictionary = (players[player_index] as Dictionary).get("city_guesses", {})
-		if int(guesses.get(selected_city, -1)) == guessed_player:
-			score += 26
-			reason_bits.append("目标城市私标吻合")
-	var skill: Dictionary = entry.get("skill", {}) as Dictionary
-	var kind := String(skill.get("kind", ""))
-	for previous_variant in resolved_card_history:
-		if not (previous_variant is Dictionary):
-			continue
-		var previous := previous_variant as Dictionary
-		if not bool(previous.get("public_owner_revealed", false)) or int(previous.get("player_index", -1)) != guessed_player:
-			continue
-		var previous_skill: Dictionary = previous.get("skill", {}) as Dictionary
-		if String(previous_skill.get("kind", "")) == kind:
-			score += 18
-			reason_bits.append("已揭示同类牌")
-			break
-	if reason_bits.is_empty():
-		score += ((resolution_id + guessed_player * 5 + business_cycle_count) % 13)
-		reason_bits.append("弱线索试探")
-	var learning_bonus := _ai_learning_bonus(player_index, "card_owner_guess", "", "", product_name, "卡牌归属押注")
-	score += learning_bonus
-	return {
-		"action": "卡牌归属押注",
-		"kind": "card_owner_guess",
-		"policy_kind": "card_owner_guess",
-		"resolution_id": resolution_id,
-		"card_name": _card_resolution_entry_card_label(entry),
-		"guessed_player": guessed_player,
-		"stake": stake,
-		"district": selected_city,
-		"product": product_name,
-		"learning_bonus": learning_bonus,
-		"score": maxi(1, score),
-		"reason": "轨道#%d《%s》→玩家%d｜%s" % [
-			resolution_id,
-			_card_resolution_entry_card_label(entry),
-			guessed_player + 1,
-			"、".join(reason_bits),
-		],
-	}
-func _ai_card_guess_candidates(player_index: int) -> Array:
-	var result := []
-	if not _player_is_ai(player_index):
-		return result
-	for i in range(resolved_card_history.size() - 1, -1, -1):
-		var entry_variant: Variant = resolved_card_history[i]
-		if not (entry_variant is Dictionary):
-			continue
-		var entry := entry_variant as Dictionary
-		if bool(entry.get("public_owner_revealed", false)):
-			continue
-		var best := {}
-		for guessed_player in range(players.size()):
-			var candidate := _ai_card_guess_candidate_for_owner(player_index, entry, guessed_player)
-			if candidate.is_empty():
-				continue
-			if best.is_empty() or int(candidate.get("score", 0)) > int(best.get("score", 0)):
-				best = candidate
-		if not best.is_empty():
-			result.append(best)
-	return result
-func _ai_apply_card_guess_candidate(player_index: int, candidate: Dictionary, all_candidates: Array) -> bool:
-	_record_ai_decision(
-		player_index,
-		"卡牌归属押注",
-		int(candidate.get("resolution_id", -1)),
-		int(candidate.get("score", 0)),
-		String(candidate.get("reason", "按公开条件与私有线索押注")),
-		all_candidates,
-		{
-			"policy_kind": String(candidate.get("policy_kind", "card_owner_guess")),
-			"resolution_id": int(candidate.get("resolution_id", -1)),
-			"guessed_player": int(candidate.get("guessed_player", -1)),
-			"stake": int(candidate.get("stake", 0)),
-			"card_name": String(candidate.get("card_name", "")),
-			"product": String(candidate.get("product", "")),
-			"learning_bonus": int(candidate.get("learning_bonus", 0)),
-		}
-	)
-	return _guess_card_resolution_owner_for_player(player_index, int(candidate.get("resolution_id", -1)), int(candidate.get("guessed_player", -1)), true)
 func _auto_ai_intel_decisions(force: bool = false) -> int:
 	if session_finished or not ai_card_decision_enabled:
 		return 0
@@ -8388,13 +8215,6 @@ func _auto_ai_intel_decisions(force: bool = false) -> int:
 		var city_choice := _ai_pick_candidate(player_index, city_candidates, force)
 		if not city_choice.is_empty() and (force or int(city_choice.get("score", 0)) >= AI_INTEL_MIN_CITY_SCORE):
 			if _ai_apply_city_guess_candidate(player_index, city_choice, city_candidates):
-				acted += 1
-		if acted >= AI_INTEL_ACTIONS_PER_TICK and not force:
-			return acted
-		var card_candidates := _ai_card_guess_candidates(player_index)
-		var card_choice := _ai_pick_candidate(player_index, card_candidates, force)
-		if not card_choice.is_empty() and (force or int(card_choice.get("score", 0)) >= AI_INTEL_MIN_CARD_SCORE):
-			if _ai_apply_card_guess_candidate(player_index, card_choice, card_candidates):
 				acted += 1
 		if acted >= AI_INTEL_ACTIONS_PER_TICK and not force:
 			return acted

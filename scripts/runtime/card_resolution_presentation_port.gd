@@ -8,7 +8,7 @@ const MAX_EVENTS := 48
 const PUBLIC_KEYS := [
 	"event_id", "event_kind", "resolution_id", "card_name", "phase",
 	"status", "remaining_seconds", "target_kind", "district_index",
-	"world_position", "accent", "public_owner_revealed",
+	"world_position", "accent",
 	"public_target_revealed",
 ]
 const SUPPORTED_EVENT_KINDS := [
@@ -115,11 +115,6 @@ func _sanitize(source: Dictionary) -> Dictionary:
 	for key in PUBLIC_KEYS:
 		if source.has(key):
 			result[key] = _sanitize_value(source[key])
-	var owner_revealed := bool(result.get("public_owner_revealed", false))
-	if owner_revealed:
-		var owner_label := _public_label(source.get("public_owner_label", ""))
-		if not owner_label.is_empty():
-			result["public_owner_label"] = owner_label
 	var target_revealed := bool(result.get("public_target_revealed", false))
 	if target_revealed:
 		var target_label := _public_label(source.get("target_label", ""))

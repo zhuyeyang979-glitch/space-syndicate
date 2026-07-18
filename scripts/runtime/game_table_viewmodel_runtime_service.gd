@@ -60,12 +60,10 @@ func compose_resolution_overlay_badges(source: Dictionary) -> Array:
 	if entry.is_empty():
 		return []
 	var badge_texts: Array = []
-	if bool(entry.get("public_owner_revealed", false)):
-		badge_texts.append("公开归属标签｜%s" % str(entry.get("public_owner_label", "归属：已公开")).replace("归属：", ""))
-	elif bool(entry.get("is_viewer_card", false)):
+	if bool(entry.get("is_viewer_card", false)):
 		badge_texts.append("我的展示牌")
 	else:
-		badge_texts.append("归属待猜")
+		badge_texts.append("匿名公开动作")
 	var requirement_text := str(source.get("requirement_text", ""))
 	if requirement_text != "":
 		badge_texts.append("出牌条件｜%s" % _short_text(requirement_text.replace("打出条件：", "").replace("条件：", ""), 22))
@@ -234,9 +232,7 @@ func _compose_track_entry(source: Dictionary, state_text: String, track: Diction
 	var presentation := _compose_card(card_source)
 	var resolution_id := _resolution_id(entry)
 	var selected := resolution_id >= 0 and resolution_id == int(track.get("selected_resolution_id", -1))
-	var owner_revealed := bool(entry.get("public_owner_revealed", false))
-	var owner_text := "待猜"
-	if owner_revealed: owner_text = str(entry.get("public_owner_label", source.get("public_owner_label", "已公开"))).replace("归属：", "").replace("归属:", "")
+	var owner_text := "匿名"
 	var card_label := str(source.get("card_label", presentation.get("display_name", "公开牌")))
 	var requirement_text := str(source.get("requirement_text", card_source.get("play_requirement_text", "")))
 	var target_text := str(source.get("target_text", ""))
@@ -244,7 +240,7 @@ func _compose_track_entry(source: Dictionary, state_text: String, track: Diction
 	var tooltip := _track_tooltip(source, presentation, state_text, requirement_text, target_text, badges)
 	var requirements := [
 		{"text":state_text, "tooltip":"这张牌在公共牌轨中的位置。"},
-		{"text":"归属:%s" % owner_text, "tooltip":"未公开前只能从目标、顺序和余波推理。"},
+		{"text":"公开履历", "tooltip":"只显示卡名、目标、顺序和余波；隐藏出牌者不会被揭露。"},
 	]
 	if requirement_text != "": requirements.append({"text":_short_text(requirement_text.replace("打出条件：", "").replace("条件：", ""), 18), "tooltip":requirement_text})
 	if target_text != "": requirements.append({"text":"目标:%s" % _short_text(target_text, 12), "tooltip":target_text})
@@ -253,7 +249,7 @@ func _compose_track_entry(source: Dictionary, state_text: String, track: Diction
 	var actions := []
 	var deep_links := []
 	if resolution_id >= 0:
-		actions.append({"id":"track_select_%d" % resolution_id, "label":"选中竞猜", "disabled":owner_revealed, "tooltip":"把这张牌设为当前归属竞猜对象。" if not owner_revealed else "归属已公开，无需竞猜。"})
+		actions.append({"id":"track_select_%d" % resolution_id, "label":"查看履历", "tooltip":"把这条公共动作设为当前查看对象；不会产生竞猜或经济结算。"})
 		actions.append({"id":"track_intel_%d" % resolution_id, "label":"线索档案", "tooltip":"打开情报档案，并把这张牌的条件、目标、顺序和余波线索置顶。"})
 		deep_links.append({"id":"track_intel_%d" % resolution_id, "label":"线索档案", "tooltip":"打开情报档案并置顶这张牌。"})
 		var group_size := maxi(1, int(entry.get("group_size", 1)))
@@ -270,8 +266,8 @@ func _compose_track_entry(source: Dictionary, state_text: String, track: Diction
 		"group_id":str(entry.get("group_id", "")), "group_position":int(entry.get("group_position", 0)), "group_order":int(entry.get("group_order", 1)), "group_size":int(entry.get("group_size", 1)),
 		"card_name":card_name, "label":"%s %s" % [state_text, _short_text(card_label, 8)], "slot":_slot_text(state_text), "state":state_text, "kind":_track_kind(state_text), "cost":"",
 		"owner_hint":owner_text, "badges":badges, "active":selected or state_text.begins_with("当前展示") or state_text.begins_with("展示组1") or state_text.begins_with("锁定组1"), "selected":selected,
-		"accent":presentation.get("accent", Color("#94a3b8")), "tooltip":tooltip, "title":"牌轨详情", "summary":"%s｜%s｜归属:%s" % [state_text, _short_text(card_label, 10), owner_text],
-		"detail":_short_text(tooltip, 64), "full_detail":tooltip, "why":"看顺序、目标、余波猜来源。", "requirements":requirements, "actions":actions, "deep_links":deep_links,
+		"accent":presentation.get("accent", Color("#94a3b8")), "tooltip":tooltip, "title":"牌轨详情", "summary":"%s｜%s｜公共动作" % [state_text, _short_text(card_label, 10)],
+		"detail":_short_text(tooltip, 64), "full_detail":tooltip, "why":"查看顺序、目标和余波；出牌者保持隐藏。", "requirements":requirements, "actions":actions, "deep_links":deep_links,
 		"select_action":"track_select_%d" % resolution_id if resolution_id >= 0 else "", "open_action":"track_open_%s" % card_name if card_name != "" else "",
 	}
 
@@ -319,8 +315,7 @@ func _visible_badges(entry: Dictionary, state_text: String, selected: bool) -> A
 	var badges := []
 	if selected: badges.append("已选")
 	if str(entry.get("group_id", "")) != "": badges.append("同源组 %d/%d" % [clampi(int(entry.get("group_order", 1)), 1, maxi(1, int(entry.get("group_size", 1)))), maxi(1, int(entry.get("group_size", 1)))])
-	if bool(entry.get("public_owner_revealed", false)): badges.append(_short_text(str(entry.get("public_owner_label", "已公开")).replace("归属：", ""), 6))
-	elif bool(entry.get("is_viewer_card", false)): badges.append("我的牌")
+	if bool(entry.get("is_viewer_card", false)): badges.append("我的牌")
 	if state_text.begins_with("当前展示"): badges.append("展示")
 	elif state_text.begins_with("锁定组1") or state_text.begins_with("展示组1") or state_text.begins_with("组织组1"): badges.append("队首")
 	elif state_text.begins_with("下批"): badges.append("下批")
@@ -334,8 +329,7 @@ func _resolution_badge_color(text: String) -> Color:
 	if text.contains("结算顺序"): return Color("#fde68a")
 	if text.contains("合约"): return Color("#fbbf24")
 	if text.contains("出牌条件"): return Color("#bbf7d0")
-	if text.contains("归属未知") or text.contains("归属待猜"): return Color("#94a3b8")
-	if text.contains("公开归属"): return Color("#fef3c7")
+	if text.contains("匿名公开动作"): return Color("#94a3b8")
 	if text.contains("下一张") or text.contains("队首") or text.contains("候补") or text.contains("下批"): return Color("#bae6fd")
 	if text.contains("展示"): return Color("#fda4af")
 	return Color("#c4b5fd")
@@ -350,7 +344,7 @@ func _track_tooltip(source: Dictionary, presentation: Dictionary, state_text: St
 	var order_clue := str(source.get("order_clue", ""))
 	if order_clue != "": lines.append("顺序：%s" % _short_text(order_clue, 60))
 	if not badges.is_empty(): lines.append("牌槽标记：%s" % " / ".join(badges))
-	lines.append("单击竞猜归属；双击打开卡牌图鉴。")
+	lines.append("单击查看公共履历；双击打开卡牌图鉴。私人标注不产生奖励或权威归属结论。")
 	return "\n".join(lines)
 
 
@@ -358,7 +352,7 @@ func _compose_event(entry: Dictionary, index: int) -> Dictionary:
 	if entry.is_empty(): return {}
 	var text := str(entry.get("text", "公共事件"))
 	var detail := str(entry.get("tooltip", text))
-	return {"id":"event_%d" % index, "label":_short_text(text, 12), "slot":"事件", "state":"公共事件", "kind":"event", "owner_hint":"只读", "badges":["只读"], "active":false, "accent":entry.get("accent", Color("#a78bfa")), "tooltip":"公共事件：只读，不可竞猜｜%s" % detail, "title":"牌轨事件", "summary":_short_text(text, 36), "detail":detail, "why":"公共只读事件。", "requirements":[{"text":"只读"}, {"text":"公共事件"}], "deep_links":[{"id":"detail_intel", "label":"情报详情"}]}
+	return {"id":"event_%d" % index, "label":_short_text(text, 12), "slot":"事件", "state":"公共事件", "kind":"event", "owner_hint":"只读", "badges":["只读"], "active":false, "accent":entry.get("accent", Color("#a78bfa")), "tooltip":"公共事件：只读履历，无奖励或权威归属结论｜%s" % detail, "title":"牌轨事件", "summary":_short_text(text, 36), "detail":detail, "why":"公共只读履历；私人标注仅供当前查看者使用。", "requirements":[{"text":"只读"}, {"text":"公共事件"}], "deep_links":[{"id":"detail_intel", "label":"情报详情"}]}
 
 
 func _track_phase(source: Dictionary) -> String:

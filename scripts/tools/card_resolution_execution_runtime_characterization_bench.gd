@@ -1270,11 +1270,11 @@ func _case_private_event_visibility_boundary() -> Dictionary:
 	}
 	var encoded := JSON.stringify(snapshot)
 	var safe := not encoded.contains("PRIVATE_TARGET_MARKER") and not encoded.contains("PRIVATE_DISCARD_MARKER") and not encoded.contains("AI_PRIVATE_PLAN_MARKER") and not _contains_key_recursive(snapshot, "player_index")
-	return _record("private_event_visibility_boundary", "public-track-privacy-markers", INTEL_CARD_ID, "intel_card_trace", {
+	return _record("private_event_visibility_boundary", "public-history-privacy-markers", INTEL_CARD_ID, "card_history_public_review", {
 		"privacy_checked": safe,
 		"observed": not snapshot.is_empty(),
 		"contract_aligned": safe,
-		"notes": "The real public track snapshot keeps card/target/result clues while removing actor identity, private target/discard, and AI plan markers.",
+		"notes": "The public read-only history keeps card/target/result evidence while removing actor identity, private target/discard, and AI plan markers; viewer conclusions remain private annotations.",
 	})
 
 

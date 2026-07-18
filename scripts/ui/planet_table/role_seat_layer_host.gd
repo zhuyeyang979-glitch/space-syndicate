@@ -4,19 +4,28 @@ class_name RoleSeatLayerHost
 
 const DEFAULT_SKIN_SCENE_PATH := "res://scenes/ui/player_seat/PlayerSeatPortraitSkin.tscn"
 const FALLBACK_SCENE := preload("res://scenes/ui/planet_table/RoleSeatFallback.tscn")
-const DEFAULT_SEAT_SIZE := Vector2(112.0, 58.0)
+const DEFAULT_SEAT_SIZE := Vector2(132.0, 92.0)
 const ALL_SEAT_POSITIONS := [
 	&"top", &"left_high", &"left_mid", &"left_low",
 	&"right_high", &"right_mid", &"right_low", &"bottom",
 ]
+const LEFT_COLUMN_POSITIONS := [&"left_high", &"left_mid", &"left_low", &"bottom"]
+const RIGHT_COLUMN_POSITIONS := [&"top", &"right_high", &"right_mid", &"right_low"]
+const COLUMN_GAP := 8.0
+const ROW_GAP := 6.0
+const EDGE_MARGIN := 8.0
 
 @export var stage_viewport_path: NodePath
+@export var map_host_path: NodePath
+@export var map_view_path: NodePath
 @export var back_seat_layer_path: NodePath
 @export var front_seat_layer_path: NodePath
 @export var fallback_backdrop_path: NodePath
 @export_file("*.tscn") var skin_scene_path := DEFAULT_SKIN_SCENE_PATH
 
 @onready var stage_viewport: Control = get_node_or_null(stage_viewport_path) as Control
+@onready var map_host: Control = get_node_or_null(map_host_path) as Control
+@onready var map_view: Control = get_node_or_null(map_view_path) as Control
 @onready var back_seat_layer: Control = get_node_or_null(back_seat_layer_path) as Control
 @onready var front_seat_layer: Control = get_node_or_null(front_seat_layer_path) as Control
 @onready var fallback_backdrop: Node = get_node_or_null(fallback_backdrop_path)
@@ -30,7 +39,9 @@ func _ready() -> void:
 	_set_mouse_filter_recursive(back_seat_layer)
 	_set_mouse_filter_recursive(front_seat_layer)
 	if stage_viewport != null:
-		stage_viewport.resized.connect(_layout_seats)
+		stage_viewport.resized.connect(request_layout)
+	if map_host != null:
+		map_host.resized.connect(request_layout)
 
 
 func set_seat_descriptors(value: Array) -> void:
@@ -42,6 +53,15 @@ func set_seat_descriptors(value: Array) -> void:
 
 func seat_descriptors() -> Array:
 	return _descriptors.duplicate(true)
+
+
+func request_layout() -> void:
+	_layout_seats()
+
+
+func set_map_visual_target(value: Control) -> void:
+	map_view = value
+	request_layout()
 
 
 func layout_debug_snapshot() -> Dictionary:
@@ -60,7 +80,13 @@ func layout_debug_snapshot() -> Dictionary:
 			"mirror_h": bool(descriptor.get("mirror_h", false)),
 			"is_local_player": bool(descriptor.get("is_local_player", false)),
 			"rect": Rect2(node.position, node.size),
+			"display_rect": Rect2(node.position, node.size * node.scale),
 			"global_rect": node.get_global_rect(),
+			"column": _seat_column(StringName(descriptor.get("seat_position", &"bottom"))),
+			"column_row": _seat_column_row(StringName(descriptor.get("seat_position", &"bottom"))),
+			"presentation_scale": node.scale.x,
+			"resolved_inward_direction": _skin_inward_direction(StringName(descriptor.get("seat_position", &"bottom"))),
+			"render_layer": node.get_parent().name if node.get_parent() != null else &"",
 			"using_skin": bool(_using_skin_by_player.get(player_index, false)),
 			"mouse_filter": node.mouse_filter,
 		})
@@ -174,8 +200,11 @@ func _retire_node(node: Control) -> void:
 	node.free()
 
 
-func _move_to_depth_layer(node: Control, depth_group: StringName) -> void:
-	var target := back_seat_layer if depth_group == &"back" else front_seat_layer
+func _move_to_depth_layer(node: Control, _depth_group: StringName) -> void:
+	# Circular front/back depth no longer applies once all seats live beside the
+	# globe. Keeping every card above the map prevents valid seats disappearing
+	# behind the oversized 720px planet presentation surface.
+	var target := front_seat_layer
 	if node.get_parent() != target:
 		if node.get_parent() != null:
 			node.get_parent().remove_child(node)
@@ -222,7 +251,7 @@ func _skin_view_model(descriptor: Dictionary) -> Dictionary:
 		"is_disconnected": public_status == &"disconnected",
 		"public_status": _skin_public_status(public_status, is_public_actor, anonymous_action),
 		"inward_direction": _skin_inward_direction(seat_position),
-		"depth_class": _skin_depth_class(StringName(descriptor.get("depth_group", &"front")), seat_position),
+		"depth_class": "near" if bool(descriptor.get("is_local_player", false)) else "mid",
 		"anonymous_action_active": anonymous_action,
 	}
 
@@ -240,19 +269,9 @@ func _skin_public_status(status: StringName, active: bool, anonymous_action: boo
 
 
 func _skin_inward_direction(seat_position: StringName) -> String:
-	if str(seat_position).begins_with("left_"):
+	if seat_position in LEFT_COLUMN_POSITIONS:
 		return "left"
-	if str(seat_position).begins_with("right_"):
-		return "right"
-	return "front"
-
-
-func _skin_depth_class(depth_group: StringName, seat_position: StringName) -> String:
-	if depth_group == &"back":
-		return "far"
-	if seat_position == &"bottom":
-		return "near"
-	return "mid"
+	return "right"
 
 
 func _sync_fallback_decorations() -> void:
@@ -261,12 +280,8 @@ func _sync_fallback_decorations() -> void:
 	var visibility := {}
 	for seat_position in ALL_SEAT_POSITIONS:
 		visibility[str(seat_position)] = false
-	for descriptor_variant in _descriptors:
-		var descriptor: Dictionary = descriptor_variant
-		var player_index := int(descriptor.get("player_index", -1))
-		var seat_position := str(descriptor.get("seat_position", ""))
-		if seat_position != "":
-			visibility[seat_position] = not bool(_using_skin_by_player.get(player_index, false))
+	# Side-column cards provide the fallback themselves. The old orbit pips would
+	# otherwise leave a second, circular seat presentation around the globe.
 	fallback_backdrop.call("set_seat_decoration_visibility", visibility)
 
 
@@ -274,41 +289,62 @@ func _layout_seats() -> void:
 	if stage_viewport == null or stage_viewport.size.x <= 1.0 or stage_viewport.size.y <= 1.0:
 		return
 	var stage_size := stage_viewport.size
-	for descriptor_variant in _descriptors:
-		var descriptor: Dictionary = descriptor_variant
+	var map_rect := _map_visual_rect(stage_size)
+	_layout_column(_column_descriptors(&"left"), &"left", stage_size, map_rect)
+	_layout_column(_column_descriptors(&"right"), &"right", stage_size, map_rect)
+
+
+func _layout_column(descriptors: Array, column: StringName, stage_size: Vector2, map_rect: Rect2) -> void:
+	if descriptors.is_empty():
+		return
+	var side_width := map_rect.position.x - COLUMN_GAP - EDGE_MARGIN if column == &"left" else stage_size.x - map_rect.end.x - COLUMN_GAP - EDGE_MARGIN
+	var row_space := stage_size.y - EDGE_MARGIN * 2.0 - ROW_GAP * float(maxi(0, descriptors.size() - 1))
+	var horizontal_scale := side_width / DEFAULT_SEAT_SIZE.x
+	var vertical_scale := row_space / (DEFAULT_SEAT_SIZE.y * float(descriptors.size()))
+	var scale_factor := minf(1.0, minf(horizontal_scale, vertical_scale))
+	scale_factor = maxf(0.1, scale_factor)
+	var display_size := DEFAULT_SEAT_SIZE * scale_factor
+	var column_height := display_size.y * float(descriptors.size()) + ROW_GAP * float(maxi(0, descriptors.size() - 1))
+	var start_y := maxf(EDGE_MARGIN, (stage_size.y - column_height) * 0.5)
+	var x := map_rect.position.x - COLUMN_GAP - display_size.x if column == &"left" else map_rect.end.x + COLUMN_GAP
+	x = clampf(x, EDGE_MARGIN, maxf(EDGE_MARGIN, stage_size.x - display_size.x - EDGE_MARGIN))
+	for row in range(descriptors.size()):
+		var descriptor: Dictionary = descriptors[row]
 		var node := _seat_nodes_by_player.get(int(descriptor.get("player_index", -1))) as Control
 		if node == null:
 			continue
-		var visual_size := node.get_combined_minimum_size()
-		if visual_size.x <= 1.0 or visual_size.y <= 1.0:
-			visual_size = DEFAULT_SEAT_SIZE
-		node.size = visual_size
-		node.pivot_offset = Vector2(visual_size.x * 0.5, visual_size.y)
-		var anchor := _seat_anchor(StringName(descriptor.get("seat_position", &"bottom")), stage_size)
-		var position := anchor - Vector2(visual_size.x * 0.5, visual_size.y)
-		position.x = clampf(position.x, 8.0, maxf(8.0, stage_size.x - visual_size.x - 8.0))
-		position.y = clampf(position.y, 8.0, maxf(8.0, stage_size.y - visual_size.y - 8.0))
-		node.position = position.round()
+		node.size = DEFAULT_SEAT_SIZE
+		node.scale = Vector2.ONE * scale_factor
+		node.pivot_offset = Vector2.ZERO
+		node.position = Vector2(x, start_y + float(row) * (display_size.y + ROW_GAP)).round()
 
 
-func _seat_anchor(seat_position: StringName, viewport_size: Vector2) -> Vector2:
-	match seat_position:
-		&"top":
-			return Vector2(viewport_size.x * 0.50, viewport_size.y * 0.21)
-		&"left_high":
-			return Vector2(viewport_size.x * 0.14, viewport_size.y * 0.31)
-		&"left_mid":
-			return Vector2(viewport_size.x * 0.11, viewport_size.y * 0.53)
-		&"left_low":
-			return Vector2(viewport_size.x * 0.16, viewport_size.y * 0.76)
-		&"right_high":
-			return Vector2(viewport_size.x * 0.86, viewport_size.y * 0.31)
-		&"right_mid":
-			return Vector2(viewport_size.x * 0.89, viewport_size.y * 0.53)
-		&"right_low":
-			return Vector2(viewport_size.x * 0.84, viewport_size.y * 0.76)
-		_:
-			return Vector2(viewport_size.x * 0.50, viewport_size.y * 0.95)
+func _column_descriptors(column: StringName) -> Array:
+	var ordered_positions := LEFT_COLUMN_POSITIONS if column == &"left" else RIGHT_COLUMN_POSITIONS
+	var result: Array = []
+	for seat_position in ordered_positions:
+		for descriptor_variant in _descriptors:
+			var descriptor: Dictionary = descriptor_variant
+			if StringName(descriptor.get("seat_position", &"")) == seat_position:
+				result.append(descriptor)
+	return result
+
+
+func _seat_column(seat_position: StringName) -> StringName:
+	return &"left" if seat_position in LEFT_COLUMN_POSITIONS else &"right"
+
+
+func _seat_column_row(seat_position: StringName) -> int:
+	var positions := LEFT_COLUMN_POSITIONS if seat_position in LEFT_COLUMN_POSITIONS else RIGHT_COLUMN_POSITIONS
+	return positions.find(seat_position)
+
+
+func _map_visual_rect(stage_size: Vector2) -> Rect2:
+	if map_view != null and is_instance_valid(map_view) and map_view.visible:
+		return Rect2(map_view.global_position - stage_viewport.global_position, map_view.size * map_view.scale)
+	if map_host != null:
+		return Rect2(map_host.position, map_host.size)
+	return Rect2(stage_size * 0.25, stage_size * 0.5)
 
 
 func _validated_descriptors(value: Array) -> Array:

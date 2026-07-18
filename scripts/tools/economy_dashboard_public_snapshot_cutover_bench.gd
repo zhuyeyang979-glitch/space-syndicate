@@ -265,7 +265,7 @@ func _source() -> Dictionary:
 		"monster_clue_entries": [{"slot": 0, "name": "岩甲兽", "rank": 1, "owner_text": "归属未公开", "recent_loss": 5, "recent_damage": 10, "recent_source": "城市炮火", "recent_time": 18.0, "total_lost": 5, "cash_pool": 45, "cash_total": 50, "down": false, "clue": "受伤资金变化"}],
 		"warehouse_entries": [{"name": "临港城", "owner_view": "业主未知", "intel_hint": "情报：无", "pressure": 7, "count": 2, "units": 4, "products": ["环晶电池"], "seconds_left": 18.0, "potential_income": 36, "latest_clue": "仓储公开"}],
 		"player_cash_entries": [{"name": "测试玩家", "private": false, "eliminated": false, "score_label": "可见预估", "visible_score": 800, "visible_cash": 600, "city_count": 1, "intel_summary": "情报待结算", "last_cycle": 20, "role_income": 8, "gdp_per_minute": 240, "recent_delta": 12, "window_delta": 20, "path": "580→600", "ledger": "城市+20"}, {"name": "对手", "private": true, "eliminated": false}],
-		"inference_lines": ["城市私标：临港城→玩家2", "公开卡牌归属：轨道融资待猜"],
+		"inference_lines": ["城市私标：临港城→玩家2", "公共卡牌履历：轨道融资待复盘，可私标"],
 	}
 
 

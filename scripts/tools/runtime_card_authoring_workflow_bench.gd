@@ -24,7 +24,7 @@ const CASE_IDS := [
 	"catalog_has_239_authored_cards",
 	"output_is_user_scoped",
 	"authoritative_catalog_validates",
-	"all_49_kinds_remain_registered",
+	"all_50_kinds_remain_registered",
 	"sample_family_validates",
 	"sample_rank_validates",
 	"duplicate_rank_is_blocked",
@@ -195,7 +195,7 @@ func _case_pass(case_id: String) -> bool:
 		"catalog_has_239_authored_cards": return int(_index.get("card_count", 0)) == 239
 		"output_is_user_scoped": return OUTPUT_DIR.begins_with("user://") and not OUTPUT_DIR.contains("res://reports")
 		"authoritative_catalog_validates": return bool(_validation.get("valid", false))
-		"all_49_kinds_remain_registered": return int(_catalog.validation_report().get("kind_count", 0)) == 49
+		"all_50_kinds_remain_registered": return int(_catalog.validation_report().get("kind_count", 0)) == 50
 		"sample_family_validates": return bool(_validator.validate_family(_sample_family, _catalog).get("valid", false))
 		"sample_rank_validates": return bool(_validator.validate_rank(_sample_rank, _sample_family, _catalog).get("valid", false))
 		"duplicate_rank_is_blocked": return _duplicate_rank_is_blocked()

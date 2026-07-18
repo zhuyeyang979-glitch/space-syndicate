@@ -111,6 +111,53 @@ func show_card(card_data: Dictionary) -> void:
 	})
 
 
+func show_public_commodity(item: Dictionary, action_result: Dictionary = {}) -> void:
+	var name := str(item.get("public_name", "公开商品"))
+	var supply := int(item.get("public_supply_pressure", 0))
+	var demand := int(item.get("public_demand_pressure", 0))
+	var price := int(item.get("public_market_price", -1))
+	var trend := int(item.get("public_market_trend", 0))
+	var claimable := bool(item.get("claimable", false))
+	var disabled_reason := str(item.get("public_claim_disabled_reason", "当前不可领取。"))
+	var result_text := str(action_result.get("explanation", "")).strip_edges()
+	var why := result_text if not result_text.is_empty() else (
+		"共享商品牌可免费领取；行情只说明商品市场状态，不是领取费用。" \
+		if claimable else disabled_reason
+	)
+	var trend_text := "%+d" % trend if trend != 0 else "持平"
+	var actions: Array = []
+	if claimable:
+		actions.append({
+			"id": "commodity_claim_selected",
+			"label": "免费领取",
+			"tooltip": "提交给商品卡库存 owner；界面不会直接移除商品。",
+		})
+	set_context({
+		"context_kind": "public_commodity",
+		"title": "公共商品",
+		"why": why,
+		"district": {
+			"id": str(item.get("commodity_slot_id", "")),
+			"title": name,
+			"summary": str(item.get("public_short_effect", "免费领取后安装到合法设施。")),
+			"detail": "市场价 %s｜趋势 %s｜供给 %d｜需求 %d" % ["¥%d" % price if price >= 0 else "--", trend_text, supply, demand],
+			"full_detail": "%s\n公开市场：供给 %d，需求 %d，趋势 %s。\n领取费用：免费。" % [str(item.get("public_short_effect", "")), supply, demand, trend_text],
+			"chips": [
+				{"text": str(item.get("public_industry", "商品"))},
+				{"text": "供 %d" % supply},
+				{"text": "需 %d" % demand},
+			],
+		},
+		"requirements": [
+			{"text": "免费", "tooltip": "领取不支付现金或资产。"},
+			{"text": "可领取" if claimable else "暂不可领", "tooltip": "商品必须仍在当前权威快照中。" if claimable else disabled_reason},
+		],
+		"actions": actions,
+		"deep_links": [{"id": "detail_products", "label": "商品图鉴"}],
+		"logs": [str(action_result.get("consequence", ""))] if not action_result.is_empty() else [],
+	})
+
+
 func _card_inspector_full_detail(card_data: Dictionary) -> String:
 	var lines: Array[String] = []
 	var timing := _card_inspector_timing(card_data)
