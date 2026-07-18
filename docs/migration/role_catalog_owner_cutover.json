@@ -1,0 +1,18 @@
+{
+  "status": "ROLE_CATALOG_READ_ONLY_OWNER_CUTOVER_GREEN",
+  "owner_scene": "res://scenes/runtime/RoleCatalogRuntimeService.tscn",
+  "owner_script": "res://scripts/runtime/role_catalog_runtime_service.gd",
+  "catalog_count": 24,
+  "duplicate_count": 0,
+  "canonical_hash": "7609b20741bec0e835e7768f2301f587c1848180a49aad8ca7c767e6c8d1cbe0",
+  "main_catalog_copy_count": 0,
+  "save_schema_changed": false,
+  "player_seat_source_changed": false,
+  "portrait_manifest": {
+    "name_order_parity": true,
+    "slug_parity": true,
+    "rendered": 8,
+    "pending": 16
+  },
+  "test": "res://tests/role_catalog_runtime_service_test.gd"
+}

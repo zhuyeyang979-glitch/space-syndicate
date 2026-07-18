@@ -100,6 +100,28 @@ func compose_region(region_index: int) -> Dictionary:
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
+func public_region_count() -> int:
+	if not _require_ready():
+		return 0
+	var value: Variant = _region_public_bridge.call("region_codex_public_facts", 0)
+	var facts := value as Dictionary if value is Dictionary else {}
+	return maxi(0, int(facts.get("total", 0)))
+
+
+func stable_item_id_at(region_index: int) -> String:
+	return "region:%d" % region_index if region_index >= 0 and region_index < public_region_count() else ""
+
+
+func index_for_stable_item_id(item_id: String) -> int:
+	if not item_id.begins_with("region:"):
+		return -1
+	var suffix := item_id.trim_prefix("region:")
+	if not suffix.is_valid_int():
+		return -1
+	var region_index := int(suffix)
+	return region_index if region_index >= 0 and region_index < public_region_count() else -1
+
+
 func public_field_schema() -> Dictionary:
 	var value: Variant = _adapter.call("public_field_schema")
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}

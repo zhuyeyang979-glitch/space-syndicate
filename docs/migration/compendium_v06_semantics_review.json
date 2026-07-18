@@ -1,0 +1,12 @@
+{
+  "status": "GREEN",
+  "ruleset": "space_syndicate_v06",
+  "product_open_initializes_runtime": false,
+  "product_ensure_catalog_on_open_count": 0,
+  "card_public_catalog": "res://resources/cards/runtime/card_runtime_catalog_v06.tres",
+  "commodity_acquire_cash": 0,
+  "commodity_play_asset_cost": 0,
+  "retired_term_count": 0,
+  "session_finished_expands_visibility": false,
+  "test": "res://tests/compendium_v06_public_semantics_test.gd"
+}

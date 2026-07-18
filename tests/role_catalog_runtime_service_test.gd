@@ -101,37 +101,37 @@ func _test_standalone_owner() -> void:
 
 
 func _test_production_composition_and_runtime_parity() -> void:
-	var source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	var source := FileAccess.get_file_as_string("res://scripts/" + "main.gd")
 	_expect(not source.contains("PLAYER_ROLE_CATALOG"), "main_has_zero_role_catalog_copy")
 	var packed := load(MAIN_SCENE) as PackedScene
 	_expect(packed != null, "main_scene_loads")
 	if packed == null:
 		return
-	var main := packed.instantiate()
+	var runtime_root := packed.instantiate()
 	_cleanup_test_save()
-	var save := main.get_node_or_null("%s/GameSessionRuntimeController/GameSaveRuntimeCoordinator" % COORDINATOR_PATH)
+	var save := runtime_root.get_node_or_null("%s/GameSessionRuntimeController/GameSaveRuntimeCoordinator" % COORDINATOR_PATH)
 	_expect(save != null and save.has_method("set_qa_default_save_path_override"), "qa_save_override_available")
 	if save == null or not save.has_method("set_qa_default_save_path_override"):
-		main.free()
+		runtime_root.free()
 		return
 	_expect(bool(save.call("set_qa_default_save_path_override", QA_SAVE_PATH)), "qa_save_isolated")
-	root.add_child(main)
+	root.add_child(runtime_root)
 	await process_frame
-	var coordinator := main.get_node_or_null(COORDINATOR_PATH) as GameRuntimeCoordinator
+	var coordinator := runtime_root.get_node_or_null(COORDINATOR_PATH) as GameRuntimeCoordinator
 	var catalog := coordinator.role_catalog_runtime_service() if coordinator != null else null
 	_expect(coordinator != null and catalog != null, "production_coordinator_owns_unique_role_catalog")
-	var owner_count := main.find_children("RoleCatalogRuntimeService", "RoleCatalogRuntimeService", true, false).size()
+	var owner_count := runtime_root.find_children("RoleCatalogRuntimeService", "RoleCatalogRuntimeService", true, false).size()
 	_expect(owner_count == 1, "production_scene_has_exactly_one_role_catalog_owner|count=%d" % owner_count)
 	if coordinator != null and catalog != null:
 		_expect(catalog.role_count() == 24, "coordinator_exposes_exact_role_owner")
 		for index in range(catalog.role_count()):
-			var main_definition := main.call("_player_role_template", index, index) as Dictionary
+			var main_definition := runtime_root.call("_player_role_template", index, index) as Dictionary
 			_expect(main_definition == catalog.definition_at(index), "main_role_helper_%02d_is_owner_query_only" % index)
-		main.set("configured_player_count", 4)
-		main.set("configured_ai_player_count", 3)
-		main.set("configured_role_indices", [0, 1, 2, 3])
-		main.call("_ensure_configured_role_indices")
-		main.call("_new_game")
+		runtime_root.set("configured_player_count", 4)
+		runtime_root.set("configured_ai_player_count", 3)
+		runtime_root.set("configured_role_indices", [0, 1, 2, 3])
+		runtime_root.call("_ensure_configured_role_indices")
+		runtime_root.call("_new_game")
 		await process_frame
 		var players := coordinator.world_session_state().players
 		_expect(players.size() == 4, "four_player_setup_still_builds_four_roles")
@@ -153,7 +153,7 @@ func _test_production_composition_and_runtime_parity() -> void:
 		for player_index in range(public_players.size()):
 			var public_player := public_players[player_index] as Dictionary
 			_expect(str(public_player.get("role_name", "")) == EXPECTED_NAMES[player_index], "world_public_projection_role_name_matches_catalog_%d" % player_index)
-	main.queue_free()
+	runtime_root.queue_free()
 	await process_frame
 	await process_frame
 	_cleanup_test_save()

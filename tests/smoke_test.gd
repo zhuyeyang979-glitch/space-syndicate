@@ -722,48 +722,48 @@ func _run() -> void:
 		var saved_reasons := intel_player_snapshot.get("city_guess_reasons", {}) as Dictionary
 		_expect(int(saved_confidence.get(dossier_rival_city_index, 0)) == 3, "private city-owner mark confidence remains on the active player state")
 		_expect(String(saved_reasons.get(dossier_rival_city_index, "")) == "card", "private city-owner mark reason remains on the active player state")
-	main.call("_open_intel_region_codex_link", buildable_district)
+	_request_compendium_page(main, "region", "detail", "region:%d" % buildable_district, buildable_district, "", "intel", "intel")
 	await process_frame
 	var intel_back_button := _menu_overlay_node(main, "MenuBestiaryBackButton") as Button
 	_expect(menu_title_label != null and menu_title_label.text == "区域图鉴" and intel_back_button != null and intel_back_button.text == "返回情报档案", "intel dossier region links return to the dossier")
-	_expect_runtime_map_focus_target(main, buildable_district, "intel dossier region link rotates the central planet to the target region")
-	main.call("_back_from_catalog_menu")
+	_expect(int((_runtime_coordinator(main) as GameRuntimeCoordinator).table_selection_state().selected_district) == buildable_district, "region codex deep link does not replace the table selection owner")
+	_emit_compendium_back(main)
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "情报档案", "region codex returns to the intel dossier")
-	main.call("_open_intel_card_codex_link", "城市融资1")
+	_request_compendium_page(main, "card", "detail", "城市融资1", -1, "all", "intel", "intel")
 	await process_frame
 	intel_back_button = _menu_overlay_node(main, "MenuBestiaryBackButton") as Button
 	_expect(menu_title_label != null and menu_title_label.text == "卡牌图鉴" and intel_back_button != null and intel_back_button.text == "返回缩略图", "intel dossier card links open card detail before returning to thumbnails")
-	main.call("_back_from_catalog_menu")
+	_emit_compendium_back(main)
 	await process_frame
 	intel_back_button = _menu_overlay_node(main, "MenuBestiaryBackButton") as Button
 	_expect(menu_title_label != null and menu_title_label.text == "卡牌图鉴" and menu_body_label != null and menu_body_label.text.contains("卡牌图鉴") and intel_back_button != null and intel_back_button.text == "返回情报档案", "card detail returns to thumbnail page before the intel dossier")
-	main.call("_back_from_catalog_menu")
+	_emit_compendium_back(main)
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "情报档案", "card thumbnail page returns to the intel dossier")
-	main.call("_open_intel_monster_codex_link", 0)
+	_request_compendium_page(main, "monster", "detail", "monster:0", 0, "", "intel", "intel")
 	await process_frame
 	intel_back_button = _menu_overlay_node(main, "MenuBestiaryBackButton") as Button
 	_expect(menu_title_label != null and menu_title_label.text == "怪兽生态档案" and intel_back_button != null and intel_back_button.text == "返回缩略图", "intel dossier monster links open monster detail before returning to thumbnails")
-	main.call("_back_from_catalog_menu")
+	_emit_compendium_back(main)
 	await process_frame
 	intel_back_button = _menu_overlay_node(main, "MenuBestiaryBackButton") as Button
 	_expect(menu_title_label != null and menu_title_label.text == "怪兽生态档案" and menu_body_label != null and menu_body_label.text.contains("怪兽生态｜") and intel_back_button != null and intel_back_button.text == "返回情报档案", "monster detail returns to thumbnail page before the intel dossier")
-	main.call("_back_from_catalog_menu")
+	_emit_compendium_back(main)
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "情报档案", "monster thumbnail page returns to the intel dossier")
-	main.call("_open_intel_product_codex_link", "活体芯片")
+	_request_compendium_page(main, "product", "detail", "活体芯片", -1, "", "intel", "intel")
 	await process_frame
 	intel_back_button = _menu_overlay_node(main, "MenuBestiaryBackButton") as Button
 	_expect(menu_title_label != null and menu_title_label.text == "商品图鉴" and intel_back_button != null and intel_back_button.text == "返回缩略图", "intel dossier product links open product detail before returning to thumbnails")
-	main.call("_back_from_catalog_menu")
+	_emit_compendium_back(main)
 	await process_frame
 	intel_back_button = _menu_overlay_node(main, "MenuBestiaryBackButton") as Button
 	_expect(menu_title_label != null and menu_title_label.text == "商品图鉴" and menu_body_label != null and menu_body_label.text.contains("商品目录｜") and intel_back_button != null and intel_back_button.text == "返回情报档案", "product detail returns to thumbnail page before the intel dossier")
-	main.call("_back_from_catalog_menu")
+	_emit_compendium_back(main)
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "情报档案", "product thumbnail page returns to the intel dossier")
-	main.call("_open_compendium_menu")
+	_request_compendium_hub(main)
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "图鉴", "unified compendium opens from the main scene")
 	var menu_catalog_nav_row := _menu_overlay_node(main, "MenuCatalogNavRow") as HBoxContainer
@@ -778,7 +778,7 @@ func _run() -> void:
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "区域图鉴"), "compendium exposes region codex")
 	players = _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players)
 	var first_role := (players[0] as Dictionary).get("role_card", {}) as Dictionary
-	main.call("_open_role_codex_from_compendium")
+	_request_compendium_page(main, "role", "detail", "catalog", 0)
 	await process_frame
 	var menu_bestiary_back_button := _menu_overlay_node(main, "MenuBestiaryBackButton") as Button
 	_expect(menu_title_label != null and menu_title_label.text == "角色图鉴", "role codex opens from the compendium")
@@ -788,10 +788,10 @@ func _run() -> void:
 	_expect(menu_preview_box != null and _container_card_art_stats_contains(menu_preview_box, "公开身份") and not _container_card_art_stats_contains(menu_preview_box, "起始:"), "role codex card art presents public identity without starter-monster fingerprints")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "独立选择") and not _container_button_text_contains(menu_preview_box, "点击查看卡牌图鉴") and not _container_button_text_contains(menu_preview_box, "查看怪兽生态档案"), "role codex does not link roles to starter monster cards")
 	var old_role_text := menu_body_label.text
-	main.call("_cycle_menu_catalog", 1)
+	_emit_compendium_step(main, 1)
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "角色图鉴" and menu_body_label.text != old_role_text, "role codex next button logic changes pages")
-	main.call("_open_bestiary_from_compendium")
+	_request_compendium_page(main, "monster", "browser", "catalog", -1)
 	await process_frame
 	menu_bestiary_back_button = _menu_overlay_node(main, "MenuBestiaryBackButton") as Button
 	_expect(menu_title_label != null and menu_title_label.text == "怪兽生态档案", "monster ecology dossier opens from the compendium")
@@ -805,12 +805,12 @@ func _run() -> void:
 	if menu_content_scroll != null:
 		menu_content_scroll.scroll_vertical = bestiary_scroll_before
 		bestiary_scroll_before = int(menu_content_scroll.scroll_vertical)
-	main.call("_preview_bestiary_entry", 0, true)
+	_emit_compendium_action(main, "monster_preview", {"catalog_index": 0})
 	await process_frame
 	await process_frame
 	_expect(menu_content_scroll != null and (bestiary_scroll_before <= 0 or int(menu_content_scroll.scroll_vertical) == bestiary_scroll_before), "monster codex hover preview preserves scroll position when the page is scrollable")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "HP:") and _container_label_text_contains(menu_preview_box, "生态位:") and _container_label_text_contains(menu_preview_box, "行动定位:") and _container_label_text_contains(menu_preview_box, "行动:"), "monster codex hover preview shows the selected monster details")
-	main.call("_open_bestiary_detail", 0)
+	_emit_compendium_action(main, "monster_detail", {"catalog_index": 0})
 	await process_frame
 	menu_bestiary_back_button = _menu_overlay_node(main, "MenuBestiaryBackButton") as Button
 	_expect(menu_body_label != null and menu_body_label.text.contains("正面经济天气"), "monster codex shows positive economy abilities")
@@ -822,15 +822,15 @@ func _run() -> void:
 	_expect(menu_preview_box != null and _container_button_tooltip_contains(menu_preview_box, "召唤区域"), "monster codex card links expose summon-region restrictions on hover")
 	_expect(menu_bestiary_back_button != null and menu_bestiary_back_button.text == "返回缩略图" and menu_bestiary_prev_button != null and menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and menu_bestiary_next_button.visible, "monster detail exposes previous/next and a return-to-thumbnails button")
 	var old_bestiary_text := menu_body_label.text
-	main.call("_cycle_menu_catalog", 1)
+	_emit_compendium_step(main, 1)
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "怪兽生态档案" and menu_body_label.text != old_bestiary_text, "monster detail next button logic changes pages")
-	main.call("_open_card_codex_by_name", first_monster_card)
+	_request_compendium_page(main, "card", "detail", first_monster_card, -1, "all", "compendium", "monster")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "卡牌图鉴" and menu_body_label != null and menu_body_label.text.contains("怪兽牌") and menu_body_label.text.contains("生命"), "monster-card link can jump to the matching card codex entry")
-	main.call("_open_bestiary_from_compendium")
+	_request_compendium_page(main, "monster", "browser", "catalog", -1)
 	await process_frame
-	main.call("_open_card_codex_from_compendium")
+	_request_compendium_page(main, "card", "browser", "catalog", -1, "all")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "卡牌图鉴", "card codex opens from the compendium")
 	_expect(menu_continue_button != null and not menu_continue_button.visible and menu_back_button != null and not menu_back_button.visible, "card codex hides global continue/back buttons and keeps only codex-local navigation")
@@ -846,13 +846,13 @@ func _run() -> void:
 	if menu_content_scroll != null:
 		menu_content_scroll.scroll_vertical = card_codex_scroll_before
 		card_codex_scroll_before = int(menu_content_scroll.scroll_vertical)
-	main.call("_preview_card_codex_card", "城市融资1", true)
+	_emit_compendium_action(main, "card_preview", {"card_name": "城市融资1"})
 	await process_frame
 	await process_frame
 	_expect(menu_content_scroll != null and (card_codex_scroll_before <= 0 or int(menu_content_scroll.scroll_vertical) == card_codex_scroll_before), "card codex hover preview preserves scroll position when the page is scrollable")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "城市融资") and _container_label_text_contains(menu_preview_box, "I→IV"), "card codex hover preview shows the selected card details")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "路线：城市成长") and not _container_label_text_contains(menu_preview_box, "预算:"), "card codex hover preview explains the card's strategic route without internal budget text")
-	main.call("_open_card_codex_detail", "城市融资1")
+	_emit_compendium_action(main, "card_detail", {"card_name": "城市融资1"})
 	await process_frame
 	var card_codex_back_button := _menu_overlay_node(main, "MenuBestiaryBackButton") as Button
 	_expect(menu_interaction_hint_label != null and menu_interaction_hint_label.text.contains("卡面") and menu_interaction_hint_label.text.contains("梯度") and menu_interaction_hint_label.text.length() <= 18, "card detail page exposes a compact interaction hint")
@@ -863,31 +863,31 @@ func _run() -> void:
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "结算演出") and _container_label_text_contains(menu_preview_box, "匿名"), "card detail shows the public anonymous resolution presentation")
 	_expect(card_codex_back_button != null and card_codex_back_button.text == "返回缩略图" and menu_bestiary_prev_button != null and menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and menu_bestiary_next_button.visible, "card detail exposes previous/next and a return-to-thumbnails button")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "匿名投资光幕"), "city economy cards use their own resolution animation script")
-	main.call("_back_from_catalog_menu")
+	_emit_compendium_back(main)
 	await process_frame
 	_expect(menu_body_label != null and menu_body_label.text.contains("卡牌图鉴"), "card detail can return to the thumbnail grid")
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = "活体芯片"
-	main.call("_open_product_codex_menu")
+	_request_compendium_page(main, "product", "browser", "catalog", -1)
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "商品图鉴", "product codex opens from the compendium")
 	_expect(menu_body_label != null and menu_body_label.text.contains("商品目录｜") and menu_body_label.text.contains("本页") and menu_body_label.text.contains("本局出现") and menu_body_label.text.contains("主打法") and menu_body_label.text.contains("双击详情"), "product codex opens as a concise thumbnail grid")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "缩略图下一页") and _container_label_text_contains(menu_preview_box, "本局商品生态") and _container_label_text_contains(menu_preview_box, "策略入口") and _container_label_text_contains(menu_preview_box, "商品路线分布") and _container_label_text_contains(menu_preview_box, "牌路连接") and _container_label_text_contains(menu_preview_box, "悬停预览"), "product codex thumbnail page exposes paging, ecosystem overview, and hover preview")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "主策略:"), "product thumbnails expose a primary strategy tag before opening detail")
 	_expect(menu_bestiary_prev_button != null and not menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and not menu_bestiary_next_button.visible, "product codex hides detail previous/next buttons on the thumbnail page")
-	var codex_navigation: Dictionary = main.call("_codex_navigation_state_snapshot") if main.has_method("_codex_navigation_state_snapshot") else {}
+	var codex_navigation: Dictionary = _runtime_coordinator(main).call("codex_navigation_state") as Dictionary
 	var product_navigation: Dictionary = codex_navigation.get("product", {}) if codex_navigation.get("product", {}) is Dictionary else {}
 	var product_preview_index := int(product_navigation.get("selected_index", 0))
 	var product_codex_scroll_before := 56
 	if menu_content_scroll != null:
 		menu_content_scroll.scroll_vertical = product_codex_scroll_before
 		product_codex_scroll_before = int(menu_content_scroll.scroll_vertical)
-	main.call("_preview_product_codex_entry", product_preview_index, true)
+	_emit_compendium_action(main, "product_preview", {"catalog_index": product_preview_index})
 	await process_frame
 	await process_frame
 	var product_codex_scroll_after := int(menu_content_scroll.scroll_vertical) if menu_content_scroll != null else -1
 	_expect(menu_content_scroll != null and (product_codex_scroll_before <= 0 or product_codex_scroll_after == product_codex_scroll_before), "product codex hover preview preserves scroll position when the page is scrollable")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "活体芯片") and _container_label_text_contains(menu_preview_box, "价格带") and _container_label_text_contains(menu_preview_box, "策略:"), "product codex hover preview shows the selected product strategy details")
-	main.call("_open_product_codex_detail", product_preview_index)
+	_request_compendium_page(main, "product", "detail", "catalog", product_preview_index)
 	await process_frame
 	var product_codex_back_button := _menu_overlay_node(main, "MenuBestiaryBackButton") as Button
 	_expect(menu_body_label != null and menu_body_label.text.contains("活体芯片"), "product detail opens on the currently selected trade product")
@@ -897,10 +897,10 @@ func _run() -> void:
 	_expect(menu_body_label != null and menu_body_label.text.contains("【商品卡】") and menu_body_label.text.contains("【市场面板】") and menu_body_label.text.contains("【策略面板】") and menu_body_label.text.contains("【金融与天气】") and menu_body_label.text.contains("【生态与卡牌】"), "product detail uses TCG-style readable strategy sections")
 	_expect(menu_body_label != null and menu_body_label.text.contains("商品相关城市线索"), "product codex can filter city clues by product")
 	_expect(product_codex_back_button != null and product_codex_back_button.text == "返回缩略图" and menu_bestiary_prev_button != null and menu_bestiary_prev_button.visible and menu_bestiary_next_button != null and menu_bestiary_next_button.visible, "product detail exposes previous/next and a return-to-thumbnails button")
-	main.call("_back_from_catalog_menu")
+	_emit_compendium_back(main)
 	await process_frame
 	_expect(menu_body_label != null and menu_body_label.text.contains("商品目录｜"), "product detail can return to the thumbnail grid")
-	main.call("_open_region_codex_menu", buildable_district)
+	_request_compendium_page(main, "region", "detail", "region:%d" % buildable_district, buildable_district)
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "区域图鉴", "region codex opens from the compendium")
 	_expect_runtime_map_focus_target(main, buildable_district, "region codex jump rotates the central planet to the opened region")
@@ -1167,7 +1167,7 @@ func _role_catalog_has_positive_cards(main: Node) -> bool:
 		var tags := _as_array(role.get("balance_tags", []))
 		if int(role.get("balance_budget", 0)) <= 0 or _as_array(role.get("balance_drivers", [])).is_empty() or tags.is_empty():
 			return false
-		var snapshot := main.call("_role_codex_public_snapshot", role, role_index, role_count) as Dictionary
+		var snapshot := _runtime_coordinator(main).call("role_codex_public_snapshot", role_index, {}) as Dictionary
 		var board := snapshot.get("board", {}) as Dictionary
 		if not str(snapshot.get("summary_text", "")).contains(role_name) \
 			or str(snapshot.get("route_label", "")).strip_edges() == "" \
@@ -1193,11 +1193,11 @@ func _role_card_art_exposes_runtime_triggers(main: Node) -> bool:
 	var military_limit_role := {}
 	if military_limit_role_index >= 0:
 		military_limit_role = main.call("_make_player_role_card", 0, military_limit_role_index) as Dictionary
-	var bonus_snapshot := main.call("_role_codex_public_snapshot", bonus_card_role, 0, 1) as Dictionary
-	var resource_snapshot := main.call("_role_codex_public_snapshot", resource_role, 0, 1) as Dictionary
-	var upgrade_snapshot := main.call("_role_codex_public_snapshot", upgrade_role, 0, 1) as Dictionary
-	var monster_limit_snapshot := main.call("_role_codex_public_snapshot", monster_limit_role, 0, 1) as Dictionary
-	var military_limit_snapshot := main.call("_role_codex_public_snapshot", military_limit_role, 0, 1) as Dictionary
+	var bonus_snapshot := _runtime_coordinator(main).call("role_codex_public_snapshot", 0, {}) as Dictionary
+	var resource_snapshot := _runtime_coordinator(main).call("role_codex_public_snapshot", 1, {}) as Dictionary
+	var upgrade_snapshot := _runtime_coordinator(main).call("role_codex_public_snapshot", 3, {}) as Dictionary
+	var monster_limit_snapshot := _runtime_coordinator(main).call("role_codex_public_snapshot", monster_limit_role_index, {}) as Dictionary
+	var military_limit_snapshot := _runtime_coordinator(main).call("role_codex_public_snapshot", military_limit_role_index, {}) as Dictionary
 	var bonus_identity := bonus_snapshot.get("board", {}) as Dictionary
 	return String(bonus_identity.get("title_tooltip", "")).contains("公开身份牌") \
 		and String(bonus_snapshot.get("economy_line", "")).contains("环晶电池区域购牌+1") \
@@ -4341,8 +4341,9 @@ func _verify_news_and_weather_card_rules(main: Node) -> bool:
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
 	var news_skill := main.call("_make_skill", "热搜推送1") as Dictionary
 	var weather_skill := {"weather_type": "ion_storm", "source_type": "card", "effect": "weather_control"}
-	ok = ok and String(main.call("_card_codex_filter_label", "news")) == "新闻事件"
-	ok = ok and String(main.call("_card_codex_filter_label", "weather")) == "天气干预"
+	var public_codex_source := _card_codex_public_source_service(main)
+	ok = ok and public_codex_source != null and _as_array(public_codex_source.call("ordered_card_ids", "news")).is_empty()
+	ok = ok and public_codex_source != null and _as_array(public_codex_source.call("ordered_card_ids", "weather")).is_empty()
 	ok = ok and _card_presentation_category_id(main, news_skill) == "news"
 	ok = ok and _card_presentation_text(main, news_skill, "strategy_route_label").contains("新闻信息战")
 	var news_plan := runtime_coordinator.call("plan_card_economy_product_route_effect", {
@@ -4822,7 +4823,7 @@ func _card_rank_power_score(main: Node, skill_name: String) -> float:
 
 
 func _verify_card_rank_ladders_are_complete(main: Node) -> bool:
-	var names := _as_array(main.call("_card_codex_names", "all"))
+	var names := _runtime_card_catalog_ids(main)
 	var checked := 0
 	for name_variant in names:
 		var base_name := String(name_variant)
@@ -5145,7 +5146,7 @@ func _verify_direct_player_interaction_cards(_main: Node) -> bool:
 		"产权冻结": "city_control_dispute",
 		"轨道齐射": "global_barrage",
 	}
-	var interaction_names := _as_array(main.call("_card_codex_names", "interaction"))
+	var interaction_names := _runtime_card_catalog_ids(main, "interaction")
 	var run_pool := _as_array(main.call("_current_run_card_pool"))
 	for family_variant in families.keys():
 		var family := String(family_variant)
@@ -5773,7 +5774,7 @@ func _all_card_supply_entries_are_base_rank(main: Node, districts: Array) -> boo
 		if skill_name != "" and _skill_rank(skill_name) != 1:
 			print("Non-base card in run market: %s" % skill_name)
 			return false
-	for name_variant in _as_array(main.call("_card_codex_names", "all")):
+	for name_variant in _runtime_card_catalog_ids(main):
 		var card_name := String(name_variant)
 		if card_name != "" and _skill_rank(card_name) != 1:
 			print("Non-base card in codex index: %s" % card_name)
@@ -7204,6 +7205,47 @@ func _menu_overlay_node(main: Node, node_name: String) -> Node:
 	return overlay.find_child(node_name, true, false)
 
 
+func _request_compendium_hub(main: Node) -> bool:
+	var application_flow_port := main.get_node_or_null("RuntimeServices/ApplicationFlowPort")
+	return application_flow_port != null and bool(application_flow_port.call("submit_action", "compendium"))
+
+
+func _request_compendium_page(
+	main: Node,
+	domain: String,
+	view: String,
+	stable_item_id: String,
+	optional_index: int,
+	filter_id: String = "",
+	return_target: String = "compendium",
+	origin: String = "compendium"
+) -> bool:
+	var navigation_port := main.get_node_or_null("RuntimeServices/CompendiumNavigationPort")
+	return navigation_port != null and bool(navigation_port.call(
+		"request_open", domain, view, stable_item_id, optional_index, filter_id, 0,
+		return_target, {"origin": origin}
+	))
+
+
+func _emit_compendium_action(main: Node, action_id: String, payload: Dictionary) -> void:
+	var overlay := main.get("menu_overlay") as Node
+	var surface := overlay.call("get_codex_surface") as Node if overlay != null and overlay.has_method("get_codex_surface") else null
+	if surface != null:
+		surface.emit_signal("action_requested", action_id, payload.duplicate(true))
+
+
+func _emit_compendium_step(main: Node, delta: int) -> void:
+	var overlay := main.get("menu_overlay") as Node
+	if overlay != null:
+		overlay.emit_signal("catalog_step_requested", delta)
+
+
+func _emit_compendium_back(main: Node) -> void:
+	var overlay := main.get("menu_overlay") as Node
+	if overlay != null:
+		overlay.emit_signal("catalog_back_requested")
+
+
 func _container_has_named_node(container: Node, node_name: String) -> bool:
 	if String(container.name) == node_name:
 		return true
@@ -8349,6 +8391,20 @@ func _runtime_coordinator(main: Node) -> Node:
 	return coordinator
 
 
+func _runtime_card_catalog_ids(main: Node, category_id: String = "") -> Array:
+	var coordinator := _runtime_coordinator(main) as GameRuntimeCoordinator
+	var catalog := coordinator.card_runtime_catalog_service() if coordinator != null else null
+	var result: Array = catalog.ordered_card_ids() if catalog != null else []
+	if category_id == "":
+		return result
+	var filtered: Array = []
+	for card_id_variant: Variant in result:
+		var card_id := str(card_id_variant)
+		if _card_presentation_category_id(main, catalog.definition(card_id)) == category_id:
+			filtered.append(card_id)
+	return filtered
+
+
 func _visual_cue_array(main: Node, key: String) -> Array:
 	var coordinator := _runtime_coordinator(main)
 	var snapshot_variant: Variant = coordinator.call("visual_cue_public_snapshot") if coordinator != null else {}
@@ -8565,91 +8621,41 @@ func _city_has_single_goods(main: Node, district_index: int) -> bool:
 
 
 func _verify_card_codex_uses_unified_categories(main: Node) -> bool:
-	var monster_card := String(main.call("_monster_card_name", 0, 1))
-	var monster_names := _as_array(main.call("_card_codex_names", "monster"))
-	var monster_skill_names := _as_array(main.call("_card_codex_names", "monster_skill"))
-	var military_names := _as_array(main.call("_card_codex_names", "military"))
-	var interaction_names := _as_array(main.call("_card_codex_names", "interaction"))
-	var city_names := _as_array(main.call("_card_codex_names", "city"))
-	var commodity_names := _as_array(main.call("_card_codex_names", "commodity"))
-	var futures_names := _as_array(main.call("_card_codex_names", "futures"))
-	var finance_names := _as_array(main.call("_card_codex_names", "finance"))
-	var contract_names := _as_array(main.call("_card_codex_names", "contract"))
-	var business_alias_names := _as_array(main.call("_card_codex_names", "business"))
-	var economy_alias_names := _as_array(main.call("_card_codex_names", "economy"))
-	var all_names := _as_array(main.call("_card_codex_names", "all"))
-	var coordinator := _runtime_coordinator(main)
-	var monster_text := String((coordinator.call("card_codex_public_detail_snapshot", monster_card, 0, maxi(1, monster_names.size())) as Dictionary).get("summary_text", ""))
-	var contract_text := String((coordinator.call("card_codex_public_detail_snapshot", "区域供需合约1", 0, maxi(1, contract_names.size())) as Dictionary).get("summary_text", ""))
-	var district_supply_card := ""
-	var district_supply_index := -1
-	var districts := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts)
-	for district_index in range(districts.size()):
-		var district := districts[district_index] as Dictionary
-		var choices := _as_array(district.get("card_choices", []))
-		if not choices.is_empty():
-			district_supply_card = String(choices[0])
-			district_supply_index = district_index
-			break
-	var ok := true
-	var failures := []
-	if not monster_names.has(monster_card):
-		failures.append("monster")
-	if not monster_skill_names.has("移动1"):
-		failures.append("monster_skill")
-	if not military_names.has("制空战斗机1"):
-		failures.append("military")
-	if not interaction_names.has("相位否决1") or not interaction_names.has("星链拆解1"):
-		failures.append("interaction")
-	if not city_names.has("应急修复1"):
-		failures.append("city")
-	if not commodity_names.has("远期采购1"):
-		failures.append("commodity")
-	if not futures_names.has("商品看涨1") or not futures_names.has("港仓囤货1"):
-		failures.append("futures")
-	if not finance_names.has("城市买涨1") or not finance_names.has("城市做空1"):
-		failures.append("finance")
-	if not contract_names.has("区域供需合约1"):
-		failures.append("contract")
-	if not business_alias_names.has("区域供需合约1"):
-		failures.append("business_alias")
-	if not economy_alias_names.has("远期采购1") or not economy_alias_names.has("城市买涨1"):
-		failures.append("economy_alias")
-	if not all_names.has(monster_card) or not all_names.has("区域供需合约1"):
-		failures.append("all")
-	if String(main.call("_card_codex_filter_label", "monster")) != "怪兽牌":
-		failures.append("monster_label")
-	if String(main.call("_card_codex_filter_label", "monster_skill")) != "怪兽技能":
-		failures.append("monster_skill_label")
-	if String(main.call("_card_codex_filter_label", "military")) != "军队/军令":
-		failures.append("military_label")
-	if String(main.call("_card_codex_filter_label", "interaction")) != "玩家互动":
-		failures.append("interaction_label")
-	if String(main.call("_card_codex_filter_label", "futures")) != "商品期货":
-		failures.append("futures_label")
-	if String(main.call("_card_codex_filter_label", "finance")) != "金融/GDP":
-		failures.append("finance_label")
-	if String(main.call("_card_codex_filter_label", "business")) != "经营/合约":
-		failures.append("business_alias_label")
-	if not monster_text.contains("怪兽牌"):
-		failures.append("monster_text")
-	if not contract_text.contains("合约"):
-		failures.append("contract_text")
-	if district_supply_card == "" or String(main.call("_card_supply_layer_for_card", district_supply_card)) != "区域补给":
-		failures.append("district_supply_layer")
-	if district_supply_card != "":
-		var public_source := _card_codex_public_source_service(main)
-		var district_card_facts: Dictionary = public_source.call("compose_card_facts", district_supply_card, district_supply_index) if public_source != null else {}
-		var district_card_visible_name := String(district_card_facts.get("display_name", ""))
-		if district_card_visible_name == "" or not String(district_card_facts.get("detail_tooltip", "")).contains(district_card_visible_name):
-			failures.append("district_tooltip_preview")
-	if _card_presentation_category_id(main, _runtime_card_definition(main, "相位否决1")) != "interaction":
-		failures.append("phase_cancel_interaction_category")
-	if _card_presentation_category_id(main, _runtime_card_definition(main, "商品看涨1")) != "futures":
-		failures.append("futures_category")
-	if _card_presentation_category_id(main, _runtime_card_definition(main, "城市买涨1")) != "finance":
-		failures.append("finance_category")
-	ok = failures.is_empty()
+	var public_source := _card_codex_public_source_service(main)
+	if public_source == null:
+		return false
+	var all_names := _as_array(public_source.call("ordered_card_ids", "all"))
+	var labels := {}
+	for option_variant: Variant in _as_array(public_source.call("public_filter_options")):
+		if option_variant is Dictionary:
+			var option := option_variant as Dictionary
+			labels[str(option.get("id", ""))] = str(option.get("label", ""))
+	var expected_labels := {
+		"commodity": "商品牌", "facility": "公共设施", "supply_demand": "供需订单",
+		"monster": "怪兽单位", "military": "军队单位", "interaction": "玩家互动",
+		"organization": "组织升级",
+	}
+	var failures: Array[String] = []
+	for category_id_variant: Variant in expected_labels:
+		var category_id := str(category_id_variant)
+		var category_names := _as_array(public_source.call("ordered_card_ids", category_id))
+		if category_names.is_empty():
+			failures.append("%s_empty" % category_id)
+		if str(labels.get(category_id, "")) != str(expected_labels.get(category_id, "")):
+			failures.append("%s_label" % category_id)
+		for card_id_variant: Variant in category_names:
+			var card_id := str(card_id_variant)
+			var facts: Dictionary = public_source.call("compose_card_facts", card_id, all_names.find(card_id))
+			if not all_names.has(card_id) or str(facts.get("category_id", "")) != category_id:
+				failures.append("%s_membership" % category_id)
+				break
+			if str(facts.get("supply_layer", "")) not in ["商品带免费领取", "全局普通牌市场"]:
+				failures.append("%s_supply_semantics" % category_id)
+				break
+	for retired_filter in ["monster_skill", "city", "futures", "finance", "contract", "business", "economy", "news", "weather"]:
+		if not _as_array(public_source.call("ordered_card_ids", retired_filter)).is_empty():
+			failures.append("retired_filter_%s" % retired_filter)
+	var ok := failures.is_empty() and not all_names.is_empty()
 	if not failures.is_empty():
 		print("Card codex category failures: %s" % " / ".join(failures))
 	return ok

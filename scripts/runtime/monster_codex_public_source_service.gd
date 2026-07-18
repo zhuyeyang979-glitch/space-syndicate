@@ -82,6 +82,28 @@ func compose_snapshot(catalog_index: int, selected: bool = false) -> Dictionary:
 	return result
 
 
+func public_catalog_count() -> int:
+	if not _require_ready():
+		return 0
+	var value: Variant = _monster.call("monster_codex_public_catalog_summary_v06")
+	var summary := value as Dictionary if value is Dictionary else {}
+	return maxi(0, int(summary.get("catalog_count", 0)))
+
+
+func stable_item_id_at(catalog_index: int) -> String:
+	return "monster:%d" % catalog_index if catalog_index >= 0 and catalog_index < public_catalog_count() else ""
+
+
+func index_for_stable_item_id(item_id: String) -> int:
+	if not item_id.begins_with("monster:"):
+		return -1
+	var suffix := item_id.trim_prefix("monster:")
+	if not suffix.is_valid_int():
+		return -1
+	var catalog_index := int(suffix)
+	return catalog_index if catalog_index >= 0 and catalog_index < public_catalog_count() else -1
+
+
 func compose_browser_source(request: Dictionary) -> Dictionary:
 	if not _require_ready() or not bool(_adapter.call("accepts_public_input", request)):
 		_last_error = "browser_request_rejected"

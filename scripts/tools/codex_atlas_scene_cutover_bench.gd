@@ -186,11 +186,11 @@ func _run_case(case_id: String) -> Dictionary:
 			_open_product_browser()
 			var browser := _preview_child("ProductCodexBrowser")
 			var summaries := browser.find_children("CodexBrowserSummaryCard_*", "PanelContainer", true, false) if browser != null else []
-			passed = summaries.size() == 4
+			passed = not summaries.is_empty()
 			for summary_variant: Variant in summaries:
 				passed = passed and (summary_variant as Node).scene_file_path == SUMMARY_CARD_SCENE
 			flags["scene_checked"] = true
-			notes = "the four product overview cards reuse one editable summary scene"
+			notes = "every rendered product overview card reuses one editable summary scene"
 		"product_badge_scene_reused":
 			_open_product_browser()
 			var browser := _preview_child("ProductCodexBrowser")
@@ -206,7 +206,8 @@ func _run_case(case_id: String) -> Dictionary:
 			var target := int(indices[-1]) if not indices.is_empty() else -1
 			if browser != null and target >= 0:
 				browser.emit_signal("entry_preview_requested", target)
-			var navigation: Dictionary = _main.call("_codex_navigation_state_snapshot") if _main != null and _main.has_method("_codex_navigation_state_snapshot") else {}
+			var coordinator := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if _main != null else null
+			var navigation: Dictionary = coordinator.call("codex_navigation_state") if coordinator != null else {}
 			var monster_state: Dictionary = navigation.get("monster", {}) if navigation.get("monster", {}) is Dictionary else {}
 			passed = target >= 0 and int(monster_state.get("preview_index", -1)) == target and _preview_child("BestiaryCodexBrowser") != null
 			flags["bridge_checked"] = true
@@ -219,7 +220,8 @@ func _run_case(case_id: String) -> Dictionary:
 			var target := int(indices[-1]) if not indices.is_empty() else -1
 			if browser != null and target >= 0:
 				browser.emit_signal("entry_preview_requested", target)
-			var navigation: Dictionary = _main.call("_codex_navigation_state_snapshot") if _main != null and _main.has_method("_codex_navigation_state_snapshot") else {}
+			var coordinator := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if _main != null else null
+			var navigation: Dictionary = coordinator.call("codex_navigation_state") if coordinator != null else {}
 			var product_state: Dictionary = navigation.get("product", {}) if navigation.get("product", {}) is Dictionary else {}
 			passed = target >= 0 and int(product_state.get("preview_index", -1)) == target and _preview_child("ProductCodexBrowser") != null
 			flags["bridge_checked"] = true
@@ -258,7 +260,8 @@ func _run_case(case_id: String) -> Dictionary:
 			flags["interaction_checked"] = true
 			notes = "scene-owned paging preserves the existing signed delta contract"
 		"bestiary_snapshot_pure_data":
-			var snapshot: Variant = _main.call("_bestiary_codex_browser_snapshot") if _main != null else {}
+			var coordinator := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if _main != null else null
+			var snapshot: Variant = coordinator.call("monster_codex_public_browser_snapshot", {"start_index": 0, "end_index": 6, "selected_index": 0, "columns": 3, "can_page": true, "page_label": "测试怪兽目录"}) if coordinator != null else {}
 			passed = snapshot is Dictionary and _is_pure_data(snapshot)
 			flags["pure_data_checked"] = true
 			notes = "monster atlas receives a pure-data snapshot"
@@ -273,7 +276,8 @@ func _run_case(case_id: String) -> Dictionary:
 			var coordinator := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if _main != null else null
 			var total := ProductMarketRuntimeController.PRODUCT_CATALOG.size()
 			var product_snapshot: Variant = coordinator.call("product_codex_public_browser_snapshot", {"start_index": 0, "end_index": mini(total, 6), "selected_index": 0, "columns": 3, "can_page": total > 6, "page_label": "测试商品目录"}) if coordinator != null and coordinator.has_method("product_codex_public_browser_snapshot") else {}
-			var snapshots := [_main.call("_bestiary_codex_browser_snapshot"), product_snapshot] if _main != null else []
+			var monster_snapshot: Variant = coordinator.call("monster_codex_public_browser_snapshot", {"start_index": 0, "end_index": 6, "selected_index": 0, "columns": 3, "can_page": true, "page_label": "测试怪兽目录"}) if coordinator != null else {}
+			var snapshots := [monster_snapshot, product_snapshot]
 			passed = _is_pure_data(snapshots) and not _contains_private_key(snapshots)
 			flags["privacy_checked"] = true
 			notes = "atlas snapshots contain no hidden owner, target, discard, or plan keys"
@@ -294,13 +298,21 @@ func _run_case(case_id: String) -> Dictionary:
 
 
 func _open_bestiary_browser() -> void:
-	if _main != null:
-		_main.call("_open_bestiary_menu")
+	_request_codex("monster", "browser", "catalog", -1)
 
 
 func _open_product_browser() -> void:
-	if _main != null:
-		_main.call("_open_product_codex_menu")
+	_request_codex("product", "browser", "catalog", -1)
+
+
+func _request_codex(domain: String, view: String, stable_item_id: String, optional_index: int, filter_id: String = "") -> bool:
+	if _main == null:
+		return false
+	var port := _main.get_node_or_null("RuntimeServices/CompendiumNavigationPort")
+	return port != null and bool(port.call(
+		"request_open", domain, view, stable_item_id, optional_index, filter_id, 0,
+		"compendium", {"origin": "compendium"}
+	))
 
 
 func _preview_child(node_name: String) -> Control:

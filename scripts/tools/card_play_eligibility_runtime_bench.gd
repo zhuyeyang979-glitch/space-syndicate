@@ -364,7 +364,7 @@ func _skill_for_spec(spec: Dictionary) -> Dictionary:
 
 
 func _real_skill_for_kind(kind: String) -> Dictionary:
-	var names_variant: Variant = _runtime_main.call("_card_codex_names", "all")
+	var names_variant: Variant = (_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).card_runtime_catalog_service().ordered_card_ids()
 	var names: Array = names_variant if names_variant is Array else []
 	for name_variant in names:
 		var value: Variant = _runtime_main.call("_make_skill", str(name_variant))

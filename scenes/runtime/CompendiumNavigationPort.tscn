@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/compendium_navigation_port.gd" id="1_port"]
+
+[node name="CompendiumNavigationPort" type="Node"]
+script = ExtResource("1_port")
+editor_description = "Typed, fail-closed request boundary for read-only Compendium navigation. It owns request validation and exact-once emission, never catalog/page state."

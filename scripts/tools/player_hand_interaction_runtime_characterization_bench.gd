@@ -915,7 +915,7 @@ func _skills(card_ids: Array) -> Array:
 func _generic_card_ids(count: int) -> Array:
 	var result: Array = []
 	var families: Array[String] = []
-	var names_variant: Variant = _runtime_main.call("_card_codex_names", "all")
+	var names_variant: Variant = (_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).card_runtime_catalog_service().ordered_card_ids()
 	var names: Array = names_variant if names_variant is Array else []
 	for name_variant in names:
 		var card_id := str(_runtime_main.call("_canonical_card_supply_name", str(name_variant)))

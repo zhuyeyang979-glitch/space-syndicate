@@ -3,6 +3,7 @@ class_name SpaceSyndicateMenuRootLobby
 
 signal action_requested(action_id: String)
 signal rules_requested()
+signal compendium_requested()
 
 @onready var title_label: Label = %MainMenuLobbyTitle
 @onready var status_label: Label = %MainMenuLobbyStatus
@@ -203,6 +204,8 @@ func _action_button(entry: Dictionary, accent: Color, primary: bool) -> Button:
 		_buttons_by_id[action_id] = button
 		if action_id == "rules":
 			button.pressed.connect(_emit_rules)
+		elif action_id == "compendium":
+			button.pressed.connect(_emit_compendium)
 		else:
 			button.pressed.connect(_emit_action.bind(action_id))
 	return button
@@ -233,6 +236,10 @@ func _emit_action(action_id: String) -> void:
 
 func _emit_rules() -> void:
 	rules_requested.emit()
+
+
+func _emit_compendium() -> void:
+	compendium_requested.emit()
 
 
 func _style_button(button: Button, accent: Color, active: bool) -> void:

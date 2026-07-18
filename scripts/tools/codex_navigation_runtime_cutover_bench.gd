@@ -251,32 +251,30 @@ func _run_case(case_id: String) -> Dictionary:
 			flags["pure_data_checked"] = true
 			notes = "GameRuntimeCoordinator exposes only duplicated pure-data navigation snapshots"
 		"real_main_controller_composition":
-			var snapshot: Dictionary = _main.call("_runtime_composition_snapshot") if _main != null else {}
-			var coordinator_snapshot: Dictionary = snapshot.get("game_runtime_coordinator", {}) if snapshot.get("game_runtime_coordinator", {}) is Dictionary else {}
-			var navigation_snapshot: Dictionary = coordinator_snapshot.get("codex_navigation_runtime", {}) if coordinator_snapshot.get("codex_navigation_runtime", {}) is Dictionary else {}
-			passed = bool(snapshot.get("codex_navigation_runtime_controller_found", false)) and bool(navigation_snapshot.get("controller_authoritative", false)) and not bool(navigation_snapshot.get("legacy_main_authority_active", true))
+			var main_controller := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CodexNavigationRuntimeController") if _main != null else null
+			var navigation_snapshot: Dictionary = main_controller.call("debug_snapshot") if main_controller != null else {}
+			passed = main_controller != null and main_controller.scene_file_path == CONTROLLER_SCENE and bool(navigation_snapshot.get("controller_authoritative", false)) and not bool(navigation_snapshot.get("legacy_main_authority_active", true))
 			flags["main_checked"] = true
 			notes = "real main reports the scene-owned navigation authority active"
 		"real_main_catalog_routes_delegate":
-			if _main != null:
-				_main.call("_open_bestiary_menu", 1)
-				_main.call("_open_product_codex_menu", 1)
-				_main.call("_open_card_codex_menu", 0)
-			var snapshot: Dictionary = _main.call("_codex_navigation_state_snapshot") if _main != null else {}
+			_request_codex("monster", "detail", "catalog", 1)
+			_request_codex("product", "detail", "catalog", 1)
+			_request_codex("card", "detail", "catalog", 0, "all")
+			var coordinator := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if _main != null else null
+			var snapshot: Dictionary = coordinator.call("codex_navigation_state") if coordinator != null else {}
 			passed = str(snapshot.get("catalog_mode", "")) == "card" and int((snapshot.get("monster", {}) as Dictionary).get("selected_index", -1)) == 1 and int((snapshot.get("product", {}) as Dictionary).get("selected_index", -1)) == 1 and bool((snapshot.get("card", {}) as Dictionary).get("show_detail", false))
 			flags["routing_checked"] = true
 			flags["main_checked"] = true
-			notes = "existing open routes mutate controller state while retaining scene renderers"
+			notes = "typed scene-owned requests mutate only the navigation owner while retaining scene renderers"
 		"real_main_v1_save_adapter_parity":
-			var captured: Dictionary = _main.call("_capture_run_domain_state_compatibility_adapter") if _main != null else {}
 			var coordinator := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if _main != null else null
 			var legacy: Dictionary = coordinator.call("codex_navigation_legacy_save_snapshot") if coordinator != null else {}
-			passed = not captured.is_empty()
-			for key in LEGACY_SAVE_KEYS:
-				passed = passed and captured.get(key) == legacy.get(key)
+			var main_controller := coordinator.get_node_or_null("CodexNavigationRuntimeController") if coordinator != null else null
+			var owner_legacy: Dictionary = main_controller.call("to_legacy_save_snapshot") if main_controller != null else {}
+			passed = not legacy.is_empty() and legacy == owner_legacy and not _main_source.contains("func _capture_run_domain_state_compatibility_adapter(")
 			flags["persistence_checked"] = true
 			flags["main_checked"] = true
-			notes = "real v1 save capture merges controller-owned navigation under unchanged keys"
+			notes = "legacy navigation shape remains controller-owned without a Main capture adapter"
 		"legacy_authority_and_helpers_absent":
 			passed = true
 			for variable_name in RETIRED_STATE_VARIABLES:
@@ -297,6 +295,16 @@ func _record(case_id: String, passed: bool, notes: String, flags: Dictionary = {
 	var record := {"case_id": case_id, "controller_checked": false, "main_checked": false, "state_checked": false, "pagination_checked": false, "persistence_checked": false, "routing_checked": false, "privacy_checked": false, "pure_data_checked": false, "deletion_checked": false, "passed": passed, "notes": notes}
 	record.merge(flags, true)
 	return record
+
+
+func _request_codex(domain: String, view: String, stable_item_id: String, optional_index: int, filter_id: String = "") -> bool:
+	if _main == null:
+		return false
+	var port := _main.get_node_or_null("RuntimeServices/CompendiumNavigationPort")
+	return port != null and bool(port.call(
+		"request_open", domain, view, stable_item_id, optional_index, filter_id, 0,
+		"compendium", {"origin": "compendium"}
+	))
 
 
 func _is_pure_data(value: Variant) -> bool:

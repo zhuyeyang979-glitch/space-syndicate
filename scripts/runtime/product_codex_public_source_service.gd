@@ -122,6 +122,22 @@ func compose_browser_snapshot(request: Dictionary) -> Dictionary:
 	return _compose_browser(request, true)
 
 
+func ordered_product_ids() -> Array[String]:
+	var result: Array[String] = []
+	for product_variant: Variant in ProductMarketRuntimeController.PRODUCT_CATALOG:
+		result.append(str(product_variant))
+	return result
+
+
+func resolve_product_id(product_identity: String) -> String:
+	var identity := product_identity.strip_edges()
+	return identity if ProductMarketRuntimeController.PRODUCT_CATALOG.has(identity) else ""
+
+
+func index_by_product_id(product_id: String) -> int:
+	return ProductMarketRuntimeController.PRODUCT_CATALOG.find(resolve_product_id(product_id))
+
+
 func public_field_schema() -> Dictionary:
 	var value: Variant = _adapter.call("public_field_schema")
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
