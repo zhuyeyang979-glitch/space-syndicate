@@ -280,7 +280,7 @@ func _test_main_negative_surface() -> void:
 	for method_name in RETIRED_MAIN_METHODS:
 		if main_source.contains("func %s(" % method_name):
 			offenders.append(method_name)
-	_expect(offenders.is_empty(), "retired_main_compendium_methods_are_physically_absent|offenders=%s" % offenders)
+	_expect(offenders.is_empty(), "retired_main_compendium_methods_are_physically_absent|offenders=%s" % [offenders])
 	_expect(not main_source.contains("CompendiumHubSnapshotScript") and not main_source.contains("PLAYER_ROLE_CATALOG"), "main_has_no_compendium_hub_or_role_catalog_copy")
 	_expect(scene_source.contains('signal="compendium_requested"') and scene_source.contains('to="RuntimeServices/CompendiumApplicationFlowController" method="open_hub"'), "dedicated_compendium_signal_is_scene_composed")
 	_expect(scene_source.contains('signal="catalog_step_requested"') and scene_source.contains('signal="catalog_back_requested"') and scene_source.contains('signal="codex_action_requested"'), "all_codex_surface_signals_target_scene_owned_flow")
