@@ -127,23 +127,26 @@ func handle_surface_action(action_id: String, payload: Dictionary) -> bool:
 		"hub_action":
 			var domain := str(payload.get("action_id", ""))
 			if domain == "main": return _route_return("main")
-			if domain == "role": return port.request_open("role", "detail", "catalog", 0, "", 0, "compendium", {"origin": "compendium"})
-			if domain == "region": return port.request_open("region", "detail", "catalog", 0, "", 0, "compendium", {"origin": "compendium"})
-			return port.request_open(domain, "browser", "catalog", -1, "all" if domain == "card" else "", 0, "compendium", {"origin": "compendium"})
+			var hub_context := {"origin": "compendium", "push_current": true}
+			if domain == "role": return port.request_open("role", "detail", "catalog", 0, "", 0, return_target, hub_context)
+			if domain == "region": return port.request_open("region", "detail", "catalog", 0, "", 0, return_target, hub_context)
+			return port.request_open(domain, "browser", "catalog", -1, "all" if domain == "card" else "", 0, return_target, hub_context)
 		"card_filter": return port.request_open("card", "browser", "catalog", -1, str(payload.get("filter_id", "")), 0, return_target, {"origin": "card"})
 		"card_page_step": return port.request_open("card", "browser", "catalog", -1, str((current.get("card", {}) as Dictionary).get("filter_id", "all")), int(payload.get("delta", 0)), return_target, {"origin": "card"})
 		"card_preview", "card_detail":
 			var card_view := "preview" if action_id == "card_preview" else "detail"
-			return port.request_open("card", card_view, str(payload.get("card_name", "")), -1, str((current.get("card", {}) as Dictionary).get("filter_id", "all")), 0, return_target, {"origin": "card"})
+			return port.request_open("card", card_view, str(payload.get("card_name", "")), -1, str((current.get("card", {}) as Dictionary).get("filter_id", "all")), 0, return_target, _detail_transition_context(current, "card", card_view))
 		"card_deep_link": return port.request_open("card", "detail", str(payload.get("card_name", "")), -1, "all", 0, return_target, {"origin": "monster", "push_current": true})
 		"monster_page_step": return port.request_open("monster", "browser", "catalog", -1, "", int(payload.get("delta", 0)), return_target, {"origin": "monster"})
 		"monster_preview", "monster_detail":
 			var monster_index := int(payload.get("catalog_index", -1))
-			return port.request_open("monster", "preview" if action_id == "monster_preview" else "detail", "monster:%d" % monster_index, monster_index, "", 0, return_target, {"origin": "monster"})
+			var monster_view := "preview" if action_id == "monster_preview" else "detail"
+			return port.request_open("monster", monster_view, "monster:%d" % monster_index, monster_index, "", 0, return_target, _detail_transition_context(current, "monster", monster_view))
 		"product_page_step": return port.request_open("product", "browser", "catalog", -1, "", int(payload.get("delta", 0)), return_target, {"origin": "product"})
 		"product_preview", "product_detail":
 			var product_index := int(payload.get("catalog_index", -1))
-			return port.request_open("product", "preview" if action_id == "product_preview" else "detail", "catalog", product_index, "", 0, return_target, {"origin": "product"})
+			var product_view := "preview" if action_id == "product_preview" else "detail"
+			return port.request_open("product", product_view, "catalog", product_index, "", 0, return_target, _detail_transition_context(current, "product", product_view))
 	return false
 
 
@@ -232,6 +235,13 @@ func _quick_nav_entries() -> Array:
 		{"id": "rules", "label": "规则", "tooltip": "查看当前规则。", "accent": Color("#93c5fd")},
 		{"id": "compendium", "label": "图鉴", "tooltip": "查看资料库。", "accent": Color("#f472b6")},
 	]
+
+
+func _detail_transition_context(navigation: Dictionary, domain: String, target_view: String) -> Dictionary:
+	var context := {"origin": domain}
+	if target_view == "detail" and str(navigation.get("catalog_mode", "")) == domain and str(navigation.get("current_view", "")) == "browser":
+		context["push_current"] = true
+	return context
 
 
 func _menu_overlay() -> SpaceSyndicateMenuOverlay: return get_node_or_null(menu_overlay_path) as SpaceSyndicateMenuOverlay
