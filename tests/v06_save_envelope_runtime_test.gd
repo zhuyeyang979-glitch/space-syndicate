@@ -146,7 +146,16 @@ func _test_roundtrip_replay_and_session_lifecycle() -> void:
 	_expect(bool(session_write.get("ok", false)) and (lifecycle.get("active", {}) as Dictionary).is_empty() and str((lifecycle.get("last", {}) as Dictionary).get("state", "")) == "complete", "GameSession owns only write operation lifecycle")
 	var session_read: Dictionary = _session.call("request_load", session_path)
 	lifecycle = _session.call("operation_lifecycle_snapshot")
-	_expect(bool(session_read.get("ok", false)) and (lifecycle.get("active", {}) as Dictionary).is_empty() and str((lifecycle.get("last", {}) as Dictionary).get("kind", "")) == "read", "GameSession owns only read operation lifecycle")
+	_expect(
+		not bool(session_read.get("ok", true))
+				and not bool(session_read.get("applied", true))
+				and int(session_read.get("registry_apply_count", 0)) == 1
+				and str(session_read.get("reason_code", "")) == "owner_registry_invalid"
+				and (lifecycle.get("active", {}) as Dictionary).is_empty()
+				and str((lifecycle.get("last", {}) as Dictionary).get("kind", "")) == "read"
+				and str((lifecycle.get("last", {}) as Dictionary).get("state", "")) == "failed",
+		"GameSession owns failed registry read/apply operation lifecycle"
+	)
 
 
 func _test_atomic_failure_matrix() -> void:

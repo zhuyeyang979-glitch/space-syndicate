@@ -652,7 +652,7 @@
         "res://tests/card_history_public_annotation_test.gd",
         "res://tests/session_envelope_save_owner_test.gd"
       ],
-      "old_path_deleted": false,
+      "old_path_deleted": true,
       "duplicate_execution_checked": true,
       "commit_sha": "UNCOMMITTED",
       "status": "cut_over"
