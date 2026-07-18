@@ -1,14 +1,17 @@
 extends RefCounted
 class_name PublicPlayerSeatSnapshot
 
-const LAYOUTS := {
-	3: [&"bottom", &"left_mid", &"right_mid"],
-	4: [&"bottom", &"left_mid", &"top", &"right_mid"],
-	5: [&"bottom", &"left_high", &"left_low", &"right_high", &"right_low"],
-	6: [&"bottom", &"left_high", &"left_low", &"top", &"right_high", &"right_low"],
-	7: [&"bottom", &"left_high", &"left_mid", &"left_low", &"right_high", &"right_mid", &"right_low"],
-	8: [&"bottom", &"left_high", &"left_mid", &"left_low", &"top", &"right_high", &"right_mid", &"right_low"],
-}
+const STABLE_SEAT_POSITIONS := [
+	&"left_low",
+	&"right_low",
+	&"left_mid_low",
+	&"right_mid_low",
+	&"left_mid_high",
+	&"right_mid_high",
+	&"left_high",
+	&"right_high",
+]
+const LOCAL_PRESENTATION_SCALE := 1.10
 
 const ALLOWED_SOURCE_KEYS := [
 	"player_index",
@@ -28,23 +31,24 @@ func compose(source_entries: Array) -> Array:
 		return []
 	var local_offset := _local_source_offset(sanitized)
 	var ordered := _rotate_local_first(sanitized, local_offset)
-	var positions: Array = LAYOUTS.get(ordered.size(), [])
+	var positions: Array = STABLE_SEAT_POSITIONS.slice(0, ordered.size())
 	var result: Array = []
 	for index in range(mini(ordered.size(), positions.size())):
 		var source: Dictionary = ordered[index]
 		var seat_position: StringName = positions[index]
 		var descriptor := {
+			"seat_index": index,
 			"player_index": int(source.get("player_index", index)),
 			"public_player_name": str(source.get("public_player_name", "玩家%d" % (index + 1))),
 			"role_name": str(source.get("role_name", "外星辛迪加")),
 			"player_color": _as_color(source.get("player_color", Color.WHITE)),
 			"seat_position": seat_position,
-			"portrait_variant": &"front" if seat_position in [&"bottom", &"top"] else &"side_inward",
+			"portrait_variant": &"side_inward",
 			"mirror_h": str(seat_position).begins_with("right_"),
 			"is_local_player": index == 0,
 			"public_status": _public_status(source.get("public_status", &"waiting")),
 			"is_publicly_active": bool(source.get("is_publicly_active", false)) and not bool(source.get("public_activity_is_anonymous", false)),
-			"visual_scale": _visual_scale(seat_position),
+			"visual_scale": LOCAL_PRESENTATION_SCALE if index == 0 else 1.0,
 			"depth_group": _depth_group(seat_position),
 		}
 		result.append(descriptor)
@@ -86,17 +90,7 @@ func _rotate_local_first(entries: Array, local_offset: int) -> Array:
 
 
 func _depth_group(seat_position: StringName) -> StringName:
-	return &"back" if seat_position in [&"top", &"left_high", &"right_high"] else &"front"
-
-
-func _visual_scale(seat_position: StringName) -> float:
-	if seat_position == &"top":
-		return 0.84
-	if seat_position in [&"left_high", &"right_high"]:
-		return 0.90
-	if seat_position in [&"left_mid", &"right_mid"]:
-		return 0.96
-	return 1.0
+	return &"front"
 
 
 func _public_status(value: Variant) -> StringName:

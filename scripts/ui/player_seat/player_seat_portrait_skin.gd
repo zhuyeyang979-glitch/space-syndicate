@@ -109,6 +109,7 @@ func public_debug_snapshot() -> Dictionary:
 		"depth_class": _depth_class,
 		"public_actor_highlighted": _is_publicly_active and not _anonymous_action_active,
 		"anonymous_action_suppresses_highlight": _anonymous_action_active,
+		"local_marker_visible": _is_local_player and is_instance_valid(public_status_badge) and public_status_badge.visible and public_status_badge.text.contains("你"),
 		"mouse_filter": mouse_filter,
 		"owns_layout": false,
 		"owns_player_mapping": false,
@@ -219,18 +220,18 @@ func _status_from_view_model(view_model: Dictionary) -> String:
 
 func _status_label() -> String:
 	if _anonymous_action_active and _public_status == STATUS_PUBLIC_ACTOR:
-		return ""
+		return "你" if _is_local_player else ""
+	var status_text := ""
 	match _public_status:
 		STATUS_WAITING:
-			return "等待"
+			status_text = "等待"
 		STATUS_PUBLIC_ACTOR:
-			return "公开行动" if not _anonymous_action_active else ""
+			status_text = "行动" if not _anonymous_action_active else ""
 		STATUS_BANKRUPT:
-			return "已破产"
+			status_text = "已破产"
 		STATUS_DISCONNECTED:
-			return "离线"
-		_:
-			return ""
+			status_text = "离线"
+	return "你｜%s" % status_text if _is_local_player and not status_text.is_empty() else ("你" if _is_local_player else status_text)
 
 
 func _portrait_view() -> String:

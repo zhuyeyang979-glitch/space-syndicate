@@ -2,9 +2,9 @@
 
 ## Purpose
 
-The production planet table owns one public player-seat presentation host for 3–8 seats. It maps public player identity and role state around the existing planet without changing the map size, intercepting map input, or exposing private game state.
+The production planet table owns one public player-seat presentation host for every supported 3–8 player count. It maps public player identity and role state into stable columns beside the planet without changing the map size, intercepting map input, or exposing private game state.
 
-The host is ready to consume the future scene:
+The host consumes the production scene:
 
 `res://scenes/ui/player_seat/PlayerSeatPortraitSkin.tscn`
 
@@ -17,7 +17,7 @@ The host never reads portrait PNG paths or an art manifest.
 - Planet/map layer: `/GameScreen/SafeArea/MainRows/TableArea/PlanetBoard/PlanetRows/PlanetStageViewport/MapHost`
 - Front presentation layer: `/GameScreen/SafeArea/MainRows/TableArea/PlanetBoard/PlanetRows/PlanetStageViewport/FrontSeatLayer`
 
-`RoleSeatLayerHost` owns the two presentation layers through exported `NodePath` bindings. The layers are siblings in the production scene so their tree order can place top/high seats behind the opaque planet disc and lower/bottom seats in front without using global `z_index`.
+`RoleSeatLayerHost` owns the two presentation layers through exported `NodePath` bindings. All supported seats use the front presentation layer and remain outside the planet input rectangle. The back layer remains in the scene contract for non-seat presentation compatibility.
 
 All host and seat presentation controls use `MOUSE_FILTER_IGNORE`.
 
@@ -40,6 +40,7 @@ The public source does not forward cash, hand or discard information, hidden own
 `PublicPlayerSeatSnapshot` emits only:
 
 - `player_index`
+- `seat_index`
 - `public_player_name`
 - `role_name`
 - `player_color`
@@ -56,20 +57,22 @@ When an action is anonymous, `public_activity_is_anonymous` suppresses `is_publi
 
 ## Seat mapping
 
-The local player is rotated to the first descriptor and fixed at `bottom`.
+The authorized local player is rotated to descriptor seat zero and fixed at `left_low`. Later player counts only append slots, so existing seat indices never change side:
 
-| Seats | Clockwise presentation order from local player |
+| Seat index | Stable slot |
 | --- | --- |
-| 3 | bottom, left_mid, right_mid |
-| 4 | bottom, left_mid, top, right_mid |
-| 5 | bottom, left_high, left_low, right_high, right_low |
-| 6 | bottom, left_high, left_low, top, right_high, right_low |
-| 7 | bottom, left_high, left_mid, left_low, right_high, right_mid, right_low |
-| 8 | bottom, left_high, left_mid, left_low, top, right_high, right_mid, right_low |
+| 0 | left_low (local) |
+| 1 | right_low |
+| 2 | left_mid_low |
+| 3 | right_mid_low |
+| 4 | left_mid_high |
+| 5 | right_mid_high |
+| 6 | left_high |
+| 7 | right_high |
 
-Coordinates are calculated from the live `PlanetStageViewport` rectangle. The seat pivot is its bottom center. Horizontal positions are clamped to an eight-pixel safe margin.
+This produces the supported splits `2/1`, `2/2`, `3/2`, `3/3`, `4/3`, and `4/4` for 3–8 players. The local portrait is 1.10 times the ordinary seat presentation scale and uses the existing public `is_local_player` field to display the compact `你` marker.
 
-`top`, `left_high`, and `right_high` use the back layer. All other positions use the front layer. Left and right seats request inward-facing portraits; right seats set `mirror_h = true`.
+Coordinates are calculated from the live `PlanetStageViewport` rectangle. Each column is centered independently, keeping 5- and 7-player layouts visually balanced. Horizontal positions are clamped to an eight-pixel safe margin. Left and right seats request inward-facing portraits; right seats set `mirror_h = true`. No full player portrait occupies the top commodity-track region.
 
 ## Dynamic Skin handoff
 
@@ -89,6 +92,7 @@ Only a seat that successfully mounts its Skin hides its corresponding legacy dec
 
 - Focused production host test: `tests/player_seat_host_production_test.gd`
 - Production-scene capture driver: `tests/player_seat_host_capture.gd`
-- Screenshots: `reports/ui/player_seat_host/player_seat_host_{3,4,6,8}_players_1600x960.png`
+- Formal `main.tscn` screenshots: `docs/ui_qa/player_seat_side_columns/player_seat_side_columns_{3,4,5,6,7,8}p.png`
+- Formal scene-tree and pixel gate: `docs/ui_qa/player_seat_side_columns/player_seat_side_columns_result.json`
 - Godot MCP scene: `res://scenes/ui/PlanetBoard.tscn`
 - Godot MCP runtime: `res://scenes/main.tscn`

@@ -1,0 +1,144 @@
+{
+  "captures": [
+    {
+      "capture": {
+        "bright_ratio": 0.137208333333333,
+        "error": 0,
+        "nonblack_ratio": 1.0,
+        "path": "C:/Users/zhuye/Documents/New project/space-syndicate-player-seat-side-layout-0469db6/docs/ui_qa/player_seat_side_columns/player_seat_side_columns_3p.png",
+        "pixel_complete": true,
+        "saved": true,
+        "size": {
+          "x": 1600,
+          "y": 960
+        }
+      },
+      "left_count": 2,
+      "local_player_index": 0,
+      "local_slot": "left_low",
+      "player_count": 3,
+      "right_count": 1,
+      "scene": "res://scenes/main.tscn",
+      "seat_count": 3
+    },
+    {
+      "capture": {
+        "bright_ratio": 0.14975,
+        "error": 0,
+        "nonblack_ratio": 1.0,
+        "path": "C:/Users/zhuye/Documents/New project/space-syndicate-player-seat-side-layout-0469db6/docs/ui_qa/player_seat_side_columns/player_seat_side_columns_4p.png",
+        "pixel_complete": true,
+        "saved": true,
+        "size": {
+          "x": 1600,
+          "y": 960
+        }
+      },
+      "left_count": 2,
+      "local_player_index": 0,
+      "local_slot": "left_low",
+      "player_count": 4,
+      "right_count": 2,
+      "scene": "res://scenes/main.tscn",
+      "seat_count": 4
+    },
+    {
+      "capture": {
+        "bright_ratio": 0.147333333333333,
+        "error": 0,
+        "nonblack_ratio": 0.999958333333333,
+        "path": "C:/Users/zhuye/Documents/New project/space-syndicate-player-seat-side-layout-0469db6/docs/ui_qa/player_seat_side_columns/player_seat_side_columns_5p.png",
+        "pixel_complete": true,
+        "saved": true,
+        "size": {
+          "x": 1600,
+          "y": 960
+        }
+      },
+      "left_count": 3,
+      "local_player_index": 0,
+      "local_slot": "left_low",
+      "player_count": 5,
+      "right_count": 2,
+      "scene": "res://scenes/main.tscn",
+      "seat_count": 5
+    },
+    {
+      "capture": {
+        "bright_ratio": 0.135875,
+        "error": 0,
+        "nonblack_ratio": 0.999958333333333,
+        "path": "C:/Users/zhuye/Documents/New project/space-syndicate-player-seat-side-layout-0469db6/docs/ui_qa/player_seat_side_columns/player_seat_side_columns_6p.png",
+        "pixel_complete": true,
+        "saved": true,
+        "size": {
+          "x": 1600,
+          "y": 960
+        }
+      },
+      "left_count": 3,
+      "local_player_index": 0,
+      "local_slot": "left_low",
+      "player_count": 6,
+      "right_count": 3,
+      "scene": "res://scenes/main.tscn",
+      "seat_count": 6
+    },
+    {
+      "capture": {
+        "bright_ratio": 0.133458333333333,
+        "error": 0,
+        "nonblack_ratio": 0.999958333333333,
+        "path": "C:/Users/zhuye/Documents/New project/space-syndicate-player-seat-side-layout-0469db6/docs/ui_qa/player_seat_side_columns/player_seat_side_columns_7p.png",
+        "pixel_complete": true,
+        "saved": true,
+        "size": {
+          "x": 1600,
+          "y": 960
+        }
+      },
+      "left_count": 4,
+      "local_player_index": 0,
+      "local_slot": "left_low",
+      "player_count": 7,
+      "right_count": 3,
+      "scene": "res://scenes/main.tscn",
+      "seat_count": 7
+    },
+    {
+      "capture": {
+        "bright_ratio": 0.138916666666667,
+        "error": 0,
+        "nonblack_ratio": 0.999958333333333,
+        "path": "C:/Users/zhuye/Documents/New project/space-syndicate-player-seat-side-layout-0469db6/docs/ui_qa/player_seat_side_columns/player_seat_side_columns_8p.png",
+        "pixel_complete": true,
+        "saved": true,
+        "size": {
+          "x": 1600,
+          "y": 960
+        }
+      },
+      "left_count": 4,
+      "local_player_index": 0,
+      "local_slot": "left_low",
+      "player_count": 8,
+      "right_count": 4,
+      "scene": "res://scenes/main.tscn",
+      "seat_count": 8
+    }
+  ],
+  "checks": 159,
+  "failures": [],
+  "player_default_save_after": {
+    "exists": false
+  },
+  "player_default_save_before": {
+    "exists": false
+  },
+  "resolution": {
+    "x": 1600,
+    "y": 960
+  },
+  "scene": "res://scenes/main.tscn",
+  "status": "PASS"
+}

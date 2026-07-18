@@ -7,6 +7,10 @@ const PUBLIC_ROLE_NAMES := [
 	"环港走私议会", "重力矿联董事会", "光合修复会", "星鲸餐饮垄断",
 	"幽幕播报社", "赤环航运托拉斯", "黑潮风险基金", "暗礁公证黑市",
 ]
+const STABLE_SEAT_POSITIONS := [
+	&"left_low", &"right_low", &"left_mid_low", &"right_mid_low",
+	&"left_mid_high", &"right_mid_high", &"left_high", &"right_high",
+]
 const FORBIDDEN_TOKENS := [
 	"cash", "discard", "hand", "hand_count", "hidden_owner", "private_intel",
 	"private_plan", "real_actor", "true_owner",
@@ -44,7 +48,7 @@ func _run() -> void:
 		await _finish(host)
 		return
 
-	for seat_count in [3, 4, 6, 8]:
+	for seat_count in [3, 4, 5, 6, 7, 8]:
 		var players := _players(seat_count)
 		if seat_count == 4:
 			(players[3] as Dictionary)["eliminated"] = true
@@ -58,9 +62,14 @@ func _run() -> void:
 		var descriptors := _seat_descriptors(seat_host)
 		_expect(descriptors.size() == seat_count, "%d-player production refresh creates exactly %d seats" % [seat_count, seat_count])
 		_expect(_unique_indices(descriptors) == seat_count and _local_count(descriptors) == 1, "%d-player seats have unique indices and exactly one local player" % seat_count)
+		_expect(_stable_slot_mapping(descriptors, seat_count), "%d-player seats use the stable alternating side-slot mapping" % seat_count)
+		_expect(StringName(_seat(descriptors, 2).get("seat_position", &"")) == &"left_low" and int(_seat(descriptors, 2).get("seat_index", -1)) == 0, "%d-player local viewer occupies stable left_low seat zero" % seat_count)
 		_expect(_public_identity_is_complete(descriptors), "%d-player seats expose public name, assigned role, color and status" % seat_count)
 		_expect(_anonymous_activity_is_safe(descriptors), "%d-player anonymous activity does not reveal a real actor" % seat_count)
 		_expect(not _contains_forbidden_token(descriptors), "%d-player seat descriptors contain no private facts" % seat_count)
+		var local_skin := screen.find_child("PlayerSeat_2", true, false)
+		var local_skin_debug: Dictionary = local_skin.call("public_debug_snapshot") if local_skin != null and local_skin.has_method("public_debug_snapshot") else {}
+		_expect(bool(local_skin_debug.get("local_marker_visible", false)), "%d-player local portrait displays the public 你 marker" % seat_count)
 		if seat_count == 4:
 			_expect(str(_seat(descriptors, 3).get("public_status", "")) == "eliminated", "eliminated public session fact reaches the seat status")
 
@@ -163,6 +172,17 @@ func _local_count(entries: Array) -> int:
 		if bool((entry_variant as Dictionary).get("is_local_player", false)):
 			count += 1
 	return count
+
+
+func _stable_slot_mapping(entries: Array, seat_count: int) -> bool:
+	if entries.size() != seat_count:
+		return false
+	for seat_index in range(seat_count):
+		var entry: Dictionary = entries[seat_index] if entries[seat_index] is Dictionary else {}
+		if int(entry.get("seat_index", -1)) != seat_index \
+				or StringName(entry.get("seat_position", &"")) != STABLE_SEAT_POSITIONS[seat_index]:
+			return false
+	return true
 
 
 func _public_identity_is_complete(entries: Array) -> bool:

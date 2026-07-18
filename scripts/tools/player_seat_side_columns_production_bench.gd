@@ -6,6 +6,10 @@ const PUBLIC_ROLE_NAMES := [
 	"环港走私议会", "重力矿联董事会", "光合修复会", "星鲸餐饮垄断",
 	"幽幕播报社", "赤环航运托拉斯", "黑潮风险基金", "暗礁公证黑市",
 ]
+const STABLE_SEAT_POSITIONS := [
+	&"left_low", &"right_low", &"left_mid_low", &"right_mid_low",
+	&"left_mid_high", &"right_mid_high", &"left_high", &"right_high",
+]
 
 @export var auto_run := true
 @export var quit_on_finish := false
@@ -38,7 +42,7 @@ func run_checks() -> Dictionary:
 	if screen == null:
 		return _finish({})
 	screen.apply_state({
-		"planet": {"public_player_seat_sources": _public_seat_sources()},
+		"planet": {"public_player_seat_sources": _public_seat_sources(8)},
 		"player_board": {"identity": "本地玩家", "hand_cards": []},
 	})
 	for _frame in 6:
@@ -61,20 +65,42 @@ func run_checks() -> Dictionary:
 	_check(_utilities_suppressed(screen), "utility_rails_and_flow_compass_do_not_overlap_columns")
 	_check(map_host.size.x > 240.0 and map_host.size.y > 240.0 and planet_board.size.x > map_host.size.x, "planet_remains_primary_visual")
 	_check(_private_tokens_absent(snapshot), "seat_debug_projection_contains_no_private_player_state")
+	for seat_count in [3, 4, 5, 6, 7, 8]:
+		screen.apply_state({
+			"planet": {"public_player_seat_sources": _public_seat_sources(seat_count)},
+			"player_board": {"identity": "本地玩家", "hand_cards": []},
+		})
+		for _frame in 3:
+			await get_tree().process_frame
+		var count_snapshot: Dictionary = host.call("layout_debug_snapshot")
+		var count_seats: Array = count_snapshot.get("seats", []) if count_snapshot.get("seats", []) is Array else []
+		_check(count_seats.size() == seat_count, "%d_player_exact_seat_count" % seat_count)
+		_check(_column_count(count_seats, &"left") == int(ceil(float(seat_count) * 0.5)), "%d_player_left_column_count" % seat_count)
+		_check(_column_count(count_seats, &"right") == int(floor(float(seat_count) * 0.5)), "%d_player_right_column_count" % seat_count)
+		_check(_stable_slot_mapping(count_seats, seat_count), "%d_player_stable_slot_mapping" % seat_count)
+		_check(_local_at_left_low(count_seats), "%d_player_local_left_low" % seat_count)
+		_check(_no_overlaps(count_seats), "%d_player_no_seat_overlap" % seat_count)
+		_check(_outside_map(count_seats, _control_rect_in(stage_viewport, map_view)), "%d_player_planet_input_clear" % seat_count)
+	screen.apply_state({
+		"planet": {"public_player_seat_sources": _public_seat_sources(8)},
+		"player_board": {"identity": "本地玩家", "hand_cards": []},
+	})
+	for _frame in 3:
+		await get_tree().process_frame
 	var screenshot := await _capture_screenshot()
 	_check(bool(screenshot.get("passed", false)), "production_screenshot_captured")
 	return _finish(screenshot)
 
 
-func _public_seat_sources() -> Array:
+func _public_seat_sources(count: int) -> Array:
 	var result: Array = []
-	for index in range(PUBLIC_ROLE_NAMES.size()):
+	for index in range(count):
 		result.append({
 			"player_index": index,
 			"public_player_name": "玩家 %02d" % (index + 1),
 			"role_name": PUBLIC_ROLE_NAMES[index],
-			"player_color": Color.from_hsv(float(index) / float(PUBLIC_ROLE_NAMES.size()), 0.62, 0.96),
-			"is_local_player": index == 2,
+			"player_color": Color.from_hsv(float(index) / float(count), 0.62, 0.96),
+			"is_local_player": index == 0,
 			"public_status": &"ready",
 			"is_publicly_active": index == 4,
 		})
@@ -129,16 +155,35 @@ func _all_ignore_mouse(seats: Array) -> bool:
 
 
 func _semantic_side_mapping(seats: Array) -> bool:
-	var bottom_column := ""
-	var top_column := ""
+	var local_column := ""
+	var top_count := 0
 	for seat_variant in seats:
 		var seat: Dictionary = seat_variant
-		match StringName(seat.get("seat_position", &"")):
-			&"bottom":
-				bottom_column = str(seat.get("column", ""))
-			&"top":
-				top_column = str(seat.get("column", ""))
-	return bottom_column == "left" and top_column == "right"
+		if bool(seat.get("is_local_player", false)):
+			local_column = str(seat.get("column", ""))
+		if str(seat.get("seat_position", "")).begins_with("top"):
+			top_count += 1
+	return local_column == "left" and top_count == 0
+
+
+func _stable_slot_mapping(seats: Array, seat_count: int) -> bool:
+	if seats.size() != seat_count:
+		return false
+	for seat_index in range(seat_count):
+		var seat: Dictionary = seats[seat_index]
+		if int(seat.get("seat_index", -1)) != seat_index \
+				or StringName(seat.get("seat_position", &"")) != STABLE_SEAT_POSITIONS[seat_index]:
+			return false
+	return true
+
+
+func _local_at_left_low(seats: Array) -> bool:
+	for seat_variant in seats:
+		var seat: Dictionary = seat_variant
+		if bool(seat.get("is_local_player", false)):
+			return StringName(seat.get("seat_position", &"")) == &"left_low" \
+				and is_equal_approx(float(seat.get("visual_scale", 0.0)), 1.10)
+	return false
 
 
 func _utilities_suppressed(screen: Node) -> bool:
