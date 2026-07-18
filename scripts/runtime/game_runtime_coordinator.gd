@@ -89,6 +89,8 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		card_definition_bridge.call("set_catalog_service", card_runtime_catalog)
 	var balance_diagnostics := _gameplay_balance_diagnostics_node()
 	var balance_diagnostics_bridge := _gameplay_balance_diagnostics_world_bridge_node()
+	if balance_diagnostics_bridge != null and balance_diagnostics_bridge.has_method("set_role_catalog"):
+		balance_diagnostics_bridge.call("set_role_catalog", _role_catalog_runtime_service_node())
 	if balance_diagnostics != null and balance_diagnostics.has_method("set_world_bridge"):
 		balance_diagnostics.call("set_world_bridge", balance_diagnostics_bridge)
 	if balance_diagnostics != null and balance_diagnostics.has_method("configure"):
@@ -483,6 +485,8 @@ func bind_ai_world(world: Node) -> void:
 	var balance_diagnostics_bridge := _gameplay_balance_diagnostics_world_bridge_node()
 	if balance_diagnostics_bridge != null and balance_diagnostics_bridge.has_method("bind_world"):
 		balance_diagnostics_bridge.call("bind_world", world)
+	if balance_diagnostics_bridge != null and balance_diagnostics_bridge.has_method("set_role_catalog"):
+		balance_diagnostics_bridge.call("set_role_catalog", _role_catalog_runtime_service_node())
 	var balance_diagnostics := _gameplay_balance_diagnostics_node()
 	if balance_diagnostics != null and balance_diagnostics.has_method("set_world_bridge"):
 		balance_diagnostics.call("set_world_bridge", balance_diagnostics_bridge)
@@ -1544,6 +1548,10 @@ func _apply_victory_outcome_receipt(receipt: Dictionary) -> void:
 
 func card_runtime_catalog_service() -> CardRuntimeCatalogService:
 	return _card_runtime_catalog_node() as CardRuntimeCatalogService
+
+
+func role_catalog_runtime_service() -> RoleCatalogRuntimeService:
+	return _role_catalog_runtime_service_node() as RoleCatalogRuntimeService
 
 
 func card_runtime_definition_bridge() -> CardRuntimeDefinitionWorldBridge:
@@ -5252,6 +5260,10 @@ func _region_supply_card_descriptor(card_id: String) -> Dictionary:
 
 func _card_runtime_catalog_node() -> Node:
 	return get_node_or_null("CardRuntimeCatalogService")
+
+
+func _role_catalog_runtime_service_node() -> Node:
+	return get_node_or_null("RoleCatalogRuntimeService")
 
 
 func _card_runtime_definition_bridge_node() -> Node:

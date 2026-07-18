@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/role_catalog_runtime_service.gd" id="1_role_catalog"]
+
+[node name="RoleCatalogRuntimeService" type="Node"]
+script = ExtResource("1_role_catalog")
+editor_description = "Read-only ordered owner for the 24 public player role definitions. Runtime and save identity remain the legacy role index plus Chinese role name."

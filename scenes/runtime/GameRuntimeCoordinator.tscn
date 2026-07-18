@@ -1,4 +1,4 @@
-[gd_scene load_steps=104 format=3]
+[gd_scene load_steps=105 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -103,10 +103,14 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/MilitaryMonsterDamageCommandSink.tscn" id="108_military_monster_damage_sink"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/MonsterMoveCommandSink.tscn" id="109_monster_move_sink"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/MonsterActionCommandSink.tscn" id="110_monster_action_sink"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RoleCatalogRuntimeService.tscn" id="111_role_catalog"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
 editor_description = "Thin replacement-foundation coordinator. It composes runtime services without owning economy, card, monster, AI decision, or UI rules."
+
+[node name="RoleCatalogRuntimeService" parent="." instance=ExtResource("111_role_catalog")]
+unique_name_in_owner = true
 
 [node name="RunRngService" parent="." instance=ExtResource("81_run_rng")]
 unique_name_in_owner = true

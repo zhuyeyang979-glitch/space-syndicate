@@ -108,237 +108,6 @@ const PLAYER_COLORS := [
 	Color("#fb923c"),
 ]
 
-const PLAYER_ROLE_CATALOG := [
-	{
-		"name": "环港走私议会",
-		"species": "蜂冠商族",
-		"trait": "高速物流与电池黑市专家；喜欢把怪兽登陆伪装成货运事故。",
-		"passive": "开局资金+¥80；在含环晶电池的区域购牌时，免费额外获得1张同区候选牌。",
-		"starting_cash_bonus": 80,
-		"bonus_card_product": "环晶电池",
-		"flavor": "他们总能把第一只怪兽包装成一次普通货运事故。",
-	},
-	{
-		"name": "深海菌毯使团",
-		"species": "雾鳃孢子人",
-		"trait": "擅长把资源偏好伪装成生态灾害；靠菌毯副产物结算现金。",
-		"passive": "开局资金+¥80；己方含深海菌毯的城市每分钟现金流额外+¥55。",
-		"starting_cash_bonus": 80,
-		"resource_cash_product": "深海菌毯",
-		"resource_cash_amount": 55,
-		"flavor": "他们的合同像潮湿的孢子一样扩散，没人知道真正的客户是谁。",
-	},
-	{
-		"name": "重力矿联董事会",
-		"species": "岩壳重核族",
-		"trait": "矿业城市与重物流保护伞；用重力陶瓷抵押城市现金流。",
-		"passive": "开局资金+¥90；己方含重力陶瓷的城市每分钟现金流额外+¥45。",
-		"starting_cash_bonus": 90,
-		"resource_cash_product": "重力陶瓷",
-		"resource_cash_amount": 45,
-		"flavor": "他们称一切破坏为地质调整，并且会给调整开票。",
-	},
-	{
-		"name": "离子军购局",
-		"species": "蓝焰档案体",
-		"trait": "军需订单与能量食品投标人；怪兽升级会变成采购预算。",
-		"passive": "己方怪兽升级时获得¥160。",
-		"monster_upgrade_cash": 160,
-		"flavor": "他们从不发动战争，只是提前出售战争会需要的东西。",
-	},
-	{
-		"name": "光合修复会",
-		"species": "藤冠共生体",
-		"trait": "避难产业和修复商品联盟；把光合凝胶做成灾后保险。",
-		"passive": "开局资金+¥120；己方含光合凝胶的城市每分钟现金流额外+¥40。",
-		"starting_cash_bonus": 120,
-		"resource_cash_product": "光合凝胶",
-		"resource_cash_amount": 40,
-		"flavor": "他们的城市总在灾后重建合同签好之后才被灾难发现。",
-	},
-	{
-		"name": "虹膜数据券商",
-		"species": "棱眼账本体",
-		"trait": "把活体芯片写进每笔交易的影子账本；擅长从情报商品区顺手拿牌。",
-		"passive": "开局资金+¥60；在含活体芯片的区域购牌时，免费额外获得1张同区候选牌。",
-		"starting_cash_bonus": 60,
-		"bonus_card_product": "活体芯片",
-		"flavor": "他们不偷情报，他们只是提前拥有账本的下一页。",
-	},
-	{
-		"name": "星鲸餐饮垄断",
-		"species": "鲸胃星民",
-		"trait": "星鲸罐头连锁供应商；怪兽每次变强都会顺便带火一次联名营销。",
-		"passive": "己方含星鲸罐头的城市每分钟现金流额外+¥50；己方怪兽升级时获得¥60。",
-		"resource_cash_product": "星鲸罐头",
-		"resource_cash_amount": 50,
-		"monster_upgrade_cash": 60,
-		"flavor": "他们坚称每一次怪兽袭击都只是一次过于成功的试吃会。",
-	},
-	{
-		"name": "静电蜂巢银行",
-		"species": "金翼蜂群意志",
-		"trait": "用静电蜂蜜给黑市信用背书；越靠近甜味商路，越容易多拿一张牌。",
-		"passive": "在含静电蜂蜜的区域购牌时，免费额外获得1张同区候选牌；卡牌归属竞猜押注成本-¥20。",
-		"bonus_card_product": "静电蜂蜜",
-		"card_owner_guess_discount": 20,
-		"flavor": "他们发出的不是贷款通知，是一整座蜂巢的低频催收。",
-	},
-	{
-		"name": "星图审计庭",
-		"species": "银环观测官",
-		"trait": "把每一座城市的施工轨迹写进星图账本；擅长直接锁定陌生区域业主。",
-		"passive": "每局可用2次身份侦测：直接查明当前选中陌生城市的真实业主，并以高置信写入私人标注；城市归属终局命中奖励+¥40。",
-		"intel_city_reveal_charges": 2,
-		"city_guess_reward_bonus": 40,
-		"flavor": "他们从不问“是谁造的”，只问“为什么发票没有经过审计庭”。",
-	},
-	{
-		"name": "幽幕播报社",
-		"species": "暗频主持群",
-		"trait": "专门购买匿名出牌瞬间的影像残帧；可以追溯卡牌轨道上的历史归属。",
-		"passive": "每局可用1次身份追帧：私下查明一张轨道匿名牌是谁打出的；卡牌归属竞猜押注成本-¥40。",
-		"intel_card_trace_charges": 1,
-		"card_owner_guess_discount": 40,
-		"flavor": "所有画面都是雪花屏，只有他们听得见雪花里谁在结账。",
-	},
-	{
-		"name": "双边密约公证团",
-		"species": "镜面章鱼律师",
-		"trait": "从合约墨迹里读出双方的影子；知道更多，但不能免费公开证明。",
-		"passive": "每局可用2次合约回溯：私下查明最近一份合约的出牌方与目标业主；合约牌GDP份额门槛-5个百分点。",
-		"intel_contract_trace_charges": 2,
-		"contract_flow_discount": 1,
-		"flavor": "他们盖章时会伸出第三只触手，专门握住真正签字的人。",
-	},
-	{
-		"name": "碎光私探行会",
-		"species": "棱镜游民",
-		"trait": "靠半真半假的线索套利；不一定知道答案，但下注成本更低。",
-		"passive": "卡牌归属竞猜押注成本-¥30，猜中额外获得¥30。",
-		"card_owner_guess_discount": 30,
-		"card_owner_guess_bonus": 30,
-		"flavor": "他们卖出的每条线索都闪闪发光，尤其是错的那条。",
-	},
-	{
-		"name": "星门补给商会",
-		"species": "折跃仓储人",
-		"trait": "把恒星晨昏线当作移动仓储时刻表；总能提前准备下一次采购。",
-		"passive": "开局资金+¥40。普通牌市场的日照资格与怪兽压力报价对所有玩家一致。",
-		"starting_cash_bonus": 40,
-		"flavor": "他们的仓库门永远开在晨昏线到来前一秒。",
-	},
-	{
-		"name": "赤环航运托拉斯",
-		"species": "红环渡航民",
-		"trait": "经营海洋保险、航道租赁和绕行合同；最擅长从运输瓶颈里抽佣。",
-		"passive": "己方含风暴珍珠的城市每分钟现金流额外+¥35；合约牌GDP份额门槛-5个百分点；开局资金+¥50。",
-		"starting_cash_bonus": 50,
-		"resource_cash_product": "风暴珍珠",
-		"resource_cash_amount": 35,
-		"contract_flow_discount": 1,
-		"flavor": "他们不拥有海洋，只拥有所有必须穿过海洋的发票。",
-	},
-	{
-		"name": "霓虹需求剧院",
-		"species": "幕光拟态族",
-		"trait": "把消费欲望包装成演出；适合做需求城市、会展和短期订单。",
-		"passive": "己方含梦境香氛的城市每分钟现金流额外+¥45；在含梦境香氛的区域购牌时，免费额外获得1张同区候选牌。",
-		"resource_cash_product": "梦境香氛",
-		"resource_cash_amount": 45,
-		"bonus_card_product": "梦境香氛",
-		"flavor": "他们出售的不是商品，是观众相信自己需要商品的那一秒。",
-	},
-	{
-		"name": "极昼农业云",
-		"species": "日冕叶群",
-		"trait": "喜欢低价稳定商品和长线现金流；抗压但爆发较慢。",
-		"passive": "开局资金+¥110；己方含星露莓的城市每分钟现金流额外+¥35；城市归属终局命中奖励+¥20。",
-		"starting_cash_bonus": 110,
-		"resource_cash_product": "星露莓",
-		"resource_cash_amount": 35,
-		"city_guess_reward_bonus": 20,
-		"flavor": "极昼温室从不休息，账本也不休息。",
-	},
-	{
-		"name": "黑潮风险基金",
-		"species": "墨鳍量化体",
-		"trait": "以灾害波动和匿名押注为食；适合金融买涨/做空与情报竞猜混合路线。",
-		"passive": "开局资金+¥70；卡牌归属竞猜押注成本-¥20；猜中额外获得¥40。",
-		"starting_cash_bonus": 70,
-		"card_owner_guess_discount": 20,
-		"card_owner_guess_bonus": 40,
-		"flavor": "他们看见怪兽时先问：这次波动能不能加杠杆？",
-	},
-	{
-		"name": "白噪安保公司",
-		"species": "噪羽守密者",
-		"trait": "保护运输、擦除痕迹、低调收钱；适合领先后的防守与保险路线。",
-		"passive": "己方含轨迹墨水的城市每分钟现金流额外+¥40；卡牌归属竞猜押注成本-¥25；开局资金+¥40。",
-		"starting_cash_bonus": 40,
-		"resource_cash_product": "轨迹墨水",
-		"resource_cash_amount": 40,
-		"card_owner_guess_discount": 25,
-		"flavor": "白噪声里什么都能消失，包括一张过于关键的发票。",
-	},
-	{
-		"name": "钛壳互助清算所",
-		"species": "钛壳贝群",
-		"trait": "把城市修复、保险和低风险商品做成互助池；收益稳但依赖城市存活。",
-		"passive": "开局资金+¥60；己方含钛壳贝的城市每分钟现金流额外+¥55。",
-		"starting_cash_bonus": 60,
-		"resource_cash_product": "钛壳贝",
-		"resource_cash_amount": 55,
-		"flavor": "他们愿意赔付一切损失，只要损失发生前你已经买了他们的下一份合约。",
-	},
-	{
-		"name": "暗礁公证黑市",
-		"species": "珊瑚印章群",
-		"trait": "专门处理不该被看见的合约副本；擅长追溯签约关系。",
-		"passive": "每局可用1次合约回溯：私下查明最近一份合约的出牌方与目标业主；合约牌GDP份额门槛-5个百分点；开局资金+¥30。",
-		"starting_cash_bonus": 30,
-		"intel_contract_trace_charges": 1,
-		"contract_flow_discount": 1,
-		"flavor": "他们的印章长在暗礁上，只有退潮时才露出真正的名字。",
-	},
-	{
-		"name": "太阳鳞片王朝",
-		"species": "金鳞恒温族",
-		"trait": "偏好高价值奢侈品、公开市场动向和终局现金冲刺；很容易成为被盯上的富目标。",
-		"passive": "开局资金+¥150；己方含太阳鳞片的城市每分钟现金流额外+¥30。",
-		"starting_cash_bonus": 150,
-		"resource_cash_product": "太阳鳞片",
-		"resource_cash_amount": 30,
-		"flavor": "他们从不隐藏财富，只隐藏财富旁边的怪兽脚印。",
-	},
-	{
-		"name": "孪星兽栏同盟",
-		"species": "双核驯灾族",
-		"trait": "把灾害承包给成对的轨道兽栏；适合同时铺两条怪兽压力线，但资金线索也会翻倍暴露。",
-		"passive": "怪兽归属上限+1：可同时拥有2只在场怪兽。第二只怪兽仍自动行动，受伤时照常让归属者按生命比例失去资金并公开线索；同名怪兽牌仍优先升级/刷新场上同名怪兽。",
-		"monster_control_limit_bonus": 1,
-		"starting_cash_bonus": 30,
-		"flavor": "他们从不问哪只怪兽更忠诚，只问哪只怪兽离竞品城市更近。",
-	},
-	{
-		"name": "蜂巢防务议会",
-		"species": "群巢参谋体",
-		"trait": "把军队拆成多个匿名战术节点；适合一支保卫收益线，一支压制竞争区。",
-		"passive": "军队归属上限+1：可同时维持2支短时防卫军。每支军队各自绑定私有军令牌；军队仍不会自主行动，且军令执行不公开下令者。",
-		"military_control_limit_bonus": 1,
-		"starting_cash_bonus": 30,
-		"flavor": "蜂巢的命令从不来自一个脑袋，所以也没人知道该追查哪一个脑袋。",
-	},
-	{
-		"name": "悖论兽契社",
-		"species": "逆相契约体",
-		"trait": "把怪兽召唤契约改写成相位保险；擅长用怪兽牌抵消关键匿名行动。",
-		"passive": "直接玩家互动牌展示后会出现相位响应沙漏；窗口内可把任意手中怪兽牌当作相位否决打出。会消耗该怪兽牌，但不暴露原本归属。",
-		"monster_cards_as_counter": true,
-		"starting_cash_bonus": 40,
-		"flavor": "他们相信怪兽不是武器，而是一份足够荒谬的撤销条款。",
-	},
-]
 
 const OCEAN_PRODUCT_CATALOG := [
 	"星鲸罐头", "星鳍鱼群", "蓝潮藻", "巨藻纤维", "风暴珍珠", "深海菌毯",
@@ -4160,20 +3929,22 @@ func _open_role_codex_menu(index: int = -1) -> void:
 
 
 func _cycle_role_codex(step: int) -> void:
-	if PLAYER_ROLE_CATALOG.is_empty():
+	var role_count := _player_role_catalog_size()
+	if role_count <= 0:
 		return
-	_codex_navigation_controller_node().role_codex_index = wrapi(_codex_navigation_controller_node().role_codex_index + step, 0, PLAYER_ROLE_CATALOG.size())
+	_codex_navigation_controller_node().role_codex_index = wrapi(_codex_navigation_controller_node().role_codex_index + step, 0, role_count)
 	_update_role_codex_menu()
 
 
 func _update_role_codex_menu() -> void:
-	if PLAYER_ROLE_CATALOG.is_empty():
+	var role_count := _player_role_catalog_size()
+	if role_count <= 0:
 		_show_catalog_empty_page("角色图鉴", "还没有角色卡资料。")
 		return
-	_codex_navigation_controller_node().role_codex_index = wrapi(_codex_navigation_controller_node().role_codex_index, 0, PLAYER_ROLE_CATALOG.size())
+	_codex_navigation_controller_node().role_codex_index = wrapi(_codex_navigation_controller_node().role_codex_index, 0, role_count)
 	var role_index: int = int(_codex_navigation_controller_node().role_codex_index)
 	var role_card := _make_player_role_card(role_index)
-	var public_snapshot := _role_codex_public_snapshot(role_card, role_index, PLAYER_ROLE_CATALOG.size())
+	var public_snapshot := _role_codex_public_snapshot(role_card, role_index, role_count)
 	_present_codex_page("角色图鉴", str(public_snapshot.get("summary_text", "")), {
 		"mode": "role",
 		"view": "detail",
@@ -6737,22 +6508,25 @@ func _district_index_for_region_id(region_id: String) -> int:
 
 
 func _player_role_template_index(player_index: int) -> int:
-	if PLAYER_ROLE_CATALOG.is_empty():
+	var role_count := _player_role_catalog_size()
+	if role_count <= 0:
 		return 0
-	return wrapi(player_index, 0, PLAYER_ROLE_CATALOG.size())
+	return wrapi(player_index, 0, role_count)
 
 
 func _player_role_catalog_size() -> int:
-	return PLAYER_ROLE_CATALOG.size()
+	var catalog := _game_runtime_coordinator_node().role_catalog_runtime_service()
+	return catalog.role_count() if catalog != null else 0
 
 
 func _player_role_template(player_index: int, role_index: int = -1) -> Dictionary:
-	if PLAYER_ROLE_CATALOG.is_empty():
+	if _player_role_catalog_size() <= 0:
 		return {}
 	var template_index := _player_role_template_index(player_index)
 	if role_index >= 0:
 		template_index = _clamp_role_index(role_index)
-	return (PLAYER_ROLE_CATALOG[template_index] as Dictionary).duplicate(true)
+	var catalog := _game_runtime_coordinator_node().role_catalog_runtime_service()
+	return catalog.definition_at(template_index) if catalog != null else {}
 
 
 func _role_starting_cash_delta(role_card: Dictionary) -> int:
@@ -9522,11 +9296,12 @@ func _ensure_configured_role_indices() -> void:
 
 
 func _next_available_configured_role_index(start_index: int, used: Dictionary) -> int:
-	if PLAYER_ROLE_CATALOG.is_empty():
+	var role_count := _player_role_catalog_size()
+	if role_count <= 0:
 		return 0
 	var start := _clamp_role_index(start_index)
-	for offset in range(PLAYER_ROLE_CATALOG.size()):
-		var candidate := wrapi(start + offset, 0, PLAYER_ROLE_CATALOG.size())
+	for offset in range(role_count):
+		var candidate := wrapi(start + offset, 0, role_count)
 		if not used.has(candidate):
 			return candidate
 	return start
@@ -9555,9 +9330,10 @@ func _ensure_configured_starter_monster_indices() -> void:
 
 
 func _clamp_role_index(index: int) -> int:
-	if PLAYER_ROLE_CATALOG.is_empty():
+	var role_count := _player_role_catalog_size()
+	if role_count <= 0:
 		return 0
-	return wrapi(index, 0, PLAYER_ROLE_CATALOG.size())
+	return wrapi(index, 0, role_count)
 
 
 func _configured_role_index(player_index: int) -> int:
@@ -9623,14 +9399,15 @@ func _resolve_configured_role_indices_for_run() -> Array:
 		resolved.append(role_index)
 		used[role_index] = true
 	var available := []
-	for role_index in range(PLAYER_ROLE_CATALOG.size()):
+	var role_count := _player_role_catalog_size()
+	for role_index in range(role_count):
 		if not used.has(role_index):
 			available.append(role_index)
 	for slot_variant in random_slots:
 		var slot := int(slot_variant)
 		if available.is_empty():
 			available = []
-			for role_index in range(PLAYER_ROLE_CATALOG.size()):
+			for role_index in range(role_count):
 				if not used.has(role_index):
 					available.append(role_index)
 			if available.is_empty():
