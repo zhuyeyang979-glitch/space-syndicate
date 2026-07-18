@@ -2251,7 +2251,7 @@ func _menu_quick_nav_entries() -> Array:
 		{"id": "setup", "label": "开局", "tooltip": "进入开局配置：设置席位、电脑对手、角色和起始怪兽。", "accent": "#38bdf8"},
 		{"id": "standings", "label": "局势", "tooltip": "查看动态区域控制、前K区商品GDP、资格进度和公开审计。", "accent": "#facc15"},
 		{"id": "economy", "label": "经济", "tooltip": "查看GDP、商品、商路、天气和收入拆解。", "accent": "#4ade80"},
-		{"id": "intel", "label": "情报", "tooltip": "整理城市归属推理、卡牌竞猜和怪兽资金线索。", "accent": "#c084fc"},
+		{"id": "intel", "label": "情报", "tooltip": "整理城市归属推理、公共卡牌履历与私人标注、怪兽资金线索。", "accent": "#c084fc"},
 		{"id": "rules", "label": "规则", "tooltip": "查看购牌、出牌、竞价、合约、怪兽赌局、天气和终局规则。", "accent": "#93c5fd"},
 		{"id": "compendium", "label": "图鉴", "tooltip": "进入角色、怪兽、卡牌、商品和区域图鉴。", "accent": "#f472b6"},
 	]

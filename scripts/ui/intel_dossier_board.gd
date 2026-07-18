@@ -28,7 +28,7 @@ func set_dossier(data: Dictionary) -> void:
 	tooltip_text = str(data.get("tooltip", "情报侦探板：整理城市嫌疑、匿名牌、怪兽资金和公开城市线索，不扫描对手现金、手牌或真实资产。"))
 	add_theme_stylebox_override("panel", _card_style(accent, Color("#020617").lerp(accent, 0.07), 1, 8))
 	title_label.text = str(data.get("title", "情报侦探板"))
-	title_label.tooltip_text = str(data.get("title_tooltip", "先扫线索类别，再决定标注城市、猜卡牌归属或跳到图鉴查证。"))
+	title_label.tooltip_text = str(data.get("title_tooltip", "先扫线索类别，再决定标注城市、查看公共卡牌履历、添加私人标注或跳到图鉴查证。"))
 	kpi_grid.columns = clampi(int(data.get("kpi_columns", 4)), 1, 4)
 	clue_grid.columns = clampi(int(data.get("clue_columns", 3)), 1, 3)
 	control_grid.columns = clampi(int(data.get("control_columns", 1)), 1, 2)

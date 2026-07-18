@@ -344,7 +344,7 @@ func _track_tooltip(source: Dictionary, presentation: Dictionary, state_text: St
 	var order_clue := str(source.get("order_clue", ""))
 	if order_clue != "": lines.append("顺序：%s" % _short_text(order_clue, 60))
 	if not badges.is_empty(): lines.append("牌槽标记：%s" % " / ".join(badges))
-	lines.append("单击竞猜归属；双击打开卡牌图鉴。")
+	lines.append("单击查看公共履历；双击打开卡牌图鉴。私人标注不产生奖励或权威归属结论。")
 	return "\n".join(lines)
 
 
@@ -352,7 +352,7 @@ func _compose_event(entry: Dictionary, index: int) -> Dictionary:
 	if entry.is_empty(): return {}
 	var text := str(entry.get("text", "公共事件"))
 	var detail := str(entry.get("tooltip", text))
-	return {"id":"event_%d" % index, "label":_short_text(text, 12), "slot":"事件", "state":"公共事件", "kind":"event", "owner_hint":"只读", "badges":["只读"], "active":false, "accent":entry.get("accent", Color("#a78bfa")), "tooltip":"公共事件：只读，不可竞猜｜%s" % detail, "title":"牌轨事件", "summary":_short_text(text, 36), "detail":detail, "why":"公共只读事件。", "requirements":[{"text":"只读"}, {"text":"公共事件"}], "deep_links":[{"id":"detail_intel", "label":"情报详情"}]}
+	return {"id":"event_%d" % index, "label":_short_text(text, 12), "slot":"事件", "state":"公共事件", "kind":"event", "owner_hint":"只读", "badges":["只读"], "active":false, "accent":entry.get("accent", Color("#a78bfa")), "tooltip":"公共事件：只读履历，无奖励或权威归属结论｜%s" % detail, "title":"牌轨事件", "summary":_short_text(text, 36), "detail":detail, "why":"公共只读履历；私人标注仅供当前查看者使用。", "requirements":[{"text":"只读"}, {"text":"公共事件"}], "deep_links":[{"id":"detail_intel", "label":"情报详情"}]}
 
 
 func _track_phase(source: Dictionary) -> String:

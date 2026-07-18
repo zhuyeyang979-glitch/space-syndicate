@@ -50,7 +50,7 @@ func compose_role(source: Dictionary) -> Dictionary:
 		"chips": chips,
 		"kpis": [
 			{"title": "经济", "value": _short_text(economy_line, 34), "meta": "现金/商品/购牌收益", "accent": Color("#bbf7d0")},
-			{"title": "情报", "value": _short_text(intel_line, 34), "meta": "侦测、追溯和竞猜优势", "accent": Color("#c4b5fd")},
+			{"title": "情报", "value": _short_text(intel_line, 34), "meta": "公开证据与私人标注", "accent": Color("#c4b5fd")},
 			{"title": "控制", "value": _short_text(control_line, 34), "meta": "日照市场、合约、单位或反制", "accent": Color("#93c5fd")},
 			{"title": "开局", "value": _short_text(opening_hint, 34), "meta": "第一局建议动作", "accent": Color("#facc15")},
 		],
