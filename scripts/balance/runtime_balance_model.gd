@@ -637,7 +637,7 @@ func skill_balance_score_breakdown(skill: Dictionary, rank: int = 1):
 	var damage_score = maxi(0, int(skill.get("damage", 0))) * 58 + maxi(0, int(skill.get("global_barrage_damage", 0))) * 74 + maxi(0, int(skill.get("global_barrage_target_count", 0))) * 32
 	var interaction_score = maxi(0, int(skill.get("hand_discard_count", 0))) * 82 + maxi(0, int(skill.get("hand_steal_count", 0))) * 112 + maxi(0, int(skill.get("global_barrage_route_damage", 0))) * 56
 	var defense_score = maxi(0, int(skill.get("armor", 0))) * 35 + maxi(0, int(skill.get("guard", 0))) * 42 + maxi(0, int(skill.get("counter_strength", 0))) * 58
-	var intel_score = maxi(0, int(skill.get("trace_card_count", 0))) * 42 + maxi(0, int(skill.get("reveal_city_count", 0))) * 48 + maxi(0, int(skill.get("trace_contract_count", 0))) * 45 + maxi(0, int(skill.get("counter_trace", 0))) * 42
+	var intel_score = maxi(0, int(skill.get("history_review_count", 0))) * 28 + maxi(0, int(skill.get("history_subscription_count", 0))) * 24 + maxi(0, int(skill.get("reveal_city_count", 0))) * 48 + maxi(0, int(skill.get("trace_contract_count", 0))) * 45 + maxi(0, int(skill.get("counter_trace", 0))) * 42
 	var monster_score = 140 + maxi(0, int(skill.get("hp", 0))) * 7 + maxi(0, int(skill.get("fixed_skill_count", 0))) * 36 if kind == "monster_card" else 0
 	var military_score = 70 + maxi(0, int(skill.get("military_hp", 0))) * 7 + maxi(0, int(skill.get("military_damage", 0))) * 70 if ["military_force", "military_command"].has(kind) else 0
 	var weather_score = maxi(1, int(skill.get("weather_zone_count", 1))) * 42 + int(round(float(skill.get("weather_duration_seconds", WEATHER_DURATION_MIN_SECONDS)) / 3.0)) if kind == "weather_control" else 0
@@ -826,7 +826,7 @@ func skill_balance_ai_play_tags(skill: Dictionary):
 		_append_unique(tags, "pressures_rival")
 	if ["product_futures", "city_gdp_derivative"].has(kind):
 		_append_unique(tags, "time_window_finance")
-	if ["intel_city_reveal", "intel_card_trace", "intel_contract_trace", "card_counter"].has(kind):
+	if ["intel_city_reveal", "card_history_public_review", "card_history_subscription", "intel_contract_trace", "card_counter"].has(kind):
 		_append_unique(tags, "uses_public_clues")
 	if kind == "monster_card":
 		_append_unique(tags, "creates_map_pressure")

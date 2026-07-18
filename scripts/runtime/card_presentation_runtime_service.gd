@@ -388,7 +388,7 @@ func _theme_color(skill: Dictionary) -> Color:
 		"card_counter": return Color("#a78bfa")
 		"player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage": return Color("#60a5fa")
 		"city_revenue_boost", "cash_gain", "product_speculation", "product_futures", "product_contract_boon", "area_trade_contract", "route_insurance", "city_product_upgrade", "city_product_shift", "city_demand_shift", "market_stabilize", "product_growth_boon", "route_flow_boon", "city_contract_boon", "region_economy_shift": return Color("#f59e0b")
-		"intel_city_reveal", "intel_card_trace", "intel_contract_trace": return Color("#60a5fa")
+		"intel_city_reveal", "card_history_public_review", "card_history_subscription", "intel_contract_trace": return Color("#60a5fa")
 		"news_event": return Color("#fb923c")
 		"weather_control": return Color("#38bdf8")
 		"panic_shift": return Color("#f97316")
@@ -417,7 +417,7 @@ func _strategy_route_label(skill: Dictionary) -> String:
 	if kind in ["military_force", "military_command"]: return "战斗破坏"
 	if kind in ["monster_card", "monster_bound_action", "monster_lure", "monster_takeover"] or tags.contains("怪兽"): return "怪兽路线"
 	if kind in ["player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage"] or tags.contains("互动"): return "直接互动"
-	if kind in ["intel_city_reveal", "intel_card_trace", "intel_contract_trace"] or tags.contains("情报"): return "情报推理"
+	if kind in ["intel_city_reveal", "card_history_public_review", "card_history_subscription", "intel_contract_trace"] or tags.contains("情报"): return "情报推理"
 	if kind == "news_event" or tags.contains("新闻"): return "新闻信息战"
 	if kind == "weather_control" or tags.contains("天气"): return "天气博弈"
 	if kind in ["area_trade_contract", "product_contract_boon"] or int(skill.get("contract_income", 0)) > 0 or accept_delta != 0 or decline_delta != 0 or int(skill.get("accept_cash", 0)) != 0 or int(skill.get("decline_cash_penalty", 0)) != 0: return "合约博弈"
@@ -447,11 +447,11 @@ func _use_case_text(source: Dictionary, skill: Dictionary, route_label: String) 
 		"route_insurance": "修复商路", "route_sabotage": "破坏商路", "route_flow_boon": "加速商路", "city_contract_boon": "临时订单增收",
 		"area_trade_contract": "连接两区供需", "product_contract_boon": "强化商品合约", "product_growth_boon": "推高商品增长", "region_economy_shift": "改区域经济",
 		"product_speculation": "炒商品价格", "price_pump": "炒商品价格", "disaster_insurance": "保险防跌",
-		"intel_city_reveal": "查城市业主", "intel_card_trace": "追溯出牌者", "intel_contract_trace": "追溯合约方",
+		"intel_city_reveal": "查城市业主", "intel_contract_trace": "追溯合约方",
 		"news_event": "制造新闻热度", "weather_control": "改写天气预报", "supply_draw": "补手牌",
 		"market_stabilize": "稳定市场价格", "panic_shift": "引怪到目标", "area_damage": "破坏区域", "move": "移动怪兽", "fly": "飞行位移", "burrow": "潜行位移",
 		"guard": "怪兽格挡", "armor_gain": "给怪兽护甲", "special_monster_delay": "延后怪兽行动", "roar": "吼退怪兽", "miasma_bloom": "布置瘴气", "miasma_reclaim": "回收瘴气",
-		"card_owner_guess": "猜卡牌归属", "city_owner_guess": "猜城市业主", "queue": "排队结算", "event": "制造公开事件",
+		"card_history_public_review": "公开证据复盘", "card_history_subscription": "私人履历订阅", "city_owner_guess": "猜城市业主", "queue": "排队结算", "event": "制造公开事件",
 	}
 	if labels.has(kind): return str(labels[kind])
 	if kind == "product_futures":
@@ -544,7 +544,7 @@ func _rule_facts(source: Dictionary, skill: Dictionary) -> Array:
 		["revenue_amount", "GDP/min", "plus"], ["cash", "资金", "plus"], ["draw_amount", "候选卡", "plus"], ["repair_routes", "修复商路", "int"],
 		["product_level", "商品等级", "plus"], ["product_shift", "主营换线", "int"], ["demand_shift", "需求改造", "int"],
 		["route_damage", "商路损伤", "plus"], ["production_delta", "生产", "signed"], ["transport_delta", "交通", "signed"], ["consumption_delta", "消费", "signed"],
-		["miasma_count", "瘴气", "int"], ["reclaim_count", "回收瘴气", "int"], ["reveal_city_count", "查区域业主", "int"], ["trace_card_count", "追溯出牌", "int"], ["trace_contract_count", "追溯合约", "int"],
+		["miasma_count", "瘴气", "int"], ["reclaim_count", "回收瘴气", "int"], ["reveal_city_count", "查区域业主", "int"], ["history_review_count", "复盘履历", "int"], ["history_subscription_count", "订阅履历", "int"], ["trace_contract_count", "追溯合约", "int"],
 		["hand_discard_count", "拆牌", "int"], ["hand_steal_count", "牵牌", "int"], ["target_cash_penalty", "目标成本", "money"], ["control_gdp_penalty", "归属惩罚", "gdp"],
 		["counter_strength", "反制强度", "int"], ["counter_refund", "成功返还", "money"], ["counter_trace", "反制线索", "int"],
 	]
@@ -635,13 +635,13 @@ func _category_id(source: Dictionary, skill: Dictionary) -> String:
 	if kind == "weather_control": return "weather"
 	if kind in ["monster_lure", "special_monster_delay", "monster_takeover", "panic_shift"] or bool(source.get("targets_monster", false)): return "tactic"
 	if kind == "supply_draw": return "supply"
-	if kind in ["intel_city_reveal", "intel_card_trace", "intel_contract_trace"]: return "intel"
+	if kind in ["intel_city_reveal", "card_history_public_review", "card_history_subscription", "intel_contract_trace"]: return "intel"
 	return "other"
 
 
 func _primary_type_label(source: Dictionary, skill: Dictionary) -> String:
 	if bool(source.get("is_monster_card", false)) or str(skill.get("kind", "")) == "monster_card": return "怪兽牌"
-	var labels := {"monster_bound_action":"怪兽技能牌", "military_force":"军队牌", "military_command":"军令技能牌", "card_counter":"玩家互动牌", "player_hand_disrupt":"玩家互动牌", "player_hand_steal":"玩家互动牌", "city_control_dispute":"玩家互动牌", "global_barrage":"玩家互动牌", "city_gdp_derivative":"金融牌", "product_futures":"期货牌", "product_speculation":"商品牌", "product_contract_boon":"商品牌", "product_growth_boon":"商品牌", "market_stabilize":"商品牌", "area_trade_contract":"合约牌", "city_contract_boon":"合约牌", "city_revenue_boost":"经营牌", "city_product_upgrade":"经营牌", "city_product_shift":"经营牌", "city_demand_shift":"经营牌", "route_insurance":"经营牌", "route_flow_boon":"经营牌", "route_sabotage":"经营牌", "region_economy_shift":"经营牌", "intel_city_reveal":"情报/补给牌", "intel_card_trace":"情报/补给牌", "intel_contract_trace":"情报/补给牌", "supply_draw":"情报/补给牌", "news_event":"新闻牌", "weather_control":"天气牌", "monster_lure":"诱导牌", "monster_takeover":"诱导牌", "special_monster_delay":"诱导牌", "panic_shift":"诱导牌"}
+	var labels := {"monster_bound_action":"怪兽技能牌", "military_force":"军队牌", "military_command":"军令技能牌", "card_counter":"玩家互动牌", "player_hand_disrupt":"玩家互动牌", "player_hand_steal":"玩家互动牌", "city_control_dispute":"玩家互动牌", "global_barrage":"玩家互动牌", "city_gdp_derivative":"金融牌", "product_futures":"期货牌", "product_speculation":"商品牌", "product_contract_boon":"商品牌", "product_growth_boon":"商品牌", "market_stabilize":"商品牌", "area_trade_contract":"合约牌", "city_contract_boon":"合约牌", "city_revenue_boost":"经营牌", "city_product_upgrade":"经营牌", "city_product_shift":"经营牌", "city_demand_shift":"经营牌", "route_insurance":"经营牌", "route_flow_boon":"经营牌", "route_sabotage":"经营牌", "region_economy_shift":"经营牌", "intel_city_reveal":"情报/补给牌", "card_history_public_review":"情报/补给牌", "card_history_subscription":"情报/补给牌", "intel_contract_trace":"情报/补给牌", "supply_draw":"情报/补给牌", "news_event":"新闻牌", "weather_control":"天气牌", "monster_lure":"诱导牌", "monster_takeover":"诱导牌", "special_monster_delay":"诱导牌", "panic_shift":"诱导牌"}
 	if labels.has(str(skill.get("kind", ""))): return str(labels[str(skill.get("kind", ""))])
 	return "怪兽技能牌" if bool(source.get("is_direct_monster_skill", false)) else "战术牌"
 

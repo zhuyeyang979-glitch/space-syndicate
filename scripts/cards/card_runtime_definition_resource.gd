@@ -5,6 +5,7 @@ class_name CardRuntimeDefinitionResource
 @export_group("Identity")
 @export var card_id := ""
 @export var family_id := ""
+@export var display_name := ""
 @export_range(1, 4, 1) var rank := 1
 @export var kind: StringName = &""
 
@@ -63,6 +64,7 @@ func debug_snapshot() -> Dictionary:
 
 func _authored_value(key: String) -> Variant:
 	match key:
+		"display_name": return display_name if not display_name.is_empty() else card_id
 		"kind": return str(kind)
 		"cost": return purchase_cost
 		"text": return rules_text

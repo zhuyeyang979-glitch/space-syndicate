@@ -131,8 +131,6 @@ func plan_submission(request: Dictionary, facts: Dictionary) -> Dictionary:
 		"asset_cost": {},
 		"asset_debit": {},
 		"asset_reservation_required": false,
-		"public_owner_revealed": false,
-		"public_owner_label": "",
 		"consumed_on_queue": consumed_on_queue,
 		"skill": queued_skill,
 	}, true)
@@ -682,8 +680,6 @@ func _public_entry(entry: Dictionary) -> Dictionary:
 		"group_size": int(entry.get("group_size", 0)),
 		"group_position": int(entry.get("group_position", 0)),
 		"queued_behind_resolution": bool(entry.get("queued_behind_resolution", false)),
-		"public_owner_revealed": bool(entry.get("public_owner_revealed", false)),
-		"public_owner_label": str(entry.get("public_owner_label", "")) if bool(entry.get("public_owner_revealed", false)) else "",
 	}
 
 
@@ -708,6 +704,10 @@ func _normalize_legacy_entry(source: Dictionary) -> Dictionary:
 	entry.erase("capacity_reservation_id")
 	entry.erase("capacity_reservation_transaction_id")
 	entry.erase("group_bid")
+	entry.erase("public_owner_revealed")
+	entry.erase("public_owner_label")
+	entry.erase("owner_revealed_time")
+	entry.erase("guessers")
 	entry.erase("tip")
 	entry.erase("winning_bid")
 	entry.erase("locked_bid")

@@ -101,7 +101,7 @@ func _run() -> void:
 		"当前操作冷却还需2.5秒。",
 		"你购买了秘密卡牌，报价¥300。",
 		"下次开局角色设置为黑潮风险基金。",
-		"归属竞猜失败并私下结算¥75。",
+		"卡牌履历私人标注已更新；不产生现金或GDP。",
 	]
 	var public_count_before_sensitive := coordinator.presentation_recent_public_log_entries(64).size()
 	for sample in sensitive_feedback_samples:

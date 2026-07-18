@@ -7,16 +7,17 @@
 script = ExtResource("1_yul4j")
 card_id = "出牌追帧1"
 family_id = "出牌追帧"
-kind = &"intel_card_trace"
+display_name = "残帧复盘 I"
+kind = &"card_history_public_review"
 purchase_cost = 4
-rules_text = "私下追溯卡牌轨道上一张匿名牌的出牌者：优先查当前选中的轨道卡，未选则查最近未公开的历史牌。"
+rules_text = "选择一条公共卡牌履历，为当前玩家私下生成公开证据复盘；只记录公开时间、目标、牌种、阶段与嫌疑集合，不给出真实归属。"
 tags = PackedStringArray("情报", "卡牌")
 play_product = "活体芯片"
 play_flow_required = 1
-authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "trace_card_count", "damage", "move", "range", "tags", "text")
+authored_keys = PackedStringArray("cost", "display_name", "kind", "play_product", "play_flow_required", "history_review_count", "damage", "move", "range", "tags", "text")
 integer_core_fields = PackedStringArray()
 effect_parameters = {
-"trace_card_count": 1
+"history_review_count": 1
 }
 
 [sub_resource type="Resource" id="Resource_u7yd5"]
@@ -24,16 +25,17 @@ script = ExtResource("1_yul4j")
 card_id = "出牌追帧2"
 family_id = "出牌追帧"
 rank = 2
-kind = &"intel_card_trace"
+display_name = "残帧复盘 II"
+kind = &"card_history_public_review"
 purchase_cost = 6
-rules_text = "私下追溯最多两张匿名牌的出牌者：优先当前选中卡，再追最近未公开历史牌。"
+rules_text = "为最多两条公共履历生成私人公开证据复盘；嫌疑集合只来自公开事实，不揭示真实出牌者。"
 tags = PackedStringArray("情报", "升级")
 play_product = "活体芯片"
 play_flow_required = 2
-authored_keys = PackedStringArray("cost", "kind", "play_product", "play_flow_required", "trace_card_count", "damage", "move", "range", "tags", "text")
+authored_keys = PackedStringArray("cost", "display_name", "kind", "play_product", "play_flow_required", "history_review_count", "damage", "move", "range", "tags", "text")
 integer_core_fields = PackedStringArray()
 effect_parameters = {
-"trace_card_count": 2
+"history_review_count": 2
 }
 
 [resource]

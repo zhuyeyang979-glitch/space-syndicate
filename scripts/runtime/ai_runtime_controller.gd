@@ -797,9 +797,6 @@ func _city_intel_priority_score(entry: Dictionary) -> int:
 func _normalized_city_guess_confidence(confidence: int) -> int:
 	return _call_world(&"_normalized_city_guess_confidence", [confidence])
 
-func _public_card_resolution_owner_entries() -> Array:
-	return _call_world(&"_public_card_resolution_owner_entries")
-
 func _victory_public_snapshot() -> Dictionary:
 	if _victory_control_runtime_controller == null or not _victory_control_runtime_controller.has_method("public_snapshot"):
 		return {}
@@ -3175,31 +3172,6 @@ func _ai_best_pressure_target_city(player_index: int) -> int:
 func _ai_direct_interaction_target_player(player_index: int) -> int:
 	var plan := _ai_direct_player_interaction_plan(player_index, {})
 	return int(plan.get("target_player", -1))
-func _ai_public_card_owner_signal_for_player(viewer_index: int, target_player: int) -> int:
-	if viewer_index < 0 or viewer_index >= players.size() or target_player < 0 or target_player >= players.size():
-		return 0
-	var score := 0
-	var scanned := 0
-	for i in range(resolved_card_history.size() - 1, -1, -1):
-		var entry_variant: Variant = resolved_card_history[i]
-		if not (entry_variant is Dictionary):
-			continue
-		var entry: Dictionary = entry_variant
-		var known_owner := int(entry.get("player_index", -1)) if bool(entry.get("public_owner_revealed", false)) else -1
-		if known_owner != target_player:
-			continue
-		var skill: Dictionary = entry.get("skill", {}) as Dictionary
-		var card_name := String(skill.get("name", entry.get("card_name", "")))
-		var kind := String(skill.get("kind", ""))
-		score += 18 + mini(95, int(float(_card_strength_budget_points(card_name)) / 3.0))
-		if _ai_pressure_kind(kind, skill):
-			score += 26
-		if _ai_defense_kind(kind, skill):
-			score += 18
-		scanned += 1
-		if scanned >= 5:
-			break
-	return score
 func _ai_direct_player_interaction_plan(player_index: int, skill: Dictionary) -> Dictionary:
 	if player_index < 0 or player_index >= players.size() or players.size() <= 1:
 		return {}
@@ -3230,7 +3202,6 @@ func _ai_direct_player_interaction_plan(player_index: int, skill: Dictionary) ->
 		var settlement_gap := settlement - self_estimate
 		var city_pressure := _player_active_city_count(i) * 74
 		var monster_pressure := _ai_owned_active_monster_count(i) * 42
-		var public_signal := _ai_public_card_owner_signal_for_player(player_index, i)
 		var leader_bonus := 0
 		if i == leader_index:
 			leader_bonus = 245 + int(float(_ai_endgame_urgency_score(player_index)) / 2.0)
@@ -3244,7 +3215,6 @@ func _ai_direct_player_interaction_plan(player_index: int, skill: Dictionary) ->
 			+ int(float(maxi(0, settlement_gap)) / 10.0) \
 			+ city_pressure \
 			+ monster_pressure \
-			+ public_signal \
 			+ leader_bonus \
 			+ posture_bonus \
 			+ hand_effect_pressure \
@@ -3253,8 +3223,6 @@ func _ai_direct_player_interaction_plan(player_index: int, skill: Dictionary) ->
 		var role := "pressure_high_value_player"
 		if i == leader_index:
 			role = "pressure_leader_hand"
-		elif public_signal >= 80:
-			role = "pressure_revealed_operator"
 		elif city_pressure >= 140:
 			role = "pressure_city_operator"
 		elif monster_pressure >= 84:
@@ -3271,14 +3239,12 @@ func _ai_direct_player_interaction_plan(player_index: int, skill: Dictionary) ->
 				"direct_target_gap": settlement_gap,
 				"direct_target_city_pressure": city_pressure,
 				"direct_target_monster_pressure": monster_pressure,
-				"direct_target_public_card_signal": public_signal,
 				"direct_effect_pressure": hand_effect_pressure,
 				"score": score,
-				"reason": "直接互动%s｜%s｜估值差%d｜公开牌线索%d｜效果压强%d" % [
+				"reason": "直接互动%s｜%s｜估值差%d｜效果压强%d" % [
 					_interaction_target_label(i),
 					role,
 					settlement_gap,
-					public_signal,
 					hand_effect_pressure,
 				],
 			}
@@ -8134,17 +8100,6 @@ func _ai_public_player_product_signal(viewer_index: int, guessed_player: int, pr
 			var clue := _normalize_city_public_clue_entry(clue_variant)
 			if (clue.get("products", []) as Array).has(product_name):
 				signal_score += 8 + confidence * 3
-	for entry_variant in _public_card_resolution_owner_entries():
-		if not (entry_variant is Dictionary):
-			continue
-		var entry := entry_variant as Dictionary
-		if not bool(entry.get("public_owner_revealed", false)) or int(entry.get("player_index", -1)) != guessed_player:
-			continue
-		if String(entry.get("play_requirement_product", "")) == product_name:
-			signal_score += 34
-		var skill: Dictionary = entry.get("skill", {}) as Dictionary
-		if String(skill.get("play_product", "")) == product_name:
-			signal_score += 24
 	return signal_score
 func _ai_city_guess_owner_candidate(viewer_index: int, city_entry: Dictionary, guessed_player: int) -> Dictionary:
 	var city_index := int(city_entry.get("district_index", -1))

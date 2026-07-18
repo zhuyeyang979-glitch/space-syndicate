@@ -56,7 +56,7 @@ func debug_snapshot() -> Dictionary:
 func _empty_snapshot(reason: String) -> Dictionary:
 	var safe_reason := reason if reason.strip_edges() != "" else "暂无当前局情报"
 	return {
-		"summary_text": "还没有当前局情报。%s；开始新局并城市化、出牌、竞猜或制造怪兽冲突后再查看。" % safe_reason,
+		"summary_text": "还没有当前局情报。%s；开始新局并城市化、出牌或制造怪兽冲突后再查看。" % safe_reason,
 		"board": {
 			"title": "情报侦探板",
 			"accent": Color("#c084fc"),
@@ -73,25 +73,25 @@ func _empty_snapshot(reason: String) -> Dictionary:
 func _board_snapshot(source: Dictionary, city_entries: Array, card_entries: Array, monster_entries: Array, warehouse_entries: Array, city_clue_entries: Array, focused_card: Dictionary, controls: Array, links: Array) -> Dictionary:
 	var chips := [
 		{"text": "终局揭晓", "accent": Color("#fef3c7"), "tooltip": "城市业主标注只在终局结算正误。"},
-		{"text": "即时竞猜¥%d" % int(source.get("card_guess_stake", 0)), "accent": Color("#c4b5fd"), "tooltip": "卡牌归属竞猜猜中后才公开该牌牌主标签。"},
+		{"text": "卡牌履历只读", "accent": Color("#c4b5fd"), "tooltip": "卡牌履历只保留公开时间、目标、牌种、阶段和结果；不会揭露隐藏出牌者。"},
 		{"text": "不看对手现金", "accent": Color("#94a3b8"), "tooltip": "情报页只整理公开证据和当前玩家自己的推理。"},
 	]
 	if not focused_card.is_empty():
 		chips.push_front({
-			"text": "已选牌轨:%s" % _short_text(str(focused_card.get("card", "匿名牌")), 8),
+			"text": "履历:%s" % _short_text(str(focused_card.get("card", "未知牌")), 8),
 			"accent": Color("#f472b6"),
-			"tooltip": "从公开牌轨带入的当前匿名牌。",
+			"tooltip": "当前展开的公共卡牌履历；私人标注只对当前玩家可见。",
 		})
 	var clues: Array = []
 	if not focused_card.is_empty():
 		clues.append(_focused_evidence_card(focused_card))
 	clues.append_array([
 		{"title": "城市嫌疑", "lines": _city_lines(city_entries), "accent": Color("#38bdf8"), "tooltip": "优先标注高GDP、低置信、仓储或有公开线索的城市。"},
-		{"title": "匿名牌轨", "lines": _card_lines(card_entries), "accent": Color("#f472b6"), "tooltip": "看匿名牌条件、目标和公开报价，再决定是否竞猜。"},
+		{"title": "公共卡牌履历", "lines": _card_lines(card_entries), "accent": Color("#f472b6"), "tooltip": "查看公开时间、目标、牌种、阶段和结果；私人标注不构成权威归属答案。"},
 		{"title": "怪兽资金", "lines": _monster_lines(monster_entries), "accent": Color("#fb7185"), "tooltip": "怪兽受伤形成公开资金压力线索。"},
 		{"title": "仓储/做空靶标", "lines": _warehouse_lines(warehouse_entries), "accent": Color("#fb923c"), "tooltip": "匿名仓储会把期货收益绑定到可被攻击的城市。"},
 		{"title": "城市公开线索", "lines": _public_city_lines(city_clue_entries), "accent": Color("#4ade80"), "tooltip": "合约、经营改造、供需变化和新闻留下的公开线索。"},
-		{"title": "下一步查证", "lines": ["先标：高GDP、仓储、低置信城市。", "再查：匿名牌条件、目标和报价。", "验证：怪兽资金损失与商品受益方。", "兑现：终局城市标注，牌轨即时竞猜。"], "accent": Color("#a78bfa"), "tooltip": "从公开证据到私人判断的推荐顺序。"},
+		{"title": "下一步查证", "lines": ["先标：高GDP、仓储、低置信城市。", "再查：卡牌公开目标、阶段和余波。", "订阅：跟踪未来公开证据变化。", "验证：怪兽资金损失与商品受益方。"], "accent": Color("#a78bfa"), "tooltip": "从公开证据到私人判断的推荐顺序。"},
 	])
 	return {
 		"title": "情报侦探板",
@@ -104,7 +104,7 @@ func _board_snapshot(source: Dictionary, city_entries: Array, card_entries: Arra
 		"link_columns": clampi(int(source.get("link_columns", 2)), 1, 3),
 		"chips": chips,
 		"kpis": _kpis(source, card_entries, monster_entries, warehouse_entries),
-		"actions": _focused_actions(focused_card),
+		"actions": _focused_actions(focused_card, source),
 		"clues": clues,
 		"control_title": "私人推理控制｜只修改当前玩家自己的标注",
 		"control_groups": controls,
@@ -122,14 +122,14 @@ func _summary_text(source: Dictionary, city_entries: Array, card_entries: Array,
 	var public_city_lines := _public_city_lines(city_clue_entries)
 	return "\n".join([
 		"情报档案",
-		"城市标注、匿名牌轨、怪兽资金和仓储风险集中管理；当前玩家：%s｜刷新%d｜当前不揭示正误，不扫描对手现金/手牌。" % [str(source.get("viewer_name", "无当前玩家")), int(source.get("business_cycle_count", 0))],
-		"情报换钱｜城市私标只在终局范围结算：猜对+¥%d，猜错-¥%d；卡牌归属押注¥%d，猜中才公开牌主。" % [int(source.get("correct_guess_cash", 0)), int(source.get("wrong_guess_cost", 0)), int(source.get("card_guess_stake", 0))],
+		"城市标注、公共卡牌履历、怪兽资金和仓储风险集中管理；当前玩家：%s｜刷新%d｜不扫描对手现金/手牌或隐藏出牌者。" % [str(source.get("viewer_name", "无当前玩家")), int(source.get("business_cycle_count", 0))],
+		"私人推理｜城市私标按现行终局规则结算：猜对+¥%d，猜错-¥%d；卡牌履历标注和订阅不奖励现金或GDP。" % [int(source.get("correct_guess_cash", 0)), int(source.get("wrong_guess_cost", 0))],
 		"城市业主情报｜终局范围｜%s" % _joined_or(city_lines, "暂无陌生城市；先城市化或观察公开线索。"),
-		"卡牌归属档案｜押注｜%s" % _joined_or(card_lines, "暂无可押注匿名牌。"),
+		"公共卡牌履历｜只读+私人标注｜%s" % _joined_or(card_lines, "暂无已结算的公共卡牌履历。"),
 		"怪兽资金档案｜受伤按最大生命比例掉钱并形成公开线索｜%s" % _joined_or(monster_lines, "暂无怪兽受伤资金线索。"),
 		"仓储风险线索｜匿名仓储会暴露可被做空、齐射、驻军或引怪的城市压力｜%s" % _joined_or(warehouse_lines, "暂无仓储风险线索。"),
 		"城市公开线索档案｜类型、商品和收入变化可辅助城市业主判断｜%s" % _joined_or(public_city_lines, "暂无城市公开线索。"),
-		"调查优先级｜优先级越高越值得先标注；先看高GDP、仓储风险、怪兽冲突和匿名牌轨。",
+		"调查优先级｜优先级越高越值得先标注；先看高GDP、仓储风险、怪兽冲突和公共卡牌余波。",
 		"置信分布：高%d / 中%d / 低%d｜理由分布：%s｜胜利由区域控制、Top-N归属GDP和公开审计决定；情报不会建立第二套终局分数。" % [_confidence_count(city_entries, 3), _confidence_count(city_entries, 2), _confidence_count(city_entries, 1), _reason_summary(city_entries, source.get("reason_options", []) as Array if source.get("reason_options", []) is Array else [])],
 		"城市标注：%d/%d｜待查%d｜全对%s｜全错%s" % [int(stats.get("guessed", 0)), int(stats.get("total_foreign", 0)), int(stats.get("unmarked", 0)), _signed_int(int(stats.get("best_cash", 0))), _signed_int(int(stats.get("worst_cash", 0)))],
 	])
@@ -140,20 +140,26 @@ func _kpis(source: Dictionary, card_entries: Array, monster_entries: Array, ware
 	return [
 		{"title": "城市标注", "value": "%d/%d" % [int(stats.get("guessed", 0)), int(stats.get("total_foreign", 0))], "meta": "全对%s｜全错%s" % [_signed_int(int(stats.get("best_cash", 0))), _signed_int(int(stats.get("worst_cash", 0)))], "accent": Color("#38bdf8"), "tooltip": "陌生城市业主标注只在终局结算。"},
 		{"title": "待查城市", "value": "%d" % int(stats.get("unmarked", 0)), "meta": "优先看高GDP/仓储/断路", "accent": Color("#facc15"), "tooltip": "未标注、高价值或有公开线索的城市更值得查。"},
-		{"title": "待猜牌", "value": "%d" % card_entries.size(), "meta": "牌轨归属/条件", "accent": Color("#f472b6"), "tooltip": "卡牌可通过商品门槛、目标、报价和结果反推。"},
+		{"title": "卡牌履历", "value": "%d" % card_entries.size(), "meta": "公开事实/私人标注", "accent": Color("#f472b6"), "tooltip": "卡牌履历不会揭露隐藏出牌者，也不产生竞猜收益。"},
 		{"title": "公开资金线索", "value": "%d" % monster_entries.size(), "meta": "怪兽受伤/仓储风险%d" % warehouse_entries.size(), "accent": Color("#fb7185"), "tooltip": "怪兽资金损失和仓储城市会暴露经济压力。"},
 	]
 
 
-func _focused_actions(entry: Dictionary) -> Array:
+func _focused_actions(entry: Dictionary, source: Dictionary) -> Array:
 	if entry.is_empty():
 		return []
 	var resolution_id := int(entry.get("resolution_id", -1))
 	if resolution_id < 0:
 		return []
 	var actions: Array = [
-		{"id": "track_return_%d" % resolution_id, "label": "回到牌轨", "accent": Color("#38bdf8"), "tooltip": "关闭情报档案并保持这张牌为已选牌轨。"},
+		{"id": "history_return_%d" % resolution_id, "label": "返回主桌", "accent": Color("#38bdf8"), "tooltip": "关闭情报档案；不会改变牌桌选择或公开状态。"},
+		{"id": "history_subscribe_%d" % resolution_id, "label": "私人订阅", "accent": Color("#c084fc"), "tooltip": "仅当前玩家订阅该履历未来的公开变化；最多2条，不奖励现金或GDP。"},
 	]
+	for option_variant in _dictionary_array(source.get("player_options", []), 8):
+		var player_index := int((option_variant as Dictionary).get("player_index", -1))
+		if player_index >= 0:
+			actions.append({"id": "history_suspect_%d_%d" % [resolution_id, player_index], "label": "私标P%d" % (player_index + 1), "accent": Color("#f472b6"), "tooltip": "只记录当前玩家自己的嫌疑标注；不是权威归属答案。"})
+	actions.append({"id": "history_clear_%d" % resolution_id, "label": "清除私标", "accent": Color("#94a3b8"), "tooltip": "清除当前玩家对该履历的嫌疑与订阅。"})
 	var card_name := str(entry.get("card_name", "")).strip_edges()
 	if card_name != "":
 		actions.append({"id": "track_open_%s" % card_name, "label": "卡牌详情", "accent": Color("#f472b6"), "tooltip": "打开对应卡牌详情。"})
@@ -239,7 +245,7 @@ func _focused_card(entries: Array) -> Dictionary:
 	for entry_variant in entries:
 		if bool((entry_variant as Dictionary).get("focused", false)):
 			return (entry_variant as Dictionary).duplicate(true)
-	return {}
+	return (entries[0] as Dictionary).duplicate(true) if not entries.is_empty() and entries[0] is Dictionary else {}
 
 
 func _focused_evidence_card(entry: Dictionary) -> Dictionary:
@@ -247,13 +253,13 @@ func _focused_evidence_card(entry: Dictionary) -> Dictionary:
 	var tip := str(entry.get("tip", "")).strip_edges()
 	var aftermath := str(entry.get("aftermath", "")).strip_edges()
 	return {
-		"title": "已选牌轨证据链",
+		"title": "公共卡牌履历证据链",
 		"lines": [
-			"牌槽证据｜%s｜%s｜%s｜%s" % ["#%d" % resolution_id if resolution_id >= 0 else "#?", str(entry.get("track_state", "牌轨")), str(entry.get("card", "匿名卡")), _short_text(str(entry.get("status", "归属待猜")), 22)],
-			"出牌条件｜%s" % str(entry.get("requirement", "条件未知")),
-			"目标线索｜%s" % str(entry.get("target", "目标未知")),
-			"出价记录｜%s" % (tip if tip != "" else "暂无公开报价/小费线索。"),
-			"余波线索｜%s｜%s｜%s" % [str(entry.get("style", "卡牌")), _time_text(float(entry.get("time", -1.0))), aftermath if aftermath != "" else "尚未留下结算余波。"],
+			"履历序号｜%s｜%s｜%s｜%s" % ["#%d" % resolution_id if resolution_id >= 0 else "#?", str(entry.get("track_state", "已结算")), str(entry.get("card", "未知牌")), _short_text(str(entry.get("status", "公共记录")), 22)],
+			"公开范围｜%s" % str(entry.get("requirement", "只记录公开事实")),
+			"公开目标｜%s" % str(entry.get("target", "无公开目标")),
+			"证据摘要｜%s" % (tip if tip != "" else "暂无额外公开证据。"),
+			"公开结果｜%s｜%s｜%s" % [str(entry.get("style", "卡牌")), _time_text(float(entry.get("time", -1.0))), aftermath if aftermath != "" else "暂无公开结果。"],
 			"私人推理｜%s" % _private_note(entry),
 		],
 		"accent": Color("#f472b6"),
@@ -277,8 +283,8 @@ func _card_lines(entries: Array) -> Array:
 		var entry := entry_variant as Dictionary
 		var secondary := str(entry.get("tip", "")).strip_edges()
 		if secondary == "": secondary = str(entry.get("target", "目标未知"))
-		lines.append("%s%s｜%s｜%s｜%s" % ["已选牌轨｜" if bool(entry.get("focused", false)) else "", str(entry.get("card", "匿名卡")), _short_text(str(entry.get("status", "归属待猜")), 18), _short_text(str(entry.get("requirement", "条件未知")), 18), _short_text(secondary, 18)])
-	if lines.is_empty(): lines.append("暂无待猜牌轨记录。")
+		lines.append("%s%s｜%s｜%s｜%s" % ["当前履历｜" if bool(entry.get("focused", false)) else "", str(entry.get("card", "未知牌")), _short_text(str(entry.get("status", "公共记录")), 18), _short_text(str(entry.get("requirement", "只读")), 18), _short_text(secondary, 18)])
+	if lines.is_empty(): lines.append("暂无公共卡牌履历。")
 	return lines
 
 
@@ -319,7 +325,7 @@ func _card_detail_lines(entries: Array) -> Array:
 	for entry_variant in entries.slice(0, mini(4, entries.size())):
 		var entry := entry_variant as Dictionary
 		var tip := str(entry.get("tip", "")).strip_edges()
-		lines.append("%s｜%s｜条件:%s｜目标:%s%s" % [str(entry.get("card", "匿名卡牌")), str(entry.get("status", "归属待猜")), str(entry.get("requirement", "未知")), str(entry.get("target", "目标未知")), "｜小费线索:%s" % tip if tip != "" else ""])
+		lines.append("%s｜%s｜范围:%s｜目标:%s%s" % [str(entry.get("card", "未知牌")), str(entry.get("status", "公共记录")), str(entry.get("requirement", "只读")), str(entry.get("target", "无公开目标")), "｜公开证据:%s" % tip if tip != "" else ""])
 	return lines
 
 
@@ -354,12 +360,10 @@ func _reason_summary(entries: Array, options: Array) -> String:
 
 
 func _private_note(entry: Dictionary) -> String:
-	var status := str(entry.get("status", "归属待猜"))
-	if status.contains("我已查明") or status.contains("我已押注") or status.contains("我打出的牌"):
+	var status := str(entry.get("status", "公共记录"))
+	if status.contains("我的私人") or status.contains("我的线索订阅"):
 		return "%s；仅当前玩家视角可见。" % status
-	if bool(entry.get("revealed", false)):
-		return "归属已经通过竞猜公开；可继续复盘余波和目标。"
-	return "尚未押注或查明；结合条件、目标、报价和地图余波决定是否竞猜。"
+	return "尚未添加私人标注；只能依据公开时间、目标、牌种、阶段和结果形成判断。"
 
 
 func _time_text(value: float) -> String:

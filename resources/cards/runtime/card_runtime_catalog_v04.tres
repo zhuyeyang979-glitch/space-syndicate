@@ -99,9 +99,13 @@ kind_field_rules = {
 "allowed": ["cost", "damage", "guard", "kind", "move", "range", "ranged_guard", "tags", "text"],
 "required": ["cost", "damage", "guard", "kind", "move", "range", "tags", "text"]
 },
-"intel_card_trace": {
-"allowed": ["cost", "damage", "kind", "move", "play_flow_required", "play_product", "range", "reveal_city_count", "tags", "text", "trace_card_count", "trace_contract_count"],
-"required": ["cost", "damage", "kind", "move", "play_flow_required", "play_product", "range", "tags", "text", "trace_card_count"]
+"card_history_public_review": {
+"allowed": ["cost", "damage", "display_name", "history_review_count", "kind", "move", "play_flow_required", "play_product", "range", "tags", "text"],
+"required": ["cost", "display_name", "history_review_count", "kind", "play_flow_required", "play_product", "tags", "text"]
+},
+"card_history_subscription": {
+"allowed": ["cost", "damage", "display_name", "history_subscription_count", "kind", "move", "play_flow_required", "play_product", "range", "tags", "text"],
+"required": ["cost", "display_name", "history_subscription_count", "kind", "play_flow_required", "play_product", "tags", "text"]
 },
 "intel_city_reveal": {
 "allowed": ["cost", "damage", "kind", "move", "play_flow_required", "play_product", "range", "reveal_city_count", "tags", "text"],

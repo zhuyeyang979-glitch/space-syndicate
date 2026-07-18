@@ -2656,9 +2656,9 @@ func _check_runtime_hand_card_drag_to_map_play(main: Node, runtime_screen: Contr
 	var selected_resolution_id := int(main.get("selected_card_resolution_id"))
 	var runtime_right_inspector := runtime_screen.find_child("RightInspector", true, false)
 	var runtime_inspector_text := _node_tree_text(runtime_right_inspector)
-	_expect(selected_resolution_id >= 0, "single-clicking a runtime PublicTrack slot selects a card-resolution guess target in main")
+	_expect(selected_resolution_id >= 0, "single-clicking a runtime PublicTrack slot focuses a public card-history entry in main")
 	_expect(_array_has_prefix(track_action_ids, "track_select_"), "single-clicking a runtime PublicTrack slot emits a track_select action through GameScreen")
-	_expect(runtime_inspector_text.contains("牌轨详情") and runtime_inspector_text.contains("选中竞猜") and runtime_inspector_text.contains("线索档案"), "runtime PublicTrack click keeps the selected track detail and dossier action in RightInspector after main resync")
+	_expect(runtime_inspector_text.contains("牌轨详情") and runtime_inspector_text.contains("查看履历") and runtime_inspector_text.contains("线索档案"), "runtime PublicTrack click keeps the public-history detail and dossier action in RightInspector after main resync")
 	var intel_button := _find_visible_button_containing(runtime_right_inspector, "线索档案")
 	_expect(intel_button != null, "runtime selected PublicTrack detail exposes a direct intel dossier action")
 	if intel_button != null:
@@ -2670,20 +2670,14 @@ func _check_runtime_hand_card_drag_to_map_play(main: Node, runtime_screen: Contr
 		var menu_preview_box := menu_overlay.call("get_preview_host") as VBoxContainer if menu_overlay != null and menu_overlay.has_method("get_preview_host") else null
 		var dossier_text := _node_tree_text(menu_preview_box)
 		_expect(track_action_ids.has("track_intel_%d" % selected_resolution_id), "pressing the runtime track dossier action emits the focused track_intel command")
-		_expect(menu_title_label != null and menu_title_label.text == "情报档案" and dossier_text.contains("已选牌轨") and dossier_text.contains("查看卡牌线索") and dossier_text.contains("已选牌轨证据链") and dossier_text.contains("出价记录") and dossier_text.contains("余波线索") and dossier_text.contains("私人推理") and dossier_text.contains("回到牌轨") and dossier_text.contains("竞猜") and dossier_text.contains("卡牌详情"), "runtime track dossier action opens the intel dossier with the selected public-track evidence chain focused and track/guess/detail paths")
-		var dossier_guess_button := _find_visible_button_containing(menu_preview_box, "竞猜")
-		_expect(dossier_guess_button != null, "runtime focused IntelDossier exposes a guess path back to the selected public-track card")
-		if dossier_guess_button != null:
-			dossier_guess_button.emit_signal("pressed")
+		_expect(menu_title_label != null and menu_title_label.text == "情报档案" and dossier_text.contains("公共卡牌履历证据链") and dossier_text.contains("公开目标") and dossier_text.contains("证据摘要") and dossier_text.contains("公开结果") and dossier_text.contains("私人推理") and dossier_text.contains("返回主桌") and dossier_text.contains("私人订阅") and dossier_text.contains("卡牌详情"), "runtime track dossier action opens the public-history evidence chain with viewer-private annotation and detail paths")
+		var dossier_return_button := _find_visible_button_containing(menu_preview_box, "返回主桌")
+		_expect(dossier_return_button != null, "runtime focused IntelDossier exposes a zero-settlement return path")
+		if dossier_return_button != null:
+			dossier_return_button.emit_signal("pressed")
 			await process_frame
 			await process_frame
-			_expect(menu_overlay != null and not menu_overlay.visible, "runtime IntelDossier guess path returns to the main table instead of resolving inside the dossier")
-			_expect(int(main.get("selected_card_resolution_id")) == selected_resolution_id, "runtime IntelDossier guess path keeps the same selected public-track resolution_id")
-			_force_runtime_screen_sync(main)
-			await process_frame
-			var selected_track_marker := runtime_screen.find_child("PublicTrackSlotSelected", true, false)
-			var track_focus_label := runtime_screen.find_child("TrackFocusLabel", true, false) as Label
-			_expect(selected_track_marker != null and track_focus_label != null and track_focus_label.text.contains("已选牌轨"), "runtime IntelDossier guess path returns to the same selected PublicTrack focus")
+			_expect(menu_overlay != null and not menu_overlay.visible, "runtime IntelDossier return path closes the read-only dossier without settlement")
 
 
 func _check_runtime_blocked_hand_card_drag_reason(main: Node, runtime_screen: Control) -> void:
@@ -3609,7 +3603,7 @@ func _check_viewmodel_contracts() -> void:
 		"select_action": "track_select_42",
 		"open_action": "track_open_orbital_finance_i",
 		"requirements": [{"text": "当前"}, {"text": "归属:匿名"}],
-		"actions": [{"id": "track_select_42", "label": "选中竞猜"}, {"id": "track_intel_42", "label": "线索档案"}],
+		"actions": [{"id": "track_select_42", "label": "查看履历"}, {"id": "track_intel_42", "label": "线索档案"}],
 		"deep_links": [{"id": "track_intel_42", "label": "线索档案"}, {"id": "track_open_orbital_finance_i", "label": "卡牌详情"}],
 	}])
 	var planet: Variant = planet_script.new().apply_dictionary({
@@ -8719,7 +8713,7 @@ func _check_runtime_card_catalog_resource_component() -> void:
 		var integrity_variant: Variant = JSON.parse_string(FileAccess.get_file_as_string(CARD_RUNTIME_CATALOG_INTEGRITY))
 		var integrity: Dictionary = integrity_variant if integrity_variant is Dictionary else {}
 		var hashes_match := str(debug.get("catalog_order_sha256", "")) == str(integrity.get("catalog_order_sha256", "")) and str(debug.get("upgradeable_order_sha256", "")) == str(integrity.get("upgradeable_order_sha256", "")) and str(debug.get("common_pool_order_sha256", "")) == str(integrity.get("common_pool_order_sha256", ""))
-		_expect(bool(report.get("valid", false)) and int(report.get("card_count", 0)) == 239 and int(report.get("authored_rank_count", 0)) == 239 and int(report.get("family_count", 0)) == 120 and int(report.get("pack_count", 0)) == 10 and int(report.get("common_pool_count", 0)) == 125 and int(report.get("upgradeable_family_count", 0)) == 76 and int(report.get("kind_count", 0)) == 49 and hashes_match and not _variant_contains_callable(report) and not _variant_contains_object(report), "Runtime catalog validates 120 families, 239 authored ranks, ten packs, 125 pool entries, 76 upgradeable families, 49 kinds, and locked order hashes")
+		_expect(bool(report.get("valid", false)) and int(report.get("card_count", 0)) == 239 and int(report.get("authored_rank_count", 0)) == 239 and int(report.get("family_count", 0)) == 120 and int(report.get("pack_count", 0)) == 10 and int(report.get("common_pool_count", 0)) == 125 and int(report.get("upgradeable_family_count", 0)) == 76 and int(report.get("kind_count", 0)) == 50 and hashes_match and not _variant_contains_callable(report) and not _variant_contains_object(report), "Runtime catalog validates 120 families, 239 authored ranks, ten packs, 125 pool entries, 76 upgradeable families, 50 kinds, and locked order hashes")
 	var family_file_count := 0
 	for path in DirAccess.get_files_at("res://resources/cards/runtime/families"):
 		family_file_count += 1 if str(path).ends_with(".tres") else 0
@@ -9467,11 +9461,11 @@ func _check_intel_dossier_public_snapshot_cutover_component() -> void:
 		_expect(service.has_method("configure") and service.has_method("compose") and service.has_method("debug_snapshot"), "IntelDossierPublicSnapshotService exposes required pure-data APIs")
 		service.call("configure", {})
 		var snapshot: Dictionary = service.call("compose", {
-			"valid": true, "viewer_index": 0, "viewer_name": "玩家", "correct_guess_cash": 120, "wrong_guess_cost": 60, "card_guess_stake": 100, "city_final_value": 200,
+			"valid": true, "viewer_index": 0, "viewer_name": "玩家", "correct_guess_cash": 120, "wrong_guess_cost": 60, "city_final_value": 200,
 			"stats": {"total_foreign": 1, "guessed": 1, "unmarked": 0, "best_cash": 120, "worst_cash": -60},
 			"player_options": [{"player_index": 1, "label": "标玩家2"}], "confidence_options": [{"value": 3, "label": "高"}], "reason_options": [{"id": "card", "label": "卡牌条件"}],
 			"city_entries": [{"district_index": 3, "name": "环城港", "guess": 1, "marked": true, "confidence": 3, "confidence_label": "高", "reason": "card", "reason_label": "卡牌条件", "priority": 88, "potential_income": 200, "warehouse_pressure": 10, "latest_clue": "公开线索"}],
-			"card_entries": [{"resolution_id": 42, "card": "轨道融资1", "card_name": "轨道融资1", "focused": true, "status": "归属待猜", "requirement": "份额10%", "target": "城市", "track_state": "已结算"}],
+			"card_entries": [{"resolution_id": 42, "history_entry_id": "card-history:42", "card": "轨道融资1", "card_name": "轨道融资1", "focused": true, "status": "我的私人标注", "requirement": "只记录公开事实", "target": "城市", "track_state": "已结算"}],
 			"monster_entries": [{"slot": 0, "name": "吞星兽", "catalog_index": 2, "owner_text": "归属未公开", "clue": "资金线索"}],
 			"warehouse_entries": [], "city_clue_entries": [{"district": "环城港", "clue_products": ["活体芯片"], "linked_product": "活体芯片", "clue": "需求上升"}],
 		})
@@ -9485,7 +9479,7 @@ func _check_intel_dossier_public_snapshot_cutover_component() -> void:
 				action_ids.append(str((action_variant as Dictionary).get("id", "")))
 		for action_variant in board.get("links", []) as Array:
 			action_ids.append(str((action_variant as Dictionary).get("id", "")))
-		_expect(action_ids.has("track_return_42") and action_ids.has("track_guess_42") and action_ids.has("intel_city_mark_3_1") and action_ids.has("intel_city_confidence_3_3") and action_ids.has("intel_city_reason_3_card") and action_ids.has("intel_open_region_3") and action_ids.has("intel_open_economy"), "Intel Dossier service preserves track ids and composes city/link action ids")
+		_expect(action_ids.has("history_return_42") and action_ids.has("history_subscribe_42") and action_ids.has("history_suspect_42_1") and action_ids.has("history_clear_42") and action_ids.has("intel_city_mark_3_1") and action_ids.has("intel_city_confidence_3_3") and action_ids.has("intel_city_reason_3_card") and action_ids.has("intel_open_region_3") and action_ids.has("intel_open_economy"), "Intel Dossier service composes viewer-private history annotation and city/link action ids")
 		var debug: Dictionary = service.call("debug_snapshot")
 		_expect(not bool(debug.get("mutates_city_guesses", true)) and not bool(debug.get("settles_intel_cash", true)) and not bool(debug.get("reveals_city_owner_truth", true)) and not bool(debug.get("reveals_card_owner_truth", true)) and not bool(debug.get("reads_private_hands", true)) and not bool(debug.get("navigates_runtime_nodes", true)) and bool(debug.get("action_id_controls", false)), "Intel Dossier formatter owns no mutation, settlement, hidden-truth, private-hand, or navigation rules")
 		service.free()
@@ -9501,7 +9495,7 @@ func _check_intel_dossier_public_snapshot_cutover_component() -> void:
 		root.add_child(bench)
 		await process_frame
 		_expect(bench.has_method("output_dir") and bench.has_method("retired_formatter_names") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "IntelDossierPublicSnapshotCutoverBench exposes required QA APIs")
-		var expected_cases := ["required_service_assets_load", "service_scene_contract", "intel_source_pure_data", "empty_source_safe", "summary_privacy_contract", "header_chip_contract", "kpi_contract", "focused_evidence_contract", "track_action_compatibility", "city_mark_action_ids", "confidence_action_ids", "reason_action_ids", "public_link_action_ids", "board_signal_forwarding", "coordinator_scene_composition", "coordinator_pure_data_proxy", "real_main_route_and_render", "open_performance_contract", "legacy_builders_absent_and_metrics", "private_input_rejection"]
+		var expected_cases := ["required_service_assets_load", "service_scene_contract", "intel_source_pure_data", "empty_source_safe", "summary_privacy_contract", "header_chip_contract", "kpi_contract", "focused_evidence_contract", "history_annotation_actions", "city_mark_action_ids", "confidence_action_ids", "reason_action_ids", "public_link_action_ids", "board_signal_forwarding", "coordinator_scene_composition", "coordinator_pure_data_proxy", "real_main_route_and_render", "open_performance_contract", "legacy_builders_absent_and_metrics", "private_input_rejection"]
 		var cases: Array = bench.call("cutover_cases")
 		var retired_formatters: Array = bench.call("retired_formatter_names")
 		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
@@ -9905,29 +9899,29 @@ func _check_intel_dossier_board_component() -> void:
 		)
 	board.call("set_dossier", {
 		"title": "情报侦探板",
-		"title_tooltip": "先扫线索类别，再决定标注城市、猜卡牌归属或跳到图鉴查证。",
+		"title_tooltip": "先扫公开线索，再决定标注城市、订阅卡牌履历或跳到图鉴查证。",
 		"kpi_columns": 4,
 		"clue_columns": 3,
 		"chips": [
 			{"text": "终局揭晓", "accent": Color("#fef3c7"), "tooltip": "终局结算"},
-			{"text": "即时竞猜¥40", "accent": Color("#c4b5fd"), "tooltip": "牌轨竞猜"},
+			{"text": "卡牌履历只读", "accent": Color("#c4b5fd"), "tooltip": "公开事实与私人标注"},
 			{"text": "不看对手现金", "accent": Color("#94a3b8"), "tooltip": "隐私保护"},
 		],
 		"kpis": [
 			{"title": "城市标注", "value": "2/5", "meta": "全对+300｜全错-120", "accent": Color("#38bdf8"), "tooltip": "城市归属标注"},
 			{"title": "待查城市", "value": "3", "meta": "优先看高GDP/仓储/断路", "accent": Color("#facc15"), "tooltip": "待查城市"},
-			{"title": "牌轨牌", "value": "4", "meta": "归属/条件", "accent": Color("#f472b6"), "tooltip": "公开牌轨"},
+			{"title": "卡牌履历", "value": "4", "meta": "公开事实/私人标注", "accent": Color("#f472b6"), "tooltip": "公共卡牌履历"},
 			{"title": "公开资金线索", "value": "2", "meta": "怪兽受伤/仓储风险1", "accent": Color("#fb7185"), "tooltip": "公开线索"},
 		],
 		"actions": [
-			{"id": "track_return_42", "label": "回到牌轨", "accent": Color("#38bdf8"), "tooltip": "回到主桌"},
-			{"id": "track_guess_42", "label": "竞猜", "accent": Color("#c084fc"), "tooltip": "回到归属竞猜"},
+			{"id": "history_return_42", "label": "返回主桌", "accent": Color("#38bdf8"), "tooltip": "不改变牌桌选择"},
+			{"id": "history_subscribe_42", "label": "私人订阅", "accent": Color("#c084fc"), "tooltip": "只通知当前玩家"},
 			{"id": "track_open_orbital_finance_i", "label": "卡牌详情", "accent": Color("#f472b6"), "tooltip": "打开卡牌详情"},
 		],
 		"clues": [
-			{"title": "已选牌轨证据链", "lines": ["牌槽证据｜#42｜竞拍1｜业主透镜｜归属待猜", "出牌条件｜轨迹墨水流动≥2", "目标线索｜区域：雾港", "出价记录｜锁定报价¥80", "余波线索｜金融｜T+12.0s｜GDP跳变", "私人推理｜尚未押注"], "accent": Color("#f472b6"), "tooltip": "已选牌轨", "line_limit": 6},
+			{"title": "公共卡牌履历证据链", "lines": ["履历序号｜#42｜已结算｜业主透镜｜公共记录", "公开范围｜只记录公开事实", "公开目标｜区域：雾港", "证据摘要｜目标与余波", "公开结果｜金融｜T+12.0s｜GDP跳变", "私人推理｜我的私人标注"], "accent": Color("#f472b6"), "tooltip": "公共履历", "line_limit": 6},
 			{"title": "城市嫌疑", "lines": ["雾港｜优先88｜标P2/高｜GDP48｜仓储"], "accent": Color("#38bdf8"), "tooltip": "城市嫌疑"},
-			{"title": "牌轨线索", "lines": ["业主透镜｜归属待猜｜需轨迹墨水"], "accent": Color("#f472b6"), "tooltip": "公开牌轨"},
+			{"title": "履历订阅", "lines": ["业主透镜｜只订阅公开变化｜无奖励"], "accent": Color("#f472b6"), "tooltip": "私人订阅"},
 			{"title": "怪兽资金", "lines": ["怪1受伤，疑似牵连仓储"], "accent": Color("#fb7185"), "tooltip": "怪兽资金"},
 			{"title": "仓储/做空靶标", "lines": ["晶尘仓储绑定雾港"], "accent": Color("#fb923c"), "tooltip": "仓储风险"},
 			{"title": "城市公开线索", "lines": ["雾港出现合约收入跳变"], "accent": Color("#4ade80"), "tooltip": "公开线索"},
@@ -9957,8 +9951,8 @@ func _check_intel_dossier_board_component() -> void:
 	_expect(board.find_child("IntelDossierControlGrid", true, false) != null and board.find_child("IntelDossierControlGroup", true, false) != null and board.find_child("IntelDossierControlActionButton", true, false) != null, "IntelDossierBoard owns sceneized city inference control groups")
 	_expect(board.find_child("IntelDossierLinkGrid", true, false) != null and board.find_child("IntelDossierLinkActionButton", true, false) != null, "IntelDossierBoard owns sceneized public evidence links")
 	var board_text := _node_tree_text(board)
-	_expect(board_text.contains("已选牌轨证据链") and board_text.contains("出价记录") and board_text.contains("余波线索") and board_text.contains("私人推理") and board_text.contains("回到牌轨") and board_text.contains("竞猜") and board_text.contains("卡牌详情"), "IntelDossierBoard can render a selected public-track evidence chain with bid, aftermath, private-note lines, and track/guess/detail paths")
-	for label_text in ["回到牌轨", "竞猜", "卡牌详情"]:
+	_expect(board_text.contains("公共卡牌履历证据链") and board_text.contains("证据摘要") and board_text.contains("公开结果") and board_text.contains("私人推理") and board_text.contains("返回主桌") and board_text.contains("私人订阅") and board_text.contains("卡牌详情"), "IntelDossierBoard renders public history with viewer-private annotation and detail paths")
+	for label_text in ["返回主桌", "私人订阅", "卡牌详情"]:
 		var action_button := _find_visible_button_containing(board, label_text)
 		if action_button != null:
 			action_button.emit_signal("pressed")
@@ -9967,7 +9961,7 @@ func _check_intel_dossier_board_component() -> void:
 		if action_button != null:
 			action_button.emit_signal("pressed")
 	await process_frame
-	_expect(emitted_dossier_actions.has("track_return_42") and emitted_dossier_actions.has("track_guess_42") and emitted_dossier_actions.has("track_open_orbital_finance_i"), "IntelDossierBoard action buttons emit data-only public-track action ids")
+	_expect(emitted_dossier_actions.has("history_return_42") and emitted_dossier_actions.has("history_subscribe_42") and emitted_dossier_actions.has("track_open_orbital_finance_i"), "IntelDossierBoard action buttons emit data-only public-history action ids")
 	_expect(emitted_dossier_actions.has("intel_city_mark_3_1") and emitted_dossier_actions.has("intel_city_confidence_3_3") and emitted_dossier_actions.has("intel_city_reason_3_card") and emitted_dossier_actions.has("intel_city_clear_3") and emitted_dossier_actions.has("intel_open_region_3") and emitted_dossier_actions.has("intel_open_economy"), "IntelDossierBoard control/link buttons emit data-only action ids")
 	root.remove_child(board)
 	board.queue_free()

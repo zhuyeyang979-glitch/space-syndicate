@@ -20,7 +20,7 @@ func _init() -> void:
 	_expect(not ai_source.contains("_ai_card_" + "guess_candidates"), "AI produces no card-owner guess candidates")
 	_expect(not ai_source.contains("policy_kind\": \"card_owner_" + "guess"), "AI records no card-owner guess policy")
 	_expect(not ai_source.contains("卡牌归属押注"), "AI exposes no card-owner wager reason")
-	_expect(not queue_source.contains("\"guessers\""), "new card-resolution entries own no guesser list")
+	_expect(not queue_source.contains("\"guessers\":" ) and queue_source.contains("entry.erase(\"guessers\")"), "new card-resolution entries own no guesser list while legacy restore strips the retired field")
 	_expect(not dossier_source.contains("track_" + "guess_"), "Intel dossier offers no card-owner guess action")
 	var catalog := ROLE_CATALOG_SCENE.instantiate() as RoleCatalogRuntimeService
 	_expect(catalog != null and catalog.role_count() == 24, "role catalog remains the unique 24-role owner")

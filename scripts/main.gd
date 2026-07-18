@@ -1856,8 +1856,6 @@ func _runtime_card_resolution_overlay_badge_source(entry: Dictionary) -> Diction
 	var contract_controller := _contract_runtime_controller_node()
 	var pending_contract := contract_controller.offer_by_id(int(entry.get("contract_offer_id", resolution_id))) if contract_controller != null else {}
 	var public_entry := {
-		"public_owner_revealed": bool(entry.get("public_owner_revealed", false)),
-		"public_owner_label": str(entry.get("public_owner_label", "归属：已公开")),
 		"is_viewer_card": _game_runtime_coordinator_node().table_selection_state().selected_player >= 0 and _game_runtime_coordinator_node().table_selection_state().selected_player < _game_runtime_coordinator_node().world_session_state().players.size() and int(entry.get("player_index", -1)) == _game_runtime_coordinator_node().table_selection_state().selected_player,
 	}
 	return {
@@ -2527,12 +2525,40 @@ func _add_intel_dossier_board_panel(parent: Container, board_snapshot: Dictionar
 
 func _on_intel_dossier_board_action_requested(action_id: String) -> void:
 	var handled := false
-	if action_id.begins_with("track_return_"):
-		var return_resolution_id := int(action_id.substr("track_return_".length()))
-		_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
-		_focus_card_resolution_track_entry(return_resolution_id)
+	if action_id.begins_with("history_return_"):
 		_close_menu()
 		handled = true
+	elif action_id.begins_with("history_subscribe_"):
+		var resolution_id := int(action_id.substr("history_subscribe_".length()))
+		var result := _game_runtime_coordinator_node().apply_card_history_private_annotation(
+			_game_runtime_coordinator_node().table_selection_state().selected_player,
+			"card-history:%d" % resolution_id,
+			{"subscribed": true, "private_tags": ["线索订阅"]}
+		)
+		handled = bool(result.get("applied", false))
+		if handled:
+			_open_intel_dossier_menu()
+	elif action_id.begins_with("history_suspect_"):
+		var values := action_id.substr("history_suspect_".length()).split("_", false, 1)
+		if values.size() == 2:
+			var result := _game_runtime_coordinator_node().apply_card_history_private_annotation(
+				_game_runtime_coordinator_node().table_selection_state().selected_player,
+				"card-history:%d" % int(values[0]),
+				{"suspected_player_indices": [int(values[1])], "private_confidence": 1, "private_tags": ["私人嫌疑"]}
+			)
+			handled = bool(result.get("applied", false))
+			if handled:
+				_open_intel_dossier_menu()
+	elif action_id.begins_with("history_clear_"):
+		var resolution_id := int(action_id.substr("history_clear_".length()))
+		var result := _game_runtime_coordinator_node().apply_card_history_private_annotation(
+			_game_runtime_coordinator_node().table_selection_state().selected_player,
+			"card-history:%d" % resolution_id,
+			{"suspected_player_indices": [], "excluded_player_indices": [], "private_confidence": 0, "private_tags": [], "note_text": "", "subscribed": false}
+		)
+		handled = bool(result.get("applied", false))
+		if handled:
+			_open_intel_dossier_menu()
 	elif action_id.begins_with("track_select_"):
 		var resolution_id := int(action_id.substr("track_select_".length()))
 		_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
@@ -2694,22 +2720,6 @@ func _city_owner_view_text_for_player(city_index: int, viewer_index: int) -> Str
 		if guess >= 0:
 			return "我的推测:玩家%d" % (guess + 1)
 	return "未知业主"
-
-
-func _public_card_resolution_owner_entries() -> Array:
-	var entries := []
-	for entry_variant in _game_runtime_coordinator_node().card_resolution_history_snapshot():
-		if entry_variant is Dictionary:
-			entries.append(entry_variant)
-	if not _card_resolution_active_entry().is_empty():
-		entries.append(_card_resolution_active_entry())
-	for entry_variant in _card_resolution_current_queue():
-		if entry_variant is Dictionary:
-			entries.append(entry_variant)
-	for entry_variant in _card_resolution_next_queue():
-		if entry_variant is Dictionary:
-			entries.append(entry_variant)
-	return entries
 
 
 func _economy_warehouse_risk_entries(limit: int = 5, viewer_index: int = -1) -> Array:
@@ -2907,86 +2917,54 @@ func _latest_city_public_clue_text(city: Dictionary) -> String:
 
 func _intel_card_guess_entries(viewer_index: int, limit: int = 5) -> Array:
 	var entries := []
-	var source_entries := _public_card_resolution_owner_entries()
+	var public_snapshot := _game_runtime_coordinator_node().card_history_public_snapshot()
+	var source_entries: Array = public_snapshot.get("entries", []) if public_snapshot.get("entries", []) is Array else []
+	var annotation_snapshot := _game_runtime_coordinator_node().card_history_private_annotations(viewer_index)
+	var annotations_by_id := {}
+	for annotation_variant in annotation_snapshot.get("annotations", []):
+		if annotation_variant is Dictionary:
+			var annotation := annotation_variant as Dictionary
+			annotations_by_id[str(annotation.get("history_entry_id", ""))] = annotation
 	for i in range(source_entries.size() - 1, -1, -1):
 		var entry_variant: Variant = source_entries[i]
 		if not (entry_variant is Dictionary):
 			continue
 		var entry := entry_variant as Dictionary
-		var skill: Dictionary = entry.get("skill", {}) as Dictionary
-		if skill.is_empty():
+		var history_entry_id := str(entry.get("history_entry_id", ""))
+		if history_entry_id.is_empty():
 			continue
-		var card_name := String(skill.get("name", ""))
-		var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
-		var owner_index := int(entry.get("player_index", -1))
-		var owner_revealed := bool(entry.get("public_owner_revealed", false))
-		var known_owner := _private_known_card_owner_for_entry(viewer_index, entry)
-		var status := "公共行动履历｜归属保持匿名"
-		if owner_revealed:
-			status = String(entry.get("public_owner_label", "归属已公开"))
-		elif known_owner >= 0 and known_owner < _game_runtime_coordinator_node().world_session_state().players.size():
-			status = "我已查明：玩家%d｜尚未公开" % (known_owner + 1)
-		elif viewer_index == owner_index:
-			status = "我打出的牌｜仅当前视角可知"
-		var time_value := float(entry.get("resolved_time", entry.get("queued_order", -1.0)))
-		var public_target := "目标未知"
-		if int(entry.get("target_player", -1)) >= 0:
-			public_target = "玩家%d" % (int(entry.get("target_player", -1)) + 1)
-		elif int(entry.get("target_slot", -1)) >= 0:
-			public_target = "怪兽%d" % (int(entry.get("target_slot", -1)) + 1)
-		elif int(entry.get("selected_district", -1)) >= 0:
-			public_target = "区域%d" % (int(entry.get("selected_district", -1)) + 1)
+		var id_parts := history_entry_id.split(":", false)
+		var resolution_id := int(id_parts[id_parts.size() - 1]) if not id_parts.is_empty() else -1
+		var annotation: Dictionary = annotations_by_id.get(history_entry_id, {}) if annotations_by_id.get(history_entry_id, {}) is Dictionary else {}
+		var status := "公共行动履历｜不公开出牌者"
+		var private_tags: Array = annotation.get("private_tags", []) if annotation.get("private_tags", []) is Array else []
+		if bool(annotation.get("subscribed", false)):
+			status = "我的线索订阅｜等待公开证据变化"
+		elif not (annotation.get("suspected_player_indices", []) as Array).is_empty():
+			status = "我的私人推测｜置信%d" % int(annotation.get("private_confidence", 0))
+		elif not str(annotation.get("note_text", "")).is_empty():
+			status = "我的私人标注"
+		elif not private_tags.is_empty():
+			status = "我的私人标注｜%s" % "/".join(private_tags)
+		var time_value := float(entry.get("public_time", -1.0))
 		entries.append({
 			"resolution_id": resolution_id,
-			"card": _card_resolution_entry_card_label(entry),
-			"card_name": card_name,
-			"track_state": _intel_card_guess_track_state(entry, resolution_id),
+			"history_entry_id": history_entry_id,
+			"card": str(entry.get("public_card_name", "未知牌")),
+			"card_name": str(entry.get("public_card_id", "")),
+			"track_state": "已结算" if str(entry.get("public_action_phase", "resolved")) == "resolved" else "等待结算",
 			"status": status,
-			"target": public_target,
-			"requirement": _card_resolution_play_requirement_text(entry).replace("打出条件：", ""),
-			"tip": _card_resolution_order_clue_text(entry),
-			"aftermath": String(entry.get("aftermath_clue", "")),
+			"target": str(entry.get("public_target", "无公开目标")),
+			"requirement": "公开履历只记录已经发生的动作和结果",
+			"tip": str(annotation.get("public_evidence_summary", "只使用公共证据进行复盘")),
+			"aftermath": str(entry.get("public_result", "")),
 			"style": "卡牌",
 			"time": time_value,
-			"revealed": owner_revealed,
+			"revealed": not str(entry.get("publicly_revealed_actor", "")).is_empty(),
 			"focused": resolution_id >= 0 and resolution_id == _game_runtime_coordinator_node().table_selection_state().selected_card_resolution_id,
 		})
 	entries.sort_custom(Callable(self, "_sort_intel_card_guess_entry"))
 	return _first_entries(entries, limit)
-
-
-func _intel_card_guess_track_state(entry: Dictionary, resolution_id: int) -> String:
-	if resolution_id < 0:
-		return "牌轨"
-	if int(_card_resolution_active_entry().get("resolution_id", _card_resolution_active_entry().get("queued_order", -1))) == resolution_id:
-		return "当前展示"
-	for i in range(_card_resolution_current_queue().size()):
-		var queue_variant: Variant = _card_resolution_current_queue()[i]
-		if not (queue_variant is Dictionary):
-			continue
-		var queue_entry := queue_variant as Dictionary
-		if int(queue_entry.get("resolution_id", queue_entry.get("queued_order", -1))) != resolution_id:
-			continue
-		var group_position := maxi(1, int(queue_entry.get("group_position", i + 1)))
-		var group_order := maxi(1, int(queue_entry.get("group_order", 1)))
-		var group_size := maxi(1, int(queue_entry.get("group_size", 1)))
-		if card_resolution_auction_open:
-			return "锁定组%d·%d/%d" % [group_position, group_order, group_size]
-		if card_resolution_batch_locked or not _card_resolution_active_entry().is_empty():
-			return "锁定组%d·%d/%d" % [group_position, group_order, group_size]
-		return "组织组%d·%d/%d" % [group_position, group_order, group_size]
-	for i in range(_card_resolution_next_queue().size()):
-		var next_variant: Variant = _card_resolution_next_queue()[i]
-		if next_variant is Dictionary:
-			var next_entry := next_variant as Dictionary
-			if int(next_entry.get("resolution_id", next_entry.get("queued_order", -1))) == resolution_id:
-				return "下批等待%d" % (i + 1)
-	for history_variant in _game_runtime_coordinator_node().card_resolution_history_snapshot():
-		if history_variant is Dictionary:
-			var history_entry := history_variant as Dictionary
-			if int(history_entry.get("resolution_id", history_entry.get("queued_order", -1))) == resolution_id:
-				return "已结算"
-	return String(entry.get("track_state", "牌轨"))
 
 
 func _sort_intel_card_guess_entry(a: Dictionary, b: Dictionary) -> bool:
@@ -5293,7 +5271,6 @@ func _new_game() -> void:
 			"city_guesses": {},
 			"city_guess_confidence": {},
 			"city_guess_reasons": {},
-			"known_card_owners": {},
 			"known_contract_parties": {},
 			"cities_built": 0,
 			"total_card_spend": 0,
@@ -5668,8 +5645,7 @@ func _ensure_player_role_cards() -> void:
 func _ensure_player_private_intel_state() -> void:
 	for i in range(_game_runtime_coordinator_node().world_session_state().players.size()):
 		var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[i]
-		if not (player.get("known_card_owners", {}) is Dictionary):
-			player["known_card_owners"] = {}
+		player.erase("known_card_owners")
 		if not (player.get("known_contract_parties", {}) is Dictionary):
 			player["known_contract_parties"] = {}
 		if not (player.get("city_guesses", {}) is Dictionary):
@@ -6060,7 +6036,7 @@ func _runtime_bid_board_track_link(label: String, entry: Dictionary, state_text:
 		"active": active or selected,
 		"selected": selected,
 		"accent": _card_presentation_color(_queued_skill_from_entry(entry)),
-		"tooltip": "对应顶部公开牌轨：%s｜%s｜%s。单击这里或顶部牌槽可选中竞猜/详情。" % [label, state_text, card_label],
+		"tooltip": "对应当前公共结算：%s｜%s｜%s。单击可查看公开履历和详情。" % [label, state_text, card_label],
 		"max_chars": 13,
 	}
 
@@ -6862,73 +6838,6 @@ func _set_city_guess_reason_for_player(viewer_index: int, city_index: int, reaso
 		_city_guess_reason_label(normalized_reason),
 	])
 	return true
-
-
-func _private_known_card_owner_for_entry(viewer_index: int, entry: Dictionary) -> int:
-	if viewer_index < 0 or viewer_index >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return -1
-	var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
-	if resolution_id < 0:
-		return -1
-	var known: Dictionary = (_game_runtime_coordinator_node().world_session_state().players[viewer_index] as Dictionary).get("known_card_owners", {})
-	return int(known.get(str(resolution_id), -1))
-
-
-func _remember_card_owner_for_player(viewer_index: int, entry: Dictionary, source: String) -> bool:
-	if viewer_index < 0 or viewer_index >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return false
-	var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
-	var card_owner := int(entry.get("player_index", -1))
-	if resolution_id < 0 or card_owner < 0 or card_owner >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return false
-	var known: Dictionary = (_game_runtime_coordinator_node().world_session_state().players[viewer_index] as Dictionary).get("known_card_owners", {})
-	if int(known.get(str(resolution_id), -1)) == card_owner:
-		return false
-	known[str(resolution_id)] = card_owner
-	_game_runtime_coordinator_node().world_session_state().players[viewer_index]["known_card_owners"] = known
-	_record_player_economic_event(viewer_index, "情报", source, 0, "私下查明轨道#%d《%s》由玩家%d打出。" % [
-		resolution_id,
-		_card_resolution_entry_card_label(entry),
-		card_owner + 1,
-	])
-	return true
-
-
-func _traceable_card_entries(preferred_resolution_id: int = -1, limit: int = 1) -> Array:
-	var result := []
-	if preferred_resolution_id >= 0:
-		var preferred := _card_resolution_entry_by_id(preferred_resolution_id)
-		if not preferred.is_empty() and not bool(preferred.get("public_owner_revealed", false)):
-			result.append(preferred)
-	var history := _game_runtime_coordinator_node().card_resolution_history_snapshot()
-	for i in range(history.size() - 1, -1, -1):
-		if result.size() >= limit:
-			return result
-		var entry_variant: Variant = history[i]
-		if not (entry_variant is Dictionary):
-			continue
-		var entry := entry_variant as Dictionary
-		var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
-		if resolution_id < 0 or resolution_id == preferred_resolution_id or bool(entry.get("public_owner_revealed", false)):
-			continue
-		result.append(entry.duplicate(true))
-	return result
-
-
-func _trace_card_owner_for_player(viewer_index: int, preferred_resolution_id: int = -1, count: int = 1, source: String = "出牌追帧") -> int:
-	var traced := 0
-	for entry_variant in _traceable_card_entries(preferred_resolution_id, maxi(1, count)):
-		if not (entry_variant is Dictionary):
-			continue
-		var entry := entry_variant as Dictionary
-		if _remember_card_owner_for_player(viewer_index, entry, source):
-			traced += 1
-			_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s获得一条匿名卡牌归属线索：轨道#%d《%s》的真实出牌者已写入私人情报。" % [
-				String((_game_runtime_coordinator_node().world_session_state().players[viewer_index] as Dictionary).get("name", "玩家")),
-				int(entry.get("resolution_id", entry.get("queued_order", -1))),
-				_card_resolution_entry_card_label(entry),
-			])
-	return traced
 
 
 func _reveal_city_owner_by_intel_card(player_index: int, city_index: int, source: String) -> bool:
@@ -9695,13 +9604,8 @@ func _card_resolution_phase_text(entry: Dictionary = {}, _seconds_left: float = 
 		active_entry = _card_resolution_active_entry()
 	if not active_entry.is_empty():
 		if card_resolution_counter_window_active:
-			return "阶段：相位响应｜可打反制｜原牌暂未结算｜出牌者%s" % [
-				"已揭晓" if bool(active_entry.get("public_owner_revealed", false)) else "未知",
-			]
-		return "阶段：组内连续结算｜锁定候补%d｜普通牌等待下一窗口｜出牌者%s" % [
-			queued,
-			"已揭晓" if bool(active_entry.get("public_owner_revealed", false)) else "未知",
-		]
+			return "阶段：相位响应｜可打反制｜原牌暂未结算｜匿名公开动作"
+		return "阶段：组内连续结算｜锁定候补%d｜普通牌等待下一窗口｜匿名公开动作" % queued
 	if queued > 0:
 		return "阶段：卡牌组锁定｜锁定候补%d｜可加价：否｜普通牌等待下一窗口" % queued
 	return ""
@@ -10732,7 +10636,7 @@ func _card_resolution_overlay_detail_text(entry: Dictionary, seconds_left: float
 	if card_label == "":
 		card_label = "牌桌卡牌"
 	var lines := [
-		"%s｜出牌者%s" % [card_label, "已揭晓" if bool(entry.get("public_owner_revealed", false)) else "未知"],
+		"%s｜匿名公开动作" % card_label,
 		_card_resolution_phase_text(entry, seconds_left),
 	]
 	var animation_text := String(entry.get("aftermath_clue", ""))

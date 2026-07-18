@@ -270,7 +270,7 @@ func _dossier_focused_resolution_id(data: Dictionary) -> int:
 
 
 func _resolution_id_from_action(action_id: String) -> int:
-	for prefix in ["track_return_", "track_select_", "track_intel_"]:
+	for prefix in ["history_return_", "history_subscribe_", "history_clear_", "track_select_", "track_intel_"]:
 		if action_id.begins_with(prefix):
 			var suffix := action_id.substr(prefix.length()).strip_edges()
 			return int(suffix) if suffix.is_valid_int() else -1

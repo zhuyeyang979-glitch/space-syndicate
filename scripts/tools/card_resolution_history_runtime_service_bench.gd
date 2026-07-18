@@ -22,13 +22,16 @@ func run_bench() -> Dictionary:
 			"player_index": 2,
 			"skill": {"name": "相位否决", "kind": "card_counter"},
 			"public_owner_revealed": false,
+			"guessers": [1],
 		})
 		_check(bool(appended.get("appended", false)), "resolution appends")
 		_check(bool(service.append_resolved({"resolution_id": 91}).get("duplicate", false)), "duplicate is rejected")
-		_check(not JSON.stringify(service.public_history_snapshot()).contains("player_index"), "public projection hides actor")
-		_check(bool(service.reveal_owner(91, "归属：玩家3").get("revealed", false)), "owner label reveals")
-		_check(JSON.stringify(service.public_history_snapshot()).contains("归属：玩家3"), "revealed label reaches public projection")
+		var public_history: Array = service.public_history_snapshot()
+		_check(not JSON.stringify(public_history).contains("player_index"), "public projection hides actor")
+		_check(service.private_viewer_snapshot(0) == public_history and service.private_viewer_snapshot(3) == public_history, "viewer projections remain public and byte-equivalent")
+		_check(not bool(service.patch_entry(91, {"public_owner_label": "归属：玩家3"}).get("patched", true)), "retired owner reveal patch fails closed")
 		var saved: Dictionary = service.to_save_data()
+		_check(not JSON.stringify(saved).contains("guessers") and not JSON.stringify(saved).contains("public_owner_"), "save omits retired guess fields")
 		service.reset_state()
 		_check(bool(service.apply_save_data(saved).get("applied", false)) and service.to_save_data() == saved, "save roundtrip is exact")
 	var result := {"passed": failures.is_empty(), "checks": checks, "failures": failures.duplicate()}

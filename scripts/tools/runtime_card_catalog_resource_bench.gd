@@ -20,7 +20,7 @@ const EXPECTED_FAMILY_COUNT := 120
 const EXPECTED_PACK_COUNT := 10
 const EXPECTED_POOL_COUNT := 125
 const EXPECTED_UPGRADEABLE_COUNT := 76
-const EXPECTED_KIND_COUNT := 49
+const EXPECTED_KIND_COUNT := 50
 const HISTORICAL_CASE_COUNT := 40
 const LIVE_CASE_COUNT := 40
 const CASE_COUNT := HISTORICAL_CASE_COUNT + LIVE_CASE_COUNT
@@ -75,7 +75,7 @@ const LIVE_CASE_IDS := [
 	"derived_rank_nearest_lower_parity", "derived_growth_35_percent_parity",
 	"exact_id_beats_derivation", "city_development_precedence", "product_futures_terms_external_live",
 	"city_gdp_terms_external_live", "monster_card_route_preserved", "monster_technique_route_preserved",
-	"requirement_policy_stays_external", "all_49_kinds_validate", "pure_data_definition",
+	"requirement_policy_stays_external", "all_50_kinds_validate", "pure_data_definition",
 	"pure_data_catalog_snapshot", "resource_load_failure_explicit", "coordinator_scene_composition",
 	"main_runtime_uses_catalog_service", "eligibility_consumer_parity", "queue_consumer_parity",
 	"presentation_consumer_parity", "ai_consumer_parity", "military_consumer_no_world_constant",
@@ -325,7 +325,7 @@ func _historical_pass(case_id: String) -> bool:
 		"counter_card_shape":
 			return _kinds_have_cards(["card_counter"])
 		"intel_card_shape":
-			return _kinds_have_cards(["intel_city_reveal", "intel_card_trace", "intel_contract_trace"])
+			return _kinds_have_cards(["intel_city_reveal", "card_history_public_review", "card_history_subscription", "intel_contract_trace"])
 		"product_futures_terms_external":
 			return _financial_terms_external("商品看涨1")
 		"city_gdp_terms_external":
@@ -377,7 +377,7 @@ func _live_pass(case_id: String) -> bool:
 		"monster_card_route_preserved": return _monster_card_route()
 		"monster_technique_route_preserved": return _monster_technique_route()
 		"requirement_policy_stays_external": return _requirement_policy_external()
-		"all_49_kinds_validate": return bool(report.get("valid", false)) and int(report.get("kind_count", 0)) == EXPECTED_KIND_COUNT
+		"all_50_kinds_validate": return bool(report.get("valid", false)) and int(report.get("kind_count", 0)) == EXPECTED_KIND_COUNT
 		"pure_data_definition": return _all_definitions_are_data()
 		"pure_data_catalog_snapshot": return _is_data_only(_catalog.debug_snapshot()) and _is_data_only(_service.debug_snapshot())
 		"resource_load_failure_explicit": return _source_has("res://scripts/runtime/card_runtime_catalog_service.gd", "no legacy fallback is available") and not _source_has("res://scripts/runtime/card_runtime_catalog_service.gd", "main.gd")
@@ -882,7 +882,7 @@ func _count_phase(phase: String) -> int:
 
 
 func _update_ui(manifest: Dictionary) -> void:
-	summary_label.text = "239 cards | 120 families | 10 packs | 49 kinds | %d/%d passed" % [int(manifest.get("passed_count", 0)), CASE_COUNT]
+	summary_label.text = "239 cards | 120 families | 10 packs | 50 kinds | %d/%d passed" % [int(manifest.get("passed_count", 0)), CASE_COUNT]
 	status_label.text = "PASS - Resource Catalog owns runtime" if _failures.is_empty() else "CUTOVER FAILURE"
 	schema_text.text = "[b]Runtime source[/b]\nCardRuntimeCatalogService\n\n[b]Assets[/b]\n120 family .tres\n239 embedded ranks\n10 ordered packs\n1 v0.4 catalog\n\n[b]Composition[/b]\nDefinitionWorldBridge\nExternal financial terms\nMonster owner routes\nRequirementPolicy after resolve\n\n[b]Legacy[/b]\nNo main.gd catalog fallback"
 	var lines: Array[String] = []

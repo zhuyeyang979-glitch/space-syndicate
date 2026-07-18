@@ -1,4 +1,4 @@
-[gd_scene load_steps=106 format=3]
+[gd_scene load_steps=108 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -105,6 +105,8 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/MonsterActionCommandSink.tscn" id="110_monster_action_sink"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/RoleCatalogRuntimeService.tscn" id="111_role_catalog"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/RoleCodexPublicSourceService.tscn" id="112_role_codex_source"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/CardHistoryPublicQueryPort.tscn" id="113_card_history_query"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardHistoryPrivateAnnotationService.tscn" id="114_card_history_annotations"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -344,6 +346,12 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="CardResolutionHistoryRuntimeService" parent="." instance=ExtResource("91_card_resolution_history")]
+unique_name_in_owner = true
+
+[node name="CardHistoryPublicQueryPort" parent="." instance=ExtResource("113_card_history_query")]
+unique_name_in_owner = true
+
+[node name="CardHistoryPrivateAnnotationService" parent="." instance=ExtResource("114_card_history_annotations")]
 unique_name_in_owner = true
 
 [node name="CardResolutionPresentationPort" parent="." instance=ExtResource("92_card_resolution_presentation_port")]

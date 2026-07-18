@@ -1260,6 +1260,30 @@ func card_resolution_viewer_history_snapshot(viewer_index: int) -> Array:
 	return service.private_viewer_snapshot(viewer_index) if service != null else []
 
 
+func card_history_public_snapshot() -> Dictionary:
+	var query := _card_history_public_query_port_node()
+	var value: Variant = query.call("compose_history") if query != null and query.has_method("compose_history") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func card_history_private_annotations(viewer_index: int) -> Dictionary:
+	var annotations := _card_history_private_annotation_service_node()
+	var value: Variant = annotations.call("viewer_snapshot", viewer_index) if annotations != null and annotations.has_method("viewer_snapshot") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func apply_card_history_private_annotation(viewer_index: int, history_entry_id: String, patch: Dictionary) -> Dictionary:
+	var annotations := _card_history_private_annotation_service_node()
+	var value: Variant = annotations.call("apply_annotation", viewer_index, history_entry_id, patch.duplicate(true)) if annotations != null and annotations.has_method("apply_annotation") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {"applied": false, "reason_code": "annotation_service_unavailable"}
+
+
+func refresh_card_history_private_subscriptions() -> Dictionary:
+	var annotations := _card_history_private_annotation_service_node()
+	var value: Variant = annotations.call("refresh_subscriptions") if annotations != null and annotations.has_method("refresh_subscriptions") else {}
+	return (value as Dictionary).duplicate(true) if value is Dictionary else {"refreshed": false, "reason_code": "annotation_service_unavailable"}
+
+
 func card_resolution_history_entry(resolution_id: int) -> Dictionary:
 	var service := _card_resolution_history_runtime_service_node()
 	return service.entry_by_id(resolution_id) if service != null else {}
@@ -1285,6 +1309,9 @@ func reset_card_resolution_history() -> void:
 	var service := _card_resolution_history_runtime_service_node()
 	if service != null:
 		service.reset_state()
+	var annotations := _card_history_private_annotation_service_node()
+	if annotations != null and annotations.has_method("reset_state"):
+		annotations.call("reset_state")
 
 
 func select_card_resolution(resolution_id: int) -> Dictionary:
@@ -1429,6 +1456,8 @@ func _wire_card_execution_typed_ports() -> void:
 	var scheduler := _scheduler_node() as ForcedDecisionRuntimeScheduler
 	var commodity_flow := _commodity_flow_runtime_controller_node() as CommodityFlowRuntimeController
 	var history := _card_resolution_history_runtime_service_node()
+	var history_query: Node = _card_history_public_query_port_node()
+	var history_annotations: Node = _card_history_private_annotation_service_node()
 	var presentation := _card_resolution_presentation_port_node()
 	var intel := _card_intel_runtime_service_node()
 	var commitment := _card_commitment_runtime_service_node()
@@ -1441,8 +1470,12 @@ func _wire_card_execution_typed_ports() -> void:
 		eligibility_facts.set_runtime_dependencies(queue, resolution, target_choice, monster, military, contract, session, scheduler, commodity_flow)
 	if economy_port != null:
 		economy_port.set_contract_runtime_controller(contract)
+	if history_query != null:
+		history_query.configure(history)
+	if history_annotations != null:
+		history_annotations.configure(history_query)
 	if intel != null:
-		intel.set_dependencies(world_state, selection, history, contract)
+		intel.set_dependencies(world_state, selection, history_query, history_annotations, contract)
 	if commitment != null:
 		commitment.set_dependencies(world_state, _card_cooldown_runtime_controller_node(), _weather_telemetry_runtime_service_node() as WeatherTelemetryRuntimeService, eligibility_facts, eligibility)
 	if effect_router != null:
@@ -5475,6 +5508,14 @@ func _card_resolution_execution_world_bridge_node() -> Node:
 
 func _card_resolution_history_runtime_service_node() -> CardResolutionHistoryRuntimeService:
 	return get_node_or_null("CardResolutionHistoryRuntimeService") as CardResolutionHistoryRuntimeService
+
+
+func _card_history_public_query_port_node() -> Node:
+	return get_node_or_null("CardHistoryPublicQueryPort")
+
+
+func _card_history_private_annotation_service_node() -> Node:
+	return get_node_or_null("CardHistoryPrivateAnnotationService")
 
 
 func _card_resolution_presentation_port_node() -> CardResolutionPresentationPort:

@@ -27,23 +27,21 @@ func _run() -> void:
 	var patch: Dictionary = service.patch_entry(11, {"aftermath_clue": "公开余波", "resolved": true})
 	_expect(bool(patch.get("patched", false)) and bool(patch.get("changed", false)), "history entry accepts a data-only patch")
 	_expect(not bool(service.patch_entry(11, {"player_index": 7}).get("patched", true)), "identity fields cannot be patched")
-	var reveal: Dictionary = service.reveal_owner(11, "归属：玩家1")
-	_expect(bool(reveal.get("revealed", false)) and bool(reveal.get("changed", false)), "public owner label can be revealed")
-	_expect(not bool(service.reveal_owner(11, "归属：玩家1").get("changed", true)), "repeating the same reveal is idempotent")
+	_expect(not bool(service.patch_entry(11, {"public_owner_revealed": true}).get("patched", true)), "retired owner reveal cannot be patched")
+	_expect(not bool(service.patch_entry(11, {"nested": {"guessers": [1]}}).get("patched", true)), "nested retired owner fields fail closed")
 
 	var public_history: Array = service.public_history_snapshot()
 	var public_text := JSON.stringify(public_history)
 	_expect(public_history.size() == 2, "public snapshot preserves order")
-	_expect(str((public_history[0] as Dictionary).get("public_owner_label", "")) == "归属：玩家1", "revealed owner label is public")
-	for forbidden in ["player_index", "slot_index", "true_owner", "hidden_owner", "owner_truth", "ai_plan", "cash", "private-hand-sentinel"]:
+	for forbidden in ["player_index", "slot_index", "true_owner", "hidden_owner", "owner_truth", "public_owner", "guessers", "ai_plan", "cash", "private-hand-sentinel"]:
 		_expect(not public_text.contains(forbidden), "public history omits private token %s" % forbidden)
 
 	var owner_view: Array = service.private_viewer_snapshot(0)
 	var rival_view: Array = service.private_viewer_snapshot(1)
-	_expect(int((owner_view[0] as Dictionary).get("player_index", -1)) == 0 and str((owner_view[0] as Dictionary).get("visibility_scope", "")) == "owner_private", "owner receives own private binding")
-	_expect(not (rival_view[0] as Dictionary).has("player_index") and str((rival_view[0] as Dictionary).get("visibility_scope", "")) == "public", "rival receives only public projection")
+	_expect(owner_view == public_history and rival_view == public_history, "all viewers receive byte-equivalent public history")
 
 	var saved: Dictionary = service.to_save_data()
+	_expect(not JSON.stringify(saved).contains("guessers") and not JSON.stringify(saved).contains("public_owner_"), "new save omits retired guess and owner fields")
 	var restored := HISTORY_SCENE.instantiate()
 	root.add_child(restored)
 	restored.configure({"history_limit": 9})
@@ -62,6 +60,14 @@ func _run() -> void:
 	invalid["appended_resolution_ids"] = [12]
 	_expect(not bool(restored.apply_save_data(invalid).get("applied", true)), "invalid lineage save fails closed")
 	_expect(restored.to_save_data() == before_bad_load, "failed load is atomic")
+	var legacy: Dictionary = before_bad_load.duplicate(true)
+	legacy["history"] = (legacy.get("history", []) as Array).duplicate(true)
+	(legacy["history"][0] as Dictionary)["guessers"] = [0, 1]
+	(legacy["history"][0] as Dictionary)["public_owner_revealed"] = true
+	(legacy["history"][0] as Dictionary)["nested_legacy"] = {"public_owner_label": "SECRET_OWNER"}
+	_expect(bool(restored.apply_save_data(legacy).get("applied", false)), "legacy save applies while discarding retired owner fields")
+	var restored_text := JSON.stringify(restored.to_save_data())
+	_expect(not restored_text.contains("guessers") and not restored_text.contains("public_owner_") and not restored_text.contains("SECRET_OWNER"), "legacy owner and guess fields are recursively discarded without reward")
 
 	var source := FileAccess.get_file_as_string("res://scripts/runtime/card_resolution_history_runtime_service.gd")
 	_expect(not source.contains("Main") and not source.contains("current_scene") and not source.contains("Callable"), "history owner has no Main callback or scene lookup")
@@ -93,6 +99,7 @@ func _entry(resolution_id: int, player_index: int, card_name: String) -> Diction
 		"owner_truth": player_index,
 		"ai_plan": "SECRET_PLAN",
 		"private_hand": "private-hand-sentinel",
+		"guessers": [1],
 		"public_owner_revealed": false,
 		"public_owner_label": "",
 	}
