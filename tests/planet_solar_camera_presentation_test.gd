@@ -200,7 +200,7 @@ func _test_save_boundary() -> void:
 	var save := session.get_node_or_null("GameSaveRuntimeCoordinator")
 	var handshake := save.get_node_or_null("RulesetSaveHandshakeService") if save != null else null
 	var manifest: Dictionary = handshake.call("required_section_manifest") if handshake != null else {}
-	_expect(manifest.size() == 18 and not manifest.has("solar_camera") and not manifest.has("solar_phase"), "existing 18-owner save manifest gains no solar camera or phase section")
+	_expect(manifest.size() == 19 and not manifest.has("solar_camera") and not manifest.has("solar_phase"), "existing 19-owner save manifest gains no solar camera or phase section")
 	var map_view := PLANET_MAP_SCENE.instantiate() as Control
 	var controller := map_view.get_node_or_null("PlanetSolarCameraController")
 	_expect(controller != null and not controller.has_method("to_save_data") and not controller.has_method("apply_save_data"), "solar camera controller is local presentation state with no save API")

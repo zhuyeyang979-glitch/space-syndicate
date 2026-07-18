@@ -20,6 +20,8 @@ func _run() -> void:
 	var second := _entry(12, 1, "影仓牵引")
 	_expect(bool(service.append_resolved(first).get("appended", false)), "first resolution appends")
 	_expect(bool(service.append_resolved(second).get("appended", false)), "second resolution appends")
+	var authoritative_text := JSON.stringify(service.history_snapshot())
+	_expect(authoritative_text.contains("player_index") and not authoritative_text.contains("PRIVATE_CASH") and not authoritative_text.contains("PRIVATE_HAND") and not authoritative_text.contains("PRIVATE_DISCARD") and not authoritative_text.contains("PRIVATE_SLOT"), "live append retains authoritative player_index and recursively strips private payload")
 	var duplicate: Dictionary = service.append_resolved(first)
 	_expect(not bool(duplicate.get("appended", true)) and bool(duplicate.get("duplicate", false)), "duplicate resolution is rejected exact-once")
 	_expect((service.history_snapshot() as Array).size() == 2, "duplicate does not add history")
@@ -33,15 +35,19 @@ func _run() -> void:
 	var public_history: Array = service.public_history_snapshot()
 	var public_text := JSON.stringify(public_history)
 	_expect(public_history.size() == 2, "public snapshot preserves order")
-	for forbidden in ["player_index", "slot_index", "true_owner", "hidden_owner", "owner_truth", "public_owner", "guessers", "ai_plan", "cash", "private-hand-sentinel"]:
-		_expect(not public_text.contains(forbidden), "public history omits private token %s" % forbidden)
+	for forbidden_key in ["player_index", "slot_index", "true_owner", "hidden_owner", "owner_truth", "public_owner", "guessers", "ai_plan", "cash", "hand", "discard", "private_hand"]:
+		_expect(not public_text.contains('\"%s\":' % forbidden_key), "public history omits private key %s" % forbidden_key)
+	_expect(not public_text.contains("private-hand-sentinel"), "public history omits the private hand sentinel")
 
 	var owner_view: Array = service.private_viewer_snapshot(0)
 	var rival_view: Array = service.private_viewer_snapshot(1)
 	_expect(owner_view == public_history and rival_view == public_history, "all viewers receive byte-equivalent public history")
 
 	var saved: Dictionary = service.to_save_data()
-	_expect(not JSON.stringify(saved).contains("guessers") and not JSON.stringify(saved).contains("public_owner_"), "new save omits retired guess and owner fields")
+	var saved_text := JSON.stringify(saved)
+	_expect(not saved_text.contains("guessers") and not saved_text.contains("public_owner_") and not saved_text.contains("SECRET_PLAN") and not saved_text.contains("owner_truth"), "new save omits retired and private owner fields")
+	_expect(saved_text.contains("player_index"), "authoritative save retains player_index for gameplay consumers")
+	_expect(bool(service.preflight_save_data(saved).get("accepted", false)), "save data passes the pure owner preflight")
 	var restored := HISTORY_SCENE.instantiate()
 	root.add_child(restored)
 	restored.configure({"history_limit": 9})
@@ -53,13 +59,16 @@ func _run() -> void:
 	_expect(bool(restored.append_resolved(third).get("appended", false)), "new resolution appends after restore")
 	var limited: Array = restored.history_snapshot()
 	_expect(limited.size() == 2 and int((limited[0] as Dictionary).get("resolution_id", -1)) == 12 and int((limited[1] as Dictionary).get("resolution_id", -1)) == 13, "history limit evicts oldest entry without losing order")
-	_expect(bool(restored.append_resolved(first).get("duplicate", false)), "evicted resolution lineage remains exact-once")
+	_expect(restored.to_save_data().get("appended_resolution_ids", []) == [12, 13], "saved lineage exactly matches retained history after eviction")
 
 	var before_bad_load: Dictionary = restored.to_save_data()
 	var invalid: Dictionary = before_bad_load.duplicate(true)
 	invalid["appended_resolution_ids"] = [12]
 	_expect(not bool(restored.apply_save_data(invalid).get("applied", true)), "invalid lineage save fails closed")
 	_expect(restored.to_save_data() == before_bad_load, "failed load is atomic")
+	var private_invalid: Dictionary = before_bad_load.duplicate(true)
+	(private_invalid.get("history", []) as Array)[0]["ai_plan"] = "DO_NOT_RESTORE"
+	_expect(not bool(restored.preflight_save_data(private_invalid).get("accepted", true)), "private save fields fail owner preflight")
 	var legacy: Dictionary = before_bad_load.duplicate(true)
 	legacy["history"] = (legacy.get("history", []) as Array).duplicate(true)
 	(legacy["history"][0] as Dictionary)["guessers"] = [0, 1]
@@ -70,7 +79,7 @@ func _run() -> void:
 	_expect(not restored_text.contains("guessers") and not restored_text.contains("public_owner_") and not restored_text.contains("SECRET_OWNER"), "legacy owner and guess fields are recursively discarded without reward")
 
 	var source := FileAccess.get_file_as_string("res://scripts/runtime/card_resolution_history_runtime_service.gd")
-	_expect(not source.contains("Main") and not source.contains("current_scene") and not source.contains("Callable"), "history owner has no Main callback or scene lookup")
+	_expect(not source.contains("Main") and not source.contains("current_scene") and not source.contains("Callable("), "history owner has no Main callback or scene lookup")
 	_expect(not source.contains("selected_card_resolution_id"), "selected resolution remains outside history owner")
 	var debug_text := JSON.stringify(restored.debug_snapshot())
 	for forbidden in ["player_index", "skill", "true_owner", "cash", "hand"]:
@@ -99,6 +108,9 @@ func _entry(resolution_id: int, player_index: int, card_name: String) -> Diction
 		"owner_truth": player_index,
 		"ai_plan": "SECRET_PLAN",
 		"private_hand": "private-hand-sentinel",
+		"hand": ["PRIVATE_HAND"],
+		"discard": ["PRIVATE_DISCARD"],
+		"nested_private": [[{"cash": "PRIVATE_CASH", "private_hand": "PRIVATE_HAND", "slot_index": "PRIVATE_SLOT"}]],
 		"guessers": [1],
 		"public_owner_revealed": false,
 		"public_owner_label": "",

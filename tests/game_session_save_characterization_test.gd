@@ -2,7 +2,7 @@ extends SceneTree
 
 const COORDINATOR_SCENE_PATH := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
 const V06_ENVELOPE_GATE_PATH := "res://tests/v06_save_envelope_runtime_test.gd"
-const EXPECTED_SECTION_COUNT := 18
+const EXPECTED_SECTION_COUNT := 19
 const FORBIDDEN_SOLAR_SECTION_TOKENS := ["solar", "sunlight", "planet_rotation", "phase"]
 
 var _checks := 0
@@ -64,10 +64,10 @@ func _test_exact_owner_manifest(handshake: Node, registry: Node) -> void:
 		var lowered := section_id.to_lower()
 		for token in FORBIDDEN_SOLAR_SECTION_TOKENS:
 			forbidden_section = forbidden_section or lowered.contains(token)
-	_expect(manifest.size() == EXPECTED_SECTION_COUNT and order.size() == EXPECTED_SECTION_COUNT, "v0.6 manifest and apply order contain exactly eighteen sections")
-	_expect(owner_ids.size() == EXPECTED_SECTION_COUNT, "all eighteen sections have unique owners")
+	_expect(manifest.size() == EXPECTED_SECTION_COUNT and order.size() == EXPECTED_SECTION_COUNT, "v0.6 manifest and apply order contain exactly nineteen sections")
+	_expect(owner_ids.size() == EXPECTED_SECTION_COUNT, "all nineteen sections have unique owners")
 	_expect(manifest.has("session") and manifest.has("bankruptcy_neutral_estate"), "session and bankruptcy neutral estate remain explicit owners")
-	_expect(not forbidden_section, "derived solar state is not serialized as a nineteenth section")
+	_expect(not forbidden_section, "derived solar state is not serialized as a twentieth section")
 
 
 func _test_resume_fails_closed(registry: Node) -> void:

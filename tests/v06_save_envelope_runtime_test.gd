@@ -57,7 +57,8 @@ func _test_scene_and_registry() -> void:
 		var owner_id := str((manifest.get(section_variant, {}) as Dictionary).get("owner_id", ""))
 		owners[owner_id] = true
 	var bankruptcy_contract: Dictionary = manifest.get("bankruptcy_neutral_estate", {}) if manifest.get("bankruptcy_neutral_estate", {}) is Dictionary else {}
-	_expect(manifest.size() == 18 and owners.size() == manifest.size() and manifest.has("session") and manifest.has("player_organization") and str(bankruptcy_contract.get("owner_id", "")) == "bankruptcy_neutral_estate" and int(bankruptcy_contract.get("state_version", 0)) == 1, "registry has 18 unique required owners including bankruptcy neutral estate")
+	var history_contract: Dictionary = manifest.get("card_resolution_history", {}) if manifest.get("card_resolution_history", {}) is Dictionary else {}
+	_expect(manifest.size() == 19 and owners.size() == manifest.size() and manifest.has("session") and manifest.has("player_organization") and str(bankruptcy_contract.get("owner_id", "")) == "bankruptcy_neutral_estate" and int(bankruptcy_contract.get("state_version", 0)) == 1 and str(history_contract.get("owner_id", "")) == "card_resolution_history" and int(history_contract.get("state_version", 0)) == 1, "registry has 19 unique required owners including card resolution history and bankruptcy neutral estate")
 
 
 func _test_strict_envelope_schema() -> void:

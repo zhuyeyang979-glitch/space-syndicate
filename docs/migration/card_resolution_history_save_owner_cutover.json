@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "status": "stage_a_local_candidate",
+  "section_id": "card_resolution_history",
+  "owner_id": "card_resolution_history",
+  "owner": "res://scripts/runtime/card_resolution_history_runtime_service.gd",
+  "binding_scene": "res://scenes/runtime/V06SaveOwnerRegistry.tscn",
+  "restore_dependency_contract": "res://scripts/runtime/card_history_restore_dependency_contract.gd",
+  "fixed_order_index_zero_based": 14,
+  "session_last": true,
+  "required_section_count_before": 18,
+  "required_section_count_after": 19,
+  "transactional_section_count_before": 11,
+  "transactional_section_count_after": 12,
+  "unsupported_section_count": 7,
+  "full_run_resume_claim": false,
+  "old_18_section_v3_policy": "fail_closed_manifest_mismatch",
+  "main_modified": false,
+  "second_history_owner_count": 0,
+  "history_copied_to_execution": false,
+  "history_copied_to_session": false
+}

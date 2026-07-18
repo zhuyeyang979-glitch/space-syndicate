@@ -2,7 +2,7 @@ extends SceneTree
 
 const COORDINATOR_SCENE_PATH := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
 const WEATHER_SPEC_PATH := "res://docs/weather_system_v1_spec.md"
-const EXPECTED_SECTION_COUNT := 18
+const EXPECTED_SECTION_COUNT := 19
 const WEATHER_SECTION_ID := "weather"
 const WEATHER_OWNER_ID := "weather_runtime"
 const WEATHER_SCHEMA_VERSION := 2
@@ -255,13 +255,13 @@ func _check_save_section_boundary() -> void:
 		for token in FORBIDDEN_SECTION_TOKENS:
 			if lowered.contains(token):
 				forbidden_sections.append(section_id)
-	_expect(manifest.size() == EXPECTED_SECTION_COUNT and order.size() == EXPECTED_SECTION_COUNT, "save_registry_remains_exactly_18_sections")
+	_expect(manifest.size() == EXPECTED_SECTION_COUNT and order.size() == EXPECTED_SECTION_COUNT, "save_registry_remains_exactly_19_sections")
 	_expect(owner_ids.size() == EXPECTED_SECTION_COUNT, "save_registry_has_unique_owner_per_section")
 	_expect(weather_count == 1 and manifest.has(WEATHER_SECTION_ID) and order.has(WEATHER_SECTION_ID), "weather_v1_reuses_existing_weather_section")
-	_expect(forbidden_sections.is_empty(), "no_solar_rotation_or_weather_19th_section|sections=%s" % [forbidden_sections])
+	_expect(forbidden_sections.is_empty(), "no_solar_rotation_or_weather_20th_section|sections=%s" % [forbidden_sections])
 	var weather_contract: Dictionary = manifest.get(WEATHER_SECTION_ID, {}) if manifest.get(WEATHER_SECTION_ID, {}) is Dictionary else {}
 	_expect(str(weather_contract.get("owner_id", "")) == WEATHER_OWNER_ID, "weather_section_bound_to_weather_runtime_owner")
-	_expect(not bool(snapshot.get("resume_ready", true)) and int(snapshot.get("required_section_count", 0)) == EXPECTED_SECTION_COUNT, "registry_resume_remains_fail_closed_with_18_sections")
+	_expect(not bool(snapshot.get("resume_ready", true)) and int(snapshot.get("required_section_count", 0)) == EXPECTED_SECTION_COUNT, "registry_resume_remains_fail_closed_with_19_sections")
 
 
 func _check_owner_api_surface() -> bool:

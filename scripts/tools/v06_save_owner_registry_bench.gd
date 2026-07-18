@@ -5,6 +5,27 @@ const BindingScript := preload("res://scripts/runtime/v06_save_owner_binding_res
 const RegistryScript := preload("res://scripts/runtime/v06_save_owner_registry.gd")
 const FakeOwnerScript := preload("res://scripts/tools/v06_save_owner_registry_fake_owner.gd")
 const HANDSHAKE_SCENE := preload("res://scenes/runtime/RulesetSaveHandshakeService.tscn")
+const EXPECTED_FIXED_ORDER := [
+	"ruleset",
+	"region_infrastructure",
+	"region_supply",
+	"commodity_flow",
+	"routes",
+	"player_mana",
+	"commodity_belt_visibility",
+	"card_inventory",
+	"player_organization",
+	"monsters",
+	"military",
+	"weather",
+	"card_resolution_queue",
+	"card_resolution_execution",
+	"card_resolution_history",
+	"ai",
+	"bankruptcy_neutral_estate",
+	"victory_control",
+	"session",
+]
 const PRIVATE_SENTINELS := [
 	"98765432100",
 	"V06_OWNER_REGISTRY_PRIVATE_HAND",
@@ -54,13 +75,14 @@ func run_bench() -> Dictionary:
 	_check(production_registry != null, "production_registry_scene_wired")
 	var production_snapshot: Dictionary = production_registry.registry_snapshot() if production_registry != null else {}
 	_check(bool(production_snapshot.get("valid", false)), "production_registry_matches_handshake_manifest")
-	_check(int(production_snapshot.get("required_section_count", 0)) == 18 and int(production_snapshot.get("binding_count", 0)) == 18, "production_registry_has_all_18_unique_sections")
-	_check(int(production_snapshot.get("transactional_section_count", 0)) == 11 and int(production_snapshot.get("unsupported_section_count", 0)) == 7 and not bool(production_snapshot.get("resume_ready", true)), "production_registry_declares_eleven_auditable_transactional_owners")
+	_check(int(production_snapshot.get("required_section_count", 0)) == 19 and int(production_snapshot.get("binding_count", 0)) == 19, "production_registry_has_all_19_unique_sections")
+	_check(int(production_snapshot.get("transactional_section_count", 0)) == 12 and int(production_snapshot.get("unsupported_section_count", 0)) == 7 and not bool(production_snapshot.get("resume_ready", true)), "production_registry_declares_twelve_auditable_transactional_owners")
 	_check(_binding_matches(production_registry, "region_supply", "region_supply", "../../RegionSupplyRuntimeController", 1), "region_supply_section_uses_the_unique_transactional_rack_owner")
 	_check(_binding_matches(production_registry, "commodity_flow", "commodity_flow", "../../CommodityFlowRuntimeController", 2), "commodity_flow_section_uses_the_unique_transactional_economy_owner")
 	_check(_bankruptcy_binding_is_transactional(production_registry), "bankruptcy_section_uses_the_unique_transactional_estate_owner")
 	_check(_weather_binding_is_transactional(production_registry), "weather_section_uses_the_unique_transactional_weather_owner")
 	_check(_binding_is_transactional(production_registry, "card_resolution_execution"), "card_execution_section_uses_the_unique_transactional_execution_owner")
+	_check(_history_binding_is_transactional(production_registry), "card_history_section_uses_the_unique_transactional_history_owner")
 	_check(not bool(production_snapshot.get("captures_business_state", true)) and not bool(production_snapshot.get("stores_parallel_owner_state", true)), "registry_bindings_copy_no_bankruptcy_or_participant_journal_state")
 	var production_capture: Dictionary = production_registry.capture_resume_envelope({"envelope_id": "production-reject", "write_id": "production-reject"}) if production_registry != null else {}
 	_check(not bool(production_capture.get("ok", true)) and str(production_capture.get("reason_code", "")) == "restore_capability_incomplete" and not production_capture.has("envelope"), "production_capture_fails_closed_without_complete_owner_capability")
@@ -75,8 +97,8 @@ func run_bench() -> Dictionary:
 		return _finish(production_snapshot, {})
 	var fixed_order: Array[String] = registry.fixed_section_order()
 	var fake_snapshot: Dictionary = registry.registry_snapshot()
-	_check(bool(fake_snapshot.get("valid", false)) and bool(fake_snapshot.get("resume_ready", false)) and int(fake_snapshot.get("transactional_section_count", 0)) == 18, "complete_transactional_registry_is_resume_ready")
-	_check(fixed_order.size() == 18 and fixed_order[-1] == "session", "fixed_apply_order_is_complete_and_session_last")
+	_check(bool(fake_snapshot.get("valid", false)) and bool(fake_snapshot.get("resume_ready", false)) and int(fake_snapshot.get("transactional_section_count", 0)) == 19, "complete_transactional_registry_is_resume_ready")
+	_check(fixed_order == EXPECTED_FIXED_ORDER and fixed_order[-1] == "session", "fixed_apply_order_is_complete_and_session_last")
 
 	var original_bindings: Array[BindingScript] = registry.bindings.duplicate()
 	var duplicate_bindings: Array[BindingScript] = original_bindings.duplicate()
@@ -88,7 +110,7 @@ func run_bench() -> Dictionary:
 	var capture: Dictionary = registry.capture_resume_envelope({"envelope_id": "registry-bench-1", "write_id": "registry-bench-write-1"})
 	var envelope: Dictionary = capture.get("envelope", {}) if capture.get("envelope", {}) is Dictionary else {}
 	var validation: Dictionary = handshake.call("validate_envelope", envelope) if not envelope.is_empty() else {}
-	_check(bool(capture.get("ok", false)) and bool(validation.get("valid", false)) and (envelope.get("sections", {}) as Dictionary).size() == 18, "capture_composes_one_valid_full_manifest_envelope")
+	_check(bool(capture.get("ok", false)) and bool(validation.get("valid", false)) and (envelope.get("sections", {}) as Dictionary).size() == 19, "capture_composes_one_valid_full_manifest_envelope")
 	_check(JSON.stringify(envelope).contains("Vector2") and JSON.stringify(envelope).contains("Color"), "capture_uses_handshake_explicit_variant_codec")
 	_check(_public_receipt_safe(registry.public_operation_receipt(capture)), "capture_public_receipt_omits_envelope_and_private_owner_state")
 	var forged_public: Dictionary = registry.public_operation_receipt({
@@ -102,9 +124,9 @@ func run_bench() -> Dictionary:
 
 	var success_envelope := _envelope_with_values(handshake, envelope, fixed_order, 100)
 	var preflight: Dictionary = registry.preflight_envelope(success_envelope)
-	_check(bool(preflight.get("ok", false)) and bool(preflight.get("envelope_valid", false)) and bool(preflight.get("preflight_complete", false)) and int(preflight.get("preflight_count", 0)) == 18, "all_owner_preflights_complete_before_apply")
+	_check(bool(preflight.get("ok", false)) and bool(preflight.get("envelope_valid", false)) and bool(preflight.get("preflight_complete", false)) and int(preflight.get("preflight_count", 0)) == 19, "all_owner_preflights_complete_before_apply")
 	var success: Dictionary = registry.apply_envelope(success_envelope)
-	_check(bool(success.get("ok", false)) and success.get("applied_section_ids", []) == fixed_order and int(success.get("apply_count", 0)) == 18, "owners_apply_once_in_fixed_order")
+	_check(bool(success.get("ok", false)) and success.get("applied_section_ids", []) == fixed_order and int(success.get("apply_count", 0)) == 19, "owners_apply_once_in_fixed_order")
 	_check(_owner_values_match(harness, fixed_order, 100), "successful_apply_commits_all_normalized_owner_states")
 	_check(_public_receipt_safe(registry.public_operation_receipt(success)), "success_public_receipt_omits_sections_balances_hands_owner_truth_and_ai_plan")
 
@@ -157,6 +179,8 @@ func run_bench() -> Dictionary:
 		"weather_unsupported_reason": _binding_unsupported_reason(production_registry, "weather"),
 		"card_execution_section_transactional": _binding_is_transactional(production_registry, "card_resolution_execution"),
 		"card_execution_unsupported_reason": _binding_unsupported_reason(production_registry, "card_resolution_execution"),
+		"card_history_section_transactional": _history_binding_is_transactional(production_registry),
+		"card_history_unsupported_reason": _binding_unsupported_reason(production_registry, "card_resolution_history"),
 		"transactional_harness_sections": fixed_order.size(),
 		"fixed_apply_order_count": fixed_order.size(),
 		"global_preflight": bool(preflight.get("preflight_complete", false)),
@@ -236,6 +260,24 @@ func _weather_binding_is_transactional(registry: Node) -> bool:
 			and binding.unsupported_reason.is_empty() \
 			and str(binding.owner_path) == "../../WeatherRuntimeController" \
 			and binding.capture_method == "to_save_data" \
+			and binding.apply_method == "apply_save_data" \
+			and binding.rollback_method == "apply_save_data"
+	return false
+
+
+func _history_binding_is_transactional(registry: Node) -> bool:
+	if registry == null:
+		return false
+	for binding in registry.bindings:
+		if binding == null or binding.section_id != "card_resolution_history":
+			continue
+		return binding.owner_id == "card_resolution_history" \
+			and binding.state_version == 1 \
+			and binding.restore_mode == BindingScript.RESTORE_TRANSACTIONAL \
+			and binding.unsupported_reason.is_empty() \
+			and str(binding.owner_path) == "../../CardResolutionHistoryRuntimeService" \
+			and binding.capture_method == "to_save_data" \
+			and binding.preflight_method == "preflight_save_data" \
 			and binding.apply_method == "apply_save_data" \
 			and binding.rollback_method == "apply_save_data"
 	return false

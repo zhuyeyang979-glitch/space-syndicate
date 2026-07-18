@@ -19,7 +19,7 @@ func _run() -> void:
 	bench.call("_prepare_runtime")
 	bench.call("_reset_policy")
 
-	_test_eighteen_owner_registry_has_no_solar_section(bench)
+	_test_nineteen_owner_registry_has_no_solar_section(bench)
 	_test_session_clock_restore_reproduces_sunlight(bench)
 	_test_purchase_session_restore_never_live_reprices(bench)
 
@@ -29,7 +29,7 @@ func _run() -> void:
 	_finish()
 
 
-func _test_eighteen_owner_registry_has_no_solar_section(bench: Node) -> void:
+func _test_nineteen_owner_registry_has_no_solar_section(bench: Node) -> void:
 	var coordinator := bench.get_node_or_null("%GameRuntimeCoordinator")
 	var session := coordinator.get_node_or_null("GameSessionRuntimeController") if coordinator != null else null
 	var save := session.get_node_or_null("GameSaveRuntimeCoordinator") if session != null else null
@@ -50,8 +50,8 @@ func _test_eighteen_owner_registry_has_no_solar_section(bench: Node) -> void:
 		var lowered := section_id.to_lower()
 		for token in ["solar", "sunlight", "planet_rotation", "rotation_phase"]:
 			forbidden_solar_section = forbidden_solar_section or lowered.contains(token)
-	_expect(manifest.size() == 18 and order.size() == 18 and owner_ids.size() == 18 and not owner_ids.has(""), "save manifest and fixed apply order retain exactly eighteen unique owners")
-	_expect(not forbidden_solar_section, "solar and rotation phase remain derived facts instead of a nineteenth save section")
+	_expect(manifest.size() == 19 and order.size() == 19 and owner_ids.size() == 19 and not owner_ids.has(""), "save manifest and fixed apply order retain exactly nineteen unique owners")
+	_expect(not forbidden_solar_section, "solar and rotation phase remain derived facts instead of a twentieth save section")
 	var registry_snapshot: Dictionary = registry.call("registry_snapshot")
 	_expect(bool(registry_snapshot.get("valid", false)) and not bool(registry_snapshot.get("resume_ready", true)), "owner registry remains valid and explicitly fail-closed while restore coverage is incomplete")
 

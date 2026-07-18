@@ -5262,9 +5262,9 @@ func _check_ruleset_v05_foundation_component() -> void:
 		var unknown_owner_envelope := v06_envelope.duplicate(true)
 		(unknown_owner_envelope.get("sections", {}) as Dictionary)["unknown_owner"] = {"schema_version": 1}
 		var unknown_owner_validation: Dictionary = handshake.call("validate_envelope", unknown_owner_envelope)
-		_expect(int(handshake_snapshot.get("save_version", 0)) == 3 and str(handshake_snapshot.get("ruleset_id", "")) == "v0.6" and int(handshake_snapshot.get("required_section_count", 0)) == 18 and bool(handshake_snapshot.get("registry_valid", false)) and not bool(handshake_snapshot.get("legacy_resume_enabled", true)) and not bool(handshake_snapshot.get("production_save_path_owned", true)), "save handshake owns one strict 18-owner v3/v0.6 envelope without a production default path")
+		_expect(int(handshake_snapshot.get("save_version", 0)) == 3 and str(handshake_snapshot.get("ruleset_id", "")) == "v0.6" and int(handshake_snapshot.get("required_section_count", 0)) == 19 and bool(handshake_snapshot.get("registry_valid", false)) and not bool(handshake_snapshot.get("legacy_resume_enabled", true)) and not bool(handshake_snapshot.get("production_save_path_owned", true)), "save handshake owns one strict 19-owner v3/v0.6 envelope without a production default path")
 		_expect(str(v1_inspection.get("classification", "")) == "legacy_v1" and str(v2_inspection.get("classification", "")) == "legacy_v2" and not bool(v1_inspection.get("can_resume", true)) and not bool(v2_inspection.get("can_resume", true)) and bool(v1_inspection.get("requires_backup", false)) and bool(v2_inspection.get("requires_backup", false)), "v1 and v2 saves are inspect-only and resume fail-closed")
-		_expect(bool(v06_validation.get("valid", false)) and (v06_envelope.get("sections", {}) as Dictionary).size() == 18 and not bool(unknown_owner_validation.get("valid", true)), "v3 validation requires exactly the registered 18 owners and rejects an unknown owner")
+		_expect(bool(v06_validation.get("valid", false)) and (v06_envelope.get("sections", {}) as Dictionary).size() == 19 and not bool(unknown_owner_validation.get("valid", true)), "v3 validation requires exactly the registered 19 owners and rejects an unknown owner")
 		_expect(not _variant_contains_callable(v06_envelope) and not _variant_contains_object(v06_envelope), "v3 save envelope stays pure data")
 		handshake.free()
 	var bench_packed := load(RULESET_V05_FOUNDATION_BENCH_SCENE) as PackedScene
@@ -5708,8 +5708,8 @@ func _check_game_session_save_ownership_component() -> void:
 		var envelope := _compose_v06_layout_save_envelope(handshake)
 		var envelope_validation: Dictionary = save.call("validate_envelope", envelope) if save != null else {}
 		var registry_snapshot: Dictionary = owner_registry.call("registry_snapshot") if owner_registry != null else {}
-		_expect(bool(envelope_validation.get("valid", false)) and int(envelope.get("save_version", 0)) == 3 and str(envelope.get("ruleset_id", "")) == "v0.6" and (envelope.get("sections", {}) as Dictionary).size() == 18, "Save Coordinator validates one strict v3/v0.6 18-section envelope")
-		_expect(bool(registry_snapshot.get("valid", false)) and int(registry_snapshot.get("required_section_count", 0)) == 18 and int(registry_snapshot.get("transactional_section_count", 0)) == 8 and int(registry_snapshot.get("unsupported_section_count", 0)) == 10 and not bool(registry_snapshot.get("resume_ready", true)), "production owner registry exposes the audited 8/10 boundary and keeps resume fail-closed")
+		_expect(bool(envelope_validation.get("valid", false)) and int(envelope.get("save_version", 0)) == 3 and str(envelope.get("ruleset_id", "")) == "v0.6" and (envelope.get("sections", {}) as Dictionary).size() == 19, "Save Coordinator validates one strict v3/v0.6 19-section envelope")
+		_expect(bool(registry_snapshot.get("valid", false)) and int(registry_snapshot.get("required_section_count", 0)) == 19 and int(registry_snapshot.get("transactional_section_count", 0)) == 12 and int(registry_snapshot.get("unsupported_section_count", 0)) == 7 and not bool(registry_snapshot.get("resume_ready", true)), "production owner registry exposes the audited 12/7 boundary and keeps resume fail-closed")
 		coordinator.free()
 		bridge.free()
 	var main_packed := load("res://scenes/main.tscn") as PackedScene

@@ -21,9 +21,9 @@ and exact rollback. Until every section is transactional, resume fails closed.
 
 ## v0.6 target manifest
 
-The target remains exactly 18 required sections. This round replaces the obsolete
-`installed_commodities` + `sale_receipts` split with one `commodity_flow` section and
-uses the released slot for `region_supply`.
+The target now contains exactly 19 required sections. The additional section registers
+the already-authoritative resolved-card history owner; it does not copy history into
+execution or session state.
 
 | Fixed order | Section | Sole gameplay owner | Required state |
 | ---: | --- | --- | --- |
@@ -41,12 +41,13 @@ uses the released slot for `region_supply`.
 | 12 | `weather` | `WeatherRuntimeController` | Forecast/active lifecycle, timers, region history, revision and receipts |
 | 13 | `card_resolution_queue` | Card Resolution Queue owner | Current/waiting entries, shared window sequence, reservations and queue lineage |
 | 14 | `card_resolution_execution` | Card Resolution Execution owner | Active execution, continuation, committed intents and exact-once execution lineage |
-| 15 | `ai` | `AiRuntimeController` | AI-private continuation and learning state required for exact resume; never a public projection |
-| 16 | `bankruptcy_neutral_estate` | `BankruptcyNeutralEstateRuntimeController` | Estate lifecycle journal, neutral-rent journal, sanitized public receipt and trigger marker |
-| 17 | `victory_control` | `VictoryControlRuntimeController` | Qualification/audit state, authoritative outcome receipt and exact continuation facts |
-| 18 | `session` | `GameSessionRuntimeController` | Session lifecycle, authoritative clocks, the single shared gameplay RNG continuation, save-operation identity and session revision |
+| 15 | `card_resolution_history` | `CardResolutionHistoryRuntimeService` | Retained resolved-card entries, canonical retained lineage, history limit and revision; no private owner or AI fields |
+| 16 | `ai` | `AiRuntimeController` | AI-private continuation and learning state required for exact resume; never a public projection |
+| 17 | `bankruptcy_neutral_estate` | `BankruptcyNeutralEstateRuntimeController` | Estate lifecycle journal, neutral-rent journal, sanitized public receipt and trigger marker |
+| 18 | `victory_control` | `VictoryControlRuntimeController` | Qualification/audit state, authoritative outcome receipt and exact continuation facts |
+| 19 | `session` | `GameSessionRuntimeController` | Session lifecycle, authoritative clocks, the single shared gameplay RNG continuation, save-operation identity and session revision |
 
-No nineteenth section is introduced. Presentation-only route selection, open-window state,
+No twentieth section is introduced. Presentation-only route selection, open-window state,
 focus state and overlay layout are not gameplay sections.
 
 ## Region supply requirements
@@ -101,7 +102,7 @@ only commodity price, trend and financial-market state under its existing owner 
 
 Apply uses this fixed sequence:
 
-1. Validate the registry against the authoritative 18-section manifest.
+1. Validate the registry against the authoritative 19-section manifest.
 2. Validate the complete envelope through `RulesetSaveHandshakeService`.
 3. Decode exact wrappers and run each owner's declared pure live-owner preflight,
    or a detached-probe apply when the owner has no explicit preflight API.
@@ -171,7 +172,7 @@ They must not expose:
 
 ## Current capability baseline
 
-The production registry currently reports 11 transactional / 7 unsupported
+The production registry currently reports 12 transactional / 7 unsupported
 bindings. Transactional bindings are:
 
 - `region_infrastructure`
@@ -183,6 +184,7 @@ bindings. Transactional bindings are:
 - `bankruptcy_neutral_estate`
 - `commodity_flow`
 - `card_resolution_execution`
+- `card_resolution_history`
 - `victory_control`
 - `session`
 
@@ -197,6 +199,8 @@ already be captured or restored.
 Required focused evidence after implementation:
 
 - `tests/v06_save_owner_registry_test.gd`
+- `tests/card_resolution_history_save_owner_test.gd`
+- `tests/card_resolution_history_runtime_service_test.gd`
 - `tests/commodity_flow_backlog_save_roundtrip_v06_test.gd`
 - `tests/region_supply_rng_save_roundtrip_v06_test.gd`
 - `tests/commodity_flow_public_privacy_v06_test.gd`
