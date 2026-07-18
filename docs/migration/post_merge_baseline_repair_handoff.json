@@ -4,71 +4,233 @@
   "worktree": "C:/Users/zhuye/Documents/New project/space-syndicate-post-merge-repair-9629ce7",
   "branch": "codex/post-merge-baseline-repair-9629ce7",
   "base": "9629ce7ff7555ed19d8f657c01db4a19ffff819b",
+  "status": "POST_MERGE_BASELINE_REPAIR_GREEN",
+  "next_status": "COMPENDIUM_CUTOVER_UNBLOCKED",
   "commits": [
     "549e3815dec0cb8a4b0a3663e64cc4220bf8a9c0",
-    "b0bbf0cf4e57145d77094149c74b4d1c36135473"
+    "b0bbf0cf4e57145d77094149c74b4d1c36135473",
+    "c8d2edfb06f5bb424dd9332d8f1dfddf2ed28609",
+    "c9152f740eb6076541b30077398814911e1a0a8c",
+    "ddf0cbce07422a47956fff0968a9dd7ba9ea996f",
+    "4b5cd3cfb3412096f45258f15a80a076d71f5628"
   ],
-  "focused_status": "focused_follow_up_passed",
-  "recorded_timeout": {
-    "target": "res://scenes/tools/TablePresentationSourceTargetBench.tscn",
-    "run_id": "20260717-231912-880-TablePresentationSourceTargetBench-7a3cde99",
-    "timeout_seconds": 300,
-    "observed_result": "FAIL 45/49",
-    "runner_exit_code": 124,
-    "script_error_count": 0,
-    "remaining_runtime_process_ids": [],
-    "classification": {
-      "fixture": "six phase nodes were assigned before tree entry and the production scene-owned RuntimeSimulationStep was omitted, causing three RuntimeLoop/cadence failures",
-      "runner": "deferred auto-run never called get_tree().quit, so the process timed out after printing its result",
-      "rendering_environment": "the headless dummy viewport had no texture and was incorrectly treated as a headed screenshot failure"
+  "commit_details": [
+    {
+      "sha": "549e3815dec0cb8a4b0a3663e64cc4220bf8a9c0",
+      "description": "Align RuntimeLoop cutover fixtures and benches with the merged seven-child production phase scene."
+    },
+    {
+      "sha": "b0bbf0cf4e57145d77094149c74b4d1c36135473",
+      "description": "Restore authoritative PlayerSeat projection wiring and real presentation-query injection without a Main fallback."
+    },
+    {
+      "sha": "c8d2edfb06f5bb424dd9332d8f1dfddf2ed28609",
+      "description": "Record initial RuntimeLoop and PlayerSeat repair analysis and evidence."
+    },
+    {
+      "sha": "c9152f740eb6076541b30077398814911e1a0a8c",
+      "description": "Harden the TablePresentation source-target scene gate and environment-aware screenshot evidence."
+    },
+    {
+      "sha": "ddf0cbce07422a47956fff0968a9dd7ba9ea996f",
+      "description": "Keep monster visual-color resolution in the Monster runtime owner through the existing catalog."
+    },
+    {
+      "sha": "4b5cd3cfb3412096f45258f15a80a076d71f5628",
+      "description": "Migrate rules and role/commodity settlement fixtures to the merged owners and typed WorldSessionState."
+    }
+  ],
+  "recording_commit": {
+    "message": "docs: finalize post-merge baseline repair evidence",
+    "sha_recorded_in_document": false
+  },
+  "initial_runtime_loop_failure": {
+    "reported_script_errors": 16,
+    "unique_events": 1,
+    "classification": "one fixture getter lifecycle event repeated across assertions",
+    "production_runtime_defect_count": 0,
+    "production_runtime_loop_unique": true,
+    "main_fallback_restored": false
+  },
+  "player_seat_repair": {
+    "classification": "production source wiring defect",
+    "source": "WorldSessionPublicProjection",
+    "real_presentation_query_injected": true,
+    "pre_session_empty_allowed": true,
+    "main_fallback_restored": false,
+    "privacy_preserved": true
+  },
+  "monster_color_p0": {
+    "discovered_by": "later headed QA",
+    "origin": "origin/main",
+    "symptom": "_auto_monster_color routed through a physically deleted Main helper and converted Nil to Color",
+    "fixed_by": "ddf0cbce07422a47956fff0968a9dd7ba9ea996f",
+    "authority": "MonsterRuntimeController plus MONSTER_CATALOG_V06.art_profile",
+    "stable_color_fallback": true,
+    "main_wrapper_restored": false
+  },
+  "table_presentation_history": {
+    "original": {
+      "run_id": "20260717-231912-880-TablePresentationSourceTargetBench-7a3cde99",
+      "checks_passed": 45,
+      "checks_total": 49,
+      "runner_exit_code": 124,
+      "timeout_seconds": 300,
+      "script_error_count": 0
+    },
+    "repaired": {
+      "run_id": "20260717-234159-484-TablePresentationSourceTargetBench-c8962899",
+      "checks_passed": 49,
+      "checks_total": 49,
+      "process_exit_code": 0,
+      "runner_exit_code": 0,
+      "duration_seconds": 7.839,
+      "timed_out": false,
+      "script_error_count": 0,
+      "remaining_runtime_process_ids": []
+    },
+    "final_independent_run": {
+      "run_id": "20260718-065210-097-TablePresentationSourceTargetBench-193a2e67",
+      "checks_passed": 49,
+      "checks_total": 49,
+      "exit_code": 0
     }
   },
-  "follow_up": {
-    "target": "res://scenes/tools/TablePresentationSourceTargetBench.tscn",
-    "run_id": "20260717-234159-484-TablePresentationSourceTargetBench-c8962899",
-    "status": "passed",
-    "checks_passed": 49,
-    "checks_total": 49,
-    "process_exit_code": 0,
-    "runner_exit_code": 0,
-    "duration_seconds": 7.839,
-    "timed_out": false,
-    "script_error_count": 0,
-    "headless_screenshot_mode": "dummy_renderer_skipped",
-    "cleanup_process_ids": [],
-    "remaining_runtime_process_ids": [],
-    "regression_runs": {
-      "runtime_loop_cutover_test": "20260717-234244-436-runtime_loop_cutover_test-8b271d79",
-      "runtime_loop_cutover_bench": "20260717-234250-977-RuntimeLoopCutoverBench-91450cc5",
-      "table_presentation_source_target_cutover_test": "20260717-234258-214-table_presentation_source_target_cutover_test-7c16997a",
-      "player_seat_public_source_wiring_test": "20260717-234300-970-player_seat_public_source_wiring_test-9b2820fe",
-      "smoke_check_only": "20260717-234310-354-smoke_test-b32cf3ed"
+  "merged_owner_fixture_results": {
+    "player_rules": {
+      "run_id": "20260718-064951-279-player_rules_in_game_test-832e8124",
+      "exit_code": 0,
+      "composition_owner": "ApplicationFlowController",
+      "main_duplicate_compose": false
+    },
+    "role_resource_cash_commodity_settlement": {
+      "run_id": "20260718-064953-828-role_resource_cash_commodity_settlement_v06_test-bcc07bd1",
+      "checks_passed": 82,
+      "checks_total": 82,
+      "exit_code": 0,
+      "typed_world_session_state": true,
+      "world_players_fallback_restored": false
+    },
+    "monster_autonomous_migration": {
+      "run_id": "20260718-064943-987-simulation_autonomous_behavior_command_migration_test-e54c0fe4",
+      "checks_passed": 14,
+      "checks_total": 14,
+      "exit_code": 0
+    },
+    "runtime_loop_cutover": {
+      "run_id": "20260718-065000-124-runtime_loop_cutover_test-e46810d7",
+      "exit_code": 0
     }
   },
-  "mcp": {
-    "port": 8825,
-    "project_root_verified": true,
-    "godot_version": "4.7-stable (official)",
-    "scene": "res://scenes/tools/PlayerSeatPortraitSkinBench.tscn",
-    "runtime_error_events": 0,
-    "skin_available": true,
-    "fallback_available": true,
-    "double_display": false,
+  "final_independent_qa": {
+    "tracked_script_scan": {
+      "passed": 848,
+      "total": 848,
+      "parse_errors": 0,
+      "earlier_restricted_scan_total": 386,
+      "coverage_note": "The 848-script scan covers all tracked scripts and supersedes the earlier restricted scan.",
+      "candidate_added_test_files": 1
+    },
+    "critical_scenes": {
+      "passed": 12,
+      "total": 12
+    },
+    "focused_gates": {
+      "passed": 14,
+      "total": 14,
+      "exit_code": 0,
+      "script_error_count": 0,
+      "remaining_process_ids": []
+    },
+    "smoke_check_only": {
+      "run_id": "20260718-065202-503-smoke_test-be40ed27",
+      "exit_code": 0
+    },
+    "main": {
+      "physical_lines": 12505,
+      "methods": 788
+    },
+    "architecture": {
+      "runtime_owner_count_each": 1,
+      "main_fallback_count": 0,
+      "registered_save_owner_count": 18
+    }
+  },
+  "real_four_player_pve": {
+    "scene": "res://scenes/main.tscn",
+    "ui_path": [
+      "start_new_game",
+      "default_four_player_pve",
+      "start_run"
+    ],
+    "duration_seconds": 18,
+    "phase_transition": [
+      "operations",
+      "planning"
+    ],
+    "fps": 145,
+    "runtime_loop": {
+      "frame_index": 29037,
+      "path": "active",
+      "stopped_reason": "completed"
+    },
+    "world_effective_microseconds": 7739891,
+    "monster_count": 3,
+    "monsters_advancing": true,
+    "console_error_lines": 0,
+    "target_error_occurrences": 0,
+    "player_seats": {
+      "public_descriptor_count": 4,
+      "node_count": 4,
+      "unique_player_indices": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "skin_indices": [
+        0,
+        2
+      ],
+      "fallback_indices": [
+        1,
+        3
+      ],
+      "skin_fallback_mutually_exclusive": true
+    },
+    "screenshot": {
+      "absolute_path": "C:/Users/zhuye/AppData/Local/SpaceSyndicate/post_merge_targeted_qa_4b5cd3c/real_four_player_after_15s.png",
+      "bytes": 390693,
+      "sha256": "EF978CC349E595A3721FE66672385774205F16178125194738A8B1D884095905"
+    }
+  },
+  "remaining_p2": {
+    "test": "tests/monster_card_real_owner_integration_v06_test.gd",
+    "run_id": "20260718-065218-749-monster_card_real_owner_integration_v06_test-47a7215c",
+    "checks_passed": 22,
+    "checks_total": 31,
+    "failures": 9,
+    "classification": "deferred stale fixture without typed WorldSessionState",
+    "affects_formal_new_game": false,
+    "affects_current_gate_0": false,
+    "all_repository_tests_green_claimed": false
+  },
+  "clean_stop": {
     "play_state_after_stop": false,
-    "editor_stopped": true,
-    "port_open_after_stop": false,
-    "follow_up_scene": "res://scenes/tools/TablePresentationSourceTargetBench.tscn",
-    "follow_up_checks": "49/49",
-    "follow_up_headed_capture": true,
-    "follow_up_screenshot_save_error": 0,
-    "follow_up_screenshot_width": 1528,
-    "follow_up_screenshot_height": 917,
-    "follow_up_screenshot_sha256": "A8E6B234488FA0C19071909B4F5405B7223F93E26E43C191502A5EDB0C0EBA58",
-    "follow_up_runtime_events": ["ready", "exit"],
-    "follow_up_play_state_after_run": false,
-    "follow_up_editor_pid": 17540,
-    "follow_up_port_open_after_stop": false
+    "normal_editor_close_timed_out": true,
+    "verified_editor_pid_terminated": 16196,
+    "remaining_worktree_godot_process_count": 0,
+    "dedicated_listener_port": 8845,
+    "dedicated_listener_count_after_stop": 0,
+    "generated_sidecars_removed_individually": true,
+    "git_diff_check_exit_code": 0,
+    "worktree_clean": true
   },
-  "full_gate_0_claimed": false,
-  "fetch_rebase_push_performed": false
+  "scope": {
+    "compendium_files_modified": 0,
+    "fetch_performed": false,
+    "rebase_performed": false,
+    "push_performed": false,
+    "save_schema_changed": false
+  }
 }
