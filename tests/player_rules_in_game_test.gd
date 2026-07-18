@@ -45,7 +45,8 @@ func _check_rules_are_game_ui_data() -> void:
 	_expect(not snapshot_text.contains("player_index") and not snapshot_text.contains("cash") and not snapshot_text.contains("hand"), "rules snapshot does not expose runtime player state")
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 	_expect(not main_source.contains("func _rules_quick_reference_snapshot"), "Main no longer owns a duplicate rules snapshot builder")
-	_expect(main_source.contains("RulesQuickReferenceSnapshotV06Script.compose"), "Main consumes the v0.6 pure-data rules snapshot")
+	var application_flow_source := FileAccess.get_file_as_string("res://scripts/runtime/application_flow_controller.gd")
+	_expect(application_flow_source.contains("RULES_SNAPSHOT_SCRIPT.compose") and not main_source.contains("RulesQuickReferenceSnapshotV06Script.compose"), "ApplicationFlowController composes the v0.6 pure-data rules snapshot without a Main fallback")
 
 
 func _check_rules_board_renders_player_questions() -> void:

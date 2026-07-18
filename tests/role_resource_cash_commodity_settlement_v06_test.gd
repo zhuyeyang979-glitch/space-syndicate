@@ -10,7 +10,7 @@ var _failures: Array[String] = []
 
 class RuntimeWorld:
 	extends Node
-	var players: Array = []
+	pass
 
 
 class RoleFlowBridge:
@@ -23,14 +23,17 @@ class RoleFlowBridge:
 
 func _init() -> void:
 	var world := RuntimeWorld.new()
-	world.players = [
+	var state := WorldSessionState.new()
+	state.replace_players([
 		_player("深海菌毯", 55),
 		_player("重力陶瓷", 45),
-	]
+	], true)
 	root.add_child(world)
+	root.add_child(state)
 	var bridge := BRIDGE_SCRIPT.new()
 	root.add_child(bridge)
 	bridge.call("bind_world", world)
+	bridge.call("set_world_session_state", state)
 
 	var public_batch := {
 		"batch_id": "role-cash-batch-1",
@@ -41,8 +44,8 @@ func _init() -> void:
 	}
 	var public_before := public_batch.duplicate(true)
 	var first: Dictionary = bridge.call("apply_sale_receipt_batch", public_batch)
-	var owner: Dictionary = world.players[0]
-	var non_match: Dictionary = world.players[1]
+	var owner: Dictionary = state.players[0]
+	var non_match: Dictionary = state.players[1]
 	_expect(bool(first.get("applied", false)) and not bool(first.get("duplicate", true)), "matching CommodityFlow batch applies once")
 	_expect(int(owner.get("cash_cents", 0)) == 10000 + 725 + 5500, "matching role receives the configured 55 cash in addition to sale proceeds")
 	_expect(int(owner.get("cash", 0)) == 162, "whole-cash compatibility field follows authoritative cents")
@@ -59,7 +62,7 @@ func _init() -> void:
 	_expect(not first.has("role_receipt") and not first.has("player_index") and not first.has("commodity_id"), "bridge result does not project the private role receipt")
 
 	var replay: Dictionary = bridge.call("apply_sale_receipt_batch", public_batch)
-	owner = world.players[0]
+	owner = state.players[0]
 	_expect(bool(replay.get("applied", false)) and bool(replay.get("duplicate", false)), "same batch id replays idempotently")
 	_expect(int(owner.get("cash_cents", 0)) == 16225 and int(owner.get("total_role_income", 0)) == 55 and _ledger_rows(owner, "role_resource_cash").size() == 1, "batch replay repeats neither cash, role total, nor ledger receipt")
 
@@ -68,7 +71,7 @@ func _init() -> void:
 		"receipts": [_sale_receipt("commodity-sale-role-1", 0, "深海菌毯", 0)],
 	}
 	var rebound_result: Dictionary = bridge.call("apply_sale_receipt_batch", rebound)
-	owner = world.players[0]
+	owner = state.players[0]
 	_expect(bool(rebound_result.get("applied", false)) and int(owner.get("total_role_income", 0)) == 55, "same source receipt cannot settle role income again under another batch id")
 	_expect(_ledger_rows(owner, "role_resource_cash").size() == 1, "source-receipt exact-once guard prevents a second role ledger receipt")
 
@@ -78,6 +81,7 @@ func _init() -> void:
 	_verify_real_commodity_flow_chain()
 
 	world.queue_free()
+	state.queue_free()
 	bridge.queue_free()
 	print("ROLE_RESOURCE_CASH_COMMODITY_SETTLEMENT_V06_TEST|status=%s|checks=%d|failures=%d" % ["PASS" if _failures.is_empty() else "FAIL", _checks, _failures.size()])
 	quit(_failures.size())
@@ -85,8 +89,10 @@ func _init() -> void:
 
 func _verify_real_commodity_flow_chain() -> void:
 	var world := RuntimeWorld.new()
-	world.players = [_player("星露莓", 35)]
+	var state := WorldSessionState.new()
+	state.replace_players([_player("星露莓", 35)], true)
 	root.add_child(world)
+	root.add_child(state)
 	var bridge := RoleFlowBridge.new()
 	var facility := {
 		"facility_id": "role-cash-factory",
@@ -114,6 +120,7 @@ func _verify_real_commodity_flow_chain() -> void:
 	}
 	root.add_child(bridge)
 	bridge.call("bind_world", world)
+	bridge.call("set_world_session_state", state)
 	var flow := FLOW_SCRIPT.new()
 	root.add_child(flow)
 	flow.call("set_world_bridge", bridge)
@@ -137,7 +144,7 @@ func _verify_real_commodity_flow_chain() -> void:
 		var tick: Dictionary = flow.call("advance_world", 1.0)
 		_expect(bool(tick.get("advanced", false)), "real CommodityFlow tick %d advances" % second)
 		receipt_count += int(tick.get("receipt_count", 0))
-	var player: Dictionary = world.players[0]
+	var player: Dictionary = state.players[0]
 	_expect(receipt_count == 1, "real local production emits one authoritative regional Sale Receipt")
 	_expect(int(player.get("cash_cents", 0)) == 10000 + 100 + 3500 and int(player.get("total_role_income", 0)) == 35, "real controller-to-bridge chain settles sale cash and role cash together")
 	_expect(_ledger_rows(player, "role_resource_cash").size() == 1, "real controller chain writes exactly one private role ledger receipt")
@@ -147,6 +154,7 @@ func _verify_real_commodity_flow_chain() -> void:
 	flow.queue_free()
 	bridge.queue_free()
 	world.queue_free()
+	state.queue_free()
 
 
 func _player(product_id: String, amount: int) -> Dictionary:
