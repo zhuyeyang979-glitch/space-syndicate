@@ -10,6 +10,7 @@ const RULESET_V06_PROFILE := preload("res://resources/rules/space_syndicate_rule
 const MONSTER_CARD_EFFECT_ADAPTER_V06 := preload("res://scripts/cards/v06/units/monster_card_effect_adapter_v06.gd")
 const AI_V06_ECONOMY_ACTION_PORT := preload("res://scripts/runtime/ai_v06_economy_action_port.gd")
 const RUNTIME_BALANCE_MODEL_SCRIPT := preload("res://scripts/balance/runtime_balance_model.gd")
+const COMMODITY_SUSHI_TRACK_SERVICE_SCRIPT := preload("res://scripts/runtime/commodity_sushi_track_runtime_service.gd")
 const CORE_ECONOMIC_CARD_EFFECT_KINDS_V06 := [
 	"install_commodity_rate",
 	"build_upgrade_or_repair_facility",
@@ -197,6 +198,13 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 			card_player_state_adapter,
 			commodity_flow,
 			region_infrastructure
+		)
+	var commodity_sushi_track := _commodity_sushi_track_runtime_service_node()
+	if commodity_sushi_track != null:
+		commodity_sushi_track.configure(
+			commodity_card_inventory as CommodityCardInventoryRuntimeController,
+			card_player_state_adapter as CardPlayerStateProductionAdapterV06,
+			product_market_controller as ProductMarketRuntimeController
 		)
 	_bind_region_supply_source_port()
 	var codex_navigation := _codex_navigation_node()
@@ -634,6 +642,8 @@ func refresh_v06_production_player_bindings(world: Node = null) -> Dictionary:
 	if commodity_card_inventory is CommodityCardInventoryRuntimeController:
 		(commodity_card_inventory as CommodityCardInventoryRuntimeController).set_world_session_state(session_state)
 	var actor_map: Dictionary = card_player_state_adapter.call("actor_player_indices") if card_player_state_adapter != null and card_player_state_adapter.has_method("actor_player_indices") else {}
+	var belt_bootstrap: Dictionary = commodity_card_inventory.call("initialize_default_belt_if_empty") \
+		if commodity_card_inventory != null and commodity_card_inventory.has_method("initialize_default_belt_if_empty") else {}
 	var organization_owner_result := _configure_player_organization_runtime(actor_map)
 	var public_demand_bootstrap := _bootstrap_v06_public_demand_endpoints()
 	var core_configure: Dictionary = {}
@@ -660,7 +670,8 @@ func refresh_v06_production_player_bindings(world: Node = null) -> Dictionary:
 	var organization_readiness: Dictionary = core_snapshot.get("organization_consumer_readiness", {}) if core_snapshot.get("organization_consumer_readiness", {}) is Dictionary else {}
 	var public_demand_ready := bool(public_demand_bootstrap.get("ready", false))
 	var ai_v06_economy_port := _refresh_ai_v06_economy_action_port()
-	var binding_ready := not actor_map.is_empty() and state_ready and inventory_ready and core_ready and monster_adapter_ready and public_demand_ready
+	var belt_ready := bool(belt_bootstrap.get("configured", false))
+	var binding_ready := not actor_map.is_empty() and state_ready and inventory_ready and core_ready and monster_adapter_ready and public_demand_ready and belt_ready
 	_last_v06_player_binding_result = {
 		"ready": binding_ready,
 		"reason_code": "production_players_bound" if binding_ready else "production_players_not_bound",
@@ -675,6 +686,8 @@ func refresh_v06_production_player_bindings(world: Node = null) -> Dictionary:
 		"monster_card_adapter_ready": monster_adapter_ready,
 		"public_demand_ready": public_demand_ready,
 		"public_demand_bootstrap": public_demand_bootstrap.duplicate(true),
+		"commodity_belt_ready": belt_ready,
+		"commodity_belt_bootstrap": belt_bootstrap.duplicate(true),
 		"ai_v06_economy_port_ready": bool(ai_v06_economy_port.get("available", false)),
 	}
 	_refresh_coordinator_readiness()
@@ -3836,6 +3849,9 @@ func reset_state() -> void:
 	var commodity_card_inventory := _commodity_card_inventory_runtime_controller_node()
 	if commodity_card_inventory != null and commodity_card_inventory.has_method("reset_state"):
 		commodity_card_inventory.call("reset_state")
+	var commodity_sushi_track := _commodity_sushi_track_runtime_service_node()
+	if commodity_sushi_track != null:
+		commodity_sushi_track.reset_projection_state()
 	_bind_region_supply_source_port()
 	var organization_owner := _player_organization_runtime_controller_node()
 	if organization_owner != null and organization_owner.has_method("reset_state"):
@@ -5185,7 +5201,8 @@ func _wire_table_presentation_source_target() -> void:
 		_card_resolution_queue_node() as CardResolutionQueueRuntimeService,
 		_card_resolution_history_runtime_service_node(),
 		_card_resolution_presentation_port_node(),
-		_player_seat_public_source_node() as PlayerSeatPublicSourceService
+		_player_seat_public_source_node() as PlayerSeatPublicSourceService,
+		_commodity_sushi_track_runtime_service_node()
 	)
 	source.configure(
 		_table_presentation_query_ports_node(),
@@ -5388,6 +5405,10 @@ func _player_mana_runtime_controller_node() -> Node:
 
 func _commodity_card_inventory_runtime_controller_node() -> Node:
 	return get_node_or_null("CommodityCardInventoryRuntimeController")
+
+
+func _commodity_sushi_track_runtime_service_node() -> COMMODITY_SUSHI_TRACK_SERVICE_SCRIPT:
+	return get_node_or_null("CommoditySushiTrackRuntimeService") as COMMODITY_SUSHI_TRACK_SERVICE_SCRIPT
 
 
 func _bind_region_supply_source_port() -> Dictionary:

@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/commodity_sushi_track_runtime_service.gd" id="1_service"]
+
+[node name="CommoditySushiTrackRuntimeService" type="Node"]
+script = ExtResource("1_service")
+editor_description = "Viewer-safe typed projection and claim adapter over the single CommodityCardInventory belt owner. Owns no belt, player, market, RNG, or save state."

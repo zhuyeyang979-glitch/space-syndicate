@@ -25,6 +25,7 @@ const PUBLIC_TRACK_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/public_t
 const RIGHT_INSPECTOR_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/right_inspector_snapshot.gd")
 const TOP_BAR_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/top_bar_snapshot.gd")
 const OPTIONAL_ROUTE_PUBLIC_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/optional_route_public_snapshot.gd")
+const COMMODITY_SUSHI_TRACK_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/commodity_sushi_track_snapshot.gd")
 
 var top_bar: Dictionary = {}
 var card_track: Array = []
@@ -35,6 +36,7 @@ var player_board: Dictionary = {}
 var temporary_decision: Dictionary = {}
 var active_forced_decision: Dictionary = {}
 var optional_route_presentation: Dictionary = {}
+var commodity_sushi_track: Dictionary = {}
 var visual_events: Array = []
 var visual_event_key := ""
 
@@ -65,6 +67,10 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	optional_route_presentation = OPTIONAL_ROUTE_PUBLIC_SNAPSHOT_SCRIPT.new() \
 		.apply_dictionary(data.get("optional_route_presentation", {})) \
 		.to_ui_dictionary()
+	var commodity_source: Dictionary = data.get("commodity_sushi_track", {}) \
+		if data.get("commodity_sushi_track", {}) is Dictionary else {}
+	var commodity_snapshot: COMMODITY_SUSHI_TRACK_SNAPSHOT_SCRIPT = COMMODITY_SUSHI_TRACK_SNAPSHOT_SCRIPT.new().apply_dictionary(commodity_source)
+	commodity_sushi_track = commodity_snapshot.to_dictionary() if commodity_snapshot != null and commodity_snapshot.is_valid() else {}
 	visual_events = (data.get("visual_events", []) as Array).duplicate(true) if data.get("visual_events", []) is Array else []
 	visual_event_key = str(data.get("visual_event_key", ""))
 	return self
@@ -81,6 +87,7 @@ func to_ui_dictionary() -> Dictionary:
 		"temporary_decision": temporary_decision,
 		"active_forced_decision": active_forced_decision,
 		"optional_route_presentation": optional_route_presentation,
+		"commodity_sushi_track": commodity_sushi_track,
 		"visual_events": visual_events,
 		"visual_event_key": visual_event_key,
 	}

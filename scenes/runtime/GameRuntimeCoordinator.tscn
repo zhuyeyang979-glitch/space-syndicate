@@ -1,4 +1,4 @@
-[gd_scene load_steps=108 format=3]
+[gd_scene load_steps=109 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -64,6 +64,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/CommodityFlowWorldBridge.tscn" id="61_commodity_flow_bridge"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/PlayerManaRuntimeController.tscn" id="62_player_mana"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CommodityCardInventoryRuntimeController.tscn" id="63_commodity_card_inventory"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CommoditySushiTrackRuntimeService.tscn" id="115_commodity_sushi_track"]
 [ext_resource type="Script" path="res://scripts/cards/v06/production/card_player_state_production_adapter_v06.gd" id="64_card_player_state_adapter"]
 [ext_resource type="Script" path="res://scripts/cards/v06/production/core_economic_card_runtime_adapter_v06.gd" id="65_core_economic_runtime_adapter"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/PlayerOrganizationRuntimeController.tscn" id="66_player_organization"]
@@ -239,6 +240,9 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="CommodityCardInventoryRuntimeController" parent="." instance=ExtResource("63_commodity_card_inventory")]
+unique_name_in_owner = true
+
+[node name="CommoditySushiTrackRuntimeService" parent="." instance=ExtResource("115_commodity_sushi_track")]
 unique_name_in_owner = true
 
 [node name="CardPlayerStateProductionAdapterV06" type="Node" parent="."]

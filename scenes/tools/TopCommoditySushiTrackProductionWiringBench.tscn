@@ -1,0 +1,44 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/top_commodity_sushi_track_production_wiring_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/ui/GameScreen.tscn" id="2_game_screen"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/GameRuntimeCoordinator.tscn" id="3_coordinator"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CommoditySushiTrackApplicationFlowController.tscn" id="4_flow"]
+
+[node name="TopCommoditySushiTrackProductionWiringBench" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_bench")
+
+[node name="GameScreen" parent="." instance=ExtResource("2_game_screen")]
+unique_name_in_owner = true
+
+[node name="GameRuntimeCoordinator" parent="." instance=ExtResource("3_coordinator")]
+unique_name_in_owner = true
+presentation_game_screen_path = NodePath("../GameScreen")
+
+[node name="CommoditySushiTrackApplicationFlowController" parent="." instance=ExtResource("4_flow")]
+service_path = NodePath("../GameRuntimeCoordinator/CommoditySushiTrackRuntimeService")
+game_screen_path = NodePath("../GameScreen")
+refresh_port_path = NodePath("../GameRuntimeCoordinator/TablePresentationRefreshPort")
+
+[node name="BenchStatus" type="PanelContainer" parent="."]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 124.0
+offset_bottom = 42.0
+mouse_filter = 2
+
+[node name="StatusLabel" type="Label" parent="BenchStatus"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "RUNNING"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[connection signal="commodity_claim_requested" from="GameScreen" to="CommoditySushiTrackApplicationFlowController" method="handle_claim_request"]

@@ -252,6 +252,58 @@ func configure_belt(revision: int, entries: Array) -> Dictionary:
 	return (value_variant as Dictionary).duplicate(true) if value_variant is Dictionary else _failure("belt_configuration_invalid")
 
 
+func initialize_default_belt_if_empty() -> Dictionary:
+	if not _service_ready():
+		return _failure("controller_not_ready")
+	var current := belt_snapshot()
+	var current_items: Dictionary = current.get("items", {}) if current.get("items", {}) is Dictionary else {}
+	if int(current.get("revision", 0)) > 0 or not current_items.is_empty():
+		return {
+			"configured": true,
+			"reason_code": "commodity_belt_preserved",
+			"belt": current,
+		}
+	var selected_cards: Array[Dictionary] = []
+	var selected_ids: Dictionary = {}
+	var commodity_cards_variant: Variant = CATALOG.call("cards_for_acquisition", "commodity_belt_free")
+	var commodity_cards: Array = commodity_cards_variant if commodity_cards_variant is Array else []
+	for industry_id in ["life", "energy", "industry", "technology", "commerce", "shipping"]:
+		for card_variant in commodity_cards:
+			var card: Dictionary = card_variant if card_variant is Dictionary else {}
+			var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+			var card_id := str(machine.get("card_id", ""))
+			if int(machine.get("rank", 0)) == 1 and str(machine.get("industry_id", "")) == industry_id and not selected_ids.has(card_id):
+				selected_cards.append(card)
+				selected_ids[card_id] = true
+				break
+	for card_variant in commodity_cards:
+		if selected_cards.size() >= 8:
+			break
+		var card: Dictionary = card_variant if card_variant is Dictionary else {}
+		var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+		var card_id := str(machine.get("card_id", ""))
+		if int(machine.get("rank", 0)) != 1 or card_id.is_empty() or selected_ids.has(card_id):
+			continue
+		selected_cards.append(card)
+		selected_ids[card_id] = true
+	var entries: Array = []
+	for card in selected_cards:
+		var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+		var card_id := str(machine.get("card_id", ""))
+		entries.append({
+			"item_id": "commodity_slot:%s" % card_id,
+			"card": card,
+			"claimable": true,
+			"visible_actor_ids": [],
+		})
+	if entries.size() != 8:
+		return _failure("commodity_belt_seed_incomplete")
+	var result := configure_belt(1, entries)
+	result["deterministic_seed"] = true
+	result["seed_item_count"] = entries.size()
+	return result
+
+
 func belt_snapshot() -> Dictionary:
 	if not _service_ready():
 		return {"revision": 0, "items": {}}

@@ -3,6 +3,7 @@ extends Node
 class_name TablePresentationViewModelQuery
 
 const HAND_LIMIT := 5
+const COMMODITY_SUSHI_TRACK_SERVICE_SCRIPT := preload("res://scripts/runtime/commodity_sushi_track_runtime_service.gd")
 
 var _ports: TablePresentationQueryPorts
 var _selection: TableSelectionState
@@ -26,6 +27,7 @@ var _queue: CardResolutionQueueRuntimeService
 var _history: CardResolutionHistoryRuntimeService
 var _card_resolution_presentation: CardResolutionPresentationPort
 var _player_seat_sources: PlayerSeatPublicSourceService
+var _commodity_sushi_track: COMMODITY_SUSHI_TRACK_SERVICE_SCRIPT
 var _revision := 0
 var _compose_count := 0
 var _last_visual_event_revision := 0
@@ -53,7 +55,8 @@ func configure(
 	queue: CardResolutionQueueRuntimeService,
 	history: CardResolutionHistoryRuntimeService,
 	card_resolution_presentation: CardResolutionPresentationPort,
-	player_seat_sources: PlayerSeatPublicSourceService = null
+	player_seat_sources: PlayerSeatPublicSourceService = null,
+	commodity_sushi_track: COMMODITY_SUSHI_TRACK_SERVICE_SCRIPT = null
 ) -> void:
 	_ports = ports
 	_selection = selection
@@ -77,6 +80,7 @@ func configure(
 	_history = history
 	_card_resolution_presentation = card_resolution_presentation
 	_player_seat_sources = player_seat_sources
+	_commodity_sushi_track = commodity_sushi_track
 
 
 func compose_table_state(viewer_index: int, include_full: bool) -> Dictionary:
@@ -103,6 +107,8 @@ func compose_table_state(viewer_index: int, include_full: bool) -> Dictionary:
 		"visual_events": visual_surface.get("events", []),
 		"visual_event_key": str(visual_surface.get("key", "")),
 		"logs": logs,
+		"commodity_sushi_track": _commodity_sushi_track.public_snapshot(viewer_index).to_dictionary() \
+			if _commodity_sushi_track != null else {},
 	}
 	var card_surfaces := {
 		"hand_cards": _hand_card_sources(viewer_index, private_world),
@@ -167,6 +173,7 @@ func debug_snapshot() -> Dictionary:
 		"uses_public_queue_and_history": true,
 		"card_visual_event_revision": _last_visual_event_revision,
 		"uses_public_player_seat_projection": _player_seat_sources != null,
+		"uses_public_commodity_sushi_track_projection": _commodity_sushi_track != null,
 		"supports_decision_kinds": ["monster_wager", "contract_response", "discard_purchase", "monster_target_choice", "player_target_choice"],
 		"references_main": false,
 		"mutates_gameplay": false,
