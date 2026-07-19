@@ -19,6 +19,8 @@ func _init() -> void:
 	_test_identity_fail_closed()
 	_test_session_fail_closed()
 	_test_replay_and_collision()
+	_test_journal_resilience()
+	_test_journal_session_scope()
 	_test_input_validation()
 	_test_zero_gameplay_mutation()
 	print("PlayerIdentityAuthorizationBoundary: %d checks / %d failures" % [_checks, _failures])
@@ -133,6 +135,35 @@ func _test_replay_and_collision() -> void:
 	_expect(not collision_receipt.authorized and collision_receipt.request_id_collision and collision_receipt.reason_code == "request_id_collision", "same ID with different binding is rejected as collision")
 
 
+func _test_journal_resilience() -> void:
+	var poisoned := _request("identity:retry-after-rejection", 11)
+	poisoned.authorization_revision += 1
+	_expect(_reason(poisoned) == "authorization_revision_stale", "rejected request does not enter the exact-once journal")
+	poisoned.authorization_revision = _authorization.context().authorization_revision
+	_expect(_boundary.authorize_request(poisoned).authorized, "corrected request may reuse an ID that never authorized")
+	var retained := _request("identity:retained", 12)
+	_expect(_boundary.authorize_request(retained).authorized, "retained request authorizes before journal pressure")
+	var bulk_authorized := true
+	for index in range(300):
+		var request := _request("identity:bulk:%d" % index, 1000 + index)
+		bulk_authorized = bulk_authorized and _boundary.authorize_request(request).authorized
+	_expect(bulk_authorized, "more than the former journal limit authorizes without eviction")
+	var replay := _boundary.authorize_request(retained)
+	_expect(not replay.authorized and replay.idempotent_replay, "accepted request remains replay-protected without journal eviction")
+	var debug := _boundary.debug_snapshot()
+	_expect(not bool(debug.get("journal_eviction_enabled", true)) and int(debug.get("journal_size", 0)) >= 302, "journal retains accepted IDs for the active session")
+
+
+func _test_journal_session_scope() -> void:
+	var request_id := "identity:session-scoped"
+	_expect(_boundary.authorize_request(_request(request_id, 1400)).authorized, "request ID authorizes in the original session")
+	_session.set("_session_id", "session-auth-2")
+	_session.set("_seed", 43)
+	_expect(_boundary.authorize_request(_request(request_id, 1401)).authorized, "request ID may be reused after the authoritative session changes")
+	_session.set("_session_id", "session-auth-1")
+	_session.set("_seed", 42)
+
+
 func _test_input_validation() -> void:
 	var missing_id := _request("identity:temporary", 11)
 	missing_id.request_id = ""
@@ -154,7 +185,7 @@ func _test_zero_gameplay_mutation() -> void:
 	_expect(_world.debug_snapshot() == world_before, "authorization does not mutate world state")
 	_expect(_session.session_summary() == session_before, "authorization does not mutate session state")
 	var debug := _boundary.debug_snapshot()
-	_expect(int(debug.get("authorized_count", 0)) >= 3 and int(debug.get("replay_count", 0)) == 1 and int(debug.get("collision_count", 0)) == 1, "debug counters expose successful, replay, and collision outcomes")
+	_expect(int(debug.get("authorized_count", 0)) >= 304 and int(debug.get("replay_count", 0)) >= 2 and int(debug.get("collision_count", 0)) == 1, "debug counters expose successful, replay, and collision outcomes")
 
 
 func _request(request_id: String, revision: int) -> PlayerIdentityActionRequest:

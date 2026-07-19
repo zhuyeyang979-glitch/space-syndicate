@@ -4,14 +4,12 @@ class_name PlayerIdentityAuthorizationBoundary
 
 signal authorization_completed(receipt: PlayerIdentityAuthorizationReceipt)
 
-const JOURNAL_LIMIT := 256
-
 @export var local_viewer_authorization_path: NodePath
 @export var world_session_state_path: NodePath
 @export var game_session_path: NodePath
 
 var _request_journal: Dictionary = {}
-var _request_order: Array[String] = []
+var _journal_session_key := ""
 var _submission_count := 0
 var _authorized_count := 0
 var _rejection_count := 0
@@ -45,19 +43,6 @@ func authorize_request(request: PlayerIdentityActionRequest) -> PlayerIdentityAu
 	var validation := request.validation_report()
 	if not bool(validation.get("valid", false)):
 		return _complete(_receipt(request, false, str(validation.get("reason_code", "request_invalid"))))
-	var fingerprint := request.fingerprint()
-	if _request_journal.has(request.request_id):
-		var prior_fingerprint := str(_request_journal.get(request.request_id, ""))
-		if prior_fingerprint != fingerprint:
-			_collision_count += 1
-			var collision := _receipt(request, false, "request_id_collision")
-			collision.request_id_collision = true
-			return _complete(collision)
-		_replay_count += 1
-		var replay := _receipt(request, false, "request_replay")
-		replay.idempotent_replay = true
-		return _complete(replay)
-	_remember_request(request.request_id, fingerprint)
 	var dependencies := _dependencies_report()
 	if not bool(dependencies.get("ready", false)):
 		return _complete(_receipt(request, false, str(dependencies.get("reason_code", "authority_dependency_missing"))))
@@ -85,6 +70,20 @@ func authorize_request(request: PlayerIdentityActionRequest) -> PlayerIdentityAu
 		return _complete(_receipt(request, false, "wrong_session"))
 	if request.session_revision != session.session_start_revision():
 		return _complete(_receipt(request, false, "session_revision_stale"))
+	_sync_journal_session(request.session_id, request.session_revision)
+	var fingerprint := request.fingerprint()
+	if _request_journal.has(request.request_id):
+		var prior_fingerprint := str(_request_journal.get(request.request_id, ""))
+		if prior_fingerprint != fingerprint:
+			_collision_count += 1
+			var collision := _receipt(request, false, "request_id_collision")
+			collision.request_id_collision = true
+			return _complete(collision)
+		_replay_count += 1
+		var replay := _receipt(request, false, "request_replay")
+		replay.idempotent_replay = true
+		return _complete(replay)
+	_request_journal[request.request_id] = fingerprint
 	return _complete(_receipt(request, true, "authorized"))
 
 
@@ -97,7 +96,8 @@ func debug_snapshot() -> Dictionary:
 		"replay_count": _replay_count,
 		"collision_count": _collision_count,
 		"journal_size": _request_journal.size(),
-		"journal_limit": JOURNAL_LIMIT,
+		"journal_session_key": _journal_session_key,
+		"journal_eviction_enabled": false,
 		"scene_owned": true,
 		"typed_requests": true,
 		"viewer_authority": "LocalViewerAuthorization",
@@ -119,11 +119,12 @@ func _dependencies_report() -> Dictionary:
 	return {"ready": true, "reason_code": ""}
 
 
-func _remember_request(request_id: String, fingerprint: String) -> void:
-	_request_journal[request_id] = fingerprint
-	_request_order.append(request_id)
-	while _request_order.size() > JOURNAL_LIMIT:
-		_request_journal.erase(_request_order.pop_front())
+func _sync_journal_session(session_id: String, session_revision: int) -> void:
+	var session_key := "%s:%d" % [session_id, session_revision]
+	if _journal_session_key == session_key:
+		return
+	_request_journal.clear()
+	_journal_session_key = session_key
 
 
 func _receipt(request: PlayerIdentityActionRequest, authorized: bool, reason_code: String) -> PlayerIdentityAuthorizationReceipt:
