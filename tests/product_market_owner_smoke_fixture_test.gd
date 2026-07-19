@@ -1,7 +1,6 @@
 extends SceneTree
 
-const MAIN_SCENE_PATH := "res://scenes/main.tscn"
-const SAVE_COORDINATOR_NODE_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController/GameSaveRuntimeCoordinator"
+const SESSION_START_DRIVER := preload("res://tests/support/production_session_start_driver.gd")
 const PRODUCT_MARKET_CONTROLLER_NODE_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ProductMarketRuntimeController"
 const TEST_SAVE_PATH := "user://test_runs/product_market_owner_smoke_fixture.save"
 
@@ -15,27 +14,27 @@ func _init() -> void:
 
 func _run() -> void:
 	_cleanup_save()
-	var packed := load(MAIN_SCENE_PATH) as PackedScene
-	_expect(packed != null, "main scene loads")
-	if packed == null:
+	var start_result := await SESSION_START_DRIVER.start_default_session(
+		self,
+		TEST_SAVE_PATH,
+		"product-market-owner-smoke"
+	)
+	_expect(bool(start_result.get("qa_save_override_ready", false)), "fixture isolates the default save path before Main enters the tree")
+	_expect(bool(start_result.get("started", false)), "formal setup transaction starts the default production session|reason=%s" % start_result.get("reason_code", ""))
+	var receipt := start_result.get("receipt") as SessionStartReceipt
+	_expect(receipt != null and receipt.applied and receipt.reason_code == "session_start_committed", "transaction receipt confirms one committed production start")
+	_expect(int(start_result.get("main_start_call_count", -1)) == 0, "fixture performs zero Main start calls")
+	_expect(int(start_result.get("setup_fallback_count", -1)) == 0, "fixture uses zero setup fallback paths")
+	var transaction_snapshot: Dictionary = start_result.get("transaction_snapshot", {})
+	_expect(not bool(transaction_snapshot.get("references_main", true)), "formal session transaction does not reference Main")
+	var main := start_result.get("main_root") as Node
+	if main == null or not bool(start_result.get("started", false)):
+		if main != null:
+			main.queue_free()
+			await process_frame
+		_cleanup_save()
 		_finish()
 		return
-	var main := packed.instantiate()
-	var save_coordinator := main.get_node_or_null(SAVE_COORDINATOR_NODE_PATH)
-	var save_override_ready := save_coordinator != null \
-		and save_coordinator.has_method("set_qa_default_save_path_override") \
-		and bool(save_coordinator.call("set_qa_default_save_path_override", TEST_SAVE_PATH))
-	_expect(save_override_ready, "fixture isolates the default save path")
-	if not save_override_ready:
-		main.free()
-		_finish()
-		return
-	get_root().add_child(main)
-	await process_frame
-	await process_frame
-	main.call("_new_game")
-	await process_frame
-	await process_frame
 
 	var controller := main.get_node_or_null(PRODUCT_MARKET_CONTROLLER_NODE_PATH)
 	_expect(controller != null, "ProductMarketRuntimeController is scene-owned")
