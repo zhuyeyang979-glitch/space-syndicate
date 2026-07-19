@@ -40,15 +40,17 @@ static func compose(source: Dictionary) -> Array:
 			"优先保护高收入路线，再考虑扩建。",
 			"planet_routes"
 		))
-		result.append(_route_action(
-			"strategy_pressure_competition",
+		var intel_action := _route_action(
+			"intel",
 			"压竞争",
 			"pressure_competition",
 			"pressure_competition",
 			"打开情报档案，依据公开线索选择竞争目标。",
 			"先确认公开证据，不读取对手私密状态。",
 			"intel_dossier"
-		))
+		)
+		intel_action["application_intent"] = IntelApplicationIntent.open().to_dictionary()
+		result.append(intel_action)
 	for action_variant in source.get("context_actions", []):
 		var context_action := _action(action_variant)
 		if not context_action.is_empty() and not _has_id(result, str(context_action.get("id", ""))):

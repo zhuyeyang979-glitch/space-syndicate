@@ -2,16 +2,14 @@ extends Control
 class_name IntelDossierPublicSnapshotCutoverBench
 
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
-const MAIN_SCRIPT_PATH := "res://scripts/main.gd"
-const SERVICE_SCENE := "res://scenes/runtime/IntelDossierPublicSnapshotService.tscn"
-const SERVICE_SCRIPT := "res://scripts/runtime/intel_dossier_public_snapshot_service.gd"
+const QUERY_SCENE := "res://scenes/runtime/presentation/IntelDossierViewerQueryPort.tscn"
+const COMMAND_SCENE := "res://scenes/runtime/IntelPrivateCommandPort.tscn"
+const CONTROLLER_SCENE := "res://scenes/runtime/IntelApplicationFlowController.tscn"
 const BOARD_SCENE := "res://scenes/ui/IntelDossierBoard.tscn"
-const COORDINATOR_SCENE := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
-const OUTPUT_DIR := "user://space_syndicate_design_qa/intel_dossier_public_snapshot_cutover/"
+const OUTPUT_DIR := "res://docs/ui_qa/intel_query_command_split/"
 const MANIFEST_PATH := OUTPUT_DIR + "manifest.json"
 const REPORT_PATH := OUTPUT_DIR + "report.md"
-const SCREENSHOT_PATH := "user://space_syndicate_design_qa/intel_dossier_public_snapshot_cutover_sprint_21.png"
-const CITY_FIXTURES := preload("res://tests/helpers/city_world_fixture_factory.gd")
+const SCREENSHOT_PATH := OUTPUT_DIR + "intel_query_command_split_summary.png"
 
 const RETIRED_FORMATTERS := [
 	"_focused_intel_card_action_snapshots", "_intel_dossier_chip_snapshots", "_focused_intel_card_guess_entry",
@@ -31,14 +29,22 @@ const RETIRED_FORMATTERS := [
 @onready var ownership_text: RichTextLabel = %OwnershipText
 @onready var results_text: RichTextLabel = %ResultsText
 
-var _service: Node
 var _main: Control
-var _main_source := ""
+var _flow: ApplicationFlowPort
+var _query: IntelDossierViewerQueryPort
+var _commands: IntelPrivateCommandPort
+var _controller: IntelApplicationFlowController
+var _coordinator: GameRuntimeCoordinator
+var _world: WorldSessionState
+var _annotations: CardHistoryPrivateAnnotationService
+var _history: CardResolutionHistoryRuntimeService
+var _monster: MonsterRuntimeController
 var _records: Array = []
 var _failures: Array[String] = []
-var _real_source: Dictionary = {}
-var _real_snapshot: Dictionary = {}
-var _real_open_elapsed_ms := -1
+var _evidence: Dictionary = {}
+var _main_source := ""
+var _open_elapsed_ms := -1
+var _command_sequence := 0
 
 
 func _ready() -> void:
@@ -56,11 +62,11 @@ func retired_formatter_names() -> Array:
 
 func cutover_cases() -> Array:
 	return [
-		"required_service_assets_load", "service_scene_contract", "intel_source_pure_data", "empty_source_safe",
-		"summary_privacy_contract", "header_chip_contract", "kpi_contract", "focused_evidence_contract",
-		"history_annotation_actions", "city_mark_action_ids", "confidence_action_ids", "reason_action_ids",
-		"public_link_action_ids", "board_signal_forwarding", "coordinator_scene_composition", "coordinator_pure_data_proxy",
-		"real_main_route_and_render", "open_performance_contract", "legacy_builders_absent_and_metrics", "private_input_rejection",
+		"formal_assets_load", "scene_owned_composition", "dedicated_application_boundary",
+		"authorized_query_zero_mutation", "public_world_categories", "public_facility_privacy",
+		"viewer_private_guess", "viewer_isolation", "authorized_reveal",
+		"card_annotation_delegation", "typed_public_links", "controller_exact_once",
+		"final_settlement_real_owner", "main_routes_retired", "bounded_capture_manifest",
 	]
 
 
@@ -68,311 +74,531 @@ func build_cutover_manifest_preview() -> Dictionary:
 	var records: Array = []
 	for case_id_variant in cutover_cases():
 		records.append(_record(str(case_id_variant), false, "preview"))
-	return {"suite": "intel-dossier-public-snapshot-cutover-v04", "output_dir": OUTPUT_DIR, "screenshot_path": SCREENSHOT_PATH, "record_count": records.size(), "retired_formatter_count": RETIRED_FORMATTERS.size(), "records": records}
+	return {
+		"suite": "intel-query-command-split-v1",
+		"output_dir": OUTPUT_DIR,
+		"screenshot_path": SCREENSHOT_PATH,
+		"record_count": records.size(),
+		"retired_formatter_count": RETIRED_FORMATTERS.size(),
+		"records": records,
+	}
 
 
 func run_cutover_suite() -> void:
 	_records.clear()
 	_failures.clear()
+	_evidence.clear()
 	_prepare_output_dir()
-	_main_source = FileAccess.get_file_as_string(MAIN_SCRIPT_PATH)
-	await _prepare_runtime()
+	await _prepare_formal_runtime()
 	for case_id_variant in cutover_cases():
 		var case_id := str(case_id_variant)
-		var record := await _run_case(case_id)
+		var passed := bool(_evidence.get(case_id, false))
+		var notes := str((_evidence.get("notes", {}) as Dictionary).get(case_id, "formal main.tscn evidence"))
+		var record := _record(case_id, passed, notes)
 		_records.append(record)
-		if not bool(record.get("passed", false)):
-			_failures.append("%s: %s" % [case_id, str(record.get("notes", "failed"))])
-	var manifest := {"suite": "intel-dossier-public-snapshot-cutover-v04", "output_dir": OUTPUT_DIR, "screenshot_path": SCREENSHOT_PATH, "record_count": _records.size(), "passed_count": _passed_count(), "retired_formatter_count": RETIRED_FORMATTERS.size(), "real_open_elapsed_ms": _real_open_elapsed_ms, "main_metrics": _main_metrics(), "records": _records.duplicate(true)}
+		if not passed:
+			_failures.append("%s: %s" % [case_id, notes])
+	var manifest := {
+		"suite": "intel-query-command-split-v1",
+		"output_dir": OUTPUT_DIR,
+		"screenshot_path": SCREENSHOT_PATH,
+		"record_count": _records.size(),
+		"passed_count": _passed_count(),
+		"retired_formatter_count": RETIRED_FORMATTERS.size(),
+		"open_elapsed_ms": _open_elapsed_ms,
+		"main_metrics": _main_metrics(),
+		"diagnostics": (_evidence.get("diagnostics", {}) as Dictionary).duplicate(true),
+		"records": _records.duplicate(true),
+	}
 	_write_text(MANIFEST_PATH, JSON.stringify(manifest, "\t"))
 	_write_text(REPORT_PATH, _markdown_report(manifest))
+	if _main != null:
+		_main.visible = false
 	_update_ui(manifest)
+	await get_tree().process_frame
+	await _save_viewport(SCREENSHOT_PATH)
 	await _dispose_runtime()
-	_save_screenshot()
-	print("IntelDossierPublicSnapshotCutoverBench manifest: %s" % MANIFEST_PATH)
-	print("IntelDossierPublicSnapshotCutoverBench report: %s" % REPORT_PATH)
-	print("IntelDossierPublicSnapshotCutoverBench screenshot: %s" % SCREENSHOT_PATH)
-	print("IntelDossierPublicSnapshotCutoverBench passed: %d/%d" % [_passed_count(), _records.size()])
-	print("IntelDossierPublicSnapshotCutoverBench real open: %dms" % _real_open_elapsed_ms)
+	print("IntelQueryCommandSplitBench|passed=%d/%d|output=%s" % [_passed_count(), _records.size(), OUTPUT_DIR])
 	if not _failures.is_empty():
-		push_error("IntelDossierPublicSnapshotCutoverBench failed:\n- %s" % "\n- ".join(_failures))
+		push_error("IntelQueryCommandSplitBench failed:\n- %s" % "\n- ".join(_failures))
 	if DisplayServer.get_name() == "headless":
 		get_tree().quit(0 if _failures.is_empty() else 1)
 
 
-func _prepare_runtime() -> void:
-	var service_packed := load(SERVICE_SCENE) as PackedScene
-	_service = service_packed.instantiate() if service_packed != null else null
-	if _service != null:
-		add_child(_service)
-		_service.call("configure", {})
-	var main_packed := load(MAIN_SCENE_PATH) as PackedScene
-	_main = main_packed.instantiate() as Control if main_packed != null else null
-	if _main != null:
-		_main.visible = false
-		add_child(_main)
-	await get_tree().process_frame
-	await get_tree().process_frame
-	if _main != null and _main.has_method("_new_game"):
-		_main.call("_new_game")
-	await get_tree().process_frame
-	await get_tree().process_frame
-	if _main != null:
-		_seed_real_intel_city()
-		await get_tree().process_frame
-		_real_source = _main.call("_intel_dossier_public_source_snapshot", 0) as Dictionary
-		_real_snapshot = _main.call("_intel_dossier_public_snapshot", 0) as Dictionary
-		var started := Time.get_ticks_msec()
-		_main.call("_open_intel_dossier_menu")
-		_real_open_elapsed_ms = Time.get_ticks_msec() - started
-	await get_tree().process_frame
-	await get_tree().process_frame
-
-
-func _run_case(case_id: String) -> Dictionary:
-	var passed := false
-	var notes := ""
-	var flags := {}
-	var fixture := _compose_fixture()
-	var board := fixture.get("board", {}) as Dictionary
-	var ids := _action_ids(board)
-	match case_id:
-		"required_service_assets_load":
-			passed = load(SERVICE_SCRIPT) is Script and load(SERVICE_SCENE) is PackedScene and load(BOARD_SCENE) is PackedScene and load(COORDINATOR_SCENE) is PackedScene
-			flags["service_checked"] = true
-			notes = "service, editable dossier board, and coordinator assets load"
-		"service_scene_contract":
-			var debug := _debug_snapshot()
-			passed = _service != null and _service.has_method("configure") and _service.has_method("compose") and _service.has_method("debug_snapshot")
-			passed = passed and not bool(debug.get("mutates_city_guesses", true)) and not bool(debug.get("settles_intel_cash", true)) and not bool(debug.get("reveals_city_owner_truth", true)) and not bool(debug.get("reveals_card_owner_truth", true)) and not bool(debug.get("reads_private_hands", true)) and not bool(debug.get("navigates_runtime_nodes", true)) and bool(debug.get("action_id_controls", false))
-			flags["domain_boundary_checked"] = true
-			notes = "service owns public presentation and intent ids, not intel rules or navigation"
-		"intel_source_pure_data":
-			passed = bool(_real_source.get("valid", false)) and _is_pure_data(_real_source) and not _contains_private_key(_real_source)
-			flags["main_checked"] = true
-			flags["pure_data_checked"] = true
-			flags["privacy_checked"] = true
-			notes = "real main supplies one viewer-safe bounded intel fact snapshot"
-		"empty_source_safe":
-			var empty_snapshot: Dictionary = _service.call("compose", {"valid": false, "reason": "无玩家"}) if _service != null else {}
-			passed = str(empty_snapshot.get("summary_text", "")).contains("无玩家") and _action_ids(empty_snapshot.get("board", {}) as Dictionary).has("intel_open_economy")
-			flags["summary_checked"] = true
-			notes = "empty dossier remains readable and keeps a safe economy link"
-		"summary_privacy_contract":
-			var text := str(fixture.get("summary_text", ""))
-			passed = text.contains("公共卡牌履历") and text.contains("不奖励现金或GDP") and text.contains("不扫描对手现金/手牌") and not text.contains("真实出牌者")
-			flags["summary_checked"] = true
-			flags["privacy_checked"] = true
-			notes = "summary explains public history and viewer-private annotations without revealing hidden truth"
-		"header_chip_contract":
-			var chips := board.get("chips", []) as Array
-			passed = chips.size() == 4 and str((chips[0] as Dictionary).get("text", "")).contains("履历") and str((chips[2] as Dictionary).get("text", "")).contains("卡牌履历只读")
-			flags["board_checked"] = true
-			notes = "focused history, city settlement, read-only, and privacy chips are scene payloads"
-		"kpi_contract":
-			var kpis := board.get("kpis", []) as Array
-			passed = kpis.size() == 4 and JSON.stringify(kpis).contains("城市标注") and JSON.stringify(kpis).contains("公开资金线索")
-			flags["board_checked"] = true
-			notes = "four compact intel KPIs come from the service"
-		"focused_evidence_contract":
-			var clues := board.get("clues", []) as Array
-			passed = clues.size() == 7 and JSON.stringify(clues[0]).contains("公共卡牌履历证据链") and JSON.stringify(clues[0]).contains("公开结果") and JSON.stringify(clues[0]).contains("私人推理")
-			flags["board_checked"] = true
-			notes = "focused public-history evidence remains first and viewer-scoped"
-		"history_annotation_actions":
-			passed = ids.has("history_return_42") and ids.has("history_subscribe_42") and ids.has("history_suspect_42_1") and ids.has("history_clear_42") and ids.has("track_open_轨道融资1") and not JSON.stringify(ids).contains("track_guess")
-			flags["action_id_checked"] = true
-			notes = "history actions only request viewer-private annotation, subscription, clear, return, and public card detail"
-		"city_mark_action_ids":
-			passed = ids.has("intel_city_mark_3_1") and ids.has("intel_city_mark_3_2") and ids.has("intel_city_clear_3")
-			flags["action_id_checked"] = true
-			notes = "city owner mark and clear controls are data-only ids"
-		"confidence_action_ids":
-			passed = ids.has("intel_city_confidence_3_1") and ids.has("intel_city_confidence_3_2") and ids.has("intel_city_confidence_3_3")
-			flags["action_id_checked"] = true
-			notes = "confidence controls preserve low, medium, and high intent"
-		"reason_action_ids":
-			passed = ids.has("intel_city_reason_3_product") and ids.has("intel_city_reason_3_card")
-			flags["action_id_checked"] = true
-			notes = "reason controls carry stable reason ids without Callables"
-		"public_link_action_ids":
-			passed = ids.has("intel_open_region_3") and ids.has("intel_open_card_轨道融资1") and ids.has("intel_open_monster_2") and ids.has("intel_open_product_活体芯片") and ids.has("intel_open_economy")
-			flags["routing_checked"] = true
-			notes = "region, card, monster, product, and economy navigation are intent ids"
-		"board_signal_forwarding":
-			passed = await _board_signal_forwarding_checked(board)
-			flags["board_checked"] = true
-			flags["action_id_checked"] = true
-			notes = "scene-owned buttons emit action_requested(action_id)"
-		"coordinator_scene_composition":
-			var node := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/IntelDossierPublicSnapshotService") if _main != null else null
-			passed = node != null and node.scene_file_path == SERVICE_SCENE
-			flags["service_checked"] = true
-			flags["main_checked"] = true
-			notes = "real main composition owns one editable intel snapshot service"
-		"coordinator_pure_data_proxy":
-			var coordinator := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if _main != null else null
-			var snapshot: Variant = coordinator.call("compose_intel_dossier_snapshot", _source()) if coordinator != null else {}
-			passed = coordinator != null and _is_pure_data(snapshot) and not _contains_private_key(snapshot)
-			flags["pure_data_checked"] = true
-			flags["privacy_checked"] = true
-			notes = "coordinator returns a duplicated viewer-safe dossier snapshot"
-		"real_main_route_and_render":
-			passed = await _real_main_route_and_render_checked()
-			flags["main_checked"] = true
-			flags["routing_checked"] = true
-			flags["action_id_checked"] = true
-			notes = "real intel menu renders controls/links and routes a scene-owned mark action id"
-		"open_performance_contract":
-			passed = _real_open_elapsed_ms >= 0 and _real_open_elapsed_ms < 5000
-			flags["performance_checked"] = true
-			notes = "real intel menu opens below the five-second gate (%dms)" % _real_open_elapsed_ms
-		"legacy_builders_absent_and_metrics":
-			passed = RETIRED_FORMATTERS.size() == 22
-			for formatter_name in RETIRED_FORMATTERS:
-				passed = passed and not _main_source.contains("func %s(" % str(formatter_name))
-			var metrics := _main_metrics()
-			passed = passed and int(metrics.get("nonblank_lines", 999999)) < 39882 and int(metrics.get("function_count", 999999)) < 1969 and int(metrics.get("top_level_variable_count", 999999)) <= 192 and int(metrics.get("constant_count", 999999)) <= 318
-			flags["deletion_checked"] = true
-			notes = "twenty-two legacy formatters/builders are absent and main.gd shrinks below Sprint 20"
-		"private_input_rejection":
-			var injected := _source()
-			injected["hidden_owner"] = 7
-			injected["private_hand"] = ["secret-card"]
-			injected["ai_private_plan"] = "secret-route"
-			var snapshot: Dictionary = _service.call("compose", injected) if _service != null else {}
-			passed = _is_pure_data(snapshot) and not _contains_private_key(snapshot) and not JSON.stringify(snapshot).contains("secret-card") and not JSON.stringify(snapshot).contains("secret-route")
-			flags["privacy_checked"] = true
-			flags["pure_data_checked"] = true
-			notes = "hidden owners, private hands, and AI plans never enter dossier output"
-	return _record(case_id, passed, notes, flags)
-
-
-func _seed_real_intel_city() -> void:
+func _prepare_formal_runtime() -> void:
+	var notes := {}
+	var diagnostics := {}
+	_evidence["notes"] = notes
+	_evidence["diagnostics"] = diagnostics
+	_evidence["formal_assets_load"] = load(MAIN_SCENE_PATH) is PackedScene \
+		and load(QUERY_SCENE) is PackedScene and load(COMMAND_SCENE) is PackedScene \
+		and load(CONTROLLER_SCENE) is PackedScene and load(BOARD_SCENE) is PackedScene
+	notes["formal_assets_load"] = "formal main, query, command, controller, and board scenes load"
+	var packed := load(MAIN_SCENE_PATH) as PackedScene
+	_main = packed.instantiate() as Control if packed != null else null
 	if _main == null:
 		return
-	var players_variant: Variant = ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players
-	var districts_variant: Variant = ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts
-	if not (players_variant is Array) or (players_variant as Array).size() < 2 or not (districts_variant is Array):
+	add_child(_main)
+	var main_script := _main.get_script() as Script
+	_main_source = main_script.get_source_code() if main_script != null else ""
+	var session_started: bool = await _start_formal_session()
+	_query = _main.get_node_or_null("RuntimeServices/IntelDossierViewerQueryPort") as IntelDossierViewerQueryPort
+	_commands = _main.get_node_or_null("RuntimeServices/IntelPrivateCommandPort") as IntelPrivateCommandPort
+	_controller = _main.get_node_or_null("RuntimeServices/IntelApplicationFlowController") as IntelApplicationFlowController
+	_coordinator = _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	_world = _coordinator.world_session_state() if _coordinator != null else null
+	_annotations = _coordinator.get_node_or_null("CardHistoryPrivateAnnotationService") as CardHistoryPrivateAnnotationService if _coordinator != null else null
+	_history = _coordinator.get_node_or_null("CardResolutionHistoryRuntimeService") as CardResolutionHistoryRuntimeService if _coordinator != null else null
+	_monster = _coordinator.monster_runtime_controller() if _coordinator != null else null
+	_evidence["scene_owned_composition"] = session_started and _flow != null and _query != null and _commands != null \
+		and _controller != null and _world != null and _annotations != null and _history != null and _monster != null
+	notes["scene_owned_composition"] = "one formal scene-owned Flow, Query, Command, Controller, WorldSession, and annotation owner"
+	if not bool(_evidence["scene_owned_composition"]):
 		return
-	var districts := districts_variant as Array
-	for district_index in range(districts.size()):
-		var district := districts[district_index] as Dictionary if districts[district_index] is Dictionary else {}
-		if str(district.get("terrain", "land")) == "ocean" or bool(district.get("destroyed", false)) or not (district.get("city", {}) as Dictionary).is_empty():
-			continue
-		CITY_FIXTURES.create_city_bool(_main, 1, district_index, "Intel dossier fixture")
-		return
-
-
-func _real_main_route_and_render_checked() -> bool:
-	if _main == null or not (_real_snapshot.get("board", {}) is Dictionary):
-		return false
-	var panel := _main.find_child("IntelDossierBoardPanel", true, false)
-	if panel == null or panel.find_child("IntelDossierControlGrid", true, false) == null or panel.find_child("IntelDossierLinkGrid", true, false) == null:
-		return false
-	var city_entries := _real_source.get("city_entries", []) as Array if _real_source.get("city_entries", []) is Array else []
-	if city_entries.is_empty():
-		return false
-	var district_index := int((city_entries[0] as Dictionary).get("district_index", -1))
-	var mark_button: Button = null
-	var region_button: Button = null
-	for node_variant in panel.find_children("*", "Button", true, false):
-		var button := node_variant as Button
-		if button.text.begins_with("标玩家") and mark_button == null:
-			mark_button = button
-		if button.text.contains("查看区域线索") and region_button == null:
-			region_button = button
-	if district_index < 0 or mark_button == null or region_button == null:
-		return false
-	mark_button.emit_signal("pressed")
-	await get_tree().process_frame
-	await get_tree().process_frame
-	var players := ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array
-	if players.is_empty():
-		return false
-	var guesses := (players[0] as Dictionary).get("city_guesses", {}) as Dictionary
-	return int(guesses.get(district_index, -1)) >= 0
-
-
-func _board_signal_forwarding_checked(board_snapshot: Dictionary) -> bool:
-	var packed := load(BOARD_SCENE) as PackedScene
-	var board := packed.instantiate() as Control if packed != null else null
-	if board == null:
-		return false
-	add_child(board)
-	var emitted := []
-	board.connect("action_requested", func(action_id: String) -> void: emitted.append(action_id))
-	board.call("set_dossier", board_snapshot)
-	await get_tree().process_frame
-	var button := board.find_child("IntelDossierControlActionButton", true, false) as Button
-	if button != null and not button.disabled:
-		button.emit_signal("pressed")
-	await get_tree().process_frame
-	board.queue_free()
-	await get_tree().process_frame
-	return not emitted.is_empty() and str(emitted[0]).begins_with("intel_city_")
-
-
-func _compose_fixture() -> Dictionary:
-	return _service.call("compose", _source()) as Dictionary if _service != null else {}
-
-
-func _source() -> Dictionary:
-	return {
-		"valid": true, "viewer_index": 0, "viewer_name": "测试玩家", "business_cycle_count": 3,
-		"correct_guess_cash": 120, "wrong_guess_cost": 60, "city_final_value": 200,
-		"stats": {"total_foreign": 2, "guessed": 1, "unmarked": 1, "best_cash": 120, "worst_cash": -60},
-		"player_options": [{"player_index": 1, "label": "标玩家2"}, {"player_index": 2, "label": "标玩家3"}],
-		"confidence_options": [{"value": 1, "label": "低"}, {"value": 2, "label": "中"}, {"value": 3, "label": "高"}],
-		"reason_options": [{"id": "product", "label": "商品竞争"}, {"id": "card", "label": "卡牌条件"}],
-		"city_entries": [{"district_index": 3, "name": "环城港", "guess": 1, "marked": true, "confidence": 2, "confidence_label": "中", "reason": "card", "reason_label": "卡牌条件", "priority": 88, "potential_income": 210, "warehouse_pressure": 24, "latest_clue": "活体芯片需求上升"}],
-		"card_entries": [{"resolution_id": 42, "history_entry_id": "card-history:42", "card": "轨道融资1", "card_name": "轨道融资1", "track_state": "已结算", "status": "我的私人标注", "target": "环城港", "requirement": "公开履历只记录已经发生的动作和结果", "tip": "公开证据复盘", "aftermath": "GDP上升", "style": "经济", "time": 12.5, "revealed": false, "focused": true}],
-		"monster_entries": [{"slot": 0, "name": "吞星兽", "catalog_index": 2, "owner_text": "归属未公开", "recent_loss": 30, "total_lost": 60, "cash_pool": 140, "cash_total": 200, "clue": "受伤资金线索"}],
-		"warehouse_entries": [{"name": "环城港", "owner_view": "未知业主", "pressure": 24, "count": 1, "units": 3, "products": ["活体芯片"], "latest_clue": "匿名仓储3单位"}],
-		"city_clue_entries": [{"district": "环城港", "kind": "需求", "clue_products": ["活体芯片"], "linked_product": "活体芯片", "owner_visible": false, "income": 80, "clue": "需求上升"}],
-		"kpi_columns": 4, "clue_columns": 3, "control_columns": 1, "link_columns": 2,
+	var district_index := _first_foreign_city(0)
+	var city_fixture := {"created": district_index >= 0, "reason_code": "existing_foreign_city" if district_index >= 0 else "foreign_city_missing"}
+	if district_index < 0:
+		city_fixture = _seed_foreign_city()
+		district_index = _first_foreign_city(0)
+	diagnostics["city_fixture"] = city_fixture.duplicate(true)
+	var region_id := _world.region_id_for_district(district_index) if district_index >= 0 else ""
+	var monster_fixture := _seed_public_monster(district_index)
+	diagnostics["monster_fixture"] = monster_fixture.duplicate(true)
+	_seed_public_history()
+	var history_id := _first_history_id()
+	var world_before := _world.internal_snapshot()
+	var annotation_before := _annotations.viewer_snapshot(0)
+	var snapshot := _query.snapshot_for_authorized_viewer(history_id, region_id)
+	var snapshot_text := JSON.stringify(snapshot)
+	_evidence["authorized_query_zero_mutation"] = bool(snapshot.get("valid", false)) \
+		and _world.internal_snapshot() == world_before and _annotations.viewer_snapshot(0) == annotation_before \
+		and int(_query.debug_snapshot().get("owner_mutation_delta", -1)) == 0
+	notes["authorized_query_zero_mutation"] = "authorized viewer query returns detached data and mutates no owner"
+	var world_intel: Array = snapshot.get("public_world_intel", []) if snapshot.get("public_world_intel", []) is Array else []
+	_evidence["public_world_categories"] = not world_intel.is_empty() \
+		and _world_categories_present(world_intel) and _clue_categories_present(snapshot.get("board", {}) as Dictionary)
+	notes["public_world_categories"] = "public region, facility, product/demand, route, weather, and monster-attraction evidence is present"
+	_evidence["public_facility_privacy"] = snapshot_text.contains("public_facility_entries") \
+		and snapshot_text.contains("owner_player_index") and not _contains_private_material(snapshot)
+	notes["public_facility_privacy"] = "audited public facility ownership remains visible; inventory and hidden owner stay absent"
+	var generic_before := int(_flow.debug_snapshot().get("action_emission_count", 0))
+	var controller_before := _controller.debug_snapshot()
+	var started := Time.get_ticks_msec()
+	var submitted := _flow.submit_intel_application_intent(IntelApplicationIntent.open(history_id, region_id))
+	await _wait_frames(2)
+	_open_elapsed_ms = Time.get_ticks_msec() - started
+	var controller_after := _controller.debug_snapshot()
+	_evidence["dedicated_application_boundary"] = submitted \
+		and int(_flow.debug_snapshot().get("intel_application_intent_emission_count", 0)) == 1 \
+		and int(_flow.debug_snapshot().get("action_emission_count", 0)) == generic_before
+	notes["dedicated_application_boundary"] = "typed focus crosses ApplicationFlowPort exactly once and never emits generic action_requested"
+	_evidence["controller_exact_once"] = int(controller_after.get("open_count", 0)) == int(controller_before.get("open_count", 0)) + 1 \
+		and int(controller_after.get("query_count", 0)) == int(controller_before.get("query_count", 0)) + 1 \
+		and int(controller_after.get("apply_count", 0)) == int(controller_before.get("apply_count", 0)) + 1
+	notes["controller_exact_once"] = "one typed application intent produces one open, query, and apply"
+	await _capture_stage("01_viewer_private_guess_before.png")
+	var guessed_player := _first_valid_suspect(0)
+	var city_receipt := _submit_command(&"set_city_owner_guess", 0, "region:%s" % region_id, _world.city_inference_owner_revision(0), {"suspected_player_index": guessed_player, "confidence": 2, "reason_id": "card"})
+	var city_projection := _world.city_inference_projection(0)
+	var city_record := _city_record_for_region(city_projection.get("records", []), region_id)
+	var city_receipt_evidence := city_receipt.to_dictionary() if city_receipt != null else {"reason_code": "receipt_missing"}
+	diagnostics["viewer_private_guess"] = {
+		"district_index": district_index,
+		"region_id": region_id,
+		"receipt": city_receipt_evidence,
+		"projection": city_record,
 	}
+	_evidence["viewer_private_guess"] = city_receipt != null and city_receipt.applied \
+		and city_receipt.reason_code == "city_owner_guess_set" and not city_record.is_empty()
+	notes["viewer_private_guess"] = "WorldSession receipt=%s; target=%s; projection=%s" % [
+		str(city_receipt_evidence.get("reason_code", "receipt_missing")), region_id, JSON.stringify(city_record),
+	]
+	_flow.submit_intel_application_intent(IntelApplicationIntent.open(history_id, region_id))
+	await _wait_frames(2)
+	await _capture_stage("01_viewer_private_guess.png")
+	var viewer_zero_before := _annotations.viewer_snapshot(0)
+	var viewer_zero_revision := _annotations.owner_revision_for_viewer(0)
+	var viewer_one_before := _annotations.owner_revision_for_viewer(1)
+	_annotations.set_note_exact(1, history_id, "QA_VIEWER_ONE_PRIVATE_NOTE")
+	var isolated := _query.snapshot_for_authorized_viewer(history_id, region_id)
+	_evidence["viewer_isolation"] = not JSON.stringify(isolated).contains("QA_VIEWER_ONE_PRIVATE_NOTE") \
+		and _annotations.viewer_snapshot(0) == viewer_zero_before \
+		and _annotations.owner_revision_for_viewer(0) == viewer_zero_revision \
+		and _annotations.owner_revision_for_viewer(1) != viewer_one_before
+	notes["viewer_isolation"] = "viewer B mutation changes only B revision; viewer A snapshot and query remain isolated"
+	await _capture_stage("02_viewer_isolation.png")
+	var true_owner := -1
+	if district_index >= 0 and district_index < _world.districts.size() and _world.districts[district_index] is Dictionary:
+		true_owner = int((_world.districts[district_index] as Dictionary).get("city", {}).get("owner", -1))
+	var reveal := _world.apply_authorized_city_reveal(0, region_id, true_owner, "QA authorized reveal") if not region_id.is_empty() else {
+		"applied": false, "changed": false, "reason_code": "city_fixture_missing",
+	}
+	var reveal_snapshot := _query.snapshot_for_authorized_viewer(history_id, region_id)
+	var reveal_record := _city_record_for_region(reveal_snapshot.get("city_inference_projection", []), region_id)
+	diagnostics["authorized_reveal"] = {"owner_receipt": reveal.duplicate(true), "projection": reveal_record}
+	_evidence["authorized_reveal"] = bool(reveal.get("applied", false)) \
+		and str(reveal.get("reason_code", "")) == "authorized_city_reveal_set" \
+		and int(reveal_record.get("confidence", 0)) == WorldSessionState.CITY_GUESS_AUTHORIZED_REVEAL \
+		and bool(reveal_record.get("authorized_reveal", false))
+	notes["authorized_reveal"] = "WorldSession receipt=%s; confidence=%d; locked=%s" % [
+		str(reveal.get("reason_code", "receipt_missing")), int(reveal_record.get("confidence", 0)), str(reveal_record.get("authorized_reveal", false)),
+	]
+	_flow.submit_intel_application_intent(IntelApplicationIntent.open(history_id, region_id))
+	await _wait_frames(2)
+	await _capture_stage("03_authorized_reveal.png")
+	var note_receipt := _submit_command(&"set_card_history_note", 0, history_id, _annotations.owner_revision_for_viewer(0), {"note_text": "QA viewer annotation"})
+	var card_snapshot := _query.snapshot_for_authorized_viewer(history_id, region_id)
+	_evidence["card_annotation_delegation"] = note_receipt != null and note_receipt.applied \
+		and JSON.stringify(card_snapshot.get("own_private_card_annotations", {})).contains("QA viewer annotation")
+	notes["card_annotation_delegation"] = "typed card note delegates to CardHistoryPrivateAnnotationService"
+	_flow.submit_intel_application_intent(IntelApplicationIntent.open(history_id, region_id))
+	await _wait_frames(2)
+	await _capture_stage("04_card_annotation.png")
+	var link_evidence := _typed_link_evidence(card_snapshot.get("public_navigation_links", []))
+	diagnostics["typed_public_links"] = link_evidence.duplicate(true)
+	_evidence["typed_public_links"] = _typed_links_present(card_snapshot.get("public_navigation_links", [])) \
+		and bool(monster_fixture.get("applied", false))
+	notes["typed_public_links"] = "typed kinds=%s; subjects=%s; monster owner=%s" % [
+		JSON.stringify(link_evidence.get("kinds", [])), JSON.stringify(link_evidence.get("subjects", {})), str(monster_fixture.get("reason_code", "fixture_missing")),
+	]
+	var settlement := _main.get_node_or_null("RuntimeServices/FinalSettlementRuntimeComposition") as FinalSettlementRuntimeComposition
+	var settlement_before := int(settlement.debug_snapshot().get("present_count", 0)) if settlement != null else -1
+	var survivor_evidence := _seed_last_survivor(0)
+	var outcome_receipt := _coordinator.resolve_victory_outcome("last_survivor", {})
+	await _wait_frames(3)
+	var settlement_after := int(settlement.debug_snapshot().get("present_count", 0)) if settlement != null else -1
+	var settlement_snapshot := settlement.last_public_snapshot() if settlement != null else {}
+	diagnostics["final_settlement_real_owner"] = {
+		"authoritative_world": survivor_evidence,
+		"outcome_receipt": outcome_receipt.duplicate(true),
+		"present_count_before": settlement_before,
+		"present_count_after": settlement_after,
+	}
+	_evidence["final_settlement_real_owner"] = settlement != null \
+		and bool(survivor_evidence.get("valid", false)) \
+		and str(outcome_receipt.get("reason_code", "")) == "last_survivor" \
+		and outcome_receipt.get("winner_player_indices", []) == [0] \
+		and settlement_after == settlement_before + 1 and not settlement_snapshot.is_empty()
+	notes["final_settlement_real_owner"] = "bridge active=%s; owner reason=%s; winners=%s; present delta=%d" % [
+		JSON.stringify(survivor_evidence.get("active_player_indices", [])), str(outcome_receipt.get("reason_code", "receipt_missing")),
+		JSON.stringify(outcome_receipt.get("winner_player_indices", [])), settlement_after - settlement_before,
+	]
+	await _capture_stage("05_final_settlement.png")
+	var retired := not _main_source.is_empty() \
+		and not _main_source.contains("IntelApplicationIntent") and not _main_source.contains("IntelDossier") \
+		and not _main_source.contains("func _intel_city_guess_entries(")
+	for formatter_name in RETIRED_FORMATTERS:
+		retired = retired and not _main_source.contains("func %s(" % str(formatter_name))
+	_evidence["main_routes_retired"] = retired
+	notes["main_routes_retired"] = "Main contains no executable typed Intel route, dossier builder, or dead city-query wrapper"
+	_evidence["bounded_capture_manifest"] = _open_elapsed_ms >= 0 and _open_elapsed_ms < 5000 and cutover_cases().size() == 15
+	notes["bounded_capture_manifest"] = "single bounded driver records five formal UI evidence stages and a 15-case manifest"
 
 
-func _action_ids(board: Dictionary) -> Array:
-	var ids := []
-	for entry_variant in board.get("actions", []) as Array: ids.append(str((entry_variant as Dictionary).get("id", "")))
-	for group_variant in board.get("control_groups", []) as Array:
-		for entry_variant in (group_variant as Dictionary).get("actions", []) as Array: ids.append(str((entry_variant as Dictionary).get("id", "")))
-	for entry_variant in board.get("links", []) as Array: ids.append(str((entry_variant as Dictionary).get("id", "")))
-	return ids
+func _submit_command(kind: StringName, viewer_index: int, subject_id: String, revision: String, payload: Dictionary) -> IntelPrivateCommandReceipt:
+	_command_sequence += 1
+	return _commands.submit_command(IntelPrivateCommand.create("qa:%d" % _command_sequence, kind, viewer_index, subject_id, revision, payload))
 
 
-func _debug_snapshot() -> Dictionary:
-	return _service.call("debug_snapshot") as Dictionary if _service != null else {}
-
-
-func _record(case_id: String, passed: bool, notes: String, flags: Dictionary = {}) -> Dictionary:
-	var record := {"case_id": case_id, "service_checked": false, "main_checked": false, "summary_checked": false, "board_checked": false, "domain_boundary_checked": false, "action_id_checked": false, "routing_checked": false, "performance_checked": false, "privacy_checked": false, "pure_data_checked": false, "deletion_checked": false, "passed": passed, "notes": notes}
-	record.merge(flags, true)
-	return record
-
-
-func _is_pure_data(value: Variant) -> bool:
-	if value is Callable or typeof(value) == TYPE_OBJECT: return false
-	if value is Dictionary:
-		for key_variant in value:
-			if not _is_pure_data(key_variant) or not _is_pure_data(value[key_variant]): return false
-	elif value is Array:
-		for item_variant in value:
-			if not _is_pure_data(item_variant): return false
+func _start_formal_session() -> bool:
+	_flow = _main.get_node_or_null("RuntimeServices/ApplicationFlowPort") as ApplicationFlowPort
+	if _flow == null or not _flow.submit_action("setup"):
+		return false
+	await _wait_frames(2)
+	var start_button := _main.find_child("NewGameSetupStartButton", true, false) as Button
+	if start_button == null or start_button.disabled:
+		return false
+	start_button.pressed.emit()
+	await _wait_frames(4)
 	return true
 
 
-func _contains_private_key(value: Variant) -> bool:
-	if value is Dictionary:
-		for key_variant in value:
-			if str(key_variant).to_lower() in ["owner", "owner_index", "hidden_owner", "private_target", "private_plan", "ai_private_plan", "hand", "private_hand", "private_discard"]: return true
-			if _contains_private_key(value[key_variant]): return true
-	elif value is Array:
-		for item_variant in value:
-			if _contains_private_key(item_variant): return true
+func _seed_foreign_city() -> Dictionary:
+	if _world == null or _world.players.size() < 2:
+		return {"created": false, "reason_code": "fixture_dependency_missing", "attempts": []}
+	var districts := _world.districts.duplicate(true)
+	var attempts: Array = []
+	for district_index in range(districts.size()):
+		if not (districts[district_index] is Dictionary):
+			continue
+		var district := (districts[district_index] as Dictionary).duplicate(true)
+		if str(district.get("terrain", "land")) == "ocean" or bool(district.get("destroyed", false)):
+			continue
+		var city: Dictionary = district.get("city", {}) if district.get("city", {}) is Dictionary else {}
+		if city.is_empty():
+			var region_id := _world.region_id_for_district(district_index)
+			district["city"] = {
+				"region_id": region_id,
+				"owner": 1,
+				"active": true,
+				"level": 1,
+				"gdp_focus": str(district.get("economic_focus", "balanced")),
+				"products": [],
+				"demands": [],
+				"projects": [],
+				"last_income": 0,
+				"competition_matches": 0,
+				"trade_routes": [],
+				"warehouse_stockpile_count": 0,
+				"warehouse_stockpile_units": 0,
+				"warehouse_stockpile_products": [],
+				"built_at": _world.game_time,
+				"last_public_clue": "该区域已出现稳定的城市经营活动",
+				"public_clues": [],
+			}
+			districts[district_index] = district
+			_world.replace_districts(districts, true)
+			var created := _first_foreign_city(0) == district_index
+			attempts.append({"district_index": district_index, "created": created, "reason_code": "world_session_city_fixture_applied" if created else "world_session_city_fixture_rejected"})
+			return {
+				"created": created,
+				"reason_code": "world_session_city_fixture_applied" if created else "world_session_city_fixture_rejected",
+				"district_index": district_index,
+				"region_id": region_id,
+				"owner_api": "WorldSessionState.replace_districts",
+				"attempts": attempts,
+			}
+	return {"created": false, "reason_code": "no_legal_foreign_city_fixture", "attempts": attempts}
+
+
+func _seed_public_monster(preferred_district_index: int) -> Dictionary:
+	if _monster == null or _world == null or _world.districts.is_empty():
+		return {"applied": false, "reason_code": "monster_fixture_dependency_missing"}
+	var district_index := preferred_district_index
+	if district_index < 0 or district_index >= _world.districts.size() or bool((_world.districts[district_index] as Dictionary).get("destroyed", false)):
+		district_index = _first_live_district()
+	if district_index < 0:
+		return {"applied": false, "reason_code": "monster_fixture_region_missing"}
+	var existing := _monster.region_attraction_public_snapshot_v06(district_index)
+	var existing_entries: Array = existing.get("entries", []) if existing.get("entries", []) is Array else []
+	if not existing_entries.is_empty():
+		return {"applied": true, "reason_code": "existing_public_monster", "district_index": district_index, "public_entry": (existing_entries[0] as Dictionary).duplicate(true)}
+	var catalog_source := _monster.monster_codex_public_catalog_source_v06(0)
+	var catalog_entry: Dictionary = catalog_source.get("entry", {}) if catalog_source.get("entry", {}) is Dictionary else {}
+	if not bool(catalog_source.get("valid", false)) or str(catalog_entry.get("name", "")).is_empty():
+		return {"applied": false, "reason_code": str(catalog_source.get("reason_code", "monster_catalog_fixture_missing"))}
+	var save_data := _monster.to_save_data()
+	var roster: Array = save_data.get("auto_monsters", []) if save_data.get("auto_monsters", []) is Array else []
+	roster = roster.duplicate(true)
+	var uid := maxi(1, int(save_data.get("next_auto_monster_uid", 1)))
+	var hp := maxi(1, int(catalog_entry.get("hp", 40)))
+	var district := _world.districts[district_index] as Dictionary
+	roster.append({
+		"uid": uid,
+		"catalog_index": 0,
+		"slot": roster.size(),
+		"rank": 1,
+		"name": str(catalog_entry.get("name", "怪兽")),
+		"hp": hp,
+		"max_hp": hp,
+		"duration": 45.0,
+		"remaining_time": 45.0,
+		"move": float(catalog_entry.get("move", 1.0)),
+		"move_damage": 1,
+		"collision_damage": 1,
+		"movement_traits": (catalog_entry.get("movement_traits", []) as Array).duplicate(true),
+		"terrain_move_multiplier": (catalog_entry.get("terrain_move_multiplier", {}) as Dictionary).duplicate(true),
+		"resource_drain": 1,
+		"resource_focus": (catalog_entry.get("resource_focus", []) as Array).duplicate(true),
+		"position": district_index,
+		"world_position": district.get("center", Vector2.ZERO),
+		"armor": maxi(0, int(catalog_entry.get("armor", 0))),
+		"guard": 0,
+		"ranged_guard": 0,
+		"tether": 0,
+		"down": false,
+		"owner": -1,
+		"owner_revealed": false,
+		"owner_clue": "",
+	})
+	save_data["auto_monsters"] = roster
+	save_data["next_auto_monster_uid"] = uid + 1
+	var owner_receipt := _monster.apply_save_data(save_data)
+	var public_snapshot := _monster.region_attraction_public_snapshot_v06(district_index)
+	var public_entries: Array = public_snapshot.get("entries", []) if public_snapshot.get("entries", []) is Array else []
+	return {
+		"applied": bool(owner_receipt.get("applied", false)) and not public_entries.is_empty(),
+		"reason_code": "monster_owner_save_applied" if bool(owner_receipt.get("applied", false)) else str(owner_receipt.get("reason_code", "monster_owner_save_rejected")),
+		"district_index": district_index,
+		"catalog_stable_id": "monster:0",
+		"owner_receipt": owner_receipt.duplicate(true),
+		"public_entry": (public_entries[0] as Dictionary).duplicate(true) if not public_entries.is_empty() else {},
+	}
+
+
+func _first_live_district() -> int:
+	for district_index in range(_world.districts.size()):
+		if _world.districts[district_index] is Dictionary and not bool((_world.districts[district_index] as Dictionary).get("destroyed", false)):
+			return district_index
+	return -1
+
+
+func _seed_public_history() -> void:
+	if _history == null or not _first_history_id().is_empty():
+		return
+	_history.append_resolved({
+		"resolution_id": 90701,
+		"player_index": 1,
+		"slot_index": 0,
+		"resolved_time": _world.game_time,
+		"selected_district": maxi(0, _first_foreign_city(0)),
+		"resolved": true,
+		"aftermath_clue": "公开 QA 余波",
+		"skill": {"name": "城市融资1", "display_name": "城市融资 I", "kind": "economy"},
+	})
+
+
+func _first_history_id() -> String:
+	var query := _coordinator.get_node_or_null("CardHistoryPublicQueryPort") as CardHistoryPublicQueryPort if _coordinator != null else null
+	if query == null:
+		return ""
+	var entries: Array = query.compose_history().get("entries", [])
+	return str((entries[0] as Dictionary).get("history_entry_id", "")) if not entries.is_empty() else ""
+
+
+func _first_foreign_city(viewer_index: int) -> int:
+	if _world == null:
+		return -1
+	for district_index in range(_world.districts.size()):
+		var district := _world.districts[district_index] as Dictionary
+		var city: Dictionary = district.get("city", {}) if district.get("city", {}) is Dictionary else {}
+		if bool(city.get("active", false)) and int(city.get("owner", -1)) >= 0 and int(city.get("owner", -1)) != viewer_index:
+			return district_index
+	return -1
+
+
+func _first_valid_suspect(viewer_index: int) -> int:
+	for player_index in range(_world.players.size()):
+		if player_index != viewer_index:
+			return player_index
+	return -1
+
+
+func _world_categories_present(entries: Array) -> bool:
+	var text := JSON.stringify(entries)
+	return text.contains("public_clue") and text.contains("public_facility_entries") \
+		and text.contains("supply_product_ids") and text.contains("demand_text") \
+		and text.contains("weather_text") and text.contains("trade_route_load") \
+		and text.contains("monster_attraction_entries")
+
+
+func _clue_categories_present(board: Dictionary) -> bool:
+	var text := JSON.stringify(board.get("clues", []))
+	return text.contains("公开区域证据") and text.contains("匿名设施概览") \
+		and text.contains("商品、路线与天气") and text.contains("怪兽吸引线索")
+
+
+func _typed_links_present(value: Variant) -> bool:
+	var evidence := _typed_link_evidence(value)
+	var kinds: Array = evidence.get("kinds", []) if evidence.get("kinds", []) is Array else []
+	return kinds.has("open_region") and kinds.has("open_product") and kinds.has("open_monster") \
+		and kinds.has("open_card") and kinds.has("focus_history") and kinds.has("open_economy")
+
+
+func _typed_link_evidence(value: Variant) -> Dictionary:
+	var kinds: Array[String] = []
+	var subjects: Dictionary = {}
+	if not (value is Array):
+		return {"kinds": kinds, "subjects": subjects}
+	for link_variant in value as Array:
+		if not (link_variant is Dictionary):
+			continue
+		var payload: Variant = (link_variant as Dictionary).get("intent", {})
+		var intent := IntelDossierActionIntent.from_dictionary(payload as Dictionary) if payload is Dictionary else null
+		if intent != null:
+			var kind := str(intent.intent_kind)
+			if not kinds.has(kind):
+				kinds.append(kind)
+				subjects[kind] = intent.subject_id
+	kinds.sort()
+	return {"kinds": kinds, "subjects": subjects}
+
+
+func _city_record_for_region(value: Variant, region_id: String) -> Dictionary:
+	if not (value is Array):
+		return {}
+	for record_variant in value as Array:
+		if record_variant is Dictionary and str((record_variant as Dictionary).get("region_id", "")) == region_id:
+			return (record_variant as Dictionary).duplicate(true)
+	return {}
+
+
+func _seed_last_survivor(survivor_index: int) -> Dictionary:
+	if _world == null or _coordinator == null or survivor_index < 0 or survivor_index >= _world.players.size():
+		return {"valid": false, "reason_code": "last_survivor_fixture_invalid"}
+	var players := _world.players.duplicate(true)
+	for player_index in range(players.size()):
+		if not (players[player_index] is Dictionary):
+			return {"valid": false, "reason_code": "last_survivor_player_invalid"}
+		var player := (players[player_index] as Dictionary).duplicate(true)
+		player["eliminated"] = player_index != survivor_index
+		players[player_index] = player
+	_world.replace_players(players, true)
+	var owner_snapshot := _coordinator.victory_control_world_snapshot()
+	var active_player_indices: Array[int] = []
+	for player_variant in owner_snapshot.get("players", []) if owner_snapshot.get("players", []) is Array else []:
+		if player_variant is Dictionary and not bool((player_variant as Dictionary).get("eliminated", false)):
+			active_player_indices.append(int((player_variant as Dictionary).get("player_index", -1)))
+	return {
+		"valid": active_player_indices == [survivor_index],
+		"reason_code": "authoritative_last_survivor_ready" if active_player_indices == [survivor_index] else "authoritative_last_survivor_mismatch",
+		"active_player_indices": active_player_indices,
+		"world_visibility_scope": str(owner_snapshot.get("visibility_scope", "")),
+	}
+
+
+func _contains_private_material(value: Variant) -> bool:
+	var text := JSON.stringify(value)
+	for marker in ["warehouse_inventory", "private_hand", "hidden_owner", "true_owner", "raw_monsters", "ai_memory", "current_price", "base_price"]:
+		if text.contains(marker):
+			return true
 	return false
+
+
+func _capture_stage(file_name: String) -> void:
+	await _save_viewport(OUTPUT_DIR + file_name)
+
+
+func _save_viewport(path: String) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	await RenderingServer.frame_post_draw
+	var image := get_viewport().get_texture().get_image()
+	if image == null:
+		_failures.append("viewport image unavailable: %s" % path)
+		return
+	var absolute_path := ProjectSettings.globalize_path(path)
+	DirAccess.make_dir_recursive_absolute(absolute_path.get_base_dir())
+	var error := image.save_png(absolute_path)
+	if error != OK:
+		_failures.append("screenshot failed: %s" % path)
+
+
+func _record(case_id: String, passed: bool, notes: String) -> Dictionary:
+	return {
+		"case_id": case_id,
+		"service_checked": case_id in ["authorized_query_zero_mutation", "public_world_categories"],
+		"main_checked": case_id in ["scene_owned_composition", "main_routes_retired", "final_settlement_real_owner"],
+		"summary_checked": case_id in ["public_world_categories", "bounded_capture_manifest"],
+		"board_checked": case_id in ["viewer_private_guess", "authorized_reveal", "card_annotation_delegation"],
+		"domain_boundary_checked": case_id in ["viewer_private_guess", "viewer_isolation", "final_settlement_real_owner"],
+		"action_id_checked": false,
+		"routing_checked": case_id in ["dedicated_application_boundary", "typed_public_links", "controller_exact_once"],
+		"performance_checked": case_id == "bounded_capture_manifest",
+		"privacy_checked": case_id in ["authorized_query_zero_mutation", "public_facility_privacy", "viewer_isolation"],
+		"pure_data_checked": case_id in ["authorized_query_zero_mutation", "public_world_categories", "typed_public_links"],
+		"deletion_checked": case_id == "main_routes_retired",
+		"passed": passed,
+		"notes": notes,
+	}
+
+
+func _passed_count() -> int:
+	var count := 0
+	for record_variant in _records:
+		if bool((record_variant as Dictionary).get("passed", false)):
+			count += 1
+	return count
 
 
 func _main_metrics() -> Dictionary:
@@ -382,18 +608,15 @@ func _main_metrics() -> Dictionary:
 	var constant_count := 0
 	for line_variant in _main_source.split("\n"):
 		var line := str(line_variant)
-		if not line.strip_edges().is_empty(): nonblank_lines += 1
-		if line.begins_with("func "): function_count += 1
-		elif line.begins_with("var "): variable_count += 1
-		elif line.begins_with("const "): constant_count += 1
+		if not line.strip_edges().is_empty():
+			nonblank_lines += 1
+		if line.begins_with("func "):
+			function_count += 1
+		elif line.begins_with("var "):
+			variable_count += 1
+		elif line.begins_with("const "):
+			constant_count += 1
 	return {"nonblank_lines": nonblank_lines, "function_count": function_count, "top_level_variable_count": variable_count, "constant_count": constant_count}
-
-
-func _passed_count() -> int:
-	var count := 0
-	for record_variant in _records:
-		if bool((record_variant as Dictionary).get("passed", false)): count += 1
-	return count
 
 
 func _update_ui(manifest: Dictionary) -> void:
@@ -401,26 +624,27 @@ func _update_ui(manifest: Dictionary) -> void:
 	var total := int(manifest.get("record_count", 0))
 	status_label.text = "PASS" if passed == total else "FAIL"
 	status_label.modulate = Color("#4ade80") if passed == total else Color("#fb7185")
-	summary_label.text = "%d/%d ownership cases passed" % [passed, total]
-	var metrics := manifest.get("main_metrics", {}) as Dictionary
-	ownership_text.text = "[b]Scene-owned Intel Dossier[/b]\nIntelDossierPublicSnapshotService owns summary, evidence cards, controls, links, and action ids.\n\n[b]Domain authority retained[/b]\nCity guesses, confidence/reason mutation, card wagers, hidden truth, settlement, and Codex navigation remain runtime-owned.\n\n[b]Retired from main.gd[/b]\n22 presentation formatters and runtime UI builders.\n\n[b]Real open budget[/b]\n%s ms\n\n[b]Current main metrics[/b]\n%s nonblank lines - %s functions - %s vars - %s constants" % [str(manifest.get("real_open_elapsed_ms", -1)), str(metrics.get("nonblank_lines", 0)), str(metrics.get("function_count", 0)), str(metrics.get("top_level_variable_count", 0)), str(metrics.get("constant_count", 0))]
+	summary_label.text = "%d/%d formal ownership cases" % [passed, total]
+	ownership_text.text = "[b]Formal main.tscn evidence[/b]\nApplicationFlowPort -> IntelApplicationFlowController -> viewer query/private command ports.\n\n[b]Captured stages[/b]\nViewer-private guess, viewer isolation, authorized reveal, card annotation, and real final settlement.\n\n[b]Open budget[/b]\n%d ms" % _open_elapsed_ms
 	var lines: Array[String] = []
 	for record_variant in _records:
 		var record := record_variant as Dictionary
 		var result := "PASS" if bool(record.get("passed", false)) else "FAIL"
 		lines.append("[color=%s]%s[/color]  [b]%s[/b]\n%s" % ["#4ade80" if result == "PASS" else "#fb7185", result, str(record.get("case_id", "")), str(record.get("notes", ""))])
 	results_text.text = "\n\n".join(lines)
-	call_deferred("_reset_report_scroll")
-
-
-func _reset_report_scroll() -> void:
-	ownership_text.scroll_to_line(0)
-	results_text.scroll_to_line(0)
 
 
 func _markdown_report(manifest: Dictionary) -> String:
-	var metrics := manifest.get("main_metrics", {}) as Dictionary
-	var lines := ["# Intel Dossier Public Snapshot Cutover", "", "- Passed: %d/%d" % [int(manifest.get("passed_count", 0)), int(manifest.get("record_count", 0))], "- Retired formatters/builders: %d" % int(manifest.get("retired_formatter_count", 0)), "- Real open: %dms" % int(manifest.get("real_open_elapsed_ms", -1)), "- Main nonblank lines: %d" % int(metrics.get("nonblank_lines", 0)), "", "| Case | Result | Notes |", "| --- | --- | --- |"]
+	var lines := [
+		"# Intel Query / Command Split QA",
+		"",
+		"- Passed: %d/%d" % [int(manifest.get("passed_count", 0)), int(manifest.get("record_count", 0))],
+		"- Formal typed open: %dms" % int(manifest.get("open_elapsed_ms", -1)),
+		"- Driver scene: `res://scenes/tools/IntelDossierPublicSnapshotCutoverBench.tscn`",
+		"",
+		"| Case | Result | Notes |",
+		"| --- | --- | --- |",
+	]
 	for record_variant in manifest.get("records", []):
 		var record := record_variant as Dictionary
 		lines.append("| %s | %s | %s |" % [str(record.get("case_id", "")), "PASS" if bool(record.get("passed", false)) else "FAIL", str(record.get("notes", "")).replace("|", "/")])
@@ -430,9 +654,10 @@ func _markdown_report(manifest: Dictionary) -> String:
 func _prepare_output_dir() -> void:
 	var absolute_dir := ProjectSettings.globalize_path(OUTPUT_DIR)
 	DirAccess.make_dir_recursive_absolute(absolute_dir)
-	for file_name in ["manifest.json", "report.md"]:
+	for file_name in ["manifest.json", "report.md", "intel_query_command_split_summary.png", "01_viewer_private_guess_before.png", "01_viewer_private_guess.png", "02_viewer_isolation.png", "03_authorized_reveal.png", "04_card_annotation.png", "05_final_settlement.png"]:
 		var absolute_path := absolute_dir.path_join(file_name)
-		if FileAccess.file_exists(absolute_path): DirAccess.remove_absolute(absolute_path)
+		if FileAccess.file_exists(absolute_path):
+			DirAccess.remove_absolute(absolute_path)
 
 
 func _write_text(path: String, content: String) -> void:
@@ -443,28 +668,19 @@ func _write_text(path: String, content: String) -> void:
 	file.store_string(content)
 
 
-func _save_screenshot() -> void:
-	if DisplayServer.get_name() == "headless": return
-	var image := get_viewport().get_texture().get_image()
-	if image == null:
-		_failures.append("viewport image unavailable")
-		return
-	var absolute_path := ProjectSettings.globalize_path(SCREENSHOT_PATH)
-	DirAccess.make_dir_recursive_absolute(absolute_path.get_base_dir())
-	var error := image.save_png(absolute_path)
-	if error != OK: _failures.append("screenshot save failed: %s" % error_string(error))
+func _wait_frames(count: int) -> void:
+	for _index in range(maxi(1, count)):
+		await get_tree().process_frame
 
 
 func _dispose_runtime() -> void:
-	if _main != null:
-		for player_variant in _main.find_children("*", "AudioStreamPlayer", true, false):
-			var player := player_variant as AudioStreamPlayer
-			if player != null:
-				player.stop()
-				player.stream = null
-		_main.queue_free()
-		_main = null
-	if _service != null:
-		_service.queue_free()
-		_service = null
-	for _frame in range(4): await get_tree().process_frame
+	if _main == null:
+		return
+	for player_variant in _main.find_children("*", "AudioStreamPlayer", true, false):
+		var player := player_variant as AudioStreamPlayer
+		if player != null:
+			player.stop()
+			player.stream = null
+	_main.queue_free()
+	_main = null
+	await _wait_frames(3)

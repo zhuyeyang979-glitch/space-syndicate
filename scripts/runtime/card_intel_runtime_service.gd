@@ -4,16 +4,16 @@ class_name CardIntelRuntimeService
 
 var _world_session_state: WorldSessionState
 var _table_selection_state: TableSelectionState
-var _history_query: Node
-var _annotation_service: Node
+var _history_query: CardHistoryPublicQueryPort
+var _annotation_service: CardHistoryPrivateAnnotationService
 var _contract_controller: ContractRuntimeController
 
 
 func set_dependencies(
 	world_session_state: WorldSessionState,
 	table_selection_state: TableSelectionState,
-	history_query: Node,
-	annotation_service: Node,
+	history_query: CardHistoryPublicQueryPort,
+	annotation_service: CardHistoryPrivateAnnotationService,
 	contract_controller: ContractRuntimeController
 ) -> void:
 	_world_session_state = world_session_state
@@ -101,10 +101,6 @@ func _reveal_city_owners(player_index: int, count: int, source: String, selected
 	for district_index in range(districts.size()):
 		if not order.has(district_index):
 			order.append(district_index)
-	var player: Dictionary = _world_session_state.players[player_index]
-	var guesses: Dictionary = player.get("city_guesses", {}) if player.get("city_guesses", {}) is Dictionary else {}
-	var reasons: Dictionary = player.get("city_guess_reasons", {}) if player.get("city_guess_reasons", {}) is Dictionary else {}
-	var confidence: Dictionary = player.get("city_guess_confidence", {}) if player.get("city_guess_confidence", {}) is Dictionary else {}
 	var revealed := 0
 	for district_index_variant in order:
 		if revealed >= count:
@@ -117,14 +113,14 @@ func _reveal_city_owners(player_index: int, count: int, source: String, selected
 		var owner_index := int(city.get("owner", -1))
 		if city.is_empty() or not bool(city.get("active", true)) or owner_index < 0 or owner_index == player_index:
 			continue
-		guesses[district_index] = owner_index
-		reasons[district_index] = source
-		confidence[district_index] = 100
-		revealed += 1
-	player["city_guesses"] = guesses
-	player["city_guess_reasons"] = reasons
-	player["city_guess_confidence"] = confidence
-	_world_session_state.players[player_index] = player
+		var result := _world_session_state.apply_authorized_city_reveal(
+			player_index,
+			_world_session_state.region_id_for_district(district_index),
+			owner_index,
+			source
+		)
+		if bool(result.get("applied", false)):
+			revealed += 1
 	return _receipt(revealed > 0, "resolved" if revealed > 0 else "no_traceable_city", {"city_reveal_count": revealed})
 
 

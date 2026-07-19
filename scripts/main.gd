@@ -7,7 +7,6 @@ const CardPlayRequirementPolicyScript := preload("res://scripts/cards/card_play_
 const SharedCardGroupWindowScript := preload("res://scripts/cards/shared_card_group_window.gd")
 const RoguelikeEconomicViabilityPolicyScript := preload("res://scripts/runtime/roguelike_economic_viability_policy.gd")
 const MenuRootLobbyScene := preload("res://scenes/ui/MenuRootLobby.tscn")
-const IntelDossierBoardScene := preload("res://scenes/ui/IntelDossierBoard.tscn")
 const NewGameSetupPageScene := preload("res://scenes/ui/NewGameSetupPage.tscn")
 const PlayerBoardStrategyActionSnapshotScript := preload("res://scripts/viewmodels/player_board_strategy_action_snapshot.gd")
 const TABLE_SFX_KEYS := ["card", "impact", "storm"]
@@ -163,7 +162,6 @@ var skill_market := []
 var time_scale := 1.0
 var selected_market_skill := ""
 var previewed_district_card := ""
-var selected_guess_player := -1
 var configured_player_count := DEFAULT_PLAYER_COUNT
 var configured_ai_player_count := DEFAULT_AI_PLAYER_COUNT
 var configured_roguelike_depth := DEFAULT_ROGUELIKE_DEPTH
@@ -362,10 +360,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			_cycle_district(-1)
 		KEY_E:
 			_cycle_district(1)
-		KEY_G:
-			_cycle_guess_player(1)
-		KEY_M:
-			_mark_selected_city_guess()
 		KEY_C:
 			_cycle_selected_district_card()
 		KEY_X:
@@ -1300,11 +1294,6 @@ func _codex_navigation_controller_node() -> Node:
 	return coordinator.get_node_or_null("CodexNavigationRuntimeController") if coordinator != null else null
 
 
-func _intel_dossier_public_snapshot_service_node() -> Node:
-	var coordinator := _game_runtime_coordinator_node()
-	return coordinator.get_node_or_null("IntelDossierPublicSnapshotService") if coordinator != null else null
-
-
 func _mark_game_runtime_coordinator_missing(report_error: bool = false) -> void:
 	game_runtime_coordinator_missing = true
 	if report_error and not game_runtime_coordinator_missing_reported:
@@ -1468,9 +1457,6 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 		"codex_cards":
 			var navigation_port := get_node_or_null("RuntimeServices/CompendiumNavigationPort")
 			handled = navigation_port != null and bool(navigation_port.call("request_open", "card", "browser", "catalog", -1, "all", 0, "game", {"origin": "game"}))
-		"codex_intel":
-			_open_intel_dossier_menu()
-			handled = true
 		"inspect":
 			var application_flow_port := get_node_or_null("RuntimeServices/ApplicationFlowPort")
 			handled = application_flow_port != null and bool(application_flow_port.call("submit_action", "compendium"))
@@ -1522,12 +1508,6 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 				var resolution_id := int(action_id.substr("track_select_".length()))
 				_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
 				_select_card_resolution_track_entry(resolution_id)
-				handled = true
-			elif action_id.begins_with("track_intel_"):
-				var intel_resolution_id := int(action_id.substr("track_intel_".length()))
-				_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
-				_game_runtime_coordinator_node().select_card_resolution(intel_resolution_id)
-				_open_intel_dossier_menu()
 				handled = true
 			elif action_id.begins_with("track_open_"):
 				var card_name := action_id.substr("track_open_".length()).strip_edges()
@@ -1678,9 +1658,6 @@ func _activate_runtime_player_board_action(action_id: String) -> bool:
 			return true
 		"strategy_protect_routes":
 			_toggle_selected_trade_route()
-			return true
-		"strategy_pressure_competition":
-			_open_intel_dossier_menu()
 			return true
 	return false
 
@@ -2282,8 +2259,6 @@ func _on_menu_quick_nav_action_requested(action_id: String) -> void:
 	match action_id:
 		"setup":
 			_start_new_run_from_menu()
-		"intel":
-			_open_intel_dossier_menu()
 
 
 func _menu_summary_grid_columns() -> int:
@@ -2497,411 +2472,11 @@ func _final_settlement_runtime_composition_node() -> Node:
 	return get_node_or_null("RuntimeServices/FinalSettlementRuntimeComposition")
 
 
-func _open_intel_dossier_menu() -> void:
-	var snapshot := _intel_dossier_public_snapshot(_game_runtime_coordinator_node().table_selection_state().selected_player)
-	_show_menu("情报档案", str(snapshot.get("summary_text", "暂无当前局情报。")), not _runtime_session_finished())
-	_populate_intel_dossier_snapshot(snapshot)
-
-
-func _populate_intel_dossier_snapshot(snapshot: Dictionary) -> void:
-	if menu_preview_box == null:
-		return
-	menu_overlay.call("clear_preview")
-	menu_preview_box.visible = true
-	var board_snapshot := snapshot.get("board", {}) as Dictionary if snapshot.get("board", {}) is Dictionary else {}
-	_add_intel_dossier_board_panel(menu_preview_box, board_snapshot)
-
-
-func _add_intel_dossier_board_panel(parent: Container, board_snapshot: Dictionary) -> void:
-	var board := IntelDossierBoardScene.instantiate() as Control
-	if board == null or not board.has_method("set_dossier"):
-		_report_required_ui_scene_missing("IntelDossierBoard", "set_dossier")
-		return
-	parent.add_child(board)
-	if board.has_signal("action_requested"):
-		board.connect("action_requested", Callable(self, "_on_intel_dossier_board_action_requested"))
-	board.call("set_dossier", board_snapshot)
-
-
-func _on_intel_dossier_board_action_requested(action_id: String) -> void:
-	var handled := false
-	if action_id.begins_with("history_return_"):
-		_close_menu()
-		handled = true
-	elif action_id.begins_with("history_subscribe_"):
-		var resolution_id := int(action_id.substr("history_subscribe_".length()))
-		var result := _game_runtime_coordinator_node().apply_card_history_private_annotation(
-			_game_runtime_coordinator_node().table_selection_state().selected_player,
-			"card-history:%d" % resolution_id,
-			{"subscribed": true, "private_tags": ["线索订阅"]}
-		)
-		handled = bool(result.get("applied", false))
-		if handled:
-			_open_intel_dossier_menu()
-	elif action_id.begins_with("history_suspect_"):
-		var values := action_id.substr("history_suspect_".length()).split("_", false, 1)
-		if values.size() == 2:
-			var result := _game_runtime_coordinator_node().apply_card_history_private_annotation(
-				_game_runtime_coordinator_node().table_selection_state().selected_player,
-				"card-history:%d" % int(values[0]),
-				{"suspected_player_indices": [int(values[1])], "private_confidence": 1, "private_tags": ["私人嫌疑"]}
-			)
-			handled = bool(result.get("applied", false))
-			if handled:
-				_open_intel_dossier_menu()
-	elif action_id.begins_with("history_clear_"):
-		var resolution_id := int(action_id.substr("history_clear_".length()))
-		var result := _game_runtime_coordinator_node().apply_card_history_private_annotation(
-			_game_runtime_coordinator_node().table_selection_state().selected_player,
-			"card-history:%d" % resolution_id,
-			{"suspected_player_indices": [], "excluded_player_indices": [], "private_confidence": 0, "private_tags": [], "note_text": "", "subscribed": false}
-		)
-		handled = bool(result.get("applied", false))
-		if handled:
-			_open_intel_dossier_menu()
-	elif action_id.begins_with("track_select_"):
-		var resolution_id := int(action_id.substr("track_select_".length()))
-		_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
-		_focus_card_resolution_track_entry(resolution_id)
-		_close_menu()
-		handled = true
-	elif action_id.begins_with("track_open_"):
-		var card_name := action_id.substr("track_open_".length()).strip_edges()
-		if card_name != "":
-			var navigation_port := get_node_or_null("RuntimeServices/CompendiumNavigationPort")
-			handled = navigation_port != null and bool(navigation_port.call("request_open", "card", "detail", card_name, -1, "all", 0, "intel", {"origin": "intel"}))
-	elif action_id.begins_with("intel_city_mark_"):
-		var values := action_id.substr("intel_city_mark_".length()).split("_", false, 1)
-		if values.size() == 2:
-			_mark_city_guess_from_intel(int(values[0]), int(values[1]))
-			handled = true
-	elif action_id.begins_with("intel_city_clear_"):
-		_mark_city_guess_from_intel(int(action_id.substr("intel_city_clear_".length())), -1)
-		handled = true
-	elif action_id.begins_with("intel_city_confidence_"):
-		var values := action_id.substr("intel_city_confidence_".length()).split("_", false, 1)
-		if values.size() == 2:
-			_set_city_guess_confidence_from_intel(int(values[0]), int(values[1]))
-			handled = true
-	elif action_id.begins_with("intel_city_reason_"):
-		var payload := action_id.substr("intel_city_reason_".length())
-		var separator := payload.find("_")
-		if separator > 0:
-			_set_city_guess_reason_from_intel(int(payload.substr(0, separator)), payload.substr(separator + 1))
-			handled = true
-	elif action_id.begins_with("intel_open_region_"):
-		var region_index := int(action_id.substr("intel_open_region_".length()))
-		var navigation_port := get_node_or_null("RuntimeServices/CompendiumNavigationPort")
-		handled = navigation_port != null and bool(navigation_port.call("request_open", "region", "detail", "region:%d" % region_index, region_index, "", 0, "intel", {"origin": "intel"}))
-	elif action_id.begins_with("intel_open_card_"):
-		var card_name := action_id.substr("intel_open_card_".length())
-		var navigation_port := get_node_or_null("RuntimeServices/CompendiumNavigationPort")
-		handled = navigation_port != null and bool(navigation_port.call("request_open", "card", "detail", card_name, -1, "all", 0, "intel", {"origin": "intel"}))
-	elif action_id.begins_with("intel_open_monster_"):
-		var monster_index := int(action_id.substr("intel_open_monster_".length()))
-		var navigation_port := get_node_or_null("RuntimeServices/CompendiumNavigationPort")
-		handled = navigation_port != null and bool(navigation_port.call("request_open", "monster", "detail", "monster:%d" % monster_index, monster_index, "", 0, "intel", {"origin": "intel"}))
-	elif action_id.begins_with("intel_open_product_"):
-		var product_name := action_id.substr("intel_open_product_".length())
-		var navigation_port := get_node_or_null("RuntimeServices/CompendiumNavigationPort")
-		handled = navigation_port != null and bool(navigation_port.call("request_open", "product", "detail", product_name, -1, "", 0, "intel", {"origin": "intel"}))
-	elif action_id == "intel_open_economy":
-		var application_flow_port := get_node_or_null("RuntimeServices/ApplicationFlowPort") as ApplicationFlowPort
-		handled = application_flow_port != null and application_flow_port.submit_action("economy")
-		if handled:
-			return
-	if handled:
-		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
-
-
-func _intel_dossier_public_snapshot(viewer_index: int = -1) -> Dictionary:
-	var source := _intel_dossier_public_source_snapshot(viewer_index if viewer_index >= 0 else _game_runtime_coordinator_node().table_selection_state().selected_player)
-	var coordinator := _game_runtime_coordinator_node()
-	if coordinator != null and coordinator.has_method("compose_intel_dossier_snapshot"):
-		var value: Variant = coordinator.call("compose_intel_dossier_snapshot", source)
-		if value is Dictionary:
-			return (value as Dictionary).duplicate(true)
-	var service := _intel_dossier_public_snapshot_service_node()
-	var fallback: Variant = service.call("compose", source) if service != null and service.has_method("compose") else {}
-	return (fallback as Dictionary).duplicate(true) if fallback is Dictionary else {}
-
-
-func _intel_dossier_public_source_snapshot(viewer_index: int) -> Dictionary:
-	if _game_runtime_coordinator_node().world_session_state().players.is_empty() or _game_runtime_coordinator_node().world_session_state().districts.is_empty() or viewer_index < 0 or viewer_index >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return {"valid": false, "reason": "没有当前玩家或地图数据"}
-	_refresh_route_network()
-	var city_entries := _intel_city_guess_entries(viewer_index, 8)
-	for entry_variant in city_entries:
-		var entry := entry_variant as Dictionary
-		entry["confidence_label"] = _city_guess_confidence_label(int(entry.get("confidence", CITY_GUESS_CONFIDENCE_DEFAULT))) if bool(entry.get("marked", false)) else "无"
-		entry["reason_label"] = _city_guess_reason_label(String(entry.get("reason", CITY_GUESS_REASON_DEFAULT))) if bool(entry.get("marked", false)) else "无"
-	var monster_entries := _economy_monster_cash_clue_entries(8)
-	for entry_variant in monster_entries:
-		var entry := entry_variant as Dictionary
-		entry["catalog_index"] = _monster_catalog_index_by_name(String(entry.get("name", "")))
-	var city_clue_entries := _economy_city_public_clue_entries(8)
-	for entry_variant in city_clue_entries:
-		var entry := entry_variant as Dictionary
-		var clue_products: Array = entry.get("clue_products", []) as Array
-		entry["linked_product"] = String(clue_products[0]) if not clue_products.is_empty() and ProductMarketRuntimeController.PRODUCT_CATALOG.has(String(clue_products[0])) else ""
-	var player_options := []
-	for player_index in range(_game_runtime_coordinator_node().world_session_state().players.size()):
-		if player_index != viewer_index:
-			player_options.append({"player_index": player_index, "label": "标玩家%d" % (player_index + 1)})
-	var confidence_options := []
-	for confidence in [CITY_GUESS_CONFIDENCE_LOW, CITY_GUESS_CONFIDENCE_MEDIUM, CITY_GUESS_CONFIDENCE_HIGH]:
-		confidence_options.append({"value": confidence, "label": _city_guess_confidence_label(confidence)})
-	var reason_options := []
-	for reason in _city_guess_reason_options():
-		reason_options.append({"id": reason, "label": _city_guess_reason_label(reason)})
-	return {
-		"valid": true,
-		"viewer_index": viewer_index,
-		"viewer_name": String((_game_runtime_coordinator_node().world_session_state().players[viewer_index] as Dictionary).get("name", "玩家%d" % (viewer_index + 1))),
-		"business_cycle_count": _product_market_cycle(),
-		"game_over": _runtime_session_finished(),
-		"correct_guess_cash": INTEL_CORRECT_GUESS_CASH,
-		"wrong_guess_cost": INTEL_WRONG_GUESS_COST,
-		"victory_control": _victory_control_public_snapshot(),
-		"stats": _player_intel_exposure_stats(viewer_index),
-		"city_entries": city_entries,
-		"card_entries": _intel_card_guess_entries(viewer_index, 8),
-		"monster_entries": monster_entries,
-		"warehouse_entries": _economy_warehouse_risk_entries(8, viewer_index),
-		"city_clue_entries": city_clue_entries,
-		"player_options": player_options,
-		"confidence_options": confidence_options,
-		"reason_options": reason_options,
-		"kpi_columns": clampi(int(floor(_menu_available_content_width() / 220.0)), 1, 4),
-		"clue_columns": clampi(int(floor(_menu_available_content_width() / 300.0)), 1, 3),
-		"control_columns": clampi(int(floor(_menu_available_content_width() / 520.0)), 1, 2),
-		"link_columns": clampi(int(floor(_menu_available_content_width() / 360.0)), 1, 3),
-	}
-
-
-func _mark_city_guess_from_intel(city_index: int, guessed_player: int) -> void:
-	if _mark_city_guess_for_player(_game_runtime_coordinator_node().table_selection_state().selected_player, city_index, guessed_player):
-		_jump_to_district_on_table(city_index)
-		selected_guess_player = guessed_player
-		_open_intel_dossier_menu()
-
-
-func _set_city_guess_confidence_from_intel(city_index: int, confidence: int) -> void:
-	if _set_city_guess_confidence_for_player(_game_runtime_coordinator_node().table_selection_state().selected_player, city_index, confidence):
-		_jump_to_district_on_table(city_index)
-		_open_intel_dossier_menu()
-
-
-func _set_city_guess_reason_from_intel(city_index: int, reason: String) -> void:
-	if _set_city_guess_reason_for_player(_game_runtime_coordinator_node().table_selection_state().selected_player, city_index, reason):
-		_jump_to_district_on_table(city_index)
-		_open_intel_dossier_menu()
-
-
 func _first_entries(entries: Array, limit: int) -> Array:
 	var result := []
 	for i in range(min(limit, entries.size())):
 		result.append(entries[i])
 	return result
-
-
-func _city_owner_view_text_for_player(city_index: int, viewer_index: int) -> String:
-	if city_index < 0 or city_index >= _game_runtime_coordinator_node().world_session_state().districts.size():
-		return "无城市"
-	var city := _district_city(city_index)
-	if not _city_is_active(city):
-		return "城市废墟"
-	var city_owner := int(city.get("owner", -1))
-	if viewer_index >= 0 and viewer_index < _game_runtime_coordinator_node().world_session_state().players.size() and city_owner == viewer_index:
-		return "己方"
-	if viewer_index >= 0 and viewer_index < _game_runtime_coordinator_node().world_session_state().players.size():
-		var guesses: Dictionary = _game_runtime_coordinator_node().world_session_state().players[viewer_index].get("city_guesses", {})
-		var guess := int(guesses.get(city_index, -1))
-		if guess >= 0:
-			return "我的推测:玩家%d" % (guess + 1)
-	return "未知业主"
-
-
-func _economy_warehouse_risk_entries(limit: int = 5, viewer_index: int = -1) -> Array:
-	var entries := []
-	for index_variant in _active_city_district_indices():
-		var index := int(index_variant)
-		var city := _district_city(index)
-		var pressure := _city_warehouse_stockpile_pressure(city)
-		if pressure <= 0:
-			continue
-		var products: Array = city.get("warehouse_stockpile_products", [])
-		var count := int(city.get("warehouse_stockpile_count", 0))
-		var units := int(city.get("warehouse_stockpile_units", 0))
-		var expires_at := float(city.get("warehouse_stockpile_expires_at", -1.0))
-		var seconds_left := maxf(0.0, expires_at - _game_runtime_coordinator_node().world_session_state().game_time) if expires_at >= 0.0 else -1.0
-		entries.append({
-			"district_index": index,
-			"name": String(_game_runtime_coordinator_node().world_session_state().districts[index].get("name", "城市")),
-			"owner_view": _city_owner_view_text_for_player(index, viewer_index),
-			"intel_hint": _city_intel_hint_for_player(index, viewer_index),
-			"pressure": pressure,
-			"count": count,
-			"units": units,
-			"products": products.duplicate(true),
-			"status": _city_warehouse_stockpile_status_text(city),
-			"seconds_left": seconds_left,
-			"income": int(city.get("last_income", 0)),
-			"potential_income": _city_cycle_income(index, _city_competition_matches(index)),
-			"latest_clue": _latest_city_public_clue_text(city),
-		})
-	entries.sort_custom(Callable(self, "_sort_economy_warehouse_risk_entry"))
-	return _first_entries(entries, limit)
-
-
-func _sort_economy_warehouse_risk_entry(a: Dictionary, b: Dictionary) -> bool:
-	var pressure_a := int(a.get("pressure", 0))
-	var pressure_b := int(b.get("pressure", 0))
-	if pressure_a != pressure_b:
-		return pressure_a > pressure_b
-	var units_a := int(a.get("units", 0))
-	var units_b := int(b.get("units", 0))
-	if units_a != units_b:
-		return units_a > units_b
-	var income_a := int(a.get("potential_income", 0))
-	var income_b := int(b.get("potential_income", 0))
-	if income_a != income_b:
-		return income_a > income_b
-	return String(a.get("name", "")) < String(b.get("name", ""))
-
-
-func _intel_city_guess_entries(viewer_index: int, limit: int = 6) -> Array:
-	var entries := []
-	if viewer_index < 0 or viewer_index >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return entries
-	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[viewer_index]
-	var guesses: Dictionary = player.get("city_guesses", {})
-	var confidences: Dictionary = player.get("city_guess_confidence", {})
-	var reasons: Dictionary = player.get("city_guess_reasons", {})
-	for index_variant in _active_city_district_indices():
-		var city_index := int(index_variant)
-		var city := _district_city(city_index)
-		var city_owner := int(city.get("owner", -1))
-		if city_owner == viewer_index:
-			continue
-		var guess := int(guesses.get(city_index, -1))
-		var marked := guess >= 0 and guess < _game_runtime_coordinator_node().world_session_state().players.size()
-		var competition := _city_competition_matches(city_index)
-		var breakdown := _city_cycle_income_breakdown(city_index, competition)
-		var result_text := "终局待判"
-		if _runtime_session_finished() and guess >= 0:
-			result_text = "命中+¥%d" % INTEL_CORRECT_GUESS_CASH if guess == city_owner else "错标-¥%d" % INTEL_WRONG_GUESS_COST
-		var entry := {
-			"district_index": city_index,
-			"name": String(_game_runtime_coordinator_node().world_session_state().districts[city_index].get("name", "区域%d" % (city_index + 1))),
-			"guess": guess,
-			"marked": marked,
-			"confidence": _normalized_city_guess_confidence(int(confidences.get(city_index, CITY_GUESS_CONFIDENCE_DEFAULT))) if marked else 0,
-			"reason": _normalized_city_guess_reason(String(reasons.get(city_index, CITY_GUESS_REASON_DEFAULT))) if marked else "",
-			"hint": _city_intel_hint_for_player(city_index, viewer_index),
-			"result": result_text,
-			"potential_income": int(breakdown.get("net", 0)),
-			"last_income": int(city.get("last_income", 0)),
-			"products": _city_product_names(city),
-			"demands": _city_demand_names(city),
-			"competition": competition,
-			"disrupted": int(city.get("trade_disrupted_routes", 0)),
-			"latest_clue": _latest_city_public_clue_text(city),
-			"warehouse_pressure": _city_warehouse_stockpile_pressure(city),
-			"warehouse_status": _city_warehouse_stockpile_status_text(city),
-		}
-		entry["priority"] = _city_intel_priority_score(entry)
-		entries.append(entry)
-	entries.sort_custom(Callable(self, "_sort_intel_city_guess_entry"))
-	return _first_entries(entries, limit)
-
-
-func _sort_intel_city_guess_entry(a: Dictionary, b: Dictionary) -> bool:
-	var a_priority := int(a.get("priority", 0))
-	var b_priority := int(b.get("priority", 0))
-	if a_priority != b_priority:
-		return a_priority > b_priority
-	var a_marked := bool(a.get("marked", false))
-	var b_marked := bool(b.get("marked", false))
-	if a_marked != b_marked:
-		return not a_marked
-	var a_income := int(a.get("potential_income", 0))
-	var b_income := int(b.get("potential_income", 0))
-	if a_income != b_income:
-		return a_income > b_income
-	return String(a.get("name", "")) < String(b.get("name", ""))
-
-
-func _city_intel_priority_score(entry: Dictionary) -> int:
-	var score := 0
-	score += clampi(int(float(int(entry.get("potential_income", 0))) / 10.0), 0, 80)
-	score += clampi(int(float(int(entry.get("last_income", 0))) / 20.0), 0, 30)
-	score += int(entry.get("competition", 0)) * 18
-	score += int(entry.get("disrupted", 0)) * 16
-	score += clampi(int(float(int(entry.get("warehouse_pressure", 0))) / 2.0), 0, 120)
-	score += (entry.get("products", []) as Array).size() * 4
-	score += (entry.get("demands", []) as Array).size() * 4
-	var latest_clue := String(entry.get("latest_clue", ""))
-	if latest_clue != "" and latest_clue != "暂无公开线索":
-		score += 20
-	if bool(entry.get("marked", false)):
-		match _normalized_city_guess_confidence(int(entry.get("confidence", CITY_GUESS_CONFIDENCE_DEFAULT))):
-			CITY_GUESS_CONFIDENCE_LOW:
-				score += 18
-			CITY_GUESS_CONFIDENCE_MEDIUM:
-				score += 8
-			CITY_GUESS_CONFIDENCE_HIGH:
-				score -= 12
-	else:
-		score += 45
-	return maxi(0, score)
-
-
-func _normalized_city_guess_confidence(confidence: int) -> int:
-	return clampi(confidence, CITY_GUESS_CONFIDENCE_LOW, CITY_GUESS_CONFIDENCE_HIGH)
-
-
-func _city_guess_confidence_label(confidence: int) -> String:
-	match _normalized_city_guess_confidence(confidence):
-		CITY_GUESS_CONFIDENCE_HIGH:
-			return "高"
-		CITY_GUESS_CONFIDENCE_MEDIUM:
-			return "中"
-		_:
-			return "低"
-
-
-func _city_guess_reason_options() -> Array:
-	return [
-		CITY_GUESS_REASON_PRODUCT,
-		CITY_GUESS_REASON_ROUTE,
-		CITY_GUESS_REASON_CARD,
-		CITY_GUESS_REASON_MONSTER,
-		CITY_GUESS_REASON_ROLE,
-		CITY_GUESS_REASON_INTUITION,
-	]
-
-
-func _normalized_city_guess_reason(reason: String) -> String:
-	if _city_guess_reason_options().has(reason):
-		return reason
-	return CITY_GUESS_REASON_DEFAULT
-
-
-func _city_guess_reason_label(reason: String) -> String:
-	match _normalized_city_guess_reason(reason):
-		CITY_GUESS_REASON_PRODUCT:
-			return "商品竞争"
-		CITY_GUESS_REASON_ROUTE:
-			return "商路线索"
-		CITY_GUESS_REASON_CARD:
-			return "卡牌条件"
-		CITY_GUESS_REASON_MONSTER:
-			return "怪兽资金"
-		CITY_GUESS_REASON_ROLE:
-			return "身份能力"
-		_:
-			return "直觉"
 
 
 func _latest_city_public_clue_text(city: Dictionary) -> String:
@@ -2913,70 +2488,6 @@ func _latest_city_public_clue_text(city: Dictionary) -> String:
 				return clue_text
 	var last_clue := String(city.get("last_public_clue", ""))
 	return last_clue if last_clue != "" else "暂无公开线索"
-
-
-func _intel_card_guess_entries(viewer_index: int, limit: int = 5) -> Array:
-	var entries := []
-	var public_snapshot := _game_runtime_coordinator_node().card_history_public_snapshot()
-	var source_entries: Array = public_snapshot.get("entries", []) if public_snapshot.get("entries", []) is Array else []
-	var annotation_snapshot := _game_runtime_coordinator_node().card_history_private_annotations(viewer_index)
-	var annotations_by_id := {}
-	for annotation_variant in annotation_snapshot.get("annotations", []):
-		if annotation_variant is Dictionary:
-			var annotation := annotation_variant as Dictionary
-			annotations_by_id[str(annotation.get("history_entry_id", ""))] = annotation
-	for i in range(source_entries.size() - 1, -1, -1):
-		var entry_variant: Variant = source_entries[i]
-		if not (entry_variant is Dictionary):
-			continue
-		var entry := entry_variant as Dictionary
-		var history_entry_id := str(entry.get("history_entry_id", ""))
-		if history_entry_id.is_empty():
-			continue
-		var id_parts := history_entry_id.split(":", false)
-		var resolution_id := int(id_parts[id_parts.size() - 1]) if not id_parts.is_empty() else -1
-		var annotation: Dictionary = annotations_by_id.get(history_entry_id, {}) if annotations_by_id.get(history_entry_id, {}) is Dictionary else {}
-		var status := "公共行动履历｜不公开出牌者"
-		var private_tags: Array = annotation.get("private_tags", []) if annotation.get("private_tags", []) is Array else []
-		if bool(annotation.get("subscribed", false)):
-			status = "我的线索订阅｜等待公开证据变化"
-		elif not (annotation.get("suspected_player_indices", []) as Array).is_empty():
-			status = "我的私人推测｜置信%d" % int(annotation.get("private_confidence", 0))
-		elif not str(annotation.get("note_text", "")).is_empty():
-			status = "我的私人标注"
-		elif not private_tags.is_empty():
-			status = "我的私人标注｜%s" % "/".join(private_tags)
-		var time_value := float(entry.get("public_time", -1.0))
-		entries.append({
-			"resolution_id": resolution_id,
-			"history_entry_id": history_entry_id,
-			"card": str(entry.get("public_card_name", "未知牌")),
-			"card_name": str(entry.get("public_card_id", "")),
-			"track_state": "已结算" if str(entry.get("public_action_phase", "resolved")) == "resolved" else "等待结算",
-			"status": status,
-			"target": str(entry.get("public_target", "无公开目标")),
-			"requirement": "公开履历只记录已经发生的动作和结果",
-			"tip": str(annotation.get("public_evidence_summary", "只使用公共证据进行复盘")),
-			"aftermath": str(entry.get("public_result", "")),
-			"style": "卡牌",
-			"time": time_value,
-			"revealed": not str(entry.get("publicly_revealed_actor", "")).is_empty(),
-			"focused": resolution_id >= 0 and resolution_id == _game_runtime_coordinator_node().table_selection_state().selected_card_resolution_id,
-		})
-	entries.sort_custom(Callable(self, "_sort_intel_card_guess_entry"))
-	return _first_entries(entries, limit)
-
-
-func _sort_intel_card_guess_entry(a: Dictionary, b: Dictionary) -> bool:
-	var a_focused := bool(a.get("focused", false))
-	var b_focused := bool(b.get("focused", false))
-	if a_focused != b_focused:
-		return a_focused
-	var a_time := float(a.get("time", -1.0))
-	var b_time := float(b.get("time", -1.0))
-	if not is_equal_approx(a_time, b_time):
-		return a_time > b_time
-	return String(a.get("card", "")) < String(b.get("card", ""))
 
 
 func _product_public_status_tags(product_name: String) -> Array:
@@ -3045,98 +2556,6 @@ func _city_public_status_tags(city: Dictionary) -> Array:
 	if warehouse_text != "":
 		tags.append(warehouse_text)
 	return tags
-
-
-func _economy_city_public_clue_entries(limit: int = 6, product_filter: String = "") -> Array:
-	var entries := []
-	for city_index_variant in _active_city_district_indices():
-		var city_index := int(city_index_variant)
-		var city := _district_city(city_index)
-		if not _city_is_active(city):
-			continue
-		var city_products := _city_product_names(city)
-		var city_demands := _city_demand_names(city)
-		var clues := city.get("public_clues", []) as Array
-		if clues.is_empty():
-			var last_clue := String(city.get("last_public_clue", ""))
-			if last_clue != "":
-				clues = [last_clue]
-		for i in range(clues.size() - 1, -1, -1):
-			var clue_entry := _normalize_city_public_clue_entry(clues[i])
-			var clue_text := String(clue_entry.get("text", ""))
-			if clue_text == "":
-				continue
-			var clue_products := (clue_entry.get("products", []) as Array).duplicate(true)
-			if product_filter != "" and not clue_products.has(product_filter) and not city_products.has(product_filter) and not city_demands.has(product_filter):
-				continue
-			entries.append({
-				"district": String(_game_runtime_coordinator_node().world_session_state().districts[city_index].get("name", "城市")),
-				"city_index": city_index,
-				"clue": clue_text,
-				"time": float(clue_entry.get("time", -1.0)),
-				"cycle": int(clue_entry.get("cycle", 0)),
-				"kind": String(clue_entry.get("kind", "公开")),
-				"clue_products": clue_products,
-				"owner_visible": int(city.get("owner", -1)) == _game_runtime_coordinator_node().table_selection_state().selected_player,
-				"income": int(city.get("last_income", 0)),
-				"products": city_products,
-				"demands": city_demands,
-			})
-	entries.sort_custom(Callable(self, "_sort_economy_city_public_clue_entry"))
-	return _first_entries(entries, limit)
-
-
-func _sort_economy_city_public_clue_entry(a: Dictionary, b: Dictionary) -> bool:
-	var a_time := float(a.get("time", -1.0))
-	var b_time := float(b.get("time", -1.0))
-	if not is_equal_approx(a_time, b_time):
-		return a_time > b_time
-	return String(a.get("clue", "")) > String(b.get("clue", ""))
-
-
-func _economy_monster_cash_clue_entries(limit: int = 5) -> Array:
-	var entries := []
-	for slot in range(monster_runtime_controller.auto_monsters.size()):
-		var actor: Dictionary = monster_runtime_controller.auto_monsters[slot]
-		var clue := String(actor.get("owner_clue", ""))
-		var total_lost := int(actor.get("owner_damage_cash_lost", 0))
-		if clue == "" and total_lost <= 0:
-			continue
-		var owner_index := int(actor.get("owner", -1))
-		var owner_public := bool(actor.get("owner_revealed", false)) and owner_index >= 0 and owner_index < _game_runtime_coordinator_node().world_session_state().players.size()
-		var owner_text := "归属未公开"
-		if owner_public:
-			owner_text = "归属已公开：%s" % String(_game_runtime_coordinator_node().world_session_state().players[owner_index].get("name", "玩家%d" % (owner_index + 1)))
-		entries.append({
-			"slot": slot,
-			"name": String(actor.get("name", "怪兽")),
-			"rank": int(actor.get("rank", 1)),
-			"owner_text": owner_text,
-			"owner_public": owner_public,
-			"clue": clue,
-			"recent_loss": int(actor.get("last_owner_damage_cash_loss", 0)),
-			"recent_damage": int(actor.get("last_owner_damage_amount", 0)),
-			"recent_source": String(actor.get("last_owner_damage_source", "")),
-			"recent_time": float(actor.get("last_owner_damage_time", -1.0)),
-			"total_lost": total_lost,
-			"cash_pool": int(actor.get("owner_damage_cash_pool", 0)),
-			"cash_total": int(actor.get("owner_damage_cash_total", 0)),
-			"down": bool(actor.get("down", false)),
-		})
-	entries.sort_custom(Callable(self, "_sort_economy_monster_cash_clue_entry"))
-	return _first_entries(entries, limit)
-
-
-func _sort_economy_monster_cash_clue_entry(a: Dictionary, b: Dictionary) -> bool:
-	var time_a := float(a.get("recent_time", -1.0))
-	var time_b := float(b.get("recent_time", -1.0))
-	if not is_equal_approx(time_a, time_b):
-		return time_a > time_b
-	var lost_a := int(a.get("total_lost", 0))
-	var lost_b := int(b.get("total_lost", 0))
-	if lost_a != lost_b:
-		return lost_a > lost_b
-	return int(a.get("slot", 0)) < int(b.get("slot", 0))
 
 
 func _menu_action_accent_for_text(button_text: String) -> Color:
@@ -3295,33 +2714,6 @@ func _player_intel_pending_summary(player_index: int) -> String:
 
 func _player_intel_display_summary(player_index: int) -> String:
 	return _player_intel_summary(player_index) if _runtime_session_finished() else _player_intel_pending_summary(player_index)
-
-
-func _city_intel_hint_for_player(city_index: int, viewer_index: int) -> String:
-	if city_index < 0 or city_index >= _game_runtime_coordinator_node().world_session_state().districts.size():
-		return "情报：无选区"
-	if viewer_index < 0 or viewer_index >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return "情报：无当前玩家"
-	var city := _district_city(city_index)
-	if city.is_empty():
-		return "情报：未城市化"
-	if not _city_is_active(city):
-		return "情报：废墟不结算"
-	var city_owner := int(city.get("owner", -1))
-	if city_owner == viewer_index:
-		return "情报：己方城市不参与猜业主结算"
-	var guesses: Dictionary = _game_runtime_coordinator_node().world_session_state().players[viewer_index].get("city_guesses", {})
-	var guess := int(guesses.get(city_index, -1))
-	if guess < 0:
-		return "情报：未标注，终局可争取+¥%d，错标-¥%d" % [
-			INTEL_CORRECT_GUESS_CASH,
-			INTEL_WRONG_GUESS_COST,
-		]
-	return "情报：已标玩家%d，终局猜对+¥%d / 猜错-¥%d" % [
-		guess + 1,
-		INTEL_CORRECT_GUESS_CASH,
-		INTEL_WRONG_GUESS_COST,
-	]
 
 
 func _player_name(player_index: int) -> String:
@@ -5015,7 +4407,6 @@ func _new_game() -> void:
 	_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
 	selected_market_skill = skill_market[0] if not skill_market.is_empty() else ""
 	previewed_district_card = selected_market_skill
-	selected_guess_player = -1
 	_game_runtime_coordinator_node().table_selection_state().selected_trade_product = ""
 	_game_runtime_coordinator_node().table_selection_state().selected_map_layer_focus = "all"
 	if coordinator != null and coordinator.has_method("reset_victory_control_runtime"):
@@ -6117,14 +5508,6 @@ func _runtime_selected_context_why(player_index: int) -> String:
 	return "选择目标区域，再从真实卡牌目录打出完整定义的公共设施牌。"
 
 
-func _runtime_deep_link_snapshots() -> Array:
-	return [
-		{"id": "detail_region", "label": "区域详情"},
-		{"id": "detail_cards", "label": "卡牌/牌架"},
-		{"id": "detail_intel", "label": "情报详情"},
-	]
-
-
 func _runtime_player_board_hint(player_index: int) -> String:
 	if not _runtime_player_is_valid(player_index):
 		return "还没有可行动席位。"
@@ -6452,16 +5835,6 @@ func _apply_rival_business_action(player_index: int, action: Dictionary) -> bool
 	return false
 
 
-func _cycle_guess_player(step: int) -> void:
-	if _game_runtime_coordinator_node().world_session_state().players.is_empty():
-		return
-	for _attempt in range(_game_runtime_coordinator_node().world_session_state().players.size() + 1):
-		selected_guess_player = wrapi(selected_guess_player + step + 1, 0, _game_runtime_coordinator_node().world_session_state().players.size() + 1) - 1
-		if selected_guess_player != _game_runtime_coordinator_node().table_selection_state().selected_player:
-			break
-	_refresh_map_controls()
-
-
 func _toggle_selected_trade_route() -> void:
 	if _game_runtime_coordinator_node().table_selection_state().selected_trade_product != "":
 		_game_runtime_coordinator_node().table_selection_state().selected_trade_product = ""
@@ -6514,165 +5887,6 @@ func _default_trade_product_for_selected_district() -> String:
 		if not demands.is_empty():
 			return String(demands[0])
 	return ""
-
-
-func _load_selected_district_guess() -> void:
-	selected_guess_player = -1
-	if _game_runtime_coordinator_node().table_selection_state().selected_player < 0 or _game_runtime_coordinator_node().table_selection_state().selected_player >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return
-	var guesses: Dictionary = _game_runtime_coordinator_node().world_session_state().players[_game_runtime_coordinator_node().table_selection_state().selected_player].get("city_guesses", {})
-	selected_guess_player = int(guesses.get(_game_runtime_coordinator_node().table_selection_state().selected_district, -1))
-
-
-func _mark_selected_city_guess() -> void:
-	if _mark_city_guess_for_player(_game_runtime_coordinator_node().table_selection_state().selected_player, _game_runtime_coordinator_node().table_selection_state().selected_district, selected_guess_player):
-		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
-
-
-func _mark_city_guess_for_player(viewer_index: int, city_index: int, guessed_player: int, confidence: int = CITY_GUESS_CONFIDENCE_DEFAULT, reason: String = CITY_GUESS_REASON_DEFAULT) -> bool:
-	if viewer_index < 0 or viewer_index >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return false
-	if city_index < 0 or city_index >= _game_runtime_coordinator_node().world_session_state().districts.size():
-		return false
-	var city := _district_city(city_index)
-	if not _city_is_active(city):
-		_game_runtime_coordinator_node().record_legacy_viewer_feedback("选中区域没有可标注的存活城市群。")
-		return false
-	var city_owner := int(city.get("owner", -1))
-	var guesses: Dictionary = _game_runtime_coordinator_node().world_session_state().players[viewer_index].get("city_guesses", {})
-	var confidences: Dictionary = _game_runtime_coordinator_node().world_session_state().players[viewer_index].get("city_guess_confidence", {})
-	var reasons: Dictionary = _game_runtime_coordinator_node().world_session_state().players[viewer_index].get("city_guess_reasons", {})
-	if city_owner == viewer_index:
-		guesses.erase(city_index)
-		confidences.erase(city_index)
-		reasons.erase(city_index)
-		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guesses"] = guesses
-		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guess_confidence"] = confidences
-		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guess_reasons"] = reasons
-		_game_runtime_coordinator_node().record_legacy_viewer_feedback("这是%s自己的城市，不需要推测归属。" % _game_runtime_coordinator_node().world_session_state().players[viewer_index]["name"])
-	elif guessed_player < 0:
-		guesses.erase(city_index)
-		confidences.erase(city_index)
-		reasons.erase(city_index)
-		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guesses"] = guesses
-		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guess_confidence"] = confidences
-		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guess_reasons"] = reasons
-		_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s清除了对%s城市归属的私人标注。" % [_game_runtime_coordinator_node().world_session_state().players[viewer_index]["name"], _game_runtime_coordinator_node().world_session_state().districts[city_index]["name"]])
-	elif guessed_player == viewer_index:
-		guesses.erase(city_index)
-		confidences.erase(city_index)
-		reasons.erase(city_index)
-		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guesses"] = guesses
-		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guess_confidence"] = confidences
-		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guess_reasons"] = reasons
-		_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s不能把陌生城市标成自己；已清除该私人标注。" % _game_runtime_coordinator_node().world_session_state().players[viewer_index]["name"])
-	elif guessed_player >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return false
-	else:
-		guesses[city_index] = guessed_player
-		var normalized_confidence := _normalized_city_guess_confidence(confidence)
-		var normalized_reason := _normalized_city_guess_reason(String(reasons.get(city_index, reason)))
-		confidences[city_index] = normalized_confidence
-		reasons[city_index] = normalized_reason
-		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guesses"] = guesses
-		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guess_confidence"] = confidences
-		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guess_reasons"] = reasons
-		_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s将%s私人标注为：推测属于玩家%d（置信:%s｜理由:%s）。情报现金终局才揭晓：猜对+¥%d，猜错-¥%d。" % [
-			_game_runtime_coordinator_node().world_session_state().players[viewer_index]["name"],
-			_game_runtime_coordinator_node().world_session_state().districts[city_index]["name"],
-			guessed_player + 1,
-			_city_guess_confidence_label(normalized_confidence),
-			_city_guess_reason_label(normalized_reason),
-			INTEL_CORRECT_GUESS_CASH,
-			INTEL_WRONG_GUESS_COST,
-		])
-	return true
-
-
-func _set_city_guess_confidence_for_player(viewer_index: int, city_index: int, confidence: int) -> bool:
-	if viewer_index < 0 or viewer_index >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return false
-	if city_index < 0 or city_index >= _game_runtime_coordinator_node().world_session_state().districts.size():
-		return false
-	var guesses: Dictionary = _game_runtime_coordinator_node().world_session_state().players[viewer_index].get("city_guesses", {})
-	if int(guesses.get(city_index, -1)) < 0:
-		_game_runtime_coordinator_node().record_legacy_viewer_feedback("请先给%s设置业主标注，再调整置信度。" % String(_game_runtime_coordinator_node().world_session_state().districts[city_index].get("name", "城市")))
-		return false
-	var normalized_confidence := _normalized_city_guess_confidence(confidence)
-	var confidences: Dictionary = _game_runtime_coordinator_node().world_session_state().players[viewer_index].get("city_guess_confidence", {})
-	confidences[city_index] = normalized_confidence
-	_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guess_confidence"] = confidences
-	_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s把%s的私人标注置信度调为%s；这只影响推理记录，不改变终局奖惩。" % [
-		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["name"],
-		String(_game_runtime_coordinator_node().world_session_state().districts[city_index].get("name", "城市")),
-		_city_guess_confidence_label(normalized_confidence),
-	])
-	return true
-
-
-func _set_city_guess_reason_for_player(viewer_index: int, city_index: int, reason: String) -> bool:
-	if viewer_index < 0 or viewer_index >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return false
-	if city_index < 0 or city_index >= _game_runtime_coordinator_node().world_session_state().districts.size():
-		return false
-	var guesses: Dictionary = _game_runtime_coordinator_node().world_session_state().players[viewer_index].get("city_guesses", {})
-	if int(guesses.get(city_index, -1)) < 0:
-		_game_runtime_coordinator_node().record_legacy_viewer_feedback("请先给%s设置业主标注，再记录标注理由。" % String(_game_runtime_coordinator_node().world_session_state().districts[city_index].get("name", "城市")))
-		return false
-	var normalized_reason := _normalized_city_guess_reason(reason)
-	var reasons: Dictionary = _game_runtime_coordinator_node().world_session_state().players[viewer_index].get("city_guess_reasons", {})
-	reasons[city_index] = normalized_reason
-	_game_runtime_coordinator_node().world_session_state().players[viewer_index]["city_guess_reasons"] = reasons
-	_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s把%s的私人标注理由记为%s；这只影响推理备忘，不改变终局奖惩。" % [
-		_game_runtime_coordinator_node().world_session_state().players[viewer_index]["name"],
-		String(_game_runtime_coordinator_node().world_session_state().districts[city_index].get("name", "城市")),
-		_city_guess_reason_label(normalized_reason),
-	])
-	return true
-
-
-func _reveal_city_owner_by_intel_card(player_index: int, city_index: int, source: String) -> bool:
-	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size() or city_index < 0 or city_index >= _game_runtime_coordinator_node().world_session_state().districts.size():
-		return false
-	var city := _district_city(city_index)
-	if not _city_is_active(city):
-		return false
-	var city_owner := int(city.get("owner", -1))
-	if city_owner < 0 or city_owner >= _game_runtime_coordinator_node().world_session_state().players.size() or city_owner == player_index:
-		return false
-	if not _mark_city_guess_for_player(player_index, city_index, city_owner, CITY_GUESS_CONFIDENCE_HIGH, CITY_GUESS_REASON_CARD):
-		return false
-	_record_player_economic_event(player_index, "情报", source, 0, "线索牌查明%s真实业主为玩家%d；答案只进入私人标注。" % [
-		String(_game_runtime_coordinator_node().world_session_state().districts[city_index].get("name", "区域")),
-		city_owner + 1,
-	])
-	return true
-
-
-func _apply_intel_city_reveal(_player: Dictionary, skill: Dictionary) -> bool:
-	var count := maxi(1, int(skill.get("reveal_city_count", 1)))
-	var districts_to_check := []
-	if _game_runtime_coordinator_node().table_selection_state().selected_district >= 0 and _game_runtime_coordinator_node().table_selection_state().selected_district < _game_runtime_coordinator_node().world_session_state().districts.size():
-		districts_to_check.append(_game_runtime_coordinator_node().table_selection_state().selected_district)
-	for entry_variant in _intel_city_guess_entries(_game_runtime_coordinator_node().table_selection_state().selected_player, 12):
-		if districts_to_check.size() >= count * 3:
-			break
-		if not (entry_variant is Dictionary):
-			continue
-		var district_index := int((entry_variant as Dictionary).get("district_index", -1))
-		if district_index >= 0 and not districts_to_check.has(district_index):
-			districts_to_check.append(district_index)
-	var revealed := 0
-	for district_variant in districts_to_check:
-		if revealed >= count:
-			break
-		if _reveal_city_owner_by_intel_card(_game_runtime_coordinator_node().table_selection_state().selected_player, int(district_variant), String(skill.get("name", "业主透镜"))):
-			revealed += 1
-			_game_runtime_coordinator_node().record_legacy_viewer_feedback("线索牌%s：%s真实业主已写入当前玩家私人地图标注。" % [
-				String(skill.get("name", "业主透镜")),
-				String(_game_runtime_coordinator_node().world_session_state().districts[int(district_variant)].get("name", "区域")),
-			])
-	return revealed > 0
 
 
 func _selected_city_owner_view_text() -> String:
@@ -6923,10 +6137,8 @@ func _selected_district_action_lamp_entries(player_index: int) -> Array:
 	return entries
 
 
-func _selected_district_action_entries(player_index: int) -> Array:
+func _selected_district_action_entries(_player_index: int) -> Array:
 	var has_selection := _game_runtime_coordinator_node().table_selection_state().selected_district >= 0 and _game_runtime_coordinator_node().table_selection_state().selected_district < _game_runtime_coordinator_node().world_session_state().districts.size()
-	var city := _district_city(_game_runtime_coordinator_node().table_selection_state().selected_district)
-	var can_mark := _city_is_active(city) and int(city.get("owner", -1)) != player_index
 	return [
 		{
 			"id": "district_open_rack",
@@ -6936,15 +6148,6 @@ func _selected_district_action_entries(player_index: int) -> Array:
 			"disabled": not has_selection,
 			"target": Callable(self, "_open_district_supply_from_map").bind(_game_runtime_coordinator_node().table_selection_state().selected_district),
 			"accent": Color("#38bdf8"),
-		},
-		{
-			"id": "district_open_intel",
-			"text": "◇标注",
-			"kind": "inspect_intel",
-			"tooltip": "打开情报档案，为这座陌生城市记录私人归属推测。",
-			"disabled": not can_mark,
-			"target": Callable(self, "_open_intel_dossier_menu"),
-			"accent": Color("#c084fc"),
 		},
 		{
 			"id": "district_toggle_routes",
@@ -7205,7 +6408,6 @@ func _open_district_supply_from_map(district_index: int, focus_v06_facility: boo
 	district_supply_open_player = _local_human_player_index()
 	_open_district_card_purchase_window(district_index, district_supply_open_player)
 	_sync_selected_district_card()
-	_load_selected_district_guess()
 	if focus_v06_facility:
 		var facility_source := _v06_facility_supply_source(district_index, district_supply_open_player, true)
 		var facility_card_id := str(facility_source.get("card_name", ""))
@@ -7622,7 +6824,6 @@ func _select_player(index: int) -> void:
 	if district_supply_overlay != null and district_supply_overlay.visible and district_supply_open_district >= 0:
 		district_supply_open_player = _local_human_player_index()
 		_open_district_card_purchase_window(district_supply_open_district, district_supply_open_player)
-	_load_selected_district_guess()
 	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
@@ -7630,7 +6831,6 @@ func _select_district(index: int) -> void:
 	if not _jump_to_district_on_table(index):
 		return
 	_sync_selected_district_card()
-	_load_selected_district_guess()
 	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
@@ -7875,7 +7075,6 @@ func _cycle_district(step: int) -> void:
 		return
 	_jump_to_district_on_table(wrapi(_game_runtime_coordinator_node().table_selection_state().selected_district + step, 0, _game_runtime_coordinator_node().world_session_state().districts.size()))
 	_sync_selected_district_card()
-	_load_selected_district_guess()
 	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 

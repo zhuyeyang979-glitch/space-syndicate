@@ -250,8 +250,9 @@ func _compose_track_entry(source: Dictionary, state_text: String, track: Diction
 	var deep_links := []
 	if resolution_id >= 0:
 		actions.append({"id":"track_select_%d" % resolution_id, "label":"查看履历", "tooltip":"把这条公共动作设为当前查看对象；不会产生竞猜或经济结算。"})
-		actions.append({"id":"track_intel_%d" % resolution_id, "label":"线索档案", "tooltip":"打开情报档案，并把这张牌的条件、目标、顺序和余波线索置顶。"})
-		deep_links.append({"id":"track_intel_%d" % resolution_id, "label":"线索档案", "tooltip":"打开情报档案并置顶这张牌。"})
+		var intel_intent := IntelApplicationIntent.open("card-history:%d" % resolution_id).to_dictionary()
+		actions.append({"id":"intel", "label":"线索档案", "tooltip":"打开情报档案，并把这张公共履历置顶。", "application_intent":intel_intent})
+		deep_links.append({"id":"intel", "label":"线索档案", "tooltip":"打开情报档案并置顶这张公共履历。", "application_intent":intel_intent.duplicate(true)})
 		var group_size := maxi(1, int(entry.get("group_size", 1)))
 		var group_order := clampi(int(entry.get("group_order", 1)), 1, group_size)
 		if bool(source.get("can_reorder", false)) and group_size > 1:
@@ -352,7 +353,7 @@ func _compose_event(entry: Dictionary, index: int) -> Dictionary:
 	if entry.is_empty(): return {}
 	var text := str(entry.get("text", "公共事件"))
 	var detail := str(entry.get("tooltip", text))
-	return {"id":"event_%d" % index, "label":_short_text(text, 12), "slot":"事件", "state":"公共事件", "kind":"event", "owner_hint":"只读", "badges":["只读"], "active":false, "accent":entry.get("accent", Color("#a78bfa")), "tooltip":"公共事件：只读履历，无奖励或权威归属结论｜%s" % detail, "title":"牌轨事件", "summary":_short_text(text, 36), "detail":detail, "why":"公共只读履历；私人标注仅供当前查看者使用。", "requirements":[{"text":"只读"}, {"text":"公共事件"}], "deep_links":[{"id":"detail_intel", "label":"情报详情"}]}
+	return {"id":"event_%d" % index, "label":_short_text(text, 12), "slot":"事件", "state":"公共事件", "kind":"event", "owner_hint":"只读", "badges":["只读"], "active":false, "accent":entry.get("accent", Color("#a78bfa")), "tooltip":"公共事件：只读履历，无奖励或权威归属结论｜%s" % detail, "title":"牌轨事件", "summary":_short_text(text, 36), "detail":detail, "why":"公共只读履历；私人标注仅供当前查看者使用。", "requirements":[{"text":"只读"}, {"text":"公共事件"}], "deep_links":[{"id":"intel", "label":"情报详情", "application_intent":IntelApplicationIntent.open().to_dictionary()}]}
 
 
 func _track_phase(source: Dictionary) -> String:

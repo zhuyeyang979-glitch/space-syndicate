@@ -10,6 +10,8 @@ signal rules_requested()
 signal standings_requested()
 signal economy_requested()
 signal compendium_requested()
+signal intel_requested()
+signal intel_application_intent_requested(intent: IntelApplicationIntent)
 signal menu_requested(title: String, summary: String, can_continue: bool)
 
 const ALLOWED_ACTIONS := [&"setup", &"standings", &"economy", &"intel", &"rules", &"compendium"]
@@ -18,6 +20,9 @@ var _action_emission_count := 0
 var _standings_emission_count := 0
 var _economy_emission_count := 0
 var _compendium_emission_count := 0
+var _intel_emission_count := 0
+var _intel_application_intent_emission_count := 0
+var _intel_application_intent_rejection_count := 0
 var _menu_emission_count := 0
 
 
@@ -36,9 +41,25 @@ func submit_action(action_id: String) -> bool:
 	elif normalized == &"compendium":
 		_compendium_emission_count += 1
 		compendium_requested.emit()
+	elif normalized == &"intel":
+		_intel_emission_count += 1
+		intel_requested.emit()
 	else:
 		_action_emission_count += 1
 		action_requested.emit(normalized)
+	return true
+
+
+func submit_intel_application_intent(intent: IntelApplicationIntent) -> bool:
+	if intent == null or not intent.is_valid():
+		_intel_application_intent_rejection_count += 1
+		return false
+	var detached_intent := IntelApplicationIntent.from_dictionary(intent.to_dictionary())
+	if detached_intent == null:
+		_intel_application_intent_rejection_count += 1
+		return false
+	_intel_application_intent_emission_count += 1
+	intel_application_intent_requested.emit(detached_intent)
 	return true
 
 
@@ -65,6 +86,16 @@ func debug_snapshot() -> Dictionary:
 		"compendium_signal_boundary": true,
 		"compendium_uses_generic_action_signal": false,
 		"compendium_to_main": false,
+		"intel_emission_count": _intel_emission_count,
+		"intel_signal_boundary": true,
+		"intel_uses_dedicated_signal": true,
+		"intel_uses_generic_action_signal": false,
+		"intel_application_intent_emission_count": _intel_application_intent_emission_count,
+		"intel_application_intent_rejection_count": _intel_application_intent_rejection_count,
+		"intel_application_intent_uses_dedicated_signal": true,
+		"intel_application_intent_uses_generic_action_signal": false,
+		"stores_intel_navigation_state": false,
+		"intel_to_main": false,
 		"rules_signal_boundary": true,
 		"menu_emission_count": _menu_emission_count,
 		"owns_gameplay_state": false,

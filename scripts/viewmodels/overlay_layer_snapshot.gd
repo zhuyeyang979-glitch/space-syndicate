@@ -90,8 +90,6 @@ func _drawer_title_for_action(action_id: String, inspector: Dictionary, district
 			return "区域详情"
 		"codex_cards", "codex_card", "detail_cards", "detail_card":
 			return "卡牌详情"
-		"codex_intel", "detail_intel":
-			return "情报详情"
 		"inspect":
 			return "桌面详情"
 	var inspector_title := _first_text(inspector, ["title"], "详情抽屉")
@@ -107,8 +105,6 @@ func _drawer_codex_links(action_id: String, inspector: Dictionary) -> Array:
 			return [{"id": "codex_region", "label": "打开区域图鉴"}]
 		"detail_cards", "detail_card", "codex_cards", "codex_card":
 			return [{"id": "codex_cards", "label": "打开卡牌图鉴"}]
-		"detail_intel", "codex_intel":
-			return [{"id": "codex_intel", "label": "打开情报板"}]
 	var links: Array = inspector.get("deep_links", []) if inspector.get("deep_links", []) is Array else []
 	var result: Array = []
 	for link_variant in links:
@@ -121,8 +117,6 @@ func _drawer_codex_links(action_id: String, inspector: Dictionary) -> Array:
 				result.append({"id": "codex_region", "label": "打开区域图鉴"})
 			"detail_cards", "detail_card":
 				result.append({"id": "codex_cards", "label": "打开卡牌图鉴"})
-			"detail_intel":
-				result.append({"id": "codex_intel", "label": "打开情报板"})
 			_:
 				if link_id.begins_with("codex"):
 					result.append(link)
@@ -130,7 +124,6 @@ func _drawer_codex_links(action_id: String, inspector: Dictionary) -> Array:
 		result = [
 			{"id": "codex_region", "label": "打开区域图鉴"},
 			{"id": "codex_cards", "label": "打开卡牌图鉴"},
-			{"id": "codex_intel", "label": "打开情报板"},
 		]
 	return result
 

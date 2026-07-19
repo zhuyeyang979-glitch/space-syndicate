@@ -1,8 +1,9 @@
 extends SceneTree
 
-const SERVICE_SCENE := "res://scenes/runtime/IntelDossierPublicSnapshotService.tscn"
+const SERVICE_SCENE := preload("res://scenes/runtime/IntelDossierPublicSnapshotService.tscn")
 
-var failures: Array[String] = []
+var _checks := 0
+var _failures: Array[String] = []
 
 
 func _init() -> void:
@@ -10,35 +11,42 @@ func _init() -> void:
 
 
 func _run() -> void:
-	var packed := load(SERVICE_SCENE) as PackedScene
-	_expect(packed != null, "service scene loads")
-	var service := packed.instantiate() if packed != null else null
-	_expect(service != null, "service scene instantiates")
-	if service == null:
-		_finish()
-		return
+	var service := SERVICE_SCENE.instantiate() as IntelDossierPublicSnapshotService
 	root.add_child(service)
-	service.call("configure", {})
-	var snapshot: Dictionary = service.call("compose", _source())
-	_expect(str(snapshot.get("summary_text", "")).contains("公共卡牌履历") and str(snapshot.get("summary_text", "")).contains("不奖励现金或GDP"), "summary explains read-only history without revealing truth")
+	service.configure()
+	var source := _source()
+	var source_before := source.duplicate(true)
+	var snapshot := service.compose(source)
 	var board := snapshot.get("board", {}) as Dictionary
-	_expect((board.get("kpis", []) as Array).size() == 4 and (board.get("clues", []) as Array).size() == 7, "board composes KPI and focused evidence lanes")
-	var action_ids := _action_ids(board)
-	_expect(action_ids.has("history_return_42") and action_ids.has("history_subscribe_42") and action_ids.has("history_suspect_42_1") and action_ids.has("history_clear_42") and action_ids.has("track_open_轨道融资1"), "focused history exposes only private annotation and detail intents")
-	_expect(action_ids.has("intel_city_mark_3_1") and action_ids.has("intel_city_clear_3") and action_ids.has("intel_city_confidence_3_3") and action_ids.has("intel_city_reason_3_card"), "city inference controls use data-only action ids")
-	_expect(action_ids.has("intel_open_region_3") and action_ids.has("intel_open_card_轨道融资1") and action_ids.has("intel_open_monster_2") and action_ids.has("intel_open_product_活体芯片") and action_ids.has("intel_open_economy"), "public evidence links use data-only action ids")
-	var debug: Dictionary = service.call("debug_snapshot")
-	_expect(bool(debug.get("service_ready", false)) and bool(debug.get("service_authoritative", false)) and not bool(debug.get("mutates_city_guesses", true)) and not bool(debug.get("settles_intel_cash", true)) and not bool(debug.get("reveals_city_owner_truth", true)) and not bool(debug.get("reads_private_hands", true)) and bool(debug.get("action_id_controls", false)), "service owns presentation and intents, not rules or private truth")
-	_expect(_is_pure_data(snapshot) and not _contains_private_key(snapshot), "snapshot is viewer-safe pure data")
+	var intents := _intents(board)
+	_expect(source == source_before, "compose mutates zero source data")
+	_expect(str(snapshot.get("summary_text", "")).contains("公共卡牌履历"), "summary names the public history source")
+	_expect((board.get("kpis", []) as Array).size() == 4 and not (board.get("clues", []) as Array).is_empty(), "board composes bounded public-world and viewer-private evidence lanes")
+	_expect(_has_kind(intents, &"set_city_owner_guess") and _has_kind(intents, &"clear_city_owner_guess"), "city set and clear intents are typed")
+	_expect(_has_kind(intents, &"set_city_guess_confidence") and _has_kind(intents, &"set_city_guess_reason"), "city confidence and reason intents are typed")
+	_expect(_has_kind(intents, &"set_card_history_subscription") and _has_kind(intents, &"set_card_history_suspects") and _has_kind(intents, &"clear_card_history_annotation"), "card annotation controls use narrow typed commands")
+	_expect(_has_kind(intents, &"open_region") and _has_kind(intents, &"open_product") and _has_kind(intents, &"open_monster") and _has_kind(intents, &"open_card") and _has_kind(intents, &"focus_history") and _has_kind(intents, &"open_economy"), "public world and history deep links use typed navigation intents")
+	_expect((snapshot.get("public_navigation_links", []) as Array) == (board.get("links", []) as Array), "formatter exposes detached public navigation links as a clear contract partition")
+	var rendered := JSON.stringify(snapshot)
+	_expect(rendered.contains("公开区域证据") and rendered.contains("公开业主：玩家2") and rendered.contains("商品、路线与天气") and rendered.contains("怪兽吸引线索"), "formatter restores public region, facility owner, product/route/weather, and monster clues")
+	_expect(not rendered.contains("warehouse_inventory") and not rendered.contains("hidden_owner") and not rendered.contains("true_owner"), "formatter never projects private inventory or hidden city ownership")
+	_expect(_all_intents_exact_and_valid(intents), "every control carries the exact typed intent contract")
+	_expect(not JSON.stringify(snapshot).contains("intel_city_mark_") and not JSON.stringify(snapshot).contains("track_intel_"), "payloads are never encoded in string action ids")
+	_expect(not _has_kind(intents, &"use_city_reveal") and not _has_kind(intents, &"use_contract_trace"), "unowned role actions stay unavailable")
+	var reveal_source := _source()
+	(reveal_source.get("city_entries", []) as Array)[0]["authorized_reveal"] = true
+	(reveal_source.get("city_entries", []) as Array)[0]["confidence"] = 100
+	var reveal_groups: Array = ((service.compose(reveal_source).get("board", {}) as Dictionary).get("control_groups", []) as Array)
+	_expect(not reveal_groups.is_empty() and ((reveal_groups[0] as Dictionary).get("actions", []) as Array).is_empty(), "authorized confidence 100 is display-only and locked")
 	var injected := _source()
 	injected["hidden_owner"] = 7
-	injected["private_hand"] = ["secret-card"]
-	injected["ai_private_plan"] = "secret-route"
-	var injected_snapshot: Dictionary = service.call("compose", injected)
-	var encoded := JSON.stringify(injected_snapshot)
-	_expect(not _contains_private_key(injected_snapshot) and not encoded.contains("secret-card") and not encoded.contains("secret-route"), "unknown private input is dropped")
-	var empty_snapshot: Dictionary = service.call("compose", {"valid": false, "reason": "无玩家"})
-	_expect(str(empty_snapshot.get("summary_text", "")).contains("无玩家") and ((empty_snapshot.get("board", {}) as Dictionary).get("links", []) as Array).size() == 1, "empty state remains safe and actionable")
+	injected["opponent_hand"] = ["SECRET_CARD"]
+	_expect(not JSON.stringify(service.compose(injected)).contains("SECRET_CARD"), "unknown private input is not projected")
+	var debug := service.debug_snapshot()
+	_expect(bool(debug.get("typed_action_intents", false)) and not bool(debug.get("action_id_controls", true)), "debug contract retires string action controls")
+	_expect(not bool(debug.get("city_reveal_controls_exposed", true)) and not bool(debug.get("contract_trace_controls_exposed", true)), "debug contract records unavailable role actions")
+	var empty := service.compose({"valid": false, "reason": "无授权玩家"})
+	_expect(str(empty.get("summary_text", "")) == "无授权玩家" and (((empty.get("board", {}) as Dictionary).get("links", []) as Array).is_empty()), "denied snapshot has no actionable fallback")
 	service.queue_free()
 	await process_frame
 	_finish()
@@ -48,80 +56,111 @@ func _source() -> Dictionary:
 	return {
 		"valid": true,
 		"viewer_index": 0,
-		"viewer_name": "测试玩家",
-		"business_cycle_count": 3,
-		"correct_guess_cash": 120,
-		"wrong_guess_cost": 60,
-		"city_final_value": 200,
-		"stats": {"total_foreign": 2, "guessed": 1, "unmarked": 1, "best_cash": 120, "worst_cash": -60},
-		"player_options": [{"player_index": 1, "label": "标玩家2"}, {"player_index": 2, "label": "标玩家3"}],
-		"confidence_options": [{"value": 1, "label": "低"}, {"value": 2, "label": "中"}, {"value": 3, "label": "高"}],
-		"reason_options": [{"id": "product", "label": "商品竞争"}, {"id": "card", "label": "卡牌条件"}],
-		"city_entries": [{"district_index": 3, "name": "环城港", "guess": 1, "marked": true, "confidence": 2, "confidence_label": "中", "reason": "card", "reason_label": "卡牌条件", "priority": 88, "potential_income": 210, "warehouse_pressure": 24, "latest_clue": "活体芯片需求上升"}],
-		"card_entries": [{"resolution_id": 42, "history_entry_id": "card-history:42", "card": "轨道融资1", "card_name": "轨道融资1", "track_state": "已结算", "status": "我的私人标注", "target": "环城港", "requirement": "公开履历只记录已经发生的动作和结果", "tip": "公开证据复盘", "aftermath": "GDP上升", "style": "经济", "time": 12.5, "revealed": false, "focused": true}],
-		"monster_entries": [{"slot": 0, "name": "吞星兽", "catalog_index": 2, "owner_text": "归属未公开", "recent_loss": 30, "total_lost": 60, "cash_pool": 140, "cash_total": 200, "clue": "受伤资金线索"}],
-		"warehouse_entries": [{"name": "环城港", "owner_view": "未知业主", "pressure": 24, "count": 1, "units": 3, "products": ["活体芯片"], "latest_clue": "匿名仓储3单位"}],
-		"city_clue_entries": [{"district": "环城港", "kind": "需求", "clue_products": ["活体芯片"], "linked_product": "活体芯片", "owner_visible": false, "income": 80, "clue": "需求上升"}],
-		"kpi_columns": 4,
-		"clue_columns": 3,
-		"control_columns": 1,
-		"link_columns": 2,
+		"viewer_name": "本地玩家",
+		"city_owner_revision": "city-revision-1",
+		"annotation_owner_revision": "annotation-revision-1",
+		"focused_history_entry_id": "card-history:42",
+		"public_players": [
+			{"player_index": 0, "public_player_name": "本地玩家"},
+			{"player_index": 1, "public_player_name": "玩家2"},
+			{"player_index": 2, "public_player_name": "玩家3"},
+		],
+		"public_world_intel": [{
+			"district_index": 1,
+			"region_id": "region.001",
+			"region_stable_item_id": "region:1",
+			"name": "环城港",
+			"terrain_label": "陆地",
+			"economic_focus_label": "能源",
+			"facility_count": 2,
+			"anonymous_warehouse_count": 1,
+			"public_facility_entries": [
+				{"facility_type": "warehouse", "industry_id": "storage", "owner_kind": "player", "owner_player_index": 1, "rank": 1},
+				{"facility_type": "factory", "industry_id": "energy", "owner_kind": "neutral", "owner_player_index": -1, "rank": 1},
+			],
+			"supply_product_ids": ["活体芯片"],
+			"supply_text": "活体芯片",
+			"demand_text": "燃料",
+			"weather_text": "晴朗",
+			"trade_route_load": 2,
+			"public_clue": "公开运输痕迹",
+			"monster_attraction_entries": [{"name": "流星哨兵", "reason": "被公开能源信号吸引", "stable_item_id": "monster:2"}],
+		}],
+		"city_entries": [{
+			"district_index": 1,
+			"region_id": "region.001",
+			"name": "环城港",
+			"city_level": 2,
+			"city_last_income": 80,
+			"suspected_player_index": 1,
+			"confidence": 2,
+			"reason_id": "card",
+			"authorized_reveal": false,
+		}],
+		"card_entries": [{
+			"history_entry_id": "card-history:42",
+			"public_sequence": 42,
+			"public_card_id": "orbital_finance_i",
+			"public_card_name": "轨道融资 I",
+			"public_target": "区域2",
+			"public_result": "GDP上升",
+			"viewer_annotation": {"suspected_player_indices": [1], "subscribed": false},
+		}],
+		"role_definition": {"name": "测试角色", "passive": "公开定义"},
+		"role_usage": {"residual_catalog": 0, "public_exclusion": 0},
 	}
 
 
-func _action_ids(board: Dictionary) -> Array:
-	var ids := []
+func _intents(board: Dictionary) -> Array:
+	var result: Array = []
 	for entry_variant in board.get("actions", []) as Array:
-		ids.append(str((entry_variant as Dictionary).get("id", "")))
+		_append_intent(result, entry_variant)
 	for group_variant in board.get("control_groups", []) as Array:
 		for entry_variant in (group_variant as Dictionary).get("actions", []) as Array:
-			ids.append(str((entry_variant as Dictionary).get("id", "")))
+			_append_intent(result, entry_variant)
 	for entry_variant in board.get("links", []) as Array:
-		ids.append(str((entry_variant as Dictionary).get("id", "")))
-	return ids
+		_append_intent(result, entry_variant)
+	return result
 
 
-func _contains_private_key(value: Variant) -> bool:
-	if value is Dictionary:
-		for key_variant in (value as Dictionary).keys():
-			var key := str(key_variant).to_lower()
-			if key.contains("hidden_owner") or key.contains("private_hand") or key.contains("private_plan") or key.contains("ai_private"):
-				return true
-			if _contains_private_key((value as Dictionary)[key_variant]):
-				return true
-	elif value is Array:
-		for item in value:
-			if _contains_private_key(item):
-				return true
+func _append_intent(target: Array, entry_variant: Variant) -> void:
+	if entry_variant is Dictionary and (entry_variant as Dictionary).get("intent", {}) is Dictionary:
+		target.append(((entry_variant as Dictionary).get("intent", {}) as Dictionary).duplicate(true))
+
+
+func _has_kind(intents: Array, kind: StringName) -> bool:
+	for intent_variant in intents:
+		if StringName((intent_variant as Dictionary).get("intent_kind", "")) == kind:
+			return true
 	return false
 
 
-func _is_pure_data(value: Variant) -> bool:
-	match typeof(value):
-		TYPE_NIL, TYPE_BOOL, TYPE_INT, TYPE_FLOAT, TYPE_STRING, TYPE_STRING_NAME, TYPE_COLOR:
-			return true
-		TYPE_ARRAY:
-			for item in value as Array:
-				if not _is_pure_data(item): return false
-			return true
-		TYPE_DICTIONARY:
-			for key_variant in (value as Dictionary).keys():
-				if not _is_pure_data(key_variant) or not _is_pure_data((value as Dictionary)[key_variant]): return false
-			return true
-		_:
+func _all_intents_exact_and_valid(intents: Array) -> bool:
+	if intents.is_empty():
+		return false
+	var expected := ["schema_version", "intent_kind", "viewer_index", "subject_id", "expected_owner_revision", "payload"]
+	for intent_variant in intents:
+		var dictionary := intent_variant as Dictionary
+		if dictionary.keys().size() != expected.size():
 			return false
+		for key in expected:
+			if not dictionary.has(key):
+				return false
+		if IntelDossierActionIntent.from_dictionary(dictionary) == null:
+			return false
+	return true
 
 
 func _expect(condition: bool, label: String) -> void:
+	_checks += 1
 	if not condition:
-		failures.append(label)
-		print("FAIL: %s" % label)
+		_failures.append(label)
 
 
 func _finish() -> void:
-	if failures.is_empty():
-		print("INTEL DOSSIER PUBLIC SNAPSHOT SERVICE PASS")
+	if _failures.is_empty():
+		print("INTEL_DOSSIER_PUBLIC_SNAPSHOT_SERVICE_TEST|status=PASS|checks=%d" % _checks)
 		quit(0)
 		return
-	push_error("Intel Dossier public snapshot service failures: %s" % "; ".join(failures))
+	push_error("INTEL_DOSSIER_PUBLIC_SNAPSHOT_SERVICE_TEST failed:\n- " + "\n- ".join(_failures))
 	quit(1)

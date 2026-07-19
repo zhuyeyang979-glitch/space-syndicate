@@ -1,0 +1,425 @@
+{
+	"diagnostics": {
+		"authorized_reveal": {
+			"owner_receipt": {
+				"applied": true,
+				"changed": true,
+				"owner_revision_after": "467f5872fff3d6a5b85fe6c043c94a3d3d81ad0292f5a9d95c411f70766dab5e",
+				"owner_revision_before": "4034fe15633f9612210b8f2b8255845a8919d93e100cfcce118843da1e225bac",
+				"reason_code": "authorized_city_reveal_set"
+			},
+			"projection": {
+				"authorized_reveal": true,
+				"city_competition_matches": 0,
+				"city_demands": [],
+				"city_last_income": 0,
+				"city_level": 1,
+				"city_products": [],
+				"confidence": 100,
+				"damage": 0,
+				"demands": [
+					"蓝潮藻"
+				],
+				"district_index": 0,
+				"name": "东京湾",
+				"products": [
+					"寒冠冰糖"
+				],
+				"reason_id": "QA authorized reveal",
+				"region_id": "region.000",
+				"suspected_player_index": 1,
+				"terrain": "land"
+			}
+		},
+		"city_fixture": {
+			"attempts": [
+				{
+					"created": true,
+					"district_index": 0,
+					"reason_code": "world_session_city_fixture_applied"
+				}
+			],
+			"created": true,
+			"district_index": 0,
+			"owner_api": "WorldSessionState.replace_districts",
+			"reason_code": "world_session_city_fixture_applied",
+			"region_id": "region.000"
+		},
+		"final_settlement_real_owner": {
+			"authoritative_world": {
+				"active_player_indices": [
+					0
+				],
+				"reason_code": "authoritative_last_survivor_ready",
+				"valid": true,
+				"world_visibility_scope": "controller_private"
+			},
+			"outcome_receipt": {
+				"audit_evidence": {
+					"audit_roster": [],
+					"settlement_checkpoint": "post_world_settlement",
+					"victory_rule": {
+						"coverage_basis_points": 4000,
+						"gdp_per_required_region_per_minute": 36,
+						"ordinary_victory_paused": false,
+						"required_region_count": 4,
+						"required_top_k_gdp_per_minute": 144,
+						"required_top_k_gdp_per_minute_cents": 14400,
+						"surviving_region_count": 9
+					}
+				},
+				"co_victory": false,
+				"comparison_order": [
+					"top_k_gdp_per_minute_cents",
+					"controlled_region_count",
+					"cash_ledger_cents"
+				],
+				"outcome_id": "victory.v06.1",
+				"rankings": [
+					{
+						"cash_ledger_cents": 208000,
+						"controlled_region_count": 0,
+						"player_index": 0,
+						"top_k_gdp_per_minute": 0,
+						"top_k_gdp_per_minute_cents": 0,
+						"top_n_gdp_per_minute": 0,
+						"winner": true
+					}
+				],
+				"reason_code": "last_survivor",
+				"ruleset_id": "v0.6",
+				"schema_version": 2,
+				"visibility_scope": "public",
+				"winner_player_indices": [
+					0
+				]
+			},
+			"present_count_after": 1,
+			"present_count_before": 0
+		},
+		"monster_fixture": {
+			"applied": true,
+			"catalog_stable_id": "monster:0",
+			"district_index": 0,
+			"owner_receipt": {
+				"active_wager_count": 0,
+				"applied": true,
+				"monster_count": 1
+			},
+			"public_entry": {
+				"factor_codes": [
+					"distance",
+					"city"
+				],
+				"name": "孢雾海皇",
+				"ordinal": 1,
+				"reason": "主要吸引：距离 / 城市经营"
+			},
+			"reason_code": "monster_owner_save_applied"
+		},
+		"typed_public_links": {
+			"kinds": [
+				"focus_history",
+				"open_card",
+				"open_economy",
+				"open_monster",
+				"open_product",
+				"open_region"
+			],
+			"subjects": {
+				"focus_history": "card-history:90701",
+				"open_card": "城市融资1",
+				"open_economy": "economy",
+				"open_monster": "monster:0",
+				"open_product": "寒冠冰糖",
+				"open_region": "region:0"
+			}
+		},
+		"viewer_private_guess": {
+			"district_index": 0,
+			"projection": {
+				"authorized_reveal": false,
+				"confidence": 2,
+				"district_index": 0,
+				"reason_id": "card",
+				"reason_kind": "manual",
+				"region_id": "region.000",
+				"suspected_player_index": 1
+			},
+			"receipt": {
+				"accepted": true,
+				"applied": true,
+				"changed": true,
+				"command_id": "qa:1",
+				"command_kind": "set_city_owner_guess",
+				"idempotent_replay": false,
+				"notification_delta": 0,
+				"owner_revision_after": "4034fe15633f9612210b8f2b8255845a8919d93e100cfcce118843da1e225bac",
+				"owner_revision_before": "be990ae4360e4ed4ba55b7f17311f0f3ba3a48c00708af4284ed800fe52d98cc",
+				"public_log_delta": 0,
+				"reason_code": "city_owner_guess_set",
+				"role_usage_delta": 0,
+				"save_dirty_delta": 1,
+				"schema_version": 1,
+				"subject_id": "region:region.000",
+				"viewer_index": 0
+			},
+			"region_id": "region.000"
+		}
+	},
+	"main_metrics": {
+		"constant_count": 102,
+		"function_count": 665,
+		"nonblank_lines": 8754,
+		"top_level_variable_count": 65
+	},
+	"open_elapsed_ms": 447,
+	"output_dir": "res://docs/ui_qa/intel_query_command_split/",
+	"passed_count": 15,
+	"record_count": 15,
+	"records": [
+		{
+			"action_id_checked": false,
+			"board_checked": false,
+			"case_id": "formal_assets_load",
+			"deletion_checked": false,
+			"domain_boundary_checked": false,
+			"main_checked": false,
+			"notes": "formal main, query, command, controller, and board scenes load",
+			"passed": true,
+			"performance_checked": false,
+			"privacy_checked": false,
+			"pure_data_checked": false,
+			"routing_checked": false,
+			"service_checked": false,
+			"summary_checked": false
+		},
+		{
+			"action_id_checked": false,
+			"board_checked": false,
+			"case_id": "scene_owned_composition",
+			"deletion_checked": false,
+			"domain_boundary_checked": false,
+			"main_checked": true,
+			"notes": "one formal scene-owned Flow, Query, Command, Controller, WorldSession, and annotation owner",
+			"passed": true,
+			"performance_checked": false,
+			"privacy_checked": false,
+			"pure_data_checked": false,
+			"routing_checked": false,
+			"service_checked": false,
+			"summary_checked": false
+		},
+		{
+			"action_id_checked": false,
+			"board_checked": false,
+			"case_id": "dedicated_application_boundary",
+			"deletion_checked": false,
+			"domain_boundary_checked": false,
+			"main_checked": false,
+			"notes": "typed focus crosses ApplicationFlowPort exactly once and never emits generic action_requested",
+			"passed": true,
+			"performance_checked": false,
+			"privacy_checked": false,
+			"pure_data_checked": false,
+			"routing_checked": true,
+			"service_checked": false,
+			"summary_checked": false
+		},
+		{
+			"action_id_checked": false,
+			"board_checked": false,
+			"case_id": "authorized_query_zero_mutation",
+			"deletion_checked": false,
+			"domain_boundary_checked": false,
+			"main_checked": false,
+			"notes": "authorized viewer query returns detached data and mutates no owner",
+			"passed": true,
+			"performance_checked": false,
+			"privacy_checked": true,
+			"pure_data_checked": true,
+			"routing_checked": false,
+			"service_checked": true,
+			"summary_checked": false
+		},
+		{
+			"action_id_checked": false,
+			"board_checked": false,
+			"case_id": "public_world_categories",
+			"deletion_checked": false,
+			"domain_boundary_checked": false,
+			"main_checked": false,
+			"notes": "public region, facility, product/demand, route, weather, and monster-attraction evidence is present",
+			"passed": true,
+			"performance_checked": false,
+			"privacy_checked": false,
+			"pure_data_checked": true,
+			"routing_checked": false,
+			"service_checked": true,
+			"summary_checked": true
+		},
+		{
+			"action_id_checked": false,
+			"board_checked": false,
+			"case_id": "public_facility_privacy",
+			"deletion_checked": false,
+			"domain_boundary_checked": false,
+			"main_checked": false,
+			"notes": "audited public facility ownership remains visible; inventory and hidden owner stay absent",
+			"passed": true,
+			"performance_checked": false,
+			"privacy_checked": true,
+			"pure_data_checked": false,
+			"routing_checked": false,
+			"service_checked": false,
+			"summary_checked": false
+		},
+		{
+			"action_id_checked": false,
+			"board_checked": true,
+			"case_id": "viewer_private_guess",
+			"deletion_checked": false,
+			"domain_boundary_checked": true,
+			"main_checked": false,
+			"notes": "WorldSession receipt=city_owner_guess_set; target=region.000; projection={\"authorized_reveal\":false,\"confidence\":2,\"district_index\":0,\"reason_id\":\"card\",\"reason_kind\":\"manual\",\"region_id\":\"region.000\",\"suspected_player_index\":1}",
+			"passed": true,
+			"performance_checked": false,
+			"privacy_checked": false,
+			"pure_data_checked": false,
+			"routing_checked": false,
+			"service_checked": false,
+			"summary_checked": false
+		},
+		{
+			"action_id_checked": false,
+			"board_checked": false,
+			"case_id": "viewer_isolation",
+			"deletion_checked": false,
+			"domain_boundary_checked": true,
+			"main_checked": false,
+			"notes": "viewer B mutation changes only B revision; viewer A snapshot and query remain isolated",
+			"passed": true,
+			"performance_checked": false,
+			"privacy_checked": true,
+			"pure_data_checked": false,
+			"routing_checked": false,
+			"service_checked": false,
+			"summary_checked": false
+		},
+		{
+			"action_id_checked": false,
+			"board_checked": true,
+			"case_id": "authorized_reveal",
+			"deletion_checked": false,
+			"domain_boundary_checked": false,
+			"main_checked": false,
+			"notes": "WorldSession receipt=authorized_city_reveal_set; confidence=100; locked=true",
+			"passed": true,
+			"performance_checked": false,
+			"privacy_checked": false,
+			"pure_data_checked": false,
+			"routing_checked": false,
+			"service_checked": false,
+			"summary_checked": false
+		},
+		{
+			"action_id_checked": false,
+			"board_checked": true,
+			"case_id": "card_annotation_delegation",
+			"deletion_checked": false,
+			"domain_boundary_checked": false,
+			"main_checked": false,
+			"notes": "typed card note delegates to CardHistoryPrivateAnnotationService",
+			"passed": true,
+			"performance_checked": false,
+			"privacy_checked": false,
+			"pure_data_checked": false,
+			"routing_checked": false,
+			"service_checked": false,
+			"summary_checked": false
+		},
+		{
+			"action_id_checked": false,
+			"board_checked": false,
+			"case_id": "typed_public_links",
+			"deletion_checked": false,
+			"domain_boundary_checked": false,
+			"main_checked": false,
+			"notes": "typed kinds=[\"focus_history\",\"open_card\",\"open_economy\",\"open_monster\",\"open_product\",\"open_region\"]; subjects={\"focus_history\":\"card-history:90701\",\"open_card\":\"城市融资1\",\"open_economy\":\"economy\",\"open_monster\":\"monster:0\",\"open_product\":\"寒冠冰糖\",\"open_region\":\"region:0\"}; monster owner=monster_owner_save_applied",
+			"passed": true,
+			"performance_checked": false,
+			"privacy_checked": false,
+			"pure_data_checked": true,
+			"routing_checked": true,
+			"service_checked": false,
+			"summary_checked": false
+		},
+		{
+			"action_id_checked": false,
+			"board_checked": false,
+			"case_id": "controller_exact_once",
+			"deletion_checked": false,
+			"domain_boundary_checked": false,
+			"main_checked": false,
+			"notes": "one typed application intent produces one open, query, and apply",
+			"passed": true,
+			"performance_checked": false,
+			"privacy_checked": false,
+			"pure_data_checked": false,
+			"routing_checked": true,
+			"service_checked": false,
+			"summary_checked": false
+		},
+		{
+			"action_id_checked": false,
+			"board_checked": false,
+			"case_id": "final_settlement_real_owner",
+			"deletion_checked": false,
+			"domain_boundary_checked": true,
+			"main_checked": true,
+			"notes": "bridge active=[0]; owner reason=last_survivor; winners=[0]; present delta=1",
+			"passed": true,
+			"performance_checked": false,
+			"privacy_checked": false,
+			"pure_data_checked": false,
+			"routing_checked": false,
+			"service_checked": false,
+			"summary_checked": false
+		},
+		{
+			"action_id_checked": false,
+			"board_checked": false,
+			"case_id": "main_routes_retired",
+			"deletion_checked": true,
+			"domain_boundary_checked": false,
+			"main_checked": true,
+			"notes": "Main contains no executable typed Intel route, dossier builder, or dead city-query wrapper",
+			"passed": true,
+			"performance_checked": false,
+			"privacy_checked": false,
+			"pure_data_checked": false,
+			"routing_checked": false,
+			"service_checked": false,
+			"summary_checked": false
+		},
+		{
+			"action_id_checked": false,
+			"board_checked": false,
+			"case_id": "bounded_capture_manifest",
+			"deletion_checked": false,
+			"domain_boundary_checked": false,
+			"main_checked": false,
+			"notes": "single bounded driver records five formal UI evidence stages and a 15-case manifest",
+			"passed": true,
+			"performance_checked": true,
+			"privacy_checked": false,
+			"pure_data_checked": false,
+			"routing_checked": false,
+			"service_checked": false,
+			"summary_checked": true
+		}
+	],
+	"retired_formatter_count": 22,
+	"screenshot_path": "res://docs/ui_qa/intel_query_command_split/intel_query_command_split_summary.png",
+	"suite": "intel-query-command-split-v1"
+}

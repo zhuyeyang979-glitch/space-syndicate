@@ -698,8 +698,8 @@ const INTEL_DOSSIER_PUBLIC_SNAPSHOT_SERVICE_SCENE := "res://scenes/runtime/Intel
 const INTEL_DOSSIER_PUBLIC_SNAPSHOT_SERVICE_TEST := "res://tests/intel_dossier_public_snapshot_service_test.gd"
 const INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/intel_dossier_public_snapshot_cutover_bench.gd"
 const INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE := "res://scenes/tools/IntelDossierPublicSnapshotCutoverBench.tscn"
-const INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR := "user://space_syndicate_design_qa/intel_dossier_public_snapshot_cutover/"
-const INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH := "user://space_syndicate_design_qa/intel_dossier_public_snapshot_cutover_sprint_21.png"
+const INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR := "res://docs/ui_qa/intel_query_command_split/"
+const INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH := "res://docs/ui_qa/intel_query_command_split/intel_query_command_split_summary.png"
 const NEW_GAME_SETUP_PAGE_SCRIPT := "res://scripts/ui/new_game_setup_page.gd"
 const NEW_GAME_SETUP_PAGE_SCENE := "res://scenes/ui/NewGameSetupPage.tscn"
 const NEW_GAME_SETUP_PAGE_CUTOVER_BENCH_SCRIPT := "res://scripts/tools/new_game_setup_page_cutover_bench.gd"
@@ -9453,7 +9453,7 @@ func _check_final_settlement_public_snapshot_cutover_component() -> void:
 
 
 func _check_intel_dossier_public_snapshot_cutover_component() -> void:
-	for path in [INTEL_DOSSIER_PUBLIC_SNAPSHOT_SERVICE_SCRIPT, INTEL_DOSSIER_PUBLIC_SNAPSHOT_SERVICE_SCENE, INTEL_DOSSIER_PUBLIC_SNAPSHOT_SERVICE_TEST, INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT, INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE]:
+	for path in [INTEL_DOSSIER_PUBLIC_SNAPSHOT_SERVICE_SCRIPT, INTEL_DOSSIER_PUBLIC_SNAPSHOT_SERVICE_SCENE, INTEL_DOSSIER_PUBLIC_SNAPSHOT_SERVICE_TEST, INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCRIPT, INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE, "res://scenes/runtime/presentation/IntelDossierViewerQueryPort.tscn", "res://scenes/runtime/IntelPrivateCommandPort.tscn", "res://scenes/runtime/IntelApplicationFlowController.tscn"]:
 		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for Intel Dossier Public Snapshot Cutover" % path)
 	var service_packed := load(INTEL_DOSSIER_PUBLIC_SNAPSHOT_SERVICE_SCENE) as PackedScene
 	var service := service_packed.instantiate() if service_packed != null else null
@@ -9461,33 +9461,50 @@ func _check_intel_dossier_public_snapshot_cutover_component() -> void:
 		_expect(service.has_method("configure") and service.has_method("compose") and service.has_method("debug_snapshot"), "IntelDossierPublicSnapshotService exposes required pure-data APIs")
 		service.call("configure", {})
 		var snapshot: Dictionary = service.call("compose", {
-			"valid": true, "viewer_index": 0, "viewer_name": "玩家", "correct_guess_cash": 120, "wrong_guess_cost": 60, "city_final_value": 200,
-			"stats": {"total_foreign": 1, "guessed": 1, "unmarked": 0, "best_cash": 120, "worst_cash": -60},
-			"player_options": [{"player_index": 1, "label": "标玩家2"}], "confidence_options": [{"value": 3, "label": "高"}], "reason_options": [{"id": "card", "label": "卡牌条件"}],
-			"city_entries": [{"district_index": 3, "name": "环城港", "guess": 1, "marked": true, "confidence": 3, "confidence_label": "高", "reason": "card", "reason_label": "卡牌条件", "priority": 88, "potential_income": 200, "warehouse_pressure": 10, "latest_clue": "公开线索"}],
-			"card_entries": [{"resolution_id": 42, "history_entry_id": "card-history:42", "card": "轨道融资1", "card_name": "轨道融资1", "focused": true, "status": "我的私人标注", "requirement": "只记录公开事实", "target": "城市", "track_state": "已结算"}],
-			"monster_entries": [{"slot": 0, "name": "吞星兽", "catalog_index": 2, "owner_text": "归属未公开", "clue": "资金线索"}],
-			"warehouse_entries": [], "city_clue_entries": [{"district": "环城港", "clue_products": ["活体芯片"], "linked_product": "活体芯片", "clue": "需求上升"}],
+			"valid": true,
+			"viewer_index": 0,
+			"viewer_name": "玩家",
+			"city_owner_revision": "city-r1",
+			"annotation_owner_revision": "annotation-r1",
+			"focused_history_entry_id": "card-history:42",
+			"public_players": [{"player_index": 0, "public_player_name": "玩家"}, {"player_index": 1, "public_player_name": "玩家2"}],
+			"public_world_intel": [{
+				"district_index": 3, "region_id": "region.003", "region_stable_item_id": "region:3", "name": "环城港",
+				"terrain_label": "陆地", "economic_focus_label": "能源", "public_clue": "公开线索",
+				"facility_count": 1, "anonymous_warehouse_count": 1,
+				"public_facility_entries": [{"facility_type": "warehouse", "industry_id": "storage", "owner_kind": "player", "owner_player_index": 1, "rank": 1}],
+				"supply_product_ids": ["活体芯片"], "supply_text": "活体芯片", "demand_text": "燃料",
+				"weather_text": "晴朗", "trade_route_load": 2,
+				"monster_attraction_entries": [{"name": "流星哨兵", "reason": "被公开能源信号吸引", "stable_item_id": "monster:2"}],
+			}],
+			"city_entries": [{"district_index": 3, "region_id": "region.003", "name": "环城港", "city_level": 2, "city_last_income": 80, "suspected_player_index": 1, "confidence": 3, "reason_id": "card", "authorized_reveal": false}],
+			"card_entries": [{"history_entry_id": "card-history:42", "public_sequence": 42, "public_card_id": "城市融资1", "public_card_name": "城市融资 I", "public_target": "环城港", "public_result": "GDP上升", "viewer_annotation": {"suspected_player_indices": [1], "subscribed": false}}],
+			"role_definition": {"name": "公开角色", "passive": "公开定义"},
+			"role_usage": {"residual_catalog": 0, "public_exclusion": 0},
 		})
 		var board := snapshot.get("board", {}) as Dictionary
-		_expect(snapshot.get("summary_text", "") is String and board.get("control_groups", []) is Array and board.get("links", []) is Array and not _variant_contains_callable(snapshot) and not _variant_contains_object(snapshot), "IntelDossierPublicSnapshotService returns pure summary, evidence, controls, and links")
-		var action_ids := []
+		_expect(snapshot.get("summary_text", "") is String and snapshot.get("public_navigation_links", []) is Array and board.get("control_groups", []) is Array and board.get("links", []) is Array and not _variant_contains_callable(snapshot) and not _variant_contains_object(snapshot), "IntelDossierPublicSnapshotService returns pure summary, public-world evidence, typed controls, and links")
+		var intent_kinds: Array[StringName] = []
 		for action_variant in board.get("actions", []) as Array:
-			action_ids.append(str((action_variant as Dictionary).get("id", "")))
+			var intent: Variant = (action_variant as Dictionary).get("intent", {})
+			if intent is Dictionary:
+				intent_kinds.append(StringName((intent as Dictionary).get("intent_kind", "")))
 		for group_variant in board.get("control_groups", []) as Array:
 			for action_variant in (group_variant as Dictionary).get("actions", []) as Array:
-				action_ids.append(str((action_variant as Dictionary).get("id", "")))
+				var intent: Variant = (action_variant as Dictionary).get("intent", {})
+				if intent is Dictionary:
+					intent_kinds.append(StringName((intent as Dictionary).get("intent_kind", "")))
 		for action_variant in board.get("links", []) as Array:
-			action_ids.append(str((action_variant as Dictionary).get("id", "")))
-		_expect(action_ids.has("history_return_42") and action_ids.has("history_subscribe_42") and action_ids.has("history_suspect_42_1") and action_ids.has("history_clear_42") and action_ids.has("intel_city_mark_3_1") and action_ids.has("intel_city_confidence_3_3") and action_ids.has("intel_city_reason_3_card") and action_ids.has("intel_open_region_3") and action_ids.has("intel_open_economy"), "Intel Dossier service composes viewer-private history annotation and city/link action ids")
+			var intent: Variant = (action_variant as Dictionary).get("intent", {})
+			if intent is Dictionary:
+				intent_kinds.append(StringName((intent as Dictionary).get("intent_kind", "")))
+		_expect(intent_kinds.has(&"set_city_owner_guess") and intent_kinds.has(&"set_city_guess_confidence") and intent_kinds.has(&"set_city_guess_reason") and intent_kinds.has(&"set_card_history_subscription") and intent_kinds.has(&"open_region") and intent_kinds.has(&"open_product") and intent_kinds.has(&"open_monster") and intent_kinds.has(&"open_economy"), "Intel Dossier service composes narrow typed command and public-navigation intents")
 		var debug: Dictionary = service.call("debug_snapshot")
-		_expect(not bool(debug.get("mutates_city_guesses", true)) and not bool(debug.get("settles_intel_cash", true)) and not bool(debug.get("reveals_city_owner_truth", true)) and not bool(debug.get("reveals_card_owner_truth", true)) and not bool(debug.get("reads_private_hands", true)) and not bool(debug.get("navigates_runtime_nodes", true)) and bool(debug.get("action_id_controls", false)), "Intel Dossier formatter owns no mutation, settlement, hidden-truth, private-hand, or navigation rules")
+		_expect(not bool(debug.get("mutates_city_guesses", true)) and not bool(debug.get("settles_intel_cash", true)) and not bool(debug.get("reveals_city_owner_truth", true)) and not bool(debug.get("reads_private_hands", true)) and not bool(debug.get("navigates_runtime_nodes", true)) and bool(debug.get("typed_action_intents", false)) and not bool(debug.get("action_id_controls", true)), "Intel formatter owns no mutation, settlement, hidden truth, private hand, navigation, or string action IDs")
 		service.free()
-	var coordinator_packed := load(GAME_RUNTIME_COORDINATOR_SCENE) as PackedScene
-	var coordinator := coordinator_packed.instantiate() if coordinator_packed != null else null
-	_expect(coordinator != null and coordinator.get_node_or_null("IntelDossierPublicSnapshotService") != null and coordinator.has_method("compose_intel_dossier_snapshot"), "GameRuntimeCoordinator composes and proxies IntelDossierPublicSnapshotService")
-	if coordinator != null:
-		coordinator.free()
+	var main_scene_source := FileAccess.get_file_as_string("res://scenes/main.tscn")
+	_expect(main_scene_source.contains("runtime/presentation/IntelDossierViewerQueryPort.tscn") and main_scene_source.contains("IntelPrivateCommandPort.tscn") and main_scene_source.contains("IntelApplicationFlowController.tscn") and main_scene_source.contains('signal="intel_application_intent_requested" from="RuntimeServices/ApplicationFlowPort"'), "formal main scene composes and connects the scene-owned typed Intel path")
+	_expect(not main_scene_source.contains('application_intent_requested" from="RuntimeGameScreen" to="RuntimeServices/IntelApplicationFlowController') and not main_scene_source.contains('application_intent_requested" from="RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay" to="RuntimeServices/IntelApplicationFlowController'), "formal scene has zero direct UI-to-Intel-controller routes")
 	var bench_packed := load(INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_BENCH_SCENE) as PackedScene
 	if bench_packed != null:
 		var bench := bench_packed.instantiate() as Control
@@ -9495,12 +9512,12 @@ func _check_intel_dossier_public_snapshot_cutover_component() -> void:
 		root.add_child(bench)
 		await process_frame
 		_expect(bench.has_method("output_dir") and bench.has_method("retired_formatter_names") and bench.has_method("cutover_cases") and bench.has_method("build_cutover_manifest_preview") and bench.has_method("run_cutover_suite"), "IntelDossierPublicSnapshotCutoverBench exposes required QA APIs")
-		var expected_cases := ["required_service_assets_load", "service_scene_contract", "intel_source_pure_data", "empty_source_safe", "summary_privacy_contract", "header_chip_contract", "kpi_contract", "focused_evidence_contract", "history_annotation_actions", "city_mark_action_ids", "confidence_action_ids", "reason_action_ids", "public_link_action_ids", "board_signal_forwarding", "coordinator_scene_composition", "coordinator_pure_data_proxy", "real_main_route_and_render", "open_performance_contract", "legacy_builders_absent_and_metrics", "private_input_rejection"]
+		var expected_cases := ["formal_assets_load", "scene_owned_composition", "dedicated_application_boundary", "authorized_query_zero_mutation", "public_world_categories", "public_facility_privacy", "viewer_private_guess", "viewer_isolation", "authorized_reveal", "card_annotation_delegation", "typed_public_links", "controller_exact_once", "final_settlement_real_owner", "main_routes_retired", "bounded_capture_manifest"]
 		var cases: Array = bench.call("cutover_cases")
 		var retired_formatters: Array = bench.call("retired_formatter_names")
 		var manifest: Dictionary = bench.call("build_cutover_manifest_preview")
 		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
-		var fields_ok := records.size() == 20
+		var fields_ok := records.size() == 15
 		for record_variant in records:
 			var record := record_variant as Dictionary
 			for key in ["case_id", "service_checked", "main_checked", "summary_checked", "board_checked", "domain_boundary_checked", "action_id_checked", "routing_checked", "performance_checked", "privacy_checked", "pure_data_checked", "deletion_checked", "passed", "notes"]:
@@ -9509,11 +9526,11 @@ func _check_intel_dossier_public_snapshot_cutover_component() -> void:
 		var all_retired := retired_formatters.size() == 22
 		for formatter_name_variant in retired_formatters:
 			all_retired = all_retired and not main_source.contains("func %s(" % str(formatter_name_variant))
-		_expect(cases == expected_cases and all_retired and int(manifest.get("retired_formatter_count", 0)) == 22 and str(bench.call("output_dir")) == INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "IntelDossierPublicSnapshotCutoverBench defines 20 pure-data cases, 22 retired builders/formatters, and user:// outputs")
+		_expect(cases == expected_cases and all_retired and int(manifest.get("retired_formatter_count", 0)) == 22 and str(bench.call("output_dir")) == INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_OUTPUT_DIR and str(manifest.get("screenshot_path", "")) == INTEL_DOSSIER_PUBLIC_SNAPSHOT_CUTOVER_SCREENSHOT_PATH and fields_ok and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "Intel QA driver defines 15 typed ownership cases, 22 retired builders/formatters, and docs/ui_qa outputs")
 		root.remove_child(bench)
 		bench.queue_free()
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	_expect(main_source.contains("func _intel_dossier_public_source_snapshot(") and main_source.contains("func _intel_dossier_public_snapshot(") and main_source.contains("compose_intel_dossier_snapshot") and not main_source.contains("func _add_intel_city_guess_buttons(") and not main_source.contains("func _add_intel_dossier_link_button("), "main.gd keeps one Intel viewer-fact adapter and routes scene-owned action ids without dynamic controls")
+	_expect(not main_source.contains("IntelApplicationIntent") and not main_source.contains("IntelDossier") and not main_source.contains("func _intel_city_guess_entries(") and not main_source.contains("func _add_intel_city_guess_buttons(") and not main_source.contains("func _add_intel_dossier_link_button("), "main.gd contains zero executable typed Intel routing, dossier source/formatter, or dead city-query wrappers")
 	var nonblank := 0
 	var function_count := 0
 	var variable_count := 0
@@ -9892,10 +9909,11 @@ func _check_intel_dossier_board_component() -> void:
 	await process_frame
 	_expect(board.has_method("set_dossier"), "IntelDossierBoard owns dossier snapshot rendering")
 	_expect(board.has_signal("action_requested"), "IntelDossierBoard exposes selected-card evidence-chain action signals")
-	var emitted_dossier_actions: Array[String] = []
+	var emitted_dossier_actions: Array[StringName] = []
 	if board.has_signal("action_requested"):
-		board.connect("action_requested", func(action_id: String) -> void:
-			emitted_dossier_actions.append(action_id)
+		board.connect("action_requested", func(intent: IntelDossierActionIntent) -> void:
+			if intent != null:
+				emitted_dossier_actions.append(intent.intent_kind)
 		)
 	board.call("set_dossier", {
 		"title": "情报侦探板",
@@ -9914,9 +9932,8 @@ func _check_intel_dossier_board_component() -> void:
 			{"title": "公开资金线索", "value": "2", "meta": "怪兽受伤/仓储风险1", "accent": Color("#fb7185"), "tooltip": "公开线索"},
 		],
 		"actions": [
-			{"id": "history_return_42", "label": "返回主桌", "accent": Color("#38bdf8"), "tooltip": "不改变牌桌选择"},
-			{"id": "history_subscribe_42", "label": "私人订阅", "accent": Color("#c084fc"), "tooltip": "只通知当前玩家"},
-			{"id": "track_open_orbital_finance_i", "label": "卡牌详情", "accent": Color("#f472b6"), "tooltip": "打开卡牌详情"},
+			{"label": "私人订阅", "accent": Color("#c084fc"), "tooltip": "只通知当前玩家", "intent": {"schema_version": 1, "intent_kind": &"set_card_history_subscription", "viewer_index": 0, "subject_id": "card-history:42", "expected_owner_revision": "annotation-r1", "payload": {"subscribed": true}}},
+			{"label": "卡牌详情", "accent": Color("#f472b6"), "tooltip": "打开卡牌详情", "intent": {"schema_version": 1, "intent_kind": &"open_card", "viewer_index": 0, "subject_id": "城市融资1", "expected_owner_revision": "", "payload": {}}},
 		],
 		"clues": [
 			{"title": "公共卡牌履历证据链", "lines": ["履历序号｜#42｜已结算｜业主透镜｜公共记录", "公开范围｜只记录公开事实", "公开目标｜区域：雾港", "证据摘要｜目标与余波", "公开结果｜金融｜T+12.0s｜GDP跳变", "私人推理｜我的私人标注"], "accent": Color("#f472b6"), "tooltip": "公共履历", "line_limit": 6},
@@ -9930,15 +9947,15 @@ func _check_intel_dossier_board_component() -> void:
 		"control_groups": [{
 			"id": "city_3", "title": "标注城市：雾港", "meta": "优先88｜标P2/高｜仓储线索", "accent": Color("#c084fc"),
 			"actions": [
-				{"id": "intel_city_mark_3_1", "label": "标玩家2", "accent": Color("#38bdf8")},
-				{"id": "intel_city_confidence_3_3", "label": "置信:高", "accent": Color("#7dd3fc")},
-				{"id": "intel_city_reason_3_card", "label": "卡牌条件", "accent": Color("#4ade80")},
-				{"id": "intel_city_clear_3", "label": "清除", "accent": Color("#94a3b8")},
+				{"label": "标记玩家2", "accent": Color("#38bdf8"), "intent": {"schema_version": 1, "intent_kind": &"set_city_owner_guess", "viewer_index": 0, "subject_id": "region:region.003", "expected_owner_revision": "city-r1", "payload": {"suspected_player_index": 1, "confidence": 2, "reason_id": "intuition"}}},
+				{"label": "置信 3", "accent": Color("#7dd3fc"), "intent": {"schema_version": 1, "intent_kind": &"set_city_guess_confidence", "viewer_index": 0, "subject_id": "region:region.003", "expected_owner_revision": "city-r1", "payload": {"confidence": 3}}},
+				{"label": "卡牌", "accent": Color("#4ade80"), "intent": {"schema_version": 1, "intent_kind": &"set_city_guess_reason", "viewer_index": 0, "subject_id": "region:region.003", "expected_owner_revision": "city-r1", "payload": {"reason_id": "card"}}},
+				{"label": "清除", "accent": Color("#94a3b8"), "intent": {"schema_version": 1, "intent_kind": &"clear_city_owner_guess", "viewer_index": 0, "subject_id": "region:region.003", "expected_owner_revision": "city-r1", "payload": {}}},
 			],
 		}],
 		"links": [
-			{"id": "intel_open_region_3", "label": "查看区域线索：雾港", "accent": Color("#38bdf8")},
-			{"id": "intel_open_economy", "label": "打开经济总览", "accent": Color("#facc15")},
+			{"label": "查看区域：雾港", "accent": Color("#38bdf8"), "intent": {"schema_version": 1, "intent_kind": &"open_region", "viewer_index": 0, "subject_id": "region:3", "expected_owner_revision": "", "payload": {}}},
+			{"label": "打开经济总览", "accent": Color("#facc15"), "intent": {"schema_version": 1, "intent_kind": &"open_economy", "viewer_index": 0, "subject_id": "economy", "expected_owner_revision": "", "payload": {}}},
 		],
 		"accent": Color("#c084fc"),
 	})
@@ -9951,18 +9968,18 @@ func _check_intel_dossier_board_component() -> void:
 	_expect(board.find_child("IntelDossierControlGrid", true, false) != null and board.find_child("IntelDossierControlGroup", true, false) != null and board.find_child("IntelDossierControlActionButton", true, false) != null, "IntelDossierBoard owns sceneized city inference control groups")
 	_expect(board.find_child("IntelDossierLinkGrid", true, false) != null and board.find_child("IntelDossierLinkActionButton", true, false) != null, "IntelDossierBoard owns sceneized public evidence links")
 	var board_text := _node_tree_text(board)
-	_expect(board_text.contains("公共卡牌履历证据链") and board_text.contains("证据摘要") and board_text.contains("公开结果") and board_text.contains("私人推理") and board_text.contains("返回主桌") and board_text.contains("私人订阅") and board_text.contains("卡牌详情"), "IntelDossierBoard renders public history with viewer-private annotation and detail paths")
-	for label_text in ["返回主桌", "私人订阅", "卡牌详情"]:
+	_expect(board_text.contains("公共卡牌履历证据链") and board_text.contains("证据摘要") and board_text.contains("公开结果") and board_text.contains("私人推理") and board_text.contains("私人订阅") and board_text.contains("卡牌详情"), "IntelDossierBoard renders public history with viewer-private annotation and typed detail paths")
+	for label_text in ["私人订阅", "卡牌详情"]:
 		var action_button := _find_visible_button_containing(board, label_text)
 		if action_button != null:
 			action_button.emit_signal("pressed")
-	for label_text in ["标玩家2", "置信:高", "卡牌条件", "清除", "查看区域线索", "打开经济总览"]:
+	for label_text in ["标记玩家2", "置信 3", "卡牌", "清除", "查看区域：", "打开经济总览"]:
 		var action_button := _find_visible_button_containing(board, label_text)
 		if action_button != null:
 			action_button.emit_signal("pressed")
 	await process_frame
-	_expect(emitted_dossier_actions.has("history_return_42") and emitted_dossier_actions.has("history_subscribe_42") and emitted_dossier_actions.has("track_open_orbital_finance_i"), "IntelDossierBoard action buttons emit data-only public-history action ids")
-	_expect(emitted_dossier_actions.has("intel_city_mark_3_1") and emitted_dossier_actions.has("intel_city_confidence_3_3") and emitted_dossier_actions.has("intel_city_reason_3_card") and emitted_dossier_actions.has("intel_city_clear_3") and emitted_dossier_actions.has("intel_open_region_3") and emitted_dossier_actions.has("intel_open_economy"), "IntelDossierBoard control/link buttons emit data-only action ids")
+	_expect(emitted_dossier_actions.has(&"set_card_history_subscription") and emitted_dossier_actions.has(&"open_card"), "IntelDossierBoard action buttons emit typed public-history intents")
+	_expect(emitted_dossier_actions.has(&"set_city_owner_guess") and emitted_dossier_actions.has(&"set_city_guess_confidence") and emitted_dossier_actions.has(&"set_city_guess_reason") and emitted_dossier_actions.has(&"clear_city_owner_guess") and emitted_dossier_actions.has(&"open_region") and emitted_dossier_actions.has(&"open_economy"), "IntelDossierBoard control/link buttons emit narrow typed intents")
 	root.remove_child(board)
 	board.queue_free()
 

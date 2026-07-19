@@ -40,20 +40,16 @@ func _run() -> void:
 	root.size = Vector2i(1600, 960)
 	root.add_child(_main)
 	await _wait_frames(4)
-	_main.set("configured_player_count", 3)
-	_main.set("configured_ai_player_count", 2)
-	_main.set("configured_roguelike_depth", 1)
-	_main.set("configured_role_indices", [0, 1, 2])
-	_main.set("configured_starter_monster_indices", [0, 1, 2])
-	_main.call("_new_game")
-	_main.set("time_scale", 0.0)
-	await _wait_frames(8)
+	_expect(await _start_formal_session(), "formal_setup_application_path_starts_session")
+	await _wait_frames(4)
 
-	_coordinator = _main.get_node_or_null(COORDINATOR_PATH)
+	_coordinator = _main.get_node_or_null(COORDINATOR_PATH) as GameRuntimeCoordinator
 	_source_service = _coordinator.get_node_or_null(SOURCE_SERVICE_NAME) if _coordinator != null else null
-	_monster_owner = _main.get("monster_runtime_controller") as Node
-	var districts: Array = ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts if ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts is Array else []
-	var players: Array = ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players if ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players is Array else []
+	_monster_owner = _coordinator.get_node_or_null("MonsterRuntimeController") if _coordinator != null else null
+	var world: WorldSessionState = (_coordinator as GameRuntimeCoordinator).world_session_state() if _coordinator != null else null
+	var districts: Array = world.districts if world != null else []
+	var players: Array = world.players if world != null else []
+	_main.process_mode = Node.PROCESS_MODE_DISABLED
 	_district_index = _first_live_district(districts)
 	_expect(_coordinator != null and _coordinator.has_method("region_codex_public_snapshot"), "production_coordinator_region_composition_reachable")
 	_expect(_source_service != null and _source_service.has_method("compose_source"), "production_region_public_source_service_reachable")
@@ -69,10 +65,23 @@ func _run() -> void:
 	_test_monster_reason_privacy_boundary()
 	_test_expired_monster_peer_factor_exclusion()
 	_test_future_region_attraction_owner_api()
-	_test_private_intel_callers_remain_owned()
+	_test_current_intel_query_owner_boundary()
 
 	await _dispose_main()
 	_finish()
+
+
+func _start_formal_session() -> bool:
+	var flow := _main.get_node_or_null("RuntimeServices/ApplicationFlowPort") as ApplicationFlowPort
+	if flow == null or not flow.submit_action("setup"):
+		return false
+	await _wait_frames(2)
+	var start_button := _main.find_child("NewGameSetupStartButton", true, false) as Button
+	if start_button == null or start_button.disabled:
+		return false
+	start_button.pressed.emit()
+	await _wait_frames(8)
+	return true
 
 
 func _test_cross_viewer_private_state_invariance() -> void:
@@ -175,11 +184,26 @@ func _test_future_region_attraction_owner_api() -> void:
 	_expect(owner_api_present, "region_attraction_public_owner_api_missing")
 
 
-func _test_private_intel_callers_remain_owned() -> void:
-	var source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	for caller_name in ["_economy_warehouse_risk_entries", "_intel_city_guess_entries"]:
-		var caller_source := _function_source(source, caller_name)
-		_expect(caller_source.contains("_city_intel_hint_for_player("), "viewer_private_intel_caller_retained|caller=%s" % caller_name)
+func _test_current_intel_query_owner_boundary() -> void:
+	_reset_private_fixture()
+	var coordinator := _main.get_node_or_null(COORDINATOR_PATH) as GameRuntimeCoordinator
+	var query := _main.get_node_or_null("RuntimeServices/IntelDossierViewerQueryPort") as IntelDossierViewerQueryPort
+	var world := coordinator.world_session_state() if coordinator != null else null
+	_expect(query != null and world != null, "scene_owned_intel_query_and_world_owner_reachable")
+	if query == null or world == null:
+		return
+	var world_before := world.internal_snapshot()
+	var region_id := world.region_id_for_district(_district_index)
+	var snapshot := query.snapshot_for_authorized_viewer("", region_id)
+	var encoded := JSON.stringify(snapshot)
+	_expect(bool(snapshot.get("valid", false)) and snapshot.has("public_world_intel") and snapshot.has("own_private_city_or_facility_inference"), "scene_owned_intel_query_contract_reachable")
+	_expect(world.internal_snapshot() == world_before, "scene_owned_intel_query_zero_world_mutation")
+	var leaks: Array[String] = []
+	_collect_string_sentinel_paths(snapshot, "intel_query", leaks)
+	_expect(leaks.is_empty() and not encoded.contains("hidden_owner") and not encoded.contains("warehouse_inventory"), "scene_owned_intel_query_private_state_isolated|leaks=%s" % [leaks])
+	var main_script := _main.get_script() as Script
+	var main_source := main_script.get_source_code() if main_script != null else ""
+	_expect(not main_source.is_empty() and not main_source.contains("func _intel_city_guess_entries(") and not main_source.contains("func _economy_warehouse_risk_entries("), "retired_main_private_intel_wrappers_absent")
 
 
 func _reset_private_fixture() -> void:
@@ -373,14 +397,6 @@ func _value_at_path(value: Variant, path: Array) -> Variant:
 		else:
 			return null
 	return current
-
-
-func _function_source(source: String, function_name: String) -> String:
-	var start := source.find("func %s(" % function_name)
-	if start < 0:
-		return ""
-	var next := source.find("\nfunc ", start + 1)
-	return source.substr(start) if next < 0 else source.substr(start, next - start)
 
 
 func _first_live_district(districts: Array) -> int:

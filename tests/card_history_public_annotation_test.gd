@@ -44,6 +44,12 @@ func _run() -> void:
 	_expect((annotations.viewer_snapshot(0).get("annotations", []) as Array).size() == 1, "viewer zero sees own annotation")
 	_expect((annotations.viewer_snapshot(1).get("annotations", []) as Array).is_empty(), "viewer one cannot read viewer zero annotation")
 	_expect(not public_text.contains("公开目标靠近能源区") and query.compose_history() == public_snapshot, "private annotation never changes the public projection")
+	var viewer_zero_revision_before: String = annotations.owner_revision_for_viewer(0)
+	var viewer_zero_snapshot_before: Dictionary = annotations.viewer_snapshot(0)
+	var viewer_one_revision_before: String = annotations.owner_revision_for_viewer(1)
+	_expect(bool(annotations.set_note_exact(1, first_id, "另一位玩家的私标").get("applied", false)), "viewer one can mutate its own annotation")
+	_expect(annotations.owner_revision_for_viewer(0) == viewer_zero_revision_before and annotations.viewer_snapshot(0) == viewer_zero_snapshot_before, "viewer one mutation leaves viewer zero revision and snapshot byte-stable")
+	_expect(annotations.owner_revision_for_viewer(1) != viewer_one_revision_before, "viewer one mutation advances only viewer one's owner revision")
 
 	_expect(bool(annotations.subscribe_entries(0, ["card-history:70", "card-history:71"]).get("applied", false)), "viewer can subscribe to two history rows")
 	var third_subscription: Dictionary = annotations.apply_annotation(0, "card-history:72", {"subscribed": true})

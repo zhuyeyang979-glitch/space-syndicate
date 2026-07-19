@@ -1,0 +1,400 @@
+{
+  "schema_version": 1,
+  "audit_id": "intel_query_command_audit",
+  "status": "complete_analysis_only",
+  "baseline": {
+    "branch": "codex/intel-query-command-split-657f517",
+    "sha": "657f5172e7afa8c31658f90af5f81d076430bf5c",
+    "main_metrics": {
+      "physical_lines": 10971,
+      "nonblank_lines": 9481,
+      "methods": 702,
+      "constants": 103,
+      "top_level_preloads": 10,
+      "top_level_variables": 66
+    }
+  },
+  "scope": {
+    "production_files_modified": false,
+    "test_files_modified": false,
+    "scene_files_modified": false,
+    "godot_run": false,
+    "allowed_outputs": [
+      "docs/migration/intel_query_command_audit.md",
+      "docs/migration/intel_query_command_audit.json"
+    ]
+  },
+  "blocking_findings": [
+    {
+      "id": "query_mutates_route_network",
+      "severity": "P0",
+      "classification": "read_only_query",
+      "summary": "Opening Intel calls _refresh_route_network before composing the source.",
+      "evidence": ["scripts/main.gd:2629-2633"],
+      "required_resolution": "Consume an existing public route projection; query must not refresh or initialize gameplay owners."
+    },
+    {
+      "id": "private_writes_bypass_typed_command",
+      "severity": "P0",
+      "classification": "viewer_private_state",
+      "summary": "Raw action strings lead to arbitrary annotation patches and direct writes into WorldSessionState.players dictionaries.",
+      "evidence": [
+        "scripts/ui/intel_dossier_board.gd:4",
+        "scripts/ui/intel_dossier_board.gd:227-247",
+        "scripts/ui/intel_dossier_board.gd:327-353",
+        "scripts/main.gd:2526-2614",
+        "scripts/main.gd:6532-6631"
+      ],
+      "required_resolution": "Use typed, revisioned, idempotent commands; WorldSessionState and CardHistoryPrivateAnnotationService remain the state owners."
+    },
+    {
+      "id": "intel_routes_through_generic_main",
+      "severity": "P1",
+      "classification": "application_navigation",
+      "summary": "ApplicationFlowPort has no dedicated Intel signal; intel falls through generic action_requested to Main.",
+      "evidence": [
+        "scripts/runtime/application_flow_port.gd:8-15",
+        "scripts/runtime/application_flow_port.gd:24-42",
+        "scenes/main.tscn:147",
+        "scripts/main.gd:2281-2286"
+      ],
+      "required_resolution": "Add an exact-once intel_requested boundary connected to an Intel application flow controller, with zero Main fallback."
+    },
+    {
+      "id": "source_not_public_or_authorized",
+      "severity": "P1",
+      "classification": "public_private_boundary",
+      "summary": "The source combines public facts, selected-viewer private data, hidden-source monster facts, rule values, and UI dimensions without local-viewer authorization.",
+      "evidence": [
+        "scripts/main.gd:2629-2679",
+        "scripts/main.gd:2773-2816",
+        "scripts/main.gd:3097-3127",
+        "scripts/ui/intel_dossier_board.gd:24-43"
+      ],
+      "required_resolution": "Authorize the local viewer and compose only public owner projections plus that viewer's private projections."
+    },
+    {
+      "id": "read_navigation_mutates_selection",
+      "severity": "P1",
+      "classification": "presentation",
+      "summary": "track_select, track_intel, and city mutation wrappers alter table selection/focus during Intel interactions.",
+      "evidence": [
+        "scripts/main.gd:1526-1531",
+        "scripts/main.gd:2562-2567",
+        "scripts/main.gd:2682-2698"
+      ],
+      "required_resolution": "Carry stable IDs in typed requests without mutating TableSelectionState."
+    },
+    {
+      "id": "ai_depends_on_main_intel_helpers",
+      "severity": "P1",
+      "classification": "shared_gameplay_dependency",
+      "summary": "AI dynamically calls four Main Intel helpers and receives confidence/reason constants from Main.",
+      "evidence": [
+        "scripts/runtime/ai_runtime_controller.gd:791-798",
+        "scripts/runtime/ai_runtime_controller.gd:1011-1012",
+        "scripts/runtime/ai_runtime_controller.gd:6823",
+        "scripts/runtime/ai_runtime_controller.gd:8081-8207",
+        "scripts/runtime/ai_runtime_world_bridge.gd:93-97",
+        "scripts/main.gd:1106-1125",
+        "scripts/main.gd:1320-1321"
+      ],
+      "required_resolution": "Do not delete or alter these formulas under the UI cutover. Count as retained shared debt unless a separately authorized typed AI dependency migration preserves behavior."
+    },
+    {
+      "id": "settlement_authority_not_discovered",
+      "severity": "P1",
+      "classification": "rule_authority_gap",
+      "summary": "Main contains a city-guess cash/role-bonus formula, but no production caller was discovered for the calculation cluster.",
+      "evidence": [
+        "scripts/main.gd:3205-3297",
+        "tests/smoke_test.gd:6499"
+      ],
+      "required_resolution": "Freeze values and require a formal settlement parity test before removing or relocating the formula."
+    },
+    {
+      "id": "stringly_typed_surface",
+      "severity": "P2",
+      "classification": "presentation",
+      "summary": "Formatter concatenates action IDs and Main parses prefixes/splits before dynamic Node.call navigation.",
+      "evidence": [
+        "scripts/runtime/intel_dossier_public_snapshot_service.gd:155-165",
+        "scripts/runtime/intel_dossier_public_snapshot_service.gd:192-240",
+        "scripts/main.gd:2526-2607"
+      ],
+      "required_resolution": "Use explicit typed action/request objects and payload allowlists."
+    }
+  ],
+  "authoritative_owners": [
+    {
+      "domain": "city_inference_and_world_session",
+      "owner": "WorldSessionState",
+      "path": "scripts/runtime/world_session_state.gd",
+      "evidence": ["scripts/runtime/world_session_state.gd:18-29", "scripts/runtime/world_session_state.gd:162-187"],
+      "cutover_rule": "Remains the sole owner of players, districts, city guesses, confidence, and reasons."
+    },
+    {
+      "domain": "city_inference_save_codec",
+      "owner": "WorldSessionEnvelopeCodec",
+      "path": "scripts/runtime/world_session_envelope_codec.gd",
+      "evidence": ["scripts/runtime/world_session_envelope_codec.gd:39-42", "scripts/runtime/world_session_envelope_codec.gd:377-459"],
+      "cutover_rule": "Reuse the existing envelope fields; no second Intel save section."
+    },
+    {
+      "domain": "public_card_history",
+      "owner": "CardResolutionHistoryRuntimeService via CardHistoryPublicQueryPort",
+      "path": "scripts/presentation/card_history_public_query_port.gd",
+      "evidence": ["scripts/presentation/card_history_public_query_port.gd:17-103"],
+      "cutover_rule": "Read-only public facts only."
+    },
+    {
+      "domain": "private_card_annotations",
+      "owner": "CardHistoryPrivateAnnotationService",
+      "path": "scripts/runtime/card_history_private_annotation_service.gd",
+      "evidence": [
+        "scripts/runtime/card_history_private_annotation_service.gd:44-49",
+        "scripts/runtime/card_history_private_annotation_service.gd:73-181",
+        "scripts/runtime/card_history_private_annotation_service.gd:213-359"
+      ],
+      "cutover_rule": "Delegate typed commands; Intel must not mirror annotations, subscriptions, or role usage."
+    },
+    {
+      "domain": "intel_card_gameplay_effects",
+      "owner": "CardIntelRuntimeService",
+      "path": "scripts/runtime/card_intel_runtime_service.gd",
+      "evidence": ["scripts/runtime/card_intel_runtime_service.gd:26-40", "scripts/runtime/card_intel_runtime_service.gd:96-128"],
+      "cutover_rule": "Retain as gameplay owner; it is not a read-only dossier query."
+    },
+    {
+      "domain": "contract_trace",
+      "owner": "ContractRuntimeController and ContractRuntimeWorldBridge",
+      "path": "scripts/runtime/contract_runtime_controller.gd",
+      "evidence": ["scripts/runtime/contract_runtime_controller.gd:734-755", "scripts/runtime/contract_runtime_world_bridge.gd:138-166"],
+      "cutover_rule": "Retain legal card effect and viewer-private known_contract_parties state."
+    }
+  ],
+  "entry_points": [
+    {
+      "id": "menu_quick_navigation",
+      "classification": "application_navigation",
+      "path": [
+        "scripts/ui/menu_quick_navigation.gd:4,11,20,35,117",
+        "scripts/ui/menu_overlay.gd:266-269,373-374",
+        "scenes/main.tscn:153",
+        "scripts/runtime/application_flow_port.gd:24-42",
+        "scenes/main.tscn:147",
+        "scripts/main.gd:2281-2286",
+        "scripts/main.gd:2500-2503"
+      ]
+    },
+    {
+      "id": "compendium_return",
+      "classification": "application_navigation",
+      "path": ["scripts/runtime/compendium_application_flow_controller.gd:195-206", "scripts/runtime/application_flow_port.gd:24-42", "scripts/main.gd:2281-2286"]
+    },
+    {
+      "id": "game_screen_codex_intel",
+      "classification": "application_navigation",
+      "path": ["scripts/main.gd:1402-1419", "scripts/main.gd:1461-1473"]
+    },
+    {
+      "id": "right_inspector_card_history",
+      "classification": "presentation_and_selection_mutation",
+      "path": [
+        "scripts/runtime/game_table_viewmodel_runtime_service.gd:253-254",
+        "scripts/ui/game_screen.gd:775-845",
+        "scripts/main.gd:1526-1531"
+      ]
+    },
+    {
+      "id": "overlay_detail",
+      "classification": "application_navigation",
+      "path": ["scripts/viewmodels/overlay_layer_snapshot.gd:87-135", "scripts/presentation/table_presentation_viewmodel_query.gd:122-126", "scripts/main.gd:1461-1473"]
+    },
+    {
+      "id": "strategy_pressure_competition",
+      "classification": "application_navigation",
+      "path": ["scripts/main.gd:1679-1684"]
+    },
+    {
+      "id": "district_inspector",
+      "classification": "direct_main_callable",
+      "path": ["scripts/main.gd:1638-1653", "scripts/main.gd:6926-6967"]
+    },
+    {
+      "id": "keyboard_city_inference",
+      "classification": "viewer_private_mutation",
+      "path": ["scripts/main.gd:321-377", "scripts/main.gd:6455-6462", "scripts/main.gd:6527-6589"]
+    },
+    {
+      "id": "load_then_open",
+      "classification": "save_owned_state",
+      "path": ["scripts/main.gd:4430-4442"],
+      "note": "No dedicated Intel refresh was found; successful load opens the main menu and a later Intel open recomposes."
+    }
+  ],
+  "action_contracts_current": [
+    {"family": "history_return_*", "classification": "application_navigation", "destination": "Main closes menu"},
+    {"family": "history_subscribe_*", "classification": "viewer_private_state", "destination": "CardHistoryPrivateAnnotationService through raw Coordinator patch"},
+    {"family": "history_suspect_*", "classification": "viewer_private_state", "destination": "CardHistoryPrivateAnnotationService through raw Coordinator patch"},
+    {"family": "history_clear_*", "classification": "viewer_private_state", "destination": "CardHistoryPrivateAnnotationService through raw Coordinator patch"},
+    {"family": "track_select_*", "classification": "presentation_mutation", "destination": "TableSelectionState and card-resolution focus"},
+    {"family": "track_open_*", "classification": "read_only_query", "destination": "CompendiumNavigationPort dynamic call"},
+    {"family": "intel_city_mark_*", "classification": "typed_mutation_missing", "destination": "WorldSessionState.players direct write"},
+    {"family": "intel_city_clear_*", "classification": "typed_mutation_missing", "destination": "WorldSessionState.players direct write"},
+    {"family": "intel_city_confidence_*", "classification": "typed_mutation_missing", "destination": "WorldSessionState.players direct write"},
+    {"family": "intel_city_reason_*", "classification": "typed_mutation_missing", "destination": "WorldSessionState.players direct write"},
+    {"family": "intel_open_region/card/monster/product_*", "classification": "read_only_query", "destination": "CompendiumNavigationPort dynamic call"},
+    {"family": "intel_open_economy", "classification": "application_navigation", "destination": "ApplicationFlowPort economy signal"}
+  ],
+  "main_removal_candidates": [
+    {"symbol": "IntelDossierBoardScene", "reference": "scripts/main.gd:10"},
+    {"symbol": "_intel_dossier_public_snapshot_service_node", "reference": "scripts/main.gd:1303-1305"},
+    {"symbol": "_open_intel_dossier_menu", "reference": "scripts/main.gd:2500-2503"},
+    {"symbol": "_populate_intel_dossier_snapshot", "reference": "scripts/main.gd:2506-2512"},
+    {"symbol": "_add_intel_dossier_board_panel", "reference": "scripts/main.gd:2515-2523"},
+    {"symbol": "_on_intel_dossier_board_action_requested", "reference": "scripts/main.gd:2526-2614"},
+    {"symbol": "_intel_dossier_public_snapshot", "reference": "scripts/main.gd:2617-2626"},
+    {"symbol": "_intel_dossier_public_source_snapshot", "reference": "scripts/main.gd:2629-2679"},
+    {"symbol": "_mark_city_guess_from_intel", "reference": "scripts/main.gd:2682-2686"},
+    {"symbol": "_set_city_guess_confidence_from_intel", "reference": "scripts/main.gd:2689-2692"},
+    {"symbol": "_set_city_guess_reason_from_intel", "reference": "scripts/main.gd:2695-2698"},
+    {"symbol": "_first_entries", "reference": "scripts/main.gd:2701-2705"},
+    {"symbol": "_city_owner_view_text_for_player", "reference": "scripts/main.gd:2708-2722"},
+    {"symbol": "_economy_warehouse_risk_entries_and_sorter", "reference": "scripts/main.gd:2725-2770"},
+    {"symbol": "_latest_city_public_clue_text", "reference": "scripts/main.gd:2907-2915"},
+    {"symbol": "_intel_card_guess_entries_and_sorter", "reference": "scripts/main.gd:2918-2979"},
+    {"symbol": "_economy_city_public_clue_entries_and_sorter", "reference": "scripts/main.gd:3050-3094"},
+    {"symbol": "_economy_monster_cash_clue_entries_and_sorter", "reference": "scripts/main.gd:3097-3139"},
+    {"symbol": "_player_intel_exposure_stats", "reference": "scripts/main.gd:3257-3283"},
+    {"symbol": "_player_intel_pending_summary", "reference": "scripts/main.gd:3286-3293"},
+    {"symbol": "_player_intel_display_summary", "reference": "scripts/main.gd:3296-3297"},
+    {"symbol": "_cycle_guess_player", "reference": "scripts/main.gd:6455-6462"},
+    {"symbol": "_mark_selected_city_guess", "reference": "scripts/main.gd:6527-6529"},
+    {"symbol": "_set_city_guess_confidence_for_player", "reference": "scripts/main.gd:6592-6610"},
+    {"symbol": "_set_city_guess_reason_for_player", "reference": "scripts/main.gd:6613-6631"},
+    {"symbol": "_reveal_city_owner_by_intel_card", "reference": "scripts/main.gd:6634-6649"},
+    {"symbol": "_apply_intel_city_reveal", "reference": "scripts/main.gd:6652-6675"},
+    {"symbol": "district_open_intel_callable", "reference": "scripts/main.gd:6941-6947"}
+  ],
+  "dead_or_test_only_candidates": [
+    {"symbol": "_product_public_status_tags", "reference": "scripts/main.gd:2982-3018"},
+    {"symbol": "_city_public_status_tags", "reference": "scripts/main.gd:3021-3047"},
+    {"symbol": "_player_intel_stats_summary_cluster", "reference": "scripts/main.gd:3205-3297", "caveat": "Preserve until formal settlement parity identifies an authoritative consumer."},
+    {"symbol": "_ensure_player_role_cards_and_private_intel_state", "reference": "scripts/main.gd:5424-5448"}
+  ],
+  "retained_shared_helpers": [
+    {
+      "symbol": "_intel_city_guess_entries_and_sorter",
+      "main_reference": "scripts/main.gd:2773-2832",
+      "consumer": "scripts/runtime/ai_runtime_controller.gd:791-792,8167-8186",
+      "rule": "Retain unless an authorized typed AI dependency migration preserves facts and behavior."
+    },
+    {
+      "symbol": "_city_intel_priority_score",
+      "main_reference": "scripts/main.gd:2835-2857",
+      "consumer": "scripts/runtime/ai_runtime_controller.gd:6823,794-795",
+      "rule": "Preserve exact scoring."
+    },
+    {
+      "symbol": "_normalized_city_guess_confidence",
+      "main_reference": "scripts/main.gd:2860-2861",
+      "consumer": "scripts/runtime/ai_runtime_controller.gd:797-798,8081-8103",
+      "rule": "Preserve normalization."
+    },
+    {
+      "symbol": "_mark_city_guess_for_player",
+      "main_reference": "scripts/main.gd:6532-6589",
+      "consumer": "scripts/runtime/ai_runtime_controller.gd:1011-1012,8187-8207",
+      "rule": "AI remains a consumer; future implementation should delegate to typed WorldSession command without altering AI algorithm."
+    },
+    {
+      "symbol": "city_guess_constants",
+      "main_reference": "scripts/main.gd:48-60,1106-1125",
+      "consumer": "scripts/runtime/ai_runtime_controller.gd:650-684,8081-8207",
+      "rule": "Retain until AI constants have a typed owner."
+    },
+    {
+      "symbol": "_city_intel_hint_for_player",
+      "main_reference": "scripts/main.gd:3300-3324",
+      "consumer": "Indirect AI use through _intel_city_guess_entries",
+      "rule": "Same AI boundary."
+    },
+    {
+      "symbol": "_load_selected_district_guess",
+      "main_reference": "scripts/main.gd:6519-6524",
+      "consumer": "scripts/main.gd:7208,7625,7633,7878",
+      "rule": "Remove only together with selected_guess_player and legacy keyboard flow."
+    },
+    {
+      "symbol": "_selected_city_owner_view_text",
+      "main_reference": "scripts/main.gd:6678-6689",
+      "consumer": "scripts/main.gd:6854-6872",
+      "rule": "Preserve district presentation through an authorized viewer projection."
+    },
+    {
+      "symbol": "_player_visible_city_text",
+      "main_reference": "scripts/main.gd:6970-6982",
+      "consumer": "scripts/main.gd:9618-9630",
+      "rule": "Preserve opponent-tableau privacy semantics."
+    }
+  ],
+  "tests_to_migrate": [
+    {
+      "path": "scripts/tools/intel_dossier_public_snapshot_cutover_bench.gd",
+      "baseline_result": "19/20",
+      "sole_failure": "real_main_route_and_render",
+      "evidence_source": "user_supplied",
+      "classification": "stale_main_contract",
+      "rule": "Migrate the oracle to the dedicated controller/query/typed-command path; never restore Main rendering or legacy string mark routing. The other 19 checks are green."
+    },
+    {"path": "tests/smoke_test.gd", "references": ["526", "680", "696", "701", "706", "712", "718", "2489", "6499"], "rule": "Replace direct Main calls with owner/port contracts; do not restore wrappers."},
+    {"path": "scripts/tools/intel_dossier_public_snapshot_cutover_bench.gd", "references": ["123-126"], "rule": "Drive the dedicated ApplicationFlow/query/controller path."},
+    {"path": "tests/layout_scene_smoke_test.gd", "references": ["9516"], "rule": "Assert old Main source/snapshot are absent and new composition is unique."},
+    {"path": "tests/ui_snapshot_capture.gd", "references": ["133"], "rule": "Open Intel through ApplicationFlowPort."},
+    {"path": "scripts/tools/bestiary_formal_product_path_driver.gd", "references": ["224-266"], "rule": "Keep as positive ApplicationFlow/Compendium return coverage."},
+    {"path": "scripts/tools/global_ui_navigation_characterization_registry.gd", "references": ["44"], "rule": "Update legacy route metadata only after cutover."}
+  ],
+  "source_negative_gates": [
+    "intel_submit_emits_dedicated_once_generic_zero",
+    "main_scene_intel_to_controller_connection_count_one",
+    "main_scene_intel_to_main_connection_count_zero",
+    "removable_main_intel_symbol_executable_count_zero",
+    "main_intel_dossier_preload_count_zero",
+    "query_refresh_route_network_count_zero",
+    "query_raw_auto_monsters_count_zero",
+    "query_mutable_players_or_districts_count_zero",
+    "query_table_selection_access_count_zero",
+    "query_ui_width_access_count_zero",
+    "query_runtime_object_count_zero",
+    "opponent_private_field_leak_count_zero",
+    "intel_ui_direct_owner_lookup_count_zero",
+    "private_command_replay_mutation_count_zero",
+    "private_command_stale_mutation_count_zero",
+    "private_command_unauthorized_mutation_count_zero",
+    "second_city_inference_owner_count_zero",
+    "second_card_annotation_owner_count_zero",
+    "intel_open_gameplay_mutation_count_zero",
+    "intel_open_rng_delta_zero",
+    "intel_open_selection_delta_zero",
+    "intel_open_save_dirty_delta_zero"
+  ],
+  "audit_limits": [
+    "No distinct facility-guess data model or stable facility-ID command path was found; current city inference uses district indexes.",
+    "No direct MenuRootLobby Intel button exists at this baseline.",
+    "No production dossier action for arbitrary note_text or private_tags editing was found.",
+    "No production caller for residual-catalog or public-exclusion role APIs was found.",
+    "No dedicated post-load Intel refresh was found.",
+    "No authoritative production caller for Main's city-guess settlement calculation was found.",
+    "No Godot runtime or test was executed by this analysis-only audit."
+  ],
+  "recommended_cutover_order": [
+    "Add dedicated ApplicationFlowPort intel signal and explicit scene composition.",
+    "Add an authorized viewer query over public owners plus the viewer's own WorldSession and annotation projections.",
+    "Add typed city-inference commands against WorldSessionState and typed delegation to CardHistoryPrivateAnnotationService.",
+    "Convert IntelDossier to typed intents and remove table-selection side effects from read-only navigation.",
+    "Physically delete the Main application/page/source/mutation-wrapper cluster and migrate stale fixtures.",
+    "Keep AI-shared helpers as explicit debt unless their typed dependency migration is separately authorized.",
+    "Run formal settlement parity before deleting the orphaned Main settlement formula."
+  ]
+}

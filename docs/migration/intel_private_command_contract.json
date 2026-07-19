@@ -1,0 +1,471 @@
+{
+  "schema_version": 1,
+  "audit": {
+    "base_sha": "657f5172e7afa8c31658f90af5f81d076430bf5c",
+    "scope": "analysis_only",
+    "production_changed": false,
+    "tests_changed": false,
+    "save_schema_changed": false
+  },
+  "findings": [
+    {
+      "id": "selected_player_is_not_authorization",
+      "severity": "P1",
+      "current_paths": [
+        "scripts/main.gd:2500",
+        "scripts/main.gd:2531",
+        "scripts/main.gd:2682"
+      ],
+      "required_owner": "LocalViewerAuthorization",
+      "required_result": "command.viewer_index equals the single authorized local viewer"
+    },
+    {
+      "id": "city_inference_has_no_typed_transaction",
+      "severity": "P1",
+      "current_paths": [
+        "scripts/main.gd:6532",
+        "scripts/main.gd:6592",
+        "scripts/main.gd:6613"
+      ],
+      "required_owner": "WorldSessionState",
+      "gaps": [
+        "command_id",
+        "expected_owner_revision",
+        "idempotent_receipt",
+        "failure_zero_mutation",
+        "single_save_dirty_transition"
+      ]
+    },
+    {
+      "id": "generic_annotation_patch_bypasses_evidence_authority",
+      "severity": "P1",
+      "current_paths": [
+        "scripts/runtime/game_runtime_coordinator.gd:1288",
+        "scripts/runtime/card_history_private_annotation_service.gd:89"
+      ],
+      "forbidden_direct_field": "excluded_player_indices",
+      "required_result": "only the evidence owner derives exclusions and residual suspects"
+    },
+    {
+      "id": "role_charge_authority_gap",
+      "severity": "P1",
+      "fields_without_durable_usage": [
+        "intel_city_reveal_charges",
+        "intel_contract_trace_charges"
+      ],
+      "persisted_usage_fields": [
+        "residual_catalog",
+        "public_exclusion"
+      ],
+      "disposition": "do_not_expose_role_buttons_in_this_cutover"
+    },
+    {
+      "id": "facility_guess_not_a_current_rule",
+      "severity": "P2",
+      "evidence": [
+        "facility ownership is public in docs/tabletop_rulebook_v06.md",
+        "WorldSessionEnvelopeCodec persists only district city_intel_records"
+      ],
+      "disposition": "reject_set_or_clear_facility_guess"
+    },
+    {
+      "id": "retired_card_owner_fixture_remains",
+      "severity": "P2",
+      "path": "tests/smoke_test.gd:6708",
+      "classification": "LEGACY_FIXTURE",
+      "production_authority": false
+    }
+  ],
+  "owners": {
+    "local_viewer_authorization": "LocalViewerAuthorization",
+    "city_inference": "WorldSessionState.players",
+    "public_card_history": "CardResolutionHistoryRuntimeService/CardHistoryPublicQueryPort",
+    "private_card_annotations": "CardHistoryPrivateAnnotationService",
+    "persisted_annotation_role_usage": "CardHistoryPrivateAnnotationService.role_usage_by_viewer",
+    "final_city_guess_settlement": {
+      "status": "unresolved_authority_gap",
+      "production_owner_discovered": false,
+      "production_consumer_discovered": false,
+      "retained_artifact": "orphaned Main _player_intel_stats/summary formula",
+      "settlement_parity_verified": false,
+      "scope": "outside this page/action cutover"
+    },
+    "save_transaction": "session envelope v2",
+    "second_intel_state_owner_allowed": false,
+    "second_intel_save_owner_allowed": false
+  },
+  "typed_request": {
+    "type": "IntelPrivateCommand",
+    "fields": [
+      "schema_version",
+      "command_id",
+      "command_kind",
+      "viewer_index",
+      "subject_id",
+      "expected_owner_revision",
+      "payload"
+    ],
+    "subject_id_formats": {
+      "city_inference": "region:<region_id>",
+      "card_history": "card-history:<resolution_id>"
+    },
+    "forbidden_values": [
+      "Node",
+      "Object",
+      "Callable",
+      "Main",
+      "mutable_player_dictionary",
+      "hidden_actor",
+      "authoritative_owner_answer",
+      "ai_plan"
+    ]
+  },
+  "typed_receipt": {
+    "type": "IntelPrivateCommandReceipt",
+    "fields": [
+      "schema_version",
+      "command_id",
+      "command_kind",
+      "viewer_index",
+      "subject_id",
+      "accepted",
+      "applied",
+      "changed",
+      "idempotent_replay",
+      "reason_code",
+      "owner_revision_before",
+      "owner_revision_after",
+      "save_dirty_delta",
+      "role_usage_delta",
+      "notification_delta",
+      "public_log_delta"
+    ],
+    "failure_deltas": {
+      "state_mutation": 0,
+      "save_dirty": 0,
+      "role_usage": 0,
+      "notification": 0,
+      "public_log": 0,
+      "cash": 0,
+      "gdp": 0,
+      "rng": 0
+    },
+    "replay_policy": {
+      "same_id_same_fingerprint": "terminal_receipt_with_idempotent_replay",
+      "same_id_different_fingerprint": "command_binding_mismatch",
+      "after_restore": "owner_revision_stale_or_unchanged_noop"
+    }
+  },
+  "commands": [
+    {
+      "kind": "set_city_owner_guess",
+      "classification": "PRIVATE_COMMAND",
+      "owner": "WorldSessionState",
+      "subject": "region:<region_id>",
+      "payload": {
+        "suspected_player_index": "int",
+        "confidence": "int:1|2|3",
+        "reason_id": "product|route|card|monster|role|intuition"
+      },
+      "authorization": "authorized local viewer; active foreign city; valid non-self suspect",
+      "success": "atomically writes city_guesses, city_guess_confidence, city_guess_reasons",
+      "save_dirty": "one on changed success",
+      "visibility": "viewer_private",
+      "current_ui_callers": ["intel_city_mark_<district>_<player>"],
+      "current_main_path": "scripts/main.gd:2573-2577"
+    },
+    {
+      "kind": "clear_city_owner_guess",
+      "classification": "PRIVATE_COMMAND",
+      "owner": "WorldSessionState",
+      "subject": "region:<region_id>",
+      "payload": {},
+      "authorization": "authorized local viewer",
+      "success": "atomically erases all three city inference fields",
+      "save_dirty": "one only when a record existed",
+      "visibility": "viewer_private",
+      "current_ui_callers": ["intel_city_clear_<district>"]
+    },
+    {
+      "kind": "set_city_guess_confidence",
+      "classification": "PRIVATE_COMMAND",
+      "owner": "WorldSessionState",
+      "subject": "region:<region_id>",
+      "payload": {"confidence": "int:1|2|3"},
+      "authorization": "authorized local viewer with an existing guess",
+      "normalization_allowed": false,
+      "save_dirty": "one on changed success",
+      "visibility": "viewer_private",
+      "current_ui_callers": ["intel_city_confidence_<district>_<value>"]
+    },
+    {
+      "kind": "set_city_guess_reason",
+      "classification": "PRIVATE_COMMAND",
+      "owner": "WorldSessionState",
+      "subject": "region:<region_id>",
+      "payload": {"reason_id": "product|route|card|monster|role|intuition"},
+      "authorization": "authorized local viewer with an existing guess",
+      "normalization_allowed": false,
+      "save_dirty": "one on changed success",
+      "visibility": "viewer_private",
+      "current_ui_callers": ["intel_city_reason_<district>_<reason>"]
+    },
+    {
+      "kind": "set_card_history_note",
+      "classification": "PRIVATE_COMMAND",
+      "owner": "CardHistoryPrivateAnnotationService",
+      "subject": "card-history:<resolution_id>",
+      "payload": {"note_text": "String,max_length=240"},
+      "authorization": "authorized local viewer and existing public history entry",
+      "normalization_allowed": false,
+      "save_dirty": "one on changed success",
+      "visibility": "viewer_private",
+      "current_ui_callers": []
+    },
+    {
+      "kind": "set_card_history_tags",
+      "classification": "PRIVATE_COMMAND",
+      "owner": "CardHistoryPrivateAnnotationService",
+      "subject": "card-history:<resolution_id>",
+      "payload": {"private_tags": "Array[String],unique,max=8,item_length=1..32"},
+      "authorization": "authorized local viewer and existing public history entry",
+      "normalization_allowed": false,
+      "save_dirty": "one on changed success",
+      "visibility": "viewer_private",
+      "current_ui_callers": []
+    },
+    {
+      "kind": "set_card_history_suspects",
+      "classification": "PRIVATE_COMMAND",
+      "owner": "CardHistoryPrivateAnnotationService",
+      "subject": "card-history:<resolution_id>",
+      "payload": {"suspected_player_indices": "Array[int],canonical,unique,in_range"},
+      "authorization": "authorized local viewer and existing public history entry",
+      "forbidden_overlap": "excluded_player_indices",
+      "save_dirty": "one on changed success",
+      "visibility": "viewer_private",
+      "current_ui_callers": ["history_suspect_<resolution>_<player>"]
+    },
+    {
+      "kind": "set_card_history_private_confidence",
+      "classification": "PRIVATE_COMMAND",
+      "owner": "CardHistoryPrivateAnnotationService",
+      "subject": "card-history:<resolution_id>",
+      "payload": {"private_confidence": "int:0|1|2|3"},
+      "authorization": "authorized local viewer and existing public history entry",
+      "save_dirty": "one on changed success",
+      "visibility": "viewer_private",
+      "current_ui_callers": []
+    },
+    {
+      "kind": "set_card_history_subscription",
+      "classification": "PRIVATE_COMMAND",
+      "owner": "CardHistoryPrivateAnnotationService",
+      "subject": "card-history:<resolution_id>",
+      "payload": {"subscribed": "bool"},
+      "authorization": "authorized local viewer and existing public history entry",
+      "limits": {"maximum_subscriptions": 2},
+      "save_dirty": "one on changed success",
+      "visibility": "viewer_private",
+      "current_ui_callers": ["history_subscribe_<resolution>"],
+      "unsubscribe_supported": true
+    },
+    {
+      "kind": "clear_card_history_annotation",
+      "classification": "PRIVATE_COMMAND",
+      "owner": "CardHistoryPrivateAnnotationService",
+      "subject": "card-history:<resolution_id>",
+      "payload": {},
+      "authorization": "authorized local viewer and existing public history entry",
+      "clears": [
+        "note_text",
+        "private_tags",
+        "suspected_player_indices",
+        "private_confidence",
+        "excluded_player_indices",
+        "subscribed"
+      ],
+      "save_dirty": "one only when changed",
+      "visibility": "viewer_private",
+      "current_ui_callers": ["history_clear_<resolution>"]
+    },
+    {
+      "kind": "use_residual_frame_catalog",
+      "classification": "PRIVATE_COMMAND",
+      "owner": "CardHistoryPrivateAnnotationService",
+      "subject": "card-history:<resolution_id>",
+      "payload": {},
+      "authorization": "authorized local viewer with card_history_residual_catalog_charges",
+      "owner_derived_inputs": ["public suspect candidates"],
+      "caller_supplied_candidates_allowed": false,
+      "usage_key": "residual_catalog",
+      "maximum_usage": 2,
+      "charge_rule": "consume once only when the annotation changes",
+      "save_dirty": "one on changed success",
+      "visibility": "viewer_private",
+      "current_ui_callers": []
+    },
+    {
+      "kind": "use_public_evidence_exclusion",
+      "classification": "PRIVATE_COMMAND",
+      "owner": "CardHistoryPrivateAnnotationService",
+      "subject": "card-history:<resolution_id>",
+      "payload": {},
+      "authorization": "authorized local viewer with card_history_public_exclusion_charges",
+      "owner_derived_inputs": ["publicly impossible candidates", "deterministic eligible suspect"],
+      "caller_supplied_exclusions_allowed": false,
+      "usage_key": "public_exclusion",
+      "maximum_usage": 3,
+      "charge_rule": "consume once only when one existing suspect is excluded",
+      "save_dirty": "one on changed success",
+      "visibility": "viewer_private",
+      "current_ui_callers": []
+    }
+  ],
+  "non_dossier_private_effects": [
+    {
+      "kind": "intel_city_reveal",
+      "classification": "PRIVATE_COMMAND",
+      "producer_scope": "committed_card_resolution_only",
+      "owner_path": "CardEffectRuntimeRouter/CardIntelRuntimeService/WorldSessionState",
+      "dossier_port_accepts": false,
+      "confidence_sentinel": 100
+    },
+    {
+      "kind": "card_history_public_review",
+      "classification": "PRIVATE_COMMAND",
+      "producer_scope": "committed_card_resolution_only",
+      "owner_path": "CardIntelRuntimeService/CardHistoryPrivateAnnotationService",
+      "dossier_port_accepts": false
+    },
+    {
+      "kind": "card_history_subscription",
+      "classification": "PRIVATE_COMMAND",
+      "producer_scope": "committed_card_resolution_only",
+      "owner_path": "CardIntelRuntimeService/CardHistoryPrivateAnnotationService",
+      "dossier_port_accepts": false
+    },
+    {
+      "kind": "intel_contract_trace",
+      "classification": "PRIVATE_COMMAND",
+      "producer_scope": "committed_card_resolution_only",
+      "owner_path": "CardIntelRuntimeService/ContractRuntimeController/WorldSessionState.known_contract_parties",
+      "dossier_port_accepts": false
+    }
+  ],
+  "blocked_role_commands": [
+    {
+      "kind": "use_city_owner_reveal_role",
+      "role_field": "intel_city_reveal_charges",
+      "reason": "no durable role usage owner or production UI consumer"
+    },
+    {
+      "kind": "use_contract_trace_role",
+      "role_field": "intel_contract_trace_charges",
+      "reason": "no durable role usage owner or production UI consumer"
+    }
+  ],
+  "queries": [
+    "open_or_refresh_authorized_viewer_dossier",
+    "read_public_city_evidence",
+    "read_own_city_inference",
+    "read_public_card_history",
+    "read_own_card_annotations",
+    "read_own_persisted_role_usage",
+    "read_public_navigation_links"
+  ],
+  "application_navigation": [
+    "open_intel",
+    "close_intel",
+    "return_to_intel",
+    "open_economy_via_application_flow",
+    "open_card_via_codex_request",
+    "open_monster_via_codex_request",
+    "open_product_via_codex_request",
+    "open_region_via_codex_request",
+    "focus_history_entry_without_table_selection_mutation"
+  ],
+  "retired": [
+    "track_guess_*",
+    "card_owner_guess",
+    "CARD_OWNER_GUESS_STAKE",
+    "_card_owner_guess_stake_for_player",
+    "_card_owner_guess_payout_for_player",
+    "_guess_card_resolution_owner_for_player",
+    "_ai_card_guess_candidates",
+    "_ai_card_guess_candidate_for_owner",
+    "card_owner_guess_reward",
+    "card_owner_guess_penalty",
+    "card_owner_guess_payout",
+    "card_owner_guess_settlement",
+    "card_owner_guess_discount",
+    "card_owner_guess_bonus",
+    "intel_card_trace_charges",
+    "known_card_owners"
+  ],
+  "legacy_fixtures": [
+    {
+      "path": "tests/smoke_test.gd:6708-6760",
+      "tokens": ["card_owner_guess", "guessers", "_ai_card_guess_candidate_for_owner"],
+      "may_restore_production_path": false
+    }
+  ],
+  "required_main_deletions": [
+    "IntelDossierBoardScene preload",
+    "_open_intel_dossier_menu",
+    "_populate_intel_dossier_snapshot",
+    "_add_intel_dossier_board_panel",
+    "_on_intel_dossier_board_action_requested",
+    "_intel_dossier_public_snapshot",
+    "_intel_dossier_public_source_snapshot",
+    "_mark_city_guess_from_intel",
+    "_set_city_guess_confidence_from_intel",
+    "_set_city_guess_reason_from_intel",
+    "_intel_city_guess_entries and Intel-only helpers after consumer migration",
+    "_intel_card_guess_entries",
+    "_sort_intel_card_guess_entry",
+    "_mark_city_guess_for_player after human and AI migration",
+    "_set_city_guess_confidence_for_player",
+    "_set_city_guess_reason_for_player",
+    "_reveal_city_owner_by_intel_card",
+    "_apply_intel_city_reveal",
+    "codex_intel and quick-nav intel Main routes",
+    "track_intel_* Main route",
+    "Intel action-string prefix parser"
+  ],
+  "negative_tests": [
+    "invalid_viewer_negative_or_out_of_range",
+    "opponent_or_ai_viewer_submitted_through_local_ui",
+    "selected_player_spoof_does_not_authorize",
+    "invalid_or_missing_subject",
+    "inactive_or_own_city_subject",
+    "facility_guess_subject_rejected",
+    "extra_or_missing_payload_key",
+    "non_data_payload_rejected",
+    "invalid_suspected_player",
+    "manual_confidence_0_4_100_rejected",
+    "invalid_reason_rejected_without_fallback",
+    "stale_owner_revision_zero_mutation",
+    "same_command_id_same_fingerprint_idempotent",
+    "same_command_id_different_fingerprint_rejected",
+    "session_finished_zero_mutation",
+    "unauthorized_role_zero_charge",
+    "exhausted_role_zero_charge",
+    "no_public_evidence_zero_charge",
+    "third_subscription_rejected",
+    "caller_supplied_exclusion_rejected",
+    "caller_supplied_residual_candidates_rejected",
+    "viewer_A_state_absent_from_viewer_B_UI_and_debug",
+    "query_and_navigation_zero_mutation",
+    "card_owner_guess_economy_remains_absent"
+  ],
+  "target_counts": {
+    "intel_to_main_route_count": 0,
+    "generic_intel_application_route_count": 0,
+    "main_intel_fallback_count": 0,
+    "second_intel_state_owner_count": 0,
+    "second_intel_save_owner_count": 0,
+    "card_owner_guess_path_count": 0,
+    "failure_mutation_count": 0
+  }
+}
