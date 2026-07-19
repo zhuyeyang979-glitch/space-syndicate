@@ -43,6 +43,7 @@ func _ready() -> void:
 	_wire_table_selection_state()
 	_wire_world_session_state()
 	_wire_forced_decision_candidate_sources()
+	call_deferred("_wire_table_selection_intent_port")
 	_wire_card_cooldown_runtime_controller()
 	_wire_card_execution_typed_ports()
 	_wire_card_resolution_transition_sink()
@@ -59,6 +60,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	_wire_table_selection_state()
 	_wire_world_session_state()
 	_wire_forced_decision_candidate_sources()
+	call_deferred("_wire_table_selection_intent_port")
 	_wire_card_cooldown_runtime_controller()
 	_wire_card_execution_typed_ports()
 	_wire_card_resolution_transition_sink()
@@ -5553,6 +5555,29 @@ func _wire_table_presentation_source_target() -> void:
 	)
 	port.configure(source, game_screen, game_screen.presentation_planet_target(), developer_target, _table_presentation_refresh_scheduler_node())
 	_wire_domain_presentation_ports(port, _table_presentation_query_ports_node().public_log_port)
+	_wire_table_selection_intent_port()
+
+
+func _wire_table_selection_intent_port() -> void:
+	if Engine.is_editor_hint():
+		return
+	var port := get_node_or_null("TableSelectionIntentPort") as TableSelectionIntentPort
+	var game_screen := get_node_or_null(presentation_game_screen_path) as SpaceSyndicateGameScreen \
+		if not presentation_game_screen_path.is_empty() else null
+	if port == null or game_screen == null:
+		return
+	if not game_screen.table_selection_intent_requested.is_connected(port.submit_intent):
+		game_screen.table_selection_intent_requested.connect(port.submit_intent)
+	if not port.receipt_ready.is_connected(game_screen.apply_table_selection_receipt):
+		port.receipt_ready.connect(game_screen.apply_table_selection_receipt)
+	if not port.presentation_refresh_requested.is_connected(_on_table_selection_presentation_refresh_requested):
+		port.presentation_refresh_requested.connect(_on_table_selection_presentation_refresh_requested)
+
+
+func _on_table_selection_presentation_refresh_requested(kind: StringName, reason: StringName) -> void:
+	var refresh_port := _table_presentation_refresh_port_node()
+	if refresh_port != null:
+		refresh_port.request_immediate(kind, reason)
 
 
 func _wire_domain_presentation_ports(refresh_port: TablePresentationRefreshPort, public_log_port: PublicLogProducerPort) -> void:

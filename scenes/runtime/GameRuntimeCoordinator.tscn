@@ -111,6 +111,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardHistoryPrivateAnnotationService.tscn" id="114_card_history_annotations"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/PlayerIdentityAuthorizationBoundary.tscn" id="117_player_identity_authorization"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionResponsePort.tscn" id="118_forced_decision_response"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/TableSelectionIntentPort.tscn" id="119_table_selection_intent"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -165,6 +166,12 @@ game_session_path = NodePath("../GameSessionRuntimeController")
 unique_name_in_owner = true
 identity_boundary_path = NodePath("../PlayerIdentityAuthorizationBoundary")
 scheduler_path = NodePath("../ForcedDecisionRuntimeScheduler")
+
+[node name="TableSelectionIntentPort" parent="." instance=ExtResource("119_table_selection_intent")]
+unique_name_in_owner = true
+identity_boundary_path = NodePath("../PlayerIdentityAuthorizationBoundary")
+selection_state_path = NodePath("../TableSelectionState")
+forced_decision_response_port_path = NodePath("../ForcedDecisionResponsePort")
 
 [node name="TablePresentationViewModelQuery" parent="." instance=ExtResource("103_table_presentation_viewmodel_query")]
 unique_name_in_owner = true

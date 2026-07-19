@@ -39,9 +39,12 @@ var optional_route_presentation: Dictionary = {}
 var commodity_sushi_track: Dictionary = {}
 var visual_events: Array = []
 var visual_event_key := ""
+var selection_context: Dictionary = {}
 
 
 func apply_dictionary(data: Dictionary) -> RefCounted:
+	var selection_source: Dictionary = data.get("selection_context", {}) if data.get("selection_context", {}) is Dictionary else {}
+	selection_context = {"revision": maxi(0, int(selection_source.get("revision", 0)))}
 	var track_source: Array = data.get("card_track", []) if data.get("card_track", []) is Array else []
 	card_track = PUBLIC_TRACK_SNAPSHOT_SCRIPT.new().apply_entries(track_source).to_ui_array()
 	var card_resolution_source: Dictionary = data.get("card_resolution_track", {}) if data.get("card_resolution_track", {}) is Dictionary else {}
@@ -78,6 +81,7 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 
 func to_ui_dictionary() -> Dictionary:
 	return {
+		"selection_context": selection_context.duplicate(true),
 		"top_bar": top_bar,
 		"card_track": card_track,
 		"card_resolution_track": card_resolution_track,

@@ -8,6 +8,7 @@ signal temporary_decision_action_requested(action_id: String)
 signal public_bid_action_requested(action_id: String)
 signal public_bid_track_link_hovered(action_id: String)
 signal public_bid_track_link_unhovered(action_id: String)
+signal map_layer_focus_requested(layer_id: String)
 
 @onready var tooltip_panel: PanelContainer = %TooltipPanel
 @onready var tooltip_label: Label = %TooltipLabel
@@ -33,6 +34,12 @@ signal public_bid_track_link_unhovered(action_id: String)
 @onready var drag_preview_panel: PanelContainer = %DragPreviewPanel
 @onready var drag_preview_label: Label = %DragPreviewLabel
 @onready var district_supply_drawer: Control = %DistrictSupplySideDrawerOverlay
+@onready var map_control_toolbar: PlanetMapControlToolbar = get_node_or_null(
+	"RuntimeSurfaceLayer/FullscreenMapOverlay/FullscreenMapMargin/FullscreenMapRows/FullscreenMapToolbar/FullscreenMapActionHost/PlanetMapControlToolbar"
+) as PlanetMapControlToolbar
+@onready var fullscreen_map_layer_hud_label: Label = get_node_or_null(
+	"RuntimeSurfaceLayer/FullscreenMapOverlay/FullscreenMapMargin/FullscreenMapRows/FullscreenMapReadingHud/FullscreenMapHudMargin/FullscreenMapLayerHud/FullscreenMapLayerChip/ChipMargin/FullscreenMapLayerHudLabel"
+) as Label
 @onready var fullscreen_planet_map_view: SpaceSyndicatePlanetMapView = get_node_or_null(
 	"RuntimeSurfaceLayer/FullscreenMapOverlay/FullscreenMapMargin/FullscreenMapRows/FullscreenMapHost/FullscreenPlanetMapView"
 ) as SpaceSyndicatePlanetMapView
@@ -78,6 +85,8 @@ func _ready() -> void:
 	side_drawer_close_button.pressed.connect(hide_side_drawer)
 	_connect_specialized_temporary_decision_panels()
 	_connect_public_bid_panel()
+	if map_control_toolbar != null and not map_control_toolbar.map_layer_focus_requested.is_connected(_on_map_layer_focus_requested):
+		map_control_toolbar.map_layer_focus_requested.connect(_on_map_layer_focus_requested)
 	if district_supply_drawer != null and not district_supply_drawer.visibility_changed.is_connected(_on_district_supply_visibility_changed):
 		district_supply_drawer.visibility_changed.connect(_on_district_supply_visibility_changed)
 
@@ -110,6 +119,19 @@ func handle_back_request() -> bool:
 
 func presentation_fullscreen_planet_target() -> SpaceSyndicatePlanetMapView:
 	return fullscreen_planet_map_view
+
+
+func _on_map_layer_focus_requested(layer_id: String) -> void:
+	map_layer_focus_requested.emit(layer_id)
+
+
+func set_selected_map_layer_focus(layer_id: String) -> void:
+	if map_control_toolbar != null:
+		map_control_toolbar.set_selected_map_layer_focus(layer_id)
+		var status := map_control_toolbar.selected_map_layer_status()
+		if fullscreen_map_layer_hud_label != null:
+			fullscreen_map_layer_hud_label.text = str(status.get("text", "图层:全图"))
+			fullscreen_map_layer_hud_label.tooltip_text = str(status.get("tooltip", "当前全屏地图图层。"))
 
 
 func _configure_pointer_passthrough_skeleton() -> void:

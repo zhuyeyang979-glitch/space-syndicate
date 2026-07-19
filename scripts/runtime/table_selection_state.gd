@@ -4,6 +4,18 @@ class_name TableSelectionState
 
 signal selection_changed(snapshot: Dictionary)
 
+const MAP_LAYER_FOCUS_IDS := [
+	"all",
+	"product",
+	"route",
+	"intel",
+	"weather",
+	"monster",
+	"city",
+	"economy",
+	"military",
+]
+
 var _selected_player := 0
 var _inspected_player := 0
 var _selected_district := 0
@@ -191,4 +203,4 @@ func _set_value(property_name: StringName, value: Variant) -> void:
 
 func _normalize_map_layer_focus(value: String) -> String:
 	var normalized := value.strip_edges().to_lower()
-	return normalized if normalized in ["all", "economy", "route", "monster", "military", "weather", "intel"] else "all"
+	return normalized if normalized in MAP_LAYER_FOCUS_IDS else "all"

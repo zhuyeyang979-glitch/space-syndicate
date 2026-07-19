@@ -7,6 +7,7 @@ const COMMODITY_CLAIM_REQUEST_SCRIPT := preload("res://scripts/runtime/commodity
 const COMMODITY_ITEM_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/commodity_sushi_track_item_snapshot.gd")
 const COMMODITY_TRACK_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/commodity_sushi_track_snapshot.gd")
 const COMMODITY_TRACK_SCRIPT := preload("res://scripts/ui/table/top_commodity_sushi_track.gd")
+const TABLE_SELECTION_INTENT_SCRIPT := preload("res://scripts/runtime/table_selection_intent.gd")
 const HAND_HOVER_PREVIEW_LEFT := 0.020
 const HAND_HOVER_PREVIEW_TOP := 0.350
 const HAND_HOVER_PREVIEW_RIGHT := 0.190
@@ -48,6 +49,7 @@ signal card_drag_preview_started(card_data: Dictionary)
 signal card_drag_preview_ended(card_data: Dictionary)
 signal card_drop_requested(card_data: Dictionary, screen_position: Vector2)
 signal commodity_claim_requested(request: COMMODITY_CLAIM_REQUEST_SCRIPT)
+signal table_selection_intent_requested(intent: TABLE_SELECTION_INTENT_SCRIPT)
 
 @onready var top_bar: Node = %TopBar
 @onready var commodity_sushi_track: COMMODITY_TRACK_SCRIPT = %TopCommoditySushiTrack
@@ -77,6 +79,7 @@ var _live_presentation_target_count := 0
 var _full_presentation_target_count := 0
 var _presentation_authorized_viewer_index := -1
 var _presentation_authorization_revision := 0
+var _table_selection_request_revision := 0
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	_bind_presentation_map_targets()
@@ -121,6 +124,8 @@ func _ready() -> void:
 		overlay_layer.connect("public_bid_track_link_hovered", Callable(self, "_on_track_link_hovered"))
 	if overlay_layer.has_signal("public_bid_track_link_unhovered"):
 		overlay_layer.connect("public_bid_track_link_unhovered", Callable(self, "_on_track_link_unhovered"))
+	if overlay_layer.has_signal("map_layer_focus_requested"):
+		overlay_layer.connect("map_layer_focus_requested", Callable(self, "_on_map_layer_focus_requested"))
 	call_deferred("_sync_runtime_table_focus_order")
 
 
@@ -209,6 +214,46 @@ func bind_presentation_viewer(viewer_index: int, authorization_revision: int) ->
 func _presentation_authorization_matches(viewer_index: int, authorization_revision: int) -> bool:
 	return viewer_index >= 0 and viewer_index == _presentation_authorized_viewer_index \
 		and authorization_revision > 0 and authorization_revision == _presentation_authorization_revision
+
+
+func _on_map_layer_focus_requested(layer_id: String) -> void:
+	if _forced_surface_blocks_player_actions():
+		_show_player_action_feedback("map_layer_focus", "blocked", "请先完成当前强制决策。")
+		return
+	_table_selection_request_revision += 1
+	var intent := TABLE_SELECTION_INTENT_SCRIPT.new()
+	intent.request_id = "table-selection:%d:%d" % [_presentation_authorized_viewer_index, _table_selection_request_revision]
+	intent.selection_kind = TABLE_SELECTION_INTENT_SCRIPT.KIND_MAP_LAYER
+	intent.viewer_index = _presentation_authorized_viewer_index
+	intent.authorization_revision = _presentation_authorization_revision
+	intent.expected_selection_revision = _current_selection_revision()
+	intent.map_layer_id = StringName(layer_id)
+	intent.source_surface = &"planet_map"
+	intent.request_revision = _table_selection_request_revision
+	table_selection_intent_requested.emit(intent)
+
+
+func apply_table_selection_receipt(receipt: TableSelectionReceipt) -> void:
+	if receipt == null:
+		return
+	if overlay_layer != null and overlay_layer.has_method("set_selected_map_layer_focus"):
+		overlay_layer.call("set_selected_map_layer_focus", str(receipt.effective_map_layer_id))
+	if receipt.selection_revision_after >= 0:
+		var context: Dictionary = current_ui_data.get("selection_context", {}) \
+			if current_ui_data.get("selection_context", {}) is Dictionary else {}
+		context["revision"] = receipt.selection_revision_after
+		current_ui_data["selection_context"] = context
+	if receipt.accepted:
+		_show_player_action_feedback(receipt.request_id, "success", "地图图层已切换。")
+	else:
+		var detail := "图层状态已变化，请重试。" if receipt.reason_code == "selection_revision_stale" else "当前无法切换地图图层。"
+		_show_player_action_feedback(receipt.request_id, "blocked", detail)
+
+
+func _current_selection_revision() -> int:
+	var context: Dictionary = current_ui_data.get("selection_context", {}) \
+		if current_ui_data.get("selection_context", {}) is Dictionary else {}
+	return maxi(0, int(context.get("revision", 0)))
 
 
 func presentation_target_debug_snapshot() -> Dictionary:

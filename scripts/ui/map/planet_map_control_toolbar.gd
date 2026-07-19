@@ -3,6 +3,7 @@ class_name PlanetMapControlToolbar
 
 signal control_action_requested(action_id: String, payload: Dictionary)
 signal optional_route_selection_changed(product_id: String)
+signal map_layer_focus_requested(layer_id: String)
 
 const LAYER_IDS := ["all", "product", "route", "intel", "weather", "monster", "city"]
 
@@ -22,6 +23,8 @@ var _layer_buttons: Dictionary = {}
 var _applying_snapshot := false
 var _route_view_enabled := false
 var _local_selected_trade_product_id := ""
+var _selected_layer_id := "all"
+var _layer_entries: Array = []
 
 
 func _ready() -> void:
@@ -109,11 +112,14 @@ func _apply_reading_hints(entries_variant: Variant) -> void:
 
 
 func _apply_layers(entries_variant: Variant, selected_layer_id: String) -> void:
+	_selected_layer_id = selected_layer_id if LAYER_IDS.has(selected_layer_id) else "all"
 	var entries_by_id: Dictionary = {}
+	_layer_entries = []
 	if entries_variant is Array:
 		for entry_variant: Variant in entries_variant:
 			if entry_variant is Dictionary:
 				var entry := entry_variant as Dictionary
+				_layer_entries.append(entry.duplicate(true))
 				entries_by_id[str(entry.get("id", ""))] = entry
 	for layer_id_variant: Variant in LAYER_IDS:
 		var layer_id := str(layer_id_variant)
@@ -121,7 +127,7 @@ func _apply_layers(entries_variant: Variant, selected_layer_id: String) -> void:
 		if button == null:
 			continue
 		var entry: Dictionary = entries_by_id.get(layer_id, {}) as Dictionary
-		var selected := layer_id == selected_layer_id
+		var selected := layer_id == _selected_layer_id
 		button.visible = not entry.is_empty()
 		button.text = str(entry.get("label", layer_id.left(1).to_upper()))
 		button.tooltip_text = "%s｜%s" % [str(entry.get("text", layer_id)), str(entry.get("tip", "点击切换地图图层。"))]
@@ -223,7 +229,26 @@ func _emit_layer_focus(layer_id: String) -> void:
 			overlay.call("activate_optional_route_view", button)
 		trade_product_selector.call_deferred("grab_focus")
 		return
-	_emit_control_action("map_layer_focus", {"layer_id": layer_id})
+	map_layer_focus_requested.emit(layer_id)
+
+
+func set_selected_map_layer_focus(layer_id: String) -> void:
+	_selected_layer_id = layer_id if LAYER_IDS.has(layer_id) else "all"
+	_apply_layers(_layer_entries.duplicate(true), _selected_layer_id)
+	var status := selected_map_layer_status()
+	_apply_label(layer_status_label, status, "图层:全图", "当前地图图层焦点。")
+
+
+func selected_map_layer_status() -> Dictionary:
+	for entry_variant in _layer_entries:
+		var entry: Dictionary = entry_variant if entry_variant is Dictionary else {}
+		if str(entry.get("id", "")) != _selected_layer_id:
+			continue
+		return {
+			"text": "图层:%s" % str(entry.get("text", entry.get("label", _selected_layer_id))),
+			"tooltip": str(entry.get("tip", "当前地图图层焦点。")),
+		}
+	return {"text": "图层:全图", "tooltip": "显示全部公开地图信息。"}
 
 
 func _emit_contract_endpoint(action_id: String, button: Button) -> void:

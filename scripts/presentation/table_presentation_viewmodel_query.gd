@@ -97,6 +97,9 @@ func compose_table_state(viewer_index: int, include_full: bool) -> Dictionary:
 	var logs := _ports.recent_public_log_messages(6)
 	var visual_surface := _next_card_resolution_visual_surface(public_world)
 	var table_source := {
+		"selection_context": {
+			"revision": int(_selection.snapshot().get("revision", 0)) if _selection != null else 0,
+		},
 		"top_bar": _top_bar_source(viewer_index, public_world, private_world, action, district),
 		"planet": _planet_source(public_world, action, district, public_projection, viewer_index),
 		"district": district,
