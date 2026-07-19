@@ -45,8 +45,6 @@ func table_selection_state() -> TableSelectionState:
 
 
 func world_snapshot() -> Dictionary:
-	if not has_world():
-		return {}
 	if _world_session_state == null:
 		return {}
 	var districts_variant: Variant = _world_session_state.districts
@@ -63,8 +61,6 @@ func world_snapshot() -> Dictionary:
 
 
 func player_cash(player_index: int) -> int:
-	if not has_world():
-		return -1
 	var players_variant: Variant = _world_session_state.players if _world_session_state != null else []
 	if not (players_variant is Array):
 		return -1
@@ -113,8 +109,7 @@ func price_step_cap(volatility: int, base_price: int) -> int:
 
 
 func next_market_interval() -> float:
-	var value: Variant = call_world("_roll_timer", ["market"])
-	return maxf(0.01, float(value)) if value != null else 8.0
+	return _rng_service.randf_range(30.0, 60.0) if _rng_service != null else 30.0
 
 
 func forward_runtime_event(event: Dictionary) -> void:

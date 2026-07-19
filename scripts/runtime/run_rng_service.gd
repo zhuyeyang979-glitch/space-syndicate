@@ -3,6 +3,7 @@ extends Node
 class_name RunRngService
 
 signal state_restored(state: int)
+signal plan_state_committed(state: int, draw_count_delta: int)
 
 var _rng := RandomNumberGenerator.new()
 var _draw_count := 0
@@ -91,6 +92,57 @@ static func deterministic_weighted_shuffle(rows: Array, rng_state: int) -> Dicti
 		"items": ordered_items,
 		"rng_state": derived_rng.state,
 	}
+
+
+func capture_plan_checkpoint() -> Dictionary:
+	return {"schema_version": 1, "rng_state": _rng.state, "draw_count": _draw_count}
+
+
+static func detached_randi_range(cursor: Dictionary, from: int, to: int) -> Dictionary:
+	if int(cursor.get("schema_version", 0)) != 1 or int(cursor.get("rng_state", 0)) == 0 or from > to:
+		return {"ok": false, "reason_code": "rng_cursor_invalid"}
+	var detached := RandomNumberGenerator.new()
+	detached.state = int(cursor.get("rng_state", 1))
+	var value := detached.randi_range(from, to)
+	return {"ok": true, "value": value, "rng_state": detached.state, "draw_count": int(cursor.get("draw_count", 0)) + 1}
+
+
+static func detached_randf_range(cursor: Dictionary, from: float, to: float) -> Dictionary:
+	if int(cursor.get("schema_version", 0)) != 1 or int(cursor.get("rng_state", 0)) == 0 or from > to:
+		return {"ok": false, "reason_code": "rng_cursor_invalid"}
+	var detached := RandomNumberGenerator.new()
+	detached.state = int(cursor.get("rng_state", 1))
+	var value := detached.randf_range(from, to)
+	return {"ok": true, "value": value, "rng_state": detached.state, "draw_count": int(cursor.get("draw_count", 0)) + 1}
+
+
+func preflight_plan_commit(expected_checkpoint: Dictionary, terminal_cursor: Dictionary) -> Dictionary:
+	if int(expected_checkpoint.get("schema_version", 0)) != 1 or int(terminal_cursor.get("schema_version", 0)) != 1:
+		return {"accepted": false, "reason_code": "rng_plan_schema_invalid"}
+	if int(expected_checkpoint.get("rng_state", 0)) != _rng.state or int(expected_checkpoint.get("draw_count", -1)) != _draw_count:
+		return {"accepted": false, "reason_code": "session_start_rng_state_stale"}
+	if int(terminal_cursor.get("rng_state", 0)) == 0 or int(terminal_cursor.get("draw_count", -1)) < _draw_count:
+		return {"accepted": false, "reason_code": "rng_terminal_cursor_invalid"}
+	return {"accepted": true, "reason_code": "rng_plan_commit_valid"}
+
+
+func commit_plan_state(expected_checkpoint: Dictionary, terminal_cursor: Dictionary) -> Dictionary:
+	var preflight := preflight_plan_commit(expected_checkpoint, terminal_cursor)
+	if not bool(preflight.get("accepted", false)):
+		return {"committed": false, "reason_code": str(preflight.get("reason_code", "rng_plan_commit_invalid"))}
+	var delta := int(terminal_cursor.get("draw_count", _draw_count)) - _draw_count
+	_rng.state = int(terminal_cursor.get("rng_state", _rng.state))
+	_draw_count += delta
+	plan_state_committed.emit(_rng.state, delta)
+	return {"committed": true, "reason_code": "rng_plan_state_committed", "rng_state": _rng.state, "draw_count_delta": delta}
+
+
+func restore_plan_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	if int(checkpoint.get("schema_version", 0)) != 1 or int(checkpoint.get("rng_state", 0)) == 0 or int(checkpoint.get("draw_count", -1)) < 0:
+		return {"restored": false, "reason_code": "rng_plan_checkpoint_invalid"}
+	_rng.state = int(checkpoint.get("rng_state", 1))
+	_draw_count = int(checkpoint.get("draw_count", 0))
+	return {"restored": true, "reason_code": "rng_plan_checkpoint_restored"}
 
 
 func to_save_data() -> Dictionary:

@@ -32,6 +32,19 @@ func reset_state() -> void:
 	_rejected_count = 0
 
 
+func capture_runtime_checkpoint() -> Dictionary:
+	return {"schema_version": 1, "planned_count": _planned_count, "finalized_count": _finalized_count, "rejected_count": _rejected_count}
+
+
+func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	if int(checkpoint.get("schema_version", 0)) != 1:
+		return {"restored": false, "reason_code": "card_economy_effect_checkpoint_invalid"}
+	_planned_count = int(checkpoint.get("planned_count", 0))
+	_finalized_count = int(checkpoint.get("finalized_count", 0))
+	_rejected_count = int(checkpoint.get("rejected_count", 0))
+	return {"restored": true, "reason_code": "card_economy_effect_checkpoint_restored"}
+
+
 func supports_handler(handler_id: String) -> bool:
 	return HANDLER_FAMILIES.has(handler_id)
 

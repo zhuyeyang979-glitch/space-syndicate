@@ -51,6 +51,26 @@ func reset_state() -> void:
 	_last_group_window_sequence = -1
 
 
+func capture_runtime_checkpoint() -> Dictionary:
+	return {"schema_version": 1, "current_queue": _current_queue.duplicate(true), "next_queue": _next_queue.duplicate(true), "active_entry": _active_entry.duplicate(true), "resolution_sequence": _resolution_sequence, "revision": _revision, "plan_count": _plan_count, "commit_count": _commit_count, "rejection_count": _rejection_count, "last_reason": _last_reason, "last_group_window_sequence": _last_group_window_sequence}
+
+
+func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	if int(checkpoint.get("schema_version", 0)) != 1 or not (checkpoint.get("current_queue") is Array) or not (checkpoint.get("next_queue") is Array) or not (checkpoint.get("active_entry") is Dictionary):
+		return {"restored": false, "reason_code": "card_resolution_queue_checkpoint_invalid"}
+	_current_queue = (checkpoint.get("current_queue", []) as Array).duplicate(true)
+	_next_queue = (checkpoint.get("next_queue", []) as Array).duplicate(true)
+	_active_entry = (checkpoint.get("active_entry", {}) as Dictionary).duplicate(true)
+	_resolution_sequence = int(checkpoint.get("resolution_sequence", 0))
+	_revision = int(checkpoint.get("revision", 0))
+	_plan_count = int(checkpoint.get("plan_count", 0))
+	_commit_count = int(checkpoint.get("commit_count", 0))
+	_rejection_count = int(checkpoint.get("rejection_count", 0))
+	_last_reason = str(checkpoint.get("last_reason", ""))
+	_last_group_window_sequence = int(checkpoint.get("last_group_window_sequence", -1))
+	return {"restored": true, "reason_code": "card_resolution_queue_checkpoint_restored"}
+
+
 func plan_submission(request: Dictionary, facts: Dictionary) -> Dictionary:
 	_plan_count += 1
 	if not _configured or not _is_data_only(request) or not _is_data_only(facts):

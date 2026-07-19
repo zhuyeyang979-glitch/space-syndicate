@@ -1,4 +1,4 @@
-[gd_scene load_steps=109 format=3]
+[gd_scene load_steps=110 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -76,6 +76,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardMarketPolicyWorldBridge.tscn" id="72_card_market_bridge"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/RunRngService.tscn" id="81_run_rng"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/TableSelectionState.tscn" id="82_table_selection"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/TableCardSupplyPresentationState.tscn" id="116_card_supply_presentation"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/WorldSessionState.tscn" id="83_world_session"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardTargetChoiceRuntimeController.tscn" id="84_target_choice"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionCandidateSources.tscn" id="85_forced_sources"]
@@ -120,6 +121,9 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="TableSelectionState" parent="." instance=ExtResource("82_table_selection")]
+unique_name_in_owner = true
+
+[node name="TableCardSupplyPresentationState" parent="." instance=ExtResource("116_card_supply_presentation")]
 unique_name_in_owner = true
 
 [node name="WorldSessionState" parent="." instance=ExtResource("83_world_session")]

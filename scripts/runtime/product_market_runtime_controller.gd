@@ -25,6 +25,7 @@ const ROUTE_FLOW_MULTIPLIER_MAX := 2.8
 const WEATHER_ECONOMY_MULTIPLIER_MIN := 0.70
 const WEATHER_ECONOMY_MULTIPLIER_MAX := 1.30
 const PRODUCT_INDUSTRY_CATALOG := preload("res://resources/content/product_industry_catalog_v05.tres")
+const RuntimeBalanceModelScript := preload("res://scripts/balance/runtime_balance_model.gd")
 const WEATHER_PUBLIC_CONTRIBUTION_KEYS := [
 	"kind",
 	"weather_id",
@@ -166,6 +167,231 @@ func reset_state() -> Dictionary:
 	_legacy_positions_normalized = 0
 	_last_futures_receipt = {}
 	return runtime_state_snapshot()
+
+
+static func build_new_session_plan(cursor: Dictionary, interval_min := 30.0, interval_max := 60.0) -> Dictionary:
+	if int(cursor.get("schema_version", 0)) != 1 or int(cursor.get("rng_state", 0)) == 0:
+		return {"ok": false, "reason_code": "product_market_plan_rng_cursor_invalid"}
+	var next_cursor := cursor.duplicate(true)
+	var result := {}
+	var weights: Array = []
+	for tier_variant in PRODUCT_PRICE_TIERS:
+		var tier: Dictionary = tier_variant
+		weights.append(int(tier.get("weight", 1)))
+	for product_variant in PRODUCT_CATALOG:
+		var product_name := str(product_variant)
+		var tier_draw := _detached_weighted_pick(weights, next_cursor)
+		if not bool(tier_draw.get("ok", false)):
+			return tier_draw
+		next_cursor = _cursor_from_detached_draw(tier_draw)
+		var tier_index := clampi(int(tier_draw.get("value", 0)), 0, PRODUCT_PRICE_TIERS.size() - 1)
+		var tier: Dictionary = PRODUCT_PRICE_TIERS[tier_index]
+		var price_draw := RunRngService.detached_randi_range(next_cursor, int(tier.get("min", 30)), int(tier.get("max", 60)))
+		if not bool(price_draw.get("ok", false)):
+			return price_draw
+		next_cursor = _cursor_from_detached_draw(price_draw)
+		var base_price := int(price_draw.get("value", int(tier.get("min", 30))))
+		result[product_name] = {
+			"tier": str(tier.get("label", "基础消费")),
+			"base_price": base_price, "price": base_price, "trend": 0,
+			"volatility": int(tier.get("volatility", 4)), "supply": 0, "demand": 0, "disrupted": 0,
+			"price_history": [base_price],
+			"base_growth_multiplier": 1.0, "growth_multiplier": 1.0, "growth_seconds": 0.0, "growth_turns": 0,
+			"growth_source": "", "base_growth_source": "",
+			"base_route_flow_multiplier": 1.0, "route_flow_multiplier": 1.0, "route_flow_seconds": 0.0, "route_flow_turns": 0,
+			"route_flow_source": "", "base_route_flow_source": "",
+			"market_contract_demand": 0, "market_contract_supply": 0, "market_contract_seconds": 0.0,
+			"market_contract_turns": 0, "market_contract_source": "", "futures_positions": [],
+		}
+	var interval_draw := RunRngService.detached_randf_range(next_cursor, maxf(0.01, interval_min), maxf(interval_min, interval_max))
+	if not bool(interval_draw.get("ok", false)):
+		return interval_draw
+	next_cursor = _cursor_from_detached_draw(interval_draw)
+	return {
+		"ok": true,
+		"reason_code": "product_market_new_session_plan_ready",
+		"state": {
+			"schema_version": 1,
+			"product_market": result,
+			"business_cycle_count": 0,
+			"market_timer": float(interval_draw.get("value", interval_min)),
+			"futures_position_sequence": 0,
+		},
+		"cursor": next_cursor,
+	}
+
+
+static func build_new_session_refresh_plan(plan_state: Dictionary, districts: Array, cursor: Dictionary) -> Dictionary:
+	if int(cursor.get("schema_version", 0)) != 1 or int(cursor.get("rng_state", 0)) == 0:
+		return {"ok": false, "reason_code": "product_market_refresh_rng_cursor_invalid"}
+	if int(plan_state.get("schema_version", 0)) != 1 or not (plan_state.get("product_market", {}) is Dictionary):
+		return {"ok": false, "reason_code": "product_market_refresh_plan_invalid"}
+	var market: Dictionary = (plan_state.get("product_market", {}) as Dictionary).duplicate(true)
+	if market.size() != PRODUCT_CATALOG.size():
+		return {"ok": false, "reason_code": "product_market_refresh_catalog_incomplete"}
+	var pressure := _new_session_market_pressure(districts)
+	var supply: Dictionary = pressure.get("supply", {})
+	var demand: Dictionary = pressure.get("demand", {})
+	var disrupted: Dictionary = pressure.get("disrupted", {})
+	var next_cursor := cursor.duplicate(true)
+	var balance_model := RuntimeBalanceModelScript.new()
+	for product_variant in PRODUCT_CATALOG:
+		var product_name := str(product_variant)
+		var entry: Dictionary = (market.get(product_name, {}) as Dictionary).duplicate(true)
+		if entry.is_empty():
+			return {"ok": false, "reason_code": "product_market_refresh_product_missing"}
+		var base_price := int(entry.get("base_price", 50))
+		var volatility := int(entry.get("volatility", 4))
+		var noise_draw := RunRngService.detached_randf_range(next_cursor, -float(volatility), float(volatility))
+		if not bool(noise_draw.get("ok", false)):
+			return noise_draw
+		next_cursor = _cursor_from_detached_draw(noise_draw)
+		var demand_score := int(demand.get(product_name, 0))
+		var supply_score := int(supply.get(product_name, 0))
+		var disrupted_score := int(disrupted.get(product_name, 0))
+		var price_model: Dictionary = balance_model.product_price_model(
+			base_price,
+			supply_score,
+			demand_score,
+			disrupted_score,
+			0,
+			0,
+			volatility,
+			float(noise_draw.get("value", 0.0)),
+			1.0
+		)
+		var price := int(price_model.get("price", base_price))
+		entry["price"] = price
+		entry["trend"] = int(price_model.get("delta", 0))
+		entry["raw_trend"] = int(price_model.get("raw_delta", entry.get("trend", 0)))
+		entry["price_step_cap"] = int(price_model.get("step_cap", volatility))
+		entry["driver_summary"] = str(price_model.get("driver_summary", ""))
+		entry["supply"] = supply_score
+		entry["demand"] = demand_score
+		entry["disrupted"] = disrupted_score
+		entry["weather_price_growth_multiplier"] = 1.0
+		entry["weather_modifier"] = 0
+		entry["weather_contributions"] = []
+		entry["weather_driver_summary"] = "无天气因素"
+		_append_detached_price_history(entry, price)
+		market[product_name] = entry
+	var state := plan_state.duplicate(true)
+	state["product_market"] = market
+	return {
+		"ok": true,
+		"reason_code": "product_market_new_session_refresh_ready",
+		"state": state,
+		"cursor": next_cursor,
+		"draw_count_delta": int(next_cursor.get("draw_count", 0)) - int(cursor.get("draw_count", 0)),
+	}
+
+
+func preflight_new_session(plan_state: Dictionary) -> Dictionary:
+	var market_variant: Variant = plan_state.get("product_market", {})
+	if int(plan_state.get("schema_version", 0)) != 1 or not (market_variant is Dictionary):
+		return {"accepted": false, "reason_code": "product_market_new_session_plan_invalid"}
+	var market: Dictionary = market_variant
+	if market.size() != PRODUCT_CATALOG.size() or float(plan_state.get("market_timer", 0.0)) <= 0.0:
+		return {"accepted": false, "reason_code": "product_market_new_session_plan_incomplete"}
+	for product_variant in PRODUCT_CATALOG:
+		var product_name := str(product_variant)
+		if not market.has(product_name) or not (market[product_name] is Dictionary):
+			return {"accepted": false, "reason_code": "product_market_new_session_product_missing"}
+	return {"accepted": true, "reason_code": "product_market_new_session_plan_valid"}
+
+
+func apply_new_session_plan(plan_state: Dictionary) -> Dictionary:
+	var preflight := preflight_new_session(plan_state)
+	if not bool(preflight.get("accepted", false)):
+		return {"applied": false, "reason_code": str(preflight.get("reason_code", "product_market_new_session_plan_invalid"))}
+	product_market = (plan_state.get("product_market", {}) as Dictionary).duplicate(true)
+	business_cycle_count = 0
+	market_timer = float(plan_state.get("market_timer", 30.0))
+	futures_position_sequence = 0
+	_futures_open_count = 0
+	_futures_settlement_count = 0
+	_legacy_positions_normalized = 0
+	_last_futures_receipt = {}
+	return {"applied": true, "reason_code": "product_market_new_session_plan_applied"}
+
+
+static func _detached_weighted_pick(weights: Array, cursor: Dictionary) -> Dictionary:
+	var total := 0
+	for value in weights:
+		total += maxi(0, int(value))
+	if total <= 0:
+		return {"ok": false, "reason_code": "product_market_weight_table_invalid"}
+	var draw := RunRngService.detached_randi_range(cursor, 1, total)
+	if not bool(draw.get("ok", false)):
+		return draw
+	var ticket := int(draw.get("value", 1))
+	var running := 0
+	var selected := weights.size() - 1
+	for index in range(weights.size()):
+		running += maxi(0, int(weights[index]))
+		if ticket <= running:
+			selected = index
+			break
+	draw["value"] = selected
+	return draw
+
+
+static func _cursor_from_detached_draw(draw: Dictionary) -> Dictionary:
+	return {
+		"schema_version": 1,
+		"rng_state": int(draw.get("rng_state", 1)),
+		"draw_count": int(draw.get("draw_count", 0)),
+	}
+
+
+static func _new_session_market_pressure(districts: Array) -> Dictionary:
+	var supply := {}
+	var demand := {}
+	var disrupted := {}
+	for product_variant in PRODUCT_CATALOG:
+		var product_name := str(product_variant)
+		supply[product_name] = 0
+		demand[product_name] = 0
+		disrupted[product_name] = 0
+	for district_variant in districts:
+		if not (district_variant is Dictionary):
+			continue
+		var district: Dictionary = district_variant
+		if bool(district.get("destroyed", false)):
+			continue
+		for product_variant in district.get("products", []):
+			var product_name := str(product_variant)
+			supply[product_name] = int(supply.get(product_name, 0)) + 1
+		for demand_variant in district.get("demands", []):
+			var demand_name := str(demand_variant)
+			demand[demand_name] = int(demand.get(demand_name, 0)) + 1
+		var city_variant: Variant = district.get("city", {})
+		if not (city_variant is Dictionary):
+			continue
+		var city: Dictionary = city_variant
+		if city.is_empty() or bool(city.get("destroyed", false)) or not bool(city.get("active", true)):
+			continue
+		for city_product_variant in city.get("products", []):
+			if city_product_variant is Dictionary:
+				var city_product_name := str((city_product_variant as Dictionary).get("name", ""))
+				supply[city_product_name] = int(supply.get(city_product_name, 0)) + 2
+		for city_demand_variant in city.get("demands", []):
+			var city_demand_name := str(city_demand_variant)
+			demand[city_demand_name] = int(demand.get(city_demand_name, 0)) + 3
+		for route_variant in city.get("trade_routes", []):
+			if route_variant is Dictionary and bool((route_variant as Dictionary).get("disrupted", false)):
+				var disrupted_product := str((route_variant as Dictionary).get("product", ""))
+				disrupted[disrupted_product] = int(disrupted.get(disrupted_product, 0)) + 1
+	return {"supply": supply, "demand": demand, "disrupted": disrupted}
+
+
+static func _append_detached_price_history(entry: Dictionary, price: int) -> void:
+	var history: Array = (entry.get("price_history", []) as Array).duplicate()
+	if history.is_empty() or int(history[-1]) != price:
+		history.append(price)
+	while history.size() > PRODUCT_HISTORY_LIMIT:
+		history.pop_front()
+	entry["price_history"] = history
 
 
 func terms_for_card_id(card_id: String) -> Dictionary:
@@ -733,6 +959,18 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	ensure_catalog()
 	_normalize_loaded_futures_positions()
 	return runtime_state_snapshot()
+
+
+func restore_new_session_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	if not (checkpoint.get("product_market", {}) is Dictionary):
+		return {"restored": false, "reason_code": "product_market_new_session_checkpoint_invalid"}
+	product_market = (checkpoint.get("product_market", {}) as Dictionary).duplicate(true)
+	_clear_weather_projection(product_market)
+	business_cycle_count = int(checkpoint.get("business_cycle_count", 0))
+	market_timer = float(checkpoint.get("market_timer", 8.0))
+	futures_position_sequence = maxi(0, int(checkpoint.get("futures_position_sequence", 0)))
+	_normalize_loaded_futures_positions()
+	return {"restored": true, "reason_code": "product_market_new_session_checkpoint_restored"}
 
 
 func runtime_state_snapshot() -> Dictionary:

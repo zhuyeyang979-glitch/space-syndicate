@@ -3,7 +3,15 @@ class_name SpaceSyndicateNewGameSetupPage
 
 const SeatCardScene := preload("res://scenes/ui/NewGameSetupSeatCard.tscn")
 
-signal action_requested(action_id: String)
+signal start_requested()
+signal back_requested()
+signal return_table_requested()
+signal player_count_requested(value: int)
+signal ai_count_requested(value: int)
+signal challenge_depth_requested(value: int)
+signal role_step_requested(player_index: int, step: int)
+signal role_random_requested(player_index: int)
+signal starter_monster_step_requested(player_index: int, step: int)
 
 @onready var summary_chip_rail: HFlowContainer = %NewGameSetupSummaryChipRail
 @onready var lobby: Control = %NewGameSetupLobbyPanel
@@ -21,9 +29,9 @@ func _ready() -> void:
 	set_meta("new_game_setup_page", true)
 	if option_board.has_signal("option_selected"):
 		option_board.connect("option_selected", _on_option_selected)
-	start_button.pressed.connect(_emit_action.bind("setup_start"))
-	back_button.pressed.connect(_emit_action.bind("setup_back"))
-	return_table_button.pressed.connect(_emit_action.bind("setup_return_table"))
+	start_button.pressed.connect(func() -> void: start_requested.emit())
+	back_button.pressed.connect(func() -> void: back_requested.emit())
+	return_table_button.pressed.connect(func() -> void: return_table_requested.emit())
 	_style_button(start_button, Color("#22c55e"), true)
 	_style_button(back_button, Color("#38bdf8"), false)
 	_style_button(return_table_button, Color("#22c55e"), false)
@@ -110,25 +118,21 @@ func _add_seat(entry: Dictionary) -> void:
 
 func _on_option_selected(option_id: String, value: int) -> void:
 	match option_id:
-		"player_count", "ai_count", "challenge_depth":
-			action_requested.emit("setup_%s_%d" % [option_id, value])
+		"player_count": player_count_requested.emit(value)
+		"ai_count": ai_count_requested.emit(value)
+		"challenge_depth": challenge_depth_requested.emit(value)
 
 
 func _on_role_step_requested(player_index: int, step: int) -> void:
-	action_requested.emit("setup_role_step_%d_%d" % [player_index, step])
+	role_step_requested.emit(player_index, step)
 
 
 func _on_role_random_requested(player_index: int) -> void:
-	action_requested.emit("setup_role_random_%d" % player_index)
+	role_random_requested.emit(player_index)
 
 
 func _on_monster_step_requested(player_index: int, step: int) -> void:
-	action_requested.emit("setup_monster_step_%d_%d" % [player_index, step])
-
-
-func _emit_action(action_id: String) -> void:
-	if action_id.strip_edges() != "":
-		action_requested.emit(action_id)
+	starter_monster_step_requested.emit(player_index, step)
 
 
 func _style_button(button: Button, accent: Color, primary: bool) -> void:

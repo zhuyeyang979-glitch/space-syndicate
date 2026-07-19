@@ -269,7 +269,7 @@ func region_codex_public_facts(legacy_index: int) -> Dictionary:
 
 func region_commodity_facts(region_id: String) -> Dictionary:
 	var normalized_id := region_id.strip_edges()
-	if normalized_id.is_empty() or _controller == null or _world == null or not is_instance_valid(_world):
+	if normalized_id.is_empty() or _controller == null or _world_session_state == null:
 		return {"available": false, "authoritative": false, "reason_code": "region_commodity_facts_unavailable"}
 	var districts_variant: Variant = _world_session_state.districts if _world_session_state != null else []
 	if not (districts_variant is Array):
@@ -329,7 +329,7 @@ func public_commodity_region_facts() -> Array:
 
 
 func selected_region_commodity_facts() -> Dictionary:
-	if _world == null or not is_instance_valid(_world):
+	if _world_session_state == null or _table_selection_state == null:
 		return {"available": false, "authoritative": false, "reason_code": "region_commodity_facts_unavailable"}
 	var selected_index := _table_selection_state.selected_district if _table_selection_state != null else -1
 	var districts_variant: Variant = _world_session_state.districts if _world_session_state != null else []

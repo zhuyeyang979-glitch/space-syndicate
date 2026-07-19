@@ -11,6 +11,7 @@ signal standings_requested()
 signal economy_requested()
 signal compendium_requested()
 signal intel_requested()
+signal setup_requested()
 signal intel_application_intent_requested(intent: IntelApplicationIntent)
 signal menu_requested(title: String, summary: String, can_continue: bool)
 
@@ -21,6 +22,7 @@ var _standings_emission_count := 0
 var _economy_emission_count := 0
 var _compendium_emission_count := 0
 var _intel_emission_count := 0
+var _setup_emission_count := 0
 var _intel_application_intent_emission_count := 0
 var _intel_application_intent_rejection_count := 0
 var _menu_emission_count := 0
@@ -44,6 +46,9 @@ func submit_action(action_id: String) -> bool:
 	elif normalized == &"intel":
 		_intel_emission_count += 1
 		intel_requested.emit()
+	elif normalized == &"setup":
+		_setup_emission_count += 1
+		setup_requested.emit()
 	else:
 		_action_emission_count += 1
 		action_requested.emit(normalized)
@@ -96,6 +101,10 @@ func debug_snapshot() -> Dictionary:
 		"intel_application_intent_uses_generic_action_signal": false,
 		"stores_intel_navigation_state": false,
 		"intel_to_main": false,
+		"setup_emission_count": _setup_emission_count,
+		"setup_signal_boundary": true,
+		"setup_uses_generic_action_signal": false,
+		"setup_to_main": false,
 		"rules_signal_boundary": true,
 		"menu_emission_count": _menu_emission_count,
 		"owns_gameplay_state": false,

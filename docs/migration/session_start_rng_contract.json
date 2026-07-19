@@ -1,0 +1,332 @@
+{
+  "schema_version": 1,
+  "status": "GO_WITH_FROZEN_DEBT",
+  "task": "SETUP_SESSION_START_TRANSACTION_CUTOVER",
+  "base_sha": "2575fb4ac3192f8030c1719401531c582c9121c1",
+  "analysis_only": true,
+  "authority": {
+    "owner": "RunRngService",
+    "scene": "res://scenes/runtime/RunRngService.tscn",
+    "script": "res://scripts/runtime/run_rng_service.gd",
+    "live_owner_count": 1,
+    "randomized_at": "application_ready_once",
+    "randomize_evidence": "scripts/main.gd:268-276",
+    "new_run_re_randomizes": false,
+    "saved_fields": [
+      "rng_state"
+    ],
+    "diagnostic_fields": [
+      "draw_count",
+      "restore_count"
+    ],
+    "second_rng_owner_allowed": false
+  },
+  "setup_render_contract": {
+    "consumes_rng": false,
+    "resolves_random_role": false,
+    "operations": [
+      "open_setup",
+      "refresh_setup",
+      "set_player_count",
+      "set_ai_player_count",
+      "set_challenge_depth",
+      "step_explicit_role",
+      "set_random_role_placeholder",
+      "step_starter_monster",
+      "normalize_seat_arrays",
+      "render_role_and_starter_cards"
+    ],
+    "evidence": [
+      "scripts/main.gd:3524-3548",
+      "scripts/main.gd:3678-3772",
+      "scripts/main.gd:7249-7270",
+      "scripts/main.gd:7316-7330"
+    ]
+  },
+  "role_contract": {
+    "random_placeholder": -1,
+    "random_placeholder_allowed_for": "ai_seats_only",
+    "resolution_phase": "session_start_plan",
+    "resolution_order": "ascending_player_index",
+    "selection": "uniform_index_from_remaining_catalog_entries",
+    "unique_without_replacement": true,
+    "explicit_roles_consume_rng": false,
+    "evidence": [
+      "scripts/main.gd:7174-7200",
+      "scripts/main.gd:7249-7257",
+      "scripts/main.gd:7280-7313",
+      "tests/smoke_test.gd:1984-2012"
+    ]
+  },
+  "starter_monster_contract": {
+    "randomized": false,
+    "source": "configured_catalog_index",
+    "duplicates_allowed": true,
+    "unique_required": false,
+    "independent_from_role": true,
+    "consumes_rng": false,
+    "ai_value_publicly_hidden": true,
+    "ui_text_debt": "AI setup says random assignment, but production uses the configured index without a draw.",
+    "evidence": [
+      "scripts/main.gd:3678-3707",
+      "scripts/main.gd:7215-7222",
+      "scripts/main.gd:7242-7246",
+      "scripts/main.gd:4965-4983",
+      "tests/smoke_test.gd:4203-4220"
+    ]
+  },
+  "start_draw_sequence": [
+    {
+      "order": 1,
+      "domain": "product_market_initial_catalog",
+      "draws": "tier_ticket_then_base_price_per_product_in_catalog_order",
+      "output": "initial_product_market",
+      "live_apply_must_redraw": false,
+      "evidence": [
+        "scripts/main.gd:4396",
+        "scripts/runtime/product_market_runtime_controller.gd:159-168",
+        "scripts/runtime/product_market_runtime_controller.gd:216-241",
+        "scripts/runtime/product_market_runtime_controller.gd:863-871"
+      ]
+    },
+    {
+      "order": 2,
+      "domain": "random_ai_roles",
+      "draws": "one_integer_draw_per_unresolved_ai_seat",
+      "output": "resolved_role_indices",
+      "live_apply_must_redraw": false,
+      "evidence": [
+        "scripts/main.gd:4420-4428",
+        "scripts/main.gd:7280-7313"
+      ]
+    },
+    {
+      "order": 3,
+      "domain": "world_region_count",
+      "draws": "one_integer_draw_within_depth_bounds",
+      "output": "target_region_count",
+      "live_apply_must_redraw": false,
+      "evidence": [
+        "scripts/main.gd:3931-3940"
+      ]
+    },
+    {
+      "order": 4,
+      "domain": "world_sites",
+      "draws": "x_and_y_float_draws_per_attempt_including_rejected_attempts_and_fallbacks",
+      "output": "ordered_region_sites_and_geometry",
+      "variable_draw_count": true,
+      "live_apply_must_redraw": false,
+      "evidence": [
+        "scripts/main.gd:3976-3998"
+      ]
+    },
+    {
+      "order": 5,
+      "domain": "ocean_region_selection",
+      "draws": "ratio_seed_count_unique_seed_retries_and_neighbor_growth_picks",
+      "output": "ocean_region_indices",
+      "variable_draw_count": true,
+      "live_apply_must_redraw": false,
+      "evidence": [
+        "scripts/main.gd:4181-4209"
+      ]
+    },
+    {
+      "order": 6,
+      "domain": "ocean_names",
+      "draws": "one_ocean_name_offset",
+      "output": "region_names",
+      "live_apply_must_redraw": false,
+      "evidence": [
+        "scripts/main.gd:3948-3952",
+        "scripts/main.gd:4053-4061"
+      ]
+    },
+    {
+      "order": 7,
+      "domain": "region_economy_goods",
+      "draws": "land_focus_and_product_demand_count_and_without_replacement_picks_in_region_order",
+      "output": "terrain_focus_products_demands",
+      "live_apply_must_redraw": false,
+      "evidence": [
+        "scripts/main.gd:4027-4029",
+        "scripts/main.gd:4056-4100",
+        "scripts/main.gd:4236-4249"
+      ]
+    },
+    {
+      "order": 8,
+      "domain": "region_supply_seed_capture",
+      "draws": "none",
+      "output": "region_supply_gameplay_seed_and_derived_racks",
+      "captures_intermediate_rng_state": true,
+      "advances_live_rng": false,
+      "evidence": [
+        "scripts/main.gd:4483-4490",
+        "scripts/runtime/region_supply_runtime_controller.gd:45-99",
+        "scripts/runtime/region_supply_runtime_controller.gd:619-623"
+      ]
+    },
+    {
+      "order": 9,
+      "domain": "product_market_initial_refreshes",
+      "draws": "one_noise_draw_per_product_per_refresh_for_two_refreshes",
+      "output": "final_initial_product_prices_trends_and_history",
+      "refresh_count": 2,
+      "live_apply_must_redraw": false,
+      "evidence": [
+        "scripts/main.gd:4494",
+        "scripts/main.gd:4504",
+        "scripts/runtime/product_market_runtime_controller.gd:299-339"
+      ]
+    },
+    {
+      "order": 10,
+      "domain": "initial_weather_forecast",
+      "draws": "region_tie_break_definition_choice_and_next_generation_interval",
+      "output": "initial_weather_event_and_next_generation_world_us",
+      "authored_forecast_and_active_durations": true,
+      "bypasses_normal_start_grace": true,
+      "live_apply_must_redraw": false,
+      "evidence": [
+        "scripts/main.gd:4499-4500",
+        "scripts/runtime/weather_runtime_controller.gd:568-590",
+        "scripts/runtime/weather_runtime_controller.gd:1124-1133",
+        "scripts/runtime/weather_system.gd:53-72",
+        "scripts/runtime/weather_system.gd:75-101"
+      ]
+    },
+    {
+      "order": 11,
+      "domain": "rng_final_state_capture",
+      "draws": "none",
+      "output": "rng_post_state",
+      "evidence": [
+        "scripts/main.gd:4519-4529"
+      ]
+    }
+  ],
+  "deterministic_start_outputs": [
+    {
+      "domain": "ai_personality",
+      "behavior": "wrap_by_ai_order",
+      "consumes_rng": false,
+      "evidence": "scripts/runtime/ai_runtime_controller.gd:2952-2960"
+    },
+    {
+      "domain": "starter_monster_cards",
+      "behavior": "configured_catalog_lookup",
+      "consumes_rng": false,
+      "evidence": "scripts/main.gd:4965-4983"
+    },
+    {
+      "domain": "field_monsters",
+      "behavior": "none_spawned_at_start",
+      "consumes_rng": false,
+      "evidence": "tests/smoke_test.gd:136-140"
+    },
+    {
+      "domain": "region_infrastructure",
+      "behavior": "initialize_empty_region_definitions_from_generated_world",
+      "consumes_rng": false,
+      "evidence": "scripts/main.gd:542-563"
+    },
+    {
+      "domain": "commodity_sushi_belt",
+      "behavior": "fixed_industry_order_rank_one_catalog_selection",
+      "consumes_rng": false,
+      "evidence": "scripts/runtime/commodity_card_inventory_runtime_controller.gd:255-304"
+    },
+    {
+      "domain": "monster_action_timers",
+      "behavior": "fixed_balance_prime_values",
+      "consumes_rng": false,
+      "evidence": "scripts/main.gd:8238-8242"
+    }
+  ],
+  "detached_cursor_contract": {
+    "new_live_rng_owner": false,
+    "temporary_rng_object_may_escape": false,
+    "plan_contains_rng_object": false,
+    "required_checkpoint_fields": [
+      "schema_version",
+      "rng_state",
+      "draw_count"
+    ],
+    "required_plan_fields": [
+      "rng_pre_state",
+      "rng_post_state",
+      "rng_draw_count_delta",
+      "region_supply_gameplay_seed",
+      "plan_fingerprint"
+    ],
+    "required_capabilities": [
+      "capture_plan_checkpoint",
+      "pure_state_threaded_integer_draw",
+      "pure_state_threaded_float_draw",
+      "preflight_compare_live_state",
+      "commit_planned_state_once"
+    ],
+    "stale_reason_code": "session_start_rng_state_stale",
+    "failure_live_rng_delta": 0,
+    "duplicate_success_live_rng_delta": 0,
+    "commit_timing": "after_all_domain_and_game_session_applies_succeed",
+    "existing_pure_helper_precedent": "RunRngService.deterministic_weighted_shuffle"
+  },
+  "plan_must_materialize": [
+    "resolved_role_indices_and_names",
+    "configured_starter_monster_indices_and_ids",
+    "initial_product_market_after_two_refreshes",
+    "region_count_sites_geometry_names_neighbors",
+    "region_terrain_focus_products_demands",
+    "region_supply_gameplay_seed_and_racks",
+    "initial_weather_event_and_next_generation_time",
+    "rng_pre_state_post_state_and_draw_delta"
+  ],
+  "forbidden_during_apply": [
+    "live_rng_draw",
+    "generate_product_market_against_live_rng",
+    "refresh_prices_against_live_rng",
+    "generate_world_against_live_rng",
+    "schedule_initial_weather_against_live_rng",
+    "randomize",
+    "global_randi",
+    "global_randf",
+    "second_rng_owner",
+    "setup_draft_seed_authority"
+  ],
+  "acceptance_gates": [
+    "same_input_and_pre_state_same_plan_and_fingerprint",
+    "setup_query_zero_rng_delta",
+    "draft_commands_zero_rng_delta",
+    "failed_plan_zero_live_rng_delta",
+    "failed_transaction_zero_live_rng_delta",
+    "successful_start_matches_plan_post_state",
+    "sequential_and_detached_planner_output_parity",
+    "random_roles_unique_in_seat_order",
+    "explicit_roles_zero_role_draws",
+    "starter_monsters_allow_duplicates_and_use_zero_draws",
+    "role_and_starter_selection_remain_independent",
+    "duplicate_success_request_zero_additional_draws"
+  ],
+  "known_debt": [
+    {
+      "id": "ai_starter_ui_random_wording",
+      "blocking": false,
+      "disposition": "preserve configured-index behavior; do not add randomness"
+    },
+    {
+      "id": "initial_weather_bypasses_90_second_grace",
+      "blocking": false,
+      "disposition": "preserve explicit initial forecast and draw order"
+    }
+  ],
+  "blocking_ambiguity": false,
+  "block_status_if_contract_cannot_be_implemented": "SETUP_SESSION_START_BLOCKED_BY_RNG_CONTRACT",
+  "block_conditions": [
+    "resolved product market, world, supply and weather plans cannot be built without live RNG mutation",
+    "live RNG cannot be compare-and-committed atomically",
+    "failed active-session replacement cannot preserve exact RNG state"
+  ]
+}

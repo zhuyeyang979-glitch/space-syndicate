@@ -50,6 +50,28 @@ func reset_state() -> void:
 	_last_outcome = ""
 
 
+func capture_runtime_checkpoint() -> Dictionary:
+	return {"schema_version": 1, "receive_plan_count": _receive_plan_count, "remove_plan_count": _remove_plan_count, "lock_plan_count": _lock_plan_count, "transfer_plan_count": _transfer_plan_count, "queue_commit_plan_count": _queue_commit_plan_count, "queue_committed_count": _queue_committed_count, "commit_attempt_count": _commit_attempt_count, "committed_count": _committed_count, "rejected_count": _rejected_count, "last_reason": _last_reason, "last_operation": _last_operation, "last_outcome": _last_outcome}
+
+
+func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	if int(checkpoint.get("schema_version", 0)) != 1:
+		return {"restored": false, "reason_code": "card_inventory_checkpoint_invalid"}
+	_receive_plan_count = int(checkpoint.get("receive_plan_count", 0))
+	_remove_plan_count = int(checkpoint.get("remove_plan_count", 0))
+	_lock_plan_count = int(checkpoint.get("lock_plan_count", 0))
+	_transfer_plan_count = int(checkpoint.get("transfer_plan_count", 0))
+	_queue_commit_plan_count = int(checkpoint.get("queue_commit_plan_count", 0))
+	_queue_committed_count = int(checkpoint.get("queue_committed_count", 0))
+	_commit_attempt_count = int(checkpoint.get("commit_attempt_count", 0))
+	_committed_count = int(checkpoint.get("committed_count", 0))
+	_rejected_count = int(checkpoint.get("rejected_count", 0))
+	_last_reason = str(checkpoint.get("last_reason", ""))
+	_last_operation = str(checkpoint.get("last_operation", ""))
+	_last_outcome = str(checkpoint.get("last_outcome", ""))
+	return {"restored": true, "reason_code": "card_inventory_checkpoint_restored"}
+
+
 func plan_receive(request: Dictionary) -> Dictionary:
 	return _plan_receive(request, true)
 

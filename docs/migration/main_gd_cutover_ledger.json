@@ -328,26 +328,111 @@
       "status": "cut_over"
     },
     {
-      "domain": "new_game_setup",
+      "domain": "new_game_setup_draft",
       "old_symbols": [
-        "_new_game",
         "configured_player_count",
         "configured_ai_player_count",
+        "configured_roguelike_depth",
         "configured_role_indices",
         "configured_starter_monster_indices"
       ],
       "old_consumers": [
         "NewGameSetupPage",
+        "AI setup identity",
         "normal session start"
       ],
-      "new_owner_scene": "",
-      "new_owner_script": "",
-      "new_public_api": [],
-      "tests": [],
-      "old_path_deleted": false,
-      "duplicate_execution_checked": false,
-      "commit_sha": "",
-      "status": "pending"
+      "new_owner_scene": "res://scenes/runtime/NewGameSetupDraftService.tscn + res://scenes/runtime/SetupDraftCommandPort.tscn + res://scenes/runtime/presentation/NewGameSetupViewerQueryPort.tscn",
+      "new_owner_script": "res://scripts/runtime/new_game_setup_draft_service.gd + res://scripts/runtime/setup_draft_command_port.gd + res://scripts/runtime/new_game_setup_viewer_query_port.gd",
+      "new_public_api": [
+        "draft_snapshot",
+        "apply_command",
+        "page_snapshot"
+      ],
+      "tests": [
+        "res://tests/setup_session_start_transaction_cutover_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
+    },
+    {
+      "domain": "session_start_plan",
+      "old_symbols": [
+        "Main new-game RNG consumption",
+        "Main world-generation plan assembly"
+      ],
+      "old_consumers": [
+        "_new_game"
+      ],
+      "new_owner_scene": "res://scenes/runtime/SessionStartPlanBuilder.tscn",
+      "new_owner_script": "res://scripts/runtime/session_start_plan_builder.gd + res://scripts/runtime/session_start_world_plan_builder.gd",
+      "new_public_api": [
+        "build_plan",
+        "SessionStartRequest",
+        "SessionStartPlan"
+      ],
+      "tests": [
+        "res://tests/setup_session_start_transaction_cutover_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
+    },
+    {
+      "domain": "session_start_transaction",
+      "old_symbols": [
+        "_new_game",
+        "Main owner reset order",
+        "Main timer priming"
+      ],
+      "old_consumers": [
+        "normal session start",
+        "full-run quality driver"
+      ],
+      "new_owner_scene": "res://scenes/runtime/SessionStartTransactionCoordinator.tscn",
+      "new_owner_script": "res://scripts/runtime/session_start_transaction_coordinator.gd",
+      "new_public_api": [
+        "start_session",
+        "SessionStartReceipt",
+        "set_test_fault_stage"
+      ],
+      "tests": [
+        "res://tests/setup_session_start_transaction_cutover_test.gd",
+        "res://tests/session_envelope_save_owner_test.gd",
+        "res://tests/full_run_quality_driver_contract_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
+    },
+    {
+      "domain": "setup_application_flow",
+      "old_symbols": [
+        "_open_new_game_setup_menu",
+        "_on_new_game_setup_action_requested",
+        "_confirm_start_new_run_from_setup",
+        "generic setup application action"
+      ],
+      "old_consumers": [
+        "MenuRootLobby",
+        "NewGameSetupPage"
+      ],
+      "new_owner_scene": "res://scenes/runtime/SetupApplicationFlowController.tscn",
+      "new_owner_script": "res://scripts/runtime/setup_application_flow_controller.gd + res://scripts/runtime/application_flow_port.gd",
+      "new_public_api": [
+        "ApplicationFlowPort.setup_requested",
+        "SetupApplicationFlowController.open_setup"
+      ],
+      "tests": [
+        "res://tests/setup_session_start_transaction_cutover_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
     },
     {
       "domain": "save_restore",

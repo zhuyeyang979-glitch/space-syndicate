@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/session_start_transaction_coordinator.gd" id="1_transaction"]
+
+[node name="SessionStartTransactionCoordinator" type="Node"]
+script = ExtResource("1_transaction")
+editor_description = "Coordinates preflight, checkpoints, atomic apply, and reverse rollback for session start."

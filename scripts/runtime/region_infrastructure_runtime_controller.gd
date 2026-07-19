@@ -159,6 +159,28 @@ func _bankruptcy_estate_failure(stage: String, reason_code: String) -> Dictionar
 func initialize_regions(region_definitions: Array) -> Dictionary:
 	if not _configured:
 		return {"initialized": false, "reason": "controller_not_configured"}
+	var preflight := preflight_new_session_regions(region_definitions)
+	if not bool(preflight.get("accepted", false)):
+		return {
+			"initialized": false,
+			"reason": str(preflight.get("reason_code", "region_definitions_invalid")),
+			"errors": (preflight.get("errors", []) as Array).duplicate(),
+		}
+	var prepared: Dictionary = (preflight.get("prepared_regions", {}) as Dictionary).duplicate(true)
+	reset_state()
+	_regions = prepared
+	_revision = 1 if not _regions.is_empty() else 0
+	return {
+		"initialized": true,
+		"region_count": _regions.size(),
+		"facility_count": 0,
+		"revision": _revision,
+	}
+
+
+func preflight_new_session_regions(region_definitions: Array) -> Dictionary:
+	if not _configured:
+		return {"accepted": false, "reason_code": "controller_not_configured", "errors": []}
 	var prepared: Dictionary = {}
 	var errors: Array[String] = []
 	for definition_variant in region_definitions:
@@ -185,16 +207,11 @@ func initialize_regions(region_definitions: Array) -> Dictionary:
 			"revision": 1,
 			"legacy_index": int(definition.get("legacy_index", -1)),
 		}
-	if not errors.is_empty():
-		return {"initialized": false, "reason": "region_definitions_invalid", "errors": errors}
-	reset_state()
-	_regions = prepared
-	_revision = 1 if not _regions.is_empty() else 0
 	return {
-		"initialized": true,
-		"region_count": _regions.size(),
-		"facility_count": 0,
-		"revision": _revision,
+		"accepted": errors.is_empty() and not prepared.is_empty(),
+		"reason_code": "region_new_session_regions_valid" if errors.is_empty() and not prepared.is_empty() else "region_definitions_invalid",
+		"errors": errors,
+		"prepared_regions": prepared,
 	}
 
 

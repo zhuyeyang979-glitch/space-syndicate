@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/new_game_setup_viewer_query_port.gd" id="1_query"]
+
+[node name="NewGameSetupViewerQueryPort" type="Node"]
+script = ExtResource("1_query")
+editor_description = "Pure-data read boundary for the setup page."

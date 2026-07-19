@@ -48,13 +48,12 @@ func configure(
 	legal_card_descriptors: Array,
 	slots_per_region := DEFAULT_SLOT_COUNT
 ) -> Dictionary:
-	var normalized_regions := _normalize_regions(region_descriptors)
-	var normalized_cards := _normalize_cards(legal_card_descriptors)
-	var normalized_slot_count := clampi(int(slots_per_region), 1, MAX_SLOT_COUNT)
-	if normalized_regions.is_empty():
-		return _result(false, "region_supply_regions_missing")
-	if normalized_cards.is_empty():
-		return _result(false, "region_supply_cards_missing")
+	var preflight := preflight_new_session_configuration(region_descriptors, legal_card_descriptors, slots_per_region)
+	if not bool(preflight.get("accepted", false)):
+		return _result(false, str(preflight.get("reason_code", "region_supply_configuration_invalid")))
+	var normalized_regions: Dictionary = preflight.get("normalized_regions", {})
+	var normalized_cards: Dictionary = preflight.get("normalized_cards", {})
+	var normalized_slot_count := int(preflight.get("slot_count", DEFAULT_SLOT_COUNT))
 
 	_gameplay_seed = gameplay_seed
 	_state_revision = 0
@@ -105,6 +104,25 @@ func configure(
 		"legal_card_count": _card_order.size(),
 		"slots_per_region": normalized_slot_count,
 		"state_revision": _state_revision,
+	}
+
+
+func preflight_new_session_configuration(region_descriptors: Array, legal_card_descriptors: Array, slots_per_region := DEFAULT_SLOT_COUNT) -> Dictionary:
+	var normalized_regions := _normalize_regions(region_descriptors)
+	var normalized_cards := _normalize_cards(legal_card_descriptors)
+	if normalized_regions.is_empty():
+		return {"accepted": false, "reason_code": "region_supply_regions_missing"}
+	if normalized_cards.is_empty():
+		return {"accepted": false, "reason_code": "region_supply_cards_missing"}
+	var slot_count := int(slots_per_region)
+	if slot_count < 1 or slot_count > MAX_SLOT_COUNT:
+		return {"accepted": false, "reason_code": "region_supply_slot_count_invalid"}
+	return {
+		"accepted": true,
+		"reason_code": "region_supply_configuration_valid",
+		"normalized_regions": normalized_regions,
+		"normalized_cards": normalized_cards,
+		"slot_count": slot_count,
 	}
 
 
