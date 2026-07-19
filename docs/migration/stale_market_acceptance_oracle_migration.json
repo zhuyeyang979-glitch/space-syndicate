@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "status": "test_only_oracle_migration",
+  "authority_conflict": false,
+  "required_source_file_count": 5,
+  "retired_fragment_count": 31,
+  "expected_absent_files": [
+    "res://tests/human_first_table_playability_v06_test.gd"
+  ],
+  "current_rulebook_clause": "打开区域牌架、浏览挂牌或保持牌架窗口可见都不暂停",
+  "retired_rulebook_clause": "打开普通牌市场、浏览挂牌或保持市场界面可见都不暂停",
+  "reference_scan": {
+    "active_tests_scripts_tools_matches": 7,
+    "deleted_fixture_path_matches": 1,
+    "exact_retired_sentence_matches": 1,
+    "additional_generic_wording_matches": 5,
+    "generic_wording_is_globally_banned": false
+  },
+  "historical_documentation_debt": [
+    {
+      "path": "res://docs/human_first_table_playability_gate_v06.md",
+      "issue": "Contains an obsolete runnable command for the retired fixture.",
+      "in_scope": false
+    }
+  ],
+  "preserved_contracts": [
+    "regional_racks",
+    "solar_rotation_120_seconds",
+    "quote_lifetime_5_seconds",
+    "monster_pressure_pricing",
+    "true_pause_clock"
+  ],
+  "minimum_check_count": 83,
+  "production_change_count": 0,
+  "scene_change_count": 0,
+  "restored_fixture_count": 0,
+  "restored_main_wrapper_count": 0,
+  "gameplay_routing_change_count": 0
+}
