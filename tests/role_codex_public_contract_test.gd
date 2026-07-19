@@ -1,8 +1,6 @@
 extends SceneTree
 
-const MAIN_SCENE := "res://scenes/main.tscn"
-const COORDINATOR_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator"
-const SAVE_COORDINATOR_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController/GameSaveRuntimeCoordinator"
+const SESSION_START_DRIVER := preload("res://tests/support/production_session_start_driver.gd")
 const QA_SAVE_PATH := "user://test_runs/role_codex_public_contract.save"
 const STARTER_ROLE_FIELDS := [
 	"starter_monster_index",
@@ -32,6 +30,7 @@ var _failures: Array[String] = []
 var _main: Node
 var _coordinator: Node
 var _diagnostics: Node
+var _role_catalog: RoleCatalogRuntimeService
 
 
 func _init() -> void:
@@ -39,42 +38,45 @@ func _init() -> void:
 
 
 func _run() -> void:
-	var packed := load(MAIN_SCENE) as PackedScene
-	_expect(packed != null, "main_scene_loads")
-	if packed == null:
-		_finish()
-		return
-	_main = packed.instantiate()
 	_cleanup_test_save()
-	var save := _main.get_node_or_null(SAVE_COORDINATOR_PATH)
-	_expect(save != null and save.has_method("set_qa_default_save_path_override"), "qa_save_override_available_before_tree_entry")
-	if save == null or not save.has_method("set_qa_default_save_path_override"):
-		_main.free()
-		_main = null
-		_finish()
-		return
-	_expect(bool(save.call("set_qa_default_save_path_override", QA_SAVE_PATH)), "focused_gate_uses_isolated_qa_save_path")
-	root.add_child(_main)
-	await process_frame
-	if _main.has_method("_new_game"):
-		_main.set("configured_player_count", 4)
-		_main.set("configured_ai_player_count", 3)
-		_main.call("_new_game")
-	await process_frame
-	_coordinator = _main.get_node_or_null(COORDINATOR_PATH)
-	_diagnostics = _coordinator.call("gameplay_balance_diagnostics_service") if _coordinator != null and _coordinator.has_method("gameplay_balance_diagnostics_service") else null
-	_test_role_codex_public_owner_contract()
-	_test_random_role_resolution_without_run_state_wrapper()
+	var default_result := await SESSION_START_DRIVER.start_default_session(self, QA_SAVE_PATH, "role-codex-default-session")
+	_adopt_session(default_result)
+	_assert_formal_session_start(default_result, 4, "default")
+	if _main != null and bool(default_result.get("started", false)):
+		_test_role_codex_public_owner_contract()
 	await _cleanup()
+	await _test_random_role_resolution_and_config_reset()
 	_finish()
+
+
+func _adopt_session(start_result: Dictionary) -> void:
+	_main = start_result.get("main_root") as Node
+	_coordinator = start_result.get("coordinator") as Node
+	_diagnostics = _coordinator.call("gameplay_balance_diagnostics_service") if _coordinator != null and _coordinator.has_method("gameplay_balance_diagnostics_service") else null
+	_role_catalog = _coordinator.call("role_catalog_runtime_service") as RoleCatalogRuntimeService if _coordinator != null and _coordinator.has_method("role_catalog_runtime_service") else null
+
+
+func _assert_formal_session_start(start_result: Dictionary, expected_players: int, prefix: String) -> void:
+	_expect(bool(start_result.get("qa_save_override_ready", false)), "%s_driver_installs_qa_save_override" % prefix)
+	_expect(bool(start_result.get("started", false)), "%s_formal_session_start_succeeds|reason=%s" % [prefix, start_result.get("reason_code", "")])
+	var receipt := start_result.get("receipt") as SessionStartReceipt
+	_expect(receipt != null and receipt.applied, "%s_formal_session_receipt_is_applied" % prefix)
+	_expect(int(start_result.get("main_start_call_count", -1)) == 0, "%s_fixture_calls_no_Main_start_method" % prefix)
+	_expect(int(start_result.get("setup_fallback_count", -1)) == 0, "%s_fixture_uses_no_setup_fallback" % prefix)
+	var world := start_result.get("world_session") as WorldSessionState
+	_expect(world != null and world.players.size() == expected_players, "%s_formal_world_has_expected_player_count" % prefix)
+	var operation: Dictionary = start_result.get("transaction_snapshot", {})
+	_expect(str(operation.get("operation_state", "")) == "succeeded" and int(operation.get("terminal_request_count", 0)) == 1 and not bool(operation.get("references_main", true)), "%s_transaction_commits_exactly_once_without_Main" % prefix)
+	var game_session := start_result.get("game_session") as GameSessionRuntimeController
+	_expect(game_session != null and str(game_session.session_summary().get("session_state", "")) == "running", "%s_game_session_is_running" % prefix)
 
 
 func _test_role_codex_public_owner_contract() -> void:
 	_expect(_coordinator != null and _coordinator.has_method("role_codex_public_snapshot"), "coordinator_exposes scene-owned role Codex public source")
 	_expect(_diagnostics != null and _diagnostics.has_method("role_balance_audit"), "diagnostics_owner_exposes_role_balance_audit")
-	if _coordinator == null or _diagnostics == null:
+	if _coordinator == null or _diagnostics == null or _role_catalog == null:
 		return
-	var role_count := int(_main.call("_player_role_catalog_size"))
+	var role_count := _role_catalog.role_count()
 	_expect(role_count == 24, "role_catalog_exactly_24")
 	var source_service := _coordinator.get_node_or_null("RoleCodexPublicSourceService")
 	_expect(source_service != null and bool((source_service.call("debug_snapshot") as Dictionary).get("uses_role_catalog_public_projection", false)), "role Codex consumes RoleCatalog public projection")
@@ -88,7 +90,8 @@ func _test_role_codex_public_owner_contract() -> void:
 	var saw_intel := false
 	var saw_control := false
 	for role_index in range(role_count):
-		var role := _main.call("_make_player_role_card", 0, role_index) as Dictionary
+		var role := _role_catalog.public_definition_at(role_index)
+		role = _diagnostics.call("apply_role_balance_metadata", role) as Dictionary
 		var role_name := str(role.get("name", ""))
 		_expect(role_name != "" and not names.has(role_name), "role_%02d_has_unique_public_name" % role_index)
 		names[role_name] = true
@@ -109,22 +112,24 @@ func _test_role_codex_public_owner_contract() -> void:
 	_expect(not FileAccess.get_file_as_string("res://scripts/main.gd").contains("func _role_codex_public_source_snapshot("), "retired Main role source helper is physically absent")
 
 
-func _test_random_role_resolution_without_run_state_wrapper() -> void:
-	var previous_player_count := int(_main.get("configured_player_count"))
-	var previous_ai_count := int(_main.get("configured_ai_player_count"))
-	var previous_role_indices := _array(_main.get("configured_role_indices")).duplicate(true)
+func _test_random_role_resolution_and_config_reset() -> void:
 	var seat_count := 8
 	var random_config := [0]
 	for _index in range(1, seat_count):
 		random_config.append(-1)
-	_main.set("configured_player_count", seat_count)
-	_main.set("configured_ai_player_count", seat_count - 1)
-	_main.set("configured_role_indices", random_config)
-	_main.call("_ensure_configured_role_indices")
-	var configured := _array(_main.get("configured_role_indices"))
+	var random_result := await SESSION_START_DRIVER.start_configured_session(
+		self,
+		{"player_count": seat_count, "ai_player_count": seat_count - 1, "challenge_depth": 1, "role_indices": random_config},
+		QA_SAVE_PATH,
+		"role-codex-random-eight-session"
+	)
+	_adopt_session(random_result)
+	_assert_formal_session_start(random_result, seat_count, "random_eight")
+	var draft := random_result.get("draft_service") as NewGameSetupDraftService
+	var configured := _array(draft.draft_snapshot().get("role_indices", [])) if draft != null else []
 	_expect(configured.size() >= seat_count and int(configured[1]) == -1 and int(configured[7]) == -1, "setup_keeps_random_role_placeholders_before_run")
-	_main.call("_new_game")
-	var players := _array(((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players)
+	var random_world := random_result.get("world_session") as WorldSessionState
+	var players := _array(random_world.players) if random_world != null else []
 	var used := {}
 	var resolved_ok := players.size() == seat_count
 	for player_variant in players:
@@ -136,8 +141,16 @@ func _test_random_role_resolution_without_run_state_wrapper() -> void:
 			break
 		used[role_index] = true
 	_expect(resolved_ok and used.size() == seat_count, "random_ai_roles_resolve_to_unique_public_roles")
-	_restore_role_setup(previous_player_count, previous_ai_count, previous_role_indices)
-	_expect(int(_main.get("configured_player_count")) == previous_player_count and int(_main.get("configured_ai_player_count")) == previous_ai_count and _array(((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players).size() == previous_player_count, "setup_scalar_restore_rebuilds_original_run_without_global_save_wrapper")
+	await _cleanup()
+
+	var reset_result := await SESSION_START_DRIVER.start_default_session(self, QA_SAVE_PATH, "role-codex-default-reset-session")
+	_adopt_session(reset_result)
+	_assert_formal_session_start(reset_result, 4, "default_reset")
+	var reset_world := reset_result.get("world_session") as WorldSessionState
+	var reset_draft := reset_result.get("draft_service") as NewGameSetupDraftService
+	var reset_snapshot := reset_draft.draft_snapshot() if reset_draft != null else {}
+	_expect(reset_world != null and reset_world.players.size() == 4 and int(reset_snapshot.get("player_count", 0)) == 4 and int(reset_snapshot.get("ai_player_count", -1)) == 3, "setup_configuration_does_not_leak_across_independent_formal_sessions")
+	await _cleanup()
 
 
 func _compose_role_snapshot(role: Dictionary, index: int, total: int) -> Dictionary:
@@ -158,14 +171,6 @@ func _role_snapshot_shape_ok(snapshot: Dictionary, role_name: String) -> bool:
 		and _array(board.get("chips", [])).size() >= 2 \
 		and _array(board.get("kpis", [])).size() == 4 \
 		and _array(board.get("routes", [])).size() >= 6
-
-
-func _restore_role_setup(player_count: int, ai_count: int, role_indices: Array) -> void:
-	_main.set("configured_player_count", player_count)
-	_main.set("configured_ai_player_count", ai_count)
-	_main.set("configured_role_indices", role_indices.duplicate(true))
-	_main.call("_ensure_configured_role_indices")
-	_main.call("_new_game")
 
 
 func _starter_field_paths(value: Variant, path: String = "$") -> Array[String]:
@@ -208,15 +213,16 @@ func _cleanup() -> void:
 	_main = null
 	_coordinator = null
 	_diagnostics = null
+	_role_catalog = null
 	await process_frame
 	await process_frame
 	_cleanup_test_save()
 
 
 func _cleanup_test_save() -> void:
-	var absolute_path := ProjectSettings.globalize_path(QA_SAVE_PATH)
-	if FileAccess.file_exists(absolute_path):
-		DirAccess.remove_absolute(absolute_path)
+	for path in [QA_SAVE_PATH, QA_SAVE_PATH + ".tmp"]:
+		if FileAccess.file_exists(path):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
 
 func _expect(condition: bool, label: String) -> void:

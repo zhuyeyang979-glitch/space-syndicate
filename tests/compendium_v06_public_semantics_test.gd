@@ -1,8 +1,7 @@
 extends SceneTree
 
-const MAIN_SCENE := "res://scenes/main.tscn"
-const COORDINATOR_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator"
-const SAVE_COORDINATOR_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController/GameSaveRuntimeCoordinator"
+const SESSION_START_DRIVER := preload("res://tests/support/production_session_start_driver.gd")
+const MENU_OVERLAY_PATH := "RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay"
 const QA_SAVE_PATH := "user://test_runs/compendium_v06_public_semantics.save"
 const RETIRED_TEXT := [
 	"城市产权份额",
@@ -72,30 +71,15 @@ func _init() -> void:
 
 func _run() -> void:
 	_cleanup_test_save()
-	var packed := load(MAIN_SCENE) as PackedScene
-	_expect(packed != null, "main_scene_loads")
-	if packed == null:
+	var start_result := await SESSION_START_DRIVER.start_default_session(self, QA_SAVE_PATH, "compendium-v06-public-semantics")
+	_main = start_result.get("main_root") as Node
+	_assert_formal_session_start(start_result, 4)
+	if _main == null or not bool(start_result.get("started", false)):
+		await _cleanup()
 		_finish()
 		return
-	_main = packed.instantiate()
-	var save := _main.get_node_or_null(SAVE_COORDINATOR_PATH)
-	_expect(save != null and save.has_method("set_qa_default_save_path_override"), "qa_save_override_available_before_tree_entry")
-	if save == null or not save.has_method("set_qa_default_save_path_override"):
-		_main.free()
-		_main = null
-		_finish()
-		return
-	_expect(bool(save.call("set_qa_default_save_path_override", QA_SAVE_PATH)), "focused_gate_uses_isolated_qa_save_path")
-	root.add_child(_main)
-	await process_frame
-	await process_frame
-	_main.set("configured_player_count", 4)
-	_main.set("configured_ai_player_count", 3)
-	_main.call("_new_game")
-	await process_frame
-	await process_frame
-	_coordinator = _main.get_node_or_null(COORDINATOR_PATH)
-	_menu_overlay = _main.get("menu_overlay") as Control
+	_coordinator = start_result.get("coordinator") as Node
+	_menu_overlay = _main.get_node_or_null(MENU_OVERLAY_PATH) as Control
 	_surface = _menu_overlay.call("get_codex_surface") as Control if _menu_overlay != null and _menu_overlay.has_method("get_codex_surface") else null
 	_expect(_coordinator != null, "real_game_runtime_coordinator_available")
 	_expect(_menu_overlay != null and _surface != null, "real_menu_overlay_owns_codex_surface")
@@ -106,6 +90,21 @@ func _run() -> void:
 		_test_retired_player_text_absent_from_active_sources()
 	await _cleanup()
 	_finish()
+
+
+func _assert_formal_session_start(start_result: Dictionary, expected_players: int) -> void:
+	_expect(bool(start_result.get("qa_save_override_ready", false)), "driver_installs_qa_save_override_before_tree_entry")
+	_expect(bool(start_result.get("started", false)), "formal_session_start_succeeds|reason=%s" % start_result.get("reason_code", ""))
+	var receipt := start_result.get("receipt") as SessionStartReceipt
+	_expect(receipt != null and receipt.applied, "formal_session_receipt_is_applied")
+	_expect(int(start_result.get("main_start_call_count", -1)) == 0, "formal_fixture_calls_no_Main_start_method")
+	_expect(int(start_result.get("setup_fallback_count", -1)) == 0, "formal_fixture_uses_no_setup_fallback")
+	var world := start_result.get("world_session") as WorldSessionState
+	_expect(world != null and world.players.size() == expected_players, "formal_world_has_expected_player_count")
+	var operation: Dictionary = start_result.get("transaction_snapshot", {})
+	_expect(str(operation.get("operation_state", "")) == "succeeded" and int(operation.get("terminal_request_count", 0)) == 1 and not bool(operation.get("references_main", true)), "formal_session_transaction_commits_exactly_once_without_Main")
+	var game_session := start_result.get("game_session") as GameSessionRuntimeController
+	_expect(game_session != null and str(game_session.session_summary().get("session_state", "")) == "running", "formal_game_session_is_running")
 
 
 func _test_real_public_pages() -> void:
@@ -360,9 +359,9 @@ func _cleanup() -> void:
 
 
 func _cleanup_test_save() -> void:
-	var absolute_path := ProjectSettings.globalize_path(QA_SAVE_PATH)
-	if FileAccess.file_exists(absolute_path):
-		DirAccess.remove_absolute(absolute_path)
+	for path in [QA_SAVE_PATH, QA_SAVE_PATH + ".tmp"]:
+		if FileAccess.file_exists(path):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
 
 func _expect(condition: bool, label: String) -> void:

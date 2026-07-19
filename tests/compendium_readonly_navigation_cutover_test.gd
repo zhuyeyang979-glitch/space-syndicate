@@ -1,6 +1,6 @@
 extends SceneTree
 
-const MAIN_SCENE := "res://scenes/main.tscn"
+const SESSION_START_DRIVER := preload("res://tests/support/production_session_start_driver.gd")
 const CodexOpenRequestScript := preload("res://scripts/runtime/codex_open_request.gd")
 const QA_SAVE_PATH := "user://test_runs/compendium_readonly_navigation_cutover.save"
 const COORDINATOR_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator"
@@ -33,6 +33,7 @@ var _port: Node
 var _query: Node
 var _app_port: Node
 var _navigation: Node
+var _game_session: GameSessionRuntimeController
 
 
 func _init() -> void:
@@ -41,33 +42,29 @@ func _init() -> void:
 
 func _run() -> void:
 	_cleanup_qa_save()
-	var packed := load(MAIN_SCENE) as PackedScene
-	_expect(packed != null, "main_scene_loads")
-	if packed == null:
+	var start_result := await SESSION_START_DRIVER.start_configured_session(
+		self,
+		{"player_count": 4, "ai_player_count": 3, "challenge_depth": 1},
+		QA_SAVE_PATH,
+		"compendium-readonly-navigation"
+	)
+	_runtime_root = start_result.get("main_root") as Node
+	_game_session = start_result.get("game_session") as GameSessionRuntimeController
+	_assert_formal_session_start(start_result, 4)
+	if _runtime_root == null or not bool(start_result.get("started", false)):
+		await _cleanup()
 		_finish()
 		return
-	_runtime_root = packed.instantiate()
-	var save := _runtime_root.get_node_or_null(COORDINATOR_PATH + "/GameSessionRuntimeController/GameSaveRuntimeCoordinator")
-	_expect(save != null and save.has_method("set_qa_default_save_path_override"), "qa_save_override_available_before_tree_entry")
-	if save == null or not bool(save.call("set_qa_default_save_path_override", QA_SAVE_PATH)):
-		_runtime_root.free()
-		_runtime_root = null
-		_finish()
-		return
-	root.add_child(_runtime_root)
-	await _settle(2)
-	_runtime_root.set("configured_player_count", 4)
-	_runtime_root.set("configured_ai_player_count", 3)
-	_runtime_root.call("_new_game")
-	await _settle(3)
 	_bind_nodes()
 	_test_composition_and_source_direction()
 	if _dependencies_ready():
-		_runtime_root.call("_open_pause_menu")
+		_game_session.pause_session()
 		await _settle(2)
+		_expect(str(_game_session.session_summary().get("session_state", "")) == "paused", "formal_game_session_is_paused_before_compendium_open")
 		var gameplay_before := _capture_gameplay_state()
 		var counters_before := _counter_snapshot()
-		await _exercise_internal_navigation()
+		await _open_compendium_hub()
+		await _exercise_navigation_from_hub()
 		var gameplay_after := _capture_gameplay_state()
 		_expect(gameplay_after == gameplay_before, "all_internal_compendium_navigation_has_zero_gameplay_mutation")
 		_test_exact_once_counters(counters_before, _counter_snapshot())
@@ -111,7 +108,7 @@ func _test_composition_and_source_direction() -> void:
 	_expect(bool(app_debug.get("compendium_signal_boundary", false)) and not bool(app_debug.get("compendium_uses_generic_action_signal", true)) and not bool(app_debug.get("compendium_to_main", true)), "application_flow_uses_dedicated_compendium_signal")
 
 
-func _exercise_internal_navigation() -> void:
+func _open_compendium_hub() -> void:
 	var app_before := _app_port.call("debug_snapshot") as Dictionary
 	_expect(bool(_app_port.call("submit_action", "compendium")), "dedicated_compendium_action_is_accepted")
 	await _settle(2)
@@ -120,6 +117,8 @@ func _exercise_internal_navigation() -> void:
 	_expect(int(app_after.get("action_emission_count", 0)) == int(app_before.get("action_emission_count", 0)), "compendium_never_uses_generic_action_signal")
 	_expect(_surface_mode_is("compendium", "hub"), "hub_renders_on_real_codex_surface")
 
+
+func _exercise_navigation_from_hub() -> void:
 	_emit_surface_action("hub_action", {"action_id": "role"})
 	await _settle(2)
 	_expect(_surface_mode_is("role", "detail"), "role_detail_renders")
@@ -264,13 +263,33 @@ func _test_return_targets() -> void:
 		await _settle(2)
 		var expected_title: String = str({"economy": "经济总览", "standings": "局势排名", "intel": "情报档案"}.get(target, ""))
 		_expect(str((_overlay.call("debug_snapshot") as Dictionary).get("title", "")) == expected_title, "return_target_%s_routes_through_application_flow" % target)
-	_runtime_root.call("_open_pause_menu")
-	await _settle(1)
+	_game_session.pause_session()
+	var reopen_before := _app_port.call("debug_snapshot") as Dictionary
+	_expect(bool(_app_port.call("submit_action", "compendium")), "game_return_reopens_compendium_through_dedicated_application_port")
+	await _settle(2)
+	var reopen_after := _app_port.call("debug_snapshot") as Dictionary
+	_expect(int(reopen_after.get("compendium_emission_count", 0)) == int(reopen_before.get("compendium_emission_count", 0)) + 1, "intentional_game_return_reopen_emits_once")
+	_expect(_surface_mode_is("compendium", "hub"), "game_return_reopen_starts_from_hub")
 	_expect(bool(_port.call("request_open", "role", "detail", "catalog", 0, "", 0, "game", {"origin": "game"})), "game_return_page_opens")
 	await _settle(1)
 	_emit_overlay_back()
-	await _settle(1)
+	await _settle(2)
 	_expect(not _overlay.visible, "game_return_closes_menu")
+	_expect(str(_game_session.session_summary().get("session_state", "")) == "running", "game_return_resumes_formal_session")
+
+
+func _assert_formal_session_start(start_result: Dictionary, expected_players: int) -> void:
+	_expect(bool(start_result.get("qa_save_override_ready", false)), "driver_installs_qa_save_override_before_tree_entry")
+	_expect(bool(start_result.get("started", false)), "formal_session_start_succeeds|reason=%s" % start_result.get("reason_code", ""))
+	var receipt := start_result.get("receipt") as SessionStartReceipt
+	_expect(receipt != null and receipt.applied, "formal_session_receipt_is_applied")
+	_expect(int(start_result.get("main_start_call_count", -1)) == 0, "formal_fixture_calls_no_Main_start_method")
+	_expect(int(start_result.get("setup_fallback_count", -1)) == 0, "formal_fixture_uses_no_setup_fallback")
+	var world := start_result.get("world_session") as WorldSessionState
+	_expect(world != null and world.players.size() == expected_players, "formal_world_has_expected_player_count")
+	var operation: Dictionary = start_result.get("transaction_snapshot", {})
+	_expect(str(operation.get("operation_state", "")) == "succeeded" and int(operation.get("terminal_request_count", 0)) == 1 and not bool(operation.get("references_main", true)), "formal_session_transaction_commits_exactly_once_without_Main")
+	_expect(_game_session != null and str(_game_session.session_summary().get("session_state", "")) == "running", "formal_game_session_is_running")
 
 
 func _test_main_negative_surface() -> void:
@@ -367,6 +386,8 @@ func _cleanup() -> void:
 	if _runtime_root != null:
 		_runtime_root.queue_free()
 		_runtime_root = null
+	_game_session = null
+	await process_frame
 	await process_frame
 	_cleanup_qa_save()
 

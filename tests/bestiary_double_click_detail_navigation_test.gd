@@ -1,6 +1,6 @@
 extends SceneTree
 
-const MAIN_SCENE := "res://scenes/main.tscn"
+const SESSION_START_DRIVER := preload("res://tests/support/production_session_start_driver.gd")
 const QA_SAVE_PATH := "user://test_runs/bestiary_double_click_detail_navigation.save"
 const COORDINATOR_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator"
 const MENU_OVERLAY_PATH := "RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay"
@@ -17,6 +17,7 @@ var _surface: Control
 var _flow: Node
 var _app_port: Node
 var _navigation: Node
+var _game_session: GameSessionRuntimeController
 var _preview_signal_count := 0
 var _detail_signal_count := 0
 
@@ -27,25 +28,14 @@ func _init() -> void:
 
 func _run() -> void:
 	_cleanup_qa_save()
-	var packed := load(MAIN_SCENE) as PackedScene
-	_expect(packed != null, "main_scene_loads")
-	if packed == null:
+	var start_result := await SESSION_START_DRIVER.start_default_session(self, QA_SAVE_PATH, "bestiary-double-click-detail")
+	_runtime_root = start_result.get("main_root") as Node
+	_game_session = start_result.get("game_session") as GameSessionRuntimeController
+	_assert_formal_session_start(start_result, 4)
+	if _runtime_root == null or not bool(start_result.get("started", false)):
+		await _cleanup()
 		_finish()
 		return
-	_runtime_root = packed.instantiate()
-	var save := _runtime_root.get_node_or_null(COORDINATOR_PATH + "/GameSessionRuntimeController/GameSaveRuntimeCoordinator")
-	_expect(save != null and save.has_method("set_qa_default_save_path_override"), "qa_save_override_available")
-	if save == null or not bool(save.call("set_qa_default_save_path_override", QA_SAVE_PATH)):
-		_runtime_root.free()
-		_runtime_root = null
-		_finish()
-		return
-	root.add_child(_runtime_root)
-	await _settle(2)
-	_runtime_root.set("configured_player_count", 4)
-	_runtime_root.set("configured_ai_player_count", 3)
-	_runtime_root.call("_new_game")
-	await _settle(3)
 	_bind_nodes()
 	if _dependencies_ready():
 		await _exercise_real_thumbnail_path()
@@ -69,8 +59,9 @@ func _dependencies_ready() -> bool:
 
 
 func _exercise_real_thumbnail_path() -> void:
-	_runtime_root.call("_open_pause_menu")
+	_game_session.pause_session()
 	await _settle(1)
+	_expect(str(_game_session.session_summary().get("session_state", "")) == "paused", "formal_game_session_is_paused_before_bestiary_open")
 	_expect(bool(_app_port.call("submit_action", "compendium")), "compendium_opens_through_dedicated_application_port")
 	await _settle(2)
 	_surface.emit_signal("action_requested", "hub_action", {"action_id": "monster"})
@@ -187,6 +178,20 @@ func _exercise_real_thumbnail_path() -> void:
 	_expect(_main_route_count() == 0, "bestiary_navigation_has_zero_main_route")
 
 
+func _assert_formal_session_start(start_result: Dictionary, expected_players: int) -> void:
+	_expect(bool(start_result.get("qa_save_override_ready", false)), "driver_installs_qa_save_override_before_tree_entry")
+	_expect(bool(start_result.get("started", false)), "formal_session_start_succeeds|reason=%s" % start_result.get("reason_code", ""))
+	var receipt := start_result.get("receipt") as SessionStartReceipt
+	_expect(receipt != null and receipt.applied, "formal_session_receipt_is_applied")
+	_expect(int(start_result.get("main_start_call_count", -1)) == 0, "formal_fixture_calls_no_Main_start_method")
+	_expect(int(start_result.get("setup_fallback_count", -1)) == 0, "formal_fixture_uses_no_setup_fallback")
+	var world := start_result.get("world_session") as WorldSessionState
+	_expect(world != null and world.players.size() == expected_players, "formal_world_has_expected_player_count")
+	var operation: Dictionary = start_result.get("transaction_snapshot", {})
+	_expect(str(operation.get("operation_state", "")) == "succeeded" and int(operation.get("terminal_request_count", 0)) == 1 and not bool(operation.get("references_main", true)), "formal_session_transaction_commits_exactly_once_without_Main")
+	_expect(_game_session != null and str(_game_session.session_summary().get("session_state", "")) == "running", "formal_game_session_is_running")
+
+
 func _interaction_counters(browser: Control) -> Dictionary:
 	var browser_debug := browser.call("debug_snapshot") as Dictionary
 	var surface_debug := _surface.call("debug_snapshot") as Dictionary
@@ -290,7 +295,8 @@ func _visible_ui_is_private_safe() -> bool:
 func _main_route_count() -> int:
 	var source := FileAccess.get_file_as_string("res://scripts/" + "main.gd")
 	var count := 0
-	for method_name in ["_open_bestiary_menu", "_update_bestiary_menu", "_on_codex_surface_action_requested", "_present_codex_page"]:
+	var retired_negative_scan_methods := ["_open_bestiary_menu", "_update_bestiary_menu", "_on_codex_surface_action_requested", "_present_codex_page"]
+	for method_name in retired_negative_scan_methods:
 		if source.contains("func %s(" % method_name):
 			count += 1
 	return count
@@ -313,6 +319,8 @@ func _cleanup() -> void:
 	if _runtime_root != null:
 		_runtime_root.queue_free()
 		_runtime_root = null
+	_game_session = null
+	await process_frame
 	await process_frame
 	_cleanup_qa_save()
 
