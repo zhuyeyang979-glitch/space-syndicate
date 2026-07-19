@@ -9,7 +9,10 @@ const CARD_FLOW_TEST_PATH := "res://tests/card_flow_transaction_service_v06_test
 const EXECUTION_TEST_PATH := "res://tests/card_resolution_execution_runtime_service_test.gd"
 const ROTATION_PERIOD_US := 120_000_000
 const QUOTE_LIFETIME_US := 5_000_000
-const RETIRED_ORACLE_PATHS := {
+const RETIRED_ORACLE_FILES_EXPECTED_ABSENT := [
+	"res://tests/human_first_table_playability_v06_test.gd",
+]
+const RETIRED_ORACLE_FRAGMENT_CHECKS := {
 	"res://tests/smoke_test.gd": [
 		"first_summon_plays",
 		"monster landing regions discount card purchases while adjacent regions keep base price",
@@ -45,9 +48,6 @@ const RETIRED_ORACLE_PATHS := {
 		"_stage_human_first_summon",
 		"_stage3_evidence_passes",
 	],
-	"res://tests/human_first_table_playability_v06_test.gd": [
-		"human first-summon",
-	],
 	"res://tests/game_session_save_characterization_test.gd": [
 		"MAIN_SCENE_PATH",
 		"_capture_run_state",
@@ -75,11 +75,17 @@ func _run() -> void:
 
 
 func _test_retired_oracles_are_physically_absent() -> void:
-	for path_variant in RETIRED_ORACLE_PATHS.keys():
+	for path_variant in RETIRED_ORACLE_FILES_EXPECTED_ABSENT:
 		var path := str(path_variant)
+		_expect(not FileAccess.file_exists(path), "retired oracle file is physically absent: %s" % path)
+	for path_variant in RETIRED_ORACLE_FRAGMENT_CHECKS.keys():
+		var path := str(path_variant)
+		var source_exists := FileAccess.file_exists(path)
+		_expect(source_exists, "retirement source exists: %s" % path)
+		if not source_exists:
+			continue
 		var source := FileAccess.get_file_as_string(path)
-		_expect(not source.is_empty(), "retirement source loads: %s" % path)
-		var fragments: Array = RETIRED_ORACLE_PATHS.get(path_variant, []) if RETIRED_ORACLE_PATHS.get(path_variant, []) is Array else []
+		var fragments: Array = RETIRED_ORACLE_FRAGMENT_CHECKS.get(path_variant, []) if RETIRED_ORACLE_FRAGMENT_CHECKS.get(path_variant, []) is Array else []
 		for fragment_variant in fragments:
 			var fragment := str(fragment_variant)
 			_expect(not source.contains(fragment), "retired oracle is physically absent from %s: %s" % [path, fragment])
@@ -92,13 +98,14 @@ func _test_authoritative_public_rule_copy() -> void:
 	_expect(not rulebook.is_empty(), "authoritative v0.6 rulebook loads")
 	for clause in [
 		"每 120 秒完成一周权威自转",
-		"打开普通牌市场、浏览挂牌或保持市场界面可见都不暂停",
+		"打开区域牌架、浏览挂牌或保持牌架窗口可见都不暂停",
 		"q2 = min(10, 2 + 2×same + adjacent)",
 		"最终现金价格为 `ceil(B×q2/2)`",
 		"有效 5 秒 `world_effective` 时间",
 		"何时召唤完全由玩家决定",
 	]:
 		_expect(rulebook.contains(clause), "rulebook keeps settled clause: %s" % clause)
+	_expect(not rulebook.contains("打开普通牌市场、浏览挂牌或保持市场界面可见都不暂停"), "rulebook excludes the retired ordinary-card-market pause clause")
 	for phrase in [
 		"召唤时点完全自愿",
 		"未召唤不阻断经济、设施或购牌",
