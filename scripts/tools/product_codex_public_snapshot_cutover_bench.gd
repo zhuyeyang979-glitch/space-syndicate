@@ -3,6 +3,8 @@ class_name ProductCodexPublicSnapshotCutoverBench
 
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const MAIN_SCRIPT_PATH := "res://scripts/main.gd"
+const SESSION_START_DRIVER := preload("res://tests/support/production_session_start_driver.gd")
+const QA_SAVE_PATH := "user://test_runs/product_codex_public_snapshot_cutover.save"
 const SERVICE_SCENE := "res://scenes/runtime/ProductCodexPublicSnapshotService.tscn"
 const SERVICE_SCRIPT := "res://scripts/runtime/product_codex_public_snapshot_service.gd"
 const SOURCE_SERVICE_SCENE := "res://scenes/runtime/ProductCodexPublicSourceService.tscn"
@@ -89,7 +91,12 @@ func run_cutover_suite() -> void:
 	_failures.clear()
 	_prepare_output_dir()
 	_main_source = FileAccess.get_file_as_string(MAIN_SCRIPT_PATH)
-	await _prepare_runtime()
+	if not await _prepare_runtime():
+		_failures.append("formal_four_player_session_unavailable")
+		await _dispose_runtime()
+		push_error("ProductCodexPublicSnapshotCutoverBench failed: formal session startup")
+		get_tree().quit(1)
+		return
 	for case_id_variant: Variant in cutover_cases():
 		var case_id := str(case_id_variant)
 		var record := _run_case(case_id)
@@ -117,11 +124,10 @@ func run_cutover_suite() -> void:
 	print("ProductCodexPublicSnapshotCutoverBench passed: %d/%d" % [_passed_count(), _records.size()])
 	if not _failures.is_empty():
 		push_error("ProductCodexPublicSnapshotCutoverBench failed:\n- %s" % "\n- ".join(_failures))
-	if DisplayServer.get_name() == "headless":
-		get_tree().quit(0 if _failures.is_empty() else 1)
+	get_tree().quit(0 if _failures.is_empty() else 1)
 
 
-func _prepare_runtime() -> void:
+func _prepare_runtime() -> bool:
 	var service_packed := load(SERVICE_SCENE) as PackedScene
 	_service = service_packed.instantiate() if service_packed != null else null
 	if _service != null:
@@ -132,22 +138,18 @@ func _prepare_runtime() -> void:
 	if _surface != null:
 		_surface.visible = false
 		add_child(_surface)
-	var main_packed := load(MAIN_SCENE_PATH) as PackedScene
-	_main = main_packed.instantiate() as Control if main_packed != null else null
-	if _main != null:
-		_main.visible = false
-		add_child(_main)
-	await get_tree().process_frame
-	await get_tree().process_frame
-	if _main != null and _main.has_method("_new_game"):
-		_main.call("_new_game")
+	var start_result := await SESSION_START_DRIVER.start_default_session(get_tree(), QA_SAVE_PATH, "product-codex-public-snapshot-cutover")
+	_main = start_result.get("main_root") as Control
+	if _main == null or not bool(start_result.get("started", false)):
+		return false
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if _main != null:
 		var coordinator := _coordinator()
 		_source_service = coordinator.get_node_or_null("ProductCodexPublicSourceService") if coordinator != null else null
-		var names: Array = _main.call("_product_catalog_names")
+		var names: Array = _source_service.call("ordered_product_ids") if _source_service != null and _source_service.has_method("ordered_product_ids") else []
 		_real_product_name = str(names[0]) if not names.is_empty() else ""
+	return _source_service != null and _real_product_name != ""
 
 
 func _run_case(case_id: String) -> Dictionary:
@@ -195,7 +197,7 @@ func _run_case(case_id: String) -> Dictionary:
 			notes = "ProductCodexDetail receives a stable scene-owned payload"
 		"detail_chip_contract":
 			var chips := ((_compose_fixture().get("detail", {}) as Dictionary).get("chips", []) as Array)
-			passed = chips.size() == 7 and _array_has_text(chips, "¥92") and _array_has_text(chips, "供2") and _array_has_text(chips, "波4")
+			passed = chips.size() == 6 and _array_has_text(chips, "¥92") and _array_has_text(chips, "基准¥70") and _array_has_text(chips, "供2") and _array_has_text(chips, "需5") and _array_has_text(chips, "波4")
 			flags["market_checked"] = true
 			notes = "price, base, trend, supply, demand, disruption, and volatility chips remain stable"
 		"detail_kpi_contract":
@@ -213,7 +215,7 @@ func _run_case(case_id: String) -> Dictionary:
 			notes = "service renders the supplied ranking exactly and never recomputes scores"
 		"futures_warehouse_public_contract":
 			var snapshot := _compose_fixture()
-			passed = str(snapshot.get("preview_text", "")).contains("匿名期货") and str(snapshot.get("summary_text", "")).contains("仓库:临港城")
+			passed = str(snapshot.get("preview_text", "")).contains("私人仓储和期货持仓保持隐藏") and str(snapshot.get("summary_text", "")).contains("私人仓储和期货持仓保持隐藏") and not str(snapshot.get("preview_text", "")).contains("匿名期货")
 			flags["futures_checked"] = true
 			flags["privacy_checked"] = true
 			notes = "anonymous futures counts and public warehouse location remain readable without owner identity"
@@ -324,7 +326,7 @@ func _run_case(case_id: String) -> Dictionary:
 			passed = passed and int(metrics.get("nonblank_lines", 999999)) < 40859 and int(metrics.get("function_count", 999999)) < 2010
 			passed = passed and int(metrics.get("top_level_variable_count", 999999)) <= 192 and int(metrics.get("constant_count", 999999)) <= 320
 			passed = passed and not bool(debug.get("calculates_market_price", true)) and not bool(debug.get("calculates_strategy_scores", true)) and not bool(debug.get("legacy_main_formatter_active", true))
-			passed = passed and bool(source_debug.get("strategy_scores_fail_closed", false)) and bool(source_debug.get("warehouse_pressure_fail_closed", false)) and not bool(source_debug.get("reads_player_state", true))
+			passed = passed and bool(source_debug.get("strategy_scores_fail_closed", false)) and bool(source_debug.get("private_futures_and_warehouse_excluded", false)) and not bool(source_debug.get("reads_player_state", true))
 			flags["deletion_checked"] = true
 			flags["market_checked"] = true
 			flags["strategy_checked"] = true

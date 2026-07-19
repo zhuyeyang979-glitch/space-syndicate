@@ -3,6 +3,8 @@ class_name CodexPublicSnapshotCutoverBench
 
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const MAIN_SCRIPT_PATH := "res://scripts/main.gd"
+const SESSION_START_DRIVER := preload("res://tests/support/production_session_start_driver.gd")
+const QA_SAVE_PATH := "user://test_runs/codex_public_snapshot_cutover.save"
 const SERVICE_SCENE := "res://scenes/runtime/CodexPublicSnapshotService.tscn"
 const SERVICE_SCRIPT := "res://scripts/runtime/codex_public_snapshot_service.gd"
 const COORDINATOR_SCENE := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
@@ -75,7 +77,12 @@ func run_cutover_suite() -> void:
 	_failures.clear()
 	_prepare_output_dir()
 	_main_source = FileAccess.get_file_as_string(MAIN_SCRIPT_PATH)
-	await _prepare_runtime()
+	if not await _prepare_runtime():
+		_failures.append("formal_four_player_session_unavailable")
+		await _dispose_runtime()
+		push_error("CodexPublicSnapshotCutoverBench failed: formal session startup")
+		get_tree().quit(1)
+		return
 	for case_id_variant: Variant in cutover_cases():
 		var case_id := str(case_id_variant)
 		var record := _run_case(case_id)
@@ -98,28 +105,23 @@ func run_cutover_suite() -> void:
 	print("CodexPublicSnapshotCutoverBench passed: %d/%d" % [_passed_count(), _records.size()])
 	if not _failures.is_empty():
 		push_error("CodexPublicSnapshotCutoverBench failed:\n- %s" % "\n- ".join(_failures))
-	if DisplayServer.get_name() == "headless":
-		get_tree().quit(0 if _failures.is_empty() else 1)
+	get_tree().quit(0 if _failures.is_empty() else 1)
 
 
-func _prepare_runtime() -> void:
+func _prepare_runtime() -> bool:
 	var service_packed := load(SERVICE_SCENE) as PackedScene
 	_service = service_packed.instantiate() if service_packed != null else null
 	if _service != null:
 		add_child(_service)
 		_service.call("configure", {})
-	var main_packed := load(MAIN_SCENE_PATH) as PackedScene
-	_main = main_packed.instantiate() as Control if main_packed != null else null
-	if _main != null:
-		_main.visible = false
-		add_child(_main)
-	await get_tree().process_frame
-	await get_tree().process_frame
-	if _main != null and _main.has_method("_new_game"):
-		_main.call("_new_game")
+	var start_result := await SESSION_START_DRIVER.start_default_session(get_tree(), QA_SAVE_PATH, "codex-public-snapshot-cutover")
+	_main = start_result.get("main_root") as Control
+	if _main == null or not bool(start_result.get("started", false)):
+		return false
 	await get_tree().process_frame
 	await get_tree().process_frame
 	_region_source_service = _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionCodexPublicSourceService") if _main != null else null
+	return _region_source_service != null
 
 
 func _run_case(case_id: String) -> Dictionary:
@@ -237,10 +239,11 @@ func _run_case(case_id: String) -> Dictionary:
 			flags["pure_data_checked"] = true
 			notes = "coordinator proxies duplicated pure-data snapshots only"
 		"real_main_role_route":
-			var role_card: Dictionary = _main.call("_make_player_role_card", 0) if _main != null else {}
 			var coordinator := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if _main != null else null
+			var role_catalog := coordinator.call("role_catalog_runtime_service") as RoleCatalogRuntimeService if coordinator != null and coordinator.has_method("role_catalog_runtime_service") else null
+			var role_definition: Dictionary = role_catalog.public_definition_at(0) if role_catalog != null else {}
 			var snapshot: Dictionary = coordinator.call("role_codex_public_snapshot", 0, {}) if coordinator != null else {}
-			passed = not snapshot.is_empty() and snapshot.get("board", {}) is Dictionary and str(snapshot.get("summary_text", "")).contains(str(role_card.get("name", "")))
+			passed = not role_definition.is_empty() and not snapshot.is_empty() and snapshot.get("board", {}) is Dictionary and str(snapshot.get("summary_text", "")).contains(str(role_definition.get("name", "")))
 			flags["main_checked"] = true
 			flags["role_checked"] = true
 			flags["routing_checked"] = true

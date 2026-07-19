@@ -3,6 +3,8 @@ class_name CodexNavigationRuntimeCutoverBench
 
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const MAIN_SCRIPT_PATH := "res://scripts/main.gd"
+const SESSION_START_DRIVER := preload("res://tests/support/production_session_start_driver.gd")
+const QA_SAVE_PATH := "user://test_runs/codex_navigation_runtime_cutover.save"
 const CONTROLLER_SCENE := "res://scenes/runtime/CodexNavigationRuntimeController.tscn"
 const CONTROLLER_SCRIPT := "res://scripts/runtime/codex_navigation_runtime_controller.gd"
 const COORDINATOR_SCENE := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
@@ -106,7 +108,12 @@ func run_cutover_suite() -> void:
 	_failures.clear()
 	_prepare_output_dir()
 	_main_source = FileAccess.get_file_as_string(MAIN_SCRIPT_PATH)
-	await _prepare_runtime()
+	if not await _prepare_runtime():
+		_failures.append("formal_four_player_session_unavailable")
+		await _dispose_runtime()
+		push_error("CodexNavigationRuntimeCutoverBench failed: formal session startup")
+		get_tree().quit(1)
+		return
 	for case_id_variant: Variant in cutover_cases():
 		var case_id := str(case_id_variant)
 		var record := _run_case(case_id)
@@ -135,27 +142,22 @@ func run_cutover_suite() -> void:
 	print("CodexNavigationRuntimeCutoverBench passed: %d/%d" % [_passed_count(), _records.size()])
 	if not _failures.is_empty():
 		push_error("CodexNavigationRuntimeCutoverBench failed:\n- %s" % "\n- ".join(_failures))
-	if DisplayServer.get_name() == "headless":
-		get_tree().quit(0 if _failures.is_empty() else 1)
+	get_tree().quit(0 if _failures.is_empty() else 1)
 
 
-func _prepare_runtime() -> void:
+func _prepare_runtime() -> bool:
 	var controller_packed := load(CONTROLLER_SCENE) as PackedScene
 	_controller = controller_packed.instantiate() if controller_packed != null else null
 	if _controller != null:
 		add_child(_controller)
 		_controller.call("configure", {})
-	var main_packed := load(MAIN_SCENE_PATH) as PackedScene
-	_main = main_packed.instantiate() as Control if main_packed != null else null
-	if _main != null:
-		_main.visible = false
-		add_child(_main)
+	var start_result := await SESSION_START_DRIVER.start_default_session(get_tree(), QA_SAVE_PATH, "codex-navigation-runtime-cutover")
+	_main = start_result.get("main_root") as Control
+	if _main == null or not bool(start_result.get("started", false)):
+		return false
 	await get_tree().process_frame
 	await get_tree().process_frame
-	if _main != null and _main.has_method("_new_game"):
-		_main.call("_new_game")
-	await get_tree().process_frame
-	await get_tree().process_frame
+	return _controller != null
 
 
 func _run_case(case_id: String) -> Dictionary:
@@ -257,10 +259,14 @@ func _run_case(case_id: String) -> Dictionary:
 			flags["main_checked"] = true
 			notes = "real main reports the scene-owned navigation authority active"
 		"real_main_catalog_routes_delegate":
-			_request_codex("monster", "detail", "catalog", 1)
-			_request_codex("product", "detail", "catalog", 1)
-			_request_codex("card", "detail", "catalog", 0, "all")
 			var coordinator := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if _main != null else null
+			if coordinator != null:
+				var navigation := coordinator.get_node_or_null("CodexNavigationRuntimeController")
+				if navigation != null:
+					navigation.call("set_catalog_mode", "card")
+				coordinator.call("update_codex_navigation_domain", "monster", {"selected_index": 1, "show_detail": true})
+				coordinator.call("update_codex_navigation_domain", "product", {"selected_index": 1, "show_detail": true})
+				coordinator.call("update_codex_navigation_domain", "card", {"selected_index": 0, "filter_id": "all", "show_detail": true})
 			var snapshot: Dictionary = coordinator.call("codex_navigation_state") if coordinator != null else {}
 			passed = str(snapshot.get("catalog_mode", "")) == "card" and int((snapshot.get("monster", {}) as Dictionary).get("selected_index", -1)) == 1 and int((snapshot.get("product", {}) as Dictionary).get("selected_index", -1)) == 1 and bool((snapshot.get("card", {}) as Dictionary).get("show_detail", false))
 			flags["routing_checked"] = true
@@ -295,16 +301,6 @@ func _record(case_id: String, passed: bool, notes: String, flags: Dictionary = {
 	var record := {"case_id": case_id, "controller_checked": false, "main_checked": false, "state_checked": false, "pagination_checked": false, "persistence_checked": false, "routing_checked": false, "privacy_checked": false, "pure_data_checked": false, "deletion_checked": false, "passed": passed, "notes": notes}
 	record.merge(flags, true)
 	return record
-
-
-func _request_codex(domain: String, view: String, stable_item_id: String, optional_index: int, filter_id: String = "") -> bool:
-	if _main == null:
-		return false
-	var port := _main.get_node_or_null("RuntimeServices/CompendiumNavigationPort")
-	return port != null and bool(port.call(
-		"request_open", domain, view, stable_item_id, optional_index, filter_id, 0,
-		"compendium", {"origin": "compendium"}
-	))
 
 
 func _is_pure_data(value: Variant) -> bool:
