@@ -91,6 +91,9 @@ func _normalize_action(entry_variant: Variant, index: int, fallback_label: Strin
 		var semantic_value := str(entry.get(semantic_key, "")).strip_edges()
 		if not semantic_value.is_empty():
 			result[semantic_key] = semantic_value
+	var application_intent: Variant = entry.get("application_intent", {})
+	if application_intent is Dictionary and IntelApplicationIntent.from_dictionary(application_intent as Dictionary) != null:
+		result["application_intent"] = (application_intent as Dictionary).duplicate(true)
 	return result
 
 

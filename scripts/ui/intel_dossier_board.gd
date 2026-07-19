@@ -1,7 +1,7 @@
 extends PanelContainer
 class_name SpaceSyndicateIntelDossierBoard
 
-signal action_requested(action_id: String)
+signal action_requested(intent: IntelDossierActionIntent)
 
 @onready var header: HBoxContainer = %IntelDossierBoardHeader
 @onready var title_label: Label = %IntelDossierBoardTitle
@@ -224,15 +224,16 @@ func _add_clue_card(entry: Dictionary) -> void:
 
 
 func _add_action_button(entry: Dictionary) -> void:
-	var action_id := str(entry.get("id", entry.get("action_id", ""))).strip_edges()
-	var label_text := str(entry.get("label", action_id)).strip_edges()
-	if action_id == "" or label_text == "":
+	var intent := _intent_from_entry(entry)
+	var label_text := str(entry.get("label", "")).strip_edges()
+	if intent == null or label_text == "":
 		return
 	var disabled := bool(entry.get("disabled", false))
 	var accent := _dictionary_color(entry, "accent", Color("#c4b5fd"))
 	var button := Button.new()
 	button.name = "IntelDossierActionButton"
-	button.set_meta("resolution_id", _resolution_id_from_action(action_id))
+	button.set_meta("intent_kind", intent.intent_kind)
+	button.set_meta("subject_id", intent.subject_id)
 	button.text = _short_text(label_text, 10)
 	button.disabled = disabled
 	button.custom_minimum_size = Vector2(92, 28)
@@ -243,9 +244,7 @@ func _add_action_button(entry: Dictionary) -> void:
 	button.add_theme_stylebox_override("hover", _button_style(accent, true, disabled))
 	button.add_theme_stylebox_override("pressed", _button_style(accent.lightened(0.12), true, disabled))
 	button.add_theme_stylebox_override("disabled", _button_style(accent, false, true))
-	button.pressed.connect(func() -> void:
-		action_requested.emit(action_id)
-	)
+	button.pressed.connect(Callable(self, "_on_action_pressed").bind(intent))
 	action_row.add_child(button)
 
 
@@ -254,26 +253,11 @@ func _dossier_focused_resolution_id(data: Dictionary) -> int:
 		var explicit_id := int(data.get(key, -1))
 		if explicit_id >= 0:
 			return explicit_id
-	var actions: Array = data.get("actions", []) if data.get("actions", []) is Array else []
-	for action_variant in actions:
-		var action: Dictionary = action_variant if action_variant is Dictionary else {}
-		var action_id := str(action.get("id", action.get("action_id", ""))).strip_edges()
-		var resolution_id := _resolution_id_from_action(action_id)
-		if resolution_id >= 0:
-			return resolution_id
 	var clues: Array = data.get("clues", []) if data.get("clues", []) is Array else []
 	for clue_variant in clues:
 		var clue: Dictionary = clue_variant if clue_variant is Dictionary else {}
 		if bool(clue.get("focused", false)) and int(clue.get("resolution_id", -1)) >= 0:
 			return int(clue.get("resolution_id", -1))
-	return -1
-
-
-func _resolution_id_from_action(action_id: String) -> int:
-	for prefix in ["history_return_", "history_subscribe_", "history_clear_", "track_select_", "track_intel_"]:
-		if action_id.begins_with(prefix):
-			var suffix := action_id.substr(prefix.length()).strip_edges()
-			return int(suffix) if suffix.is_valid_int() else -1
 	return -1
 
 
@@ -324,9 +308,9 @@ func _add_link_button(entry: Dictionary) -> void:
 
 
 func _add_data_action_button(parent: Container, entry: Dictionary, node_name: String, minimum_width: float) -> void:
-	var action_id := str(entry.get("id", entry.get("action_id", ""))).strip_edges()
-	var label_text := str(entry.get("label", action_id)).strip_edges()
-	if action_id == "" or label_text == "":
+	var intent := _intent_from_entry(entry)
+	var label_text := str(entry.get("label", "")).strip_edges()
+	if intent == null or label_text == "":
 		return
 	var disabled := bool(entry.get("disabled", false))
 	var accent := _dictionary_color(entry, "accent", Color("#c4b5fd"))
@@ -344,13 +328,22 @@ func _add_data_action_button(parent: Container, entry: Dictionary, node_name: St
 	button.add_theme_stylebox_override("hover", _button_style(accent, true, disabled))
 	button.add_theme_stylebox_override("pressed", _button_style(accent.lightened(0.12), true, disabled))
 	button.add_theme_stylebox_override("disabled", _button_style(accent, false, true))
-	button.pressed.connect(Callable(self, "_on_action_pressed").bind(action_id))
+	button.set_meta("intent_kind", intent.intent_kind)
+	button.set_meta("subject_id", intent.subject_id)
+	button.pressed.connect(Callable(self, "_on_action_pressed").bind(intent))
 	parent.add_child(button)
 
 
-func _on_action_pressed(action_id: String) -> void:
-	if action_id.strip_edges() != "":
-		action_requested.emit(action_id)
+func _on_action_pressed(intent: IntelDossierActionIntent) -> void:
+	if intent != null and intent.is_valid():
+		action_requested.emit(intent)
+
+
+func _intent_from_entry(entry: Dictionary) -> IntelDossierActionIntent:
+	var intent_variant: Variant = entry.get("intent", {})
+	if not (intent_variant is Dictionary):
+		return null
+	return IntelDossierActionIntent.from_dictionary(intent_variant as Dictionary)
 
 
 func _label(text: String, font_size: int, color: Color) -> Label:

@@ -122,7 +122,7 @@ func compose_table_state(viewer_index: int, include_full: bool) -> Dictionary:
 		"fallback_deep_links": [
 			{"id": "detail_region", "label": "区域详情"},
 			{"id": "detail_cards", "label": "卡牌/牌架"},
-			{"id": "detail_intel", "label": "情报详情"},
+			{"id": "intel", "label": "情报详情", "application_intent": IntelApplicationIntent.open("", str(district.get("region_id", ""))).to_dictionary()},
 		],
 		"logs": logs,
 	}

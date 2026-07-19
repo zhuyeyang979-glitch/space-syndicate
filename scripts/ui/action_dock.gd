@@ -2,6 +2,7 @@ extends PanelContainer
 class_name SpaceSyndicateActionDock
 
 signal action_requested(action_id: String)
+signal application_intent_requested(intent: IntelApplicationIntent)
 
 @onready var title_label: Label = %ActionTitle
 @onready var quick_action_row: HFlowContainer = %ActionDockQuickActionRow
@@ -68,7 +69,8 @@ func set_quick_actions(actions: Array) -> void:
 			str(action.get("state", "ready" if active else "waiting")),
 			active,
 			str(action.get("tooltip", "")),
-			str(action.get("shortcut", action.get("hotkey", "")))
+			str(action.get("shortcut", action.get("hotkey", ""))),
+			_application_intent(action)
 		)
 
 
@@ -88,7 +90,8 @@ func set_actions(actions: Array) -> void:
 			action_id,
 			_player_action_label(action, "执行操作", "action"),
 			bool(action.get("disabled", false)),
-			str(action.get("tooltip", ""))
+			str(action.get("tooltip", "")),
+			_application_intent(action)
 		)
 
 
@@ -107,7 +110,7 @@ func _clear_row(row: Container) -> void:
 		child.queue_free()
 
 
-func _add_quick_action_button(action_id: String, label_text: String, state_text: String, active: bool, tooltip: String, shortcut_text: String = "") -> void:
+func _add_quick_action_button(action_id: String, label_text: String, state_text: String, active: bool, tooltip: String, shortcut_text: String = "", application_intent: IntelApplicationIntent = null) -> void:
 	var button := Button.new()
 	button.name = "MainActionDockButton"
 	var shortcut := _short_text(shortcut_text.strip_edges(), 3)
@@ -127,7 +130,10 @@ func _add_quick_action_button(action_id: String, label_text: String, state_text:
 	button.add_theme_color_override("font_color", _action_accent(action_id).lightened(0.28) if active else Color("#cbd5e1"))
 	button.add_theme_font_size_override("font_size", 9)
 	button.pressed.connect(func() -> void:
-		action_requested.emit(action_id)
+		if application_intent != null:
+			application_intent_requested.emit(application_intent)
+		else:
+			action_requested.emit(action_id)
 	)
 	quick_action_row.add_child(button)
 
@@ -142,7 +148,7 @@ func _quick_action_tooltip(tooltip: String, shortcut: String) -> String:
 	return "%s｜%s" % [prefix, text]
 
 
-func _add_action_button(action_id: String, label_text: String, disabled: bool, tooltip: String) -> void:
+func _add_action_button(action_id: String, label_text: String, disabled: bool, tooltip: String, application_intent: IntelApplicationIntent = null) -> void:
 	var button := Button.new()
 	button.name = "PlayerActionButton"
 	button.text = _short_text(label_text, 12 if dense_mode else 16)
@@ -157,9 +163,19 @@ func _add_action_button(action_id: String, label_text: String, disabled: bool, t
 	button.add_theme_color_override("font_color", Color("#f8fafc") if not disabled else Color("#94a3b8"))
 	button.add_theme_font_size_override("font_size", 10 if dense_mode else (12 if compact_mode else 11))
 	button.pressed.connect(func() -> void:
-		action_requested.emit(action_id)
+		if application_intent != null:
+			application_intent_requested.emit(application_intent)
+		else:
+			action_requested.emit(action_id)
 	)
 	action_row.add_child(button)
+
+
+func _application_intent(action: Dictionary) -> IntelApplicationIntent:
+	var value: Variant = action.get("application_intent", {})
+	if not (value is Dictionary):
+		return null
+	return IntelApplicationIntent.from_dictionary(value as Dictionary)
 
 
 func _quick_action_state_text(value: String) -> String:

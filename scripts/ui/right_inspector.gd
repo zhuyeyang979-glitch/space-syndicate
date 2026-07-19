@@ -5,13 +5,14 @@ const WHY_TEXT_CHAR_LIMIT := 48
 const SUMMARY_TEXT_CHAR_LIMIT := 44
 
 signal action_requested(action_id: String)
+signal application_intent_requested(intent: IntelApplicationIntent)
 
 @onready var title_label: Label = %InspectorTitle
 @onready var reason_panel: Control = %InspectorReasonPanel
 @onready var reason_label: Label = %InspectorReasonLabel
 @onready var requirement_chip_row: HFlowContainer = %InspectorRequirementChipRow
 @onready var district_info_panel: Node = %DistrictInfoPanel
-@onready var current_action_panel: Node = %CurrentActionPanel
+@onready var current_action_panel: SpaceSyndicateActionDock = %CurrentActionPanel
 @onready var event_log_panel: Control = %EventLogPanel
 @onready var event_log_label: Label = %EventLogLabel
 @onready var deep_link_row: HFlowContainer = %InspectorDeepLinkRow
@@ -22,10 +23,9 @@ var _focused_track_resolution_id := -1
 
 
 func _ready() -> void:
-	if current_action_panel.has_method("set_dense_mode"):
-		current_action_panel.call("set_dense_mode", true)
-	if current_action_panel.has_signal("action_requested"):
-		current_action_panel.connect("action_requested", Callable(self, "_on_action_requested"))
+	current_action_panel.set_dense_mode(true)
+	current_action_panel.action_requested.connect(_on_action_requested)
+	current_action_panel.application_intent_requested.connect(_on_application_intent_requested)
 
 
 func set_context(data: Dictionary) -> void:
@@ -54,9 +54,8 @@ func set_context(data: Dictionary) -> void:
 			district.get("chips", []),
 			_district_full_detail(district)
 		)
-	if current_action_panel.has_method("set_actions"):
-		var actions: Variant = data.get("actions", [])
-		current_action_panel.call("set_actions", actions if actions is Array else [])
+	var actions: Variant = data.get("actions", [])
+	current_action_panel.set_actions(actions if actions is Array else [])
 	_set_event_log(data.get("logs", []))
 	_set_deep_links(data.get("deep_links", data.get("details", [])))
 
@@ -374,8 +373,12 @@ func _set_deep_links(links_variant: Variant) -> void:
 		if action_id == "":
 			action_id = "detail_link_%d" % link_index
 			push_warning("RightInspector deep link is missing an internal id; generated '%s'." % action_id)
+		var application_intent := _application_intent(link)
 		button.pressed.connect(func() -> void:
-			action_requested.emit(action_id)
+			if application_intent != null:
+				application_intent_requested.emit(application_intent)
+			else:
+				action_requested.emit(action_id)
 		)
 		deep_link_row.add_child(button)
 
@@ -459,3 +462,15 @@ func _card_chip_tooltip(key: String) -> String:
 
 func _on_action_requested(action_id: String) -> void:
 	action_requested.emit(action_id)
+
+
+func _on_application_intent_requested(intent: IntelApplicationIntent) -> void:
+	if intent != null and intent.is_valid():
+		application_intent_requested.emit(intent)
+
+
+func _application_intent(entry: Dictionary) -> IntelApplicationIntent:
+	var value: Variant = entry.get("application_intent", {})
+	if not (value is Dictionary):
+		return null
+	return IntelApplicationIntent.from_dictionary(value as Dictionary)

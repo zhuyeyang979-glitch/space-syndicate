@@ -789,13 +789,95 @@ func _store_card_resolution_entry(entry: Dictionary) -> bool:
 	return _call_world(&"_store_card_resolution_entry", [entry])
 
 func _intel_city_guess_entries(viewer_index: int, limit: int = 6) -> Array:
-	return _call_world(&"_intel_city_guess_entries", [viewer_index, limit])
+	var entries := []
+	if viewer_index < 0 or viewer_index >= players.size():
+		return entries
+	var player: Dictionary = players[viewer_index]
+	var guesses: Dictionary = player.get("city_guesses", {})
+	var confidences: Dictionary = player.get("city_guess_confidence", {})
+	for index_variant in _active_city_district_indices():
+		var city_index := int(index_variant)
+		var city := _district_city(city_index)
+		if int(city.get("owner", -1)) == viewer_index:
+			continue
+		var guess := int(guesses.get(city_index, -1))
+		var marked: bool = guess >= 0 and guess < players.size()
+		var competition := _city_competition_matches(city_index)
+		var breakdown := _city_cycle_income_breakdown(city_index, competition)
+		var entry := {
+			"district_index": city_index,
+			"name": String(districts[city_index].get("name", "区域%d" % (city_index + 1))),
+			"guess": guess,
+			"marked": marked,
+			"confidence": _normalized_city_guess_confidence(int(confidences.get(city_index, CITY_GUESS_CONFIDENCE_DEFAULT))) if marked else 0,
+			"potential_income": int(breakdown.get("net", 0)),
+			"last_income": int(city.get("last_income", 0)),
+			"products": _city_product_names(city),
+			"demands": _city_demand_names(city),
+			"competition": competition,
+			"disrupted": int(city.get("trade_disrupted_routes", 0)),
+			"latest_clue": _ai_latest_city_public_clue_text(city),
+			"warehouse_pressure": _city_warehouse_stockpile_pressure(city),
+		}
+		entry["priority"] = _city_intel_priority_score(entry)
+		entries.append(entry)
+	entries.sort_custom(Callable(self, "_sort_ai_city_guess_entry"))
+	var result := []
+	for index in range(mini(maxi(limit, 0), entries.size())):
+		result.append(entries[index])
+	return result
+
+func _sort_ai_city_guess_entry(a: Dictionary, b: Dictionary) -> bool:
+	var a_priority := int(a.get("priority", 0))
+	var b_priority := int(b.get("priority", 0))
+	if a_priority != b_priority:
+		return a_priority > b_priority
+	var a_marked := bool(a.get("marked", false))
+	var b_marked := bool(b.get("marked", false))
+	if a_marked != b_marked:
+		return not a_marked
+	var a_income := int(a.get("potential_income", 0))
+	var b_income := int(b.get("potential_income", 0))
+	if a_income != b_income:
+		return a_income > b_income
+	return String(a.get("name", "")) < String(b.get("name", ""))
 
 func _city_intel_priority_score(entry: Dictionary) -> int:
-	return _call_world(&"_city_intel_priority_score", [entry])
+	var score := 0
+	score += clampi(int(float(int(entry.get("potential_income", 0))) / 10.0), 0, 80)
+	score += clampi(int(float(int(entry.get("last_income", 0))) / 20.0), 0, 30)
+	score += int(entry.get("competition", 0)) * 18
+	score += int(entry.get("disrupted", 0)) * 16
+	score += clampi(int(float(int(entry.get("warehouse_pressure", 0))) / 2.0), 0, 120)
+	score += (entry.get("products", []) as Array).size() * 4
+	score += (entry.get("demands", []) as Array).size() * 4
+	var latest_clue := String(entry.get("latest_clue", ""))
+	if latest_clue != "" and latest_clue != "暂无公开线索":
+		score += 20
+	if bool(entry.get("marked", false)):
+		match _normalized_city_guess_confidence(int(entry.get("confidence", CITY_GUESS_CONFIDENCE_DEFAULT))):
+			CITY_GUESS_CONFIDENCE_LOW:
+				score += 18
+			CITY_GUESS_CONFIDENCE_MEDIUM:
+				score += 8
+			CITY_GUESS_CONFIDENCE_HIGH:
+				score -= 12
+	else:
+		score += 45
+	return maxi(0, score)
 
 func _normalized_city_guess_confidence(confidence: int) -> int:
-	return _call_world(&"_normalized_city_guess_confidence", [confidence])
+	return clampi(confidence, CITY_GUESS_CONFIDENCE_LOW, CITY_GUESS_CONFIDENCE_HIGH)
+
+func _ai_latest_city_public_clue_text(city: Dictionary) -> String:
+	var public_clues: Array = city.get("public_clues", []) if city.get("public_clues", []) is Array else []
+	for index in range(public_clues.size() - 1, -1, -1):
+		var clue := _normalize_city_public_clue_entry(public_clues[index])
+		var clue_text := String(clue.get("text", ""))
+		if not clue_text.is_empty():
+			return clue_text
+	var last_clue := String(city.get("last_public_clue", ""))
+	return last_clue if not last_clue.is_empty() else "暂无公开线索"
 
 func _victory_public_snapshot() -> Dictionary:
 	if _victory_control_runtime_controller == null or not _victory_control_runtime_controller.has_method("public_snapshot"):
@@ -1009,7 +1091,8 @@ func _apply_rival_business_action(player_index: int, action: Dictionary) -> bool
 	return _call_world(&"_apply_rival_business_action", [player_index, action])
 
 func _mark_city_guess_for_player(viewer_index: int, city_index: int, guessed_player: int, confidence: int = CITY_GUESS_CONFIDENCE_DEFAULT, reason: String = CITY_GUESS_REASON_DEFAULT) -> bool:
-	return _call_world(&"_mark_city_guess_for_player", [viewer_index, city_index, guessed_player, confidence, reason])
+	var bridge := _world_bridge as AiRuntimeWorldBridge
+	return bridge != null and bridge.apply_city_owner_guess(viewer_index, city_index, guessed_player, confidence, reason)
 
 func _traceable_contract_entries(preferred_resolution_id: int = -1, limit: int = 1) -> Array:
 	return _contract_runtime_controller.traceable_contract_entries(preferred_resolution_id, limit) if _contract_runtime_controller != null else []

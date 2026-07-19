@@ -1469,8 +1469,8 @@ func _wire_card_execution_typed_ports() -> void:
 	var scheduler := _scheduler_node() as ForcedDecisionRuntimeScheduler
 	var commodity_flow := _commodity_flow_runtime_controller_node() as CommodityFlowRuntimeController
 	var history := _card_resolution_history_runtime_service_node()
-	var history_query: Node = _card_history_public_query_port_node()
-	var history_annotations: Node = _card_history_private_annotation_service_node()
+	var history_query := _card_history_public_query_port_node() as CardHistoryPublicQueryPort
+	var history_annotations := _card_history_private_annotation_service_node() as CardHistoryPrivateAnnotationService
 	var presentation := _card_resolution_presentation_port_node()
 	var intel := _card_intel_runtime_service_node()
 	var commitment := _card_commitment_runtime_service_node()
@@ -4703,12 +4703,6 @@ func compose_standings_snapshot(source: Dictionary) -> Dictionary:
 
 func compose_final_settlement_snapshot(source: Dictionary) -> Dictionary:
 	var service := _final_settlement_public_snapshot_node()
-	var value: Variant = service.call("compose", source) if service != null and service.has_method("compose") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func compose_intel_dossier_snapshot(source: Dictionary) -> Dictionary:
-	var service := _intel_dossier_public_snapshot_node()
 	var value: Variant = service.call("compose", source) if service != null and service.has_method("compose") else {}
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 

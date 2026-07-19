@@ -40,6 +40,24 @@ func table_selection_state() -> TableSelectionState:
 	return _table_selection_state
 
 
+func apply_city_owner_guess(viewer_index: int, district_index: int, guessed_player: int, confidence: int, reason_id: String) -> bool:
+	if _world_session_state == null:
+		return false
+	var region_id := _world_session_state.region_id_for_district(district_index)
+	var revision := _world_session_state.city_inference_owner_revision(viewer_index)
+	if region_id.is_empty() or revision.is_empty():
+		return false
+	var result := _world_session_state.set_city_owner_guess(
+		viewer_index,
+		region_id,
+		guessed_player,
+		confidence,
+		reason_id,
+		revision
+	)
+	return bool(result.get("applied", false))
+
+
 func has_world() -> bool:
 	return _world != null and is_instance_valid(_world)
 
@@ -118,6 +136,7 @@ func debug_snapshot() -> Dictionary:
 		"rng_service_ready": _rng_service != null,
 		"table_selection_state_ready": _table_selection_state != null,
 		"world_session_state_ready": _world_session_state != null,
+		"city_inference_writes_world_session_owner": true,
 		"routed_intent_count": _routed_intent_count,
 		"failed_intent_count": _failed_intent_count,
 		"owns_ai_state": false,

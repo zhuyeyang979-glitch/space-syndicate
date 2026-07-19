@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/intel_private_command_port.gd" id="1_port"]
+
+[node name="IntelPrivateCommandPort" type="Node"]
+script = ExtResource("1_port")
+editor_description = "Authorized, revision-bound, exact-once Intel private command boundary. State remains owned by WorldSessionState and CardHistoryPrivateAnnotationService."

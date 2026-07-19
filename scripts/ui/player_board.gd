@@ -10,6 +10,7 @@ signal card_drag_preview_moved(card_data: Dictionary, screen_position: Vector2)
 signal card_drag_preview_ended(card_data: Dictionary)
 signal card_drag_released(card_data: Dictionary, screen_position: Vector2)
 signal action_requested(action_id: String)
+signal application_intent_requested(intent: IntelApplicationIntent)
 
 @onready var title_label: Label = %PlayerBoardTitle
 @onready var identity_chip: Label = %PlayerIdentityChip
@@ -23,7 +24,7 @@ signal action_requested(action_id: String)
 @onready var goal_bar: ProgressBar = %PlayerGoalBar
 @onready var hand_rack: Control = %HandRack
 @onready var action_hint_label: Label = %PlayerActionHint
-@onready var main_action_dock: Node = %PlayerMainActionDock
+@onready var main_action_dock: SpaceSyndicateActionDock = %PlayerMainActionDock
 @onready var status_lamp_row: Container = %PlayerStatusLampRow
 @onready var readiness_chip_row: Container = %PlayerReadinessChipRow
 @onready var resource_tableau: PanelContainer = %PlayerResourceTableau
@@ -59,10 +60,10 @@ func _ready() -> void:
 		hand_rack.connect("card_drag_preview_ended", Callable(self, "_on_card_drag_preview_ended"))
 	if hand_rack != null and hand_rack.has_signal("card_drag_released"):
 		hand_rack.connect("card_drag_released", Callable(self, "_on_card_drag_released"))
-	if main_action_dock != null and main_action_dock.has_method("set_compact_mode"):
-		main_action_dock.call("set_compact_mode", true)
-	if main_action_dock != null and main_action_dock.has_signal("action_requested"):
-		main_action_dock.connect("action_requested", Callable(self, "_on_action_requested"))
+	if main_action_dock != null:
+		main_action_dock.set_compact_mode(true)
+		main_action_dock.action_requested.connect(_on_action_requested)
+		main_action_dock.application_intent_requested.connect(_on_application_intent_requested)
 
 
 func _configure_pointer_filter_skeleton() -> void:
@@ -201,6 +202,11 @@ func _on_action_requested(action_id: String) -> void:
 	action_requested.emit(action_id)
 
 
+func _on_application_intent_requested(intent: IntelApplicationIntent) -> void:
+	if intent != null and intent.is_valid():
+		application_intent_requested.emit(intent)
+
+
 func _first_enabled_card_action_id(card_data: Dictionary) -> String:
 	var actions: Array = card_data.get("actions", []) if card_data.get("actions", []) is Array else []
 	for action_variant in actions:
@@ -216,9 +222,9 @@ func _first_enabled_card_action_id(card_data: Dictionary) -> String:
 
 
 func _set_main_action_dock(quick_actions: Array, actions: Array) -> void:
-	if main_action_dock == null or not main_action_dock.has_method("set_dock"):
+	if main_action_dock == null:
 		return
-	main_action_dock.call("set_dock", {
+	main_action_dock.set_dock({
 		"quick_actions": quick_actions,
 		"actions": actions,
 	})

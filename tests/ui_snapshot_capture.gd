@@ -130,7 +130,11 @@ func _capture_size_suite(packed: PackedScene, layout_demo_packed: PackedScene, c
 		main.call("_open_economy_overview_menu")
 		await _pump_frames(8)
 		await _save_viewport_snapshot("economy_overview_runtime_%s.png" % suffix)
-		main.call("_open_intel_dossier_menu")
+		var intel_flow := main.get_node_or_null("RuntimeServices/ApplicationFlowPort") as ApplicationFlowPort
+		if intel_flow != null:
+			intel_flow.submit_action("intel")
+		else:
+			_capture_failures.append("scene-owned Intel application flow was unavailable")
 		await _pump_frames(8)
 		await _save_viewport_snapshot("intel_dossier_runtime_%s.png" % suffix)
 		var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")

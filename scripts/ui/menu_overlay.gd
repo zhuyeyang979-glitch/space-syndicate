@@ -7,6 +7,7 @@ signal catalog_step_requested(delta: int)
 signal catalog_back_requested
 signal quick_nav_action_requested(action_id: String)
 signal codex_action_requested(action_id: String, payload: Dictionary)
+signal application_intent_requested(intent: IntelApplicationIntent)
 
 @onready var surface_panel: PanelContainer = %MenuSurfacePanel
 @onready var shell_margin: MarginContainer = %MenuShellMargin
@@ -371,7 +372,10 @@ func _refresh_body_disclosure() -> void:
 
 
 func _on_quick_nav_action_requested(action_id: String) -> void:
-	quick_nav_action_requested.emit(action_id)
+	if action_id == "intel":
+		application_intent_requested.emit(IntelApplicationIntent.open())
+	else:
+		quick_nav_action_requested.emit(action_id)
 
 
 func _on_codex_action_requested(action_id: String, payload: Dictionary) -> void:

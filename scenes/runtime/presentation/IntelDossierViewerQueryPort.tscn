@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/intel_dossier_viewer_query_port.gd" id="1_query"]
+
+[node name="IntelDossierViewerQueryPort" type="Node"]
+script = ExtResource("1_query")
+editor_description = "Authorized viewer query that combines WorldSession viewer projections with the audited Region Codex public source and public card history."

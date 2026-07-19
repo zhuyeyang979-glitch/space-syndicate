@@ -41,7 +41,7 @@ const OUTPUT_FIELDS := [
 	"updated_at_public_revision",
 ]
 
-var _public_query: Node
+var _public_query: CardHistoryPublicQueryPort
 var _annotations_by_viewer: Dictionary = {}
 var _role_usage_by_viewer: Dictionary = {}
 var _subscription_fingerprints: Dictionary = {}
@@ -49,8 +49,8 @@ var _revision := 0
 var _notification_count := 0
 
 
-func configure(public_query: Node) -> void:
-	_public_query = public_query if public_query != null and public_query.has_method("entry_by_id") else null
+func configure(public_query: CardHistoryPublicQueryPort) -> void:
+	_public_query = public_query
 
 
 func reset_state() -> void:
@@ -71,25 +71,137 @@ func annotation_for_viewer(viewer_index: int, history_entry_id: String) -> Dicti
 
 
 func viewer_snapshot(viewer_index: int) -> Dictionary:
-	var rows: Array = []
-	var viewer_rows: Dictionary = _annotations_by_viewer.get(str(viewer_index), {}) if _annotations_by_viewer.get(str(viewer_index), {}) is Dictionary else {}
-	var ids: Array = viewer_rows.keys()
-	ids.sort()
-	for entry_id_variant in ids:
-		rows.append((viewer_rows[entry_id_variant] as Dictionary).duplicate(true))
+	var rows := _viewer_annotation_rows(viewer_index)
 	return {
 		"schema_version": 1,
 		"visibility_scope": "viewer_private",
 		"viewer_index": viewer_index,
-		"revision": _revision,
+		"revision": _viewer_owner_revision(viewer_index, rows),
 		"annotations": rows,
 	}
 
 
 func apply_annotation(viewer_index: int, history_entry_id: String, patch: Dictionary) -> Dictionary:
+	if patch.has("excluded_player_indices"):
+		return {"applied": false, "reason_code": "annotation_exclusion_requires_public_evidence", "revision": _revision}
+	return _apply_annotation_patch(viewer_index, history_entry_id, patch, false)
+
+
+func owner_revision_for_viewer(viewer_index: int) -> String:
+	if viewer_index < 0:
+		return ""
+	return _viewer_owner_revision(viewer_index, _viewer_annotation_rows(viewer_index))
+
+
+func _viewer_owner_revision(viewer_index: int, rows: Array) -> String:
+	var context := HashingContext.new()
+	context.start(HashingContext.HASH_SHA256)
+	context.update(JSON.stringify({
+		"schema_version": SAVE_SCHEMA_VERSION,
+		"viewer_index": viewer_index,
+		"annotations": rows,
+		"role_usage": role_usage_snapshot(viewer_index),
+	}).to_utf8_buffer())
+	return context.finish().hex_encode()
+
+
+func _viewer_annotation_rows(viewer_index: int) -> Array:
+	var rows: Array = []
+	if viewer_index < 0:
+		return rows
+	var viewer_rows: Dictionary = _annotations_by_viewer.get(str(viewer_index), {}) if _annotations_by_viewer.get(str(viewer_index), {}) is Dictionary else {}
+	var ids: Array = viewer_rows.keys()
+	ids.sort()
+	for entry_id_variant in ids:
+		rows.append((viewer_rows[entry_id_variant] as Dictionary).duplicate(true))
+	return rows
+
+
+func role_usage_snapshot(viewer_index: int) -> Dictionary:
+	if viewer_index < 0:
+		return {}
+	return {
+		"viewer_index": viewer_index,
+		"residual_catalog": _role_usage(viewer_index, "residual_catalog"),
+		"public_exclusion": _role_usage(viewer_index, "public_exclusion"),
+		"visibility_scope": "viewer_private",
+	}
+
+
+func notification_count() -> int:
+	return _notification_count
+
+
+func set_note_exact(viewer_index: int, history_entry_id: String, note_text: String) -> Dictionary:
+	if note_text.length() > 240:
+		return {"applied": false, "reason_code": "annotation_note_invalid", "revision": _revision}
+	return _apply_annotation_patch(viewer_index, history_entry_id, {"note_text": note_text}, false)
+
+
+func set_tags_exact(viewer_index: int, history_entry_id: String, private_tags: Array) -> Dictionary:
+	if not _strict_tags_valid(private_tags):
+		return {"applied": false, "reason_code": "annotation_tags_invalid", "revision": _revision}
+	return _apply_annotation_patch(viewer_index, history_entry_id, {"private_tags": private_tags.duplicate()}, false)
+
+
+func set_suspects_exact(viewer_index: int, history_entry_id: String, suspected_player_indices: Array, valid_player_count: int) -> Dictionary:
+	if not _strict_indices_valid(suspected_player_indices, valid_player_count):
+		return {"applied": false, "reason_code": "annotation_suspects_invalid", "revision": _revision}
+	var current := annotation_for_viewer(viewer_index, history_entry_id)
+	var excluded: Array = current.get("excluded_player_indices", []) if current.get("excluded_player_indices", []) is Array else []
+	for player_index_variant in suspected_player_indices:
+		if excluded.has(player_index_variant):
+			return {"applied": false, "reason_code": "annotation_indices_overlap", "revision": _revision}
+	return _apply_annotation_patch(viewer_index, history_entry_id, {"suspected_player_indices": suspected_player_indices.duplicate()}, false)
+
+
+func set_private_confidence_exact(viewer_index: int, history_entry_id: String, private_confidence: int) -> Dictionary:
+	if private_confidence < 0 or private_confidence > 3:
+		return {"applied": false, "reason_code": "annotation_confidence_invalid", "revision": _revision}
+	return _apply_annotation_patch(viewer_index, history_entry_id, {"private_confidence": private_confidence}, false)
+
+
+func set_subscription_exact(viewer_index: int, history_entry_id: String, subscribed: bool) -> Dictionary:
+	return _apply_annotation_patch(viewer_index, history_entry_id, {"subscribed": subscribed}, false)
+
+
+func clear_annotation_exact(viewer_index: int, history_entry_id: String) -> Dictionary:
+	if annotation_for_viewer(viewer_index, history_entry_id).is_empty():
+		return {"applied": true, "changed": false, "reason_code": "unchanged", "revision": _revision}
+	return _apply_annotation_patch(viewer_index, history_entry_id, {
+		"note_text": "",
+		"private_tags": [],
+		"suspected_player_indices": [],
+		"private_confidence": 0,
+		"excluded_player_indices": [],
+		"subscribed": false,
+	}, true)
+
+
+func use_residual_catalog_from_public_evidence(viewer_index: int, history_entry_id: String, valid_player_count: int, maximum_charges: int) -> Dictionary:
+	var public_entry := _public_entry(history_entry_id)
+	if public_entry.is_empty() or not str(public_entry.get("publicly_revealed_actor", "")).is_empty() or valid_player_count < 2:
+		return {"applied": false, "reason_code": "public_evidence_not_meaningful", "revision": _revision}
+	var public_candidates: Array[int] = []
+	for player_index in range(valid_player_count):
+		public_candidates.append(player_index)
+	return use_residual_catalog_role(viewer_index, history_entry_id, public_candidates, mini(maximum_charges, MAX_RESIDUAL_CATALOG_USAGE))
+
+
+func use_public_exclusion_from_public_evidence(viewer_index: int, history_entry_id: String, maximum_charges: int) -> Dictionary:
+	var public_entry := _public_entry(history_entry_id)
+	if public_entry.is_empty() or maximum_charges <= 0:
+		return {"applied": false, "reason_code": "public_evidence_not_meaningful", "revision": _revision}
+	# The frozen public-history projection exposes no authoritative impossibility set.
+	# Failing closed avoids manufacturing an exclusion from a target label.
+	return {"applied": false, "reason_code": "no_publicly_impossible_suspect", "revision": _revision}
+
+
+func _apply_annotation_patch(viewer_index: int, history_entry_id: String, patch: Dictionary, allow_evidence_exclusion: bool) -> Dictionary:
 	var normalized_id := history_entry_id.strip_edges()
 	var public_entry := _public_entry(normalized_id)
-	if viewer_index < 0 or public_entry.is_empty() or patch.is_empty() or not _valid_patch(patch):
+	if viewer_index < 0 or public_entry.is_empty() or patch.is_empty() or not _valid_patch(patch) \
+			or (patch.has("excluded_player_indices") and not allow_evidence_exclusion):
 		return {"applied": false, "reason_code": "annotation_request_invalid", "revision": _revision}
 	var before := annotation_for_viewer(viewer_index, normalized_id)
 	var after := _base_annotation(viewer_index, public_entry) if before.is_empty() else before.duplicate(true)
@@ -172,7 +284,7 @@ func use_public_exclusion_role(viewer_index: int, history_entry_id: String, publ
 		return {"applied": false, "reason_code": "no_publicly_impossible_suspect", "used": used}
 	excluded.append(selected)
 	suspects.erase(selected)
-	var result := apply_annotation(viewer_index, history_entry_id, {"suspected_player_indices": suspects, "excluded_player_indices": excluded})
+	var result := _apply_annotation_patch(viewer_index, history_entry_id, {"suspected_player_indices": suspects, "excluded_player_indices": excluded}, true)
 	if bool(result.get("changed", false)):
 		_set_role_usage(viewer_index, "public_exclusion", used + 1)
 		result["excluded_player_index"] = selected
@@ -378,6 +490,8 @@ func debug_snapshot() -> Dictionary:
 		"checkpoint_persisted_by_session_owner": true,
 		"notification_state_persisted": false,
 		"preflight_reads_live_history": false,
+		"generic_exclusion_patch_allowed": false,
+		"typed_command_adapter": true,
 	}
 
 
@@ -537,6 +651,36 @@ func _valid_patch(patch: Dictionary) -> bool:
 		if not EDITABLE_FIELDS.has(str(key_variant)):
 			return false
 	return true
+
+
+func _strict_tags_valid(tags: Array) -> bool:
+	if tags.size() > 8:
+		return false
+	var seen: Array[String] = []
+	for tag_variant in tags:
+		if not (tag_variant is String):
+			return false
+		var tag := str(tag_variant)
+		if tag.is_empty() or tag.length() > 32 or tag.strip_edges() != tag or seen.has(tag):
+			return false
+		seen.append(tag)
+	return true
+
+
+func _strict_indices_valid(indices: Array, valid_player_count: int) -> bool:
+	if valid_player_count < 0:
+		return false
+	var normalized: Array[int] = []
+	for index_variant in indices:
+		if not (index_variant is int):
+			return false
+		var player_index := int(index_variant)
+		if player_index < 0 or player_index >= valid_player_count or normalized.has(player_index):
+			return false
+		normalized.append(player_index)
+	var sorted := normalized.duplicate()
+	sorted.sort()
+	return normalized == sorted
 
 
 func _normalized_field(field: String, value: Variant) -> Variant:

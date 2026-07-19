@@ -39,6 +39,7 @@ const PRIVATE_TRACK_TEXT_TOKENS := ["hidden_", "private_", "owner_secret", "secr
 
 signal end_turn_requested
 signal action_requested(action_id: String)
+signal application_intent_requested(intent: IntelApplicationIntent)
 signal card_selected(card_data: Dictionary)
 signal card_hovered(card_data: Dictionary)
 signal card_unhovered
@@ -51,8 +52,8 @@ signal commodity_claim_requested(request: COMMODITY_CLAIM_REQUEST_SCRIPT)
 @onready var top_bar: Node = %TopBar
 @onready var commodity_sushi_track: COMMODITY_TRACK_SCRIPT = %TopCommoditySushiTrack
 @onready var planet_board: Node = %PlanetBoard
-@onready var right_inspector: Node = %RightInspector
-@onready var player_board: Node = %PlayerBoard
+@onready var right_inspector: SpaceSyndicateRightInspector = %RightInspector
+@onready var player_board: SpaceSyndicatePlayerBoard = %PlayerBoard
 @onready var visual_event_layer: Node = get_node_or_null("%RuntimeVisualEventLayer")
 @onready var overlay_layer: Node = %OverlayLayer
 @onready var hand_hover_preview_host: Control = get_node_or_null("%HandHoverPreviewHost") as Control
@@ -90,6 +91,7 @@ func _ready() -> void:
 		commodity_sushi_track.claim_requested.connect(_on_commodity_claim_requested)
 	if right_inspector.has_signal("action_requested"):
 		right_inspector.connect("action_requested", Callable(self, "_on_action_requested"))
+	right_inspector.application_intent_requested.connect(_on_application_intent_requested)
 	if player_board.has_signal("card_selected"):
 		player_board.connect("card_selected", Callable(self, "_on_card_selected"))
 	if player_board.has_signal("card_hovered"):
@@ -108,6 +110,7 @@ func _ready() -> void:
 		player_board.connect("card_drag_released", Callable(self, "_on_card_drag_released"))
 	if player_board.has_signal("action_requested"):
 		player_board.connect("action_requested", Callable(self, "_on_action_requested"))
+	player_board.application_intent_requested.connect(_on_application_intent_requested)
 	if overlay_layer.has_signal("side_drawer_action_requested"):
 		overlay_layer.connect("side_drawer_action_requested", Callable(self, "_on_side_drawer_action_requested"))
 	if overlay_layer.has_signal("temporary_decision_action_requested"):
@@ -505,6 +508,12 @@ func _on_action_requested(action_id: String) -> void:
 	action_requested.emit(action_id)
 
 
+func _on_application_intent_requested(intent: IntelApplicationIntent) -> void:
+	if intent == null or not intent.is_valid() or _forced_surface_blocks_player_actions():
+		return
+	application_intent_requested.emit(intent)
+
+
 func _on_track_link_hovered(action_id: String) -> void:
 	_set_public_track_hover(action_id)
 	_show_track_action_hover_preview(action_id)
@@ -778,8 +787,8 @@ func _track_entry_inspector_context(entry: Dictionary) -> Dictionary:
 	var actions: Array = (public_entry.get("actions", []) as Array).duplicate(true) if public_entry.get("actions", []) is Array else []
 	var deep_links: Array = (public_entry.get("deep_links", []) as Array).duplicate(true) if public_entry.get("deep_links", []) is Array else []
 	_append_track_action_if_missing(actions, _track_select_action(public_entry), "查看履历", "把这条公共动作设为当前查看对象。")
-	_append_track_action_if_missing(actions, _track_intel_action(public_entry), "线索档案", "打开情报档案并置顶这张公开牌。")
-	_append_track_action_if_missing(deep_links, _track_intel_action(public_entry), "线索档案", "打开情报档案并置顶这张公开牌。")
+	_append_track_intel_intent_if_missing(actions, public_entry)
+	_append_track_intel_intent_if_missing(deep_links, public_entry)
 	_append_track_action_if_missing(actions, _track_open_action(public_entry), "卡牌详情", "打开这张公开牌的图鉴详情。")
 	_append_track_action_if_missing(deep_links, _track_open_action(public_entry), "卡牌详情", "打开这张公开牌的图鉴详情。")
 	var badges: Array = public_entry.get("badges", []) if public_entry.get("badges", []) is Array else []
@@ -838,13 +847,6 @@ func _track_select_action(entry: Dictionary) -> String:
 	return "track_select_%d" % resolution_id if resolution_id >= 0 else ""
 
 
-func _track_intel_action(entry: Dictionary) -> String:
-	if str(entry.get("kind", "")).strip_edges().to_lower() == "event":
-		return ""
-	var resolution_id := int(entry.get("resolution_id", -1))
-	return "track_intel_%d" % resolution_id if resolution_id >= 0 else ""
-
-
 func _track_open_action(entry: Dictionary) -> String:
 	var action_id := str(entry.get("open_action", "")).strip_edges()
 	if action_id != "":
@@ -861,6 +863,25 @@ func _append_track_action_if_missing(target: Array, action_id: String, label: St
 		if str(action.get("id", action.get("action_id", ""))).strip_edges() == action_id:
 			return
 	target.append({"id": action_id, "label": label, "tooltip": tooltip})
+
+
+func _append_track_intel_intent_if_missing(target: Array, entry: Dictionary) -> void:
+	if str(entry.get("kind", "")).strip_edges().to_lower() == "event":
+		return
+	var resolution_id := int(entry.get("resolution_id", -1))
+	if resolution_id < 0:
+		return
+	for action_variant in target:
+		var action: Dictionary = action_variant if action_variant is Dictionary else {}
+		var intent_value: Variant = action.get("application_intent", {})
+		if intent_value is Dictionary and str((intent_value as Dictionary).get("focused_history_entry_id", "")) == "card-history:%d" % resolution_id:
+			return
+	target.append({
+		"id": "intel",
+		"label": "线索档案",
+		"tooltip": "打开情报档案并置顶这张公共履历。",
+		"application_intent": IntelApplicationIntent.open("card-history:%d" % resolution_id).to_dictionary(),
+	})
 
 
 func _safe_public_track_entry(entry: Dictionary) -> Dictionary:
@@ -1056,7 +1077,7 @@ func _track_entry_for_action(action_id: String) -> Dictionary:
 
 
 func _track_entry_matches_action(entry: Dictionary, action_id: String) -> bool:
-	if action_id in [_track_select_action(entry), _track_intel_action(entry), _track_open_action(entry)]:
+	if action_id in [_track_select_action(entry), _track_open_action(entry)]:
 		return true
 	var actions: Array = entry.get("actions", []) if entry.get("actions", []) is Array else []
 	for action_variant in actions:

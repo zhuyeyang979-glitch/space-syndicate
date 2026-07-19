@@ -677,51 +677,39 @@ func _run() -> void:
 	_expect(menu_body_label != null and menu_body_label.text.contains("流水"), "economy overview shows player economy ledger entries")
 	_expect(menu_body_label != null and menu_body_label.text.contains("收入拆解") and menu_body_label.text.contains("合约"), "economy overview shows city income breakdowns and temporary contract status")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "经济速览") and _container_label_text_contains(menu_preview_box, "商品热榜") and _container_label_text_contains(menu_preview_box, "公开异动") and _container_label_text_contains(menu_preview_box, "匿名线索"), "economy overview exposes compact GDP, product, route, public-situation, and clue summary cards")
-	main.call("_open_intel_dossier_menu")
+	var intel_flow := main.get_node_or_null("RuntimeServices/ApplicationFlowPort") as ApplicationFlowPort
+	var intel_query := main.get_node_or_null("RuntimeServices/IntelDossierViewerQueryPort") as IntelDossierViewerQueryPort
+	var intel_commands := main.get_node_or_null("RuntimeServices/IntelPrivateCommandPort") as IntelPrivateCommandPort
+	var intel_world := (main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()
+	var dossier_rival_city_index := _first_rival_city_index(main, 0)
+	var dossier_region_id := intel_world.region_id_for_district(dossier_rival_city_index) if dossier_rival_city_index >= 0 else ""
+	_expect(intel_flow != null and intel_query != null and intel_commands != null, "scene-owned Intel application/query/command ports are reachable")
+	intel_flow.submit_intel_application_intent(IntelApplicationIntent.open("", dossier_region_id))
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "情报档案", "intel dossier opens from the main scene")
-	_expect(menu_body_label != null and menu_body_label.text.contains("情报换钱") and menu_body_label.text.contains("当前不揭示正误"), "intel dossier explains money settlement without revealing truth early")
-	_expect(menu_body_label != null and menu_body_label.text.contains("城市业主情报") and menu_body_label.text.contains("终局范围"), "intel dossier summarizes private city-owner guesses")
-	_expect(menu_body_label != null and menu_body_label.text.contains("卡牌归属档案") and menu_body_label.text.contains("押注"), "intel dossier summarizes anonymous card-owner betting status")
-	_expect(menu_body_label != null and menu_body_label.text.contains("怪兽资金档案") and menu_body_label.text.contains("城市公开线索档案"), "intel dossier groups monster cash and city clue evidence")
-	_expect(menu_body_label != null and menu_body_label.text.contains("调查优先级") and menu_body_label.text.contains("优先级"), "intel dossier ranks city-owner leads by investigation priority")
+	_expect(menu_body_label != null and menu_body_label.text.contains("公开区域") and menu_body_label.text.contains("城市推理"), "intel dossier summarizes public regions and the authorized viewer's city inference")
 	menu_preview_box = _menu_overlay_node(main, "MenuPreviewBox") as VBoxContainer
-	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "查看区域线索"), "intel dossier exposes region clue jump buttons")
-	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "查看卡牌线索"), "intel dossier exposes card clue jump buttons")
-	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "标玩家") and _container_button_text_contains(menu_preview_box, "清除"), "intel dossier exposes city-owner mark buttons")
-	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "卡牌条件") and _container_button_text_contains(menu_preview_box, "怪兽资金"), "intel dossier exposes city-owner mark reason buttons")
+	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "公开区域证据") and _container_label_text_contains(menu_preview_box, "怪兽吸引线索"), "intel dossier renders audited public region and monster evidence")
+	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "查看区域："), "intel dossier exposes typed region jump buttons")
+	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "标记") and _container_button_text_contains(menu_preview_box, "清除"), "intel dossier exposes typed city-owner mark buttons")
+	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "卡牌") and _container_button_text_contains(menu_preview_box, "怪兽"), "intel dossier exposes typed city-owner reason buttons")
 	_expect(menu_preview_box != null and _container_button_text_contains(menu_preview_box, "打开经济总览"), "intel dossier keeps an economy overview jump")
-	var dossier_rival_city_index := _first_rival_city_index(main, 0)
 	if dossier_rival_city_index >= 0:
-		main.call("_mark_city_guess_from_intel", dossier_rival_city_index, -1)
-		await process_frame
-		var players_after_intel_clear := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players)
-		var guesses_after_intel_clear := (players_after_intel_clear[0] as Dictionary).get("city_guesses", {}) as Dictionary
-		_expect(not guesses_after_intel_clear.has(dossier_rival_city_index), "intel dossier can clear a private city-owner mark")
-		main.call("_mark_city_guess_from_intel", dossier_rival_city_index, 1)
-		await process_frame
-		var players_after_intel_mark := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players)
-		var guesses_after_intel_mark := (players_after_intel_mark[0] as Dictionary).get("city_guesses", {}) as Dictionary
-		_expect(int(guesses_after_intel_mark.get(dossier_rival_city_index, -1)) == 1, "intel dossier can update a private city-owner mark")
-		main.call("_set_city_guess_confidence_from_intel", dossier_rival_city_index, 3)
-		await process_frame
-		var players_after_confidence := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players)
-		var confidence_after_intel := (players_after_confidence[0] as Dictionary).get("city_guess_confidence", {}) as Dictionary
-		_expect(int(confidence_after_intel.get(dossier_rival_city_index, 0)) == 3, "intel dossier can update city-owner mark confidence")
-		_expect(menu_body_label != null and menu_body_label.text.contains("置信:高") and menu_body_label.text.contains("置信分布"), "intel dossier displays city-owner mark confidence")
-		main.call("_set_city_guess_reason_from_intel", dossier_rival_city_index, "card")
-		await process_frame
-		var players_after_reason := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players)
-		var reasons_after_intel := (players_after_reason[0] as Dictionary).get("city_guess_reasons", {}) as Dictionary
-		_expect(String(reasons_after_intel.get(dossier_rival_city_index, "")) == "card", "intel dossier can update city-owner mark reason")
-		_expect(menu_body_label != null and menu_body_label.text.contains("理由:卡牌条件") and menu_body_label.text.contains("理由分布"), "intel dossier displays city-owner mark reason")
-		var intel_city_entries := _as_array(main.call("_intel_city_guess_entries", 0, 6))
-		_expect(not intel_city_entries.is_empty() and int((intel_city_entries[0] as Dictionary).get("priority", -1)) >= 0, "intel dossier computes non-negative city investigation priority")
-		var intel_player_snapshot := (_as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players)[0] as Dictionary)
-		var saved_confidence := intel_player_snapshot.get("city_guess_confidence", {}) as Dictionary
-		var saved_reasons := intel_player_snapshot.get("city_guess_reasons", {}) as Dictionary
-		_expect(int(saved_confidence.get(dossier_rival_city_index, 0)) == 3, "private city-owner mark confidence remains on the active player state")
-		_expect(String(saved_reasons.get(dossier_rival_city_index, "")) == "card", "private city-owner mark reason remains on the active player state")
+		var revision := intel_world.city_inference_owner_revision(0)
+		var clear_receipt := intel_commands.submit_command(IntelPrivateCommand.create("smoke:intel:clear", &"clear_city_owner_guess", 0, "region:%s" % dossier_region_id, revision, {}))
+		_expect(clear_receipt.applied and (intel_world.city_inference_projection(0).get("records", []) as Array).is_empty(), "typed Intel command can clear the authorized viewer's city mark")
+		revision = intel_world.city_inference_owner_revision(0)
+		var mark_receipt := intel_commands.submit_command(IntelPrivateCommand.create("smoke:intel:mark", &"set_city_owner_guess", 0, "region:%s" % dossier_region_id, revision, {"suspected_player_index": 1, "confidence": 2, "reason_id": "intuition"}))
+		_expect(mark_receipt.applied, "typed Intel command can update the authorized viewer's city mark")
+		revision = intel_world.city_inference_owner_revision(0)
+		var confidence_receipt := intel_commands.submit_command(IntelPrivateCommand.create("smoke:intel:confidence", &"set_city_guess_confidence", 0, "region:%s" % dossier_region_id, revision, {"confidence": 3}))
+		_expect(confidence_receipt.applied, "typed Intel command can update city mark confidence")
+		revision = intel_world.city_inference_owner_revision(0)
+		var reason_receipt := intel_commands.submit_command(IntelPrivateCommand.create("smoke:intel:reason", &"set_city_guess_reason", 0, "region:%s" % dossier_region_id, revision, {"reason_id": "card"}))
+		var inference_records: Array = intel_world.city_inference_projection(0).get("records", [])
+		_expect(reason_receipt.applied and not inference_records.is_empty() and int((inference_records[0] as Dictionary).get("confidence", 0)) == 3 and str((inference_records[0] as Dictionary).get("reason_id", "")) == "card", "WorldSession owner preserves typed confidence and reason")
+		var refreshed_intel := intel_query.snapshot_for_authorized_viewer("", dossier_region_id)
+		_expect(bool(refreshed_intel.get("valid", false)) and JSON.stringify(refreshed_intel.get("city_inference_projection", [])).contains("card"), "authorized query reflects the current viewer's typed city inference")
 	_request_compendium_page(main, "region", "detail", "region:%d" % buildable_district, buildable_district, "", "intel", "intel")
 	await process_frame
 	var intel_back_button := _menu_overlay_node(main, "MenuBestiaryBackButton") as Button
@@ -2486,7 +2474,10 @@ func _verify_ai_intel_policy(main: Node) -> bool:
 			ok = ok and CITY_FIXTURES.create_city_bool(main, 2, target_index, "AI推理目标城")
 			ok = ok and _set_city_goods_for_test(main, source_index, "活体芯片", "轨迹墨水")
 			ok = ok and _set_city_goods_for_test(main, target_index, "活体芯片", "轨迹墨水")
-			ok = ok and bool(main.call("_mark_city_guess_for_player", 1, source_index, 2, 3, "product"))
+			var ai_world := (main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()
+			var source_region_id := ai_world.region_id_for_district(source_index)
+			var seed_guess := ai_world.set_city_owner_guess(1, source_region_id, 2, 3, "product", ai_world.city_inference_owner_revision(1))
+			ok = ok and bool(seed_guess.get("applied", false))
 			var city_candidates := _ai_controller(main).call("_ai_city_guess_candidates", 1) as Array
 			var city_choice := _find_city_guess_candidate(city_candidates, target_index, 2)
 			ok = ok and not city_choice.is_empty()
