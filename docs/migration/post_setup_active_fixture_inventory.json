@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "baseline_sha": "0e7ee717ac6323ee2af24a8d6617a0319f038081",
+  "scan_contract": {
+    "total_matched_files": 55,
+    "total_exact_matches": 119,
+    "compendium_active_test_fixtures": 5,
+    "codex_active_bench_fixtures": 6,
+    "other_domain_fixtures": 44,
+    "unknown_classification_count": 0,
+    "source_splitting_evasion_count": 0
+  },
+  "compendium_active_formal_tests": [
+    "tests/compendium_readonly_navigation_cutover_test.gd",
+    "tests/bestiary_double_click_detail_navigation_test.gd",
+    "tests/compendium_v06_public_semantics_test.gd",
+    "tests/product_codex_public_source_service_test.gd",
+    "tests/role_codex_public_contract_test.gd"
+  ],
+  "codex_active_benches": [
+    "scripts/tools/card_codex_public_snapshot_cutover_bench.gd",
+    "scripts/tools/codex_atlas_scene_cutover_bench.gd",
+    "scripts/tools/codex_navigation_runtime_cutover_bench.gd",
+    "scripts/tools/codex_public_snapshot_cutover_bench.gd",
+    "scripts/tools/codex_scene_hard_cutover_bench.gd",
+    "scripts/tools/product_codex_public_snapshot_cutover_bench.gd"
+  ],
+  "other_domain_summary": [
+    {
+      "classification": "CURRENT_GAMEPLAY_ROUTING_MIGRATION_INPUT",
+      "domain": "card_gameplay",
+      "file_count": 9
+    },
+    {
+      "classification": "CURRENT_GAMEPLAY_ROUTING_MIGRATION_INPUT",
+      "domain": "action_adopters_and_cross_domain_routing_oracles",
+      "file_count": 5
+    },
+    {
+      "classification": "OTHER_FUTURE_DOMAIN_MIGRATION_INPUT",
+      "domain": "ai",
+      "file_count": 3
+    },
+    {
+      "classification": "OTHER_FUTURE_DOMAIN_MIGRATION_INPUT",
+      "domain": "monster",
+      "file_count": 4
+    },
+    {
+      "classification": "OTHER_FUTURE_DOMAIN_MIGRATION_INPUT",
+      "domain": "military",
+      "file_count": 1
+    },
+    {
+      "classification": "OTHER_FUTURE_DOMAIN_MIGRATION_INPUT",
+      "domain": "save_and_settlement",
+      "file_count": 3
+    },
+    {
+      "classification": "OTHER_FUTURE_DOMAIN_MIGRATION_INPUT",
+      "domain": "runtime_characterization_and_ui_capture",
+      "file_count": 17
+    },
+    {
+      "classification": "HISTORICAL_NEGATIVE_ASSERTION",
+      "domain": "retired_setup_source_guards",
+      "file_count": 2
+    }
+  ],
+  "retired_fixture_expected_absent": [],
+  "classification_totals": {
+    "COMPENDIUM_ACTIVE_FORMAL_TEST": 5,
+    "CODEX_ACTIVE_BENCH": 6,
+    "CURRENT_GAMEPLAY_ROUTING_MIGRATION_INPUT": 14,
+    "OTHER_FUTURE_DOMAIN_MIGRATION_INPUT": 28,
+    "HISTORICAL_NEGATIVE_ASSERTION": 2,
+    "RETIRED_FIXTURE_EXPECTED_ABSENT": 0
+  },
+  "scope_note": "Batch A changes only the five formal Compendium fixtures. The six Codex benches remain reserved for batch B; the other 44 files remain inventory only."
+}

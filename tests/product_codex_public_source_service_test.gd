@@ -1,7 +1,8 @@
 extends SceneTree
 
-const MAIN_SCENE := "res://scenes/main.tscn"
+const SESSION_START_DRIVER := preload("res://tests/support/production_session_start_driver.gd")
 const SOURCE_SERVICE_SCENE := "res://scenes/runtime/ProductCodexPublicSourceService.tscn"
+const QA_SAVE_PATH := "user://test_runs/product_codex_public_source_service.save"
 const DELETED_MAIN_HELPERS := [
 	"_product_codex_grid_text",
 	"_product_codex_browser_snapshot",
@@ -17,6 +18,9 @@ const DELETED_MAIN_HELPERS := [
 
 var failures: Array[String] = []
 var _main: Control
+var _coordinator_node: GameRuntimeCoordinator
+var _world_session: WorldSessionState
+var _selection: TableSelectionState
 
 
 func _init() -> void:
@@ -24,22 +28,20 @@ func _init() -> void:
 
 
 func _run() -> void:
-	var packed := load(MAIN_SCENE) as PackedScene
-	_expect(packed != null, "main scene loads")
-	_main = packed.instantiate() as Control if packed != null else null
-	_expect(_main != null, "main scene instantiates")
-	if _main == null:
+	_cleanup_qa_save()
+	_test_unconfigured_service_fails_closed()
+	var start_result := await SESSION_START_DRIVER.start_default_session(self, QA_SAVE_PATH, "product-codex-public-source")
+	_main = start_result.get("main_root") as Control
+	_coordinator_node = start_result.get("coordinator") as GameRuntimeCoordinator
+	_world_session = start_result.get("world_session") as WorldSessionState
+	_assert_formal_session_start(start_result, 4)
+	if _main == null or not bool(start_result.get("started", false)):
+		await _cleanup()
 		_finish()
 		return
-	root.add_child(_main)
-	await process_frame
-	await process_frame
-	if _main.has_method("_new_game"):
-		_main.call("_new_game")
-	await process_frame
-	await process_frame
 	var coordinator := _coordinator()
 	_expect(coordinator != null, "coordinator is present")
+	_selection = coordinator.table_selection_state() if coordinator != null else null
 	var service := coordinator.get_node_or_null("ProductCodexPublicSourceService") if coordinator != null else null
 	_expect(service != null and service.scene_file_path == SOURCE_SERVICE_SCENE, "ProductCodexPublicSourceService is the unique scene-owned source")
 	_expect(service != null and service.has_method("compose_detail_source") and service.has_method("compose_browser_snapshot") and service.has_method("public_field_schema") and service.has_method("debug_snapshot"), "Product source service exposes public source APIs")
@@ -90,20 +92,47 @@ func _run() -> void:
 	for helper in DELETED_MAIN_HELPERS:
 		deleted = deleted and not main_source.contains("func %s(" % helper)
 	_expect(deleted and coordinator.has_method("product_codex_public_browser_snapshot") and coordinator.has_method("product_codex_public_detail_snapshot") and not coordinator.has_method("compose_product_codex_snapshot"), "legacy Main Product Codex helpers and generic source proxy are absent")
-	_main.queue_free()
-	_main = null
-	await process_frame
+	await _cleanup()
 	_finish()
 
 
 func _coordinator() -> Node:
-	return _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") if _main != null else null
+	return _coordinator_node
+
+
+func _test_unconfigured_service_fails_closed() -> void:
+	var packed := load(SOURCE_SERVICE_SCENE) as PackedScene
+	_expect(packed != null, "standalone Product source scene loads")
+	var service := packed.instantiate() if packed != null else null
+	_expect(service != null, "standalone Product source service instantiates")
+	if service == null:
+		return
+	var product_name := str(ProductMarketRuntimeController.PRODUCT_CATALOG[0])
+	_expect((service.call("compose_detail_source", product_name, 0, true) as Dictionary).is_empty(), "unconfigured detail source fails closed")
+	_expect((service.call("compose_browser_snapshot", {"start_index": 0, "end_index": 1, "selected_index": 0, "columns": 1, "can_page": false, "page_label": ""}) as Dictionary).is_empty(), "unconfigured browser source fails closed")
+	var debug := service.call("debug_snapshot") as Dictionary
+	_expect(not bool(debug.get("service_ready", true)) and str(debug.get("last_error", "")) != "", "unconfigured source reports unavailable without initializing runtime")
+	service.free()
+
+
+func _assert_formal_session_start(start_result: Dictionary, expected_players: int) -> void:
+	_expect(bool(start_result.get("qa_save_override_ready", false)), "driver installs QA save override before tree entry")
+	_expect(bool(start_result.get("started", false)), "formal session start succeeds|reason=%s" % start_result.get("reason_code", ""))
+	var receipt := start_result.get("receipt") as SessionStartReceipt
+	_expect(receipt != null and receipt.applied, "formal session receipt is applied")
+	_expect(int(start_result.get("main_start_call_count", -1)) == 0, "formal fixture calls no Main start method")
+	_expect(int(start_result.get("setup_fallback_count", -1)) == 0, "formal fixture uses no setup fallback")
+	_expect(_world_session != null and _world_session.players.size() == expected_players, "formal world has expected player count")
+	var operation: Dictionary = start_result.get("transaction_snapshot", {})
+	_expect(str(operation.get("operation_state", "")) == "succeeded" and int(operation.get("terminal_request_count", 0)) == 1 and not bool(operation.get("references_main", true)), "formal session transaction commits exactly once without Main")
+	var game_session := start_result.get("game_session") as GameSessionRuntimeController
+	_expect(game_session != null and str(game_session.session_summary().get("session_state", "")) == "running", "formal game session is running")
 
 
 func _mutate_private_viewer_state() -> void:
-	if _main == null:
+	if _world_session == null:
 		return
-	var players_variant: Variant = ((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players
+	var players_variant: Variant = _world_session.players
 	if players_variant is Array and not (players_variant as Array).is_empty():
 		var players := players_variant as Array
 		var player := (players[0] as Dictionary).duplicate(true) if players[0] is Dictionary else {}
@@ -114,9 +143,28 @@ func _mutate_private_viewer_state() -> void:
 		player["hidden_owner"] = "PRIVATE_SENTINEL_OWNER"
 		player["ai_plan"] = "PRIVATE_SENTINEL_AI"
 		players[0] = player
-		((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
-	((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 2
-	((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = 3
+		_world_session.players = players
+	if _selection != null:
+		_selection.selected_player = 2
+		_selection.selected_district = 3
+
+
+func _cleanup() -> void:
+	if _main != null:
+		_main.queue_free()
+	_main = null
+	_coordinator_node = null
+	_world_session = null
+	_selection = null
+	await process_frame
+	await process_frame
+	_cleanup_qa_save()
+
+
+func _cleanup_qa_save() -> void:
+	for path in [QA_SAVE_PATH, QA_SAVE_PATH + ".tmp"]:
+		if FileAccess.file_exists(path):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
 
 func _is_pure_data(value: Variant) -> bool:

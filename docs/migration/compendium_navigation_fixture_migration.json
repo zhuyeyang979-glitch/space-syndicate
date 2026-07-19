@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "baseline_sha": "0e7ee717ac6323ee2af24a8d6617a0319f038081",
+  "batch": "A",
+  "fixture_count": 5,
+  "production_files_modified": 0,
+  "production_scenes_modified": 0,
+  "driver_contract_changed": false,
+  "required_session_fixtures": 5,
+  "standalone_unconfigured_subcases": [
+    "tests/product_codex_public_source_service_test.gd"
+  ],
+  "formal_boundaries": {
+    "session_start": "ProductionSessionStartDriver",
+    "pause": "GameSessionRuntimeController.pause_session",
+    "compendium_open": "ApplicationFlowPort.submit_action(compendium)",
+    "role_catalog": "RoleCatalogRuntimeService",
+    "product_unconfigured": "standalone ProductCodexPublicSourceService"
+  },
+  "retired_callable_count_after": 0,
+  "main_wrapper_restore_count": 0,
+  "cleanup_contract": "queue_free returned main_root, await two frames, remove QA save and .tmp, quit explicitly",
+  "preserved_contracts": [
+    "Compendium navigation zero mutation and exact once",
+    "Bestiary real GUI single and double click",
+    "Compendium v0.6 semantics and recursive privacy",
+    "Product Codex unconfigured fail closed and live read-only deltas",
+    "Role Codex catalog, random resolution, and independent-session reset parity"
+  ]
+}
