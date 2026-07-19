@@ -471,7 +471,7 @@ func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
 	_subscription_fingerprints = (checkpoint.get("subscription_fingerprints", {}) as Dictionary).duplicate(true)
 	_revision = int(checkpoint.get("revision", 0))
 	_notification_count = int(checkpoint.get("notification_count", 0))
-	return {"applied": true, "reason_code": "card_annotation_runtime_checkpoint_restored"}
+	return {"applied": true, "restored": true, "reason_code": "card_annotation_runtime_checkpoint_restored"}
 
 
 func debug_snapshot() -> Dictionary:

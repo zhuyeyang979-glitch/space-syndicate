@@ -42,6 +42,23 @@ func reset_state() -> void:
 	_last_result_summary = {}
 
 
+func capture_runtime_checkpoint() -> Dictionary:
+	return {"schema_version": 1, "plan_count": _plan_count, "commit_attempt_count": _commit_attempt_count, "committed_count": _committed_count, "rejected_count": _rejected_count, "last_kind": _last_kind, "last_reason": _last_reason, "last_result_summary": _last_result_summary.duplicate(true)}
+
+
+func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	if int(checkpoint.get("schema_version", 0)) != 1 or not (checkpoint.get("last_result_summary") is Dictionary):
+		return {"restored": false, "reason_code": "hand_interaction_checkpoint_invalid"}
+	_plan_count = int(checkpoint.get("plan_count", 0))
+	_commit_attempt_count = int(checkpoint.get("commit_attempt_count", 0))
+	_committed_count = int(checkpoint.get("committed_count", 0))
+	_rejected_count = int(checkpoint.get("rejected_count", 0))
+	_last_kind = str(checkpoint.get("last_kind", ""))
+	_last_reason = str(checkpoint.get("last_reason", ""))
+	_last_result_summary = (checkpoint.get("last_result_summary", {}) as Dictionary).duplicate(true)
+	return {"restored": true, "reason_code": "hand_interaction_checkpoint_restored"}
+
+
 func plan_interaction(request: Dictionary) -> Dictionary:
 	return _plan_interaction(request, true)
 

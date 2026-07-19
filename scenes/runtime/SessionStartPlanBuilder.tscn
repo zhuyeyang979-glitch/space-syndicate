@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/session_start_plan_builder.gd" id="1_builder"]
+
+[node name="SessionStartPlanBuilder" type="Node"]
+script = ExtResource("1_builder")
+editor_description = "Builds deterministic detached new-session plans without mutating live owners."

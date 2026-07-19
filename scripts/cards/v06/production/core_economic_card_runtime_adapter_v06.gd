@@ -144,6 +144,38 @@ func reset_state() -> void:
 		configure(card_source_owner, commodity_flow_owner, infrastructure_owner, actor_player_indices, region_product_facts_port, organization_owner, organization_consumers)
 
 
+func capture_new_session_binding_checkpoint() -> Dictionary:
+	return {
+		"schema_version": 1,
+		"card_source_owner": _card_source_owner,
+		"commodity_flow_owner": _commodity_flow_owner,
+		"infrastructure_owner": _infrastructure_owner,
+		"region_product_facts_port": _region_product_facts_port,
+		"organization_owner": _organization_owner,
+		"organization_consumers": _organization_consumers.duplicate(),
+		"actor_player_indices": _actor_player_indices.duplicate(true),
+		"configured": _configured,
+	}
+
+
+func restore_new_session_binding_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	if int(checkpoint.get("schema_version", 0)) != 1:
+		return {"restored": false, "reason_code": "core_economic_binding_checkpoint_invalid"}
+	_clear_bindings()
+	if not bool(checkpoint.get("configured", false)):
+		return {"restored": true, "reason_code": "core_economic_binding_restored_unconfigured"}
+	var restored := configure(
+		checkpoint.get("card_source_owner") as Object,
+		checkpoint.get("commodity_flow_owner") as Object,
+		checkpoint.get("infrastructure_owner") as Object,
+		(checkpoint.get("actor_player_indices", {}) as Dictionary).duplicate(true),
+		checkpoint.get("region_product_facts_port") as Object,
+		checkpoint.get("organization_owner") as Object,
+		(checkpoint.get("organization_consumers", {}) as Dictionary).duplicate()
+	)
+	return {"restored": bool(restored.get("configured", false)), "reason_code": str(restored.get("reason_code", "core_economic_binding_restore_failed"))}
+
+
 func _clear_bindings() -> void:
 	_card_source_owner = null
 	_commodity_flow_owner = null

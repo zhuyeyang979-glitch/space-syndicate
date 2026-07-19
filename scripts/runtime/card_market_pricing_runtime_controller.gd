@@ -40,6 +40,21 @@ func reset_state() -> void:
 	_authorization_count = 0
 
 
+func capture_runtime_checkpoint() -> Dictionary:
+	return {"schema_version": 1, "next_quote_sequence": _next_quote_sequence, "quotes_by_key": _quotes_by_key.duplicate(true), "quotes_by_id": _quotes_by_id.duplicate(true), "quote_count": _quote_count, "authorization_count": _authorization_count}
+
+
+func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	if int(checkpoint.get("schema_version", 0)) != 1 or not (checkpoint.get("quotes_by_key") is Dictionary) or not (checkpoint.get("quotes_by_id") is Dictionary):
+		return {"restored": false, "reason_code": "card_market_checkpoint_invalid"}
+	_next_quote_sequence = int(checkpoint.get("next_quote_sequence", 1))
+	_quotes_by_key = (checkpoint.get("quotes_by_key", {}) as Dictionary).duplicate(true)
+	_quotes_by_id = (checkpoint.get("quotes_by_id", {}) as Dictionary).duplicate(true)
+	_quote_count = int(checkpoint.get("quote_count", 0))
+	_authorization_count = int(checkpoint.get("authorization_count", 0))
+	return {"restored": true, "reason_code": "card_market_checkpoint_restored"}
+
+
 func quote_listing(request: Dictionary) -> Dictionary:
 	if not _configured or not _is_data_only(request):
 		return _rejected_quote("market_quote_unavailable")

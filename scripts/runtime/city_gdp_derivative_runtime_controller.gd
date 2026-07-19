@@ -247,6 +247,13 @@ func apply_save_data(data: Dictionary, legacy_positions_by_district: Dictionary 
 	return runtime_state_snapshot()
 
 
+func restore_new_session_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	if not (checkpoint.get("positions_by_district", {}) is Dictionary):
+		return {"restored": false, "reason_code": "city_gdp_new_session_checkpoint_invalid"}
+	apply_save_data(checkpoint)
+	return {"restored": true, "reason_code": "city_gdp_new_session_checkpoint_restored"}
+
+
 func runtime_state_snapshot() -> Dictionary:
 	return {"positions_by_district": positions_by_district.duplicate(true), "position_sequence": position_sequence}
 

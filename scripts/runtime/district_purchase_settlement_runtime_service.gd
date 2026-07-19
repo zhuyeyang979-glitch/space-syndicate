@@ -38,6 +38,24 @@ func reset_state() -> void:
 	_last_committed = false
 
 
+func capture_runtime_checkpoint() -> Dictionary:
+	return {"schema_version": 1, "purchase_plan_count": _purchase_plan_count, "inventory_delegate_plan_count": _inventory_delegate_plan_count, "commit_attempt_count": _commit_attempt_count, "committed_count": _committed_count, "rejected_count": _rejected_count, "last_reason": _last_reason, "last_operation": _last_operation, "last_committed": _last_committed}
+
+
+func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	if int(checkpoint.get("schema_version", 0)) != 1:
+		return {"restored": false, "reason_code": "purchase_settlement_checkpoint_invalid"}
+	_purchase_plan_count = int(checkpoint.get("purchase_plan_count", 0))
+	_inventory_delegate_plan_count = int(checkpoint.get("inventory_delegate_plan_count", 0))
+	_commit_attempt_count = int(checkpoint.get("commit_attempt_count", 0))
+	_committed_count = int(checkpoint.get("committed_count", 0))
+	_rejected_count = int(checkpoint.get("rejected_count", 0))
+	_last_reason = str(checkpoint.get("last_reason", ""))
+	_last_operation = str(checkpoint.get("last_operation", ""))
+	_last_committed = bool(checkpoint.get("last_committed", false))
+	return {"restored": true, "reason_code": "purchase_settlement_checkpoint_restored"}
+
+
 func plan_purchase(request: Dictionary) -> Dictionary:
 	_purchase_plan_count += 1
 	if not _configured:

@@ -30,6 +30,10 @@ var _last_v06_player_binding_result: Dictionary = {
 }
 var _monster_card_effect_adapter_v06: Object
 var _ai_v06_economy_action_port: RefCounted
+var _new_session_test_fault_stage := ""
+var _new_session_commit_side_effect_count := 0
+var _new_session_presentation_refresh_count := 0
+var _last_new_session_commit_only_receipt: Dictionary = {}
 
 
 func _ready() -> void:
@@ -629,6 +633,10 @@ func bind_ai_world(world: Node) -> void:
 func refresh_v06_production_player_bindings(world: Node = null) -> Dictionary:
 	if world != null:
 		_bound_world = world
+	return refresh_v06_session_player_bindings()
+
+
+func refresh_v06_session_player_bindings() -> Dictionary:
 	var card_player_state_adapter := _card_player_state_production_adapter_v06_node()
 	var commodity_card_inventory := _commodity_card_inventory_runtime_controller_node()
 	var core_economic_adapter := _core_economic_card_runtime_adapter_v06_node()
@@ -1234,6 +1242,10 @@ func run_rng_service() -> RunRngService:
 
 func table_selection_state() -> TableSelectionState:
 	return _table_selection_state_node()
+
+
+func card_supply_presentation_state() -> TableCardSupplyPresentationState:
+	return _table_card_supply_presentation_state_node()
 
 
 func world_session_state() -> WorldSessionState:
@@ -3801,6 +3813,330 @@ func forced_decision_sources_debug() -> Dictionary:
 	return sources.debug_snapshot() if sources != null else {}
 
 
+func preflight_new_session_plan(plan: Dictionary) -> Dictionary:
+	if int(plan.get("plan_schema_version", 0)) != 1 or not (plan.get("districts", []) is Array) or not (plan.get("card_pool", []) is Array):
+		return {"accepted": false, "reason_code": "runtime_new_session_plan_invalid"}
+	var required_nodes := [
+		_product_market_runtime_controller_node(), _region_infrastructure_runtime_controller_node(),
+		_region_supply_runtime_controller_node(), _world_session_state_node(), _table_selection_state_node(),
+		_weather_runtime_controller_node(),
+		_ai_runtime_controller_node(), _card_resolution_queue_node(), _card_resolution_execution_node(),
+		_card_resolution_history_runtime_service_node(), _card_history_private_annotation_service_node(),
+		_core_economic_card_runtime_adapter_v06_node(),
+	]
+	for node_variant in required_nodes:
+		if node_variant == null:
+			return {"accepted": false, "reason_code": "runtime_new_session_owner_missing"}
+	var market_preflight: Dictionary = _product_market_runtime_controller_node().call("preflight_new_session", plan.get("product_market_state", {}))
+	if not bool(market_preflight.get("accepted", false)):
+		return market_preflight
+	var weather_preflight: Dictionary = _weather_runtime_controller_node().call("preflight_new_session", plan.get("weather_state", {}))
+	if not bool(weather_preflight.get("accepted", false)):
+		return weather_preflight
+	var region_definitions := _new_session_region_definitions(plan.get("districts", []) as Array)
+	var infrastructure_preflight: Dictionary = _region_infrastructure_runtime_controller_node().call("preflight_new_session_regions", region_definitions)
+	if not bool(infrastructure_preflight.get("accepted", false)):
+		return infrastructure_preflight
+	var supply_inputs := _new_session_region_supply_inputs(plan)
+	if not bool(supply_inputs.get("valid", false)):
+		return {"accepted": false, "reason_code": str(supply_inputs.get("reason_code", "runtime_new_session_supply_inputs_invalid"))}
+	var supply_preflight: Dictionary = _region_supply_runtime_controller_node().call(
+		"preflight_new_session_configuration",
+		supply_inputs.get("regions", []),
+		supply_inputs.get("cards", []),
+		int(supply_inputs.get("slot_count", 4))
+	)
+	if not bool(supply_preflight.get("accepted", false)):
+		return supply_preflight
+	return {
+		"accepted": true,
+		"reason_code": "runtime_new_session_plan_valid",
+		"region_definitions": region_definitions,
+		"supply_inputs": supply_inputs,
+	}
+
+
+func capture_new_session_checkpoint() -> Dictionary:
+	var saved_owners := {}
+	for entry_variant in _new_session_saved_owners():
+		var entry: Dictionary = entry_variant
+		var owner := entry.get("owner") as Node
+		if owner == null or not owner.has_method("to_save_data"):
+			return {"captured": false, "reason_code": "new_session_checkpoint_owner_unavailable", "owner_id": str(entry.get("owner_id", ""))}
+		var data_variant: Variant = owner.call("to_save_data")
+		if not (data_variant is Dictionary):
+			return {"captured": false, "reason_code": "new_session_checkpoint_data_invalid", "owner_id": str(entry.get("owner_id", ""))}
+		saved_owners[str(entry.get("owner_id", ""))] = (data_variant as Dictionary).duplicate(true)
+	var annotations := _card_history_private_annotation_service_node()
+	var ai_runtime := _ai_runtime_controller_node()
+	var core_adapter := _core_economic_card_runtime_adapter_v06_node()
+	return {
+		"captured": true,
+		"schema_version": 1,
+		"configured": _configured,
+		"binding_result": _last_v06_player_binding_result.duplicate(true),
+		"saved_owners": saved_owners,
+		"queue": _card_resolution_queue_node().capture_runtime_checkpoint(),
+		"pricing": _card_market_pricing_runtime_controller_node().capture_runtime_checkpoint(),
+		"card_inventory": _card_inventory_node().capture_runtime_checkpoint(),
+		"hand_interaction": _player_hand_interaction_node().capture_runtime_checkpoint(),
+		"purchase_settlement": _purchase_settlement_node().capture_runtime_checkpoint(),
+		"economy_route_effect": _card_economy_product_route_effect_node().capture_runtime_checkpoint(),
+		"annotations": annotations.call("capture_runtime_checkpoint") if annotations != null else {},
+		"ai_runtime": ai_runtime.call("capture_new_session_checkpoint") if ai_runtime != null else {},
+		"core_binding": core_adapter.call("capture_new_session_binding_checkpoint") if core_adapter != null else {},
+		"world_effective_us": int(_world_effective_clock_runtime_controller_node().call("world_effective_micros")) if _world_effective_clock_runtime_controller_node() != null else 0,
+	}
+
+
+func apply_new_session_plan(plan: Dictionary) -> Dictionary:
+	var preflight := preflight_new_session_plan(plan)
+	if not bool(preflight.get("accepted", false)):
+		return {"applied": false, "reason_code": str(preflight.get("reason_code", "runtime_new_session_preflight_failed"))}
+	_configured = false
+	_last_v06_player_binding_result = {"ready": false, "reason_code": "new_session_applying"}
+	for owner in [
+		_card_target_choice_runtime_controller_node(), _city_gdp_derivative_runtime_controller_node(),
+		_route_network_runtime_controller_node(), _commodity_flow_runtime_controller_node(),
+		_player_mana_runtime_controller_node(), _commodity_card_inventory_runtime_controller_node(),
+		_player_organization_runtime_controller_node(), _bankruptcy_neutral_estate_runtime_controller_node(),
+		_victory_control_runtime_controller_node(), _ai_runtime_controller_node(), _monster_runtime_controller_node(),
+		_military_runtime_controller_node(), _weather_runtime_controller_node(), _contract_runtime_controller_node(),
+		_purchase_node(), _card_resolution_execution_node(), _card_resolution_runtime_controller_node(),
+	]:
+		if owner != null and owner.has_method("reset_state"):
+			owner.call("reset_state")
+	_card_resolution_queue_node().reset_state()
+	_card_market_pricing_runtime_controller_node().reset_state()
+	_card_inventory_node().reset_state()
+	_player_hand_interaction_node().reset_state()
+	_purchase_settlement_node().reset_state()
+	_card_economy_product_route_effect_node().reset_state()
+	reset_card_resolution_history()
+	if _new_session_fault("after_resets"):
+		return {"applied": false, "reason_code": "new_session_fault_after_resets"}
+	var clock := _world_effective_clock_runtime_controller_node()
+	if clock != null and clock.has_method("reset_state"):
+		clock.call("reset_state")
+	var market_result: Dictionary = _product_market_runtime_controller_node().call("apply_new_session_plan", plan.get("product_market_state", {}))
+	if not bool(market_result.get("applied", false)):
+		return market_result
+	if _new_session_fault("after_market_apply"):
+		return {"applied": false, "reason_code": "new_session_fault_after_market_apply"}
+	var infrastructure_result: Dictionary = _region_infrastructure_runtime_controller_node().call("initialize_regions", preflight.get("region_definitions", []))
+	if not bool(infrastructure_result.get("initialized", false)):
+		return {"applied": false, "reason_code": str(infrastructure_result.get("reason", "new_session_infrastructure_failed"))}
+	if _new_session_fault("after_infrastructure_apply"):
+		return {"applied": false, "reason_code": "new_session_fault_after_infrastructure_apply"}
+	var supply_inputs: Dictionary = preflight.get("supply_inputs", {})
+	var supply_result: Dictionary = _region_supply_runtime_controller_node().call(
+		"configure",
+		int(plan.get("region_supply_seed", 1)),
+		supply_inputs.get("regions", []),
+		supply_inputs.get("cards", []),
+		int(supply_inputs.get("slot_count", 4))
+	)
+	if not bool(supply_result.get("configured", false)):
+		return {"applied": false, "reason_code": str(supply_result.get("reason_code", "new_session_region_supply_failed"))}
+	if _new_session_fault("after_supply_apply"):
+		return {"applied": false, "reason_code": "new_session_fault_after_supply_apply"}
+	var weather_result: Dictionary = _weather_runtime_controller_node().call("apply_new_session_plan", plan.get("weather_state", {}))
+	if not bool(weather_result.get("applied", false)):
+		return weather_result
+	if _new_session_fault("after_weather_market_apply"):
+		return {"applied": false, "reason_code": "new_session_fault_after_weather_market_apply"}
+	var selection := _table_selection_state_node()
+	selection.restore({
+		"selected_player": 0, "inspected_player": 0,
+		"selected_district": int(plan.get("selected_district", 0)),
+		"selected_trade_product": "", "selected_card_resolution_id": -1,
+		"selected_hand_slot": -1, "selected_map_layer_focus": "all",
+	})
+	var binding := refresh_v06_session_player_bindings()
+	if not bool(binding.get("ready", false)):
+		return {"applied": false, "reason_code": str(binding.get("reason_code", "new_session_player_binding_failed")), "binding": binding}
+	if _new_session_fault("after_player_binding"):
+		return {"applied": false, "reason_code": "new_session_fault_after_player_binding"}
+	_ai_runtime_controller_node().call("ensure_player_state")
+	_configured = true
+	return {"applied": true, "reason_code": "runtime_new_session_applied", "binding": binding, "supply": supply_result}
+
+
+func rollback_new_session_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	if int(checkpoint.get("schema_version", 0)) != 1 or not (checkpoint.get("saved_owners", {}) is Dictionary):
+		return {"restored": false, "reason_code": "runtime_new_session_checkpoint_invalid", "failures": []}
+	var failures: Array = []
+	var core_adapter := _core_economic_card_runtime_adapter_v06_node()
+	if core_adapter == null or not bool((core_adapter.call("restore_new_session_binding_checkpoint", checkpoint.get("core_binding", {})) as Dictionary).get("restored", false)):
+		failures.append("core_binding")
+	var ai_runtime := _ai_runtime_controller_node()
+	if ai_runtime == null or not bool((ai_runtime.call("restore_new_session_checkpoint", checkpoint.get("ai_runtime", {})) as Dictionary).get("restored", false)):
+		failures.append("ai_runtime")
+	var annotations := _card_history_private_annotation_service_node()
+	if annotations == null or not bool((annotations.call("restore_runtime_checkpoint", checkpoint.get("annotations", {})) as Dictionary).get("restored", false)):
+		failures.append("annotations")
+	for custom in [
+		{"id": "economy_route_effect", "owner": _card_economy_product_route_effect_node()},
+		{"id": "purchase_settlement", "owner": _purchase_settlement_node()},
+		{"id": "hand_interaction", "owner": _player_hand_interaction_node()},
+		{"id": "card_inventory", "owner": _card_inventory_node()},
+		{"id": "pricing", "owner": _card_market_pricing_runtime_controller_node()},
+		{"id": "queue", "owner": _card_resolution_queue_node()},
+	]:
+		var custom_owner := (custom as Dictionary).get("owner") as Node
+		var custom_id := str((custom as Dictionary).get("id", ""))
+		if custom_owner == null or not bool((custom_owner.call("restore_runtime_checkpoint", checkpoint.get(custom_id, {})) as Dictionary).get("restored", false)):
+			failures.append(custom_id)
+	var saved_owners: Dictionary = checkpoint.get("saved_owners", {})
+	var owners := _new_session_saved_owners()
+	owners.reverse()
+	for entry_variant in owners:
+		var entry: Dictionary = entry_variant
+		var owner_id := str(entry.get("owner_id", ""))
+		var owner := entry.get("owner") as Node
+		var restore_method := str(entry.get("restore_method", "apply_save_data"))
+		if owner == null or not owner.has_method(restore_method):
+			failures.append(owner_id)
+			continue
+		var restored_variant: Variant = owner.call(restore_method, saved_owners.get(owner_id, {}))
+		var restored: Dictionary = restored_variant if restored_variant is Dictionary else {}
+		var accepted := bool(restored.get("restored", false)) if restore_method == "restore_new_session_checkpoint" else bool(restored.get("applied", false))
+		if not accepted:
+			failures.append(owner_id)
+	var clock := _world_effective_clock_runtime_controller_node()
+	if clock != null and clock.has_method("restore_micros"):
+		clock.call("restore_micros", int(checkpoint.get("world_effective_us", 0)))
+	_configured = bool(checkpoint.get("configured", false))
+	_last_v06_player_binding_result = (checkpoint.get("binding_result", {}) as Dictionary).duplicate(true)
+	return {"restored": failures.is_empty(), "reason_code": "runtime_new_session_checkpoint_restored" if failures.is_empty() else "runtime_new_session_rollback_incomplete", "failures": failures}
+
+
+func commit_new_session_side_effects(plan: Dictionary) -> Dictionary:
+	_new_session_commit_side_effect_count += 1
+	var rng_before := _run_rng_service_node().capture_plan_checkpoint()
+	var market_before: Dictionary = _product_market_runtime_controller_node().call("to_save_data")
+	var weather_before: Dictionary = _weather_runtime_controller_node().call("to_save_data")
+	var card_supply_presentation := _table_card_supply_presentation_state_node()
+	if card_supply_presentation != null:
+		card_supply_presentation.reset_for_committed_session()
+	reset_public_log()
+	reset_visual_cues()
+	var query_ports := _table_presentation_query_ports_node()
+	if query_ports != null:
+		query_ports.reset_state()
+	var scheduler := _scheduler_node()
+	if scheduler != null:
+		scheduler.sync_candidates([])
+	var sushi_track := _commodity_sushi_track_runtime_service_node()
+	if sushi_track != null:
+		sushi_track.reset_projection_state()
+	var weather_presentation: Dictionary = _weather_runtime_controller_node().call("commit_new_session_presentation")
+	request_table_presentation_refresh(&"full", &"session_start_committed")
+	_new_session_presentation_refresh_count += 1
+	var rng_after := _run_rng_service_node().capture_plan_checkpoint()
+	var market_after: Dictionary = _product_market_runtime_controller_node().call("to_save_data")
+	var weather_after: Dictionary = _weather_runtime_controller_node().call("to_save_data")
+	var rng_delta := int(rng_after.get("draw_count", 0)) - int(rng_before.get("draw_count", 0))
+	var gameplay_mutation_count := int(market_after != market_before) + int(weather_after != weather_before)
+	var committed := bool(weather_presentation.get("committed", false)) and rng_delta == 0 and gameplay_mutation_count == 0
+	_last_new_session_commit_only_receipt = {
+		"committed": committed,
+		"reason_code": "new_session_side_effects_committed" if committed else "new_session_commit_only_invariant_failed",
+		"player_count": int(plan.get("player_count", 0)),
+		"rng_draw_delta": rng_delta,
+		"gameplay_mutation_count": gameplay_mutation_count,
+		"weather_presentation": weather_presentation.duplicate(true),
+	}
+	return _last_new_session_commit_only_receipt.duplicate(true)
+
+
+func set_new_session_test_fault_stage(stage: String) -> void:
+	_new_session_test_fault_stage = stage.strip_edges()
+
+
+func new_session_start_debug_snapshot() -> Dictionary:
+	return {
+		"commit_side_effect_count": _new_session_commit_side_effect_count,
+		"presentation_refresh_count": _new_session_presentation_refresh_count,
+		"last_commit_only_receipt": _last_new_session_commit_only_receipt.duplicate(true),
+		"test_fault_stage": _new_session_test_fault_stage,
+	}
+
+
+func _new_session_fault(stage: String) -> bool:
+	return not _new_session_test_fault_stage.is_empty() and _new_session_test_fault_stage == stage
+
+
+func _new_session_saved_owners() -> Array:
+	return [
+		{"owner_id": "selection", "owner": _table_selection_state_node()},
+		{"owner_id": "target_choice", "owner": _card_target_choice_runtime_controller_node()},
+		{"owner_id": "product_market", "owner": _product_market_runtime_controller_node(), "restore_method": "restore_new_session_checkpoint"},
+		{"owner_id": "city_gdp", "owner": _city_gdp_derivative_runtime_controller_node(), "restore_method": "restore_new_session_checkpoint"},
+		{"owner_id": "route_network", "owner": _route_network_runtime_controller_node()},
+		{"owner_id": "region_infrastructure", "owner": _region_infrastructure_runtime_controller_node()},
+		{"owner_id": "commodity_flow", "owner": _commodity_flow_runtime_controller_node()},
+		{"owner_id": "player_mana", "owner": _player_mana_runtime_controller_node()},
+		{"owner_id": "commodity_inventory", "owner": _commodity_card_inventory_runtime_controller_node()},
+		{"owner_id": "organization", "owner": _player_organization_runtime_controller_node()},
+		{"owner_id": "bankruptcy", "owner": _bankruptcy_neutral_estate_runtime_controller_node()},
+		{"owner_id": "victory", "owner": _victory_control_runtime_controller_node()},
+		{"owner_id": "monster", "owner": _monster_runtime_controller_node()},
+		{"owner_id": "military", "owner": _military_runtime_controller_node()},
+		{"owner_id": "weather", "owner": _weather_runtime_controller_node()},
+		{"owner_id": "contract", "owner": _contract_runtime_controller_node()},
+		{"owner_id": "purchase", "owner": _purchase_node()},
+		{"owner_id": "resolution_execution", "owner": _card_resolution_execution_node()},
+		{"owner_id": "resolution_history", "owner": _card_resolution_history_runtime_service_node()},
+		{"owner_id": "resolution_runtime", "owner": _card_resolution_runtime_controller_node()},
+		{"owner_id": "region_supply", "owner": _region_supply_runtime_controller_node()},
+	]
+
+
+func _new_session_region_definitions(district_rows: Array) -> Array:
+	var result: Array = []
+	for district_index in range(district_rows.size()):
+		if not (district_rows[district_index] is Dictionary):
+			continue
+		var district: Dictionary = district_rows[district_index]
+		var neighbor_ids: Array = []
+		for neighbor_variant in (district.get("neighbors", []) as Array):
+			var neighbor_index := int(neighbor_variant)
+			if neighbor_index >= 0 and neighbor_index < district_rows.size() and district_rows[neighbor_index] is Dictionary:
+				neighbor_ids.append(str((district_rows[neighbor_index] as Dictionary).get("region_id", "region.%03d" % neighbor_index)))
+		result.append({
+			"region_id": str(district.get("region_id", "region.%03d" % district_index)),
+			"terrain_id": str(district.get("terrain", "unknown")),
+			"neighbor_region_ids": neighbor_ids,
+			"legacy_index": district_index,
+		})
+	return result
+
+
+func _new_session_region_supply_inputs(plan: Dictionary) -> Dictionary:
+	var district_rows: Array = plan.get("districts", [])
+	var region_descriptors: Array = []
+	for district_index in range(district_rows.size()):
+		if not (district_rows[district_index] is Dictionary):
+			return {"valid": false, "reason_code": "new_session_supply_district_invalid"}
+		var district: Dictionary = district_rows[district_index]
+		region_descriptors.append({
+			"region_id": str(district.get("region_id", "region.%03d" % district_index)),
+			"region_index": district_index,
+			"display_name": str(district.get("name", "区域%d" % (district_index + 1))),
+			"terrain": str(district.get("terrain", "")),
+			"active": not bool(district.get("destroyed", false)),
+			"destroyed": bool(district.get("destroyed", false)),
+			"mode_tags": (district.get("mode_tags", []) as Array).duplicate() if district.get("mode_tags", []) is Array else [],
+		})
+	var card_descriptors: Array = []
+	for card_id_variant in (plan.get("card_pool", []) as Array):
+		var descriptor := _region_supply_card_descriptor(str(card_id_variant))
+		if not descriptor.is_empty():
+			card_descriptors.append(descriptor)
+	return {"valid": not region_descriptors.is_empty() and not card_descriptors.is_empty(), "reason_code": "new_session_supply_inputs_ready", "regions": region_descriptors, "cards": card_descriptors, "slot_count": 4}
+
+
 func reset_state() -> void:
 	_configured = false
 	_last_v06_player_binding_result = {
@@ -5575,6 +5911,10 @@ func _run_rng_service_node() -> RunRngService:
 
 func _table_selection_state_node() -> TableSelectionState:
 	return get_node_or_null("TableSelectionState") as TableSelectionState
+
+
+func _table_card_supply_presentation_state_node() -> TableCardSupplyPresentationState:
+	return get_node_or_null("TableCardSupplyPresentationState") as TableCardSupplyPresentationState
 
 
 func _world_session_state_node() -> WorldSessionState:

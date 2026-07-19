@@ -117,6 +117,106 @@ func reset_state() -> void:
 	_refresh_legacy_projection()
 
 
+static func build_new_session_plan(cursor: Dictionary, districts: Array, now_us := 0) -> Dictionary:
+	if int(cursor.get("schema_version", 0)) != 1 or int(cursor.get("rng_state", 0)) == 0:
+		return {"ok": false, "reason_code": "weather_new_session_rng_cursor_invalid"}
+	var catalog := DEFAULT_DEFINITION_CATALOG as WeatherDefinitionCatalog
+	if catalog == null or not bool(catalog.validate_catalog().get("valid", false)):
+		return {"ok": false, "reason_code": "weather_new_session_catalog_invalid"}
+	var candidates := _new_session_region_candidates(districts)
+	if candidates.is_empty():
+		return {"ok": false, "reason_code": "weather_new_session_region_missing"}
+	var next_cursor := cursor.duplicate(true)
+	var region_draw := RunRngService.detached_randi_range(next_cursor, 0, candidates.size() - 1)
+	if not bool(region_draw.get("ok", false)):
+		return region_draw
+	next_cursor = _cursor_from_detached_draw(region_draw)
+	var region_index := int(candidates[int(region_draw.get("value", 0))])
+	var definition_ids := catalog.definition_ids()
+	if definition_ids.is_empty():
+		return {"ok": false, "reason_code": "weather_new_session_definition_missing"}
+	var definition_draw := RunRngService.detached_randi_range(next_cursor, 0, definition_ids.size() - 1)
+	if not bool(definition_draw.get("ok", false)):
+		return definition_draw
+	next_cursor = _cursor_from_detached_draw(definition_draw)
+	var definition := catalog.definition(str(definition_ids[int(definition_draw.get("value", 0))]))
+	if definition == null:
+		return {"ok": false, "reason_code": "weather_new_session_definition_invalid"}
+	var generation_draw := RunRngService.detached_randi_range(next_cursor, WeatherSystem.GENERATION_MIN_US, WeatherSystem.GENERATION_MAX_US)
+	if not bool(generation_draw.get("ok", false)):
+		return generation_draw
+	next_cursor = _cursor_from_detached_draw(generation_draw)
+	var forecast_us := int(round(clampf(definition.forecast_duration, WeatherSystem.FORECAST_LEAD_MIN_SECONDS, WeatherSystem.FORECAST_LEAD_MAX_SECONDS) * 1_000_000.0))
+	var active_us := int(round(clampf(definition.active_duration, WeatherSystem.ACTIVE_MIN_SECONDS, WeatherSystem.ACTIVE_MAX_SECONDS) * 1_000_000.0))
+	var fade_us := int(round(maxf(0.0, definition.fade_duration) * 1_000_000.0))
+	var event := {
+		"event_schema_version": WeatherRuntimeState.EVENT_SCHEMA_VERSION,
+		"id": 1,
+		"definition_id": definition.id,
+		"type": definition.id,
+		"region_indices": [region_index],
+		"districts": [region_index],
+		"phase": WeatherRuntimeState.PHASE_FORECAST,
+		"source_type": SOURCE_TYPE_NATURAL,
+		"created_at_world_us": now_us,
+		"forecast_starts_at_world_us": now_us,
+		"active_starts_at_world_us": now_us + forecast_us,
+		"active_ends_at_world_us": now_us + forecast_us + active_us,
+		"fade_ends_at_world_us": now_us + forecast_us + active_us + fade_us,
+		"forecast_duration_world_us": forecast_us,
+		"active_duration_world_us": active_us,
+		"fade_duration_world_us": fade_us,
+	}
+	return {
+		"ok": true,
+		"reason_code": "weather_new_session_plan_ready",
+		"state": {
+			"schema_version": WeatherRuntimeState.SCHEMA_VERSION,
+			"events": [event],
+			"queue": [],
+			"next_generation_world_us": now_us + int(generation_draw.get("value", WeatherSystem.GENERATION_MIN_US)),
+			"sequence": 1,
+			"history": [],
+			"region_history": {str(region_index): 1},
+			"telemetry": {"scheduled_forecast": 1, "scheduled_natural": 1},
+		},
+		"cursor": next_cursor,
+		"draw_count_delta": int(next_cursor.get("draw_count", 0)) - int(cursor.get("draw_count", 0)),
+	}
+
+
+func preflight_new_session(plan_state: Dictionary) -> Dictionary:
+	var validation := WeatherRuntimeState.validate_save_payload(plan_state, weather_type_ids())
+	if not bool(validation.get("valid", false)):
+		return {"accepted": false, "reason_code": "weather_new_session_plan_invalid", "details": validation}
+	if (plan_state.get("events", []) as Array).size() != 1 or int(plan_state.get("sequence", 0)) != 1:
+		return {"accepted": false, "reason_code": "weather_new_session_forecast_missing"}
+	return {"accepted": true, "reason_code": "weather_new_session_plan_valid"}
+
+
+func apply_new_session_plan(plan_state: Dictionary) -> Dictionary:
+	var preflight := preflight_new_session(plan_state)
+	if not bool(preflight.get("accepted", false)):
+		return {"applied": false, "reason_code": str(preflight.get("reason_code", "weather_new_session_plan_invalid"))}
+	var result := apply_save_data(plan_state)
+	return {
+		"applied": bool(result.get("applied", false)),
+		"reason_code": "weather_new_session_plan_applied" if bool(result.get("applied", false)) else str(result.get("reason", "weather_new_session_apply_failed")),
+	}
+
+
+func commit_new_session_presentation() -> Dictionary:
+	if weather_forecast.is_empty():
+		return {"committed": true, "reason_code": "weather_new_session_presentation_empty"}
+	var definition := _definition(str(weather_forecast.get("definition_id", weather_forecast.get("type", ""))))
+	if definition == null:
+		return {"committed": true, "reason_code": "weather_new_session_presentation_definition_unavailable"}
+	_announce_forecast(weather_forecast, definition)
+	_log("天气预报：%s将在%s后影响%s。" % [definition.display_name, _duration_short_text(float(weather_forecast.get("forecast_duration_world_us", 0)) / 1_000_000.0), district_names(weather_forecast, 5)])
+	_add_action_callout("星球气象台", "天气预报", status_text(), color(definition.id), _district_center(int(WeatherRuntimeState.event_region_indices(weather_forecast).front())), 6.0)
+	return {"committed": true, "reason_code": "weather_new_session_presentation_committed"}
+
+
 func tick(_delta_seconds: float) -> void:
 	if not _configured:
 		return
@@ -1003,6 +1103,37 @@ func _clean_region_indices(regions: Array, max_count: int = WeatherSystem.DEFAUL
 		if result.size() >= limit:
 			break
 	return result
+
+
+static func _new_session_region_candidates(districts: Array) -> Array:
+	var best_score := -INF
+	var candidates: Array = []
+	for index in range(districts.size()):
+		if not (districts[index] is Dictionary):
+			continue
+		var district: Dictionary = districts[index]
+		if bool(district.get("destroyed", false)):
+			continue
+		var city_variant: Variant = district.get("city", {})
+		var has_active_city := city_variant is Dictionary and not (city_variant as Dictionary).is_empty() \
+			and bool((city_variant as Dictionary).get("active", true)) and not bool((city_variant as Dictionary).get("destroyed", false))
+		var neighbors: Array = district.get("neighbors", []) if district.get("neighbors", []) is Array else []
+		var trade_volume_bucket := maxi(0, int(district.get("public_trade_volume_bucket", district.get("trade_volume_bucket", district.get("route_load_bucket", 0)))))
+		var score := (8.0 if has_active_city else 0.0) + float(neighbors.size()) * 2.0 + float(trade_volume_bucket) * 1.25
+		if score > best_score + 0.001:
+			best_score = score
+			candidates = [index]
+		elif is_equal_approx(score, best_score):
+			candidates.append(index)
+	return candidates
+
+
+static func _cursor_from_detached_draw(draw: Dictionary) -> Dictionary:
+	return {
+		"schema_version": 1,
+		"rng_state": int(draw.get("rng_state", 1)),
+		"draw_count": int(draw.get("draw_count", 0)),
+	}
 
 
 func _shared_rng() -> RunRngService:

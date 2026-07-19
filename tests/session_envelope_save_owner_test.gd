@@ -33,7 +33,20 @@ func _verify_formal_four_player_capture() -> void:
 	formal_root.process_mode = Node.PROCESS_MODE_DISABLED
 	root.add_child(formal_root)
 	await process_frame
-	formal_root.call("_new_game")
+	var draft := formal_root.get_node_or_null("RuntimeServices/NewGameSetupDraftService") as NewGameSetupDraftService
+	var transaction := formal_root.get_node_or_null("RuntimeServices/SessionStartTransactionCoordinator") as SessionStartTransactionCoordinator
+	var session := formal_root.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController") as GameSessionRuntimeController
+	var request := SessionStartRequest.create(
+		"session-envelope-formal-capture",
+		draft.draft_snapshot() if draft != null else {},
+		session.session_start_revision() if session != null else -1,
+		"focused_test"
+	)
+	var start_receipt := transaction.start_session(request) if transaction != null else null
+	_expect(
+		start_receipt != null and start_receipt.applied,
+		"formal main starts through the scene-owned session transaction: %s" % JSON.stringify(start_receipt.to_dictionary() if start_receipt != null else {})
+	)
 	await process_frame
 	var coordinator := formal_root.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
 	var world := coordinator.world_session_state() if coordinator != null else null

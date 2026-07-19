@@ -7,29 +7,10 @@ const CardPlayRequirementPolicyScript := preload("res://scripts/cards/card_play_
 const SharedCardGroupWindowScript := preload("res://scripts/cards/shared_card_group_window.gd")
 const RoguelikeEconomicViabilityPolicyScript := preload("res://scripts/runtime/roguelike_economic_viability_policy.gd")
 const MenuRootLobbyScene := preload("res://scenes/ui/MenuRootLobby.tscn")
-const NewGameSetupPageScene := preload("res://scenes/ui/NewGameSetupPage.tscn")
 const PlayerBoardStrategyActionSnapshotScript := preload("res://scripts/viewmodels/player_board_strategy_action_snapshot.gd")
 const TABLE_SFX_KEYS := ["card", "impact", "storm"]
 const MIN_PLAYER_COUNT := 3
 const MAX_PLAYER_COUNT := 8
-const DEFAULT_PLAYER_COUNT := 4
-const MIN_AI_PLAYER_COUNT := 2
-const MAX_AI_PLAYER_COUNT := 7
-const DEFAULT_AI_PLAYER_COUNT := 3
-const ROLE_RANDOM_INDEX := -1
-const ROGUELIKE_DEPTH_MIN := 1
-const ROGUELIKE_DEPTH_MAX := 6
-const DEFAULT_ROGUELIKE_DEPTH := 1
-const TARGET_GAME_LENGTH_MIN_SECONDS := 1800.0
-const TARGET_GAME_LENGTH_MAX_SECONDS := 3600.0
-const TARGET_GAME_LENGTH_BASE_SECONDS := 1800.0
-const TARGET_GAME_LENGTH_DEPTH_STEP_SECONDS := 360.0
-const BALANCE_EXPECTED_CITY_COUNT_MAX := 6
-const MAP_WIDTH_METERS := 1400.0
-const MAP_HEIGHT_METERS := 950.0
-const MAP_SITE_MARGIN_METERS := 70.0
-const MAP_REGION_COUNT_MIN := 6
-const MAP_REGION_COUNT_MAX := 54
 const MONSTER_COMMAND_MOVE_METERS := 220.0
 const NEARBY_RADIUS_METERS := 240.0
 const DEFAULT_AOE_RADIUS_METERS := 180.0
@@ -79,20 +60,8 @@ const TEMP_DECISION_PLAYER_TARGET := "player_target_choice"
 const TEMP_DECISION_MONSTER_WAGER := "monster_wager"
 const MONSTER_CARD_PLAY_CASH_PER_EXISTING := 100
 const MONSTER_OWNER_DAMAGE_CASH_RANK_STEP := 170
-const REGION_ECONOMY_LEVEL_MIN := 1
-const REGION_ECONOMY_LEVEL_MAX := 5
-const REGION_TRANSPORT_SCORE_MIN := 0.55
-const REGION_TRANSPORT_SCORE_MAX := 2.4
-const DISTRICT_PRODUCT_COUNT_MIN := 1
-const DISTRICT_PRODUCT_COUNT_MAX := 1
-const DISTRICT_DEMAND_COUNT_MIN := 1
-const DISTRICT_DEMAND_COUNT_MAX := 1
-const DISTRICT_NEIGHBOR_COUNT := 4
-const OCEAN_REGION_RATIO_MIN := 0.26
-const OCEAN_REGION_RATIO_MAX := 0.40
 const COMMAND_COOLDOWN := 1.0
 const DEFAULT_SKILL_COOLDOWN := 3.0
-const SETTINGS_PATH := "user://space_syndicate_settings.cfg"
 
 const PLAYER_COLORS := [
 	Color("#38bdf8"),
@@ -106,28 +75,10 @@ const PLAYER_COLORS := [
 ]
 
 
-const OCEAN_PRODUCT_CATALOG := [
-	"星鲸罐头", "星鳍鱼群", "蓝潮藻", "巨藻纤维", "风暴珍珠", "深海菌毯",
-	"海底黑油", "钛壳贝", "夜航香蕉", "暗礁珊瑚", "离岸水晶", "潮汐电浆",
-]
-
-const OCEAN_DISTRICT_NAME_POOL := [
-	"蓝潮海", "静默洋", "环流海峡", "极光湾", "赤道航道", "深星海盆",
-	"群岛外海", "寒冠洋", "珊瑚环礁", "远洋航门", "月影海", "磁暴海峡",
-]
-
-
 const WAREHOUSE_STOCKPILE_COUNT_PRESSURE := 34
 const WAREHOUSE_STOCKPILE_UNIT_PRESSURE := 8
 const WAREHOUSE_STOCKPILE_PRODUCT_PRESSURE := 10
 
-
-const DISTRICT_NAME_POOL := [
-	"东京湾", "能源塔", "旧城区", "港口", "地球总部", "商业区", "地下基地", "电视台",
-	"轨道电梯", "月台仓库", "风暴街", "第七码头", "废弃工厂", "研究院", "环城高速", "巨蛋球场",
-	"磁悬浮站", "海滨公园", "地下商场", "天文台", "避难中心", "中央医院", "卫星阵列", "纪念广场",
-	"冷却塔", "军港", "货运枢纽", "水族馆", "数据塔", "旧神社", "工业岛", "玻璃城区",
-]
 
 const DISTRICT_PALETTE := [
 	Color("#1e3a8a"),
@@ -157,17 +108,8 @@ const REALTIME_BALANCE := {
 }
 
 var _roguelike_economic_viability_dev_audit: Dictionary = {}
-var skill_market := []
 
 var time_scale := 1.0
-var selected_market_skill := ""
-var previewed_district_card := ""
-var configured_player_count := DEFAULT_PLAYER_COUNT
-var configured_ai_player_count := DEFAULT_AI_PLAYER_COUNT
-var configured_roguelike_depth := DEFAULT_ROGUELIKE_DEPTH
-var configured_role_indices := []
-var configured_starter_monster_indices := []
-var district_lookup := {}
 
 var runtime_game_screen: Control
 var ruleset_runtime_bridge: Node
@@ -192,8 +134,6 @@ var menu_preview_box: VBoxContainer
 var menu_regular_buttons := []
 var menu_load_run_button: Button
 var district_supply_overlay: Control
-var district_supply_open_district := -1
-var district_supply_open_player := -1
 var speed_before_menu := 1.0
 var full_map_overlay: Control
 var full_map_view: Control
@@ -268,7 +208,6 @@ var table_sfx_players := {}
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	_game_runtime_coordinator_node().run_rng_service().randomize()
-	_load_settings()
 	_build_layout()
 	_build_developer_balance_greybox()
 	_build_table_audio()
@@ -2256,9 +2195,8 @@ func _menu_quick_nav_visible(title_text: String, _show_main_actions: bool, compa
 
 
 func _on_menu_quick_nav_action_requested(action_id: String) -> void:
-	match action_id:
-		"setup":
-			_start_new_run_from_menu()
+	if action_id == "":
+		return
 
 
 func _menu_summary_grid_columns() -> int:
@@ -2409,8 +2347,6 @@ func _main_menu_root_lobby_snapshot() -> Dictionary:
 
 func _on_menu_root_lobby_action_requested(action_id: String) -> void:
 	match action_id:
-		"new_run":
-			_start_new_run_from_menu()
 		"continue":
 			_close_menu()
 		"load_run":
@@ -2426,6 +2362,8 @@ func _add_main_menu_planet_lobby_panel(parent: Container) -> void:
 	if lobby.has_signal("action_requested"):
 		lobby.connect("action_requested", Callable(self, "_on_menu_root_lobby_action_requested"))
 	var application_flow_port := get_node_or_null("RuntimeServices/ApplicationFlowPort")
+	if application_flow_port != null and lobby.has_signal("setup_requested"):
+		lobby.connect("setup_requested", Callable(application_flow_port, "submit_action").bind("setup"))
 	if application_flow_port != null and lobby.has_signal("rules_requested"):
 		lobby.connect("rules_requested", Callable(application_flow_port, "submit_action").bind("rules"))
 	if application_flow_port != null and lobby.has_signal("compendium_requested"):
@@ -3441,17 +3379,11 @@ func _balance_monster_movement_speed_model(actor: Dictionary, target_index: int 
 	return _runtime_balance_model().call("monster_movement_speed_model", actor, monster_runtime_controller._monster_terrain_move_multiplier(actor, target_index), action_speed_mps, _current_balance_region_radius_m(), 10.0) as Dictionary
 
 
-func _current_balance_region_size_model() -> Dictionary:
-	var region_count := _game_runtime_coordinator_node().world_session_state().districts.size()
-	if region_count <= 0:
-		var depth_range := _balance_region_count_range_for_depth()
-		region_count = int(depth_range.get("region_mid", maxi(MAP_REGION_COUNT_MIN, 1)))
-	return _runtime_balance_model().call("region_size_model", configured_roguelike_depth, region_count) as Dictionary
-
-
 func _current_balance_region_radius_m() -> float:
-	var model := _current_balance_region_size_model()
-	return maxf(1.0, float(model.get("avg_region_radius_m", 180.0)))
+	var world := _game_runtime_coordinator_node().world_session_state()
+	var region_count := maxi(1, world.districts.size())
+	var world_area := maxf(1.0, world.map_width_m * world.map_height_m)
+	return maxf(1.0, sqrt(world_area / float(region_count) / PI))
 
 
 func _auto_monster_movement_speed_mps(actor: Dictionary, target_index: int, action_speed_mps: float = -1.0) -> float:
@@ -3461,14 +3393,6 @@ func _auto_monster_movement_speed_mps(actor: Dictionary, target_index: int, acti
 
 func _monster_knockback_model(action_or_skill: Dictionary, actor: Dictionary = {}) -> Dictionary:
 	return _runtime_balance_model().call("monster_knockback_speed_model", action_or_skill, actor, _current_balance_region_radius_m(), 0.5) as Dictionary
-
-
-func _balance_region_count_range_for_depth(depth: int = -1) -> Dictionary:
-	return _runtime_balance_model().call("region_count_range_for_depth", configured_roguelike_depth if depth < 0 else depth) as Dictionary
-
-
-func _balance_planet_size_for_depth(depth: int = -1) -> Dictionary:
-	return _runtime_balance_model().call("planet_size_for_depth", configured_roguelike_depth if depth < 0 else depth) as Dictionary
 
 
 func _close_menu() -> void:
@@ -3490,333 +3414,6 @@ func _close_menu() -> void:
 		if runtime_coordinator != null and runtime_coordinator.has_method("resume_session"):
 			runtime_coordinator.call("resume_session")
 	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
-
-
-func _start_new_run_from_menu() -> void:
-	_open_new_game_setup_menu()
-
-
-func _open_new_game_setup_menu() -> void:
-	_ensure_configured_ai_player_count()
-	_show_menu(
-		"开局准备",
-		"开桌前确认席位、电脑对手、挑战层级、公开角色和起始怪兽牌。起始牌由各席持有，召唤完全自愿，不阻断建城、买牌或经济。",
-		not _game_runtime_coordinator_node().world_session_state().players.is_empty() and not _runtime_session_finished()
-	)
-	if menu_preview_box != null:
-		menu_overlay.call("clear_preview")
-		menu_preview_box.visible = true
-		_add_new_game_setup_controls(menu_preview_box)
-
-
-func _add_new_game_setup_controls(parent: Container) -> void:
-	_ensure_configured_ai_player_count()
-	var page := NewGameSetupPageScene.instantiate() as Control
-	if page == null or not page.has_method("set_page"):
-		_report_required_ui_scene_missing("NewGameSetupPage", "set_page")
-		return
-	if page.has_signal("action_requested"):
-		page.connect("action_requested", Callable(self, "_on_new_game_setup_action_requested"))
-	parent.add_child(page)
-	page.call("set_page", _new_game_setup_page_snapshot())
-
-
-func _new_game_setup_page_snapshot() -> Dictionary:
-	var seats := []
-	for player_index in range(configured_player_count):
-		var role_card := _make_configured_player_role_card(player_index)
-		var starter_card := _make_starting_monster_card(player_index)
-		var starter_monster_index := _configured_starter_monster_index(player_index)
-		var role_selection_label := _configured_role_selection_label(player_index)
-		var seat_type := _player_seat_type_for_config_index(player_index)
-		var seat_label := "电脑对手" if seat_type == "ai" else "真人/本地"
-		seats.append(_new_game_setup_seat_card_snapshot(player_index, seat_label, seat_type, role_card, starter_card, starter_monster_index, role_selection_label))
-	return {
-		"accent": Color("#38bdf8"),
-		"tooltip": "完整场景化开局准备页：流程、参数、席位和开始命令都可在 Godot 编辑器中检查。",
-		"summary_chips": _new_game_setup_summary_chip_snapshots(),
-		"lobby": _new_game_setup_lobby_snapshot(),
-		"options": _new_game_setup_option_board_snapshot(),
-		"seat_title": "座位卡｜公开角色 + 起始怪兽牌",
-		"seat_columns": clampi(int(floor(_menu_available_content_width() / 520.0)), 1, 2),
-		"seat_scroll_height": 360.0,
-		"seats": seats,
-		"hint": "角色公开；起始怪兽牌由各席持有并可随时自愿召唤。普通牌按来源区日照与怪兽压力报价。",
-		"can_return_table": not _game_runtime_coordinator_node().world_session_state().players.is_empty() and not _runtime_session_finished(),
-		"start_disabled": false,
-		"start_tooltip": "按当前%d席、AI%d和%s配置开始本局。" % [configured_player_count, configured_ai_player_count, _roguelike_depth_label()],
-	}
-
-
-func _new_game_setup_summary_chip_snapshots() -> Array:
-	return [
-		{"text": "席位 %d" % configured_player_count, "accent": Color("#bfdbfe"), "fill": Color("#0f172a")},
-		{"text": "真人 %d" % _configured_human_player_count(), "accent": Color("#bbf7d0"), "fill": Color("#064e3b")},
-		{"text": "电脑对手%d" % configured_ai_player_count, "accent": Color("#d8b4fe"), "fill": Color("#2e1065")},
-		{"text": _roguelike_depth_label(), "accent": Color("#fde68a"), "fill": Color("#713f12")},
-		{"text": "控%d区 / GDP%d" % [_victory_required_regions(), _victory_required_gdp()], "accent": Color("#fef3c7"), "fill": Color("#422006")},
-		{"text": "角色不重复", "accent": Color("#93c5fd"), "fill": Color("#1e3a8a")},
-		{"text": "召唤可选", "accent": Color("#fecaca"), "fill": Color("#7f1d1d")},
-	]
-
-
-func _on_new_game_setup_action_requested(action_id: String) -> void:
-	if action_id == "setup_start":
-		_confirm_start_new_run_from_setup()
-	elif action_id == "setup_back":
-		_open_main_menu()
-	elif action_id == "setup_return_table":
-		_close_menu()
-	elif action_id.begins_with("setup_player_count_"):
-		_set_configured_player_count_from_new_game_menu(int(action_id.substr("setup_player_count_".length())))
-	elif action_id.begins_with("setup_ai_count_"):
-		_set_configured_ai_player_count_from_new_game_menu(int(action_id.substr("setup_ai_count_".length())))
-	elif action_id.begins_with("setup_challenge_depth_"):
-		_set_configured_roguelike_depth_from_new_game_menu(int(action_id.substr("setup_challenge_depth_".length())))
-	elif action_id.begins_with("setup_role_step_"):
-		var values := action_id.substr("setup_role_step_".length()).split("_", false, 1)
-		if values.size() == 2:
-			_cycle_configured_role_for_player_from_new_game_menu(int(values[0]), int(values[1]))
-	elif action_id.begins_with("setup_role_random_"):
-		_set_configured_role_random_for_player(int(action_id.substr("setup_role_random_".length())))
-		_open_new_game_setup_menu()
-	elif action_id.begins_with("setup_monster_step_"):
-		var values := action_id.substr("setup_monster_step_".length()).split("_", false, 1)
-		if values.size() == 2:
-			_cycle_configured_starter_monster_for_player_from_new_game_menu(int(values[0]), int(values[1]))
-
-
-func _new_game_setup_lobby_snapshot() -> Dictionary:
-	return {
-		"accent": Color("#38bdf8"),
-		"title": "开桌流程",
-		"title_tooltip": "从左到右确认；不需要阅读长规则也能开始测试。",
-		"tooltip": "开局准备像电子桌游开桌大厅：先确认流程，再调整下方席位卡。",
-		"columns": clampi(int(floor(_menu_available_content_width() / 180.0)), 1, 5),
-		"chips": [
-			{"text": "PVE %d席" % configured_player_count, "accent": Color("#bfdbfe"), "tooltip": "本地真人对电脑对手。"},
-			{"text": "AI %d" % configured_ai_player_count, "accent": Color("#d8b4fe"), "tooltip": "电脑对手数量。"},
-			{"text": "控%d区 / GDP%d" % [_victory_required_regions(), _victory_required_gdp()], "accent": Color("#fef3c7"), "tooltip": "动态达标并持续10秒后进入120秒公开审计。"},
-		],
-		"steps": [
-			{"title": "1｜席位", "body": "%d席｜真人%d｜AI%d" % [configured_player_count, _configured_human_player_count(), configured_ai_player_count], "accent": Color("#38bdf8"), "tooltip": "用下方席位/电脑按钮调整桌面规模。"},
-			{"title": "2｜挑战", "body": "%s｜%s" % [_roguelike_depth_label(), _short_card_text(_roguelike_planet_profile_text(), 30)], "accent": Color("#facc15"), "tooltip": "挑战层级决定星球规模；胜利门槛随当前存续区域实时变化。"},
-			{"title": "3｜角色", "body": "公开身份｜同局不重复", "accent": Color("#c084fc"), "tooltip": "角色牌开局公开；AI可随机，但开局时仍保证不重复。"},
-			{"title": "4｜怪兽牌", "body": "各席持有｜召唤可选", "accent": Color("#fb7185"), "tooltip": "角色不绑定起始怪兽；起始怪兽牌由玩家持有，可在合法时机自愿打出。"},
-			{"title": "5｜开局", "body": "受光牌架 → 发展牌 → 商品项目", "accent": Color("#22c55e"), "tooltip": "开始本局后可直接浏览牌架、购买发展牌、建立商品项目和匿名出牌。"},
-		],
-		"readiness": [
-			{"text": "角色不重复", "accent": Color("#93c5fd"), "fill": Color("#1e3a8a")},
-			{"text": "怪兽牌独立", "accent": Color("#fecaca"), "fill": Color("#7f1d1d")},
-			{"text": "召唤不阻断经济", "accent": Color("#bbf7d0"), "fill": Color("#14532d")},
-			{"text": "AI可随机角色", "accent": Color("#d8b4fe"), "fill": Color("#312e81")},
-			{"text": "区域控制审计", "accent": Color("#fef3c7"), "fill": Color("#713f12")},
-		],
-	}
-
-
-func _new_game_setup_option_board_snapshot() -> Dictionary:
-	var player_entries := []
-	for count in range(MIN_PLAYER_COUNT, MAX_PLAYER_COUNT + 1):
-		player_entries.append({
-			"id": "player_count",
-			"value": count,
-			"text": "%d席" % count,
-			"pressed": count == configured_player_count,
-			"tooltip": "%d名玩家席位；至少1名真人，其余可由AI补足。" % count,
-		})
-
-	var ai_entries := []
-	var max_ai := mini(MAX_AI_PLAYER_COUNT, configured_player_count - 1)
-	for count in range(MIN_AI_PLAYER_COUNT, max_ai + 1):
-		ai_entries.append({
-			"id": "ai_count",
-			"value": count,
-			"text": "AI%d" % count,
-			"pressed": count == configured_ai_player_count,
-			"tooltip": "%d个电脑对手；AI内部策略不会显示给玩家。" % count,
-		})
-
-	var depth_entries := []
-	for depth in range(ROGUELIKE_DEPTH_MIN, ROGUELIKE_DEPTH_MAX + 1):
-		depth_entries.append({
-			"id": "challenge_depth",
-			"value": depth,
-			"text": _level_text(depth),
-			"pressed": depth == configured_roguelike_depth,
-			"tooltip": _roguelike_planet_profile_text(depth),
-		})
-	return {
-		"accent": Color("#facc15"),
-		"title": "开局参数｜先定桌面规模",
-		"title_tooltip": "三个参数决定本局桌面：席位、AI数量、星球挑战。",
-		"tooltip": "开局参数板：像桌游开局板一样集中调整席位、电脑对手和挑战层级。",
-		"columns": clampi(int(floor(_menu_available_content_width() / 260.0)), 1, 3),
-		"cards": [
-			{
-				"title": "席位",
-				"detail": "%d席｜真人%d｜AI%d" % [configured_player_count, _configured_human_player_count(), configured_ai_player_count],
-				"accent": Color("#38bdf8"),
-				"options": player_entries,
-			},
-			{
-				"title": "电脑对手",
-				"detail": "本地PVE｜AI路线隐藏",
-				"accent": Color("#c084fc"),
-				"options": ai_entries,
-			},
-			{
-				"title": "挑战层级",
-				"detail": "%s｜动态控制%d区｜前K区GDP %d/min" % [_roguelike_depth_label(), _victory_required_regions(), _victory_required_gdp()],
-				"accent": Color("#facc15"),
-				"options": depth_entries,
-			},
-		],
-	}
-
-
-func _new_game_setup_seat_card_snapshot(player_index: int, seat_label: String, seat_type: String, role_card: Dictionary, starter_card: Dictionary, starter_monster_index: int, role_selection_label: String) -> Dictionary:
-	var accent := _player_color(player_index)
-	var role_name := String(role_card.get("name", "外星辛迪加"))
-	var is_ai_seat := seat_type == "ai"
-	var public_starter_text := "随机分配/开局后未知" if is_ai_seat else String(_catalog_entry(starter_monster_index).get("name", String(starter_card.get("monster_name", "怪兽"))))
-	var snapshot := {
-		"player_index": player_index,
-		"seat_type": seat_type,
-		"accent": accent,
-		"tooltip": "座位卡：公开角色 + 各席持有的起始怪兽牌。",
-		"chips": [
-			{"text": "P%d" % (player_index + 1), "accent": Color("#f8fafc"), "fill": Color("#0f172a").lerp(accent, 0.28)},
-			{"text": seat_label, "accent": Color("#bfdbfe"), "fill": Color("#0f172a")},
-			{"text": String(role_card.get("species", "未知外星人")), "accent": Color("#d8b4fe"), "fill": Color("#312e81")},
-			{"text": "角色:%s" % _short_card_text(role_name, 14), "accent": Color("#e0f2fe"), "fill": Color("#0c4a6e")},
-			{"text": "◆ %s" % _short_card_text(public_starter_text, 14), "accent": Color("#fecaca"), "fill": Color("#7f1d1d")},
-		],
-		"identity": _new_game_setup_seat_identity_snapshot(player_index, seat_type, role_card, starter_card, starter_monster_index, role_selection_label),
-		"passive_text": "角色被动：%s" % _short_card_text(_role_passive_text(role_card), 86),
-		"passive_tooltip": _role_passive_text(role_card),
-		"role_label": role_selection_label,
-		"role_random": _configured_role_index(player_index) == ROLE_RANDOM_INDEX,
-		"show_random_role": is_ai_seat,
-		"card_faces": [_new_game_setup_role_card_face_snapshot(role_card)],
-	}
-	if is_ai_seat:
-		return snapshot
-	snapshot["monster_label"] = public_starter_text
-	snapshot["starter_note"] = _starter_monster_setup_summary(starter_card)
-	(snapshot["card_faces"] as Array).append(_new_game_setup_starter_card_face_snapshot(starter_card, starter_monster_index))
-	return snapshot
-
-
-func _new_game_setup_role_card_face_snapshot(role_card: Dictionary) -> Dictionary:
-	return {
-		"name": String(role_card.get("name", "外星辛迪加")),
-		"cost": "R",
-		"effect": _role_card_face_text(role_card, true),
-		"type": _role_card_tag_text(role_card),
-		"rank": _short_card_text(String(role_card.get("species", "角色")), 8),
-		"card_kind": "player_role",
-		"card_stats": "公开身份｜%s" % _short_card_text(_codex_role_route_label(role_card), 18),
-		"accent": _role_card_presentation_color(role_card),
-		"minimum_width": 142.0,
-		"minimum_height": 140.0,
-	}
-
-
-func _new_game_setup_starter_card_face_snapshot(starter_card: Dictionary, starter_monster_index: int) -> Dictionary:
-	var starter_name := String(_catalog_entry(starter_monster_index).get("name", String(starter_card.get("name", starter_card.get("monster_name", "怪兽")))))
-	return {
-		"name": starter_name,
-		"cost": "◆",
-		"effect": _starter_monster_setup_summary(starter_card),
-		"type": "怪兽",
-		"rank": _level_text(max(1, _game_runtime_coordinator_node().card_rank(starter_name))),
-		"card_kind": "monster_card",
-		"card_stats": "不限区｜自愿召唤｜%s" % _short_card_text(_monster_card_region_text(starter_card, true), 16),
-		"accent": _card_presentation_color(starter_card),
-		"minimum_width": 142.0,
-		"minimum_height": 140.0,
-	}
-
-
-func _new_game_setup_seat_identity_snapshot(player_index: int, seat_type: String, role_card: Dictionary, starter_card: Dictionary, starter_monster_index: int, role_selection_label: String) -> Dictionary:
-	var accent := _player_color(player_index)
-	var role_label := "随机角色" if _configured_role_index(player_index) == ROLE_RANDOM_INDEX else _short_card_text(String(role_card.get("name", role_selection_label)), 12)
-	var starter_label := "匿名待公开" if seat_type == "ai" else _short_card_text(String(_catalog_entry(starter_monster_index).get("name", "怪兽")), 12)
-	var chips := [
-		{"text": "公开角色:%s" % role_label, "accent": Color("#e0f2fe"), "fill": Color("#0c4a6e")},
-		{"text": "起始牌:%s" % starter_label, "accent": Color("#fecaca"), "fill": Color("#7f1d1d")},
-		{"text": "怪兽归属匿名", "accent": Color("#fde68a"), "fill": Color("#713f12")},
-	]
-	if seat_type == "ai":
-		chips.append({"text": "AI策略隐藏", "accent": Color("#cbd5e1"), "fill": Color("#334155")})
-	else:
-		chips.append({"text": "本地玩家", "accent": Color("#bbf7d0"), "fill": Color("#14532d")})
-
-	var role_body := "开局公开；%s" % _short_card_text(_codex_role_route_label(role_card), 20)
-	if _configured_role_index(player_index) == ROLE_RANDOM_INDEX:
-		role_body = "开局随机分配，结果公开且不重复。"
-	var privacy_text := "AI路线与出牌思路隐藏；只读公开动作。" if seat_type == "ai" else "现金/手牌只自己看；对手靠线索推理。"
-	var starter_body := "自愿召唤后才公开具体怪兽。" if seat_type == "ai" else _short_card_text(_starter_monster_setup_summary(starter_card), 54)
-	return {
-		"accent": accent,
-		"tooltip": "座位公开信息板：只显示公开角色、起始怪兽牌状态和第一步提示；AI内部路线不公开。",
-		"columns": 2,
-		"chips": chips,
-		"cards": [
-			{"title": "公开身份", "body": role_body, "accent": Color("#93c5fd"), "tooltip": "角色是公开信息；不会绑定起始怪兽归属。"},
-			{"title": "起始怪兽牌", "body": starter_body, "accent": Color("#fb7185"), "tooltip": "该席持有起始怪兽牌；召唤完全自愿，召唤者仍保持匿名。"},
-			{"title": "第一步", "body": "选区域 → 看受光牌架 → 建立收入", "accent": Color("#22c55e"), "tooltip": "召唤怪兽不是购牌或经济前置。"},
-			{"title": "信息边界", "body": privacy_text, "accent": Color("#c4b5fd"), "tooltip": privacy_text},
-		],
-	}
-
-
-func _set_configured_player_count_from_new_game_menu(count: int) -> void:
-	_set_configured_player_count(count)
-	_open_new_game_setup_menu()
-
-
-func _set_configured_ai_player_count_from_new_game_menu(count: int) -> void:
-	_set_configured_ai_player_count(count)
-	_open_new_game_setup_menu()
-
-
-func _set_configured_roguelike_depth_from_new_game_menu(depth: int) -> void:
-	_set_configured_roguelike_depth(depth)
-	_open_new_game_setup_menu()
-
-
-func _cycle_configured_role_for_player_from_new_game_menu(player_index: int, step: int) -> void:
-	_cycle_configured_role_for_player(player_index, step)
-	_open_new_game_setup_menu()
-
-
-func _cycle_configured_starter_monster_for_player_from_new_game_menu(player_index: int, step: int) -> void:
-	_cycle_configured_starter_monster_for_player(player_index, step)
-	_open_new_game_setup_menu()
-
-
-func _starter_monster_setup_summary(starter_card: Dictionary) -> String:
-	var fixed_skill_count := int(starter_card.get("fixed_skill_count", 1))
-	var duration_text := _monster_card_duration_text(starter_card, true)
-	var region_text := _monster_card_region_text(starter_card, true)
-	return "起始牌：%s｜%s｜召唤可选｜固定技%d" % [
-		region_text,
-		duration_text,
-		fixed_skill_count,
-	]
-
-
-func _confirm_start_new_run_from_setup() -> void:
-	_game_runtime_coordinator_node().record_legacy_viewer_feedback("开始新局：%d席外星辛迪加入局，其中真人/本地%d席，电脑对手%d席；怪兽将通过起始怪兽牌和后续怪兽卡匿名召唤，场上数量没有硬上限。" % [
-		configured_player_count,
-		_configured_human_player_count(),
-		configured_ai_player_count,
-	])
-	_new_game()
-	speed_before_menu = 1.0
-	_close_menu()
 
 
 func _load_run_from_menu() -> void:
@@ -3847,486 +3444,6 @@ func _refresh_run_save_menu_state() -> void:
 
 func _quit_game() -> void:
 	get_tree().quit()
-
-
-func _save_settings(show_log: bool) -> void:
-	_ensure_configured_ai_player_count()
-	_ensure_configured_roguelike_depth()
-	_ensure_configured_role_indices()
-	_ensure_configured_starter_monster_indices()
-	var config := ConfigFile.new()
-	config.set_value("setup", "player_count", configured_player_count)
-	config.set_value("setup", "ai_player_count", configured_ai_player_count)
-	config.set_value("setup", "roguelike_depth", configured_roguelike_depth)
-	config.set_value("setup", "role_indices", configured_role_indices)
-	config.set_value("setup", "starter_monster_indices", configured_starter_monster_indices)
-	var err: int = config.save(SETTINGS_PATH)
-	if not show_log:
-		return
-	if err == OK:
-		_game_runtime_coordinator_node().record_legacy_viewer_feedback("开局设置已保存到本地用户配置。")
-	else:
-		_game_runtime_coordinator_node().record_legacy_viewer_feedback("开局设置保存失败：%s。" % error_string(err))
-	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
-
-
-func _load_settings() -> void:
-	var config := ConfigFile.new()
-	var err: int = config.load(SETTINGS_PATH)
-	if err != OK:
-		_ensure_configured_ai_player_count()
-		_ensure_configured_roguelike_depth()
-		_ensure_configured_role_indices()
-		_ensure_configured_starter_monster_indices()
-		return
-	configured_player_count = clampi(int(config.get_value("setup", "player_count", DEFAULT_PLAYER_COUNT)), MIN_PLAYER_COUNT, MAX_PLAYER_COUNT)
-	configured_ai_player_count = int(config.get_value("setup", "ai_player_count", min(DEFAULT_AI_PLAYER_COUNT, configured_player_count - 1)))
-	_ensure_configured_ai_player_count()
-	configured_roguelike_depth = int(config.get_value("setup", "roguelike_depth", DEFAULT_ROGUELIKE_DEPTH))
-	_ensure_configured_roguelike_depth()
-	var saved_role_indices: Variant = config.get_value("setup", "role_indices", [])
-	configured_role_indices = (saved_role_indices as Array).duplicate(true) if saved_role_indices is Array else []
-	_ensure_configured_role_indices()
-	var saved_starter_monster_indices: Variant = config.get_value("setup", "starter_monster_indices", [])
-	configured_starter_monster_indices = (saved_starter_monster_indices as Array).duplicate(true) if saved_starter_monster_indices is Array else []
-	_ensure_configured_starter_monster_indices()
-
-
-func _roguelike_depth_label(depth: int = -1) -> String:
-	var value := configured_roguelike_depth if depth < 0 else depth
-	return "深度%s" % _level_text(clampi(value, ROGUELIKE_DEPTH_MIN, ROGUELIKE_DEPTH_MAX))
-
-
-func _roguelike_planet_profile(depth: int = -1) -> Dictionary:
-	var value := clampi(configured_roguelike_depth if depth < 0 else depth, ROGUELIKE_DEPTH_MIN, ROGUELIKE_DEPTH_MAX)
-	var count_range := _balance_region_count_range_for_depth(value)
-	var planet_size := _balance_planet_size_for_depth(value)
-	var region_min := int(count_range.get("region_min", 6))
-	var region_max := int(count_range.get("region_max", 9))
-	return {
-		"depth": value,
-		"label": _roguelike_depth_label(value),
-		"region_min": region_min,
-		"region_max": region_max,
-		"width": float(planet_size.get("width_m", MAP_WIDTH_METERS)),
-		"height": float(planet_size.get("height_m", MAP_HEIGHT_METERS)),
-		"victory_rule": _victory_dynamic_rule(),
-	}
-
-
-func _roguelike_planet_profile_text(depth: int = -1) -> String:
-	var profile := _roguelike_planet_profile(depth)
-	var victory_rule: Dictionary = profile.get("victory_rule", {}) if profile.get("victory_rule", {}) is Dictionary else _victory_dynamic_rule()
-	return "%s｜星球%.0fm×%.0fm｜区域%d-%d｜动态控制%d区 / 前K区GDP %d/min" % [
-		String(profile.get("label", "深度I")),
-		float(profile.get("width", MAP_WIDTH_METERS)),
-		float(profile.get("height", MAP_HEIGHT_METERS)),
-		int(profile.get("region_min", MAP_REGION_COUNT_MIN)),
-		int(profile.get("region_max", MAP_REGION_COUNT_MAX)),
-		int(victory_rule.get("required_region_count", 0)),
-		int(victory_rule.get("required_top_k_gdp_per_minute", 0)),
-	]
-
-
-func _generate_roguelike_districts() -> void:
-	_game_runtime_coordinator_node().world_session_state().districts = []
-	district_lookup = {}
-	var profile := _roguelike_planet_profile()
-	_game_runtime_coordinator_node().world_session_state().configure_world_geometry(
-		float(profile.get("width", MAP_WIDTH_METERS)),
-		float(profile.get("height", MAP_HEIGHT_METERS))
-	)
-	var target_region_count := _game_runtime_coordinator_node().run_rng_service().randi_range(int(profile.get("region_min", MAP_REGION_COUNT_MIN)), int(profile.get("region_max", MAP_REGION_COUNT_MAX)))
-	var sites := _generate_region_sites(target_region_count)
-
-	for i in range(sites.size()):
-		var polygon: Array = _voronoi_polygon_for_site(i, sites)
-		if polygon.size() < 3:
-			continue
-		var center: Vector2 = _polygon_centroid(polygon)
-		var area_m2: float = max(1.0, abs(_polygon_area(polygon)))
-		var district_name: String = String(DISTRICT_NAME_POOL[i]) if i < DISTRICT_NAME_POOL.size() else "第%d区" % (i + 1)
-		var district := {
-			"region_id": "region.%03d" % i,
-			"name": district_name,
-			"center": center,
-			"polygon": polygon,
-			"area_m2": area_m2,
-			"radius_m": sqrt(area_m2 / PI),
-			"hp": 0,
-			"damage": 0,
-			"last_damage_source": "",
-			"last_damage_amount": 0,
-			"last_damage_time": -1.0,
-			"destroyed": false,
-			"miasma": false,
-			"terrain": "land",
-			"terrain_label": "陆地",
-			"products": [],
-			"demands": [],
-			"neighbors": [],
-			"transport_score": 1.0,
-			"city": {},
-		}
-		_game_runtime_coordinator_node().world_session_state().districts.append(district)
-	_assign_district_neighbors()
-	_assign_district_terrain_and_goods()
-
-
-func _generate_region_sites(count: int) -> Array:
-	var sites := []
-	var attempts := 0
-	while sites.size() < count and attempts < count * 80:
-		attempts += 1
-		var point := Vector2(
-			_game_runtime_coordinator_node().run_rng_service().randf_range(MAP_SITE_MARGIN_METERS, _game_runtime_coordinator_node().world_session_state().map_width_m - MAP_SITE_MARGIN_METERS),
-			_game_runtime_coordinator_node().run_rng_service().randf_range(MAP_SITE_MARGIN_METERS, _game_runtime_coordinator_node().world_session_state().map_height_m - MAP_SITE_MARGIN_METERS)
-		)
-		var too_close := false
-		for existing in sites:
-			if point.distance_to(existing) < 130.0:
-				too_close = true
-				break
-		if too_close:
-			continue
-		sites.append(point)
-	while sites.size() < count:
-		sites.append(Vector2(
-			_game_runtime_coordinator_node().run_rng_service().randf_range(MAP_SITE_MARGIN_METERS, _game_runtime_coordinator_node().world_session_state().map_width_m - MAP_SITE_MARGIN_METERS),
-			_game_runtime_coordinator_node().run_rng_service().randf_range(MAP_SITE_MARGIN_METERS, _game_runtime_coordinator_node().world_session_state().map_height_m - MAP_SITE_MARGIN_METERS)
-		))
-	return sites
-
-
-func _assign_district_neighbors() -> void:
-	for i in range(_game_runtime_coordinator_node().world_session_state().districts.size()):
-		var entries := []
-		for j in range(_game_runtime_coordinator_node().world_session_state().districts.size()):
-			if i == j:
-				continue
-			entries.append({"index": j, "distance": _wrapped_distance(_district_center(i), _district_center(j))})
-		entries.sort_custom(Callable(self, "_sort_distance_entry"))
-		var neighbors := []
-		for entry in entries:
-			if neighbors.size() >= DISTRICT_NEIGHBOR_COUNT:
-				break
-			neighbors.append(int(entry["index"]))
-		_game_runtime_coordinator_node().world_session_state().districts[i]["neighbors"] = neighbors
-	for i in range(_game_runtime_coordinator_node().world_session_state().districts.size()):
-		var neighbors: Array = _game_runtime_coordinator_node().world_session_state().districts[i].get("neighbors", [])
-		for neighbor_variant in neighbors:
-			var neighbor := int(neighbor_variant)
-			if neighbor < 0 or neighbor >= _game_runtime_coordinator_node().world_session_state().districts.size():
-				continue
-			var reverse: Array = _game_runtime_coordinator_node().world_session_state().districts[neighbor].get("neighbors", [])
-			if not reverse.has(i):
-				reverse.append(i)
-				_game_runtime_coordinator_node().world_session_state().districts[neighbor]["neighbors"] = reverse
-
-
-func _land_economic_focus() -> String:
-	var focuses := ["production", "transport", "consumption", "balanced"]
-	return String(focuses[_game_runtime_coordinator_node().run_rng_service().randi_range(0, focuses.size() - 1)])
-
-
-func _district_economy_focus_label(focus: String) -> String:
-	match focus:
-		"production":
-			return "生产区"
-		"transport":
-			return "交通枢纽"
-		"consumption":
-			return "消费区"
-		"ocean_transport":
-			return "海运通道"
-	return "均衡区"
-
-
-func _transport_score_from_level(level: int, is_ocean: bool = false) -> float:
-	var base := 1.0 if not is_ocean else 1.25
-	return clampf(base + float(clampi(level, REGION_ECONOMY_LEVEL_MIN, REGION_ECONOMY_LEVEL_MAX) - 1) * 0.18, REGION_TRANSPORT_SCORE_MIN, REGION_TRANSPORT_SCORE_MAX)
-
-
-func _assign_district_terrain_and_goods() -> void:
-	if _game_runtime_coordinator_node().world_session_state().districts.is_empty():
-		return
-	var ocean_indices := _roll_ocean_district_indices()
-	var ocean_name_offset := _game_runtime_coordinator_node().run_rng_service().randi_range(0, max(0, OCEAN_DISTRICT_NAME_POOL.size() - 1))
-	var ocean_name_count := 0
-	for i in range(_game_runtime_coordinator_node().world_session_state().districts.size()):
-		var district: Dictionary = _game_runtime_coordinator_node().world_session_state().districts[i]
-		if ocean_indices.has(i):
-			var ocean_name := String(OCEAN_DISTRICT_NAME_POOL[(ocean_name_offset + ocean_name_count) % OCEAN_DISTRICT_NAME_POOL.size()])
-			ocean_name_count += 1
-			district["name"] = ocean_name
-			district["terrain"] = "ocean"
-			district["terrain_label"] = "海洋"
-			district["economic_focus"] = "ocean_transport"
-			district["economic_focus_label"] = _district_economy_focus_label("ocean_transport")
-			var ocean_products := _random_product_names_for_terrain("ocean", DISTRICT_PRODUCT_COUNT_MIN, DISTRICT_PRODUCT_COUNT_MAX)
-			district["products"] = ocean_products
-			district["demands"] = _random_product_names(DISTRICT_DEMAND_COUNT_MIN, DISTRICT_DEMAND_COUNT_MAX, ocean_products)
-			district["production_level"] = REGION_ECONOMY_LEVEL_MIN
-			district["transport_level"] = 4
-			district["consumption_level"] = REGION_ECONOMY_LEVEL_MIN
-			district["transport_score"] = _transport_score_from_level(int(district["transport_level"]), true)
-		else:
-			var focus := _land_economic_focus()
-			district["terrain"] = "land"
-			district["terrain_label"] = "陆地"
-			district["economic_focus"] = focus
-			district["economic_focus_label"] = _district_economy_focus_label(focus)
-			match focus:
-				"production":
-					district["production_level"] = 3
-					district["transport_level"] = 2
-					district["consumption_level"] = 1
-				"transport":
-					district["production_level"] = 1
-					district["transport_level"] = 3
-					district["consumption_level"] = 2
-				"consumption":
-					district["production_level"] = 1
-					district["transport_level"] = 2
-					district["consumption_level"] = 3
-				_:
-					district["production_level"] = 2
-					district["transport_level"] = 2
-					district["consumption_level"] = 2
-			var products := _random_product_names_for_terrain("land", DISTRICT_PRODUCT_COUNT_MIN, DISTRICT_PRODUCT_COUNT_MAX)
-			district["products"] = products
-			district["demands"] = _random_product_names(DISTRICT_DEMAND_COUNT_MIN, DISTRICT_DEMAND_COUNT_MAX, products)
-			district["transport_score"] = _transport_score_from_level(int(district["transport_level"]), false)
-		_game_runtime_coordinator_node().world_session_state().districts[i] = district
-	var economic_districts: Array = []
-	for district_index in range(_game_runtime_coordinator_node().world_session_state().districts.size()):
-		var district: Dictionary = _game_runtime_coordinator_node().world_session_state().districts[district_index]
-		economic_districts.append({
-			"region_id": str(district.get("region_id", "region.%03d" % district_index)),
-			"terrain": str(district.get("terrain", "unknown")),
-			"neighbors": (district.get("neighbors", []) as Array).duplicate(),
-			"products": (district.get("products", []) as Array).duplicate(),
-			"demands": (district.get("demands", []) as Array).duplicate(),
-		})
-	var viability_result: Dictionary = RoguelikeEconomicViabilityPolicyScript.normalize({
-		"districts": economic_districts,
-		"catalog_products": _product_catalog_names(),
-		"terrain_product_pools": {
-			"land": _product_pool_for_terrain("land"),
-			"ocean": _product_pool_for_terrain("ocean"),
-		},
-	})
-	_roguelike_economic_viability_dev_audit = (viability_result.get("audit", {}) as Dictionary).duplicate(true)
-	_roguelike_economic_viability_dev_audit["ok"] = bool(viability_result.get("ok", false))
-	_roguelike_economic_viability_dev_audit["result_reason_code"] = str(viability_result.get("reason_code", "result_missing"))
-	if not bool(viability_result.get("ok", false)):
-		push_error("Roguelike economic viability policy failed closed: %s" % str(viability_result.get("reason_code", "unknown")))
-		return
-	if not bool(_roguelike_economic_viability_dev_audit.get("changed", false)):
-		return
-	var normalized_districts: Array = viability_result.get("districts", []) if viability_result.get("districts", []) is Array else []
-	var changed_destination_indices: Array = _roguelike_economic_viability_dev_audit.get("changed_destination_indices", []) if _roguelike_economic_viability_dev_audit.get("changed_destination_indices", []) is Array else []
-	if normalized_districts.size() != _game_runtime_coordinator_node().world_session_state().districts.size() \
-		or changed_destination_indices.is_empty() \
-		or changed_destination_indices.size() > 1 \
-		or changed_destination_indices.size() != int(_roguelike_economic_viability_dev_audit.get("mutation_count", -1)):
-		_roguelike_economic_viability_dev_audit["ok"] = false
-		_roguelike_economic_viability_dev_audit["result_reason_code"] = "normalized_patch_invalid"
-		push_error("Roguelike economic viability policy returned an invalid patch set.")
-		return
-	var changed_index_set: Dictionary = {}
-	for destination_variant: Variant in changed_destination_indices:
-		if not (destination_variant is int):
-			changed_index_set.clear()
-			break
-		var destination_index := int(destination_variant)
-		if destination_index < 0 or destination_index >= _game_runtime_coordinator_node().world_session_state().districts.size() or changed_index_set.has(destination_index):
-			changed_index_set.clear()
-			break
-		changed_index_set[destination_index] = true
-	var demand_patches: Dictionary = {}
-	var normalized_patch_valid := changed_index_set.size() == changed_destination_indices.size()
-	for district_index in range(_game_runtime_coordinator_node().world_session_state().districts.size()):
-		if not normalized_patch_valid or not (normalized_districts[district_index] is Dictionary):
-			normalized_patch_valid = false
-			break
-		var before: Dictionary = economic_districts[district_index]
-		var normalized: Dictionary = normalized_districts[district_index]
-		var normalized_demands: Array = normalized.get("demands", []) if normalized.get("demands", []) is Array else []
-		var demand_changed := JSON.stringify(normalized_demands) != JSON.stringify(before.get("demands", []))
-		if str(normalized.get("region_id", "")) != str(before.get("region_id", "")) \
-			or str(normalized.get("terrain", "")) != str(before.get("terrain", "")) \
-			or JSON.stringify(normalized.get("neighbors", [])) != JSON.stringify(before.get("neighbors", [])) \
-			or JSON.stringify(normalized.get("products", [])) != JSON.stringify(before.get("products", [])) \
-			or normalized_demands.size() != DISTRICT_DEMAND_COUNT_MIN \
-			or demand_changed != changed_index_set.has(district_index):
-			normalized_patch_valid = false
-			break
-		if demand_changed:
-			demand_patches[district_index] = normalized_demands.duplicate()
-	if not normalized_patch_valid or demand_patches.size() != changed_index_set.size():
-		_roguelike_economic_viability_dev_audit["ok"] = false
-		_roguelike_economic_viability_dev_audit["result_reason_code"] = "normalized_patch_validation_failed"
-		push_error("Roguelike economic viability policy patch validation failed closed.")
-		return
-	# Apply only after the sole optional demand patch validates, so a malformed
-	# policy result can never leave a partially rewritten map.
-	for destination_variant: Variant in changed_destination_indices:
-		var destination_index := int(destination_variant)
-		var destination: Dictionary = _game_runtime_coordinator_node().world_session_state().districts[destination_index]
-		destination["demands"] = (demand_patches.get(destination_index, []) as Array).duplicate()
-		_game_runtime_coordinator_node().world_session_state().districts[destination_index] = destination
-
-
-func _roll_ocean_district_indices() -> Array:
-	var result := []
-	var count := _game_runtime_coordinator_node().world_session_state().districts.size()
-	if count <= 2:
-		return result
-	var desired: int = clampi(int(round(float(count) * _game_runtime_coordinator_node().run_rng_service().randf_range(OCEAN_REGION_RATIO_MIN, OCEAN_REGION_RATIO_MAX))), 1, count - 1)
-	var seed_count: int = clampi(_game_runtime_coordinator_node().run_rng_service().randi_range(1, 3), 1, desired)
-	while result.size() < seed_count:
-		var seed_index := _game_runtime_coordinator_node().run_rng_service().randi_range(0, count - 1)
-		if not result.has(seed_index):
-			result.append(seed_index)
-	var guard := 0
-	while result.size() < desired and guard < count * 8:
-		guard += 1
-		var candidates := []
-		for index_variant in result:
-			var index := int(index_variant)
-			for neighbor_variant in _game_runtime_coordinator_node().world_session_state().districts[index].get("neighbors", []):
-				var neighbor := int(neighbor_variant)
-				if neighbor >= 0 and neighbor < count and not result.has(neighbor) and not candidates.has(neighbor):
-					candidates.append(neighbor)
-		if candidates.is_empty():
-			for i in range(count):
-				if not result.has(i):
-					candidates.append(i)
-		if candidates.is_empty():
-			break
-		result.append(int(candidates[_game_runtime_coordinator_node().run_rng_service().randi_range(0, candidates.size() - 1)]))
-	return result
-
-
-func _random_product_names(count_min: int, count_max: int, excluded: Array = []) -> Array:
-	return _random_product_names_from_pool(ProductMarketRuntimeController.PRODUCT_CATALOG, count_min, count_max, excluded)
-
-
-func _random_product_names_for_terrain(terrain: String, count_min: int, count_max: int, excluded: Array = []) -> Array:
-	return _random_product_names_from_pool(_product_pool_for_terrain(terrain), count_min, count_max, excluded)
-
-
-func _product_pool_for_terrain(terrain: String) -> Array:
-	if terrain == "ocean":
-		return OCEAN_PRODUCT_CATALOG.duplicate()
-	var pool := []
-	for product_variant in ProductMarketRuntimeController.PRODUCT_CATALOG:
-		var product_name := String(product_variant)
-		if product_name == "" or OCEAN_PRODUCT_CATALOG.has(product_name):
-			continue
-		pool.append(product_name)
-	return pool
-
-
-func _product_catalog_names() -> Array:
-	return ProductMarketRuntimeController.PRODUCT_CATALOG.duplicate()
-
-
-func _random_product_names_from_pool(source_pool: Array, count_min: int, count_max: int, excluded: Array = []) -> Array:
-	var pool := []
-	for product_variant in source_pool:
-		var product_name := String(product_variant)
-		if product_name == "" or excluded.has(product_name):
-			continue
-		pool.append(product_name)
-	var result := []
-	var count: int = min(pool.size(), _game_runtime_coordinator_node().run_rng_service().randi_range(count_min, count_max))
-	while result.size() < count and not pool.is_empty():
-		var pick := _game_runtime_coordinator_node().run_rng_service().randi_range(0, pool.size() - 1)
-		result.append(String(pool[pick]))
-		pool.remove_at(pick)
-	return result
-
-
-func _voronoi_polygon_for_site(site_index: int, sites: Array) -> Array:
-	var polygon := [
-		Vector2(0.0, 0.0),
-		Vector2(_game_runtime_coordinator_node().world_session_state().map_width_m, 0.0),
-		Vector2(_game_runtime_coordinator_node().world_session_state().map_width_m, _game_runtime_coordinator_node().world_session_state().map_height_m),
-		Vector2(0.0, _game_runtime_coordinator_node().world_session_state().map_height_m),
-	]
-	var site: Vector2 = sites[site_index]
-	for i in range(sites.size()):
-		if i == site_index:
-			continue
-		polygon = _clip_polygon_closer_to_site(polygon, site, sites[i])
-		if polygon.size() < 3:
-			break
-	return polygon
-
-
-func _clip_polygon_closer_to_site(polygon: Array, site: Vector2, other: Vector2) -> Array:
-	var clipped := []
-	if polygon.is_empty():
-		return clipped
-	var normal := other - site
-	var midpoint := (site + other) * 0.5
-	for i in range(polygon.size()):
-		var current: Vector2 = polygon[i]
-		var next: Vector2 = polygon[(i + 1) % polygon.size()]
-		var current_inside := _is_closer_to_site(current, midpoint, normal)
-		var next_inside := _is_closer_to_site(next, midpoint, normal)
-		if current_inside and next_inside:
-			clipped.append(next)
-		elif current_inside and not next_inside:
-			clipped.append(_bisector_intersection(current, next, midpoint, normal))
-		elif not current_inside and next_inside:
-			clipped.append(_bisector_intersection(current, next, midpoint, normal))
-			clipped.append(next)
-	return clipped
-
-
-func _is_closer_to_site(point: Vector2, midpoint: Vector2, normal: Vector2) -> bool:
-	return (point - midpoint).dot(normal) <= 0.001
-
-
-func _bisector_intersection(a: Vector2, b: Vector2, midpoint: Vector2, normal: Vector2) -> Vector2:
-	var direction := b - a
-	var denominator := direction.dot(normal)
-	if abs(denominator) <= 0.001:
-		return a
-	var t := -((a - midpoint).dot(normal)) / denominator
-	return a + direction * clamp(t, 0.0, 1.0)
-
-
-func _polygon_area(polygon: Array) -> float:
-	if polygon.size() < 3:
-		return 0.0
-	var area := 0.0
-	for i in range(polygon.size()):
-		var current: Vector2 = polygon[i]
-		var next: Vector2 = polygon[(i + 1) % polygon.size()]
-		area += current.x * next.y - next.x * current.y
-	return area * 0.5
-
-
-func _polygon_centroid(polygon: Array) -> Vector2:
-	var signed_area := _polygon_area(polygon)
-	if abs(signed_area) <= 0.001:
-		var fallback := Vector2.ZERO
-		for point in polygon:
-			fallback += point as Vector2
-		return fallback / max(1.0, float(polygon.size()))
-	var cx := 0.0
-	var cy := 0.0
-	for i in range(polygon.size()):
-		var current: Vector2 = polygon[i]
-		var next: Vector2 = polygon[(i + 1) % polygon.size()]
-		var cross := current.x * next.y - next.x * current.y
-		cx += (current.x + next.x) * cross
-		cy += (current.y + next.y) * cross
-	return Vector2(cx, cy) / (6.0 * signed_area)
 
 
 func _district_region_id(district_index: int) -> String:
@@ -4368,167 +3485,6 @@ func _nearest_district_to(point: Vector2) -> int:
 			best_distance = dist
 			best_index = i
 	return best_index
-
-
-func _new_game() -> void:
-	var runtime_controller := _card_resolution_controller_node()
-	if runtime_controller == null or not runtime_controller.has_method("reset_state"):
-		_mark_card_resolution_controller_missing("new game", true)
-		return
-	runtime_controller.call("reset_state")
-	var coordinator := _game_runtime_coordinator_node()
-	if coordinator != null and coordinator.has_method("reset_state"):
-		coordinator.call("reset_state")
-	_game_runtime_coordinator_node().world_session_state().players = []
-	_game_runtime_coordinator_node().world_session_state().districts = []
-	card_resolution_timer = 0.0
-	card_resolution_counter_window_active = false
-	card_resolution_counter_timer = 0.0
-	card_resolution_simultaneous_timer = 0.0
-	card_resolution_auction_timer = 0.0
-	card_resolution_auction_open = false
-	card_resolution_batch_locked = false
-	card_resolution_batch_reference_player = -1
-	card_group_window_sequence = 0
-	last_card_resolution_player_index = -1
-	_game_runtime_coordinator_node().reset_card_resolution_history()
-	_game_runtime_coordinator_node().select_card_resolution(-1)
-	_product_market_runtime_call("reset_state")
-	_city_gdp_derivative_runtime_call("reset_state")
-	skill_market = _monster_market_skills()
-	_game_runtime_coordinator_node().reset_public_log()
-	_game_runtime_coordinator_node().reset_visual_cues()
-	if coordinator != null and coordinator.has_method("restore_world_effective_seconds"):
-		coordinator.call("restore_world_effective_seconds", 0.0)
-	_game_runtime_coordinator_node().world_session_state().game_time = 0.0
-	time_scale = 1.0
-	_game_runtime_coordinator_node().table_selection_state().selected_player = 0
-	_game_runtime_coordinator_node().table_selection_state().inspected_player = 0
-	_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
-	selected_market_skill = skill_market[0] if not skill_market.is_empty() else ""
-	previewed_district_card = selected_market_skill
-	_game_runtime_coordinator_node().table_selection_state().selected_trade_product = ""
-	_game_runtime_coordinator_node().table_selection_state().selected_map_layer_focus = "all"
-	if coordinator != null and coordinator.has_method("reset_victory_control_runtime"):
-		coordinator.call("reset_victory_control_runtime")
-	_prime_timers_for_new_game()
-
-	_ensure_configured_ai_player_count()
-	_ensure_configured_roguelike_depth()
-	_ensure_configured_role_indices()
-	_ensure_configured_starter_monster_indices()
-	var configured_human_count := _configured_human_player_count()
-	var run_role_indices := _resolve_configured_role_indices_for_run()
-	for i in range(configured_player_count):
-		var role_card := _make_player_role_card(i, int(run_role_indices[i]) if i < run_role_indices.size() else _player_role_template_index(i))
-		var role_starting_cash_delta := _role_starting_cash_delta(role_card)
-		var starting_cash := _player_starting_cash_for_role(role_card)
-		var is_ai := i >= configured_human_count
-		var ai_profile: Dictionary = _ai_runtime_call("_ai_profile_for_config_index", [i]) as Dictionary if is_ai else {}
-		var starter_monster_card := _make_starting_monster_card(i)
-		if starter_monster_card.is_empty():
-			push_error("The v0.6 starter monster card is unavailable for player %d." % i)
-			_mark_game_runtime_coordinator_missing(true)
-			return
-		_game_runtime_coordinator_node().world_session_state().players.append({
-			"id": i,
-			"name": "玩家%d" % (i + 1),
-			"seat_type": "ai" if is_ai else "human",
-			"is_ai": is_ai,
-			"ai_profile": ai_profile,
-			"ai_memory": _ai_runtime_call("_empty_ai_memory") if is_ai else {},
-			"role_index": int(role_card.get("role_index", i)),
-			"role_card": role_card,
-			"base_starting_cash": STARTING_CASH,
-			"role_starting_cash_delta": role_starting_cash_delta,
-			"starting_cash_total": starting_cash,
-			"cash": starting_cash,
-			"cash_cents": starting_cash * 100,
-			"cash_history": [starting_cash],
-			"v06_transaction_ledger": [],
-			"eliminated": false,
-			"eliminated_at": -1.0,
-			"elimination_reason": "",
-			"economic_ledger": [],
-			"city_guesses": {},
-			"city_guess_confidence": {},
-			"city_guess_reasons": {},
-			"known_contract_parties": {},
-			"cities_built": 0,
-			"total_card_spend": 0,
-			"card_purchase_count": 0,
-			"total_build_spend": 0,
-			"total_card_income": 0,
-			"total_role_income": 0,
-			"total_business_spend": 0,
-			"action_cooldown": 0.0,
-			"queued_card_tip": 0,
-			"slots": [starter_monster_card],
-		})
-	_ai_runtime_call("_ensure_player_ai_state")
-
-	_generate_roguelike_districts()
-	_initialize_region_infrastructure_runtime()
-	if coordinator == null or not coordinator.has_method("refresh_v06_production_player_bindings"):
-		_mark_game_runtime_coordinator_missing(true)
-		return
-	var production_binding_variant: Variant = coordinator.call("refresh_v06_production_player_bindings", self)
-	var production_binding: Dictionary = production_binding_variant if production_binding_variant is Dictionary else {}
-	if not bool(production_binding.get("ready", false)):
-		_mark_game_runtime_coordinator_missing(true)
-		return
-	game_runtime_coordinator_bound = true
-	game_runtime_coordinator_missing = false
-	game_runtime_coordinator_missing_reported = false
-	skill_market = _current_run_card_pool()
-	var supply_config_variant: Variant = coordinator.call(
-		"configure_region_supply_from_world",
-		_game_runtime_coordinator_node().run_rng_service().state,
-		_game_runtime_coordinator_node().world_session_state().districts,
-		skill_market,
-		DISTRICT_CARD_CHOICE_MAX
-	) if coordinator != null and coordinator.has_method("configure_region_supply_from_world") else {}
-	if not (supply_config_variant is Dictionary) or not bool((supply_config_variant as Dictionary).get("configured", false)):
-		_mark_game_runtime_coordinator_missing(true)
-		return
-	_product_market_runtime_call("refresh_prices")
-	var center := Vector2(_game_runtime_coordinator_node().world_session_state().map_width_m * 0.5, _game_runtime_coordinator_node().world_session_state().map_height_m * 0.5)
-	_game_runtime_coordinator_node().table_selection_state().selected_district = _nearest_district_to(center)
-	if _game_runtime_coordinator_node().table_selection_state().selected_district < 0:
-		_game_runtime_coordinator_node().table_selection_state().selected_district = 0
-	if coordinator != null and coordinator.has_method("weather_runtime_call"):
-		coordinator.call("weather_runtime_call", &"schedule_next_forecast", [true])
-	district_supply_open_district = -1
-	district_supply_open_player = -1
-	_sync_selected_district_card()
-	_product_market_runtime_call("refresh_prices")
-	_start_card_ingress_animation()
-
-	_game_runtime_coordinator_node().record_legacy_viewer_feedback("星球牌局开始：%d席玩家，其中真人/本地%d席、电脑对手%d席；本局怪兽由怪兽卡匿名召唤，场上数量没有硬上限。" % [
-		configured_player_count,
-		_human_player_count(),
-		_ai_runtime_call("_ai_player_count"),
-	])
-	_game_runtime_coordinator_node().record_legacy_viewer_feedback("电脑对手已入局：会围绕城市GDP、商品竞争、商路价值、怪兽风险与匿名情报做出行动。")
-	_game_runtime_coordinator_node().record_legacy_viewer_feedback("星球牌局开始：%s；达到动态区域控制与前K区商品GDP门槛并持续10秒后，进入120秒公开审计。" % _roguelike_planet_profile_text())
-	_game_runtime_coordinator_node().record_legacy_viewer_feedback("城市化规则启动：玩家在区域秘密建城；建筑公开出现，但对手看不到真实业主，只能保存私人推测。")
-	_game_runtime_coordinator_node().record_legacy_viewer_feedback("星球随机生成陆地与海洋：陆地和海洋都会出现本地商品；海洋偏向鱼群、巨藻、海底能源和潮汐电力，并继续承担高价值商路运输；合约牌可继续改写供需。")
-	_game_runtime_coordinator_node().record_legacy_viewer_feedback("每个城市群初始生产1种商品、需求1种商品；后续通过匿名供需合约扩张或替换经营结构。同类商品越多，竞争扣减越高。保护自己的城市，同时借怪兽摧毁竞争城市。")
-	_game_runtime_coordinator_node().record_legacy_viewer_feedback("本局地图：%.0fm×%.0fm球面投影星球，生成%d个随机陆海区域。" % [_game_runtime_coordinator_node().world_session_state().map_width_m, _game_runtime_coordinator_node().world_session_state().map_height_m, _game_runtime_coordinator_node().world_session_state().districts.size()])
-	_game_runtime_coordinator_node().record_legacy_viewer_feedback("本局区域牌架从统一合法牌池确定性随机抽取；购买花钱，I级牌是路线入口，其他牌按卡面公开条件检查。每个区域提供%d个随机挂牌。" % DISTRICT_CARD_CHOICE_MAX)
-	if coordinator != null and coordinator.has_method("begin_session"):
-		var scenario_id := ""
-		coordinator.call("begin_session", {
-			"scenario_id": scenario_id,
-			"ruleset_id": "v0.4",
-			"seed": _game_runtime_coordinator_node().run_rng_service().state,
-			"player_count": _game_runtime_coordinator_node().world_session_state().players.size(),
-			"ai_player_count": _ai_runtime_call("_ai_player_count"),
-			"difficulty": _roguelike_depth_label(),
-			"mission_title": scenario_id if scenario_id != "" else "自由牌局",
-		})
-	_save_settings(false)
-	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _start_card_ingress_animation() -> void:
@@ -4711,6 +3667,13 @@ func _player_role_catalog_size() -> int:
 	return catalog.role_count() if catalog != null else 0
 
 
+func _clamp_role_index(index: int) -> int:
+	var role_count := _player_role_catalog_size()
+	if role_count <= 0:
+		return 0
+	return wrapi(index, 0, role_count)
+
+
 func _player_role_template(player_index: int, role_index: int = -1) -> Dictionary:
 	if _player_role_catalog_size() <= 0:
 		return {}
@@ -4764,31 +3727,6 @@ func _make_player_role_card(player_index: int, role_index: int = -1) -> Dictiona
 		_role_passive_text(role),
 	]
 	return role
-
-
-func _make_configured_player_role_card(player_index: int) -> Dictionary:
-	var role_index := _configured_role_index(player_index)
-	if role_index == ROLE_RANDOM_INDEX:
-		return _random_role_placeholder_card()
-	return _make_player_role_card(player_index, role_index)
-
-
-func _random_role_placeholder_card() -> Dictionary:
-	return {
-		"name": "随机角色",
-		"species": "未揭示外星人",
-		"trait": "开局确认时从本局未占用角色中抽取。",
-		"passive": "随机获得一个公开角色被动。",
-		"flavor": "席位已登记，真正的辛迪加代表将在开局时入场。",
-		"kind": "player_role",
-		"role_index": ROLE_RANDOM_INDEX,
-		"balance_budget": 0,
-		"balance_band": "待分配",
-		"balance_tags": [],
-		"balance_drivers": [],
-		"balance_summary": "随机角色｜开局时分配未重复公开角色",
-		"text": "随机角色｜开局确认时分配一个未重复公开角色。",
-	}
 
 
 func _normalize_player_role_card(role_card: Dictionary, player_index: int) -> Dictionary:
@@ -4960,27 +3898,6 @@ func _apply_role_monster_upgrade_cash(player_index: int, monster_name: String, o
 		amount,
 	])
 	return amount
-
-
-func _make_starting_monster_card(player_index: int, _role_card: Dictionary = {}) -> Dictionary:
-	var monster_index := _configured_starter_monster_index(player_index)
-	var monster_name := str(_catalog_entry(monster_index).get("name", ""))
-	var coordinator := _game_runtime_coordinator_node()
-	var definition_variant: Variant = coordinator.call("v06_starter_monster_card_by_name", monster_name) if coordinator != null and coordinator.has_method("v06_starter_monster_card_by_name") else {}
-	var definition: Dictionary = definition_variant if definition_variant is Dictionary else {}
-	var skill := _v06_world_card_from_definition(definition)
-	if skill.is_empty():
-		return {}
-	var machine: Dictionary = (skill.get("machine", {}) as Dictionary).duplicate(true) if skill.get("machine", {}) is Dictionary else {}
-	machine["asset_cost"] = {}
-	machine["starter_entitlement"] = true
-	skill["machine"] = machine
-	skill["starter_play_free"] = true
-	skill["summon_access"] = "any"
-	skill["text"] = "%s（起始怪兽牌：每席开局持有；召唤完全自愿，不是购牌、设施或经济前置。）" % [
-		String(skill.get("text", "")),
-	]
-	return skill
 
 
 func _toggle_pause() -> void:
@@ -6354,7 +5271,7 @@ func _preview_district_card(card_name: String, refresh: bool = true) -> void:
 	var context_district := _active_district_card_context()
 	if context_district >= 0 and context_district < _game_runtime_coordinator_node().world_session_state().districts.size() and not _district_has_card(context_district, card_name):
 		return
-	previewed_district_card = card_name
+	_game_runtime_coordinator_node().card_supply_presentation_state().previewed_district_card = card_name
 	if refresh:
 		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
@@ -6365,9 +5282,10 @@ func _select_district_card_for_quote(card_name: String, refresh: bool = true) ->
 	var context_district := _active_district_card_context()
 	if context_district < 0 or context_district >= _game_runtime_coordinator_node().world_session_state().districts.size() or not _district_has_card(context_district, card_name):
 		return
-	selected_market_skill = card_name
-	previewed_district_card = card_name
-	var purchase_player := district_supply_open_player if _district_supply_is_open() else _game_runtime_coordinator_node().table_selection_state().selected_player
+	var presentation_state := _game_runtime_coordinator_node().card_supply_presentation_state()
+	presentation_state.selected_market_skill = card_name
+	presentation_state.previewed_district_card = card_name
+	var purchase_player := presentation_state.open_player if _district_supply_is_open() else _game_runtime_coordinator_node().table_selection_state().selected_player
 	var runtime_coordinator := _game_runtime_coordinator_node()
 	if runtime_coordinator != null and runtime_coordinator.has_method("acknowledge_district_purchase_selection"):
 		runtime_coordinator.call("acknowledge_district_purchase_selection", purchase_player, context_district, card_name, _district_supply_rack_revision(context_district))
@@ -6377,7 +5295,8 @@ func _select_district_card_for_quote(card_name: String, refresh: bool = true) ->
 
 
 func _close_district_supply_overlay() -> void:
-	var closing_player := district_supply_open_player
+	var presentation_state := _game_runtime_coordinator_node().card_supply_presentation_state()
+	var closing_player := presentation_state.open_player
 	if district_supply_overlay != null:
 		if district_supply_overlay.has_method("clear_supply"):
 			district_supply_overlay.call("clear_supply")
@@ -6385,18 +5304,19 @@ func _close_district_supply_overlay() -> void:
 	var runtime_coordinator := _game_runtime_coordinator_node()
 	if closing_player >= 0 and runtime_coordinator != null and runtime_coordinator.has_method("close_district_purchase_window"):
 		runtime_coordinator.call("close_district_purchase_window", closing_player, "drawer_closed")
-	district_supply_open_district = -1
-	district_supply_open_player = -1
+	presentation_state.open_district = -1
+	presentation_state.open_player = -1
 	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _district_supply_is_open() -> bool:
-	return district_supply_overlay != null and district_supply_overlay.visible and district_supply_open_district >= 0 and district_supply_open_district < _game_runtime_coordinator_node().world_session_state().districts.size()
+	var open_district := _game_runtime_coordinator_node().card_supply_presentation_state().open_district
+	return district_supply_overlay != null and district_supply_overlay.visible and open_district >= 0 and open_district < _game_runtime_coordinator_node().world_session_state().districts.size()
 
 
 func _active_district_card_context() -> int:
 	if _district_supply_is_open():
-		return district_supply_open_district
+		return _game_runtime_coordinator_node().card_supply_presentation_state().open_district
 	return _game_runtime_coordinator_node().table_selection_state().selected_district
 
 
@@ -6404,12 +5324,13 @@ func _open_district_supply_from_map(district_index: int, focus_v06_facility: boo
 	if district_index < 0 or district_index >= _game_runtime_coordinator_node().world_session_state().districts.size() or _game_runtime_coordinator_node().table_selection_state().selected_player < 0 or _game_runtime_coordinator_node().table_selection_state().selected_player >= _game_runtime_coordinator_node().world_session_state().players.size():
 		return
 	_jump_to_district_on_table(district_index)
-	district_supply_open_district = district_index
-	district_supply_open_player = _local_human_player_index()
-	_open_district_card_purchase_window(district_index, district_supply_open_player)
+	var presentation_state := _game_runtime_coordinator_node().card_supply_presentation_state()
+	presentation_state.open_district = district_index
+	presentation_state.open_player = _local_human_player_index()
+	_open_district_card_purchase_window(district_index, presentation_state.open_player)
 	_sync_selected_district_card()
 	if focus_v06_facility:
-		var facility_source := _v06_facility_supply_source(district_index, district_supply_open_player, true)
+		var facility_source := _v06_facility_supply_source(district_index, presentation_state.open_player, true)
 		var facility_card_id := str(facility_source.get("card_name", ""))
 		if not facility_card_id.is_empty():
 			_preview_v06_facility_card(facility_card_id)
@@ -6419,28 +5340,29 @@ func _open_district_supply_from_map(district_index: int, focus_v06_facility: boo
 func _refresh_district_supply_overlay() -> void:
 	if district_supply_overlay == null or not district_supply_overlay.visible:
 		return
-	if district_supply_open_district < 0 or district_supply_open_district >= _game_runtime_coordinator_node().world_session_state().districts.size():
+	var presentation_state := _game_runtime_coordinator_node().card_supply_presentation_state()
+	if presentation_state.open_district < 0 or presentation_state.open_district >= _game_runtime_coordinator_node().world_session_state().districts.size():
 		district_supply_overlay.visible = false
 		return
-	var supply_player := district_supply_open_player
+	var supply_player := presentation_state.open_player
 	if supply_player < 0 or supply_player >= _game_runtime_coordinator_node().world_session_state().players.size() or _player_is_ai(supply_player):
 		supply_player = _local_human_player_index()
 	if supply_player < 0 or supply_player >= _game_runtime_coordinator_node().world_session_state().players.size():
 		return
-	if district_supply_open_player != supply_player:
-		district_supply_open_player = supply_player
-		_open_district_card_purchase_window(district_supply_open_district, supply_player)
-	var supply_revision := _district_supply_rack_revision(district_supply_open_district)
+	if presentation_state.open_player != supply_player:
+		presentation_state.open_player = supply_player
+		_open_district_card_purchase_window(presentation_state.open_district, supply_player)
+	var supply_revision := _district_supply_rack_revision(presentation_state.open_district)
 	var runtime_coordinator := _game_runtime_coordinator_node()
 	if runtime_coordinator != null and runtime_coordinator.has_method("mark_district_supply_revision"):
-		runtime_coordinator.call("mark_district_supply_revision", supply_player, district_supply_open_district, supply_revision)
+		runtime_coordinator.call("mark_district_supply_revision", supply_player, presentation_state.open_district, supply_revision)
 	if not district_supply_overlay.has_method("set_supply"):
 		return
 	if runtime_coordinator == null or not runtime_coordinator.has_method("compose_district_supply_snapshot"):
 		push_error("District supply rendering requires GameRuntimeCoordinator/DistrictSupplySnapshotService.")
 		district_supply_overlay.call("set_supply", {})
 		return
-	var source := _district_supply_snapshot_source(district_supply_open_district, supply_player, _local_human_player_index())
+	var source := _district_supply_snapshot_source(presentation_state.open_district, supply_player, _local_human_player_index())
 	var snapshot_variant: Variant = runtime_coordinator.call("compose_district_supply_snapshot", source)
 	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
 	district_supply_overlay.call("set_supply", snapshot)
@@ -6458,13 +5380,14 @@ func _district_supply_snapshot_source(district_index: int, subject_player_index:
 	var choices := _district_supply_card_ids(district_index)
 	var v06_facility_source := _v06_facility_supply_source(district_index, card_context_player_index, false)
 	var v06_facility_card_id := str(v06_facility_source.get("card_name", ""))
-	var preview_name := previewed_district_card
+	var presentation_state := _game_runtime_coordinator_node().card_supply_presentation_state()
+	var preview_name := presentation_state.previewed_district_card
 	if not choices.has(preview_name) and preview_name != v06_facility_card_id:
 		preview_name = str(choices[0]) if not choices.is_empty() else ""
 		if preview_name.is_empty():
 			preview_name = v06_facility_card_id
-		previewed_district_card = preview_name
-		selected_market_skill = preview_name
+		presentation_state.previewed_district_card = preview_name
+		presentation_state.selected_market_skill = preview_name
 	var card_sources: Array = []
 	if not v06_facility_source.is_empty():
 		v06_facility_source["selected"] = v06_facility_card_id == preview_name
@@ -6624,8 +5547,9 @@ func _preview_v06_facility_card(card_id: String) -> void:
 	var coordinator := _game_runtime_coordinator_node()
 	if coordinator != null and coordinator.has_method("refresh_v06_facility_quote"):
 		coordinator.call("refresh_v06_facility_quote", _v06_actor_id(_local_human_player_index()), card_id)
-	previewed_district_card = card_id
-	selected_market_skill = card_id
+	var presentation_state := _game_runtime_coordinator_node().card_supply_presentation_state()
+	presentation_state.previewed_district_card = card_id
+	presentation_state.selected_market_skill = card_id
 	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
@@ -6799,8 +5723,9 @@ func _open_district_card_purchase_window(district_index: int, player_index: int 
 	if district_index < 0 or district_index >= _game_runtime_coordinator_node().world_session_state().districts.size() or resolved_player < 0 or resolved_player >= _game_runtime_coordinator_node().world_session_state().players.size():
 		return
 	if district_supply_overlay != null and district_supply_overlay.visible:
-		district_supply_open_district = district_index
-		district_supply_open_player = resolved_player
+		var presentation_state := _game_runtime_coordinator_node().card_supply_presentation_state()
+		presentation_state.open_district = district_index
+		presentation_state.open_player = resolved_player
 	var runtime_coordinator := _game_runtime_coordinator_node()
 	if runtime_coordinator == null or not runtime_coordinator.has_method("open_district_purchase_window"):
 		return
@@ -6821,9 +5746,10 @@ func _select_player(index: int) -> void:
 	_game_runtime_coordinator_node().table_selection_state().selected_player = index
 	_game_runtime_coordinator_node().table_selection_state().inspected_player = index
 	_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
-	if district_supply_overlay != null and district_supply_overlay.visible and district_supply_open_district >= 0:
-		district_supply_open_player = _local_human_player_index()
-		_open_district_card_purchase_window(district_supply_open_district, district_supply_open_player)
+	var presentation_state := _game_runtime_coordinator_node().card_supply_presentation_state()
+	if district_supply_overlay != null and district_supply_overlay.visible and presentation_state.open_district >= 0:
+		presentation_state.open_player = _local_human_player_index()
+		_open_district_card_purchase_window(presentation_state.open_district, presentation_state.open_player)
 	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
@@ -7078,59 +6004,6 @@ func _cycle_district(step: int) -> void:
 	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
-func _set_configured_player_count(count: int) -> void:
-	configured_player_count = clampi(count, MIN_PLAYER_COUNT, MAX_PLAYER_COUNT)
-	_ensure_configured_ai_player_count()
-	_ensure_configured_role_indices()
-	_ensure_configured_starter_monster_indices()
-	_save_settings(false)
-	_game_runtime_coordinator_node().record_legacy_viewer_feedback("下次开局玩家数设置为：%d席，其中AI %d个。" % [configured_player_count, configured_ai_player_count])
-	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
-
-
-func _ensure_configured_ai_player_count() -> void:
-	configured_player_count = clampi(configured_player_count, MIN_PLAYER_COUNT, MAX_PLAYER_COUNT)
-	var max_ai := mini(MAX_AI_PLAYER_COUNT, configured_player_count - 1)
-	configured_ai_player_count = clampi(configured_ai_player_count, MIN_AI_PLAYER_COUNT, max_ai)
-
-
-func _set_configured_ai_player_count(count: int) -> void:
-	_ensure_configured_ai_player_count()
-	var max_ai := mini(MAX_AI_PLAYER_COUNT, configured_player_count - 1)
-	configured_ai_player_count = clampi(count, MIN_AI_PLAYER_COUNT, max_ai)
-	_ensure_configured_role_indices()
-	_save_settings(false)
-	_game_runtime_coordinator_node().record_legacy_viewer_feedback("下次开局电脑对手数设置为：%d个；真人/本地玩家席位%d个。" % [configured_ai_player_count, _configured_human_player_count()])
-	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
-
-
-func _ensure_configured_roguelike_depth() -> void:
-	configured_roguelike_depth = clampi(configured_roguelike_depth, ROGUELIKE_DEPTH_MIN, ROGUELIKE_DEPTH_MAX)
-
-
-func _set_configured_roguelike_depth(depth: int) -> void:
-	configured_roguelike_depth = clampi(depth, ROGUELIKE_DEPTH_MIN, ROGUELIKE_DEPTH_MAX)
-	_save_settings(false)
-	var profile := _roguelike_planet_profile(configured_roguelike_depth)
-	_game_runtime_coordinator_node().record_legacy_viewer_feedback("下次开局挑战层级设为%s：约%d-%d区；本局胜利门槛将按当前存续区域动态计算，当前为控制%d区且前K区GDP达到%d/min。" % [
-		_roguelike_depth_label(configured_roguelike_depth),
-		int(profile.get("region_min", MAP_REGION_COUNT_MIN)),
-		int(profile.get("region_max", MAP_REGION_COUNT_MAX)),
-		_victory_required_regions(),
-		_victory_required_gdp(),
-	])
-	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
-
-
-func _configured_human_player_count() -> int:
-	_ensure_configured_ai_player_count()
-	return max(1, configured_player_count - configured_ai_player_count)
-
-
-func _player_seat_type_for_config_index(player_index: int) -> String:
-	return "ai" if player_index >= _configured_human_player_count() else "human"
-
-
 func _player_is_ai(player_index: int) -> bool:
 	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
 		return false
@@ -7169,165 +6042,6 @@ func _collect_player_facing_text(node: Node, result: Array) -> void:
 			result.append(tooltip)
 	for child in node.get_children():
 		_collect_player_facing_text(child, result)
-
-
-func _ensure_configured_role_indices() -> void:
-	var normalized := []
-	var used := {}
-	for i in range(MAX_PLAYER_COUNT):
-		var value := _player_role_template_index(i)
-		if i < configured_role_indices.size():
-			value = int(configured_role_indices[i])
-		if value == ROLE_RANDOM_INDEX and _player_seat_type_for_config_index(i) == "ai":
-			normalized.append(ROLE_RANDOM_INDEX)
-			continue
-		var role_index := _next_available_configured_role_index(value, used if i < configured_player_count else {})
-		normalized.append(role_index)
-		if i < configured_player_count:
-			used[role_index] = true
-	configured_role_indices = normalized
-
-
-func _next_available_configured_role_index(start_index: int, used: Dictionary) -> int:
-	var role_count := _player_role_catalog_size()
-	if role_count <= 0:
-		return 0
-	var start := _clamp_role_index(start_index)
-	for offset in range(role_count):
-		var candidate := wrapi(start + offset, 0, role_count)
-		if not used.has(candidate):
-			return candidate
-	return start
-
-
-func _configured_role_used_by_other(player_index: int) -> Dictionary:
-	_ensure_configured_ai_player_count()
-	var used := {}
-	for i in range(configured_player_count):
-		if i == player_index or i >= configured_role_indices.size():
-			continue
-		var value := int(configured_role_indices[i])
-		if value >= 0:
-			used[_clamp_role_index(value)] = true
-	return used
-
-
-func _ensure_configured_starter_monster_indices() -> void:
-	var normalized := []
-	for i in range(MAX_PLAYER_COUNT):
-		var value := wrapi(i, 0, max(1, _catalog_size()))
-		if i < configured_starter_monster_indices.size():
-			value = int(configured_starter_monster_indices[i])
-		normalized.append(clampi(value, 0, max(0, _catalog_size() - 1)))
-	configured_starter_monster_indices = normalized
-
-
-func _clamp_role_index(index: int) -> int:
-	var role_count := _player_role_catalog_size()
-	if role_count <= 0:
-		return 0
-	return wrapi(index, 0, role_count)
-
-
-func _configured_role_index(player_index: int) -> int:
-	_ensure_configured_role_indices()
-	if player_index < 0 or player_index >= configured_role_indices.size():
-		return _player_role_template_index(player_index)
-	var value := int(configured_role_indices[player_index])
-	if value == ROLE_RANDOM_INDEX:
-		return ROLE_RANDOM_INDEX
-	return _clamp_role_index(value)
-
-
-func _configured_starter_monster_index(player_index: int) -> int:
-	_ensure_configured_starter_monster_indices()
-	if player_index < 0 or player_index >= configured_starter_monster_indices.size():
-		return wrapi(player_index, 0, max(1, _catalog_size()))
-	return clampi(int(configured_starter_monster_indices[player_index]), 0, max(0, _catalog_size() - 1))
-
-
-func _set_configured_role_for_player(player_index: int, role_index: int) -> void:
-	if player_index < 0 or player_index >= MAX_PLAYER_COUNT:
-		return
-	_ensure_configured_role_indices()
-	if role_index == ROLE_RANDOM_INDEX and _player_seat_type_for_config_index(player_index) == "ai":
-		configured_role_indices[player_index] = ROLE_RANDOM_INDEX
-	else:
-		configured_role_indices[player_index] = _next_available_configured_role_index(role_index, _configured_role_used_by_other(player_index))
-	_save_settings(false)
-	_game_runtime_coordinator_node().record_legacy_viewer_feedback("玩家%d下次开局角色设置为：%s。" % [player_index + 1, _configured_role_selection_label(player_index)])
-	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
-
-
-func _cycle_configured_role_for_player(player_index: int, step: int) -> void:
-	var current := _configured_role_index(player_index)
-	if current == ROLE_RANDOM_INDEX:
-		current = _player_role_template_index(player_index)
-	_set_configured_role_for_player(player_index, current + step)
-
-
-func _set_configured_role_random_for_player(player_index: int) -> void:
-	_set_configured_role_for_player(player_index, ROLE_RANDOM_INDEX)
-
-
-func _configured_role_selection_label(player_index: int) -> String:
-	var role_index := _configured_role_index(player_index)
-	if role_index == ROLE_RANDOM_INDEX:
-		return "随机角色"
-	return String(_make_player_role_card(player_index, role_index).get("name", "外星辛迪加"))
-
-
-func _resolve_configured_role_indices_for_run() -> Array:
-	_ensure_configured_role_indices()
-	var resolved := []
-	var used := {}
-	var random_slots := []
-	for i in range(configured_player_count):
-		var value := _configured_role_index(i)
-		if value == ROLE_RANDOM_INDEX:
-			resolved.append(ROLE_RANDOM_INDEX)
-			random_slots.append(i)
-			continue
-		var role_index := _next_available_configured_role_index(value, used)
-		resolved.append(role_index)
-		used[role_index] = true
-	var available := []
-	var role_count := _player_role_catalog_size()
-	for role_index in range(role_count):
-		if not used.has(role_index):
-			available.append(role_index)
-	for slot_variant in random_slots:
-		var slot := int(slot_variant)
-		if available.is_empty():
-			available = []
-			for role_index in range(role_count):
-				if not used.has(role_index):
-					available.append(role_index)
-			if available.is_empty():
-				available.append(_player_role_template_index(slot))
-		var pick := _game_runtime_coordinator_node().run_rng_service().randi_range(0, available.size() - 1)
-		var role_index := int(available[pick])
-		available.remove_at(pick)
-		resolved[slot] = role_index
-		used[role_index] = true
-	return resolved
-
-
-func _set_configured_starter_monster_for_player(player_index: int, monster_index: int) -> void:
-	if player_index < 0 or player_index >= MAX_PLAYER_COUNT:
-		return
-	_ensure_configured_starter_monster_indices()
-	configured_starter_monster_indices[player_index] = wrapi(monster_index, 0, max(1, _catalog_size()))
-	_save_settings(false)
-	_game_runtime_coordinator_node().record_legacy_viewer_feedback("玩家%d下次开局起始怪兽设置为：%s。" % [
-		player_index + 1,
-		String(_catalog_entry(_configured_starter_monster_index(player_index)).get("name", "怪兽")),
-	])
-	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
-
-
-func _cycle_configured_starter_monster_for_player(player_index: int, step: int) -> void:
-	_set_configured_starter_monster_for_player(player_index, _configured_starter_monster_index(player_index) + step)
 
 
 func _catalog_size() -> int:
@@ -8235,16 +6949,10 @@ func _route_network_load_for_legacy_region(index: int) -> int:
 	return int(_route_network_runtime_call("route_load_for_legacy_region", [index]))
 
 
-func _prime_timers_for_new_game() -> void:
-	monster_runtime_controller.prime_action_timers(
-		max(1.0, _preset_float("special_monster_min") * 0.9),
-		max(1.0, _preset_float("monster_min") * 0.8)
-	)
-
-
 func _claim_district_card(skill_name: String) -> void:
 	var context_district := _active_district_card_context()
-	var purchase_player := district_supply_open_player if _district_supply_is_open() else _game_runtime_coordinator_node().table_selection_state().selected_player
+	var presentation_state := _game_runtime_coordinator_node().card_supply_presentation_state()
+	var purchase_player := presentation_state.open_player if _district_supply_is_open() else _game_runtime_coordinator_node().table_selection_state().selected_player
 	if purchase_player < 0 or purchase_player >= _game_runtime_coordinator_node().world_session_state().players.size():
 		purchase_player = _local_human_player_index()
 	if purchase_player < 0 or purchase_player >= _game_runtime_coordinator_node().world_session_state().players.size():
@@ -8259,10 +6967,10 @@ func _claim_district_card(skill_name: String) -> void:
 		_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s不是当前区域的候选卡。%s" % [_card_display_name(skill_name), _card_choice_location_summary(skill_name)])
 		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 		return
-	selected_market_skill = skill_name
+	presentation_state.selected_market_skill = skill_name
 	_game_runtime_coordinator_node().table_selection_state().selected_player = purchase_player
-	district_supply_open_player = purchase_player
-	_buy_card_for_player_from_district(purchase_player, context_district, selected_market_skill, false, true)
+	presentation_state.open_player = purchase_player
+	_buy_card_for_player_from_district(purchase_player, context_district, presentation_state.selected_market_skill, false, true)
 	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 	_focus_runtime_map_on_district(context_district)
 
@@ -8282,28 +6990,30 @@ func _selected_district_card_choices() -> Array:
 
 func _sync_selected_district_card() -> void:
 	var choices := _selected_district_card_choices()
+	var presentation_state := _game_runtime_coordinator_node().card_supply_presentation_state()
 	if choices.is_empty():
-		selected_market_skill = ""
-		previewed_district_card = ""
+		presentation_state.selected_market_skill = ""
+		presentation_state.previewed_district_card = ""
 		return
-	if not choices.has(selected_market_skill):
-		selected_market_skill = String(choices[0])
-	if not choices.has(previewed_district_card):
-		previewed_district_card = selected_market_skill
+	if not choices.has(presentation_state.selected_market_skill):
+		presentation_state.selected_market_skill = String(choices[0])
+	if not choices.has(presentation_state.previewed_district_card):
+		presentation_state.previewed_district_card = presentation_state.selected_market_skill
 
 
 func _cycle_selected_district_card(step: int = 1) -> void:
 	var choices := _selected_district_card_choices()
+	var presentation_state := _game_runtime_coordinator_node().card_supply_presentation_state()
 	if choices.is_empty():
-		selected_market_skill = ""
-		previewed_district_card = ""
+		presentation_state.selected_market_skill = ""
+		presentation_state.previewed_district_card = ""
 		_game_runtime_coordinator_node().record_legacy_viewer_feedback("当前区域暂无可获取卡牌。")
 		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 		return
-	var current := choices.find(selected_market_skill)
+	var current := choices.find(presentation_state.selected_market_skill)
 	current = 0 if current < 0 else wrapi(current + step, 0, choices.size())
-	selected_market_skill = String(choices[current])
-	previewed_district_card = selected_market_skill
+	presentation_state.selected_market_skill = String(choices[current])
+	presentation_state.previewed_district_card = presentation_state.selected_market_skill
 	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
@@ -9180,7 +7890,13 @@ func _buy_selected_skill() -> void:
 		_game_runtime_coordinator_node().record_legacy_viewer_feedback("请先完成当前卡牌的目标玩家选择。")
 		return
 	_sync_selected_district_card()
-	_buy_card_for_player_from_district(_game_runtime_coordinator_node().table_selection_state().selected_player, _game_runtime_coordinator_node().table_selection_state().selected_district, selected_market_skill, false, true)
+	_buy_card_for_player_from_district(
+		_game_runtime_coordinator_node().table_selection_state().selected_player,
+		_game_runtime_coordinator_node().table_selection_state().selected_district,
+		_game_runtime_coordinator_node().card_supply_presentation_state().selected_market_skill,
+		false,
+		true
+	)
 	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 

@@ -1,4 +1,4 @@
-[gd_scene load_steps=23 format=3]
+[gd_scene load_steps=29 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/ui/GameScreen.tscn" id="2_game_screen"]
@@ -22,6 +22,12 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/presentation/IntelDossierViewerQueryPort.tscn" id="21_intel_query"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/IntelPrivateCommandPort.tscn" id="22_intel_commands"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/IntelApplicationFlowController.tscn" id="23_intel_controller"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/NewGameSetupDraftService.tscn" id="24_setup_draft"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/SetupDraftCommandPort.tscn" id="25_setup_commands"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/NewGameSetupViewerQueryPort.tscn" id="26_setup_query"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/SessionStartPlanBuilder.tscn" id="27_session_plan"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/SessionStartTransactionCoordinator.tscn" id="28_session_transaction"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/SetupApplicationFlowController.tscn" id="29_setup_controller"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -81,6 +87,46 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 menu_overlay_path = NodePath("../../RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay")
 coordinator_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator")
+
+[node name="NewGameSetupDraftService" parent="RuntimeServices" instance=ExtResource("24_setup_draft")]
+unique_name_in_owner = true
+role_catalog_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/RoleCatalogRuntimeService")
+
+[node name="SetupDraftCommandPort" parent="RuntimeServices" instance=ExtResource("25_setup_commands")]
+unique_name_in_owner = true
+draft_service_path = NodePath("../NewGameSetupDraftService")
+
+[node name="NewGameSetupViewerQueryPort" parent="RuntimeServices" instance=ExtResource("26_setup_query")]
+unique_name_in_owner = true
+draft_service_path = NodePath("../NewGameSetupDraftService")
+role_catalog_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/RoleCatalogRuntimeService")
+world_session_state_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/WorldSessionState")
+game_session_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController")
+
+[node name="SessionStartPlanBuilder" parent="RuntimeServices" instance=ExtResource("27_session_plan")]
+unique_name_in_owner = true
+role_catalog_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/RoleCatalogRuntimeService")
+coordinator_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator")
+ai_runtime_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/AiRuntimeController")
+
+[node name="SessionStartTransactionCoordinator" parent="RuntimeServices" instance=ExtResource("28_session_transaction")]
+unique_name_in_owner = true
+draft_service_path = NodePath("../NewGameSetupDraftService")
+plan_builder_path = NodePath("../SessionStartPlanBuilder")
+runtime_coordinator_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator")
+world_session_state_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/WorldSessionState")
+game_session_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController")
+run_rng_service_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/RunRngService")
+runtime_loop_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/RuntimeLoop")
+
+[node name="SetupApplicationFlowController" parent="RuntimeServices" instance=ExtResource("29_setup_controller")]
+unique_name_in_owner = true
+menu_overlay_path = NodePath("../../RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay")
+draft_service_path = NodePath("../NewGameSetupDraftService")
+query_port_path = NodePath("../NewGameSetupViewerQueryPort")
+command_port_path = NodePath("../SetupDraftCommandPort")
+transaction_coordinator_path = NodePath("../SessionStartTransactionCoordinator")
+game_session_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController")
 
 [node name="StandingsPublicQueryPort" parent="RuntimeServices" instance=ExtResource("13_standings_query")]
 unique_name_in_owner = true
@@ -182,6 +228,7 @@ editor_description = "Explicit host for compatibility fallbacks created only whe
 [connection signal="compendium_requested" from="RuntimeServices/ApplicationFlowPort" to="RuntimeServices/CompendiumApplicationFlowController" method="open_hub"]
 [connection signal="intel_requested" from="RuntimeServices/ApplicationFlowPort" to="RuntimeServices/IntelApplicationFlowController" method="open_intel"]
 [connection signal="intel_application_intent_requested" from="RuntimeServices/ApplicationFlowPort" to="RuntimeServices/IntelApplicationFlowController" method="open_application_intent"]
+[connection signal="setup_requested" from="RuntimeServices/ApplicationFlowPort" to="RuntimeServices/SetupApplicationFlowController" method="open_setup"]
 [connection signal="quick_nav_action_requested" from="RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay" to="RuntimeServices/ApplicationFlowPort" method="submit_action"]
 [connection signal="application_intent_requested" from="RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay" to="RuntimeServices/ApplicationFlowPort" method="submit_intel_application_intent"]
 [connection signal="catalog_step_requested" from="RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay" to="RuntimeServices/CompendiumApplicationFlowController" method="step_current_catalog"]

@@ -439,6 +439,47 @@ func capture_runtime_checkpoint() -> Dictionary:
 	return internal_snapshot()
 
 
+func preflight_new_session(plan: Dictionary) -> Dictionary:
+	if int(plan.get("plan_schema_version", 0)) != 1 or not (plan.get("players") is Array) or not (plan.get("districts") is Array):
+		return {"accepted": false, "reason_code": "world_session_start_plan_invalid"}
+	var next_players: Array = plan.get("players", [])
+	var next_districts: Array = plan.get("districts", [])
+	if next_players.size() < 3 or next_players.size() > 8 or next_districts.is_empty() or float(plan.get("map_width_m", 0.0)) <= 0.0 or float(plan.get("map_height_m", 0.0)) <= 0.0:
+		return {"accepted": false, "reason_code": "world_session_start_bounds_invalid"}
+	var player_ids := {}
+	for player_variant in next_players:
+		if not (player_variant is Dictionary) or player_ids.has(int((player_variant as Dictionary).get("id", -1))):
+			return {"accepted": false, "reason_code": "world_session_start_player_invalid"}
+		player_ids[int((player_variant as Dictionary).get("id", -1))] = true
+	var region_ids := {}
+	for district_variant in next_districts:
+		if not (district_variant is Dictionary):
+			return {"accepted": false, "reason_code": "world_session_start_district_invalid"}
+		var region_id := str((district_variant as Dictionary).get("region_id", ""))
+		if region_id.is_empty() or region_ids.has(region_id):
+			return {"accepted": false, "reason_code": "world_session_start_region_id_invalid"}
+		region_ids[region_id] = true
+	return {"accepted": true, "reason_code": "world_session_start_ready"}
+
+
+func apply_new_session_plan(plan: Dictionary) -> Dictionary:
+	var preflight := preflight_new_session(plan)
+	if not bool(preflight.get("accepted", false)):
+		return {"applied": false, "reason_code": str(preflight.get("reason_code", "world_session_start_invalid"))}
+	_players = (plan.get("players", []) as Array).duplicate(true)
+	_districts = (plan.get("districts", []) as Array).duplicate(true)
+	_game_time = 0.0
+	_map_width_m = float(plan.get("map_width_m", DEFAULT_MAP_WIDTH_M))
+	_map_height_m = float(plan.get("map_height_m", DEFAULT_MAP_HEIGHT_M))
+	_world_geometry_revision += 1
+	_city_inference_mutation_count = 0
+	players_replaced.emit(_players.size())
+	districts_replaced.emit(_districts.size())
+	game_time_changed.emit(_game_time)
+	world_geometry_changed.emit(_map_width_m, _map_height_m, _world_geometry_revision)
+	return {"applied": true, "reason_code": "world_session_start_applied", "player_count": _players.size(), "district_count": _districts.size()}
+
+
 func restore_runtime_checkpoint(checkpoint: Dictionary) -> Dictionary:
 	if int(checkpoint.get("schema_version", -1)) != 1 \
 			or not (checkpoint.get("players", []) is Array) \

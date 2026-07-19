@@ -7,6 +7,8 @@ const DRIVER_ID := "full_run_quality_driver_v2"
 const SEED_ALGORITHM := "space-syndicate-full-run-quality-v1:sha256-positive31"
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const COORDINATOR_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator"
+const SETUP_DRAFT_PATH := "RuntimeServices/NewGameSetupDraftService"
+const SESSION_START_TRANSACTION_PATH := "RuntimeServices/SessionStartTransactionCoordinator"
 const SESSION_PATH := "GameSessionRuntimeController"
 const REGISTRY_PATH := "V06SaveOwnerRegistry"
 const SAVE_COORDINATOR_PATH := "GameSaveRuntimeCoordinator"
@@ -322,19 +324,25 @@ func _run() -> void:
 
 
 func _start_fixed_seed_run(main_instance: Node, session: Node, run_seed: int) -> Dictionary:
-	if not main_instance.has_method("_confirm_start_new_run_from_setup"):
-		return {"started": false, "reason_code": "main_setup_api_unavailable"}
-	main_instance.set("configured_player_count", RECOMMENDED_PLAYER_COUNT)
-	main_instance.set("configured_ai_player_count", RECOMMENDED_AI_COUNT)
-	main_instance.set("configured_roguelike_depth", 1)
-	main_instance.set("configured_role_indices", [0, 1, 2, 3])
-	main_instance.set("configured_starter_monster_indices", [0, 1, 2, 3])
+	var draft := main_instance.get_node_or_null(SETUP_DRAFT_PATH) as NewGameSetupDraftService
+	var transaction := main_instance.get_node_or_null(SESSION_START_TRANSACTION_PATH) as SessionStartTransactionCoordinator
+	if draft == null or transaction == null or not (session is GameSessionRuntimeController):
+		return {"started": false, "reason_code": "session_start_transaction_unavailable"}
+	draft.reset_to_defaults()
 	var runtime_coordinator := main_instance.get_node_or_null(COORDINATOR_PATH) as GameRuntimeCoordinator
 	var runtime_rng := runtime_coordinator.run_rng_service() if runtime_coordinator != null else null
 	if runtime_rng == null:
 		return {"started": false, "reason_code": "run_rng_service_unavailable"}
 	runtime_rng.seed = run_seed
-	main_instance.call("_confirm_start_new_run_from_setup")
+	var request := SessionStartRequest.create(
+		"full-run:%d" % run_seed,
+		draft.draft_snapshot(),
+		(session as GameSessionRuntimeController).session_start_revision(),
+		"quality_driver"
+	)
+	var receipt := transaction.start_session(request)
+	if receipt == null or not receipt.applied:
+		return {"started": false, "reason_code": receipt.reason_code if receipt != null else "session_start_receipt_missing"}
 	await _wait_frames(10)
 	var players_variant: Variant = ((main_instance.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players
 	var players: Array = players_variant if players_variant is Array else []
@@ -368,7 +376,8 @@ func _capability_preflight(main_instance: Node, coordinator: Node, session: Node
 	var session_ready := session != null and session.has_method("session_summary")
 	var settlement_ready := settlement_composition != null and settlement_composition.has_method("debug_snapshot") and settlement_composition.has_method("last_public_snapshot")
 	var scripted_ui_port_ready := runtime_screen != null and runtime_screen.has_signal("action_requested")
-	var setup_ready := main_instance.has_method("_confirm_start_new_run_from_setup")
+	var setup_ready := main_instance.get_node_or_null(SETUP_DRAFT_PATH) is NewGameSetupDraftService \
+		and main_instance.get_node_or_null(SESSION_START_TRANSACTION_PATH) is SessionStartTransactionCoordinator
 	var registry_valid := bool(registry_snapshot.get("valid", false)) and qa_path_ready
 	var required_sections := int(registry_snapshot.get("required_section_count", 0))
 	var transactional_sections := int(registry_snapshot.get("transactional_section_count", 0))

@@ -94,6 +94,67 @@ func session_summary() -> Dictionary:
 	}
 
 
+func session_start_revision() -> int:
+	return int(hash(JSON.stringify({"state": _session_state, "session_id": _session_id, "scenario_id": _scenario_id, "seed": _seed, "setup": _setup_summary, "outcome": _outcome_receipt, "operation_sequence": _operation_sequence}))) & 0x7fffffff
+
+
+func preflight_new_session(setup_snapshot: Dictionary, expected_revision: int) -> Dictionary:
+	if not _configured or not _is_data_only(setup_snapshot):
+		return {"accepted": false, "reason_code": "game_session_start_payload_invalid"}
+	if expected_revision != session_start_revision():
+		return {"accepted": false, "reason_code": "active_session_revision_stale"}
+	if str(setup_snapshot.get("session_id", "")).strip_edges().is_empty() or int(setup_snapshot.get("player_count", 0)) < 3:
+		return {"accepted": false, "reason_code": "game_session_start_summary_invalid"}
+	return {"accepted": true, "reason_code": "game_session_start_ready"}
+
+
+func capture_new_session_checkpoint() -> Dictionary:
+	return {
+		"schema_version": 1, "configured": _configured, "ruleset_id": _ruleset_id, "session_state": _session_state,
+		"session_id": _session_id, "scenario_id": _scenario_id, "seed": _seed, "setup_summary": _setup_summary.duplicate(true),
+		"save_state": _save_state, "dirty_reason": _dirty_reason, "outcome_receipt": _outcome_receipt.duplicate(true),
+		"operation_sequence": _operation_sequence, "active_operation": _active_operation.duplicate(true), "last_operation": _last_operation.duplicate(true),
+		"world_effective_us": int(_world_effective_clock.call("world_effective_micros")) if _world_effective_clock != null and _world_effective_clock.has_method("world_effective_micros") else 0,
+	}
+
+
+func apply_new_session_plan(setup_snapshot: Dictionary, expected_revision: int) -> Dictionary:
+	var preflight := preflight_new_session(setup_snapshot, expected_revision)
+	if not bool(preflight.get("accepted", false)):
+		return {"applied": false, "reason_code": str(preflight.get("reason_code", "game_session_start_invalid"))}
+	_session_state = STATE_STARTING
+	_session_id = str(setup_snapshot.get("session_id", ""))
+	_scenario_id = str(setup_snapshot.get("scenario_id", ""))
+	_seed = int(setup_snapshot.get("seed", 0))
+	_setup_summary = _safe_setup_summary(setup_snapshot)
+	_outcome_receipt = {}
+	_save_state = "dirty"
+	_dirty_reason = "new_session"
+	_session_state = STATE_RUNNING
+	return {"applied": true, "reason_code": "game_session_start_committed", "session_revision": session_start_revision(), "session": session_summary()}
+
+
+func rollback_new_session_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	if int(checkpoint.get("schema_version", 0)) != 1 or not (checkpoint.get("setup_summary") is Dictionary) or not (checkpoint.get("outcome_receipt") is Dictionary):
+		return {"restored": false, "reason_code": "game_session_checkpoint_invalid"}
+	_configured = bool(checkpoint.get("configured", false))
+	_ruleset_id = str(checkpoint.get("ruleset_id", ""))
+	_session_state = str(checkpoint.get("session_state", STATE_IDLE))
+	_session_id = str(checkpoint.get("session_id", ""))
+	_scenario_id = str(checkpoint.get("scenario_id", ""))
+	_seed = int(checkpoint.get("seed", 0))
+	_setup_summary = (checkpoint.get("setup_summary", {}) as Dictionary).duplicate(true)
+	_save_state = str(checkpoint.get("save_state", "clean"))
+	_dirty_reason = str(checkpoint.get("dirty_reason", ""))
+	_outcome_receipt = (checkpoint.get("outcome_receipt", {}) as Dictionary).duplicate(true)
+	_operation_sequence = int(checkpoint.get("operation_sequence", 0))
+	_active_operation = (checkpoint.get("active_operation", {}) as Dictionary).duplicate(true)
+	_last_operation = (checkpoint.get("last_operation", {}) as Dictionary).duplicate(true)
+	if _world_effective_clock != null and _world_effective_clock.has_method("restore_micros"):
+		_world_effective_clock.call("restore_micros", int(checkpoint.get("world_effective_us", 0)))
+	return {"restored": true, "reason_code": "game_session_checkpoint_restored", "session_revision": session_start_revision()}
+
+
 func mark_dirty(reason: String = "runtime_change") -> void:
 	if _session_state not in [STATE_RUNNING, STATE_PAUSED]:
 		return

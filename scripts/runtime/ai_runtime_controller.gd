@@ -107,6 +107,18 @@ func set_v06_economy_action_port(port: RefCounted) -> Dictionary:
 	return _ai_v06_economy_port_capability()
 
 
+func new_session_identity_for_seat(player_index: int, human_player_count: int) -> Dictionary:
+	if player_index < human_player_count:
+		return {"is_ai": false, "seat_type": "human", "ai_profile": {}, "ai_memory": {}}
+	if AI_PERSONALITY_CATALOG.is_empty():
+		return {"is_ai": true, "seat_type": "ai", "ai_profile": {}, "ai_memory": _empty_ai_memory()}
+	var ai_order := maxi(0, player_index - human_player_count)
+	var profile_index := wrapi(ai_order, 0, AI_PERSONALITY_CATALOG.size())
+	var profile := (AI_PERSONALITY_CATALOG[profile_index] as Dictionary).duplicate(true)
+	profile["profile_index"] = profile_index
+	return {"is_ai": true, "seat_type": "ai", "ai_profile": profile, "ai_memory": _empty_ai_memory()}
+
+
 func configure(ruleset_snapshot: Dictionary, supplied_profile: Resource = null) -> void:
 	_ruleset_snapshot = ruleset_snapshot.duplicate(true)
 	if supplied_profile != null:
@@ -144,6 +156,38 @@ func reset_state() -> void:
 		"state": "idle",
 		"reason_code": "ai_v06_facility_bootstrap_idle",
 	}
+
+
+func capture_new_session_checkpoint() -> Dictionary:
+	return {
+		"schema_version": 1,
+		"save_data": to_save_data().duplicate(true),
+		"ai_card_decision_timer": ai_card_decision_timer,
+		"ai_auction_reaction_timer": ai_auction_reaction_timer,
+		"ai_intel_decision_timer": ai_intel_decision_timer,
+		"ai_card_decision_enabled": ai_card_decision_enabled,
+		"last_receipts": _last_receipts.duplicate(true),
+		"facility_bootstrap_attempt_count": _v06_facility_bootstrap_attempt_count,
+		"facility_bootstrap_success_count": _v06_facility_bootstrap_success_count,
+		"facility_bootstrap_last_public": _v06_facility_bootstrap_last_public.duplicate(true),
+	}
+
+
+func restore_new_session_checkpoint(checkpoint: Dictionary) -> Dictionary:
+	if int(checkpoint.get("schema_version", 0)) != 1 or not (checkpoint.get("save_data", {}) is Dictionary):
+		return {"restored": false, "reason_code": "ai_new_session_checkpoint_invalid"}
+	var applied := apply_save_data(checkpoint.get("save_data", {}) as Dictionary)
+	if not bool(applied.get("applied", false)):
+		return {"restored": false, "reason_code": str(applied.get("reason_code", "ai_new_session_restore_failed"))}
+	ai_card_decision_timer = float(checkpoint.get("ai_card_decision_timer", 0.0))
+	ai_auction_reaction_timer = float(checkpoint.get("ai_auction_reaction_timer", 0.0))
+	ai_intel_decision_timer = float(checkpoint.get("ai_intel_decision_timer", 0.0))
+	ai_card_decision_enabled = bool(checkpoint.get("ai_card_decision_enabled", true))
+	_last_receipts = (checkpoint.get("last_receipts", []) as Array).duplicate(true)
+	_v06_facility_bootstrap_attempt_count = int(checkpoint.get("facility_bootstrap_attempt_count", 0))
+	_v06_facility_bootstrap_success_count = int(checkpoint.get("facility_bootstrap_success_count", 0))
+	_v06_facility_bootstrap_last_public = (checkpoint.get("facility_bootstrap_last_public", {}) as Dictionary).duplicate(true)
+	return {"restored": true, "reason_code": "ai_new_session_checkpoint_restored"}
 
 
 func tick(delta: float) -> void:
@@ -392,18 +436,6 @@ var card_resolution_counter_window_active:
 		return _world_value(&"card_resolution_counter_window_active", false)
 	set(value):
 		_write_world_value(&"card_resolution_counter_window_active", value)
-
-var configured_ai_player_count:
-	get:
-		return _world_value(&"configured_ai_player_count", 0)
-	set(value):
-		_write_world_value(&"configured_ai_player_count", value)
-
-var configured_player_count:
-	get:
-		return _world_value(&"configured_player_count", 0)
-	set(value):
-		_write_world_value(&"configured_player_count", value)
 
 var districts:
 	get:
@@ -1150,12 +1182,6 @@ func _short_card_text(text: String, max_len: int) -> String:
 
 func _queue_monster_card_as_counter(player_index: int, slot_index: int, source_skill: Dictionary) -> bool:
 	return _call_world(&"_queue_monster_card_as_counter", [player_index, slot_index, source_skill])
-
-func _ensure_configured_ai_player_count() -> void:
-	return _call_world(&"_ensure_configured_ai_player_count")
-
-func _configured_human_player_count() -> int:
-	return _call_world(&"_configured_human_player_count")
 
 func _player_is_ai(player_index: int) -> bool:
 	return _call_world(&"_player_is_ai", [player_index])
@@ -2952,7 +2978,11 @@ func _ai_player_indices() -> Array:
 func _ai_profile_for_config_index(player_index: int) -> Dictionary:
 	if AI_PERSONALITY_CATALOG.is_empty():
 		return {}
-	var human_count := _configured_human_player_count()
+	var human_count := 0
+	for player_variant in players:
+		if player_variant is Dictionary and not bool((player_variant as Dictionary).get("is_ai", false)):
+			human_count += 1
+	human_count = maxi(1, human_count)
 	var ai_order: int = maxi(0, player_index - human_count)
 	var profile_index := wrapi(ai_order, 0, AI_PERSONALITY_CATALOG.size())
 	var profile := (AI_PERSONALITY_CATALOG[profile_index] as Dictionary).duplicate(true)
@@ -3001,9 +3031,11 @@ func _empty_ai_memory() -> Dictionary:
 func _ensure_player_ai_state() -> void:
 	if players.is_empty():
 		return
-	configured_player_count = clampi(max(configured_player_count, players.size()), MIN_PLAYER_COUNT, MAX_PLAYER_COUNT)
-	_ensure_configured_ai_player_count()
-	var human_count: int = maxi(1, players.size() - configured_ai_player_count)
+	var human_count := 0
+	for player_variant in players:
+		if player_variant is Dictionary and not bool((player_variant as Dictionary).get("is_ai", false)):
+			human_count += 1
+	human_count = maxi(1, human_count)
 	for i in range(players.size()):
 		var player: Dictionary = players[i]
 		var seat_type := String(player.get("seat_type", "ai" if i >= human_count else "human"))
