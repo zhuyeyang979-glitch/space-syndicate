@@ -9,7 +9,7 @@ Status: `MAIN_APPLICATION_FLOW_HANDLER_EXTRACTION_GREEN`
 | `rules` | `Main._on_menu_quick_nav_action_requested` → `_open_rules_menu` → rules board | `ApplicationFlowController.open_rules` | migrated | none; static read-only reference content |
 | `standings` | Main snapshot adapter + menu/scoreboard composition | `StandingsApplicationFlowController` + `StandingsPublicQueryPort` | migrated | viewer-authorized read-only query |
 | `economy` | Main dashboard source adapter + menu/economy surface | `EconomyApplicationFlowController` + `EconomyDashboardViewerQueryPort` | migrated | public facts plus authorized viewer's own private economy; cached-only |
-| `intel` | Main dossier source/action bridge | Main adapter + `IntelDossierPublicSnapshotService` | pending | action bridge can enter gameplay inference; separate cutover |
+| `intel` | Main dossier source/action bridge | `ApplicationFlowPort` + `IntelApplicationFlowController` + `IntelDossierViewerQueryPort` + `IntelPrivateCommandPort` | migrated | authorized query is read-only; narrow typed commands delegate to existing owners |
 | `compendium` | Main catalog navigation/action routing | `CompendiumApplicationFlowController` + `CompendiumNavigationPort` + `CompendiumReadOnlyQueryPort` | migrated | typed, read-only, exact-once pages; no Main route or gameplay mutation |
 | `setup` | Main new-game/setup actions | Main + setup scene | pending | session-start transaction; do not move into a UI-only handler |
 
@@ -23,15 +23,17 @@ world state or decide any gameplay rule.
 
 ### B. Read-only presentation queries
 
-Standings, economy and compendium now use scene-owned query/application-flow
-ports. Intel still uses a Main source/action bridge because it mixes public
-evidence with viewer-private guesses; it requires a separate query/command
-split rather than copying that adapter into a read-only flow handler.
+Standings, economy, compendium and Intel now use scene-owned query/application-
+flow ports. Intel's query joins only the audited Region Codex public source,
+public card history, role public definitions, and the authorized viewer's own
+WorldSession/card-annotation projections. The detached result is read-only.
 
 ### C. Simulation/world mutation
 
-Setup, intel guesses, save/load and player actions remain outside this handler.
-They must continue through the existing session, command and mutation owners.
+Setup, save/load and general player actions remain outside this handler. Intel
+mutations cross `IntelPrivateCommandPort` and remain owned by
+`WorldSessionState` or `CardHistoryPrivateAnnotationService`; the application
+flow port stores no navigation or gameplay state.
 
 ### D. Historical glue
 
@@ -43,10 +45,11 @@ the same change. No compatibility wrapper or fallback remains.
 ```mermaid
 flowchart LR
   Q[MenuOverlay / MenuRootLobby] --> P[ApplicationFlowPort]
-  P --> H[ApplicationFlowController]
-  H --> R[RulesQuickReferenceBoard]
-  H --> C[GameRuntimeCoordinator.pause_session]
+  P --> H[ApplicationFlowController / IntelApplicationFlowController]
+  H --> R[RulesQuickReferenceBoard / IntelDossierBoard]
+  H --> V[IntelDossierViewerQueryPort]
+  H --> C[IntelPrivateCommandPort]
 ```
 
-Other white-list actions still use the transitional port-to-Main route and are
-explicitly marked pending above. This is not a second runtime authority.
+`setup` remains explicitly pending above. Intel has no transitional
+port-to-Main route and creates no second runtime authority.

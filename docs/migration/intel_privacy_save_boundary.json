@@ -1,0 +1,438 @@
+{
+  "status": "BOUNDARY_FROZEN_WITH_CUTOVER_BLOCKERS",
+  "audit_base_sha": "657f5172e7afa8c31658f90af5f81d076430bf5c",
+  "scope": "analysis_only",
+  "full_run_resume_claim": false,
+  "registry": {
+    "section_count": 19,
+    "session_section_id": "session",
+    "session_schema_version": 2,
+    "session_owner": "res://scripts/runtime/session_envelope_save_owner.gd",
+    "card_history_section_id": "card_resolution_history",
+    "card_history_restores_before_session": true,
+    "new_intel_section_count": 0,
+    "unsupported_sections": [
+      "ruleset",
+      "routes",
+      "commodity_belt_visibility",
+      "card_inventory",
+      "military",
+      "card_resolution_queue",
+      "ai"
+    ],
+    "references": [
+      "scenes/runtime/V06SaveOwnerRegistry.tscn:132-142",
+      "scenes/runtime/V06SaveOwnerRegistry.tscn:172-183",
+      "scripts/runtime/v06_save_owner_registry.gd:27-47",
+      "scripts/runtime/session_envelope_save_owner.gd:31-162",
+      "scripts/runtime/session_envelope_save_owner.gd:176-190"
+    ]
+  },
+  "findings": [
+    {
+      "severity": "P1",
+      "id": "intel_query_mutates_route_owner",
+      "summary": "Opening Intel calls route refresh and can change route refresh or rebuild counters.",
+      "references": [
+        "scripts/main.gd:2629-2633",
+        "scripts/runtime/route_network_runtime_controller.gd:76-95",
+        "scripts/runtime/route_network_runtime_controller.gd:136-143"
+      ]
+    },
+    {
+      "severity": "P1",
+      "id": "intel_source_reads_raw_private_world",
+      "summary": "Main reads mutable players/districts, true city owners, private warehouse data and raw monster cash-like fields instead of typed public projections.",
+      "references": [
+        "scripts/main.gd:2629-2660",
+        "scripts/main.gd:2725-2752",
+        "scripts/main.gd:2773-2801",
+        "scripts/main.gd:3050-3127",
+        "scripts/main.gd:3205-3283",
+        "scripts/runtime/intel_dossier_public_snapshot_service.gd:271-320"
+      ]
+    },
+    {
+      "severity": "P1",
+      "id": "city_inference_command_bypasses",
+      "summary": "UI, card and AI paths mutate city inference dictionaries without one typed authorization, revision and idempotence boundary.",
+      "references": [
+        "scripts/main.gd:2526-2614",
+        "scripts/main.gd:6532-6631",
+        "scripts/runtime/card_intel_runtime_service.gd:96-128",
+        "scripts/runtime/ai_runtime_controller.gd:1011-1012",
+        "scripts/runtime/ai_runtime_controller.gd:8190"
+      ]
+    },
+    {
+      "severity": "P1",
+      "id": "authorized_reveal_semantics_drift",
+      "summary": "Save uses confidence 100 as the authorized reveal sentinel, while the legacy Main reveal and Intel formatter normalize it to ordinary confidence 1-3 semantics.",
+      "references": [
+        "scripts/runtime/world_session_envelope_codec.gd:4-8",
+        "scripts/runtime/world_session_envelope_codec.gd:383-460",
+        "scripts/runtime/card_intel_runtime_service.gd:120-126",
+        "scripts/main.gd:2799-2800",
+        "scripts/main.gd:2860-2904",
+        "scripts/main.gd:6634-6648"
+      ]
+    },
+    {
+      "severity": "P2",
+      "id": "formatter_and_surface_trust_tainted_strings",
+      "summary": "Accepted source strings flow to visible text and tooltips without recursive value-taint or runtime-type rejection.",
+      "references": [
+        "scripts/runtime/intel_dossier_public_snapshot_service.gd:19-33",
+        "scripts/runtime/intel_dossier_public_snapshot_service.gd:373-380",
+        "scripts/ui/intel_dossier_board.gd:24-43",
+        "scripts/ui/intel_dossier_board.gd:139-240",
+        "scripts/ui/intel_dossier_board.gd:289-348"
+      ]
+    },
+    {
+      "severity": "P2",
+      "id": "intel_navigation_mutates_selection_and_falls_back_to_main",
+      "summary": "Track selection mutates TableSelectionState and snapshot composition retains a Main-side fallback.",
+      "references": [
+        "scripts/main.gd:2562-2567",
+        "scripts/main.gd:2617-2626"
+      ]
+    }
+  ],
+  "authorities": {
+    "world_session": {
+      "owner": "WorldSessionState",
+      "path": "res://scripts/runtime/world_session_state.gd",
+      "state": [
+        "players",
+        "districts",
+        "game_time",
+        "map_width_m",
+        "map_height_m",
+        "world_geometry_revision"
+      ],
+      "city_inference_runtime_fields": {
+        "city_guesses": "district_index -> suspected_player_index",
+        "city_guess_confidence": "district_index -> 1|2|3|100",
+        "city_guess_reasons": "district_index -> reason_id_or_authorized_reveal_reason"
+      },
+      "facility_guess_field_exists": false,
+      "subject_identity": "district_index_for_active_city",
+      "role_identity": {
+        "index_field": "role_index",
+        "name_field": "role_card.name",
+        "must_match_catalog": true
+      },
+      "authorized_reveal": {
+        "dedicated_boolean_exists": false,
+        "runtime_sentinel": "confidence == 100",
+        "envelope_reason_kind": "public_reveal",
+        "reason_requirement": "nonempty and at most 96 characters"
+      },
+      "ordinary_confidence_allowlist": [1, 2, 3],
+      "ordinary_reason_allowlist": [
+        "product",
+        "route",
+        "card",
+        "monster",
+        "role",
+        "intuition"
+      ],
+      "restore_signal_order": [
+        "players_replaced",
+        "districts_replaced",
+        "game_time_changed",
+        "world_geometry_changed",
+        "session_restored"
+      ],
+      "references": [
+        "scripts/runtime/world_session_state.gd:18-35",
+        "scripts/runtime/world_session_state.gd:132-147",
+        "scripts/runtime/world_session_state.gd:166-200",
+        "scripts/runtime/world_session_envelope_codec.gd:19-123",
+        "scripts/runtime/world_session_envelope_codec.gd:261-317",
+        "scripts/runtime/world_session_envelope_codec.gd:383-460"
+      ]
+    },
+    "card_history_private_annotations": {
+      "owner": "CardHistoryPrivateAnnotationService",
+      "path": "res://scripts/runtime/card_history_private_annotation_service.gd",
+      "save_root_fields": [
+        "schema_version",
+        "revision",
+        "annotations_by_viewer",
+        "role_usage_by_viewer"
+      ],
+      "persisted_annotation_fields": [
+        "note_text",
+        "private_tags",
+        "suspected_player_indices",
+        "private_confidence",
+        "excluded_player_indices",
+        "subscribed"
+      ],
+      "persisted_role_usage_ids": [
+        "residual_catalog",
+        "public_exclusion"
+      ],
+      "derived_runtime_fields": [
+        "viewer_index",
+        "history_entry_id",
+        "public_evidence_summary",
+        "verified_by_public_reveal",
+        "updated_at_public_revision"
+      ],
+      "not_persisted": [
+        "subscription_fingerprints",
+        "notification_count",
+        "formatted_public_evidence"
+      ],
+      "viewer_bucket_isolation": true,
+      "service_enforces_current_local_viewer": false,
+      "command_port_must_enforce_current_local_viewer": true,
+      "references": [
+        "scripts/runtime/card_history_private_annotation_service.gd:5-49",
+        "scripts/runtime/card_history_private_annotation_service.gd:64-86",
+        "scripts/runtime/card_history_private_annotation_service.gd:143-210",
+        "scripts/runtime/card_history_private_annotation_service.gd:213-329",
+        "scripts/runtime/card_history_private_annotation_service.gd:365-380",
+        "scripts/runtime/card_history_private_annotation_service.gd:411-479"
+      ]
+    },
+    "card_resolution_public_history": {
+      "owner": "CardResolutionHistoryRuntimeService",
+      "owner_path": "res://scripts/runtime/card_resolution_history_runtime_service.gd",
+      "query_port": "res://scripts/presentation/card_history_public_query_port.gd",
+      "public_query_fields": [
+        "history_entry_id",
+        "public_sequence",
+        "public_time",
+        "public_card_id",
+        "public_card_name",
+        "public_target",
+        "public_result",
+        "public_reveal_state",
+        "publicly_revealed_actor",
+        "action_phase",
+        "card_category",
+        "public_revision"
+      ],
+      "publicly_revealed_actor_currently_always_empty": true,
+      "private_viewer_history_equals_public": true,
+      "references": [
+        "scripts/runtime/card_resolution_history_runtime_service.gd:9-31",
+        "scripts/runtime/card_resolution_history_runtime_service.gd:60-108",
+        "scripts/runtime/card_resolution_history_runtime_service.gd:161-170",
+        "scripts/runtime/card_resolution_history_runtime_service.gd:231-269",
+        "scripts/presentation/card_history_public_query_port.gd:6-19",
+        "scripts/presentation/card_history_public_query_port.gd:74-112"
+      ]
+    }
+  },
+  "cold_restore": {
+    "required_order": [
+      "card_resolution_history",
+      "world_session_state",
+      "card_history_private_annotations",
+      "game_session_runtime"
+    ],
+    "annotation_structural_preflight_reads_live_history": false,
+    "annotation_apply_requires_restored_history": true,
+    "missing_history_reason_code": "card_annotation_public_history_missing",
+    "subscription_fingerprints_rebuilt_silently": true,
+    "notification_count_delta": 0,
+    "saved_revision_restored_exactly": true,
+    "existing_evidence": {
+      "cold_history_before": 0,
+      "cold_annotations_before": 0,
+      "cold_history_after": 3,
+      "cold_annotations_after": 4,
+      "viewer_isolation_verified": true,
+      "city_inference_roundtrip_verified": true,
+      "role_usage_roundtrip_verified": true
+    },
+    "references": [
+      "scripts/tools/session_envelope_save_owner_bench.gd:94-135",
+      "scripts/tools/session_envelope_save_owner_bench.gd:414-435",
+      "scripts/tools/session_envelope_save_owner_bench.gd:568-571",
+      "tests/card_history_public_annotation_test.gd:43-46",
+      "tests/card_history_public_annotation_test.gd:61-70"
+    ]
+  },
+  "projection_policy": {
+    "public_allowlist": [
+      "public_player_index",
+      "public_player_name",
+      "public_district_region_id_name_status_geometry",
+      "public_facility_facts_and_publicly_revealed_facility_owner",
+      "owner_provided_public_commodity_gdp_route_monster_warehouse_pressure_clues",
+      "card_history_public_query_fields",
+      "owner_authorized_public_reveal_events",
+      "owner_authorized_public_log_facts",
+      "public_city_inference_rule_parameters",
+      "typed_navigation_link_ids"
+    ],
+    "viewer_private_allowlist": [
+      "authorized_viewer_index_and_public_name",
+      "own_city_guess_rows",
+      "own_city_guess_confidence",
+      "own_city_guess_reason",
+      "own_authorized_reveal_sentinel",
+      "own_card_annotation_persisted_fields",
+      "own_derived_public_evidence_fields",
+      "own_residual_catalog_usage",
+      "own_public_exclusion_usage"
+    ],
+    "forbidden": [
+      "opponent_city_guesses",
+      "opponent_confidence",
+      "opponent_reasons",
+      "opponent_notes_tags_suspects_exclusions_subscriptions_role_usage",
+      "hidden_or_true_city_facility_monster_card_owner",
+      "hidden_card_actor",
+      "unpublished_reveal",
+      "opponent_cash_or_cash_cents",
+      "opponent_hand_discard_slots",
+      "private_warehouse_inventory_units_products_expiry",
+      "private_futures_orders",
+      "ai_plan_score_reason_pressure_memory_learning",
+      "internal_execution_fingerprint",
+      "raw_command_id",
+      "save_or_node_path",
+      "mutable_player_district_city_monster_annotation_dictionary",
+      "Node",
+      "Object",
+      "Callable",
+      "RID",
+      "Resource",
+      "Signal",
+      "current_scene",
+      "root_main",
+      "method_name_string",
+      "fallback_service_discovery"
+    ],
+    "surfaces": [
+      "snapshot_serialization",
+      "debug_snapshot",
+      "Label.text",
+      "RichTextLabel.text",
+      "Button.text",
+      "tooltip_text",
+      "accessibility_text",
+      "empty_state_reason"
+    ],
+    "session_finished_expands_private_visibility": false
+  },
+  "command_bypasses": [
+    {
+      "kind": "set_or_clear_city_guess",
+      "current_path": "Main_direct_dictionary_mutation",
+      "required_owner": "WorldSessionState",
+      "references": [
+        "scripts/main.gd:2573-2580",
+        "scripts/main.gd:6532-6589"
+      ]
+    },
+    {
+      "kind": "set_city_confidence_or_reason",
+      "current_path": "Main_direct_dictionary_mutation",
+      "required_owner": "WorldSessionState",
+      "references": [
+        "scripts/main.gd:2581-2591",
+        "scripts/main.gd:6592-6631"
+      ]
+    },
+    {
+      "kind": "card_city_owner_reveal",
+      "current_path": "CardIntelRuntimeService_direct_dictionary_mutation",
+      "required_owner": "WorldSessionState_typed_mutation_boundary",
+      "references": [
+        "scripts/runtime/card_intel_runtime_service.gd:96-128"
+      ]
+    },
+    {
+      "kind": "legacy_main_city_reveal",
+      "current_path": "Main_direct_mutation_and_private_economic_log",
+      "required_owner": "WorldSessionState_typed_mutation_boundary",
+      "references": [
+        "scripts/main.gd:6634-6675"
+      ]
+    },
+    {
+      "kind": "ai_city_inference",
+      "current_path": "AIRuntime_dynamic_Main_call",
+      "required_owner": "WorldSessionState_typed_mutation_boundary",
+      "references": [
+        "scripts/runtime/ai_runtime_controller.gd:1011-1012",
+        "scripts/runtime/ai_runtime_controller.gd:8190"
+      ]
+    },
+    {
+      "kind": "card_annotation_edit_or_subscription",
+      "current_path": "Main_selected_player_to_annotation_service",
+      "required_owner": "CardHistoryPrivateAnnotationService",
+      "required_additional_gate": "authorized_local_viewer_and_idempotent_command",
+      "references": [
+        "scripts/main.gd:2531-2561",
+        "scripts/runtime/card_history_private_annotation_service.gd:89-181"
+      ]
+    }
+  ],
+  "query_zero_mutation_required": {
+    "world_session_revision": 0,
+    "rng_delta": 0,
+    "route_refresh_delta": 0,
+    "route_rebuild_delta": 0,
+    "product_market_revision_delta": 0,
+    "commodity_flow_revision_delta": 0,
+    "weather_revision_delta": 0,
+    "monster_revision_delta": 0,
+    "cash_gdp_delta": 0,
+    "city_inference_delta": 0,
+    "annotation_revision_delta": 0,
+    "table_selection_delta": 0,
+    "public_log_delta": 0,
+    "command_pipeline_delta": 0,
+    "save_dirty_delta": 0
+  },
+  "required_negative_tests": [
+    "cross_viewer_city_inference_isolation",
+    "cross_viewer_card_annotation_isolation",
+    "opponent_cash_hand_discard_invariance",
+    "private_warehouse_and_futures_invariance",
+    "hidden_owner_and_hidden_actor_invariance",
+    "ai_private_state_invariance",
+    "recursive_nested_string_sentinel_rejection",
+    "recursive_object_node_callable_rid_resource_rejection",
+    "query_zero_route_refresh_and_rebuild",
+    "query_zero_rng_and_gameplay_mutation",
+    "query_zero_table_selection_mutation",
+    "query_zero_save_dirty_mutation",
+    "unauthorized_viewer_command_rejected",
+    "invalid_city_subject_and_suspect_rejected",
+    "invalid_confidence_and_reason_rejected",
+    "stale_revision_rejected",
+    "duplicate_command_id_idempotent",
+    "authorized_reveal_confidence_100_roundtrip",
+    "authorized_reveal_cannot_be_silently_downgraded",
+    "annotation_unknown_history_rejected",
+    "annotation_subscription_limit_rejected",
+    "annotation_suspect_exclusion_overlap_rejected",
+    "cold_restore_wrong_order_rolls_back",
+    "cold_restore_notification_delta_zero",
+    "session_finished_does_not_expand_private_visibility",
+    "visible_tooltip_accessibility_debug_recursive_privacy_scan"
+  ],
+  "frozen_constraints": {
+    "modify_save_registry": false,
+    "modify_session_envelope_v2_shape": false,
+    "modify_card_resolution_history_schema": false,
+    "modify_annotation_persisted_fields": false,
+    "modify_world_session_dto_schema": false,
+    "create_second_world_session_owner": false,
+    "create_second_intel_state_owner": false,
+    "create_second_intel_save_owner": false,
+    "create_new_intel_save_section": false,
+    "claim_full_run_resume": false
+  }
+}

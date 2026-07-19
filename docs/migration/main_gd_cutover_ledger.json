@@ -564,6 +564,94 @@
       "status": "cut_over"
     },
     {
+      "domain": "intel_viewer_query",
+      "old_symbols": [
+        "_intel_dossier_public_source_snapshot",
+        "_intel_dossier_public_snapshot",
+        "Main-owned Intel source/formatter fallback"
+      ],
+      "old_consumers": [
+        "Intel dossier menu",
+        "district and table typed Intel entry points",
+        "Intel public deep links"
+      ],
+      "new_owner_scene": "res://scenes/runtime/presentation/IntelDossierViewerQueryPort.tscn",
+      "new_owner_script": "res://scripts/presentation/intel_dossier_viewer_query_port.gd",
+      "new_public_api": [
+        "snapshot_for_authorized_viewer",
+        "debug_snapshot"
+      ],
+      "tests": [
+        "res://tests/intel_query_command_cutover_test.gd",
+        "res://tests/intel_dossier_public_snapshot_service_test.gd",
+        "res://tests/region_codex_public_source_privacy_acceptance_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
+    },
+    {
+      "domain": "intel_private_commands",
+      "old_symbols": [
+        "_mark_city_guess_from_intel",
+        "_set_city_guess_confidence_from_intel",
+        "_set_city_guess_reason_from_intel",
+        "Main Intel UI mutation wrapper"
+      ],
+      "old_consumers": [
+        "IntelDossierBoard controls",
+        "authorized local viewer card annotations"
+      ],
+      "new_owner_scene": "res://scenes/runtime/IntelPrivateCommandPort.tscn",
+      "new_owner_script": "res://scripts/runtime/intel_private_command_port.gd + res://scripts/runtime/intel_private_command.gd + res://scripts/runtime/intel_private_command_receipt.gd",
+      "new_public_api": [
+        "submit_command",
+        "IntelPrivateCommand.create",
+        "IntelPrivateCommandReceipt"
+      ],
+      "tests": [
+        "res://tests/intel_query_command_cutover_test.gd",
+        "res://tests/card_history_public_annotation_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
+    },
+    {
+      "domain": "intel_application_flow",
+      "old_symbols": [
+        "_open_intel_dossier_menu",
+        "_on_intel_dossier_board_action_requested",
+        "Main Intel string action dispatcher",
+        "Main Intel route refresh-on-open"
+      ],
+      "old_consumers": [
+        "MenuOverlay quick navigation",
+        "GameScreen typed application intents",
+        "PlayerBoard and table typed Intel intents"
+      ],
+      "new_owner_scene": "res://scenes/runtime/IntelApplicationFlowController.tscn + res://scenes/runtime/ApplicationFlowPort.tscn",
+      "new_owner_script": "res://scripts/runtime/intel_application_flow_controller.gd + res://scripts/runtime/application_flow_port.gd + res://scripts/runtime/intel_application_intent.gd",
+      "new_public_api": [
+        "ApplicationFlowPort.intel_requested",
+        "ApplicationFlowPort.submit_intel_application_intent",
+        "ApplicationFlowPort.intel_application_intent_requested",
+        "IntelApplicationFlowController.open_intel",
+        "IntelApplicationFlowController.open_application_intent"
+      ],
+      "tests": [
+        "res://tests/intel_query_command_cutover_test.gd",
+        "res://tests/main_application_flow_handler_extraction_test.gd",
+        "res://scenes/tools/IntelDossierPublicSnapshotCutoverBench.tscn"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
+    },
+    {
       "domain": "compendium_readonly_navigation",
       "old_symbols": [
         "_open_compendium_menu",
@@ -710,7 +798,6 @@
         "audio",
         "menu state",
         "overlay glue",
-        "intel/query glue",
         "_get",
         "_set",
         "fallback helpers"
