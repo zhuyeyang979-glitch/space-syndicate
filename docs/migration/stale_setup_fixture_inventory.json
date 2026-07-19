@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "baseline_sha": "80da7c06ef2fe1a3d5d790e9485b40814c9da4ad",
+  "scope": "repository-wide tracked GDScript scan after this atomic three-fixture migration",
+  "scan_command": "rg -n -F --glob '*.gd' <literal> .",
+  "literal_strings_are_recorded_without_splitting": true,
+  "production_wrapper_restoration_allowed": false,
+  "migrated_in_this_change": [
+    {
+      "path": "tests/product_market_owner_smoke_fixture_test.gd",
+      "removed_contracts": [
+        "call(\"_new_game\")"
+      ],
+      "replacement": "ProductionSessionStartDriver -> SessionStartTransactionCoordinator"
+    },
+    {
+      "path": "tests/v06_market_clock_save_production_acceptance_test.gd",
+      "removed_contracts": [
+        "call(\"_start_scenario_from_menu\"",
+        "first_table_fixture_snapshot"
+      ],
+      "replacement": "ProductionSessionStartDriver plus WorldSessionPublicProjection district selection"
+    },
+    {
+      "path": "tests/role_catalog_runtime_service_test.gd",
+      "removed_contracts": [
+        "call(\"_player_role_template\"",
+        "call(\"_ensure_configured_role_indices\")",
+        "call(\"_new_game\")",
+        "set(\"configured_player_count\"",
+        "set(\"configured_ai_player_count\"",
+        "set(\"configured_role_indices\""
+      ],
+      "replacement": "unique RoleCatalogRuntimeService plus ProductionSessionStartDriver"
+    }
+  ],
+  "remaining_stale_contracts": [
+    {
+      "literal": "call(\"_new_game\")",
+      "occurrences": 73,
+      "files": 51
+    },
+    {
+      "literal": "call(\"_start_scenario_from_menu\"",
+      "occurrences": 4,
+      "files": 4
+    },
+    {
+      "literal": "call(\"_ensure_configured_role_indices\")",
+      "occurrences": 8,
+      "files": 2
+    },
+    {
+      "literal": "set(\"configured_player_count\"",
+      "occurrences": 37,
+      "files": 25
+    },
+    {
+      "literal": "set(\"configured_ai_player_count\"",
+      "occurrences": 37,
+      "files": 25
+    },
+    {
+      "literal": "set(\"configured_role_indices\"",
+      "occurrences": 31,
+      "files": 18
+    },
+    {
+      "literal": "set(\"configured_starter_monster_indices\"",
+      "occurrences": 24,
+      "files": 17
+    }
+  ],
+  "scope_control": {
+    "fixtures_migrated": 3,
+    "production_files_modified": 0,
+    "scene_files_modified": 0,
+    "remaining_debt_intentionally_unchanged": true
+  }
+}

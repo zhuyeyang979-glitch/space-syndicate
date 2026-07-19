@@ -1,8 +1,7 @@
 extends SceneTree
 
-const MAIN_SCENE := "res://scenes/main.tscn"
 const ROLE_CATALOG_SCENE := "res://scenes/runtime/RoleCatalogRuntimeService.tscn"
-const COORDINATOR_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator"
+const SESSION_START_DRIVER := preload("res://tests/support/production_session_start_driver.gd")
 const QA_SAVE_PATH := "user://test_runs/role_catalog_runtime_service.save"
 const EXPECTED_LEGACY_AUDIT_SHA256 := "7609b20741bec0e835e7768f2301f587c1848180a49aad8ca7c767e6c8d1cbe0"
 const EXPECTED_CATALOG_SHA256 := "15cfd908d14509138571e29b28f62fe612ad8935940df01add8722bffd8c9ec6"
@@ -105,36 +104,32 @@ func _test_standalone_owner() -> void:
 func _test_production_composition_and_runtime_parity() -> void:
 	var source := FileAccess.get_file_as_string("res://scripts/" + "main.gd")
 	_expect(not source.contains("PLAYER_ROLE_CATALOG"), "main_has_zero_role_catalog_copy")
-	var packed := load(MAIN_SCENE) as PackedScene
-	_expect(packed != null, "main_scene_loads")
-	if packed == null:
-		return
-	var runtime_root := packed.instantiate()
 	_cleanup_test_save()
-	var save := runtime_root.get_node_or_null("%s/GameSessionRuntimeController/GameSaveRuntimeCoordinator" % COORDINATOR_PATH)
-	_expect(save != null and save.has_method("set_qa_default_save_path_override"), "qa_save_override_available")
-	if save == null or not save.has_method("set_qa_default_save_path_override"):
-		runtime_root.free()
+	var start_result := await SESSION_START_DRIVER.start_configured_session(
+		self,
+		{
+			"player_count": 4,
+			"ai_player_count": 3,
+			"challenge_depth": 1,
+			"role_indices": [0, 1, 2, 3],
+			"starter_monster_indices": [0, 1, 2, 3],
+		},
+		QA_SAVE_PATH,
+		"role-catalog-runtime-parity"
+	)
+	_expect(bool(start_result.get("qa_save_override_ready", false)), "qa_save_isolated_before_tree_entry")
+	_expect(bool(start_result.get("started", false)), "formal_setup_transaction_starts_role_parity_session|reason=%s" % start_result.get("reason_code", ""))
+	var runtime_root := start_result.get("main_root") as Node
+	var coordinator := start_result.get("coordinator") as GameRuntimeCoordinator
+	if runtime_root == null:
+		_cleanup_test_save()
 		return
-	_expect(bool(save.call("set_qa_default_save_path_override", QA_SAVE_PATH)), "qa_save_isolated")
-	root.add_child(runtime_root)
-	await process_frame
-	var coordinator := runtime_root.get_node_or_null(COORDINATOR_PATH) as GameRuntimeCoordinator
 	var catalog := coordinator.role_catalog_runtime_service() if coordinator != null else null
 	_expect(coordinator != null and catalog != null, "production_coordinator_owns_unique_role_catalog")
 	var owner_count := runtime_root.find_children("RoleCatalogRuntimeService", "RoleCatalogRuntimeService", true, false).size()
 	_expect(owner_count == 1, "production_scene_has_exactly_one_role_catalog_owner|count=%d" % owner_count)
 	if coordinator != null and catalog != null:
 		_expect(catalog.role_count() == 24, "coordinator_exposes_exact_role_owner")
-		for index in range(catalog.role_count()):
-			var main_definition := runtime_root.call("_player_role_template", index, index) as Dictionary
-			_expect(main_definition == catalog.definition_at(index), "main_role_helper_%02d_is_owner_query_only" % index)
-		runtime_root.set("configured_player_count", 4)
-		runtime_root.set("configured_ai_player_count", 3)
-		runtime_root.set("configured_role_indices", [0, 1, 2, 3])
-		runtime_root.call("_ensure_configured_role_indices")
-		runtime_root.call("_new_game")
-		await process_frame
 		var players := coordinator.world_session_state().players
 		_expect(players.size() == 4, "four_player_setup_still_builds_four_roles")
 		for player_index in range(players.size()):
@@ -155,6 +150,12 @@ func _test_production_composition_and_runtime_parity() -> void:
 		for player_index in range(public_players.size()):
 			var public_player := public_players[player_index] as Dictionary
 			_expect(str(public_player.get("role_name", "")) == EXPECTED_NAMES[player_index], "world_public_projection_role_name_matches_catalog_%d" % player_index)
+		var seat_source := coordinator.get_node_or_null("PlayerSeatPublicSourceService") as PlayerSeatPublicSourceService
+		var seat_rows := seat_source.compose_sources(public_projection, 0) if seat_source != null else []
+		_expect(seat_rows.size() == players.size(), "player_seat_source_preserves_formal_role_count")
+		for player_index in range(seat_rows.size()):
+			var seat := seat_rows[player_index] as Dictionary
+			_expect(int(seat.get("player_index", -1)) == player_index and str(seat.get("role_name", "")) == EXPECTED_NAMES[player_index], "player_seat_role_projection_matches_catalog_%d" % player_index)
 	runtime_root.queue_free()
 	await process_frame
 	await process_frame
