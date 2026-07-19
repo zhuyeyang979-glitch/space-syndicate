@@ -89,6 +89,54 @@ func set_active_context(player_index: int, district_index: int, product_id: Stri
 	})
 
 
+func inspected_player_index() -> int:
+	return _inspected_player
+
+
+func select_inspected_player(target_player_index: int, expected_selection_revision: int) -> Dictionary:
+	if expected_selection_revision != _revision:
+		return {
+			"applied": false,
+			"changed": false,
+			"reason_code": "selection_revision_stale",
+			"previous_inspected_player_index": _inspected_player,
+			"inspected_player_index": _inspected_player,
+			"selection_revision": _revision,
+		}
+	if target_player_index < 0:
+		return {
+			"applied": false,
+			"changed": false,
+			"reason_code": "target_player_invalid",
+			"previous_inspected_player_index": _inspected_player,
+			"inspected_player_index": _inspected_player,
+			"selection_revision": _revision,
+		}
+	var previous := _inspected_player
+	var changed := target_player_index != _inspected_player or target_player_index != _selected_player
+	_selected_player = target_player_index
+	_inspected_player = target_player_index
+	if changed:
+		_revision += 1
+		selection_changed.emit(snapshot())
+	return {
+		"applied": true,
+		"changed": changed,
+		"reason_code": "inspection_applied" if changed else "inspection_unchanged",
+		"previous_inspected_player_index": previous,
+		"inspected_player_index": _inspected_player,
+		"selection_revision": _revision,
+	}
+
+
+func inspected_player_snapshot() -> Dictionary:
+	return {
+		"inspected_player_index": _inspected_player,
+		"selection_revision": _revision,
+		"presentation_only": true,
+	}
+
+
 func restore(data: Dictionary) -> Dictionary:
 	var next_player := int(data.get("selected_player", _selected_player))
 	var next_inspected := int(data.get("inspected_player", _inspected_player))
@@ -162,6 +210,8 @@ func debug_snapshot() -> Dictionary:
 	var result := snapshot()
 	result["owns_table_selection_state"] = true
 	result["private_player_state_exposed"] = false
+	result["selected_player_semantics"] = "presentation_inspection_target"
+	result["authorized_actor_source"] = "external_identity_authority"
 	return result
 
 

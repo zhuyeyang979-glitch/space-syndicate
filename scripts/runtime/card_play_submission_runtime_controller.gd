@@ -49,7 +49,7 @@ func set_dependencies(
 
 func request_hand_play(request: Dictionary) -> Dictionary:
 	_submission_count += 1
-	var player_index := int(request.get("player_index", _table_selection_state.selected_player if _table_selection_state != null else -1))
+	var player_index := int(request.get("player_index", -1))
 	var slot_index := int(request.get("slot_index", -1))
 	var card_context := _card_at(player_index, slot_index)
 	if not bool(card_context.get("valid", false)):

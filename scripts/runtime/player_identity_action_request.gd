@@ -11,6 +11,11 @@ const SOURCE_SURFACES := [
 	&"top_commodity_track",
 	&"right_inspector",
 	&"forced_decision",
+	&"player_seat",
+	&"keyboard_hotkey",
+	&"table_toolbar",
+	&"fullscreen_hud",
+	&"qa_driver",
 ]
 
 var schema_version := SCHEMA_VERSION

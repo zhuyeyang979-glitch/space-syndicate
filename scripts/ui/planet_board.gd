@@ -1,6 +1,8 @@
 extends PanelContainer
 class_name SpaceSyndicatePlanetBoard
 
+signal player_inspection_requested(player_index: int)
+
 @onready var title_label: Label = %PlanetTitle
 @onready var hint_label: Label = %PlanetHint
 @onready var weather_forecast_strip: Control = %WeatherForecastStrip
@@ -63,6 +65,8 @@ func _ready() -> void:
 		stage_viewport.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if role_seat_layer_host != null and role_seat_layer_host.has_method("set_map_visual_target"):
 		role_seat_layer_host.call("set_map_visual_target", embedded_map_view)
+	if role_seat_layer_host != null and role_seat_layer_host.has_signal("player_inspection_requested"):
+		role_seat_layer_host.connect("player_inspection_requested", Callable(self, "_on_player_inspection_requested"))
 	call_deferred("_fit_square_stage")
 	queue_redraw()
 
@@ -151,6 +155,24 @@ func bind_presentation_viewer(viewer_index: int, authorization_revision: int) ->
 	_presentation_authorization_revision = authorization_revision
 
 
+func set_inspected_player_index(player_index: int) -> void:
+	if role_seat_layer_host != null and role_seat_layer_host.has_method("set_inspected_player_index"):
+		role_seat_layer_host.call("set_inspected_player_index", player_index)
+
+
+func inspected_player_index() -> int:
+	return int(role_seat_layer_host.call("inspected_player_index")) if role_seat_layer_host != null and role_seat_layer_host.has_method("inspected_player_index") else -1
+
+
+func focus_inspected_player(player_index: int) -> void:
+	if role_seat_layer_host != null and role_seat_layer_host.has_method("focus_player"):
+		role_seat_layer_host.call("focus_player", player_index)
+
+
+func _on_player_inspection_requested(player_index: int) -> void:
+	player_inspection_requested.emit(player_index)
+
+
 func map_presentation_target_debug_snapshot() -> Dictionary:
 	return {
 		"target_revision": _map_presentation_target_revision,
@@ -199,10 +221,11 @@ func _configure_pointer_passthrough_layers() -> void:
 		playtest_flow_compass,
 		left_space_rail,
 		right_space_rail,
-		back_seat_layer,
-		front_seat_layer,
 	]:
 		_set_mouse_filter_recursive(node, Control.MOUSE_FILTER_IGNORE)
+	for seat_layer in [back_seat_layer, front_seat_layer]:
+		if seat_layer != null:
+			seat_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
 func _set_mouse_filter_recursive(node: Node, filter: Control.MouseFilter) -> void:

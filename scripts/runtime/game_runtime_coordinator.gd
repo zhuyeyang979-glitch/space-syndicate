@@ -1246,6 +1246,11 @@ func table_selection_state() -> TableSelectionState:
 	return _table_selection_state_node()
 
 
+func gameplay_actor_authorization_context(source_surface: StringName = &"game_screen") -> GameplayActorAuthorizationContext:
+	var boundary := get_node_or_null("PlayerIdentityAuthorizationBoundary") as PlayerIdentityAuthorizationBoundary
+	return boundary.current_actor_context(source_surface) if boundary != null else GameplayActorAuthorizationContext.denied("actor_authority_missing", 0, source_surface)
+
+
 func card_supply_presentation_state() -> TableCardSupplyPresentationState:
 	return _table_card_supply_presentation_state_node()
 
@@ -5566,6 +5571,7 @@ func _wire_table_selection_intent_port() -> void:
 		if not presentation_game_screen_path.is_empty() else null
 	if port == null or game_screen == null:
 		return
+	game_screen.bind_gameplay_actor_authorization_context(gameplay_actor_authorization_context(&"game_screen"))
 	if not game_screen.table_selection_intent_requested.is_connected(port.submit_intent):
 		game_screen.table_selection_intent_requested.connect(port.submit_intent)
 	if not port.receipt_ready.is_connected(game_screen.apply_table_selection_receipt):

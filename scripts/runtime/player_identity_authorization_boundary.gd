@@ -15,6 +15,7 @@ var _authorized_count := 0
 var _rejection_count := 0
 var _replay_count := 0
 var _collision_count := 0
+var _context_issue_count := 0
 
 
 func build_request(request_id: String, source_surface: StringName, request_revision: int) -> PlayerIdentityActionRequest:
@@ -87,6 +88,57 @@ func authorize_request(request: PlayerIdentityActionRequest) -> PlayerIdentityAu
 	return _complete(_receipt(request, true, "authorized"))
 
 
+func current_actor_context(source_surface: StringName = &"game_screen") -> GameplayActorAuthorizationContext:
+	_context_issue_count += 1
+	if not PlayerIdentityActionRequest.SOURCE_SURFACES.has(source_surface):
+		return GameplayActorAuthorizationContext.denied("source_surface_invalid", _context_issue_count, source_surface)
+	var dependencies := _dependencies_report()
+	if not bool(dependencies.get("ready", false)):
+		return GameplayActorAuthorizationContext.denied(str(dependencies.get("reason_code", "authority_dependency_missing")), _context_issue_count, source_surface)
+	var viewer_context := _authorization().context()
+	if not viewer_context.authorized or viewer_context.viewer_index < 0:
+		return GameplayActorAuthorizationContext.denied("spectator_private_mismatch", _context_issue_count, source_surface)
+	var public_players: Array = _world().public_intel_projection().get("players", [])
+	if viewer_context.viewer_index >= public_players.size():
+		return GameplayActorAuthorizationContext.denied("authorized_player_missing", _context_issue_count, source_surface)
+	var public_player: Dictionary = public_players[viewer_context.viewer_index] if public_players[viewer_context.viewer_index] is Dictionary else {}
+	if int(public_player.get("player_index", -1)) != viewer_context.viewer_index:
+		return GameplayActorAuthorizationContext.denied("public_authority_mismatch", _context_issue_count, source_surface)
+	var summary := _game_session().session_summary()
+	if str(summary.get("session_state", "")) not in [GameSessionRuntimeController.STATE_RUNNING, GameSessionRuntimeController.STATE_PAUSED]:
+		return GameplayActorAuthorizationContext.denied("session_not_actionable", _context_issue_count, source_surface)
+	var context := GameplayActorAuthorizationContext.new()
+	context.request_id = "actor-context:%s:%d" % [str(summary.get("session_id", "")), _context_issue_count]
+	context.authorized = true
+	context.reason_code = "authorized"
+	context.viewer_index = viewer_context.viewer_index
+	context.authorized_actor_player_index = viewer_context.viewer_index
+	context.authorization_revision = viewer_context.authorization_revision
+	context.session_id = str(summary.get("session_id", ""))
+	context.session_revision = _game_session().session_start_revision()
+	context.source_surface = source_surface
+	context.issued_at_operation_revision = _context_issue_count
+	return context if context.is_valid() else GameplayActorAuthorizationContext.denied("actor_context_invalid", _context_issue_count, source_surface)
+
+
+func authorize_actor_index(requested_actor_player_index: int, source_surface: StringName = &"game_screen") -> GameplayActorAuthorizationContext:
+	var context := current_actor_context(source_surface)
+	if not context.is_valid():
+		return context
+	if requested_actor_player_index != context.authorized_actor_player_index:
+		return GameplayActorAuthorizationContext.denied("actor_authority_mismatch", context.issued_at_operation_revision, source_surface)
+	return GameplayActorAuthorizationContext.from_dictionary(context.to_dictionary())
+
+
+func public_player_exists(player_index: int) -> bool:
+	if _world() == null or player_index < 0:
+		return false
+	var public_players: Array = _world().public_intel_projection().get("players", [])
+	if player_index >= public_players.size() or not (public_players[player_index] is Dictionary):
+		return false
+	return int((public_players[player_index] as Dictionary).get("player_index", -1)) == player_index
+
+
 func debug_snapshot() -> Dictionary:
 	return {
 		"boundary_id": "player_identity_authorization_v1",
@@ -95,12 +147,14 @@ func debug_snapshot() -> Dictionary:
 		"rejection_count": _rejection_count,
 		"replay_count": _replay_count,
 		"collision_count": _collision_count,
+		"context_issue_count": _context_issue_count,
 		"journal_size": _request_journal.size(),
 		"journal_session_key": _journal_session_key,
 		"journal_eviction_enabled": false,
 		"scene_owned": true,
 		"typed_requests": true,
 		"viewer_authority": "LocalViewerAuthorization",
+		"actor_authority": "LocalViewerAuthorization+GameSessionRuntimeController+WorldSessionState",
 		"session_authority": "GameSessionRuntimeController",
 		"world_authority": "WorldSessionState.public_intel_projection",
 		"infers_actor_from_ui": false,

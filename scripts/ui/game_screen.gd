@@ -79,6 +79,11 @@ var _live_presentation_target_count := 0
 var _full_presentation_target_count := 0
 var _presentation_authorized_viewer_index := -1
 var _presentation_authorization_revision := 0
+var _presentation_session_id := ""
+var _presentation_session_revision := 0
+var _inspected_player_index := -1
+var _last_player_inspection_receipt_revision := -1
+var _player_inspection_receipt_apply_count := 0
 var _table_selection_request_revision := 0
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
@@ -89,6 +94,8 @@ func _ready() -> void:
 		top_bar.connect("end_turn_requested", Callable(self, "_on_end_turn_requested"))
 	if top_bar.has_signal("menu_requested"):
 		top_bar.connect("menu_requested", Callable(self, "_on_menu_requested"))
+	if top_bar.has_signal("player_inspection_requested"):
+		top_bar.connect("player_inspection_requested", Callable(self, "_on_toolbar_player_inspection_requested"))
 	if commodity_sushi_track != null:
 		commodity_sushi_track.item_focused.connect(_on_commodity_item_focused)
 		commodity_sushi_track.claim_requested.connect(_on_commodity_claim_requested)
@@ -113,7 +120,11 @@ func _ready() -> void:
 		player_board.connect("card_drag_released", Callable(self, "_on_card_drag_released"))
 	if player_board.has_signal("action_requested"):
 		player_board.connect("action_requested", Callable(self, "_on_action_requested"))
+	if player_board.has_signal("player_inspection_requested"):
+		player_board.connect("player_inspection_requested", Callable(self, "_on_player_board_inspection_requested"))
 	player_board.application_intent_requested.connect(_on_application_intent_requested)
+	if planet_board.has_signal("player_inspection_requested"):
+		planet_board.connect("player_inspection_requested", Callable(self, "_on_player_seat_inspection_requested"))
 	if overlay_layer.has_signal("side_drawer_action_requested"):
 		overlay_layer.connect("side_drawer_action_requested", Callable(self, "_on_side_drawer_action_requested"))
 	if overlay_layer.has_signal("temporary_decision_action_requested"):
@@ -165,6 +176,7 @@ func apply_state(data: Dictionary) -> void:
 		player_data.get("bid_board", {}),
 		ui_data.get("active_forced_decision", {})
 	)
+	_apply_inspected_player_presentation()
 	call_deferred("_sync_runtime_table_focus_order")
 
 
@@ -205,10 +217,30 @@ func bind_presentation_viewer(viewer_index: int, authorization_revision: int) ->
 		_selected_commodity_slot_id = ""
 		_selected_commodity_item_data = {}
 		_last_commodity_action_result = {}
+		_inspected_player_index = viewer_index
+		_last_player_inspection_receipt_revision = -1
+		_player_inspection_receipt_apply_count = 0
 	_presentation_authorized_viewer_index = viewer_index
 	_presentation_authorization_revision = authorization_revision
 	if planet_board is SpaceSyndicatePlanetBoard:
 		(planet_board as SpaceSyndicatePlanetBoard).bind_presentation_viewer(viewer_index, authorization_revision)
+	if player_board.has_method("bind_public_identity"):
+		player_board.call("bind_public_identity", viewer_index)
+	if top_bar.has_method("bind_public_identity"):
+		top_bar.call("bind_public_identity", viewer_index)
+
+
+func bind_gameplay_actor_authorization_context(context: GameplayActorAuthorizationContext) -> void:
+	if context == null or not context.is_valid():
+		_presentation_session_id = ""
+		_presentation_session_revision = 0
+		return
+	if _presentation_authorized_viewer_index >= 0 and context.viewer_index != _presentation_authorized_viewer_index:
+		return
+	_presentation_authorized_viewer_index = context.viewer_index
+	_presentation_authorization_revision = context.authorization_revision
+	_presentation_session_id = context.session_id
+	_presentation_session_revision = context.session_revision
 
 
 func _presentation_authorization_matches(viewer_index: int, authorization_revision: int) -> bool:
@@ -226,6 +258,8 @@ func _on_map_layer_focus_requested(layer_id: String) -> void:
 	intent.selection_kind = TABLE_SELECTION_INTENT_SCRIPT.KIND_MAP_LAYER
 	intent.viewer_index = _presentation_authorized_viewer_index
 	intent.authorization_revision = _presentation_authorization_revision
+	intent.session_id = _presentation_session_id
+	intent.session_revision = _presentation_session_revision
 	intent.expected_selection_revision = _current_selection_revision()
 	intent.map_layer_id = StringName(layer_id)
 	intent.source_surface = &"planet_map"
@@ -233,21 +267,126 @@ func _on_map_layer_focus_requested(layer_id: String) -> void:
 	table_selection_intent_requested.emit(intent)
 
 
+func request_player_inspection(target_player_index: int, source_surface: StringName) -> bool:
+	if source_surface not in TABLE_SELECTION_INTENT_SCRIPT.PLAYER_INSPECTION_SOURCE_SURFACES \
+			or target_player_index < 0 or _presentation_authorized_viewer_index < 0 \
+			or _presentation_session_id.is_empty() or _presentation_session_revision <= 0:
+		return false
+	_table_selection_request_revision += 1
+	var intent := TABLE_SELECTION_INTENT_SCRIPT.new()
+	intent.request_id = "player-inspection:%d:%d" % [_presentation_authorized_viewer_index, _table_selection_request_revision]
+	intent.selection_kind = TABLE_SELECTION_INTENT_SCRIPT.KIND_INSPECT_PLAYER
+	intent.viewer_index = _presentation_authorized_viewer_index
+	intent.authorization_revision = _presentation_authorization_revision
+	intent.session_id = _presentation_session_id
+	intent.session_revision = _presentation_session_revision
+	intent.expected_selection_revision = _current_selection_revision()
+	intent.target_player_index = target_player_index
+	intent.source_surface = source_surface
+	intent.request_revision = _table_selection_request_revision
+	table_selection_intent_requested.emit(intent)
+	return true
+
+
 func apply_table_selection_receipt(receipt: TableSelectionReceipt) -> void:
 	if receipt == null:
 		return
-	if overlay_layer != null and overlay_layer.has_method("set_selected_map_layer_focus"):
+	if receipt.selection_kind == TABLE_SELECTION_INTENT_SCRIPT.KIND_MAP_LAYER \
+			and overlay_layer != null and overlay_layer.has_method("set_selected_map_layer_focus"):
 		overlay_layer.call("set_selected_map_layer_focus", str(receipt.effective_map_layer_id))
 	if receipt.selection_revision_after >= 0:
 		var context: Dictionary = current_ui_data.get("selection_context", {}) \
 			if current_ui_data.get("selection_context", {}) is Dictionary else {}
 		context["revision"] = receipt.selection_revision_after
 		current_ui_data["selection_context"] = context
-	if receipt.accepted:
+	if receipt.accepted and receipt.selection_kind == TABLE_SELECTION_INTENT_SCRIPT.KIND_INSPECT_PLAYER:
+		if receipt.selection_revision_after >= 0 and receipt.selection_revision_after <= _last_player_inspection_receipt_revision:
+			return
+		_last_player_inspection_receipt_revision = receipt.selection_revision_after
+		_player_inspection_receipt_apply_count += 1
+		_inspected_player_index = receipt.inspected_player_index
+		_apply_inspected_player_presentation(true)
+		_show_player_action_feedback(receipt.request_id, "success", "已切换公开玩家视图；你的行动身份保持不变。")
+	elif receipt.accepted:
 		_show_player_action_feedback(receipt.request_id, "success", "地图图层已切换。")
 	else:
-		var detail := "图层状态已变化，请重试。" if receipt.reason_code == "selection_revision_stale" else "当前无法切换地图图层。"
+		var detail := "当前无法切换地图图层。"
+		if receipt.selection_kind == TABLE_SELECTION_INTENT_SCRIPT.KIND_INSPECT_PLAYER:
+			if receipt.reason_code == "selection_revision_stale":
+				detail = "查看状态已变化，请重试。"
+			elif receipt.reason_code == "forced_decision_blocks_selection":
+				detail = "请先完成当前强制决策。"
+			else:
+				detail = "当前无法切换公开玩家视图。"
+		elif receipt.reason_code == "selection_revision_stale":
+			detail = "图层状态已变化，请重试。"
 		_show_player_action_feedback(receipt.request_id, "blocked", detail)
+
+
+func _on_player_seat_inspection_requested(player_index: int) -> void:
+	request_player_inspection(player_index, &"player_seat")
+
+
+func _on_player_board_inspection_requested(player_index: int) -> void:
+	request_player_inspection(player_index, &"player_board")
+
+
+func _on_toolbar_player_inspection_requested(player_index: int) -> void:
+	request_player_inspection(player_index, &"table_toolbar")
+
+
+func _apply_inspected_player_presentation(focus_seat: bool = false) -> void:
+	var descriptor := _public_player_descriptor(_inspected_player_index)
+	if descriptor.is_empty():
+		return
+	if planet_board.has_method("set_inspected_player_index"):
+		planet_board.call("set_inspected_player_index", _inspected_player_index)
+	if focus_seat and planet_board.has_method("focus_inspected_player"):
+		planet_board.call("focus_inspected_player", _inspected_player_index)
+	if player_board.has_method("set_inspected_public_player"):
+		player_board.call("set_inspected_public_player", descriptor)
+	if top_bar.has_method("set_inspected_public_player"):
+		top_bar.call("set_inspected_public_player", descriptor)
+	if right_inspector.has_method("show_public_player"):
+		right_inspector.call("show_public_player", descriptor)
+	if overlay_layer != null:
+		overlay_layer.set_meta("inspected_player_index", _inspected_player_index)
+		overlay_layer.set_meta("player_inspection_revision", _current_selection_revision())
+
+
+func _public_player_descriptor(player_index: int) -> Dictionary:
+	var planet: Dictionary = current_ui_data.get("planet", {}) if current_ui_data.get("planet", {}) is Dictionary else {}
+	var seats: Array = planet.get("player_seats", []) if planet.get("player_seats", []) is Array else []
+	for seat_variant in seats:
+		if not (seat_variant is Dictionary):
+			continue
+		var seat := seat_variant as Dictionary
+		if int(seat.get("player_index", -1)) != player_index:
+			continue
+		return {
+			"player_index": player_index,
+			"public_player_name": str(seat.get("public_player_name", "玩家%d" % (player_index + 1))),
+			"role_name": str(seat.get("role_name", "外星辛迪加")),
+			"player_color": seat.get("player_color", Color.WHITE),
+			"public_status": str(seat.get("public_status", "waiting")),
+			"is_local_player": bool(seat.get("is_local_player", false)),
+		}
+	return {}
+
+
+func player_inspection_debug_snapshot() -> Dictionary:
+	return {
+		"inspected_player_index": _inspected_player_index,
+		"authorized_viewer_index": _presentation_authorized_viewer_index,
+		"session_id_bound": not _presentation_session_id.is_empty(),
+		"player_seat_synced": planet_board.has_method("inspected_player_index") and int(planet_board.call("inspected_player_index")) == _inspected_player_index,
+		"player_board_synced": int(player_board.get_meta("inspected_player_index", -1)) == _inspected_player_index,
+		"toolbar_synced": int(top_bar.get_meta("inspected_player_index", -1)) == _inspected_player_index,
+		"fullscreen_hud_synced": int(overlay_layer.get_meta("inspected_player_index", -1)) == _inspected_player_index if overlay_layer != null else false,
+		"right_inspector_public_only": str(right_inspector.get_meta("context_kind", "")) == "public_player",
+		"receipt_apply_count": _player_inspection_receipt_apply_count,
+		"last_receipt_revision": _last_player_inspection_receipt_revision,
+	}
 
 
 func _current_selection_revision() -> int:
@@ -636,6 +775,13 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var key_event := event as InputEventKey
 	if key_event == null or not key_event.pressed or key_event.echo:
 		return
+	if _should_ignore_player_inspection_hotkey():
+		return
+	var inspected_index := _player_inspection_index_for_key(key_event)
+	if inspected_index >= 0:
+		accept_event()
+		request_player_inspection(inspected_index, &"keyboard_hotkey")
+		return
 	if _should_ignore_quick_action_hotkey():
 		return
 	var quick_index := _quick_action_index_for_key(key_event)
@@ -660,7 +806,27 @@ func _should_ignore_quick_action_hotkey() -> bool:
 	return overlay_layer != null and overlay_layer.has_method("public_bid_visible") and bool(overlay_layer.call("public_bid_visible"))
 
 
+func _should_ignore_player_inspection_hotkey() -> bool:
+	if not is_visible_in_tree():
+		return true
+	var focused := get_viewport().gui_get_focus_owner() if get_viewport() != null else null
+	return focused is LineEdit or focused is TextEdit
+
+
+func _player_inspection_index_for_key(event: InputEventKey) -> int:
+	if event.ctrl_pressed or event.alt_pressed or event.meta_pressed:
+		return -1
+	var code := int(event.unicode)
+	if code >= 49 and code <= 56:
+		return code - 49
+	if event.keycode >= KEY_1 and event.keycode <= KEY_8:
+		return int(event.keycode - KEY_1)
+	return -1
+
+
 func _quick_action_index_for_key(event: InputEventKey) -> int:
+	if not event.ctrl_pressed:
+		return -1
 	var code := int(event.unicode)
 	if code >= 49 and code <= 52:
 		return code - 49

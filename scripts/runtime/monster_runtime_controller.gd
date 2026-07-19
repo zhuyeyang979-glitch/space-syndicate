@@ -150,15 +150,6 @@ var game_time: float:
 	set(value):
 		_write_world_value(&"game_time", value)
 
-var selected_player: int:
-	get:
-		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
-		return state.selected_player if state != null else -1
-	set(value):
-		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
-		if state != null:
-			state.selected_player = value
-
 var selected_district: int:
 	get:
 		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
@@ -495,8 +486,7 @@ func resolve_targeted_skill(skill: Dictionary, player: Dictionary, target_slot: 
 		_add_action_callout("自动怪兽%d·%s" % [target_slot + 1, String(delayed_actor.get("name", "怪兽"))], "行动干扰", "%s使特殊行动延后%.1fs。" % [String(skill.get("name", "行动干扰")), delay], _auto_monster_color(target_slot), _entity_world_position(delayed_actor))
 		return true
 	if kind == "monster_takeover":
-		var takeover_player := acting_player_index if acting_player_index >= 0 else selected_player
-		return _apply_monster_takeover(skill, target_slot, takeover_player)
+		return _apply_monster_takeover(skill, target_slot, acting_player_index)
 	if kind == "mudslide":
 		var mud_actor: Dictionary = auto_monsters[target_slot]
 		var range_limit: float = float(skill.get("range", DEFAULT_AOE_RADIUS_METERS))
@@ -4817,8 +4807,6 @@ func _record_monster_wager_damage(attacker_slot: int, target_slot: int, damage: 
 	active_monster_wagers[index] = entry
 
 func _place_monster_wager_percent(wager_id: int, side: String, stake_percent: int = 0, player_index: int = -1, forced: bool = false, metadata: Dictionary = {}) -> bool:
-	if player_index < 0:
-		player_index = selected_player
 	if player_index < 0 or player_index >= players.size():
 		return false
 	var index := _monster_wager_entry_index_by_id(wager_id)
@@ -4833,8 +4821,6 @@ func _place_monster_wager_percent(wager_id: int, side: String, stake_percent: in
 
 func _place_monster_wager(wager_id: int, side: String, stake: int = 0, player_index: int = -1, forced: bool = false, metadata: Dictionary = {}) -> bool:
 	side = side.to_lower()
-	if player_index < 0:
-		player_index = selected_player
 	if player_index < 0 or player_index >= players.size() or stake < 0:
 		return false
 	var index := _monster_wager_entry_index_by_id(wager_id)

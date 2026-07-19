@@ -516,15 +516,6 @@ var selected_district:
 		if state != null:
 			state.selected_district = int(value)
 
-var selected_player:
-	get:
-		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
-		return state.selected_player if state != null else 0
-	set(value):
-		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
-		if state != null:
-			state.selected_player = int(value)
-
 var selected_trade_product:
 	get:
 		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
@@ -1024,8 +1015,8 @@ func _skill_play_product(skill: Dictionary, player_index: int) -> String:
 func _skill_play_flow_required(skill: Dictionary, _player_index: int = -1) -> int:
 	return _call_world(&"_skill_play_flow_required", [skill, _player_index])
 
-func _skill_play_region_scope(skill: Dictionary) -> String:
-	return str(_skill_play_requirement_status(selected_player, skill).get("scope", CardPlayRequirementPolicyScript.SCOPE_OWN_BEST_REGION))
+func _skill_play_region_scope(skill: Dictionary, player_index: int) -> String:
+	return str(_skill_play_requirement_status(player_index, skill).get("scope", CardPlayRequirementPolicyScript.SCOPE_OWN_BEST_REGION))
 
 func _best_player_gdp_share_district(player_index: int) -> int:
 	return _call_world(&"_best_player_gdp_share_district", [player_index])
@@ -1034,8 +1025,8 @@ func _skill_play_requirement_status(player_index: int, skill: Dictionary) -> Dic
 	var value: Variant = _call_world(&"_card_play_requirement_snapshot", [player_index, skill])
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
-func _skill_play_cash_cost(skill: Dictionary) -> int:
-	return int(_skill_play_requirement_status(selected_player, skill).get("cash_cost", 0))
+func _skill_play_cash_cost(skill: Dictionary, player_index: int) -> int:
+	return int(_skill_play_requirement_status(player_index, skill).get("cash_cost", 0))
 
 func _can_play_skill_now(player_index: int, skill: Dictionary, show_log: bool = true) -> bool:
 	var value: Variant = _call_world(&"_card_play_eligibility_snapshot", [player_index, skill, "rule", {}])
@@ -5002,7 +4993,7 @@ func _ai_route_plan_bonus_for_candidate(player_index: int, kind: String, distric
 	return max(0, bonus)
 func _ai_play_requirement_metadata(player_index: int, skill: Dictionary, planned_district: int = -1) -> Dictionary:
 	var evaluated_skill := skill.duplicate(true)
-	var scope := _skill_play_region_scope(evaluated_skill)
+	var scope := _skill_play_region_scope(evaluated_skill, player_index)
 	var has_locked_requirement_district := evaluated_skill.has("play_requirement_district")
 	var requirement_district := int(evaluated_skill.get("play_requirement_district", planned_district))
 	if not has_locked_requirement_district:
@@ -5047,7 +5038,7 @@ func _ai_route_hand_inventory(player_index: int, route_id: String) -> Dictionary
 			continue
 		result["total"] = int(result.get("total", 0)) + 1
 		var requirement := _ai_play_requirement_metadata(player_index, skill, _best_player_gdp_share_district(player_index))
-		var cash_cost := _skill_play_cash_cost(skill)
+		var cash_cost := _skill_play_cash_cost(skill, player_index)
 		if bool(requirement.get("requirement_satisfied", false)) and cash >= cash_cost:
 			result["playable"] = int(result.get("playable", 0)) + 1
 		else:
@@ -6959,7 +6950,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 	if int(context.get("district", -1)) < 0:
 		return {}
 	var requirement_district := int(context.get("district", -1))
-	if _skill_play_region_scope(skill) == CardPlayRequirementPolicyScript.SCOPE_CONTRACT_SOURCE_REGION:
+	if _skill_play_region_scope(skill, player_index) == CardPlayRequirementPolicyScript.SCOPE_CONTRACT_SOURCE_REGION:
 		requirement_district = int(context.get("contract_source", requirement_district))
 	var requirement_metadata := _ai_play_requirement_metadata(player_index, skill, requirement_district)
 	if not bool(requirement_metadata.get("requirement_satisfied", false)):
@@ -6999,7 +6990,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		if refreshed_futures_plan.is_empty():
 			return {}
 		context.merge(refreshed_futures_plan, true)
-	var cash_cost := _skill_play_cash_cost(skill)
+	var cash_cost := _skill_play_cash_cost(skill, player_index)
 	if int((players[player_index] as Dictionary).get("cash", 0)) < cash_cost:
 		return {}
 	var target_owner := -999
@@ -7384,12 +7375,10 @@ func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_cand
 	var slot_index := int(candidate.get("slot_index", -1))
 	var target_slot := int(candidate.get("target_slot", -1))
 	var target_player := int(candidate.get("target_player", -1))
-	var previous_player := int(selected_player)
 	var previous_district := int(selected_district)
 	var previous_product := str(selected_trade_product)
 	var previous_source := int(selected_contract_source_district)
 	var previous_target := int(selected_contract_target_district)
-	selected_player = player_index
 	selected_district = int(candidate.get("district", _ai_first_alive_district()))
 	selected_trade_product = String(candidate.get("product", ""))
 	selected_contract_source_district = int(candidate.get("contract_source", -1))
@@ -7430,7 +7419,6 @@ func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_cand
 			all_candidates,
 			decision_metadata
 		)
-	selected_player = previous_player
 	selected_district = previous_district
 	selected_trade_product = previous_product
 	selected_contract_source_district = previous_source
@@ -7878,10 +7866,8 @@ func _ai_queue_counter_response_candidate(player_index: int, candidate: Dictiona
 	if slot_index < 0 or slot_index >= slots.size() or not (slots[slot_index] is Dictionary):
 		return false
 	var source_skill: Dictionary = slots[slot_index]
-	var previous_player := int(selected_player)
 	var previous_district := int(selected_district)
 	var previous_product := str(selected_trade_product)
-	selected_player = player_index
 	selected_district = int(candidate.get("district", int(_card_resolution_active_entry().get("selected_district", _ai_first_alive_district()))))
 	selected_trade_product = String(candidate.get("product", _skill_play_product(source_skill, player_index)))
 	var queued := false
@@ -7934,7 +7920,6 @@ func _ai_queue_counter_response_candidate(player_index: int, candidate: Dictiona
 				"learning_bonus": int(candidate.get("learning_bonus", 0)),
 			}
 		)
-	selected_player = previous_player
 	selected_district = previous_district
 	selected_trade_product = previous_product
 	return queued
