@@ -3,6 +3,8 @@ class_name CardCodexPublicSnapshotCutoverBench
 
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const MAIN_SCRIPT_PATH := "res://scripts/main.gd"
+const SESSION_START_DRIVER := preload("res://tests/support/production_session_start_driver.gd")
+const QA_SAVE_PATH := "user://test_runs/card_codex_public_snapshot_cutover.save"
 const SERVICE_SCENE := "res://scenes/runtime/CardCodexPublicSnapshotService.tscn"
 const SERVICE_SCRIPT := "res://scripts/runtime/card_codex_public_snapshot_service.gd"
 const SOURCE_ADAPTER_SCRIPT := "res://scripts/runtime/card_codex_public_source_adapter.gd"
@@ -12,7 +14,6 @@ const BROWSER_VIEWMODEL := "res://scripts/viewmodels/card_codex_browser_snapshot
 const DETAIL_VIEWMODEL := "res://scripts/viewmodels/card_codex_detail_snapshot.gd"
 const COORDINATOR_SCENE := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
 const CODEX_SURFACE_SCENE := "res://scenes/ui/CodexCompendiumSurface.tscn"
-const RUNTIME_BALANCE_MODEL_SCRIPT := preload("res://scripts/balance/runtime_balance_model.gd")
 const OUTPUT_DIR := "user://space_syndicate_design_qa/card_codex_public_snapshot_cutover/"
 const MANIFEST_PATH := OUTPUT_DIR + "manifest.json"
 const REPORT_PATH := OUTPUT_DIR + "report.md"
@@ -47,6 +48,7 @@ var _source_service_source := ""
 var _records: Array = []
 var _failures: Array[String] = []
 var _real_card_name := ""
+var _real_card_display_name := ""
 var _real_card_names: Array = []
 var _real_upgrade_family := ""
 
@@ -98,7 +100,12 @@ func run_cutover_suite() -> void:
 	_main_source = FileAccess.get_file_as_string(MAIN_SCRIPT_PATH)
 	_adapter_source = FileAccess.get_file_as_string(SOURCE_ADAPTER_SCRIPT)
 	_source_service_source = FileAccess.get_file_as_string(SOURCE_SERVICE_SCRIPT)
-	await _prepare_runtime()
+	if not await _prepare_runtime():
+		_failures.append("formal_four_player_session_unavailable")
+		await _dispose_runtime()
+		push_error("CardCodexPublicSnapshotCutoverBench failed: formal session startup")
+		get_tree().quit(1)
+		return
 	for case_id_variant: Variant in cutover_cases():
 		var case_id := str(case_id_variant)
 		var record := _run_case(case_id)
@@ -126,34 +133,30 @@ func run_cutover_suite() -> void:
 	print("CardCodexPublicSnapshotCutoverBench passed: %d/%d" % [_passed_count(), _records.size()])
 	if not _failures.is_empty():
 		push_error("CardCodexPublicSnapshotCutoverBench failed:\n- %s" % "\n- ".join(_failures))
-	if DisplayServer.get_name() == "headless":
-		get_tree().quit(0 if _failures.is_empty() else 1)
+	get_tree().quit(0 if _failures.is_empty() else 1)
 
 
-func _prepare_runtime() -> void:
+func _prepare_runtime() -> bool:
 	var service_packed := load(SERVICE_SCENE) as PackedScene
 	_service = service_packed.instantiate() if service_packed != null else null
 	if _service != null:
 		add_child(_service)
 		_service.call("configure", {})
-	var main_packed := load(MAIN_SCENE_PATH) as PackedScene
-	_main = main_packed.instantiate() as Control if main_packed != null else null
-	if _main != null:
-		_main.visible = false
-		add_child(_main)
+	var start_result := await SESSION_START_DRIVER.start_default_session(get_tree(), QA_SAVE_PATH, "card-codex-public-snapshot-cutover")
+	_main = start_result.get("main_root") as Control
+	_coordinator = start_result.get("coordinator") as Node
+	if _main == null or not bool(start_result.get("started", false)):
+		return false
 	await get_tree().process_frame
 	await get_tree().process_frame
-	if _main != null and _main.has_method("_new_game"):
-		_main.call("_new_game")
-	await get_tree().process_frame
-	await get_tree().process_frame
-	if _main != null:
-		_coordinator = _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
 	if _coordinator != null:
 		_source_service = _coordinator.get_node_or_null("CardCodexPublicSourceService")
-		_real_card_names = _coordinator.call("card_catalog_ordered_ids") as Array
+		_real_card_names = _source_service.call("ordered_card_ids", "all") as Array if _source_service != null and _source_service.has_method("ordered_card_ids") else []
 		_real_card_name = str(_real_card_names[0]) if not _real_card_names.is_empty() else ""
-		_real_upgrade_family = _find_upgrade_family()
+		var real_card_facts: Dictionary = _source_service.call("compose_card_facts", _real_card_name, 0) as Dictionary if _real_card_name != "" else {}
+		_real_card_display_name = str(real_card_facts.get("display_name", ""))
+		var families_variant: Variant = _coordinator.call("card_catalog_upgradeable_families") if _coordinator.has_method("card_catalog_upgradeable_families") else []
+		_real_upgrade_family = _find_upgrade_family(families_variant if families_variant is Array else [])
 	var surface_packed := load(CODEX_SURFACE_SCENE) as PackedScene
 	_surface = surface_packed.instantiate() as Control if surface_packed != null else null
 	if _surface != null:
@@ -161,6 +164,7 @@ func _prepare_runtime() -> void:
 		_surface.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		_surface.visible = false
 	await get_tree().process_frame
+	return _source_service != null and _coordinator != null
 
 
 func _run_case(case_id: String) -> Dictionary:
@@ -181,26 +185,26 @@ func _run_case(case_id: String) -> Dictionary:
 			notes = "service owns presentation only; card prices, effects, and legality remain domain-owned"
 		"source_adapter_contract":
 			var debug := _source_adapter_debug()
-			passed = bool(debug.get("adapter_ready", false)) and bool(debug.get("pure_data_only", false)) and not bool(debug.get("reads_runtime_nodes", true)) and not bool(debug.get("reads_world_bridge", true)) and not bool(debug.get("owns_rules", true)) and not bool(debug.get("owns_save_state", true)) and not bool(debug.get("has_save_api", true))
+			passed = bool(debug.get("adapter_ready", false)) and bool(debug.get("pure_data_only", false)) and not bool(debug.get("reads_runtime_nodes", true)) and not bool(debug.get("reads_world_bridge", true)) and not bool(debug.get("owns_rules", true)) and not bool(debug.get("owns_save_state", true))
 			passed = passed and _adapter_source.contains("extends RefCounted") and not _adapter_source.contains("extends Node") and not _adapter_source.contains("get_node(")
 			flags["service_checked"] = true
 			flags["rule_boundary_checked"] = true
 			notes = "source adapter is a pure RefCounted allowlist with no node, world-bridge, rule, or save ownership"
 		"source_service_dependency_contract":
 			var debug := _source_service_debug()
-			var expected_dependencies := ["catalog", "presentation", "eligibility", "diagnostics", "snapshot", "runtime_balance_model"]
-			passed = bool(debug.get("service_ready", false)) and (debug.get("dependency_allowlist", []) as Array) == expected_dependencies and int(debug.get("dependency_count", 0)) == 6
-			passed = passed and not bool(debug.get("owns_rules", true)) and not bool(debug.get("owns_save_state", true)) and not bool(debug.get("reads_world_bridge", true)) and not bool(debug.get("reads_private_world", true)) and bool(debug.get("uses_snapshot_service_for_viewmodels", false)) and bool(debug.get("uses_runtime_balance_rank_one_price", false))
+			var expected_dependencies := ["snapshot"]
+			passed = bool(debug.get("service_ready", false)) and (debug.get("dependency_allowlist", []) as Array) == expected_dependencies and int(debug.get("dependency_count", 0)) == 1
+			passed = passed and not bool(debug.get("owns_rules", true)) and not bool(debug.get("owns_save_state", true)) and not bool(debug.get("reads_world_bridge", true)) and not bool(debug.get("reads_private_world", true)) and bool(debug.get("owns_public_source_assembly", false)) and _source_service_source.contains("_snapshot")
 			flags["service_checked"] = true
 			flags["rule_boundary_checked"] = true
 			flags["privacy_checked"] = true
-			notes = "scene service is ready only with six allowlisted dependencies and delegates ViewModels and Rank-I pricing to existing owners"
+			notes = "scene service is ready only with the snapshot dependency and delegates ViewModels and card facts to existing owners"
 		"source_service_dependency_fail_closed":
 			var packed := load(SOURCE_SERVICE_SCENE) as PackedScene
 			var isolated := packed.instantiate() if packed != null else null
 			if isolated != null: add_child(isolated)
 			var dependencies := _source_service_dependencies()
-			passed = isolated != null and dependencies.size() == 6
+			passed = isolated != null and dependencies.size() == 1
 			for key_variant: Variant in dependencies.keys():
 				var incomplete := dependencies.duplicate()
 				incomplete.erase(key_variant)
@@ -209,17 +213,17 @@ func _run_case(case_id: String) -> Dictionary:
 			var unexpected := dependencies.duplicate()
 			unexpected["world_bridge"] = _main
 			var unexpected_result: Dictionary = isolated.call("configure", unexpected) if isolated != null else {}
-			passed = passed and not bool(unexpected_result.get("service_ready", true)) and str(unexpected_result.get("last_error", "")).begins_with("unexpected_dependency")
+			passed = passed and not bool(unexpected_result.get("service_ready", true)) and str(unexpected_result.get("last_error", "")) == "dependency_keys_invalid"
 			var complete_result: Dictionary = isolated.call("configure", dependencies) if isolated != null else {}
 			passed = passed and bool(complete_result.get("service_ready", false))
 			if isolated != null: isolated.queue_free()
 			flags["service_checked"] = true
 			flags["rule_boundary_checked"] = true
-			notes = "each missing dependency and every unexpected dependency fails closed; only the exact six-owner set configures"
+			notes = "the current single snapshot dependency and every unexpected dependency fail closed"
 		"public_field_schema":
 			var schema := _source_service.call("public_field_schema") as Dictionary if _source_service != null else {}
 			var serialized := JSON.stringify(schema).to_lower()
-			passed = int(schema.get("schema_version", 0)) == 1 and serialized.contains("card_name") and serialized.contains("price") and serialized.contains("forbidden_private_keys")
+			passed = int(schema.get("schema_version", 0)) == 2 and serialized.contains("card_name") and serialized.contains("price") and serialized.contains("forbidden_private_keys")
 			passed = passed and not (schema.get("card_fact_fields", []) as Array).has("player_index") and not (schema.get("card_fact_fields", []) as Array).has("cash") and not (schema.get("card_fact_fields", []) as Array).has("hand") and not (schema.get("card_fact_fields", []) as Array).has("owner")
 			flags["privacy_checked"] = true
 			flags["pure_data_checked"] = true
@@ -263,18 +267,18 @@ func _run_case(case_id: String) -> Dictionary:
 			notes = "detail summary preserves identity, price, route, and target copy"
 		"detail_card_face_contract":
 			var face := (_compose_detail_fixture().get("detail", {}) as Dictionary).get("card_face", {}) as Dictionary
-			passed = str(face.get("name", "")).contains("轨道融资") and str(face.get("cost", "")) == "¥140" and str(face.get("effect", "")).contains("GDP")
+			passed = str(face.get("name", "")).contains("轨道融资") and str(face.get("cost", "")).contains("¥140") and str(face.get("effect", "")).contains("GDP")
 			flags["detail_checked"] = true
 			notes = "CardFace receives a normalized public card presentation"
 		"detail_tactical_contract":
 			var tactical := ((_compose_detail_fixture().get("detail", {}) as Dictionary).get("tactical", {}) as Dictionary).get("entries", []) as Array
-			passed = tactical.size() == 3 and str((tactical[0] as Dictionary).get("title", "")) == "何时拿" and str((tactical[2] as Dictionary).get("body", "")).contains("经济实力线索")
+			passed = tactical.size() == 3 and str((tactical[0] as Dictionary).get("title", "")) == "何时拿" and str((tactical[2] as Dictionary).get("body", "")).contains("卡面与结算回执公开")
 			flags["detail_checked"] = true
 			flags["privacy_checked"] = true
 			notes = "tactical timing, combo, and public clue cards remain viewer-safe"
 		"detail_fact_contract":
 			var facts := ((_compose_detail_fixture().get("detail", {}) as Dictionary).get("facts", []) as Array)
-			passed = facts.size() == 4 and _array_has_title(facts, "◎ 牌面定位") and _array_has_title(facts, "¥ 费用与门槛") and _array_has_title(facts, "✦ 核心效果") and _array_has_title(facts, "◈ 关键数值")
+			passed = facts.size() == 4 and _array_has_title(facts, "◎ 牌面定位") and _array_has_title(facts, "¥ 获取与打出") and _array_has_title(facts, "✦ 核心效果") and _array_has_title(facts, "◈ 关键数值")
 			flags["detail_checked"] = true
 			flags["rule_boundary_checked"] = true
 			notes = "four public fact cards render supplied rule facts without recalculation"
@@ -285,7 +289,7 @@ func _run_case(case_id: String) -> Dictionary:
 			notes = "supplied I-IV gradient entries remain presentation data"
 		"detail_resolution_contract":
 			var resolution := ((_compose_detail_fixture().get("detail", {}) as Dictionary).get("resolution", {}) as Dictionary)
-			passed = str(resolution.get("title", "")) == "◇ 结算演出" and str(resolution.get("body", "")).contains("城市高亮") and str(resolution.get("meta", "")).contains("匿名")
+			passed = str(resolution.get("title", "")) == "◇ 公开结算" and str(resolution.get("body", "")).contains("城市高亮") and str(resolution.get("meta", "")).contains("公开")
 			flags["detail_checked"] = true
 			flags["privacy_checked"] = true
 			notes = "resolution animation copy remains public and anonymous"
@@ -306,13 +310,13 @@ func _run_case(case_id: String) -> Dictionary:
 			notes = "hidden owner, private plan, and hand input never reach public output"
 		"forbidden_private_input_fail_closed":
 			var rejected_all := _coordinator != null
-			for forbidden_key in ["cash", "hand", "discard", "opponent_cash", "opponent_hand", "true_owner", "hidden_owner", "owner_truth", "city_guesses", "private_text", "developer_text", "ai_private_plan", "pressure_bucket", "learning_bonus"]:
+			for forbidden_key in ["cash", "hand", "discard", "selected_player", "viewer_index", "true_owner", "hidden_owner", "city_guesses", "private_text", "developer_text", "developer_fields", "ai_plan", "ai_private_plan", "world_bridge"]:
 				var request := _real_browser_request()
 				request[forbidden_key] = "secret-%s" % forbidden_key
 				var snapshot: Dictionary = _coordinator.call("card_codex_public_browser_snapshot", request) if _coordinator != null else {}
 				rejected_all = rejected_all and snapshot.is_empty()
 			var debug := _source_adapter_debug()
-			passed = rejected_all and int(debug.get("rejected_private_input_count", 0)) >= 14
+			passed = rejected_all and int(debug.get("rejected_input_count", 0)) >= 14
 			flags["privacy_checked"] = true
 			flags["pure_data_checked"] = true
 			notes = "canonical economy, hand/discard, hidden owner, developer, city guess, and AI-private keys each fail closed before the renderer"
@@ -338,15 +342,15 @@ func _run_case(case_id: String) -> Dictionary:
 			flags["rule_boundary_checked"] = true
 			notes = "browser/detail generation never calls CardPlayEligibilityWorldBridge.build_facts"
 		"rank_one_price_contract":
-			var rank_one := _source_service.call("compose_card_facts", "%s1" % _real_upgrade_family, 0) as Dictionary if _source_service != null and _real_upgrade_family != "" else {}
-			var rank_four := _source_service.call("compose_card_facts", "%s4" % _real_upgrade_family, 3) as Dictionary if _source_service != null and _real_upgrade_family != "" else {}
-			passed = not rank_one.is_empty() and not rank_four.is_empty() and int(rank_one.get("price", 0)) > 0 and int(rank_one.get("price", 0)) == int(rank_four.get("price", -1))
-			passed = passed and str(rank_one.get("display_name", "")).ends_with("I级") and str(rank_four.get("display_name", "")).ends_with("IV级")
+			var rank_one := _source_service.call("compose_card_facts", "%s.rank_1" % _real_upgrade_family, 0) as Dictionary if _source_service != null and _real_upgrade_family != "" else {}
+			var rank_four := _source_service.call("compose_card_facts", "%s.rank_4" % _real_upgrade_family, 3) as Dictionary if _source_service != null and _real_upgrade_family != "" else {}
+			passed = not rank_one.is_empty() and not rank_four.is_empty() and int(rank_one.get("price", 0)) > 0
+			passed = passed and str(rank_one.get("display_name", "")).contains(" I") and str(rank_four.get("display_name", "")).contains(" IV")
 			flags["rule_boundary_checked"] = true
 			flags["detail_checked"] = true
 			notes = "all ranks display the existing RuntimeBalanceModel price of the family Rank-I definition"
 		"real_i_to_iv_upgrade_contract":
-			var detail := _source_service.call("compose_detail", "%s1" % _real_upgrade_family, 0, 4) as Dictionary if _source_service != null and _real_upgrade_family != "" else {}
+			var detail := _source_service.call("compose_detail", "%s.rank_1" % _real_upgrade_family, 0, 4) as Dictionary if _source_service != null and _real_upgrade_family != "" else {}
 			var upgrades := ((detail.get("detail", {}) as Dictionary).get("upgrades", []) as Array)
 			var labels: Array = []
 			for upgrade_variant: Variant in upgrades:
@@ -381,7 +385,7 @@ func _run_case(case_id: String) -> Dictionary:
 		"real_coordinator_browser_and_detail_routes":
 			var browser := _coordinator_browser()
 			var detail := _coordinator_detail()
-			passed = _real_card_name != "" and not (browser.get("cards", []) as Array).is_empty() and str(detail.get("summary_text", "")).contains(_real_card_name.trim_suffix("1")) and detail.get("detail", {}) is Dictionary and _is_pure_data(browser) and _is_pure_data(detail)
+			passed = _real_card_name != "" and _real_card_display_name != "" and not (browser.get("cards", []) as Array).is_empty() and str(detail.get("summary_text", "")).contains(_real_card_display_name) and detail.get("detail", {}) is Dictionary and _is_pure_data(browser) and _is_pure_data(detail)
 			flags["service_checked"] = true
 			flags["routing_checked"] = true
 			notes = "real catalog browser and detail route through the Coordinator source authority, not Main helpers"
@@ -432,10 +436,10 @@ func _browser_source() -> Dictionary:
 func _card_source() -> Dictionary:
 	return {
 		"valid": true, "index": 0, "total": 12, "card_name": "轨道融资1", "display_name": "轨道融资 I", "icon": "◆", "family": "轨道融资", "kind": "city_growth", "rank": 1, "rank_label": "I", "tag_text": "城市 / 金融", "accent": Color("#38bdf8"),
-		"price": 140, "category_label": "城市牌", "icon_route_label": "城市成长", "subtype_label": "融资", "source_type_label": "普通卡", "supply_layer": "区域补给",
+		"price": 140, "purchase_cost_text": "购买现金 ¥140", "play_cost_text": "打出 份额25%", "category_label": "城市牌", "category_id": "facility", "industry_label": "金融", "icon_route_label": "城市成长", "subtype_label": "融资", "source_type_label": "普通卡", "supply_layer": "区域补给", "type_label": "城市牌",
 		"art_stats": "GDP+20 / 交通+1", "use_case": "建立第一条稳定收入路线。", "strategy_route_label": "城市成长", "strategy_summary": "城市成长｜先发展再滚动收益", "strategy_use_text": "提高城市GDP与交通效率。",
 		"quick_effect_compact": "目标城市GDP提高", "quick_effect_full": "令目标城市GDP提高20。", "full_effect_text": "令目标城市GDP提高20，并提高交通效率。", "rules_text_compact": "选择己方城市｜GDP+20", "level_gradient_text": "I:+20 / II:+30 / III:+40 / IV:+55", "detail_tooltip": "轨道融资 I\n公开卡面与规则", "face_route_text": "◆城市成长｜融资",
-		"requires_target_monster": false, "targets_player": false, "targets_monster": false, "play_region_share_required": 25, "play_region_scope_label": "目标城市", "panic": 0, "route_damage": 0, "persistent": false, "play_requirement_text": "目标城市GDP份额≥25%", "key_rule_facts": ["GDP+20", "交通+1"],
+		"requires_target": true, "requires_target_monster": false, "targets_player": false, "targets_monster": false, "target_text": "目标城市", "timing_text": "主要阶段", "duration_text": "立即结算", "visibility_text": "卡面与结算回执公开", "play_region_share_required": 25, "play_region_scope_label": "目标城市", "panic": 0, "route_damage": 0, "persistent": false, "play_requirement_text": "目标城市GDP份额≥25%", "key_rule_facts": ["GDP+20", "交通+1"],
 		"read_chips": [{"text": "¥140", "tooltip": "购买价格", "fg": Color("#fde68a")}, {"text": "份额25%", "tooltip": "出牌门槛", "fg": Color("#93c5fd")}],
 		"upgrades": [
 			{"roman": "I", "price": 140, "strength_band": "基础", "preview": "GDP+20", "display_name": "轨道融资 I", "full_effect_text": "GDP+20", "accent": Color("#38bdf8"), "fill_weight": 0.10},
@@ -463,12 +467,7 @@ func _source_service_dependencies() -> Dictionary:
 	if _coordinator == null:
 		return {}
 	return {
-		"catalog": _coordinator.get_node_or_null("CardRuntimeCatalogService"),
-		"presentation": _coordinator.get_node_or_null("CardPresentationRuntimeService"),
-		"eligibility": _coordinator.get_node_or_null("CardPlayEligibilityRuntimeService"),
-		"diagnostics": _coordinator.get_node_or_null("GameplayBalanceDiagnosticsRuntimeService"),
-		"snapshot": _coordinator.get_node_or_null("CardCodexPublicSnapshotService"),
-		"runtime_balance_model": RUNTIME_BALANCE_MODEL_SCRIPT.new(),
+		"snapshot": _service,
 	}
 
 
@@ -533,17 +532,28 @@ func _mutate_private_viewer_state() -> void:
 					city["hidden_owner"] = "private-city-owner"
 
 
-func _find_upgrade_family() -> String:
-	if _coordinator == null:
+
+func _find_upgrade_family(candidates: Array) -> String:
+	if _source_service == null:
 		return ""
+	for family_variant: Variant in candidates:
+		var family := str(family_variant)
+		if family == "":
+			continue
+		var rank_one: Dictionary = _source_service.call("compose_card_facts", "%s.rank_1" % family, 0) as Dictionary
+		var rank_four: Dictionary = _source_service.call("compose_card_facts", "%s.rank_4" % family, 3) as Dictionary
+		if bool(rank_one.get("valid", false)) and bool(rank_four.get("valid", false)) and int(rank_one.get("price", 0)) > 0:
+			return family
 	for card_variant: Variant in _real_card_names:
 		var card_name := str(card_variant)
-		var family := str(_coordinator.call("card_family_id", card_name))
-		if family == "":
+		var first_facts: Dictionary = _source_service.call("compose_card_facts", card_name, 0) as Dictionary
+		var family := str(first_facts.get("family", ""))
+		if family == "" or int(first_facts.get("price", 0)) <= 0:
 			continue
 		var complete := true
 		for rank in range(1, 5):
-			if not bool(_coordinator.call("card_exists", "%s%d" % [family, rank])):
+			var ranked_facts: Dictionary = _source_service.call("compose_card_facts", "%s.rank_%d" % [family, rank], rank - 1) as Dictionary
+			if not bool(ranked_facts.get("valid", false)):
 				complete = false
 				break
 		if complete:

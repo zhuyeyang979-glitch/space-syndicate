@@ -3,7 +3,10 @@ class_name CodexSceneHardCutoverBench
 
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const MAIN_SCRIPT_PATH := "res://scripts/main.gd"
+const SESSION_START_DRIVER := preload("res://tests/support/production_session_start_driver.gd")
+const QA_SAVE_PATH := "user://test_runs/codex_scene_hard_cutover.save"
 const CODEX_SURFACE_SCENE_PATH := "res://scenes/ui/CodexCompendiumSurface.tscn"
+const OVERLAY_PATH := "RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay"
 const CODEX_SURFACE_SCRIPT_PATH := "res://scripts/ui/codex_compendium_surface.gd"
 const COMPENDIUM_HUB_SNAPSHOT_SCRIPT_PATH := "res://scripts/viewmodels/compendium_hub_snapshot.gd"
 const OUTPUT_DIR := "user://space_syndicate_design_qa/codex_scene_hard_cutover/"
@@ -152,7 +155,12 @@ func run_cutover_suite() -> void:
 	_failures.clear()
 	_prepare_output_dir()
 	_main_source = FileAccess.get_file_as_string(MAIN_SCRIPT_PATH).replace("\r\n", "\n")
-	await _ensure_main()
+	if not await _ensure_main():
+		_failures.append("formal_four_player_session_unavailable")
+		await _dispose_main()
+		push_error("CodexSceneHardCutoverBench failed: formal session startup")
+		get_tree().quit(1)
+		return
 	for case_id_variant: Variant in cutover_cases():
 		var case_id := str(case_id_variant)
 		var record := _run_case(case_id)
@@ -181,26 +189,21 @@ func run_cutover_suite() -> void:
 	print("CodexSceneHardCutoverBench passed: %d/%d" % [_passed_count(), _records.size()])
 	if not _failures.is_empty():
 		push_error("CodexSceneHardCutoverBench failed:\n- %s" % "\n- ".join(_failures))
-	if DisplayServer.get_name() == "headless":
-		get_tree().quit(0 if _failures.is_empty() else 1)
+	get_tree().quit(0 if _failures.is_empty() else 1)
 
 
-func _ensure_main() -> void:
-	var packed := load(MAIN_SCENE_PATH) as PackedScene
-	_main = packed.instantiate() as Control if packed != null else null
-	if _main == null:
-		return
-	_main.visible = false
-	add_child(_main)
-	await get_tree().process_frame
-	if _main.has_method("_new_game"):
-		_main.call("_new_game")
+func _ensure_main() -> bool:
+	var start_result := await SESSION_START_DRIVER.start_default_session(get_tree(), QA_SAVE_PATH, "codex-scene-hard-cutover")
+	_main = start_result.get("main_root") as Control
+	if _main == null or not bool(start_result.get("started", false)):
+		return false
 	await get_tree().process_frame
 	await get_tree().process_frame
-	_overlay = _main.get("menu_overlay") as Control
+	_overlay = _main.get_node_or_null(OVERLAY_PATH) as Control
 	var coordinator := _main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
 	var names_variant: Variant = coordinator.call("card_codex_public_card_ids", "all") if coordinator != null else []
 	_card_names = names_variant if names_variant is Array else []
+	return _overlay != null and coordinator != null
 
 
 func _run_case(case_id: String) -> Dictionary:
@@ -376,13 +379,38 @@ func _codex_snapshots() -> Array:
 
 
 func _request_codex(domain: String, view: String, stable_item_id: String, optional_index: int, filter_id: String = "") -> bool:
-	if _main == null:
+	if not _open_compendium_hub():
 		return false
-	var port := _main.get_node_or_null("RuntimeServices/CompendiumNavigationPort")
-	return port != null and bool(port.call(
-		"request_open", domain, view, stable_item_id, optional_index, filter_id, 0,
-		"compendium", {"origin": "compendium"}
-	))
+	var flow := _main.get_node_or_null("RuntimeServices/CompendiumApplicationFlowController") as CompendiumApplicationFlowController
+	if flow == null:
+		return false
+	if view == "browser":
+		return flow.handle_surface_action("hub_action", {"action_id": domain})
+	if domain in ["role", "region"]:
+		return flow.handle_surface_action("hub_action", {"action_id": domain})
+	if domain == "monster":
+		return flow.handle_surface_action("monster_detail", {"catalog_index": optional_index})
+	if domain == "product":
+		return flow.handle_surface_action("product_detail", {"catalog_index": optional_index})
+	return false
+
+
+func _open_compendium_hub() -> bool:
+	if _main == null or _overlay == null:
+		return false
+	if not _overlay.visible:
+		var press := InputEventKey.new()
+		press.keycode = KEY_ESCAPE
+		press.physical_keycode = KEY_ESCAPE
+		press.pressed = true
+		_main.get_viewport().push_input(press, true)
+		var release := InputEventKey.new()
+		release.keycode = KEY_ESCAPE
+		release.physical_keycode = KEY_ESCAPE
+		release.pressed = false
+		_main.get_viewport().push_input(release, true)
+	var app_port := _main.get_node_or_null("RuntimeServices/ApplicationFlowPort") as ApplicationFlowPort
+	return app_port != null and app_port.submit_action("compendium")
 
 
 func _functions_absent(function_names: Array) -> bool:
