@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "status": "actor_propagation_cutover_audited",
+  "authority_source": "CardResolutionQueue.active_entry.player_index",
+  "authority_loss_point": "CardEffectRuntimeRouter monster_card dispatch",
+  "consumer": "MonsterRuntimeController._summon_monster_from_card",
+  "affected_decisions": [
+    "monster_owner",
+    "monster_control_cap",
+    "same_family_upgrade",
+    "bound_skill_recipient",
+    "scenario_eligibility"
+  ],
+  "execution_inflight_actor_roundtrip": "proven",
+  "queue_runtime_checkpoint_actor_roundtrip": "proven",
+  "queue_only_formal_registry_restore": "not_proven_existing_apply_api_missing_debt",
+  "save_schema_changed": false,
+  "second_actor_journal_created": false,
+  "public_actor_leak_count": 0
+}
