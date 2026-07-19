@@ -1,0 +1,239 @@
+{
+  "schema_version": 1,
+  "contract_id": "session_start_transaction_v1",
+  "reviewed_base_sha": "2575fb4ac3192f8030c1719401531c582c9121c1",
+  "status": "contract_ready_with_required_api_gaps",
+  "full_run_resume_claim": false,
+  "coordinator": {
+    "kind": "explicit_scene_owned_operation_coordinator",
+    "owns_gameplay_state": false,
+    "owns_rng_state": false,
+    "owns_setup_draft": false,
+    "uses_save_registry": false,
+    "uses_second_game_runtime_coordinator": false,
+    "uses_dynamic_discovery": false,
+    "allowed_operational_state": [
+      "idle",
+      "planning",
+      "preflighting",
+      "checkpointing",
+      "applying",
+      "rolling_back",
+      "succeeded",
+      "failed"
+    ]
+  },
+  "global_invariants": {
+    "all_preflights_before_apply": true,
+    "all_checkpoints_before_apply": true,
+    "game_session_committed_last_business_owner": true,
+    "reverse_rollback": true,
+    "failed_start_preserves_active_session": true,
+    "failed_plan_live_rng_delta": 0,
+    "public_log_before_commit": 0,
+    "presentation_refresh_before_commit": 0,
+    "new_save_section_count": 0
+  },
+  "operation_barrier": {
+    "required": true,
+    "owner": "existing_runtime_loop_and_command_boundary",
+    "changes_game_session_lifecycle": false,
+    "blocks_runtime_ticks": true,
+    "blocks_gameplay_commands": true,
+    "allows_read_only_presentation": true,
+    "release_after_rollback_or_commit_publication": true
+  },
+  "phases": [
+    {"order": 1, "id": "validate_request", "mutation_allowed": false},
+    {"order": 2, "id": "build_pure_plan_from_rng_fork", "mutation_allowed": false},
+    {"order": 3, "id": "preflight_all_owners", "mutation_allowed": false},
+    {"order": 4, "id": "acquire_runtime_barrier_and_revalidate", "mutation_allowed": false},
+    {"order": 5, "id": "capture_all_checkpoints", "mutation_allowed": false},
+    {"order": 6, "id": "apply_business_owners", "mutation_allowed": true},
+    {"order": 7, "id": "commit_rng_terminal_state", "mutation_allowed": true},
+    {"order": 8, "id": "publish_commit_only_side_effects", "mutation_allowed": true},
+    {"order": 9, "id": "release_runtime_barrier", "mutation_allowed": false}
+  ],
+  "participant_api": {
+    "preflight": "preflight_new_session",
+    "checkpoint": "capture_new_session_checkpoint",
+    "apply": "apply_new_session_plan",
+    "rollback": "rollback_new_session_checkpoint",
+    "requires_pure_data": true,
+    "requires_exact_runtime_roundtrip": true,
+    "allows_rng_during_apply": false,
+    "allows_ui_during_apply": false,
+    "allows_public_log_during_apply": false
+  },
+  "owner_apply_order": [
+    {"order": 1, "owner_id": "world_session_state", "path": "res://scripts/runtime/world_session_state.gd", "status": "reuse_checkpoint_add_plan_api", "depends_on": []},
+    {"order": 2, "owner_id": "world_effective_clock", "path": "res://scripts/runtime/world_effective_clock_runtime_controller.gd", "status": "exact_checkpoint_required", "depends_on": ["world_session_state"]},
+    {"order": 3, "owner_id": "card_resolution_runtime", "path": "res://scripts/runtime/card_resolution_runtime_controller.gd", "status": "reuse_validated_save_api", "depends_on": ["world_session_state"]},
+    {"order": 4, "owner_id": "card_resolution_queue", "path": "res://scripts/runtime/card_resolution_queue_runtime_service.gd", "status": "hard_api_gap", "depends_on": ["card_resolution_runtime"]},
+    {"order": 5, "owner_id": "card_resolution_execution", "path": "res://scripts/runtime/card_resolution_execution_runtime_service.gd", "status": "reuse_preflight_save_api", "depends_on": ["card_resolution_runtime", "card_resolution_queue"]},
+    {"order": 6, "owner_id": "card_resolution_history", "path": "res://scripts/runtime/card_resolution_history_runtime_service.gd", "status": "reuse_preflight_save_api", "depends_on": ["world_session_state"]},
+    {"order": 7, "owner_id": "card_history_private_annotations", "path": "res://scripts/runtime/card_history_private_annotation_service.gd", "status": "reuse_runtime_checkpoint", "depends_on": ["world_session_state", "card_resolution_history"]},
+    {"order": 8, "owner_id": "card_target_choice", "path": "res://scripts/runtime/card_target_choice_runtime_controller.gd", "status": "reuse_save_api_add_preflight", "depends_on": ["world_session_state"]},
+    {"order": 9, "owner_id": "district_purchase", "path": "res://scripts/runtime/district_purchase_runtime_controller.gd", "status": "reuse_save_api_add_preflight", "depends_on": ["world_session_state", "card_target_choice"]},
+    {"order": 10, "owner_id": "card_inventory_bookkeeping", "path": "res://scripts/runtime/card_inventory_runtime_service.gd", "status": "exact_checkpoint_required", "depends_on": ["world_session_state"]},
+    {"order": 11, "owner_id": "player_hand_interaction", "path": "res://scripts/runtime/player_hand_interaction_runtime_service.gd", "status": "exact_checkpoint_required", "depends_on": ["world_session_state", "card_inventory_bookkeeping"]},
+    {"order": 12, "owner_id": "district_purchase_settlement", "path": "res://scripts/runtime/district_purchase_settlement_runtime_service.gd", "status": "exact_checkpoint_required", "depends_on": ["district_purchase", "card_inventory_bookkeeping"]},
+    {"order": 13, "owner_id": "card_economy_product_route_effect", "path": "res://scripts/runtime/card_economy_product_route_effect_runtime_service.gd", "status": "exact_checkpoint_required", "depends_on": ["world_session_state"]},
+    {"order": 14, "owner_id": "region_infrastructure", "path": "res://scripts/runtime/region_infrastructure_runtime_controller.gd", "status": "reuse_save_api_add_plan_preflight", "depends_on": ["world_session_state"]},
+    {"order": 15, "owner_id": "region_supply", "path": "res://scripts/runtime/region_supply_runtime_controller.gd", "status": "detached_plan_and_exact_apply_required", "depends_on": ["world_session_state", "region_infrastructure"]},
+    {"order": 16, "owner_id": "player_mana", "path": "res://scripts/runtime/player_mana_runtime_controller.gd", "status": "reuse_save_api_add_plan_preflight", "depends_on": ["world_session_state"]},
+    {"order": 17, "owner_id": "commodity_card_inventory", "path": "res://scripts/runtime/commodity_card_inventory_runtime_controller.gd", "status": "reuse_save_api_add_plan_preflight", "depends_on": ["world_session_state"]},
+    {"order": 18, "owner_id": "player_organization", "path": "res://scripts/runtime/player_organization_runtime_controller.gd", "status": "reuse_save_api_add_plan_preflight", "depends_on": ["world_session_state", "commodity_card_inventory"]},
+    {"order": 19, "owner_id": "commodity_flow", "path": "res://scripts/runtime/commodity_flow_runtime_controller.gd", "status": "reuse_save_api_add_plan_preflight", "depends_on": ["world_session_state", "region_infrastructure", "player_organization"]},
+    {"order": 20, "owner_id": "contract_runtime", "path": "res://scripts/runtime/contract_runtime_controller.gd", "status": "reuse_save_api_add_plan_preflight", "depends_on": ["world_session_state", "commodity_flow"]},
+    {"order": 21, "owner_id": "product_market", "path": "res://scripts/runtime/product_market_runtime_controller.gd", "status": "detached_rng_plan_required", "depends_on": ["world_session_state", "commodity_flow"]},
+    {"order": 22, "owner_id": "city_gdp_derivative", "path": "res://scripts/runtime/city_gdp_derivative_runtime_controller.gd", "status": "reuse_save_api_add_plan_preflight", "depends_on": ["world_session_state", "product_market", "commodity_flow"]},
+    {"order": 23, "owner_id": "weather_runtime", "path": "res://scripts/runtime/weather_runtime_controller.gd", "status": "reuse_save_api_external_telemetry_delayed", "depends_on": ["world_session_state", "world_effective_clock", "product_market", "region_infrastructure"]},
+    {"order": 24, "owner_id": "monster_runtime", "path": "res://scripts/runtime/monster_runtime_controller.gd", "status": "reuse_save_api_add_plan_preflight", "depends_on": ["world_session_state", "weather_runtime"]},
+    {"order": 25, "owner_id": "military_runtime", "path": "res://scripts/runtime/military_runtime_controller.gd", "status": "strict_preflight_required", "depends_on": ["world_session_state", "weather_runtime"]},
+    {"order": 26, "owner_id": "ai_runtime", "path": "res://scripts/runtime/ai_runtime_controller.gd", "status": "exact_runtime_checkpoint_required", "depends_on": ["world_session_state", "product_market", "monster_runtime"]},
+    {"order": 27, "owner_id": "card_market_pricing", "path": "res://scripts/runtime/card_market_pricing_runtime_controller.gd", "status": "hard_api_gap", "depends_on": ["world_session_state", "world_effective_clock", "region_supply", "monster_runtime"]},
+    {"order": 28, "owner_id": "bankruptcy_neutral_estate", "path": "res://scripts/runtime/bankruptcy_neutral_estate_runtime_controller.gd", "status": "reuse_save_api_add_plan_preflight", "depends_on": ["world_session_state", "region_infrastructure", "commodity_flow", "monster_runtime", "military_runtime"]},
+    {"order": 29, "owner_id": "victory_control", "path": "res://scripts/runtime/victory_control_runtime_controller.gd", "status": "reuse_save_api_add_plan_preflight", "depends_on": ["world_session_state", "region_infrastructure", "commodity_flow", "product_market", "military_runtime"]},
+    {"order": 30, "owner_id": "table_selection", "path": "res://scripts/runtime/table_selection_state.gd", "status": "reuse_save_api_add_preflight", "depends_on": ["world_session_state", "region_supply"]},
+    {"order": 31, "owner_id": "game_session_runtime", "path": "res://scripts/runtime/game_session_runtime_controller.gd", "status": "hard_exact_checkpoint_and_commit_api_gap", "depends_on": ["world_session_state", "world_effective_clock", "card_resolution_runtime", "region_supply", "commodity_flow", "product_market", "weather_runtime", "monster_runtime", "military_runtime", "ai_runtime", "victory_control", "table_selection"]}
+  ],
+  "owner_rollback_order": [
+    "game_session_runtime",
+    "table_selection",
+    "victory_control",
+    "bankruptcy_neutral_estate",
+    "card_market_pricing",
+    "ai_runtime",
+    "military_runtime",
+    "monster_runtime",
+    "weather_runtime",
+    "city_gdp_derivative",
+    "product_market",
+    "contract_runtime",
+    "commodity_flow",
+    "player_organization",
+    "commodity_card_inventory",
+    "player_mana",
+    "region_supply",
+    "region_infrastructure",
+    "card_economy_product_route_effect",
+    "district_purchase_settlement",
+    "player_hand_interaction",
+    "card_inventory_bookkeeping",
+    "district_purchase",
+    "card_target_choice",
+    "card_history_private_annotations",
+    "card_resolution_history",
+    "card_resolution_execution",
+    "card_resolution_queue",
+    "card_resolution_runtime",
+    "world_effective_clock",
+    "world_session_state"
+  ],
+  "rng_finalizer": {
+    "owner_id": "run_rng_service",
+    "path": "res://scripts/runtime/run_rng_service.gd",
+    "plan_uses_detached_fork": true,
+    "commit_after_game_session_business_apply": true,
+    "expected_baseline_compare_required": true,
+    "rollback_before_game_session": true,
+    "current_status": "hard_fork_and_commit_api_gap"
+  },
+  "derived_commit_only_order": [
+    "publish_game_session_started_once",
+    "rebind_non_state_runtime_adapters",
+    "route_network_rebuild",
+    "forced_decision_resynchronize",
+    "public_log_and_viewer_feedback_reset_then_start_receipts",
+    "visual_cue_reset_then_ingress_cue",
+    "commodity_sushi_projection_reset",
+    "table_presentation_refresh_once",
+    "start_audio_once",
+    "setup_close_and_table_show_once",
+    "runtime_barrier_release"
+  ],
+  "derived_owners_not_in_business_apply": [
+    {"owner_id": "route_network", "reason": "derived_cache_rebuilds_from_committed_authorities"},
+    {"owner_id": "forced_decision_scheduler", "reason": "derived_candidates_resynchronize_after_commit"},
+    {"owner_id": "public_log", "reason": "presentation_receipts_are_commit_only"},
+    {"owner_id": "viewer_private_feedback", "reason": "presentation_state_is_cleared_only_after commit"},
+    {"owner_id": "visual_cue_owner", "reason": "visual_state_is_commit_only"},
+    {"owner_id": "commodity_sushi_track_projection", "reason": "derived_presentation_projection"}
+  ],
+  "exact_once": {
+    "journal_scope": "runtime_operation_only",
+    "journal_saved": false,
+    "same_id_same_payload_succeeded": "return_stored_receipt_without_apply",
+    "same_id_same_payload_in_progress": "return_in_progress",
+    "same_id_different_payload": "reject_request_id_collision",
+    "failed_same_id": "return_stored_failure_new_id_required_for_retry",
+    "concurrent_distinct_request": "reject_session_start_busy"
+  },
+  "hard_blockers": [
+    {
+      "id": "runtime_barrier_missing",
+      "reason": "RuntimeLoop advances continuously and cannot freeze cross-owner checkpoints without changing GameSession lifecycle.",
+      "required_api": "typed exclusive session-start barrier on existing runtime loop and command boundary"
+    },
+    {
+      "id": "rng_fork_missing",
+      "reason": "Current setup and world generation consume live RunRngService; compensating restore emits state_restored and changes metrics.",
+      "required_api": "detached fork, expected-baseline reservation, terminal-state commit, exact rollback checkpoint"
+    },
+    {
+      "id": "game_session_exact_checkpoint_missing",
+      "reason": "Save payload omits dirty and operation state, and apply_save_data forces save state clean.",
+      "required_api": "exact transaction checkpoint plus deterministic preflighted commit with delayed signal"
+    },
+    {
+      "id": "card_resolution_queue_checkpoint_missing",
+      "reason": "Current and next queues, active entry and sequence have reset only.",
+      "required_api": "strict pure-data preflight, exact checkpoint/apply/rollback"
+    },
+    {
+      "id": "card_market_quote_checkpoint_missing",
+      "reason": "Active private quote records and authorization lineage have reset only.",
+      "required_api": "exact private runtime checkpoint/apply/rollback"
+    },
+    {
+      "id": "production_binding_helper_is_composite_mutation",
+      "reason": "The helper bootstraps belt, organization and public demand before readiness is known.",
+      "required_api": "split owner subplans from mutation-free dependency rebind"
+    },
+    {
+      "id": "live_generation_during_apply",
+      "reason": "World, product market and region supply are generated directly against live owners.",
+      "required_api": "detached pure plans produced from the RNG fork and exact owner apply"
+    },
+    {
+      "id": "transient_runtime_checkpoint_gaps",
+      "reason": "AI receipts/bootstrap counters, hand/purchase/effect bookkeeping and other reset state are not exact-save participants.",
+      "required_api": "narrow exact runtime checkpoints or proof that state is derived and untouched until commit"
+    }
+  ],
+  "forbidden_calls_from_transaction": [
+    "Main._new_game",
+    "GameRuntimeCoordinator.reset_state",
+    "GameRuntimeCoordinator.refresh_v06_production_player_bindings",
+    "ProductMarketRuntimeController.reset_state",
+    "RegionSupplyRuntimeController.configure"
+  ],
+  "blocked_status_if_gaps_unresolved": "SETUP_SESSION_START_BLOCKED_BY_NONTRANSACTIONAL_OWNER",
+  "source_references": [
+    "scripts/main.gd:4373-4531",
+    "scripts/runtime/game_runtime_coordinator.gd:629-690",
+    "scripts/runtime/game_runtime_coordinator.gd:3804-3897",
+    "scripts/runtime/runtime_loop.gd:11-12",
+    "scripts/runtime/runtime_lifecycle_phase_coordinator.gd:13-35",
+    "scripts/runtime/game_session_runtime_controller.gd:31-36",
+    "scripts/runtime/game_session_runtime_controller.gd:60-76",
+    "scripts/runtime/game_session_runtime_controller.gd:129-172",
+    "scripts/runtime/run_rng_service.gd:37-40",
+    "scripts/runtime/run_rng_service.gd:96-116",
+    "scripts/runtime/session_envelope_save_owner.gd:67-162",
+    "scripts/runtime/session_envelope_save_owner.gd:222-252",
+    "scripts/runtime/region_supply_runtime_controller.gd:45-108",
+    "scripts/runtime/route_network_runtime_controller.gd:187-213"
+  ]
+}
