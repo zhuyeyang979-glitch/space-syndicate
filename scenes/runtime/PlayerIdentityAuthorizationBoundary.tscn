@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/player_identity_authorization_boundary.gd" id="1_boundary"]
+
+[node name="PlayerIdentityAuthorizationBoundary" type="Node"]
+script = ExtResource("1_boundary")
+editor_description = "Scene-owned identity envelope authority for future gameplay requests. It validates the existing local viewer, public world seat, and active session without routing or mutating gameplay."
