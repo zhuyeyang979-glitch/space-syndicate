@@ -949,6 +949,34 @@
       "status": "pending"
     },
     {
+      "domain": "table_navigation_action_routing",
+      "old_symbols": [
+        "Main codex_region action branch",
+        "Main codex_cards action branch",
+        "Main inspect action branch",
+        "Main track_open_* action branch"
+      ],
+      "old_consumers": [
+        "GameScreen table controls",
+        "public card track detail links"
+      ],
+      "new_owner_scene": "res://scenes/runtime/TableNavigationActionRouter.tscn",
+      "new_owner_script": "res://scripts/runtime/table_navigation_action_router.gd",
+      "new_public_api": [
+        "TableNavigationActionIntent.from_action_id",
+        "TableNavigationActionRouter.submit_intent"
+      ],
+      "tests": [
+        "res://tests/table_navigation_action_router_test.gd",
+        "res://scenes/tools/TableNavigationActionRouterBench.tscn",
+        "res://tests/main_gd_architecture_gate_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
+    },
+    {
       "domain": "remaining_root_responsibilities",
       "old_symbols": [
         "audio",

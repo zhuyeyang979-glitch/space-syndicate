@@ -1,0 +1,21 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/table_navigation_action_router_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/TableSelectionState.tscn" id="2_selection"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CompendiumNavigationPort.tscn" id="3_navigation"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/ApplicationFlowPort.tscn" id="4_application"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/TableNavigationActionRouter.tscn" id="5_router"]
+
+[node name="TableNavigationActionRouterBench" type="Node"]
+script = ExtResource("1_bench")
+
+[node name="TableSelectionState" parent="." instance=ExtResource("2_selection")]
+
+[node name="CompendiumNavigationPort" parent="." instance=ExtResource("3_navigation")]
+
+[node name="ApplicationFlowPort" parent="." instance=ExtResource("4_application")]
+
+[node name="TableNavigationActionRouter" parent="." instance=ExtResource("5_router")]
+selection_state_path = NodePath("../TableSelectionState")
+compendium_navigation_port_path = NodePath("../CompendiumNavigationPort")
+application_flow_port_path = NodePath("../ApplicationFlowPort")

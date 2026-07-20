@@ -8499,3 +8499,16 @@ deleted. Evidence and the remaining action inventory are recorded in
 - No save section, AI behavior, military/monster target, or full queue restore
   claim changed. Direct non-card ProductMarket calls retain their existing
   optional focus fallback outside the card-effect bridge.
+
+## 2026-07-20 — Typed table navigation action routing
+
+- Region detail, card browser, Compendium hub, and public card-track detail
+  navigation now leave `GameScreen` as typed intents and are routed by the
+  scene-owned `TableNavigationActionRouter`.
+- The router reuses `TableSelectionState`, `CompendiumNavigationPort`, and
+  `ApplicationFlowPort`; it owns no gameplay or navigation state and has no
+  legacy-root fallback.
+- Replay/collision and missing-target paths fail closed, while unrelated actions
+  remain unchanged for later atomic migration.
+- The four old root action branches were physically removed, reducing
+  `scripts/main.gd` by 15 physical and nonblank lines.

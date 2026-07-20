@@ -1,4 +1,4 @@
-[gd_scene load_steps=29 format=3]
+[gd_scene load_steps=30 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/ui/GameScreen.tscn" id="2_game_screen"]
@@ -28,6 +28,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/SessionStartPlanBuilder.tscn" id="27_session_plan"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/SessionStartTransactionCoordinator.tscn" id="28_session_transaction"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/SetupApplicationFlowController.tscn" id="29_setup_controller"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/TableNavigationActionRouter.tscn" id="30_table_navigation_router"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -87,6 +88,12 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 menu_overlay_path = NodePath("../../RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay")
 coordinator_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator")
+
+[node name="TableNavigationActionRouter" parent="RuntimeServices" instance=ExtResource("30_table_navigation_router")]
+unique_name_in_owner = true
+selection_state_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/TableSelectionState")
+compendium_navigation_port_path = NodePath("../CompendiumNavigationPort")
+application_flow_port_path = NodePath("../ApplicationFlowPort")
 
 [node name="NewGameSetupDraftService" parent="RuntimeServices" instance=ExtResource("24_setup_draft")]
 unique_name_in_owner = true
@@ -237,5 +244,6 @@ editor_description = "Explicit host for compatibility fallbacks created only whe
 [connection signal="navigation_requested" from="RuntimeServices/CompendiumNavigationPort" to="RuntimeServices/CompendiumApplicationFlowController" method="handle_navigation_request"]
 [connection signal="commodity_claim_requested" from="RuntimeGameScreen" to="RuntimeServices/CommoditySushiTrackApplicationFlowController" method="handle_claim_request"]
 [connection signal="application_intent_requested" from="RuntimeGameScreen" to="RuntimeServices/ApplicationFlowPort" method="submit_intel_application_intent"]
+[connection signal="navigation_intent_requested" from="RuntimeGameScreen" to="RuntimeServices/TableNavigationActionRouter" method="submit_intent"]
 [connection signal="public_log_receipt_requested" from="RuntimeServices/FinalSettlementRuntimeComposition" to="RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator" method="append_public_log_receipt"]
 [connection signal="victory_presentation_receipt_ready" from="RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator" to="RuntimeServices/FinalSettlementRuntimeComposition" method="present_victory_receipt"]

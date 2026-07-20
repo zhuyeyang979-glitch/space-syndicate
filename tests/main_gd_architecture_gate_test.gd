@@ -27,6 +27,8 @@ func _run() -> void:
 	var metrics := _main_metrics(main_source)
 	_expect(not main_source.contains("func _process("), "Main no longer owns the authoritative frame callback")
 	_expect(not main_source.contains("func _physics_process("), "Main has no physics-process replacement loop")
+	for retired_navigation_action in ["\"codex_region\":", "\"codex_cards\":", "\"inspect\":", "track_open_"]:
+		_expect(not main_source.contains(retired_navigation_action), "Main no longer routes table navigation action %s" % retired_navigation_action)
 	var runtime_loop_source := FileAccess.get_file_as_string("res://scripts/runtime/runtime_loop.gd")
 	var runtime_ports_source := FileAccess.get_file_as_string("res://scripts/runtime/runtime_world_ports.gd")
 	var runtime_phases_source := FileAccess.get_file_as_string("res://scripts/runtime/runtime_phase_coordinator.gd")

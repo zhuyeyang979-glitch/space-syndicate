@@ -1364,16 +1364,6 @@ func _build_developer_balance_greybox() -> void:
 func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 	var handled := false
 	match action_id:
-		"codex_region":
-			var region_index := _game_runtime_coordinator_node().table_selection_state().selected_district
-			var navigation_port := get_node_or_null("RuntimeServices/CompendiumNavigationPort")
-			handled = navigation_port != null and bool(navigation_port.call("request_open", "region", "detail", "region:%d" % region_index, region_index, "", 0, "game", {"origin": "game"}))
-		"codex_cards":
-			var navigation_port := get_node_or_null("RuntimeServices/CompendiumNavigationPort")
-			handled = navigation_port != null and bool(navigation_port.call("request_open", "card", "browser", "catalog", -1, "all", 0, "game", {"origin": "game"}))
-		"inspect":
-			var application_flow_port := get_node_or_null("RuntimeServices/ApplicationFlowPort")
-			handled = application_flow_port != null and bool(application_flow_port.call("submit_action", "compendium"))
 		"menu":
 			_open_pause_menu()
 			handled = true
@@ -1412,11 +1402,6 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 				var discard_slot := int(action_id.substr("discard_purchase_".length()))
 				_confirm_discard_purchase(discard_slot)
 				handled = true
-			elif action_id.begins_with("track_open_"):
-				var card_name := action_id.substr("track_open_".length()).strip_edges()
-				if card_name != "":
-					var navigation_port := get_node_or_null("RuntimeServices/CompendiumNavigationPort")
-					handled = navigation_port != null and bool(navigation_port.call("request_open", "card", "detail", card_name, -1, "all", 0, "game", {"origin": "game"}))
 	if handled:
 		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 

@@ -8,6 +8,7 @@ const COMMODITY_ITEM_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/commod
 const COMMODITY_TRACK_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/commodity_sushi_track_snapshot.gd")
 const COMMODITY_TRACK_SCRIPT := preload("res://scripts/ui/table/top_commodity_sushi_track.gd")
 const TABLE_SELECTION_INTENT_SCRIPT := preload("res://scripts/runtime/table_selection_intent.gd")
+const TABLE_NAVIGATION_ACTION_INTENT_SCRIPT := preload("res://scripts/runtime/table_navigation_action_intent.gd")
 const HAND_HOVER_PREVIEW_LEFT := 0.020
 const HAND_HOVER_PREVIEW_TOP := 0.350
 const HAND_HOVER_PREVIEW_RIGHT := 0.190
@@ -50,6 +51,7 @@ signal card_drag_preview_ended(card_data: Dictionary)
 signal card_drop_requested(card_data: Dictionary, screen_position: Vector2)
 signal commodity_claim_requested(request: COMMODITY_CLAIM_REQUEST_SCRIPT)
 signal table_selection_intent_requested(intent: TABLE_SELECTION_INTENT_SCRIPT)
+signal navigation_intent_requested(intent: TABLE_NAVIGATION_ACTION_INTENT_SCRIPT)
 
 @onready var top_bar: Node = %TopBar
 @onready var commodity_sushi_track: COMMODITY_TRACK_SCRIPT = %TopCommoditySushiTrack
@@ -85,6 +87,7 @@ var _inspected_player_index := -1
 var _last_player_inspection_receipt_revision := -1
 var _player_inspection_receipt_apply_count := 0
 var _table_selection_request_revision := 0
+var _navigation_request_revision := 0
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	_bind_presentation_map_targets()
@@ -814,6 +817,8 @@ func _on_action_requested(action_id: String) -> void:
 	if _should_open_detail_drawer(action_id):
 		_open_detail_drawer(action_id)
 	_show_player_action_feedback(action_id)
+	if _emit_navigation_intent_if_supported(action_id, &"game_screen"):
+		return
 	action_requested.emit(action_id)
 
 
@@ -1098,7 +1103,19 @@ func _emit_track_action_request(action_id: String, detail: String, source_surfac
 			return
 		return
 	_show_player_action_feedback(normalized_action_id, "pending", detail)
+	if _emit_navigation_intent_if_supported(normalized_action_id, source_surface):
+		return
 	action_requested.emit(normalized_action_id)
+
+
+func _emit_navigation_intent_if_supported(action_id: String, source_surface: StringName) -> bool:
+	var intent := TABLE_NAVIGATION_ACTION_INTENT_SCRIPT.from_action_id(action_id, source_surface)
+	if intent == null:
+		return false
+	_navigation_request_revision += 1
+	intent.request_id = "table-navigation:%d" % _navigation_request_revision
+	navigation_intent_requested.emit(intent)
+	return true
 
 
 func _on_card_drag_preview_started(card_data: Dictionary, screen_position: Vector2) -> void:
