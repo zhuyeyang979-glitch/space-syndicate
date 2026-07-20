@@ -150,15 +150,6 @@ var game_time: float:
 	set(value):
 		_write_world_value(&"game_time", value)
 
-var selected_player: int:
-	get:
-		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
-		return state.selected_player if state != null else -1
-	set(value):
-		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
-		if state != null:
-			state.selected_player = value
-
 var selected_district: int:
 	get:
 		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
@@ -495,8 +486,7 @@ func resolve_targeted_skill(skill: Dictionary, player: Dictionary, target_slot: 
 		_add_action_callout("自动怪兽%d·%s" % [target_slot + 1, String(delayed_actor.get("name", "怪兽"))], "行动干扰", "%s使特殊行动延后%.1fs。" % [String(skill.get("name", "行动干扰")), delay], _auto_monster_color(target_slot), _entity_world_position(delayed_actor))
 		return true
 	if kind == "monster_takeover":
-		var takeover_player := acting_player_index if acting_player_index >= 0 else selected_player
-		return _apply_monster_takeover(skill, target_slot, takeover_player)
+		return _apply_monster_takeover(skill, target_slot, acting_player_index)
 	if kind == "mudslide":
 		var mud_actor: Dictionary = auto_monsters[target_slot]
 		var range_limit: float = float(skill.get("range", DEFAULT_AOE_RADIUS_METERS))
@@ -3577,17 +3567,19 @@ func _upgrade_field_monster_from_card(player_index: int, skill: Dictionary) -> b
 	request_table_presentation_refresh()
 	return true
 
-func _summon_monster_from_card(_player: Dictionary, skill: Dictionary) -> bool:
+func _summon_monster_from_card(acting_player_index: int, skill: Dictionary) -> bool:
+	if acting_player_index < 0 or acting_player_index >= players.size():
+		return false
 	var catalog_index := int(skill.get("catalog_index", -1))
 	if catalog_index < 0 or catalog_index >= _catalog_size():
 		_log("%s没有有效的怪兽资料。" % String(skill.get("name", "怪兽卡")))
 		return false
-	if _upgrade_field_monster_from_card(selected_player, skill):
+	if _upgrade_field_monster_from_card(acting_player_index, skill):
 		return true
-	var owned_count := _owned_active_monster_count(selected_player)
-	var monster_limit := _player_monster_control_limit(selected_player)
+	var owned_count := _owned_active_monster_count(acting_player_index)
+	var monster_limit := _player_monster_control_limit(acting_player_index)
 	if owned_count >= monster_limit:
-		var existing_owned_slot := _owned_active_monster_slot(selected_player)
+		var existing_owned_slot := _owned_active_monster_slot(acting_player_index)
 		var owned_actor: Dictionary = auto_monsters[existing_owned_slot] if existing_owned_slot >= 0 else {}
 		_log("%s无法新增怪兽：当前角色同时最多归属%d只怪兽；当前已拥有%d只%s。同名怪兽牌仍可用于升级或刷新同名怪兽。" % [
 			String(skill.get("name", "怪兽卡")),
@@ -3608,7 +3600,7 @@ func _summon_monster_from_card(_player: Dictionary, skill: Dictionary) -> bool:
 	var fallback_rank := _skill_rank(String(skill.get("name", "")))
 	var rank := clampi(int(skill.get("rank", fallback_rank)), 1, 4)
 	var slot := auto_monsters.size()
-	var actor := _make_auto_monster(slot, catalog_index, selected_district, selected_player, rank)
+	var actor := _make_auto_monster(slot, catalog_index, selected_district, acting_player_index, rank)
 	var card_hp := maxi(1, int(skill.get("hp", actor.get("max_hp", 1))))
 	actor["hp"] = card_hp
 	actor["max_hp"] = card_hp
@@ -3621,7 +3613,7 @@ func _summon_monster_from_card(_player: Dictionary, skill: Dictionary) -> bool:
 	_apply_monster_economic_boons()
 	_refresh_product_market_prices()
 	var fixed_skill_count := int(skill.get("fixed_skill_count", rank))
-	var granted := _grant_bound_monster_skills(selected_player, int(actor.get("uid", 0)), String(actor.get("name", "怪兽")), rank, fixed_skill_count)
+	var granted := _grant_bound_monster_skills(acting_player_index, int(actor.get("uid", 0)), String(actor.get("name", "怪兽")), rank, fixed_skill_count)
 	_add_visual_trail(_district_center(selected_district) + Vector2(0, -80), _district_center(selected_district), _auto_monster_color(slot), "召唤")
 	_add_action_callout(
 		"匿名怪兽卡",
@@ -3643,7 +3635,7 @@ func _summon_monster_from_card(_player: Dictionary, skill: Dictionary) -> bool:
 		districts[selected_district]["name"],
 		_limited_name_list(granted, 4, "无"),
 	])
-	if selected_player >= 0 and selected_player < players.size():
+	if acting_player_index >= 0 and acting_player_index < players.size():
 		_complete_scenario_signal("monster_summoned", "首召怪兽：%s降落在%s。" % [String(actor.get("name", "怪兽")), String(districts[selected_district].get("name", "区域"))], "after_summon", "scenario_coach")
 	request_table_presentation_refresh()
 	return true
@@ -4815,8 +4807,6 @@ func _record_monster_wager_damage(attacker_slot: int, target_slot: int, damage: 
 	active_monster_wagers[index] = entry
 
 func _place_monster_wager_percent(wager_id: int, side: String, stake_percent: int = 0, player_index: int = -1, forced: bool = false, metadata: Dictionary = {}) -> bool:
-	if player_index < 0:
-		player_index = selected_player
 	if player_index < 0 or player_index >= players.size():
 		return false
 	var index := _monster_wager_entry_index_by_id(wager_id)
@@ -4831,8 +4821,6 @@ func _place_monster_wager_percent(wager_id: int, side: String, stake_percent: in
 
 func _place_monster_wager(wager_id: int, side: String, stake: int = 0, player_index: int = -1, forced: bool = false, metadata: Dictionary = {}) -> bool:
 	side = side.to_lower()
-	if player_index < 0:
-		player_index = selected_player
 	if player_index < 0 or player_index >= players.size() or stake < 0:
 		return false
 	var index := _monster_wager_entry_index_by_id(wager_id)

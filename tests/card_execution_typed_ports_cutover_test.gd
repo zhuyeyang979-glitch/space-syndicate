@@ -67,9 +67,9 @@ func _verify_sources() -> void:
 func _verify_selection_roundtrip() -> void:
 	var selection := SELECTION_SCENE.instantiate() as TableSelectionState
 	root.add_child(selection)
-	selection.selected_card_resolution_id = 73
+	selection.select_card_resolution_target(73, -1, int(selection.snapshot().get("revision", -1)))
 	var saved := selection.to_save_data()
-	selection.selected_card_resolution_id = -1
+	selection.select_card_resolution_target(-1, -1, int(selection.snapshot().get("revision", -1)))
 	selection.apply_save_data(saved)
 	_expect(selection.selected_card_resolution_id == 73, "selected resolution is scene-owned and survives save/load")
 	selection.queue_free()

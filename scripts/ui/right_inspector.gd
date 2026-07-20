@@ -157,6 +157,39 @@ func show_public_commodity(item: Dictionary, action_result: Dictionary = {}) -> 
 	})
 
 
+func show_public_player(descriptor: Dictionary) -> void:
+	var player_index := int(descriptor.get("player_index", -1))
+	var public_name := str(descriptor.get("public_player_name", "玩家%d" % (player_index + 1)))
+	var role_name := str(descriptor.get("role_name", "外星辛迪加"))
+	var status := str(descriptor.get("public_status", "waiting"))
+	var status_text: String = str({
+		"ready": "已就绪",
+		"waiting": "等待",
+		"active": "公开行动",
+		"eliminated": "已离场",
+		"disconnected": "暂离",
+	}.get(status, "等待"))
+	set_meta("context_kind", "public_player")
+	set_meta("inspected_player_index", player_index)
+	set_context({
+		"context_kind": "public_player",
+		"title": "公开席位",
+		"why": "这里只展示公开身份与状态；行动者、现金、手牌和私人情报不会随查看目标改变。",
+		"district": {
+			"id": "public-player:%d" % player_index,
+			"title": public_name,
+			"summary": "%s｜%s" % [role_name, status_text],
+			"detail": "公开玩家 %d｜%s" % [player_index + 1, status_text],
+			"full_detail": "角色：%s\n公开状态：%s\n私人资源：不可见" % [role_name, status_text],
+			"chips": [{"text": role_name}, {"text": status_text}],
+		},
+		"requirements": [],
+		"actions": [],
+		"deep_links": [],
+		"logs": [],
+	})
+
+
 func _card_inspector_full_detail(card_data: Dictionary) -> String:
 	var lines: Array[String] = []
 	var timing := _card_inspector_timing(card_data)

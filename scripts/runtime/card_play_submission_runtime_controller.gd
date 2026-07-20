@@ -4,6 +4,7 @@ class_name CardPlaySubmissionRuntimeController
 
 const TARGET_MONSTER := CardTargetChoiceRuntimeController.KIND_MONSTER
 const TARGET_PLAYER := CardTargetChoiceRuntimeController.KIND_PLAYER
+const StableTargetEnvelope := preload("res://scripts/runtime/card_resolution_stable_target_envelope.gd")
 
 var _world_session_state: WorldSessionState
 var _table_selection_state: TableSelectionState
@@ -15,6 +16,7 @@ var _target_choice_controller: CardTargetChoiceRuntimeController
 var _contract_controller: ContractRuntimeController
 var _product_market_controller: ProductMarketRuntimeController
 var _derivative_controller: CityGdpDerivativeRuntimeController
+var _selection_catalog_query_port: TableSelectionCatalogQueryPort
 var _runtime_coordinator: GameRuntimeCoordinator
 var _submission_count := 0
 var _accepted_count := 0
@@ -32,6 +34,7 @@ func set_dependencies(
 	contract_controller: ContractRuntimeController,
 	product_market_controller: ProductMarketRuntimeController,
 	derivative_controller: CityGdpDerivativeRuntimeController,
+	selection_catalog_query_port: TableSelectionCatalogQueryPort,
 	runtime_coordinator: GameRuntimeCoordinator
 ) -> void:
 	_world_session_state = world_session_state
@@ -44,27 +47,34 @@ func set_dependencies(
 	_contract_controller = contract_controller
 	_product_market_controller = product_market_controller
 	_derivative_controller = derivative_controller
+	_selection_catalog_query_port = selection_catalog_query_port
 	_runtime_coordinator = runtime_coordinator
 
 
 func request_hand_play(request: Dictionary) -> Dictionary:
 	_submission_count += 1
-	var player_index := int(request.get("player_index", _table_selection_state.selected_player if _table_selection_state != null else -1))
+	var player_index := int(request.get("player_index", -1))
 	var slot_index := int(request.get("slot_index", -1))
 	var card_context := _card_at(player_index, slot_index)
 	if not bool(card_context.get("valid", false)):
 		return _remember(_rejection("card_slot_invalid"))
 	var skill: Dictionary = card_context.get("skill", {})
 	if _is_v06_runtime_card(skill):
-		return _remember(_submit_v06(player_index, slot_index, skill))
-	var eligibility := _eligibility(player_index, skill, "hand")
+		var v06_envelope := _capture_stable_target_envelope(request, {})
+		if v06_envelope.is_empty():
+			return _remember(_rejection("stable_target_capture_failed"))
+		return _remember(_submit_v06(player_index, slot_index, skill, v06_envelope))
+	var frozen := _prepare_legacy_submission(player_index, skill, "hand", request)
+	if not bool(frozen.get("prepared", false)):
+		return _remember(_rejection(str(frozen.get("reason", "stable_target_capture_failed")), _dictionary(frozen.get("details", {}))))
+	var eligibility := _dictionary(frozen.get("eligibility", {}))
 	if not bool(eligibility.get("allowed", false)):
 		return _remember(_rejection(str(eligibility.get("reason_code", "card_play_rejected")), eligibility))
 	if bool(eligibility.get("requires_target_monster", false)) and not request.has("target_slot"):
-		return _remember(_begin_target(TARGET_MONSTER, player_index, slot_index))
+		return _remember(_begin_target(TARGET_MONSTER, player_index, slot_index, _dictionary(frozen.get("envelope", {})), StableTargetEnvelope.card_fingerprint(skill)))
 	if bool(eligibility.get("requires_target_player", false)) and not request.has("target_player"):
-		return _remember(_begin_target(TARGET_PLAYER, player_index, slot_index))
-	return _remember(_submit_legacy(player_index, slot_index, int(request.get("target_slot", -1)), int(request.get("target_player", -1)), eligibility))
+		return _remember(_begin_target(TARGET_PLAYER, player_index, slot_index, _dictionary(frozen.get("envelope", {})), StableTargetEnvelope.card_fingerprint(skill)))
+	return _remember(_submit_legacy(player_index, slot_index, eligibility, _dictionary(frozen.get("envelope", {}))))
 
 
 func submit_card_play(request: Dictionary) -> Dictionary:
@@ -76,25 +86,60 @@ func submit_card_play(request: Dictionary) -> Dictionary:
 		return _remember(_rejection("card_slot_invalid"))
 	var skill: Dictionary = card_context.get("skill", {})
 	if _is_v06_runtime_card(skill):
-		return _remember(_submit_v06(player_index, slot_index, skill))
-	var eligibility := _eligibility(player_index, skill, "rule")
+		var v06_envelope := _capture_stable_target_envelope(request, {})
+		if v06_envelope.is_empty():
+			return _remember(_rejection("stable_target_capture_failed"))
+		return _remember(_submit_v06(player_index, slot_index, skill, v06_envelope))
+	var frozen := _pending_or_new_submission(player_index, slot_index, skill, request)
+	if not bool(frozen.get("prepared", false)):
+		return _remember(_rejection(str(frozen.get("reason", "stable_target_capture_failed")), _dictionary(frozen.get("details", {}))))
+	var eligibility := _dictionary(frozen.get("eligibility", {}))
 	if not bool(eligibility.get("allowed", false)):
 		return _remember(_rejection(str(eligibility.get("reason_code", "card_play_rejected")), eligibility))
-	return _remember(_submit_legacy(player_index, slot_index, int(request.get("target_slot", -1)), int(request.get("target_player", -1)), eligibility))
+	return _remember(_submit_legacy(player_index, slot_index, eligibility, _dictionary(frozen.get("envelope", {}))))
+
+
+func begin_target_choice(kind: String, player_index: int, slot_index: int) -> Dictionary:
+	if kind not in [TARGET_MONSTER, TARGET_PLAYER]:
+		return _remember(_rejection("target_choice_kind_invalid"))
+	var card_context := _card_at(player_index, slot_index)
+	if not bool(card_context.get("valid", false)):
+		return _remember(_rejection("card_slot_invalid"))
+	var skill := _dictionary(card_context.get("skill", {}))
+	if _is_v06_runtime_card(skill):
+		return _remember(_rejection("v06_target_choice_unsupported"))
+	var frozen := _prepare_legacy_submission(player_index, skill, "hand", {}, kind)
+	if not bool(frozen.get("prepared", false)):
+		return _remember(_rejection(str(frozen.get("reason", "stable_target_capture_failed")), _dictionary(frozen.get("details", {}))))
+	var eligibility := _dictionary(frozen.get("eligibility", {}))
+	var expected := bool(eligibility.get("requires_target_monster", false)) if kind == TARGET_MONSTER else bool(eligibility.get("requires_target_player", false))
+	if not bool(eligibility.get("allowed", false)) or not expected:
+		return _remember(_rejection(str(eligibility.get("reason_code", "target_choice_not_required")), eligibility))
+	return _remember(_begin_target(kind, player_index, slot_index, _dictionary(frozen.get("envelope", {})), StableTargetEnvelope.card_fingerprint(skill)))
 
 
 func debug_snapshot() -> Dictionary:
 	return {
-		"controller_ready": _world_session_state != null and _eligibility_facts != null and _queue_service != null,
+		"controller_ready": _world_session_state != null \
+			and _eligibility_facts != null \
+			and _queue_service != null \
+			and _selection_catalog_query_port != null,
 		"submission_count": _submission_count,
 		"accepted_count": _accepted_count,
 		"shared_human_ai_entry": true,
+		"stable_target_capture": _selection_catalog_query_port != null,
 		"holds_main_reference": false,
 		"last_receipt": _last_receipt.duplicate(true),
 	}
 
 
-func _submit_legacy(player_index: int, slot_index: int, target_slot: int, target_player: int, eligibility: Dictionary) -> Dictionary:
+func _submit_legacy(player_index: int, slot_index: int, eligibility: Dictionary, stable_target_envelope: Dictionary) -> Dictionary:
+	var envelope_validation := StableTargetEnvelope.validate(stable_target_envelope)
+	if not bool(envelope_validation.get("valid", false)):
+		return _rejection(str(envelope_validation.get("reason_code", "stable_target_invalid")))
+	var frozen_context := StableTargetEnvelope.context_at_capture(stable_target_envelope)
+	if frozen_context.is_empty():
+		return _rejection("stable_target_context_missing")
 	var players := _world_session_state.players
 	var player: Dictionary = players[player_index]
 	var slots: Array = player.get("slots", [])
@@ -104,20 +149,21 @@ func _submit_legacy(player_index: int, slot_index: int, target_slot: int, target
 	var target_status: Dictionary = eligibility.get("target_status", {}) if eligibility.get("target_status", {}) is Dictionary else {}
 	var runtime_state := _resolution_controller.card_play_fact_snapshot() if _resolution_controller != null else {}
 	var reactive_counter := bool(target_status.get("is_counter", false)) and bool(runtime_state.get("counter_window_active", false)) and not _queue_service.active_entry().is_empty()
-	var contract_context := _contract_context(player_index, skill)
+	var contract_context := _contract_context(player_index, skill, frozen_context)
 	if not str(contract_context.get("error", "")).is_empty():
 		return _rejection(str(contract_context.get("reason", "contract_context_invalid")))
 	var queued_skill := _skill_with_financial_terms(skill)
 	if queued_skill.has("submission_terms_error"):
 		return _rejection(str(queued_skill.get("submission_terms_error", "financial_terms_missing")))
 	if str(queued_skill.get("kind", "")) == "public_facility":
-		queued_skill["target_region_index"] = _table_selection_state.selected_district
+		queued_skill["target_region_index"] = int(frozen_context.get("selected_district", -1))
 	var requirement_status: Dictionary = eligibility.get("requirement_status", {}) if eligibility.get("requirement_status", {}) is Dictionary else {}
 	var entry_context := {
-		"target_slot": target_slot,
-		"target_player": target_player,
-		"selected_district": _table_selection_state.selected_district,
-		"selected_trade_product": _table_selection_state.selected_trade_product,
+		"target_slot": int(frozen_context.get("target_slot", -1)),
+		"target_player": int(frozen_context.get("target_player", -1)),
+		"selected_district": int(frozen_context.get("selected_district", -1)),
+		"selected_trade_product": str(frozen_context.get("selected_trade_product", "")),
+		"selected_card_resolution_id": int(frozen_context.get("selected_card_resolution_id", -1)),
 		"contract_source_district": int(contract_context.get("source", -1)),
 		"contract_target_district": int(contract_context.get("target", -1)),
 		"contract_target_owner": int(contract_context.get("target_owner", -1)),
@@ -130,10 +176,11 @@ func _submit_legacy(player_index: int, slot_index: int, target_slot: int, target
 		"play_requirement_kind": str(requirement_status.get("kind", "none")),
 		"play_requirement_scope": str(requirement_status.get("scope", "")),
 		"play_requirement_gdp_share_percent": int(requirement_status.get("required_share_percent", 0)),
-		"play_requirement_district": int(requirement_status.get("qualifying_district", -1)),
+		"play_requirement_district": int(frozen_context.get("play_requirement_district", requirement_status.get("qualifying_district", -1))),
 		"play_requirement_product": "",
 		"play_requirement_flow": 0,
 		"play_requirement_text": str(requirement_status.get("requirement_text", "条件：无")),
+		"stable_target_envelope": stable_target_envelope.duplicate(true),
 	}
 	var play_cash_cost := maxi(0, int(eligibility.get("cash_cost", 0)))
 	var queue_plan := _runtime_coordinator.plan_card_resolution_queue_submission({
@@ -206,14 +253,14 @@ func _submit_legacy(player_index: int, slot_index: int, target_slot: int, target
 	}
 
 
-func _submit_v06(player_index: int, slot_index: int, card: Dictionary) -> Dictionary:
+func _submit_v06(player_index: int, slot_index: int, card: Dictionary, stable_target_envelope: Dictionary) -> Dictionary:
 	if _runtime_coordinator == null:
 		return _rejection("v06_runtime_unavailable")
 	var actor_id := str((_world_session_state.players[player_index] as Dictionary).get("actor_id", "player.%d" % player_index)).strip_edges()
-	var region_id := ""
-	var district_index := _table_selection_state.selected_district
-	if district_index >= 0 and district_index < _world_session_state.districts.size():
-		region_id = str((_world_session_state.districts[district_index] as Dictionary).get("region_id", "region.%03d" % district_index))
+	var validation := StableTargetEnvelope.validate(stable_target_envelope)
+	if not bool(validation.get("valid", false)):
+		return _rejection(str(validation.get("reason_code", "stable_target_invalid")))
+	var region_id := str(stable_target_envelope.get("region_id", ""))
 	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
 	var authoritative_slot := _v06_authoritative_slot(actor_id, str(machine.get("card_id", "")))
 	if authoritative_slot < 0:
@@ -250,27 +297,140 @@ func _v06_authoritative_slot(actor_id: String, card_id: String) -> int:
 	return -1
 
 
-func _eligibility(player_index: int, skill: Dictionary, mode: String) -> Dictionary:
+func _pending_or_new_submission(player_index: int, slot_index: int, skill: Dictionary, request: Dictionary) -> Dictionary:
+	var choice_kind := _choice_kind_for_request(request)
+	if not choice_kind.is_empty() and _target_choice_controller != null and _target_choice_controller.has_choice(choice_kind):
+		var choice := _target_choice_controller.choice_snapshot(choice_kind)
+		if int(choice.get("player_index", -1)) != player_index or int(choice.get("slot_index", -1)) != slot_index:
+			return {"prepared": false, "reason": "stable_target_choice_binding_mismatch"}
+		var envelope := _dictionary(choice.get("stable_target_envelope", {}))
+		var expected_card_fingerprint := str(choice.get("source_card_fingerprint", ""))
+		if envelope.is_empty() or expected_card_fingerprint.is_empty():
+			return {"prepared": false, "reason": "stable_target_context_missing"}
+		if StableTargetEnvelope.card_fingerprint(skill) != expected_card_fingerprint:
+			return {"prepared": false, "reason": "stable_target_card_changed"}
+		var bound := StableTargetEnvelope.bind_target(
+			envelope,
+			_envelope_target_kind(choice_kind),
+			int(request.get("target_slot", -1)),
+			int(request.get("target_player", -1))
+		)
+		if bound.is_empty():
+			return {"prepared": false, "reason": "stable_target_binding_invalid"}
+		var frozen_context := StableTargetEnvelope.context_at_capture(bound)
+		var eligibility := _eligibility(player_index, skill, "rule", frozen_context)
+		var target_matches := bool(eligibility.get("requires_target_monster", false)) if choice_kind == TARGET_MONSTER else bool(eligibility.get("requires_target_player", false))
+		if not target_matches:
+			return {"prepared": false, "reason": "stable_target_kind_changed", "details": eligibility}
+		return {"prepared": true, "eligibility": eligibility, "envelope": bound}
+	return _prepare_legacy_submission(player_index, skill, "rule", request)
+
+
+func _prepare_legacy_submission(
+	player_index: int,
+	skill: Dictionary,
+	mode: String,
+	request: Dictionary,
+	forced_choice_kind: String = ""
+) -> Dictionary:
+	var selection_snapshot := _selection_snapshot(request)
+	if selection_snapshot.is_empty():
+		return {"prepared": false, "reason": "table_selection_unavailable"}
+	var contract_selection := _contract_controller.selection_snapshot() if _contract_controller != null else {}
+	var frozen_context := {
+		"selected_district": int(selection_snapshot.get("selected_district", -1)),
+		"selected_trade_product": str(selection_snapshot.get("selected_trade_product", "")),
+		"selected_card_resolution_id": int(selection_snapshot.get("selected_card_resolution_id", -1)),
+		"contract_source_district": int(contract_selection.get("source_district", -1)),
+		"contract_target_district": int(contract_selection.get("target_district", -1)),
+	}
+	var eligibility := _eligibility(player_index, skill, mode, frozen_context)
+	var choice_kind := forced_choice_kind
+	if choice_kind.is_empty():
+		if bool(eligibility.get("requires_target_monster", false)):
+			choice_kind = TARGET_MONSTER
+		elif bool(eligibility.get("requires_target_player", false)):
+			choice_kind = TARGET_PLAYER
+	var requirement_status := _dictionary(eligibility.get("requirement_status", {}))
+	var envelope := _capture_stable_target_envelope(selection_snapshot, {
+		"target_kind": _envelope_target_kind(choice_kind),
+		"target_slot": int(request.get("target_slot", -1)),
+		"target_player": int(request.get("target_player", -1)),
+		"contract_source_district": int(frozen_context.get("contract_source_district", -1)),
+		"contract_target_district": int(frozen_context.get("contract_target_district", -1)),
+		"contract_selection_revision": int(contract_selection.get("revision", -1)),
+		"play_requirement_district": int(requirement_status.get("qualifying_district", -1)),
+		"capture_source": str(request.get("submission_source", "card_play_submission")),
+	})
+	if envelope.is_empty():
+		return {"prepared": false, "reason": "stable_target_capture_failed", "details": eligibility}
+	return {"prepared": true, "eligibility": eligibility, "envelope": envelope}
+
+
+func _capture_stable_target_envelope(selection_or_request: Dictionary, context: Dictionary) -> Dictionary:
+	if _selection_catalog_query_port == null or _table_selection_state == null:
+		return {}
+	var selection_snapshot := selection_or_request
+	if not selection_snapshot.has("schema_version") \
+			or not selection_snapshot.has("revision") \
+			or not selection_snapshot.has("selected_district") \
+			or not selection_snapshot.has("selected_trade_product"):
+		selection_snapshot = _selection_snapshot(selection_or_request)
+	if selection_snapshot.is_empty():
+		return {}
+	return StableTargetEnvelope.capture(
+		selection_snapshot,
+		_selection_catalog_query_port.compose_region_catalog(),
+		_selection_catalog_query_port.compose_product_catalog(),
+		context
+	)
+
+
+func _selection_snapshot(request: Dictionary) -> Dictionary:
+	if _table_selection_state == null:
+		return {}
+	var result := _table_selection_state.snapshot()
+	if request.has("selected_card_resolution_id"):
+		result["selected_card_resolution_id"] = int(request.get("selected_card_resolution_id", -1))
+	return result
+
+
+func _choice_kind_for_request(request: Dictionary) -> String:
+	if int(request.get("target_slot", -1)) >= 0:
+		return TARGET_MONSTER
+	if int(request.get("target_player", -1)) >= 0:
+		return TARGET_PLAYER
+	return ""
+
+
+func _envelope_target_kind(choice_kind: String) -> String:
+	if choice_kind == TARGET_MONSTER:
+		return StableTargetEnvelope.TARGET_MONSTER
+	if choice_kind == TARGET_PLAYER:
+		return StableTargetEnvelope.TARGET_PLAYER
+	return StableTargetEnvelope.TARGET_NONE
+
+
+func _eligibility(player_index: int, skill: Dictionary, mode: String, context: Dictionary = {}) -> Dictionary:
 	if _eligibility_facts == null or _eligibility_service == null:
 		return {"allowed": false, "reason_code": "eligibility_service_missing"}
-	var facts := _eligibility_facts.build_facts(player_index, skill)
+	var facts := _eligibility_facts.build_facts(player_index, skill, context)
 	facts["commodity_color_flow"] = _runtime_coordinator.commodity_color_flow_snapshot(player_index)
 	facts["player_mana"] = _runtime_coordinator.player_mana_availability(player_index)
 	return _eligibility_service.evaluate_play({"player_index": player_index, "skill": skill, "evaluation_mode": mode}, facts)
 
 
-func _contract_context(player_index: int, skill: Dictionary) -> Dictionary:
+func _contract_context(player_index: int, skill: Dictionary, context: Dictionary) -> Dictionary:
 	if str(skill.get("kind", "")) != "area_trade_contract":
 		return {}
 	if _contract_controller == null:
 		return {"error": "contract_controller_missing", "reason": "contract_controller_missing"}
-	var selection := _contract_controller.selection_snapshot()
 	return _contract_controller.offer_context(
 		skill,
 		player_index,
-		int(selection.get("source_district", -1)),
-		int(selection.get("target_district", -1)),
-		_table_selection_state.selected_trade_product
+		int(context.get("contract_source_district", -1)),
+		int(context.get("contract_target_district", -1)),
+		str(context.get("selected_trade_product", ""))
 	)
 
 
@@ -294,12 +454,20 @@ func _skill_with_financial_terms(skill: Dictionary) -> Dictionary:
 	return result
 
 
-func _begin_target(kind: String, player_index: int, slot_index: int) -> Dictionary:
+func _begin_target(
+	kind: String,
+	player_index: int,
+	slot_index: int,
+	stable_target_envelope: Dictionary,
+	source_card_fingerprint: String
+) -> Dictionary:
 	if _target_choice_controller == null:
 		return _rejection("target_choice_controller_missing")
-	var choice := _target_choice_controller.begin_choice(kind, player_index, slot_index)
+	var choice := _target_choice_controller.begin_choice(kind, player_index, slot_index, stable_target_envelope, source_card_fingerprint)
+	if choice.is_empty() or not bool(choice.get("accepted", true)):
+		return _rejection(str(choice.get("reason", "target_choice_rejected")), choice)
 	return {
-		"accepted": bool(choice.get("accepted", true)),
+		"accepted": true,
 		"queued": false,
 		"target_choice_started": not choice.is_empty(),
 		"target_kind": kind,

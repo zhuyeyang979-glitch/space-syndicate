@@ -9,7 +9,7 @@ const SCENE_PATHS := {
 	"hand_rack": "res://scenes/ui/HandRack.tscn",
 	"action_dock": "res://scenes/ui/ActionDock.tscn",
 	"bid_board": "res://scenes/ui/BidBoard.tscn",
-	"public_track": "res://scenes/ui/PublicTrack.tscn",
+	"top_commodity_track": "res://scenes/ui/table/TopCommoditySushiTrack.tscn",
 	"card_resolution_track": "res://scenes/ui/CardResolutionTrack.tscn",
 	"overlay_layer": "res://scenes/ui/OverlayLayer.tscn",
 	"district_supply": "res://scenes/ui/DistrictSupplyDrawer.tscn",
@@ -49,14 +49,19 @@ func _run() -> void:
 
 	var game_screen := roots.get("game_screen") as Node
 	var player_board := roots.get("player_board") as Node
+	var commodity_track := roots.get("top_commodity_track") as Node
 	var card_track := roots.get("card_resolution_track") as Node
 	var overlay := roots.get("overlay_layer") as Node
 	var planet_board := roots.get("planet_board") as Node
 	var district_supply := roots.get("district_supply") as Node
 
-	_expect(_has_nodes(game_screen, ["TopBar", "PublicTrack", "PlanetBoard", "RightInspector", "PlayerBoard", "OverlayLayer"]), "GameScreen composes the real table scenes")
+	_expect(_has_nodes(game_screen, ["TopBar", "TopCommoditySushiTrack", "PlanetBoard", "RightInspector", "PlayerBoard", "OverlayLayer"]), "GameScreen composes the current commodity-led table scenes")
+	_expect(game_screen != null and game_screen.find_child("PublicTrack", true, false) == null, "GameScreen keeps the retired PublicTrack out of active production composition")
+	_expect(game_screen != null and game_screen.find_children("TopCommoditySushiTrack", "", true, false).size() == 1, "GameScreen composes exactly one TopCommoditySushiTrack")
 	_expect(_has_nodes(game_screen, ["RuntimeVisualEventLayer"]) and not _has_nodes(game_screen, ["FirstRunCoach", "ScenarioCoach"]), "GameScreen keeps runtime feedback and removes legacy coach surfaces")
 	_expect(_has_nodes(player_board, ["PlayerResourceTableau", "HandRack", "PlayerMainActionDock"]) and player_board.find_child("PlayerBidBoard", true, false) == null, "PlayerBoard owns resources, hand, and actions without reserving a permanent bid surface")
+	_expect(_has_nodes(commodity_track, ["TrackMargin", "TrackRows", "HeaderRow", "TitleLabel", "CommodityTrackPhaseLabel", "CommodityTrackCountLabel", "BeltViewport", "CommodityTrackItemHost", "CommodityTrackEmptyLabel"]), "TopCommoditySushiTrack owns its stable public commodity surface")
+	_expect(commodity_track is Control and (commodity_track as Control).custom_minimum_size.y >= 150.0, "TopCommoditySushiTrack remains a wide table surface instead of the retired 44px banner")
 	_expect(_has_nodes(card_track, ["HistoryRail", "ActiveResolutionSlot", "QueueRail", "NextQueueRail", "AuctionResponseLayer", "PrivacyHintLayer", "EmptyStateLayer"]), "CardResolutionTrack owns its complete public resolution surface")
 	_expect(_has_nodes(overlay, ["ConfirmPanel", "MonsterWagerDecisionPanel", "ContractResponseDecisionPanel", "TemporaryChoiceDecisionPanel", "PublicBidDecisionPanel"]), "OverlayLayer owns every temporary decision panel, including structured public_bid")
 	_expect(_has_nodes(planet_board, ["WeatherForecastStrip", "PlanetMapView"]), "PlanetBoard owns weather and the sceneized planet map")
@@ -96,6 +101,8 @@ func _run() -> void:
 
 	var player_scene_text := _source("res://scenes/ui/PlayerBoard.tscn")
 	var top_bar_text := _source("res://scenes/ui/TopBar.tscn")
+	var commodity_track_scene_text := _source("res://scenes/ui/table/TopCommoditySushiTrack.tscn")
+	var commodity_track_source := _source("res://scripts/ui/table/top_commodity_sushi_track.gd")
 	var track_scene_text := _source("res://scenes/ui/CardResolutionTrack.tscn")
 	var overlay_scene_text := _source("res://scenes/ui/OverlayLayer.tscn")
 	var menu_overlay_scene_text := _source("res://scenes/ui/MenuOverlay.tscn")
@@ -107,6 +114,8 @@ func _run() -> void:
 	var district_info_source := _source("res://scripts/ui/district_info_panel.gd")
 	_expect(_contains_all(player_scene_text, ["玩家板｜手牌", "现金｜", "GDP｜", "选区｜", "下一步｜", "手牌｜"]), "PlayerBoard keeps concise player-facing Chinese defaults")
 	_expect(_contains_all(top_bar_text, ["桌态｜待开桌", "计时｜00:00", "结束操作", "菜单"]), "TopBar keeps readable table status and commands")
+	_expect(_contains_all(commodity_track_scene_text, ["公共商品寿司带", "等待权威快照", "0 件公开商品", "共享商品带尚未就绪。"]), "TopCommoditySushiTrack explains its public commodity state")
+	_expect(_contains_all(commodity_track_source, ["signal item_focused", "signal claim_requested", "func set_snapshot(snapshot:"]), "TopCommoditySushiTrack exposes typed commodity focus, claim, and snapshot boundaries")
 	_expect(_contains_all(track_scene_text, ["公共牌轨", "竞价/响应窗口", "归属未公开前只显示待猜线索", "牌轨空闲"]), "CardResolutionTrack explains public state without owner leakage")
 	_expect(_contains_all(overlay_scene_text, ["详情抽屉", "确认操作", "MonsterWagerDecisionPanel", "ContractResponseDecisionPanel", "TemporaryChoiceDecisionPanel"]), "OverlayLayer exposes scene-owned detail and decision surfaces")
 	_expect(_contains_all(menu_overlay_scene_text, ["text = \"返回\""]) and not menu_overlay_scene_text.contains("text = \"Back\""), "MenuOverlay keeps default navigation player-facing and localized")

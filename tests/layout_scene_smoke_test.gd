@@ -2324,6 +2324,17 @@ func _array_has_prefix(values: Array, prefix: String) -> bool:
 	return false
 
 
+func _selection_intents_have_card_resolution(intents: Array, resolution_id: int) -> bool:
+	for intent_variant in intents:
+		if not (intent_variant is Dictionary):
+			continue
+		var intent := intent_variant as Dictionary
+		if str(intent.get("selection_kind", "")) == str(TableSelectionIntent.KIND_SELECT_CARD_RESOLUTION) \
+				and int(intent.get("target_card_resolution_id", -2)) == resolution_id:
+			return true
+	return false
+
+
 func _action_list_has_label(actions: Array, expected_label: String) -> bool:
 	for action_variant in actions:
 		if not (action_variant is Dictionary):
@@ -2635,13 +2646,20 @@ func _check_runtime_hand_card_drag_to_map_play(main: Node, runtime_screen: Contr
 	_expect(int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district) == target_district, "dragging a live hand card onto a map district selects the drop district before playing")
 	_expect(int(main.get("selected_runtime_card_slot")) == slot_index, "dragging a live hand card onto the map selects the matching runtime hand slot")
 	_expect(_runtime_card_resolution_entry_count(main) > queue_before, "dragging a live hand card onto the map commits it to the public resolution track through the gameplay controller")
-	main.set("selected_card_resolution_id", -1)
+	var runtime_selection := (main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()
+	var clear_result := runtime_selection.select_card_resolution_target(-1, -1, int(runtime_selection.snapshot().get("revision", -1)))
+	_expect(bool(clear_result.get("applied", false)), "runtime card-track fixture clears focus through the scene-owned selection state")
 	_force_runtime_screen_sync(main)
 	await process_frame
 	var track_action_ids: Array[String] = []
+	var track_selection_intents: Array[Dictionary] = []
 	if runtime_screen.has_signal("action_requested"):
 		runtime_screen.connect("action_requested", func(action_id: String) -> void:
 			track_action_ids.append(action_id)
+		)
+	if runtime_screen.has_signal("table_selection_intent_requested"):
+		runtime_screen.connect("table_selection_intent_requested", func(intent: TableSelectionIntent) -> void:
+			track_selection_intents.append(intent.to_dictionary())
 		)
 	var track_slot := runtime_screen.find_child("PublicTrackSlot", true, false) as Control
 	_expect(track_slot != null, "runtime PublicTrack renders the newly queued anonymous card as a clickable table slot")
@@ -2653,12 +2671,13 @@ func _check_runtime_hand_card_drag_to_map_play(main: Node, runtime_screen: Contr
 	track_slot.gui_input.emit(track_click)
 	await process_frame
 	await process_frame
-	var selected_resolution_id := int(main.get("selected_card_resolution_id"))
+	var selected_resolution_id := int(runtime_selection.selected_card_resolution_id)
 	var runtime_right_inspector := runtime_screen.find_child("RightInspector", true, false)
 	var runtime_inspector_text := _node_tree_text(runtime_right_inspector)
-	_expect(selected_resolution_id >= 0, "single-clicking a runtime PublicTrack slot focuses a public card-history entry in main")
-	_expect(_array_has_prefix(track_action_ids, "track_select_"), "single-clicking a runtime PublicTrack slot emits a track_select action through GameScreen")
-	_expect(runtime_inspector_text.contains("牌轨详情") and runtime_inspector_text.contains("查看履历") and runtime_inspector_text.contains("线索档案"), "runtime PublicTrack click keeps the public-history detail and dossier action in RightInspector after main resync")
+	_expect(selected_resolution_id >= 0, "single-clicking a runtime PublicTrack slot focuses a public card-history entry in the scene-owned selection state")
+	_expect(_selection_intents_have_card_resolution(track_selection_intents, selected_resolution_id), "single-clicking a runtime PublicTrack slot emits one typed card-resolution selection intent")
+	_expect(not _array_has_prefix(track_action_ids, "track_select_"), "single-clicking a runtime PublicTrack slot emits no legacy track_select action toward Main")
+	_expect(runtime_inspector_text.contains("牌轨详情") and runtime_inspector_text.contains("查看履历") and runtime_inspector_text.contains("线索档案"), "runtime PublicTrack click keeps the public-history detail and dossier action in RightInspector after typed refresh")
 	var intel_button := _find_visible_button_containing(runtime_right_inspector, "线索档案")
 	_expect(intel_button != null, "runtime selected PublicTrack detail exposes a direct intel dossier action")
 	if intel_button != null:

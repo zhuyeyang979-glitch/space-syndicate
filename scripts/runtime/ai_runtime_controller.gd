@@ -26,7 +26,6 @@ var _route_network_runtime_controller: RouteNetworkRuntimeController
 var _visual_cue_runtime_owner: VisualCueRuntimeOwner
 var _card_play_submission_controller: CardPlaySubmissionRuntimeController
 var _card_resolution_history_service: CardResolutionHistoryRuntimeService
-var _table_selection_state: TableSelectionState
 var _v06_economy_action_port: RefCounted
 var _ruleset_snapshot: Dictionary = {}
 var _policy_main_payload: Dictionary = {}
@@ -94,12 +93,10 @@ func set_visual_cue_runtime_owner(cue_owner: VisualCueRuntimeOwner) -> void:
 
 func set_card_execution_dependencies(
 	submission_controller: CardPlaySubmissionRuntimeController,
-	history_service: CardResolutionHistoryRuntimeService,
-	table_selection_state: TableSelectionState
+	history_service: CardResolutionHistoryRuntimeService
 ) -> void:
 	_card_play_submission_controller = submission_controller
 	_card_resolution_history_service = history_service
-	_table_selection_state = table_selection_state
 
 
 func set_v06_economy_action_port(port: RefCounted) -> Dictionary:
@@ -484,13 +481,6 @@ var rng:
 	get:
 		return _world_bridge.shared_rng() if _world_bridge != null else null
 
-var selected_card_resolution_id:
-	get:
-		return _table_selection_state.selected_card_resolution_id if _table_selection_state != null else -1
-	set(value):
-		if _table_selection_state != null:
-			_table_selection_state.selected_card_resolution_id = int(value)
-
 var selected_contract_source_district:
 	get:
 		return int(_contract_runtime_controller.selection_snapshot().get("source_district", -1)) if _contract_runtime_controller != null else -1
@@ -515,15 +505,6 @@ var selected_district:
 		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
 		if state != null:
 			state.selected_district = int(value)
-
-var selected_player:
-	get:
-		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
-		return state.selected_player if state != null else 0
-	set(value):
-		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
-		if state != null:
-			state.selected_player = int(value)
 
 var selected_trade_product:
 	get:
@@ -1024,8 +1005,8 @@ func _skill_play_product(skill: Dictionary, player_index: int) -> String:
 func _skill_play_flow_required(skill: Dictionary, _player_index: int = -1) -> int:
 	return _call_world(&"_skill_play_flow_required", [skill, _player_index])
 
-func _skill_play_region_scope(skill: Dictionary) -> String:
-	return str(_skill_play_requirement_status(selected_player, skill).get("scope", CardPlayRequirementPolicyScript.SCOPE_OWN_BEST_REGION))
+func _skill_play_region_scope(skill: Dictionary, player_index: int) -> String:
+	return str(_skill_play_requirement_status(player_index, skill).get("scope", CardPlayRequirementPolicyScript.SCOPE_OWN_BEST_REGION))
 
 func _best_player_gdp_share_district(player_index: int) -> int:
 	return _call_world(&"_best_player_gdp_share_district", [player_index])
@@ -1034,8 +1015,8 @@ func _skill_play_requirement_status(player_index: int, skill: Dictionary) -> Dic
 	var value: Variant = _call_world(&"_card_play_requirement_snapshot", [player_index, skill])
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
-func _skill_play_cash_cost(skill: Dictionary) -> int:
-	return int(_skill_play_requirement_status(selected_player, skill).get("cash_cost", 0))
+func _skill_play_cash_cost(skill: Dictionary, player_index: int) -> int:
+	return int(_skill_play_requirement_status(player_index, skill).get("cash_cost", 0))
 
 func _can_play_skill_now(player_index: int, skill: Dictionary, show_log: bool = true) -> bool:
 	var value: Variant = _call_world(&"_card_play_eligibility_snapshot", [player_index, skill, "rule", {}])
@@ -1128,6 +1109,17 @@ func _mark_city_guess_for_player(viewer_index: int, city_index: int, guessed_pla
 
 func _traceable_contract_entries(preferred_resolution_id: int = -1, limit: int = 1) -> Array:
 	return _contract_runtime_controller.traceable_contract_entries(preferred_resolution_id, limit) if _contract_runtime_controller != null else []
+
+func _latest_public_history_resolution_id() -> int:
+	if _card_resolution_history_service == null:
+		return -1
+	var entries := _card_resolution_history_service.public_history_snapshot()
+	for index in range(entries.size() - 1, -1, -1):
+		if entries[index] is Dictionary:
+			var resolution_id := int((entries[index] as Dictionary).get("resolution_id", -1))
+			if resolution_id >= 0:
+				return resolution_id
+	return -1
 
 func _monster_wager_base_percent(entry: Dictionary) -> int:
 	return _call_monster(&"_monster_wager_base_percent", [entry])
@@ -1317,7 +1309,7 @@ func _card_can_open_counter_window(entry: Dictionary) -> bool:
 func _card_resolution_entry_card_label(entry: Dictionary) -> String:
 	return _call_world(&"_card_resolution_entry_card_label", [entry])
 
-func _queue_skill_resolution(player_index: int, slot_index: int, target_slot: int = -1, target_player: int = -1) -> bool:
+func _queue_skill_resolution(player_index: int, slot_index: int, target_slot: int = -1, target_player: int = -1, selected_resolution_id: int = -1) -> bool:
 	if _card_play_submission_controller == null:
 		return false
 	return bool(_card_play_submission_controller.submit_card_play({
@@ -1325,6 +1317,7 @@ func _queue_skill_resolution(player_index: int, slot_index: int, target_slot: in
 		"slot_index": slot_index,
 		"target_slot": target_slot,
 		"target_player": target_player,
+		"selected_card_resolution_id": selected_resolution_id,
 		"submission_source": "ai",
 	}).get("accepted", false))
 
@@ -5002,7 +4995,7 @@ func _ai_route_plan_bonus_for_candidate(player_index: int, kind: String, distric
 	return max(0, bonus)
 func _ai_play_requirement_metadata(player_index: int, skill: Dictionary, planned_district: int = -1) -> Dictionary:
 	var evaluated_skill := skill.duplicate(true)
-	var scope := _skill_play_region_scope(evaluated_skill)
+	var scope := _skill_play_region_scope(evaluated_skill, player_index)
 	var has_locked_requirement_district := evaluated_skill.has("play_requirement_district")
 	var requirement_district := int(evaluated_skill.get("play_requirement_district", planned_district))
 	if not has_locked_requirement_district:
@@ -5047,7 +5040,7 @@ func _ai_route_hand_inventory(player_index: int, route_id: String) -> Dictionary
 			continue
 		result["total"] = int(result.get("total", 0)) + 1
 		var requirement := _ai_play_requirement_metadata(player_index, skill, _best_player_gdp_share_district(player_index))
-		var cash_cost := _skill_play_cash_cost(skill)
+		var cash_cost := _skill_play_cash_cost(skill, player_index)
 		if bool(requirement.get("requirement_satisfied", false)) and cash >= cash_cost:
 			result["playable"] = int(result.get("playable", 0)) + 1
 		else:
@@ -6724,6 +6717,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		"learning_bonus": 0,
 		"contract_source": -1,
 		"contract_target": -1,
+		"selected_card_resolution_id": -1,
 		"score": 70 + maxi(0, int(skill.get("cost", 2))) * 12 + maxi(1, _skill_rank(String(skill.get("name", "")))) * 9,
 		"reason": "按卡牌强度、目标价值、GDP份额、路线计划与AI性格评分",
 	}
@@ -6937,13 +6931,17 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		context["district"] = rival_city
 		context["score"] = int(context["score"]) + 88 + _city_intel_priority_score({"potential_income": int(_district_city(rival_city).get("last_income", 0)), "last_income": int(_district_city(rival_city).get("last_income", 0)), "competition": _city_competition_matches(rival_city), "disrupted": int(_district_city(rival_city).get("trade_disrupted_routes", 0)), "products": _city_product_names(_district_city(rival_city)), "demands": _city_demand_names(_district_city(rival_city)), "marked": false})
 	elif ["card_history_public_review", "card_history_subscription"].has(kind):
-		if resolved_card_history.is_empty():
+		var history_resolution_id := _latest_public_history_resolution_id()
+		if history_resolution_id < 0:
 			return {}
+		context["selected_card_resolution_id"] = history_resolution_id
 		context["district"] = _ai_first_alive_district()
 		context["score"] = int(context["score"]) + 70 + mini(36, resolved_card_history.size() * 3)
 	elif kind == "intel_contract_trace":
-		if _traceable_contract_entries(selected_card_resolution_id, 1).is_empty():
+		var traceable_entries := _traceable_contract_entries(-1, 1)
+		if traceable_entries.is_empty():
 			return {}
+		context["selected_card_resolution_id"] = int((traceable_entries[0] as Dictionary).get("resolution_id", -1))
 		context["district"] = _ai_first_alive_district()
 		context["score"] = int(context["score"]) + 100 + pending_contract_offers.size() * 18
 	elif kind == "supply_draw":
@@ -6959,7 +6957,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 	if int(context.get("district", -1)) < 0:
 		return {}
 	var requirement_district := int(context.get("district", -1))
-	if _skill_play_region_scope(skill) == CardPlayRequirementPolicyScript.SCOPE_CONTRACT_SOURCE_REGION:
+	if _skill_play_region_scope(skill, player_index) == CardPlayRequirementPolicyScript.SCOPE_CONTRACT_SOURCE_REGION:
 		requirement_district = int(context.get("contract_source", requirement_district))
 	var requirement_metadata := _ai_play_requirement_metadata(player_index, skill, requirement_district)
 	if not bool(requirement_metadata.get("requirement_satisfied", false)):
@@ -6999,7 +6997,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		if refreshed_futures_plan.is_empty():
 			return {}
 		context.merge(refreshed_futures_plan, true)
-	var cash_cost := _skill_play_cash_cost(skill)
+	var cash_cost := _skill_play_cash_cost(skill, player_index)
 	if int((players[player_index] as Dictionary).get("cash", 0)) < cash_cost:
 		return {}
 	var target_owner := -999
@@ -7384,17 +7382,15 @@ func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_cand
 	var slot_index := int(candidate.get("slot_index", -1))
 	var target_slot := int(candidate.get("target_slot", -1))
 	var target_player := int(candidate.get("target_player", -1))
-	var previous_player := int(selected_player)
 	var previous_district := int(selected_district)
 	var previous_product := str(selected_trade_product)
 	var previous_source := int(selected_contract_source_district)
 	var previous_target := int(selected_contract_target_district)
-	selected_player = player_index
 	selected_district = int(candidate.get("district", _ai_first_alive_district()))
 	selected_trade_product = String(candidate.get("product", ""))
 	selected_contract_source_district = int(candidate.get("contract_source", -1))
 	selected_contract_target_district = int(candidate.get("contract_target", -1))
-	var queued := _queue_skill_resolution(player_index, slot_index, target_slot, target_player)
+	var queued := _queue_skill_resolution(player_index, slot_index, target_slot, target_player, int(candidate.get("selected_card_resolution_id", -1)))
 	if queued:
 		var queue_index := _queued_card_entry_index_for_player(player_index)
 		var in_next_batch := false
@@ -7430,7 +7426,6 @@ func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_cand
 			all_candidates,
 			decision_metadata
 		)
-	selected_player = previous_player
 	selected_district = previous_district
 	selected_trade_product = previous_product
 	selected_contract_source_district = previous_source
@@ -7878,10 +7873,8 @@ func _ai_queue_counter_response_candidate(player_index: int, candidate: Dictiona
 	if slot_index < 0 or slot_index >= slots.size() or not (slots[slot_index] is Dictionary):
 		return false
 	var source_skill: Dictionary = slots[slot_index]
-	var previous_player := int(selected_player)
 	var previous_district := int(selected_district)
 	var previous_product := str(selected_trade_product)
-	selected_player = player_index
 	selected_district = int(candidate.get("district", int(_card_resolution_active_entry().get("selected_district", _ai_first_alive_district()))))
 	selected_trade_product = String(candidate.get("product", _skill_play_product(source_skill, player_index)))
 	var queued := false
@@ -7934,7 +7927,6 @@ func _ai_queue_counter_response_candidate(player_index: int, candidate: Dictiona
 				"learning_bonus": int(candidate.get("learning_bonus", 0)),
 			}
 		)
-	selected_player = previous_player
 	selected_district = previous_district
 	selected_trade_product = previous_product
 	return queued

@@ -48,11 +48,13 @@ func dispatch(transaction: Dictionary) -> Dictionary:
 	var entry: Dictionary = _dictionary(transaction.get("active_entry", {}))
 	var skill: Dictionary = _dictionary(transaction.get("skill", {}))
 	var player_index := int(entry.get("player_index", -1))
-	var players := _world_session_state.players if _world_session_state != null else []
-	if player_index < 0 or player_index >= players.size() or skill.is_empty():
-		return _receipt(false, false, "effect_context_missing")
-	var player: Dictionary = players[player_index]
 	var handler_id := str(transaction.get("handler_id", skill.get("kind", "")))
+	var players := _world_session_state.players if _world_session_state != null else []
+	if skill.is_empty():
+		return _receipt(false, false, "effect_context_missing")
+	if player_index < 0 or player_index >= players.size():
+		return _receipt(false, false, "monster_card_actor_invalid" if handler_id == "monster_card" else "effect_context_missing")
+	var player: Dictionary = players[player_index]
 	var resolved := false
 	var continuation_kind := "normal"
 	if handler_id == "target_monster":
@@ -119,7 +121,7 @@ func _dispatch_economy_family(handler_id: String, entry: Dictionary, skill: Dict
 func _dispatch_domain_handler(handler_id: String, player_index: int, player: Dictionary, entry: Dictionary, skill: Dictionary) -> bool:
 	match handler_id:
 		"monster_card":
-			return _monster_controller != null and _monster_controller._summon_monster_from_card(player, skill)
+			return _monster_controller != null and _monster_controller._summon_monster_from_card(player_index, skill)
 		"public_facility":
 			if _runtime_coordinator == null:
 				return false

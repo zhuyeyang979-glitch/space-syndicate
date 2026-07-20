@@ -40,10 +40,12 @@ class RecordingMarket:
 	var pressure_calls := 0
 	var refresh_calls := 0
 	var last_effect := {}
+	var last_target_context := {}
 
-	func apply_news_market_pressure(effect: Dictionary) -> Dictionary:
+	func apply_news_market_pressure(effect: Dictionary, target_context: Dictionary = {}) -> Dictionary:
 		pressure_calls += 1
 		last_effect = effect.duplicate(true)
+		last_target_context = target_context.duplicate(true)
 		return {
 			"changed": int(effect.get("market_demand_pressure", 0)) > 0,
 			"product_id": "星露莓",
@@ -98,11 +100,11 @@ func _initialize() -> void:
 	}
 	var plan: Dictionary = service.plan_effect({
 		"handler_id": "news_event",
-		"active_entry": {"resolution_id": 77, "player_index": 0, "private_actor": "PRIVATE_ACTOR_SENTINEL"},
+		"active_entry": {"resolution_id": 77, "player_index": 0, "selected_district": 0, "selected_trade_product": "星露莓", "private_actor": "PRIVATE_ACTOR_SENTINEL"},
 		"skill": skill,
 	})
 	_expect(bool(plan.get("ready", false)) and str(plan.get("family_id", "")) == "economy", "news event is planned by the existing effect owner")
-	var receipt: Dictionary = bridge.apply_effect(world, plan)
+	var receipt: Dictionary = bridge.apply_effect(plan)
 	var finalization: Dictionary = service.finalize_effect(plan, receipt)
 	_expect(bool(receipt.get("resolved", false)) and bool(finalization.get("resolved", false)), "valid news event commits through the production dispatch chain")
 	var district: Dictionary = world.districts[0]
@@ -116,6 +118,15 @@ func _initialize() -> void:
 	_expect(_exact_keys(public_receipt, ["anonymous_source", "card_name", "consumption_delta", "district_index", "district_name", "event_kind", "market_demand_delta", "market_supply_delta", "news_category", "panic_delta", "product_id", "production_delta", "route_damage_delta", "schema_version", "transport_delta", "volatility_delta"]), "public aftermath uses a fixed allowlist")
 	_expect(bool(public_receipt.get("anonymous_source", false)) and not _contains_private_sentinel(public_receipt), "public aftermath hides player, owner, hand, and private actor state")
 	_expect(str(city.get("last_public_clue", "")).contains("出牌者匿名") and not _contains_private_sentinel(city.get("public_clues", [])), "city receives a public anonymous aftermath clue")
+	_expect(not market.last_target_context.is_empty(), "market-bearing news receives a frozen product target context")
+
+	var region_only_plan: Dictionary = service.plan_effect({
+		"handler_id": "news_event",
+		"active_entry": {"resolution_id": 78, "player_index": 0, "selected_district": 0},
+		"skill": {"name": "舆论操控1", "kind": "news_event", "news_category": "heat", "panic": 1},
+	})
+	var region_only_receipt: Dictionary = bridge.apply_effect(region_only_plan)
+	_expect(bool(region_only_receipt.get("resolved", false)) and market.last_target_context.is_empty(), "region-only news does not require or sample a product target")
 
 	var invalid_world := FixtureWorld.new()
 	invalid_world.districts[0]["destroyed"] = true
@@ -123,7 +134,7 @@ func _initialize() -> void:
 	var invalid_before := invalid_world.districts.duplicate(true)
 	var pressure_before := market.pressure_calls
 	bridge.set_world_session_state(invalid_world)
-	var invalid_receipt: Dictionary = bridge.apply_effect(invalid_world, plan)
+	var invalid_receipt: Dictionary = bridge.apply_effect(plan)
 	_expect(not bool(invalid_receipt.get("resolved", true)) and str(invalid_receipt.get("reason", "")) == "district_destroyed", "destroyed target fails closed")
 	_expect(invalid_world.districts == invalid_before and market.pressure_calls == pressure_before, "invalid target mutates no region or market owner")
 

@@ -1,4 +1,4 @@
-[gd_scene load_steps=110 format=3]
+[gd_scene load_steps=113 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -109,6 +109,10 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/RoleCodexPublicSourceService.tscn" id="112_role_codex_source"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/presentation/CardHistoryPublicQueryPort.tscn" id="113_card_history_query"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardHistoryPrivateAnnotationService.tscn" id="114_card_history_annotations"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/PlayerIdentityAuthorizationBoundary.tscn" id="117_player_identity_authorization"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionResponsePort.tscn" id="118_forced_decision_response"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/TableSelectionIntentPort.tscn" id="119_table_selection_intent"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/TableSelectionCatalogQueryPort.tscn" id="120_selection_catalog_query"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -152,6 +156,31 @@ unique_name_in_owner = true
 
 [node name="TablePresentationQueryPorts" parent="." instance=ExtResource("99_table_presentation_query_ports")]
 unique_name_in_owner = true
+
+[node name="PlayerIdentityAuthorizationBoundary" parent="." instance=ExtResource("117_player_identity_authorization")]
+unique_name_in_owner = true
+local_viewer_authorization_path = NodePath("../TablePresentationQueryPorts/LocalViewerAuthorization")
+world_session_state_path = NodePath("../WorldSessionState")
+game_session_path = NodePath("../GameSessionRuntimeController")
+
+[node name="ForcedDecisionResponsePort" parent="." instance=ExtResource("118_forced_decision_response")]
+unique_name_in_owner = true
+identity_boundary_path = NodePath("../PlayerIdentityAuthorizationBoundary")
+scheduler_path = NodePath("../ForcedDecisionRuntimeScheduler")
+
+[node name="TableSelectionIntentPort" parent="." instance=ExtResource("119_table_selection_intent")]
+unique_name_in_owner = true
+identity_boundary_path = NodePath("../PlayerIdentityAuthorizationBoundary")
+selection_state_path = NodePath("../TableSelectionState")
+forced_decision_response_port_path = NodePath("../ForcedDecisionResponsePort")
+card_resolution_queue_path = NodePath("../CardResolutionQueueRuntimeService")
+card_resolution_history_path = NodePath("../CardResolutionHistoryRuntimeService")
+
+[node name="TableSelectionCatalogQueryPort" parent="." instance=ExtResource("120_selection_catalog_query")]
+unique_name_in_owner = true
+world_session_state_path = NodePath("../WorldSessionState")
+product_market_runtime_controller_path = NodePath("../ProductMarketRuntimeController")
+game_session_runtime_controller_path = NodePath("../GameSessionRuntimeController")
 
 [node name="TablePresentationViewModelQuery" parent="." instance=ExtResource("103_table_presentation_viewmodel_query")]
 unique_name_in_owner = true

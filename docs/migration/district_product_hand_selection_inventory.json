@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "boundary_id": "district_product_hand_selection_cutover",
+  "status": "cut_over",
+  "state_owner": "res://scripts/runtime/table_selection_state.gd",
+  "intent_port": "res://scripts/runtime/table_selection_intent_port.gd",
+  "identity_boundary": "res://scripts/runtime/player_identity_authorization_boundary.gd",
+  "ui_surface": "res://scripts/ui/game_screen.gd",
+  "selection_kinds": [
+    "select_district",
+    "select_trade_product",
+    "select_hand_slot"
+  ],
+  "target_authority": {
+    "district": "WorldSessionState.public_intel_projection",
+    "trade_product": "ProductMarketRuntimeController.PRODUCT_CATALOG",
+    "hand_slot": "authorized local viewer slot existence"
+  },
+  "main_direct_write_count": 0,
+  "main_single_click_map_route_count": 0,
+  "main_hand_selection_callback_count": 0,
+  "actor_identity_delta_count": 0,
+  "gameplay_world_mutation_count": 0,
+  "private_hand_content_field_count": 0,
+  "card_supply_reconciliation_owner": "res://scripts/runtime/table_card_supply_presentation_state.gd",
+  "optional_route_filter": {
+    "owner": "res://scripts/runtime/optional_route_presentation_runtime_service.gd",
+    "field": "selected_trade_product_id",
+    "merged_with_table_selection": false
+  },
+  "retained_production_categories": [
+    "authorized command target reads",
+    "domain completion focus",
+    "AI candidate-local context",
+    "session-start initialization",
+    "save restore"
+  ],
+  "unknown_consumer_count": 0,
+  "focused_test": "res://tests/district_product_hand_selection_cutover_test.gd"
+}

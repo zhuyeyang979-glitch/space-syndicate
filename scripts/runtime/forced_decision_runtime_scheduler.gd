@@ -9,6 +9,8 @@ var _priority_order: Array[String] = []
 var _candidates: Array = []
 var _configured := false
 var _public_bid_phase_active := false
+var _decision_revision := 0
+var _decision_fingerprint := ""
 
 
 func configure(priority_order: Array) -> void:
@@ -46,6 +48,7 @@ func sync_candidates(candidates: Array, public_bid_phase_snapshot: Dictionary = 
 		_candidates.append(public_bid_candidate)
 		_public_bid_phase_active = true
 	_sort_candidates()
+	_refresh_decision_revision()
 
 
 func active_decision(viewer_index: int = -1) -> Dictionary:
@@ -67,6 +70,7 @@ func active_decision(viewer_index: int = -1) -> Dictionary:
 		"blocks_player_actions": false,
 		"blocks_card_resolution": bool(candidate.get("blocks_card_resolution", false)),
 		"owner_scope": "another_player",
+		"decision_revision": _decision_revision,
 		"visible_to_viewer": false,
 		"notes": "Another player is resolving the active forced decision.",
 	}
@@ -105,6 +109,7 @@ func debug_snapshot() -> Dictionary:
 		"blocks_global_time": blocks_global_time(),
 		"blocks_card_resolution": blocks_card_resolution(),
 		"public_bid_phase_active": _public_bid_phase_active,
+		"decision_revision": _decision_revision,
 		"candidates": candidate_snapshots,
 	}
 
@@ -231,5 +236,17 @@ func _candidate_snapshot(candidate: Dictionary) -> Dictionary:
 		"blocks_card_resolution": bool(candidate.get("blocks_card_resolution", false)),
 		"source_ref": str(candidate.get("source_ref", "")),
 		"owner_scope": "assigned" if int(candidate.get("owner_player_index", -1)) >= 0 else "all_players",
+		"decision_revision": _decision_revision,
 		"notes": str(candidate.get("notes", "")),
 	}
+
+
+func _refresh_decision_revision() -> void:
+	var fingerprint := JSON.stringify({
+		"candidates": _candidates,
+		"public_bid_phase_active": _public_bid_phase_active,
+	}).sha256_text()
+	if fingerprint == _decision_fingerprint:
+		return
+	_decision_fingerprint = fingerprint
+	_decision_revision += 1

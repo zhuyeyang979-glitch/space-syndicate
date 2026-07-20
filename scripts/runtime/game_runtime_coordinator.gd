@@ -43,6 +43,7 @@ func _ready() -> void:
 	_wire_table_selection_state()
 	_wire_world_session_state()
 	_wire_forced_decision_candidate_sources()
+	call_deferred("_wire_table_selection_intent_port")
 	_wire_card_cooldown_runtime_controller()
 	_wire_card_execution_typed_ports()
 	_wire_card_resolution_transition_sink()
@@ -59,6 +60,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	_wire_table_selection_state()
 	_wire_world_session_state()
 	_wire_forced_decision_candidate_sources()
+	call_deferred("_wire_table_selection_intent_port")
 	_wire_card_cooldown_runtime_controller()
 	_wire_card_execution_typed_ports()
 	_wire_card_resolution_transition_sink()
@@ -1244,6 +1246,11 @@ func table_selection_state() -> TableSelectionState:
 	return _table_selection_state_node()
 
 
+func gameplay_actor_authorization_context(source_surface: StringName = &"game_screen") -> GameplayActorAuthorizationContext:
+	var boundary := get_node_or_null("PlayerIdentityAuthorizationBoundary") as PlayerIdentityAuthorizationBoundary
+	return boundary.current_actor_context(source_surface) if boundary != null else GameplayActorAuthorizationContext.denied("actor_authority_missing", 0, source_surface)
+
+
 func card_supply_presentation_state() -> TableCardSupplyPresentationState:
 	return _table_card_supply_presentation_state_node()
 
@@ -1337,14 +1344,6 @@ func reset_card_resolution_history() -> void:
 	var annotations := _card_history_private_annotation_service_node()
 	if annotations != null and annotations.has_method("reset_state"):
 		annotations.call("reset_state")
-
-
-func select_card_resolution(resolution_id: int) -> Dictionary:
-	var state := _table_selection_state_node()
-	if state == null:
-		return {"selected": false, "reason": "selection_state_missing"}
-	state.selected_card_resolution_id = resolution_id
-	return {"selected": true, "resolution_id": state.selected_card_resolution_id}
 
 
 func _wire_run_rng_service() -> void:
@@ -1489,6 +1488,7 @@ func _wire_card_execution_typed_ports() -> void:
 	var counter := _card_counter_settlement_runtime_service_node()
 	var effect_router := _card_effect_runtime_router_node()
 	var submission := _card_play_submission_runtime_controller_node()
+	var selection_catalog := get_node_or_null("TableSelectionCatalogQueryPort") as TableSelectionCatalogQueryPort
 	var execution := _card_resolution_execution_node() as CardResolutionExecutionRuntimeService
 	var economy_port := _card_economy_product_route_effect_world_bridge_node() as CardEconomyProductRouteEffectWorldBridge
 	if eligibility_facts != null:
@@ -1500,7 +1500,7 @@ func _wire_card_execution_typed_ports() -> void:
 	if history_annotations != null:
 		history_annotations.configure(history_query)
 	if intel != null:
-		intel.set_dependencies(world_state, selection, history_query, history_annotations, contract)
+		intel.set_dependencies(world_state, history_query, history_annotations, contract)
 	if commitment != null:
 		commitment.set_dependencies(world_state, _card_cooldown_runtime_controller_node(), _weather_telemetry_runtime_service_node() as WeatherTelemetryRuntimeService, eligibility_facts, eligibility)
 	if effect_router != null:
@@ -1526,11 +1526,12 @@ func _wire_card_execution_typed_ports() -> void:
 			target_choice, contract,
 			_product_market_runtime_controller_node() as ProductMarketRuntimeController,
 			_city_gdp_derivative_runtime_controller_node() as CityGdpDerivativeRuntimeController,
+			selection_catalog,
 			self
 		)
 	var ai := _ai_runtime_controller_node() as AiRuntimeController
 	if ai != null:
-		ai.set_card_execution_dependencies(submission, history, selection)
+		ai.set_card_execution_dependencies(submission, history)
 	var contract_bridge := _contract_runtime_world_bridge_node() as ContractRuntimeWorldBridge
 	if contract_bridge != null:
 		contract_bridge.set_card_resolution_history_service(history, queue)
@@ -3779,8 +3780,8 @@ func allows_card_resolution_progress() -> bool:
 
 
 func begin_card_target_choice(kind: String, player_index: int, slot_index: int) -> Dictionary:
-	var target_choice_owner := _card_target_choice_runtime_controller_node()
-	return target_choice_owner.begin_choice(kind, player_index, slot_index) if target_choice_owner != null else {"accepted": false, "reason": "target_choice_owner_unavailable"}
+	var submission := _card_play_submission_runtime_controller_node()
+	return submission.begin_target_choice(kind, player_index, slot_index) if submission != null else {"accepted": false, "reason": "submission_controller_missing"}
 
 
 func card_target_choice_snapshot(kind: String) -> Dictionary:
@@ -5553,6 +5554,67 @@ func _wire_table_presentation_source_target() -> void:
 	)
 	port.configure(source, game_screen, game_screen.presentation_planet_target(), developer_target, _table_presentation_refresh_scheduler_node())
 	_wire_domain_presentation_ports(port, _table_presentation_query_ports_node().public_log_port)
+	_wire_table_selection_intent_port()
+
+
+func _wire_table_selection_intent_port() -> void:
+	if Engine.is_editor_hint():
+		return
+	var port := get_node_or_null("TableSelectionIntentPort") as TableSelectionIntentPort
+	var game_screen := get_node_or_null(presentation_game_screen_path) as SpaceSyndicateGameScreen \
+		if not presentation_game_screen_path.is_empty() else null
+	if port == null or game_screen == null:
+		return
+	game_screen.bind_gameplay_actor_authorization_context(gameplay_actor_authorization_context(&"game_screen"))
+	if not game_screen.table_selection_intent_requested.is_connected(port.submit_intent):
+		game_screen.table_selection_intent_requested.connect(port.submit_intent)
+	if not port.receipt_ready.is_connected(game_screen.apply_table_selection_receipt):
+		port.receipt_ready.connect(game_screen.apply_table_selection_receipt)
+	if not port.presentation_refresh_requested.is_connected(_on_table_selection_presentation_refresh_requested):
+		port.presentation_refresh_requested.connect(_on_table_selection_presentation_refresh_requested)
+
+
+func _on_table_selection_presentation_refresh_requested(kind: StringName, reason: StringName) -> void:
+	if reason == &"selected_district_changed":
+		_reconcile_selected_district_card_supply()
+	elif reason == &"selected_trade_product_changed":
+		_record_selected_route_weather_response()
+	var refresh_port := _table_presentation_refresh_port_node()
+	if refresh_port != null:
+		refresh_port.request_immediate(kind, reason)
+
+
+func _reconcile_selected_district_card_supply() -> void:
+	var selection := _table_selection_state_node()
+	var world := _world_session_state_node()
+	var presentation := _table_card_supply_presentation_state_node()
+	if selection == null or world == null or presentation == null:
+		return
+	var district_index := selection.selected_district
+	if district_index < 0 or district_index >= world.districts.size():
+		presentation.reconcile_district_card_choices([])
+		return
+	var district: Dictionary = world.districts[district_index]
+	if bool(district.get("destroyed", false)):
+		presentation.reconcile_district_card_choices([])
+		return
+	var region_id := str(district.get("region_id", "region.%03d" % district_index))
+	var choices: Array = []
+	for card_id_variant in region_supply_card_ids(region_id):
+		var card_id := str(card_id_variant)
+		if card_exists(card_id):
+			choices.append(card_id)
+	presentation.reconcile_district_card_choices(choices)
+
+
+func _record_selected_route_weather_response() -> void:
+	var selection := _table_selection_state_node()
+	var world := _world_session_state_node()
+	if selection == null or world == null:
+		return
+	var district_index := selection.selected_district
+	if district_index >= 0 and district_index < world.districts.size():
+		record_weather_public_response(district_index, "route_after_forecast")
 
 
 func _wire_domain_presentation_ports(refresh_port: TablePresentationRefreshPort, public_log_port: PublicLogProducerPort) -> void:

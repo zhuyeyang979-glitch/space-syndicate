@@ -665,8 +665,7 @@ func remove_unit(index: int, reason: String) -> bool:
 func trigger_command(skill: Dictionary, target_slot: int = -1, acting_player_index: int = -1, command_context: Dictionary = {}) -> bool:
 	var players := _players()
 	var districts := _districts()
-	var selection: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
-	var player_index := acting_player_index if acting_player_index >= 0 else (selection.selected_player if selection != null else -1)
+	var player_index := acting_player_index
 	if player_index < 0 or player_index >= players.size():
 		return false
 	var unit_index := unit_index_by_uid(int(skill.get("bound_military_uid", 0)))

@@ -2,6 +2,8 @@
 extends Node
 class_name RoleSeatLayerHost
 
+signal player_inspection_requested(player_index: int)
+
 const DEFAULT_SKIN_SCENE_PATH := "res://scenes/ui/player_seat/PlayerSeatPortraitSkin.tscn"
 const FALLBACK_SCENE := preload("res://scenes/ui/planet_table/RoleSeatFallback.tscn")
 const DEFAULT_SEAT_SIZE := Vector2(132.0, 92.0)
@@ -37,6 +39,7 @@ const EDGE_MARGIN := 8.0
 var _descriptors: Array = []
 var _seat_nodes_by_player := {}
 var _using_skin_by_player := {}
+var _inspected_player_index := -1
 
 
 func _ready() -> void:
@@ -53,6 +56,7 @@ func set_seat_descriptors(value: Array) -> void:
 	_sync_seat_nodes()
 	_sync_fallback_decorations()
 	_layout_seats()
+	_sync_inspection_state()
 
 
 func seat_descriptors() -> Array:
@@ -61,6 +65,21 @@ func seat_descriptors() -> Array:
 
 func request_layout() -> void:
 	_layout_seats()
+
+
+func set_inspected_player_index(player_index: int) -> void:
+	_inspected_player_index = player_index
+	_sync_inspection_state()
+
+
+func inspected_player_index() -> int:
+	return _inspected_player_index
+
+
+func focus_player(player_index: int) -> void:
+	var node := _seat_nodes_by_player.get(player_index) as Control
+	if node != null and node.focus_mode != Control.FOCUS_NONE:
+		node.grab_focus()
 
 
 func set_map_visual_target(value: Control) -> void:
@@ -95,6 +114,7 @@ func layout_debug_snapshot() -> Dictionary:
 			"render_layer": node.get_parent().name if node.get_parent() != null else &"",
 			"using_skin": bool(_using_skin_by_player.get(player_index, false)),
 			"mouse_filter": node.mouse_filter,
+			"inspected": player_index == _inspected_player_index,
 		})
 	return {
 		"seat_count": seats.size(),
@@ -194,8 +214,13 @@ func _instantiate_fallback(descriptor: Dictionary) -> Control:
 
 func _prepare_node(instance: Control, descriptor: Dictionary) -> void:
 	instance.name = "PlayerSeat_%d" % int(descriptor.get("player_index", 0))
-	instance.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_set_mouse_filter_recursive(instance)
+	instance.mouse_filter = Control.MOUSE_FILTER_STOP
+	instance.focus_mode = Control.FOCUS_ALL
+	var player_index := int(descriptor.get("player_index", -1))
+	instance.gui_input.connect(_on_seat_gui_input.bind(player_index))
+	instance.mouse_entered.connect(_on_seat_mouse_entered.bind(instance))
+	instance.mouse_exited.connect(_on_seat_mouse_exited.bind(instance))
 
 
 func _retire_node(node: Control) -> void:
@@ -390,6 +415,60 @@ func _set_mouse_filter_recursive(node: Node) -> void:
 		(node as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for child in node.get_children():
 		_set_mouse_filter_recursive(child)
+
+
+func _on_seat_gui_input(event: InputEvent, player_index: int) -> void:
+	var mouse_event := event as InputEventMouseButton
+	if mouse_event != null and mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
+		player_inspection_requested.emit(player_index)
+		get_viewport().set_input_as_handled()
+		return
+	var action_event := event as InputEventAction
+	if action_event != null and action_event.action == &"ui_accept" and action_event.pressed:
+		player_inspection_requested.emit(player_index)
+		get_viewport().set_input_as_handled()
+		return
+	var key_event := event as InputEventKey
+	if key_event != null and key_event.pressed and not key_event.echo and key_event.keycode in [KEY_ENTER, KEY_SPACE]:
+		player_inspection_requested.emit(player_index)
+		get_viewport().set_input_as_handled()
+
+
+func _on_seat_mouse_entered(node: Control) -> void:
+	if node != null and node.has_method("set_host_hovered"):
+		node.call("set_host_hovered", true)
+
+
+func _on_seat_mouse_exited(node: Control) -> void:
+	if node != null and node.has_method("set_host_hovered"):
+		node.call("set_host_hovered", false)
+
+
+func _sync_inspection_state() -> void:
+	for player_index_variant in _seat_nodes_by_player.keys():
+		var player_index := int(player_index_variant)
+		var node := _seat_nodes_by_player.get(player_index) as Control
+		if node == null:
+			continue
+		node.set_meta("inspected_player", player_index == _inspected_player_index)
+		var outline := node.get_node_or_null("InspectionOutline") as Panel
+		if outline == null:
+			outline = Panel.new()
+			outline.name = "InspectionOutline"
+			outline.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			outline.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			outline.z_index = 20
+			var style := StyleBoxFlat.new()
+			style.bg_color = Color(0.0, 0.0, 0.0, 0.0)
+			style.border_color = Color("#f8fafc")
+			style.set_border_width_all(2)
+			style.set_corner_radius_all(8)
+			style.shadow_color = Color(0.22, 0.83, 0.96, 0.72)
+			style.shadow_size = 7
+			outline.add_theme_stylebox_override("panel", style)
+			node.add_child(outline)
+			outline.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		outline.visible = player_index == _inspected_player_index
 
 
 func _has_property(object: Object, property_name: StringName) -> bool:

@@ -234,6 +234,53 @@ func district_index_for_region_id(region_id: String) -> int:
 	return -1
 
 
+func public_region_selection_catalog_source() -> Dictionary:
+	if _players.is_empty() or _districts.is_empty():
+		return _public_region_catalog_unavailable("pre_session")
+	var entries: Array = []
+	var seen_ids: Dictionary = {}
+	for public_index in range(_districts.size()):
+		if not (_districts[public_index] is Dictionary) \
+				or not TablePresentationPureDataPolicy.is_pure_data(_districts[public_index]):
+			return _public_region_catalog_unavailable("region_source_not_pure_data")
+		var district := _districts[public_index] as Dictionary
+		if not district.has("region_id") or typeof(district["region_id"]) != TYPE_STRING:
+			return _public_region_catalog_unavailable("region_id_type_invalid")
+		if not district.has("name") or typeof(district["name"]) != TYPE_STRING:
+			return _public_region_catalog_unavailable("region_name_type_invalid")
+		if district.has("terrain") and not (district["terrain"] is String or district["terrain"] is StringName):
+			return _public_region_catalog_unavailable("region_terrain_type_invalid")
+		if district.has("destroyed") and typeof(district["destroyed"]) != TYPE_BOOL:
+			return _public_region_catalog_unavailable("region_destroyed_type_invalid")
+		var region_id: String = district["region_id"]
+		var public_name: String = (district["name"] as String).strip_edges()
+		var public_terrain := str(district.get("terrain", "")).strip_edges()
+		var destroyed := district.get("destroyed", false) as bool
+		if region_id.is_empty() or region_id != region_id.strip_edges() or seen_ids.has(region_id):
+			return _public_region_catalog_unavailable("region_id_invalid")
+		if public_name.is_empty():
+			return _public_region_catalog_unavailable("region_name_missing")
+		seen_ids[region_id] = true
+		var entry := {
+			"region_id": region_id,
+			"public_index": public_index,
+			"public_name": public_name,
+			"public_status": "ruins" if destroyed else "active",
+			"selectable": true,
+			"disabled_reason": "",
+			"public_terrain": public_terrain,
+		}
+		if not TablePresentationPureDataPolicy.is_pure_data(entry):
+			return _public_region_catalog_unavailable("region_entry_not_pure_data")
+		entries.append(entry)
+	return {
+		"schema_version": 1,
+		"available": true,
+		"unavailable_reason": "",
+		"entries": entries,
+	}
+
+
 func set_city_owner_guess(
 	viewer_index: int,
 	region_id: String,
@@ -630,6 +677,15 @@ func _region_id_for_district(district_index: int) -> String:
 	if district_index < 0 or district_index >= _districts.size() or not (_districts[district_index] is Dictionary):
 		return ""
 	return str((_districts[district_index] as Dictionary).get("region_id", "region.%03d" % district_index))
+
+
+func _public_region_catalog_unavailable(reason_code: String) -> Dictionary:
+	return {
+		"schema_version": 1,
+		"available": false,
+		"unavailable_reason": reason_code,
+		"entries": [],
+	}
 
 
 func _canonical_string_array(value: Variant) -> Array:

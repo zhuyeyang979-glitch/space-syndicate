@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "status": "classified",
+  "baseline_sha": "f0d5a8c71b882dd8667772fc5ce135d7fd39c9e8",
+  "previous_selection_commit": "c4bfba7c39ca7afdd5f63bae05d3b6fd465062f6",
+  "inventory_command": "rg -n --no-heading selected_player scripts --glob *.gd",
+  "raw_lexical_hit_count": 78,
+  "classification_counts": {
+    "PRESENTATION_INSPECTION_TARGET": 30,
+    "GAMEPLAY_TARGET_PLAYER": 0,
+    "AUTHORIZED_ACTOR_SOURCE": 0,
+    "VIEWER_IDENTITY": 0,
+    "PUBLIC_PLAYER_LOOKUP": 0,
+    "LEGACY_OR_DEAD": 48,
+    "UNKNOWN": 0
+  },
+  "production_inventory": [
+    {
+      "path": "scripts/runtime/table_selection_state.gd",
+      "hit_count": 18,
+      "classification": "PRESENTATION_INSPECTION_TARGET",
+      "detail": "Sole selection owner and save-compatible selected_player key; explicit APIs expose inspected-player semantics."
+    },
+    {
+      "path": "scripts/runtime/game_runtime_coordinator.gd",
+      "hit_count": 1,
+      "classification": "PRESENTATION_INSPECTION_TARGET",
+      "detail": "New-session selection initialization only."
+    },
+    {
+      "path": "scripts/presentation/table_presentation_viewmodel_query.gd",
+      "hit_count": 1,
+      "classification": "PRESENTATION_INSPECTION_TARGET",
+      "detail": "Detached presentation metadata initialized from the authorized viewer."
+    },
+    {
+      "path": "scripts/runtime/product_market_runtime_world_bridge.gd",
+      "hit_count": 1,
+      "classification": "PRESENTATION_INSPECTION_TARGET",
+      "detail": "Legacy presentation metadata; not consumed as a ProductMarket command actor."
+    },
+    {
+      "path": "scripts/runtime/gameplay_balance_diagnostics_world_bridge.gd",
+      "hit_count": 9,
+      "classification": "PRESENTATION_INSPECTION_TARGET",
+      "detail": "Developer diagnostic sample subject; no gameplay command submission."
+    },
+    {
+      "path": "scripts/runtime/action_result_v1.gd",
+      "hit_count": 1,
+      "classification": "LEGACY_OR_DEAD",
+      "subcategory": "non_consuming_schema_sentinel"
+    },
+    {
+      "path": "scripts/runtime/card_codex_public_source_adapter.gd",
+      "hit_count": 1,
+      "classification": "LEGACY_OR_DEAD",
+      "subcategory": "non_consuming_privacy_sentinel"
+    },
+    {
+      "path": "scripts/runtime/monster_codex_public_source_adapter.gd",
+      "hit_count": 1,
+      "classification": "LEGACY_OR_DEAD",
+      "subcategory": "non_consuming_privacy_sentinel"
+    },
+    {
+      "path": "scripts/runtime/product_codex_public_source_adapter.gd",
+      "hit_count": 1,
+      "classification": "LEGACY_OR_DEAD",
+      "subcategory": "non_consuming_privacy_sentinel"
+    },
+    {
+      "path": "scripts/runtime/region_codex_public_source_adapter.gd",
+      "hit_count": 1,
+      "classification": "LEGACY_OR_DEAD",
+      "subcategory": "non_consuming_privacy_sentinel"
+    },
+    {
+      "path": "scripts/runtime/standings_public_query_port.gd",
+      "hit_count": 1,
+      "classification": "LEGACY_OR_DEAD",
+      "subcategory": "non_consuming_debug_sentinel"
+    }
+  ],
+  "tool_fixture_inventory": [
+    {"path": "scripts/tools/balance_runtime_bridge_bench.gd", "hit_count": 1},
+    {"path": "scripts/tools/card_codex_public_snapshot_cutover_bench.gd", "hit_count": 2},
+    {"path": "scripts/tools/card_inventory_runtime_characterization_bench.gd", "hit_count": 1},
+    {"path": "scripts/tools/card_resolution_execution_runtime_characterization_bench.gd", "hit_count": 3},
+    {"path": "scripts/tools/card_resolution_queue_runtime_characterization_bench.gd", "hit_count": 1},
+    {"path": "scripts/tools/city_development_settlement_runtime_characterization_bench.gd", "hit_count": 2},
+    {"path": "scripts/tools/contract_runtime_characterization_bench.gd", "hit_count": 4},
+    {"path": "scripts/tools/military_runtime_characterization_bench.gd", "hit_count": 2},
+    {"path": "scripts/tools/monster_codex_public_snapshot_cutover_bench.gd", "hit_count": 3},
+    {"path": "scripts/tools/monster_region_public_attraction_v06_bench.gd", "hit_count": 3},
+    {"path": "scripts/tools/monster_runtime_characterization_bench.gd", "hit_count": 3},
+    {"path": "scripts/tools/monster_weather_integration_v1_bench.gd", "hit_count": 1},
+    {"path": "scripts/tools/player_hand_interaction_runtime_characterization_bench.gd", "hit_count": 2},
+    {"path": "scripts/tools/product_codex_public_snapshot_cutover_bench.gd", "hit_count": 2},
+    {"path": "scripts/tools/product_market_runtime_characterization_bench.gd", "hit_count": 1},
+    {"path": "scripts/tools/region_codex_public_source_bench.gd", "hit_count": 7},
+    {"path": "scripts/tools/table_presentation_source_target_bench.gd", "hit_count": 1},
+    {"path": "scripts/tools/table_selection_state_cutover_bench.gd", "hit_count": 1},
+    {"path": "scripts/tools/weather_economy_v1_bench.gd", "hit_count": 1},
+    {"path": "scripts/tools/weather_runtime_characterization_bench.gd", "hit_count": 1}
+  ],
+  "tool_fixture_hit_count": 42,
+  "authority_contract": {
+    "inspected_player_owner": "scripts/runtime/table_selection_state.gd",
+    "inspected_player_api": "inspected_player_index/select_inspected_player/inspected_player_snapshot",
+    "viewer_authority": "scripts/presentation/local_viewer_authorization.gd",
+    "actor_authority_port": "scripts/runtime/player_identity_authorization_boundary.gd",
+    "actor_context": "scripts/runtime/gameplay_actor_authorization_context.gd",
+    "session_authority": "scripts/runtime/game_session_runtime_controller.gd",
+    "world_membership_authority": "scripts/runtime/world_session_state.gd",
+    "selection_owner_count": 1,
+    "actor_authority_owner_count": 1
+  },
+  "negative_counts": {
+    "selected_player_actor_source_count": 0,
+    "selected_player_to_main_route_count": 0,
+    "selected_player_main_fallback_count": 0,
+    "unknown_count": 0
+  },
+  "compatibility_debt": [
+    "The selected_player storage key remains until a later save-schema migration; its runtime meaning is presentation inspection target only."
+  ]
+}

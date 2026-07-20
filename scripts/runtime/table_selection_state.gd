@@ -4,6 +4,18 @@ class_name TableSelectionState
 
 signal selection_changed(snapshot: Dictionary)
 
+const MAP_LAYER_FOCUS_IDS := [
+	"all",
+	"product",
+	"route",
+	"intel",
+	"weather",
+	"monster",
+	"city",
+	"economy",
+	"military",
+]
+
 var _selected_player := 0
 var _inspected_player := 0
 var _selected_district := 0
@@ -74,6 +86,167 @@ func set_active_context(player_index: int, district_index: int, product_id: Stri
 		"inspected_player": _inspected_player,
 		"selected_district": district_index,
 		"selected_trade_product": product_id,
+	})
+
+
+func inspected_player_index() -> int:
+	return _inspected_player
+
+
+func select_inspected_player(target_player_index: int, expected_selection_revision: int) -> Dictionary:
+	if expected_selection_revision != _revision:
+		return {
+			"applied": false,
+			"changed": false,
+			"reason_code": "selection_revision_stale",
+			"previous_inspected_player_index": _inspected_player,
+			"inspected_player_index": _inspected_player,
+			"selection_revision": _revision,
+		}
+	if target_player_index < 0:
+		return {
+			"applied": false,
+			"changed": false,
+			"reason_code": "target_player_invalid",
+			"previous_inspected_player_index": _inspected_player,
+			"inspected_player_index": _inspected_player,
+			"selection_revision": _revision,
+		}
+	var previous := _inspected_player
+	var changed := target_player_index != _inspected_player or target_player_index != _selected_player
+	_selected_player = target_player_index
+	_inspected_player = target_player_index
+	if changed:
+		_revision += 1
+		selection_changed.emit(snapshot())
+	return {
+		"applied": true,
+		"changed": changed,
+		"reason_code": "inspection_applied" if changed else "inspection_unchanged",
+		"previous_inspected_player_index": previous,
+		"inspected_player_index": _inspected_player,
+		"selection_revision": _revision,
+	}
+
+
+func inspected_player_snapshot() -> Dictionary:
+	return {
+		"inspected_player_index": _inspected_player,
+		"selection_revision": _revision,
+		"presentation_only": true,
+	}
+
+
+func select_district_target(target_district_index: int, expected_selection_revision: int, clear_hand_selection := true) -> Dictionary:
+	if expected_selection_revision != _revision:
+		return _target_result(false, false, "selection_revision_stale", {
+			"previous_district_index": _selected_district,
+			"district_index": _selected_district,
+			"previous_hand_slot": _selected_hand_slot,
+			"hand_slot": _selected_hand_slot,
+		})
+	if target_district_index < 0:
+		return _target_result(false, false, "target_district_invalid", {
+			"previous_district_index": _selected_district,
+			"district_index": _selected_district,
+			"previous_hand_slot": _selected_hand_slot,
+			"hand_slot": _selected_hand_slot,
+		})
+	var previous_district := _selected_district
+	var previous_hand_slot := _selected_hand_slot
+	var next_hand_slot := -1 if clear_hand_selection else _selected_hand_slot
+	var changed := target_district_index != _selected_district or next_hand_slot != _selected_hand_slot
+	_selected_district = target_district_index
+	_selected_hand_slot = next_hand_slot
+	if changed:
+		_revision += 1
+		selection_changed.emit(snapshot())
+	return _target_result(true, changed, "district_selection_applied" if changed else "district_selection_unchanged", {
+		"previous_district_index": previous_district,
+		"district_index": _selected_district,
+		"previous_hand_slot": previous_hand_slot,
+		"hand_slot": _selected_hand_slot,
+	})
+
+
+func select_trade_product_target(target_product_id: String, expected_selection_revision: int) -> Dictionary:
+	if expected_selection_revision != _revision:
+		return _target_result(false, false, "selection_revision_stale", {
+			"previous_trade_product_id": _selected_trade_product,
+			"trade_product_id": _selected_trade_product,
+		})
+	if target_product_id.length() > 80 or target_product_id.strip_edges() != target_product_id:
+		return _target_result(false, false, "target_trade_product_invalid", {
+			"previous_trade_product_id": _selected_trade_product,
+			"trade_product_id": _selected_trade_product,
+		})
+	var previous := _selected_trade_product
+	var changed := target_product_id != _selected_trade_product
+	_selected_trade_product = target_product_id
+	if changed:
+		_revision += 1
+		selection_changed.emit(snapshot())
+	return _target_result(true, changed, "trade_product_selection_applied" if changed else "trade_product_selection_unchanged", {
+		"previous_trade_product_id": previous,
+		"trade_product_id": _selected_trade_product,
+	})
+
+
+func select_hand_target(target_slot: int, expected_selection_revision: int) -> Dictionary:
+	if expected_selection_revision != _revision:
+		return _target_result(false, false, "selection_revision_stale", {
+			"previous_hand_slot": _selected_hand_slot,
+			"hand_slot": _selected_hand_slot,
+		})
+	if target_slot < -1:
+		return _target_result(false, false, "target_hand_slot_invalid", {
+			"previous_hand_slot": _selected_hand_slot,
+			"hand_slot": _selected_hand_slot,
+		})
+	var previous := _selected_hand_slot
+	var changed := target_slot != _selected_hand_slot
+	_selected_hand_slot = target_slot
+	if changed:
+		_revision += 1
+		selection_changed.emit(snapshot())
+	return _target_result(true, changed, "hand_selection_applied" if changed else "hand_selection_unchanged", {
+		"previous_hand_slot": previous,
+		"hand_slot": _selected_hand_slot,
+	})
+
+
+func select_card_resolution_target(target_resolution_id: int, focus_district_index: int, expected_selection_revision: int) -> Dictionary:
+	if expected_selection_revision != _revision:
+		return _target_result(false, false, "selection_revision_stale", {
+			"previous_card_resolution_id": _selected_card_resolution_id,
+			"card_resolution_id": _selected_card_resolution_id,
+			"previous_district_index": _selected_district,
+			"district_index": _selected_district,
+			"focus_district_index": -1,
+		})
+	if target_resolution_id < -1 or focus_district_index < -1:
+		return _target_result(false, false, "card_resolution_selection_invalid", {
+			"previous_card_resolution_id": _selected_card_resolution_id,
+			"card_resolution_id": _selected_card_resolution_id,
+			"previous_district_index": _selected_district,
+			"district_index": _selected_district,
+			"focus_district_index": -1,
+		})
+	var previous_resolution_id := _selected_card_resolution_id
+	var previous_district_index := _selected_district
+	var next_district_index := focus_district_index if focus_district_index >= 0 else _selected_district
+	var changed := target_resolution_id != _selected_card_resolution_id or next_district_index != _selected_district
+	_selected_card_resolution_id = target_resolution_id
+	_selected_district = next_district_index
+	if changed:
+		_revision += 1
+		selection_changed.emit(snapshot())
+	return _target_result(true, changed, "card_resolution_selection_applied" if changed else "card_resolution_selection_unchanged", {
+		"previous_card_resolution_id": previous_resolution_id,
+		"card_resolution_id": _selected_card_resolution_id,
+		"previous_district_index": previous_district_index,
+		"district_index": _selected_district,
+		"focus_district_index": focus_district_index,
 	})
 
 
@@ -150,6 +323,8 @@ func debug_snapshot() -> Dictionary:
 	var result := snapshot()
 	result["owns_table_selection_state"] = true
 	result["private_player_state_exposed"] = false
+	result["selected_player_semantics"] = "presentation_inspection_target"
+	result["authorized_actor_source"] = "external_identity_authority"
 	return result
 
 
@@ -191,4 +366,15 @@ func _set_value(property_name: StringName, value: Variant) -> void:
 
 func _normalize_map_layer_focus(value: String) -> String:
 	var normalized := value.strip_edges().to_lower()
-	return normalized if normalized in ["all", "economy", "route", "monster", "military", "weather", "intel"] else "all"
+	return normalized if normalized in MAP_LAYER_FOCUS_IDS else "all"
+
+
+func _target_result(applied: bool, changed: bool, reason_code: String, values: Dictionary) -> Dictionary:
+	var result := {
+		"applied": applied,
+		"changed": changed,
+		"reason_code": reason_code,
+		"selection_revision": _revision,
+	}
+	result.merge(values, true)
+	return result

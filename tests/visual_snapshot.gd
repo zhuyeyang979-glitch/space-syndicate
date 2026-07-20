@@ -4,6 +4,7 @@ const VISUAL_SCENES := [
 	"res://scenes/ui/GameScreen.tscn",
 	"res://scenes/ui/PlayerBoard.tscn",
 	"res://scenes/ui/CardFace.tscn",
+	"res://scenes/ui/table/TopCommoditySushiTrack.tscn",
 	"res://scenes/ui/CardResolutionTrack.tscn",
 	"res://scenes/ui/PlanetMapView.tscn",
 	"res://scenes/ui/OverlayLayer.tscn",
@@ -58,17 +59,22 @@ func _run() -> void:
 	var game_screen := _instantiate("res://scenes/ui/GameScreen.tscn")
 	var player_board := _instantiate("res://scenes/ui/PlayerBoard.tscn")
 	var planet_map := _instantiate("res://scenes/ui/PlanetMapView.tscn")
+	var commodity_track := _instantiate("res://scenes/ui/table/TopCommoditySushiTrack.tscn")
 	var card_track := _instantiate("res://scenes/ui/CardResolutionTrack.tscn")
 	var overlay := _instantiate("res://scenes/ui/OverlayLayer.tscn")
 
-	_expect(_has_nodes(game_screen, ["Background", "TopBar", "PublicTrack", "PlanetBoard", "RightInspector", "PlayerBoard", "OverlayLayer"]), "GameScreen provides the complete scene-owned table composition")
+	_expect(_has_nodes(game_screen, ["Background", "TopBar", "TopCommoditySushiTrack", "PlanetBoard", "RightInspector", "PlayerBoard", "OverlayLayer"]), "GameScreen provides the current commodity-led scene-owned table composition")
+	_expect(game_screen != null and game_screen.find_child("PublicTrack", true, false) == null, "GameScreen excludes the retired PublicTrack node")
+	_expect(game_screen != null and game_screen.find_children("TopCommoditySushiTrack", "", true, false).size() == 1, "GameScreen composes exactly one TopCommoditySushiTrack node")
 	_expect(_has_nodes(player_board, ["PlayerResourceTableau", "PlayerHandTableau", "HandRack", "PlayerCommandTableau", "PlayerMainActionDock"]) and player_board.find_child("PlayerBidBoard", true, false) == null, "PlayerBoard has stable resource, hand, and action regions with zero permanent bid footprint")
 	_expect(_has_nodes(planet_map, ["BackdropLayer", "OrbitLayer", "DistrictLayer", "RouteLayer", "MonsterLayer", "SelectionLayer", "EffectLayer", "CalloutLayer", "DebugOverlayLayer"]), "PlanetMapView exposes editable visual layers")
+	_expect(_has_nodes(commodity_track, ["TrackMargin", "HeaderRow", "BeltViewport", "CommodityTrackItemHost", "CommodityTrackEmptyLabel"]), "TopCommoditySushiTrack exposes stable header, belt, item, and empty-state regions")
 	_expect(_has_nodes(card_track, ["HistoryRail", "ActiveResolutionSlot", "QueueRail", "NextQueueRail", "AuctionResponseLayer", "PrivacyHintLayer"]), "CardResolutionTrack exposes stable visual lanes and privacy feedback")
 	_expect(_has_nodes(overlay, ["SideDrawerLayer", "TooltipLayer", "DragPreviewLayer", "ModalLayer", "RuntimeSurfaceLayer", "PublicBidDecisionPanel"]), "OverlayLayer separates detail, pointer, transient bid, decision, and runtime surfaces")
 
 	var main_source := _source("res://scripts/main.gd")
 	var main_scene_source := _source("res://scenes/main.tscn")
+	var game_screen_scene_source := _source("res://scenes/ui/GameScreen.tscn")
 	var map_scene_source := _source("res://scenes/ui/PlanetMapView.tscn")
 	var map_script_source := _source("res://scripts/ui/planet_map_view.gd")
 	var card_face_source := _source("res://scripts/ui/card_face.gd")
@@ -78,6 +84,8 @@ func _run() -> void:
 	var targeting_source := _source("res://scripts/ui/targeting_overlay.gd")
 
 	_expect(main_scene_source.contains("GameScreen.tscn") and main_scene_source.contains("RuntimeGameScreen"), "main.tscn embeds the real GameScreen")
+	_expect(not game_screen_scene_source.contains("res://scenes/ui/PublicTrack.tscn"), "GameScreen no longer references the retired PublicTrack scene")
+	_expect(game_screen_scene_source.count("res://scenes/ui/table/TopCommoditySushiTrack.tscn") == 1, "GameScreen references the TopCommoditySushiTrack scene exactly once")
 	_expect(map_scene_source.contains("PlanetGlobeBackdrop") and map_scene_source.contains("PlanetFocusRangeOverlay") and map_scene_source.contains("PlanetMapScaleHint"), "PlanetMapView keeps stable editor-visible anchor components")
 	_expect(map_script_source.contains("sceneized_visual_cutover_enabled := true") and map_script_source.contains("legacy_draw_fallback_enabled := false"), "sceneized map rendering remains the default")
 	_expect(map_script_source.contains("PlanetDistrictPolygonScene") and map_script_source.contains("PlanetRouteSegmentScene") and map_script_source.contains("PlanetMonsterTokenScene"), "map render ownership resolves to component scenes")
@@ -100,7 +108,7 @@ func _run() -> void:
 		var helper_name := str(helper_variant)
 		_expect(not main_source.contains("func %s(" % helper_name), "%s stays outside main.gd" % helper_name)
 
-	for node in [game_screen, player_board, planet_map, card_track, overlay]:
+	for node in [game_screen, player_board, planet_map, commodity_track, card_track, overlay]:
 		if node != null:
 			node.free()
 	_finish()

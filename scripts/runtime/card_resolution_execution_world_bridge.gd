@@ -277,6 +277,7 @@ func _aftermath_receipt(transaction: Dictionary) -> Dictionary:
 
 func _history_receipt(transaction: Dictionary) -> Dictionary:
 	var entry := _dictionary(transaction.get("active_entry", {}))
+	entry.erase("stable_target_envelope")
 	entry["resolved_time"] = _world_session_state.game_time if _world_session_state != null else 0.0
 	var append := _history_service.append_resolved(entry)
 	return {

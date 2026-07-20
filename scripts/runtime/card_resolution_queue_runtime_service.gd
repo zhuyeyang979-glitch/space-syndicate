@@ -3,6 +3,7 @@ extends Node
 class_name CardResolutionQueueRuntimeService
 
 const SharedCardGroupWindowScript := preload("res://scripts/cards/shared_card_group_window.gd")
+const StableTargetEnvelope := preload("res://scripts/runtime/card_resolution_stable_target_envelope.gd")
 
 var _ruleset_id := ""
 var _configured := false
@@ -124,6 +125,10 @@ func plan_submission(request: Dictionary, facts: Dictionary) -> Dictionary:
 	var group_identifier := "counter_%d" % planned_resolution_id if reactive_counter else SharedCardGroupWindowScript.group_id(window_sequence, player_index)
 	var context_variant: Variant = request.get("entry_context", {})
 	var entry: Dictionary = (context_variant as Dictionary).duplicate(true) if context_variant is Dictionary else {}
+	if entry.has("stable_target_envelope"):
+		var target_binding := StableTargetEnvelope.validate_entry_binding(entry)
+		if not bool(target_binding.get("valid", false)):
+			return _submission_rejection(str(target_binding.get("reason_code", "stable_target_invalid")))
 	var skill_variant: Variant = request.get("skill", {})
 	var queued_skill: Dictionary = (skill_variant as Dictionary).duplicate(true) if skill_variant is Dictionary else {}
 	if queued_skill.is_empty():

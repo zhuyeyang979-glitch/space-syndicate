@@ -3497,8 +3497,7 @@ func _verify_ai_strategy_route_diversification_policy(main: Node) -> bool:
 		main.set("card_resolution_batch_locked", false)
 		main.set("card_resolution_auction_open", false)
 		main.set("card_resolution_simultaneous_timer", 0.5)
-		main.set("selected_card_resolution_id", -1)
-		main.set("resolved_card_history", [])
+		_replace_card_resolution_history_for_test(main, [])
 		_reset_route_plan_sandbox_for_test(main)
 		var own_index := _first_empty_land_district_for_contract(main)
 		var rival_index := _first_empty_land_district_for_contract(main, [own_index])
@@ -3579,8 +3578,7 @@ func _verify_ai_strategy_route_diversification_policy(main: Node) -> bool:
 				"public_owner_revealed": false,
 				"resolved_time": float(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time),
 			}]
-			main.set("resolved_card_history", history)
-			main.set("selected_card_resolution_id", 88001)
+			_replace_card_resolution_history_for_test(main, history)
 		var skill_for_context := main.call("_make_skill", String(case.get("card", ""))) as Dictionary
 		skill_for_context.erase("starter_play_free")
 		var context := _ai_controller(main).call("_ai_card_play_context", 1, 0, skill_for_context) as Dictionary
@@ -3775,7 +3773,7 @@ func _exercise_ai_primary_route_cards_for_test(main: Node) -> Array:
 			clue_city_index = i
 			break
 	if clue_city_index >= 0:
-		main.set("resolved_card_history", [{
+		_replace_card_resolution_history_for_test(main, [{
 			"resolution_id": 99041,
 			"queued_order": 99041,
 			"player_index": 2,
@@ -3786,7 +3784,6 @@ func _exercise_ai_primary_route_cards_for_test(main: Node) -> Array:
 			"public_owner_revealed": false,
 			"resolved_time": float(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time),
 		}])
-		main.set("selected_card_resolution_id", 99041)
 	for player_index in range(1, players.size()):
 		players = _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players).duplicate(true)
 		var player := players[player_index] as Dictionary
@@ -8380,6 +8377,15 @@ func _runtime_coordinator(main: Node) -> Node:
 	if coordinator == null:
 		push_error("Smoke test requires scene-owned GameRuntimeCoordinator.")
 	return coordinator
+
+
+func _replace_card_resolution_history_for_test(main: Node, entries: Array) -> bool:
+	var coordinator := _runtime_coordinator(main) as GameRuntimeCoordinator
+	var history := coordinator.card_resolution_history_service() if coordinator != null else null
+	if history == null:
+		push_error("Smoke test requires scene-owned CardResolutionHistoryRuntimeService.")
+		return false
+	return bool(history.replace_legacy_entries(entries).get("applied", false))
 
 
 func _runtime_card_catalog_ids(main: Node, category_id: String = "") -> Array:

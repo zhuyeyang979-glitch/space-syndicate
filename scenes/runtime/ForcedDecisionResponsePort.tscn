@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/forced_decision_response_port.gd" id="1_port"]
+
+[node name="ForcedDecisionResponsePort" type="Node"]
+script = ExtResource("1_port")
+editor_description = "Typed, exact-once authorization boundary for responses to the currently active forced decision. Domain owners remain responsible for applying accepted responses."

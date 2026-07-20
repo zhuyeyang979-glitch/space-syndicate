@@ -5,6 +5,7 @@ const COMPACT_PHYSICAL_WIDTH := 1400
 
 signal end_turn_requested
 signal menu_requested
+signal player_inspection_requested(player_index: int)
 
 @onready var phase_label: Label = %PhaseLabel
 @onready var turn_label: Label = %TurnLabel
@@ -24,10 +25,16 @@ signal menu_requested
 var _selected_detail := "未选区"
 var _action_detail := "看星球"
 var _weather_detail := "天气:无影响｜预报:暂无"
+var _public_player_index := -1
+var _owner_identity_text := "未入席"
+var _inspected_public_player: Dictionary = {}
 
 
 func _ready() -> void:
 	_configure_chip_defaults()
+	identity_chip.mouse_filter = Control.MOUSE_FILTER_STOP
+	identity_chip.focus_mode = Control.FOCUS_ALL
+	identity_chip.gui_input.connect(_on_identity_chip_gui_input)
 	var window := get_window()
 	if window != null and not window.size_changed.is_connected(_on_window_size_changed):
 		window.size_changed.connect(_on_window_size_changed)
@@ -43,6 +50,7 @@ func set_state(data: Dictionary) -> void:
 	var table_state_text := _first_text(data, ["table_state", "table_status", "status", "phase"], "待开桌")
 	var tempo_text := _first_text(data, ["tempo", "time_text", "clock", "elapsed", "turn"], "00:00")
 	var identity_text := _first_text(data, ["identity", "player", "seat"], "未入席")
+	_owner_identity_text = identity_text
 	var cash_text := _first_text(data, ["cash_text", "cash", "money"], "¥ --")
 	var gdp_text := _first_text(data, ["gdp_text", "gdp"], "--/min")
 	var goal_text := _first_text(data, ["goal_text", "goal", "target"], "--")
@@ -77,6 +85,37 @@ func set_state(data: Dictionary) -> void:
 		end_turn_button.text = str(data.get("end_turn_label", "结束"))
 		end_turn_button.tooltip_text = str(data.get("end_turn_tooltip", "结算当前桌面步骤。"))
 	_sync_responsive_visibility()
+	_sync_inspected_identity_chip()
+
+
+func bind_public_identity(player_index: int) -> void:
+	_public_player_index = player_index
+
+
+func set_inspected_public_player(descriptor: Dictionary) -> void:
+	_inspected_public_player = {
+		"player_index": int(descriptor.get("player_index", -1)),
+		"public_player_name": str(descriptor.get("public_player_name", "")),
+		"role_name": str(descriptor.get("role_name", "")),
+	}
+	set_meta("inspected_player_index", int(_inspected_public_player.get("player_index", -1)))
+	_sync_inspected_identity_chip()
+
+
+func _sync_inspected_identity_chip() -> void:
+	var inspected_index := int(_inspected_public_player.get("player_index", -1))
+	if inspected_index < 0 or inspected_index == _public_player_index:
+		_set_chip(identity_chip, "本席", _owner_identity_text, 112, 14)
+		return
+	var public_name := str(_inspected_public_player.get("public_player_name", "玩家%d" % (inspected_index + 1)))
+	_set_chip(identity_chip, "查看", public_name, 112, 14)
+	identity_chip.tooltip_text = "当前查看%s（%s）；行动身份仍是本席。" % [public_name, str(_inspected_public_player.get("role_name", "公开角色"))]
+
+
+func _on_identity_chip_gui_input(event: InputEvent) -> void:
+	var mouse_event := event as InputEventMouseButton
+	if mouse_event != null and mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed and _public_player_index >= 0:
+		player_inspection_requested.emit(_public_player_index)
 
 
 func _first_text(data: Dictionary, keys: Array, fallback: String) -> String:

@@ -96,7 +96,19 @@ func compose_table_state(viewer_index: int, include_full: bool) -> Dictionary:
 	var actions := _action_entries(viewer_index, public_world, action, district)
 	var logs := _ports.recent_public_log_messages(6)
 	var visual_surface := _next_card_resolution_visual_surface(public_world)
+	var hand_cards := _hand_card_sources(viewer_index, private_world)
 	var table_source := {
+		"selection_context": {
+			"revision": int(_selection.snapshot().get("revision", 0)) if _selection != null else 0,
+			"selected_district": _selection.selected_district if _selection != null else -1,
+			"district_count": _array(public_world.get("districts", [])).size(),
+			"selected_trade_product": _selection.selected_trade_product if _selection != null else "",
+			"trade_product_ids": ProductMarketRuntimeController.PRODUCT_CATALOG.duplicate(),
+			"default_trade_product_id": _default_trade_product_id(district),
+			"selected_hand_slot": _selection.selected_hand_slot if _selection != null else -1,
+			"hand_slot_count": hand_cards.size(),
+			"selected_card_resolution_id": _selection.selected_card_resolution_id if _selection != null else -1,
+		},
 		"top_bar": _top_bar_source(viewer_index, public_world, private_world, action, district),
 		"planet": _planet_source(public_world, action, district, public_projection, viewer_index),
 		"district": district,
@@ -111,7 +123,7 @@ func compose_table_state(viewer_index: int, include_full: bool) -> Dictionary:
 			if _commodity_sushi_track != null else {},
 	}
 	var card_surfaces := {
-		"hand_cards": _hand_card_sources(viewer_index, private_world),
+		"hand_cards": hand_cards,
 		"track": _card_track_source(viewer_index, action),
 		"selected_hand_slot": _selection.selected_hand_slot if _selection != null else -1,
 		"selected_resolution_id": _selection.selected_card_resolution_id if _selection != null else -1,
@@ -135,6 +147,14 @@ func compose_table_state(viewer_index: int, include_full: bool) -> Dictionary:
 	_revision += 1
 	_compose_count += 1
 	return TablePresentationPureDataPolicy.detached_copy(composed) as Dictionary
+
+
+func _default_trade_product_id(district: Dictionary) -> String:
+	for key in ["demands", "city_demands", "products", "city_products"]:
+		var values := _string_array(district.get(key, []))
+		if not values.is_empty():
+			return values[0]
+	return ""
 
 
 func hand_presentation_sources_for_viewer(viewer_index: int) -> Array:

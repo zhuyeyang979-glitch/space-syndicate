@@ -8446,3 +8446,56 @@ deleted. Evidence and the remaining action inventory are recorded in
   closed instead of fabricating a world.
 - The registry remains 19 sections (12 transactional, 7 unsupported), so this
   boundary deliberately makes no full-run-resume claim.
+
+## 2026-07-20 — Public card-track focus authority cutover
+
+- Public queue/history selection now enters `TableSelectionIntentPort` as a
+  typed card-resolution focus request. The port validates only public queue and
+  history projections, updates card focus plus an optional public district in
+  one selection revision, and returns an exact-once receipt.
+- `GameScreen` adapts the card track, public bid board, and right inspector to
+  that typed boundary. Card play freezes the selected public resolution into
+  its execution context, while AI chooses its own public history target and no
+  longer reads or writes the human presentation focus.
+- Removed four Main-only focus helpers and the raw `track_select_*` /
+  `track_return_*` dispatch. Main fell from 8,757 to 8,698 physical lines and
+  from 587 to 583 methods for this boundary.
+- The formal product gate passes 72/72 through the real `main.tscn`, including
+  a four-player `SessionStartTransaction`, exact-once focus, and zero world or
+  queue mutation. Selection, identity, card-execution, Main architecture,
+  composition, and smoke check-only gates also pass with zero script errors or
+  residual processes.
+- Funplay MCP on the isolated 8775 endpoint inspected `main.tscn` and
+  `GameRuntimeCoordinator.tscn`, confirmed the scene-wired public queue/history
+  dependencies, ran the formal main scene with 813 runtime nodes and zero
+  console errors, and stopped play plus the editor cleanly.
+- Two inherited UI source contracts remain red because they still require the
+  retired `PublicTrack` node instead of the already-shipped
+  `TopCommoditySushiTrack`. Neither test nor `GameScreen.tscn` changed in this
+  boundary; their oracle migration remains separate work.
+
+## 2026-07-20 — Card-resolution stable target envelope
+
+- Card play now captures stable region, product, and public resolution IDs at
+  the first intent, before any monster/player target-choice continuation.
+- Target choice binds only the later explicit target; switching table focus no
+  longer retargets the queued action. Delayed execution resolves the original
+  `region_id` against the current world ordering.
+- Queue mirrors and envelope fingerprints fail closed on drift or tampering,
+  commitment revalidation receives frozen context, and public history strips
+  the private envelope.
+- The target-choice v1 save shape and v0.6 save registry are unchanged. A
+  restored legacy pending choice without an envelope fails closed, and no card
+  resolution queue cold-restore support is claimed by this boundary.
+
+## 2026-07-20 — Product-market frozen product and warehouse target
+
+- Card-owned ProductMarket effects now consume a pure-data target context from
+  the stable card-resolution envelope instead of sampling live product or
+  district focus during delayed execution.
+- Product effects preserve the viewer's presentation focus. Warehouse futures
+  resolve stable region IDs, revalidate active city ownership at execution, and
+  retain a stable warehouse region identity alongside the legacy numeric mirror.
+- No save section, AI behavior, military/monster target, or full queue restore
+  claim changed. Direct non-card ProductMarket calls retain their existing
+  optional focus fallback outside the card-effect bridge.

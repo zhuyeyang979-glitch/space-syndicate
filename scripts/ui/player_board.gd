@@ -11,6 +11,7 @@ signal card_drag_preview_ended(card_data: Dictionary)
 signal card_drag_released(card_data: Dictionary, screen_position: Vector2)
 signal action_requested(action_id: String)
 signal application_intent_requested(intent: IntelApplicationIntent)
+signal player_inspection_requested(player_index: int)
 
 @onready var title_label: Label = %PlayerBoardTitle
 @onready var identity_chip: Label = %PlayerIdentityChip
@@ -36,12 +37,18 @@ var status_lamps_signature: String = ""
 var readiness_chips_signature: String = ""
 var progress_path_signature: String = ""
 var runtime_feedback: Dictionary = {}
+var _public_player_index := -1
+var _owner_identity_text := "未入席"
+var _inspected_public_player: Dictionary = {}
 
 
 func _ready() -> void:
 	_configure_pointer_filter_skeleton()
 	_configure_chip_defaults()
 	_configure_tableau_styles()
+	identity_chip.mouse_filter = Control.MOUSE_FILTER_STOP
+	identity_chip.focus_mode = Control.FOCUS_ALL
+	identity_chip.gui_input.connect(_on_identity_chip_gui_input)
 	if hand_rack != null and hand_rack.has_signal("card_hovered"):
 		hand_rack.connect("card_hovered", Callable(self, "_on_card_hovered"))
 	if hand_rack != null and hand_rack.has_signal("card_unhovered"):
@@ -105,6 +112,7 @@ func set_player_state(data: Dictionary) -> void:
 	var actions: Array = data.get("actions", []) if data.get("actions", []) is Array else []
 	var primary_action := _first_text(data, ["primary_action", "primary_action_label", "next_action"], _first_action_label(actions))
 	var identity_text := _first_text(data, ["identity", "player", "seat"], "未入席")
+	_owner_identity_text = identity_text
 	var cash_text := _first_text(data, ["cash_text", "cash", "money"], "¥ --")
 	var gdp_text := _first_text(data, ["gdp_text", "gdp"], "--/min")
 	var goal_text := _first_text(data, ["goal_text", "goal", "target"], "--")
@@ -132,6 +140,45 @@ func set_player_state(data: Dictionary) -> void:
 	if next_hand_signature != hand_cards_signature:
 		hand_cards_signature = next_hand_signature
 		set_hand_cards(hand_cards)
+	_sync_inspected_identity_chip()
+
+
+func bind_public_identity(player_index: int) -> void:
+	_public_player_index = player_index
+
+
+func set_inspected_public_player(descriptor: Dictionary) -> void:
+	_inspected_public_player = _safe_public_player_descriptor(descriptor)
+	set_meta("inspected_player_index", int(_inspected_public_player.get("player_index", -1)))
+	_sync_inspected_identity_chip()
+
+
+func _sync_inspected_identity_chip() -> void:
+	var inspected_index := int(_inspected_public_player.get("player_index", -1))
+	if inspected_index < 0 or inspected_index == _public_player_index:
+		_set_chip(identity_chip, "本席", _owner_identity_text, 118, 14)
+		return
+	var public_name := str(_inspected_public_player.get("public_player_name", "玩家%d" % (inspected_index + 1)))
+	var role_name := str(_inspected_public_player.get("role_name", "公开角色"))
+	_set_chip(identity_chip, "查看", public_name, 118, 14)
+	identity_chip.tooltip_text = "公开玩家：%s｜%s。现金、手牌与私人情报仍属于本席。" % [public_name, role_name]
+
+
+func _safe_public_player_descriptor(source: Dictionary) -> Dictionary:
+	return {
+		"player_index": int(source.get("player_index", -1)),
+		"public_player_name": str(source.get("public_player_name", "")),
+		"role_name": str(source.get("role_name", "")),
+		"player_color": source.get("player_color", Color.WHITE),
+		"public_status": str(source.get("public_status", "waiting")),
+		"is_local_player": bool(source.get("is_local_player", false)),
+	}
+
+
+func _on_identity_chip_gui_input(event: InputEvent) -> void:
+	var mouse_event := event as InputEventMouseButton
+	if mouse_event != null and mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed and _public_player_index >= 0:
+		player_inspection_requested.emit(_public_player_index)
 
 
 func set_hand_cards(cards: Array) -> void:

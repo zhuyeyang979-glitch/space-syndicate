@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "base_sha": "84b6ebf2640bc95ed1f673af6c6cbe8a5ca7dcf0",
+  "boundary": "PUBLIC_REGION_SELECTION_CATALOG_SNAPSHOT_API",
+  "stable_id_author": "SessionStartWorldPlanBuilder",
+  "authoritative_order_owner": "WorldSessionState",
+  "source_api": "WorldSessionState.public_region_selection_catalog_source",
+  "query_port": "res://scripts/presentation/table_selection_catalog_query_port.gd",
+  "snapshot_type": "PublicRegionSelectionCatalogSnapshot",
+  "entry_type": "PublicRegionSelectionCatalogEntry",
+  "session_identity_owner": "GameSessionRuntimeController",
+  "source_owner_id": "WorldSessionState",
+  "source_ready_equals_available": true,
+  "snapshot_envelope_fields": [
+    "session_id",
+    "session_revision",
+    "source_owner_id",
+    "source_ready"
+  ],
+  "entry_fields": [
+    "region_id",
+    "public_index",
+    "public_name",
+    "public_status",
+    "selectable",
+    "disabled_reason",
+    "public_terrain"
+  ],
+  "ordering_fields": [
+    "region_id",
+    "public_index",
+    "selectable"
+  ],
+  "ordering_excludes": [
+    "game_time",
+    "public_name",
+    "public_status",
+    "public_terrain",
+    "geometry",
+    "selection",
+    "hover",
+    "camera",
+    "product_focus",
+    "timestamp",
+    "rng",
+    "session_id",
+    "session_revision",
+    "source_owner_id",
+    "source_ready"
+  ],
+  "cross_session_mix_allowed": false,
+  "strict_primitive_validation": true,
+  "missing_id_fallback": false,
+  "pre_session_available": false,
+  "second_mutable_owner_count": 0,
+  "main_reference_count": 0,
+  "save_section_delta": 0
+}

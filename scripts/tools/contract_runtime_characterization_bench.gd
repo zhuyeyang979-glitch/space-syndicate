@@ -1106,7 +1106,10 @@ func _reset_fixture() -> void:
 	_runtime_main.set("map_event_effects", [])
 	_runtime_main.set("movement_trails", [])
 	_runtime_main.set("resolved_card_history", [])
-	_runtime_main.set("selected_card_resolution_id", -1)
+	var runtime_coordinator := _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	if runtime_coordinator != null:
+		var selection := runtime_coordinator.table_selection_state()
+		selection.select_card_resolution_target(-1, -1, int(selection.snapshot().get("revision", -1)))
 	_queue_service.call("reset_state")
 	_execution_service.call("reset_state")
 	_card_controller.call("reset_state")

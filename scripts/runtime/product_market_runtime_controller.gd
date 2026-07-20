@@ -26,6 +26,7 @@ const WEATHER_ECONOMY_MULTIPLIER_MIN := 0.70
 const WEATHER_ECONOMY_MULTIPLIER_MAX := 1.30
 const PRODUCT_INDUSTRY_CATALOG := preload("res://resources/content/product_industry_catalog_v05.tres")
 const RuntimeBalanceModelScript := preload("res://scripts/balance/runtime_balance_model.gd")
+const FrozenTargetContext := preload("res://scripts/runtime/product_market_frozen_target_context.gd")
 const WEATHER_PUBLIC_CONTRIBUTION_KEYS := [
 	"kind",
 	"weather_id",
@@ -666,15 +667,20 @@ func age_economic_boons(delta_seconds: float) -> void:
 			_route_network_runtime_controller.refresh_routes()
 
 
-func apply_speculation(player_index: int, skill: Dictionary) -> bool:
-	var product_name := _default_product()
+func apply_speculation(player_index: int, skill: Dictionary, target_context: Dictionary = {}) -> bool:
+	var target := _resolve_product_target(target_context)
+	if not bool(target.get("valid", false)):
+		_log("%s商品目标无效：%s。" % [str(skill.get("name", "商品牌")), str(target.get("reason_code", "product_target_invalid"))])
+		return false
+	var product_name := str(target.get("product_id", ""))
 	var source := str(skill.get("name", "商品牌"))
 	if product_name.is_empty(): _log("%s没有可操盘商品。" % source); return false
 	var before_price := product_price(product_name)
 	var price_delta := int(skill.get("price_delta", 0))
 	var pressure := int(_formula("product_speculation_pressure", {"price_delta": price_delta}).get("pressure", 1))
 	apply_external_pressure(product_name, pressure if price_delta >= 0 else 0, pressure if price_delta < 0 else 0, 0, false)
-	_set_selected_product(product_name)
+	if not bool(target.get("frozen", false)):
+		_set_selected_product(product_name)
 	var cash_gain := int(skill.get("cash", 0))
 	if cash_gain > 0: _world_bridge.commit_player_cash_delta(player_index, cash_gain, source, product_name, "card_income", cash_gain)
 	refresh_prices()
@@ -687,28 +693,42 @@ func futures_duration_seconds(skill: Dictionary) -> float:
 	return float(_formula("product_futures_duration", {"skill": {"futures_terms": terms}}).get("seconds", 0.0)) if not terms.is_empty() else 0.0
 
 
-func apply_futures(player_index: int, skill: Dictionary) -> bool:
-	return bool(open_futures_position(player_index, skill).get("committed", false))
+func apply_futures(player_index: int, skill: Dictionary, target_context: Dictionary = {}) -> bool:
+	return bool(open_futures_position(player_index, skill, target_context).get("committed", false))
 
 
-func open_futures_position(player_index: int, skill: Dictionary) -> Dictionary:
-	var source := str(skill.get("name", "商品期货")); var product_name := _default_product()
+func open_futures_position(player_index: int, skill: Dictionary, target_context: Dictionary = {}) -> Dictionary:
+	var source := str(skill.get("name", "商品期货"))
+	var target := _resolve_product_target(target_context)
+	var product_name := str(target.get("product_id", ""))
+	if not bool(target.get("valid", false)):
+		return _futures_receipt(false, str(target.get("reason_code", "product_target_invalid")), source, product_name)
 	var terms := futures_terms(skill)
 	if terms.is_empty() or str(terms.get("card_id", "")) != source:
 		return _futures_receipt(false, "terms_missing", source, product_name)
 	if product_name.is_empty() or not PRODUCT_CATALOG.has(product_name):
 		_log("%s没有可建仓商品。" % source)
 		return _futures_receipt(false, "product_missing", source, product_name)
-	var world := _world_snapshot(); var selected_district := int(world.get("selected_district", -1)); var warehouse_district := -1
+	var world := _world_snapshot(); var selected_district := int(world.get("selected_district", -1)); var warehouse_district := -1; var warehouse_region_id := ""
 	if bool(terms.get("requires_warehouse", false)):
-		var city := _district_city(world, selected_district)
+		if bool(target.get("frozen", false)):
+			warehouse_region_id = str(target.get("warehouse_region_id", ""))
+			var world_state := _world_bridge.world_session_state() if _world_bridge != null else null
+			var resolved_warehouse := world_state.district_index_for_region_id(warehouse_region_id) if world_state != null else -1
+			if resolved_warehouse < 0 or resolved_warehouse != int(target.get("warehouse_district_index", -1)):
+				return _futures_receipt(false, "warehouse_region_stale", source, product_name)
+			warehouse_district = resolved_warehouse
+		else:
+			warehouse_district = selected_district
+			var legacy_world_state := _world_bridge.world_session_state() if _world_bridge != null else null
+			warehouse_region_id = legacy_world_state.region_id_for_district(warehouse_district) if legacy_world_state != null else ""
+		var city := _district_city(world, warehouse_district)
 		if not _city_is_active(city):
 			_log("%s需要选中一座己方存活城市作为仓库。" % source)
 			return _futures_receipt(false, "warehouse_city_missing", source, product_name)
 		if int(city.get("owner", -1)) != player_index:
 			_log("%s只能把囤货放进己方城市仓库；仓库真实业主仍不公开。" % source)
 			return _futures_receipt(false, "warehouse_owner_mismatch", source, product_name)
-		warehouse_district = selected_district
 	var entry := market_entry(product_name); var before_price := product_price(product_name); var direction := str(terms.get("direction", ""))
 	if entry.is_empty() or not ["up", "down"].has(direction):
 		return _futures_receipt(false, "position_terms_invalid", source, product_name)
@@ -734,6 +754,7 @@ func open_futures_position(player_index: int, skill: Dictionary) -> Dictionary:
 		"multiplier": maxf(0.1, float(terms.get("multiplier", 1.0))),
 		"units": units,
 		"warehouse_district": warehouse_district,
+		"warehouse_region_id": warehouse_region_id,
 		"action_fee_cash": action_fee_cash,
 		"locked_margin": margin_cash,
 		"maximum_gain": maxi(0, int(terms.get("maximum_gain", 0))),
@@ -753,7 +774,10 @@ func open_futures_position(player_index: int, skill: Dictionary) -> Dictionary:
 	entry["futures_positions"] = futures
 	entry["temporary_demand_pressure"] = int(entry.get("temporary_demand_pressure", 0)) + maxi(0, int(skill.get("market_demand_pressure", 0)))
 	entry["temporary_supply_pressure"] = int(entry.get("temporary_supply_pressure", 0)) + maxi(0, int(skill.get("market_supply_pressure", 0)))
-	product_market[product_name] = entry; _set_selected_product(product_name); _world_bridge.call_world("_refresh_warehouse_stockpile_city_markers"); refresh_prices()
+	product_market[product_name] = entry
+	if not bool(target.get("frozen", false)):
+		_set_selected_product(product_name)
+	_world_bridge.call_world("_refresh_warehouse_stockpile_city_markers"); refresh_prices()
 	_world_bridge.call_world("_present_product_futures_opened", [source, product_name, direction, before_price, duration_seconds, warehouse_district])
 	_futures_open_count += 1
 	return _futures_receipt(true, "", source, product_name, {"position_id": futures_position_sequence, "cash_delta": -cash_required, "locked_margin": margin_cash, "cash_before": cash_before, "cash_after": int(cash_receipt.get("cash_after", cash_before - cash_required))})
@@ -789,6 +813,10 @@ func settle_futures_position(product_name: String, current_price: int, position:
 func settle_futures_for_destroyed_warehouse(district_index: int, source: String, damage_receipt: Dictionary) -> Dictionary:
 	if district_index < 0:
 		return {"committed": false, "reason": "district_invalid", "settled_count": 0}
+	var destroyed_region_id := ""
+	var world_state := _world_bridge.world_session_state() if _world_bridge != null else null
+	if world_state != null:
+		destroyed_region_id = world_state.region_id_for_district(district_index)
 	var settled_count := 0
 	var total_loss := 0
 	for product_variant in product_market.keys():
@@ -796,7 +824,11 @@ func settle_futures_for_destroyed_warehouse(district_index: int, source: String,
 		for futures_variant in futures:
 			if not (futures_variant is Dictionary): continue
 			var position := futures_variant as Dictionary
-			if int(position.get("warehouse_district", -1)) != district_index:
+			var position_region_id := str(position.get("warehouse_region_id", ""))
+			var warehouse_matches := not position_region_id.is_empty() and not destroyed_region_id.is_empty() and position_region_id == destroyed_region_id
+			if position_region_id.is_empty():
+				warehouse_matches = int(position.get("warehouse_district", -1)) == district_index
+			if not warehouse_matches:
 				remaining.append(position)
 				continue
 			var formula_id := str(position.get("warehouse_loss_formula_id", "warehouse_futures_v04_loss"))
@@ -850,8 +882,13 @@ func _futures_receipt(committed: bool, reason: String, source: String, product_n
 	return receipt
 
 
-func apply_market_stabilize(skill: Dictionary) -> bool:
-	var source := str(skill.get("name", "市场稳定")); var product_name := _default_product()
+func apply_market_stabilize(skill: Dictionary, target_context: Dictionary = {}) -> bool:
+	var source := str(skill.get("name", "市场稳定"))
+	var target := _resolve_product_target(target_context)
+	if not bool(target.get("valid", false)):
+		_log("%s商品目标无效：%s。" % [source, str(target.get("reason_code", "product_target_invalid"))])
+		return false
+	var product_name := str(target.get("product_id", ""))
 	if product_name.is_empty(): _log("%s没有可稳定的商品。" % source); return false
 	var entry := market_entry(product_name); var before_volatility := int(entry.get("volatility", 4)); var before_price := product_price(product_name)
 	var before_demand := int(entry.get("temporary_demand_pressure", 0)); var before_supply := int(entry.get("temporary_supply_pressure", 0))
@@ -859,25 +896,40 @@ func apply_market_stabilize(skill: Dictionary) -> bool:
 	entry["temporary_supply_pressure"] = maxi(0, before_supply - maxi(1, int(float(int(skill.get("stabilize_amount", 0))) / 12.0)))
 	var after_volatility := clampi(before_volatility + int(skill.get("volatility_delta", 0)), PRODUCT_VOLATILITY_MIN, PRODUCT_VOLATILITY_MAX)
 	if after_volatility == before_volatility and int(entry["temporary_demand_pressure"]) == before_demand and int(entry["temporary_supply_pressure"]) == before_supply: _log("%s没有产生有效变化：%s已经处于稳定区间。" % [source, product_name]); return false
-	entry["volatility"] = after_volatility; product_market[product_name] = entry; _set_selected_product(product_name); refresh_prices()
+	entry["volatility"] = after_volatility; product_market[product_name] = entry
+	if not bool(target.get("frozen", false)):
+		_set_selected_product(product_name)
+	refresh_prices()
 	_log("%s稳定%s：削减临时供需压力，市场按供需重算¥%d→¥%d，波动%d→%d。" % [source, product_name, before_price, product_price(product_name), before_volatility, after_volatility])
 	return true
 
 
-func apply_product_growth_boon(skill: Dictionary) -> bool:
-	var source := str(skill.get("name", "商品催化")); var product_name := _default_product()
+func apply_product_growth_boon(skill: Dictionary, target_context: Dictionary = {}) -> bool:
+	var source := str(skill.get("name", "商品催化"))
+	var target := _resolve_product_target(target_context)
+	if not bool(target.get("valid", false)):
+		_log("%s商品目标无效：%s。" % [source, str(target.get("reason_code", "product_target_invalid"))])
+		return false
+	var product_name := str(target.get("product_id", ""))
 	if product_name.is_empty(): _log("%s没有可催化的商品。" % source); return false
 	var growth_seconds := _skill_duration(skill, "growth_seconds", "growth_turns", 0)
 	var route_seconds := _skill_duration(skill, "route_flow_seconds", "route_flow_turns", int(ceil(growth_seconds / ECONOMY_LEGACY_TURN_SECONDS)))
 	var duration_seconds := maxf(ECONOMY_LEGACY_TURN_SECONDS, maxf(growth_seconds, route_seconds))
 	var changed := apply_product_market_boon(product_name, float(skill.get("growth_multiplier", 1.0)), float(skill.get("route_flow_multiplier", 1.0)), int(ceil(duration_seconds / ECONOMY_LEGACY_TURN_SECONDS)), source, false, duration_seconds)
 	if not changed: _log("%s没有超过%s当前已有的经济天气。" % [source, product_name]); return false
-	_set_selected_product(product_name); refresh_prices(); _world_bridge.call_world("_present_product_growth_boon", [source, product_name])
+	if not bool(target.get("frozen", false)):
+		_set_selected_product(product_name)
+	refresh_prices(); _world_bridge.call_world("_present_product_growth_boon", [source, product_name])
 	return true
 
 
-func apply_product_contract_boon(player_index: int, skill: Dictionary) -> bool:
-	var source := str(skill.get("name", "商品合约")); var product_name := _default_product()
+func apply_product_contract_boon(player_index: int, skill: Dictionary, target_context: Dictionary = {}) -> bool:
+	var source := str(skill.get("name", "商品合约"))
+	var target := _resolve_product_target(target_context)
+	if not bool(target.get("valid", false)):
+		_log("%s商品目标无效：%s。" % [source, str(target.get("reason_code", "product_target_invalid"))])
+		return false
+	var product_name := str(target.get("product_id", ""))
 	if product_name.is_empty(): _log("%s没有可签约商品。" % source); return false
 	var entry := market_entry(product_name); var before_price := product_price(product_name); var before_volatility := int(entry.get("volatility", 4))
 	var contract_seconds := _skill_duration(skill, "market_contract_seconds", "market_contract_turns", int(skill.get("growth_turns", 1)))
@@ -890,7 +942,9 @@ func apply_product_contract_boon(player_index: int, skill: Dictionary) -> bool:
 	var cash_gain := int(skill.get("cash", 0))
 	if cash_gain > 0: _world_bridge.commit_player_cash_delta(player_index, cash_gain, source, product_name, "card_income", cash_gain); changed = true
 	if not changed: _log("%s没有超过%s当前已有的商品合约。" % [source, product_name]); return false
-	_set_selected_product(product_name); refresh_prices(); _world_bridge.call_world("_present_product_contract_boon", [source, product_name, before_price, product_price(product_name), before_volatility, int(market_entry(product_name).get("volatility", before_volatility)), cash_gain])
+	if not bool(target.get("frozen", false)):
+		_set_selected_product(product_name)
+	refresh_prices(); _world_bridge.call_world("_present_product_contract_boon", [source, product_name, before_price, product_price(product_name), before_volatility, int(market_entry(product_name).get("volatility", before_volatility)), cash_gain])
 	return true
 
 
@@ -905,22 +959,26 @@ func apply_external_pressure(product_name: String, demand_delta: int, supply_del
 	return {"changed": true, "product_name": product_name, "price": product_price(product_name)}
 
 
-func apply_news_market_pressure(effect: Dictionary) -> Dictionary:
-	var product_name := _default_product()
-	if product_name.is_empty():
-		return {"changed": false, "reason_code": "news_product_unavailable", "product_id": ""}
+func apply_news_market_pressure(effect: Dictionary, target_context: Dictionary = {}) -> Dictionary:
 	var demand_delta := maxi(0, int(effect.get("market_demand_pressure", 0)))
 	var supply_delta := maxi(0, int(effect.get("market_supply_pressure", 0)))
 	var volatility_delta := int(effect.get("volatility_delta", 0))
 	if demand_delta <= 0 and supply_delta <= 0 and volatility_delta == 0:
-		return {"changed": false, "reason_code": "news_market_effect_empty", "product_id": product_name}
+		return {"changed": false, "reason_code": "news_market_effect_empty", "product_id": ""}
+	var target := _resolve_product_target(target_context)
+	var product_name := str(target.get("product_id", ""))
+	if not bool(target.get("valid", false)):
+		return {"changed": false, "reason_code": str(target.get("reason_code", "product_target_invalid")), "product_id": product_name}
+	if product_name.is_empty():
+		return {"changed": false, "reason_code": "news_product_unavailable", "product_id": ""}
 	var result := apply_external_pressure(product_name, demand_delta, supply_delta, volatility_delta, false)
 	result["reason_code"] = "news_market_pressure_applied" if bool(result.get("changed", false)) else str(result.get("reason", "news_market_pressure_rejected"))
 	result["product_id"] = product_name
 	result["demand_delta"] = demand_delta
 	result["supply_delta"] = supply_delta
 	result["volatility_delta"] = volatility_delta
-	_set_selected_product(product_name)
+	if not bool(target.get("frozen", false)):
+		_set_selected_product(product_name)
 	return result
 
 
@@ -990,6 +1048,58 @@ func public_market_snapshot() -> Dictionary:
 	}
 
 
+func public_product_selection_catalog_source() -> Dictionary:
+	return _public_product_selection_catalog_source_from(PRODUCT_CATALOG, PRODUCT_PROFILES)
+
+
+func _public_product_selection_catalog_source_from(product_catalog: Array, product_profiles: Dictionary) -> Dictionary:
+	if product_catalog.size() != 46:
+		return _public_product_catalog_unavailable("product_count_invalid")
+	var entries: Array = []
+	var seen_ids: Dictionary = {}
+	for public_index in range(product_catalog.size()):
+		var product_variant: Variant = product_catalog[public_index]
+		if not (product_variant is String or product_variant is StringName):
+			return _public_product_catalog_unavailable("product_id_type_invalid")
+		var product_id := str(product_variant)
+		if product_id.is_empty() or product_id != product_id.strip_edges() or seen_ids.has(product_id):
+			return _public_product_catalog_unavailable("product_id_invalid")
+		var profile_variant: Variant = product_profiles.get(product_id, {})
+		if not (profile_variant is Dictionary):
+			return _public_product_catalog_unavailable("product_profile_missing")
+		seen_ids[product_id] = true
+		var profile := profile_variant as Dictionary
+		var category_variant: Variant = profile.get("category", "")
+		if not (category_variant is String or category_variant is StringName):
+			return _public_product_catalog_unavailable("product_category_type_invalid")
+		var entry := {
+			"product_id": product_id,
+			"public_index": public_index,
+			"public_name": product_id,
+			"selectable": true,
+			"disabled_reason": "",
+			"public_category": str(category_variant).strip_edges(),
+		}
+		if not TablePresentationPureDataPolicy.is_pure_data(entry):
+			return _public_product_catalog_unavailable("product_entry_not_pure_data")
+		entries.append(entry)
+	return {
+		"schema_version": 1,
+		"available": true,
+		"unavailable_reason": "",
+		"entries": entries,
+	}
+
+
+func _public_product_catalog_unavailable(reason_code: String) -> Dictionary:
+	return {
+		"schema_version": 1,
+		"available": false,
+		"unavailable_reason": reason_code,
+		"entries": [],
+	}
+
+
 func product_weather_contribution_snapshot(product_name: String) -> Dictionary:
 	var entry := market_entry(product_name, false)
 	return {
@@ -1030,6 +1140,10 @@ func _normalize_loaded_futures_positions() -> void:
 				_legacy_positions_normalized += 1
 			position["card_id"] = card_id
 			position["product_id"] = str(position.get("product_id", product_name))
+			if not position.has("warehouse_region_id") or str(position.get("warehouse_region_id", "")).is_empty():
+				var legacy_warehouse_district := int(position.get("warehouse_district", -1))
+				var world_state := _world_bridge.world_session_state() if _world_bridge != null else null
+				position["warehouse_region_id"] = world_state.region_id_for_district(legacy_warehouse_district) if world_state != null and legacy_warehouse_district >= 0 else ""
 			position["duration_seconds"] = float(position.get("duration_seconds", terms.get("duration_seconds", 0.0)))
 			position["settlement_formula_id"] = str(position.get("settlement_formula_id", terms.get("settlement_formula_id", "product_futures_v04_settlement")))
 			position["warehouse_loss_formula_id"] = str(position.get("warehouse_loss_formula_id", terms.get("warehouse_loss_formula_id", "warehouse_futures_v04_loss")))
@@ -1124,6 +1238,36 @@ func _shared_rng() -> RunRngService:
 func _default_product() -> String:
 	var value: Variant = _world_bridge.call_world("_default_economy_product") if _world_bridge != null else ""
 	return str(value)
+
+
+func _resolve_product_target(target_context: Dictionary = {}) -> Dictionary:
+	if target_context.is_empty():
+		var legacy_product := _default_product()
+		return {
+			"valid": not legacy_product.is_empty() and PRODUCT_CATALOG.has(legacy_product),
+			"reason_code": "" if not legacy_product.is_empty() and PRODUCT_CATALOG.has(legacy_product) else "product_missing",
+			"product_id": legacy_product,
+			"frozen": false,
+		}
+	var validation := FrozenTargetContext.validate(target_context)
+	if not bool(validation.get("valid", false)):
+		return {"valid": false, "reason_code": str(validation.get("reason_code", "product_target_context_invalid")), "product_id": "", "frozen": true, "warehouse_region_id": "", "warehouse_district_index": -1}
+	var product_id := str(target_context.get("product_id", ""))
+	if product_id.is_empty() or not PRODUCT_CATALOG.has(product_id):
+		return {"valid": false, "reason_code": "product_missing", "product_id": product_id, "frozen": true, "warehouse_region_id": str(target_context.get("warehouse_region_id", "")), "warehouse_district_index": int(target_context.get("warehouse_district_index", -1))}
+	var world_state := _world_bridge.world_session_state() if _world_bridge != null else null
+	if world_state == null:
+		return {"valid": false, "reason_code": "product_target_context_world_unavailable", "product_id": product_id, "frozen": true, "warehouse_region_id": str(target_context.get("warehouse_region_id", "")), "warehouse_district_index": int(target_context.get("warehouse_district_index", -1))}
+	var region_id := str(target_context.get("region_id", ""))
+	var current_region_index := world_state.district_index_for_region_id(region_id)
+	if current_region_index < 0 or current_region_index != int(target_context.get("region_district_index", -1)):
+		return {"valid": false, "reason_code": "product_target_region_stale", "product_id": product_id, "frozen": true, "warehouse_region_id": str(target_context.get("warehouse_region_id", "")), "warehouse_district_index": int(target_context.get("warehouse_district_index", -1))}
+	if bool(target_context.get("warehouse_required", false)):
+		var warehouse_region_id := str(target_context.get("warehouse_region_id", ""))
+		var warehouse_index := world_state.district_index_for_region_id(warehouse_region_id)
+		if warehouse_index < 0 or warehouse_index != int(target_context.get("warehouse_district_index", -1)):
+			return {"valid": false, "reason_code": "warehouse_region_stale", "product_id": product_id, "frozen": true, "warehouse_region_id": warehouse_region_id, "warehouse_district_index": int(target_context.get("warehouse_district_index", -1))}
+	return {"valid": true, "reason_code": "", "product_id": product_id, "frozen": true, "warehouse_region_id": str(target_context.get("warehouse_region_id", "")), "warehouse_district_index": int(target_context.get("warehouse_district_index", -1))}
 
 
 func _set_selected_product(product_name: String) -> void:
