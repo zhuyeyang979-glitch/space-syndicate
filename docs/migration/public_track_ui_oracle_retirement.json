@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "status": "test_only_oracle_migration",
+  "production_file_change_count": 0,
+  "production_scene_change_count": 0,
+  "main_file_change_count": 0,
+  "active_game_screen": {
+    "public_track_node_count": 0,
+    "public_track_scene_reference_count": 0,
+    "top_commodity_track_node_count": 1,
+    "top_commodity_track_scene_reference_count": 1
+  },
+  "top_commodity_track": {
+    "scene": "res://scenes/ui/table/TopCommoditySushiTrack.tscn",
+    "minimum_height": 150,
+    "responsibilities": [
+      "public_commodity_slots",
+      "public_commodity_focus",
+      "commodity_claim_intent",
+      "authoritative_snapshot_presentation"
+    ]
+  },
+  "card_resolution_track": {
+    "scene": "res://scenes/ui/CardResolutionTrack.tscn",
+    "contract_retained": true,
+    "responsibilities": [
+      "resolution_history",
+      "active_resolution",
+      "queue",
+      "next_queue",
+      "temporary_auction_response",
+      "visibility_safe_resolution_information"
+    ]
+  },
+  "legacy_public_track": {
+    "scene_file_deleted": false,
+    "audited_for_removal": false,
+    "removal_requires_zero_reference_audit": true
+  }
+}
