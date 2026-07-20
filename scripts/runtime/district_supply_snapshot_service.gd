@@ -60,6 +60,8 @@ const SAFE_ACTION_REASON_CODES := [
 const FORBIDDEN_SOURCE_KEYS := [
 	"hidden_owner",
 	"hidden_owner_id",
+	"true_owner",
+	"owner_truth",
 	"owner_player_index",
 	"owner_id",
 	"source_monster_uid",
@@ -76,6 +78,22 @@ const FORBIDDEN_SOURCE_KEYS := [
 	"private_channel_source",
 	"ai_plan",
 	"ai_score",
+	"ai_reason",
+	"ai_utility_score",
+	"route_plan_score",
+	"pressure_bucket",
+	"learning_bonus",
+	"private_route_plan",
+	"exact_hand",
+	"hand_count",
+	"cash_cents",
+	"quote_id",
+	"quote_key",
+	"quote_fingerprint",
+	"quote_binding_fingerprint",
+	"supply_revision",
+	"opened_at_world_us",
+	"expires_at_world_us",
 	"utility_scores",
 	"decision_samples",
 ]
@@ -144,7 +162,7 @@ func compose(source: Dictionary) -> Dictionary:
 		"privacy_tooltip": "精确现金、手牌数量与购买资格仅对本地玩家本人显示。" if viewer_private else "公共视图不含任何玩家的精确现金、手牌或购买资格。",
 	}
 	if viewer_private:
-		output["purchase_window"] = (source.get("purchase_window", {}) as Dictionary).duplicate(true)
+		output["purchase_window"] = _purchase_window_snapshot(source.get("purchase_window", {}))
 	_last_output_card_count = cards.size()
 	_last_pure_data_checked = _is_data_only(output)
 	return output if _last_pure_data_checked else _safe_snapshot()
@@ -232,6 +250,39 @@ func _safe_snapshot() -> Dictionary:
 		"privacy_hint": "只显示当前玩家可见的购买状态。",
 		"privacy_tooltip": "不会公开手牌、隐藏牌主或渠道来源。",
 	}
+
+
+func _purchase_window_snapshot(value: Variant) -> Dictionary:
+	if not (value is Dictionary):
+		return {}
+	var source := value as Dictionary
+	if source.is_empty():
+		return {}
+	var result := {
+		"state": str(source.get("state", "view_only")),
+		"active": bool(source.get("active", false)),
+		"requires_reselection": bool(source.get("requires_reselection", false)),
+	}
+	var source_quote: Dictionary = source.get("quote", {}) if source.get("quote", {}) is Dictionary else {}
+	if not source_quote.is_empty():
+		var quote := {}
+		for key in [
+			"quote_active",
+			"locked_eligible",
+			"eligible",
+			"confirmable",
+			"viewable",
+			"availability_kind",
+			"remaining_world_us",
+			"final_price",
+			"multiplier_q2",
+			"same_region_alive_count",
+			"directly_adjacent_alive_count",
+		]:
+			if source_quote.has(key):
+				quote[key] = source_quote[key]
+		result["quote"] = quote
+	return result
 
 
 func _header_chips(source: Dictionary) -> Array:

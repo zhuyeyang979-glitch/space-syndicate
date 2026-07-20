@@ -114,7 +114,7 @@ func _run() -> void:
 		_expect(_inventory_card_count(player_after_play) == hand_before, "facility finalization removes the played card from hand")
 
 		main.call("_close_district_supply_overlay")
-		main.call("_refresh_ui")
+		coordinator.call("request_table_presentation_refresh", &"full", &"human_normal_table_gate")
 		await _wait_frames(3)
 		var planet_map := main.find_child("PlanetMapView", true, false) as Control
 		var hand_rack := main.find_child("HandRack", true, false) as Control
@@ -133,7 +133,14 @@ func _run() -> void:
 			rival["hidden_owner"] = "NORMAL_TABLE_TRUE_OWNER_SENTINEL"
 			players[1] = rival
 			((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
-		var rival_supply: Dictionary = main.call("_district_supply_snapshot_source", district, 1, 0)
+		var supply_query := coordinator.get_node_or_null("DistrictSupplyViewerQueryPort") as DistrictSupplyViewerQueryPort
+		var supply_presentation := coordinator.card_supply_presentation_state()
+		var rival_supply: Dictionary = {}
+		if supply_query != null and supply_presentation != null:
+			supply_presentation.open_district = district
+			supply_presentation.open_player = 1
+			rival_supply = supply_query.snapshot_for_viewer(0)
+		_expect(supply_query != null and str(rival_supply.get("visibility_scope", "")) == "public", "rival rack uses the typed public DistrictSupplyViewerQueryPort")
 		var victory_public: Dictionary = coordinator.call("victory_control_public_snapshot", -1)
 		_scan_public_value(rival_supply, "district_supply.public")
 		_scan_public_value(victory_public, "victory.public")

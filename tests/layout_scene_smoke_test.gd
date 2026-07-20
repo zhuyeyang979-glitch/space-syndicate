@@ -415,6 +415,8 @@ const DISTRICT_SUPPLY_MARKET_CARD_SCENE := "res://scenes/ui/DistrictSupplyMarket
 const DISTRICT_SUPPLY_PREVIEW_CARD_SCENE := "res://scenes/ui/DistrictSupplyPreviewCard.tscn"
 const DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCRIPT := "res://scripts/runtime/district_supply_snapshot_service.gd"
 const DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCENE := "res://scenes/runtime/DistrictSupplySnapshotService.tscn"
+const DISTRICT_SUPPLY_VIEWER_QUERY_PORT_SCRIPT := "res://scripts/presentation/district_supply_viewer_query_port.gd"
+const DISTRICT_SUPPLY_VIEWER_QUERY_PORT_SCENE := "res://scenes/runtime/presentation/DistrictSupplyViewerQueryPort.tscn"
 const CARD_INVENTORY_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT := "res://scripts/tools/card_inventory_runtime_characterization_bench.gd"
 const CARD_INVENTORY_RUNTIME_CHARACTERIZATION_BENCH_SCENE := "res://scenes/tools/CardInventoryRuntimeCharacterizationBench.tscn"
 const CARD_INVENTORY_RUNTIME_SERVICE_SCRIPT := "res://scripts/runtime/card_inventory_runtime_service.gd"
@@ -2495,8 +2497,9 @@ func _check_runtime_main_action_dock_click_flow(main: Node, runtime_screen: Cont
 		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = build_district
 		# The rejection path refreshes city cashflow shells. Stabilize those derived
 		# dictionaries before taking the no-mutation baseline.
-		if main.has_method("_refresh_ui"):
-			main.call("_refresh_ui")
+		var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+		if coordinator != null:
+			coordinator.request_table_presentation_refresh(&"full", &"layout_action_dock_baseline")
 			await process_frame
 		_force_runtime_screen_sync(main)
 		await process_frame
@@ -3058,22 +3061,26 @@ func _first_runtime_actionable_hand_context(main: Node) -> Dictionary:
 
 
 func _first_runtime_direct_buy_offer(main: Node) -> Dictionary:
-	if not main.has_method("_can_buy_card_from_district") or not main.has_method("_district_supply_purchase_state"):
+	if not main.has_method("_can_buy_card_from_district"):
+		return {}
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	var query := coordinator.get_node_or_null("DistrictSupplyViewerQueryPort") as DistrictSupplyViewerQueryPort if coordinator != null else null
+	var presentation := coordinator.card_supply_presentation_state() if coordinator != null else null
+	if query == null or presentation == null:
 		return {}
 	var districts := _runtime_districts(main)
 	for i in range(districts.size()):
 		if not bool(main.call("_can_buy_card_from_district", i, 0)):
 			continue
-		if not (districts[i] is Dictionary):
-			continue
-		var district: Dictionary = districts[i]
-		var choices_variant: Variant = district.get("card_choices", [])
-		var choices: Array = choices_variant if choices_variant is Array else []
-		for card_variant in choices:
-			var card_name := String(card_variant)
-			var state_variant: Variant = main.call("_district_supply_purchase_state", i, card_name, 0)
-			var state: Dictionary = state_variant if state_variant is Dictionary else {}
-			if bool(state.get("actionable", false)) and not bool(state.get("requires_discard", false)) and not _runtime_player_has_card_family(main, 0, card_name):
+		presentation.open_district = i
+		presentation.open_player = 0
+		var surface := query.snapshot_for_viewer(0)
+		var snapshot: Dictionary = surface.get("snapshot", {}) if surface.get("snapshot", {}) is Dictionary else {}
+		var cards: Array = snapshot.get("cards", []) if snapshot.get("cards", []) is Array else []
+		for card_variant in cards:
+			var card: Dictionary = card_variant if card_variant is Dictionary else {}
+			var card_name := str(card.get("card_name", ""))
+			if not card_name.is_empty() and not _runtime_player_has_card_family(main, 0, card_name):
 				return {"district": i, "card": card_name}
 	return {}
 
@@ -5841,12 +5848,14 @@ func _check_district_purchase_settlement_and_presentation_preparation() -> void:
 		var main_inventory := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardInventoryRuntimeService") if main != null else null
 		var main_purchase_settlement := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictPurchaseSettlementRuntimeService") if main != null else null
 		var main_supply_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictSupplySnapshotService") if main != null else null
+		var main_supply_query := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictSupplyViewerQueryPort") if main != null else null
 		_expect(main_inventory != null and main_inventory.scene_file_path == CARD_INVENTORY_RUNTIME_SERVICE_SCENE, "main.tscn composes CardInventoryRuntimeService under GameRuntimeCoordinator")
 		_expect(main_purchase_settlement != null and main_purchase_settlement.scene_file_path == DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCENE, "main.tscn composes DistrictPurchaseSettlementRuntimeService under GameRuntimeCoordinator")
 		_expect(main_supply_snapshot != null and main_supply_snapshot.scene_file_path == DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCENE, "main.tscn composes DistrictSupplySnapshotService under GameRuntimeCoordinator")
+		_expect(main_supply_query != null and main_supply_query.scene_file_path == DISTRICT_SUPPLY_VIEWER_QUERY_PORT_SCENE, "main.tscn composes the viewer-safe DistrictSupplyViewerQueryPort under GameRuntimeCoordinator")
 		if main != null:
 			main.free()
-	for path in [DISTRICT_SUPPLY_DRAWER_SCRIPT, DISTRICT_SUPPLY_DRAWER_SCENE, DISTRICT_SUPPLY_STATUS_CHIP_SCRIPT, DISTRICT_SUPPLY_STATUS_CHIP_SCENE, DISTRICT_SUPPLY_MARKET_CARD_SCENE, DISTRICT_SUPPLY_PREVIEW_CARD_SCENE, DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCRIPT, DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCENE]:
+	for path in [DISTRICT_SUPPLY_DRAWER_SCRIPT, DISTRICT_SUPPLY_DRAWER_SCENE, DISTRICT_SUPPLY_STATUS_CHIP_SCRIPT, DISTRICT_SUPPLY_STATUS_CHIP_SCENE, DISTRICT_SUPPLY_MARKET_CARD_SCENE, DISTRICT_SUPPLY_PREVIEW_CARD_SCENE, DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCRIPT, DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCENE, DISTRICT_SUPPLY_VIEWER_QUERY_PORT_SCRIPT, DISTRICT_SUPPLY_VIEWER_QUERY_PORT_SCENE]:
 		_expect(ResourceLoader.exists(path) and load(path) != null, "%s loads for District Supply Drawer scene ownership" % path)
 	var supply_service_packed := load(DISTRICT_SUPPLY_SNAPSHOT_SERVICE_SCENE) as PackedScene
 	if supply_service_packed != null:
@@ -5887,10 +5896,10 @@ func _check_district_purchase_settlement_and_presentation_preparation() -> void:
 	var settlement_service_source := FileAccess.get_file_as_string(DISTRICT_PURCHASE_SETTLEMENT_RUNTIME_SERVICE_SCRIPT)
 	_expect(not main_source.contains("var district_card_purchase_snapshot") and not main_source.contains("district_card_purchase_snapshot ="), "main.gd does not regain a parallel district-purchase state owner while the v0.6 owner cutover is pending")
 	var retired_drawer_tokens := ["DistrictSupplyMarketCardScene", "DistrictSupplyPreviewCardScene", "var district_supply_title_label", "var district_supply_access_label", "var district_supply_chip_row", "var district_supply_state_rail", "var district_supply_list_box", "var district_supply_preview_box", "func _add_district_supply_header_chips", "func _add_district_supply_summary_chip", "func _add_district_supply_market_status_rail", "func _sync_district_supply_market_focus_links", "func _add_district_supply_card_button", "func _add_district_supply_preview", "func _on_district_card_gui_input"]
-	var drawer_legacy_absent := main_source.contains("func _district_supply_snapshot_source") and main_source.contains("func _on_district_supply_action_requested") and main_source.contains("compose_district_supply_snapshot")
+	var drawer_legacy_absent := not main_source.contains("func _district_supply_snapshot_source") and main_source.contains("func _on_district_supply_action_requested") and not main_source.contains("compose_district_supply_snapshot")
 	for retired_token in retired_drawer_tokens:
 		drawer_legacy_absent = drawer_legacy_absent and not main_source.contains(str(retired_token))
-	_expect(drawer_legacy_absent, "main.gd permanently retires Drawer child-scene preloads, child mirrors, builders, focus loop, and direct card GUI callback")
+	_expect(drawer_legacy_absent, "main.gd permanently retires the Drawer query/composition path, child mirrors, builders, focus loop, and direct card GUI callback")
 	var retired_snapshot_formatters := ["_district_supply_drawer_snapshot", "_district_supply_pure_ui_value", "_district_supply_header_chip_entries", "_district_supply_market_summary", "_district_supply_market_status_entries", "_district_supply_market_status_entry", "_district_supply_access_short_label", "_district_supply_access_color", "_district_supply_purchase_verdict_entries", "_district_supply_micro_card_chip_entries", "_district_supply_decision_chip_entries", "_district_supply_preview_scan_sections", "_district_supply_buy_scan_text", "_district_supply_play_scan_text", "_district_supply_target_scan_text", "_district_supply_target_scan_tooltip", "_district_supply_market_card_snapshot", "_district_supply_preview_snapshot", "_district_supply_preview_card_face_snapshot"]
 	var snapshot_formatters_absent := true
 	for formatter_name in retired_snapshot_formatters:

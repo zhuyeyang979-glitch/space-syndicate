@@ -5044,15 +5044,6 @@ func compose_final_settlement_snapshot(source: Dictionary) -> Dictionary:
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
-func compose_district_supply_snapshot(source: Dictionary) -> Dictionary:
-	var service := _district_supply_snapshot_node()
-	if service == null or not service.has_method("compose"):
-		push_error("GameRuntimeCoordinator requires DistrictSupplySnapshotService.")
-		return {}
-	var value: Variant = service.call("compose", source)
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
 func compose_card_presentation(source: Dictionary) -> Dictionary:
 	var service := _card_presentation_node()
 	if service == null or not service.has_method("compose_card"):
@@ -5518,6 +5509,22 @@ func _wire_table_presentation_source_target() -> void:
 	var developer_target := _developer_balance_presentation_target_node()
 	var developer_diagnostics := _gameplay_balance_diagnostics_node() as GameplayBalanceDiagnosticsRuntimeService \
 		if developer_target != null and developer_target.is_available() else null
+	var district_supply_query := _district_supply_viewer_query_port_node()
+	if district_supply_query == null:
+		push_error("GameRuntimeCoordinator requires DistrictSupplyViewerQueryPort.")
+		return
+	district_supply_query.configure(
+		_table_presentation_query_ports_node(),
+		_table_card_supply_presentation_state_node(),
+		_region_supply_runtime_controller_node() as RegionSupplyRuntimeController,
+		_purchase_node() as DistrictPurchaseRuntimeController,
+		_card_market_pricing_runtime_controller_node() as CardMarketPricingRuntimeController,
+		_card_runtime_catalog_node() as CardRuntimeCatalogService,
+		_card_presentation_node() as CardPresentationRuntimeService,
+		_district_supply_snapshot_node() as DistrictSupplySnapshotService,
+		_card_inventory_node() as CardInventoryRuntimeService,
+		_session_node() as GameSessionRuntimeController
+	)
 	viewmodel_query.configure(
 		_table_presentation_query_ports_node(),
 		_table_selection_state_node(),
@@ -5541,7 +5548,8 @@ func _wire_table_presentation_source_target() -> void:
 		_card_resolution_history_runtime_service_node(),
 		_card_resolution_presentation_port_node(),
 		_player_seat_public_source_node() as PlayerSeatPublicSourceService,
-		_commodity_sushi_track_runtime_service_node()
+		_commodity_sushi_track_runtime_service_node(),
+		district_supply_query
 	)
 	source.configure(
 		_table_presentation_query_ports_node(),
@@ -5663,6 +5671,10 @@ func _table_presentation_source_owner_node() -> TablePresentationSourceOwner:
 
 func _table_presentation_viewmodel_query_node() -> TablePresentationViewModelQuery:
 	return get_node_or_null("TablePresentationViewModelQuery") as TablePresentationViewModelQuery
+
+
+func _district_supply_viewer_query_port_node() -> DistrictSupplyViewerQueryPort:
+	return get_node_or_null("DistrictSupplyViewerQueryPort") as DistrictSupplyViewerQueryPort
 
 
 func _table_presentation_refresh_port_node() -> TablePresentationRefreshPort:

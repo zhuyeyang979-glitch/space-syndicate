@@ -76,6 +76,14 @@ func plan_receive(request: Dictionary) -> Dictionary:
 	return _plan_receive(request, true)
 
 
+func preview_receive(request: Dictionary) -> Dictionary:
+	return _plan_receive(request, false)
+
+
+func ordinary_hand_limit() -> int:
+	return _ordinary_hand_limit
+
+
 func commit_receive(player_state: Dictionary, current_facts: Dictionary, plan: Dictionary) -> Dictionary:
 	_commit_attempt_count += 1
 	if not _configured or not _is_data_only(player_state) or not _is_data_only(current_facts) or not _is_data_only(plan):

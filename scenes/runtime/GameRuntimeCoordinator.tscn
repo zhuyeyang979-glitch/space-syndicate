@@ -1,4 +1,4 @@
-[gd_scene load_steps=113 format=3]
+[gd_scene load_steps=114 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -113,6 +113,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionResponsePort.tscn" id="118_forced_decision_response"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/TableSelectionIntentPort.tscn" id="119_table_selection_intent"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/presentation/TableSelectionCatalogQueryPort.tscn" id="120_selection_catalog_query"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/DistrictSupplyViewerQueryPort.tscn" id="121_district_supply_viewer_query"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -183,6 +184,9 @@ product_market_runtime_controller_path = NodePath("../ProductMarketRuntimeContro
 game_session_runtime_controller_path = NodePath("../GameSessionRuntimeController")
 
 [node name="TablePresentationViewModelQuery" parent="." instance=ExtResource("103_table_presentation_viewmodel_query")]
+unique_name_in_owner = true
+
+[node name="DistrictSupplyViewerQueryPort" parent="." instance=ExtResource("121_district_supply_viewer_query")]
 unique_name_in_owner = true
 
 [node name="TablePresentationSourceOwner" parent="." instance=ExtResource("100_table_presentation_source")]

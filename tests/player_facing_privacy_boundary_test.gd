@@ -89,7 +89,7 @@ func _run() -> void:
 	var players: Array = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players if ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players is Array else []
 	_expect(players.size() == 3, "real setup_start creates three production players")
 	if players.size() == 3:
-		await _check_district_supply_boundary(main, players, starter_names)
+		await _check_district_supply_boundary(main, players)
 
 	_stop_audio(main)
 	root.remove_child(main)
@@ -133,7 +133,7 @@ func _check_setup_controls(main: Node, starter_names: Array[String]) -> void:
 	_expect(visible_text.contains(starter_names[0]), "visible setup controls preserve the local human starter choice")
 
 
-func _check_district_supply_boundary(main: Node, players: Array, starter_names: Array[String]) -> void:
+func _check_district_supply_boundary(main: Node, players: Array) -> void:
 	var human: Dictionary = players[0] if players[0] is Dictionary else {}
 	var ai: Dictionary = players[1] if players[1] is Dictionary else {}
 	human["cash"] = HUMAN_CASH_SENTINEL
@@ -150,51 +150,51 @@ func _check_district_supply_boundary(main: Node, players: Array, starter_names: 
 	ai["hidden_owner"] = HIDDEN_OWNER_SENTINEL
 	players[0] = human
 	players[1] = ai
-	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	_expect(coordinator != null, "production Coordinator remains composed")
+	if coordinator == null:
+		return
+	coordinator.world_session_state().players = players
+	var query := coordinator.get_node_or_null("DistrictSupplyViewerQueryPort") as DistrictSupplyViewerQueryPort
+	var presentation := coordinator.card_supply_presentation_state()
+	_expect(query != null and presentation != null, "scene-owned DistrictSupplyViewerQueryPort is the only drawer query source")
+	if query == null or presentation == null:
+		return
 
-	var district_index := _first_public_supply_district(main)
+	var district_index := _first_public_supply_district(coordinator, query, presentation)
 	_expect(district_index >= 0, "public district path exposes at least one card without requiring an AI monster")
 	if district_index < 0:
 		return
 
 	var public_sources := [
-		{"name": "missing_viewer", "source": main.call("_district_supply_snapshot_source", district_index, 1)},
-		{"name": "opponent_subject", "source": main.call("_district_supply_snapshot_source", district_index, 1, 0)},
-		{"name": "ai_self_forgery", "source": main.call("_district_supply_snapshot_source", district_index, 1, 1)},
-		{"name": "unknown_viewer", "source": main.call("_district_supply_snapshot_source", district_index, 0, 999)},
+		{"name": "missing_viewer", "source": _district_supply_surface(query, presentation, district_index, 1, -1)},
+		{"name": "opponent_subject", "source": _district_supply_surface(query, presentation, district_index, 1, 0)},
+		{"name": "ai_self_forgery", "source": _district_supply_surface(query, presentation, district_index, 1, 1)},
+		{"name": "unknown_viewer", "source": _district_supply_surface(query, presentation, district_index, 0, 999)},
 	]
 	for case_variant in public_sources:
 		var case: Dictionary = case_variant as Dictionary
 		var source: Dictionary = case.get("source", {}) if case.get("source", {}) is Dictionary else {}
 		_check_public_supply_source(str(case.get("name", "public")), source)
 
-	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
-	_expect(coordinator != null and coordinator.has_method("compose_district_supply_snapshot"), "production Coordinator exposes district supply composition")
-	if coordinator == null:
-		return
-	var opponent_source: Dictionary = public_sources[1].get("source", {}) as Dictionary
-	var public_output_variant: Variant = coordinator.call("compose_district_supply_snapshot", opponent_source)
-	var public_output: Dictionary = public_output_variant if public_output_variant is Dictionary else {}
+	var opponent_surface: Dictionary = public_sources[1].get("source", {}) as Dictionary
+	var public_output: Dictionary = opponent_surface.get("snapshot", {}) if opponent_surface.get("snapshot", {}) is Dictionary else {}
 	var public_cards: Array = public_output.get("cards", []) if public_output.get("cards", []) is Array else []
-	var source_cards: Array = opponent_source.get("cards", []) if opponent_source.get("cards", []) is Array else []
-	_expect(not public_output.is_empty() and public_cards.size() == source_cards.size() and not public_cards.is_empty(), "safe public schema composes a non-empty browseable card list")
+	_expect(not public_output.is_empty() and not public_cards.is_empty(), "typed public query composes a non-empty browseable card list")
 	var public_output_private_paths: Array[String] = []
 	_collect_key_paths(public_output, ["player_cash", "counted_hand_size", "hand_limit", "purchase_window"], "public_output", public_output_private_paths)
 	_expect(public_output_private_paths.is_empty(), "composed public snapshot omits private aggregate/window keys: %s" % [public_output_private_paths])
 	_expect(_sentinel_leaks(public_output).is_empty(), "composed public snapshot has zero recursive sentinel leaks")
-	var public_debug: Dictionary = coordinator.call("district_supply_snapshot_debug") as Dictionary
-	var public_validation: Dictionary = public_debug.get("last_validation", {}) if public_debug.get("last_validation", {}) is Dictionary else {}
-	_expect(bool(public_validation.get("valid", false)) and (public_validation.get("public_purchase_state_violations", []) as Array).is_empty(), "public source passes explicit schema and fixed browse-state validation")
+	var public_debug := query.debug_snapshot()
+	_expect(bool(public_debug.get("configured", false)) and not bool(public_debug.get("references_main", true)) and not bool(public_debug.get("mutates_gameplay", true)), "typed query remains configured, read-only, and independent from Main")
 
-	main.call("_open_district_card_purchase_window", district_index, 0)
-	var own_source_variant: Variant = main.call("_district_supply_snapshot_source", district_index, 0, 0)
-	var own_source: Dictionary = own_source_variant if own_source_variant is Dictionary else {}
+	var own_surface := _district_supply_surface(query, presentation, district_index, 0, 0)
+	var own_source: Dictionary = own_surface.get("snapshot", {}) if own_surface.get("snapshot", {}) is Dictionary else {}
 	var expected_hand := int(main.call("_player_counted_hand_size", human))
-	var expected_can_buy := bool(main.call("_can_buy_card_from_district", district_index, 0))
-	_expect(str(own_source.get("visibility_scope", "")) == "viewer_private" and bool(own_source.get("viewer_authorized", false)), "local human self-view receives viewer_private scope")
-	_expect(int(own_source.get("player_cash", -1)) == HUMAN_CASH_SENTINEL, "local human self-view preserves exact own cash")
-	_expect(int(own_source.get("counted_hand_size", -1)) == expected_hand and int(own_source.get("hand_limit", -1)) > 0, "local human self-view preserves exact own hand aggregate")
-	_expect(own_source.has("can_buy") and bool(own_source.get("can_buy", false)) == expected_can_buy and own_source.has("purchase_window"), "local human self-view preserves canonical purchase eligibility and window")
+	var own_text := _value_text(own_source)
+	_expect(str(own_surface.get("visibility_scope", "")) == "viewer_private" and str(own_source.get("visibility_scope", "")) == "viewer_private", "local human self-view receives viewer_private scope")
+	_expect(own_text.contains("¥%d" % HUMAN_CASH_SENTINEL), "local human self-view preserves exact own cash in the formatted drawer")
+	_expect(own_text.contains("手牌 %d/" % expected_hand), "local human self-view preserves its own hand aggregate")
 	var own_cards: Array = own_source.get("cards", []) if own_source.get("cards", []) is Array else []
 	var eligibility_present := not own_cards.is_empty()
 	for card_variant in own_cards:
@@ -202,52 +202,63 @@ func _check_district_supply_boundary(main: Node, players: Array, starter_names: 
 			eligibility_present = false
 			continue
 		var card := card_variant as Dictionary
-		var state: Dictionary = card.get("purchase_state", {}) if card.get("purchase_state", {}) is Dictionary else {}
-		eligibility_present = eligibility_present and state.has("actionable") and state.has("requires_discard")
+		eligibility_present = eligibility_present and card.has("actionable") and card.has("state_text")
 	_expect(eligibility_present, "local human card rows retain private purchase eligibility state")
 
-	var own_output_variant: Variant = coordinator.call("compose_district_supply_snapshot", own_source)
-	var own_output: Dictionary = own_output_variant if own_output_variant is Dictionary else {}
-	var own_text := _value_text(own_output)
-	_expect(str(own_output.get("visibility_scope", "")) == "viewer_private", "private source composes through the production snapshot service")
-	_expect(own_text.contains("¥%d" % HUMAN_CASH_SENTINEL), "own composed drawer shows exact local cash")
-	_expect(own_text.contains("手牌 %d/%d" % [expected_hand, int(own_source.get("hand_limit", 0))]), "own composed drawer shows exact local hand aggregate")
-
-	var overlay := main.get("district_supply_overlay") as Control
-	_expect(overlay != null, "real district supply drawer exists")
+	var screen := main.find_child("RuntimeGameScreen", true, false) as SpaceSyndicateGameScreen
+	var overlay := screen.get_node_or_null("OverlayLayer") as SpaceSyndicateOverlayLayer if screen != null else null
+	var viewer_context := coordinator.get_node("TablePresentationQueryPorts").viewer_context() as TablePresentationViewerContext
+	_expect(overlay != null, "real typed district supply target exists")
 	if overlay != null:
-		main.set("district_supply_open_district", district_index)
-		main.set("district_supply_open_player", 1)
-		overlay.visible = true
-		main.call("_refresh_district_supply_overlay")
-		await _wait_frames(3)
-		var drawer_text := _visible_control_text(overlay)
-		_expect(int(main.get("district_supply_open_player")) == 0, "drawer coerces an AI subject back to the local human viewer")
+		_expect(overlay.apply_district_supply_presentation(opponent_surface, 0, viewer_context.authorization_revision), "typed target accepts the public browse surface")
+		await _wait_frames(2)
+		var drawer := screen.get_district_supply_drawer()
+		var public_drawer_text := _visible_control_text(drawer)
+		_expect(not public_drawer_text.contains("¥%d" % AI_CASH_SENTINEL), "public opponent drawer omits exact rival cash")
+		_expect(overlay.apply_district_supply_presentation(own_surface, 0, viewer_context.authorization_revision), "typed target accepts the authorized local surface")
+		await _wait_frames(2)
+		var drawer_text := _visible_control_text(drawer)
 		_expect(drawer_text.contains("¥%d" % HUMAN_CASH_SENTINEL), "normal local-human drawer still renders own exact cash")
-		_expect(drawer_text.contains("手牌 %d/%d" % [expected_hand, int(own_source.get("hand_limit", 0))]), "normal local-human drawer still renders own hand aggregate")
 		var visible_leaks := _text_leaks(drawer_text, [])
 		_expect(visible_leaks.is_empty(), "visible district controls contain no injected AI sentinel leak: %s" % [visible_leaks])
 
 
-func _first_public_supply_district(main: Node) -> int:
-	var districts: Array = ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts if ((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts is Array else []
+func _first_public_supply_district(
+	coordinator: GameRuntimeCoordinator,
+	query: DistrictSupplyViewerQueryPort,
+	presentation: TableCardSupplyPresentationState
+) -> int:
+	var districts: Array = coordinator.world_session_state().districts
 	for district_index in range(districts.size()):
-		var source_variant: Variant = main.call("_district_supply_snapshot_source", district_index, 1, 0)
-		var source: Dictionary = source_variant if source_variant is Dictionary else {}
-		var cards: Array = source.get("cards", []) if source.get("cards", []) is Array else []
+		var surface := _district_supply_surface(query, presentation, district_index, 1, 0)
+		var snapshot: Dictionary = surface.get("snapshot", {}) if surface.get("snapshot", {}) is Dictionary else {}
+		var cards: Array = snapshot.get("cards", []) if snapshot.get("cards", []) is Array else []
 		if not cards.is_empty():
 			return district_index
 	return -1
 
 
+func _district_supply_surface(
+	query: DistrictSupplyViewerQueryPort,
+	presentation: TableCardSupplyPresentationState,
+	district_index: int,
+	subject_index: int,
+	viewer_index: int
+) -> Dictionary:
+	presentation.open_district = district_index
+	presentation.open_player = subject_index
+	return query.snapshot_for_viewer(viewer_index)
+
+
 func _check_public_supply_source(case_name: String, source: Dictionary) -> void:
-	_expect(not source.is_empty(), "%s returns a fail-closed public source instead of private data" % case_name)
-	_expect(str(source.get("visibility_scope", "")) == "public" and not bool(source.get("viewer_authorized", true)), "%s is explicitly public and unauthorized" % case_name)
+	_expect(not source.is_empty(), "%s returns a fail-closed public surface instead of private data" % case_name)
+	_expect(str(source.get("visibility_scope", "")) == "public", "%s is explicitly public" % case_name)
 	var private_paths: Array[String] = []
 	_collect_key_paths(source, PUBLIC_PRIVATE_KEYS, case_name, private_paths)
 	_expect(private_paths.is_empty(), "%s recursively omits private aggregate/owner/AI keys: %s" % [case_name, private_paths])
 	_expect(_sentinel_leaks(source).is_empty(), "%s has zero recursive sentinel leaks" % case_name)
-	var cards: Array = source.get("cards", []) if source.get("cards", []) is Array else []
+	var snapshot: Dictionary = source.get("snapshot", {}) if source.get("snapshot", {}) is Dictionary else {}
+	var cards: Array = snapshot.get("cards", []) if snapshot.get("cards", []) is Array else []
 	_expect(not cards.is_empty(), "%s keeps the public card list viewable" % case_name)
 	var browse_states_valid := not cards.is_empty()
 	for card_variant in cards:
@@ -255,12 +266,11 @@ func _check_public_supply_source(case_name: String, source: Dictionary) -> void:
 			browse_states_valid = false
 			continue
 		var card := card_variant as Dictionary
-		var state: Dictionary = card.get("purchase_state", {}) if card.get("purchase_state", {}) is Dictionary else {}
+		var preview: Dictionary = card.get("preview", {}) if card.get("preview", {}) is Dictionary else {}
 		browse_states_valid = browse_states_valid \
-			and str(state.get("label", "")) == "仅浏览" \
-			and not bool(state.get("actionable", true)) \
-			and not bool(state.get("requires_discard", true)) \
-			and int(state.get("price", -1)) == int(card.get("price", -2))
+			and str(card.get("state_text", "")) == "仅浏览" \
+			and not bool(card.get("actionable", true)) \
+			and not bool(preview.get("buy_enabled", true))
 	_expect(browse_states_valid, "%s exposes only public price plus fixed non-actionable browse states" % case_name)
 
 

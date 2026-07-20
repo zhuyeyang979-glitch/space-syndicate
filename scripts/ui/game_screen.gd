@@ -196,7 +196,16 @@ func apply_live_presentation(snapshot: TableLivePresentationSnapshot) -> int:
 func apply_full_presentation(snapshot: TableFullPresentationSnapshot) -> int:
 	if snapshot == null or not snapshot.is_valid() or not _presentation_authorization_matches(snapshot.viewer_index, snapshot.authorization_revision):
 		return _presentation_target_revision
-	apply_state(snapshot.to_dictionary())
+	var data := snapshot.to_dictionary()
+	apply_state(data)
+	var overlays := overlay_layer as SpaceSyndicateOverlayLayer
+	var district_supply: Dictionary = data.get("district_supply", {}) if data.get("district_supply", {}) is Dictionary else {}
+	if overlays != null:
+		overlays.apply_district_supply_presentation(
+			district_supply,
+			snapshot.viewer_index,
+			snapshot.authorization_revision
+		)
 	_presentation_target_revision += 1
 	_full_presentation_target_count += 1
 	return _presentation_target_revision
@@ -217,6 +226,8 @@ func _bind_presentation_map_targets() -> void:
 
 
 func bind_presentation_viewer(viewer_index: int, authorization_revision: int) -> void:
+	var authorization_changed := _presentation_authorized_viewer_index != viewer_index \
+		or _presentation_authorization_revision != authorization_revision
 	if _presentation_authorized_viewer_index != viewer_index:
 		_selected_commodity_slot_id = ""
 		_selected_commodity_item_data = {}
@@ -224,6 +235,10 @@ func bind_presentation_viewer(viewer_index: int, authorization_revision: int) ->
 		_inspected_player_index = viewer_index
 		_last_player_inspection_receipt_revision = -1
 		_player_inspection_receipt_apply_count = 0
+	if authorization_changed:
+		var overlays := overlay_layer as SpaceSyndicateOverlayLayer
+		if overlays != null:
+			overlays.clear_district_supply_presentation()
 	_presentation_authorized_viewer_index = viewer_index
 	_presentation_authorization_revision = authorization_revision
 	if planet_board is SpaceSyndicatePlanetBoard:

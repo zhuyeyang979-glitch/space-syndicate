@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/district_supply_viewer_query_port.gd" id="1"]
+
+[node name="DistrictSupplyViewerQueryPort" type="Node"]
+script = ExtResource("1")
+editor_description = "Viewer-safe, scene-owned regional rack query. Reads public rack and authorized local-player purchase facts without opening quotes, mutating gameplay, or inspecting future bag order."

@@ -257,7 +257,7 @@ func _on_card_preview_requested(card_name: String, source: String) -> void:
 
 
 func _on_card_purchase_requested(card_name: String, source: String) -> void:
-	if card_name != "":
+	if card_name != "" and str(_snapshot.get("visibility_scope", "public")) == "viewer_private":
 		supply_action_requested.emit("district_supply_purchase_card", {"card_name": card_name, "source": source})
 
 

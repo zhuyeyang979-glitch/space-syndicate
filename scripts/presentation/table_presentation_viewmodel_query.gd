@@ -28,6 +28,7 @@ var _history: CardResolutionHistoryRuntimeService
 var _card_resolution_presentation: CardResolutionPresentationPort
 var _player_seat_sources: PlayerSeatPublicSourceService
 var _commodity_sushi_track: COMMODITY_SUSHI_TRACK_SERVICE_SCRIPT
+var _district_supply_query: DistrictSupplyViewerQueryPort
 var _revision := 0
 var _compose_count := 0
 var _last_visual_event_revision := 0
@@ -56,7 +57,8 @@ func configure(
 	history: CardResolutionHistoryRuntimeService,
 	card_resolution_presentation: CardResolutionPresentationPort,
 	player_seat_sources: PlayerSeatPublicSourceService = null,
-	commodity_sushi_track: COMMODITY_SUSHI_TRACK_SERVICE_SCRIPT = null
+	commodity_sushi_track: COMMODITY_SUSHI_TRACK_SERVICE_SCRIPT = null,
+	district_supply_query: DistrictSupplyViewerQueryPort = null
 ) -> void:
 	_ports = ports
 	_selection = selection
@@ -81,6 +83,7 @@ func configure(
 	_card_resolution_presentation = card_resolution_presentation
 	_player_seat_sources = player_seat_sources
 	_commodity_sushi_track = commodity_sushi_track
+	_district_supply_query = district_supply_query
 
 
 func compose_table_state(viewer_index: int, include_full: bool) -> Dictionary:
@@ -144,6 +147,8 @@ func compose_table_state(viewer_index: int, include_full: bool) -> Dictionary:
 	})
 	if include_full:
 		composed["viewer_private_feedback"] = _ports.recent_viewer_private_feedback(viewer_index, 6)
+		composed["district_supply"] = _district_supply_query.snapshot_for_viewer(viewer_index) \
+			if _district_supply_query != null else {}
 	_revision += 1
 	_compose_count += 1
 	return TablePresentationPureDataPolicy.detached_copy(composed) as Dictionary
@@ -194,6 +199,7 @@ func debug_snapshot() -> Dictionary:
 		"card_visual_event_revision": _last_visual_event_revision,
 		"uses_public_player_seat_projection": _player_seat_sources != null,
 		"uses_public_commodity_sushi_track_projection": _commodity_sushi_track != null,
+		"uses_viewer_safe_district_supply_projection": _district_supply_query != null,
 		"supports_decision_kinds": ["monster_wager", "contract_response", "discard_purchase", "monster_target_choice", "player_target_choice"],
 		"references_main": false,
 		"mutates_gameplay": false,

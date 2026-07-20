@@ -1,7 +1,42 @@
 # 太空辛迪加开发日志
 
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
-> 最新记录日期：2026-07-18。
+> 最新记录日期：2026-07-21。
+
+## 2026-07-21 — District supply presentation query/target cutover
+
+- Added one scene-owned `DistrictSupplyViewerQueryPort` that composes the
+  regional card-rack surface from existing public rack, pricing, purchase,
+  catalog, inventory, session and viewer-authorization owners. It introduces no
+  second rack, quote, inventory or purchase owner.
+- District supply is included only in the full table presentation snapshot.
+  Live refresh neither rebuilds nor clears an already visible drawer.
+- `GameScreen` and `OverlayLayer` now form the typed target. Viewer identity and
+  authorization revision are checked before private content is applied, and an
+  authorization change immediately clears stale drawer data.
+- Opponent/public racks remain viewable but browse-only. Public activation
+  cannot emit a purchase action; public projections exclude exact cash, hand
+  data, hidden ownership, AI plans, quote fingerprints and supply revisions.
+- Read-only gates prove that querying does not reshuffle/refill the rack, inspect
+  future bag order, create a quote, mutate inventory diagnostics or change the
+  current presentation selection.
+- Physically removed eight district-supply presentation/source helpers from
+  `main.gd`: 8,199 → 7,933 physical lines, 7,012 → 6,760 nonblank lines and
+  556 → 548 methods. The umbrella `presentation_action_routing` domain remains
+  pending because purchase, quote, discard and open/close commands are a later
+  typed action cutover.
+
+### Validation
+
+- District supply query cutover: 38/38.
+- Godot 4.7 MCP production Bench: 23/23.
+- Drawer live refresh, transient windows, region-supply randomization/save,
+  Main composition, Main architecture, UI text, visual snapshot and smoke
+  check-only gates: passed.
+- The isolated full smoke loaded the production scene and main menu, then hit
+  its inherited retired `_new_game` fixture at `tests/smoke_test.gd:77` and
+  timed out. No old Main compatibility entry was restored, and no failure from
+  the district-supply query/target path appeared before that fixture debt.
 
 ## 2026-07-20 — Menu lifecycle application-flow cutover
 

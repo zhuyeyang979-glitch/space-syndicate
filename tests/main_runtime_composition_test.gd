@@ -213,6 +213,7 @@ func _check_static_composition(main: Control) -> void:
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardEconomyProductRouteFormulaRuntimeService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictPurchaseSettlementRuntimeService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictSupplySnapshotService",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictSupplyViewerQueryPort",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RouteNetworkRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RouteNetworkWorldBridge",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CommodityFlowRuntimeController",
@@ -310,6 +311,7 @@ func _check_static_composition(main: Control) -> void:
 	var hand_interaction := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/PlayerHandInteractionRuntimeService")
 	var purchase_settlement := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictPurchaseSettlementRuntimeService")
 	var district_supply_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictSupplySnapshotService")
+	var district_supply_query := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictSupplyViewerQueryPort")
 	var codex_navigation := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CodexNavigationRuntimeController")
 	var codex_public_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CodexPublicSnapshotService")
 	var monster_codex_public_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterCodexPublicSnapshotService")
@@ -375,6 +377,9 @@ func _check_static_composition(main: Control) -> void:
 	_expect(hand_interaction != null and hand_interaction.scene_file_path == "res://scenes/runtime/PlayerHandInteractionRuntimeService.tscn" and hand_interaction.has_method("plan_interaction") and hand_interaction.has_method("commit_interaction") and hand_interaction.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the editable PlayerHandInteractionRuntimeService scene and orchestration/cash/event-intent API")
 	_expect(purchase_settlement != null and purchase_settlement.scene_file_path == "res://scenes/runtime/DistrictPurchaseSettlementRuntimeService.tscn" and purchase_settlement.has_method("plan_purchase") and purchase_settlement.has_method("commit_purchase") and purchase_settlement.has_method("validate_discard"), "GameRuntimeCoordinator owns the editable DistrictPurchaseSettlementRuntimeService scene")
 	_expect(district_supply_snapshot != null and district_supply_snapshot.scene_file_path == "res://scenes/runtime/DistrictSupplySnapshotService.tscn" and district_supply_snapshot.has_method("compose") and district_supply_snapshot.has_method("validate_source") and district_supply_snapshot.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the editable DistrictSupplySnapshotService scene")
+	_expect(district_supply_query != null and district_supply_query.scene_file_path == "res://scenes/runtime/presentation/DistrictSupplyViewerQueryPort.tscn" and district_supply_query.has_method("snapshot_for_viewer") and district_supply_query.has_method("debug_snapshot"), "GameRuntimeCoordinator owns one scene-owned viewer-safe DistrictSupplyViewerQueryPort")
+	var district_query_debug: Dictionary = district_supply_query.call("debug_snapshot") if district_supply_query != null else {}
+	_expect(not bool(district_query_debug.get("references_main", true)) and not bool(district_query_debug.get("mutates_gameplay", true)) and not bool(district_query_debug.get("opens_market_quote", true)) and not bool(district_query_debug.get("reads_future_supply_bag", true)), "district supply query declares a read-only non-Main presentation boundary before session wiring")
 	for retired_diagnostic in ["_development_route_profiles", "_card_strength_budget_report", "_development_route_balance_audit", "_development_route_pressure_audit", "_direct_interaction_balance_report", "_role_balance_audit", "_monster_ecology_balance_report", "_product_ecosystem_report", "_card_supply_product_filter_audit", "_card_one_glance_audit_report", "_runtime_balance_snapshot"]:
 		_expect(not main_source.contains("func %s(" % retired_diagnostic), "Sprint 62 deletes legacy main.gd diagnostic owner %s" % retired_diagnostic)
 	for retired_economy_formatter in ["_economy_city_public_clue_line", "_city_product_market_price_summary", "_city_demand_price_summary", "_city_income_detail_lines", "_district_transport_speed", "_first_run_teaching_supply_gate", "_join_first_card_facts", "_product_list_with_prices", "_product_trend_text", "_district_connection_summary"]:

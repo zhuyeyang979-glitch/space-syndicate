@@ -930,14 +930,16 @@
     {
       "domain": "presentation_action_routing",
       "old_symbols": [
-        "_runtime_table_snapshot_source",
-        "_on_runtime_game_screen_action_requested"
+        "_on_runtime_game_screen_action_requested",
+        "_on_district_supply_action_requested",
+        "remaining Main gameplay/application action branches"
       ],
       "old_consumers": [
         "GameScreen",
         "PlanetBoard",
         "PlayerBoard",
-        "MenuOverlay"
+        "MenuOverlay",
+        "OverlayLayer and DistrictSupplyDrawer"
       ],
       "new_owner_scene": "",
       "new_owner_script": "",
@@ -947,6 +949,51 @@
       "duplicate_execution_checked": false,
       "commit_sha": "",
       "status": "pending"
+    },
+    {
+      "domain": "district_supply_surface_query",
+      "old_symbols": [
+        "_refresh_district_supply_overlay",
+        "_district_supply_snapshot_source",
+        "_district_supply_private_viewer_authorized",
+        "_district_supply_public_card_source",
+        "_district_supply_card_source",
+        "_district_supply_target_kind",
+        "_district_supply_purchase_state",
+        "_active_card_market_quote"
+      ],
+      "old_consumers": [
+        "GameScreen full table presentation",
+        "OverlayLayer district supply drawer",
+        "authorized local-player purchase preview",
+        "public and opponent district-rack browsing"
+      ],
+      "new_owner_scene": "res://scenes/runtime/presentation/DistrictSupplyViewerQueryPort.tscn + res://scenes/ui/OverlayLayer.tscn",
+      "new_owner_script": "res://scripts/presentation/district_supply_viewer_query_port.gd + res://scripts/presentation/table_presentation_viewmodel_query.gd + res://scripts/ui/game_screen.gd + res://scripts/ui/overlay_layer.gd",
+      "new_public_api": [
+        "DistrictSupplyViewerQueryPort.snapshot_for_viewer",
+        "DistrictSupplyViewerQueryPort.debug_snapshot",
+        "TablePresentationViewModelQuery.compose_table_state",
+        "SpaceSyndicateGameScreen.apply_full_presentation",
+        "SpaceSyndicateOverlayLayer.apply_district_supply_presentation",
+        "SpaceSyndicateOverlayLayer.clear_district_supply_presentation",
+        "CardInventoryRuntimeService.preview_receive",
+        "CardInventoryRuntimeService.ordinary_hand_limit"
+      ],
+      "tests": [
+        "res://tests/district_supply_surface_query_cutover_test.gd",
+        "res://scenes/tools/DistrictSupplySurfaceQueryCutoverBench.tscn",
+        "res://tests/district_supply_drawer_live_refresh_test.gd",
+        "res://tests/transient_gameplay_windows_v06_test.gd",
+        "res://tests/region_supply_full_randomization_v06_test.gd",
+        "res://tests/region_supply_rng_save_roundtrip_v06_test.gd",
+        "res://tests/main_runtime_composition_test.gd",
+        "res://tests/main_gd_architecture_gate_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
     },
     {
       "domain": "table_navigation_action_routing",

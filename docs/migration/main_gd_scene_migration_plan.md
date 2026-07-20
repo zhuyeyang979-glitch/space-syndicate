@@ -206,6 +206,35 @@ constants, preloads, wrappers and dynamic callbacks are physically deleted and
 the negative scan reports zero references for that domain. A reference Bench
 or a new owner without old-path deletion is not completion.
 
+## District supply surface query/target cutover: complete
+
+The district rack presentation is now composed by the scene-owned
+`DistrictSupplyViewerQueryPort`. It reads the existing public region-supply
+owner and only the authorized viewer-private projection. The result is included
+only in full table presentation snapshots; live cadence does not rebuild,
+clear or reapply an open drawer.
+
+`GameScreen` forwards the full snapshot to the typed `OverlayLayer` target.
+The target validates viewer identity and authorization revision, clears stale
+private content when authorization changes and keeps public/opponent rack cards
+browse-only. A public confirm or double-click cannot emit a purchase action.
+
+The query does not reshuffle or refill the rack, inspect the future shuffle bag,
+create a market quote, mutate inventory diagnostics or change the current
+presentation selection. Quote credentials, supply revisions, opponent cash,
+opponent hand data, hidden ownership and AI-private state are excluded.
+
+Eight district-supply source, formatter, refresh and quote-inspection helpers
+were physically deleted from Main. Main changed from 8,199 to 7,933 physical
+lines, 7,012 to 6,760 nonblank lines and 556 to 548 methods; fields, constants
+and preloads did not increase. The existing open/close, quote, purchase and
+discard command paths remain outside this read-only cutover.
+
+The umbrella `presentation_action_routing` domain therefore remains pending.
+The next focused boundary is the typed district purchase/quote/discard command
+and action-routing cutover, which must delete the remaining Main action path
+without adding a compatibility wrapper.
+
 ## Standings application-flow cutover: complete
 
 The standings page now enters through the dedicated

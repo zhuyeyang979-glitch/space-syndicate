@@ -3,7 +3,20 @@ extends Node
 class_name WorldSessionPresentationQuery
 
 const PUBLIC_PLAYER_KEYS := ["name", "seat_type", "role_index", "role_card", "eliminated", "eliminated_at", "elimination_reason"]
-const PRIVATE_CARD_KEYS := ["name", "kind", "rank", "price", "target_type", "cooldown", "cooldown_left", "family_id", "card_id"]
+const PRIVATE_CARD_KEYS := [
+	"name",
+	"kind",
+	"rank",
+	"price",
+	"target_type",
+	"cooldown",
+	"cooldown_left",
+	"family_id",
+	"card_id",
+	"persistent",
+	"queued_for_resolution",
+	"lock_left",
+]
 const PRIVATE_PLAYER_KEYS := ["cash", "cash_cents", "city_guesses", "city_guess_confidence", "city_guess_reasons", "known_card_owners", "known_contract_parties", "eliminated"]
 
 var _world_session_state: WorldSessionState

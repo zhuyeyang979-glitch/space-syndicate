@@ -75,6 +75,9 @@ var _surface_stack: Array[Dictionary] = []
 var _surface_context_revision := 0
 var _active_forced_surface_id := ""
 var _forced_focus_restore_path := ""
+var _district_supply_presentation_apply_count := 0
+var _district_supply_presentation_reject_count := 0
+var _last_district_supply_visibility_scope := "closed"
 
 
 func _ready() -> void:
@@ -349,6 +352,62 @@ func activate_optional_route_view(opener: Control = null) -> bool:
 
 func deactivate_optional_route_view(restore_focus := true) -> void:
 	_remove_surface(SURFACE_ROUTE_VIEW, restore_focus)
+
+
+func apply_district_supply_presentation(
+	surface: Dictionary,
+	viewer_index: int,
+	authorization_revision: int
+) -> bool:
+	var drawer := district_supply_drawer as SpaceSyndicateDistrictSupplyDrawer
+	if drawer == null:
+		_district_supply_presentation_reject_count += 1
+		return false
+	if int(surface.get("viewer_index", -1)) != viewer_index \
+			or int(surface.get("authorization_revision", 0)) != authorization_revision \
+			or (str(surface.get("visibility_scope", "closed")) == "viewer_private" \
+				and int(surface.get("subject_player_index", -1)) != viewer_index):
+		_clear_district_supply_presentation(drawer)
+		_district_supply_presentation_reject_count += 1
+		return false
+	var should_show := bool(surface.get("visible", false))
+	var snapshot: Dictionary = surface.get("snapshot", {}) if surface.get("snapshot", {}) is Dictionary else {}
+	if not should_show:
+		_clear_district_supply_presentation(drawer)
+		_district_supply_presentation_apply_count += 1
+		return true
+	if forced_surface_active() or snapshot.is_empty():
+		_district_supply_presentation_reject_count += 1
+		return false
+	drawer.set_supply(snapshot)
+	drawer.visible = true
+	_last_district_supply_visibility_scope = str(surface.get("visibility_scope", "public"))
+	_district_supply_presentation_apply_count += 1
+	return true
+
+
+func clear_district_supply_presentation() -> void:
+	var drawer := district_supply_drawer as SpaceSyndicateDistrictSupplyDrawer
+	if drawer != null:
+		_clear_district_supply_presentation(drawer)
+
+
+func district_supply_presentation_target_snapshot() -> Dictionary:
+	return {
+		"apply_count": _district_supply_presentation_apply_count,
+		"reject_count": _district_supply_presentation_reject_count,
+		"last_visibility_scope": _last_district_supply_visibility_scope,
+		"visible": district_supply_drawer.visible if district_supply_drawer != null else false,
+		"owns_gameplay_state": false,
+		"owns_purchase_quote": false,
+		"references_main": false,
+	}
+
+
+func _clear_district_supply_presentation(drawer: SpaceSyndicateDistrictSupplyDrawer) -> void:
+	drawer.clear_supply()
+	drawer.visible = false
+	_last_district_supply_visibility_scope = "closed"
 
 
 func transient_surface_stack_snapshot() -> Dictionary:

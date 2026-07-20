@@ -350,6 +350,7 @@ func _drawer_snapshot() -> Dictionary:
 	}
 	return {
 		"title": "区域牌架",
+		"visibility_scope": "viewer_private",
 		"rule_strip": "悬停/单击只预览｜双击或购买才报价",
 		"privacy_hint": "只显示本地玩家状态。",
 		"header_chips": [],

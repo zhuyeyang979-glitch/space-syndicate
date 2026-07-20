@@ -698,15 +698,15 @@ func _stage_privacy() -> void:
 		((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
 	var district := int(((_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district)
 	var ai_supply: Dictionary = {}
-	if district >= 0 and _main.has_method("_district_supply_snapshot_source"):
-		ai_supply = _main.call("_district_supply_snapshot_source", district, 1) as Dictionary
+	var coordinator := _coordinator as GameRuntimeCoordinator
+	var supply_query := coordinator.get_node_or_null("DistrictSupplyViewerQueryPort") as DistrictSupplyViewerQueryPort if coordinator != null else null
+	var supply_presentation := coordinator.card_supply_presentation_state() if coordinator != null else null
+	if district >= 0 and supply_query != null and supply_presentation != null:
+		supply_presentation.open_district = district
+		supply_presentation.open_player = 1
+		ai_supply = supply_query.snapshot_for_viewer(0)
 		_scan_public_value(ai_supply, "district_supply.ai_view")
-		_main.set("district_supply_open_district", district)
-		_main.set("district_supply_open_player", 1)
-		var overlay: Variant = _main.get("district_supply_overlay")
-		if overlay is CanvasItem:
-			(overlay as CanvasItem).visible = true
-		_main.call("_refresh_district_supply_overlay")
+		coordinator.request_table_presentation_refresh(&"full", &"vertical_slice_privacy_audit")
 		await _wait_frames(2)
 	var monster := _monster_owner()
 	var public_monsters: Variant = monster.call("roster_snapshot", false) if monster != null and monster.has_method("roster_snapshot") else []
