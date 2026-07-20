@@ -2,6 +2,15 @@
 extends Node
 class_name CardEconomyProductRouteEffectWorldBridge
 
+const FrozenTargetContext := preload("res://scripts/runtime/product_market_frozen_target_context.gd")
+const PRODUCT_TARGET_HANDLERS := [
+	"product_speculation",
+	"product_futures",
+	"product_contract_boon",
+	"market_stabilize",
+	"product_growth_boon",
+]
+
 var _product_market_runtime_controller: ProductMarketRuntimeController
 var _city_gdp_derivative_runtime_controller: CityGdpDerivativeRuntimeController
 var _formula_runtime_service: CardEconomyProductRouteFormulaRuntimeService
@@ -54,27 +63,33 @@ func apply_effect(plan: Dictionary) -> Dictionary:
 	var players: Array = players_variant if players_variant is Array else []
 	if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary) or skill.is_empty():
 		return _receipt(handler_id, false, "effect_context_missing")
+	var target_context := {}
+	if PRODUCT_TARGET_HANDLERS.has(handler_id) or (handler_id == "news_event" and _news_event_has_market_effect(skill)):
+		var target_result := _frozen_product_target_context(entry, skill, handler_id)
+		if not bool(target_result.get("valid", false)):
+			return _receipt(handler_id, false, str(target_result.get("reason_code", "product_target_context_invalid")))
+		target_context = (target_result.get("context", {}) as Dictionary).duplicate(true)
 	var resolved := false
 	match handler_id:
 		"product_speculation":
-			resolved = _product_market_runtime_controller.apply_speculation(player_index, skill) if _product_market_runtime_controller != null else false
+			resolved = _product_market_runtime_controller.apply_speculation(player_index, skill, target_context) if _product_market_runtime_controller != null else false
 		"product_futures":
-			resolved = _product_market_runtime_controller.apply_futures(player_index, skill) if _product_market_runtime_controller != null else false
+			resolved = _product_market_runtime_controller.apply_futures(player_index, skill, target_context) if _product_market_runtime_controller != null else false
 		"city_gdp_derivative":
 			var district_index := int(entry.get("selected_district", -1))
 			var derivative_receipt := _city_gdp_derivative_runtime_controller.open_position(player_index, skill, district_index) if _city_gdp_derivative_runtime_controller != null else {"committed": false}
 			resolved = bool(derivative_receipt.get("committed", false))
 		"product_contract_boon":
-			resolved = _product_market_runtime_controller.apply_product_contract_boon(player_index, skill) if _product_market_runtime_controller != null else false
+			resolved = _product_market_runtime_controller.apply_product_contract_boon(player_index, skill, target_context) if _product_market_runtime_controller != null else false
 		"area_trade_contract":
 			var contract_result := _contract_runtime_controller.open_offer(skill, entry) if _contract_runtime_controller != null else {"opened": false, "reason": "contract_controller_missing"}
 			resolved = bool(contract_result.get("opened", false))
 		"market_stabilize":
-			resolved = _product_market_runtime_controller.apply_market_stabilize(skill) if _product_market_runtime_controller != null else false
+			resolved = _product_market_runtime_controller.apply_market_stabilize(skill, target_context) if _product_market_runtime_controller != null else false
 		"news_event":
-			return _apply_news_event(handler_id, skill, int(entry.get("selected_district", -1)))
+			return _apply_news_event(handler_id, skill, int(entry.get("selected_district", -1)), target_context)
 		"product_growth_boon":
-			resolved = _product_market_runtime_controller.apply_product_growth_boon(skill) if _product_market_runtime_controller != null else false
+			resolved = _product_market_runtime_controller.apply_product_growth_boon(skill, target_context) if _product_market_runtime_controller != null else false
 		_:
 			return _receipt(handler_id, false, "handler_not_owned")
 	return _receipt(handler_id, resolved, "resolved" if resolved else "effect_not_resolved", true)
@@ -92,10 +107,11 @@ func debug_snapshot() -> Dictionary:
 		"city_gdp_derivative_controller_bound": _city_gdp_derivative_runtime_controller != null,
 		"formula_runtime_service_bound": _formula_runtime_service != null,
 		"contract_runtime_controller_bound": _contract_runtime_controller != null,
+		"frozen_product_target_context_supported": true,
 	}
 
 
-func _apply_news_event(handler_id: String, skill: Dictionary, district_index: int) -> Dictionary:
+func _apply_news_event(handler_id: String, skill: Dictionary, district_index: int, target_context: Dictionary = {}) -> Dictionary:
 	if _formula_runtime_service == null or _product_market_runtime_controller == null:
 		return _receipt(handler_id, false, "news_event_owner_unavailable")
 	var districts_variant: Variant = _world_session_state.districts if _world_session_state != null else []
@@ -111,7 +127,7 @@ func _apply_news_event(handler_id: String, skill: Dictionary, district_index: in
 	})
 	if not bool(region_result.get("ok", false)):
 		return _receipt(handler_id, false, str(region_result.get("reason", "news_event_region_rejected")))
-	var market_result := _product_market_runtime_controller.apply_news_market_pressure(effect)
+	var market_result := _product_market_runtime_controller.apply_news_market_pressure(effect, target_context)
 	var region_changed := bool(region_result.get("changed", false))
 	var market_changed := bool(market_result.get("changed", false))
 	if not region_changed and not market_changed:
@@ -126,6 +142,24 @@ func _apply_news_event(handler_id: String, skill: Dictionary, district_index: in
 	var result := _receipt(handler_id, true, "news_event_committed", true)
 	result["public_receipt"] = public_receipt
 	return result
+
+
+func _frozen_product_target_context(entry: Dictionary, skill: Dictionary, handler_id: String) -> Dictionary:
+	if _world_session_state == null:
+		return {"valid": false, "reason_code": "product_target_context_world_unavailable"}
+	var requires_warehouse := false
+	if handler_id == "product_futures":
+		var terms: Dictionary = skill.get("futures_terms", {}) as Dictionary if skill.get("futures_terms", {}) is Dictionary else {}
+		if terms.is_empty() and _product_market_runtime_controller != null:
+			terms = _product_market_runtime_controller.futures_terms(skill)
+		requires_warehouse = bool(terms.get("requires_warehouse", false))
+	return FrozenTargetContext.from_entry(entry, _world_session_state, requires_warehouse)
+
+
+func _news_event_has_market_effect(skill: Dictionary) -> bool:
+	return int(skill.get("market_demand_pressure", 0)) != 0 \
+		or int(skill.get("market_supply_pressure", 0)) != 0 \
+		or int(skill.get("volatility_delta", 0)) != 0
 
 
 func _news_effect_allowlist(skill: Dictionary) -> Dictionary:

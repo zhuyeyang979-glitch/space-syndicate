@@ -49,15 +49,15 @@ class FakeProductMarketController:
 	extends ProductMarketRuntimeController
 	var calls: Array
 
-	func apply_speculation(_player_index: int, _skill: Dictionary) -> bool: return _record("product_speculation")
-	func apply_futures(_player_index: int, _skill: Dictionary) -> bool: return _record("product_futures")
-	func apply_product_contract_boon(_player_index: int, _skill: Dictionary) -> bool: return _record("product_contract_boon")
-	func apply_market_stabilize(_skill: Dictionary) -> bool: return _record("market_stabilize")
-	func apply_news_market_pressure(_skill: Dictionary) -> Dictionary:
+	func apply_speculation(_player_index: int, _skill: Dictionary, _target_context: Dictionary = {}) -> bool: return _record("product_speculation")
+	func apply_futures(_player_index: int, _skill: Dictionary, _target_context: Dictionary = {}) -> bool: return _record("product_futures")
+	func apply_product_contract_boon(_player_index: int, _skill: Dictionary, _target_context: Dictionary = {}) -> bool: return _record("product_contract_boon")
+	func apply_market_stabilize(_skill: Dictionary, _target_context: Dictionary = {}) -> bool: return _record("market_stabilize")
+	func apply_news_market_pressure(_skill: Dictionary, _target_context: Dictionary = {}) -> Dictionary:
 		_record("news_event")
 		return {"changed": true, "product_id": "星露莓", "demand_delta": 1, "supply_delta": 0, "volatility_delta": 0}
 	func refresh_after_news_event() -> void: pass
-	func apply_product_growth_boon(_skill: Dictionary) -> bool: return _record("product_growth_boon")
+	func apply_product_growth_boon(_skill: Dictionary, _target_context: Dictionary = {}) -> bool: return _record("product_growth_boon")
 
 	func _record(handler_id: String) -> bool:
 		calls.append(handler_id)
@@ -115,10 +115,15 @@ func _initialize() -> void:
 		root.add_child(bridge)
 		var fake_world := FakeWorld.new()
 		root.add_child(fake_world)
+		var world_state := WorldSessionState.new()
+		world_state.players = fake_world.players
+		world_state.districts = fake_world.districts
+		root.add_child(world_state)
 		var fake_market := FakeProductMarketController.new()
 		fake_market.calls = fake_world.calls
 		root.add_child(fake_market)
 		bridge.call("set_product_market_runtime_controller", fake_market)
+		bridge.call("set_world_session_state", world_state)
 		var fake_derivative := FakeCityGdpDerivativeController.new()
 		fake_derivative.calls = fake_world.calls
 		root.add_child(fake_derivative)
@@ -140,7 +145,8 @@ func _initialize() -> void:
 		fake_contract.name = "ContractRuntimeController"
 		fake_contract.calls = fake_world.calls
 		coordinator.add_child(fake_contract)
-		var receipt := bridge.call("apply_effect", fake_world, product_plan) as Dictionary
+		bridge.call("set_contract_runtime_controller", fake_contract)
+		var receipt := bridge.call("apply_effect", product_plan) as Dictionary
 		_expect(bool(receipt.get("resolved", false)) and fake_world.calls == ["product_speculation"], "bridge applies the active planned product operation exactly once")
 		var finalized := service.call("finalize_effect", product_plan, receipt) as Dictionary
 		_expect(bool(finalized.get("dispatched", false)) and bool(finalized.get("resolved", false)), "service finalizes a successful world receipt")
@@ -152,11 +158,12 @@ func _initialize() -> void:
 		for handler_variant in service.call("supported_handlers") as Array:
 			var handler_id := str(handler_variant)
 			var handler_plan := service.call("plan_effect", _request(3900 + fake_world.calls.size(), handler_id, {"cash": 1})) as Dictionary
-			var handler_receipt := bridge.call("apply_effect", fake_world, handler_plan) as Dictionary
+			var handler_receipt := bridge.call("apply_effect", handler_plan) as Dictionary
 			var handler_result := service.call("finalize_effect", handler_plan, handler_receipt) as Dictionary
 			all_handlers_routed = all_handlers_routed and bool(handler_result.get("resolved", false))
 		_expect(all_handlers_routed and fake_world.calls == ACTIVE_HANDLERS, "world bridge routes all eight active owned handlers exactly once")
 		fake_world.queue_free()
+		world_state.queue_free()
 		fake_market.queue_free()
 		fake_derivative.queue_free()
 		formula.queue_free()
@@ -175,7 +182,7 @@ func _request(resolution_id: int, handler_id: String, extra: Dictionary = {}) ->
 		skill[key_variant] = extra[key_variant]
 	return {
 		"handler_id": handler_id,
-		"active_entry": {"resolution_id": resolution_id, "player_index": 0, "slot_index": 0},
+		"active_entry": {"resolution_id": resolution_id, "player_index": 0, "slot_index": 0, "selected_district": 0, "selected_trade_product": "星露莓"},
 		"skill": skill,
 	}
 

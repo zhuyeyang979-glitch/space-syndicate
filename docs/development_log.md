@@ -8487,3 +8487,15 @@ deleted. Evidence and the remaining action inventory are recorded in
 - The target-choice v1 save shape and v0.6 save registry are unchanged. A
   restored legacy pending choice without an envelope fails closed, and no card
   resolution queue cold-restore support is claimed by this boundary.
+
+## 2026-07-20 — Product-market frozen product and warehouse target
+
+- Card-owned ProductMarket effects now consume a pure-data target context from
+  the stable card-resolution envelope instead of sampling live product or
+  district focus during delayed execution.
+- Product effects preserve the viewer's presentation focus. Warehouse futures
+  resolve stable region IDs, revalidate active city ownership at execution, and
+  retain a stable warehouse region identity alongside the legacy numeric mirror.
+- No save section, AI behavior, military/monster target, or full queue restore
+  claim changed. Direct non-card ProductMarket calls retain their existing
+  optional focus fallback outside the card-effect bridge.
