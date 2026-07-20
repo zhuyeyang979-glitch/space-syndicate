@@ -407,7 +407,31 @@ func _monster_public_projection_only() -> bool:
 
 func _service_bridge_api_is_narrow() -> bool:
 	var source := FileAccess.get_file_as_string("res://scripts/runtime/region_codex_public_source_service.gd")
-	return source.count("_region_public_bridge.call(") == 1 and source.contains("_region_public_bridge.call(\"region_codex_public_facts\"") and not source.contains("region_snapshot_for_legacy_index") and not source.contains("region_commodity_facts") and not source.contains("selected_region_commodity_facts")
+	var total_call_count := source.count("_region_public_bridge.call(")
+	var literal_methods := _literal_region_bridge_call_methods(source)
+	if total_call_count <= 0 or literal_methods.size() != total_call_count:
+		return false
+	var unique_methods := {}
+	for method_name: String in literal_methods:
+		unique_methods[method_name] = true
+	return unique_methods.size() == 1 and unique_methods.has("region_codex_public_facts") and not source.contains("region_snapshot_for_legacy_index") and not source.contains("region_commodity_facts") and not source.contains("selected_region_commodity_facts") and not source.contains("scripts/main.gd") and not source.contains("/root/Main") and not source.contains("selected_player") and not source.contains("selected_district") and not source.contains("to_save_data") and not source.contains("apply_save_data")
+
+
+func _literal_region_bridge_call_methods(source: String) -> Array[String]:
+	var result: Array[String] = []
+	var token := "_region_public_bridge.call(\""
+	var cursor := 0
+	while true:
+		var call_start := source.find(token, cursor)
+		if call_start < 0:
+			break
+		var method_start := call_start + token.length()
+		var method_end := source.find("\"", method_start)
+		if method_end < 0:
+			return []
+		result.append(source.substr(method_start, method_end - method_start))
+		cursor = method_end + 1
+	return result
 
 
 func _architecture_and_save_boundary() -> bool:

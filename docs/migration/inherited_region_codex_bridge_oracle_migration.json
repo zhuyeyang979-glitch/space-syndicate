@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "classification": "INHERITED_SAME_BOUNDARY_ORACLE",
+  "old_expected_call_site_count": 1,
+  "actual_call_site_count": 2,
+  "literal_call_count": 2,
+  "unique_bridge_method_count": 1,
+  "allowed_bridge_methods": [
+    "region_codex_public_facts"
+  ],
+  "call_sites": [
+    {
+      "function": "compose_source",
+      "purpose": "read public facts for the requested region"
+    },
+    {
+      "function": "public_region_count",
+      "purpose": "read the public total region count"
+    }
+  ],
+  "baseline_head": "84b6ebf2640bc95ed1f673af6c6cbe8a5ca7dcf0",
+  "blob_evidence": {
+    "scripts/runtime/region_codex_public_source_service.gd": "1d6de62f443382c8f63a6a0ad27f7424d7ce377f",
+    "scripts/tools/region_codex_public_source_bench.gd": "2aee1a8f83e6cfaa17566b30d0ce19beab619f91",
+    "scripts/runtime/region_infrastructure_world_bridge.gd": "0e46e709526fcf29fdebf4e9d76fc35b771019d6"
+  },
+  "production_service_modified": false,
+  "bridge_modified": false,
+  "main_modified": false,
+  "privacy_contract_weakened": false,
+  "dynamic_method_calls_allowed": false,
+  "main_fallback_added": false
+}
