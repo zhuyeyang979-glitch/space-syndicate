@@ -1488,6 +1488,7 @@ func _wire_card_execution_typed_ports() -> void:
 	var counter := _card_counter_settlement_runtime_service_node()
 	var effect_router := _card_effect_runtime_router_node()
 	var submission := _card_play_submission_runtime_controller_node()
+	var selection_catalog := get_node_or_null("TableSelectionCatalogQueryPort") as TableSelectionCatalogQueryPort
 	var execution := _card_resolution_execution_node() as CardResolutionExecutionRuntimeService
 	var economy_port := _card_economy_product_route_effect_world_bridge_node() as CardEconomyProductRouteEffectWorldBridge
 	if eligibility_facts != null:
@@ -1525,6 +1526,7 @@ func _wire_card_execution_typed_ports() -> void:
 			target_choice, contract,
 			_product_market_runtime_controller_node() as ProductMarketRuntimeController,
 			_city_gdp_derivative_runtime_controller_node() as CityGdpDerivativeRuntimeController,
+			selection_catalog,
 			self
 		)
 	var ai := _ai_runtime_controller_node() as AiRuntimeController
@@ -3778,8 +3780,8 @@ func allows_card_resolution_progress() -> bool:
 
 
 func begin_card_target_choice(kind: String, player_index: int, slot_index: int) -> Dictionary:
-	var target_choice_owner := _card_target_choice_runtime_controller_node()
-	return target_choice_owner.begin_choice(kind, player_index, slot_index) if target_choice_owner != null else {"accepted": false, "reason": "target_choice_owner_unavailable"}
+	var submission := _card_play_submission_runtime_controller_node()
+	return submission.begin_target_choice(kind, player_index, slot_index) if submission != null else {"accepted": false, "reason": "submission_controller_missing"}
 
 
 func card_target_choice_snapshot(kind: String) -> Dictionary:

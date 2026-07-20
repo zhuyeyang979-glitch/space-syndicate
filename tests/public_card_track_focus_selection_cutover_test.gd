@@ -239,7 +239,7 @@ func _test_game_screen_typed_adapters() -> void:
 func _test_explicit_card_effect_context() -> void:
 	var submission_source := FileAccess.get_file_as_string("res://scripts/runtime/card_play_submission_runtime_controller.gd")
 	_expect(submission_source.contains("int(request.get(\"selected_card_resolution_id\", -1))"), "card submission accepts an explicit resolution target")
-	_expect(submission_source.contains("\"selected_card_resolution_id\": selected_card_resolution_id"), "queued resolution freezes the explicit target for later effect execution")
+	_expect(submission_source.contains("\"selected_card_resolution_id\": int(frozen_context.get(\"selected_card_resolution_id\", -1))") and submission_source.contains("\"stable_target_envelope\": stable_target_envelope.duplicate(true)"), "queued resolution freezes the explicit target for later effect execution")
 	var intel_source := FileAccess.get_file_as_string("res://scripts/runtime/card_intel_runtime_service.gd")
 	_expect(not intel_source.contains("TableSelectionState") and not intel_source.contains("_table_selection_state"), "Intel effect resolution never reads mutable UI focus")
 	_expect(intel_source.contains("context.get(\"selected_card_resolution_id\", -1)"), "Intel effects consume only the frozen resolution context")

@@ -42,7 +42,7 @@ func finalize_commitment(request: Dictionary) -> Dictionary:
 	var players := _world_session_state.players
 	var player: Dictionary = players[player_index]
 	if not bool(entry.get("play_cost_paid_on_queue", skill.get("_play_cost_paid_on_queue", false))):
-		var cost := _cash_cost(player_index, skill)
+		var cost := _cash_cost(player_index, skill, _entry_context(entry))
 		if int(player.get("cash", 0)) < cost:
 			return _receipt(false, "commitment_cash_unavailable", resolution_id)
 		player["cash"] = int(player.get("cash", 0)) - cost
@@ -92,12 +92,22 @@ func debug_snapshot() -> Dictionary:
 	return {"service_ready": _world_session_state != null and _cooldown_controller != null, "completed_count": _completed.size(), "revision": _revision, "cash_owner": false, "inventory_owner": false}
 
 
-func _cash_cost(player_index: int, skill: Dictionary) -> int:
+func _cash_cost(player_index: int, skill: Dictionary, context: Dictionary) -> int:
 	if _eligibility_facts == null or _eligibility_service == null:
 		return maxi(0, int(skill.get("play_cash_cost", 0)))
-	var facts := _eligibility_facts.build_facts(player_index, skill)
+	var facts := _eligibility_facts.build_facts(player_index, skill, context)
 	var result := _eligibility_service.evaluate_play({"player_index": player_index, "skill": skill, "evaluation_mode": "catalog"}, facts)
 	return maxi(0, int(result.get("cash_cost", 0)))
+
+
+func _entry_context(entry: Dictionary) -> Dictionary:
+	return {
+		"selected_district": int(entry.get("selected_district", -1)),
+		"selected_trade_product": str(entry.get("selected_trade_product", "")),
+		"contract_source_district": int(entry.get("contract_source_district", -1)),
+		"contract_target_district": int(entry.get("contract_target_district", -1)),
+		"play_requirement_district": int(entry.get("play_requirement_district", -1)),
+	}
 
 
 func _receipt(committed: bool, reason: String, resolution_id: int) -> Dictionary:

@@ -8473,3 +8473,17 @@ deleted. Evidence and the remaining action inventory are recorded in
   retired `PublicTrack` node instead of the already-shipped
   `TopCommoditySushiTrack`. Neither test nor `GameScreen.tscn` changed in this
   boundary; their oracle migration remains separate work.
+
+## 2026-07-20 — Card-resolution stable target envelope
+
+- Card play now captures stable region, product, and public resolution IDs at
+  the first intent, before any monster/player target-choice continuation.
+- Target choice binds only the later explicit target; switching table focus no
+  longer retargets the queued action. Delayed execution resolves the original
+  `region_id` against the current world ordering.
+- Queue mirrors and envelope fingerprints fail closed on drift or tampering,
+  commitment revalidation receives frozen context, and public history strips
+  the private envelope.
+- The target-choice v1 save shape and v0.6 save registry are unchanged. A
+  restored legacy pending choice without an envelope fails closed, and no card
+  resolution queue cold-restore support is claimed by this boundary.

@@ -3,6 +3,7 @@ extends Node
 class_name CardResolutionTransitionSink
 
 const INTENT_GUARD := 20
+const StableTargetEnvelope := preload("res://scripts/runtime/card_resolution_stable_target_envelope.gd")
 const SUPPORTED_TRANSITIONS := {
 	"show_active": true,
 	"begin_counter": true,
@@ -246,6 +247,10 @@ func _complete_active(command: Dictionary) -> Dictionary:
 		var entry := _queue.active_entry()
 		if entry.is_empty() or int(entry.get("resolution_id", -1)) != resolution_id:
 			return {"handled": false, "reason": "active_resolution_mismatch"}
+		var stable_resolution := _resolved_execution_entry(entry)
+		if not bool(stable_resolution.get("valid", false)):
+			return {"handled": false, "reason": str(stable_resolution.get("reason_code", "stable_target_invalid"))}
+		entry = _dictionary(stable_resolution.get("entry", {}))
 		var skill := _dictionary(entry.get("skill", {}))
 		if skill.is_empty():
 			return {"handled": false, "reason": "active_skill_missing"}
@@ -384,6 +389,12 @@ func _entry_selection_context(entry: Dictionary) -> Dictionary:
 		"contract_target_district": int(entry.get("contract_target_district", -1)),
 		"play_requirement_district": int(entry.get("play_requirement_district", -1)),
 	}
+
+
+func _resolved_execution_entry(entry: Dictionary) -> Dictionary:
+	if not entry.has("stable_target_envelope"):
+		return {"valid": true, "reason_code": "legacy_frozen_index", "entry": entry.duplicate(true)}
+	return StableTargetEnvelope.resolved_entry(entry, _world_session)
 
 
 func _reject_batch(reason: String, details: Dictionary = {}, prior_receipts: Array = []) -> Dictionary:
