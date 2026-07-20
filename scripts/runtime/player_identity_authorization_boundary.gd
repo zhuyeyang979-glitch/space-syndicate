@@ -139,6 +139,23 @@ func public_player_exists(player_index: int) -> bool:
 	return int((public_players[player_index] as Dictionary).get("player_index", -1)) == player_index
 
 
+func public_district_exists(district_index: int) -> bool:
+	if _world() == null or district_index < 0:
+		return false
+	var public_regions: Array = _world().public_intel_projection().get("regions", [])
+	if district_index >= public_regions.size() or not (public_regions[district_index] is Dictionary):
+		return false
+	return int((public_regions[district_index] as Dictionary).get("district_index", -1)) == district_index
+
+
+func authorized_player_hand_slot_exists(viewer_index: int, slot_index: int) -> bool:
+	if _world() == null or viewer_index < 0 or viewer_index >= _world().players.size() or slot_index < 0:
+		return false
+	var player: Dictionary = _world().players[viewer_index] if _world().players[viewer_index] is Dictionary else {}
+	var slots: Array = player.get("slots", []) if player.get("slots", []) is Array else []
+	return slot_index < slots.size() and slots[slot_index] is Dictionary
+
+
 func debug_snapshot() -> Dictionary:
 	return {
 		"boundary_id": "player_identity_authorization_v1",

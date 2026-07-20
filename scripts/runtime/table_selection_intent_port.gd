@@ -56,19 +56,26 @@ func submit_intent(intent: TableSelectionIntent) -> TableSelectionReceipt:
 	var identity_receipt := _identity_boundary().authorize_request(request)
 	if not identity_receipt.authorized:
 		return _complete(_receipt(intent, false, "identity_%s" % identity_receipt.reason_code))
-	if intent.selection_kind == TableSelectionIntent.KIND_INSPECT_PLAYER \
-			and not _identity_boundary().public_player_exists(intent.target_player_index):
-		return _complete(_receipt(intent, false, "target_player_missing"))
+	var target_rejection := _target_rejection_reason(intent)
+	if not target_rejection.is_empty():
+		return _complete(_receipt(intent, false, target_rejection))
 	_sync_journal_session(request.session_id, request.session_revision)
 	_journal[request.request_id] = fingerprint
 	var selection_result := {}
-	if intent.selection_kind == TableSelectionIntent.KIND_INSPECT_PLAYER:
-		selection_result = _selection_state().select_inspected_player(intent.target_player_index, intent.expected_selection_revision)
-		if not bool(selection_result.get("applied", false)):
-			_journal.erase(request.request_id)
-			return _complete(_receipt(intent, false, str(selection_result.get("reason_code", "inspection_rejected"))))
-	else:
-		_selection_state().selected_map_layer_focus = str(request.map_layer_id)
+	match intent.selection_kind:
+		TableSelectionIntent.KIND_INSPECT_PLAYER:
+			selection_result = _selection_state().select_inspected_player(intent.target_player_index, intent.expected_selection_revision)
+		TableSelectionIntent.KIND_SELECT_DISTRICT:
+			selection_result = _selection_state().select_district_target(intent.target_district_index, intent.expected_selection_revision, true)
+		TableSelectionIntent.KIND_SELECT_TRADE_PRODUCT:
+			selection_result = _selection_state().select_trade_product_target(intent.target_trade_product_id, intent.expected_selection_revision)
+		TableSelectionIntent.KIND_SELECT_HAND_SLOT:
+			selection_result = _selection_state().select_hand_target(intent.target_hand_slot, intent.expected_selection_revision)
+		_:
+			_selection_state().selected_map_layer_focus = str(request.map_layer_id)
+	if not selection_result.is_empty() and not bool(selection_result.get("applied", false)):
+		_journal.erase(request.request_id)
+		return _complete(_receipt(intent, false, str(selection_result.get("reason_code", "selection_rejected"))))
 	var after := _selection_state().snapshot()
 	var receipt := _receipt(intent, true, "selection_applied")
 	receipt.applied = true
@@ -78,13 +85,24 @@ func submit_intent(intent: TableSelectionIntent) -> TableSelectionReceipt:
 	if intent.selection_kind == TableSelectionIntent.KIND_INSPECT_PLAYER:
 		receipt.previous_inspected_player_index = int(selection_result.get("previous_inspected_player_index", -1))
 		receipt.inspected_player_index = int(selection_result.get("inspected_player_index", -1))
+	elif intent.selection_kind == TableSelectionIntent.KIND_SELECT_DISTRICT:
+		receipt.previous_district_index = int(selection_result.get("previous_district_index", -1))
+		receipt.district_index = int(selection_result.get("district_index", -1))
+		receipt.previous_hand_slot = int(selection_result.get("previous_hand_slot", -1))
+		receipt.hand_slot = int(selection_result.get("hand_slot", -1))
+	elif intent.selection_kind == TableSelectionIntent.KIND_SELECT_TRADE_PRODUCT:
+		receipt.previous_trade_product_id = str(selection_result.get("previous_trade_product_id", ""))
+		receipt.trade_product_id = str(selection_result.get("trade_product_id", ""))
+	elif intent.selection_kind == TableSelectionIntent.KIND_SELECT_HAND_SLOT:
+		receipt.previous_hand_slot = int(selection_result.get("previous_hand_slot", -1))
+		receipt.hand_slot = int(selection_result.get("hand_slot", -1))
 	if receipt.changed:
 		_changed_count += 1
 		receipt.presentation_refresh_requested = true
 		_refresh_emission_count += 1
-		var refresh_kind := &"full" if intent.selection_kind == TableSelectionIntent.KIND_INSPECT_PLAYER else &"map"
+		var refresh_kind := _refresh_kind(intent.selection_kind)
 		receipt.presentation_refresh_mask = [refresh_kind]
-		presentation_refresh_requested.emit(refresh_kind, &"inspected_player_changed" if intent.selection_kind == TableSelectionIntent.KIND_INSPECT_PLAYER else &"table_selection_changed")
+		presentation_refresh_requested.emit(refresh_kind, _refresh_reason(intent.selection_kind))
 	else:
 		receipt.reason_code = "selection_unchanged"
 	return _complete(receipt)
@@ -103,7 +121,7 @@ func debug_snapshot() -> Dictionary:
 		"journal_size": _journal.size(),
 		"journal_session_key": _journal_session_key,
 		"journal_eviction_enabled": false,
-		"supported_selection_kinds": [TableSelectionIntent.KIND_MAP_LAYER, TableSelectionIntent.KIND_INSPECT_PLAYER],
+		"supported_selection_kinds": [TableSelectionIntent.KIND_MAP_LAYER, TableSelectionIntent.KIND_INSPECT_PLAYER, TableSelectionIntent.KIND_SELECT_DISTRICT, TableSelectionIntent.KIND_SELECT_TRADE_PRODUCT, TableSelectionIntent.KIND_SELECT_HAND_SLOT],
 		"typed_identity_envelope_required": true,
 		"exact_once": true,
 		"owns_selection_state": false,
@@ -132,6 +150,9 @@ func _request_from_intent(intent: TableSelectionIntent) -> TableSelectionRequest
 	request.expected_selection_revision = intent.expected_selection_revision
 	request.map_layer_id = intent.map_layer_id
 	request.target_player_index = intent.target_player_index
+	request.target_district_index = intent.target_district_index
+	request.target_trade_product_id = intent.target_trade_product_id
+	request.target_hand_slot = intent.target_hand_slot
 	return request
 
 
@@ -153,6 +174,9 @@ func _receipt(intent: TableSelectionIntent, accepted: bool, reason_code: String)
 		receipt.session_revision = intent.session_revision
 		receipt.map_layer_id = intent.map_layer_id
 		receipt.inspected_player_index = intent.target_player_index
+		receipt.district_index = intent.target_district_index
+		receipt.trade_product_id = intent.target_trade_product_id
+		receipt.hand_slot = intent.target_hand_slot
 	receipt.accepted = accepted
 	receipt.reason_code = reason_code
 	return receipt
@@ -163,6 +187,12 @@ func _complete(receipt: TableSelectionReceipt) -> TableSelectionReceipt:
 		receipt.effective_map_layer_id = StringName(_selection_state().selected_map_layer_focus)
 		if receipt.inspected_player_index < 0 or not receipt.accepted:
 			receipt.inspected_player_index = _selection_state().inspected_player_index()
+		if receipt.district_index < 0 or not receipt.accepted:
+			receipt.district_index = _selection_state().selected_district
+		if receipt.trade_product_id.is_empty() and (receipt.selection_kind != TableSelectionIntent.KIND_SELECT_TRADE_PRODUCT or not receipt.accepted):
+			receipt.trade_product_id = _selection_state().selected_trade_product
+		if receipt.hand_slot < -1 or not receipt.accepted:
+			receipt.hand_slot = _selection_state().selected_hand_slot
 	if receipt.accepted:
 		_accepted_count += 1
 	else:
@@ -181,3 +211,33 @@ func _selection_state() -> TableSelectionState:
 
 func _forced_response_port() -> ForcedDecisionResponsePort:
 	return get_node_or_null(forced_decision_response_port_path) as ForcedDecisionResponsePort
+
+
+func _target_rejection_reason(intent: TableSelectionIntent) -> String:
+	match intent.selection_kind:
+		TableSelectionIntent.KIND_INSPECT_PLAYER:
+			return "" if _identity_boundary().public_player_exists(intent.target_player_index) else "target_player_missing"
+		TableSelectionIntent.KIND_SELECT_DISTRICT:
+			return "" if _identity_boundary().public_district_exists(intent.target_district_index) else "target_district_missing"
+		TableSelectionIntent.KIND_SELECT_TRADE_PRODUCT:
+			return "" if intent.target_trade_product_id.is_empty() or ProductMarketRuntimeController.PRODUCT_CATALOG.has(intent.target_trade_product_id) else "target_trade_product_missing"
+		TableSelectionIntent.KIND_SELECT_HAND_SLOT:
+			return "" if intent.target_hand_slot == -1 or _identity_boundary().authorized_player_hand_slot_exists(intent.viewer_index, intent.target_hand_slot) else "target_hand_slot_missing"
+	return ""
+
+
+func _refresh_kind(selection_kind: StringName) -> StringName:
+	return &"map" if selection_kind in [TableSelectionIntent.KIND_MAP_LAYER, TableSelectionIntent.KIND_SELECT_TRADE_PRODUCT] else &"full"
+
+
+func _refresh_reason(selection_kind: StringName) -> StringName:
+	match selection_kind:
+		TableSelectionIntent.KIND_INSPECT_PLAYER:
+			return &"inspected_player_changed"
+		TableSelectionIntent.KIND_SELECT_DISTRICT:
+			return &"selected_district_changed"
+		TableSelectionIntent.KIND_SELECT_TRADE_PRODUCT:
+			return &"selected_trade_product_changed"
+		TableSelectionIntent.KIND_SELECT_HAND_SLOT:
+			return &"selected_hand_slot_changed"
+	return &"table_selection_changed"

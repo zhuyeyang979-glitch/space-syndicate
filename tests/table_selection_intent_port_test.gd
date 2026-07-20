@@ -209,7 +209,16 @@ func _test_presentation_revision_contract() -> void:
 		"selection_context": {"revision": 17, "private_hand": ["forbidden"]},
 	}).to_ui_dictionary()
 	var context: Dictionary = normalized.get("selection_context", {})
-	_expect(context == {"revision": 17}, "TableSnapshot allowlists only the public selection revision for UI request binding")
+	_expect(context == {
+		"revision": 17,
+		"selected_district": -1,
+		"district_count": 0,
+		"selected_trade_product": "",
+		"trade_product_ids": [],
+		"default_trade_product_id": "",
+		"selected_hand_slot": -1,
+		"hand_slot_count": 0,
+	}, "TableSnapshot allowlists detached public target context without private hand contents")
 	_expect(TablePresentationPureDataPolicy.is_pure_data(normalized), "selection request context remains detached pure data")
 	var debug := _port.debug_snapshot()
 	_expect(int(debug.get("gameplay_mutation_count", -1)) == 0 and int(debug.get("refresh_emission_count", 0)) >= 5, "port reports zero gameplay mutation and explicit presentation refreshes")

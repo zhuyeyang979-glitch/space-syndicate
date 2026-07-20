@@ -44,7 +44,16 @@ var selection_context: Dictionary = {}
 
 func apply_dictionary(data: Dictionary) -> RefCounted:
 	var selection_source: Dictionary = data.get("selection_context", {}) if data.get("selection_context", {}) is Dictionary else {}
-	selection_context = {"revision": maxi(0, int(selection_source.get("revision", 0)))}
+	selection_context = {
+		"revision": maxi(0, int(selection_source.get("revision", 0))),
+		"selected_district": int(selection_source.get("selected_district", -1)),
+		"district_count": maxi(0, int(selection_source.get("district_count", 0))),
+		"selected_trade_product": str(selection_source.get("selected_trade_product", "")),
+		"trade_product_ids": _selection_string_array(selection_source.get("trade_product_ids", [])),
+		"default_trade_product_id": str(selection_source.get("default_trade_product_id", "")),
+		"selected_hand_slot": int(selection_source.get("selected_hand_slot", -1)),
+		"hand_slot_count": maxi(0, int(selection_source.get("hand_slot_count", 0))),
+	}
 	var track_source: Array = data.get("card_track", []) if data.get("card_track", []) is Array else []
 	card_track = PUBLIC_TRACK_SNAPSHOT_SCRIPT.new().apply_entries(track_source).to_ui_array()
 	var card_resolution_source: Dictionary = data.get("card_resolution_track", {}) if data.get("card_resolution_track", {}) is Dictionary else {}
@@ -107,6 +116,17 @@ func _merge_top_bar_source(top_source: Dictionary, player_source: Dictionary) ->
 	if not merged.has("selected_district") and player_source.has("selected_district_summary"):
 		merged["selected_district"] = player_source["selected_district_summary"]
 	return merged
+
+
+func _selection_string_array(value: Variant) -> Array[String]:
+	var result: Array[String] = []
+	if not (value is Array):
+		return result
+	for entry_variant in value:
+		var entry := str(entry_variant).strip_edges()
+		if not entry.is_empty() and not result.has(entry):
+			result.append(entry)
+	return result
 
 
 func _normalize_temporary_decision(value: Variant) -> Dictionary:

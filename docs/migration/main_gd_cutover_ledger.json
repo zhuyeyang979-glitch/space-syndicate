@@ -857,6 +857,42 @@
       "status": "cut_over"
     },
     {
+      "domain": "typed_table_target_selection",
+      "old_symbols": [
+        "_select_district",
+        "_cycle_district",
+        "_cycle_trade_product",
+        "_on_runtime_game_screen_card_selected",
+        "Main direct selected_district writes",
+        "Main direct selected_trade_product writes",
+        "Main direct selected_hand_slot writes"
+      ],
+      "old_consumers": [
+        "embedded and fullscreen map district clicks",
+        "district and product keyboard focus",
+        "HandRack selection",
+        "public track focus"
+      ],
+      "new_owner_scene": "res://scenes/runtime/TableSelectionIntentPort.tscn",
+      "new_owner_script": "res://scripts/runtime/table_selection_intent_port.gd + res://scripts/runtime/table_selection_state.gd",
+      "new_public_api": [
+        "select_district",
+        "select_trade_product",
+        "select_hand_slot",
+        "select_district_target",
+        "select_trade_product_target",
+        "select_hand_target"
+      ],
+      "tests": [
+        "res://tests/district_product_hand_selection_cutover_test.gd",
+        "res://tests/table_selection_intent_port_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
+    },
+    {
       "domain": "presentation_action_routing",
       "old_symbols": [
         "_runtime_table_snapshot_source",

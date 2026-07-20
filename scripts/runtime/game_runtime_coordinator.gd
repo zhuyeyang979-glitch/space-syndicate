@@ -5581,9 +5581,46 @@ func _wire_table_selection_intent_port() -> void:
 
 
 func _on_table_selection_presentation_refresh_requested(kind: StringName, reason: StringName) -> void:
+	if reason == &"selected_district_changed":
+		_reconcile_selected_district_card_supply()
+	elif reason == &"selected_trade_product_changed":
+		_record_selected_route_weather_response()
 	var refresh_port := _table_presentation_refresh_port_node()
 	if refresh_port != null:
 		refresh_port.request_immediate(kind, reason)
+
+
+func _reconcile_selected_district_card_supply() -> void:
+	var selection := _table_selection_state_node()
+	var world := _world_session_state_node()
+	var presentation := _table_card_supply_presentation_state_node()
+	if selection == null or world == null or presentation == null:
+		return
+	var district_index := selection.selected_district
+	if district_index < 0 or district_index >= world.districts.size():
+		presentation.reconcile_district_card_choices([])
+		return
+	var district: Dictionary = world.districts[district_index]
+	if bool(district.get("destroyed", false)):
+		presentation.reconcile_district_card_choices([])
+		return
+	var region_id := str(district.get("region_id", "region.%03d" % district_index))
+	var choices: Array = []
+	for card_id_variant in region_supply_card_ids(region_id):
+		var card_id := str(card_id_variant)
+		if card_exists(card_id):
+			choices.append(card_id)
+	presentation.reconcile_district_card_choices(choices)
+
+
+func _record_selected_route_weather_response() -> void:
+	var selection := _table_selection_state_node()
+	var world := _world_session_state_node()
+	if selection == null or world == null:
+		return
+	var district_index := selection.selected_district
+	if district_index >= 0 and district_index < world.districts.size():
+		record_weather_public_response(district_index, "route_after_forecast")
 
 
 func _wire_domain_presentation_ports(refresh_port: TablePresentationRefreshPort, public_log_port: PublicLogProducerPort) -> void:

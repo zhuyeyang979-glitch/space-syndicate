@@ -279,18 +279,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	match key_event.keycode:
 		KEY_SPACE:
 			_toggle_pause()
-		KEY_Q:
-			_cycle_district(-1)
-		KEY_E:
-			_cycle_district(1)
 		KEY_C:
 			_cycle_selected_district_card()
 		KEY_X:
 			_buy_selected_skill()
-		KEY_R:
-			_toggle_selected_trade_route()
-		KEY_T:
-			_cycle_trade_product(1)
 
 
 func _build_runtime_game_screen() -> void:
@@ -1321,7 +1313,6 @@ func _bind_runtime_game_screen(screen: Control) -> void:
 	var signal_bindings := {
 		"action_requested": Callable(self, "_on_runtime_game_screen_action_requested"),
 		"end_turn_requested": Callable(self, "_on_runtime_game_screen_end_turn_requested"),
-		"card_selected": Callable(self, "_on_runtime_game_screen_card_selected"),
 		"card_drop_requested": Callable(self, "_on_runtime_game_screen_card_drop_requested"),
 	}
 	for signal_name_variant in signal_bindings.keys():
@@ -1409,7 +1400,6 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 				handled = _activate_runtime_district_action(action_id)
 			elif action_id.begins_with("play_"):
 				var slot_index := int(action_id.substr("play_".length()))
-				_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = slot_index
 				var play_receipt := _game_runtime_coordinator_node().request_hand_card_play({
 					"player_index": _runtime_snapshot_player_index(),
 					"slot_index": slot_index,
@@ -1423,13 +1413,11 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 				handled = true
 			elif action_id.begins_with("track_return_"):
 				var return_resolution_id := int(action_id.substr("track_return_".length()))
-				_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
 				_focus_card_resolution_track_entry(return_resolution_id)
 				_close_menu()
 				handled = true
 			elif action_id.begins_with("track_select_"):
 				var resolution_id := int(action_id.substr("track_select_".length()))
-				_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
 				_select_card_resolution_track_entry(resolution_id)
 				handled = true
 			elif action_id.begins_with("track_open_"):
@@ -1484,21 +1472,12 @@ func _on_runtime_game_screen_end_turn_requested() -> void:
 	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
-func _on_runtime_game_screen_card_selected(card_data: Dictionary) -> void:
-	_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
-	var card_id := String(card_data.get("id", ""))
-	if card_id.begins_with("hand_"):
-		_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = int(card_id.substr("hand_".length()))
-	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
-
-
 func _on_runtime_game_screen_card_drop_requested(card_data: Dictionary, screen_position: Vector2) -> void:
 	var slot_index := _runtime_hand_slot_from_card_data(card_data)
 	if slot_index < 0:
 		return
 	if not _runtime_drop_position_targets_map(screen_position):
 		return
-	_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = slot_index
 	var receipt := _game_runtime_coordinator_node().request_hand_card_play({
 		"player_index": _runtime_snapshot_player_index(),
 		"slot_index": slot_index,
@@ -1534,7 +1513,6 @@ func _runtime_drop_position_targets_map(screen_position: Vector2) -> bool:
 		var district_index := int(map_view.call("get_district_at_control_position", local_position))
 		if district_index < 0:
 			return false
-		_select_district(district_index)
 	return true
 
 
@@ -1602,7 +1580,6 @@ func _activate_runtime_quick_action(action_id: String) -> bool:
 			var slot_index := _first_actionable_hand_slot(player_index)
 			if slot_index < 0:
 				return false
-			_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = slot_index
 			var receipt := _game_runtime_coordinator_node().request_hand_card_play({
 				"player_index": player_index,
 				"slot_index": slot_index,
@@ -1641,9 +1618,6 @@ func _build_runtime_map_view() -> void:
 		return
 	map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var select_callback := Callable(self, "_select_district")
-	if not map_view.district_selected.is_connected(select_callback):
-		map_view.district_selected.connect(select_callback)
 	var double_callback := Callable(self, "_open_district_supply_from_map")
 	if not map_view.district_double_clicked.is_connected(double_callback):
 		map_view.district_double_clicked.connect(double_callback)
@@ -1919,9 +1893,6 @@ func _build_full_map_overlay() -> void:
 		return
 	full_map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	full_map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var select_callback := Callable(self, "_select_district")
-	if full_map_view.has_signal("district_selected") and not full_map_view.is_connected("district_selected", select_callback):
-		full_map_view.connect("district_selected", select_callback)
 	var double_callback := Callable(self, "_open_district_supply_from_map")
 	if full_map_view.has_signal("district_double_clicked") and not full_map_view.is_connected("district_double_clicked", double_callback):
 		full_map_view.connect("district_double_clicked", double_callback)
@@ -1993,17 +1964,6 @@ func _map_layer_focus_label(layer_id: String) -> String:
 	return String(_map_layer_entry(layer_id).get("text", "全图"))
 
 
-func _set_map_layer_focus(layer_id: String) -> void:
-	_game_runtime_coordinator_node().table_selection_state().selected_map_layer_focus = String(_map_layer_entry(layer_id).get("id", "all"))
-	if _game_runtime_coordinator_node().table_selection_state().selected_map_layer_focus == "route" and _game_runtime_coordinator_node().table_selection_state().selected_trade_product == "":
-		_game_runtime_coordinator_node().table_selection_state().selected_trade_product = _default_trade_product_for_selected_district()
-		if _game_runtime_coordinator_node().table_selection_state().selected_trade_product == "" and not ProductMarketRuntimeController.PRODUCT_CATALOG.is_empty():
-			_game_runtime_coordinator_node().table_selection_state().selected_trade_product = String(ProductMarketRuntimeController.PRODUCT_CATALOG[0])
-	_game_runtime_coordinator_node().record_legacy_viewer_feedback("地图图层切换：%s。" % _map_layer_focus_label(_game_runtime_coordinator_node().table_selection_state().selected_map_layer_focus))
-	_refresh_map_controls()
-	_game_runtime_coordinator_node().request_table_presentation_refresh(&"map", &"main_state_changed")
-
-
 func _map_control_toolbar_snapshot() -> Dictionary:
 	var contract_controller := _contract_runtime_controller_node()
 	var contract_selection := contract_controller.selection_snapshot() if contract_controller != null else {"source_district": -1, "target_district": -1}
@@ -2058,29 +2018,20 @@ func _map_control_toolbar_snapshot() -> Dictionary:
 
 func _on_map_control_toolbar_action_requested(action_id: String, payload: Dictionary) -> void:
 	match action_id:
-		"map_layer_focus":
-			_set_map_layer_focus(str(payload.get("layer_id", "all")))
-		"map_trade_product_select":
-			var product_id := str(payload.get("product_id", ""))
-			if product_id != "" and not ProductMarketRuntimeController.PRODUCT_CATALOG.has(product_id):
-				return
-			_game_runtime_coordinator_node().table_selection_state().selected_trade_product = product_id
-			_game_runtime_coordinator_node().request_table_presentation_refresh(&"map", &"main_state_changed")
-			_refresh_map_controls()
 		"map_contract_source_select":
 			var contract_controller := _contract_runtime_controller_node()
 			if contract_controller != null:
 				var result := contract_controller.select_source_district(_game_runtime_coordinator_node().table_selection_state().selected_district, _game_runtime_coordinator_node().table_selection_state().selected_trade_product)
-				if bool(result.get("accepted", false)):
-					_game_runtime_coordinator_node().table_selection_state().selected_trade_product = str(result.get("selected_product", _game_runtime_coordinator_node().table_selection_state().selected_trade_product))
+				if bool(result.get("accepted", false)) and runtime_game_screen != null and runtime_game_screen.has_method("request_trade_product_selection"):
+					runtime_game_screen.call("request_trade_product_selection", str(result.get("selected_product", "")), &"table_toolbar")
 				_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(result.get("message", "供给区选择失败。")))
 				_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 		"map_contract_target_select":
 			var contract_controller := _contract_runtime_controller_node()
 			if contract_controller != null:
 				var result := contract_controller.select_target_district(_game_runtime_coordinator_node().table_selection_state().selected_district, _game_runtime_coordinator_node().table_selection_state().selected_trade_product)
-				if bool(result.get("accepted", false)):
-					_game_runtime_coordinator_node().table_selection_state().selected_trade_product = str(result.get("selected_product", _game_runtime_coordinator_node().table_selection_state().selected_trade_product))
+				if bool(result.get("accepted", false)) and runtime_game_screen != null and runtime_game_screen.has_method("request_trade_product_selection"):
+					runtime_game_screen.call("request_trade_product_selection", str(result.get("selected_product", "")), &"table_toolbar")
 				_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(result.get("message", "需求区选择失败。")))
 				_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
@@ -4539,9 +4490,10 @@ func _focus_runtime_map_on_district(district_index: int) -> void:
 func _jump_to_district_on_table(district_index: int, clear_card_selection: bool = true) -> bool:
 	if district_index < 0 or district_index >= _game_runtime_coordinator_node().world_session_state().districts.size():
 		return false
-	_game_runtime_coordinator_node().table_selection_state().selected_district = district_index
-	if clear_card_selection:
-		_game_runtime_coordinator_node().table_selection_state().selected_hand_slot = -1
+	var selection := _game_runtime_coordinator_node().table_selection_state()
+	var result := selection.select_district_target(district_index, int(selection.snapshot().get("revision", -1)), clear_card_selection)
+	if not bool(result.get("applied", false)):
+		return false
 	_focus_runtime_map_on_district(district_index)
 	return true
 
@@ -4734,33 +4686,14 @@ func _apply_rival_business_action(player_index: int, action: Dictionary) -> bool
 
 
 func _toggle_selected_trade_route() -> void:
-	if _game_runtime_coordinator_node().table_selection_state().selected_trade_product != "":
-		_game_runtime_coordinator_node().table_selection_state().selected_trade_product = ""
-	else:
-		_game_runtime_coordinator_node().table_selection_state().selected_trade_product = _default_trade_product_for_selected_district()
-		if _game_runtime_coordinator_node().table_selection_state().selected_trade_product == "" and not ProductMarketRuntimeController.PRODUCT_CATALOG.is_empty():
-			_game_runtime_coordinator_node().table_selection_state().selected_trade_product = String(ProductMarketRuntimeController.PRODUCT_CATALOG[0])
-	_game_runtime_coordinator_node().request_table_presentation_refresh(&"map", &"main_state_changed")
-	_refresh_map_controls()
-	if _game_runtime_coordinator_node().table_selection_state().selected_district >= 0:
-		_game_runtime_coordinator_node().record_weather_public_response(_game_runtime_coordinator_node().table_selection_state().selected_district, "route_after_forecast")
-
-
-func _cycle_trade_product(step: int) -> void:
-	if ProductMarketRuntimeController.PRODUCT_CATALOG.is_empty():
-		return
-	if _game_runtime_coordinator_node().table_selection_state().selected_trade_product == "":
-		_game_runtime_coordinator_node().table_selection_state().selected_trade_product = _default_trade_product_for_selected_district()
-		if _game_runtime_coordinator_node().table_selection_state().selected_trade_product == "":
-			_game_runtime_coordinator_node().table_selection_state().selected_trade_product = String(ProductMarketRuntimeController.PRODUCT_CATALOG[0])
-	else:
-		var index := ProductMarketRuntimeController.PRODUCT_CATALOG.find(_game_runtime_coordinator_node().table_selection_state().selected_trade_product)
-		if index < 0:
-			index = 0
-		index = wrapi(index + step, 0, ProductMarketRuntimeController.PRODUCT_CATALOG.size())
-		_game_runtime_coordinator_node().table_selection_state().selected_trade_product = String(ProductMarketRuntimeController.PRODUCT_CATALOG[index])
-	_game_runtime_coordinator_node().request_table_presentation_refresh(&"map", &"main_state_changed")
-	_refresh_map_controls()
+	var selected_product := _game_runtime_coordinator_node().table_selection_state().selected_trade_product
+	var next_product := ""
+	if selected_product.is_empty():
+		next_product = _default_trade_product_for_selected_district()
+		if next_product.is_empty() and not ProductMarketRuntimeController.PRODUCT_CATALOG.is_empty():
+			next_product = String(ProductMarketRuntimeController.PRODUCT_CATALOG[0])
+	if runtime_game_screen != null and runtime_game_screen.has_method("request_trade_product_selection"):
+		runtime_game_screen.call("request_trade_product_selection", next_product, &"player_board")
 
 
 func _default_trade_product_for_selected_district() -> String:
@@ -5723,13 +5656,6 @@ func _open_district_card_purchase_window(district_index: int, player_index: int 
 		runtime_coordinator.call("reserve_district_purchase_discard", restored_pending)
 
 
-func _select_district(index: int) -> void:
-	if not _jump_to_district_on_table(index):
-		return
-	_sync_selected_district_card()
-	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
-
-
 func _has_pending_target_choice() -> bool:
 	return not _game_runtime_coordinator_node().card_target_choice_snapshot(TEMP_DECISION_MONSTER_TARGET).is_empty()
 
@@ -5966,14 +5892,6 @@ func _queue_monster_card_as_counter(player_index: int, slot_index: int, source_s
 		_game_runtime_coordinator_node().world_session_state().players[player_index] = player
 	return false
 
-
-
-func _cycle_district(step: int) -> void:
-	if _game_runtime_coordinator_node().world_session_state().districts.is_empty():
-		return
-	_jump_to_district_on_table(wrapi(_game_runtime_coordinator_node().table_selection_state().selected_district + step, 0, _game_runtime_coordinator_node().world_session_state().districts.size()))
-	_sync_selected_district_card()
-	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _player_is_ai(player_index: int) -> bool:

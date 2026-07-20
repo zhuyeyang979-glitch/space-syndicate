@@ -529,7 +529,6 @@ func _check_runtime_signal_bindings(main: Control) -> void:
 	var bindings := {
 		"action_requested": "_on_runtime_game_screen_action_requested",
 		"end_turn_requested": "_on_runtime_game_screen_end_turn_requested",
-		"card_selected": "_on_runtime_game_screen_card_selected",
 		"card_drop_requested": "_on_runtime_game_screen_card_drop_requested",
 	}
 	for signal_name_variant in bindings.keys():
@@ -541,6 +540,27 @@ func _check_runtime_signal_bindings(main: Control) -> void:
 			if connection.get("callable", Callable()) == expected:
 				count += 1
 		_expect(count == 1, "%s is connected to main exactly once" % signal_name)
+	var legacy_card_selection := Callable(main, &"_on_runtime_game_screen_card_selected")
+	var legacy_count := 0
+	for connection_variant in screen.get_signal_connection_list(&"card_selected"):
+		var connection: Dictionary = connection_variant if connection_variant is Dictionary else {}
+		if connection.get("callable", Callable()) == legacy_card_selection:
+			legacy_count += 1
+	_expect(legacy_count == 0, "card_selected no longer routes hand focus through Main")
+	var selection_port := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/TableSelectionIntentPort") as TableSelectionIntentPort
+	_expect(selection_port != null, "scene composition exposes the typed table-selection port")
+	if selection_port != null:
+		var request_count := 0
+		for connection_variant in screen.get_signal_connection_list(&"table_selection_intent_requested"):
+			var connection: Dictionary = connection_variant if connection_variant is Dictionary else {}
+			if connection.get("callable", Callable()) == Callable(selection_port, &"submit_intent"):
+				request_count += 1
+		var receipt_count := 0
+		for connection_variant in selection_port.get_signal_connection_list(&"receipt_ready"):
+			var connection: Dictionary = connection_variant if connection_variant is Dictionary else {}
+			if connection.get("callable", Callable()) == Callable(screen, &"apply_table_selection_receipt"):
+				receipt_count += 1
+		_expect(request_count == 1 and receipt_count == 1, "typed table-selection request and receipt are each connected exactly once")
 
 
 func _check_runtime_controller_authority(main: Control) -> void:

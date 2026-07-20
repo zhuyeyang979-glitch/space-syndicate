@@ -137,6 +137,7 @@ func _ready() -> void:
 		overlay_layer.connect("public_bid_track_link_unhovered", Callable(self, "_on_track_link_unhovered"))
 	if overlay_layer.has_signal("map_layer_focus_requested"):
 		overlay_layer.connect("map_layer_focus_requested", Callable(self, "_on_map_layer_focus_requested"))
+	call_deferred("_bind_district_selection_sources")
 	call_deferred("_sync_runtime_table_focus_order")
 
 
@@ -288,6 +289,59 @@ func request_player_inspection(target_player_index: int, source_surface: StringN
 	return true
 
 
+func request_district_selection(target_district_index: int, source_surface: StringName) -> bool:
+	if source_surface not in TABLE_SELECTION_INTENT_SCRIPT.DISTRICT_SELECTION_SOURCE_SURFACES \
+			or target_district_index < 0 or not _selection_identity_is_bound():
+		return false
+	var intent := _new_table_selection_intent(TABLE_SELECTION_INTENT_SCRIPT.KIND_SELECT_DISTRICT, source_surface, "district-selection")
+	intent.target_district_index = target_district_index
+	table_selection_intent_requested.emit(intent)
+	return true
+
+
+func request_trade_product_selection(target_product_id: String, source_surface: StringName) -> bool:
+	if source_surface not in TABLE_SELECTION_INTENT_SCRIPT.TRADE_PRODUCT_SELECTION_SOURCE_SURFACES \
+			or target_product_id.length() > 80 or target_product_id.strip_edges() != target_product_id \
+			or not _selection_identity_is_bound():
+		return false
+	var intent := _new_table_selection_intent(TABLE_SELECTION_INTENT_SCRIPT.KIND_SELECT_TRADE_PRODUCT, source_surface, "trade-product-selection")
+	intent.target_trade_product_id = target_product_id
+	table_selection_intent_requested.emit(intent)
+	return true
+
+
+func request_hand_selection(target_hand_slot: int, source_surface: StringName) -> bool:
+	if source_surface not in TABLE_SELECTION_INTENT_SCRIPT.HAND_SELECTION_SOURCE_SURFACES \
+			or target_hand_slot < -1 or not _selection_identity_is_bound():
+		return false
+	var intent := _new_table_selection_intent(TABLE_SELECTION_INTENT_SCRIPT.KIND_SELECT_HAND_SLOT, source_surface, "hand-selection")
+	intent.target_hand_slot = target_hand_slot
+	table_selection_intent_requested.emit(intent)
+	return true
+
+
+func _new_table_selection_intent(selection_kind: StringName, source_surface: StringName, request_prefix: String) -> TableSelectionIntent:
+	_table_selection_request_revision += 1
+	var intent := TABLE_SELECTION_INTENT_SCRIPT.new()
+	intent.request_id = "%s:%d:%d" % [request_prefix, _presentation_authorized_viewer_index, _table_selection_request_revision]
+	intent.selection_kind = selection_kind
+	intent.viewer_index = _presentation_authorized_viewer_index
+	intent.authorization_revision = _presentation_authorization_revision
+	intent.session_id = _presentation_session_id
+	intent.session_revision = _presentation_session_revision
+	intent.expected_selection_revision = _current_selection_revision()
+	intent.source_surface = source_surface
+	intent.request_revision = _table_selection_request_revision
+	return intent
+
+
+func _selection_identity_is_bound() -> bool:
+	return _presentation_authorized_viewer_index >= 0 \
+		and _presentation_authorization_revision > 0 \
+		and not _presentation_session_id.is_empty() \
+		and _presentation_session_revision > 0
+
+
 func apply_table_selection_receipt(receipt: TableSelectionReceipt) -> void:
 	if receipt == null:
 		return
@@ -298,6 +352,14 @@ func apply_table_selection_receipt(receipt: TableSelectionReceipt) -> void:
 		var context: Dictionary = current_ui_data.get("selection_context", {}) \
 			if current_ui_data.get("selection_context", {}) is Dictionary else {}
 		context["revision"] = receipt.selection_revision_after
+		match receipt.selection_kind:
+			TABLE_SELECTION_INTENT_SCRIPT.KIND_SELECT_DISTRICT:
+				context["selected_district"] = receipt.district_index
+				context["selected_hand_slot"] = receipt.hand_slot
+			TABLE_SELECTION_INTENT_SCRIPT.KIND_SELECT_TRADE_PRODUCT:
+				context["selected_trade_product"] = receipt.trade_product_id
+			TABLE_SELECTION_INTENT_SCRIPT.KIND_SELECT_HAND_SLOT:
+				context["selected_hand_slot"] = receipt.hand_slot
 		current_ui_data["selection_context"] = context
 	if receipt.accepted and receipt.selection_kind == TABLE_SELECTION_INTENT_SCRIPT.KIND_INSPECT_PLAYER:
 		if receipt.selection_revision_after >= 0 and receipt.selection_revision_after <= _last_player_inspection_receipt_revision:
@@ -308,7 +370,12 @@ func apply_table_selection_receipt(receipt: TableSelectionReceipt) -> void:
 		_apply_inspected_player_presentation(true)
 		_show_player_action_feedback(receipt.request_id, "success", "已切换公开玩家视图；你的行动身份保持不变。")
 	elif receipt.accepted:
-		_show_player_action_feedback(receipt.request_id, "success", "地图图层已切换。")
+		var success_detail: String = str({
+			TABLE_SELECTION_INTENT_SCRIPT.KIND_SELECT_DISTRICT: "区域焦点已切换；行动者身份保持不变。",
+			TABLE_SELECTION_INTENT_SCRIPT.KIND_SELECT_TRADE_PRODUCT: "商品目标已切换；市场状态未被修改。",
+			TABLE_SELECTION_INTENT_SCRIPT.KIND_SELECT_HAND_SLOT: "手牌焦点已切换；尚未提交出牌。",
+		}.get(receipt.selection_kind, "地图图层已切换。"))
+		_show_player_action_feedback(receipt.request_id, "success", success_detail)
 	else:
 		var detail := "当前无法切换地图图层。"
 		if receipt.selection_kind == TABLE_SELECTION_INTENT_SCRIPT.KIND_INSPECT_PLAYER:
@@ -320,6 +387,12 @@ func apply_table_selection_receipt(receipt: TableSelectionReceipt) -> void:
 				detail = "当前无法切换公开玩家视图。"
 		elif receipt.reason_code == "selection_revision_stale":
 			detail = "图层状态已变化，请重试。"
+		elif receipt.selection_kind == TABLE_SELECTION_INTENT_SCRIPT.KIND_SELECT_DISTRICT:
+			detail = "当前无法切换区域焦点。"
+		elif receipt.selection_kind == TABLE_SELECTION_INTENT_SCRIPT.KIND_SELECT_TRADE_PRODUCT:
+			detail = "当前无法切换商品目标。"
+		elif receipt.selection_kind == TABLE_SELECTION_INTENT_SCRIPT.KIND_SELECT_HAND_SLOT:
+			detail = "当前无法切换手牌焦点。"
 		_show_player_action_feedback(receipt.request_id, "blocked", detail)
 
 
@@ -418,7 +491,27 @@ func _set_overlay_anchor_rect(control: Control, left: float, top: float, right: 
 func attach_runtime_map(map_node: Control) -> void:
 	if planet_board != null and planet_board.has_method("attach_runtime_map"):
 		planet_board.call("attach_runtime_map", map_node)
+	_bind_district_selection_source(map_node, &"planet_map")
 	call_deferred("_sync_runtime_table_focus_order")
+
+
+func _bind_district_selection_sources() -> void:
+	_bind_district_selection_source(get_embedded_map_view(), &"planet_map")
+	var fullscreen_map := overlay_layer.call("presentation_fullscreen_planet_target") as Control \
+		if overlay_layer != null and overlay_layer.has_method("presentation_fullscreen_planet_target") else null
+	_bind_district_selection_source(fullscreen_map, &"fullscreen_hud")
+
+
+func _bind_district_selection_source(map_node: Control, source_surface: StringName) -> void:
+	if map_node == null or not map_node.has_signal("district_selected"):
+		return
+	var callback := Callable(self, "_on_district_selection_requested").bind(source_surface)
+	if not map_node.is_connected("district_selected", callback):
+		map_node.connect("district_selected", callback)
+
+
+func _on_district_selection_requested(district_index: int, source_surface: StringName) -> void:
+	request_district_selection(district_index, source_surface)
 
 
 func set_weather_presentation(forecast_view_model: Dictionary, overlay_view_model: Dictionary, motion_mode: String) -> void:
@@ -777,6 +870,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		return
 	if _should_ignore_player_inspection_hotkey():
 		return
+	if _handle_table_selection_hotkey(key_event):
+		accept_event()
+		return
 	var inspected_index := _player_inspection_index_for_key(key_event)
 	if inspected_index >= 0:
 		accept_event()
@@ -792,6 +888,43 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		return
 	accept_event()
 	_on_action_requested(action_id)
+
+
+func _handle_table_selection_hotkey(event: InputEventKey) -> bool:
+	if event.ctrl_pressed or event.alt_pressed or event.meta_pressed:
+		return false
+	var context := _selection_context()
+	match event.keycode:
+		KEY_Q, KEY_E:
+			var district_count := int(context.get("district_count", 0))
+			if district_count <= 0:
+				return false
+			var step := -1 if event.keycode == KEY_Q else 1
+			var selected := int(context.get("selected_district", 0))
+			return request_district_selection(wrapi(selected + step, 0, district_count), &"keyboard_hotkey")
+		KEY_R:
+			var current_product := str(context.get("selected_trade_product", ""))
+			return request_trade_product_selection("" if not current_product.is_empty() else _default_trade_product_from_context(context), &"keyboard_hotkey")
+		KEY_T:
+			var product_ids: Array = context.get("trade_product_ids", []) if context.get("trade_product_ids", []) is Array else []
+			if product_ids.is_empty():
+				return false
+			var current_product := str(context.get("selected_trade_product", ""))
+			var current_index := product_ids.find(current_product)
+			return request_trade_product_selection(str(product_ids[0] if current_index < 0 else product_ids[wrapi(current_index + 1, 0, product_ids.size())]), &"keyboard_hotkey")
+	return false
+
+
+func _selection_context() -> Dictionary:
+	return current_ui_data.get("selection_context", {}) if current_ui_data.get("selection_context", {}) is Dictionary else {}
+
+
+func _default_trade_product_from_context(context: Dictionary) -> String:
+	var preferred := str(context.get("default_trade_product_id", ""))
+	if not preferred.is_empty():
+		return preferred
+	var product_ids: Array = context.get("trade_product_ids", []) if context.get("trade_product_ids", []) is Array else []
+	return str(product_ids[0]) if not product_ids.is_empty() else ""
 
 
 func _should_ignore_quick_action_hotkey() -> bool:
@@ -849,6 +982,7 @@ func _on_card_selected(card_data: Dictionary) -> void:
 	_selected_commodity_item_data = {}
 	_last_commodity_action_result = {}
 	_selected_hand_card_data = card_data.duplicate(true)
+	request_hand_selection(_hand_slot_from_card_data(card_data), &"hand_rack")
 	if right_inspector.has_method("show_card"):
 		right_inspector.call("show_card", card_data)
 	card_selected.emit(card_data)
@@ -874,6 +1008,7 @@ func _on_card_unhovered() -> void:
 
 func _on_card_unselected(card_data: Dictionary) -> void:
 	_selected_hand_card_data = {}
+	request_hand_selection(-1, &"hand_rack")
 	_restore_right_inspector_context()
 	if not _restore_selected_commodity_focus():
 		_sync_selected_track_focus_from_state()
@@ -885,6 +1020,7 @@ func _on_track_entry_selected(entry: Dictionary) -> void:
 	_selected_commodity_item_data = {}
 	_last_commodity_action_result = {}
 	_clear_hand_detail_focus_for_track()
+	request_hand_selection(-1, &"game_screen")
 	if right_inspector.has_method("set_context"):
 		right_inspector.call("set_context", _track_entry_inspector_context(entry))
 	_show_track_focus_for_entry(entry, "已选牌轨", false)
@@ -895,6 +1031,7 @@ func _on_track_entry_selected(entry: Dictionary) -> void:
 
 func _on_track_entry_opened(entry: Dictionary) -> void:
 	_clear_hand_detail_focus_for_track()
+	request_hand_selection(-1, &"game_screen")
 	if right_inspector.has_method("set_context"):
 		right_inspector.call("set_context", _track_entry_inspector_context(entry))
 	_show_track_focus_for_entry(entry, "打开牌轨", false)
@@ -945,7 +1082,40 @@ func _on_card_drag_released(card_data: Dictionary, screen_position: Vector2) -> 
 	if _forced_surface_blocks_player_actions():
 		return
 	if _card_drop_zone_contains(screen_position) and _card_can_drop_on_map(card_data):
+		var district_index := _district_at_map_position(screen_position)
+		if district_index < 0 or not request_district_selection(district_index, &"planet_map"):
+			return
+		if int(_selection_context().get("selected_district", -1)) != district_index:
+			return
+		request_hand_selection(_hand_slot_from_card_data(card_data), &"hand_rack")
 		card_drop_requested.emit(card_data, screen_position)
+
+
+func _hand_slot_from_card_data(card_data: Dictionary) -> int:
+	var card_id := str(card_data.get("id", ""))
+	if card_id.begins_with("hand_"):
+		var slot_text := card_id.substr("hand_".length())
+		return int(slot_text) if slot_text.is_valid_int() else -1
+	var actions: Array = card_data.get("actions", []) if card_data.get("actions", []) is Array else []
+	for action_variant in actions:
+		if not (action_variant is Dictionary):
+			continue
+		var action_id := str((action_variant as Dictionary).get("id", ""))
+		if action_id.begins_with("play_"):
+			var slot_text := action_id.substr("play_".length())
+			if slot_text.is_valid_int():
+				return int(slot_text)
+	return -1
+
+
+func _district_at_map_position(screen_position: Vector2) -> int:
+	var map_control := _map_drop_control()
+	if map_control == null:
+		return -1
+	var map_rect := map_control.get_global_rect()
+	if not map_rect.has_point(screen_position) or not map_control.has_method("get_district_at_control_position"):
+		return -1
+	return int(map_control.call("get_district_at_control_position", screen_position - map_rect.position))
 
 
 func _show_card_drag_feedback(card_data: Dictionary, screen_position: Vector2) -> void:

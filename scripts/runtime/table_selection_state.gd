@@ -137,6 +137,84 @@ func inspected_player_snapshot() -> Dictionary:
 	}
 
 
+func select_district_target(target_district_index: int, expected_selection_revision: int, clear_hand_selection := true) -> Dictionary:
+	if expected_selection_revision != _revision:
+		return _target_result(false, false, "selection_revision_stale", {
+			"previous_district_index": _selected_district,
+			"district_index": _selected_district,
+			"previous_hand_slot": _selected_hand_slot,
+			"hand_slot": _selected_hand_slot,
+		})
+	if target_district_index < 0:
+		return _target_result(false, false, "target_district_invalid", {
+			"previous_district_index": _selected_district,
+			"district_index": _selected_district,
+			"previous_hand_slot": _selected_hand_slot,
+			"hand_slot": _selected_hand_slot,
+		})
+	var previous_district := _selected_district
+	var previous_hand_slot := _selected_hand_slot
+	var next_hand_slot := -1 if clear_hand_selection else _selected_hand_slot
+	var changed := target_district_index != _selected_district or next_hand_slot != _selected_hand_slot
+	_selected_district = target_district_index
+	_selected_hand_slot = next_hand_slot
+	if changed:
+		_revision += 1
+		selection_changed.emit(snapshot())
+	return _target_result(true, changed, "district_selection_applied" if changed else "district_selection_unchanged", {
+		"previous_district_index": previous_district,
+		"district_index": _selected_district,
+		"previous_hand_slot": previous_hand_slot,
+		"hand_slot": _selected_hand_slot,
+	})
+
+
+func select_trade_product_target(target_product_id: String, expected_selection_revision: int) -> Dictionary:
+	if expected_selection_revision != _revision:
+		return _target_result(false, false, "selection_revision_stale", {
+			"previous_trade_product_id": _selected_trade_product,
+			"trade_product_id": _selected_trade_product,
+		})
+	if target_product_id.length() > 80 or target_product_id.strip_edges() != target_product_id:
+		return _target_result(false, false, "target_trade_product_invalid", {
+			"previous_trade_product_id": _selected_trade_product,
+			"trade_product_id": _selected_trade_product,
+		})
+	var previous := _selected_trade_product
+	var changed := target_product_id != _selected_trade_product
+	_selected_trade_product = target_product_id
+	if changed:
+		_revision += 1
+		selection_changed.emit(snapshot())
+	return _target_result(true, changed, "trade_product_selection_applied" if changed else "trade_product_selection_unchanged", {
+		"previous_trade_product_id": previous,
+		"trade_product_id": _selected_trade_product,
+	})
+
+
+func select_hand_target(target_slot: int, expected_selection_revision: int) -> Dictionary:
+	if expected_selection_revision != _revision:
+		return _target_result(false, false, "selection_revision_stale", {
+			"previous_hand_slot": _selected_hand_slot,
+			"hand_slot": _selected_hand_slot,
+		})
+	if target_slot < -1:
+		return _target_result(false, false, "target_hand_slot_invalid", {
+			"previous_hand_slot": _selected_hand_slot,
+			"hand_slot": _selected_hand_slot,
+		})
+	var previous := _selected_hand_slot
+	var changed := target_slot != _selected_hand_slot
+	_selected_hand_slot = target_slot
+	if changed:
+		_revision += 1
+		selection_changed.emit(snapshot())
+	return _target_result(true, changed, "hand_selection_applied" if changed else "hand_selection_unchanged", {
+		"previous_hand_slot": previous,
+		"hand_slot": _selected_hand_slot,
+	})
+
+
 func restore(data: Dictionary) -> Dictionary:
 	var next_player := int(data.get("selected_player", _selected_player))
 	var next_inspected := int(data.get("inspected_player", _inspected_player))
@@ -254,3 +332,14 @@ func _set_value(property_name: StringName, value: Variant) -> void:
 func _normalize_map_layer_focus(value: String) -> String:
 	var normalized := value.strip_edges().to_lower()
 	return normalized if normalized in MAP_LAYER_FOCUS_IDS else "all"
+
+
+func _target_result(applied: bool, changed: bool, reason_code: String, values: Dictionary) -> Dictionary:
+	var result := {
+		"applied": applied,
+		"changed": changed,
+		"reason_code": reason_code,
+		"selection_revision": _revision,
+	}
+	result.merge(values, true)
+	return result

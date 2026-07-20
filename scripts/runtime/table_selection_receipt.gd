@@ -12,6 +12,12 @@ var map_layer_id: StringName = &""
 var effective_map_layer_id: StringName = &"all"
 var previous_inspected_player_index := -1
 var inspected_player_index := -1
+var previous_district_index := -1
+var district_index := -1
+var previous_trade_product_id := ""
+var trade_product_id := ""
+var previous_hand_slot := -1
+var hand_slot := -1
 var changed := false
 var applied := false
 var selection_revision_before := -1
@@ -36,6 +42,12 @@ func to_dictionary() -> Dictionary:
 		"effective_map_layer_id": effective_map_layer_id,
 		"previous_inspected_player_index": previous_inspected_player_index,
 		"inspected_player_index": inspected_player_index,
+		"previous_district_index": previous_district_index,
+		"district_index": district_index,
+		"previous_trade_product_id": previous_trade_product_id,
+		"trade_product_id": trade_product_id,
+		"previous_hand_slot": previous_hand_slot,
+		"hand_slot": hand_slot,
 		"changed": changed,
 		"applied": applied,
 		"selection_revision_before": selection_revision_before,
