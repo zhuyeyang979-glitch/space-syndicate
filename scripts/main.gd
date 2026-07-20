@@ -1403,6 +1403,7 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 				var play_receipt := _game_runtime_coordinator_node().request_hand_card_play({
 					"player_index": _runtime_snapshot_player_index(),
 					"slot_index": slot_index,
+					"selected_card_resolution_id": _game_runtime_coordinator_node().table_selection_state().selected_card_resolution_id,
 					"submission_source": "human",
 				})
 				_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(play_receipt.get("player_message", "卡牌操作已处理。")))
@@ -1410,15 +1411,6 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 			elif action_id.begins_with("discard_purchase_"):
 				var discard_slot := int(action_id.substr("discard_purchase_".length()))
 				_confirm_discard_purchase(discard_slot)
-				handled = true
-			elif action_id.begins_with("track_return_"):
-				var return_resolution_id := int(action_id.substr("track_return_".length()))
-				_focus_card_resolution_track_entry(return_resolution_id)
-				_close_menu()
-				handled = true
-			elif action_id.begins_with("track_select_"):
-				var resolution_id := int(action_id.substr("track_select_".length()))
-				_select_card_resolution_track_entry(resolution_id)
 				handled = true
 			elif action_id.begins_with("track_open_"):
 				var card_name := action_id.substr("track_open_".length()).strip_edges()
@@ -1481,6 +1473,7 @@ func _on_runtime_game_screen_card_drop_requested(card_data: Dictionary, screen_p
 	var receipt := _game_runtime_coordinator_node().request_hand_card_play({
 		"player_index": _runtime_snapshot_player_index(),
 		"slot_index": slot_index,
+		"selected_card_resolution_id": _game_runtime_coordinator_node().table_selection_state().selected_card_resolution_id,
 		"submission_source": "human_drag",
 	})
 	_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(receipt.get("player_message", "卡牌操作已处理。")))
@@ -1583,6 +1576,7 @@ func _activate_runtime_quick_action(action_id: String) -> bool:
 			var receipt := _game_runtime_coordinator_node().request_hand_card_play({
 				"player_index": player_index,
 				"slot_index": slot_index,
+				"selected_card_resolution_id": _game_runtime_coordinator_node().table_selection_state().selected_card_resolution_id,
 				"submission_source": "human_quick_action",
 			})
 			_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(receipt.get("player_message", "卡牌操作已处理。")))
@@ -1782,62 +1776,6 @@ func _track_status_badge(text: String, text_color: Color, bg_color: Color) -> Pa
 	label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	margin.add_child(label)
 	return badge
-
-
-func _select_card_resolution_track_entry(resolution_id: int) -> void:
-	var selection := _game_runtime_coordinator_node().table_selection_state()
-	selection.selected_card_resolution_id = -1 if selection.selected_card_resolution_id == resolution_id else resolution_id
-	if selection.selected_card_resolution_id >= 0:
-		_focus_card_resolution_target_region(selection.selected_card_resolution_id)
-	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
-
-
-func _focus_card_resolution_track_entry(resolution_id: int) -> void:
-	_game_runtime_coordinator_node().select_card_resolution(resolution_id)
-	_focus_card_resolution_target_region(resolution_id)
-	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
-
-
-func _focus_card_resolution_target_region(resolution_id: int) -> bool:
-	var entry := _card_resolution_entry_by_id(resolution_id)
-	var district_index := _card_resolution_public_target_district(entry)
-	if district_index < 0:
-		return false
-	return _jump_to_district_on_table(district_index, false)
-
-
-func _card_resolution_public_target_district(entry: Dictionary) -> int:
-	if entry.is_empty():
-		return -1
-	var skill: Dictionary = entry.get("skill", {}) as Dictionary
-	if String(skill.get("kind", "")) == "area_trade_contract":
-		var contract_target := int(entry.get("contract_target_district", -1))
-		if contract_target >= 0 and contract_target < _game_runtime_coordinator_node().world_session_state().districts.size():
-			return contract_target
-		var contract_source := int(entry.get("contract_source_district", -1))
-		if contract_source >= 0 and contract_source < _game_runtime_coordinator_node().world_session_state().districts.size():
-			return contract_source
-	var selected_index := int(entry.get("selected_district", -1))
-	if selected_index >= 0 and selected_index < _game_runtime_coordinator_node().world_session_state().districts.size():
-		return selected_index
-	var target_slot := int(entry.get("target_slot", -1))
-	if target_slot >= 0 and target_slot < monster_runtime_controller.auto_monsters.size():
-		var actor: Dictionary = monster_runtime_controller.auto_monsters[target_slot]
-		var actor_district := int(actor.get("position", -1))
-		if actor_district >= 0 and actor_district < _game_runtime_coordinator_node().world_session_state().districts.size():
-			return actor_district
-		var world_position: Variant = actor.get("world_position", Vector2.ZERO)
-		if world_position is Vector2:
-			var nearest := _nearest_district_to(world_position)
-			if nearest >= 0 and nearest < _game_runtime_coordinator_node().world_session_state().districts.size():
-				return nearest
-	var fallback_contract_target := int(entry.get("contract_target_district", -1))
-	if fallback_contract_target >= 0 and fallback_contract_target < _game_runtime_coordinator_node().world_session_state().districts.size():
-		return fallback_contract_target
-	var fallback_contract_source := int(entry.get("contract_source_district", -1))
-	if fallback_contract_source >= 0 and fallback_contract_source < _game_runtime_coordinator_node().world_session_state().districts.size():
-		return fallback_contract_source
-	return -1
 
 
 func _card_resolution_entry_by_id(resolution_id: int) -> Dictionary:
@@ -5803,6 +5741,7 @@ func _choose_pending_target_monster(slot: int) -> void:
 		"slot_index": slot_index,
 		"target_slot": slot,
 		"target_player": -1,
+		"selected_card_resolution_id": _game_runtime_coordinator_node().table_selection_state().selected_card_resolution_id,
 		"submission_source": "human_target_choice",
 	})
 	_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(receipt.get("player_message", "卡牌提交已处理。")))
@@ -5844,6 +5783,7 @@ func _choose_pending_target_player(target_player: int) -> void:
 		"slot_index": slot_index,
 		"target_slot": -1,
 		"target_player": target_player,
+		"selected_card_resolution_id": _game_runtime_coordinator_node().table_selection_state().selected_card_resolution_id,
 		"submission_source": "human_target_choice",
 	})
 	_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(receipt.get("player_message", "卡牌提交已处理。")))
@@ -5877,6 +5817,7 @@ func _queue_monster_card_as_counter(player_index: int, slot_index: int, source_s
 		"slot_index": slot_index,
 		"target_slot": -1,
 		"target_player": -1,
+		"selected_card_resolution_id": _game_runtime_coordinator_node().table_selection_state().selected_card_resolution_id,
 		"submission_source": "role_counter_conversion",
 	})
 	_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(counter_receipt.get("player_message", "卡牌提交已处理。")))

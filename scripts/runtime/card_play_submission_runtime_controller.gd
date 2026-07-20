@@ -64,7 +64,7 @@ func request_hand_play(request: Dictionary) -> Dictionary:
 		return _remember(_begin_target(TARGET_MONSTER, player_index, slot_index))
 	if bool(eligibility.get("requires_target_player", false)) and not request.has("target_player"):
 		return _remember(_begin_target(TARGET_PLAYER, player_index, slot_index))
-	return _remember(_submit_legacy(player_index, slot_index, int(request.get("target_slot", -1)), int(request.get("target_player", -1)), eligibility))
+	return _remember(_submit_legacy(player_index, slot_index, int(request.get("target_slot", -1)), int(request.get("target_player", -1)), int(request.get("selected_card_resolution_id", -1)), eligibility))
 
 
 func submit_card_play(request: Dictionary) -> Dictionary:
@@ -80,7 +80,7 @@ func submit_card_play(request: Dictionary) -> Dictionary:
 	var eligibility := _eligibility(player_index, skill, "rule")
 	if not bool(eligibility.get("allowed", false)):
 		return _remember(_rejection(str(eligibility.get("reason_code", "card_play_rejected")), eligibility))
-	return _remember(_submit_legacy(player_index, slot_index, int(request.get("target_slot", -1)), int(request.get("target_player", -1)), eligibility))
+	return _remember(_submit_legacy(player_index, slot_index, int(request.get("target_slot", -1)), int(request.get("target_player", -1)), int(request.get("selected_card_resolution_id", -1)), eligibility))
 
 
 func debug_snapshot() -> Dictionary:
@@ -94,7 +94,7 @@ func debug_snapshot() -> Dictionary:
 	}
 
 
-func _submit_legacy(player_index: int, slot_index: int, target_slot: int, target_player: int, eligibility: Dictionary) -> Dictionary:
+func _submit_legacy(player_index: int, slot_index: int, target_slot: int, target_player: int, selected_card_resolution_id: int, eligibility: Dictionary) -> Dictionary:
 	var players := _world_session_state.players
 	var player: Dictionary = players[player_index]
 	var slots: Array = player.get("slots", [])
@@ -118,6 +118,7 @@ func _submit_legacy(player_index: int, slot_index: int, target_slot: int, target
 		"target_player": target_player,
 		"selected_district": _table_selection_state.selected_district,
 		"selected_trade_product": _table_selection_state.selected_trade_product,
+		"selected_card_resolution_id": selected_card_resolution_id,
 		"contract_source_district": int(contract_context.get("source", -1)),
 		"contract_target_district": int(contract_context.get("target", -1)),
 		"contract_target_owner": int(contract_context.get("target_owner", -1)),

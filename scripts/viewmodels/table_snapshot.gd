@@ -53,6 +53,7 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 		"default_trade_product_id": str(selection_source.get("default_trade_product_id", "")),
 		"selected_hand_slot": int(selection_source.get("selected_hand_slot", -1)),
 		"hand_slot_count": maxi(0, int(selection_source.get("hand_slot_count", 0))),
+		"selected_card_resolution_id": int(selection_source.get("selected_card_resolution_id", -1)),
 	}
 	var track_source: Array = data.get("card_track", []) if data.get("card_track", []) is Array else []
 	card_track = PUBLIC_TRACK_SNAPSHOT_SCRIPT.new().apply_entries(track_source).to_ui_array()

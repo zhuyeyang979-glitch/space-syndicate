@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "boundary_id": "public_card_resolution_focus_authority_cutover",
+  "status": "cut_over",
+  "state_owner": "res://scripts/runtime/table_selection_state.gd",
+  "intent_port": "res://scripts/runtime/table_selection_intent_port.gd",
+  "ui_surface": "res://scripts/ui/game_screen.gd",
+  "selection_kind": "select_card_resolution",
+  "public_target_authorities": [
+    "CardResolutionQueueRuntimeService.public_snapshot",
+    "CardResolutionHistoryRuntimeService.public_history_snapshot"
+  ],
+  "allowed_source_surfaces": [
+    "card_resolution_track",
+    "public_bid_board",
+    "right_inspector"
+  ],
+  "main_track_select_route_count": 0,
+  "main_track_return_route_count": 0,
+  "main_direct_write_count": 0,
+  "coordinator_untyped_setter_count": 0,
+  "private_target_focus_count": 0,
+  "gameplay_mutation_count": 0,
+  "intel_table_focus_read_count": 0,
+  "ai_human_focus_read_count": 0,
+  "card_effect_target_context": "frozen_on_card_resolution_entry",
+  "retained_routes": [
+    "track_open Compendium navigation",
+    "authoritative card-resolution entry lookup for gameplay consumers"
+  ],
+  "focused_test": "res://tests/public_card_track_focus_selection_cutover_test.gd"
+}

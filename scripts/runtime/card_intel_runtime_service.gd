@@ -3,7 +3,6 @@ extends Node
 class_name CardIntelRuntimeService
 
 var _world_session_state: WorldSessionState
-var _table_selection_state: TableSelectionState
 var _history_query: CardHistoryPublicQueryPort
 var _annotation_service: CardHistoryPrivateAnnotationService
 var _contract_controller: ContractRuntimeController
@@ -11,20 +10,18 @@ var _contract_controller: ContractRuntimeController
 
 func set_dependencies(
 	world_session_state: WorldSessionState,
-	table_selection_state: TableSelectionState,
 	history_query: CardHistoryPublicQueryPort,
 	annotation_service: CardHistoryPrivateAnnotationService,
 	contract_controller: ContractRuntimeController
 ) -> void:
 	_world_session_state = world_session_state
-	_table_selection_state = table_selection_state
 	_history_query = history_query
 	_annotation_service = annotation_service
 	_contract_controller = contract_controller
 
 
 func apply_intel_effect(player_index: int, skill: Dictionary, context: Dictionary = {}) -> Dictionary:
-	if _world_session_state == null or _table_selection_state == null or player_index < 0 or player_index >= _world_session_state.players.size():
+	if _world_session_state == null or player_index < 0 or player_index >= _world_session_state.players.size():
 		return _receipt(false, "intel_context_missing")
 	match str(skill.get("kind", "")):
 		"intel_city_reveal":
@@ -35,14 +32,15 @@ func apply_intel_effect(player_index: int, skill: Dictionary, context: Dictionar
 			return _subscribe_public_history(player_index, skill, context)
 		"intel_contract_trace":
 			var count := maxi(1, int(skill.get("trace_contract_count", 1)))
-			var traced := _contract_controller.trace_contract_parties(player_index, int(context.get("selected_card_resolution_id", _table_selection_state.selected_card_resolution_id)), count, str(skill.get("name", "合约追溯"))) if _contract_controller != null else 0
+			var traced := _contract_controller.trace_contract_parties(player_index, int(context.get("selected_card_resolution_id", -1)), count, str(skill.get("name", "合约追溯"))) if _contract_controller != null else 0
 			return _receipt(traced > 0, "resolved" if traced > 0 else "no_traceable_contract", {"contract_trace_count": traced})
 	return _receipt(false, "intel_kind_unsupported")
 
 
 func debug_snapshot() -> Dictionary:
 	return {
-		"service_ready": _world_session_state != null and _table_selection_state != null and _history_query != null and _annotation_service != null,
+		"service_ready": _world_session_state != null and _history_query != null and _annotation_service != null,
+		"reads_table_selection_focus": false,
 		"private_intel_authority": true,
 		"public_owner_truth_exposed": false,
 		"reads_hidden_actor": false,
@@ -53,7 +51,7 @@ func debug_snapshot() -> Dictionary:
 func _review_public_history(player_index: int, skill: Dictionary, context: Dictionary) -> Dictionary:
 	if _history_query == null or _annotation_service == null:
 		return _receipt(false, "history_services_unavailable")
-	var targets := _history_targets(int(context.get("selected_card_resolution_id", _table_selection_state.selected_card_resolution_id)), maxi(1, int(skill.get("history_review_count", 1))))
+	var targets := _history_targets(int(context.get("selected_card_resolution_id", -1)), maxi(1, int(skill.get("history_review_count", 1))))
 	var public_players: Array = []
 	for index in range(_world_session_state.players.size()):
 		public_players.append(index)
@@ -68,7 +66,7 @@ func _review_public_history(player_index: int, skill: Dictionary, context: Dicti
 func _subscribe_public_history(player_index: int, skill: Dictionary, context: Dictionary) -> Dictionary:
 	if _history_query == null or _annotation_service == null:
 		return _receipt(false, "history_services_unavailable")
-	var targets := _history_targets(int(context.get("selected_card_resolution_id", _table_selection_state.selected_card_resolution_id)), clampi(int(skill.get("history_subscription_count", 1)), 1, 2))
+	var targets := _history_targets(int(context.get("selected_card_resolution_id", -1)), clampi(int(skill.get("history_subscription_count", 1)), 1, 2))
 	var result: Dictionary = _annotation_service.subscribe_entries(player_index, targets)
 	return _receipt(bool(result.get("applied", false)), str(result.get("reason_code", "no_subscription_target")), {"history_subscription_count": (result.get("history_entry_ids", []) as Array).size()})
 

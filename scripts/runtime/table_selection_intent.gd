@@ -7,6 +7,7 @@ const KIND_INSPECT_PLAYER: StringName = &"inspect_player"
 const KIND_SELECT_DISTRICT: StringName = &"select_district"
 const KIND_SELECT_TRADE_PRODUCT: StringName = &"select_trade_product"
 const KIND_SELECT_HAND_SLOT: StringName = &"select_hand_slot"
+const KIND_SELECT_CARD_RESOLUTION: StringName = &"select_card_resolution"
 const MAP_LAYER_IDS := [
 	&"all",
 	&"product",
@@ -41,6 +42,12 @@ const HAND_SELECTION_SOURCE_SURFACES := [
 	&"game_screen",
 	&"qa_driver",
 ]
+const CARD_RESOLUTION_SELECTION_SOURCE_SURFACES := [
+	&"card_resolution_track",
+	&"public_bid_board",
+	&"right_inspector",
+	&"qa_driver",
+]
 
 var schema_version := SCHEMA_VERSION
 var request_id := ""
@@ -55,6 +62,7 @@ var target_player_index := -1
 var target_district_index := -1
 var target_trade_product_id := ""
 var target_hand_slot := -2
+var target_card_resolution_id := -2
 var source_surface: StringName = &"planet_map"
 var request_revision := 0
 
@@ -64,7 +72,7 @@ func validation_report() -> Dictionary:
 		return _invalid("intent_schema_invalid")
 	if not PlayerIdentityActionRequest._canonical_identifier(request_id, 128):
 		return _invalid("request_id_invalid")
-	if selection_kind not in [KIND_MAP_LAYER, KIND_INSPECT_PLAYER, KIND_SELECT_DISTRICT, KIND_SELECT_TRADE_PRODUCT, KIND_SELECT_HAND_SLOT]:
+	if selection_kind not in [KIND_MAP_LAYER, KIND_INSPECT_PLAYER, KIND_SELECT_DISTRICT, KIND_SELECT_TRADE_PRODUCT, KIND_SELECT_HAND_SLOT, KIND_SELECT_CARD_RESOLUTION]:
 		return _invalid("selection_kind_invalid")
 	if viewer_index < 0:
 		return _invalid("viewer_index_invalid")
@@ -103,6 +111,11 @@ func validation_report() -> Dictionary:
 				return _invalid("target_hand_slot_invalid")
 			if not HAND_SELECTION_SOURCE_SURFACES.has(source_surface):
 				return _invalid("source_surface_invalid")
+		KIND_SELECT_CARD_RESOLUTION:
+			if target_card_resolution_id < -1:
+				return _invalid("target_card_resolution_invalid")
+			if not CARD_RESOLUTION_SELECTION_SOURCE_SURFACES.has(source_surface):
+				return _invalid("source_surface_invalid")
 	if request_revision <= 0:
 		return _invalid("request_revision_invalid")
 	return {"valid": true, "reason_code": ""}
@@ -132,6 +145,7 @@ func to_dictionary() -> Dictionary:
 		"target_district_index": target_district_index,
 		"target_trade_product_id": target_trade_product_id,
 		"target_hand_slot": target_hand_slot,
+		"target_card_resolution_id": target_card_resolution_id,
 		"source_surface": source_surface,
 		"request_revision": request_revision,
 	}

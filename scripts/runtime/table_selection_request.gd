@@ -8,13 +8,14 @@ var target_player_index := -1
 var target_district_index := -1
 var target_trade_product_id := ""
 var target_hand_slot := -2
+var target_card_resolution_id := -2
 
 
 func validation_report() -> Dictionary:
 	var identity_validation := super.validation_report()
 	if not bool(identity_validation.get("valid", false)):
 		return identity_validation
-	if selection_kind not in [TableSelectionIntent.KIND_MAP_LAYER, TableSelectionIntent.KIND_INSPECT_PLAYER, TableSelectionIntent.KIND_SELECT_DISTRICT, TableSelectionIntent.KIND_SELECT_TRADE_PRODUCT, TableSelectionIntent.KIND_SELECT_HAND_SLOT]:
+	if selection_kind not in [TableSelectionIntent.KIND_MAP_LAYER, TableSelectionIntent.KIND_INSPECT_PLAYER, TableSelectionIntent.KIND_SELECT_DISTRICT, TableSelectionIntent.KIND_SELECT_TRADE_PRODUCT, TableSelectionIntent.KIND_SELECT_HAND_SLOT, TableSelectionIntent.KIND_SELECT_CARD_RESOLUTION]:
 		return _invalid("selection_kind_invalid")
 	if expected_selection_revision < 0:
 		return _invalid("selection_revision_invalid")
@@ -34,6 +35,9 @@ func validation_report() -> Dictionary:
 		TableSelectionIntent.KIND_SELECT_HAND_SLOT:
 			if target_hand_slot < -1:
 				return _invalid("target_hand_slot_invalid")
+		TableSelectionIntent.KIND_SELECT_CARD_RESOLUTION:
+			if target_card_resolution_id < -1:
+				return _invalid("target_card_resolution_invalid")
 	return {"valid": true, "reason_code": ""}
 
 
@@ -46,4 +50,5 @@ func to_dictionary() -> Dictionary:
 	result["target_district_index"] = target_district_index
 	result["target_trade_product_id"] = target_trade_product_id
 	result["target_hand_slot"] = target_hand_slot
+	result["target_card_resolution_id"] = target_card_resolution_id
 	return result

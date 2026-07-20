@@ -215,6 +215,41 @@ func select_hand_target(target_slot: int, expected_selection_revision: int) -> D
 	})
 
 
+func select_card_resolution_target(target_resolution_id: int, focus_district_index: int, expected_selection_revision: int) -> Dictionary:
+	if expected_selection_revision != _revision:
+		return _target_result(false, false, "selection_revision_stale", {
+			"previous_card_resolution_id": _selected_card_resolution_id,
+			"card_resolution_id": _selected_card_resolution_id,
+			"previous_district_index": _selected_district,
+			"district_index": _selected_district,
+			"focus_district_index": -1,
+		})
+	if target_resolution_id < -1 or focus_district_index < -1:
+		return _target_result(false, false, "card_resolution_selection_invalid", {
+			"previous_card_resolution_id": _selected_card_resolution_id,
+			"card_resolution_id": _selected_card_resolution_id,
+			"previous_district_index": _selected_district,
+			"district_index": _selected_district,
+			"focus_district_index": -1,
+		})
+	var previous_resolution_id := _selected_card_resolution_id
+	var previous_district_index := _selected_district
+	var next_district_index := focus_district_index if focus_district_index >= 0 else _selected_district
+	var changed := target_resolution_id != _selected_card_resolution_id or next_district_index != _selected_district
+	_selected_card_resolution_id = target_resolution_id
+	_selected_district = next_district_index
+	if changed:
+		_revision += 1
+		selection_changed.emit(snapshot())
+	return _target_result(true, changed, "card_resolution_selection_applied" if changed else "card_resolution_selection_unchanged", {
+		"previous_card_resolution_id": previous_resolution_id,
+		"card_resolution_id": _selected_card_resolution_id,
+		"previous_district_index": previous_district_index,
+		"district_index": _selected_district,
+		"focus_district_index": focus_district_index,
+	})
+
+
 func restore(data: Dictionary) -> Dictionary:
 	var next_player := int(data.get("selected_player", _selected_player))
 	var next_inspected := int(data.get("inspected_player", _inspected_player))

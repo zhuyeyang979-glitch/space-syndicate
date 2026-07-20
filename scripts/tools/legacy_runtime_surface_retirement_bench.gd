@@ -182,13 +182,17 @@ func _run_case(case_id: String) -> Dictionary:
 			flags["snapshot_checked"] = true
 			notes = "hard scene ownership reports no fallback, missing node, duplicate node, or duplicate signal"
 		"track_selection_syncs_sceneized_screen":
-			var select_start := _main_source.find("func _select_card_resolution_track_entry")
-			var focus_start := _main_source.find("func _focus_card_resolution_track_entry")
-			var select_slice := _main_source.substr(select_start, 520) if select_start >= 0 else ""
-			var focus_slice := _main_source.substr(focus_start, 360) if focus_start >= 0 else ""
-			passed = select_slice.contains("_sync_runtime_game_screen(true)") and focus_slice.contains("_sync_runtime_game_screen(true)")
+			var game_screen_source := FileAccess.get_file_as_string("res://scripts/ui/game_screen.gd")
+			var coordinator_scene := FileAccess.get_file_as_string("res://scenes/runtime/GameRuntimeCoordinator.tscn")
+			passed = not _main_source.contains("func _select_card_resolution_track_entry") \
+				and not _main_source.contains("func _focus_card_resolution_track_entry") \
+				and not _main_source.contains("action_id.begins_with(\"track_select_\")") \
+				and game_screen_source.contains("func request_card_resolution_selection") \
+				and game_screen_source.contains("table_selection_intent_requested.emit(intent)") \
+				and coordinator_scene.contains("card_resolution_queue_path = NodePath(\"../CardResolutionQueueRuntimeService\")") \
+				and coordinator_scene.contains("card_resolution_history_path = NodePath(\"../CardResolutionHistoryRuntimeService\")")
 			flags["bridge_checked"] = true
-			notes = "public-track focus now refreshes the sceneized snapshot instead of a removed renderer"
+			notes = "public-track focus uses the scene-owned typed selection port with public queue/history authorization and no Main fallback"
 	return _record(case_id, passed, notes, flags)
 
 

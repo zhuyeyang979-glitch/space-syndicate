@@ -1346,14 +1346,6 @@ func reset_card_resolution_history() -> void:
 		annotations.call("reset_state")
 
 
-func select_card_resolution(resolution_id: int) -> Dictionary:
-	var state := _table_selection_state_node()
-	if state == null:
-		return {"selected": false, "reason": "selection_state_missing"}
-	state.selected_card_resolution_id = resolution_id
-	return {"selected": true, "resolution_id": state.selected_card_resolution_id}
-
-
 func _wire_run_rng_service() -> void:
 	var service := _run_rng_service_node()
 	if service == null:
@@ -1507,7 +1499,7 @@ func _wire_card_execution_typed_ports() -> void:
 	if history_annotations != null:
 		history_annotations.configure(history_query)
 	if intel != null:
-		intel.set_dependencies(world_state, selection, history_query, history_annotations, contract)
+		intel.set_dependencies(world_state, history_query, history_annotations, contract)
 	if commitment != null:
 		commitment.set_dependencies(world_state, _card_cooldown_runtime_controller_node(), _weather_telemetry_runtime_service_node() as WeatherTelemetryRuntimeService, eligibility_facts, eligibility)
 	if effect_router != null:
@@ -1537,7 +1529,7 @@ func _wire_card_execution_typed_ports() -> void:
 		)
 	var ai := _ai_runtime_controller_node() as AiRuntimeController
 	if ai != null:
-		ai.set_card_execution_dependencies(submission, history, selection)
+		ai.set_card_execution_dependencies(submission, history)
 	var contract_bridge := _contract_runtime_world_bridge_node() as ContractRuntimeWorldBridge
 	if contract_bridge != null:
 		contract_bridge.set_card_resolution_history_service(history, queue)

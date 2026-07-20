@@ -107,6 +107,7 @@ func compose_table_state(viewer_index: int, include_full: bool) -> Dictionary:
 			"default_trade_product_id": _default_trade_product_id(district),
 			"selected_hand_slot": _selection.selected_hand_slot if _selection != null else -1,
 			"hand_slot_count": hand_cards.size(),
+			"selected_card_resolution_id": _selection.selected_card_resolution_id if _selection != null else -1,
 		},
 		"top_bar": _top_bar_source(viewer_index, public_world, private_world, action, district),
 		"planet": _planet_source(public_world, action, district, public_projection, viewer_index),

@@ -9,6 +9,8 @@ const SOURCE_SURFACES := [
 	&"planet_map",
 	&"district_supply",
 	&"top_commodity_track",
+	&"card_resolution_track",
+	&"public_bid_board",
 	&"right_inspector",
 	&"forced_decision",
 	&"player_seat",

@@ -172,6 +172,8 @@ unique_name_in_owner = true
 identity_boundary_path = NodePath("../PlayerIdentityAuthorizationBoundary")
 selection_state_path = NodePath("../TableSelectionState")
 forced_decision_response_port_path = NodePath("../ForcedDecisionResponsePort")
+card_resolution_queue_path = NodePath("../CardResolutionQueueRuntimeService")
+card_resolution_history_path = NodePath("../CardResolutionHistoryRuntimeService")
 
 [node name="TablePresentationViewModelQuery" parent="." instance=ExtResource("103_table_presentation_viewmodel_query")]
 unique_name_in_owner = true

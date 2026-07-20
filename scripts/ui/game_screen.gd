@@ -320,6 +320,18 @@ func request_hand_selection(target_hand_slot: int, source_surface: StringName) -
 	return true
 
 
+func request_card_resolution_selection(target_resolution_id: int, source_surface: StringName) -> bool:
+	if source_surface not in TABLE_SELECTION_INTENT_SCRIPT.CARD_RESOLUTION_SELECTION_SOURCE_SURFACES \
+			or target_resolution_id < -1 or not _selection_identity_is_bound():
+		return false
+	var selected_resolution_id := int(_selection_context().get("selected_card_resolution_id", -1))
+	var effective_target := -1 if target_resolution_id >= 0 and selected_resolution_id == target_resolution_id else target_resolution_id
+	var intent := _new_table_selection_intent(TABLE_SELECTION_INTENT_SCRIPT.KIND_SELECT_CARD_RESOLUTION, source_surface, "card-resolution-selection")
+	intent.target_card_resolution_id = effective_target
+	table_selection_intent_requested.emit(intent)
+	return true
+
+
 func _new_table_selection_intent(selection_kind: StringName, source_surface: StringName, request_prefix: String) -> TableSelectionIntent:
 	_table_selection_request_revision += 1
 	var intent := TABLE_SELECTION_INTENT_SCRIPT.new()
@@ -360,6 +372,9 @@ func apply_table_selection_receipt(receipt: TableSelectionReceipt) -> void:
 				context["selected_trade_product"] = receipt.trade_product_id
 			TABLE_SELECTION_INTENT_SCRIPT.KIND_SELECT_HAND_SLOT:
 				context["selected_hand_slot"] = receipt.hand_slot
+			TABLE_SELECTION_INTENT_SCRIPT.KIND_SELECT_CARD_RESOLUTION:
+				context["selected_card_resolution_id"] = receipt.card_resolution_id
+				context["selected_district"] = receipt.district_index
 		current_ui_data["selection_context"] = context
 	if receipt.accepted and receipt.selection_kind == TABLE_SELECTION_INTENT_SCRIPT.KIND_INSPECT_PLAYER:
 		if receipt.selection_revision_after >= 0 and receipt.selection_revision_after <= _last_player_inspection_receipt_revision:
@@ -374,7 +389,10 @@ func apply_table_selection_receipt(receipt: TableSelectionReceipt) -> void:
 			TABLE_SELECTION_INTENT_SCRIPT.KIND_SELECT_DISTRICT: "区域焦点已切换；行动者身份保持不变。",
 			TABLE_SELECTION_INTENT_SCRIPT.KIND_SELECT_TRADE_PRODUCT: "商品目标已切换；市场状态未被修改。",
 			TABLE_SELECTION_INTENT_SCRIPT.KIND_SELECT_HAND_SLOT: "手牌焦点已切换；尚未提交出牌。",
+			TABLE_SELECTION_INTENT_SCRIPT.KIND_SELECT_CARD_RESOLUTION: "公共牌轨焦点已切换；未触发任何卡牌结算。",
 		}.get(receipt.selection_kind, "地图图层已切换。"))
+		if receipt.selection_kind == TABLE_SELECTION_INTENT_SCRIPT.KIND_SELECT_CARD_RESOLUTION and receipt.focus_district_index >= 0:
+			_focus_public_district(receipt.focus_district_index)
 		_show_player_action_feedback(receipt.request_id, "success", success_detail)
 	else:
 		var detail := "当前无法切换地图图层。"
@@ -393,7 +411,18 @@ func apply_table_selection_receipt(receipt: TableSelectionReceipt) -> void:
 			detail = "当前无法切换商品目标。"
 		elif receipt.selection_kind == TABLE_SELECTION_INTENT_SCRIPT.KIND_SELECT_HAND_SLOT:
 			detail = "当前无法切换手牌焦点。"
+		elif receipt.selection_kind == TABLE_SELECTION_INTENT_SCRIPT.KIND_SELECT_CARD_RESOLUTION:
+			detail = "这条公共牌轨记录已不存在，请刷新后重试。"
 		_show_player_action_feedback(receipt.request_id, "blocked", detail)
+
+
+func _focus_public_district(district_index: int) -> void:
+	for map_node in [
+		get_embedded_map_view(),
+		overlay_layer.call("presentation_fullscreen_planet_target") if overlay_layer != null and overlay_layer.has_method("presentation_fullscreen_planet_target") else null,
+	]:
+		if map_node != null and map_node.has_method("focus_district"):
+			map_node.call("focus_district", district_index)
 
 
 func _on_player_seat_inspection_requested(player_index: int) -> void:
@@ -776,6 +805,9 @@ func _on_action_requested(action_id: String) -> void:
 	if action_id == "commodity_claim_selected":
 		_submit_selected_commodity_claim()
 		return
+	if action_id.begins_with("track_select_"):
+		_emit_track_action_request(action_id, "已选择公共轨道线索。", &"right_inspector")
+		return
 	if _forced_surface_blocks_player_actions():
 		_show_player_action_feedback(action_id, "blocked", "请先完成当前强制决策。")
 		return
@@ -858,6 +890,9 @@ func _on_temporary_decision_action_requested(action_id: String) -> void:
 
 
 func _on_public_bid_action_requested(action_id: String) -> void:
+	if action_id.begins_with("track_select_"):
+		_emit_track_action_request(action_id, "已选择竞价对应的公共牌轨线索。", &"public_bid_board")
+		return
 	_show_player_action_feedback(action_id, "resolved", "牌序竞价选择已提交，等待牌序阶段推进。")
 	action_requested.emit(action_id)
 
@@ -1026,7 +1061,7 @@ func _on_track_entry_selected(entry: Dictionary) -> void:
 	_show_track_focus_for_entry(entry, "已选牌轨", false)
 	var action_id := _track_select_action(entry)
 	if action_id != "":
-		_emit_track_action_request(action_id, "已选择公共轨道线索。")
+		_emit_track_action_request(action_id, "已选择公共轨道线索。", &"card_resolution_track")
 
 
 func _on_track_entry_opened(entry: Dictionary) -> void:
@@ -1041,10 +1076,10 @@ func _on_track_entry_opened(entry: Dictionary) -> void:
 
 
 func _on_track_action_requested(action_id: String) -> void:
-	_emit_track_action_request(action_id, "公共牌轨响应已提交。")
+	_emit_track_action_request(action_id, "公共牌轨响应已提交。", &"card_resolution_track")
 
 
-func _emit_track_action_request(action_id: String, detail: String) -> void:
+func _emit_track_action_request(action_id: String, detail: String, source_surface: StringName = &"card_resolution_track") -> void:
 	var normalized_action_id := action_id.strip_edges()
 	if normalized_action_id == "":
 		return
@@ -1056,6 +1091,12 @@ func _emit_track_action_request(action_id: String, detail: String) -> void:
 		return
 	_last_track_action_bridge_id = normalized_action_id
 	_last_track_action_bridge_frame = current_frame
+	if normalized_action_id.begins_with("track_select_"):
+		var resolution_text := normalized_action_id.substr("track_select_".length()).strip_edges()
+		if not resolution_text.is_valid_int() or not request_card_resolution_selection(int(resolution_text), source_surface):
+			_show_player_action_feedback(normalized_action_id, "blocked", "这条公共牌轨记录无法选择。")
+			return
+		return
 	_show_player_action_feedback(normalized_action_id, "pending", detail)
 	action_requested.emit(normalized_action_id)
 

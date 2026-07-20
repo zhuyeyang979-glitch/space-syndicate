@@ -8,6 +8,8 @@ signal presentation_refresh_requested(kind: StringName, reason: StringName)
 @export var identity_boundary_path: NodePath
 @export var selection_state_path: NodePath
 @export var forced_decision_response_port_path: NodePath
+@export var card_resolution_queue_path: NodePath
+@export var card_resolution_history_path: NodePath
 
 var _journal: Dictionary = {}
 var _journal_session_key := ""
@@ -71,6 +73,12 @@ func submit_intent(intent: TableSelectionIntent) -> TableSelectionReceipt:
 			selection_result = _selection_state().select_trade_product_target(intent.target_trade_product_id, intent.expected_selection_revision)
 		TableSelectionIntent.KIND_SELECT_HAND_SLOT:
 			selection_result = _selection_state().select_hand_target(intent.target_hand_slot, intent.expected_selection_revision)
+		TableSelectionIntent.KIND_SELECT_CARD_RESOLUTION:
+			selection_result = _selection_state().select_card_resolution_target(
+				intent.target_card_resolution_id,
+				_public_target_district(_public_card_resolution_entry(intent.target_card_resolution_id)),
+				intent.expected_selection_revision
+			)
 		_:
 			_selection_state().selected_map_layer_focus = str(request.map_layer_id)
 	if not selection_result.is_empty() and not bool(selection_result.get("applied", false)):
@@ -96,6 +104,12 @@ func submit_intent(intent: TableSelectionIntent) -> TableSelectionReceipt:
 	elif intent.selection_kind == TableSelectionIntent.KIND_SELECT_HAND_SLOT:
 		receipt.previous_hand_slot = int(selection_result.get("previous_hand_slot", -1))
 		receipt.hand_slot = int(selection_result.get("hand_slot", -1))
+	elif intent.selection_kind == TableSelectionIntent.KIND_SELECT_CARD_RESOLUTION:
+		receipt.previous_card_resolution_id = int(selection_result.get("previous_card_resolution_id", -1))
+		receipt.card_resolution_id = int(selection_result.get("card_resolution_id", -1))
+		receipt.previous_district_index = int(selection_result.get("previous_district_index", -1))
+		receipt.district_index = int(selection_result.get("district_index", -1))
+		receipt.focus_district_index = int(selection_result.get("focus_district_index", -1))
 	if receipt.changed:
 		_changed_count += 1
 		receipt.presentation_refresh_requested = true
@@ -121,7 +135,7 @@ func debug_snapshot() -> Dictionary:
 		"journal_size": _journal.size(),
 		"journal_session_key": _journal_session_key,
 		"journal_eviction_enabled": false,
-		"supported_selection_kinds": [TableSelectionIntent.KIND_MAP_LAYER, TableSelectionIntent.KIND_INSPECT_PLAYER, TableSelectionIntent.KIND_SELECT_DISTRICT, TableSelectionIntent.KIND_SELECT_TRADE_PRODUCT, TableSelectionIntent.KIND_SELECT_HAND_SLOT],
+		"supported_selection_kinds": [TableSelectionIntent.KIND_MAP_LAYER, TableSelectionIntent.KIND_INSPECT_PLAYER, TableSelectionIntent.KIND_SELECT_DISTRICT, TableSelectionIntent.KIND_SELECT_TRADE_PRODUCT, TableSelectionIntent.KIND_SELECT_HAND_SLOT, TableSelectionIntent.KIND_SELECT_CARD_RESOLUTION],
 		"typed_identity_envelope_required": true,
 		"exact_once": true,
 		"owns_selection_state": false,
@@ -153,6 +167,7 @@ func _request_from_intent(intent: TableSelectionIntent) -> TableSelectionRequest
 	request.target_district_index = intent.target_district_index
 	request.target_trade_product_id = intent.target_trade_product_id
 	request.target_hand_slot = intent.target_hand_slot
+	request.target_card_resolution_id = intent.target_card_resolution_id
 	return request
 
 
@@ -177,6 +192,7 @@ func _receipt(intent: TableSelectionIntent, accepted: bool, reason_code: String)
 		receipt.district_index = intent.target_district_index
 		receipt.trade_product_id = intent.target_trade_product_id
 		receipt.hand_slot = intent.target_hand_slot
+		receipt.card_resolution_id = intent.target_card_resolution_id
 	receipt.accepted = accepted
 	receipt.reason_code = reason_code
 	return receipt
@@ -193,6 +209,8 @@ func _complete(receipt: TableSelectionReceipt) -> TableSelectionReceipt:
 			receipt.trade_product_id = _selection_state().selected_trade_product
 		if receipt.hand_slot < -1 or not receipt.accepted:
 			receipt.hand_slot = _selection_state().selected_hand_slot
+		if receipt.card_resolution_id < -1 or not receipt.accepted:
+			receipt.card_resolution_id = _selection_state().selected_card_resolution_id
 	if receipt.accepted:
 		_accepted_count += 1
 	else:
@@ -223,6 +241,8 @@ func _target_rejection_reason(intent: TableSelectionIntent) -> String:
 			return "" if intent.target_trade_product_id.is_empty() or ProductMarketRuntimeController.PRODUCT_CATALOG.has(intent.target_trade_product_id) else "target_trade_product_missing"
 		TableSelectionIntent.KIND_SELECT_HAND_SLOT:
 			return "" if intent.target_hand_slot == -1 or _identity_boundary().authorized_player_hand_slot_exists(intent.viewer_index, intent.target_hand_slot) else "target_hand_slot_missing"
+		TableSelectionIntent.KIND_SELECT_CARD_RESOLUTION:
+			return "" if intent.target_card_resolution_id == -1 or not _public_card_resolution_entry(intent.target_card_resolution_id).is_empty() else "target_card_resolution_missing"
 	return ""
 
 
@@ -240,4 +260,46 @@ func _refresh_reason(selection_kind: StringName) -> StringName:
 			return &"selected_trade_product_changed"
 		TableSelectionIntent.KIND_SELECT_HAND_SLOT:
 			return &"selected_hand_slot_changed"
+		TableSelectionIntent.KIND_SELECT_CARD_RESOLUTION:
+			return &"selected_card_resolution_changed"
 	return &"table_selection_changed"
+
+
+func _public_card_resolution_entry(resolution_id: int) -> Dictionary:
+	if resolution_id < 0:
+		return {}
+	var queue := get_node_or_null(card_resolution_queue_path) as CardResolutionQueueRuntimeService
+	if queue != null:
+		var queue_snapshot := queue.public_snapshot()
+		for lane_name in ["current", "next"]:
+			var lane: Array = queue_snapshot.get(lane_name, []) if queue_snapshot.get(lane_name, []) is Array else []
+			for entry_variant in lane:
+				if entry_variant is Dictionary and int((entry_variant as Dictionary).get("resolution_id", -1)) == resolution_id:
+					return (entry_variant as Dictionary).duplicate(true)
+		var active: Dictionary = queue_snapshot.get("active", {}) if queue_snapshot.get("active", {}) is Dictionary else {}
+		if int(active.get("resolution_id", -1)) == resolution_id:
+			return active.duplicate(true)
+	var history := get_node_or_null(card_resolution_history_path) as CardResolutionHistoryRuntimeService
+	if history != null:
+		for entry_variant in history.public_history_snapshot():
+			if entry_variant is Dictionary and int((entry_variant as Dictionary).get("resolution_id", -1)) == resolution_id:
+				return (entry_variant as Dictionary).duplicate(true)
+	return {}
+
+
+func _public_target_district(entry: Dictionary) -> int:
+	if entry.is_empty():
+		return -1
+	if str(entry.get("card_kind", "")) == "area_trade_contract":
+		for key in ["contract_target_district", "contract_source_district"]:
+			var contract_index := int(entry.get(key, -1))
+			if _identity_boundary().public_district_exists(contract_index):
+				return contract_index
+	var selected_index := int(entry.get("selected_district", -1))
+	if _identity_boundary().public_district_exists(selected_index):
+		return selected_index
+	for key in ["contract_target_district", "contract_source_district"]:
+		var fallback_index := int(entry.get(key, -1))
+		if _identity_boundary().public_district_exists(fallback_index):
+			return fallback_index
+	return -1
