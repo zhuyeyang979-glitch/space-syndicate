@@ -146,29 +146,34 @@ func _instantiate_production_main() -> Node:
 
 
 func _stage_main_menu_and_setup() -> void:
-	_main.call("_open_main_menu")
+	var lifecycle := _main.get_node_or_null("RuntimeServices/MenuLifecycleApplicationFlowController") as MenuLifecycleApplicationFlowController
+	var application_flow := _main.get_node_or_null("RuntimeServices/ApplicationFlowPort") as ApplicationFlowPort
+	var menu_overlay := _main.get_node_or_null("RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay") as SpaceSyndicateMenuOverlay
+	if lifecycle != null:
+		lifecycle.open_root_menu()
 	await _wait_frames(2)
-	var lobby_variant: Variant = _main.call("_main_menu_root_lobby_snapshot")
-	var lobby: Dictionary = lobby_variant if lobby_variant is Dictionary else {}
-	var has_new_run := _contains_action_id(lobby, "new_run")
+	var lobby := menu_overlay.find_child("MainMenuPlanetLobbyPanel", true, false) as SpaceSyndicateMenuRootLobby if menu_overlay != null else null
+	var new_run_button := lobby.get_action_button("new_run") if lobby != null else null
+	var has_new_run := new_run_button != null and not new_run_button.disabled
 	if has_new_run:
-		_main.call("_on_menu_root_lobby_action_requested", "new_run")
-	else:
+		new_run_button.emit_signal("pressed")
+	elif application_flow != null:
 		# Continue gathering independent evidence without turning this missing root action green.
-		_main.call("_open_new_game_setup_menu")
+		application_flow.submit_action("setup")
 	await _wait_frames(3)
 	var setup_node := _main.find_child("NewGameSetupPage", true, false)
 	var setup_visible := setup_node is CanvasItem and (setup_node as CanvasItem).is_visible_in_tree()
-	var menu_overlay: Variant = _main.get("menu_overlay")
-	var menu_visible := menu_overlay is CanvasItem and (menu_overlay as CanvasItem).visible
+	var menu_visible := menu_overlay != null and menu_overlay.visible
 
-	_main.call("_close_menu")
+	if lifecycle != null:
+		lifecycle.close_to_table()
 	await _wait_frames(2)
-	var players: Array = _array_property(_main, "players")
-	menu_overlay = _main.get("menu_overlay")
-	var idle_close_safe := not players.is_empty() or (menu_overlay is CanvasItem and (menu_overlay as CanvasItem).visible)
-	if not (menu_overlay is CanvasItem and (menu_overlay as CanvasItem).visible):
-		_main.call("_open_new_game_setup_menu")
+	var world := (_coordinator as GameRuntimeCoordinator).world_session_state() if _coordinator is GameRuntimeCoordinator else null
+	var players: Array = world.players if world != null else []
+	var idle_close_safe := not players.is_empty() or (menu_overlay != null and menu_overlay.visible)
+	if menu_overlay == null or not menu_overlay.visible:
+		if application_flow != null:
+			application_flow.submit_action("setup")
 		await _wait_frames(2)
 	_record(
 		"main_menu_new_run_setup",
@@ -188,7 +193,9 @@ func _stage_start_three_seat_match() -> void:
 	_main.set("configured_roguelike_depth", 1)
 	_main.set("configured_role_indices", [0, 1, 2])
 	_main.set("configured_starter_monster_indices", [0, 1, 2])
-	_main.call("_open_new_game_setup_menu")
+	var application_flow := _main.get_node_or_null("RuntimeServices/ApplicationFlowPort") as ApplicationFlowPort
+	if application_flow != null:
+		application_flow.submit_action("setup")
 	await _wait_frames(2)
 	_setup_snapshot = (_main.call("_new_game_setup_page_snapshot") as Dictionary).duplicate(true)
 	_capture_ai_setup_secrets()

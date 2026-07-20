@@ -54,11 +54,11 @@ func _capture_size_suite(packed: PackedScene, layout_demo_packed: PackedScene, c
 	get_root().add_child(main)
 	await _pump_frames(10)
 
-	main.call("_open_main_menu")
+	_open_runtime_root_menu(main)
 	await _pump_frames(8)
 	await _save_viewport_snapshot("main_menu_%s.png" % suffix)
 
-	main.call("_open_new_game_setup_menu")
+	_request_application_page(main, "setup")
 	await _pump_frames(8)
 	await _save_viewport_snapshot("new_game_setup_%s.png" % suffix)
 	_scroll_named_container_to_bottom(main, "MenuContentScroll")
@@ -79,7 +79,7 @@ func _capture_size_suite(packed: PackedScene, layout_demo_packed: PackedScene, c
 		await _pump_frames(8)
 		await _save_viewport_snapshot("tutorial_quick_start_%s.png" % suffix)
 
-		main.call("_open_rules_menu")
+		_request_application_page(main, "rules")
 		await _pump_frames(8)
 		await _save_viewport_snapshot("rules_quick_reference_%s.png" % suffix)
 
@@ -122,12 +122,10 @@ func _capture_size_suite(packed: PackedScene, layout_demo_packed: PackedScene, c
 	_clear_active_scenario_state(main)
 	main.call("_new_game")
 	if capture_size == Vector2i(1600, 960):
-		var standings_controller := main.get_node_or_null("RuntimeServices/StandingsApplicationFlowController")
-		if standings_controller != null:
-			standings_controller.call("open_standings")
+		_request_application_page(main, "standings")
 		await _pump_frames(8)
 		await _save_viewport_snapshot("standings_runtime_%s.png" % suffix)
-		main.call("_open_economy_overview_menu")
+		_request_application_page(main, "economy")
 		await _pump_frames(8)
 		await _save_viewport_snapshot("economy_overview_runtime_%s.png" % suffix)
 		var intel_flow := main.get_node_or_null("RuntimeServices/ApplicationFlowPort") as ApplicationFlowPort
@@ -147,7 +145,7 @@ func _capture_size_suite(packed: PackedScene, layout_demo_packed: PackedScene, c
 		await _save_viewport_snapshot("final_settlement_runtime_%s.png" % suffix)
 		main.call("_new_game")
 		await _pump_frames(8)
-	main.call("_close_menu")
+	_close_runtime_menu(main)
 	await _pump_frames(16)
 	await _save_viewport_snapshot("play_table_%s.png" % suffix)
 	if _open_runtime_supply_drawer_for_capture(main):
@@ -651,6 +649,25 @@ func _game_runtime_coordinator(root_node: Node) -> GameRuntimeCoordinator:
 	if root_node == null:
 		return null
 	return root_node.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+
+
+func _menu_lifecycle(root_node: Node) -> MenuLifecycleApplicationFlowController:
+	return root_node.get_node_or_null("RuntimeServices/MenuLifecycleApplicationFlowController") as MenuLifecycleApplicationFlowController if root_node != null else null
+
+
+func _open_runtime_root_menu(root_node: Node) -> bool:
+	var lifecycle := _menu_lifecycle(root_node)
+	return lifecycle != null and lifecycle.open_root_menu()
+
+
+func _close_runtime_menu(root_node: Node) -> bool:
+	var lifecycle := _menu_lifecycle(root_node)
+	return lifecycle != null and lifecycle.close_to_table()
+
+
+func _request_application_page(root_node: Node, action_id: String) -> bool:
+	var port := root_node.get_node_or_null("RuntimeServices/ApplicationFlowPort") as ApplicationFlowPort if root_node != null else null
+	return port != null and port.submit_action(action_id)
 
 
 func _request_compendium_hub(root_node: Node) -> bool:

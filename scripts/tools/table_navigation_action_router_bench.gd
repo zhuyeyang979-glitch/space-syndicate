@@ -35,9 +35,11 @@ func run_bench() -> Dictionary:
 
 	var navigation_requests: Array = []
 	var compendium_requests := [0]
+	var pause_menu_requests := [0]
 	var receipt_events: Array = []
 	navigation.navigation_requested.connect(func(request: Variant) -> void: navigation_requests.append(request))
 	application.compendium_requested.connect(func() -> void: compendium_requests[0] = int(compendium_requests[0]) + 1)
+	application.pause_menu_requested.connect(func() -> void: pause_menu_requests[0] = int(pause_menu_requests[0]) + 1)
 	router.receipt_ready.connect(func(receipt: Dictionary) -> void: receipt_events.append(receipt.duplicate(true)))
 
 	selection.selected_district = 4
@@ -63,6 +65,10 @@ func run_bench() -> Dictionary:
 	_check(bool(hub_receipt.get("accepted", false)), "Compendium hub intent is accepted")
 	_check(int(compendium_requests[0]) == 1, "Compendium hub emits once through ApplicationFlowPort")
 
+	var pause_receipt := router.submit_intent(_intent("pause-1", TableNavigationActionIntent.KIND_PAUSE_MENU))
+	_check(bool(pause_receipt.get("accepted", false)), "pause-menu intent is accepted")
+	_check(int(pause_menu_requests[0]) == 1, "pause-menu intent emits once through the dedicated application-flow signal")
+
 	var duplicate := router.submit_intent(detail)
 	_check(not bool(duplicate.get("accepted", true)) and str(duplicate.get("reason_code", "")) == "request_replay", "duplicate request is rejected")
 	_check(navigation_requests.size() == 3, "duplicate request never reaches navigation target")
@@ -75,12 +81,12 @@ func run_bench() -> Dictionary:
 	_check(not bool(missing_region.get("accepted", true)) and str(missing_region.get("reason_code", "")) == "selected_district_missing", "missing region selection fails closed")
 
 	var debug := router.debug_snapshot()
-	_check(int(debug.get("accepted_count", 0)) == 4, "accepted diagnostic count is exact")
+	_check(int(debug.get("accepted_count", 0)) == 5, "accepted diagnostic count is exact")
 	_check(int(debug.get("duplicate_count", 0)) == 1, "duplicate diagnostic count is exact")
-	_check(int(debug.get("journal_size", 0)) == 4, "journal stores accepted requests only")
+	_check(int(debug.get("journal_size", 0)) == 5, "journal stores accepted requests only")
 	_check(not bool(debug.get("owns_gameplay_state", true)) and not bool(debug.get("owns_navigation_state", true)), "router owns no gameplay or navigation state")
 	_check(not bool(debug.get("references_main", true)) and not bool(debug.get("uses_callable_dispatch", true)), "router has no Main or Callable dispatch path")
-	_check(receipt_events.size() == 7, "every submission produces exactly one receipt")
+	_check(receipt_events.size() == 8, "every submission produces exactly one receipt")
 
 	var main_scene := FileAccess.get_file_as_string("res://scenes/main.tscn")
 	var screen_source := FileAccess.get_file_as_string("res://scripts/ui/game_screen.gd")

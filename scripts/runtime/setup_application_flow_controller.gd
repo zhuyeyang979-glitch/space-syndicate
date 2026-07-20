@@ -9,6 +9,7 @@ const SETUP_PAGE_SCENE := preload("res://scenes/ui/NewGameSetupPage.tscn")
 @export var command_port_path: NodePath
 @export var transaction_coordinator_path: NodePath
 @export var game_session_path: NodePath
+@export var menu_lifecycle_path: NodePath
 
 var _page: SpaceSyndicateNewGameSetupPage
 var _command_sequence := 0
@@ -131,7 +132,9 @@ func _on_start_requested() -> void:
 	var receipt := _transaction().start_session(request)
 	if receipt != null and receipt.applied:
 		_draft_service().reset_to_defaults()
-		_menu_overlay().visible = false
+		var lifecycle := _menu_lifecycle()
+		if lifecycle != null:
+			lifecycle.close_to_table()
 		return
 	_menu_overlay().set_body_text(_failure_text(receipt), true)
 	_refresh_page()
@@ -145,9 +148,9 @@ func _on_back_requested() -> void:
 
 
 func _on_return_table_requested() -> void:
-	if _game_session().session_state() == "paused":
-		_game_session().resume_session()
-	_menu_overlay().visible = false
+	var lifecycle := _menu_lifecycle()
+	if lifecycle != null:
+		lifecycle.close_to_table()
 
 
 func _failure_text(receipt: SessionStartReceipt) -> String:
@@ -182,3 +185,7 @@ func _transaction() -> SessionStartTransactionCoordinator:
 
 func _game_session() -> GameSessionRuntimeController:
 	return get_node_or_null(game_session_path) as GameSessionRuntimeController
+
+
+func _menu_lifecycle() -> MenuLifecycleApplicationFlowController:
+	return get_node_or_null(menu_lifecycle_path) as MenuLifecycleApplicationFlowController

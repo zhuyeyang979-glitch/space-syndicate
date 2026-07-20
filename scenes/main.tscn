@@ -1,4 +1,4 @@
-[gd_scene load_steps=30 format=3]
+[gd_scene load_steps=31 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/ui/GameScreen.tscn" id="2_game_screen"]
@@ -29,6 +29,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/SessionStartTransactionCoordinator.tscn" id="28_session_transaction"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/SetupApplicationFlowController.tscn" id="29_setup_controller"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/TableNavigationActionRouter.tscn" id="30_table_navigation_router"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/MenuLifecycleApplicationFlowController.tscn" id="31_menu_lifecycle_controller"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -87,7 +88,15 @@ unique_name_in_owner = true
 [node name="ApplicationFlowController" parent="RuntimeServices" instance=ExtResource("12_application_flow_controller")]
 unique_name_in_owner = true
 menu_overlay_path = NodePath("../../RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay")
+
+[node name="MenuLifecycleApplicationFlowController" parent="RuntimeServices" instance=ExtResource("31_menu_lifecycle_controller")]
+unique_name_in_owner = true
+menu_overlay_path = NodePath("../../RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay")
 coordinator_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator")
+world_session_state_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/WorldSessionState")
+application_flow_port_path = NodePath("../ApplicationFlowPort")
+codex_navigation_owner_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/CodexNavigationRuntimeController")
+game_screen_path = NodePath("../../RuntimeGameScreen")
 
 [node name="TableNavigationActionRouter" parent="RuntimeServices" instance=ExtResource("30_table_navigation_router")]
 unique_name_in_owner = true
@@ -134,6 +143,7 @@ query_port_path = NodePath("../NewGameSetupViewerQueryPort")
 command_port_path = NodePath("../SetupDraftCommandPort")
 transaction_coordinator_path = NodePath("../SessionStartTransactionCoordinator")
 game_session_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController")
+menu_lifecycle_path = NodePath("../MenuLifecycleApplicationFlowController")
 
 [node name="StandingsPublicQueryPort" parent="RuntimeServices" instance=ExtResource("13_standings_query")]
 unique_name_in_owner = true
@@ -227,8 +237,9 @@ editor_description = "Explicit host for compatibility fallbacks created only whe
 
 [connection signal="action_requested" from="RuntimeServices/FinalSettlementRuntimeComposition" to="RuntimeServices/ApplicationFlowPort" method="submit_action"]
 [connection signal="menu_open_requested" from="RuntimeServices/FinalSettlementRuntimeComposition" to="RuntimeServices/ApplicationFlowPort" method="request_menu"]
-[connection signal="action_requested" from="RuntimeServices/ApplicationFlowPort" to="." method="_on_menu_quick_nav_action_requested"]
-[connection signal="menu_requested" from="RuntimeServices/ApplicationFlowPort" to="." method="_show_menu"]
+[connection signal="application_page_opening" from="RuntimeServices/ApplicationFlowPort" to="RuntimeServices/MenuLifecycleApplicationFlowController" method="prepare_application_page"]
+[connection signal="pause_menu_requested" from="RuntimeServices/ApplicationFlowPort" to="RuntimeServices/MenuLifecycleApplicationFlowController" method="open_pause_menu"]
+[connection signal="menu_requested" from="RuntimeServices/ApplicationFlowPort" to="RuntimeServices/MenuLifecycleApplicationFlowController" method="present_requested_shell"]
 [connection signal="rules_requested" from="RuntimeServices/ApplicationFlowPort" to="RuntimeServices/ApplicationFlowController" method="open_rules"]
 [connection signal="standings_requested" from="RuntimeServices/ApplicationFlowPort" to="RuntimeServices/StandingsApplicationFlowController" method="open_standings"]
 [connection signal="economy_requested" from="RuntimeServices/ApplicationFlowPort" to="RuntimeServices/EconomyApplicationFlowController" method="open_economy"]
@@ -237,6 +248,8 @@ editor_description = "Explicit host for compatibility fallbacks created only whe
 [connection signal="intel_application_intent_requested" from="RuntimeServices/ApplicationFlowPort" to="RuntimeServices/IntelApplicationFlowController" method="open_application_intent"]
 [connection signal="setup_requested" from="RuntimeServices/ApplicationFlowPort" to="RuntimeServices/SetupApplicationFlowController" method="open_setup"]
 [connection signal="quick_nav_action_requested" from="RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay" to="RuntimeServices/ApplicationFlowPort" method="submit_action"]
+[connection signal="continue_requested" from="RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay" to="RuntimeServices/MenuLifecycleApplicationFlowController" method="close_to_table"]
+[connection signal="main_menu_requested" from="RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay" to="RuntimeServices/MenuLifecycleApplicationFlowController" method="open_root_menu"]
 [connection signal="application_intent_requested" from="RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay" to="RuntimeServices/ApplicationFlowPort" method="submit_intel_application_intent"]
 [connection signal="catalog_step_requested" from="RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay" to="RuntimeServices/CompendiumApplicationFlowController" method="step_current_catalog"]
 [connection signal="catalog_back_requested" from="RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay" to="RuntimeServices/CompendiumApplicationFlowController" method="back_from_catalog"]

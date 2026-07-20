@@ -977,6 +977,48 @@
       "status": "cut_over"
     },
     {
+      "domain": "menu_lifecycle_application_flow",
+      "old_symbols": [
+        "Main _open_main_menu",
+        "Main _open_pause_menu",
+        "Main _show_menu",
+        "Main _close_menu",
+        "Main menu overlay and preview fields",
+        "Main root-lobby/load/quit handlers",
+        "Main menu signal dynamic wiring",
+        "Main time_scale pause mirror"
+      ],
+      "old_consumers": [
+        "GameScreen top-bar menu",
+        "Escape/Enter/Space menu input",
+        "FinalSettlement requested menu",
+        "MenuOverlay continue/back",
+        "Setup page start/return",
+        "rules/economy/standings page opening"
+      ],
+      "new_owner_scene": "res://scenes/runtime/MenuLifecycleApplicationFlowController.tscn",
+      "new_owner_script": "res://scripts/runtime/menu_lifecycle_application_flow_controller.gd",
+      "new_public_api": [
+        "ApplicationFlowPort.application_page_opening",
+        "ApplicationFlowPort.request_pause_menu",
+        "MenuLifecycleApplicationFlowController.open_root_menu",
+        "MenuLifecycleApplicationFlowController.open_pause_menu",
+        "MenuLifecycleApplicationFlowController.present_requested_shell",
+        "MenuLifecycleApplicationFlowController.close_to_table",
+        "MenuLifecycleApplicationFlowController.handle_key_request"
+      ],
+      "tests": [
+        "res://tests/menu_lifecycle_application_flow_cutover_test.gd",
+        "res://scenes/tools/MenuLifecycleApplicationFlowBench.tscn",
+        "res://tests/table_navigation_action_router_test.gd",
+        "res://tests/main_gd_architecture_gate_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
+    },
+    {
       "domain": "remaining_root_responsibilities",
       "old_symbols": [
         "audio",

@@ -61,11 +61,11 @@ func _run() -> void:
 	var catalog_probe := int(main.call("_catalog_size"))
 	_mark_smoke_progress("after catalog probe %d" % catalog_probe)
 	_mark_smoke_progress("before open main menu")
-	main.call("_open_main_menu")
+	_open_runtime_root_menu(main)
 	_mark_smoke_progress("main menu opened")
 	await process_frame
 	_mark_smoke_progress("main menu frame")
-	var load_run_button := main.get("menu_load_run_button") as Button
+	var load_run_button := _runtime_menu_load_run_button(main)
 	var run_save_label := _menu_overlay_node(main, "MenuRunSaveLabel") as Label
 	_expect(run_save_label != null and run_save_label.text.contains("暂无"), "main menu reports no saved run in the test slot")
 	_expect(load_run_button != null and load_run_button.disabled, "load run button is disabled when no test save exists")
@@ -77,7 +77,7 @@ func _run() -> void:
 	main.call("_new_game")
 	_expect(_verify_v06_market_rule_contract(), "smoke consumes the settled voluntary-summon and solar-market public rule contract")
 	main.set("ai_card_decision_enabled", false)
-	main.call("_open_main_menu")
+	_open_runtime_root_menu(main)
 	await process_frame
 	var main_source := FileAccess.get_file_as_string(MAIN_SCRIPT_PATH)
 	_expect(
@@ -551,11 +551,11 @@ func _run() -> void:
 		_verify_economy_card_effects(main, buildable_district)
 		var session_snapshot: Dictionary = economy_coordinator.session_to_save_data() if economy_coordinator != null and economy_coordinator.has_method("session_to_save_data") else {}
 		_expect(not session_snapshot.is_empty(), "current session exposes the authoritative save owner snapshot")
-		main.call("_open_main_menu")
+		_open_runtime_root_menu(main)
 		await process_frame
 		_expect(not main.has_method("_save_run") and not main.has_method("_load_run"), "Main does not restore retired save wrappers")
 
-	var menu_overlay := main.get("menu_overlay") as Control
+	var menu_overlay := _runtime_menu_overlay(main)
 	_expect(menu_overlay != null and menu_overlay.visible, "main menu overlay opens after setup")
 	_mark_smoke_progress("menu and codex navigation")
 	var menu_title_label := _menu_overlay_node(main, "MenuTitleLabel") as Label
@@ -572,7 +572,7 @@ func _run() -> void:
 	var menu_surface_panel := _menu_overlay_node(main, "MenuSurfacePanel") as PanelContainer
 	var menu_content_scroll := _menu_overlay_node(main, "MenuContentScroll") as ScrollContainer
 	var menu_content_box := _menu_overlay_node(main, "MenuContentBox") as VBoxContainer
-	main.call("_open_main_menu")
+	_open_runtime_root_menu(main)
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "太空辛迪加｜星球赌桌", "main menu opens with the table-lobby title")
 	_expect(menu_context_label != null and not menu_context_label.visible, "root main menu hides breadcrumb text")
@@ -581,7 +581,7 @@ func _run() -> void:
 	_expect(menu_surface_panel != null and menu_surface_panel.has_theme_stylebox_override("panel") and menu_surface_panel.custom_minimum_size.x >= 760.0, "main menu uses a reusable responsive surface panel")
 	_expect(menu_content_scroll != null and not menu_content_scroll.follow_focus and menu_content_box != null and menu_preview_box != null and menu_preview_box.get_parent() == menu_content_box, "main menu keeps body and previews inside a scrollable content column without focus-jumping on hover")
 	_expect(menu_overlay != null and _container_has_named_node(menu_overlay, "MainMenuPlanetLobbyPanel") and _container_has_named_node(menu_overlay, "MainMenuCommandCard") and _container_has_named_node(menu_overlay, "MainMenuUtilityRail"), "main menu arranges only the planet lobby and compact command buttons")
-	_expect(menu_body_label != null and menu_body_label.text.contains("最后钱最多") and not menu_body_label.text.contains("游戏规则"), "main menu keeps only a short objective line")
+	_expect(menu_body_label != null and menu_body_label.text.contains("控区") and menu_body_label.text.contains("GDP") and not menu_body_label.text.contains("游戏规则"), "main menu keeps only a short objective line")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "星球赌桌大厅") and _container_button_text_contains(menu_preview_box, "开始新局") and _container_button_text_contains(menu_preview_box, "资料库"), "main menu exposes current normal-game primary actions")
 	_expect(menu_overlay != null and not _container_button_text_contains(menu_overlay, "新手战役") and not _container_button_text_contains(menu_overlay, "快速开局") and not _container_button_text_contains(menu_overlay, "首局任务"), "main menu has no legacy onboarding entry")
 	_expect(menu_overlay != null and _container_label_text_contains(menu_overlay, "建城｜怪兽｜下注｜推理"), "main menu uses short player-facing command labels")
@@ -595,7 +595,7 @@ func _run() -> void:
 		main.call("_ensure_configured_role_indices")
 		role_indices_before_setup = _as_array(main.get("configured_role_indices")).duplicate(true)
 	var current_players_before_setup := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players).size()
-	main.call("_start_new_run_from_menu")
+	_request_application_page(main, "setup")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "开局准备", "new-run entry opens the setup preview instead of immediately starting")
 	_expect(menu_context_label != null and menu_context_label.text.contains("开局｜"), "setup branch updates the compact breadcrumb/help strip")
@@ -620,7 +620,7 @@ func _run() -> void:
 	_expect(int(configured_preview_role.get("role_index", -1)) == int(role_indices_after_cycle[0]), "configured role selection controls the role card used for new runs")
 	main.call("_set_configured_role_for_player", 0, first_role_before_setup)
 	await process_frame
-	main.call("_open_new_game_setup_menu")
+	_request_application_page(main, "setup")
 	await process_frame
 	var preview_player_count := 8
 	main.call("_set_configured_player_count_from_new_game_menu", preview_player_count)
@@ -635,9 +635,9 @@ func _run() -> void:
 	await process_frame
 	main.set("configured_role_indices", role_indices_before_setup)
 	main.call("_ensure_configured_role_indices")
-	main.call("_open_main_menu")
+	_open_runtime_root_menu(main)
 	await process_frame
-	main.call("_open_rules_menu")
+	_request_application_page(main, "rules")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "游戏规则", "rules menu opens from the main scene")
 	_expect(menu_continue_button != null and not menu_continue_button.visible and menu_back_button != null and menu_back_button.visible, "rules subpage shows return navigation without a global continue button")
@@ -646,23 +646,18 @@ func _run() -> void:
 	_expect(menu_body_label != null and menu_body_label.text.contains("开局：") and not menu_body_label.text.contains("Y切预设") and not menu_body_label.text.contains("AI训练") and not menu_body_label.text.contains("当前原型规则"), "rules menu removes development history, AI training, and obsolete debug controls")
 	_expect(menu_body_label != null and not menu_body_label.text.contains("经营周期") and not menu_body_label.text.contains("经济周期"), "rules menu avoids cycle wording")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "牌桌规则速览") and _container_label_text_contains(menu_preview_box, "怪兽") and _container_label_text_contains(menu_preview_box, "公开牌轨"), "rules menu exposes a compact card-summary layer above the short rule text")
-	var quick_nav_ids: Array[String] = []
-	for entry_variant in _as_array(main.call("_menu_quick_nav_entries")):
-		if entry_variant is Dictionary:
-			quick_nav_ids.append(String((entry_variant as Dictionary).get("id", "")))
+	var quick_nav_ids := _runtime_quick_nav_ids(main)
 	_expect(menu_quick_nav_row != null and menu_quick_nav_row.visible and quick_nav_ids.has("rules") and quick_nav_ids.has("economy"), "rules subpage uses the scene-owned quick navigation with rules and economy routes")
-	main.call("_open_economy_overview_menu")
+	_request_application_page(main, "economy")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "经济总览", "economy overview remains reachable from menu actions")
-	var standings_controller := main.get_node_or_null("RuntimeServices/StandingsApplicationFlowController")
-	if standings_controller != null:
-		standings_controller.call("open_standings")
+	_request_application_page(main, "standings")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "局势排名", "standings menu opens from the main scene")
 	_expect(menu_body_label != null and menu_body_label.text.contains("Top-N个人归属GDP") and menu_body_label.text.contains("公开审计"), "standings menu explains the current victory race")
 	_expect(menu_body_label != null and menu_body_label.text.contains("对手资产继续保密") and not menu_body_label.text.contains("对手计划") and not menu_body_label.text.contains("AI对局压力") and not menu_body_label.text.contains("反制建议") and not menu_body_label.text.contains("推荐卡牌路线"), "standings menu shows only authorized public clues")
 	_expect(menu_preview_box != null and _container_label_text_contains(menu_preview_box, "局势记分板") and _container_label_text_contains(menu_preview_box, "胜利门槛") and _container_label_text_contains(menu_preview_box, "我的Top-N GDP"), "standings menu renders the scene-owned scoreboard")
-	main.call("_open_economy_overview_menu")
+	_request_application_page(main, "economy")
 	await process_frame
 	_expect(menu_title_label != null and menu_title_label.text == "经济总览", "economy overview opens from the main scene")
 	_expect(menu_body_label != null and menu_body_label.text.contains("情报现金只在终局兑现"), "economy overview avoids revealing intelligence correctness early")
@@ -7187,10 +7182,45 @@ func _container_has_meta(container: Node, meta_name: String) -> bool:
 
 
 func _menu_overlay_node(main: Node, node_name: String) -> Node:
-	var overlay := main.get("menu_overlay") as Node
+	var overlay := _runtime_menu_overlay(main)
 	if overlay == null:
 		return null
 	return overlay.find_child(node_name, true, false)
+
+
+func _runtime_menu_lifecycle(main: Node) -> MenuLifecycleApplicationFlowController:
+	return main.get_node_or_null("RuntimeServices/MenuLifecycleApplicationFlowController") as MenuLifecycleApplicationFlowController
+
+
+func _runtime_menu_overlay(main: Node) -> SpaceSyndicateMenuOverlay:
+	return main.get_node_or_null("RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay") as SpaceSyndicateMenuOverlay
+
+
+func _open_runtime_root_menu(main: Node) -> bool:
+	var lifecycle := _runtime_menu_lifecycle(main)
+	return lifecycle != null and lifecycle.open_root_menu()
+
+
+func _request_application_page(main: Node, action_id: String) -> bool:
+	var port := main.get_node_or_null("RuntimeServices/ApplicationFlowPort") as ApplicationFlowPort
+	return port != null and port.submit_action(action_id)
+
+
+func _runtime_menu_load_run_button(main: Node) -> Button:
+	var overlay := _runtime_menu_overlay(main)
+	var lobby := overlay.find_child("MainMenuPlanetLobbyPanel", true, false) as SpaceSyndicateMenuRootLobby if overlay != null else null
+	return lobby.get_load_run_button() if lobby != null else null
+
+
+func _runtime_quick_nav_ids(main: Node) -> Array[String]:
+	var ids: Array[String] = []
+	var overlay := _runtime_menu_overlay(main)
+	var snapshot: Dictionary = overlay.debug_snapshot() if overlay != null else {}
+	var quick: Dictionary = snapshot.get("quick_navigation", {}) if snapshot.get("quick_navigation", {}) is Dictionary else {}
+	for entry_variant in _as_array(quick.get("rendered", [])):
+		if entry_variant is Dictionary:
+			ids.append(str((entry_variant as Dictionary).get("id", "")))
+	return ids
 
 
 func _request_compendium_hub(main: Node) -> bool:
@@ -7216,20 +7246,20 @@ func _request_compendium_page(
 
 
 func _emit_compendium_action(main: Node, action_id: String, payload: Dictionary) -> void:
-	var overlay := main.get("menu_overlay") as Node
+	var overlay := _runtime_menu_overlay(main)
 	var surface := overlay.call("get_codex_surface") as Node if overlay != null and overlay.has_method("get_codex_surface") else null
 	if surface != null:
 		surface.emit_signal("action_requested", action_id, payload.duplicate(true))
 
 
 func _emit_compendium_step(main: Node, delta: int) -> void:
-	var overlay := main.get("menu_overlay") as Node
+	var overlay := _runtime_menu_overlay(main)
 	if overlay != null:
 		overlay.emit_signal("catalog_step_requested", delta)
 
 
 func _emit_compendium_back(main: Node) -> void:
-	var overlay := main.get("menu_overlay") as Node
+	var overlay := _runtime_menu_overlay(main)
 	if overlay != null:
 		overlay.emit_signal("catalog_back_requested")
 

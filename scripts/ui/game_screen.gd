@@ -804,6 +804,10 @@ func _on_menu_requested() -> void:
 	_on_action_requested("menu")
 
 
+func request_pause_menu() -> void:
+	_on_action_requested("menu")
+
+
 func _on_action_requested(action_id: String) -> void:
 	if action_id == "commodity_claim_selected":
 		_submit_selected_commodity_claim()

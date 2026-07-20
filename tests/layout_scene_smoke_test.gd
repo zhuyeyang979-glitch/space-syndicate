@@ -2393,14 +2393,12 @@ func _check_runtime_map_mouse_selection_flow(main: Node, runtime_screen: Control
 	if main.has_method("_close_district_supply_overlay"):
 		main.call("_close_district_supply_overlay")
 		await process_frame
-	if main.has_method("_close_menu"):
-		main.call("_close_menu")
+	if _close_runtime_menu(main):
 		await process_frame
 	if main.has_method("_new_game"):
 		main.call("_new_game")
 		await process_frame
-		if main.has_method("_close_menu"):
-			main.call("_close_menu")
+		if _close_runtime_menu(main):
 			await process_frame
 	var map_view := main.get("map_view") as Control
 	var map_host := runtime_screen.find_child("MapHost", true, false) as Control
@@ -2459,8 +2457,7 @@ func _check_runtime_main_action_dock_click_flow(main: Node, runtime_screen: Cont
 	_prepare_runtime_human_player(main, 0)
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).inspected_player = 0
-	if main.has_method("_close_menu"):
-		main.call("_close_menu")
+	if _close_runtime_menu(main):
 		await process_frame
 	if main.has_method("_close_district_supply_overlay"):
 		main.call("_close_district_supply_overlay")
@@ -2563,14 +2560,12 @@ func _check_runtime_hand_card_double_click_play(main: Node, runtime_screen: Cont
 	if main.has_method("_close_district_supply_overlay"):
 		main.call("_close_district_supply_overlay")
 		await process_frame
-	if main.has_method("_close_menu"):
-		main.call("_close_menu")
+	if _close_runtime_menu(main):
 		await process_frame
 	if main.has_method("_new_game"):
 		main.call("_new_game")
 		await process_frame
-		if main.has_method("_close_menu"):
-			main.call("_close_menu")
+		if _close_runtime_menu(main):
 			await process_frame
 	var action_context := _first_runtime_actionable_hand_context(main)
 	_expect(not action_context.is_empty(), "runtime hand-card double-click flow finds an actionable hand card and map context")
@@ -2601,14 +2596,12 @@ func _check_runtime_hand_card_drag_to_map_play(main: Node, runtime_screen: Contr
 	if main.has_method("_close_district_supply_overlay"):
 		main.call("_close_district_supply_overlay")
 		await process_frame
-	if main.has_method("_close_menu"):
-		main.call("_close_menu")
+	if _close_runtime_menu(main):
 		await process_frame
 	if main.has_method("_new_game"):
 		main.call("_new_game")
 		await process_frame
-		if main.has_method("_close_menu"):
-			main.call("_close_menu")
+		if _close_runtime_menu(main):
 			await process_frame
 	var action_context := _first_runtime_actionable_hand_context(main)
 	_expect(not action_context.is_empty(), "runtime hand-card drag-to-map flow finds an actionable hand card and map target")
@@ -2684,7 +2677,7 @@ func _check_runtime_hand_card_drag_to_map_play(main: Node, runtime_screen: Contr
 		intel_button.emit_signal("pressed")
 		await process_frame
 		await process_frame
-		var menu_overlay := main.get("menu_overlay") as Control
+		var menu_overlay := _runtime_menu_overlay(main)
 		var menu_title_label := menu_overlay.find_child("MenuTitleLabel", true, false) as Label if menu_overlay != null else null
 		var menu_preview_box := menu_overlay.call("get_preview_host") as VBoxContainer if menu_overlay != null and menu_overlay.has_method("get_preview_host") else null
 		var dossier_text := _node_tree_text(menu_preview_box)
@@ -2706,14 +2699,12 @@ func _check_runtime_blocked_hand_card_drag_reason(main: Node, runtime_screen: Co
 	if main.has_method("_close_district_supply_overlay"):
 		main.call("_close_district_supply_overlay")
 		await process_frame
-	if main.has_method("_close_menu"):
-		main.call("_close_menu")
+	if _close_runtime_menu(main):
 		await process_frame
 	if main.has_method("_new_game"):
 		main.call("_new_game")
 		await process_frame
-		if main.has_method("_close_menu"):
-			main.call("_close_menu")
+		if _close_runtime_menu(main):
 			await process_frame
 	var action_context := _first_runtime_actionable_hand_context(main)
 	_expect(not action_context.is_empty(), "runtime blocked hand-card drag flow can first find a playable card")
@@ -2758,14 +2749,12 @@ func _check_runtime_market_card_double_click_purchase(main: Node, runtime_screen
 	if main.has_method("_close_district_supply_overlay"):
 		main.call("_close_district_supply_overlay")
 		await process_frame
-	if main.has_method("_close_menu"):
-		main.call("_close_menu")
+	if _close_runtime_menu(main):
 		await process_frame
 	if main.has_method("_new_game"):
 		main.call("_new_game")
 		await process_frame
-		if main.has_method("_close_menu"):
-			main.call("_close_menu")
+		if _close_runtime_menu(main):
 			await process_frame
 	var action_context := _first_runtime_actionable_hand_context(main)
 	_expect(not action_context.is_empty(), "runtime market-card double-click flow can prepare first monster access")
@@ -2829,14 +2818,12 @@ func _check_runtime_full_hand_private_discard_purchase(main: Node, runtime_scree
 	if main.has_method("_close_district_supply_overlay"):
 		main.call("_close_district_supply_overlay")
 		await process_frame
-	if main.has_method("_close_menu"):
-		main.call("_close_menu")
+	if _close_runtime_menu(main):
 		await process_frame
 	if main.has_method("_new_game"):
 		main.call("_new_game")
 		await process_frame
-		if main.has_method("_close_menu"):
-			main.call("_close_menu")
+		if _close_runtime_menu(main):
 			await process_frame
 	var district_index := _first_runtime_alive_district(main)
 	_expect(district_index >= 0, "runtime full-hand private discard flow finds a live district")
@@ -2911,6 +2898,19 @@ func _runtime_game_screen_table_snapshot(runtime_screen: Control) -> Dictionary:
 		return {}
 	var snapshot_variant: Variant = runtime_screen.get("current_ui_data")
 	return (snapshot_variant as Dictionary).duplicate(true) if snapshot_variant is Dictionary else {}
+
+
+func _runtime_menu_lifecycle(main: Node) -> MenuLifecycleApplicationFlowController:
+	return main.get_node_or_null("RuntimeServices/MenuLifecycleApplicationFlowController") as MenuLifecycleApplicationFlowController
+
+
+func _runtime_menu_overlay(main: Node) -> SpaceSyndicateMenuOverlay:
+	return main.get_node_or_null("RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay") as SpaceSyndicateMenuOverlay
+
+
+func _close_runtime_menu(main: Node) -> bool:
+	var lifecycle := _runtime_menu_lifecycle(main)
+	return lifecycle != null and lifecycle.is_menu_visible() and lifecycle.close_to_table()
 
 
 func _runtime_table_snapshot_contains_private_owner_data(value: Variant) -> bool:
@@ -7219,12 +7219,13 @@ func _check_codex_scene_hard_cutover_component() -> void:
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 	var codex_surface_source := FileAccess.get_file_as_string(CODEX_COMPENDIUM_SURFACE_SCRIPT)
 	var menu_overlay_source := FileAccess.get_file_as_string("res://scripts/ui/menu_overlay.gd")
+	var menu_lifecycle_source := FileAccess.get_file_as_string("res://scripts/runtime/menu_lifecycle_application_flow_controller.gd")
 	_expect(codex_surface_source.contains("func _contract_surfaces()") and codex_surface_source.contains("generated fallbacks are disabled") and not codex_surface_source.contains("find_child("), "CodexCompendiumSurface owns explicit child contracts without name lookup")
 	for component_name in ["CompendiumHubBoardPanel", "CardCodexBrowserPanel", "CardCodexDetailPanel", "BestiaryCodexBrowser", "BestiaryMonsterBoardPanel", "ProductCodexBrowser", "ProductCodexMarketBoardPanel", "RegionCodexTileBoardPanel", "RoleCodexIdentityBoardPanel"]:
 		_expect(codex_surface_source.contains("\"%s\"" % component_name), "CodexCompendiumSurface requires %s" % component_name)
 	for codex_scene_path in required_scenes:
 		_expect(not main_source.contains(codex_scene_path), "main.gd has no direct Codex scene reference: %s" % codex_scene_path)
-	_expect(menu_overlay_source.contains("child.is_in_group(\"persistent_menu_surface\")") and main_source.count("menu_overlay.call(\"clear_preview\")") >= 17 and main_source.count("menu_overlay.call(\"clear_preview\")\n\tmenu_preview_box.visible = true") >= 15 and main_source.contains("menu_overlay.call(\"clear_preview\")\n\t\tmenu_preview_box.visible = true") and not main_source.contains("child.is_in_group(\"persistent_menu_surface\")"), "MenuOverlay exclusively owns persistent Codex surface cleanup before callers reshow the preview host")
+	_expect(menu_overlay_source.contains("child.is_in_group(\"persistent_menu_surface\")") and menu_lifecycle_source.contains("overlay.clear_preview()") and not main_source.contains("menu_overlay.call(\"clear_preview\")") and not main_source.contains("var menu_overlay") and not main_source.contains("func _close_menu("), "scene-owned MenuOverlay and lifecycle own persistent surface cleanup without a Main fallback")
 	var nonblank := 0
 	var function_count := 0
 	var variable_count := 0

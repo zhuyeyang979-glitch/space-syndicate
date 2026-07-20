@@ -49,6 +49,9 @@ func submit_intent(intent: TableNavigationActionIntent) -> Dictionary:
 		TableNavigationActionIntent.KIND_CARD_DETAIL:
 			target_id = detached.target_card_name
 			handled = _navigation_port().request_open("card", "detail", target_id, -1, "all", 0, "game", {"origin": "game"})
+		TableNavigationActionIntent.KIND_PAUSE_MENU:
+			target_id = "pause_menu"
+			handled = _application_flow_port().request_pause_menu()
 	if not handled:
 		return _complete(_receipt(detached.request_id, detached.action_kind, false, "target_rejected"))
 	_journal[detached.request_id] = fingerprint
@@ -74,7 +77,7 @@ func debug_snapshot() -> Dictionary:
 
 
 func _dependency_rejection(kind: StringName) -> String:
-	if kind == TableNavigationActionIntent.KIND_COMPENDIUM_HUB:
+	if kind in [TableNavigationActionIntent.KIND_COMPENDIUM_HUB, TableNavigationActionIntent.KIND_PAUSE_MENU]:
 		return "application_flow_port_missing" if _application_flow_port() == null else ""
 	if _navigation_port() == null:
 		return "compendium_navigation_port_missing"

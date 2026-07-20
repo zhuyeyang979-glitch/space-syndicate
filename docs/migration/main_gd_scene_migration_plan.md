@@ -221,3 +221,19 @@ private all-seat materializer and scoreboard preload are physically deleted.
 The shared victory-order helper remains because its non-standings migration is
 outside this atomic boundary. The broader `presentation_action_routing` ledger
 domain remains pending.
+
+## Menu lifecycle application-flow cutover: complete
+
+Root, pause and externally requested menu shells are now owned by the single
+scene-composed `MenuLifecycleApplicationFlowController`. Rules, economy and
+standings retain their dedicated controllers and authorized query ports; a
+typed `ApplicationFlowPort.application_page_opening` signal gives them one
+shared pause lifecycle without duplicating their snapshots. The GameScreen
+menu button and Escape path use the exact-once table navigation router, while
+continue/back/setup closure use the same lifecycle owner.
+
+Main's menu fields, root-lobby preload, 27 menu methods, dynamic signal wiring
+and legacy pacing mirror are physically deleted. `PauseMenuSummaryBoard.tscn`
+replaces Main-created pause cards. Main fell by 484 physical lines and six
+top-level variables. The broad `presentation_action_routing` domain remains
+pending because unrelated gameplay actions still enter Main.

@@ -6,7 +6,6 @@ const RuntimeBalanceModelScript := preload("res://scripts/balance/runtime_balanc
 const CardPlayRequirementPolicyScript := preload("res://scripts/cards/card_play_requirement_policy.gd")
 const SharedCardGroupWindowScript := preload("res://scripts/cards/shared_card_group_window.gd")
 const RoguelikeEconomicViabilityPolicyScript := preload("res://scripts/runtime/roguelike_economic_viability_policy.gd")
-const MenuRootLobbyScene := preload("res://scenes/ui/MenuRootLobby.tscn")
 const PlayerBoardStrategyActionSnapshotScript := preload("res://scripts/viewmodels/player_board_strategy_action_snapshot.gd")
 const TABLE_SFX_KEYS := ["card", "impact", "storm"]
 const MIN_PLAYER_COUNT := 3
@@ -109,8 +108,6 @@ const REALTIME_BALANCE := {
 
 var _roguelike_economic_viability_dev_audit: Dictionary = {}
 
-var time_scale := 1.0
-
 var runtime_game_screen: Control
 var ruleset_runtime_bridge: Node
 var ruleset_runtime_bridge_bound := false
@@ -129,12 +126,7 @@ var card_resolution_controller_missing := false
 var card_resolution_controller_missing_context := ""
 var card_resolution_controller_missing_reported := false
 var map_view: Control
-var menu_overlay: Control
-var menu_preview_box: VBoxContainer
-var menu_regular_buttons := []
-var menu_load_run_button: Button
 var district_supply_overlay: Control
-var speed_before_menu := 1.0
 var full_map_overlay: Control
 var full_map_view: Control
 var fullscreen_map_hud_labels := {}
@@ -212,7 +204,6 @@ func _ready() -> void:
 	_build_developer_balance_greybox()
 	_build_table_audio()
 	_game_runtime_coordinator_node().record_legacy_viewer_feedback("点击开局准备后确认玩家角色与起始怪兽牌；怪兽由怪兽卡匿名召唤，场上数量没有硬上限。")
-	_open_main_menu()
 	_start_table_bgm()
 
 
@@ -266,19 +257,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		if full_map_overlay != null and full_map_overlay.visible:
 			_close_fullscreen_map()
 			return
-		if menu_overlay != null and menu_overlay.visible:
-			_close_menu()
-		else:
-			_open_pause_menu()
-		return
-	if menu_overlay != null and menu_overlay.visible:
-		if key_event.keycode == KEY_ENTER or key_event.keycode == KEY_SPACE:
-			_close_menu()
+	var menu_lifecycle := get_node_or_null("RuntimeServices/MenuLifecycleApplicationFlowController") as MenuLifecycleApplicationFlowController
+	if menu_lifecycle != null and menu_lifecycle.handle_key_request(key_event.keycode):
 		return
 
 	match key_event.keycode:
-		KEY_SPACE:
-			_toggle_pause()
 		KEY_C:
 			_cycle_selected_district_card()
 		KEY_X:
@@ -1364,9 +1347,6 @@ func _build_developer_balance_greybox() -> void:
 func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 	var handled := false
 	match action_id:
-		"menu":
-			_open_pause_menu()
-			handled = true
 		"discard_purchase_cancel":
 			_cancel_discard_purchase()
 			handled = true
@@ -1634,7 +1614,6 @@ func _bind_runtime_overlay_surfaces() -> void:
 	_build_card_resolution_overlay()
 	_build_bottom_countdown_bar()
 	_build_district_supply_overlay()
-	_bind_menu_overlay_scene()
 
 
 func _recent_table_event_clean_text(line: String) -> String:
@@ -1959,38 +1938,6 @@ func _on_map_control_toolbar_action_requested(action_id: String, payload: Dictio
 				_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
-func _bind_menu_overlay_scene() -> void:
-	if menu_overlay != null and is_instance_valid(menu_overlay):
-		return
-	var overlay := _runtime_composition_control("MenuModalOverlay")
-	if overlay == null:
-		push_error("MenuModalOverlay is required in OverlayLayer; runtime menu construction has been retired.")
-		return
-	for method_name in ["present_menu_shell", "present_codex_page", "clear_preview", "get_preview_host", "get_codex_surface", "set_global_navigation", "refresh_current_layout"]:
-		if not overlay.has_method(method_name):
-			push_error("MenuModalOverlay must expose %s; refusing to rebuild the menu shell in main.gd." % method_name)
-			return
-	menu_overlay = overlay
-	menu_preview_box = menu_overlay.call("get_preview_host") as VBoxContainer
-	if menu_preview_box == null:
-		push_error("MenuModalOverlay must expose its scene-owned preview host.")
-		menu_overlay = null
-		return
-	var signal_routes := {
-		"continue_requested": Callable(self, "_close_menu"),
-		"main_menu_requested": Callable(self, "_open_main_menu"),
-	}
-	for signal_name_variant: Variant in signal_routes:
-		var signal_name := str(signal_name_variant)
-		var callback := signal_routes[signal_name] as Callable
-		if not menu_overlay.has_signal(signal_name):
-			push_error("MenuModalOverlay is missing required signal %s." % signal_name)
-			continue
-		if not menu_overlay.is_connected(signal_name, callback):
-			menu_overlay.connect(signal_name, callback)
-	menu_regular_buttons = []
-	_refresh_menu_layout()
-
 func _menu_card_style(accent: Color, fill: Color = Color("#0b1220"), border_width: int = 1, radius: int = 12) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = fill
@@ -2000,269 +1947,8 @@ func _menu_card_style(accent: Color, fill: Color = Color("#0b1220"), border_widt
 	return style
 
 
-func _menu_viewport_size() -> Vector2:
-	return get_viewport().get_visible_rect().size if get_viewport() != null else Vector2(960, 640)
-
-
-func _menu_available_content_width() -> float:
-	if menu_overlay != null and menu_overlay.has_method("available_content_width"):
-		return float(menu_overlay.call("available_content_width", _menu_viewport_size()))
-	return 260.0
-
-
-func _menu_available_content_height() -> float:
-	if menu_overlay != null and menu_overlay.has_method("available_content_height"):
-		return float(menu_overlay.call("available_content_height", _menu_viewport_size()))
-	return 260.0
-
-
-func _refresh_menu_layout() -> void:
-	if menu_overlay != null and menu_overlay.has_method("refresh_current_layout"):
-		menu_overlay.call("refresh_current_layout", _menu_viewport_size())
-
-
-func _menu_quick_nav_entries() -> Array:
-	return [
-		{"id": "setup", "label": "开局", "tooltip": "进入开局配置：设置席位、电脑对手、角色和起始怪兽。", "accent": "#38bdf8"},
-		{"id": "standings", "label": "局势", "tooltip": "查看动态区域控制、前K区商品GDP、资格进度和公开审计。", "accent": "#facc15"},
-		{"id": "economy", "label": "经济", "tooltip": "查看GDP、商品、商路、天气和收入拆解。", "accent": "#4ade80"},
-		{"id": "intel", "label": "情报", "tooltip": "整理城市归属推理、公共卡牌履历与私人标注、怪兽资金线索。", "accent": "#c084fc"},
-		{"id": "rules", "label": "规则", "tooltip": "查看购牌、出牌、竞价、合约、怪兽赌局、天气和终局规则。", "accent": "#93c5fd"},
-		{"id": "compendium", "label": "图鉴", "tooltip": "进入角色、怪兽、卡牌、商品和区域图鉴。", "accent": "#f472b6"},
-	]
-
-
-func _menu_quick_nav_active_key(title_text: String) -> String:
-	match title_text:
-		"开局准备":
-			return "setup"
-		"局势排名", "终局结算":
-			return "standings"
-		"经济总览":
-			return "economy"
-		"情报档案":
-			return "intel"
-		"游戏规则":
-			return "rules"
-		"图鉴", "角色图鉴", "怪兽生态档案", "卡牌图鉴", "商品图鉴", "区域图鉴":
-			return "compendium"
-	return ""
-
-
-func _menu_quick_nav_visible(title_text: String, _show_main_actions: bool, compact_page: bool = false) -> bool:
-	return not compact_page and title_text not in ["太空辛迪加｜星球赌桌", "暂停菜单"]
-
-
-func _on_menu_quick_nav_action_requested(action_id: String) -> void:
-	if action_id == "":
-		return
-
-
-func _menu_summary_grid_columns() -> int:
-	return clampi(int(floor(_menu_available_content_width() / 280.0)), 1, 4)
-
-
-func _show_menu_summary_cards(cards: Array, heading: String = "页面速览") -> void:
-	if menu_preview_box == null:
-		return
-	menu_overlay.call("clear_preview")
-	menu_preview_box.visible = true
-	var heading_label := _plain_label(heading, 13, Color("#dbeafe"))
-	heading_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	menu_preview_box.add_child(heading_label)
-	var grid := GridContainer.new()
-	grid.columns = _menu_summary_grid_columns()
-	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.add_theme_constant_override("h_separation", 10)
-	grid.add_theme_constant_override("v_separation", 10)
-	menu_preview_box.add_child(grid)
-	for card_variant in cards:
-		if card_variant is Dictionary:
-			var card: Dictionary = card_variant
-			_add_menu_info_card(
-				grid,
-				String(card.get("title", "提示")),
-				String(card.get("body", "")),
-				card.get("accent", Color("#38bdf8")) as Color,
-				String(card.get("meta", ""))
-			)
-
-
 func _report_required_ui_scene_missing(component_name: String, required_method: String) -> void:
 	push_error("%s is a required scenes/ui component and must expose %s; refusing to rebuild this player-facing page through legacy main.gd controls." % [component_name, required_method])
-
-
-func _add_menu_info_card(parent: Container, title_text: String, body_text: String, accent: Color = Color("#38bdf8"), meta_text: String = "") -> PanelContainer:
-	var panel := PanelContainer.new()
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.custom_minimum_size = Vector2(0, 112)
-	panel.tooltip_text = body_text
-	panel.add_theme_stylebox_override("panel", _menu_card_style(accent, Color("#020617").lerp(accent, 0.10), 1, 14))
-	parent.add_child(panel)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 12)
-	margin.add_theme_constant_override("margin_top", 10)
-	margin.add_theme_constant_override("margin_right", 12)
-	margin.add_theme_constant_override("margin_bottom", 10)
-	panel.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 5)
-	margin.add_child(box)
-	var title := _plain_label(title_text, 12, Color("#f8fafc"))
-	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(title)
-	var body := _plain_label(body_text, 10, Color("#cbd5e1"))
-	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.add_child(body)
-	if meta_text != "":
-		var meta := _plain_label(meta_text, 9, accent.lightened(0.18))
-		meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		box.add_child(meta)
-	return panel
-
-
-func _open_main_menu() -> void:
-	_show_menu(
-		"太空辛迪加｜星球赌桌",
-		"秘密建城 · 匿名出牌 · 怪兽赌局\n控制区域，推进GDP，接受公开审计。",
-		not _game_runtime_coordinator_node().world_session_state().players.is_empty() and not _runtime_session_finished(),
-		true
-	)
-	_populate_main_menu_summary_cards()
-
-
-func _open_pause_menu() -> void:
-	_show_menu(
-		"暂停菜单",
-		"游戏已暂停。继续游戏，或查看局势、经济、情报、图鉴和规则。",
-		not _runtime_session_finished(),
-		true
-	)
-	_populate_pause_menu_summary_cards()
-
-
-func _populate_main_menu_summary_cards() -> void:
-	if menu_preview_box == null:
-		return
-	menu_overlay.call("clear_preview")
-	menu_preview_box.visible = true
-	_add_main_menu_planet_lobby_panel(menu_preview_box)
-	_refresh_run_save_menu_state()
-
-
-func _main_menu_root_lobby_snapshot() -> Dictionary:
-	var can_continue := not _game_runtime_coordinator_node().world_session_state().players.is_empty() and not _runtime_session_finished()
-	return {
-		"accent": Color("#f59e0b"),
-		"tooltip": "星球赌桌大厅：保存、开局、继续和资料库入口。",
-		"title": "SPACE SYNDICATE",
-		"title_tooltip": "主菜单保留开新一桌、继续牌桌、资料库和游戏规则。",
-		"status": "星球赌桌｜控区、GDP与公开审计",
-		"status_tooltip": "终局按现金排名。",
-		"planet_mark": "◎",
-		"planet_title": "星球赌桌大厅",
-		"planet_hint": "建城｜怪兽｜下注｜推理",
-		"chip_rail_tooltip": "首屏只保留开桌前必须知道的桌面身份。",
-		"table_line": "选择你的下一步",
-		"table_tooltip": "主菜单只显示当前可用的正常游戏入口。",
-		"columns": 1,
-		"chips": [
-			{"text": "席位 3-8｜真人对 AI", "accent": Color("#bfdbfe"), "tooltip": "真人玩家对2-7个电脑对手。"},
-			{"text": "开局 怪兽｜先压上桌", "accent": Color("#fda4af"), "tooltip": "新局在开局准备里选择起始怪兽。"},
-			{"text": "牌轨 匿名｜亮牌不亮人", "accent": Color("#c084fc"), "tooltip": "出牌公开，牌主隐藏。"},
-		],
-		"actions": [
-			{
-				"id": "new_run",
-				"kicker": "01｜开桌",
-				"label": "开始新局",
-				"detail": "先设置席位、AI、角色与起始怪兽牌",
-				"accent": Color("#22c55e"),
-				"featured": true,
-			},
-			{
-				"id": "compendium",
-				"kicker": "02｜资料",
-				"label": "资料库",
-				"detail": "图鉴、卡牌、商品、区域",
-				"accent": Color("#f472b6"),
-			},
-		],
-		"utilities": [
-			{
-				"id": "continue",
-				"label": "继续牌桌" if can_continue else "暂无牌桌",
-				"tooltip": "回到当前星球" if can_continue else "先开新一桌。",
-				"accent": Color("#22c55e"),
-				"disabled": not can_continue,
-			},
-			{"id": "rules", "label": "游戏规则", "accent": Color("#93c5fd")},
-			{"id": "load_run", "label": "读取局面", "accent": Color("#94a3b8")},
-			{"id": "quit", "label": "退出游戏", "accent": Color("#fb7185")},
-		],
-	}
-
-
-func _on_menu_root_lobby_action_requested(action_id: String) -> void:
-	match action_id:
-		"continue":
-			_close_menu()
-		"load_run":
-			_load_run_from_menu()
-		"quit":
-			_quit_game()
-
-
-func _add_main_menu_planet_lobby_panel(parent: Container) -> void:
-	var lobby := MenuRootLobbyScene.instantiate() as Control
-	if lobby == null:
-		return
-	if lobby.has_signal("action_requested"):
-		lobby.connect("action_requested", Callable(self, "_on_menu_root_lobby_action_requested"))
-	var application_flow_port := get_node_or_null("RuntimeServices/ApplicationFlowPort")
-	if application_flow_port != null and lobby.has_signal("setup_requested"):
-		lobby.connect("setup_requested", Callable(application_flow_port, "submit_action").bind("setup"))
-	if application_flow_port != null and lobby.has_signal("rules_requested"):
-		lobby.connect("rules_requested", Callable(application_flow_port, "submit_action").bind("rules"))
-	if application_flow_port != null and lobby.has_signal("compendium_requested"):
-		lobby.connect("compendium_requested", Callable(application_flow_port, "submit_action").bind("compendium"))
-	parent.add_child(lobby)
-	if lobby.has_method("set_lobby"):
-		lobby.call("set_lobby", _main_menu_root_lobby_snapshot())
-	if lobby.has_method("get_load_run_button"):
-		var load_button_variant: Variant = lobby.call("get_load_run_button")
-		if load_button_variant is Button:
-			menu_load_run_button = load_button_variant as Button
-
-
-func _populate_pause_menu_summary_cards() -> void:
-	_show_menu_summary_cards([
-		{
-			"title": "继续观察",
-			"body": "回到地图后继续看手牌、匿名卡牌轨道、天气预报和当前区域操作。",
-			"meta": "暂停只用于读信息，不改变实时规则。",
-			"accent": Color("#22c55e"),
-		},
-		{
-			"title": "复查局势",
-			"body": "局势排名看终局距离，经济总览看GDP/商品/商路，情报档案整理推理。",
-			"meta": "先看短卡片，再读证据文本。",
-			"accent": Color("#38bdf8"),
-		},
-		{
-			"title": "查资料",
-			"body": "规则、图鉴、经济和情报都在分支里；主桌只留本局要用的信息。",
-			"meta": "长说明收进资料页。",
-			"accent": Color("#c084fc"),
-		},
-		{
-			"title": "保存/重开",
-			"body": "保存设置或当前局面；也可以回到开局准备，调整席位、对手和角色后重开。",
-			"meta": "想换一颗星球，就从这里再开一桌。",
-			"accent": Color("#94a3b8"),
-		},
-	], "暂停速览｜先决定继续、复查、查资料还是重开")
 
 
 func _final_settlement_runtime_composition_node() -> Node:
@@ -2651,112 +2337,6 @@ func _close_fullscreen_map() -> void:
 		return
 	full_map_overlay.visible = false
 	_game_runtime_coordinator_node().request_table_presentation_refresh(&"map", &"main_state_changed")
-
-
-func _menu_context_text(title_text: String, show_main_actions: bool = false) -> String:
-	if show_main_actions and title_text == "太空辛迪加｜星球赌桌":
-		return ""
-	if show_main_actions and title_text == "暂停菜单":
-		return "暂停｜继续、局势、资料、保存"
-	match title_text:
-		"开局准备":
-			return "开局｜席位、AI、角色、起始怪兽"
-		"图鉴":
-			return "图鉴｜选分类"
-		"卡牌图鉴", "怪兽生态档案", "商品图鉴":
-			return "%s｜悬停预览，双击详情" % title_text
-		"角色图鉴", "区域图鉴":
-			return "%s｜按钮切换" % title_text
-		"游戏规则":
-			return "规则｜先看短卡"
-		"经济总览":
-			return "经济｜GDP、商品、商路"
-		"情报档案":
-			return "情报｜整理公开线索"
-		"局势排名":
-			return "局势｜目标与排名"
-		"新手引导":
-			return "引导｜首局四步"
-	return "%s｜返回回上级" % title_text
-
-
-func _menu_interaction_hint_text(title_text: String, show_main_actions: bool = false) -> String:
-	if show_main_actions and title_text == "太空辛迪加｜星球赌桌":
-		return ""
-	if show_main_actions and title_text == "暂停菜单":
-		return "暂停菜单｜继续、复查局势、查资料或保存。"
-	match title_text:
-		"开局准备":
-			return "选席位、难度、角色、怪兽。"
-		"图鉴":
-			return "先选资料分类。"
-		"卡牌图鉴":
-			if _codex_navigation_controller_node().card_codex_show_detail:
-				return "卡面、梯度、关键数值。"
-			return "悬停预览，双击详情。"
-		"怪兽生态档案":
-			if _codex_navigation_controller_node().bestiary_show_detail:
-				return "画像、行动、速度、偏好。"
-			return "悬停预览，双击详情。"
-		"商品图鉴":
-			if _codex_navigation_controller_node().product_codex_show_detail:
-				return "价格、供需、商路。"
-			return "悬停预览，双击详情。"
-		"角色图鉴":
-			return "公开角色卡。"
-		"区域图鉴":
-			return "地形、HP、城市、商路。"
-		"游戏规则":
-			return "先看短卡。"
-		"经济总览":
-			return "看GDP、商品、商路。"
-		"情报档案":
-			return "只整理公开线索。"
-		"局势排名":
-			return "看目标和排名。"
-		"新手引导":
-			return "受光牌架、发展牌、商品项目、出牌；怪兽召唤可选。"
-	return "只显示本页操作。"
-
-
-func _show_menu(title_text: String, body_text: String, can_continue: bool, show_main_actions: bool = false, compact_page: bool = false) -> void:
-	if menu_overlay == null or not menu_overlay.has_method("present_menu_shell"):
-		return
-	if time_scale > 0.0:
-		speed_before_menu = time_scale
-	time_scale = 0.0
-	var runtime_coordinator := _game_runtime_coordinator_node()
-	if runtime_coordinator != null and runtime_coordinator.has_method("pause_session"):
-		runtime_coordinator.call("pause_session")
-	_codex_navigation_controller_node().catalog_mode = ""
-	menu_load_run_button = null
-	var root_table_menu := show_main_actions and title_text == "太空辛迪加｜星球赌桌"
-	menu_overlay.call("present_menu_shell", {
-		"title": title_text,
-		"body": body_text,
-		"context": _menu_context_text(title_text, show_main_actions),
-		"context_visible": not root_table_menu and not compact_page,
-		"hint": _menu_interaction_hint_text(title_text, show_main_actions),
-		"hint_visible": not root_table_menu and not compact_page,
-		"continue_disabled": not can_continue,
-		"continue_visible": can_continue and show_main_actions and not root_table_menu,
-		"back_visible": not show_main_actions,
-		"nav_visible": not root_table_menu,
-		"run_save_visible": show_main_actions,
-		"root_table_menu": root_table_menu,
-		"compact_page": compact_page,
-		"viewport_size": _menu_viewport_size(),
-		"quick_nav": _menu_quick_nav_entries(),
-		"quick_nav_active_id": _menu_quick_nav_active_key(title_text),
-		"quick_nav_visible": _menu_quick_nav_visible(title_text, show_main_actions, compact_page),
-	})
-	for button_variant: Variant in menu_regular_buttons:
-		var button := button_variant as CanvasItem
-		if is_instance_valid(button):
-			button.visible = show_main_actions
-	_refresh_run_save_menu_state()
-	_refresh_menu_layout()
-	call_deferred("_refresh_menu_layout")
 
 
 func _codex_role_route_label(role_card: Dictionary) -> String:
@@ -3254,57 +2834,6 @@ func _monster_knockback_model(action_or_skill: Dictionary, actor: Dictionary = {
 	return _runtime_balance_model().call("monster_knockback_speed_model", action_or_skill, actor, _current_balance_region_radius_m(), 0.5) as Dictionary
 
 
-func _close_menu() -> void:
-	if menu_overlay == null:
-		return
-	if _game_runtime_coordinator_node().world_session_state().players.is_empty():
-		_open_main_menu()
-		return
-	menu_overlay.visible = false
-	if menu_overlay.has_method("set_body_text"):
-		menu_overlay.call("set_body_text", "", false)
-	if menu_preview_box != null:
-		menu_preview_box.visible = false
-	if menu_overlay.has_method("clear_preview"):
-		menu_overlay.call("clear_preview")
-	if not _runtime_session_finished():
-		time_scale = max(1.0, speed_before_menu)
-		var runtime_coordinator := _game_runtime_coordinator_node()
-		if runtime_coordinator != null and runtime_coordinator.has_method("resume_session"):
-			runtime_coordinator.call("resume_session")
-	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
-
-
-func _load_run_from_menu() -> void:
-	var coordinator := _game_runtime_coordinator_node()
-	var result_variant: Variant = coordinator.call("request_run_load", "") if coordinator != null and coordinator.has_method("request_run_load") else {}
-	var result: Dictionary = result_variant if result_variant is Dictionary else {}
-	var err := int(result.get("error_code", ERR_INVALID_DATA))
-	if bool(result.get("ok", false)) and bool(result.get("applied", false)) and err == OK:
-		_game_runtime_coordinator_node().record_legacy_viewer_feedback("已读取保存局面。")
-		_open_main_menu()
-	else:
-		var detail := str(result.get("summary", result.get("reason_code", error_string(err))))
-		_game_runtime_coordinator_node().record_legacy_viewer_feedback("局面读取失败：%s" % detail)
-		_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
-	_refresh_run_save_menu_state()
-
-
-func _refresh_run_save_menu_state() -> void:
-	var coordinator := _game_runtime_coordinator_node()
-	var inspection_variant: Variant = coordinator.call("inspect_run_save", "") if coordinator != null and coordinator.has_method("inspect_run_save") else {}
-	var inspection: Dictionary = inspection_variant if inspection_variant is Dictionary else {}
-	var has_save := bool(inspection.get("ok", false)) and bool(inspection.get("applied", false))
-	if menu_load_run_button != null:
-		menu_load_run_button.disabled = not has_save
-	if menu_overlay != null and menu_overlay.has_method("set_run_save_summary"):
-		menu_overlay.call("set_run_save_summary", str(inspection.get("summary", "存档：运行时恢复服务不可用。")))
-
-
-func _quit_game() -> void:
-	get_tree().quit()
-
-
 func _district_region_id(district_index: int) -> String:
 	if district_index < 0 or district_index >= _game_runtime_coordinator_node().world_session_state().districts.size():
 		return ""
@@ -3757,19 +3286,6 @@ func _apply_role_monster_upgrade_cash(player_index: int, monster_name: String, o
 		amount,
 	])
 	return amount
-
-
-func _toggle_pause() -> void:
-	var coordinator := _game_runtime_coordinator_node()
-	if time_scale <= 0.0:
-		time_scale = 1.0
-		if coordinator != null and coordinator.has_method("resume_session"):
-			coordinator.call("resume_session")
-	else:
-		time_scale = 0.0
-		if coordinator != null and coordinator.has_method("pause_session"):
-			coordinator.call("pause_session")
-	_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _runtime_snapshot_player_index() -> int:

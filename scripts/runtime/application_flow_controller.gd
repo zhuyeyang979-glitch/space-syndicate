@@ -1,16 +1,15 @@
 extends Node
 class_name ApplicationFlowController
 
-## Scene-owned application-flow handler. This first slice owns the rules page
-## only; it coordinates the existing menu surface and static rules board, but
+## Scene-owned application-flow handler. This slice owns the rules page only;
+## the shared menu lifecycle pauses the session before this handler renders.
+## It coordinates the existing menu surface and static rules board, but
 ## never owns gameplay state, simulation timing, commands, RNG, or save data.
 
 const RULES_BOARD_SCENE := preload("res://scenes/ui/RulesQuickReferenceBoard.tscn")
 const RULES_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/rules_quick_reference_snapshot_v06.gd")
 
 @export var menu_overlay_path: NodePath
-@export var coordinator_path: NodePath
-
 var _rules_open_count := 0
 
 
@@ -18,9 +17,6 @@ func open_rules() -> bool:
 	var overlay := _menu_overlay()
 	if overlay == null or not overlay.has_method("present_menu_shell") or not overlay.has_method("get_preview_host"):
 		return false
-	var coordinator := _coordinator()
-	if coordinator != null and coordinator.has_method("pause_session"):
-		coordinator.pause_session()
 	var body := str(RULES_SNAPSHOT_SCRIPT.player_summary_text())
 	overlay.call("present_menu_shell", {
 		"title": "游戏规则",
@@ -70,10 +66,6 @@ func debug_snapshot() -> Dictionary:
 
 func _menu_overlay() -> Node:
 	return get_node_or_null(menu_overlay_path) if not menu_overlay_path.is_empty() else null
-
-
-func _coordinator() -> GameRuntimeCoordinator:
-	return get_node_or_null(coordinator_path) as GameRuntimeCoordinator if not coordinator_path.is_empty() else null
 
 
 func _available_width(overlay: Node) -> float:

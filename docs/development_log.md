@@ -3,6 +3,19 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-18。
 
+## 2026-07-20 — Menu lifecycle application-flow cutover
+
+- Added one scene-owned menu lifecycle controller for root, pause, requested
+  shells, close/resume, load and quit application actions.
+- Reused the existing rules, economy and standings controllers and their
+  visibility-safe query ports; no duplicate snapshots or business logic were
+  introduced.
+- Routed the top-bar menu through the typed exact-once table navigation path.
+- Added a reusable scene-authored pause summary board and removed Main's
+  programmatic menu cards, menu fields and 27 menu methods.
+- Main changed from 8,683 to 8,199 physical lines and from 583 to 556 methods.
+- Added focused lifecycle, exact-once, privacy and Main-negative gates.
+
 ## 2026-07-18｜卡牌结算履历正式存档 Owner
 
 - 将既有唯一 `CardResolutionHistoryRuntimeService` 注册为 v0.6 第19个 required

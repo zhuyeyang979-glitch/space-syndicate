@@ -5,7 +5,8 @@ const KIND_REGION_DETAIL := &"region_detail"
 const KIND_CARD_BROWSER := &"card_browser"
 const KIND_COMPENDIUM_HUB := &"compendium_hub"
 const KIND_CARD_DETAIL := &"card_detail"
-const ALLOWED_KINDS := [KIND_REGION_DETAIL, KIND_CARD_BROWSER, KIND_COMPENDIUM_HUB, KIND_CARD_DETAIL]
+const KIND_PAUSE_MENU := &"pause_menu"
+const ALLOWED_KINDS := [KIND_REGION_DETAIL, KIND_CARD_BROWSER, KIND_COMPENDIUM_HUB, KIND_CARD_DETAIL, KIND_PAUSE_MENU]
 
 var request_id := ""
 var action_kind: StringName = &""
@@ -24,6 +25,8 @@ static func from_action_id(action_id: String, source: StringName = &"game_screen
 			intent.action_kind = KIND_CARD_BROWSER
 		"inspect":
 			intent.action_kind = KIND_COMPENDIUM_HUB
+		"menu":
+			intent.action_kind = KIND_PAUSE_MENU
 		_:
 			if normalized.begins_with("track_open_"):
 				intent.action_kind = KIND_CARD_DETAIL

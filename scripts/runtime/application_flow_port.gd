@@ -6,6 +6,8 @@ class_name ApplicationFlowPort
 ## it never owns gameplay state, timing, or presentation snapshots.
 
 signal action_requested(action_id: StringName)
+signal application_page_opening(action_id: StringName)
+signal pause_menu_requested()
 signal rules_requested()
 signal standings_requested()
 signal economy_requested()
@@ -18,6 +20,8 @@ signal menu_requested(title: String, summary: String, can_continue: bool)
 const ALLOWED_ACTIONS := [&"setup", &"standings", &"economy", &"intel", &"rules", &"compendium"]
 
 var _action_emission_count := 0
+var _page_opening_emission_count := 0
+var _pause_menu_emission_count := 0
 var _standings_emission_count := 0
 var _economy_emission_count := 0
 var _compendium_emission_count := 0
@@ -32,6 +36,8 @@ func submit_action(action_id: String) -> bool:
 	var normalized := StringName(action_id)
 	if not ALLOWED_ACTIONS.has(normalized):
 		return false
+	_page_opening_emission_count += 1
+	application_page_opening.emit(normalized)
 	if normalized == &"rules":
 		rules_requested.emit()
 	elif normalized == &"standings":
@@ -52,6 +58,12 @@ func submit_action(action_id: String) -> bool:
 	else:
 		_action_emission_count += 1
 		action_requested.emit(normalized)
+	return true
+
+
+func request_pause_menu() -> bool:
+	_pause_menu_emission_count += 1
+	pause_menu_requested.emit()
 	return true
 
 
@@ -81,6 +93,8 @@ func debug_snapshot() -> Dictionary:
 		"boundary_id": "application_flow_port_v06",
 		"allowed_action_count": ALLOWED_ACTIONS.size(),
 		"action_emission_count": _action_emission_count,
+		"page_opening_emission_count": _page_opening_emission_count,
+		"pause_menu_emission_count": _pause_menu_emission_count,
 		"standings_emission_count": _standings_emission_count,
 		"standings_uses_dedicated_signal": true,
 		"standings_uses_generic_action_signal": false,

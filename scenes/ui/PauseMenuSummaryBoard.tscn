@@ -1,0 +1,204 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_continue"]
+bg_color = Color(0.015, 0.092, 0.071, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.133, 0.773, 0.369, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_review"]
+bg_color = Color(0.018, 0.067, 0.137, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.22, 0.741, 0.973, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_reference"]
+bg_color = Color(0.075, 0.027, 0.133, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.753, 0.518, 0.988, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_restart"]
+bg_color = Color(0.047, 0.055, 0.071, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.58, 0.639, 0.722, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[node name="PauseMenuSummaryBoard" type="VBoxContainer"]
+custom_minimum_size = Vector2(0, 276)
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_theme")
+theme_override_constants/separation = 10
+
+[node name="Heading" type="Label" parent="."]
+layout_mode = 2
+text = "暂停速览｜先决定继续、复查、查资料还是重开"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 15
+
+[node name="Cards" type="GridContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+columns = 2
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+
+[node name="ContinueCard" type="PanelContainer" parent="Cards"]
+custom_minimum_size = Vector2(0, 112)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBox_continue")
+
+[node name="Margin" type="MarginContainer" parent="Cards/ContinueCard"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="Stack" type="VBoxContainer" parent="Cards/ContinueCard/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Title" type="Label" parent="Cards/ContinueCard/Margin/Stack"]
+layout_mode = 2
+text = "继续观察"
+theme_override_font_sizes/font_size = 13
+
+[node name="Body" type="Label" parent="Cards/ContinueCard/Margin/Stack"]
+layout_mode = 2
+text = "回到地图后继续看手牌、公开牌轨、天气预报和当前区域操作。"
+autowrap_mode = 3
+
+[node name="Meta" type="Label" parent="Cards/ContinueCard/Margin/Stack"]
+layout_mode = 2
+text = "暂停只用于读信息，不改变实时规则。"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.525, 0.937, 0.675, 1)
+
+[node name="ReviewCard" type="PanelContainer" parent="Cards"]
+custom_minimum_size = Vector2(0, 112)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBox_review")
+
+[node name="Margin" type="MarginContainer" parent="Cards/ReviewCard"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="Stack" type="VBoxContainer" parent="Cards/ReviewCard/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Title" type="Label" parent="Cards/ReviewCard/Margin/Stack"]
+layout_mode = 2
+text = "复查局势"
+theme_override_font_sizes/font_size = 13
+
+[node name="Body" type="Label" parent="Cards/ReviewCard/Margin/Stack"]
+layout_mode = 2
+text = "局势排名看终局距离，经济总览看 GDP、商品和商路，情报档案整理推理。"
+autowrap_mode = 3
+
+[node name="Meta" type="Label" parent="Cards/ReviewCard/Margin/Stack"]
+layout_mode = 2
+text = "先看短卡片，再读证据文本。"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.49, 0.827, 0.988, 1)
+
+[node name="ReferenceCard" type="PanelContainer" parent="Cards"]
+custom_minimum_size = Vector2(0, 112)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBox_reference")
+
+[node name="Margin" type="MarginContainer" parent="Cards/ReferenceCard"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="Stack" type="VBoxContainer" parent="Cards/ReferenceCard/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Title" type="Label" parent="Cards/ReferenceCard/Margin/Stack"]
+layout_mode = 2
+text = "查资料"
+theme_override_font_sizes/font_size = 13
+
+[node name="Body" type="Label" parent="Cards/ReferenceCard/Margin/Stack"]
+layout_mode = 2
+text = "规则、图鉴、经济和情报都在分页里；主桌只保留本局要用的信息。"
+autowrap_mode = 3
+
+[node name="Meta" type="Label" parent="Cards/ReferenceCard/Margin/Stack"]
+layout_mode = 2
+text = "长说明收进资料页。"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.847, 0.71, 0.992, 1)
+
+[node name="RestartCard" type="PanelContainer" parent="Cards"]
+custom_minimum_size = Vector2(0, 112)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBox_restart")
+
+[node name="Margin" type="MarginContainer" parent="Cards/RestartCard"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="Stack" type="VBoxContainer" parent="Cards/RestartCard/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Title" type="Label" parent="Cards/RestartCard/Margin/Stack"]
+layout_mode = 2
+text = "保存 / 重开"
+theme_override_font_sizes/font_size = 13
+
+[node name="Body" type="Label" parent="Cards/RestartCard/Margin/Stack"]
+layout_mode = 2
+text = "保存设置或当前局面；也可以回到开局准备，调整席位、对手和角色后重开。"
+autowrap_mode = 3
+
+[node name="Meta" type="Label" parent="Cards/RestartCard/Margin/Stack"]
+layout_mode = 2
+text = "想换一颗星球，就从这里再开一桌。"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.796, 0.835, 0.894, 1)
