@@ -990,6 +990,58 @@ func public_market_snapshot() -> Dictionary:
 	}
 
 
+func public_product_selection_catalog_source() -> Dictionary:
+	return _public_product_selection_catalog_source_from(PRODUCT_CATALOG, PRODUCT_PROFILES)
+
+
+func _public_product_selection_catalog_source_from(product_catalog: Array, product_profiles: Dictionary) -> Dictionary:
+	if product_catalog.size() != 46:
+		return _public_product_catalog_unavailable("product_count_invalid")
+	var entries: Array = []
+	var seen_ids: Dictionary = {}
+	for public_index in range(product_catalog.size()):
+		var product_variant: Variant = product_catalog[public_index]
+		if not (product_variant is String or product_variant is StringName):
+			return _public_product_catalog_unavailable("product_id_type_invalid")
+		var product_id := str(product_variant)
+		if product_id.is_empty() or product_id != product_id.strip_edges() or seen_ids.has(product_id):
+			return _public_product_catalog_unavailable("product_id_invalid")
+		var profile_variant: Variant = product_profiles.get(product_id, {})
+		if not (profile_variant is Dictionary):
+			return _public_product_catalog_unavailable("product_profile_missing")
+		seen_ids[product_id] = true
+		var profile := profile_variant as Dictionary
+		var category_variant: Variant = profile.get("category", "")
+		if not (category_variant is String or category_variant is StringName):
+			return _public_product_catalog_unavailable("product_category_type_invalid")
+		var entry := {
+			"product_id": product_id,
+			"public_index": public_index,
+			"public_name": product_id,
+			"selectable": true,
+			"disabled_reason": "",
+			"public_category": str(category_variant).strip_edges(),
+		}
+		if not TablePresentationPureDataPolicy.is_pure_data(entry):
+			return _public_product_catalog_unavailable("product_entry_not_pure_data")
+		entries.append(entry)
+	return {
+		"schema_version": 1,
+		"available": true,
+		"unavailable_reason": "",
+		"entries": entries,
+	}
+
+
+func _public_product_catalog_unavailable(reason_code: String) -> Dictionary:
+	return {
+		"schema_version": 1,
+		"available": false,
+		"unavailable_reason": reason_code,
+		"entries": [],
+	}
+
+
 func product_weather_contribution_snapshot(product_name: String) -> Dictionary:
 	var entry := market_entry(product_name, false)
 	return {

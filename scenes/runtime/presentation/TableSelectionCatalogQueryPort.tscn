@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/table_selection_catalog_query_port.gd" id="1_query"]
+
+[node name="TableSelectionCatalogQueryPort" type="Node"]
+script = ExtResource("1_query")
+editor_description = "Stateless public region and product selection-catalog query. Catalog and session authorities are explicit scene-owned runtime services."

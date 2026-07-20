@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "base_sha": "84b6ebf2640bc95ed1f673af6c6cbe8a5ca7dcf0",
+  "boundary": "PUBLIC_PRODUCT_SELECTION_CATALOG_SNAPSHOT_API",
+  "authoritative_order_owner": "ProductMarketRuntimeController.PRODUCT_CATALOG",
+  "authoritative_product_count": 46,
+  "source_api": "ProductMarketRuntimeController.public_product_selection_catalog_source",
+  "query_port": "res://scripts/presentation/table_selection_catalog_query_port.gd",
+  "snapshot_type": "PublicProductSelectionCatalogSnapshot",
+  "entry_type": "PublicProductSelectionCatalogEntry",
+  "session_identity_owner": "GameSessionRuntimeController",
+  "source_owner_id": "ProductMarketRuntimeController.PRODUCT_CATALOG",
+  "source_ready_equals_available": true,
+  "snapshot_envelope_fields": [
+    "session_id",
+    "session_revision",
+    "source_owner_id",
+    "source_ready"
+  ],
+  "entry_fields": [
+    "product_id",
+    "public_index",
+    "public_name",
+    "selectable",
+    "disabled_reason",
+    "public_category"
+  ],
+  "ordering_fields": [
+    "product_id",
+    "public_index",
+    "selectable"
+  ],
+  "ordering_excludes": [
+    "price",
+    "supply",
+    "demand",
+    "market_revision",
+    "futures",
+    "weather",
+    "commodity_slot_id",
+    "commodity_card_id",
+    "sushi_slot_order",
+    "selection",
+    "timestamp",
+    "rng",
+    "session_id",
+    "session_revision",
+    "source_owner_id",
+    "source_ready"
+  ],
+  "product_industry_resource_is_order_authority": false,
+  "display_name_is_identity_source": false,
+  "commodity_slot_id_confusion_count": 0,
+  "query_triggered_claim_count": 0,
+  "behavioral_slot_isolation": {
+    "shared_product_slot_count": 2,
+    "reorder_tested": true,
+    "entry_exit_tested": true,
+    "hover_equivalent_state_tested": true,
+    "claimability_change_tested": true,
+    "catalog_count_after_changes": 46,
+    "ordering_identity_delta": 0
+  },
+  "cross_session_mix_allowed": false,
+  "strict_primitive_validation": true,
+  "second_mutable_owner_count": 0,
+  "main_reference_count": 0,
+  "save_section_delta": 0
+}

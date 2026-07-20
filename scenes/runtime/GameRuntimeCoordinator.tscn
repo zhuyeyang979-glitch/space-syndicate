@@ -1,4 +1,4 @@
-[gd_scene load_steps=112 format=3]
+[gd_scene load_steps=113 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -112,6 +112,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/PlayerIdentityAuthorizationBoundary.tscn" id="117_player_identity_authorization"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionResponsePort.tscn" id="118_forced_decision_response"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/TableSelectionIntentPort.tscn" id="119_table_selection_intent"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/TableSelectionCatalogQueryPort.tscn" id="120_selection_catalog_query"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -174,6 +175,12 @@ selection_state_path = NodePath("../TableSelectionState")
 forced_decision_response_port_path = NodePath("../ForcedDecisionResponsePort")
 card_resolution_queue_path = NodePath("../CardResolutionQueueRuntimeService")
 card_resolution_history_path = NodePath("../CardResolutionHistoryRuntimeService")
+
+[node name="TableSelectionCatalogQueryPort" parent="." instance=ExtResource("120_selection_catalog_query")]
+unique_name_in_owner = true
+world_session_state_path = NodePath("../WorldSessionState")
+product_market_runtime_controller_path = NodePath("../ProductMarketRuntimeController")
+game_session_runtime_controller_path = NodePath("../GameSessionRuntimeController")
 
 [node name="TablePresentationViewModelQuery" parent="." instance=ExtResource("103_table_presentation_viewmodel_query")]
 unique_name_in_owner = true
