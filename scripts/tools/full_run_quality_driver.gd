@@ -30,11 +30,22 @@ const ACTION_ENGINE_TIME_SCALE := 2.0
 const SUPPLY_WAIT_ENGINE_TIME_SCALE := 8.0
 const GDP_WAIT_ENGINE_TIME_SCALE := 8.0
 const SUPPLY_QUOTE_REFRESH_INTERVAL_MSEC := 1000
+const SUPPLY_QUOTE_REFRESH_ATTEMPTS_PER_RACK := 3
+const SUPPLY_RACK_ROTATION_LIMIT := 8
 const EXIT_INVALID_ARGUMENTS := 2
 const EXIT_CAPABILITY_INCOMPLETE := 3
 const EXIT_OBSERVATION_INCOMPLETE := 4
 const EXIT_RUNTIME_COMPOSITION_UNAVAILABLE := 5
 const EXIT_NONFINITE := 6
+const TYPED_RACK_ACTION_IDS := [
+	"rack",
+	"buy",
+	"district_open_rack",
+	"primary_open_development_rack",
+	"primary_open_rack",
+	"primary_review_rack",
+	"strategy_build_gdp_source",
+]
 
 const FIXED_SEEDS: Array[int] = [
 	900626424,
@@ -109,6 +120,7 @@ var _action_stats := {
 	"progressed": 0,
 	"rejected_invalid": 0,
 	"supply_quote_refreshes": 0,
+	"supply_rack_rotations": 0,
 	"reason_codes": {},
 }
 
@@ -203,6 +215,7 @@ func _run() -> void:
 	var no_action_since_msec := observation_started_msec
 	var pending_action: Dictionary = {}
 	var exhausted_navigation_actions: Dictionary = {}
+	var supply_rotation_state := _new_supply_rotation_state()
 	var last_supply_quote_refresh_msec := 0
 	var final_status := "incomplete"
 	var failure_code := "observation_window_elapsed_before_settlement"
@@ -212,7 +225,7 @@ func _run() -> void:
 		await process_frame
 		var now_msec := Time.get_ticks_msec()
 		var public_progress: Dictionary = final_telemetry.get("progress", {}) if final_telemetry.get("progress", {}) is Dictionary else {}
-		var ui_action := _scripted_ui_action(runtime_screen, exhausted_navigation_actions, public_progress)
+		var ui_action := _scripted_ui_action(runtime_screen, exhausted_navigation_actions, public_progress, supply_rotation_state)
 		if _session_state(session) == "running":
 			var waiting_action_id := str(ui_action.get("id", "")) if bool(ui_action.get("disabled", false)) else ""
 			var waiting_for_world := waiting_action_id in ["district_supply_wait", "gdp_accumulation_wait"]
@@ -258,14 +271,30 @@ func _run() -> void:
 				_action_stats["rejected_invalid"] = int(_action_stats.get("rejected_invalid", 0)) + 1
 				failure_code = "scripted_ui_action_no_progress:%s" % pending_id
 				_record_reason("scripted_ui_action_no_progress")
-				_last_event = "blocked:%s" % failure_code
+				var failure_feedback := _runtime_action_feedback(runtime_screen)
+				_last_progress_feedback = "%s:%s:%s" % [
+					pending_id,
+					str(failure_feedback.get("state", "none")),
+					str(failure_feedback.get("detail", "")).left(96),
+				]
+				_last_event = "blocked_feedback:%s:%s" % [
+					str(failure_feedback.get("state", "none")),
+					str(failure_feedback.get("detail", "")).left(96),
+				]
 				final_status = "blocked"
 				break
 
 		if pending_action.is_empty():
 			var action_id := str(ui_action.get("id", ""))
 			if not action_id.is_empty() and not bool(ui_action.get("disabled", false)):
-				_submit_scripted_ui_action(runtime_screen, ui_action)
+				if not _submit_scripted_ui_action(runtime_screen, ui_action):
+					_action_stats["attempted"] = int(_action_stats.get("attempted", 0)) + 1
+					_action_stats["rejected_invalid"] = int(_action_stats.get("rejected_invalid", 0)) + 1
+					failure_code = "scripted_ui_action_submission_rejected:%s" % action_id
+					_record_reason("scripted_ui_action_submission_rejected")
+					_last_event = "blocked:%s" % failure_code
+					final_status = "blocked"
+					break
 				_action_stats["attempted"] = int(_action_stats.get("attempted", 0)) + 1
 				_last_event = "action_requested:%s:after:%s" % [action_id, _last_progress_feedback]
 				pending_action = {
@@ -278,8 +307,30 @@ func _run() -> void:
 				no_action_since_msec = now_msec
 			elif action_id in ["district_supply_wait", "gdp_accumulation_wait"] and bool(ui_action.get("disabled", false)):
 				if action_id == "district_supply_wait" and now_msec - last_supply_quote_refresh_msec >= SUPPLY_QUOTE_REFRESH_INTERVAL_MSEC:
-					if _refresh_visible_supply_quote(runtime_screen):
+					var wait_facts := _public_supply_wait_facts(runtime_screen)
+					var rack_signature := str(wait_facts.get("rack_signature", ""))
+					var attempts_by_signature: Dictionary = supply_rotation_state.get("refresh_attempts_by_signature", {}) \
+						if supply_rotation_state.get("refresh_attempts_by_signature", {}) is Dictionary else {}
+					var attempts := int(attempts_by_signature.get(rack_signature, 0))
+					var exhausted_signatures: Dictionary = supply_rotation_state.get("exhausted_signatures", {}) \
+						if supply_rotation_state.get("exhausted_signatures", {}) is Dictionary else {}
+					if not rack_signature.is_empty() and (bool(exhausted_signatures.get(rack_signature, false)) \
+							or attempts >= SUPPLY_QUOTE_REFRESH_ATTEMPTS_PER_RACK):
+						exhausted_signatures[rack_signature] = true
+						supply_rotation_state["exhausted_signatures"] = exhausted_signatures
+						if _begin_supply_rack_rotation(supply_rotation_state, wait_facts):
+							_action_stats["supply_rack_rotations"] = int(_action_stats.get("supply_rack_rotations", 0)) + 1
+							_last_event = "supply_rack_rotation_started:%d" % int(supply_rotation_state.get("target_district", -1))
+					elif _refresh_visible_supply_quote(runtime_screen):
 						_action_stats["supply_quote_refreshes"] = int(_action_stats.get("supply_quote_refreshes", 0)) + 1
+						if not rack_signature.is_empty():
+							attempts_by_signature[rack_signature] = attempts + 1
+							supply_rotation_state["refresh_attempts_by_signature"] = attempts_by_signature
+					elif not rack_signature.is_empty():
+						exhausted_signatures[rack_signature] = true
+						supply_rotation_state["exhausted_signatures"] = exhausted_signatures
+						if _begin_supply_rack_rotation(supply_rotation_state, wait_facts):
+							_action_stats["supply_rack_rotations"] = int(_action_stats.get("supply_rack_rotations", 0)) + 1
 					last_supply_quote_refresh_msec = now_msec
 				_last_event = "waiting:district_supply_quote_availability" if action_id == "district_supply_wait" else "waiting:gdp_accumulation_and_victory_qualification"
 				no_action_since_msec = now_msec
@@ -375,7 +426,11 @@ func _capability_preflight(main_instance: Node, coordinator: Node, session: Node
 	var victory_ready := coordinator != null and coordinator.has_method("victory_control_public_snapshot")
 	var session_ready := session != null and session.has_method("session_summary")
 	var settlement_ready := settlement_composition != null and settlement_composition.has_method("debug_snapshot") and settlement_composition.has_method("last_public_snapshot")
-	var scripted_ui_port_ready := runtime_screen != null and runtime_screen.has_signal("action_requested")
+	var scripted_ui_port_ready := runtime_screen is SpaceSyndicateGameScreen \
+		and runtime_screen.has_signal("action_requested") \
+		and runtime_screen.has_method("request_district_supply_open") \
+		and runtime_screen.has_method("request_district_supply_close") \
+		and _temporary_decision_overlay(runtime_screen) != null
 	var setup_ready := main_instance.get_node_or_null(SETUP_DRAFT_PATH) is NewGameSetupDraftService \
 		and main_instance.get_node_or_null(SESSION_START_TRANSACTION_PATH) is SessionStartTransactionCoordinator
 	var registry_valid := bool(registry_snapshot.get("valid", false)) and qa_path_ready
@@ -511,7 +566,12 @@ func _settlement_snapshot(victory: Dictionary, settlement_composition: Node, ses
 	}
 
 
-func _scripted_ui_action(runtime_screen: Node, exhausted_navigation_actions: Dictionary = {}, public_progress: Dictionary = {}) -> Dictionary:
+func _scripted_ui_action(
+	runtime_screen: Node,
+	exhausted_navigation_actions: Dictionary = {},
+	public_progress: Dictionary = {},
+	supply_rotation_state: Dictionary = {}
+) -> Dictionary:
 	if runtime_screen == null:
 		return {"id": "", "phase": "play", "disabled": true}
 	var menu_action := _menu_overlay_ui_action(runtime_screen)
@@ -529,7 +589,11 @@ func _scripted_ui_action(runtime_screen: Node, exhausted_navigation_actions: Dic
 				"id": str(temporary_action.get("id", "")),
 				"phase": "decision_window.%s" % str(temporary.get("kind", "choice")),
 				"disabled": bool(temporary_action.get("disabled", false)),
+				"origin": "temporary_decision",
 			}
+	var supply_rotation_action := _supply_rotation_action(runtime_screen, supply_rotation_state)
+	if not supply_rotation_action.is_empty():
+		return supply_rotation_action
 	var source_established := false
 	var strategy_actions: Array[Dictionary] = []
 	for strategy_kind in ["expand_economic_source", "protect_route", "pressure_competition"]:
@@ -668,6 +732,141 @@ func _refresh_visible_supply_quote(runtime_screen: Node) -> bool:
 	return true
 
 
+func _new_supply_rotation_state() -> Dictionary:
+	return {
+		"phase": "",
+		"target_district": -1,
+		"source_rack_signature": "",
+		"source_selection_revision": -1,
+		"rotation_count": 0,
+		"refresh_attempts_by_signature": {},
+		"exhausted_signatures": {},
+		"visited_districts": {},
+	}
+
+
+func _public_supply_wait_facts(runtime_screen: Node) -> Dictionary:
+	var screen := runtime_screen as SpaceSyndicateGameScreen
+	var drawer := _district_supply_drawer(runtime_screen)
+	if screen == null or drawer == null or not drawer.visible or not drawer.has_method("debug_snapshot"):
+		return {}
+	var drawer_variant: Variant = drawer.call("debug_snapshot")
+	var drawer_snapshot: Dictionary = drawer_variant if drawer_variant is Dictionary else {}
+	var ui: Dictionary = screen.current_ui_data if screen.current_ui_data is Dictionary else {}
+	var selection: Dictionary = ui.get("selection_context", {}) if ui.get("selection_context", {}) is Dictionary else {}
+	var district_index := int(selection.get("selected_district", -1))
+	var district_count := int(selection.get("district_count", 0))
+	var card_signature_rows: Array[String] = []
+	var cards: Array = drawer_snapshot.get("cards", []) if drawer_snapshot.get("cards", []) is Array else []
+	for card_variant in cards:
+		if not (card_variant is Dictionary):
+			continue
+		var card := card_variant as Dictionary
+		card_signature_rows.append("%s|%s" % [
+			str(card.get("card_name", "")),
+			str(card.get("kind", "")),
+		])
+	var signature_source := {
+		"district_index": district_index,
+		"cards": card_signature_rows,
+	}
+	return {
+		"valid": district_index >= 0 and district_count > 1,
+		"district_index": district_index,
+		"district_count": district_count,
+		"selection_revision": int(selection.get("revision", -1)),
+		"rack_signature": JSON.stringify(signature_source).sha256_text(),
+	}
+
+
+func _begin_supply_rack_rotation(rotation_state: Dictionary, wait_facts: Dictionary) -> bool:
+	if rotation_state.is_empty() or not bool(wait_facts.get("valid", false)) \
+			or not str(rotation_state.get("phase", "")).is_empty():
+		return false
+	if int(rotation_state.get("rotation_count", 0)) >= SUPPLY_RACK_ROTATION_LIMIT:
+		rotation_state["phase"] = "exhausted"
+		return false
+	var selected_district := int(wait_facts.get("district_index", -1))
+	var district_count := int(wait_facts.get("district_count", 0))
+	var visited: Dictionary = rotation_state.get("visited_districts", {}) \
+		if rotation_state.get("visited_districts", {}) is Dictionary else {}
+	visited[selected_district] = true
+	var target_district := -1
+	for offset in range(1, district_count + 1):
+		var candidate := wrapi(selected_district + offset, 0, district_count)
+		if not bool(visited.get(candidate, false)):
+			target_district = candidate
+			break
+	rotation_state["visited_districts"] = visited
+	if target_district < 0:
+		rotation_state["phase"] = "exhausted"
+		return false
+	rotation_state["phase"] = "close"
+	rotation_state["target_district"] = target_district
+	rotation_state["source_rack_signature"] = str(wait_facts.get("rack_signature", ""))
+	rotation_state["source_selection_revision"] = int(wait_facts.get("selection_revision", -1))
+	rotation_state["rotation_count"] = int(rotation_state.get("rotation_count", 0)) + 1
+	return true
+
+
+func _supply_rotation_action(runtime_screen: Node, rotation_state: Dictionary) -> Dictionary:
+	if runtime_screen == null or rotation_state.is_empty():
+		return {}
+	var phase := str(rotation_state.get("phase", ""))
+	if phase.is_empty():
+		return {}
+	if phase == "exhausted":
+		return {
+			"id": "district_supply_rotation_exhausted",
+			"phase": "play.supply.rotation_exhausted.%d" % int(rotation_state.get("rotation_count", 0)),
+			"disabled": true,
+			"origin": "district_supply_rotation",
+		}
+	var drawer := _district_supply_drawer(runtime_screen)
+	var screen := runtime_screen as SpaceSyndicateGameScreen
+	if screen == null:
+		return {}
+	var ui: Dictionary = screen.current_ui_data if screen.current_ui_data is Dictionary else {}
+	var selection: Dictionary = ui.get("selection_context", {}) if ui.get("selection_context", {}) is Dictionary else {}
+	var selected_district := int(selection.get("selected_district", -1))
+	var selection_revision := int(selection.get("revision", -1))
+	var target_district := int(rotation_state.get("target_district", -1))
+	if phase == "close":
+		if drawer != null and drawer.visible:
+			return {
+				"id": "district_supply_rotation_close",
+				"phase": "play.supply.rotation_close.%d" % int(rotation_state.get("source_selection_revision", -1)),
+				"disabled": false,
+				"origin": "district_supply_rotation",
+			}
+		rotation_state["phase"] = "select"
+		phase = "select"
+	if phase == "select":
+		if selected_district != target_district:
+			return {
+				"id": "map_select_%d" % target_district,
+				"phase": "play.supply.rotation_select.%d.%d" % [selection_revision, target_district],
+				"disabled": false,
+				"origin": "planet_map",
+				"district_index": target_district,
+			}
+		rotation_state["phase"] = "open"
+		phase = "open"
+	if phase == "open":
+		if drawer != null and drawer.visible:
+			rotation_state["phase"] = ""
+			rotation_state["target_district"] = -1
+			return {}
+		return {
+			"id": "district_supply_rotation_open",
+			"phase": "play.supply.rotation_open.%d.%d" % [selection_revision, target_district],
+			"disabled": false,
+			"origin": "district_supply_rotation",
+			"district_index": target_district,
+		}
+	return {}
+
+
 func _next_supply_card_of_kind(cards: Array, kind: String, after_card_name: String = "") -> Dictionary:
 	var matching: Array[Dictionary] = []
 	for card_variant in cards:
@@ -725,23 +924,60 @@ func _board_action_request(action: Dictionary, player_board: Dictionary, signatu
 	}
 
 
-func _submit_scripted_ui_action(runtime_screen: Node, action: Dictionary) -> void:
+func _submit_scripted_ui_action(runtime_screen: Node, action: Dictionary) -> bool:
+	var action_id := str(action.get("id", ""))
+	if str(action.get("origin", "")) == "temporary_decision":
+		var temporary_decision_overlay := _temporary_decision_overlay(runtime_screen)
+		if temporary_decision_overlay == null or action_id.is_empty():
+			return false
+		temporary_decision_overlay.temporary_decision_action_requested.emit(action_id)
+		return true
+	if str(action.get("origin", "")) == "district_supply_rotation":
+		var rotation_screen := runtime_screen as SpaceSyndicateGameScreen
+		if rotation_screen == null:
+			return false
+		if action_id == "district_supply_rotation_close":
+			return rotation_screen.request_district_supply_close(&"qa_driver")
+		if action_id == "district_supply_rotation_open":
+			return rotation_screen.request_district_supply_open(int(action.get("district_index", -1)), &"qa_driver")
+		return false
+	if action_id in TYPED_RACK_ACTION_IDS:
+		var screen := runtime_screen as SpaceSyndicateGameScreen
+		if screen == null:
+			return false
+		var ui: Dictionary = screen.current_ui_data if screen.current_ui_data is Dictionary else {}
+		var selection_context: Dictionary = ui.get("selection_context", {}) if ui.get("selection_context", {}) is Dictionary else {}
+		var selected_district := int(selection_context.get("selected_district", -1))
+		return selected_district >= 0 and screen.request_district_supply_open(selected_district, &"qa_driver")
 	if str(action.get("origin", "")) == "menu_overlay":
 		var menu_overlay := _menu_overlay(runtime_screen)
 		if menu_overlay != null and menu_overlay.has_signal("continue_requested"):
 			menu_overlay.emit_signal("continue_requested")
-		return
+			return true
+		return false
 	if str(action.get("origin", "")) == "district_supply":
 		var drawer := _district_supply_drawer(runtime_screen)
 		if drawer != null and drawer.has_signal("supply_action_requested"):
 			drawer.emit_signal("supply_action_requested", str(action.get("id", "")), (action.get("payload", {}) as Dictionary).duplicate(true))
-		return
+			return true
+		return false
 	if str(action.get("origin", "")) == "planet_map":
 		var map_view: Control = runtime_screen.call("get_embedded_map_view") if runtime_screen.has_method("get_embedded_map_view") else null
 		if map_view != null and map_view.has_signal("district_selected"):
 			map_view.emit_signal("district_selected", int(action.get("district_index", -1)))
-		return
-	runtime_screen.emit_signal("action_requested", str(action.get("id", "")))
+			return true
+		return false
+	if runtime_screen == null or not runtime_screen.has_signal("action_requested") or action_id.is_empty():
+		return false
+	runtime_screen.emit_signal("action_requested", action_id)
+	return true
+
+
+func _temporary_decision_overlay(runtime_screen: Node) -> SpaceSyndicateOverlayLayer:
+	var screen := runtime_screen as SpaceSyndicateGameScreen
+	if screen == null:
+		return null
+	return screen.get_overlay_host() as SpaceSyndicateOverlayLayer
 
 
 func _district_supply_drawer(runtime_screen: Node) -> Node:
