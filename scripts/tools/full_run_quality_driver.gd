@@ -29,7 +29,10 @@ const OBSERVATION_ACTION_DRAIN := &"drain"
 const OBSERVATION_ACTION_CLOSED := &"closed"
 const SIMULATION_TIME_SCALE := 16.0
 const WAIT_SIMULATION_TIME_SCALE := 128.0
-const ACTION_ENGINE_TIME_SCALE := 2.0
+# Keep UI action admission at human-scale time. Region-supply quotes live for
+# five world seconds; accelerating the engine here can expire a successful
+# quote before the typed presentation receipt becomes the next visible action.
+const ACTION_ENGINE_TIME_SCALE := 1.0
 const SUPPLY_WAIT_ENGINE_TIME_SCALE := 8.0
 const GDP_WAIT_ENGINE_TIME_SCALE := 8.0
 const SUPPLY_QUOTE_REFRESH_INTERVAL_MSEC := 1000
@@ -118,6 +121,8 @@ var _started_msec := 0
 var _heartbeat_sequence := 0
 var _last_event := "driver_started"
 var _last_progress_feedback := ""
+var _district_supply_receipt_sequence := 0
+var _last_district_supply_receipt: Dictionary = {}
 var _action_stats := {
 	"attempted": 0,
 	"progressed": 0,
@@ -171,6 +176,9 @@ func _run() -> void:
 
 	coordinator = main_instance.get_node_or_null(COORDINATOR_PATH)
 	session = coordinator.get_node_or_null(SESSION_PATH) if coordinator != null else null
+	var district_supply_port := (coordinator as GameRuntimeCoordinator).district_supply_action_port() if coordinator is GameRuntimeCoordinator else null
+	if district_supply_port != null and not district_supply_port.receipt_ready.is_connected(_on_district_supply_action_receipt):
+		district_supply_port.receipt_ready.connect(_on_district_supply_action_receipt)
 	var registry := session.get_node_or_null(REGISTRY_PATH) if session != null else null
 	var runtime_screen := main_instance.get_node_or_null(RUNTIME_SCREEN_PATH)
 	var settlement_composition := main_instance.get_node_or_null(SETTLEMENT_PATH)
@@ -249,6 +257,24 @@ func _run() -> void:
 		if not pending_action.is_empty():
 			var pending_id := str(pending_action.get("id", ""))
 			var pending_phase := str(pending_action.get("phase", ""))
+			var supply_receipt_arrived := str(pending_action.get("origin", "")) == "district_supply" \
+				and _district_supply_receipt_sequence > int(pending_action.get("supply_receipt_sequence", -1))
+			if supply_receipt_arrived and not bool(_last_district_supply_receipt.get("accepted", false)):
+				var receipt_reason := str(_last_district_supply_receipt.get("reason_code", "district_supply_rejected"))
+				if recoverable_supply_receipt_reason(receipt_reason):
+					_record_reason("district_supply_retryable_receipt")
+					_last_event = "retrying_typed_receipt:%s" % receipt_reason
+					if receipt_reason == "source_region_dark" and _begin_supply_rack_rotation(supply_rotation_state, _public_supply_wait_facts(runtime_screen)):
+						_action_stats["supply_rack_rotations"] = int(_action_stats.get("supply_rack_rotations", 0)) + 1
+					pending_action = {}
+					no_action_since_msec = now_msec
+					continue
+				_action_stats["rejected_invalid"] = int(_action_stats.get("rejected_invalid", 0)) + 1
+				failure_code = "scripted_ui_action_rejected:%s:%s" % [pending_id, receipt_reason]
+				_record_reason("scripted_ui_action_rejected")
+				_last_event = "blocked_typed_receipt:%s" % receipt_reason
+				final_status = "blocked"
+				break
 			var action_progressed := str(ui_action.get("id", "")) != pending_id or str(ui_action.get("phase", "")) != pending_phase
 			if action_progressed:
 				_action_stats["progressed"] = int(_action_stats.get("progressed", 0)) + 1
@@ -301,6 +327,7 @@ func _run() -> void:
 		if pending_action.is_empty() and observation_policy == OBSERVATION_ACTION_OPEN:
 			var action_id := str(ui_action.get("id", ""))
 			if not action_id.is_empty() and not bool(ui_action.get("disabled", false)):
+				var supply_receipt_sequence_before_submission := _district_supply_receipt_sequence
 				if not _submit_scripted_ui_action(runtime_screen, ui_action):
 					_action_stats["attempted"] = int(_action_stats.get("attempted", 0)) + 1
 					_action_stats["rejected_invalid"] = int(_action_stats.get("rejected_invalid", 0)) + 1
@@ -317,6 +344,7 @@ func _run() -> void:
 					"origin": str(ui_action.get("origin", "")),
 					"signature": str(ui_action.get("signature", "")),
 					"requested_msec": now_msec,
+					"supply_receipt_sequence": supply_receipt_sequence_before_submission,
 				}
 				no_action_since_msec = now_msec
 			elif action_id in ["district_supply_wait", "gdp_accumulation_wait"] and bool(ui_action.get("disabled", false)):
@@ -328,7 +356,8 @@ func _run() -> void:
 					var attempts := int(attempts_by_signature.get(rack_signature, 0))
 					var exhausted_signatures: Dictionary = supply_rotation_state.get("exhausted_signatures", {}) \
 						if supply_rotation_state.get("exhausted_signatures", {}) is Dictionary else {}
-					if not rack_signature.is_empty() and (bool(exhausted_signatures.get(rack_signature, false)) \
+					if not rack_signature.is_empty() and (not bool(wait_facts.get("has_visible_facility", true)) \
+							or bool(exhausted_signatures.get(rack_signature, false)) \
 							or attempts >= SUPPLY_QUOTE_REFRESH_ATTEMPTS_PER_RACK):
 						exhausted_signatures[rack_signature] = true
 						supply_rotation_state["exhausted_signatures"] = exhausted_signatures
@@ -346,7 +375,8 @@ func _run() -> void:
 						if _begin_supply_rack_rotation(supply_rotation_state, wait_facts):
 							_action_stats["supply_rack_rotations"] = int(_action_stats.get("supply_rack_rotations", 0)) + 1
 					last_supply_quote_refresh_msec = now_msec
-				_last_event = "waiting:district_supply_quote_availability" if action_id == "district_supply_wait" else "waiting:gdp_accumulation_and_victory_qualification"
+				_last_event = ("waiting:district_supply_facility_visibility" if str(ui_action.get("phase", "")).contains("facility_not_visible") else "waiting:district_supply_quote_availability") \
+					if action_id == "district_supply_wait" else "waiting:gdp_accumulation_and_victory_qualification"
 				no_action_since_msec = now_msec
 			elif now_msec - no_action_since_msec >= int(NO_ACTION_TIMEOUT_SECONDS * 1000.0):
 				var exact_phase := str(final_telemetry.get("phase", "play"))
@@ -605,6 +635,7 @@ func _scripted_ui_action(
 	if not supply_rotation_action.is_empty():
 		return supply_rotation_action
 	var source_established := false
+	var facility_chain_incomplete := int(public_progress.get("owned_facility_count", 0)) < 4
 	var strategy_actions: Array[Dictionary] = []
 	for strategy_kind in ["expand_economic_source", "protect_route", "pressure_competition"]:
 		var strategy_action := _first_enabled_action_by_kind(player_board.get("actions", []), strategy_kind)
@@ -625,7 +656,7 @@ func _scripted_ui_action(
 	var facility_hand_action := _first_enabled_card_action_by_kind(hand_cards, "facility_v06")
 	if not facility_hand_action.is_empty():
 		return facility_hand_action
-	var visible_supply_action := _district_supply_ui_action(runtime_screen)
+	var visible_supply_action := _district_supply_ui_action(runtime_screen, facility_chain_incomplete)
 	if not visible_supply_action.is_empty():
 		return visible_supply_action
 	for strategy_action in strategy_actions:
@@ -639,7 +670,7 @@ func _scripted_ui_action(
 			"disabled": true,
 			"origin": "economic_wait",
 		}
-	var supply_action := _district_supply_ui_action(runtime_screen)
+	var supply_action := _district_supply_ui_action(runtime_screen, facility_chain_incomplete)
 	if not supply_action.is_empty():
 		return supply_action
 	var build_source_action := _first_enabled_action_by_kind(player_board.get("actions", []), "build_economic_source")
@@ -671,18 +702,25 @@ func _scripted_ui_action(
 	return {"id": "", "phase": "play", "disabled": true}
 
 
-func _district_supply_ui_action(runtime_screen: Node) -> Dictionary:
+func _district_supply_ui_action(runtime_screen: Node, facility_chain_incomplete := false) -> Dictionary:
 	var drawer := _district_supply_drawer(runtime_screen)
 	if drawer == null or not drawer.visible or not drawer.has_method("debug_snapshot") or not drawer.has_signal("supply_action_requested"):
 		return {}
 	var snapshot_variant: Variant = drawer.call("debug_snapshot")
 	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
+	return district_supply_action_from_snapshot(snapshot, facility_chain_incomplete)
+
+
+static func district_supply_action_from_snapshot(snapshot: Dictionary, facility_chain_incomplete := false) -> Dictionary:
 	var preview: Dictionary = snapshot.get("preview", {}) if snapshot.get("preview", {}) is Dictionary else {}
 	var preview_card_name := str(preview.get("card_name", ""))
 	var primary_action_id := str(preview.get("primary_action_id", ""))
+	var cards: Array = snapshot.get("cards", []) if snapshot.get("cards", []) is Array else []
+	var preview_kind := _supply_card_kind(cards, preview_card_name)
 	if not preview_card_name.is_empty() \
 			and bool(preview.get("buy_enabled", false)) \
-			and primary_action_id in ["district_supply_preview_card", "district_supply_purchase_card"]:
+			and primary_action_id in ["district_supply_preview_card", "district_supply_purchase_card"] \
+			and (not facility_chain_incomplete or _is_supply_facility_kind(preview_kind)):
 		var action_phase := "quote" if primary_action_id == "district_supply_preview_card" else "purchase"
 		return {
 			"id": primary_action_id,
@@ -691,7 +729,6 @@ func _district_supply_ui_action(runtime_screen: Node) -> Dictionary:
 			"origin": "district_supply",
 			"payload": {"card_name": preview_card_name, "source": "full_run_visible_preview"},
 		}
-	var cards: Array = snapshot.get("cards", []) if snapshot.get("cards", []) is Array else []
 	var retry_next_facility := str(preview.get("action_reason_code", "")) in [
 		"source_region_dark",
 		"source_region_destroyed",
@@ -699,7 +736,7 @@ func _district_supply_ui_action(runtime_screen: Node) -> Dictionary:
 		"market_quote_unavailable",
 		"quote_expired",
 	]
-	var facility_card := _next_supply_card_of_kind(cards, "facility_v06", preview_card_name if retry_next_facility else "")
+	var facility_card := _next_supply_facility_card(cards, preview_card_name if retry_next_facility else "")
 	if not facility_card.is_empty():
 		var facility_name := str(facility_card.get("card_name", ""))
 		if preview_card_name != facility_name:
@@ -710,6 +747,13 @@ func _district_supply_ui_action(runtime_screen: Node) -> Dictionary:
 				"origin": "district_supply",
 				"payload": {"card_name": facility_name, "source": "full_run_gdp_strategy"},
 			}
+	if facility_chain_incomplete:
+		return {
+			"id": "district_supply_wait",
+			"phase": "play.supply.wait.cards_%d.preview_%s.reason_facility_not_visible" % [cards.size(), preview_card_name if not preview_card_name.is_empty() else "none"],
+			"disabled": true,
+			"origin": "district_supply",
+		}
 	for card_variant in cards:
 		if not (card_variant is Dictionary):
 			continue
@@ -729,7 +773,7 @@ func _district_supply_ui_action(runtime_screen: Node) -> Dictionary:
 		"phase": "play.supply.wait.cards_%d.preview_%s.reason_%s" % [cards.size(), preview_card_name if not preview_card_name.is_empty() else "none", str(preview.get("action_reason_code", "purchase_unavailable"))],
 		"disabled": true,
 		"origin": "district_supply",
-	} if drawer.visible else {}
+	}
 
 
 func _refresh_visible_supply_quote(runtime_screen: Node) -> bool:
@@ -771,11 +815,13 @@ func _public_supply_wait_facts(runtime_screen: Node) -> Dictionary:
 	var district_index := int(selection.get("selected_district", -1))
 	var district_count := int(selection.get("district_count", 0))
 	var card_signature_rows: Array[String] = []
+	var has_visible_facility := false
 	var cards: Array = drawer_snapshot.get("cards", []) if drawer_snapshot.get("cards", []) is Array else []
 	for card_variant in cards:
 		if not (card_variant is Dictionary):
 			continue
 		var card := card_variant as Dictionary
+		has_visible_facility = has_visible_facility or _is_supply_facility_kind(str(card.get("kind", "")))
 		card_signature_rows.append("%s|%s" % [
 			str(card.get("card_name", "")),
 			str(card.get("kind", "")),
@@ -790,6 +836,7 @@ func _public_supply_wait_facts(runtime_screen: Node) -> Dictionary:
 		"district_count": district_count,
 		"selection_revision": int(selection.get("revision", -1)),
 		"rack_signature": JSON.stringify(signature_source).sha256_text(),
+		"has_visible_facility": has_visible_facility,
 	}
 
 
@@ -831,10 +878,10 @@ func _supply_rotation_action(runtime_screen: Node, rotation_state: Dictionary) -
 		return {}
 	if phase == "exhausted":
 		return {
-			"id": "district_supply_rotation_exhausted",
-			"phase": "play.supply.rotation_exhausted.%d" % int(rotation_state.get("rotation_count", 0)),
+			"id": "district_supply_wait",
+			"phase": "play.supply.rotation_exhausted_wait.%d" % int(rotation_state.get("rotation_count", 0)),
 			"disabled": true,
-			"origin": "district_supply_rotation",
+			"origin": "economic_wait",
 		}
 	var drawer := _district_supply_drawer(runtime_screen)
 	var screen := runtime_screen as SpaceSyndicateGameScreen
@@ -881,7 +928,47 @@ func _supply_rotation_action(runtime_screen: Node, rotation_state: Dictionary) -
 	return {}
 
 
-func _next_supply_card_of_kind(cards: Array, kind: String, after_card_name: String = "") -> Dictionary:
+static func _supply_card_kind(cards: Array, card_name: String) -> String:
+	if card_name.is_empty():
+		return ""
+	for card_variant in cards:
+		if card_variant is Dictionary and str((card_variant as Dictionary).get("card_name", "")) == card_name:
+			return str((card_variant as Dictionary).get("kind", ""))
+	return ""
+
+
+static func _is_supply_facility_kind(kind: String) -> bool:
+	# The public region-supply projection uses the v0.6 catalog category
+	# (`facility`); hand presentation uses `facility_v06`. Accept both typed
+	# projections without inferring card identity from its name.
+	return kind in ["facility", "facility_v06", "public_facility"]
+
+
+static func recoverable_supply_receipt_reason(reason_code: String) -> bool:
+	# These outcomes are normal consequences of the public five-second quote and
+	# rotating illumination. The UI clears/replaces the quote, so a human can
+	# retry without any gameplay mutation having occurred.
+	return reason_code in ["locked_quote_changed", "quote_unavailable", "source_region_dark"]
+
+
+static func _next_supply_facility_card(cards: Array, after_card_name: String = "") -> Dictionary:
+	var matching: Array[Dictionary] = []
+	for card_variant in cards:
+		if card_variant is Dictionary:
+			var card := card_variant as Dictionary
+			if _is_supply_facility_kind(str(card.get("kind", ""))) and bool(card.get("actionable", false)):
+				matching.append(card)
+	if matching.is_empty():
+		return {}
+	if after_card_name.is_empty():
+		return matching[0].duplicate(true)
+	for index in range(matching.size()):
+		if str(matching[index].get("card_name", "")) == after_card_name:
+			return matching[wrapi(index + 1, 0, matching.size())].duplicate(true)
+	return matching[0].duplicate(true)
+
+
+static func _next_supply_card_of_kind(cards: Array, kind: String, after_card_name: String = "") -> Dictionary:
 	var matching: Array[Dictionary] = []
 	for card_variant in cards:
 		if card_variant is Dictionary and str((card_variant as Dictionary).get("kind", "")) == kind:
@@ -1032,6 +1119,18 @@ func _runtime_action_feedback(runtime_screen: Node) -> Dictionary:
 		return {}
 	var value: Variant = runtime_screen.call("get_runtime_player_feedback_snapshot")
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func _on_district_supply_action_receipt(receipt: DistrictSupplyActionReceipt) -> void:
+	if receipt == null:
+		return
+	_district_supply_receipt_sequence += 1
+	_last_district_supply_receipt = {
+		"accepted": receipt.accepted,
+		"reason_code": receipt.reason_code,
+		"action_kind": str(receipt.action_kind),
+		"request_id": receipt.request_id,
+	}
 
 
 func _next_public_map_action(runtime_screen: Node) -> Dictionary:
