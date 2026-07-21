@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "request_id": "P2-ALPHA01-CONTENT-CURATION-runtime-activation",
+  "curation_status": "READY",
+  "activation_status": "PENDING_OWNER_INTEGRATION",
+  "reason": "The scoped content task owns the deterministic whitelist but not the production consumers that currently read full catalogs.",
+  "manifest_resource": "res://resources/content/alpha01/alpha01_content_manifest.tres",
+  "content_contract": {
+    "public_roles": 8,
+    "player_card_identities": 40,
+    "rank_records": 160,
+    "regional_supply_identities": 28,
+    "commodity_identities": 12,
+    "monsters": 8,
+    "products": 46,
+    "acquisition_rule": "Only manifest.acquisition_card_ids() (.rank_1) may seed draw/acquisition universes; ranks II-IV remain same-family upgrade records."
+  },
+  "observed_production_state": {
+    "regional_supply_rank_one_identities": 41,
+    "regional_supply_categories": {
+      "facility": 16,
+      "supply_demand": 2,
+      "monster": 8,
+      "military": 7,
+      "interaction": 3,
+      "organization": 5
+    },
+    "commodity_source_families": 46,
+    "commodity_default_belt_visible_entries": 8,
+    "role_catalog_entries": 24,
+    "rank_record_draw_risk": "NOT_PRESENT: both regional supply and the default commodity belt filter rank I."
+  },
+  "requested_owner_work": [
+    {
+      "consumer": "regional supply session plan",
+      "candidate_owner_paths": [
+        "res://scripts/runtime/session_start_plan_builder.gd",
+        "res://scripts/runtime/game_runtime_coordinator.gd",
+        "res://scripts/runtime/region_supply_runtime_controller.gd"
+      ],
+      "requirement": "Intersect the canonical rank-I regional supply descriptors with the 28 non-commodity acquisition IDs from the Alpha manifest; keep deterministic ordering and no future-bag exposure."
+    },
+    {
+      "consumer": "commodity belt",
+      "candidate_owner_paths": [
+        "res://scripts/runtime/commodity_card_inventory_runtime_controller.gd"
+      ],
+      "requirement": "Limit belt candidates to the 12 selected commodity rank-I IDs before deterministic eight-entry seeding; do not make rank II-IV directly drawable."
+    },
+    {
+      "consumer": "role setup and session identity",
+      "candidate_owner_paths": [
+        "res://scripts/runtime/new_game_setup_draft_service.gd",
+        "res://scripts/runtime/new_game_setup_viewer_query_port.gd",
+        "res://scripts/runtime/session_start_plan_builder.gd"
+      ],
+      "requirement": "Expose only the eight selected source roles while preserving their authoritative source indices [0,1,2,3,8,16,21,22] and Chinese-name save identity; do not remap them to unsafe local save indices."
+    }
+  ],
+  "already_at_parity": {
+    "monsters": "The Alpha selection is the complete eight-monster runtime roster.",
+    "products": "The Alpha selection is the complete 46-product economy catalog."
+  },
+  "acceptance_gates": [
+    "The focused Alpha manifest test passes with the pinned selection and dependency hashes.",
+    "Player acquisition surfaces expose 40 identities total, not 160 rank records.",
+    "The regional supply universe is exactly the selected 28 non-commodity rank-I IDs.",
+    "Commodity acquisition uses only the selected 12 commodity rank-I IDs.",
+    "Setup exposes exactly the selected eight roles while save identity remains source-stable.",
+    "No organization card or retired mechanic enters an active pool.",
+    "Hidden hands, cash, AI reasoning, route plans, starter-monster choices, and ownership remain private."
+  ],
+  "boundary_confirmation": "This content-curation commit does not modify Main, GameRuntimeCoordinator, GameScreen, economy owners, card-execution owners, or any production consumer."
+}
