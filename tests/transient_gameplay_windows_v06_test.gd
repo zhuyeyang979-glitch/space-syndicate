@@ -186,7 +186,7 @@ func _test_public_bid_and_forced_back() -> void:
 		"temporary_decision": {"id": "stale", "kind": "stale_fixture", "actions": [{"id": "stale_action"}]},
 	})
 	var rejected_table: Dictionary = rejected_snapshot.call("to_ui_dictionary") as Dictionary
-	_expect((rejected_table.get("temporary_decision", {}) as Dictionary).is_empty(), "TableSnapshot allowlists only real wager, counter, contract, discard, and target decision kinds")
+	_expect((rejected_table.get("temporary_decision", {}) as Dictionary).is_empty(), "TableSnapshot allowlists only real wager, counter, discard, and target decision kinds")
 	rejected_snapshot.call("apply_dictionary", {
 		"active_forced_decision": {
 			"id": "fixture-active",

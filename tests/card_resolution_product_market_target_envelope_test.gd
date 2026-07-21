@@ -179,9 +179,8 @@ func _run() -> void:
 		"selected_district": 0,
 		"selected_trade_product": "星露莓",
 		"target_slot": -1,
+		"target_monster_uid": -1,
 		"target_player": -1,
-		"contract_source_district": -1,
-		"contract_target_district": -1,
 		"play_requirement_district": -1,
 		"stable_target_envelope": envelope,
 	}

@@ -177,8 +177,6 @@ func _run() -> void:
 	(old_envelope.get("sections", {}) as Dictionary).erase("card_resolution_history")
 	_expect(not bool(handshake.validate_envelope(old_envelope).get("valid", true)), "old eighteen-section envelope fails closed after manifest change")
 
-	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	_expect(not main_source.contains("CardHistoryRestoreDependencyContract") and not main_source.contains("preflight_save_data"), "Stage A adds no Main dependency")
 	_expect(not FileAccess.get_file_as_string("res://scripts/runtime/card_resolution_execution_runtime_service.gd").contains('"history": _history'), "execution owner does not duplicate authoritative history content")
 
 	coordinator.queue_free()

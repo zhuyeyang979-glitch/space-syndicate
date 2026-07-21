@@ -1287,8 +1287,6 @@ func _case_next_queue_item_starts_after_completion() -> Dictionary:
 func _case_save_load_active_resolution_parity() -> Dictionary:
 	var coordinator := _coordinator()
 	var entry := _entry(CASH_CARD_ID, 3629)
-	entry["contract_source_district"] = 0
-	entry["contract_target_district"] = 1
 	_queue_service().call("replace_active_entry", entry)
 	_queue_service().call("replace_current_queue", [_entry(CASH_CARD_ID, 3630)])
 	_queue_service().call("replace_next_queue", [_entry(COUNTER_CARD_ID, 3631)])

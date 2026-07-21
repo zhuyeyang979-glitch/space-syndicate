@@ -37,13 +37,13 @@ func interaction_cases() -> Array:
 	return [
 		_case_record("empty_hand", "empty_hand_affordance", "", "", "HandRack keeps an empty affordance and does not expose a card action."),
 		_case_record("normal_hand", "select_first_card_and_play", "card_orbital_finance", "play:orbital_finance", "Clicking the first hand card updates detail and emits the card play action."),
-		_case_record("selected_enabled_card", "selected_enabled_action", "card_shadow_contract", "play:shadow_contract", "Selected enabled card keeps focus and emits its play action."),
+		_case_record("selected_enabled_card", "selected_enabled_action", "card_shadow_disruption", "play:shadow_disruption", "Selected enabled card keeps focus and emits its play action."),
 		_case_record("selected_disabled_card", "disabled_action_silent", "card_monster_tip_blocked", "play:monster_tip", "Disabled action remains visible but does not emit."),
 		_case_record("hovered_card", "hover_keeps_focus", "card_orbital_finance", "", "Hover metadata is present without clearing selected-card context."),
 		_case_record("drag_preview", "invalid_drop_silent", "card_signal_jammer", "", "Invalid drop state is visible and does not emit a play action."),
 		_case_record("right_inspector_card_detail", "right_inspector_detail", "card_orbital_finance", "play:orbital_finance", "RightInspector shows use-case, target, requirement, effect, and action."),
-		_case_record("public_track_selection", "public_track_click", "card_orbital_finance", "track:contract_a", "Clicking a public-track slot records the public UI action without private owner data."),
-		_case_record("temporary_decision_pending_hint", "temporary_decision_pending_hint", "card_shadow_contract", "", "Pending overlay hint is visible and does not bypass the temporary decision flow."),
+		_case_record("public_track_selection", "public_track_click", "card_orbital_finance", "track:interaction_a", "Clicking a public-track slot records the public UI action without private owner data."),
+		_case_record("temporary_decision_pending_hint", "temporary_decision_pending_hint", "card_shadow_disruption", "", "Pending overlay hint is visible and does not bypass the temporary decision flow."),
 	]
 
 
@@ -425,7 +425,7 @@ func _right_inspector_has_card(preview: Control, card_id: String) -> bool:
 
 func _public_track_privacy_checked(preview: Control) -> bool:
 	var text := _node_tree_text(preview.find_child("PublicTrack", true, false))
-	return text.contains("匿名合约") and text.contains("玩家?") and not text.contains("owner") and not text.contains("hidden")
+	return text.contains("互动牌") and text.contains("待猜") and not text.contains("owner") and not text.contains("hidden")
 
 
 func _preview_has_single_player_surface(preview: Control) -> bool:

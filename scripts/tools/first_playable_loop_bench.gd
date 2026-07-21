@@ -164,7 +164,7 @@ func _run_step(viewport: SubViewport, screen: Control, step_data: Dictionary, em
 			clicked_action_id = expected_action_id
 			await _click_public_track_slot(viewport, screen)
 			emitted_action_id = _latest_since(emitted_action_ids, before_action_count)
-			right_inspector_checked = _node_tree_text(screen.find_child("RightInspector", true, false)).contains("匿名合约")
+			right_inspector_checked = _node_tree_text(screen.find_child("RightInspector", true, false)).contains("互动牌")
 			player_feedback_checked = _player_feedback_contains(screen, expected_action_id, "action")
 		"temporary_decision_roundtrip":
 			overlay_checked = _temporary_decision_overlay_visible(screen)
@@ -406,7 +406,7 @@ func _temporary_decision_overlay_visible(screen: Control) -> bool:
 		return false
 	var text := _node_tree_text(overlay)
 	var panel := screen.find_child("TemporaryChoiceDecisionPanel", true, false) as Control
-	return panel != null and panel.visible and text.contains("选择合约目标")
+	return panel != null and panel.visible and text.contains("选择互动目标")
 
 
 func _temporary_decision_feedback_visible(screen: Control) -> bool:

@@ -126,8 +126,6 @@ func _request(resolution_id: int, kind: String) -> Dictionary:
 			"selected_player": 0,
 			"selected_district": 0,
 			"selected_trade_product": "QA Product",
-			"contract_source_district": -1,
-			"contract_target_district": -1,
 		},
 	}
 

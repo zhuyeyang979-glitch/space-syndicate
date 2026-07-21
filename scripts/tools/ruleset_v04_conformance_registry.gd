@@ -302,7 +302,7 @@ const RECORDS := [
 		"expected_behavior": "All gameplay card definitions, family/rank progression, common-pool order, and consumer snapshots come from one Inspector-editable runtime catalog while external financial terms retain their dedicated owners.",
 		"current_owner": "CardRuntimeCatalogService + card_runtime_catalog_v04.tres",
 		"current_status": STATUS_CUTOVER_COMPLETE,
-		"runtime_evidence": ["Sprint 58 passes 80/80", "Sprint 59 authoring workflow passes 36/36", "232 active authored definitions match locked canonical hashes", "114 families and 70 upgradeable families", "118 ordered public-pool entries", "49 effect kinds validate", "custom Inspector validation and user:// change review are available", "Coordinator statically composes Catalog Service and DefinitionWorldBridge", "main.gd legacy constants and helpers are absent"],
+		"runtime_evidence": ["Sprint 58 passes 80/80", "Sprint 59 authoring workflow passes 36/36", "230 active authored definitions match locked canonical hashes", "113 families and 70 upgradeable families", "116 ordered public-pool entries", "48 effect kinds validate", "custom Inspector validation and user:// change review are available", "Coordinator statically composes Catalog Service and DefinitionWorldBridge", "main.gd legacy constants and helpers are absent"],
 		"cutover_action": "Keep the Resource catalog as the only static card-definition source; require the Inspector validator and change-review workflow for authored changes; retain dedicated Product Futures, City GDP, and Monster dynamic-definition owners.",
 		"deletion_candidates": [],
 		"risk": "medium",

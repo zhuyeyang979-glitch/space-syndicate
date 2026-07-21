@@ -1,5 +1,5 @@
 {
-  "card_count": 239,
+  "card_count": 230,
   "card_hashes": {
     "业主透镜1": "be2c6e12262673623a202c04f9fc55d6b2ca1a85818dea93d858402fc7ebf1be",
     "业主透镜2": "acf4f12759c2a4df5ae7a73a4d243aed255b9ad682e588814663d7eb6bfd3fb7",
@@ -77,8 +77,6 @@
     "夺取怪兽1": "9d99b2b142cdc766986057b866005aa606c20e84b8cd94f8a8efe5c4d24dee92",
     "完美格挡破绽1": "11a77418917eae32a3700a4708d5d713bee30933ac86c9a6325b931245e145c2",
     "定身闪光余波1": "9db9ff2d37b5218f370c13f28a4bd05697ad35827a3431ebb0c870fe33186a6c",
-    "密约回溯1": "f874a5126d6566063307762b83f53bec3041e3d7b29509c92553cbde9364da7c",
-    "密约回溯2": "f9aefcf012ac7270f89147b887ae160b55a80caa57a7c8b63c9d95bd41fc5eb3",
     "导弹阵地1": "5047b6bc0a1eaa3b5254ea7c485da69d2b151429435ab40ebe43db11dbb3fb69",
     "导弹阵地2": "fbb92f3b5acf8ffa692e7114bd9b6f031aff2fbafcefea335525a14014dce358",
     "导弹阵地3": "845d45e25c4046f7ec019dabc82b2b8b1015dfb6997597875abc352637b0d646",
@@ -234,11 +232,11 @@
     "飞行2": "919b18adecb7037adbcbfbaae466b36bfad1182ef1456083e635fa4e3b1cecaa",
     "飞踢落点预判1": "06d072b677ffaa7755d568ebd33fc843f2382ebf8247ace96ad88fd821caef5e"
   },
-  "catalog_data_sha256": "6b5d3c8b9e4d314278a1f693c7f2651e70d4ca2bd41f9c331221fd2082e1450d",
-  "catalog_order_sha256": "b3fdc8d63e15ab5bfde97cde8a7a99294d5e667d91d7e991aa3dfcdf7bd7241e",
-  "common_pool_count": 118,
-  "common_pool_order_sha256": "eead212ffe30f44a1af0b822062730b20bb158ffdfd54c89a4cb0b95ee42dcfe",
-  "family_count": 114,
+  "catalog_data_sha256": "0492531b53d13b47d9354b71dce2eebaa26784ac218dd294cf1f4d5e7a1c0ae5",
+  "catalog_order_sha256": "54aa7929922580235034a53d1fbf940c97bf6b64d3ebec610e2cd89a422350ae",
+  "common_pool_count": 116,
+  "common_pool_order_sha256": "3059a90e42c676a5bb469d836813b1b45d6b02693464f654e4309e0e225cd33b",
+  "family_count": 113,
   "ruleset_id": "v0.4",
   "schema": "runtime-card-catalog-integrity-v1",
   "upgradeable_family_count": 70,

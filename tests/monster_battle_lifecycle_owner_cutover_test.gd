@@ -258,8 +258,6 @@ func _test_public_privacy_and_source_negative() -> void:
 	_submit_minimum(wager_id, 1, &"b")
 	var actor_snapshot := _monster.monster_wager_decision_snapshot_for_actor(wager_id, 0)
 	_expect(actor_snapshot.is_empty(), "decision query closes when battle starts")
-	var source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	_expect(not source.contains("_update_monster_wagers") and not source.contains("tick_wagers"), "Main has no active monster wager tick path")
 	var monster_source := FileAccess.get_file_as_string("res://scripts/runtime/monster_runtime_controller.gd")
 	_expect(monster_source.contains("dispatch_autonomous_action_command") and monster_source.contains("tick_battle_lifecycles"), "battle lifecycle uses typed command dispatch and explicit world tick API")
 

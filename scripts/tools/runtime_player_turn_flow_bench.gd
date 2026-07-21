@@ -38,10 +38,10 @@ func flow_cases() -> Array:
 	return [
 		_case_record("empty_hand", "empty_hand_no_card_action", "", "", "Real GameScreen keeps the bottom hand area readable without card actions."),
 		_case_record("normal_hand", "hand_card_click_updates_inspector", "card_orbital_finance", "", "Clicking a real HandRack card updates the real RightInspector."),
-		_case_record("selected_enabled_card", "enabled_action_emits", "card_shadow_contract", "play:shadow_contract", "Enabled card action travels through GameScreen.action_requested."),
+		_case_record("selected_enabled_card", "enabled_action_emits", "card_shadow_disruption", "play:shadow_disruption", "Enabled card action travels through GameScreen.action_requested."),
 		_case_record("selected_disabled_card", "disabled_action_stays_silent", "card_monster_tip_blocked", "play:monster_tip", "Disabled action remains visible with a reason and does not emit."),
-		_case_record("public_track_selection", "public_track_select_safe_hint", "card_orbital_finance", "track:contract_a", "Public track click shows public context without hidden-owner fields."),
-		_case_record("temporary_decision_pending_hint", "temporary_decision_pending_feedback", "card_shadow_contract", "", "Pending temporary decision shows player-surface feedback without bypassing OverlayLayer."),
+		_case_record("public_track_selection", "public_track_select_safe_hint", "card_orbital_finance", "track:interaction_a", "Public track click shows public context without hidden-owner fields."),
+		_case_record("temporary_decision_pending_hint", "temporary_decision_pending_feedback", "card_shadow_disruption", "", "Pending temporary decision shows player-surface feedback without bypassing OverlayLayer."),
 	]
 
 
@@ -153,7 +153,7 @@ func _run_case(viewport: SubViewport, screen: Control, case: Dictionary, emitted
 			clicked_action_id = expected_action_id
 			await _click_public_track_slot(viewport, screen)
 			emitted_action_id = _latest_since(emitted_action_ids, before_count)
-			right_inspector_checked = _node_tree_text(screen.find_child("RightInspector", true, false)).contains("匿名合约")
+			right_inspector_checked = _node_tree_text(screen.find_child("RightInspector", true, false)).contains("互动牌")
 			public_hint_safe = _public_hint_safe(screen)
 		"temporary_decision_pending_feedback":
 			right_inspector_checked = true
@@ -285,7 +285,7 @@ func _temporary_decision_payload() -> Dictionary:
 	return {
 		"id": "runtime_flow_player_target",
 		"kind": "player_target_choice",
-		"title": "选择合约目标",
+		"title": "选择互动目标",
 		"summary": "真实主界面正在等待 Overlay 完成目标选择。",
 		"body": "这个 payload 只用于 RuntimePlayerTurnFlowBench，不调用规则函数。",
 		"chips": [{"text": "私密选择"}, {"text": "公开后结算"}],
@@ -437,7 +437,7 @@ func _temporary_decision_hint_visible(screen: Control) -> bool:
 	if board != null and board.has_method("get_runtime_feedback_snapshot"):
 		var value: Variant = board.call("get_runtime_feedback_snapshot")
 		player_feedback = value if value is Dictionary else {}
-	return overlay_text.contains("选择合约目标") and feedback_text.contains("等待决策") and str(player_feedback.get("kind", "")) == "temporary_decision"
+	return overlay_text.contains("选择互动目标") and feedback_text.contains("等待决策") and str(player_feedback.get("kind", "")) == "temporary_decision"
 
 
 func _hand_card_by_id(screen: Control, card_id: String) -> Control:

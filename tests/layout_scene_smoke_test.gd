@@ -1006,7 +1006,7 @@ func _check_player_turn_mcp_preview_component() -> void:
 	preview.call("show_preview_id", "public_track_selection")
 	await process_frame
 	await process_frame
-	_expect(_node_tree_text(preview).contains("匿名合约") and _node_tree_text(preview).contains("公共轨道"), "PlayerTurnMcpPreview public_track_selection shows selected public-track context")
+	_expect(_node_tree_text(preview).contains("互动牌") and _node_tree_text(preview).contains("公共轨道"), "PlayerTurnMcpPreview public_track_selection shows selected public-track context")
 	preview.call("show_preview_id", "temporary_decision_pending_hint")
 	await process_frame
 	await process_frame
@@ -2924,7 +2924,6 @@ func _runtime_table_snapshot_contains_private_owner_data(value: Variant) -> bool
 		"owner_truth",
 		"true_owner",
 		"known_card_owners",
-		"known_contract_parties",
 		"ai_plan",
 		"ai_private_plan",
 		"ai_memory",
@@ -3111,7 +3110,7 @@ func _prepare_runtime_full_hand_purchase(main: Node, district_index: int, incomi
 				main.call("_make_skill", "装甲再生1"),
 				main.call("_make_skill", "舆论操控1"),
 				main.call("_make_skill", "业主透镜1"),
-				main.call("_make_skill", "区域供需合约1"),
+				main.call("_make_skill", "短期订单1"),
 			]
 		players[0] = player
 		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
@@ -8630,14 +8629,14 @@ func _check_runtime_card_catalog_resource_component() -> void:
 		var integrity_variant: Variant = JSON.parse_string(FileAccess.get_file_as_string(CARD_RUNTIME_CATALOG_INTEGRITY))
 		var integrity: Dictionary = integrity_variant if integrity_variant is Dictionary else {}
 		var hashes_match := str(debug.get("catalog_order_sha256", "")) == str(integrity.get("catalog_order_sha256", "")) and str(debug.get("upgradeable_order_sha256", "")) == str(integrity.get("upgradeable_order_sha256", "")) and str(debug.get("common_pool_order_sha256", "")) == str(integrity.get("common_pool_order_sha256", ""))
-		_expect(bool(report.get("valid", false)) and int(report.get("card_count", 0)) == 232 and int(report.get("authored_rank_count", 0)) == 232 and int(report.get("family_count", 0)) == 114 and int(report.get("pack_count", 0)) == 10 and int(report.get("common_pool_count", 0)) == 118 and int(report.get("upgradeable_family_count", 0)) == 70 and int(report.get("kind_count", 0)) == 49 and hashes_match and not _variant_contains_callable(report) and not _variant_contains_object(report), "Runtime catalog validates 114 families, 232 authored ranks, ten packs, 118 pool entries, 70 upgradeable families, 49 kinds, and locked order hashes")
+		_expect(bool(report.get("valid", false)) and int(report.get("card_count", 0)) == 230 and int(report.get("authored_rank_count", 0)) == 230 and int(report.get("family_count", 0)) == 113 and int(report.get("pack_count", 0)) == 10 and int(report.get("common_pool_count", 0)) == 116 and int(report.get("upgradeable_family_count", 0)) == 70 and int(report.get("kind_count", 0)) == 48 and hashes_match and not _variant_contains_callable(report) and not _variant_contains_object(report), "Runtime catalog validates 113 families, 230 authored ranks, ten packs, 116 pool entries, 70 upgradeable families, 48 kinds, and locked order hashes")
 	var family_file_count := 0
 	for path in DirAccess.get_files_at("res://resources/cards/runtime/families"):
 		family_file_count += 1 if str(path).ends_with(".tres") else 0
 	var pack_file_count := 0
 	for path in DirAccess.get_files_at("res://resources/cards/runtime/packs"):
 		pack_file_count += 1 if str(path).ends_with(".tres") else 0
-	_expect(family_file_count == 114 and pack_file_count == 10, "Runtime card Resource graph has exactly 114 family files and ten pack files")
+	_expect(family_file_count == 113 and pack_file_count == 10, "Runtime card Resource graph has exactly 113 family files and ten pack files")
 	var service_packed := load(CARD_RUNTIME_CATALOG_SERVICE_SCENE) as PackedScene
 	var service := service_packed.instantiate() if service_packed != null else null
 	if service != null:
@@ -8676,7 +8675,7 @@ func _check_runtime_card_catalog_resource_component() -> void:
 			var record: Dictionary = record_variant if record_variant is Dictionary else {}
 			for field_name in ["case_id", "phase", "runtime_owner", "observed", "contract_aligned", "passed", "pure_data_checked", "notes"]:
 				fields_ok = fields_ok and record.has(field_name)
-		_expect(cases_ok and fields_ok and int(manifest.get("case_count", 0)) == 80 and int(manifest.get("historical_case_count", 0)) == 40 and int(manifest.get("live_case_count", 0)) == 40 and bool(schema.get("runtime_cutover_enabled", false)) and str(manifest.get("runtime_owner", "")) == "CardRuntimeCatalogService" and int(schema.get("family_resources", 0)) == 114 and int(schema.get("embedded_rank_resources", 0)) == 232 and int(schema.get("pack_resources", 0)) == 10 and str(bench.call("output_dir")) == RUNTIME_CARD_CATALOG_RESOURCE_OUTPUT_DIR and str(bench.call("screenshot_path")) == RUNTIME_CARD_CATALOG_RESOURCE_SCREENSHOT_PATH and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest) and not _variant_contains_callable(schema) and not _variant_contains_object(schema), "Runtime Card Catalog Sprint 58 exposes forty historical and forty live pure-data cases with the authoritative Resource owner")
+		_expect(cases_ok and fields_ok and int(manifest.get("case_count", 0)) == 80 and int(manifest.get("historical_case_count", 0)) == 40 and int(manifest.get("live_case_count", 0)) == 40 and bool(schema.get("runtime_cutover_enabled", false)) and str(manifest.get("runtime_owner", "")) == "CardRuntimeCatalogService" and int(schema.get("family_resources", 0)) == 113 and int(schema.get("embedded_rank_resources", 0)) == 230 and int(schema.get("pack_resources", 0)) == 10 and str(bench.call("output_dir")) == RUNTIME_CARD_CATALOG_RESOURCE_OUTPUT_DIR and str(bench.call("screenshot_path")) == RUNTIME_CARD_CATALOG_RESOURCE_SCREENSHOT_PATH and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest) and not _variant_contains_callable(schema) and not _variant_contains_object(schema), "Runtime Card Catalog Sprint 58 exposes forty historical and forty live pure-data cases with the authoritative Resource owner")
 		root.remove_child(bench)
 		bench.queue_free()
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
@@ -8690,7 +8689,7 @@ func _check_runtime_card_catalog_resource_component() -> void:
 	if coordinator != null:
 		coordinator.free()
 	var ownership_contract := FileAccess.get_file_as_string(RUNTIME_CARD_CATALOG_OWNERSHIP_CONTRACT)
-	_expect(ownership_contract.contains("80/80") and ownership_contract.contains("main.gd` is not a catalog owner") and FileAccess.get_file_as_string(RUNTIME_CARD_CATALOG_RESOURCE_SCHEMA).contains("232 embedded `CardRuntimeRankResource`"), "Sprint 58 ownership and Resource schema contracts document one owner and the deletion gate")
+	_expect(ownership_contract.contains("80/80") and ownership_contract.contains("main.gd` is not a catalog owner") and FileAccess.get_file_as_string(RUNTIME_CARD_CATALOG_RESOURCE_SCHEMA).contains("230 embedded `CardRuntimeRankResource`"), "Sprint 58 ownership and Resource schema contracts document one owner and the deletion gate")
 	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
 	var registry: RefCounted = registry_script.new() if registry_script != null else null
 	if registry != null:
@@ -8763,7 +8762,7 @@ func _check_runtime_card_authoring_workflow_component() -> void:
 	var index: Dictionary = service.authoring_index()
 	var validation: Dictionary = service.validate_catalog()
 	var service_debug: Dictionary = service.debug_snapshot()
-	_expect(bool(configured.get("configured", false)) and bool(index.get("valid", false)) and int(index.get("pack_count", 0)) == 10 and int(index.get("family_count", 0)) == 114 and int(index.get("card_count", 0)) == 232 and bool(validation.get("valid", false)) and str(service_debug.get("runtime_owner_unchanged", "")) == "CardRuntimeCatalogService" and bool(service_debug.get("editor_only", false)) and str(service.call("output_dir")) == RUNTIME_CARD_AUTHORING_OUTPUT_DIR and not _variant_contains_callable(index) and not _variant_contains_object(index) and not _variant_contains_callable(validation) and not _variant_contains_object(validation), "Authoring Service indexes and validates the authoritative 10-pack/114-family/232-card catalog using pure data")
+	_expect(bool(configured.get("configured", false)) and bool(index.get("valid", false)) and int(index.get("pack_count", 0)) == 10 and int(index.get("family_count", 0)) == 113 and int(index.get("card_count", 0)) == 230 and bool(validation.get("valid", false)) and str(service_debug.get("runtime_owner_unchanged", "")) == "CardRuntimeCatalogService" and bool(service_debug.get("editor_only", false)) and str(service.call("output_dir")) == RUNTIME_CARD_AUTHORING_OUTPUT_DIR and not _variant_contains_callable(index) and not _variant_contains_object(index) and not _variant_contains_callable(validation) and not _variant_contains_object(validation), "Authoring Service indexes and validates the authoritative 10-pack/113-family/230-card catalog using pure data")
 	var workspace_packed := load(RUNTIME_CARD_AUTHORING_WORKSPACE_SCENE) as PackedScene
 	_expect(workspace_packed != null, "RuntimeCardAuthoringWorkspace scene loads")
 	if workspace_packed != null:
@@ -8773,7 +8772,7 @@ func _check_runtime_card_authoring_workflow_component() -> void:
 		for node_name in ["AuthoringPackOption", "AuthoringFamilySearch", "AuthoringFamilyList", "AuthoringCardList", "AuthoringValidationOutput", "AuthoringReviewOutput", "ValidateSelectedCardButton", "CaptureAuthoringBaselineButton", "BuildAuthoringReviewButton", "OpenSelectedCardResourceButton"]:
 			_expect(workspace.find_child(node_name, true, false) != null, "RuntimeCardAuthoringWorkspace statically owns %s" % node_name)
 		var workspace_debug: Dictionary = workspace.call("debug_snapshot")
-		_expect(workspace.has_method("refresh_index") and workspace.has_method("select_family") and workspace.has_method("select_card") and workspace.has_method("validate_selected") and workspace.has_method("validate_catalog") and workspace.has_method("capture_baseline") and workspace.has_method("build_change_review") and workspace.has_method("open_selected_resource") and int(workspace_debug.get("card_count", 0)) == 232 and str(workspace_debug.get("runtime_owner_unchanged", "")) == "CardRuntimeCatalogService" and not _variant_contains_callable(workspace_debug) and not _variant_contains_object(workspace_debug), "RuntimeCardAuthoringWorkspace exposes navigation, validation, baseline, review, Resource-path, and pure-data debug APIs")
+		_expect(workspace.has_method("refresh_index") and workspace.has_method("select_family") and workspace.has_method("select_card") and workspace.has_method("validate_selected") and workspace.has_method("validate_catalog") and workspace.has_method("capture_baseline") and workspace.has_method("build_change_review") and workspace.has_method("open_selected_resource") and int(workspace_debug.get("card_count", 0)) == 230 and str(workspace_debug.get("runtime_owner_unchanged", "")) == "CardRuntimeCatalogService" and not _variant_contains_callable(workspace_debug) and not _variant_contains_object(workspace_debug), "RuntimeCardAuthoringWorkspace exposes navigation, validation, baseline, review, Resource-path, and pure-data debug APIs")
 		root.remove_child(workspace)
 		workspace.queue_free()
 	var bench_packed := load(RUNTIME_CARD_AUTHORING_WORKFLOW_BENCH_SCENE) as PackedScene
@@ -10024,7 +10023,7 @@ func _check_final_settlement_board_component() -> void:
 			},
 		],
 		"event_lines": [
-			"关键卡牌：匿名合约改变雾港收入。",
+			"关键卡牌：条件订单改变雾港收入。",
 			"地图结局：存活城市2座｜已毁区域1个｜怪兽在场1/2。",
 		],
 		"ranks": [
