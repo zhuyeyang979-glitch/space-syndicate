@@ -24,6 +24,9 @@ const ACTION_PROGRESS_TIMEOUT_SECONDS := 3.0
 const NO_ACTION_TIMEOUT_SECONDS := 1.5
 const DEFAULT_OBSERVATION_SECONDS := 12
 const DEFAULT_MAX_WALL_SECONDS := 30
+const OBSERVATION_ACTION_OPEN := &"open"
+const OBSERVATION_ACTION_DRAIN := &"drain"
+const OBSERVATION_ACTION_CLOSED := &"closed"
 const SIMULATION_TIME_SCALE := 16.0
 const WAIT_SIMULATION_TIME_SCALE := 128.0
 const ACTION_ENGINE_TIME_SCALE := 2.0
@@ -284,7 +287,18 @@ func _run() -> void:
 				final_status = "blocked"
 				break
 
-		if pending_action.is_empty():
+		var observation_policy := observation_action_policy(
+			observation_started_msec,
+			observation_limit_msec,
+			now_msec,
+			pending_action
+		)
+		if observation_policy == OBSERVATION_ACTION_CLOSED:
+			failure_code = "observation_window_elapsed_before_settlement"
+			_last_event = "blocked:%s" % failure_code
+			break
+
+		if pending_action.is_empty() and observation_policy == OBSERVATION_ACTION_OPEN:
 			var action_id := str(ui_action.get("id", ""))
 			if not action_id.is_empty() and not bool(ui_action.get("disabled", false)):
 				if not _submit_scripted_ui_action(runtime_screen, ui_action):
@@ -353,10 +367,6 @@ func _run() -> void:
 		if now_msec - last_heartbeat_msec >= int(HEARTBEAT_INTERVAL_SECONDS * 1000.0):
 			_emit_heartbeat(seed_index, final_telemetry, "running")
 			last_heartbeat_msec = now_msec
-		if now_msec - observation_started_msec >= observation_limit_msec:
-			failure_code = "observation_window_elapsed_during_action" if not pending_action.is_empty() else "observation_window_elapsed_before_settlement"
-			_last_event = "blocked:%s" % failure_code
-			break
 		if now_msec - _started_msec >= max_wall_msec:
 			failure_code = "driver_wall_timeout"
 			_last_event = "blocked:driver_wall_timeout"
@@ -1282,6 +1292,17 @@ func _head_token() -> String:
 
 static func qa_save_directory(head: String, run_seed: int) -> String:
 	return "%s%s/%d/" % [QA_SAVE_ROOT, _safe_path_segment(head), run_seed]
+
+
+static func observation_action_policy(
+	observation_started_msec: int,
+	observation_limit_msec: int,
+	now_msec: int,
+	pending_action: Dictionary
+) -> StringName:
+	if now_msec - observation_started_msec < maxi(0, observation_limit_msec):
+		return OBSERVATION_ACTION_OPEN
+	return OBSERVATION_ACTION_DRAIN if not pending_action.is_empty() else OBSERVATION_ACTION_CLOSED
 
 
 static func public_output_contract() -> Dictionary:

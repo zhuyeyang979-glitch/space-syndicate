@@ -136,6 +136,9 @@ func _run() -> void:
 	_expect(driver_source.contains('player_board.get("hand_cards"') and driver_source.contains('player_board.get("actions"') and driver_source.contains('"play.hand.%s.%s"') and driver_source.contains('"play.board.%s.%s"'), "post-coach scripted play uses only public HandRack and PlayerBoard action ids with stateful progress fingerprints")
 	_expect(driver_source.contains('"board_primary"') and driver_source.contains("navigation_no_state_change") and driver_source.contains('"selected_district_summary"'), "one-shot board navigation cannot loop in one region and becomes eligible again after a public region change")
 	_expect(driver_source.contains("observation_window_elapsed_before_settlement") and driver_source.contains("driver_wall_timeout"), "bounded observation and wall timeout have distinct failure codes")
+	_expect(not driver_source.contains("observation_window_elapsed_during_action"), "observation expiry no longer misclassifies an action admitted near the boundary as a product stall")
+	_expect(driver_source.contains("observation_action_policy") and driver_source.contains("OBSERVATION_ACTION_DRAIN"), "the observation boundary stops admitting new actions while boundedly draining an already accepted action")
+	_expect(driver_source.find("observation_policy == OBSERVATION_ACTION_CLOSED") < driver_source.find("if not _submit_scripted_ui_action(runtime_screen, ui_action):"), "the closed observation gate runs before any next scripted UI action can be submitted")
 	_expect(not driver_source.contains('"completion_rate"') and not driver_source.contains('"completed_runs"'), "single-run output cannot masquerade as aggregate quality evidence")
 
 	for token in FORBIDDEN_DRIVER_TOKENS:

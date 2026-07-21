@@ -179,6 +179,13 @@ The driver may not:
 - open a presentation surface to advance its underlying economy;
 - call settlement presentation before the authoritative outcome exists.
 
+The observation duration is an action-admission boundary, not a cancellation signal. Once it
+closes, the driver submits no further player action. An action accepted before the boundary may
+finish only inside the existing three-second action-progress bound; it must then report normal
+progress or the exact no-progress failure. This prevents a healthy production action from being
+misreported merely because the observation deadline arrived between submission and the next UI
+projection, without extending the observation indefinitely.
+
 ## Invocation
 
 Single-seed preflight:
