@@ -35,6 +35,15 @@ const EXIT_CAPABILITY_INCOMPLETE := 3
 const EXIT_OBSERVATION_INCOMPLETE := 4
 const EXIT_RUNTIME_COMPOSITION_UNAVAILABLE := 5
 const EXIT_NONFINITE := 6
+const TYPED_RACK_ACTION_IDS := [
+	"rack",
+	"buy",
+	"district_open_rack",
+	"primary_open_development_rack",
+	"primary_open_rack",
+	"primary_review_rack",
+	"strategy_build_gdp_source",
+]
 
 const FIXED_SEEDS: Array[int] = [
 	900626424,
@@ -265,7 +274,14 @@ func _run() -> void:
 		if pending_action.is_empty():
 			var action_id := str(ui_action.get("id", ""))
 			if not action_id.is_empty() and not bool(ui_action.get("disabled", false)):
-				_submit_scripted_ui_action(runtime_screen, ui_action)
+				if not _submit_scripted_ui_action(runtime_screen, ui_action):
+					_action_stats["attempted"] = int(_action_stats.get("attempted", 0)) + 1
+					_action_stats["rejected_invalid"] = int(_action_stats.get("rejected_invalid", 0)) + 1
+					failure_code = "scripted_ui_action_submission_rejected:%s" % action_id
+					_record_reason("scripted_ui_action_submission_rejected")
+					_last_event = "blocked:%s" % failure_code
+					final_status = "blocked"
+					break
 				_action_stats["attempted"] = int(_action_stats.get("attempted", 0)) + 1
 				_last_event = "action_requested:%s:after:%s" % [action_id, _last_progress_feedback]
 				pending_action = {
@@ -375,7 +391,9 @@ func _capability_preflight(main_instance: Node, coordinator: Node, session: Node
 	var victory_ready := coordinator != null and coordinator.has_method("victory_control_public_snapshot")
 	var session_ready := session != null and session.has_method("session_summary")
 	var settlement_ready := settlement_composition != null and settlement_composition.has_method("debug_snapshot") and settlement_composition.has_method("last_public_snapshot")
-	var scripted_ui_port_ready := runtime_screen != null and runtime_screen.has_signal("action_requested")
+	var scripted_ui_port_ready := runtime_screen is SpaceSyndicateGameScreen \
+		and runtime_screen.has_signal("action_requested") \
+		and runtime_screen.has_method("request_district_supply_open")
 	var setup_ready := main_instance.get_node_or_null(SETUP_DRAFT_PATH) is NewGameSetupDraftService \
 		and main_instance.get_node_or_null(SESSION_START_TRANSACTION_PATH) is SessionStartTransactionCoordinator
 	var registry_valid := bool(registry_snapshot.get("valid", false)) and qa_path_ready
@@ -725,23 +743,38 @@ func _board_action_request(action: Dictionary, player_board: Dictionary, signatu
 	}
 
 
-func _submit_scripted_ui_action(runtime_screen: Node, action: Dictionary) -> void:
+func _submit_scripted_ui_action(runtime_screen: Node, action: Dictionary) -> bool:
+	var action_id := str(action.get("id", ""))
+	if action_id in TYPED_RACK_ACTION_IDS:
+		var screen := runtime_screen as SpaceSyndicateGameScreen
+		if screen == null:
+			return false
+		var ui: Dictionary = screen.current_ui_data if screen.current_ui_data is Dictionary else {}
+		var selection_context: Dictionary = ui.get("selection_context", {}) if ui.get("selection_context", {}) is Dictionary else {}
+		var selected_district := int(selection_context.get("selected_district", -1))
+		return selected_district >= 0 and screen.request_district_supply_open(selected_district, &"qa_driver")
 	if str(action.get("origin", "")) == "menu_overlay":
 		var menu_overlay := _menu_overlay(runtime_screen)
 		if menu_overlay != null and menu_overlay.has_signal("continue_requested"):
 			menu_overlay.emit_signal("continue_requested")
-		return
+			return true
+		return false
 	if str(action.get("origin", "")) == "district_supply":
 		var drawer := _district_supply_drawer(runtime_screen)
 		if drawer != null and drawer.has_signal("supply_action_requested"):
 			drawer.emit_signal("supply_action_requested", str(action.get("id", "")), (action.get("payload", {}) as Dictionary).duplicate(true))
-		return
+			return true
+		return false
 	if str(action.get("origin", "")) == "planet_map":
 		var map_view: Control = runtime_screen.call("get_embedded_map_view") if runtime_screen.has_method("get_embedded_map_view") else null
 		if map_view != null and map_view.has_signal("district_selected"):
 			map_view.emit_signal("district_selected", int(action.get("district_index", -1)))
-		return
-	runtime_screen.emit_signal("action_requested", str(action.get("id", "")))
+			return true
+		return false
+	if runtime_screen == null or not runtime_screen.has_signal("action_requested") or action_id.is_empty():
+		return false
+	runtime_screen.emit_signal("action_requested", action_id)
+	return true
 
 
 func _district_supply_drawer(runtime_screen: Node) -> Node:
