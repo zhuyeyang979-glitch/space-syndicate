@@ -172,8 +172,6 @@ func _behavior_spec(case_id: String) -> Dictionary:
 		"gdp_share_insufficient": {"skill_id": "城市融资2", "facts": {"share_basis_points_by_district": {"0": 0}}, "reason": "gdp_share_insufficient", "allowed": false},
 		"gdp_share_satisfied": {"skill_id": "城市融资2", "facts": {"share_basis_points_by_district": {"0": 10000}}, "reason": "playable", "allowed": true},
 		"cash_insufficient": {"skill": {"play_cash": 120}, "facts": {"player_cash": 20}, "reason": "cash_insufficient", "allowed": false},
-		"contract_invalid": {"mode": "hand", "skill_kind": "area_trade_contract", "facts": {"contract_error": "合约端点无效"}, "reason": "contract_invalid", "allowed": false},
-		"contract_valid": {"mode": "hand", "skill_kind": "area_trade_contract", "reason": "playable", "allowed": true},
 		"city_development_invalid": {"mode": "hand", "skill_kind": "city_development", "facts": {"city_development_error": "目标没有商品项目"}, "reason": "city_development_invalid", "allowed": false},
 		"city_development_valid": {"mode": "hand", "skill_kind": "city_development", "reason": "playable", "allowed": true},
 		"military_unit_missing": {"skill_kind": "military_command", "facts": {"military_unit_present": false}, "reason": "military_unit_missing", "allowed": false},

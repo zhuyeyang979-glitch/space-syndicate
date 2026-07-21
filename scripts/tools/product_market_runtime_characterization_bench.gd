@@ -12,8 +12,6 @@ const AI_CONTROLLER_SCRIPT_PATH := "res://scripts/runtime/ai_runtime_controller.
 const WEATHER_CONTROLLER_SCRIPT_PATH := "res://scripts/runtime/weather_runtime_controller.gd"
 const MONSTER_CONTROLLER_SCRIPT_PATH := "res://scripts/runtime/monster_runtime_controller.gd"
 const MILITARY_CONTROLLER_SCRIPT_PATH := "res://scripts/runtime/military_runtime_controller.gd"
-const CONTRACT_CONTROLLER_SCRIPT_PATH := "res://scripts/runtime/contract_runtime_controller.gd"
-const CONTRACT_WORLD_BRIDGE_SCRIPT_PATH := "res://scripts/runtime/contract_runtime_world_bridge.gd"
 const PRODUCT_CODEX_SCRIPT_PATH := "res://scripts/runtime/product_codex_public_snapshot_service.gd"
 const PRODUCT_MARKET_CONTROLLER_SCENE_PATH := "res://scenes/runtime/ProductMarketRuntimeController.tscn"
 const PRODUCT_MARKET_CONTROLLER_SCRIPT_PATH := "res://scripts/runtime/product_market_runtime_controller.gd"
@@ -214,7 +212,7 @@ const CASE_IDS := [
 	"sprint53_deletion_candidates_complete",
 	"formula_service_remains_arithmetic_owner",
 	"ai_reads_market_but_does_not_mutate",
-	"weather_monster_military_contract_share_refresh_route",
+	"weather_monster_military_share_refresh_route",
 	"pure_data_evidence_and_no_runtime_objects",
 	"twelve_real_futures_cards_exist",
 	"four_rank_progression_for_long",
@@ -285,7 +283,6 @@ var _ai_controller: Node
 var _weather_controller: Node
 var _monster_controller: Node
 var _military_controller: Node
-var _contract_controller: Node
 var _market_controller: ProductMarketRuntimeController
 var _queue_service: Node
 var _eligibility_service: Node
@@ -489,7 +486,7 @@ func _run_case(case_id: String) -> Dictionary:
 		"sprint53_deletion_candidates_complete": return _case_deletion_candidates()
 		"formula_service_remains_arithmetic_owner": return _case_formula_boundary()
 		"ai_reads_market_but_does_not_mutate": return _case_ai_boundary()
-		"weather_monster_military_contract_share_refresh_route": return _case_world_routes()
+		"weather_monster_military_share_refresh_route": return _case_world_routes()
 		"pure_data_evidence_and_no_runtime_objects": return _case_pure_data()
 	return _record(case_id, false, false, "Unknown characterization case.")
 
@@ -1203,9 +1200,8 @@ func _case_world_routes() -> Dictionary:
 	var weather := str(_sources.get("weather", ""))
 	var monster := str(_sources.get("monster", ""))
 	var military := str(_sources.get("military", ""))
-	var contract := str(_sources.get("contract_bridge", ""))
-	var observed := weather.contains("_product_market_runtime_controller.refresh_prices") and monster.contains("_product_market_runtime_controller.refresh_prices") and monster.contains("_product_market_runtime_controller.apply_product_market_boon") and military.contains("_product_market_runtime_controller.refresh_prices") and contract.contains("_product_market_runtime_controller.refresh_prices")
-	return _record("weather_monster_military_contract_share_refresh_route", observed, observed, "Weather, Monster, Military, and Contract all route through the authoritative ProductMarketRuntimeController.", {"world_route_checked": true})
+	var observed := weather.contains("_product_market_runtime_controller.refresh_prices") and monster.contains("_product_market_runtime_controller.refresh_prices") and monster.contains("_product_market_runtime_controller.apply_product_market_boon") and military.contains("_product_market_runtime_controller.refresh_prices")
+	return _record("weather_monster_military_share_refresh_route", observed, observed, "Weather, Monster, and Military route through the authoritative ProductMarketRuntimeController.", {"world_route_checked": true})
 
 
 func _case_pure_data() -> Dictionary:
@@ -1231,8 +1227,6 @@ func _load_sources() -> void:
 		"weather": FileAccess.get_file_as_string(WEATHER_CONTROLLER_SCRIPT_PATH),
 		"monster": FileAccess.get_file_as_string(MONSTER_CONTROLLER_SCRIPT_PATH),
 		"military": FileAccess.get_file_as_string(MILITARY_CONTROLLER_SCRIPT_PATH),
-		"contract": FileAccess.get_file_as_string(CONTRACT_CONTROLLER_SCRIPT_PATH),
-		"contract_bridge": FileAccess.get_file_as_string(CONTRACT_WORLD_BRIDGE_SCRIPT_PATH),
 		"product_codex": FileAccess.get_file_as_string(PRODUCT_CODEX_SCRIPT_PATH),
 		"market_controller": FileAccess.get_file_as_string(PRODUCT_MARKET_CONTROLLER_SCRIPT_PATH),
 		"market_world_bridge": FileAccess.get_file_as_string(PRODUCT_MARKET_WORLD_BRIDGE_SCRIPT_PATH),
@@ -1274,7 +1268,6 @@ func _ensure_runtime_main() -> bool:
 	_weather_controller = _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/WeatherRuntimeController")
 	_monster_controller = _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterRuntimeController")
 	_military_controller = _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MilitaryRuntimeController")
-	_contract_controller = _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ContractRuntimeController")
 	_market_controller = _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ProductMarketRuntimeController") as ProductMarketRuntimeController
 	_queue_service = _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardResolutionQueueRuntimeService")
 	_eligibility_service = _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardPlayEligibilityRuntimeService")
@@ -1282,7 +1275,7 @@ func _ensure_runtime_main() -> bool:
 	_baseline_players = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players as Array).duplicate(true)
 	_baseline_districts = (((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
 	_baseline_product_market = (_market_state().get("product_market", {}) as Dictionary).duplicate(true)
-	return _coordinator != null and _market_controller != null and _formula_service != null and _queue_service != null and _eligibility_service != null and _presentation_service != null and _cashflow_controller != null and _gdp_controller != null and _ai_controller != null and _weather_controller != null and _monster_controller != null and _military_controller != null and _contract_controller != null and not _baseline_players.is_empty() and not _baseline_districts.is_empty() and not _baseline_product_market.is_empty()
+	return _coordinator != null and _market_controller != null and _formula_service != null and _queue_service != null and _eligibility_service != null and _presentation_service != null and _cashflow_controller != null and _gdp_controller != null and _ai_controller != null and _weather_controller != null and _monster_controller != null and _military_controller != null and not _baseline_players.is_empty() and not _baseline_districts.is_empty() and not _baseline_product_market.is_empty()
 
 
 func _reset_fixture() -> void:
@@ -1869,7 +1862,6 @@ func _release_runtime_main() -> void:
 	_weather_controller = null
 	_monster_controller = null
 	_military_controller = null
-	_contract_controller = null
 	_market_controller = null
 	_queue_service = null
 	_eligibility_service = null

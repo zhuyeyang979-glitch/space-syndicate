@@ -164,7 +164,7 @@ func _fixture_temporary_decision_pending() -> Dictionary:
 		"privacy_hint": "私密弃牌和目标选择不写入公共牌轨。",
 		"entries": [
 			_entry(9140, "0", "怪兽赌局", "当前展示", "待猜", "¥50", "#f43f5e", ["Overlay"], "track_select_9140", "track_open_monster_wager"),
-			_entry(9141, "N1", "回应合约", "下批等待1", "待猜", "¥70", "#22c55e", ["下批"], "track_select_9141", "track_open_contract_response"),
+			_entry(9141, "N1", "选择目标", "下批等待1", "待猜", "¥70", "#22c55e", ["下批"], "track_select_9141", "track_open_target_choice"),
 		],
 	})
 

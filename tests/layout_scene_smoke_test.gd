@@ -100,7 +100,6 @@ const SPLIT_UI_SCRIPT_PATHS := [
 	"res://scripts/ui/card_resolution_track.gd",
 	"res://scripts/ui/card_resolution_track_slot.gd",
 	"res://scripts/ui/monster_wager_decision_panel.gd",
-	"res://scripts/ui/contract_response_decision_panel.gd",
 	"res://scripts/ui/temporary_choice_decision_panel.gd",
 	"res://scripts/ui/temporary_decision_overlay_preview.gd",
 	"res://scripts/ui/temporary_decision_overlay_capture_bench.gd",
@@ -567,13 +566,6 @@ const WEATHER_RUNTIME_WORLD_BRIDGE_SCRIPT := "res://scripts/runtime/weather_runt
 const WEATHER_RUNTIME_WORLD_BRIDGE_SCENE := "res://scenes/runtime/WeatherRuntimeWorldBridge.tscn"
 const WEATHER_RUNTIME_CHARACTERIZATION_OUTPUT_DIR := "user://space_syndicate_design_qa/weather_runtime_characterization/"
 const WEATHER_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH := "user://space_syndicate_design_qa/weather_runtime_hard_cutover_sprint_49.png"
-const CONTRACT_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT := "res://scripts/tools/contract_runtime_characterization_bench.gd"
-const CONTRACT_RUNTIME_CHARACTERIZATION_BENCH_SCENE := "res://scenes/tools/ContractRuntimeCharacterizationBench.tscn"
-const CONTRACT_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/ContractRuntimeController.tscn"
-const CONTRACT_RUNTIME_WORLD_BRIDGE_SCENE := "res://scenes/runtime/ContractRuntimeWorldBridge.tscn"
-const CONTRACT_RUNTIME_OWNERSHIP_CONTRACT := "res://docs/contract_runtime_ownership_contract.md"
-const CONTRACT_RUNTIME_CHARACTERIZATION_OUTPUT_DIR := "user://space_syndicate_design_qa/contract_runtime_characterization/"
-const CONTRACT_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH := "user://space_syndicate_design_qa/contract_runtime_hard_cutover_sprint_51.png"
 const PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT := "res://scripts/tools/product_market_runtime_characterization_bench.gd"
 const PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_BENCH_SCENE := "res://scenes/tools/ProductMarketRuntimeCharacterizationBench.tscn"
 const PRODUCT_MARKET_RUNTIME_OWNERSHIP_CONTRACT := "res://docs/product_market_runtime_ownership_contract.md"
@@ -825,7 +817,6 @@ func _run() -> void:
 	await _check_monster_runtime_characterization_component()
 	await _check_military_runtime_characterization_component()
 	await _check_weather_runtime_characterization_component()
-	await _check_contract_runtime_characterization_component()
 	await _check_product_market_runtime_characterization_component()
 	await _check_city_trade_network_runtime_characterization_component()
 	await _check_city_development_settlement_runtime_characterization_component()
@@ -1458,7 +1449,7 @@ func _check_temporary_decision_overlay_interaction_bench_component() -> void:
 	var disabled_cases := 0
 	var empty_edge := 0
 	var malformed_edge := 0
-	var expected_ids := ["monster_wager", "contract_response", "discard_purchase", "monster_target_choice", "player_target_choice"]
+	var expected_ids := ["monster_wager", "discard_purchase", "monster_target_choice", "player_target_choice"]
 	var seen_base_ids: Array[String] = []
 	var seen_disabled_ids: Array[String] = []
 	var required_case_fields_ok := true
@@ -1537,7 +1528,6 @@ func _check_temporary_decision_overlay_preview_component() -> void:
 		)
 	var expected_panel_by_id := {
 		"monster_wager": "MonsterWagerDecisionPanel",
-		"contract_response": "ContractResponseDecisionPanel",
 		"discard_purchase": "TemporaryChoiceDecisionPanel",
 		"monster_target_choice": "TemporaryChoiceDecisionPanel",
 		"player_target_choice": "TemporaryChoiceDecisionPanel",
@@ -1602,7 +1592,7 @@ func _check_temporary_decision_overlay_preview_component() -> void:
 
 func _visible_temporary_decision_panel_names(root_node: Node) -> Array[String]:
 	var names: Array[String] = []
-	for node_name in ["MonsterWagerDecisionPanel", "ContractResponseDecisionPanel", "TemporaryChoiceDecisionPanel", "TemporaryDecisionModal", "ConfirmPanel"]:
+	for node_name in ["MonsterWagerDecisionPanel", "TemporaryChoiceDecisionPanel", "TemporaryDecisionModal", "ConfirmPanel"]:
 		var panel := root_node.find_child(node_name, true, false) as Control
 		if panel != null and panel.visible:
 			names.append(node_name)
@@ -1861,24 +1851,20 @@ func _check_planet_map_sceneization_component() -> void:
 		var toolbar := toolbar_packed.instantiate() as Control
 		root.add_child(toolbar)
 		await process_frame
-		_expect(toolbar.has_method("set_controls") and toolbar.has_method("debug_snapshot") and toolbar.has_signal("control_action_requested") and toolbar.has_signal("optional_route_selection_changed"), "PlanetMapControlToolbar exposes pure snapshot input, gameplay actions, and a separate local route-selection signal")
-		for node_name in ["MapReadingHintRail", "MapLayerFocusRail", "MapLayerAllButton", "MapLayerProductButton", "MapLayerRouteButton", "MapLayerIntelButton", "MapLayerWeatherButton", "MapLayerMonsterButton", "MapTradeProductSelector", "MapTradeStatusLabel", "MapContractSourceButton", "MapContractTargetButton", "MapContractStatusLabel"]:
+		_expect(toolbar.has_method("set_controls") and toolbar.has_method("debug_snapshot") and not toolbar.has_signal("control_action_requested") and toolbar.has_signal("map_layer_focus_requested") and toolbar.has_signal("optional_route_selection_changed"), "PlanetMapControlToolbar exposes typed layer/route signals without the retired generic Main action path")
+		for node_name in ["MapReadingHintRail", "MapLayerFocusRail", "MapLayerAllButton", "MapLayerProductButton", "MapLayerRouteButton", "MapLayerIntelButton", "MapLayerWeatherButton", "MapLayerMonsterButton", "MapTradeProductSelector", "MapTradeStatusLabel"]:
 			_expect(toolbar.find_child(node_name, true, false) != null, "PlanetMapControlToolbar owns %s" % node_name)
-		var toolbar_actions: Array[String] = []
-		var toolbar_payloads: Array = []
+		for retired_node_name in ["MapContractSourceButton", "MapContractTargetButton", "MapContractStatusLabel"]:
+			_expect(toolbar.find_child(retired_node_name, true, false) == null, "PlanetMapControlToolbar omits retired contract-response control %s" % retired_node_name)
 		var optional_route_selections: Array[String] = []
-		toolbar.connect("control_action_requested", func(action_id: String, payload: Dictionary) -> void:
-			toolbar_actions.append(action_id)
-			toolbar_payloads.append(payload.duplicate(true))
-		)
 		toolbar.connect("optional_route_selection_changed", func(product_id: String) -> void:
 			optional_route_selections.append(product_id)
 		)
-		toolbar.call("set_controls", {"layers": [{"id": "all", "label": "全", "text": "全图", "accent": "#fef3c7"}, {"id": "route", "label": "⇄", "text": "商路", "accent": "#f59e0b"}], "selected_layer_id": "all", "trade": {"options": [{"id": "", "label": "商路关闭"}, {"id": "食品", "label": "食品"}], "selected_product_id": ""}, "contract_source": {"disabled": true}, "contract_target": {"disabled": true}})
+		toolbar.call("set_controls", {"layers": [{"id": "all", "label": "全", "text": "全图", "accent": "#fef3c7"}, {"id": "route", "label": "⇄", "text": "商路", "accent": "#f59e0b"}], "selected_layer_id": "all", "trade": {"options": [{"id": "", "label": "商路关闭"}, {"id": "食品", "label": "食品"}], "selected_product_id": ""}})
 		(toolbar.find_child("MapLayerRouteButton", true, false) as Button).emit_signal("pressed")
 		toolbar.call("_on_trade_product_selected", 1)
 		var toolbar_snapshot: Variant = toolbar.call("debug_snapshot")
-		_expect(toolbar_actions.is_empty() and optional_route_selections == ["食品"] and bool((toolbar_snapshot as Dictionary).get("route_view_enabled", false)), "route focus and commodity selection stay local instead of emitting legacy gameplay mutations")
+		_expect(optional_route_selections == ["食品"] and bool((toolbar_snapshot as Dictionary).get("route_view_enabled", false)), "route focus and commodity selection stay local without a generic gameplay mutation signal")
 		_expect(toolbar_snapshot is Dictionary and not _variant_contains_callable(toolbar_snapshot) and not _variant_contains_object(toolbar_snapshot), "PlanetMapControlToolbar debug snapshot remains pure data")
 		root.remove_child(toolbar)
 		toolbar.queue_free()
@@ -2007,7 +1993,7 @@ func _check_planet_map_sceneization_component() -> void:
 				_expect(interaction_screenshot_path == PLANET_MAP_INTERACTION_SCREENSHOT_PATH and interaction_screenshot_path.begins_with("user://") and not interaction_screenshot_path.contains("res://reports"), "PlanetMapInteractionBench exposes the user:// MCP screenshot target")
 			var interaction_cases_variant: Variant = interaction_bench.call("interaction_cases") if interaction_bench.has_method("interaction_cases") else []
 			var interaction_cases: Array = interaction_cases_variant if interaction_cases_variant is Array else []
-			var expected_interaction_ids := ["click_selected_district", "double_click_district", "keyboard_navigation", "focus_district_programmatic", "zoom_projection_sync", "render_cutover_interaction", "empty_map_safe_interaction", "toolbar_scene_composition", "layer_focus_action_routes", "trade_product_selection_routes", "contract_source_enabled_disabled", "contract_target_enabled_disabled", "real_main_toolbar_route", "pure_toolbar_snapshot", "legacy_toolbar_builders_and_node_arrays_absent"]
+			var expected_interaction_ids := ["click_selected_district", "double_click_district", "keyboard_navigation", "focus_district_programmatic", "zoom_projection_sync", "render_cutover_interaction", "empty_map_safe_interaction", "toolbar_scene_composition", "layer_focus_action_routes", "trade_product_selection_routes", "real_main_toolbar_route", "pure_toolbar_snapshot", "legacy_toolbar_builders_and_node_arrays_absent"]
 			var interaction_ids_ok := interaction_cases.size() == expected_interaction_ids.size()
 			for id in expected_interaction_ids:
 				var has_id := false
@@ -2033,7 +2019,7 @@ func _check_planet_map_sceneization_component() -> void:
 		_expect(not main_source.contains(retired_composition_token), "main.gd keeps dynamic runtime-composition fallback absent: %s" % retired_composition_token)
 	for retired_token in ["func _add_map_control_chip", "func _add_map_layer_focus_rail", "func _add_map_action_controls", "func _on_trade_product_selected", "map_build_buttons", "map_guess_options", "map_guess_buttons", "map_role_intel_buttons", "map_city_info_labels", "map_trade_options", "map_trade_buttons", "map_trade_info_labels", "map_layer_buttons", "map_layer_info_labels", "map_contract_source_buttons", "map_contract_target_buttons", "map_contract_info_labels"]:
 		_expect(not main_source.contains(retired_token), "main.gd keeps retired map-toolbar ownership absent: %s" % retired_token)
-	_expect(main_source.contains("func _map_control_toolbar_snapshot") and main_source.contains("func _on_map_control_toolbar_action_requested"), "main.gd keeps one pure map-toolbar snapshot bridge and one action router")
+	_expect(main_source.contains("func _map_control_toolbar_snapshot") and not main_source.contains("func _on_map_control_toolbar_action_requested"), "main.gd keeps only the pure map-toolbar snapshot bridge and no retired generic action router")
 	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
 	var registry: RefCounted = registry_script.new() if registry_script != null else null
 	if registry != null:
@@ -2315,7 +2301,7 @@ func _forced_overlay_metadata(decision_id: String, kind: String, priority_group:
 		"presentation_surface": "overlay",
 		"blocks_global_time": kind == "monster_wager",
 		"blocks_player_actions": true,
-		"blocks_card_resolution": kind in ["monster_wager", "contract_response"],
+		"blocks_card_resolution": kind == "monster_wager",
 	}
 
 
@@ -3550,7 +3536,6 @@ func _check_viewmodel_contracts() -> void:
 		{"id": "monster_target_choice", "kind": "monster_target_choice", "title": "请选择目标怪兽", "body": "入轨前指定目标。", "chips": [{"text": "目标公开"}], "actions": [{"id": "target_monster_uid_101", "label": "怪1"}, {"id": "target_monster_cancel", "label": "取消"}], "choice": {"mode": "monster_target", "card": "相位诱导", "public_after": "目标怪兽公开。"}},
 		{"id": "player_target_choice", "kind": "player_target_choice", "title": "请选择目标玩家", "body": "直接互动目标。", "chips": [{"text": "匿名入轨"}], "actions": [{"id": "target_player_1", "label": "玩家2"}], "choice": {"mode": "player_target", "card": "相位否决", "public_after": "目标玩家公开。"}},
 		{"id": "monster_wager_7", "kind": "monster_wager", "title": "怪兽赌局 #7", "body": "全场冻结公开下注。", "chips": [{"text": "全场冻结"}], "actions": [{"id": "monster_wager:7:a:5", "label": "押A 5%"}], "wager": {"matchup": "相位兽 vs 潮汐巨兽", "pool": 50}},
-		{"id": "contract_response_42", "kind": "contract_response", "title": "匿名合约签署窗口", "body": "目标商品控制者决定。", "chips": [{"text": "私密签约权"}], "actions": [{"id": "contract_accept_42", "label": "签约"}, {"id": "contract_reject_42", "label": "拒绝"}], "contract": {"route": "雾港区 → 赤潮港", "products": "海雾果"}},
 	]
 	var overlay: Variant = overlay_script.new().apply_side_drawer("detail_region", inspector.to_ui_dictionary())
 	var card_codex_browser: Variant = card_codex_browser_script.new().apply_dictionary({
@@ -3733,9 +3718,8 @@ func _check_viewmodel_contracts() -> void:
 		var first_decision_action: Dictionary = decision_actions[0] if decision_actions.size() > 0 and decision_actions[0] is Dictionary else {}
 		var preserves_choice: bool = not ["discard_purchase", "monster_target_choice", "player_target_choice"].has(str(example.get("kind", ""))) or (decision.get("choice", {}) is Dictionary and (decision.get("choice", {}) as Dictionary).get("mode") == (example.get("choice", {}) as Dictionary).get("mode"))
 		var preserves_wager: bool = str(example.get("kind", "")) != "monster_wager" or (decision.get("wager", {}) is Dictionary and (decision.get("wager", {}) as Dictionary).get("matchup") == "相位兽 vs 潮汐巨兽")
-		var preserves_contract: bool = str(example.get("kind", "")) != "contract_response" or (decision.get("contract", {}) is Dictionary and (decision.get("contract", {}) as Dictionary).get("route") == "雾港区 → 赤潮港")
-		temporary_decision_contract_ok = temporary_decision_contract_ok and decision.get("kind") == example.get("kind") and decision_actions.size() == expected_actions.size() and first_decision_action.get("id") == first_expected_action.get("id") and preserves_choice and preserves_wager and preserves_contract and not _variant_contains_callable(decision)
-	_expect(temporary_decision_contract_ok, "TableSnapshot normalizes discard, target, wager, and contract temporary decisions as data-only OverlayLayer action ids with specialized detail payloads")
+		temporary_decision_contract_ok = temporary_decision_contract_ok and decision.get("kind") == example.get("kind") and decision_actions.size() == expected_actions.size() and first_decision_action.get("id") == first_expected_action.get("id") and preserves_choice and preserves_wager and not _variant_contains_callable(decision)
+	_expect(temporary_decision_contract_ok, "TableSnapshot normalizes discard, target, and wager temporary decisions as data-only OverlayLayer action ids with specialized detail payloads")
 	_expect(not _variant_contains_callable(table.to_ui_dictionary()), "TableSnapshot output stays data-only without Callable rule handles")
 	_expect(not _variant_contains_callable(card_browser_ui), "CardCodexBrowserSnapshot output stays data-only without Callable rule handles")
 	_expect(not _variant_contains_callable(card_detail_ui), "CardCodexDetailSnapshot output stays data-only without Callable rule handles")
@@ -5109,7 +5093,7 @@ func _check_ruleset_v04_source_of_truth_component() -> void:
 		_expect(is_equal_approx(float(timing.get("monster_wager_default_seconds", 0.0)), 15.0) and is_equal_approx(float(timing.get("monster_wager_max_seconds", 0.0)), 15.0) and is_equal_approx(float(timing.get("final_countdown_seconds", 0.0)), 75.0), "Ruleset profile owns the unified 15-second monster wager and final countdown timing")
 		_expect(int(card_group.get("default_group_card_limit", 0)) == 3 and int(card_group.get("maximum_group_card_limit", 0)) == 4, "Ruleset profile owns default and maximum card-group limits")
 		_expect(bool(capabilities.get("realtime_income_enabled", false)) and not bool(capabilities.get("direct_city_build_allowed", true)) and bool(capabilities.get("city_development_requires_product_project", false)) and bool(capabilities.get("private_plan_enabled", false)), "Ruleset profile records v0.4 capabilities")
-		_expect(profile_snapshot.get("forced_decision_priority", []) == ["monster_wager", "counter_response", "contract_response", "other_choice"], "Ruleset profile records v0.4 forced-decision priority")
+		_expect(profile_snapshot.get("forced_decision_priority", []) == ["monster_wager", "counter_response", "other_choice"], "Ruleset profile records the current forced-decision priority")
 		_expect(not _variant_contains_callable(profile_snapshot) and not _variant_contains_object(profile_snapshot), "Ruleset profile debug snapshot stays pure data")
 	var bridge_packed := load(RULESET_RUNTIME_BRIDGE_SCENE) as PackedScene
 	var bridge := bridge_packed.instantiate() if bridge_packed != null else null
@@ -5157,7 +5141,7 @@ func _check_ruleset_v04_source_of_truth_component() -> void:
 	_expect(registry != null and registry.has_method("records") and registry.has_method("record_for_id") and registry.has_method("summary"), "RulesetV04ConformanceRegistry exposes audit APIs")
 	if registry != null:
 		var registry_records: Array = registry.call("records")
-		var required_ids := ["shared_card_window", "card_group_limit", "realtime_cashflow", "card_play_requirements", "active_card_execution", "contract_runtime_lifecycle", "economy_product_route_card_effect_dispatch", "economy_product_route_formula_ownership", "city_development_product_binding", "direct_city_build_legacy", "forced_decision_scheduler", "ai_policy_runtime_ownership", "private_plan_slot", "monster_runtime_lifecycle", "military_runtime_lifecycle", "weather_runtime_lifecycle", "monster_wager_timing", "final_countdown_timing", "end_turn_legacy_surface", "product_market_futures_runtime_lifecycle", "product_futures_margin_and_caps", "city_gdp_derivative_margin_and_caps", "warehouse_destruction_settlement", "runtime_card_catalog_source_of_truth", "gameplay_balance_diagnostics_ownership"]
+		var required_ids := ["shared_card_window", "card_group_limit", "realtime_cashflow", "card_play_requirements", "active_card_execution", "economy_product_route_card_effect_dispatch", "economy_product_route_formula_ownership", "city_development_product_binding", "direct_city_build_legacy", "forced_decision_scheduler", "ai_policy_runtime_ownership", "private_plan_slot", "monster_runtime_lifecycle", "military_runtime_lifecycle", "weather_runtime_lifecycle", "monster_wager_timing", "final_countdown_timing", "end_turn_legacy_surface", "product_market_futures_runtime_lifecycle", "product_futures_margin_and_caps", "city_gdp_derivative_margin_and_caps", "warehouse_destruction_settlement", "runtime_card_catalog_source_of_truth", "gameplay_balance_diagnostics_ownership"]
 		var ids: Array[String] = []
 		var fields_ok := registry_records.size() >= required_ids.size()
 		for record_variant in registry_records:
@@ -5599,7 +5583,6 @@ func _check_main_runtime_replacement_foundation_component() -> void:
 		_expect(scheduler != null and scheduler.scene_file_path == FORCED_DECISION_RUNTIME_SCHEDULER_SCENE and scheduler.has_method("configure") and scheduler.has_method("sync_candidates") and scheduler.has_method("active_decision") and scheduler.has_method("active_priority_group") and scheduler.has_method("blocks_global_time") and scheduler.has_method("blocks_player_actions") and scheduler.has_method("blocks_card_resolution") and scheduler.has_method("debug_snapshot"), "ForcedDecisionRuntimeScheduler is an editable child with required arbitration APIs")
 		var candidates := [
 			{"id": "choice", "kind": "monster_target_choice", "priority_group": "other_choice", "owner_player_index": 0, "visibility_scope": "private", "presentation_surface": "overlay", "opened_sequence": 1.0, "blocks_global_time": false, "blocks_player_actions": true, "blocks_card_resolution": false, "source_ref": "monster_target_choice", "notes": "test"},
-			{"id": "contract", "kind": "contract_response", "priority_group": "contract_response", "owner_player_index": 1, "visibility_scope": "private", "presentation_surface": "overlay", "opened_sequence": 2.0, "blocks_global_time": false, "blocks_player_actions": true, "blocks_card_resolution": true, "source_ref": "contract_response", "notes": "test"},
 			{"id": "counter", "kind": "counter_response", "priority_group": "counter_response", "owner_player_index": -1, "visibility_scope": "public", "presentation_surface": "card_resolution_track", "opened_sequence": 3.0, "blocks_global_time": false, "blocks_player_actions": false, "blocks_card_resolution": false, "source_ref": "card_resolution_counter", "notes": "test"},
 			{"id": "wager", "kind": "monster_wager", "priority_group": "monster_wager", "owner_player_index": -1, "visibility_scope": "public", "presentation_surface": "overlay", "opened_sequence": 4.0, "blocks_global_time": true, "blocks_player_actions": true, "blocks_card_resolution": true, "source_ref": "monster_wager", "notes": "test"},
 		]
@@ -5607,13 +5590,13 @@ func _check_main_runtime_replacement_foundation_component() -> void:
 		var active: Dictionary = scheduler.call("active_decision", 0)
 		var runtime_snapshot: Dictionary = coordinator.call("debug_snapshot")
 		var scheduler_snapshot: Dictionary = runtime_snapshot.get("forced_decision_scheduler", {}) if runtime_snapshot.get("forced_decision_scheduler", {}) is Dictionary else {}
-		_expect(str(active.get("priority_group", "")) == "monster_wager" and bool(coordinator.call("blocks_global_time")) and not bool(coordinator.call("allows_card_resolution_progress")), "v0.4 scheduler selects monster wager over counter, contract, and other choices")
+		_expect(str(active.get("priority_group", "")) == "monster_wager" and bool(coordinator.call("blocks_global_time")) and not bool(coordinator.call("allows_card_resolution_progress")), "scheduler selects monster wager over counter and other choices")
 		var expected_scheduler_priority: Array = (ruleset_snapshot.get("forced_decision_priority", []) as Array).duplicate()
 		expected_scheduler_priority.append("public_bid")
-		_expect(scheduler_snapshot.get("priority_order", []) == expected_scheduler_priority and scheduler_snapshot.get("priority_order", []) == ["monster_wager", "counter_response", "contract_response", "other_choice", "public_bid"], "ForcedDecisionRuntimeScheduler preserves RulesetRuntimeBridge priority and appends public_bid last")
-		scheduler.call("sync_candidates", [candidates[1]])
-		var hidden: Dictionary = scheduler.call("active_decision", 0)
-		var owner_visible: Dictionary = scheduler.call("active_decision", 1)
+		_expect(scheduler_snapshot.get("priority_order", []) == expected_scheduler_priority and scheduler_snapshot.get("priority_order", []) == ["monster_wager", "counter_response", "other_choice", "public_bid"], "ForcedDecisionRuntimeScheduler preserves RulesetRuntimeBridge priority and appends public_bid last")
+		scheduler.call("sync_candidates", [candidates[0]])
+		var hidden: Dictionary = scheduler.call("active_decision", 1)
+		var owner_visible: Dictionary = scheduler.call("active_decision", 0)
 		var private_snapshot: Dictionary = coordinator.call("debug_snapshot")
 		_expect(not bool(hidden.get("visible_to_viewer", true)) and str(hidden.get("presentation_surface", "")) == "player_hint" and bool(owner_visible.get("visible_to_viewer", false)), "private forced decision is visible only to its owner")
 		_expect(not var_to_str(private_snapshot).contains("owner_player_index") and not _variant_contains_callable(private_snapshot) and not _variant_contains_object(private_snapshot), "Coordinator and Scheduler debug snapshots omit owner identity and remain pure data")
@@ -6581,10 +6564,7 @@ func _check_card_resolution_execution_runtime_characterization_component() -> vo
 		"hand_interaction_routes_to_existing_service",
 		"inventory_mutation_routes_to_inventory_service",
 		"temporary_decision_pauses_resolution",
-		"temporary_decision_resume_continues_same_resolution",
-		"temporary_decision_cancel_behavior_characterized",
 		"counter_response_preserves_active_entry",
-		"contract_response_preserves_active_entry",
 		"monster_wager_preserves_active_entry",
 		"public_event_emitted_after_success",
 		"private_event_visibility_boundary",
@@ -6601,16 +6581,16 @@ func _check_card_resolution_execution_runtime_characterization_component() -> vo
 		"failed_active_release_blocks_effect", "countered_card_skips_original_effect", "countered_card_finishes_commitment",
 		"normal_effect_dispatches_once", "stale_requirement_keeps_no_refund_semantics", "stale_target_keeps_no_refund_semantics",
 		"persistent_card_restores_and_cools_down", "consumable_card_never_returns", "paid_cost_marker_preserved",
-		"selection_context_restored", "contract_context_restored", "city_development_uses_world_adapter",
+		"selection_context_restored", "city_development_uses_world_adapter",
 		"product_route_economy_use_world_adapters", "monster_and_player_target_use_world_adapters", "hand_interaction_uses_existing_service",
-		"contract_offer_remains_non_blocking", "monster_wager_handoff_uses_forced_scheduler", "aftermath_and_history_order_preserved",
+		"monster_wager_handoff_uses_forced_scheduler", "aftermath_and_history_order_preserved",
 		"history_appended_exactly_once", "current_queue_starts_next_entry", "empty_current_queue_promotes_next_batch",
 		"save_resume_privacy_and_legacy_absence",
 		"formula_service_scene_composition", "formula_service_api_contract", "product_price_model_owner_unchanged",
 		"city_gdp_formula_owner_unchanged", "market_boon_formula_parity", "speculation_pressure_formula_parity",
 		"futures_formula_parity", "gdp_derivative_formula_parity", "route_formula_parity",
 		"main_pure_formula_bodies_absent", "effect_family_uses_formula_service", "execution_service_remains_formula_agnostic",
-		"product_contract_boon_formula_parity", "city_contract_boon_formula_parity", "contract_accept_route_flow_formula_parity",
+		"product_contract_boon_formula_parity", "city_contract_boon_formula_parity",
 		"route_insurance_formula_parity", "city_product_upgrade_formula_parity", "city_product_shift_formula_parity",
 		"city_demand_shift_formula_parity", "city_adjustment_formula_parity", "main_contract_formula_bodies_absent",
 		"main_city_product_formula_bodies_absent", "world_rng_and_mutation_boundary_preserved", "execution_service_sprint40_formula_agnostic",
@@ -6642,12 +6622,12 @@ func _check_card_resolution_execution_runtime_characterization_component() -> vo
 			"formula_checked", "formula_owner_checked", "legacy_orchestration_absent", "observed", "contract_aligned", "cutover_checked",
 			"needs_design_decision", "risk", "notes",
 		]
-		var fields_ok := records.size() == 80
+		var fields_ok := records.size() == 74
 		for record_variant in records:
 			var record: Dictionary = record_variant if record_variant is Dictionary else {}
 			for key in required_fields:
 				fields_ok = fields_ok and record.has(key)
-		_expect(cases == expected_cases and cutover_cases == expected_cutover_cases and int(manifest.get("case_count", 0)) == 28 and int(manifest.get("cutover_case_count", 0)) == 52 and int(manifest.get("total_case_count", 0)) == 80 and int(manifest.get("record_count", 0)) == 80, "Card Resolution Execution Bench defines the exact 28 observation + 52 cutover matrix")
+		_expect(cases == expected_cases and cutover_cases == expected_cutover_cases and int(manifest.get("case_count", 0)) == 25 and int(manifest.get("cutover_case_count", 0)) == 49 and int(manifest.get("total_case_count", 0)) == 74 and int(manifest.get("record_count", 0)) == 74, "Card Resolution Execution Bench defines the exact 25 observation + 49 cutover matrix")
 		_expect(fields_ok, "Card Resolution Execution manifest preview contains the complete execution, continuation, service, privacy, observation, alignment, and decision fields")
 		_expect(str(bench.call("output_dir")) == CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_OUTPUT_DIR and str(manifest.get("output_dir", "")) == CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_OUTPUT_DIR and str(bench.call("screenshot_path")) == CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH and str(manifest.get("screenshot_path", "")) == CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH, "Card Resolution Execution QA uses the expected user:// manifest, report, and screenshot paths")
 		_expect(CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_OUTPUT_DIR.begins_with("user://") and not CARD_RESOLUTION_EXECUTION_RUNTIME_CHARACTERIZATION_OUTPUT_DIR.contains("res://reports") and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "Card Resolution Execution manifest preview is pure data and never targets tracked reports")
@@ -6666,7 +6646,7 @@ func _check_card_resolution_execution_runtime_characterization_component() -> vo
 	var family_bridge := family_bridge_packed.instantiate() if family_bridge_packed != null else null
 	var execution_owner := execution_packed.instantiate() if execution_packed != null else null
 	var active_family_handlers := [
-		"area_trade_contract", "city_gdp_derivative", "market_stabilize", "product_contract_boon",
+		"city_gdp_derivative", "market_stabilize", "product_contract_boon",
 		"product_futures", "product_growth_boon", "product_speculation",
 	]
 	var retired_family_handlers := [
@@ -6681,7 +6661,7 @@ func _check_card_resolution_execution_runtime_characterization_component() -> vo
 		var family_bridge_debug: Dictionary = family_bridge.call("debug_snapshot")
 		var execution_debug: Dictionary = execution_owner.call("debug_snapshot")
 		family_owner_fixture_checked = family_owner.call("supported_handlers") == active_family_handlers
-		family_owner_fixture_checked = family_owner_fixture_checked and str(family_owner.call("family_for_handler", "city_gdp_derivative")) == "economy" and str(family_owner.call("family_for_handler", "product_futures")) == "product" and str(family_owner.call("family_for_handler", "area_trade_contract")) == "route"
+		family_owner_fixture_checked = family_owner_fixture_checked and str(family_owner.call("family_for_handler", "city_gdp_derivative")) == "economy" and str(family_owner.call("family_for_handler", "product_futures")) == "product"
 		for handler_variant in active_family_handlers:
 			var handler_id := str(handler_variant)
 			var plan: Dictionary = family_owner.call("plan_effect", {"handler_id": handler_id, "active_entry": {"resolution_id": 4000, "player_index": 0, "slot_index": 0}, "skill": {"name": "layout-owner-fixture", "kind": handler_id}})
@@ -8005,99 +7985,6 @@ func _check_weather_runtime_characterization_component() -> void:
 		viewport.queue_free()
 
 
-func _check_contract_runtime_characterization_component() -> void:
-	for path in [CONTRACT_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT, CONTRACT_RUNTIME_CHARACTERIZATION_BENCH_SCENE, CONTRACT_RUNTIME_CONTROLLER_SCENE, CONTRACT_RUNTIME_WORLD_BRIDGE_SCENE, CONTRACT_RUNTIME_OWNERSHIP_CONTRACT]:
-		_expect(ResourceLoader.exists(path) or FileAccess.file_exists(path), "%s exists for Contract Runtime Characterization" % path)
-		if path.ends_with(".gd") or path.ends_with(".tscn"):
-			_expect(load(path) != null, "%s loads for Contract Runtime Characterization" % path)
-	var packed := load(CONTRACT_RUNTIME_CHARACTERIZATION_BENCH_SCENE) as PackedScene
-	if packed != null:
-		var bench := packed.instantiate() as Control
-		bench.set("auto_run", false)
-		root.add_child(bench)
-		await process_frame
-		for node_name in ["RuntimeMainHost", "SummaryLabel", "StatusLabel", "OwnershipText", "CasesText"]:
-			_expect(bench.find_child(node_name, true, false) != null, "ContractRuntimeCharacterizationBench statically owns %s" % node_name)
-		_expect(bench.has_method("output_dir") and bench.has_method("screenshot_path") and bench.has_method("characterization_cases") and bench.has_method("build_characterization_manifest_preview") and bench.has_method("run_characterization_suite") and bench.has_method("run_suite"), "ContractRuntimeCharacterizationBench exposes the long-lived characterization API")
-		var cases: Array = bench.call("characterization_cases")
-		var required_cases := ["contract_call_graph_complete", "five_real_contract_families_exist", "contract_rank_i_to_iv_assets", "pending_offer_runtime_shape", "contract_ruleset_window_is_five_seconds", "valid_source_district", "valid_target_district", "same_source_target_rejected", "destroyed_or_invalid_district_rejected_atomically", "selected_product_contract", "automatic_product_matching", "fixed_product_contract", "multi_product_contract", "punitive_decline_terms_preserved", "card_resolution_creates_pending_offer", "response_context_copied_to_offer", "active_resolution_released_after_offer_creation", "later_cards_continue_while_contract_pending", "duplicate_offer_id_rejected", "offer_creation_has_no_partial_world_mutation", "human_accept_routes_once", "human_decline_routes_once", "timeout_routes_once", "duplicate_response_rejected", "response_after_expiry_rejected", "forced_decision_priority_preserved", "monster_wager_or_counter_preempts_contract", "overlay_action_id_compatibility", "ai_accept_uses_same_runtime_response_route", "ai_decline_uses_same_runtime_response_route", "ai_remains_decision_owner_only", "player_and_ai_results_have_same_mutation_contract", "accept_cash_and_region_effects_exact_once", "decline_penalty_caps_and_route_damage_exact_once", "timeout_effect_matches_observed_runtime_semantics", "formula_service_remains_pure_formula_owner", "city_market_and_route_refresh_count_observed", "multiple_pending_offers_resolve_independently", "current_save_shape", "legacy_save_defaults", "pending_timer_save_load_parity", "public_contract_result_clue", "intel_trace_uses_sanitized_result", "hidden_owner_not_exposed", "private_target_and_private_discard_not_exposed", "pure_data_snapshots", "sprint51_deletion_candidates_complete", "controller_scene_composition", "controller_api_contract", "coordinator_static_composition", "state_owner_cutover", "endpoint_product_owner_cutover", "project_controller_authority", "explicit_self_sign_gate", "preempted_timer_suspends", "nonblocking_card_resolution", "exact_once_transaction", "world_bridge_non_owning", "player_ai_shared_route", "save_owner_cutover", "pure_public_private_snapshots", "main_legacy_contract_absent"]
-		var cases_ok := cases.size() == 62
-		for case_id in required_cases:
-			cases_ok = cases_ok and cases.has(case_id)
-		var manifest: Dictionary = bench.call("build_characterization_manifest_preview")
-		var records: Array = manifest.get("records", []) if manifest.get("records", []) is Array else []
-		var fields_ok := records.size() == 62
-		for record_variant in records:
-			var record: Dictionary = record_variant
-			for key in ["case_id", "card_id", "contract_offer_id", "response_kind", "source_district", "target_district", "product_count", "timer_before", "timer_after", "cash_delta", "production_delta", "demand_delta", "transport_delta", "route_flow_delta", "route_damage_delta", "public_event_delta", "private_event_delta", "execution_boundary_checked", "formula_service_checked", "ai_route_checked", "forced_decision_checked", "save_checked", "privacy_checked", "pure_data_checked", "observed", "contract_aligned", "needs_design_decision", "risk", "notes"]:
-				fields_ok = fields_ok and record.has(key)
-		var baseline_metrics: Dictionary = manifest.get("baseline_main_metrics", {}) if manifest.get("baseline_main_metrics", {}) is Dictionary else {}
-		_expect(cases_ok and fields_ok and int(manifest.get("case_count", 0)) == 62 and str(bench.call("output_dir")) == CONTRACT_RUNTIME_CHARACTERIZATION_OUTPUT_DIR and str(bench.call("screenshot_path")) == CONTRACT_RUNTIME_CHARACTERIZATION_SCREENSHOT_PATH and bool(manifest.get("runtime_cutover_enabled", false)) and str(manifest.get("runtime_owner", "")) == "res://scripts/runtime/contract_runtime_controller.gd" and str(manifest.get("baseline_main_sha256", "")) == "214aeb804860d2dffb8833eff0bc0a4098b355178c07fb8e8bd1d80e6221777f" and int(baseline_metrics.get("nonblank_lines", 0)) == 25039 and int(baseline_metrics.get("function_count", 0)) == 1415 and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest), "ContractRuntimeCharacterizationBench defines the 47 revalidation + 15 hard-cutover pure-data gate with user:// outputs")
-		root.remove_child(bench)
-		bench.queue_free()
-	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	var main_nonblank := 0
-	var main_functions := 0
-	var main_variables := 0
-	var main_constants := 0
-	for line_variant in main_source.split("\n"):
-		var line := str(line_variant)
-		if not line.strip_edges().is_empty():
-			main_nonblank += 1
-		if line.begins_with("func "):
-			main_functions += 1
-		elif line.begins_with("var "):
-			main_variables += 1
-		elif line.begins_with("const "):
-			main_constants += 1
-	_expect(main_nonblank <= 24589 and main_functions <= 1385 and main_variables <= 145 and main_constants <= 228 and not main_source.contains("var pending_contract_offers") and not main_source.contains("func _enqueue_pending_area_trade_contract(") and not main_source.contains("func _respond_to_pending_contract_for_player(") and not main_source.contains("func _update_pending_contract_offers("), "Sprint 51 deletes the legacy main.gd Contract Runtime owner and meets the hard-deletion ceilings")
-	var contract_source := FileAccess.get_file_as_string(CONTRACT_RUNTIME_OWNERSHIP_CONTRACT)
-	_expect(contract_source.contains("Sprint 51 status") and contract_source.contains("62/62") and contract_source.contains("Deleted legacy owner") and contract_source.contains("Project-controller authority") and contract_source.contains("visible-time"), "Contract ownership contract records the authoritative owner, locked v0.4 decisions, privacy, and completed deletion gate")
-	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
-	var registry: RefCounted = registry_script.new() if registry_script != null else null
-	if registry != null:
-		var registry_paths: Array = registry.call("scene_paths")
-		_expect(registry_paths.has(CONTRACT_RUNTIME_CHARACTERIZATION_BENCH_SCENE) and registry_paths.has(CONTRACT_RUNTIME_CONTROLLER_SCENE) and registry_paths.has(CONTRACT_RUNTIME_WORLD_BRIDGE_SCENE), "MCP registry includes Contract Runtime Controller, World Bridge, and long-lived QA Bench")
-	var scene_audit_script := load(SCENEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
-	var scene_audit: RefCounted = scene_audit_script.new() if scene_audit_script != null else null
-	if scene_audit != null:
-		var gate: Dictionary = scene_audit.call("record_for_id", "contract_runtime_characterization_gate")
-		_expect(str(gate.get("current_scene_path", "")) == CONTRACT_RUNTIME_CONTROLLER_SCENE and str(gate.get("source_script_path", "")) == "res://scripts/runtime/contract_runtime_controller.gd" and str(gate.get("sceneization_status", "")) == "full", "Sceneization Audit records the Sprint 51 Contract Runtime hard cutover")
-	var system_script := load(SYSTEM_RESOURCEIZATION_AUDIT_REGISTRY_SCRIPT) as Script
-	var system_audit: RefCounted = system_script.new() if system_script != null else null
-	if system_audit != null:
-		var record: Dictionary = system_audit.call("record_for_id", "contract_runtime_characterization_gate")
-		_expect(str(record.get("current_status", "")) == "sceneized" and str(record.get("current_path", "")) == CONTRACT_RUNTIME_CONTROLLER_SCENE and str(record.get("runtime_owner", "")).contains("contract_runtime_controller.gd"), "System Resourceization Audit records ContractRuntimeController as the runtime owner")
-	var ruleset_script := load(RULESET_V04_CONFORMANCE_REGISTRY_SCRIPT) as Script
-	var ruleset: RefCounted = ruleset_script.new() if ruleset_script != null else null
-	if ruleset != null:
-		var rule: Dictionary = ruleset.call("record_for_id", "contract_runtime_lifecycle")
-		_expect(str(rule.get("current_status", "")) == "cutover_complete" and str(rule.get("current_owner", "")).contains("ContractRuntimeController") and str(rule.get("next_sprint", "")).contains("Monitor"), "Ruleset registry records the locked v0.4 Contract Runtime semantics and completed cutover")
-	var dock_packed := load(DESIGN_QA_DOCK_SCENE) as PackedScene
-	if dock_packed != null:
-		var viewport := SubViewport.new()
-		viewport.size = Vector2i(420, 900)
-		root.add_child(viewport)
-		var dock := dock_packed.instantiate() as Control
-		viewport.add_child(dock)
-		await process_frame
-		for button_name in ["OpenContractRuntimeControllerButton", "OpenContractRuntimeWorldBridgeButton", "OpenContractRuntimeCharacterizationBenchButton", "RunContractRuntimeCharacterizationBenchButton", "OpenContractRuntimeCharacterizationOutputFolderButton"]:
-			_expect(dock.find_child(button_name, true, false) != null, "Design QA Dock contains %s" % button_name)
-		_expect(dock.has_method("contract_runtime_characterization_bench_scene_path") and dock.has_method("contract_runtime_characterization_qa_output_dir"), "Design QA Dock exposes Contract Runtime Bench and output paths")
-		var open_paths: Array[String] = []
-		var run_paths: Array[String] = []
-		dock.connect("open_contract_runtime_characterization_bench_requested", func(scene_path: String) -> void: open_paths.append(scene_path))
-		dock.connect("run_contract_runtime_characterization_bench_requested", func(scene_path: String) -> void: run_paths.append(scene_path))
-		(dock.find_child("OpenContractRuntimeCharacterizationBenchButton", true, false) as Button).emit_signal("pressed")
-		(dock.find_child("RunContractRuntimeCharacterizationBenchButton", true, false) as Button).emit_signal("pressed")
-		await process_frame
-		_expect(open_paths == [CONTRACT_RUNTIME_CHARACTERIZATION_BENCH_SCENE] and run_paths == [CONTRACT_RUNTIME_CHARACTERIZATION_BENCH_SCENE], "Design QA Dock fallback signals emit Contract Runtime Characterization Bench paths")
-		viewport.remove_child(dock)
-		dock.queue_free()
-		root.remove_child(viewport)
-		viewport.queue_free()
-
-
 func _check_product_market_runtime_characterization_component() -> void:
 	for path in [PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_BENCH_SCRIPT, PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_BENCH_SCENE, PRODUCT_MARKET_RUNTIME_OWNERSHIP_CONTRACT, PRODUCT_FUTURES_V04_TERMS_CONTRACT, PRODUCT_FUTURES_V04_DESIGN_DECISIONS, PRODUCT_FUTURES_TERMS_RESOURCE_SCRIPT, PRODUCT_FUTURES_TERMS_CATALOG_SCRIPT, PRODUCT_FUTURES_TERMS_CATALOG]:
 		_expect(ResourceLoader.exists(path) or FileAccess.file_exists(path), "Product Market Runtime characterization asset exists: %s" % path)
@@ -8743,14 +8630,14 @@ func _check_runtime_card_catalog_resource_component() -> void:
 		var integrity_variant: Variant = JSON.parse_string(FileAccess.get_file_as_string(CARD_RUNTIME_CATALOG_INTEGRITY))
 		var integrity: Dictionary = integrity_variant if integrity_variant is Dictionary else {}
 		var hashes_match := str(debug.get("catalog_order_sha256", "")) == str(integrity.get("catalog_order_sha256", "")) and str(debug.get("upgradeable_order_sha256", "")) == str(integrity.get("upgradeable_order_sha256", "")) and str(debug.get("common_pool_order_sha256", "")) == str(integrity.get("common_pool_order_sha256", ""))
-		_expect(bool(report.get("valid", false)) and int(report.get("card_count", 0)) == 239 and int(report.get("authored_rank_count", 0)) == 239 and int(report.get("family_count", 0)) == 120 and int(report.get("pack_count", 0)) == 10 and int(report.get("common_pool_count", 0)) == 125 and int(report.get("upgradeable_family_count", 0)) == 76 and int(report.get("kind_count", 0)) == 50 and hashes_match and not _variant_contains_callable(report) and not _variant_contains_object(report), "Runtime catalog validates 120 families, 239 authored ranks, ten packs, 125 pool entries, 76 upgradeable families, 50 kinds, and locked order hashes")
+		_expect(bool(report.get("valid", false)) and int(report.get("card_count", 0)) == 232 and int(report.get("authored_rank_count", 0)) == 232 and int(report.get("family_count", 0)) == 114 and int(report.get("pack_count", 0)) == 10 and int(report.get("common_pool_count", 0)) == 118 and int(report.get("upgradeable_family_count", 0)) == 70 and int(report.get("kind_count", 0)) == 49 and hashes_match and not _variant_contains_callable(report) and not _variant_contains_object(report), "Runtime catalog validates 114 families, 232 authored ranks, ten packs, 118 pool entries, 70 upgradeable families, 49 kinds, and locked order hashes")
 	var family_file_count := 0
 	for path in DirAccess.get_files_at("res://resources/cards/runtime/families"):
 		family_file_count += 1 if str(path).ends_with(".tres") else 0
 	var pack_file_count := 0
 	for path in DirAccess.get_files_at("res://resources/cards/runtime/packs"):
 		pack_file_count += 1 if str(path).ends_with(".tres") else 0
-	_expect(family_file_count == 120 and pack_file_count == 10, "Runtime card Resource graph has exactly 120 family files and ten pack files")
+	_expect(family_file_count == 114 and pack_file_count == 10, "Runtime card Resource graph has exactly 114 family files and ten pack files")
 	var service_packed := load(CARD_RUNTIME_CATALOG_SERVICE_SCENE) as PackedScene
 	var service := service_packed.instantiate() if service_packed != null else null
 	if service != null:
@@ -8789,7 +8676,7 @@ func _check_runtime_card_catalog_resource_component() -> void:
 			var record: Dictionary = record_variant if record_variant is Dictionary else {}
 			for field_name in ["case_id", "phase", "runtime_owner", "observed", "contract_aligned", "passed", "pure_data_checked", "notes"]:
 				fields_ok = fields_ok and record.has(field_name)
-		_expect(cases_ok and fields_ok and int(manifest.get("case_count", 0)) == 80 and int(manifest.get("historical_case_count", 0)) == 40 and int(manifest.get("live_case_count", 0)) == 40 and bool(schema.get("runtime_cutover_enabled", false)) and str(manifest.get("runtime_owner", "")) == "CardRuntimeCatalogService" and int(schema.get("family_resources", 0)) == 120 and int(schema.get("embedded_rank_resources", 0)) == 239 and int(schema.get("pack_resources", 0)) == 10 and str(bench.call("output_dir")) == RUNTIME_CARD_CATALOG_RESOURCE_OUTPUT_DIR and str(bench.call("screenshot_path")) == RUNTIME_CARD_CATALOG_RESOURCE_SCREENSHOT_PATH and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest) and not _variant_contains_callable(schema) and not _variant_contains_object(schema), "Runtime Card Catalog Sprint 58 exposes forty historical and forty live pure-data cases with the authoritative Resource owner")
+		_expect(cases_ok and fields_ok and int(manifest.get("case_count", 0)) == 80 and int(manifest.get("historical_case_count", 0)) == 40 and int(manifest.get("live_case_count", 0)) == 40 and bool(schema.get("runtime_cutover_enabled", false)) and str(manifest.get("runtime_owner", "")) == "CardRuntimeCatalogService" and int(schema.get("family_resources", 0)) == 114 and int(schema.get("embedded_rank_resources", 0)) == 232 and int(schema.get("pack_resources", 0)) == 10 and str(bench.call("output_dir")) == RUNTIME_CARD_CATALOG_RESOURCE_OUTPUT_DIR and str(bench.call("screenshot_path")) == RUNTIME_CARD_CATALOG_RESOURCE_SCREENSHOT_PATH and not _variant_contains_callable(manifest) and not _variant_contains_object(manifest) and not _variant_contains_callable(schema) and not _variant_contains_object(schema), "Runtime Card Catalog Sprint 58 exposes forty historical and forty live pure-data cases with the authoritative Resource owner")
 		root.remove_child(bench)
 		bench.queue_free()
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
@@ -8803,7 +8690,7 @@ func _check_runtime_card_catalog_resource_component() -> void:
 	if coordinator != null:
 		coordinator.free()
 	var ownership_contract := FileAccess.get_file_as_string(RUNTIME_CARD_CATALOG_OWNERSHIP_CONTRACT)
-	_expect(ownership_contract.contains("80/80") and ownership_contract.contains("main.gd` is not a catalog owner") and FileAccess.get_file_as_string(RUNTIME_CARD_CATALOG_RESOURCE_SCHEMA).contains("239 embedded `CardRuntimeRankResource`"), "Sprint 58 ownership and Resource schema contracts document one owner and the deletion gate")
+	_expect(ownership_contract.contains("80/80") and ownership_contract.contains("main.gd` is not a catalog owner") and FileAccess.get_file_as_string(RUNTIME_CARD_CATALOG_RESOURCE_SCHEMA).contains("232 embedded `CardRuntimeRankResource`"), "Sprint 58 ownership and Resource schema contracts document one owner and the deletion gate")
 	var registry_script := load(MCP_SCENE_REGISTRY_SCRIPT) as Script
 	var registry: RefCounted = registry_script.new() if registry_script != null else null
 	if registry != null:
@@ -8876,7 +8763,7 @@ func _check_runtime_card_authoring_workflow_component() -> void:
 	var index: Dictionary = service.authoring_index()
 	var validation: Dictionary = service.validate_catalog()
 	var service_debug: Dictionary = service.debug_snapshot()
-	_expect(bool(configured.get("configured", false)) and bool(index.get("valid", false)) and int(index.get("pack_count", 0)) == 10 and int(index.get("family_count", 0)) == 120 and int(index.get("card_count", 0)) == 239 and bool(validation.get("valid", false)) and str(service_debug.get("runtime_owner_unchanged", "")) == "CardRuntimeCatalogService" and bool(service_debug.get("editor_only", false)) and str(service.call("output_dir")) == RUNTIME_CARD_AUTHORING_OUTPUT_DIR and not _variant_contains_callable(index) and not _variant_contains_object(index) and not _variant_contains_callable(validation) and not _variant_contains_object(validation), "Authoring Service indexes and validates the authoritative 10-pack/120-family/239-card catalog using pure data")
+	_expect(bool(configured.get("configured", false)) and bool(index.get("valid", false)) and int(index.get("pack_count", 0)) == 10 and int(index.get("family_count", 0)) == 114 and int(index.get("card_count", 0)) == 232 and bool(validation.get("valid", false)) and str(service_debug.get("runtime_owner_unchanged", "")) == "CardRuntimeCatalogService" and bool(service_debug.get("editor_only", false)) and str(service.call("output_dir")) == RUNTIME_CARD_AUTHORING_OUTPUT_DIR and not _variant_contains_callable(index) and not _variant_contains_object(index) and not _variant_contains_callable(validation) and not _variant_contains_object(validation), "Authoring Service indexes and validates the authoritative 10-pack/114-family/232-card catalog using pure data")
 	var workspace_packed := load(RUNTIME_CARD_AUTHORING_WORKSPACE_SCENE) as PackedScene
 	_expect(workspace_packed != null, "RuntimeCardAuthoringWorkspace scene loads")
 	if workspace_packed != null:
@@ -8886,7 +8773,7 @@ func _check_runtime_card_authoring_workflow_component() -> void:
 		for node_name in ["AuthoringPackOption", "AuthoringFamilySearch", "AuthoringFamilyList", "AuthoringCardList", "AuthoringValidationOutput", "AuthoringReviewOutput", "ValidateSelectedCardButton", "CaptureAuthoringBaselineButton", "BuildAuthoringReviewButton", "OpenSelectedCardResourceButton"]:
 			_expect(workspace.find_child(node_name, true, false) != null, "RuntimeCardAuthoringWorkspace statically owns %s" % node_name)
 		var workspace_debug: Dictionary = workspace.call("debug_snapshot")
-		_expect(workspace.has_method("refresh_index") and workspace.has_method("select_family") and workspace.has_method("select_card") and workspace.has_method("validate_selected") and workspace.has_method("validate_catalog") and workspace.has_method("capture_baseline") and workspace.has_method("build_change_review") and workspace.has_method("open_selected_resource") and int(workspace_debug.get("card_count", 0)) == 239 and str(workspace_debug.get("runtime_owner_unchanged", "")) == "CardRuntimeCatalogService" and not _variant_contains_callable(workspace_debug) and not _variant_contains_object(workspace_debug), "RuntimeCardAuthoringWorkspace exposes navigation, validation, baseline, review, Resource-path, and pure-data debug APIs")
+		_expect(workspace.has_method("refresh_index") and workspace.has_method("select_family") and workspace.has_method("select_card") and workspace.has_method("validate_selected") and workspace.has_method("validate_catalog") and workspace.has_method("capture_baseline") and workspace.has_method("build_change_review") and workspace.has_method("open_selected_resource") and int(workspace_debug.get("card_count", 0)) == 232 and str(workspace_debug.get("runtime_owner_unchanged", "")) == "CardRuntimeCatalogService" and not _variant_contains_callable(workspace_debug) and not _variant_contains_object(workspace_debug), "RuntimeCardAuthoringWorkspace exposes navigation, validation, baseline, review, Resource-path, and pure-data debug APIs")
 		root.remove_child(workspace)
 		workspace.queue_free()
 	var bench_packed := load(RUNTIME_CARD_AUTHORING_WORKFLOW_BENCH_SCENE) as PackedScene

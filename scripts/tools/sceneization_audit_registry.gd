@@ -855,18 +855,6 @@ const RECORDS := [
 		"mcp_notes": "Sprint 49 reports 53/53. WeatherRuntimeController is authoritative; WeatherRuntimeWorldBridge is non-owning and EnvironmentBalanceModel remains QA-only.",
 	},
 	{
-		"id": "contract_runtime_characterization_gate",
-		"display_name": "Contract Runtime Hard Cutover Gate",
-		"category": "Systems",
-		"current_scene_path": "res://scenes/runtime/ContractRuntimeController.tscn",
-		"source_script_path": "res://scripts/runtime/contract_runtime_controller.gd",
-		"sceneization_status": STATUS_FULL,
-		"priority": 1,
-		"next_step": "Protect the 62-case Contract Runtime gate and characterize any new contract card family before extending the authoritative Controller.",
-		"risk_notes": "High; responder authority, self-sign permission, preempted timer suspension, non-blocking continuation, exact-once settlement, and privacy must be resolved together.",
-		"mcp_notes": "Sprint 51 reports 62/62. ContractRuntimeController is authoritative, ContractRuntimeWorldBridge is non-owning, and the 37 legacy main.gd functions are absent.",
-	},
-	{
 		"id": "game_table_viewmodel_runtime_service_gate",
 		"display_name": "Game Table ViewModel Runtime Service Gate",
 		"category": "Core Table",
@@ -1067,7 +1055,7 @@ const RECORDS := [
 		"sceneization_status": STATUS_FULL,
 		"priority": 1,
 		"next_step": "Keep the Sprint 58 runtime integrity gate and Sprint 59 authoring workflow green whenever a card family, authored rank, pack order, or public-pool membership changes.",
-		"risk_notes": "Medium; all 239 authored hashes and deterministic orders are now gated, while external financial terms and dynamic Monster definitions retain their dedicated owners.",
+		"risk_notes": "Medium; all 232 active authored hashes and deterministic orders are now gated, while external financial terms and dynamic Monster definitions retain their dedicated owners.",
 		"mcp_notes": "Sprint 58 is cutover_complete: CardRuntimeCatalogService and DefinitionWorldBridge are static Coordinator scenes, the Resource graph is Inspector editable, and the 80/80 gate proves no main.gd fallback remains. Sprint 59 adds the custom Inspector authoring panel, Workspace, validator, baseline and change-review package.",
 	},
 	{

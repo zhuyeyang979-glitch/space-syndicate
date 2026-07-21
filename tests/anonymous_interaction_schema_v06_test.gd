@@ -28,8 +28,9 @@ func _run() -> void:
 	var deep_counter := counter.duplicate(true)
 	(deep_counter["effect_payload"] as Dictionary)["response_depth"] = 2
 	_expect(str(SCHEMA.validate_intent(deep_counter).get("reason_code", "")) == "counter_scope_invalid", "counter depth is exactly one")
-	var contract := _intent("tx-contract", "contract_offer_v06", "target_player", {"interaction_domain": "contract"}, ["B"])
-	_expect(str(SCHEMA.validate_intent(contract).get("route_domain", "")) == "contract", "contract routes from effect fields")
+	var retired_contract := _intent("tx-contract", "contract_offer_v06", "target_player", {"interaction_domain": "contract"}, ["B"])
+	_expect(str(SCHEMA.validate_intent(retired_contract).get("reason_code", "")) == "interaction_effect_fields_unsupported", "retired contract offer has no anonymous interaction route")
+	_expect(SCHEMA.route_domain(retired_contract).is_empty(), "generic contract interaction domain is physically unsupported")
 	var intel := _intent("tx-intel", "intel_card_trace", "private_evidence", {"interaction_domain": "intel"}, [])
 	_expect(str(SCHEMA.validate_intent(intel).get("route_domain", "")) == "intel", "intel routes from effect fields")
 	var prepared := SCHEMA.stage_receipt(direct, "prepared", true, "prepared")

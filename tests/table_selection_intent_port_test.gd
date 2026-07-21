@@ -96,11 +96,9 @@ func _test_ui_typed_emission() -> void:
 		"selected_layer_id": "all",
 	})
 	var dedicated := [0]
-	var generic := [0]
 	toolbar.map_layer_focus_requested.connect(func(_layer_id: String) -> void: dedicated[0] = int(dedicated[0]) + 1)
-	toolbar.control_action_requested.connect(func(_action_id: String, _payload: Dictionary) -> void: generic[0] = int(generic[0]) + 1)
 	toolbar.call("_emit_layer_focus", "city")
-	_expect(int(dedicated[0]) == 1 and int(generic[0]) == 0, "map-layer button emits one dedicated intent source and zero generic Main actions")
+	_expect(int(dedicated[0]) == 1 and not toolbar.has_signal("control_action_requested"), "map-layer button emits one dedicated intent source and exposes no generic Main action signal")
 	toolbar.set_selected_map_layer_focus("city")
 	var toolbar_debug := toolbar.debug_snapshot()
 	_expect(str(toolbar_debug.get("layer_status", "")).contains("city") and _selected_layer_id(toolbar_debug) == "city", "authoritative receipt can update both toolbar status and selected button")

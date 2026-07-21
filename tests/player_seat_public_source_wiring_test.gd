@@ -120,7 +120,7 @@ func _configure_presentation_dependencies(coordinator: GameRuntimeCoordinator) -
 	queue.configure({"ruleset_id": "v0.6", "card_group": RULESET.card_group_rules()})
 	history.configure({"history_limit": 24})
 	resolution.configure(RULESET.card_group_rules())
-	scheduler.configure(["monster_wager", "counter_response", "contract_response", "other_choice"])
+	scheduler.configure(["monster_wager", "counter_response", "other_choice"])
 
 
 func _players(count: int) -> Array:

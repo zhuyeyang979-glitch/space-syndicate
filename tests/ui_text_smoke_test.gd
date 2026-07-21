@@ -63,7 +63,7 @@ func _run() -> void:
 	_expect(_has_nodes(commodity_track, ["TrackMargin", "TrackRows", "HeaderRow", "TitleLabel", "CommodityTrackPhaseLabel", "CommodityTrackCountLabel", "BeltViewport", "CommodityTrackItemHost", "CommodityTrackEmptyLabel"]), "TopCommoditySushiTrack owns its stable public commodity surface")
 	_expect(commodity_track is Control and (commodity_track as Control).custom_minimum_size.y >= 150.0, "TopCommoditySushiTrack remains a wide table surface instead of the retired 44px banner")
 	_expect(_has_nodes(card_track, ["HistoryRail", "ActiveResolutionSlot", "QueueRail", "NextQueueRail", "AuctionResponseLayer", "PrivacyHintLayer", "EmptyStateLayer"]), "CardResolutionTrack owns its complete public resolution surface")
-	_expect(_has_nodes(overlay, ["ConfirmPanel", "MonsterWagerDecisionPanel", "ContractResponseDecisionPanel", "TemporaryChoiceDecisionPanel", "PublicBidDecisionPanel"]), "OverlayLayer owns every temporary decision panel, including structured public_bid")
+	_expect(_has_nodes(overlay, ["ConfirmPanel", "MonsterWagerDecisionPanel", "TemporaryChoiceDecisionPanel", "PublicBidDecisionPanel"]), "OverlayLayer owns every current temporary decision panel, including structured public_bid")
 	_expect(_has_nodes(planet_board, ["WeatherForecastStrip", "PlanetMapView"]), "PlanetBoard owns weather and the sceneized planet map")
 	_expect(_has_nodes(district_supply, ["DistrictSupplyMarketGrid", "DistrictSupplyPreviewPanel"]), "DistrictSupplyDrawer owns its market and preview surfaces")
 
@@ -117,7 +117,7 @@ func _run() -> void:
 	_expect(_contains_all(commodity_track_scene_text, ["公共商品寿司带", "等待权威快照", "0 件公开商品", "共享商品带尚未就绪。"]), "TopCommoditySushiTrack explains its public commodity state")
 	_expect(_contains_all(commodity_track_source, ["signal item_focused", "signal claim_requested", "func set_snapshot(snapshot:"]), "TopCommoditySushiTrack exposes typed commodity focus, claim, and snapshot boundaries")
 	_expect(_contains_all(track_scene_text, ["公共牌轨", "竞价/响应窗口", "归属未公开前只显示待猜线索", "牌轨空闲"]), "CardResolutionTrack explains public state without owner leakage")
-	_expect(_contains_all(overlay_scene_text, ["详情抽屉", "确认操作", "MonsterWagerDecisionPanel", "ContractResponseDecisionPanel", "TemporaryChoiceDecisionPanel"]), "OverlayLayer exposes scene-owned detail and decision surfaces")
+	_expect(_contains_all(overlay_scene_text, ["详情抽屉", "确认操作", "MonsterWagerDecisionPanel", "TemporaryChoiceDecisionPanel"]), "OverlayLayer exposes scene-owned detail and decision surfaces")
 	_expect(_contains_all(menu_overlay_scene_text, ["text = \"返回\""]) and not menu_overlay_scene_text.contains("text = \"Back\""), "MenuOverlay keeps default navigation player-facing and localized")
 	_expect(menu_overlay_source.contains("data.get(\"back_text\", \"返回\")"), "MenuOverlay catalog navigation keeps a localized fallback")
 	_expect(monster_token_scene_text.contains("text = \"场上单位\"") and monster_token_source.contains("data.get(\"detail_label\", \"场上单位\")") and not monster_token_source.contains("data.get(\"motif\""), "PlanetMonsterToken never renders internal visual motif ids")

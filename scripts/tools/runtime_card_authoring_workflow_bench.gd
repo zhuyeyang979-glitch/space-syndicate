@@ -20,11 +20,11 @@ const CASE_IDS := [
 	"authoring_service_script_loads",
 	"catalog_resource_loads",
 	"catalog_has_ten_packs",
-	"catalog_has_120_families",
-	"catalog_has_239_authored_cards",
+	"catalog_has_114_families",
+	"catalog_has_232_authored_cards",
 	"output_is_user_scoped",
 	"authoritative_catalog_validates",
-	"all_50_kinds_remain_registered",
+	"all_49_kinds_remain_registered",
 	"sample_family_validates",
 	"sample_rank_validates",
 	"duplicate_rank_is_blocked",
@@ -191,11 +191,11 @@ func _case_pass(case_id: String) -> bool:
 		"authoring_service_script_loads": return load("res://scripts/cards/card_runtime_authoring_service.gd") != null
 		"catalog_resource_loads": return _catalog != null
 		"catalog_has_ten_packs": return int(_index.get("pack_count", 0)) == 10
-		"catalog_has_120_families": return int(_index.get("family_count", 0)) == 120
-		"catalog_has_239_authored_cards": return int(_index.get("card_count", 0)) == 239
+		"catalog_has_114_families": return int(_index.get("family_count", 0)) == 114
+		"catalog_has_232_authored_cards": return int(_index.get("card_count", 0)) == 232
 		"output_is_user_scoped": return OUTPUT_DIR.begins_with("user://") and not OUTPUT_DIR.contains("res://reports")
 		"authoritative_catalog_validates": return bool(_validation.get("valid", false))
-		"all_50_kinds_remain_registered": return int(_catalog.validation_report().get("kind_count", 0)) == 50
+		"all_49_kinds_remain_registered": return int(_catalog.validation_report().get("kind_count", 0)) == 49
 		"sample_family_validates": return bool(_validator.validate_family(_sample_family, _catalog).get("valid", false))
 		"sample_rank_validates": return bool(_validator.validate_rank(_sample_rank, _sample_family, _catalog).get("valid", false))
 		"duplicate_rank_is_blocked": return _duplicate_rank_is_blocked()
@@ -410,7 +410,7 @@ func _case_note(case_id: String, passed: bool) -> String:
 
 
 func _update_ui(manifest: Dictionary) -> void:
-	summary_label.text = "239 cards | 120 families | 10 packs | %d/%d workflow checks" % [int(manifest.get("passed_count", 0)), CASE_IDS.size()]
+	summary_label.text = "232 cards | 114 families | 10 packs | %d/%d workflow checks" % [int(manifest.get("passed_count", 0)), CASE_IDS.size()]
 	status_label.text = "PASS - Inspector authoring is review-gated" if _failures.is_empty() else "AUTHORING WORKFLOW FAILURE"
 	var lines: Array[String] = []
 	for record_variant in _records:

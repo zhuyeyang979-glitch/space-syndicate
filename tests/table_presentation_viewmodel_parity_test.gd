@@ -8,7 +8,7 @@ const BATTLE_LIFECYCLE_POLICY := preload("res://scripts/runtime/monster_battle_l
 const TOP_BAR_FIELDS := ["table_state", "tempo", "phase", "turn", "identity", "cash_text", "gdp_text", "goal_text", "selected_district", "primary_action", "weather_status"]
 const PLAYER_BOARD_FIELDS := ["actions", "quick_actions", "region_infrastructure", "table_state_lamps", "readiness_chips", "progress_path", "bid_board", "goal_text", "goal_ratio", "primary_action", "hand_cards"]
 const TRACK_SOURCE_FIELDS := ["history", "active", "queue", "next_queue", "events", "selected_resolution_id", "selected_player", "auction_open", "batch_locked", "counter_window_active", "group_phase", "group_phase_remaining_seconds", "group_cadence", "group_count", "pending_decision", "status_text"]
-const DECISION_KINDS := ["monster_wager", "contract_response", "discard_purchase", "monster_target_choice", "player_target_choice"]
+const DECISION_KINDS := ["monster_wager", "discard_purchase", "monster_target_choice", "player_target_choice"]
 
 var checks := 0
 var failures: Array[String] = []
@@ -218,28 +218,9 @@ func _run() -> void:
 		var revealed_event := _dictionary(revealed.get("event", {}))
 		_expect(not revealed_event.has("public_owner_label") and str(revealed_event.get("target_label", "")) == "已公开区域", "card-history presentation retires actor labels while preserving explicitly public target labels")
 
-	var contract_bridge := coordinator.get_node_or_null("ContractRuntimeWorldBridge") as ContractRuntimeWorldBridge
-	var history := coordinator.get_node_or_null("CardResolutionHistoryRuntimeService") as CardResolutionHistoryRuntimeService
-	_expect(contract_bridge != null and history != null, "contract and history typed owners are production-composed")
-	if contract_bridge != null and history != null:
-		var contract_stored := contract_bridge.store_contract_result({
-			"resolution_id": 501,
-			"skill": {"name": "合约测试牌", "display_name": "合约测试牌", "kind": "area_trade_contract"},
-			"contract_source_district": 0,
-			"contract_target_district": 1,
-			"contract_products": ["crystal"],
-			"contract_response": "accepted",
-			"aftermath_clue": "合约已公开接受。",
-		})
-		var stored_contract := _history_entry(history, 501)
-		_expect(contract_stored and not str(stored_contract.get("aftermath_style", "")).is_empty(), "contract history derives presentation style through the typed card service")
-
 	var query_source := FileAccess.get_file_as_string("res://scripts/presentation/table_presentation_viewmodel_query.gd")
 	_expect(not query_source.contains("WorldSessionState") and not query_source.contains("_world.players") and not query_source.contains("_world.districts"), "ViewModel query has no raw WorldSessionState collection dependency")
 	_expect(query_source.contains("private_world_projection") and query_source.contains("CardPlayEligibility"), "hand projection uses viewer-private allowlist and eligibility facts")
-	var contract_bridge_source := FileAccess.get_file_as_string("res://scripts/runtime/contract_runtime_world_bridge.gd")
-	_expect(not contract_bridge_source.contains("_card_resolution_presentation_snapshot") and contract_bridge_source.contains("CardPresentationRuntimeService"), "contract result presentation uses a typed scene-owned service without a Main callback")
-	_expect(not contract_bridge_source.contains("_pulse_district") and not contract_bridge_source.contains("_add_action_callout"), "contract bridge has no dead presentation callback to Main")
 	for decision_kind in DECISION_KINDS:
 		_expect(query_source.contains('"%s"' % decision_kind), "query supports temporary decision kind: %s" % decision_kind)
 	_assert_temporary_decision_parity(host, coordinator, query)
@@ -295,7 +276,7 @@ func _configure_presentation_dependencies(coordinator: GameRuntimeCoordinator) -
 	if resolution != null:
 		resolution.configure(RULESET.card_group_rules())
 	if scheduler != null:
-		scheduler.configure(["monster_wager", "counter_response", "contract_response", "other_choice"])
+		scheduler.configure(["monster_wager", "counter_response", "other_choice"])
 	if monster != null and monster_bridge != null:
 		monster_bridge.set_world_session_state(coordinator.world_session_state())
 		monster.set_world_bridge(monster_bridge)
@@ -320,12 +301,10 @@ func _configure_track(coordinator: GameRuntimeCoordinator, card_id: String, skil
 func _assert_temporary_decision_parity(host: Node, coordinator: GameRuntimeCoordinator, query: TablePresentationViewModelQuery) -> void:
 	var scheduler := coordinator.get_node_or_null("ForcedDecisionRuntimeScheduler") as ForcedDecisionRuntimeScheduler
 	var monster := coordinator.get_node_or_null("MonsterRuntimeController") as MonsterRuntimeController
-	var contract := coordinator.get_node_or_null("ContractRuntimeController") as ContractRuntimeController
-	var contract_bridge := coordinator.get_node_or_null("ContractRuntimeWorldBridge") as ContractRuntimeWorldBridge
 	var purchase := coordinator.get_node_or_null("DistrictPurchaseRuntimeController") as DistrictPurchaseRuntimeController
 	var target := coordinator.get_node_or_null("CardTargetChoiceRuntimeController") as CardTargetChoiceRuntimeController
-	_expect(scheduler != null and monster != null and contract != null and contract_bridge != null and purchase != null and target != null, "five temporary decision owners are production-composed")
-	if scheduler == null or monster == null or contract == null or contract_bridge == null or purchase == null or target == null:
+	_expect(scheduler != null and monster != null and purchase != null and target != null, "current temporary decision owners are production-composed")
+	if scheduler == null or monster == null or purchase == null or target == null:
 		return
 
 	monster.auto_monsters = [
@@ -364,25 +343,6 @@ func _assert_temporary_decision_parity(host: Node, coordinator: GameRuntimeCoord
 	var wager_decision := query.temporary_decision_presentation_source_for_viewer(0)
 	_expect(_decision_matches(wager_decision, "monster_wager"), "monster wager active descriptor and owner snapshot produce actionable wager decision")
 	monster.active_monster_wagers.clear()
-	scheduler.sync_candidates([])
-
-	var private_world := PrivateViewerWorldStub.new()
-	host.add_child(private_world)
-	contract_bridge.bind_world(private_world)
-	contract.set_world_bridge(contract_bridge)
-	contract.pending_offers = [{
-		"contract_offer_id": 27,
-		"contract_target_owner": 0,
-		"contract_response": ContractRuntimeController.RESPONSE_PENDING,
-		"contract_decision_timer": 5.0,
-		"contract_source_district": 0,
-		"contract_target_district": 1,
-		"contract_products": ["crystal"],
-		"skill": {"name": "星际供需协议", "kind": "area_trade_contract"},
-	}]
-	scheduler.sync_candidates(contract.forced_decision_candidates())
-	_expect(_decision_matches(query.temporary_decision_presentation_source_for_viewer(0), "contract_response"), "contract active descriptor and owner snapshot produce actionable response decision")
-	contract.pending_offers.clear()
 	scheduler.sync_candidates([])
 
 	var quote_authority := QuoteAuthorityStub.new()

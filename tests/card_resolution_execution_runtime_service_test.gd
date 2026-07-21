@@ -56,10 +56,10 @@ func _run() -> void:
 	failed_release = service.call("advance_execution", failed_release, {"intent_type": "release_active", "completed": false, "reason": "active_resolution_mismatch"}) as Dictionary
 	_expect(str(failed_release.get("status", "")) == "aborted" and _next_kind(failed_release) == "" and not bool(failed_release.get("effect_dispatched", false)), "failed active release blocks effect dispatch")
 
-	var promoted := service.call("plan_execution", _request(3705, "area_trade_contract")) as Dictionary
+	var promoted := service.call("plan_execution", _request(3705, "product_speculation")) as Dictionary
 	var promoted_order: Array[String] = []
-	promoted = _drive(service, promoted, promoted_order, {"next_queue_count": 1, "continuation_kind": "contract_response"})
-	_expect(promoted_order.has("promote_next_batch") and str(promoted.get("continuation_kind", "")) == "contract_response", "empty current queue promotes next batch while retaining contract continuation classification")
+	promoted = _drive(service, promoted, promoted_order, {"next_queue_count": 1})
+	_expect(promoted_order.has("promote_next_batch") and str(promoted.get("continuation_kind", "")) == "normal", "empty current queue promotes the next batch with the normal continuation")
 	_expect(bool((service.call("finalize_execution", promoted) as Dictionary).get("completed", false)), "promoted execution finalizes")
 
 	var missing_recovery := service.call("recover_from_active", {}, {}) as Dictionary

@@ -1260,49 +1260,6 @@ size_flags_horizontal = 3
 text = "Open Weather Runtime Output"
 tooltip_text = "Open user://space_syndicate_design_qa/weather_runtime_characterization/"
 
-[node name="ContractRuntimeOwnershipActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="OpenContractRuntimeControllerButton" type="Button" parent="DockMargin/DockRows/ContractRuntimeOwnershipActionRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Open Contract Controller"
-tooltip_text = "Open res://scenes/runtime/ContractRuntimeController.tscn"
-
-[node name="OpenContractRuntimeWorldBridgeButton" type="Button" parent="DockMargin/DockRows/ContractRuntimeOwnershipActionRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Open Contract Bridge"
-tooltip_text = "Open res://scenes/runtime/ContractRuntimeWorldBridge.tscn"
-
-[node name="ContractRuntimeCharacterizationActionRow" type="HBoxContainer" parent="DockMargin/DockRows"]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="OpenContractRuntimeCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows/ContractRuntimeCharacterizationActionRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Open Contract Runtime QA"
-tooltip_text = "Open res://scenes/tools/ContractRuntimeCharacterizationBench.tscn"
-
-[node name="RunContractRuntimeCharacterizationBenchButton" type="Button" parent="DockMargin/DockRows/ContractRuntimeCharacterizationActionRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Run Contract Runtime QA"
-tooltip_text = "Run the Sprint 51 62-case real-main hard-cutover gate"
-
-[node name="OpenContractRuntimeCharacterizationOutputFolderButton" type="Button" parent="DockMargin/DockRows"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Open Contract Runtime Output"
-tooltip_text = "Open user://space_syndicate_design_qa/contract_runtime_characterization/"
-
 [node name="ProductMarketRuntimeCharacterizationSection" type="Label" parent="DockMargin/DockRows"]
 layout_mode = 2
 text = "Product Futures v0.4 Hard Alignment"
@@ -2015,13 +1972,6 @@ custom_minimum_size = Vector2(128, 30)
 layout_mode = 2
 text = "monster_wager"
 tooltip_text = "Preview fixture: monster_wager"
-
-[node name="ContractResponseFixtureButton" type="Button" parent="DockMargin/DockRows/FixtureGrid"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(128, 30)
-layout_mode = 2
-text = "contract_response"
-tooltip_text = "Preview fixture: contract_response"
 
 [node name="DiscardPurchaseFixtureButton" type="Button" parent="DockMargin/DockRows/FixtureGrid"]
 unique_name_in_owner = true

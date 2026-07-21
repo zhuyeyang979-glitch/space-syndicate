@@ -50,11 +50,7 @@ func _run() -> void:
 	var toolbar := TOOLBAR_SCENE.instantiate() as Control
 	root.add_child(toolbar)
 	await process_frame
-	var legacy_actions: Array[String] = []
 	var local_route_selections: Array[String] = []
-	toolbar.connect("control_action_requested", func(action_id: String, _payload: Dictionary) -> void:
-		legacy_actions.append(action_id)
-	)
 	toolbar.connect("optional_route_selection_changed", func(product_id: String) -> void:
 		local_route_selections.append(product_id)
 	)
@@ -64,7 +60,7 @@ func _run() -> void:
 		"trade": {"options": [{"id": "", "label": "隐藏商路"}, {"id": "晶雾", "label": "晶雾"}]},
 	})
 	toolbar.call("_on_trade_product_selected", 1)
-	_expect(legacy_actions.is_empty() and local_route_selections == ["晶雾"], "toolbar route selection stays local and emits no legacy gameplay product mutation")
+	_expect(not toolbar.has_signal("control_action_requested") and local_route_selections == ["晶雾"], "toolbar route selection stays local and exposes no legacy generic gameplay mutation signal")
 	var refreshed_districts := _districts()
 	(refreshed_districts[1] as Dictionary)["center"] = Vector2(330, 440)
 	(refreshed_districts[2] as Dictionary)["center"] = Vector2(500, 410)

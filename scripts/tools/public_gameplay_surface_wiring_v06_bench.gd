@@ -21,7 +21,7 @@ func _run_bench() -> void:
 	if get_window() != null:
 		get_window().size = Vector2i(1280, 720)
 	table_service.call("configure", card_presentation)
-	scheduler.call("configure", ["monster_wager", "counter_response", "contract_response", "other_choice"])
+	scheduler.call("configure", ["monster_wager", "counter_response", "other_choice"])
 	var bid := {
 		"title": "牌序竞价",
 		"phase_id": "public_bid",
@@ -146,7 +146,7 @@ func _visible_forced_panel_count(overlay: Node) -> int:
 	if overlay == null:
 		return 0
 	var count := 0
-	for name in ["MonsterWagerDecisionPanel", "ContractResponseDecisionPanel", "TemporaryChoiceDecisionPanel", "TemporaryDecisionModal", "PublicBidDecisionPanel"]:
+	for name in ["MonsterWagerDecisionPanel", "TemporaryChoiceDecisionPanel", "TemporaryDecisionModal", "PublicBidDecisionPanel"]:
 		var control := overlay.find_child(name, true, false) as Control
 		if control != null and control.visible:
 			count += 1

@@ -1,4 +1,6 @@
 extends Control
+
+# Active QA characterization for the current card-resolution execution path.
 class_name CardResolutionExecutionRuntimeCharacterizationBench
 
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
@@ -20,15 +22,13 @@ const CONTROLLER_SCRIPT_PATH := "res://scripts/runtime/card_resolution_runtime_c
 const INVENTORY_SERVICE_SCRIPT_PATH := "res://scripts/runtime/card_inventory_runtime_service.gd"
 const HAND_SERVICE_SCRIPT_PATH := "res://scripts/runtime/player_hand_interaction_runtime_service.gd"
 const DISTRICT_SETTLEMENT_SCRIPT_PATH := "res://scripts/runtime/district_purchase_settlement_runtime_service.gd"
-const CONTRACT_CONTROLLER_SCRIPT_PATH := "res://scripts/runtime/contract_runtime_controller.gd"
-const CONTRACT_WORLD_BRIDGE_SCRIPT_PATH := "res://scripts/runtime/contract_runtime_world_bridge.gd"
 const OUTPUT_DIR := "user://space_syndicate_design_qa/card_resolution_execution_characterization/"
 const MANIFEST_PATH := OUTPUT_DIR + "manifest.json"
 const REPORT_PATH := OUTPUT_DIR + "report.md"
 const SCREENSHOT_PATH := "user://space_syndicate_design_qa/contract_city_product_formula_sprint_40.png"
 const BASELINE_MAIN_SHA256 := "0D46E013D8EA2BA131C61D6E6F183B2E99BF7E929A245FF31FBA4B22D5DE1C0A"
-const CASE_COUNT := 28
-const CUTOVER_CASE_COUNT := 52
+const CASE_COUNT := 25
+const CUTOVER_CASE_COUNT := 49
 const TOTAL_CASE_COUNT := CASE_COUNT + CUTOVER_CASE_COUNT
 
 const CASH_CARD_ID := "轨道融资1"
@@ -36,7 +36,6 @@ const PRODUCT_CARD_ID := "价格套利1"
 const DISTRICT_CARD_ID := "生产扩张1"
 const MONSTER_CARD_ID := "诱导电波1"
 const HAND_CARD_ID := "星链拆解1"
-const CONTRACT_CARD_ID := "区域供需合约1"
 const INTEL_CARD_ID := "出牌追帧1"
 const COUNTER_CARD_ID := "相位否决1"
 const PERSISTENT_CARD_ID := "移动1"
@@ -51,6 +50,7 @@ const PERSISTENT_CARD_ID := "移动1"
 @onready var cases_text: RichTextLabel = %CasesText
 
 var _runtime_main: Control = null
+var _session_start_sequence := 0
 var _records: Array = []
 var _failures: Array[String] = []
 
@@ -86,10 +86,7 @@ func characterization_cases() -> Array:
 		"hand_interaction_routes_to_existing_service",
 		"inventory_mutation_routes_to_inventory_service",
 		"temporary_decision_pauses_resolution",
-		"temporary_decision_resume_continues_same_resolution",
-		"temporary_decision_cancel_behavior_characterized",
 		"counter_response_preserves_active_entry",
-		"contract_response_preserves_active_entry",
 		"monster_wager_preserves_active_entry",
 		"public_event_emitted_after_success",
 		"private_event_visibility_boundary",
@@ -120,12 +117,10 @@ func cutover_cases() -> Array:
 		"consumable_card_never_returns",
 		"paid_cost_marker_preserved",
 		"selection_context_restored",
-		"contract_context_restored",
 		"city_development_uses_world_adapter",
 		"product_route_economy_use_world_adapters",
 		"monster_and_player_target_use_world_adapters",
 		"hand_interaction_uses_existing_service",
-		"contract_offer_remains_non_blocking",
 		"monster_wager_handoff_uses_forced_scheduler",
 		"aftermath_and_history_order_preserved",
 		"history_appended_exactly_once",
@@ -146,7 +141,6 @@ func cutover_cases() -> Array:
 		"execution_service_remains_formula_agnostic",
 		"product_contract_boon_formula_parity",
 		"city_contract_boon_formula_parity",
-		"contract_accept_route_flow_formula_parity",
 		"route_insurance_formula_parity",
 		"city_product_upgrade_formula_parity",
 		"city_product_shift_formula_parity",
@@ -281,10 +275,7 @@ func _run_case(case_id: String) -> Dictionary:
 		"hand_interaction_routes_to_existing_service": return _case_hand_interaction_routes_to_existing_service()
 		"inventory_mutation_routes_to_inventory_service": return _case_inventory_mutation_routes_to_inventory_service()
 		"temporary_decision_pauses_resolution": return _case_temporary_decision_pauses_resolution()
-		"temporary_decision_resume_continues_same_resolution": return _case_temporary_decision_resume_continues_same_resolution()
-		"temporary_decision_cancel_behavior_characterized": return _case_temporary_decision_cancel_behavior_characterized()
 		"counter_response_preserves_active_entry": return _case_counter_response_preserves_active_entry()
-		"contract_response_preserves_active_entry": return _case_contract_response_preserves_active_entry()
 		"monster_wager_preserves_active_entry": return _case_monster_wager_preserves_active_entry()
 		"public_event_emitted_after_success": return _case_public_event_emitted_after_success()
 		"private_event_visibility_boundary": return _case_private_event_visibility_boundary()
@@ -320,12 +311,10 @@ func _run_cutover_case(case_id: String) -> Dictionary:
 		"consumable_card_never_returns": return _cutover_consumable_card_never_returns()
 		"paid_cost_marker_preserved": return _cutover_paid_cost_marker_preserved()
 		"selection_context_restored": return _cutover_selection_context_restored()
-		"contract_context_restored": return _cutover_contract_context_restored()
 		"city_development_uses_world_adapter": return _cutover_city_development_uses_world_adapter()
 		"product_route_economy_use_world_adapters": return _cutover_product_route_economy_use_world_adapters()
 		"monster_and_player_target_use_world_adapters": return _cutover_monster_and_player_target_use_world_adapters()
 		"hand_interaction_uses_existing_service": return _cutover_hand_interaction_uses_existing_service()
-		"contract_offer_remains_non_blocking": return _cutover_contract_offer_remains_non_blocking()
 		"monster_wager_handoff_uses_forced_scheduler": return _cutover_monster_wager_handoff_uses_forced_scheduler()
 		"aftermath_and_history_order_preserved": return _cutover_aftermath_and_history_order_preserved()
 		"history_appended_exactly_once": return _cutover_history_appended_exactly_once()
@@ -346,7 +335,6 @@ func _run_cutover_case(case_id: String) -> Dictionary:
 		"execution_service_remains_formula_agnostic": return _cutover_execution_service_remains_formula_agnostic()
 		"product_contract_boon_formula_parity": return _cutover_product_contract_boon_formula_parity()
 		"city_contract_boon_formula_parity": return _cutover_city_contract_boon_formula_parity()
-		"contract_accept_route_flow_formula_parity": return _cutover_contract_accept_route_flow_formula_parity()
 		"route_insurance_formula_parity": return _cutover_route_insurance_formula_parity()
 		"city_product_upgrade_formula_parity": return _cutover_city_product_upgrade_formula_parity()
 		"city_product_shift_formula_parity": return _cutover_city_product_shift_formula_parity()
@@ -508,16 +496,6 @@ func _cutover_selection_context_restored() -> Dictionary:
 	return _cutover_record("selection_context_restored", {"observed": _history_count_for_resolution(3716) == 1, "contract_aligned": checked, "world_adapter_checked": checked, "notes": "Actor/district/product selection is captured in the pure plan and restored before history continuation."})
 
 
-func _cutover_contract_context_restored() -> Dictionary:
-	var source := _main_source()
-	var request_builder := _function_source(source, "_card_resolution_execution_request")
-	var bridge_source := FileAccess.get_file_as_string(EXECUTION_WORLD_BRIDGE_SCRIPT_PATH)
-	var restore := _function_source(bridge_source, "_restore_context_receipt")
-	var execution_source := FileAccess.get_file_as_string(EXECUTION_SERVICE_SCRIPT_PATH)
-	var checked := request_builder.contains("contract_source_district") and request_builder.contains("contract_target_district") and restore.contains("contract_controller.set_selection_state") and execution_source.contains("INTENT_RESTORE_CONTEXT")
-	return _cutover_record("contract_context_restored", {"observed": not restore.is_empty(), "contract_aligned": checked, "intent_order_checked": checked, "world_adapter_checked": checked, "notes": "Contract endpoints are temporary world context and are restored by an explicit service-owned phase."}, CONTRACT_CARD_ID, "contract_context")
-
-
 func _cutover_city_development_uses_world_adapter() -> Dictionary:
 	var effect_adapter := _function_source(_main_source(), "_apply_card_resolution_effect_request")
 	var service_source := FileAccess.get_file_as_string(EXECUTION_SERVICE_SCRIPT_PATH)
@@ -534,7 +512,6 @@ func _cutover_product_route_economy_use_world_adapters() -> Dictionary:
 	var checked := effect_adapter.contains("plan_card_economy_product_route_effect") and effect_adapter.contains("finalize_card_economy_product_route_effect") and effect_adapter.contains("_card_economy_product_route_effect_world_bridge_node")
 	checked = checked and family_bridge_source.contains("_product_market_runtime_controller.apply_speculation") and family_bridge_source.contains("_apply_route_insurance") and family_bridge_source.contains("_apply_region_economy_shift")
 	checked = checked and not effect_adapter.contains("_apply_product_speculation") and not execution_source.contains("_apply_product_speculation") and not family_service_source.contains("_apply_product_speculation")
-	checked = checked and family_bridge_source.contains("contract_controller.open_offer") and FileAccess.get_file_as_string(CONTRACT_CONTROLLER_SCRIPT_PATH).contains("func open_offer(") and not _main_source().contains("func _apply_area_trade_contract(")
 	return _cutover_record("product_route_economy_use_world_adapters", {"observed": not effect_adapter.is_empty(), "contract_aligned": checked, "service_owner_checked": checked, "world_adapter_checked": checked, "main_adapter_checked": checked, "notes": "The family service owns pure dispatch plans, its stateless world bridge routes existing formulas, and Execution Service remains family-agnostic."}, PRODUCT_CARD_ID, "economy_product_route_family")
 
 
@@ -550,14 +527,6 @@ func _cutover_hand_interaction_uses_existing_service() -> Dictionary:
 	var interaction_adapter := _function_source(_main_source(), "_resolve_player_hand_interaction")
 	var checked := effect_adapter.contains("_apply_player_hand_disrupt") and interaction_adapter.contains("plan_player_hand_interaction") and interaction_adapter.contains("commit_player_hand_interaction") and _hand_service() != null
 	return _cutover_record("hand_interaction_uses_existing_service", {"observed": _hand_service() != null, "contract_aligned": checked, "existing_service_route_checked": checked, "world_adapter_checked": checked, "notes": "Execution delegates the real interaction card to the already-authoritative PlayerHandInteractionRuntimeService."}, HAND_CARD_ID, "player_hand_interaction")
-
-
-func _cutover_contract_offer_remains_non_blocking() -> Dictionary:
-	var result := _drive_execution_service(_service_plan(3722, CONTRACT_CARD_ID), {"continuation_kind": "contract_response"})
-	var transaction: Dictionary = result.get("transaction", {}) as Dictionary
-	var contract_source := FileAccess.get_file_as_string(CONTRACT_CONTROLLER_SCRIPT_PATH)
-	var checked := str(transaction.get("continuation_kind", "")) == "contract_response" and contract_source.contains("pending_offers.append(offer)") and contract_source.contains("\"blocks_card_resolution\": false")
-	return _cutover_record("contract_offer_remains_non_blocking", {"observed": str(transaction.get("continuation_kind", "")) == "contract_response", "contract_aligned": checked, "continuation_checked": checked, "notes": "The card resolves and leaves a pending offer/history continuation while the next card may start."}, CONTRACT_CARD_ID, "contract_continuation")
 
 
 func _cutover_monster_wager_handoff_uses_forced_scheduler() -> Dictionary:
@@ -757,7 +726,7 @@ func _cutover_product_contract_boon_formula_parity() -> Dictionary:
 	}) as Dictionary if service != null else {}
 	var entry: Dictionary = result.get("entry", {}) as Dictionary
 	var checked := bool(result.get("ok", false)) and bool(result.get("changed", false)) and int(entry.get("market_contract_demand", 0)) == 5 and int(entry.get("market_contract_supply", 0)) == 1 and is_equal_approx(float(entry.get("market_contract_seconds", 0.0)), 60.0) and int(entry.get("market_contract_turns", 0)) == 2 and int(entry.get("volatility", 0)) == 1
-	return _cutover_record("product_contract_boon_formula_parity", {"observed": bool(result.get("ok", false)), "contract_aligned": checked, "formula_checked": checked, "pure_data_checked": _is_data_only(result), "notes": "Product-contract demand/supply maxima, duration mirror, source merge, and volatility clamp are deterministic Formula Service ownership."}, CONTRACT_CARD_ID, "product_contract_boon")
+	return _cutover_record("product_contract_boon_formula_parity", {"observed": bool(result.get("ok", false)), "contract_aligned": checked, "formula_checked": checked, "pure_data_checked": _is_data_only(result), "notes": "Automatic product-order demand/supply maxima, duration mirror, source merge, and volatility clamp are deterministic Formula Service ownership."}, PRODUCT_CARD_ID, "product_contract_boon")
 
 
 func _cutover_city_contract_boon_formula_parity() -> Dictionary:
@@ -772,20 +741,7 @@ func _cutover_city_contract_boon_formula_parity() -> Dictionary:
 	}) as Dictionary if service != null else {}
 	var city: Dictionary = result.get("city", {}) as Dictionary
 	var checked := bool(result.get("changed", false)) and int(city.get("contract_income_bonus", 0)) == 5 and is_equal_approx(float(city.get("contract_seconds", 0.0)), 60.0) and is_equal_approx(float(city.get("route_flow_multiplier", 0.0)), 1.5) and is_equal_approx(float(city.get("route_flow_seconds", 0.0)), 90.0)
-	return _cutover_record("city_contract_boon_formula_parity", {"observed": bool(result.get("ok", false)), "contract_aligned": checked, "formula_checked": checked, "pure_data_checked": _is_data_only(result), "notes": "City contracts preserve maximum income, longest duration, route-flow cap, and source composition."}, CONTRACT_CARD_ID, "city_contract_boon")
-
-
-func _cutover_contract_accept_route_flow_formula_parity() -> Dictionary:
-	var service := _formula_service()
-	var result: Dictionary = service.call("calculate", "city_route_flow_boon", {
-		"city": {"route_flow_multiplier": 1.2, "route_flow_seconds": 30.0},
-		"route_flow_multiplier": 1.6,
-		"route_flow_seconds": 60.0,
-		"source": "fixture-accept",
-	}) as Dictionary if service != null else {}
-	var city: Dictionary = result.get("city", {}) as Dictionary
-	var checked := bool(result.get("changed", false)) and is_equal_approx(float(city.get("route_flow_multiplier", 0.0)), 1.6) and is_equal_approx(float(city.get("route_flow_seconds", 0.0)), 60.0) and str(city.get("route_flow_source", "")) == "fixture-accept"
-	return _cutover_record("contract_accept_route_flow_formula_parity", {"observed": bool(result.get("ok", false)), "contract_aligned": checked, "formula_checked": checked, "pure_data_checked": _is_data_only(result), "notes": "Accepted contracts use the shared city route-flow formula without moving eligibility or response ownership."}, CONTRACT_CARD_ID, "contract_accept_flow")
+	return _cutover_record("city_contract_boon_formula_parity", {"observed": bool(result.get("ok", false)), "contract_aligned": checked, "formula_checked": checked, "pure_data_checked": _is_data_only(result), "notes": "City income boons preserve maximum income, longest duration, route-flow cap, and source composition."}, PRODUCT_CARD_ID, "city_contract_boon")
 
 
 func _cutover_route_insurance_formula_parity() -> Dictionary:
@@ -842,12 +798,10 @@ func _cutover_city_adjustment_formula_parity() -> Dictionary:
 func _cutover_main_contract_formula_bodies_absent() -> Dictionary:
 	var source := _main_source()
 	var market_source := FileAccess.get_file_as_string(PRODUCT_MARKET_CONTROLLER_SCRIPT_PATH)
-	var contract_bridge_source := FileAccess.get_file_as_string(CONTRACT_WORLD_BRIDGE_SCRIPT_PATH)
-	var accept_flow := _function_source(contract_bridge_source, "_apply_route_flow")
 	var city_contract := _function_source(source, "_apply_city_contract_boon")
 	var insurance := _function_source(source, "_apply_route_insurance")
-	var checked := not source.contains("func _apply_product_contract_boon(") and market_source.contains("func apply_product_contract_boon(") and market_source.contains("_formula(\"product_contract_boon\"") and accept_flow.contains("city_route_flow_boon") and not accept_flow.contains("maxf(before_flow") and city_contract.contains("city_contract_boon") and not city_contract.contains("contract_income_bonus\"] = maxi") and insurance.contains("route_insurance") and not insurance.contains("trade_route_damage\"] = max") and not source.contains("func _apply_contract_accept_route_flow(")
-	return _cutover_record("main_contract_formula_bodies_absent", {"observed": market_source.contains("func apply_product_contract_boon(") and not city_contract.is_empty(), "contract_aligned": checked, "main_adapter_checked": checked, "legacy_orchestration_absent": checked, "formula_checked": checked, "notes": "Product contract pressure is owned by ProductMarketRuntimeController; city boon, accepted route flow, and insurance adapters contain no duplicated arithmetic."}, CONTRACT_CARD_ID, "formula_deletion_gate")
+	var checked := not source.contains("func _apply_product_contract_boon(") and market_source.contains("func apply_product_contract_boon(") and market_source.contains("_formula(\"product_contract_boon\"") and city_contract.contains("city_contract_boon") and not city_contract.contains("contract_income_bonus\"] = maxi") and insurance.contains("route_insurance") and not insurance.contains("trade_route_damage\"] = max")
+	return _cutover_record("main_contract_formula_bodies_absent", {"observed": market_source.contains("func apply_product_contract_boon(") and not city_contract.is_empty(), "contract_aligned": checked, "main_adapter_checked": checked, "legacy_orchestration_absent": checked, "formula_checked": checked, "notes": "Automatic product-order pressure is owned by ProductMarketRuntimeController; city income and insurance adapters contain no duplicated arithmetic."}, PRODUCT_CARD_ID, "formula_deletion_gate")
 
 
 func _cutover_main_city_product_formula_bodies_absent() -> Dictionary:
@@ -875,7 +829,7 @@ func _cutover_execution_service_sprint40_formula_agnostic() -> Dictionary:
 	var checked := not bool(debug.get("concrete_effect_authority", true)) and not bool(debug.get("queue_authority", true)) and not bool(debug.get("timing_authority", true))
 	for token in forbidden:
 		checked = checked and not execution_source.contains(str(token))
-	return _cutover_record("execution_service_sprint40_formula_agnostic", {"observed": not execution_source.is_empty(), "contract_aligned": checked, "service_owner_checked": checked, "formula_owner_checked": checked, "pure_data_checked": _is_data_only(debug), "notes": "Sprint 40 adds no contract, city-product, demand, or insurance knowledge to the generic Execution Service."}, CONTRACT_CARD_ID, "execution_boundary")
+	return _cutover_record("execution_service_sprint40_formula_agnostic", {"observed": not execution_source.is_empty(), "contract_aligned": checked, "service_owner_checked": checked, "formula_owner_checked": checked, "pure_data_checked": _is_data_only(debug), "notes": "Sprint 40 adds no automatic-order, city-product, demand, or insurance knowledge to the generic Execution Service."}, PRODUCT_CARD_ID, "execution_boundary")
 
 
 func _case_execution_call_graph_complete() -> Dictionary:
@@ -904,7 +858,7 @@ func _case_queue_service_boundary_unchanged() -> Dictionary:
 	var queue_source := FileAccess.get_file_as_string(QUEUE_SERVICE_SCRIPT_PATH)
 	var execution_source := FileAccess.get_file_as_string(EXECUTION_SERVICE_SCRIPT_PATH)
 	var complete := _function_source(main_source, "_complete_active_card_resolution")
-	var separated := queue_source.contains("func complete_active(") and queue_source.contains("func start_next(") and not queue_source.contains("_apply_area_trade_contract") and not queue_source.contains("_apply_player_hand_disrupt") and not execution_source.contains("func start_next(") and not execution_source.contains("func complete_active(")
+	var separated := queue_source.contains("func complete_active(") and queue_source.contains("func start_next(") and not queue_source.contains("_apply_player_hand_disrupt") and not execution_source.contains("func start_next(") and not execution_source.contains("func complete_active(")
 	return _record("queue_service_boundary_unchanged", "service-boundary", "", "ownership", {
 		"observed": not queue_source.is_empty(),
 		"contract_aligned": separated and complete.contains("plan_card_resolution_execution") and not complete.contains(".call(\"complete_active\""),
@@ -1159,35 +1113,6 @@ func _case_temporary_decision_pauses_resolution() -> Dictionary:
 	})
 
 
-func _case_temporary_decision_resume_continues_same_resolution() -> Dictionary:
-	var execution_source := FileAccess.get_file_as_string(EXECUTION_SERVICE_SCRIPT_PATH)
-	var bridge_source := FileAccess.get_file_as_string(CONTRACT_WORLD_BRIDGE_SCRIPT_PATH)
-	var contract_result := _function_source(bridge_source, "store_contract_result")
-	var no_resume_token := not execution_source.contains("resume_context") and not execution_source.contains("temporary_decision")
-	var history_patch := contract_result.contains("_entry_by_id") and bridge_source.contains("_card_resolution_entry_by_id") and contract_result.contains("_store_card_resolution_entry")
-	return _record("temporary_decision_resume_continues_same_resolution", "observed-no-generic-resume", CONTRACT_CARD_ID, "continuation", {
-		"temporary_decision_kind": "contract_history_patch",
-		"observed": not execution_source.is_empty() and not contract_result.is_empty(),
-		"contract_aligned": no_resume_token and history_patch,
-		"notes": "There is no generic active-card resume token today. Contract responses patch the same resolution_id in history while later cards continue, matching v0.4's non-blocking contract window.",
-	})
-
-
-func _case_temporary_decision_cancel_behavior_characterized() -> Dictionary:
-	var controller_source := FileAccess.get_file_as_string(CONTRACT_CONTROLLER_SCRIPT_PATH)
-	var respond := _function_source(controller_source, "respond_to_offer")
-	var updater := _function_source(controller_source, "tick_visible_offer")
-	var commit := _function_source(controller_source, "commit_response")
-	var explicit_reject := respond.contains("plan_response") and commit.contains("apply_response_transaction")
-	var timeout_reject := updater.contains("timeout") and updater.contains("respond_to_offer")
-	return _record("temporary_decision_cancel_behavior_characterized", "contract-reject-timeout", CONTRACT_CARD_ID, "contract_response", {
-		"temporary_decision_kind": "contract_response",
-		"observed": not respond.is_empty() and not updater.is_empty(),
-		"contract_aligned": explicit_reject and timeout_reject,
-		"notes": "Contract cancel/reject and timeout both resolve the stored offer exactly once; they do not rewind or reacquire the submitted card.",
-	})
-
-
 func _case_counter_response_preserves_active_entry() -> Dictionary:
 	var entry := _entry(HAND_CARD_ID, 3618, 0, -1, 1)
 	_queue_service().call("replace_active_entry", entry)
@@ -1206,20 +1131,6 @@ func _case_counter_response_preserves_active_entry() -> Dictionary:
 		"queue_service_checked": preserved,
 		"timing_boundary_checked": true,
 		"notes": "The fixed 5-second counter window is the card-level pause that retains the active entry until response/timeout.",
-	})
-
-
-func _case_contract_response_preserves_active_entry() -> Dictionary:
-	var execution_source := FileAccess.get_file_as_string(EXECUTION_SERVICE_SCRIPT_PATH)
-	var contract_source := FileAccess.get_file_as_string(CONTRACT_CONTROLLER_SCRIPT_PATH)
-	var clear_before_resolve := _source_tokens_in_order(execution_source, ["INTENT_RELEASE_ACTIVE", "INTENT_DISPATCH_EFFECT"])
-	var independent := contract_source.contains("pending_offers.append(offer)") and contract_source.contains("\"blocks_card_resolution\": false")
-	return _record("contract_response_preserves_active_entry", "v04-independent-contract-window", CONTRACT_CARD_ID, "area_trade_contract", {
-		"temporary_decision_kind": "contract_response",
-		"active_completed": true,
-		"observed": not contract_source.is_empty(),
-		"contract_aligned": clear_before_resolve and independent,
-		"notes": "Despite the historical case name, v0.4 intentionally does not preserve active for contracts: the offer is copied to pending_contract_offers and later cards continue.",
 	})
 
 
@@ -1375,7 +1286,7 @@ func _case_next_queue_item_starts_after_completion() -> Dictionary:
 
 func _case_save_load_active_resolution_parity() -> Dictionary:
 	var coordinator := _coordinator()
-	var entry := _entry(CONTRACT_CARD_ID, 3629)
+	var entry := _entry(CASH_CARD_ID, 3629)
 	entry["contract_source_district"] = 0
 	entry["contract_target_district"] = 1
 	_queue_service().call("replace_active_entry", entry)
@@ -1387,7 +1298,7 @@ func _case_save_load_active_resolution_parity() -> Dictionary:
 		coordinator.call("apply_card_resolution_queue_legacy_save_snapshot", snapshot)
 	var restored := _active_entry()
 	var parity := int(restored.get("resolution_id", -1)) == 3629 and (_queue_service().call("current_queue") as Array).size() == 1 and (_queue_service().call("next_queue") as Array).size() == 1
-	return _record("save_load_active_resolution_parity", "legacy-save-v1", CONTRACT_CARD_ID, "save_restore", {
+	return _record("save_load_active_resolution_parity", "legacy-save-v1", CASH_CARD_ID, "save_restore", {
 		"active_resolution_id": 3629,
 		"active_completed": false,
 		"queue_service_checked": parity,
@@ -1523,16 +1434,33 @@ func _ensure_runtime_main() -> bool:
 func _reset_runtime_main() -> void:
 	if _runtime_main == null:
 		return
-	_runtime_main.set_process(true)
-	_runtime_main.call("_new_game")
-	_runtime_main.set_process(false)
+	# Session setup is owned by the atomic v0.6 transaction. This active bench
+	# must not revive Main's removed `_new_game` compatibility entry merely to
+	# obtain a fresh table fixture.
+	_session_start_sequence += 1
+	var services := _runtime_main.get_node_or_null("RuntimeServices")
+	var coordinator := _coordinator()
+	var draft := services.get_node_or_null("NewGameSetupDraftService") as NewGameSetupDraftService if services != null else null
+	var transaction := services.get_node_or_null("SessionStartTransactionCoordinator") as SessionStartTransactionCoordinator if services != null else null
+	var session := coordinator.get_node_or_null("GameSessionRuntimeController") as GameSessionRuntimeController if coordinator != null else null
+	if draft == null or transaction == null or session == null:
+		push_error("Card-resolution characterization setup dependencies are unavailable.")
+		return
+	var request := SessionStartRequest.create(
+		"card-resolution-characterization:%d" % _session_start_sequence,
+		draft.draft_snapshot(),
+		session.session_start_revision(),
+		"focused_test"
+	)
+	var start_receipt := transaction.start_session(request)
+	if start_receipt == null or not start_receipt.applied:
+		push_error("Card-resolution characterization session start failed: %s" % (start_receipt.reason_code if start_receipt != null else "missing_receipt"))
+		return
 	_hide_runtime_canvas_layers()
 	await get_tree().process_frame
 	await get_tree().process_frame
 	_queue_service().call("reset_state")
 	_runtime_main.set("resolved_card_history", [])
-	if _contract_controller() != null:
-		_contract_controller().call("reset_state")
 	(_coordinator() as GameRuntimeCoordinator).reset_public_log()
 	_runtime_main.set("action_callouts", [])
 	_runtime_main.set("runtime_visual_events", [])
@@ -1679,10 +1607,6 @@ func _hand_service() -> Node:
 	return _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/PlayerHandInteractionRuntimeService") if _runtime_main != null else null
 
 
-func _contract_controller() -> Node:
-	return _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ContractRuntimeController") if _runtime_main != null else null
-
-
 func _active_entry() -> Dictionary:
 	var value: Variant = _queue_service().call("active_entry") if _queue_service() != null else {}
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
@@ -1821,7 +1745,7 @@ func _runtime_persistent_card_id() -> String:
 
 
 func _representative_card_catalog() -> Array:
-	var ids := [CASH_CARD_ID, PRODUCT_CARD_ID, DISTRICT_CARD_ID, MONSTER_CARD_ID, HAND_CARD_ID, CONTRACT_CARD_ID, INTEL_CARD_ID, COUNTER_CARD_ID, _runtime_persistent_card_id(), _runtime_city_development_card_id()]
+	var ids := [CASH_CARD_ID, PRODUCT_CARD_ID, DISTRICT_CARD_ID, MONSTER_CARD_ID, HAND_CARD_ID, INTEL_CARD_ID, COUNTER_CARD_ID, _runtime_persistent_card_id(), _runtime_city_development_card_id()]
 	var result: Array = []
 	for card_id_variant in ids:
 		var card_id := str(card_id_variant)
@@ -1932,8 +1856,8 @@ func _update_ui(manifest: Dictionary) -> void:
 	summary_label.text = "Active execution: %d/%d observed | %d/%d aligned | %d/%d cutover | %d/%d total" % [observed, CASE_COUNT, aligned, CASE_COUNT, cutover, CUTOVER_CASE_COUNT, passed, TOTAL_CASE_COUNT]
 	status_label.text = "CUTOVER %d/%d" % [passed, TOTAL_CASE_COUNT] if passed == TOTAL_CASE_COUNT else "INCOMPLETE"
 	status_label.add_theme_color_override("font_color", Color("#4ade80") if passed == TOTAL_CASE_COUNT else Color("#fb7185"))
-	contract_text.text = "[b]v0.4 execution contract[/b]\n\n• Targets are chosen at submit and rechecked at resolve\n• Submitted cards/costs are not refunded on counter or drift\n• Direct-player cards open a fixed 5-second counter window\n• Contract response is independent and does not block later cards\n• Public track hides actor and private payloads"
-	lifecycle_text.text = "[b]Runtime ownership[/b]\n\n[b]Queue + Timing[/b]\n• current / active / next lifecycle\n• 30 / 25 / 5 clocks\n\n[b]Execution Service[/b]\n• generic intents only\n\n[b]Effect Family Service[/b]\n• 17 handler plans\n\n[b]Formula Service[/b]\n• 19 pure market / contract / city / route operations\n• price and city GDP retain existing owners\n\n[b]World bridges[/b]\n• RNG, eligibility, and concrete mutations"
+	contract_text.text = "[b]Current execution contract[/b]\n\n• Targets are chosen at submit and rechecked at resolve\n• Submitted cards/costs are not refunded on counter or drift\n• Direct-player cards open a fixed 5-second counter window\n• Conditional supply and demand orders settle automatically; retired contract responses create no window\n• Public track hides actor and private payloads"
+	lifecycle_text.text = "[b]Runtime ownership[/b]\n\n[b]Queue + Timing[/b]\n• current / active / next lifecycle\n• 30 / 25 / 5 clocks\n\n[b]Execution Service[/b]\n• generic intents only\n\n[b]Effect Family Service[/b]\n• active handler plans\n\n[b]Formula Service[/b]\n• pure market, city, route, and automatic-order operations\n• price and city GDP retain existing owners\n\n[b]World bridges[/b]\n• RNG, eligibility, and concrete mutations"
 	var lines: Array[String] = ["[b]Characterization + cutover gates[/b]"]
 	for record_variant in manifest.get("records", []):
 		var record: Dictionary = record_variant

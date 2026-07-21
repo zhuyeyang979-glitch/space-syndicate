@@ -249,7 +249,7 @@ func _run_case(case_id: String) -> Dictionary:
 		"legacy_contract_ui_wrapper_absent":
 			passed = _tokens_absent(["func _respond_to_active_contract", "func _respond_to_pending_contract("])
 			flags["deletion_checked"] = true
-			notes = "contract UI uses the player-aware action bridge without obsolete wrappers"
+			notes = "retired contract-response UI has no player action bridge or obsolete wrapper"
 		"runtime_player_snapshot_pure_data":
 			passed = not _runtime_snapshot.is_empty() and _is_pure_data(_runtime_snapshot)
 			flags["snapshot_checked"] = true

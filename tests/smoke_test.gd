@@ -509,7 +509,6 @@ func _run() -> void:
 		_expect(int(ai_facility_bootstrap.get("sources_after", 0)) > int(ai_facility_bootstrap.get("sources_before", 0)), "AI facility bootstrap increases finalized rival economic sources")
 		_expect(int(ai_facility_bootstrap.get("cash_after", -1)) < int(ai_facility_bootstrap.get("cash_before", -1)), "AI facility bootstrap spends authoritative rival cash")
 		_expect(bool(ai_facility_bootstrap.get("public_available", false)), "AI facility bootstrap exposes a public capability result without private scoring weights")
-		_expect(_verify_area_trade_contract_accept_and_decline(main), "area trade contracts open a separate non-blocking five-second decision window after reveal and resolve accept, reject, and timeout effects")
 		_expect(not bool(ai_facility_bootstrap.get("human_source_after", true)), "AI facility bootstrap does not create an economic source for the human seat")
 		_expect(_city_markers_include_unknown_rival(main), "active player's map marks rival auto-expanded cities as unknown owners")
 		var rival_city_index := _first_rival_city_index(main, 0)
@@ -2415,31 +2414,11 @@ func _verify_role_intel_and_trace_tools(main: Node) -> bool:
 			"guessers": [],
 			"resolved_time": float(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time),
 		})
-		var contract_resolution_id := 81002
-		history.append({
-			"resolution_id": contract_resolution_id,
-			"queued_order": contract_resolution_id,
-			"player_index": 2,
-			"skill": main.call("_make_skill", "区域供需合约1"),
-			"selected_district": city_index,
-			"contract_source_district": city_index,
-			"contract_target_district": contract_target_index,
-			"contract_target_owner": 1,
-			"contract_response": "accepted",
-			"public_owner_revealed": false,
-			"guessers": [],
-			"resolved_time": float(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time),
-		})
 		main.set("resolved_card_history", history)
 		ok = ok and int(main.call("_trace_card_owner_for_player", 0, card_resolution_id, 1, "烟测追帧")) == 1
-		ok = ok and int(_contract_controller(main).call("trace_contract_parties", 0, contract_resolution_id, 1, "烟测密约")) == 1
 		var players_after_trace := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players)
 		var known_cards := (players_after_trace[0] as Dictionary).get("known_card_owners", {}) as Dictionary
-		var known_contracts := (players_after_trace[0] as Dictionary).get("known_contract_parties", {}) as Dictionary
-		var known_contract := known_contracts.get(str(contract_resolution_id), {}) as Dictionary
 		ok = ok and int(known_cards.get(str(card_resolution_id), -1)) == 1
-		ok = ok and int(known_contract.get("proposer", -1)) == 2
-		ok = ok and int(known_contract.get("target_owner", -1)) == 1
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = saved_players
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = saved_districts
 	main.set("resolved_card_history", saved_history)
@@ -2973,29 +2952,6 @@ func _verify_ai_route_plan_policy(main: Node) -> bool:
 				saw_route_gap_buy = int(candidate.get("route_gap_bonus", 0)) > int(candidate.get("route_gap_penalty", 0)) and String(candidate.get("route_gap_reason", "")).contains("补需求") and int(candidate.get("route_gap_field_match", 0)) >= 2
 			elif String(candidate.get("card_name", "")) == "生产扩张1":
 				supply_gap_score = maxi(supply_gap_score, int(candidate.get("score", 0)))
-		var contract_skill := main.call("_make_skill", "环晶电池专供1") as Dictionary
-		var contract_entry := {
-			"skill": contract_skill,
-			"contract_source_district": seed_index,
-			"contract_target_district": seed_index,
-			"contract_products": ["环晶电池"],
-		}
-		var contract_candidates := _ai_controller(main).call("_ai_contract_response_candidates", 1, contract_entry) as Array
-		var saw_route_contract := false
-		var saw_contract_metadata := false
-		for candidate_variant in contract_candidates:
-			if not (candidate_variant is Dictionary):
-				continue
-			var candidate := candidate_variant as Dictionary
-			if String(candidate.get("action", "")) == "签约" and String(candidate.get("route_plan_stage", "")) == "create_demand" and int(candidate.get("route_plan_bonus", 0)) > 0:
-				saw_route_contract = true
-				saw_contract_metadata = String(candidate.get("contract_response_role", "")) == "accept_route_plan" \
-					and int(candidate.get("contract_route_match", 0)) == 1 \
-					and int(candidate.get("contract_accept_value", 0)) > int(candidate.get("contract_reject_value", 0)) \
-					and int(candidate.get("contract_response_margin", 0)) > 0 \
-					and candidate.has("contract_decline_risk") \
-					and candidate.has("contract_accept_economic_delta")
-				break
 		var play_candidates := _ai_controller(main).call("_ai_card_play_candidates", 1) as Array
 		var play_choice := {}
 		for candidate_variant in play_candidates:
@@ -3010,25 +2966,7 @@ func _verify_ai_route_plan_policy(main: Node) -> bool:
 		var players_after_queue := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players)
 		var route_play_memory := _ai_memory_has_kind_with_metadata(players_after_queue, 1, "匿名出牌", "route_plan_stage", "create_demand")
 		var route_gap_score_ok := demand_gap_score > supply_gap_score
-		var first_route_ok := build_ok and demand_plan_ok and demand_context_ok and saw_route_buy and route_gap_direct_ok and saw_route_gap_buy and route_gap_score_ok and saw_route_gap_play and saw_route_contract and saw_contract_metadata and not play_choice.is_empty() and route_play_queued and route_play_memory
-		if not first_route_ok:
-			print("AI route plan first-route failures: build=%s demand_plan=%s demand_context=%s route_buy=%s gap_direct=%s gap_buy=%s gap_score=%s gap_play=%s contract=%s contract_meta=%s play_choice=%s queued=%s memory=%s demand_score=%d supply_score=%d" % [
-				str(build_ok),
-				str(demand_plan_ok),
-				str(demand_context_ok),
-				str(saw_route_buy),
-				str(route_gap_direct_ok),
-				str(saw_route_gap_buy),
-				str(route_gap_score_ok),
-				str(saw_route_gap_play),
-				str(saw_route_contract),
-				str(saw_contract_metadata),
-				str(not play_choice.is_empty()),
-				str(route_play_queued),
-				str(route_play_memory),
-				demand_gap_score,
-				supply_gap_score,
-			])
+		var first_route_ok := build_ok and demand_plan_ok and demand_context_ok and saw_route_buy and route_gap_direct_ok and saw_route_gap_buy and route_gap_score_ok and saw_route_gap_play and not play_choice.is_empty() and route_play_queued and route_play_memory
 		ok = first_route_ok and ok
 		var inventory_players := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players).duplicate(true)
 		var inventory_player := inventory_players[1] as Dictionary
@@ -3317,7 +3255,6 @@ func _verify_ai_weather_control_policy(main: Node) -> bool:
 	main.set("active_card_resolution", {})
 	main.set("card_resolution_queue", [])
 	main.set("next_card_resolution_queue", [])
-	_reset_contract_runtime(main)
 	main.set("card_resolution_batch_locked", false)
 	main.set("card_resolution_auction_open", false)
 	_reset_route_plan_sandbox_for_test(main)
@@ -3488,7 +3425,6 @@ func _verify_ai_strategy_route_diversification_policy(main: Node) -> bool:
 		main.set("active_card_resolution", {})
 		main.set("card_resolution_queue", [])
 		main.set("next_card_resolution_queue", [])
-		_reset_contract_runtime(main)
 		main.set("card_resolution_batch_locked", false)
 		main.set("card_resolution_auction_open", false)
 		main.set("card_resolution_simultaneous_timer", 0.5)
@@ -3827,7 +3763,6 @@ func _verify_ai_progresses_run_smoke(main: Node) -> bool:
 	main.set("active_card_resolution", {})
 	main.set("card_resolution_queue", [])
 	main.set("next_card_resolution_queue", [])
-	_reset_contract_runtime(main)
 	main.set("card_resolution_batch_locked", false)
 	main.set("card_resolution_auction_open", false)
 	main.set("card_resolution_force_duration", 0.0)
@@ -3935,7 +3870,6 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 	main.set("active_card_resolution", {})
 	main.set("card_resolution_queue", [])
 	main.set("next_card_resolution_queue", [])
-	_reset_contract_runtime(main)
 	main.set("card_resolution_batch_locked", false)
 	main.set("card_resolution_auction_open", false)
 	main.set("card_resolution_force_duration", 0.0)
@@ -5424,7 +5358,6 @@ func _verify_temporary_decision_blueprints(main: Node) -> bool:
 	var fixtures: RefCounted = fixture_script.new()
 	var expected_panels := {
 		"discard_purchase": "TemporaryChoiceDecisionPanel",
-		"contract_response": "ContractResponseDecisionPanel",
 		"monster_target_choice": "TemporaryChoiceDecisionPanel",
 		"player_target_choice": "TemporaryChoiceDecisionPanel",
 		"monster_wager": "MonsterWagerDecisionPanel",
@@ -5438,7 +5371,7 @@ func _verify_temporary_decision_blueprints(main: Node) -> bool:
 			return false
 		overlay.call("show_temporary_decision", data)
 		var expected_panel_name := str(expected_panels[kind])
-		for panel_name in ["MonsterWagerDecisionPanel", "ContractResponseDecisionPanel", "TemporaryChoiceDecisionPanel"]:
+		for panel_name in ["MonsterWagerDecisionPanel", "TemporaryChoiceDecisionPanel"]:
 			var panel := overlay.find_child(panel_name, true, false) as Control
 			if panel == null or panel.visible != (panel_name == expected_panel_name):
 				return false
@@ -6644,7 +6577,6 @@ func _verify_ai_online_learning_policy(main: Node) -> bool:
 	main.set("active_card_resolution", {})
 	main.set("card_resolution_queue", [])
 	main.set("next_card_resolution_queue", [])
-	_reset_contract_runtime(main)
 	main.set("card_resolution_batch_locked", false)
 	main.set("card_resolution_auction_open", false)
 	var own_index := _first_empty_land_district_for_contract(main)
@@ -6679,12 +6611,6 @@ func _verify_ai_online_learning_policy(main: Node) -> bool:
 			"route_plan_product": "环晶电池",
 			"route_plan_stage": "create_demand",
 		})
-		_ai_controller(main).call("_record_ai_decision", 1, "匿名合约签约", own_index, 100, "学习测试：签约有效", [], {
-			"policy_kind": "contract_accept",
-			"product": "环晶电池",
-			"route_plan_product": "环晶电池",
-			"route_plan_stage": "create_demand",
-		})
 		_ai_controller(main).call("_record_ai_decision", 1, "城市业主推理", rival_index, 100, "学习测试：城市推理有效", [], {
 			"policy_kind": "city_owner_guess",
 		})
@@ -6702,17 +6628,15 @@ func _verify_ai_online_learning_policy(main: Node) -> bool:
 		var players_after_learning := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players)
 		var learned_memory := (players_after_learning[1] as Dictionary).get("ai_memory", {}) as Dictionary
 		var other_memory := (players_after_learning[2] as Dictionary).get("ai_memory", {}) as Dictionary
-		var finalized_ok := finalized >= 5
+		var finalized_ok := finalized >= 4
 		var updates_ok := int(learned_memory.get("learning_updates", 0)) > 0
 		var price_learned_ok := _ai_memory_has_positive_learning(learned_memory, "policy:price_pump")
 		var demand_learned_ok := _ai_memory_has_positive_learning(learned_memory, "policy:city_demand_shift")
-		var contract_learned_ok := _ai_memory_has_positive_learning(learned_memory, "policy:contract_accept")
 		var city_learned_ok := _ai_memory_has_positive_learning(learned_memory, "policy:city_owner_guess")
 		var card_learned_ok := _ai_memory_has_positive_learning(learned_memory, "policy:card_owner_guess")
 		var isolated_ok := not _ai_memory_has_positive_learning(other_memory, "policy:price_pump")
 		var business_learning_bonus := int(_ai_controller(main).call("_ai_learning_bonus", 1, "price_pump", "grow_focus", "strengthen_route", "环晶电池", "匿名商业"))
 		var card_play_learning_bonus := int(_ai_controller(main).call("_ai_learning_bonus", 1, "city_demand_shift", "grow_focus", "create_demand", "环晶电池", "匿名出牌"))
-		var contract_learning_bonus := int(_ai_controller(main).call("_ai_learning_bonus", 1, "contract_accept", "", "create_demand", "环晶电池", "匿名合约签约"))
 		var strategy_learning_bonus := int(_ai_controller(main).call("_ai_learning_bonus", 1, "", "grow_focus", "", "环晶电池", "战略选择"))
 		var route_learning_bonus := int(_ai_controller(main).call("_ai_learning_bonus", 1, "", "grow_focus", "create_demand", "环晶电池", "路线规划"))
 		var city_candidate := _ai_controller(main).call("_ai_city_guess_owner_candidate", 1, {
@@ -6755,8 +6679,8 @@ func _verify_ai_online_learning_policy(main: Node) -> bool:
 		var restored_players := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players)
 		var restored_memory := (restored_players[1] as Dictionary).get("ai_memory", {}) as Dictionary
 		var persisted_ok := _ai_memory_has_positive_learning(restored_memory, "policy:price_pump")
-		ok = ok and finalized_ok and updates_ok and price_learned_ok and demand_learned_ok and contract_learned_ok and city_learned_ok and card_learned_ok and isolated_ok
-		ok = ok and business_learning_bonus > 0 and card_play_learning_bonus > 0 and contract_learning_bonus > 0 and strategy_learning_bonus > 0 and route_learning_bonus > 0 and saw_city_learning and saw_card_guess_learning
+		ok = ok and finalized_ok and updates_ok and price_learned_ok and demand_learned_ok and city_learned_ok and card_learned_ok and isolated_ok
+		ok = ok and business_learning_bonus > 0 and card_play_learning_bonus > 0 and strategy_learning_bonus > 0 and route_learning_bonus > 0 and saw_city_learning and saw_card_guess_learning
 		ok = ok and restore_learned_ok and persisted_ok
 	var restore_result := int(main.call("_apply_run_state", saved))
 	main.set("ai_card_decision_enabled", saved_ai_enabled)
@@ -6771,7 +6695,6 @@ func _verify_ai_episode_learning_policy(main: Node) -> bool:
 	main.set("active_card_resolution", {})
 	main.set("card_resolution_queue", [])
 	main.set("next_card_resolution_queue", [])
-	_reset_contract_runtime(main)
 	main.set("card_resolution_batch_locked", false)
 	main.set("card_resolution_auction_open", false)
 	var own_index := _first_empty_land_district_for_contract(main)
@@ -8544,25 +8467,6 @@ func _weather_controller(main: Node) -> Node:
 	return controller
 
 
-func _contract_controller(main: Node) -> Node:
-	var controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ContractRuntimeController")
-	if controller == null:
-		push_error("Smoke test requires scene-owned ContractRuntimeController.")
-	return controller
-
-
-func _contract_pending_offers(main: Node) -> Array:
-	var controller := _contract_controller(main)
-	var value: Variant = controller.call("pending_offers_snapshot", true) if controller != null else []
-	return (value as Array).duplicate(true) if value is Array else []
-
-
-func _reset_contract_runtime(main: Node) -> void:
-	var controller := _contract_controller(main)
-	if controller != null:
-		controller.call("reset_state")
-
-
 func _as_array(value: Variant) -> Array:
 	return value as Array if value is Array else []
 
@@ -8704,326 +8608,6 @@ func _first_empty_land_district_for_contract(main: Node, excluded: Array = []) -
 		if city.is_empty():
 			return i
 	return -1
-
-
-func _prepare_land_pair_for_contract_test(main: Node) -> Dictionary:
-	var districts := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts).duplicate(true)
-	var chosen := []
-	for i in range(districts.size()):
-		var district_variant: Variant = districts[i]
-		if not (district_variant is Dictionary):
-			continue
-		var district := district_variant as Dictionary
-		if String(district.get("terrain", "")) != "land" or bool(district.get("destroyed", false)):
-			continue
-		var city := district.get("city", {}) as Dictionary
-		if city.is_empty():
-			chosen.append(i)
-			if chosen.size() >= 2:
-				break
-	for i in range(districts.size()):
-		if chosen.size() >= 2:
-			break
-		if chosen.has(i):
-			continue
-		var district_variant: Variant = districts[i]
-		if not (district_variant is Dictionary):
-			continue
-		var district := district_variant as Dictionary
-		if String(district.get("terrain", "")) != "land" or bool(district.get("destroyed", false)):
-			continue
-		chosen.append(i)
-	if chosen.size() < 2:
-		return {}
-	for index_variant in chosen:
-		var index := int(index_variant)
-		var district := districts[index] as Dictionary
-		district["city"] = {}
-		districts[index] = district
-	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
-	return {"source": int(chosen[0]), "target": int(chosen[1])}
-
-
-func _test_city_product_names(city: Dictionary) -> Array:
-	var result := []
-	for product_variant in city.get("products", []):
-		var product := product_variant as Dictionary
-		result.append(String(product.get("name", "")))
-	return result
-
-
-func _test_city_demand_names(city: Dictionary) -> Array:
-	var result := []
-	for demand_variant in city.get("demands", []):
-		result.append(String(demand_variant))
-	return result
-
-
-func _test_contract_product(main: Node, source_index: int, target_index: int) -> String:
-	var districts := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts)
-	var source_city := (districts[source_index] as Dictionary).get("city", {}) as Dictionary
-	var target_city := (districts[target_index] as Dictionary).get("city", {}) as Dictionary
-	var source_products := _test_city_product_names(source_city)
-	var target_demands := _test_city_demand_names(target_city)
-	var market := _product_market_for_test(main)
-	for product_variant in market.keys():
-		var product_name := String(product_variant)
-		if product_name != "" and not source_products.has(product_name) and not target_demands.has(product_name):
-			return product_name
-	for product_variant in market.keys():
-		var product_name := String(product_variant)
-		if product_name != "":
-			return product_name
-	return "环晶电池"
-
-
-func _verify_area_trade_contract_accept_and_decline(_main: Node) -> bool:
-	var packed := load(MAIN_SCENE_PATH) as PackedScene
-	if packed == null:
-		return false
-	var main := packed.instantiate()
-	var fixture_save_path := "user://test_runs/smoke_area_trade_contract_fixture.save"
-	if FileAccess.file_exists(fixture_save_path):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(fixture_save_path))
-	var save_coordinator := main.get_node_or_null(SAVE_COORDINATOR_NODE_PATH) as Node
-	var save_override_ready := save_coordinator != null \
-		and save_coordinator.has_method("set_qa_default_save_path_override") \
-		and bool(save_coordinator.call("set_qa_default_save_path_override", fixture_save_path))
-	if not save_override_ready:
-		main.free()
-		return false
-	main.set("configured_player_count", EXPECTED_PLAYER_COUNT)
-	main.set("configured_ai_player_count", EXPECTED_AI_PLAYER_COUNT)
-	main.set("configured_role_indices", [0, 1, 2, 3, 4])
-	main.set("configured_starter_monster_indices", [7, 6, 2, 4, 3])
-	get_root().add_child(main)
-	main.call("_new_game")
-	main.set_process(false)
-	var saved_force_duration: float = float(main.get("card_resolution_force_duration"))
-	var saved_force_simultaneous: float = float(main.get("card_resolution_force_simultaneous_window"))
-	var ok := true
-	main.set("active_card_resolution", {})
-	main.set("card_resolution_queue", [])
-	main.set("next_card_resolution_queue", [])
-	_reset_contract_runtime(main)
-	main.set("card_resolution_batch_locked", false)
-	main.set("card_resolution_force_duration", 5.0)
-	main.set("card_resolution_force_simultaneous_window", 0.5)
-	var land_pair := _prepare_land_pair_for_contract_test(main)
-	var source_index := int(land_pair.get("source", -1))
-	var target_index := int(land_pair.get("target", -1))
-	if source_index < 0 or target_index < 0:
-		ok = false
-	else:
-		var players := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players)
-		for i in range(players.size()):
-			var player := players[i] as Dictionary
-			player["cash"] = 5000
-			players[i] = player
-		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
-		ok = ok and CITY_FIXTURES.create_city_bool(main, 0, source_index, "合约测试供给")
-		ok = ok and CITY_FIXTURES.create_city_bool(main, 1, target_index, "合约测试需求")
-		var product_name := _test_contract_product(main, source_index, target_index)
-		var flow_districts := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts).duplicate(true)
-		var flow_source_district := flow_districts[source_index] as Dictionary
-		var flow_source_city := flow_source_district.get("city", {}) as Dictionary
-		var flow_demands := _as_array(flow_source_city.get("demands", [])).duplicate(true)
-		if not flow_demands.has(product_name):
-			flow_demands.append(product_name)
-		flow_source_city["demands"] = flow_demands
-		flow_source_district["city"] = flow_source_city
-		flow_districts[source_index] = flow_source_district
-		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = flow_districts
-		var skill := main.call("_make_skill", "区域供需合约1") as Dictionary
-		skill["play_product"] = product_name
-		skill["play_flow_required"] = 1
-		var contract_controller := _contract_controller(main)
-		var project_districts := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts).duplicate(true)
-		var project_target := project_districts[target_index] as Dictionary
-		var project_city := (project_target.get("city", {}) as Dictionary).duplicate(true)
-		project_city["projects"] = [{"project_id": "smoke-contract-target", "product_id": product_name, "direction": "demand", "active": true, "controller_player_index": 1}]
-		project_target["city"] = project_city
-		project_districts[target_index] = project_target
-		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = project_districts
-		var missing_pair_context := contract_controller.call("offer_context", skill, 0, -1, -1, product_name) as Dictionary
-		ok = ok and String(missing_pair_context.get("error", "")) != ""
-		var queue_players := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players)
-		var queue_player := queue_players[0] as Dictionary
-		var queue_slots := _as_array(queue_player.get("slots", []))
-		if queue_slots.is_empty():
-			queue_slots.append(null)
-		queue_slots[0] = skill.duplicate(true)
-		queue_player["slots"] = queue_slots
-		queue_players[0] = queue_player
-		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = queue_players
-		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
-		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = product_name
-		contract_controller.call("set_selection_state", -1, -1)
-		ok = ok and not bool(main.call("_queue_skill_resolution", 0, 0, -1))
-		ok = ok and _as_array(main.get("card_resolution_queue")).is_empty() and _contract_pending_offers(main).is_empty()
-		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = source_index
-		contract_controller.call("select_source_district", source_index, product_name)
-		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = target_index
-		contract_controller.call("select_target_district", target_index, product_name)
-		var selection := contract_controller.call("selection_snapshot") as Dictionary
-		ok = ok and int(selection.get("source_district", -1)) == source_index
-		ok = ok and int(selection.get("target_district", -1)) == target_index
-		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = product_name
-		var context := contract_controller.call("offer_context", skill, 0, source_index, target_index, product_name) as Dictionary
-		ok = ok and String(context.get("error", "")) == ""
-		var target_owner := int(context.get("target_owner", -1))
-		var products := context.get("products", []) as Array
-		ok = ok and target_owner == 1 and products.has(product_name)
-		var entry := {
-			"resolution_id": 90001,
-			"player_index": 0,
-			"selected_district": source_index,
-			"selected_trade_product": product_name,
-			"contract_source_district": source_index,
-			"contract_target_district": target_index,
-			"contract_target_owner": target_owner,
-			"contract_products": products.duplicate(true),
-			"contract_response": "pending",
-			"skill": skill.duplicate(true),
-		}
-		# The public reveal itself must not expose signing controls.
-		main.set("active_card_resolution", entry.duplicate(true))
-		main.set("card_resolution_timer", 5.0)
-		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = target_owner
-		main.call("_refresh_ui")
-		var player_box := main.get("player_box") as VBoxContainer
-		ok = ok and player_box != null and not _container_label_text_contains(player_box, "匿名合约签署窗口")
-		main.set("active_card_resolution", {})
-		main.set("card_resolution_timer", 0.0)
-
-		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
-		ok = ok and bool(main.call("_queue_skill_resolution", 0, 0, -1))
-		ok = ok and _contract_pending_offers(main).is_empty()
-		ok = ok and (main.get("active_card_resolution") as Dictionary).is_empty()
-		_advance_card_resolution_frame_for_test(main, 0.49)
-		ok = ok and _contract_pending_offers(main).is_empty()
-		_advance_card_resolution_frame_for_test(main, 0.02)
-		var active_contract_reveal := main.get("active_card_resolution") as Dictionary
-		ok = ok and not active_contract_reveal.is_empty()
-		ok = ok and int(active_contract_reveal.get("contract_source_district", -1)) == source_index
-		ok = ok and int(active_contract_reveal.get("contract_target_district", -1)) == target_index
-		ok = ok and _contract_pending_offers(main).is_empty()
-		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = target_owner
-		main.call("_refresh_ui")
-		player_box = main.get("player_box") as VBoxContainer
-		ok = ok and player_box != null and not _container_label_text_contains(player_box, "匿名合约签署窗口")
-		_advance_card_resolution_frame_for_test(main, 4.90)
-		ok = ok and _contract_pending_offers(main).is_empty()
-		ok = ok and not (main.get("active_card_resolution") as Dictionary).is_empty()
-		_advance_card_resolution_frame_for_test(main, 0.20)
-		var pending_offers := _contract_pending_offers(main)
-		ok = ok and pending_offers.size() == 1
-		ok = ok and not bool(main.call("_is_card_resolution_busy"))
-		var queued_contract_id := -1
-		if not pending_offers.is_empty():
-			var queued_offer := pending_offers[0] as Dictionary
-			queued_contract_id = int(queued_offer.get("resolution_id", queued_offer.get("contract_offer_id", -1)))
-			ok = ok and is_equal_approx(float(queued_offer.get("contract_decision_timer", 0.0)), 5.0)
-		_set_player_skill(main, 2, 40, "舆论操控1")
-		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 2
-		ok = ok and bool(main.call("_queue_skill_resolution", 2, 40, -1))
-		ok = ok and _contract_pending_offers(main).size() == 1
-		main.set("card_resolution_queue", [])
-		main.set("next_card_resolution_queue", [])
-		main.set("active_card_resolution", {})
-		main.set("card_resolution_timer", 0.0)
-		main.set("card_resolution_simultaneous_timer", 0.0)
-		main.set("card_resolution_auction_timer", 0.0)
-		main.set("card_resolution_auction_open", false)
-		main.set("card_resolution_batch_locked", false)
-		main.set("card_resolution_batch_reference_player", -1)
-		main.set("last_card_resolution_player_index", -1)
-		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = target_owner
-		var history := _as_array(main.get("resolved_card_history")).duplicate(true)
-		for i in range(history.size()):
-			var history_entry := history[i] as Dictionary
-			if int(history_entry.get("resolution_id", -1)) != queued_contract_id:
-				continue
-			history_entry["public_owner_revealed"] = true
-			history_entry["public_owner_label"] = "归属：玩家1"
-			history_entry["guessers"] = [2]
-			history[i] = history_entry
-			break
-		main.set("resolved_card_history", history)
-		main.call("_refresh_ui")
-		player_box = main.get("player_box") as VBoxContainer
-		ok = ok and player_box != null and _container_label_text_contains(player_box, "匿名合约签署窗口")
-		ok = ok and player_box != null and _container_label_text_contains(player_box, "不会阻塞其他玩家继续出牌")
-		ok = ok and player_box != null and _container_button_text_contains(player_box, "签约") and _container_button_text_contains(player_box, "拒绝")
-		var players_before_accept := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players)
-		var target_cash_before := int((players_before_accept[target_owner] as Dictionary).get("cash", 0))
-		ok = ok and bool((contract_controller.call("respond_to_offer", target_owner, queued_contract_id, true, false) as Dictionary).get("committed", false))
-		ok = ok and _contract_pending_offers(main).is_empty()
-		var stored_accept := main.call("_card_resolution_entry_by_id", queued_contract_id) as Dictionary
-		ok = ok and String(stored_accept.get("contract_response", "")) == "accepted"
-		ok = ok and bool(stored_accept.get("public_owner_revealed", false)) and (stored_accept.get("guessers", []) as Array).has(2)
-		ok = ok and String(stored_accept.get("contract_result_clue", "")).contains("合约已签约")
-		ok = ok and String(stored_accept.get("contract_accept_summary", "")).contains("流通")
-		ok = ok and String(stored_accept.get("aftermath_clue", "")).contains("发起者和回应者仍需推理")
-		var districts_after_accept := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts)
-		var source_district := districts_after_accept[source_index] as Dictionary
-		var target_district := districts_after_accept[target_index] as Dictionary
-		var source_city := source_district.get("city", {}) as Dictionary
-		var target_city := target_district.get("city", {}) as Dictionary
-		ok = ok and ((source_district.get("products", []) as Array).has(product_name) or _test_city_product_names(source_city).has(product_name))
-		ok = ok and ((target_district.get("demands", []) as Array).has(product_name) or _test_city_demand_names(target_city).has(product_name))
-		var players_after_accept := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players)
-		ok = ok and int((players_after_accept[target_owner] as Dictionary).get("cash", 0)) > target_cash_before
-		ok = ok and float(target_city.get("route_flow_multiplier", 1.0)) > 1.0
-
-		var decline_skill := main.call("_make_skill", "区域供需合约2") as Dictionary
-		var decline_entry := entry.duplicate(true)
-		decline_entry["resolution_id"] = 90002
-		decline_entry["skill"] = decline_skill.duplicate(true)
-		decline_entry["contract_response"] = "pending"
-		var players_before_decline := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players)
-		var decline_cash_before := int((players_before_decline[target_owner] as Dictionary).get("cash", 0))
-		ok = ok and bool((contract_controller.call("open_offer", decline_skill, decline_entry) as Dictionary).get("opened", false))
-		ok = ok and _contract_pending_offers(main).size() == 1
-		ok = ok and bool((contract_controller.call("respond_to_offer", target_owner, 90002, false, false) as Dictionary).get("committed", false))
-		var players_after_decline := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players)
-		ok = ok and int((players_after_decline[target_owner] as Dictionary).get("cash", 0)) < decline_cash_before
-		var districts_after_decline := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts)
-		var declined_city := ((districts_after_decline[target_index] as Dictionary).get("city", {}) as Dictionary)
-		ok = ok and int(declined_city.get("trade_route_damage", 0)) >= 1
-
-		var timeout_entry := entry.duplicate(true)
-		timeout_entry["resolution_id"] = 90003
-		timeout_entry["skill"] = decline_skill.duplicate(true)
-		timeout_entry["contract_response"] = "pending"
-		var players_before_timeout := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players)
-		var timeout_cash_before := int((players_before_timeout[target_owner] as Dictionary).get("cash", 0))
-		ok = ok and bool((contract_controller.call("open_offer", decline_skill, timeout_entry) as Dictionary).get("opened", false))
-		contract_controller.call("tick_visible_offer", 5.1, "contract_response_90003")
-		ok = ok and _contract_pending_offers(main).is_empty()
-		var players_after_timeout := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players)
-		ok = ok and int((players_after_timeout[target_owner] as Dictionary).get("cash", 0)) < timeout_cash_before
-		var ai_entry := entry.duplicate(true)
-		var punitive_skill := main.call("_make_skill", "惩罚性拒签条款1") as Dictionary
-		ai_entry["resolution_id"] = 90004
-		ai_entry["skill"] = punitive_skill.duplicate(true)
-		ai_entry["contract_response"] = "pending"
-		var ai_samples_before := _ai_decision_sample_count(_as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players))
-		ok = ok and bool((contract_controller.call("open_offer", punitive_skill, ai_entry) as Dictionary).get("opened", false))
-		ok = ok and _contract_pending_offers(main).size() == 1
-		var ai_contract_responses := int(_ai_controller(main).call("_update_ai_contract_responses", true))
-		ok = ok and ai_contract_responses == 1 and _contract_pending_offers(main).is_empty()
-		var players_after_ai_contract := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players)
-		ok = ok and _ai_decision_sample_count(players_after_ai_contract) > ai_samples_before
-		ok = ok and _ai_memory_has_kind_with_metadata(players_after_ai_contract, target_owner, "匿名合约签约", "policy_kind", "contract_accept")
-		ok = ok and _ai_memory_has_kind_with_metadata(players_after_ai_contract, target_owner, "匿名合约签约", "contract_response_role", "accept_avoid_punishment")
-		ok = ok and _ai_memory_has_kind_with_metadata(players_after_ai_contract, target_owner, "匿名合约签约", "contract_source_district", source_index)
-	main.set("card_resolution_force_duration", saved_force_duration)
-	main.set("card_resolution_force_simultaneous_window", saved_force_simultaneous)
-	main.free()
-	if FileAccess.file_exists(fixture_save_path):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(fixture_save_path))
-	return ok
 
 
 func _expect(condition: bool, label: String) -> void:

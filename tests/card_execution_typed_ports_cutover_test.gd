@@ -60,8 +60,7 @@ func _verify_sources() -> void:
 		_expect(not execution_source.contains(forbidden), "execution port omits dynamic Main pattern %s" % forbidden)
 	var ai_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_runtime_controller.gd")
 	_expect(not ai_source.contains("_call_world(&\"_queue_skill_resolution\"") and ai_source.contains("_card_play_submission_controller.submit_card_play"), "AI submits through the shared typed controller without Main fallback")
-	var contract_source := FileAccess.get_file_as_string("res://scripts/runtime/contract_runtime_world_bridge.gd")
-	_expect(not contract_source.contains("get(\"resolved_card_history\"") and not contract_source.contains("set(\"resolved_card_history\""), "contract tracing uses the typed history owner")
+	_expect(not FileAccess.file_exists("res://scripts/runtime/contract_runtime_world_bridge.gd"), "retired contract response bridge is absent")
 
 
 func _verify_selection_roundtrip() -> void:

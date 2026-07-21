@@ -24,7 +24,6 @@ func _ready() -> void:
 		"MilitaryRuntimeWorldBridge",
 		"WeatherRuntimeWorldBridge",
 		"ProductMarketRuntimeWorldBridge",
-		"ContractRuntimeWorldBridge",
 		"CardPlayEligibilityWorldBridge",
 		"RegionInfrastructureWorldBridge",
 		"CardResolutionExecutionWorldBridge",

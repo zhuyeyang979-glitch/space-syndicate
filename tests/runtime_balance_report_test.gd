@@ -238,7 +238,6 @@ func _sample_snapshot() -> Dictionary:
 		"cards": [
 			_card_entry("移动1", {"cost": 2, "kind": "move", "move": 180}),
 			_card_entry("价格套利1", {"cost": 3, "kind": "product_speculation", "cash": 260, "price_delta": 18, "tags": ["经济", "商品"]}),
-			_card_entry("垄断协议1", {"cost": 4, "kind": "area_trade_contract", "contract_income": 160, "accept_cash": 120, "market_demand_pressure": 1, "tags": ["合约", "经济"]}),
 			_card_entry("商品看涨1", {"cost": 4, "kind": "product_futures", "futures_terms": {"direction": "up", "multiplier": 1.0, "duration_seconds": 60.0, "units": 1, "margin_cash": 120, "maximum_gain": 260, "maximum_loss": 120}, "market_demand_pressure": 1, "tags": ["经济", "期货"]}),
 			_card_entry("商品看跌1", {"cost": 4, "kind": "product_futures", "futures_terms": {"direction": "down", "multiplier": 1.0, "duration_seconds": 60.0, "units": 1, "margin_cash": 120, "maximum_gain": 260, "maximum_loss": 120}, "market_supply_pressure": 1, "tags": ["经济", "期货"]}),
 			_card_entry("港仓囤货1", {"cost": 4, "kind": "product_futures", "futures_terms": {"direction": "up", "multiplier": 0.75, "duration_seconds": 90.0, "units": 2, "requires_warehouse": true, "margin_cash": 180, "maximum_gain": 360, "maximum_loss": 180}, "tags": ["经济", "仓储"]}),

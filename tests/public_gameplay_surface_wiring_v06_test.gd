@@ -25,7 +25,7 @@ func _run() -> void:
 	root.add_child(screen)
 	screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	table_service.call("configure", card_presentation)
-	scheduler.call("configure", ["monster_wager", "counter_response", "contract_response", "other_choice"])
+	scheduler.call("configure", ["monster_wager", "counter_response", "other_choice"])
 	await process_frame
 
 	var bid_state := _bid_state("public_bid")
@@ -208,7 +208,7 @@ func _districts() -> Array:
 
 func _visible_forced_panel_count(overlay: Node) -> int:
 	var count := 0
-	for name in ["MonsterWagerDecisionPanel", "ContractResponseDecisionPanel", "TemporaryChoiceDecisionPanel", "TemporaryDecisionModal", "PublicBidDecisionPanel"]:
+	for name in ["MonsterWagerDecisionPanel", "TemporaryChoiceDecisionPanel", "TemporaryDecisionModal", "PublicBidDecisionPanel"]:
 		var control := overlay.find_child(name, true, false) as Control
 		if control != null and control.visible:
 			count += 1

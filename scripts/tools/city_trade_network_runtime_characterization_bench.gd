@@ -12,7 +12,6 @@ const WORLD_BRIDGE_SCENE_PATH := "res://scenes/runtime/CityTradeNetworkWorldBrid
 const GDP_FORMULA_SCRIPT_PATH := "res://scripts/runtime/gdp_formula_runtime_controller.gd"
 const CASHFLOW_SCRIPT_PATH := "res://scripts/runtime/economy_cashflow_runtime_controller.gd"
 const PRODUCT_MARKET_SCRIPT_PATH := "res://scripts/runtime/product_market_runtime_controller.gd"
-const CONTRACT_BRIDGE_SCRIPT_PATH := "res://scripts/runtime/contract_runtime_world_bridge.gd"
 const MILITARY_SCRIPT_PATH := "res://scripts/runtime/military_runtime_controller.gd"
 const WEATHER_SCRIPT_PATH := "res://scripts/runtime/weather_runtime_controller.gd"
 const PROJECT_STATE_SCRIPT_PATH := "res://tests/legacy_v05/economy/city_product_project_state_v05.gd"
@@ -797,13 +796,13 @@ func _case_destroyed_cashflow() -> Dictionary:
 
 
 func _case_cross_system_refresh() -> Dictionary:
-	var callers := ["contract", "military", "weather", "product_market"]
+	var callers := ["military", "weather", "product_market"]
 	var missing: Array = []
 	for caller in callers:
 		if not str(_sources.get(caller, "")).contains("_refresh_city_networks"):
 			missing.append(caller)
 	var observed := missing.is_empty()
-	return _record("cross_system_refresh_single_hook", observed, observed, "Contract, military, weather, and product-market bridges all request the same main world refresh hook; missing=%s." % str(missing), {"refresh_order_checked": true})
+	return _record("cross_system_refresh_single_hook", observed, observed, "Military, weather, and product-market bridges all request the same main world refresh hook; missing=%s." % str(missing), {"refresh_order_checked": true})
 
 
 func _case_market_refresh_separate() -> Dictionary:
@@ -1195,9 +1194,9 @@ func _case_cutover(case_id: String) -> Dictionary:
 			notes = "Existing world-facing call sites retain narrow Controller adapters without fallback formulas."
 		"external_refresh_callers_preserved":
 			observed = true
-			for source_id in ["contract", "military", "weather", "product_market"]:
+			for source_id in ["military", "weather", "product_market"]:
 				observed = observed and str(_sources.get(source_id, "")).contains("_refresh_city_networks")
-			notes = "Existing Contract, Military, Weather, and ProductMarket world hooks still route one refresh request."
+			notes = "Existing Military, Weather, and ProductMarket world hooks still route one refresh request."
 		"gdp_formula_owner_preserved":
 			observed = controller_source.contains("_gdp_formula_controller.call(\"calculate_city_gdp\"") and not controller_source.contains("func _calculate_city_gdp(")
 			notes = "GDP arithmetic remains exclusively delegated to GdpFormulaRuntimeController."
@@ -1455,7 +1454,6 @@ func _load_sources() -> void:
 		"gdp": FileAccess.get_file_as_string(GDP_FORMULA_SCRIPT_PATH),
 		"cashflow": FileAccess.get_file_as_string(CASHFLOW_SCRIPT_PATH),
 		"product_market": FileAccess.get_file_as_string(PRODUCT_MARKET_SCRIPT_PATH),
-		"contract": FileAccess.get_file_as_string(CONTRACT_BRIDGE_SCRIPT_PATH),
 		"military": FileAccess.get_file_as_string(MILITARY_SCRIPT_PATH),
 		"weather": FileAccess.get_file_as_string(WEATHER_SCRIPT_PATH),
 		"project_state": FileAccess.get_file_as_string(PROJECT_STATE_SCRIPT_PATH),

@@ -109,11 +109,9 @@ func _build_fixture() -> void:
 	_history.name = "History"
 	_host.add_child(_history)
 	_history.configure({"history_limit": 8})
-	_expect(bool(_history.append_resolved(_entry(61, "public_contract", "area_trade_contract", 0).merged({
+	_expect(bool(_history.append_resolved(_entry(61, "public_product", "product_speculation", 0).merged({
 		"resolved": true,
 		"resolution_outcome": "resolved",
-		"contract_source_district": 0,
-		"contract_target_district": 2,
 		"hidden_owner": "SECRET_OWNER",
 	}, true)).get("appended", false)), "public history fixture appends")
 	_port = PORT_SCENE.instantiate() as TableSelectionIntentPort
