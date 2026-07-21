@@ -2050,18 +2050,6 @@ func _verify_random_ai_roles_resolve_unique() -> bool:
 	return ok
 
 
-func _restore_role_setup_for_smoke(main: Node, player_count: int, ai_count: int, role_indices: Array) -> bool:
-	main.set("configured_player_count", player_count)
-	main.set("configured_ai_player_count", ai_count)
-	main.set("configured_role_indices", role_indices.duplicate(true))
-	main.call("_ensure_configured_role_indices")
-	main.call("_new_game")
-	var restored_roles := _as_array(main.get("configured_role_indices"))
-	return int(main.get("configured_player_count")) == player_count \
-		and int(main.get("configured_ai_player_count")) == ai_count \
-		and restored_roles.size() >= player_count
-
-
 func _role_index_array_is_unique(indices: Array, seat_count: int, allow_random: bool = false) -> bool:
 	if indices.size() < seat_count:
 		return false
@@ -2077,13 +2065,25 @@ func _role_index_array_is_unique(indices: Array, seat_count: int, allow_random: 
 
 
 func _verify_role_selection_and_budget_audit(main: Node) -> bool:
-	var previous_player_count := int(main.get("configured_player_count"))
-	var previous_ai_count := int(main.get("configured_ai_player_count"))
-	var previous_role_indices := _as_array(main.get("configured_role_indices")).duplicate(true)
-	var ok := true
-	var role_count := int(main.call("_player_role_catalog_size"))
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	var services := main.get_node_or_null("RuntimeServices")
+	var role_catalog := coordinator.role_catalog_runtime_service() if coordinator != null else null
+	var diagnostics := coordinator.gameplay_balance_diagnostics_service() if coordinator != null else null
+	var rng := coordinator.run_rng_service() if coordinator != null else null
+	var draft: NewGameSetupDraftService = null
+	var builder: SessionStartPlanBuilder = null
+	var game_session: GameSessionRuntimeController = null
+	if services != null:
+		draft = services.get_node_or_null("NewGameSetupDraftService") as NewGameSetupDraftService
+		builder = services.get_node_or_null("SessionStartPlanBuilder") as SessionStartPlanBuilder
+	if coordinator != null:
+		game_session = coordinator.get_node_or_null("GameSessionRuntimeController") as GameSessionRuntimeController
+	if role_catalog == null or diagnostics == null or rng == null or draft == null or builder == null or game_session == null:
+		return false
+	var ok := bool(role_catalog.validate_catalog().get("valid", false))
+	var role_count := role_catalog.role_count()
 	ok = ok and role_count >= 24
-	var audit := _diagnostics(main).role_balance_audit()
+	var audit := diagnostics.role_balance_audit()
 	var duplicate_names := _as_array(audit.get("duplicate_names", []))
 	var missing_budget_roles := _as_array(audit.get("missing_budget_roles", []))
 	var missing_positive_roles := _as_array(audit.get("missing_positive_roles", []))
@@ -2096,14 +2096,14 @@ func _verify_role_selection_and_budget_audit(main: Node) -> bool:
 	ok = ok and int(audit.get("budget_max", 0)) > int(audit.get("budget_min", 0))
 	ok = ok and float(audit.get("budget_average", 0.0)) > 0.0
 	ok = ok and band_counts.size() >= 2
-	var summary := _diagnostics(main).role_balance_audit_summary(audit)
+	var summary := diagnostics.role_balance_audit_summary(audit)
 	ok = ok and summary.contains("角色预算审计") and summary.contains("强度")
 	var saw_economy := false
 	var saw_supply := false
 	var saw_intel := false
 	var saw_control := false
 	for role_index in range(role_count):
-		var role := main.call("_make_player_role_card", role_index, role_index) as Dictionary
+		var role := diagnostics.apply_role_balance_metadata(role_catalog.public_definition_at(role_index))
 		var budget_points := int(role.get("balance_budget", 0))
 		var band := String(role.get("balance_band", ""))
 		var drivers := _as_array(role.get("balance_drivers", []))
@@ -2121,21 +2121,40 @@ func _verify_role_selection_and_budget_audit(main: Node) -> bool:
 	var duplicate_config := []
 	for duplicate_seat in range(seat_count):
 		duplicate_config.append(0)
-	main.set("configured_player_count", seat_count)
-	main.set("configured_ai_player_count", maxi(0, seat_count - 1))
-	main.set("configured_role_indices", duplicate_config)
-	main.call("_ensure_configured_role_indices")
-	ok = ok and _role_index_array_is_unique(_as_array(main.get("configured_role_indices")), seat_count, false)
+	var previous_draft := draft.capture_checkpoint()
+	var duplicate_checkpoint := previous_draft.duplicate(true)
+	duplicate_checkpoint["player_count"] = seat_count
+	duplicate_checkpoint["ai_player_count"] = seat_count - 1
+	duplicate_checkpoint["role_indices"] = duplicate_config
+	var duplicate_restore := draft.restore_checkpoint(duplicate_checkpoint)
+	var duplicate_snapshot := draft.draft_snapshot()
+	ok = ok and bool(duplicate_restore.get("restored", false))
+	ok = ok and _role_index_array_is_unique(_as_array(duplicate_snapshot.get("role_indices", [])), seat_count, false)
 	var random_config := [0]
 	for random_seat in range(1, seat_count):
-		random_config.append(-1)
-	main.set("configured_role_indices", random_config)
-	main.call("_ensure_configured_role_indices")
-	ok = ok and _role_index_array_is_unique(_as_array(main.get("configured_role_indices")), seat_count, true)
-	var resolved := main.call("_resolve_configured_role_indices_for_run") as Array
+		random_config.append(NewGameSetupDraftService.ROLE_RANDOM_INDEX)
+	var random_checkpoint := previous_draft.duplicate(true)
+	random_checkpoint["player_count"] = seat_count
+	random_checkpoint["ai_player_count"] = seat_count - 1
+	random_checkpoint["role_indices"] = random_config
+	var random_restore := draft.restore_checkpoint(random_checkpoint)
+	var random_snapshot := draft.draft_snapshot()
+	ok = ok and bool(random_restore.get("restored", false))
+	ok = ok and _role_index_array_is_unique(_as_array(random_snapshot.get("role_indices", [])), seat_count, true)
+	var rng_checkpoint := rng.capture_plan_checkpoint()
+	var request := SessionStartRequest.create("full-smoke-role-budget-random-plan", random_snapshot, game_session.session_start_revision(), "focused_test")
+	var plan_result := builder.build_plan(request, rng_checkpoint)
+	var plan := plan_result.get("plan") as SessionStartPlan
+	var resolved: Array = []
+	if plan != null:
+		for player_variant in plan.players:
+			if player_variant is Dictionary:
+				resolved.append(int((player_variant as Dictionary).get("role_index", -1)))
+	ok = ok and bool(plan_result.get("ok", false)) and plan != null
 	ok = ok and _role_index_array_is_unique(resolved, seat_count, false)
-	var restored := _restore_role_setup_for_smoke(main, previous_player_count, previous_ai_count, previous_role_indices)
-	return ok and restored
+	ok = ok and rng.capture_plan_checkpoint() == rng_checkpoint
+	var restored := draft.restore_checkpoint(previous_draft)
+	return ok and bool(restored.get("restored", false)) and draft.draft_snapshot() == previous_draft
 
 
 func _role_index_by_name(main: Node, role_name: String) -> int:
