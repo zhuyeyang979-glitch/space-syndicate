@@ -422,6 +422,7 @@ func _preview_snapshot(card: Dictionary, source: Dictionary) -> Dictionary:
 	var facts := _join_first(card.get("key_rule_facts", []) as Array, 4, "｜")
 	var detail := str(state.get("detail", ""))
 	var can_request_quote := _can_request_quote(state, source)
+	var primary_action_id := _primary_action_id(state, can_request_quote)
 	return {
 		"card_name": card_name,
 		"title": "%s | %s" % [display_name, str(card.get("primary_type_label", "卡牌"))],
@@ -441,14 +442,23 @@ func _preview_snapshot(card: Dictionary, source: Dictionary) -> Dictionary:
 		"status_text": "%s｜¥%d｜%s" % [str(state.get("label", "仅浏览")), price, _short_text(detail, 36)],
 		"status_tooltip": detail,
 		"action_reason_code": _safe_action_reason_code(state),
+		"primary_action_id": primary_action_id,
 		"buy_text": "%s ¥%d" % ["获取报价" if can_request_quote else ("手满限制" if bool(state.get("requires_discard", false)) else "购买"), price],
-		"buy_enabled": bool(state.get("actionable", false)) or can_request_quote,
+		"buy_enabled": not primary_action_id.is_empty(),
 		"buy_tooltip": "查看总是允许；%s" % detail,
 		"card_face": _preview_card_face(card),
 		"accent": accent,
 		"theme_color": theme_color,
 		"tooltip": str(card.get("detail_tooltip", "")),
 	}
+
+
+func _primary_action_id(state: Dictionary, can_request_quote: bool) -> String:
+	if can_request_quote:
+		return "district_supply_preview_card"
+	if bool(state.get("actionable", false)):
+		return "district_supply_purchase_card"
+	return ""
 
 
 func _can_request_quote(state: Dictionary, source: Dictionary) -> bool:

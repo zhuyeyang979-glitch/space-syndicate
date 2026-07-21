@@ -259,8 +259,16 @@ func _on_card_preview_requested(card_name: String, source: String) -> void:
 
 
 func _on_card_purchase_requested(card_name: String, source: String) -> void:
-	if card_name != "" and str(_snapshot.get("visibility_scope", "public")) == "viewer_private":
-		supply_action_requested.emit("district_supply_purchase_card", {"card_name": card_name, "source": source})
+	if card_name.is_empty() or str(_snapshot.get("visibility_scope", "public")) != "viewer_private":
+		return
+	var entry: Dictionary = _market_entries_by_name.get(card_name, {}) as Dictionary
+	var preview: Dictionary = entry.get("preview", {}) if entry.get("preview", {}) is Dictionary else {}
+	if preview.is_empty() and str((_snapshot.get("preview", {}) as Dictionary).get("card_name", "")) == card_name:
+		preview = _snapshot.get("preview", {}) as Dictionary
+	var primary_action_id := str(preview.get("primary_action_id", ""))
+	if primary_action_id not in ["district_supply_preview_card", "district_supply_purchase_card"]:
+		return
+	supply_action_requested.emit(primary_action_id, {"card_name": card_name, "source": source})
 
 
 func _clear_children(parent: Node) -> void:

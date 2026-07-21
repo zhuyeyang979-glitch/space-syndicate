@@ -38,14 +38,32 @@ func _run() -> void:
 	var preview_status := refreshed_preview.find_child("DistrictSupplyPreviewStatusLabel", true, false) as Label if refreshed_preview != null else null
 	_expect(preview_status != null and preview_status.text.contains("4.0"), "reused preview still receives the latest quote text")
 
+	var emitted_actions: Array[String] = []
+	drawer.supply_action_requested.connect(func(action_id: String, _payload: Dictionary) -> void:
+		emitted_actions.append(action_id)
+	)
+	drawer.call("_on_card_purchase_requested", "设施牌测试", "focused_test")
+	_expect(emitted_actions == ["district_supply_preview_card"], "quote projection emits the typed quote action instead of premature purchase")
+	drawer.call("set_supply", _snapshot(3_000_000, "报价剩余 3.0 秒", "district_supply_purchase_card"))
+	await process_frame
+	drawer.call("_on_card_purchase_requested", "设施牌测试", "focused_test")
+	_expect(emitted_actions == ["district_supply_preview_card", "district_supply_purchase_card"], "purchase-ready projection emits the typed purchase action")
+	var public_snapshot := _snapshot(3_000_000, "公共浏览", "district_supply_purchase_card")
+	public_snapshot["visibility_scope"] = "public"
+	drawer.call("set_supply", public_snapshot)
+	await process_frame
+	drawer.call("_on_card_purchase_requested", "设施牌测试", "focused_test")
+	_expect(emitted_actions.size() == 2, "public projection cannot emit quote or purchase actions")
+
 	drawer.queue_free()
 	await process_frame
 	_finish()
 
 
-func _snapshot(remaining_world_us: int, status_text: String) -> Dictionary:
+func _snapshot(remaining_world_us: int, status_text: String, primary_action_id := "district_supply_preview_card") -> Dictionary:
 	return {
 		"title": "区域牌架 · 实时刷新门",
+		"visibility_scope": "viewer_private",
 		"rule_strip": "单击预览｜双击购买",
 		"privacy_hint": "只显示当前玩家可见状态。",
 		"purchase_window": {"remaining_world_us": remaining_world_us},
@@ -70,6 +88,7 @@ func _snapshot(remaining_world_us: int, status_text: String) -> Dictionary:
 			"status_text": status_text,
 			"buy_text": "购买 ¥200",
 			"buy_enabled": true,
+			"primary_action_id": primary_action_id,
 			"accent": "#34d399ff",
 			"theme_color": "#38bdf8ff",
 		},
