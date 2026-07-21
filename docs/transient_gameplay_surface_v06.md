@@ -31,7 +31,6 @@ These surfaces:
 - 怪兽战斗下注
 - 牌序竞价
 - 反制响应
-- 合同回应
 - 满手牌处理
 - 怪兽目标选择
 - 玩家目标选择
@@ -91,12 +90,11 @@ Target priority:
 | ---: | --- | --- | --- |
 | 1 | `monster_wager` | 怪兽战斗下注 | Public mandatory overlay; 15 seconds; freezes global world time; all complete may end early |
 | 2 | `counter_response` | 反制响应 | Viewer-scoped overlay; blocks the incoming resolution according to the existing owner |
-| 3 | `contract_response` | 合同回应 | Target-player private overlay; timer/continuation remain Contract owner facts |
-| 4 | `other_choice` | 满手牌处理、怪兽目标选择、玩家目标选择 | Assigned-player private overlay; same-priority order is oldest `opened_sequence`, then stable decision ID |
-| 5 | `public_bid` | 牌序竞价 | Lowest presentation priority; present only while Card Resolution is in `public_bid` |
+| 3 | `other_choice` | 满手牌处理、怪兽目标选择、玩家目标选择 | Assigned-player private overlay; same-priority order is oldest `opened_sequence`, then stable decision ID |
+| 4 | `public_bid` | 牌序竞价 | Lowest presentation priority; present only while Card Resolution is in `public_bid` |
 
 The scheduler owns only priority, stable same-priority ordering, viewer-safe active metadata
-and blocking projection. It never settles a wager, bid, counter, contract, discard or target.
+and blocking projection. It never settles a wager, bid, counter, discard or target.
 
 When a higher decision preempts a lower surface:
 
@@ -185,7 +183,6 @@ Use:
 - 牌序竞价
 - 怪兽战斗下注
 - 反制响应
-- 合同回应
 - 选择弃牌
 - 选择怪兽目标
 - 选择玩家目标

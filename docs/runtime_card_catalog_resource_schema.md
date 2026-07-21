@@ -8,12 +8,12 @@ should not store the entire catalog in one untyped Dictionary.
 
 Recommended production asset count:
 
-- 120 `CardRuntimeFamilyResource` `.tres` files
-- 239 embedded `CardRuntimeRankResource` subresources
+- 114 `CardRuntimeFamilyResource` `.tres` files
+- 232 embedded `CardRuntimeRankResource` subresources
 - 10 ordered `CardRuntimePackResource` `.tres` files
 - 1 `CardRuntimeCatalogResource` `.tres` file
 
-The expected 131 tracked `.tres` files keep one human-editable file per family
+The expected 125 tracked `.tres` files keep one human-editable file per family
 without producing a separate file for every rank.
 
 ## Resource types
@@ -111,10 +111,10 @@ presentation-only and cannot override runtime definitions.
 
 ## Validation requirements for Sprint 58
 
-- 239 explicit definitions reproduce the current Dictionary shape.
-- 120 families and all I-IV derived results match byte-for-byte after canonical
+- 232 explicit definitions reproduce the current Dictionary shape.
+- 114 families and all I-IV derived results match byte-for-byte after canonical
   key sorting.
-- 76 upgradeable families and 125 public-pool ids preserve exact order.
+- 70 upgradeable families and 118 public-pool ids preserve exact order.
 - all 49 effect kinds pass a kind-specific field validator.
 - all consumers receive the same pure-data snapshot.
 - save card names and privacy boundaries remain unchanged.

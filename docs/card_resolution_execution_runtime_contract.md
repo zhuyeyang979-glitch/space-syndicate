@@ -9,7 +9,7 @@ This contract records the Sprint 36 observed behavior and the Sprint 37 ownershi
 - Orchestration owner: `CardResolutionExecutionRuntimeService.tscn`.
 - Concrete effect routing: `CardEffectRuntimeRouter` through typed family ports.
 - Characterization/cutover gate: `CardResolutionExecutionRuntimeCharacterizationBench.tscn`.
-- Sprint 37 gate: 28/28 observed, 28/28 aligned, and 28/28 cutover.
+- Current live bench: 25 characterization cases plus 49 cutover cases; retired consent-flow cases are covered only by the dedicated negative retirement gate.
 
 ## Observed lifecycle
 
@@ -54,7 +54,7 @@ Ruleset v0.4 treats submission as commitment.
 | Monster target missing/down | No monster effect | Submission commitment remains | Active already cleared | Target-invalid log and failed aftermath |
 | Effect owner returns false | No successful effect result | Submission commitment remains | Active already cleared | `未生效` aftermath clue |
 | Counter succeeds | Target effect skipped | Target card/cost remain committed; counter also settles | Active target cleared once | Anonymous counter event and history |
-| Contract endpoint invalid at reveal end | Contract offer is not opened | Submitted contract remains committed | Active card does not resume | Stable contract failure log |
+| Conditional-order requirement drift | No economic effect | Submitted card remains committed | Active card does not resume | Stable automatic-order failure log |
 
 No generic execution refund mechanism was observed. Bankruptcy checks remain with the existing cash/ledger owners and run after complete atomic effects.
 
@@ -70,16 +70,9 @@ Monster and player targets are chosen before queue submission. Pending target ch
 
 Direct-player interaction cards open a fixed five-second response window. This is the card-level pause that retains the active entry. One counter layer is allowed; counter cards are not countered again.
 
-### Contract response
+### Conditional orders
 
-Area trade contracts follow the explicit v0.4 exception:
-
-- The active contract card completes its normal reveal position.
-- A copy keyed by the same `resolution_id` enters `pending_contract_offers`.
-- The target owner receives an independent five-second accept/reject window.
-- Other cards continue resolving.
-- Accept, reject, or timeout patches the same resolved-history record.
-- Timeout is rejection, not cancellation/rewind.
+Conditional-order and supply cards have no target-player consent phase. Their existing card, commodity, route, and market checks either settle automatically or produce the ordinary failed-effect aftermath without reopening the active card.
 
 ### Monster wager
 
@@ -111,7 +104,6 @@ Sprint 36 loads real runtime definitions rather than fabricated IDs:
 | `生产扩张1` | `region_economy_shift` | District mutation |
 | `诱导电波1` | `monster_lure` | Monster target recheck and monster-rule dispatch |
 | `星链拆解1` | `player_hand_disrupt` | Existing hand-interaction service route |
-| `区域供需合约1` | `area_trade_contract` | Independent contract response window |
 | `出牌追帧1`（现名“残帧复盘 I”） | `card_history_public_review` | Uses public history evidence only; any conclusion remains a viewer-private annotation |
 | `相位否决1` | `card_counter` | Five-second counter response |
 | Runtime-generated city development card | `city_development` | Scenario hook ownership |
@@ -202,7 +194,7 @@ Manifest and report records use only dictionaries, arrays, strings, numbers, and
 
 ## Save and resume
 
-Current, active, and next queues round-trip through the existing v1 compatibility keys owned by Queue Service. `pending_contract_offers` remains a separate saved list because contract responses are non-blocking history continuations rather than active-card state.
+Current, active, and next queues round-trip through the existing v1 compatibility keys owned by Queue Service. There is no separate consent-offer save list in v0.6.
 
 Missing or empty active state resumes safely with no effect replay. Existing v1 queue keys and save version are unchanged. The Service recovery API rejects empty active state and never recreates an effect from history alone.
 

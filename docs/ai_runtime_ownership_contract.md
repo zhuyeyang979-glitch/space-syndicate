@@ -22,7 +22,7 @@ There is no `main.gd` AI constant or personality-catalog fallback. Resource load
 
 ## Preserved Behavior
 
-The migrated functions retain their pre-cutover bodies and call order. This includes card play and purchase candidates, auction/counter/contract responses, intel, monster wagers, military, weather, city/product/route/monster strategy, online learning, and public audit reports.
+The migrated functions retain their current v0.6 call order. This includes card play and purchase candidates, auction/counter decisions, automatic conditional-order evaluation, intel, monster wagers, military, weather, city/product/route/monster strategy, online learning, and public audit reports.
 
 World legality and mutation remain with their existing owners. The controller asks the bridge for those facts or actions; it does not duplicate card, economy, city, route, monster, military, weather, contract, queue, or execution rules.
 
