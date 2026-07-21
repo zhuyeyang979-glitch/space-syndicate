@@ -20,8 +20,6 @@ func advance_active(context: RuntimePhaseFrameContext) -> void:
 	if _lifecycle.allows_card_resolution_progress():
 		context.append_step(&"advance_card_resolution_frame")
 		_card.advance_card_resolution_frame(context.world_delta)
-	context.append_step(&"tick_contract_runtime")
-	_card.tick_contract_runtime(context.world_delta)
 	context.append_step(&"advance_card_cooldowns")
 	_card.advance_card_cooldowns(context.world_delta)
 

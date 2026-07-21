@@ -5,19 +5,16 @@ class_name CardIntelRuntimeService
 var _world_session_state: WorldSessionState
 var _history_query: CardHistoryPublicQueryPort
 var _annotation_service: CardHistoryPrivateAnnotationService
-var _contract_controller: ContractRuntimeController
 
 
 func set_dependencies(
 	world_session_state: WorldSessionState,
 	history_query: CardHistoryPublicQueryPort,
-	annotation_service: CardHistoryPrivateAnnotationService,
-	contract_controller: ContractRuntimeController
+	annotation_service: CardHistoryPrivateAnnotationService
 ) -> void:
 	_world_session_state = world_session_state
 	_history_query = history_query
 	_annotation_service = annotation_service
-	_contract_controller = contract_controller
 
 
 func apply_intel_effect(player_index: int, skill: Dictionary, context: Dictionary = {}) -> Dictionary:
@@ -30,10 +27,6 @@ func apply_intel_effect(player_index: int, skill: Dictionary, context: Dictionar
 			return _review_public_history(player_index, skill, context)
 		"card_history_subscription":
 			return _subscribe_public_history(player_index, skill, context)
-		"intel_contract_trace":
-			var count := maxi(1, int(skill.get("trace_contract_count", 1)))
-			var traced := _contract_controller.trace_contract_parties(player_index, int(context.get("selected_card_resolution_id", -1)), count, str(skill.get("name", "合约追溯"))) if _contract_controller != null else 0
-			return _receipt(traced > 0, "resolved" if traced > 0 else "no_traceable_contract", {"contract_trace_count": traced})
 	return _receipt(false, "intel_kind_unsupported")
 
 

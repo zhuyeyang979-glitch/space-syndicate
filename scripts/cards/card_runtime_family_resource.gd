@@ -6,8 +6,7 @@ const INTEGER_GROWTH_FIELDS := [
 	"damage", "armor", "guard", "ranged_guard", "panic", "revenue_amount", "cash",
 	"draw_amount", "repair_routes", "route_damage", "contract_income", "market_demand_pressure",
 	"market_supply_pressure", "miasma_count", "reclaim_count", "product_level", "product_shift",
-	"demand_shift", "contract_add_products", "contract_add_demands", "contract_remove_products",
-	"contract_remove_demands", "accept_cash", "decline_cash_penalty", "decline_route_damage",
+	"demand_shift",
 	"stabilize_amount", "reveal_city_count", "history_review_count", "history_subscription_count", "trace_contract_count",
 	"card_access_extra_hops", "weather_zone_count", "hand_discard_count", "hand_steal_count",
 	"target_cash_penalty", "control_gdp_penalty", "global_barrage_damage",
@@ -15,8 +14,6 @@ const INTEGER_GROWTH_FIELDS := [
 ]
 const SIGNED_INTEGER_GROWTH_FIELDS := [
 	"price_delta", "volatility_delta", "production_delta", "transport_delta", "consumption_delta",
-	"accept_production_delta", "accept_transport_delta", "accept_consumption_delta",
-	"decline_production_delta", "decline_transport_delta", "decline_consumption_delta",
 ]
 const FLOAT_GROWTH_FIELDS := [
 	"move", "range", "knockback", "delay", "lure_speedup", "card_access_seconds",
@@ -24,7 +21,7 @@ const FLOAT_GROWTH_FIELDS := [
 	"weather_duration_seconds", "hand_lock_seconds", "control_block_seconds",
 ]
 const MULTIPLIER_GROWTH_FIELDS := [
-	"growth_multiplier", "route_flow_multiplier", "accept_route_flow_multiplier",
+	"growth_multiplier", "route_flow_multiplier",
 	"extended_card_price_multiplier", "global_card_price_multiplier",
 ]
 const TURN_GROWTH_FIELDS := ["contract_turns", "market_contract_turns", "growth_turns", "route_flow_turns"]

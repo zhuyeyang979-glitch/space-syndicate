@@ -104,16 +104,12 @@ func requirement_status(request: Dictionary, facts: Dictionary) -> Dictionary:
 	var required_percent := clampi(int(profile.get("required_share_percent", 0)), 0, 100)
 	if str(skill.get("schema_version", "")) in ["v0.5", "v0.6"] or str(skill.get("kind", "")) == "public_facility":
 		required_percent = 0
-	if str(skill.get("kind", "")) == "area_trade_contract":
-		required_percent = maxi(0, required_percent - maxi(0, int(facts.get("contract_share_discount_percent", 0))))
 	var scope := str(profile.get("scope", CARD_PLAY_REQUIREMENT_POLICY.SCOPE_OWN_BEST_REGION))
 	var district_index := int(skill.get("play_requirement_district", -1))
 	if district_index < 0:
 		match scope:
 			CARD_PLAY_REQUIREMENT_POLICY.SCOPE_TARGET_REGION:
 				district_index = int(facts.get("selected_district", -1))
-			CARD_PLAY_REQUIREMENT_POLICY.SCOPE_CONTRACT_SOURCE_REGION:
-				district_index = int(facts.get("contract_source_district", -1))
 			_:
 				district_index = int(facts.get("best_share_district", -1))
 	var share_by_district := _dictionary(facts.get("share_basis_points_by_district", {}))
@@ -258,9 +254,6 @@ func _evaluate_rule(request: Dictionary, facts: Dictionary, common: Dictionary, 
 		return _result(false, false, "player_eliminated", {"player_name": str(facts.get("player_name", "玩家"))}, requirement, target, mode, common)
 	if str(skill.get("kind", "")) == "public_facility" and (int(facts.get("selected_district", -1)) < 0 or bool(facts.get("selected_district_destroyed", false))):
 		return _result(false, false, "public_facility_target_unavailable", {}, requirement, target, mode, common)
-	var contract_error := str(facts.get("contract_error", ""))
-	if str(skill.get("kind", "")) == "area_trade_contract" and contract_error != "":
-		return _result(false, false, "contract_invalid", {"error": contract_error}, requirement, target, mode, common)
 	if _is_counter(skill):
 		if not bool(facts.get("counter_window_active", false)) or not bool(facts.get("active_resolution_present", false)):
 			return _result(false, false, "counter_window_closed", {}, requirement, target, mode, common)
@@ -330,9 +323,6 @@ func _evaluate_hand(request: Dictionary, facts: Dictionary, common: Dictionary) 
 			return _result(false, false, "counter_target_invalid", {}, requirement, target, "hand", common)
 	if bool(target.get("targets_monster", false)) and int(facts.get("monster_count", 0)) <= 0:
 		return _result(false, false, "monster_target_unavailable", {}, requirement, target, "hand", common)
-	var contract_error := str(facts.get("contract_error", ""))
-	if str(skill.get("kind", "")) == "area_trade_contract" and contract_error != "":
-		return _result(false, false, "contract_invalid", {"error": contract_error}, requirement, target, "hand", common)
 	if str(skill.get("kind", "")) == "public_facility" and (int(facts.get("selected_district", -1)) < 0 or bool(facts.get("selected_district_destroyed", false))):
 		return _result(false, false, "public_facility_target_unavailable", {}, requirement, target, "hand", common)
 	if str(skill.get("kind", "")) == "military_command":

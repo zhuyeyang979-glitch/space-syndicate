@@ -11,7 +11,6 @@ const HANDLER_FAMILIES := {
 	"product_futures": "product",
 	"product_contract_boon": "product",
 	"product_growth_boon": "product",
-	"area_trade_contract": "route",
 }
 
 var _configured := false
@@ -91,7 +90,7 @@ func plan_effect(request: Dictionary) -> Dictionary:
 		"family_id": family_for_handler(handler_id),
 		"operation_id": handler_id,
 		"resolution_id": int(entry.get("resolution_id", entry.get("queued_order", -1))),
-		"continuation_kind": "contract_response" if handler_id == "area_trade_contract" else "normal",
+		"continuation_kind": "normal",
 		"effect_payload": {
 			"player_index": player_index,
 			"active_entry": entry,

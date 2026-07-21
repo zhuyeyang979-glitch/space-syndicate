@@ -353,11 +353,6 @@ func _ai_runtime_controller_node() -> Node:
 	return coordinator.get_node_or_null("AiRuntimeController") if coordinator != null else null
 
 
-func _contract_runtime_controller_node() -> ContractRuntimeController:
-	var coordinator := _game_runtime_coordinator_node()
-	return coordinator.call("contract_runtime_controller") as ContractRuntimeController if coordinator != null and coordinator.has_method("contract_runtime_controller") else null
-
-
 func _product_market_runtime_controller_node() -> ProductMarketRuntimeController:
 	var coordinator := _game_runtime_coordinator_node()
 	return coordinator.call("product_market_runtime_controller") as ProductMarketRuntimeController if coordinator != null and coordinator.has_method("product_market_runtime_controller") else null
@@ -1345,20 +1340,6 @@ func _on_runtime_game_screen_action_requested(action_id: String) -> void:
 
 
 func _activate_runtime_temporary_decision_action(action_id: String) -> bool:
-	if action_id.begins_with("contract_accept_"):
-		var contract_id_text := action_id.substr("contract_accept_".length()).strip_edges()
-		if contract_id_text.is_valid_int():
-			var contract_controller := _contract_runtime_controller_node()
-			if contract_controller != null:
-				contract_controller.respond_to_offer(_runtime_snapshot_player_index(), int(contract_id_text), true)
-			return true
-	if action_id.begins_with("contract_reject_"):
-		var contract_id_text := action_id.substr("contract_reject_".length()).strip_edges()
-		if contract_id_text.is_valid_int():
-			var contract_controller := _contract_runtime_controller_node()
-			if contract_controller != null:
-				contract_controller.respond_to_offer(_runtime_snapshot_player_index(), int(contract_id_text), false)
-			return true
 	return false
 
 
@@ -1617,12 +1598,6 @@ func _refresh_card_resolution_overlay_badges(entry: Dictionary) -> void:
 
 
 func _runtime_card_resolution_overlay_badge_source(entry: Dictionary) -> Dictionary:
-	var skill: Dictionary = entry.get("skill", {}) if entry.get("skill", {}) is Dictionary else {}
-	var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
-	var active_entry := _card_resolution_active_entry()
-	var active_id := int(active_entry.get("resolution_id", active_entry.get("queued_order", -1))) if not active_entry.is_empty() else -1
-	var contract_controller := _contract_runtime_controller_node()
-	var pending_contract := contract_controller.offer_by_id(int(entry.get("contract_offer_id", resolution_id))) if contract_controller != null else {}
 	var actor_index := _runtime_snapshot_player_index()
 	var public_entry := {
 		"is_viewer_card": actor_index >= 0 and actor_index < _game_runtime_coordinator_node().world_session_state().players.size() and int(entry.get("player_index", -1)) == actor_index,
@@ -1630,9 +1605,6 @@ func _runtime_card_resolution_overlay_badge_source(entry: Dictionary) -> Diction
 	return {
 		"entry": public_entry,
 		"requirement_text": _card_resolution_play_requirement_text(entry),
-		"is_contract": str(skill.get("kind", "")) == "area_trade_contract",
-		"contract_state": "active" if active_id == resolution_id else ("pending" if not pending_contract.is_empty() else "result"),
-		"contract_response_label": contract_controller.response_public_label(entry) if contract_controller != null else "无签约窗口",
 		"order_clue": _card_resolution_order_clue_text(entry),
 		"current_queue_count": _card_resolution_current_queue().size(),
 		"next_queue_count": _card_resolution_next_queue().size(),
@@ -1709,10 +1681,6 @@ func _build_full_map_overlay() -> void:
 	var map_control_toolbar := overlay.find_child("PlanetMapControlToolbar", true, false) as Control
 	if map_control_toolbar == null or not map_control_toolbar.has_method("set_controls"):
 		_report_required_ui_scene_missing("PlanetMapControlToolbar", "set_controls")
-	else:
-		var control_callback := Callable(self, "_on_map_control_toolbar_action_requested")
-		if map_control_toolbar.has_signal("control_action_requested") and not map_control_toolbar.is_connected("control_action_requested", control_callback):
-			map_control_toolbar.connect("control_action_requested", control_callback)
 	var close_button := overlay.find_child("FullscreenMapCloseButton", true, false) as Button
 	var close_callable := Callable(self, "_close_fullscreen_map")
 	if close_button != null and not close_button.pressed.is_connected(close_callable):
@@ -1784,10 +1752,6 @@ func _map_layer_focus_label(layer_id: String) -> String:
 
 
 func _map_control_toolbar_snapshot() -> Dictionary:
-	var contract_controller := _contract_runtime_controller_node()
-	var contract_selection := contract_controller.selection_snapshot() if contract_controller != null else {"source_district": -1, "target_district": -1}
-	var contract_source := int(contract_selection.get("source_district", -1))
-	var contract_target := int(contract_selection.get("target_district", -1))
 	var district_status := _selected_district_status_text(_runtime_snapshot_player_index()) if _game_runtime_coordinator_node().table_selection_state().selected_district >= 0 and _game_runtime_coordinator_node().table_selection_state().selected_district < _game_runtime_coordinator_node().world_session_state().districts.size() else "当前未选择区域。"
 	var product_options: Array = [{"id": "", "label": "商路关闭", "disabled": false}]
 	for product_variant: Variant in ProductMarketRuntimeController.PRODUCT_CATALOG:
@@ -1800,9 +1764,6 @@ func _map_control_toolbar_snapshot() -> Dictionary:
 		trade_text = "⇄ %s｜%d" % [_short_card_text(_game_runtime_coordinator_node().table_selection_state().selected_trade_product, 6), route_count]
 		trade_tooltip = "当前显示%s的运输路径，共%d条。" % [_game_runtime_coordinator_node().table_selection_state().selected_trade_product, route_count]
 	var selected_layer := _map_layer_entry(_game_runtime_coordinator_node().table_selection_state().selected_map_layer_focus)
-	var can_set_contract_source := contract_controller != null and contract_controller.valid_source_district(_game_runtime_coordinator_node().table_selection_state().selected_district)
-	var can_set_contract_target := contract_controller != null and contract_controller.valid_target_district(_game_runtime_coordinator_node().table_selection_state().selected_district)
-	var contract_summary := contract_controller.selection_summary(_game_runtime_coordinator_node().table_selection_state().selected_trade_product, _default_trade_product_for_selected_district()) if contract_controller != null else "合约运行时不可用"
 	return {
 		"reading_hints": [
 			{"text": "◎ 赌桌中央", "tooltip": "星球保持主视野；信息尽量收进筹码、牌架和侧栏。"},
@@ -1821,38 +1782,7 @@ func _map_control_toolbar_snapshot() -> Dictionary:
 			"tooltip": "选择要在地图上显示运输路径的商品。",
 			"status": {"text": trade_text, "tooltip": trade_tooltip},
 		},
-		"contract_source": {
-			"text": "供给:%s" % ("选区" if contract_source != _game_runtime_coordinator_node().table_selection_state().selected_district else "已设"),
-			"disabled": not can_set_contract_source,
-			"tooltip": "打出合约牌前必须先点：把当前选中陆地区域设为下一张合约的供给区。" if can_set_contract_source else "供给区必须是未毁陆地区域；合约牌打出前需要先点供给区。",
-		},
-		"contract_target": {
-			"text": "需求:%s" % ("选区" if contract_target != _game_runtime_coordinator_node().table_selection_state().selected_district else "已设"),
-			"disabled": not can_set_contract_target,
-			"tooltip": "打出合约牌前必须先点：把当前存活城市群设为下一张合约的需求/签约区。" if can_set_contract_target else "需求区必须有存活城市群；合约牌打出前需要先点需求区。",
-		},
-		"contract_status": {"text": "⇄ %s" % _short_card_text(contract_summary.replace("合约:", "").replace("合约：", ""), 12), "tooltip": contract_summary},
 	}
-
-
-func _on_map_control_toolbar_action_requested(action_id: String, payload: Dictionary) -> void:
-	match action_id:
-		"map_contract_source_select":
-			var contract_controller := _contract_runtime_controller_node()
-			if contract_controller != null:
-				var result := contract_controller.select_source_district(_game_runtime_coordinator_node().table_selection_state().selected_district, _game_runtime_coordinator_node().table_selection_state().selected_trade_product)
-				if bool(result.get("accepted", false)) and runtime_game_screen != null and runtime_game_screen.has_method("request_trade_product_selection"):
-					runtime_game_screen.call("request_trade_product_selection", str(result.get("selected_product", "")), &"table_toolbar")
-				_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(result.get("message", "供给区选择失败。")))
-				_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
-		"map_contract_target_select":
-			var contract_controller := _contract_runtime_controller_node()
-			if contract_controller != null:
-				var result := contract_controller.select_target_district(_game_runtime_coordinator_node().table_selection_state().selected_district, _game_runtime_coordinator_node().table_selection_state().selected_trade_product)
-				if bool(result.get("accepted", false)) and runtime_game_screen != null and runtime_game_screen.has_method("request_trade_product_selection"):
-					runtime_game_screen.call("request_trade_product_selection", str(result.get("selected_product", "")), &"table_toolbar")
-				_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(result.get("message", "需求区选择失败。")))
-				_game_runtime_coordinator_node().request_table_presentation_refresh(&"full", &"main_state_changed")
 
 
 func _menu_card_style(accent: Color, fill: Color = Color("#0b1220"), border_width: int = 1, radius: int = 12) -> StyleBoxFlat:
@@ -5040,8 +4970,6 @@ func _player_card_effect_text(skill: Dictionary) -> String:
 				_meters_text(float(skill.get("move", 0.0))),
 				_monster_card_region_text(skill, true),
 			]
-		"area_trade_contract":
-			return _area_contract_player_effect_text(skill)
 		"city_gdp_derivative":
 			var terms := _city_gdp_derivative_terms(skill)
 			var side := "保单" if bool(terms.get("insurance", false)) else ("买涨" if String(terms.get("direction", "up")) == "up" else "做空")
@@ -5118,43 +5046,6 @@ func _player_card_effect_text(skill: Dictionary) -> String:
 	return _player_sanitize_rule_text(text)
 
 
-func _area_contract_player_effect_text(skill: Dictionary) -> String:
-	var add_text := []
-	if int(skill.get("contract_add_products", 0)) > 0:
-		add_text.append("供给+%d" % int(skill.get("contract_add_products", 0)))
-	if int(skill.get("contract_add_demands", 0)) > 0:
-		add_text.append("需求+%d" % int(skill.get("contract_add_demands", 0)))
-	if int(skill.get("contract_remove_products", 0)) > 0 or int(skill.get("contract_remove_demands", 0)) > 0:
-		add_text.append("替换旧供需")
-	var accept_text := []
-	if int(skill.get("accept_cash", 0)) > 0:
-		accept_text.append("签约¥+%d" % int(skill.get("accept_cash", 0)))
-	if int(skill.get("accept_production_delta", 0)) != 0:
-		accept_text.append("产能%s" % _signed_int_text(int(skill.get("accept_production_delta", 0))))
-	if int(skill.get("accept_transport_delta", 0)) != 0:
-		accept_text.append("交通%s" % _signed_int_text(int(skill.get("accept_transport_delta", 0))))
-	if int(skill.get("accept_consumption_delta", 0)) != 0:
-		accept_text.append("需求%s" % _signed_int_text(int(skill.get("accept_consumption_delta", 0))))
-	if float(skill.get("accept_route_flow_multiplier", 1.0)) > 1.001:
-		accept_text.append("商路×%.2f" % float(skill.get("accept_route_flow_multiplier", 1.0)))
-	var decline_text := []
-	if int(skill.get("decline_cash_penalty", 0)) > 0:
-		decline_text.append("拒签¥-%d" % int(skill.get("decline_cash_penalty", 0)))
-	if int(skill.get("decline_route_damage", 0)) > 0:
-		decline_text.append("断路+%d" % int(skill.get("decline_route_damage", 0)))
-	if int(skill.get("decline_production_delta", 0)) != 0:
-		decline_text.append("产能%s" % _signed_int_text(int(skill.get("decline_production_delta", 0))))
-	if int(skill.get("decline_transport_delta", 0)) != 0:
-		decline_text.append("交通%s" % _signed_int_text(int(skill.get("decline_transport_delta", 0))))
-	if int(skill.get("decline_consumption_delta", 0)) != 0:
-		decline_text.append("需求%s" % _signed_int_text(int(skill.get("decline_consumption_delta", 0))))
-	return "连接供给区与需求区：%s。目标业主稍后签/拒；%s；%s。" % [
-		" / ".join(add_text) if not add_text.is_empty() else "添加一条商品关系",
-		" / ".join(accept_text) if not accept_text.is_empty() else "签约有收益",
-		" / ".join(decline_text) if not decline_text.is_empty() else "拒签有压力",
-	]
-
-
 func _player_sanitize_rule_text(text: String) -> String:
 	var result := text
 	result = result.replace("打出前必须先", "先")
@@ -5209,8 +5100,6 @@ func _derived_skill_tags(kind: String) -> Array:
 			return ["经济", "商品"]
 		"product_contract_boon":
 			return ["经济", "合约"]
-		"area_trade_contract":
-			return ["经营", "合约"]
 		"player_hand_disrupt":
 			return ["互动", "拆牌"]
 		"player_hand_steal":
@@ -6325,10 +6214,6 @@ func _card_resolution_overlay_detail_text(entry: Dictionary, seconds_left: float
 	if animation_text != "":
 		lines.append("演出：%s" % _short_card_text(animation_text, 120))
 	lines.append("效果：%s" % _short_card_text(_skill_display_text(skill), 120))
-	var contract_controller := _contract_runtime_controller_node()
-	var contract_text := contract_controller.card_resolution_public_text(entry) if contract_controller != null else ""
-	if contract_text != "":
-		lines.append(_short_card_text(contract_text, 120))
 	var requirement_text := _card_resolution_play_requirement_text(entry)
 	if requirement_text != "":
 		lines.append(requirement_text)

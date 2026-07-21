@@ -30,7 +30,6 @@ class_name SpaceSyndicateRulesetProfile
 @export var forced_decision_priority: Array[String] = [
 	"monster_wager",
 	"counter_response",
-	"contract_response",
 	"other_choice",
 ]
 
@@ -109,7 +108,7 @@ func validation_snapshot() -> Dictionary:
 		issues.append("ordinary hand limit must be five for v0.4")
 	if maximum_card_rank != 4:
 		issues.append("maximum card rank must be IV for v0.4")
-	if forced_decision_priority != ["monster_wager", "counter_response", "contract_response", "other_choice"]:
+	if forced_decision_priority != ["monster_wager", "counter_response", "other_choice"]:
 		issues.append("forced decision priority does not match v0.4")
 	return {
 		"valid": issues.is_empty(),

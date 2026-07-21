@@ -3,7 +3,6 @@
 [ext_resource type="Theme" path="res://themes/GameTheme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scripts/ui/overlay_layer.gd" id="2_overlay"]
 [ext_resource type="PackedScene" path="res://scenes/ui/MonsterWagerDecisionPanel.tscn" id="3_wager"]
-[ext_resource type="PackedScene" path="res://scenes/ui/ContractResponseDecisionPanel.tscn" id="4_contract"]
 [ext_resource type="PackedScene" path="res://scenes/ui/TemporaryChoiceDecisionPanel.tscn" id="5_choice"]
 [ext_resource type="PackedScene" path="res://scenes/ui/FullscreenMapOverlay.tscn" id="6_fullscreen_map"]
 [ext_resource type="PackedScene" path="res://scenes/ui/CardResolutionBanner.tscn" id="7_resolution_banner"]
@@ -234,11 +233,6 @@ theme_override_constants/h_separation = 8
 theme_override_constants/v_separation = 6
 
 [node name="MonsterWagerDecisionPanel" parent="OverlayRoot/ModalLayer/ConfirmCenter" instance=ExtResource("3_wager")]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-
-[node name="ContractResponseDecisionPanel" parent="OverlayRoot/ModalLayer/ConfirmCenter" instance=ExtResource("4_contract")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2

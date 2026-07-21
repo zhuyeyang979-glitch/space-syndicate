@@ -120,8 +120,6 @@ class_name RuntimeBalanceParametersResource
 		"cash",
 		"revenue_amount",
 		"contract_income",
-		"accept_cash",
-		"decline_cash_penalty",
 		"production_delta",
 		"transport_delta",
 		"consumption_delta",

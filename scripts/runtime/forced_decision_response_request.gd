@@ -4,7 +4,6 @@ class_name ForcedDecisionResponseRequest
 const DECISION_KINDS := [
 	&"monster_wager",
 	&"counter_response",
-	&"contract_response",
 	&"discard_purchase",
 	&"monster_target_choice",
 	&"player_target_choice",

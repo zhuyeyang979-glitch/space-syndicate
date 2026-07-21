@@ -795,8 +795,6 @@ func _intent_for(transaction: Dictionary, intent_type: String) -> Dictionary:
 
 func _execution_kind(skill: Dictionary, target_kind: String) -> String:
 	var kind := str(skill.get("kind", ""))
-	if kind == "area_trade_contract":
-		return "contract_continuation"
 	if target_kind == "monster" or target_kind == "player":
 		return "targeted"
 	return "normal"

@@ -34,7 +34,6 @@ class_name SpaceSyndicateRulesetProfileV05
 @export var purchase_window_seconds: int = 12
 @export var local_purchase_price_bp: int = 8000
 @export var adjacent_purchase_price_bp: int = 10000
-@export var contract_response_seconds: int = 8
 
 @export_group("Monster")
 @export var monster_warning_seconds: int = 5
@@ -97,7 +96,6 @@ func timing_rules() -> Dictionary:
 		"battle_limit_quick": battle_limit_quick,
 		"battle_limit_standard": battle_limit_standard,
 		"battle_limit_expert": battle_limit_expert,
-		"contract_response_seconds": contract_response_seconds,
 		"intel_tracking_seconds": intel_tracking_seconds,
 		"weather_forecast_seconds": weather_forecast_seconds,
 		"weather_duration_seconds": weather_duration_seconds,

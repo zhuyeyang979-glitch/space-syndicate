@@ -13,7 +13,6 @@ var _eligibility_service: CardPlayEligibilityRuntimeService
 var _queue_service: CardResolutionQueueRuntimeService
 var _resolution_controller: CardResolutionRuntimeController
 var _target_choice_controller: CardTargetChoiceRuntimeController
-var _contract_controller: ContractRuntimeController
 var _product_market_controller: ProductMarketRuntimeController
 var _derivative_controller: CityGdpDerivativeRuntimeController
 var _selection_catalog_query_port: TableSelectionCatalogQueryPort
@@ -32,7 +31,6 @@ func set_dependencies(
 	queue_service: CardResolutionQueueRuntimeService,
 	resolution_controller: CardResolutionRuntimeController,
 	target_choice_controller: CardTargetChoiceRuntimeController,
-	contract_controller: ContractRuntimeController,
 	product_market_controller: ProductMarketRuntimeController,
 	derivative_controller: CityGdpDerivativeRuntimeController,
 	selection_catalog_query_port: TableSelectionCatalogQueryPort,
@@ -46,7 +44,6 @@ func set_dependencies(
 	_queue_service = queue_service
 	_resolution_controller = resolution_controller
 	_target_choice_controller = target_choice_controller
-	_contract_controller = contract_controller
 	_product_market_controller = product_market_controller
 	_derivative_controller = derivative_controller
 	_selection_catalog_query_port = selection_catalog_query_port
@@ -134,9 +131,6 @@ func _submit_legacy(player_index: int, slot_index: int, eligibility: Dictionary,
 	var target_status: Dictionary = eligibility.get("target_status", {}) if eligibility.get("target_status", {}) is Dictionary else {}
 	var runtime_state := _resolution_controller.card_play_fact_snapshot() if _resolution_controller != null else {}
 	var reactive_counter := bool(target_status.get("is_counter", false)) and bool(runtime_state.get("counter_window_active", false)) and not _queue_service.active_entry().is_empty()
-	var contract_context := _contract_context(player_index, skill, frozen_context)
-	if not str(contract_context.get("error", "")).is_empty():
-		return _rejection(str(contract_context.get("reason", "contract_context_invalid")))
 	var queued_skill := _skill_with_financial_terms(skill)
 	if queued_skill.has("submission_terms_error"):
 		return _rejection(str(queued_skill.get("submission_terms_error", "financial_terms_missing")))
@@ -150,14 +144,6 @@ func _submit_legacy(player_index: int, slot_index: int, eligibility: Dictionary,
 		"selected_district": int(frozen_context.get("selected_district", -1)),
 		"selected_trade_product": str(frozen_context.get("selected_trade_product", "")),
 		"selected_card_resolution_id": int(frozen_context.get("selected_card_resolution_id", -1)),
-		"contract_source_district": int(contract_context.get("source", -1)),
-		"contract_target_district": int(contract_context.get("target", -1)),
-		"contract_target_owner": int(contract_context.get("target_owner", -1)),
-		"contract_target_project_ids": _array(contract_context.get("target_project_ids", [])),
-		"contract_products": _array(contract_context.get("products", [])),
-		"contract_response": ContractRuntimeController.RESPONSE_PENDING if str(skill.get("kind", "")) == "area_trade_contract" else "",
-		"contract_response_player": -1,
-		"contract_response_time": -1.0,
 		"queued_time": _world_session_state.game_time,
 		"play_requirement_kind": str(requirement_status.get("kind", "none")),
 		"play_requirement_scope": str(requirement_status.get("scope", "")),
@@ -333,13 +319,10 @@ func _prepare_legacy_submission(
 	var selection_snapshot := _selection_snapshot(request)
 	if selection_snapshot.is_empty():
 		return {"prepared": false, "reason": "table_selection_unavailable"}
-	var contract_selection := _contract_controller.selection_snapshot() if _contract_controller != null else {}
 	var frozen_context := {
 		"selected_district": int(selection_snapshot.get("selected_district", -1)),
 		"selected_trade_product": str(selection_snapshot.get("selected_trade_product", "")),
 		"selected_card_resolution_id": int(selection_snapshot.get("selected_card_resolution_id", -1)),
-		"contract_source_district": int(contract_selection.get("source_district", -1)),
-		"contract_target_district": int(contract_selection.get("target_district", -1)),
 	}
 	var eligibility := _eligibility(player_index, skill, mode, frozen_context)
 	var choice_kind := forced_choice_kind
@@ -353,9 +336,6 @@ func _prepare_legacy_submission(
 		"target_kind": _envelope_target_kind(choice_kind),
 		"target_slot": int(request.get("target_slot", -1)),
 		"target_player": int(request.get("target_player", -1)),
-		"contract_source_district": int(frozen_context.get("contract_source_district", -1)),
-		"contract_target_district": int(frozen_context.get("contract_target_district", -1)),
-		"contract_selection_revision": int(contract_selection.get("revision", -1)),
 		"play_requirement_district": int(requirement_status.get("qualifying_district", -1)),
 		"capture_source": str(request.get("submission_source", "card_play_submission")),
 	})
@@ -415,20 +395,6 @@ func _eligibility(player_index: int, skill: Dictionary, mode: String, context: D
 	facts["commodity_color_flow"] = _runtime_coordinator.commodity_color_flow_snapshot(player_index)
 	facts["player_mana"] = _runtime_coordinator.player_mana_availability(player_index)
 	return _eligibility_service.evaluate_play({"player_index": player_index, "skill": skill, "evaluation_mode": mode}, facts)
-
-
-func _contract_context(player_index: int, skill: Dictionary, context: Dictionary) -> Dictionary:
-	if str(skill.get("kind", "")) != "area_trade_contract":
-		return {}
-	if _contract_controller == null:
-		return {"error": "contract_controller_missing", "reason": "contract_controller_missing"}
-	return _contract_controller.offer_context(
-		skill,
-		player_index,
-		int(context.get("contract_source_district", -1)),
-		int(context.get("contract_target_district", -1)),
-		str(context.get("selected_trade_product", ""))
-	)
 
 
 func _skill_with_financial_terms(skill: Dictionary) -> Dictionary:

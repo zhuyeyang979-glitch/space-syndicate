@@ -88,12 +88,6 @@ custom_minimum_size = Vector2(132, 30)
 layout_mode = 2
 text = "怪兽赌局"
 
-[node name="ContractResponsePreviewButton" type="Button" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows/PreviewStateGrid"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(132, 30)
-layout_mode = 2
-text = "合约回应"
-
 [node name="DiscardPreviewButton" type="Button" parent="PreviewMargin/PreviewColumns/PreviewControlPanel/PreviewControlMargin/PreviewControlRows/PreviewStateGrid"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(132, 30)

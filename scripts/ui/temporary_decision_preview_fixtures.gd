@@ -2,7 +2,6 @@ extends RefCounted
 class_name SpaceSyndicateTemporaryDecisionPreviewFixtures
 
 const MONSTER_WAGER := "monster_wager"
-const CONTRACT_RESPONSE := "contract_response"
 const DISCARD_PURCHASE := "discard_purchase"
 const MONSTER_TARGET_CHOICE := "monster_target_choice"
 const PLAYER_TARGET_CHOICE := "player_target_choice"
@@ -11,7 +10,6 @@ const PLAYER_TARGET_CHOICE := "player_target_choice"
 func preview_ids() -> Array[String]:
 	return [
 		MONSTER_WAGER,
-		CONTRACT_RESPONSE,
 		DISCARD_PURCHASE,
 		MONSTER_TARGET_CHOICE,
 		PLAYER_TARGET_CHOICE,
@@ -22,8 +20,6 @@ func preview_label(id: String) -> String:
 	match id:
 		MONSTER_WAGER:
 			return "怪兽赌局"
-		CONTRACT_RESPONSE:
-			return "合约回应"
 		DISCARD_PURCHASE:
 			return "私密弃牌"
 		MONSTER_TARGET_CHOICE:
@@ -37,8 +33,6 @@ func fixture(id: String) -> Dictionary:
 	match id:
 		MONSTER_WAGER:
 			return _monster_wager_fixture()
-		CONTRACT_RESPONSE:
-			return _contract_response_fixture()
 		DISCARD_PURCHASE:
 			return _discard_purchase_fixture()
 		MONSTER_TARGET_CHOICE:
@@ -66,12 +60,6 @@ func long_text_fixture(id: String) -> Dictionary:
 		wager["side_hint"] = str(wager.get("side_hint", "")) + long_tail
 		wager["public_decisions"] = str(wager.get("public_decisions", "")) + "｜玩家2 +10%｜玩家3 强制底注｜玩家4 尚未决定"
 		data["wager"] = wager
-	elif kind == CONTRACT_RESPONSE and data.get("contract", {}) is Dictionary:
-		var contract: Dictionary = (data.get("contract", {}) as Dictionary).duplicate(true)
-		contract["accept"] = str(contract.get("accept", "")) + "，同时暴露路线收益和商品控制线索"
-		contract["reject"] = str(contract.get("reject", "")) + "，拒签惩罚在公开结算中保留推理空间"
-		contract["privacy"] = str(contract.get("privacy", "")) + long_tail
-		data["contract"] = contract
 	elif data.get("choice", {}) is Dictionary:
 		var choice: Dictionary = (data.get("choice", {}) as Dictionary).duplicate(true)
 		choice["summary"] = str(choice.get("summary", "")) + long_tail
@@ -149,36 +137,6 @@ func _monster_wager_fixture() -> Dictionary:
 			"side_hint": "你尚未下注；底注5%，可加码。",
 		},
 		"accent": "#fb923c",
-	}
-
-
-func _contract_response_fixture() -> Dictionary:
-	return {
-		"id": "preview_contract_response_42",
-		"kind": CONTRACT_RESPONSE,
-		"title": "匿名合约签署窗口",
-		"body": "海雾转运合约｜雾港区 → 赤潮港｜商品：海雾果。",
-		"tooltip": "签约选择只发给目标商品控制者；发起者和回应者身份仍需要推理。",
-		"chips": [
-			{"text": "私密签约权", "tooltip": "只有目标商品控制者可操作。", "accent": "#bfdbfe"},
-			{"text": "不阻塞", "tooltip": "不阻塞其他玩家出牌。", "accent": "#fde68a"},
-			{"text": "18s", "tooltip": "超时按拒签处理。", "accent": "#fbbf24"},
-		],
-		"actions": [
-			{"id": "contract_accept_42", "label": "签约", "tooltip": "接受匿名合约。"},
-			{"id": "contract_reject_42", "label": "拒绝", "tooltip": "拒绝匿名合约。"},
-		],
-		"contract": {
-			"card": "海雾转运合约",
-			"route": "雾港区 → 赤潮港",
-			"products": "海雾果",
-			"accept": "¥+80、流通×1.25",
-			"reject": "罚¥40",
-			"timer": 18.0,
-			"timer_text": "18s",
-			"privacy": "签约选择只发给目标商品控制者；合约牌本身仍在牌轨中供全场推理。",
-		},
-		"accent": "#fbbf24",
 	}
 
 

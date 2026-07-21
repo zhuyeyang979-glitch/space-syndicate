@@ -155,8 +155,6 @@ func _priority_group_for_kind(kind: String) -> String:
 			return "monster_wager"
 		"counter_response":
 			return "counter_response"
-		"contract_response":
-			return "contract_response"
 		"discard_purchase", "monster_target_choice", "player_target_choice":
 			return "other_choice"
 		"public_bid", "card_order_bid":

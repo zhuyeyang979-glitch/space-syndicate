@@ -13,7 +13,7 @@ const FORBIDDEN_PRIVATE_KEYS := {
 }
 const FORBIDDEN_RETIRED_FIELDS := {
 	"play_region_share_required": true, "city_share": true, "project_share": true, "project_gdp": true,
-	"investment_unit": true, "contract_accept": true, "contract_decline": true, "route_hp": true,
+	"investment_unit": true, "route_hp": true,
 	"route_damage": true, "repair_routes": true, "direct_cash": true, "direct_gdp": true,
 	"direct_region_damage": true, "play_cash_cost": true,
 }

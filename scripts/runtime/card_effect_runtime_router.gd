@@ -7,7 +7,6 @@ var _table_selection_state: TableSelectionState
 var _monster_controller: MonsterRuntimeController
 var _military_controller: MilitaryRuntimeController
 var _weather_controller: WeatherRuntimeController
-var _contract_controller: ContractRuntimeController
 var _hand_interaction_service: PlayerHandInteractionRuntimeService
 var _economy_service: CardEconomyProductRouteEffectRuntimeService
 var _economy_port: CardEconomyProductRouteEffectWorldBridge
@@ -22,7 +21,6 @@ func set_dependencies(
 	monster_controller: MonsterRuntimeController,
 	military_controller: MilitaryRuntimeController,
 	weather_controller: WeatherRuntimeController,
-	contract_controller: ContractRuntimeController,
 	hand_interaction_service: PlayerHandInteractionRuntimeService,
 	economy_service: CardEconomyProductRouteEffectRuntimeService,
 	economy_port: CardEconomyProductRouteEffectWorldBridge,
@@ -35,7 +33,6 @@ func set_dependencies(
 	_monster_controller = monster_controller
 	_military_controller = military_controller
 	_weather_controller = weather_controller
-	_contract_controller = contract_controller
 	_hand_interaction_service = hand_interaction_service
 	_economy_service = economy_service
 	_economy_port = economy_port
@@ -68,9 +65,7 @@ func dispatch(transaction: Dictionary) -> Dictionary:
 			continuation_kind = str(family_result.get("continuation_kind", "normal"))
 		else:
 			resolved = _dispatch_domain_handler(handler_id, player_index, player, entry, skill)
-	if resolved and handler_id == "area_trade_contract":
-		continuation_kind = "contract_response"
-	elif _monster_controller != null and _monster_controller.open_wager_decision_count() > int(transaction.get("monster_wager_decision_count_before", 0)):
+	if _monster_controller != null and _monster_controller.open_wager_decision_count() > int(transaction.get("monster_wager_decision_count_before", 0)):
 		continuation_kind = "forced_decision_handoff"
 	return _receipt(true, resolved, "resolved" if resolved else "effect_not_resolved", continuation_kind)
 
@@ -80,7 +75,7 @@ func supported_handler_ids() -> Array:
 		"target_monster", "target_player", "monster_card", "public_facility",
 		"monster_bound_action", "military_force", "military_command",
 		"card_counter", "weather_control", "intel_city_reveal",
-		"card_history_public_review", "card_history_subscription", "intel_contract_trace", "supply_draw",
+		"card_history_public_review", "card_history_subscription", "supply_draw",
 	] + (_economy_service.supported_handlers() if _economy_service != null else [])
 
 

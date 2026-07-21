@@ -12,7 +12,6 @@ const KIND_REGION_GDP_SHARE := "region_gdp_share"
 
 const SCOPE_TARGET_REGION := "target_region"
 const SCOPE_OWN_BEST_REGION := "own_best_region"
-const SCOPE_CONTRACT_SOURCE_REGION := "contract_source_region"
 
 const BASE_SHARE_BY_RANK := {
 	1: 0,
@@ -111,8 +110,6 @@ static func scope_label(scope: String) -> String:
 	match scope:
 		SCOPE_TARGET_REGION:
 			return "目标区域"
-		SCOPE_CONTRACT_SOURCE_REGION:
-			return "合约发起区"
 	return "任一经营区"
 
 
@@ -130,8 +127,6 @@ static func _required_share_percent(rank: int, skill: Dictionary) -> int:
 
 static func _scope_for(skill: Dictionary) -> String:
 	var kind := String(skill.get("kind", ""))
-	if kind == "area_trade_contract":
-		return SCOPE_CONTRACT_SOURCE_REGION
 	if TARGET_REGION_KINDS.has(kind) and not _has_hostile_region_effect(skill):
 		return SCOPE_TARGET_REGION
 	return SCOPE_OWN_BEST_REGION

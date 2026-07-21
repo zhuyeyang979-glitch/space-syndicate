@@ -8,8 +8,6 @@ static func validation_report(decision_kind: StringName, decision_id: String, op
 			return _monster_wager_option(decision_id, option_id)
 		&"counter_response":
 			return _counter_option(option_id)
-		&"contract_response":
-			return _contract_option(decision_id, option_id)
 		&"discard_purchase":
 			return _indexed_or_cancel(option_id, "discard_purchase_", "discard_purchase_cancel")
 		&"monster_target_choice":
@@ -39,15 +37,6 @@ static func _counter_option(option_id: String) -> Dictionary:
 	if option_id == "counter_pass":
 		return _valid()
 	if option_id.begins_with("counter_play_") and option_id.trim_prefix("counter_play_").is_valid_int() and int(option_id.trim_prefix("counter_play_")) >= 0:
-		return _valid()
-	return _invalid("option_not_available")
-
-
-static func _contract_option(decision_id: String, option_id: String) -> Dictionary:
-	var contract_id := decision_id.trim_prefix("contract_response_")
-	if not decision_id.begins_with("contract_response_") or not contract_id.is_valid_int():
-		return _invalid("decision_id_invalid")
-	if option_id in ["contract_accept_%s" % contract_id, "contract_reject_%s" % contract_id]:
 		return _valid()
 	return _invalid("option_not_available")
 

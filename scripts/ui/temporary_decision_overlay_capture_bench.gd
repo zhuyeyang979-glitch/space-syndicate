@@ -13,7 +13,6 @@ const BASE_SIZES := [
 const STRESS_SIZE := {"width": 1600, "height": 960}
 const PANEL_BY_FIXTURE_ID := {
 	"monster_wager": "MonsterWagerDecisionPanel",
-	"contract_response": "ContractResponseDecisionPanel",
 	"discard_purchase": "TemporaryChoiceDecisionPanel",
 	"monster_target_choice": "TemporaryChoiceDecisionPanel",
 	"player_target_choice": "TemporaryChoiceDecisionPanel",

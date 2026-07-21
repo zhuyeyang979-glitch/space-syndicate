@@ -15,7 +15,6 @@ const DEFAULT_PREVIEW_ID := "monster_wager"
 @onready var status_label: Label = %TemporaryDecisionPreviewStatusLabel
 @onready var last_action_label: Label = %TemporaryDecisionPreviewActionLabel
 @onready var monster_wager_button: Button = %MonsterWagerPreviewButton
-@onready var contract_response_button: Button = %ContractResponsePreviewButton
 @onready var discard_button: Button = %DiscardPreviewButton
 @onready var monster_target_button: Button = %MonsterTargetPreviewButton
 @onready var player_target_button: Button = %PlayerTargetPreviewButton
@@ -99,7 +98,6 @@ func hide_overlay() -> void:
 
 func _connect_buttons() -> void:
 	_connect_button(monster_wager_button, "_on_monster_wager_pressed")
-	_connect_button(contract_response_button, "_on_contract_response_pressed")
 	_connect_button(discard_button, "_on_discard_pressed")
 	_connect_button(monster_target_button, "_on_monster_target_pressed")
 	_connect_button(player_target_button, "_on_player_target_pressed")
@@ -147,8 +145,6 @@ func _expected_panel_for(payload: Dictionary) -> String:
 	match str(payload.get("kind", "")):
 		"monster_wager":
 			return "Monster Wager Panel"
-		"contract_response":
-			return "Contract Response Panel"
 		"discard_purchase", "monster_target_choice", "player_target_choice":
 			return "Temporary Choice Panel"
 		"":
@@ -167,10 +163,6 @@ func _action_count_text(payload: Dictionary) -> String:
 
 func _on_monster_wager_pressed() -> void:
 	show_preview_id("monster_wager")
-
-
-func _on_contract_response_pressed() -> void:
-	show_preview_id("contract_response")
 
 
 func _on_discard_pressed() -> void:

@@ -1,7 +1,6 @@
 extends VBoxContainer
 class_name PlanetMapControlToolbar
 
-signal control_action_requested(action_id: String, payload: Dictionary)
 signal optional_route_selection_changed(product_id: String)
 signal map_layer_focus_requested(layer_id: String)
 
@@ -15,9 +14,6 @@ const LAYER_IDS := ["all", "product", "route", "intel", "weather", "monster", "c
 @onready var layer_status_label: Label = %MapLayerStatusLabel
 @onready var trade_product_selector: OptionButton = %MapTradeProductSelector
 @onready var trade_status_label: Label = %MapTradeStatusLabel
-@onready var contract_source_button: Button = %MapContractSourceButton
-@onready var contract_target_button: Button = %MapContractTargetButton
-@onready var contract_status_label: Label = %MapContractStatusLabel
 
 var _layer_buttons: Dictionary = {}
 var _applying_snapshot := false
@@ -44,10 +40,6 @@ func _ready() -> void:
 		button.set_meta("layer_id", layer_id)
 		button.pressed.connect(_emit_layer_focus.bind(layer_id))
 	trade_product_selector.item_selected.connect(_on_trade_product_selected)
-	contract_source_button.pressed.connect(_emit_contract_endpoint.bind("map_contract_source_select", contract_source_button))
-	contract_target_button.pressed.connect(_emit_contract_endpoint.bind("map_contract_target_select", contract_target_button))
-	_style_command_button(contract_source_button, Color("#38bdf8"))
-	_style_command_button(contract_target_button, Color("#f59e0b"))
 	set_controls({})
 
 
@@ -59,9 +51,6 @@ func set_controls(snapshot: Dictionary) -> void:
 	_apply_layers(snapshot.get("layers", []), str(snapshot.get("selected_layer_id", "all")))
 	_apply_label(layer_status_label, snapshot.get("layer_status", {}), "图层:全图", "当前地图图层焦点。")
 	_apply_trade(snapshot.get("trade", {}))
-	_apply_button(contract_source_button, snapshot.get("contract_source", {}), "供给端")
-	_apply_button(contract_target_button, snapshot.get("contract_target", {}), "需求端")
-	_apply_label(contract_status_label, snapshot.get("contract_status", {}), "⇄ 合约未设", "下一张合约牌的供给端与需求端。")
 	_applying_snapshot = false
 
 
@@ -96,9 +85,6 @@ func debug_snapshot() -> Dictionary:
 		"selected_trade_product_id": _selected_trade_product_id(),
 		"route_view_enabled": _route_view_enabled,
 		"trade_status": trade_status_label.text,
-		"contract_source": _button_snapshot(contract_source_button),
-		"contract_target": _button_snapshot(contract_target_button),
-		"contract_status": contract_status_label.text,
 	}
 
 
@@ -249,16 +235,6 @@ func selected_map_layer_status() -> Dictionary:
 			"tooltip": str(entry.get("tip", "当前地图图层焦点。")),
 		}
 	return {"text": "图层:全图", "tooltip": "显示全部公开地图信息。"}
-
-
-func _emit_contract_endpoint(action_id: String, button: Button) -> void:
-	if button != null and button.visible and not button.disabled:
-		_emit_control_action(action_id, {})
-
-
-func _emit_control_action(action_id: String, payload: Dictionary) -> void:
-	if action_id.strip_edges() != "":
-		control_action_requested.emit(action_id, payload.duplicate(true))
 
 
 func _selected_trade_product_id() -> String:

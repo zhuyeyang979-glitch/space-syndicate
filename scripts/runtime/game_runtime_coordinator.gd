@@ -290,8 +290,6 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var military_world_bridge := _military_runtime_world_bridge_node()
 	var weather_controller := _weather_runtime_controller_node()
 	var weather_world_bridge := _weather_runtime_world_bridge_node()
-	var contract_controller := _contract_runtime_controller_node()
-	var contract_world_bridge := _contract_runtime_world_bridge_node()
 	var ai_controller := _ai_runtime_controller_node()
 	var ai_world_bridge := _ai_runtime_world_bridge_node()
 	var visual_cue_owner := _visual_cue_runtime_owner_node()
@@ -304,10 +302,6 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		economy_product_route_bridge.call("set_product_market_runtime_controller", product_market_controller)
 	if economy_product_route_bridge != null and economy_product_route_bridge.has_method("set_city_gdp_derivative_runtime_controller"):
 		economy_product_route_bridge.call("set_city_gdp_derivative_runtime_controller", city_gdp_derivative_controller)
-	if contract_world_bridge != null and contract_world_bridge.has_method("set_product_market_runtime_controller"):
-		contract_world_bridge.call("set_product_market_runtime_controller", product_market_controller)
-	if contract_world_bridge != null and contract_world_bridge.has_method("set_route_network_runtime_controller"):
-		contract_world_bridge.call("set_route_network_runtime_controller", route_network_controller)
 	if weather_controller != null and weather_controller.has_method("set_world_bridge"):
 		weather_controller.call("set_world_bridge", weather_world_bridge)
 	if weather_controller != null and weather_controller.has_method("set_world_effective_clock"):
@@ -325,10 +319,6 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var weather_presentation := _weather_presentation_runtime_service_node()
 	if weather_presentation != null and weather_presentation.has_method("configure"):
 		weather_presentation.call("configure", weather_controller)
-	if contract_controller != null and contract_controller.has_method("set_world_bridge"):
-		contract_controller.call("set_world_bridge", contract_world_bridge)
-	if contract_controller != null and contract_controller.has_method("configure"):
-		contract_controller.call("configure", ruleset_snapshot)
 	if ai_controller != null and ai_controller.has_method("set_world_bridge"):
 		ai_controller.call("set_world_bridge", ai_world_bridge)
 	if ai_controller != null and ai_controller.has_method("set_monster_runtime_controller"):
@@ -337,8 +327,6 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		ai_controller.call("set_military_runtime_controller", military_controller)
 	if ai_controller != null and ai_controller.has_method("set_weather_runtime_controller"):
 		ai_controller.call("set_weather_runtime_controller", weather_controller)
-	if ai_controller != null and ai_controller.has_method("set_contract_runtime_controller"):
-		ai_controller.call("set_contract_runtime_controller", contract_controller)
 	if ai_controller != null and ai_controller.has_method("set_product_market_runtime_controller"):
 		ai_controller.call("set_product_market_runtime_controller", product_market_controller)
 	if ai_controller != null and ai_controller.has_method("set_city_gdp_derivative_runtime_controller"):
@@ -426,7 +414,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	if product_market_controller != null and product_market_controller.has_method("set_route_network_runtime_controller"):
 		product_market_controller.call("set_route_network_runtime_controller", route_network_controller)
 	if victory_world_bridge != null and victory_world_bridge.has_method("set_runtime_dependencies"):
-		victory_world_bridge.call("set_runtime_dependencies", region_infrastructure, commodity_flow, contract_controller, product_market_controller, city_gdp_derivative_controller, military_controller)
+		victory_world_bridge.call("set_runtime_dependencies", region_infrastructure, commodity_flow, product_market_controller, city_gdp_derivative_controller, military_controller)
 	if victory_controller != null and victory_controller.has_method("set_world_bridge"):
 		victory_controller.call("set_world_bridge", victory_world_bridge)
 	if victory_controller != null and victory_controller.has_method("configure"):
@@ -484,12 +472,11 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var monster_snapshot := _monster_runtime_debug_snapshot()
 	var military_snapshot := _military_runtime_debug_snapshot()
 	var weather_snapshot := _weather_runtime_debug_snapshot()
-	var contract_snapshot := _contract_runtime_debug_snapshot()
 	var victory_snapshot := _victory_control_runtime_debug_snapshot()
 	var world_clock_snapshot := _node_debug_snapshot(world_clock)
 	var solar_snapshot := _node_debug_snapshot(solar_availability)
 	var card_market_snapshot := _node_debug_snapshot(card_market_pricing)
-	_composition_ready = _ruleset_id == "v0.4" and scheduler != null and not priority_order.is_empty() and bool(world_clock_snapshot.get("controller_ready", false)) and bool(solar_snapshot.get("service_ready", false)) and bool(card_market_snapshot.get("controller_ready", false)) and bool(card_runtime_catalog_snapshot.get("service_ready", false)) and bool(card_definition_bridge_snapshot.get("bridge_ready", false)) and bool(balance_diagnostics_snapshot.get("service_ready", false)) and bool(session_snapshot.get("session_ready", false)) and bool(purchase_snapshot.get("controller_ready", false)) and bool(card_inventory_snapshot.get("service_ready", false)) and bool(card_resolution_queue_snapshot.get("service_ready", false)) and bool(card_resolution_execution_snapshot.get("service_ready", false)) and bool(economy_product_route_effect_snapshot.get("service_ready", false)) and bool(economy_product_route_formula_snapshot.get("service_ready", false)) and bool(product_market_snapshot.get("controller_ready", false)) and bool(city_gdp_derivative_snapshot.get("controller_ready", false)) and bool(route_network_snapshot.get("controller_ready", false)) and bool(commodity_flow_snapshot.get("controller_ready", false)) and bool(commodity_flow_bridge_snapshot.get("bridge_ready", false)) and bool(player_mana_snapshot.get("controller_ready", false)) and bool(hand_interaction_snapshot.get("service_ready", false)) and bool(purchase_settlement_snapshot.get("service_ready", false)) and bool(codex_navigation_snapshot.get("controller_ready", false)) and bool(codex_public_snapshot_debug.get("service_ready", false)) and bool(monster_codex_public_snapshot_debug.get("service_ready", false)) and bool(monster_codex_public_source_debug.get("service_ready", false)) and bool(product_codex_public_snapshot_debug.get("service_ready", false)) and bool(product_codex_public_source_debug.get("service_ready", false)) and bool(card_codex_public_snapshot_debug.get("service_ready", false)) and bool(card_codex_public_source_debug.get("service_ready", false)) and bool(region_codex_public_source_debug.get("service_ready", false)) and bool(economy_dashboard_public_snapshot_debug.get("service_ready", false)) and bool(standings_public_snapshot_debug.get("service_ready", false)) and bool(final_settlement_public_snapshot_debug.get("service_ready", false)) and bool(intel_dossier_public_snapshot_debug.get("service_ready", false)) and bool(district_supply_snapshot_state.get("service_ready", false)) and bool(card_presentation_snapshot.get("service_ready", false)) and bool(card_play_eligibility_snapshot.get("service_ready", false)) and bool(card_play_world_bridge_snapshot.get("bridge_ready", false)) and bool(table_viewmodel_snapshot.get("service_ready", false)) and bool(ai_snapshot.get("controller_ready", false)) and bool(monster_snapshot.get("controller_ready", false)) and bool(military_snapshot.get("controller_ready", false)) and bool(weather_snapshot.get("controller_ready", false)) and bool(contract_snapshot.get("controller_ready", false)) and bool(victory_snapshot.get("controller_ready", false))
+	_composition_ready = _ruleset_id == "v0.4" and scheduler != null and not priority_order.is_empty() and bool(world_clock_snapshot.get("controller_ready", false)) and bool(solar_snapshot.get("service_ready", false)) and bool(card_market_snapshot.get("controller_ready", false)) and bool(card_runtime_catalog_snapshot.get("service_ready", false)) and bool(card_definition_bridge_snapshot.get("bridge_ready", false)) and bool(balance_diagnostics_snapshot.get("service_ready", false)) and bool(session_snapshot.get("session_ready", false)) and bool(purchase_snapshot.get("controller_ready", false)) and bool(card_inventory_snapshot.get("service_ready", false)) and bool(card_resolution_queue_snapshot.get("service_ready", false)) and bool(card_resolution_execution_snapshot.get("service_ready", false)) and bool(economy_product_route_effect_snapshot.get("service_ready", false)) and bool(economy_product_route_formula_snapshot.get("service_ready", false)) and bool(product_market_snapshot.get("controller_ready", false)) and bool(city_gdp_derivative_snapshot.get("controller_ready", false)) and bool(route_network_snapshot.get("controller_ready", false)) and bool(commodity_flow_snapshot.get("controller_ready", false)) and bool(commodity_flow_bridge_snapshot.get("bridge_ready", false)) and bool(player_mana_snapshot.get("controller_ready", false)) and bool(hand_interaction_snapshot.get("service_ready", false)) and bool(purchase_settlement_snapshot.get("service_ready", false)) and bool(codex_navigation_snapshot.get("controller_ready", false)) and bool(codex_public_snapshot_debug.get("service_ready", false)) and bool(monster_codex_public_snapshot_debug.get("service_ready", false)) and bool(monster_codex_public_source_debug.get("service_ready", false)) and bool(product_codex_public_snapshot_debug.get("service_ready", false)) and bool(product_codex_public_source_debug.get("service_ready", false)) and bool(card_codex_public_snapshot_debug.get("service_ready", false)) and bool(card_codex_public_source_debug.get("service_ready", false)) and bool(region_codex_public_source_debug.get("service_ready", false)) and bool(economy_dashboard_public_snapshot_debug.get("service_ready", false)) and bool(standings_public_snapshot_debug.get("service_ready", false)) and bool(final_settlement_public_snapshot_debug.get("service_ready", false)) and bool(intel_dossier_public_snapshot_debug.get("service_ready", false)) and bool(district_supply_snapshot_state.get("service_ready", false)) and bool(card_presentation_snapshot.get("service_ready", false)) and bool(card_play_eligibility_snapshot.get("service_ready", false)) and bool(card_play_world_bridge_snapshot.get("bridge_ready", false)) and bool(table_viewmodel_snapshot.get("service_ready", false)) and bool(ai_snapshot.get("controller_ready", false)) and bool(monster_snapshot.get("controller_ready", false)) and bool(military_snapshot.get("controller_ready", false)) and bool(weather_snapshot.get("controller_ready", false)) and bool(victory_snapshot.get("controller_ready", false))
 	_composition_ready = _composition_ready and bool(action_result_presentation_snapshot.get("service_ready", false))
 	_refresh_coordinator_readiness()
 
@@ -580,14 +567,6 @@ func bind_ai_world(world: Node) -> void:
 	var weather_controller := _weather_runtime_controller_node()
 	if weather_controller != null and weather_controller.has_method("set_world_bridge"):
 		weather_controller.call("set_world_bridge", weather_bridge)
-	var contract_bridge := _contract_runtime_world_bridge_node()
-	if contract_bridge != null and contract_bridge.has_method("bind_world"):
-		contract_bridge.call("bind_world", world)
-	var contract_controller := _contract_runtime_controller_node()
-	if contract_controller != null and contract_controller.has_method("set_world_bridge"):
-		contract_controller.call("set_world_bridge", contract_bridge)
-	if controller != null and controller.has_method("set_contract_runtime_controller"):
-		controller.call("set_contract_runtime_controller", contract_controller)
 	if controller != null and controller.has_method("set_product_market_runtime_controller"):
 		controller.call("set_product_market_runtime_controller", product_market_controller)
 	if controller != null and controller.has_method("set_city_gdp_derivative_runtime_controller"):
@@ -608,10 +587,6 @@ func bind_ai_world(world: Node) -> void:
 		weather_controller.call("set_product_market_runtime_controller", product_market_controller)
 	if weather_controller != null and weather_controller.has_method("set_route_network_runtime_controller"):
 		weather_controller.call("set_route_network_runtime_controller", route_network_controller)
-	if contract_bridge != null and contract_bridge.has_method("set_product_market_runtime_controller"):
-		contract_bridge.call("set_product_market_runtime_controller", product_market_controller)
-	if contract_bridge != null and contract_bridge.has_method("set_route_network_runtime_controller"):
-		contract_bridge.call("set_route_network_runtime_controller", route_network_controller)
 	if product_market_controller != null and product_market_controller.has_method("set_route_network_runtime_controller"):
 		product_market_controller.call("set_route_network_runtime_controller", route_network_controller)
 	var effect_bridge := _card_economy_product_route_effect_world_bridge_node()
@@ -625,7 +600,7 @@ func bind_ai_world(world: Node) -> void:
 	if victory_bridge != null and victory_bridge.has_method("bind_world"):
 		victory_bridge.call("bind_world", world)
 	if victory_bridge != null and victory_bridge.has_method("set_runtime_dependencies"):
-		victory_bridge.call("set_runtime_dependencies", region_infrastructure, commodity_flow_controller, contract_controller, product_market_controller, city_gdp_derivative_controller, military_controller)
+		victory_bridge.call("set_runtime_dependencies", region_infrastructure, commodity_flow_controller, product_market_controller, city_gdp_derivative_controller, military_controller)
 	var victory_controller := _victory_control_runtime_controller_node()
 	if victory_controller != null and victory_controller.has_method("set_world_bridge"):
 		victory_controller.call("set_world_bridge", victory_bridge)
@@ -986,7 +961,6 @@ func _wire_runtime_world_ports() -> void:
 	)
 	_runtime_card_port_node().bind_dependencies(
 		_card_resolution_frame_driver_node(),
-		_contract_runtime_controller_node() as ContractRuntimeController,
 		_card_cooldown_runtime_controller_node(),
 		_scheduler_node() as ForcedDecisionRuntimeScheduler
 	)
@@ -1389,7 +1363,6 @@ func _wire_table_selection_state() -> void:
 	var monster_bridge := _monster_runtime_world_bridge_node()
 	var military_bridge := _military_runtime_world_bridge_node()
 	var market_bridge := _product_market_runtime_world_bridge_node()
-	var contract_bridge := _contract_runtime_world_bridge_node()
 	var eligibility_bridge := _card_play_world_bridge_node()
 	var diagnostics_bridge := _gameplay_balance_diagnostics_world_bridge_node()
 	var infrastructure_bridge := _region_infrastructure_world_bridge_node()
@@ -1403,8 +1376,6 @@ func _wire_table_selection_state() -> void:
 		(military_bridge as MilitaryRuntimeWorldBridge).set_table_selection_state(state)
 	if market_bridge is ProductMarketRuntimeWorldBridge:
 		(market_bridge as ProductMarketRuntimeWorldBridge).set_table_selection_state(state)
-	if contract_bridge is ContractRuntimeWorldBridge:
-		(contract_bridge as ContractRuntimeWorldBridge).set_table_selection_state(state)
 	if eligibility_bridge is CardPlayEligibilityWorldBridge:
 		(eligibility_bridge as CardPlayEligibilityWorldBridge).set_table_selection_state(state)
 	if diagnostics_bridge is GameplayBalanceDiagnosticsWorldBridge:
@@ -1426,7 +1397,6 @@ func _wire_world_session_state() -> void:
 	var military_bridge := _military_runtime_world_bridge_node()
 	var weather_bridge := _weather_runtime_world_bridge_node()
 	var market_bridge := _product_market_runtime_world_bridge_node()
-	var contract_bridge := _contract_runtime_world_bridge_node()
 	var eligibility_bridge := _card_play_world_bridge_node()
 	var diagnostics_bridge := _gameplay_balance_diagnostics_world_bridge_node()
 	var infrastructure_bridge := _region_infrastructure_world_bridge_node()
@@ -1450,8 +1420,6 @@ func _wire_world_session_state() -> void:
 		(weather_bridge as WeatherRuntimeWorldBridge).set_world_session_state(state)
 	if market_bridge is ProductMarketRuntimeWorldBridge:
 		(market_bridge as ProductMarketRuntimeWorldBridge).set_world_session_state(state)
-	if contract_bridge is ContractRuntimeWorldBridge:
-		(contract_bridge as ContractRuntimeWorldBridge).set_world_session_state(state)
 	if eligibility_bridge is CardPlayEligibilityWorldBridge:
 		(eligibility_bridge as CardPlayEligibilityWorldBridge).set_world_session_state(state)
 	if diagnostics_bridge is GameplayBalanceDiagnosticsWorldBridge:
@@ -1497,9 +1465,6 @@ func _wire_monster_wager_cash_commitment_query_port() -> void:
 	var derivative_bridge := _city_gdp_derivative_runtime_world_bridge_node()
 	if derivative_bridge is CityGdpDerivativeRuntimeWorldBridge:
 		(derivative_bridge as CityGdpDerivativeRuntimeWorldBridge).set_cash_commitment_query_port(port)
-	var contract_bridge := _contract_runtime_world_bridge_node()
-	if contract_bridge is ContractRuntimeWorldBridge:
-		(contract_bridge as ContractRuntimeWorldBridge).set_cash_commitment_query_port(port)
 	var flow_bridge := _commodity_flow_world_bridge_node()
 	if flow_bridge is CommodityFlowWorldBridge:
 		(flow_bridge as CommodityFlowWorldBridge).set_cash_commitment_query_port(port)
@@ -1527,7 +1492,6 @@ func _wire_card_execution_typed_ports() -> void:
 	var monster := _monster_runtime_controller_node() as MonsterRuntimeController
 	var military := _military_runtime_controller_node() as MilitaryRuntimeController
 	var weather := _weather_runtime_controller_node() as WeatherRuntimeController
-	var contract := _contract_runtime_controller_node() as ContractRuntimeController
 	var session := _session_node() as GameSessionRuntimeController
 	var scheduler := _scheduler_node() as ForcedDecisionRuntimeScheduler
 	var commodity_flow := _commodity_flow_runtime_controller_node() as CommodityFlowRuntimeController
@@ -1545,20 +1509,18 @@ func _wire_card_execution_typed_ports() -> void:
 	var economy_port := _card_economy_product_route_effect_world_bridge_node() as CardEconomyProductRouteEffectWorldBridge
 	var cash_commitment_query := _monster_wager_cash_commitment_query_port_node()
 	if eligibility_facts != null:
-		eligibility_facts.set_runtime_dependencies(queue, resolution, target_choice, monster, military, contract, session, scheduler, commodity_flow, cash_commitment_query)
-	if economy_port != null:
-		economy_port.set_contract_runtime_controller(contract)
+		eligibility_facts.set_runtime_dependencies(queue, resolution, target_choice, monster, military, session, scheduler, commodity_flow, cash_commitment_query)
 	if history_query != null:
 		history_query.configure(history)
 	if history_annotations != null:
 		history_annotations.configure(history_query)
 	if intel != null:
-		intel.set_dependencies(world_state, history_query, history_annotations, contract)
+		intel.set_dependencies(world_state, history_query, history_annotations)
 	if commitment != null:
 		commitment.set_dependencies(world_state, _card_cooldown_runtime_controller_node(), _weather_telemetry_runtime_service_node() as WeatherTelemetryRuntimeService, eligibility_facts, eligibility, cash_commitment_query)
 	if effect_router != null:
 		effect_router.set_dependencies(
-			world_state, selection, monster, military, weather, contract,
+			world_state, selection, monster, military, weather,
 			_player_hand_interaction_node() as PlayerHandInteractionRuntimeService,
 			_card_economy_product_route_effect_node() as CardEconomyProductRouteEffectRuntimeService,
 			economy_port, intel, presentation, self
@@ -1576,7 +1538,7 @@ func _wire_card_execution_typed_ports() -> void:
 	if submission != null:
 		submission.set_dependencies(
 			world_state, selection, eligibility_facts, eligibility, queue, resolution,
-			target_choice, contract,
+			target_choice,
 			_product_market_runtime_controller_node() as ProductMarketRuntimeController,
 			_city_gdp_derivative_runtime_controller_node() as CityGdpDerivativeRuntimeController,
 			selection_catalog,
@@ -1586,10 +1548,6 @@ func _wire_card_execution_typed_ports() -> void:
 	var ai := _ai_runtime_controller_node() as AiRuntimeController
 	if ai != null:
 		ai.set_card_execution_dependencies(submission, history)
-	var contract_bridge := _contract_runtime_world_bridge_node() as ContractRuntimeWorldBridge
-	if contract_bridge != null:
-		contract_bridge.set_card_resolution_history_service(history, queue)
-		contract_bridge.set_card_presentation_service(_card_presentation_node() as CardPresentationRuntimeService)
 
 
 func solar_public_presentation_snapshot() -> Dictionary:
@@ -1971,10 +1929,6 @@ func military_runtime_controller() -> MilitaryRuntimeController:
 
 func weather_runtime_controller() -> WeatherRuntimeController:
 	return _weather_runtime_controller_node() as WeatherRuntimeController
-
-
-func contract_runtime_controller() -> ContractRuntimeController:
-	return _contract_runtime_controller_node() as ContractRuntimeController
 
 
 func product_market_runtime_controller() -> ProductMarketRuntimeController:
@@ -2835,34 +2789,6 @@ func commodity_card_inventory_runtime_call(method_name: StringName, arguments: A
 	return controller.callv(method_name, arguments)
 
 
-func contract_runtime_call(method_name: StringName, arguments: Array = []) -> Variant:
-	var controller := _contract_runtime_controller_node()
-	if controller == null or not controller.has_method(method_name):
-		push_error("ContractRuntimeController method unavailable: %s" % method_name)
-		return null
-	return controller.callv(method_name, arguments)
-
-
-func contract_to_save_data() -> Dictionary:
-	var controller := _contract_runtime_controller_node()
-	var value: Variant = controller.call("to_save_data") if controller != null and controller.has_method("to_save_data") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func apply_contract_save_data(data: Dictionary) -> Dictionary:
-	var controller := _contract_runtime_controller_node()
-	var value: Variant = controller.call("apply_save_data", data) if controller != null and controller.has_method("apply_save_data") else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-
-func tick_contract_runtime(delta: float) -> Dictionary:
-	var ports := _runtime_world_ports_node()
-	return _runtime_card_port_node().tick_contract_runtime(delta) if ports != null and _runtime_card_port_node() != null else {
-		"ticked": false,
-		"reason": "runtime_card_port_unavailable",
-	}
-
-
 func weather_runtime_call(method_name: StringName, arguments: Array = []) -> Variant:
 	var controller := _weather_runtime_controller_node()
 	if controller == null or not controller.has_method(method_name):
@@ -3409,7 +3335,7 @@ func apply_new_session_plan(plan: Dictionary) -> Dictionary:
 		_player_mana_runtime_controller_node(), _commodity_card_inventory_runtime_controller_node(),
 		_player_organization_runtime_controller_node(), _bankruptcy_neutral_estate_runtime_controller_node(),
 		_victory_control_runtime_controller_node(), _ai_runtime_controller_node(), _monster_runtime_controller_node(),
-		_military_runtime_controller_node(), _weather_runtime_controller_node(), _contract_runtime_controller_node(),
+		_military_runtime_controller_node(), _weather_runtime_controller_node(),
 		_purchase_node(), _card_resolution_execution_node(), _card_resolution_runtime_controller_node(),
 	]:
 		if owner != null and owner.has_method("reset_state"):
@@ -3592,7 +3518,6 @@ func _new_session_saved_owners() -> Array:
 		{"owner_id": "monster", "owner": _monster_runtime_controller_node()},
 		{"owner_id": "military", "owner": _military_runtime_controller_node()},
 		{"owner_id": "weather", "owner": _weather_runtime_controller_node()},
-		{"owner_id": "contract", "owner": _contract_runtime_controller_node()},
 		{"owner_id": "purchase", "owner": _purchase_node()},
 		{"owner_id": "resolution_execution", "owner": _card_resolution_execution_node()},
 		{"owner_id": "resolution_history", "owner": _card_resolution_history_runtime_service_node()},
@@ -3678,9 +3603,6 @@ func reset_state() -> void:
 	var weather_controller := _weather_runtime_controller_node()
 	if weather_controller != null and weather_controller.has_method("reset_state"):
 		weather_controller.call("reset_state")
-	var contract_controller := _contract_runtime_controller_node()
-	if contract_controller != null and contract_controller.has_method("reset_state"):
-		contract_controller.call("reset_state")
 	var route_network_controller := _route_network_runtime_controller_node()
 	if route_network_controller != null and route_network_controller.has_method("reset_state"):
 		route_network_controller.call("reset_state")
@@ -4754,7 +4676,6 @@ func debug_snapshot() -> Dictionary:
 	var monster_runtime_snapshot := _monster_runtime_debug_snapshot()
 	var military_runtime_snapshot := _military_runtime_debug_snapshot()
 	var weather_runtime_snapshot := _weather_runtime_debug_snapshot()
-	var contract_runtime_snapshot := _contract_runtime_debug_snapshot()
 	var victory_control_runtime_snapshot := _victory_control_runtime_debug_snapshot()
 	var victory_control_world_bridge_snapshot := _victory_control_world_bridge_debug_snapshot()
 	var table_presentation_query_ports_snapshot := _table_presentation_query_ports_node().debug_snapshot() if _table_presentation_query_ports_node() != null else {}
@@ -4763,7 +4684,7 @@ func debug_snapshot() -> Dictionary:
 		"coordinator_composition_ready": _composition_ready,
 		"v06_production_player_bindings_ready": bool(_last_v06_player_binding_result.get("ready", false)),
 		"v06_production_player_bindings": _last_v06_player_binding_result.duplicate(true),
-		"coordinator_authoritative": _configured and bool(scheduler_snapshot.get("scheduler_authoritative", false)) and bool(card_runtime_catalog_snapshot.get("service_authoritative", false)) and bool(session_snapshot.get("session_authoritative", false)) and bool(purchase_snapshot.get("controller_authoritative", false)) and bool(card_inventory_snapshot.get("service_authoritative", false)) and bool(card_resolution_queue_snapshot.get("service_authoritative", false)) and bool(card_resolution_execution_snapshot.get("service_authoritative", false)) and bool(economy_product_route_effect_snapshot.get("service_authoritative", false)) and bool(economy_product_route_formula_snapshot.get("service_authoritative", false)) and bool(product_market_runtime_snapshot.get("controller_authoritative", false)) and bool(city_gdp_derivative_runtime_snapshot.get("controller_authoritative", false)) and bool(commodity_flow_runtime_snapshot.get("controller_authoritative", false)) and bool(hand_interaction_snapshot.get("service_authoritative", false)) and bool(purchase_settlement_snapshot.get("service_authoritative", false)) and bool(codex_navigation_snapshot.get("controller_authoritative", false)) and bool(codex_public_snapshot.get("service_authoritative", false)) and bool(monster_codex_public_snapshot.get("service_authoritative", false)) and bool(monster_codex_public_source.get("service_authoritative", false)) and bool(product_codex_public_snapshot.get("service_authoritative", false)) and bool(product_codex_public_source.get("service_authoritative", false)) and bool(card_codex_public_snapshot.get("service_authoritative", false)) and bool(economy_dashboard_public_snapshot.get("service_authoritative", false)) and bool(standings_public_snapshot.get("service_authoritative", false)) and bool(final_settlement_public_snapshot.get("service_authoritative", false)) and bool(intel_dossier_public_snapshot.get("service_authoritative", false)) and bool(district_supply_snapshot.get("service_authoritative", false)) and bool(card_presentation_snapshot.get("service_authoritative", false)) and bool(card_play_eligibility_snapshot.get("service_authoritative", false)) and bool(table_viewmodel_snapshot.get("service_authoritative", false)) and bool(monster_runtime_snapshot.get("controller_authoritative", false)) and bool(military_runtime_snapshot.get("controller_authoritative", false)) and bool(weather_runtime_snapshot.get("controller_authoritative", false)) and bool(contract_runtime_snapshot.get("controller_authoritative", false)),
+		"coordinator_authoritative": _configured and bool(scheduler_snapshot.get("scheduler_authoritative", false)) and bool(card_runtime_catalog_snapshot.get("service_authoritative", false)) and bool(session_snapshot.get("session_authoritative", false)) and bool(purchase_snapshot.get("controller_authoritative", false)) and bool(card_inventory_snapshot.get("service_authoritative", false)) and bool(card_resolution_queue_snapshot.get("service_authoritative", false)) and bool(card_resolution_execution_snapshot.get("service_authoritative", false)) and bool(economy_product_route_effect_snapshot.get("service_authoritative", false)) and bool(economy_product_route_formula_snapshot.get("service_authoritative", false)) and bool(product_market_runtime_snapshot.get("controller_authoritative", false)) and bool(city_gdp_derivative_runtime_snapshot.get("controller_authoritative", false)) and bool(commodity_flow_runtime_snapshot.get("controller_authoritative", false)) and bool(hand_interaction_snapshot.get("service_authoritative", false)) and bool(purchase_settlement_snapshot.get("service_authoritative", false)) and bool(codex_navigation_snapshot.get("controller_authoritative", false)) and bool(codex_public_snapshot.get("service_authoritative", false)) and bool(monster_codex_public_snapshot.get("service_authoritative", false)) and bool(monster_codex_public_source.get("service_authoritative", false)) and bool(product_codex_public_snapshot.get("service_authoritative", false)) and bool(product_codex_public_source.get("service_authoritative", false)) and bool(card_codex_public_snapshot.get("service_authoritative", false)) and bool(economy_dashboard_public_snapshot.get("service_authoritative", false)) and bool(standings_public_snapshot.get("service_authoritative", false)) and bool(final_settlement_public_snapshot.get("service_authoritative", false)) and bool(intel_dossier_public_snapshot.get("service_authoritative", false)) and bool(district_supply_snapshot.get("service_authoritative", false)) and bool(card_presentation_snapshot.get("service_authoritative", false)) and bool(card_play_eligibility_snapshot.get("service_authoritative", false)) and bool(table_viewmodel_snapshot.get("service_authoritative", false)) and bool(monster_runtime_snapshot.get("controller_authoritative", false)) and bool(military_runtime_snapshot.get("controller_authoritative", false)) and bool(weather_runtime_snapshot.get("controller_authoritative", false)),
 		"ruleset_id": _ruleset_id,
 		"forced_decision_scheduler": scheduler_snapshot,
 		"world_effective_clock": world_clock_snapshot,
@@ -4820,7 +4741,6 @@ func debug_snapshot() -> Dictionary:
 		"monster_runtime": monster_runtime_snapshot,
 		"military_runtime": military_runtime_snapshot,
 		"weather_runtime": weather_runtime_snapshot,
-		"contract_runtime": contract_runtime_snapshot,
 		"victory_control_runtime": victory_control_runtime_snapshot,
 		"victory_control_world_bridge": victory_control_world_bridge_snapshot,
 		"table_presentation_query_ports": table_presentation_query_ports_snapshot,
@@ -4890,7 +4810,6 @@ func _wire_forced_decision_candidate_sources() -> void:
 		_monster_runtime_controller_node() as MonsterRuntimeController,
 		_card_resolution_runtime_controller_node(),
 		_card_resolution_queue_node(),
-		_contract_runtime_controller_node() as ContractRuntimeController,
 		_purchase_node() as DistrictPurchaseRuntimeController,
 		_card_target_choice_runtime_controller_node(),
 		_scheduler_node() as ForcedDecisionRuntimeScheduler
@@ -5043,7 +4962,6 @@ func _wire_table_presentation_source_target() -> void:
 		_region_infrastructure_runtime_controller_node() as RegionInfrastructureRuntimeController,
 		_weather_presentation_runtime_service_node() as WeatherPresentationRuntimeService,
 		_victory_control_runtime_controller_node() as VictoryControlRuntimeController,
-		_contract_runtime_controller_node() as ContractRuntimeController,
 		_purchase_node() as DistrictPurchaseRuntimeController,
 		_card_target_choice_runtime_controller_node(),
 		_monster_runtime_controller_node() as MonsterRuntimeController,
@@ -5234,15 +5152,12 @@ func _wire_domain_presentation_ports(refresh_port: TablePresentationRefreshPort,
 	var monster := _monster_runtime_controller_node()
 	var military := _military_runtime_controller_node()
 	var weather := _weather_runtime_controller_node()
-	var contract_bridge := _contract_runtime_world_bridge_node()
 	if monster != null:
 		monster.set_table_presentation_ports(refresh_port, public_log_port, clock)
 	if military != null:
 		military.set_table_presentation_ports(refresh_port, public_log_port, clock)
 	if weather != null:
 		weather.set_table_presentation_ports(refresh_port, public_log_port, clock)
-	if contract_bridge != null:
-		contract_bridge.set_table_presentation_ports(refresh_port, public_log_port, clock)
 	var product_market := _product_market_runtime_controller_node() as ProductMarketRuntimeController
 	if product_market != null:
 		product_market.set_table_presentation_log_port(public_log_port, clock)
@@ -5523,14 +5438,6 @@ func _weather_telemetry_runtime_service_node() -> Node:
 	return get_node_or_null("WeatherTelemetryRuntimeService")
 
 
-func _contract_runtime_controller_node() -> Node:
-	return get_node_or_null("ContractRuntimeController")
-
-
-func _contract_runtime_world_bridge_node() -> Node:
-	return get_node_or_null("ContractRuntimeWorldBridge")
-
-
 func _card_play_eligibility_node() -> Node:
 	return get_node_or_null("CardPlayEligibilityRuntimeService")
 
@@ -5759,15 +5666,6 @@ func _military_runtime_debug_snapshot() -> Dictionary:
 
 func _weather_runtime_debug_snapshot() -> Dictionary:
 	var controller := _weather_runtime_controller_node()
-	if controller != null and controller.has_method("debug_snapshot"):
-		var snapshot_variant: Variant = controller.call("debug_snapshot", -1)
-		if snapshot_variant is Dictionary:
-			return (snapshot_variant as Dictionary).duplicate(true)
-	return {}
-
-
-func _contract_runtime_debug_snapshot() -> Dictionary:
-	var controller := _contract_runtime_controller_node()
 	if controller != null and controller.has_method("debug_snapshot"):
 		var snapshot_variant: Variant = controller.call("debug_snapshot", -1)
 		if snapshot_variant is Dictionary:

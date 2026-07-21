@@ -9,7 +9,6 @@ var _world: Node
 var _world_session_state: WorldSessionState
 var _region_infrastructure_controller: Node
 var _commodity_flow_controller: Node
-var _contract_controller: Node
 var _product_market_controller: Node
 var _city_gdp_derivative_controller: Node
 var _military_controller: Node
@@ -28,10 +27,9 @@ func world_session_state() -> WorldSessionState:
 	return _world_session_state
 
 
-func set_runtime_dependencies(region_infrastructure_controller: Node, commodity_flow_controller: Node, contract_controller: Node, product_market_controller: Node, city_gdp_derivative_controller: Node, military_controller: Node) -> void:
+func set_runtime_dependencies(region_infrastructure_controller: Node, commodity_flow_controller: Node, product_market_controller: Node, city_gdp_derivative_controller: Node, military_controller: Node) -> void:
 	_region_infrastructure_controller = region_infrastructure_controller
 	_commodity_flow_controller = commodity_flow_controller
-	_contract_controller = contract_controller
 	_product_market_controller = product_market_controller
 	_city_gdp_derivative_controller = city_gdp_derivative_controller
 	_military_controller = military_controller
@@ -98,7 +96,6 @@ func capture_world_snapshot(clock_pause: Dictionary = {}, settlement_checkpoint 
 				"commodity_inventory": _commodity_inventory_assets(player_index),
 				"color_gdp": _color_gdp_snapshot(player_index),
 				"units": _unit_assets(player_index),
-				"contracts": _contract_assets(player_index),
 				"financial_positions": _financial_assets(player_index),
 			},
 		})
@@ -253,29 +250,6 @@ func _unit_assets(player_index: int) -> Array:
 			"rank": int(unit.get("rank", 1)),
 			"district_index": int(unit.get("district_index", unit.get("current_district", -1))),
 			"duration_remaining": float(unit.get("duration_remaining", 0.0)),
-		})
-	return result
-
-
-func _contract_assets(player_index: int) -> Array:
-	var result: Array = []
-	if _contract_controller == null or not _contract_controller.has_method("pending_offers_snapshot"):
-		return result
-	var offers_variant: Variant = _contract_controller.call("pending_offers_snapshot", true)
-	if not (offers_variant is Array):
-		return result
-	for offer_variant in offers_variant:
-		if not (offer_variant is Dictionary):
-			continue
-		var offer: Dictionary = offer_variant
-		if player_index not in [int(offer.get("contract_source_owner", -1)), int(offer.get("contract_target_owner", -1))]:
-			continue
-		result.append({
-			"contract_id": int(offer.get("contract_offer_id", offer.get("resolution_id", -1))),
-			"response": str(offer.get("contract_response", "")),
-			"source_district": int(offer.get("contract_source_district", -1)),
-			"target_district": int(offer.get("contract_target_district", -1)),
-			"products": (offer.get("contract_products", []) as Array).duplicate() if offer.get("contract_products", []) is Array else [],
 		})
 	return result
 
