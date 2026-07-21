@@ -6,6 +6,7 @@ const MAP_VIEW_SCRIPT_PATH := "res://scripts/map_view.gd"
 const CARD_ART_SCRIPT_PATH := "res://scripts/card_art_view.gd"
 const MONSTER_ART_SCRIPT_PATH := "res://scripts/monster_art_view.gd"
 const CITY_FIXTURES := preload("res://tests/helpers/city_world_fixture_factory.gd")
+const SESSION_START_DRIVER := preload("res://tests/support/production_session_start_driver.gd")
 const V06_RULES_SNAPSHOT := preload("res://scripts/viewmodels/rules_quick_reference_snapshot_v06.gd")
 const CARD_RESOLUTION_QUEUE_SCRIPT := preload("res://scripts/runtime/card_resolution_queue_runtime_service.gd")
 const RUNTIME_BALANCE_MODEL_SCRIPT := preload("res://scripts/balance/runtime_balance_model.gd")
@@ -69,12 +70,36 @@ func _run() -> void:
 	var run_save_label := _menu_overlay_node(main, "MenuRunSaveLabel") as Label
 	_expect(run_save_label != null and run_save_label.text.contains("暂无"), "main menu reports no saved run in the test slot")
 	_expect(load_run_button != null and load_run_button.disabled, "load run button is disabled when no test save exists")
-	main.set("configured_player_count", EXPECTED_PLAYER_COUNT)
-	main.set("configured_ai_player_count", EXPECTED_AI_PLAYER_COUNT)
-	main.set("configured_role_indices", [0, 1, 2, 3, 4])
-	main.set("configured_starter_monster_indices", [7, 6, 2, 4, 3])
 	_mark_smoke_progress("new game setup")
-	main.call("_new_game")
+	main.queue_free()
+	await process_frame
+	var session_start_result := await SESSION_START_DRIVER.start_configured_session(
+		self,
+		{
+			"player_count": EXPECTED_PLAYER_COUNT,
+			"ai_player_count": EXPECTED_AI_PLAYER_COUNT,
+			"challenge_depth": 1,
+			"role_indices": [0, 1, 2, 3],
+			"starter_monster_indices": [7, 6, 2, 4],
+		},
+		TEST_RUN_SAVE_PATH,
+		"full-smoke-formal-session-start"
+	)
+	main = session_start_result.get("main_root") as Node
+	var session_start_receipt := session_start_result.get("receipt") as SessionStartReceipt
+	var formal_session_started := main != null \
+		and bool(session_start_result.get("qa_save_override_ready", false)) \
+		and session_start_result.get("draft_service") is NewGameSetupDraftService \
+		and session_start_result.get("command_port") is SetupDraftCommandPort \
+		and session_start_result.get("transaction") is SessionStartTransactionCoordinator \
+		and session_start_receipt != null \
+		and session_start_receipt.applied
+	_expect(formal_session_started, "smoke starts the configured new game through the typed setup transaction")
+	if not formal_session_started:
+		if main != null:
+			main.queue_free()
+		_finish()
+		return
 	_expect(_verify_v06_market_rule_contract(), "smoke consumes the settled voluntary-summon and solar-market public rule contract")
 	main.set("ai_card_decision_enabled", false)
 	_open_runtime_root_menu(main)
@@ -126,9 +151,11 @@ func _run() -> void:
 	var skill_market := _as_array(main.get("skill_market"))
 	var auto_monsters := _as_array(main.get("auto_monsters"))
 	var product_market := _product_market_for_test(main)
+	var game_session := session_start_result.get("game_session") as GameSessionRuntimeController
+	var session_setup := (game_session.session_summary().get("setup", {}) as Dictionary) if game_session != null else {}
 
 	_expect(players.size() == EXPECTED_PLAYER_COUNT, "new game creates the configured player count")
-	_expect(int(main.get("configured_ai_player_count")) == EXPECTED_AI_PLAYER_COUNT, "new game keeps the configured AI opponent count")
+	_expect(int(session_setup.get("ai_player_count", -1)) == EXPECTED_AI_PLAYER_COUNT, "new game keeps the configured AI opponent count")
 	_expect(_ai_player_count(players) == EXPECTED_AI_PLAYER_COUNT, "new game creates AI seats for the PVE roguelike run")
 	_expect(not bool((players[0] as Dictionary).get("is_ai", true)) and bool((players[1] as Dictionary).get("is_ai", false)), "player 1 remains the human/local seat while later seats are AI opponents")
 	_expect(((players[1] as Dictionary).get("ai_profile", {}) as Dictionary).has("style") and ((players[1] as Dictionary).get("ai_memory", {}) as Dictionary).has("decision_samples"), "AI seats carry a personality profile and training-memory log")
