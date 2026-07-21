@@ -1092,7 +1092,7 @@ func _case_card_effect_resolver_unchanged() -> Dictionary:
 	var main_source := FileAccess.get_file_as_string(MAIN_SCRIPT_PATH)
 	var service_source := FileAccess.get_file_as_string(QUEUE_SERVICE_SCRIPT_PATH)
 	var resolver := _function_source(main_source, "_apply_card_resolution_effect_request")
-	var aligned := not resolver.is_empty() and resolver.contains("match handler_id:") and not resolver.contains("CardResolutionQueueRuntimeService") and not service_source.contains("func _apply_card_resolution_effect_request") and not service_source.contains("_apply_area_trade_contract")
+	var aligned := not resolver.is_empty() and resolver.contains("match handler_id:") and not resolver.contains("CardResolutionQueueRuntimeService") and not service_source.contains("func _apply_card_resolution_effect_request")
 	return _record("card_effect_resolver_unchanged", "effect-boundary", {}, {
 		"observed": not resolver.is_empty(),
 		"contract_aligned": aligned,
@@ -1202,9 +1202,6 @@ func _clear_queue_state() -> void:
 	_runtime_main.set("card_resolution_force_duration", 2.0)
 	_runtime_main.set("card_resolution_force_simultaneous_window", 8.0)
 	_runtime_main.set("public_card_bid_monster_wager_pool", 0)
-	var contract_controller := _runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ContractRuntimeController")
-	if contract_controller != null and contract_controller.has_method("reset_state"):
-		contract_controller.call("reset_state")
 
 
 func _qa_skill(overrides: Dictionary = {}) -> Dictionary:

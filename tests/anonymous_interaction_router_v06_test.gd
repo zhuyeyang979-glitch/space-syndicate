@@ -49,8 +49,8 @@ func _verify_routes_and_exact_once() -> void:
 	var router = ROUTER.new()
 	var owners := {"contract": ReferenceOwner.new(), "intel": ReferenceOwner.new(), "direct_player": ReferenceOwner.new(), "counter_response": ReferenceOwner.new()}
 	_expect(bool(router.configure(owners).get("configured", false)), "router configures all field domains")
+	_expect(not router.configured_domains().has("contract"), "retired contract owner is not configurable")
 	var fixtures := [
-		_intent("tx-contract", "contract_offer_v06", "target_player", {"interaction_domain": "contract"}, ["B"]),
 		_intent("tx-intel", "intel_card_trace", "private_evidence", {"interaction_domain": "intel"}, []),
 		_intent("tx-direct", "player_hand_disrupt", "opponent_discardable_hand", {"direct_player_interaction": true}, ["B"]),
 		_intent("tx-counter", "card_counter", "incoming_direct_player_interaction", {"target_scope": "direct_player_interaction", "response_depth": 1}, ["A"]),
@@ -68,6 +68,9 @@ func _verify_routes_and_exact_once() -> void:
 		var finalize_replay: Dictionary = router.finalize_effect(committed)
 		_expect(bool(finalized.get("finalized", false)) and bool(finalize_replay.get("idempotent_replay", false)) and owner.finalize_calls == 1, "%s finalize is exact-once" % domain)
 	_expect(bool(router.checkpoint_status().get("can_checkpoint", false)), "finalized router is checkpoint-safe")
+	var retired_contract := _intent("tx-contract", "contract_offer_v06", "target_player", {"interaction_domain": "contract"}, ["B"])
+	var rejected: Dictionary = router.prepare_effect(retired_contract)
+	_expect(not bool(rejected.get("prepared", false)) and str(rejected.get("reason_code", "")) == "interaction_effect_fields_unsupported", "retired contract offer reaches no router owner")
 
 
 func _verify_failure_lifecycle() -> void:

@@ -48,7 +48,6 @@ const NIGHT_PATROL_FRAME_PATHS := {
 	"military_force": "res://assets/third_party/night_patrol/ui/card-frame-attack.png",
 	"military_command": "res://assets/third_party/night_patrol/ui/card-frame-attack.png",
 	"card_counter": "res://assets/third_party/night_patrol/ui/card-frame-skill.png",
-	"area_trade_contract": "res://assets/third_party/night_patrol/ui/card-frame-power.png",
 	"city_contract_boon": "res://assets/third_party/night_patrol/ui/card-frame-power.png",
 	"product_contract_boon": "res://assets/third_party/night_patrol/ui/card-frame-power.png",
 	"city_gdp_derivative": "res://assets/third_party/night_patrol/ui/card-frame-status.png",
@@ -207,7 +206,7 @@ func _draw_motif(rect: Rect2) -> void:
 			_draw_city_motif(center, radius)
 		"city_gdp_derivative", "product_futures", "product_speculation", "market_stabilize":
 			_draw_market_chart_motif(center, radius)
-		"area_trade_contract", "city_contract_boon", "product_contract_boon", "route_insurance":
+		"city_contract_boon", "product_contract_boon", "route_insurance":
 			_draw_route_motif(center, radius, false)
 		"route_sabotage":
 			_draw_route_motif(center, radius, true)
@@ -1642,8 +1641,6 @@ func _glyph_for_kind() -> String:
 			return "订"
 		"product_growth_boon":
 			return "催"
-		"area_trade_contract":
-			return "约"
 		"city_contract_boon":
 			return "单"
 		"route_flow_boon":

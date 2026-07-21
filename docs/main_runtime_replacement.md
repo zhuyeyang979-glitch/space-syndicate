@@ -280,9 +280,9 @@ The existing `MenuShellRuntimeCutoverBench` is expanded instead of duplicated. I
 
 ## Sprint 25: Planet Map Control Toolbar Scene Cutover
 
-`PlanetMapControlToolbar.tscn` now owns the fullscreen map reading hints, seven existing layer-focus buttons, current layer/district/trade/contract status, the trade-product selector, and the two contract endpoint commands. The scene includes the six required public reading layers plus the pre-existing city layer so the cutover does not silently remove an available map mode. It accepts one pure snapshot and emits `control_action_requested(action_id, payload)` using only strings and dictionaries.
+`PlanetMapControlToolbar.tscn` owns the fullscreen map reading hints, seven layer-focus buttons, current layer/district/trade status, and the trade-product selector. The scene includes the six required public reading layers plus the city layer. It accepts one pure snapshot and emits only the typed `map_layer_focus_requested` and local `optional_route_selection_changed` signals; the retired contract endpoint controls and generic Main action signal are absent.
 
-`FullscreenMapOverlay.tscn` embeds the toolbar under `FullscreenMapActionHost`. `main.gd` keeps `_map_control_toolbar_snapshot()`, `_on_map_control_toolbar_action_requested()`, the existing layer/trade state, and the existing contract validation/execution functions. Three generated-control builders, the old OptionButton callback, thirteen mirrored Node arrays, and all their refresh loops are deleted. The map projection, district input, route calculation, contract qualification, selected-district behavior, save data, and privacy rules are unchanged.
+`FullscreenMapOverlay.tscn` embeds the toolbar under `FullscreenMapActionHost`. `main.gd` keeps only `_map_control_toolbar_snapshot()` while typed layer and route selection travel through the scene-owned GameScreen/Overlay ports. The retired generic action router, contract endpoint controls, generated-control builders, old OptionButton callback, mirrored Node arrays, and their refresh loops are deleted. Map projection, district input, route calculation, selected-district behavior, save data, and privacy rules remain unchanged.
 
 `PlanetMapInteractionBench` now proves 15/15 cases: the original seven district/focus/projection checks plus editable toolbar composition, layer and product payloads, disabled/enabled contract endpoint guards, real-main routing, pure snapshots, and the permanent deletion gate. `main.gd` moves from 38,881 non-empty lines / 1,927 functions / 192 top-level variables / 313 constants to 38,757 / 1,925 / 179 / 313.
 
@@ -443,13 +443,13 @@ player-interaction, contract, intel, counter, generated city-development, and
 runtime-bound persistent cards. The gate is **28/28 observed** and **28/28
 contract aligned**, with those counts reported separately.
 
-The main architectural finding is that only the fixed five-second counter
-window retains the active card. Target choices complete before submission;
-area-trade contracts deliberately copy their response context into
-`pending_contract_offers`, clear active, allow later cards to continue, and
-patch the same `resolution_id` in history after accept/reject/timeout. Monster
-wager remains a separate Forced Decision owner that freezes planet simulation
-without becoming a second card queue owner.
+The main architectural finding was that only the fixed five-second counter
+window retained the active card.  This historical note described a retired
+area-trade response experiment; in v0.6, conditional supply and demand orders
+settle automatically through their authoritative economy owners and create no
+signature, refusal, timeout, or deferred-response state. Monster wager remains
+a separate Forced Decision owner that freezes planet simulation without
+becoming a second card queue owner.
 
 No production ownership moves in Sprint 36. Queue lifecycle stays in
 `CardResolutionQueueRuntimeService`, timing stays in

@@ -60,7 +60,7 @@ func _test_region_rack_intent() -> void:
 		single.double_click = false
 		market_card.call("_gui_input", single)
 		await process_frame
-		_expect(int(action_counts.get("preview", 0)) == 0 and int(action_counts.get("purchase", 0)) == 0 and (quote_state.get("quote", {}) as Dictionary).is_empty(), "hover/single-click preview creates no quote and emits no owner action")
+		_expect(int(action_counts.get("preview", 0)) == 1 and int(action_counts.get("purchase", 0)) == 0 and (quote_state.get("quote", {}) as Dictionary).is_empty(), "single-click emits only the passive preview intent and creates no quote or purchase")
 		var drawer_debug := drawer.call("debug_snapshot") as Dictionary
 		_expect(str(drawer_debug.get("local_preview_card_name", "")) == "测试牌" and bool(drawer_debug.get("passive_preview_only", false)), "single-click updates only the drawer-local preview")
 		var double_click := InputEventMouseButton.new()
@@ -171,18 +171,9 @@ func _test_public_bid_and_forced_back() -> void:
 	_expect(_visible_forced_panel_count(overlay) == 0, "resolved forced decision releases every modal visual")
 	_expect(root.gui_get_focus_owner() == opener, "forced-to-forced preemption preserves the original opener focus for final restoration")
 
-	overlay.call("show_temporary_decision", {
-		"id": "contract_2",
-		"kind": "contract_response",
-		"title": "合同回应",
-		"body": "真实合约决定",
-		"actions": [{"id": "contract_accept_2", "label": "签约"}],
-		"contract": {"route": "A → B", "products": "晶雾"},
-	})
-	_expect(_visible_forced_panel_count(overlay) == 1, "contract overlay exists only when a real decision snapshot is supplied")
 	overlay.call("show_temporary_decision", {})
 	await process_frame
-	_expect(_visible_forced_panel_count(overlay) == 0, "empty decision snapshot leaves wager/contract/target surfaces absent")
+	_expect(_visible_forced_panel_count(overlay) == 0, "empty decision snapshot leaves wager and target surfaces absent")
 	overlay.call("show_temporary_decision", {
 		"id": "fixture_only",
 		"kind": "fixture_only",
@@ -245,16 +236,16 @@ func _test_scheduler_public_bid_priority() -> void:
 	scheduler.call("sync_candidates", [], _bid_state("public_bid"))
 	var unconfigured_debug := scheduler.call("debug_snapshot") as Dictionary
 	_expect(not bool(unconfigured_debug.get("scheduler_ready", true)) and int(unconfigured_debug.get("candidate_count", -1)) == 0 and str(scheduler.call("active_priority_group")).is_empty(), "empty scheduler configuration stays fail-closed instead of retaining or enabling public_bid alone")
-	scheduler.call("configure", ["public_bid", "monster_wager", "counter_response", "contract_response", "other_choice"])
+	scheduler.call("configure", ["public_bid", "monster_wager", "counter_response", "other_choice"])
 	var configured_debug := scheduler.call("debug_snapshot") as Dictionary
-	_expect((configured_debug.get("priority_order", []) as Array) == ["monster_wager", "counter_response", "contract_response", "other_choice", "public_bid"], "prelisted public_bid is normalized to the final lowest-priority slot")
+	_expect((configured_debug.get("priority_order", []) as Array) == ["monster_wager", "counter_response", "other_choice", "public_bid"], "prelisted public_bid is normalized to the final lowest-priority slot")
 	scheduler.call("sync_candidates", [_candidate("forged-bid", "public_bid", "monster_wager", 1.0)])
 	_expect(str(scheduler.call("active_priority_group")).is_empty(), "public_bid cannot forge a higher scheduler priority group")
 	scheduler.call("sync_candidates", [_candidate("direct-bid", "public_bid", "public_bid", 1.0)])
 	_expect(str(scheduler.call("active_priority_group")).is_empty(), "public_bid cannot enter the scheduler as an arbitrary external candidate")
 	scheduler.call("sync_candidates", [_candidate("fixture-only", "fixture_only", "monster_wager", 1.0)])
 	_expect(str(scheduler.call("active_priority_group")).is_empty(), "unknown decision kinds cannot enter a configured scheduler priority group")
-	scheduler.call("configure", ["monster_wager", "counter_response", "contract_response", "other_choice"])
+	scheduler.call("configure", ["monster_wager", "counter_response", "other_choice"])
 	scheduler.call("sync_candidates", [
 		_candidate("choice", "monster_target_choice", "other_choice", 40.0),
 	], _bid_state("public_bid"))
@@ -265,7 +256,7 @@ func _test_scheduler_public_bid_priority() -> void:
 	_expect(str(scheduler.call("active_priority_group")).is_empty(), "planning cannot leave a stale public_bid candidate active")
 	scheduler.call("sync_candidates", [], _bid_state("public_bid"))
 	var debug := scheduler.call("debug_snapshot") as Dictionary
-	_expect((debug.get("priority_order", []) as Array) == ["monster_wager", "counter_response", "contract_response", "other_choice", "public_bid"] and bool(debug.get("public_bid_phase_active", false)), "scheduler appends the phase-derived public_bid as the lowest stable priority")
+	_expect((debug.get("priority_order", []) as Array) == ["monster_wager", "counter_response", "other_choice", "public_bid"] and bool(debug.get("public_bid_phase_active", false)), "scheduler appends the phase-derived public_bid as the lowest stable priority")
 	scheduler.queue_free()
 
 
@@ -318,15 +309,15 @@ func _test_game_screen_layout_and_zero_placeholder() -> void:
 		"active_forced_decision": _active_public_bid(),
 		"player_board": {"bid_board": _bid_state("public_bid"), "actions": [], "quick_actions": [], "hand_cards": []},
 		"temporary_decision": {
-			"id": "stale_contract",
-			"kind": "contract_response",
-			"title": "陈旧合约",
-			"actions": [{"id": "contract_accept_stale", "label": "签约"}],
+			"id": "stale_target",
+			"kind": "player_target_choice",
+			"title": "陈旧目标",
+			"actions": [{"id": "target_player_1", "label": "玩家1"}],
 		},
 	})
 	await process_frame
-	var stale_contract_panel := screen.find_child("ContractResponseDecisionPanel", true, false) as Control
-	_expect(bid_panel != null and bid_panel.visible and (stale_contract_panel == null or not stale_contract_panel.visible), "scheduler-mismatched temporary data cannot suppress the selected public_bid surface")
+	var stale_target_panel := screen.find_child("TemporaryChoiceDecisionPanel", true, false) as Control
+	_expect(bid_panel != null and bid_panel.visible and (stale_target_panel == null or not stale_target_panel.visible), "scheduler-mismatched temporary data cannot suppress the selected public_bid surface")
 	screen.call("apply_state", {
 		"active_forced_decision": _active_public_bid(),
 		"player_board": {"bid_board": _bid_state("planning"), "actions": [], "quick_actions": [], "hand_cards": []},
@@ -418,7 +409,7 @@ func _active_public_bid() -> Dictionary:
 
 func _visible_forced_panel_count(overlay: Node) -> int:
 	var count := 0
-	for name in ["MonsterWagerDecisionPanel", "ContractResponseDecisionPanel", "TemporaryChoiceDecisionPanel", "TemporaryDecisionModal", "PublicBidDecisionPanel"]:
+	for name in ["MonsterWagerDecisionPanel", "TemporaryChoiceDecisionPanel", "TemporaryDecisionModal", "PublicBidDecisionPanel"]:
 		var control := overlay.find_child(name, true, false) as Control
 		if control != null and control.visible:
 			count += 1

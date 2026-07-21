@@ -50,8 +50,6 @@ class FakeCardPort extends RuntimeCardPort:
 	func is_ready() -> bool: return true
 	func advance_card_resolution_frame(delta_seconds: float) -> Dictionary:
 		state._record(&"advance_card_resolution_frame", delta_seconds); return {}
-	func tick_contract_runtime(delta_seconds: float) -> Dictionary:
-		state._record(&"tick_contract_runtime", delta_seconds); return {}
 	func advance_card_cooldowns(delta_seconds: float) -> Dictionary:
 		state._record(&"advance_card_cooldowns", delta_seconds); return {}
 
@@ -178,7 +176,7 @@ func _test_active_trace() -> void:
 	var expected: Array[StringName] = [
 		&"session_is_finished", &"synchronize_forced_decisions", &"blocks_global_time", &"session_is_paused",
 		&"advance_world_time", &"allows_card_resolution_progress", &"advance_card_resolution_frame",
-		&"tick_contract_runtime", &"advance_card_cooldowns", &"advance_city_gdp_derivative_timers",
+		&"advance_card_cooldowns", &"advance_city_gdp_derivative_timers",
 		&"advance_product_futures_timers", &"tick_weather", &"advance_economic_boons",
 		&"tick_monster_wagers", &"tick_ai", &"tick_monster_motion", &"tick_military",
 		&"tick_monster_actions", &"tick_monster_durations", &"advance_visual_cues",

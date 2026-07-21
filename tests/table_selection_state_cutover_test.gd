@@ -50,7 +50,6 @@ func _run() -> void:
 		"MonsterRuntimeWorldBridge",
 		"MilitaryRuntimeWorldBridge",
 		"ProductMarketRuntimeWorldBridge",
-		"ContractRuntimeWorldBridge",
 		"CardPlayEligibilityWorldBridge",
 		"GameplayBalanceDiagnosticsWorldBridge",
 		"RegionInfrastructureWorldBridge",

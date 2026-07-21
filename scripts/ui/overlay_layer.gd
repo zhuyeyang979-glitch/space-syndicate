@@ -18,7 +18,6 @@ signal map_layer_focus_requested(layer_id: String)
 @onready var confirm_action_row: GridContainer = %ConfirmActionRow
 @onready var confirm_center: CenterContainer = $OverlayRoot/ModalLayer/ConfirmCenter
 @onready var monster_wager_decision_panel: Control = %MonsterWagerDecisionPanel
-@onready var contract_response_decision_panel: Control = %ContractResponseDecisionPanel
 @onready var temporary_choice_decision_panel: Control = %TemporaryChoiceDecisionPanel
 @onready var public_bid_decision_panel: Control = %PublicBidDecisionPanel
 @onready var side_drawer_panel: PanelContainer = %SideDrawerPanel
@@ -54,14 +53,12 @@ const TEMP_DECISION_SIDE_ANCHOR_TOP := 0.18
 const TEMP_DECISION_SIDE_ANCHOR_RIGHT := 0.985
 const TEMP_DECISION_SIDE_ANCHOR_BOTTOM := 0.82
 const TEMP_DECISION_MONSTER_WAGER := "monster_wager"
-const TEMP_DECISION_CONTRACT_RESPONSE := "contract_response"
 const TEMP_DECISION_DISCARD := "discard_purchase"
 const TEMP_DECISION_MONSTER_TARGET := "monster_target_choice"
 const TEMP_DECISION_PLAYER_TARGET := "player_target_choice"
 const REAL_TEMPORARY_DECISION_KINDS := [
 	TEMP_DECISION_MONSTER_WAGER,
 	"counter_response",
-	TEMP_DECISION_CONTRACT_RESPONSE,
 	TEMP_DECISION_DISCARD,
 	TEMP_DECISION_MONSTER_TARGET,
 	TEMP_DECISION_PLAYER_TARGET,
@@ -208,10 +205,6 @@ func show_temporary_decision(data: Dictionary) -> void:
 		confirm_panel.visible = false
 		_activate_forced_surface(data, monster_wager_decision_panel)
 		return
-	if kind == TEMP_DECISION_CONTRACT_RESPONSE and _show_specialized_temporary_decision(contract_response_decision_panel, data):
-		confirm_panel.visible = false
-		_activate_forced_surface(data, contract_response_decision_panel)
-		return
 	if [TEMP_DECISION_DISCARD, TEMP_DECISION_MONSTER_TARGET, TEMP_DECISION_PLAYER_TARGET].has(kind) and _show_specialized_temporary_decision(temporary_choice_decision_panel, data):
 		confirm_panel.visible = false
 		_activate_forced_surface(data, temporary_choice_decision_panel)
@@ -275,7 +268,7 @@ func forced_surface_active() -> bool:
 
 
 func _connect_specialized_temporary_decision_panels() -> void:
-	for panel in [monster_wager_decision_panel, contract_response_decision_panel, temporary_choice_decision_panel]:
+	for panel in [monster_wager_decision_panel, temporary_choice_decision_panel]:
 		if panel != null and panel.has_signal("action_requested"):
 			panel.connect("action_requested", Callable(self, "_on_specialized_temporary_decision_action_requested"))
 
@@ -316,7 +309,7 @@ func _show_specialized_temporary_decision(panel: Control, data: Dictionary) -> b
 
 
 func _hide_specialized_temporary_decision_panels() -> void:
-	for panel in [monster_wager_decision_panel, contract_response_decision_panel, temporary_choice_decision_panel]:
+	for panel in [monster_wager_decision_panel, temporary_choice_decision_panel]:
 		if panel != null:
 			panel.visible = false
 

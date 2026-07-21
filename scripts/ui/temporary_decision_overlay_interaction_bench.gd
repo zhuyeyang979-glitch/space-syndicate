@@ -9,14 +9,12 @@ const REPORT_PATH := OUTPUT_DIR + "report.md"
 const VIEWPORT_SIZE := {"width": 1600, "height": 960}
 const PANEL_BY_FIXTURE_ID := {
 	"monster_wager": "MonsterWagerDecisionPanel",
-	"contract_response": "ContractResponseDecisionPanel",
 	"discard_purchase": "TemporaryChoiceDecisionPanel",
 	"monster_target_choice": "TemporaryChoiceDecisionPanel",
 	"player_target_choice": "TemporaryChoiceDecisionPanel",
 }
 const TEMPORARY_DECISION_PANEL_NAMES := [
 	"MonsterWagerDecisionPanel",
-	"ContractResponseDecisionPanel",
 	"TemporaryChoiceDecisionPanel",
 	"TemporaryDecisionModal",
 	"ConfirmPanel",

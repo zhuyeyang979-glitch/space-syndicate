@@ -368,6 +368,41 @@ If a design choice is ambiguous:
 4. Prefer Terraforming Mars / Gaia Project style board-game clarity over debug density.
 5. Make a small reversible change with tests instead of a broad rewrite.
 
+## V0.6 Rule Authority Gate
+
+Before adding any gameplay Owner, Port, Sink, Request, Receipt, RuntimeController,
+UI decision window, AI policy, save field, save section, or card effect kind, the
+change must identify all of the following:
+
+- `mechanic_id`
+- active rule source and section
+- player-facing meaning
+- authoritative owner
+- required privacy
+- required persistence
+
+The permanent authority order is:
+
+1. `docs/tabletop_rulebook_v06.md`
+2. `docs/rules_v06_runtime_directive.md`
+3. the active Ruleset, card runtime catalog, and data Resources
+4. explicit v0.6 decisions in `README.md`
+5. approved migration ledgers and design records
+6. production code
+7. tests and Benches
+8. historical code, fixtures, and text
+
+Code and tests are not product-rule authority. When no active rule clause can be
+identified, report `RULE_AUTHORITY_NOT_ESTABLISHED` and do not begin production
+implementation. A failing legacy test is never a reason to restore a retired
+mechanic.
+
+Mechanics marked `RETIRED` in
+`docs/rules/v06_mechanic_status_registry.json` may appear only in deletion work,
+compatibility reads, data migration, historical documentation, and explicit
+negative tests. They may not gain a new production Owner, Port, Sink, Receipt,
+window, AI policy, or save state.
+
 ## main.gd Extinction Policy
 
 `scripts/main.gd` is frozen legacy code.

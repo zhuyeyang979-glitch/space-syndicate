@@ -338,8 +338,6 @@ func _face_chips(source: Dictionary, skill: Dictionary) -> Array:
 		entries.append({"text": "◆目标", "fg": Color("#fecaca"), "bg": Color("#7f1d1d"), "tip": "打出后需要指定一只在场怪兽。"})
 	elif bool(source.get("targets_player", false)):
 		entries.append({"text": "◎玩家", "fg": Color("#bfdbfe"), "bg": Color("#1e3a8a"), "tip": "打出后需要指定一名玩家。"})
-	elif str(skill.get("kind", "")) == "area_trade_contract":
-		entries.append({"text": "⇄两区", "fg": Color("#fde68a"), "bg": Color("#713f12"), "tip": "合约牌需要先选择供给区和需求区。"})
 	else:
 		entries.append({"text": "按选区", "fg": Color("#c4b5fd"), "bg": Color("#312e81"), "tip": "按当前选区、当前商品或卡面规则结算。"})
 	entries.append({
@@ -387,7 +385,7 @@ func _theme_color(skill: Dictionary) -> Color:
 		"military_force", "military_command": return Color("#67e8f9")
 		"card_counter": return Color("#a78bfa")
 		"player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage": return Color("#60a5fa")
-		"city_revenue_boost", "cash_gain", "product_speculation", "product_futures", "product_contract_boon", "area_trade_contract", "route_insurance", "city_product_upgrade", "city_product_shift", "city_demand_shift", "market_stabilize", "product_growth_boon", "route_flow_boon", "city_contract_boon", "region_economy_shift": return Color("#f59e0b")
+		"city_revenue_boost", "cash_gain", "product_speculation", "product_futures", "product_contract_boon", "route_insurance", "city_product_upgrade", "city_product_shift", "city_demand_shift", "market_stabilize", "product_growth_boon", "route_flow_boon", "city_contract_boon", "region_economy_shift": return Color("#f59e0b")
 		"intel_city_reveal", "card_history_public_review", "card_history_subscription", "intel_contract_trace": return Color("#60a5fa")
 		"news_event": return Color("#fb923c")
 		"weather_control": return Color("#38bdf8")
@@ -407,11 +405,9 @@ func _strategy_route_label(skill: Dictionary) -> String:
 	var tags := str(skill.get("tag_text", " "))
 	if tags.strip_edges() == "" and skill.get("tags", []) is Array:
 		tags = " / ".join(skill.get("tags", []))
-	var route_damage := int(skill.get("route_damage", 0)) + int(skill.get("decline_route_damage", 0))
+	var route_damage := int(skill.get("route_damage", 0))
 	var repair_routes := int(skill.get("repair_routes", 0))
 	var economy_delta := int(skill.get("production_delta", 0)) + int(skill.get("transport_delta", 0)) + int(skill.get("consumption_delta", 0))
-	var accept_delta := int(skill.get("accept_production_delta", 0)) + int(skill.get("accept_transport_delta", 0)) + int(skill.get("accept_consumption_delta", 0))
-	var decline_delta := int(skill.get("decline_production_delta", 0)) + int(skill.get("decline_transport_delta", 0)) + int(skill.get("decline_consumption_delta", 0))
 	var market_pressure := int(skill.get("market_demand_pressure", 0)) + int(skill.get("market_supply_pressure", 0)) + int(skill.get("price_delta", 0))
 	if kind == "card_counter": return "直接互动"
 	if kind in ["military_force", "military_command"]: return "战斗破坏"
@@ -420,7 +416,7 @@ func _strategy_route_label(skill: Dictionary) -> String:
 	if kind in ["intel_city_reveal", "card_history_public_review", "card_history_subscription", "intel_contract_trace"] or tags.contains("情报"): return "情报推理"
 	if kind == "news_event" or tags.contains("新闻"): return "新闻信息战"
 	if kind == "weather_control" or tags.contains("天气"): return "天气博弈"
-	if kind in ["area_trade_contract", "product_contract_boon"] or int(skill.get("contract_income", 0)) > 0 or accept_delta != 0 or decline_delta != 0 or int(skill.get("accept_cash", 0)) != 0 or int(skill.get("decline_cash_penalty", 0)) != 0: return "合约博弈"
+	if kind == "product_contract_boon" or int(skill.get("contract_income", 0)) > 0: return "订单经济"
 	if route_damage > 0 or economy_delta < 0 or kind in ["route_sabotage", "area_damage"]: return "城市压制"
 	if kind in ["city_gdp_derivative", "product_speculation", "market_stabilize"] or market_pressure != 0: return "金融投机"
 	if kind == "supply_draw" or int(skill.get("draw_amount", 0)) > 0: return "补给构筑"
@@ -445,7 +441,7 @@ func _use_case_text(source: Dictionary, skill: Dictionary, route_label: String) 
 		"player_hand_disrupt": "拆对手手牌", "player_hand_steal": "偷取对手手牌", "city_control_dispute": "冻结城市归属", "global_barrage": "全场齐射压制",
 		"city_revenue_boost": "加城市GDP", "cash_gain": "补现金", "city_product_upgrade": "升级城市商品", "city_product_shift": "换城市商品", "city_demand_shift": "改城市需求",
 		"route_insurance": "修复商路", "route_sabotage": "破坏商路", "route_flow_boon": "加速商路", "city_contract_boon": "临时订单增收",
-		"area_trade_contract": "连接两区供需", "product_contract_boon": "强化商品合约", "product_growth_boon": "推高商品增长", "region_economy_shift": "改区域经济",
+		"product_contract_boon": "强化商品合约", "product_growth_boon": "推高商品增长", "region_economy_shift": "改区域经济",
 		"product_speculation": "炒商品价格", "price_pump": "炒商品价格", "disaster_insurance": "保险防跌",
 		"intel_city_reveal": "查城市业主", "intel_contract_trace": "追溯合约方",
 		"news_event": "制造新闻热度", "weather_control": "改写天气预报", "supply_draw": "补手牌",
@@ -629,7 +625,7 @@ func _category_id(source: Dictionary, skill: Dictionary) -> String:
 	if kind == "city_gdp_derivative": return "finance"
 	if kind == "product_futures": return "futures"
 	if kind in ["product_speculation", "product_contract_boon", "product_growth_boon", "market_stabilize", "cash_gain"]: return "commodity"
-	if kind in ["area_trade_contract", "city_contract_boon"]: return "contract"
+	if kind == "city_contract_boon": return "contract"
 	if kind in ["city_revenue_boost", "route_insurance", "city_product_upgrade", "city_product_shift", "city_demand_shift", "route_flow_boon", "route_sabotage", "region_economy_shift"]: return "city"
 	if kind == "news_event": return "news"
 	if kind == "weather_control": return "weather"
@@ -641,7 +637,7 @@ func _category_id(source: Dictionary, skill: Dictionary) -> String:
 
 func _primary_type_label(source: Dictionary, skill: Dictionary) -> String:
 	if bool(source.get("is_monster_card", false)) or str(skill.get("kind", "")) == "monster_card": return "怪兽牌"
-	var labels := {"monster_bound_action":"怪兽技能牌", "military_force":"军队牌", "military_command":"军令技能牌", "card_counter":"玩家互动牌", "player_hand_disrupt":"玩家互动牌", "player_hand_steal":"玩家互动牌", "city_control_dispute":"玩家互动牌", "global_barrage":"玩家互动牌", "city_gdp_derivative":"金融牌", "product_futures":"期货牌", "product_speculation":"商品牌", "product_contract_boon":"商品牌", "product_growth_boon":"商品牌", "market_stabilize":"商品牌", "area_trade_contract":"合约牌", "city_contract_boon":"合约牌", "city_revenue_boost":"经营牌", "city_product_upgrade":"经营牌", "city_product_shift":"经营牌", "city_demand_shift":"经营牌", "route_insurance":"经营牌", "route_flow_boon":"经营牌", "route_sabotage":"经营牌", "region_economy_shift":"经营牌", "intel_city_reveal":"情报/补给牌", "card_history_public_review":"情报/补给牌", "card_history_subscription":"情报/补给牌", "intel_contract_trace":"情报/补给牌", "supply_draw":"情报/补给牌", "news_event":"新闻牌", "weather_control":"天气牌", "monster_lure":"诱导牌", "monster_takeover":"诱导牌", "special_monster_delay":"诱导牌", "panic_shift":"诱导牌"}
+	var labels := {"monster_bound_action":"怪兽技能牌", "military_force":"军队牌", "military_command":"军令技能牌", "card_counter":"玩家互动牌", "player_hand_disrupt":"玩家互动牌", "player_hand_steal":"玩家互动牌", "city_control_dispute":"玩家互动牌", "global_barrage":"玩家互动牌", "city_gdp_derivative":"金融牌", "product_futures":"期货牌", "product_speculation":"商品牌", "product_contract_boon":"商品牌", "product_growth_boon":"商品牌", "market_stabilize":"商品牌", "city_contract_boon":"合约牌", "city_revenue_boost":"经营牌", "city_product_upgrade":"经营牌", "city_product_shift":"经营牌", "city_demand_shift":"经营牌", "route_insurance":"经营牌", "route_flow_boon":"经营牌", "route_sabotage":"经营牌", "region_economy_shift":"经营牌", "intel_city_reveal":"情报/补给牌", "card_history_public_review":"情报/补给牌", "card_history_subscription":"情报/补给牌", "intel_contract_trace":"情报/补给牌", "supply_draw":"情报/补给牌", "news_event":"新闻牌", "weather_control":"天气牌", "monster_lure":"诱导牌", "monster_takeover":"诱导牌", "special_monster_delay":"诱导牌", "panic_shift":"诱导牌"}
 	if labels.has(str(skill.get("kind", ""))): return str(labels[str(skill.get("kind", ""))])
 	return "怪兽技能牌" if bool(source.get("is_direct_monster_skill", false)) else "战术牌"
 
@@ -711,7 +707,6 @@ func _resolution_animation_stages(_card_name: String, skill: Dictionary, facts: 
 		"product_speculation": return ["%s把当前商品推上匿名交易屏，价格曲线先剧烈抖动。" % label, "卡牌不直接改价，而是写入临时供需压力，等待下一次市场重算兑现。", "现金收益立即进匿名玩家账本；市场波动则成为其他玩家的反推证据。"]
 		"city_gdp_derivative": return ["%s翻面时，目标城市上方出现匿名买涨、做空或保单盘口。" % label, "系统锁定该城即时GDP、保证金、持续时间和最大盈亏；到期按真实GDP变化结算。", "城市毁灭会立即结算全部方向：做空/保单按条款获利，买涨承担封顶损失；收款人仍保持匿名。"]
 		"product_contract_boon": return ["%s把远期合约钉到当前商品，订单影像沿商路扩散。" % label, "持续供需压力和可能的流通倍率进入商品天气，按秒衰减。", "商品价格不会被手动改写，只会在后续供需重算里体现这张牌的余波。"]
-		"area_trade_contract": return ["%s公开翻面：供给区、需求区和合约商品被投到所有玩家屏幕中央。" % label, "公开展示结束后，目标城市真实业主会再获得独立签约/拒绝窗口；发起者仍保持匿名。", "签约会写入区域供需和流通奖励，拒签或超时会按卡面惩罚落到账本与商路。"]
 		"player_hand_disrupt": return ["%s翻面时，目标玩家头像被短暂标蓝，出牌者仍被匿名遮罩盖住。" % label, "系统私下拆除目标的一张普通手牌；具体牌名只进入目标玩家自己的流水。", "公开轨道只留下“谁被拆牌”和GDP份额门槛，方便其他玩家反推谁最受益。"]
 		"player_hand_steal": return ["%s打开一条隐形补给索，目标玩家与匿名出牌者之间闪过牵取轨迹。" % label, "目标的一张普通手牌会被私下牵走；若牵取方无法接收，则转化成拆牌和情报补偿。", "手牌内容不公开，但目标、时机和商品门槛会成为身份推理线索。"]
 		"city_control_dispute": return ["%s把目标城市的产权登记切成多层匿名印章。" % label, "城市进入短暂产权争议，GDP/min受到归属惩罚；真实业主仍不公开。", "争议会留在城市公开线索中，可配合做空、怪兽破坏或城市归属推理。"]
@@ -791,7 +786,6 @@ func _resolution_aftermath_clue_text(skill: Dictionary, resolved: bool, targets_
 	if kind == "monster_card": return "怪兽HP/时间/落点成为公开线索"
 	if targets_monster or kind in ["move", "fly", "burrow", "attack", "charge_attack", "roll_attack", "area_damage", "mudslide", "miasma_shot", "miasma_bloom", "miasma_reclaim", "corrosive_breath", "armor_gain", "guard", "roar", "monster_lure", "special_monster_delay", "monster_takeover", "monster_bound_action"]: return "怪兽位置/耐久/状态变化可追踪"
 	if kind in ["city_revenue_boost", "city_contract_boon", "city_product_upgrade", "city_product_shift", "city_demand_shift"]: return "城市经营结构和账本会持续变化"
-	if kind == "area_trade_contract": return "匿名合约会改写区域供需与签拒线索"
 	if kind in ["player_hand_disrupt", "player_hand_steal"]: return "目标玩家公开，手牌细节私密"
 	if kind == "city_control_dispute": return "城市产权争议会压低GDP并留下归属线索"
 	if kind == "global_barrage": return "多座目标城市公开受击，可反推压制意图"
@@ -814,7 +808,7 @@ func _resolution_effect_radius(skill: Dictionary, military_range: float) -> floa
 	if kind == "military_force": return clampf(military_range, 90.0, 360.0)
 	if kind == "military_command": return clampf(float(skill.get("range", 220.0)), 80.0, 330.0)
 	if kind == "card_counter": return 145.0
-	if kind.contains("city") or kind in ["route_sabotage", "route_flow_boon", "route_insurance", "area_trade_contract", "news_event", "weather_control"]: return 105.0
+	if kind.contains("city") or kind in ["route_sabotage", "route_flow_boon", "route_insurance", "news_event", "weather_control"]: return 105.0
 	if kind.contains("product") or kind == "market_stabilize": return 90.0
 	return 75.0
 
@@ -825,7 +819,7 @@ func _resolution_effect_style(skill: Dictionary, targets_monster: bool) -> Strin
 	if kind == "card_counter": return "counter"
 	if kind in ["military_force", "military_command"]: return "military"
 	if targets_monster or kind in ["move", "fly", "burrow", "attack", "charge_attack", "roll_attack", "area_damage", "mudslide", "miasma_shot", "miasma_bloom", "miasma_reclaim", "corrosive_breath", "armor_gain", "guard", "roar", "monster_lure", "special_monster_delay", "monster_takeover", "monster_bound_action"]: return "monster_command"
-	if kind in ["city_revenue_boost", "city_contract_boon", "city_product_upgrade", "city_product_shift", "city_demand_shift", "route_flow_boon", "route_insurance", "route_sabotage", "area_trade_contract"]: return "city"
+	if kind in ["city_revenue_boost", "city_contract_boon", "city_product_upgrade", "city_product_shift", "city_demand_shift", "route_flow_boon", "route_insurance", "route_sabotage"]: return "city"
 	if kind in ["player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage"]: return "interaction"
 	if kind in ["product_speculation", "product_futures", "product_contract_boon", "product_growth_boon", "market_stabilize"]: return "product"
 	if kind == "region_economy_shift": return "region"

@@ -187,7 +187,6 @@ func _test_production_composition_and_privacy_gates() -> void:
 		"res://scripts/runtime/card_commitment_runtime_service.gd",
 		"res://scripts/runtime/product_market_runtime_world_bridge.gd",
 		"res://scripts/runtime/city_gdp_derivative_runtime_world_bridge.gd",
-		"res://scripts/runtime/contract_runtime_world_bridge.gd",
 		"res://scripts/runtime/player_hand_interaction_runtime_service.gd",
 		"res://scripts/runtime/district_purchase_settlement_runtime_service.gd",
 		"res://scripts/runtime/commodity_flow_world_bridge.gd",

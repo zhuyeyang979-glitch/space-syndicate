@@ -2,7 +2,7 @@ extends RefCounted
 class_name InteractionEffectRouterV06
 
 const SCHEMA := preload("res://scripts/cards/v06/interaction/anonymous_interaction_runtime_schema_v06.gd")
-const DOMAINS := ["contract", "intel", "direct_player", "counter_response"]
+const DOMAINS := ["intel", "direct_player", "counter_response"]
 
 var _handlers_by_domain: Dictionary = {}
 var _associations: Dictionary = {}

@@ -3,7 +3,6 @@ extends SceneTree
 const SERVICE_SCENE := "res://scenes/runtime/CardEconomyProductRouteEffectRuntimeService.tscn"
 const BRIDGE_SCENE := "res://scenes/runtime/CardEconomyProductRouteEffectWorldBridge.tscn"
 const ACTIVE_HANDLERS := [
-	"area_trade_contract",
 	"city_gdp_derivative",
 	"market_stabilize",
 	"news_event",
@@ -34,15 +33,6 @@ class FakeWorld:
 	var selected_district := 0
 	var districts := [{"name": "fixture", "destroyed": false, "terrain": "land", "panic": 0, "production_level": 2, "transport_level": 2, "consumption_level": 2, "city": {"active": true, "trade_route_damage": 0}}]
 	var calls: Array = []
-
-
-class FakeContractController:
-	extends ContractRuntimeController
-	var calls: Array
-
-	func open_offer(_skill: Dictionary, _entry: Dictionary) -> Dictionary:
-		calls.append("area_trade_contract")
-		return {"opened": true, "reason": "fixture"}
 
 
 class FakeProductMarketController:
@@ -83,10 +73,9 @@ func _initialize() -> void:
 		return
 	root.add_child(service)
 	service.call("configure", {"ruleset_id": "v0.4"})
-	_expect(service.call("supported_handlers") == ACTIVE_HANDLERS, "service owns the exact eight active economy, product, and route handlers")
+	_expect(service.call("supported_handlers") == ACTIVE_HANDLERS, "service owns the exact seven active economy and product handlers")
 	_expect(str(service.call("family_for_handler", "city_gdp_derivative")) == "economy", "GDP derivative is classified as economy")
 	_expect(str(service.call("family_for_handler", "product_futures")) == "product", "futures are classified as product")
-	_expect(str(service.call("family_for_handler", "area_trade_contract")) == "route", "area trade contract is classified as route")
 	var product_plan := service.call("plan_effect", _request(3801, "product_speculation")) as Dictionary
 	_expect(bool(product_plan.get("ready", false)) and bool(product_plan.get("supported", false)), "active supported handler creates a ready plan")
 	_expect(_is_data_only(product_plan), "effect plan contains pure data only")
@@ -132,27 +121,10 @@ func _initialize() -> void:
 		formula.configure({"ruleset_id": "v0.4"})
 		root.add_child(formula)
 		bridge.call("set_formula_runtime_service", formula)
-		var runtime_services := Node.new()
-		runtime_services.name = "RuntimeServices"
-		fake_world.add_child(runtime_services)
-		var controller_host := Node.new()
-		controller_host.name = "RuntimeControllerHost"
-		runtime_services.add_child(controller_host)
-		var coordinator := Node.new()
-		coordinator.name = "GameRuntimeCoordinator"
-		controller_host.add_child(coordinator)
-		var fake_contract := FakeContractController.new()
-		fake_contract.name = "ContractRuntimeController"
-		fake_contract.calls = fake_world.calls
-		coordinator.add_child(fake_contract)
-		bridge.call("set_contract_runtime_controller", fake_contract)
 		var receipt := bridge.call("apply_effect", product_plan) as Dictionary
 		_expect(bool(receipt.get("resolved", false)) and fake_world.calls == ["product_speculation"], "bridge applies the active planned product operation exactly once")
 		var finalized := service.call("finalize_effect", product_plan, receipt) as Dictionary
 		_expect(bool(finalized.get("dispatched", false)) and bool(finalized.get("resolved", false)), "service finalizes a successful world receipt")
-		var contract_plan := service.call("plan_effect", _request(3804, "area_trade_contract")) as Dictionary
-		var contract_result := service.call("finalize_effect", contract_plan, {"handler_id": "area_trade_contract", "dispatched": true, "resolved": true, "reason": "resolved"}) as Dictionary
-		_expect(str(contract_result.get("continuation_kind", "")) == "contract_response", "area contract retains its non-blocking continuation classification")
 		fake_world.calls.clear()
 		var all_handlers_routed := true
 		for handler_variant in service.call("supported_handlers") as Array:
@@ -161,7 +133,7 @@ func _initialize() -> void:
 			var handler_receipt := bridge.call("apply_effect", handler_plan) as Dictionary
 			var handler_result := service.call("finalize_effect", handler_plan, handler_receipt) as Dictionary
 			all_handlers_routed = all_handlers_routed and bool(handler_result.get("resolved", false))
-		_expect(all_handlers_routed and fake_world.calls == ACTIVE_HANDLERS, "world bridge routes all eight active owned handlers exactly once")
+		_expect(all_handlers_routed and fake_world.calls == ACTIVE_HANDLERS, "world bridge routes all seven active owned handlers exactly once")
 		fake_world.queue_free()
 		world_state.queue_free()
 		fake_market.queue_free()

@@ -15,7 +15,6 @@ var _region_supply: RegionSupplyRuntimeController
 var _infrastructure: RegionInfrastructureRuntimeController
 var _weather: WeatherPresentationRuntimeService
 var _victory: VictoryControlRuntimeController
-var _contract: ContractRuntimeController
 var _purchase: DistrictPurchaseRuntimeController
 var _target_choice: CardTargetChoiceRuntimeController
 var _monster: MonsterRuntimeController
@@ -45,7 +44,6 @@ func configure(
 	infrastructure: RegionInfrastructureRuntimeController,
 	weather: WeatherPresentationRuntimeService,
 	victory: VictoryControlRuntimeController,
-	contract: ContractRuntimeController,
 	purchase: DistrictPurchaseRuntimeController,
 	target_choice: CardTargetChoiceRuntimeController,
 	monster: MonsterRuntimeController,
@@ -70,7 +68,6 @@ func configure(
 	_infrastructure = infrastructure
 	_weather = weather
 	_victory = victory
-	_contract = contract
 	_purchase = purchase
 	_target_choice = target_choice
 	_monster = monster
@@ -200,7 +197,7 @@ func debug_snapshot() -> Dictionary:
 		"uses_public_player_seat_projection": _player_seat_sources != null,
 		"uses_public_commodity_sushi_track_projection": _commodity_sushi_track != null,
 		"uses_viewer_safe_district_supply_projection": _district_supply_query != null,
-		"supports_decision_kinds": ["monster_wager", "contract_response", "discard_purchase", "monster_target_choice", "player_target_choice"],
+		"supports_decision_kinds": ["monster_wager", "counter_response", "discard_purchase", "monster_target_choice", "player_target_choice"],
 		"references_main": false,
 		"mutates_gameplay": false,
 	}
@@ -457,8 +454,6 @@ func _temporary_decision_source(viewer_index: int, public_world: Dictionary, pri
 	match str(forced.get("source_ref", forced.get("kind", ""))):
 		"monster_wager":
 			return _monster_wager_decision(viewer_index)
-		"contract_response":
-			return _contract.decision_snapshot(viewer_index) if _contract != null else {}
 		"discard_purchase":
 			return _discard_decision(viewer_index, private_world)
 		"monster_target_choice":

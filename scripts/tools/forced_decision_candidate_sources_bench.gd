@@ -18,7 +18,7 @@ func run_bench() -> Dictionary:
 	if coordinator != null:
 		var scheduler := coordinator.get_node_or_null("ForcedDecisionRuntimeScheduler") as ForcedDecisionRuntimeScheduler
 		if scheduler != null:
-			scheduler.configure(["monster_wager", "counter_response", "contract_response", "other_choice"])
+			scheduler.configure(["monster_wager", "counter_response", "other_choice"])
 		var target := coordinator.get_node_or_null("CardTargetChoiceRuntimeController") as CardTargetChoiceRuntimeController
 		var sources := coordinator.get_node_or_null("ForcedDecisionCandidateSources") as ForcedDecisionCandidateSources
 		_check(target != null, "target owner exists")

@@ -57,8 +57,6 @@ static func route_domain(intent: Dictionary) -> String:
 	and target_kind == "incoming_direct_player_interaction" \
 	and str(payload.get("target_scope", "")) == "direct_player_interaction":
 		return "counter_response"
-	if effect_kind.begins_with("contract_") or str(payload.get("interaction_domain", "")) == "contract":
-		return "contract"
 	if effect_kind.begins_with("intel_") or str(payload.get("interaction_domain", "")) == "intel":
 		return "intel"
 	if bool(payload.get("direct_player_interaction", false)) \

@@ -16,7 +16,6 @@ var _city_gdp_derivative_runtime_controller: CityGdpDerivativeRuntimeController
 var _formula_runtime_service: CardEconomyProductRouteFormulaRuntimeService
 var _table_selection_state: TableSelectionState
 var _world_session_state: WorldSessionState
-var _contract_runtime_controller: ContractRuntimeController
 
 
 func set_product_market_runtime_controller(controller: ProductMarketRuntimeController) -> void:
@@ -37,10 +36,6 @@ func set_table_selection_state(state: TableSelectionState) -> void:
 
 func set_world_session_state(state: WorldSessionState) -> void:
 	_world_session_state = state
-
-
-func set_contract_runtime_controller(controller: ContractRuntimeController) -> void:
-	_contract_runtime_controller = controller
 
 
 func world_session_state() -> WorldSessionState:
@@ -81,9 +76,6 @@ func apply_effect(plan: Dictionary) -> Dictionary:
 			resolved = bool(derivative_receipt.get("committed", false))
 		"product_contract_boon":
 			resolved = _product_market_runtime_controller.apply_product_contract_boon(player_index, skill, target_context) if _product_market_runtime_controller != null else false
-		"area_trade_contract":
-			var contract_result := _contract_runtime_controller.open_offer(skill, entry) if _contract_runtime_controller != null else {"opened": false, "reason": "contract_controller_missing"}
-			resolved = bool(contract_result.get("opened", false))
 		"market_stabilize":
 			resolved = _product_market_runtime_controller.apply_market_stabilize(skill, target_context) if _product_market_runtime_controller != null else false
 		"news_event":
@@ -106,7 +98,6 @@ func debug_snapshot() -> Dictionary:
 		"product_market_controller_bound": _product_market_runtime_controller != null,
 		"city_gdp_derivative_controller_bound": _city_gdp_derivative_runtime_controller != null,
 		"formula_runtime_service_bound": _formula_runtime_service != null,
-		"contract_runtime_controller_bound": _contract_runtime_controller != null,
 		"frozen_product_target_context_supported": true,
 	}
 

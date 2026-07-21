@@ -47,8 +47,6 @@ func interaction_cases() -> Array:
 		{"case_id": "toolbar_scene_composition", "fixture_id": "toolbar_default", "clicked_district": -1, "interaction": "toolbar_scene"},
 		{"case_id": "layer_focus_action_routes", "fixture_id": "toolbar_default", "clicked_district": -1, "interaction": "toolbar_layer"},
 		{"case_id": "trade_product_selection_routes", "fixture_id": "toolbar_default", "clicked_district": -1, "interaction": "toolbar_trade"},
-		{"case_id": "contract_source_enabled_disabled", "fixture_id": "toolbar_default", "clicked_district": -1, "interaction": "toolbar_contract_source"},
-		{"case_id": "contract_target_enabled_disabled", "fixture_id": "toolbar_default", "clicked_district": -1, "interaction": "toolbar_contract_target"},
 		{"case_id": "real_main_toolbar_route", "fixture_id": "real_main", "clicked_district": -1, "interaction": "toolbar_real_main"},
 		{"case_id": "pure_toolbar_snapshot", "fixture_id": "toolbar_default", "clicked_district": -1, "interaction": "toolbar_pure_data"},
 		{"case_id": "legacy_toolbar_builders_and_node_arrays_absent", "fixture_id": "main_source", "clicked_district": -1, "interaction": "toolbar_deletion"},
@@ -278,18 +276,16 @@ func _run_toolbar_case(case: Dictionary) -> Dictionary:
 	var case_id := str(case.get("case_id", ""))
 	var packed := load(TOOLBAR_SCENE_PATH) as PackedScene
 	var toolbar := packed.instantiate() as Control if packed != null else null
-	var actions: Array[String] = []
-	var payloads: Array = []
+	var layer_focuses: Array[String] = []
+	var route_selections: Array[String] = []
 	if toolbar != null:
 		add_child(toolbar)
 		toolbar.visible = false
-		toolbar.connect("control_action_requested", func(emitted_action_id: String, payload: Dictionary) -> void:
-			actions.append(emitted_action_id)
-			payloads.append(payload.duplicate(true))
-		)
+		toolbar.connect("map_layer_focus_requested", func(layer_id: String) -> void: layer_focuses.append(layer_id))
+		toolbar.connect("optional_route_selection_changed", func(product_id: String) -> void: route_selections.append(product_id))
 		await _settle_frames(2)
 		toolbar.call("set_controls", _toolbar_fixture())
-	var toolbar_checked := toolbar != null and toolbar.has_method("set_controls") and toolbar.has_method("debug_snapshot") and toolbar.has_signal("control_action_requested")
+	var toolbar_checked := toolbar != null and toolbar.has_method("set_controls") and toolbar.has_method("debug_snapshot") and toolbar.has_signal("map_layer_focus_requested") and toolbar.has_signal("optional_route_selection_changed") and not toolbar.has_signal("control_action_requested")
 	var payload_checked := false
 	var disabled_checked := false
 	var main_route_checked := false
@@ -299,50 +295,26 @@ func _run_toolbar_case(case: Dictionary) -> Dictionary:
 	var action_id := ""
 	match case_id:
 		"toolbar_scene_composition":
-			var required_nodes := ["MapReadingHintRail", "MapLayerFocusRail", "MapLayerAllButton", "MapLayerProductButton", "MapLayerRouteButton", "MapLayerIntelButton", "MapLayerWeatherButton", "MapLayerMonsterButton", "MapTradeProductSelector", "MapTradeStatusLabel", "MapContractSourceButton", "MapContractTargetButton", "MapContractStatusLabel"]
-			passed = toolbar_checked and _has_nodes(toolbar, required_nodes) and FileAccess.get_file_as_string(FULLSCREEN_MAP_SCENE_PATH).contains(TOOLBAR_SCENE_PATH)
+			var required_nodes := ["MapReadingHintRail", "MapLayerFocusRail", "MapLayerAllButton", "MapLayerProductButton", "MapLayerRouteButton", "MapLayerIntelButton", "MapLayerWeatherButton", "MapLayerMonsterButton", "MapTradeProductSelector", "MapTradeStatusLabel"]
+			var retired_nodes := ["MapContractSourceButton", "MapContractTargetButton", "MapContractStatusLabel"]
+			var retired_nodes_absent := true
+			for node_name_variant: Variant in retired_nodes:
+				retired_nodes_absent = retired_nodes_absent and toolbar.find_child(str(node_name_variant), true, false) == null
+			passed = toolbar_checked and _has_nodes(toolbar, required_nodes) and retired_nodes_absent and FileAccess.get_file_as_string(FULLSCREEN_MAP_SCENE_PATH).contains(TOOLBAR_SCENE_PATH)
 		"layer_focus_action_routes":
 			action_id = "map_layer_focus"
-			var button := toolbar.find_child("MapLayerRouteButton", true, false) as Button if toolbar != null else null
+			var button := toolbar.find_child("MapLayerIntelButton", true, false) as Button if toolbar != null else null
 			if button != null:
 				button.emit_signal("pressed")
-			payload_checked = actions == [action_id] and payloads.size() == 1 and str((payloads[0] as Dictionary).get("layer_id", "")) == "route"
+			payload_checked = layer_focuses == ["intel"]
 			passed = toolbar_checked and payload_checked
 		"trade_product_selection_routes":
 			action_id = "map_trade_product_select"
 			var selector := toolbar.find_child("MapTradeProductSelector", true, false) as OptionButton if toolbar != null else null
 			if selector != null and selector.item_count > 1:
 				selector.emit_signal("item_selected", 1)
-			payload_checked = actions == [action_id] and payloads.size() == 1 and str((payloads[0] as Dictionary).get("product_id", "")) == "食品"
+			payload_checked = route_selections == ["食品"]
 			passed = toolbar_checked and payload_checked
-		"contract_source_enabled_disabled":
-			action_id = "map_contract_source_select"
-			var source_button := toolbar.find_child("MapContractSourceButton", true, false) as Button if toolbar != null else null
-			if source_button != null:
-				source_button.emit_signal("pressed")
-			disabled_checked = actions.is_empty()
-			var enabled_snapshot := _toolbar_fixture()
-			(enabled_snapshot["contract_source"] as Dictionary)["disabled"] = false
-			if toolbar != null:
-				toolbar.call("set_controls", enabled_snapshot)
-			if source_button != null:
-				source_button.emit_signal("pressed")
-			payload_checked = actions == [action_id] and payloads == [{}]
-			passed = toolbar_checked and disabled_checked and payload_checked
-		"contract_target_enabled_disabled":
-			action_id = "map_contract_target_select"
-			var target_button := toolbar.find_child("MapContractTargetButton", true, false) as Button if toolbar != null else null
-			if target_button != null:
-				target_button.emit_signal("pressed")
-			disabled_checked = actions.is_empty()
-			var enabled_snapshot := _toolbar_fixture()
-			(enabled_snapshot["contract_target"] as Dictionary)["disabled"] = false
-			if toolbar != null:
-				toolbar.call("set_controls", enabled_snapshot)
-			if target_button != null:
-				target_button.emit_signal("pressed")
-			payload_checked = actions == [action_id] and payloads == [{}]
-			passed = toolbar_checked and disabled_checked and payload_checked
 		"real_main_toolbar_route":
 			action_id = "map_layer_focus"
 			main_route_checked = await _real_main_toolbar_route_ok()
@@ -354,11 +326,11 @@ func _run_toolbar_case(case: Dictionary) -> Dictionary:
 		"legacy_toolbar_builders_and_node_arrays_absent":
 			var main_source := FileAccess.get_file_as_string(MAIN_SCRIPT_PATH)
 			var retired_tokens := ["func _add_map_control_chip", "func _add_map_layer_focus_rail", "func _add_map_action_controls", "func _on_trade_product_selected", "map_build_buttons", "map_guess_options", "map_guess_buttons", "map_role_intel_buttons", "map_city_info_labels", "map_trade_options", "map_trade_buttons", "map_trade_info_labels", "map_layer_buttons", "map_layer_info_labels", "map_contract_source_buttons", "map_contract_target_buttons", "map_contract_info_labels"]
-			deletion_checked = main_source.contains("func _map_control_toolbar_snapshot") and main_source.contains("func _on_map_control_toolbar_action_requested")
+			deletion_checked = main_source.contains("func _map_control_toolbar_snapshot") and not main_source.contains("func _on_map_control_toolbar_action_requested")
 			for token_variant: Variant in retired_tokens:
 				deletion_checked = deletion_checked and not main_source.contains(str(token_variant))
 			passed = toolbar_checked and deletion_checked
-	var notes := "toolbar ownership ok" if passed else "toolbar=%s action=%s payload=%s disabled=%s main=%s deletion=%s pure=%s actions=%s payloads=%s" % [str(toolbar_checked), action_id, str(payload_checked), str(disabled_checked), str(main_route_checked), str(deletion_checked), str(pure_data_checked), str(actions), str(payloads)]
+	var notes := "toolbar ownership ok" if passed else "toolbar=%s action=%s payload=%s disabled=%s main=%s deletion=%s pure=%s layer_focuses=%s route_selections=%s" % [str(toolbar_checked), action_id, str(payload_checked), str(disabled_checked), str(main_route_checked), str(deletion_checked), str(pure_data_checked), str(layer_focuses), str(route_selections)]
 	if toolbar != null:
 		remove_child(toolbar)
 		toolbar.queue_free()
@@ -402,9 +374,6 @@ func _toolbar_fixture() -> Dictionary:
 		"selected_layer_id": "all",
 		"layer_status": {"text": "图层:全图", "tooltip": "当前图层"},
 		"trade": {"options": [{"id": "", "label": "商路关闭"}, {"id": "食品", "label": "食品"}, {"id": "能源", "label": "能源"}], "selected_product_id": "", "status": {"text": "⇄ 商路关"}},
-		"contract_source": {"text": "供给:选区", "disabled": true, "tooltip": "当前不可设"},
-		"contract_target": {"text": "需求:选区", "disabled": true, "tooltip": "当前不可设"},
-		"contract_status": {"text": "⇄ 合约未设", "tooltip": "供给端与需求端"},
 	}
 
 
@@ -421,11 +390,15 @@ func _real_main_toolbar_route_ok() -> bool:
 	await _settle_frames(2)
 	var toolbar := main.find_child("PlanetMapControlToolbar", true, false) as Control
 	var intel_button := toolbar.find_child("MapLayerIntelButton", true, false) as Button if toolbar != null else null
+	var typed_layer_events: Array[String] = []
+	var production_connection_count := toolbar.get_signal_connection_list("map_layer_focus_requested").size() if toolbar != null else 0
+	if toolbar != null:
+		toolbar.connect("map_layer_focus_requested", func(layer_id: String) -> void: typed_layer_events.append(layer_id))
 	if intel_button != null:
 		intel_button.emit_signal("pressed")
 	await _settle_frames(2)
-	var snapshot: Dictionary = toolbar.call("debug_snapshot") as Dictionary if toolbar != null and toolbar.has_method("debug_snapshot") else {}
-	var route_ok := toolbar != null and str(main.get("selected_map_layer_focus")) == "intel" and _selected_layer_id(snapshot) == "intel"
+	var selection_state := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/TableSelectionState")
+	var route_ok := toolbar != null and selection_state != null and production_connection_count > 0 and typed_layer_events == ["intel"] and not toolbar.has_signal("control_action_requested")
 	for player_variant: Variant in main.find_children("*", "AudioStreamPlayer", true, false):
 		var player := player_variant as AudioStreamPlayer
 		if player != null:

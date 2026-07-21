@@ -12,7 +12,6 @@ var _resolution_controller: CardResolutionRuntimeController
 var _target_choice_controller: CardTargetChoiceRuntimeController
 var _monster_controller: MonsterRuntimeController
 var _military_controller: MilitaryRuntimeController
-var _contract_controller: ContractRuntimeController
 var _session_controller: GameSessionRuntimeController
 var _forced_decision_scheduler: ForcedDecisionRuntimeScheduler
 var _commodity_flow_controller: CommodityFlowRuntimeController
@@ -34,7 +33,6 @@ func set_runtime_dependencies(
 	target_choice_controller: CardTargetChoiceRuntimeController,
 	monster_controller: MonsterRuntimeController,
 	military_controller: MilitaryRuntimeController,
-	contract_controller: ContractRuntimeController,
 	session_controller: GameSessionRuntimeController,
 	forced_decision_scheduler: ForcedDecisionRuntimeScheduler,
 	commodity_flow_controller: CommodityFlowRuntimeController,
@@ -45,7 +43,6 @@ func set_runtime_dependencies(
 	_target_choice_controller = target_choice_controller
 	_monster_controller = monster_controller
 	_military_controller = military_controller
-	_contract_controller = contract_controller
 	_session_controller = session_controller
 	_forced_decision_scheduler = forced_decision_scheduler
 	_commodity_flow_controller = commodity_flow_controller
@@ -83,16 +80,6 @@ func build_facts(player_index: int, skill: Dictionary, context: Dictionary = {})
 	var unit: Dictionary = {}
 	if str(skill.get("kind", "")) == "military_command" and _military_controller != null:
 		unit = _military_controller.active_unit_for_player(player_index, int(skill.get("bound_military_uid", 0)))
-	var contract_selection := _contract_controller.selection_snapshot() if _contract_controller != null else {}
-	var contract_context: Dictionary = {}
-	if str(skill.get("kind", "")) == "area_trade_contract":
-		contract_context = _contract_controller.offer_context(
-			skill,
-			player_index,
-			int(context.get("contract_source_district", contract_selection.get("source_district", -1))),
-			int(context.get("contract_target_district", contract_selection.get("target_district", -1))),
-			str(context.get("selected_trade_product", _table_selection_state.selected_trade_product))
-		) if _contract_controller != null else {"error": "合约运行时控制器不可用", "reason": "contract_controller_missing"}
 	var share_by_district := _share_basis_points_by_district(player_index, districts) if player_valid else {}
 	var runtime_state := _resolution_controller.card_play_fact_snapshot() if _resolution_controller != null else {}
 	var batch_locked := bool(runtime_state.get("batch_locked", false))
@@ -126,8 +113,6 @@ func build_facts(player_index: int, skill: Dictionary, context: Dictionary = {})
 		"selected_district_valid": selected_district_valid,
 		"selected_district_destroyed": bool(selected_district_data.get("destroyed", false)),
 		"selected_district_name": str(selected_district_data.get("name", "区域")),
-		"contract_source_district": int(context.get("contract_source_district", contract_selection.get("source_district", -1))),
-		"contract_share_discount_percent": int(role.get("contract_gdp_share_discount_percent", int(role.get("contract_flow_discount", 0)) * 5)),
 		"best_share_district": _best_share_district(share_by_district),
 		"share_basis_points_by_district": share_by_district,
 		"pending_target_choice": pending_target_choice,
@@ -141,8 +126,6 @@ func build_facts(player_index: int, skill: Dictionary, context: Dictionary = {})
 		"active_resolution_present": not active_entry.is_empty(),
 		"active_skill": active_skill,
 		"active_skill_counterable": _counterable(active_skill),
-		"contract_error": str(contract_context.get("error", "")),
-		"contract_context": contract_context,
 		"military_unit_present": not unit.is_empty(),
 		"military_unit_cooldown": float(unit.get("cooldown_left", 0.0)),
 		"military_deployment_valid": military_deployment_valid,

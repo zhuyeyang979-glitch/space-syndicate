@@ -44,8 +44,6 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/WeatherRuntimeWorldBridge.tscn" id="39_weather_world_bridge"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/WeatherPresentationRuntimeService.tscn" id="75_weather_presentation"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/WeatherTelemetryRuntimeService.tscn" id="76_weather_telemetry"]
-[ext_resource type="PackedScene" path="res://scenes/runtime/ContractRuntimeController.tscn" id="40_contract_runtime"]
-[ext_resource type="PackedScene" path="res://scenes/runtime/ContractRuntimeWorldBridge.tscn" id="41_contract_world_bridge"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ProductMarketRuntimeController.tscn" id="42_product_market"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ProductMarketRuntimeWorldBridge.tscn" id="43_product_market_world_bridge"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CityGdpDerivativeRuntimeController.tscn" id="44_city_gdp_derivative"]
@@ -353,12 +351,6 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="WeatherTelemetryRuntimeService" parent="." instance=ExtResource("76_weather_telemetry")]
-unique_name_in_owner = true
-
-[node name="ContractRuntimeController" parent="." instance=ExtResource("40_contract_runtime")]
-unique_name_in_owner = true
-
-[node name="ContractRuntimeWorldBridge" parent="." instance=ExtResource("41_contract_world_bridge")]
 unique_name_in_owner = true
 
 [node name="CardPlayEligibilityRuntimeService" parent="." instance=ExtResource("32_card_play_eligibility")]

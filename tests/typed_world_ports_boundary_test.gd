@@ -52,7 +52,7 @@ func _test_port_contracts() -> void:
 	_check(ports != null and ports.get_child_count() == 7, "all seven typed ports reconstruct from the production scene")
 	var required := {
 		"RuntimeLifecyclePort": ["session_is_finished", "session_is_paused", "synchronize_forced_decisions", "blocks_global_time", "allows_card_resolution_progress", "advance_world_time"],
-		"RuntimeCardPort": ["advance_card_resolution_frame", "tick_contract_runtime", "advance_card_cooldowns"],
+		"RuntimeCardPort": ["advance_card_resolution_frame", "advance_card_cooldowns"],
 		"RuntimeEconomyPort": ["advance_city_gdp_derivative_timers", "advance_product_futures_timers", "advance_economic_boons", "advance_commodity_flow", "advance_runtime_commodity_flow", "tick_product_market_cycle"],
 		"RuntimeActorPort": ["tick_weather", "tick_ai", "tick_military"],
 		"RuntimeMonsterPort": ["tick_wager_decisions_realtime", "tick_battle_lifecycles", "tick_motion", "tick_actions", "tick_durations", "tick_revivals"],
@@ -73,8 +73,10 @@ func _test_port_contracts() -> void:
 
 func _test_mutation_boundary() -> void:
 	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
+	var phase_source := FileAccess.get_file_as_string("res://scripts/runtime/runtime_phase_coordinator.gd")
+	_check(coordinator_source.contains("loop.bind_phase_coordinator(phases)"), "Coordinator composes the single phase coordinator into RuntimeLoop")
 	for marker in ["ports.lifecycle", "ports.card", "ports.economy", "ports.actors", "ports.monster", "ports.presentation", "ports.victory"]:
-		_check(coordinator_source.contains(marker), "Coordinator delegates migrated frame intent through %s" % marker)
+		_check(phase_source.contains(marker), "Phase coordinator delegates migrated frame intent through %s" % marker)
 	var audit := RuntimeAuthorityAudit.new()
 	for domain in ["runtime_lifecycle", "runtime_card", "runtime_economy", "runtime_actors", "runtime_monster", "runtime_presentation", "runtime_victory"]:
 		_check(audit.register_authority(StringName(domain), &"mutation_path", NodePath("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RuntimeWorldPorts/%s" % domain), 1), "%s mutation path registers" % domain)

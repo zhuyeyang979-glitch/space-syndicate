@@ -2,13 +2,13 @@
 
 ## Sprint 38 boundary
 
-`CardEconomyProductRouteEffectRuntimeService` is the single pure-data dispatch owner for these seventeen handlers:
+`CardEconomyProductRouteEffectRuntimeService` is the single pure-data dispatch owner for the current supported economy and product handlers:
 
-- Economy: `cash_gain`, `city_revenue_boost`, `city_gdp_derivative`.
-- Product: `market_stabilize`, `product_speculation`, `product_futures`, `product_contract_boon`, `product_growth_boon`, `city_product_upgrade`, `city_product_shift`, `city_demand_shift`.
-- Route: `area_trade_contract`, `route_insurance`, `route_flow_boon`, `route_sabotage`, `region_economy_shift`, `city_contract_boon`.
+- Economy: `city_gdp_derivative`.
+- Product: `market_stabilize`, `product_speculation`, `product_futures`, `product_contract_boon`, `product_growth_boon`.
+- Route: `city_contract_boon`.
 
-The service owns handler registration, family classification, pure effect plans, stable result envelopes, and the `area_trade_contract` continuation classification. It stores no active card or world state.
+The service owns handler registration, family classification, pure effect plans, and stable result envelopes. It stores no active card or world state.
 
 ## Adjacent owners
 
@@ -32,21 +32,21 @@ Public/debug snapshots contain the supported handler registry and aggregate coun
 ## Preserved semantics
 
 - No price, payout, GDP, duration, route, contract, target, AI, or privacy formula changed in Sprint 38.
-- `area_trade_contract` remains a non-blocking contract-response continuation.
+- Conditional order and supply effects are automatic economics operations; they do not create a player-consent continuation.
 - Failed effects keep the existing no-refund commitment behavior owned by Execution Service.
 - The bridge dispatches each supported plan once; Execution Service remains the exactly-once lifecycle gate.
 - Missing service or bridge state fails closed. There is no legacy family-dispatch fallback in `main.gd`.
 
 ## Sprint 38 evidence
 
-- Focused service test verifies the exact seventeen-handler registry, pure plans/debug output, all bridge routes, and the narrow ownership flags.
-- `CardResolutionExecutionRuntimeCharacterizationBench` remains 28/28 observed, 28/28 aligned, and 28/28 cutover after the family routing change.
+- Focused service test verifies the exact active-handler registry, pure plans/debug output, all bridge routes, and the narrow ownership flags.
+- The active characterization bench excludes retired consent-flow cases; its remaining economics evidence is separate from the v0.6 retirement gate.
 - `main.gd::_apply_card_resolution_effect_request()` calls Coordinator plan/finalize APIs and contains none of the seventeen concrete family branches.
 
 ## Sprint 39 formula result
 
 The product-market boon, speculation pressure, futures, GDP-derivative, and route-factor formulas have moved to the sibling pure Formula Service. Compatible world function names remain as fact/result adapters, but their arithmetic bodies and the futures payout-unit constant are absent from `main.gd`.
 
-The long-lived Bench now passes 28/28 observed, 28/28 aligned, and 40/40 cutover. Actual world mutation, ledgers, public clues, and visuals remain in existing owners. Execution Service did not gain formula knowledge.
+Actual world mutation, ledgers, public clues, and visuals remain in existing owners. Execution Service did not gain formula knowledge.
 
 The next deletion gate should characterize contract and city-product mutation arithmetic before moving it. Do not expand Execution Service or recreate queue/timer state in either service.

@@ -67,11 +67,6 @@ func compose_resolution_overlay_badges(source: Dictionary) -> Array:
 	var requirement_text := str(source.get("requirement_text", ""))
 	if requirement_text != "":
 		badge_texts.append("出牌条件｜%s" % _short_text(requirement_text.replace("打出条件：", "").replace("条件：", ""), 22))
-	if bool(source.get("is_contract", false)):
-		match str(source.get("contract_state", "result")):
-			"active": badge_texts.append("合约展示｜随后签约")
-			"pending": badge_texts.append("合约待签｜看底部沙漏")
-			_: badge_texts.append("合约结果｜%s" % str(source.get("contract_response_label", "待公开")))
 	var order_clue := str(source.get("order_clue", ""))
 	if order_clue != "":
 		badge_texts.append("结算顺序｜%s" % _short_text(order_clue, 20))

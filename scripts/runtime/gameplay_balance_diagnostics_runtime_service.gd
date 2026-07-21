@@ -109,16 +109,11 @@ func card_budget_points(skill: Dictionary) -> int:
 	points += int(float(abs(int(skill.get("cash", 0)))) / 35.0)
 	points += int(float(abs(int(skill.get("revenue_amount", 0)))) / 10.0)
 	points += int(float(abs(int(skill.get("contract_income", 0)))) / 12.0)
-	points += int(float(abs(int(skill.get("accept_cash", 0)))) / 30.0)
-	points += int(float(abs(int(skill.get("decline_cash_penalty", 0)))) / 35.0)
 	for key in [
 		"production_delta", "transport_delta", "consumption_delta",
-		"accept_production_delta", "accept_transport_delta", "accept_consumption_delta",
-		"decline_production_delta", "decline_transport_delta", "decline_consumption_delta",
 		"price_delta", "market_demand_pressure", "market_supply_pressure",
 		"product_level", "product_shift", "demand_shift",
-		"contract_add_products", "contract_add_demands", "contract_remove_products", "contract_remove_demands",
-		"repair_routes", "route_damage", "decline_route_damage", "draw_amount",
+		"repair_routes", "route_damage", "draw_amount",
 		"damage", "armor", "guard", "ranged_guard", "miasma_count", "reclaim_count", "fixed_skill_count",
 		"weather_zone_count", "hand_discard_count", "hand_steal_count",
 		"target_cash_penalty", "control_gdp_penalty", "global_barrage_damage", "global_barrage_target_count", "global_barrage_route_damage",
@@ -140,7 +135,6 @@ func card_budget_points(skill: Dictionary) -> int:
 	points += int(round(absf(float(skill.get("control_block_seconds", 0.0))) / 5.0))
 	points += int(round(maxf(0.0, float(skill.get("growth_multiplier", 1.0)) - 1.0) * 24.0))
 	points += int(round(maxf(0.0, float(skill.get("route_flow_multiplier", 1.0)) - 1.0) * 24.0))
-	points += int(round(maxf(0.0, float(skill.get("accept_route_flow_multiplier", 1.0)) - 1.0) * 18.0))
 	var futures_terms := _dictionary(skill.get("futures_terms", {}))
 	if str(skill.get("kind", "")) == "product_futures":
 		points += int(float(maxi(0, int(futures_terms.get("maximum_gain", 0)))) / 30.0)
@@ -208,8 +202,8 @@ func card_balance_pillars(skill: Dictionary, card_facts: Dictionary = {}) -> Arr
 	var target := _dictionary(card_facts.get("target", {}))
 	var tags := str(skill.get("tags", ""))
 	var derivative_terms := _dictionary(skill.get("gdp_derivative_terms", {}))
-	var economy_delta := int(skill.get("production_delta", 0)) + int(skill.get("transport_delta", 0)) + int(skill.get("consumption_delta", 0)) + int(skill.get("accept_production_delta", 0)) + int(skill.get("accept_transport_delta", 0)) + int(skill.get("accept_consumption_delta", 0)) + int(skill.get("contract_add_products", 0)) + int(skill.get("contract_add_demands", 0))
-	if int(skill.get("cash", 0)) > 0 or int(skill.get("revenue_amount", 0)) > 0 or int(skill.get("contract_income", 0)) > 0 or int(skill.get("accept_cash", 0)) > 0 or economy_delta > 0 or float(skill.get("growth_multiplier", 1.0)) > 1.001 or float(skill.get("route_flow_multiplier", 1.0)) > 1.001 or kind == "product_futures" or (kind == "city_gdp_derivative" and str(derivative_terms.get("direction", "up")) == "up"):
+	var economy_delta := int(skill.get("production_delta", 0)) + int(skill.get("transport_delta", 0)) + int(skill.get("consumption_delta", 0))
+	if int(skill.get("cash", 0)) > 0 or int(skill.get("revenue_amount", 0)) > 0 or int(skill.get("contract_income", 0)) > 0 or economy_delta > 0 or float(skill.get("growth_multiplier", 1.0)) > 1.001 or float(skill.get("route_flow_multiplier", 1.0)) > 1.001 or kind == "product_futures" or (kind == "city_gdp_derivative" and str(derivative_terms.get("direction", "up")) == "up"):
 		_append_unique(pillars, "收益")
 	if int(skill.get("damage", 0)) > 0 or int(skill.get("route_damage", 0)) > 0 or economy_delta < 0 or int(skill.get("hand_discard_count", 0)) > 0 or int(skill.get("hand_steal_count", 0)) > 0 or int(skill.get("control_gdp_penalty", 0)) > 0 or int(skill.get("global_barrage_damage", 0)) > 0 or kind in ["route_sabotage", "area_damage", "mudslide", "miasma_shot", "corrosive_breath", "panic_shift", "news_event", "player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage", "military_force", "military_command"]:
 		_append_unique(pillars, "压制")
@@ -225,13 +219,13 @@ func card_balance_pillars(skill: Dictionary, card_facts: Dictionary = {}) -> Arr
 		_append_unique(pillars, "怪兽")
 	if kind in ["military_force", "military_command"] or tags.contains("军队") or tags.contains("军令"):
 		_append_unique(pillars, "军队")
-	if kind in ["area_trade_contract", "product_contract_boon"] or int(skill.get("contract_add_products", 0)) > 0 or int(skill.get("contract_add_demands", 0)) > 0 or int(skill.get("accept_cash", 0)) != 0 or int(skill.get("decline_cash_penalty", 0)) != 0:
+	if kind == "product_contract_boon" or int(skill.get("contract_income", 0)) > 0:
 		_append_unique(pillars, "合约")
 	if kind in ["product_speculation", "product_futures", "market_stabilize", "product_growth_boon", "product_contract_boon"] or int(skill.get("market_demand_pressure", 0)) != 0 or int(skill.get("market_supply_pressure", 0)) != 0:
 		_append_unique(pillars, "市场")
 	if kind == "city_gdp_derivative":
 		_append_unique(pillars, "GDP金融")
-	if int(requirement.get("required_share_percent", skill.get("play_region_gdp_share_required", 0))) > 0 or int(requirement.get("cash_cost", skill.get("play_cash", 0))) > 0 or bool(target.get("targets_monster", skill.get("target_monster_required", false))) or kind in ["area_trade_contract", "card_counter", "weather_control"] or (kind == "monster_card" and not bool(skill.get("starter_play_free", false)) and str(skill.get("summon_access", "any")) != "any"):
+	if int(requirement.get("required_share_percent", skill.get("play_region_gdp_share_required", 0))) > 0 or int(requirement.get("cash_cost", skill.get("play_cash", 0))) > 0 or bool(target.get("targets_monster", skill.get("target_monster_required", false))) or kind in ["card_counter", "weather_control"] or (kind == "monster_card" and not bool(skill.get("starter_play_free", false)) and str(skill.get("summon_access", "any")) != "any"):
 		_append_unique(pillars, "公开门槛")
 	if pillars.is_empty():
 		pillars.append("临场")
@@ -891,7 +885,7 @@ func _family_complete(family: String, ids: Dictionary) -> bool:
 func _fallback_route_id(skill: Dictionary) -> String:
 	var kind := str(skill.get("kind", ""))
 	if kind in ["city_revenue_boost", "city_product_upgrade", "city_product_shift", "city_demand_shift", "route_flow_boon", "route_insurance"]: return "city_growth"
-	if kind in ["area_trade_contract", "product_contract_boon", "city_contract_boon"]: return "contract_route"
+	if kind in ["product_contract_boon", "city_contract_boon"]: return "contract_route"
 	if kind in ["product_speculation", "product_futures", "city_gdp_derivative", "market_stabilize", "product_growth_boon"]: return "finance_speculation"
 	if kind in ["monster_card", "monster_bound_action", "monster_lure", "monster_takeover", "route_sabotage", "weather_control", "news_event", "military_force", "military_command"]: return "monster_pressure"
 	if kind.begins_with("intel_") or kind == "supply_draw": return "intel_supply"
@@ -923,12 +917,10 @@ func _pressure_card_entry(card: Dictionary) -> Dictionary:
 	var target := _dictionary(card.get("target", {}))
 	var pillars := card_balance_pillars(skill, card)
 	var required_share := int(requirement.get("required_share_percent", skill.get("play_region_gdp_share_required", 0)))
-	var money := int(float(maxi(0, int(skill.get("cash", 0)))) / 35.0) + int(float(maxi(0, int(skill.get("revenue_amount", 0)))) / 8.0) + int(float(maxi(0, int(skill.get("contract_income", 0)))) / 10.0) + int(float(maxi(0, int(skill.get("accept_cash", 0)))) / 30.0)
+	var money := int(float(maxi(0, int(skill.get("cash", 0)))) / 35.0) + int(float(maxi(0, int(skill.get("revenue_amount", 0)))) / 8.0) + int(float(maxi(0, int(skill.get("contract_income", 0)))) / 10.0)
 	money += maxi(0, int(skill.get("production_delta", 0))) * 44 + maxi(0, int(skill.get("transport_delta", 0))) * 42 + maxi(0, int(skill.get("consumption_delta", 0))) * 42
-	money += maxi(0, int(skill.get("accept_production_delta", 0))) * 38 + maxi(0, int(skill.get("accept_transport_delta", 0))) * 36 + maxi(0, int(skill.get("accept_consumption_delta", 0))) * 36
-	money += maxi(0, int(skill.get("contract_add_products", 0))) * 34 + maxi(0, int(skill.get("contract_add_demands", 0))) * 34
 	money += int(round(maxf(0.0, float(skill.get("growth_multiplier", 1.0)) - 1.0) * 120.0)) + int(round(maxf(0.0, float(skill.get("route_flow_multiplier", 1.0)) - 1.0) * 110.0))
-	var disruption := maxi(0, int(skill.get("damage", 0))) * 42 + maxi(0, int(skill.get("route_damage", 0))) * 68 + maxi(0, int(skill.get("decline_route_damage", 0))) * 64
+	var disruption := maxi(0, int(skill.get("damage", 0))) * 42 + maxi(0, int(skill.get("route_damage", 0))) * 68
 	disruption += maxi(0, -int(skill.get("production_delta", 0))) * 48 + maxi(0, -int(skill.get("transport_delta", 0))) * 48 + maxi(0, -int(skill.get("consumption_delta", 0))) * 48
 	disruption += maxi(0, int(skill.get("panic", 0))) * 3 + maxi(0, int(skill.get("hand_discard_count", 0))) * 86 + maxi(0, int(skill.get("hand_steal_count", 0))) * 118
 	disruption += int(float(maxi(0, int(skill.get("target_cash_penalty", 0)))) / 2.0) + int(round(maxf(0.0, float(skill.get("control_block_seconds", 0.0))) * maxi(0, int(skill.get("control_gdp_penalty", 0))) / 18.0))
@@ -941,7 +933,7 @@ func _pressure_card_entry(card: Dictionary) -> Dictionary:
 	if required_share > 0: clue += 26
 	if bool(target.get("targets_player", false)): gate += 28; clue += 54
 	if bool(target.get("targets_monster", false)): gate += 24; clue += 42
-	if kind in ["city_control_dispute", "global_barrage", "area_trade_contract", "weather_control", "military_force"]: clue += 44
+	if kind in ["city_control_dispute", "global_barrage", "weather_control", "military_force"]: clue += 44
 	if not bool(skill.get("persistent", false)): gate += 8
 	else: protection += 18
 	if pillars.has("公开门槛"): clue += 18
@@ -1116,7 +1108,6 @@ func _card_budget_gate_facts(card_facts: Dictionary) -> Array:
 	var cash := int(requirement.get("cash_cost", skill.get("play_cash", 0))); if cash > 0: result.append("打出¥%d" % cash)
 	if bool(target.get("targets_monster", skill.get("target_monster_required", false))): result.append("公开指定怪兽")
 	if bool(target.get("targets_player", skill.get("target_player_required", false))): result.append("公开指定玩家")
-	if str(skill.get("kind", "")) == "area_trade_contract": result.append("先选供需两区")
 	result.append("固定技能冷却" if bool(skill.get("persistent", false)) else "一次性")
 	return result
 
@@ -1152,7 +1143,7 @@ func _products_available(required: Array, available: Array) -> bool:
 
 
 func _uses_current_product(skill: Dictionary) -> bool:
-	var kind := str(skill.get("kind", "")); return kind in ["product_speculation", "product_futures", "product_contract_boon", "product_growth_boon", "market_stabilize", "city_product_shift", "city_demand_shift"] or (kind == "area_trade_contract" and str(skill.get("contract_product_mode", "selected")) != "fixed") or int(skill.get("market_demand_pressure", 0)) != 0 or int(skill.get("market_supply_pressure", 0)) != 0
+	var kind := str(skill.get("kind", "")); return kind in ["product_speculation", "product_futures", "product_contract_boon", "product_growth_boon", "market_stabilize", "city_product_shift", "city_demand_shift"] or int(skill.get("market_demand_pressure", 0)) != 0 or int(skill.get("market_supply_pressure", 0)) != 0
 
 
 func _district_products(district: Dictionary) -> Array:

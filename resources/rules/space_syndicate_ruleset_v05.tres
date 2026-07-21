@@ -31,7 +31,6 @@ maximum_card_rank = 4
 purchase_window_seconds = 12
 local_purchase_price_bp = 8000
 adjacent_purchase_price_bp = 10000
-contract_response_seconds = 8
 monster_warning_seconds = 5
 monster_wager_seconds = 8
 monster_wager_min_rate_bp = 500

@@ -9,7 +9,7 @@ Measured from `scripts/main.gd` on the current branch:
 - 24 public alien role cards.
 - 6 AI personality profiles.
 - 46 total products, including 12 ocean products.
-- 239 static skill/card entries, plus generated monster-card entries in the shared card codex.
+- 232 active static skill/card entries, plus generated monster-card entries in the shared card codex.
 - 22 complete static I-IV rank ladders.
 - 28 military-force cards: 行星防卫军 plus air, land, and ocean forces.
 - 12 product-futures cards: commodity long/short and warehouse stockpile lines.
@@ -38,7 +38,7 @@ The current branch now has an automated development-route pressure audit. It che
 | Route | Current support | Main risk | Next balancing need |
 | --- | --- | --- | --- |
 | City GDP growth | City financing, product/demand shifts, temporary orders, route-flow buffs, contracts | Can snowball if early city remains untouched | Keep GDP boosts readable through breakdown; add more targeted city defense and city-specific sabotage tests |
-| Contract economy | Supply/demand contract families, punitive refusal terms, temporary city contracts | Some contracts can feel abstract without clear route visualization | Make contract acceptance/rejection consequences more visible in economy overview and card previews |
+| Conditional-order economy | Supply/demand order families and temporary city orders settle automatically | Orders can feel abstract without clear route visualization | Make automatic supply/demand settlement and its public results visible in the economy overview and card previews |
 | Finance/GDP speculation | City buy-up, city short, disaster insurance, commodity futures, warehouse stockpile | High leverage can become “cash from nowhere” if not tied to visible GDP/price movement | Commodity futures now have field-driven leverage/gate/clue audits; next pass should compare long-run AI profits across city GDP, commodity futures, and monster pressure routes |
 | Monster pressure | Monster cards, lures, takeover, resource preferences, monster wagers, ecology identity audit | Randomness can feel unfair if target reasons are hidden | Continue exposing attraction reasons, resource matches, and action text without revealing owner; future monsters must pass movement/resource/action/bound-skill/art differentiation checks |
 | Military command | Defense army, fighter, bomber, tank, missile, submarine, warship, reusable commands | Could overlap too much with monster destruction if not bounded | Keep movement non-crushing; reserve area HP damage for explicit strike commands; tune GDP pressure by unit role |

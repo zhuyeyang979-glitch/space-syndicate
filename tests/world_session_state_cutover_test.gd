@@ -41,7 +41,6 @@ func _run() -> void:
 		"MilitaryRuntimeWorldBridge",
 		"WeatherRuntimeWorldBridge",
 		"ProductMarketRuntimeWorldBridge",
-		"ContractRuntimeWorldBridge",
 		"CardPlayEligibilityWorldBridge",
 		"GameplayBalanceDiagnosticsWorldBridge",
 		"RegionInfrastructureWorldBridge",

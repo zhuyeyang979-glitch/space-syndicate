@@ -11,7 +11,6 @@ var _world_bridge: Node
 var _monster_runtime_controller: MonsterRuntimeController
 var _military_runtime_controller: MilitaryRuntimeController
 var _weather_runtime_controller: WeatherRuntimeController
-var _contract_runtime_controller: ContractRuntimeController
 var _product_market_runtime_controller: ProductMarketRuntimeController
 var _city_gdp_derivative_runtime_controller: CityGdpDerivativeRuntimeController
 var _card_definition_bridge: CardRuntimeDefinitionWorldBridge
@@ -49,10 +48,6 @@ func set_military_runtime_controller(controller: MilitaryRuntimeController) -> v
 
 func set_weather_runtime_controller(controller: WeatherRuntimeController) -> void:
 	_weather_runtime_controller = controller
-
-
-func set_contract_runtime_controller(controller: ContractRuntimeController) -> void:
-	_contract_runtime_controller = controller
 
 
 func set_product_market_runtime_controller(controller: ProductMarketRuntimeController) -> void:
@@ -215,8 +210,6 @@ func build_response_plan(response_kind: String, player_index: int, context: Dict
 	match response_kind:
 		"counter_response":
 			candidates = _ai_counter_response_candidates(player_index)
-		"contract_response":
-			candidates = _ai_contract_response_candidates(player_index, context)
 		"monster_wager":
 			var wager_plan := _ai_monster_wager_plan(player_index, context)
 			if not wager_plan.is_empty():
@@ -339,7 +332,6 @@ func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 		"receipt_count": _last_receipts.size(),
 		"shared_rng": _world_ready() and rng != null,
 		"weather_controller_bound": _weather_runtime_controller != null,
-		"contract_controller_bound": _contract_runtime_controller != null,
 		"victory_control_controller_bound": _victory_control_runtime_controller != null,
 		"typed_card_submission_bound": _card_play_submission_controller != null,
 		"typed_card_history_bound": _card_resolution_history_service != null,
@@ -448,15 +440,6 @@ var military_units:
 	get:
 		return _military_runtime_controller.roster_snapshot(true) if _military_runtime_controller != null else []
 
-var pending_contract_offers:
-	get:
-		return _contract_runtime_controller.pending_offers_snapshot(true) if _contract_runtime_controller != null else []
-	set(value):
-		if _contract_runtime_controller != null and value is Array:
-			var save_data := _contract_runtime_controller.to_save_data()
-			save_data["pending_contract_offers"] = (value as Array).duplicate(true)
-			_contract_runtime_controller.apply_save_data(save_data)
-
 var players:
 	get:
 		return _world_value(&"players", [])
@@ -474,22 +457,6 @@ var resolved_card_history:
 var rng:
 	get:
 		return _world_bridge.shared_rng() if _world_bridge != null else null
-
-var selected_contract_source_district:
-	get:
-		return int(_contract_runtime_controller.selection_snapshot().get("source_district", -1)) if _contract_runtime_controller != null else -1
-	set(value):
-		if _contract_runtime_controller != null:
-			var selection := _contract_runtime_controller.selection_snapshot()
-			_contract_runtime_controller.set_selection_state(int(value), int(selection.get("target_district", -1)))
-
-var selected_contract_target_district:
-	get:
-		return int(_contract_runtime_controller.selection_snapshot().get("target_district", -1)) if _contract_runtime_controller != null else -1
-	set(value):
-		if _contract_runtime_controller != null:
-			var selection := _contract_runtime_controller.selection_snapshot()
-			_contract_runtime_controller.set_selection_state(int(selection.get("source_district", -1)), int(value))
 
 var selected_district:
 	get:
@@ -689,10 +656,6 @@ var CITY_GUESS_REASON_PRODUCT:
 var CITY_GUESS_REASON_ROUTE:
 	get:
 		return _world_constant(&"CITY_GUESS_REASON_ROUTE")
-
-var CONTRACT_RESPONSE_PENDING:
-	get:
-		return ContractRuntimeController.RESPONSE_PENDING
 
 var DEFAULT_AOE_RADIUS_METERS:
 	get:
@@ -1118,9 +1081,6 @@ func _mark_city_guess_for_player(viewer_index: int, city_index: int, guessed_pla
 	var bridge := _world_bridge as AiRuntimeWorldBridge
 	return bridge != null and bridge.apply_city_owner_guess(viewer_index, city_index, guessed_player, confidence, reason)
 
-func _traceable_contract_entries(preferred_resolution_id: int = -1, limit: int = 1) -> Array:
-	return _contract_runtime_controller.traceable_contract_entries(preferred_resolution_id, limit) if _contract_runtime_controller != null else []
-
 func _latest_public_history_resolution_id() -> int:
 	if _card_resolution_history_service == null:
 		return -1
@@ -1140,18 +1100,6 @@ func _monster_wager_clamped_percent(entry: Dictionary, percent: int) -> int:
 
 func _monster_wager_amount_for_percent(player_index: int, percent: int, entry: Dictionary = {}) -> int:
 	return _call_monster(&"_monster_wager_amount_for_percent", [player_index, percent, entry])
-
-func _pending_contract_offers_for_player(player_index: int) -> Array:
-	return _contract_runtime_controller.offers_for_player(player_index) if _contract_runtime_controller != null else []
-
-func _contract_accept_effect_summary(skill: Dictionary) -> String:
-	return _contract_runtime_controller.accept_effect_summary(skill) if _contract_runtime_controller != null else "无额外奖励"
-
-func _contract_decline_effect_summary(skill: Dictionary) -> String:
-	return _contract_runtime_controller.decline_effect_summary(skill) if _contract_runtime_controller != null else "无额外惩罚"
-
-func _respond_to_pending_contract_for_player(player_index: int, contract_id: int, accept: bool, announce: bool = true) -> bool:
-	return bool(_contract_runtime_controller.respond_to_offer(player_index, contract_id, accept, announce).get("committed", false)) if _contract_runtime_controller != null else false
 
 func _development_route_archetypes() -> Array:
 	return _gameplay_balance_diagnostics_service.development_routes() if _gameplay_balance_diagnostics_service != null else []
@@ -2532,7 +2480,7 @@ func _ai_product_sample_policy_family(sample: Dictionary) -> String:
 	var strategic_role := String(sample.get("strategic_role", ""))
 	if String(sample.get("futures_direction", "")) != "" or policy_kind.contains("futures") or kind == "product_futures":
 		return "期货"
-	if kind.contains("合约") or kind == "area_trade_contract" or policy_kind.contains("contract") or String(sample.get("contract_response_role", "")) != "":
+	if kind.contains("合约") or policy_kind.contains("contract"):
 		return "合约"
 	if String(sample.get("weather_type", "")) != "" or policy_kind.contains("weather") or kind == "weather_control":
 		return "天气"
@@ -3830,14 +3778,6 @@ func _ai_policy_candidate_group_audit(group_name: String, candidates: Array) -> 
 		"negative_anomalies": negative_anomalies,
 		"samples": samples,
 	}
-func _ai_contract_policy_candidates_for_audit(player_index: int) -> Array:
-	var result := []
-	if not _player_is_ai(player_index):
-		return result
-	for offer_variant in _pending_contract_offers_for_player(player_index):
-		if offer_variant is Dictionary:
-			result.append_array(_ai_contract_response_candidates(player_index, offer_variant as Dictionary))
-	return result
 func _ai_intel_policy_candidates_for_audit(player_index: int) -> Array:
 	var result := []
 	if not _player_is_ai(player_index):
@@ -3881,7 +3821,6 @@ func _ai_policy_candidate_audit(player_index: int) -> Dictionary:
 		"card_play": _ai_policy_candidate_group_audit("card_play", play_candidates),
 		"card_buy": _ai_policy_candidate_group_audit("card_buy", buy_candidates),
 		"counter": _ai_policy_candidate_group_audit("counter", _ai_counter_response_candidates(player_index)),
-		"contract": _ai_policy_candidate_group_audit("contract", _ai_contract_policy_candidates_for_audit(player_index)),
 		"intel": _ai_policy_candidate_group_audit("intel", _ai_intel_policy_candidates_for_audit(player_index)),
 		"monster_wager": _ai_policy_candidate_group_audit("monster_wager", _ai_monster_wager_policy_candidates_for_audit(player_index)),
 		"military": _ai_policy_candidate_group_audit("military", military_candidates),
@@ -4623,7 +4562,7 @@ func _ai_strategy_bonus_for_candidate(player_index: int, kind: String, district_
 			if focus != "" and product_name == focus:
 				bonus += 46
 		"grow_focus":
-			if ["city_build", "city_revenue_boost", "city_product_upgrade", "city_product_shift", "city_demand_shift", "city_contract_boon", "route_flow_boon", "product_speculation", "city_gdp_derivative", "product_contract_boon", "product_growth_boon", "cash_gain", "area_trade_contract", "region_economy_shift", "news_event", "weather_control"].has(kind):
+			if ["city_build", "city_revenue_boost", "city_product_upgrade", "city_product_shift", "city_demand_shift", "city_contract_boon", "route_flow_boon", "product_speculation", "city_gdp_derivative", "product_contract_boon", "product_growth_boon", "cash_gain", "region_economy_shift", "news_event", "weather_control"].has(kind):
 				bonus += AI_STRATEGY_MATCH_BONUS
 			if focus != "" and product_name == focus:
 				bonus += 54
@@ -4638,7 +4577,7 @@ func _ai_development_route_for_kind(kind: String, skill: Dictionary = {}) -> Str
 	match kind:
 		"city_build", "city_revenue_boost", "city_product_upgrade", "city_product_shift", "city_demand_shift", "city_contract_boon", "route_flow_boon", "region_economy_shift", "route_insurance":
 			return "city_growth"
-		"area_trade_contract", "product_contract_boon":
+		"product_contract_boon":
 			return "contract_route"
 		"product_speculation", "product_futures", "city_gdp_derivative", "market_stabilize", "product_growth_boon", "cash_gain":
 			return "finance_speculation"
@@ -4656,7 +4595,7 @@ func _ai_policy_family_for_kind(kind: String, skill: Dictionary = {}) -> String:
 		"kind": kind,
 		"policy_kind": kind,
 	}
-	for field_name in ["weather_type", "direct_interaction_role", "contract_response_role", "futures_direction", "strategic_role"]:
+	for field_name in ["weather_type", "direct_interaction_role", "futures_direction", "strategic_role"]:
 		if skill.has(field_name):
 			probe[field_name] = skill[field_name]
 	return _ai_product_sample_policy_family(probe)
@@ -5003,15 +4942,15 @@ func _ai_route_plan_bonus_for_candidate(player_index: int, kind: String, distric
 					bonus += 180
 				if product_match:
 					bonus += 70
-			elif ["city_product_shift", "area_trade_contract", "product_contract_boon", "region_economy_shift"].has(kind) and product_match:
+			elif ["city_product_shift", "product_contract_boon", "region_economy_shift"].has(kind) and product_match:
 				bonus += 72
 		"create_demand":
-			if ["city_demand_shift", "area_trade_contract", "product_contract_boon", "route_flow_boon", "city_contract_boon"].has(kind) and product_match:
+			if ["city_demand_shift", "product_contract_boon", "route_flow_boon", "city_contract_boon"].has(kind) and product_match:
 				bonus += 118
 			if resolved_owner == player_index:
 				bonus += 42
 		"strengthen_route":
-			if ["route_flow_boon", "city_revenue_boost", "city_product_upgrade", "city_contract_boon", "product_speculation", "city_gdp_derivative", "product_contract_boon", "product_growth_boon", "area_trade_contract", "news_event", "weather_control"].has(kind) and product_match:
+			if ["route_flow_boon", "city_revenue_boost", "city_product_upgrade", "city_contract_boon", "product_speculation", "city_gdp_derivative", "product_contract_boon", "product_growth_boon", "news_event", "weather_control"].has(kind) and product_match:
 				bonus += 108
 			if resolved_owner == player_index:
 				bonus += 34
@@ -5036,8 +4975,6 @@ func _ai_play_requirement_metadata(player_index: int, skill: Dictionary, planned
 	if not has_locked_requirement_district:
 		if scope == CardPlayRequirementPolicyScript.SCOPE_OWN_BEST_REGION:
 			requirement_district = _best_player_gdp_share_district(player_index)
-		elif scope == CardPlayRequirementPolicyScript.SCOPE_CONTRACT_SOURCE_REGION and planned_district < 0:
-			requirement_district = selected_contract_source_district
 	if requirement_district >= 0:
 		evaluated_skill["play_requirement_district"] = requirement_district
 	var status := _skill_play_requirement_status(player_index, evaluated_skill)
@@ -5146,12 +5083,12 @@ func _ai_route_gap_adjustment(player_index: int, skill: Dictionary, district_ind
 	if not product_match and district_index >= 0:
 		product_match = _ai_district_touches_product(district_index, plan_product)
 	var field_match := 1 if product_match else 0
-	var production_delta := int(skill.get("production_delta", 0)) + int(skill.get("accept_production_delta", 0))
-	var transport_delta := int(skill.get("transport_delta", 0)) + int(skill.get("accept_transport_delta", 0))
-	var consumption_delta := int(skill.get("consumption_delta", 0)) + int(skill.get("accept_consumption_delta", 0))
-	var decline_pressure := maxi(0, -int(skill.get("decline_production_delta", 0))) + maxi(0, -int(skill.get("decline_transport_delta", 0))) + maxi(0, -int(skill.get("decline_consumption_delta", 0))) + int(skill.get("decline_route_damage", 0))
-	var supply_boost := maxi(0, production_delta) + int(skill.get("contract_add_products", 0)) + int(skill.get("product_shift", 0))
-	var demand_boost := maxi(0, consumption_delta) + int(skill.get("contract_add_demands", 0)) + int(skill.get("demand_shift", 0)) + int(ceil(float(maxi(0, int(skill.get("market_demand_pressure", 0)))) / 2.0))
+	var production_delta := int(skill.get("production_delta", 0))
+	var transport_delta := int(skill.get("transport_delta", 0))
+	var consumption_delta := int(skill.get("consumption_delta", 0))
+	var decline_pressure := 0
+	var supply_boost := maxi(0, production_delta) + int(skill.get("product_shift", 0))
+	var demand_boost := maxi(0, consumption_delta) + int(skill.get("demand_shift", 0)) + int(ceil(float(maxi(0, int(skill.get("market_demand_pressure", 0)))) / 2.0))
 	var traffic_boost := maxi(0, transport_delta) + int(skill.get("repair_routes", 0))
 	var flow_multiplier := float(skill.get("route_flow_multiplier", 1.0))
 	if flow_multiplier > 1.001:
@@ -5269,7 +5206,7 @@ func _ai_product_for_skill(player_index: int, skill: Dictionary) -> String:
 		var rival_product := _ai_preferred_product(player_index, true)
 		if rival_product != "":
 			return rival_product
-	if route_product != "" and (_player_product_flow(player_index, route_product) > 0 or ["product_speculation", "product_futures", "product_contract_boon", "product_growth_boon", "market_stabilize", "city_product_shift", "city_demand_shift", "region_economy_shift", "area_trade_contract", "news_event", "weather_control"].has(kind)):
+	if route_product != "" and (_player_product_flow(player_index, route_product) > 0 or ["product_speculation", "product_futures", "product_contract_boon", "product_growth_boon", "market_stabilize", "city_product_shift", "city_demand_shift", "region_economy_shift", "news_event", "weather_control"].has(kind)):
 		return route_product
 	if focus != "" and (_player_product_flow(player_index, focus) > 0 or ["product_speculation", "product_futures", "product_contract_boon", "product_growth_boon", "market_stabilize", "city_product_shift", "city_demand_shift", "region_economy_shift", "news_event", "weather_control"].has(kind)):
 		return focus
@@ -5653,18 +5590,13 @@ func _ai_counter_target_threat(player_index: int, target_entry: Dictionary) -> D
 		var city := _district_city(district_index)
 		var negative_delta := maxi(0, -int(skill.get("production_delta", 0))) \
 			+ maxi(0, -int(skill.get("transport_delta", 0))) \
-			+ maxi(0, -int(skill.get("consumption_delta", 0))) \
-			+ maxi(0, -int(skill.get("accept_production_delta", 0))) \
-			+ maxi(0, -int(skill.get("accept_transport_delta", 0))) \
-			+ maxi(0, -int(skill.get("accept_consumption_delta", 0)))
+			+ maxi(0, -int(skill.get("consumption_delta", 0)))
 		var route_damage := maxi(0, int(skill.get("route_damage", 0))) \
-			+ maxi(0, int(skill.get("decline_route_damage", 0))) \
 			+ maxi(0, int(skill.get("global_barrage_route_damage", 0))) \
 			+ maxi(0, int(skill.get("military_strike_route_damage", 0)))
 		var area_damage := maxi(0, int(skill.get("damage", 0))) + maxi(0, int(skill.get("global_barrage_damage", 0)))
 		var city_pressure := negative_delta * 128 + route_damage * 132 + area_damage * 118
 		city_pressure += maxi(0, int(skill.get("control_gdp_penalty", 0))) * 3
-		city_pressure += int(float(maxi(0, int(skill.get("decline_cash_penalty", 0)))) / 2.0)
 		city_pressure += _city_warehouse_stockpile_pressure(city)
 		city_pressure += int(float(_ai_city_target_score(player_index, district_index, true, true)) / 3.0)
 		if city_pressure > 0:
@@ -5677,15 +5609,12 @@ func _ai_counter_target_threat(player_index: int, target_entry: Dictionary) -> D
 	if rival_city_target:
 		var positive_delta := maxi(0, int(skill.get("production_delta", 0))) \
 			+ maxi(0, int(skill.get("transport_delta", 0))) \
-			+ maxi(0, int(skill.get("consumption_delta", 0))) \
-			+ maxi(0, int(skill.get("accept_production_delta", 0))) \
-			+ maxi(0, int(skill.get("accept_transport_delta", 0))) \
-			+ maxi(0, int(skill.get("accept_consumption_delta", 0)))
+			+ maxi(0, int(skill.get("consumption_delta", 0)))
 		var rival_boost := positive_delta * 78 \
 			+ int(float(int(skill.get("revenue_amount", 0))) / 3.0) \
 			+ int(float(int(skill.get("contract_income", 0))) / 4.0) \
 			+ maxi(0, int(skill.get("repair_routes", 0))) * 64
-		var flow_multiplier := float(skill.get("route_flow_multiplier", skill.get("accept_route_flow_multiplier", 1.0)))
+		var flow_multiplier := float(skill.get("route_flow_multiplier", 1.0))
 		if flow_multiplier > 1.001:
 			rival_boost += int(round((flow_multiplier - 1.0) * 160.0))
 		if String(derivative_terms.get("direction", "")) == "up" and float(derivative_terms.get("multiplier", 0.0)) > 0.0:
@@ -5720,14 +5649,6 @@ func _ai_counter_target_threat(player_index: int, target_entry: Dictionary) -> D
 		if barrage_pressure > 0:
 			score += barrage_pressure
 			reasons.append("压制全场齐射+%d" % barrage_pressure)
-	elif kind == "area_trade_contract" and own_city_target:
-		var contract_pressure := int(float(maxi(0, int(skill.get("decline_cash_penalty", 0)))) / 2.0) \
-			+ maxi(0, int(skill.get("decline_route_damage", 0))) * 90 \
-			+ maxi(0, -int(skill.get("decline_transport_delta", 0))) * 80 \
-			+ maxi(0, -int(skill.get("decline_consumption_delta", 0))) * 70
-		if contract_pressure > 0:
-			score += contract_pressure
-			reasons.append("拆解惩罚合约+%d" % contract_pressure)
 	elif kind == "weather_control":
 		var weather_pressure := int(float(_ai_counter_nearest_owned_city_pressure(player_index, district_index)) / 2.0) + int(skill.get("weather_zone_count", 1)) * 28
 		if own_city_target:
@@ -6311,7 +6232,7 @@ func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, distric
 		score += economy_delta * (60 if helpful_target else 24)
 	elif economy_delta < 0:
 		score += abs(economy_delta) * (70 if harmful_target else -45)
-	var route_damage := int(skill.get("route_damage", 0)) + int(skill.get("decline_route_damage", 0))
+	var route_damage := int(skill.get("route_damage", 0))
 	if route_damage > 0:
 		score += route_damage * (75 if harmful_target else 15)
 		if warehouse_pressure > 0 and harmful_target:
@@ -6828,19 +6749,6 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 			String(military_plan.get("reason", "部署军队")),
 			_military_unit_mobility_summary(skill),
 		]
-	elif kind == "area_trade_contract":
-		if own_city < 0 or rival_city < 0:
-			return {}
-		context["contract_source"] = own_city
-		context["contract_target"] = rival_city
-		context["district"] = rival_city
-		var source_products := _city_product_names(_district_city(own_city))
-		if focus_product != "" and source_products.has(focus_product):
-			context["product"] = focus_product
-			context["focus_bonus"] = int(context.get("focus_bonus", 0)) + AI_ECONOMIC_FOCUS_MATCH_BONUS
-		elif not source_products.is_empty():
-			context["product"] = String(source_products[0])
-		context["score"] = int(context["score"]) + 110 + int(float(int(skill.get("accept_cash", 0))) / 3.0)
 	elif ["city_revenue_boost", "city_product_upgrade", "city_product_shift", "city_demand_shift", "city_contract_boon", "route_flow_boon"].has(kind):
 		if own_city < 0:
 			return {}
@@ -6972,13 +6880,6 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		context["selected_card_resolution_id"] = history_resolution_id
 		context["district"] = _ai_first_alive_district()
 		context["score"] = int(context["score"]) + 70 + mini(36, resolved_card_history.size() * 3)
-	elif kind == "intel_contract_trace":
-		var traceable_entries := _traceable_contract_entries(-1, 1)
-		if traceable_entries.is_empty():
-			return {}
-		context["selected_card_resolution_id"] = int((traceable_entries[0] as Dictionary).get("resolution_id", -1))
-		context["district"] = _ai_first_alive_district()
-		context["score"] = int(context["score"]) + 100 + pending_contract_offers.size() * 18
 	elif kind == "supply_draw":
 		context["district"] = -1
 		for i in range(districts.size()):
@@ -6992,8 +6893,6 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 	if int(context.get("district", -1)) < 0:
 		return {}
 	var requirement_district := int(context.get("district", -1))
-	if _skill_play_region_scope(skill, player_index) == CardPlayRequirementPolicyScript.SCOPE_CONTRACT_SOURCE_REGION:
-		requirement_district = int(context.get("contract_source", requirement_district))
 	var requirement_metadata := _ai_play_requirement_metadata(player_index, skill, requirement_district)
 	if not bool(requirement_metadata.get("requirement_satisfied", false)):
 		return {}
@@ -7419,12 +7318,8 @@ func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_cand
 	var target_player := int(candidate.get("target_player", -1))
 	var previous_district := int(selected_district)
 	var previous_product := str(selected_trade_product)
-	var previous_source := int(selected_contract_source_district)
-	var previous_target := int(selected_contract_target_district)
 	selected_district = int(candidate.get("district", _ai_first_alive_district()))
 	selected_trade_product = String(candidate.get("product", ""))
-	selected_contract_source_district = int(candidate.get("contract_source", -1))
-	selected_contract_target_district = int(candidate.get("contract_target", -1))
 	var queued := _queue_skill_resolution(player_index, slot_index, target_slot, target_player, int(candidate.get("selected_card_resolution_id", -1)))
 	if queued:
 		var queue_index := _queued_card_entry_index_for_player(player_index)
@@ -7463,8 +7358,6 @@ func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_cand
 		)
 	selected_district = previous_district
 	selected_trade_product = previous_product
-	selected_contract_source_district = previous_source
-	selected_contract_target_district = previous_target
 	return queued
 func _ai_execute_card_turn(player_index: int, force: bool = false) -> String:
 	var play_candidates := _ai_card_play_candidates(player_index)
@@ -7661,225 +7554,6 @@ func _auto_ai_counter_responses(force: bool = false) -> int:
 		if _ai_queue_counter_response_candidate(player_index, candidate, player_candidates):
 			return 1
 	return 0
-func _ai_contract_response_candidates(player_index: int, entry: Dictionary) -> Array:
-	var skill: Dictionary = entry.get("skill", {}) as Dictionary
-	var source_index := int(entry.get("contract_source_district", -1))
-	var target_index := int(entry.get("contract_target_district", -1))
-	var products: Array = entry.get("contract_products", []) as Array
-	var source_owner := -1
-	if source_index >= 0 and source_index < districts.size():
-		source_owner = int(_district_city(source_index).get("owner", -1))
-	var target_city := _district_city(target_index)
-	var accept_score := 62
-	accept_score += int(float(int(skill.get("accept_cash", 0))) / 3.0)
-	accept_score += maxi(0, int(skill.get("accept_production_delta", 0))) * 34
-	accept_score += maxi(0, int(skill.get("accept_transport_delta", 0))) * 42
-	accept_score += maxi(0, int(skill.get("accept_consumption_delta", 0))) * 32
-	var accept_route_flow := float(skill.get("accept_route_flow_multiplier", 1.0))
-	if accept_route_flow > 1.001:
-		accept_score += int(round((accept_route_flow - 1.0) * 230.0)) + maxi(1, int(ceil(_skill_duration_seconds(skill, "route_flow_seconds", "route_flow_turns", 1) / ECONOMY_LEGACY_TURN_SECONDS))) * 8
-	accept_score += maxi(0, int(skill.get("contract_add_products", 0))) * 38
-	accept_score += maxi(0, int(skill.get("contract_add_demands", 0))) * 42
-	accept_score -= maxi(0, int(skill.get("contract_remove_products", 0))) * 16
-	accept_score -= maxi(0, int(skill.get("contract_remove_demands", 0))) * 16
-	accept_score += products.size() * 15
-	if _city_is_active(target_city):
-		accept_score += int(target_city.get("trade_route_damage", 0)) * 14
-		accept_score += maxi(0, 4 - (target_city.get("demands", []) as Array).size()) * 12
-	if source_owner == player_index:
-		accept_score += 58
-	var route_product := _ai_route_plan_product(player_index)
-	var route_stage := _ai_route_plan_stage(player_index)
-	var route_score := _ai_route_plan_score(player_index)
-	var contract_matches_route := route_product != "" and (products.has(route_product) or _ai_district_touches_product(source_index, route_product) or _ai_district_touches_product(target_index, route_product))
-	var accept_route_bonus := 0
-	if contract_matches_route:
-		accept_route_bonus += AI_ROUTE_PLAN_MATCH_BONUS
-		if ["create_demand", "strengthen_route", "defend_route"].has(route_stage):
-			accept_route_bonus += 82
-	if source_owner == player_index and route_product != "":
-		accept_route_bonus += 46
-	accept_score += accept_route_bonus
-	var contract_product_tag := route_product if contract_matches_route else _limited_name_list(products, 1, "")
-	var accept_learning_bonus := _ai_learning_bonus(player_index, "contract_accept", "", route_stage, contract_product_tag, "匿名合约签约")
-	accept_score += accept_learning_bonus
-	var reject_score := 54
-	if source_owner >= 0 and source_owner != player_index:
-		reject_score += 42
-	reject_score += maxi(0, int(skill.get("contract_remove_products", 0)) + int(skill.get("contract_remove_demands", 0))) * 10
-	var reject_route_bonus := 0
-	if source_owner >= 0 and source_owner != player_index and route_stage == "attack_rival" and contract_matches_route:
-		reject_route_bonus += 72
-	reject_score += reject_route_bonus
-	var reject_learning_bonus := _ai_learning_bonus(player_index, "contract_reject", "", route_stage, contract_product_tag, "匿名合约拒签")
-	reject_score += reject_learning_bonus
-	var decline_badness := 0
-	decline_badness += int(float(int(skill.get("decline_cash_penalty", 0))) / 3.0)
-	decline_badness += maxi(0, -int(skill.get("decline_production_delta", 0))) * 38
-	decline_badness += maxi(0, -int(skill.get("decline_transport_delta", 0))) * 44
-	decline_badness += maxi(0, -int(skill.get("decline_consumption_delta", 0))) * 34
-	decline_badness += maxi(0, int(skill.get("decline_route_damage", 0))) * 52
-	accept_score += decline_badness
-	reject_score -= int(round(float(decline_badness) * 0.55))
-	var target_gdp := 0
-	var target_route_damage := 0
-	var target_product_count := 0
-	var target_demand_count := 0
-	if _city_is_active(target_city):
-		target_gdp = int(target_city.get("last_gdp", target_city.get("last_income", 0)))
-		target_route_damage = int(target_city.get("trade_route_damage", 0)) + int(target_city.get("trade_disrupted_routes", 0))
-		target_product_count = (target_city.get("products", []) as Array).size()
-		target_demand_count = (target_city.get("demands", []) as Array).size()
-	var accept_economic_delta := int(skill.get("accept_cash", 0))
-	accept_economic_delta += int(skill.get("accept_production_delta", 0)) * 26
-	accept_economic_delta += int(skill.get("accept_transport_delta", 0)) * 32
-	accept_economic_delta += int(skill.get("accept_consumption_delta", 0)) * 24
-	accept_economic_delta += int(round(maxf(0.0, accept_route_flow - 1.0) * 120.0))
-	accept_economic_delta += maxi(0, int(skill.get("contract_add_products", 0))) * 26
-	accept_economic_delta += maxi(0, int(skill.get("contract_add_demands", 0))) * 30
-	accept_economic_delta -= maxi(0, int(skill.get("contract_remove_products", 0)) + int(skill.get("contract_remove_demands", 0))) * 14
-	var decline_economic_delta := -int(skill.get("decline_cash_penalty", 0))
-	decline_economic_delta += int(skill.get("decline_production_delta", 0)) * 26
-	decline_economic_delta += int(skill.get("decline_transport_delta", 0)) * 32
-	decline_economic_delta += int(skill.get("decline_consumption_delta", 0)) * 24
-	decline_economic_delta -= maxi(0, int(skill.get("decline_route_damage", 0))) * 38
-	var accept_role := "accept_economic_gain"
-	if decline_badness >= 90:
-		accept_role = "accept_avoid_punishment"
-	elif accept_route_bonus > 0:
-		accept_role = "accept_route_plan"
-	elif source_owner == player_index:
-		accept_role = "accept_self_supply"
-	var reject_role := "reject_low_value"
-	if source_owner >= 0 and source_owner != player_index and reject_route_bonus > 0:
-		reject_role = "reject_rival_route"
-	elif source_owner >= 0 and source_owner != player_index:
-		reject_role = "reject_rival_supply"
-	return [
-		{
-			"action": "签约",
-			"card_name": String(skill.get("name", "区域供需合约")),
-			"kind": "area_trade_contract_response",
-			"policy_kind": "contract_accept",
-			"district": target_index,
-			"product": _limited_name_list(products, 3, "未指定"),
-			"score": maxi(1, accept_score),
-			"reason": "签约奖励:%s｜拒签代价:%s｜商品:%s" % [
-				_contract_accept_effect_summary(skill),
-				_contract_decline_effect_summary(skill),
-				_limited_name_list(products, 3, "未指定"),
-			],
-			"route_plan_product": route_product,
-			"route_plan_stage": route_stage,
-			"route_plan_score": route_score,
-			"route_plan_bonus": accept_route_bonus,
-			"learning_bonus": accept_learning_bonus,
-			"contract_response_role": accept_role,
-			"contract_source_district": source_index,
-			"contract_target_district": target_index,
-			"contract_source_owner": source_owner,
-			"contract_target_gdp": target_gdp,
-			"contract_target_route_damage": target_route_damage,
-			"contract_target_product_count": target_product_count,
-			"contract_target_demand_count": target_demand_count,
-			"contract_route_match": 1 if contract_matches_route else 0,
-			"contract_accept_value": maxi(1, accept_score),
-			"contract_reject_value": maxi(1, reject_score),
-			"contract_response_margin": accept_score - reject_score,
-			"contract_decline_risk": decline_badness,
-			"contract_accept_economic_delta": accept_economic_delta,
-			"contract_decline_economic_delta": decline_economic_delta,
-		},
-		{
-			"action": "拒签",
-			"card_name": String(skill.get("name", "区域供需合约")),
-			"kind": "area_trade_contract_response",
-			"policy_kind": "contract_reject",
-			"district": target_index,
-			"product": _limited_name_list(products, 3, "未指定"),
-			"score": maxi(1, reject_score),
-			"reason": "拒绝可能避免帮对手供给区扩张｜拒签惩罚:%s" % _contract_decline_effect_summary(skill),
-			"route_plan_product": route_product,
-			"route_plan_stage": route_stage,
-			"route_plan_score": route_score,
-			"route_plan_bonus": reject_route_bonus,
-			"learning_bonus": reject_learning_bonus,
-			"contract_response_role": reject_role,
-			"contract_source_district": source_index,
-			"contract_target_district": target_index,
-			"contract_source_owner": source_owner,
-			"contract_target_gdp": target_gdp,
-			"contract_target_route_damage": target_route_damage,
-			"contract_target_product_count": target_product_count,
-			"contract_target_demand_count": target_demand_count,
-			"contract_route_match": 1 if contract_matches_route else 0,
-			"contract_accept_value": maxi(1, accept_score),
-			"contract_reject_value": maxi(1, reject_score),
-			"contract_response_margin": reject_score - accept_score,
-			"contract_decline_risk": decline_badness,
-			"contract_accept_economic_delta": accept_economic_delta,
-			"contract_decline_economic_delta": decline_economic_delta,
-		},
-	]
-func _update_ai_contract_responses(force: bool = false) -> int:
-	if pending_contract_offers.is_empty():
-		return 0
-	var responded := 0
-	var offers_snapshot: Array = pending_contract_offers.duplicate(true)
-	for offer_variant in offers_snapshot:
-		if not (offer_variant is Dictionary):
-			continue
-		var entry: Dictionary = offer_variant
-		if String(entry.get("contract_response", CONTRACT_RESPONSE_PENDING)) != CONTRACT_RESPONSE_PENDING:
-			continue
-		var contract_owner := int(entry.get("contract_target_owner", -1))
-		if not _player_is_ai(contract_owner):
-			continue
-		if not force and float(entry.get("contract_decision_timer", _ruleset_timing_seconds(&"contract_window_seconds"))) > _ruleset_timing_seconds(&"contract_window_seconds") - 1.0:
-			continue
-		var candidates := _ai_contract_response_candidates(contract_owner, entry)
-		var choice := _ai_pick_candidate(contract_owner, candidates, force)
-		if choice.is_empty():
-			continue
-		var accept := String(choice.get("action", "")) == "签约"
-		var contract_id := int(entry.get("contract_offer_id", entry.get("resolution_id", -1)))
-		_record_ai_decision(
-			contract_owner,
-			"匿名合约%s" % String(choice.get("action", "回应")),
-			int(entry.get("contract_target_district", -1)),
-			int(choice.get("score", 0)),
-			String(choice.get("reason", "按奖励、惩罚和是否帮对手评分")),
-			candidates,
-			{
-				"card_name": String((entry.get("skill", {}) as Dictionary).get("name", "区域供需合约")),
-				"contract_offer_id": contract_id,
-				"contract_response": String(choice.get("action", "")),
-				"policy_kind": String(choice.get("policy_kind", "")),
-				"route_plan_product": String(choice.get("route_plan_product", "")),
-				"route_plan_stage": String(choice.get("route_plan_stage", "")),
-				"route_plan_score": int(choice.get("route_plan_score", 0)),
-				"route_plan_bonus": int(choice.get("route_plan_bonus", 0)),
-				"learning_bonus": int(choice.get("learning_bonus", 0)),
-				"product": String(choice.get("product", "")),
-				"contract_response_role": String(choice.get("contract_response_role", "")),
-				"contract_source_district": int(choice.get("contract_source_district", -1)),
-				"contract_target_district": int(choice.get("contract_target_district", -1)),
-				"contract_source_owner": int(choice.get("contract_source_owner", -1)),
-				"contract_target_gdp": int(choice.get("contract_target_gdp", 0)),
-				"contract_target_route_damage": int(choice.get("contract_target_route_damage", 0)),
-				"contract_route_match": int(choice.get("contract_route_match", 0)),
-				"contract_accept_value": int(choice.get("contract_accept_value", 0)),
-				"contract_reject_value": int(choice.get("contract_reject_value", 0)),
-				"contract_response_margin": int(choice.get("contract_response_margin", 0)),
-				"contract_decline_risk": int(choice.get("contract_decline_risk", 0)),
-				"contract_accept_economic_delta": int(choice.get("contract_accept_economic_delta", 0)),
-				"contract_decline_economic_delta": int(choice.get("contract_decline_economic_delta", 0)),
-			}
-		)
-		if _respond_to_pending_contract_for_player(contract_owner, contract_id, accept, false):
-			_log("目标城市业主匿名%s了一份合约；系统只公开结果，不公开是哪位玩家回应。" % ("签署" if accept else "拒绝"))
-			responded += 1
-	return responded
 func _ai_public_player_product_signal(viewer_index: int, guessed_player: int, product_name: String) -> int:
 	if viewer_index < 0 or viewer_index >= players.size() or guessed_player < 0 or guessed_player >= players.size() or product_name == "":
 		return 0
@@ -8032,7 +7706,6 @@ func _update_ai_decisions(delta: float) -> void:
 	ai_auction_reaction_timer -= delta
 	if ai_auction_reaction_timer <= 0.0:
 		_auto_ai_counter_responses(false)
-		_update_ai_contract_responses(false)
 		_auto_ai_monster_wagers()
 		ai_auction_reaction_timer = AI_AUCTION_REACTION_INTERVAL_SECONDS
 	ai_card_decision_timer -= delta

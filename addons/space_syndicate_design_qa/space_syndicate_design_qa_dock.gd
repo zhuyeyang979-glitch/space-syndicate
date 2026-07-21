@@ -140,10 +140,6 @@ signal open_weather_runtime_controller_requested(scene_path: String)
 signal open_weather_runtime_world_bridge_requested(scene_path: String)
 signal open_weather_runtime_characterization_bench_requested(scene_path: String)
 signal run_weather_runtime_characterization_bench_requested(scene_path: String)
-signal open_contract_runtime_controller_requested(scene_path: String)
-signal open_contract_runtime_world_bridge_requested(scene_path: String)
-signal open_contract_runtime_characterization_bench_requested(scene_path: String)
-signal run_contract_runtime_characterization_bench_requested(scene_path: String)
 signal open_product_market_runtime_characterization_bench_requested(scene_path: String)
 signal run_product_market_runtime_characterization_bench_requested(scene_path: String)
 signal open_product_futures_terms_catalog_requested(resource_path: String)
@@ -298,9 +294,6 @@ const MILITARY_RUNTIME_CHARACTERIZATION_BENCH_SCENE_PATH := "res://scenes/tools/
 const WEATHER_RUNTIME_CONTROLLER_SCENE_PATH := "res://scenes/runtime/WeatherRuntimeController.tscn"
 const WEATHER_RUNTIME_WORLD_BRIDGE_SCENE_PATH := "res://scenes/runtime/WeatherRuntimeWorldBridge.tscn"
 const WEATHER_RUNTIME_CHARACTERIZATION_BENCH_SCENE_PATH := "res://scenes/tools/WeatherRuntimeCharacterizationBench.tscn"
-const CONTRACT_RUNTIME_CONTROLLER_SCENE_PATH := "res://scenes/runtime/ContractRuntimeController.tscn"
-const CONTRACT_RUNTIME_WORLD_BRIDGE_SCENE_PATH := "res://scenes/runtime/ContractRuntimeWorldBridge.tscn"
-const CONTRACT_RUNTIME_CHARACTERIZATION_BENCH_SCENE_PATH := "res://scenes/tools/ContractRuntimeCharacterizationBench.tscn"
 const PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_BENCH_SCENE_PATH := "res://scenes/tools/ProductMarketRuntimeCharacterizationBench.tscn"
 const PRODUCT_FUTURES_TERMS_CATALOG_PATH := "res://resources/finance/product_futures/product_futures_terms_v04_catalog.tres"
 const CITY_TRADE_NETWORK_RUNTIME_CONTROLLER_SCENE_PATH := "res://scenes/runtime/CityTradeNetworkRuntimeController.tscn"
@@ -382,7 +375,6 @@ const MONSTER_CODEX_PUBLIC_SNAPSHOT_CUTOVER_QA_OUTPUT_DIR := "user://space_syndi
 const MONSTER_RUNTIME_CHARACTERIZATION_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/monster_runtime_characterization/"
 const MILITARY_RUNTIME_CHARACTERIZATION_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/military_runtime_characterization/"
 const WEATHER_RUNTIME_CHARACTERIZATION_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/weather_runtime_characterization/"
-const CONTRACT_RUNTIME_CHARACTERIZATION_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/contract_runtime_characterization/"
 const PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/product_futures_v04_hard_alignment/"
 const CITY_TRADE_NETWORK_RUNTIME_CHARACTERIZATION_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/city_trade_network_characterization/"
 const VICTORY_CONTROL_RUNTIME_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/victory_control_runtime/"
@@ -401,7 +393,6 @@ const NEW_GAME_SETUP_PAGE_CUTOVER_QA_OUTPUT_DIR := "user://space_syndicate_desig
 const AI_POLICY_RESOURCE_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/ai_policy_resourceization/"
 const PANEL_BY_FIXTURE_ID := {
 	"monster_wager": "MonsterWagerDecisionPanel",
-	"contract_response": "ContractResponseDecisionPanel",
 	"discard_purchase": "TemporaryChoiceDecisionPanel",
 	"monster_target_choice": "TemporaryChoiceDecisionPanel",
 	"player_target_choice": "TemporaryChoiceDecisionPanel",
@@ -588,11 +579,6 @@ const PANEL_BY_FIXTURE_ID := {
 @onready var open_weather_runtime_characterization_bench_button: Button = %OpenWeatherRuntimeCharacterizationBenchButton
 @onready var run_weather_runtime_characterization_bench_button: Button = %RunWeatherRuntimeCharacterizationBenchButton
 @onready var open_weather_runtime_characterization_output_folder_button: Button = %OpenWeatherRuntimeCharacterizationOutputFolderButton
-@onready var open_contract_runtime_controller_button: Button = %OpenContractRuntimeControllerButton
-@onready var open_contract_runtime_world_bridge_button: Button = %OpenContractRuntimeWorldBridgeButton
-@onready var open_contract_runtime_characterization_bench_button: Button = %OpenContractRuntimeCharacterizationBenchButton
-@onready var run_contract_runtime_characterization_bench_button: Button = %RunContractRuntimeCharacterizationBenchButton
-@onready var open_contract_runtime_characterization_output_folder_button: Button = %OpenContractRuntimeCharacterizationOutputFolderButton
 @onready var open_product_market_runtime_characterization_bench_button: Button = %OpenProductMarketRuntimeCharacterizationBenchButton
 @onready var run_product_market_runtime_characterization_bench_button: Button = %RunProductMarketRuntimeCharacterizationBenchButton
 @onready var open_product_futures_terms_catalog_button: Button = %OpenProductFuturesTermsCatalogButton
@@ -656,7 +642,6 @@ const PANEL_BY_FIXTURE_ID := {
 @onready var open_ai_runtime_controller_button: Button = %OpenAiRuntimeControllerButton
 @onready var open_ai_runtime_world_bridge_button: Button = %OpenAiRuntimeWorldBridgeButton
 @onready var monster_wager_button: Button = %MonsterWagerFixtureButton
-@onready var contract_response_button: Button = %ContractResponseFixtureButton
 @onready var discard_button: Button = %DiscardPurchaseFixtureButton
 @onready var monster_target_button: Button = %MonsterTargetFixtureButton
 @onready var player_target_button: Button = %PlayerTargetFixtureButton
@@ -1094,18 +1079,6 @@ func weather_runtime_characterization_bench_scene_path() -> String:
 	return WEATHER_RUNTIME_CHARACTERIZATION_BENCH_SCENE_PATH
 
 
-func contract_runtime_controller_scene_path() -> String:
-	return CONTRACT_RUNTIME_CONTROLLER_SCENE_PATH
-
-
-func contract_runtime_world_bridge_scene_path() -> String:
-	return CONTRACT_RUNTIME_WORLD_BRIDGE_SCENE_PATH
-
-
-func contract_runtime_characterization_bench_scene_path() -> String:
-	return CONTRACT_RUNTIME_CHARACTERIZATION_BENCH_SCENE_PATH
-
-
 func product_market_runtime_characterization_bench_scene_path() -> String:
 	return PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_BENCH_SCENE_PATH
 
@@ -1420,10 +1393,6 @@ func military_runtime_characterization_qa_output_dir() -> String:
 
 func weather_runtime_characterization_qa_output_dir() -> String:
 	return WEATHER_RUNTIME_CHARACTERIZATION_QA_OUTPUT_DIR
-
-
-func contract_runtime_characterization_qa_output_dir() -> String:
-	return CONTRACT_RUNTIME_CHARACTERIZATION_QA_OUTPUT_DIR
 
 
 func product_market_runtime_characterization_qa_output_dir() -> String:
@@ -2640,38 +2609,6 @@ func run_weather_runtime_characterization_bench_scene() -> void:
 	_set_status("Run Weather Runtime Characterization bench: %s" % WEATHER_RUNTIME_CHARACTERIZATION_BENCH_SCENE_PATH)
 
 
-func open_contract_runtime_controller_scene() -> void:
-	if _editor_plugin != null and _editor_plugin.has_method("open_scene"):
-		_editor_plugin.call("open_scene", CONTRACT_RUNTIME_CONTROLLER_SCENE_PATH)
-	else:
-		open_contract_runtime_controller_requested.emit(CONTRACT_RUNTIME_CONTROLLER_SCENE_PATH)
-	_set_status("Open Contract Runtime Controller: %s" % CONTRACT_RUNTIME_CONTROLLER_SCENE_PATH)
-
-
-func open_contract_runtime_world_bridge_scene() -> void:
-	if _editor_plugin != null and _editor_plugin.has_method("open_scene"):
-		_editor_plugin.call("open_scene", CONTRACT_RUNTIME_WORLD_BRIDGE_SCENE_PATH)
-	else:
-		open_contract_runtime_world_bridge_requested.emit(CONTRACT_RUNTIME_WORLD_BRIDGE_SCENE_PATH)
-	_set_status("Open Contract Runtime World Bridge: %s" % CONTRACT_RUNTIME_WORLD_BRIDGE_SCENE_PATH)
-
-
-func open_contract_runtime_characterization_bench_scene() -> void:
-	if _editor_plugin != null and _editor_plugin.has_method("open_scene"):
-		_editor_plugin.call("open_scene", CONTRACT_RUNTIME_CHARACTERIZATION_BENCH_SCENE_PATH)
-	else:
-		open_contract_runtime_characterization_bench_requested.emit(CONTRACT_RUNTIME_CHARACTERIZATION_BENCH_SCENE_PATH)
-	_set_status("Open Contract Runtime Characterization bench: %s" % CONTRACT_RUNTIME_CHARACTERIZATION_BENCH_SCENE_PATH)
-
-
-func run_contract_runtime_characterization_bench_scene() -> void:
-	if _editor_plugin != null and _editor_plugin.has_method("run_scene"):
-		_editor_plugin.call("run_scene", CONTRACT_RUNTIME_CHARACTERIZATION_BENCH_SCENE_PATH)
-	else:
-		run_contract_runtime_characterization_bench_requested.emit(CONTRACT_RUNTIME_CHARACTERIZATION_BENCH_SCENE_PATH)
-	_set_status("Run Contract Runtime Characterization bench: %s" % CONTRACT_RUNTIME_CHARACTERIZATION_BENCH_SCENE_PATH)
-
-
 func open_product_market_runtime_characterization_bench_scene() -> void:
 	if _editor_plugin != null and _editor_plugin.has_method("open_scene"):
 		_editor_plugin.call("open_scene", PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_BENCH_SCENE_PATH)
@@ -3400,15 +3337,6 @@ func open_weather_runtime_characterization_output_folder() -> void:
 		_set_status("Weather Runtime Characterization output folder: %s" % WEATHER_RUNTIME_CHARACTERIZATION_QA_OUTPUT_DIR)
 
 
-func open_contract_runtime_characterization_output_folder() -> void:
-	var absolute_path := ProjectSettings.globalize_path(CONTRACT_RUNTIME_CHARACTERIZATION_QA_OUTPUT_DIR)
-	var error := OS.shell_open(absolute_path)
-	if error == OK:
-		_set_status("Open Contract Runtime Characterization output folder: %s" % CONTRACT_RUNTIME_CHARACTERIZATION_QA_OUTPUT_DIR)
-	else:
-		_set_status("Contract Runtime Characterization output folder: %s" % CONTRACT_RUNTIME_CHARACTERIZATION_QA_OUTPUT_DIR)
-
-
 func open_product_market_runtime_characterization_output_folder() -> void:
 	var absolute_path := ProjectSettings.globalize_path(PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_QA_OUTPUT_DIR)
 	var error := OS.shell_open(absolute_path)
@@ -3744,11 +3672,6 @@ func _connect_buttons() -> void:
 	_connect_button(open_weather_runtime_characterization_bench_button, "open_weather_runtime_characterization_bench_scene")
 	_connect_button(run_weather_runtime_characterization_bench_button, "run_weather_runtime_characterization_bench_scene")
 	_connect_button(open_weather_runtime_characterization_output_folder_button, "open_weather_runtime_characterization_output_folder")
-	_connect_button(open_contract_runtime_controller_button, "open_contract_runtime_controller_scene")
-	_connect_button(open_contract_runtime_world_bridge_button, "open_contract_runtime_world_bridge_scene")
-	_connect_button(open_contract_runtime_characterization_bench_button, "open_contract_runtime_characterization_bench_scene")
-	_connect_button(run_contract_runtime_characterization_bench_button, "run_contract_runtime_characterization_bench_scene")
-	_connect_button(open_contract_runtime_characterization_output_folder_button, "open_contract_runtime_characterization_output_folder")
 	_connect_button(open_product_market_runtime_characterization_bench_button, "open_product_market_runtime_characterization_bench_scene")
 	_connect_button(run_product_market_runtime_characterization_bench_button, "run_product_market_runtime_characterization_bench_scene")
 	_connect_button(open_product_futures_terms_catalog_button, "open_product_futures_terms_catalog")
@@ -3812,7 +3735,6 @@ func _connect_buttons() -> void:
 	_connect_button(open_ai_runtime_controller_button, "open_ai_runtime_controller_scene")
 	_connect_button(open_ai_runtime_world_bridge_button, "open_ai_runtime_world_bridge_scene")
 	_connect_button(monster_wager_button, "_on_monster_wager_fixture_pressed")
-	_connect_button(contract_response_button, "_on_contract_response_fixture_pressed")
 	_connect_button(discard_button, "_on_discard_fixture_pressed")
 	_connect_button(monster_target_button, "_on_monster_target_fixture_pressed")
 	_connect_button(player_target_button, "_on_player_target_fixture_pressed")
@@ -3858,10 +3780,6 @@ func _set_status(text: String) -> void:
 
 func _on_monster_wager_fixture_pressed() -> void:
 	select_fixture("monster_wager")
-
-
-func _on_contract_response_fixture_pressed() -> void:
-	select_fixture("contract_response")
 
 
 func _on_discard_fixture_pressed() -> void:

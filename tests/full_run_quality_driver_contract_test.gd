@@ -128,12 +128,12 @@ func _run() -> void:
 
 	var sample := SnapshotScript.compose({
 		"seed": EXPECTED_SEEDS[0],
-		"phase": "decision_window.contract_response",
+		"phase": "decision_window.counter_response",
 		"elapsed": {"wall_seconds": 2.5, "world_seconds": 10.0},
 		"decision_window": {
 			"active": true,
-			"kind": "contract_response",
-			"priority_group": "contract_response",
+			"kind": "counter_response",
+			"priority_group": "counter_response",
 			"blocks_global_time": true,
 			"blocks_player_actions": true,
 			"visible_to_scripted_player": true,
@@ -147,12 +147,12 @@ func _run() -> void:
 			"presentation_ready": false,
 		},
 		"invalid_actions": {"count": 1, "last_reason_code": "ui_action_no_progress"},
-		"last_event": "action_requested:contract_accept",
+		"last_event": "action_requested:counter_pass",
 		"observed_public_facts": {"clock": 10.0, "probe": INF},
 	})
 	_expect(bool(sample.get("valid", false)) and int(sample.get("seed", 0)) == EXPECTED_SEEDS[0], "telemetry accepts aggregate public facts and preserves the fixed seed")
 	_expect(_contains_all(sample, REQUIRED_TELEMETRY_KEYS), "telemetry exposes seed, phase, elapsed, decision, settlement, invalid-action, nonfinite, and last-event fields")
-	_expect(str(sample.get("phase", "")) == "decision_window.contract_response", "telemetry keeps the exact public decision phase")
+	_expect(str(sample.get("phase", "")) == "decision_window.counter_response", "telemetry keeps the exact public decision phase")
 	_expect(int((sample.get("invalid_actions", {}) as Dictionary).get("count", 0)) == 1, "telemetry preserves the aggregate invalid-action count")
 	_expect(int((sample.get("nonfinite", {}) as Dictionary).get("count", 0)) == 1 and (sample.get("nonfinite", {}) as Dictionary).get("paths", []) == ["public.probe"], "telemetry detects a non-finite public runtime fact without serializing its value")
 	_expect(not _contains_forbidden_key(sample), "composed telemetry contains no player cash, hand, owner truth, or AI-private key")

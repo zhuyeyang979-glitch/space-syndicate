@@ -256,8 +256,6 @@ func skill_price_power_adjustment(skill: Dictionary):
 	adjustment += mini(90, int(round(float(abs(int(skill.get("cash", 0)))) / 8.0)))
 	adjustment += mini(95, int(round(float(abs(int(skill.get("revenue_amount", 0)))) / 3.0)))
 	adjustment += mini(80, int(round(float(abs(int(skill.get("contract_income", 0)))) / 4.0)))
-	adjustment += mini(70, int(round(float(abs(int(skill.get("accept_cash", 0)))) / 10.0)))
-	adjustment += mini(70, int(round(float(abs(int(skill.get("decline_cash_penalty", 0)))) / 10.0)))
 	adjustment += maxi(0, int(skill.get("production_delta", 0))) * 10
 	adjustment += maxi(0, int(skill.get("transport_delta", 0))) * 10
 	adjustment += maxi(0, int(skill.get("consumption_delta", 0))) * 10
@@ -583,7 +581,7 @@ func runtime_balance_rule_loophole_rows():
 
 
 func skill_balance_numeric_field_names():
-	return ["cash", "revenue_amount", "contract_income", "accept_cash", "decline_cash_penalty", "production_delta", "transport_delta", "consumption_delta", "market_demand_pressure", "market_supply_pressure", "price_delta", "growth_multiplier", "route_flow_multiplier", "repair_routes", "route_damage", "damage", "panic", "draw_amount", "history_review_count", "history_subscription_count", "reveal_city_count", "trace_contract_count", "hand_discard_count", "hand_steal_count", "counter_strength", "counter_trace", "global_barrage_damage", "global_barrage_target_count", "global_barrage_route_damage", "hp", "fixed_skill_count", "military_hp", "military_damage", "military_gdp_penalty", "military_strike_route_damage", "weather_zone_count", "weather_duration_seconds"]
+	return ["cash", "revenue_amount", "contract_income", "production_delta", "transport_delta", "consumption_delta", "market_demand_pressure", "market_supply_pressure", "price_delta", "growth_multiplier", "route_flow_multiplier", "repair_routes", "route_damage", "damage", "panic", "draw_amount", "history_review_count", "history_subscription_count", "reveal_city_count", "trace_contract_count", "hand_discard_count", "hand_steal_count", "counter_strength", "counter_trace", "global_barrage_damage", "global_barrage_target_count", "global_barrage_route_damage", "hp", "fixed_skill_count", "military_hp", "military_damage", "military_gdp_penalty", "military_strike_route_damage", "weather_zone_count", "weather_duration_seconds"]
 
 
 func skill_balance_feature_vector(card_name: String, skill: Dictionary, rank: int = 1, family: String = "", price: int = 0, route_id: String = "", route_label: String = ""):
@@ -843,8 +841,6 @@ func skill_balance_target_type(skill: Dictionary):
 	if skill_targets_monster(skill):
 		return "monster"
 	match String(skill.get("kind", "")):
-		"area_trade_contract":
-			return "two_districts"
 		"weather_control":
 			return "weather_anchor"
 		"city_gdp_derivative", "city_revenue_boost", "city_product_upgrade", "city_product_shift", "city_demand_shift", "route_flow_boon", "route_insurance", "region_economy_shift":
@@ -887,7 +883,7 @@ func skill_balance_public_telegraph_score(skill: Dictionary):
 		score += 28
 	if int(skill.get("market_demand_pressure", 0)) != 0 or int(skill.get("market_supply_pressure", 0)) != 0:
 		score += 20
-	if ["area_trade_contract", "weather_control", "military_force", "monster_card", "global_barrage"].has(String(skill.get("kind", ""))):
+	if ["weather_control", "military_force", "monster_card", "global_barrage"].has(String(skill.get("kind", ""))):
 		score += 30
 	return score
 
@@ -905,7 +901,7 @@ func skill_balance_complexity_score(skill: Dictionary, rank: int = 1):
 		score += 1
 	if bool(_dict_or_empty(skill.get("futures_terms", {})).get("requires_warehouse", false)):
 		score += 3
-	if ["area_trade_contract", "product_futures", "city_gdp_derivative", "weather_control", "card_counter"].has(String(skill.get("kind", ""))):
+	if ["product_futures", "city_gdp_derivative", "weather_control", "card_counter"].has(String(skill.get("kind", ""))):
 		score += 4
 	return score
 

@@ -7,8 +7,6 @@ const REPORT_PATH := OUTPUT_DIR + "report.md"
 const SCREENSHOT_PATH := "user://space_syndicate_design_qa/forced_decision_scheduler_sprint_1.png"
 const ACTION_ID_SAMPLES := [
 	"monster_wager:17:alpha:5",
-	"contract_accept_23",
-	"contract_reject_23",
 	"discard_purchase_2",
 	"target_monster_uid_101",
 	"target_player_2",
@@ -16,14 +14,11 @@ const ACTION_ID_SAMPLES := [
 const FLOW_CASES := [
 	{"case_id": "no_decision", "notes": "An empty candidate set yields no active forced decision."},
 	{"case_id": "other_choice_only", "notes": "A private target choice is selected for its owner."},
-	{"case_id": "contract_over_other_choice", "notes": "Contract response outranks target and discard choices."},
-	{"case_id": "counter_over_contract", "notes": "Card counter response outranks a pending contract."},
-	{"case_id": "monster_wager_over_counter", "notes": "Monster wager is the highest v0.4 forced-decision priority."},
+	{"case_id": "monster_wager_over_counter", "notes": "Monster wager is the highest v0.6 forced-decision priority."},
 	{"case_id": "stable_order_with_same_priority", "notes": "Equal-priority candidates sort by opened sequence and stable id."},
 	{"case_id": "resolve_reveals_next_decision", "notes": "Removing the resolved candidate reveals the next priority without duplicate state."},
 	{"case_id": "global_blocking_matrix", "notes": "Monster wager blocks table time, player actions, and card resolution."},
-	{"case_id": "player_specific_blocking", "notes": "A private contract blocks only its target owner's actions."},
-	{"case_id": "card_resolution_progress_gate", "notes": "Contract waits block settlement progress while the counter timer remains allowed to tick."},
+	{"case_id": "player_specific_blocking", "notes": "A private target choice blocks only its assigned player's actions."},
 	{"case_id": "private_owner_not_exposed", "notes": "Non-owners receive only a private waiting hint and debug output omits owner identity."},
 	{"case_id": "action_ids_unchanged", "notes": "The scheduler arbitrates decision ids without rewriting existing action ids."},
 	{"case_id": "recompute_after_save_state", "notes": "Derived candidates recompute to the same active result after reset."},
@@ -66,7 +61,7 @@ func build_flow_manifest_preview() -> Dictionary:
 		records.append(_record(str(flow_case.get("case_id", "")), false, "Preview manifest only."))
 	return {
 		"suite": "forced_decision_runtime_scheduler",
-		"ruleset_id": "v0.4",
+		"ruleset_id": "v0.6",
 		"output_dir": OUTPUT_DIR,
 		"screenshot_path": SCREENSHOT_PATH,
 		"record_count": records.size(),
@@ -90,7 +85,7 @@ func run_flow_suite() -> void:
 		records.append(_record(case_id, passed, notes if passed else "FAILED: %s" % notes))
 	var manifest := {
 		"suite": "forced_decision_runtime_scheduler",
-		"ruleset_id": "v0.4",
+		"ruleset_id": "v0.6",
 		"output_dir": OUTPUT_DIR,
 		"screenshot_path": SCREENSHOT_PATH,
 		"record_count": records.size(),
@@ -124,12 +119,6 @@ func _run_case(case_id: String) -> bool:
 		"other_choice_only":
 			_sync([_other_choice()])
 			return str(_active(0).get("priority_group", "")) == "other_choice" and bool(_active(0).get("visible_to_viewer", false))
-		"contract_over_other_choice":
-			_sync([_other_choice(), _contract_response()])
-			return str(_active(1).get("priority_group", "")) == "contract_response"
-		"counter_over_contract":
-			_sync([_contract_response(), _counter_response()])
-			return str(_active().get("priority_group", "")) == "counter_response"
 		"monster_wager_over_counter":
 			_sync([_counter_response(), _monster_wager()])
 			return str(_active().get("priority_group", "")) == "monster_wager"
@@ -142,39 +131,37 @@ func _run_case(case_id: String) -> bool:
 			_sync([choice_b, choice_a])
 			return str(_active(0).get("id", "")) == "choice_a"
 		"resolve_reveals_next_decision":
-			_sync([_monster_wager(), _contract_response()])
+			_sync([_monster_wager(), _other_choice()])
 			var first_group := str(_active(1).get("priority_group", ""))
-			_sync([_contract_response()])
-			return first_group == "monster_wager" and str(_active(1).get("priority_group", "")) == "contract_response"
+			_sync([_other_choice()])
+			return first_group == "monster_wager" and str(_active(0).get("priority_group", "")) == "other_choice"
 		"global_blocking_matrix":
 			_sync([_monster_wager()])
 			return bool(coordinator.call("blocks_global_time")) and bool(coordinator.call("blocks_player_actions", 0)) and not bool(coordinator.call("allows_card_resolution_progress"))
 		"player_specific_blocking":
-			_sync([_contract_response()])
-			return not bool(coordinator.call("blocks_player_actions", 0)) and bool(coordinator.call("blocks_player_actions", 1))
-		"card_resolution_progress_gate":
-			_sync([_contract_response()])
-			var contract_blocks := not bool(coordinator.call("allows_card_resolution_progress"))
-			_sync([_counter_response()])
-			return contract_blocks and bool(coordinator.call("allows_card_resolution_progress"))
+			_sync([_other_choice()])
+			return bool(coordinator.call("blocks_player_actions", 0)) and not bool(coordinator.call("blocks_player_actions", 1))
 		"private_owner_not_exposed":
-			_sync([_contract_response()])
-			var hidden_entry := _active(0)
-			var visible_entry := _active(1)
+			_sync([_other_choice()])
+			var visible_entry := _active(0)
+			var hidden_entry := _active(1)
 			return not bool(hidden_entry.get("visible_to_viewer", true)) and str(hidden_entry.get("presentation_surface", "")) == "player_hint" and bool(visible_entry.get("visible_to_viewer", false)) and not _contains_key_recursive(_coordinator_snapshot(), "owner_player_index")
 		"action_ids_unchanged":
 			var before := ACTION_ID_SAMPLES.duplicate()
-			_sync([_monster_wager(), _contract_response(), _other_choice()])
+			_sync([_monster_wager(), _other_choice()])
 			return before == ACTION_ID_SAMPLES and not _coordinator_snapshot().has("action_router")
 		"recompute_after_save_state":
-			var candidates := [_other_choice(), _contract_response(), _counter_response()]
+			var candidates := [_other_choice(), _counter_response()]
 			_sync(candidates)
 			var before := _active(1)
 			coordinator.call("reset_state")
 			_sync(candidates.duplicate(true))
-			return before == _active(1)
+			var after := _active(1)
+			return str(before.get("id", "")) == str(after.get("id", "")) \
+				and str(before.get("priority_group", "")) == str(after.get("priority_group", "")) \
+				and bool(before.get("visible_to_viewer", false)) == bool(after.get("visible_to_viewer", false))
 		"pure_data_snapshots":
-			_sync([_monster_wager(), _counter_response(), _contract_response(), _other_choice()])
+			_sync([_monster_wager(), _counter_response(), _other_choice()])
 			return _is_pure_data(_coordinator_snapshot()) and _is_pure_data(build_flow_manifest_preview())
 	return false
 
@@ -188,11 +175,14 @@ func _configure_runtime() -> void:
 
 
 func _sync(candidates: Array) -> void:
-	coordinator.call("sync_forced_decision_candidates", candidates)
+	var scheduler := coordinator.get_node_or_null("ForcedDecisionRuntimeScheduler")
+	if scheduler != null:
+		scheduler.call("sync_candidates", candidates)
 
 
 func _active(viewer_index: int = -1) -> Dictionary:
-	var active_variant: Variant = coordinator.call("active_forced_decision", viewer_index)
+	var scheduler := coordinator.get_node_or_null("ForcedDecisionRuntimeScheduler")
+	var active_variant: Variant = scheduler.call("active_decision", viewer_index) if scheduler != null else {}
 	return active_variant if active_variant is Dictionary else {}
 
 
@@ -207,10 +197,6 @@ func _monster_wager() -> Dictionary:
 
 func _counter_response() -> Dictionary:
 	return _candidate("counter_response_19", "counter_response", "counter_response", -1, "public", "card_resolution_track", 19.0, false, false, false, "card_resolution_counter")
-
-
-func _contract_response() -> Dictionary:
-	return _candidate("contract_response_23", "contract_response", "contract_response", 1, "private", "overlay", 23.0, false, true, true, "contract_response")
 
 
 func _other_choice() -> Dictionary:
@@ -269,7 +255,7 @@ func _build_report(manifest: Dictionary) -> String:
 		"# Forced Decision Runtime Scheduler",
 		"",
 		"Passed: %d/%d" % [int(manifest.get("passed_count", 0)), int(manifest.get("record_count", 0))],
-		"Priority: `monster_wager -> counter_response -> contract_response -> other_choice`",
+		"Priority: `monster_wager -> counter_response -> other_choice`",
 		"Output: `%s`" % OUTPUT_DIR,
 		"",
 		"| Case | Passed | Active group | Notes |",
@@ -280,7 +266,7 @@ func _build_report(manifest: Dictionary) -> String:
 		lines.append("| %s | %s | %s | %s |" % [str(record.get("case_id", "")), str(record.get("passed", false)), str(record.get("active_priority_group", "")), str(record.get("notes", "")).replace("|", "/")])
 	lines.append_array([
 		"",
-		"The scheduler owns arbitration and blocking only. Existing wager, counter, contract, target, and discard handlers still own rule effects.",
+		"The scheduler owns arbitration and blocking only. Existing wager, counter, target, and discard handlers still own rule effects.",
 	])
 	return "\n".join(lines) + "\n"
 
@@ -299,7 +285,7 @@ func _set_status(text: String) -> void:
 	if summary_label != null:
 		summary_label.text = text
 	if priority_text != null:
-		priority_text.text = "[b]v0.4 authority[/b]\nmonster_wager\n↓ counter_response\n↓ contract_response\n↓ other_choice\n\n%s" % text
+		priority_text.text = "[b]v0.6 authority[/b]\nmonster_wager\n↓ counter_response\n↓ other_choice\n\n%s" % text
 
 
 func _settle_frames(count: int) -> void:

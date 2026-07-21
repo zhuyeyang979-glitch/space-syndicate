@@ -33,11 +33,6 @@ const WEATHER_RUNTIME_CHARACTERIZATION_SCRIPT := "res://scripts/tools/weather_ru
 const WEATHER_RUNTIME_OWNERSHIP_CONTRACT := "res://docs/weather_runtime_ownership_contract.md"
 const WEATHER_RUNTIME_CONTROLLER := "res://scenes/runtime/WeatherRuntimeController.tscn"
 const WEATHER_RUNTIME_WORLD_BRIDGE := "res://scenes/runtime/WeatherRuntimeWorldBridge.tscn"
-const CONTRACT_RUNTIME_CHARACTERIZATION_BENCH := "res://scenes/tools/ContractRuntimeCharacterizationBench.tscn"
-const CONTRACT_RUNTIME_CHARACTERIZATION_SCRIPT := "res://scripts/tools/contract_runtime_characterization_bench.gd"
-const CONTRACT_RUNTIME_OWNERSHIP_CONTRACT := "res://docs/contract_runtime_ownership_contract.md"
-const CONTRACT_RUNTIME_CONTROLLER := "res://scenes/runtime/ContractRuntimeController.tscn"
-const CONTRACT_RUNTIME_WORLD_BRIDGE := "res://scenes/runtime/ContractRuntimeWorldBridge.tscn"
 const PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_BENCH := "res://scenes/tools/ProductMarketRuntimeCharacterizationBench.tscn"
 const PRODUCT_MARKET_RUNTIME_CHARACTERIZATION_SCRIPT := "res://scripts/tools/product_market_runtime_characterization_bench.gd"
 const PRODUCT_MARKET_RUNTIME_OWNERSHIP_CONTRACT := "res://docs/product_market_runtime_ownership_contract.md"
@@ -193,8 +188,6 @@ func _check_static_composition(main: Control) -> void:
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameplayBalanceDiagnosticsWorldBridge",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/AiRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/AiRuntimeWorldBridge",
-		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ContractRuntimeController",
-		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ContractRuntimeWorldBridge",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardPresentationRuntimeService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameTableViewModelRuntimeService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardPlayEligibilityRuntimeService",
@@ -543,7 +536,7 @@ func _check_runtime_snapshot(main: Control, phase: String) -> void:
 	var victory_snapshot: Dictionary = coordinator_snapshot.get("victory_control_runtime", {}) if coordinator_snapshot.get("victory_control_runtime", {}) is Dictionary else {}
 	var card_presentation_snapshot: Dictionary = coordinator_snapshot.get("card_presentation", {}) if coordinator_snapshot.get("card_presentation", {}) is Dictionary else {}
 	var table_viewmodel_snapshot: Dictionary = coordinator_snapshot.get("game_table_viewmodel", {}) if coordinator_snapshot.get("game_table_viewmodel", {}) is Dictionary else {}
-	_expect(scheduler_snapshot.get("priority_order", []) == ["monster_wager", "counter_response", "contract_response", "other_choice", "public_bid"], "%s preserves RulesetRuntimeBridge priorities and appends public_bid as the lowest forced-decision priority" % phase)
+	_expect(scheduler_snapshot.get("priority_order", []) == ["monster_wager", "counter_response", "other_choice", "public_bid"], "%s preserves RulesetRuntimeBridge priorities and appends public_bid as the lowest forced-decision priority" % phase)
 	_expect(bool(session_snapshot.get("session_ready", false)) and bool(session_snapshot.get("session_authoritative", false)), "%s configures scene-owned session/save authority" % phase)
 	_expect(bool(purchase_snapshot.get("controller_ready", false)) and bool(purchase_snapshot.get("controller_authoritative", false)) and bool(purchase_snapshot.get("session_authority_only", false)) and not bool(purchase_snapshot.get("pricing_authority", true)) and not bool(purchase_snapshot.get("access_authority", true)) and bool(purchase_snapshot.get("legacy_monster_gate_retired", false)), "%s configures DistrictPurchase as session-only while CardMarketPricing owns eligibility and quotes" % phase)
 	_expect(bool(card_inventory_snapshot.get("service_ready", false)) and bool(card_inventory_snapshot.get("service_authoritative", false)) and int(card_inventory_snapshot.get("ordinary_hand_limit", 0)) == 5 and int(card_inventory_snapshot.get("maximum_card_rank", 0)) == 4 and not bool(card_inventory_snapshot.get("purchase_cash_authority", true)) and not bool(card_inventory_snapshot.get("ledger_authority", true)) and not bool(card_inventory_snapshot.get("legacy_inventory_fallback_used", true)), "%s configures CardInventoryRuntimeService as the v0.4 slot-mutation authority without moving cash or ledger ownership" % phase)
@@ -683,18 +676,6 @@ func _check_runtime_controller_authority(main: Control) -> void:
 	var coordinator_scene := FileAccess.get_file_as_string(GAME_RUNTIME_COORDINATOR_SCENE)
 	weather_characterization_ready = weather_characterization_ready and coordinator_scene.count("[node name=\"WeatherRuntimeController\"") == 1 and coordinator_scene.count("[node name=\"WeatherRuntimeWorldBridge\"") == 1 and main_source.sha256_text() != "f75b217e85da2e4f5300b900290457d41e4c031ec3c6b7cefe996e6a354a103a"
 	_expect(weather_characterization_ready and weather_contract.contains("Current v0.6 status") and weather_contract.contains("Main boundary"), "v0.6 composes one authoritative WeatherRuntimeController and non-owning bridge while keeping the legacy main.gd weather engine deleted")
-	var contract_contract := FileAccess.get_file_as_string(CONTRACT_RUNTIME_OWNERSHIP_CONTRACT)
-	var contract_characterization_ready := ResourceLoader.exists(CONTRACT_RUNTIME_CHARACTERIZATION_BENCH) and ResourceLoader.exists(CONTRACT_RUNTIME_CHARACTERIZATION_SCRIPT) and ResourceLoader.exists(CONTRACT_RUNTIME_CONTROLLER) and ResourceLoader.exists(CONTRACT_RUNTIME_WORLD_BRIDGE) and not contract_contract.is_empty()
-	var contract_packed := load(CONTRACT_RUNTIME_CHARACTERIZATION_BENCH) as PackedScene
-	if contract_packed != null:
-		var contract_bench := contract_packed.instantiate()
-		var contract_manifest: Dictionary = contract_bench.call("build_characterization_manifest_preview") if contract_bench != null and contract_bench.has_method("build_characterization_manifest_preview") else {}
-		contract_characterization_ready = contract_characterization_ready and int(contract_manifest.get("case_count", 0)) == 62 and str(contract_manifest.get("runtime_owner", "")) == "res://scripts/runtime/contract_runtime_controller.gd" and bool(contract_manifest.get("runtime_cutover_enabled", false)) and _is_pure_data(contract_manifest)
-		if contract_bench != null:
-			contract_bench.free()
-	contract_characterization_ready = contract_characterization_ready and not main_source.contains("var pending_contract_offers") and not main_source.contains("func _enqueue_pending_area_trade_contract(") and not main_source.contains("func _update_pending_contract_offers(") and not main_source.contains("func _respond_to_pending_contract_for_player(")
-	contract_characterization_ready = contract_characterization_ready and coordinator_scene.count("[node name=\"ContractRuntimeController\"") == 1 and coordinator_scene.count("[node name=\"ContractRuntimeWorldBridge\"") == 1
-	_expect(contract_characterization_ready and contract_contract.contains("Sprint 51 status") and contract_contract.contains("62/62") and contract_contract.contains("Deleted legacy owner"), "Sprint 51 composes one authoritative ContractRuntimeController and non-owning bridge while deleting the legacy main.gd contract engine")
 
 
 func _check_product_market_characterization_assets() -> void:
@@ -773,7 +754,7 @@ func _check_runtime_card_catalog_resource_assets() -> void:
 	ready = ready and bench != null and bench.has_method("historical_integrity_cases") and bench.has_method("live_cutover_cases") and bench.has_method("run_resource_suite")
 	ready = ready and int(manifest.get("case_count", 0)) == 80 and int(manifest.get("historical_case_count", 0)) == 40 and int(manifest.get("live_case_count", 0)) == 40
 	ready = ready and bool(schema.get("runtime_cutover_enabled", false)) and str(manifest.get("runtime_owner", "")) == "CardRuntimeCatalogService" and str(schema.get("runtime_owner", "")) == "CardRuntimeCatalogService"
-	ready = ready and int(schema.get("family_resources", 0)) == 120 and int(schema.get("embedded_rank_resources", 0)) == 239 and int(schema.get("pack_resources", 0)) == 10
+	ready = ready and int(schema.get("family_resources", 0)) == 114 and int(schema.get("embedded_rank_resources", 0)) == 232 and int(schema.get("pack_resources", 0)) == 10
 	ready = ready and _is_pure_data(manifest) and _is_pure_data(schema)
 	if bench != null:
 		bench.free()
@@ -786,8 +767,8 @@ func _check_runtime_card_catalog_resource_assets() -> void:
 		ready = ready and not main_source.contains("func %s(" % legacy_helper)
 	var coordinator_source := FileAccess.get_file_as_string("res://scenes/runtime/GameRuntimeCoordinator.tscn")
 	ready = ready and coordinator_source.contains("CardRuntimeCatalogService") and coordinator_source.contains("CardRuntimeDefinitionWorldBridge")
-	ready = ready and ownership_contract.contains("80/80") and ownership_contract.contains("CardRuntimeCatalogService") and resource_schema.contains("120 `CardRuntimeFamilyResource`") and resource_schema.contains("239 embedded `CardRuntimeRankResource`")
-	_expect(ready, "Sprint 58 uses one Inspector-editable 120-family/239-rank Resource catalog, an authoritative Catalog Service, and no parallel main.gd catalog owner")
+	ready = ready and ownership_contract.contains("80/80") and ownership_contract.contains("CardRuntimeCatalogService") and resource_schema.contains("114 `CardRuntimeFamilyResource`") and resource_schema.contains("232 embedded `CardRuntimeRankResource`")
+	_expect(ready, "Sprint 58 uses one Inspector-editable 114-family/232-rank Resource catalog, an authoritative Catalog Service, and no parallel main.gd catalog owner")
 
 
 func _check_runtime_card_authoring_assets() -> void:

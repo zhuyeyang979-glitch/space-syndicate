@@ -290,11 +290,6 @@ func _public_card_resolution_entry(resolution_id: int) -> Dictionary:
 func _public_target_district(entry: Dictionary) -> int:
 	if entry.is_empty():
 		return -1
-	if str(entry.get("card_kind", "")) == "area_trade_contract":
-		for key in ["contract_target_district", "contract_source_district"]:
-			var contract_index := int(entry.get(key, -1))
-			if _identity_boundary().public_district_exists(contract_index):
-				return contract_index
 	var selected_index := int(entry.get("selected_district", -1))
 	if _identity_boundary().public_district_exists(selected_index):
 		return selected_index

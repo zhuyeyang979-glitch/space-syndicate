@@ -783,7 +783,7 @@ func _overlay_hidden(screen: Control) -> bool:
 	var overlay := _overlay_layer(screen)
 	if overlay == null:
 		return false
-	for panel_name in ["MonsterWagerDecisionPanel", "ContractResponseDecisionPanel", "TemporaryChoiceDecisionPanel", "ConfirmPanel"]:
+	for panel_name in ["MonsterWagerDecisionPanel", "TemporaryChoiceDecisionPanel", "ConfirmPanel"]:
 		var panel := overlay.find_child(panel_name, true, false) as Control
 		if panel != null and panel.visible:
 			return false
