@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "request_id": "P0-CASH-AUTHORITY-COMMITMENT-BOUNDARY",
+  "status": "READY",
+  "priority": "P0",
+  "source_branch": "codex/p0-cash-authority-49445b3",
+  "base_sha": "49445b3c6cb1f6ab8b9b784483756c34bb9824c8",
+  "rule_authority_gate": "GREEN",
+  "purpose": "Wire the stateless typed cash mutation boundary into the unique production composition and physically delete the three Main cash mutation methods.",
+  "new_files_to_integrate": [
+    "scripts/runtime/player_cash_mutation_port.gd",
+    "scenes/runtime/PlayerCashMutationPort.tscn",
+    "tests/player_cash_mutation_port_test.gd",
+    "scripts/tools/player_cash_mutation_port_bench.gd",
+    "scenes/tools/PlayerCashMutationPortBench.tscn",
+    "docs/migration/p0_cash_authority_commitment_boundary.md",
+    "docs/migration/p0_cash_authority_commitment_boundary.json"
+  ],
+  "hot_file_changes": [
+    {
+      "file": "scenes/runtime/GameRuntimeCoordinator.tscn",
+      "change": "Instantiate exactly one PlayerCashMutationPort next to WorldSessionState and MonsterWagerCashCommitmentQueryPort."
+    },
+    {
+      "file": "scripts/runtime/game_runtime_coordinator.gd",
+      "change": "Configure the port with the existing WorldSessionState and commitment query port, then inject it into the product-market, city-GDP-derivative and monster-upgrade consumers. Fail closed if unavailable."
+    },
+    {
+      "file": "scripts/main.gd",
+      "change": "After every production caller uses the typed port, physically delete _commit_product_market_cash_delta, _commit_city_gdp_derivative_cash_delta and _apply_role_monster_upgrade_cash plus dead helpers used only by them. Do not retain wrappers or fallback."
+    }
+  ],
+  "consumer_changes": [
+    {
+      "files": [
+        "scripts/runtime/product_market_runtime_controller.gd",
+        "scripts/runtime/product_market_runtime_world_bridge.gd"
+      ],
+      "change": "Pass stable lifecycle transaction IDs to PlayerCashMutationPort. Remove dynamic Main cash calls and post-hoc cents reconciliation. Futures open uses the allocated position ID; settlement uses position ID plus reason; immediate card income uses the card execution transaction ID."
+    },
+    {
+      "files": [
+        "scripts/runtime/city_gdp_derivative_runtime_controller.gd",
+        "scripts/runtime/city_gdp_derivative_runtime_world_bridge.gd"
+      ],
+      "change": "Allocate or bind the stable position ID before debit, pass stable open/settlement transaction IDs to PlayerCashMutationPort, and remove dynamic Main cash calls and reconciliation. A failed open must preserve the current position-sequence semantics."
+    },
+    {
+      "files": [
+        "scripts/runtime/monster_runtime_controller.gd",
+        "scripts/runtime/monster_runtime_world_bridge.gd"
+      ],
+      "change": "Resolve the existing public role card from WorldSessionState, use monster UID plus resulting rank as the exact-once ID, call commit_role_monster_upgrade_cash, and keep presentation as a separate typed/event path. Remove the Main cash callback."
+    }
+  ],
+  "required_transaction_ids": {
+    "product_futures_open": "product-futures:<player>:<position_id>:open",
+    "product_futures_settlement": "product-futures:<player>:<position_id>:<reason>",
+    "product_card_income": "<card_execution_transaction_id>:product-market-cash",
+    "city_gdp_derivative": "city-gdp:<player>:<position_id>:<phase>",
+    "role_monster_upgrade": "monster:<monster_uid>:rank.<new_rank>:role-cash"
+  },
+  "forbidden": [
+    "second cash owner",
+    "second transaction ledger",
+    "new save section",
+    "Main fallback",
+    "timestamp or frame based transaction IDs",
+    "formula or reward amount changes",
+    "public exposure of cash or commitment diagnostics"
+  ],
+  "required_negative_gates": [
+    "no _commit_product_market_cash_delta in scripts/main.gd",
+    "no _commit_city_gdp_derivative_cash_delta in scripts/main.gd",
+    "no _apply_role_monster_upgrade_cash in scripts/main.gd",
+    "no dynamic Main cash call in product or GDP bridges",
+    "one PlayerCashMutationPort production instance",
+    "one WorldSessionState cash truth",
+    "zero duplicate mutation",
+    "zero wager commitment overspend"
+  ],
+  "required_tests": [
+    "tests/player_cash_mutation_port_test.gd",
+    "tests/monster_wager_cash_commitment_query_port_cutover_test.gd",
+    "focused product futures tests",
+    "focused city GDP derivative tests",
+    "focused monster upgrade tests",
+    "tests/main_gd_architecture_gate_test.gd",
+    "tests/main_runtime_composition_test.gd",
+    "tests/smoke_test.gd --check-only"
+  ]
+}

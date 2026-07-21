@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "status": "PORT_READY_FOR_INTEGRATION",
+  "rule_authority_gate": "GREEN",
+  "cash_owner": "WorldSessionState",
+  "cash_truth_field": "players[*].cash_cents",
+  "cash_mirror_field": "players[*].cash",
+  "exact_once_ledger": "players[*].v06_transaction_ledger",
+  "commitment_owner": "MonsterRuntimeController",
+  "commitment_query_port": "MonsterWagerCashCommitmentQueryPort",
+  "new_mutation_port": {
+    "scene": "res://scenes/runtime/PlayerCashMutationPort.tscn",
+    "script": "res://scripts/runtime/player_cash_mutation_port.gd",
+    "stores_cash": false,
+    "stores_journal": false,
+    "stores_commitments": false,
+    "adds_save_section": false,
+    "entrypoints": [
+      "commit_product_market_cash_delta",
+      "commit_city_gdp_derivative_cash_delta",
+      "commit_role_monster_upgrade_cash"
+    ]
+  },
+  "write_paths": [
+    {
+      "path": "scripts/main.gd::_commit_product_market_cash_delta",
+      "classification": "INTEGRATION_CUTOVER_REQUIRED",
+      "risk": ["whole_unit_only_write", "split_authorize_then_reconcile", "main_mutation"]
+    },
+    {
+      "path": "scripts/main.gd::_commit_city_gdp_derivative_cash_delta",
+      "classification": "INTEGRATION_CUTOVER_REQUIRED",
+      "risk": ["whole_unit_only_write", "split_authorize_then_reconcile", "main_mutation"]
+    },
+    {
+      "path": "scripts/main.gd::_apply_role_monster_upgrade_cash",
+      "classification": "INTEGRATION_CUTOVER_REQUIRED",
+      "risk": ["cash_cents_drift", "no_exact_once_transaction", "main_mutation"]
+    },
+    {
+      "path": "scripts/runtime/monster_runtime_controller.gd::wager settlement postimage",
+      "classification": "PRESERVE_WAGER_OWNER",
+      "reason": "settlement consumes the wager owner's own frozen commitments"
+    },
+    {
+      "path": "scripts/runtime/commodity_flow_world_bridge.gd::apply_sale_receipt_batch",
+      "classification": "SEPARATE_P0_BOUNDARY",
+      "reason": "atomic multi-player sale-receipt batch remains outside this task"
+    }
+  ],
+  "hard_guards": [
+    "cash_cents_and_cash_same_atomic_postimage",
+    "debit_cannot_consume_unresolved_wager_commitment",
+    "negative_postimage_rejected",
+    "transaction_id_exact_once",
+    "transaction_id_conflict_rejected",
+    "existing_save_owner_roundtrip",
+    "no_public_snapshot"
+  ],
+  "production_integration_request": "docs/integration_requests/P0-CASH-AUTHORITY-COMMITMENT-BOUNDARY.json"
+}
