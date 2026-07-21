@@ -95,10 +95,10 @@ func _test_cash_cents_parity_and_exact_once() -> void:
 	var event_size := (player.get("economic_ledger", []) as Array).size()
 	var transaction_size := (player.get("v06_transaction_ledger", []) as Array).size()
 	var replay := _port.commit_product_market_cash_delta(
-		"market:position.1:open", 0, -10, "商品期货", "环晶电池", "futures_open", 0, 7
+		"market:position.1:open", 0, -10, "商品期货", "环晶电池", "futures_open", 0, 99
 	)
 	player = _player_state()
-	_expect(bool(replay.get("committed", false)) and bool(replay.get("replayed", false)), "an identical transaction replays its authoritative receipt")
+	_expect(bool(replay.get("committed", false)) and bool(replay.get("replayed", false)), "an identical transaction replays after the presentation market cycle advances")
 	_expect(
 		int(player.get("cash_cents", -1)) == 99055
 			and (player.get("cash_history", []) as Array).size() == history_size
@@ -106,6 +106,8 @@ func _test_cash_cents_parity_and_exact_once() -> void:
 			and (player.get("v06_transaction_ledger", []) as Array).size() == transaction_size,
 		"an exact-once replay produces zero cash, history, event, or journal side effects"
 	)
+	var first_event := (player.get("economic_ledger", []) as Array)[0] as Dictionary
+	_expect(int(first_event.get("cycle", -1)) == 7, "a later-cycle replay preserves the first committed audit cycle")
 	var conflict := _port.commit_product_market_cash_delta(
 		"market:position.1:open", 0, -9, "商品期货", "环晶电池", "futures_open", 0, 7
 	)
@@ -149,6 +151,10 @@ func _test_product_market_and_gdp_counters() -> void:
 	player = _player_state()
 	_expect(bool(gdp.get("committed", false)) and int(player.get("cash_cents", -1)) == 19000, "GDP derivative settlement uses the same typed cash authority")
 	_expect(int(player.get("total_card_income", -1)) == 55 and (player.get("economic_ledger", []) as Array).size() == 4, "GDP derivative income classification and history remain exact")
+	var gdp_replay := _port.commit_city_gdp_derivative_cash_delta(
+		"gdp:position.4:settle", 0, 40, "城市GDP期权", "region.4", "浮空港", "derivative_expiry", 25, 41
+	)
+	_expect(bool(gdp_replay.get("replayed", false)) and int(_player_state().get("cash_cents", -1)) == 19000, "GDP derivative replay remains exact-once after the market cycle advances")
 
 
 func _test_role_monster_upgrade_reward() -> void:
@@ -161,10 +167,10 @@ func _test_role_monster_upgrade_reward() -> void:
 	_expect(bool(reward.get("committed", false)) and int(player.get("cash_cents", -1)) == 36000, "role income is credited even while an unresolved wager commitment exists")
 	_expect(int(player.get("total_card_income", -1)) == 160 and int(player.get("total_role_income", -1)) == 160, "monster-upgrade reward preserves both existing role income counters")
 	var replay := _port.commit_role_monster_upgrade_cash(
-		"monster:uid.401:rank.2:role-cash", 0, 160, "role.star-whale", "星鲸餐饮垄断", 401, "星鲸", 1, 2, 9
+		"monster:uid.401:rank.2:role-cash", 0, 160, "role.star-whale", "星鲸餐饮垄断", 401, "星鲸", 1, 2, 17
 	)
 	player = _player_state()
-	_expect(bool(replay.get("replayed", false)) and int(player.get("cash_cents", -1)) == 36000 and int(player.get("total_role_income", -1)) == 160, "role reward retry is exact-once")
+	_expect(bool(replay.get("replayed", false)) and int(player.get("cash_cents", -1)) == 36000 and int(player.get("total_role_income", -1)) == 160, "role reward retry is exact-once after the market cycle advances")
 
 
 func _test_save_roundtrip_preserves_exact_once() -> void:
@@ -179,10 +185,10 @@ func _test_save_roundtrip_preserves_exact_once() -> void:
 	_host.add_child(restored_port)
 	_expect(bool(restored_port.configure(restored, restored_query, _authority).get("configured", false)), "the stateless port needs no new save section")
 	var replay := restored_port.commit_role_monster_upgrade_cash(
-		"monster:uid.401:rank.2:role-cash", 0, 160, "role.star-whale", "星鲸餐饮垄断", 401, "星鲸", 1, 2, 9
+		"monster:uid.401:rank.2:role-cash", 0, 160, "role.star-whale", "星鲸餐饮垄断", 401, "星鲸", 1, 2, 27
 	)
 	var restored_player := (restored.players[0] as Dictionary)
-	_expect(bool(replay.get("replayed", false)) and int(restored_player.get("cash_cents", -1)) == 36000 and int(restored_player.get("total_role_income", -1)) == 160, "save/load cannot replay an already committed role reward")
+	_expect(bool(replay.get("replayed", false)) and int(restored_player.get("cash_cents", -1)) == 36000 and int(restored_player.get("total_role_income", -1)) == 160, "save/load at a later market cycle cannot replay an already committed role reward")
 
 
 func _test_product_futures_lifecycle_identity() -> void:

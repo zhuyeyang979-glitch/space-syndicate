@@ -445,8 +445,20 @@ func _command_fingerprint(
 		"reason_code": reason_code,
 		"card_income_cents": card_income_cents,
 		"role_income_cents": role_income_cents,
-		"events": events,
+		# The market cycle is presentation/history metadata captured at first
+		# commit. It must not turn a later retry of the same stable transaction
+		# into a conflict after time or a save/load boundary has advanced.
+		"events": _stable_event_fingerprint_rows(events),
 	}).sha256_text()
+
+
+func _stable_event_fingerprint_rows(events: Array[Dictionary]) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for event in events:
+		var row := event.duplicate(true)
+		row.erase("cycle")
+		result.append(row)
+	return result
 
 
 func _addition_would_overflow(left: int, right: int) -> bool:

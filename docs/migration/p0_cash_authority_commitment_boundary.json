@@ -49,6 +49,8 @@
     "debit_cannot_consume_unresolved_wager_commitment",
     "negative_postimage_rejected",
     "transaction_id_exact_once",
+    "cross_cycle_retry_uses_immutable_terms",
+    "first_committed_audit_cycle_preserved",
     "transaction_id_conflict_rejected",
     "existing_save_owner_roundtrip",
     "no_public_snapshot",
@@ -60,7 +62,8 @@
     "gate_ok": true
   },
   "validation": {
-    "player_cash_mutation_port": "37/37 PASS",
+    "player_cash_mutation_port": "39/39 PASS",
+    "cross_cycle_exact_once": "product/gdp/role/save-load PASS",
     "wager_commitment_query": "33/33 PASS",
     "product_market_target_envelope": "18 PASS",
     "monster_actor_propagation": "28/28 PASS",
@@ -76,6 +79,7 @@
     "privacy_violations": 0
   },
   "known_debt": [
-    "retired_full_smoke_fixture_still_names_removed_main_role_reward_method"
+    "retired_full_smoke_fixture_still_names_removed_main_role_reward_method",
+    "cash_first_cross_owner_callers_need_composite_transaction_or_compensation_before_any_post_cash_step_becomes_fallible"
   ]
 }

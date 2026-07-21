@@ -60,8 +60,11 @@ A first commit:
 9. atomically replaces the player record and records the deterministic mutation.
 
 An identical retry returns the stored receipt with zero side effects. Reusing a
-transaction ID with different terms fails closed. Save/load replay uses the same
-existing ledger and does not repeat cash, counters, history, or events.
+transaction ID with different immutable terms fails closed. The market `cycle`
+is retained on the first committed private audit event, but is excluded from the
+immutable command fingerprint so a later-cycle retry remains an exact replay.
+Save/load replay uses the same existing ledger and does not repeat cash,
+counters, history, or events.
 
 ## Stable transaction identities
 
@@ -120,7 +123,7 @@ remain 102 and production reference files did not increase.
 
 ## Validation evidence
 
-- `player_cash_mutation_port_test.gd`: `37/37 PASS`
+- `player_cash_mutation_port_test.gd`: `39/39 PASS`
 - `monster_wager_cash_commitment_query_port_cutover_test.gd`: `33/33 PASS`
 - `card_resolution_product_market_target_envelope_test.gd`: `18 PASS`
 - `monster_card_resolution_actor_propagation_test.gd`: `28/28 PASS`
@@ -133,9 +136,18 @@ remain 102 and production reference files did not increase.
 - `smoke_test.gd --check-only`: exit `0`
 - Godot 4.7 MCP `PlayerCashMutationPortBench.tscn`: `11/11 PASS`
 - Static negative gate: all three retired Main symbols have zero production hits.
+- Cross-cycle exact-once coverage: product, GDP derivative, role reward, and
+  save/load retry all preserve the first committed audit event.
 - `git diff --check`: `PASS`
 
 Godot reports repository-wide pre-existing warnings during import; this cutover
 adds no parse error, runtime error, missing-access error, or orphan connection.
 The retired broad full-smoke fixture still names the removed Main role-reward
 method and must be migrated independently; this cutover does not restore it.
+
+The product-futures, GDP-derivative, role-upgrade, speculation, and legacy
+product-contract callers currently perform a synchronous cash-first mutation
+followed by their domain postimage. No reachable post-cash branch explicitly
+returns failure, so this does not block the cash-owner cutover. A future change
+that makes any post-cash step fallible must first add a composite transaction or
+compensation boundary and post-cash fault-injection coverage.
