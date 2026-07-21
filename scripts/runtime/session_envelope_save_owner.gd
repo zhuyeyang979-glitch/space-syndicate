@@ -65,6 +65,9 @@ func capture_composite_state() -> Dictionary:
 
 
 func preflight_save_data(data: Dictionary) -> Dictionary:
+	var retired_payload := LegacyContractPayloadGuardV06.validation_report(data)
+	if not bool(retired_payload.get("valid", false)):
+		return _preflight_rejection("retired_contract_payload_rejected", str(retired_payload.get("path", "session_envelope")))
 	if _looks_like_v1(data):
 		return _preflight_v1(data)
 	if not _has_exact_keys(data, ROOT_FIELDS) or int(data.get("schema_version", -1)) != SCHEMA_VERSION or not _is_data_only(data):

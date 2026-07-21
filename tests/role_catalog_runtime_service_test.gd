@@ -4,7 +4,7 @@ const ROLE_CATALOG_SCENE := "res://scenes/runtime/RoleCatalogRuntimeService.tscn
 const SESSION_START_DRIVER := preload("res://tests/support/production_session_start_driver.gd")
 const QA_SAVE_PATH := "user://test_runs/role_catalog_runtime_service.save"
 const EXPECTED_LEGACY_AUDIT_SHA256 := "7609b20741bec0e835e7768f2301f587c1848180a49aad8ca7c767e6c8d1cbe0"
-const EXPECTED_CATALOG_SHA256 := "15cfd908d14509138571e29b28f62fe612ad8935940df01add8722bffd8c9ec6"
+const EXPECTED_CATALOG_SHA256 := "12efc6af267c070ca020510d0c639571aff22f6c2b8b36772f02a1b90571cf8a"
 const EXPECTED_NAMES := [
 	"环港走私议会",
 	"深海菌毯使团",
@@ -36,13 +36,11 @@ const EXPECTED_FIELD_UNION := [
 	"card_history_public_exclusion_charges",
 	"card_history_residual_catalog_charges",
 	"city_guess_reward_bonus",
-	"contract_flow_discount",
 	"flavor",
 	"high_volatility_bonus_once_per_market_cycle",
 	"high_volatility_first_sale_bonus",
 	"high_volatility_sale_threshold",
 	"intel_city_reveal_charges",
-	"intel_contract_trace_charges",
 	"military_control_limit_bonus",
 	"monster_cards_as_counter",
 	"monster_control_limit_bonus",

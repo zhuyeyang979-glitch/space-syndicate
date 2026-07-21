@@ -49,7 +49,7 @@ Before Sprint 53, `main.gd` owned:
 - `EconomyCashflowRuntimeController` owns per-second payout cadence and remainder planning, not market refresh.
 - `GdpFormulaRuntimeController` owns city GDP calculation, not product price or futures state.
 - `AiRuntimeController` reads market facts and chooses intents. It does not refresh or mutate the market.
-- Weather, Monster, Military, and Contract controllers request the shared market route through world bridges; none stores a second `product_market`.
+- Weather, Monster, Military, and card/economy effect owners request the shared market route through world bridges; none stores a second `product_market`.
 - `ProductCodexPublicSnapshotService` formats public display data only.
 
 ## Market entry shape
@@ -136,6 +136,6 @@ Sprint 52 records these differences and does not modify production rules to make
 
 ## Sprint 53 deletion gate (complete)
 
-Sprint 53 should create one scene-owned `ProductMarketRuntimeController` and a non-owning world bridge, migrate all three persistent states, shared-RNG requests, generation, refresh, boon/futures lifecycle, public/private snapshots, and current/legacy save fields, then delete the mapped `main.gd` implementation in the same change. It must not absorb Formula, Cashflow, GDP, AI, Weather, Monster, Military, Contract, Card Execution, or Product Codex ownership.
+Sprint 53 should create one scene-owned `ProductMarketRuntimeController` and a non-owning world bridge, migrate all three persistent states, shared-RNG requests, generation, refresh, boon/futures lifecycle, public/private snapshots, and current/legacy save fields, then delete the mapped `main.gd` implementation in the same change. It must not absorb Formula, Cashflow, GDP, AI, Weather, Monster, Military, card-effect, Card Execution, or Product Codex ownership.
 
 Direct-reflection tests now use the Controller API or real runtime receipts. No silent fallback market remains.

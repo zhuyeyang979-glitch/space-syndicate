@@ -6,7 +6,7 @@ This plan separates infrastructure that survives future rule changes from polici
 
 ### 1. One authoritative owner per state domain
 
-Hand, cash/assets, mana/commitment, commodities, facilities/cities, monsters, military, contracts, card queue, market, clock, and victory each have one authoritative runtime owner. UI, AI, campaigns, and tests consume snapshots and commands; they do not maintain parallel truth.
+Hand, cash/assets, mana/commitment, commodities, facilities/cities, monsters, military, card queue/effects, market, clock, and victory each have one authoritative runtime owner. Conditional orders are ordinary card/economy effects, not a separate contract-response owner. UI, AI, campaigns, and tests consume snapshots and commands; they do not maintain parallel truth.
 
 ### 2. One command lifecycle
 
@@ -108,7 +108,7 @@ These are expected to change and must remain replaceable data/policy modules:
 - monster uniqueness, simultaneous monster caps, and ownership limits;
 - exact card-play requirements and whether rank-I cards waive them;
 - regional supply composition, fixed regional monster cards, and purchase discounts;
-- contract acceptance windows and penalties;
+- automatic conditional-order settlement and its public result receipts;
 - wager base percentage, odds, and payout formula;
 - weather frequency and forecast duration;
 - commodity catalogue, elasticity, and GDP coefficients;
@@ -143,4 +143,3 @@ Sceneize and prove only the critical path first:
 7. A single non-blocking table UI path and isolated save.
 
 Depth expansion is welcome when it plugs into these seams. Systems likely to be redesigned should remain data-driven or fail-closed until the basic match is green.
-

@@ -41,21 +41,21 @@ func case_data(case_id: String) -> Dictionary:
 		"inspect_opening_hand_card":
 			return _case(case_id, "normal_hand", "inspect_card", "card_orbital_finance", "", "轨道融资", "Click an opening hand card and read it in RightInspector.")
 		"execute_enabled_card_action":
-			return _case(case_id, "selected_enabled_card", "execute_card_action", "card_shadow_contract", "play:shadow_contract", "影子合约", "Execute an enabled card action through GameScreen.action_requested.")
+			return _case(case_id, "selected_enabled_card", "execute_card_action", "card_shadow_disruption", "play:shadow_disruption", "影仓牵引", "Execute an enabled card action through GameScreen.action_requested.")
 		"disabled_action_guard":
 			return _case(case_id, "selected_disabled_card", "disabled_action_guard", "card_monster_tip_blocked", "play:monster_tip", "怪兽赌局尚未开启", "Disabled action remains visible but silent.")
 		"public_track_after_action_feedback":
 			return _case(case_id, "public_track_selection", "public_track_response", "card_orbital_finance", "first_round:track:bid", "公开报价", "Public track slot selection and response action bridge through GameScreen.")
 		"planet_map_after_action_feedback":
-			return _case(case_id, "selected_enabled_card", "planet_map_action", "card_shadow_contract", "", "雾港城", "PlanetMapView selection, double-click, focus, and sceneized cutover stay live.")
+			return _case(case_id, "selected_enabled_card", "planet_map_action", "card_shadow_disruption", "", "雾港城", "PlanetMapView selection, double-click, focus, and sceneized cutover stay live.")
 		"temporary_decision_pending_flow":
-			return _case(case_id, "temporary_decision_pending_hint", "temporary_decision", "card_shadow_contract", TEMPORARY_DECISION_ACTION_ID, "选择合约目标", "Temporary decision overlay emits through the existing action flow.")
+			return _case(case_id, "temporary_decision_pending_hint", "temporary_decision", "card_shadow_disruption", TEMPORARY_DECISION_ACTION_ID, "选择互动目标", "Temporary decision overlay emits through the existing action flow.")
 		"end_turn_or_advance_step":
-			return _case(case_id, "selected_enabled_card", "end_turn", "card_shadow_contract", "end_turn_requested", "第一轮", "End Turn emits the compatible signal and keeps table context.")
+			return _case(case_id, "selected_enabled_card", "end_turn", "card_shadow_disruption", "end_turn_requested", "第一轮", "End Turn emits the compatible signal and keeps table context.")
 		"privacy_boundary_runtime":
 			return _case(case_id, "public_track_selection", "privacy_boundary", "card_orbital_finance", "", "匿名", "Visible UI and QA payload stay free of private owner tokens.")
 		"recovery_after_action_sequence":
-			return _case(case_id, "temporary_decision_pending_hint", "recovery_sequence", "card_shadow_contract", "end_turn_requested", "第一轮", "Select card, inspect map, read track, resolve overlay, and end turn without stale UI.")
+			return _case(case_id, "temporary_decision_pending_hint", "recovery_sequence", "card_shadow_disruption", "end_turn_requested", "第一轮", "Select card, inspect map, read track, resolve overlay, and end turn without stale UI.")
 	return _case("boot_to_first_player_turn", "normal_hand", "boot", "card_orbital_finance", "", "玩家回合", "Fallback first-round boot case.")
 
 
@@ -76,8 +76,8 @@ func temporary_decision_payload() -> Dictionary:
 	return {
 		"id": "first_round_player_target_choice",
 		"kind": "player_target_choice",
-		"title": "选择合约目标",
-		"summary": "第一轮合约行动正在等待目标选择。",
+		"title": "选择互动目标",
+		"summary": "第一轮互动行动正在等待目标选择。",
 		"body": "这个 payload 只用于 FirstRoundRuntimePlayableLoopBench，不调用规则函数。",
 		"chips": [{"text": "私密目标"}, {"text": "公开后结算"}],
 		"actions": [
@@ -88,7 +88,7 @@ func temporary_decision_payload() -> Dictionary:
 			"mode": "player_target",
 			"summary": "选择目标后才进入公开线索。",
 			"privacy": "目标选择保持私密。",
-			"public_after": "只公开合约已回应，不公开隐藏归属字段。",
+			"public_after": "只公开目标锁定与反制时机，不公开隐藏归属字段。",
 		},
 	}
 
@@ -102,10 +102,10 @@ func map_payload_for_case(flow_case: Dictionary) -> Dictionary:
 			payload["projection"] = "local"
 			payload["hint"] = "第一轮行动聚焦雾港城，路线和 callout 均由 sceneized 地图组件显示。"
 			payload["movement_trails"] = [
-				{"from": [760, 310], "to": [1035, 560], "accent": "#38bdf8", "label": "合约路径"},
+				{"from": [760, 310], "to": [1035, 560], "accent": "#38bdf8", "label": "行动路径"},
 			]
 			payload["action_callouts"] = [
-				{"title": "首轮行动", "detail": "影子合约已指向雾港城。", "position": [760, 310], "accent": "#facc15"},
+				{"title": "首轮行动", "detail": "影仓牵引已指向雾港城。", "position": [760, 310], "accent": "#facc15"},
 			]
 			payload["map_event_effects"] = [
 				{"position": [760, 310], "label": "反馈", "color": "#a78bfa"},
@@ -233,24 +233,24 @@ func _public_track_entries_for_case(case_id: String) -> Array:
 	var active := case_id in ["public_track_after_action_feedback", "recovery_after_action_sequence"]
 	return [
 		{
-			"id": "first_round_track_contract",
+			"id": "first_round_track_interaction",
 			"resolution_id": 3101,
 			"slot": "#1",
-			"label": "匿名合约",
-			"title": "匿名合约",
-			"state": "待回应" if active else "队列",
+			"label": "互动牌",
+			"title": "互动牌",
+			"state": "反制窗" if active else "队列",
 			"kind": "queue",
 			"owner_hint": "待猜",
 			"cost": "$2",
 			"accent": "#a78bfa",
 			"badges": ["公开"],
-			"select_action": "first_round:track:select_contract",
-			"open_action": "first_round:track:open_contract",
+			"select_action": "first_round:track:select_interaction",
+			"open_action": "first_round:track:open_interaction",
 			"active": active,
 			"selected": active,
-			"summary": "匿名合约进入公共结算轨。",
+			"summary": "匿名互动牌进入公共结算轨。",
 			"detail": "只展示公开标签、报价和状态。",
-			"tooltip": "公开线索：匿名合约等待回应。",
+			"tooltip": "公开线索：互动牌正在等待一层反制。",
 		},
 		{
 			"id": "first_round_track_finance",
@@ -333,7 +333,7 @@ func _primary_action_for_case(case_id: String) -> String:
 		"inspect_opening_hand_card":
 			return "查看手牌"
 		"execute_enabled_card_action":
-			return "执行合约"
+			return "执行互动牌"
 		"disabled_action_guard":
 			return "查看原因"
 		"public_track_after_action_feedback":

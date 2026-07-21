@@ -11,7 +11,12 @@ const ROUTER_SCRIPT := preload("res://scripts/cards/v06/production/core_economic
 const BATCH_SINK_SCRIPT := preload("res://scripts/cards/v06/production/commodity_flow_atomic_batch_sink_v06.gd")
 const CANDIDATE_PORT_SCRIPT := preload("res://scripts/cards/v06/production/commodity_flow_candidate_snapshot_port_v06.gd")
 const ORGANIZATION_PORT_SCRIPT := preload("res://scripts/cards/v06/production/organization_production_port_v06.gd")
+const EFFECT_SUPPORT_SCRIPT := preload("res://scripts/cards/v06/effects/card_effect_adapter_support_v06.gd")
 const ORGANIZATION_EFFECT_KIND := "install_organization_upgrade"
+const AUTOMATIC_SUPPLY_DEMAND_TARGETS := {
+	"global_order_budget": "global_matching_goods",
+	"global_supply_spawn": "global_matching_factories",
+}
 
 var _card_source_owner: Object
 var _commodity_flow_owner: Object
@@ -207,6 +212,162 @@ func refresh_supply_demand_candidates() -> Dictionary:
 	return result
 
 
+func automatic_supply_demand_target_context(effect_kind: String, target_kind: String) -> Dictionary:
+	if not _configured or _candidate_port == null or _global_owner == null:
+		return {"ready": false, "reason_code": "core_economic_runtime_unavailable"}
+	var expected_target_kind := str(AUTOMATIC_SUPPLY_DEMAND_TARGETS.get(effect_kind, ""))
+	if expected_target_kind.is_empty() or target_kind != expected_target_kind:
+		return {"ready": false, "reason_code": "automatic_supply_demand_target_kind_mismatch"}
+	var refresh := refresh_supply_demand_candidates()
+	if not bool(refresh.get("valid", false)):
+		return {
+			"ready": false,
+			"reason_code": str(refresh.get("reason_code", "candidate_snapshot_unavailable")),
+		}
+	var metadata_variant: Variant = _global_owner.call("candidate_snapshot_metadata")
+	var metadata: Dictionary = metadata_variant if metadata_variant is Dictionary else {}
+	var revision := int(metadata.get("revision", -1))
+	if (
+		not bool(metadata.get("configured", false))
+		or revision < 0
+		or revision != int(refresh.get("revision", -2))
+		or int(metadata.get("candidate_count", 0)) <= 0
+	):
+		return {"ready": false, "reason_code": "automatic_supply_demand_candidates_unavailable"}
+	return {
+		"ready": true,
+		"reason_code": "automatic_supply_demand_target_ready",
+		"target_context": {
+			"valid": true,
+			"target_kind": expected_target_kind,
+			"candidate_snapshot_revision": revision,
+		},
+	}
+
+
+func resolve_queued_automatic_supply_demand(
+	actor_id: String,
+	card: Dictionary,
+	target_context: Dictionary,
+	transaction_id: String
+) -> Dictionary:
+	if not _configured or _effect_router == null:
+		return _failure("core_economic_runtime_unavailable")
+	var build := _automatic_supply_demand_intent(actor_id, card, target_context, transaction_id)
+	if not bool(build.get("valid", false)):
+		return _queued_resolution_failure(str(build.get("reason_code", "queued_supply_demand_binding_invalid")), {})
+	var binding: Dictionary = (build.get("binding", {}) as Dictionary).duplicate(true)
+	var intent: Dictionary = (build.get("intent", {}) as Dictionary).duplicate(true)
+	var prepared_variant: Variant = _effect_router.call("prepare_effect", intent)
+	var prepared: Dictionary = prepared_variant if prepared_variant is Dictionary else {}
+	if not bool(prepared.get("prepared", false)) or not EFFECT_SUPPORT_SCRIPT.binding_matches(prepared, binding):
+		if _effect_router.has_method("abort_prepared_effect"):
+			_effect_router.call("abort_prepared_effect", prepared.duplicate(true))
+		return _queued_resolution_failure(str(prepared.get("reason_code", "effect_prepare_failed")), binding)
+	var committed_variant: Variant = _effect_router.call("commit_effect", prepared.duplicate(true))
+	var committed: Dictionary = committed_variant if committed_variant is Dictionary else {}
+	if not bool(committed.get("committed", false)) or not EFFECT_SUPPORT_SCRIPT.binding_matches(committed, binding):
+		if _effect_router.has_method("abort_prepared_effect"):
+			_effect_router.call("abort_prepared_effect", prepared.duplicate(true))
+		return _queued_resolution_failure(str(committed.get("reason_code", "effect_commit_failed")), binding)
+	var finalized_variant: Variant = _effect_router.call("finalize_effect", committed.duplicate(true))
+	var finalized: Dictionary = finalized_variant if finalized_variant is Dictionary else {}
+	if not bool(finalized.get("finalized", false)):
+		var rollback_variant: Variant = _effect_router.call("rollback_effect", committed.duplicate(true)) if _effect_router.has_method("rollback_effect") else {}
+		var rollback: Dictionary = rollback_variant if rollback_variant is Dictionary else {}
+		var reason_code := "effect_finalize_failed" if bool(rollback.get("rolled_back", false)) else "effect_compensation_failed"
+		var failure := _queued_resolution_failure(reason_code, binding)
+		failure["rollback"] = rollback.duplicate(true)
+		return failure
+	_last_reason_code = "queued_supply_demand_resolved"
+	return {
+		"handled": true,
+		"committed": true,
+		"finalized": true,
+		"resolved": true,
+		"reason_code": "queued_supply_demand_resolved",
+		"binding": binding.duplicate(true),
+		"effect_receipt": committed.duplicate(true),
+		"effect_finalization": finalized.duplicate(true),
+		"idempotent_replay": bool(finalized.get("idempotent_replay", false)) or bool(committed.get("duplicate", false)),
+	}
+
+
+func preflight_automatic_supply_demand(
+	actor_id: String,
+	card: Dictionary,
+	target_context: Dictionary,
+	transaction_id: String
+) -> Dictionary:
+	if not _configured or _effect_router == null:
+		return {"ready": false, "reason_code": "core_economic_runtime_unavailable"}
+	var build := _automatic_supply_demand_intent(actor_id, card, target_context, transaction_id)
+	if not bool(build.get("valid", false)):
+		return {"ready": false, "reason_code": str(build.get("reason_code", "queued_supply_demand_binding_invalid"))}
+	var binding: Dictionary = (build.get("binding", {}) as Dictionary).duplicate(true)
+	var intent: Dictionary = (build.get("intent", {}) as Dictionary).duplicate(true)
+	var prepared_variant: Variant = _effect_router.call("prepare_effect", intent)
+	var prepared: Dictionary = prepared_variant if prepared_variant is Dictionary else {}
+	var ready := bool(prepared.get("prepared", false)) and EFFECT_SUPPORT_SCRIPT.binding_matches(prepared, binding)
+	if _effect_router.has_method("abort_prepared_effect"):
+		_effect_router.call("abort_prepared_effect", prepared.duplicate(true))
+	return {
+		"ready": ready,
+		"reason_code": "automatic_supply_demand_preflight_ready" if ready else str(prepared.get("reason_code", "effect_prepare_failed")),
+		"target_context": target_context.duplicate(true) if ready else {},
+	}
+
+
+func _automatic_supply_demand_intent(
+	actor_id: String,
+	card: Dictionary,
+	target_context: Dictionary,
+	transaction_id: String
+) -> Dictionary:
+	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+	var effect_kind := str(machine.get("effect_kind", ""))
+	var expected_target_kind := str(AUTOMATIC_SUPPLY_DEMAND_TARGETS.get(effect_kind, ""))
+	var card_id := str(machine.get("card_id", ""))
+	var card_instance_id := str(card.get("runtime_instance_id", ""))
+	var payload: Dictionary = machine.get("effect_payload", {}) if machine.get("effect_payload", {}) is Dictionary else {}
+	if actor_id.strip_edges().is_empty() or transaction_id.strip_edges().is_empty() or card_id.is_empty() or card_instance_id.is_empty() or payload.is_empty():
+		return {"valid": false, "reason_code": "queued_supply_demand_binding_invalid"}
+	if expected_target_kind.is_empty() or not bool(target_context.get("valid", false)) or str(target_context.get("target_kind", "")) != expected_target_kind:
+		return {"valid": false, "reason_code": "automatic_supply_demand_target_kind_mismatch"}
+	var target_hash := _stable_hash(target_context)
+	var payload_hash := _stable_hash(payload)
+	var intent_hash := _stable_hash({
+		"operation": "resolve_queued_automatic_supply_demand",
+		"transaction_id": transaction_id,
+		"actor_id": actor_id,
+		"card_id": card_id,
+		"card_instance_id": card_instance_id,
+		"effect_kind": effect_kind,
+		"target_hash": target_hash,
+		"payload_hash": payload_hash,
+	})
+	var binding := {
+		"transaction_id": transaction_id,
+		"actor_id": actor_id,
+		"card_id": card_id,
+		"card_instance_id": card_instance_id,
+		"effect_kind": effect_kind,
+		"target_hash": target_hash,
+		"payload_hash": payload_hash,
+		"intent_hash": intent_hash,
+	}
+	var intent := binding.duplicate(true)
+	intent["target_context"] = target_context.duplicate(true)
+	intent["effect_payload"] = payload.duplicate(true)
+	intent["contract"] = "prepare_is_side_effect_free"
+	return {
+		"valid": true,
+		"reason_code": "automatic_supply_demand_intent_ready",
+		"binding": binding.duplicate(true),
+		"intent": intent.duplicate(true),
+	}
+
+
 func play_card(
 	actor_id: String,
 	slot_index: int,
@@ -337,6 +498,42 @@ func _failure(reason_code: String) -> Dictionary:
 		"reason_code": reason_code,
 		"feedback": _localized_feedback(reason_code),
 	}
+
+
+func _queued_resolution_failure(reason_code: String, binding: Dictionary) -> Dictionary:
+	_last_reason_code = reason_code
+	return {
+		"handled": true,
+		"committed": false,
+		"finalized": false,
+		"resolved": false,
+		"reason_code": reason_code,
+		"binding": binding.duplicate(true),
+		"feedback": _localized_feedback(reason_code),
+	}
+
+
+func _stable_hash(value: Variant) -> String:
+	var context := HashingContext.new()
+	context.start(HashingContext.HASH_SHA256)
+	context.update(JSON.stringify(_canonicalize(value)).to_utf8_buffer())
+	return context.finish().hex_encode()
+
+
+func _canonicalize(value: Variant) -> Variant:
+	if value is Dictionary:
+		var result: Dictionary = {}
+		var keys: Array = (value as Dictionary).keys()
+		keys.sort_custom(func(left: Variant, right: Variant) -> bool: return str(left) < str(right))
+		for key_variant in keys:
+			result[str(key_variant)] = _canonicalize((value as Dictionary).get(key_variant))
+		return result
+	if value is Array:
+		var result: Array = []
+		for item_variant in value as Array:
+			result.append(_canonicalize(item_variant))
+		return result
+	return value
 
 
 func _localized_feedback(reason_code: String) -> Dictionary:

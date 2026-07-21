@@ -1055,7 +1055,7 @@ const RECORDS := [
 		"sceneization_status": STATUS_FULL,
 		"priority": 1,
 		"next_step": "Keep the Sprint 58 runtime integrity gate and Sprint 59 authoring workflow green whenever a card family, authored rank, pack order, or public-pool membership changes.",
-		"risk_notes": "Medium; all 232 active authored hashes and deterministic orders are now gated, while external financial terms and dynamic Monster definitions retain their dedicated owners.",
+		"risk_notes": "Medium; all 230 active authored hashes and deterministic orders are now gated, while external financial terms and dynamic Monster definitions retain their dedicated owners.",
 		"mcp_notes": "Sprint 58 is cutover_complete: CardRuntimeCatalogService and DefinitionWorldBridge are static Coordinator scenes, the Resource graph is Inspector editable, and the 80/80 gate proves no main.gd fallback remains. Sprint 59 adds the custom Inspector authoring panel, Workspace, validator, baseline and change-review package.",
 	},
 	{

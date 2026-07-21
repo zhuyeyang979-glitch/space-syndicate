@@ -41,6 +41,7 @@ func _run() -> void:
 	_expect(not main_source.contains("TEMP_DECISION_MONSTER_WAGER"), "Main no longer owns the monster-wager response constant")
 	_expect(not main_source.contains("action_id.begins_with(\"monster_wager:\")") and not main_source.contains("._place_monster_wager_percent"), "Main no longer parses or dispatches monster-wager responses")
 	_expect(not main_source.contains("_victory_control_escrow_cents") and not main_source.contains("&\"active_monster_wagers\"") and not main_source.contains("&\"resolved_monster_wager_history\"") and not main_source.contains("&\"monster_wager_sequence\"") and not main_source.contains("&\"public_card_bid_monster_wager_pool\""), "Main no longer proxies wager settlement state or escrow")
+	_expect(not main_source.contains("_update_monster_wagers") and not main_source.contains("tick_wagers"), "Main has no active monster-wager tick path")
 	_expect(not main_source.contains("func _active_bottom_countdown_state("), "Main no longer aggregates forced-decision countdown presentation state")
 	var runtime_loop_source := FileAccess.get_file_as_string("res://scripts/runtime/runtime_loop.gd")
 	var runtime_ports_source := FileAccess.get_file_as_string("res://scripts/runtime/runtime_world_ports.gd")

@@ -26,7 +26,7 @@ The current runtime order is:
 9. Dispatch one pure effect request to the existing effect-family rule owner.
 10. Finalize the submitted card commitment and persistent cooldown.
 11. Emit success/failure aftermath and public/private evidence.
-12. Restore the previously selected player, district, product, and contract endpoints.
+12. Restore the previously selected player, district, product, and active target endpoints.
 13. Append one resolved-history entry.
 14. Execution Service chooses `start_next` or `finish_batch`/`promote_next_batch`; Queue Service performs the mutation.
 
@@ -207,7 +207,7 @@ Moved as one orchestration unit:
 - Effect-dispatch request and result envelope.
 - Selection-context capture/restore.
 - Completion, aftermath, history, and continuation intents.
-- Counter/contract continuation classification.
+- Counter and forced-decision continuation classification.
 
 Deleted or reduced after the execution and transition gates proved parity:
 

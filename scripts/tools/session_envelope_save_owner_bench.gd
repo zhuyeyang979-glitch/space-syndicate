@@ -462,7 +462,6 @@ func _players_fixture(role_catalog: RoleCatalogRuntimeService) -> Array:
 			"city_guesses": {},
 			"city_guess_confidence": {},
 			"city_guess_reasons": {},
-			"known_contract_parties": {1: "公开合约线索"} if index == 0 else {},
 			"cities_built": 0,
 			"total_card_spend": 0,
 			"card_purchase_count": 0,

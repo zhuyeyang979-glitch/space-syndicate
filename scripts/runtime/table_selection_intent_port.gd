@@ -293,8 +293,4 @@ func _public_target_district(entry: Dictionary) -> int:
 	var selected_index := int(entry.get("selected_district", -1))
 	if _identity_boundary().public_district_exists(selected_index):
 		return selected_index
-	for key in ["contract_target_district", "contract_source_district"]:
-		var fallback_index := int(entry.get(key, -1))
-		if _identity_boundary().public_district_exists(fallback_index):
-			return fallback_index
 	return -1

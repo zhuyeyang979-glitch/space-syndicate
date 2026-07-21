@@ -200,6 +200,18 @@ func _requirement_receipt(transaction: Dictionary) -> Dictionary:
 	if skill.is_empty():
 		return {"intent_type": "revalidate_requirement", "valid": false, "reason": "missing_skill", "skill": skill}
 	skill.erase("queued_for_resolution")
+	var machine: Dictionary = skill.get("machine", {}) if skill.get("machine", {}) is Dictionary else {}
+	if str(machine.get("effect_kind", "")) in ["global_order_budget", "global_supply_spawn"]:
+		if _runtime_coordinator == null or not _runtime_coordinator.has_method("revalidate_queued_v06_automatic_supply_demand"):
+			return {"intent_type": "revalidate_requirement", "valid": false, "reason": "queued_supply_demand_runtime_unavailable", "skill": skill}
+		var v06_result_variant: Variant = _runtime_coordinator.call("revalidate_queued_v06_automatic_supply_demand", entry.duplicate(true), skill.duplicate(true))
+		var v06_result: Dictionary = v06_result_variant if v06_result_variant is Dictionary else {}
+		return {
+			"intent_type": "revalidate_requirement",
+			"valid": bool(v06_result.get("valid", false)),
+			"reason": str(v06_result.get("reason_code", "queued_supply_demand_conditions_unmet")),
+			"skill": _dictionary(v06_result.get("skill", skill)),
+		}
 	var context := _entry_context(entry)
 	var facts := _eligibility_facts.build_facts(player_index, skill, context)
 	if _runtime_coordinator != null:
@@ -285,6 +297,23 @@ func _aftermath_receipt(transaction: Dictionary) -> Dictionary:
 func _history_receipt(transaction: Dictionary) -> Dictionary:
 	var entry := _dictionary(transaction.get("active_entry", {}))
 	entry.erase("stable_target_envelope")
+	for private_key in [
+		"v06_actor_id",
+		"v06_card_id",
+		"v06_card_instance_id",
+		"v06_effect_kind",
+		"asset_reservation_id",
+		"asset_cost",
+		"asset_debit",
+		"financial_authorized_cents",
+		"financial_cash_revision",
+	]:
+		entry.erase(private_key)
+	var history_skill := _dictionary(entry.get("skill", {}))
+	history_skill.erase("_v06_automatic_target_context")
+	history_skill.erase("runtime_instance_id")
+	history_skill.erase("developer")
+	entry["skill"] = history_skill
 	entry["resolved_time"] = _world_session_state.game_time if _world_session_state != null else 0.0
 	var append := _history_service.append_resolved(entry)
 	return {
@@ -353,8 +382,6 @@ func _entry_context(entry: Dictionary) -> Dictionary:
 	return {
 		"selected_district": int(entry.get("selected_district", -1)),
 		"selected_trade_product": str(entry.get("selected_trade_product", "")),
-		"contract_source_district": int(entry.get("contract_source_district", -1)),
-		"contract_target_district": int(entry.get("contract_target_district", -1)),
 		"play_requirement_district": int(entry.get("play_requirement_district", -1)),
 	}
 

@@ -209,7 +209,7 @@ func card_balance_pillars(skill: Dictionary, card_facts: Dictionary = {}) -> Arr
 		_append_unique(pillars, "压制")
 	if int(skill.get("repair_routes", 0)) > 0 or int(skill.get("armor", 0)) > 0 or int(skill.get("guard", 0)) > 0 or int(skill.get("ranged_guard", 0)) > 0 or int(skill.get("counter_strength", 0)) > 0 or int(skill.get("military_hp", 0)) > 0 or kind in ["route_insurance", "market_stabilize", "special_monster_delay", "armor_gain", "card_counter", "military_force"] or bool(derivative_terms.get("insurance", false)):
 		_append_unique(pillars, "防御")
-	if kind in ["intel_city_reveal", "card_history_public_review", "card_history_subscription", "intel_contract_trace"] or tags.contains("情报"):
+	if kind in ["intel_city_reveal", "card_history_public_review", "card_history_subscription"] or tags.contains("情报"):
 		_append_unique(pillars, "信息")
 	if tags.contains("互动") or kind in ["player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage", "card_counter"]:
 		_append_unique(pillars, "互动")
@@ -220,7 +220,7 @@ func card_balance_pillars(skill: Dictionary, card_facts: Dictionary = {}) -> Arr
 	if kind in ["military_force", "military_command"] or tags.contains("军队") or tags.contains("军令"):
 		_append_unique(pillars, "军队")
 	if kind == "product_contract_boon" or int(skill.get("contract_income", 0)) > 0:
-		_append_unique(pillars, "合约")
+		_append_unique(pillars, "订单供需")
 	if kind in ["product_speculation", "product_futures", "market_stabilize", "product_growth_boon", "product_contract_boon"] or int(skill.get("market_demand_pressure", 0)) != 0 or int(skill.get("market_supply_pressure", 0)) != 0:
 		_append_unique(pillars, "市场")
 	if kind == "city_gdp_derivative":
@@ -285,7 +285,7 @@ func development_route_audit(world_snapshot: Dictionary = {}) -> Array:
 func development_route_pillar_summary(entry: Dictionary) -> String:
 	var counts := _dictionary(entry.get("pillar_counts", {}))
 	var pieces: Array = []
-	for pillar in ["收益", "压制", "防御", "互动", "信息", "补给", "怪兽", "合约", "市场", "GDP金融", "公开门槛", "临场"]:
+	for pillar in ["收益", "压制", "防御", "互动", "信息", "补给", "怪兽", "订单供需", "市场", "GDP金融", "公开门槛", "临场"]:
 		var count := int(counts.get(pillar, 0))
 		if count > 0:
 			pieces.append("%s×%d" % [pillar, count])
@@ -357,9 +357,8 @@ func role_budget(role_card: Dictionary) -> Dictionary:
 	var components := [
 		["resource_cash_amount", "商品现金流", 1.0, "economy"], ["monster_upgrade_cash", "升兽现金", 0.25, "monster"],
 		["intel_city_reveal_charges", "城市归属侦测", 42.0, "intel"], ["card_history_residual_catalog_charges", "残帧编目", 28.0, "intel"],
-		["intel_contract_trace_charges", "合约回溯", 40.0, "intel"], ["city_guess_reward_bonus", "城市竞猜奖励", 0.25, "intel"],
+		["city_guess_reward_bonus", "城市竞猜奖励", 0.25, "intel"],
 		["card_history_public_exclusion_charges", "公开证据排除", 24.0, "intel"], ["high_volatility_first_sale_bonus", "高波动周期首售", 0.8, "economy"],
-		["contract_flow_discount", "合约GDP门槛折扣", 34.0, "contract"],
 		["monster_control_limit_bonus", "怪兽归属上限", 58.0, "monster"], ["military_control_limit_bonus", "军队归属上限", 52.0, "military"],
 	]
 	for component in components:
@@ -926,7 +925,7 @@ func _pressure_card_entry(card: Dictionary) -> Dictionary:
 	disruption += int(float(maxi(0, int(skill.get("target_cash_penalty", 0)))) / 2.0) + int(round(maxf(0.0, float(skill.get("control_block_seconds", 0.0))) * maxi(0, int(skill.get("control_gdp_penalty", 0))) / 18.0))
 	disruption += maxi(0, int(skill.get("global_barrage_target_count", 0))) * (maxi(0, int(skill.get("global_barrage_damage", 0))) * 70 + maxi(0, int(skill.get("global_barrage_route_damage", 0))) * 46)
 	var protection := maxi(0, int(skill.get("repair_routes", 0))) * 62 + maxi(0, int(skill.get("armor", 0))) * 18 + maxi(0, int(skill.get("guard", 0))) * 18 + maxi(0, int(skill.get("ranged_guard", 0))) * 18 + maxi(0, int(skill.get("counter_strength", 0))) * 80 + maxi(0, int(skill.get("stabilize_amount", 0))) * 36
-	var intel_supply := maxi(0, int(skill.get("history_review_count", 0))) * 56 + maxi(0, int(skill.get("history_subscription_count", 0))) * 48 + maxi(0, int(skill.get("trace_contract_count", 0))) * 88 + maxi(0, int(skill.get("reveal_city_count", 0))) * 92 + maxi(0, int(skill.get("draw_amount", 0))) * 72
+	var intel_supply := maxi(0, int(skill.get("history_review_count", 0))) * 56 + maxi(0, int(skill.get("history_subscription_count", 0))) * 48 + maxi(0, int(skill.get("reveal_city_count", 0))) * 92 + maxi(0, int(skill.get("draw_amount", 0))) * 72
 	var gate := maxi(0, int(skill.get("cost", 0))) * 8 + required_share * 4 + _card_budget_gate_facts(card).size() * 18
 	var clue := 0
 	if str(card.get("play_product", "")) != "": clue += 18
@@ -974,7 +973,7 @@ func _pressure_notes(route_id: String, entry: Dictionary) -> Array:
 		"city_growth":
 			if int(entry.get("money_score", 0)) <= 0: notes.append("城市成长缺收益引擎")
 		"contract_route":
-			if int(entry.get("money_score", 0)) <= 0 or int(entry.get("gate_score", 0)) <= 0: notes.append("合约路线缺收益或谈判门槛")
+			if int(entry.get("money_score", 0)) <= 0 or int(entry.get("gate_score", 0)) <= 0: notes.append("订单供需路线缺收益或网络门槛")
 		"finance_speculation":
 			if int(entry.get("money_score", 0)) <= 0 or int(entry.get("public_clue_score", 0)) <= 0: notes.append("金融路线缺兑现或公开价格/GDP线索")
 		"monster_pressure":
@@ -1068,7 +1067,7 @@ func _development_route_balance_notes(route_id: String, entry: Dictionary) -> Ar
 
 
 func _expected_pillars(route_id: String) -> Array:
-	return {"city_growth": ["收益", "防御", "公开门槛"], "contract_route": ["合约", "收益", "公开门槛"], "finance_speculation": ["GDP金融", "市场", "防御", "公开门槛"], "monster_pressure": ["怪兽", "压制", "公开门槛"], "intel_supply": ["信息", "补给", "公开门槛"], "direct_interaction": ["互动", "压制", "公开门槛"]}.get(route_id, ["临场"])
+	return {"city_growth": ["收益", "防御", "公开门槛"], "contract_route": ["订单供需", "收益", "公开门槛"], "finance_speculation": ["GDP金融", "市场", "防御", "公开门槛"], "monster_pressure": ["怪兽", "压制", "公开门槛"], "intel_supply": ["信息", "补给", "公开门槛"], "direct_interaction": ["互动", "压制", "公开门槛"]}.get(route_id, ["临场"])
 
 
 func _has_pillar(entry: Dictionary, pillar: String) -> bool:

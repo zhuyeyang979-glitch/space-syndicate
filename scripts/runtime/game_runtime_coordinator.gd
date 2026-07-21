@@ -19,6 +19,10 @@ const CORE_ECONOMIC_CARD_EFFECT_KINDS_V06 := [
 	"global_supply_spawn",
 	"install_organization_upgrade",
 ]
+const SHARED_RESOLUTION_EFFECT_KINDS_V06 := [
+	"global_order_budget",
+	"global_supply_spawn",
+]
 
 var _ruleset_id := ""
 var _configured := false
@@ -2500,6 +2504,15 @@ func play_v06_runtime_card(request: Dictionary) -> Dictionary:
 	if not bool(route.get("ready", false)):
 		route["committed"] = false
 		return route
+	if SHARED_RESOLUTION_EFFECT_KINDS_V06.has(str(route.get("effect_kind", ""))):
+		return {
+			"handled": true,
+			"committed": false,
+			"route_id": str(route.get("route_id", "")),
+			"effect_kind": str(route.get("effect_kind", "")),
+			"card_id": str(route.get("card_id", "")),
+			"reason_code": "v06_card_requires_shared_resolution",
+		}
 	var target_result := _v06_runtime_card_target_context(card, actor_id, request)
 	if not bool(target_result.get("ready", false)):
 		return {
@@ -2528,6 +2541,95 @@ func play_v06_runtime_card(request: Dictionary) -> Dictionary:
 	if str(result.get("reason_code", "")).is_empty():
 		result["reason_code"] = "v06_card_play_committed" if bool(result.get("committed", false)) else "v06_card_play_rejected"
 	return result
+
+
+func revalidate_queued_v06_automatic_supply_demand(entry: Dictionary, skill: Dictionary) -> Dictionary:
+	var machine: Dictionary = skill.get("machine", {}) if skill.get("machine", {}) is Dictionary else {}
+	var effect_kind := str(machine.get("effect_kind", ""))
+	var card_id := str(machine.get("card_id", ""))
+	var card_instance_id := str(skill.get("runtime_instance_id", ""))
+	var player_index := int(entry.get("player_index", -1))
+	if not _configured or not SHARED_RESOLUTION_EFFECT_KINDS_V06.has(effect_kind) or card_id.is_empty() or card_instance_id.is_empty() or player_index < 0:
+		return {"valid": false, "reason_code": "queued_supply_demand_binding_invalid", "skill": skill.duplicate(true)}
+	var actor_binding := actor_id_for_player_index(player_index)
+	var actor_id := str(actor_binding.get("actor_id", ""))
+	if not bool(actor_binding.get("available", false)) \
+			or actor_id != str(entry.get("v06_actor_id", "")) \
+			or card_id != str(entry.get("v06_card_id", "")) \
+			or card_instance_id != str(entry.get("v06_card_instance_id", "")) \
+			or effect_kind != str(entry.get("v06_effect_kind", "")):
+		return {"valid": false, "reason_code": "queued_supply_demand_binding_changed", "skill": skill.duplicate(true)}
+	var preflight := preflight_v06_automatic_supply_demand(actor_id, skill)
+	if not bool(preflight.get("ready", false)):
+		return {
+			"valid": false,
+			"reason_code": str(preflight.get("reason_code", "queued_supply_demand_conditions_unmet")),
+			"skill": skill.duplicate(true),
+		}
+	var refreshed_skill := skill.duplicate(true)
+	refreshed_skill["_v06_automatic_target_context"] = (preflight.get("target_context", {}) as Dictionary).duplicate(true)
+	return {
+		"valid": true,
+		"reason_code": "queued_supply_demand_ready",
+		"skill": refreshed_skill,
+	}
+
+
+func preflight_v06_automatic_supply_demand(actor_id: String, card: Dictionary) -> Dictionary:
+	var target_result := _v06_runtime_card_target_context(card, actor_id, {})
+	if not bool(target_result.get("ready", false)):
+		return {
+			"ready": false,
+			"reason_code": str(target_result.get("reason_code", "queued_supply_demand_conditions_unmet")),
+		}
+	var core_adapter := _core_economic_card_runtime_adapter_v06_node()
+	if core_adapter == null or not core_adapter.has_method("preflight_automatic_supply_demand"):
+		return {"ready": false, "reason_code": "core_economic_runtime_unavailable"}
+	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+	var card_instance_id := str(card.get("runtime_instance_id", ""))
+	var target_context: Dictionary = target_result.get("target_context", {}) if target_result.get("target_context", {}) is Dictionary else {}
+	var transaction_id := "preflight:v06-supply-demand:%s:%s:%s" % [
+		actor_id,
+		card_instance_id,
+		str(machine.get("effect_kind", "")),
+	]
+	var value_variant: Variant = core_adapter.call(
+		"preflight_automatic_supply_demand",
+		actor_id,
+		card.duplicate(true),
+		target_context.duplicate(true),
+		transaction_id
+	)
+	var result: Dictionary = (value_variant as Dictionary).duplicate(true) if value_variant is Dictionary else {
+		"ready": false,
+		"reason_code": "automatic_supply_demand_preflight_invalid",
+	}
+	if bool(result.get("ready", false)):
+		result["target_context"] = target_context.duplicate(true)
+	return result
+
+
+func resolve_queued_v06_automatic_supply_demand(entry: Dictionary, skill: Dictionary) -> Dictionary:
+	var resolution_id := int(entry.get("resolution_id", entry.get("queued_order", -1)))
+	var actor_id := str(entry.get("v06_actor_id", ""))
+	var target_context: Dictionary = skill.get("_v06_automatic_target_context", {}) if skill.get("_v06_automatic_target_context", {}) is Dictionary else {}
+	var core_adapter := _core_economic_card_runtime_adapter_v06_node()
+	if resolution_id < 0 or actor_id.is_empty() or target_context.is_empty() or core_adapter == null or not core_adapter.has_method("resolve_queued_automatic_supply_demand"):
+		return {"handled": true, "committed": false, "finalized": false, "resolved": false, "reason_code": "queued_supply_demand_runtime_unavailable"}
+	var result_variant: Variant = core_adapter.call(
+		"resolve_queued_automatic_supply_demand",
+		actor_id,
+		skill.duplicate(true),
+		target_context.duplicate(true),
+		"card-resolution:%d:v06-supply-demand" % resolution_id
+	)
+	return (result_variant as Dictionary).duplicate(true) if result_variant is Dictionary else {
+		"handled": true,
+		"committed": false,
+		"finalized": false,
+		"resolved": false,
+		"reason_code": "queued_supply_demand_receipt_invalid",
+	}
 
 
 func _v06_runtime_card_terminal_replay(request: Dictionary, inventory: Object) -> Dictionary:
@@ -2640,6 +2742,21 @@ func _v06_runtime_card_replay_target_context(card: Dictionary, request: Dictiona
 			"expected_owner_revision": committed_owner_revision - 1,
 		}
 		return {"ready": _v06_stable_hash(target_context) == target_hash, "reason_code": "v06_card_play_replay_binding_mismatch", "target_context": target_context}
+	if ["global_order_budget", "global_supply_spawn"].has(effect_kind):
+		var owner_receipt: Dictionary = effect_receipt.get("owner_receipt", {}) if effect_receipt.get("owner_receipt", {}) is Dictionary else {}
+		var candidate_snapshot_revision := int(owner_receipt.get("candidate_snapshot_revision", -1))
+		if candidate_snapshot_revision < 0:
+			return {"ready": false, "reason_code": "v06_card_play_terminal_invalid"}
+		var target_context := {
+			"valid": true,
+			"target_kind": str(machine.get("target_kind", "")),
+			"candidate_snapshot_revision": candidate_snapshot_revision,
+		}
+		return {
+			"ready": _v06_stable_hash(target_context) == target_hash,
+			"reason_code": "v06_card_play_replay_binding_mismatch",
+			"target_context": target_context,
+		}
 	if effect_kind == "deploy_or_upgrade_monster":
 		if region_id.is_empty():
 			return {"ready": false, "reason_code": "v06_card_play_replay_binding_mismatch"}
@@ -2752,6 +2869,19 @@ func _v06_runtime_card_target_context(card: Dictionary, actor_id: String, reques
 				"window_sequence": window_sequence,
 				"expected_owner_revision": int(private_snapshot.get("owner_revision", -1)),
 			},
+		}
+	if ["global_order_budget", "global_supply_spawn"].has(effect_kind):
+		var core_adapter := _core_economic_card_runtime_adapter_v06_node()
+		if core_adapter == null or not core_adapter.has_method("automatic_supply_demand_target_context"):
+			return {"ready": false, "reason_code": "core_economic_runtime_unavailable"}
+		var context_variant: Variant = core_adapter.call(
+			"automatic_supply_demand_target_context",
+			effect_kind,
+			str(machine.get("target_kind", ""))
+		)
+		return (context_variant as Dictionary).duplicate(true) if context_variant is Dictionary else {
+			"ready": false,
+			"reason_code": "automatic_supply_demand_target_context_invalid",
 		}
 	if effect_kind == "deploy_or_upgrade_monster":
 		var monster_controller := _monster_runtime_controller_node()

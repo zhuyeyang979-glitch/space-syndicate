@@ -15,12 +15,12 @@ const MANIFEST_PATH := OUTPUT_DIR + "manifest.json"
 const REPORT_PATH := OUTPUT_DIR + "report.md"
 const SCREENSHOT_PATH := "user://space_syndicate_design_qa/runtime_card_catalog_resource_hard_cutover_sprint_58.png"
 
-const EXPECTED_CARD_COUNT := 232
-const EXPECTED_FAMILY_COUNT := 114
+const EXPECTED_CARD_COUNT := 230
+const EXPECTED_FAMILY_COUNT := 113
 const EXPECTED_PACK_COUNT := 10
-const EXPECTED_POOL_COUNT := 118
+const EXPECTED_POOL_COUNT := 116
 const EXPECTED_UPGRADEABLE_COUNT := 70
-const EXPECTED_KIND_COUNT := 49
+const EXPECTED_KIND_COUNT := 48
 const HISTORICAL_CASE_COUNT := 40
 const LIVE_CASE_COUNT := 40
 const CASE_COUNT := HISTORICAL_CASE_COUNT + LIVE_CASE_COUNT
@@ -68,14 +68,14 @@ const HISTORICAL_CASE_IDS := [
 	"sprint58_deletion_candidates_complete", "catalog_source_hash_metadata_locked",
 ]
 const LIVE_CASE_IDS := [
-	"resource_scripts_load", "family_asset_count_114", "embedded_rank_count_232",
+	"resource_scripts_load", "family_asset_count_113", "embedded_rank_count_230",
 	"pack_asset_count_10", "catalog_asset_loads", "all_families_single_pack",
 	"pack_order_preserved", "catalog_card_order_hash", "family_upgrade_order_hash",
 	"public_pool_order_hash", "exact_definition_parity", "all_explicit_definitions_canonical_parity",
 	"derived_rank_nearest_lower_parity", "derived_growth_35_percent_parity",
 	"exact_id_beats_derivation", "city_development_precedence", "product_futures_terms_external_live",
 	"city_gdp_terms_external_live", "monster_card_route_preserved", "monster_technique_route_preserved",
-	"requirement_policy_stays_external", "all_49_kinds_validate", "pure_data_definition",
+	"requirement_policy_stays_external", "all_48_kinds_validate", "pure_data_definition",
 	"pure_data_catalog_snapshot", "resource_load_failure_explicit", "coordinator_scene_composition",
 	"main_runtime_uses_catalog_service", "eligibility_consumer_parity", "queue_consumer_parity",
 	"presentation_consumer_parity", "ai_consumer_parity", "military_consumer_no_world_constant",
@@ -187,7 +187,7 @@ func run_resource_suite() -> void:
 		_count_passed(), CASE_COUNT, _count_phase("historical_integrity"), HISTORICAL_CASE_COUNT,
 		_count_phase("live_cutover"), LIVE_CASE_COUNT,
 	])
-	print("RuntimeCardCatalogResourceBench assets: 114 families; 232 authored ranks; 10 packs; 1 catalog")
+	print("RuntimeCardCatalogResourceBench assets: 113 families; 230 authored ranks; 10 packs; 1 catalog")
 	print("RuntimeCardCatalogResourceBench manifest: %s" % MANIFEST_PATH)
 	print("RuntimeCardCatalogResourceBench report: %s" % REPORT_PATH)
 	print("RuntimeCardCatalogResourceBench screenshot: %s" % SCREENSHOT_PATH)
@@ -323,7 +323,7 @@ func _historical_pass(case_id: String) -> bool:
 		"counter_card_shape":
 			return _kinds_have_cards(["card_counter"])
 		"intel_card_shape":
-			return _kinds_have_cards(["intel_city_reveal", "card_history_public_review", "card_history_subscription", "intel_contract_trace"])
+			return _kinds_have_cards(["intel_city_reveal", "card_history_public_review", "card_history_subscription"])
 		"product_futures_terms_external":
 			return _financial_terms_external("商品看涨1")
 		"city_gdp_terms_external":
@@ -359,8 +359,8 @@ func _live_pass(case_id: String) -> bool:
 	var report := _catalog.validation_report()
 	match case_id:
 		"resource_scripts_load": return RESOURCE_SCRIPT_PATHS.all(func(path: String) -> bool: return load(path) != null)
-		"family_asset_count_114": return _tres_count(FAMILY_DIR) == EXPECTED_FAMILY_COUNT
-		"embedded_rank_count_232": return _embedded_rank_count() == EXPECTED_CARD_COUNT
+		"family_asset_count_113": return _tres_count(FAMILY_DIR) == EXPECTED_FAMILY_COUNT
+		"embedded_rank_count_230": return _embedded_rank_count() == EXPECTED_CARD_COUNT
 		"pack_asset_count_10": return _tres_count(PACK_DIR) == EXPECTED_PACK_COUNT
 		"catalog_asset_loads": return _catalog != null and bool(report.get("valid", false))
 		"all_families_single_pack": return _family_membership_is_exact()
@@ -379,7 +379,7 @@ func _live_pass(case_id: String) -> bool:
 		"monster_card_route_preserved": return _monster_card_route()
 		"monster_technique_route_preserved": return _monster_technique_route()
 		"requirement_policy_stays_external": return _requirement_policy_external()
-		"all_49_kinds_validate": return bool(report.get("valid", false)) and int(report.get("kind_count", 0)) == EXPECTED_KIND_COUNT
+		"all_48_kinds_validate": return bool(report.get("valid", false)) and int(report.get("kind_count", 0)) == EXPECTED_KIND_COUNT
 		"pure_data_definition": return _all_definitions_are_data()
 		"pure_data_catalog_snapshot": return _is_data_only(_catalog.debug_snapshot()) and _is_data_only(_service.debug_snapshot())
 		"resource_load_failure_explicit": return _source_has("res://scripts/runtime/card_runtime_catalog_service.gd", "no legacy fallback is available") and not _source_has("res://scripts/runtime/card_runtime_catalog_service.gd", "main.gd")
@@ -884,9 +884,9 @@ func _count_phase(phase: String) -> int:
 
 
 func _update_ui(manifest: Dictionary) -> void:
-	summary_label.text = "232 cards | 114 families | 10 packs | 49 kinds | %d/%d passed" % [int(manifest.get("passed_count", 0)), CASE_COUNT]
+	summary_label.text = "230 cards | 113 families | 10 packs | 48 kinds | %d/%d passed" % [int(manifest.get("passed_count", 0)), CASE_COUNT]
 	status_label.text = "PASS - Resource Catalog owns runtime" if _failures.is_empty() else "CUTOVER FAILURE"
-	schema_text.text = "[b]Runtime source[/b]\nCardRuntimeCatalogService\n\n[b]Assets[/b]\n114 family .tres\n232 embedded ranks\n10 ordered packs\n1 v0.4 catalog\n\n[b]Composition[/b]\nDefinitionWorldBridge\nExternal financial terms\nMonster owner routes\nRequirementPolicy after resolve\n\n[b]Legacy[/b]\nNo main.gd catalog fallback"
+	schema_text.text = "[b]Runtime source[/b]\nCardRuntimeCatalogService\n\n[b]Assets[/b]\n113 family .tres\n230 embedded ranks\n10 ordered packs\n1 v0.4 catalog\n\n[b]Composition[/b]\nDefinitionWorldBridge\nExternal financial terms\nMonster owner routes\nRequirementPolicy after resolve\n\n[b]Legacy[/b]\nNo main.gd catalog fallback"
 	var lines: Array[String] = []
 	for record_variant in _records:
 		var record: Dictionary = record_variant
@@ -899,7 +899,7 @@ func _markdown_report(manifest: Dictionary) -> String:
 		"# Runtime Card Catalog Resource Hard Cutover - Sprint 58", "",
 		"- Runtime owner: `CardRuntimeCatalogService`",
 		"- Cutover enabled: `true`",
-		"- Assets: 114 family Resources, 232 authored rank subresources, 10 pack Resources, 1 catalog Resource",
+		"- Assets: 113 family Resources, 230 authored rank subresources, 10 pack Resources, 1 catalog Resource",
 		"- Historical integrity: %d/%d" % [int(manifest.get("historical_passed", 0)), HISTORICAL_CASE_COUNT],
 		"- Live cutover: %d/%d" % [int(manifest.get("live_passed", 0)), LIVE_CASE_COUNT],
 		"- Total: %d/%d" % [int(manifest.get("passed_count", 0)), CASE_COUNT], "",

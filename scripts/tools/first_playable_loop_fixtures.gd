@@ -11,9 +11,9 @@ func loop_steps() -> Array:
 	return [
 		_step("boot_to_player_turn", "selected_enabled_card", "full_table", "", "Open the table into a readable first player turn."),
 		_step("inspect_first_card", "normal_hand", "hand_to_inspector", "", "Click the first playable hand card and confirm the right inspector explains it."),
-		_step("execute_enabled_action", "selected_enabled_card", "action_feedback", "play:shadow_contract", "Execute an enabled card action through the real GameScreen signal path."),
+		_step("execute_enabled_action", "selected_enabled_card", "action_feedback", "play:shadow_disruption", "Execute an enabled card action through the real GameScreen signal path."),
 		_step("disabled_action_guard", "selected_disabled_card", "disabled_guard", "play:monster_tip", "Disabled card action stays visible with a reason and does not emit."),
-		_step("public_track_safe_read", "public_track_selection", "public_track", "track:contract_a", "Public track selection shows public context without hidden owner leakage."),
+		_step("public_track_safe_read", "public_track_selection", "public_track", "track:interaction_a", "Public track selection shows public context without hidden owner leakage."),
 		_step("temporary_decision_roundtrip", "temporary_decision_pending_hint", "temporary_decision_overlay", TEMPORARY_DECISION_ACTION_ID, "Temporary decision uses OverlayLayer and returns through its action signal."),
 		_step("end_turn_feedback", "selected_enabled_card", "turn_advance", "end_turn", "End Turn remains a compatible signal and leaves clear player feedback."),
 	]
@@ -55,7 +55,7 @@ func temporary_decision_payload() -> Dictionary:
 	return {
 		"id": "first_playable_loop_player_target",
 		"kind": "player_target_choice",
-		"title": "选择合约目标",
+		"title": "选择互动目标",
 		"summary": "第一轮竖切片正在等待玩家完成 Overlay 目标选择。",
 		"body": "这个 payload 只用于 FirstPlayableLoopBench，不调用规则函数。",
 		"chips": [{"text": "私密选择"}, {"text": "公开后结算"}],
@@ -67,7 +67,7 @@ func temporary_decision_payload() -> Dictionary:
 			"mode": "player_target",
 			"summary": "选择目标后才进入公开线索。",
 			"privacy": "目标选择保持私密。",
-			"public_after": "只公开合约已回应，不公开隐藏归属字段。",
+			"public_after": "只公开目标锁定与反制时机，不公开隐藏归属字段。",
 		},
 	}
 

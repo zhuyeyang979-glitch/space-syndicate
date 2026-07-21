@@ -12,6 +12,7 @@ func configure(commodity_flow_owner: Object) -> Dictionary:
 		_commodity_flow_owner != null
 		and _commodity_flow_owner.has_method("prepare_card_effect_batch")
 		and _commodity_flow_owner.has_method("commit_card_effect_batch")
+		and _commodity_flow_owner.has_method("finalize_card_effect_batch")
 		and _commodity_flow_owner.has_method("rollback_card_effect_batch")
 	)
 	if not configured:
@@ -56,6 +57,15 @@ func rollback_batch(receipt: Dictionary) -> Dictionary:
 			"transaction_id": str(receipt.get("transaction_id", "")),
 			"reason_code": "commodity_flow_rollback_receipt_invalid",
 		}
+	return (result as Dictionary).duplicate(true)
+
+
+func finalize_batch(receipt: Dictionary) -> Dictionary:
+	if _commodity_flow_owner == null:
+		return _failure(receipt, "commodity_flow_owner_unavailable", "finalize")
+	var result: Variant = _commodity_flow_owner.call("finalize_card_effect_batch", receipt.duplicate(true))
+	if not (result is Dictionary):
+		return _failure(receipt, "commodity_flow_finalize_receipt_invalid", "finalize")
 	return (result as Dictionary).duplicate(true)
 
 

@@ -39,7 +39,6 @@ const PLAYER_RUNTIME_REQUIRED_KEYS := [
 	"city_guesses",
 	"city_guess_confidence",
 	"city_guess_reasons",
-	"known_contract_parties",
 	"cities_built",
 	"total_card_spend",
 	"card_purchase_count",
@@ -72,7 +71,6 @@ const PLAYER_ENVELOPE_REQUIRED_KEYS := [
 	"elimination_reason",
 	"economic_ledger",
 	"city_intel_records",
-	"known_contract_parties",
 	"cities_built",
 	"total_card_spend",
 	"card_purchase_count",
@@ -157,6 +155,9 @@ static func capture(runtime_state: Dictionary, ordered_role_names: Array[String]
 
 
 static func normalize(candidate: Dictionary, ordered_role_names: Array[String] = []) -> Dictionary:
+	var retired_payload := LegacyContractPayloadGuardV06.validation_report(candidate)
+	if not bool(retired_payload.get("valid", false)):
+		return _rejection("retired_contract_payload_rejected")
 	if not _has_exact_keys(candidate, ROOT_KEYS) or int(candidate.get("schema_version", -1)) != SCHEMA_VERSION:
 		return _rejection("world_session_schema_invalid")
 	if not (candidate.get("players") is Array) or not (candidate.get("districts") is Array):
@@ -261,7 +262,7 @@ static func _validate_runtime_root(runtime_state: Dictionary) -> Dictionary:
 static func _capture_player(value: Variant, viewer_index: int, player_count: int, district_count: int, ordered_role_names: Array[String]) -> Dictionary:
 	if not (value is Dictionary):
 		return _rejection("world_session_player_invalid")
-	var player := (value as Dictionary).duplicate(true)
+	var player := LegacyContractPayloadGuardV06.strip_migration_only_runtime_fields(value as Dictionary)
 	if not _has_required_keys(player, PLAYER_RUNTIME_REQUIRED_KEYS):
 		return _rejection("world_session_player_field_missing")
 	var identity_validation := _validate_player_identity(player, viewer_index, ordered_role_names)
@@ -342,7 +343,7 @@ static func _validate_player_identity(player: Dictionary, viewer_index: int, ord
 
 
 static func _validate_player_shape(player: Dictionary, envelope_shape: bool) -> Dictionary:
-	for field in ["ai_profile", "ai_memory", "role_card", "known_contract_parties"]:
+	for field in ["ai_profile", "ai_memory", "role_card"]:
 		if not (player.get(field) is Dictionary):
 			return _rejection("world_session_player_field_type_invalid")
 	for field in ["cash_history", "v06_transaction_ledger", "economic_ledger", "slots"]:

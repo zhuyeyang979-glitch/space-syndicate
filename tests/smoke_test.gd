@@ -363,8 +363,8 @@ func _run() -> void:
 	_expect(String(main.call("_card_display_name", "怪兽·孢雾海皇4")).contains("IV级") and not String(main.call("_card_display_name", "怪兽·孢雾海皇4")).contains("Lv"), "visible card names use Roman-numeral rank text without legacy Lv labels")
 	_expect(premium_card_price > basic_card_price, "card prices rise with the card's economic power cost")
 	_expect(int(main.call("_card_price", "价格套利2")) == int(main.call("_card_price", "价格套利1")), "higher-rank economy cards keep the same rank-I base price")
-	_expect(int(main.call("_card_price", "短期订单2")) == int(main.call("_card_price", "短期订单1")), "temporary contract upgrades keep the same rank-I base price")
-	_expect(int(main.call("_card_price", "远期采购2")) == int(main.call("_card_price", "远期采购1")), "product contract upgrades keep the same rank-I base price")
+	_expect(int(main.call("_card_price", "短期订单2")) == int(main.call("_card_price", "短期订单1")), "temporary order upgrades keep the same rank-I base price")
+	_expect(int(main.call("_card_price", "远期采购2")) == int(main.call("_card_price", "远期采购1")), "product order upgrades keep the same rank-I base price")
 	var growth_strategy_text := _card_presentation_text(main, main.call("_make_skill", "城市融资1") as Dictionary, "strategy_route_label")
 	var speculation_strategy_text := _card_presentation_text(main, main.call("_make_skill", "城市做空1") as Dictionary, "strategy_route_label")
 	var intel_strategy_text := _card_presentation_text(main, main.call("_make_skill", "业主透镜1") as Dictionary, "strategy_route_label")
@@ -377,7 +377,7 @@ func _run() -> void:
 	_expect(_verify_development_route_pressure_audit(main), "development route pressure audit proves core strategies have money pressure, gates, clues, and AI coverage")
 	_expect(_verify_direct_player_interaction_cards(main), "direct player-interaction cards cover 拆牌、牵牌、产权冻结、全场齐射 with target-player UI, balance gates, and anonymous clue rules")
 	_expect(_verify_direct_interaction_balance_audit(main), "direct-interaction balance audit gates strong pressure with regional GDP share, public clues, and counter windows")
-	_expect(_verify_temporary_decision_blueprints(main), "temporary decision UI has reusable blueprints for discard, contract, monster target, player target, and monster wager modules")
+	_expect(_verify_temporary_decision_blueprints(main), "temporary decision UI has reusable blueprints for discard, monster target, player target, and monster wager modules")
 	_expect(_verify_ai_monster_wager_policy(main), "AI monster-wager bets use strength, ownership, city-risk, public stake, and hidden scoring metadata")
 	_expect(_verify_ten_hour_route_pack(main), "ten-hour route pack adds complete repair, lockdown, intel-bounty, and route-weather ladders with AI-readable fields")
 	_expect(_card_presentation_text(main, main.call("_make_skill", "城市融资1") as Dictionary, "art_stats").contains("城市成长"), "card face stats show the strategy route for non-monster cards")
@@ -1087,7 +1087,7 @@ func _role_cards_have_mechanical_passives(players: Array) -> bool:
 		if String(role.get("passive", "")) == "":
 			return false
 		var has_mechanical_field := false
-		for field_name in ["starting_cash_delta", "starting_cash_bonus", "resource_cash_product", "resource_cash_amount", "bonus_card_product", "monster_upgrade_cash", "intel_city_reveal_charges", "intel_card_trace_charges", "intel_contract_trace_charges", "city_guess_reward_bonus", "card_owner_guess_discount", "card_owner_guess_bonus", "contract_flow_discount", "card_access_extra_hops", "card_access_global", "monster_control_limit_bonus", "military_control_limit_bonus"]:
+		for field_name in ["starting_cash_delta", "starting_cash_bonus", "resource_cash_product", "resource_cash_amount", "bonus_card_product", "monster_upgrade_cash", "intel_city_reveal_charges", "intel_card_trace_charges", "city_guess_reward_bonus", "card_owner_guess_discount", "card_owner_guess_bonus", "card_access_extra_hops", "card_access_global", "monster_control_limit_bonus", "military_control_limit_bonus"]:
 			if role.has(field_name):
 				has_mechanical_field = true
 				break
@@ -2996,7 +2996,7 @@ func _verify_ai_route_plan_policy(main: Node) -> bool:
 		blocked_intel_a["play_region_scope"] = "target_region"
 		blocked_intel_a["play_region_gdp_share_required"] = 40
 		blocked_intel_a["play_requirement_district"] = decoy_index
-		var blocked_intel_b := main.call("_make_skill", "密约回溯1") as Dictionary
+		var blocked_intel_b := main.call("_make_skill", "出牌追帧1") as Dictionary
 		blocked_intel_b["play_requirement_kind"] = "region_gdp_share"
 		blocked_intel_b["play_region_scope"] = "target_region"
 		blocked_intel_b["play_region_gdp_share_required"] = 40
@@ -3571,8 +3571,8 @@ func _seed_supply_cards_near_ai_monsters_for_test(main: Node) -> void:
 		"城市融资1",
 		"供应链保险1",
 		"交通升级1",
-		"区域供需合约1",
-		"自动撮合合约1",
+		"短期订单1",
+		"军需临单1",
 		"价格套利1",
 		"城市做空1",
 		"商品看涨1",
@@ -3678,7 +3678,7 @@ func _exercise_ai_primary_route_cards_for_test(main: Node) -> Array:
 		1: "商品看涨1",
 		2: "产权冻结1",
 		3: "诱导电波1",
-		4: "区域供需合约1",
+		4: "短期订单1",
 		5: "线索悬赏1",
 	}
 	var players := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players).duplicate(true)
@@ -5542,8 +5542,8 @@ func _verify_development_route_balance_baseline(main: Node) -> bool:
 					print("City-growth route lacks income pillar: %s" % pillar_summary)
 					return false
 			"contract_route":
-				if not pillar_summary.contains("合约"):
-					print("Contract route lacks contract pillar: %s" % pillar_summary)
+				if not pillar_summary.contains("订单供需"):
+					print("Order-supply route lacks order/supply pillar: %s" % pillar_summary)
 					return false
 			"finance_speculation":
 				if not pillar_summary.contains("GDP金融") and not pillar_summary.contains("市场"):

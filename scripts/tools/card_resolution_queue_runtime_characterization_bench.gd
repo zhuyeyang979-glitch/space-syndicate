@@ -712,7 +712,7 @@ func _case_public_snapshot_privacy_boundary() -> Dictionary:
 	_prepare_players([[], []], [1000, 1000])
 	var entry := _entry(1, 81, 90, 1)
 	entry["target_player"] = 0
-	entry["contract_target_owner"] = 0
+	entry["hidden_target_owner"] = 0
 	entry["private_target"] = "PRIVATE_TARGET_MARKER"
 	entry["private_discard"] = "PRIVATE_DISCARD_MARKER"
 	entry["ai_private_plan"] = "AI_PRIVATE_PLAN_MARKER"
@@ -721,7 +721,7 @@ func _case_public_snapshot_privacy_boundary() -> Dictionary:
 	var table_snapshot: Dictionary = table_variant if table_variant is Dictionary else {}
 	var snapshot: Dictionary = table_snapshot.get("card_resolution_track", {}) if table_snapshot.get("card_resolution_track", {}) is Dictionary else {}
 	var serialized := str(snapshot)
-	var forbidden_absent := not serialized.contains("PRIVATE_TARGET_MARKER") and not serialized.contains("PRIVATE_DISCARD_MARKER") and not serialized.contains("AI_PRIVATE_PLAN_MARKER") and not _contains_key_recursive(snapshot, "player_index") and not _contains_key_recursive(snapshot, "contract_target_owner")
+	var forbidden_absent := not serialized.contains("PRIVATE_TARGET_MARKER") and not serialized.contains("PRIVATE_DISCARD_MARKER") and not serialized.contains("AI_PRIVATE_PLAN_MARKER") and not _contains_key_recursive(snapshot, "player_index") and not _contains_key_recursive(snapshot, "hidden_target_owner")
 	var entries: Array = snapshot.get("entries", []) if snapshot.get("entries", []) is Array else []
 	var public_entry: Dictionary = entries[0] if not entries.is_empty() and entries[0] is Dictionary else {}
 	var owner_hint := str(public_entry.get("owner_hint", ""))

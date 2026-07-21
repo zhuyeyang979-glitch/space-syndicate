@@ -134,6 +134,7 @@ func rollback_effect(receipt: Dictionary) -> Dictionary:
 func finalize_effect(receipt: Dictionary) -> Dictionary:
 	var transaction_id := str(receipt.get("transaction_id", ""))
 	if _finalization_results_by_transaction.has(transaction_id):
+		_prepared_effect_kind_by_transaction.erase(transaction_id)
 		var replay: Dictionary = (_finalization_results_by_transaction.get(transaction_id, {}) as Dictionary).duplicate(true)
 		replay["idempotent_replay"] = true
 		return replay

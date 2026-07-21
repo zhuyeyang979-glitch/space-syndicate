@@ -96,7 +96,7 @@ cash/GDP or call a settlement method directly.
 - Public preview does not create a quote; explicit purchase intent creates a 5-second
   `world_effective` quote.
 - Full “牌序竞价” is visible only during `public_bid`.
-- Monster wager, counter, contract, full-hand and target windows appear only when their
+- Monster wager, counter, full-hand and target windows appear only when their
   authoritative decision exists.
 - `ForcedDecisionRuntimeScheduler` exposes at most one actionable decision surface.
 - Back cannot bypass a forced decision or open pause behind it.

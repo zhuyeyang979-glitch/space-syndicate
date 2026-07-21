@@ -21,9 +21,9 @@ supply = "Medium"
 risk = "3 / 5"
 volatility = "3"
 weather = "Low-orbit weather can delay delivery windows and make route pressure public."
-use_case = "Use to teach a simple supply-demand gap before asking players to sign or reject a contract."
+use_case = "Use to teach a simple supply-demand gap before an automatic conditional order checks the public goods network."
 kpi_notes = PackedStringArray("Demand spikes when nearby cities lack cold-chain supply.", "Medium supply keeps auctions readable.", "Weather and route changes can move this line.", "Watch visible route pressure before committing.")
-strategy_notes = PackedStringArray("Pair with a stable route and clear city demand.", "Use contract windows to compare guaranteed value against route risk.", "Keep all owner-specific reads out of this public entry.")
+strategy_notes = PackedStringArray("Pair with a stable route and clear city demand.", "Compare an automatic order's visible conditions against route risk before committing it.", "Keep all owner-specific reads out of this public entry.")
 
 [sub_resource type="Resource" id="Product_harbor_mist_fruit"]
 script = ExtResource("2_product")
@@ -121,7 +121,7 @@ subtitle = "Risk product reference"
 summary = "A contract-adjacent service product for explaining why players hedge visible route and monster pressure."
 accent = "#c084fc"
 chips = PackedStringArray("Insurance", "Route", "Risk")
-source_note = "Public codex reference for route-risk teaching. Gameplay rules and contract actions remain authoritative elsewhere."
+source_note = "Public codex reference for route-risk teaching. Gameplay rules and automatic order settlement remain authoritative elsewhere."
 glyph = "RI"
 profile = "Service | risk hedge"
 terrain = "Terrain: route office / auction desk"

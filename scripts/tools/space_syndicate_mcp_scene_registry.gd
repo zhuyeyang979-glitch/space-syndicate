@@ -1498,7 +1498,7 @@ const RECORDS := [
 		"scene_path": "res://resources/cards/runtime/card_runtime_catalog_v04.tres",
 		"category": CATEGORY_INSPECTOR_TOOLS,
 		"expected_root_type": "Resource",
-		"purpose": "Inspector-editable graph of 114 families, 232 authored ranks, ten editorial packs, ordered pool, and 49 kind validators.",
+		"purpose": "Inspector-editable graph of 113 families, 230 authored ranks, ten editorial packs, ordered pool, and 48 kind validators.",
 		"mcp_notes": "Edit authored card values here or in the linked family Resources. Product Futures and City GDP terms remain external catalogs.",
 		"smoke_check_enabled": true,
 		"previewable": false,

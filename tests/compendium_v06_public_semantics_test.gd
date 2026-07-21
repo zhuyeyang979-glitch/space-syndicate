@@ -13,6 +13,19 @@ const RETIRED_TEXT := [
 	"商路修复",
 	"单一城市业主",
 	"行动概率",
+	"sign or reject",
+	"contract response",
+	"contract window",
+	"contract prompt",
+	"签约",
+	"拒签",
+	"合同回应",
+	"合同接受",
+	"合同拒绝",
+	"合同超时",
+	"等待签署",
+	"需要签署",
+	"合约罚金",
 ]
 const PRIVATE_KEYS := [
 	"players",
@@ -258,9 +271,13 @@ func _test_retired_player_text_absent_from_active_sources() -> void:
 		for token in RETIRED_TEXT:
 			if source.contains(token):
 				offenders.append("%s:%s" % [path, token])
-	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-	if main_source.contains("行动概率"):
-		offenders.append("res://scripts/main.gd:行动概率")
+	var registry := CompendiumContentRegistry.new()
+	for payload_variant in registry.all_entries():
+		if not (payload_variant is Dictionary):
+			continue
+		var payload: Dictionary = payload_variant
+		for retired_path in _retired_text_paths(payload, "compendium.%s" % str(payload.get("entry_id", "unknown"))):
+			offenders.append(retired_path)
 	_expect(offenders.is_empty(), "active_compendium_sources_exclude_retired_player_text|offenders=%s" % offenders)
 
 

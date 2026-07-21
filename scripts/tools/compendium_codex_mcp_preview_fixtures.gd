@@ -165,7 +165,7 @@ func _product_market_detail() -> Dictionary:
 			"kpis": [
 				{"title": "Demand", "value": "High", "meta": "Buy early, sell after a public shortage.", "accent": "#22c55e"},
 				{"title": "Storage", "value": "Fragile", "meta": "Warehouse pressure grows when monsters move.", "accent": "#facc15"},
-				{"title": "Contract", "value": "Strong", "meta": "Good response-window teaching product.", "accent": "#38bdf8"},
+				{"title": "Order", "value": "Strong", "meta": "Good automatic-settlement teaching product.", "accent": "#38bdf8"},
 				{"title": "Risk", "value": "3 / 5", "meta": "Track route effects before investing.", "accent": "#fb7185"},
 			],
 			"strategies": [

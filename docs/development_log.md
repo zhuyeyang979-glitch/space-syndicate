@@ -8661,3 +8661,21 @@ deleted. Evidence and the remaining action inventory are recorded in
   remain unchanged for later atomic migration.
 - The four old root action branches were physically removed, reducing
   `scripts/main.gd` by 15 physical and nonblank lines.
+
+## 2026-07-22 — V0.6 legacy contract-response retirement
+
+- Retired the obsolete target-player contract accept/reject/timeout/penalty
+  mechanic without adding a replacement consent window or compatibility
+  runtime. Card counter, monster wager, and typed target choice remain active.
+- Conditional orders and supply cards now preflight and settle automatically
+  through the existing CardResolution and economy owners with exact-once
+  finalize/replay behavior and zero partial mutation on failed conditions.
+- Removed the seven `area_trade_contract` cards and two `密约回溯` ranks from
+  active content. Historical aliases remain migration-only; no replacement
+  reward or effect was invented.
+- Added a permanent v0.6 mechanic-status registry and authority checker. The
+  final scan reports zero retired production identifiers, zero split-string
+  evasions, and zero unregistered gameplay mechanics.
+- Full evidence, catalog hashes, Main budget, and unchanged broad-fixture debt
+  are recorded in
+  `docs/migration/v06_legacy_contract_response_retirement_cutover.md`.

@@ -67,7 +67,6 @@ func _run() -> void:
 	_expect(bool(private_feedback.get("applied", false)), "legacy local feedback is stored only for the authorized viewer")
 	_expect(coordinator.presentation_recent_public_log_messages(3).size() == 1, "viewer-private feedback never enters public history")
 	var production_log_cases := [
-		["contract-log", &"contract_public_update", &"public.contract.updated", {"action_kind": "contract", "public_status": "updated"}],
 		["military-log", &"military_public_update", &"public.military.updated", {"action_kind": "military", "public_status": "updated"}],
 		["monster-log", &"monster_public_update", &"public.monster.updated", {"action_kind": "monster", "public_status": "updated"}],
 		["market-log", &"market_public_update", &"public.market.updated", {"action_kind": "market", "public_status": "updated"}],
@@ -83,7 +82,7 @@ func _run() -> void:
 	_expect(not player_messages_json.contains("public.") and not player_messages_json.contains("victory."), "player-facing public log messages never expose localization keys")
 	for raw_enum in ["updated", "idle", "qualification", "resolving"]:
 		_expect(not player_messages_json.contains(raw_enum), "player-facing public log messages never expose raw enum: %s" % raw_enum)
-	for localized_copy in ["合约局势已更新", "军事部署已更新", "怪兽局势已更新", "商品市场已更新", "天气局势已更新", "胜利进程：等待 → 资格确认"]:
+	for localized_copy in ["军事部署已更新", "怪兽局势已更新", "商品市场已更新", "天气局势已更新", "胜利进程：等待 → 资格确认"]:
 		_expect(player_messages_json.contains(localized_copy), "production localization key renders closed player copy: %s" % localized_copy)
 	var sensitive_feedback_samples := [
 		"资金不足：购买需要¥900，当前只有¥123。",

@@ -5,6 +5,10 @@ class_name CardPlaySubmissionRuntimeController
 const TARGET_MONSTER := CardTargetChoiceRuntimeController.KIND_MONSTER
 const TARGET_PLAYER := CardTargetChoiceRuntimeController.KIND_PLAYER
 const StableTargetEnvelope := preload("res://scripts/runtime/card_resolution_stable_target_envelope.gd")
+const SHARED_RESOLUTION_EFFECT_KINDS_V06 := [
+	"global_order_budget",
+	"global_supply_spawn",
+]
 
 var _world_session_state: WorldSessionState
 var _table_selection_state: TableSelectionState
@@ -63,6 +67,8 @@ func request_hand_play(request: Dictionary) -> Dictionary:
 		var v06_envelope := _capture_stable_target_envelope(request, {})
 		if v06_envelope.is_empty():
 			return _remember(_rejection("stable_target_capture_failed"))
+		if _uses_shared_resolution_v06(skill):
+			return _remember(_submit_v06_automatic_supply_demand(player_index, slot_index, skill, v06_envelope))
 		return _remember(_submit_v06(player_index, slot_index, skill, v06_envelope))
 	var frozen := _prepare_legacy_submission(player_index, skill, "hand", request)
 	if not bool(frozen.get("prepared", false)):
@@ -89,6 +95,8 @@ func submit_card_play(request: Dictionary) -> Dictionary:
 		var v06_envelope := _capture_stable_target_envelope(request, {})
 		if v06_envelope.is_empty():
 			return _remember(_rejection("stable_target_capture_failed"))
+		if _uses_shared_resolution_v06(skill):
+			return _remember(_submit_v06_automatic_supply_demand(player_index, slot_index, skill, v06_envelope))
 		return _remember(_submit_v06(player_index, slot_index, skill, v06_envelope))
 	var frozen := _pending_or_new_submission(player_index, slot_index, skill, request)
 	if not bool(frozen.get("prepared", false)):
@@ -244,10 +252,14 @@ func _submit_v06(player_index: int, slot_index: int, card: Dictionary, stable_ta
 		return _rejection(str(validation.get("reason_code", "stable_target_invalid")))
 	var region_id := str(stable_target_envelope.get("region_id", ""))
 	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
-	var authoritative_slot := _v06_authoritative_slot(actor_id, str(machine.get("card_id", "")))
+	var runtime_instance_id := str(card.get("runtime_instance_id", ""))
+	var authoritative_slot := _v06_authoritative_slot(actor_id, str(machine.get("card_id", "")), runtime_instance_id, slot_index)
 	if authoritative_slot < 0:
 		return _rejection("v06_authoritative_slot_changed")
-	var runtime_instance_id := str(card.get("runtime_instance_id", "slot:%d" % slot_index))
+	var authoritative_card := _v06_authoritative_card_at(actor_id, authoritative_slot)
+	runtime_instance_id = str(authoritative_card.get("runtime_instance_id", ""))
+	if runtime_instance_id.is_empty():
+		return _rejection("v06_authoritative_instance_missing")
 	var result := _runtime_coordinator.play_v06_runtime_card({
 		"actor_id": actor_id,
 		"slot_index": authoritative_slot,
@@ -267,16 +279,174 @@ func _submit_v06(player_index: int, slot_index: int, card: Dictionary, stable_ta
 	}
 
 
-func _v06_authoritative_slot(actor_id: String, card_id: String) -> int:
+func _submit_v06_automatic_supply_demand(
+	player_index: int,
+	slot_index: int,
+	card: Dictionary,
+	stable_target_envelope: Dictionary
+) -> Dictionary:
+	if _runtime_coordinator == null or _world_session_state == null or _resolution_controller == null:
+		return _rejection("v06_runtime_unavailable")
+	var validation := StableTargetEnvelope.validate(stable_target_envelope)
+	var frozen_context := StableTargetEnvelope.context_at_capture(stable_target_envelope)
+	if not bool(validation.get("valid", false)) or frozen_context.is_empty():
+		return _rejection(str(validation.get("reason_code", "stable_target_invalid")))
+	var actor_binding := _runtime_coordinator.actor_id_for_player_index(player_index)
+	if not bool(actor_binding.get("available", false)):
+		return _rejection(str(actor_binding.get("reason_code", "v06_actor_mapping_unavailable")))
+	var actor_id := str(actor_binding.get("actor_id", ""))
+	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+	var player_text: Dictionary = card.get("player", {}) if card.get("player", {}) is Dictionary else {}
+	var card_id := str(machine.get("card_id", ""))
+	var card_instance_id := str(card.get("runtime_instance_id", ""))
+	var effect_kind := str(machine.get("effect_kind", ""))
+	var authoritative_slot := _v06_authoritative_slot(actor_id, card_id, card_instance_id, slot_index)
+	if authoritative_slot < 0 or authoritative_slot != slot_index:
+		return _rejection("v06_authoritative_slot_changed")
+	var authoritative_card := _v06_authoritative_card_at(actor_id, authoritative_slot)
+	card_instance_id = str(authoritative_card.get("runtime_instance_id", ""))
+	if card_instance_id.is_empty():
+		return _rejection("v06_authoritative_instance_missing")
+	card = authoritative_card
+	machine = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+	player_text = card.get("player", {}) if card.get("player", {}) is Dictionary else {}
+	if not _runtime_coordinator.has_method("preflight_v06_automatic_supply_demand"):
+		return _rejection("core_economic_runtime_unavailable")
+	var preflight_variant: Variant = _runtime_coordinator.call("preflight_v06_automatic_supply_demand", actor_id, card.duplicate(true))
+	var preflight: Dictionary = preflight_variant if preflight_variant is Dictionary else {}
+	if not bool(preflight.get("ready", false)):
+		return _rejection(str(preflight.get("reason_code", "queued_supply_demand_conditions_unmet")), preflight)
+	var players := _world_session_state.players
+	if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary):
+		return _rejection("invalid_player")
+	var player: Dictionary = players[player_index]
+	var queued_skill := card.duplicate(true)
+	queued_skill["name"] = str(player_text.get("name", card_id))
+	queued_skill["display_name"] = str(player_text.get("name", card_id))
+	queued_skill["kind"] = str(machine.get("category_id", "supply_demand"))
+	queued_skill["family_id"] = str(machine.get("family_id", card_id))
+	queued_skill["rank"] = maxi(1, int(machine.get("rank", 1)))
+	queued_skill["persistent"] = false
+	queued_skill["asset_cost"] = _dictionary(machine.get("asset_cost", {}))
+	var entry_context := {
+		"target_slot": int(frozen_context.get("target_slot", -1)),
+		"target_monster_uid": int(frozen_context.get("target_monster_uid", -1)),
+		"target_player": int(frozen_context.get("target_player", -1)),
+		"selected_district": int(frozen_context.get("selected_district", -1)),
+		"selected_trade_product": str(frozen_context.get("selected_trade_product", "")),
+		"selected_card_resolution_id": int(frozen_context.get("selected_card_resolution_id", -1)),
+		"play_requirement_district": int(frozen_context.get("play_requirement_district", -1)),
+		"queued_time": _world_session_state.game_time,
+		"stable_target_envelope": stable_target_envelope.duplicate(true),
+		"v06_actor_id": actor_id,
+		"v06_card_id": card_id,
+		"v06_card_instance_id": card_instance_id,
+		"v06_effect_kind": effect_kind,
+	}
+	var runtime_state := _resolution_controller.card_play_fact_snapshot()
+	var available_cash_cents := int(player.get("cash_cents", int(player.get("cash", 0)) * 100))
+	if _cash_commitment_query_port != null:
+		available_cash_cents = _cash_commitment_query_port.available_cash_cents(player_index)
+	var queue_plan := _runtime_coordinator.plan_card_resolution_queue_submission({
+		"player_index": player_index,
+		"slot_index": slot_index,
+		"already_queued": bool(card.get("queued_for_resolution", false)),
+		"reactive_counter": false,
+		"group_card_limit": 1,
+		"play_cash_cost_cents": 0,
+		"financial_margin_cents": 0,
+		"financial_terms_version": "",
+		"available_cash_cents": available_cash_cents,
+		"cash_revision": "%d" % available_cash_cents,
+		"asset_cost": queued_skill["asset_cost"],
+		"skill": queued_skill,
+		"entry_context": entry_context,
+	}, {
+		"player_count": players.size(),
+		"counter_window_active": bool(runtime_state.get("counter_window_active", false)),
+		"batch_locked": bool(runtime_state.get("batch_locked", false)),
+		"simultaneous_timer": float(runtime_state.get("simultaneous_timer", 0.0)),
+		"lock_duration": float(_resolution_controller.lock_seconds),
+		"public_bid_duration": float(_resolution_controller.public_bid_seconds),
+		"window_sequence": int(runtime_state.get("window_sequence", 0)),
+		"reference_player": int(runtime_state.get("batch_reference_player", -1)),
+	})
+	if not bool(queue_plan.get("accepted", false)):
+		return _rejection(str(queue_plan.get("reason", "queue_rejected")), queue_plan)
+	var committed_entry := _dictionary(queue_plan.get("entry", {}))
+	var inventory_request := {
+		"inventory": _inventory_snapshot(player),
+		"target_slot": slot_index,
+		"queued_skill": _dictionary(committed_entry.get("skill", {})),
+		"consumed_on_queue": bool(queue_plan.get("consumed_on_queue", false)),
+	}
+	var inventory_plan := _runtime_coordinator.plan_card_inventory_queue_commit(inventory_request)
+	if not bool(inventory_plan.get("ready", false)):
+		return _rejection(str(inventory_plan.get("reason", "inventory_plan_rejected")))
+	var prepared_player := player.duplicate(true)
+	var inventory_commit := _runtime_coordinator.commit_card_inventory_queue_commit(prepared_player, inventory_request, inventory_plan)
+	if not bool(inventory_commit.get("committed", false)):
+		return _rejection(str(inventory_commit.get("reason", "inventory_commit_failed")))
+	var queue_commit := _runtime_coordinator.commit_card_resolution_queue_submission(queue_plan, {
+		"authorized": true,
+		"inventory_committed": true,
+		"play_cost_authorized": true,
+		"financial_margin_authorized": true,
+		"asset_authorized": true,
+	})
+	if not bool(queue_commit.get("committed", false)):
+		return _rejection(str(queue_commit.get("reason", "queue_commit_failed")))
+	prepared_player["queued_card_tip"] = 0
+	players[player_index] = prepared_player
+	_world_session_state.players = players
+	_resolution_controller.set_player_ready(player_index, false, _active_player_indices(players))
+	if bool(queue_commit.get("begins_new_batch", false)):
+		var sequence := int(queue_commit.get("next_window_sequence", int(runtime_state.get("window_sequence", 0)) + 1))
+		_resolution_controller.begin_group_window(-1.0, int(queue_commit.get("reference_player", player_index)), sequence)
+	_accepted_count += 1
+	return {
+		"accepted": true,
+		"queued": true,
+		"reason": "queued",
+		"route": str(queue_commit.get("route", "current")),
+		"resolution_id": int(committed_entry.get("resolution_id", -1)),
+		"player_message": "卡牌已进入共享卡牌窗。",
+	}
+
+
+func _v06_authoritative_slot(
+	actor_id: String,
+	card_id: String,
+	runtime_instance_id: String = "",
+	preferred_slot_index: int = -1
+) -> int:
 	var player := _runtime_coordinator.v06_card_player_snapshot(actor_id)
 	var inventory: Dictionary = player.get("inventory", {}) if player.get("inventory", {}) is Dictionary else {}
 	var slots: Array = inventory.get("slots", []) if inventory.get("slots", []) is Array else []
+	if preferred_slot_index >= 0 and preferred_slot_index < slots.size() and slots[preferred_slot_index] is Dictionary:
+		var preferred: Dictionary = slots[preferred_slot_index]
+		var preferred_machine: Dictionary = preferred.get("machine", {}) if preferred.get("machine", {}) is Dictionary else {}
+		if str(preferred_machine.get("card_id", "")) == card_id \
+				and (runtime_instance_id.is_empty() or str(preferred.get("runtime_instance_id", "")) == runtime_instance_id):
+			return preferred_slot_index
+	if runtime_instance_id.is_empty():
+		return -1
 	for index in range(slots.size()):
 		if slots[index] is Dictionary:
 			var machine: Dictionary = (slots[index] as Dictionary).get("machine", {}) if (slots[index] as Dictionary).get("machine", {}) is Dictionary else {}
-			if str(machine.get("card_id", "")) == card_id:
+			if str(machine.get("card_id", "")) == card_id \
+					and str((slots[index] as Dictionary).get("runtime_instance_id", "")) == runtime_instance_id:
 				return index
 	return -1
+
+
+func _v06_authoritative_card_at(actor_id: String, slot_index: int) -> Dictionary:
+	var player := _runtime_coordinator.v06_card_player_snapshot(actor_id)
+	var inventory: Dictionary = player.get("inventory", {}) if player.get("inventory", {}) is Dictionary else {}
+	var slots: Array = inventory.get("slots", []) if inventory.get("slots", []) is Array else []
+	if slot_index < 0 or slot_index >= slots.size() or not (slots[slot_index] is Dictionary):
+		return {}
+	return (slots[slot_index] as Dictionary).duplicate(true)
 
 
 func _pending_or_new_submission(player_index: int, slot_index: int, skill: Dictionary, request: Dictionary) -> Dictionary:
@@ -490,6 +660,11 @@ func _active_player_indices(players: Array) -> Array:
 func _is_v06_runtime_card(card: Dictionary) -> bool:
 	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
 	return not str(machine.get("card_id", "")).is_empty() and not str(machine.get("effect_kind", "")).is_empty()
+
+
+func _uses_shared_resolution_v06(card: Dictionary) -> bool:
+	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+	return SHARED_RESOLUTION_EFFECT_KINDS_V06.has(str(machine.get("effect_kind", "")))
 
 
 func _rejection(reason: String, details: Dictionary = {}) -> Dictionary:

@@ -205,7 +205,7 @@ func _fixture_public_track_selection() -> Dictionary:
 		"selected_card": selected,
 		"hand_focus": "none",
 		"public_track": [
-			{"slot": "#1", "label": "匿名合约", "state": "待回应", "owner_hint": "玩家?", "selected": true, "active": true, "hover_action": "track:contract_a", "badges": ["公开"], "tooltip": "公开线索：有人提交了匿名合约。"},
+			{"slot": "#1", "label": "互动牌", "state": "反制窗", "owner_hint": "待猜", "selected": true, "active": true, "hover_action": "track:interaction_a", "badges": ["公开"], "tooltip": "公开线索：匿名互动牌正在等待一层反制。"},
 			{"slot": "#2", "label": "怪兽赌局", "state": "下注中", "owner_hint": "公开", "active": true, "hover_action": "track:wager_b", "badges": ["倒计时"], "tooltip": "公开线索：怪兽赌局正在收集押注。"},
 		],
 		"inspector": _public_track_context(),
@@ -351,21 +351,21 @@ func _base_cards() -> Array:
 			],
 		},
 		{
-			"id": "card_shadow_contract",
-			"name": "影子合约",
+			"id": "card_shadow_disruption",
+			"name": "影仓牵引",
 			"cost": "2",
-			"type": "合约",
+			"type": "互动",
 			"rank": "II",
 			"target": "一名玩家",
-			"use_case": "制造私密选择",
-			"effect": "向目标玩家发起私密合约回应，回应后公开一条线索。",
+			"use_case": "制造可反制的公开压力",
+			"effect": "选择目标后进入公共结算轨；目标无需同意，其他玩家可在反制窗提交一层反制。",
 			"requirement": "至少一名可选目标玩家。",
 			"presentation": "mini_hand",
 			"accent": "#a78bfa",
 			"drop_enabled": true,
 			"actions": [
-				{"id": "play:shadow_contract", "label": "发起合约", "disabled": false, "tooltip": "进入合约回应临时决策。"},
-				{"id": "inspect:shadow_contract", "label": "详情", "disabled": false},
+				{"id": "play:shadow_disruption", "label": "选择目标", "disabled": false, "tooltip": "目标选择后进入公共结算轨；不请求目标同意。"},
+				{"id": "inspect:shadow_disruption", "label": "详情", "disabled": false},
 			],
 		},
 		{
@@ -419,7 +419,7 @@ func _detail_card() -> Dictionary:
 
 func _base_public_track() -> Array:
 	return [
-		{"slot": "#1", "label": "匿名合约", "state": "待回应", "owner_hint": "玩家?", "active": false, "hover_action": "track:contract_a", "badges": ["私密"], "tooltip": "有人提交了匿名合约。"},
+		{"slot": "#1", "label": "互动牌", "state": "反制窗", "owner_hint": "待猜", "active": false, "hover_action": "track:interaction_a", "badges": ["公开"], "tooltip": "一张匿名互动牌正在等待一层反制。"},
 		{"slot": "#2", "label": "怪兽赌局", "state": "下注中", "owner_hint": "公开", "active": true, "hover_action": "track:wager_b", "badges": ["公开"], "tooltip": "怪兽赌局正在下注。"},
 	]
 
@@ -468,13 +468,13 @@ func _public_track_context() -> Dictionary:
 		"title": "公共轨道",
 		"why": "选中的公共线索会改变玩家对匿名行动的判断。",
 		"district": {
-			"title": "匿名合约",
-			"summary": "有人发起合约回应，身份仍隐藏。",
+			"title": "匿名互动牌",
+			"summary": "目标已经锁定；牌轨只公开反制时机，真实出牌者仍隐藏。",
 			"full_detail": "公共轨道只展示可公开线索，不泄露私密来源。",
 			"chips": [{"text": "公开线索"}, {"text": "匿名"}],
 		},
 		"requirements": [{"text": "只读"}, {"text": "可追踪"}],
 		"actions": [{"id": "track:inspect", "label": "查看线索", "disabled": false}],
 		"deep_links": [{"id": "codex:public_track", "label": "轨道说明"}],
-		"logs": ["公开轨道：匿名合约进入待回应状态。"],
+		"logs": ["公开轨道：匿名互动牌进入一层反制窗口。"],
 	}

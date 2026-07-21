@@ -54,7 +54,15 @@ func dispatch(transaction: Dictionary) -> Dictionary:
 	var player: Dictionary = players[player_index]
 	var resolved := false
 	var continuation_kind := "normal"
-	if handler_id == "target_monster":
+	if handler_id in ["global_order_budget", "global_supply_spawn"]:
+		if _runtime_coordinator == null or not _runtime_coordinator.has_method("resolve_queued_v06_automatic_supply_demand"):
+			return _receipt(true, false, "queued_supply_demand_runtime_unavailable")
+		var v06_result_variant: Variant = _runtime_coordinator.call("resolve_queued_v06_automatic_supply_demand", entry.duplicate(true), skill.duplicate(true))
+		var v06_result: Dictionary = v06_result_variant if v06_result_variant is Dictionary else {}
+		resolved = bool(v06_result.get("resolved", false)) and bool(v06_result.get("committed", false)) and bool(v06_result.get("finalized", false))
+		if not resolved:
+			return _receipt(true, false, str(v06_result.get("reason_code", "queued_supply_demand_effect_failed")))
+	elif handler_id == "target_monster":
 		resolved = _resolve_targeted_skill(skill, player, _resolved_monster_target_slot(entry), player_index, int(entry.get("selected_district", -1)), entry)
 	elif handler_id == "target_player":
 		resolved = _resolve_player_interaction(player_index, int(entry.get("target_player", -1)), skill)
@@ -76,11 +84,16 @@ func supported_handler_ids() -> Array:
 		"monster_bound_action", "military_force", "military_command",
 		"card_counter", "weather_control", "intel_city_reveal",
 		"card_history_public_review", "card_history_subscription", "supply_draw",
+		"global_order_budget", "global_supply_spawn",
 	] + (_economy_service.supported_handlers() if _economy_service != null else [])
 
 
 func supports_skill(skill: Dictionary) -> bool:
 	var kind := str(skill.get("kind", ""))
+	var machine: Dictionary = skill.get("machine", {}) if skill.get("machine", {}) is Dictionary else {}
+	var machine_effect_kind := str(machine.get("effect_kind", ""))
+	if supported_handler_ids().has(machine_effect_kind):
+		return true
 	if kind.is_empty():
 		return false
 	if kind in ["player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage"]:
@@ -139,7 +152,7 @@ func _dispatch_domain_handler(handler_id: String, player_index: int, player: Dic
 			return false
 		"weather_control":
 			return _weather_controller != null and _weather_controller.apply_weather_control_at(skill, int(entry.get("selected_district", -1)))
-		"intel_city_reveal", "card_history_public_review", "card_history_subscription", "intel_contract_trace":
+		"intel_city_reveal", "card_history_public_review", "card_history_subscription":
 			return _intel_service != null and bool(_intel_service.apply_intel_effect(player_index, skill, entry).get("resolved", false))
 		"supply_draw":
 			return false

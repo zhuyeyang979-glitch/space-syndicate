@@ -13,10 +13,6 @@ const PUBLIC_ENTRY_FIELDS := [
 	"selected_trade_product",
 	"target_slot",
 	"target_player",
-	"contract_source_district",
-	"contract_target_district",
-	"contract_product",
-	"group_id",
 	"group_order",
 	"group_size",
 	"group_position",
@@ -160,9 +156,10 @@ func replace_legacy_entries(entries: Array) -> Dictionary:
 
 func public_history_snapshot() -> Array:
 	var result: Array = []
+	var public_group_ids: Dictionary = {}
 	for entry_variant in _history:
 		if entry_variant is Dictionary:
-			result.append(_public_entry(entry_variant as Dictionary))
+			result.append(_public_entry(entry_variant as Dictionary, _anonymous_group_id(entry_variant as Dictionary, public_group_ids)))
 	return result
 
 
@@ -228,7 +225,7 @@ func debug_snapshot() -> Dictionary:
 	}
 
 
-func _public_entry(entry: Dictionary) -> Dictionary:
+func _public_entry(entry: Dictionary, public_group_id: String = "") -> Dictionary:
 	var skill: Dictionary = entry.get("skill", {}) if entry.get("skill", {}) is Dictionary else {}
 	var result := {
 		"resolution_id": _entry_id(entry),
@@ -242,12 +239,23 @@ func _public_entry(entry: Dictionary) -> Dictionary:
 		},
 		"visibility_scope": "public",
 	}
+	if not public_group_id.is_empty():
+		result["group_id"] = public_group_id
 	for field_variant in PUBLIC_ENTRY_FIELDS:
 		var field := str(field_variant)
 		if field == "resolution_id" or not entry.has(field):
 			continue
 		result[field] = _sanitize_public_data(entry[field])
 	return result
+
+
+func _anonymous_group_id(entry: Dictionary, aliases: Dictionary) -> String:
+	var internal_id := str(entry.get("group_id", ""))
+	if internal_id.is_empty():
+		return ""
+	if not aliases.has(internal_id):
+		aliases[internal_id] = "public_set_%d" % (aliases.size() + 1)
+	return str(aliases.get(internal_id, ""))
 
 
 func _sanitize_public_data(value: Variant) -> Variant:

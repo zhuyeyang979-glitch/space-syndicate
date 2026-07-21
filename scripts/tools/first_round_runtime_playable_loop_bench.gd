@@ -198,7 +198,7 @@ func _run_case(viewport: SubViewport, screen: Control, flow_case: Dictionary) ->
 			clicked_action_id = _press_response_action(track, expected_action_id)
 			await _pump_frames(5)
 			emitted_action_id = _latest_since(_emitted_action_ids, before_track_count)
-			inspector_checked = _inspector_contains(screen, "匿名合约")
+			inspector_checked = _inspector_contains(screen, "互动牌")
 			player_board_feedback_checked = _player_feedback_contains(screen, expected_action_id)
 			public_track_checked = _public_track_response_checked(track)
 		"planet_map_action":
@@ -209,7 +209,7 @@ func _run_case(viewport: SubViewport, screen: Control, flow_case: Dictionary) ->
 				map_view.call("focus_district", 1)
 			await _pump_frames(8)
 			planet_map_checked = district_click_ok and district_double_ok and _planet_map_focus_checked(map_view, 1)
-			inspector_checked = _inspector_contains(screen, "影子合约") or _inspector_contains(screen, expected_text)
+			inspector_checked = _inspector_contains(screen, "影仓牵引") or _inspector_contains(screen, expected_text)
 		"temporary_decision":
 			overlay_checked = _temporary_overlay_visible(screen)
 			player_board_feedback_checked = _temporary_feedback_visible(screen)
@@ -771,7 +771,7 @@ func _temporary_overlay_visible(screen: Control) -> bool:
 	if overlay == null:
 		return false
 	var panel := overlay.find_child("TemporaryChoiceDecisionPanel", true, false) as Control
-	return panel != null and panel.visible and _node_tree_text(panel).contains("选择合约目标")
+	return panel != null and panel.visible and _node_tree_text(panel).contains("选择互动目标")
 
 
 func _hide_overlay(overlay: Node) -> void:

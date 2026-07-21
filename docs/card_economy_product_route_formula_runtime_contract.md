@@ -30,7 +30,7 @@ The Formula Service owns:
 11. Stable boon-source merging without duplicate source labels.
 12. Product-contract demand/supply maxima, legacy duration mirror, source merge, and volatility clamp.
 13. City-contract income/duration maxima composed with the shared route-flow boon.
-14. Accepted-contract and ordinary city route-flow maxima, duration, source, and zero-floor route repair.
+14. Automatic order/supply and ordinary city route-flow maxima, duration, source, and zero-floor route repair.
 15. Route insurance repair, permanent revenue adjustment, and temporary route-flow boon.
 16. City product upgrade using the first lowest-level slot, rank-V cap, and permanent revenue bonus.
 17. City product shift of a supplied candidate into the first lowest-level slot, resetting it to rank I.

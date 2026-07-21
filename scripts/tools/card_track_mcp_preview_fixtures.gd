@@ -79,7 +79,7 @@ func _fixture_empty_track() -> Dictionary:
 func _fixture_resolved_history() -> Dictionary:
 	return _base_fixture("resolved_history", "已结算历史", "History cards remain compact and readable.", [
 		_entry(9001, "#1", "轨道融资", "已结算", "公开", "¥80", "#38bdf8", ["收益"], "track_select_9001", "track_open_orbital_finance_i"),
-		_entry(9002, "#2", "雾港合约", "回应完毕", "匿名", "¥60", "#22c55e", ["合约"], "track_select_9002", "track_open_fog_contract"),
+		_entry(9002, "#2", "雾港订单", "已结算", "匿名", "¥60", "#22c55e", ["订单"], "track_select_9002", "track_open_fog_order"),
 	])
 
 
@@ -117,7 +117,7 @@ func _fixture_public_event_readonly() -> Dictionary:
 
 
 func _fixture_selected_guessable() -> Dictionary:
-	var guessable := _entry(9050, "#G", "匿名合约", "待回应", "待猜", "¥120", "#22c55e", ["可猜"], "track_select_9050", "track_open_guessable_contract")
+	var guessable := _entry(9050, "#G", "互动牌", "反制窗", "待猜", "¥120", "#22c55e", ["可猜"], "track_select_9050", "track_open_guessable_interaction")
 	guessable["selected"] = true
 	return _base_fixture("selected_guessable", "选中可竞猜", "Selected marker remains discoverable for MCP and visual QA.", [guessable])
 
@@ -130,14 +130,14 @@ func _fixture_hovered_linked_action() -> Dictionary:
 		"hover_action": "track_select_9061",
 		"entries": [
 			_entry(9060, "#1", "星港订单", "公开", "公开", "¥50", "#38bdf8", ["普通"], "track_select_9060", "track_open_starport_order"),
-			_entry(9061, "#2", "领跑合约", "领跑", "匿名", "¥130", "#facc15", ["领跑"], "track_select_9061", "track_open_leader_contract"),
+			_entry(9061, "#2", "领跑订单", "领跑", "匿名", "¥130", "#facc15", ["领跑"], "track_select_9061", "track_open_leader_order"),
 		],
 	}
 
 
 func _fixture_long_text_safe_state() -> Dictionary:
 	return _base_fixture("long_text_safe_state", "长文本安全态", "Slot labels trim long public clues without stretching the top rail.", [
-		_entry(9070, "#LONG", "一张名字非常非常长的轨道金融合同需要被安全截断", "等待公开回应与进一步竞价", "隐藏持有者线索", "¥999", "#c084fc", ["长文本", "安全截断"], "track_select_9070", "track_open_long_text"),
+		_entry(9070, "#LONG", "一张名字非常非常长的轨道金融订单需要被安全截断", "等待公开竞价与结算", "待猜持有者线索", "¥999", "#c084fc", ["长文本", "安全截断"], "track_select_9070", "track_open_long_text"),
 	])
 
 

@@ -4,6 +4,23 @@ class_name AiRuntimeController
 
 const CardPlayRequirementPolicyScript := preload("res://scripts/cards/card_play_requirement_policy.gd")
 const DEFAULT_POLICY_PROFILE := preload("res://resources/ai/ai_policy_profile_v1.tres")
+const ACTIVE_RESPONSE_KINDS := [
+	"counter_response",
+	"monster_wager",
+	"discard_purchase",
+	"monster_target_choice",
+	"player_target_choice",
+	"public_bid",
+	"card_order_bid",
+]
+const AI_SAVE_FIELDS := [
+	"ai_card_decision_timer",
+	"ai_auction_reaction_timer",
+	"ai_intel_decision_timer",
+	"ai_card_decision_enabled",
+	"player_states",
+]
+const AI_PLAYER_SAVE_FIELDS := ["player_index", "ai_profile", "ai_memory"]
 
 @export var policy_profile: Resource = DEFAULT_POLICY_PROFILE
 
@@ -206,6 +223,8 @@ func build_turn_plan(player_index: int, world_snapshot: Dictionary) -> Dictionar
 func build_response_plan(response_kind: String, player_index: int, context: Dictionary) -> Dictionary:
 	if not _configured or not _world_ready():
 		return {"planned": false, "reason": "controller_not_ready", "response_kind": response_kind, "player_index": player_index}
+	if response_kind not in ACTIVE_RESPONSE_KINDS:
+		return {"planned": false, "reason": "response_kind_unsupported", "response_kind": response_kind, "player_index": player_index, "candidate_count": 0, "selected": {}}
 	var candidates: Array = []
 	match response_kind:
 		"counter_response":
@@ -286,15 +305,59 @@ func to_save_data() -> Dictionary:
 	}
 
 
+func preflight_save_data(data: Dictionary) -> Dictionary:
+	if not TablePresentationPureDataPolicy.is_pure_data(data) or not _has_exact_save_fields(data, AI_SAVE_FIELDS):
+		return {"accepted": false, "reason_code": "ai_save_shape_invalid"}
+	var retired_payload := LegacyContractPayloadGuardV06.validation_report(data)
+	if not bool(retired_payload.get("valid", false)):
+		return {"accepted": false, "reason_code": "retired_contract_payload_rejected"}
+	for timer_key in ["ai_card_decision_timer", "ai_auction_reaction_timer", "ai_intel_decision_timer"]:
+		var timer_value: Variant = data.get(timer_key)
+		if not (timer_value is int or timer_value is float) or not is_finite(float(timer_value)):
+			return {"accepted": false, "reason_code": "ai_save_timer_invalid"}
+	if not (data.get("ai_card_decision_enabled") is bool) or not (data.get("player_states") is Array):
+		return {"accepted": false, "reason_code": "ai_save_shape_invalid"}
+	var normalized_states: Array = []
+	var seen_player_indices: Dictionary = {}
+	for state_variant in data.get("player_states", []) as Array:
+		if not (state_variant is Dictionary):
+			return {"accepted": false, "reason_code": "ai_player_save_invalid"}
+		var state := state_variant as Dictionary
+		if not _has_exact_save_fields(state, AI_PLAYER_SAVE_FIELDS) \
+				or not (state.get("player_index") is int) \
+				or int(state.get("player_index", -1)) < 0 \
+				or not (state.get("ai_profile") is Dictionary) \
+				or not (state.get("ai_memory") is Dictionary):
+			return {"accepted": false, "reason_code": "ai_player_save_invalid"}
+		var player_index := int(state.get("player_index", -1))
+		if seen_player_indices.has(player_index):
+			return {"accepted": false, "reason_code": "ai_player_save_duplicate"}
+		seen_player_indices[player_index] = true
+		normalized_states.append(state.duplicate(true))
+	return {
+		"accepted": true,
+		"reason_code": "ai_save_valid",
+		"normalized_state": {
+			"ai_card_decision_timer": maxf(0.1, float(data.get("ai_card_decision_timer", 2.2))),
+			"ai_auction_reaction_timer": maxf(0.1, float(data.get("ai_auction_reaction_timer", 0.7))),
+			"ai_intel_decision_timer": maxf(0.1, float(data.get("ai_intel_decision_timer", 5.5))),
+			"ai_card_decision_enabled": bool(data.get("ai_card_decision_enabled", true)),
+			"player_states": normalized_states,
+		},
+	}
+
+
 func apply_save_data(data: Dictionary) -> Dictionary:
-	ai_card_decision_timer = maxf(0.1, float(data.get("ai_card_decision_timer", _policy_value("timing", "card_decision_interval_seconds", 2.2))))
-	ai_auction_reaction_timer = maxf(0.1, float(data.get("ai_auction_reaction_timer", _policy_value("timing", "auction_reaction_interval_seconds", 0.7))))
-	ai_intel_decision_timer = maxf(0.1, float(data.get("ai_intel_decision_timer", _policy_value("timing", "intel_decision_interval_seconds", 5.5))))
-	ai_card_decision_enabled = bool(data.get("ai_card_decision_enabled", true))
+	var preflight := preflight_save_data(data)
+	if not bool(preflight.get("accepted", false)):
+		return {"applied": false, "reason_code": str(preflight.get("reason_code", "ai_save_invalid")), "player_state_count": 0}
+	var normalized := preflight.get("normalized_state", {}) as Dictionary
+	ai_card_decision_timer = float(normalized.get("ai_card_decision_timer", _policy_value("timing", "card_decision_interval_seconds", 2.2)))
+	ai_auction_reaction_timer = float(normalized.get("ai_auction_reaction_timer", _policy_value("timing", "auction_reaction_interval_seconds", 0.7)))
+	ai_intel_decision_timer = float(normalized.get("ai_intel_decision_timer", _policy_value("timing", "intel_decision_interval_seconds", 5.5)))
+	ai_card_decision_enabled = bool(normalized.get("ai_card_decision_enabled", true))
 	if _world_ready():
-		for state_variant in data.get("player_states", []):
-			if not (state_variant is Dictionary):
-				continue
+		for state_variant in normalized.get("player_states", []) as Array:
 			var state: Dictionary = state_variant
 			var player_index := int(state.get("player_index", -1))
 			if player_index < 0 or player_index >= players.size():
@@ -306,7 +369,16 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 				player["ai_memory"] = (state.get("ai_memory", {}) as Dictionary).duplicate(true)
 			players[player_index] = player
 		_ensure_player_ai_state()
-	return {"applied": true, "player_state_count": int((data.get("player_states", []) as Array).size()) if data.get("player_states", []) is Array else 0}
+	return {"applied": true, "reason_code": "ai_save_applied", "player_state_count": int((normalized.get("player_states", []) as Array).size())}
+
+
+func _has_exact_save_fields(dictionary: Dictionary, fields: Array) -> bool:
+	if dictionary.size() != fields.size():
+		return false
+	for field_variant in fields:
+		if not dictionary.has(str(field_variant)):
+			return false
+	return true
 
 
 func policy_snapshot() -> Dictionary:
@@ -4583,7 +4655,7 @@ func _ai_development_route_for_kind(kind: String, skill: Dictionary = {}) -> Str
 			return "finance_speculation"
 		"monster_card", "monster_bound_action", "monster_lure", "monster_takeover", "mudslide", "special_monster_delay", "news_event", "weather_control", "route_sabotage", "panic_shift":
 			return "monster_pressure"
-		"intel_city_reveal", "card_history_public_review", "card_history_subscription", "intel_contract_trace", "supply_draw":
+		"intel_city_reveal", "card_history_public_review", "card_history_subscription", "supply_draw":
 			return "intel_supply"
 		"player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage", "card_counter":
 			return "direct_interaction"
@@ -6195,7 +6267,6 @@ func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, distric
 	score += int(skill.get("history_review_count", 0)) * 28
 	score += int(skill.get("history_subscription_count", 0)) * 24
 	score += int(skill.get("reveal_city_count", 0)) * 48
-	score += int(skill.get("trace_contract_count", 0)) * 45
 	score += int(skill.get("hand_discard_count", 0)) * (82 if harmful_target or target_owner == -999 else -30)
 	score += int(skill.get("hand_steal_count", 0)) * (112 if harmful_target or target_owner == -999 else -45)
 	score += int(round(float(skill.get("hand_lock_seconds", 0.0)) * 2.0)) if harmful_target or target_owner == -999 else 0
@@ -6671,8 +6742,6 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		"endgame_urgency": endgame_urgency,
 		"phase_bonus": 0,
 		"learning_bonus": 0,
-		"contract_source": -1,
-		"contract_target": -1,
 		"selected_card_resolution_id": -1,
 		"score": 70 + maxi(0, int(skill.get("cost", 2))) * 12 + maxi(1, _skill_rank(String(skill.get("name", "")))) * 9,
 		"reason": "按卡牌强度、目标价值、GDP份额、路线计划与AI性格评分",

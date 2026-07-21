@@ -175,7 +175,7 @@ func _normalize_temporary_decision(value: Variant) -> Dictionary:
 		"actions": normalized_actions,
 		"accent": source.get("accent", Color("#facc15")),
 	}
-	for key in ["wager", "contract", "choice", "details"]:
+	for key in ["wager", "choice", "details"]:
 		var detail_value: Variant = source.get(key, {})
 		if detail_value is Dictionary:
 			result[key] = (detail_value as Dictionary).duplicate(true)

@@ -517,17 +517,18 @@ func queue_state_snapshot() -> Dictionary:
 
 
 func public_snapshot() -> Dictionary:
+	var public_group_ids: Dictionary = {}
 	var current_public: Array = []
 	for entry_variant in _current_queue:
 		if entry_variant is Dictionary:
-			current_public.append(_public_entry(entry_variant as Dictionary))
+			current_public.append(_public_entry(entry_variant as Dictionary, _anonymous_group_id(entry_variant as Dictionary, public_group_ids)))
 	var next_public: Array = []
 	for entry_variant in _next_queue:
 		if entry_variant is Dictionary:
-			next_public.append(_public_entry(entry_variant as Dictionary))
+			next_public.append(_public_entry(entry_variant as Dictionary, _anonymous_group_id(entry_variant as Dictionary, public_group_ids)))
 	return {
 		"current": current_public,
-		"active": _public_entry(_active_entry),
+		"active": _public_entry(_active_entry, _anonymous_group_id(_active_entry, public_group_ids)),
 		"next": next_public,
 		"current_count": _current_queue.size(),
 		"active_present": not _active_entry.is_empty(),
@@ -689,7 +690,7 @@ func _entry_id(entry: Dictionary) -> int:
 	return int(entry.get("resolution_id", entry.get("queued_order", -1))) if not entry.is_empty() else -1
 
 
-func _public_entry(entry: Dictionary) -> Dictionary:
+func _public_entry(entry: Dictionary, public_group_id: String = "") -> Dictionary:
 	if entry.is_empty():
 		return {}
 	var skill: Dictionary = entry.get("skill", {}) if entry.get("skill", {}) is Dictionary else {}
@@ -698,14 +699,23 @@ func _public_entry(entry: Dictionary) -> Dictionary:
 		"card_name": str(skill.get("name", "")),
 		"card_kind": str(skill.get("kind", "")),
 		"selected_district": int(entry.get("selected_district", -1)),
-		"contract_source_district": int(entry.get("contract_source_district", -1)),
-		"contract_target_district": int(entry.get("contract_target_district", -1)),
-		"group_id": str(entry.get("group_id", "")),
+		"group_id": public_group_id,
 		"group_order": int(entry.get("group_order", 0)),
 		"group_size": int(entry.get("group_size", 0)),
 		"group_position": int(entry.get("group_position", 0)),
 		"queued_behind_resolution": bool(entry.get("queued_behind_resolution", false)),
 	}
+
+
+func _anonymous_group_id(entry: Dictionary, aliases: Dictionary) -> String:
+	if entry.is_empty():
+		return ""
+	var internal_id := str(entry.get("group_id", ""))
+	if internal_id.is_empty():
+		return ""
+	if not aliases.has(internal_id):
+		aliases[internal_id] = "public_set_%d" % (aliases.size() + 1)
+	return str(aliases.get(internal_id, ""))
 
 
 func _normalize_legacy_entries(entries: Array) -> Array:

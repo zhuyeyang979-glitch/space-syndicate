@@ -430,8 +430,6 @@ func _target_kind(public_card: Dictionary, definition: Dictionary) -> String:
 		return "monster"
 	if target_type.contains("player"):
 		return "player"
-	if target_type.contains("pair"):
-		return "district_pair"
 	match str(definition.get("kind", public_card.get("card_type", ""))):
 		"monster_card": return "monster_deploy"
 		"military_force": return "military_deploy"

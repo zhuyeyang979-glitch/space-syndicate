@@ -754,7 +754,7 @@ func _check_runtime_card_catalog_resource_assets() -> void:
 	ready = ready and bench != null and bench.has_method("historical_integrity_cases") and bench.has_method("live_cutover_cases") and bench.has_method("run_resource_suite")
 	ready = ready and int(manifest.get("case_count", 0)) == 80 and int(manifest.get("historical_case_count", 0)) == 40 and int(manifest.get("live_case_count", 0)) == 40
 	ready = ready and bool(schema.get("runtime_cutover_enabled", false)) and str(manifest.get("runtime_owner", "")) == "CardRuntimeCatalogService" and str(schema.get("runtime_owner", "")) == "CardRuntimeCatalogService"
-	ready = ready and int(schema.get("family_resources", 0)) == 114 and int(schema.get("embedded_rank_resources", 0)) == 232 and int(schema.get("pack_resources", 0)) == 10
+	ready = ready and int(schema.get("family_resources", 0)) == 113 and int(schema.get("embedded_rank_resources", 0)) == 230 and int(schema.get("pack_resources", 0)) == 10
 	ready = ready and _is_pure_data(manifest) and _is_pure_data(schema)
 	if bench != null:
 		bench.free()
@@ -767,8 +767,8 @@ func _check_runtime_card_catalog_resource_assets() -> void:
 		ready = ready and not main_source.contains("func %s(" % legacy_helper)
 	var coordinator_source := FileAccess.get_file_as_string("res://scenes/runtime/GameRuntimeCoordinator.tscn")
 	ready = ready and coordinator_source.contains("CardRuntimeCatalogService") and coordinator_source.contains("CardRuntimeDefinitionWorldBridge")
-	ready = ready and ownership_contract.contains("80/80") and ownership_contract.contains("CardRuntimeCatalogService") and resource_schema.contains("114 `CardRuntimeFamilyResource`") and resource_schema.contains("232 embedded `CardRuntimeRankResource`")
-	_expect(ready, "Sprint 58 uses one Inspector-editable 114-family/232-rank Resource catalog, an authoritative Catalog Service, and no parallel main.gd catalog owner")
+	ready = ready and ownership_contract.contains("80/80") and ownership_contract.contains("CardRuntimeCatalogService") and resource_schema.contains("113 `CardRuntimeFamilyResource`") and resource_schema.contains("230 embedded `CardRuntimeRankResource`")
+	_expect(ready, "Sprint 58 uses one Inspector-editable 113-family/230-rank Resource catalog, an authoritative Catalog Service, and no parallel main.gd catalog owner")
 
 
 func _check_runtime_card_authoring_assets() -> void:

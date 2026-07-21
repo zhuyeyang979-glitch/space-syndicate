@@ -30,26 +30,26 @@ fact_notes = PackedStringArray("Type: 经济.", "Effect power 5 / Complexity 1."
 [sub_resource type="Resource" id="Card_cold_crown_contract_i"]
 script = ExtResource("2_card")
 entry_id = "cold_crown_contract_i"
-display_name = "寒冠合约"
+display_name = "寒冠订单"
 subtitle = "Vertical slice balance card | first_table"
-summary = "合约 Rank I card from the vertical slice balance set. This public codex entry explains contract pressure and first-table use without becoming rules data."
+summary = "条件订单 Rank I card from the vertical slice balance set. This public codex entry explains public supply-demand pressure without becoming rules data."
 accent = "#22c55e"
-chips = PackedStringArray("合约", "Rank I", "first_table")
+chips = PackedStringArray("条件订单", "Rank I", "first_table")
 source_note = "Migrated from data/balance/vertical_slice_card_set.json for public codex display only. Existing gameplay rules remain authoritative."
 rank = "I"
-card_kind = "合约"
+card_kind = "条件订单"
 cost = "$40"
-target = "public contract opportunity"
+target = "public goods-network condition"
 route = "first_table"
 requirement = "Use the existing rules layer to check legality; this Resource is display reference only."
 effect = "Public balance reference: effect power 4, targeting 2, economy 3, interaction 1, complexity 3."
-read_order = "Cost -> type -> target -> contract window -> public effect"
-face_note = "Resourceized contract reference for codex browsing."
-timing_note = "Use when first_table introduces contract response windows."
+read_order = "Cost -> type -> network condition -> automatic settlement -> public effect"
+face_note = "Resourceized conditional-order reference for codex browsing."
+timing_note = "Use when first_table introduces automatic order validation."
 risk_note = "Setup discount 3, delayed effect 1, self-risk 0."
-public_resolution_note = "Public track may show a contract prompt or response window without storing sensitive player data."
-tactical_notes = PackedStringArray("Good first contract teaching card.", "Price anchor: $40.", "Keep response timing in the existing flow.")
-fact_notes = PackedStringArray("Type: 合约.", "Effect power 4 / Complexity 3.")
+public_resolution_note = "Public track may show an automatic condition check and settlement result without storing sensitive player data."
+tactical_notes = PackedStringArray("Good first conditional-order teaching card.", "Price anchor: $40.", "Keep legality and settlement in the existing economy flow.")
+fact_notes = PackedStringArray("Type: 条件订单.", "Effect power 4 / Complexity 3.")
 
 [sub_resource type="Resource" id="Card_route_spark_i"]
 script = ExtResource("2_card")

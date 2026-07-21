@@ -1,7 +1,7 @@
 extends RefCounted
 class_name CardResolutionStableTargetEnvelope
 
-const SCHEMA_VERSION := 2
+const SCHEMA_VERSION := 3
 const TARGET_NONE := "none"
 const TARGET_MONSTER := "monster"
 const TARGET_PLAYER := "player"
@@ -24,11 +24,6 @@ const ALLOWED_KEYS := [
 	"target_slot",
 	"target_monster_uid",
 	"target_player",
-	"contract_source_region_id",
-	"contract_source_public_index_at_capture",
-	"contract_target_region_id",
-	"contract_target_public_index_at_capture",
-	"contract_selection_revision",
 	"play_requirement_region_id",
 	"play_requirement_public_index_at_capture",
 	"capture_source",
@@ -58,12 +53,8 @@ static func capture(
 	var product_binding := _product_binding(product_catalog, product_id)
 	if not bool(product_binding.get("valid", false)):
 		return {}
-	var contract_source := _region_binding(region_catalog, int(context.get("contract_source_district", -1)), true)
-	var contract_target := _region_binding(region_catalog, int(context.get("contract_target_district", -1)), true)
 	var requirement := _region_binding(region_catalog, int(context.get("play_requirement_district", -1)), true)
-	if not bool(contract_source.get("valid", false)) \
-			or not bool(contract_target.get("valid", false)) \
-			or not bool(requirement.get("valid", false)):
+	if not bool(requirement.get("valid", false)):
 		return {}
 	var envelope := {
 		"schema_version": SCHEMA_VERSION,
@@ -83,11 +74,6 @@ static func capture(
 		"target_slot": int(context.get("target_slot", -1)),
 		"target_monster_uid": int(context.get("target_monster_uid", -1)),
 		"target_player": int(context.get("target_player", -1)),
-		"contract_source_region_id": str(contract_source.get("region_id", "")),
-		"contract_source_public_index_at_capture": int(contract_source.get("public_index", -1)),
-		"contract_target_region_id": str(contract_target.get("region_id", "")),
-		"contract_target_public_index_at_capture": int(contract_target.get("public_index", -1)),
-		"contract_selection_revision": int(context.get("contract_selection_revision", -1)),
 		"play_requirement_region_id": str(requirement.get("region_id", "")),
 		"play_requirement_public_index_at_capture": int(requirement.get("public_index", -1)),
 		"capture_source": str(context.get("capture_source", "card_play_submission")),
@@ -129,7 +115,7 @@ static func validate(envelope: Dictionary) -> Dictionary:
 	for key in [
 		"session_id", "region_id", "region_ordering_revision", "region_ordering_fingerprint",
 		"product_id", "product_ordering_revision", "product_ordering_fingerprint", "target_kind",
-		"contract_source_region_id", "contract_target_region_id", "play_requirement_region_id",
+		"play_requirement_region_id",
 		"capture_source", "envelope_fingerprint",
 	]:
 		if not envelope.has(key) or typeof(envelope[key]) != TYPE_STRING:
@@ -137,8 +123,7 @@ static func validate(envelope: Dictionary) -> Dictionary:
 	for key in [
 		"schema_version", "session_revision", "selection_revision", "region_public_index_at_capture",
 		"product_public_index_at_capture", "selected_card_resolution_id", "target_slot", "target_monster_uid", "target_player",
-		"contract_source_public_index_at_capture", "contract_target_public_index_at_capture",
-		"contract_selection_revision", "play_requirement_public_index_at_capture",
+		"play_requirement_public_index_at_capture",
 	]:
 		if not envelope.has(key) or typeof(envelope[key]) != TYPE_INT:
 			return _invalid("stable_target_type_invalid")
@@ -173,17 +158,11 @@ static func validate(envelope: Dictionary) -> Dictionary:
 		return _invalid("stable_target_monster_binding_invalid")
 	if target_kind == TARGET_PLAYER and (target_player < -1 or target_slot != -1 or target_monster_uid != -1):
 		return _invalid("stable_target_player_binding_invalid")
-	for pair in [
-		["contract_source_region_id", "contract_source_public_index_at_capture"],
-		["contract_target_region_id", "contract_target_public_index_at_capture"],
-		["play_requirement_region_id", "play_requirement_public_index_at_capture"],
-	]:
-		var stable_id := str(envelope[pair[0]])
-		var public_index := int(envelope[pair[1]])
-		if (stable_id.is_empty() and public_index != -1) or (not stable_id.is_empty() and (not _text_id(stable_id, false) or public_index < 0)):
-			return _invalid("stable_target_optional_region_binding_invalid")
-	if int(envelope["contract_selection_revision"]) < -1:
-		return _invalid("stable_target_contract_revision_invalid")
+	var requirement_region_id := str(envelope["play_requirement_region_id"])
+	var requirement_public_index := int(envelope["play_requirement_public_index_at_capture"])
+	if (requirement_region_id.is_empty() and requirement_public_index != -1) \
+			or (not requirement_region_id.is_empty() and (not _text_id(requirement_region_id, false) or requirement_public_index < 0)):
+		return _invalid("stable_target_optional_region_binding_invalid")
 	if not _text_id(str(envelope["capture_source"]), false):
 		return _invalid("stable_target_capture_source_invalid")
 	var expected := _fingerprint(envelope)
@@ -211,8 +190,6 @@ static func validate_entry_binding(entry: Dictionary) -> Dictionary:
 		and int(entry.get("target_slot", -2)) == int(envelope["target_slot"]) \
 		and int(entry.get("target_monster_uid", -2)) == int(envelope["target_monster_uid"]) \
 		and int(entry.get("target_player", -2)) == int(envelope["target_player"]) \
-		and int(entry.get("contract_source_district", -2)) == int(envelope["contract_source_public_index_at_capture"]) \
-		and int(entry.get("contract_target_district", -2)) == int(envelope["contract_target_public_index_at_capture"]) \
 		and int(entry.get("play_requirement_district", -2)) == int(envelope["play_requirement_public_index_at_capture"])
 	if not mirrors_match:
 		return _invalid("stable_target_legacy_mirror_mismatch")
@@ -229,8 +206,6 @@ static func context_at_capture(envelope: Dictionary) -> Dictionary:
 		"target_slot": int(envelope["target_slot"]),
 		"target_monster_uid": int(envelope["target_monster_uid"]),
 		"target_player": int(envelope["target_player"]),
-		"contract_source_district": int(envelope["contract_source_public_index_at_capture"]),
-		"contract_target_district": int(envelope["contract_target_public_index_at_capture"]),
 		"play_requirement_district": int(envelope["play_requirement_public_index_at_capture"]),
 	}
 
@@ -264,19 +239,14 @@ static func resolve_for_world(
 	if region_index < 0:
 		return _invalid("stable_target_region_missing")
 	context["selected_district"] = region_index
-	for binding in [
-		["contract_source_region_id", "contract_source_district"],
-		["contract_target_region_id", "contract_target_district"],
-		["play_requirement_region_id", "play_requirement_district"],
-	]:
-		var stable_id := str(envelope[binding[0]])
-		if stable_id.is_empty():
-			context[binding[1]] = -1
-			continue
-		var resolved_index := world_session_state.district_index_for_region_id(stable_id)
+	var requirement_region_id := str(envelope["play_requirement_region_id"])
+	if requirement_region_id.is_empty():
+		context["play_requirement_district"] = -1
+	else:
+		var resolved_index := world_session_state.district_index_for_region_id(requirement_region_id)
 		if resolved_index < 0:
 			return _invalid("stable_target_optional_region_missing")
-		context[binding[1]] = resolved_index
+		context["play_requirement_district"] = resolved_index
 	return {
 		"valid": true,
 		"reason_code": "",

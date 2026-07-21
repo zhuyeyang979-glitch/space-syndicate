@@ -5,11 +5,11 @@ does not define gameplay independently of the rulebook and runtime directive.
 
 | Mechanic | Status | Meaning / boundary |
 | --- | --- | --- |
-| `card_counter_response` | ACTIVE | One formal response layer for counterable interaction cards. It is never a contract response. |
-| `monster_wager_response` | ACTIVE | The formal forced decision for monster-battle wagers. |
-| `card_target_choice` | ACTIVE | Legal monster, player, region, or product target selection for a played card. |
+| `card_counter_response` | ACTIVE | Section 8: one formal response layer for counterable direct-player interaction cards. It is never a contract response. |
+| `monster_wager_response` | ACTIVE | Section 9: the formal 15-second forced decision for monster-battle wagers. |
+| `card_target_choice` | ACTIVE | Section 7.4: forced target selection exists for monster and player targets. Region/product selection remains ordinary planning context, not a forced-response owner. |
 | `forced_decision` | ACTIVE | Other temporary decisions explicitly required by active v0.6 rules. |
-| `conditional_order_auto_settlement` | ACTIVE | Conditional order and supply cards are validated and settled automatically by the card execution and economy owners. No target player signs them. |
+| `conditional_order_auto_settlement` | ACTIVE | Section 8: `GlobalSupplyDemandRuntimeServiceV06` plans the effect, CardResolution carries its exact-once lineage, and `CommodityFlowRuntimeController` applies the atomic sink. No responder exists. |
 | `legacy_project_contract` | RETIRED | v0.5 project-to-project contract state. |
 | `contract_response` | RETIRED | Dedicated accept/reject/timeout response lifecycle. |
 | `contract_accept` | RETIRED | Target-player acceptance action. |
@@ -18,9 +18,10 @@ does not define gameplay independently of the rulebook and runtime directive.
 | `contract_penalty` | RETIRED | Refusal/timeout penalty. |
 | `contract_signature` | RETIRED | Target-player signature state. |
 | `area_trade_contract` | RETIRED | Legacy card family; retired without replacement. |
+| `legacy_contract_trace_intel_card` | RETIRED | `密约回溯1/2` depended on retired contract-party truth; both cards and `intel_contract_trace` are retired without replacement. |
 | `contract_offer_v06` | RETIRED | The anonymous interaction schema and router have no generic contract domain. |
 | `target_player_contract_consent` | RETIRED | Player consent for an order/supply card. |
-| `legacy_contract_save_reader` | MIGRATION_ONLY | Fail-closed recognition of unknown legacy payload keys; it creates no runtime state. |
+| `legacy_contract_save_reader` | MIGRATION_ONLY | Legacy payloads are inspected and rejected before apply; they are never ignored into a live session and create no runtime state. |
 | `legacy_contract_card_alias` | MIGRATION_ONLY | Reserved index entry only; there is no active alias because the retired family has no approved replacement. |
 
 The corresponding JSON is authoritative for automated checks. Any new mechanic
