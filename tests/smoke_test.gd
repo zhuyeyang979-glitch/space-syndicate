@@ -8548,8 +8548,12 @@ func _map_effects_contain_min_duration(main: Node, kind: String, min_duration: f
 
 func _regions_start_with_terrain_goods(main: Node) -> bool:
 	var districts := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts)
-	var ocean_products := _as_array(main.call("_product_pool_for_terrain", "ocean"))
-	var land_products := _as_array(main.call("_product_pool_for_terrain", "land"))
+	var ocean_products := SessionStartWorldPlanBuilder.OCEAN_PRODUCTS.duplicate()
+	var land_products: Array = []
+	for product_variant in ProductMarketRuntimeController.PRODUCT_CATALOG:
+		var product_name := str(product_variant)
+		if not product_name.is_empty() and not ocean_products.has(product_name):
+			land_products.append(product_name)
 	var saw_land := false
 	var saw_ocean := false
 	for district_variant in districts:
