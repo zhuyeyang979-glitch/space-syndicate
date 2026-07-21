@@ -7,6 +7,8 @@ const MONSTER_SCENE := preload("res://scenes/runtime/MonsterRuntimeController.ts
 const ROUTER_SCENE := preload("res://scenes/runtime/CardEffectRuntimeRouter.tscn")
 const QUEUE_SCENE := preload("res://scenes/runtime/CardResolutionQueueRuntimeService.tscn")
 const EXECUTION_SCENE := preload("res://scenes/runtime/CardResolutionExecutionRuntimeService.tscn")
+const CASH_QUERY_SCENE := preload("res://scenes/runtime/MonsterWagerCashCommitmentQueryPort.tscn")
+const CASH_MUTATION_SCENE := preload("res://scenes/runtime/PlayerCashMutationPort.tscn")
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -16,7 +18,6 @@ class FixtureWorld:
 	extends Node
 
 	var role_cap_bonus_by_player := {}
-	var upgrade_cash_players: Array[int] = []
 	var scenario_signal_count := 0
 
 	func _player_role_card_for_index(player_index: int) -> Dictionary:
@@ -64,10 +65,6 @@ class FixtureWorld:
 
 	func _monster_card_duration_text(skill: Dictionary, _compact: bool = false) -> String:
 		return "%ds" % int(skill.get("duration", 0.0))
-
-	func _apply_role_monster_upgrade_cash(player_index: int, _monster_name: String, _old_rank: int, _new_rank: int, _world_position: Vector2) -> int:
-		upgrade_cash_players.append(player_index)
-		return 0
 
 	func _complete_scenario_signal(_signal_id: String, _public_text: String, _snapshot_key: String = "", _focus_target: String = "") -> bool:
 		scenario_signal_count += 1
@@ -140,12 +137,15 @@ func _verify_upgrade_uses_queue_actor() -> void:
 		_seed_actor(owner, 0, 0),
 		_seed_actor(owner, 0, 2),
 	]
+	var upgraded_uid := int((owner.auto_monsters[0] as Dictionary).get("uid", 0))
 	var receipt := _dispatch(fixture, 0, _monster_skill(owner, 0, 2), 4301)
 	var players := state.players
 	_check(bool(receipt.get("resolved", false)), "same-family monster card resolves as an upgrade")
 	_check(int((owner.auto_monsters[0] as Dictionary).get("rank", 0)) == 2, "queue actor's same-family monster is upgraded")
 	_check(int((owner.auto_monsters[1] as Dictionary).get("rank", 0)) == 1, "inspected player's same-family monster is not upgraded")
-	_check((fixture.world as FixtureWorld).upgrade_cash_players == [0], "upgrade passive receives the queue actor")
+	var actor_ledger: Array = (players[0] as Dictionary).get("v06_transaction_ledger", []) as Array
+	var expected_transaction_id := "monster:%d:rank.2:role-cash" % upgraded_uid
+	_check(int((players[0] as Dictionary).get("cash", 0)) == 1160 and actor_ledger.any(func(row: Variant) -> bool: return row is Dictionary and str((row as Dictionary).get("transaction_id", "")) == expected_transaction_id), "upgrade reward uses the queue actor and stable monster/rank transaction identity")
 	_check(not (players[0] as Dictionary).get("slots", []).is_empty() and (players[2] as Dictionary).get("slots", []).is_empty(), "upgrade skill refresh remains bound to the queue actor")
 	_cleanup(fixture)
 
@@ -240,7 +240,13 @@ func _fixture() -> Dictionary:
 	var bridge := WORLD_BRIDGE_SCENE.instantiate() as MonsterRuntimeWorldBridge
 	var owner := MONSTER_SCENE.instantiate() as MonsterRuntimeController
 	var router := ROUTER_SCENE.instantiate() as CardEffectRuntimeRouter
-	for node in [world, state, selection, bridge, owner, router]:
+	var cash_query := CASH_QUERY_SCENE.instantiate() as MonsterWagerCashCommitmentQueryPort
+	var cash_mutation := CASH_MUTATION_SCENE.instantiate() as PlayerCashMutationPort
+	var identity := SimulationStateIdentity.new()
+	var audit := SimulationDeterminismAudit.new()
+	var authority := SimulationMutationAuthority.new()
+	var nodes: Array[Node] = [world, state, selection, bridge, owner, router, cash_query, cash_mutation, identity, audit, authority]
+	for node in nodes:
 		root.add_child(node)
 	state.players = _players()
 	state.districts = [{"name": "QA Region", "destroyed": false, "center": Vector2(120.0, 240.0)}]
@@ -248,8 +254,13 @@ func _fixture() -> Dictionary:
 	bridge.set_world_session_state(state)
 	bridge.set_table_selection_state(selection)
 	owner.set_world_bridge(bridge)
-	router.set_dependencies(state, selection, owner, null, null, null, null, null, null, null, null, null)
-	return {"world": world, "state": state, "selection": selection, "bridge": bridge, "owner": owner, "router": router}
+	cash_query.configure(state, owner)
+	authority.bind_diagnostics(identity, audit)
+	authority.begin_step(1)
+	cash_mutation.configure(state, cash_query, authority)
+	owner.set_player_cash_mutation_port(cash_mutation)
+	router.set_dependencies(state, selection, owner, null, null, null, null, null, null, null, null)
+	return {"world": world, "state": state, "selection": selection, "bridge": bridge, "owner": owner, "router": router, "cash_query": cash_query, "cash_mutation": cash_mutation, "identity": identity, "audit": audit, "authority": authority}
 
 
 func _players() -> Array:
@@ -261,6 +272,18 @@ func _players() -> Array:
 			"role_name": "QA Role %d" % index,
 			"slots": [],
 			"cash": 1000,
+			"cash_cents": 100000,
+			"cash_history": [1000],
+			"economic_ledger": [],
+			"v06_transaction_ledger": [],
+			"total_card_income": 0,
+			"total_role_income": 0,
+			"role_card": {
+				"role_index": index,
+				"name": "QA Role %d" % index,
+				"monster_control_limit_bonus": 0,
+				"monster_upgrade_cash": 160 if index == 0 else 0,
+			},
 		})
 	return result
 
@@ -305,7 +328,7 @@ func _function_body(source: String, start_marker: String, end_marker: String) ->
 
 
 func _cleanup(fixture: Dictionary) -> void:
-	for key in ["router", "owner", "bridge", "selection", "state", "world"]:
+	for key in ["authority", "audit", "identity", "cash_mutation", "cash_query", "router", "owner", "bridge", "selection", "state", "world"]:
 		var node: Node = fixture.get(key)
 		if node != null and is_instance_valid(node):
 			node.free()

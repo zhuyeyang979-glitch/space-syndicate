@@ -1,0 +1,21 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/player_cash_mutation_port_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/WorldSessionState.tscn" id="2_world"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/MonsterRuntimeWorldBridge.tscn" id="3_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/MonsterRuntimeController.tscn" id="4_monster"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/MonsterWagerCashCommitmentQueryPort.tscn" id="5_query"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/PlayerCashMutationPort.tscn" id="6_port"]
+
+[node name="PlayerCashMutationPortBench" type="Node"]
+script = ExtResource("1_bench")
+
+[node name="WorldSessionState" parent="." instance=ExtResource("2_world")]
+
+[node name="MonsterRuntimeWorldBridge" parent="." instance=ExtResource("3_bridge")]
+
+[node name="MonsterRuntimeController" parent="." instance=ExtResource("4_monster")]
+
+[node name="MonsterWagerCashCommitmentQueryPort" parent="." instance=ExtResource("5_query")]
+
+[node name="PlayerCashMutationPort" parent="." instance=ExtResource("6_port")]

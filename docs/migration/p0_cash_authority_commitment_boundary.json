@@ -1,0 +1,85 @@
+{
+  "schema_version": 2,
+  "status": "PRODUCTION_CUTOVER_GREEN",
+  "rule_authority_gate": "GREEN",
+  "cash_owner": "WorldSessionState",
+  "cash_truth_field": "players[*].cash_cents",
+  "cash_mirror_field": "players[*].cash",
+  "exact_once_ledger": "players[*].v06_transaction_ledger",
+  "commitment_owner": "MonsterRuntimeController",
+  "commitment_query_port": "MonsterWagerCashCommitmentQueryPort",
+  "mutation_authority": "SimulationMutationAuthority",
+  "mutation_port": {
+    "scene": "res://scenes/runtime/PlayerCashMutationPort.tscn",
+    "script": "res://scripts/runtime/player_cash_mutation_port.gd",
+    "production_instances": 1,
+    "stores_cash": false,
+    "stores_journal": false,
+    "stores_commitments": false,
+    "adds_save_section": false,
+    "entrypoints": [
+      "commit_product_market_cash_delta",
+      "commit_city_gdp_derivative_cash_delta",
+      "commit_role_monster_upgrade_cash"
+    ]
+  },
+  "retired_main_methods": [
+    "_commit_product_market_cash_delta",
+    "_commit_city_gdp_derivative_cash_delta",
+    "_apply_role_monster_upgrade_cash"
+  ],
+  "stable_transaction_ids": {
+    "product_futures_open": "product-futures:<player>:<position_id>:open",
+    "product_futures_settlement": "product-futures:<player>:<position_id>:<reason>",
+    "product_card_income": "<card-resolution-id>:product-market-cash",
+    "city_gdp_derivative": "city-gdp:<player>:<position_id>:<phase>",
+    "role_monster_upgrade": "monster:<monster_uid>:rank.<new_rank>:role-cash"
+  },
+  "authority_evidence": {
+    "all_first_mutations_require_active_simulation_step": true,
+    "all_first_mutations_authorized": true,
+    "all_first_mutations_audited": true,
+    "card_originated_paths_use_runtime_command_pipeline": true,
+    "timer_settlements_are_ordered_runtime_simulation_phase_operations": true,
+    "direct_world_session_write_is_typed_atomic_commit_only": true,
+    "audit_failure_rolls_back_postimage": true
+  },
+  "hard_guards": [
+    "cash_cents_and_cash_same_atomic_postimage",
+    "debit_cannot_consume_unresolved_wager_commitment",
+    "negative_postimage_rejected",
+    "transaction_id_exact_once",
+    "cross_cycle_retry_uses_immutable_terms",
+    "first_committed_audit_cycle_preserved",
+    "transaction_id_conflict_rejected",
+    "existing_save_owner_roundtrip",
+    "no_public_snapshot",
+    "no_main_fallback"
+  ],
+  "main_budget": {
+    "before": {"physical_lines": 6741, "nonblank_lines": 5690, "methods": 486, "variables": 47, "constants": 64},
+    "after": {"physical_lines": 6641, "nonblank_lines": 5596, "methods": 483, "variables": 47, "constants": 64},
+    "gate_ok": true
+  },
+  "validation": {
+    "player_cash_mutation_port": "39/39 PASS",
+    "cross_cycle_exact_once": "product/gdp/role/save-load PASS",
+    "wager_commitment_query": "33/33 PASS",
+    "product_market_target_envelope": "18 PASS",
+    "monster_actor_propagation": "28/28 PASS",
+    "city_gdp_derivative_bench": "40/40 PASS",
+    "world_session_state": "44/44 PASS",
+    "monster_cross_owner_upgrade": "24 PASS",
+    "product_market_owner": "15 PASS",
+    "main_architecture": "202 PASS",
+    "main_composition": "PASS",
+    "smoke_check_only": "EXIT 0",
+    "godot_mcp_bench": "11/11 PASS",
+    "production_negative_symbols": 0,
+    "privacy_violations": 0
+  },
+  "known_debt": [
+    "retired_full_smoke_fixture_still_names_removed_main_role_reward_method",
+    "cash_first_cross_owner_callers_need_composite_transaction_or_compensation_before_any_post_cash_step_becomes_fallible"
+  ]
+}

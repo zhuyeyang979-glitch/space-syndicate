@@ -9,6 +9,7 @@ var _rng_service: RunRngService
 var _table_selection_state: TableSelectionState
 var _world_session_state: WorldSessionState
 var _cash_commitment_query_port: MonsterWagerCashCommitmentQueryPort
+var _cash_mutation_port: PlayerCashMutationPort
 var _world_call_count := 0
 var _failed_world_call_count := 0
 
@@ -31,6 +32,10 @@ func set_world_session_state(state: WorldSessionState) -> void:
 
 func set_cash_commitment_query_port(port: MonsterWagerCashCommitmentQueryPort) -> void:
 	_cash_commitment_query_port = port
+
+
+func set_cash_mutation_port(port: PlayerCashMutationPort) -> void:
+	_cash_mutation_port = port
 
 
 func world_session_state() -> WorldSessionState:
@@ -77,24 +82,23 @@ func player_cash(player_index: int) -> int:
 	return int((players[player_index] as Dictionary).get("cash", 0))
 
 
-func commit_player_cash_delta(player_index: int, cash_delta: int, source: String, product_name: String, reason_code: String, income_amount := 0) -> Dictionary:
-	if cash_delta < 0 and _cash_commitment_query_port != null:
-		var authorization := _cash_commitment_query_port.authorize_debit_units(player_index, -cash_delta)
-		if not bool(authorization.get("authorized", false)):
-			return {
-				"committed": false,
-				"reason": str(authorization.get("reason_code", "cash_reserved_for_monster_wager")),
-				"cash_before": player_cash(player_index),
-				"cash_required": -cash_delta,
-			}
-	var before_cash := _world_session_state.private_player_cash_snapshot(player_index) if _world_session_state != null else {}
-	var value: Variant = call_world("_commit_product_market_cash_delta", [player_index, cash_delta, source, product_name, reason_code, maxi(0, income_amount)])
-	var receipt := (value as Dictionary).duplicate(true) if value is Dictionary else {"committed": false, "reason": "cash_adapter_missing"}
-	if bool(receipt.get("committed", false)) and _world_session_state != null:
-		var reconciliation := _world_session_state.reconcile_private_player_cash_after_unit_mutation(player_index, before_cash)
-		if not bool(reconciliation.get("reconciled", false)):
-			return {"committed": false, "reason": str(reconciliation.get("reason_code", "cash_reconciliation_failed"))}
-	return receipt
+func commit_player_cash_delta(transaction_id: String, player_index: int, cash_delta: int, source: String, product_name: String, reason_code: String, income_amount := 0, market_cycle := 0) -> Dictionary:
+	if _cash_mutation_port == null or not _cash_mutation_port.is_ready():
+		return {"committed": false, "reason": "player_cash_mutation_port_unavailable"}
+	return _cash_mutation_port.commit_product_market_cash_delta(
+		transaction_id,
+		player_index,
+		cash_delta,
+		source,
+		product_name,
+		reason_code,
+		maxi(0, income_amount),
+		maxi(0, market_cycle)
+	)
+
+
+func cash_mutation_ready() -> bool:
+	return _cash_mutation_port != null and _cash_mutation_port.is_ready()
 
 
 func read_world_value(property_name: StringName, default_value: Variant = null) -> Variant:
@@ -149,13 +153,14 @@ func debug_snapshot() -> Dictionary:
 		"shared_rng_available": shared_rng() != null,
 		"table_selection_state_ready": _table_selection_state != null,
 		"world_session_state_ready": _world_session_state != null,
-		"cash_adapter_available": has_world() and _world.has_method("_commit_product_market_cash_delta"),
+		"cash_mutation_port_ready": cash_mutation_ready(),
 		"monster_wager_cash_commitment_guard_bound": _cash_commitment_query_port != null,
 		"world_call_count": _world_call_count,
 		"failed_world_call_count": _failed_world_call_count,
 		"owns_product_market_state": false,
 		"owns_product_market_rules": false,
 		"owns_shared_rng": false,
+		"dynamic_main_cash_callback": false,
 	}
 
 

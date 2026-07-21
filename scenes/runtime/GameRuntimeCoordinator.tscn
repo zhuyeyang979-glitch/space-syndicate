@@ -1,4 +1,4 @@
-[gd_scene load_steps=119 format=3]
+[gd_scene load_steps=120 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -117,6 +117,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardTargetChoiceResponseSink.tscn" id="124_target_choice_response"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/MonsterWagerResponseSink.tscn" id="125_monster_wager_response"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/MonsterWagerCashCommitmentQueryPort.tscn" id="126_monster_wager_cash_query"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/PlayerCashMutationPort.tscn" id="127_player_cash_mutation"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -330,6 +331,9 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="MonsterWagerCashCommitmentQueryPort" parent="." instance=ExtResource("126_monster_wager_cash_query")]
+unique_name_in_owner = true
+
+[node name="PlayerCashMutationPort" parent="." instance=ExtResource("127_player_cash_mutation")]
 unique_name_in_owner = true
 
 [node name="MonsterRuntimeWorldBridge" parent="." instance=ExtResource("35_monster_world_bridge")]

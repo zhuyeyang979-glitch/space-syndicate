@@ -99,12 +99,7 @@ class MarketWorld:
 
 	extends Node
 
-	var cash_calls := 0
 	var warehouse_clue_calls := 0
-
-	func _commit_product_market_cash_delta(_player_index: int, _cash_delta: int, _source: String, _product_name: String, _reason: String, _income_amount: int) -> Dictionary:
-		cash_calls += 1
-		return {"committed": true, "cash_after": 990}
 
 	func _append_product_futures_warehouse_clue(_district_index: int, _source: String, _direction: String, _product_name: String, _units: int, _duration_seconds: float) -> void:
 		warehouse_clue_calls += 1
@@ -120,6 +115,29 @@ class MarketWorld:
 
 	func _balance_product_price_model(base_price: int, _supply: int, _demand: int, _disrupted: int, _unused: int, _weather_modifier: int, _volatility: int, _noise: float, _growth_multiplier: float) -> Dictionary:
 		return {"price": base_price, "delta": 0, "raw_delta": 0, "step_cap": 1, "driver_summary": "fixture"}
+
+
+class RecordingCashMutationPort:
+
+	extends PlayerCashMutationPort
+
+	var cash_calls := 0
+
+	func is_ready() -> bool:
+		return true
+
+	func commit_product_market_cash_delta(
+		_transaction_id: String,
+		_player_index: int,
+		_cash_delta_units: int,
+		_source_id: String,
+		_product_id: String,
+		_reason_code: String,
+		_income_units: int = 0,
+		_market_cycle: int = 0
+	) -> Dictionary:
+		cash_calls += 1
+		return {"committed": true, "cash_after": 990}
 
 
 class WarehouseMarket:
@@ -229,14 +247,17 @@ func _test_warehouse_context(world: FixtureWorld, entry: Dictionary, catalogs: D
 	var market_world := MarketWorld.new()
 	var market_bridge := ProductMarketRuntimeWorldBridge.new()
 	var market := WarehouseMarket.new()
+	var cash_port := RecordingCashMutationPort.new()
 	var selection := TableSelectionState.new()
 	root.add_child(market_world)
 	root.add_child(market_bridge)
 	root.add_child(market)
+	root.add_child(cash_port)
 	root.add_child(selection)
 	market_bridge.bind_world(market_world)
 	market_bridge.set_world_session_state(world)
 	market_bridge.set_table_selection_state(selection)
+	market_bridge.set_cash_mutation_port(cash_port)
 	market.set_world_bridge(market_bridge)
 	market.product_market = {"星露莓": {"base_price": 50, "price": 50, "volatility": 4, "price_history": [50], "futures_positions": []}}
 	selection.restore({"selected_district": 0, "selected_trade_product": "磁核榴莲"})
@@ -248,14 +269,15 @@ func _test_warehouse_context(world: FixtureWorld, entry: Dictionary, catalogs: D
 	var positions: Array = (market.market_entry("星露莓").get("futures_positions", []) as Array)
 	_expect(bool(opened.get("committed", false)) and positions.size() == 1, "warehouse future commits through frozen target")
 	_expect(not positions.is_empty() and str((positions[0] as Dictionary).get("warehouse_region_id", "")) == "region.000", "warehouse position stores stable region identity")
-	var cash_calls_before := market_world.cash_calls
+	var cash_calls_before := cash_port.cash_calls
 	world.districts[1]["city"]["owner"] = 1
 	var rejected := market.open_futures_position(0, skill, warehouse_context)
 	_expect(not bool(rejected.get("committed", false)) and str(rejected.get("reason", "")) == "warehouse_owner_mismatch", "warehouse owner is revalidated at execution")
-	_expect(market_world.cash_calls == cash_calls_before and (market.market_entry("星露莓").get("futures_positions", []) as Array).size() == 1, "warehouse authorization failure mutates no cash or position")
+	_expect(cash_port.cash_calls == cash_calls_before and (market.market_entry("星露莓").get("futures_positions", []) as Array).size() == 1, "warehouse authorization failure mutates no cash or position")
 	selection.free()
 	market.free()
 	market_bridge.free()
+	cash_port.free()
 	market_world.free()
 
 

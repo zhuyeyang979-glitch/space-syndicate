@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/player_cash_mutation_port.gd" id="1_port"]
+
+[node name="PlayerCashMutationPort" type="Node"]
+script = ExtResource("1_port")
+editor_description = "Typed exact-once cash mutation boundary. WorldSessionState remains the only balance and ledger owner; unresolved monster-wager commitments are checked through the existing private query port."

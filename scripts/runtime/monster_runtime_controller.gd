@@ -62,6 +62,7 @@ var _monster_binding_capability_provider_v06: Object
 var _region_infrastructure_world_bridge: Node
 var _route_network_runtime_controller: RouteNetworkRuntimeController
 var _product_market_runtime_controller: ProductMarketRuntimeController
+var _player_cash_mutation_port: PlayerCashMutationPort
 var _card_runtime_catalog_service: CardRuntimeCatalogService
 var _weather_runtime_controller: WeatherRuntimeController
 var _weather_telemetry_runtime_service: Node
@@ -108,6 +109,10 @@ var _monster_card_lifecycle_call_counts_v06 := {
 
 func set_product_market_runtime_controller(controller: ProductMarketRuntimeController) -> void:
 	_product_market_runtime_controller = controller
+
+
+func set_player_cash_mutation_port(port: PlayerCashMutationPort) -> void:
+	_player_cash_mutation_port = port
 
 
 func set_region_infrastructure_world_bridge(bridge: Node) -> void:
@@ -3976,6 +3981,15 @@ func _upgrade_field_monster_from_card(player_index: int, skill: Dictionary) -> b
 	var old_uid := int(actor.get("uid", 0))
 	var old_owner_revealed := bool(actor.get("owner_revealed", false))
 	var old_owner_clue := String(actor.get("owner_clue", ""))
+	if not refresh_only and not _commit_role_monster_upgrade_cash(
+		player_index,
+		old_uid,
+		String(actor.get("name", "怪兽")),
+		old_rank,
+		new_rank,
+		_entity_world_position(actor)
+	):
+		return false
 	actor["rank"] = new_rank
 	actor["hp"] = maxi(1, int(upgraded_card.get("hp", actor.get("hp", 1))))
 	actor["max_hp"] = int(actor["hp"])
@@ -3989,8 +4003,6 @@ func _upgrade_field_monster_from_card(player_index: int, skill: Dictionary) -> b
 	_invalidate_bound_monster_skills(old_uid, "绑定怪兽已升级，旧固定技能失效。")
 	var fixed_skill_count := int(upgraded_card.get("fixed_skill_count", new_rank))
 	var granted := _grant_bound_monster_skills(player_index, old_uid, String(actor.get("name", "怪兽")), new_rank, fixed_skill_count)
-	if not refresh_only:
-		_apply_role_monster_upgrade_cash(player_index, String(actor.get("name", "怪兽")), old_rank, new_rank, _entity_world_position(actor))
 	_apply_monster_economic_boons()
 	_refresh_product_market_prices()
 	_add_action_callout(
@@ -6439,13 +6451,50 @@ func _append_unique_district_index(result: Array, index: int) -> void:
 func _apply_product_market_boon(product_name: String, growth_multiplier: float, route_flow_multiplier: float, turns: int, source: String, persistent: bool = false, duration_seconds: float = -1.0) -> bool:
 	return _product_market_runtime_controller.apply_product_market_boon(product_name, growth_multiplier, route_flow_multiplier, turns, source, persistent, duration_seconds) if _product_market_runtime_controller != null else false
 
-func _apply_role_monster_upgrade_cash(player_index: int, monster_name: String, old_rank: int, new_rank: int, world_position: Vector2) -> int:
+func _commit_role_monster_upgrade_cash(player_index: int, monster_uid: int, monster_name: String, old_rank: int, new_rank: int, world_position: Vector2) -> bool:
 	var state := _world_bridge.world_session_state() if _world_bridge != null else null
-	var before_cash := state.private_player_cash_snapshot(player_index) if state != null else {}
-	var amount := int(_world_call(&"_apply_role_monster_upgrade_cash", [player_index, monster_name, old_rank, new_rank, world_position]))
-	if amount > 0 and state != null and not bool(state.reconcile_private_player_cash_after_unit_mutation(player_index, before_cash).get("reconciled", false)):
-		return 0
-	return amount
+	if state == null or player_index < 0 or player_index >= state.players.size() or not (state.players[player_index] is Dictionary):
+		return false
+	var player := state.players[player_index] as Dictionary
+	var role_variant: Variant = player.get("role_card", {})
+	var role: Dictionary = role_variant if role_variant is Dictionary else {}
+	var amount := int(role.get("monster_upgrade_cash", 0))
+	if amount <= 0:
+		return true
+	var role_index := int(role.get("role_index", -1))
+	var role_name := str(role.get("name", ""))
+	if role_index < 0 or role_name.is_empty() or monster_uid <= 0 or _player_cash_mutation_port == null:
+		return false
+	var transaction_id := "monster:%d:rank.%d:role-cash" % [monster_uid, new_rank]
+	var receipt := _player_cash_mutation_port.commit_role_monster_upgrade_cash(
+		transaction_id,
+		player_index,
+		amount,
+		"role.%02d" % role_index,
+		role_name,
+		monster_uid,
+		monster_name,
+		old_rank,
+		new_rank,
+		_product_market_runtime_controller.business_cycle_count if _product_market_runtime_controller != null else 0
+	)
+	if not bool(receipt.get("committed", false)):
+		return false
+	if not bool(receipt.get("replayed", false)):
+		_add_action_callout(
+			"角色收益",
+			role_name,
+			"%s升级触发返现：¥+%d。" % [monster_name, amount],
+			Color("#fde68a"),
+			world_position
+		)
+		_log("%s触发%s：%s升级，获得¥%d。" % [
+			str(player.get("name", "玩家%d" % (player_index + 1))),
+			role_name,
+			monster_name,
+			amount,
+		])
+	return true
 
 func _auto_monster_action_probability_text(actor: Dictionary, action_index: int, weights: Array, total: int, any_destroyed: bool) -> String:
 	return _world_call(&"_auto_monster_action_probability_text", [actor, action_index, weights, total, any_destroyed])
@@ -6597,7 +6646,11 @@ func _player_name(player_index: int) -> String:
 	return _world_call(&"_player_name", [player_index])
 
 func _player_role_card_for_index(player_index: int) -> Dictionary:
-	return _world_call(&"_player_role_card_for_index", [player_index])
+	var state := _world_bridge.world_session_state() if _world_bridge != null else null
+	if state == null or player_index < 0 or player_index >= state.players.size() or not (state.players[player_index] is Dictionary):
+		return {}
+	var role_variant: Variant = (state.players[player_index] as Dictionary).get("role_card", {})
+	return (role_variant as Dictionary).duplicate(true) if role_variant is Dictionary else {}
 
 func _preset_int(key: String) -> int:
 	return _world_call(&"_preset_int", [key])

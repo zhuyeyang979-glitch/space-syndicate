@@ -57,25 +57,38 @@ var _controller: CityGdpDerivativeRuntimeController
 var _bridge: CityGdpDerivativeRuntimeWorldBridge
 var _formula: CardEconomyProductRouteFormulaRuntimeService
 var _world: FixtureWorld
+var _cash_mutation_port: PlayerCashMutationPort
+var _mutation_authority: SimulationMutationAuthority
+var _monster: MonsterRuntimeController
 var _records: Array = []
 var _failures: Array[String] = []
 
 
 class FixtureWorld:
-	extends Node
+	extends WorldSessionState
 
-	var game_time := 0.0
-	var players: Array = []
-	var districts: Array = []
 	var private_events: Array = []
 	var public_events: Array = []
 
-	func reset(cash := 1000, city_owner_index := 0, current_gdp := 100) -> void:
+	func reset_fixture(cash := 1000, city_owner_index := 0, current_gdp := 100) -> void:
 		game_time = 0.0
-		players = [{"cash": cash}, {"cash": cash}]
-		districts = [{"name": "晨昏港", "city": {"active": true, "owner": city_owner_index, "last_income": current_gdp, "public_clues": []}}]
+		players = [_player(cash, 0), _player(cash, 1)]
+		districts = [{"region_id": "region.000", "name": "晨昏港", "city": {"active": true, "owner": city_owner_index, "last_income": current_gdp, "public_clues": []}}]
 		private_events = []
 		public_events = []
+
+	func _player(cash: int, index: int) -> Dictionary:
+		return {
+			"id": "player-%d" % index,
+			"cash": cash,
+			"cash_cents": cash * 100,
+			"cash_history": [cash],
+			"economic_ledger": [],
+			"v06_transaction_ledger": [],
+			"total_card_income": 0,
+			"total_role_income": 0,
+			"eliminated": false,
+		}
 
 	func set_gdp(value: int) -> void:
 		districts[0]["city"]["last_income"] = value
@@ -85,17 +98,6 @@ class FixtureWorld:
 
 	func _city_cycle_income(district_index: int, _competition: int) -> int:
 		return int((districts[district_index]["city"] as Dictionary).get("last_income", 0))
-
-	func _commit_city_gdp_derivative_cash_delta(player_index: int, cash_delta: int, card_id: String, district_index: int, reason_code: String, income_amount := 0) -> Dictionary:
-		if player_index < 0 or player_index >= players.size():
-			return {"committed": false, "reason": "player_invalid"}
-		var before := int((players[player_index] as Dictionary).get("cash", 0))
-		var after := before + cash_delta
-		if after < 0:
-			return {"committed": false, "reason": "cash_insufficient", "cash_before": before}
-		players[player_index]["cash"] = after
-		private_events.append({"card_id": card_id, "district_index": district_index, "reason_code": reason_code, "cash_delta": cash_delta, "income_amount": income_amount})
-		return {"committed": true, "reason": "", "cash_before": before, "cash_after": after, "cash_delta": cash_delta}
 
 	func _append_city_gdp_derivative_public_clue(district_index: int, clue: String) -> bool:
 		var city := (districts[district_index]["city"] as Dictionary).duplicate(true)
@@ -110,6 +112,19 @@ class FixtureWorld:
 
 	func _present_city_gdp_derivative_settlement(district_index: int, reason: String, receipts: Array) -> void:
 		public_events.append({"kind": "settled", "district_index": district_index, "reason": reason, "receipts": receipts.duplicate(true)})
+
+
+class FixtureMonster:
+	extends MonsterRuntimeController
+
+	func private_wager_cash_commitment_snapshot(player_index: int, excluded_wager_id: int = -1) -> Dictionary:
+		return {
+			"valid": player_index >= 0,
+			"reason_code": "monster_wager_commitment_ready" if player_index >= 0 else "monster_wager_commitment_player_invalid",
+			"reserved_cents": 0,
+			"commitment_revision": 0,
+			"commitment_fingerprint": "fixture:%d:%d" % [player_index, excluded_wager_id],
+		}
 
 
 func _ready() -> void:
@@ -162,9 +177,25 @@ func _setup_runtime() -> bool:
 		runtime_host.add_child(node)
 	_formula.configure({"ruleset_id": "v0.4"})
 	_bridge.bind_world(_world)
+	_bridge.set_world_session_state(_world)
+	_monster = FixtureMonster.new()
+	var query := MonsterWagerCashCommitmentQueryPort.new()
+	var identity := SimulationStateIdentity.new()
+	var audit := SimulationDeterminismAudit.new()
+	_mutation_authority = SimulationMutationAuthority.new()
+	_cash_mutation_port = PlayerCashMutationPort.new()
+	var dependencies: Array[Node] = [_monster, query, identity, audit, _mutation_authority, _cash_mutation_port]
+	for dependency in dependencies:
+		runtime_host.add_child(dependency)
+	query.configure(_world, _monster)
+	_mutation_authority.bind_diagnostics(identity, audit)
+	_mutation_authority.begin_step(1)
+	_cash_mutation_port.configure(_world, query, _mutation_authority)
+	_bridge.set_cash_commitment_query_port(query)
+	_bridge.set_cash_mutation_port(_cash_mutation_port)
 	_controller.set_world_bridge(_bridge)
 	_controller.configure({"ruleset_id": "v0.4"}, _formula)
-	_world.reset()
+	_world.reset_fixture()
 	return bool(_controller.debug_snapshot().get("controller_ready", false))
 
 
@@ -196,9 +227,9 @@ func _run_structure_cases() -> void:
 	var coordinator_scene := FileAccess.get_file_as_string(COORDINATOR_SCENE_PATH)
 	_add_record("coordinator_scene_composition", coordinator_scene.contains("CityGdpDerivativeRuntimeController.tscn") and coordinator_scene.contains("CityGdpDerivativeRuntimeWorldBridge.tscn"), "Controller and WorldBridge are static coordinator children.", {"composition_checked": true})
 	var bridge_source := FileAccess.get_file_as_string("res://scripts/runtime/city_gdp_derivative_runtime_world_bridge.gd")
-	_add_record("world_bridge_contract", bridge_source.contains("_commit_city_gdp_derivative_cash_delta") and bridge_source.contains("_append_city_gdp_derivative_public_clue") and not bridge_source.contains("maximum_gain"), "WorldBridge routes facts and mutations without owning formulas.", {"world_bridge_checked": true})
+	_add_record("world_bridge_contract", bridge_source.contains("set_cash_mutation_port") and not bridge_source.contains("_commit_city_gdp_derivative_cash_delta") and bridge_source.contains("_append_city_gdp_derivative_public_clue") and not bridge_source.contains("maximum_gain"), "WorldBridge routes typed cash mutations and world facts without owning formulas.", {"world_bridge_checked": true})
 	var queue_source := FileAccess.get_file_as_string(QUEUE_SCRIPT_PATH)
-	_add_record("queue_margin_preflight", queue_source.contains("gdp_derivative_terms") and queue_source.contains("margin_cash") and not queue_source.contains("locked_margin"), "Queue authorizes action fee, bid, and margin without locking margin.", {"authorization_checked": true})
+	_add_record("queue_margin_preflight", queue_source.contains("financial_margin_cents") and queue_source.contains("financial_cash_required_cents") and queue_source.contains("financial_margin_locked_on_queue\": false"), "Queue consumes typed margin cents from eligibility/submission and never locks the margin itself.", {"authorization_checked": true})
 	var eligibility_source := FileAccess.get_file_as_string(ELIGIBILITY_SCRIPT_PATH)
 	_add_record("eligibility_margin_reason", eligibility_source.contains("financial_margin_insufficient") and eligibility_source.contains("gdp_derivative_terms"), "Eligibility exposes the same stable insufficient-margin reason.", {"authorization_checked": true})
 	var presentation_source := FileAccess.get_file_as_string(PRESENTATION_SCRIPT_PATH)
@@ -297,7 +328,7 @@ func _settlement_case(card_id: String, current_gdp: int, destroyed: bool, expect
 
 func _reset_fixture(cash: int, city_owner_index: int, current_gdp: int) -> void:
 	_controller.reset_state()
-	_world.reset(cash, city_owner_index, current_gdp)
+	_world.reset_fixture(cash, city_owner_index, current_gdp)
 
 
 func _open(card_id: String, player_index: int) -> Dictionary:
