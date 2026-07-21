@@ -159,8 +159,15 @@ func _run() -> void:
 	_expect(_ai_player_count(players) == EXPECTED_AI_PLAYER_COUNT, "new game creates AI seats for the PVE roguelike run")
 	_expect(not bool((players[0] as Dictionary).get("is_ai", true)) and bool((players[1] as Dictionary).get("is_ai", false)), "player 1 remains the human/local seat while later seats are AI opponents")
 	_expect(((players[1] as Dictionary).get("ai_profile", {}) as Dictionary).has("style") and ((players[1] as Dictionary).get("ai_memory", {}) as Dictionary).has("decision_samples"), "AI seats carry a personality profile and training-memory log")
-	var planet_profile := main.call("_roguelike_planet_profile") as Dictionary
-	_expect(districts.size() >= int(planet_profile.get("region_min", MIN_REGION_COUNT)) and districts.size() <= int(planet_profile.get("region_max", MAX_REGION_COUNT)), "new game creates the expected roguelike region count")
+	var setup_draft := (session_start_result.get("draft_service") as NewGameSetupDraftService).draft_snapshot()
+	var configured_challenge_depth := int(setup_draft.get("challenge_depth", -1))
+	var region_count_range := MovementBalanceModel.new().region_count_range_for_depth(configured_challenge_depth)
+	_expect(
+		int(region_count_range.get("depth", -1)) == configured_challenge_depth
+		and districts.size() >= int(region_count_range.get("region_min", MIN_REGION_COUNT))
+		and districts.size() <= int(region_count_range.get("region_max", MAX_REGION_COUNT)),
+		"new game creates the expected roguelike region count"
+	)
 	_expect(_regions_start_with_terrain_goods(main), "land and ocean regions start with one terrain-appropriate produced good and one demanded good before contracts expand them")
 	_expect(auto_monsters.is_empty(), "new game starts with no field monsters until monster cards are played")
 	_expect(_players_have_role_cards(main, players), "each player receives an alien syndicate role card")
