@@ -11,6 +11,7 @@ const COORDINATOR_SCENE_PATH := "res://scenes/runtime/GameRuntimeCoordinator.tsc
 const COORDINATOR_SCRIPT_PATH := "res://scripts/runtime/game_runtime_coordinator.gd"
 const AI_CONTROLLER_SCRIPT_PATH := "res://scripts/runtime/ai_runtime_controller.gd"
 const ENVIRONMENT_BALANCE_MODEL_PATH := "res://scripts/balance/environment_balance_model.gd"
+const BATTLE_LIFECYCLE_POLICY := preload("res://scripts/runtime/monster_battle_lifecycle_policy_v06.gd")
 const OUTPUT_DIR := "user://space_syndicate_design_qa/weather_runtime_characterization/"
 const MANIFEST_PATH := OUTPUT_DIR + "manifest.json"
 const REPORT_PATH := OUTPUT_DIR + "report.md"
@@ -655,7 +656,35 @@ func _case_realtime_tick() -> Dictionary:
 func _case_wager_freeze() -> Dictionary:
 	var district_index := _first_alive_district()
 	_weather_controller.replace_runtime_state({"id": 1, "type": "ion_storm", "districts": [district_index], "created_at": 0.0, "starts_at": 0.5, "duration": 45.0, "source": "test", "forced": false}, [], 1)
-	_monster_controller.active_monster_wagers = [{"wager_id": 99, "resolved": false, "remaining_seconds": 20.0, "seconds_total": 20.0, "competitors": []}]
+	var competitors := [
+		{"side": "a", "slot": 0, "uid": 901, "name": "冻结测试甲", "damage": 0},
+		{"side": "b", "slot": 1, "uid": 902, "name": "冻结测试乙", "damage": 0},
+	]
+	_monster_controller.auto_monsters = competitors.duplicate(true)
+	_monster_controller.active_monster_wagers = [{
+		"wager_id": 99,
+		"resolved": false,
+		"base_percent": 5,
+		"competitors": competitors,
+		"damage_a": 0,
+		"damage_b": 0,
+		"bets": {},
+		"public_bets": [],
+		"historical_public_pool": 0,
+		"eligible_player_indices": [0],
+		"opening_cash_units_by_player": {"0": 100},
+		"public_player_ids_by_index": {"0": "player.0"},
+		"lifecycle_schema_version": BATTLE_LIFECYCLE_POLICY.SCHEMA_VERSION,
+		"lifecycle_phase": BATTLE_LIFECYCLE_POLICY.PHASE_DECISION,
+		"lifecycle_revision": 1,
+		"decision_remaining_seconds": 15.0,
+		"battle_limit_seconds": 60.0,
+		"battle_remaining_seconds": 60.0,
+		"locked_competitor_uids": [901, 902],
+		"battle_roster_fingerprint": BATTLE_LIFECYCLE_POLICY.roster_fingerprint(competitors),
+		"opening_attack_applied": true,
+		"decision_open": true,
+	}]
 	(_runtime_coordinator.get_node_or_null("RuntimeLoop") as RuntimeLoop).advance_frame_for_test(0.5)
 	var observed := is_zero_approx(float(((_runtime_main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time)) and _weather_controller.active_zone_count() == 0
 	return _record("monster_wager_freezes_weather", observed, observed, "The existing forced-decision boundary still freezes weather time.", {"timing_checked": true})

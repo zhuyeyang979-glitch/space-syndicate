@@ -229,6 +229,13 @@ func _target_receipt(transaction: Dictionary) -> Dictionary:
 	if valid and target_kind == "monster":
 		var monsters := _eligibility_facts.monster_roster_snapshot()
 		var target_slot := int(entry.get("target_slot", -1))
+		var target_uid := int(entry.get("target_monster_uid", -1))
+		if target_uid > 0:
+			target_slot = -1
+			for monster_index in range(monsters.size()):
+				if monsters[monster_index] is Dictionary and int((monsters[monster_index] as Dictionary).get("uid", -1)) == target_uid:
+					target_slot = monster_index
+					break
 		valid = target_slot >= 0 and target_slot < monsters.size() and monsters[target_slot] is Dictionary and not bool((monsters[target_slot] as Dictionary).get("down", false))
 		reason = "valid" if valid else "target_monster_invalid"
 	elif valid and target_kind == "player":

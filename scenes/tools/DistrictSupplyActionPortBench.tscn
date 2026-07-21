@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/district_supply_action_port_bench.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/GameRuntimeCoordinator.tscn" id="2"]
+
+[node name="DistrictSupplyActionPortBench" type="Node"]
+script = ExtResource("1")
+
+[node name="GameRuntimeCoordinator" parent="." instance=ExtResource("2")]

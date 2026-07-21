@@ -3,6 +3,73 @@
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
 > 最新记录日期：2026-07-21。
 
+## 2026-07-21 — Monster battle lifecycle owner cutover
+
+- Split monster wager runtime into a 15-second real-time decision phase and a
+  separate world-effective battle phase capped at 60 seconds. The decision
+  phase remains the only global-freeze window; the battle phase no longer
+  blocks ordinary card/table play.
+- `MonsterRuntimeController` remains the only wager lifecycle owner. The
+  opening battle strike is dispatched through `RuntimeCommandPipeline` and
+  `MonsterActionCommandSink`, then applied under `SimulationMutationAuthority`.
+- Settlement now occurs at a battle terminal condition rather than on the last
+  wager response. Downed/expired/removed combatants and the 60-second cap settle
+  exactly once; knockback or animation alone does not.
+- Hardened idempotent command replay: a reused opening command ID is accepted
+  only if actor UID, target UID, action index and action fingerprint match the
+  owner-recorded applied command.
+- Added focused lifecycle tests and Bench coverage, and updated the old reopen
+  cooldown test plus wager Bench fixtures to use the battle lifecycle instead
+  of immediate manual settlement.
+- Retired the old external wager-ID settlement wrapper. Tests and smoke cleanup
+  now finish active wager battles by advancing the owner lifecycle; terminal
+  journal replay is proven by idempotent later battle ticks rather than a manual
+  `_settle_monster_wager` call.
+- Retired the remaining old active-wager test fixture shape. Focused wager,
+  forced-decision, table-presentation and weather characterization fixtures now
+  use the formal battle lifecycle fields; old field names remain only as
+  privacy/negative sentinels.
+
+## 2026-07-21 — Monster wager cash commitment query cutover
+
+- Added one private, read-only `MonsterWagerCashCommitmentQueryPort` to the
+  formal runtime composition. `WorldSessionState` remains the cash owner and
+  `MonsterRuntimeController` remains the wager/commitment owner.
+- Every active ordinary negative-cash path now plans and/or commits against
+  cash remaining after all unresolved wager stakes. Income is unrestricted;
+  malformed commitments fail closed; only final wager settlement may consume
+  its own commitment.
+- Hardened the transitional `cash`/`cash_cents` mirror at the state owner so a
+  legacy whole-unit mutation cannot resurrect spent money during a later
+  cents-based economy batch or wager settlement. Coherent fractional cents are
+  preserved.
+- Added a formal production Bench, privacy/source-negative gates and focused
+  cross-system regression. This is the prerequisite for—not the
+  implementation of—the 60-second monster battle lifecycle.
+
+## 2026-07-21 — Monster wager settlement owner cutover
+
+- Kept `MonsterRuntimeController` as the sole wager/history/public-pool/save
+  owner and connected its production settlement to the existing pure v0.6
+  policy; no parallel wager or cash owner was introduced.
+- Unified the decision window at 15 seconds, exposed every 1% rate from the
+  shared 5%-10% base through the 20% cap, and froze eligible seats plus opening
+  cash once per wager. Eliminated seats are excluded; zero-cash seats remain.
+- Responses now record commitments without early cash mutation. Window close
+  computes one strict snapshot and applies all player net deltas through one
+  whole-roster state swap.
+- Replaced the unique-winner/single-pool formula with `H + 2S`, tied winning
+  sides, per-winner self-double, equal remaining bonus, no-winner roll-forward
+  and zero-damage refund semantics.
+- Added commitment reservation against pending monster-owner damage, monotonic
+  settlement revision, strict terminal key/receipt SHA binding and exact-once
+  save gates. AI now receives public wager facts plus only its own opening-cash
+  snapshot; the private all-player active-wager snapshot API was retired.
+- Removed Main wager proxies/escrow and the AI active-array setter. Focused
+  evidence: policy 77/77, production owner 47/47, typed response 40/40 and
+  reopen cooldown 9/9. The production scene Bench is registered for Godot 4.7
+  MCP QA.
+
 ## 2026-07-21 — District supply presentation query/target cutover
 
 - Added one scene-owned `DistrictSupplyViewerQueryPort` that composes the
@@ -8547,6 +8614,40 @@ deleted. Evidence and the remaining action inventory are recorded in
 - No save section, AI behavior, military/monster target, or full queue restore
   claim changed. Direct non-card ProductMarket calls retain their existing
   optional focus fallback outside the card-effect bridge.
+
+## 2026-07-21 — Card target-choice response cutover
+
+- Monster/player target responses now travel through the existing typed forced-
+  decision identity gate into one scene-owned response sink and the shared
+  `CardPlaySubmissionRuntimeController` entry.
+- Live targets are revalidated at response time; accepted submission and choice
+  clearing use a synchronous owner reservation, while invalid targets and
+  rejected submissions keep the private choice open.
+- Rendered decision ID/revision is frozen into the response. Monster targets
+  use a stable public UID and the v2 stable-target envelope resolves the live
+  roster slot by UID, preventing stale UI and roster reorder retargeting.
+- Cancellation consumes no card and produces no public event. Public projection
+  after a queued card is redacted to the target kind/index and omits actor,
+  source card, hidden owner, hand and cash facts.
+- Removed fourteen target-choice constants/helpers and the option routing branch
+  from `scripts/main.gd`; no compatibility fallback was added.
+
+## 2026-07-21 — Monster-wager forced-response cutover
+
+- Human wager buttons now submit a typed, revision-bound forced-decision
+  request to one scene-owned `MonsterWagerResponseSink`; they no longer fall
+  through the generic GameScreen action signal to Main.
+- The sink rechecks the exact live wager option, so stale windows, absent
+  competitors, repeated responses and forged percentages fail without a cash
+  mutation. Sides `a` through `h` remain available for real multi-monster
+  matchups.
+- MonsterRuntimeController remains the sole wager owner and now exposes one
+  typed response entry shared by the human sink and AI adapter. Wager cash
+  mutations synchronize `cash` and `cash_cents`.
+- Removed Main's wager constant, action parser, direct private-controller call,
+  and the zero-consumer bottom-countdown state aggregator. Full v0.6
+  timing/payout-policy wiring remains an explicit separate
+  settlement-owner cutover rather than being mixed into this response change.
 
 ## 2026-07-20 — Typed table navigation action routing
 

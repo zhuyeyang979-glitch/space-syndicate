@@ -504,9 +504,10 @@ func _monster_target_decision(viewer_index: int, private_world: Dictionary) -> D
 	var roster := _monster.roster_snapshot(false) if _monster != null else []
 	for index in range(roster.size()):
 		var actor := _dictionary(roster[index])
-		actions.append({"id": "target_monster_%d" % index, "label": "怪%d %s" % [index + 1, str(actor.get("name", "怪兽"))], "disabled": bool(actor.get("down", false)), "tooltip": "指定目标；目标会公开，出牌者仍隐藏。"})
+		var monster_uid := int(actor.get("uid", -1))
+		actions.append({"id": "target_monster_uid_%d" % monster_uid, "label": "怪%d %s" % [index + 1, str(actor.get("name", "怪兽"))], "disabled": monster_uid <= 0 or bool(actor.get("down", false)), "tooltip": "指定目标；目标会公开，出牌者仍隐藏。"})
 	actions.append({"id": "target_monster_cancel", "label": "取消"})
-	return {"id": "monster_target_choice", "kind": "monster_target_choice", "title": "请选择目标怪兽", "body": "%s需要先指定目标怪兽。" % card_name, "actions": actions, "choice": {"mode": "monster_target", "target_count": roster.size()}}
+	return {"id": str(choice.get("choice_id", "")), "kind": "monster_target_choice", "title": "请选择目标怪兽", "body": "%s需要先指定目标怪兽。" % card_name, "actions": actions, "choice": {"mode": "monster_target", "target_count": roster.size()}}
 
 
 func _player_target_decision(viewer_index: int, public_world: Dictionary, private_world: Dictionary) -> Dictionary:
@@ -521,9 +522,9 @@ func _player_target_decision(viewer_index: int, public_world: Dictionary, privat
 		if index == viewer_index:
 			continue
 		var player := _dictionary(players[index])
-		actions.append({"id": "target_player_%d" % index, "label": str(player.get("public_player_name", "玩家%d" % (index + 1))), "tooltip": "目标会公开，出牌者仍隐藏。"})
+		actions.append({"id": "target_player_%d" % index, "label": str(player.get("public_player_name", "玩家%d" % (index + 1))), "disabled": bool(player.get("eliminated", false)), "tooltip": "目标会公开，出牌者仍隐藏。"})
 	actions.append({"id": "target_player_cancel", "label": "取消"})
-	return {"id": "player_target_choice", "kind": "player_target_choice", "title": "请选择目标玩家", "body": "%s会影响一名玩家。" % card_name, "actions": actions, "choice": {"mode": "player_target", "target_count": maxi(0, players.size() - 1)}}
+	return {"id": str(choice.get("choice_id", "")), "kind": "player_target_choice", "title": "请选择目标玩家", "body": "%s会影响一名玩家。" % card_name, "actions": actions, "choice": {"mode": "player_target", "target_count": maxi(0, players.size() - 1)}}
 
 
 func action_choices(viewer_index: int) -> Dictionary:

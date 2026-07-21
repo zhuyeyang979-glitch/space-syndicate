@@ -9,6 +9,7 @@ var _table_selection_state: TableSelectionState
 var _world_session_state: WorldSessionState
 var _card_effect_router: CardEffectRuntimeRouter
 var _role_catalog: RoleCatalogRuntimeService
+var _district_supply_query: DistrictSupplyRuntimeQueryPort
 var _build_count := 0
 
 
@@ -30,6 +31,10 @@ func set_card_effect_router(router: CardEffectRuntimeRouter) -> void:
 
 func set_role_catalog(role_catalog: RoleCatalogRuntimeService) -> void:
 	_role_catalog = role_catalog
+
+
+func set_district_supply_runtime_query_port(query: DistrictSupplyRuntimeQueryPort) -> void:
+	_district_supply_query = query
 
 
 func world_session_state() -> WorldSessionState:
@@ -86,6 +91,7 @@ func debug_snapshot() -> Dictionary:
 		"world_mutation_authority": false,
 		"privacy_boundary": "public_and_developer_safe_facts_only",
 		"world_session_state_ready": _world_session_state != null,
+		"district_supply_query_ready": _district_supply_query != null,
 	}
 
 
@@ -216,7 +222,8 @@ func _district_facts(selected_player: int) -> Array:
 	for district_index in range(source.size()):
 		var district: Dictionary = source[district_index] if source[district_index] is Dictionary else {}
 		var city := _world_dictionary_call(&"_district_city", [district_index])
-		var public_rack_card_ids := _world_array_call(&"_district_supply_card_ids", [district_index])
+		var public_rack_card_ids := _district_supply_query.public_card_ids_for_district(district_index) \
+			if _district_supply_query != null else []
 		var monster_cards: Array = []
 		for card_variant in public_rack_card_ids:
 			var card_name := _world_string_call(&"_canonical_card_supply_name", [str(card_variant)])
@@ -233,7 +240,8 @@ func _district_facts(selected_player: int) -> Array:
 			"demands": _array(district.get("demands", [])),
 			"public_rack_card_ids": _canonical_card_choices(public_rack_card_ids),
 			"monster_cards": monster_cards,
-			"availability_kind": _world_string_call(&"_district_market_availability_kind", [district_index]),
+			"availability_kind": str(_district_supply_query.public_market_availability(district_index).get("availability_kind", "invalid")) \
+				if _district_supply_query != null else "invalid",
 			"city_active": bool(_world.call("_city_is_active", city)) if _world.has_method("_city_is_active") else not city.is_empty(),
 			"city_products": _world_array_call(&"_city_product_names", [city]),
 			"city_demands": _world_array_call(&"_city_demand_names", [city]),

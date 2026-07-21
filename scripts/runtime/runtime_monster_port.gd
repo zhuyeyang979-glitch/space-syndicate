@@ -12,9 +12,14 @@ func is_ready() -> bool:
 	return is_instance_valid(_monster)
 
 
-func tick_wagers(delta_seconds: float) -> void:
+func tick_wager_decisions_realtime(delta_seconds: float) -> void:
 	if _monster != null:
-		_monster.tick_wagers(delta_seconds)
+		_monster.tick_wager_decisions_realtime(delta_seconds)
+
+
+func tick_battle_lifecycles(delta_seconds: float) -> void:
+	if _monster != null:
+		_monster.tick_battle_lifecycles(delta_seconds)
 
 
 func tick_motion(delta_seconds: float) -> void:
@@ -38,4 +43,4 @@ func tick_revivals(delta_seconds: float) -> void:
 
 
 func debug_snapshot() -> Dictionary:
-	return {"port_kind": "monster", "ready": is_ready(), "operation_count": 5, "owns_monster_state": false}
+	return {"port_kind": "monster", "ready": is_ready(), "operation_count": 6, "owns_monster_state": false}

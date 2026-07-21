@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_target_choice_response_sink.gd" id="1"]
+
+[node name="CardTargetChoiceResponseSink" type="Node"]
+script = ExtResource("1")
+target_choice_controller_path = NodePath("../CardTargetChoiceRuntimeController")
+card_play_submission_controller_path = NodePath("../CardPlaySubmissionRuntimeController")
+monster_runtime_controller_path = NodePath("../MonsterRuntimeController")
+identity_boundary_path = NodePath("../PlayerIdentityAuthorizationBoundary")
+editor_description = "Consumes authorized monster/player target responses exactly once. It validates only public target facts, delegates card submission, and never owns choices, cards, players, or monsters."

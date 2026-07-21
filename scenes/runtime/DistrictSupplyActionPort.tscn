@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/district_supply_action_port.gd" id="1"]
+
+[node name="DistrictSupplyActionPort" type="Node"]
+script = ExtResource("1")
+identity_boundary_path = NodePath("../PlayerIdentityAuthorizationBoundary")
+coordinator_path = NodePath("..")
+world_session_state_path = NodePath("../WorldSessionState")
+presentation_state_path = NodePath("../TableCardSupplyPresentationState")
+purchase_controller_path = NodePath("../DistrictPurchaseRuntimeController")
+commodity_card_inventory_path = NodePath("../CommodityCardInventoryRuntimeController")
+game_session_path = NodePath("../GameSessionRuntimeController")

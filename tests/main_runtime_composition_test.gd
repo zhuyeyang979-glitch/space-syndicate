@@ -214,6 +214,10 @@ func _check_static_composition(main: Control) -> void:
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictPurchaseSettlementRuntimeService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictSupplySnapshotService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictSupplyViewerQueryPort",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictSupplyRuntimeQueryPort",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictSupplyActionPort",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardTargetChoiceResponseSink",
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterWagerResponseSink",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RouteNetworkRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RouteNetworkWorldBridge",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CommodityFlowRuntimeController",
@@ -312,6 +316,10 @@ func _check_static_composition(main: Control) -> void:
 	var purchase_settlement := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictPurchaseSettlementRuntimeService")
 	var district_supply_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictSupplySnapshotService")
 	var district_supply_query := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictSupplyViewerQueryPort")
+	var district_supply_runtime_query := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictSupplyRuntimeQueryPort")
+	var district_supply_action := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/DistrictSupplyActionPort")
+	var card_target_choice_response_sink := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardTargetChoiceResponseSink")
+	var monster_wager_response_sink := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterWagerResponseSink")
 	var codex_navigation := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CodexNavigationRuntimeController")
 	var codex_public_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CodexPublicSnapshotService")
 	var monster_codex_public_snapshot := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterCodexPublicSnapshotService")
@@ -380,31 +388,63 @@ func _check_static_composition(main: Control) -> void:
 	_expect(district_supply_query != null and district_supply_query.scene_file_path == "res://scenes/runtime/presentation/DistrictSupplyViewerQueryPort.tscn" and district_supply_query.has_method("snapshot_for_viewer") and district_supply_query.has_method("debug_snapshot"), "GameRuntimeCoordinator owns one scene-owned viewer-safe DistrictSupplyViewerQueryPort")
 	var district_query_debug: Dictionary = district_supply_query.call("debug_snapshot") if district_supply_query != null else {}
 	_expect(not bool(district_query_debug.get("references_main", true)) and not bool(district_query_debug.get("mutates_gameplay", true)) and not bool(district_query_debug.get("opens_market_quote", true)) and not bool(district_query_debug.get("reads_future_supply_bag", true)), "district supply query declares a read-only non-Main presentation boundary before session wiring")
+	_expect(district_supply_runtime_query != null and district_supply_runtime_query.scene_file_path == "res://scenes/runtime/DistrictSupplyRuntimeQueryPort.tscn" and district_supply_runtime_query.has_method("public_card_ids_for_district") and district_supply_runtime_query.has_method("bind_ai_private_capability"), "GameRuntimeCoordinator owns one non-presentation DistrictSupplyRuntimeQueryPort with an explicit AI-private capability boundary")
+	var district_runtime_query_debug: Dictionary = district_supply_runtime_query.call("debug_snapshot") if district_supply_runtime_query != null else {}
+	_expect(not bool(district_runtime_query_debug.get("references_main", true)) and not bool(district_runtime_query_debug.get("mutates_gameplay", true)) and not bool(district_runtime_query_debug.get("reads_future_supply_bag", true)), "runtime district query is a read-only Main-free boundary")
+	_expect(card_target_choice_response_sink != null and card_target_choice_response_sink.scene_file_path == "res://scenes/runtime/CardTargetChoiceResponseSink.tscn" and card_target_choice_response_sink.has_method("consume_authorized_response"), "GameRuntimeCoordinator owns one scene-owned card target-choice response sink")
+	var target_response_debug: Dictionary = card_target_choice_response_sink.call("debug_snapshot") if card_target_choice_response_sink != null else {}
+	_expect(not bool(target_response_debug.get("references_main", true)) and not bool(target_response_debug.get("owns_target_choice", true)) and not bool(target_response_debug.get("owns_card_queue", true)) and not bool(target_response_debug.get("owns_monster_roster", true)) and not bool(target_response_debug.get("owns_player_state", true)), "target-choice response sink delegates to the existing owners without Main or duplicate state")
+	_expect(monster_wager_response_sink != null and monster_wager_response_sink.scene_file_path == "res://scenes/runtime/MonsterWagerResponseSink.tscn" and monster_wager_response_sink.has_method("consume_authorized_response"), "GameRuntimeCoordinator owns one scene-owned monster-wager response sink")
+	var wager_response_debug: Dictionary = monster_wager_response_sink.call("debug_snapshot") if monster_wager_response_sink != null else {}
+	_expect(not bool(wager_response_debug.get("references_main", true)) and not bool(wager_response_debug.get("owns_wager_state", true)) and not bool(wager_response_debug.get("owns_player_cash", true)) and not bool(wager_response_debug.get("owns_public_pool", true)) and not bool(wager_response_debug.get("owns_save_state", true)), "monster-wager response sink delegates to the existing owner without Main or duplicate state")
 	for retired_diagnostic in ["_development_route_profiles", "_card_strength_budget_report", "_development_route_balance_audit", "_development_route_pressure_audit", "_direct_interaction_balance_report", "_role_balance_audit", "_monster_ecology_balance_report", "_product_ecosystem_report", "_card_supply_product_filter_audit", "_card_one_glance_audit_report", "_runtime_balance_snapshot"]:
 		_expect(not main_source.contains("func %s(" % retired_diagnostic), "Sprint 62 deletes legacy main.gd diagnostic owner %s" % retired_diagnostic)
 	for retired_economy_formatter in ["_economy_city_public_clue_line", "_city_product_market_price_summary", "_city_demand_price_summary", "_city_income_detail_lines", "_district_transport_speed", "_first_run_teaching_supply_gate", "_join_first_card_facts", "_product_list_with_prices", "_product_trend_text", "_district_connection_summary"]:
 		_expect(not main_source.contains("func %s(" % retired_economy_formatter) and not main_source.contains("%s(" % retired_economy_formatter), "unused Main economy formatter stays physically absent: %s" % retired_economy_formatter)
-	var buy_start := main_source.find("func _buy_card_for_player_from_district(")
-	var buy_end := main_source.find("\nfunc ", buy_start + 5)
-	var buy_source := main_source.substr(buy_start, buy_end - buy_start) if buy_start >= 0 and buy_end > buy_start else ""
+	var district_action_source := FileAccess.get_file_as_string("res://scripts/runtime/district_supply_action_port.gd")
 	_expect(
-		main_source.contains("func _buy_card_for_player_from_district(")
-		and main_source.contains("func _district_supply_listing(")
-		and main_source.contains("func _district_supply_card_ids(")
-		and main_source.contains("func _district_supply_rack_revision(")
-		and buy_source.contains("plan_district_purchase_settlement")
-		and buy_source.contains("commit_district_purchase_with_region_supply")
-		and buy_source.contains("_district_supply_listing")
-		and not buy_source.contains("player[\"cash\"] =")
-		and not buy_source.contains("_record_player_card_spend(")
+		district_supply_action != null
+		and district_supply_action.scene_file_path == "res://scenes/runtime/DistrictSupplyActionPort.tscn"
+		and not district_action_source.contains("plan_district_purchase_settlement")
+		and not district_action_source.contains("commit_district_purchase_with_region_supply")
+		and district_action_source.contains("region_supply_listing")
+		and not district_action_source.contains("player[\"cash\"] =")
+		and not main_source.contains("func _buy_card_for_player_from_district(")
+		and not main_source.contains("func _open_district_supply_from_map(")
 		and not main_source.contains("func _assign_district_card_choices(")
 		and not main_source.contains("func _normalize_card_supply_state(")
 		and not main_source.contains("func _ensure_fixed_monster_card_supply(")
 		and not main_source.contains("func _inject_first_table_followup_card_supply(")
 		and not main_source.contains("district[\"card_choices\"]")
 		and not main_source.contains("district[\"card_sources\"]"),
-		"Main consumes the scene-owned RegionSupply rack and purchase refill lifecycle without restoring district shadow supply or guarantee-slot owners"
+		"DistrictSupplyActionPort coordinates the scene-owned purchase lifecycle and Main no longer owns rack actions"
 	)
+	for retired_district_query in [
+		"_district_region_id",
+		"_district_supply_listing",
+		"_district_supply_card_ids",
+		"_district_supply_rack_revision",
+		"_selected_district_card_choices",
+		"_sync_selected_district_card",
+		"_cycle_selected_district_card",
+		"_district_has_card",
+		"_card_market_preview",
+		"_district_market_availability",
+		"_district_market_currently_purchasable",
+		"_district_market_availability_kind",
+		"_district_market_availability_text",
+		"_district_purchase_inventory_snapshot",
+		"_district_purchase_inventory_plan",
+		"_player_can_receive_card",
+		"_discardable_hand_slots_for_purchase",
+		"_player_can_receive_card_with_discard",
+		"_purchase_requires_discard",
+		"_pending_discard_purchase_for_player",
+	]:
+		_expect(
+			not main_source.contains("func %s" % retired_district_query),
+			"DistrictSupplyRuntimeQueryPort keeps Main query helper retired: %s" % retired_district_query
+		)
 	var effect_router_source := FileAccess.get_file_as_string("res://scripts/runtime/card_effect_runtime_router.gd")
 	_expect(not main_source.contains("func _apply_player_hand_disrupt(") and not main_source.contains("func _apply_player_hand_steal(") and not main_source.contains("func _resolve_player_hand_interaction(") and effect_router_source.contains("func _resolve_player_interaction("), "typed effect routing deletes the three legacy Main interaction entry points")
 	var interaction_service_source := FileAccess.get_file_as_string("res://scripts/runtime/player_hand_interaction_runtime_service.gd")

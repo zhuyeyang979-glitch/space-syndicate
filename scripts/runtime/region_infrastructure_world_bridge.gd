@@ -16,6 +16,7 @@ var _controller: Node
 var _world: Node
 var _table_selection_state: TableSelectionState
 var _world_session_state: WorldSessionState
+var _district_supply_query: DistrictSupplyRuntimeQueryPort
 var _request_sequence := 0
 var _forward_count := 0
 var _failure_count := 0
@@ -41,6 +42,10 @@ func set_table_selection_state(state: TableSelectionState) -> void:
 
 func set_world_session_state(state: WorldSessionState) -> void:
 	_world_session_state = state
+
+
+func set_district_supply_runtime_query_port(query: DistrictSupplyRuntimeQueryPort) -> void:
+	_district_supply_query = query
 
 
 func world_session_state() -> WorldSessionState:
@@ -188,9 +193,9 @@ func region_codex_public_facts(legacy_index: int) -> Dictionary:
 	var district := districts[legacy_index] as Dictionary
 	var products_result := _region_codex_public_string_array(district.get("products", []))
 	var demands_result := _region_codex_public_string_array(district.get("demands", []))
-	var public_rack_variant: Variant = _world.call("_district_supply_card_ids", legacy_index) \
-		if _world.has_method("_district_supply_card_ids") \
-		else []
+	if _district_supply_query == null:
+		return _region_codex_public_unavailable(legacy_index, "region_codex_public_supply_query_unavailable", districts.size())
+	var public_rack_variant: Variant = _district_supply_query.public_card_ids_for_district(legacy_index)
 	var cards_result := _region_codex_public_string_array(public_rack_variant)
 	var neighbors_result := _region_codex_public_index_array(district.get("neighbors", []), districts.size())
 	for result_variant: Variant in [products_result, demands_result, cards_result, neighbors_result]:

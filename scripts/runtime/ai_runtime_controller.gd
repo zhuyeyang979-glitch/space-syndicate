@@ -4,11 +4,6 @@ class_name AiRuntimeController
 
 const CardPlayRequirementPolicyScript := preload("res://scripts/cards/card_play_requirement_policy.gd")
 const DEFAULT_POLICY_PROFILE := preload("res://resources/ai/ai_policy_profile_v1.tres")
-const AiV06EconomyActionPortScript := preload("res://scripts/runtime/ai_v06_economy_action_port.gd")
-
-const AI_V06_FACILITY_BOOTSTRAP_POLICY_KIND := "v06_facility_bootstrap"
-const AI_V06_FACILITY_CATEGORY := "facility"
-const AI_V06_FACILITY_EFFECT_KIND := "build_upgrade_or_repair_facility"
 
 @export var policy_profile: Resource = DEFAULT_POLICY_PROFILE
 
@@ -26,17 +21,14 @@ var _route_network_runtime_controller: RouteNetworkRuntimeController
 var _visual_cue_runtime_owner: VisualCueRuntimeOwner
 var _card_play_submission_controller: CardPlaySubmissionRuntimeController
 var _card_resolution_history_service: CardResolutionHistoryRuntimeService
-var _v06_economy_action_port: RefCounted
+var _district_supply_action_port: DistrictSupplyActionPort
+var _district_supply_runtime_query_port: DistrictSupplyRuntimeQueryPort
+var _district_supply_ai_query_capability: DistrictSupplyAiQueryCapability
+var _cash_commitment_query_port: MonsterWagerCashCommitmentQueryPort
 var _ruleset_snapshot: Dictionary = {}
 var _policy_main_payload: Dictionary = {}
 var _configured := false
 var _last_receipts: Array = []
-var _v06_facility_bootstrap_attempt_count := 0
-var _v06_facility_bootstrap_success_count := 0
-var _v06_facility_bootstrap_last_public := {
-	"state": "idle",
-	"reason_code": "ai_v06_facility_bootstrap_idle",
-}
 var ai_card_decision_timer := 2.2
 var ai_auction_reaction_timer := 0.7
 var ai_intel_decision_timer := 5.5
@@ -99,9 +91,20 @@ func set_card_execution_dependencies(
 	_card_resolution_history_service = history_service
 
 
-func set_v06_economy_action_port(port: RefCounted) -> Dictionary:
-	_v06_economy_action_port = port
-	return _ai_v06_economy_port_capability()
+func set_district_supply_action_port(port: DistrictSupplyActionPort) -> void:
+	_district_supply_action_port = port
+
+
+func set_district_supply_runtime_query_port(
+	port: DistrictSupplyRuntimeQueryPort,
+	capability: DistrictSupplyAiQueryCapability
+) -> void:
+	_district_supply_runtime_query_port = port
+	_district_supply_ai_query_capability = capability
+
+
+func set_cash_commitment_query_port(port: MonsterWagerCashCommitmentQueryPort) -> void:
+	_cash_commitment_query_port = port
 
 
 func new_session_identity_for_seat(player_index: int, human_player_count: int) -> Dictionary:
@@ -147,12 +150,6 @@ func reset_state() -> void:
 	ai_intel_decision_timer = float(_policy_value("timing", "intel_decision_interval_seconds", 5.5))
 	ai_card_decision_enabled = true
 	_last_receipts.clear()
-	_v06_facility_bootstrap_attempt_count = 0
-	_v06_facility_bootstrap_success_count = 0
-	_v06_facility_bootstrap_last_public = {
-		"state": "idle",
-		"reason_code": "ai_v06_facility_bootstrap_idle",
-	}
 
 
 func capture_new_session_checkpoint() -> Dictionary:
@@ -164,9 +161,6 @@ func capture_new_session_checkpoint() -> Dictionary:
 		"ai_intel_decision_timer": ai_intel_decision_timer,
 		"ai_card_decision_enabled": ai_card_decision_enabled,
 		"last_receipts": _last_receipts.duplicate(true),
-		"facility_bootstrap_attempt_count": _v06_facility_bootstrap_attempt_count,
-		"facility_bootstrap_success_count": _v06_facility_bootstrap_success_count,
-		"facility_bootstrap_last_public": _v06_facility_bootstrap_last_public.duplicate(true),
 	}
 
 
@@ -181,9 +175,6 @@ func restore_new_session_checkpoint(checkpoint: Dictionary) -> Dictionary:
 	ai_intel_decision_timer = float(checkpoint.get("ai_intel_decision_timer", 0.0))
 	ai_card_decision_enabled = bool(checkpoint.get("ai_card_decision_enabled", true))
 	_last_receipts = (checkpoint.get("last_receipts", []) as Array).duplicate(true)
-	_v06_facility_bootstrap_attempt_count = int(checkpoint.get("facility_bootstrap_attempt_count", 0))
-	_v06_facility_bootstrap_success_count = int(checkpoint.get("facility_bootstrap_success_count", 0))
-	_v06_facility_bootstrap_last_public = (checkpoint.get("facility_bootstrap_last_public", {}) as Dictionary).duplicate(true)
 	return {"restored": true, "reason_code": "ai_new_session_checkpoint_restored"}
 
 
@@ -393,17 +384,20 @@ func _call_monster(method_name: StringName, arguments: Array = []) -> Variant:
 	return _monster_runtime_controller.callv(method_name, arguments)
 
 
+func _active_monster_wager_ids() -> Array:
+	var result: Variant = _call_monster(&"active_wager_ids_snapshot")
+	return (result as Array).duplicate() if result is Array else []
+
+
+func _monster_wager_decision_snapshot_for_actor(wager_id: int, player_index: int) -> Dictionary:
+	var result: Variant = _call_monster(&"monster_wager_decision_snapshot_for_actor", [wager_id, player_index])
+	return (result as Dictionary).duplicate(true) if result is Dictionary else {}
+
+
 func _policy_value(group: String, field: String, default_value: Variant) -> Variant:
 	var group_variant: Variant = _policy_main_payload.get(group, {})
 	return (group_variant as Dictionary).get(field, default_value) if group_variant is Dictionary else default_value
 
-
-var active_monster_wagers:
-	get:
-		return _monster_runtime_controller.active_monster_wagers if _monster_runtime_controller != null else []
-	set(value):
-		if _monster_runtime_controller != null and value is Array:
-			_monster_runtime_controller.active_monster_wagers = (value as Array).duplicate(true)
 
 var auto_monsters:
 	get:
@@ -1029,6 +1023,11 @@ func _signed_int_text(value: int) -> String:
 	return _call_world(&"_signed_int_text", [value])
 
 func _card_price(skill_name: String, district_index: int = -1, player_index: int = -1) -> int:
+	if district_index >= 0:
+		if _district_supply_runtime_query_port == null:
+			return 0
+		var preview := _district_supply_runtime_query_port.public_price_preview(district_index, skill_name)
+		return int(preview.get("final_price", 0)) if not preview.is_empty() else 0
 	return _call_world(&"_card_price", [skill_name, district_index, player_index])
 
 func _card_strength_budget_points(card_name: String) -> int:
@@ -1074,7 +1073,13 @@ func _player_role_card_for_index(player_index: int) -> Dictionary:
 	return _call_monster(&"_player_role_card_for_index", [player_index])
 
 func _district_or_city_has_product(district_index: int, product_name: String) -> bool:
-	return _call_world(&"_district_or_city_has_product", [district_index, product_name])
+	if product_name.is_empty() or district_index < 0 or district_index >= districts.size():
+		return false
+	var district: Dictionary = districts[district_index] if districts[district_index] is Dictionary else {}
+	if (district.get("products", []) as Array).has(product_name) or (district.get("demands", []) as Array).has(product_name):
+		return true
+	var city := _district_city(district_index)
+	return _city_is_active(city) and (_city_product_names(city).has(product_name) or _city_demand_names(city).has(product_name))
 
 func _skill_exists(skill_name: String) -> bool:
 	return _card_definition_bridge.has_runtime_card(skill_name) if _card_definition_bridge != null else false
@@ -1101,7 +1106,13 @@ func _normalize_city_public_clue_entry(value: Variant) -> Dictionary:
 	return _call_world(&"_normalize_city_public_clue_entry", [value])
 
 func _apply_rival_business_action(player_index: int, action: Dictionary) -> bool:
-	return _call_world(&"_apply_rival_business_action", [player_index, action])
+	var bridge := _world_bridge as AiRuntimeWorldBridge
+	var state := bridge.world_session_state() if bridge != null else null
+	var before_cash := state.private_player_cash_snapshot(player_index) if state != null else {}
+	var applied := bool(_call_world(&"_apply_rival_business_action", [player_index, action]))
+	if applied and state != null:
+		return bool(state.reconcile_private_player_cash_after_unit_mutation(player_index, before_cash).get("reconciled", false))
+	return applied
 
 func _mark_city_guess_for_player(viewer_index: int, city_index: int, guessed_player: int, confidence: int = CITY_GUESS_CONFIDENCE_DEFAULT, reason: String = CITY_GUESS_REASON_DEFAULT) -> bool:
 	var bridge := _world_bridge as AiRuntimeWorldBridge
@@ -1127,8 +1138,8 @@ func _monster_wager_base_percent(entry: Dictionary) -> int:
 func _monster_wager_clamped_percent(entry: Dictionary, percent: int) -> int:
 	return _call_monster(&"_monster_wager_clamped_percent", [entry, percent])
 
-func _monster_wager_amount_for_percent(player_index: int, percent: int) -> int:
-	return _call_monster(&"_monster_wager_amount_for_percent", [player_index, percent])
+func _monster_wager_amount_for_percent(player_index: int, percent: int, entry: Dictionary = {}) -> int:
+	return _call_monster(&"_monster_wager_amount_for_percent", [player_index, percent, entry])
 
 func _pending_contract_offers_for_player(player_index: int) -> Array:
 	return _contract_runtime_controller.offers_for_player(player_index) if _contract_runtime_controller != null else []
@@ -1196,8 +1207,8 @@ func _canonical_card_supply_name(skill_name: String) -> String:
 	return _call_world(&"_canonical_card_supply_name", [skill_name])
 
 func _district_supply_card_ids(district_index: int) -> Array:
-	var value: Variant = _call_world(&"_district_supply_card_ids", [district_index])
-	return (value as Array).duplicate() if value is Array else []
+	return _district_supply_runtime_query_port.public_card_ids_for_district(district_index) \
+		if _district_supply_runtime_query_port != null else []
 
 func _alive_district_indices() -> Array:
 	return _call_world(&"_alive_district_indices")
@@ -1235,7 +1246,8 @@ func _route_network_load_for_legacy_region(index: int) -> int:
 	return _route_network_runtime_controller.route_load_for_legacy_region(index) if _route_network_runtime_controller != null else 0
 
 func _market_listing_purchasable(district_index: int) -> bool:
-	return _call_world(&"_district_market_currently_purchasable", [district_index])
+	return _district_supply_runtime_query_port.public_market_purchasable(district_index) \
+		if _district_supply_runtime_query_port != null else false
 
 func _skill_rank(skill_name: String) -> int:
 	return _card_definition_bridge.rank(skill_name) if _card_definition_bridge != null else 0
@@ -1252,14 +1264,25 @@ func _find_highest_family_card_slot(player: Dictionary, skill_name: String) -> i
 func _player_counted_hand_size(player: Dictionary) -> int:
 	return _call_world(&"_player_counted_hand_size", [player])
 
-func _discardable_hand_slots_for_purchase(player: Dictionary) -> Array:
-	return _call_world(&"_discardable_hand_slots_for_purchase", [player])
+func _discardable_hand_slots_for_purchase(player_index: int) -> Array:
+	return _district_supply_runtime_query_port.private_discardable_slots_for_actor(
+		_district_supply_ai_query_capability,
+		player_index
+	) if _district_supply_runtime_query_port != null else []
 
-func _player_can_receive_card_with_discard(player: Dictionary, skill_name: String) -> bool:
-	return _call_world(&"_player_can_receive_card_with_discard", [player, skill_name])
+func _player_can_receive_card_with_discard(player_index: int, skill_name: String) -> bool:
+	return _district_supply_runtime_query_port.private_can_receive_with_discard(
+		_district_supply_ai_query_capability,
+		player_index,
+		skill_name
+	) if _district_supply_runtime_query_port != null else false
 
-func _purchase_requires_discard(player: Dictionary, skill_name: String) -> bool:
-	return _call_world(&"_purchase_requires_discard", [player, skill_name])
+func _purchase_requires_discard(player_index: int, skill_name: String) -> bool:
+	return _district_supply_runtime_query_port.private_requires_discard(
+		_district_supply_ai_query_capability,
+		player_index,
+		skill_name
+	) if _district_supply_runtime_query_port != null else false
 
 func _city_warehouse_stockpile_pressure(city: Dictionary) -> int:
 	return _call_monster(&"_city_warehouse_stockpile_pressure", [city])
@@ -1289,8 +1312,10 @@ func _city_gdp_derivative_risk_adjusted_value(terms: Dictionary) -> int:
 func _interaction_target_label(player_index: int) -> String:
 	return _call_world(&"_interaction_target_label", [player_index])
 
-func _buy_card_for_player_from_district(player_index: int, district_index: int, skill_name: String, anonymous: bool = false, ignore_cooldown: bool = false, discard_slot: int = -1) -> bool:
-	return _call_world(&"_buy_card_for_player_from_district", [player_index, district_index, skill_name, anonymous, ignore_cooldown, discard_slot])
+func _buy_card_for_player_from_district(player_index: int, district_index: int, skill_name: String, _anonymous: bool = false, _ignore_cooldown: bool = false, discard_slot: int = -1) -> bool:
+	if _district_supply_action_port == null:
+		return false
+	return _district_supply_action_port.submit_ai_purchase(player_index, district_index, skill_name, discard_slot)
 
 func _skill_targets_monster(skill: Dictionary) -> bool:
 	var value: Variant = _call_world(&"_card_play_target_snapshot", [skill])
@@ -1352,7 +1377,8 @@ func _monster_wager_player_side(entry: Dictionary, player_index: int) -> String:
 	return _call_monster(&"_monster_wager_player_side", [entry, player_index])
 
 func _place_monster_wager_percent(wager_id: int, side: String, stake_percent: int = 0, player_index: int = -1, forced: bool = false, metadata: Dictionary = {}) -> bool:
-	return _call_monster(&"_place_monster_wager_percent", [wager_id, side, stake_percent, player_index, forced, metadata])
+	var response: Variant = _call_monster(&"submit_monster_wager_response", [wager_id, player_index, StringName(side), stake_percent, forced, metadata])
+	return bool((response as Dictionary).get("applied", false)) if response is Dictionary else false
 
 func _monster_wager_actor_expected_damage_score(actor: Dictionary) -> int:
 	return _call_monster(&"_monster_wager_actor_expected_damage_score", [actor])
@@ -1603,7 +1629,7 @@ func _rival_business_candidates_for_player(player_index: int) -> Array:
 	var result := []
 	if player_index < 0 or player_index >= players.size() or not _player_is_ai(player_index):
 		return result
-	if int(players[player_index].get("cash", 0)) < RIVAL_BUSINESS_ACTION_COST:
+	if _spendable_cash_units(player_index) < RIVAL_BUSINESS_ACTION_COST:
 		return result
 	_ensure_product_market_catalog()
 	var focus_product := _ai_focus_product(player_index)
@@ -1746,7 +1772,7 @@ func _auto_rival_business_actions(force: bool = false) -> int:
 		if acted >= limit:
 			break
 		var player_index := int(player_index_variant)
-		if int(players[player_index].get("cash", 0)) < RIVAL_BUSINESS_ACTION_COST:
+		if _spendable_cash_units(player_index) < RIVAL_BUSINESS_ACTION_COST:
 			continue
 		if not force and rng.randi_range(1, 100) > RIVAL_BUSINESS_ACTION_CHANCE_PERCENT:
 			continue
@@ -1785,6 +1811,14 @@ func _auto_rival_business_actions(force: bool = false) -> int:
 		_log("经营暗流：%d次匿名商业行动留下公开线索，但没有揭示真实业主。" % acted)
 		_request_table_presentation_refresh()
 	return acted
+
+
+func _spendable_cash_units(player_index: int) -> int:
+	if _cash_commitment_query_port != null:
+		return _cash_commitment_query_port.available_cash_units(player_index)
+	if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary):
+		return 0
+	return maxi(0, int((players[player_index] as Dictionary).get("cash", 0)))
 func _ai_development_route_preference_audit() -> Dictionary:
 	var coverage := {}
 	for profile_variant in AI_PERSONALITY_CATALOG:
@@ -3814,10 +3848,11 @@ func _ai_monster_wager_policy_candidates_for_audit(player_index: int) -> Array:
 	var result := []
 	if not _player_is_ai(player_index):
 		return result
-	for wager_variant in active_monster_wagers:
-		if not (wager_variant is Dictionary):
+	for wager_id_variant: Variant in _active_monster_wager_ids():
+		var wager := _monster_wager_decision_snapshot_for_actor(int(wager_id_variant), player_index)
+		if wager.is_empty():
 			continue
-		var plan := _ai_monster_wager_plan(player_index, wager_variant as Dictionary)
+		var plan := _ai_monster_wager_plan(player_index, wager)
 		if plan.is_empty():
 			continue
 		plan["action"] = "monster_wager"
@@ -7121,8 +7156,8 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 		if not _market_listing_purchasable(district_index) or bool(districts[district_index].get("destroyed", false)):
 			continue
 		for card_variant in _district_supply_card_ids(district_index):
-			var card_name := _canonical_card_supply_name(String(card_variant))
-			if card_name == "" or not _player_can_receive_card_with_discard(player, card_name):
+			var card_name := String(card_variant)
+			if card_name == "" or not _player_can_receive_card_with_discard(player_index, card_name):
 				continue
 			var price := _card_price(card_name, district_index, player_index)
 			if cash - price < AI_CARD_BUY_MIN_CASH_RESERVE:
@@ -7133,7 +7168,7 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 			var development_route_bias := _ai_development_route_bias(player_index, development_route)
 			var development_route_bonus := _ai_development_route_bonus(player_index, development_route)
 			var score := 55 + int(skill.get("cost", 2)) * 11 - int(round(float(price) / 12.0))
-			var needs_discard := _purchase_requires_discard(player, card_name)
+			var needs_discard := _purchase_requires_discard(player_index, card_name)
 			var discard_slot := -1
 			var discard_keep_value := 0
 			var hand_pressure_penalty := 0
@@ -7431,341 +7466,6 @@ func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_cand
 	selected_contract_source_district = previous_source
 	selected_contract_target_district = previous_target
 	return queued
-func ai_v06_facility_bootstrap_public_snapshot() -> Dictionary:
-	var capability := _ai_v06_economy_port_capability()
-	return {
-		"available": bool(capability.get("available", false)),
-		"revision": 1,
-		"reason_code": str(_v06_facility_bootstrap_last_public.get("reason_code", "ai_v06_facility_bootstrap_idle")),
-		"state": str(_v06_facility_bootstrap_last_public.get("state", "idle")),
-		"attempt_count": _v06_facility_bootstrap_attempt_count,
-		"success_count": _v06_facility_bootstrap_success_count,
-	}
-
-
-func execute_v06_facility_bootstrap_cycle(force: bool = false) -> Dictionary:
-	return _auto_ai_v06_facility_bootstrap(force)
-
-
-func _ai_v06_economy_port_capability() -> Dictionary:
-	if _v06_economy_action_port == null or not is_instance_valid(_v06_economy_action_port) or not _v06_economy_action_port.has_method("capability_snapshot"):
-		return {
-			"available": false,
-			"revision": 0,
-			"reason_code": "ai_v06_economy_port_unavailable",
-		}
-	var value_variant: Variant = _v06_economy_action_port.call("capability_snapshot")
-	return (value_variant as Dictionary).duplicate(true) if value_variant is Dictionary else {
-		"available": false,
-		"revision": 0,
-		"reason_code": "ai_v06_economy_port_capability_invalid",
-	}
-
-
-func _ai_v06_facility_failure(reason_code: String, attempted: bool = false) -> Dictionary:
-	return {
-		"available": false,
-		"attempted": attempted,
-		"committed": false,
-		"finalized": false,
-		"reason_code": reason_code,
-	}
-
-
-func _ai_v06_actor_id(player_index: int) -> String:
-	if player_index < 0 or _v06_economy_action_port == null or not _v06_economy_action_port.has_method("actor_id_for_player_index"):
-		return ""
-	var identity_variant: Variant = _v06_economy_action_port.call("actor_id_for_player_index", player_index)
-	var identity: Dictionary = identity_variant if identity_variant is Dictionary else {}
-	if not bool(identity.get("available", false)):
-		return ""
-	return str(identity.get("actor_id", "")).strip_edges()
-
-
-func _ai_v06_starter_status(actor_id: String) -> Dictionary:
-	if actor_id.is_empty() or _monster_runtime_controller == null or not _monster_runtime_controller.has_method("monster_starter_state_snapshot_v06"):
-		return {
-			"available": false,
-			"reason_code": "ai_v06_starter_owner_unavailable",
-		}
-	var value_variant: Variant = _monster_runtime_controller.call("monster_starter_state_snapshot_v06", actor_id)
-	if not (value_variant is Dictionary):
-		return {
-			"available": false,
-			"reason_code": "ai_v06_starter_snapshot_invalid",
-		}
-	var snapshot := value_variant as Dictionary
-	if not bool(snapshot.get("available", false)):
-		return {
-			"available": false,
-			"reason_code": str(snapshot.get("reason_code", "ai_v06_starter_snapshot_unavailable")),
-		}
-	if str(snapshot.get("state", "")) != "summoned" or int(snapshot.get("unit_uid", 0)) <= 0:
-		return {
-			"available": false,
-			"reason_code": "ai_v06_starter_not_completed",
-		}
-	return {
-		"available": true,
-		"reason_code": "ai_v06_starter_completed",
-	}
-
-
-func _ai_v06_authoritative_target_region(primary: Dictionary, fallback: Dictionary = {}) -> String:
-	for snapshot in [primary, fallback]:
-		var target_region_id := str((snapshot as Dictionary).get("target_region_id", "")).strip_edges()
-		if not target_region_id.is_empty():
-			return target_region_id
-		var legal_regions_variant: Variant = (snapshot as Dictionary).get("legal_region_ids", [])
-		if not (legal_regions_variant is Array):
-			continue
-		for region_id_variant in legal_regions_variant as Array:
-			var region_id := str(region_id_variant).strip_edges()
-			if not region_id.is_empty():
-				return region_id
-	return ""
-
-
-func _ai_v06_facility_card_binding(player_snapshot: Dictionary, expected_card_id: String = "") -> Dictionary:
-	var cards_variant: Variant = player_snapshot.get("cards", [])
-	if not (cards_variant is Array):
-		return {}
-	for card_variant in cards_variant as Array:
-		if not (card_variant is Dictionary):
-			continue
-		var card := card_variant as Dictionary
-		if not bool(card.get("bootstrap_eligible", false)) \
-				or str(card.get("category_id", "")) != AI_V06_FACILITY_CATEGORY \
-				or int(card.get("rank", 0)) != 1 \
-				or str(card.get("effect_kind", "")) != AI_V06_FACILITY_EFFECT_KIND:
-			continue
-		if not expected_card_id.is_empty() and str(card.get("card_id", "")) != expected_card_id:
-			continue
-		var slot_index := int(card.get("slot_index", -1))
-		var runtime_instance_id := str(card.get("runtime_instance_id", "")).strip_edges()
-		if slot_index < 0 or runtime_instance_id.is_empty():
-			continue
-		return {
-			"slot_index": slot_index,
-			"runtime_instance_id": runtime_instance_id,
-		}
-	return {}
-
-
-func _ai_v06_facility_listing(market_snapshot: Dictionary) -> Dictionary:
-	var listing_variant: Variant = market_snapshot.get("listing", {})
-	if not (listing_variant is Dictionary):
-		return {}
-	var listing := listing_variant as Dictionary
-	if not bool(listing.get("canonical", false)) \
-			or not bool(listing.get("bootstrap_eligible", false)) \
-			or str(listing.get("category_id", "")) != AI_V06_FACILITY_CATEGORY \
-			or int(listing.get("rank", 0)) != 1 \
-			or str(listing.get("effect_kind", "")) != AI_V06_FACILITY_EFFECT_KIND:
-		return {}
-	var item_id := str(listing.get("item_id", "")).strip_edges()
-	var card_id := str(listing.get("card_id", "")).strip_edges()
-	var purchase_cash := int(listing.get("purchase_cash", -1))
-	if item_id.is_empty() or card_id.is_empty() or purchase_cash < 0:
-		return {}
-	return {
-		"item_id": item_id,
-		"card_id": card_id,
-		"purchase_cash": purchase_cash,
-		"target_region_id": str(listing.get("target_region_id", "")).strip_edges(),
-		"legal_region_ids": (listing.get("legal_region_ids", []) as Array).duplicate(true) if listing.get("legal_region_ids", []) is Array else [],
-	}
-
-
-func _ai_v06_facility_bootstrap_candidate(player_index: int, force: bool = false) -> Dictionary:
-	var capability := _ai_v06_economy_port_capability()
-	if not bool(capability.get("available", false)):
-		return _ai_v06_facility_failure(str(capability.get("reason_code", "ai_v06_economy_port_unavailable")))
-	if not _configured or not _world_ready() or player_index < 0 or not _player_is_ai(player_index) or _player_is_eliminated(player_index):
-		return _ai_v06_facility_failure("ai_v06_facility_player_unavailable")
-	var world_players: Array = players
-	if player_index >= world_players.size() or not (world_players[player_index] is Dictionary):
-		return _ai_v06_facility_failure("ai_v06_facility_player_unavailable")
-	var world_player := world_players[player_index] as Dictionary
-	if not force and float(world_player.get("action_cooldown", 0.0)) > 0.0:
-		return _ai_v06_facility_failure("ai_v06_facility_action_cooldown")
-	var actor_id := _ai_v06_actor_id(player_index)
-	if actor_id.is_empty():
-		return _ai_v06_facility_failure("ai_v06_facility_actor_missing")
-	var starter_status := _ai_v06_starter_status(actor_id)
-	if not bool(starter_status.get("available", false)):
-		return _ai_v06_facility_failure(str(starter_status.get("reason_code", "ai_v06_starter_not_completed")))
-	var source_variant: Variant = _v06_economy_action_port.call("economic_source_snapshot", actor_id)
-	var source_snapshot: Dictionary = (source_variant as Dictionary).duplicate(true) if source_variant is Dictionary else {}
-	if not bool(source_snapshot.get("available", false)):
-		return _ai_v06_facility_failure(str(source_snapshot.get("reason_code", "ai_v06_economic_source_unavailable")))
-	var source_revision := int(source_snapshot.get("revision", -1))
-	if source_revision < 0:
-		return _ai_v06_facility_failure("ai_v06_economic_source_revision_invalid")
-	if bool(source_snapshot.get("has_source", false)):
-		return _ai_v06_facility_failure("ai_v06_economic_source_already_exists")
-	if bool(source_snapshot.get("bootstrap_finalized", false)):
-		return _ai_v06_facility_failure("ai_v06_facility_bootstrap_already_finalized")
-	var player_variant: Variant = _v06_economy_action_port.call("player_snapshot", actor_id)
-	var player_snapshot: Dictionary = (player_variant as Dictionary).duplicate(true) if player_variant is Dictionary else {}
-	if not bool(player_snapshot.get("available", false)):
-		return _ai_v06_facility_failure(str(player_snapshot.get("reason_code", "ai_v06_player_snapshot_unavailable")))
-	var player_revision := int(player_snapshot.get("revision", -1))
-	if player_revision < 0 or not player_snapshot.has("cash"):
-		return _ai_v06_facility_failure("ai_v06_player_snapshot_invalid")
-	var existing_card := _ai_v06_facility_card_binding(player_snapshot)
-	if not existing_card.is_empty():
-		var existing_target_region_id := _ai_v06_authoritative_target_region(source_snapshot)
-		if existing_target_region_id.is_empty():
-			return _ai_v06_facility_failure("ai_v06_facility_authoritative_target_unavailable")
-		return {
-			"available": true,
-			"reason_code": "ai_v06_facility_existing_card_ready",
-			"policy_kind": AI_V06_FACILITY_BOOTSTRAP_POLICY_KIND,
-			"action_kind": "play_existing_facility",
-			"player_index": player_index,
-			"actor_id": actor_id,
-			"region_id": existing_target_region_id,
-			"expected_player_revision": player_revision,
-			"expected_source_revision": source_revision,
-			"purchase_required": false,
-		}
-	var market_variant: Variant = _v06_economy_action_port.call("market_snapshot", actor_id)
-	var market_snapshot: Dictionary = (market_variant as Dictionary).duplicate(true) if market_variant is Dictionary else {}
-	if not bool(market_snapshot.get("available", false)):
-		return _ai_v06_facility_failure(str(market_snapshot.get("reason_code", "ai_v06_market_snapshot_unavailable")))
-	var market_revision := int(market_snapshot.get("revision", -1))
-	var listing := _ai_v06_facility_listing(market_snapshot)
-	if market_revision < 0 or listing.is_empty():
-		return _ai_v06_facility_failure("ai_v06_canonical_rank_i_facility_unavailable")
-	var region_id := _ai_v06_authoritative_target_region(listing, source_snapshot)
-	if region_id.is_empty():
-		return _ai_v06_facility_failure("ai_v06_facility_authoritative_target_unavailable")
-	if int(player_snapshot.get("cash", -1)) < int(listing.get("purchase_cash", 0)):
-		return _ai_v06_facility_failure("ai_v06_facility_cash_insufficient")
-	return {
-		"available": true,
-		"reason_code": "ai_v06_facility_purchase_ready",
-		"policy_kind": AI_V06_FACILITY_BOOTSTRAP_POLICY_KIND,
-		"action_kind": "purchase_and_play_facility",
-		"player_index": player_index,
-		"actor_id": actor_id,
-		"region_id": region_id,
-		"item_id": str(listing.get("item_id", "")),
-		"card_id": str(listing.get("card_id", "")),
-		"expected_market_revision": market_revision,
-		"expected_player_revision": player_revision,
-		"expected_source_revision": source_revision,
-		"purchase_required": true,
-	}
-
-
-func _ai_v06_facility_transaction_id(operation: String, binding: Dictionary) -> String:
-	return "ai-v06-%s:%s" % [operation, JSON.stringify(binding).sha256_text()]
-
-
-func _ai_execute_v06_facility_bootstrap_for_player(player_index: int, force: bool = false) -> Dictionary:
-	var candidate := _ai_v06_facility_bootstrap_candidate(player_index, force)
-	if not bool(candidate.get("available", false)):
-		return candidate
-	var actor_id := str(candidate.get("actor_id", ""))
-	var expected_card_id := str(candidate.get("card_id", ""))
-	if bool(candidate.get("purchase_required", false)):
-		var purchase_transaction_id := _ai_v06_facility_transaction_id("facility-purchase", {
-			"actor_id": actor_id,
-			"item_id": str(candidate.get("item_id", "")),
-			"market_revision": int(candidate.get("expected_market_revision", -1)),
-			"player_revision": int(candidate.get("expected_player_revision", -1)),
-			"source_revision": int(candidate.get("expected_source_revision", -1)),
-		})
-		var purchase_variant: Variant = _v06_economy_action_port.call(
-			"purchase_rank_i_facility",
-			actor_id,
-			str(candidate.get("item_id", "")),
-			purchase_transaction_id,
-			int(candidate.get("expected_market_revision", -1)),
-			int(candidate.get("expected_player_revision", -1)),
-			int(candidate.get("expected_source_revision", -1))
-		)
-		var purchase: Dictionary = (purchase_variant as Dictionary).duplicate(true) if purchase_variant is Dictionary else {}
-		if not bool(purchase.get("available", false)) or not bool(purchase.get("committed", false)):
-			return _ai_v06_facility_failure(str(purchase.get("reason_code", "ai_v06_facility_purchase_rejected")), true)
-	var player_variant: Variant = _v06_economy_action_port.call("player_snapshot", actor_id)
-	var player_snapshot: Dictionary = (player_variant as Dictionary).duplicate(true) if player_variant is Dictionary else {}
-	if not bool(player_snapshot.get("available", false)):
-		return _ai_v06_facility_failure(str(player_snapshot.get("reason_code", "ai_v06_player_snapshot_unavailable")), true)
-	var card_binding := _ai_v06_facility_card_binding(player_snapshot, expected_card_id)
-	if card_binding.is_empty():
-		return _ai_v06_facility_failure("ai_v06_purchased_facility_binding_missing", true)
-	var runtime_instance_id := str(card_binding.get("runtime_instance_id", ""))
-	var play_transaction_id := _ai_v06_facility_transaction_id("facility-play", {
-		"actor_id": actor_id,
-		"region_id": str(candidate.get("region_id", "")),
-		"runtime_instance_id": runtime_instance_id,
-	})
-	var play_variant: Variant = _v06_economy_action_port.call("play_runtime_card", {
-		"actor_id": actor_id,
-		"slot_index": int(card_binding.get("slot_index", -1)),
-		"runtime_instance_id": runtime_instance_id,
-		"transaction_id": play_transaction_id,
-		"region_id": str(candidate.get("region_id", "")),
-		"expected_player_revision": int(player_snapshot.get("revision", -1)),
-		"expected_source_revision": int(candidate.get("expected_source_revision", -1)),
-	})
-	var play: Dictionary = (play_variant as Dictionary).duplicate(true) if play_variant is Dictionary else {}
-	if not bool(play.get("available", false)) or not bool(play.get("committed", false)):
-		return _ai_v06_facility_failure(str(play.get("reason_code", "ai_v06_facility_play_rejected")), true)
-	var finalization: Dictionary = play.get("effect_finalization", {}) if play.get("effect_finalization", {}) is Dictionary else {}
-	if not bool(play.get("finalized", finalization.get("finalized", false))):
-		return _ai_v06_facility_failure("ai_v06_facility_play_not_finalized", true)
-	return {
-		"available": true,
-		"attempted": true,
-		"committed": true,
-		"finalized": true,
-		"reason_code": "ai_v06_facility_bootstrap_finalized",
-	}
-
-
-func _auto_ai_v06_facility_bootstrap(force: bool = false) -> Dictionary:
-	if session_finished or not ai_card_decision_enabled:
-		return {
-			"available": false,
-			"revision": 1,
-			"acted": 0,
-			"attempted": 0,
-			"reason_code": "ai_v06_facility_bootstrap_disabled",
-		}
-	var acted := 0
-	var attempted := 0
-	for player_index_variant in _ai_player_indices():
-		var result := _ai_execute_v06_facility_bootstrap_for_player(int(player_index_variant), force)
-		if bool(result.get("attempted", false)):
-			attempted += 1
-			_v06_facility_bootstrap_attempt_count += 1
-		if bool(result.get("committed", false)) and bool(result.get("finalized", false)):
-			acted = 1
-			_v06_facility_bootstrap_success_count += 1
-			break
-	var port_available := bool(_ai_v06_economy_port_capability().get("available", false))
-	var public_reason := "ai_v06_facility_bootstrap_finalized" if acted > 0 else (
-		"ai_v06_facility_bootstrap_attempted" if attempted > 0 else (
-			"ai_v06_facility_bootstrap_no_action" if port_available else "ai_v06_facility_bootstrap_unavailable"
-		)
-	)
-	_v06_facility_bootstrap_last_public = {
-		"state": "finalized" if acted > 0 else ("attempted" if attempted > 0 else "idle"),
-		"reason_code": public_reason,
-	}
-	return {
-		"available": port_available,
-		"revision": 1,
-		"acted": acted,
-		"attempted": attempted,
-		"reason_code": public_reason,
-	}
-
-
 func _ai_execute_card_turn(player_index: int, force: bool = false) -> String:
 	var play_candidates := _ai_card_play_candidates(player_index)
 	var play_choice := _ai_pick_candidate(player_index, play_candidates, force)
@@ -8337,9 +8037,7 @@ func _update_ai_decisions(delta: float) -> void:
 		ai_auction_reaction_timer = AI_AUCTION_REACTION_INTERVAL_SECONDS
 	ai_card_decision_timer -= delta
 	if ai_card_decision_timer <= 0.0:
-		var bootstrap := execute_v06_facility_bootstrap_cycle(false)
-		if int(bootstrap.get("acted", 0)) <= 0:
-			_auto_ai_card_decisions(false)
+		_auto_ai_card_decisions(false)
 		ai_card_decision_timer = AI_CARD_DECISION_INTERVAL_SECONDS
 	ai_intel_decision_timer -= delta
 	if ai_intel_decision_timer <= 0.0:
@@ -8367,8 +8065,7 @@ func _ai_discard_keep_value(player_index: int, slot_index: int) -> int:
 func _ai_discard_slot_for_purchase(player_index: int, _incoming_card_name: String) -> int:
 	if player_index < 0 or player_index >= players.size():
 		return -1
-	var player: Dictionary = players[player_index]
-	var slots := _discardable_hand_slots_for_purchase(player)
+	var slots := _discardable_hand_slots_for_purchase(player_index)
 	var best_slot := -1
 	var best_value := 999999
 	for slot_variant in slots:
@@ -8480,7 +8177,7 @@ func _ai_monster_wager_plan(player_index: int, entry: Dictionary) -> Dictionary:
 	elif confidence >= 70:
 		raise_steps = 1
 	var stake_percent := _monster_wager_clamped_percent(entry, base_percent + raise_steps)
-	var stake := _monster_wager_amount_for_percent(player_index, stake_percent)
+	var stake := _monster_wager_amount_for_percent(player_index, stake_percent, entry)
 	best["confidence"] = confidence
 	best["stake"] = stake
 	best["stake_percent"] = stake_percent
@@ -8496,14 +8193,17 @@ func _ai_monster_wager_side(player_index: int, entry: Dictionary) -> String:
 	var plan := _ai_monster_wager_plan(player_index, entry)
 	return String(plan.get("side", ""))
 func _auto_ai_monster_wagers_for_entry(wager_id: int) -> int:
-	var index := _monster_wager_entry_index_by_id(wager_id)
-	if index < 0:
+	if not _active_monster_wager_ids().has(wager_id):
 		return 0
 	var acted := 0
 	for player_index in range(players.size()):
 		if not _player_is_ai(player_index):
 			continue
-		var entry: Dictionary = active_monster_wagers[index]
+		var entry := _monster_wager_decision_snapshot_for_actor(wager_id, player_index)
+		if entry.is_empty():
+			continue
+		if not bool(entry.get("decision_open", false)):
+			break
 		if _monster_wager_player_side(entry, player_index) != "":
 			continue
 		var plan := _ai_monster_wager_plan(player_index, entry)
@@ -8518,15 +8218,11 @@ func _auto_ai_monster_wagers_for_entry(wager_id: int) -> int:
 				metadata[key] = plan[key_variant]
 		if _place_monster_wager_percent(wager_id, side, stake_percent, player_index, false, metadata):
 			acted += 1
-			index = _monster_wager_entry_index_by_id(wager_id)
-			if index < 0:
+			if not _active_monster_wager_ids().has(wager_id):
 				break
 	return acted
 func _auto_ai_monster_wagers() -> int:
 	var acted := 0
-	for entry_variant in active_monster_wagers.duplicate(true):
-		if not (entry_variant is Dictionary):
-			continue
-		var entry := entry_variant as Dictionary
-		acted += _auto_ai_monster_wagers_for_entry(int(entry.get("wager_id", -1)))
+	for wager_id_variant: Variant in _active_monster_wager_ids():
+		acted += _auto_ai_monster_wagers_for_entry(int(wager_id_variant))
 	return acted

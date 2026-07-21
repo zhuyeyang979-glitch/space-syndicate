@@ -1,4 +1,4 @@
-[gd_scene load_steps=114 format=3]
+[gd_scene load_steps=119 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -114,6 +114,11 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/TableSelectionIntentPort.tscn" id="119_table_selection_intent"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/presentation/TableSelectionCatalogQueryPort.tscn" id="120_selection_catalog_query"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/presentation/DistrictSupplyViewerQueryPort.tscn" id="121_district_supply_viewer_query"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/DistrictSupplyActionPort.tscn" id="122_district_supply_action"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/DistrictSupplyRuntimeQueryPort.tscn" id="123_district_supply_runtime_query"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardTargetChoiceResponseSink.tscn" id="124_target_choice_response"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/MonsterWagerResponseSink.tscn" id="125_monster_wager_response"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/MonsterWagerCashCommitmentQueryPort.tscn" id="126_monster_wager_cash_query"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -169,6 +174,12 @@ unique_name_in_owner = true
 identity_boundary_path = NodePath("../PlayerIdentityAuthorizationBoundary")
 scheduler_path = NodePath("../ForcedDecisionRuntimeScheduler")
 
+[node name="CardTargetChoiceResponseSink" parent="." instance=ExtResource("124_target_choice_response")]
+unique_name_in_owner = true
+
+[node name="MonsterWagerResponseSink" parent="." instance=ExtResource("125_monster_wager_response")]
+unique_name_in_owner = true
+
 [node name="TableSelectionIntentPort" parent="." instance=ExtResource("119_table_selection_intent")]
 unique_name_in_owner = true
 identity_boundary_path = NodePath("../PlayerIdentityAuthorizationBoundary")
@@ -187,6 +198,12 @@ game_session_runtime_controller_path = NodePath("../GameSessionRuntimeController
 unique_name_in_owner = true
 
 [node name="DistrictSupplyViewerQueryPort" parent="." instance=ExtResource("121_district_supply_viewer_query")]
+unique_name_in_owner = true
+
+[node name="DistrictSupplyRuntimeQueryPort" parent="." instance=ExtResource("123_district_supply_runtime_query")]
+unique_name_in_owner = true
+
+[node name="DistrictSupplyActionPort" parent="." instance=ExtResource("122_district_supply_action")]
 unique_name_in_owner = true
 
 [node name="TablePresentationSourceOwner" parent="." instance=ExtResource("100_table_presentation_source")]
@@ -312,6 +329,9 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="MonsterRuntimeController" parent="." instance=ExtResource("34_monster_runtime")]
+unique_name_in_owner = true
+
+[node name="MonsterWagerCashCommitmentQueryPort" parent="." instance=ExtResource("126_monster_wager_cash_query")]
 unique_name_in_owner = true
 
 [node name="MonsterRuntimeWorldBridge" parent="." instance=ExtResource("35_monster_world_bridge")]

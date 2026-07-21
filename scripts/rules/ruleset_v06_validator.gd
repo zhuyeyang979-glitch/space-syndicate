@@ -53,7 +53,7 @@ static func validate(profile: Resource) -> Dictionary:
 	_expect(errors, commodity.get("commodity_rate_by_rank", {}) == {"I": 10, "II": 20, "III": 40, "IV": 80}, "commodity_rate_invalid")
 	_expect(errors, int(commodity.get("commodity_belt_refresh_seconds", 0)) == 5 and int(commodity.get("leading_tier_minimum_visible_cards", 0)) == 3, "commodity_belt_invalid")
 	_expect(errors, int(mana.get("observation_window_seconds", 0)) == 30 and int(mana.get("per_color_maximum", 0)) == 100 and int(mana.get("gdp_per_minute_divisor", 0)) == 100, "mana_rules_invalid")
-	_expect(errors, int(monster.get("battle_limit_seconds", 0)) == 60 and int(monster.get("upgrade_delay_extension_seconds", 0)) == 60 and int(monster.get("wager_seconds", 0)) == 8, "monster_timing_invalid")
+	_expect(errors, int(monster.get("battle_limit_seconds", 0)) == 60 and int(monster.get("upgrade_delay_extension_seconds", 0)) == 60 and int(monster.get("wager_seconds", 0)) == 15, "monster_timing_invalid")
 	_expect(errors, int(monster.get("wager_minimum_rate_bp", 0)) == 500 and int(monster.get("wager_maximum_rate_bp", 0)) == 1000 and int(monster.get("wager_standard_rate_bp", 0)) == 500, "monster_wager_rate_invalid")
 	for enabled_key in ["public_facility_model_enabled", "region_shared_hp_enabled", "continuous_commodity_flow_enabled", "six_color_mana_enabled"]:
 		_expect(errors, bool(capabilities.get(enabled_key, false)), "capability_must_be_enabled:%s" % enabled_key)

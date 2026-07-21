@@ -29,6 +29,7 @@ const ASSET_TRANSACTION_PREFIX := "card-player-state-v06"
 var _catalog: Resource
 var _asset_controller: Node
 var _world_session_state: WorldSessionState
+var _cash_commitment_query_port: MonsterWagerCashCommitmentQueryPort
 var _configured := false
 var _reservations: Dictionary = {}
 var _prepared_mutations: Dictionary = {}
@@ -55,6 +56,7 @@ func configure(catalog: Resource, asset_controller: Node) -> Dictionary:
 		"stores_inventory": false,
 		"stores_cash": false,
 		"stores_assets": false,
+		"monster_wager_cash_commitment_guard_bound": _cash_commitment_query_port != null,
 	}
 
 
@@ -63,6 +65,14 @@ func set_world_session_state(state: WorldSessionState) -> Dictionary:
 	return {
 		"bound": _world_has_players(),
 		"reason_code": "world_session_state_bound" if _world_has_players() else "production_world_missing",
+	}
+
+
+func set_cash_commitment_query_port(port: MonsterWagerCashCommitmentQueryPort) -> Dictionary:
+	_cash_commitment_query_port = port
+	return {
+		"bound": _cash_commitment_query_port != null,
+		"reason_code": "monster_wager_cash_commitment_query_bound" if _cash_commitment_query_port != null else "monster_wager_cash_commitment_query_missing",
 	}
 
 
@@ -377,6 +387,10 @@ func prepare_reserved_mutations(reservation_id: String, next_states: Dictionary)
 			return _commit_reject(reservation, "inventory_changed", {"actor_id": actor_id})
 		var proposed: Dictionary = normalized_next.get(actor_id, {}) as Dictionary
 		var cash_delta := int(proposed.get("cash", 0)) - int(before.get("cash", 0))
+		if cash_delta < 0 and _cash_commitment_query_port != null:
+			var authorization := _cash_commitment_query_port.authorize_debit_units(player_index, -cash_delta)
+			if not bool(authorization.get("authorized", false)):
+				return _commit_reject(reservation, str(authorization.get("reason_code", "cash_reserved_for_monster_wager")), {"actor_id": actor_id})
 		if _cash_units(current_player) + cash_delta < 0:
 			return _commit_reject(reservation, "cash_insufficient", {"actor_id": actor_id})
 		var purchase_count_delta := int(proposed.get("card_purchase_count", 0)) - int(before.get("card_purchase_count", 0))
@@ -506,6 +520,10 @@ func commit_reserved(reservation_id: String, next_states: Dictionary, effect_rec
 		for asset_id in ASSET_IDS:
 			visible_assets[asset_id] = int(visible_assets.get(asset_id, 0)) + int(debit.get(asset_id, 0))
 		var cash_delta := int(row.get("cash_delta", 0))
+		if cash_delta < 0 and _cash_commitment_query_port != null:
+			var authorization := _cash_commitment_query_port.authorize_debit_units(player_index, -cash_delta)
+			if not bool(authorization.get("authorized", false)):
+				return _commit_reject(reservation, str(authorization.get("reason_code", "cash_reserved_for_monster_wager")), {"actor_id": actor_id})
 		if _cash_units(current_player) + cash_delta < 0:
 			return _commit_reject(reservation, "cash_insufficient", {"actor_id": actor_id})
 		var purchase_count_delta := int(row.get("purchase_count_delta", 0))

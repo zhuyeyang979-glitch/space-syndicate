@@ -136,7 +136,7 @@ func plan_execution(request: Dictionary) -> Dictionary:
 		"active_entry": active_entry,
 		"skill": skill,
 		"selection_context": _dictionary(request.get("selection_context", {})),
-		"forced_decision_count_before": maxi(0, int(request.get("forced_decision_count_before", 0))),
+		"monster_wager_decision_count_before": maxi(0, int(request.get("monster_wager_decision_count_before", 0))),
 		"recovered": bool(request.get("recovered", false)),
 	}
 	_inflight_resolution_ids[resolution_key] = execution_id

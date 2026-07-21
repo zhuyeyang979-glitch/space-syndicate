@@ -5445,7 +5445,7 @@ func _verify_temporary_decision_blueprints(main: Node) -> bool:
 	var wager := fixtures.call("fixture", "monster_wager") as Dictionary
 	var wager_data := wager.get("wager", {}) as Dictionary
 	overlay.call("hide_confirm")
-	return float(wager_data.get("timer", 0.0)) >= 20.0 and float(wager_data.get("timer", 0.0)) <= 30.0
+	return is_equal_approx(float(wager_data.get("timer", 0.0)), 15.0)
 
 
 func _verify_ai_monster_wager_policy(_main: Node) -> bool:
@@ -8227,7 +8227,7 @@ func _verify_monster_resource_and_collision_system(main: Node, district_index: i
 	if not active_wagers.is_empty():
 		var wager_id := int((active_wagers[0] as Dictionary).get("wager_id", -1))
 		_monster_controller(main).call("_force_monster_wager_missing_bets", wager_id, "烟测自动结束")
-		_monster_controller(main).call("_settle_monster_wager", wager_id, "烟测自动结束")
+		_monster_controller(main).tick_battle_lifecycles(60.0)
 	auto_monsters = _as_array(main.get("auto_monsters"))
 	var target_after := auto_monsters[1] as Dictionary
 	var target_durability_after := int(target_after.get("hp", 0)) + int(target_after.get("armor", 0))
@@ -8243,8 +8243,9 @@ func _verify_monster_resource_and_collision_system(main: Node, district_index: i
 
 
 func _settle_all_active_monster_wagers(main: Node, reason: String) -> void:
+	var monster_controller := _monster_controller(main)
 	for _attempt in range(8):
-		var active_wagers := _as_array(main.get("active_monster_wagers"))
+		var active_wagers := _as_array(monster_controller.get("active_monster_wagers"))
 		if active_wagers.is_empty():
 			return
 		for wager_variant in active_wagers:
@@ -8252,11 +8253,11 @@ func _settle_all_active_monster_wagers(main: Node, reason: String) -> void:
 			var wager_id := int(wager.get("wager_id", -1))
 			if wager_id < 0:
 				continue
-			_monster_controller(main).call("_force_monster_wager_missing_bets", wager_id, reason)
-			_monster_controller(main).call("_settle_monster_wager", wager_id, reason)
-		_monster_controller(main).call("_update_monster_wagers", 999.0)
-	if not _as_array(main.get("active_monster_wagers")).is_empty():
-		main.set("active_monster_wagers", [])
+			monster_controller.call("_force_monster_wager_missing_bets", wager_id, reason)
+		monster_controller.tick_wager_decisions_realtime(999.0)
+		monster_controller.tick_battle_lifecycles(60.0)
+	if not _as_array(monster_controller.get("active_monster_wagers")).is_empty():
+		monster_controller.set("active_monster_wagers", [])
 
 
 func _verify_special_monster_passives(main: Node) -> void:

@@ -86,7 +86,9 @@ func attach_quote(player_index: int, district_index: int, quote: Dictionary) -> 
 	var record := active_window(player_index)
 	if not is_window_active(player_index, district_index) or not _is_data_only(quote) or str(quote.get("quote_id", "")).is_empty():
 		return {}
-	if int(quote.get("district_index", -1)) != district_index or str(quote.get("supply_revision", "")) != str(record.get("supply_revision", "")):
+	var selected_revision := str(record.get("selected_supply_revision", ""))
+	var expected_revision := selected_revision if not selected_revision.is_empty() else str(record.get("supply_revision", ""))
+	if int(quote.get("district_index", -1)) != district_index or str(quote.get("supply_revision", "")) != expected_revision:
 		return {}
 	var selected_card_id := str(record.get("selected_card_id", ""))
 	if not selected_card_id.is_empty() and selected_card_id != str(quote.get("card_id", "")):

@@ -5,6 +5,9 @@ class_name MonsterRuntimeController
 const UNIT_CARD_SCHEMA_V06 := preload("res://scripts/cards/v06/units/unit_card_runtime_schema_v06.gd")
 const CARD_RUNTIME_CATALOG_V06 := preload("res://resources/cards/runtime/card_runtime_catalog_v06.tres")
 const MONSTER_CATALOG_V06 := preload("res://scripts/runtime/monster_catalog_v06.gd")
+const MONSTER_WAGER_SETTLEMENT_POLICY_V06 := preload("res://scripts/runtime/monster_wager_settlement_policy_v06.gd")
+const MONSTER_BATTLE_LIFECYCLE_POLICY_V06 := preload("res://scripts/runtime/monster_battle_lifecycle_policy_v06.gd")
+const RULESET_V06_PROFILE := preload("res://resources/rules/space_syndicate_ruleset_v06.tres")
 const MONSTER_FAMILY_WEATHER_TRAITS_V1 := preload("res://resources/monsters/monster_family_weather_traits_v1.tres")
 const MONSTER_WEATHER_SPEED_CAP := 1.30
 
@@ -52,6 +55,7 @@ const MONSTER_REGION_PUBLIC_ATTRACTION_FACTORS_V06 := [
 const MONSTER_COMMAND_MOVE_METERS := 220.0
 const NEARBY_RADIUS_METERS := 240.0
 const DEFAULT_AOE_RADIUS_METERS := 180.0
+const CASH_CENTS_PER_UNIT := 100
 
 var _world_bridge: MonsterRuntimeWorldBridge
 var _monster_binding_capability_provider_v06: Object
@@ -63,6 +67,7 @@ var _weather_runtime_controller: WeatherRuntimeController
 var _weather_telemetry_runtime_service: Node
 var _visual_cue_runtime_owner: VisualCueRuntimeOwner
 var _ruleset_snapshot: Dictionary = {}
+var _monster_battle_rules_v06: Dictionary = {}
 var _configured := false
 
 var auto_monsters: Array = []
@@ -73,6 +78,8 @@ var active_monster_wagers: Array = []
 var resolved_monster_wager_history: Array = []
 var monster_wager_sequence := 0
 var public_card_bid_monster_wager_pool := 0
+var _monster_wager_settlement_revision := 0
+var _monster_wager_settlement_terminal_journal: Dictionary = {}
 var monster_timer := 4.0
 var special_monster_timer := 5.0
 
@@ -199,15 +206,15 @@ const BLUE_LANCER_REACTIVE_DAMAGE_REDUCTION := 1
 
 const BLUE_LANCER_REACTIVE_DAMAGE_BONUS := 1
 
-const MONSTER_WAGER_MIN_BASE_PERCENT := 5
+const MONSTER_WAGER_MIN_BASE_PERCENT := MONSTER_WAGER_SETTLEMENT_POLICY_V06.MIN_BASE_RATE_BP / 100
 
-const MONSTER_WAGER_MAX_BASE_PERCENT := 10
+const MONSTER_WAGER_MAX_BASE_PERCENT := MONSTER_WAGER_SETTLEMENT_POLICY_V06.MAX_BASE_RATE_BP / 100
 
-const MONSTER_WAGER_MAX_STAKE_PERCENT := 30
+const MONSTER_WAGER_PERCENT_STEP := MONSTER_WAGER_SETTLEMENT_POLICY_V06.RATE_INCREMENT_BP / 100
 
-const MONSTER_WAGER_PERCENT_STEP := 1
+const MONSTER_WAGER_WINDOW_SECONDS := MONSTER_WAGER_SETTLEMENT_POLICY_V06.WINDOW_DURATION_SECONDS
 
-const MONSTER_WAGER_VISIBLE_RAISE_STEPS := 5
+const MONSTER_WAGER_MAX_STAKE_PERCENT := MONSTER_WAGER_SETTLEMENT_POLICY_V06.MAX_FINAL_RATE_BP / 100
 
 const MONSTER_WAGER_HISTORY_LIMIT := 12
 
@@ -298,6 +305,25 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		_monster_codex_public_catalog_summary_cache_v06.clear()
 
 
+func configure_battle_lifecycle_v06(monster_rules: Dictionary) -> Dictionary:
+	var battle_limit := float(monster_rules.get("battle_limit_seconds", 0.0))
+	var wager_seconds := float(monster_rules.get("wager_seconds", 0.0))
+	if not is_finite(battle_limit) or battle_limit <= 0.0 \
+		or not is_equal_approx(wager_seconds, float(MONSTER_WAGER_WINDOW_SECONDS)):
+		_monster_battle_rules_v06.clear()
+		return {"configured": false, "reason_code": "monster_battle_lifecycle_rules_invalid"}
+	_monster_battle_rules_v06 = {
+		"battle_limit_seconds": battle_limit,
+		"wager_seconds": wager_seconds,
+	}
+	return {
+		"configured": true,
+		"reason_code": "monster_battle_lifecycle_rules_ready",
+		"battle_limit_seconds": battle_limit,
+		"wager_seconds": wager_seconds,
+	}
+
+
 func set_table_presentation_ports(refresh_port: TablePresentationRefreshPort, log_port: PublicLogProducerPort, clock: WorldEffectiveClockRuntimeController) -> void:
 	_table_presentation_refresh_port = refresh_port
 	_public_log_producer_port = log_port
@@ -313,6 +339,8 @@ func reset_state() -> void:
 	resolved_monster_wager_history.clear()
 	monster_wager_sequence = 0
 	public_card_bid_monster_wager_pool = 0
+	_monster_wager_settlement_revision = 0
+	_monster_wager_settlement_terminal_journal.clear()
 	monster_timer = 4.0
 	special_monster_timer = 5.0
 	_monster_card_revision_v06 = 0
@@ -418,8 +446,12 @@ func _bankruptcy_estate_failure(stage: String, reason_code: String) -> Dictionar
 	return {"prepared": false, "committed": false, "rolled_back": false, "finalized": false, "stage": stage, "reason_code": reason_code, "estate_counts": {}}
 
 
-func tick_wagers(delta: float) -> void:
-	_update_monster_wagers(delta)
+func tick_wager_decisions_realtime(real_delta: float) -> void:
+	_update_monster_wager_decisions(real_delta)
+
+
+func tick_battle_lifecycles(world_delta: float) -> void:
+	_update_monster_battle_lifecycles(world_delta)
 
 
 func tick_motion(delta: float) -> void:
@@ -536,6 +568,64 @@ func simulation_mutation_snapshot_by_uid(target_uid: int) -> Dictionary:
 		"lure_moves_left": int(actor.get("lure_moves_left", 0)),
 		"region_infrastructure": _simulation_region_mutation_projection(),
 	}
+
+
+func simulation_battle_action_mutation_snapshot(actor_uid: int, target_uid: int, wager_id: int) -> Dictionary:
+	var actor := simulation_mutation_snapshot_by_uid(actor_uid)
+	var target := simulation_mutation_snapshot_by_uid(target_uid)
+	var wager_index := _monster_wager_entry_index_by_id(wager_id)
+	if actor.is_empty() or target.is_empty() or wager_index < 0:
+		return {}
+	# Region infrastructure is a shared projection. Include it once so the
+	# mutation audit covers district side effects without duplicating a large
+	# world projection for both combatants.
+	actor.erase("region_infrastructure")
+	target.erase("region_infrastructure")
+	var wager: Dictionary = active_monster_wagers[wager_index] as Dictionary
+	var damage_by_side := {}
+	for competitor_variant: Variant in _monster_wager_competitors(wager):
+		if not (competitor_variant is Dictionary):
+			continue
+		var side := str((competitor_variant as Dictionary).get("side", ""))
+		if not side.is_empty():
+			damage_by_side[side] = maxi(0, _monster_wager_damage_for_side(wager, side))
+	return {
+		"wager_id": wager_id,
+		"settlement_revision": int(wager.get("settlement_revision", -1)),
+		"lifecycle_phase": _monster_wager_phase(wager),
+		"battle_remaining_milliseconds": maxi(0, int(round(float(wager.get("battle_remaining_seconds", 0.0)) * 1000.0))),
+		"opening_attack_applied": bool(wager.get("opening_attack_applied", false)),
+		"locked_competitor_uids": (wager.get("locked_competitor_uids", []) as Array).duplicate(true),
+		"damage_by_side": damage_by_side,
+		"actor": actor,
+		"target": target,
+		"region_infrastructure": _simulation_region_mutation_projection(),
+	}
+
+
+func monster_battle_opening_attack_applied(wager_id: int, settlement_revision: int, command_id: String) -> bool:
+	var wager_index := _monster_wager_entry_index_by_id(wager_id)
+	if wager_index < 0:
+		return false
+	var wager: Dictionary = active_monster_wagers[wager_index] as Dictionary
+	return int(wager.get("settlement_revision", -1)) == settlement_revision \
+		and str(wager.get("opening_attack_command_id", "")) == command_id \
+		and bool(wager.get("opening_attack_applied", false))
+
+
+func monster_battle_opening_attack_command_matches(command: Dictionary) -> bool:
+	var wager_id := int(command.get("wager_id", -1))
+	var wager_index := _monster_wager_entry_index_by_id(wager_id)
+	if wager_index < 0:
+		return false
+	var wager: Dictionary = active_monster_wagers[wager_index] as Dictionary
+	return int(wager.get("settlement_revision", -1)) == int(command.get("settlement_revision", -2)) \
+		and str(wager.get("opening_attack_command_id", "")) == str(command.get("command_id", "")) \
+		and bool(wager.get("opening_attack_applied", false)) \
+		and int(wager.get("opening_attack_actor_uid", -1)) == int(command.get("actor_uid", -2)) \
+		and int(wager.get("opening_attack_target_uid", -1)) == int(command.get("target_monster_uid", -2)) \
+		and int(wager.get("opening_attack_action_index", -1)) == int(command.get("action_index", -2)) \
+		and str(wager.get("opening_attack_action_fingerprint", "")) == UNIT_CARD_SCHEMA_V06.fingerprint(command.get("action", {}))
 
 
 func _simulation_region_mutation_projection() -> Array:
@@ -1128,8 +1218,74 @@ func selected_actor_snapshot(include_private: bool = true) -> Dictionary:
 	return _monster_public_actor_v06(actor)
 
 
-func active_wagers_snapshot() -> Array:
-	return active_monster_wagers.duplicate(true)
+func active_wager_count() -> int:
+	return active_monster_wagers.size()
+
+
+func open_wager_decision_count() -> int:
+	var result := 0
+	for entry_variant: Variant in active_monster_wagers:
+		if entry_variant is Dictionary and _monster_wager_is_decision_open(entry_variant as Dictionary):
+			result += 1
+	return result
+
+
+func has_open_monster_wager_decision() -> bool:
+	return open_wager_decision_count() > 0
+
+
+func active_wager_ids_snapshot() -> Array:
+	var result: Array = []
+	for entry_variant: Variant in active_monster_wagers:
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		if bool(entry.get("resolved", false)):
+			continue
+		var wager_id := int(entry.get("wager_id", -1))
+		if wager_id >= 0:
+			result.append(wager_id)
+	return result
+
+
+func monster_wager_decision_snapshot_for_actor(wager_id: int, player_index: int) -> Dictionary:
+	# AI and other decision actors receive public wager facts plus exactly one
+	# private opening-cash value: their own.  The authoritative active entry and
+	# every rival opening-cash snapshot remain inside this owner.
+	if player_index < 0 or player_index >= players.size():
+		return {}
+	var index := _monster_wager_entry_index_by_id(wager_id)
+	if index < 0:
+		return {}
+	var entry: Dictionary = active_monster_wagers[index]
+	if bool(entry.get("resolved", false)) or not _monster_wager_is_decision_open(entry) \
+		or not _monster_wager_eligible_player_indices(entry).has(player_index):
+		return {}
+	var actor_key := str(player_index)
+	var own_bet := _monster_wager_player_bet(entry, player_index)
+	var actor_bets: Dictionary = {}
+	if not own_bet.is_empty():
+		actor_bets[actor_key] = own_bet
+	var result := {
+		"wager_id": wager_id,
+		"settlement_revision": int(entry.get("settlement_revision", -1)),
+		"base_percent": _monster_wager_base_percent(entry),
+		"competitors": _monster_wager_competitors(entry).duplicate(true),
+		"bets": actor_bets,
+		"public_bets": (entry.get("public_bets", []) as Array).duplicate(true),
+		"opening_cash_units_by_player": {actor_key: _monster_wager_opening_cash_units(entry, player_index)},
+		"eligible_player_indices": [player_index],
+		"remaining_seconds": maxf(0.0, float(entry.get("decision_remaining_seconds", 0.0))),
+		"seconds_total": float(MONSTER_WAGER_WINDOW_SECONDS),
+		"decision_open": bool(entry.get("decision_open", false)),
+		"historical_public_pool": maxi(0, int(entry.get("historical_public_pool", 0))),
+	}
+	for competitor_variant: Variant in _monster_wager_competitors(entry):
+		if competitor_variant is Dictionary:
+			var side := str((competitor_variant as Dictionary).get("side", ""))
+			if not side.is_empty():
+				result["damage_%s" % side] = maxi(0, _monster_wager_damage_for_side(entry, side))
+	return result
 
 
 func monster_wager_presentation_for_viewer(viewer_index: int) -> Dictionary:
@@ -1142,6 +1298,10 @@ func monster_wager_presentation_for_viewer(viewer_index: int) -> Dictionary:
 	if wager_id < 0:
 		return {}
 	var decision := _monster_wager_player_decision(entry, viewer_index)
+	var eligible_players := _monster_wager_eligible_player_indices(entry)
+	var phase := _monster_wager_phase(entry)
+	var decision_open := _monster_wager_is_decision_open(entry)
+	var viewer_can_respond := decision_open and eligible_players.has(viewer_index)
 	var base_percent := _monster_wager_base_percent(entry)
 	var actions: Array = []
 	var matchup: Array = []
@@ -1156,14 +1316,14 @@ func monster_wager_presentation_for_viewer(viewer_index: int) -> Dictionary:
 		var label := _monster_wager_side_label(entry, side)
 		matchup.append({"side": side, "name": label})
 		damage.append({"side": side, "name": label, "damage": _monster_wager_damage_for_side(entry, side)})
-		for percent_variant in _monster_wager_percent_options(entry):
+		for percent_variant in _monster_wager_percent_options(entry) if viewer_can_respond else []:
 			var percent := int(percent_variant)
 			actions.append({
 				"id": "monster_wager:%d:%s:%d" % [wager_id, side, percent],
 				"side": side,
 				"label": label,
 				"stake_percent": percent,
-				"stake": _monster_wager_amount_for_percent(viewer_index, percent),
+				"stake": _monster_wager_amount_for_percent(viewer_index, percent, entry),
 				"disabled": not decision.is_empty(),
 			})
 	var viewer_bet := _monster_wager_player_bet(entry, viewer_index)
@@ -1179,21 +1339,27 @@ func monster_wager_presentation_for_viewer(viewer_index: int) -> Dictionary:
 			"stake_percent": maxi(0, _monster_wager_bet_percent(bet)),
 			"forced": bool(bet.get("forced", false)),
 		})
+	var visible_remaining := maxf(0.0, float(entry.get("decision_remaining_seconds", 0.0))) if phase == MONSTER_BATTLE_LIFECYCLE_POLICY_V06.PHASE_DECISION else maxf(0.0, float(entry.get("battle_remaining_seconds", 0.0)))
+	var visible_total := float(MONSTER_WAGER_WINDOW_SECONDS) if phase == MONSTER_BATTLE_LIFECYCLE_POLICY_V06.PHASE_DECISION else maxf(0.0, float(entry.get("battle_limit_seconds", 0.0)))
 	return {
 		"schema_version": 1,
 		"visibility_scope": "viewer_private",
 		"viewer_index": viewer_index,
 		"active": true,
+		"phase": phase,
+		"decision_open": decision_open,
 		"wager_id": wager_id,
 		"base_percent": base_percent,
-		"remaining_seconds": maxf(0.0, float(entry.get("remaining_seconds", 0.0))),
-		"seconds_total": maxf(0.0, float(entry.get("seconds_total", 0.0))),
+		"remaining_seconds": visible_remaining,
+		"seconds_total": visible_total,
+		"battle_remaining_seconds": maxf(0.0, float(entry.get("battle_remaining_seconds", 0.0))),
+		"battle_seconds_total": maxf(0.0, float(entry.get("battle_limit_seconds", 0.0))),
 		"context": str(entry.get("context", "怪兽遭遇")),
 		"matchup": matchup,
 		"damage": damage,
 		"pool": _monster_wager_total_stake(entry),
 		"decision_count": _monster_wager_decision_count(entry),
-		"seat_count": players.size(),
+		"seat_count": eligible_players.size(),
 		"viewer_decision": {
 			"decided": not decision.is_empty(),
 			"side": decision,
@@ -1202,6 +1368,80 @@ func monster_wager_presentation_for_viewer(viewer_index: int) -> Dictionary:
 		},
 		"actions": actions,
 		"public_bets": public_bets,
+	}
+
+
+func submit_monster_wager_response(
+		wager_id: int,
+		player_index: int,
+		side: StringName,
+		stake_percent: int,
+		forced: bool = false,
+		_metadata: Dictionary = {}
+) -> Dictionary:
+	if player_index < 0 or player_index >= players.size():
+		return _monster_wager_response_failure(wager_id, player_index, side, stake_percent, "monster_wager_player_invalid")
+	var index := _monster_wager_entry_index_by_id(wager_id)
+	if index < 0:
+		return _monster_wager_response_failure(wager_id, player_index, side, stake_percent, "monster_wager_not_active")
+	var entry: Dictionary = active_monster_wagers[index]
+	if bool(entry.get("resolved", false)) or not bool(entry.get("decision_open", false)):
+		return _monster_wager_response_failure(wager_id, player_index, side, stake_percent, "monster_wager_not_active")
+	if not _monster_wager_eligible_player_indices(entry).has(player_index):
+		return _monster_wager_response_failure(wager_id, player_index, side, stake_percent, "monster_wager_player_ineligible")
+	if not _monster_wager_player_bet(entry, player_index).is_empty():
+		return _monster_wager_response_failure(wager_id, player_index, side, stake_percent, "monster_wager_already_decided")
+	var normalized_side := str(side).to_lower().strip_edges()
+	var side_available := false
+	for competitor_variant in _monster_wager_competitors(entry):
+		if competitor_variant is Dictionary and str((competitor_variant as Dictionary).get("side", "")).to_lower() == normalized_side:
+			side_available = true
+			break
+	if not side_available:
+		return _monster_wager_response_failure(wager_id, player_index, StringName(normalized_side), stake_percent, "monster_wager_side_unavailable")
+	if not _monster_wager_percent_options(entry).has(stake_percent):
+		return _monster_wager_response_failure(wager_id, player_index, StringName(normalized_side), stake_percent, "monster_wager_percent_unavailable")
+	var stake := _monster_wager_amount_for_percent(player_index, stake_percent, entry)
+	if not _place_monster_wager(wager_id, normalized_side, stake_percent, player_index, forced):
+		return _monster_wager_response_failure(wager_id, player_index, StringName(normalized_side), stake_percent, "monster_wager_response_rejected")
+	var current_index := _monster_wager_entry_index_by_id(wager_id)
+	var decision_closed := current_index < 0
+	if current_index >= 0:
+		decision_closed = not _monster_wager_is_decision_open(active_monster_wagers[current_index] as Dictionary)
+	return {
+		"schema_version": 1,
+		"accepted": true,
+		"applied": true,
+		"reason_code": "monster_wager_response_applied",
+		"wager_id": wager_id,
+		"player_index": player_index,
+		"side": normalized_side,
+		"stake_percent": stake_percent,
+		"stake": stake,
+		"forced": forced,
+		"decision_closed": decision_closed,
+	}
+
+
+func _monster_wager_response_failure(
+		wager_id: int,
+		player_index: int,
+		side: StringName,
+		stake_percent: int,
+		reason_code: String
+) -> Dictionary:
+	return {
+		"schema_version": 1,
+		"accepted": false,
+		"applied": false,
+		"reason_code": reason_code,
+		"wager_id": wager_id,
+		"player_index": player_index,
+		"side": str(side),
+		"stake_percent": stake_percent,
+		"stake": 0,
+		"forced": false,
+		"decision_closed": _monster_wager_entry_index_by_id(wager_id) < 0,
 	}
 
 
@@ -1223,6 +1463,9 @@ func to_save_data() -> Dictionary:
 		"resolved_monster_wager_history": resolved_monster_wager_history.duplicate(true),
 		"monster_wager_sequence": monster_wager_sequence,
 		"public_card_bid_monster_wager_pool": public_card_bid_monster_wager_pool,
+		"monster_wager_settlement_revision": _monster_wager_settlement_revision,
+		"monster_wager_settlement_terminal_journal": _monster_wager_settlement_terminal_journal.duplicate(true),
+		"monster_battle_lifecycle_schema_version": MONSTER_BATTLE_LIFECYCLE_POLICY_V06.SCHEMA_VERSION,
 		"monster_timer": monster_timer,
 		"special_monster_timer": special_monster_timer,
 		"monster_card_atomic_schema_version": MONSTER_CARD_LIFECYCLE_SCHEMA_V06,
@@ -1247,6 +1490,8 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	resolved_monster_wager_history = (next_state.get("resolved_monster_wager_history", []) as Array).duplicate(true)
 	monster_wager_sequence = int(next_state.get("monster_wager_sequence", 0))
 	public_card_bid_monster_wager_pool = int(next_state.get("public_card_bid_monster_wager_pool", 0))
+	_monster_wager_settlement_revision = int(next_state.get("monster_wager_settlement_revision", 0))
+	_monster_wager_settlement_terminal_journal = (next_state.get("monster_wager_settlement_terminal_journal", {}) as Dictionary).duplicate(true)
 	monster_timer = float(next_state.get("monster_timer", 4.0))
 	special_monster_timer = float(next_state.get("special_monster_timer", 5.0))
 	_monster_card_revision_v06 = int(next_state.get("monster_card_atomic_owner_revision", 0))
@@ -1296,6 +1541,10 @@ func debug_snapshot(viewer_index: int = -1) -> Dictionary:
 		"selected_slot": selected_auto_monster_slot,
 		"next_uid": next_auto_monster_uid,
 		"active_wager_count": active_monster_wagers.size(),
+		"open_wager_decision_count": open_wager_decision_count(),
+		"active_battle_count": _active_monster_battle_count_v06(),
+		"battle_limit_seconds": _monster_battle_limit_seconds_v06(),
+		"battle_lifecycle_owner": true,
 		"resolved_wager_count": resolved_monster_wager_history.size(),
 		"public_wager_pool": public_card_bid_monster_wager_pool,
 		"monster_timer": monster_timer,
@@ -1303,6 +1552,14 @@ func debug_snapshot(viewer_index: int = -1) -> Dictionary:
 		"viewer_index": viewer_index,
 		"public_roster": public_roster,
 	}
+
+
+func _active_monster_battle_count_v06() -> int:
+	var result := 0
+	for entry_variant: Variant in active_monster_wagers:
+		if entry_variant is Dictionary and _monster_wager_phase(entry_variant as Dictionary) == MONSTER_BATTLE_LIFECYCLE_POLICY_V06.PHASE_BATTLE:
+			result += 1
+	return result
 
 
 func monster_runtime_capabilities_v06() -> Dictionary:
@@ -1915,11 +2172,129 @@ func _monster_card_dependency_matrix_v06() -> Dictionary:
 	return result
 
 
+func _normalize_monster_wager_lifecycle_save_v06(source: Dictionary, roster: Array) -> Dictionary:
+	var next := source.duplicate(true)
+	var competitors_variant: Variant = next.get("competitors", [])
+	if not (competitors_variant is Array) or (competitors_variant as Array).size() < 2:
+		return {"valid": false, "reason_code": "monster_save_battle_competitors_invalid"}
+	var competitors := competitors_variant as Array
+	var pending_variant: Variant = next.get("pending_attack", {})
+	if not (pending_variant is Dictionary) or not _monster_battle_lifecycle_save_value_is_pure_v06(pending_variant):
+		return {"valid": false, "reason_code": "monster_save_battle_pending_attack_invalid"}
+	var pending := (pending_variant as Dictionary).duplicate(true)
+	var legacy := int(next.get("lifecycle_schema_version", 0)) == 0
+	if legacy:
+		if not pending.is_empty():
+			var attacker_uid := int(pending.get("attacker_uid", 0))
+			var target_uid := int(pending.get("target_uid", 0))
+			if attacker_uid <= 0:
+				attacker_uid = _monster_wager_saved_uid_for_slot_v06(int(pending.get("attacker_slot", -1)), competitors, roster)
+			if target_uid <= 0:
+				target_uid = _monster_wager_saved_uid_for_slot_v06(int(pending.get("target_slot", -1)), competitors, roster)
+			pending.erase("attacker_slot")
+			pending.erase("target_slot")
+			pending["attacker_uid"] = attacker_uid
+			pending["target_uid"] = target_uid
+			pending["action_index"] = maxi(0, int(pending.get("action_index", 0)))
+			pending["context"] = str(pending.get("context", next.get("context", "怪兽赌局开战")))
+			next["pending_attack"] = pending
+		var initial := MONSTER_BATTLE_LIFECYCLE_POLICY_V06.initial_state(
+			competitors,
+			_monster_battle_limit_seconds_v06(),
+			float(MONSTER_WAGER_WINDOW_SECONDS),
+			pending
+		)
+		next.merge(initial, true)
+		if bool(source.get("decision_open", false)):
+			next["decision_remaining_seconds"] = clampf(
+				float(source.get("remaining_seconds", MONSTER_WAGER_WINDOW_SECONDS)),
+				0.0,
+				float(MONSTER_WAGER_WINDOW_SECONDS)
+			)
+		else:
+			next = MONSTER_BATTLE_LIFECYCLE_POLICY_V06.transition_to_battle(next, "legacy_save_migration")
+			next["battle_remaining_seconds"] = clampf(
+				float(source.get("battle_remaining_seconds", _monster_battle_limit_seconds_v06())),
+				0.0,
+				_monster_battle_limit_seconds_v06()
+			)
+			if bool(source.get("battle_resolved", pending.is_empty())):
+				next["opening_attack_applied"] = true
+				next.erase("pending_attack")
+		if not pending.is_empty() and str(next.get("opening_attack_command_id", "")).strip_edges().is_empty():
+			next["opening_attack_command_id"] = "monster-wager-opening:%d:%d" % [
+				int(next.get("wager_id", -1)),
+				int(next.get("settlement_revision", -1)),
+			]
+	else:
+		if int(next.get("lifecycle_schema_version", -1)) != MONSTER_BATTLE_LIFECYCLE_POLICY_V06.SCHEMA_VERSION:
+			return {"valid": false, "reason_code": "monster_save_battle_lifecycle_schema_invalid"}
+	for legacy_key in ["remaining_seconds", "seconds_total", "battle_resolved"]:
+		next.erase(legacy_key)
+	var validation := MONSTER_BATTLE_LIFECYCLE_POLICY_V06.validate(
+		next,
+		_monster_battle_limit_seconds_v06(),
+		float(MONSTER_WAGER_WINDOW_SECONDS)
+	)
+	if not bool(validation.get("valid", false)):
+		return {"valid": false, "reason_code": str(validation.get("reason_code", "monster_save_battle_lifecycle_invalid"))}
+	pending_variant = next.get("pending_attack", {})
+	if not (pending_variant is Dictionary) or not _monster_battle_lifecycle_save_value_is_pure_v06(pending_variant):
+		return {"valid": false, "reason_code": "monster_save_battle_pending_attack_invalid"}
+	pending = pending_variant as Dictionary
+	if bool(next.get("opening_attack_applied", false)):
+		if not pending.is_empty():
+			return {"valid": false, "reason_code": "monster_save_battle_applied_pending_collision"}
+	else:
+		var locked: Array = next.get("locked_competitor_uids", []) as Array
+		var attacker_uid := int(pending.get("attacker_uid", -1))
+		var target_uid := int(pending.get("target_uid", -1))
+		var expected_command_id := "monster-wager-opening:%d:%d" % [
+			int(next.get("wager_id", -1)),
+			int(next.get("settlement_revision", -1)),
+		]
+		if pending.is_empty() or attacker_uid <= 0 or target_uid <= 0 or attacker_uid == target_uid \
+			or not locked.has(attacker_uid) or not locked.has(target_uid) \
+			or not (pending.get("action", {}) is Dictionary) or (pending.get("action", {}) as Dictionary).is_empty() \
+			or str(next.get("opening_attack_command_id", "")) != expected_command_id:
+			return {"valid": false, "reason_code": "monster_save_battle_opening_attack_binding_invalid"}
+		if _monster_wager_phase(next) != MONSTER_BATTLE_LIFECYCLE_POLICY_V06.PHASE_DECISION \
+			and int(next.get("opening_attack_occurred_at_world_us", 0)) <= 0:
+			return {"valid": false, "reason_code": "monster_save_battle_opening_attack_time_invalid"}
+	return {"valid": true, "reason_code": "monster_save_battle_lifecycle_valid", "entry": next}
+
+
+func _monster_wager_saved_uid_for_slot_v06(slot: int, competitors: Array, roster: Array) -> int:
+	if slot >= 0 and slot < roster.size() and roster[slot] is Dictionary:
+		var roster_uid := int((roster[slot] as Dictionary).get("uid", 0))
+		if roster_uid > 0:
+			return roster_uid
+	for competitor_variant: Variant in competitors:
+		if competitor_variant is Dictionary and int((competitor_variant as Dictionary).get("slot", -1)) == slot:
+			return int((competitor_variant as Dictionary).get("uid", 0))
+	return 0
+
+
+func _monster_battle_lifecycle_save_value_is_pure_v06(value: Variant) -> bool:
+	if value is Object or value is Callable:
+		return false
+	if value is Dictionary:
+		for key_variant: Variant in (value as Dictionary).keys():
+			if not _monster_battle_lifecycle_save_value_is_pure_v06(key_variant) \
+				or not _monster_battle_lifecycle_save_value_is_pure_v06((value as Dictionary).get(key_variant)):
+				return false
+	elif value is Array:
+		for item_variant: Variant in value as Array:
+			if not _monster_battle_lifecycle_save_value_is_pure_v06(item_variant):
+				return false
+	return true
+
+
 func _monster_save_envelope_v06(data: Dictionary) -> Dictionary:
 	for array_key in ["auto_monsters", "active_monster_wagers", "resolved_monster_wager_history"]:
 		if data.has(array_key) and not (data.get(array_key) is Array):
 			return {"valid": false, "reason_code": "monster_save_%s_invalid" % array_key}
-	for dictionary_key in ["monster_card_atomic_starter_state", "monster_card_atomic_reservations", "monster_card_atomic_terminal_journal", "monster_card_atomic_presentation_journal"]:
+	for dictionary_key in ["monster_card_atomic_starter_state", "monster_card_atomic_reservations", "monster_card_atomic_terminal_journal", "monster_card_atomic_presentation_journal", "monster_wager_settlement_terminal_journal"]:
 		if data.has(dictionary_key) and not (data.get(dictionary_key) is Dictionary):
 			return {"valid": false, "reason_code": "monster_save_%s_invalid" % dictionary_key}
 	var roster: Array = (data.get("auto_monsters", []) as Array).duplicate(true)
@@ -1966,6 +2341,71 @@ func _monster_save_envelope_v06(data: Dictionary) -> Dictionary:
 	var reservations: Dictionary = (data.get("monster_card_atomic_reservations", {}) as Dictionary).duplicate(true)
 	var terminal_journal: Dictionary = (data.get("monster_card_atomic_terminal_journal", {}) as Dictionary).duplicate(true)
 	var presentation_journal: Dictionary = (data.get("monster_card_atomic_presentation_journal", {}) as Dictionary).duplicate(true)
+	var wager_settlement_revision := int(data.get("monster_wager_settlement_revision", 0))
+	if wager_settlement_revision < 0:
+		return {"valid": false, "reason_code": "monster_save_wager_settlement_revision_invalid"}
+	var wager_terminal_journal: Dictionary = (data.get("monster_wager_settlement_terminal_journal", {}) as Dictionary).duplicate(true)
+	for terminal_key_variant: Variant in wager_terminal_journal.keys():
+		var terminal_key := str(terminal_key_variant)
+		var terminal_variant: Variant = wager_terminal_journal.get(terminal_key_variant)
+		if terminal_key.is_empty() or not (terminal_variant is Dictionary):
+			return {"valid": false, "reason_code": "monster_save_wager_terminal_invalid"}
+		var wager_terminal := terminal_variant as Dictionary
+		var expected_terminal_keys := ["schema_version", "wager_id", "revision", "fingerprint", "stage", "public_receipt"]
+		if wager_terminal.size() != expected_terminal_keys.size():
+			return {"valid": false, "reason_code": "monster_save_wager_terminal_schema_invalid"}
+		for expected_key: String in expected_terminal_keys:
+			if not wager_terminal.has(expected_key):
+				return {"valid": false, "reason_code": "monster_save_wager_terminal_schema_invalid"}
+		var terminal_wager_id := int(wager_terminal.get("wager_id", -1))
+		var terminal_revision := int(wager_terminal.get("revision", -1))
+		var expected_terminal_key := "%d:%d" % [terminal_wager_id, terminal_revision]
+		var terminal_public_receipt: Dictionary = wager_terminal.get("public_receipt", {}) if wager_terminal.get("public_receipt", {}) is Dictionary else {}
+		if int(wager_terminal.get("schema_version", -1)) != 1 or terminal_wager_id < 0 or terminal_revision < 0 or terminal_revision > wager_settlement_revision or terminal_key != expected_terminal_key or str(wager_terminal.get("stage", "")) != "finalized" or not MONSTER_WAGER_SETTLEMENT_POLICY_V06.is_sha256(str(wager_terminal.get("fingerprint", ""))) or not MONSTER_WAGER_SETTLEMENT_POLICY_V06.public_receipt_is_valid(terminal_public_receipt, "monster-wager:%d" % terminal_wager_id, terminal_revision):
+			return {"valid": false, "reason_code": "monster_save_wager_terminal_invalid"}
+	var lifecycle_schema := int(data.get("monster_battle_lifecycle_schema_version", 0))
+	if lifecycle_schema not in [0, MONSTER_BATTLE_LIFECYCLE_POLICY_V06.SCHEMA_VERSION]:
+		return {"valid": false, "reason_code": "monster_save_battle_lifecycle_schema_invalid"}
+	var active_wagers: Array = (data.get("active_monster_wagers", []) as Array).duplicate(true)
+	var seen_active_wager_ids: Dictionary = {}
+	var locked_active_monster_uids: Dictionary = {}
+	var maximum_active_wager_revision := 0
+	var maximum_active_wager_id := 0
+	for wager_index in range(active_wagers.size()):
+		var wager_variant: Variant = active_wagers[wager_index]
+		if not (wager_variant is Dictionary):
+			return {"valid": false, "reason_code": "monster_save_active_wager_invalid"}
+		var normalized_lifecycle := _normalize_monster_wager_lifecycle_save_v06(wager_variant as Dictionary, roster)
+		if not bool(normalized_lifecycle.get("valid", false)):
+			return {"valid": false, "reason_code": str(normalized_lifecycle.get("reason_code", "monster_save_battle_lifecycle_invalid"))}
+		var wager := normalized_lifecycle.get("entry", {}) as Dictionary
+		active_wagers[wager_index] = wager
+		var wager_id := int(wager.get("wager_id", -1))
+		var revision := int(wager.get("settlement_revision", -1))
+		if wager_id < 0 or revision < 0 or seen_active_wager_ids.has(wager_id) \
+			or bool(wager.get("resolved", false)) or not (wager.get("decision_open") is bool):
+			return {"valid": false, "reason_code": "monster_save_active_wager_binding_invalid"}
+		if not (wager.get("eligible_player_indices", []) is Array) or not (wager.get("opening_cash_units_by_player", {}) is Dictionary) or not (wager.get("public_player_ids_by_index", {}) is Dictionary):
+			return {"valid": false, "reason_code": "monster_save_active_wager_snapshot_invalid"}
+		for player_index_variant: Variant in wager.get("eligible_player_indices", []):
+			var player_key := str(int(player_index_variant))
+			if not (wager.get("opening_cash_units_by_player", {}) as Dictionary).has(player_key) or int((wager.get("opening_cash_units_by_player", {}) as Dictionary).get(player_key, -1)) < 0 or str((wager.get("public_player_ids_by_index", {}) as Dictionary).get(player_key, "")).is_empty():
+				return {"valid": false, "reason_code": "monster_save_active_wager_snapshot_invalid"}
+		if wager_terminal_journal.has("%d:%d" % [wager_id, revision]):
+			return {"valid": false, "reason_code": "monster_save_wager_active_terminal_collision"}
+		for uid_variant: Variant in wager.get("locked_competitor_uids", []):
+			var locked_uid := int(uid_variant)
+			if locked_active_monster_uids.has(locked_uid):
+				return {"valid": false, "reason_code": "monster_save_battle_roster_overlap"}
+			locked_active_monster_uids[locked_uid] = wager_id
+		seen_active_wager_ids[wager_id] = true
+		maximum_active_wager_id = maxi(maximum_active_wager_id, wager_id)
+		maximum_active_wager_revision = maxi(maximum_active_wager_revision, revision)
+	if wager_settlement_revision < maximum_active_wager_revision:
+		return {"valid": false, "reason_code": "monster_save_wager_revision_stale"}
+	var wager_sequence := maxi(0, int(data.get("monster_wager_sequence", 0)))
+	if wager_sequence < maximum_active_wager_id:
+		return {"valid": false, "reason_code": "monster_save_wager_sequence_stale"}
 	var candidate_core := {
 		"auto_monsters": roster,
 		"next_auto_monster_uid": next_uid,
@@ -2012,10 +2452,12 @@ func _monster_save_envelope_v06(data: Dictionary) -> Dictionary:
 			"next_auto_monster_uid": next_uid,
 			"next_special_monster_slot": next_special,
 			"selected_auto_monster_slot": selected_slot,
-			"active_monster_wagers": (data.get("active_monster_wagers", []) as Array).duplicate(true),
+			"active_monster_wagers": active_wagers,
 			"resolved_monster_wager_history": (data.get("resolved_monster_wager_history", []) as Array).duplicate(true),
-			"monster_wager_sequence": maxi(0, int(data.get("monster_wager_sequence", 0))),
+			"monster_wager_sequence": wager_sequence,
 			"public_card_bid_monster_wager_pool": maxi(0, int(data.get("public_card_bid_monster_wager_pool", 0))),
+			"monster_wager_settlement_revision": wager_settlement_revision,
+			"monster_wager_settlement_terminal_journal": wager_terminal_journal,
 			"monster_timer": maxf(0.0, float(data.get("monster_timer", 4.0))),
 			"special_monster_timer": maxf(0.0, float(data.get("special_monster_timer", 5.0))),
 			"monster_card_atomic_owner_revision": owner_revision,
@@ -3423,9 +3865,12 @@ func _apply_owner_damage_cash_loss(slot: int, damage: int, source: String) -> vo
 	var paid_so_far := maxi(0, int(actor.get("owner_damage_cash_lost", total_pool - int(actor.get("owner_damage_cash_pool", total_pool)))))
 	var remaining_pool := maxi(0, total_pool - paid_so_far)
 	var loss := mini(remaining_pool, maxi(1, int(round(float(total_pool) * float(damage) / float(max_hp)))))
+	var available_cash := maxi(0, _monster_wager_player_cash_units(monster_owner) - _monster_wager_reserved_cash_units_for_player(monster_owner))
+	loss = mini(loss, available_cash)
 	if loss <= 0:
 		return
-	players[monster_owner]["cash"] = max(0, int(players[monster_owner].get("cash", 0)) - loss)
+	if not _apply_monster_wager_cash_delta(monster_owner, -loss):
+		return
 	_record_player_economic_event(monster_owner, "怪兽伤害暴露", String(actor.get("name", "怪兽")), -loss, "%s造成%d伤害" % [source, damage])
 	_record_player_cash_snapshot(monster_owner)
 	actor["owner_damage_cash_total"] = total_pool
@@ -3644,6 +4089,14 @@ func _player_monster_control_limit(player_index: int) -> int:
 	var role := _player_role_card_for_index(player_index)
 	return maxi(1, 1 + int(role.get("monster_control_limit_bonus", 0)))
 
+
+func _monster_battle_limit_seconds_v06() -> float:
+	if not _monster_battle_rules_v06.is_empty():
+		return maxf(0.0, float(_monster_battle_rules_v06.get("battle_limit_seconds", 0.0)))
+	var rules: Dictionary = RULESET_V06_PROFILE.monster_rules()
+	return maxf(0.0, float(rules.get("battle_limit_seconds", 0.0)))
+
+
 func _monster_wager_base_percent(entry: Dictionary) -> int:
 	var fallback := MONSTER_WAGER_MIN_BASE_PERCENT
 	return clampi(
@@ -3656,22 +4109,173 @@ func _monster_wager_clamped_percent(entry: Dictionary, percent: int) -> int:
 	var base_percent := _monster_wager_base_percent(entry)
 	return clampi(percent, base_percent, MONSTER_WAGER_MAX_STAKE_PERCENT)
 
-func _monster_wager_amount_for_percent(player_index: int, percent: int) -> int:
+func _monster_wager_amount_for_percent(player_index: int, percent: int, entry: Dictionary = {}) -> int:
+	var wager := entry
+	if wager.is_empty():
+		wager = _latest_active_monster_wager()
+	var opening_cash := _monster_wager_opening_cash_units(wager, player_index)
+	if opening_cash < 0:
+		return 0
+	var result: Dictionary = MONSTER_WAGER_SETTLEMENT_POLICY_V06.stake_for_cash(opening_cash, percent * 100)
+	return int(result.get("stake", 0)) if bool(result.get("ok", false)) else 0
+
+
+func _monster_wager_player_cash_units(player_index: int) -> int:
+	return floori(float(_monster_wager_player_cash_cents(player_index)) / float(CASH_CENTS_PER_UNIT))
+
+
+func _monster_wager_player_cash_cents(player_index: int) -> int:
+	if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary):
+		return 0
+	if _world_bridge != null and _world_bridge.world_session_state() != null:
+		var cash_snapshot := _world_bridge.world_session_state().private_player_cash_snapshot(player_index)
+		if bool(cash_snapshot.get("valid", false)):
+			return maxi(0, int(cash_snapshot.get("cash_cents", 0)))
+	var fallback := WorldSessionState.canonical_private_cash_record(players[player_index] as Dictionary)
+	return maxi(0, int(fallback.get("cash_cents", 0)))
+
+
+func _monster_wager_opening_cash_units(entry: Dictionary, player_index: int) -> int:
+	var snapshots: Dictionary = entry.get("opening_cash_units_by_player", {}) if entry.get("opening_cash_units_by_player", {}) is Dictionary else {}
+	var key := str(player_index)
+	if not snapshots.has(key) or not (snapshots.get(key) is int):
+		return -1
+	return maxi(0, int(snapshots.get(key, 0)))
+
+
+func private_wager_cash_commitment_snapshot(player_index: int, excluded_wager_id: int = -1) -> Dictionary:
+	# Internal actor-scoped query only.  It intentionally exposes neither rival
+	# opening cash nor public presentation data.  The active wager records remain
+	# the sole commitment authority; the query port stores no duplicate ledger.
 	if player_index < 0 or player_index >= players.size():
-		return 0
-	var player_cash := maxi(0, int((players[player_index] as Dictionary).get("cash", 0)))
-	if player_cash <= 0:
-		return 0
-	var amount := int(ceil(float(player_cash) * float(percent) / 100.0))
-	return clampi(maxi(1, amount), 1, player_cash)
+		return {
+			"valid": false,
+			"reason_code": "monster_wager_commitment_player_invalid",
+			"reserved_cents": 0,
+			"commitment_revision": -1,
+			"commitment_fingerprint": "",
+		}
+	var rows: Array = []
+	var reserved_units := 0
+	for entry_variant: Variant in active_monster_wagers:
+		if not (entry_variant is Dictionary):
+			return {
+				"valid": false,
+				"reason_code": "monster_wager_commitment_entry_invalid",
+				"reserved_cents": 0,
+				"commitment_revision": _monster_wager_settlement_revision,
+				"commitment_fingerprint": "",
+			}
+		var entry := entry_variant as Dictionary
+		var wager_id := int(entry.get("wager_id", -1))
+		if bool(entry.get("resolved", false)) or wager_id == excluded_wager_id or not _monster_wager_eligible_player_indices(entry).has(player_index):
+			continue
+		var commitments := MONSTER_WAGER_SETTLEMENT_POLICY_V06.complete_timeout_commitments(_monster_wager_policy_snapshot(entry))
+		if not bool(commitments.get("ok", false)):
+			return {
+				"valid": false,
+				"reason_code": "monster_wager_commitment_unavailable",
+				"reserved_cents": 0,
+				"commitment_revision": _monster_wager_settlement_revision,
+				"commitment_fingerprint": "",
+			}
+		var public_player_id := _monster_wager_public_player_id(entry, player_index)
+		var matched := false
+		for participant_variant: Variant in commitments.get("participants", []):
+			if not (participant_variant is Dictionary):
+				continue
+			var participant := participant_variant as Dictionary
+			if str(participant.get("public_player_id", "")) != public_player_id:
+				continue
+			var stake_units := maxi(0, int(participant.get("stake", 0)))
+			if reserved_units > 92233720368547758 - stake_units:
+				return {
+					"valid": false,
+					"reason_code": "monster_wager_commitment_overflow",
+					"reserved_cents": 0,
+					"commitment_revision": _monster_wager_settlement_revision,
+					"commitment_fingerprint": "",
+				}
+			reserved_units += stake_units
+			rows.append({
+				"wager_id": wager_id,
+				"settlement_revision": int(entry.get("settlement_revision", -1)),
+				"stake_units": stake_units,
+			})
+			matched = true
+			break
+		if not matched:
+			return {
+				"valid": false,
+				"reason_code": "monster_wager_commitment_participant_missing",
+				"reserved_cents": 0,
+				"commitment_revision": _monster_wager_settlement_revision,
+				"commitment_fingerprint": "",
+			}
+	rows.sort_custom(func(left: Variant, right: Variant) -> bool:
+		return int((left as Dictionary).get("wager_id", -1)) < int((right as Dictionary).get("wager_id", -1))
+	)
+	var reserved_cents := reserved_units * CASH_CENTS_PER_UNIT
+	var fingerprint_source := {
+		"player_index": player_index,
+		"excluded_wager_id": excluded_wager_id,
+		"commitment_revision": _monster_wager_settlement_revision,
+		"rows": rows,
+	}
+	return {
+		"valid": true,
+		"reason_code": "monster_wager_commitment_ready",
+		"reserved_cents": reserved_cents,
+		"commitment_revision": _monster_wager_settlement_revision,
+		"commitment_fingerprint": JSON.stringify(fingerprint_source).sha256_text(),
+	}
+
+
+func _monster_wager_reserved_cash_units_for_player(player_index: int) -> int:
+	var snapshot := private_wager_cash_commitment_snapshot(player_index)
+	if not bool(snapshot.get("valid", false)):
+		# A malformed unresolved wager must never let another mutation consume
+		# money that might be required when the owner retries settlement.
+		return _monster_wager_player_cash_units(player_index)
+	return mini(
+		_monster_wager_player_cash_units(player_index),
+		maxi(0, floori(float(int(snapshot.get("reserved_cents", 0))) / float(CASH_CENTS_PER_UNIT)))
+	)
+
+
+func _monster_wager_eligible_player_indices(entry: Dictionary) -> Array:
+	var result: Array = []
+	for player_index_variant: Variant in entry.get("eligible_player_indices", []):
+		var player_index := int(player_index_variant)
+		if player_index >= 0 and player_index < players.size() and not result.has(player_index):
+			result.append(player_index)
+	result.sort()
+	return result
+
+
+func _monster_wager_public_player_id(entry: Dictionary, player_index: int) -> String:
+	var public_ids: Dictionary = entry.get("public_player_ids_by_index", {}) if entry.get("public_player_ids_by_index", {}) is Dictionary else {}
+	var result := str(public_ids.get(str(player_index), "")).strip_edges()
+	return result if not result.is_empty() else "player.%d" % player_index
+
+
+func _apply_monster_wager_cash_delta(player_index: int, delta_units: int) -> bool:
+	if player_index < 0 or player_index >= players.size():
+		return false
+	var player: Dictionary = (players[player_index] as Dictionary).duplicate(true)
+	var current_cents := _monster_wager_player_cash_cents(player_index)
+	var next_cents := current_cents + delta_units * CASH_CENTS_PER_UNIT
+	if next_cents < 0:
+		return false
+	player["cash_cents"] = next_cents
+	player["cash"] = floori(float(next_cents) / float(CASH_CENTS_PER_UNIT))
+	players[player_index] = player
+	return true
 
 func _monster_wager_percent_options(entry: Dictionary) -> Array:
 	var base_percent := _monster_wager_base_percent(entry)
 	var result := []
-	for step in range(MONSTER_WAGER_VISIBLE_RAISE_STEPS + 1):
-		var percent := base_percent + step * MONSTER_WAGER_PERCENT_STEP
-		if percent > MONSTER_WAGER_MAX_STAKE_PERCENT:
-			break
+	for percent in range(base_percent, MONSTER_WAGER_MAX_STAKE_PERCENT + 1, MONSTER_WAGER_PERCENT_STEP):
 		result.append(percent)
 	return result
 
@@ -3679,12 +4283,12 @@ func _monster_wager_bet_percent(bet: Dictionary) -> int:
 	return int(bet.get("stake_percent", bet.get("percent", 0)))
 
 func _monster_wager_total_stake(entry: Dictionary) -> int:
-	var total := maxi(0, int(entry.get("public_card_bid_pool", 0)))
+	var stakes := 0
 	var bets: Dictionary = entry.get("bets", {}) as Dictionary
 	for bet_variant in bets.values():
 		if bet_variant is Dictionary:
-			total += maxi(0, int((bet_variant as Dictionary).get("stake", 0)))
-	return total
+			stakes += maxi(0, int((bet_variant as Dictionary).get("stake", 0)))
+	return maxi(0, int(entry.get("historical_public_pool", entry.get("public_card_bid_pool", 0)))) + stakes * 2
 
 func _monster_wager_player_bet(entry: Dictionary, player_index: int) -> Dictionary:
 	var bets: Dictionary = entry.get("bets", {}) as Dictionary
@@ -4000,6 +4604,8 @@ func _auto_special_monster_tick_for_slot(slot: int) -> void:
 
 
 func apply_autonomous_action_command(command: Dictionary) -> Dictionary:
+	if str(command.get("action_kind", "")) == "battle_opening_attack":
+		return _apply_monster_battle_opening_attack_command(command)
 	var target_uid := int(command.get("actor_uid", -1))
 	var slot := _auto_monster_slot_by_uid(target_uid)
 	if slot < 0 or slot >= auto_monsters.size():
@@ -4093,6 +4699,73 @@ func apply_autonomous_action_command(command: Dictionary) -> Dictionary:
 	if self_damage > 0:
 		_auto_monster_take_damage(slot, self_damage, "%s反冲" % String(action.get("name", "行动")), -1)
 	return {"accepted": true, "slot": slot, "target_district": target_after_move, "action_index": action_index}
+
+
+func _apply_monster_battle_opening_attack_command(command: Dictionary) -> Dictionary:
+	var wager_id := int(command.get("wager_id", -1))
+	var wager_index := _monster_wager_entry_index_by_id(wager_id)
+	if wager_index < 0:
+		return {"accepted": false, "reason": "monster_battle_wager_not_active"}
+	var entry := active_monster_wagers[wager_index] as Dictionary
+	if _monster_wager_phase(entry) != MONSTER_BATTLE_LIFECYCLE_POLICY_V06.PHASE_BATTLE \
+		or int(entry.get("settlement_revision", -1)) != int(command.get("settlement_revision", -2)):
+		return {"accepted": false, "reason": "monster_battle_command_binding_invalid"}
+	if bool(entry.get("opening_attack_applied", false)):
+		return {"accepted": false, "reason": "monster_battle_opening_attack_already_applied"}
+	var pending: Dictionary = entry.get("pending_attack", {}) as Dictionary
+	if pending.is_empty() \
+		or str(command.get("command_id", "")) != str(entry.get("opening_attack_command_id", "")):
+		return {"accepted": false, "reason": "monster_battle_opening_command_binding_invalid"}
+	var actor_uid := int(command.get("actor_uid", -1))
+	var target_uid := int(command.get("target_monster_uid", -1))
+	var locked_uids: Array = entry.get("locked_competitor_uids", []) as Array
+	if actor_uid <= 0 or target_uid <= 0 or actor_uid == target_uid \
+		or not locked_uids.has(actor_uid) or not locked_uids.has(target_uid):
+		return {"accepted": false, "reason": "monster_battle_roster_binding_invalid"}
+	var actor_slot := _auto_monster_slot_by_uid(actor_uid)
+	var target_slot := _auto_monster_slot_by_uid(target_uid)
+	if actor_slot < 0 or target_slot < 0:
+		return {"accepted": false, "reason": "monster_battle_competitor_unavailable"}
+	var action: Dictionary = command.get("action", {}) as Dictionary
+	if action.is_empty() \
+		or actor_uid != int(pending.get("attacker_uid", -1)) \
+		or target_uid != int(pending.get("target_uid", -1)) \
+		or int(command.get("action_index", -1)) != int(pending.get("action_index", -2)) \
+		or str(command.get("context", "")) != str(pending.get("context", "")) \
+		or UNIT_CARD_SCHEMA_V06.fingerprint(action) != UNIT_CARD_SCHEMA_V06.fingerprint(pending.get("action", {})):
+		return {"accepted": false, "reason": "monster_battle_action_binding_invalid"}
+	var applied := _auto_monster_use_action_on_other(
+		actor_slot,
+		target_slot,
+		action,
+		str(command.get("context", "怪兽赌局开战")),
+		false
+	)
+	if not applied:
+		return {"accepted": false, "reason": "monster_battle_opening_attack_rejected"}
+	# The exact-once marker and the damage mutation belong to the same owner
+	# mutation. This makes the saved postimage sufficient to prevent a second
+	# strike after load, even if a downstream diagnostic receipt is interrupted.
+	var current_index := _monster_wager_entry_index_by_id(wager_id)
+	if current_index < 0:
+		return {"accepted": false, "reason": "monster_battle_wager_lost_during_attack"}
+	var current: Dictionary = (active_monster_wagers[current_index] as Dictionary).duplicate(true)
+	current["opening_attack_applied"] = true
+	current["opening_attack_applied_at"] = game_time
+	current["opening_attack_actor_uid"] = actor_uid
+	current["opening_attack_target_uid"] = target_uid
+	current["opening_attack_action_index"] = int(command.get("action_index", -1))
+	current["opening_attack_action_fingerprint"] = UNIT_CARD_SCHEMA_V06.fingerprint(action)
+	current.erase("pending_attack")
+	active_monster_wagers[current_index] = current
+	return {
+		"accepted": true,
+		"reason": "",
+		"wager_id": wager_id,
+		"actor_uid": actor_uid,
+		"target_monster_uid": target_uid,
+		"action_index": int(command.get("action_index", -1)),
+	}
 
 func _monster_has_trait(actor: Dictionary, trait_name: String) -> bool:
 	var traits: Array = actor.get("movement_traits", []) as Array
@@ -4426,6 +5099,8 @@ func _monster_wager_competitors_for_pair(slot_a: int, slot_b: int) -> Array:
 		var actor: Dictionary = auto_monsters[i]
 		if bool(actor.get("down", false)):
 			continue
+		if _active_monster_wager_index_for_uid(int(actor.get("uid", 0))) >= 0:
+			continue
 		var monster_position := int(actor.get("position", -1))
 		if not anchor_positions.has(monster_position):
 			continue
@@ -4464,8 +5139,33 @@ func _latest_active_monster_wager() -> Dictionary:
 	return {}
 
 
+func _monster_wager_phase(entry: Dictionary) -> String:
+	var phase := str(entry.get("lifecycle_phase", ""))
+	if [
+		MONSTER_BATTLE_LIFECYCLE_POLICY_V06.PHASE_DECISION,
+		MONSTER_BATTLE_LIFECYCLE_POLICY_V06.PHASE_BATTLE,
+		MONSTER_BATTLE_LIFECYCLE_POLICY_V06.PHASE_SETTLING,
+	].has(phase):
+		return phase
+	return MONSTER_BATTLE_LIFECYCLE_POLICY_V06.PHASE_DECISION if bool(entry.get("decision_open", false)) else MONSTER_BATTLE_LIFECYCLE_POLICY_V06.PHASE_BATTLE
+
+
+func _monster_wager_is_decision_open(entry: Dictionary) -> bool:
+	return not bool(entry.get("resolved", false)) \
+		and _monster_wager_phase(entry) == MONSTER_BATTLE_LIFECYCLE_POLICY_V06.PHASE_DECISION \
+		and bool(entry.get("decision_open", false))
+
+
+func _latest_open_monster_wager_decision() -> Dictionary:
+	for i in range(active_monster_wagers.size() - 1, -1, -1):
+		var entry: Dictionary = active_monster_wagers[i]
+		if _monster_wager_is_decision_open(entry):
+			return entry.duplicate(true)
+	return {}
+
+
 func forced_decision_candidates() -> Array:
-	var wager := _latest_active_monster_wager()
+	var wager := _latest_open_monster_wager_decision()
 	if wager.is_empty():
 		return []
 	var wager_id := int(wager.get("wager_id", -1))
@@ -4483,7 +5183,7 @@ func forced_decision_candidates() -> Array:
 		"blocks_player_actions": true,
 		"blocks_card_resolution": true,
 		"source_ref": "monster_wager",
-		"notes": "Public wager freezes the table until every bet or timeout resolves.",
+		"notes": "Public wager freezes the table only until every choice is locked or the 15-second window times out.",
 	}]
 
 func _monster_wager_current_slot(entry: Dictionary, side: String) -> int:
@@ -4514,7 +5214,49 @@ func _monster_wager_side_active(entry: Dictionary, side: String) -> bool:
 	var slot := _monster_wager_current_slot(entry, side)
 	if slot < 0 or slot >= auto_monsters.size():
 		return false
-	return not bool((auto_monsters[slot] as Dictionary).get("down", false))
+	var actor := auto_monsters[slot] as Dictionary
+	if bool(actor.get("down", false)):
+		return false
+	return not actor.has("remaining_time") or float(actor.get("remaining_time", 0.0)) > 0.0
+
+
+func _active_monster_wager_index_for_uid(monster_uid: int) -> int:
+	if monster_uid <= 0:
+		return -1
+	for i in range(active_monster_wagers.size()):
+		var entry: Dictionary = active_monster_wagers[i]
+		if bool(entry.get("resolved", false)):
+			continue
+		for competitor_variant: Variant in _monster_wager_competitors(entry):
+			if competitor_variant is Dictionary and int((competitor_variant as Dictionary).get("uid", 0)) == monster_uid:
+				return i
+	return -1
+
+
+func _nearest_locked_battle_opponent_slot(slot: int, entry: Dictionary) -> int:
+	if slot < 0 or slot >= auto_monsters.size():
+		return -1
+	var actor := auto_monsters[slot] as Dictionary
+	var actor_uid := int(actor.get("uid", 0))
+	var best_slot := -1
+	var best_distance := INF
+	for competitor_variant: Variant in _monster_wager_competitors(entry):
+		if not (competitor_variant is Dictionary):
+			continue
+		var competitor := competitor_variant as Dictionary
+		if int(competitor.get("uid", 0)) == actor_uid:
+			continue
+		var side := str(competitor.get("side", ""))
+		if not _monster_wager_side_active(entry, side):
+			continue
+		var candidate_slot := _monster_wager_current_slot(entry, side)
+		if candidate_slot < 0:
+			continue
+		var distance := _wrapped_distance(_entity_world_position(actor), _entity_world_position(auto_monsters[candidate_slot] as Dictionary))
+		if distance < best_distance or (is_equal_approx(distance, best_distance) and (best_slot < 0 or candidate_slot < best_slot)):
+			best_distance = distance
+			best_slot = candidate_slot
+	return best_slot
 
 func _monster_wager_side_for_slot(entry: Dictionary, slot: int) -> String:
 	if slot < 0 or slot >= auto_monsters.size():
@@ -4609,7 +5351,7 @@ func _monster_wager_decision_count(entry: Dictionary) -> int:
 	return bets.size()
 
 func _monster_wager_all_players_decided(entry: Dictionary) -> bool:
-	return _monster_wager_decision_count(entry) >= players.size()
+	return _monster_wager_decision_count(entry) >= _monster_wager_eligible_player_indices(entry).size()
 
 func _monster_wager_public_decision_summary(entry: Dictionary) -> String:
 	var bets: Dictionary = entry.get("bets", {}) as Dictionary
@@ -4640,48 +5382,81 @@ func _monster_wager_public_bet_summary(entry: Dictionary) -> String:
 	return _monster_wager_public_decision_summary(entry)
 
 func _monster_wager_freezes_game() -> bool:
-	for entry_variant in active_monster_wagers:
-		if entry_variant is Dictionary and not bool((entry_variant as Dictionary).get("resolved", false)):
-			return true
-	return false
-
-func _monster_wager_forced_side(entry: Dictionary, player_index: int) -> String:
-	var preferred := str(_ai_runtime_call("_ai_monster_wager_side", [player_index, entry]))
-	if preferred != "":
-		return preferred
-	var best_side := ""
-	var best_damage := -999
-	for competitor_variant in _monster_wager_competitors(entry):
-		var competitor := competitor_variant as Dictionary
-		var side := String(competitor.get("side", ""))
-		var damage := _monster_wager_damage_for_side(entry, side)
-		if best_side == "" or damage > best_damage:
-			best_side = side
-			best_damage = damage
-	return best_side
+	return has_open_monster_wager_decision()
 
 func _force_monster_wager_missing_bets(wager_id: int, reason: String) -> void:
 	var index := _monster_wager_entry_index_by_id(wager_id)
 	if index < 0:
 		return
-	for player_index in range(players.size()):
-		index = _monster_wager_entry_index_by_id(wager_id)
-		if index < 0:
-			return
-		var entry: Dictionary = active_monster_wagers[index]
-		if _monster_wager_player_side(entry, player_index) != "":
-			continue
-		var side := _monster_wager_forced_side(entry, player_index)
-		if side == "":
-			continue
-		var base_percent := _monster_wager_base_percent(entry)
-		if _place_monster_wager_percent(wager_id, side, base_percent, player_index, true):
-			_log("怪兽赌局#%d：%s未在窗口内手动下注，系统按%s强制押底注%d%%。" % [
-				wager_id,
-				_player_name(player_index),
-				reason,
-				base_percent,
-			])
+	var entry: Dictionary = (active_monster_wagers[index] as Dictionary).duplicate(true)
+	entry["forced_close_reason"] = reason
+	active_monster_wagers[index] = entry
+	# Missing seats remain unresponded in the strict policy snapshot.  The pure
+	# policy then assigns them, in stable public-player order, to the currently
+	# least-staked side and marks the public receipt as auto-selected.
+
+
+func _materialize_monster_wager_timeout_commitments(entry: Dictionary) -> Dictionary:
+	var commitments := MONSTER_WAGER_SETTLEMENT_POLICY_V06.complete_timeout_commitments(_monster_wager_policy_snapshot(entry))
+	if not bool(commitments.get("ok", false)):
+		return {"ok": false, "reason_code": str(commitments.get("reason_code", "monster_wager_commitment_unavailable")), "entry": entry}
+	var next := entry.duplicate(true)
+	var bets: Dictionary = (next.get("bets", {}) as Dictionary).duplicate(true)
+	var public_bets: Array = []
+	for participant_variant: Variant in commitments.get("participants", []):
+		if not (participant_variant is Dictionary):
+			return {"ok": false, "reason_code": "monster_wager_commitment_participant_invalid", "entry": entry}
+		var participant := participant_variant as Dictionary
+		var player_index := _monster_wager_player_index_for_public_id(next, str(participant.get("public_player_id", "")))
+		if player_index < 0:
+			return {"ok": false, "reason_code": "monster_wager_commitment_player_binding_invalid", "entry": entry}
+		var player_key := str(player_index)
+		var existing: Dictionary = (bets.get(player_key, {}) as Dictionary).duplicate(true) if bets.get(player_key, {}) is Dictionary else {}
+		var forced := bool(participant.get("auto_selected", false)) or bool(existing.get("forced", false))
+		var bet := {
+			"player_index": player_index,
+			"side": str(participant.get("selected_side_id", "")),
+			"stake": maxi(0, int(participant.get("stake", 0))),
+			"stake_percent": maxi(0, int(participant.get("rate_bp", 0)) / 100),
+			"forced": forced,
+			"last_time": float(existing.get("last_time", game_time)),
+		}
+		bets[player_key] = bet
+		public_bets.append({
+			"player_index": player_index,
+			"side": str(bet.get("side", "")),
+			"stake": int(bet.get("stake", 0)),
+			"stake_percent": int(bet.get("stake_percent", 0)),
+			"forced": forced,
+			"time": float(bet.get("last_time", game_time)),
+		})
+	next["bets"] = bets
+	next["public_bets"] = public_bets
+	return {"ok": true, "reason_code": "monster_wager_commitments_materialized", "entry": next}
+
+
+func _close_monster_wager_decision_window(index: int, reason: String) -> bool:
+	if index < 0 or index >= active_monster_wagers.size():
+		return false
+	var entry: Dictionary = (active_monster_wagers[index] as Dictionary).duplicate(true)
+	if not _monster_wager_is_decision_open(entry):
+		return _monster_wager_phase(entry) != MONSTER_BATTLE_LIFECYCLE_POLICY_V06.PHASE_DECISION
+	var materialized := _materialize_monster_wager_timeout_commitments(entry)
+	if not bool(materialized.get("ok", false)):
+		return false
+	entry = MONSTER_BATTLE_LIFECYCLE_POLICY_V06.transition_to_battle(materialized.get("entry", entry) as Dictionary, reason)
+	entry["battle_started_at"] = game_time
+	if not bool(entry.get("opening_attack_applied", false)):
+		entry["opening_attack_occurred_at_world_us"] = maxi(1, int(round(game_time * 1000000.0)))
+	active_monster_wagers[index] = entry
+	_log("怪兽赌局#%d下注锁定：%s；决斗恢复世界时间，最长%.0f秒后结算。" % [
+		int(entry.get("wager_id", -1)),
+		reason,
+		float(entry.get("battle_limit_seconds", 0.0)),
+	])
+	request_table_presentation_refresh()
+	return true
+
 
 func _try_finish_monster_wager_if_ready(wager_id: int) -> bool:
 	var index := _monster_wager_entry_index_by_id(wager_id)
@@ -4690,7 +5465,7 @@ func _try_finish_monster_wager_if_ready(wager_id: int) -> bool:
 	var entry: Dictionary = active_monster_wagers[index]
 	if not _monster_wager_all_players_decided(entry):
 		return false
-	return _settle_monster_wager_at_index(index, "全员已下注")
+	return _close_monster_wager_decision_window(index, "全员已下注")
 
 func _open_monster_wager_for_pair(slot_a: int, slot_b: int, context: String = "怪兽遭遇", pending_attack: Dictionary = {}) -> int:
 	if slot_a < 0 or slot_a >= auto_monsters.size() or slot_b < 0 or slot_b >= auto_monsters.size() or slot_a == slot_b:
@@ -4701,23 +5476,54 @@ func _open_monster_wager_for_pair(slot_a: int, slot_b: int, context: String = "�
 	if existing_index >= 0:
 		var existing: Dictionary = active_monster_wagers[existing_index]
 		return int(existing.get("wager_id", -1))
+	var actor_a: Dictionary = auto_monsters[slot_a]
+	var actor_b: Dictionary = auto_monsters[slot_b]
+	var actor_a_uid := int(actor_a.get("uid", 0))
+	var actor_b_uid := int(actor_b.get("uid", 0))
+	if actor_a_uid <= 0 or actor_b_uid <= 0 \
+		or _active_monster_wager_index_for_uid(actor_a_uid) >= 0 \
+		or _active_monster_wager_index_for_uid(actor_b_uid) >= 0:
+		return -1
+	# Only one forced wager choice can own the modal decision surface at a time.
+	# Disjoint battles may coexist after their choices have closed.
+	if has_open_monster_wager_decision():
+		return -1
 	var competitors := _monster_wager_competitors_for_pair(slot_a, slot_b)
 	if competitors.size() < 2:
 		return -1
-	var actor_a: Dictionary = auto_monsters[slot_a]
-	var actor_b: Dictionary = auto_monsters[slot_b]
 	if bool(actor_a.get("down", false)) or bool(actor_b.get("down", false)):
 		return -1
 	monster_wager_sequence += 1
+	_monster_wager_settlement_revision += 1
 	var pair_key := _monster_wager_key_for_competitors(competitors)
 	var base_percent := rng.randi_range(MONSTER_WAGER_MIN_BASE_PERCENT, MONSTER_WAGER_MAX_BASE_PERCENT)
+	var eligible_player_indices: Array = []
+	var opening_cash_units_by_player: Dictionary = {}
+	var public_player_ids_by_index: Dictionary = {}
+	for player_index in range(players.size()):
+		var player_variant: Variant = players[player_index]
+		if not (player_variant is Dictionary) or bool((player_variant as Dictionary).get("eliminated", false)):
+			continue
+		eligible_player_indices.append(player_index)
+		opening_cash_units_by_player[str(player_index)] = _monster_wager_player_cash_units(player_index)
+		public_player_ids_by_index[str(player_index)] = "player.%d" % player_index
+	if eligible_player_indices.is_empty():
+		return -1
+	var opening_attack := pending_attack.duplicate(true)
+	if not opening_attack.is_empty():
+		opening_attack.erase("attacker_slot")
+		opening_attack.erase("target_slot")
+		opening_attack["attacker_uid"] = actor_a_uid
+		opening_attack["target_uid"] = actor_b_uid
+		opening_attack["action_index"] = maxi(0, int(opening_attack.get("action_index", 0)))
 	var entry := {
 		"wager_id": monster_wager_sequence,
+		"settlement_revision": _monster_wager_settlement_revision,
 		"pair_key": pair_key,
 		"base_percent": base_percent,
 		"competitors": competitors.duplicate(true),
-		"monster_a_uid": int(actor_a.get("uid", 0)),
-		"monster_b_uid": int(actor_b.get("uid", 0)),
+		"monster_a_uid": actor_a_uid,
+		"monster_b_uid": actor_b_uid,
 		"monster_a_slot": slot_a,
 		"monster_b_slot": slot_b,
 		"monster_a_name": String(actor_a.get("name", "怪兽A")),
@@ -4726,25 +5532,33 @@ func _open_monster_wager_for_pair(slot_a: int, slot_b: int, context: String = "�
 		"damage_b": 0,
 		"bets": {},
 		"public_bets": [],
-		"public_card_bid_pool": public_card_bid_monster_wager_pool,
+		"historical_public_pool": public_card_bid_monster_wager_pool,
+		"eligible_player_indices": eligible_player_indices,
+		"opening_cash_units_by_player": opening_cash_units_by_player,
+		"public_player_ids_by_index": public_player_ids_by_index,
 		"started_at": game_time,
-		"remaining_seconds": _ruleset_timing_seconds(&"monster_wager_default_seconds"),
-		"seconds_total": _ruleset_timing_seconds(&"monster_wager_default_seconds"),
+		"decision_open": true,
 		"context": context,
-		"pending_attack": pending_attack.duplicate(true),
-		"battle_resolved": pending_attack.is_empty(),
+		"pending_attack": opening_attack,
+		"opening_attack_command_id": "monster-wager-opening:%d:%d" % [monster_wager_sequence, _monster_wager_settlement_revision],
 		"resolved": false,
 	}
+	entry.merge(MONSTER_BATTLE_LIFECYCLE_POLICY_V06.initial_state(
+		competitors,
+		_monster_battle_limit_seconds_v06(),
+		float(MONSTER_WAGER_WINDOW_SECONDS),
+		opening_attack
+	), true)
 	for competitor_variant in competitors:
 		var competitor := competitor_variant as Dictionary
 		entry["damage_%s" % String(competitor.get("side", ""))] = 0
 	active_monster_wagers.append(entry)
 	var carried_card_bid_pool := public_card_bid_monster_wager_pool
 	public_card_bid_monster_wager_pool = 0
-	_log("公开怪兽赌局#%d开启：%s，整局冻结%.0f秒内强制下注；本局统一底注%d%%，身份、方向、百分比和金额全部公开，押中者平分总奖池。" % [
+	_log("公开怪兽赌局#%d开启：%s，整局冻结%.0f秒内强制下注；本局统一底注%d%%，身份、方向、百分比和金额全部公开；赢家先取双倍本注，再平分剩余奖金。" % [
 		monster_wager_sequence,
 		_monster_wager_matchup_text(entry),
-		_ruleset_timing_seconds(&"monster_wager_default_seconds"),
+		MONSTER_WAGER_WINDOW_SECONDS,
 		base_percent,
 	])
 	if carried_card_bid_pool > 0:
@@ -4784,13 +5598,10 @@ func _record_monster_wager_damage(attacker_slot: int, target_slot: int, damage: 
 		return
 	var index := _active_monster_wager_index_for_pair(attacker_slot, target_slot)
 	if index < 0:
-		var opened_id := _open_monster_wager_for_pair(attacker_slot, target_slot, "怪兽交战")
-		if opened_id < 0:
-			return
-		index = _monster_wager_entry_index_by_id(opened_id)
-	if index < 0:
 		return
 	var entry: Dictionary = active_monster_wagers[index]
+	if _monster_wager_phase(entry) != MONSTER_BATTLE_LIFECYCLE_POLICY_V06.PHASE_BATTLE:
+		return
 	var side := _monster_wager_side_for_slot(entry, attacker_slot)
 	if side == "":
 		return
@@ -4806,34 +5617,22 @@ func _record_monster_wager_damage(attacker_slot: int, target_slot: int, damage: 
 	entry["competitors"] = competitors
 	active_monster_wagers[index] = entry
 
-func _place_monster_wager_percent(wager_id: int, side: String, stake_percent: int = 0, player_index: int = -1, forced: bool = false, metadata: Dictionary = {}) -> bool:
+func _place_monster_wager(wager_id: int, side: String, stake_percent: int, player_index: int, forced: bool = false) -> bool:
+	side = side.to_lower()
 	if player_index < 0 or player_index >= players.size():
 		return false
 	var index := _monster_wager_entry_index_by_id(wager_id)
 	if index < 0:
 		return false
-	var entry: Dictionary = active_monster_wagers[index]
-	var percent := _monster_wager_clamped_percent(entry, stake_percent if stake_percent > 0 else _monster_wager_base_percent(entry))
-	var stake := _monster_wager_amount_for_percent(player_index, percent)
-	var enriched_metadata := metadata.duplicate(true)
-	enriched_metadata["stake_percent"] = percent
-	return _place_monster_wager(wager_id, side, stake, player_index, forced, enriched_metadata)
-
-func _place_monster_wager(wager_id: int, side: String, stake: int = 0, player_index: int = -1, forced: bool = false, metadata: Dictionary = {}) -> bool:
-	side = side.to_lower()
-	if player_index < 0 or player_index >= players.size() or stake < 0:
-		return false
-	var index := _monster_wager_entry_index_by_id(wager_id)
-	if index < 0:
-		return false
 	var entry: Dictionary = (active_monster_wagers[index] as Dictionary).duplicate(true)
+	if not bool(entry.get("decision_open", false)) or not _monster_wager_eligible_player_indices(entry).has(player_index):
+		return false
 	if _monster_wager_side_label(entry, side) == "平局":
 		return false
-	var player_cash := int((players[player_index] as Dictionary).get("cash", 0))
 	var base_percent := _monster_wager_base_percent(entry)
-	var stake_percent := int(metadata.get("stake_percent", metadata.get("percent", _monster_wager_percent_for_amount(player_index, stake))))
-	stake_percent = _monster_wager_clamped_percent(entry, stake_percent if stake_percent > 0 else base_percent)
-	stake = _monster_wager_amount_for_percent(player_index, stake_percent)
+	if stake_percent < base_percent or stake_percent > MONSTER_WAGER_MAX_STAKE_PERCENT or (stake_percent - base_percent) % MONSTER_WAGER_PERCENT_STEP != 0:
+		return false
+	var stake := _monster_wager_amount_for_percent(player_index, stake_percent, entry)
 	var bets: Dictionary = (entry.get("bets", {}) as Dictionary).duplicate(true)
 	var player_key := str(player_index)
 	var bet := {}
@@ -4842,17 +5641,12 @@ func _place_monster_wager(wager_id: int, side: String, stake: int = 0, player_in
 	var previous_side := String(bet.get("side", ""))
 	if previous_side != "":
 		return false
-	players[player_index]["cash"] = player_cash - stake
 	bet["player_index"] = player_index
 	bet["side"] = side
 	bet["stake"] = stake
 	bet["stake_percent"] = stake_percent
 	bet["forced"] = forced
 	bet["last_time"] = game_time
-	for key_variant in metadata.keys():
-		var key := String(key_variant)
-		if key.begins_with("ai_wager_"):
-			bet[key] = metadata[key_variant]
 	bets[player_key] = bet
 	var public_bets: Array = (entry.get("public_bets", []) as Array).duplicate(true)
 	public_bets.append({
@@ -4868,14 +5662,6 @@ func _place_monster_wager(wager_id: int, side: String, stake: int = 0, player_in
 	entry["bets"] = bets
 	entry["public_bets"] = public_bets
 	active_monster_wagers[index] = entry
-	_record_player_economic_event(
-		player_index,
-		"怪兽赌局",
-		"强制底注" if forced else "公开下注",
-		-stake,
-		"赌局#%d：%s%d%%（¥%d）支持%s；身份、方向、百分比和金额都公开。" % [wager_id, "强制底注" if forced else "公开下注", stake_percent, stake, _monster_wager_side_label(entry, side)]
-	)
-	_record_player_cash_snapshot(player_index)
 	_log("公开下注：%s在怪兽赌局#%d%s%d%%（¥%d）支持%s。" % [
 		_player_name(player_index),
 		wager_id,
@@ -4906,7 +5692,7 @@ func _monster_wager_actor_expected_damage_score(actor: Dictionary) -> int:
 		score += float(maxi(0, action_damage)) * float(weight)
 	return maxi(1, int(round(score / float(total))))
 
-func _update_monster_wagers(delta: float) -> void:
+func _update_monster_wager_decisions(real_delta: float) -> void:
 	if active_monster_wagers.is_empty():
 		return
 	for i in range(active_monster_wagers.size() - 1, -1, -1):
@@ -4914,166 +5700,306 @@ func _update_monster_wagers(delta: float) -> void:
 		if bool(entry.get("resolved", false)):
 			active_monster_wagers.remove_at(i)
 			continue
-		var remaining := maxf(0.0, float(entry.get("remaining_seconds", _ruleset_timing_seconds(&"monster_wager_default_seconds"))) - delta)
-		entry["remaining_seconds"] = remaining
-		active_monster_wagers[i] = entry
-		if remaining <= 0.0:
-			_force_monster_wager_missing_bets(int(entry.get("wager_id", -1)), "倒计时结束")
-			_settle_monster_wager(int(entry.get("wager_id", -1)), "倒计时结束")
+		if not _monster_wager_is_decision_open(entry):
 			continue
-		var active_sides := 0
-		for competitor_variant in _monster_wager_competitors(entry):
-			var competitor := competitor_variant as Dictionary
-			if _monster_wager_side_active(entry, String(competitor.get("side", ""))):
-				active_sides += 1
-		if active_sides < 2:
+		entry = MONSTER_BATTLE_LIFECYCLE_POLICY_V06.advance_decision(entry, real_delta)
+		active_monster_wagers[i] = entry
+		if float(entry.get("decision_remaining_seconds", 0.0)) <= 0.0:
+			_force_monster_wager_missing_bets(int(entry.get("wager_id", -1)), "倒计时结束")
+			var current_index := _monster_wager_entry_index_by_id(int(entry.get("wager_id", -1)))
+			if current_index >= 0:
+				_close_monster_wager_decision_window(current_index, "倒计时结束")
+			continue
+		if _monster_wager_active_side_count(entry) < 2:
 			_force_monster_wager_missing_bets(int(entry.get("wager_id", -1)), "怪兽离场")
-			_settle_monster_wager(int(entry.get("wager_id", -1)), "怪兽离场")
+			_close_monster_wager_decision_window(i, "怪兽离场")
 
-func _settle_monster_wager(wager_id: int, reason: String = "手动结算") -> bool:
-	var index := _monster_wager_entry_index_by_id(wager_id)
-	if index < 0:
+
+func _update_monster_battle_lifecycles(world_delta: float) -> void:
+	if active_monster_wagers.is_empty():
+		return
+	for i in range(active_monster_wagers.size() - 1, -1, -1):
+		if i >= active_monster_wagers.size():
+			continue
+		var entry: Dictionary = active_monster_wagers[i]
+		if bool(entry.get("resolved", false)):
+			active_monster_wagers.remove_at(i)
+			continue
+		var phase := _monster_wager_phase(entry)
+		if phase == MONSTER_BATTLE_LIFECYCLE_POLICY_V06.PHASE_SETTLING:
+			_settle_monster_wager_at_index(i, str(entry.get("settlement_reason", "结算重试")))
+			continue
+		if phase != MONSTER_BATTLE_LIFECYCLE_POLICY_V06.PHASE_BATTLE:
+			continue
+		if _monster_wager_active_side_count(entry) < 2:
+			_transition_monster_wager_to_settlement(i, "怪兽倒地或离场")
+			continue
+		if not _dispatch_monster_wager_opening_attack(i):
+			# The first strike is a typed simulation mutation. If its command path is
+			# unavailable, the battle timer fails closed instead of skipping damage.
+			continue
+		var wager_id := int(entry.get("wager_id", -1))
+		var current_index := _monster_wager_entry_index_by_id(wager_id)
+		if current_index < 0:
+			continue
+		entry = active_monster_wagers[current_index] as Dictionary
+		if _monster_wager_active_side_count(entry) < 2:
+			_transition_monster_wager_to_settlement(current_index, "怪兽倒地或离场")
+			continue
+		entry = MONSTER_BATTLE_LIFECYCLE_POLICY_V06.advance_battle(entry, world_delta)
+		active_monster_wagers[current_index] = entry
+		if float(entry.get("battle_remaining_seconds", 0.0)) <= 0.0:
+			_transition_monster_wager_to_settlement(current_index, "战斗达到60秒上限")
+
+
+func _monster_wager_active_side_count(entry: Dictionary) -> int:
+	var result := 0
+	for competitor_variant: Variant in _monster_wager_competitors(entry):
+		if competitor_variant is Dictionary and _monster_wager_side_active(entry, str((competitor_variant as Dictionary).get("side", ""))):
+			result += 1
+	return result
+
+
+func _transition_monster_wager_to_settlement(index: int, reason: String) -> bool:
+	if index < 0 or index >= active_monster_wagers.size():
 		return false
+	var entry := MONSTER_BATTLE_LIFECYCLE_POLICY_V06.transition_to_settling(active_monster_wagers[index] as Dictionary, reason)
+	active_monster_wagers[index] = entry
 	return _settle_monster_wager_at_index(index, reason)
 
-func _resolve_monster_wager_pending_battle_at_index(index: int) -> void:
+func _dispatch_monster_wager_opening_attack(index: int) -> bool:
 	if index < 0 or index >= active_monster_wagers.size():
-		return
+		return false
 	var entry: Dictionary = (active_monster_wagers[index] as Dictionary).duplicate(true)
-	if bool(entry.get("battle_resolved", false)):
-		return
-	entry["battle_resolved"] = true
-	active_monster_wagers[index] = entry
+	if bool(entry.get("opening_attack_applied", false)):
+		return true
 	var pending: Dictionary = entry.get("pending_attack", {}) as Dictionary
 	if pending.is_empty():
-		return
-	var attacker_slot := int(pending.get("attacker_slot", -1))
-	var target_slot := int(pending.get("target_slot", -1))
+		entry["opening_attack_applied"] = true
+		active_monster_wagers[index] = entry
+		return true
+	var attacker_uid := int(pending.get("attacker_uid", -1))
+	var target_uid := int(pending.get("target_uid", -1))
 	var action: Dictionary = pending.get("action", {}) as Dictionary
 	var context := String(pending.get("context", "怪兽赌局开战"))
-	if attacker_slot < 0 or target_slot < 0 or action.is_empty():
-		return
-	_auto_monster_use_action_on_other(attacker_slot, target_slot, action, context, false)
+	if attacker_uid <= 0 or target_uid <= 0 or action.is_empty() or _runtime_command_pipeline == null:
+		return false
+	var command_id := str(entry.get("opening_attack_command_id", "")).strip_edges()
+	if command_id.is_empty():
+		return false
+	var occurred_at_world_us := maxi(1, int(entry.get("opening_attack_occurred_at_world_us", round(game_time * 1000000.0))))
+	var attacker_slot := _auto_monster_slot_by_uid(attacker_uid)
+	var target_district := int((auto_monsters[attacker_slot] as Dictionary).get("position", -1)) if attacker_slot >= 0 else -1
+	var dispatch := dispatch_autonomous_action_command({
+		"command_id": command_id,
+		"actor_uid": attacker_uid,
+		"target_monster_uid": target_uid,
+		"action_kind": "battle_opening_attack",
+		"action_index": maxi(0, int(pending.get("action_index", 0))),
+		"action": action.duplicate(true),
+		"target_district": target_district,
+		"wager_id": int(entry.get("wager_id", -1)),
+		"settlement_revision": int(entry.get("settlement_revision", -1)),
+		"context": context,
+		"source": "monster_battle_lifecycle",
+		"occurred_at_world_us": occurred_at_world_us,
+		"sequence": int(entry.get("settlement_revision", 0)),
+	})
+	if not bool(dispatch.get("handled", false)):
+		return false
+	var current_index := _monster_wager_entry_index_by_id(int(entry.get("wager_id", -1)))
+	if current_index < 0:
+		return false
+	var current: Dictionary = active_monster_wagers[current_index] as Dictionary
+	return bool(current.get("opening_attack_applied", false)) and not current.has("pending_attack")
+
+func _monster_wager_policy_snapshot(entry: Dictionary) -> Dictionary:
+	var competitors: Array = []
+	for competitor_variant: Variant in _monster_wager_competitors(entry):
+		if not (competitor_variant is Dictionary):
+			continue
+		var competitor := competitor_variant as Dictionary
+		var side := str(competitor.get("side", ""))
+		competitors.append({"side_id": side, "effective_damage": maxi(0, _monster_wager_damage_for_side(entry, side))})
+	var participants: Array = []
+	var base_percent := _monster_wager_base_percent(entry)
+	for player_index_variant: Variant in _monster_wager_eligible_player_indices(entry):
+		var player_index := int(player_index_variant)
+		var bet := _monster_wager_player_bet(entry, player_index)
+		var responded := not bet.is_empty() and not bool(bet.get("forced", false))
+		participants.append({
+			"public_player_id": _monster_wager_public_player_id(entry, player_index),
+			"exact_cash": _monster_wager_opening_cash_units(entry, player_index),
+			"responded": responded,
+			"selected_side_id": str(bet.get("side", "")) if responded else "",
+			"rate_bp": _monster_wager_bet_percent(bet) * 100 if responded else base_percent * 100,
+		})
+	var snapshot := {
+		"schema_version": MONSTER_WAGER_SETTLEMENT_POLICY_V06.SCHEMA_VERSION,
+		"wager_id": "monster-wager:%d" % int(entry.get("wager_id", -1)),
+		"revision": int(entry.get("settlement_revision", -1)),
+		"fingerprint": "",
+		"window": {"duration_seconds": int(MONSTER_WAGER_WINDOW_SECONDS), "mandatory": true, "ready_can_close_early": true},
+		"base_rate_bp": base_percent * 100,
+		"historical_public_pool": maxi(0, int(entry.get("historical_public_pool", 0))),
+		"competitors": competitors,
+		"participants": participants,
+	}
+	snapshot["fingerprint"] = MONSTER_WAGER_SETTLEMENT_POLICY_V06.fingerprint_for_snapshot(snapshot)
+	return snapshot
+
+
+func _monster_wager_player_index_for_public_id(entry: Dictionary, public_player_id: String) -> int:
+	for player_index_variant: Variant in _monster_wager_eligible_player_indices(entry):
+		var player_index := int(player_index_variant)
+		if _monster_wager_public_player_id(entry, player_index) == public_player_id:
+			return player_index
+	return -1
+
+
+func _monster_wager_cash_postimage(entry: Dictionary, private_receipt: Dictionary) -> Dictionary:
+	var next_players: Array = players.duplicate(true)
+	var touched: Dictionary = {}
+	for participant_variant: Variant in private_receipt.get("participants", []):
+		if not (participant_variant is Dictionary):
+			return {"ok": false, "reason_code": "monster_wager_participant_delta_invalid"}
+		var participant := participant_variant as Dictionary
+		var player_index := _monster_wager_player_index_for_public_id(entry, str(participant.get("public_player_id", "")))
+		if player_index < 0 or player_index >= next_players.size() or touched.has(player_index):
+			return {"ok": false, "reason_code": "monster_wager_participant_binding_invalid"}
+		var player_variant: Variant = next_players[player_index]
+		if not (player_variant is Dictionary):
+			return {"ok": false, "reason_code": "monster_wager_player_state_invalid"}
+		var player := (player_variant as Dictionary).duplicate(true)
+		var current_cents := _monster_wager_player_cash_cents(player_index)
+		var delta_units := int(participant.get("net_cash_delta", 0))
+		if delta_units > 92233720368547758 or delta_units < -92233720368547758:
+			return {"ok": false, "reason_code": "monster_wager_cash_delta_overflow"}
+		var delta_cents := delta_units * CASH_CENTS_PER_UNIT
+		if delta_cents > 0 and current_cents > 9223372036854775807 - delta_cents:
+			return {"ok": false, "reason_code": "monster_wager_cash_delta_overflow"}
+		var next_cents := current_cents + delta_cents
+		if next_cents < 0:
+			return {"ok": false, "reason_code": "monster_wager_cash_insufficient"}
+		player["cash_cents"] = next_cents
+		player["cash"] = floori(float(next_cents) / float(CASH_CENTS_PER_UNIT))
+		next_players[player_index] = player
+		touched[player_index] = true
+	return {"ok": true, "players": next_players}
+
+
+func _monster_wager_public_history_entry(entry: Dictionary, public_receipt: Dictionary, reason: String) -> Dictionary:
+	var history := entry.duplicate(true)
+	for private_key in [
+		"opening_cash_units_by_player", "public_player_ids_by_index", "pending_attack",
+		"locked_competitor_uids", "battle_roster_fingerprint", "opening_attack_command_id",
+		"opening_attack_occurred_at_world_us", "opening_attack_applied_at",
+		"opening_attack_actor_uid", "opening_attack_target_uid",
+		"opening_attack_action_index", "opening_attack_action_fingerprint",
+	]:
+		history.erase(private_key)
+	history["resolved"] = true
+	history["decision_open"] = false
+	history["resolved_at"] = game_time
+	history["resolution_reason"] = reason
+	history["winner_sides"] = (public_receipt.get("winning_side_ids", []) as Array).duplicate(true)
+	history["winner_side"] = str((history.get("winner_sides", []) as Array)[0]) if not (history.get("winner_sides", []) as Array).is_empty() else ""
+	var winner_labels: Array = []
+	for side_variant: Variant in history.get("winner_sides", []):
+		winner_labels.append(_monster_wager_side_label(entry, str(side_variant)))
+	history["winner_label"] = _limited_name_list(winner_labels, 4, "无胜方")
+	history["total_pot"] = int(public_receipt.get("settlement_pool", 0))
+	history["public_card_bid_pool_retained"] = int(public_receipt.get("public_pool_after", 0))
+	history["outcome_kind"] = str(public_receipt.get("outcome_kind", ""))
+	history["settlement_public_receipt"] = public_receipt.duplicate(true)
+	history.erase("bets")
+	return history
+
 
 func _settle_monster_wager_at_index(index: int, reason: String) -> bool:
 	if index < 0 or index >= active_monster_wagers.size():
 		return false
-	_resolve_monster_wager_pending_battle_at_index(index)
-	if index < 0 or index >= active_monster_wagers.size():
+	var preflight_entry: Dictionary = (active_monster_wagers[index] as Dictionary).duplicate(true)
+	if _monster_wager_phase(preflight_entry) == MONSTER_BATTLE_LIFECYCLE_POLICY_V06.PHASE_DECISION \
+		or bool(preflight_entry.get("decision_open", false)):
+		return false
+	if _monster_wager_phase(preflight_entry) != MONSTER_BATTLE_LIFECYCLE_POLICY_V06.PHASE_SETTLING:
+		preflight_entry = MONSTER_BATTLE_LIFECYCLE_POLICY_V06.transition_to_settling(preflight_entry, reason)
+		active_monster_wagers[index] = preflight_entry
+	var commitment_preflight := MONSTER_WAGER_SETTLEMENT_POLICY_V06.complete_timeout_commitments(_monster_wager_policy_snapshot(preflight_entry))
+	if not bool(commitment_preflight.get("ok", false)):
 		return false
 	var entry: Dictionary = (active_monster_wagers[index] as Dictionary).duplicate(true)
-	var competitors := _monster_wager_competitors(entry)
-	var winner_sides := []
-	var best_damage := -1
-	for competitor_variant in competitors:
-		var competitor := competitor_variant as Dictionary
-		var side := String(competitor.get("side", ""))
-		var damage := _monster_wager_damage_for_side(entry, side)
-		if damage > best_damage:
-			best_damage = damage
-			winner_sides = [side]
-		elif damage == best_damage:
-			winner_sides.append(side)
-	var bets: Dictionary = entry.get("bets", {}) as Dictionary
-	var public_card_bid_pool := maxi(0, int(entry.get("public_card_bid_pool", 0)))
-	var total_pot := public_card_bid_pool
-	var valid_single_winner := best_damage > 0 and winner_sides.size() == 1
-	var winning_bets := []
-	for key_variant in bets.keys():
-		var bet_variant: Variant = bets[key_variant]
-		if not (bet_variant is Dictionary):
-			continue
-		var bet := bet_variant as Dictionary
-		var stake := int(bet.get("stake", 0))
-		if stake <= 0:
-			continue
-		total_pot += stake
-		if valid_single_winner and winner_sides.has(String(bet.get("side", ""))):
-			winning_bets.append(bet)
-	var public_outcomes := []
-	if not valid_single_winner:
-		public_card_bid_monster_wager_pool += public_card_bid_pool
-	var remaining_payout := total_pot
-	var winning_paid := 0
-	for key_variant in bets.keys():
-		var bet_variant: Variant = bets[key_variant]
-		if not (bet_variant is Dictionary):
-			continue
-		var bet := bet_variant as Dictionary
-		var player_index := int(bet.get("player_index", int(String(key_variant))))
-		if player_index < 0 or player_index >= players.size():
-			continue
-		var stake := int(bet.get("stake", 0))
-		if stake <= 0:
-			continue
-		var side := String(bet.get("side", ""))
-		if not valid_single_winner:
-			players[player_index]["cash"] = int((players[player_index] as Dictionary).get("cash", 0)) + stake
-			_record_player_economic_event(player_index, "怪兽赌局", "平局退款", stake, "赌局#%d没有唯一最高伤害方，玩家下注退回；卡牌竞价公共池保留。" % int(entry.get("wager_id", -1)))
-			_record_player_cash_snapshot(player_index)
-			public_outcomes.append("%s退款¥%d" % [_player_name(player_index), stake])
-		elif winner_sides.has(side) and not winning_bets.is_empty():
-			winning_paid += 1
-			var payout := int(floor(float(total_pot) / float(winning_bets.size())))
-			if winning_paid >= winning_bets.size():
-				payout = remaining_payout
-			remaining_payout -= payout
-			players[player_index]["cash"] = int((players[player_index] as Dictionary).get("cash", 0)) + payout
-			_record_player_economic_event(player_index, "怪兽赌局", "赌局命中", payout, "赌局#%d：%s进入最高伤害方，与其他命中玩家平分总奖池¥%d。" % [
-				int(entry.get("wager_id", -1)),
-				_monster_wager_side_label(entry, side),
-				total_pot,
-			])
-			_record_player_cash_snapshot(player_index)
-			public_outcomes.append("%s命中%s 分得¥%d" % [_player_name(player_index), _monster_wager_side_label(entry, side), payout])
-		else:
-			_record_player_economic_event(player_index, "怪兽赌局", "赌局落空", 0, "赌局#%d：%s未进入最高伤害方，下注进入总奖池。" % [
-				int(entry.get("wager_id", -1)),
-				_monster_wager_side_label(entry, side),
-			])
-			public_outcomes.append("%s落空" % _player_name(player_index))
-	if valid_single_winner and winning_bets.is_empty() and total_pot > 0:
-		public_card_bid_monster_wager_pool += total_pot
-		public_outcomes.append("无人命中，奖池¥%d保留" % total_pot)
-	entry["resolved"] = true
-	entry["resolved_at"] = game_time
-	entry["resolution_reason"] = reason
-	entry["winner_sides"] = winner_sides if valid_single_winner else []
-	entry["winner_side"] = String(winner_sides[0]) if valid_single_winner else ""
-	var winner_labels := []
-	for winner_side_variant in (winner_sides if valid_single_winner else []):
-		winner_labels.append(_monster_wager_side_label(entry, String(winner_side_variant)))
-	entry["winner_label"] = _limited_name_list(winner_labels, 4, "无胜方")
-	entry["total_pot"] = total_pot
-	entry["public_card_bid_pool_retained"] = public_card_bid_pool if not valid_single_winner else (total_pot if winning_bets.is_empty() else 0)
-	entry["public_outcomes"] = public_outcomes
-	resolved_monster_wager_history.append(entry)
-	while resolved_monster_wager_history.size() > MONSTER_WAGER_HISTORY_LIMIT:
-		resolved_monster_wager_history.pop_front()
+	var policy_snapshot := _monster_wager_policy_snapshot(entry)
+	var fingerprint := str(policy_snapshot.get("fingerprint", ""))
+	var terminal_key := "%d:%d" % [int(entry.get("wager_id", -1)), int(entry.get("settlement_revision", -1))]
+	if _monster_wager_settlement_terminal_journal.has(terminal_key):
+		var prior: Dictionary = _monster_wager_settlement_terminal_journal.get(terminal_key, {})
+		return str(prior.get("fingerprint", "")) == fingerprint
+	var result: Dictionary = MONSTER_WAGER_SETTLEMENT_POLICY_V06.settle(policy_snapshot)
+	if not bool(result.get("ok", false)):
+		return false
+	var private_receipt: Dictionary = result.get("private_delta_receipt", {}) if result.get("private_delta_receipt", {}) is Dictionary else {}
+	var public_receipt: Dictionary = result.get("public_receipt", {}) if result.get("public_receipt", {}) is Dictionary else {}
+	var cash_postimage := _monster_wager_cash_postimage(entry, private_receipt)
+	if not bool(cash_postimage.get("ok", false)):
+		return false
+	var pool_remainder := maxi(0, int(private_receipt.get("public_pool_after", 0)))
+	if public_card_bid_monster_wager_pool > 9223372036854775807 - pool_remainder:
+		return false
+	var next_history := resolved_monster_wager_history.duplicate(true)
+	var history_entry := _monster_wager_public_history_entry(entry, public_receipt, reason)
+	next_history.append(history_entry)
+	while next_history.size() > MONSTER_WAGER_HISTORY_LIMIT:
+		next_history.pop_front()
+	var terminal := {
+		"schema_version": 1,
+		"wager_id": int(entry.get("wager_id", -1)),
+		"revision": int(entry.get("settlement_revision", -1)),
+		"fingerprint": fingerprint,
+		"stage": "finalized",
+		"public_receipt": public_receipt.duplicate(true),
+	}
+	# All validation is complete before the one whole-array player swap.  The
+	# remaining owner assignments are local, deterministic and have no failure
+	# branch, so no player can observe a partially paid multiplayer settlement.
+	players = (cash_postimage.get("players", []) as Array).duplicate(true)
+	public_card_bid_monster_wager_pool += pool_remainder
+	resolved_monster_wager_history = next_history
 	active_monster_wagers.remove_at(index)
-	var result_text := "%s最高伤害" % String(entry.get("winner_label", "无胜方"))
-	_log("怪兽赌局#%d结算：%s（%s，总奖池¥%d，%s）。%s" % [
-		int(entry.get("wager_id", -1)),
-		result_text,
-		_monster_wager_damage_score_text(entry),
-		total_pot,
-		reason,
-		"；".join(public_outcomes) if not public_outcomes.is_empty() else "无人下注",
+	_monster_wager_settlement_terminal_journal[terminal_key] = terminal
+	var public_outcomes: Array = []
+	for participant_variant: Variant in private_receipt.get("participants", []):
+		if not (participant_variant is Dictionary):
+			continue
+		var participant := participant_variant as Dictionary
+		var player_index := _monster_wager_player_index_for_public_id(entry, str(participant.get("public_player_id", "")))
+		if player_index < 0:
+			continue
+		var winner := bool(participant.get("winner", false))
+		var payout := maxi(0, int(participant.get("payout", 0)))
+		var stake := maxi(0, int(participant.get("stake", 0)))
+		var delta := int(participant.get("net_cash_delta", 0))
+		var label := "无有效伤害退款" if str(private_receipt.get("outcome_kind", "")) == "void_no_effective_damage" else ("赌局命中" if winner else "赌局落空")
+		_record_player_economic_event(player_index, "怪兽赌局", label, delta, "赌局#%d：下注¥%d，派奖¥%d。" % [int(entry.get("wager_id", -1)), stake, payout])
+		_record_player_cash_snapshot(player_index)
+		public_outcomes.append("%s%s（下注¥%d，派奖¥%d）" % [_player_name(player_index), "命中" if winner else ("退款" if delta == 0 else "落空"), stake, payout])
+	history_entry["public_outcomes"] = public_outcomes
+	resolved_monster_wager_history[resolved_monster_wager_history.size() - 1] = history_entry
+	var result_text := "%s最高伤害" % str(history_entry.get("winner_label", "无胜方"))
+	_log("怪兽赌局#%d结算：%s（%s，总奖池¥%d，双倍配资¥%d，%s）。%s" % [
+		int(entry.get("wager_id", -1)), result_text, _monster_wager_damage_score_text(entry),
+		int(public_receipt.get("settlement_pool", 0)), int(public_receipt.get("matching_money", 0)), reason,
+		"；".join(public_outcomes) if not public_outcomes.is_empty() else "无人参与",
 	])
 	var anchor_position := Vector2.ZERO
-	for competitor_variant in _monster_wager_competitors(entry):
+	for competitor_variant: Variant in _monster_wager_competitors(entry):
 		var competitor := competitor_variant as Dictionary
-		var slot := _monster_wager_current_slot(entry, String(competitor.get("side", "")))
+		var slot := _monster_wager_current_slot(entry, str(competitor.get("side", "")))
 		if slot >= 0 and slot < auto_monsters.size():
 			anchor_position = _entity_world_position(auto_monsters[slot] as Dictionary)
 			break
-	_add_action_callout(
-		"怪兽赌局",
-		"结算",
-		"%s｜%s" % [result_text, _monster_wager_damage_score_text(entry)],
-		Color("#fde68a"),
-		anchor_position
-	)
+	_add_action_callout("怪兽赌局", "结算", "%s｜%s" % [result_text, _monster_wager_damage_score_text(entry)], Color("#fde68a"), anchor_position)
 	request_table_presentation_refresh()
 	return true
 
@@ -5159,6 +6085,10 @@ func _nearest_other_auto_monster_slot(slot: int) -> int:
 	if slot < 0 or slot >= auto_monsters.size():
 		return -1
 	var actor: Dictionary = auto_monsters[slot]
+	var active_wager_index := _active_monster_wager_index_for_uid(int(actor.get("uid", 0)))
+	if active_wager_index >= 0 \
+		and _monster_wager_phase(active_monster_wagers[active_wager_index] as Dictionary) == MONSTER_BATTLE_LIFECYCLE_POLICY_V06.PHASE_BATTLE:
+		return _nearest_locked_battle_opponent_slot(slot, active_monster_wagers[active_wager_index] as Dictionary)
 	var best_slot := -1
 	var best_distance := INF
 	for i in range(auto_monsters.size()):
@@ -5510,7 +6440,12 @@ func _apply_product_market_boon(product_name: String, growth_multiplier: float, 
 	return _product_market_runtime_controller.apply_product_market_boon(product_name, growth_multiplier, route_flow_multiplier, turns, source, persistent, duration_seconds) if _product_market_runtime_controller != null else false
 
 func _apply_role_monster_upgrade_cash(player_index: int, monster_name: String, old_rank: int, new_rank: int, world_position: Vector2) -> int:
-	return _world_call(&"_apply_role_monster_upgrade_cash", [player_index, monster_name, old_rank, new_rank, world_position])
+	var state := _world_bridge.world_session_state() if _world_bridge != null else null
+	var before_cash := state.private_player_cash_snapshot(player_index) if state != null else {}
+	var amount := int(_world_call(&"_apply_role_monster_upgrade_cash", [player_index, monster_name, old_rank, new_rank, world_position]))
+	if amount > 0 and state != null and not bool(state.reconcile_private_player_cash_after_unit_mutation(player_index, before_cash).get("reconciled", false)):
+		return 0
+	return amount
 
 func _auto_monster_action_probability_text(actor: Dictionary, action_index: int, weights: Array, total: int, any_destroyed: bool) -> String:
 	return _world_call(&"_auto_monster_action_probability_text", [actor, action_index, weights, total, any_destroyed])
@@ -5651,14 +6586,6 @@ func _monster_knockback_model(action_or_skill: Dictionary, actor: Dictionary = {
 
 func _monster_technique_card_name(monster_name: String, action_index: int, rank: int = 1) -> String:
 	return MONSTER_CATALOG_V06.monster_technique_card_name(monster_name, action_index, rank)
-
-func _monster_wager_percent_for_amount(player_index: int, amount: int) -> int:
-	if player_index < 0 or player_index >= players.size():
-		return 0
-	var player_cash := maxi(0, int((players[player_index] as Dictionary).get("cash", 0)))
-	if player_cash <= 0:
-		return 0
-	return clampi(int(round(float(maxi(0, amount)) * 100.0 / float(player_cash))), 0, 100)
 
 func _nearest_district_to(point: Vector2) -> int:
 	return _world_call(&"_nearest_district_to", [point])

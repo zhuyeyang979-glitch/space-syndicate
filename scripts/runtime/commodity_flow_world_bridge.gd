@@ -13,6 +13,7 @@ var _region_infrastructure_controller: Node
 var _product_market_controller: Node
 var _route_network_controller: Node
 var _bankruptcy_estate_controller: Node
+var _cash_commitment_query_port: MonsterWagerCashCommitmentQueryPort
 var _capture_count := 0
 var _apply_count := 0
 var _applied_batch_ids: Dictionary = {}
@@ -39,6 +40,10 @@ func bind_world(world: Node) -> void:
 
 func set_world_session_state(state: WorldSessionState) -> void:
 	_world_session_state = state
+
+
+func set_cash_commitment_query_port(port: MonsterWagerCashCommitmentQueryPort) -> void:
+	_cash_commitment_query_port = port
 
 
 func world_session_state() -> WorldSessionState:
@@ -212,7 +217,12 @@ func apply_sale_receipt_batch(batch: Dictionary) -> Dictionary:
 			return {"applied": false, "reason": "player_record_invalid"}
 		var player: Dictionary = (prepared_players[player_index] as Dictionary).duplicate(true)
 		var cash_cents := int(player.get("cash_cents", int(player.get("cash", 0)) * CURRENCY_SCALE))
-		cash_cents += int(deltas_by_player[player_index])
+		var cash_delta_cents := int(deltas_by_player[player_index])
+		if cash_delta_cents < 0 and _cash_commitment_query_port != null:
+			var authorization := _cash_commitment_query_port.authorize_debit_cents(player_index, -cash_delta_cents)
+			if not bool(authorization.get("authorized", false)):
+				return {"applied": false, "reason": str(authorization.get("reason_code", "cash_reserved_for_monster_wager"))}
+		cash_cents += cash_delta_cents
 		if cash_cents < 0 and not authorized_negative_players.has(player_index):
 			return {"applied": false, "reason": "passive_cash_would_be_negative"}
 		player["cash_cents"] = cash_cents
@@ -254,6 +264,7 @@ func debug_snapshot() -> Dictionary:
 		"runtime_owner": "none",
 		"bridge_role": "commodity_flow_world_facts_and_atomic_cash_apply",
 		"world_session_state_ready": _world_session_state != null,
+		"monster_wager_cash_commitment_guard_bound": _cash_commitment_query_port != null,
 		"capture_count": _capture_count,
 		"apply_count": _apply_count,
 		"applied_batch_count": _applied_batch_ids.size(),

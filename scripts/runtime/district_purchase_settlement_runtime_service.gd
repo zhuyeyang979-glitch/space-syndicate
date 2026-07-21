@@ -8,6 +8,7 @@ const STATUS_REJECTED := "rejected"
 
 var _configured := false
 var _inventory_service: Node = null
+var _cash_commitment_query_port: MonsterWagerCashCommitmentQueryPort
 var _purchase_plan_count := 0
 var _inventory_delegate_plan_count := 0
 var _commit_attempt_count := 0
@@ -20,6 +21,10 @@ var _last_committed := false
 
 func set_inventory_service(service: Node) -> void:
 	_inventory_service = service
+
+
+func set_cash_commitment_query_port(port: MonsterWagerCashCommitmentQueryPort) -> void:
+	_cash_commitment_query_port = port
 
 
 func configure(_config: Dictionary = {}) -> void:
@@ -68,7 +73,11 @@ func plan_purchase(request: Dictionary) -> Dictionary:
 	if not bool(request.get("supply_contains_card", false)):
 		return _purchase_rejection("card_not_in_supply")
 	var price := maxi(0, int(request.get("price", 0)))
-	if int(request.get("player_cash", 0)) < price:
+	var player_cash := int(request.get("player_cash", 0))
+	var player_index := int(request.get("player_index", -1))
+	if _cash_commitment_query_port != null and player_index >= 0:
+		player_cash = _cash_commitment_query_port.available_cash_units(player_index)
+	if player_cash < price:
 		return _purchase_rejection("insufficient_cash")
 	var inventory: Dictionary = request.get("inventory", {}) if request.get("inventory", {}) is Dictionary else {}
 	inventory = inventory.duplicate(true)
@@ -120,9 +129,15 @@ func commit_purchase(player_state: Dictionary, current_facts: Dictionary, plan: 
 	if not _plans_match(plan, current_plan):
 		return _commit_rejection("state_drift")
 	var price := maxi(0, int(current_facts.get("price", 0)))
+	var player_index := int(current_facts.get("player_index", -1))
+	if _cash_commitment_query_port != null and player_index >= 0:
+		var authorization := _cash_commitment_query_port.authorize_debit_units(player_index, price)
+		if not bool(authorization.get("authorized", false)):
+			return _commit_rejection(str(authorization.get("reason_code", "cash_reserved_for_monster_wager")))
 	if int(player_state.get("cash", 0)) != int(current_facts.get("player_cash", 0)) or int(player_state.get("cash", 0)) < price:
 		return _commit_rejection("cash_drift")
 	var after_player := player_state.duplicate(true)
+	var cash_record := WorldSessionState.canonical_private_cash_record(after_player)
 	var inventory: Dictionary = current_facts.get("inventory", {}) if current_facts.get("inventory", {}) is Dictionary else {}
 	var inventory_result_variant: Variant = _inventory_service.call("commit_receive", after_player, inventory, current_plan)
 	var inventory_result: Dictionary = inventory_result_variant if inventory_result_variant is Dictionary else {}
@@ -131,7 +146,9 @@ func commit_purchase(player_state: Dictionary, current_facts: Dictionary, plan: 
 	var operation := str(current_plan.get("operation", ""))
 	if operation == "replace":
 		_append_ledger_entry(after_player, current_facts.get("discard_ledger_context", {}) as Dictionary if current_facts.get("discard_ledger_context", {}) is Dictionary else {}, int(after_player.get("cash", 0)))
-	after_player["cash"] = int(after_player.get("cash", 0)) - price
+	var next_cash_cents := int(cash_record.get("cash_cents", 0)) - price * 100
+	after_player["cash_cents"] = next_cash_cents
+	after_player["cash"] = floori(float(next_cash_cents) / 100.0)
 	after_player["card_purchase_count"] = int(after_player.get("card_purchase_count", 0)) + 1
 	after_player["total_card_spend"] = int(after_player.get("total_card_spend", 0)) + price
 	_append_ledger_entry(after_player, current_facts.get("purchase_ledger_context", {}) as Dictionary if current_facts.get("purchase_ledger_context", {}) is Dictionary else {}, int(after_player.get("cash", 0)))
@@ -191,6 +208,7 @@ func debug_snapshot() -> Dictionary:
 		"window_authority": false,
 		"presentation_authority": false,
 		"legacy_settlement_fallback_used": false,
+		"monster_wager_cash_commitment_guard_bound": _cash_commitment_query_port != null,
 	}
 
 

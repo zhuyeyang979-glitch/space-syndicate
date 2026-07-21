@@ -13,6 +13,7 @@ signal city_inference_changed(viewer_index: int, region_id: String, owner_revisi
 
 const DEFAULT_MAP_WIDTH_M := 1400.0
 const DEFAULT_MAP_HEIGHT_M := 950.0
+const CASH_CENTS_PER_UNIT := 100
 const CITY_GUESS_CONFIDENCE_LOW := 1
 const CITY_GUESS_CONFIDENCE_MEDIUM := 2
 const CITY_GUESS_CONFIDENCE_HIGH := 3
@@ -99,6 +100,84 @@ func advance_game_time(delta: float) -> float:
 	if delta <= 0.0:
 		return _game_time
 	return set_game_time(_game_time + delta)
+
+
+func private_player_cash_snapshot(player_index: int) -> Dictionary:
+	## Actor-scoped runtime query. Never expose this result through a public
+	## presentation source: ordinary-play cash and wager availability are private.
+	if player_index < 0 or player_index >= _players.size() or not (_players[player_index] is Dictionary):
+		return {
+			"valid": false,
+			"reason_code": "player_cash_unavailable",
+			"player_index": player_index,
+			"cash_cents": 0,
+			"currency_fields_consistent": false,
+		}
+	var normalized := canonical_private_cash_record(_players[player_index] as Dictionary)
+	normalized["valid"] = true
+	normalized["reason_code"] = "player_cash_ready"
+	normalized["player_index"] = player_index
+	return normalized
+
+
+func reconcile_private_player_cash_after_unit_mutation(
+	player_index: int,
+	before_snapshot: Dictionary
+) -> Dictionary:
+	## Temporary typed migration hook for already-existing whole-unit cash writers.
+	## It keeps the v0.6 cents ledger and the legacy mirror coherent without moving
+	## cash ownership into a bridge or into the wager query port.
+	if player_index < 0 or player_index >= _players.size() or not (_players[player_index] is Dictionary):
+		return {"reconciled": false, "reason_code": "player_cash_unavailable"}
+	var player := (_players[player_index] as Dictionary).duplicate(true)
+	var current_units := int(player.get("cash", 0))
+	var canonical_cents := 0
+	if bool(before_snapshot.get("valid", false)) and int(before_snapshot.get("player_index", -1)) == player_index:
+		var before_units := int(before_snapshot.get("cash_units", 0))
+		var before_cents := int(before_snapshot.get("cash_cents", before_units * CASH_CENTS_PER_UNIT))
+		var delta_units := current_units - before_units
+		if delta_units > 92233720368547758 or delta_units < -92233720368547758:
+			return {"reconciled": false, "reason_code": "player_cash_overflow"}
+		var delta_cents := delta_units * CASH_CENTS_PER_UNIT
+		if (delta_cents > 0 and before_cents > 9223372036854775807 - delta_cents) \
+				or (delta_cents < 0 and before_cents < -9223372036854775808 - delta_cents):
+			return {"reconciled": false, "reason_code": "player_cash_overflow"}
+		canonical_cents = before_cents + delta_cents
+	else:
+		canonical_cents = int(canonical_private_cash_record(player).get("cash_cents", 0))
+	player["cash_cents"] = canonical_cents
+	player["cash"] = floori(float(canonical_cents) / float(CASH_CENTS_PER_UNIT))
+	_players[player_index] = player
+	return {
+		"reconciled": true,
+		"reason_code": "player_cash_reconciled",
+		"player_index": player_index,
+		"cash_units": int(player.get("cash", 0)),
+		"cash_cents": canonical_cents,
+	}
+
+
+static func canonical_private_cash_record(player: Dictionary) -> Dictionary:
+	## v0.6 cents are exact when the legacy whole-unit mirror agrees with them.
+	## A few not-yet-retired unit-based owners still update only `cash`; when the
+	## mirrors drift by at least one whole unit, trusting stale `cash_cents` could
+	## resurrect already-spent money during wager settlement.  In that explicit
+	## migration state, the changed whole-unit value is the fail-safe truth and
+	## fractional cents are discarded until the next canonical mutation rewrites
+	## both fields.
+	var has_units := player.has("cash")
+	var has_cents := player.has("cash_cents")
+	var unit_cash := int(player.get("cash", 0))
+	var unit_cash_cents := unit_cash * CASH_CENTS_PER_UNIT
+	var stored_cents := int(player.get("cash_cents", unit_cash_cents))
+	var fields_consistent := has_units and has_cents and floori(float(stored_cents) / float(CASH_CENTS_PER_UNIT)) == unit_cash
+	var canonical_cents := stored_cents if (has_cents and (not has_units or fields_consistent)) else unit_cash_cents
+	return {
+		"cash_cents": canonical_cents,
+		"cash_units": floori(float(canonical_cents) / float(CASH_CENTS_PER_UNIT)),
+		"currency_fields_consistent": fields_consistent or not (has_units and has_cents),
+		"used_legacy_unit_reconciliation": has_units and has_cents and not fields_consistent,
+	}
 
 
 func configure_world_geometry(width_m: float, height_m: float) -> Dictionary:

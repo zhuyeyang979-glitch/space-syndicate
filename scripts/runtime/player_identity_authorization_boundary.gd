@@ -139,6 +139,16 @@ func public_player_exists(player_index: int) -> bool:
 	return int((public_players[player_index] as Dictionary).get("player_index", -1)) == player_index
 
 
+func public_player_is_active(player_index: int) -> bool:
+	if _world() == null or player_index < 0:
+		return false
+	var public_players: Array = _world().public_intel_projection().get("players", [])
+	if player_index >= public_players.size() or not (public_players[player_index] is Dictionary):
+		return false
+	var player := public_players[player_index] as Dictionary
+	return int(player.get("player_index", -1)) == player_index and not bool(player.get("eliminated", false))
+
+
 func public_district_exists(district_index: int) -> bool:
 	if _world() == null or district_index < 0:
 		return false

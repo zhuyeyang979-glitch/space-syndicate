@@ -210,6 +210,7 @@ func _normalize_active_forced_decision(value: Variant) -> Dictionary:
 	return {
 		"id": decision_id,
 		"kind": kind,
+		"decision_revision": int(source.get("decision_revision", 0)),
 		"priority_group": priority_group,
 		"visible_to_viewer": bool(source.get("visible_to_viewer", false)),
 		"presentation_surface": presentation_surface,

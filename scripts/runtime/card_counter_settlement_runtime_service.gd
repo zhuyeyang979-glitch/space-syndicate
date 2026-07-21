@@ -63,7 +63,12 @@ func resolve_counter(target_entry: Dictionary) -> Dictionary:
 		var player_index := int(counter_entry.get("player_index", -1))
 		if _world_session_state != null and player_index >= 0 and player_index < _world_session_state.players.size():
 			var players := _world_session_state.players
-			(players[player_index] as Dictionary)["cash"] = int((players[player_index] as Dictionary).get("cash", 0)) + refund
+			var player := (players[player_index] as Dictionary).duplicate(true)
+			var normalized := WorldSessionState.canonical_private_cash_record(player)
+			var next_cash_cents := int(normalized.get("cash_cents", 0)) + refund * 100
+			player["cash_cents"] = next_cash_cents
+			player["cash"] = floori(float(next_cash_cents) / 100.0)
+			players[player_index] = player
 			_world_session_state.players = players
 	counter_entry["resolved_time"] = _world_session_state.game_time if _world_session_state != null else 0.0
 	counter_entry["countered_resolution_id"] = target_id

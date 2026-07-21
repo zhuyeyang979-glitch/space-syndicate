@@ -55,7 +55,7 @@ func _test_port_contracts() -> void:
 		"RuntimeCardPort": ["advance_card_resolution_frame", "tick_contract_runtime", "advance_card_cooldowns"],
 		"RuntimeEconomyPort": ["advance_city_gdp_derivative_timers", "advance_product_futures_timers", "advance_economic_boons", "advance_commodity_flow", "advance_runtime_commodity_flow", "tick_product_market_cycle"],
 		"RuntimeActorPort": ["tick_weather", "tick_ai", "tick_military"],
-		"RuntimeMonsterPort": ["tick_wagers", "tick_motion", "tick_actions", "tick_durations", "tick_revivals"],
+		"RuntimeMonsterPort": ["tick_wager_decisions_realtime", "tick_battle_lifecycles", "tick_motion", "tick_actions", "tick_durations", "tick_revivals"],
 		"RuntimePresentationPort": ["advance_visual_cues", "advance_table_presentation"],
 		"RuntimeVictoryPort": ["advance_victory_control"],
 	}

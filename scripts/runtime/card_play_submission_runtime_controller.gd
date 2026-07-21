@@ -18,6 +18,7 @@ var _product_market_controller: ProductMarketRuntimeController
 var _derivative_controller: CityGdpDerivativeRuntimeController
 var _selection_catalog_query_port: TableSelectionCatalogQueryPort
 var _runtime_coordinator: GameRuntimeCoordinator
+var _cash_commitment_query_port: MonsterWagerCashCommitmentQueryPort
 var _submission_count := 0
 var _accepted_count := 0
 var _last_receipt: Dictionary = {}
@@ -35,7 +36,8 @@ func set_dependencies(
 	product_market_controller: ProductMarketRuntimeController,
 	derivative_controller: CityGdpDerivativeRuntimeController,
 	selection_catalog_query_port: TableSelectionCatalogQueryPort,
-	runtime_coordinator: GameRuntimeCoordinator
+	runtime_coordinator: GameRuntimeCoordinator,
+	cash_commitment_query_port: MonsterWagerCashCommitmentQueryPort = null
 ) -> void:
 	_world_session_state = world_session_state
 	_table_selection_state = table_selection_state
@@ -49,6 +51,7 @@ func set_dependencies(
 	_derivative_controller = derivative_controller
 	_selection_catalog_query_port = selection_catalog_query_port
 	_runtime_coordinator = runtime_coordinator
+	_cash_commitment_query_port = cash_commitment_query_port
 
 
 func request_hand_play(request: Dictionary) -> Dictionary:
@@ -99,25 +102,6 @@ func submit_card_play(request: Dictionary) -> Dictionary:
 	return _remember(_submit_legacy(player_index, slot_index, eligibility, _dictionary(frozen.get("envelope", {}))))
 
 
-func begin_target_choice(kind: String, player_index: int, slot_index: int) -> Dictionary:
-	if kind not in [TARGET_MONSTER, TARGET_PLAYER]:
-		return _remember(_rejection("target_choice_kind_invalid"))
-	var card_context := _card_at(player_index, slot_index)
-	if not bool(card_context.get("valid", false)):
-		return _remember(_rejection("card_slot_invalid"))
-	var skill := _dictionary(card_context.get("skill", {}))
-	if _is_v06_runtime_card(skill):
-		return _remember(_rejection("v06_target_choice_unsupported"))
-	var frozen := _prepare_legacy_submission(player_index, skill, "hand", {}, kind)
-	if not bool(frozen.get("prepared", false)):
-		return _remember(_rejection(str(frozen.get("reason", "stable_target_capture_failed")), _dictionary(frozen.get("details", {}))))
-	var eligibility := _dictionary(frozen.get("eligibility", {}))
-	var expected := bool(eligibility.get("requires_target_monster", false)) if kind == TARGET_MONSTER else bool(eligibility.get("requires_target_player", false))
-	if not bool(eligibility.get("allowed", false)) or not expected:
-		return _remember(_rejection(str(eligibility.get("reason_code", "target_choice_not_required")), eligibility))
-	return _remember(_begin_target(kind, player_index, slot_index, _dictionary(frozen.get("envelope", {})), StableTargetEnvelope.card_fingerprint(skill)))
-
-
 func debug_snapshot() -> Dictionary:
 	return {
 		"controller_ready": _world_session_state != null \
@@ -129,6 +113,7 @@ func debug_snapshot() -> Dictionary:
 		"shared_human_ai_entry": true,
 		"stable_target_capture": _selection_catalog_query_port != null,
 		"holds_main_reference": false,
+		"monster_wager_cash_commitment_guard_bound": _cash_commitment_query_port != null,
 		"last_receipt": _last_receipt.duplicate(true),
 	}
 
@@ -160,6 +145,7 @@ func _submit_legacy(player_index: int, slot_index: int, eligibility: Dictionary,
 	var requirement_status: Dictionary = eligibility.get("requirement_status", {}) if eligibility.get("requirement_status", {}) is Dictionary else {}
 	var entry_context := {
 		"target_slot": int(frozen_context.get("target_slot", -1)),
+		"target_monster_uid": int(frozen_context.get("target_monster_uid", -1)),
 		"target_player": int(frozen_context.get("target_player", -1)),
 		"selected_district": int(frozen_context.get("selected_district", -1)),
 		"selected_trade_product": str(frozen_context.get("selected_trade_product", "")),
@@ -183,6 +169,9 @@ func _submit_legacy(player_index: int, slot_index: int, eligibility: Dictionary,
 		"stable_target_envelope": stable_target_envelope.duplicate(true),
 	}
 	var play_cash_cost := maxi(0, int(eligibility.get("cash_cost", 0)))
+	var available_cash_cents := int(player.get("cash_cents", int(player.get("cash", 0)) * 100))
+	if _cash_commitment_query_port != null:
+		available_cash_cents = _cash_commitment_query_port.available_cash_cents(player_index)
 	var queue_plan := _runtime_coordinator.plan_card_resolution_queue_submission({
 		"player_index": player_index,
 		"slot_index": slot_index,
@@ -192,8 +181,8 @@ func _submit_legacy(player_index: int, slot_index: int, eligibility: Dictionary,
 		"play_cash_cost_cents": play_cash_cost * 100,
 		"financial_margin_cents": int(eligibility.get("financial_margin_cash", 0)) * 100,
 		"financial_terms_version": str(eligibility.get("financial_terms_version", "")),
-		"available_cash_cents": int(player.get("cash", 0)) * 100,
-		"cash_revision": "%d" % int(player.get("cash", 0)),
+		"available_cash_cents": available_cash_cents,
+		"cash_revision": "%d" % available_cash_cents,
 		"asset_cost": _dictionary(eligibility.get("asset_cost", queued_skill.get("asset_cost", {}))),
 		"skill": queued_skill,
 		"entry_context": entry_context,
@@ -225,17 +214,24 @@ func _submit_legacy(player_index: int, slot_index: int, eligibility: Dictionary,
 	if not bool(inventory_commit.get("committed", false)):
 		return _rejection(str(inventory_commit.get("reason", "inventory_commit_failed")))
 	var total_cash_authorized_cents := play_cash_cost * 100 + maxi(0, int(queue_plan.get("financial_margin_cents", 0)))
+	if _cash_commitment_query_port != null:
+		var cash_authorization := _cash_commitment_query_port.authorize_debit_cents(player_index, total_cash_authorized_cents)
+		if not bool(cash_authorization.get("authorized", false)):
+			return _rejection(str(cash_authorization.get("reason_code", "cash_reserved_for_monster_wager")))
 	var queue_commit := _runtime_coordinator.commit_card_resolution_queue_submission(queue_plan, {
 		"authorized": true,
 		"inventory_committed": true,
-		"play_cost_authorized": int(player.get("cash", 0)) * 100 >= total_cash_authorized_cents,
-		"financial_margin_authorized": int(player.get("cash", 0)) * 100 >= total_cash_authorized_cents,
+		"play_cost_authorized": available_cash_cents >= total_cash_authorized_cents,
+		"financial_margin_authorized": available_cash_cents >= total_cash_authorized_cents,
 		"asset_authorized": true,
 	})
 	if not bool(queue_commit.get("committed", false)):
 		return _rejection(str(queue_commit.get("reason", "queue_commit_failed")))
 	prepared_player["queued_card_tip"] = 0
-	prepared_player["cash"] = maxi(0, int(prepared_player.get("cash", 0)) - play_cash_cost)
+	var prepared_cash := WorldSessionState.canonical_private_cash_record(prepared_player)
+	var next_cash_cents := maxi(0, int(prepared_cash.get("cash_cents", 0)) - play_cash_cost * 100)
+	prepared_player["cash_cents"] = next_cash_cents
+	prepared_player["cash"] = floori(float(next_cash_cents) / 100.0)
 	players[player_index] = prepared_player
 	_world_session_state.players = players
 	_resolution_controller.set_player_ready(player_index, false, _active_player_indices(players))
@@ -313,7 +309,8 @@ func _pending_or_new_submission(player_index: int, slot_index: int, skill: Dicti
 			envelope,
 			_envelope_target_kind(choice_kind),
 			int(request.get("target_slot", -1)),
-			int(request.get("target_player", -1))
+			int(request.get("target_player", -1)),
+			int(request.get("target_monster_uid", -1))
 		)
 		if bound.is_empty():
 			return {"prepared": false, "reason": "stable_target_binding_invalid"}

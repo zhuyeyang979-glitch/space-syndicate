@@ -10,6 +10,13 @@ const RATE_INCREMENT_BP := 100
 const MAX_FINAL_RATE_BP := 2000
 const BASIS_POINTS_DENOMINATOR := 10000
 const MAX_INT64 := 9223372036854775807
+const PUBLIC_RECEIPT_KEYS := [
+	"schema_version", "policy_id", "wager_id", "revision", "outcome_kind",
+	"base_rate_bp", "competitors", "participants", "historical_public_pool",
+	"current_stake_total", "matching_money", "settlement_pool",
+	"winning_side_ids", "maximum_effective_damage", "remaining_bonus",
+	"remaining_bonus_each", "public_pool_after", "payout_total", "fingerprint",
+]
 
 
 static func fingerprint_for_snapshot(snapshot: Dictionary) -> String:
@@ -18,23 +25,45 @@ static func fingerprint_for_snapshot(snapshot: Dictionary) -> String:
 	return _stable_fingerprint(_fingerprint_payload(snapshot))
 
 
-static func settle(snapshot: Dictionary) -> Dictionary:
+static func is_sha256(value: String) -> bool:
+	return _is_sha256(value)
+
+
+static func public_receipt_is_valid(receipt: Dictionary, expected_wager_id: String, expected_revision: int) -> bool:
+	if not _is_pure_data(receipt) or not _has_exact_keys(receipt, PUBLIC_RECEIPT_KEYS):
+		return false
+	if int(receipt.get("schema_version", -1)) != SCHEMA_VERSION or str(receipt.get("policy_id", "")) != POLICY_ID:
+		return false
+	if str(receipt.get("wager_id", "")) != expected_wager_id or int(receipt.get("revision", -1)) != expected_revision:
+		return false
+	var fingerprint := str(receipt.get("fingerprint", ""))
+	if not _is_sha256(fingerprint):
+		return false
+	var payload := receipt.duplicate(true)
+	payload.erase("fingerprint")
+	return fingerprint == _stable_fingerprint(payload)
+
+
+static func stake_for_cash(exact_cash: int, rate_bp: int) -> Dictionary:
+	# This is the single production arithmetic entry for wager commitments.  The
+	# runtime owner uses it for previews and settlement, so UI and gameplay can
+	# never drift on rounding or the positive-cash minimum.
+	return _stake_for_cash(exact_cash, rate_bp).duplicate(true)
+
+
+static func complete_timeout_commitments(snapshot: Dictionary) -> Dictionary:
+	# Timeout selection is part of the settlement policy, but the runtime owner
+	# materializes these commitments before resolving the pending attack. This
+	# lets monster-owner cash loss respect every frozen wager commitment without
+	# duplicating the deterministic least-staked-side rule in the controller.
 	var validation := _validate_snapshot(snapshot)
 	if not bool(validation.get("valid", false)):
 		return _failure(snapshot, str(validation.get("reason_code", "snapshot_invalid")))
-
-	var wager_id := str(snapshot.get("wager_id", ""))
-	var revision := int(snapshot.get("revision", -1))
-	var private_fingerprint := str(snapshot.get("fingerprint", ""))
-	var historical_public_pool := int(snapshot.get("historical_public_pool", 0))
-	var base_rate_bp := int(snapshot.get("base_rate_bp", 0))
 	var competitors: Array = validation.get("competitors", []) as Array
 	var participants: Array = validation.get("participants", []) as Array
-
 	var side_totals: Dictionary = {}
 	for competitor_variant: Variant in competitors:
 		side_totals[str((competitor_variant as Dictionary).get("side_id", ""))] = 0
-
 	var prepared_participants: Array = []
 	var total_stakes := 0
 	for participant_variant: Variant in participants:
@@ -80,6 +109,34 @@ static func settle(snapshot: Dictionary) -> Dictionary:
 		if not bool(auto_sum_result.get("ok", false)):
 			return _failure(snapshot, "side_stake_total_overflow")
 		side_totals[selected_side_id] = int(auto_sum_result.get("value", 0))
+	return {
+		"ok": true,
+		"reason_code": "timeout_commitments_ready",
+		"schema_version": SCHEMA_VERSION,
+		"wager_id": str(snapshot.get("wager_id", "")),
+		"revision": int(snapshot.get("revision", -1)),
+		"fingerprint": str(snapshot.get("fingerprint", "")),
+		"competitors": competitors.duplicate(true),
+		"participants": prepared_participants,
+		"side_totals": side_totals,
+		"total_stakes": total_stakes,
+	}
+
+
+static func settle(snapshot: Dictionary) -> Dictionary:
+	var commitments := complete_timeout_commitments(snapshot)
+	if not bool(commitments.get("ok", false)):
+		return commitments
+
+	var wager_id := str(snapshot.get("wager_id", ""))
+	var revision := int(snapshot.get("revision", -1))
+	var private_fingerprint := str(snapshot.get("fingerprint", ""))
+	var historical_public_pool := int(snapshot.get("historical_public_pool", 0))
+	var base_rate_bp := int(snapshot.get("base_rate_bp", 0))
+	var competitors: Array = (commitments.get("competitors", []) as Array).duplicate(true)
+	var prepared_participants: Array = (commitments.get("participants", []) as Array).duplicate(true)
+	var side_totals: Dictionary = (commitments.get("side_totals", {}) as Dictionary).duplicate(true)
+	var total_stakes := int(commitments.get("total_stakes", 0))
 
 	var maximum_effective_damage := 0
 	for competitor_variant: Variant in competitors:

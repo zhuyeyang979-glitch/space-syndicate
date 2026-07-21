@@ -9,6 +9,9 @@ const COMMODITY_TRACK_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/commo
 const COMMODITY_TRACK_SCRIPT := preload("res://scripts/ui/table/top_commodity_sushi_track.gd")
 const TABLE_SELECTION_INTENT_SCRIPT := preload("res://scripts/runtime/table_selection_intent.gd")
 const TABLE_NAVIGATION_ACTION_INTENT_SCRIPT := preload("res://scripts/runtime/table_navigation_action_intent.gd")
+const DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT := preload("res://scripts/runtime/district_supply_action_intent.gd")
+const CARD_TARGET_CHOICE_RESPONSE_RECEIPT_SCRIPT := preload("res://scripts/runtime/card_target_choice_response_receipt.gd")
+const MONSTER_WAGER_RESPONSE_RECEIPT_SCRIPT := preload("res://scripts/runtime/monster_wager_response_receipt.gd")
 const HAND_HOVER_PREVIEW_LEFT := 0.020
 const HAND_HOVER_PREVIEW_TOP := 0.350
 const HAND_HOVER_PREVIEW_RIGHT := 0.190
@@ -52,6 +55,8 @@ signal card_drop_requested(card_data: Dictionary, screen_position: Vector2)
 signal commodity_claim_requested(request: COMMODITY_CLAIM_REQUEST_SCRIPT)
 signal table_selection_intent_requested(intent: TABLE_SELECTION_INTENT_SCRIPT)
 signal navigation_intent_requested(intent: TABLE_NAVIGATION_ACTION_INTENT_SCRIPT)
+signal district_supply_action_intent_requested(intent: DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT)
+signal forced_decision_response_requested(request: ForcedDecisionResponseRequest)
 
 @onready var top_bar: Node = %TopBar
 @onready var commodity_sushi_track: COMMODITY_TRACK_SCRIPT = %TopCommoditySushiTrack
@@ -66,6 +71,7 @@ signal navigation_intent_requested(intent: TABLE_NAVIGATION_ACTION_INTENT_SCRIPT
 @onready var hand_hover_preview_card: Control = get_node_or_null("%HandHoverPreviewCard") as Control
 
 var current_ui_data: Dictionary = {}
+var _rendered_forced_decision_binding: Dictionary = {}
 var _temporary_track_focus_active := false
 var _selected_hand_card_data: Dictionary = {}
 var _last_runtime_player_feedback: Dictionary = {}
@@ -88,6 +94,12 @@ var _last_player_inspection_receipt_revision := -1
 var _player_inspection_receipt_apply_count := 0
 var _table_selection_request_revision := 0
 var _navigation_request_revision := 0
+var _district_supply_action_request_revision := 0
+var _forced_decision_response_request_revision := 0
+var _district_supply_locked_quote_ids: Dictionary = {}
+var _district_supply_selected_card_by_district: Dictionary = {}
+
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	_bind_presentation_map_targets()
@@ -140,6 +152,9 @@ func _ready() -> void:
 		overlay_layer.connect("public_bid_track_link_unhovered", Callable(self, "_on_track_link_unhovered"))
 	if overlay_layer.has_signal("map_layer_focus_requested"):
 		overlay_layer.connect("map_layer_focus_requested", Callable(self, "_on_map_layer_focus_requested"))
+	var district_supply_drawer := get_district_supply_drawer()
+	if district_supply_drawer != null and district_supply_drawer.has_signal("supply_action_requested"):
+		district_supply_drawer.connect("supply_action_requested", Callable(self, "_on_district_supply_action_requested"))
 	call_deferred("_bind_district_selection_sources")
 	call_deferred("_sync_runtime_table_focus_order")
 
@@ -434,6 +449,64 @@ func apply_table_selection_receipt(receipt: TableSelectionReceipt) -> void:
 		_show_player_action_feedback(receipt.request_id, "blocked", detail)
 
 
+func apply_district_supply_action_receipt(receipt: DistrictSupplyActionReceipt) -> void:
+	if receipt == null:
+		return
+	var quote_key := _district_supply_quote_key(receipt.district_index, receipt.card_id)
+	if receipt.accepted and receipt.action_kind == DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT.KIND_QUOTE and not receipt.quote_id.is_empty():
+		_district_supply_locked_quote_ids[quote_key] = receipt.quote_id
+		_district_supply_selected_card_by_district[receipt.district_index] = receipt.card_id
+	elif receipt.accepted and receipt.action_kind == DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT.KIND_CLOSE:
+		_district_supply_locked_quote_ids.clear()
+		_district_supply_selected_card_by_district.clear()
+	elif receipt.action_kind == DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT.KIND_PURCHASE \
+			and (receipt.accepted or receipt.reason_code in ["locked_quote_changed", "session_finished"]):
+		_district_supply_locked_quote_ids.erase(quote_key)
+	if receipt.accepted and receipt.focus_district_index >= 0:
+		_focus_public_district(receipt.focus_district_index)
+	if receipt.close_drawer:
+		var overlays := overlay_layer as SpaceSyndicateOverlayLayer
+		if overlays != null:
+			overlays.clear_district_supply_presentation()
+	var detail := "区域牌架动作已完成。" if receipt.accepted else "区域牌架状态已经变化，请刷新后重试。"
+	if receipt.requires_discard:
+		detail = "手牌已满，请私下选择一张可弃的普通牌。"
+	_show_player_action_feedback(receipt.request_id, "success" if receipt.accepted else ("pending" if receipt.requires_discard else "blocked"), detail)
+
+
+func apply_card_target_choice_response_receipt(receipt: CARD_TARGET_CHOICE_RESPONSE_RECEIPT_SCRIPT) -> void:
+	if receipt == null:
+		return
+	var state := "success" if receipt.accepted else "blocked"
+	var detail := receipt.player_message.strip_edges()
+	if detail.is_empty():
+		detail = "目标选择已完成。" if receipt.accepted else "目标当前不可用，请重新选择。"
+	_show_player_action_feedback(receipt.request_id, state, detail)
+
+
+func apply_monster_wager_response_receipt(receipt: MONSTER_WAGER_RESPONSE_RECEIPT_SCRIPT) -> void:
+	if receipt == null:
+		return
+	var state := "success" if receipt.applied else "blocked"
+	var detail := receipt.player_message.strip_edges()
+	if detail.is_empty():
+		detail = "下注已确认。" if receipt.applied else "下注未生效，请按当前窗口重试。"
+	_show_player_action_feedback(receipt.request_id, state, detail)
+
+
+func apply_forced_decision_response_receipt(receipt: ForcedDecisionResponseReceipt) -> void:
+	if receipt == null or receipt.accepted \
+			or str(receipt.decision_kind) not in ["monster_wager", "monster_target_choice", "player_target_choice"]:
+		return
+	var detail := "赌局已经变化，请按当前窗口重新下注。" if str(receipt.decision_kind) == "monster_wager" \
+			else "目标选择已失效或已经处理，请按当前窗口重新选择。"
+	_show_player_action_feedback(receipt.request_id, "blocked", detail)
+
+
+func _district_supply_quote_key(district_index: int, card_id: String) -> String:
+	return "%d:%s" % [district_index, card_id]
+
+
 func _focus_public_district(district_index: int) -> void:
 	for map_node in [
 		get_embedded_map_view(),
@@ -555,10 +628,79 @@ func _bind_district_selection_source(map_node: Control, source_surface: StringNa
 	var callback := Callable(self, "_on_district_selection_requested").bind(source_surface)
 	if not map_node.is_connected("district_selected", callback):
 		map_node.connect("district_selected", callback)
+	if map_node.has_signal("district_double_clicked"):
+		var double_callback := Callable(self, "_on_district_supply_open_requested").bind(source_surface)
+		if not map_node.is_connected("district_double_clicked", double_callback):
+			map_node.connect("district_double_clicked", double_callback)
 
 
 func _on_district_selection_requested(district_index: int, source_surface: StringName) -> void:
 	request_district_selection(district_index, source_surface)
+
+
+func _on_district_supply_open_requested(district_index: int, source_surface: StringName) -> void:
+	if _forced_surface_blocks_player_actions():
+		_show_player_action_feedback("district_supply_open", "blocked", "请先完成当前强制决策。")
+		return
+	if not request_district_selection(district_index, source_surface):
+		return
+	_emit_district_supply_action(DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT.KIND_OPEN, district_index, "", -1, source_surface)
+
+
+func request_district_supply_open(district_index: int, source_surface: StringName = &"game_screen") -> bool:
+	if _forced_surface_blocks_player_actions() or not request_district_selection(district_index, source_surface):
+		return false
+	return _emit_district_supply_action(DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT.KIND_OPEN, district_index, "", -1, source_surface)
+
+
+func request_selected_district_supply_purchase(source_surface: StringName = &"game_screen") -> bool:
+	var district_index := int(_selection_context().get("selected_district", -1))
+	var card_id := str(_district_supply_selected_card_by_district.get(district_index, ""))
+	if district_index < 0 or card_id.is_empty() or _forced_surface_blocks_player_actions():
+		return false
+	return _emit_district_supply_action(DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT.KIND_PURCHASE, district_index, card_id, -1, source_surface)
+
+
+func request_district_supply_close(source_surface: StringName = &"game_screen") -> bool:
+	return _emit_district_supply_action(DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT.KIND_CLOSE, -1, "", -1, source_surface)
+
+
+func _on_district_supply_action_requested(action_id: String, payload: Dictionary) -> void:
+	if action_id != "district_supply_close" and _forced_surface_blocks_player_actions():
+		_show_player_action_feedback(action_id, "blocked", "请先完成当前强制决策。")
+		return
+	var district_index := int(payload.get("district_index", _selection_context().get("selected_district", -1)))
+	var card_id := str(payload.get("card_name", ""))
+	match action_id:
+		"district_supply_close":
+			_emit_district_supply_action(DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT.KIND_CLOSE, district_index, "", -1, &"district_supply")
+		"district_supply_preview_card":
+			var kind := DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT.KIND_PREVIEW if str(payload.get("source", "")) == "hover" else DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT.KIND_QUOTE
+			_emit_district_supply_action(kind, district_index, card_id, -1, &"district_supply")
+		"district_supply_purchase_card":
+			_emit_district_supply_action(DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT.KIND_PURCHASE, district_index, card_id, -1, &"district_supply")
+
+
+func _emit_district_supply_action(kind: StringName, district_index: int, card_id: String, discard_slot: int, source_surface: StringName) -> bool:
+	if not _selection_identity_is_bound():
+		return false
+	_district_supply_action_request_revision += 1
+	var intent := DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT.new()
+	intent.request_id = "district-supply:%d:%d" % [_presentation_authorized_viewer_index, _district_supply_action_request_revision]
+	intent.action_kind = kind
+	intent.actor_player_index = _presentation_authorized_viewer_index
+	intent.authorization_revision = _presentation_authorization_revision
+	intent.session_id = _presentation_session_id
+	intent.session_revision = _presentation_session_revision
+	intent.district_index = district_index
+	intent.card_id = card_id
+	intent.discard_slot = discard_slot
+	if kind in [DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT.KIND_PURCHASE, DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT.KIND_DISCARD_CONFIRM]:
+		intent.locked_quote_id = str(_district_supply_locked_quote_ids.get(_district_supply_quote_key(district_index, card_id), ""))
+	intent.source_surface = source_surface
+	intent.request_revision = _district_supply_action_request_revision
+	district_supply_action_intent_requested.emit(intent)
+	return true
 
 
 func set_weather_presentation(forecast_view_model: Dictionary, overlay_view_model: Dictionary, motion_mode: String) -> void:
@@ -827,6 +969,18 @@ func _on_action_requested(action_id: String) -> void:
 	if action_id == "commodity_claim_selected":
 		_submit_selected_commodity_claim()
 		return
+	if action_id in ["rack", "buy", "district_open_rack", "primary_open_development_rack", "primary_open_rack", "primary_review_rack", "strategy_build_gdp_source"]:
+		if _forced_surface_blocks_player_actions():
+			_show_player_action_feedback(action_id, "blocked", "请先完成当前强制决策。")
+			return
+		_emit_district_supply_action(
+			DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT.KIND_OPEN,
+			int(_selection_context().get("selected_district", -1)),
+			"",
+			-1,
+			&"game_screen"
+		)
+		return
 	if action_id.begins_with("track_select_"):
 		_emit_track_action_request(action_id, "已选择公共轨道线索。", &"right_inspector")
 		return
@@ -909,8 +1063,58 @@ func _on_side_drawer_action_requested(action_id: String) -> void:
 
 
 func _on_temporary_decision_action_requested(action_id: String) -> void:
+	if action_id == "discard_purchase_cancel":
+		_emit_district_supply_action(DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT.KIND_DISCARD_CANCEL, -1, "", -1, &"forced_decision")
+		return
+	if action_id.begins_with("discard_purchase_"):
+		var slot_index := int(action_id.trim_prefix("discard_purchase_"))
+		_emit_district_supply_action(DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT.KIND_DISCARD_CONFIRM, -1, "", slot_index, &"forced_decision")
+		return
+	if action_id.begins_with("monster_wager:"):
+		if not _emit_forced_decision_response(action_id, "monster_wager", "monster-wager"):
+			_show_player_action_feedback(action_id, "blocked", "赌局已经变化，请等待桌面刷新。")
+		return
+	if action_id == "target_monster_cancel" or action_id.begins_with("target_monster_") \
+			or action_id == "target_player_cancel" or action_id.begins_with("target_player_"):
+		var expected_kind := "monster_target_choice" if action_id.begins_with("target_monster_") else "player_target_choice"
+		if not _emit_forced_decision_response(action_id, expected_kind, "target-choice"):
+			_show_player_action_feedback(action_id, "blocked", "目标选择已失效，请等待桌面刷新。")
+		return
 	_show_player_action_feedback(action_id, "resolved", "临时决策已提交，等待规则结算。")
 	action_requested.emit(action_id)
+
+
+func _emit_forced_decision_response(option_id: String, expected_kind: String, request_prefix: String) -> bool:
+	if not _selection_identity_is_bound():
+		return false
+	var active: Dictionary = current_ui_data.get("active_forced_decision", {}) \
+			if current_ui_data.get("active_forced_decision", {}) is Dictionary else {}
+	var rendered := _rendered_forced_decision_binding
+	if str(active.get("kind", "")) != expected_kind \
+			or str(rendered.get("kind", "")) != expected_kind \
+			or str(rendered.get("decision_id", "")) != str(active.get("id", "")) \
+			or int(rendered.get("decision_revision", 0)) != int(active.get("decision_revision", 0)) \
+			or not bool(active.get("visible_to_viewer", false)) \
+			or int(active.get("decision_revision", 0)) <= 0:
+		return false
+	_forced_decision_response_request_revision += 1
+	var request := ForcedDecisionResponseRequest.new()
+	request.request_id = "%s:%d:%d" % [request_prefix, _presentation_authorized_viewer_index, _forced_decision_response_request_revision]
+	request.viewer_index = _presentation_authorized_viewer_index
+	request.authorized_player_index = _presentation_authorized_viewer_index
+	request.authorization_revision = _presentation_authorization_revision
+	request.session_id = _presentation_session_id
+	request.session_revision = _presentation_session_revision
+	request.source_surface = &"forced_decision"
+	request.request_revision = _forced_decision_response_request_revision
+	request.decision_id = str(rendered.get("decision_id", ""))
+	request.decision_kind = StringName(expected_kind)
+	request.decision_revision = int(rendered.get("decision_revision", 0))
+	request.option_id = option_id
+	if not bool(request.validation_report().get("valid", false)):
+		return false
+	forced_decision_response_requested.emit(request)
+	return true
 
 
 func _on_public_bid_action_requested(action_id: String) -> void:
@@ -954,6 +1158,10 @@ func _handle_table_selection_hotkey(event: InputEventKey) -> bool:
 		return false
 	var context := _selection_context()
 	match event.keycode:
+		KEY_C:
+			return _cycle_district_supply_quote()
+		KEY_X:
+			return request_selected_district_supply_purchase(&"keyboard_hotkey")
 		KEY_Q, KEY_E:
 			var district_count := int(context.get("district_count", 0))
 			if district_count <= 0:
@@ -972,6 +1180,21 @@ func _handle_table_selection_hotkey(event: InputEventKey) -> bool:
 			var current_index := product_ids.find(current_product)
 			return request_trade_product_selection(str(product_ids[0] if current_index < 0 else product_ids[wrapi(current_index + 1, 0, product_ids.size())]), &"keyboard_hotkey")
 	return false
+
+
+func _cycle_district_supply_quote() -> bool:
+	var drawer := get_district_supply_drawer()
+	if drawer == null or not drawer.has_method("debug_snapshot"):
+		return false
+	var snapshot: Dictionary = drawer.call("debug_snapshot")
+	var card_ids: Array = snapshot.get("rendered_card_names", []) if snapshot.get("rendered_card_names", []) is Array else []
+	if card_ids.is_empty():
+		return false
+	var district_index := int(_selection_context().get("selected_district", -1))
+	var current_id := str(_district_supply_selected_card_by_district.get(district_index, ""))
+	var current_index := card_ids.find(current_id)
+	var next_id := str(card_ids[0] if current_index < 0 else card_ids[wrapi(current_index + 1, 0, card_ids.size())])
+	return _emit_district_supply_action(DISTRICT_SUPPLY_ACTION_INTENT_SCRIPT.KIND_QUOTE, district_index, next_id, -1, &"keyboard_hotkey")
 
 
 func _selection_context() -> Dictionary:
@@ -1627,11 +1850,20 @@ func _sync_temporary_decision_overlay(value: Variant) -> void:
 		return
 	var decision: Dictionary = value if value is Dictionary else {}
 	if decision.is_empty():
+		_rendered_forced_decision_binding.clear()
 		if overlay_layer.has_method("hide_confirm"):
 			overlay_layer.call("hide_confirm")
 		if str(_last_runtime_player_feedback.get("kind", "")) == "temporary_decision":
 			_clear_player_runtime_feedback()
 		return
+	if str(decision.get("kind", "")) in ["monster_wager", "monster_target_choice", "player_target_choice"]:
+		_rendered_forced_decision_binding = {
+			"decision_id": str(decision.get("decision_id", decision.get("id", ""))),
+			"decision_revision": int(decision.get("decision_revision", 0)),
+			"kind": str(decision.get("kind", "")),
+		}
+	else:
+		_rendered_forced_decision_binding.clear()
 	if overlay_layer.has_method("show_temporary_decision"):
 		overlay_layer.call("show_temporary_decision", decision)
 	_show_temporary_decision_player_feedback(decision)
@@ -1653,7 +1885,10 @@ func _sync_transient_gameplay_surfaces(decision_value: Variant, bid_value: Varia
 	if temporary_decision_is_active:
 		if overlay_layer.has_method("hide_public_bid"):
 			overlay_layer.call("hide_public_bid", false)
-		_sync_temporary_decision_overlay(decision)
+		var rendered_decision := decision.duplicate(true)
+		rendered_decision["decision_id"] = str(active_forced.get("id", ""))
+		rendered_decision["decision_revision"] = int(active_forced.get("decision_revision", 0))
+		_sync_temporary_decision_overlay(rendered_decision)
 		return
 	_sync_temporary_decision_overlay({})
 	if public_bid_is_active and str(bid_state.get("phase_id", "")).strip_edges() == "public_bid":

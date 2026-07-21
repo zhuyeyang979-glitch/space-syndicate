@@ -197,44 +197,11 @@ func _build_players(draft: Dictionary, roles: Array, catalog: RoleCatalogRuntime
 	return {"ok": true, "players": players}
 
 
-func _build_run_card_pool(districts: Array, coordinator: GameRuntimeCoordinator) -> Array:
-	var run_products: Array = []
-	for district_variant in districts:
-		if not (district_variant is Dictionary):
-			continue
-		var district: Dictionary = district_variant
-		for key in ["products", "demands"]:
-			for product_variant in (district.get(key, []) as Array):
-				var product_name := str(product_variant).strip_edges()
-				if not product_name.is_empty() and not run_products.has(product_name):
-					run_products.append(product_name)
-	var result: Array = []
-	for card_variant in coordinator.card_catalog_public_pool():
-		var card_id := str(card_variant).strip_edges()
-		var definition := coordinator.card_definition(card_id)
-		if card_id.is_empty() or definition.is_empty():
-			continue
-		var requirements: Array = []
-		var supply_product := str(definition.get("supply_product", definition.get("play_product", ""))).strip_edges()
-		if not supply_product.is_empty():
-			requirements.append(supply_product)
-		var contract_products: Array = definition.get("contract_products", []) if definition.get("contract_products", []) is Array else []
-		for product_variant in contract_products:
-			var product_name := str(product_variant).strip_edges()
-			if not product_name.is_empty() and not requirements.has(product_name):
-				requirements.append(product_name)
-		var allowed := true
-		for required_product in requirements:
-			if not run_products.has(required_product):
-				allowed = false
-				break
-		if allowed and not result.has(card_id):
-			result.append(card_id)
-	for monster_card_variant in MonsterCatalog.monster_card_names(1):
-		var monster_card := str(monster_card_variant).strip_edges()
-		if not monster_card.is_empty() and not result.has(monster_card):
-			result.append(monster_card)
-	return result
+func _build_run_card_pool(_districts: Array, coordinator: GameRuntimeCoordinator) -> Array:
+	# The regional rack and the production inventory must share the same v0.6
+	# canonical card identities. Region-specific playability remains a public
+	# listing condition; it must not be encoded as a second legacy card pool.
+	return coordinator.region_supply_catalog_card_ids()
 
 
 func _world_card(card: Dictionary) -> Dictionary:

@@ -94,6 +94,13 @@ static func validate(envelope: Dictionary) -> Dictionary:
 			return {"valid": false, "reason": "monster_action_payload_invalid"}
 		if not (payload_dictionary.get("action", {}) is Dictionary):
 			return {"valid": false, "reason": "monster_action_definition_invalid"}
+		if str(payload_dictionary.get("action_kind", "")) == "battle_opening_attack":
+			var actor_uid := int(payload_dictionary.get("actor_uid", -1))
+			var target_uid := int(payload_dictionary.get("target_monster_uid", -1))
+			if actor_uid <= 0 or target_uid <= 0 or actor_uid == target_uid \
+				or int(payload_dictionary.get("wager_id", -1)) < 0 \
+				or int(payload_dictionary.get("settlement_revision", -1)) < 0:
+				return {"valid": false, "reason": "monster_battle_action_binding_invalid"}
 	var expected := _fingerprint(envelope)
 	if str(envelope.get("envelope_fingerprint", "")) != expected:
 		return {"valid": false, "reason": "command_envelope_fingerprint_mismatch"}

@@ -58,7 +58,7 @@ func dispatch(transaction: Dictionary) -> Dictionary:
 	var resolved := false
 	var continuation_kind := "normal"
 	if handler_id == "target_monster":
-		resolved = _resolve_targeted_skill(skill, player, int(entry.get("target_slot", -1)), player_index, int(entry.get("selected_district", -1)), entry)
+		resolved = _resolve_targeted_skill(skill, player, _resolved_monster_target_slot(entry), player_index, int(entry.get("selected_district", -1)), entry)
 	elif handler_id == "target_player":
 		resolved = _resolve_player_interaction(player_index, int(entry.get("target_player", -1)), skill)
 	else:
@@ -70,7 +70,7 @@ func dispatch(transaction: Dictionary) -> Dictionary:
 			resolved = _dispatch_domain_handler(handler_id, player_index, player, entry, skill)
 	if resolved and handler_id == "area_trade_contract":
 		continuation_kind = "contract_response"
-	elif _monster_controller != null and _monster_controller.active_wagers_snapshot().size() > int(transaction.get("forced_decision_count_before", 0)):
+	elif _monster_controller != null and _monster_controller.open_wager_decision_count() > int(transaction.get("monster_wager_decision_count_before", 0)):
 		continuation_kind = "forced_decision_handoff"
 	return _receipt(true, resolved, "resolved" if resolved else "effect_not_resolved", continuation_kind)
 
@@ -155,6 +155,17 @@ func _resolve_targeted_skill(skill: Dictionary, player: Dictionary, target_slot:
 	if str(skill.get("kind", "")) == "military_command":
 		return _military_controller != null and _military_controller.trigger_command(skill, target_slot, player_index, {"resolution_id": int(entry.get("resolution_id", entry.get("queued_order", -1)))})
 	return _monster_controller != null and _monster_controller.resolve_targeted_skill(skill, player, target_slot, player_index, selected_district)
+
+
+func _resolved_monster_target_slot(entry: Dictionary) -> int:
+	var target_uid := int(entry.get("target_monster_uid", -1))
+	if target_uid <= 0 or _monster_controller == null:
+		return int(entry.get("target_slot", -1))
+	var roster := _monster_controller.roster_snapshot(false)
+	for index in range(roster.size()):
+		if roster[index] is Dictionary and int((roster[index] as Dictionary).get("uid", -1)) == target_uid:
+			return index
+	return -1
 
 
 func _resolve_player_interaction(player_index: int, target_player_index: int, skill: Dictionary) -> bool:

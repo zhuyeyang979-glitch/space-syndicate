@@ -127,7 +127,7 @@ func _monster_wager_fixture() -> Dictionary:
 			{"text": "全场冻结", "tooltip": "下注结束前暂停常规出牌。", "accent": "#fb7185"},
 			{"text": "底注5%", "tooltip": "最低公开下注。", "accent": "#fb923c"},
 			{"text": "已押 1/4", "tooltip": "全员下注后提前结算。", "accent": "#c4b5fd"},
-			{"text": "22s", "tooltip": "剩余下注时间。", "accent": "#fed7aa"},
+			{"text": "选择中", "tooltip": "15秒强制选择窗口正在缩短。", "accent": "#fed7aa"},
 		],
 		"actions": [
 			{"id": "monster_wager:7:a:5", "label": "押相位兽 5%", "tooltip": "以当前席位公开押相位兽。"},
@@ -144,8 +144,8 @@ func _monster_wager_fixture() -> Dictionary:
 			"pool": 50,
 			"decided": 1,
 			"seat_count": 4,
-			"timer": 22.0,
-			"timer_text": "22s",
+			"timer": 15.0,
+			"timer_text": "选择中",
 			"side_hint": "你尚未下注；底注5%，可加码。",
 		},
 		"accent": "#fb923c",
@@ -226,8 +226,8 @@ func _monster_target_fixture() -> Dictionary:
 			{"text": "目标公开", "tooltip": "目标会成为推理线索。", "accent": "#fda4af"},
 		],
 		"actions": [
-			{"id": "target_monster_0", "label": "怪1 相位兽", "tooltip": "指定相位兽。"},
-			{"id": "target_monster_1", "label": "怪2 潮汐兽", "tooltip": "指定潮汐巨兽。", "disabled": true},
+			{"id": "target_monster_uid_101", "label": "怪1 相位兽", "tooltip": "指定相位兽。"},
+			{"id": "target_monster_uid_102", "label": "怪2 潮汐兽", "tooltip": "指定潮汐巨兽。", "disabled": true},
 			{"id": "target_monster_cancel", "label": "取消", "tooltip": "取消目标选择。"},
 		],
 		"choice": {

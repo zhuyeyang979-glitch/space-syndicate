@@ -16,6 +16,7 @@ var _contract_controller: ContractRuntimeController
 var _session_controller: GameSessionRuntimeController
 var _forced_decision_scheduler: ForcedDecisionRuntimeScheduler
 var _commodity_flow_controller: CommodityFlowRuntimeController
+var _cash_commitment_query_port: MonsterWagerCashCommitmentQueryPort
 var _build_count := 0
 
 
@@ -36,7 +37,8 @@ func set_runtime_dependencies(
 	contract_controller: ContractRuntimeController,
 	session_controller: GameSessionRuntimeController,
 	forced_decision_scheduler: ForcedDecisionRuntimeScheduler,
-	commodity_flow_controller: CommodityFlowRuntimeController
+	commodity_flow_controller: CommodityFlowRuntimeController,
+	cash_commitment_query_port: MonsterWagerCashCommitmentQueryPort = null
 ) -> void:
 	_queue_service = queue_service
 	_resolution_controller = resolution_controller
@@ -47,6 +49,7 @@ func set_runtime_dependencies(
 	_session_controller = session_controller
 	_forced_decision_scheduler = forced_decision_scheduler
 	_commodity_flow_controller = commodity_flow_controller
+	_cash_commitment_query_port = cash_commitment_query_port
 
 
 func world_session_state() -> WorldSessionState:
@@ -106,14 +109,17 @@ func build_facts(player_index: int, skill: Dictionary, context: Dictionary = {})
 	if str(skill.get("kind", "")) == "military_force":
 		military_deployment_valid = _military_controller != null and _military_controller.can_deploy_at_district(skill, selected_district)
 		military_terrain_label = _military_controller.deploy_terrain_label(skill) if _military_controller != null else "有效地形"
+	var spendable_cash_cents := int(player.get("cash_cents", int(player.get("cash", 0)) * 100))
+	if player_valid and _cash_commitment_query_port != null:
+		spendable_cash_cents = _cash_commitment_query_port.available_cash_cents(player_index)
 	return {
 		"player_valid": player_valid,
 		"player_count": players.size(),
 		"monster_count": monsters.size(),
 		"player_name": str(player.get("name", "玩家%d" % (player_index + 1))) if player_valid else "玩家",
 		"player_eliminated": bool(player.get("eliminated", false)) if player_valid else true,
-		"player_cash": int(player.get("cash", 0)),
-		"player_cash_cents": int(player.get("cash", 0)) * 100,
+		"player_cash": spendable_cash_cents / 100,
+		"player_cash_cents": spendable_cash_cents,
 		"player_action_cooldown": float(player.get("action_cooldown", 0.0)),
 		"game_over": _session_controller != null and _session_controller.is_finished(),
 		"selected_district": selected_district,
@@ -125,7 +131,7 @@ func build_facts(player_index: int, skill: Dictionary, context: Dictionary = {})
 		"best_share_district": _best_share_district(share_by_district),
 		"share_basis_points_by_district": share_by_district,
 		"pending_target_choice": pending_target_choice,
-		"monster_wager_freeze": _monster_controller != null and not _monster_controller.active_wagers_snapshot().is_empty(),
+		"monster_wager_freeze": _monster_controller != null and _monster_controller.has_open_monster_wager_decision(),
 		"forced_decision_pending": _forced_decision_scheduler != null and (
 			_forced_decision_scheduler.blocks_global_time()
 			or _forced_decision_scheduler.blocks_player_actions(player_index)

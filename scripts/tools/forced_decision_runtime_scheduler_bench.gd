@@ -10,7 +10,7 @@ const ACTION_ID_SAMPLES := [
 	"contract_accept_23",
 	"contract_reject_23",
 	"discard_purchase_2",
-	"target_monster_1",
+	"target_monster_uid_101",
 	"target_player_2",
 ]
 const FLOW_CASES := [

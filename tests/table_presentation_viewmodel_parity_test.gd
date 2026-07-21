@@ -3,6 +3,7 @@ extends SceneTree
 const GAME_SCREEN_SCENE := preload("res://scenes/ui/GameScreen.tscn")
 const COORDINATOR_SCENE := preload("res://scenes/runtime/GameRuntimeCoordinator.tscn")
 const RULESET := preload("res://resources/rules/space_syndicate_ruleset_v06.tres")
+const BATTLE_LIFECYCLE_POLICY := preload("res://scripts/runtime/monster_battle_lifecycle_policy_v06.gd")
 
 const TOP_BAR_FIELDS := ["table_state", "tempo", "phase", "turn", "identity", "cash_text", "gdp_text", "goal_text", "selected_district", "primary_action", "weather_status"]
 const PLAYER_BOARD_FIELDS := ["actions", "quick_actions", "region_infrastructure", "table_state_lamps", "readiness_chips", "progress_path", "bid_board", "goal_text", "goal_ratio", "primary_action", "hand_cards"]
@@ -335,14 +336,29 @@ func _assert_temporary_decision_parity(host: Node, coordinator: GameRuntimeCoord
 		"wager_id": 17,
 		"resolved": false,
 		"base_percent": 5,
-		"remaining_seconds": 12.0,
-		"seconds_total": 15.0,
 		"competitors": [
 			{"side": "a", "slot": 0, "uid": 101, "name": "潮汐巨兽", "damage": 0},
 			{"side": "b", "slot": 1, "uid": 102, "name": "轨道巨兽", "damage": 0},
 		],
 		"bets": {},
 		"public_bets": [],
+		"historical_public_pool": 0,
+		"eligible_player_indices": [0],
+		"opening_cash_units_by_player": {"0": 1400},
+		"public_player_ids_by_index": {"0": "player.0"},
+		"lifecycle_schema_version": BATTLE_LIFECYCLE_POLICY.SCHEMA_VERSION,
+		"lifecycle_phase": BATTLE_LIFECYCLE_POLICY.PHASE_DECISION,
+		"lifecycle_revision": 1,
+		"decision_remaining_seconds": 12.0,
+		"battle_limit_seconds": 60.0,
+		"battle_remaining_seconds": 60.0,
+		"locked_competitor_uids": [101, 102],
+		"battle_roster_fingerprint": BATTLE_LIFECYCLE_POLICY.roster_fingerprint([
+			{"side": "a", "slot": 0, "uid": 101, "name": "潮汐巨兽", "damage": 0},
+			{"side": "b", "slot": 1, "uid": 102, "name": "轨道巨兽", "damage": 0},
+		]),
+		"opening_attack_applied": true,
+		"decision_open": true,
 	}]
 	scheduler.sync_candidates(monster.forced_decision_candidates())
 	var wager_decision := query.temporary_decision_presentation_source_for_viewer(0)

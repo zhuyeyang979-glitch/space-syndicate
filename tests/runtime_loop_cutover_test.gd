@@ -82,7 +82,8 @@ class FakeMonsterPort extends RuntimeMonsterPort:
 	var state: TraceState
 	func _init(value: TraceState) -> void: state = value
 	func is_ready() -> bool: return true
-	func tick_wagers(delta_seconds: float) -> void: state._record(&"tick_monster_wagers", delta_seconds)
+	func tick_wager_decisions_realtime(delta_seconds: float) -> void: state._record(&"tick_monster_wagers", delta_seconds)
+	func tick_battle_lifecycles(delta_seconds: float) -> void: state._record(&"tick_monster_wagers", delta_seconds)
 	func tick_motion(delta_seconds: float) -> void: state._record(&"tick_monster_motion", delta_seconds)
 	func tick_actions(delta_seconds: float) -> void: state._record(&"tick_monster_actions", delta_seconds)
 	func tick_durations(delta_seconds: float) -> void: state._record(&"tick_monster_durations", delta_seconds)

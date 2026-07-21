@@ -254,6 +254,8 @@ func _on_card_preview_requested(card_name: String, source: String) -> void:
 			child_entry["selected"] = child_name == card_name
 			child.call("set_card", child_entry)
 	set_meta("last_passive_preview_source", source)
+	if source != "hover":
+		supply_action_requested.emit("district_supply_preview_card", {"card_name": card_name, "source": source})
 
 
 func _on_card_purchase_requested(card_name: String, source: String) -> void:

@@ -9,6 +9,7 @@ const QUEUE_SCENE := preload("res://scenes/runtime/CardResolutionQueueRuntimeSer
 const CONTRACT_SCENE := preload("res://scenes/runtime/ContractRuntimeController.tscn")
 const MONSTER_SCENE := preload("res://scenes/runtime/MonsterRuntimeController.tscn")
 const SCHEDULER_SCENE := preload("res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn")
+const BATTLE_LIFECYCLE_POLICY := preload("res://scripts/runtime/monster_battle_lifecycle_policy_v06.gd")
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -47,7 +48,11 @@ func _run() -> void:
 	purchase.set_quote_authority(quote_authority)
 	purchase.configure()
 
-	monster.active_monster_wagers = [{"wager_id": 41, "resolved": false, "hidden_owner": 7, "pending_attack": {"cash": 999}}]
+	monster.auto_monsters = [
+		{"slot": 0, "uid": 4101, "name": "候选怪兽A", "position": 0, "down": false},
+		{"slot": 1, "uid": 4102, "name": "候选怪兽B", "position": 0, "down": false},
+	]
+	monster.active_monster_wagers = [_formal_wager_fixture(41)]
 	card_controller.begin_counter(5.0)
 	queue.replace_active_entry({"resolution_id": 42, "skill": {"name": "公开卡面"}, "player_index": 6})
 	contract.pending_offers = [{
@@ -77,6 +82,7 @@ func _run() -> void:
 		_expect(not debug_text.contains(forbidden), "source debug omits private field %s" % forbidden)
 	var collected_text := JSON.stringify(sources.collect_candidates())
 	_expect(not collected_text.contains("secret-card") and not collected_text.contains("private-quote") and not collected_text.contains("pending_attack"), "candidate descriptors omit card, quote, and wager internals")
+	_expect(not collected_text.contains("battle_resolved") and not collected_text.contains("hidden_owner"), "candidate descriptors do not depend on retired wager fixture fields")
 
 	monster.active_monster_wagers.clear()
 	sources.synchronize()
@@ -120,6 +126,38 @@ func _expect(condition: bool, message: String) -> void:
 	_checks += 1
 	if not condition:
 		_failures.append(message)
+
+
+func _formal_wager_fixture(wager_id: int) -> Dictionary:
+	var competitors := [
+		{"side": "a", "name": "候选怪兽A", "slot": 0, "uid": 4101, "damage": 0},
+		{"side": "b", "name": "候选怪兽B", "slot": 1, "uid": 4102, "damage": 0},
+	]
+	return {
+		"wager_id": wager_id,
+		"settlement_revision": wager_id,
+		"base_percent": 5,
+		"competitors": competitors,
+		"damage_a": 0,
+		"damage_b": 0,
+		"bets": {},
+		"public_bets": [],
+		"historical_public_pool": 0,
+		"eligible_player_indices": [0, 1],
+		"opening_cash_units_by_player": {"0": 100, "1": 100},
+		"public_player_ids_by_index": {"0": "player.0", "1": "player.1"},
+		"lifecycle_schema_version": BATTLE_LIFECYCLE_POLICY.SCHEMA_VERSION,
+		"lifecycle_phase": BATTLE_LIFECYCLE_POLICY.PHASE_DECISION,
+		"lifecycle_revision": 1,
+		"decision_remaining_seconds": 15.0,
+		"battle_limit_seconds": 60.0,
+		"battle_remaining_seconds": 60.0,
+		"locked_competitor_uids": [4101, 4102],
+		"battle_roster_fingerprint": BATTLE_LIFECYCLE_POLICY.roster_fingerprint(competitors),
+		"opening_attack_applied": true,
+		"decision_open": true,
+		"resolved": false,
+	}
 
 
 func _finish() -> void:

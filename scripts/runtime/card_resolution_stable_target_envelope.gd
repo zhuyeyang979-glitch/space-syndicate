@@ -1,7 +1,7 @@
 extends RefCounted
 class_name CardResolutionStableTargetEnvelope
 
-const SCHEMA_VERSION := 1
+const SCHEMA_VERSION := 2
 const TARGET_NONE := "none"
 const TARGET_MONSTER := "monster"
 const TARGET_PLAYER := "player"
@@ -22,6 +22,7 @@ const ALLOWED_KEYS := [
 	"selected_card_resolution_id",
 	"target_kind",
 	"target_slot",
+	"target_monster_uid",
 	"target_player",
 	"contract_source_region_id",
 	"contract_source_public_index_at_capture",
@@ -80,6 +81,7 @@ static func capture(
 		"selected_card_resolution_id": int(selection_snapshot.get("selected_card_resolution_id", -1)),
 		"target_kind": str(context.get("target_kind", TARGET_NONE)),
 		"target_slot": int(context.get("target_slot", -1)),
+		"target_monster_uid": int(context.get("target_monster_uid", -1)),
 		"target_player": int(context.get("target_player", -1)),
 		"contract_source_region_id": str(contract_source.get("region_id", "")),
 		"contract_source_public_index_at_capture": int(contract_source.get("public_index", -1)),
@@ -94,12 +96,13 @@ static func capture(
 	return envelope if bool(validate(envelope).get("valid", false)) else {}
 
 
-static func bind_target(envelope: Dictionary, target_kind: String, target_slot: int, target_player: int) -> Dictionary:
+static func bind_target(envelope: Dictionary, target_kind: String, target_slot: int, target_player: int, target_monster_uid: int = -1) -> Dictionary:
 	if not bool(validate(envelope).get("valid", false)) or target_kind not in TARGET_KINDS:
 		return {}
 	var result := envelope.duplicate(true)
 	result["target_kind"] = target_kind
 	result["target_slot"] = target_slot
+	result["target_monster_uid"] = target_monster_uid
 	result["target_player"] = target_player
 	result["envelope_fingerprint"] = _fingerprint(result)
 	return result if bool(validate(result).get("valid", false)) else {}
@@ -133,7 +136,7 @@ static func validate(envelope: Dictionary) -> Dictionary:
 			return _invalid("stable_target_type_invalid")
 	for key in [
 		"schema_version", "session_revision", "selection_revision", "region_public_index_at_capture",
-		"product_public_index_at_capture", "selected_card_resolution_id", "target_slot", "target_player",
+		"product_public_index_at_capture", "selected_card_resolution_id", "target_slot", "target_monster_uid", "target_player",
 		"contract_source_public_index_at_capture", "contract_target_public_index_at_capture",
 		"contract_selection_revision", "play_requirement_public_index_at_capture",
 	]:
@@ -159,14 +162,16 @@ static func validate(envelope: Dictionary) -> Dictionary:
 		return _invalid("stable_target_resolution_invalid")
 	var target_kind := str(envelope["target_kind"])
 	var target_slot := int(envelope["target_slot"])
+	var target_monster_uid := int(envelope["target_monster_uid"])
 	var target_player := int(envelope["target_player"])
 	if target_kind not in TARGET_KINDS:
 		return _invalid("stable_target_kind_invalid")
-	if target_kind == TARGET_NONE and (target_slot != -1 or target_player != -1):
+	if target_kind == TARGET_NONE and (target_slot != -1 or target_monster_uid != -1 or target_player != -1):
 		return _invalid("stable_target_none_binding_invalid")
-	if target_kind == TARGET_MONSTER and (target_slot < -1 or target_player != -1):
+	if target_kind == TARGET_MONSTER and (target_slot < -1 or target_monster_uid < -1 or target_player != -1 \
+			or ((target_slot == -1) != (target_monster_uid == -1))):
 		return _invalid("stable_target_monster_binding_invalid")
-	if target_kind == TARGET_PLAYER and (target_player < -1 or target_slot != -1):
+	if target_kind == TARGET_PLAYER and (target_player < -1 or target_slot != -1 or target_monster_uid != -1):
 		return _invalid("stable_target_player_binding_invalid")
 	for pair in [
 		["contract_source_region_id", "contract_source_public_index_at_capture"],
@@ -204,6 +209,7 @@ static func validate_entry_binding(entry: Dictionary) -> Dictionary:
 		and str(entry.get("selected_trade_product", "\u0000")) == str(envelope["product_id"]) \
 		and int(entry.get("selected_card_resolution_id", -2)) == int(envelope["selected_card_resolution_id"]) \
 		and int(entry.get("target_slot", -2)) == int(envelope["target_slot"]) \
+		and int(entry.get("target_monster_uid", -2)) == int(envelope["target_monster_uid"]) \
 		and int(entry.get("target_player", -2)) == int(envelope["target_player"]) \
 		and int(entry.get("contract_source_district", -2)) == int(envelope["contract_source_public_index_at_capture"]) \
 		and int(entry.get("contract_target_district", -2)) == int(envelope["contract_target_public_index_at_capture"]) \
@@ -221,6 +227,7 @@ static func context_at_capture(envelope: Dictionary) -> Dictionary:
 		"selected_trade_product": str(envelope["product_id"]),
 		"selected_card_resolution_id": int(envelope["selected_card_resolution_id"]),
 		"target_slot": int(envelope["target_slot"]),
+		"target_monster_uid": int(envelope["target_monster_uid"]),
 		"target_player": int(envelope["target_player"]),
 		"contract_source_district": int(envelope["contract_source_public_index_at_capture"]),
 		"contract_target_district": int(envelope["contract_target_public_index_at_capture"]),

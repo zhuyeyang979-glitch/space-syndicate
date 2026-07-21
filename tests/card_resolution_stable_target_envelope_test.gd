@@ -161,6 +161,17 @@ func _test_envelope_contract() -> void:
 	var unresolved_entry := StableTargetEnvelope.context_at_capture(envelope)
 	unresolved_entry["stable_target_envelope"] = envelope
 	_expect(not bool(StableTargetEnvelope.validate_entry_binding(unresolved_entry).get("valid", false)), "queue binding rejects unresolved target")
+	var monster_pending := StableTargetEnvelope.capture(
+		_selection.snapshot(),
+		_query.compose_region_catalog(),
+		_query.compose_product_catalog(),
+		{"target_kind": StableTargetEnvelope.TARGET_MONSTER, "capture_source": "focused_test"}
+	)
+	var monster_bound := StableTargetEnvelope.bind_target(monster_pending, StableTargetEnvelope.TARGET_MONSTER, 0, -1, 42)
+	_expect(bool(StableTargetEnvelope.validate(monster_bound).get("valid", false)) and int(StableTargetEnvelope.context_at_capture(monster_bound).get("target_monster_uid", -1)) == 42, "monster target envelope fingerprints the stable monster UID together with its slot mirror")
+	var monster_tampered := monster_bound.duplicate(true)
+	monster_tampered["target_monster_uid"] = 43
+	_expect(not bool(StableTargetEnvelope.validate(monster_tampered).get("valid", false)), "monster UID tampering invalidates the target envelope")
 
 
 func _test_target_choice_focus_drift() -> void:
@@ -291,11 +302,14 @@ func _test_source_boundaries() -> void:
 	var commitment_source := FileAccess.get_file_as_string("res://scripts/runtime/card_commitment_runtime_service.gd")
 	var history_source := FileAccess.get_file_as_string("res://scripts/runtime/card_resolution_execution_world_bridge.gd")
 	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
+	var game_screen_source := FileAccess.get_file_as_string("res://scripts/ui/game_screen.gd")
+	var response_sink_source := FileAccess.get_file_as_string("res://scripts/runtime/card_target_choice_response_sink.gd")
 	_expect(not submission_source.contains("_table_selection_state.selected_district") and not submission_source.contains("_table_selection_state.selected_trade_product"), "submission never re-reads mutable focus after capture")
 	_expect(sink_source.contains("StableTargetEnvelope.resolved_entry(entry, _world_session)"), "transition sink resolves stable IDs before planning execution")
 	_expect(commitment_source.contains("build_facts(player_index, skill, context)"), "commitment cost revalidation receives frozen context")
 	_expect(history_source.contains("entry.erase(\"stable_target_envelope\")"), "history strips the private execution envelope")
-	_expect(coordinator_source.contains("submission.begin_target_choice(kind, player_index, slot_index)"), "legacy UI entry delegates first-intent capture to the submission owner")
+	_expect(game_screen_source.contains("forced_decision_response_requested.emit(request)") and response_sink_source.contains("_submission_owner().submit_card_play(submit_request)"), "human target continuation reaches the shared submission owner through the typed forced-decision path")
+	_expect(not coordinator_source.contains("func begin_card_target_choice(") and not coordinator_source.contains("func clear_card_target_choice(") and not coordinator_source.contains("func apply_card_target_choice_legacy_state("), "coordinator exposes no legacy target-choice mutation facade")
 	_expect(not submission_source.contains("current_scene") and not submission_source.contains("/root/Main"), "stable target submission has no Main discovery fallback")
 
 

@@ -23,6 +23,7 @@ var _failed_world_call_count := 0
 var _table_presentation_refresh_port: TablePresentationRefreshPort
 var _public_log_producer_port: PublicLogProducerPort
 var _presentation_world_clock: WorldEffectiveClockRuntimeController
+var _cash_commitment_query_port: MonsterWagerCashCommitmentQueryPort
 
 
 func bind_world(world: Node) -> void:
@@ -41,6 +42,10 @@ func set_table_selection_state(state: TableSelectionState) -> void:
 
 func set_world_session_state(state: WorldSessionState) -> void:
 	_world_session_state = state
+
+
+func set_cash_commitment_query_port(port: MonsterWagerCashCommitmentQueryPort) -> void:
+	_cash_commitment_query_port = port
 
 
 func world_session_state() -> WorldSessionState:
@@ -374,6 +379,7 @@ func debug_snapshot() -> Dictionary:
 		"owns_ai_decisions": false,
 		"legacy_direct_response_mutation_exposed": false,
 		"atomic_effect_owner_configured": _contract_atomic_effect_owner_v06 != null,
+		"monster_wager_cash_commitment_guard_bound": _cash_commitment_query_port != null,
 	}
 
 
@@ -556,7 +562,7 @@ func _grant_cash(player_index: int, amount: int, label: String, detail: String) 
 	if player_index < 0 or player_index >= players.size() or amount <= 0 or not (players[player_index] is Dictionary):
 		return 0
 	var player := (players[player_index] as Dictionary).duplicate(true)
-	player["cash"] = int(player.get("cash", 0)) + amount
+	_apply_cash_delta_to_record(player, amount)
 	players[player_index] = player
 	if _world_session_state != null:
 		_world_session_state.players = players
@@ -569,15 +575,25 @@ func _pay_penalty(player_index: int, amount: int, label: String, detail: String)
 	if player_index < 0 or player_index >= players.size() or amount <= 0 or not (players[player_index] is Dictionary):
 		return 0
 	var player := (players[player_index] as Dictionary).duplicate(true)
-	var paid := mini(amount, maxi(0, int(player.get("cash", 0))))
+	var available := maxi(0, int(player.get("cash", 0)))
+	if _cash_commitment_query_port != null:
+		available = _cash_commitment_query_port.available_cash_units(player_index)
+	var paid := mini(amount, available)
 	if paid <= 0:
 		return 0
-	player["cash"] = int(player.get("cash", 0)) - paid
+	_apply_cash_delta_to_record(player, -paid)
 	players[player_index] = player
 	if _world_session_state != null:
 		_world_session_state.players = players
 	_call_world(&"_record_player_card_spend", [player_index, paid, label, detail])
 	return paid
+
+
+func _apply_cash_delta_to_record(record: Dictionary, delta_units: int) -> void:
+	var normalized := WorldSessionState.canonical_private_cash_record(record)
+	var next_cents := int(normalized.get("cash_cents", 0)) + delta_units * 100
+	record["cash_cents"] = next_cents
+	record["cash"] = floori(float(next_cents) / 100.0)
 
 
 func _district_fact(index: int) -> Dictionary:

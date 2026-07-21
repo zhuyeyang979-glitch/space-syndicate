@@ -8,6 +8,7 @@ const KIND_DISRUPT := "player_hand_disrupt"
 const KIND_STEAL := "player_hand_steal"
 
 var _inventory_service: Node = null
+var _cash_commitment_query_port: MonsterWagerCashCommitmentQueryPort
 var _configured := false
 var _ordinary_hand_limit := 0
 var _maximum_card_rank := 0
@@ -22,6 +23,10 @@ var _last_result_summary: Dictionary = {}
 
 func set_inventory_service(service: Node) -> void:
 	_inventory_service = service
+
+
+func set_cash_commitment_query_port(port: MonsterWagerCashCommitmentQueryPort) -> void:
+	_cash_commitment_query_port = port
 
 
 func configure(_config: Dictionary = {}) -> void:
@@ -145,8 +150,12 @@ func commit_interaction(actor_state: Dictionary, target_state: Dictionary, curre
 	var penalty_requested := int(current_plan.get("target_cash_penalty", 0))
 	var penalty_paid := 0
 	if interaction_kind == KIND_DISRUPT and penalty_requested > 0:
-		penalty_paid = mini(penalty_requested, maxi(0, target_cash_before))
-		after_target["cash"] = target_cash_before - penalty_paid
+		var target_available := maxi(0, target_cash_before)
+		var target_player_index := int(current_plan.get("target_player_index", -1))
+		if _cash_commitment_query_port != null and target_player_index >= 0:
+			target_available = _cash_commitment_query_port.available_cash_units(target_player_index)
+		penalty_paid = mini(penalty_requested, target_available)
+		_apply_cash_delta_to_record(after_target, -penalty_paid)
 		if penalty_paid > 0:
 			private_intents.append({
 				"intent_kind": "target_card_spend",
@@ -158,7 +167,7 @@ func commit_interaction(actor_state: Dictionary, target_state: Dictionary, curre
 	var compensation_rule := int(current_plan.get("steal_fail_cash", 0))
 	var compensation_paid := compensation_rule if interaction_kind == KIND_STEAL and (converted_count > 0 or transferred_count <= 0) else 0
 	if compensation_paid > 0:
-		after_actor["cash"] = actor_cash_before + compensation_paid
+		_apply_cash_delta_to_record(after_actor, compensation_paid)
 		private_intents.append({
 			"intent_kind": "actor_card_income",
 			"recipient_role": "actor",
@@ -228,6 +237,7 @@ func debug_snapshot() -> Dictionary:
 		"service_authoritative": _configured,
 		"interaction_orchestration_authority": _configured,
 		"cash_adjustment_authority": _configured,
+		"monster_wager_cash_commitment_guard_bound": _cash_commitment_query_port != null,
 		"event_intent_authority": _configured,
 		"inventory_mutation_authority": false,
 		"inventory_service_ready": bool(_inventory_debug_snapshot().get("service_ready", false)),
@@ -242,6 +252,13 @@ func debug_snapshot() -> Dictionary:
 		"last_result_summary": _last_result_summary.duplicate(true),
 		"legacy_main_orchestration_fallback_used": false,
 	}
+
+
+func _apply_cash_delta_to_record(record: Dictionary, delta_units: int) -> void:
+	var normalized := WorldSessionState.canonical_private_cash_record(record)
+	var next_cents := int(normalized.get("cash_cents", 0)) + delta_units * 100
+	record["cash_cents"] = next_cents
+	record["cash"] = floori(float(next_cents) / 100.0)
 
 
 func _plan_interaction(request: Dictionary, count_plan: bool) -> Dictionary:

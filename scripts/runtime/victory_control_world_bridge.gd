@@ -79,7 +79,9 @@ func capture_world_snapshot(clock_pause: Dictionary = {}, settlement_checkpoint 
 	for player_index in range(players.size()):
 		var player: Dictionary = players[player_index] if players[player_index] is Dictionary else {}
 		var available_cents := int(player.get("cash_cents", int(player.get("cash", 0)) * CURRENCY_SCALE))
-		var escrow_cents := _player_escrow_cents(player_index)
+		# Wager commitments remain inside MonsterRuntimeController and are applied
+		# only in the atomic settlement swap; VictoryControl has no cash escrow.
+		var escrow_cents := 0
 		player_rows.append({
 			"player_index": player_index,
 			"eliminated": _player_eliminated(player_index, player),
@@ -129,12 +131,6 @@ func debug_snapshot() -> Dictionary:
 
 func _player_eliminated(player_index: int, player: Dictionary) -> bool:
 	return bool(_world.call("_player_is_eliminated", player_index)) if _world.has_method("_player_is_eliminated") else bool(player.get("eliminated", false))
-
-
-func _player_escrow_cents(player_index: int) -> int:
-	if _world.has_method("_victory_control_escrow_cents"):
-		return maxi(0, int(_world.call("_victory_control_escrow_cents", player_index)))
-	return 0
 
 
 func _ordinary_hand_snapshot(player: Dictionary) -> Array:

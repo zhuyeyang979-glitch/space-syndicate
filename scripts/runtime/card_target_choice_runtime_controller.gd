@@ -9,12 +9,14 @@ const SAVE_SCHEMA_VERSION := 1
 const StableTargetEnvelope := preload("res://scripts/runtime/card_resolution_stable_target_envelope.gd")
 
 var _choices: Dictionary = {}
+var _reservations: Dictionary = {}
 var _next_choice_sequence := 1
 var _revision := 0
 
 
 func reset_state() -> void:
 	_choices.clear()
+	_reservations.clear()
 	_next_choice_sequence = 1
 	_revision += 1
 
@@ -28,6 +30,8 @@ func begin_choice(
 ) -> Dictionary:
 	if kind not in VALID_KINDS or player_index < 0 or slot_index < 0:
 		return {"accepted": false, "reason": "target_choice_binding_invalid"}
+	if _reservations.has(kind):
+		return {"accepted": false, "reason": "target_choice_reserved"}
 	if not stable_target_envelope.is_empty():
 		var envelope_validation := StableTargetEnvelope.validate(stable_target_envelope)
 		if not bool(envelope_validation.get("valid", false)) \
@@ -54,12 +58,64 @@ func begin_choice(
 func clear_choice(kind: String) -> Dictionary:
 	if kind not in VALID_KINDS or not _choices.has(kind):
 		return {"cleared": false, "reason": "target_choice_not_active"}
+	if _reservations.has(kind):
+		return {"cleared": false, "reason": "target_choice_reserved"}
 	var choice := (_choices[kind] as Dictionary).duplicate(true)
 	_choices.erase(kind)
 	_revision += 1
 	return {
 		"cleared": true,
 		"choice_id": str(choice.get("choice_id", "")),
+		"kind": kind,
+		"revision": _revision,
+	}
+
+
+func reserve_choice(kind: String, expected_choice_id: String, reservation_id: String) -> Dictionary:
+	if kind not in VALID_KINDS or expected_choice_id.is_empty() or not _reservation_id_valid(reservation_id):
+		return {"reserved": false, "reason": "target_choice_reservation_invalid"}
+	if _reservations.has(kind):
+		return {"reserved": false, "reason": "target_choice_already_reserved"}
+	var choice := choice_snapshot(kind)
+	if choice.is_empty():
+		return {"reserved": false, "reason": "target_choice_not_active"}
+	if str(choice.get("choice_id", "")) != expected_choice_id:
+		return {"reserved": false, "reason": "target_choice_binding_stale"}
+	_reservations[kind] = {
+		"choice_id": expected_choice_id,
+		"reservation_id": reservation_id,
+	}
+	return {
+		"reserved": true,
+		"choice_id": expected_choice_id,
+		"reservation_id": reservation_id,
+		"choice": choice,
+	}
+
+
+func release_choice_reservation(kind: String, reservation_id: String) -> Dictionary:
+	var reservation: Dictionary = _reservations.get(kind, {}) if _reservations.get(kind, {}) is Dictionary else {}
+	if reservation.is_empty() or str(reservation.get("reservation_id", "")) != reservation_id:
+		return {"released": false, "reason": "target_choice_reservation_mismatch"}
+	_reservations.erase(kind)
+	return {"released": true, "choice_id": str(reservation.get("choice_id", ""))}
+
+
+func consume_reserved_choice(kind: String, expected_choice_id: String, reservation_id: String) -> Dictionary:
+	var reservation: Dictionary = _reservations.get(kind, {}) if _reservations.get(kind, {}) is Dictionary else {}
+	if reservation.is_empty() \
+			or str(reservation.get("reservation_id", "")) != reservation_id \
+			or str(reservation.get("choice_id", "")) != expected_choice_id:
+		return {"cleared": false, "reason": "target_choice_reservation_mismatch"}
+	var choice := choice_snapshot(kind)
+	if choice.is_empty() or str(choice.get("choice_id", "")) != expected_choice_id:
+		return {"cleared": false, "reason": "target_choice_binding_stale"}
+	_choices.erase(kind)
+	_reservations.erase(kind)
+	_revision += 1
+	return {
+		"cleared": true,
+		"choice_id": expected_choice_id,
 		"kind": kind,
 		"revision": _revision,
 	}
@@ -126,6 +182,7 @@ func to_save_data() -> Dictionary:
 
 
 func apply_save_data(data: Dictionary) -> Dictionary:
+	_reservations.clear()
 	var payload_variant: Variant = data.get("card_target_choice_runtime", data)
 	var payload: Dictionary = payload_variant if payload_variant is Dictionary else {}
 	if payload.is_empty():
@@ -159,15 +216,6 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	return {"applied": true, "choice_count": _choices.size()}
 
 
-func apply_legacy_state(data: Dictionary) -> Dictionary:
-	reset_state()
-	if int(data.get("pending_target_player_index", -1)) >= 0 and int(data.get("pending_target_slot_index", -1)) >= 0:
-		begin_choice(KIND_MONSTER, int(data.get("pending_target_player_index", -1)), int(data.get("pending_target_slot_index", -1)))
-	if int(data.get("pending_player_target_player_index", -1)) >= 0 and int(data.get("pending_player_target_slot_index", -1)) >= 0:
-		begin_choice(KIND_PLAYER, int(data.get("pending_player_target_player_index", -1)), int(data.get("pending_player_target_slot_index", -1)))
-	return {"applied": true, "choice_count": _choices.size()}
-
-
 func debug_snapshot() -> Dictionary:
 	var kinds: Array[String] = []
 	for kind in VALID_KINDS:
@@ -176,6 +224,7 @@ func debug_snapshot() -> Dictionary:
 	return {
 		"controller_authoritative": true,
 		"choice_count": kinds.size(),
+		"reservation_count": _reservations.size(),
 		"active_kinds": kinds,
 		"revision": _revision,
 	}
@@ -219,5 +268,15 @@ func _sha256(value: String) -> bool:
 		return false
 	for index in range(value.length()):
 		if not "0123456789abcdef".contains(value.substr(index, 1)):
+			return false
+	return true
+
+
+func _reservation_id_valid(value: String) -> bool:
+	if value.is_empty() or value.length() > 160 or value != value.strip_edges():
+		return false
+	for index in range(value.length()):
+		var code := value.unicode_at(index)
+		if code < 32 or code == 127:
 			return false
 	return true

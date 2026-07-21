@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/monster_wager_cash_commitment_query_port.gd" id="1_port"]
+
+[node name="MonsterWagerCashCommitmentQueryPort" type="Node"]
+script = ExtResource("1_port")
+editor_description = "Private read-only boundary combining WorldSessionState cash with MonsterRuntimeController wager commitments. Stores neither balance nor commitment state."

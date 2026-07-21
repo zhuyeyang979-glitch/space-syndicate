@@ -1,0 +1,12 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/district_supply_runtime_query_port.gd" id="1"]
+
+[node name="DistrictSupplyRuntimeQueryPort" type="Node"]
+script = ExtResource("1")
+editor_description = "Scene-owned read boundary for public regional rack facts and capability-authorized AI inventory feasibility. It never reads future bag order, mutates gameplay, or exposes private facts to presentation."
+world_session_state_path = NodePath("../WorldSessionState")
+region_supply_path = NodePath("../RegionSupplyRuntimeController")
+pricing_path = NodePath("../CardMarketPricingRuntimeController")
+commodity_card_inventory_path = NodePath("../CommodityCardInventoryRuntimeController")
+game_session_path = NodePath("../GameSessionRuntimeController")

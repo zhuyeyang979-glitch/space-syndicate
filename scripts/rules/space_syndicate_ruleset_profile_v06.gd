@@ -59,7 +59,7 @@ class_name SpaceSyndicateRulesetProfileV06
 @export_group("Monster And Wager")
 @export var monster_battle_limit_seconds: int = 60
 @export var monster_upgrade_delay_extension_seconds: int = 60
-@export var monster_wager_seconds: int = 8
+@export var monster_wager_seconds: int = 15
 @export var monster_wager_min_rate_bp: int = 500
 @export var monster_wager_max_rate_bp: int = 1000
 @export var monster_wager_standard_rate_bp: int = 500

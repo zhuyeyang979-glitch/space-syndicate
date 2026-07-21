@@ -996,6 +996,173 @@
       "status": "cut_over"
     },
     {
+      "domain": "district_supply_actions",
+      "old_symbols": [
+        "_open_district_supply_from_map",
+        "_close_district_supply_overlay",
+        "_preview_district_card",
+        "_select_district_card_for_quote",
+        "_on_district_supply_action_requested",
+        "_open_district_card_purchase_window",
+        "_claim_district_card",
+        "_cancel_discard_purchase",
+        "_confirm_discard_purchase",
+        "_buy_card_for_player_from_district",
+        "_request_card_market_quote",
+        "_open_discard_purchase_choice",
+        "_district_purchase_settlement_request",
+        "_grant_role_bonus_card_on_purchase",
+        "_preview_v06_facility_card"
+      ],
+      "old_consumers": [
+        "GameScreen district double-click",
+        "DistrictSupplyDrawer",
+        "human purchase and discard flow",
+        "AI district purchase"
+      ],
+      "new_owner_scene": "res://scenes/runtime/DistrictSupplyActionPort.tscn",
+      "new_owner_script": "res://scripts/runtime/district_supply_action_port.gd",
+      "new_public_api": [
+        "DistrictSupplyActionPort.submit_intent",
+        "DistrictSupplyActionPort.submit_ai_purchase",
+        "SpaceSyndicateGameScreen.request_district_supply_open",
+        "SpaceSyndicateGameScreen.request_selected_district_supply_purchase",
+        "SpaceSyndicateGameScreen.request_district_supply_close"
+      ],
+      "tests": [
+        "res://tests/district_supply_action_port_cutover_test.gd",
+        "res://scenes/tools/DistrictSupplyActionPortBench.tscn",
+        "res://tests/card_flow_region_supply_purchase_v06_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
+    },
+    {
+      "domain": "district_supply_runtime_query",
+      "old_symbols": [
+        "_district_region_id",
+        "_district_supply_listing",
+        "_district_supply_card_ids",
+        "_district_supply_rack_revision",
+        "_selected_district_card_choices",
+        "_sync_selected_district_card",
+        "_cycle_selected_district_card",
+        "_card_market_preview",
+        "_district_market_availability",
+        "_district_purchase_inventory_plan",
+        "_discardable_hand_slots_for_purchase",
+        "_purchase_requires_discard"
+      ],
+      "old_consumers": [
+        "AiRuntimeController",
+        "GameplayBalanceDiagnosticsWorldBridge",
+        "RegionInfrastructureWorldBridge",
+        "legacy Main table formatting"
+      ],
+      "new_owner_scene": "res://scenes/runtime/DistrictSupplyRuntimeQueryPort.tscn",
+      "new_owner_script": "res://scripts/runtime/district_supply_runtime_query_port.gd",
+      "new_public_api": [
+        "DistrictSupplyRuntimeQueryPort.public_card_ids_for_district",
+        "DistrictSupplyRuntimeQueryPort.public_listing_for_district",
+        "DistrictSupplyRuntimeQueryPort.public_market_availability",
+        "DistrictSupplyRuntimeQueryPort.public_price_preview",
+        "DistrictSupplyRuntimeQueryPort.bind_ai_private_capability",
+        "DistrictSupplyRuntimeQueryPort.private_inventory_plan_for_actor",
+        "DistrictSupplyRuntimeQueryPort.private_discardable_slots_for_actor"
+      ],
+      "tests": [
+        "res://tests/district_supply_runtime_query_port_cutover_test.gd",
+        "res://scenes/tools/DistrictSupplyRuntimeQueryPortBench.tscn",
+        "res://tests/main_runtime_composition_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
+    },
+    {
+      "domain": "card_target_choice_response",
+      "old_symbols": [
+        "TEMP_DECISION_MONSTER_TARGET",
+        "TEMP_DECISION_PLAYER_TARGET",
+        "_has_pending_target_choice",
+        "_has_pending_player_target_choice",
+        "_pending_target_skill",
+        "_pending_player_target_skill",
+        "_begin_target_monster_choice",
+        "_begin_target_player_choice",
+        "_clear_pending_target_choice",
+        "_clear_pending_player_target_choice",
+        "_cancel_pending_target_choice",
+        "_cancel_pending_player_target_choice",
+        "_choose_pending_target_monster",
+        "_choose_pending_target_player",
+        "GameRuntimeCoordinator.begin_card_target_choice",
+        "GameRuntimeCoordinator.card_target_choice_snapshot",
+        "GameRuntimeCoordinator.card_target_choice_private_snapshot",
+        "GameRuntimeCoordinator.clear_card_target_choice",
+        "GameRuntimeCoordinator.apply_card_target_choice_legacy_state",
+        "CardPlaySubmissionRuntimeController.begin_target_choice",
+        "CardTargetChoiceRuntimeController.apply_legacy_state"
+      ],
+      "old_consumers": [
+        "Main temporary-decision action router",
+        "GameScreen target option actions",
+        "human monster/player target continuation"
+      ],
+      "new_owner_scene": "res://scenes/runtime/CardTargetChoiceResponseSink.tscn",
+      "new_owner_script": "res://scripts/runtime/card_target_choice_response_sink.gd",
+      "new_public_api": [
+        "ForcedDecisionResponsePort.submit_response",
+        "CardTargetChoiceResponseSink.consume_authorized_response",
+        "SpaceSyndicateGameScreen.apply_card_target_choice_response_receipt"
+      ],
+      "tests": [
+        "res://tests/card_target_choice_response_cutover_test.gd",
+        "res://scenes/tools/CardTargetChoiceResponseSinkBench.tscn",
+        "res://tests/forced_decision_response_boundary_test.gd",
+        "res://tests/card_resolution_stable_target_envelope_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
+    },
+    {
+      "domain": "monster_wager_forced_response",
+      "old_symbols": [
+        "TEMP_DECISION_MONSTER_WAGER",
+        "Main monster_wager action branch",
+        "Main._active_bottom_countdown_state",
+        "MonsterRuntimeController._place_monster_wager_percent"
+      ],
+      "old_consumers": [
+        "GameScreen temporary-decision generic action signal",
+        "Main temporary-decision action router",
+        "human monster wager response"
+      ],
+      "new_owner_scene": "res://scenes/runtime/MonsterWagerResponseSink.tscn",
+      "new_owner_script": "res://scripts/runtime/monster_wager_response_sink.gd",
+      "new_public_api": [
+        "ForcedDecisionResponsePort.submit_response",
+        "MonsterWagerResponseSink.consume_authorized_response",
+        "MonsterRuntimeController.submit_monster_wager_response",
+        "SpaceSyndicateGameScreen.apply_monster_wager_response_receipt"
+      ],
+      "tests": [
+        "res://tests/monster_wager_response_cutover_test.gd",
+        "res://scenes/tools/MonsterWagerResponseSinkBench.tscn",
+        "res://tests/forced_decision_response_boundary_test.gd",
+        "res://tests/main_gd_architecture_gate_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
+    },
+    {
       "domain": "table_navigation_action_routing",
       "old_symbols": [
         "Main codex_region action branch",
@@ -1058,6 +1225,84 @@
         "res://tests/menu_lifecycle_application_flow_cutover_test.gd",
         "res://scenes/tools/MenuLifecycleApplicationFlowBench.tscn",
         "res://tests/table_navigation_action_router_test.gd",
+        "res://tests/main_gd_architecture_gate_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
+    },
+    {
+      "domain": "monster_wager_settlement_owner",
+      "old_symbols": [
+        "Main active_monster_wagers get/set proxy",
+        "Main resolved_monster_wager_history get/set proxy",
+        "Main monster_wager_sequence get/set proxy",
+        "Main public_card_bid_monster_wager_pool get/set proxy",
+        "Main _victory_control_escrow_cents",
+        "MonsterRuntimeController legacy single-winner settlement"
+      ],
+      "old_consumers": [
+        "legacy Main wager characterization fixtures",
+        "AI active-wager array setter",
+        "legacy monster settlement path"
+      ],
+      "new_owner_scene": "res://scenes/runtime/MonsterRuntimeController.tscn",
+      "new_owner_script": "res://scripts/runtime/monster_runtime_controller.gd",
+      "new_public_api": [
+        "MonsterRuntimeController.active_wager_count",
+        "MonsterRuntimeController.active_wager_ids_snapshot",
+        "MonsterRuntimeController.monster_wager_decision_snapshot_for_actor",
+        "MonsterRuntimeController.monster_wager_presentation_for_viewer",
+        "MonsterRuntimeController.submit_monster_wager_response",
+        "MonsterRuntimeController.to_save_data",
+        "MonsterRuntimeController.apply_save_data",
+        "MonsterWagerSettlementPolicyV06.complete_timeout_commitments",
+        "MonsterWagerSettlementPolicyV06.settle"
+      ],
+      "tests": [
+        "res://tests/monster_wager_settlement_owner_cutover_test.gd",
+        "res://tests/monster_wager_settlement_policy_v06_test.gd",
+        "res://tests/monster_wager_response_cutover_test.gd",
+        "res://tests/monster_wager_reopen_cooldown_test.gd",
+        "res://tests/main_gd_architecture_gate_test.gd",
+        "res://scenes/tools/MonsterWagerSettlementOwnerBench.tscn"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "UNCOMMITTED",
+      "status": "cut_over"
+    },
+    {
+      "domain": "monster_wager_cash_commitment_query_port",
+      "old_symbols": [
+        "ordinary cash consumers reading total cash while wager stakes were unresolved",
+        "cash/cash_cents drift allowing committed cash to be restored or reused"
+      ],
+      "old_consumers": [
+        "card purchase and play costs",
+        "financial margins",
+        "contract and hand-interaction penalties",
+        "commodity/storage debt",
+        "AI business spending"
+      ],
+      "new_owner_scene": "res://scenes/runtime/MonsterWagerCashCommitmentQueryPort.tscn",
+      "new_owner_script": "res://scripts/runtime/monster_wager_cash_commitment_query_port.gd",
+      "new_public_api": [
+        "WorldSessionState.private_player_cash_snapshot",
+        "WorldSessionState.reconcile_private_player_cash_after_unit_mutation",
+        "MonsterRuntimeController.private_wager_cash_commitment_snapshot",
+        "MonsterWagerCashCommitmentQueryPort.private_cash_availability_snapshot",
+        "MonsterWagerCashCommitmentQueryPort.authorize_debit_cents",
+        "MonsterWagerCashCommitmentQueryPort.authorize_debit_units"
+      ],
+      "tests": [
+        "res://tests/monster_wager_cash_commitment_query_port_cutover_test.gd",
+        "res://scenes/tools/MonsterWagerCashCommitmentQueryPortBench.tscn",
+        "res://tests/monster_wager_settlement_owner_cutover_test.gd",
+        "res://tests/card_player_state_production_adapter_v06_test.gd",
+        "res://tests/commodity_flow_atomic_batch_sink_v06_test.gd",
+        "res://tests/main_runtime_composition_test.gd",
         "res://tests/main_gd_architecture_gate_test.gd"
       ],
       "old_path_deleted": true,

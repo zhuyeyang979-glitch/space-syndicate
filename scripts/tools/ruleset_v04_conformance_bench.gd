@@ -15,7 +15,7 @@ const FLOW_CASES := [
 	{"case_id": "shared_window_30_25_5", "notes": "Shared window timing is 30 seconds with 25 organize and 5 lock."},
 	{"case_id": "card_group_limits_3_4", "notes": "Default card group is 0-3 with an explicit maximum of 4."},
 	{"case_id": "final_countdown_75", "notes": "Final countdown is 75 seconds."},
-	{"case_id": "monster_wager_20_30", "notes": "Monster wager defaults to 20 seconds and is capped at 30."},
+	{"case_id": "monster_wager_15", "notes": "Monster wager uses one 15-second mandatory decision window."},
 	{"case_id": "realtime_income_enabled", "notes": "Realtime income remains enabled."},
 	{"case_id": "direct_city_build_disabled", "notes": "The v0.4 capability profile disallows direct city building."},
 	{"case_id": "city_development_controller_ready", "notes": "The runtime controller binds v0.4 capabilities and owns city-entry legality."},
@@ -130,8 +130,8 @@ func _run_case(case_id: String) -> bool:
 			return int(group.get("default_group_card_limit", 0)) == 3 and int(group.get("maximum_group_card_limit", 0)) == 4
 		"final_countdown_75":
 			return _near(timing.get("final_countdown_seconds", 0.0), 75.0)
-		"monster_wager_20_30":
-			return _near(timing.get("monster_wager_default_seconds", 0.0), 20.0) and _near(timing.get("monster_wager_max_seconds", 0.0), 30.0) and float(timing.get("monster_wager_default_seconds", 0.0)) <= float(timing.get("monster_wager_max_seconds", 0.0))
+		"monster_wager_15":
+			return _near(timing.get("monster_wager_default_seconds", 0.0), 15.0) and _near(timing.get("monster_wager_max_seconds", 0.0), 15.0)
 		"realtime_income_enabled":
 			return bool(capabilities.get("realtime_income_enabled", false))
 		"direct_city_build_disabled":
@@ -166,8 +166,14 @@ func _main_scene_has_bridge() -> bool:
 	if main == null:
 		return false
 	var found := main.get_node_or_null("RuntimeServices/RulesetRuntimeBridge")
-	var city_controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/CityDevelopmentRuntimeController")
-	var valid := found != null and found.has_method("debug_snapshot") and city_controller != null and city_controller.has_method("evaluate_development_request")
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
+	var region_infrastructure := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionInfrastructureRuntimeController")
+	var valid := (
+		found != null
+		and found.has_method("debug_snapshot")
+		and coordinator is GameRuntimeCoordinator
+		and region_infrastructure is RegionInfrastructureRuntimeController
+	)
 	main.free()
 	return valid
 
@@ -226,7 +232,7 @@ func _record(case_id: String, passed: bool, notes: String) -> Dictionary:
 		"case_id": case_id,
 		"ruleset_id": "v0.4",
 		"profile_checked": true,
-		"runtime_checked": case_id in ["bridge_loads", "main_composition_owns_bridge", "shared_window_30_25_5", "final_countdown_75", "monster_wager_20_30", "city_development_controller_ready", "direct_city_build_runtime_cutover"],
+		"runtime_checked": case_id in ["bridge_loads", "main_composition_owns_bridge", "shared_window_30_25_5", "final_countdown_75", "monster_wager_15", "city_development_controller_ready", "direct_city_build_runtime_cutover"],
 		"registry_checked": case_id == "conformance_registry_tracks_legacy",
 		"pure_data_checked": case_id == "pure_data_outputs",
 		"passed": passed,
@@ -286,7 +292,7 @@ func _set_status(text: String) -> void:
 	if summary_label != null:
 		summary_label.text = text
 	if rule_summary_text != null:
-		rule_summary_text.text = "[b]Runtime source[/b]  v0.4\n[b]Timing[/b]  30 shared / 25 organize / 5 lock\n[b]Wager[/b]  20 default / 30 maximum\n[b]Final countdown[/b]  75 seconds\n\n%s" % text
+		rule_summary_text.text = "[b]Runtime source[/b]  v0.4\n[b]Timing[/b]  30 shared / 25 organize / 5 lock\n[b]Wager[/b]  one mandatory 15-second window\n[b]Final countdown[/b]  75 seconds\n\n%s" % text
 
 
 func _settle_frames(count: int) -> void:

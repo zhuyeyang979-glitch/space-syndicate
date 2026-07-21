@@ -1,10 +1,31 @@
 extends SceneTree
 
-const MAIN_SCENE := preload("res://scenes/main.tscn")
-const COORDINATOR_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator"
-const SAVE_PATH := "GameSessionRuntimeController/GameSaveRuntimeCoordinator"
-const MONSTER_PATH := "MonsterRuntimeController"
-const SAVE_OVERRIDE := "user://test_runs/monster_wager_reopen_cooldown/run.save"
+const MONSTER_SCENE := preload("res://scenes/runtime/MonsterRuntimeController.tscn")
+const RNG_SCENE := preload("res://scenes/runtime/RunRngService.tscn")
+
+class FakeWorld:
+	extends Node
+
+	func _ruleset_timing_seconds(rule_id: StringName) -> float:
+		return 20.0 if rule_id == &"monster_wager_reopen_cooldown_seconds" else 0.0
+
+	func _entity_world_position(entity: Dictionary) -> Vector2:
+		return entity.get("world_position", Vector2.ZERO) as Vector2
+
+	func _ai_runtime_call(_method_name: StringName, _arguments: Array = []) -> Variant:
+		return null
+
+	func _player_name(player_index: int) -> String:
+		return "玩家%d" % player_index
+
+	func _limited_name_list(names: Array, limit: int = 6, empty_text: String = "无") -> String:
+		return empty_text if names.is_empty() else "、".join(names.slice(0, mini(limit, names.size())))
+
+	func _record_player_economic_event(_player_index: int, _kind: String, _label: String, _amount: int, _detail: String = "") -> void:
+		pass
+
+	func _record_player_cash_snapshot(_player_index: int) -> void:
+		pass
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -15,56 +36,54 @@ func _init() -> void:
 
 
 func _run() -> void:
-	var main := MAIN_SCENE.instantiate()
-	var coordinator := main.get_node_or_null(COORDINATOR_PATH)
-	var save_coordinator := coordinator.get_node_or_null(SAVE_PATH) if coordinator != null else null
-	_expect(save_coordinator != null and bool(save_coordinator.call("set_qa_default_save_path_override", SAVE_OVERRIDE)), "QA save path is isolated before Main enters the tree")
-	main.visible = false
-	root.add_child(main)
-	await _frames(8)
+	var host := Node.new()
+	root.add_child(host)
+	var world := WorldSessionState.new()
+	world.players = [
+		{"id": "player-0", "name": "玩家0", "cash": 1000, "cash_cents": 100000, "eliminated": false},
+		{"id": "player-1", "name": "玩家1", "cash": 1000, "cash_cents": 100000, "eliminated": false},
+	]
+	world.game_time = 100.0
+	host.add_child(world)
+	var fake_world := FakeWorld.new()
+	host.add_child(fake_world)
+	var rng := RNG_SCENE.instantiate() as RunRngService
+	rng.seed = 71
+	host.add_child(rng)
+	var bridge := MonsterRuntimeWorldBridge.new()
+	bridge.set_world_session_state(world)
+	bridge.set_rng_service(rng)
+	bridge.bind_world(fake_world)
+	host.add_child(bridge)
+	var monsters := MONSTER_SCENE.instantiate() as MonsterRuntimeController
+	monsters.set_world_bridge(bridge)
+	host.add_child(monsters)
+	_expect(monsters != null, "real MonsterRuntimeController is available without a Main compatibility fixture")
 
-	main.set("configured_player_count", 4)
-	main.set("configured_ai_player_count", 0)
-	main.set("configured_role_indices", [0, 1, 2, 3])
-	main.set("configured_starter_monster_indices", [0, 1, 2, 3])
-	main.call("_new_game")
-	main.set("opening_guide_dismissed", true)
-	var monsters := coordinator.get_node_or_null(MONSTER_PATH) if coordinator != null else null
-	_expect(monsters != null, "real MonsterRuntimeController is available through the Coordinator scene")
-
-	var timing: Dictionary = main.call("_ruleset_timing_rules")
-	var cooldown := float(timing.get("monster_wager_reopen_cooldown_seconds", -1.0))
+	var cooldown := float(fake_world._ruleset_timing_seconds(&"monster_wager_reopen_cooldown_seconds"))
 	_expect(is_equal_approx(cooldown, 20.0), "ruleset owns a 20-second wager reopen cooldown")
-	var district_index := maxi(0, int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district))
-	var actor_a := monsters.call("_make_auto_monster", 0, 0, district_index, 0, 1) as Dictionary
-	var actor_b := monsters.call("_make_auto_monster", 1, 1, district_index, 1, 1) as Dictionary
-	actor_a["slot"] = 0
-	actor_b["slot"] = 1
-	actor_a["down"] = false
-	actor_b["down"] = false
+	var actor_a := {"slot": 0, "uid": 101, "name": "怪兽A", "position": 0, "world_position": Vector2(10.0, 10.0), "down": false}
+	var actor_b := {"slot": 1, "uid": 102, "name": "怪兽B", "position": 0, "world_position": Vector2(20.0, 10.0), "down": false}
 	monsters.set("auto_monsters", [actor_a, actor_b])
 	monsters.set("active_monster_wagers", [])
 	monsters.set("resolved_monster_wager_history", [])
-	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = 100.0
 
 	var wager_id := int(monsters.call("_open_monster_wager_for_pair", 0, 1, "QA cooldown"))
 	_expect(wager_id > 0, "first eligible monster wager opens")
-	_expect(bool(monsters.call("_settle_monster_wager", wager_id, "QA cooldown settlement")), "wager settles into the existing owner history")
+	_expect(bool(monsters.call("_close_monster_wager_decision_window", 0, "QA lifecycle cooldown")), "15-second decision owner transitions into battle lifecycle")
+	monsters.tick_battle_lifecycles(60.0)
 	var history: Array = monsters.get("resolved_monster_wager_history")
-	_expect(history.size() == 1 and is_equal_approx(float((history[0] as Dictionary).get("resolved_at", -1.0)), 100.0), "settlement history records the authoritative reopen anchor")
+	_expect(history.size() == 1 and is_equal_approx(float((history[0] as Dictionary).get("resolved_at", -1.0)), 100.0), "60-second battle lifecycle records the authoritative reopen anchor")
 	_expect(int(monsters.call("_open_monster_wager_for_pair", 0, 1, "QA immediate reopen")) == -1, "immediate serial wager is blocked")
 
-	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = 100.0 + cooldown - 0.001
+	world.game_time = 100.0 + cooldown - 0.001
 	_expect(int(monsters.call("_open_monster_wager_for_pair", 0, 1, "QA boundary before")) == -1, "half-open cooldown remains active immediately before its boundary")
-	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).game_time = 100.0 + cooldown
+	world.game_time = 100.0 + cooldown
 	_expect(int(monsters.call("_open_monster_wager_for_pair", 0, 1, "QA boundary")) > wager_id, "a new wager may open exactly at the cooldown boundary")
 	_expect(not (history[0] as Dictionary).has("reopen_cooldown_remaining"), "cooldown is derived from existing history without duplicate mutable state")
 
-	if save_coordinator != null:
-		save_coordinator.call("clear_qa_default_save_path_override")
-	root.remove_child(main)
-	main.free()
-	await _frames(3)
+	root.remove_child(host)
+	host.free()
 	print("MONSTER_WAGER_REOPEN_COOLDOWN_TEST|status=%s|checks=%d|failures=%d" % ["PASS" if _failures.is_empty() else "FAIL", _checks, _failures.size()])
 	quit(0 if _failures.is_empty() else 1)
 
@@ -76,8 +95,3 @@ func _expect(condition: bool, message: String) -> void:
 		return
 	_failures.append(message)
 	push_error(message)
-
-
-func _frames(count: int) -> void:
-	for _index in range(count):
-		await process_frame

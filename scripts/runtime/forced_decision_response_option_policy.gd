@@ -13,7 +13,7 @@ static func validation_report(decision_kind: StringName, decision_id: String, op
 		&"discard_purchase":
 			return _indexed_or_cancel(option_id, "discard_purchase_", "discard_purchase_cancel")
 		&"monster_target_choice":
-			return _indexed_or_cancel(option_id, "target_monster_", "target_monster_cancel")
+			return _positive_uid_or_cancel(option_id, "target_monster_uid_", "target_monster_cancel")
 		&"player_target_choice":
 			return _indexed_or_cancel(option_id, "target_player_", "target_player_cancel")
 		&"public_bid":
@@ -26,9 +26,10 @@ static func _monster_wager_option(decision_id: String, option_id: String) -> Dic
 	var option_parts := option_id.split(":", false)
 	if decision_parts.size() != 3 or not String(decision_parts[2]).is_valid_int():
 		return _invalid("decision_id_invalid")
+	var side := String(option_parts[2]).to_lower() if option_parts.size() >= 3 else ""
 	if option_parts.size() != 4 or option_parts[0] != "monster_wager" \
 			or not String(option_parts[1]).is_valid_int() or String(option_parts[1]) != String(decision_parts[2]) \
-			or String(option_parts[2]) not in ["a", "b"] or not String(option_parts[3]).is_valid_int() \
+			or side.length() != 1 or side < "a" or side > "h" or not String(option_parts[3]).is_valid_int() \
 			or int(option_parts[3]) <= 0 or int(option_parts[3]) > 100:
 		return _invalid("option_not_available")
 	return _valid()
@@ -56,6 +57,15 @@ static func _indexed_or_cancel(option_id: String, prefix: String, cancel_id: Str
 		return _valid()
 	var index_text := option_id.trim_prefix(prefix)
 	if option_id.begins_with(prefix) and index_text.is_valid_int() and int(index_text) >= 0:
+		return _valid()
+	return _invalid("option_not_available")
+
+
+static func _positive_uid_or_cancel(option_id: String, prefix: String, cancel_id: String) -> Dictionary:
+	if option_id == cancel_id:
+		return _valid()
+	var uid_text := option_id.trim_prefix(prefix)
+	if option_id.begins_with(prefix) and uid_text.is_valid_int() and int(uid_text) > 0:
 		return _valid()
 	return _invalid("option_not_available")
 

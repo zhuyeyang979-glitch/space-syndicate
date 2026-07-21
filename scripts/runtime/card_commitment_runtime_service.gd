@@ -9,6 +9,7 @@ var _cooldown_controller: CardCooldownRuntimeController
 var _weather_telemetry: WeatherTelemetryRuntimeService
 var _eligibility_facts: CardPlayEligibilityWorldBridge
 var _eligibility_service: CardPlayEligibilityRuntimeService
+var _cash_commitment_query_port: MonsterWagerCashCommitmentQueryPort
 var _completed: Dictionary = {}
 var _revision := 0
 
@@ -18,13 +19,15 @@ func set_dependencies(
 	cooldown_controller: CardCooldownRuntimeController,
 	weather_telemetry: WeatherTelemetryRuntimeService,
 	eligibility_facts: CardPlayEligibilityWorldBridge,
-	eligibility_service: CardPlayEligibilityRuntimeService
+	eligibility_service: CardPlayEligibilityRuntimeService,
+	cash_commitment_query_port: MonsterWagerCashCommitmentQueryPort = null
 ) -> void:
 	_world_session_state = world_session_state
 	_cooldown_controller = cooldown_controller
 	_weather_telemetry = weather_telemetry
 	_eligibility_facts = eligibility_facts
 	_eligibility_service = eligibility_service
+	_cash_commitment_query_port = cash_commitment_query_port
 
 
 func finalize_commitment(request: Dictionary) -> Dictionary:
@@ -43,9 +46,16 @@ func finalize_commitment(request: Dictionary) -> Dictionary:
 	var player: Dictionary = players[player_index]
 	if not bool(entry.get("play_cost_paid_on_queue", skill.get("_play_cost_paid_on_queue", false))):
 		var cost := _cash_cost(player_index, skill, _entry_context(entry))
-		if int(player.get("cash", 0)) < cost:
+		if _cash_commitment_query_port != null:
+			var authorization := _cash_commitment_query_port.authorize_debit_units(player_index, cost)
+			if not bool(authorization.get("authorized", false)):
+				return _receipt(false, str(authorization.get("reason_code", "commitment_cash_unavailable")), resolution_id)
+		elif int(player.get("cash", 0)) < cost:
 			return _receipt(false, "commitment_cash_unavailable", resolution_id)
-		player["cash"] = int(player.get("cash", 0)) - cost
+		var cash_record := WorldSessionState.canonical_private_cash_record(player)
+		var next_cash_cents := int(cash_record.get("cash_cents", 0)) - cost * 100
+		player["cash_cents"] = next_cash_cents
+		player["cash"] = floori(float(next_cash_cents) / 100.0)
 	var consumed_on_queue := bool(entry.get("consumed_on_queue", false))
 	var slot_index := int(entry.get("slot_index", -1))
 	if not consumed_on_queue and slot_index >= 0:
@@ -89,7 +99,7 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 
 
 func debug_snapshot() -> Dictionary:
-	return {"service_ready": _world_session_state != null and _cooldown_controller != null, "completed_count": _completed.size(), "revision": _revision, "cash_owner": false, "inventory_owner": false}
+	return {"service_ready": _world_session_state != null and _cooldown_controller != null, "completed_count": _completed.size(), "revision": _revision, "cash_owner": false, "inventory_owner": false, "monster_wager_cash_commitment_guard_bound": _cash_commitment_query_port != null}
 
 
 func _cash_cost(player_index: int, skill: Dictionary, context: Dictionary) -> int:

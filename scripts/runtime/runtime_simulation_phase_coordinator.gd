@@ -27,7 +27,7 @@ func is_ready() -> bool:
 func advance_blocked_realtime(context: RuntimePhaseFrameContext) -> void:
 	context.enter_phase(&"simulation_blocked_realtime")
 	context.append_step(&"blocked_wager_real_tick")
-	_monster.tick_wagers(context.real_delta)
+	_monster.tick_wager_decisions_realtime(context.real_delta)
 
 
 func advance_active(context: RuntimePhaseFrameContext) -> void:
@@ -41,7 +41,7 @@ func advance_active(context: RuntimePhaseFrameContext) -> void:
 	context.append_step(&"advance_economic_boons")
 	_economy.advance_economic_boons(context.world_delta)
 	context.append_step(&"tick_monster_wagers")
-	_monster.tick_wagers(context.world_delta)
+	_monster.tick_battle_lifecycles(context.world_delta)
 	context.append_step(&"tick_ai")
 	_actors.tick_ai(context.world_delta)
 	context.append_step(&"tick_monster_motion")

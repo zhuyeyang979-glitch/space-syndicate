@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/monster_wager_response_sink.gd" id="1"]
+
+[node name="MonsterWagerResponseSink" type="Node"]
+script = ExtResource("1")
+monster_runtime_controller_path = NodePath("../MonsterRuntimeController")
+identity_boundary_path = NodePath("../PlayerIdentityAuthorizationBoundary")
+editor_description = "Consumes authorized public monster-wager responses exactly once, revalidates the live advertised option, and delegates all cash/pool/wager mutation to MonsterRuntimeController."

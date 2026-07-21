@@ -4,13 +4,22 @@
 
 `MonsterWagerSettlementPolicyV06` is a stateless pure-data calculator. It validates one authoritative wager snapshot and returns deterministic cash/public-pool deltas plus a separately constructed public receipt. It never mutates cash, monsters, the historical public pool, window state, journals, or save data.
 
-The existing wager/Monster runtime remains the only state owner. Future integration has one settlement boundary:
+The existing wager/Monster runtime remains the only state owner. Production integration has one settlement boundary:
 
 ```gdscript
 var result := MonsterWagerSettlementPolicyV06.settle(authoritative_snapshot)
 ```
 
-The owner must atomically apply `private_delta_receipt.participants[*].net_cash_delta` and `private_delta_receipt.public_pool_delta`, journal the `wager_id + revision + fingerprint` association for exact-once replay, and close/checkpoint its existing lifecycle. This policy is not a transaction service or a second wager queue.
+The owner reserves every frozen commitment before resolving the wager-triggering attack, atomically applies `private_delta_receipt.participants[*].net_cash_delta`, adds the returned `public_pool_after` to any newer public-pool contributions, journals the `wager_id + revision + fingerprint` association for exact-once replay, and closes/checkpoints its existing lifecycle. This policy is not a transaction service or a second wager queue.
+
+Ordinary spending reads that reservation through the scene-owned
+`MonsterWagerCashCommitmentQueryPort`. The port combines the private
+`WorldSessionState` cash snapshot with the owner's unresolved commitments but
+stores neither. Wager settlement is the only path allowed to consume its own
+commitment; cards, purchases, financial margins, penalties, storage debt and AI
+business spending must use `available = total - unresolved commitments`.
+Malformed commitment facts fail closed, while positive income remains legal.
+See `docs/migration/monster_wager_cash_commitment_query_port_cutover.md`.
 
 ## Snapshot schema v1
 
@@ -57,6 +66,46 @@ If every side has zero effective damage, matching money is not created: original
 
 All non-negative additions and doubling operations are checked against signed int64 bounds. Arithmetic overflow fails closed rather than wrapping.
 
+## Battle lifecycle owner
+
+The wager decision window and the monster battle are separate lifecycle phases:
+
+- `decision`: a mandatory 15-second real-time forced decision window. This is
+  the only phase that globally blocks ordinary table play.
+- `battle`: a world-effective monster battle phase capped at 60 seconds. Cards,
+  purchases and other non-blocked gameplay can continue while the battle
+  proceeds.
+- `settling`: an owner-internal terminal phase used only to produce the
+  exact-once settlement journal and public receipt.
+
+Closing the 15-second decision window only freezes player commitments. It does
+not debit cash, pay winners or resolve the wager. The owner keeps the frozen
+opening-cash commitments reserved until the battle lifecycle ends. Settlement
+occurs exactly once when the battle reaches its 60-second cap, a combatant is
+down/expired/removed, or another owner-approved terminal condition is met.
+Knockback distance, movement animation and hit presentation are not terminal
+conditions by themselves.
+
+The opening battle strike is applied through the typed runtime command path:
+
+```text
+MonsterRuntimeController
+→ RuntimeCommandPipeline
+→ MonsterActionCommandSink
+→ SimulationMutationAuthority
+→ MonsterRuntimeController
+```
+
+The sink accepts idempotent replay only when the command ID, wager ID,
+settlement revision, actor UID, target UID, action index and action fingerprint
+match the owner-recorded applied command. A reused command ID with different
+combat bindings fails closed instead of being treated as a duplicate success.
+
+`MonsterRuntimeController` remains the only wager lifecycle owner. Presentation
+nodes can display the forced decision and battle summary, but cannot tick the
+decision timer, tick the battle timer, apply damage, debit commitments, mutate
+the public pool, or write settlement history.
+
 ## Receipts and privacy
 
 Success returns:
@@ -70,4 +119,11 @@ Failure returns `ok=false`, a structured `reason_code`, empty private/public rec
 
 ## Evidence boundary
 
-The focused test covers settlement math, rate validation, int64-safe stakes, default choice, deterministic fingerprints/replay, fail-closed schemas, and recursive public privacy scanning. It does not prove production connection, atomic cash/public-pool application, save/load, checkpoint, or exact-once journaling in the existing owner.
+The pure-policy test covers settlement math, rate validation, int64-safe stakes, default choice, deterministic fingerprints/replay, fail-closed schemas, and recursive public privacy scanning. Production connection, whole-roster cash application, opening-cash save/load, pending-damage reservation, actor-scoped AI privacy, public-pool carry, strict terminal-journal binding, Main-negative gates and exact-once terminal replay are covered by `monster_wager_settlement_owner_cutover_test.gd` and `MonsterWagerSettlementOwnerBench.tscn`.
+
+The 15-second decision / 60-second battle split, battle-phase non-freeze,
+typed opening strike, save/load replay, forged duplicate rejection, early
+downed-combatant settlement, combatant release, public privacy and Main-negative
+tick gate are covered by
+`monster_battle_lifecycle_owner_cutover_test.gd` and
+`MonsterBattleLifecycleOwnerBench.tscn`.

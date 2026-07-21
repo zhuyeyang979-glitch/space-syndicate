@@ -263,7 +263,7 @@ func _complete_active(command: Dictionary) -> Dictionary:
 			"active_entry": entry,
 			"skill": skill,
 			"target_kind": str(target.get("target_kind", "none")),
-			"forced_decision_count_before": _monster.active_wagers_snapshot().size() if _monster != null else 0,
+			"monster_wager_decision_count_before": _monster.open_wager_decision_count() if _monster != null else 0,
 			"selection_context": _entry_selection_context(entry),
 		})
 	if not bool(transaction.get("ready", false)):

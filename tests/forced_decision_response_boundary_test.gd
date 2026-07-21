@@ -118,6 +118,9 @@ func _test_option_policy() -> void:
 	_expect(_reason(contract_binding) == "option_not_available", "option bound to another decision fails closed")
 	_expect(bool(ForcedDecisionResponseOptionPolicy.validation_report(&"discard_purchase", "discard_choice_1", "discard_purchase_2").get("valid", false)), "discard option uses typed indexed allowlist")
 	_expect(bool(ForcedDecisionResponseOptionPolicy.validation_report(&"monster_target_choice", "choice-1", "target_monster_cancel").get("valid", false)), "target cancellation uses a typed kind-specific option")
+	_expect(bool(ForcedDecisionResponseOptionPolicy.validation_report(&"monster_target_choice", "choice-1", "target_monster_uid_42").get("valid", false)), "monster target response uses a stable positive public UID")
+	_expect(not bool(ForcedDecisionResponseOptionPolicy.validation_report(&"monster_target_choice", "choice-1", "target_monster_0").get("valid", false)), "retired mutable roster-index target options fail closed")
+	_expect(bool(ForcedDecisionResponseOptionPolicy.validation_report(&"monster_wager", "monster_wager_7", "monster_wager:7:c:6").get("valid", false)), "monster wager syntax supports stable multi-competitor side IDs while the domain sink validates live membership")
 	_expect(not bool(ForcedDecisionResponseOptionPolicy.validation_report(&"public_bid", "public_bid_1", "accept").get("valid", true)), "bare generic response words are not accepted as authority")
 
 

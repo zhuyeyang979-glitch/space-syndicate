@@ -11,7 +11,8 @@ class PresentationLoopLifecyclePort extends RuntimeLifecyclePort:
 
 class PresentationLoopMonsterPort extends RuntimeMonsterPort:
 	func is_ready() -> bool: return true
-	func tick_wagers(_delta_seconds: float) -> void: pass
+	func tick_wager_decisions_realtime(_delta_seconds: float) -> void: pass
+	func tick_battle_lifecycles(_delta_seconds: float) -> void: pass
 
 class PresentationLoopCardPort extends RuntimeCardPort:
 	func is_ready() -> bool: return true
