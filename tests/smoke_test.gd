@@ -11,6 +11,7 @@ const V06_RULES_SNAPSHOT := preload("res://scripts/viewmodels/rules_quick_refere
 const CARD_RESOLUTION_QUEUE_SCRIPT := preload("res://scripts/runtime/card_resolution_queue_runtime_service.gd")
 const RUNTIME_BALANCE_MODEL_SCRIPT := preload("res://scripts/balance/runtime_balance_model.gd")
 const TEST_RUN_SAVE_PATH := "user://test_runs/smoke_test_current_run.save"
+const RANDOM_ROLE_TEST_RUN_SAVE_PATH := "user://test_runs/smoke_test_random_ai_roles.save"
 const SAVE_COORDINATOR_NODE_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController/GameSaveRuntimeCoordinator"
 const PRODUCT_MARKET_CONTROLLER_NODE_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/ProductMarketRuntimeController"
 const SMOKE_PROGRESS_PATH := "user://space_syndicate_smoke_progress.log"
@@ -172,7 +173,7 @@ func _run() -> void:
 	_expect(auto_monsters.is_empty(), "new game starts with no field monsters until monster cards are played")
 	_expect(_players_have_role_cards(main, players), "each player receives an alien syndicate role card")
 	_expect(_role_catalog_has_positive_cards(main), "role codex exposes distinct alien cards through public balance and codex owners")
-	_expect(_verify_random_ai_roles_resolve_unique(main), "random AI role setup resolves to public non-duplicate role cards")
+	_expect(await _verify_random_ai_roles_resolve_unique(), "random AI role setup resolves to public non-duplicate role cards")
 	_expect(_verify_role_selection_and_budget_audit(main), "role setup resolves duplicate selections and every public role exposes balance-budget metadata")
 	_expect(_role_cards_have_mechanical_passives(players), "role cards carry visible mechanical passive rules")
 	_expect(_role_card_art_exposes_runtime_triggers(main), "role-card artwork exposes regional bonus-card, cashflow product cash, and monster-upgrade cash triggers")
@@ -2009,22 +2010,28 @@ func _verify_temporary_economy_duration_seconds(main: Node) -> bool:
 	return violations.is_empty() and int(report.get("seconds_card_count", 0)) >= 30 and int(report.get("compatibility_mirror_count", 0)) >= 20
 
 
-func _verify_random_ai_roles_resolve_unique(main: Node) -> bool:
-	var previous_player_count := int(main.get("configured_player_count"))
-	var previous_ai_count := int(main.get("configured_ai_player_count"))
-	var previous_role_indices := _as_array(main.get("configured_role_indices")).duplicate(true)
-	var ok := true
-	var random_index := -1
-	main.set("configured_player_count", 8)
-	main.set("configured_ai_player_count", 7)
-	main.set("configured_role_indices", [0, random_index, random_index, random_index, random_index, random_index, random_index, random_index])
-	main.call("_ensure_configured_role_indices")
-	var configured := _as_array(main.get("configured_role_indices"))
-	ok = ok and configured.size() >= 8 and int(configured[1]) == random_index and int(configured[7]) == random_index
-	main.call("_new_game")
-	var players := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players)
+func _verify_random_ai_roles_resolve_unique() -> bool:
+	var seat_count := 8
+	var random_index := NewGameSetupDraftService.ROLE_RANDOM_INDEX
+	var random_roles := [0]
+	for _seat in range(1, seat_count):
+		random_roles.append(random_index)
+	var start_result := await SESSION_START_DRIVER.start_configured_session(
+		self,
+		{"player_count": seat_count, "ai_player_count": seat_count - 1, "challenge_depth": 1, "role_indices": random_roles},
+		RANDOM_ROLE_TEST_RUN_SAVE_PATH,
+		"full-smoke-random-ai-role-session"
+	)
+	var random_main := start_result.get("main_root") as Node
+	var receipt := start_result.get("receipt") as SessionStartReceipt
+	var draft := start_result.get("draft_service") as NewGameSetupDraftService
+	var configured := _as_array(draft.draft_snapshot().get("role_indices", [])) if draft != null else []
+	var world := start_result.get("world_session") as WorldSessionState
+	var players := _as_array(world.players) if world != null else []
+	var ok := bool(start_result.get("started", false)) and receipt != null and receipt.applied
+	ok = ok and configured.size() >= seat_count and int(configured[1]) == random_index and int(configured[seat_count - 1]) == random_index
+	ok = ok and players.size() == seat_count
 	var used := {}
-	ok = ok and players.size() == 8
 	for player_variant in players:
 		var player := player_variant as Dictionary
 		var role := player.get("role_card", {}) as Dictionary
@@ -2036,8 +2043,11 @@ func _verify_random_ai_roles_resolve_unique(main: Node) -> bool:
 		if String(role.get("name", "")) == "随机角色":
 			ok = false
 			break
-	var restored := _restore_role_setup_for_smoke(main, previous_player_count, previous_ai_count, previous_role_indices)
-	return ok and restored
+	ok = ok and used.size() == seat_count
+	if random_main != null:
+		random_main.queue_free()
+		await process_frame
+	return ok
 
 
 func _restore_role_setup_for_smoke(main: Node, player_count: int, ai_count: int, role_indices: Array) -> bool:
@@ -8693,6 +8703,7 @@ func _finish() -> void:
 
 
 func _cleanup_test_save() -> void:
-	var absolute_path := ProjectSettings.globalize_path(TEST_RUN_SAVE_PATH)
-	if FileAccess.file_exists(TEST_RUN_SAVE_PATH):
-		DirAccess.remove_absolute(absolute_path)
+	for save_path in [TEST_RUN_SAVE_PATH, RANDOM_ROLE_TEST_RUN_SAVE_PATH]:
+		for candidate_path in [save_path, save_path + ".tmp"]:
+			if FileAccess.file_exists(candidate_path):
+				DirAccess.remove_absolute(ProjectSettings.globalize_path(candidate_path))
