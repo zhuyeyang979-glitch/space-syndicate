@@ -393,7 +393,8 @@ func _capability_preflight(main_instance: Node, coordinator: Node, session: Node
 	var settlement_ready := settlement_composition != null and settlement_composition.has_method("debug_snapshot") and settlement_composition.has_method("last_public_snapshot")
 	var scripted_ui_port_ready := runtime_screen is SpaceSyndicateGameScreen \
 		and runtime_screen.has_signal("action_requested") \
-		and runtime_screen.has_method("request_district_supply_open")
+		and runtime_screen.has_method("request_district_supply_open") \
+		and _temporary_decision_overlay(runtime_screen) != null
 	var setup_ready := main_instance.get_node_or_null(SETUP_DRAFT_PATH) is NewGameSetupDraftService \
 		and main_instance.get_node_or_null(SESSION_START_TRANSACTION_PATH) is SessionStartTransactionCoordinator
 	var registry_valid := bool(registry_snapshot.get("valid", false)) and qa_path_ready
@@ -547,6 +548,7 @@ func _scripted_ui_action(runtime_screen: Node, exhausted_navigation_actions: Dic
 				"id": str(temporary_action.get("id", "")),
 				"phase": "decision_window.%s" % str(temporary.get("kind", "choice")),
 				"disabled": bool(temporary_action.get("disabled", false)),
+				"origin": "temporary_decision",
 			}
 	var source_established := false
 	var strategy_actions: Array[Dictionary] = []
@@ -745,6 +747,12 @@ func _board_action_request(action: Dictionary, player_board: Dictionary, signatu
 
 func _submit_scripted_ui_action(runtime_screen: Node, action: Dictionary) -> bool:
 	var action_id := str(action.get("id", ""))
+	if str(action.get("origin", "")) == "temporary_decision":
+		var temporary_decision_overlay := _temporary_decision_overlay(runtime_screen)
+		if temporary_decision_overlay == null or action_id.is_empty():
+			return false
+		temporary_decision_overlay.temporary_decision_action_requested.emit(action_id)
+		return true
 	if action_id in TYPED_RACK_ACTION_IDS:
 		var screen := runtime_screen as SpaceSyndicateGameScreen
 		if screen == null:
@@ -775,6 +783,13 @@ func _submit_scripted_ui_action(runtime_screen: Node, action: Dictionary) -> boo
 		return false
 	runtime_screen.emit_signal("action_requested", action_id)
 	return true
+
+
+func _temporary_decision_overlay(runtime_screen: Node) -> SpaceSyndicateOverlayLayer:
+	var screen := runtime_screen as SpaceSyndicateGameScreen
+	if screen == null:
+		return null
+	return screen.get_overlay_host() as SpaceSyndicateOverlayLayer
 
 
 func _district_supply_drawer(runtime_screen: Node) -> Node:
