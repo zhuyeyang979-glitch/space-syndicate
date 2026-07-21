@@ -1227,20 +1227,30 @@ func _role_card_art_exposes_runtime_triggers(main: Node) -> bool:
 
 
 func _verify_military_unit_variant_cards(main: Node) -> bool:
-	var districts := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts)
+	var coordinator := _runtime_card_coordinator(main) as GameRuntimeCoordinator
+	var catalog := coordinator.card_runtime_catalog_service() if coordinator != null else null
+	var military := coordinator.military_runtime_controller() if coordinator != null else null
+	var public_source := _card_codex_public_source_service(main) as CardCodexPublicSourceService
+	if catalog == null or military == null or public_source == null:
+		return false
+	var public_military_cards := public_source.ordered_card_ids("military")
+	if public_military_cards.size() != 28:
+		return false
+	var districts := _as_array(coordinator.world_session_state().districts)
 	var land_index := _first_terrain_district(districts, "land")
 	var ocean_index := _first_terrain_district(districts, "ocean")
 	if land_index < 0 or ocean_index < 0:
 		return false
 	var families := [
-		{"base": "行星防卫军", "type": "defense", "domain": "mixed", "gdp": false, "route": false},
-		{"base": "制空战斗机", "type": "fighter", "domain": "air", "gdp": true, "route": false},
-		{"base": "轨道轰炸机", "type": "bomber", "domain": "air", "gdp": true, "route": true},
-		{"base": "重装坦克", "type": "tank", "domain": "land", "gdp": true, "route": false},
-		{"base": "导弹阵地", "type": "missile", "domain": "land", "gdp": true, "route": true},
-		{"base": "潜航舰队", "type": "submarine", "domain": "sea", "gdp": true, "route": true},
-		{"base": "星海战舰", "type": "warship", "domain": "sea", "gdp": true, "route": true},
+		{"base": "行星防卫军", "public_family": "unit.military.planetary_defense_force", "type": "defense", "domain": "mixed", "gdp": false, "route": false},
+		{"base": "制空战斗机", "public_family": "unit.military.air_superiority_fighter", "type": "fighter", "domain": "air", "gdp": true, "route": false},
+		{"base": "轨道轰炸机", "public_family": "unit.military.orbital_bomber", "type": "bomber", "domain": "air", "gdp": true, "route": true},
+		{"base": "重装坦克", "public_family": "unit.military.heavy_tank", "type": "tank", "domain": "land", "gdp": true, "route": false},
+		{"base": "导弹阵地", "public_family": "unit.military.missile_emplacement", "type": "missile", "domain": "land", "gdp": true, "route": true},
+		{"base": "潜航舰队", "public_family": "unit.military.submarine_fleet", "type": "submarine", "domain": "sea", "gdp": true, "route": true},
+		{"base": "星海战舰", "public_family": "unit.military.star_ocean_battleship", "type": "warship", "domain": "sea", "gdp": true, "route": true},
 	]
+	var public_fact_signatures := {}
 	for family_variant in families:
 		var family := family_variant as Dictionary
 		var previous_hp := 0
@@ -1248,7 +1258,7 @@ func _verify_military_unit_variant_cards(main: Node) -> bool:
 		var previous_duration := 0.0
 		for rank in range(1, 5):
 			var card_name := "%s%d" % [String(family.get("base", "")), rank]
-			var skill := main.call("_make_skill", card_name) as Dictionary
+			var skill := catalog.definition(card_name)
 			if skill.is_empty() or String(skill.get("kind", "")) != "military_force":
 				return false
 			if String(skill.get("military_type", "defense")) != String(family.get("type", "")):
@@ -1272,29 +1282,55 @@ func _verify_military_unit_variant_cards(main: Node) -> bool:
 			if String(family.get("type", "")) != "defense":
 				if _as_array(skill.get("movement_traits", [])).is_empty() or (skill.get("terrain_move_multiplier", {}) as Dictionary).is_empty():
 					return false
-			var facts := _card_presentation_array(main, skill, "key_rule_facts")
-			var facts_text := ""
-			for fact_variant in facts:
-				facts_text += "%s\n" % String(fact_variant)
-			var art_stats := _card_presentation_text(main, skill, "art_stats")
-			if not facts_text.contains("军队生命") or not facts_text.contains("军队火力") or not facts_text.contains("军队在场") or not art_stats.contains("HP") or not art_stats.contains("伤"):
+			var public_family := String(family.get("public_family", ""))
+			var canonical_card_id := "%s.rank_%d" % [public_family, rank]
+			var rank_label := String(["I", "II", "III", "IV"][rank - 1])
+			var presentation := public_source.compose_card_facts(card_name, -1)
+			var facts := _as_array(presentation.get("key_rule_facts", []))
+			if not bool(presentation.get("valid", false)) \
+					or String(presentation.get("card_name", "")) != canonical_card_id \
+					or String(presentation.get("family", "")) != public_family \
+					or String(presentation.get("kind", "")) != "deploy_or_upgrade_military" \
+					or String(presentation.get("category_id", "")) != "military" \
+					or String(presentation.get("type_label", "")) != "军队单位牌" \
+					or int(presentation.get("rank", 0)) != rank \
+					or String(presentation.get("rank_label", "")) != rank_label \
+					or String(presentation.get("display_name", "")) != "%s %s" % [String(family.get("base", "")), rank_label] \
+					or not public_military_cards.has(canonical_card_id):
 				return false
-	var fighter := main.call("_make_skill", "制空战斗机1") as Dictionary
-	var tank := main.call("_make_skill", "重装坦克1") as Dictionary
-	var submarine := main.call("_make_skill", "潜航舰队1") as Dictionary
-	if not bool(_military_controller(main).call("can_deploy_at_district", fighter, land_index)) or not bool(_military_controller(main).call("can_deploy_at_district", fighter, ocean_index)):
+			if facts.size() != 5 \
+					or not String(facts[0]).begins_with("费用：") \
+					or String(facts[1]) != "时机：普通出牌窗口" \
+					or String(facts[2]) != "目标：单位档案允许的合法部署区域" \
+					or String(facts[3]) != "持续：持续至单位被摧毁或撤离" \
+					or String(facts[4]) != "公开：单位归属、等级、位置和公开数值公开":
+				return false
+			var art_stats := String(presentation.get("art_stats", ""))
+			if art_stats != "%s｜%s" % [String(presentation.get("timing_text", "")), String(presentation.get("duration_text", ""))]:
+				return false
+			var quick_effect := String(presentation.get("quick_effect_compact", ""))
+			var full_effect := String(presentation.get("full_effect_text", ""))
+			if not quick_effect.contains("%s 级%s" % [rank_label, String(family.get("base", ""))]) \
+					or not full_effect.contains("%s 级%s" % [rank_label, String(family.get("base", ""))]) \
+					or public_fact_signatures.has(full_effect):
+				return false
+			public_fact_signatures[full_effect] = true
+	var fighter := catalog.definition("制空战斗机1")
+	var tank := catalog.definition("重装坦克1")
+	var submarine := catalog.definition("潜航舰队1")
+	if not military.can_deploy_at_district(fighter, land_index) or not military.can_deploy_at_district(fighter, ocean_index):
 		return false
-	if not bool(_military_controller(main).call("can_deploy_at_district", tank, land_index)) or bool(_military_controller(main).call("can_deploy_at_district", tank, ocean_index)):
+	if not military.can_deploy_at_district(tank, land_index) or military.can_deploy_at_district(tank, ocean_index):
 		return false
-	if bool(_military_controller(main).call("can_deploy_at_district", submarine, land_index)) or not bool(_military_controller(main).call("can_deploy_at_district", submarine, ocean_index)):
+	if military.can_deploy_at_district(submarine, land_index) or not military.can_deploy_at_district(submarine, ocean_index):
 		return false
-	var tank_land := float(_military_controller(main).call("terrain_move_multiplier", tank, land_index))
-	var tank_ocean := float(_military_controller(main).call("terrain_move_multiplier", tank, ocean_index))
-	var sub_land := float(_military_controller(main).call("terrain_move_multiplier", submarine, land_index))
-	var sub_ocean := float(_military_controller(main).call("terrain_move_multiplier", submarine, ocean_index))
-	var fighter_land := float(_military_controller(main).call("terrain_move_multiplier", fighter, land_index))
-	var fighter_ocean := float(_military_controller(main).call("terrain_move_multiplier", fighter, ocean_index))
-	return tank_land > tank_ocean and sub_ocean > sub_land and fighter_land > 1.0 and fighter_ocean > 1.0
+	var tank_land := military.terrain_move_multiplier(tank, land_index)
+	var tank_ocean := military.terrain_move_multiplier(tank, ocean_index)
+	var sub_land := military.terrain_move_multiplier(submarine, land_index)
+	var sub_ocean := military.terrain_move_multiplier(submarine, ocean_index)
+	var fighter_land := military.terrain_move_multiplier(fighter, land_index)
+	var fighter_ocean := military.terrain_move_multiplier(fighter, ocean_index)
+	return public_fact_signatures.size() == 28 and tank_land > tank_ocean and sub_ocean > sub_land and fighter_land > 1.0 and fighter_ocean > 1.0
 
 
 func _verify_military_balance_identity(main: Node) -> bool:
