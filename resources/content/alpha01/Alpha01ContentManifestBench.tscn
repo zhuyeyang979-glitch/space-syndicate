@@ -1,0 +1,8 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://resources/content/alpha01/alpha01_content_manifest_bench.gd" id="1_bench"]
+[ext_resource type="Resource" path="res://resources/content/alpha01/alpha01_content_manifest.tres" id="2_manifest"]
+
+[node name="Alpha01ContentManifestBench" type="Node"]
+script = ExtResource("1_bench")
+manifest = ExtResource("2_manifest")
