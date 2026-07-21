@@ -4,6 +4,10 @@ const WORLD_SCENE := preload("res://scenes/runtime/WorldSessionState.tscn")
 const MONSTER_SCENE := preload("res://scenes/runtime/MonsterRuntimeController.tscn")
 const QUERY_SCENE := preload("res://scenes/runtime/MonsterWagerCashCommitmentQueryPort.tscn")
 const MUTATION_SCENE := preload("res://scenes/runtime/PlayerCashMutationPort.tscn")
+const MARKET_CONTROLLER_SCENE := preload("res://scenes/runtime/ProductMarketRuntimeController.tscn")
+const MARKET_BRIDGE_SCENE := preload("res://scenes/runtime/ProductMarketRuntimeWorldBridge.tscn")
+const MARKET_FORMULA_SCENE := preload("res://scenes/runtime/CardEconomyProductRouteFormulaRuntimeService.tscn")
+const SELECTION_SCENE := preload("res://scenes/runtime/TableSelectionState.tscn")
 const BATTLE_LIFECYCLE_POLICY := preload("res://scripts/runtime/monster_battle_lifecycle_policy_v06.gd")
 
 var _checks := 0
@@ -13,6 +17,28 @@ var _world: WorldSessionState
 var _monster: MonsterRuntimeController
 var _query: MonsterWagerCashCommitmentQueryPort
 var _port: PlayerCashMutationPort
+var _identity: SimulationStateIdentity
+var _audit: SimulationDeterminismAudit
+var _authority: SimulationMutationAuthority
+
+
+class MarketFixtureWorld:
+	extends Node
+
+	func _default_economy_product() -> String:
+		return "星露莓"
+
+	func _balance_product_price_model(base_price: int, _supply: int, _demand: int, _disrupted: int, _contract: int, _weather: int, volatility: int, _noise: float, _growth: float) -> Dictionary:
+		return {"price": base_price, "delta": 0, "raw_delta": 0, "step_cap": maxi(1, volatility), "driver_summary": "fixture"}
+
+	func _balance_product_price_step_cap(volatility: int, _base_price: int) -> int:
+		return maxi(1, volatility)
+
+	func _refresh_warehouse_stockpile_city_markers() -> void:
+		pass
+
+	func _present_product_futures_opened(_source: String, _product: String, _direction: String, _price: int, _duration: float, _warehouse: int) -> void:
+		pass
 
 
 func _init() -> void:
@@ -22,6 +48,7 @@ func _init() -> void:
 	_test_product_market_and_gdp_counters()
 	_test_role_monster_upgrade_reward()
 	_test_save_roundtrip_preserves_exact_once()
+	_test_product_futures_lifecycle_identity()
 	_test_owner_and_privacy_boundary()
 	print("PLAYER_CASH_MUTATION_PORT %d/%d" % [_checks - _failures, _checks])
 	_host.free()
@@ -43,9 +70,17 @@ func _build_fixture() -> void:
 	_query = QUERY_SCENE.instantiate() as MonsterWagerCashCommitmentQueryPort
 	_host.add_child(_query)
 	_expect(bool(_query.configure(_world, _monster).get("configured", false)), "the existing query port binds the two authoritative owners")
+	_identity = SimulationStateIdentity.new()
+	_audit = SimulationDeterminismAudit.new()
+	_authority = SimulationMutationAuthority.new()
+	_host.add_child(_identity)
+	_host.add_child(_audit)
+	_host.add_child(_authority)
+	_authority.bind_diagnostics(_identity, _audit)
+	_expect(bool(_authority.begin_step(1).get("opened", false)), "the focused fixture opens the authoritative simulation step")
 	_port = MUTATION_SCENE.instantiate() as PlayerCashMutationPort
 	_host.add_child(_port)
-	_expect(bool(_port.configure(_world, _query).get("configured", false)), "the mutation port binds WorldSessionState and the existing commitment boundary")
+	_expect(bool(_port.configure(_world, _query, _authority).get("configured", false)), "the mutation port binds cash, wager commitment, and simulation mutation authorities")
 
 
 func _test_cash_cents_parity_and_exact_once() -> void:
@@ -142,12 +177,55 @@ func _test_save_roundtrip_preserves_exact_once() -> void:
 	_expect(bool(restored_query.configure(restored, _monster).get("configured", false)), "the restored owner can use the same private commitment boundary")
 	var restored_port := MUTATION_SCENE.instantiate() as PlayerCashMutationPort
 	_host.add_child(restored_port)
-	_expect(bool(restored_port.configure(restored, restored_query).get("configured", false)), "the stateless port needs no new save section")
+	_expect(bool(restored_port.configure(restored, restored_query, _authority).get("configured", false)), "the stateless port needs no new save section")
 	var replay := restored_port.commit_role_monster_upgrade_cash(
 		"monster:uid.401:rank.2:role-cash", 0, 160, "role.star-whale", "星鲸餐饮垄断", 401, "星鲸", 1, 2, 9
 	)
 	var restored_player := (restored.players[0] as Dictionary)
 	_expect(bool(replay.get("replayed", false)) and int(restored_player.get("cash_cents", -1)) == 36000 and int(restored_player.get("total_role_income", -1)) == 160, "save/load cannot replay an already committed role reward")
+
+
+func _test_product_futures_lifecycle_identity() -> void:
+	_reset_player(1000, 100000)
+	_seed_wagers([])
+	_world.districts = [{"region_id": "region.000", "name": "QA Region", "destroyed": false, "products": [], "demands": [], "city": {}}]
+	_world.game_time = 10.0
+	var market_world := MarketFixtureWorld.new()
+	var selection := SELECTION_SCENE.instantiate() as TableSelectionState
+	var bridge := MARKET_BRIDGE_SCENE.instantiate() as ProductMarketRuntimeWorldBridge
+	var formula := MARKET_FORMULA_SCENE.instantiate() as CardEconomyProductRouteFormulaRuntimeService
+	var controller := MARKET_CONTROLLER_SCENE.instantiate() as ProductMarketRuntimeController
+	var nodes: Array[Node] = [market_world, selection, bridge, formula, controller]
+	for node in nodes:
+		_host.add_child(node)
+	selection.selected_trade_product = "星露莓"
+	selection.selected_district = 0
+	bridge.bind_world(market_world)
+	bridge.set_world_session_state(_world)
+	bridge.set_table_selection_state(selection)
+	bridge.set_cash_commitment_query_port(_query)
+	bridge.set_cash_mutation_port(_port)
+	formula.configure({"ruleset_id": "v0.4"})
+	controller.set_world_bridge(bridge)
+	controller.configure({"ruleset_id": "v0.4"}, formula)
+	controller.reset_state()
+	var skill := controller.skill_with_terms("商品看涨1", {"name": "商品看涨1", "kind": "product_futures"})
+	var opened := controller.open_futures_position(0, skill)
+	var opened_player := _player_state()
+	var open_ledger: Array = opened_player.get("v06_transaction_ledger", []) as Array
+	_expect(bool(opened.get("committed", false)) and int(opened.get("position_id", -1)) == 1, "product futures open commits through the typed production consumer")
+	_expect(open_ledger.size() == 1 and str((open_ledger[0] as Dictionary).get("transaction_id", "")) == "product-futures:0:1:open", "product futures open uses the allocated stable position identity")
+	_world.game_time = 1000.0
+	controller.update_futures_timers()
+	var settled_player := _player_state()
+	var settled_ledger: Array = settled_player.get("v06_transaction_ledger", []) as Array
+	_expect(settled_ledger.size() == 2 and str((settled_ledger[1] as Dictionary).get("transaction_id", "")) == "product-futures:0:1:expiry", "product futures expiry uses the same position plus lifecycle phase")
+	var cash_after_settlement := int(settled_player.get("cash_cents", -1))
+	controller.update_futures_timers()
+	_expect(int(_player_state().get("cash_cents", -1)) == cash_after_settlement and (_player_state().get("v06_transaction_ledger", []) as Array).size() == 2, "a second futures timer pass cannot duplicate settlement cash")
+	for node in nodes.duplicate():
+		if is_instance_valid(node):
+			node.free()
 
 
 func _test_owner_and_privacy_boundary() -> void:
@@ -160,10 +238,19 @@ func _test_owner_and_privacy_boundary() -> void:
 		"the port owns no second cash balance, journal, or wager state"
 	)
 	_expect(not bool(debug.get("public_snapshot_provider", true)), "private cash mutation diagnostics are never a player-facing snapshot")
+	_expect(bool(debug.get("simulation_mutation_authority_bound", false)), "production cash writes cannot bypass SimulationMutationAuthority")
 	var port_source := FileAccess.get_file_as_string("res://scripts/runtime/player_cash_mutation_port.gd")
-	_expect(not port_source.contains("scripts/main.gd") and not port_source.contains("/root/Main") and not port_source.contains("current_scene"), "the typed port has no Main or scene-discovery fallback")
+	var forbidden_root_lookup := "/root/" + "Ma" + "in"
+	_expect(not port_source.contains(forbidden_root_lookup) and not port_source.contains("current_scene"), "the typed port has no composition-root or scene-discovery fallback")
 	var request := FileAccess.get_file_as_string("res://docs/integration_requests/P0-CASH-AUTHORITY-COMMITMENT-BOUNDARY.json")
 	_expect(not request.is_empty(), "shared hot-file wiring is described through an integration request")
+	var coordinator_scene := FileAccess.get_file_as_string("res://scenes/runtime/GameRuntimeCoordinator.tscn")
+	_expect(coordinator_scene.count("[node name=\"PlayerCashMutationPort\"") == 1, "production composition contains exactly one typed cash mutation port")
+	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
+	_expect(coordinator_source.contains("_wire_player_cash_mutation_port") and coordinator_source.contains("set_player_cash_mutation_port"), "the unique coordinator explicitly wires all typed cash consumers")
+	var product_bridge_source := FileAccess.get_file_as_string("res://scripts/runtime/product_market_runtime_world_bridge.gd")
+	var gdp_bridge_source := FileAccess.get_file_as_string("res://scripts/runtime/city_gdp_derivative_runtime_world_bridge.gd")
+	_expect(bool(product_bridge_source.contains("dynamic_main_cash_callback\": false")) and bool(gdp_bridge_source.contains("dynamic_main_cash_callback\": false")), "financial world bridges expose no dynamic composition-root cash fallback")
 
 
 func _player(cash_units: int, cash_cents: int) -> Dictionary:

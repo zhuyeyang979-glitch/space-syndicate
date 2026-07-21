@@ -675,14 +675,24 @@ func apply_speculation(player_index: int, skill: Dictionary, target_context: Dic
 	var product_name := str(target.get("product_id", ""))
 	var source := str(skill.get("name", "商品牌"))
 	if product_name.is_empty(): _log("%s没有可操盘商品。" % source); return false
+	var cash_gain := int(skill.get("cash", 0))
+	var cash_transaction_id := _product_card_cash_transaction_id(target_context) if cash_gain > 0 else ""
+	if cash_gain > 0:
+		if cash_transaction_id.is_empty() or _world_bridge == null or not _world_bridge.cash_mutation_ready():
+			_log("%s缺少稳定卡牌结算身份，商品收益未执行。" % source)
+			return false
+		var cash_receipt := _world_bridge.commit_player_cash_delta(
+			cash_transaction_id, player_index, cash_gain, source, product_name,
+			"card_income", cash_gain, business_cycle_count
+		)
+		if not bool(cash_receipt.get("committed", false)):
+			return false
 	var before_price := product_price(product_name)
 	var price_delta := int(skill.get("price_delta", 0))
 	var pressure := int(_formula("product_speculation_pressure", {"price_delta": price_delta}).get("pressure", 1))
 	apply_external_pressure(product_name, pressure if price_delta >= 0 else 0, pressure if price_delta < 0 else 0, 0, false)
 	if not bool(target.get("frozen", false)):
 		_set_selected_product(product_name)
-	var cash_gain := int(skill.get("cash", 0))
-	if cash_gain > 0: _world_bridge.commit_player_cash_delta(player_index, cash_gain, source, product_name, "card_income", cash_gain)
 	refresh_prices()
 	_log("匿名卡牌围绕%s完成%s：制造%d点%s压力，市场按供需重算¥%d→¥%d；收益归属不公开（¥%d）。" % [product_name, "拉升" if price_delta >= 0 else "做空", pressure, "需求" if price_delta >= 0 else "供给", before_price, product_price(product_name), cash_gain])
 	return true
@@ -764,7 +774,8 @@ func open_futures_position(player_index: int, skill: Dictionary, target_context:
 		"warehouse_loss_formula_id": str(terms.get("warehouse_loss_formula_id", "warehouse_futures_v04_loss")),
 		"settled": false,
 	}
-	var cash_receipt := _world_bridge.commit_player_cash_delta(player_index, -cash_required, source, product_name, "futures_open", 0) if _world_bridge != null else {"committed": false, "reason": "world_bridge_missing"}
+	var cash_transaction_id := "product-futures:%d:%d:open" % [player_index, futures_position_sequence]
+	var cash_receipt := _world_bridge.commit_player_cash_delta(cash_transaction_id, player_index, -cash_required, source, product_name, "futures_open", 0, business_cycle_count) if _world_bridge != null else {"committed": false, "reason": "world_bridge_missing"}
 	if not bool(cash_receipt.get("committed", false)):
 		futures_position_sequence -= 1
 		return _futures_receipt(false, str(cash_receipt.get("reason", "cash_commit_failed")), source, product_name)
@@ -851,7 +862,9 @@ func _commit_futures_settlement(product_name: String, position: Dictionary, sett
 	var player_index := int(position.get("owner", -1))
 	var cash_return := maxi(0, int(settlement.get("cash_return", 0)))
 	var gain := maxi(0, int(settlement.get("gain", 0)))
-	var cash_receipt := _world_bridge.commit_player_cash_delta(player_index, cash_return, source, product_name, "futures_%s" % reason, gain) if _world_bridge != null else {"committed": false, "reason": "world_bridge_missing"}
+	var position_id := int(position.get("position_id", -1))
+	var cash_transaction_id := "product-futures:%d:%d:%s" % [player_index, position_id, reason]
+	var cash_receipt := _world_bridge.commit_player_cash_delta(cash_transaction_id, player_index, cash_return, source, product_name, "futures_%s" % reason, gain, business_cycle_count) if _world_bridge != null else {"committed": false, "reason": "world_bridge_missing"}
 	if not bool(cash_receipt.get("committed", false)):
 		return _futures_receipt(false, str(cash_receipt.get("reason", "cash_commit_failed")), source, product_name)
 	position["settled"] = true
@@ -931,21 +944,39 @@ func apply_product_contract_boon(player_index: int, skill: Dictionary, target_co
 		return false
 	var product_name := str(target.get("product_id", ""))
 	if product_name.is_empty(): _log("%s没有可交易商品。" % source); return false
+	var cash_gain := int(skill.get("cash", 0))
+	var cash_transaction_id := _product_card_cash_transaction_id(target_context) if cash_gain > 0 else ""
+	if cash_gain > 0 and (cash_transaction_id.is_empty() or _world_bridge == null or not _world_bridge.cash_mutation_ready()):
+		_log("%s缺少稳定卡牌结算身份，商品收益未执行。" % source)
+		return false
 	var entry := market_entry(product_name); var before_price := product_price(product_name); var before_volatility := int(entry.get("volatility", 4))
 	var contract_seconds := _skill_duration(skill, "market_contract_seconds", "market_contract_turns", int(skill.get("growth_turns", 1)))
 	var result := _formula("product_contract_boon", {"entry": entry, "demand_pressure": maxi(0, int(skill.get("market_demand_pressure", 0))), "supply_pressure": maxi(0, int(skill.get("market_supply_pressure", 0))), "contract_seconds": contract_seconds, "volatility_delta": int(skill.get("volatility_delta", 0)), "source": source})
 	if not bool(result.get("ok", false)): _log("%s商品合约公式不可用。" % source); return false
-	entry = result.get("entry", {}) as Dictionary; product_market[product_name] = entry; var changed := bool(result.get("changed", false))
+	entry = result.get("entry", {}) as Dictionary
+	var changed := bool(result.get("changed", false))
+	if cash_gain > 0:
+		var cash_receipt := _world_bridge.commit_player_cash_delta(
+			cash_transaction_id, player_index, cash_gain, source, product_name,
+			"card_income", cash_gain, business_cycle_count
+		)
+		if not bool(cash_receipt.get("committed", false)):
+			return false
+		changed = true
+	product_market[product_name] = entry
 	var flow_seconds := maxf(contract_seconds, _skill_duration(skill, "route_flow_seconds", "route_flow_turns", int(ceil(contract_seconds / ECONOMY_LEGACY_TURN_SECONDS))))
 	if float(skill.get("route_flow_multiplier", 1.0)) > 1.001 or float(skill.get("growth_multiplier", 1.0)) > 1.001:
 		changed = apply_product_market_boon(product_name, float(skill.get("growth_multiplier", 1.0)), float(skill.get("route_flow_multiplier", 1.0)), int(ceil(flow_seconds / ECONOMY_LEGACY_TURN_SECONDS)), source, false, flow_seconds) or changed
-	var cash_gain := int(skill.get("cash", 0))
-	if cash_gain > 0: _world_bridge.commit_player_cash_delta(player_index, cash_gain, source, product_name, "card_income", cash_gain); changed = true
 	if not changed: _log("%s没有超过%s当前已有的商品合约。" % [source, product_name]); return false
 	if not bool(target.get("frozen", false)):
 		_set_selected_product(product_name)
 	refresh_prices(); _world_bridge.call_world("_present_product_contract_boon", [source, product_name, before_price, product_price(product_name), before_volatility, int(market_entry(product_name).get("volatility", before_volatility)), cash_gain])
 	return true
+
+
+func _product_card_cash_transaction_id(target_context: Dictionary) -> String:
+	var resolution_id := int(target_context.get("resolution_id", -1))
+	return "card-resolution:%d:product-market-cash" % resolution_id if resolution_id >= 0 else ""
 
 
 func apply_external_pressure(product_name: String, demand_delta: int, supply_delta: int, volatility_delta := 0, refresh := true) -> Dictionary:

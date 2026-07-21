@@ -10,6 +10,9 @@ const BATTLE_LIFECYCLE_POLICY := preload("res://scripts/runtime/monster_battle_l
 
 var _checks := 0
 var _failures := 0
+var _identity: SimulationStateIdentity
+var _audit: SimulationDeterminismAudit
+var _authority: SimulationMutationAuthority
 
 
 func _ready() -> void:
@@ -24,7 +27,15 @@ func _ready() -> void:
 	monster.active_monster_wagers = [_wager()]
 	monster.set("_monster_wager_settlement_revision", 1)
 	_check(bool(query.configure(world, monster).get("configured", false)), "query configured")
-	_check(bool(port.configure(world, query).get("configured", false)), "mutation port configured")
+	_identity = SimulationStateIdentity.new()
+	_audit = SimulationDeterminismAudit.new()
+	_authority = SimulationMutationAuthority.new()
+	add_child(_identity)
+	add_child(_audit)
+	add_child(_authority)
+	_authority.bind_diagnostics(_identity, _audit)
+	_check(bool(_authority.begin_step(1).get("opened", false)), "simulation mutation step active")
+	_check(bool(port.configure(world, query, _authority).get("configured", false)), "mutation port configured")
 	var denied := port.commit_product_market_cash_delta(
 		"bench:market:denied", 0, -801, "商品期货", "环晶电池", "futures_open"
 	)
@@ -45,6 +56,7 @@ func _ready() -> void:
 	_check(int(player.get("cash", -1)) == 360 and int(player.get("cash_cents", -1)) == 36000, "cash mirrors remain coherent")
 	_check(int(player.get("total_role_income", -1)) == 160, "role counter exact once")
 	_check(not bool(port.debug_snapshot().get("stores_cash", true)), "port stores no cash")
+	_check(_authority.recent_authorizations().size() == 3, "every first cash mutation is authorized once")
 	print("PLAYER_CASH_MUTATION_PORT_BENCH %s %d/%d" % ["PASS" if _failures == 0 else "FAIL", _checks - _failures, _checks])
 	get_tree().quit(0 if _failures == 0 else 1)
 

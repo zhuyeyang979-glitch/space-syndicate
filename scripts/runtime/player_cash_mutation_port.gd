@@ -18,6 +18,7 @@ const MAX_SAFE_UNIT_DELTA := 92233720368547758
 
 var _world_session_state: WorldSessionState
 var _cash_commitment_query_port: MonsterWagerCashCommitmentQueryPort
+var _mutation_authority: SimulationMutationAuthority
 var _commit_count := 0
 var _replay_count := 0
 var _rejection_count := 0
@@ -25,10 +26,12 @@ var _rejection_count := 0
 
 func configure(
 	world_session_state: WorldSessionState,
-	cash_commitment_query_port: MonsterWagerCashCommitmentQueryPort
+	cash_commitment_query_port: MonsterWagerCashCommitmentQueryPort,
+	mutation_authority: SimulationMutationAuthority
 ) -> Dictionary:
 	_world_session_state = world_session_state
 	_cash_commitment_query_port = cash_commitment_query_port
+	_mutation_authority = mutation_authority
 	return {
 		"configured": is_ready(),
 		"reason_code": "player_cash_mutation_port_ready" if is_ready() else "player_cash_mutation_dependency_missing",
@@ -36,7 +39,8 @@ func configure(
 
 
 func is_ready() -> bool:
-	return _world_session_state != null and _cash_commitment_query_port != null
+	return _world_session_state != null and _cash_commitment_query_port != null \
+		and _mutation_authority != null
 
 
 func commit_product_market_cash_delta(
@@ -156,6 +160,7 @@ func debug_snapshot() -> Dictionary:
 		"cash_owner": "WorldSessionState",
 		"exact_once_ledger": "WorldSessionState.players[*].v06_transaction_ledger",
 		"commitment_owner": "MonsterRuntimeController",
+		"simulation_mutation_authority_bound": _mutation_authority != null,
 	}
 
 
@@ -202,6 +207,14 @@ func _commit_cash_delta(
 		return _receipt_from_ledger(prior, true)
 	if not is_ready():
 		return _reject("player_cash_mutation_port_unavailable", player_index)
+	var authority_command := {
+		"command_type": "player_cash_mutation",
+		"command_id": transaction_id,
+		"source": mutation_kind,
+	}
+	var authority_receipt := _mutation_authority.authorize_mutation(authority_command)
+	if not bool(authority_receipt.get("authorized", false)):
+		return _reject(str(authority_receipt.get("reason", "cash_mutation_authority_rejected")), player_index)
 
 	var cash_snapshot := _world_session_state.private_player_cash_snapshot(player_index)
 	if not bool(cash_snapshot.get("valid", false)):
@@ -231,7 +244,6 @@ func _commit_cash_delta(
 		return _reject("cash_insufficient", player_index)
 
 	var next_player := player.duplicate(true)
-	var cash_before_units := floori(float(cash_before_cents) / float(CURRENCY_SCALE))
 	var cash_after_units := floori(float(cash_after_cents) / float(CURRENCY_SCALE))
 	next_player["cash_cents"] = cash_after_cents
 	next_player["cash"] = cash_after_units
@@ -262,11 +274,42 @@ func _commit_cash_delta(
 	ledger.append(ledger_entry)
 	next_player["v06_transaction_ledger"] = ledger
 
-	var next_players := _world_session_state.players.duplicate(true)
+	var previous_players := _world_session_state.players.duplicate(true)
+	var next_players := previous_players.duplicate(true)
 	next_players[player_index] = next_player
 	_world_session_state.players = next_players
+	var audit_receipt := _mutation_authority.record_mutation(
+		authority_command,
+		_cash_projection(player_index, player),
+		_cash_projection(player_index, next_player),
+		{
+			"mutation_kind": mutation_kind,
+			"cash_delta_cents": cash_delta_cents,
+			"transaction_id": transaction_id,
+		}
+	)
+	if not bool(audit_receipt.get("recorded", false)):
+		_world_session_state.players = previous_players
+		return _reject(str(audit_receipt.get("reason", "cash_mutation_audit_rejected")), player_index)
 	_commit_count += 1
 	return _receipt_from_ledger(ledger_entry, false)
+
+
+func _cash_projection(player_index: int, player: Dictionary) -> Dictionary:
+	var transaction_ids: Array[String] = []
+	var ledger_variant: Variant = player.get("v06_transaction_ledger", [])
+	if ledger_variant is Array:
+		for row_variant in ledger_variant as Array:
+			if row_variant is Dictionary:
+				transaction_ids.append(str((row_variant as Dictionary).get("transaction_id", "")))
+	return {
+		"player_index": player_index,
+		"cash_cents": int(player.get("cash_cents", 0)),
+		"cash": int(player.get("cash", 0)),
+		"total_card_income": int(player.get("total_card_income", 0)),
+		"total_role_income": int(player.get("total_role_income", 0)),
+		"transaction_ids": transaction_ids,
+	}
 
 
 func _validate_identity(transaction_id: String, player_index: int, mutation_kind: String, source_id: String, reason_code: String) -> Dictionary:

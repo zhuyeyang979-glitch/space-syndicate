@@ -2,24 +2,12 @@ extends SceneTree
 
 const MONSTER_SCENE := preload("res://scenes/runtime/MonsterRuntimeController.tscn")
 const PORT_SCENE := preload("res://scenes/runtime/MonsterWagerCashCommitmentQueryPort.tscn")
+const CASH_MUTATION_SCENE := preload("res://scenes/runtime/PlayerCashMutationPort.tscn")
 const BATTLE_LIFECYCLE_POLICY := preload("res://scripts/runtime/monster_battle_lifecycle_policy_v06.gd")
 
 class FakeWorld:
 	extends Node
 	var session_state: WorldSessionState
-	var debit_calls := 0
-
-	func _commit_product_market_cash_delta(player_index: int, cash_delta: int, _source: String, _product: String, _reason: String, _income: int = 0) -> Dictionary:
-		debit_calls += 1
-		var players := session_state.players
-		var player := (players[player_index] as Dictionary).duplicate(true)
-		var before := int(player.get("cash", 0))
-		# Match the still-existing legacy Main adapter: it mutates whole units only.
-		# The production bridge must reconcile the v0.6 cents ledger afterward.
-		player["cash"] = before + cash_delta
-		players[player_index] = player
-		session_state.players = players
-		return {"committed": true, "cash_before": before, "cash_after": before + cash_delta}
 
 
 var _checks := 0
@@ -29,6 +17,7 @@ var _world: WorldSessionState
 var _fake_world: FakeWorld
 var _monster: MonsterRuntimeController
 var _port: MonsterWagerCashCommitmentQueryPort
+var _mutation_authority: SimulationMutationAuthority
 
 
 func _init() -> void:
@@ -64,6 +53,14 @@ func _build_fixture() -> void:
 	_host.add_child(_port)
 	var configured := _port.configure(_world, _monster)
 	_expect(bool(configured.get("configured", false)), "query port binds the two existing owners without storing their state")
+	var identity := SimulationStateIdentity.new()
+	var audit := SimulationDeterminismAudit.new()
+	_mutation_authority = SimulationMutationAuthority.new()
+	_host.add_child(identity)
+	_host.add_child(audit)
+	_host.add_child(_mutation_authority)
+	_mutation_authority.bind_diagnostics(identity, audit)
+	_expect(bool(_mutation_authority.begin_step(1).get("opened", false)), "the focused cash fixture runs inside an authoritative simulation step")
 
 
 func _test_base_and_selected_commitments() -> void:
@@ -154,24 +151,27 @@ func _test_financial_bridge_consumes_available_cash() -> void:
 	bridge.bind_world(_fake_world)
 	bridge.set_world_session_state(_world)
 	bridge.set_cash_commitment_query_port(_port)
+	var mutation_port := CASH_MUTATION_SCENE.instantiate() as PlayerCashMutationPort
+	_host.add_child(mutation_port)
+	_expect(bool(mutation_port.configure(_world, _port, _mutation_authority).get("configured", false)), "the financial bridge receives the typed mutation boundary")
+	bridge.set_cash_mutation_port(mutation_port)
 	_host.add_child(bridge)
-	var denied := bridge.commit_player_cash_delta(0, -951, "test", "product", "futures_open")
-	_expect(not bool(denied.get("committed", true)) and _fake_world.debit_calls == 0, "financial margin cannot spend a committed wager stake")
-	var accepted := bridge.commit_player_cash_delta(0, -950, "test", "product", "futures_open")
+	var denied := bridge.commit_player_cash_delta("test:denied", 0, -951, "test", "product", "futures_open")
+	_expect(not bool(denied.get("committed", true)), "financial margin cannot spend a committed wager stake")
+	var accepted := bridge.commit_player_cash_delta("test:accepted", 0, -950, "test", "product", "futures_open")
 	_expect(
 		bool(accepted.get("committed", false))
-			and _fake_world.debit_calls == 1
 			and int((_world.players[0] as Dictionary).get("cash", -1)) == 50
 			and int((_world.players[0] as Dictionary).get("cash_cents", -1)) == 5000
 			and _port.available_cash_cents(0) == 0,
-		"a legacy financial debit is reconciled without resurrecting the committed stake"
+		"the typed financial debit preserves exact cents without resurrecting the committed stake"
 	)
-	var income := bridge.commit_player_cash_delta(0, 5, "test", "product", "futures_close", 5)
+	var income := bridge.commit_player_cash_delta("test:income", 0, 5, "test", "product", "futures_close", 5)
 	_expect(
 		bool(income.get("committed", false))
 			and int((_world.players[0] as Dictionary).get("cash_cents", -1)) == 5500
 			and _port.available_cash_cents(0) == 500,
-		"legacy whole-unit income remains available and keeps the commitment frozen"
+		"typed income remains available and keeps the commitment frozen"
 	)
 	bridge.free()
 

@@ -88,13 +88,16 @@ func open_position(player_index: int, skill: Dictionary, district_index: int) ->
 	var cash_before := _world_bridge.player_cash(player_index)
 	if cash_before < margin_cash:
 		return _receipt(false, "financial_margin_insufficient", card_id, district_index, {"cash_before": cash_before, "cash_required": margin_cash})
-	var cash_receipt := _world_bridge.commit_player_cash_delta(player_index, -margin_cash, card_id, district_index, "derivative_open", 0)
-	if not bool(cash_receipt.get("committed", false)):
-		return _receipt(false, str(cash_receipt.get("reason", "cash_commit_failed")), card_id, district_index)
 	position_sequence += 1
+	var position_id := position_sequence
+	var cash_transaction_id := "city-gdp:%d:%d:open" % [player_index, position_id]
+	var cash_receipt := _world_bridge.commit_player_cash_delta(cash_transaction_id, player_index, -margin_cash, card_id, district_index, "derivative_open", 0)
+	if not bool(cash_receipt.get("committed", false)):
+		position_sequence -= 1
+		return _receipt(false, str(cash_receipt.get("reason", "cash_commit_failed")), card_id, district_index)
 	var game_time := float(_world_bridge.world_snapshot().get("game_time", 0.0))
 	var position := {
-		"position_id": position_sequence,
+		"position_id": position_id,
 		"owner": player_index,
 		"card_id": card_id,
 		"source": card_id,
@@ -122,7 +125,7 @@ func open_position(player_index: int, skill: Dictionary, district_index: int) ->
 	_world_bridge.present_open(_sanitize_position(position))
 	_open_count += 1
 	return _receipt(true, "", card_id, district_index, {
-		"position_id": position_sequence,
+		"position_id": position_id,
 		"position": position.duplicate(true),
 		"cash_before": cash_before,
 		"cash_after": int(cash_receipt.get("cash_after", cash_before - margin_cash)),
@@ -286,7 +289,10 @@ func _commit_settlement(district_index: int, position: Dictionary, settlement: D
 		return _receipt(false, "position_already_settled", str(position.get("card_id", "城市GDP衍生品")), district_index)
 	var cash_return := maxi(0, int(settlement.get("cash_return", 0)))
 	var gain := maxi(0, int(settlement.get("gain", 0)))
-	var cash_receipt := _world_bridge.commit_player_cash_delta(int(position.get("owner", -1)), cash_return, str(position.get("card_id", "城市GDP衍生品")), district_index, "derivative_%s" % reason, gain) if _world_bridge != null else {"committed": false, "reason": "world_bridge_missing"}
+	var player_index := int(position.get("owner", -1))
+	var position_id := int(position.get("position_id", -1))
+	var cash_transaction_id := "city-gdp:%d:%d:%s" % [player_index, position_id, reason]
+	var cash_receipt := _world_bridge.commit_player_cash_delta(cash_transaction_id, player_index, cash_return, str(position.get("card_id", "城市GDP衍生品")), district_index, "derivative_%s" % reason, gain) if _world_bridge != null else {"committed": false, "reason": "world_bridge_missing"}
 	if not bool(cash_receipt.get("committed", false)):
 		return _receipt(false, str(cash_receipt.get("reason", "cash_commit_failed")), str(position.get("card_id", "城市GDP衍生品")), district_index)
 	position["settled"] = true

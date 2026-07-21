@@ -765,78 +765,6 @@ func _on_product_market_runtime_event(event: Dictionary) -> void:
 		_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(event.get("summary", "")))
 
 
-func _commit_product_market_cash_delta(player_index: int, cash_delta: int, source: String, product_name: String, reason_code: String, income_amount: int = 0) -> Dictionary:
-	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size() or not (_game_runtime_coordinator_node().world_session_state().players[player_index] is Dictionary):
-		return {"committed": false, "reason": "player_invalid"}
-	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[player_index]
-	var cash_before := int(player.get("cash", 0))
-	var cash_after := cash_before + cash_delta
-	if cash_after < 0:
-		return {
-			"committed": false,
-			"reason": "cash_insufficient",
-			"cash_before": cash_before,
-			"cash_required": -cash_delta,
-		}
-	player = player.duplicate(true)
-	player["cash"] = cash_after
-	_game_runtime_coordinator_node().world_session_state().players[player_index] = player
-	var safe_income := clampi(income_amount, 0, maxi(0, cash_delta))
-	if safe_income > 0:
-		_record_player_card_income(player_index, safe_income, source, "%s期货收益" % product_name)
-	var non_income_delta := cash_delta - safe_income
-	if non_income_delta != 0:
-		_record_player_economic_event(
-			player_index,
-			"期货保证金",
-			source,
-			non_income_delta,
-			"%s｜%s" % [product_name, reason_code]
-		)
-		_record_player_cash_snapshot(player_index)
-	return {
-		"committed": true,
-		"reason": "",
-		"player_index": player_index,
-		"cash_before": cash_before,
-		"cash_after": cash_after,
-		"cash_delta": cash_delta,
-		"income_amount": safe_income,
-		"reason_code": reason_code,
-	}
-
-
-func _commit_city_gdp_derivative_cash_delta(player_index: int, cash_delta: int, card_id: String, district_index: int, reason_code: String, income_amount: int = 0) -> Dictionary:
-	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size() or not (_game_runtime_coordinator_node().world_session_state().players[player_index] is Dictionary):
-		return {"committed": false, "reason": "player_invalid"}
-	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[player_index]
-	var cash_before := int(player.get("cash", 0))
-	var cash_after := cash_before + cash_delta
-	if cash_after < 0:
-		return {"committed": false, "reason": "cash_insufficient", "cash_before": cash_before, "cash_required": -cash_delta}
-	player = player.duplicate(true)
-	player["cash"] = cash_after
-	_game_runtime_coordinator_node().world_session_state().players[player_index] = player
-	var safe_income := clampi(income_amount, 0, maxi(0, cash_delta))
-	var district_label := str(_game_runtime_coordinator_node().world_session_state().districts[district_index].get("name", "城市")) if district_index >= 0 and district_index < _game_runtime_coordinator_node().world_session_state().districts.size() else "城市"
-	if safe_income > 0:
-		_record_player_card_income(player_index, safe_income, card_id, "%s GDP衍生品收益" % district_label)
-	var non_income_delta := cash_delta - safe_income
-	if non_income_delta != 0:
-		_record_player_economic_event(player_index, "GDP衍生品保证金", card_id, non_income_delta, "%s｜%s" % [district_label, reason_code])
-	_record_player_cash_snapshot(player_index)
-	return {
-		"committed": true,
-		"reason": "",
-		"player_index": player_index,
-		"cash_before": cash_before,
-		"cash_after": cash_after,
-		"cash_delta": cash_delta,
-		"income_amount": safe_income,
-		"reason_code": reason_code,
-	}
-
-
 func _append_city_gdp_derivative_public_clue(district_index: int, clue: String) -> bool:
 	var city := _district_city(district_index)
 	if not _city_is_active(city):
@@ -3001,34 +2929,6 @@ func _role_runtime_copy_fields() -> Array:
 		"military_control_limit_bonus",
 		"flavor",
 	]
-
-
-func _apply_role_monster_upgrade_cash(player_index: int, monster_name: String, old_rank: int, new_rank: int, world_position: Vector2) -> int:
-	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return 0
-	var role := _player_role_card_for_index(player_index)
-	var amount := int(role.get("monster_upgrade_cash", 0))
-	if amount <= 0:
-		return 0
-	_game_runtime_coordinator_node().world_session_state().players[player_index]["cash"] = int(_game_runtime_coordinator_node().world_session_state().players[player_index].get("cash", 0)) + amount
-	_game_runtime_coordinator_node().world_session_state().players[player_index]["total_card_income"] = int(_game_runtime_coordinator_node().world_session_state().players[player_index].get("total_card_income", 0)) + amount
-	_game_runtime_coordinator_node().world_session_state().players[player_index]["total_role_income"] = int(_game_runtime_coordinator_node().world_session_state().players[player_index].get("total_role_income", 0)) + amount
-	_record_player_economic_event(player_index, "角色收益", String(role.get("name", "角色卡")), amount, "%s从%s升至%s" % [monster_name, _level_text(old_rank), _level_text(new_rank)])
-	_record_player_cash_snapshot(player_index)
-	_game_runtime_coordinator_node().add_visual_action_callout(
-		"角色收益",
-		String(role.get("name", "角色卡")),
-		"%s升级触发返现：¥+%d。" % [monster_name, amount],
-		Color("#fde68a"),
-		world_position
-	)
-	_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s触发%s：%s升级，获得¥%d。" % [
-		_game_runtime_coordinator_node().world_session_state().players[player_index]["name"],
-		String(role.get("name", "角色卡")),
-		monster_name,
-		amount,
-	])
-	return amount
 
 
 func _runtime_snapshot_player_index() -> int:
