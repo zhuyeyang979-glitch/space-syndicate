@@ -215,7 +215,7 @@ func _draw_motif(rect: Rect2) -> void:
 		"route_flow_boon":
 			_draw_motion_motif(center, radius)
 			_draw_route_motif(center, radius * 0.74, false)
-		"intel_city_reveal", "card_history_public_review", "card_history_subscription", "intel_contract_trace", "card_access_boon":
+		"intel_city_reveal", "card_history_public_review", "card_history_subscription", "card_access_boon":
 			_draw_signal_motif(center, radius)
 			_draw_supply_motif(center + Vector2(radius * 0.08, radius * 0.10), radius * 0.62)
 		"news_event", "weather_control":
@@ -1663,8 +1663,6 @@ func _glyph_for_kind() -> String:
 			return "查"
 		"card_history_public_review", "card_history_subscription":
 			return "溯"
-		"intel_contract_trace":
-			return "契"
 		"card_access_boon":
 			return "购"
 		"news_event":

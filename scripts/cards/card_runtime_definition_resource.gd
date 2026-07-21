@@ -34,7 +34,6 @@ class_name CardRuntimeDefinitionResource
 @export var target_monster_required := false
 @export var summon_access: StringName = &""
 @export var military_deploy_terrain: StringName = &""
-@export var contract_product_mode: StringName = &""
 @export var card_access_global := false
 
 @export_group("Sparse authored shape")
@@ -91,6 +90,5 @@ func _authored_value(key: String) -> Variant:
 		"target_monster_required": return target_monster_required
 		"summon_access": return str(summon_access)
 		"military_deploy_terrain": return str(military_deploy_terrain)
-		"contract_product_mode": return str(contract_product_mode)
 		"card_access_global": return card_access_global
 	return effect_parameters.get(key)

@@ -212,9 +212,8 @@ func _region_monster_attraction(entries: Array) -> String:
 func _role_route_tags(role_card: Dictionary, starting_cash_delta: int) -> Array:
 	var tags := []
 	if int(role_card.get("resource_cash_amount", 0)) > 0 or str(role_card.get("bonus_card_product", "")) != "": tags.append("商品经营")
-	if int(role_card.get("intel_city_reveal_charges", 0)) > 0 or int(role_card.get("intel_contract_trace_charges", 0)) > 0 or int(role_card.get("card_history_residual_catalog_charges", 0)) > 0 or int(role_card.get("card_history_public_exclusion_charges", 0)) > 0 or int(role_card.get("city_guess_reward_bonus", 0)) > 0: tags.append("情报推理")
+	if int(role_card.get("intel_city_reveal_charges", 0)) > 0 or int(role_card.get("card_history_residual_catalog_charges", 0)) > 0 or int(role_card.get("card_history_public_exclusion_charges", 0)) > 0 or int(role_card.get("city_guess_reward_bonus", 0)) > 0: tags.append("情报推理")
 	if int(role_card.get("high_volatility_first_sale_bonus", 0)) > 0: tags.append("市场波动")
-	if int(role_card.get("contract_flow_discount", 0)) > 0: tags.append("合约商路")
 	if int(role_card.get("monster_upgrade_cash", 0)) > 0 or int(role_card.get("monster_control_limit_bonus", 0)) > 0: tags.append("怪兽路线")
 	if int(role_card.get("military_control_limit_bonus", 0)) > 0: tags.append("军队路线")
 	if bool(role_card.get("monster_cards_as_counter", false)): tags.append("相位防守")
@@ -238,7 +237,7 @@ func _role_economy_line(role_card: Dictionary, starting_cash_delta: int) -> Stri
 func _role_intel_line(role_card: Dictionary) -> String:
 	var parts := []
 	var fields := [
-		["intel_city_reveal_charges", "查城市%d次"], ["intel_contract_trace_charges", "查合约%d次"],
+		["intel_city_reveal_charges", "查城市%d次"],
 		["card_history_residual_catalog_charges", "残帧编目%d次"], ["card_history_public_exclusion_charges", "公开排除%d次"],
 		["city_guess_reward_bonus", "城市标注+¥%d"], ["high_volatility_sale_threshold", "波动门槛%d"],
 		["high_volatility_first_sale_bonus", "周期首售+¥%d"],
@@ -252,11 +251,10 @@ func _role_intel_line(role_card: Dictionary) -> String:
 
 func _role_control_line(role_card: Dictionary) -> String:
 	var parts := []
-	if int(role_card.get("contract_flow_discount", 0)) > 0: parts.append("合约GDP-%d%%" % (int(role_card.get("contract_flow_discount", 0)) * 5))
 	if int(role_card.get("monster_control_limit_bonus", 0)) > 0: parts.append("怪兽上限%d" % (1 + int(role_card.get("monster_control_limit_bonus", 0))))
 	if int(role_card.get("military_control_limit_bonus", 0)) > 0: parts.append("军队上限%d" % (1 + int(role_card.get("military_control_limit_bonus", 0))))
 	if bool(role_card.get("monster_cards_as_counter", false)): parts.append("怪兽牌可否决")
-	return " / ".join(parts) if not parts.is_empty() else "标准购牌/合约/单位上限"
+	return " / ".join(parts) if not parts.is_empty() else "标准购牌/订单/单位上限"
 
 
 func _role_opening_hint(role_card: Dictionary, tags: Array) -> String:
@@ -267,13 +265,12 @@ func _role_opening_hint(role_card: Dictionary, tags: Array) -> String:
 	if tags.has("怪兽路线"): return "召唤完全自愿；活怪会抬高来源同区与邻区牌价，也会制造经济压力线索。"
 	if tags.has("军队路线"): return "用短时军队保卫核心城市或压制领先者，不要让地图失控。"
 	if tags.has("相位防守"): return "保留一张怪兽牌作为反制资源，等关键玩家互动牌翻面。"
-	if tags.has("合约商路"): return "优先观察供需互补区域，用合约把城市GDP做成稳定现金流。"
 	return "先查看受光挂牌、建立第一份收入；起始怪兽牌可在合适时机自愿召唤。"
 
 
 func _role_privacy_line(role_card: Dictionary) -> String:
 	if bool(role_card.get("monster_cards_as_counter", false)): return "角色公开；反制来源仍匿名，原怪兽牌不公开。"
-	if int(role_card.get("intel_city_reveal_charges", 0)) > 0 or int(role_card.get("intel_contract_trace_charges", 0)) > 0 or int(role_card.get("card_history_residual_catalog_charges", 0)) > 0 or int(role_card.get("card_history_public_exclusion_charges", 0)) > 0: return "角色公开；私人标注只使用公开证据，不揭示匿名出牌者。"
+	if int(role_card.get("intel_city_reveal_charges", 0)) > 0 or int(role_card.get("card_history_residual_catalog_charges", 0)) > 0 or int(role_card.get("card_history_public_exclusion_charges", 0)) > 0: return "角色公开；私人标注只使用公开证据，不揭示匿名出牌者。"
 	if int(role_card.get("monster_control_limit_bonus", 0)) > 0: return "角色公开；怪兽归属、内部权重和预选目标不由图鉴披露。"
 	if int(role_card.get("military_control_limit_bonus", 0)) > 0: return "角色公开；军令来源不公开，军队行动结果公开。"
 	return "角色与设施所有者公开；未召唤的起始怪兽牌、手牌、现金和私密调查不由图鉴披露。"

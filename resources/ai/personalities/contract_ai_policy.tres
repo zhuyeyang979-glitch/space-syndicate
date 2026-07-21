@@ -5,8 +5,8 @@
 [resource]
 script = ExtResource("1_personality")
 policy_id = "contract"
-display_name = "合约型AI"
-style = "优先用合约改写供需，再把商路和城市需求变成稳定GDP。"
+display_name = "订单供需型AI"
+style = "优先用自动订单与供货改写供需，再把商路和城市需求变成稳定GDP。"
 build_bias = 1.08
 business_bias = 1.18
 monster_bias = 0.78
