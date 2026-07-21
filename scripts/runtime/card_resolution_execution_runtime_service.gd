@@ -805,6 +805,10 @@ func _handler_id(skill: Dictionary, target_kind: String) -> String:
 		return "target_monster"
 	if target_kind == "player":
 		return "target_player"
+	var machine: Dictionary = skill.get("machine", {}) if skill.get("machine", {}) is Dictionary else {}
+	var effect_kind := str(machine.get("effect_kind", ""))
+	if effect_kind in ["global_order_budget", "global_supply_spawn"]:
+		return effect_kind
 	return str(skill.get("kind", "missing_skill"))
 
 

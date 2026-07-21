@@ -7,7 +7,6 @@ signal public_log_changed(revision: int)
 const MAX_ENTRIES := 90
 const MAX_TOMBSTONES := 4096
 const LOCALIZED_MESSAGES := {
-	"public.contract.updated": "合约局势已更新",
 	"public.military.updated": "军事部署已更新",
 	"public.monster.updated": "怪兽局势已更新",
 	"public.market.updated": "商品市场已更新",

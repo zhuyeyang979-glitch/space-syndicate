@@ -62,6 +62,12 @@ func begin_session(setup_snapshot: Dictionary) -> Dictionary:
 		_session_state = STATE_ERROR
 		_save_state = "failed"
 		return session_summary()
+	var legacy_guard := LegacyContractPayloadGuardV06.validation_report(setup_snapshot)
+	if not bool(legacy_guard.get("valid", false)):
+		var rejected := session_summary()
+		rejected["rejected"] = true
+		rejected["reason_code"] = str(legacy_guard.get("reason_code", "retired_contract_payload_rejected"))
+		return rejected
 	_session_state = STATE_STARTING
 	_session_id = str(setup_snapshot.get("session_id", "session_%d" % Time.get_ticks_msec()))
 	_scenario_id = str(setup_snapshot.get("scenario_id", ""))
@@ -99,7 +105,7 @@ func session_start_revision() -> int:
 
 
 func preflight_new_session(setup_snapshot: Dictionary, expected_revision: int) -> Dictionary:
-	if not _configured or not _is_data_only(setup_snapshot):
+	if not _configured or not _is_data_only(setup_snapshot) or not bool(LegacyContractPayloadGuardV06.validation_report(setup_snapshot).get("valid", false)):
 		return {"accepted": false, "reason_code": "game_session_start_payload_invalid"}
 	if expected_revision != session_start_revision():
 		return {"accepted": false, "reason_code": "active_session_revision_stale"}
@@ -135,7 +141,8 @@ func apply_new_session_plan(setup_snapshot: Dictionary, expected_revision: int) 
 
 
 func rollback_new_session_checkpoint(checkpoint: Dictionary) -> Dictionary:
-	if int(checkpoint.get("schema_version", 0)) != 1 or not (checkpoint.get("setup_summary") is Dictionary) or not (checkpoint.get("outcome_receipt") is Dictionary):
+	if int(checkpoint.get("schema_version", 0)) != 1 or not (checkpoint.get("setup_summary") is Dictionary) or not (checkpoint.get("outcome_receipt") is Dictionary) \
+			or not bool(LegacyContractPayloadGuardV06.validation_report(checkpoint).get("valid", false)):
 		return {"restored": false, "reason_code": "game_session_checkpoint_invalid"}
 	_configured = bool(checkpoint.get("configured", false))
 	_ruleset_id = str(checkpoint.get("ruleset_id", ""))
@@ -173,7 +180,7 @@ func resume_session() -> void:
 
 
 func finish_session(result_summary: Dictionary = {}) -> void:
-	if _session_state == STATE_IDLE or not _is_data_only(result_summary):
+	if _session_state == STATE_IDLE or not _is_data_only(result_summary) or not bool(LegacyContractPayloadGuardV06.validation_report(result_summary).get("valid", false)):
 		return
 	if _session_state == STATE_FINISHED and not _outcome_receipt.is_empty():
 		return
@@ -532,7 +539,8 @@ func _normalize_save_data(data: Dictionary) -> Dictionary:
 	if not (payload_variant is Dictionary):
 		return {"accepted": false, "reason_code": "session_save_invalid"}
 	var payload := payload_variant as Dictionary
-	if not _has_exact_keys(payload, SAVE_PAYLOAD_FIELDS) or not _is_data_only(payload) or int(payload.get("schema_version", 0)) != 1:
+	if not _has_exact_keys(payload, SAVE_PAYLOAD_FIELDS) or not _is_data_only(payload) or int(payload.get("schema_version", 0)) != 1 \
+			or not bool(LegacyContractPayloadGuardV06.validation_report(payload).get("valid", false)):
 		return {"accepted": false, "reason_code": "session_save_invalid"}
 	if not (payload.get("ruleset_id") is String) \
 			or str(payload.get("ruleset_id", "")) not in ["v0.4", "v0.6"] \

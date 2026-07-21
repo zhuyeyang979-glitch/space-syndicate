@@ -385,8 +385,6 @@ func _entry_selection_context(entry: Dictionary) -> Dictionary:
 	return {
 		"selected_district": int(entry.get("selected_district", -1)),
 		"selected_trade_product": str(entry.get("selected_trade_product", "")),
-		"contract_source_district": int(entry.get("contract_source_district", -1)),
-		"contract_target_district": int(entry.get("contract_target_district", -1)),
 		"play_requirement_district": int(entry.get("play_requirement_district", -1)),
 	}
 

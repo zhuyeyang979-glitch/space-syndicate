@@ -19,6 +19,7 @@ func configure(owner: Object, actor_player_indices: Dictionary) -> Dictionary:
 		and _owner.has_method("candidate_snapshot_metadata")
 		and _owner.has_method("preview_batch")
 		and _owner.has_method("commit_batch")
+		and _owner.has_method("finalize_batch")
 		and not _actor_player_indices.is_empty()
 	)
 	return {"configured": configured, "actor_count": _actor_player_indices.size()}
@@ -74,6 +75,20 @@ func rollback_effect(receipt: Dictionary) -> Dictionary:
 	if owner_receipt.is_empty() or not SUPPORT.binding_is_complete(receipt):
 		return {"rolled_back": false, "committed": false, "reason_code": "effect_receipt_invalid"}
 	return _owner.call("rollback_batch", owner_receipt.duplicate(true)) as Dictionary
+
+
+func finalize_effect(receipt: Dictionary) -> Dictionary:
+	if _owner == null or not _owner.has_method("finalize_batch"):
+		return {"finalized": false, "committed": false, "reason_code": "supply_demand_owner_unavailable"}
+	var owner_receipt: Dictionary = receipt.get("owner_receipt", {}) if receipt.get("owner_receipt", {}) is Dictionary else {}
+	if owner_receipt.is_empty() or not SUPPORT.binding_is_complete(receipt):
+		return {"finalized": false, "committed": false, "reason_code": "effect_receipt_invalid"}
+	var result_variant: Variant = _owner.call("finalize_batch", owner_receipt.duplicate(true))
+	if not (result_variant is Dictionary):
+		return {"finalized": false, "committed": true, "reason_code": "supply_demand_finalize_receipt_invalid"}
+	var result: Dictionary = (result_variant as Dictionary).duplicate(true)
+	result["committed"] = bool(result.get("committed", true))
+	return result
 
 
 func _intent_error(intent: Dictionary) -> String:

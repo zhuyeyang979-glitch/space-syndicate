@@ -262,6 +262,35 @@ func rollback_batch(receipt: Dictionary) -> Dictionary:
 	return {"rolled_back": true, "committed": false, "reason_code": "rolled_back", "transaction_id": transaction_id, "sink_rollback": (rollback_variant as Dictionary).duplicate(true)}
 
 
+func finalize_batch(receipt: Dictionary) -> Dictionary:
+	var transaction_id := str(receipt.get("transaction_id", "")).strip_edges()
+	if transaction_id.is_empty() or not _transaction_journal.has(transaction_id):
+		return {"finalized": false, "committed": false, "reason_code": "batch_receipt_missing", "transaction_id": transaction_id}
+	var journal_entry: Dictionary = _transaction_journal[transaction_id]
+	var stored: Dictionary = journal_entry.get("receipt", {}) if journal_entry.get("receipt", {}) is Dictionary else {}
+	if str(stored.get("intent_hash", "")) != str(receipt.get("intent_hash", "")):
+		return {"finalized": false, "committed": false, "reason_code": "batch_receipt_binding_invalid", "transaction_id": transaction_id}
+	if bool(stored.get("finalized", false)):
+		var replay := stored.duplicate(true)
+		replay["idempotent_replay"] = true
+		return replay
+	if not bool(stored.get("committed", false)) or bool(stored.get("rolled_back", false)) or _batch_sink == null or not _batch_sink.has_method("finalize_batch"):
+		return {"finalized": false, "committed": bool(stored.get("committed", false)), "reason_code": "batch_not_finalizable", "transaction_id": transaction_id}
+	var sink_receipt: Dictionary = stored.get("sink_receipt", {}) if stored.get("sink_receipt", {}) is Dictionary else {}
+	var finalize_variant: Variant = _batch_sink.call("finalize_batch", sink_receipt.duplicate(true))
+	if not (finalize_variant is Dictionary) or not bool((finalize_variant as Dictionary).get("finalized", false)):
+		return {"finalized": false, "committed": true, "reason_code": "batch_sink_finalize_failed", "transaction_id": transaction_id}
+	stored["finalized"] = true
+	stored["reason_code"] = "finalized"
+	stored["sink_finalization"] = (finalize_variant as Dictionary).duplicate(true)
+	journal_entry["receipt"] = stored.duplicate(true)
+	_transaction_journal[transaction_id] = journal_entry
+	for index in range(_batch_receipts.size()):
+		if str(_batch_receipts[index].get("transaction_id", "")) == transaction_id:
+			_batch_receipts[index] = stored.duplicate(true)
+	return stored.duplicate(true)
+
+
 func batch_receipts_snapshot(include_rolled_back := true) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	for receipt in _batch_receipts:

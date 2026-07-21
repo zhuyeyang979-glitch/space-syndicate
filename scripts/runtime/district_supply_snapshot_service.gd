@@ -470,7 +470,6 @@ func _micro_chips(card: Dictionary) -> Array:
 	match target_kind:
 		"monster": entries.append({"text": "目标◆", "fg": "#fecacaff", "bg": "#7f1d1dff", "tip": "打出时需要指定一只在场怪兽。"})
 		"player": entries.append({"text": "目标玩家", "fg": "#bfdbfeff", "bg": "#1e3a8aff", "tip": "直接影响一名玩家；目标会成为公开线索。"})
-		"district_pair": entries.append({"text": "两区⇄", "fg": "#fde68aff", "bg": "#713f12ff", "tip": "合约牌需要供给区和需求区。"})
 		"monster_deploy": entries.append({"text": "召唤/升级", "fg": "#fecacaff", "bg": "#7f1d1dff", "tip": "怪兽牌用于召唤、升级或刷新同名怪兽。"})
 		"military_deploy": entries.append({"text": "部署", "fg": "#cffafeff", "bg": "#164e63ff", "tip": "军队牌部署一支短期受控战斗力量。"})
 		_: entries.append({"text": "按选区", "fg": "#c4b5fdff", "bg": "#312e81ff", "tip": "按当前选区、当前商品或卡面规则结算。"})
@@ -495,7 +494,6 @@ func _decision_chips(card: Dictionary) -> Array:
 	match target_kind:
 		"monster": entries.append({"text": "目标:怪兽", "fg": "#fecacaff", "bg": "#7f1d1dff", "tip": "打出时需要指定一只在场怪兽。"})
 		"player": entries.append({"text": "目标:玩家", "fg": "#bfdbfeff", "bg": "#1e3a8aff", "tip": "打出时需要指定一名玩家。"})
-		"district_pair": entries.append({"text": "目标:两区", "fg": "#fde68aff", "bg": "#713f12ff", "tip": "合约牌需要选择供给区和需求区。"})
 		_: entries.append({"text": "目标:按牌面", "fg": "#c4b5fdff", "bg": "#312e81ff", "tip": "按当前选区、当前商品或卡面文字结算。"})
 	return entries
 
@@ -599,7 +597,6 @@ func _target_scan_text(card: Dictionary) -> String:
 	match str(card.get("target_kind", "current_district")):
 		"monster": return "指定怪兽"
 		"player": return "指定玩家"
-		"district_pair": return "供给区+需求区"
 		"monster_deploy": return "落点/同名怪兽"
 		"military_deploy": return "部署区域"
 	return "当前选区"
@@ -609,7 +606,6 @@ func _target_scan_tooltip(card: Dictionary) -> String:
 	match str(card.get("target_kind", "current_district")):
 		"monster": return "打出时要选择一只场上怪兽。"
 		"player": return "打出时要选择一名玩家；结果会变成公开推理线索。"
-		"district_pair": return "合约牌先选供给区和需求区，再进入签约流程。"
 		"monster_deploy": return "一级怪兽通常选择落点；同名在场时可升级并刷新生命/持续时间。"
 		"military_deploy": return "军队牌部署短期受控单位，后续用命令牌行动。"
 	return "多数经济牌按当前选区或卡面说明结算。"

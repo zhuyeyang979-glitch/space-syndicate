@@ -2960,8 +2960,6 @@ func _ensure_player_private_intel_state() -> void:
 	for i in range(_game_runtime_coordinator_node().world_session_state().players.size()):
 		var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[i]
 		player.erase("known_card_owners")
-		if not (player.get("known_contract_parties", {}) is Dictionary):
-			player["known_contract_parties"] = {}
 		if not (player.get("city_guesses", {}) is Dictionary):
 			player["city_guesses"] = {}
 		if not (player.get("city_guess_confidence", {}) is Dictionary):
@@ -2994,12 +2992,10 @@ func _role_runtime_copy_fields() -> Array:
 		"intel_city_reveal_charges",
 		"card_history_residual_catalog_charges",
 		"card_history_public_exclusion_charges",
-		"intel_contract_trace_charges",
 		"city_guess_reward_bonus",
 		"high_volatility_sale_threshold",
 		"high_volatility_first_sale_bonus",
 		"high_volatility_bonus_once_per_market_cycle",
-		"contract_flow_discount",
 		"monster_cards_as_counter",
 		"monster_control_limit_bonus",
 		"military_control_limit_bonus",
@@ -3677,7 +3673,7 @@ func _city_public_clue_products_from_text(clue: String) -> Array:
 
 
 func _city_public_clue_kind_from_text(clue: String) -> String:
-	if clue.contains("合约") or clue.contains("签约") or clue.contains("拒签"):
+	if clue.contains("合约"):
 		return "合约"
 	if clue.contains("商路") or clue.contains("断路") or clue.contains("黑客"):
 		return "商路"
@@ -5134,8 +5130,6 @@ func _derived_skill_tags(kind: String) -> Array:
 			return ["情报", "区域"]
 		"card_history_public_review", "card_history_subscription":
 			return ["情报", "卡牌"]
-		"intel_contract_trace":
-			return ["情报", "合约"]
 		"weather_control":
 			return ["天气"]
 		"monster_lure":

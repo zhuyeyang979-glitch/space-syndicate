@@ -106,7 +106,7 @@ const PRODUCT_PROFILES := {
 	"离岸水晶": {"category": "航线晶体", "route": "海洋物流线", "terrain": "离岸平台", "use": "天气、航线、全局采购和远程补给的关键商品。", "hook": "已绑定航线预报和星门采购权，是物流策略核心。", "flavor": "水晶会折射出还没到来的航线。", "glyph": "◇", "accent": Color("#38bdf8"), "secondary": Color("#f0abfc")},
 	"潮汐电浆": {"category": "海浪能源", "route": "海洋物流线", "terrain": "潮汐发电阵列", "use": "海浪供电商品，适合交通速度、航线预报和能源城市买涨。", "hook": "天气预报和海洋交通水平会直接影响它的策略价值。", "flavor": "每一次浪涌都被压缩成一枚蓝白色电浆币。", "glyph": "≈⚡", "accent": Color("#0ea5e9"), "secondary": Color("#facc15")},
 	"晨昏奶酪": {"category": "极地食品", "route": "食品消费线", "terrain": "晨昏牧场", "use": "中价稳定消费品，可接精密/晶体路线需求。", "hook": "适合成为城市需求端而非强投机端。", "flavor": "早晨吃像黎明，晚上吃像加班。", "glyph": "◐", "accent": Color("#fef08a"), "secondary": Color("#fb7185")},
-	"轨迹墨水": {"category": "情报材料", "route": "情报科技线", "terrain": "数据塔/海关", "use": "匿名推理、合约回溯、天气干涉和竞争封锁的关键门槛。", "hook": "打出它会暴露强线索，是信息战路线核心。", "flavor": "写下去的字会标出作者刚刚去过哪里。", "glyph": "⌁", "accent": Color("#1d4ed8"), "secondary": Color("#a855f7")},
+	"轨迹墨水": {"category": "情报材料", "route": "情报科技线", "terrain": "数据塔/海关", "use": "匿名推理、公开履历复盘、天气干涉和竞争封锁的关键门槛。", "hook": "打出它会暴露强线索，是信息战路线核心。", "flavor": "写下去的字会标出作者刚刚去过哪里。", "glyph": "⌁", "accent": Color("#1d4ed8"), "secondary": Color("#a855f7")},
 	"等离子米": {"category": "能量主粮", "route": "食品消费线", "terrain": "能源农场", "use": "军需和大众消费之间的桥梁商品。", "hook": "适合棱刃重甲/镜像猎兵相关能量食品偏好。", "flavor": "煮熟后米粒会悬浮三厘米，方便偷吃。", "glyph": "⋯", "accent": Color("#fb7185"), "secondary": Color("#facc15")},
 	"北极薄荷": {"category": "修复药材", "route": "修复避难线", "terrain": "极地温室", "use": "避难、医疗、冷却城市的辅助商品。", "hook": "适合和光合凝胶组成防御经济线。", "flavor": "闻一下，过热的怪兽也会短暂怀疑人生。", "glyph": "✚", "accent": Color("#2dd4bf"), "secondary": Color("#d9f99d")},
 	"火山番茄": {"category": "高热食品", "route": "高危能源线", "terrain": "火山陆地", "use": "高热高波动消费品，适合爆发怪兽和买涨窗口。", "hook": "被破坏或天气影响时 GDP 变化很戏剧化。", "flavor": "切开会冒岩浆味番茄汁。", "glyph": "◆", "accent": Color("#ef4444"), "secondary": Color("#f97316")},
@@ -930,7 +930,7 @@ func apply_product_contract_boon(player_index: int, skill: Dictionary, target_co
 		_log("%s商品目标无效：%s。" % [source, str(target.get("reason_code", "product_target_invalid"))])
 		return false
 	var product_name := str(target.get("product_id", ""))
-	if product_name.is_empty(): _log("%s没有可签约商品。" % source); return false
+	if product_name.is_empty(): _log("%s没有可交易商品。" % source); return false
 	var entry := market_entry(product_name); var before_price := product_price(product_name); var before_volatility := int(entry.get("volatility", 4))
 	var contract_seconds := _skill_duration(skill, "market_contract_seconds", "market_contract_turns", int(skill.get("growth_turns", 1)))
 	var result := _formula("product_contract_boon", {"entry": entry, "demand_pressure": maxi(0, int(skill.get("market_demand_pressure", 0))), "supply_pressure": maxi(0, int(skill.get("market_supply_pressure", 0))), "contract_seconds": contract_seconds, "volatility_delta": int(skill.get("volatility_delta", 0)), "source": source})

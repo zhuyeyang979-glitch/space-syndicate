@@ -42,6 +42,9 @@ func validate_envelope(payload: Dictionary) -> Dictionary:
 
 func validate_v06_envelope(payload: Dictionary) -> Dictionary:
 	var errors: Array[String] = []
+	var retired_payload := LegacyContractPayloadGuardV06.validation_report(payload)
+	if not bool(retired_payload.get("valid", false)):
+		errors.append("retired_contract_payload_rejected")
 	if payload.keys().size() != V06_TOP_LEVEL_KEYS.size():
 		errors.append("top_level_field_count_mismatch")
 	for key in V06_TOP_LEVEL_KEYS:

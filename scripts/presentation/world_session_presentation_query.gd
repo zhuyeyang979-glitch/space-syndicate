@@ -17,7 +17,7 @@ const PRIVATE_CARD_KEYS := [
 	"queued_for_resolution",
 	"lock_left",
 ]
-const PRIVATE_PLAYER_KEYS := ["cash", "cash_cents", "city_guesses", "city_guess_confidence", "city_guess_reasons", "known_card_owners", "known_contract_parties", "eliminated"]
+const PRIVATE_PLAYER_KEYS := ["cash", "cash_cents", "city_guesses", "city_guess_confidence", "city_guess_reasons", "known_card_owners", "eliminated"]
 
 var _world_session_state: WorldSessionState
 var _authorization: LocalViewerAuthorization

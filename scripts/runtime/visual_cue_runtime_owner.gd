@@ -288,7 +288,7 @@ func _sfx_key_for_callout(actor: String, action: String, detail: String) -> Stri
 		return "impact"
 	if text.contains("天气") or text.contains("警报") or text.contains("闪电") or text.contains("风暴") or text.contains("电磁"):
 		return "storm"
-	if text.contains("卡牌") or text.contains("合约") or text.contains("竞价") or text.contains("公开") or text.contains("签约") or text.contains("建造") or text.contains("城市") or text.contains("购买"):
+	if text.contains("卡牌") or text.contains("合约") or text.contains("订单") or text.contains("竞价") or text.contains("公开") or text.contains("建造") or text.contains("城市") or text.contains("购买"):
 		return "card"
 	return ""
 
