@@ -44,12 +44,13 @@ func _test_region_rack_intent() -> void:
 	await process_frame
 	var action_counts := {"purchase": 0, "preview": 0}
 	var quote_state := {"quote": {}}
-	drawer.connect("supply_action_requested", func(action_id: String, _payload: Dictionary) -> void:
+	drawer.connect("supply_action_requested", func(action_id: String, payload: Dictionary) -> void:
 		if action_id == "district_supply_preview_card":
 			action_counts["preview"] = int(action_counts.get("preview", 0)) + 1
+			if str(payload.get("source", "")) == "market_activation":
+				quote_state["quote"] = {"quote_id": "quote-1", "remaining_world_us": 5_000_000, "quote_active": true}
 		elif action_id == "district_supply_purchase_card":
 			action_counts["purchase"] = int(action_counts.get("purchase", 0)) + 1
-			quote_state["quote"] = {"quote_id": "quote-1", "remaining_world_us": 5_000_000, "quote_active": true}
 	)
 	var market_card := drawer.find_child("DistrictSupplyMarketCard_0", true, false) as Control
 	_expect(market_card != null, "region rack renders a market card")
@@ -70,7 +71,7 @@ func _test_region_rack_intent() -> void:
 		market_card.call("_gui_input", double_click)
 		await process_frame
 		var locked_quote: Dictionary = quote_state.get("quote", {}) as Dictionary
-		_expect(int(action_counts.get("purchase", 0)) == 1 and int(locked_quote.get("remaining_world_us", 0)) == 5_000_000, "explicit double-click purchase intent reaches the existing five-second quote route")
+		_expect(int(action_counts.get("preview", 0)) == 2 and int(action_counts.get("purchase", 0)) == 0 and int(locked_quote.get("remaining_world_us", 0)) == 5_000_000, "explicit double-click follows the projected quote action before any purchase intent")
 
 	var district_node := DISTRICT_NODE_SCENE.instantiate() as Control
 	root.add_child(district_node)
@@ -116,7 +117,7 @@ func _test_region_rack_intent() -> void:
 		"price": 100,
 		"purchase_state": {"label": "选择以报价", "detail": "暗面不可报价。", "actionable": false, "requires_discard": false},
 	}, {"visibility_scope": "viewer_private", "availability_kind": "dark"}) as Dictionary
-	_expect(bool(quote_preview.get("buy_enabled", false)) and str(quote_preview.get("buy_text", "")).contains("获取报价"), "explicit Buy remains enabled to create the first quote for a valid sunlit listing")
+	_expect(bool(quote_preview.get("buy_enabled", false)) and str(quote_preview.get("buy_text", "")).contains("获取报价") and str(quote_preview.get("primary_action_id", "")) == "district_supply_preview_card", "explicit Buy remains enabled with the typed quote action for a valid sunlit listing")
 	_expect(not bool(dark_preview.get("buy_enabled", true)), "invalid or dark listings remain fail-closed before quote creation")
 
 	drawer.queue_free()
@@ -336,6 +337,7 @@ func _drawer_snapshot() -> Dictionary:
 		"body": "被动预览",
 		"buy_text": "购买 ¥100",
 		"buy_enabled": true,
+		"primary_action_id": "district_supply_preview_card",
 		"accent": "#38bdf8ff",
 		"theme_color": "#38bdf8ff",
 	}

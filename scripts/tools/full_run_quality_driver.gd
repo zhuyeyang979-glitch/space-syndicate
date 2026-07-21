@@ -669,10 +669,14 @@ func _district_supply_ui_action(runtime_screen: Node) -> Dictionary:
 	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
 	var preview: Dictionary = snapshot.get("preview", {}) if snapshot.get("preview", {}) is Dictionary else {}
 	var preview_card_name := str(preview.get("card_name", ""))
-	if not preview_card_name.is_empty() and bool(preview.get("buy_enabled", false)):
+	var primary_action_id := str(preview.get("primary_action_id", ""))
+	if not preview_card_name.is_empty() \
+			and bool(preview.get("buy_enabled", false)) \
+			and primary_action_id in ["district_supply_preview_card", "district_supply_purchase_card"]:
+		var action_phase := "quote" if primary_action_id == "district_supply_preview_card" else "purchase"
 		return {
-			"id": "district_supply_purchase_card",
-			"phase": "play.supply.purchase.%s" % preview_card_name,
+			"id": primary_action_id,
+			"phase": "play.supply.%s.%s" % [action_phase, preview_card_name],
 			"disabled": false,
 			"origin": "district_supply",
 			"payload": {"card_name": preview_card_name, "source": "full_run_visible_preview"},
