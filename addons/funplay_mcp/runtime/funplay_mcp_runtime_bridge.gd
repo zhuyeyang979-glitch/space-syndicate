@@ -8,6 +8,7 @@ const WRITE_INTERVAL_SEC = 0.5
 const MAX_TREE_DEPTH = 6
 const MAX_TREE_NODES = 200
 const MAX_RUNTIME_EVENTS = 100
+const RELEASE_FEATURE = "space_syndicate_release"
 const KEY_NAME_MAP = {
 	"enter": KEY_ENTER,
 	"escape": KEY_ESCAPE,
@@ -35,9 +36,19 @@ const MOUSE_BUTTON_MAP = {
 var _elapsed: float = 0.0
 var _last_command_id: String = ""
 var _runtime_events: Array = []
+var _release_disabled: bool = false
+
+
+func _enter_tree() -> void:
+	_release_disabled = OS.has_feature(RELEASE_FEATURE)
+	if _release_disabled:
+		process_mode = Node.PROCESS_MODE_DISABLED
 
 
 func _ready() -> void:
+	if _release_disabled:
+		set_process(false)
+		return
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_clear_session_command_files()
 	_add_runtime_event("ready", "Runtime bridge ready.")
@@ -45,6 +56,8 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if _release_disabled:
+		return
 	_poll_command()
 	_elapsed += delta
 	if _elapsed < WRITE_INTERVAL_SEC:
@@ -54,6 +67,8 @@ func _process(delta: float) -> void:
 
 
 func _exit_tree() -> void:
+	if _release_disabled:
+		return
 	_add_runtime_event("exit", "Runtime bridge exiting.")
 	_write_state("exit")
 
