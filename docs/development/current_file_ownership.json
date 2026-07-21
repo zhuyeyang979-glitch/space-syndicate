@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-22T06:50:23+09:00",
+  "base_main_sha": "033d0226a023f3c0acab8577fd57712dbce42202",
+  "policy": {
+    "one_writer_per_file_ownership_set": true,
+    "shared_hot_files_require_integration_request": true,
+    "unlisted_production_files_default_to_integration_only": true
+  },
+  "shared_hot_files": [
+    "scripts/main.gd",
+    "scenes/main.tscn",
+    "scripts/runtime/game_runtime_coordinator.gd",
+    "scenes/runtime/GameRuntimeCoordinator.tscn",
+    "scripts/ui/game_screen.gd",
+    "scenes/ui/GameScreen.tscn",
+    "scripts/ui/planet_board.gd",
+    "scenes/ui/PlanetBoard.tscn",
+    "scripts/ui/player_board.gd",
+    "scenes/ui/PlayerBoard.tscn",
+    "scripts/ui/right_inspector.gd",
+    "scenes/ui/RightInspector.tscn",
+    "project.godot",
+    "tests/main_gd_architecture_gate_test.gd",
+    "tests/main_runtime_composition_test.gd",
+    "tests/layout_scene_smoke_test.gd",
+    "tests/smoke_test.gd",
+    "docs/migration/main_gd_cutover_ledger.json",
+    "docs/development_log.md",
+    "resources/cards/runtime/card_runtime_catalog_v04.tres",
+    "data/cards/card_runtime_catalog_v06.json",
+    "assets/art/role_portraits/temporary/manifest.json",
+    "data/art/card_illustration_manifest_v06.json",
+    "data/art/monster_body_art_manifest.json"
+  ],
+  "ownership_sets": [
+    {
+      "ownership_set_id": "PROGRAM-DIRECTOR",
+      "writer": "continuous-development-director",
+      "mode": "WRITE",
+      "files": ["docs/development/current_program_state.json", "docs/development/current_task_graph.json", "docs/development/current_file_ownership.json"],
+      "status": "ACTIVE"
+    },
+    {
+      "ownership_set_id": "P0-CASH-AUTHORITY-NEW-OWNER",
+      "writer": "unassigned-single-writer",
+      "mode": "WRITE_NEW_FILES_ONLY",
+      "files": ["new typed cash mutation owner/port scene and script", "new focused tests and Bench", "docs/integration_requests/P0-CASH-AUTHORITY-COMMITMENT-BOUNDARY.json"],
+      "integration_only_files": ["scripts/main.gd", "scenes/main.tscn", "scripts/runtime/game_runtime_coordinator.gd", "scenes/runtime/GameRuntimeCoordinator.tscn"],
+      "status": "READY"
+    },
+    {
+      "ownership_set_id": "P1-FULLRUN-DRIVER",
+      "writer": "unassigned-single-writer",
+      "mode": "WRITE",
+      "files": ["scripts/tools/full_run_quality_driver.gd", "tests/full_run_quality_driver_contract_test.gd", "reports/playability/full_run/**"],
+      "forbidden_files": ["scripts/ui/game_screen.gd", "scripts/runtime/district_supply_action_port.gd", "scripts/main.gd"],
+      "status": "READY"
+    },
+    {
+      "ownership_set_id": "P1-WINDOWS-EXPORT",
+      "writer": "unassigned-single-writer",
+      "mode": "WRITE",
+      "files": ["export_presets.cfg", "tools/release/**", "docs/release/**", ".github/workflows/windows-export.yml"],
+      "integration_only_files": ["project.godot"],
+      "status": "READY"
+    },
+    {
+      "ownership_set_id": "P2-ALPHA01-CONTENT",
+      "writer": "unassigned-single-writer",
+      "mode": "WRITE_NEW_FILES_ONLY",
+      "files": ["resources/content/alpha01/**", "docs/content/alpha01/**", "tests/alpha01_content_manifest_test.gd"],
+      "integration_only_files": ["resources/cards/runtime/card_runtime_catalog_v04.tres", "data/cards/card_runtime_catalog_v06.json", "resources/compendium/monsters/active_roster_pack.tres"],
+      "status": "READY"
+    },
+    {
+      "ownership_set_id": "P2-ROLE-ART",
+      "writer": "unassigned-role-art-writer",
+      "mode": "WRITE_NEW_FILES_ONLY",
+      "files": ["art_sources/role_portraits/alpha01/**", "assets/art/role_portraits/alpha01/**", "data/art/alpha01_role_portrait_manifest.json", "docs/art_qa/role_portraits/alpha01/**", "docs/licenses/third_party_art/alpha01/**"],
+      "integration_only_files": ["assets/art/role_portraits/temporary/manifest.json", "production GameScreen and seat scenes"],
+      "status": "READY"
+    },
+    {
+      "ownership_set_id": "P2-MONSTER-ART-QA",
+      "writer": "unassigned-monster-art-qa-writer",
+      "mode": "WRITE_NEW_FILES_ONLY",
+      "files": ["docs/art_qa/monsters/alpha01/**", "tests/alpha01_monster_art_manifest_test.gd", "tools/art_pipeline/monster_qa/**"],
+      "integration_only_files": ["data/art/monster_body_art_manifest.json", "resources/compendium/monsters/active_roster_pack.tres", "production monster scenes"],
+      "status": "READY"
+    },
+    {
+      "ownership_set_id": "P2-CARD-ART-ALPHA01",
+      "writer": "unassigned-card-art-writers-by-id-range",
+      "mode": "WRITE_NEW_FILES_ONLY",
+      "files": ["assets/art/cards/alpha01/**", "data/art/alpha01_card_illustration_manifest.json", "docs/art_qa/cards/alpha01/**"],
+      "integration_only_files": ["data/art/card_illustration_manifest_v06.json", "production card scenes"],
+      "status": "BLOCKED"
+    },
+    {
+      "ownership_set_id": "P4-FULL-SMOKE-FIXTURE",
+      "writer": "unassigned-single-test-writer",
+      "mode": "WRITE",
+      "files": ["tests/smoke_test.gd", "tests/helpers/**", "docs/test_debt/full_smoke_fixture_migration.md"],
+      "forbidden_files": ["scripts/main.gd", "production runtime owners"],
+      "status": "READY"
+    },
+    {
+      "ownership_set_id": "INTEGRATION-HOT-FILES",
+      "writer": "integration-agent-only",
+      "mode": "WRITE_BY_APPROVED_REQUEST",
+      "files": ["all shared_hot_files listed above"],
+      "required_input": "docs/integration_requests/<task_id>.json",
+      "status": "READY"
+    }
+  ],
+  "conflict_count": 0,
+  "unauthorized_shared_hot_file_write_count": 0
+}

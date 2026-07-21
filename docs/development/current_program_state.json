@@ -1,0 +1,178 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-22T06:50:23+09:00",
+  "source": {
+    "repository": "zhuyeyang979-glitch/space-syndicate",
+    "branch": "main",
+    "main_sha": "033d0226a023f3c0acab8577fd57712dbce42202",
+    "open_pull_requests": [],
+    "working_tree_clean": true
+  },
+  "long_term_outcomes": {
+    "PLAYABLE_GAME": false,
+    "CONTENT_PIPELINE_OPEN": true,
+    "ART_PIPELINE_OPEN": true,
+    "MAIN_GD_BOOTSTRAP_ONLY": false,
+    "RETIRED_MECHANIC_REVIVAL_COUNT": 0
+  },
+  "playable": {
+    "status": "DEVELOPMENT_SLICE_ONLY",
+    "internal_playable": false,
+    "alpha_0_1_rc": false,
+    "formal_four_seat_playthrough": "not_completed",
+    "headed_evidence": "formal four-seat startup and an 18-second table slice exist; no natural run-to-settlement evidence exists",
+    "full_run_driver": {
+      "status": "blocked_by_driver_boundary",
+      "last_observed_stop": "scripted_ui_action_no_progress:rack",
+      "interpretation": "the QA driver bypasses the typed GameScreen rack action path; this is not yet evidence of a product defect"
+    },
+    "save_resume": {
+      "transactional_owner_count": 12,
+      "required_owner_count": 19,
+      "resume_ready": false,
+      "unsupported_sections": [
+        "ruleset",
+        "routes",
+        "commodity_belt_visibility",
+        "card_inventory",
+        "military",
+        "card_resolution_queue",
+        "ai"
+      ]
+    },
+    "windows_export": {
+      "export_presets_present": false,
+      "exported_executable_present": false,
+      "packaging_automation_present": false
+    }
+  },
+  "architecture": {
+    "main_gd": {
+      "physical_lines": 6741,
+      "nonblank_lines": 5690,
+      "methods": 486,
+      "top_level_variables": 47,
+      "constants": 64,
+      "top_level_preloads": 7,
+      "external_caller_files": 102,
+      "external_call_occurrences": 1276,
+      "budget_gate": "PASS"
+    },
+    "cutover_ledger": {
+      "cut_over_domains": 36,
+      "pending_domains": 4,
+      "pending": [
+        "typed_world_ports",
+        "save_restore",
+        "presentation_action_routing",
+        "remaining_root_responsibilities"
+      ],
+      "ledger_quality": "needs_reconciliation"
+    },
+    "confirmed_p0_risks": [
+      {
+        "id": "cash_owner_commitment_bypass",
+        "summary": "three Main cash mutation paths write cash without the authoritative cents/commitment boundary"
+      },
+      {
+        "id": "ai_world_capability_overexposure",
+        "summary": "AI and several world bridges still receive Main and generic get/set/callv capability"
+      },
+      {
+        "id": "sale_receipt_postcommit_duplicate",
+        "summary": "duplicate CommodityFlow receipt batches can repeat Main-side GDP/derivative/history post-processing"
+      }
+    ]
+  },
+  "content": {
+    "runtime_card_resource_count": 230,
+    "runtime_card_family_count": 113,
+    "runtime_card_pack_count": 10,
+    "runtime_common_pool_count": 116,
+    "runtime_effect_kind_count": 48,
+    "v06_catalog_record_count": 348,
+    "public_role_count": 24,
+    "active_monster_roster_count": 8,
+    "product_count": 46,
+    "industry_count": 6,
+    "alpha_0_1_curated_manifest_present": false,
+    "status": "PIPELINE_OPEN_ALPHA_CURRATION_MISSING"
+  },
+  "art": {
+    "role_portraits": {
+      "role_count": 24,
+      "rendered_roles": 8,
+      "pending_roles": 16,
+      "runtime_png_count": 16,
+      "manifest_status": "awaiting_official_source_models"
+    },
+    "card_illustrations": {
+      "mapped_style_keys": 6,
+      "authored_candidates": 4,
+      "licensed_placeholders": 2,
+      "alpha_content_parity": false
+    },
+    "monster_bodies": {
+      "mapped_roster_entries": 8,
+      "missing_asset_files": 0,
+      "license_metadata_present": true
+    },
+    "product_art_manifest_present": false,
+    "status": "PIPELINE_OPEN_ALPHA_PARITY_INCOMPLETE"
+  },
+  "rule_authority": {
+    "gate": "GREEN",
+    "authoritative_files": [
+      "docs/tabletop_rulebook_v06.md",
+      "docs/rules_v06_runtime_directive.md",
+      "docs/rules/v06_mechanic_status_registry.json"
+    ],
+    "retired_mechanic_revival_count": 0,
+    "contract_response_status": "RETIRED",
+    "conditional_order_auto_settlement_status": "ACTIVE"
+  },
+  "known_test_state": {
+    "active_product_regressions": [],
+    "stale_fixture_debt": [
+      "human_first_table gate references a deleted test",
+      "human_normal_table_playability_v06_test.gd has a parse failure",
+      "layout suite contains old Campaign/PublicTrack/Setup/CityDevelopment oracles",
+      "full smoke still invokes a retired _new_game fixture"
+    ],
+    "broad_gate_interpretation": "P4 debt unless a focused current-product gate reproduces the failure"
+  },
+  "product_blockers": [
+    "no complete authoritative four-seat run-to-settlement",
+    "save resume is 12/19 and not resume-ready",
+    "no Windows export preset or executable",
+    "full-run QA driver does not yet use the typed rack action path"
+  ],
+  "architecture_blockers": [
+    "cash owner and monster wager commitment boundary can diverge",
+    "AI/world bridges retain generic Main capability",
+    "sale-receipt post-commit processing lacks an exact-once journal",
+    "main.gd is not bootstrap-only"
+  ],
+  "content_blockers": [
+    "no curated Alpha 0.1 manifest selecting 8 roles, 30-50 cards, 6-10 monsters and one map profile",
+    "selected content has not been proven free of dead cards and missing runtime consumers"
+  ],
+  "art_blockers": [
+    "16 of 24 role portraits remain pending",
+    "only 6 card identities have illustration mappings",
+    "no Alpha art parity manifest covers the curated content set"
+  ],
+  "worktrees": [
+    {"branch": "main", "head": "033d022", "state": "clean", "classification": "authoritative_main"},
+    {"branch": "integration/v06-playable", "head": "95f8b2c", "state": "dirty_generated_uid_only", "classification": "legacy_integration"},
+    {"branch": "codex/a-v06-product-codex", "head": "c98e323", "state": "clean", "classification": "available_legacy_role"},
+    {"branch": "codex/b-v06-military-regression", "head": "7a4de27", "state": "clean", "classification": "available_legacy_role"},
+    {"branch": "codex/c-v06-save-regression", "head": "cf11f61", "state": "clean", "classification": "available_legacy_role"},
+    {"branch": "codex/contract-forced-response-cutover", "head": "089088a", "state": "dirty", "classification": "preserved_retired_experiment_do_not_integrate"},
+    {"branch": "codex/scene-first-remove-main-gd", "head": "3ceda39", "state": "dirty_generated_artifacts", "classification": "historical_architecture_worktree"},
+    {"branch": "codex/playtest-alpha-0.1-19f2030", "head": "19f2030", "state": "dirty", "classification": "stale_unmerged_experiment_requires_reaudit"},
+    {"branch": "codex/temporary-role-table-art-20260717-012745", "head": "e0a19d0", "state": "clean", "classification": "historical_art_source"},
+    {"branch": "codex/v06-legacy-contract-response-retirement-19f2030", "head": "d09f119", "state": "clean", "classification": "merged_source_branch"},
+    {"branch": "codex/continuous-development-program-033d022", "head": "033d022", "state": "active", "classification": "program_coordinator"}
+  ]
+}
