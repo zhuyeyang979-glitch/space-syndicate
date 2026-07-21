@@ -18,11 +18,11 @@ these services duplicates eligibility rules.
 
 Every evaluation returns `allowed`, `actionable`, `reason_code`, `reason_args`, `requirement_status`, `cash_cost`, `target_status`, `target_kind`, `target_required`, `target_ready`, and `queue_preflight`. Inputs and outputs contain only Dictionary, Array, String, Number, Bool, and null.
 
-Stable rejection precedence preserves the existing player experience: invalid/eliminated player, game or pending-decision blocks, cooldown/lock state, starter summon placement, response-window legality, target availability, contract/city/military requirements, GDP share, cash, bid reserve, then target selection readiness.
+Stable rejection precedence preserves the existing player experience: invalid/eliminated player, game or pending-decision blocks, cooldown/lock state, starter summon placement, counter-window legality, target availability, conditional-order network/city/military requirements, GDP share, cash, bid reserve, then target selection readiness.
 
 ## World Bridge
 
-The bridge reads player cash/cooldown, district and GDP-share facts, forced-decision state, counter-window context, contract validation, city-development validation, military presence/cooldown/deployment, target counts, and Queue metadata. It does not decide, rank, mutate, format, or retain private state.
+The bridge reads player cash/cooldown, district and GDP-share facts, forced-decision state, counter-window context, conditional-order network facts, city-development validation, military presence/cooldown/deployment, target counts, and Queue metadata. It does not decide, rank, mutate, format, or retain private state.
 
 ## Runtime Adapters
 

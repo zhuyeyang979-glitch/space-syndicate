@@ -3,17 +3,17 @@
 ## Decision
 
 Sprint 58 should use family files with embedded rank Resources, grouped by
-ordered category packs. It should not create 239 independent rank files and it
+ordered category packs. It should not create 230 independent rank files and it
 should not store the entire catalog in one untyped Dictionary.
 
 Recommended production asset count:
 
-- 114 `CardRuntimeFamilyResource` `.tres` files
-- 232 embedded `CardRuntimeRankResource` subresources
+- 113 `CardRuntimeFamilyResource` `.tres` files
+- 230 embedded `CardRuntimeRankResource` subresources
 - 10 ordered `CardRuntimePackResource` `.tres` files
 - 1 `CardRuntimeCatalogResource` `.tres` file
 
-The expected 125 tracked `.tres` files keep one human-editable file per family
+The expected 124 tracked `.tres` files keep one human-editable file per family
 without producing a separate file for every rank.
 
 ## Resource types
@@ -111,11 +111,11 @@ presentation-only and cannot override runtime definitions.
 
 ## Validation requirements for Sprint 58
 
-- 232 explicit definitions reproduce the current Dictionary shape.
-- 114 families and all I-IV derived results match byte-for-byte after canonical
+- 230 explicit definitions reproduce the current Dictionary shape.
+- 113 families and all I-IV derived results match byte-for-byte after canonical
   key sorting.
-- 70 upgradeable families and 118 public-pool ids preserve exact order.
-- all 49 effect kinds pass a kind-specific field validator.
+- 70 upgradeable families and 116 public-pool ids preserve exact order.
+- all 48 effect kinds pass a kind-specific field validator.
 - all consumers receive the same pure-data snapshot.
 - save card names and privacy boundaries remain unchanged.
 - Resource load failure is explicit; there is no `main.gd` fallback.

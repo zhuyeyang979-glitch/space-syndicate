@@ -147,14 +147,14 @@ At `1280×720`:
 - one transient surface fits without hiding its primary action;
 - no two actionable modals overlap;
 - the central planet remains recognizable behind dismissible surfaces;
-- monster wager/public bid/contract/full-hand/target surfaces share one stable modal area;
+- monster wager/public bid/counter/full-hand/target surfaces share one stable modal area;
 - region rack may use a drawer or modal layout, but when closed reserves zero width;
 - closed surfaces have zero layout and input footprint.
 
 ## Privacy
 
 - Public wager/bid facts remain public only where current rules allow.
-- A contract responder, discard choice or target choice is visible only to its authorized player.
+- A counter responder, discard choice or target choice is visible only to its authorized player.
 - Other players see a short “另一名玩家正在决定” style hint, not the private options.
 - Presentation snapshots exclude exact opponent cash, hands, private targets, owner truth,
   AI plans/scores and transaction fingerprints.
@@ -203,7 +203,7 @@ or transaction lineage to players.
 - explicit intent creates a 5-second quote;
 - full bid surface exists only in `public_bid`;
 - wager exists only during monster battle wager timing;
-- counter/contract/full-hand/target surfaces exist only for real decisions;
+- counter/full-hand/target surfaces exist only for real decisions;
 - scheduler exposes at most one actionable surface;
 - forced Back cannot open pause;
 - every resolved/closed surface releases focus and layout;

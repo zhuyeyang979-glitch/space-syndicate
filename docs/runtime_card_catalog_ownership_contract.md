@@ -8,13 +8,13 @@ is `CardRuntimeCatalogService`, which references
 
 The catalog contains exactly:
 
-- 232 authored card definitions
-- 114 family Resources
-- 232 embedded rank subresources
+- 230 authored card definitions
+- 113 family Resources
+- 230 embedded rank subresources
 - 70 upgradeable families
-- 118 ordered public-pool card ids
+- 116 ordered public-pool card ids
 - 10 editorial pack Resources
-- 49 validated effect kinds
+- 48 validated effect kinds
 
 `main.gd` is not a catalog owner and has no catalog fallback.
 
@@ -109,7 +109,7 @@ cooldown/lock state.
 ## Integrity gate
 
 `RuntimeCardCatalogResourceBench` retains the forty Sprint 57 historical cases
-and adds forty live-cutover cases. It verifies all 232 active canonical hashes, all
+and adds forty live-cutover cases. It verifies all 230 active canonical hashes, all
 counts, three ordered hashes, derived growth, external sources, consumer
 composition, privacy, save ids, deterministic pool order, and legacy deletion.
 The required gate is 80/80.

@@ -9,12 +9,12 @@ Measured from `scripts/main.gd` on the current branch:
 - 24 public alien role cards.
 - 6 AI personality profiles.
 - 46 total products, including 12 ocean products.
-- 232 active static skill/card entries, plus generated monster-card entries in the shared card codex.
+- 230 active static skill/card entries, plus generated monster-card entries in the shared card codex.
 - 22 complete static I-IV rank ladders.
 - 28 military-force cards: 行星防卫军 plus air, land, and ocean forces.
 - 12 product-futures cards: commodity long/short and warehouse stockpile lines.
 - 12 city-GDP derivative cards: buy-up, short, and disaster-insurance lines.
-- 7 area trade-contract cards.
+- 8 ranked conditional order/supply cards (two I-IV families); the former seven area trade-contract cards are retired from active pools.
 - 6 news-event cards and 8 weather-control cards.
 - 4 card-counter cards.
 - 8 direct hand-interaction cards across 拆牌/牵牌 style effects.
@@ -42,7 +42,7 @@ The current branch now has an automated development-route pressure audit. It che
 | Finance/GDP speculation | City buy-up, city short, disaster insurance, commodity futures, warehouse stockpile | High leverage can become “cash from nowhere” if not tied to visible GDP/price movement | Commodity futures now have field-driven leverage/gate/clue audits; next pass should compare long-run AI profits across city GDP, commodity futures, and monster pressure routes |
 | Monster pressure | Monster cards, lures, takeover, resource preferences, monster wagers, ecology identity audit | Randomness can feel unfair if target reasons are hidden | Continue exposing attraction reasons, resource matches, and action text without revealing owner; future monsters must pass movement/resource/action/bound-skill/art differentiation checks |
 | Military command | Defense army, fighter, bomber, tank, missile, submarine, warship, reusable commands | Could overlap too much with monster destruction if not bounded | Keep movement non-crushing; reserve area HP damage for explicit strike commands; tune GDP pressure by unit role |
-| Intel/supply | Owner lens, card trace, contract trace, remote supply, global purchase | Too much truth can collapse the anonymous inference game | Prefer limited charges, private clues, and money stakes over full public reveal |
+| Intel/supply | Owner lens, public-card trace, remote supply, global purchase | Too much truth can collapse the anonymous inference game | Prefer limited charges, private clues, and money stakes over full public reveal |
 | Direct interaction | 星链拆解, 影仓牵引, 产权冻结, 轨道齐射, 相位否决 | Player-target effects can feel punitive if too cheap | Keep strong effects gated by product flow, public target result, and counter windows |
 | Weather/news | Forecasts, route weather cards, heat/crisis/market rumors | Passive noise would be confusing | Keep news card-made only; keep weather forecast public and limited to 1-5 regions |
 | Commodity/ocean economy | 46 goods with terrain profiles; ocean goods support fish, algae/fiber, black oil, tidal power, crystal, coral; run card supply now filters fixed-product cards and monster-resource cards by goods present on the generated planet, then local district supply requires matching nearby products/demands | Goods may still feel like names unless their art, regional source, and card route are visible enough in play | Tune distribution/rarity so each planet has several viable product routes without flooding every district with the same goods |
@@ -85,7 +85,7 @@ Next AI tuning should check whether each profile actually does its thing in long
 - 套利型AI should buy commodity/GDP speculation when the map supports it.
 - 破坏型AI should use direct interaction, route sabotage, monsters, and shorts against leaders.
 - 驯怪型AI should create monster pressure without pretending to control monsters permanently.
-- 合约型AI should build supply/demand links and accept/reject deals sensibly.
+- 订单型 AI should evaluate visible supply/demand links and automatic settlement feasibility; it never simulates another player's signature.
 - 情报型AI should use traces and owner guesses as a money route, not just as flavor.
 - Endgame behavior should visibly change when the cash goal or countdown matters: leaders protect and lock value, trailing players attack the leader's GDP/route base or take higher-leverage financial bets, and close contenders mix defense with targeted pressure.
 
