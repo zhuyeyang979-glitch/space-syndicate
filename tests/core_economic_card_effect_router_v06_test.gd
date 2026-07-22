@@ -137,6 +137,7 @@ func _run() -> void:
 	_verify_all_four_effect_kinds_route_and_finalize()
 	_verify_missing_owner_fails_closed()
 	_verify_abort_forwards_and_releases_association()
+	_verify_missing_owner_abort_fails_closed_and_preserves_association()
 	_verify_rollback_forwards_and_releases_association()
 	_verify_optional_finalize_releases_association()
 	_verify_missing_rollback_fails_closed_and_releases_association()
@@ -206,6 +207,19 @@ func _verify_abort_forwards_and_releases_association() -> void:
 	_expect(_association_is_released(router, transaction_id), "abort releases the prepared transaction association")
 	router.abort_prepared_effect(prepared)
 	_expect(handler.abort_calls.size() == 1, "repeated abort does not reach an owner after release")
+
+
+func _verify_missing_owner_abort_fails_closed_and_preserves_association() -> void:
+	var router = ROUTER_SCRIPT.new()
+	router.configure({"global_order_budget": HandlerWithoutFinalize.new()})
+	var transaction_id := "tx-router-abort-owner-unavailable"
+	var prepared: Dictionary = router.prepare_effect(_intent(transaction_id, "global_order_budget"))
+	var aborted: Dictionary = router.abort_prepared_effect(prepared)
+	_expect(not bool(aborted.get("aborted", true)), "missing owner abort cannot fabricate successful cleanup")
+	_expect(not bool(aborted.get("verified", true)), "missing owner abort remains unverified")
+	_expect(str(aborted.get("reason_code", "")) == "effect_owner_abort_unavailable", "missing owner abort has a stable fail-closed reason")
+	_expect(bool(aborted.get("transaction_pending", false)), "missing owner abort preserves the association for diagnosis or retry")
+	_expect(int(router.debug_snapshot().get("pending_transaction_count", 0)) == 1, "missing owner abort never silently discards possible owner state")
 
 
 func _verify_rollback_forwards_and_releases_association() -> void:
