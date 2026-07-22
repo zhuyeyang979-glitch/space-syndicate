@@ -1,11 +1,11 @@
 {
   "schema_version": 3,
-  "generated_at": "2026-07-23T04:56:00+09:00",
+  "generated_at": "2026-07-23T06:20:19+09:00",
   "source": {
     "repository": "zhuyeyang979-glitch/space-syndicate",
     "branch": "main",
-    "main_sha": "cb9194a32e86c20287572b20b92acc0064fcd858",
-    "latest_merge_pr": 46,
+    "main_sha": "fbbd35963d9b30b216546e3e72ca0e7012b21d05",
+    "latest_merge_pr": 48,
     "origin_divergence": {"ahead": 0, "behind": 0},
     "open_pull_requests": [],
     "source_tree_clean_before_reconciliation": true,
@@ -277,7 +277,7 @@
       "task_id": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
       "branch": "codex/p0-ai-world-typed-ports-cb9194a",
       "worktree": "E:/SpaceSyndicateWorkspace/space-syndicate-p0-ai-world-typed-ports-cb9194a",
-      "status": "ACTIVE_PREFLIGHT"
+      "status": "ACTIVE_FOUNDATION_PORTS_MERGED"
     },
     {
       "task_id": "P1-FOUR-SEAT-FIRST-ECONOMIC-ENGINE",

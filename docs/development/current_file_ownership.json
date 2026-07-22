@@ -1,7 +1,7 @@
 {
   "schema_version": 3,
-  "generated_at": "2026-07-23T04:56:00+09:00",
-  "base_main_sha": "cb9194a32e86c20287572b20b92acc0064fcd858",
+  "generated_at": "2026-07-23T06:20:19+09:00",
+  "base_main_sha": "fbbd35963d9b30b216546e3e72ca0e7012b21d05",
   "policy": {
     "one_writer_per_file_ownership_set": true,
     "shared_hot_files_require_designated_integration_writer": true,
@@ -53,15 +53,16 @@
   ],
   "active_ownership_sets": [
     {
-      "ownership_set_id": "PROGRAM-STATE-AFTER-COMMODITY-CB9194A",
+      "ownership_set_id": "PROGRAM-STATE-AFTER-AI-TYPED-FOUNDATION-FBBD359",
       "writer": "primary integration coordinator",
-      "branch": "codex/program-state-after-commodity-cb9194a",
-      "worktree": "E:/SpaceSyndicateWorkspace/space-syndicate-program-state-cb9194a",
+      "branch": "codex/program-state-after-ai-typed-foundation-fbbd359",
+      "worktree": "E:/SpaceSyndicateWorkspace/space-syndicate-main-merge-20260718",
       "mode": "WRITE_DOCS_ONLY",
       "files": [
         "docs/development/current_program_state.json",
         "docs/development/current_task_graph.json",
         "docs/development/current_file_ownership.json",
+        "docs/development/alpha_02_execution_checkpoint.json",
         "docs/development/alpha_01_to_alpha_02_program.json",
         "docs/development/alpha_01_to_alpha_02_program.md",
         "docs/integration_requests/update_program_state_after_ai_business_cash.json"
@@ -70,11 +71,11 @@
       "status": "ACTIVE"
     },
     {
-      "ownership_set_id": "P0-AI-WORLD-TYPED-PORTS-PREFLIGHT",
-      "writer": "primary coordinator plus analysis-only reviewers",
+      "ownership_set_id": "P0-AI-WORLD-TYPED-PORTS-IMPLEMENTATION",
+      "writer": "one production writer plus analysis-only reviewers",
       "branch": "codex/p0-ai-world-typed-ports-cb9194a",
       "worktree": "E:/SpaceSyndicateWorkspace/space-syndicate-p0-ai-world-typed-ports-cb9194a",
-      "mode": "PREFLIGHT_READ_ONLY",
+      "mode": "FOUNDATION_PORTS_MERGED_IMPLEMENTATION_ACTIVE",
       "files": [
         "scripts/runtime/ai_runtime_world_bridge.gd",
         "scripts/runtime/ai_runtime_controller.gd",
@@ -112,13 +113,6 @@
     }
   ],
   "ready_ownership_sets": [
-    {
-      "ownership_set_id": "P0-AI-WORLD-TYPED-PORTS-IMPLEMENTATION",
-      "activation_condition": "capability inventory and privacy contract accepted",
-      "mode": "ONE_PRODUCTION_WRITER",
-      "files": ["new narrow ports", "AI bridge generic-capability retirement", "focused tests and Bench"],
-      "status": "READY"
-    },
     {
       "ownership_set_id": "P1-SAVE-OWNER-COVERAGE-INVENTORY",
       "mode": "DOCS_AND_TEST_INVENTORY_ONLY",
