@@ -1,0 +1,43 @@
+{
+  "schema_version": "integration_request.v1",
+  "request_id": "alpha01_selected_role_art_parity_20260722",
+  "source_branch": "codex/p2-alpha01-role-art-parity-c986e5a",
+  "base_sha": "c986e5a67e2493554342d144f29184bbe1f76548",
+  "status": "ready_after_art_commit",
+  "summary": "Four selected Alpha 0.1 roles now have original front and side_inward runtime portraits in the existing RolePortraitCatalog manifest.",
+  "shared_files_not_modified": [
+    "scenes/ui/player_seat/PlayerSeatPortraitSkin.tscn",
+    "scripts/ui/player_seat/player_seat_portrait_skin.gd",
+    "scripts/presentation/role_portrait_catalog.gd",
+    "scripts/tools/player_seat_portrait_skin_bench.gd",
+    "tests/role_table_art/player_seat_portrait_skin_test.gd",
+    "tests/role_catalog_runtime_service_test.gd"
+  ],
+  "integration_updates_required": [
+    {
+      "file": "tests/role_table_art/player_seat_portrait_skin_test.gd",
+      "reason": "深海菌毯使团 is no longer a pending portrait; use another still-pending role as the fallback sentinel."
+    },
+    {
+      "file": "scripts/tools/player_seat_portrait_skin_bench.gd",
+      "reason": "The old Bench uses 深海菌毯使团 as its missing-art example; select another pending role without changing Skin behavior."
+    },
+    {
+      "file": "tests/role_catalog_runtime_service_test.gd",
+      "reason": "The manifest parity oracle must move from rendered=8/pending=16 to rendered=12/pending=12."
+    },
+    {
+      "file": "docs/art_qa/role_portraits/contact_sheet.png",
+      "reason": "Regenerate the shared all-rendered-role sheet after integration; this branch provides a scoped Alpha sheet and does not overwrite the shared historical sheet."
+    }
+  ],
+  "runtime_consumer_change_required": false,
+  "runtime_note": "RolePortraitCatalog already reads the updated manifest and accepts these res://assets/art/role_portraits/temporary paths. No production UI or Skin edit is required.",
+  "focused_evidence": [
+    "python tools/art_pipeline/validate_alpha01_selected_role_art.py",
+    "godot --headless --path . --script res://tests/role_table_art/alpha01_selected_role_art_test.gd",
+    "res://scenes/tools/Alpha01SelectedRolePortraitSkinBench.tscn",
+    "res://docs/art_qa/role_portraits/alpha01/contact_sheet.png",
+    "res://docs/art_qa/role_portraits/alpha01/skin_bench.png"
+  ]
+}

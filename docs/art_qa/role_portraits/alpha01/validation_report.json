@@ -1,0 +1,301 @@
+{
+  "status": "PASS",
+  "role_count": 4,
+  "image_count": 8,
+  "unique_asset_hash_count": 8,
+  "unique_source_hash_count": 8,
+  "identity_count": 4,
+  "metrics": [
+    {
+      "role_name": "深海菌毯使团",
+      "slug": "deepsea_mycelium_delegation",
+      "view": "front",
+      "sha256": "87848f39bfa4932266361e0c636efa0db216fcf8c87605f5b9681e6fd3c9f4ba",
+      "coverage": 0.530657,
+      "subject_height_ratio": 0.924479,
+      "bottom_pivot_ratio": 0.963542,
+      "bbox": [
+        20,
+        30,
+        493,
+        740
+      ]
+    },
+    {
+      "role_name": "深海菌毯使团",
+      "slug": "deepsea_mycelium_delegation",
+      "view": "side_inward",
+      "sha256": "ebb19e9cfaec595ef2fc7e4f87dc4b33aeaaf975efce542eb3f58bac026fea22",
+      "coverage": 0.469933,
+      "subject_height_ratio": 0.924479,
+      "bottom_pivot_ratio": 0.966146,
+      "bbox": [
+        38,
+        32,
+        465,
+        742
+      ]
+    },
+    {
+      "role_name": "离子军购局",
+      "slug": "ion_procurement_bureau",
+      "view": "front",
+      "sha256": "4b3942714e60b58052c84461e70b027b64ee4b2e2bed7033cea235983255f827",
+      "coverage": 0.32119,
+      "subject_height_ratio": 0.971354,
+      "bottom_pivot_ratio": 0.983073,
+      "bbox": [
+        69,
+        9,
+        437,
+        755
+      ]
+    },
+    {
+      "role_name": "离子军购局",
+      "slug": "ion_procurement_bureau",
+      "view": "side_inward",
+      "sha256": "3a1710ce1a4761c67d4123966313cd54d420cc236d9a2c5cffeb3a20d0c62061",
+      "coverage": 0.314054,
+      "subject_height_ratio": 0.96224,
+      "bottom_pivot_ratio": 0.981771,
+      "bbox": [
+        85,
+        15,
+        412,
+        754
+      ]
+    },
+    {
+      "role_name": "孪星兽栏同盟",
+      "slug": "binary_star_stable_alliance",
+      "view": "front",
+      "sha256": "0e59c03020aeac8b9497aedcb47defc086dad293029c3bee1f67a2d025e83670",
+      "coverage": 0.570732,
+      "subject_height_ratio": 0.951823,
+      "bottom_pivot_ratio": 0.977865,
+      "bbox": [
+        11,
+        20,
+        500,
+        751
+      ]
+    },
+    {
+      "role_name": "孪星兽栏同盟",
+      "slug": "binary_star_stable_alliance",
+      "view": "side_inward",
+      "sha256": "cff958522af28db96dd44d3986bc7529a139c61091477963f8fbe8e773c37b33",
+      "coverage": 0.494728,
+      "subject_height_ratio": 0.901042,
+      "bottom_pivot_ratio": 0.966146,
+      "bbox": [
+        17,
+        50,
+        462,
+        742
+      ]
+    },
+    {
+      "role_name": "蜂巢防务议会",
+      "slug": "hive_defense_council",
+      "view": "front",
+      "sha256": "600c25f3ffaffa309998c8bd404761adac368cb85d401ee60935aa22b89ff0d1",
+      "coverage": 0.542778,
+      "subject_height_ratio": 0.865885,
+      "bottom_pivot_ratio": 0.954427,
+      "bbox": [
+        13,
+        68,
+        498,
+        733
+      ]
+    },
+    {
+      "role_name": "蜂巢防务议会",
+      "slug": "hive_defense_council",
+      "view": "side_inward",
+      "sha256": "5209b1b0bf70f5df40bedda434a3ee28e1581f7d589826421c20eceaf6957b38",
+      "coverage": 0.516919,
+      "subject_height_ratio": 0.856771,
+      "bottom_pivot_ratio": 0.94401,
+      "bbox": [
+        24,
+        67,
+        497,
+        725
+      ]
+    }
+  ],
+  "pairwise": [
+    {
+      "left": "深海菌毯使团:front",
+      "right": "深海菌毯使团:side_inward",
+      "combined_dhash_distance": 177,
+      "threshold": 140
+    },
+    {
+      "left": "深海菌毯使团:front",
+      "right": "离子军购局:front",
+      "combined_dhash_distance": 227,
+      "threshold": 180
+    },
+    {
+      "left": "深海菌毯使团:front",
+      "right": "离子军购局:side_inward",
+      "combined_dhash_distance": 206,
+      "threshold": 180
+    },
+    {
+      "left": "深海菌毯使团:front",
+      "right": "孪星兽栏同盟:front",
+      "combined_dhash_distance": 220,
+      "threshold": 180
+    },
+    {
+      "left": "深海菌毯使团:front",
+      "right": "孪星兽栏同盟:side_inward",
+      "combined_dhash_distance": 222,
+      "threshold": 180
+    },
+    {
+      "left": "深海菌毯使团:front",
+      "right": "蜂巢防务议会:front",
+      "combined_dhash_distance": 231,
+      "threshold": 180
+    },
+    {
+      "left": "深海菌毯使团:front",
+      "right": "蜂巢防务议会:side_inward",
+      "combined_dhash_distance": 219,
+      "threshold": 180
+    },
+    {
+      "left": "深海菌毯使团:side_inward",
+      "right": "离子军购局:front",
+      "combined_dhash_distance": 206,
+      "threshold": 180
+    },
+    {
+      "left": "深海菌毯使团:side_inward",
+      "right": "离子军购局:side_inward",
+      "combined_dhash_distance": 221,
+      "threshold": 180
+    },
+    {
+      "left": "深海菌毯使团:side_inward",
+      "right": "孪星兽栏同盟:front",
+      "combined_dhash_distance": 235,
+      "threshold": 180
+    },
+    {
+      "left": "深海菌毯使团:side_inward",
+      "right": "孪星兽栏同盟:side_inward",
+      "combined_dhash_distance": 193,
+      "threshold": 180
+    },
+    {
+      "left": "深海菌毯使团:side_inward",
+      "right": "蜂巢防务议会:front",
+      "combined_dhash_distance": 200,
+      "threshold": 180
+    },
+    {
+      "left": "深海菌毯使团:side_inward",
+      "right": "蜂巢防务议会:side_inward",
+      "combined_dhash_distance": 226,
+      "threshold": 180
+    },
+    {
+      "left": "离子军购局:front",
+      "right": "离子军购局:side_inward",
+      "combined_dhash_distance": 165,
+      "threshold": 140
+    },
+    {
+      "left": "离子军购局:front",
+      "right": "孪星兽栏同盟:front",
+      "combined_dhash_distance": 245,
+      "threshold": 180
+    },
+    {
+      "left": "离子军购局:front",
+      "right": "孪星兽栏同盟:side_inward",
+      "combined_dhash_distance": 207,
+      "threshold": 180
+    },
+    {
+      "left": "离子军购局:front",
+      "right": "蜂巢防务议会:front",
+      "combined_dhash_distance": 206,
+      "threshold": 180
+    },
+    {
+      "left": "离子军购局:front",
+      "right": "蜂巢防务议会:side_inward",
+      "combined_dhash_distance": 236,
+      "threshold": 180
+    },
+    {
+      "left": "离子军购局:side_inward",
+      "right": "孪星兽栏同盟:front",
+      "combined_dhash_distance": 232,
+      "threshold": 180
+    },
+    {
+      "left": "离子军购局:side_inward",
+      "right": "孪星兽栏同盟:side_inward",
+      "combined_dhash_distance": 220,
+      "threshold": 180
+    },
+    {
+      "left": "离子军购局:side_inward",
+      "right": "蜂巢防务议会:front",
+      "combined_dhash_distance": 235,
+      "threshold": 180
+    },
+    {
+      "left": "离子军购局:side_inward",
+      "right": "蜂巢防务议会:side_inward",
+      "combined_dhash_distance": 235,
+      "threshold": 180
+    },
+    {
+      "left": "孪星兽栏同盟:front",
+      "right": "孪星兽栏同盟:side_inward",
+      "combined_dhash_distance": 230,
+      "threshold": 140
+    },
+    {
+      "left": "孪星兽栏同盟:front",
+      "right": "蜂巢防务议会:front",
+      "combined_dhash_distance": 255,
+      "threshold": 180
+    },
+    {
+      "left": "孪星兽栏同盟:front",
+      "right": "蜂巢防务议会:side_inward",
+      "combined_dhash_distance": 213,
+      "threshold": 180
+    },
+    {
+      "left": "孪星兽栏同盟:side_inward",
+      "right": "蜂巢防务议会:front",
+      "combined_dhash_distance": 213,
+      "threshold": 180
+    },
+    {
+      "left": "孪星兽栏同盟:side_inward",
+      "right": "蜂巢防务议会:side_inward",
+      "combined_dhash_distance": 213,
+      "threshold": 180
+    },
+    {
+      "left": "蜂巢防务议会:front",
+      "right": "蜂巢防务议会:side_inward",
+      "combined_dhash_distance": 180,
+      "threshold": 140
+    }
+  ],
+  "failures": []
+}

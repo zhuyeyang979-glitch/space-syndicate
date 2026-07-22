@@ -1,0 +1,20 @@
+{
+  "schema_version": "alpha01.selected_role_art_contract.v1",
+  "role_count": 4,
+  "image_count": 8,
+  "width": 512,
+  "height": 768,
+  "mode": "RGBA",
+  "required_views": ["front", "side_inward"],
+  "required_front_direction": "front",
+  "required_side_direction": "left_inward_three_quarter",
+  "minimum_subject_coverage": 0.28,
+  "maximum_subject_coverage": 0.62,
+  "minimum_subject_height_ratio": 0.80,
+  "minimum_bottom_pivot_ratio": 0.94,
+  "minimum_front_side_combined_dhash_distance": 140,
+  "minimum_cross_role_combined_dhash_distance": 180,
+  "require_unique_file_sha256": true,
+  "require_transparent_corners": true,
+  "require_distinct_identity_signature": true
+}

@@ -1,0 +1,94 @@
+{
+  "schema_version": "alpha01.role_portrait_prompts.v1",
+  "provider": "OpenAI",
+  "model": "imagegen_tool_unspecified",
+  "generated_date": "2026-07-22",
+  "third_party_reference_images_used": false,
+  "workflow": "built-in image_gen; side_inward uses only same-role generated front as identity reference",
+  "entries": [
+    {
+      "role_name": "深海菌毯使团",
+      "slug": "deepsea_mycelium_delegation",
+      "views": {
+        "front": {
+          "source_generation_id": "imagegen-019f8762-deepsea-mycelium-front",
+          "source_filename": "exec-681dc7e8-99e3-46ab-bc77-1a449ea3e4dd.png",
+          "source_sha256": "67b4d42e169d372cb7eedf782853d09d2b014b9e9b29636c3267a8fed579128a",
+          "background_key": "#ff00ff",
+          "prompt": "Create an original dignified deep-ocean fungal ambassador with a broad asymmetrical manta-like mushroom cap, layered mist gills, four folded frond arms, three pearl eyes, a cyan throat organ, compact cephalopod lower body, and a low crescent command-seat plinth. Premium stylized 3D board-game render, exact straight-on front view, full subject and base, flat #ff00ff chroma background, no text, watermark, weapon, scenery, existing character, or third-party IP."
+        },
+        "side_inward": {
+          "source_generation_id": "imagegen-019f8762-deepsea-mycelium-side-inward",
+          "source_filename": "exec-68e87347-4e99-4718-be1e-f4ea1c31521c.png",
+          "source_sha256": "a81d41788c9ffe33f991dbc65922e0ee6e0fe6d3b864e8a85e105681ee75ae9c",
+          "background_key": "#ff00ff",
+          "reference_policy": "same-role generated front only",
+          "prompt": "Preserve the exact fungal ambassador identity and crescent seat from the generated front, but render a genuine strong three-quarter left-facing inward view with foreshortening and overlap. Full subject and base, flat #ff00ff chroma background, no mirror-only edit, text, watermark, weapon, scenery, new accessory, or existing IP."
+        }
+      }
+    },
+    {
+      "role_name": "离子军购局",
+      "slug": "ion_procurement_bureau",
+      "views": {
+        "front": {
+          "source_generation_id": "imagegen-019f8762-ion-procurement-front",
+          "source_filename": "exec-799cfc2e-0fc6-4d9d-ae51-7253dce09bd0.png",
+          "source_sha256": "a37731ec17c3064c9bfbb8742111f80df48eee2bc828588c027129f13ac9c714",
+          "background_key": "#00ff00",
+          "prompt": "Create an original floating ion-plasma executive in a tall navy-black faceted ceramic shell, with a horizontal blue visor, rigid archive collar, folded registrar arms, abstract data seals, three close ion capacitors, and an anti-gravity pedestal. Premium stylized 3D board-game render, exact straight-on front view, full subject and base, flat #00ff00 chroma background, no human face, text, watermark, weapon, scenery, generic soldier, existing character, or third-party IP."
+        },
+        "side_inward": {
+          "source_generation_id": "imagegen-019f8762-ion-procurement-side-inward",
+          "source_filename": "exec-9c37fa36-eab3-4655-9649-650be57f2acc.png",
+          "source_sha256": "54ce655353eb9a53cf67bea44130f5afd154d7b7ddd7228faba9c9a94c430a69",
+          "background_key": "#00ff00",
+          "reference_policy": "same-role generated front only",
+          "prompt": "Preserve the exact ion-plasma executive, shell, collar, registrar arms, data seals, three capacitors, palette, and pedestal from the generated front, but render a genuine strong three-quarter left-facing inward view. Full subject and base, flat #00ff00 chroma background, no mirror-only edit, text, watermark, weapon, scenery, new parts, or existing IP."
+        }
+      }
+    },
+    {
+      "role_name": "孪星兽栏同盟",
+      "slug": "binary_star_stable_alliance",
+      "views": {
+        "front": {
+          "source_generation_id": "imagegen-019f8762-binary-star-stable-front",
+          "source_filename": "exec-3b1a74b9-5a01-4653-b359-0b44d084fc63.png",
+          "source_sha256": "8342540a0440176e37bfff8421689e33f4928f8ec0b5441ccfbc64d529557c37",
+          "background_key": "#00ff00",
+          "prompt": "Create one original symbiotic two-headed stablemaster organism in a broad horseshoe command saddle: a cyan crescent-crested moon-owl/reptile head and an orange antler-finned salamander/deer head share a quilted four-armed body with two luminous heart cores, a grooming ring, and a feed vessel. Premium stylized 3D board-game render, exact front view, full paired organism and saddle, flat #00ff00 chroma background, no separate people, human, robot, text, watermark, weapon, scenery, existing character, or third-party IP."
+        },
+        "side_inward": {
+          "source_generation_id": "imagegen-019f8762-binary-star-stable-side-inward",
+          "source_filename": "exec-ecc165e4-9229-4976-bf4f-478880041391.png",
+          "source_sha256": "72bbe3defc4136e51dc441af20b610e98816e7e0fb5719ce3d334715b7d7678f",
+          "background_key": "#00ff00",
+          "reference_policy": "same-role generated front only",
+          "prompt": "Preserve the exact paired stablemaster identity, both heads, shared four-armed body, twin heart cores, tools, harness, palette, and horseshoe saddle from the generated front, but render a genuine strong three-quarter left-facing inward view with the cyan head nearer and orange head partially behind. Full subject and base, flat #00ff00 chroma background, no mirror-only edit, split characters, text, watermark, weapon, new costume, or existing IP."
+        }
+      }
+    },
+    {
+      "role_name": "蜂巢防务议会",
+      "slug": "hive_defense_council",
+      "views": {
+        "front": {
+          "source_generation_id": "imagegen-019f8762-hive-defense-front",
+          "source_filename": "exec-169b8a38-17b4-4c7f-b9b5-bb18debbe053.png",
+          "source_sha256": "d9001dedd9ab28cbcea83f575df89e0689ec703e151678b183e6753a38a11f5e",
+          "background_key": "#ff00ff",
+          "prompt": "Create an original broad squat six-limbed arthropod council speaker in a hexagonal basalt cradle: dark honeycomb shield body, low triangular head with five cyan compound eyes, six short honey-gold voting arms with distinct geometric fingertips, and six attached glowing hex staff nodes. Premium stylized 3D board-game render, exact front view, full speaker and cradle, flat #ff00ff chroma background, no humanoid, generic mech, bee mascot, text, watermark, wings, stinger, weapon, scenery, existing character, or third-party IP."
+        },
+        "side_inward": {
+          "source_generation_id": "imagegen-019f8762-hive-defense-side-inward",
+          "source_filename": "exec-c2395133-16eb-4807-97ba-3986f8a20afb.png",
+          "source_sha256": "0b57e0bde714f040b6d94d3fbe28260963c89aa67ca3c291f7a6e7a4e2459ca3",
+          "background_key": "#ff00ff",
+          "reference_policy": "same-role generated front only",
+          "prompt": "Preserve the exact six-limbed arthropod council speaker, basalt honeycomb shell, five cyan eyes, six voting arms and fingertips, six staff nodes, amber inlays, palette, and hex cradle from the generated front, but render a genuine strong three-quarter left-facing inward view with all six arms readable. Full subject and base, flat #ff00ff chroma background, no mirror-only edit, text, watermark, weapon, wings, new accessory, or existing IP."
+        }
+      }
+    }
+  ]
+}
