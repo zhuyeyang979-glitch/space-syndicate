@@ -1,8 +1,8 @@
 {
-  "branch": "codex/alpha03-ai-world-typed-ports-e49ad50",
-  "commit": "e49ad50444064804ccafc91cd47bb8fc73e7d34d",
+  "branch": "main",
+  "commit": "80817847cfd0061de19516829460ca45b41558dc",
   "task": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
-  "status": "ACTIVE_CITY_INFERENCE_ATOMIC_CUTOVER_VALIDATED_DELIVERY_PENDING",
+  "status": "ACTIVE_CITY_INFERENCE_ATOMIC_CUTOVER_MERGED_ACTOR_STATE_READY",
   "logical_ownership_set": [
     "AI city-inference actor-scoped query",
     "AI city-inference exact-once command",
@@ -11,7 +11,12 @@
     "Main city-inference residue deletion",
     "Alpha 0.3 checkpoint"
   ],
-  "pr": null,
+  "pr": {
+    "number": 51,
+    "status": "MERGED",
+    "head_commit": "90014ec92a5b2f1f15e658d007ce9c87f2c4fbef",
+    "merge_commit": "80817847cfd0061de19516829460ca45b41558dc"
+  },
   "test_result": {
     "rule_authority_gate": "GREEN",
     "focused_test": "48/48 PASS",

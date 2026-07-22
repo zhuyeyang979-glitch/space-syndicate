@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "program_id": "ALPHA_0_3_CORE_COMPLETE_CLOSED_ALPHA",
-  "generated_at": "2026-07-23T07:29:00+09:00",
+  "generated_at": "2026-07-23T08:02:01+09:00",
   "initial_main_sha": "53c4c02fcb6c17dbc8e97af88e753d78ea3cb225",
   "status": "ACTIVE",
   "final_status": "NOT_CLAIMED",
@@ -16,7 +16,7 @@
     "windows_x86_64_closed_alpha": true
   },
   "phases": [
-    {"gate": "A", "task": "P0-AI-WORLD-TYPED-PORTS-CUTOVER", "status": "ACTIVE", "foundation_only": false, "completed_atomic_domains": ["foundation_ports"], "validated_delivery_pending_atomic_domains": ["city_inference_query_command"], "next_atomic_boundary": "actor_state", "result": "P0_AI_WORLD_TYPED_PORTS_CUTOVER_GREEN"},
+    {"gate": "A", "task": "P0-AI-WORLD-TYPED-PORTS-CUTOVER", "status": "ACTIVE", "foundation_only": false, "completed_atomic_domains": ["foundation_ports", "city_inference_query_command"], "next_atomic_boundary": "actor_state", "result": "P0_AI_WORLD_TYPED_PORTS_CUTOVER_GREEN"},
     {"gate": "B1", "task": "ALPHA-0.1-FIRST-ECONOMIC-ENGINE", "status": "ACTIVE", "result": "ALPHA_0_1_FIRST_ECONOMIC_ENGINE_GREEN"},
     {"gate": "B2", "task": "ALPHA-0.1-COMPLETE-MATCH", "status": "BLOCKED", "dependencies": ["ALPHA-0.1-FIRST-ECONOMIC-ENGINE"], "result": "ALPHA_0_1_COMPLETE_MATCH_GREEN"},
     {"gate": "B3", "task": "ALPHA-0.1-WINDOWS-RC", "status": "BLOCKED", "dependencies": ["ALPHA-0.1-COMPLETE-MATCH"], "result": "ALPHA_0_1_COMPLETE_MATCH_RC_GREEN"},

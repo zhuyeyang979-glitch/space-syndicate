@@ -1,7 +1,7 @@
 {
   "schema_version": 4,
-  "generated_at": "2026-07-23T07:29:00+09:00",
-  "base_main_sha": "e49ad50444064804ccafc91cd47bb8fc73e7d34d",
+  "generated_at": "2026-07-23T08:02:01+09:00",
+  "base_main_sha": "80817847cfd0061de19516829460ca45b41558dc",
   "allowed_statuses": [
     "MERGED",
     "ACTIVE",
@@ -55,15 +55,19 @@
         },
         {
           "domain": "city_inference_query_command",
-          "status": "ACTIVE",
+          "status": "MERGED",
           "branch": "codex/alpha03-ai-world-typed-ports-e49ad50",
           "focused_gate": "48/48 PASS",
-          "delivery": "PENDING"
+          "production_scene_bench": "14/14 PASS",
+          "pull_request": 51,
+          "commit": "90014ec92a5b2f1f15e658d007ce9c87f2c4fbef",
+          "merge_commit": "80817847cfd0061de19516829460ca45b41558dc",
+          "delivery": "MERGED"
         },
         {
           "domain": "actor_state",
-          "status": "BLOCKED",
-          "blocked_by": ["city_inference_query_command delivery"]
+          "status": "READY",
+          "base_main_sha": "80817847cfd0061de19516829460ca45b41558dc"
         }
       ],
       "dependencies": [

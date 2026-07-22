@@ -1,7 +1,7 @@
 {
   "schema_version": 4,
-  "generated_at": "2026-07-23T07:29:00+09:00",
-  "base_main_sha": "e49ad50444064804ccafc91cd47bb8fc73e7d34d",
+  "generated_at": "2026-07-23T08:02:01+09:00",
+  "base_main_sha": "80817847cfd0061de19516829460ca45b41558dc",
   "policy": {
     "one_writer_per_file_ownership_set": true,
     "shared_hot_files_require_integration_writer": true,
@@ -37,7 +37,7 @@
     "docs/development/alpha_03_program.json",
     "docs/development/alpha_03_execution_checkpoint.json"
   ],
-  "active_ownership_sets": [
+  "completed_ownership_sets": [
     {
       "ownership_set_id": "ALPHA03-PROGRAM-INITIALIZATION",
       "writer": "integration coordinator",
@@ -56,21 +56,31 @@
       "pull_request": 50
     },
     {
+      "ownership_set_id": "P0-AI-WORLD-TYPED-PORTS-CUTOVER-CITY-INFERENCE",
+      "branch": "codex/alpha03-ai-world-typed-ports-e49ad50",
+      "atomic_domain": "city_inference_query_command",
+      "status": "MERGED",
+      "pull_request": 51,
+      "commit": "90014ec92a5b2f1f15e658d007ce9c87f2c4fbef",
+      "merge_commit": "80817847cfd0061de19516829460ca45b41558dc"
+    }
+  ],
+  "active_ownership_sets": [
+    {
       "ownership_set_id": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
       "writer": "one production writer plus analysis-only reviewers",
-      "branch_pattern": "codex/alpha03-ai-world-typed-ports-<short_sha>",
-      "active_branch": "codex/alpha03-ai-world-typed-ports-e49ad50",
-      "current_atomic_domain": "city_inference_query_command",
+      "branch_pattern": "codex/alpha03-ai-actor-state-<short_sha>",
+      "active_branch": null,
+      "current_atomic_domain": "actor_state",
       "mode": "PRODUCTION_AND_FOCUSED_TESTS",
       "files": [
+        "scripts/runtime/ai_actor_state_port.gd",
+        "scripts/runtime/ai_actor_state_capability.gd",
         "scripts/runtime/ai_runtime_world_bridge.gd",
         "scripts/runtime/ai_runtime_controller.gd",
-        "scripts/runtime/ai_city_inference_command_port.gd",
-        "scripts/runtime/ai_region_knowledge_query_port.gd",
-        "scripts/ai/ai_policy_profile_resource.gd",
-        "scene-owned actor-scoped AI query and command ports",
+        "scene-owned actor-private state query ports",
         "focused AI privacy, parity and capability-negative tests",
-        "docs/migration/ai_city_inference_typed_ports_cutover.*",
+        "docs/migration/ai_actor_state_typed_port_migration.*",
         "docs/ai_runtime_ownership_contract.md"
       ],
       "integration_request_only": [
@@ -81,7 +91,7 @@
         "docs/migration/main_gd_cutover_ledger.json"
       ],
       "status": "ACTIVE",
-      "atomic_status": "CITY_INFERENCE_VALIDATED_DELIVERY_PENDING"
+      "atomic_status": "ACTOR_STATE_READY_FOR_BRANCH"
     },
     {
       "ownership_set_id": "P1-FIRST-ECONOMIC-ENGINE-EVIDENCE",
