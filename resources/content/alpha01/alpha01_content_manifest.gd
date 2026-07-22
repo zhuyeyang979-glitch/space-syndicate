@@ -76,6 +76,79 @@ const PRIVATE_KEY_FRAGMENTS := [
 	"pressure_bucket",
 	"reasoning",
 ]
+const ROLE_IDENTITY_FIELDS := [
+	"name",
+	"species",
+	"trait",
+	"passive",
+	"flavor",
+]
+const ROLE_PASSIVE_CONSUMER_EVIDENCE := {
+	"starting_cash_bonus": {
+		"consumer_path": "res://scripts/runtime/session_start_plan_builder.gd",
+		"consumer_api": "_build_players",
+		"required_tokens": ["func _build_players", "starting_cash_bonus", "starting_cash_total"],
+	},
+	"bonus_card_product": {
+		"consumer_path": "res://scripts/runtime/district_supply_action_port.gd",
+		"consumer_api": "_grant_role_bonus_card",
+		"required_tokens": ["func _grant_role_bonus_card", "bonus_card_product", "grant_card"],
+	},
+	"resource_cash_product": {
+		"consumer_path": "res://scripts/runtime/role_resource_cash_settlement_runtime_service.gd",
+		"consumer_api": "plan_for_sale_receipt",
+		"required_tokens": ["func plan_for_sale_receipt", "resource_cash_product", "amount_cents"],
+	},
+	"resource_cash_amount": {
+		"consumer_path": "res://scripts/runtime/role_resource_cash_settlement_runtime_service.gd",
+		"consumer_api": "plan_for_sale_receipt",
+		"required_tokens": ["func plan_for_sale_receipt", "resource_cash_amount", "amount_cents"],
+	},
+	"monster_upgrade_cash": {
+		"consumer_path": "res://scripts/runtime/monster_runtime_controller.gd",
+		"consumer_api": "_commit_role_monster_upgrade_cash",
+		"required_tokens": ["func _commit_role_monster_upgrade_cash", "monster_upgrade_cash", "commit_role_monster_upgrade_cash"],
+	},
+	"card_history_residual_catalog_charges": {
+		"consumer_path": "res://scripts/runtime/intel_private_command_port.gd",
+		"consumer_api": "use_residual_frame_catalog",
+		"required_tokens": ["use_residual_frame_catalog", "card_history_residual_catalog_charges", "use_residual_catalog_from_public_evidence"],
+	},
+	"high_volatility_sale_threshold": {
+		"consumer_path": "res://scripts/runtime/role_resource_cash_settlement_runtime_service.gd",
+		"consumer_api": "_high_volatility_plan",
+		"required_tokens": ["func _high_volatility_plan", "high_volatility_sale_threshold", "public_volatility_below_threshold"],
+	},
+	"high_volatility_first_sale_bonus": {
+		"consumer_path": "res://scripts/runtime/role_resource_cash_settlement_runtime_service.gd",
+		"consumer_api": "_high_volatility_plan",
+		"required_tokens": ["func _high_volatility_plan", "high_volatility_first_sale_bonus", "amount_cents"],
+	},
+	"high_volatility_bonus_once_per_market_cycle": {
+		"consumer_path": "res://scripts/runtime/role_resource_cash_settlement_runtime_service.gd",
+		"consumer_api": "_high_volatility_plan",
+		"required_tokens": ["func _high_volatility_plan", "high_volatility_bonus_once_per_market_cycle", "market_cycle_revision"],
+	},
+	"monster_control_limit_bonus": {
+		"consumer_path": "res://scripts/runtime/monster_runtime_controller.gd",
+		"consumer_api": "_player_monster_control_limit",
+		"required_tokens": ["func _player_monster_control_limit", "monster_control_limit_bonus", "return maxi(1, 1 +"],
+	},
+	"military_control_limit_bonus": {
+		"consumer_path": "res://scripts/runtime/military_runtime_controller.gd",
+		"consumer_api": "player_control_limit",
+		"required_tokens": ["func player_control_limit", "military_control_limit_bonus", "return maxi(1, 1 +"],
+	},
+}
+const ROLE_NON_GAMEPLAY_CONSUMER_PATH_FRAGMENTS := [
+	"/main.gd",
+	"/presentation/",
+	"/tools/",
+	"/tests/",
+	"codex",
+	"diagnostic",
+	"role_catalog_runtime_service.gd",
+]
 const OWNER_BINDINGS := {
 	"install_commodity_rate": {
 		"catalog_owner": "commodity_flow_runtime_controller",
@@ -422,20 +495,25 @@ func _validate_owner_binding(effect_kind: String, binding: Dictionary, statuses:
 func _validate_roles(registry: Dictionary, errors: Array[String]) -> Dictionary:
 	var selected_indices: Array[int] = []
 	var retired_hits: Array[String] = []
+	var passive_consumer_records: Array[Dictionary] = []
+	var unsupported_passive_fields: Array[String] = []
+	var unique_passive_fields: Array[String] = []
 	if role_catalog_scene == null:
 		errors.append("role_catalog_scene_missing")
-		return {"source_count": 0, "selected_indices": selected_indices, "public_fields_only": false, "retired_hits": retired_hits}
+		return {"source_count": 0, "selected_indices": selected_indices, "public_fields_only": false, "retired_hits": retired_hits, "passive_consumer_records": passive_consumer_records, "unsupported_passive_fields": unsupported_passive_fields}
 	var owner := role_catalog_scene.instantiate()
 	if owner == null:
 		errors.append("role_catalog_scene_instantiate_failed")
-		return {"source_count": 0, "selected_indices": selected_indices, "public_fields_only": false, "retired_hits": retired_hits}
+		return {"source_count": 0, "selected_indices": selected_indices, "public_fields_only": false, "retired_hits": retired_hits, "passive_consumer_records": passive_consumer_records, "unsupported_passive_fields": unsupported_passive_fields}
 	var required_methods := ["role_count", "ordered_role_names", "index_by_name", "public_definition_at", "validate_catalog"]
+	var required_method_missing := false
 	for method_name in required_methods:
 		if not owner.has_method(method_name):
 			errors.append("role_catalog_method_missing:%s" % method_name)
-	if not owner.has_method("validate_catalog"):
+			required_method_missing = true
+	if required_method_missing:
 		owner.free()
-		return {"source_count": 0, "selected_indices": selected_indices, "public_fields_only": false, "retired_hits": retired_hits}
+		return {"source_count": 0, "selected_indices": selected_indices, "public_fields_only": false, "retired_hits": retired_hits, "passive_consumer_records": passive_consumer_records, "unsupported_passive_fields": unsupported_passive_fields}
 	var source_report: Dictionary = owner.call("validate_catalog")
 	if not bool(source_report.get("valid", false)):
 		errors.append("role_catalog_source_invalid:%s" % JSON.stringify(source_report))
@@ -456,11 +534,20 @@ func _validate_roles(registry: Dictionary, errors: Array[String]) -> Dictionary:
 			public_fields_only = false
 			errors.append("selected_role_public_projection_invalid:%s" % role_name)
 		else:
-			retired_hits.append_array(_retired_hits("role:%s" % role_name, public_definition, registry))
+			var definition := public_definition as Dictionary
+			retired_hits.append_array(_retired_hits("role:%s" % role_name, definition, registry))
+			var consumer_audit := _validate_role_passive_consumers(role_name, definition, errors)
+			passive_consumer_records.append_array(consumer_audit.get("records", []) as Array)
+			unsupported_passive_fields.append_array(consumer_audit.get("unsupported_fields", []) as Array)
+			for field_variant in consumer_audit.get("passive_fields", []) as Array:
+				var field_name := str(field_variant)
+				if not unique_passive_fields.has(field_name):
+					unique_passive_fields.append(field_name)
 	var source_count := int(owner.call("role_count"))
 	if source_names.size() != source_count:
 		errors.append("role_catalog_ordered_count_mismatch")
 	owner.free()
+	unique_passive_fields.sort()
 	for hit in retired_hits:
 		errors.append("retired_mechanic_identifier:%s" % hit)
 	return {
@@ -469,7 +556,79 @@ func _validate_roles(registry: Dictionary, errors: Array[String]) -> Dictionary:
 		"public_fields_only": public_fields_only,
 		"manifest_payload": "names_only",
 		"retired_hits": retired_hits,
+		"passive_consumer_records": passive_consumer_records,
+		"passive_field_occurrence_count": passive_consumer_records.size(),
+		"unique_passive_fields": unique_passive_fields,
+		"unsupported_passive_fields": unsupported_passive_fields,
+		"all_passive_fields_have_non_main_gameplay_consumers": unsupported_passive_fields.is_empty(),
 	}
+
+
+func _validate_role_passive_consumers(role_name: String, definition: Dictionary, errors: Array[String]) -> Dictionary:
+	var passive_fields: Array[String] = []
+	var records: Array[Dictionary] = []
+	var unsupported_fields: Array[String] = []
+	for key_variant in definition.keys():
+		var field_name := str(key_variant)
+		if not ROLE_IDENTITY_FIELDS.has(field_name):
+			passive_fields.append(field_name)
+	passive_fields.sort()
+	if passive_fields.is_empty():
+		var empty_label := "%s:no_mechanical_passive_fields" % role_name
+		unsupported_fields.append(empty_label)
+		errors.append("selected_role_passive_without_gameplay_consumer:%s" % empty_label)
+	for field_name in passive_fields:
+		var evidence_variant: Variant = ROLE_PASSIVE_CONSUMER_EVIDENCE.get(field_name, {})
+		var evidence: Dictionary = evidence_variant if evidence_variant is Dictionary else {}
+		var path := str(evidence.get("consumer_path", ""))
+		var api := str(evidence.get("consumer_api", ""))
+		var issue := ""
+		if evidence.is_empty():
+			issue = "consumer_evidence_missing"
+		elif not _is_non_main_gameplay_consumer_path(path):
+			issue = "consumer_path_not_gameplay"
+		elif api.is_empty():
+			issue = "consumer_api_missing"
+		elif not FileAccess.file_exists(path):
+			issue = "consumer_source_missing"
+		else:
+			var source := FileAccess.get_file_as_string(path)
+			var required_tokens: Array = evidence.get("required_tokens", []) if evidence.get("required_tokens", []) is Array else []
+			if required_tokens.is_empty() or not required_tokens.has(field_name):
+				issue = "field_token_not_required"
+			else:
+				for token_variant in required_tokens:
+					var token := str(token_variant)
+					if token.is_empty() or not source.contains(token):
+						issue = "consumer_token_missing:%s" % token
+						break
+		if not issue.is_empty():
+			var label := "%s:%s:%s" % [role_name, field_name, issue]
+			unsupported_fields.append(label)
+			errors.append("selected_role_passive_without_gameplay_consumer:%s" % label)
+			continue
+		records.append({
+			"role_name": role_name,
+			"field_name": field_name,
+			"consumer_path": path,
+			"consumer_api": api,
+			"consumer_kind": "non_main_gameplay",
+		})
+	return {
+		"passive_fields": passive_fields,
+		"records": records,
+		"unsupported_fields": unsupported_fields,
+	}
+
+
+func _is_non_main_gameplay_consumer_path(path: String) -> bool:
+	if not path.begins_with("res://scripts/runtime/") or not path.ends_with(".gd"):
+		return false
+	var normalized := path.to_lower()
+	for fragment in ROLE_NON_GAMEPLAY_CONSUMER_PATH_FRAGMENTS:
+		if normalized.contains(str(fragment).to_lower()):
+			return false
+	return true
 
 
 func _validate_monsters(registry: Dictionary, errors: Array[String]) -> Dictionary:

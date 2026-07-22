@@ -38,6 +38,9 @@ func _run() -> void:
 	_expect(card_audit.get("category_counts", {}) == {"commodity": 12, "facility": 12, "interaction": 3, "supply_demand": 2, "military": 3, "monster": 8}, "card-family category mix is exact")
 	var role_audit: Dictionary = report.get("role_audit", {}) if report.get("role_audit", {}) is Dictionary else {}
 	_expect(bool(role_audit.get("public_fields_only", false)) and str(role_audit.get("manifest_payload", "")) == "names_only" and (role_audit.get("retired_hits", []) as Array).is_empty(), "role selection uses public identity, stores names only, and contains no retired identifier")
+	_expect(role_audit.get("selected_indices", []) == [0, 1, 2, 3, 9, 16, 21, 22], "selected roles preserve authoritative source indices including Ghost Broadcast at index 9")
+	_expect(bool(role_audit.get("all_passive_fields_have_non_main_gameplay_consumers", false)) and (role_audit.get("unsupported_passive_fields", []) as Array).is_empty(), "every selected role passive field has an audited non-Main gameplay consumer")
+	_expect(int(role_audit.get("passive_field_occurrence_count", 0)) == 18 and (role_audit.get("unique_passive_fields", []) as Array).size() == 11, "role consumer audit covers all 18 selected passive-field occurrences across 11 mechanics")
 	var hidden_audit: Dictionary = report.get("hidden_information_audit", {}) if report.get("hidden_information_audit", {}) is Dictionary else {}
 	_expect(bool(hidden_audit.get("pure_data", false)) and (hidden_audit.get("forbidden_key_paths", []) as Array).is_empty(), "public whitelist carries no private runtime state or developer payload")
 	var product_audit: Dictionary = report.get("product_audit", {}) if report.get("product_audit", {}) is Dictionary else {}

@@ -58,7 +58,7 @@ values. No value was edited to hide that debt.
 | Content | Real generic consumers found | Per-item conclusion |
 |---|---|---|
 | Cards | `GameRuntimeCoordinator.region_supply_catalog_card_ids`, `RegionSupplyRuntimeController`, `CommodityCardInventoryRuntimeController` | Every selected family has a rank-I acquisition record; I-IV records are execution/upgrade gradients |
-| Roles | `NewGameSetupDraftService`, `SessionStartPlanBuilder`, `RoleCodexPublicSourceService` | All eight source indices are valid and accepted by the generic setup/session/Codex consumers |
+| Roles | `NewGameSetupDraftService`, `SessionStartPlanBuilder`, plus the field-level gameplay consumers below | All eight source indices are valid; each selected mechanical passive has a non-Main gameplay consumer |
 | Monsters | `NewGameSetupDraftService`, `SessionStartPlanBuilder`, `MonsterRuntimeController`, `MonsterCodexPublicSourceService` | The selected eight are the complete runtime roster |
 | Products | `CommodityFlowRuntimeController`, `ProductMarketRuntimeController`, `GdpFormulaRuntimeController` | The selected 46 are the complete economy catalog |
 
@@ -75,6 +75,35 @@ The production catalogs are not filtered yet. Current production still offers a 
 41 non-commodity rank-I regional-supply identities, 46 commodity families, and 24 roles.
 The Alpha resource instead declares 28 regional-supply identities, 12 commodity identities,
 and 8 roles. Activating those filters crosses the assigned owner boundary.
+
+## Selected-role gameplay consumer audit
+
+The role selection now fails closed when any selected mechanical passive field lacks a
+known runtime gameplay consumer. A role definition's `name`, `species`, `trait`, `passive`,
+and `flavor` are public identity fields; every other selected field is treated as mechanical.
+The evidence source must live under `scripts/runtime`, must contain the exact field and API,
+and may not be Main, presentation, Codex, diagnostics, tools, tests, or the role catalog.
+
+| Mechanical field | Non-Main gameplay consumer | Consuming API |
+|---|---|---|
+| `starting_cash_bonus` | `SessionStartPlanBuilder` | `_build_players` |
+| `bonus_card_product` | `DistrictSupplyActionPort` | `_grant_role_bonus_card` |
+| `resource_cash_product` | `RoleResourceCashSettlementRuntimeService` | `plan_for_sale_receipt` |
+| `resource_cash_amount` | `RoleResourceCashSettlementRuntimeService` | `plan_for_sale_receipt` |
+| `monster_upgrade_cash` | `MonsterRuntimeController` | `_commit_role_monster_upgrade_cash` |
+| `card_history_residual_catalog_charges` | `IntelPrivateCommandPort` | `use_residual_frame_catalog` |
+| `high_volatility_sale_threshold` | `RoleResourceCashSettlementRuntimeService` | `_high_volatility_plan` |
+| `high_volatility_first_sale_bonus` | `RoleResourceCashSettlementRuntimeService` | `_high_volatility_plan` |
+| `high_volatility_bonus_once_per_market_cycle` | `RoleResourceCashSettlementRuntimeService` | `_high_volatility_plan` |
+| `monster_control_limit_bonus` | `MonsterRuntimeController` | `_player_monster_control_limit` |
+| `military_control_limit_bonus` | `MilitaryRuntimeController` | `player_control_limit` |
+
+Across the eight selected roles this is **18 field occurrences across 11 unique fields**.
+`星图审计庭` is no longer selected: `intel_city_reveal_charges` has no non-Main gameplay
+consumer and `city_guess_reward_bonus` is still consumed only by legacy Main. It is replaced
+by source index 9, `幽幕播报社`, whose existing `card_history_residual_catalog_charges`
+flows through the typed private intel command path. No role definition or gameplay rule was
+changed by this curation.
 
 ## Retired-mechanic audit
 

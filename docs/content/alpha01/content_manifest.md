@@ -34,14 +34,16 @@ The index is the authoritative 24-role catalog index, not a new Alpha-local iden
 | 1 | 深海菌毯使团 | Product-linked cashflow identity |
 | 2 | 重力矿联董事会 | Industrial product-linked cashflow identity |
 | 3 | 离子军购局 | Monster-upgrade economy identity |
-| 8 | 星图审计庭 | Public role with private, bounded owner-inference action |
+| 9 | 幽幕播报社 | Public-evidence residual catalog with a typed private-intel consumer |
 | 16 | 黑潮风险基金 | Public market-volatility identity |
 | 21 | 孪星兽栏同盟 | Monster-control-limit identity |
 | 22 | 蜂巢防务议会 | Military-control-limit identity |
 
 The manifest stores role names only. Passive text and values remain in the scene-owned
 `RoleCatalogRuntimeService`; save identity remains the original Chinese name plus source
-index.
+index. Every mechanical passive field on the eight selected roles is additionally checked
+against a narrow allowlist of non-Main gameplay consumers. Presentation, Codex, diagnostics,
+tests, and the role catalog itself cannot satisfy that gate.
 
 ## Card identities (40)
 
@@ -148,5 +150,5 @@ Codex do not acquire an artificial Alpha-only product schema.
 - `ranked_card_ids()` is exactly 160 unique records: ranks 1-4 for each selected family.
 - Family IDs are stored in lexical order; roles, monsters, and products preserve source order.
 - The public selection snapshot contains identities and counts only.
-- The selection fingerprint is `34fa4921fc017a84ff3117ef5040973a5d27c70ad4181b19888d3799e66d4a2e`.
+- The selection fingerprint is `e1754e42641e0cc6bd3175326f6fea2b8a62802bf4068d340e11862132b6fb54`.
 - Source and rules-registry hashes are locked in the resource so dependency drift fails closed.
