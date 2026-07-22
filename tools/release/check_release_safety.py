@@ -13,6 +13,7 @@ from pathlib import Path
 RELEASE_FEATURE = "space_syndicate_release"
 PRESET_NAME = "Windows Alpha 0.1"
 RUNTIME_BRIDGE = Path("addons/funplay_mcp/runtime/funplay_mcp_runtime_bridge.gd")
+BUILD_SCRIPT = Path("tools/release/build_windows_alpha01.ps1")
 REQUIRED_DEVELOPMENT_EXCLUDES = (
     ".mcp.json",
     ".github/*",
@@ -61,6 +62,7 @@ def audit(root: Path) -> dict[str, object]:
     preset_text = _read(root, "export_presets.cfg")
     project_text = _read(root, "project.godot")
     bridge_text = _read(root, RUNTIME_BRIDGE)
+    build_text = _read(root, BUILD_SCRIPT)
 
     preset_match = re.search(
         rf'(?ms)^\[preset\.\d+\]\s*.*?^name="{re.escape(PRESET_NAME)}"\s*.*?(?=^\[preset\.|\Z)',
@@ -108,6 +110,18 @@ def audit(root: Path) -> dict[str, object]:
     if forbidden_runtime_autoloads:
         failures.append("unexpected_mcp_runtime_autoload")
 
+    build_guard_checks = {
+        "clean_commit_snapshot": "git archive --format=zip" in build_text,
+        "external_output_guard": "OutputDirectory must be outside the Git worktree" in build_text,
+        "temporary_runtime_root": 'Join-Path $env:TEMP "space-syndicate-codex"' in build_text,
+        "terminating_import_scan": bool(
+            re.search(r"--headless\s+--editor\s+--path\s+\$snapshotRoot.*?--import", build_text)
+        ),
+        "manifest_commit_binding": "git_sha = $gitSha" in build_text,
+    }
+    if not all(build_guard_checks.values()):
+        failures.append("release_build_guards_incomplete")
+
     missing_release_documents = [
         str(path).replace("\\", "/")
         for path in REQUIRED_RELEASE_DOCUMENTS
@@ -129,6 +143,7 @@ def audit(root: Path) -> dict[str, object]:
         "release_feature": RELEASE_FEATURE,
         "bridge_autoloaded": bridge_autoloaded,
         "bridge_guard_checks": guard_checks,
+        "build_guard_checks": build_guard_checks,
         "unexpected_mcp_runtime_autoloads": forbidden_runtime_autoloads,
         "missing_development_excludes": missing_development_excludes,
         "missing_release_documents": missing_release_documents,

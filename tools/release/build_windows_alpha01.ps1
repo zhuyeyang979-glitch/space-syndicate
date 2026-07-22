@@ -138,7 +138,10 @@ try {
     }
 
     $editorScanLog = Join-Path $logRoot "editor_scan.log"
-    & $GodotPath --headless --editor --path $snapshotRoot --log-file $editorScanLog --quit
+    # Godot's dedicated import mode exits cleanly after the first cache build.
+    # `--editor --quit` can crash during Windows editor teardown after a
+    # successful import, which makes a clean Git snapshot non-reproducible.
+    & $GodotPath --headless --editor --path $snapshotRoot --log-file $editorScanLog --import
     Assert-NativeSuccess "Godot editor scan"
     $editorFatalLines = @(Find-FatalLines $editorScanLog)
     if ($editorFatalLines.Count -gt 0) {

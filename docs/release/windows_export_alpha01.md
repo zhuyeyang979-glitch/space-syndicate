@@ -24,15 +24,18 @@ screenshot evidence remains under `%TEMP%\space-syndicate-codex\`. No log,
 executable, PCK, ZIP, AppData or `.godot` directory belongs in Git.
 
 The build refuses a dirty worktree. It archives `HEAD` into a temporary clean
-source snapshot, performs the Godot editor scan there, and exports that exact
-commit. Existing canonical output is not replaced unless the caller explicitly
-passes `-ReplaceOutput`.
+source snapshot, performs a terminating Godot import scan there, and exports
+that exact commit. Import mode is used so Windows editor teardown cannot turn a
+successful first import into a crash-only failure. Existing canonical output is
+not replaced unless the caller explicitly passes `-ReplaceOutput`.
 
 ## Fail-closed checks
 
 Before export, `tools/release/check_release_safety.py` verifies:
 
 - Godot Windows x86-64 and the external preset path;
+- clean-commit archive, external output, temporary runtime, terminating import
+  scan and manifest-to-commit build guards;
 - the release feature and the runtime bridge's fail-closed feature guard;
 - exclusion of editor, MCP, QA, test, report and tool resources;
 - the real playtest checklist, third-party register, Godot license and every
