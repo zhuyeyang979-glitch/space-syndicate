@@ -61,6 +61,18 @@ func upgradeable_families() -> Array:
 	return catalog.upgradeable_families() if _require_catalog() else []
 
 
+func product_related_card_count(product_name: String) -> int:
+	if product_name.is_empty() or not _require_catalog():
+		return 0
+	var count := 0
+	for card_id_variant in catalog.ordered_card_ids():
+		var card_definition := catalog.authored_definition(str(card_id_variant))
+		if str(card_definition.get("play_product", "")) == product_name \
+				or str(card_definition.get("supply_product", "")) == product_name:
+			count += 1
+	return count
+
+
 func validation_report() -> Dictionary:
 	if not _require_catalog():
 		return {"valid": false, "errors": [_last_error]}

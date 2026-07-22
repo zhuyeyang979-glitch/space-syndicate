@@ -119,6 +119,39 @@ Two broad fixtures remain inherited debt and were not repaired by restoring reti
 
 `CardPlayEligibilityRuntimeBench` likewise retains the same three baseline failures; its two retired contract cases were physically removed.
 
+## Post-merge dead-residue verification
+
+A follow-up source and runtime audit removed the last production readers that
+could still imply a dedicated contract-response lifecycle:
+
+- the unused `contract_window_seconds` field was removed from the active
+  Ruleset profile and Inspector resource while the five-second card-counter
+  window remains unchanged;
+- the production save-handshake scene no longer loads or exposes the unused
+  v0.5 controller registry. The v0.5 registry file itself remains unchanged as
+  historical version evidence, including its old `contract_runtime` /
+  `contracts` entry; v0.6 validation, save composition and cold restore use
+  only the v0.6 registry and never resume that entry;
+- VictoryControl no longer copies an always-empty legacy contract array into
+  viewer-private audit assets. Forged legacy input is discarded;
+- Main, AI and balance diagnostics no longer read the retired
+  `contract_products` field. The uncalled Main product-card counter was
+  deleted as a whole; active product requirements continue to use the formal
+  `supply_product` / `play_product` fields;
+- the AI route score no longer carries a constant-zero `decline_pressure`
+  term. The arithmetic result is unchanged.
+
+The focused retirement gate now permanently rejects those three retired field
+names from the affected production sources. The broader authority checker
+continues to reject the registered retired mechanic identifiers. No owner,
+port, sink, receipt, UI, save section, effect kind or replacement mechanic was added. Main changed from
+6,617 to 6,599 physical lines, 5,576 to 5,560 nonblank lines and 481 to 480
+methods; fields, constants, preloads and the task-start external caller set are
+unchanged. The global budget tool still reports the inherited one-file caller
+baseline drift introduced before this follow-up (`103` current versus `102`
+recorded baseline); this change adds no Main caller and does not update that
+unrelated baseline.
+
 ## Preserved evidence and next boundary
 
 The dirty experimental contract-response worktree was preserved without commit, reset, stash, or merge. Its patch was copied outside the repository for audit. Only retirement-aligned behavior was reimplemented against the current production tree.

@@ -132,6 +132,7 @@ func _run() -> void:
 	_test_stack_is_physically_absent()
 	_test_active_catalog_is_clean()
 	_test_runtime_composition_is_clean()
+	_test_dead_retirement_residue_absent()
 	_test_active_qa_tools_have_no_deleted_contract_resource_paths()
 	_test_v06_save_registry_has_no_legacy_section()
 	_test_preserved_mechanics_remain_composed()
@@ -173,6 +174,23 @@ func _test_runtime_composition_is_clean() -> void:
 	var interaction_router := FileAccess.get_file_as_string("res://scripts/cards/v06/interaction/interaction_effect_router_v06.gd")
 	_expect(not interaction_schema.contains("contract_offer_v06") and not interaction_schema.contains('interaction_domain", "")) == "contract"'), "anonymous interaction schema has no contract offer/domain route")
 	_expect(not interaction_router.contains('"contract"') and not interaction_router.contains("contract_offer_v06"), "interaction router has no contract domain")
+
+
+func _test_dead_retirement_residue_absent() -> void:
+	var profile_source := FileAccess.get_file_as_string("res://scripts/rules/space_syndicate_ruleset_profile.gd")
+	var profile_resource := FileAccess.get_file_as_string("res://resources/rules/space_syndicate_ruleset_v04.tres")
+	_expect(not profile_source.contains("contract_window_seconds") and not profile_resource.contains("contract_window_seconds"), "retired contract-response timing is absent from the active ruleset profile and resource")
+	var handshake_source := FileAccess.get_file_as_string("res://scripts/runtime/ruleset_save_handshake_service.gd")
+	var handshake_scene := FileAccess.get_file_as_string("res://scenes/runtime/RulesetSaveHandshakeService.tscn")
+	_expect(not handshake_source.contains("@export var controller_state_version_registry:") and not handshake_scene.contains("controller_state_version_registry_v05.tres") and not handshake_scene.contains("controller_state_version_registry ="), "production save handshake no longer binds the historical v0.5 controller registry")
+	var historical_registry := FileAccess.get_file_as_string("res://resources/rules/controller_state_version_registry_v05.tres")
+	_expect(historical_registry.contains('controller_id = "contract_runtime"') and historical_registry.contains('save_section = "contracts"'), "v0.5 registry remains immutable historical version evidence rather than a v0.6 save owner")
+	var victory_source := FileAccess.get_file_as_string("res://scripts/runtime/victory_control_runtime_controller.gd")
+	_expect(not victory_source.contains('"contracts": _safe_array(source.get("contracts"'), "Victory private projection has no retired contract asset slot")
+	var ai_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_runtime_controller.gd")
+	var diagnostics_source := FileAccess.get_file_as_string("res://scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd")
+	_expect(not ai_source.contains("contract_products") and not diagnostics_source.contains("contract_products"), "AI and diagnostics no longer read the retired contract-products field")
+	_expect(not ai_source.contains("decline_pressure"), "constant-zero AI decline pressure is physically absent")
 
 
 func _test_v06_save_registry_has_no_legacy_section() -> void:

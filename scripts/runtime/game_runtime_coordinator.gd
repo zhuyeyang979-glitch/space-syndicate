@@ -101,16 +101,17 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		region_infrastructure_bridge.call("set_controller", region_infrastructure)
 	if region_infrastructure != null and region_infrastructure.has_method("configure"):
 		region_infrastructure.call("configure", RULESET_V06_PROFILE.debug_snapshot())
-	var card_runtime_catalog := _card_runtime_catalog_node()
+	var card_runtime_catalog := _card_runtime_catalog_node() as CardRuntimeCatalogService
 	if card_runtime_catalog != null and card_runtime_catalog.has_method("configure"):
 		card_runtime_catalog.call("configure", ruleset_snapshot)
 	var card_definition_bridge := _card_runtime_definition_bridge_node()
 	if card_definition_bridge != null and card_definition_bridge.has_method("set_catalog_service"):
 		card_definition_bridge.call("set_catalog_service", card_runtime_catalog)
 	var balance_diagnostics := _gameplay_balance_diagnostics_node()
-	var balance_diagnostics_bridge := _gameplay_balance_diagnostics_world_bridge_node()
-	if balance_diagnostics_bridge != null and balance_diagnostics_bridge.has_method("set_role_catalog"):
-		balance_diagnostics_bridge.call("set_role_catalog", _role_catalog_runtime_service_node())
+	var balance_diagnostics_bridge := _gameplay_balance_diagnostics_world_bridge_node() as GameplayBalanceDiagnosticsWorldBridge
+	if balance_diagnostics_bridge != null:
+		balance_diagnostics_bridge.set_card_catalog_service(card_runtime_catalog)
+		balance_diagnostics_bridge.set_role_catalog(_role_catalog_runtime_service_node() as RoleCatalogRuntimeService)
 	if balance_diagnostics != null and balance_diagnostics.has_method("set_world_bridge"):
 		balance_diagnostics.call("set_world_bridge", balance_diagnostics_bridge)
 	if balance_diagnostics != null and balance_diagnostics.has_method("configure"):

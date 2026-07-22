@@ -32,7 +32,6 @@ const V06_TOP_LEVEL_KEYS := [
 	"migration_policy",
 ]
 
-@export var controller_state_version_registry: ControllerStateVersionRegistryResource
 @export var controller_state_version_registry_v06: ControllerStateVersionRegistryResource
 
 

@@ -12,7 +12,6 @@ class_name SpaceSyndicateRulesetProfile
 @export_range(1.0, 30.0, 1.0) var lock_seconds := 5.0
 @export_range(1.0, 30.0, 1.0) var purchase_window_seconds := 12.0
 @export_range(1.0, 30.0, 1.0) var counter_window_seconds := 5.0
-@export_range(1.0, 30.0, 1.0) var contract_window_seconds := 5.0
 @export_range(1.0, 60.0, 1.0) var monster_wager_default_seconds := 15.0
 @export_range(1.0, 60.0, 1.0) var monster_wager_max_seconds := 15.0
 @export_range(0.0, 120.0, 1.0) var monster_wager_reopen_cooldown_seconds := 20.0
@@ -47,7 +46,6 @@ func timing_rules() -> Dictionary:
 		"lock_seconds": lock_seconds,
 		"purchase_window_seconds": purchase_window_seconds,
 		"counter_window_seconds": counter_window_seconds,
-		"contract_window_seconds": contract_window_seconds,
 		"monster_wager_default_seconds": monster_wager_default_seconds,
 		"monster_wager_max_seconds": monster_wager_max_seconds,
 		"monster_wager_reopen_cooldown_seconds": monster_wager_reopen_cooldown_seconds,

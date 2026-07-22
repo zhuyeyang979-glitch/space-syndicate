@@ -1130,7 +1130,6 @@ func _role_budget_band(points: int) -> String:
 
 func _fixed_product_requirements(skill: Dictionary) -> Array:
 	var result: Array = []; _append_unique(result, str(skill.get("supply_product", skill.get("play_product", ""))))
-	for value in _array(skill.get("contract_products", [])): _append_unique(result, str(value))
 	return result
 
 

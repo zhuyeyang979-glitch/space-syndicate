@@ -1,10 +1,8 @@
-[gd_scene load_steps=4 format=3 uid="uid://csiisv66i6qc"]
+[gd_scene load_steps=3 format=3 uid="uid://csiisv66i6qc"]
 
 [ext_resource type="Script" uid="uid://cues1noeesen1" path="res://scripts/runtime/ruleset_save_handshake_service.gd" id="1_1st0p"]
-[ext_resource type="Resource" path="res://resources/rules/controller_state_version_registry_v05.tres" id="2_versions"]
 [ext_resource type="Resource" path="res://resources/rules/controller_state_version_registry_v06.tres" id="3_versions_v06"]
 
 [node name="RulesetSaveHandshakeService" type="Node" unique_id=1481162597]
 script = ExtResource("1_1st0p")
-controller_state_version_registry = ExtResource("2_versions")
 controller_state_version_registry_v06 = ExtResource("3_versions_v06")
