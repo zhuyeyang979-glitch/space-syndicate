@@ -1311,6 +1311,33 @@
       "status": "cut_over"
     },
     {
+      "domain": "developer_diagnostics_host",
+      "old_symbols": [
+        "Main developer_balance_panel",
+        "Main _developer_balance_greybox_enabled",
+        "Main _build_developer_balance_greybox"
+      ],
+      "old_consumers": [
+        "Main _ready developer-only panel composition"
+      ],
+      "new_owner_scene": "res://scenes/runtime/presentation/DeveloperBalanceApplicationHost.tscn",
+      "new_owner_script": "res://scripts/presentation/developer_balance_application_host.gd",
+      "new_public_api": [
+        "DeveloperBalanceApplicationHost.mount_if_requested",
+        "DeveloperBalanceApplicationHost.debug_snapshot"
+      ],
+      "tests": [
+        "res://tests/developer_balance_application_host_cutover_test.gd",
+        "res://scenes/tools/DeveloperBalanceApplicationHostBench.tscn",
+        "res://tests/main_gd_architecture_gate_test.gd",
+        "res://tests/main_runtime_composition_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "THIS_CUTOVER",
+      "status": "cut_over"
+    },
+    {
       "domain": "remaining_root_responsibilities",
       "old_symbols": [
         "audio",

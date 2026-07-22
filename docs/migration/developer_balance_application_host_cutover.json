@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "status": "PRODUCTION_CUTOVER_GREEN",
+  "mechanic_id": "developer_diagnostics_host",
+  "rule_authority_gate": "GREEN",
+  "gameplay_mechanic": false,
+  "new_owner_justified": true,
+  "owner_scene": "res://scenes/runtime/presentation/DeveloperBalanceApplicationHost.tscn",
+  "owner_script": "res://scripts/presentation/developer_balance_application_host.gd",
+  "existing_data_owner": "res://scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd",
+  "existing_source_owner": "res://scripts/presentation/table_presentation_source_owner.gd",
+  "existing_refresh_owner": "res://scripts/presentation/table_presentation_refresh_port.gd",
+  "existing_target": "res://scripts/presentation/developer_balance_presentation_target.gd",
+  "host_owns": [
+    "optional panel instance",
+    "idempotent mount",
+    "typed target binding",
+    "bounded pure-data mount diagnostics"
+  ],
+  "host_does_not_own": [
+    "gameplay state",
+    "diagnostics report",
+    "refresh cadence",
+    "save schema",
+    "Main fallback"
+  ],
+  "mount_environment": "SPACE_SYNDICATE_DEV_BALANCE",
+  "target_environment": "SPACE_SYNDICATE_DEVELOPER_PRESENTATION",
+  "production_integrated": true,
+  "production_integration_branch": "codex/p3-developer-diagnostics-integration-1fb5e73",
+  "production_integration_base_sha": "1fb5e733b8d0da2578b2c8457b2ca2ca3fe7ca9c",
+  "focused_test": "res://tests/developer_balance_application_host_cutover_test.gd",
+  "mcp_bench": "res://scenes/tools/DeveloperBalanceApplicationHostBench.tscn",
+  "validation": {
+    "focused_bench": "PASS 24/24",
+    "focused_cutover_test": "PASS 32/32",
+    "mcp_bench": "PASS 24/24",
+    "production_main_scene": "PASS; no SCRIPT ERROR or runtime crash; existing warnings and six pathless Unicode/NUL diagnostics remain",
+    "table_presentation_cutover": "PASS 20/20",
+    "main_architecture": "PASS 209 checks",
+    "main_composition": "PASS",
+    "ui_text_smoke": "PASS",
+    "visual_snapshot": "PASS",
+    "smoke_check_only": "PASS",
+    "layout_scene_smoke": "BASELINE_DEBT; identical 62 failures on clean 1fb5e733 baseline; P3-only failures 0",
+    "main_budget": "PASS; 6617 physical, 5576 nonblank, 481 methods, 46 top-level variables, 102 external caller files",
+    "git_diff_check": "PASS",
+    "new_parse_or_runtime_errors": 0,
+    "mcp_stopped": true,
+    "balance_runtime_bridge_bench": "49/50; changed developer_panel_service_source passed; unrelated stale codex_consumers_use_diagnostics_service failed"
+  }
+}

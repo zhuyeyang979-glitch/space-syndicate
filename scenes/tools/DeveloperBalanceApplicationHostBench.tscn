@@ -1,0 +1,23 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/developer_balance_application_host_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/DeveloperBalanceApplicationHost.tscn" id="2_host"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/DeveloperBalancePresentationTarget.tscn" id="3_target"]
+
+[node name="DeveloperBalanceApplicationHostBench" type="Node"]
+script = ExtResource("1_bench")
+
+[node name="PanelHost" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="DeveloperBalancePresentationTarget" parent="." instance=ExtResource("3_target")]
+
+[node name="DeveloperBalanceApplicationHost" parent="." instance=ExtResource("2_host")]
+auto_mount = false
+panel_parent_path = NodePath("../PanelHost")
+presentation_target_path = NodePath("../DeveloperBalancePresentationTarget")

@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "request_id": "P3-DEVELOPER-DIAGNOSTICS-HOST-CUTOVER",
+  "status": "APPLIED_AND_VALIDATED",
+  "priority": "P3",
+  "source_branch": "codex/p3-developer-diagnostics-host-16a0f6c",
+  "base_sha": "16a0f6c7c087b9639ef3570f979869bb30d0a43b",
+  "integration_branch": "codex/p3-developer-diagnostics-integration-1fb5e73",
+  "integration_base_sha": "1fb5e733b8d0da2578b2c8457b2ca2ca3fe7ca9c",
+  "production_integrated": true,
+  "rule_authority_gate": "GREEN",
+  "mechanic_id": "developer_diagnostics_host",
+  "purpose": "Compose the optional developer balance panel through a scene-owned mount host and remove the remaining developer-panel composition responsibility from Main without adding a second diagnostics, cadence, or gameplay owner.",
+  "functional_core_files": [
+    "scripts/presentation/developer_balance_application_host.gd",
+    "scenes/runtime/presentation/DeveloperBalanceApplicationHost.tscn",
+    "scripts/tools/developer_balance_application_host_bench.gd",
+    "scenes/tools/DeveloperBalanceApplicationHostBench.tscn",
+    "tests/developer_balance_application_host_cutover_test.gd",
+    "docs/migration/developer_balance_application_host_cutover.md",
+    "docs/migration/developer_balance_application_host_cutover.json"
+  ],
+  "hot_file_changes": [
+    {
+      "file": "scenes/main.tscn",
+      "change": "Add one DeveloperBalanceApplicationHost PackedScene under Main/RuntimeServices. Set panel_parent_path=../../RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer and presentation_target_path=../RuntimeControllerHost/GameRuntimeCoordinator/DeveloperBalancePresentationTarget. Place it so its synchronous _ready runs before the Coordinator's existing deferred presentation wiring. Do not add another target or scheduler."
+    },
+    {
+      "file": "scripts/main.gd",
+      "change": "Delete developer_balance_panel, the _ready call to _build_developer_balance_greybox, _developer_balance_greybox_enabled, and _build_developer_balance_greybox. Do not retain a wrapper, fallback, dynamic callback, or extra refresh request."
+    },
+    {
+      "file": "docs/migration/main_gd_cutover_ledger.json",
+      "change": "After the production scene and negative gates pass, record developer_diagnostics_host as cut_over with the Host scene/script, old path deleted, duplicate execution checked, and integration commit SHA."
+    },
+    {
+      "file": "docs/development_log.md",
+      "change": "Record the production Host cutover, Main reduction, focused/MCP evidence, and both developer environment gates."
+    }
+  ],
+  "test_hot_file_changes": [
+    {
+      "file": "tests/main_gd_architecture_gate_test.gd",
+      "change": "Require absence of developer_balance_panel, _developer_balance_greybox_enabled, and _build_developer_balance_greybox from Main."
+    },
+    {
+      "file": "tests/main_runtime_composition_test.gd",
+      "change": "Require exactly one production DeveloperBalanceApplicationHost with the two explicit NodePaths and no duplicate DeveloperBalancePresentationTarget."
+    }
+  ],
+  "no_coordinator_change_required": true,
+  "forbidden": [
+    "second diagnostics service",
+    "second presentation source",
+    "second refresh scheduler",
+    "Main fallback",
+    "dynamic Main callback",
+    "developer report in player-facing snapshot",
+    "gameplay or save ownership in the Host"
+  ],
+  "required_negative_gates": [
+    "one DeveloperBalanceApplicationHost production instance",
+    "one DeveloperBalancePresentationTarget production instance",
+    "zero developer_balance_panel fields in Main",
+    "zero _build_developer_balance_greybox methods in Main",
+    "zero _developer_balance_greybox_enabled methods in Main",
+    "zero Main callbacks in the Host",
+    "zero duplicate developer refresh cadence"
+  ],
+  "required_tests_after_integration": [
+    "tests/developer_balance_application_host_cutover_test.gd",
+    "scenes/tools/DeveloperBalanceApplicationHostBench.tscn through Godot 4.7 MCP",
+    "tests/main_gd_architecture_gate_test.gd",
+    "tests/main_runtime_composition_test.gd",
+    "tools/architecture/check_main_gd_budget.py --json",
+    "tests/smoke_test.gd --check-only after the P4 smoke hot-file lease is resolved"
+  ]
+}
