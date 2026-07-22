@@ -1,0 +1,82 @@
+{
+  "schema_version": "alpha01.runtime_selection.v1",
+  "manifest_id": "alpha01_playable_cut",
+  "selection_sha256": "e1754e42641e0cc6bd3175326f6fea2b8a62802bf4068d340e11862132b6fb54",
+  "recommended_configuration": {
+    "player_count": 4,
+    "human_player_count": 1,
+    "ai_player_count": 3
+  },
+  "roles": [
+    {"source_index": 0, "name": "环港走私议会"},
+    {"source_index": 1, "name": "深海菌毯使团"},
+    {"source_index": 2, "name": "重力矿联董事会"},
+    {"source_index": 3, "name": "离子军购局"},
+    {"source_index": 9, "name": "幽幕播报社"},
+    {"source_index": 16, "name": "黑潮风险基金"},
+    {"source_index": 21, "name": "孪星兽栏同盟"},
+    {"source_index": 22, "name": "蜂巢防务议会"}
+  ],
+  "acquisition": {
+    "region_supply_rank_1_ids": [
+      "facility.factory.commerce.rank_1",
+      "facility.factory.energy.rank_1",
+      "facility.factory.industry.rank_1",
+      "facility.factory.life.rank_1",
+      "facility.factory.shipping.rank_1",
+      "facility.factory.technology.rank_1",
+      "facility.market.commerce.rank_1",
+      "facility.market.energy.rank_1",
+      "facility.market.industry.rank_1",
+      "facility.market.life.rank_1",
+      "facility.market.shipping.rank_1",
+      "facility.market.technology.rank_1",
+      "interaction.phase_veto.rank_1",
+      "interaction.shadow_warehouse_traction.rank_1",
+      "interaction.starlink_dismantle.rank_1",
+      "supply_demand.near_land_supply.rank_1",
+      "supply_demand.remote_sea_order.rank_1",
+      "unit.military.air_superiority_fighter.rank_1",
+      "unit.military.planetary_defense_force.rank_1",
+      "unit.military.submarine_fleet.rank_1",
+      "unit.monster.blue_edge_knight.rank_1",
+      "unit.monster.flame_ring_proto_star.rank_1",
+      "unit.monster.meteor_sentinel.rank_1",
+      "unit.monster.mirror_hunter.rank_1",
+      "unit.monster.oasis_repairer.rank_1",
+      "unit.monster.prism_blade_colossus.rank_1",
+      "unit.monster.sand_armor_rover.rank_1",
+      "unit.monster.spore_tide_emperor.rank_1"
+    ],
+    "commodity_track_rank_1_ids": [
+      "commodity.blue_tide_algae.rank_1",
+      "commodity.deep_sea_fungal_mat.rank_1",
+      "commodity.dream_fragrance.rank_1",
+      "commodity.gravity_ceramic.rank_1",
+      "commodity.living_chip.rank_1",
+      "commodity.photosynthetic_gel.rank_1",
+      "commodity.ring_crystal_battery.rank_1",
+      "commodity.solar_scale.rank_1",
+      "commodity.star_whale_canning.rank_1",
+      "commodity.storm_pearl.rank_1",
+      "commodity.titanium_shell_clam.rank_1",
+      "commodity.trajectory_ink.rank_1"
+    ]
+  },
+  "monsters": [
+    {"source_index": 0, "name": "孢雾海皇"},
+    {"source_index": 1, "name": "砂铠陆行兽"},
+    {"source_index": 2, "name": "流星哨兵"},
+    {"source_index": 3, "name": "棱刃重甲"},
+    {"source_index": 4, "name": "绿洲修复体"},
+    {"source_index": 5, "name": "焰环幼星"},
+    {"source_index": 6, "name": "蓝锋骑士"},
+    {"source_index": 7, "name": "镜像猎兵"}
+  ],
+  "active_map": {
+    "map_id": "depth_1_procedural_planet",
+    "challenge_depth": 1,
+    "generator": "SessionStartWorldPlanBuilder",
+    "art_surface": "res://scenes/ui/PlanetMapView.tscn"
+  }
+}

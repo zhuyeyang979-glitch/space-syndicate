@@ -66,15 +66,16 @@ The draw semantics were checked specifically:
 
 - Regional supply builds descriptors only when `rank == 1`; `RegionSupplyRuntimeController`
   also rejects a non-rank-I descriptor.
-- The default commodity belt scans the 184 commodity rank records but selects only rank-I
-  records and seeds eight visible entries.
+- The default commodity belt consumes the manifest's 12 commodity rank-I identities and
+  deterministically orders all 12 from the session gameplay seed.
 - Therefore the current runtime does **not** randomize 160 selected rank records as 160
   separate player cards.
 
-The production catalogs are not filtered yet. Current production still offers a universe of
-41 non-commodity rank-I regional-supply identities, 46 commodity families, and 24 roles.
-The Alpha resource instead declares 28 regional-supply identities, 12 commodity identities,
-and 8 roles. Activating those filters crosses the assigned owner boundary.
+Production activation filters setup and acquisition owners without duplicating their source
+catalogs. Setup exposes 8 source-stable roles; the formal session plan and regional supply use
+28 non-commodity rank-I identities; the commodity track uses 12 commodity rank-I identities.
+The complete 24-role, 87-card-family, and 46-product source catalogs remain authoritative for
+definitions, upgrades, validation, and economy execution.
 
 ## Selected-role gameplay consumer audit
 

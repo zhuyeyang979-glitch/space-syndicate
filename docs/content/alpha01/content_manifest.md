@@ -1,6 +1,6 @@
 # Alpha 0.1 Playable Content Cut
 
-Status: **curation ready; runtime activation pending owner integration**.
+Status: **runtime activated for the Alpha 0.1 playable cut**.
 
 The authoritative resource is `res://resources/content/alpha01/alpha01_content_manifest.tres`.
 It exposes exactly **40 player card identities** through `acquisition_card_ids()`.
@@ -9,6 +9,29 @@ returned by `ranked_card_ids()` are the existing I-IV upgrade gradients for thos
 identities; they are dependency and execution records, not 160 independent draw cards.
 
 No card, role, monster, product, rule value, art asset, or effect kind was added or changed.
+
+## Runtime activation
+
+The curated Resource is the sole gameplay runtime authority. Its
+`runtime_selection_snapshot()` method supplies the typed selection directly from the same
+role/card/monster identity fields. `res://docs/playtest/alpha_0_1/content_manifest.json` is
+derived parity-locked audit evidence only; runtime code never reads `res://docs/`, which the
+Windows export preset excludes.
+
+The production call chain is:
+
+1. `NewGameSetupDraftService` and `NewGameSetupViewerQueryPort` expose the eight selected
+   source-stable roles, eight starter monsters, and the single depth-I map option.
+2. `SessionStartPlanBuilder` resolves a formal 3-8 player plan from those identities and
+   places exactly the 28 selected non-commodity rank-I IDs in `card_pool`.
+3. `GameRuntimeCoordinator` preflights the plan against the same selection, configures the
+   regional supply, and seeds the commodity owner from the plan gameplay seed.
+4. `CommodityCardInventoryRuntimeController` deterministically orders all and only the 12
+   selected commodity rank-I IDs. Same seed means same order; a different seed can vary it.
+
+No runtime consumer expands the acquisition universe through `ranked_card_ids()`. The 160
+rank records remain upgrade/execution dependencies, and public selection/supply projections
+do not expose future bags, private hands, cash, ownership, routes, or AI reasoning.
 
 ## Cut summary
 

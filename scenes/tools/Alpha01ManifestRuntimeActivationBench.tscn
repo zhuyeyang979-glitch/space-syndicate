@@ -1,0 +1,19 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/alpha01_manifest_runtime_activation_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/GameRuntimeCoordinator.tscn" id="2_coordinator"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/NewGameSetupDraftService.tscn" id="3_draft"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/SessionStartPlanBuilder.tscn" id="4_builder"]
+
+[node name="Alpha01ManifestRuntimeActivationBench" type="Node"]
+script = ExtResource("1_bench")
+
+[node name="GameRuntimeCoordinator" parent="." instance=ExtResource("2_coordinator")]
+
+[node name="NewGameSetupDraftService" parent="." instance=ExtResource("3_draft")]
+role_catalog_path = NodePath("../GameRuntimeCoordinator/RoleCatalogRuntimeService")
+
+[node name="SessionStartPlanBuilder" parent="." instance=ExtResource("4_builder")]
+role_catalog_path = NodePath("../GameRuntimeCoordinator/RoleCatalogRuntimeService")
+coordinator_path = NodePath("../GameRuntimeCoordinator")
+ai_runtime_path = NodePath("../GameRuntimeCoordinator/AiRuntimeController")

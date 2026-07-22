@@ -10,6 +10,7 @@ const MIN_CHALLENGE_DEPTH := 1
 const MAX_CHALLENGE_DEPTH := 6
 const ROLE_RANDOM_INDEX := -1
 const MonsterCatalog := preload("res://scripts/runtime/monster_catalog_v06.gd")
+const AlphaContentLoader := preload("res://scripts/runtime/alpha01_content_manifest_loader.gd")
 
 @export var role_catalog_path: NodePath
 
@@ -38,9 +39,15 @@ func reset_to_defaults() -> Dictionary:
 	_challenge_depth = 1
 	_role_indices.clear()
 	_starter_monster_indices.clear()
+	var content := AlphaContentLoader.load_active_selection()
+	var allowed_roles: Array[int] = []
+	var allowed_monsters: Array[int] = []
+	if content.is_valid():
+		allowed_roles = content.role_source_indices()
+		allowed_monsters = content.monster_source_indices()
 	for index in range(MAX_PLAYER_COUNT):
-		_role_indices.append(index)
-		_starter_monster_indices.append(index)
+		_role_indices.append(allowed_roles[index % maxi(1, allowed_roles.size())] if not allowed_roles.is_empty() else 0)
+		_starter_monster_indices.append(allowed_monsters[index % maxi(1, allowed_monsters.size())] if not allowed_monsters.is_empty() else 0)
 	_normalize(false)
 	_draft_revision += 1
 	return draft_snapshot()
@@ -96,13 +103,15 @@ func apply_command(command: SetupDraftCommand) -> SetupDraftCommandReceipt:
 		&"set_challenge_depth":
 			_challenge_depth = command.integer_value
 		&"step_role":
-			_role_indices[command.player_index] = _next_available_role(command.player_index, _role_indices[command.player_index] + command.integer_value)
+			var stepped_role := _step_selected_identity(_role_indices[command.player_index], command.integer_value, _allowed_role_indices())
+			_role_indices[command.player_index] = _next_available_role(command.player_index, stepped_role)
 		&"set_role_random":
 			_role_indices[command.player_index] = ROLE_RANDOM_INDEX
 		&"step_starter_monster":
-			if _monster_catalog_count <= 0:
+			var allowed_monsters := _allowed_monster_indices()
+			if allowed_monsters.is_empty():
 				return SetupDraftCommandReceipt.make(command, false, false, "setup_monster_catalog_empty", _draft_revision)
-			_starter_monster_indices[command.player_index] = wrapi(_starter_monster_indices[command.player_index] + command.integer_value, 0, _monster_catalog_count)
+			_starter_monster_indices[command.player_index] = _step_selected_identity(_starter_monster_indices[command.player_index], command.integer_value, allowed_monsters)
 		&"reset_defaults":
 			reset_to_defaults()
 			return SetupDraftCommandReceipt.make(command, true, true, "setup_defaults_reset", _draft_revision)
@@ -133,6 +142,8 @@ func debug_snapshot() -> Dictionary:
 		"owner_id": "new_game_setup_draft_service_v1",
 		"draft_revision": _draft_revision,
 		"unique_setup_draft_owner": true,
+		"active_role_count": _allowed_role_indices().size(),
+		"active_monster_count": _allowed_monster_indices().size(),
 		"save_section_count": 0,
 		"owns_live_world": false,
 		"references_main": false,
@@ -143,11 +154,12 @@ func _normalize(bump_revision: bool) -> void:
 	_player_count = clampi(_player_count, MIN_PLAYER_COUNT, MAX_PLAYER_COUNT)
 	_ai_player_count = clampi(_ai_player_count, MIN_AI_PLAYER_COUNT, mini(MAX_AI_PLAYER_COUNT, _player_count - 1))
 	_challenge_depth = clampi(_challenge_depth, MIN_CHALLENGE_DEPTH, MAX_CHALLENGE_DEPTH)
-	var role_count := _role_count()
+	var allowed_roles := _allowed_role_indices()
+	var allowed_monsters := _allowed_monster_indices()
 	while _role_indices.size() < MAX_PLAYER_COUNT:
-		_role_indices.append(_role_indices.size() % maxi(1, role_count))
+		_role_indices.append(allowed_roles[_role_indices.size() % maxi(1, allowed_roles.size())] if not allowed_roles.is_empty() else 0)
 	while _starter_monster_indices.size() < MAX_PLAYER_COUNT:
-		_starter_monster_indices.append(_starter_monster_indices.size() % maxi(1, _monster_catalog_count))
+		_starter_monster_indices.append(allowed_monsters[_starter_monster_indices.size() % maxi(1, allowed_monsters.size())] if not allowed_monsters.is_empty() else 0)
 	_role_indices.resize(MAX_PLAYER_COUNT)
 	_starter_monster_indices.resize(MAX_PLAYER_COUNT)
 	var used := {}
@@ -158,8 +170,9 @@ func _normalize(bump_revision: bool) -> void:
 		_role_indices[index] = _next_available_role(index, role_index, used if index < _player_count else {})
 		if index < _player_count:
 			used[_role_indices[index]] = true
-		if _monster_catalog_count > 0:
-			_starter_monster_indices[index] = wrapi(_starter_monster_indices[index], 0, _monster_catalog_count)
+		if not allowed_monsters.is_empty():
+			if not allowed_monsters.has(_starter_monster_indices[index]):
+				_starter_monster_indices[index] = allowed_monsters[index % allowed_monsters.size()]
 		else:
 			_starter_monster_indices[index] = 0
 	if bump_revision:
@@ -167,8 +180,8 @@ func _normalize(bump_revision: bool) -> void:
 
 
 func _next_available_role(_player_index: int, start_index: int, used_override: Dictionary = {}) -> int:
-	var role_count := _role_count()
-	if role_count <= 0:
+	var allowed_roles := _allowed_role_indices()
+	if allowed_roles.is_empty():
 		return 0
 	var used := used_override
 	if used_override.is_empty():
@@ -177,16 +190,50 @@ func _next_available_role(_player_index: int, start_index: int, used_override: D
 			if index == _player_index or index >= _role_indices.size() or _role_indices[index] < 0:
 				continue
 			used[_role_indices[index]] = true
-	for offset in range(role_count):
-		var candidate := wrapi(start_index + offset, 0, role_count)
+	var start_position := allowed_roles.find(start_index)
+	if start_position < 0:
+		start_position = 0
+	for offset in range(allowed_roles.size()):
+		var candidate := allowed_roles[wrapi(start_position + offset, 0, allowed_roles.size())]
 		if not used.has(candidate):
 			return candidate
-	return wrapi(start_index, 0, role_count)
+	return allowed_roles[start_position]
 
 
 func _role_count() -> int:
+	return _allowed_role_indices().size()
+
+
+func _allowed_role_indices() -> Array[int]:
+	var content := AlphaContentLoader.load_active_selection()
+	if not content.is_valid():
+		return []
 	var catalog := get_node_or_null(role_catalog_path) as RoleCatalogRuntimeService
-	return catalog.role_count() if catalog != null else 0
+	var result: Array[int] = []
+	for source_index in content.role_source_indices():
+		if catalog != null and not catalog.definition_at(source_index).is_empty():
+			result.append(source_index)
+	return result
+
+
+func _allowed_monster_indices() -> Array[int]:
+	var content := AlphaContentLoader.load_active_selection()
+	if not content.is_valid():
+		return []
+	var result: Array[int] = []
+	for source_index in content.monster_source_indices():
+		if source_index >= 0 and source_index < mini(_monster_catalog_count, MonsterCatalog.catalog_size()):
+			result.append(source_index)
+	return result
+
+
+func _step_selected_identity(current: int, step: int, allowed: Array[int]) -> int:
+	if allowed.is_empty():
+		return 0
+	var position := allowed.find(current)
+	if position < 0:
+		position = 0
+	return allowed[wrapi(position + step, 0, allowed.size())]
 
 
 func _valid_snapshot(snapshot: Dictionary) -> bool:
