@@ -27,6 +27,26 @@ REQUIRED_DEVELOPMENT_EXCLUDES = (
     "addons/funplay_mcp/core/*",
     "addons/funplay_mcp/ui/*",
 )
+REQUIRED_RELEASE_DOCUMENTS = (
+    Path("docs/tomorrow_human_playtest_checklist.md"),
+    Path("docs/third_party_assets.md"),
+    Path("docs/release/GODOT_ENGINE_LICENSE.txt"),
+)
+REQUIRED_REDISTRIBUTION_LICENSES = (
+    Path("addons/funplay_mcp/LICENSE"),
+    Path("assets/third_party/game_icons_ccby/license.txt"),
+    Path("assets/third_party/game_icons_ccby/README.md"),
+    Path("assets/third_party/kenney_cc0/LICENSE.md"),
+    Path("assets/third_party/monster_battler/LICENSE"),
+    Path("assets/third_party/moth_kaijuice/LICENSE"),
+    Path("assets/third_party/night_patrol/LICENSE"),
+    Path("assets/third_party/night_patrol/NOTICE.md"),
+    Path("assets/third_party/night_patrol/vendor-aigei-README.md"),
+    Path("assets/third_party/night_patrol/vendor-shushan-README.md"),
+    Path("assets/third_party/pixelmob_cc0/LICENSE-ART.txt"),
+    Path("assets/third_party/pixelmob_cc0/README.md"),
+    Path("assets/third_party/superpowers_cc0/LICENSE.txt"),
+)
 
 
 def _read(root: Path, relative: str | Path) -> str:
@@ -58,6 +78,10 @@ def audit(root: Path) -> dict[str, object]:
         failures.append("windows_platform_missing")
     if 'binary_format/embed_pck=true' not in preset_text:
         failures.append("embedded_pck_required")
+    if 'binary_format/architecture="x86_64"' not in preset_text:
+        failures.append("windows_x86_64_required")
+    if 'export_path="../space-syndicate-builds/playtest-alpha-0.1/' not in preset_text:
+        failures.append("external_export_path_required")
     missing_development_excludes = [
         pattern for pattern in REQUIRED_DEVELOPMENT_EXCLUDES if pattern not in preset_block
     ]
@@ -84,6 +108,21 @@ def audit(root: Path) -> dict[str, object]:
     if forbidden_runtime_autoloads:
         failures.append("unexpected_mcp_runtime_autoload")
 
+    missing_release_documents = [
+        str(path).replace("\\", "/")
+        for path in REQUIRED_RELEASE_DOCUMENTS
+        if not (root / path).is_file()
+    ]
+    if missing_release_documents:
+        failures.append("release_documents_missing")
+    missing_redistribution_licenses = [
+        str(path).replace("\\", "/")
+        for path in REQUIRED_REDISTRIBUTION_LICENSES
+        if not (root / path).is_file()
+    ]
+    if missing_redistribution_licenses:
+        failures.append("redistribution_licenses_missing")
+
     return {
         "status": "PASS" if not failures else "FAIL",
         "preset": PRESET_NAME,
@@ -92,6 +131,8 @@ def audit(root: Path) -> dict[str, object]:
         "bridge_guard_checks": guard_checks,
         "unexpected_mcp_runtime_autoloads": forbidden_runtime_autoloads,
         "missing_development_excludes": missing_development_excludes,
+        "missing_release_documents": missing_release_documents,
+        "missing_redistribution_licenses": missing_redistribution_licenses,
         "failures": failures,
     }
 
