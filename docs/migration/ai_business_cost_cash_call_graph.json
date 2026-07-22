@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "mechanic_id": "ai_business_action_cash_cost",
+  "mechanic_status": "ACTIVE",
+  "current_cost_units": 90,
+  "current_cost_cents": 9000,
+  "unknown_consumer_count": 0,
+  "current_order": [
+    "product_market_cycle",
+    "ai_candidate_selection",
+    "dynamic_main_action_dispatch",
+    "direct_whole_unit_cash_write",
+    "market_effect",
+    "public_feedback"
+  ],
+  "current_defects": [
+    "cash_cents_bypass",
+    "wager_commitment_bypass",
+    "simulation_mutation_authority_bypass",
+    "no_exact_once_identity",
+    "effect_failure_after_debit_not_compensated",
+    "main_dynamic_dispatch"
+  ],
+  "target_order": [
+    "private_cash_context",
+    "effect_prepare",
+    "effect_commit_with_rollback_open",
+    "effect_finalization_seal",
+    "typed_cash_commit",
+    "effect_rollback_on_cash_failure",
+    "sealed_effect_finalize_on_cash_success",
+    "typed_public_clue_and_log",
+    "owner_tick_retries_only_missing_publication_if_needed"
+  ],
+  "new_owner_justified": true,
+  "new_ui_window_justified": false,
+  "new_save_state_justified": false
+}

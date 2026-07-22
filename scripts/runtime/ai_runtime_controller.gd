@@ -41,8 +41,11 @@ var _district_supply_action_port: DistrictSupplyActionPort
 var _district_supply_runtime_query_port: DistrictSupplyRuntimeQueryPort
 var _district_supply_ai_query_capability: DistrictSupplyAiQueryCapability
 var _cash_commitment_query_port: MonsterWagerCashCommitmentQueryPort
+var _ai_business_cost_cash_port: AiBusinessCostCashPort
+var _ai_business_cost_capability: AiBusinessCostCapability
 var _ruleset_snapshot: Dictionary = {}
 var _policy_main_payload: Dictionary = {}
+var _business_action_policy: Dictionary = {}
 var _configured := false
 var _last_receipts: Array = []
 var ai_card_decision_timer := 2.2
@@ -119,6 +122,14 @@ func set_cash_commitment_query_port(port: MonsterWagerCashCommitmentQueryPort) -
 	_cash_commitment_query_port = port
 
 
+func set_ai_business_cost_cash_port(
+	port: AiBusinessCostCashPort,
+	capability: AiBusinessCostCapability
+) -> void:
+	_ai_business_cost_cash_port = port
+	_ai_business_cost_capability = capability
+
+
 func new_session_identity_for_seat(player_index: int, human_player_count: int) -> Dictionary:
 	if player_index < human_player_count:
 		return {"is_ai": false, "seat_type": "human", "ai_profile": {}, "ai_memory": {}}
@@ -143,13 +154,20 @@ func configure(ruleset_snapshot: Dictionary, supplied_profile: Resource = null) 
 		_configured = false
 		push_error("AiRuntimeController refuses an AI Policy Profile with runtime cutover disabled.")
 		return
-	if not policy_profile.has_method("to_main_source_dictionary"):
+	if not (policy_profile is AiPolicyProfileResource) \
+			or not policy_profile.has_method("to_main_source_dictionary") \
+			or not policy_profile.has_method("business_action_terms"):
 		_configured = false
-		push_error("AiRuntimeController policy profile cannot provide runtime parameters.")
+		push_error("AiRuntimeController policy profile cannot provide typed runtime parameters.")
 		return
 	var payload_variant: Variant = policy_profile.call("to_main_source_dictionary")
 	_policy_main_payload = (payload_variant as Dictionary).duplicate(true) if payload_variant is Dictionary else {}
-	_configured = not _policy_main_payload.is_empty()
+	var business_terms_variant: Variant = policy_profile.call("business_action_terms")
+	_business_action_policy = (business_terms_variant as Dictionary).duplicate(true) if business_terms_variant is Dictionary else {}
+	_configured = not _policy_main_payload.is_empty() and _business_action_policy_valid(_business_action_policy)
+	if not _configured:
+		push_error("AiRuntimeController requires complete Business Action Policy terms.")
+		return
 	if _configured:
 		ai_card_decision_timer = float(_policy_value("timing", "card_decision_interval_seconds", 2.2))
 		ai_auction_reaction_timer = float(_policy_value("timing", "auction_reaction_interval_seconds", 0.7))
@@ -407,6 +425,7 @@ func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 		"victory_control_controller_bound": _victory_control_runtime_controller != null,
 		"typed_card_submission_bound": _card_play_submission_controller != null,
 		"typed_card_history_bound": _card_resolution_history_service != null,
+		"typed_business_cost_cash_bound": _ai_business_cost_cash_port != null and _ai_business_cost_capability != null,
 		"private_plan_exposed": false,
 	}
 
@@ -461,6 +480,21 @@ func _monster_wager_decision_snapshot_for_actor(wager_id: int, player_index: int
 func _policy_value(group: String, field: String, default_value: Variant) -> Variant:
 	var group_variant: Variant = _policy_main_payload.get(group, {})
 	return (group_variant as Dictionary).get(field, default_value) if group_variant is Dictionary else default_value
+
+
+func _business_action_policy_valid(terms: Dictionary) -> bool:
+	return terms.has("chance_percent") and terms.has("max_per_cycle") and terms.has("cost_units") \
+		and int(terms.get("chance_percent", -1)) >= 0 and int(terms.get("chance_percent", -1)) <= 100 \
+		and int(terms.get("max_per_cycle", 0)) > 0 \
+		and int(terms.get("cost_units", 0)) > 0 \
+		and str(terms.get("policy_fingerprint", "")) == _business_action_policy_fingerprint(terms)
+
+
+func _business_action_policy_fingerprint(terms: Dictionary) -> String:
+	return JSON.stringify([
+		"ai_business_cost_v1",
+		int(terms.get("cost_units", -1)),
+	]).sha256_text()
 
 
 var auto_monsters:
@@ -783,15 +817,15 @@ var RIVAL_AUTO_BUILD_MIN_CASH_RESERVE:
 
 var RIVAL_BUSINESS_ACTION_CHANCE_PERCENT:
 	get:
-		return _world_constant(&"RIVAL_BUSINESS_ACTION_CHANCE_PERCENT")
+		return int(_business_action_policy.get("chance_percent", 0))
 
 var RIVAL_BUSINESS_ACTION_COST:
 	get:
-		return _world_constant(&"RIVAL_BUSINESS_ACTION_COST")
+		return int(_business_action_policy.get("cost_units", 0))
 
 var RIVAL_BUSINESS_ACTION_MAX_PER_CYCLE:
 	get:
-		return _world_constant(&"RIVAL_BUSINESS_ACTION_MAX_PER_CYCLE")
+		return int(_business_action_policy.get("max_per_cycle", 0))
 
 var WEATHER_DURATION_MIN_SECONDS:
 	get:
@@ -1139,15 +1173,6 @@ func _city_demand_names(city: Dictionary) -> Array:
 
 func _normalize_city_public_clue_entry(value: Variant) -> Dictionary:
 	return _call_world(&"_normalize_city_public_clue_entry", [value])
-
-func _apply_rival_business_action(player_index: int, action: Dictionary) -> bool:
-	var bridge := _world_bridge as AiRuntimeWorldBridge
-	var state := bridge.world_session_state() if bridge != null else null
-	var before_cash := state.private_player_cash_snapshot(player_index) if state != null else {}
-	var applied := bool(_call_world(&"_apply_rival_business_action", [player_index, action]))
-	if applied and state != null:
-		return bool(state.reconcile_private_player_cash_after_unit_mutation(player_index, before_cash).get("reconciled", false))
-	return applied
 
 func _mark_city_guess_for_player(viewer_index: int, city_index: int, guessed_player: int, confidence: int = CITY_GUESS_CONFIDENCE_DEFAULT, reason: String = CITY_GUESS_REASON_DEFAULT) -> bool:
 	var bridge := _world_bridge as AiRuntimeWorldBridge
@@ -1783,12 +1808,170 @@ func _pick_rival_business_action(player_index: int) -> Dictionary:
 	if picked < 0:
 		return {}
 	return candidates[picked] as Dictionary
+
+
+func _execute_rival_business_action_transaction(
+	player_index: int,
+	action: Dictionary,
+	attempt_ordinal: int
+) -> bool:
+	if _ai_business_cost_cash_port == null or _ai_business_cost_capability == null \
+		or _product_market_runtime_controller == null:
+		return false
+	var action_kind := str(action.get("kind", "")).strip_edges()
+	# Route sabotage remains a scored candidate for parity, but no production
+	# owner currently has a reversible route-sabotage lifecycle. It therefore
+	# stays fail-closed exactly as the retired Main dispatch did.
+	if action_kind != "price_pump":
+		return false
+	var product_id := str(action.get("product", "")).strip_edges()
+	var own_city_index := int(action.get("own_city", -1))
+	var public_region_id := _ai_business_public_region_id(own_city_index)
+	if product_id.is_empty() or public_region_id.is_empty():
+		return false
+	var context := _ai_business_cost_cash_port.private_request_context(
+		_ai_business_cost_capability,
+		player_index
+	)
+	if not bool(context.get("authorized", false)):
+		return false
+	var request := AiBusinessCostDebitRequest.new()
+	request.request_id = _ai_business_request_id(
+		str(context.get("session_id", "")),
+		int(context.get("business_cycle_revision", -1)),
+		player_index,
+		attempt_ordinal,
+		action_kind,
+		product_id,
+		public_region_id
+	)
+	request.player_index = player_index
+	request.business_action_id = action_kind
+	request.product_id = product_id
+	request.public_region_id = public_region_id
+	request.business_cycle_revision = int(context.get("business_cycle_revision", -1))
+	request.session_id = str(context.get("session_id", ""))
+	request.session_revision = int(context.get("session_revision", -1))
+	request.simulation_step_index = int(context.get("simulation_step_index", -1))
+	request.cost_cents = int(context.get("cost_cents", 0))
+	request.policy_fingerprint = str(_business_action_policy.get("policy_fingerprint", ""))
+	request.expected_availability_fingerprint = str(context.get("expected_availability_fingerprint", ""))
+	request.source = AiBusinessCostDebitRequest.SOURCE_AI_RUNTIME
+	request.seal()
+	if not bool(request.validation_report().get("valid", false)):
+		return false
+	# A cash-owner replay must be observed before touching ProductMarket. This
+	# also protects retries after either bounded participant journal evicts its
+	# terminal record.
+	var cached := _ai_business_cost_cash_port.cached_receipt(
+		_ai_business_cost_capability,
+		request
+	)
+	if cached != null:
+		return false
+	var prepared := _product_market_runtime_controller.prepare_ai_business_market_pressure({
+		"schema_version": 1,
+		"transaction_id": request.request_id,
+		"action_kind": action_kind,
+		"product_id": product_id,
+		"public_region_id": public_region_id,
+		"source_revision": request.business_cycle_revision,
+		"expected_market_fingerprint": str(context.get("market_fingerprint", "")),
+	})
+	if not bool(prepared.get("prepared", false)):
+		return false
+	if bool(prepared.get("finalized", false)):
+		return false
+	var market_commit := _product_market_runtime_controller.commit_ai_business_market_pressure(prepared)
+	if not bool(market_commit.get("committed", false)):
+		_product_market_runtime_controller.rollback_ai_business_market_pressure(prepared)
+		return false
+	var market_finalize_ready := _product_market_runtime_controller.seal_ai_business_market_pressure_finalization(market_commit)
+	if not bool(market_finalize_ready.get("finalization_ready", false)):
+		_product_market_runtime_controller.rollback_ai_business_market_pressure(market_commit)
+		return false
+	var cash_receipt := _ai_business_cost_cash_port.submit(
+		_ai_business_cost_capability,
+		request
+	)
+	if cash_receipt == null or not cash_receipt.accepted or not cash_receipt.applied \
+			or cash_receipt.idempotent or not cash_receipt.changed:
+		_product_market_runtime_controller.rollback_ai_business_market_pressure(market_finalize_ready)
+		return false
+	var market_final := _product_market_runtime_controller.finalize_ai_business_market_pressure(market_finalize_ready)
+	if not bool(market_final.get("finalized", false)):
+		if bool(market_final.get("committed", false)) \
+				and str(market_final.get("reason_code", "")) == "ai_business_market_pressure_publication_pending":
+			# Cash, market and RNG are already exact-once committed. The market
+			# owner's presentation-only drain will retry the missing public target;
+			# this action must still count toward the per-cycle cap.
+			return true
+		# seal_ai_business_market_pressure_finalization() closes every mutable
+		# market/RNG precondition before cash commit. Reaching this branch is an
+		# invariant violation rather than a recoverable gameplay rejection.
+		push_error("AI business market finalization violated its sealed synchronous contract.")
+		return false
+	var public_receipt: Dictionary = market_final.get("public_receipt", {}) \
+		if market_final.get("public_receipt", {}) is Dictionary else {}
+	_publish_ai_business_market_pressure_callout(public_receipt, own_city_index)
+	return true
+
+
+func _ai_business_public_region_id(district_index: int) -> String:
+	if district_index < 0 or district_index >= districts.size() or not (districts[district_index] is Dictionary):
+		return ""
+	var district := districts[district_index] as Dictionary
+	if bool(district.get("destroyed", false)) or not _city_is_active(_district_city(district_index)):
+		return ""
+	return str(district.get("region_id", "region.%03d" % district_index)).strip_edges()
+
+
+func _ai_business_request_id(
+	session_id: String,
+	cycle_revision: int,
+	player_index: int,
+	attempt_ordinal: int,
+	action_kind: String,
+	product_id: String,
+	public_region_id: String
+) -> String:
+	var session_token := session_id.sha256_text().left(12)
+	var target_token := JSON.stringify([action_kind, product_id, public_region_id]).sha256_text().left(12)
+	return "ai-business:%s:%d:%d:%d:%s:%s" % [
+		session_token,
+		cycle_revision,
+		player_index,
+		attempt_ordinal,
+		action_kind,
+		target_token,
+	]
+
+
+func _publish_ai_business_market_pressure_callout(public_receipt: Dictionary, district_index: int) -> void:
+	if str(public_receipt.get("visibility_scope", "")) != "public" \
+		or str(public_receipt.get("event_kind", "")) != "ai_business_market_pressure_resolved":
+		return
+	var product_id := str(public_receipt.get("product_id", ""))
+	var pressure_units := maxi(0, int(public_receipt.get("pressure_units", 0)))
+	if product_id.is_empty() or pressure_units <= 0:
+		return
+	_add_action_callout(
+		"匿名商业",
+		"需求造势",
+		"%s需求压力+%d，价格由供需重算；可能暴露生产方利益。" % [product_id, pressure_units],
+		Color("#f59e0b"),
+		_district_center(district_index)
+	)
+
+
 func _auto_rival_business_actions(force: bool = false) -> int:
 	if session_finished or players.size() <= 1:
 		return 0
 	var acted := 0
+	var attempt_ordinal := 0
 	var limit: int = int(players.size()) - 1 if force else int(RIVAL_BUSINESS_ACTION_MAX_PER_CYCLE)
 	for player_index_variant in _rival_build_player_order():
+		attempt_ordinal += 1
 		if acted >= limit:
 			break
 		var player_index := int(player_index_variant)
@@ -1799,7 +1982,7 @@ func _auto_rival_business_actions(force: bool = false) -> int:
 		var action := _pick_rival_business_action(player_index)
 		if action.is_empty():
 			continue
-		if _apply_rival_business_action(player_index, action):
+		if _execute_rival_business_action_transaction(player_index, action, attempt_ordinal):
 			var target := int(action.get("target_city", action.get("own_city", -1)))
 			_record_ai_decision(
 				player_index,
@@ -1836,9 +2019,7 @@ func _auto_rival_business_actions(force: bool = false) -> int:
 func _spendable_cash_units(player_index: int) -> int:
 	if _cash_commitment_query_port != null:
 		return _cash_commitment_query_port.available_cash_units(player_index)
-	if player_index < 0 or player_index >= players.size() or not (players[player_index] is Dictionary):
-		return 0
-	return maxi(0, int((players[player_index] as Dictionary).get("cash", 0)))
+	return 0
 func _ai_development_route_preference_audit() -> Dictionary:
 	var coverage := {}
 	for profile_variant in AI_PERSONALITY_CATALOG:

@@ -26,6 +26,7 @@ const WEATHER_ECONOMY_MULTIPLIER_MIN := 0.70
 const WEATHER_ECONOMY_MULTIPLIER_MAX := 1.30
 const AI_BUSINESS_MARKET_PRESSURE_LIFECYCLE_VERSION := 1
 const AI_BUSINESS_MARKET_PRESSURE_JOURNAL_LIMIT := 256
+const AI_BUSINESS_PUBLICATION_RETRY_LIMIT_PER_TICK := 8
 const AI_BUSINESS_ACTION_PRICE_PUMP := "price_pump"
 const AI_BUSINESS_ACTION_ROUTE_SABOTAGE := "route_sabotage"
 const AI_BUSINESS_MARKET_PRESSURE_REQUEST_KEYS := [
@@ -39,6 +40,7 @@ const AI_BUSINESS_MARKET_PRESSURE_REQUEST_KEYS := [
 ]
 const AI_BUSINESS_MARKET_PRESSURE_PUBLIC_RECEIPT_KEYS := [
 	"schema_version",
+	"public_event_id",
 	"event_kind",
 	"action_kind",
 	"product_id",
@@ -1128,7 +1130,8 @@ func ai_business_market_pressure_authority_snapshot() -> Dictionary:
 		"available": _configured and _world_bridge != null and shared_rng != null and product_market.size() == PRODUCT_CATALOG.size(),
 		"market_fingerprint": _stable_data_fingerprint(runtime_state_snapshot()),
 		"market_revision": business_cycle_count,
-		"rollback_open_count": _ai_business_market_pressure_state_count("committed"),
+		"rollback_open_count": _ai_business_market_pressure_state_count("committed") \
+			+ _ai_business_market_pressure_state_count("finalize_ready"),
 		"recovery_required": _ai_business_market_pressure_recovery_required,
 		"journal_size": _ai_business_market_pressure_journal.size(),
 		"journal_limit": AI_BUSINESS_MARKET_PRESSURE_JOURNAL_LIMIT,
@@ -1349,7 +1352,7 @@ func rollback_ai_business_market_pressure(receipt: Dictionary) -> Dictionary:
 		_ai_business_market_pressure_journal[transaction_id] = record
 		_ai_business_market_pressure_rollback_count += 1
 		return _ai_business_market_pressure_lifecycle_receipt(record, false)
-	if state != "committed":
+	if state not in ["committed", "finalize_ready"]:
 		return _ai_business_market_pressure_failure("ai_business_market_pressure_not_rollbackable")
 	var shared_rng := _shared_rng()
 	if shared_rng == null:
@@ -1375,6 +1378,49 @@ func rollback_ai_business_market_pressure(receipt: Dictionary) -> Dictionary:
 	return _ai_business_market_pressure_lifecycle_receipt(record, false)
 
 
+func seal_ai_business_market_pressure_finalization(receipt: Dictionary) -> Dictionary:
+	## Synchronously proves the market/RNG participant is finalizable before the
+	## cash owner commits. The returned token closes every ordinary failure path:
+	## cash mutation does not own market state or RNG, so finalization after this
+	## seal is a non-failing terminal write plus public receipt publication.
+	if not TablePresentationPureDataPolicy.is_pure_data(receipt):
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_commit_receipt_not_pure_data")
+	var transaction_id := str(receipt.get("transaction_id", "")).strip_edges()
+	var record: Dictionary = _ai_business_market_pressure_journal.get(transaction_id, {}) if _ai_business_market_pressure_journal.get(transaction_id, {}) is Dictionary else {}
+	if record.is_empty() or str(receipt.get("prepared_token", "")) != str(record.get("prepared_token", "")):
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_commit_receipt_invalid")
+	var state := str(record.get("state", ""))
+	if state == "finalize_ready":
+		return _ai_business_market_pressure_lifecycle_receipt(record, true)
+	if state != "committed":
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_commit_receipt_invalid")
+	var shared_rng := _shared_rng()
+	if shared_rng == null or _stable_data_fingerprint(runtime_state_snapshot()) != str(record.get("postimage_fingerprint", "")) \
+			or not _rng_checkpoint_matches(shared_rng.capture_plan_checkpoint(), record.get("terminal_cursor", {}) as Dictionary):
+		_ai_business_market_pressure_stale_count += 1
+		return _mark_ai_business_market_pressure_recovery_required(transaction_id, record, "ai_business_market_pressure_finalize_seal_cas_failed")
+	record["publication_required"] = true
+	var public_receipt := _ai_business_market_pressure_public_receipt(record)
+	var publication_preflight := _ai_business_market_pressure_publication_preflight(public_receipt)
+	if not bool(publication_preflight.get("ready", false)):
+		return _ai_business_market_pressure_failure(str(publication_preflight.get("reason_code", "ai_business_market_pressure_publication_unavailable")))
+	var finalize_token := _stable_data_fingerprint({
+		"transaction_id": transaction_id,
+		"prepared_token": str(record.get("prepared_token", "")),
+		"postimage_fingerprint": str(record.get("postimage_fingerprint", "")),
+		"terminal_cursor": record.get("terminal_cursor", {}),
+	})
+	if finalize_token.is_empty():
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_finalize_seal_failed")
+	record["state"] = "finalize_ready"
+	record["reason_code"] = "ai_business_market_pressure_finalize_ready"
+	record["finalize_token"] = finalize_token
+	record["public_receipt"] = public_receipt
+	record["rollback_open"] = true
+	_ai_business_market_pressure_journal[transaction_id] = record
+	return _ai_business_market_pressure_lifecycle_receipt(record, false)
+
+
 func finalize_ai_business_market_pressure(receipt: Dictionary) -> Dictionary:
 	if not TablePresentationPureDataPolicy.is_pure_data(receipt):
 		return _ai_business_market_pressure_failure("ai_business_market_pressure_commit_receipt_not_pure_data")
@@ -1388,30 +1434,75 @@ func finalize_ai_business_market_pressure(receipt: Dictionary) -> Dictionary:
 	if state == "finalized":
 		return _ai_business_market_pressure_lifecycle_receipt(record, true)
 	if state == "finalizing":
-		var pending := _ai_business_market_pressure_failure("ai_business_market_pressure_finalization_in_progress")
-		pending["committed"] = true
-		pending["transaction_id"] = transaction_id
-		return pending
-	if state != "committed":
+		if str(receipt.get("finalize_token", "")) != str(record.get("finalize_token", "")):
+			return _ai_business_market_pressure_failure("ai_business_market_pressure_finalize_token_invalid")
+		if bool(record.get("finalization_active", false)):
+			var pending := _ai_business_market_pressure_failure("ai_business_market_pressure_finalization_in_progress")
+			pending["committed"] = true
+			pending["transaction_id"] = transaction_id
+			return pending
+		record["finalization_active"] = true
+		_ai_business_market_pressure_journal[transaction_id] = record
+		return _complete_ai_business_market_pressure_finalization(transaction_id, record)
+	if state not in ["committed", "finalize_ready"]:
 		return _ai_business_market_pressure_failure("ai_business_market_pressure_commit_receipt_invalid")
-	var shared_rng := _shared_rng()
-	if shared_rng == null or _stable_data_fingerprint(runtime_state_snapshot()) != str(record.get("postimage_fingerprint", "")) \
-			or not _rng_checkpoint_matches(shared_rng.capture_plan_checkpoint(), record.get("terminal_cursor", {}) as Dictionary):
-		_ai_business_market_pressure_stale_count += 1
-		return _mark_ai_business_market_pressure_recovery_required(transaction_id, record, "ai_business_market_pressure_finalize_cas_failed")
-	var telemetry_batches: Array = (record.get("telemetry_batches", []) as Array).duplicate(true)
-	var public_receipt := _ai_business_market_pressure_public_receipt(record)
+	if state == "finalize_ready":
+		if str(receipt.get("finalize_token", "")) != str(record.get("finalize_token", "")):
+			return _ai_business_market_pressure_failure("ai_business_market_pressure_finalize_token_invalid")
+	else:
+		# Existing single-owner callers may still finalize directly. Cross-owner
+		# callers must seal first so they cannot commit another participant before
+		# this CAS gate has passed.
+		var shared_rng := _shared_rng()
+		if shared_rng == null or _stable_data_fingerprint(runtime_state_snapshot()) != str(record.get("postimage_fingerprint", "")) \
+				or not _rng_checkpoint_matches(shared_rng.capture_plan_checkpoint(), record.get("terminal_cursor", {}) as Dictionary):
+			_ai_business_market_pressure_stale_count += 1
+			return _mark_ai_business_market_pressure_recovery_required(transaction_id, record, "ai_business_market_pressure_finalize_cas_failed")
+	var stored_public_receipt: Variant = record.get("public_receipt", {})
+	var public_receipt: Dictionary = (stored_public_receipt as Dictionary).duplicate(true) \
+		if stored_public_receipt is Dictionary and not (stored_public_receipt as Dictionary).is_empty() \
+		else _ai_business_market_pressure_public_receipt(record)
 	# Claim finalization before invoking telemetry so a synchronous observer cannot
 	# re-enter this transaction and publish the same batch twice.
 	record["state"] = "finalizing"
 	record["reason_code"] = "ai_business_market_pressure_finalization_in_progress"
 	record["rollback_open"] = false
 	record["public_receipt"] = public_receipt
+	record["public_clue_applied"] = false
+	record["public_log_applied"] = false
+	record["telemetry_applied"] = false
+	record["publication_required"] = bool(record.get("publication_required", false))
+	record["finalization_active"] = true
 	_ai_business_market_pressure_journal[transaction_id] = record
-	_ai_business_market_pressure_telemetry_metric_count += _emit_weather_telemetry_batches(telemetry_batches)
+	return _complete_ai_business_market_pressure_finalization(transaction_id, record)
+
+
+func _complete_ai_business_market_pressure_finalization(transaction_id: String, record: Dictionary) -> Dictionary:
+	var public_receipt: Dictionary = (record.get("public_receipt", {}) as Dictionary).duplicate(true) \
+		if record.get("public_receipt", {}) is Dictionary else {}
+	if not bool(record.get("public_clue_applied", false)):
+		var public_clue_result := _world_bridge.append_ai_business_public_clue(public_receipt) if _world_bridge != null else {}
+		record["public_clue_applied"] = bool(public_clue_result.get("applied", false))
+	if not bool(record.get("public_log_applied", false)):
+		var public_log_result := _publish_ai_business_market_pressure_public_log(public_receipt)
+		record["public_log_applied"] = bool(public_log_result.get("applied", false)) \
+			or bool(public_log_result.get("duplicate", false))
+	if bool(record.get("publication_required", false)) \
+			and (not bool(record.get("public_clue_applied", false)) or not bool(record.get("public_log_applied", false))):
+		record["state"] = "finalizing"
+		record["reason_code"] = "ai_business_market_pressure_publication_pending"
+		record["rollback_open"] = false
+		record["finalization_active"] = false
+		_ai_business_market_pressure_journal[transaction_id] = record
+		return _ai_business_market_pressure_lifecycle_receipt(record, false)
+	if not bool(record.get("telemetry_applied", false)):
+		var telemetry_batches: Array = (record.get("telemetry_batches", []) as Array).duplicate(true)
+		_ai_business_market_pressure_telemetry_metric_count += _emit_weather_telemetry_batches(telemetry_batches)
+		record["telemetry_applied"] = true
 	record["state"] = "finalized"
 	record["reason_code"] = "ai_business_market_pressure_finalized"
 	record["rollback_open"] = false
+	record["finalization_active"] = false
 	record = _compact_ai_business_market_pressure_terminal_record(record)
 	_ai_business_market_pressure_journal[transaction_id] = record
 	_ai_business_market_pressure_finalize_count += 1
@@ -1422,7 +1513,9 @@ func finalize_ai_business_market_pressure(receipt: Dictionary) -> Dictionary:
 func ai_business_market_pressure_save_preflight() -> Dictionary:
 	if _ai_business_market_pressure_recovery_required:
 		return {"accepted": false, "reason_code": "ai_business_market_pressure_recovery_required"}
-	if _ai_business_market_pressure_state_count("committed") > 0 or _ai_business_market_pressure_state_count("finalizing") > 0:
+	if _ai_business_market_pressure_state_count("committed") > 0 \
+			or _ai_business_market_pressure_state_count("finalize_ready") > 0 \
+			or _ai_business_market_pressure_state_count("finalizing") > 0:
 		return {"accepted": false, "reason_code": "ai_business_market_pressure_rollback_window_open"}
 	return {"accepted": true, "reason_code": "ai_business_market_pressure_save_safe"}
 
@@ -1433,7 +1526,9 @@ func ai_business_market_pressure_debug_snapshot() -> Dictionary:
 		"journal_size": _ai_business_market_pressure_journal.size(),
 		"journal_limit": AI_BUSINESS_MARKET_PRESSURE_JOURNAL_LIMIT,
 		"prepared_count": _ai_business_market_pressure_state_count("prepared"),
-		"rollback_open_count": _ai_business_market_pressure_state_count("committed"),
+		"rollback_open_count": _ai_business_market_pressure_state_count("committed") \
+			+ _ai_business_market_pressure_state_count("finalize_ready"),
+		"finalization_ready_count": _ai_business_market_pressure_state_count("finalize_ready"),
 		"rolled_back_count": _ai_business_market_pressure_state_count("rolled_back"),
 		"finalized_count": _ai_business_market_pressure_state_count("finalized"),
 		"finalizing_count": _ai_business_market_pressure_state_count("finalizing"),
@@ -1451,6 +1546,35 @@ func ai_business_market_pressure_debug_snapshot() -> Dictionary:
 		"transaction_owns_cash_state": false,
 		"journal_persisted": false,
 		"route_sabotage_supported": false,
+	}
+
+
+func retry_pending_ai_business_publications() -> Dictionary:
+	## Owner-level maintenance path for the presentation-only tail of an already
+	## committed transaction. It never replays cash, market mutation or RNG and
+	## visits stable journal order at most once per tick.
+	var attempted := 0
+	var finalized := 0
+	for transaction_id_variant in _ai_business_market_pressure_journal_order:
+		if attempted >= AI_BUSINESS_PUBLICATION_RETRY_LIMIT_PER_TICK:
+			break
+		var transaction_id := str(transaction_id_variant)
+		var record_variant: Variant = _ai_business_market_pressure_journal.get(transaction_id, {})
+		if not (record_variant is Dictionary):
+			continue
+		var record := record_variant as Dictionary
+		if str(record.get("state", "")) != "finalizing" or bool(record.get("finalization_active", false)):
+			continue
+		attempted += 1
+		record["finalization_active"] = true
+		_ai_business_market_pressure_journal[transaction_id] = record
+		var result := _complete_ai_business_market_pressure_finalization(transaction_id, record)
+		if bool(result.get("finalized", false)):
+			finalized += 1
+	return {
+		"attempted_count": attempted,
+		"finalized_count": finalized,
+		"pending_count": _ai_business_market_pressure_state_count("finalizing"),
 	}
 
 
@@ -1484,6 +1608,7 @@ func refresh_after_news_event() -> void:
 
 
 func tick_market_cycle(delta: float) -> Dictionary:
+	retry_pending_ai_business_publications()
 	market_timer -= maxf(0.0, delta)
 	if market_timer > 0.0: return {"ticked": false, "seconds_left": market_timer}
 	market_tick()
@@ -1500,6 +1625,9 @@ func market_tick() -> void:
 
 
 func to_save_data() -> Dictionary:
+	retry_pending_ai_business_publications()
+	if not bool(ai_business_market_pressure_save_preflight().get("accepted", false)):
+		return {}
 	return {"product_market": _product_market_save_snapshot(), "business_cycle_count": business_cycle_count, "market_timer": market_timer, "futures_position_sequence": futures_position_sequence}
 
 
@@ -1950,9 +2078,15 @@ func _apply_ai_business_market_pressure_runtime_state(snapshot: Dictionary) -> b
 	for product_variant in PRODUCT_CATALOG:
 		if not (next_market.get(str(product_variant), {}) is Dictionary):
 			return false
+	var next_market_timer := float(snapshot.get("market_timer", market_timer))
+	if not is_finite(next_market_timer):
+		return false
 	product_market = next_market.duplicate(true)
 	business_cycle_count = maxi(0, int(snapshot.get("business_cycle_count", business_cycle_count)))
-	market_timer = maxf(0.0, float(snapshot.get("market_timer", market_timer)))
+	# During tick_market_cycle's synchronous completion callback the timer may be
+	# slightly negative; clamping it here changes the participant fingerprint and
+	# breaks the real RuntimeLoop path even though no invalid time is introduced.
+	market_timer = next_market_timer
 	futures_position_sequence = maxi(0, int(snapshot.get("futures_position_sequence", futures_position_sequence)))
 	return true
 
@@ -1960,6 +2094,7 @@ func _apply_ai_business_market_pressure_runtime_state(snapshot: Dictionary) -> b
 func _ai_business_market_pressure_public_receipt(record: Dictionary) -> Dictionary:
 	var candidate := {
 		"schema_version": AI_BUSINESS_MARKET_PRESSURE_LIFECYCLE_VERSION,
+		"public_event_id": _ai_business_market_pressure_public_event_id(record),
 		"event_kind": "ai_business_market_pressure_resolved",
 		"action_kind": AI_BUSINESS_ACTION_PRICE_PUMP,
 		"product_id": str(record.get("product_id", "")),
@@ -1980,11 +2115,68 @@ func _ai_business_market_pressure_public_receipt(record: Dictionary) -> Dictiona
 	return public_receipt if TablePresentationPureDataPolicy.is_pure_data(public_receipt) else {}
 
 
+func _ai_business_market_pressure_public_event_id(record: Dictionary) -> String:
+	var product_id := str(record.get("product_id", "")).strip_edges()
+	var public_region_id := str(record.get("public_region_id", "")).strip_edges()
+	if product_id.is_empty() or public_region_id.is_empty():
+		return ""
+	var market_revision := maxi(0, int((record.get("postimage", {}) as Dictionary).get("business_cycle_count", business_cycle_count))) \
+		if record.get("postimage", {}) is Dictionary else maxi(0, business_cycle_count)
+	# The de-duplication identity is derived only from facts already present in
+	# the public receipt. It cannot be used to recover the anonymous actor or the
+	# private cash transaction lineage.
+	return "ai-business-market:%s" % JSON.stringify([
+		AI_BUSINESS_MARKET_PRESSURE_LIFECYCLE_VERSION,
+		AI_BUSINESS_ACTION_PRICE_PUMP,
+		product_id,
+		public_region_id,
+		maxi(0, int(record.get("pressure_units", 0))),
+		maxi(0, int(record.get("price_before", 0))),
+		maxi(0, int(record.get("price_after", 0))),
+		market_revision,
+	]).sha256_text()
+
+
+func _ai_business_market_pressure_publication_preflight(public_receipt: Dictionary) -> Dictionary:
+	if public_receipt.is_empty() or _world_bridge == null:
+		return {"ready": false, "reason_code": "ai_business_public_clue_owner_missing"}
+	var clue_preflight := _world_bridge.can_append_ai_business_public_clue(public_receipt)
+	if not bool(clue_preflight.get("ready", false)):
+		return {"ready": false, "reason_code": str(clue_preflight.get("reason_code", "ai_business_public_clue_unavailable"))}
+	if _public_log_producer_port == null or not _public_log_producer_port.is_ready() or _presentation_world_clock == null:
+		return {"ready": false, "reason_code": "ai_business_public_log_unavailable"}
+	return {"ready": true, "reason_code": "ai_business_publication_ready"}
+
+
+func _publish_ai_business_market_pressure_public_log(public_receipt: Dictionary) -> Dictionary:
+	if _public_log_producer_port == null or _presentation_world_clock == null:
+		return {"applied": false, "reason_code": "ai_business_public_log_unavailable"}
+	if str(public_receipt.get("visibility_scope", "")) != "public" \
+			or str(public_receipt.get("event_kind", "")) != "ai_business_market_pressure_resolved":
+		return {"applied": false, "reason_code": "ai_business_public_log_receipt_invalid"}
+	return _public_log_producer_port.publish(
+		&"ai_business_market_pressure_resolved",
+		&"public.ai_business.market_pressure_resolved",
+		{
+			"action_kind": "price_pump",
+			"commodity_id": str(public_receipt.get("product_id", "")),
+			"region_id": str(public_receipt.get("public_region_id", "")),
+			"pressure_units": maxi(0, int(public_receipt.get("pressure_units", 0))),
+			"price_before": maxi(0, int(public_receipt.get("price_before", 0))),
+			"price_after": maxi(0, int(public_receipt.get("price_after", 0))),
+		},
+		maxi(0, int(public_receipt.get("market_revision", 0))),
+		_presentation_world_clock.world_effective_seconds(),
+		str(public_receipt.get("public_event_id", ""))
+	)
+
+
 func _ai_business_market_pressure_lifecycle_receipt(record: Dictionary, is_duplicate: bool) -> Dictionary:
 	var state := str(record.get("state", ""))
 	var result := {
-		"prepared": state in ["prepared", "committed", "finalized"],
-		"committed": state in ["committed", "finalized"],
+		"prepared": state in ["prepared", "committed", "finalize_ready", "finalizing", "finalized"],
+		"committed": state in ["committed", "finalize_ready", "finalizing", "finalized"],
+		"finalization_ready": state == "finalize_ready",
 		"finalized": state == "finalized",
 		"rolled_back": state == "rolled_back",
 		"terminal": state in ["finalized", "rolled_back"],
@@ -1999,8 +2191,15 @@ func _ai_business_market_pressure_lifecycle_receipt(record: Dictionary, is_dupli
 		"pressure_units": maxi(0, int(record.get("pressure_units", 0))),
 		"draw_count_delta": maxi(0, int(record.get("draw_count_delta", 0))),
 	}
+	if state in ["finalize_ready", "finalizing"]:
+		result["finalize_token"] = str(record.get("finalize_token", ""))
+	if state == "finalizing":
+		result["public_clue_applied"] = bool(record.get("public_clue_applied", false))
+		result["public_log_applied"] = bool(record.get("public_log_applied", false))
 	if state == "finalized" and record.get("public_receipt", {}) is Dictionary:
 		result["public_receipt"] = (record.get("public_receipt", {}) as Dictionary).duplicate(true)
+		result["public_clue_applied"] = bool(record.get("public_clue_applied", false))
+		result["public_log_applied"] = bool(record.get("public_log_applied", false))
 	return result
 
 
@@ -2029,7 +2228,7 @@ func _mark_ai_business_market_pressure_recovery_required(transaction_id: String,
 	var result := _ai_business_market_pressure_failure(reason_code, true)
 	result["transaction_id"] = transaction_id
 	result["prepared_token"] = str(record.get("prepared_token", ""))
-	result["committed"] = str(record.get("state", "")) == "committed"
+	result["committed"] = str(record.get("state", "")) in ["committed", "finalize_ready"]
 	result["rollback_open"] = bool(record.get("rollback_open", false))
 	return result
 
@@ -2080,6 +2279,7 @@ func _compact_ai_business_market_pressure_terminal_record(record: Dictionary) ->
 		"rng_checkpoint",
 		"terminal_cursor",
 		"telemetry_batches",
+		"finalize_token",
 	]:
 		compacted.erase(key)
 	return compacted

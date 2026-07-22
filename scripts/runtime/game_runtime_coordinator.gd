@@ -49,6 +49,7 @@ func _ready() -> void:
 	_wire_world_session_state()
 	_wire_monster_wager_cash_commitment_query_port()
 	_wire_player_cash_mutation_port()
+	_wire_ai_business_cost_cash_port()
 	_wire_forced_decision_candidate_sources()
 	call_deferred("_wire_table_selection_intent_port")
 	call_deferred("_wire_forced_decision_response_paths")
@@ -70,6 +71,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	_wire_world_session_state()
 	_wire_monster_wager_cash_commitment_query_port()
 	_wire_player_cash_mutation_port()
+	_wire_ai_business_cost_cash_port()
 	_wire_forced_decision_candidate_sources()
 	call_deferred("_wire_table_selection_intent_port")
 	call_deferred("_wire_forced_decision_response_paths")
@@ -453,6 +455,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var product_market_snapshot := _product_market_runtime_debug_snapshot()
 	var city_gdp_derivative_snapshot := _city_gdp_derivative_runtime_debug_snapshot()
 	var player_cash_mutation_snapshot := _player_cash_mutation_port_node().debug_snapshot() if _player_cash_mutation_port_node() != null else {}
+	var ai_business_cost_cash_snapshot := _ai_business_cost_cash_port_node().debug_snapshot() if _ai_business_cost_cash_port_node() != null else {}
 	var route_network_snapshot := _route_network_runtime_debug_snapshot()
 	var commodity_flow_snapshot := _commodity_flow_runtime_debug_snapshot()
 	var commodity_flow_bridge_snapshot := _commodity_flow_world_bridge_debug_snapshot()
@@ -485,7 +488,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var world_clock_snapshot := _node_debug_snapshot(world_clock)
 	var solar_snapshot := _node_debug_snapshot(solar_availability)
 	var card_market_snapshot := _node_debug_snapshot(card_market_pricing)
-	_composition_ready = _ruleset_id == "v0.4" and scheduler != null and not priority_order.is_empty() and bool(world_clock_snapshot.get("controller_ready", false)) and bool(solar_snapshot.get("service_ready", false)) and bool(card_market_snapshot.get("controller_ready", false)) and bool(card_runtime_catalog_snapshot.get("service_ready", false)) and bool(card_definition_bridge_snapshot.get("bridge_ready", false)) and bool(balance_diagnostics_snapshot.get("service_ready", false)) and bool(session_snapshot.get("session_ready", false)) and bool(purchase_snapshot.get("controller_ready", false)) and bool(card_inventory_snapshot.get("service_ready", false)) and bool(card_resolution_queue_snapshot.get("service_ready", false)) and bool(card_resolution_execution_snapshot.get("service_ready", false)) and bool(economy_product_route_effect_snapshot.get("service_ready", false)) and bool(economy_product_route_formula_snapshot.get("service_ready", false)) and bool(product_market_snapshot.get("controller_ready", false)) and bool(city_gdp_derivative_snapshot.get("controller_ready", false)) and bool(player_cash_mutation_snapshot.get("port_ready", false)) and bool(route_network_snapshot.get("controller_ready", false)) and bool(commodity_flow_snapshot.get("controller_ready", false)) and bool(commodity_flow_bridge_snapshot.get("bridge_ready", false)) and bool(player_mana_snapshot.get("controller_ready", false)) and bool(hand_interaction_snapshot.get("service_ready", false)) and bool(purchase_settlement_snapshot.get("service_ready", false)) and bool(codex_navigation_snapshot.get("controller_ready", false)) and bool(codex_public_snapshot_debug.get("service_ready", false)) and bool(monster_codex_public_snapshot_debug.get("service_ready", false)) and bool(monster_codex_public_source_debug.get("service_ready", false)) and bool(product_codex_public_snapshot_debug.get("service_ready", false)) and bool(product_codex_public_source_debug.get("service_ready", false)) and bool(card_codex_public_snapshot_debug.get("service_ready", false)) and bool(card_codex_public_source_debug.get("service_ready", false)) and bool(region_codex_public_source_debug.get("service_ready", false)) and bool(economy_dashboard_public_snapshot_debug.get("service_ready", false)) and bool(standings_public_snapshot_debug.get("service_ready", false)) and bool(final_settlement_public_snapshot_debug.get("service_ready", false)) and bool(intel_dossier_public_snapshot_debug.get("service_ready", false)) and bool(district_supply_snapshot_state.get("service_ready", false)) and bool(card_presentation_snapshot.get("service_ready", false)) and bool(card_play_eligibility_snapshot.get("service_ready", false)) and bool(card_play_world_bridge_snapshot.get("bridge_ready", false)) and bool(table_viewmodel_snapshot.get("service_ready", false)) and bool(ai_snapshot.get("controller_ready", false)) and bool(monster_snapshot.get("controller_ready", false)) and bool(military_snapshot.get("controller_ready", false)) and bool(weather_snapshot.get("controller_ready", false)) and bool(victory_snapshot.get("controller_ready", false))
+	_composition_ready = _ruleset_id == "v0.4" and scheduler != null and not priority_order.is_empty() and bool(world_clock_snapshot.get("controller_ready", false)) and bool(solar_snapshot.get("service_ready", false)) and bool(card_market_snapshot.get("controller_ready", false)) and bool(card_runtime_catalog_snapshot.get("service_ready", false)) and bool(card_definition_bridge_snapshot.get("bridge_ready", false)) and bool(balance_diagnostics_snapshot.get("service_ready", false)) and bool(session_snapshot.get("session_ready", false)) and bool(purchase_snapshot.get("controller_ready", false)) and bool(card_inventory_snapshot.get("service_ready", false)) and bool(card_resolution_queue_snapshot.get("service_ready", false)) and bool(card_resolution_execution_snapshot.get("service_ready", false)) and bool(economy_product_route_effect_snapshot.get("service_ready", false)) and bool(economy_product_route_formula_snapshot.get("service_ready", false)) and bool(product_market_snapshot.get("controller_ready", false)) and bool(city_gdp_derivative_snapshot.get("controller_ready", false)) and bool(player_cash_mutation_snapshot.get("port_ready", false)) and bool(ai_business_cost_cash_snapshot.get("port_ready", false)) and bool(route_network_snapshot.get("controller_ready", false)) and bool(commodity_flow_snapshot.get("controller_ready", false)) and bool(commodity_flow_bridge_snapshot.get("bridge_ready", false)) and bool(player_mana_snapshot.get("controller_ready", false)) and bool(hand_interaction_snapshot.get("service_ready", false)) and bool(purchase_settlement_snapshot.get("service_ready", false)) and bool(codex_navigation_snapshot.get("controller_ready", false)) and bool(codex_public_snapshot_debug.get("service_ready", false)) and bool(monster_codex_public_snapshot_debug.get("service_ready", false)) and bool(monster_codex_public_source_debug.get("service_ready", false)) and bool(product_codex_public_snapshot_debug.get("service_ready", false)) and bool(product_codex_public_source_debug.get("service_ready", false)) and bool(card_codex_public_snapshot_debug.get("service_ready", false)) and bool(card_codex_public_source_debug.get("service_ready", false)) and bool(region_codex_public_source_debug.get("service_ready", false)) and bool(economy_dashboard_public_snapshot_debug.get("service_ready", false)) and bool(standings_public_snapshot_debug.get("service_ready", false)) and bool(final_settlement_public_snapshot_debug.get("service_ready", false)) and bool(intel_dossier_public_snapshot_debug.get("service_ready", false)) and bool(district_supply_snapshot_state.get("service_ready", false)) and bool(card_presentation_snapshot.get("service_ready", false)) and bool(card_play_eligibility_snapshot.get("service_ready", false)) and bool(card_play_world_bridge_snapshot.get("bridge_ready", false)) and bool(table_viewmodel_snapshot.get("service_ready", false)) and bool(ai_snapshot.get("controller_ready", false)) and bool(monster_snapshot.get("controller_ready", false)) and bool(military_snapshot.get("controller_ready", false)) and bool(weather_snapshot.get("controller_ready", false)) and bool(victory_snapshot.get("controller_ready", false))
 	_composition_ready = _composition_ready and bool(action_result_presentation_snapshot.get("service_ready", false))
 	_refresh_coordinator_readiness()
 
@@ -1513,6 +1516,28 @@ func _wire_player_cash_mutation_port() -> void:
 		push_error("PlayerCashMutationPort dependencies are unavailable; bound cash consumers will fail closed.")
 
 
+func _wire_ai_business_cost_cash_port() -> void:
+	var port := _ai_business_cost_cash_port_node()
+	var ai := _ai_runtime_controller_node() as AiRuntimeController
+	if port == null or ai == null:
+		push_error("GameRuntimeCoordinator requires one AiBusinessCostCashPort and AiRuntimeController; AI business spending is disabled.")
+		return
+	var capability := AiBusinessCostCapability.new()
+	var configured := port.configure(
+		_world_session_state_node(),
+		_monster_wager_cash_commitment_query_port_node(),
+		_player_cash_mutation_port_node(),
+		_session_node() as GameSessionRuntimeController,
+		_simulation_mutation_authority_node(),
+		ai.policy_profile as AiPolicyProfileResource,
+		_product_market_runtime_controller_node() as ProductMarketRuntimeController,
+		capability
+	)
+	ai.set_ai_business_cost_cash_port(port, capability)
+	if not bool(configured.get("configured", false)):
+		push_error("AiBusinessCostCashPort dependencies are unavailable; AI business actions fail closed.")
+
+
 func _wire_card_execution_typed_ports() -> void:
 	var world_state := _world_session_state_node()
 	var selection := _table_selection_state_node()
@@ -1639,6 +1664,7 @@ func _apply_victory_outcome_receipt(receipt: Dictionary) -> void:
 	var session := _session_node() as GameSessionRuntimeController
 	if session == null or session.is_finished():
 		return
+	_drain_ai_business_publications_before_session_finish()
 	session.finish_session(receipt)
 	if not session.is_finished():
 		return
@@ -3458,13 +3484,16 @@ func capture_new_session_checkpoint() -> Dictionary:
 	var saved_owners := {}
 	for entry_variant in _new_session_saved_owners():
 		var entry: Dictionary = entry_variant
+		var owner_id := str(entry.get("owner_id", ""))
 		var owner := entry.get("owner") as Node
 		if owner == null or not owner.has_method("to_save_data"):
-			return {"captured": false, "reason_code": "new_session_checkpoint_owner_unavailable", "owner_id": str(entry.get("owner_id", ""))}
+			return {"captured": false, "reason_code": "new_session_checkpoint_owner_unavailable", "owner_id": owner_id}
 		var data_variant: Variant = owner.call("to_save_data")
 		if not (data_variant is Dictionary):
-			return {"captured": false, "reason_code": "new_session_checkpoint_data_invalid", "owner_id": str(entry.get("owner_id", ""))}
-		saved_owners[str(entry.get("owner_id", ""))] = (data_variant as Dictionary).duplicate(true)
+			return {"captured": false, "reason_code": "new_session_checkpoint_data_invalid", "owner_id": owner_id}
+		if owner_id == "product_market" and (data_variant as Dictionary).is_empty():
+			return {"captured": false, "reason_code": "new_session_checkpoint_product_market_blocked", "owner_id": owner_id}
+		saved_owners[owner_id] = (data_variant as Dictionary).duplicate(true)
 	var annotations := _card_history_private_annotation_service_node()
 	var ai_runtime := _ai_runtime_controller_node()
 	var core_adapter := _core_economic_card_runtime_adapter_v06_node()
@@ -4400,7 +4429,14 @@ func resume_session() -> void:
 func finish_session(result_summary: Dictionary = {}) -> void:
 	var session := _session_node()
 	if session != null and session.has_method("finish_session"):
+		_drain_ai_business_publications_before_session_finish()
 		session.call("finish_session", result_summary)
+
+
+func _drain_ai_business_publications_before_session_finish() -> void:
+	var product_market := _product_market_runtime_controller_node() as ProductMarketRuntimeController
+	if product_market != null:
+		product_market.retry_pending_ai_business_publications()
 
 
 func mark_session_dirty(reason: String = "runtime_change") -> void:
@@ -4806,6 +4842,7 @@ func debug_snapshot() -> Dictionary:
 	var product_market_runtime_snapshot := _product_market_runtime_debug_snapshot()
 	var city_gdp_derivative_runtime_snapshot := _city_gdp_derivative_runtime_debug_snapshot()
 	var player_cash_mutation_snapshot := _player_cash_mutation_port_node().debug_snapshot() if _player_cash_mutation_port_node() != null else {}
+	var ai_business_cost_cash_snapshot := _ai_business_cost_cash_port_node().debug_snapshot() if _ai_business_cost_cash_port_node() != null else {}
 	var route_network_runtime_snapshot := _route_network_runtime_debug_snapshot()
 	var commodity_flow_runtime_snapshot := _commodity_flow_runtime_debug_snapshot()
 	var commodity_flow_world_bridge_snapshot := _commodity_flow_world_bridge_debug_snapshot()
@@ -4871,6 +4908,7 @@ func debug_snapshot() -> Dictionary:
 		"product_market_runtime": product_market_runtime_snapshot,
 		"city_gdp_derivative_runtime": city_gdp_derivative_runtime_snapshot,
 		"player_cash_mutation_port": player_cash_mutation_snapshot,
+		"ai_business_cost_cash_port": ai_business_cost_cash_snapshot,
 		"route_network_runtime": route_network_runtime_snapshot,
 		"commodity_flow_runtime": commodity_flow_runtime_snapshot,
 		"commodity_flow_world_bridge": commodity_flow_world_bridge_snapshot,
@@ -5580,6 +5618,10 @@ func _monster_wager_cash_commitment_query_port_node() -> MonsterWagerCashCommitm
 
 func _player_cash_mutation_port_node() -> PlayerCashMutationPort:
 	return get_node_or_null("PlayerCashMutationPort") as PlayerCashMutationPort
+
+
+func _ai_business_cost_cash_port_node() -> AiBusinessCostCashPort:
+	return get_node_or_null("AiBusinessCostCashPort") as AiBusinessCostCashPort
 
 
 func _monster_runtime_world_bridge_node() -> Node:

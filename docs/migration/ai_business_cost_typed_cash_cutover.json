@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "status": "production_cutover_validated_delivery_pending",
+  "mechanic_id": "ai_business_action_cash_cost",
+  "policy": {
+    "chance_percent": 76,
+    "max_per_cycle": 2,
+    "cost_units": 90,
+    "cost_cents": 9000,
+    "market_action_draw_min": 8,
+    "market_action_draw_max": 18,
+    "market_rng_draw_count": 47
+  },
+  "owners": {
+    "policy": "AiPolicyProfileResource",
+    "decision": "AiRuntimeController",
+    "typed_cash_coordination": "AiBusinessCostCashPort",
+    "cash": "WorldSessionState",
+    "cash_mutation": "PlayerCashMutationPort",
+    "wager_commitment": "MonsterRuntimeController",
+    "cash_availability": "MonsterWagerCashCommitmentQueryPort",
+    "market_effect": "ProductMarketRuntimeController",
+    "mutation_gate": "SimulationMutationAuthority",
+    "rng": "RunRngService"
+  },
+  "journal_limit": 256,
+  "market_finalization_sealed_before_cash": true,
+  "publication_dependencies_preflighted_before_cash": true,
+  "publication_pending_retry_exact_once": true,
+  "publication_retry_owner": "ProductMarketRuntimeController tick/session-finish/save maintenance",
+  "publication_pending_counts_as_committed_action": true,
+  "blocked_product_market_checkpoint_rejected": true,
+  "cash_cost_policy_fingerprint_bound": true,
+  "public_log_receipt_identity_redacted": true,
+  "cross_step_cycle_replay_supported": true,
+  "evicted_receipt_authorization_facts_preserved": true,
+  "typed_public_region_clue_restored": true,
+  "typed_detailed_public_log_restored": true,
+  "new_save_section_count": 0,
+  "main_fallback_count": 0,
+  "second_cash_owner_count": 0,
+  "second_commitment_owner_count": 0,
+  "route_sabotage_policy": "fail_closed_until_reversible_route_owner_exists",
+  "focused_tests": [
+    "res://tests/ai_business_cost_typed_cash_cutover_test.gd",
+    "res://tests/ai_business_cost_formal_four_player_test.gd",
+    "res://tests/ai_business_cost_architecture_gate_test.gd",
+    "res://scenes/tools/AiBusinessCostTypedCashCutoverBench.tscn"
+  ],
+  "main_budget_before": {
+    "physical_lines": 6599,
+    "nonblank_lines": 5560,
+    "methods": 480,
+    "constants": 64,
+    "top_level_variables": 46,
+    "top_level_preloads": 7,
+    "external_caller_files": 103
+  },
+  "main_budget_after": {
+    "physical_lines": 6528,
+    "nonblank_lines": 5497,
+    "methods": 476,
+    "constants": 59,
+    "top_level_variables": 46,
+    "top_level_preloads": 7,
+    "external_caller_files": 103
+  },
+  "full_run_resume_claim": false,
+  "next_boundary": "P0-COMMODITY-FLOW-POSTCOMMIT-EXACT-ONCE"
+}

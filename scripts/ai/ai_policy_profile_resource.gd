@@ -21,6 +21,11 @@ class_name AiPolicyProfileResource
 @export_range(0, 1000, 1) var intel_min_card_score := 125
 @export_range(1, 16, 1) var intel_actions_per_tick := 2
 
+@export_category("Business Action Policy")
+@export_range(0, 100, 1) var business_action_chance_percent := 76
+@export_range(1, 8, 1) var business_action_max_per_cycle := 2
+@export_range(1, 5000, 1) var business_action_cost_units := 90
+
 @export_category("Counter Policy")
 @export_range(0, 2000, 1) var counter_response_min_score := 160
 @export_range(0, 2000, 1) var counter_response_confident_score := 270
@@ -71,6 +76,11 @@ func parameter_groups() -> Dictionary:
 			"intel_min_card_score": intel_min_card_score,
 			"intel_actions_per_tick": intel_actions_per_tick,
 		},
+		"business_action": {
+			"chance_percent": business_action_chance_percent,
+			"max_per_cycle": business_action_max_per_cycle,
+			"cost_units": business_action_cost_units,
+		},
 		"counter": {
 			"counter_response_min_score": counter_response_min_score,
 			"counter_response_confident_score": counter_response_confident_score,
@@ -103,6 +113,22 @@ func parameter_groups() -> Dictionary:
 			"episode_goal_bonus": episode_goal_bonus,
 		},
 	}
+
+
+func business_action_terms() -> Dictionary:
+	return {
+		"chance_percent": business_action_chance_percent,
+		"max_per_cycle": business_action_max_per_cycle,
+		"cost_units": business_action_cost_units,
+		"policy_fingerprint": business_action_policy_fingerprint(),
+	}
+
+
+func business_action_policy_fingerprint() -> String:
+	return JSON.stringify([
+		"ai_business_cost_v1",
+		business_action_cost_units,
+	]).sha256_text()
 
 
 func to_policy_dictionary() -> Dictionary:
@@ -144,6 +170,12 @@ func validate_profile() -> Array:
 			"id": "ai_policy_cutover_guard",
 			"passed": runtime_cutover_enabled,
 			"notes": "AI Policy Resource is the explicit runtime parameter source after hard cutover",
+		},
+		{
+			"id": "ai_policy_business_action_terms",
+			"passed": business_action_chance_percent == 76 and business_action_max_per_cycle == 2 \
+				and business_action_cost_units == 90,
+			"notes": "business action chance, cycle limit, and 90-unit cost have one policy owner",
 		},
 		{
 			"id": "ai_policy_personalities",

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/ai_business_cost_cash_port.gd" id="1_port"]
+
+[node name="AiBusinessCostCashPort" type="Node"]
+script = ExtResource("1_port")

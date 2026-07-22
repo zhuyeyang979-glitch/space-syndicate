@@ -15,4 +15,7 @@ display_name = "AI Policy Profile v1"
 design_notes = "Inspector-editable runtime source for player-AI timing, thresholds, strategy weights, learning controls, and personality profiles."
 runtime_owner_script = "res://scripts/runtime/ai_runtime_controller.gd"
 runtime_cutover_enabled = true
+business_action_chance_percent = 76
+business_action_max_per_cycle = 2
+business_action_cost_units = 90
 personality_profiles = Array[Resource]([ExtResource("2_pioneer"), ExtResource("3_arbitrage"), ExtResource("4_disruptor"), ExtResource("5_tamer"), ExtResource("6_contract"), ExtResource("7_intelligence")])

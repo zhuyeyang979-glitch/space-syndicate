@@ -9,6 +9,7 @@ does not define gameplay independently of the rulebook and runtime directive.
 | `monster_wager_response` | ACTIVE | Section 9: the formal 15-second forced decision for monster-battle wagers. |
 | `card_target_choice` | ACTIVE | Section 7.4: forced target selection exists for monster and player targets. Region/product selection remains ordinary planning context, not a forced-response owner. |
 | `forced_decision` | ACTIVE | Other temporary decisions explicitly required by active v0.6 rules. |
+| `ai_business_action_cash_cost` | ACTIVE | AI-only anonymous market pressure costs 90 cash units through `AiBusinessCostCashPort`; committed monster-wager cash is unavailable and exact rival cash remains private. |
 | `conditional_order_auto_settlement` | ACTIVE | Section 8: `GlobalSupplyDemandRuntimeServiceV06` plans the effect, CardResolution carries its exact-once lineage, and `CommodityFlowRuntimeController` applies the atomic sink. No responder exists. |
 | `legacy_project_contract` | RETIRED | v0.5 project-to-project contract state. |
 | `contract_response` | RETIRED | Dedicated accept/reject/timeout response lifecycle. |
