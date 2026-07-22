@@ -54,7 +54,7 @@
         "res://scripts/runtime/new_game_setup_viewer_query_port.gd",
         "res://scripts/runtime/session_start_plan_builder.gd"
       ],
-      "requirement": "Expose only the eight selected source roles while preserving their authoritative source indices [0,1,2,3,8,16,21,22] and Chinese-name save identity; do not remap them to unsafe local save indices."
+      "requirement": "Expose only the eight selected source roles while preserving their authoritative source indices [0,1,2,3,9,16,21,22] and Chinese-name save identity; do not remap them to unsafe local save indices."
     }
   ],
   "already_at_parity": {
@@ -67,6 +67,7 @@
     "The regional supply universe is exactly the selected 28 non-commodity rank-I IDs.",
     "Commodity acquisition uses only the selected 12 commodity rank-I IDs.",
     "Setup exposes exactly the selected eight roles while save identity remains source-stable.",
+    "Every selected role mechanical passive field resolves to the audited non-Main gameplay consumer allowlist.",
     "No organization card or retired mechanic enters an active pool.",
     "Hidden hands, cash, AI reasoning, route plans, starter-monster choices, and ownership remain private."
   ],
