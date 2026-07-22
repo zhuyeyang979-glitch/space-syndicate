@@ -1,0 +1,120 @@
+{
+  "schema_version": "alpha01.product_art_proof.v1",
+  "manifest_id": "alpha01_six_industry_product_art_proof",
+  "purpose": "A non-production proof batch for one visually distinct Alpha 0.1 commodity in each authoritative industry.",
+  "runtime_policy": "proof_only_not_connected_to_production_consumers",
+  "generated_asset_policy": {
+    "provider": "OpenAI",
+    "model": "gpt-image-2",
+    "workflow": "built-in image_gen, flat chroma background removal, Lanczos resize",
+    "license_status": "OpenAI-generated original; not declared CC0",
+    "license_path": "res://docs/licenses/generated_art/alpha01_products/README.md",
+    "prompt_record_path": "res://docs/licenses/generated_art/alpha01_products/prompts.json",
+    "third_party_reference_images_used": false
+  },
+  "hard_contract": {
+    "entry_count": 6,
+    "industries": [
+      "life",
+      "energy",
+      "industry",
+      "technology",
+      "commerce",
+      "shipping"
+    ],
+    "width": 512,
+    "height": 512,
+    "color_mode": "RGBA",
+    "transparent_background": true,
+    "unique_asset_sha256": true,
+    "minimum_subject_coverage": 0.18,
+    "maximum_subject_coverage": 0.62,
+    "minimum_pairwise_combined_dhash_distance": 150
+  },
+  "entries": [
+    {
+      "product_id": "深海菌毯",
+      "slug": "deep_sea_fungal_mat",
+      "industry_id": "life",
+      "asset_path": "res://assets/art/products/alpha01/proof/deep_sea_fungal_mat.png",
+      "sha256": "9aada45f0f9e7c56ddd22b8a498b541ef2c11a9c17c5ca2f30f667327e488a11",
+      "source_generation_id": "imagegen-019f8729-deep-sea-fungal-mat",
+      "source_sha256": "69314e9a2ff7bd34f071d0444b21393dffbb7db6c23a17f5e8c423b2d438dc2a",
+      "prompt_id": "deep_sea_fungal_mat_v1",
+      "source_dimensions": [1254, 1254],
+      "background_key": "#ff00ff",
+      "visual_contract": "broad layered organic mat with cyan pores and coral stalks",
+      "status": "proof_ready"
+    },
+    {
+      "product_id": "环晶电池",
+      "slug": "ring_crystal_battery",
+      "industry_id": "energy",
+      "asset_path": "res://assets/art/products/alpha01/proof/ring_crystal_battery.png",
+      "sha256": "42eee73928360d9c889c0348a3585acf0116c18a3e80b8fe5421159a4091983d",
+      "source_generation_id": "imagegen-019f8729-ring-crystal-battery",
+      "source_sha256": "3fe480a3eee65584b961eb1deec85bb7631802a9df097e8f0d2c8d6796c4ebb0",
+      "prompt_id": "ring_crystal_battery_v1",
+      "source_dimensions": [1254, 1254],
+      "background_key": "#ff00ff",
+      "visual_contract": "amber segmented energy ring around a white-orange plasma core",
+      "status": "proof_ready"
+    },
+    {
+      "product_id": "重力陶瓷",
+      "slug": "gravity_ceramic",
+      "industry_id": "industry",
+      "asset_path": "res://assets/art/products/alpha01/proof/gravity_ceramic.png",
+      "sha256": "f682581254a8bf202319e1ebe19e5de894e6f73faccbab566f361d41ee644c1a",
+      "source_generation_id": "imagegen-019f8729-gravity-ceramic",
+      "source_sha256": "8c55ebd70b045eada2593d5ff9fc113a9dba9528de8b7e489c888ad6d2ed0d8c",
+      "prompt_id": "gravity_ceramic_v1",
+      "source_dimensions": [1254, 1254],
+      "background_key": "#00ff00",
+      "visual_contract": "interlocking charcoal ceramic arch with ivory glaze and violet lens",
+      "status": "proof_ready"
+    },
+    {
+      "product_id": "活体芯片",
+      "slug": "living_chip",
+      "industry_id": "technology",
+      "asset_path": "res://assets/art/products/alpha01/proof/living_chip.png",
+      "sha256": "86d139a984029d909793aa56ee17073721f8a55f99efc2306f8101c6f5dc4fc7",
+      "source_generation_id": "imagegen-019f8729-living-chip",
+      "source_sha256": "490361ecdc8a4c2023d2e8a0bb43404ac099c9b2b818b4f5facfed28e3edaadf",
+      "prompt_id": "living_chip_v1",
+      "source_dimensions": [1254, 1254],
+      "background_key": "#ff00ff",
+      "visual_contract": "cobalt biochip leaf with cyan neural veins and silver contact roots",
+      "status": "proof_ready"
+    },
+    {
+      "product_id": "风暴珍珠",
+      "slug": "storm_pearl",
+      "industry_id": "commerce",
+      "asset_path": "res://assets/art/products/alpha01/proof/storm_pearl.png",
+      "sha256": "c57c3941caaded10c1af575164e620ffab2ee6f8b2dd26a1fc36773e71b24660",
+      "source_generation_id": "imagegen-019f8729-storm-pearl",
+      "source_sha256": "f7ef7799506910bd34795bd45a4705162bc78ee606ae1e7b3f50da4210c3d9e2",
+      "prompt_id": "storm_pearl_v1",
+      "source_dimensions": [1254, 1254],
+      "background_key": "#00ff00",
+      "visual_contract": "iridescent pearl containing an indigo storm and broken gold orbits",
+      "status": "proof_ready"
+    },
+    {
+      "product_id": "蓝潮藻",
+      "slug": "blue_tide_algae",
+      "industry_id": "shipping",
+      "asset_path": "res://assets/art/products/alpha01/proof/blue_tide_algae.png",
+      "sha256": "852b237f58015e3c254927c7b59a4c70ac2b4d8b9d61b0889f1efc57b39a35d0",
+      "source_generation_id": "imagegen-019f8729-blue-tide-algae",
+      "source_sha256": "dd839c392d0c17e93ca5aeff8678c7597d31cf10290def9e481a5b5b166aa029",
+      "prompt_id": "blue_tide_algae_v1",
+      "source_dimensions": [1254, 1254],
+      "background_key": "#ff00ff",
+      "visual_contract": "asymmetric sapphire algae wave cinched by a white cargo seal",
+      "status": "proof_ready"
+    }
+  ]
+}

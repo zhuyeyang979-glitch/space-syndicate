@@ -1,0 +1,46 @@
+{
+  "request_id": "P2-ALPHA01-SIX-INDUSTRY-PRODUCT-ART-PROOF",
+  "status": "ready_for_integration_review",
+  "source_branch": "codex/p2-alpha-product-art-proof-16a0f6c",
+  "base_sha": "16a0f6c7c087b9639ef3570f979869bb30d0a43b",
+  "player_value": "Six high-frequency Alpha commodities gain immediately distinct silhouettes and industry palettes, proving a scalable path from six shared category glyphs toward readable per-product identity.",
+  "owned_files": [
+    "assets/art/products/alpha01/proof/*.png",
+    "data/art/alpha01_product_art_manifest.json",
+    "tools/art_pipeline/product_qa/*",
+    "docs/art_qa/products/alpha01/*",
+    "docs/licenses/generated_art/alpha01_products/*",
+    "tests/alpha01_product_art_manifest_test.gd",
+    "docs/integration_requests/P2-ALPHA01-SIX-INDUSTRY-PRODUCT-ART-PROOF.json"
+  ],
+  "production_files_modified": [],
+  "integration_request": {
+    "owner": "future product presentation integration owner",
+    "request": "Add one read-only product-art catalog/adapter that consumes this proof manifest for commodity cards and Product Codex thumbnails. Missing product IDs must retain the existing semantic icon fallback.",
+    "must_not": [
+      "make this art manifest a gameplay owner",
+      "change product identity or industry membership",
+      "remove fallback behavior for the remaining 40 products",
+      "copy asset paths into main.gd",
+      "add a second product catalog"
+    ]
+  },
+  "proof_products": [
+    {"product_id": "深海菌毯", "industry_id": "life"},
+    {"product_id": "环晶电池", "industry_id": "energy"},
+    {"product_id": "重力陶瓷", "industry_id": "industry"},
+    {"product_id": "活体芯片", "industry_id": "technology"},
+    {"product_id": "风暴珍珠", "industry_id": "commerce"},
+    {"product_id": "蓝潮藻", "industry_id": "shipping"}
+  ],
+  "acceptance": [
+    "all six product IDs belong to the Alpha 0.1 manifest",
+    "the authoritative product catalog confirms one item per industry",
+    "all PNGs are 512x512 RGBA with transparent backgrounds",
+    "committed and raw-source SHA-256 values are unique and pinned",
+    "pairwise visual signatures remain above the manifest similarity threshold",
+    "provenance and prompts are machine-readable",
+    "the six-entry contact sheet is generated from the manifest",
+    "no production UI, scene, rule, Alpha manifest, product catalog, or shared art manifest is modified"
+  ]
+}

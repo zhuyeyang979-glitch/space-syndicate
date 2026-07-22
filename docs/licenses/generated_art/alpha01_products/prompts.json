@@ -1,0 +1,51 @@
+{
+  "schema_version": "alpha01.product_art_prompts.v1",
+  "provider": "OpenAI",
+  "model": "gpt-image-2",
+  "generated_date": "2026-07-22",
+  "reference_images_used": false,
+  "entries": [
+    {
+      "prompt_id": "deep_sea_fungal_mat_v1",
+      "source_generation_id": "imagegen-019f8729-deep-sea-fungal-mat",
+      "source_filename": "exec-7420326d-31df-41ef-929e-b71353ea713e.png",
+      "source_sha256": "69314e9a2ff7bd34f071d0444b21393dffbb7db6c23a17f5e8c423b2d438dc2a",
+      "prompt": "Create an original square commodity icon for Deep-Sea Fungal Mat: a compact floating specimen of layered translucent teal-green fungal membranes folded into a broad manta-like mat, bioluminescent cyan pores, pale coral stalks, and a small matte bronze quarantine clasp. Use a polished hand-painted 3D board-game token style, a broad horizontal silhouette, premium science-fiction strategy-game readability, and a perfectly flat #ff00ff chroma background. No text, logo, frame, watermark, cast shadow, reflection, existing character, brand, or third-party IP."
+    },
+    {
+      "prompt_id": "ring_crystal_battery_v1",
+      "source_generation_id": "imagegen-019f8729-ring-crystal-battery",
+      "source_filename": "exec-c404bc6c-b2d3-427c-b5cd-471943f5d091.png",
+      "source_sha256": "3fe480a3eee65584b961eb1deec85bb7631802a9df097e8f0d2c8d6796c4ebb0",
+      "prompt": "Create an original square commodity icon for Ring-Crystal Battery: a thick open circular energy cell made of faceted amber crystal segments around a bright white-orange plasma core, held by dark graphite clamps and copper terminals. Use a polished hand-painted 3D board-game token style, an unmistakable circular silhouette, premium science-fiction strategy-game readability, and a perfectly flat #ff00ff chroma background. No text, logo, frame, watermark, cast shadow, reflection, existing prop, brand, or third-party IP."
+    },
+    {
+      "prompt_id": "gravity_ceramic_v1",
+      "source_generation_id": "imagegen-019f8729-gravity-ceramic",
+      "source_filename": "exec-2d91c224-bda9-4cb9-ae9c-81cddd05a248.png",
+      "source_sha256": "8c55ebd70b045eada2593d5ff9fc113a9dba9528de8b7e489c888ad6d2ed0d8c",
+      "prompt": "Create an original square commodity icon for Gravity Ceramic: three interlocking charcoal ceramic plates bent into a compact angular impossible arch, with ivory fracture-glaze edges and a violet gravity lens suspended in the center. Use a polished hand-painted 3D board-game token style, a triangular architectural silhouette, premium science-fiction strategy-game readability, and a perfectly flat #00ff00 chroma background. No text, logo, frame, watermark, cast shadow, reflection, ordinary pottery, brand, or third-party IP."
+    },
+    {
+      "prompt_id": "living_chip_v1",
+      "source_generation_id": "imagegen-019f8729-living-chip",
+      "source_filename": "exec-6a439767-e184-4e5a-b37c-3a2a4dd2043c.png",
+      "source_sha256": "490361ecdc8a4c2023d2e8a0bb43404ac099c9b2b818b4f5facfed28e3edaadf",
+      "prompt": "Create an original square commodity icon for Living Chip: a compact translucent cobalt biochip shaped like a rounded hexagonal leaf, with branching cyan neural veins, four short silver contact roots, and a luminous nucleus. Use a polished hand-painted 3D board-game token style, a distinct bio-technology silhouette, premium science-fiction strategy-game readability, and a perfectly flat #ff00ff chroma background. No text, logo, frame, watermark, cast shadow, reflection, CPU brand, or third-party IP."
+    },
+    {
+      "prompt_id": "storm_pearl_v1",
+      "source_generation_id": "imagegen-019f8729-storm-pearl",
+      "source_filename": "exec-a6a76aaf-a28a-466f-8a15-a33818c452b5.png",
+      "source_sha256": "f7ef7799506910bd34795bd45a4705162bc78ee606ae1e7b3f50da4210c3d9e2",
+      "prompt": "Create an original square commodity icon for Storm Pearl: one large iridescent pearl with a dark indigo storm spiral trapped inside, encircled by thin broken gold orbit bands and close static sparks. Use a polished hand-painted 3D board-game token style, an elegant spherical silhouette, premium science-fiction strategy-game readability, and a perfectly flat #00ff00 chroma background. No text, logo, frame, watermark, cast shadow, reflection, jewelry setting, brand, or third-party IP."
+    },
+    {
+      "prompt_id": "blue_tide_algae_v1",
+      "source_generation_id": "imagegen-019f8729-blue-tide-algae",
+      "source_filename": "exec-d56cf73e-fb3c-4dd6-80b8-2c6c88b59dfa.png",
+      "source_sha256": "dd839c392d0c17e93ca5aeff8678c7597d31cf10290def9e481a5b5b166aa029",
+      "prompt": "Create an original square commodity icon for Blue-Tide Algae: a twisting bundle of broad sapphire algae ribbons forming a rising wave crest, dotted with turquoise oxygen beads and cinched by a matte white cargo seal. Use a polished hand-painted 3D board-game token style, a strong asymmetric S-wave silhouette, premium science-fiction strategy-game readability, and a perfectly flat #ff00ff chroma background. No text, logo, frame, watermark, cast shadow, reflection, food package, brand, or third-party IP."
+    }
+  ]
+}

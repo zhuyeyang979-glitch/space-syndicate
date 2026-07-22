@@ -1,0 +1,9 @@
+{
+  "entry_count": 6,
+  "height": 1120,
+  "output_path": "res://docs/art_qa/products/alpha01/contact_sheet.png",
+  "schema_version": "alpha01.product_art_contact_sheet.v1",
+  "sha256": "d1b51e8aeac0f391cf725735d81f94168f058596fadf018a83599ecda9765424",
+  "source_manifest": "res://data/art/alpha01_product_art_manifest.json",
+  "width": 1800
+}
