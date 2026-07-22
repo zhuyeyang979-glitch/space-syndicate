@@ -13,6 +13,10 @@ from pathlib import Path
 from PIL import Image
 
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 MANIFEST_PATH = REPO_ROOT / "data/art/alpha01_product_art_manifest.json"
 ALPHA_MANIFEST_PATH = REPO_ROOT / "resources/content/alpha01/alpha01_content_manifest.tres"
