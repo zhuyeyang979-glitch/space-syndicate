@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/ai_region_knowledge_query_port.gd" id="1_port"]
+
+[node name="AiRegionKnowledgeQueryPort" type="Node"]
+script = ExtResource("1_port")
+world_session_state_path = NodePath("../WorldSessionState")
