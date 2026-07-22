@@ -212,9 +212,19 @@ const OWNER_BINDINGS := {
 @export var role_catalog_scene: PackedScene
 @export var product_catalog: Resource
 @export var role_names: PackedStringArray = []
+@export var role_source_indices: PackedInt32Array = []
 @export var card_family_ids: PackedStringArray = []
 @export var monster_names: PackedStringArray = []
+@export var monster_source_indices: PackedInt32Array = []
 @export var product_ids: PackedStringArray = []
+@export_group("Runtime Selection")
+@export var recommended_player_count := 4
+@export var recommended_human_player_count := 1
+@export var recommended_ai_player_count := 3
+@export var active_map_id := "depth_1_procedural_planet"
+@export var active_map_challenge_depth := 1
+@export var active_map_generator := "SessionStartWorldPlanBuilder"
+@export var active_map_art_surface := "res://scenes/ui/PlanetMapView.tscn"
 @export_group("Dependency Lock")
 @export var expected_card_source_sha256 := ""
 @export var expected_role_source_sha256 := ""
@@ -251,6 +261,44 @@ func selection_snapshot() -> Dictionary:
 		"product_ids": _packed_to_array(product_ids),
 		"counts": EXPECTED_SELECTION_COUNTS.duplicate(true),
 		"card_family_category_counts": EXPECTED_CARD_FAMILY_CATEGORY_COUNTS.duplicate(true),
+	}
+
+
+func runtime_selection_snapshot() -> Dictionary:
+	var roles: Array[Dictionary] = []
+	for index in range(mini(role_names.size(), role_source_indices.size())):
+		roles.append({"source_index": int(role_source_indices[index]), "name": role_names[index]})
+	var monsters: Array[Dictionary] = []
+	for index in range(mini(monster_names.size(), monster_source_indices.size())):
+		monsters.append({"source_index": int(monster_source_indices[index]), "name": monster_names[index]})
+	var region_ids: Array[String] = []
+	var commodity_ids: Array[String] = []
+	for card_id in acquisition_card_ids():
+		if card_id.begins_with("commodity."):
+			commodity_ids.append(card_id)
+		else:
+			region_ids.append(card_id)
+	return {
+		"schema_version": "alpha01.runtime_selection.v1",
+		"manifest_id": manifest_id,
+		"selection_sha256": deterministic_sha256(),
+		"recommended_configuration": {
+			"player_count": recommended_player_count,
+			"human_player_count": recommended_human_player_count,
+			"ai_player_count": recommended_ai_player_count,
+		},
+		"roles": roles,
+		"acquisition": {
+			"region_supply_rank_1_ids": region_ids,
+			"commodity_track_rank_1_ids": commodity_ids,
+		},
+		"monsters": monsters,
+		"active_map": {
+			"map_id": active_map_id,
+			"challenge_depth": active_map_challenge_depth,
+			"generator": active_map_generator,
+			"art_surface": active_map_art_surface,
+		},
 	}
 
 
@@ -318,6 +366,14 @@ func _validate_selection_shape(errors: Array[String]) -> void:
 	_validate_unique("acquisition_card", acquisition_card_ids(), errors)
 	_validate_unique("monster", monster_names, errors)
 	_validate_unique("product", product_ids, errors)
+	if role_source_indices.size() != role_names.size() or _packed_int_has_duplicates(role_source_indices):
+		errors.append("runtime_role_source_indices_invalid")
+	if monster_source_indices.size() != monster_names.size() or _packed_int_has_duplicates(monster_source_indices):
+		errors.append("runtime_monster_source_indices_invalid")
+	if recommended_player_count != 4 or recommended_human_player_count != 1 or recommended_ai_player_count != 3:
+		errors.append("runtime_recommended_configuration_invalid")
+	if active_map_id.is_empty() or active_map_challenge_depth != 1 or active_map_generator.is_empty() or active_map_art_surface.is_empty():
+		errors.append("runtime_active_map_invalid")
 	var original_card_families := _packed_to_array(card_family_ids)
 	var sorted_card_families := original_card_families.duplicate()
 	sorted_card_families.sort()
@@ -546,6 +602,8 @@ func _validate_roles(registry: Dictionary, errors: Array[String]) -> Dictionary:
 	var source_count := int(owner.call("role_count"))
 	if source_names.size() != source_count:
 		errors.append("role_catalog_ordered_count_mismatch")
+	if selected_indices != _packed_int_to_array(role_source_indices):
+		errors.append("runtime_role_source_identity_mismatch")
 	owner.free()
 	unique_passive_fields.sort()
 	for hit in retired_hits:
@@ -637,6 +695,8 @@ func _validate_monsters(registry: Dictionary, errors: Array[String]) -> Dictiona
 	var retired_hits: Array[String] = []
 	if selected != source_names:
 		errors.append("monster_selection_source_order_or_membership_mismatch")
+	if _packed_int_to_array(monster_source_indices) != range(MONSTER_CATALOG.catalog_size()):
+		errors.append("runtime_monster_source_identity_mismatch")
 	if MONSTER_CATALOG.catalog_size() != EXPECTED_SELECTION_COUNTS["monsters"]:
 		errors.append("monster_catalog_count:%d" % MONSTER_CATALOG.catalog_size())
 	for index in range(MONSTER_CATALOG.catalog_size()):
@@ -699,8 +759,8 @@ func _validate_runtime_consumers(errors: Array[String]) -> Dictionary:
 		"player_card_identity_count": acquisition_card_ids().size(),
 		"rank_record_count": ranked_card_ids().size(),
 		"rank_records_are_not_draw_ids": rank_one_draw_contract,
-		"whitelist_runtime_consumer_attached": false,
-		"integration_request_required": true,
+		"whitelist_runtime_consumer_attached": true,
+		"integration_request_required": false,
 	}
 
 
@@ -779,6 +839,22 @@ func _is_pure_data(value: Variant) -> bool:
 
 func _packed_to_array(values: PackedStringArray) -> Array[String]:
 	var result: Array[String] = []
+	for value in values:
+		result.append(value)
+	return result
+
+
+func _packed_int_has_duplicates(values: PackedInt32Array) -> bool:
+	var seen: Dictionary = {}
+	for value in values:
+		if value < 0 or seen.has(value):
+			return true
+		seen[value] = true
+	return false
+
+
+func _packed_int_to_array(values: PackedInt32Array) -> Array[int]:
+	var result: Array[int] = []
 	for value in values:
 		result.append(value)
 	return result

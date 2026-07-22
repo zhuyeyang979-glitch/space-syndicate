@@ -6,6 +6,7 @@ const RULESET_ID := "v0.6"
 const STATE_VERSION := 1
 const CATALOG := preload("res://resources/cards/runtime/card_runtime_catalog_v06.tres")
 const TRANSACTION_SERVICE_SCRIPT := preload("res://scripts/cards/v06/card_flow_transaction_service_v06.gd")
+const AlphaContentLoader := preload("res://scripts/runtime/alpha01_content_manifest_loader.gd")
 
 @onready var effect_bridge: CommodityCardEffectRuntimeBridge = %CommodityCardEffectRuntimeBridge
 
@@ -252,7 +253,7 @@ func configure_belt(revision: int, entries: Array) -> Dictionary:
 	return (value_variant as Dictionary).duplicate(true) if value_variant is Dictionary else _failure("belt_configuration_invalid")
 
 
-func initialize_default_belt_if_empty() -> Dictionary:
+func initialize_default_belt_if_empty(gameplay_seed: int = 1, selected_card_ids: Array = []) -> Dictionary:
 	if not _service_ready():
 		return _failure("controller_not_ready")
 	var current := belt_snapshot()
@@ -263,45 +264,60 @@ func initialize_default_belt_if_empty() -> Dictionary:
 			"reason_code": "commodity_belt_preserved",
 			"belt": current,
 		}
-	var selected_cards: Array[Dictionary] = []
-	var selected_ids: Dictionary = {}
-	var commodity_cards_variant: Variant = CATALOG.call("cards_for_acquisition", "commodity_belt_free")
-	var commodity_cards: Array = commodity_cards_variant if commodity_cards_variant is Array else []
-	for industry_id in ["life", "energy", "industry", "technology", "commerce", "shipping"]:
-		for card_variant in commodity_cards:
-			var card: Dictionary = card_variant if card_variant is Dictionary else {}
-			var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
-			var card_id := str(machine.get("card_id", ""))
-			if int(machine.get("rank", 0)) == 1 and str(machine.get("industry_id", "")) == industry_id and not selected_ids.has(card_id):
-				selected_cards.append(card)
-				selected_ids[card_id] = true
-				break
-	for card_variant in commodity_cards:
-		if selected_cards.size() >= 8:
-			break
-		var card: Dictionary = card_variant if card_variant is Dictionary else {}
-		var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
-		var card_id := str(machine.get("card_id", ""))
-		if int(machine.get("rank", 0)) != 1 or card_id.is_empty() or selected_ids.has(card_id):
-			continue
-		selected_cards.append(card)
-		selected_ids[card_id] = true
+	var content := AlphaContentLoader.load_active_selection()
+	if not content.is_valid():
+		return _failure("alpha01_content_selection_invalid")
+	var requested_ids: Array = selected_card_ids.duplicate() if not selected_card_ids.is_empty() else content.commodity_track_card_ids.duplicate()
+	if requested_ids.size() != Alpha01RuntimeContentSelection.EXPECTED_COMMODITY_CARD_COUNT:
+		return _failure("commodity_belt_selection_count_invalid")
+	var order_result := selected_belt_card_order(gameplay_seed, requested_ids)
+	if not bool(order_result.get("valid", false)):
+		return _failure(str(order_result.get("reason_code", "commodity_belt_selection_invalid")))
+	var selected_order: Array = order_result.get("card_ids", []) if order_result.get("card_ids", []) is Array else []
 	var entries: Array = []
-	for card in selected_cards:
-		var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
-		var card_id := str(machine.get("card_id", ""))
+	for slot_index in range(selected_order.size()):
+		var card_id := str(selected_order[slot_index])
+		var card: Dictionary = CATALOG.call("card_snapshot", card_id)
 		entries.append({
-			"item_id": "commodity_slot:%s" % card_id,
+			"item_id": "commodity_slot:%02d:%s" % [slot_index, card_id],
 			"card": card,
 			"claimable": true,
 			"visible_actor_ids": [],
 		})
-	if entries.size() != 8:
+	if entries.size() != Alpha01RuntimeContentSelection.EXPECTED_COMMODITY_CARD_COUNT:
 		return _failure("commodity_belt_seed_incomplete")
 	var result := configure_belt(1, entries)
-	result["deterministic_seed"] = true
+	result["deterministic_seed"] = maxi(1, gameplay_seed)
 	result["seed_item_count"] = entries.size()
+	result["selected_card_ids"] = selected_order.duplicate()
 	return result
+
+
+func selected_belt_card_order(gameplay_seed: int, selected_card_ids: Array = []) -> Dictionary:
+	var content := AlphaContentLoader.load_active_selection()
+	if not content.is_valid():
+		return {"valid": false, "reason_code": "alpha01_content_selection_invalid", "card_ids": []}
+	var requested_ids: Array = selected_card_ids.duplicate() if not selected_card_ids.is_empty() else content.commodity_track_card_ids.duplicate()
+	if requested_ids.size() != Alpha01RuntimeContentSelection.EXPECTED_COMMODITY_CARD_COUNT:
+		return {"valid": false, "reason_code": "commodity_belt_selection_count_invalid", "card_ids": []}
+	var seen: Dictionary = {}
+	var weighted_rows: Array[Dictionary] = []
+	for card_id_variant in requested_ids:
+		var card_id := str(card_id_variant).strip_edges()
+		var card: Dictionary = CATALOG.call("card_snapshot", card_id)
+		var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+		var rank_is_one := int(machine.get("rank", 0)) == 1
+		if card.is_empty() or not rank_is_one or str(machine.get("category_id", "")) != "commodity" or str(machine.get("acquisition_kind", "")) != "commodity_belt_free" or seen.has(card_id):
+			return {"valid": false, "reason_code": "commodity_belt_selection_invalid", "card_ids": []}
+		seen[card_id] = true
+		weighted_rows.append({"item_id": card_id, "weight": 1})
+	var shuffled := RunRngService.deterministic_weighted_shuffle(weighted_rows, maxi(1, gameplay_seed))
+	return {
+		"valid": true,
+		"reason_code": "commodity_belt_order_ready",
+		"gameplay_seed": maxi(1, gameplay_seed),
+		"card_ids": (shuffled.get("items", []) as Array).duplicate(),
+	}
 
 
 func belt_snapshot() -> Dictionary:

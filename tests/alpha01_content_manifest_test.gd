@@ -50,7 +50,7 @@ func _run() -> void:
 	var consumer_audit: Dictionary = report.get("runtime_consumer_audit", {}) if report.get("runtime_consumer_audit", {}) is Dictionary else {}
 	_expect(bool(consumer_audit.get("rank_one_draw_contract", false)) and bool(consumer_audit.get("rank_records_are_not_draw_ids", false)), "current draw consumers accept rank-I identities rather than 160 rank records")
 	_expect((consumer_audit.get("missing_paths", []) as Array).is_empty(), "cards, roles, monsters, and products each have real runtime consumer evidence")
-	_expect(not bool(consumer_audit.get("whitelist_runtime_consumer_attached", true)) and bool(consumer_audit.get("integration_request_required", false)), "hot-file whitelist activation remains an explicit integration handoff")
+	_expect(bool(consumer_audit.get("whitelist_runtime_consumer_attached", false)) and not bool(consumer_audit.get("integration_request_required", true)), "production owners consume the Alpha whitelist directly")
 	_finish()
 
 

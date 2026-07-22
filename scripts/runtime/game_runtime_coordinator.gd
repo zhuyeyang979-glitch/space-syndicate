@@ -12,6 +12,7 @@ const RUNTIME_BALANCE_MODEL_SCRIPT := preload("res://scripts/balance/runtime_bal
 const COMMODITY_SUSHI_TRACK_SERVICE_SCRIPT := preload("res://scripts/runtime/commodity_sushi_track_runtime_service.gd")
 const CARD_TARGET_CHOICE_RESPONSE_SINK_SCRIPT := preload("res://scripts/runtime/card_target_choice_response_sink.gd")
 const MONSTER_WAGER_RESPONSE_SINK_SCRIPT := preload("res://scripts/runtime/monster_wager_response_sink.gd")
+const AlphaContentLoader := preload("res://scripts/runtime/alpha01_content_manifest_loader.gd")
 const CORE_ECONOMIC_CARD_EFFECT_KINDS_V06 := [
 	"install_commodity_rate",
 	"build_upgrade_or_repair_facility",
@@ -629,7 +630,7 @@ func refresh_v06_production_player_bindings(world: Node = null) -> Dictionary:
 	return refresh_v06_session_player_bindings()
 
 
-func refresh_v06_session_player_bindings() -> Dictionary:
+func refresh_v06_session_player_bindings(commodity_seed: int = 1, commodity_card_ids: Array = []) -> Dictionary:
 	var card_player_state_adapter := _card_player_state_production_adapter_v06_node()
 	var commodity_card_inventory := _commodity_card_inventory_runtime_controller_node()
 	var core_economic_adapter := _core_economic_card_runtime_adapter_v06_node()
@@ -643,7 +644,7 @@ func refresh_v06_session_player_bindings() -> Dictionary:
 	if commodity_card_inventory is CommodityCardInventoryRuntimeController:
 		(commodity_card_inventory as CommodityCardInventoryRuntimeController).set_world_session_state(session_state)
 	var actor_map: Dictionary = card_player_state_adapter.call("actor_player_indices") if card_player_state_adapter != null and card_player_state_adapter.has_method("actor_player_indices") else {}
-	var belt_bootstrap: Dictionary = commodity_card_inventory.call("initialize_default_belt_if_empty") \
+	var belt_bootstrap: Dictionary = commodity_card_inventory.call("initialize_default_belt_if_empty", commodity_seed, commodity_card_ids) \
 		if commodity_card_inventory != null and commodity_card_inventory.has_method("initialize_default_belt_if_empty") else {}
 	var organization_owner_result := _configure_player_organization_runtime(actor_map)
 	var public_demand_bootstrap := _bootstrap_v06_public_demand_endpoints()
@@ -1765,10 +1766,11 @@ func configure_region_supply(
 
 func region_supply_catalog_card_ids() -> Array:
 	var catalog := _v06_runtime_card_catalog() as CardRuntimeCatalogV06Resource
-	if catalog == null:
+	var content := AlphaContentLoader.load_active_selection()
+	if catalog == null or not content.is_valid():
 		return []
 	var result: Array = []
-	for card_id_variant in catalog.card_ids():
+	for card_id_variant in content.region_supply_card_ids:
 		var card_id := str(card_id_variant).strip_edges()
 		if not _region_supply_card_descriptor(card_id).is_empty():
 			result.append(card_id)
@@ -3406,6 +3408,11 @@ func forced_decision_sources_debug() -> Dictionary:
 func preflight_new_session_plan(plan: Dictionary) -> Dictionary:
 	if int(plan.get("plan_schema_version", 0)) != 1 or not (plan.get("districts", []) is Array) or not (plan.get("card_pool", []) is Array):
 		return {"accepted": false, "reason_code": "runtime_new_session_plan_invalid"}
+	var content := AlphaContentLoader.load_active_selection()
+	if not content.is_valid():
+		return {"accepted": false, "reason_code": "runtime_alpha_content_invalid", "errors": content.errors.duplicate()}
+	if int(plan.get("challenge_depth", 0)) != content.active_challenge_depth() or (plan.get("card_pool", []) as Array) != content.region_supply_card_ids:
+		return {"accepted": false, "reason_code": "runtime_alpha_content_plan_mismatch"}
 	var required_nodes := [
 		_product_market_runtime_controller_node(), _region_infrastructure_runtime_controller_node(),
 		_region_supply_runtime_controller_node(), _world_session_state_node(), _table_selection_state_node(),
@@ -3542,7 +3549,8 @@ func apply_new_session_plan(plan: Dictionary) -> Dictionary:
 		"selected_trade_product": "", "selected_card_resolution_id": -1,
 		"selected_hand_slot": -1, "selected_map_layer_focus": "all",
 	})
-	var binding := refresh_v06_session_player_bindings()
+	var content := AlphaContentLoader.load_active_selection()
+	var binding := refresh_v06_session_player_bindings(int(plan.get("region_supply_seed", 1)), content.commodity_track_card_ids)
 	if not bool(binding.get("ready", false)):
 		return {"applied": false, "reason_code": str(binding.get("reason_code", "new_session_player_binding_failed")), "binding": binding}
 	if _new_session_fault("after_player_binding"):

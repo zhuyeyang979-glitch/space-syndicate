@@ -84,7 +84,7 @@ func _run() -> void:
 
 	var owner_before: Dictionary = inventory.belt_snapshot()
 	var owner_items_before: Dictionary = owner_before.get("items", {}) if owner_before.get("items", {}) is Dictionary else {}
-	_expect(int(owner_before.get("revision", 0)) == 1 and owner_items_before.size() == 8, "default shared belt deterministically seeds eight real commodity cards")
+	_expect(int(owner_before.get("revision", 0)) == 1 and owner_items_before.size() == 12, "default shared belt deterministically seeds the twelve selected commodity cards")
 	var snapshot_zero: SNAPSHOT_SCRIPT = service.public_snapshot(0)
 	var snapshot_one: SNAPSHOT_SCRIPT = service.public_snapshot(1)
 	print("COMMODITY_SUSHI_TRACK_DIAG|actors=%s|viewer0=%s|viewer1=%s" % [
@@ -92,8 +92,8 @@ func _run() -> void:
 		JSON.stringify(snapshot_zero.to_dictionary()),
 		JSON.stringify(snapshot_one.to_dictionary()),
 	])
-	_expect(snapshot_zero != null and snapshot_zero.is_valid() and snapshot_zero.available and snapshot_zero.items.size() == 8, "viewer zero receives a valid eight-item public snapshot")
-	_expect(snapshot_one != null and snapshot_one.is_valid() and snapshot_one.items.size() == 8, "viewer one receives the same shared public belt")
+	_expect(snapshot_zero != null and snapshot_zero.is_valid() and snapshot_zero.available and snapshot_zero.items.size() == 12, "viewer zero receives a valid twelve-item public snapshot")
+	_expect(snapshot_one != null and snapshot_one.is_valid() and snapshot_one.items.size() == 12, "viewer one receives the same shared public belt")
 	if snapshot_zero == null or snapshot_zero.items.is_empty():
 		await _finish(coordinator, world, null)
 		return
@@ -113,7 +113,7 @@ func _run() -> void:
 	display_snapshot["snapshot_revision"] = 11
 	_expect(track.set_snapshot_dictionary(display_snapshot), "many-item snapshot renders on the production track scene")
 	var rendered_once: Dictionary = track.debug_snapshot()
-	_expect(int(rendered_once.get("rendered_item_count", -1)) == 8 and int(rendered_once.get("created_node_count", -1)) == 8, "eight stable commodity nodes are created once")
+	_expect(int(rendered_once.get("rendered_item_count", -1)) == 12 and int(rendered_once.get("created_node_count", -1)) == 12, "twelve stable commodity nodes are created once")
 	var first_item := snapshot_zero.items[0]
 	var item_node := track.find_child("CommoditySlot_%s" % _safe_node_name(first_item.commodity_slot_id), true, false)
 	_expect(item_node != null, "stable commodity slot id maps to one production item node")
@@ -139,7 +139,7 @@ func _run() -> void:
 	updated_display["items"] = updated_items
 	_expect(track.set_snapshot_dictionary(updated_display), "newer public values update the track")
 	var rendered_twice: Dictionary = track.debug_snapshot()
-	_expect(int(rendered_twice.get("created_node_count", -1)) == 8 and int(rendered_twice.get("reused_node_count", 0)) >= 8, "value refresh reuses every same-id item node")
+	_expect(int(rendered_twice.get("created_node_count", -1)) == 12 and int(rendered_twice.get("reused_node_count", 0)) >= 12, "value refresh reuses every same-id item node")
 	var stale_display := display_snapshot.duplicate(true)
 	var state_before_stale: Dictionary = track.debug_snapshot()
 	_expect(not track.set_snapshot_dictionary(stale_display) and track.debug_snapshot().get("rendered_slot_ids", []) == state_before_stale.get("rendered_slot_ids", []), "stale revision fails closed without changing rendered slots")
@@ -148,7 +148,7 @@ func _run() -> void:
 	var duplicate_items: Array = (duplicate_display.get("items", []) as Array).duplicate(true)
 	duplicate_items.append((duplicate_items[0] as Dictionary).duplicate(true))
 	duplicate_display["items"] = duplicate_items
-	_expect(not track.set_snapshot_dictionary(duplicate_display) and int(track.debug_snapshot().get("rendered_item_count", -1)) == 8, "duplicate stable ids fail closed without rebuilding the track")
+	_expect(not track.set_snapshot_dictionary(duplicate_display) and int(track.debug_snapshot().get("rendered_item_count", -1)) == 12, "duplicate stable ids fail closed without rebuilding the track")
 
 	var rng_before := JSON.stringify(rng.debug_snapshot())
 	var market_before := JSON.stringify(product_market.public_market_snapshot())
@@ -161,7 +161,7 @@ func _run() -> void:
 	_expect(int(player_after.get("cash", -1)) == int(player_before.get("cash", -2)) and _card_count(player_after) == card_count_before + 1, "free claim adds one card and changes no cash")
 	_expect(JSON.stringify(product_market.public_market_snapshot()) == market_before and JSON.stringify(rng.debug_snapshot()) == rng_before, "claim does not refresh the market or consume RNG")
 	var snapshot_after: SNAPSHOT_SCRIPT = service.public_snapshot(0)
-	_expect(snapshot_after.is_valid() and snapshot_after.items.size() == 7 and snapshot_after.snapshot_revision > snapshot_zero.snapshot_revision, "owner commit advances the authoritative public snapshot")
+	_expect(snapshot_after.is_valid() and snapshot_after.items.size() == 11 and snapshot_after.snapshot_revision > snapshot_zero.snapshot_revision, "owner commit advances the authoritative public snapshot")
 	var replay: Dictionary = service.claim(request)
 	_expect(bool(replay.get("success", false)) and bool(replay.get("idempotent_replay", false)) and _card_count(inventory.player_snapshot("player.0")) == card_count_before + 1, "duplicate typed request replays without a second card")
 	var stale_request: REQUEST_SCRIPT = _request_for(snapshot_zero, snapshot_zero.items[1], 2)

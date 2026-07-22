@@ -3,6 +3,7 @@ class_name SessionStartPlanBuilder
 
 const MonsterCatalog := preload("res://scripts/runtime/monster_catalog_v06.gd")
 const WorldPlanBuilder := preload("res://scripts/runtime/session_start_world_plan_builder.gd")
+const AlphaContentLoader := preload("res://scripts/runtime/alpha01_content_manifest_loader.gd")
 
 const STARTING_CASH := 2000
 
@@ -22,6 +23,10 @@ func build_plan(request: SessionStartRequest, rng_checkpoint: Dictionary) -> Dic
 	var catalog := _role_catalog()
 	var coordinator := _coordinator()
 	var ai_runtime := _ai_runtime()
+	var content := AlphaContentLoader.load_active_selection()
+	if not content.is_valid():
+		_failure_count += 1
+		return {"ok": false, "reason_code": "session_start_alpha_content_invalid", "errors": content.errors.duplicate()}
 	if catalog == null or coordinator == null or ai_runtime == null or not bool(catalog.validate_catalog().get("valid", false)):
 		_failure_count += 1
 		return {"ok": false, "reason_code": "session_start_catalog_dependency_missing"}
@@ -31,18 +36,21 @@ func build_plan(request: SessionStartRequest, rng_checkpoint: Dictionary) -> Dic
 	if player_count < 3 or player_count > 8 or ai_count < 2 or ai_count >= player_count:
 		_failure_count += 1
 		return {"ok": false, "reason_code": "session_start_draft_bounds_invalid"}
+	if int(draft.get("challenge_depth", 0)) != content.active_challenge_depth():
+		_failure_count += 1
+		return {"ok": false, "reason_code": "session_start_alpha_map_not_selected"}
 	var market_result := ProductMarketRuntimeController.build_new_session_plan(rng_checkpoint, 30.0, 60.0)
 	if not bool(market_result.get("ok", false)):
 		_failure_count += 1
 		return market_result
 	var cursor: Dictionary = (market_result.get("cursor", {}) as Dictionary).duplicate(true)
-	var roles_result := _resolve_roles(draft, cursor, catalog.role_count())
+	var roles_result := _resolve_roles(draft, cursor, content.role_source_indices())
 	if not bool(roles_result.get("ok", false)):
 		_failure_count += 1
 		return roles_result
 	cursor = (roles_result.get("cursor", {}) as Dictionary).duplicate(true)
 	var resolved_roles: Array = roles_result.get("roles", [])
-	var player_result := _build_players(draft, resolved_roles, catalog, coordinator, ai_runtime)
+	var player_result := _build_players(draft, resolved_roles, catalog, coordinator, ai_runtime, content.monster_source_indices())
 	if not bool(player_result.get("ok", false)):
 		_failure_count += 1
 		return player_result
@@ -79,8 +87,8 @@ func build_plan(request: SessionStartRequest, rng_checkpoint: Dictionary) -> Dic
 		_failure_count += 1
 		return second_market_refresh
 	cursor = (second_market_refresh.get("cursor", {}) as Dictionary).duplicate(true)
-	var card_pool := _build_run_card_pool((world_result.get("districts", []) as Array), coordinator)
-	if card_pool.is_empty():
+	var card_pool := _build_run_card_pool((world_result.get("districts", []) as Array), coordinator, content.region_supply_card_ids)
+	if card_pool.size() != Alpha01RuntimeContentSelection.EXPECTED_REGION_CARD_COUNT:
 		_failure_count += 1
 		return {"ok": false, "reason_code": "session_start_card_pool_empty"}
 	var plan := SessionStartPlan.new()
@@ -125,7 +133,7 @@ func debug_snapshot() -> Dictionary:
 	return {"builder_id": "session_start_plan_builder_v1", "build_count": _build_count, "failure_count": _failure_count, "mutates_live_state": false, "consumes_live_rng": false, "references_main": false}
 
 
-func _resolve_roles(draft: Dictionary, cursor: Dictionary, role_count: int) -> Dictionary:
+func _resolve_roles(draft: Dictionary, cursor: Dictionary, allowed_role_indices: Array[int]) -> Dictionary:
 	var configured: Array = draft.get("role_indices", [])
 	var resolved: Array = []
 	var used := {}
@@ -136,12 +144,12 @@ func _resolve_roles(draft: Dictionary, cursor: Dictionary, role_count: int) -> D
 			resolved.append(value)
 			random_slots.append(index)
 			continue
-		if value < 0 or value >= role_count or used.has(value):
+		if not allowed_role_indices.has(value) or used.has(value):
 			return {"ok": false, "reason_code": "session_start_role_selection_invalid"}
 		resolved.append(value)
 		used[value] = true
 	var available: Array = []
-	for role_index in range(role_count):
+	for role_index in allowed_role_indices:
 		if not used.has(role_index):
 			available.append(role_index)
 	var next_cursor := cursor.duplicate(true)
@@ -158,7 +166,7 @@ func _resolve_roles(draft: Dictionary, cursor: Dictionary, role_count: int) -> D
 	return {"ok": true, "roles": resolved, "cursor": next_cursor}
 
 
-func _build_players(draft: Dictionary, roles: Array, catalog: RoleCatalogRuntimeService, coordinator: GameRuntimeCoordinator, ai_runtime: AiRuntimeController) -> Dictionary:
+func _build_players(draft: Dictionary, roles: Array, catalog: RoleCatalogRuntimeService, coordinator: GameRuntimeCoordinator, ai_runtime: AiRuntimeController, allowed_monster_indices: Array[int]) -> Dictionary:
 	var players: Array = []
 	var player_count := int(draft.get("player_count", 0))
 	var human_count := maxi(1, player_count - int(draft.get("ai_player_count", 0)))
@@ -172,7 +180,7 @@ func _build_players(draft: Dictionary, roles: Array, catalog: RoleCatalogRuntime
 		role["role_index"] = role_index
 		role["text"] = "%s｜特征：%s｜被动：%s" % [str(role.get("species", "未知外星人")), str(role.get("trait", "暂无特征")), str(role.get("passive", "暂无被动"))]
 		var monster_index := int(monster_indices[index]) if index < monster_indices.size() else index
-		if monster_index < 0 or monster_index >= MonsterCatalog.catalog_size():
+		if not allowed_monster_indices.has(monster_index) or monster_index >= MonsterCatalog.catalog_size():
 			return {"ok": false, "reason_code": "session_start_starter_monster_invalid"}
 		var raw_card := coordinator.v06_starter_monster_card_by_name(str(MonsterCatalog.catalog_entry(monster_index).get("name", "")))
 		var starter_card := _world_card(raw_card)
@@ -197,11 +205,16 @@ func _build_players(draft: Dictionary, roles: Array, catalog: RoleCatalogRuntime
 	return {"ok": true, "players": players}
 
 
-func _build_run_card_pool(_districts: Array, coordinator: GameRuntimeCoordinator) -> Array:
+func _build_run_card_pool(_districts: Array, coordinator: GameRuntimeCoordinator, selected_card_ids: Array[String]) -> Array:
 	# The regional rack and the production inventory must share the same v0.6
 	# canonical card identities. Region-specific playability remains a public
 	# listing condition; it must not be encoded as a second legacy card pool.
-	return coordinator.region_supply_catalog_card_ids()
+	var available := coordinator.region_supply_catalog_card_ids()
+	var result: Array = []
+	for card_id in selected_card_ids:
+		if available.has(card_id):
+			result.append(card_id)
+	return result
 
 
 func _world_card(card: Dictionary) -> Dictionary:
