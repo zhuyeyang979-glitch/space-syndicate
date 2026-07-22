@@ -146,11 +146,11 @@ func _run_eligibility_cases() -> void:
 	_seed_pools({"0": _asset_milliunits({"life": 3, "technology": 1})})
 	var facts := _eligibility_facts()
 	facts["player_mana"] = _mana.availability_snapshot(0)
-	var commodity := _eligibility.evaluate_play({"evaluation_mode": "rule", "skill": {"name": "commodity.card", "schema_version": "v0.6", "kind": "commodity", "asset_cost": {}}}, facts)
+	var commodity := _eligibility.evaluate_play({"evaluation_mode": "rule", "skill": {"name": "commodity.card", "schema_version": "v0.6", "kind": "commodity", "asset_cost": {"life": 0, "energy": 0, "industry": 0, "technology": 0, "commerce": 0, "shipping": 0, "generic": 0}}}, facts)
 	_check("eligibility_free_commodity", "eligibility", bool(commodity.get("allowed", false)) and _all_zero(_dictionary(commodity.get("asset_cost", {}))), {"reason": commodity.get("reason_code", ""), "asset_cost": commodity.get("asset_cost", {})})
-	var allowed := _eligibility.evaluate_play({"evaluation_mode": "rule", "skill": {"name": "technology.action", "schema_version": "v0.6", "kind": "intel", "asset_cost": {"technology": 1, "generic": 2}}}, facts)
+	var allowed := _eligibility.evaluate_play({"evaluation_mode": "rule", "skill": {"name": "technology.action", "schema_version": "v0.6", "kind": "intel", "asset_cost": {"life": 0, "energy": 0, "industry": 0, "technology": 1, "commerce": 0, "shipping": 0, "generic": 2}}}, facts)
 	_check("eligibility_asset_allowed", "eligibility", bool(allowed.get("allowed", false)) and str(_dictionary(allowed.get("asset_status", {})).get("authoritative_allocation_owner", "")) == "PlayerManaRuntimeController", {"reason": allowed.get("reason_code", ""), "asset_status": allowed.get("asset_status", {})})
-	var rejected := _eligibility.evaluate_play({"evaluation_mode": "rule", "skill": {"name": "shipping.action", "schema_version": "v0.6", "kind": "intel", "asset_cost": {"shipping": 1}}}, facts)
+	var rejected := _eligibility.evaluate_play({"evaluation_mode": "rule", "skill": {"name": "shipping.action", "schema_version": "v0.6", "kind": "intel", "asset_cost": {"life": 0, "energy": 0, "industry": 0, "technology": 0, "commerce": 0, "shipping": 1, "generic": 0}}}, facts)
 	_check("eligibility_asset_rejected", "eligibility", not bool(rejected.get("allowed", true)) and str(rejected.get("reason_code", "")) == "asset_insufficient", {"reason": rejected.get("reason_code", ""), "args": rejected.get("reason_args", {})})
 
 

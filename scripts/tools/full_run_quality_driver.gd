@@ -650,9 +650,6 @@ func _scripted_ui_action(
 				"disabled": bool(temporary_action.get("disabled", false)),
 				"origin": "temporary_decision",
 			}
-	var supply_rotation_action := _supply_rotation_action(runtime_screen, supply_rotation_state)
-	if not supply_rotation_action.is_empty():
-		return supply_rotation_action
 	var source_established := false
 	var facility_chain_incomplete := int(public_progress.get("owned_facility_count", 0)) < 4
 	var strategy_actions: Array[Dictionary] = []
@@ -682,6 +679,12 @@ func _scripted_ui_action(
 			"disabled": true,
 			"origin": "economic_wait",
 		}
+	# A bought facility is a stronger continuation than rotating the public rack.
+	# Rotation remains available only after the authorized hand projection proves
+	# there is no facility card waiting to be played.
+	var supply_rotation_action := _supply_rotation_action(runtime_screen, supply_rotation_state)
+	if not supply_rotation_action.is_empty():
+		return supply_rotation_action
 	var visible_supply_action := _district_supply_ui_action(runtime_screen, facility_chain_incomplete)
 	if not visible_supply_action.is_empty():
 		return visible_supply_action

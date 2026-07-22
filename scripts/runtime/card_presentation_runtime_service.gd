@@ -144,6 +144,21 @@ func compose_play_eligibility(eligibility: Dictionary, card_source: Dictionary =
 		"public_facility_target_unavailable":
 			_set_play_state(state, "设施目标不可用", "先选择未毁灭的目标区域。", false, Color("#facc15"))
 			state["log_message"] = "公共设施牌没有可用目标区域。"
+		"public_facility_slot_occupied":
+			_set_play_state(state, "设施位已占用", "当前牌对应的设施位不能使用；请手动改选区域。", false, Color("#facc15"))
+			state["log_message"] = "当前选区的对应设施位不能使用。"
+		"public_facility_slot_incompatible":
+			_set_play_state(state, "设施不匹配", "当前设施位与这张牌不匹配；请手动改选区域。", false, Color("#facc15"))
+			state["log_message"] = "当前选区的设施位与卡牌不匹配。"
+		"public_facility_product_unavailable":
+			_set_play_state(state, "缺少本地商品", "当前选区没有这座设施所需的本地商品条件。", false, Color("#facc15"))
+			state["log_message"] = "当前选区不满足设施的本地商品条件。"
+		"public_facility_card_unavailable":
+			_set_play_state(state, "卡牌已变化", "手牌位置或卡牌状态已经变化，请刷新后重试。", false, Color("#94a3b8"))
+			state["log_message"] = "设施牌状态已经变化。"
+		"public_facility_preflight_unavailable":
+			_set_play_state(state, "设施校验中", "设施状态尚未同步；本次不会扣牌或资产。", false, Color("#94a3b8"))
+			state["log_message"] = "设施目标暂时无法安全校验。"
 		"legacy_card_kind_retired":
 			_set_play_state(state, "旧卡已退役", "这张旧城市发展牌尚未迁移为 v0.6 公共设施牌。", false, Color("#fb7185"))
 			state["log_message"] = "旧城市发展牌已从 v0.6 运行时退役。"
@@ -165,6 +180,12 @@ func compose_play_eligibility(eligibility: Dictionary, card_source: Dictionary =
 		"financial_margin_insufficient":
 			_set_play_state(state, "保证金不足", "需费用¥%d + 可退保证金¥%d；当前¥%d。" % [int(args.get("cash_cost", 0)), int(args.get("margin_cash", 0)), int(args.get("cash", 0))], false, Color("#fb7185"))
 			state["log_message"] = "%s无法打出：可退保证金¥%d未获授权，当前资金¥%d。" % [card_label, int(args.get("margin_cash", 0)), int(args.get("cash", 0))]
+		"asset_cost_unavailable", "asset_cost_invalid", "asset_cost_unknown_color", "asset_cost_invalid_amount", "player_mana_snapshot_missing":
+			_set_play_state(state, "费用不可用", "卡牌费用状态尚未安全同步；本次不会扣牌或资产。", false, Color("#94a3b8"))
+			state["log_message"] = "%s的费用状态暂时无法安全校验。" % card_label
+		"asset_insufficient", "generic_asset_insufficient":
+			_set_play_state(state, "资产不足", "当前六色资产不足以支付这张牌。", false, Color("#facc15"))
+			state["log_message"] = "%s当前没有足够的六色资产。" % card_label
 		"bid_reserve_insufficient":
 			_set_play_state(state, "报价过高", "需预留打出¥%d + 保证金¥%d + 报价¥%d；当前¥%d。" % [int(args.get("cash_cost", 0)), int(args.get("margin_cash", 0)), int(args.get("bid", 0)), int(args.get("cash", 0))], false, Color("#fb7185"))
 		"needs_monster_target":
@@ -184,7 +205,8 @@ func compose_hand_card(source: Dictionary) -> Dictionary:
 	var presentation := compose_card(raw_card)
 	var skill := _dictionary(raw_card.get("skill", {}))
 	var machine := _dictionary(skill.get("machine", raw_card.get("machine", {})))
-	var hand_kind := "facility_v06" if str(machine.get("category_id", "")) == "facility" else str(skill.get("kind", raw_card.get("kind", "card")))
+	var category_id := str(raw_card.get("category_id", machine.get("category_id", "")))
+	var hand_kind := "facility_v06" if category_id == "facility" else str(skill.get("kind", raw_card.get("kind", "card")))
 	var play_state := compose_play_eligibility(_dictionary(source.get("eligibility", {})), _dictionary(source.get("card", {})))
 	var slot := int(source.get("slot", -1))
 	var actionable := bool(play_state.get("actionable", false))
@@ -375,6 +397,7 @@ func _hand_drop_label(play_state: Dictionary, source: Dictionary, skill: Diction
 
 func _theme_color(skill: Dictionary) -> Color:
 	match str(skill.get("kind", "")):
+		"public_facility": return Color("#f59e0b")
 		"player_role": return Color("#38bdf8")
 		"monster_card": return Color("#fb7185")
 		"monster_bound_action": return Color("#c084fc")
@@ -406,6 +429,7 @@ func _strategy_route_label(skill: Dictionary) -> String:
 	var repair_routes := int(skill.get("repair_routes", 0))
 	var economy_delta := int(skill.get("production_delta", 0)) + int(skill.get("transport_delta", 0)) + int(skill.get("consumption_delta", 0))
 	var market_pressure := int(skill.get("market_demand_pressure", 0)) + int(skill.get("market_supply_pressure", 0)) + int(skill.get("price_delta", 0))
+	if kind == "public_facility": return "城市成长"
 	if kind == "card_counter": return "直接互动"
 	if kind in ["military_force", "military_command"]: return "战斗破坏"
 	if kind in ["monster_card", "monster_bound_action", "monster_lure", "monster_takeover"] or tags.contains("怪兽"): return "怪兽路线"
@@ -614,6 +638,9 @@ func _detail_tooltip(source: Dictionary, presentation: Dictionary, display_text:
 
 
 func _category_id(source: Dictionary, skill: Dictionary) -> String:
+	var explicit_category := str(source.get("category_id", "")).strip_edges()
+	if not explicit_category.is_empty():
+		return explicit_category
 	if bool(source.get("is_monster_card", false)) or str(skill.get("kind", "")) == "monster_card": return "monster"
 	var kind := str(skill.get("kind", ""))
 	if kind == "monster_bound_action" or bool(source.get("is_direct_monster_skill", false)) or kind in ["move", "fly", "burrow", "attack", "charge_attack", "roll_attack", "area_damage", "mudslide", "miasma_shot", "miasma_bloom", "miasma_reclaim", "corrosive_breath", "armor_gain", "guard", "roar"]: return "monster_skill"
@@ -633,6 +660,9 @@ func _category_id(source: Dictionary, skill: Dictionary) -> String:
 
 
 func _primary_type_label(source: Dictionary, skill: Dictionary) -> String:
+	var explicit_type := str(source.get("type_label", "")).strip_edges()
+	if not explicit_type.is_empty():
+		return explicit_type
 	if bool(source.get("is_monster_card", false)) or str(skill.get("kind", "")) == "monster_card": return "怪兽牌"
 	var labels := {"monster_bound_action":"怪兽技能牌", "military_force":"军队牌", "military_command":"军令技能牌", "card_counter":"玩家互动牌", "player_hand_disrupt":"玩家互动牌", "player_hand_steal":"玩家互动牌", "city_control_dispute":"玩家互动牌", "global_barrage":"玩家互动牌", "city_gdp_derivative":"金融牌", "product_futures":"期货牌", "product_speculation":"商品牌", "product_contract_boon":"商品牌", "product_growth_boon":"商品牌", "market_stabilize":"商品牌", "city_contract_boon":"合约牌", "city_revenue_boost":"经营牌", "city_product_upgrade":"经营牌", "city_product_shift":"经营牌", "city_demand_shift":"经营牌", "route_insurance":"经营牌", "route_flow_boon":"经营牌", "route_sabotage":"经营牌", "region_economy_shift":"经营牌", "intel_city_reveal":"情报/补给牌", "card_history_public_review":"情报/补给牌", "card_history_subscription":"情报/补给牌", "supply_draw":"情报/补给牌", "news_event":"新闻牌", "weather_control":"天气牌", "monster_lure":"诱导牌", "monster_takeover":"诱导牌", "special_monster_delay":"诱导牌", "panic_shift":"诱导牌"}
 	if labels.has(str(skill.get("kind", ""))): return str(labels[str(skill.get("kind", ""))])
@@ -640,6 +670,9 @@ func _primary_type_label(source: Dictionary, skill: Dictionary) -> String:
 
 
 func _subtype_label(source: Dictionary, skill: Dictionary, route_label: String) -> String:
+	var explicit_subtype := str(source.get("subtype_label", "")).strip_edges()
+	if not explicit_subtype.is_empty():
+		return explicit_subtype
 	match str(skill.get("kind", "")):
 		"city_gdp_derivative": return "GDP衍生品"
 		"product_futures": return "商品期货"
@@ -650,7 +683,7 @@ func _subtype_label(source: Dictionary, skill: Dictionary, route_label: String) 
 
 
 func _category_icon(category_id: String) -> String:
-	return str({"monster":"◆", "monster_skill":"✦", "military":"⚔", "interaction":"◎", "city":"▣", "commodity":"◇", "futures":"△", "finance":"¥", "contract":"⇄", "intel":"◉", "news":"◌", "weather":"☄", "tactic":"⌁", "supply":"＋", "other":"□"}.get(category_id, "□"))
+	return str({"monster":"◆", "monster_skill":"✦", "military":"⚔", "interaction":"◎", "facility":"▣", "city":"▣", "commodity":"◇", "futures":"△", "finance":"¥", "contract":"⇄", "intel":"◉", "news":"◌", "weather":"☄", "tactic":"⌁", "supply":"＋", "other":"□"}.get(category_id, "□"))
 
 
 func _route_icon(route_label: String) -> String:

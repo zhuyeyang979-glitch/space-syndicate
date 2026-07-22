@@ -636,8 +636,12 @@ func _all_exact_definitions_match_authored() -> bool:
 func _city_development_precedence() -> bool:
 	if _main_source.contains("city_development_runtime_cards") or _main_source.contains("_rebuild_city_development_runtime_cards"):
 		return false
-	var result := _coordinator.submit_public_facility_card({"skill": {"kind": "city_development_card"}})
-	return not bool(result.get("committed", false)) and str(result.get("reason", "")) == "legacy_city_development_retired"
+	var legacy_result := _coordinator.submit_public_facility_card({"skill": {"kind": "city_development_card"}})
+	var public_result := _coordinator.submit_public_facility_card({"skill": {"kind": "public_facility"}})
+	return not bool(legacy_result.get("committed", false)) \
+		and str(legacy_result.get("reason", "")) == "legacy_city_development_retired" \
+		and not bool(public_result.get("committed", false)) \
+		and str(public_result.get("reason", "")) == "legacy_public_facility_entry_retired"
 
 
 func _monster_card_route() -> bool:

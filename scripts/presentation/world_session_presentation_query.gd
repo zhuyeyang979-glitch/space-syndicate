@@ -162,7 +162,21 @@ func _private_hand(value: Variant) -> Array:
 	for slot_index in range(source.size()):
 		if not (source[slot_index] is Dictionary):
 			continue
-		var card := _allowlist(source[slot_index] as Dictionary, PRIVATE_CARD_KEYS)
+		var source_card := source[slot_index] as Dictionary
+		var card := _allowlist(source_card, PRIVATE_CARD_KEYS)
+		# v0.6 facility cards keep their stable identity inside the machine
+		# envelope. Expose only that identity to the authorized owner projection;
+		# the presentation query resolves the authored definition from the existing
+		# catalog. Never forward the machine envelope or runtime instance id. A
+		# conflicting root identity is rejected rather than shown as another card.
+		var machine: Dictionary = source_card.get("machine", {}) if source_card.get("machine", {}) is Dictionary else {}
+		if str(machine.get("category_id", "")) == "facility":
+			var root_card_id := str(card.get("card_id", ""))
+			var stable_card_id := str(machine.get("card_id", ""))
+			card.erase("name")
+			card.erase("card_id")
+			if not stable_card_id.is_empty() and (root_card_id.is_empty() or root_card_id == stable_card_id):
+				card["card_id"] = stable_card_id
 		card["slot_index"] = slot_index
 		result.append(card)
 	return result

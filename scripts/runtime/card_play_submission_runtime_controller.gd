@@ -9,6 +9,8 @@ const SHARED_RESOLUTION_EFFECT_KINDS_V06 := [
 	"global_order_budget",
 	"global_supply_spawn",
 ]
+const V06_ASSET_COST_KEYS := ["life", "energy", "industry", "technology", "commerce", "shipping", "generic"]
+const MAX_EXACT_JSON_INTEGER := 9_007_199_254_740_991.0
 
 var _world_session_state: WorldSessionState
 var _table_selection_state: TableSelectionState
@@ -105,6 +107,58 @@ func submit_card_play(request: Dictionary) -> Dictionary:
 	if not bool(eligibility.get("allowed", false)):
 		return _remember(_rejection(str(eligibility.get("reason_code", "card_play_rejected")), eligibility))
 	return _remember(_submit_legacy(player_index, slot_index, eligibility, _dictionary(frozen.get("envelope", {}))))
+
+
+func submit_v06_facility_play_action(request: Dictionary) -> Dictionary:
+	_submission_count += 1
+	if _runtime_coordinator == null or _world_session_state == null:
+		return _remember(_rejection("v06_runtime_unavailable"))
+	var player_index := int(request.get("player_index", -1))
+	var slot_index := int(request.get("slot_index", -1))
+	var actor_id := str(request.get("actor_id", "")).strip_edges()
+	var card_id := str(request.get("card_id", "")).strip_edges()
+	var runtime_instance_id := str(request.get("runtime_instance_id", "")).strip_edges()
+	var region_id := str(request.get("region_id", "")).strip_edges()
+	var transaction_id := str(request.get("transaction_id", "")).strip_edges()
+	if player_index < 0 or slot_index < 0 or actor_id.is_empty() or card_id.is_empty() \
+			or runtime_instance_id.is_empty() or region_id.is_empty() or transaction_id.is_empty():
+		return _remember(_rejection("v06_facility_submission_invalid"))
+	var actor_binding := _runtime_coordinator.actor_id_for_player_index(player_index)
+	if not bool(actor_binding.get("available", false)) or str(actor_binding.get("actor_id", "")) != actor_id:
+		return _remember(_rejection("v06_actor_mapping_changed"))
+	var authoritative_card := _v06_authoritative_card_at(actor_id, slot_index)
+	var machine: Dictionary = authoritative_card.get("machine", {}) if authoritative_card.get("machine", {}) is Dictionary else {}
+	if not _v06_is_facility_card(authoritative_card) \
+			or str(machine.get("card_id", "")) != card_id \
+			or str(authoritative_card.get("runtime_instance_id", "")) != runtime_instance_id:
+		return _remember(_rejection("v06_authoritative_slot_changed"))
+	var district_index := _district_index_for_region_id(region_id)
+	if district_index < 0:
+		return _remember(_rejection("public_facility_target_unavailable"))
+	var gate := _v06_facility_eligibility(player_index, slot_index, authoritative_card, {
+		"selected_district": district_index,
+		"slot_index": slot_index,
+		"game_time": _world_session_state.game_time,
+	})
+	if not bool(gate.get("allowed", false)) or not bool(gate.get("actionable", false)):
+		return _remember(_rejection(str(gate.get("reason_code", "card_play_rejected")), gate))
+	var result := _runtime_coordinator.play_v06_runtime_card({
+		"actor_id": actor_id,
+		"slot_index": slot_index,
+		"transaction_id": transaction_id,
+		"region_id": region_id,
+		"game_time": _world_session_state.game_time,
+	})
+	var committed := bool(result.get("committed", false)) and bool(_dictionary(result.get("effect_finalization", {})).get("finalized", result.get("finalized", false)))
+	if committed:
+		_accepted_count += 1
+	return _remember({
+		"accepted": committed,
+		"queued": false,
+		"reason": str(result.get("reason_code", "v06_card_play_committed" if committed else "v06_card_play_rejected")),
+		"v06_receipt": result.duplicate(true),
+		"player_message": "卡牌事务已完成。" if committed else "卡牌当前未能生效。",
+	})
 
 
 func debug_snapshot() -> Dictionary:
@@ -254,12 +308,21 @@ func _submit_v06(player_index: int, slot_index: int, card: Dictionary, stable_ta
 	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
 	var runtime_instance_id := str(card.get("runtime_instance_id", ""))
 	var authoritative_slot := _v06_authoritative_slot(actor_id, str(machine.get("card_id", "")), runtime_instance_id, slot_index)
-	if authoritative_slot < 0:
+	if authoritative_slot < 0 or authoritative_slot != slot_index:
 		return _rejection("v06_authoritative_slot_changed")
 	var authoritative_card := _v06_authoritative_card_at(actor_id, authoritative_slot)
 	runtime_instance_id = str(authoritative_card.get("runtime_instance_id", ""))
 	if runtime_instance_id.is_empty():
 		return _rejection("v06_authoritative_instance_missing")
+	if _v06_is_facility_card(authoritative_card):
+		var frozen_context := StableTargetEnvelope.context_at_capture(stable_target_envelope)
+		if frozen_context.is_empty():
+			return _rejection("stable_target_context_missing")
+		frozen_context["slot_index"] = authoritative_slot
+		frozen_context["game_time"] = _world_session_state.game_time
+		var gate := _v06_facility_eligibility(player_index, authoritative_slot, authoritative_card, frozen_context)
+		if not bool(gate.get("allowed", false)) or not bool(gate.get("actionable", false)):
+			return _rejection(str(gate.get("reason_code", "card_play_rejected")), gate)
 	var result := _runtime_coordinator.play_v06_runtime_card({
 		"actor_id": actor_id,
 		"slot_index": authoritative_slot,
@@ -447,6 +510,64 @@ func _v06_authoritative_card_at(actor_id: String, slot_index: int) -> Dictionary
 	if slot_index < 0 or slot_index >= slots.size() or not (slots[slot_index] is Dictionary):
 		return {}
 	return (slots[slot_index] as Dictionary).duplicate(true)
+
+
+func _v06_facility_eligibility(
+	player_index: int,
+	slot_index: int,
+	card: Dictionary,
+	context: Dictionary
+) -> Dictionary:
+	if not _v06_is_facility_card(card):
+		return {"allowed": false, "actionable": false, "reason_code": "public_facility_card_unavailable"}
+	var gate_context := context.duplicate(true)
+	gate_context["slot_index"] = slot_index
+	gate_context["game_time"] = _world_session_state.game_time if _world_session_state != null else 0.0
+	return _eligibility(player_index, _normalized_v06_facility_skill(card), "hand", gate_context)
+
+
+func _normalized_v06_facility_skill(card: Dictionary) -> Dictionary:
+	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+	var result := {
+		"name": str(machine.get("card_id", "")),
+		"card_id": str(machine.get("card_id", "")),
+		"family_id": str(machine.get("family_id", "")),
+		"schema_version": "v0.6",
+		"kind": "public_facility",
+		"rank": maxi(1, int(machine.get("rank", 1))),
+		"asset_cost": _normalized_v06_asset_cost(machine.get("asset_cost", {})),
+		"play_cash": 0,
+	}
+	for state_key in ["queued_for_resolution", "lock_left", "cooldown_left"]:
+		if card.has(state_key):
+			result[state_key] = card.get(state_key)
+	return result
+
+
+func _normalized_v06_asset_cost(value: Variant) -> Dictionary:
+	var source := _dictionary(value)
+	var result: Dictionary = {}
+	for key_variant in source.keys():
+		var key := str(key_variant)
+		var amount_variant: Variant = source.get(key_variant, 0)
+		if V06_ASSET_COST_KEYS.has(key) and amount_variant is float \
+				and is_finite(float(amount_variant)) and float(amount_variant) >= 0.0 \
+				and float(amount_variant) <= MAX_EXACT_JSON_INTEGER \
+				and float(amount_variant) == floor(float(amount_variant)):
+			result[key] = int(amount_variant)
+		else:
+			result[key] = amount_variant
+	return result
+
+
+func _district_index_for_region_id(region_id: String) -> int:
+	if _world_session_state == null:
+		return -1
+	for district_index in range(_world_session_state.districts.size()):
+		var district_variant: Variant = _world_session_state.districts[district_index]
+		if district_variant is Dictionary and str((district_variant as Dictionary).get("region_id", "")) == region_id:
+			return district_index
+	return -1
 
 
 func _pending_or_new_submission(player_index: int, slot_index: int, skill: Dictionary, request: Dictionary) -> Dictionary:
@@ -660,6 +781,13 @@ func _active_player_indices(players: Array) -> Array:
 func _is_v06_runtime_card(card: Dictionary) -> bool:
 	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
 	return not str(machine.get("card_id", "")).is_empty() and not str(machine.get("effect_kind", "")).is_empty()
+
+
+func _v06_is_facility_card(card: Dictionary) -> bool:
+	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+	return str(machine.get("category_id", "")) == "facility" \
+		and str(machine.get("effect_kind", "")) == "build_upgrade_or_repair_facility" \
+		and str(machine.get("target_kind", "")) == "region_unique_facility_slot"
 
 
 func _uses_shared_resolution_v06(card: Dictionary) -> bool:

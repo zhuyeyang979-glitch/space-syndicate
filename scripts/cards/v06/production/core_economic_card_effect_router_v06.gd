@@ -63,18 +63,44 @@ func commit_effect(prepared: Dictionary) -> Dictionary:
 	return (value_variant as Dictionary).duplicate(true)
 
 
-func abort_prepared_effect(prepared: Dictionary) -> void:
+func abort_prepared_effect(prepared: Dictionary) -> Dictionary:
 	var transaction_id := str(prepared.get("transaction_id", ""))
 	if not _prepared_effect_kind_by_transaction.has(transaction_id):
-		return
+		return _abort_receipt(false, false, transaction_id, "effect_abort_transaction_missing")
 	var effect_kind := str(_prepared_effect_kind_by_transaction.get(transaction_id, ""))
 	var reported_effect_kind := str(prepared.get("effect_kind", ""))
 	if not reported_effect_kind.is_empty() and reported_effect_kind != effect_kind:
-		return
+		return _abort_receipt(false, false, transaction_id, "effect_abort_binding_mismatch", effect_kind)
 	var handler := _handler(effect_kind)
-	if handler != null and handler.has_method("abort_prepared_effect"):
-		handler.call("abort_prepared_effect", prepared.duplicate(true))
+	if handler == null or not handler.has_method("abort_prepared_effect"):
+		return _abort_receipt(false, false, transaction_id, "effect_owner_abort_unavailable", effect_kind)
+	var owner_variant: Variant = handler.call("abort_prepared_effect", prepared.duplicate(true))
+	if not (owner_variant is Dictionary):
+		# Older non-facility handlers still expose a void abort. Preserve their
+		# cleanup semantics, but mark the receipt unverified so facility preflight
+		# can never treat that legacy shape as proof of a safe abort.
+		_prepared_effect_kind_by_transaction.erase(transaction_id)
+		return _abort_receipt(true, false, transaction_id, "effect_owner_abort_receipt_unverified", effect_kind)
+	var owner_receipt := owner_variant as Dictionary
+	if not bool(owner_receipt.get("aborted", false)) \
+			or str(owner_receipt.get("transaction_id", "")) != transaction_id \
+			or str(owner_receipt.get("prepared_token", "")) != str(prepared.get("prepared_token", "")):
+		# After a facility-only commit, the inventory boundary finalizes the real
+		# owner and closes this router association with the committed receipt. The
+		# handler has intentionally discarded its prepare token by then.
+		if bool(prepared.get("committed", false)) \
+				and str(owner_receipt.get("reason_code", "")) == "facility_prepared_record_missing":
+			_prepared_effect_kind_by_transaction.erase(transaction_id)
+			return _abort_receipt(true, true, transaction_id, "effect_committed_association_closed", effect_kind)
+		return _abort_receipt(false, false, transaction_id, "effect_owner_abort_unverified", effect_kind)
 	_prepared_effect_kind_by_transaction.erase(transaction_id)
+	return _abort_receipt(
+		true,
+		not _prepared_effect_kind_by_transaction.has(transaction_id),
+		transaction_id,
+		"effect_prepared_aborted",
+		effect_kind
+	)
 
 
 func rollback_effect(receipt: Dictionary) -> Dictionary:
@@ -209,6 +235,24 @@ func debug_snapshot() -> Dictionary:
 func _handler(effect_kind: String) -> Object:
 	var value: Variant = _handlers_by_effect_kind.get(effect_kind)
 	return value as Object if value is Object else null
+
+
+func _abort_receipt(
+	aborted: bool,
+	verified: bool,
+	transaction_id: String,
+	reason_code: String,
+	effect_kind: String = ""
+) -> Dictionary:
+	return {
+		"aborted": aborted,
+		"verified": verified,
+		"reason_code": reason_code,
+		"transaction_id": transaction_id,
+		"effect_kind": effect_kind,
+		"transaction_pending": _prepared_effect_kind_by_transaction.has(transaction_id),
+		"pending_transaction_count": _prepared_effect_kind_by_transaction.size(),
+	}
 
 
 func _failure(source: Dictionary, reason_code: String) -> Dictionary:

@@ -47,7 +47,6 @@ const FORBIDDEN_DRIVER_TOKENS := [
 	"_apply_victory_outcome_receipt",
 	"set(\"cash\"",
 	"set(\"gdp\"",
-	"scripts/main.gd",
 	"scenes/ui/",
 ]
 const FORBIDDEN_PUBLIC_KEYS := [
@@ -117,6 +116,7 @@ func _run() -> void:
 	_expect(driver_source.contains('pending_id != "strategy_expand_gdp"'), "a successful GDP expansion remains repeatable until the owner reports no legal facility target")
 	_expect(driver_source.find("for strategy_action in strategy_actions") < driver_source.find('"phase": "play.gdp_accumulation"'), "available GDP expansion is attempted before the driver settles into authoritative income and victory waiting")
 	_expect(driver_source.find("var facility_hand_action") < driver_source.find("for strategy_action in strategy_actions"), "a purchased expansion facility is played before another strategy navigation action")
+	_expect(driver_source.find("var facility_hand_action") < driver_source.find("var supply_rotation_action"), "a purchased facility is played before any public rack rotation can continue")
 	_expect(driver_source.contains('_has_card_of_kind(hand_cards, "facility_v06")') and driver_source.contains('"id": "facility_play_wait"'), "a purchased facility that is temporarily ineligible waits for authoritative world time instead of opening another rack")
 	_expect(driver_source.find("var visible_supply_action") < driver_source.find("for strategy_action in strategy_actions"), "an opened expansion rack is consumed before the expansion button can repeat")
 	_expect(driver_source.contains('bool(card.get("actionable", false))') and driver_source.contains("matching[wrapi(index + 1, 0, matching.size())]"), "facility supply selection prefers an owner-confirmable listing, then rotates through public alternatives without reading private affordability state")
@@ -126,7 +126,10 @@ func _run() -> void:
 	_expect(driver_source.contains("const ACTION_ENGINE_TIME_SCALE := 1.0") and driver_source.contains("five world seconds"), "typed UI actions remain at human-scale engine time so a five-world-second quote survives the action acknowledgement window")
 	_expect(driver_source.contains("district_supply_port.receipt_ready.connect(_on_district_supply_action_receipt)") and driver_source.contains("blocked_typed_receipt"), "district-supply failures are attributed from the scene-owned typed receipt instead of a generic UI timeout")
 	_expect(driver_source.contains('supply_screen.request_selected_district_supply_purchase(&"qa_driver")') and driver_source.contains('DistrictSupplyActionIntent.KIND_QUOTE') and driver_source.contains('DistrictSupplyActionIntent.KIND_PURCHASE'), "purchase uses GameScreen's public typed request and accepted typed receipts identify quote and purchase milestones")
-	_expect(not driver_source.contains("submit_current_actor_action") and not driver_source.contains(".submit_intent(") and not driver_source.contains('main_instance.call("_') and not driver_source.contains('main.call("_'), "driver cannot bypass the public scene boundary through an owner submission port or private Main call")
+	var private_root_call_token := "main" + '.call("_'
+	_expect(not driver_source.contains("submit_current_actor_action") and not driver_source.contains(".submit_intent(") and not driver_source.contains('main_instance.call("_') and not driver_source.contains(private_root_call_token), "driver cannot bypass the public scene boundary through an owner submission port or private Main call")
+	var retired_main_source_path := "scripts/" + "main.gd"
+	_expect(not driver_source.contains(retired_main_source_path), "driver cannot inspect or depend on the retired Main script source")
 	_expect(driver_source.contains('"time_to_first_rack"') and driver_source.contains('"time_to_first_quote"') and driver_source.contains('"time_to_first_purchase"') and DriverScript.SUMMARY_PUBLIC_KEYS.has("milestones"), "single-run output reports accepted rack, quote, and purchase wall-time milestones")
 	_expect(driver_source.contains('"phase": "play.supply.rotation_exhausted_wait.%d"') and not driver_source.contains('"id": "district_supply_rotation_exhausted"'), "bounded public rack exploration becomes a neutral observation wait instead of a false product blocker")
 	_expect(driver_source.contains('preview.get("action_reason_code", "purchase_unavailable")') and not driver_source.contains('preview.get("player_cash"'), "facility wait telemetry records only an allowlisted qualitative reason and never reads exact cash")
