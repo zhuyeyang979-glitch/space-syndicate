@@ -1,13 +1,23 @@
 {
-  "schema_version": 2,
-  "generated_at": "2026-07-22T13:13:51+09:00",
-  "base_main_sha": "a644f45d6d5d2bc930e5a63a41cc802160ebee74",
+  "schema_version": 3,
+  "generated_at": "2026-07-23T04:56:00+09:00",
+  "base_main_sha": "cb9194a32e86c20287572b20b92acc0064fcd858",
   "policy": {
     "one_writer_per_file_ownership_set": true,
     "shared_hot_files_require_designated_integration_writer": true,
     "unlisted_production_files_default_to_integration_only": true,
-    "agents_commit_locally_and_do_not_push": true,
+    "analysis_agents_do_not_write": true,
+    "feature_agents_commit_only_in_their_physical_worktree": true,
     "coordinator_validates_and_publishes": true
+  },
+  "storage": {
+    "physical_project_drive": "E:",
+    "c_registered_worktree_paths_are_junctions": true,
+    "physical_c_worktree_count": 0,
+    "registered_worktree_count": 61,
+    "clean_worktree_count": 50,
+    "dirty_worktree_count": 11,
+    "missing_worktree_count": 0
   },
   "shared_hot_files": [
     "scripts/main.gd",
@@ -23,12 +33,18 @@
     "scripts/ui/right_inspector.gd",
     "scenes/ui/RightInspector.tscn",
     "project.godot",
+    "export_presets.cfg",
     "tests/main_gd_architecture_gate_test.gd",
     "tests/main_runtime_composition_test.gd",
     "tests/layout_scene_smoke_test.gd",
     "tests/smoke_test.gd",
     "docs/migration/main_gd_cutover_ledger.json",
     "docs/development_log.md",
+    "docs/development/current_program_state.json",
+    "docs/development/current_task_graph.json",
+    "docs/development/current_file_ownership.json",
+    "docs/development/alpha_01_to_alpha_02_program.json",
+    "docs/development/alpha_01_to_alpha_02_program.md",
     "resources/cards/runtime/card_runtime_catalog_v04.tres",
     "data/cards/card_runtime_catalog_v06.json",
     "assets/art/role_portraits/temporary/manifest.json",
@@ -37,141 +53,112 @@
   ],
   "active_ownership_sets": [
     {
-      "ownership_set_id": "PROGRAM-CYCLE02",
-      "writer": "continuous-development-director",
-      "branch": "codex/continuous-program-cycle02-a644f45",
-      "worktree": "C:/Users/Administrator/Documents/New project/space-syndicate-program-cycle02-a644f45",
-      "mode": "WRITE",
+      "ownership_set_id": "PROGRAM-STATE-AFTER-COMMODITY-CB9194A",
+      "writer": "primary integration coordinator",
+      "branch": "codex/program-state-after-commodity-cb9194a",
+      "worktree": "E:/SpaceSyndicateWorkspace/space-syndicate-program-state-cb9194a",
+      "mode": "WRITE_DOCS_ONLY",
       "files": [
         "docs/development/current_program_state.json",
         "docs/development/current_task_graph.json",
-        "docs/development/current_file_ownership.json"
+        "docs/development/current_file_ownership.json",
+        "docs/development/alpha_01_to_alpha_02_program.json",
+        "docs/development/alpha_01_to_alpha_02_program.md",
+        "docs/integration_requests/update_program_state_after_ai_business_cash.json"
       ],
+      "forbidden_files": ["all production scripts, scenes, resources, tests and assets"],
       "status": "ACTIVE"
     },
     {
-      "ownership_set_id": "P0-AI-BUSINESS-CASH",
-      "writer": "cycle01_architecture_audit promoted to sole implementation/integration writer",
-      "branch": "codex/p0-ai-business-cash-a644f45",
-      "worktree": "C:/Users/Administrator/Documents/New project/space-syndicate-p0-ai-business-cash-a644f45",
-      "mode": "WRITE",
+      "ownership_set_id": "P0-AI-WORLD-TYPED-PORTS-PREFLIGHT",
+      "writer": "primary coordinator plus analysis-only reviewers",
+      "branch": "codex/p0-ai-world-typed-ports-cb9194a",
+      "worktree": "E:/SpaceSyndicateWorkspace/space-syndicate-p0-ai-world-typed-ports-cb9194a",
+      "mode": "PREFLIGHT_READ_ONLY",
       "files": [
-        "one narrow typed AI cash mutation adapter/port scene and script",
-        "focused AI cash/exact-once tests and production Bench",
-        "task handoff/report",
-        "scripts/main.gd old AI business cash path deletion",
-        "minimal scenes/main.tscn or GameRuntimeCoordinator composition only if required",
-        "docs/migration/main_gd_cutover_ledger.json and docs/development_log.md only for this cutover"
+        "scripts/runtime/ai_runtime_world_bridge.gd",
+        "scripts/runtime/ai_runtime_controller.gd",
+        "actor-scoped AI query and command ports",
+        "focused AI privacy, deterministic behavior and capability-negative tests"
       ],
-      "forbidden_files": [
-        "scripts/tools/full_run_quality_driver.gd",
-        "scripts/CardUI.gd",
-        "card illustration assets and manifests",
-        "gameplay rules and catalog data"
+      "integration_request_only_files": [
+        "scripts/main.gd",
+        "scenes/main.tscn",
+        "scripts/runtime/game_runtime_coordinator.gd",
+        "scenes/runtime/GameRuntimeCoordinator.tscn",
+        "docs/migration/main_gd_cutover_ledger.json",
+        "docs/development_log.md"
       ],
       "status": "ACTIVE"
     },
     {
-      "ownership_set_id": "P1-FIRST-ECONOMIC-ENGINE-DRIVER",
-      "writer": "cycle01_playable_audit promoted to sole QA-driver writer",
+      "ownership_set_id": "P1-FIRST-ECONOMIC-ENGINE-EVIDENCE-REVIEW",
+      "writer": "unassigned current-main product reviewer",
       "branch": "codex/p1-post-facility-fullrun-a644f45",
-      "worktree": "C:/Users/Administrator/Documents/New project/space-syndicate-p1-post-facility-fullrun-a644f45",
-      "mode": "WRITE",
+      "worktree": "E:/SpaceSyndicateWorkspace/space-syndicate-p1-post-facility-fullrun-a644f45",
+      "mode": "READ_REVIEW_ONLY_UNTIL_CURRENT_MAIN_REFRESH",
       "files": [
         "scripts/tools/full_run_quality_driver.gd",
         "focused FullRun policy and contract tests",
-        "reports/playability/full_run/**",
-        "pure QA fixtures required by the driver"
+        "reports/playability/full_run/**"
       ],
       "forbidden_files": [
         "scripts/main.gd",
-        "GameRuntimeCoordinator",
+        "GameRuntimeCoordinator production files",
         "GameScreen production files",
-        "CardFlow and CommodityFlow production owners",
-        "AI production code",
-        "rules and catalogs"
-      ],
-      "status": "ACTIVE"
-    },
-    {
-      "ownership_set_id": "P2-CARD-ART-PRODUCTION-CUTOVER",
-      "writer": "cycle01_content_art_audit promoted to sole production art integrator",
-      "branch": "codex/p2-alpha-card-art-production-cutover-a644f45",
-      "worktree": "C:/Users/Administrator/Documents/New project/space-syndicate-p2-alpha-card-art-production-cutover-a644f45",
-      "mode": "WRITE",
-      "files": [
-        "new scene-owned typed CardIllustrationCatalog and adapter files",
-        "scripts/CardUI.gd",
-        "direct typed card presentation snapshot/viewmodel and codex adapter files",
-        "data/art/alpha01_card_illustration_status_manifest.json",
-        "docs/art_qa/cards/alpha01/**",
-        "focused tests and production-wiring Bench"
-      ],
-      "integration_request_only_files": [
-        "scenes/main.tscn",
-        "GameRuntimeCoordinator",
-        "GameScreen/PlanetBoard/PlayerBoard/RightInspector production files",
-        "data/art/card_illustration_manifest_v06.json"
-      ],
-      "forbidden_files": [
-        "scripts/main.gd",
-        "existing card PNG files",
-        "role, monster and product manifests",
-        "gameplay catalogs, effects, targets and save owners"
+        "CommodityFlow and AI production owners"
       ],
       "status": "ACTIVE"
     }
   ],
   "ready_ownership_sets": [
     {
-      "ownership_set_id": "P0-COMMODITY-POSTCOMMIT",
-      "writer": "unassigned-single-writer-after-current-P0",
-      "mode": "WRITE",
-      "files": ["new CommodityFlow post-commit owner/journal", "focused tests and Bench", "old Main path deletion"],
-      "status": "BLOCKED"
+      "ownership_set_id": "P0-AI-WORLD-TYPED-PORTS-IMPLEMENTATION",
+      "activation_condition": "capability inventory and privacy contract accepted",
+      "mode": "ONE_PRODUCTION_WRITER",
+      "files": ["new narrow ports", "AI bridge generic-capability retirement", "focused tests and Bench"],
+      "status": "READY"
+    },
+    {
+      "ownership_set_id": "P1-SAVE-OWNER-COVERAGE-INVENTORY",
+      "mode": "DOCS_AND_TEST_INVENTORY_ONLY",
+      "files": ["save owner coverage report", "owner-specific task split", "no save schema changes"],
+      "status": "READY"
     },
     {
       "ownership_set_id": "P2-CARD-ART-WAVE1-ASSETS",
-      "writer": "unassigned-card-art-producer",
       "mode": "WRITE_NEW_FILES_ONLY",
-      "files": ["eight selected card-ID asset directories", "wave prompt/license/hash records", "wave contact sheet"],
+      "files": ["eight selected card-ID asset directories", "prompt/license/hash records", "wave contact sheet"],
       "integration_request_only_files": ["all production manifests and card scenes"],
-      "status": "BLOCKED"
+      "status": "READY"
     },
     {
       "ownership_set_id": "P4-MONSTER-ART-GATE",
-      "writer": "unassigned-single-test-writer",
-      "mode": "WRITE",
+      "mode": "ONE_TEST_WRITER",
       "files": ["tests/art_identity_gate_test.gd", "new scene-owned art audit helper/Bench", "docs/test_debt/monster_art_identity_gate.md"],
       "forbidden_files": ["scripts/main.gd", "production monster owners", "monster art assets"],
       "status": "READY"
     },
     {
       "ownership_set_id": "P4-FULL-SMOKE-FIXTURE",
-      "writer": "unassigned-single-test-writer",
-      "mode": "WRITE",
+      "mode": "ONE_TEST_WRITER",
       "files": ["one stale fixture family in tests/smoke_test.gd", "tests/helpers/**", "docs/test_debt/full_smoke_fixture_migration.md"],
       "forbidden_files": ["scripts/main.gd", "production runtime owners"],
       "status": "READY"
     }
   ],
   "preserved_dirty_worktrees": [
-    {
-      "branch": "integration/v06-playable",
-      "classification": "legacy_integration_do_not_touch"
-    },
-    {
-      "branch": "codex/contract-forced-response-cutover",
-      "classification": "retired_experiment_do_not_integrate"
-    },
-    {
-      "branch": "codex/scene-first-remove-main-gd",
-      "classification": "historical_architecture_worktree_do_not_overwrite"
-    },
-    {
-      "branch": "codex/playtest-alpha-0.1-19f2030",
-      "classification": "stale_unmerged_experiment_requires_manual_audit"
-    }
+    {"branch": "integration/v06-playable", "classification": "generated_uid_only_do_not_clean"},
+    {"branch": "main", "classification": "generated_uid_only_do_not_clean_or_update_in_place"},
+    {"branch": "codex/scene-first-remove-main-gd", "classification": "historical_architecture_worktree_do_not_overwrite"},
+    {"branch": "codex/p0-commodity-postcommit-6506444", "classification": "abandoned_partial_predecessor_do_not_integrate_without_semantic_audit"},
+    {"branch": "codex/p1-post-first-resolution-16a0f6c", "classification": "generated_uid_only_do_not_clean"},
+    {"branch": "codex/p1-district-purchase-receipt-826c3bd", "classification": "generated_uid_only_do_not_clean"},
+    {"branch": "codex/p4-smoke-ai-military-session-16a0f6c", "classification": "tracked_test_changes_require_manual_audit"},
+    {"branch": "codex/playtest-alpha-0.1-089088a", "classification": "generated_uid_only_do_not_clean"},
+    {"branch": "codex/playtest-alpha-0.1-19f2030", "classification": "stale_unmerged_experiment_requires_manual_audit"},
+    {"branch": "codex/contract-forced-response-cutover", "classification": "retired_experiment_do_not_integrate"},
+    {"branch": "integration/pr46-merge-head-87dd12a", "classification": "validated_merge_head_with_generated_uid_only_do_not_clean"}
   ],
   "conflict_count": 0,
   "unauthorized_shared_hot_file_write_count": 0

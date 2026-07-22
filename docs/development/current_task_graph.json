@@ -1,7 +1,7 @@
 {
-  "schema_version": 2,
-  "generated_at": "2026-07-22T13:13:51+09:00",
-  "base_main_sha": "a644f45d6d5d2bc930e5a63a41cc802160ebee74",
+  "schema_version": 3,
+  "generated_at": "2026-07-23T04:56:00+09:00",
+  "base_main_sha": "cb9194a32e86c20287572b20b92acc0064fcd858",
   "allowed_statuses": ["READY", "ACTIVE", "BLOCKED", "REVIEW", "MERGE_READY", "MERGED", "DEFERRED", "RETIRED"],
   "selection_policy": "P0 correctness/privacy/exact-once, then P1 playable path, P2 content and art production, P3 Main extinction, P4 stale fixtures. P4 does not block unrelated P0-P2 work.",
   "tasks": [
@@ -18,13 +18,13 @@
       "expected_player_value": "Prevents AI from spending committed or already-spent cash and keeps the shared economy truthful.",
       "expected_main_reduction": "Delete Main._pay_rival_business_cost and its Main-owned balance exposure.",
       "expected_content_unlock": "Safe cash costs for current and future AI-readable economic cards.",
-      "status": "ACTIVE"
+      "status": "MERGED"
     },
     {
       "task_id": "P0-COMMODITY-FLOW-POSTCOMMIT-EXACT-ONCE",
       "category": "ARCHITECTURE",
       "priority": "P0",
-      "blockers": ["The active AI cash task owns scripts/main.gd and runtime composition hot files."],
+      "blockers": [],
       "dependencies": ["P0-AI-BUSINESS-COST-TYPED-CASH-CUTOVER"],
       "rule_authority": ["docs/tabletop_rulebook_v06.md GDP and commodity settlement", "docs/installed_commodity_continuous_economy_runtime_contract.md"],
       "owned_files": ["scene-owned CommodityFlow post-commit receipt consumer", "batch-lineage journal", "focused duplicate/fault tests", "old Main post-commit path deletion"],
@@ -33,13 +33,13 @@
       "expected_player_value": "Prevents a retried sale batch from paying GDP or derivatives twice.",
       "expected_main_reduction": "Delete Main commodity-flow receipt post-processing callback and bridge capability.",
       "expected_content_unlock": "Safe high-volume factories, markets and economic card waves.",
-      "status": "BLOCKED"
+      "status": "MERGED"
     },
     {
       "task_id": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
       "category": "ARCHITECTURE",
       "priority": "P0",
-      "blockers": ["Main/runtime composition hot files are serialized behind the first two P0 cutovers."],
+      "blockers": [],
       "dependencies": ["P0-COMMODITY-FLOW-POSTCOMMIT-EXACT-ONCE"],
       "rule_authority": ["docs/tabletop_rulebook_v06.md hidden information", "docs/rules_v06_runtime_directive.md authority and AI boundaries"],
       "owned_files": ["typed actor-scoped AI query ports", "typed AI intent command ports", "AI rule parameter resource", "ai_runtime_world_bridge generic capability retirement", "focused privacy/behavior tests"],
@@ -48,7 +48,7 @@
       "expected_player_value": "Preserves hidden information while keeping 2-7 AI opponents functional.",
       "expected_main_reduction": "Delete bind_ai_world(self) and the remaining generic Main AI capabilities.",
       "expected_content_unlock": "Allows AI-readable content to expand without granting whole-world access.",
-      "status": "BLOCKED"
+      "status": "ACTIVE"
     },
     {
       "task_id": "P1-FOUR-SEAT-FIRST-ECONOMIC-ENGINE",
@@ -153,13 +153,13 @@
       "expected_player_value": "Makes the five existing Alpha illustrations visible in the real hand, rack and codex without breaking missing-art fallback.",
       "expected_main_reduction": "None; Main is forbidden.",
       "expected_content_unlock": "A stable production consumer for every future card-art wave.",
-      "status": "ACTIVE"
+      "status": "MERGED"
     },
     {
       "task_id": "P2-ALPHA01-CARD-ART-WAVE-1",
       "category": "ART",
       "priority": "P2",
-      "blockers": ["A production consumer and complete 40-ID status manifest are being established."],
+      "blockers": [],
       "dependencies": ["P2-ALPHA01-CARD-ART-PRODUCTION-CUTOVER"],
       "rule_authority": ["Alpha stable card identities", "project art/license policy"],
       "owned_files": ["eight non-overlapping card-ID asset directories", "prompt/license/hash records", "wave contact sheet"],
@@ -168,7 +168,7 @@
       "expected_player_value": "Raises visual coverage from 5 to 13 of 40 selected cards with distinct table-readable art.",
       "expected_main_reduction": "None.",
       "expected_content_unlock": "Reusable art-production wave pattern.",
-      "status": "BLOCKED"
+      "status": "READY"
     },
     {
       "task_id": "P3-TABLE-AUDIO-HOST-CUTOVER",
@@ -234,7 +234,7 @@
       "task_id": "INTEGRATION-CYCLE02",
       "category": "INTEGRATION",
       "priority": "P0",
-      "blockers": ["Three active branches are still under implementation and review."],
+      "blockers": ["The first-economic-engine evidence branch remains unintegrated and must be reviewed against current main before this integration cycle can close."],
       "dependencies": ["P0-AI-BUSINESS-COST-TYPED-CASH-CUTOVER", "P1-FOUR-SEAT-FIRST-ECONOMIC-ENGINE", "P2-ALPHA01-CARD-ART-PRODUCTION-CUTOVER"],
       "rule_authority": ["AGENTS.md one-writer and Tier 3 integration rules"],
       "owned_files": ["shared hot files only through approved task ownership", "merge-head validation reports", "development program state"],

@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "program_id": "ALPHA_0_1_TO_ALPHA_0_2_COMPLETE_PRODUCTIZATION",
+  "generated_at": "2026-07-23T04:56:00+09:00",
+  "initial_main_sha": "ce6853cb75c10fdfed457431d638af9009a01083",
+  "current_main_sha": "cb9194a32e86c20287572b20b92acc0064fcd858",
+  "status": "ACTIVE",
+  "final_status": "NOT_CLAIMED",
+  "phases": [
+    {
+      "phase": "PHASE_0_REPOSITORY_AND_PROGRAM_RECONCILIATION",
+      "status": "MERGE_READY",
+      "evidence": [
+        "docs/development/current_program_state.json",
+        "docs/development/current_task_graph.json",
+        "docs/development/current_file_ownership.json"
+      ]
+    },
+    {
+      "phase": "PHASE_1A_P0_COMMODITY_FLOW_POSTCOMMIT_EXACT_ONCE",
+      "status": "MERGED",
+      "pull_request": 46,
+      "commit": "87dd12a9b673a364592760cde148a43ab00ac65b",
+      "merge_commit": "cb9194a32e86c20287572b20b92acc0064fcd858",
+      "result": "P0_COMMODITY_FLOW_POSTCOMMIT_EXACT_ONCE_GREEN"
+    },
+    {
+      "phase": "PHASE_1B_P0_AI_WORLD_TYPED_PORTS",
+      "status": "ACTIVE_PREFLIGHT",
+      "branch": "codex/p0-ai-world-typed-ports-cb9194a",
+      "dependencies": ["PHASE_1A_P0_COMMODITY_FLOW_POSTCOMMIT_EXACT_ONCE"]
+    },
+    {
+      "phase": "PHASE_2_ALPHA_0_1_FIRST_ECONOMIC_ENGINE",
+      "status": "ACTIVE_UNPROVEN",
+      "dependencies": [],
+      "missing_evidence": ["first Sale Receipt", "positive GDP/minute", "duplicate batch zero side effect in the formal four-seat path"]
+    },
+    {
+      "phase": "PHASE_3_ALPHA_0_1_COMPLETE_TERMINAL_PATH",
+      "status": "BLOCKED",
+      "dependencies": ["PHASE_2_ALPHA_0_1_FIRST_ECONOMIC_ENGINE"]
+    },
+    {
+      "phase": "PHASE_4_ALPHA_0_1_BUILD_AND_DRAFT_PRERELEASE",
+      "status": "BLOCKED",
+      "dependencies": ["PHASE_3_ALPHA_0_1_COMPLETE_TERMINAL_PATH"],
+      "current_head_build_present": false
+    },
+    {
+      "phase": "PHASE_5_ALPHA_0_1_EXTERNAL_CLOSED_PLAYTEST",
+      "status": "BLOCKED_EXTERNAL_EVIDENCE_REQUIRED",
+      "dependencies": ["PHASE_4_ALPHA_0_1_BUILD_AND_DRAFT_PRERELEASE"],
+      "required_testers": 5,
+      "required_matches": 10,
+      "required_completed_matches": 5
+    },
+    {
+      "phase": "PHASE_6_ALPHA_0_2_SAVE_RESUME",
+      "status": "BLOCKED",
+      "dependencies": ["PHASE_5_ALPHA_0_1_EXTERNAL_CLOSED_PLAYTEST"],
+      "transactional_owner_count": 12,
+      "required_owner_count": 19,
+      "full_run_resume_claim": false
+    },
+    {
+      "phase": "PHASE_7_ALPHA_0_2_DATA_ONLY_CONTENT_WAVE",
+      "status": "BLOCKED",
+      "dependencies": ["PHASE_5_ALPHA_0_1_EXTERNAL_CLOSED_PLAYTEST", "PHASE_6_ALPHA_0_2_SAVE_RESUME"],
+      "targets": {"roles": 12, "card_identities": 56, "monsters": 10, "products": 46}
+    },
+    {
+      "phase": "PHASE_8_ALPHA_0_2_ART_AUDIO_AND_UX",
+      "status": "PARTIAL_PIPELINES_OPEN",
+      "dependencies": ["PHASE_7_ALPHA_0_2_DATA_ONLY_CONTENT_WAVE"],
+      "current": {"role_art_ready": 8, "card_art_rendered": 5, "monster_art_ready": 8, "production_product_icons": 0}
+    },
+    {
+      "phase": "PHASE_9_ALPHA_0_2_WINDOWS_RC_AND_DRAFT_PRERELEASE",
+      "status": "BLOCKED",
+      "dependencies": ["PHASE_6_ALPHA_0_2_SAVE_RESUME", "PHASE_7_ALPHA_0_2_DATA_ONLY_CONTENT_WAVE", "PHASE_8_ALPHA_0_2_ART_AUDIO_AND_UX"]
+    }
+  ],
+  "non_negotiable_invariants": {
+    "public_release_published": false,
+    "alpha_0_1_full_run_resume_claim": false,
+    "retired_mechanic_revival_count": 0,
+    "main_fallback_allowed": false,
+    "old_new_dual_path_allowed": false,
+    "one_writer_per_file_ownership_set": true,
+    "force_push_allowed": false,
+    "squash_merge_allowed": false,
+    "rebase_merge_allowed": false
+  },
+  "release_state": {
+    "remote_tag_count": 0,
+    "github_release_count": 0,
+    "alpha_0_1_draft_prerelease_created": false,
+    "alpha_0_2_draft_prerelease_created": false
+  },
+  "next_boundaries": [
+    "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
+    "P1-FOUR-SEAT-FIRST-ECONOMIC-ENGINE current-main validation",
+    "P1-SAVE-RESUME-OWNER-COVERAGE inventory",
+    "P2-ALPHA01-CARD-ART-WAVE-1",
+    "P4-FULL-SMOKE-FIXTURE-MIGRATION"
+  ]
+}
