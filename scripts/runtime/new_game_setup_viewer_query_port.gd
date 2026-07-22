@@ -3,6 +3,7 @@ class_name NewGameSetupViewerQueryPort
 
 const MonsterCatalog := preload("res://scripts/runtime/monster_catalog_v06.gd")
 const MovementModel := preload("res://scripts/balance/movement_balance_model.gd")
+const AlphaContentLoader := preload("res://scripts/runtime/alpha01_content_manifest_loader.gd")
 
 @export var draft_service_path: NodePath
 @export var role_catalog_path: NodePath
@@ -16,7 +17,8 @@ func page_snapshot(available_width: float = 900.0) -> Dictionary:
 	_query_count += 1
 	var draft_owner := _draft_service()
 	var role_catalog := _role_catalog()
-	if draft_owner == null or role_catalog == null:
+	var content := AlphaContentLoader.load_active_selection()
+	if draft_owner == null or role_catalog == null or not content.is_valid():
 		return {"valid": false, "reason_code": "setup_query_dependency_missing"}
 	var draft := draft_owner.draft_snapshot()
 	var player_count := int(draft.get("player_count", 0))
@@ -47,6 +49,7 @@ func page_snapshot(available_width: float = 900.0) -> Dictionary:
 			{"text": "深度%s" % _roman(depth), "accent": Color("#fde68a"), "fill": Color("#713f12")},
 			{"text": "角色不重复", "accent": Color("#93c5fd"), "fill": Color("#1e3a8a")},
 			{"text": "召唤可选", "accent": Color("#fecaca"), "fill": Color("#7f1d1d")},
+			{"text": "Alpha清单 8/40/8", "accent": Color("#a7f3d0"), "fill": Color("#064e3b")},
 		],
 		"lobby": _lobby_snapshot(player_count, ai_count, human_count, depth, count_range, planet_size),
 		"options": _option_snapshot(player_count, ai_count, depth, count_range, planet_size),
@@ -143,8 +146,8 @@ func _option_snapshot(player_count: int, ai_count: int, depth: int, count_range:
 	for value in range(2, mini(7, player_count - 1) + 1):
 		ai_entries.append({"id": "ai_count", "value": value, "text": "AI%d" % value, "pressed": value == ai_count})
 	var depth_entries: Array = []
-	for value in range(1, 7):
-		depth_entries.append({"id": "challenge_depth", "value": value, "text": _roman(value), "pressed": value == depth})
+	var active_depth := AlphaContentLoader.load_active_selection().active_challenge_depth()
+	depth_entries.append({"id": "challenge_depth", "value": active_depth, "text": _roman(active_depth), "pressed": active_depth == depth})
 	return {
 		"accent": Color("#facc15"), "title": "开局参数｜先定桌面规模", "columns": 3,
 		"cards": [

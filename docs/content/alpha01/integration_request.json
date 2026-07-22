@@ -2,9 +2,10 @@
   "schema_version": 1,
   "request_id": "P2-ALPHA01-CONTENT-CURATION-runtime-activation",
   "curation_status": "READY",
-  "activation_status": "PENDING_OWNER_INTEGRATION",
-  "reason": "The scoped content task owns the deterministic whitelist but not the production consumers that currently read full catalogs.",
+  "activation_status": "COMPLETED_BY_P1_ALPHA01_RUNTIME_ACTIVATION",
+  "reason": "The formal setup, regional supply, and commodity-track owners now consume the validated Alpha runtime selection.",
   "manifest_resource": "res://resources/content/alpha01/alpha01_content_manifest.tres",
+  "runtime_authority": "The Resource is the sole runtime source. docs/playtest/alpha_0_1/content_manifest.json is derived audit evidence and is never loaded by gameplay code.",
   "content_contract": {
     "public_roles": 8,
     "player_card_identities": 40,
@@ -16,21 +17,23 @@
     "acquisition_rule": "Only manifest.acquisition_card_ids() (.rank_1) may seed draw/acquisition universes; ranks II-IV remain same-family upgrade records."
   },
   "observed_production_state": {
-    "regional_supply_rank_one_identities": 41,
+    "regional_supply_rank_one_identities": 28,
     "regional_supply_categories": {
-      "facility": 16,
+      "facility": 12,
       "supply_demand": 2,
       "monster": 8,
-      "military": 7,
+      "military": 3,
       "interaction": 3,
-      "organization": 5
+      "organization": 0
     },
-    "commodity_source_families": 46,
-    "commodity_default_belt_visible_entries": 8,
-    "role_catalog_entries": 24,
-    "rank_record_draw_risk": "NOT_PRESENT: both regional supply and the default commodity belt filter rank I."
+    "commodity_selected_rank_one_identities": 12,
+    "commodity_default_belt_visible_entries": 12,
+    "role_source_catalog_entries": 24,
+    "role_setup_exposed_entries": 8,
+    "active_map_count": 1,
+    "rank_record_draw_risk": "NOT_PRESENT: regional supply and commodity acquisition consume only the 40 manifest rank-I identities."
   },
-  "requested_owner_work": [
+  "completed_owner_work": [
     {
       "consumer": "regional supply session plan",
       "candidate_owner_paths": [
@@ -45,7 +48,7 @@
       "candidate_owner_paths": [
         "res://scripts/runtime/commodity_card_inventory_runtime_controller.gd"
       ],
-      "requirement": "Limit belt candidates to the 12 selected commodity rank-I IDs before deterministic eight-entry seeding; do not make rank II-IV directly drawable."
+      "requirement": "Limit belt candidates to the 12 selected commodity rank-I IDs and deterministically order them from the gameplay seed; do not make rank II-IV directly drawable."
     },
     {
       "consumer": "role setup and session identity",
@@ -71,5 +74,5 @@
     "No organization card or retired mechanic enters an active pool.",
     "Hidden hands, cash, AI reasoning, route plans, starter-monster choices, and ownership remain private."
   ],
-  "boundary_confirmation": "This content-curation commit does not modify Main, GameRuntimeCoordinator, GameScreen, economy owners, card-execution owners, or any production consumer."
+  "boundary_confirmation": "Runtime activation does not modify main.gd, main.tscn, GameScreen, rules formulas, AI policy, save format, content definitions, or art. It adds no new Main caller."
 }
