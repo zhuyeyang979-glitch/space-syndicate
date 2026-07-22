@@ -7,8 +7,8 @@ branch or a single architecture rewrite.
 ## Baseline
 
 - Initial origin/main: 53c4c02fcb6c17dbc8e97af88e753d78ea3cb225
-- Current program baseline: e49ad50444064804ccafc91cd47bb8fc73e7d34d
-- Latest merged program PR: #50
+- Current program baseline: 80817847cfd0061de19516829460ca45b41558dc
+- Latest merged program PR: #51
 - Open PRs, tags and releases: none
 - Branch protection and required CI checks: not configured
 - Complete match proven: false
@@ -25,7 +25,7 @@ old-device storage state are deliberately excluded.
 |---|---|---|
 | AI business-cost typed cash | Merged | PR #45 |
 | CommodityFlow post-commit exact-once | Merged | PR #46 |
-| AI world typed ports | Active, city-inference atomic cutover validated | PR #48 added the foundation; the current branch migrated city inference while generic consumers remain |
+| AI world typed ports | Active, city-inference atomic cutover merged | PR #48 added the foundation; PR #51 migrated city inference while generic consumers remain |
 | Four-seat first economic engine | Active | No authoritative Sale Receipt or positive GDP milestone yet |
 | Four-seat terminal path | Blocked | Depends on the first economic engine |
 | Save/resume owner coverage | Ready for owner inventory | 12 of 19 required owners are transactional |
@@ -75,8 +75,8 @@ docs/integration_requests/<task_id>.json.
 
 ## Immediate next action
 
-Deliver the AI city-inference Query/Command atomic cutover, then continue the
-same P0 with AI actor-private state. The next Product boundary remains the
+Continue the P0 with AI actor-private state after the merged city-inference
+Query/Command cutover. The next Product boundary remains the
 formal four-seat first economic engine. Save Owner inventory and card-art Wave
 1 are ready to proceed in disjoint branches.
 

@@ -1,11 +1,11 @@
 {
   "schema_version": 4,
-  "generated_at": "2026-07-23T07:29:00+09:00",
+  "generated_at": "2026-07-23T08:02:01+09:00",
   "source": {
     "repository": "zhuyeyang979-glitch/space-syndicate",
     "branch": "main",
-    "main_sha": "e49ad50444064804ccafc91cd47bb8fc73e7d34d",
-    "latest_merge_pr": 50,
+    "main_sha": "80817847cfd0061de19516829460ca45b41558dc",
+    "latest_merge_pr": 51,
     "origin_divergence": {"ahead": 0, "behind": 0},
     "open_pull_requests": [],
     "recent_main_commits_reviewed": 30,
@@ -51,12 +51,16 @@
     {
       "task_id": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
       "status": "ACTIVE",
-      "canonical_state": "ACTIVE_CITY_INFERENCE_ATOMIC_CUTOVER_VALIDATED",
+      "canonical_state": "ACTIVE_CITY_INFERENCE_ATOMIC_CUTOVER_MERGED",
       "foundation_pull_request": 48,
       "foundation_commit": "6596c3c",
-      "validated_delivery_pending_atomic_domains": [
+      "completed_atomic_domains": [
+        "foundation_ports",
         "city_inference_query_command"
       ],
+      "city_inference_pull_request": 51,
+      "city_inference_commit": "90014ec92a5b2f1f15e658d007ce9c87f2c4fbef",
+      "city_inference_merge_commit": "80817847cfd0061de19516829460ca45b41558dc",
       "next_atomic_boundary": "actor_state",
       "completion_claimed": false,
       "remaining_scope": "migrate all AI production consumers and remove generic Main/world access"
@@ -107,11 +111,11 @@
   },
   "architecture": {
     "main_gd": {
-      "physical_lines": 6481,
-      "nonblank_lines": 5456,
+      "physical_lines": 6461,
+      "nonblank_lines": 5436,
       "methods": 473,
       "top_level_variables": 46,
-      "constants": 58,
+      "constants": 47,
       "top_level_preloads": 7,
       "external_caller_files": 103,
       "external_call_occurrences": 1231,
@@ -131,11 +135,14 @@
       ]
     },
     "active_p0": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
-    "active_candidate": {
+    "last_atomic_delivery": {
       "branch": "codex/alpha03-ai-world-typed-ports-e49ad50",
       "base_main_sha": "e49ad50444064804ccafc91cd47bb8fc73e7d34d",
       "atomic_domain": "city_inference_query_command",
-      "status": "VALIDATED_DELIVERY_PENDING",
+      "status": "MERGED",
+      "pull_request": 51,
+      "commit": "90014ec92a5b2f1f15e658d007ce9c87f2c4fbef",
+      "merge_commit": "80817847cfd0061de19516829460ca45b41558dc",
       "main_gd": {
         "physical_lines": 6461,
         "nonblank_lines": 5436,
@@ -146,6 +153,12 @@
         "external_caller_files": 103,
         "new_caller_files": 0
       },
+      "parent_gate_complete": false
+    },
+    "next_atomic_candidate": {
+      "base_main_sha": "80817847cfd0061de19516829460ca45b41558dc",
+      "atomic_domain": "actor_state",
+      "status": "READY_FOR_BRANCH",
       "parent_gate_complete": false
     }
   },
