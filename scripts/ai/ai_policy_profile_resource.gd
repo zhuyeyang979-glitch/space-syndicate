@@ -21,6 +21,11 @@ class_name AiPolicyProfileResource
 @export_range(0, 1000, 1) var intel_min_card_score := 125
 @export_range(1, 16, 1) var intel_actions_per_tick := 2
 
+@export_category("City Inference Scoring")
+@export_range(0, 1000, 1) var warehouse_stockpile_count_pressure := 34
+@export_range(0, 1000, 1) var warehouse_stockpile_unit_pressure := 8
+@export_range(0, 1000, 1) var warehouse_stockpile_product_pressure := 10
+
 @export_category("Business Action Policy")
 @export_range(0, 100, 1) var business_action_chance_percent := 76
 @export_range(1, 8, 1) var business_action_max_per_cycle := 2
@@ -75,6 +80,11 @@ func parameter_groups() -> Dictionary:
 			"intel_min_city_score": intel_min_city_score,
 			"intel_min_card_score": intel_min_card_score,
 			"intel_actions_per_tick": intel_actions_per_tick,
+		},
+		"city_inference": {
+			"warehouse_stockpile_count_pressure": warehouse_stockpile_count_pressure,
+			"warehouse_stockpile_unit_pressure": warehouse_stockpile_unit_pressure,
+			"warehouse_stockpile_product_pressure": warehouse_stockpile_product_pressure,
 		},
 		"business_action": {
 			"chance_percent": business_action_chance_percent,

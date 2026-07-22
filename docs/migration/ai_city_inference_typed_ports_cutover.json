@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "status": "production_cutover_validated_delivery_pending",
+  "parent_task": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
+  "parent_task_status": "ACTIVE",
+  "mechanic": {
+    "rule_authority_gate": "GREEN",
+    "mechanic_id": "ai_city_inference_typed_port_migration",
+    "mechanic_status": "MIGRATION_ONLY",
+    "authoritative_owner": "WorldSessionState",
+    "persistence": "existing session envelope v2"
+  },
+  "ports": {
+    "actor_state": "res://scripts/runtime/ai_actor_state_port.gd",
+    "region_query": "res://scripts/runtime/ai_region_knowledge_query_port.gd",
+    "city_command": "res://scripts/runtime/ai_city_inference_command_port.gd",
+    "composition": "res://scenes/runtime/GameRuntimeCoordinator.tscn"
+  },
+  "query_contract": {
+    "detached_pure_data": true,
+    "rng_delta": 0,
+    "mutation_count": 0,
+    "hidden_owner_exposed": false,
+    "rival_private_inference_exposed": false,
+    "rival_private_cash_exposed": false,
+    "rival_private_hand_exposed": false,
+    "private_warehouse_owner_exposed": false,
+    "public_clue_allowlist": ["text", "time", "cycle", "kind", "products"],
+    "arbitrary_pure_data_clue_keys_exposed": false,
+    "public_anonymous_warehouse_fields": [
+      "warehouse_stockpile_count",
+      "warehouse_stockpile_units",
+      "warehouse_stockpile_products"
+    ],
+    "excluded_warehouse_fields": [
+      "bucket_id",
+      "owner_player_index",
+      "source_installation_id",
+      "source_factory_id",
+      "batch_transaction_id",
+      "storage_rent_debt_cents",
+      "storage_rent_remainder",
+      "storage_liability_kind",
+      "warehouse_stockpile_expires_at"
+    ]
+  },
+  "command_contract": {
+    "journal_limit": 128,
+    "journal_session_scoped": true,
+    "world_restore_clears_journal": true,
+    "capability_rebind_clears_journal": true,
+    "session_identity_change_clears_journal": true,
+    "non_running_session_rejected": true,
+    "eliminated_actor_rejected": true,
+    "stable_command_id": true,
+    "payload_fingerprint": "sha256",
+    "same_id_same_payload_replays_receipt": true,
+    "same_id_different_payload_rejected": true,
+    "stale_revision_rejected": true,
+    "forged_capability_rejected": true,
+    "human_actor_rejected": true,
+    "duplicate_mutation_count": 0
+  },
+  "behavior_parity": {
+    "personality_count": 6,
+    "rng_order_changed": false,
+    "candidate_order_changed": false,
+    "scoring_changed": false,
+    "frozen_priority_score": 84,
+    "warehouse_pressure_weights": [34, 8, 10]
+  },
+  "persistence": {
+    "new_save_section_count": 0,
+    "save_schema_changed": false,
+    "second_world_owner_count": 0,
+    "city_guess_roundtrip": "PASS",
+    "confidence_roundtrip": "PASS",
+    "reason_roundtrip": "PASS"
+  },
+  "main_budget_before": {
+    "physical_lines": 6481,
+    "nonblank_lines": 5456,
+    "methods": 473,
+    "constants": 58,
+    "top_level_variables": 46,
+    "top_level_preloads": 7,
+    "external_caller_files": 103
+  },
+  "main_budget_after": {
+    "physical_lines": 6461,
+    "nonblank_lines": 5436,
+    "methods": 473,
+    "constants": 47,
+    "top_level_variables": 46,
+    "top_level_preloads": 7,
+    "external_caller_files": 103,
+    "absolute_budget_gate": "INHERITED_CALLER_THRESHOLD_103_GT_102"
+  },
+  "evidence": {
+    "focused_checks": 48,
+    "focused_result": "PASS",
+    "production_bench_checks": 14,
+    "production_bench_result": "PASS",
+    "privacy_leaks": 0,
+    "duplicate_mutations": 0,
+    "runtime_scripts_scanned": 200,
+    "parser_errors": 0,
+    "git_diff_check": "PASS"
+  },
+  "remaining_parent_counts": {
+    "ai_controller_call_world_references": 45,
+    "ai_controller_players_tokens": 93,
+    "ai_controller_districts_tokens": 95,
+    "parent_gate_complete": false
+  },
+  "full_run_resume_claim": false,
+  "complete_match_proven": false,
+  "alpha_0_3_complete": false,
+  "next_boundary": "AI_ACTOR_STATE_TYPED_PORT_MIGRATION"
+}

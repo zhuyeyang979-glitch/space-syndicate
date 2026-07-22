@@ -25,6 +25,11 @@ const AI_PLAYER_SAVE_FIELDS := ["player_index", "ai_profile", "ai_memory"]
 @export var policy_profile: Resource = DEFAULT_POLICY_PROFILE
 
 var _world_bridge: Node
+var _ai_actor_state_port: AiActorStatePort
+var _ai_actor_state_capability: AiActorStateCapability
+var _ai_region_knowledge_query_port: AiRegionKnowledgeQueryPort
+var _ai_region_knowledge_capability: AiRegionKnowledgeCapability
+var _ai_city_inference_command_port: AiCityInferenceCommandPort
 var _monster_runtime_controller: MonsterRuntimeController
 var _military_runtime_controller: MilitaryRuntimeController
 var _weather_runtime_controller: WeatherRuntimeController
@@ -56,6 +61,20 @@ var ai_card_decision_enabled := true
 
 func set_world_bridge(bridge: Node) -> void:
 	_world_bridge = bridge
+
+
+func set_world_typed_ports(
+	actor_state_port: AiActorStatePort,
+	actor_state_capability: AiActorStateCapability,
+	region_knowledge_query_port: AiRegionKnowledgeQueryPort,
+	region_knowledge_capability: AiRegionKnowledgeCapability,
+	city_inference_command_port: AiCityInferenceCommandPort
+) -> void:
+	_ai_actor_state_port = actor_state_port
+	_ai_actor_state_capability = actor_state_capability
+	_ai_region_knowledge_query_port = region_knowledge_query_port
+	_ai_region_knowledge_capability = region_knowledge_capability
+	_ai_city_inference_command_port = city_inference_command_port
 
 
 func set_monster_runtime_controller(controller: MonsterRuntimeController) -> void:
@@ -426,6 +445,10 @@ func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 		"typed_card_submission_bound": _card_play_submission_controller != null,
 		"typed_card_history_bound": _card_resolution_history_service != null,
 		"typed_business_cost_cash_bound": _ai_business_cost_cash_port != null and _ai_business_cost_capability != null,
+		"typed_actor_state_bound": _ai_actor_state_port != null and _ai_actor_state_capability != null,
+		"typed_region_knowledge_bound": _ai_region_knowledge_query_port != null and _ai_region_knowledge_capability != null,
+		"typed_city_inference_command_bound": _ai_city_inference_command_port != null,
+		"city_inference_uses_main": false,
 		"private_plan_exposed": false,
 	}
 
@@ -442,6 +465,46 @@ func _candidate_stable_id(candidate: Dictionary) -> String:
 
 func _world_ready() -> bool:
 	return _world_bridge != null and _world_bridge.has_method("has_world") and bool(_world_bridge.call("has_world"))
+
+
+func _city_inference_ports_ready() -> bool:
+	return _ai_actor_state_port != null \
+		and _ai_actor_state_capability != null \
+		and _ai_region_knowledge_query_port != null \
+		and _ai_region_knowledge_capability != null \
+		and _ai_city_inference_command_port != null \
+		and _ai_actor_state_port.is_ready() \
+		and _ai_region_knowledge_query_port.is_ready() \
+		and _ai_city_inference_command_port.is_ready()
+
+
+func _city_inference_rules() -> Dictionary:
+	if _ai_region_knowledge_query_port == null:
+		return {}
+	return _ai_region_knowledge_query_port.inference_rules_snapshot()
+
+
+func _city_inference_snapshot(actor_index: int) -> Dictionary:
+	if not _city_inference_ports_ready():
+		return {}
+	return _ai_region_knowledge_query_port.actor_intelligence_snapshot(
+		_ai_region_knowledge_capability,
+		actor_index
+	)
+
+
+func _typed_ai_player_indices() -> Array:
+	var result: Array = []
+	if not _city_inference_ports_ready():
+		return result
+	for player_variant in _ai_actor_state_port.public_players_snapshot():
+		if not (player_variant is Dictionary):
+			continue
+		var player := player_variant as Dictionary
+		if (bool(player.get("is_ai", false)) or str(player.get("seat_type", "human")) == "ai") \
+				and not bool(player.get("eliminated", false)):
+			result.append(int(player.get("player_index", -1)))
+	return result
 
 
 func _world_value(property_name: StringName, default_value: Variant = null) -> Variant:
@@ -729,39 +792,39 @@ var AUTO_MONSTER_ENCOUNTER_RANGE_METERS:
 
 var CITY_GUESS_CONFIDENCE_DEFAULT:
 	get:
-		return _world_constant(&"CITY_GUESS_CONFIDENCE_DEFAULT")
+		return int(_city_inference_rules().get("confidence_default", WorldSessionState.CITY_GUESS_CONFIDENCE_MEDIUM))
 
 var CITY_GUESS_CONFIDENCE_HIGH:
 	get:
-		return _world_constant(&"CITY_GUESS_CONFIDENCE_HIGH")
+		return int(_city_inference_rules().get("confidence_high", WorldSessionState.CITY_GUESS_CONFIDENCE_HIGH))
 
 var CITY_GUESS_CONFIDENCE_LOW:
 	get:
-		return _world_constant(&"CITY_GUESS_CONFIDENCE_LOW")
+		return int(_city_inference_rules().get("confidence_low", WorldSessionState.CITY_GUESS_CONFIDENCE_LOW))
 
 var CITY_GUESS_CONFIDENCE_MEDIUM:
 	get:
-		return _world_constant(&"CITY_GUESS_CONFIDENCE_MEDIUM")
+		return int(_city_inference_rules().get("confidence_medium", WorldSessionState.CITY_GUESS_CONFIDENCE_MEDIUM))
 
 var CITY_GUESS_REASON_CARD:
 	get:
-		return _world_constant(&"CITY_GUESS_REASON_CARD")
+		return str(_city_inference_rules().get("reason_card", "card"))
 
 var CITY_GUESS_REASON_DEFAULT:
 	get:
-		return _world_constant(&"CITY_GUESS_REASON_DEFAULT")
+		return str(_city_inference_rules().get("reason_default", "intuition"))
 
 var CITY_GUESS_REASON_INTUITION:
 	get:
-		return _world_constant(&"CITY_GUESS_REASON_INTUITION")
+		return str(_city_inference_rules().get("reason_intuition", "intuition"))
 
 var CITY_GUESS_REASON_PRODUCT:
 	get:
-		return _world_constant(&"CITY_GUESS_REASON_PRODUCT")
+		return str(_city_inference_rules().get("reason_product", "product"))
 
 var CITY_GUESS_REASON_ROUTE:
 	get:
-		return _world_constant(&"CITY_GUESS_REASON_ROUTE")
+		return str(_city_inference_rules().get("reason_route", "route"))
 
 var DEFAULT_AOE_RADIUS_METERS:
 	get:
@@ -865,35 +928,41 @@ func _store_card_resolution_entry(entry: Dictionary) -> bool:
 	return _call_world(&"_store_card_resolution_entry", [entry])
 
 func _intel_city_guess_entries(viewer_index: int, limit: int = 6) -> Array:
-	var entries := []
-	if viewer_index < 0 or viewer_index >= players.size():
+	var entries: Array = []
+	var snapshot := _city_inference_snapshot(viewer_index)
+	if snapshot.is_empty():
 		return entries
-	var player: Dictionary = players[viewer_index]
-	var guesses: Dictionary = player.get("city_guesses", {})
-	var confidences: Dictionary = player.get("city_guess_confidence", {})
-	for index_variant in _active_city_district_indices():
-		var city_index := int(index_variant)
-		var city := _district_city(city_index)
-		if int(city.get("owner", -1)) == viewer_index:
+	var player_count := _ai_actor_state_port.player_count()
+	for region_variant in snapshot.get("regions", []) as Array:
+		if not (region_variant is Dictionary):
 			continue
-		var guess := int(guesses.get(city_index, -1))
-		var marked: bool = guess >= 0 and guess < players.size()
-		var competition := _city_competition_matches(city_index)
-		var breakdown := _city_cycle_income_breakdown(city_index, competition)
+		var region := region_variant as Dictionary
+		if bool(region.get("destroyed", false)):
+			continue
+		var city_index := int(region.get("district_index", -1))
+		var city: Dictionary = region.get("city", {}) if region.get("city", {}) is Dictionary else {}
+		if not _city_is_active(city) or str(city.get("owner_knowledge", "")) == "actor_own":
+			continue
+		var guess := int(city.get("owner", -1))
+		var marked: bool = guess >= 0 and guess < player_count \
+			and str(city.get("owner_knowledge", "")) in ["actor_guess", "authorized_reveal"]
+		var competition := 0
 		var entry := {
 			"district_index": city_index,
-			"name": String(districts[city_index].get("name", "区域%d" % (city_index + 1))),
+			"region_id": str(region.get("region_id", "")),
+			"name": str(region.get("name", "区域%d" % (city_index + 1))),
 			"guess": guess,
 			"marked": marked,
-			"confidence": _normalized_city_guess_confidence(int(confidences.get(city_index, CITY_GUESS_CONFIDENCE_DEFAULT))) if marked else 0,
-			"potential_income": int(breakdown.get("net", 0)),
+			"confidence": _normalized_city_guess_confidence(int(city.get("owner_confidence", CITY_GUESS_CONFIDENCE_DEFAULT))) if marked else 0,
+			"potential_income": int(region.get("current_gdp_per_minute", 0)),
 			"last_income": int(city.get("last_income", 0)),
-			"products": _city_product_names(city),
-			"demands": _city_demand_names(city),
+			"products": (city.get("product_names", []) as Array).duplicate(true),
+			"demands": (city.get("demand_names", []) as Array).duplicate(true),
 			"competition": competition,
 			"disrupted": int(city.get("trade_disrupted_routes", 0)),
 			"latest_clue": _ai_latest_city_public_clue_text(city),
 			"warehouse_pressure": _city_warehouse_stockpile_pressure(city),
+			"city": city.duplicate(true),
 		}
 		entry["priority"] = _city_intel_priority_score(entry)
 		entries.append(entry)
@@ -1163,20 +1232,92 @@ func _district_city(index: int) -> Dictionary:
 	return _call_monster(&"_district_city", [index])
 
 func _city_is_active(city: Dictionary) -> bool:
-	return _call_monster(&"_city_is_active", [city])
+	return not city.is_empty() and bool(city.get("active", true))
 
 func _city_product_names(city: Dictionary) -> Array:
-	return _call_monster(&"_city_product_names", [city])
+	if city.get("product_names", []) is Array and not (city.get("product_names", []) as Array).is_empty():
+		return (city.get("product_names", []) as Array).duplicate(true)
+	var result: Array = []
+	for product_variant in city.get("products", []) as Array:
+		if product_variant is Dictionary:
+			result.append(str((product_variant as Dictionary).get("name", "未知商品")))
+		else:
+			result.append(str(product_variant))
+	return result
 
 func _city_demand_names(city: Dictionary) -> Array:
-	return _call_monster(&"_city_demand_names", [city])
+	if city.get("demand_names", []) is Array and not (city.get("demand_names", []) as Array).is_empty():
+		return (city.get("demand_names", []) as Array).duplicate(true)
+	var result: Array = []
+	for product_variant in city.get("demands", []) as Array:
+		result.append(str(product_variant))
+	return result
 
 func _normalize_city_public_clue_entry(value: Variant) -> Dictionary:
-	return _call_world(&"_normalize_city_public_clue_entry", [value])
+	var entry: Dictionary = (value as Dictionary).duplicate(true) if value is Dictionary else {}
+	var clue_text := str(entry.get("text", entry.get("clue", ""))).strip_edges() \
+		if value is Dictionary else str(value).strip_edges()
+	if clue_text.is_empty():
+		return {}
+	entry["text"] = clue_text
+	if not entry.has("time"):
+		entry["time"] = float(entry.get("game_time", -1.0))
+	if not entry.has("cycle"):
+		entry["cycle"] = 0
+	if str(entry.get("kind", "")).is_empty():
+		entry["kind"] = _city_public_clue_kind(clue_text)
+	if not (entry.get("products", []) is Array) or (entry.get("products", []) as Array).is_empty():
+		var products: Array = []
+		for product_variant in ProductMarketRuntimeController.PRODUCT_CATALOG:
+			var product_name := str(product_variant)
+			if not product_name.is_empty() and clue_text.contains(product_name):
+				products.append(product_name)
+		entry["products"] = products
+	return entry
+
+
+func _city_public_clue_kind(clue_text: String) -> String:
+	if clue_text.contains("合约"):
+		return "合约"
+	if clue_text.contains("商路") or clue_text.contains("断路") or clue_text.contains("黑客"):
+		return "商路"
+	if clue_text.contains("需求压力") or clue_text.contains("市场") or clue_text.contains("价格"):
+		return "市场"
+	if clue_text.contains("GDP") or clue_text.contains("生产") or clue_text.contains("交通") or clue_text.contains("消费"):
+		return "经营"
+	return "公开"
 
 func _mark_city_guess_for_player(viewer_index: int, city_index: int, guessed_player: int, confidence: int = CITY_GUESS_CONFIDENCE_DEFAULT, reason: String = CITY_GUESS_REASON_DEFAULT) -> bool:
-	var bridge := _world_bridge as AiRuntimeWorldBridge
-	return bridge != null and bridge.apply_city_owner_guess(viewer_index, city_index, guessed_player, confidence, reason)
+	var snapshot := _city_inference_snapshot(viewer_index)
+	if snapshot.is_empty():
+		return false
+	var region_id := ""
+	for region_variant in snapshot.get("regions", []) as Array:
+		if region_variant is Dictionary and int((region_variant as Dictionary).get("district_index", -1)) == city_index:
+			region_id = str((region_variant as Dictionary).get("region_id", ""))
+			break
+	var owner_revision := str(snapshot.get("owner_revision", ""))
+	if region_id.is_empty() or owner_revision.is_empty():
+		return false
+	var command_id := "ai-city-inference:%s" % JSON.stringify([
+		viewer_index,
+		region_id,
+		guessed_player,
+		confidence,
+		reason,
+		owner_revision,
+	]).sha256_text()
+	var receipt := _ai_city_inference_command_port.submit_guess(
+		_ai_region_knowledge_capability,
+		command_id,
+		viewer_index,
+		region_id,
+		guessed_player,
+		confidence,
+		reason,
+		owner_revision
+	)
+	return bool(receipt.get("applied", false))
 
 func _latest_public_history_resolution_id() -> int:
 	if _card_resolution_history_service == null:
@@ -1330,7 +1471,15 @@ func _purchase_requires_discard(player_index: int, skill_name: String) -> bool:
 	) if _district_supply_runtime_query_port != null else false
 
 func _city_warehouse_stockpile_pressure(city: Dictionary) -> int:
-	return _call_monster(&"_city_warehouse_stockpile_pressure", [city])
+	if not _city_is_active(city):
+		return 0
+	var count := maxi(0, int(city.get("warehouse_stockpile_count", 0)))
+	var units := maxi(0, int(city.get("warehouse_stockpile_units", 0)))
+	var products: Array = city.get("warehouse_stockpile_products", []) \
+		if city.get("warehouse_stockpile_products", []) is Array else []
+	return count * int(_policy_value("city_inference", "warehouse_stockpile_count_pressure", 34)) \
+		+ units * int(_policy_value("city_inference", "warehouse_stockpile_unit_pressure", 8)) \
+		+ products.size() * int(_policy_value("city_inference", "warehouse_stockpile_product_pressure", 10))
 
 func _product_futures_duration_seconds(skill: Dictionary) -> float:
 	var terms := _product_futures_terms(skill)
@@ -7800,22 +7949,22 @@ func _auto_ai_counter_responses(force: bool = false) -> int:
 			return 1
 	return 0
 func _ai_public_player_product_signal(viewer_index: int, guessed_player: int, product_name: String) -> int:
-	if viewer_index < 0 or viewer_index >= players.size() or guessed_player < 0 or guessed_player >= players.size() or product_name == "":
+	var snapshot := _city_inference_snapshot(viewer_index)
+	var player_count := _ai_actor_state_port.player_count() if _ai_actor_state_port != null else 0
+	if snapshot.is_empty() or guessed_player < 0 or guessed_player >= player_count or product_name == "":
 		return 0
 	var signal_score := 0
-	var viewer: Dictionary = players[viewer_index]
-	var guesses: Dictionary = viewer.get("city_guesses", {})
-	var confidences: Dictionary = viewer.get("city_guess_confidence", {})
-	for city_key in guesses.keys():
-		if int(guesses.get(city_key, -1)) != guessed_player:
+	for region_variant in snapshot.get("regions", []) as Array:
+		if not (region_variant is Dictionary):
 			continue
-		var city_index := int(city_key)
-		if city_index < 0 or city_index >= districts.size():
+		var region := region_variant as Dictionary
+		var city: Dictionary = region.get("city", {}) if region.get("city", {}) is Dictionary else {}
+		if int(city.get("owner", -1)) != guessed_player \
+				or str(city.get("owner_knowledge", "")) not in ["actor_guess", "authorized_reveal"]:
 			continue
-		var city := _district_city(city_index)
 		if not _city_is_active(city):
 			continue
-		var confidence := _normalized_city_guess_confidence(int(confidences.get(city_key, CITY_GUESS_CONFIDENCE_DEFAULT)))
+		var confidence := _normalized_city_guess_confidence(int(city.get("owner_confidence", CITY_GUESS_CONFIDENCE_DEFAULT)))
 		var confidence_weight := 16 + confidence * 12
 		if _city_product_names(city).has(product_name):
 			signal_score += confidence_weight + 18
@@ -7829,9 +7978,10 @@ func _ai_public_player_product_signal(viewer_index: int, guessed_player: int, pr
 	return signal_score
 func _ai_city_guess_owner_candidate(viewer_index: int, city_entry: Dictionary, guessed_player: int) -> Dictionary:
 	var city_index := int(city_entry.get("district_index", -1))
-	if city_index < 0 or city_index >= districts.size() or guessed_player < 0 or guessed_player >= players.size() or guessed_player == viewer_index:
+	var player_count := _ai_actor_state_port.player_count() if _ai_actor_state_port != null else 0
+	if city_index < 0 or guessed_player < 0 or guessed_player >= player_count or guessed_player == viewer_index:
 		return {}
-	var city := _district_city(city_index)
+	var city: Dictionary = city_entry.get("city", {}) if city_entry.get("city", {}) is Dictionary else {}
 	if not _city_is_active(city):
 		return {}
 	var score := int(city_entry.get("priority", 0)) + 18
@@ -7885,15 +8035,17 @@ func _ai_city_guess_owner_candidate(viewer_index: int, city_entry: Dictionary, g
 		"learning_bonus": learning_bonus,
 		"score": maxi(1, score),
 		"reason": "%s→玩家%d｜%s" % [
-			String(districts[city_index].get("name", "城市")),
+			str(city_entry.get("name", "城市")),
 			guessed_player + 1,
 			"、".join(reason_bits),
 		],
 	}
 func _ai_city_guess_candidates(player_index: int) -> Array:
 	var result := []
-	if not _player_is_ai(player_index):
+	if not _city_inference_ports_ready() or not _ai_actor_state_port.is_ai_player(player_index) \
+			or _ai_actor_state_port.is_player_eliminated(player_index):
 		return result
+	var player_count := _ai_actor_state_port.player_count()
 	for entry_variant in _intel_city_guess_entries(player_index, 12):
 		if not (entry_variant is Dictionary):
 			continue
@@ -7901,7 +8053,7 @@ func _ai_city_guess_candidates(player_index: int) -> Array:
 		if bool(entry.get("marked", false)) and int(entry.get("confidence", 0)) >= CITY_GUESS_CONFIDENCE_HIGH:
 			continue
 		var best := {}
-		for guessed_player in range(players.size()):
+		for guessed_player in range(player_count):
 			var candidate := _ai_city_guess_owner_candidate(player_index, entry, guessed_player)
 			if candidate.is_empty():
 				continue
@@ -7935,7 +8087,7 @@ func _auto_ai_intel_decisions(force: bool = false) -> int:
 	if session_finished or not ai_card_decision_enabled:
 		return 0
 	var acted := 0
-	for player_index_variant in _ai_player_indices():
+	for player_index_variant in _typed_ai_player_indices():
 		var player_index := int(player_index_variant)
 		var city_candidates := _ai_city_guess_candidates(player_index)
 		var city_choice := _ai_pick_candidate(player_index, city_candidates, force)

@@ -9626,7 +9626,7 @@ func _check_ai_policy_resourceization_component() -> void:
 		var policy_payload: Dictionary = policy_variant if policy_variant is Dictionary else {}
 		var main_variant: Variant = profile.call("to_main_source_dictionary")
 		var main_payload: Dictionary = main_variant if main_variant is Dictionary else {}
-		_expect(int(summary.get("tunable_count", 0)) == 32 and int(summary.get("personality_count", 0)) == 6 and int(summary.get("group_count", 0)) == 6, "AI Policy profile exposes 32 tunables, six personalities, and six parameter groups")
+		_expect(int(summary.get("tunable_count", 0)) == 38 and int(summary.get("personality_count", 0)) == 6 and int(summary.get("group_count", 0)) == 8, "AI Policy profile exposes 38 tunables, six personalities, and eight parameter groups")
 		_expect(str(summary.get("runtime_owner_script", "")) == AI_RUNTIME_CONTROLLER_SCRIPT and bool(summary.get("runtime_cutover_enabled", false)), "AI Policy profile names AiRuntimeController as its enabled runtime owner")
 		_expect(not _variant_contains_callable(policy_payload) and not _variant_contains_object(policy_payload) and not _variant_contains_callable(main_payload) and not _variant_contains_object(main_payload), "AI Policy Resource adapters emit pure data")
 	var registry_script := load(AI_POLICY_RESOURCE_REGISTRY_SCRIPT) as Script

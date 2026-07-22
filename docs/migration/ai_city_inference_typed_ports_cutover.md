@@ -1,0 +1,126 @@
+# AI City Inference Typed Ports Cutover
+
+## Status
+
+`STATUS=AI_CITY_INFERENCE_TYPED_PORTS_ATOMIC_CUTOVER_VALIDATED`
+
+This is one completed atomic domain inside the still-active
+`P0-AI-WORLD-TYPED-PORTS-CUTOVER`. It does not claim that all AI world access,
+Alpha 0.1, full-run resume, or Alpha 0.3 is complete.
+
+## Rule Authority Gate
+
+- `RULE_AUTHORITY_GATE=GREEN`
+- `MECHANIC_ID=ai_city_inference_typed_port_migration`
+- `MECHANIC_STATUS=MIGRATION_ONLY`
+- Authoritative rule files: `AGENTS.md`, `docs/ai_runtime_ownership_contract.md`,
+  `docs/migration/intel_private_command_contract.md`, and
+  `docs/migration/intel_privacy_save_boundary.md`
+- Player-facing meaning: an AI may inspect public city evidence and its own
+  private owner guesses, then update only its own guess, confidence, and reason.
+- Authoritative owner: `WorldSessionState`
+- Persistence: the existing session envelope v2; no new section or schema.
+
+No rule, payout, role passive, city ownership rule, or inference value was
+added. This PR only replaces a generic Main/world route with typed ports.
+
+## Production Path
+
+`GameRuntimeCoordinator` composes one `AiActorStatePort`, one
+`AiRegionKnowledgeQueryPort`, and one `AiCityInferenceCommandPort`. It creates
+opaque capabilities and injects them into `AiRuntimeController`.
+
+The migrated path is:
+
+1. `AiRuntimeController` requests an actor-scoped intelligence snapshot.
+2. `AiRegionKnowledgeQueryPort` returns detached pure data.
+3. Existing candidate scoring and ordering run without Main or whole-world
+   reads in the five city-inference production functions.
+4. `AiCityInferenceCommandPort` validates capability, command identity,
+   actor, region, revision, and payload.
+5. `WorldSessionState.set_city_owner_guess` performs the authoritative change.
+
+`AiRuntimeWorldBridge.apply_city_owner_guess` and the eleven city-inference
+constants in `main.gd` were deleted. There is no fallback or dual path.
+
+## Query And Privacy Contract
+
+The query may expose only:
+
+- public region identity, geometry, terrain, damage, panic, products, demands,
+  transport facts, public city activity, public clues, and public GDP;
+- public anonymous warehouse aggregate clues: count, units, and product names;
+- the actor's own city ownership inference, confidence, reason, and authorized
+  reveal sentinel;
+- the actor's own city as `actor_own`.
+
+Anonymous warehouse aggregates are existing public product/city evidence. The
+projection deliberately excludes warehouse owner, bucket identity, source
+installation, transaction identity, debt, remainder, liability, and expiry.
+
+The query never exposes authoritative hidden owner truth, another actor's
+guess, exact rival cash, rival hand/discard, private warehouse ownership, AI
+memory, or plan. Every returned collection is detached pure data. Queries
+consume no RNG and perform no world mutation.
+
+Public clue dictionaries are rebuilt from the explicit `text`, `time`,
+`cycle`, `kind`, and string-only `products` allowlist. Arbitrary pure-data keys
+are not copied, and `last_public_clue` is reduced to its sanitized text.
+
+## Command Contract
+
+Each command binds:
+
+- stable command ID and SHA-256 payload fingerprint;
+- opaque AI capability;
+- AI actor index;
+- stable region ID;
+- suspected player index, confidence, and reason allowlists;
+- expected `WorldSessionState` owner revision.
+
+The bounded journal retains 128 receipts. Same ID and same fingerprint returns
+the original receipt with `idempotent_replay=true`; same ID with a different
+fingerprint fails closed. Stale revisions, forged capabilities, human actors,
+eliminated actors, non-running sessions, missing regions, and invalid values
+produce zero mutation.
+
+The journal is scoped to the existing `GameSessionRuntimeController` session
+identity. It is cleared when the session changes, the WorldSession emits a
+restore/reset boundary, or the opaque capability is rebound. A restored world
+therefore cannot receive an old success receipt without the mutation being
+applied to the current owner state.
+
+## Behavior Parity
+
+- Six personality resources and candidate selection remain unchanged.
+- Query and command code draw no RNG, so RNG order is unchanged.
+- City candidate iteration and score comparison retain their prior order.
+- Warehouse scoring values `34`, `8`, and `10` moved from Main constants to the
+  existing AI policy Resource without changing values.
+- The focused fixture freezes the representative city priority score at `84`.
+- Guess, confidence, and reason continue to cold-roundtrip through the existing
+  `WorldSessionState` session-envelope payload.
+
+## Evidence
+
+- Focused SceneTree test: 48/48.
+- Production scene Bench: 14/14, privacy leaks 0, duplicate mutations 0.
+- Godot MCP script scan: 200 runtime scripts, 0 parser errors.
+- `main_runtime_composition_test.gd`: pass.
+- `world_session_state_cutover_test.gd`: pass.
+- `ai_business_cost_architecture_gate_test.gd`: pass.
+- `git diff --check`: pass.
+
+Main moved from 6481 physical / 5456 nonblank / 473 methods / 58 constants to
+6461 / 5436 / 473 / 47. External caller files remain 103, so this task adds no
+caller. The repository's older absolute budget threshold remains 102 and is
+reported as inherited debt rather than a green absolute gate.
+
+## Remaining P0 Scope
+
+This atomic cutover does not satisfy the parent hard gate. Current controller
+source still contains 45 `_call_world` references, 93 `players` tokens, and 95
+`districts` tokens; the generic bridge also remains for other domains. The next
+atomic boundary is AI actor-private state, followed by public players, market,
+routes, cards, supply, monster, military, weather, victory, and presentation
+ports until all parent counts reach zero.

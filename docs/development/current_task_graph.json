@@ -1,7 +1,7 @@
 {
   "schema_version": 4,
-  "generated_at": "2026-07-23T06:46:24+09:00",
-  "base_main_sha": "53c4c02fcb6c17dbc8e97af88e753d78ea3cb225",
+  "generated_at": "2026-07-23T07:29:00+09:00",
+  "base_main_sha": "e49ad50444064804ccafc91cd47bb8fc73e7d34d",
   "allowed_statuses": [
     "MERGED",
     "ACTIVE",
@@ -21,8 +21,9 @@
     {
       "task_id": "ALPHA03-PROGRAM-INITIALIZATION",
       "priority": "P0",
-      "status": "ACTIVE",
+      "status": "MERGED",
       "branch": "codex/alpha03-program-init-53c4c02",
+      "pull_request": 50,
       "dependencies": [],
       "completion_scope": "initialize machine-independent Alpha 0.3 state, graph, ownership and checkpoint"
     },
@@ -45,7 +46,26 @@
       "priority": "P0",
       "status": "ACTIVE",
       "foundation_pull_request": 48,
-      "foundation_only": true,
+      "foundation_only": false,
+      "atomic_progress": [
+        {
+          "domain": "foundation_ports",
+          "status": "MERGED",
+          "pull_request": 48
+        },
+        {
+          "domain": "city_inference_query_command",
+          "status": "ACTIVE",
+          "branch": "codex/alpha03-ai-world-typed-ports-e49ad50",
+          "focused_gate": "48/48 PASS",
+          "delivery": "PENDING"
+        },
+        {
+          "domain": "actor_state",
+          "status": "BLOCKED",
+          "blocked_by": ["city_inference_query_command delivery"]
+        }
+      ],
       "dependencies": [
         "P0-AI-BUSINESS-COST-TYPED-CASH-CUTOVER",
         "P0-COMMODITY-FLOW-POSTCOMMIT-EXACT-ONCE"

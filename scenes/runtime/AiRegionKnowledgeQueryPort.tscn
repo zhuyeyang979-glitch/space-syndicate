@@ -5,3 +5,4 @@
 [node name="AiRegionKnowledgeQueryPort" type="Node"]
 script = ExtResource("1_port")
 world_session_state_path = NodePath("../WorldSessionState")
+commodity_flow_runtime_controller_path = NodePath("../CommodityFlowRuntimeController")

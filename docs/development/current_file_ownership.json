@@ -1,7 +1,7 @@
 {
   "schema_version": 4,
-  "generated_at": "2026-07-23T06:46:24+09:00",
-  "base_main_sha": "53c4c02fcb6c17dbc8e97af88e753d78ea3cb225",
+  "generated_at": "2026-07-23T07:29:00+09:00",
+  "base_main_sha": "e49ad50444064804ccafc91cd47bb8fc73e7d34d",
   "policy": {
     "one_writer_per_file_ownership_set": true,
     "shared_hot_files_require_integration_writer": true,
@@ -52,18 +52,26 @@
         "docs/development/alpha_03_execution_checkpoint.json"
       ],
       "forbidden": ["production scripts", "scenes", "resources", "tests", "assets"],
-      "status": "ACTIVE"
+      "status": "MERGED",
+      "pull_request": 50
     },
     {
       "ownership_set_id": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
       "writer": "one production writer plus analysis-only reviewers",
       "branch_pattern": "codex/alpha03-ai-world-typed-ports-<short_sha>",
+      "active_branch": "codex/alpha03-ai-world-typed-ports-e49ad50",
+      "current_atomic_domain": "city_inference_query_command",
       "mode": "PRODUCTION_AND_FOCUSED_TESTS",
       "files": [
         "scripts/runtime/ai_runtime_world_bridge.gd",
         "scripts/runtime/ai_runtime_controller.gd",
+        "scripts/runtime/ai_city_inference_command_port.gd",
+        "scripts/runtime/ai_region_knowledge_query_port.gd",
+        "scripts/ai/ai_policy_profile_resource.gd",
         "scene-owned actor-scoped AI query and command ports",
-        "focused AI privacy, parity and capability-negative tests"
+        "focused AI privacy, parity and capability-negative tests",
+        "docs/migration/ai_city_inference_typed_ports_cutover.*",
+        "docs/ai_runtime_ownership_contract.md"
       ],
       "integration_request_only": [
         "scripts/main.gd",
@@ -72,7 +80,8 @@
         "scenes/runtime/GameRuntimeCoordinator.tscn",
         "docs/migration/main_gd_cutover_ledger.json"
       ],
-      "status": "ACTIVE"
+      "status": "ACTIVE",
+      "atomic_status": "CITY_INFERENCE_VALIDATED_DELIVERY_PENDING"
     },
     {
       "ownership_set_id": "P1-FIRST-ECONOMIC-ENGINE-EVIDENCE",
