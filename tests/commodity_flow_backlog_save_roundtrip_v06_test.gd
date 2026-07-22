@@ -36,7 +36,7 @@ func _verify_current_roundtrip_and_transactional_rejection() -> void:
 	bridge.facts["route_candidates"] = []
 	SUPPORT.advance(flow, bridge, 60.5, 60.0)
 	var saved: Dictionary = flow.call("to_save_data")
-	_expect(int(saved.get("state_version", 0)) == 2 and int(saved.get("commodity_flow_terms_version", 0)) == 2, "new save writes only the current continuous-economy schema")
+	_expect(int(saved.get("state_version", 0)) == 3 and int(saved.get("commodity_flow_terms_version", 0)) == 2, "new save writes the post-commit-lineage schema with current continuous-economy terms")
 	_expect(not saved.has("backpressured_milliunits_by_source"), "new save never rewrites the migrated legacy overflow field")
 	_expect(not (saved.get("market_backlog_by_key", {}) as Dictionary).is_empty() and not (saved.get("warehouse_inventory", {}) as Dictionary).is_empty(), "save contains concrete backlog and warehouse inventory together")
 	_expect(not (saved.get("cumulative_wasted_milliunits_by_source", {}) as Dictionary).is_empty() and int(saved.get("waste_revision", 0)) > 0, "save contains exact current and cumulative waste state")

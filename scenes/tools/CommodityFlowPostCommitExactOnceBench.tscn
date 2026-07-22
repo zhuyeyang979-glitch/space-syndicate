@@ -1,0 +1,15 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/commodity_flow_postcommit_exact_once_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/WorldSessionState.tscn" id="2_world"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/VisualCueRuntimeOwner.tscn" id="3_visual"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CommodityFlowPostCommitReceiptConsumer.tscn" id="4_consumer"]
+
+[node name="CommodityFlowPostCommitExactOnceBench" type="Node"]
+script = ExtResource("1_bench")
+
+[node name="WorldSessionState" parent="." instance=ExtResource("2_world")]
+
+[node name="VisualCueRuntimeOwner" parent="." instance=ExtResource("3_visual")]
+
+[node name="CommodityFlowPostCommitReceiptConsumer" parent="." instance=ExtResource("4_consumer")]

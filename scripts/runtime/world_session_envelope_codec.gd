@@ -1,13 +1,14 @@
 extends RefCounted
 class_name WorldSessionEnvelopeCodec
 
-const SCHEMA_VERSION := 1
+const SCHEMA_VERSION := 2
+const LEGACY_SCHEMA_VERSION := 1
 const MIN_ACTIVE_PLAYERS := 3
 const MAX_ACTIVE_PLAYERS := 8
 const MAX_ROLE_INDEX := 23
 const PUBLIC_REVEAL_CONFIDENCE := 100
 const INT_MAP_TAG := "__world_session_dictionary_entries_v1"
-const ROOT_KEYS := [
+const LEGACY_ROOT_KEYS := [
 	"schema_version",
 	"players",
 	"districts",
@@ -15,6 +16,12 @@ const ROOT_KEYS := [
 	"map_width_m",
 	"map_height_m",
 	"world_geometry_revision",
+]
+const ROOT_KEYS := LEGACY_ROOT_KEYS + [
+	"commodity_postcommit_city_lineage_by_district",
+	"commodity_postcommit_cash_lineage_by_player",
+	"commodity_postcommit_city_mutation_count",
+	"commodity_postcommit_cash_snapshot_count",
 ]
 const PLAYER_RUNTIME_REQUIRED_KEYS := [
 	"id",
@@ -150,6 +157,10 @@ static func capture(runtime_state: Dictionary, ordered_role_names: Array[String]
 			"map_width_m": float(runtime_state.get("map_width_m", 0.0)),
 			"map_height_m": float(runtime_state.get("map_height_m", 0.0)),
 			"world_geometry_revision": int(runtime_state.get("world_geometry_revision", 0)),
+			"commodity_postcommit_city_lineage_by_district": (runtime_state.get("commodity_postcommit_city_lineage_by_district", {}) as Dictionary).duplicate(true),
+			"commodity_postcommit_cash_lineage_by_player": (runtime_state.get("commodity_postcommit_cash_lineage_by_player", {}) as Dictionary).duplicate(true),
+			"commodity_postcommit_city_mutation_count": int(runtime_state.get("commodity_postcommit_city_mutation_count", 0)),
+			"commodity_postcommit_cash_snapshot_count": int(runtime_state.get("commodity_postcommit_cash_snapshot_count", 0)),
 		},
 	}
 
@@ -158,7 +169,11 @@ static func normalize(candidate: Dictionary, ordered_role_names: Array[String] =
 	var retired_payload := LegacyContractPayloadGuardV06.validation_report(candidate)
 	if not bool(retired_payload.get("valid", false)):
 		return _rejection("retired_contract_payload_rejected")
-	if not _has_exact_keys(candidate, ROOT_KEYS) or int(candidate.get("schema_version", -1)) != SCHEMA_VERSION:
+	var candidate_version := int(candidate.get("schema_version", -1))
+	var legacy_shape := candidate_version == LEGACY_SCHEMA_VERSION \
+		and _has_exact_keys(candidate, LEGACY_ROOT_KEYS)
+	var current_shape := candidate_version == SCHEMA_VERSION and _has_exact_keys(candidate, ROOT_KEYS)
+	if not legacy_shape and not current_shape:
 		return _rejection("world_session_schema_invalid")
 	if not (candidate.get("players") is Array) or not (candidate.get("districts") is Array):
 		return _rejection("world_session_collections_invalid")
@@ -174,6 +189,9 @@ static func normalize(candidate: Dictionary, ordered_role_names: Array[String] =
 			or not (candidate.get("world_geometry_revision") is int) \
 			or int(candidate.get("world_geometry_revision", -1)) < 0:
 		return _rejection("world_session_geometry_invalid")
+	var lineage_validation := _validate_postcommit_lineage(candidate, districts.size(), players.size(), legacy_shape)
+	if not bool(lineage_validation.get("accepted", false)):
+		return lineage_validation
 	var runtime_players: Array = []
 	var normalized_players: Array = []
 	var role_indices: Dictionary = {}
@@ -210,6 +228,10 @@ static func normalize(candidate: Dictionary, ordered_role_names: Array[String] =
 		"map_width_m": float(candidate.get("map_width_m", 0.0)),
 		"map_height_m": float(candidate.get("map_height_m", 0.0)),
 		"world_geometry_revision": int(candidate.get("world_geometry_revision", 0)),
+		"commodity_postcommit_city_lineage_by_district": (lineage_validation.get("city_lineage_by_district", {}) as Dictionary).duplicate(true),
+		"commodity_postcommit_cash_lineage_by_player": (lineage_validation.get("cash_lineage_by_player", {}) as Dictionary).duplicate(true),
+		"commodity_postcommit_city_mutation_count": int(lineage_validation.get("city_mutation_count", 0)),
+		"commodity_postcommit_cash_snapshot_count": int(lineage_validation.get("cash_snapshot_count", 0)),
 	}
 	return {
 		"accepted": true,
@@ -223,6 +245,10 @@ static func normalize(candidate: Dictionary, ordered_role_names: Array[String] =
 			"map_width_m": normalized.map_width_m,
 			"map_height_m": normalized.map_height_m,
 			"world_geometry_revision": normalized.world_geometry_revision,
+			"commodity_postcommit_city_lineage_by_district": normalized.commodity_postcommit_city_lineage_by_district.duplicate(true),
+			"commodity_postcommit_cash_lineage_by_player": normalized.commodity_postcommit_cash_lineage_by_player.duplicate(true),
+			"commodity_postcommit_city_mutation_count": normalized.commodity_postcommit_city_mutation_count,
+			"commodity_postcommit_cash_snapshot_count": normalized.commodity_postcommit_cash_snapshot_count,
 		},
 	}
 
@@ -236,6 +262,10 @@ static func empty_state() -> Dictionary:
 		"map_width_m": WorldSessionState.DEFAULT_MAP_WIDTH_M,
 		"map_height_m": WorldSessionState.DEFAULT_MAP_HEIGHT_M,
 		"world_geometry_revision": 0,
+		"commodity_postcommit_city_lineage_by_district": {},
+		"commodity_postcommit_cash_lineage_by_player": {},
+		"commodity_postcommit_city_mutation_count": 0,
+		"commodity_postcommit_cash_snapshot_count": 0,
 	}
 
 
@@ -256,7 +286,104 @@ static func _validate_runtime_root(runtime_state: Dictionary) -> Dictionary:
 			or not (runtime_state.get("world_geometry_revision") is int) \
 			or int(runtime_state.get("world_geometry_revision", -1)) < 0:
 		return _rejection("world_session_geometry_invalid")
+	var lineage_validation := _validate_postcommit_lineage(runtime_state, districts.size(), players.size(), false)
+	if not bool(lineage_validation.get("accepted", false)):
+		return lineage_validation
 	return {"accepted": true}
+
+
+static func _validate_postcommit_lineage(
+	state: Dictionary,
+	district_count: int,
+	player_count: int,
+	legacy_shape: bool
+) -> Dictionary:
+	if legacy_shape:
+		return {
+			"accepted": true,
+			"city_lineage_by_district": {},
+			"cash_lineage_by_player": {},
+			"city_mutation_count": 0,
+			"cash_snapshot_count": 0,
+		}
+	if not (state.get("commodity_postcommit_city_lineage_by_district") is Dictionary) \
+			or not (state.get("commodity_postcommit_cash_lineage_by_player") is Dictionary) \
+			or not (state.get("commodity_postcommit_city_mutation_count") is int) \
+			or not (state.get("commodity_postcommit_cash_snapshot_count") is int):
+		return _rejection("world_session_postcommit_lineage_shape_invalid")
+	var city_lineage := _normalize_postcommit_lineage_dictionary(
+		state.get("commodity_postcommit_city_lineage_by_district", {}) as Dictionary,
+		district_count,
+		true
+	)
+	if not bool(city_lineage.get("accepted", false)):
+		return _rejection("world_session_postcommit_city_lineage_invalid")
+	var cash_lineage := _normalize_postcommit_lineage_dictionary(
+		state.get("commodity_postcommit_cash_lineage_by_player", {}) as Dictionary,
+		player_count
+	)
+	if not bool(cash_lineage.get("accepted", false)):
+		return _rejection("world_session_postcommit_cash_lineage_invalid")
+	var city_mutation_count := int(state.get("commodity_postcommit_city_mutation_count", -1))
+	var cash_snapshot_count := int(state.get("commodity_postcommit_cash_snapshot_count", -1))
+	if city_mutation_count < int((city_lineage.get("value", {}) as Dictionary).size()) \
+			or cash_snapshot_count < int((cash_lineage.get("value", {}) as Dictionary).size()):
+		return _rejection("world_session_postcommit_lineage_count_invalid")
+	return {
+		"accepted": true,
+		"city_lineage_by_district": city_lineage.get("value", {}),
+		"cash_lineage_by_player": cash_lineage.get("value", {}),
+		"city_mutation_count": city_mutation_count,
+		"cash_snapshot_count": cash_snapshot_count,
+	}
+
+
+static func _normalize_postcommit_lineage_dictionary(
+	source: Dictionary,
+	upper_bound: int,
+	require_city_breakdown_fingerprint := false
+) -> Dictionary:
+	var normalized: Dictionary = {}
+	for key_variant in source.keys():
+		var key_text := str(key_variant)
+		if not key_text.is_valid_int() or str(int(key_text)) != key_text:
+			return {"accepted": false}
+		var index := int(key_text)
+		var binding_variant: Variant = source[key_variant]
+		if index < 0 or index >= upper_bound or not (binding_variant is Dictionary) or normalized.has(key_text):
+			return {"accepted": false}
+		var binding := binding_variant as Dictionary
+		var expected_keys := ["batch_sequence", "batch_id", "batch_fingerprint"]
+		if require_city_breakdown_fingerprint:
+			expected_keys.append("city_breakdown_fingerprint")
+		if not _has_exact_keys(binding, expected_keys):
+			return {"accepted": false}
+		var sequence := int(binding.get("batch_sequence", -1))
+		var batch_id := str(binding.get("batch_id", ""))
+		var fingerprint := str(binding.get("batch_fingerprint", ""))
+		var city_breakdown_fingerprint := str(binding.get("city_breakdown_fingerprint", ""))
+		if not (binding.get("batch_sequence") is int) or sequence <= 0 \
+				or batch_id != "commodity-flow-batch-%010d" % sequence \
+				or not _valid_sha256(fingerprint) \
+				or require_city_breakdown_fingerprint and not _valid_sha256(city_breakdown_fingerprint):
+			return {"accepted": false}
+		normalized[key_text] = {
+			"batch_sequence": sequence,
+			"batch_id": batch_id,
+			"batch_fingerprint": fingerprint,
+		}
+		if require_city_breakdown_fingerprint:
+			(normalized[key_text] as Dictionary)["city_breakdown_fingerprint"] = city_breakdown_fingerprint
+	return {"accepted": true, "value": normalized}
+
+
+static func _valid_sha256(value: String) -> bool:
+	if value.length() != 64:
+		return false
+	for character_index in range(value.length()):
+		if not "0123456789abcdef".contains(value.substr(character_index, 1)):
+			return false
+	return true
 
 
 static func _capture_player(value: Variant, viewer_index: int, player_count: int, district_count: int, ordered_role_names: Array[String]) -> Dictionary:
@@ -574,13 +701,13 @@ static func _encode_data(value: Variant) -> Dictionary:
 				all_string_keys = false
 				break
 		if all_string_keys:
-			var result: Dictionary = {}
+			var encoded_dictionary: Dictionary = {}
 			for key_variant in dictionary.keys():
 				var encoded := _encode_data(dictionary[key_variant])
 				if not bool(encoded.get("accepted", false)):
 					return encoded
-				result[str(key_variant)] = encoded.get("value")
-			return {"accepted": true, "value": result}
+				encoded_dictionary[str(key_variant)] = encoded.get("value")
+			return {"accepted": true, "value": encoded_dictionary}
 		var entries: Array = []
 		for key_variant in dictionary.keys():
 			var key_kind := ""
@@ -628,7 +755,7 @@ static func _decode_data(value: Variant) -> Dictionary:
 		if dictionary.has(INT_MAP_TAG):
 			if dictionary.keys().size() != 1 or not (dictionary.get(INT_MAP_TAG) is Array):
 				return _rejection("world_session_encoded_dictionary_invalid")
-			var result: Dictionary = {}
+			var decoded_entry_dictionary: Dictionary = {}
 			for entry_variant in dictionary.get(INT_MAP_TAG, []) as Array:
 				if not (entry_variant is Dictionary) or not _has_exact_keys(entry_variant as Dictionary, ["key_kind", "key", "value"]):
 					return _rejection("world_session_encoded_dictionary_invalid")
@@ -645,22 +772,22 @@ static func _decode_data(value: Variant) -> Dictionary:
 						key = str(entry.get("key"))
 					_:
 						return _rejection("world_session_encoded_dictionary_key_invalid")
-				if result.has(key):
+				if decoded_entry_dictionary.has(key):
 					return _rejection("world_session_encoded_dictionary_duplicate")
 				var decoded := _decode_data(entry.get("value"))
 				if not bool(decoded.get("accepted", false)):
 					return decoded
-				result[key] = decoded.get("value")
-			return {"accepted": true, "value": result}
-		var result: Dictionary = {}
+				decoded_entry_dictionary[key] = decoded.get("value")
+			return {"accepted": true, "value": decoded_entry_dictionary}
+		var decoded_string_dictionary: Dictionary = {}
 		for key_variant in dictionary.keys():
 			if not (key_variant is String or key_variant is StringName):
 				return _rejection("world_session_dictionary_key_invalid")
 			var decoded := _decode_data(dictionary[key_variant])
 			if not bool(decoded.get("accepted", false)):
 				return decoded
-			result[str(key_variant)] = decoded.get("value")
-		return {"accepted": true, "value": result}
+			decoded_string_dictionary[str(key_variant)] = decoded.get("value")
+		return {"accepted": true, "value": decoded_string_dictionary}
 	return _rejection("world_session_variant_type_forbidden")
 
 

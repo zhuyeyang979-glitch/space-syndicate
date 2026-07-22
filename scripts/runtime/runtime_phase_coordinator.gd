@@ -37,6 +37,9 @@ func advance_frame(real_delta: float) -> Dictionary:
 	if not is_ready():
 		_last_receipt = context.receipt()
 		return _last_receipt.duplicate(true)
+	var recovery := simulation_step.recover_postcommit_before_frame(context)
+	if bool(recovery.get("needed", false)):
+		return _finish(context)
 	var path := lifecycle.begin_frame(context)
 	if path == &"global_blocked":
 		simulation.advance_blocked_realtime(context)

@@ -302,11 +302,24 @@ quantity, but never supplier identity.
    facts.
 2. Build all market records, backlog deltas, source allocations, storage
    changes, waste changes and receipt/loss batches without mutating live state.
-3. Validate cash and rent effects against cloned player records.
-4. Apply the cash batch atomically through the non-owning bridge.
+3. Validate cash/rent effects and prepare the fingerprint-bound post-commit
+   lineage against cloned records before any live commit.
+4. Apply the cash batch atomically through the non-owning bridge; a rejection
+   aborts the zero-progress lineage preparation.
 5. Commit fixed-point remainders, backlog, inventory, waste, sequences and
    revisions exactly once.
-6. Publish sanitized receipt, loss and summary projections.
+6. Seal GDP, cash-history, bankruptcy and asset-recovery inputs against that
+   exact committed batch before any later observer can read a newer world
+   revision.
+7. Emit the existing weather/loss telemetry once for the initial committed
+   flow plan. These emissions are non-authoritative and are never replayed by
+   recovery.
+8. Forward-complete the scene-owned post-commit journal in the frozen order:
+   GDP/history, derivative settlement and public pulse by district; private
+   player cash snapshots; stable bankruptcy checkpoint; stable PlayerMana
+   asset recovery; one typed public-log receipt; and one idempotent LIVE
+   presentation cadence invalidation.
+9. Finalize lineage and return the authoritative committed flow result.
 
 A rejected batch leaves cash, backlog, warehouse inventory, waste totals,
 remainders, receipt sequence and revisions unchanged.
@@ -335,10 +348,57 @@ The CommodityFlow save section contains:
 - recent Sale Receipts and receipt/batch sequences;
 - recent public flow summaries required for short-window route presentation;
 - one-time migration lineage.
+- the nested `CommodityFlowPostCommitReceiptConsumer` journal, including any
+  pending forward-recovery cursor and finalized high-watermark.
+- the matching WorldSession city/player batch-id/sequence/fingerprint bindings
+  through the formal
+  SessionEnvelope save path; old envelopes migrate with empty cursors.
 
 Loading must not advance time, generate another steady-demand tick, duplicate a
 Sale Receipt, release inventory, clear backlog or recompute a different state.
 All payloads are recursively pure data.
+
+If post-commit work was interrupted after the sale itself committed,
+load resumes only that batch. It must finish the old batch's observer,
+bankruptcy and asset-recovery checkpoints before another flow batch can be
+created. Recovery is fenced before the next frame's lifecycle, world clock,
+commands, AI, timers and autonomous behavior, and uses zero world delta. The
+consumer never rolls back an already committed sale across domain owners.
+Starting a new run clears both sides of the lineage before the first batch of
+that run. A restored target binding ahead of the pending CommodityFlow batch,
+or at the same sequence with a different fingerprint, is rejected as
+cross-owner save skew. Consumer and CommodityFlow cursors require exact
+terminal/pending parity; explicit malformed post-commit sections are never
+treated as legacy saves.
+
+Before any live owner applies restored state, the v0.6 registry validates the
+CommodityFlow consumer journal against Session, Bankruptcy and PlayerMana
+sections through a pure-data cross-section dependency contract. Finalized
+consumer-ahead, target-ahead, fingerprint collisions and malformed pending
+caller-acknowledgement windows fail closed with zero partial restore.
+
+The production CommodityFlow registry binding uses the owner's explicit
+`preflight_save_data` API. It applies the candidate only to a newly constructed,
+detached CommodityFlow owner plus detached post-commit consumer, then returns
+that probe's normalized recapture. Formal registry verification covers all 19
+sections and proves that accepted and rejected preflight paths leave every live
+owner, the live CommodityFlow checkpoint and the live consumer checkpoint
+unchanged.
+
+The journal is bounded to 128 finalized records plus at most one active pending
+record. Finalizing that pending record prunes back to 128 finalized records;
+129 finalized records without a pending record fail closed. The only permitted
+legacy bootstrap marker is
+`legacy_flow_batches_assumed_synchronously_completed`; arbitrary non-empty
+markers cannot forge a legacy restore.
+
+Non-empty batches durably retain one minimal typed public receipt in the
+bounded CommodityFlow journal. The existing public-log target consumes only its
+allowlisted localization values, and the existing presentation scheduler only
+receives a LIVE due-bit request. Empty batches produce neither. The public-log
+projection is not promoted to a twentieth Save Owner in this cutover; complete
+finalized log-history restoration remains part of the later Alpha 0.2
+save/resume coverage.
 
 ## Verification gate
 
@@ -357,5 +417,9 @@ prove:
 - legacy backpressure migrates once into non-saleable waste history;
 - save/load preserves backlog, inventory, waste, remainders and exact-once
   sequences;
+- formal 19-section preflight is pure and rejects cross-section lineage skew
+  before any live apply;
+- post-commit capacity, canonical legacy bootstrap and empty-terminal shapes
+  round-trip exactly and reject malformed variants without live mutation;
 - public snapshots expose no supplier identity, private owner, hand, cash or AI
   scoring.

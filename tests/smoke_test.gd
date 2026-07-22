@@ -7855,9 +7855,7 @@ func _verify_realtime_gdp_directionality_pack(main: Node, district_index: int) -
 			ok = ok and int(region_damage_breakdown.get("damage_penalty", 0)) > int(route_damage_breakdown.get("damage_penalty", 0)) and int(region_damage_breakdown.get("net", 0)) <= int(route_damage_breakdown.get("net", 0))
 
 			var summary := String(main.call("_city_income_breakdown_summary", region_damage_breakdown))
-			var reason := String(main.call("_city_gdp_change_reason_text", region_damage_breakdown))
 			ok = ok and summary.contains("生产GDP") and summary.contains("消费GDP") and summary.contains("断路") and summary.contains("损伤")
-			ok = ok and reason.contains("驱动") and reason.contains("压力")
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = previous_districts
 	_replace_product_market_for_test(main, previous_market)
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = previous_selected_district

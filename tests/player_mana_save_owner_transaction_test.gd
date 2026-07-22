@@ -45,6 +45,14 @@ func _run() -> void:
 	mana.commit_reservation(terminal_plan)
 	var terminal: Dictionary = mana.consume_reservation("save-owner-terminal-receipt", {"resolved": true})
 	_expect(str(terminal.get("outcome", "")) == "consumed", "player mana fixture contains an exact-once terminal receipt")
+	var recovery_transaction_id := "asset-recovery:commodity-flow-batch-0000000001"
+	var recovery_flow := {"0": _flow_row({"life": 100})}
+	var recovery_once := mana.advance_once(recovery_transaction_id, 1000, 42.0, recovery_flow)
+	var recovery_replay := mana.advance_once(recovery_transaction_id, 1000, 42.0, recovery_flow)
+	var recovery_collision := mana.advance_once(recovery_transaction_id, 2000, 42.0, recovery_flow)
+	_expect(bool(recovery_once.get("advanced", false)) and not bool(recovery_once.get("duplicate", true)), "CommodityFlow asset recovery commits through a stable transaction id")
+	_expect(bool(recovery_replay.get("advanced", false)) and bool(recovery_replay.get("duplicate", false)), "asset-recovery replay is exact-once")
+	_expect(not bool(recovery_collision.get("advanced", true)) and str(recovery_collision.get("reason", "")) == "asset_recovery_transaction_collision", "same asset-recovery id cannot authorize different terms")
 
 	var checkpoint := mana.to_save_data()
 	var checkpoint_revision := int(checkpoint.get("revision", -1))
@@ -54,6 +62,7 @@ func _run() -> void:
 	_expect(not _same_data(checkpoint, mana.to_save_data()), "player mana mutation changes the authoritative checkpoint")
 	var restored: Dictionary = mana.apply_save_data(checkpoint)
 	_expect(bool(restored.get("applied", false)) and _same_data(checkpoint, mana.to_save_data()), "player mana restore is byte-equivalent including revision reservations and receipts")
+	_expect(bool(mana.advance_once(recovery_transaction_id, 1000, 42.0, recovery_flow).get("duplicate", false)), "restored asset-recovery journal still rejects replay")
 	_expect(int(mana.to_save_data().get("revision", -1)) == checkpoint_revision, "player mana restore does not synthesize a new revision")
 	var detached_probe := mana.duplicate() as PlayerManaRuntimeController
 	var detached_receipt: Dictionary = detached_probe.apply_save_data(checkpoint) if detached_probe != null else {}

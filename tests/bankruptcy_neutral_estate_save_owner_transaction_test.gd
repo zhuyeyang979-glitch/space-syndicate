@@ -7,6 +7,16 @@ var _checks := 0
 var _failures: Array[String] = []
 
 
+class NoBankruptcyBridge:
+	extends Node
+
+	func capture_bankruptcy_candidates() -> Array:
+		return []
+
+	func bankruptcy_estate_stage(_stage: String, _request: Dictionary) -> Dictionary:
+		return {"prepared": false, "reason_code": "not_expected"}
+
+
 func _init() -> void:
 	call_deferred("_run")
 
@@ -18,7 +28,7 @@ func _run() -> void:
 	var applied: Dictionary = estate.apply_save_data(checkpoint)
 	_expect(bool(applied.get("applied", false)), "bankruptcy estate accepts a strict authoritative checkpoint")
 	var normalized := estate.to_save_data()
-	_expect(_pure_data(normalized) and int(normalized.get("state_version", 0)) == 1, "bankruptcy estate checkpoint is pure versioned data")
+	_expect(_pure_data(normalized) and int(normalized.get("state_version", 0)) == 2, "bankruptcy estate checkpoint migrates to the current pure versioned data")
 	_expect((normalized.get("journal", {}) as Dictionary).size() == 2 and (normalized.get("neutral_rent_journal", {}) as Dictionary).size() == 2, "bankruptcy estate preserves lifecycle and neutral-rent exact-once journals")
 	_expect(str(normalized.get("last_survivor_transaction_id", "")) == "estate-finalized", "bankruptcy estate preserves the last-survivor exact-once marker")
 
@@ -47,6 +57,80 @@ func _run() -> void:
 	var debug := estate.debug_snapshot()
 	_expect(not debug.has("journal") and not debug.has("neutral_rent_journal") and not JSON.stringify(debug).contains("987654321"), "bankruptcy debug snapshot exposes no private save journal")
 	estate.queue_free()
+
+	var bounded := ESTATE_SCENE.instantiate() as BankruptcyNeutralEstateRuntimeController
+	var bounded_bridge := NoBankruptcyBridge.new()
+	root.add_child(bounded_bridge)
+	root.add_child(bounded)
+	bounded.set_world_bridge(bounded_bridge)
+	_expect(bool(bounded.configure({"identity": {"ruleset_id": "v0.6"}}).get("configured", false)), "bounded bankruptcy checkpoint owner configures")
+	for sequence in range(1, 131):
+		var transaction_id := "bankruptcy:commodity-flow-batch-%010d" % sequence
+		var result := bounded.settle_checkpoint({
+			"transaction_id": transaction_id,
+			"reason_code": "post_sale_receipt",
+			"occurred_at": float(sequence),
+			"source_fingerprint": ("commodity-batch-%d" % sequence).sha256_text(),
+		})
+		_expect(bool(result.get("finalized", false)), "commodity checkpoint %d finalizes" % sequence)
+	var bounded_debug := bounded.debug_snapshot()
+	_expect(int(bounded_debug.get("transaction_count", 0)) == 128 and int(bounded_debug.get("commodity_flow_retired_sequence", 0)) == 2, "commodity bankruptcy journal remains bounded with a persisted retired high-watermark")
+	var latest_id := "bankruptcy:commodity-flow-batch-0000000130"
+	var latest_source := "commodity-batch-130".sha256_text()
+	var latest_replay := bounded.settle_checkpoint({"transaction_id": latest_id, "reason_code": "post_sale_receipt", "occurred_at": 130.0, "source_fingerprint": latest_source})
+	var latest_collision := bounded.settle_checkpoint({"transaction_id": latest_id, "reason_code": "post_sale_receipt", "occurred_at": 130.0, "source_fingerprint": "collision".sha256_text()})
+	var evicted_replay := bounded.settle_checkpoint({"transaction_id": "bankruptcy:commodity-flow-batch-0000000001", "reason_code": "post_sale_receipt", "occurred_at": 1.0, "source_fingerprint": "commodity-batch-1".sha256_text()})
+	_expect(bool(latest_replay.get("duplicate", false)) and str((bounded.checkpoint_transaction_binding(latest_id)).get("request_fingerprint", "")).length() == 64, "same bankruptcy request replays through its fingerprint binding")
+	_expect(str(latest_collision.get("reason_code", "")) == "bankruptcy_transaction_binding_collision", "same bankruptcy transaction id with a different request fingerprint fails closed")
+	_expect(str(evicted_replay.get("reason_code", "")) == "bankruptcy_transaction_lineage_evicted", "evicted commodity checkpoint cannot execute again below the retired high-watermark")
+	var bounded_save := bounded.to_save_data()
+	var bounded_restored := ESTATE_SCENE.instantiate() as BankruptcyNeutralEstateRuntimeController
+	var bounded_restored_bridge := NoBankruptcyBridge.new()
+	root.add_child(bounded_restored_bridge)
+	root.add_child(bounded_restored)
+	bounded_restored.set_world_bridge(bounded_restored_bridge)
+	bounded_restored.configure({"identity": {"ruleset_id": "v0.6"}})
+	var bounded_restore := bounded_restored.apply_save_data(bounded_save)
+	var restored_collision := bounded_restored.settle_checkpoint({"transaction_id": latest_id, "reason_code": "post_sale_receipt", "occurred_at": 130.0, "source_fingerprint": "collision-after-save".sha256_text()})
+	_expect(bool(bounded_restore.get("applied", false)) and bounded_restored.to_save_data() == bounded_save, "bounded bankruptcy lineage roundtrips exactly")
+	_expect(str(restored_collision.get("reason_code", "")) == "bankruptcy_transaction_binding_collision", "bankruptcy request collision remains rejected after save/load")
+	bounded_restored.queue_free()
+	bounded_restored_bridge.queue_free()
+	bounded.queue_free()
+	bounded_bridge.queue_free()
+
+	var ordinary := ESTATE_SCENE.instantiate() as BankruptcyNeutralEstateRuntimeController
+	var ordinary_bridge := NoBankruptcyBridge.new()
+	root.add_child(ordinary_bridge)
+	root.add_child(ordinary)
+	ordinary.set_world_bridge(ordinary_bridge)
+	ordinary.configure({"identity": {"ruleset_id": "v0.6"}})
+	var ordinary_all_finalized := true
+	for sequence in range(1, 129):
+		var result := ordinary.settle_checkpoint({
+			"transaction_id": "ordinary-bankruptcy-%03d" % sequence,
+			"reason_code": "post_sale_receipt",
+			"occurred_at": float(sequence),
+			"source_fingerprint": ("ordinary-source-%d" % sequence).sha256_text(),
+		})
+		ordinary_all_finalized = ordinary_all_finalized and bool(result.get("finalized", false))
+	var ordinary_overflow := ordinary.settle_checkpoint({
+		"transaction_id": "ordinary-bankruptcy-129",
+		"reason_code": "post_sale_receipt",
+		"occurred_at": 129.0,
+		"source_fingerprint": "ordinary-source-129".sha256_text(),
+	})
+	var ordinary_replay := ordinary.settle_checkpoint({
+		"transaction_id": "ordinary-bankruptcy-001",
+		"reason_code": "post_sale_receipt",
+		"occurred_at": 1.0,
+		"source_fingerprint": "ordinary-source-1".sha256_text(),
+	})
+	_expect(ordinary_all_finalized and int(ordinary.debug_snapshot().get("transaction_count", 0)) == 128, "ordinary bankruptcy terminal lineage fills the bounded journal without unsafe pruning")
+	_expect(str(ordinary_overflow.get("reason_code", "")) == "bankruptcy_journal_capacity_exhausted" and int(ordinary.debug_snapshot().get("transaction_count", 0)) == 128, "ordinary bankruptcy overflow fails closed when no persistent tombstone can protect eviction")
+	_expect(bool(ordinary_replay.get("duplicate", false)) and not ordinary.checkpoint_transaction_binding("ordinary-bankruptcy-001").is_empty(), "ordinary bankruptcy transaction remains replay-safe instead of being evicted")
+	ordinary.queue_free()
+	ordinary_bridge.queue_free()
 
 	var coordinator := COORDINATOR_SCENE.instantiate()
 	root.add_child(coordinator)

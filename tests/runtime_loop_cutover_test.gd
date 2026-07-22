@@ -9,6 +9,8 @@ class TraceState extends RefCounted:
 	var flow_finalized := true
 	var finish_after_flow := false
 	var finish_after_victory := false
+	var postcommit_pending := false
+	var postcommit_recovery_completed := true
 	var _flow_called := false
 	var _victory_called := false
 	var deltas: Dictionary = {}
@@ -67,6 +69,13 @@ class FakeEconomyPort extends RuntimeEconomyPort:
 		return state.flow_finalized
 	func tick_product_market_cycle(delta_seconds: float) -> Dictionary:
 		state._record(&"tick_product_market_cycle", delta_seconds); return {}
+	func has_pending_postcommit_recovery() -> bool:
+		return state.postcommit_pending
+	func recover_pending_postcommit() -> Dictionary:
+		state._record(&"recover_pending_postcommit")
+		if state.postcommit_recovery_completed:
+			state.postcommit_pending = false
+		return {"needed": true, "completed": state.postcommit_recovery_completed, "reason": "test_recovery"}
 
 class FakeActorPort extends RuntimeActorPort:
 	var state: TraceState
@@ -137,6 +146,7 @@ func _init() -> void:
 func _run() -> void:
 	_test_authority_structure()
 	_test_active_trace()
+	_test_postcommit_recovery_fence()
 	_test_blocked_pause_and_terminal_paths()
 	_test_early_return_paths()
 	_test_deterministic_port_replay()
@@ -224,6 +234,35 @@ func _test_blocked_pause_and_terminal_paths() -> void:
 	finished_loop.advance_frame_for_test(0.4)
 	_check(finished_state.calls == [&"session_is_finished"], "terminal session stops before synchronization")
 	finished_loop.free(); finished_ports.free()
+
+
+func _test_postcommit_recovery_fence() -> void:
+	var state := TraceState.new()
+	state.postcommit_pending = true
+	var ports := FakePorts.new(state)
+	var loop := RuntimeLoop.new()
+	_bind_loop_to_phases(loop, ports)
+	var recovered := loop.advance_frame_for_test(0.75)
+	_check(state.calls == [&"recover_pending_postcommit"], "pending post-commit recovery runs before lifecycle, clock, commands, AI, timers, and presentation")
+	_check(str(recovered.get("path", "")) == "postcommit_recovery" and is_zero_approx(float(recovered.get("world_delta", -1.0))), "recovery-only frame consumes zero world delta")
+	var step_receipt: Dictionary = recovered.get("simulation_step_receipt", {}) if recovered.get("simulation_step_receipt", {}) is Dictionary else {}
+	_check(bool(step_receipt.get("recovery_only", false)) and bool(step_receipt.get("completed", false)), "recovery fence remains inside RuntimeSimulationStep mutation authority")
+	state.calls.clear()
+	loop.advance_frame_for_test(0.75)
+	_check(state.calls.has(&"advance_world_time") and state.calls.has(&"advance_commodity_flow") and not state.calls.has(&"recover_pending_postcommit"), "the following frame resumes the unchanged normal runtime order")
+	loop.free()
+	ports.free()
+
+	var failed_state := TraceState.new()
+	failed_state.postcommit_pending = true
+	failed_state.postcommit_recovery_completed = false
+	var failed_ports := FakePorts.new(failed_state)
+	var failed_loop := RuntimeLoop.new()
+	_bind_loop_to_phases(failed_loop, failed_ports)
+	failed_loop.advance_frame_for_test(0.5)
+	_check(failed_state.calls == [&"recover_pending_postcommit"] and failed_state.postcommit_pending, "failed recovery remains fenced without leaking a later frame mutation")
+	failed_loop.free()
+	failed_ports.free()
 
 
 func _test_early_return_paths() -> void:
