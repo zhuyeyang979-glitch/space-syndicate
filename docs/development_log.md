@@ -8711,3 +8711,32 @@ deleted. Evidence and the remaining action inventory are recorded in
   green, and no replacement contract owner, UI, receipt or save state exists.
 - Deleted one uncalled Main helper. Main falls by 18 physical lines, 16
   nonblank lines and one method with no new Main caller.
+
+## 2026-07-22 — AI business market-pressure transaction prerequisite
+
+- Added a bounded, session-scoped prepare/commit/rollback/finalize lifecycle to
+  the authoritative `ProductMarketRuntimeController` for the existing AI
+  `price_pump` effect. It owns no cash, wager commitment, AI policy, UI or save
+  state and leaves `route_sabotage` fail-closed at its route-owner boundary.
+- The lifecycle plans the unchanged 8–18 action roll and 46-product refresh
+  through detached `RunRngService` cursors. Prepare is side-effect free;
+  commit advances the 47 draws and market postimage once; cash rejection can
+  restore the complete market and RNG preimage; telemetry is emitted only on
+  finalization.
+- Ordinary refresh and transactional refresh now share one price planner, so
+  formula, history, draw order and final state remain identical. A strict
+  public receipt excludes cash, commitment, AI reasoning, internal identity
+  and hidden-owner fields.
+- Plans are now bound to explicit market revision/fingerprint and frozen
+  supply, demand, disruption and weather facts. The pure balance model is used
+  directly, so prepare has no dynamic Main formula callback or bridge side
+  effect.
+- Replays require the opaque prepared token; tentative RNG state commits are
+  silent; finalization claims a non-reentrant state before telemetry. Terminal
+  journal records release rollback preimages and RNG/telemetry payloads.
+- The participant is intentionally synchronous and non-persistent. Save and
+  checkpoint restore reject an open rollback window, while global save-gate
+  composition remains part of the later typed-cash integration.
+- This is deliberately a prerequisite rather than production AI wiring. The
+  subsequent typed-cash cutover must consume this participant and remove the
+  Main path without adding a parallel market or cash owner.

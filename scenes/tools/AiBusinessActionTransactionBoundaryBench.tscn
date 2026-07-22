@@ -1,0 +1,25 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/ai_business_action_transaction_boundary_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/RunRngService.tscn" id="2_rng"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/WorldSessionState.tscn" id="3_world"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardEconomyProductRouteFormulaRuntimeService.tscn" id="4_formula"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/ProductMarketRuntimeWorldBridge.tscn" id="5_bridge"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/ProductMarketRuntimeController.tscn" id="6_market"]
+[ext_resource type="Script" path="res://scripts/tools/ai_business_action_transaction_fake_weather.gd" id="7_weather"]
+
+[node name="AiBusinessActionTransactionBoundaryBench" type="Node"]
+script = ExtResource("1_bench")
+
+[node name="RunRngService" parent="." instance=ExtResource("2_rng")]
+
+[node name="WorldSessionState" parent="." instance=ExtResource("3_world")]
+
+[node name="CardEconomyProductRouteFormulaRuntimeService" parent="." instance=ExtResource("4_formula")]
+
+[node name="ProductMarketRuntimeWorldBridge" parent="." instance=ExtResource("5_bridge")]
+
+[node name="ProductMarketRuntimeController" parent="." instance=ExtResource("6_market")]
+
+[node name="QaWeatherRuntimeController" type="Node" parent="."]
+script = ExtResource("7_weather")
