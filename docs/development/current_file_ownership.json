@@ -1,23 +1,14 @@
 {
-  "schema_version": 3,
-  "generated_at": "2026-07-23T06:20:19+09:00",
-  "base_main_sha": "fbbd35963d9b30b216546e3e72ca0e7012b21d05",
+  "schema_version": 4,
+  "generated_at": "2026-07-23T06:46:24+09:00",
+  "base_main_sha": "53c4c02fcb6c17dbc8e97af88e753d78ea3cb225",
   "policy": {
     "one_writer_per_file_ownership_set": true,
-    "shared_hot_files_require_designated_integration_writer": true,
-    "unlisted_production_files_default_to_integration_only": true,
+    "shared_hot_files_require_integration_writer": true,
     "analysis_agents_do_not_write": true,
-    "feature_agents_commit_only_in_their_physical_worktree": true,
-    "coordinator_validates_and_publishes": true
-  },
-  "storage": {
-    "physical_project_drive": "E:",
-    "c_registered_worktree_paths_are_junctions": true,
-    "physical_c_worktree_count": 0,
-    "registered_worktree_count": 61,
-    "clean_worktree_count": 50,
-    "dirty_worktree_count": 11,
-    "missing_worktree_count": 0
+    "feature_agents_use_independent_branches": true,
+    "machine_paths_not_recorded": true,
+    "historical_worktrees_out_of_scope": true
   },
   "shared_hot_files": [
     "scripts/main.gd",
@@ -34,81 +25,66 @@
     "scenes/ui/RightInspector.tscn",
     "project.godot",
     "export_presets.cfg",
-    "tests/main_gd_architecture_gate_test.gd",
-    "tests/main_runtime_composition_test.gd",
-    "tests/layout_scene_smoke_test.gd",
-    "tests/smoke_test.gd",
-    "docs/migration/main_gd_cutover_ledger.json",
-    "docs/development_log.md",
-    "docs/development/current_program_state.json",
-    "docs/development/current_task_graph.json",
-    "docs/development/current_file_ownership.json",
-    "docs/development/alpha_01_to_alpha_02_program.json",
-    "docs/development/alpha_01_to_alpha_02_program.md",
     "resources/cards/runtime/card_runtime_catalog_v04.tres",
     "data/cards/card_runtime_catalog_v06.json",
     "assets/art/role_portraits/temporary/manifest.json",
     "data/art/card_illustration_manifest_v06.json",
-    "data/art/monster_body_art_manifest.json"
+    "data/art/monster_body_art_manifest.json",
+    "docs/development/current_program_state.json",
+    "docs/development/current_task_graph.json",
+    "docs/development/current_file_ownership.json",
+    "docs/development/alpha_03_program.md",
+    "docs/development/alpha_03_program.json",
+    "docs/development/alpha_03_execution_checkpoint.json"
   ],
   "active_ownership_sets": [
     {
-      "ownership_set_id": "PROGRAM-STATE-AFTER-AI-TYPED-FOUNDATION-FBBD359",
-      "writer": "primary integration coordinator",
-      "branch": "codex/program-state-after-ai-typed-foundation-fbbd359",
-      "worktree": "E:/SpaceSyndicateWorkspace/space-syndicate-main-merge-20260718",
-      "mode": "WRITE_DOCS_ONLY",
+      "ownership_set_id": "ALPHA03-PROGRAM-INITIALIZATION",
+      "writer": "integration coordinator",
+      "branch": "codex/alpha03-program-init-53c4c02",
+      "mode": "DOCS_ONLY",
       "files": [
         "docs/development/current_program_state.json",
         "docs/development/current_task_graph.json",
         "docs/development/current_file_ownership.json",
-        "docs/development/alpha_02_execution_checkpoint.json",
-        "docs/development/alpha_01_to_alpha_02_program.json",
-        "docs/development/alpha_01_to_alpha_02_program.md",
-        "docs/integration_requests/update_program_state_after_ai_business_cash.json"
+        "docs/development/alpha_03_program.md",
+        "docs/development/alpha_03_program.json",
+        "docs/development/alpha_03_execution_checkpoint.json"
       ],
-      "forbidden_files": ["all production scripts, scenes, resources, tests and assets"],
+      "forbidden": ["production scripts", "scenes", "resources", "tests", "assets"],
       "status": "ACTIVE"
     },
     {
-      "ownership_set_id": "P0-AI-WORLD-TYPED-PORTS-IMPLEMENTATION",
+      "ownership_set_id": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
       "writer": "one production writer plus analysis-only reviewers",
-      "branch": "codex/p0-ai-world-typed-ports-cb9194a",
-      "worktree": "E:/SpaceSyndicateWorkspace/space-syndicate-p0-ai-world-typed-ports-cb9194a",
-      "mode": "FOUNDATION_PORTS_MERGED_IMPLEMENTATION_ACTIVE",
+      "branch_pattern": "codex/alpha03-ai-world-typed-ports-<short_sha>",
+      "mode": "PRODUCTION_AND_FOCUSED_TESTS",
       "files": [
         "scripts/runtime/ai_runtime_world_bridge.gd",
         "scripts/runtime/ai_runtime_controller.gd",
-        "actor-scoped AI query and command ports",
-        "focused AI privacy, deterministic behavior and capability-negative tests"
+        "scene-owned actor-scoped AI query and command ports",
+        "focused AI privacy, parity and capability-negative tests"
       ],
-      "integration_request_only_files": [
+      "integration_request_only": [
         "scripts/main.gd",
         "scenes/main.tscn",
         "scripts/runtime/game_runtime_coordinator.gd",
         "scenes/runtime/GameRuntimeCoordinator.tscn",
-        "docs/migration/main_gd_cutover_ledger.json",
-        "docs/development_log.md"
+        "docs/migration/main_gd_cutover_ledger.json"
       ],
       "status": "ACTIVE"
     },
     {
-      "ownership_set_id": "P1-FIRST-ECONOMIC-ENGINE-EVIDENCE-REVIEW",
-      "writer": "unassigned current-main product reviewer",
-      "branch": "codex/p1-post-facility-fullrun-a644f45",
-      "worktree": "E:/SpaceSyndicateWorkspace/space-syndicate-p1-post-facility-fullrun-a644f45",
-      "mode": "READ_REVIEW_ONLY_UNTIL_CURRENT_MAIN_REFRESH",
+      "ownership_set_id": "P1-FIRST-ECONOMIC-ENGINE-EVIDENCE",
+      "writer": "one product verification writer",
+      "branch_pattern": "codex/alpha03-first-economic-engine-<short_sha>",
+      "mode": "FORMAL_PRODUCT_DRIVER_AND_EVIDENCE",
       "files": [
         "scripts/tools/full_run_quality_driver.gd",
-        "focused FullRun policy and contract tests",
+        "focused full-run policy and contract tests",
         "reports/playability/full_run/**"
       ],
-      "forbidden_files": [
-        "scripts/main.gd",
-        "GameRuntimeCoordinator production files",
-        "GameScreen production files",
-        "CommodityFlow and AI production owners"
-      ],
+      "forbidden": ["shared hot files", "direct WorldSession mutation", "fake Sale Receipt"],
       "status": "ACTIVE"
     }
   ],
@@ -116,44 +92,31 @@
     {
       "ownership_set_id": "P1-SAVE-OWNER-COVERAGE-INVENTORY",
       "mode": "DOCS_AND_TEST_INVENTORY_ONLY",
-      "files": ["save owner coverage report", "owner-specific task split", "no save schema changes"],
+      "files": ["save owner coverage report", "seven owner-specific child task definitions"],
       "status": "READY"
     },
     {
       "ownership_set_id": "P2-CARD-ART-WAVE1-ASSETS",
-      "mode": "WRITE_NEW_FILES_ONLY",
-      "files": ["eight selected card-ID asset directories", "prompt/license/hash records", "wave contact sheet"],
-      "integration_request_only_files": ["all production manifests and card scenes"],
+      "mode": "WRITE_NEW_ASSET_FILES_ONLY",
+      "files": ["selected card identity asset directories", "prompt/license/hash records", "wave contact sheet"],
+      "integration_request_only": ["production art manifests", "card scenes"],
       "status": "READY"
     },
     {
-      "ownership_set_id": "P4-MONSTER-ART-GATE",
-      "mode": "ONE_TEST_WRITER",
-      "files": ["tests/art_identity_gate_test.gd", "new scene-owned art audit helper/Bench", "docs/test_debt/monster_art_identity_gate.md"],
-      "forbidden_files": ["scripts/main.gd", "production monster owners", "monster art assets"],
+      "ownership_set_id": "P3-UX-AUDIO-PREFLIGHT",
+      "mode": "ANALYSIS_AND_CONTRACT_ONLY",
+      "files": ["TableAudioHost contract", "typed presentation cue inventory", "lightweight onboarding audit"],
       "status": "READY"
     },
     {
       "ownership_set_id": "P4-FULL-SMOKE-FIXTURE",
       "mode": "ONE_TEST_WRITER",
-      "files": ["one stale fixture family in tests/smoke_test.gd", "tests/helpers/**", "docs/test_debt/full_smoke_fixture_migration.md"],
-      "forbidden_files": ["scripts/main.gd", "production runtime owners"],
+      "files": ["one stale fixture family", "tests/helpers/**", "docs/test_debt/full_smoke_fixture_migration.md"],
+      "forbidden": ["scripts/main.gd", "retired compatibility wrappers", "production rule changes"],
       "status": "READY"
     }
   ],
-  "preserved_dirty_worktrees": [
-    {"branch": "integration/v06-playable", "classification": "generated_uid_only_do_not_clean"},
-    {"branch": "main", "classification": "generated_uid_only_do_not_clean_or_update_in_place"},
-    {"branch": "codex/scene-first-remove-main-gd", "classification": "historical_architecture_worktree_do_not_overwrite"},
-    {"branch": "codex/p0-commodity-postcommit-6506444", "classification": "abandoned_partial_predecessor_do_not_integrate_without_semantic_audit"},
-    {"branch": "codex/p1-post-first-resolution-16a0f6c", "classification": "generated_uid_only_do_not_clean"},
-    {"branch": "codex/p1-district-purchase-receipt-826c3bd", "classification": "generated_uid_only_do_not_clean"},
-    {"branch": "codex/p4-smoke-ai-military-session-16a0f6c", "classification": "tracked_test_changes_require_manual_audit"},
-    {"branch": "codex/playtest-alpha-0.1-089088a", "classification": "generated_uid_only_do_not_clean"},
-    {"branch": "codex/playtest-alpha-0.1-19f2030", "classification": "stale_unmerged_experiment_requires_manual_audit"},
-    {"branch": "codex/contract-forced-response-cutover", "classification": "retired_experiment_do_not_integrate"},
-    {"branch": "integration/pr46-merge-head-87dd12a", "classification": "validated_merge_head_with_generated_uid_only_do_not_clean"}
-  ],
+  "active_open_pull_requests": [],
   "conflict_count": 0,
   "unauthorized_shared_hot_file_write_count": 0
 }

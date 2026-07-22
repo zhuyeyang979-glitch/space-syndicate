@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "program_id": "ALPHA_0_3_CORE_COMPLETE_CLOSED_ALPHA",
+  "generated_at": "2026-07-23T06:46:24+09:00",
+  "initial_main_sha": "53c4c02fcb6c17dbc8e97af88e753d78ea3cb225",
+  "status": "ACTIVE",
+  "final_status": "NOT_CLAIMED",
+  "product_goal": {
+    "startup": true,
+    "new_game": true,
+    "complete_match": true,
+    "save_exit_restart_resume": true,
+    "terminal_settlement": true,
+    "return_to_menu_and_restart": true,
+    "clean_exit": true,
+    "windows_x86_64_closed_alpha": true
+  },
+  "phases": [
+    {"gate": "A", "task": "P0-AI-WORLD-TYPED-PORTS-CUTOVER", "status": "ACTIVE", "foundation_only": true, "result": "P0_AI_WORLD_TYPED_PORTS_CUTOVER_GREEN"},
+    {"gate": "B1", "task": "ALPHA-0.1-FIRST-ECONOMIC-ENGINE", "status": "ACTIVE", "result": "ALPHA_0_1_FIRST_ECONOMIC_ENGINE_GREEN"},
+    {"gate": "B2", "task": "ALPHA-0.1-COMPLETE-MATCH", "status": "BLOCKED", "dependencies": ["ALPHA-0.1-FIRST-ECONOMIC-ENGINE"], "result": "ALPHA_0_1_COMPLETE_MATCH_GREEN"},
+    {"gate": "B3", "task": "ALPHA-0.1-WINDOWS-RC", "status": "BLOCKED", "dependencies": ["ALPHA-0.1-COMPLETE-MATCH"], "result": "ALPHA_0_1_COMPLETE_MATCH_RC_GREEN"},
+    {"gate": "C", "task": "ALPHA-0.1-EXTERNAL-PLAYTEST", "status": "BLOCKED", "dependencies": ["ALPHA-0.1-WINDOWS-RC"], "required_testers": 5, "required_matches": 10, "required_completed_matches": 5},
+    {"gate": "D1", "task": "ALPHA-0.2-FULL-SAVE-RESUME", "status": "READY", "readiness_stage": "OWNER_INVENTORY", "transactional_owner_count": 12, "required_owner_count": 19},
+    {"gate": "D2-D4", "task": "ALPHA-0.2-CONTENT-PRESENTATION-RC", "status": "BLOCKED", "dependencies": ["ALPHA-0.1-EXTERNAL-PLAYTEST", "ALPHA-0.2-FULL-SAVE-RESUME"]},
+    {"gate": "E", "task": "ALPHA-0.3-CORE-SYSTEMS", "status": "BLOCKED", "dependencies": ["P0-AI-WORLD-TYPED-PORTS-CUTOVER", "ALPHA-0.2-FULL-SAVE-RESUME"]},
+    {"gate": "F", "task": "ALPHA-0.3-DATA-ONLY-CONTENT", "status": "BLOCKED", "dependencies": ["ALPHA-0.3-CORE-SYSTEMS"]},
+    {"gate": "G-H", "task": "ALPHA-0.3-ART-AUDIO-UX-ACCESSIBILITY", "status": "BLOCKED", "dependencies": ["ALPHA-0.3-DATA-ONLY-CONTENT"]},
+    {"gate": "I", "task": "ALPHA-0.3-BALANCE-REPLAYABILITY-STABILITY", "status": "BLOCKED", "dependencies": ["ALPHA-0.3-ART-AUDIO-UX-ACCESSIBILITY"]},
+    {"gate": "RELEASE", "task": "ALPHA-0.3-DRAFT-PRERELEASE", "status": "BLOCKED", "dependencies": ["ALPHA-0.3-BALANCE-REPLAYABILITY-STABILITY"], "result": "ALPHA_0_3_RELEASE_CANDIDATE_GREEN"}
+  ],
+  "content": {
+    "current": {"roles": 8, "card_identities": 40, "monsters": 8, "products": 46, "industries": 6},
+    "alpha_0_2": {"roles": 12, "card_identities": 56, "monsters": 10, "products": 46},
+    "alpha_0_3": {"roles": 16, "card_identities": 72, "monsters": 12, "products": 46, "industries": 6},
+    "organization_cards_status": "DEFERRED",
+    "new_mechanics_for_counting_forbidden": true
+  },
+  "hard_invariants": {
+    "rule_authority_gate_required": true,
+    "retired_mechanic_revival_allowed": false,
+    "main_fallback_allowed": false,
+    "old_new_dual_path_allowed": false,
+    "one_writer_per_file_ownership_set": true,
+    "force_push_allowed": false,
+    "squash_merge_allowed": false,
+    "rebase_merge_allowed": false,
+    "public_release_published": false,
+    "full_run_resume_claim": false,
+    "complete_match_proven": false
+  },
+  "release": {
+    "tag": null,
+    "draft": true,
+    "prerelease": true,
+    "public": false,
+    "artifact": "space-syndicate-alpha-0.3-rc<n>-windows-x86_64.zip",
+    "status": "NOT_CREATED"
+  },
+  "next_task": "P0-AI-WORLD-TYPED-PORTS-CUTOVER"
+}
