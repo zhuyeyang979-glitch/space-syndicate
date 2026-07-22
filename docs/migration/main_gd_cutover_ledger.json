@@ -1353,6 +1353,63 @@
       "status": "cut_over"
     },
     {
+      "domain": "commodity_flow_postcommit_exact_once",
+      "old_symbols": [
+        "Main._on_commodity_flow_receipt_batch",
+        "Main._sync_commodity_gdp_city_presentation",
+        "Main._city_gdp_change_reason_text",
+        "Main.CITY_GDP_HISTORY_LIMIT",
+        "CommodityFlowWorldBridge.notify_sale_receipt_batch_committed",
+        "CommodityFlowWorldBridge.bind_world"
+      ],
+      "old_consumers": [
+        "CommodityFlowRuntimeController committed Sale Receipt batch",
+        "Main GDP history, derivative, visual pulse and cash snapshot callback"
+      ],
+      "new_owner_scene": "res://scenes/runtime/CommodityFlowPostCommitReceiptConsumer.tscn",
+      "new_owner_script": "res://scripts/runtime/commodity_flow_post_commit_receipt_consumer.gd",
+      "new_public_api": [
+        "CommodityFlowPostCommitReceiptConsumer.consume_committed_batch",
+        "CommodityFlowPostCommitReceiptConsumer.retry_pending_batch",
+        "CommodityFlowPostCommitReceiptConsumer.to_save_data",
+        "CommodityFlowPostCommitReceiptConsumer.preflight_save_data",
+        "CommodityFlowPostCommitReceiptConsumer.apply_save_data",
+        "CommodityFlowRuntimeController.preflight_save_data",
+        "CommodityFlowPostCommitPublicReceipt.from_committed_batch",
+        "WorldSessionState.apply_commodity_postcommit_city_gdp_snapshot",
+        "WorldSessionState.record_commodity_postcommit_cash_snapshot",
+        "VisualCueRuntimeOwner.pulse_district_once",
+        "PlayerManaRuntimeController.advance_once",
+        "PublicLogProducerPort.append_receipt",
+        "TablePresentationRefreshScheduler.request_immediate",
+        "CommodityFlowPostCommitRestoreDependencyContract.validate_dependencies",
+        "RuntimeEconomyPort.recover_pending_postcommit"
+      ],
+      "tests": [
+        "res://tests/commodity_flow_postcommit_exact_once_test.gd",
+        "res://tests/commodity_flow_postcommit_recovery_integration_test.gd",
+        "res://tests/commodity_flow_postcommit_formal_envelope_test.gd",
+        "res://tests/commodity_flow_postcommit_downstream_checkpoint_test.gd",
+        "res://tests/commodity_flow_postcommit_restore_dependency_contract_test.gd",
+        "res://tests/commodity_flow_postcommit_registry_preflight_test.gd",
+        "res://tests/public_log_presentation_owner_save_test.gd",
+        "res://tests/commodity_flow_backlog_save_roundtrip_v06_test.gd",
+        "res://tests/bankruptcy_neutral_estate_save_owner_transaction_test.gd",
+        "res://tests/player_mana_save_owner_transaction_test.gd",
+        "res://tests/v06_save_owner_registry_test.gd",
+        "res://tests/table_presentation_query_ports_cutover_test.gd",
+        "res://tests/runtime_loop_cutover_test.gd",
+        "res://tests/typed_world_ports_boundary_test.gd",
+        "res://scenes/tools/CommodityFlowPostCommitExactOnceBench.tscn",
+        "res://tests/main_runtime_composition_test.gd",
+        "res://tests/main_gd_architecture_gate_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "THIS_CUTOVER",
+      "status": "cut_over"
+    },
+    {
       "domain": "developer_diagnostics_host",
       "old_symbols": [
         "Main developer_balance_panel",

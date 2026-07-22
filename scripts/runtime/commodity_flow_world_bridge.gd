@@ -6,7 +6,6 @@ const CURRENCY_SCALE := 100
 const PRODUCT_INDUSTRY_CATALOG := preload("res://resources/content/product_industry_catalog_v05.tres")
 const ROLE_RESOURCE_CASH_SETTLEMENT_SERVICE := preload("res://scripts/runtime/role_resource_cash_settlement_runtime_service.gd")
 
-var _world: Node
 var _world_session_state: WorldSessionState
 var _controller: Node
 var _region_infrastructure_controller: Node
@@ -34,10 +33,6 @@ func set_bankruptcy_estate_controller(controller: Node) -> void:
 	_bankruptcy_estate_controller = controller
 
 
-func bind_world(world: Node) -> void:
-	_world = world
-
-
 func set_world_session_state(state: WorldSessionState) -> void:
 	_world_session_state = state
 
@@ -48,10 +43,6 @@ func set_cash_commitment_query_port(port: MonsterWagerCashCommitmentQueryPort) -
 
 func world_session_state() -> WorldSessionState:
 	return _world_session_state
-
-
-func has_world() -> bool:
-	return _world != null and is_instance_valid(_world)
 
 
 func reset_state() -> void:
@@ -83,7 +74,7 @@ func enriched_installation_request(request: Dictionary) -> Dictionary:
 
 
 func capture_flow_facts() -> Dictionary:
-	if not has_world() or _region_infrastructure_controller == null or _product_market_controller == null:
+	if _world_session_state == null or _region_infrastructure_controller == null or _product_market_controller == null:
 		return {}
 	_capture_count += 1
 	var regions: Array = _region_infrastructure_controller.call("regions_snapshot") if _region_infrastructure_controller.has_method("regions_snapshot") else []
@@ -132,7 +123,7 @@ func capture_flow_facts() -> Dictionary:
 
 
 func apply_sale_receipt_batch(batch: Dictionary) -> Dictionary:
-	if not has_world() or not _is_pure_data(batch):
+	if _world_session_state == null or not _is_pure_data(batch):
 		return {"applied": false, "reason": "world_or_batch_invalid"}
 	var batch_id := str(batch.get("batch_id", ""))
 	if batch_id.is_empty():
@@ -253,14 +244,9 @@ func apply_sale_receipt_batch(batch: Dictionary) -> Dictionary:
 	return {"applied": true, "duplicate": false, "batch_id": batch_id, "receipt_count": receipts.size(), "player_delta_count": deltas_by_player.size()}
 
 
-func notify_sale_receipt_batch_committed(batch: Dictionary) -> void:
-	if has_world() and _world.has_method("_on_commodity_flow_receipt_batch"):
-		_world.call("_on_commodity_flow_receipt_batch", batch.duplicate(true))
-
-
 func debug_snapshot() -> Dictionary:
 	return {
-		"bridge_ready": has_world() and _controller != null and _region_infrastructure_controller != null and _product_market_controller != null and _route_network_controller != null and _bankruptcy_estate_controller != null,
+		"bridge_ready": _world_session_state != null and _controller != null and _region_infrastructure_controller != null and _product_market_controller != null and _route_network_controller != null and _bankruptcy_estate_controller != null,
 		"runtime_owner": "none",
 		"bridge_role": "commodity_flow_world_facts_and_atomic_cash_apply",
 		"world_session_state_ready": _world_session_state != null,

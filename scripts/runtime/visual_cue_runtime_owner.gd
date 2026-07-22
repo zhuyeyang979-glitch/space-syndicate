@@ -9,6 +9,7 @@ const DISTRICT_PULSE_DURATION := 1.2
 const MAX_VISUAL_TRAILS := 18
 const MAX_ACTION_CALLOUTS := 8
 const MAX_MAP_EVENT_EFFECTS := 32
+const POSTCOMMIT_PULSE_LINEAGE_LIMIT := 256
 const MELEE_RANGE_METERS := 110.0
 const SFX_KEYS := ["card", "impact", "storm"]
 
@@ -16,6 +17,9 @@ var _movement_trails: Array = []
 var _action_callouts: Array = []
 var _map_event_effects: Array = []
 var _district_pulses: Dictionary = {}
+var _postcommit_pulse_lineage: Dictionary = {}
+var _postcommit_pulse_order: Array[String] = []
+var _postcommit_pulse_collision_count := 0
 var _world_width_m := 0.0
 var _world_height_m := 0.0
 var _sfx_players: Dictionary = {}
@@ -42,6 +46,9 @@ func reset_state() -> void:
 	_action_callouts.clear()
 	_map_event_effects.clear()
 	_district_pulses.clear()
+	_postcommit_pulse_lineage.clear()
+	_postcommit_pulse_order.clear()
+	_postcommit_pulse_collision_count = 0
 	_revision += 1
 
 
@@ -182,6 +189,56 @@ func pulse_district(index: int, color: Color, duration: float = DISTRICT_PULSE_D
 	return {"pulsed": true, "district_index": index, "revision": _revision}
 
 
+func pulse_district_once(event_id: String, index: int, color: Color, duration: float = DISTRICT_PULSE_DURATION) -> Dictionary:
+	## Presentation-only exact-once target. The durable post-commit journal lives
+	## in CommodityFlowPostCommitReceiptConsumer; this bounded runtime guard closes
+	## the "pulse succeeded but caller was interrupted" window in one process.
+	var normalized_event_id := event_id.strip_edges()
+	if normalized_event_id.is_empty() or normalized_event_id != event_id or normalized_event_id.length() > 160:
+		return {"pulsed": false, "duplicate": false, "reason": "pulse_event_id_invalid"}
+	var resolved_duration := maxf(0.1, duration)
+	if index < 0 or not is_finite(duration) \
+			or not is_finite(color.r) or not is_finite(color.g) \
+			or not is_finite(color.b) or not is_finite(color.a):
+		return {"pulsed": false, "duplicate": false, "reason": "pulse_payload_invalid"}
+	var payload_fingerprint := JSON.stringify([
+		normalized_event_id,
+		index,
+		color.r,
+		color.g,
+		color.b,
+		color.a,
+		resolved_duration,
+	]).sha256_text()
+	if _postcommit_pulse_lineage.has(normalized_event_id):
+		if str(_postcommit_pulse_lineage.get(normalized_event_id, "")) != payload_fingerprint:
+			_postcommit_pulse_collision_count += 1
+			return {
+				"pulsed": false,
+				"duplicate": false,
+				"reason": "postcommit_pulse_lineage_collision",
+				"district_index": index,
+				"revision": _revision,
+			}
+		return {
+			"pulsed": true,
+			"duplicate": true,
+			"reason": "postcommit_pulse_replayed",
+			"district_index": index,
+			"revision": _revision,
+		}
+	var receipt := pulse_district(index, color, resolved_duration)
+	if not bool(receipt.get("pulsed", false)):
+		return receipt
+	_postcommit_pulse_lineage[normalized_event_id] = payload_fingerprint
+	_postcommit_pulse_order.append(normalized_event_id)
+	while _postcommit_pulse_order.size() > POSTCOMMIT_PULSE_LINEAGE_LIMIT:
+		_postcommit_pulse_lineage.erase(_postcommit_pulse_order.pop_front())
+	receipt["duplicate"] = false
+	receipt["reason"] = "postcommit_pulse_applied"
+	return receipt
+
+
 func public_snapshot() -> Dictionary:
 	return {
 		"movement_trails": _movement_trails.duplicate(true),
@@ -211,6 +268,9 @@ func debug_snapshot() -> Dictionary:
 		"action_callout_count": _action_callouts.size(),
 		"map_event_effect_count": _map_event_effects.size(),
 		"district_pulse_count": _district_pulses.size(),
+		"postcommit_pulse_lineage_count": _postcommit_pulse_lineage.size(),
+		"postcommit_pulse_lineage_limit": POSTCOMMIT_PULSE_LINEAGE_LIMIT,
+		"postcommit_pulse_collision_count": _postcommit_pulse_collision_count,
 		"advance_count": _advance_count,
 		"revision": _revision,
 		"owns_save_schema": false,

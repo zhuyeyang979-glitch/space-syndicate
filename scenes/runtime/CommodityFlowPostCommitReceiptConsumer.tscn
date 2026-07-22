@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/commodity_flow_post_commit_receipt_consumer.gd" id="1_consumer"]
+
+[node name="CommodityFlowPostCommitReceiptConsumer" type="Node"]
+script = ExtResource("1_consumer")
+editor_description = "Scene-owned exact-once consumer for committed CommodityFlow GDP/history, derivative, pulse, cash-snapshot, bankruptcy and asset-recovery effects."

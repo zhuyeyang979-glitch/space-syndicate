@@ -91,10 +91,6 @@ class FlowFactsBridge:
 		batches.append(batch.duplicate(true))
 		return {"applied": true, "receipt_count": (batch.get("receipts", []) as Array).size()}
 
-	func notify_sale_receipt_batch_committed(_batch: Dictionary) -> void:
-		pass
-
-
 func _ready() -> void:
 	if auto_run and not Engine.is_editor_hint():
 		call_deferred("run_suite")

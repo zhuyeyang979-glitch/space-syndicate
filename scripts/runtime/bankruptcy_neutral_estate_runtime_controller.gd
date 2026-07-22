@@ -4,7 +4,9 @@ class_name BankruptcyNeutralEstateRuntimeController
 
 const RULESET_ID := "v0.6"
 const LIFECYCLE_VERSION := 1
-const SAVE_STATE_VERSION := 1
+const SAVE_STATE_VERSION := 2
+const LEGACY_SAVE_STATE_VERSION := 1
+const JOURNAL_LIMIT := 128
 const ESTATE_COUNT_KEYS := [
 	"hand_cards_removed",
 	"goods_removed",
@@ -12,10 +14,11 @@ const ESTATE_COUNT_KEYS := [
 	"monsters_orphaned",
 	"facilities_neutralized",
 ]
-const SAVE_KEYS := ["state_version", "ruleset_id", "journal", "neutral_rent_journal", "last_public_receipt", "last_survivor_transaction_id"]
-const JOURNAL_RECORD_KEYS := ["state", "reason_code", "player_indices", "estate_counts", "lifecycle_token", "occurred_at", "public_receipt"]
+const SAVE_KEYS := ["state_version", "ruleset_id", "journal", "neutral_rent_journal", "last_public_receipt", "last_survivor_transaction_id", "commodity_flow_retired_sequence"]
+const JOURNAL_RECORD_KEYS := ["state", "reason_code", "player_indices", "estate_counts", "lifecycle_token", "occurred_at", "public_receipt", "request_fingerprint", "source_fingerprint"]
 const JOURNAL_STATES := ["prepared", "committed", "finalized", "rolled_back"]
 const PUBLIC_RECEIPT_KEYS := ["player_indices", "estate_counts", "reason"]
+const CHECKPOINT_REQUEST_KEYS := ["transaction_id", "reason_code", "occurred_at", "source_fingerprint"]
 
 var _configured := false
 var _world_bridge: Node
@@ -23,6 +26,7 @@ var _journal: Dictionary = {}
 var _neutral_rent_journal: Dictionary = {}
 var _last_public_receipt: Dictionary = {}
 var _last_survivor_transaction_id := ""
+var _commodity_flow_retired_sequence := 0
 
 
 func set_world_bridge(bridge: Node) -> void:
@@ -47,6 +51,7 @@ func reset_state() -> void:
 	_neutral_rent_journal.clear()
 	_last_public_receipt.clear()
 	_last_survivor_transaction_id = ""
+	_commodity_flow_retired_sequence = 0
 
 
 func to_save_data() -> Dictionary:
@@ -57,6 +62,7 @@ func to_save_data() -> Dictionary:
 		"neutral_rent_journal": _neutral_rent_journal.duplicate(true),
 		"last_public_receipt": _last_public_receipt.duplicate(true),
 		"last_survivor_transaction_id": _last_survivor_transaction_id,
+		"commodity_flow_retired_sequence": _commodity_flow_retired_sequence,
 	}
 
 
@@ -68,11 +74,14 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	_neutral_rent_journal = (prepared.get("neutral_rent_journal", {}) as Dictionary).duplicate(true)
 	_last_public_receipt = (prepared.get("last_public_receipt", {}) as Dictionary).duplicate(true)
 	_last_survivor_transaction_id = str(prepared.get("last_survivor_transaction_id", ""))
+	_commodity_flow_retired_sequence = int(prepared.get("commodity_flow_retired_sequence", 0))
 	return {
 		"applied": true,
 		"reason": "",
 		"state_version": SAVE_STATE_VERSION,
 		"transaction_count": _journal.size(),
+		"journal_limit": JOURNAL_LIMIT,
+		"commodity_flow_retired_sequence": _commodity_flow_retired_sequence,
 		"neutral_rent_receipt_count": _neutral_rent_journal.size(),
 	}
 
@@ -89,19 +98,42 @@ func settle_checkpoint(request: Dictionary) -> Dictionary:
 	return finalize_checkpoint(committed)
 
 
+func checkpoint_transaction_binding(transaction_id: String) -> Dictionary:
+	var record_variant: Variant = _journal.get(transaction_id, {})
+	if not (record_variant is Dictionary):
+		return {}
+	var record := record_variant as Dictionary
+	if record.is_empty():
+		return {}
+	return {
+		"transaction_id": transaction_id,
+		"state": str(record.get("state", "")),
+		"finalized": str(record.get("state", "")) == "finalized",
+		"request_fingerprint": str(record.get("request_fingerprint", "")),
+	}
+
+
 func prepare_checkpoint(request: Dictionary) -> Dictionary:
 	if not _configured or _world_bridge == null:
 		return _failure("bankruptcy_neutral_estate_not_ready")
 	if not _is_pure_data(request):
 		return _failure("bankruptcy_checkpoint_not_pure_data")
-	var transaction_id := str(request.get("transaction_id", "")).strip_edges()
-	if transaction_id.is_empty():
-		return _failure("bankruptcy_transaction_id_missing")
-	var reason_code := str(request.get("reason_code", "atomic_settlement")).strip_edges()
-	if reason_code.is_empty():
-		reason_code = "atomic_settlement"
+	var request_binding := _checkpoint_request_binding(request)
+	if not bool(request_binding.get("valid", false)):
+		return _failure(str(request_binding.get("reason_code", "bankruptcy_checkpoint_request_invalid")))
+	var transaction_id := str(request_binding.get("transaction_id", ""))
+	var reason_code := str(request_binding.get("reason_code", "atomic_settlement"))
+	var occurred_at := float(request_binding.get("occurred_at", 0.0))
+	var request_fingerprint := str(request_binding.get("request_fingerprint", ""))
+	var source_fingerprint := str(request_binding.get("source_fingerprint", ""))
 	if _journal.has(transaction_id):
-		return _lifecycle_replay(transaction_id)
+		return _lifecycle_replay(transaction_id, request_fingerprint)
+	var commodity_sequence := _commodity_flow_transaction_sequence(transaction_id)
+	if commodity_sequence > 0 and commodity_sequence <= _commodity_flow_retired_sequence:
+		return _failure("bankruptcy_transaction_lineage_evicted")
+	_prune_terminal_journal(JOURNAL_LIMIT - 1)
+	if _journal.size() >= JOURNAL_LIMIT:
+		return _failure("bankruptcy_journal_capacity_exhausted")
 	var candidates_variant: Variant = _world_bridge.call("capture_bankruptcy_candidates")
 	if not (candidates_variant is Array):
 		return _failure("bankruptcy_candidates_invalid")
@@ -119,12 +151,17 @@ func prepare_checkpoint(request: Dictionary) -> Dictionary:
 		var empty_public := _public_receipt([], _zero_estate_counts(), "no_bankruptcy")
 		_journal[transaction_id] = {
 			"state": "finalized",
-			"reason_code": "no_bankruptcy",
+			"reason_code": reason_code,
 			"player_indices": [],
 			"estate_counts": _zero_estate_counts(),
+			"lifecycle_token": "",
+			"occurred_at": occurred_at,
+			"request_fingerprint": request_fingerprint,
+			"source_fingerprint": source_fingerprint,
 			"public_receipt": empty_public,
 		}
 		_last_public_receipt = empty_public.duplicate(true)
+		_prune_terminal_journal()
 		return {
 			"prepared": true,
 			"committed": true,
@@ -132,20 +169,22 @@ func prepare_checkpoint(request: Dictionary) -> Dictionary:
 			"terminal": true,
 			"duplicate": false,
 			"reason_code": "no_bankruptcy",
+			"transaction_id": transaction_id,
+			"request_fingerprint": request_fingerprint,
 			"public_receipt": empty_public,
 		}
 	var lifecycle_request := {
 		"transaction_id": transaction_id,
 		"player_indices": player_indices.duplicate(),
 		"reason_code": reason_code,
-		"occurred_at": maxf(0.0, float(request.get("occurred_at", 0.0))),
+		"occurred_at": occurred_at,
 	}
 	var prepare_variant: Variant = _world_bridge.call("bankruptcy_estate_stage", "prepare", lifecycle_request)
 	var prepare_result: Dictionary = (prepare_variant as Dictionary).duplicate(true) if prepare_variant is Dictionary else {}
 	if not bool(prepare_result.get("prepared", false)):
 		return _failure(str(prepare_result.get("reason_code", "bankruptcy_participant_prepare_failed")))
 	var counts := _estate_counts(prepare_result.get("estate_counts", {}))
-	var token := _lifecycle_token(transaction_id, player_indices, reason_code)
+	var token := _lifecycle_token(transaction_id, player_indices, reason_code, request_fingerprint)
 	_journal[transaction_id] = {
 		"state": "prepared",
 		"reason_code": reason_code,
@@ -153,6 +192,8 @@ func prepare_checkpoint(request: Dictionary) -> Dictionary:
 		"estate_counts": counts.duplicate(true),
 		"lifecycle_token": token,
 		"occurred_at": float(lifecycle_request.get("occurred_at", 0.0)),
+		"request_fingerprint": request_fingerprint,
+		"source_fingerprint": source_fingerprint,
 	}
 	return {
 		"prepared": true,
@@ -163,6 +204,7 @@ func prepare_checkpoint(request: Dictionary) -> Dictionary:
 		"reason_code": "bankruptcy_estate_prepared",
 		"transaction_id": transaction_id,
 		"lifecycle_token": token,
+		"request_fingerprint": request_fingerprint,
 	}
 
 
@@ -173,7 +215,9 @@ func commit_checkpoint(prepared: Dictionary) -> Dictionary:
 		return _failure("bankruptcy_transaction_missing")
 	if str(record.get("state", "")) in ["committed", "finalized"]:
 		return _lifecycle_replay(transaction_id)
-	if str(record.get("state", "")) != "prepared" or str(prepared.get("lifecycle_token", "")) != str(record.get("lifecycle_token", "")):
+	if str(record.get("state", "")) != "prepared" \
+			or str(prepared.get("lifecycle_token", "")) != str(record.get("lifecycle_token", "")) \
+			or str(prepared.get("request_fingerprint", "")) != str(record.get("request_fingerprint", "")):
 		return _failure("bankruptcy_prepared_token_invalid")
 	var lifecycle_request := _record_request(transaction_id, record)
 	var commit_variant: Variant = _world_bridge.call("bankruptcy_estate_stage", "commit", lifecycle_request)
@@ -196,6 +240,7 @@ func commit_checkpoint(prepared: Dictionary) -> Dictionary:
 		"reason_code": "bankruptcy_estate_committed",
 		"transaction_id": transaction_id,
 		"lifecycle_token": str(record.get("lifecycle_token", "")),
+		"request_fingerprint": str(record.get("request_fingerprint", "")),
 	}
 
 
@@ -214,6 +259,7 @@ func rollback_checkpoint(receipt: Dictionary) -> Dictionary:
 		return _failure(str(rollback_result.get("reason_code", "bankruptcy_participant_rollback_failed")))
 	record["state"] = "rolled_back"
 	_journal[transaction_id] = record
+	_prune_terminal_journal()
 	return {"rolled_back": true, "duplicate": false, "reason_code": "bankruptcy_estate_rolled_back"}
 
 
@@ -224,22 +270,24 @@ func finalize_checkpoint(receipt: Dictionary) -> Dictionary:
 		return _failure("bankruptcy_transaction_missing")
 	if str(record.get("state", "")) == "finalized":
 		return _lifecycle_replay(transaction_id)
-	if str(record.get("state", "")) != "committed" or str(receipt.get("lifecycle_token", "")) != str(record.get("lifecycle_token", "")):
+	if str(record.get("state", "")) != "committed" \
+			or str(receipt.get("lifecycle_token", "")) != str(record.get("lifecycle_token", "")) \
+			or str(receipt.get("request_fingerprint", "")) != str(record.get("request_fingerprint", "")):
 		return _failure("bankruptcy_commit_receipt_invalid")
 	var lifecycle_request := _record_request(transaction_id, record)
 	var finalize_variant: Variant = _world_bridge.call("bankruptcy_estate_stage", "finalize", lifecycle_request)
 	var finalize_result: Dictionary = (finalize_variant as Dictionary).duplicate(true) if finalize_variant is Dictionary else {}
 	if not bool(finalize_result.get("finalized", false)):
 		return _failure(str(finalize_result.get("reason_code", "bankruptcy_participant_finalize_failed")))
-	var public_receipt := _public_receipt(
+	var finalized_public_receipt := _public_receipt(
 		record.get("player_indices", []),
 		_estate_counts(finalize_result.get("estate_counts", record.get("estate_counts", {}))),
 		str(record.get("reason_code", "atomic_settlement"))
 	)
 	record["state"] = "finalized"
-	record["public_receipt"] = public_receipt.duplicate(true)
+	record["public_receipt"] = finalized_public_receipt.duplicate(true)
 	_journal[transaction_id] = record
-	_last_public_receipt = public_receipt.duplicate(true)
+	_last_public_receipt = finalized_public_receipt.duplicate(true)
 	var active_variant: Variant = _world_bridge.call("active_player_indices") if _world_bridge.has_method("active_player_indices") else []
 	var active_players: Array = (active_variant as Array).duplicate() if active_variant is Array else []
 	if active_players.size() == 1 and _last_survivor_transaction_id.is_empty() and _world_bridge.has_method("request_last_survivor_victory"):
@@ -247,6 +295,7 @@ func finalize_checkpoint(receipt: Dictionary) -> Dictionary:
 		var victory_result: Dictionary = (victory_variant as Dictionary).duplicate(true) if victory_variant is Dictionary else {}
 		if bool(victory_result.get("requested", false)):
 			_last_survivor_transaction_id = transaction_id
+	_prune_terminal_journal()
 	return {
 		"prepared": true,
 		"committed": true,
@@ -254,7 +303,9 @@ func finalize_checkpoint(receipt: Dictionary) -> Dictionary:
 		"terminal": true,
 		"duplicate": false,
 		"reason_code": "bankruptcy_estate_finalized",
-		"public_receipt": public_receipt,
+		"transaction_id": transaction_id,
+		"request_fingerprint": str(record.get("request_fingerprint", "")),
+		"public_receipt": finalized_public_receipt,
 	}
 
 
@@ -300,6 +351,8 @@ func debug_snapshot() -> Dictionary:
 		"runtime_owner": "BankruptcyNeutralEstateRuntimeController",
 		"lifecycle_version": LIFECYCLE_VERSION,
 		"transaction_count": _journal.size(),
+		"journal_limit": JOURNAL_LIMIT,
+		"commodity_flow_retired_sequence": _commodity_flow_retired_sequence,
 		"prepared_count": _journal_state_count("prepared"),
 		"committed_count": _journal_state_count("committed"),
 		"rolled_back_count": _journal_state_count("rolled_back"),
@@ -319,8 +372,88 @@ func _record_request(transaction_id: String, record: Dictionary) -> Dictionary:
 	}
 
 
-func _lifecycle_replay(transaction_id: String) -> Dictionary:
+func _checkpoint_request_binding(request: Dictionary) -> Dictionary:
+	if not _keys_allowed(request, CHECKPOINT_REQUEST_KEYS):
+		return {"valid": false, "reason_code": "bankruptcy_checkpoint_request_not_allowlisted"}
+	var transaction_id_variant: Variant = request.get("transaction_id")
+	var reason_variant: Variant = request.get("reason_code", "atomic_settlement")
+	var occurred_variant: Variant = request.get("occurred_at", 0.0)
+	var source_variant: Variant = request.get("source_fingerprint", "")
+	if not (transaction_id_variant is String) \
+			or not (reason_variant is String) \
+			or not (occurred_variant is int or occurred_variant is float) \
+			or not (source_variant is String):
+		return {"valid": false, "reason_code": "bankruptcy_checkpoint_request_shape_invalid"}
+	var transaction_id := str(transaction_id_variant).strip_edges()
+	var reason_code := str(reason_variant).strip_edges()
+	var occurred_at := float(occurred_variant)
+	var source_fingerprint := str(source_variant).strip_edges()
+	if transaction_id.is_empty() or transaction_id != str(transaction_id_variant) \
+			or reason_code.is_empty() or reason_code != str(reason_variant) \
+			or not is_finite(occurred_at) or occurred_at < 0.0 \
+			or not source_fingerprint.is_empty() and not _valid_sha256(source_fingerprint):
+		return {"valid": false, "reason_code": "bankruptcy_checkpoint_request_invalid"}
+	var request_fingerprint := JSON.stringify([
+		transaction_id,
+		reason_code,
+		occurred_at,
+		source_fingerprint,
+	]).sha256_text()
+	return {
+		"valid": true,
+		"transaction_id": transaction_id,
+		"reason_code": reason_code,
+		"occurred_at": occurred_at,
+		"source_fingerprint": source_fingerprint,
+		"request_fingerprint": request_fingerprint,
+	}
+
+
+func _commodity_flow_transaction_sequence(transaction_id: String) -> int:
+	const PREFIX := "bankruptcy:commodity-flow-batch-"
+	if not transaction_id.begins_with(PREFIX):
+		return 0
+	var sequence_text := transaction_id.trim_prefix(PREFIX)
+	if sequence_text.length() != 10 or not sequence_text.is_valid_int():
+		return 0
+	var sequence := int(sequence_text)
+	return sequence if sequence > 0 and "%010d" % sequence == sequence_text else 0
+
+
+func _prune_terminal_journal(max_size := JOURNAL_LIMIT) -> void:
+	var normalized_limit := maxi(0, max_size)
+	while _journal.size() > normalized_limit:
+		var candidates: Array[String] = []
+		for transaction_id_variant in _journal.keys():
+			var transaction_id := str(transaction_id_variant)
+			var record: Dictionary = _journal.get(transaction_id_variant, {}) \
+				if _journal.get(transaction_id_variant, {}) is Dictionary else {}
+			if transaction_id == _last_survivor_transaction_id \
+					or str(record.get("state", "")) not in ["finalized", "rolled_back"] \
+					or _commodity_flow_transaction_sequence(transaction_id) <= 0:
+				continue
+			candidates.append(transaction_id)
+		if candidates.is_empty():
+			return
+		candidates.sort_custom(func(left: String, right: String) -> bool:
+			var left_record: Dictionary = _journal.get(left, {}) if _journal.get(left, {}) is Dictionary else {}
+			var right_record: Dictionary = _journal.get(right, {}) if _journal.get(right, {}) is Dictionary else {}
+			var left_time := float(left_record.get("occurred_at", 0.0))
+			var right_time := float(right_record.get("occurred_at", 0.0))
+			return left < right if is_equal_approx(left_time, right_time) else left_time < right_time
+		)
+		var evicted_id := candidates[0]
+		var evicted_sequence := _commodity_flow_transaction_sequence(evicted_id)
+		if evicted_sequence > 0:
+			_commodity_flow_retired_sequence = maxi(_commodity_flow_retired_sequence, evicted_sequence)
+		_journal.erase(evicted_id)
+
+
+func _lifecycle_replay(transaction_id: String, expected_request_fingerprint := "") -> Dictionary:
 	var record: Dictionary = _journal.get(transaction_id, {}) if _journal.get(transaction_id, {}) is Dictionary else {}
+	var request_fingerprint := str(record.get("request_fingerprint", ""))
+	if not expected_request_fingerprint.is_empty() and request_fingerprint != expected_request_fingerprint:
+		return _failure("bankruptcy_transaction_binding_collision")
 	var state := str(record.get("state", ""))
 	if state == "finalized":
 		return {
@@ -330,6 +463,8 @@ func _lifecycle_replay(transaction_id: String) -> Dictionary:
 			"terminal": true,
 			"duplicate": true,
 			"reason_code": "bankruptcy_estate_replay",
+			"transaction_id": transaction_id,
+			"request_fingerprint": request_fingerprint,
 			"public_receipt": (record.get("public_receipt", {}) as Dictionary).duplicate(true) if record.get("public_receipt", {}) is Dictionary else {},
 		}
 	return {
@@ -341,6 +476,7 @@ func _lifecycle_replay(transaction_id: String) -> Dictionary:
 		"reason_code": "bankruptcy_estate_%s_replay" % state,
 		"transaction_id": transaction_id,
 		"lifecycle_token": str(record.get("lifecycle_token", "")),
+		"request_fingerprint": request_fingerprint,
 	}
 
 
@@ -369,8 +505,18 @@ func _zero_estate_counts() -> Dictionary:
 	return result
 
 
-func _lifecycle_token(transaction_id: String, player_indices: Array, reason_code: String) -> String:
-	return JSON.stringify({"transaction_id": transaction_id, "player_indices": player_indices, "reason_code": reason_code}).sha256_text()
+func _lifecycle_token(
+	transaction_id: String,
+	player_indices: Array,
+	reason_code: String,
+	request_fingerprint: String
+) -> String:
+	return JSON.stringify({
+		"transaction_id": transaction_id,
+		"player_indices": player_indices,
+		"reason_code": reason_code,
+		"request_fingerprint": request_fingerprint,
+	}).sha256_text()
 
 
 func _journal_state_count(state: String) -> int:
@@ -395,10 +541,17 @@ func _failure(reason_code: String) -> Dictionary:
 func _prepare_save_data(data: Dictionary) -> Dictionary:
 	if not _is_pure_data(data) or not _keys_allowed(data, SAVE_KEYS):
 		return {"valid": false, "reason": "bankruptcy_save_not_allowlisted"}
-	if int(data.get("state_version", -1)) != SAVE_STATE_VERSION or str(data.get("ruleset_id", "")) != RULESET_ID:
+	var source_version := int(data.get("state_version", -1))
+	if source_version not in [LEGACY_SAVE_STATE_VERSION, SAVE_STATE_VERSION] \
+			or str(data.get("ruleset_id", "")) != RULESET_ID \
+			or source_version == SAVE_STATE_VERSION and not _has_exact_keys(data, SAVE_KEYS):
 		return {"valid": false, "reason": "bankruptcy_save_header_invalid"}
 	if not (data.get("journal", {}) is Dictionary) or not (data.get("neutral_rent_journal", {}) is Dictionary) or not (data.get("last_public_receipt", {}) is Dictionary):
 		return {"valid": false, "reason": "bankruptcy_save_shape_invalid"}
+	if (data.has("commodity_flow_retired_sequence") and not (data.get("commodity_flow_retired_sequence") is int)) \
+			or (data.get("journal", {}) as Dictionary).size() > JOURNAL_LIMIT:
+		return {"valid": false, "reason": "bankruptcy_save_lineage_bound_invalid"}
+	var retired_sequence := maxi(0, int(data.get("commodity_flow_retired_sequence", 0)))
 	var normalized_journal := _normalized_journal(data.get("journal", {}) as Dictionary)
 	if not bool(normalized_journal.get("valid", false)):
 		return normalized_journal
@@ -409,6 +562,10 @@ func _prepare_save_data(data: Dictionary) -> Dictionary:
 	if not bool(normalized_public.get("valid", false)):
 		return normalized_public
 	var journal: Dictionary = normalized_journal.get("value", {})
+	for transaction_id_variant in journal.keys():
+		var sequence := _commodity_flow_transaction_sequence(str(transaction_id_variant))
+		if sequence > 0 and sequence <= retired_sequence:
+			return {"valid": false, "reason": "bankruptcy_save_retired_lineage_collision"}
 	var last_survivor_id := str(data.get("last_survivor_transaction_id", "")).strip_edges()
 	if not last_survivor_id.is_empty():
 		var survivor_record: Dictionary = journal.get(last_survivor_id, {}) if journal.get(last_survivor_id, {}) is Dictionary else {}
@@ -420,6 +577,7 @@ func _prepare_save_data(data: Dictionary) -> Dictionary:
 		"neutral_rent_journal": normalized_rent.get("value", {}),
 		"last_public_receipt": normalized_public.get("value", {}),
 		"last_survivor_transaction_id": last_survivor_id,
+		"commodity_flow_retired_sequence": retired_sequence,
 	}
 
 
@@ -445,9 +603,9 @@ func _normalized_journal(source: Dictionary) -> Dictionary:
 		var lifecycle_token := str(record.get("lifecycle_token", ""))
 		if state in ["prepared", "committed"] and lifecycle_token.is_empty():
 			return {"valid": false, "reason": "bankruptcy_lifecycle_token_missing"}
-		var public_receipt := _normalized_public_receipt(record.get("public_receipt", {}) as Dictionary if record.get("public_receipt", {}) is Dictionary else {}, true)
-		if not bool(public_receipt.get("valid", false)):
-			return public_receipt
+		var normalized_public_receipt := _normalized_public_receipt(record.get("public_receipt", {}) as Dictionary if record.get("public_receipt", {}) is Dictionary else {}, true)
+		if not bool(normalized_public_receipt.get("valid", false)):
+			return normalized_public_receipt
 		var normalized_record := {
 			"state": state,
 			"reason_code": reason_code,
@@ -456,7 +614,21 @@ func _normalized_journal(source: Dictionary) -> Dictionary:
 			"lifecycle_token": lifecycle_token,
 			"occurred_at": maxf(0.0, float(record.get("occurred_at", 0.0))),
 		}
-		var public_value: Dictionary = public_receipt.get("value", {})
+		var source_fingerprint := str(record.get("source_fingerprint", ""))
+		if not source_fingerprint.is_empty() and not _valid_sha256(source_fingerprint):
+			return {"valid": false, "reason": "bankruptcy_journal_source_fingerprint_invalid"}
+		var expected_request_fingerprint := JSON.stringify([
+			transaction_id,
+			reason_code,
+			float(normalized_record.get("occurred_at", 0.0)),
+			source_fingerprint,
+		]).sha256_text()
+		var request_fingerprint := str(record.get("request_fingerprint", expected_request_fingerprint))
+		if request_fingerprint != expected_request_fingerprint:
+			return {"valid": false, "reason": "bankruptcy_journal_request_fingerprint_invalid"}
+		normalized_record["request_fingerprint"] = request_fingerprint
+		normalized_record["source_fingerprint"] = source_fingerprint
+		var public_value: Dictionary = normalized_public_receipt.get("value", {})
 		if not public_value.is_empty():
 			normalized_record["public_receipt"] = public_value
 		result[transaction_id] = normalized_record
@@ -512,6 +684,19 @@ func _normalized_player_indices(value: Variant) -> Dictionary:
 func _keys_allowed(source: Dictionary, allowed: Array) -> bool:
 	for key_variant in source.keys():
 		if not (key_variant is String or key_variant is StringName) or not allowed.has(str(key_variant)):
+			return false
+	return true
+
+
+func _has_exact_keys(source: Dictionary, expected: Array) -> bool:
+	return source.size() == expected.size() and _keys_allowed(source, expected)
+
+
+func _valid_sha256(value: String) -> bool:
+	if value.length() != 64:
+		return false
+	for character_index in range(value.length()):
+		if not "0123456789abcdef".contains(value.substr(character_index, 1)):
 			return false
 	return true
 

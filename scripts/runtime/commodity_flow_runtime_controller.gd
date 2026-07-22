@@ -3,12 +3,12 @@ extends Node
 class_name CommodityFlowRuntimeController
 
 signal installation_committed(receipt: Dictionary)
-signal sale_receipt_batch_committed(receipt: Dictionary)
 signal flow_loss_batch_committed(events: Array)
 
 const RULESET_ID := "v0.6"
-const STATE_VERSION := 2
+const STATE_VERSION := 3
 const LEGACY_STATE_VERSION := 1
+const PRE_POSTCOMMIT_STATE_VERSION := 2
 const FIXED_POINT_SCALE := 1000
 const MILLISECONDS_PER_MINUTE := 60000
 const BASIS_POINTS := 10000
@@ -39,6 +39,8 @@ const WEATHER_PUBLIC_CONTRIBUTION_KEYS := [
 
 var _configured := false
 var _world_bridge: Node
+var _postcommit_consumer: CommodityFlowPostCommitReceiptConsumer
+var _postcommit_required := false
 var _weather_runtime_controller: WeatherRuntimeController
 var _weather_telemetry_runtime_service: Node
 var _currency_scale := 100
@@ -99,6 +101,14 @@ func set_world_bridge(bridge: Node) -> void:
 	_world_bridge = bridge
 
 
+func set_postcommit_consumer(consumer: CommodityFlowPostCommitReceiptConsumer) -> void:
+	## Calling this method declares the production post-commit boundary required,
+	## even when composition accidentally supplies null. Standalone formula/flow
+	## tests that never opt in remain isolated from post-commit effects.
+	_postcommit_required = true
+	_postcommit_consumer = consumer
+
+
 func set_weather_runtime_controller(controller: WeatherRuntimeController) -> void:
 	_weather_runtime_controller = controller
 
@@ -142,6 +152,7 @@ func configure(profile_snapshot: Dictionary) -> Dictionary:
 		and _ambient_consumption_value_basis_points > 0 \
 		and _market_backlog_horizon_seconds > 0 \
 		and _market_backlog_recovery_extra_basis_points >= 0 \
+		and (not _postcommit_required or (_postcommit_consumer != null and _postcommit_consumer.is_ready())) \
 		and PRODUCT_INDUSTRY_CATALOG != null
 	if not _configured:
 		push_error("CommodityFlowRuntimeController requires the v0.6 continuous-flow profile and product catalog.")
@@ -196,6 +207,8 @@ func reset_state() -> void:
 	_current_game_time = 0.0
 	_last_flow_metrics = {}
 	_bankruptcy_estate_journal.clear()
+	if _postcommit_consumer != null:
+		_postcommit_consumer.reset_state()
 
 
 func bankruptcy_estate_stage(stage: String, request: Dictionary) -> Dictionary:
@@ -789,6 +802,29 @@ func card_effect_batch_snapshot(transaction_id: String) -> Dictionary:
 	return _dictionary(journal.get("receipt", {}))
 
 
+func has_pending_postcommit_recovery() -> bool:
+	return _postcommit_required and _postcommit_consumer != null and _postcommit_consumer.has_pending_batch()
+
+
+func recover_pending_postcommit() -> Dictionary:
+	if not _postcommit_required or _postcommit_consumer == null or not _postcommit_consumer.has_pending_batch():
+		return {"needed": false, "completed": true, "reason": "commodity_postcommit_idle"}
+	if not _postcommit_consumer.is_ready():
+		return {"needed": true, "completed": false, "reason": "commodity_postcommit_consumer_unavailable"}
+	var recovery := _postcommit_consumer.retry_pending_batch()
+	if not bool(recovery.get("completed", false)):
+		return {
+			"needed": true,
+			"completed": false,
+			"reason": str(recovery.get("reason_code", "commodity_postcommit_recovery_failed")),
+			"postcommit_pending_count": int(recovery.get("pending_count", 1)),
+		}
+	var recovered_result := _recovered_postcommit_flow_result(recovery)
+	recovered_result["needed"] = true
+	recovered_result["completed"] = true
+	return recovered_result
+
+
 func advance_world(delta_seconds: float, clock_pause: Dictionary = {}) -> Dictionary:
 	if not _configured or _world_bridge == null:
 		return {"advanced": false, "reason": "controller_or_bridge_not_ready", "receipt_count": 0}
@@ -796,6 +832,19 @@ func advance_world(delta_seconds: float, clock_pause: Dictionary = {}) -> Dictio
 		return {"advanced": false, "reason": "delta_not_positive", "receipt_count": 0}
 	if bool(clock_pause.get("game_over", false)) or bool(clock_pause.get("time_paused", false)) or bool(clock_pause.get("global_blocked", false)):
 		return {"advanced": false, "reason": "clock_paused", "receipt_count": 0}
+	if _postcommit_required:
+		if _postcommit_consumer == null or not _postcommit_consumer.is_ready():
+			return {"advanced": false, "reason": "commodity_postcommit_consumer_unavailable", "receipt_count": 0}
+		if _postcommit_consumer.has_pending_batch():
+			var recovery := recover_pending_postcommit()
+			if bool(recovery.get("completed", false)):
+				return recovery
+			return {
+				"advanced": false,
+				"reason": str(recovery.get("reason", "commodity_postcommit_recovery_failed")),
+				"receipt_count": 0,
+				"postcommit_pending_count": int(recovery.get("postcommit_pending_count", 1)),
+			}
 	if not _world_bridge.has_method("capture_flow_facts") or not _world_bridge.has_method("apply_sale_receipt_batch"):
 		return {"advanced": false, "reason": "world_bridge_api_missing", "receipt_count": 0}
 	var facts_variant: Variant = _world_bridge.call("capture_flow_facts")
@@ -813,22 +862,6 @@ func advance_world(delta_seconds: float, clock_pause: Dictionary = {}) -> Dictio
 		"settled_at": float(facts.get("game_time", 0.0)),
 		"receipts": (plan.get("receipts", []) as Array).duplicate(true),
 	}
-	var apply_variant: Variant = _world_bridge.call("apply_sale_receipt_batch", batch)
-	var apply_result: Dictionary = _dictionary(apply_variant)
-	if not bool(apply_result.get("applied", false)):
-		return {
-			"advanced": false,
-			"reason": str(apply_result.get("reason", "sale_receipt_batch_rejected")),
-			"batch_id": str(batch.get("batch_id", "")),
-			"receipt_count": 0,
-		}
-	_commit_flow_plan(plan)
-	_record_weather_economic_telemetry(plan.get("receipts", []) as Array)
-	var loss_events: Array = (plan.get("flow_loss_events", []) as Array).duplicate(true)
-	if not loss_events.is_empty():
-		flow_loss_batch_committed.emit(loss_events)
-	if _world_bridge.has_method("notify_sale_receipt_batch_committed"):
-		_world_bridge.call("notify_sale_receipt_batch_committed", batch)
 	var committed := {
 		"advanced": true,
 		"reason": "",
@@ -842,12 +875,122 @@ func advance_world(delta_seconds: float, clock_pause: Dictionary = {}) -> Dictio
 		"ambient_consumed_milliunits": int(plan.get("ambient_consumed_milliunits", 0)),
 		"stored_milliunits": int(plan.get("stored_milliunits", 0)),
 		"wasted_milliunits": int(plan.get("wasted_milliunits", 0)),
-		"market_backlog_milliunits": _market_backlog_total(_market_backlog_by_key),
+		"market_backlog_milliunits": _market_backlog_total(_dictionary(plan.get("next_market_backlog_by_key", {}))),
 		"warehouse_destroyed_loss_milliunits": int(plan.get("warehouse_destroyed_loss_milliunits", 0)),
-		"flow_revision": _flow_revision,
+		"flow_revision": _flow_revision + 1,
+		"settled_at": float(batch.get("settled_at", 0.0)),
+		"flow_delta_seconds": float(delta_milliseconds) / 1000.0,
+		"postcommit_completed": not _postcommit_required,
+		"postcommit_recovered_only": false,
 	}
-	sale_receipt_batch_committed.emit(committed.duplicate(true))
+	var postcommit_batch := batch.duplicate(true)
+	postcommit_batch["batch_sequence"] = int(plan.get("next_batch_sequence", _batch_sequence + 1))
+	postcommit_batch["flow_revision"] = _flow_revision + 1
+	postcommit_batch["flow_delta_seconds"] = float(delta_milliseconds) / 1000.0
+	postcommit_batch["receipt_ids"] = _postcommit_receipt_ids(postcommit_batch.get("receipts", []) as Array)
+	postcommit_batch["flow_result_summary"] = committed.duplicate(true)
+	postcommit_batch["batch_fingerprint"] = CommodityFlowPostCommitReceiptConsumer.batch_fingerprint(postcommit_batch)
+	if _postcommit_required:
+		var prepared := _postcommit_consumer.prepare_committed_batch(postcommit_batch)
+		if not bool(prepared.get("staged", false)):
+			return {
+				"advanced": false,
+				"reason": str(prepared.get("reason_code", "commodity_postcommit_preflight_failed")),
+				"batch_id": str(batch.get("batch_id", "")),
+				"receipt_count": 0,
+			}
+	var apply_variant: Variant = _world_bridge.call("apply_sale_receipt_batch", batch)
+	var apply_result: Dictionary = _dictionary(apply_variant)
+	if not bool(apply_result.get("applied", false)):
+		var abort_result := {"aborted": true}
+		if _postcommit_required:
+			abort_result = _postcommit_consumer.abort_prepared_batch(
+				str(postcommit_batch.get("batch_id", "")),
+				str(postcommit_batch.get("batch_fingerprint", ""))
+			)
+		if not bool(abort_result.get("aborted", false)):
+			return {
+				"advanced": false,
+				"reason": "commodity_postcommit_prepared_abort_failed",
+				"batch_id": str(batch.get("batch_id", "")),
+				"receipt_count": 0,
+				"postcommit_pending_count": 1,
+			}
+		return {
+			"advanced": false,
+			"reason": str(apply_result.get("reason", "sale_receipt_batch_rejected")),
+			"batch_id": str(batch.get("batch_id", "")),
+			"receipt_count": 0,
+		}
+	_commit_flow_plan(plan)
+	if _batch_sequence != int(postcommit_batch.get("batch_sequence", -1)) \
+			or _flow_revision != int(postcommit_batch.get("flow_revision", -1)):
+		return {
+			"advanced": false,
+			"flow_committed": true,
+			"reason": "commodity_postcommit_committed_cursor_mismatch",
+			"batch_id": str(batch.get("batch_id", "")),
+			"receipt_count": 0,
+			"postcommit_pending_count": 1,
+		}
+	if _postcommit_required:
+		var sealed := _postcommit_consumer.seal_committed_batch_inputs(postcommit_batch)
+		if not bool(sealed.get("sealed", false)):
+			return {
+				"advanced": false,
+				"flow_committed": true,
+				"reason": str(sealed.get("reason_code", "commodity_postcommit_input_seal_failed")),
+				"batch_id": str(batch.get("batch_id", "")),
+				"receipt_count": 0,
+				"flow_revision": _flow_revision,
+				"settled_at": float(batch.get("settled_at", 0.0)),
+				"flow_delta_seconds": float(delta_milliseconds) / 1000.0,
+				"postcommit_pending_count": int(sealed.get("pending_count", 1)),
+			}
+	_record_weather_economic_telemetry(plan.get("receipts", []) as Array)
+	var loss_events: Array = (plan.get("flow_loss_events", []) as Array).duplicate(true)
+	if not loss_events.is_empty():
+		flow_loss_batch_committed.emit(loss_events)
+	if _postcommit_required:
+		var postcommit := _postcommit_consumer.consume_committed_batch(postcommit_batch)
+		if not bool(postcommit.get("completed", false)):
+			return {
+				"advanced": false,
+				"flow_committed": true,
+				"reason": str(postcommit.get("reason_code", "commodity_postcommit_incomplete")),
+				"batch_id": str(batch.get("batch_id", "")),
+				"receipt_count": 0,
+				"flow_revision": _flow_revision,
+				"settled_at": float(batch.get("settled_at", 0.0)),
+				"flow_delta_seconds": float(delta_milliseconds) / 1000.0,
+				"postcommit_pending_count": int(postcommit.get("pending_count", 1)),
+			}
+		committed["postcommit_completed"] = true
 	return committed
+
+
+func _recovered_postcommit_flow_result(recovery: Dictionary) -> Dictionary:
+	var result: Dictionary = (recovery.get("flow_result_summary", {}) as Dictionary).duplicate(true) \
+		if recovery.get("flow_result_summary", {}) is Dictionary else {}
+	result["advanced"] = true
+	result["flow_committed"] = true
+	result["reason"] = ""
+	result["batch_id"] = str(recovery.get("batch_id", result.get("batch_id", "")))
+	result["receipt_count"] = int(recovery.get("receipt_count", result.get("receipt_count", 0)))
+	result["flow_revision"] = int(recovery.get("flow_revision", result.get("flow_revision", _flow_revision)))
+	result["settled_at"] = float(recovery.get("settled_at", result.get("settled_at", _current_game_time)))
+	result["flow_delta_seconds"] = float(recovery.get("flow_delta_seconds", result.get("flow_delta_seconds", 0.0)))
+	result["postcommit_completed"] = true
+	result["postcommit_recovered_only"] = true
+	result["postcommit_pending_count"] = 0
+	return result
+
+
+func _postcommit_receipt_ids(receipts: Array) -> Array:
+	var result: Array = []
+	for receipt_variant in receipts:
+		result.append(str((receipt_variant as Dictionary).get("receipt_id", "")) if receipt_variant is Dictionary else "")
+	return result
 
 
 func _record_weather_economic_telemetry(receipts: Array) -> void:
@@ -1237,7 +1380,7 @@ func card_effect_candidates_snapshot() -> Dictionary:
 func to_save_data() -> Dictionary:
 	var installation_transaction_ids: Array = _installation_transaction_receipts.keys()
 	installation_transaction_ids.sort()
-	return {
+	var result := {
 		"state_version": STATE_VERSION,
 		"ruleset_id": RULESET_ID,
 		"commodity_flow_terms_version": COMMODITY_FLOW_TERMS_VERSION,
@@ -1280,12 +1423,49 @@ func to_save_data() -> Dictionary:
 		"card_effect_batch_journal": _card_effect_batch_journal.duplicate(true),
 		"card_effect_batch_rollback_receipts": _card_effect_batch_rollback_receipts.duplicate(true),
 	}
+	if _postcommit_consumer != null:
+		result["postcommit_consumer"] = _postcommit_consumer.to_save_data()
+	return result
+
+
+func preflight_save_data(data: Dictionary) -> Dictionary:
+	## Validates and normalizes a candidate on a fresh detached owner/consumer.
+	## The live runtime and its injected post-commit sibling are never applied to
+	## and therefore need no rollback masquerading as preflight.
+	var live_checkpoint := to_save_data()
+	var probe := CommodityFlowRuntimeController.new()
+	var probe_consumer := CommodityFlowPostCommitReceiptConsumer.new()
+	probe.add_child(probe_consumer)
+	probe._ambient_consumption_default_units_per_minute = _ambient_consumption_default_units_per_minute
+	probe._ambient_consumption_units_per_minute_by_commodity = _ambient_consumption_units_per_minute_by_commodity.duplicate(true)
+	probe._ambient_consumption_value_basis_points = _ambient_consumption_value_basis_points
+	probe._market_backlog_horizon_seconds = _market_backlog_horizon_seconds
+	probe._market_backlog_recovery_extra_basis_points = _market_backlog_recovery_extra_basis_points
+	probe.set_postcommit_consumer(probe_consumer)
+	var applied := probe.apply_save_data(data.duplicate(true))
+	var result: Dictionary
+	if not bool(applied.get("applied", false)):
+		result = {
+			"accepted": false,
+			"reason_code": str(applied.get("reason", "commodity_flow_save_preflight_rejected")),
+		}
+	else:
+		result = {
+			"accepted": true,
+			"reason_code": "commodity_flow_save_preflight_accepted",
+			"normalized_state": probe.to_save_data(),
+		}
+	probe.free()
+	if to_save_data() != live_checkpoint:
+		return {"accepted": false, "reason_code": "commodity_flow_save_preflight_mutated_live_owner"}
+	return result
 
 
 func apply_save_data(data: Dictionary) -> Dictionary:
 	var source_state_version := int(data.get("state_version", -1))
 	var legacy_state := source_state_version == LEGACY_STATE_VERSION
-	if not _is_pure_data(data) or not [LEGACY_STATE_VERSION, STATE_VERSION].has(source_state_version) or str(data.get("ruleset_id", "")) != RULESET_ID:
+	var legacy_postcommit_state := source_state_version in [LEGACY_STATE_VERSION, PRE_POSTCOMMIT_STATE_VERSION]
+	if not _is_pure_data(data) or not [LEGACY_STATE_VERSION, PRE_POSTCOMMIT_STATE_VERSION, STATE_VERSION].has(source_state_version) or str(data.get("ruleset_id", "")) != RULESET_ID:
 		return {"applied": false, "reason": "save_header_invalid"}
 	if legacy_state:
 		if int(data.get("local_baseline_terms_version", -1)) != 1:
@@ -1407,6 +1587,13 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	var prepared_card_effect_batch_journal := _dictionary(data.get("card_effect_batch_journal", {}))
 	var prepared_card_effect_batch_rollbacks := _dictionary(data.get("card_effect_batch_rollback_receipts", {}))
 	var prepared_rollback_receipts := _dictionary(data.get("installation_rollback_receipts", {}))
+	var has_postcommit_section := data.has("postcommit_consumer")
+	if has_postcommit_section and not (data.get("postcommit_consumer") is Dictionary):
+		return {"applied": false, "reason": "commodity_postcommit_save_section_invalid"}
+	if source_state_version == STATE_VERSION and _postcommit_required and not has_postcommit_section:
+		return {"applied": false, "reason": "commodity_postcommit_save_section_missing"}
+	var prepared_postcommit_data: Dictionary = (data.get("postcommit_consumer", {}) as Dictionary).duplicate(true) \
+		if data.get("postcommit_consumer", {}) is Dictionary else {}
 	if not _is_pure_data(prepared_warehouse_inventory) \
 		or not _is_pure_data(prepared_pending_one_shot) \
 		or not _is_pure_data(prepared_one_shot_receipts) \
@@ -1426,6 +1613,18 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	)
 	if not bool(batch_state_validation.get("valid", false)):
 		return {"applied": false, "reason": str(batch_state_validation.get("reason", "card_effect_batch_state_invalid"))}
+	if data.has("postcommit_consumer") and _postcommit_consumer == null:
+		return {"applied": false, "reason": "commodity_postcommit_consumer_missing"}
+	if _postcommit_required:
+		if _postcommit_consumer == null:
+			return {"applied": false, "reason": "commodity_postcommit_consumer_missing"}
+		var postcommit_preflight := _postcommit_consumer.preflight_save_data(
+			prepared_postcommit_data,
+			maxi(0, int(data.get("batch_sequence", 0))),
+			legacy_postcommit_state and not has_postcommit_section
+		)
+		if not bool(postcommit_preflight.get("accepted", false)):
+			return {"applied": false, "reason": str(postcommit_preflight.get("reason_code", "commodity_postcommit_save_invalid"))}
 	var prepared_migration_version := maxi(0, int(data.get("legacy_backpressure_migration_version", 0)))
 	if legacy_state:
 		prepared_cumulative_waste_by_source = legacy_backpressure.duplicate(true)
@@ -1470,6 +1669,15 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	_one_shot_demand_transaction_receipts = prepared_one_shot_demand_receipts
 	_card_effect_batch_journal = prepared_card_effect_batch_journal
 	_card_effect_batch_rollback_receipts = prepared_card_effect_batch_rollbacks
+	var postcommit_restore := {"applied": true, "pending_count": 0}
+	if _postcommit_consumer != null:
+		postcommit_restore = _postcommit_consumer.apply_save_data(
+			prepared_postcommit_data,
+			_batch_sequence,
+			legacy_postcommit_state and not has_postcommit_section
+		)
+		if not bool(postcommit_restore.get("applied", false)):
+			return {"applied": false, "reason": str(postcommit_restore.get("reason_code", "commodity_postcommit_restore_failed"))}
 	return {
 		"applied": true,
 		"installation_count": _installations.size(),
@@ -1478,6 +1686,7 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 		"flow_revision": _flow_revision,
 		"migrated_legacy_backpressure": legacy_state,
 		"legacy_backpressure_migration_version": _legacy_backpressure_migration_version,
+		"postcommit_pending_count": int(postcommit_restore.get("pending_count", 0)),
 	}
 
 
@@ -1513,6 +1722,9 @@ func debug_snapshot() -> Dictionary:
 		"card_effect_batch_pending_count": _card_effect_batch_state_count("pending_flow"),
 		"card_effect_batch_settled_count": _card_effect_batch_state_count("settled"),
 		"card_effect_batch_rollback_count": _card_effect_batch_state_count("rolled_back"),
+		"postcommit_required": _postcommit_required,
+		"postcommit_consumer_ready": _postcommit_consumer != null and _postcommit_consumer.is_ready(),
+		"postcommit_consumer": _postcommit_consumer.debug_snapshot() if _postcommit_consumer != null else {},
 		"flow_revision": _flow_revision,
 		"current_game_time": _current_game_time,
 		"distance_price_model": "base_x_1_plus_12pct_per_distance_after_adjacent_capped",

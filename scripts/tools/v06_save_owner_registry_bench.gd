@@ -78,7 +78,7 @@ func run_bench() -> Dictionary:
 	_check(int(production_snapshot.get("required_section_count", 0)) == 19 and int(production_snapshot.get("binding_count", 0)) == 19, "production_registry_has_all_19_unique_sections")
 	_check(int(production_snapshot.get("transactional_section_count", 0)) == 12 and int(production_snapshot.get("unsupported_section_count", 0)) == 7 and not bool(production_snapshot.get("resume_ready", true)), "production_registry_declares_twelve_auditable_transactional_owners")
 	_check(_binding_matches(production_registry, "region_supply", "region_supply", "../../RegionSupplyRuntimeController", 1), "region_supply_section_uses_the_unique_transactional_rack_owner")
-	_check(_binding_matches(production_registry, "commodity_flow", "commodity_flow", "../../CommodityFlowRuntimeController", 2), "commodity_flow_section_uses_the_unique_transactional_economy_owner")
+	_check(_commodity_binding_is_transactional(production_registry), "commodity_flow_section_uses_the_unique_transactional_economy_owner_and_pure_preflight")
 	_check(_bankruptcy_binding_is_transactional(production_registry), "bankruptcy_section_uses_the_unique_transactional_estate_owner")
 	_check(_weather_binding_is_transactional(production_registry), "weather_section_uses_the_unique_transactional_weather_owner")
 	_check(_binding_is_transactional(production_registry, "card_resolution_execution"), "card_execution_section_uses_the_unique_transactional_execution_owner")
@@ -261,6 +261,24 @@ func _bankruptcy_binding_is_transactional(registry: Node) -> bool:
 			and binding.unsupported_reason.is_empty() \
 			and str(binding.owner_path) == "../../BankruptcyNeutralEstateRuntimeController" \
 			and binding.capture_method == "to_save_data" \
+			and binding.apply_method == "apply_save_data" \
+			and binding.rollback_method == "apply_save_data"
+	return false
+
+
+func _commodity_binding_is_transactional(registry: Node) -> bool:
+	if registry == null:
+		return false
+	for binding in registry.bindings:
+		if binding == null or binding.section_id != "commodity_flow":
+			continue
+		return binding.owner_id == "commodity_flow" \
+			and binding.state_version == 2 \
+			and binding.restore_mode == BindingScript.RESTORE_TRANSACTIONAL \
+			and binding.unsupported_reason.is_empty() \
+			and str(binding.owner_path) == "../../CommodityFlowRuntimeController" \
+			and binding.capture_method == "to_save_data" \
+			and binding.preflight_method == "preflight_save_data" \
 			and binding.apply_method == "apply_save_data" \
 			and binding.rollback_method == "apply_save_data"
 	return false

@@ -6,6 +6,7 @@ const RULESET_ID := "v0.6"
 const STATE_VERSION := 1
 const MILLIASSET_SCALE := 1000
 const ASSET_IDS := ["life", "energy", "industry", "technology", "commerce", "shipping"]
+const ADVANCE_ONCE_JOURNAL_LIMIT := 128
 
 var _configured := false
 var _currency_scale := 100
@@ -15,6 +16,8 @@ var _pools_by_player: Dictionary = {}
 var _recovery_remainders_by_player: Dictionary = {}
 var _reservations: Dictionary = {}
 var _terminal_receipts: Dictionary = {}
+var _advance_once_journal: Dictionary = {}
+var _advance_once_order: Array[String] = []
 var _current_game_time := 0.0
 var _revision := 0
 var _plan_count := 0
@@ -51,6 +54,8 @@ func reset_state(player_count: int = 0) -> void:
 	_recovery_remainders_by_player.clear()
 	_reservations.clear()
 	_terminal_receipts.clear()
+	_advance_once_journal.clear()
+	_advance_once_order.clear()
 	_current_game_time = 0.0
 	_revision += 1
 	_plan_count = 0
@@ -105,6 +110,67 @@ func advance(delta_milliseconds: int, game_time: float, color_gdp_by_player: Dic
 		"game_time": _current_game_time,
 		"gained_milliunits_by_player": gained_by_player,
 		"revision": _revision,
+	}
+
+
+func advance_once(
+	transaction_id: String,
+	delta_milliseconds: int,
+	game_time: float,
+	color_gdp_by_player: Dictionary
+) -> Dictionary:
+	var normalized_id := transaction_id.strip_edges()
+	var request := {
+		"transaction_id": normalized_id,
+		"delta_milliseconds": delta_milliseconds,
+		"game_time": game_time,
+		"color_gdp_by_player": color_gdp_by_player.duplicate(true),
+	}
+	if normalized_id != transaction_id or normalized_id.is_empty() or normalized_id.length() > 160 \
+			or not normalized_id.begins_with("asset-recovery:commodity-flow-batch-") \
+			or delta_milliseconds <= 0 or not is_finite(game_time) or game_time < 0.0 \
+			or not _is_pure_data(request):
+		return {"advanced": false, "duplicate": false, "reason": "asset_recovery_transaction_invalid"}
+	var fingerprint := JSON.stringify(_canonicalize(request)).sha256_text()
+	if _advance_once_journal.has(normalized_id):
+		var existing: Dictionary = _advance_once_journal[normalized_id]
+		if str(existing.get("fingerprint", "")) != fingerprint:
+			return {"advanced": false, "duplicate": false, "reason": "asset_recovery_transaction_collision"}
+		var replay: Dictionary = (existing.get("receipt", {}) as Dictionary).duplicate(true) \
+			if existing.get("receipt", {}) is Dictionary else {}
+		replay["duplicate"] = true
+		replay["reason"] = "asset_recovery_transaction_replayed"
+		return replay
+	var receipt := advance(delta_milliseconds, game_time, color_gdp_by_player)
+	if not bool(receipt.get("advanced", false)):
+		receipt["duplicate"] = false
+		return receipt
+	receipt["transaction_id"] = normalized_id
+	receipt["duplicate"] = false
+	_advance_once_journal[normalized_id] = {
+		"transaction_id": normalized_id,
+		"fingerprint": fingerprint,
+		"request": request,
+		"receipt": receipt.duplicate(true),
+	}
+	_advance_once_order.append(normalized_id)
+	while _advance_once_order.size() > ADVANCE_ONCE_JOURNAL_LIMIT:
+		_advance_once_journal.erase(_advance_once_order.pop_front())
+	return receipt
+
+
+func advance_once_binding(transaction_id: String) -> Dictionary:
+	var record_variant: Variant = _advance_once_journal.get(transaction_id, {})
+	if not (record_variant is Dictionary):
+		return {}
+	var record := record_variant as Dictionary
+	if record.is_empty() or str(record.get("transaction_id", "")) != transaction_id:
+		return {}
+	return {
+		"transaction_id": str(record.get("transaction_id", "")),
+		"fingerprint": str(record.get("fingerprint", "")),
+		"advanced": bool((record.get("receipt", {}) as Dictionary).get("advanced", false)) \
+			if record.get("receipt", {}) is Dictionary else false,
 	}
 
 
@@ -296,6 +362,8 @@ func to_save_data() -> Dictionary:
 		"recovery_remainders_by_player": _recovery_remainders_by_player.duplicate(true),
 		"reservations": _reservations.duplicate(true),
 		"terminal_receipts": _terminal_receipts.duplicate(true),
+		"advance_once_journal": _advance_once_journal.duplicate(true),
+		"advance_once_order": _advance_once_order.duplicate(),
 	}
 
 
@@ -315,6 +383,17 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 		return {"applied": false, "reason": "asset_save_rows_invalid"}
 	var reservations := _dictionary(data.get("reservations", {}))
 	var terminal_receipts := _dictionary(data.get("terminal_receipts", {}))
+	var has_advance_journal := data.has("advance_once_journal") or data.has("advance_once_order")
+	if has_advance_journal and (not (data.get("advance_once_journal") is Dictionary) \
+			or not (data.get("advance_once_order") is Array)):
+		return {"applied": false, "reason": "asset_recovery_journal_shape_invalid"}
+	var advance_journal: Dictionary = (data.get("advance_once_journal", {}) as Dictionary).duplicate(true) \
+		if data.get("advance_once_journal", {}) is Dictionary else {}
+	var advance_order: Array = (data.get("advance_once_order", []) as Array).duplicate() \
+		if data.get("advance_once_order", []) is Array else []
+	var advance_validation := _validate_advance_once_journal(advance_journal, advance_order)
+	if not bool(advance_validation.get("valid", false)):
+		return {"applied": false, "reason": str(advance_validation.get("reason", "asset_recovery_journal_invalid"))}
 	for reservation_variant in reservations.values():
 		if not (reservation_variant is Dictionary) or str((reservation_variant as Dictionary).get("state", "")) != "reserved":
 			return {"applied": false, "reason": "asset_save_reservation_invalid"}
@@ -322,6 +401,10 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	_recovery_remainders_by_player = _dictionary(prepared_remainders.get("rows", {}))
 	_reservations = reservations
 	_terminal_receipts = terminal_receipts
+	_advance_once_journal = (advance_validation.get("journal", {}) as Dictionary).duplicate(true)
+	_advance_once_order.clear()
+	for transaction_id_variant in advance_validation.get("order", []):
+		_advance_once_order.append(str(transaction_id_variant))
 	_current_game_time = maxf(0.0, float(data.get("current_game_time", 0.0)))
 	_revision = saved_revision
 	_last_reason = ""
@@ -361,6 +444,8 @@ func debug_snapshot() -> Dictionary:
 		"player_count": _pools_by_player.size(),
 		"reservation_count": _reservations.size(),
 		"terminal_receipt_count": _terminal_receipts.size(),
+		"advance_once_journal_count": _advance_once_journal.size(),
+		"advance_once_journal_limit": ADVANCE_ONCE_JOURNAL_LIMIT,
 		"per_color_maximum": floori(float(_pool_maximum_milliunits) / float(MILLIASSET_SCALE)),
 		"gdp_per_minute_divisor": _gdp_per_minute_divisor,
 		"plan_count": _plan_count,
@@ -374,6 +459,44 @@ func debug_snapshot() -> Dictionary:
 		"asset_balance_authority": true,
 		"legacy_industry_capacity_fallback_used": false,
 	}
+
+
+func _validate_advance_once_journal(journal: Dictionary, order: Array) -> Dictionary:
+	if journal.size() > ADVANCE_ONCE_JOURNAL_LIMIT or order.size() != journal.size():
+		return {"valid": false, "reason": "asset_recovery_journal_size_invalid"}
+	var seen: Dictionary = {}
+	var normalized_order: Array[String] = []
+	for transaction_id_variant in order:
+		if not (transaction_id_variant is String or transaction_id_variant is StringName):
+			return {"valid": false, "reason": "asset_recovery_journal_order_invalid"}
+		var transaction_id := str(transaction_id_variant)
+		if transaction_id.is_empty() or seen.has(transaction_id) or not journal.has(transaction_id):
+			return {"valid": false, "reason": "asset_recovery_journal_order_invalid"}
+		seen[transaction_id] = true
+		normalized_order.append(transaction_id)
+	for transaction_id_variant in journal.keys():
+		var transaction_id := str(transaction_id_variant)
+		var record_variant: Variant = journal[transaction_id_variant]
+		if not seen.has(transaction_id) or not (record_variant is Dictionary):
+			return {"valid": false, "reason": "asset_recovery_journal_record_invalid"}
+		var record := record_variant as Dictionary
+		if record.size() != 4 or not record.has("transaction_id") or not record.has("fingerprint") \
+				or not record.has("request") or not record.has("receipt") \
+				or str(record.get("transaction_id", "")) != transaction_id \
+				or not (record.get("request") is Dictionary) or not (record.get("receipt") is Dictionary):
+			return {"valid": false, "reason": "asset_recovery_journal_record_invalid"}
+		var request := record.get("request", {}) as Dictionary
+		var receipt := record.get("receipt", {}) as Dictionary
+		if str(request.get("transaction_id", "")) != transaction_id \
+				or not (request.get("delta_milliseconds") is int) or int(request.get("delta_milliseconds", 0)) <= 0 \
+				or not (request.get("game_time") is float) or not is_finite(float(request.get("game_time", -1.0))) \
+				or float(request.get("game_time", -1.0)) < 0.0 or not (request.get("color_gdp_by_player") is Dictionary) \
+				or str(record.get("fingerprint", "")) != JSON.stringify(_canonicalize(request)).sha256_text() \
+				or not bool(receipt.get("advanced", false)) \
+				or str(receipt.get("transaction_id", "")) != transaction_id \
+				or not _is_pure_data(record):
+			return {"valid": false, "reason": "asset_recovery_journal_binding_invalid"}
+	return {"valid": true, "journal": journal.duplicate(true), "order": normalized_order}
 
 
 func _plan_payment(available_milliunits: Dictionary, cost: Dictionary, preferred: Dictionary) -> Dictionary:
@@ -546,6 +669,23 @@ func _empty_asset_values() -> Dictionary:
 
 func _dictionary(value: Variant) -> Dictionary:
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+
+
+func _canonicalize(value: Variant) -> Variant:
+	if value is Dictionary:
+		var source := value as Dictionary
+		var keys: Array = source.keys()
+		keys.sort_custom(func(left: Variant, right: Variant) -> bool: return str(left) < str(right))
+		var result: Dictionary = {}
+		for key_variant in keys:
+			result[str(key_variant)] = _canonicalize(source[key_variant])
+		return result
+	if value is Array:
+		var result: Array = []
+		for item_variant in value as Array:
+			result.append(_canonicalize(item_variant))
+		return result
+	return value
 
 
 func _is_pure_data(value: Variant) -> bool:

@@ -98,6 +98,11 @@ func to_dictionary() -> Dictionary:
 	}
 
 
+func fingerprint() -> String:
+	var data := to_dictionary()
+	return JSON.stringify(_canonicalize(data)).sha256_text() if not data.is_empty() else ""
+
+
 func _public_values_valid(value: Variant) -> bool:
 	if value is Dictionary:
 		for key_variant in value.keys():
@@ -123,3 +128,20 @@ func _event_contract_valid() -> bool:
 			if not ["previous_state", "state"].has(str(key_variant)):
 				return false
 	return true
+
+
+static func _canonicalize(value: Variant) -> Variant:
+	if value is Dictionary:
+		var source := value as Dictionary
+		var keys: Array = source.keys()
+		keys.sort_custom(func(left: Variant, right: Variant) -> bool: return str(left) < str(right))
+		var normalized := {}
+		for key_variant in keys:
+			normalized[str(key_variant)] = _canonicalize(source[key_variant])
+		return normalized
+	if value is Array:
+		var normalized_array: Array = []
+		for child in value:
+			normalized_array.append(_canonicalize(child))
+		return normalized_array
+	return value

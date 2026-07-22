@@ -8,11 +8,6 @@ var _checks := 0
 var _failures: Array[String] = []
 
 
-class RuntimeWorld:
-	extends Node
-	pass
-
-
 class RoleFlowBridge:
 	extends "res://scripts/runtime/commodity_flow_world_bridge.gd"
 	var facts: Dictionary = {}
@@ -22,17 +17,14 @@ class RoleFlowBridge:
 
 
 func _init() -> void:
-	var world := RuntimeWorld.new()
 	var state := WorldSessionState.new()
 	state.replace_players([
 		_player("深海菌毯", 55),
 		_player("重力陶瓷", 45),
 	], true)
-	root.add_child(world)
 	root.add_child(state)
 	var bridge := BRIDGE_SCRIPT.new()
 	root.add_child(bridge)
-	bridge.call("bind_world", world)
 	bridge.call("set_world_session_state", state)
 
 	var public_batch := {
@@ -81,7 +73,6 @@ func _init() -> void:
 	_verify_high_volatility_role_bonus()
 	_verify_real_commodity_flow_chain()
 
-	world.queue_free()
 	state.queue_free()
 	bridge.queue_free()
 	print("ROLE_RESOURCE_CASH_COMMODITY_SETTLEMENT_V06_TEST|status=%s|checks=%d|failures=%d" % ["PASS" if _failures.is_empty() else "FAIL", _checks, _failures.size()])
@@ -89,7 +80,6 @@ func _init() -> void:
 
 
 func _verify_high_volatility_role_bonus() -> void:
-	var world := RuntimeWorld.new()
 	var state := WorldSessionState.new()
 	var player := _player("", 0)
 	player["role_card"] = {
@@ -99,11 +89,9 @@ func _verify_high_volatility_role_bonus() -> void:
 		"high_volatility_bonus_once_per_market_cycle": true,
 	}
 	state.replace_players([player], true)
-	root.add_child(world)
 	root.add_child(state)
 	var bridge := BRIDGE_SCRIPT.new()
 	root.add_child(bridge)
-	bridge.call("bind_world", world)
 	bridge.call("set_world_session_state", state)
 	var cycle_seven_batch := {
 		"batch_id": "black-tide-cycle-7",
@@ -141,15 +129,12 @@ func _verify_high_volatility_role_bonus() -> void:
 	_expect(bool(next_cycle.get("applied", false)) and rows.size() == 2, "first qualifying sale in the next market cycle receives a fresh bonus")
 	_expect(int((rows[1] as Dictionary).get("public_volatility", -1)) == 12 and int(settled.get("total_role_income", 0)) == 80, "Black Tide threshold and private role-income counters are exact")
 	bridge.queue_free()
-	world.queue_free()
 	state.queue_free()
 
 
 func _verify_real_commodity_flow_chain() -> void:
-	var world := RuntimeWorld.new()
 	var state := WorldSessionState.new()
 	state.replace_players([_player("星露莓", 35)], true)
-	root.add_child(world)
 	root.add_child(state)
 	var bridge := RoleFlowBridge.new()
 	var facility := {
@@ -177,7 +162,6 @@ func _verify_real_commodity_flow_chain() -> void:
 		"route_candidates": [],
 	}
 	root.add_child(bridge)
-	bridge.call("bind_world", world)
 	bridge.call("set_world_session_state", state)
 	var flow := FLOW_SCRIPT.new()
 	root.add_child(flow)
@@ -211,7 +195,6 @@ func _verify_real_commodity_flow_chain() -> void:
 	_expect(not public_receipt.has("commodity_owner") and not _contains_private_role_fields(public_receipt), "public CommodityFlow projection hides owner and all role settlement evidence")
 	flow.queue_free()
 	bridge.queue_free()
-	world.queue_free()
 	state.queue_free()
 
 

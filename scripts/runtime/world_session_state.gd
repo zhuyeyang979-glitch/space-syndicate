@@ -20,6 +20,18 @@ const CITY_GUESS_CONFIDENCE_HIGH := 3
 const CITY_GUESS_AUTHORIZED_REVEAL := 100
 const CITY_GUESS_REASON_IDS := ["product", "route", "card", "monster", "role", "intuition"]
 const PUBLIC_REGION_CLUE_HISTORY_LIMIT := 6
+const COMMODITY_POSTCOMMIT_CITY_HISTORY_LIMIT := 8
+const COMMODITY_POSTCOMMIT_CASH_HISTORY_LIMIT := 24
+const COMMODITY_POSTCOMMIT_CITY_BREAKDOWN_KEYS := [
+	"net",
+	"net_cents",
+	"receipt_count",
+	"observation_window_seconds",
+	"competition_matches",
+	"product_lines",
+	"route_lines",
+	"transit_lines",
+]
 
 @export var role_catalog_path: NodePath
 
@@ -30,6 +42,10 @@ var _map_width_m := DEFAULT_MAP_WIDTH_M
 var _map_height_m := DEFAULT_MAP_HEIGHT_M
 var _world_geometry_revision := 0
 var _city_inference_mutation_count := 0
+var _commodity_postcommit_city_lineage_by_district: Dictionary = {}
+var _commodity_postcommit_cash_lineage_by_player: Dictionary = {}
+var _commodity_postcommit_city_mutation_count := 0
+var _commodity_postcommit_cash_snapshot_count := 0
 
 var players: Array:
 	get:
@@ -66,6 +82,10 @@ func reset() -> Dictionary:
 	_map_height_m = DEFAULT_MAP_HEIGHT_M
 	_world_geometry_revision += 1
 	_city_inference_mutation_count = 0
+	_commodity_postcommit_city_lineage_by_district.clear()
+	_commodity_postcommit_cash_lineage_by_player.clear()
+	_commodity_postcommit_city_mutation_count = 0
+	_commodity_postcommit_cash_snapshot_count = 0
 	var summary := debug_snapshot()
 	players_replaced.emit(0)
 	districts_replaced.emit(0)
@@ -101,6 +121,245 @@ func advance_game_time(delta: float) -> float:
 	if delta <= 0.0:
 		return _game_time
 	return set_game_time(_game_time + delta)
+
+
+func apply_commodity_postcommit_city_gdp_snapshot(
+	batch_sequence: int,
+	batch_id: String,
+	batch_fingerprint: String,
+	city_breakdown_fingerprint: String,
+	district_index: int,
+	breakdown: Dictionary
+) -> Dictionary:
+	## Narrow authoritative mutation used only after a committed CommodityFlow
+	## batch. The private sequence ledger makes a target retry idempotent without
+	## placing internal batch IDs inside player-facing city dictionaries.
+	var binding := _commodity_postcommit_binding(batch_sequence, batch_id, batch_fingerprint)
+	if binding.is_empty() \
+			or not _valid_commodity_postcommit_sha256(city_breakdown_fingerprint) \
+			or not _commodity_postcommit_city_breakdown_valid(breakdown):
+		return {"applied": false, "reason_code": "commodity_postcommit_city_snapshot_invalid"}
+	binding["city_breakdown_fingerprint"] = city_breakdown_fingerprint
+	if binding.is_empty() or district_index < 0 or district_index >= _districts.size() \
+			or not (_districts[district_index] is Dictionary):
+		return {"applied": false, "reason_code": "commodity_postcommit_city_snapshot_invalid"}
+	var sequence_key := str(district_index)
+	var previous_binding: Dictionary = _commodity_postcommit_city_lineage_by_district.get(sequence_key, {}) \
+		if _commodity_postcommit_city_lineage_by_district.get(sequence_key, {}) is Dictionary else {}
+	var last_sequence := maxi(0, int(previous_binding.get("batch_sequence", 0)))
+	if last_sequence > batch_sequence:
+		return {
+			"applied": false,
+			"reason_code": "commodity_postcommit_city_lineage_ahead",
+			"district_index": district_index,
+			"batch_sequence": batch_sequence,
+			"last_sequence": last_sequence,
+		}
+	if last_sequence == batch_sequence:
+		if not _same_commodity_postcommit_binding(previous_binding, binding):
+			return {
+				"applied": false,
+				"idempotent": false,
+				"reason_code": "commodity_postcommit_city_lineage_collision",
+				"district_index": district_index,
+				"batch_sequence": batch_sequence,
+			}
+		return {
+			"applied": true,
+			"idempotent": true,
+			"reason_code": "commodity_postcommit_city_snapshot_already_applied",
+			"district_index": district_index,
+			"batch_sequence": batch_sequence,
+		}
+	var district := (_districts[district_index] as Dictionary).duplicate(true)
+	var city: Dictionary = (district.get("city", {}) as Dictionary).duplicate(true) if district.get("city", {}) is Dictionary else {}
+	var income := int(breakdown.get("net", 0))
+	var history: Array = (city.get("gdp_history", []) as Array).duplicate() if city.get("gdp_history", []) is Array else []
+	var previous := income
+	if not history.is_empty():
+		previous = int(history.back())
+	elif int(city.get("last_gdp", 0)) > 0:
+		previous = int(city.get("last_gdp", income))
+	history.append(income)
+	while history.size() > COMMODITY_POSTCOMMIT_CITY_HISTORY_LIMIT:
+		history.pop_front()
+	city["last_income"] = income
+	city["last_gdp"] = income
+	city["last_gdp_delta"] = income - previous
+	city["last_gdp_source"] = "商品成交回执"
+	city["last_gdp_reason"] = "只统计观察窗口内已成交商品；生产、需求、入库与浪费本身不直接产生GDP。" \
+		if int(breakdown.get("receipt_count", 0)) > 0 else "尚无完成销售的商品回执。"
+	city["last_gdp_breakdown"] = breakdown.duplicate(true)
+	city["gdp_history"] = history
+	district["city"] = city
+	_districts[district_index] = district
+	_commodity_postcommit_city_lineage_by_district[sequence_key] = binding
+	_commodity_postcommit_city_mutation_count += 1
+	return {
+		"applied": true,
+		"idempotent": false,
+		"reason_code": "commodity_postcommit_city_snapshot_applied",
+		"district_index": district_index,
+		"batch_sequence": batch_sequence,
+		"gdp": income,
+	}
+
+
+func commodity_postcommit_city_gdp(district_index: int) -> int:
+	if district_index < 0 or district_index >= _districts.size() or not (_districts[district_index] is Dictionary):
+		return 0
+	var district := _districts[district_index] as Dictionary
+	var city: Dictionary = district.get("city", {}) as Dictionary if district.get("city", {}) is Dictionary else {}
+	return int(city.get("last_gdp", city.get("last_income", 0)))
+
+
+func commodity_postcommit_city_sequence(district_index: int) -> int:
+	if district_index < 0 or district_index >= _districts.size():
+		return -1
+	return int(commodity_postcommit_city_binding(district_index).get("batch_sequence", 0))
+
+
+func commodity_postcommit_city_binding(district_index: int) -> Dictionary:
+	if district_index < 0 or district_index >= _districts.size():
+		return {}
+	var binding_variant: Variant = _commodity_postcommit_city_lineage_by_district.get(str(district_index), {})
+	return (binding_variant as Dictionary).duplicate(true) if binding_variant is Dictionary else {}
+
+
+func commodity_postcommit_player_observation_sequence(player_index: int) -> int:
+	if player_index < 0 or player_index >= _players.size():
+		return -1
+	return int(commodity_postcommit_player_observation_binding(player_index).get("batch_sequence", 0))
+
+
+func commodity_postcommit_player_observation_binding(player_index: int) -> Dictionary:
+	if player_index < 0 or player_index >= _players.size():
+		return {}
+	var binding_variant: Variant = _commodity_postcommit_cash_lineage_by_player.get(str(player_index), {})
+	return (binding_variant as Dictionary).duplicate(true) if binding_variant is Dictionary else {}
+
+
+func record_commodity_postcommit_cash_snapshot(
+	batch_sequence: int,
+	batch_id: String,
+	batch_fingerprint: String,
+	player_index: int
+) -> Dictionary:
+	var binding := _commodity_postcommit_binding(batch_sequence, batch_id, batch_fingerprint)
+	if binding.is_empty() or player_index < 0 or player_index >= _players.size() \
+			or not (_players[player_index] is Dictionary):
+		return {"applied": false, "reason_code": "commodity_postcommit_cash_snapshot_invalid"}
+	var sequence_key := str(player_index)
+	var previous_binding: Dictionary = _commodity_postcommit_cash_lineage_by_player.get(sequence_key, {}) \
+		if _commodity_postcommit_cash_lineage_by_player.get(sequence_key, {}) is Dictionary else {}
+	var last_sequence := maxi(0, int(previous_binding.get("batch_sequence", 0)))
+	if last_sequence > batch_sequence:
+		return {
+			"applied": false,
+			"reason_code": "commodity_postcommit_cash_lineage_ahead",
+			"player_index": player_index,
+			"batch_sequence": batch_sequence,
+			"last_sequence": last_sequence,
+		}
+	if last_sequence == batch_sequence:
+		if not _same_commodity_postcommit_binding(previous_binding, binding):
+			return {
+				"applied": false,
+				"idempotent": false,
+				"reason_code": "commodity_postcommit_cash_lineage_collision",
+				"player_index": player_index,
+				"batch_sequence": batch_sequence,
+			}
+		return {
+			"applied": true,
+			"idempotent": true,
+			"reason_code": "commodity_postcommit_cash_snapshot_already_applied",
+			"player_index": player_index,
+			"batch_sequence": batch_sequence,
+		}
+	var player := (_players[player_index] as Dictionary).duplicate(true)
+	if not player.has("economic_ledger"):
+		player["economic_ledger"] = []
+	var history: Array = (player.get("cash_history", []) as Array).duplicate() if player.get("cash_history", []) is Array else []
+	var current_cash := int(player.get("cash", 0))
+	var changed := history.is_empty() or int(history.back()) != current_cash
+	if changed:
+		history.append(current_cash)
+	while history.size() > COMMODITY_POSTCOMMIT_CASH_HISTORY_LIMIT:
+		history.pop_front()
+	player["cash_history"] = history
+	_players[player_index] = player
+	_commodity_postcommit_cash_lineage_by_player[sequence_key] = binding
+	_commodity_postcommit_cash_snapshot_count += 1
+	return {
+		"applied": true,
+		"idempotent": false,
+		"changed": changed,
+		"reason_code": "commodity_postcommit_cash_snapshot_applied",
+		"player_index": player_index,
+		"batch_sequence": batch_sequence,
+	}
+
+
+func _commodity_postcommit_binding(
+	batch_sequence: int,
+	batch_id: String,
+	batch_fingerprint: String
+) -> Dictionary:
+	if batch_sequence <= 0 \
+			or batch_id != "commodity-flow-batch-%010d" % batch_sequence \
+			or batch_fingerprint.length() != 64:
+		return {}
+	for character_index in range(batch_fingerprint.length()):
+		if not "0123456789abcdef".contains(batch_fingerprint.substr(character_index, 1)):
+			return {}
+	return {
+		"batch_sequence": batch_sequence,
+		"batch_id": batch_id,
+		"batch_fingerprint": batch_fingerprint,
+	}
+
+
+func _same_commodity_postcommit_binding(left: Dictionary, right: Dictionary) -> bool:
+	return int(left.get("batch_sequence", -1)) == int(right.get("batch_sequence", -2)) \
+		and str(left.get("batch_id", "")) == str(right.get("batch_id", "")) \
+		and str(left.get("batch_fingerprint", "")) == str(right.get("batch_fingerprint", "")) \
+		and str(left.get("city_breakdown_fingerprint", "")) \
+			== str(right.get("city_breakdown_fingerprint", ""))
+
+
+func _valid_commodity_postcommit_sha256(value: String) -> bool:
+	if value.length() != 64:
+		return false
+	for character_index in range(value.length()):
+		if not "0123456789abcdef".contains(value.substr(character_index, 1)):
+			return false
+	return true
+
+
+func _commodity_postcommit_city_breakdown_valid(breakdown: Dictionary) -> bool:
+	if not TablePresentationPureDataPolicy.is_pure_data(breakdown) \
+			or breakdown.size() != COMMODITY_POSTCOMMIT_CITY_BREAKDOWN_KEYS.size():
+		return false
+	for key in COMMODITY_POSTCOMMIT_CITY_BREAKDOWN_KEYS:
+		if not breakdown.has(key):
+			return false
+	if not (breakdown.get("net") is int) or int(breakdown.get("net", -1)) < 0 \
+			or not (breakdown.get("net_cents") is int) or int(breakdown.get("net_cents", -1)) < 0 \
+			or not (breakdown.get("receipt_count") is int) or int(breakdown.get("receipt_count", -1)) < 0 \
+			or not (breakdown.get("observation_window_seconds") is float) \
+			or not is_finite(float(breakdown.get("observation_window_seconds", -1.0))) \
+			or float(breakdown.get("observation_window_seconds", -1.0)) < 0.0 \
+			or not (breakdown.get("competition_matches") is int) \
+			or int(breakdown.get("competition_matches", -1)) < 0:
+		return false
+	for key in ["product_lines", "route_lines", "transit_lines"]:
+		if not (breakdown.get(key) is Array):
+			return false
+		for line_variant in breakdown.get(key) as Array:
+			if not (line_variant is String or line_variant is StringName):
+				return false
+	return true
 
 
 func can_append_ai_business_market_pressure_public_clue(
@@ -613,6 +872,12 @@ func restore(data: Dictionary, duplicate_collections := true) -> Dictionary:
 	_map_width_m = maxf(1.0, float(data.get("map_width_m", DEFAULT_MAP_WIDTH_M)))
 	_map_height_m = maxf(1.0, float(data.get("map_height_m", DEFAULT_MAP_HEIGHT_M)))
 	_world_geometry_revision = maxi(0, int(data.get("world_geometry_revision", _world_geometry_revision + 1)))
+	_commodity_postcommit_city_lineage_by_district = (data.get("commodity_postcommit_city_lineage_by_district", {}) as Dictionary).duplicate(true) \
+		if data.get("commodity_postcommit_city_lineage_by_district", {}) is Dictionary else {}
+	_commodity_postcommit_cash_lineage_by_player = (data.get("commodity_postcommit_cash_lineage_by_player", {}) as Dictionary).duplicate(true) \
+		if data.get("commodity_postcommit_cash_lineage_by_player", {}) is Dictionary else {}
+	_commodity_postcommit_city_mutation_count = maxi(0, int(data.get("commodity_postcommit_city_mutation_count", 0)))
+	_commodity_postcommit_cash_snapshot_count = maxi(0, int(data.get("commodity_postcommit_cash_snapshot_count", 0)))
 	var summary := debug_snapshot()
 	players_replaced.emit(_players.size())
 	districts_replaced.emit(_districts.size())
@@ -631,6 +896,10 @@ func internal_snapshot() -> Dictionary:
 		"map_width_m": _map_width_m,
 		"map_height_m": _map_height_m,
 		"world_geometry_revision": _world_geometry_revision,
+		"commodity_postcommit_city_lineage_by_district": _commodity_postcommit_city_lineage_by_district.duplicate(true),
+		"commodity_postcommit_cash_lineage_by_player": _commodity_postcommit_cash_lineage_by_player.duplicate(true),
+		"commodity_postcommit_city_mutation_count": _commodity_postcommit_city_mutation_count,
+		"commodity_postcommit_cash_snapshot_count": _commodity_postcommit_cash_snapshot_count,
 	}
 
 
@@ -700,6 +969,10 @@ func apply_new_session_plan(plan: Dictionary) -> Dictionary:
 	_map_height_m = float(plan.get("map_height_m", DEFAULT_MAP_HEIGHT_M))
 	_world_geometry_revision += 1
 	_city_inference_mutation_count = 0
+	_commodity_postcommit_city_lineage_by_district.clear()
+	_commodity_postcommit_cash_lineage_by_player.clear()
+	_commodity_postcommit_city_mutation_count = 0
+	_commodity_postcommit_cash_snapshot_count = 0
 	players_replaced.emit(_players.size())
 	districts_replaced.emit(_districts.size())
 	game_time_changed.emit(_game_time)
@@ -740,6 +1013,10 @@ func debug_snapshot() -> Dictionary:
 		"map_height_m": _map_height_m,
 		"world_geometry_revision": _world_geometry_revision,
 		"city_inference_mutation_count": _city_inference_mutation_count,
+		"commodity_postcommit_city_lineage_count": _commodity_postcommit_city_lineage_by_district.size(),
+		"commodity_postcommit_player_observation_lineage_count": _commodity_postcommit_cash_lineage_by_player.size(),
+		"commodity_postcommit_city_mutation_count": _commodity_postcommit_city_mutation_count,
+		"commodity_postcommit_player_observation_count": _commodity_postcommit_cash_snapshot_count,
 		"city_inference_projection_is_viewer_scoped": true,
 		"authorized_reveal_confidence": CITY_GUESS_AUTHORIZED_REVEAL,
 		"world_geometry_is_authoritative": true,

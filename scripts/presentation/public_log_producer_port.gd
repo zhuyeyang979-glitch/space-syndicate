@@ -40,6 +40,10 @@ func append_receipt(receipt: PublicLogReceipt) -> Dictionary:
 	return _owner.append_receipt(receipt) if _owner != null else {"applied": false, "reason_code": "public_log_owner_missing"}
 
 
+func receipt_binding(receipt_id: String) -> Dictionary:
+	return _owner.receipt_binding(receipt_id) if _owner != null else {}
+
+
 func debug_snapshot() -> Dictionary:
 	return {
 		"configured": _owner != null,

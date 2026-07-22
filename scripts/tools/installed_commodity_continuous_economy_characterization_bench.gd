@@ -92,7 +92,7 @@ func _run_warehouse_and_public_case() -> void:
 			kinds[str((row_variant as Dictionary).get("flow_kind", ""))] = true
 	_check(kinds.has("market_sale") and kinds.has("ambient_consumption") and kinds.has("warehouse_inbound"), "public_actual_flow_kinds")
 	var saved: Dictionary = flow.call("to_save_data")
-	_check(int(saved.get("state_version", 0)) == 2, "current_save_schema")
+	_check(int(saved.get("state_version", 0)) == 3, "current_save_schema")
 	var restored_fixture := SUPPORT.create_fixture(get_tree(), regions, [factory, market, warehouse], [route])
 	var restored_flow: Node = restored_fixture.get("flow")
 	_check(bool(restored_flow.call("apply_save_data", saved).get("applied", false)), "save_restore_applies")

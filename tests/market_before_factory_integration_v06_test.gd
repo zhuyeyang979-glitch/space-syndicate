@@ -8,20 +8,6 @@ var _checks := 0
 var _failures: Array[String] = []
 
 
-class WorldState:
-	extends Node
-
-	var game_time := 0.0
-	var players: Array = [
-		{"cash": 0, "cash_cents": 0, "v06_transaction_ledger": []},
-		{"cash": 0, "cash_cents": 0, "v06_transaction_ledger": []},
-	]
-	var committed_batches: Array = []
-
-	func _on_commodity_flow_receipt_batch(batch: Dictionary) -> void:
-		committed_batches.append(batch.duplicate(true))
-
-
 class InfrastructureFacts:
 	extends Node
 
@@ -66,7 +52,11 @@ func _init() -> void:
 
 
 func _run() -> void:
-	var world := WorldState.new()
+	var world := WorldSessionState.new()
+	world.replace_players([
+		{"cash": 0, "cash_cents": 0, "v06_transaction_ledger": []},
+		{"cash": 0, "cash_cents": 0, "v06_transaction_ledger": []},
+	], true)
 	var infrastructure := InfrastructureFacts.new()
 	var product_market := ProductMarketFacts.new()
 	var route_network := RouteNetworkFacts.new()
@@ -83,7 +73,7 @@ func _run() -> void:
 	var factory := SUPPORT.facility("factory.integration", "region.integration", "factory", 0)
 	infrastructure.regions = [region]
 	infrastructure.facilities = [market]
-	bridge.call("bind_world", world)
+	bridge.call("set_world_session_state", world)
 	bridge.call("set_controller", flow)
 	bridge.call("set_runtime_dependencies", infrastructure, product_market, route_network)
 	flow.call("set_world_bridge", bridge)
@@ -93,7 +83,7 @@ func _run() -> void:
 	var first := _advance(flow, world, 60.0)
 	var second := _advance(flow, world, 60.0)
 	_expect(int(first.get("market_backlog_milliunits", 0)) == 10000 and int(second.get("market_backlog_milliunits", 0)) == 20000, "market-first production path accrues capped unmet demand without supply")
-	_expect(int((world.players[0] as Dictionary).get("cash_cents", -1)) == 0 and world.committed_batches.size() == 2, "empty authoritative batches advance without inventing cash or manual orders")
+	_expect(bool(first.get("advanced", false)) and bool(second.get("advanced", false)) and int(first.get("receipt_count", -1)) == 0 and int(second.get("receipt_count", -1)) == 0 and int((world.players[0] as Dictionary).get("cash_cents", -1)) == 0, "empty authoritative batches advance without inventing cash or manual orders")
 	infrastructure.facilities = [market, factory]
 	_expect(bool(SUPPORT.install(flow, factory, SUPPORT.DEFAULT_PRODUCT_ID, "production", 0, 2).get("finalized", false)), "matching factory installs later")
 	var no_route := _advance(flow, world, 60.0)
@@ -122,7 +112,7 @@ func _run() -> void:
 	quit(_failures.size())
 
 
-func _advance(flow: Node, world: WorldState, seconds: float) -> Dictionary:
+func _advance(flow: Node, world: WorldSessionState, seconds: float) -> Dictionary:
 	world.game_time += seconds
 	return flow.call("advance_world", seconds)
 

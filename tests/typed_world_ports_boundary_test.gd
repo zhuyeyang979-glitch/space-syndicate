@@ -53,7 +53,7 @@ func _test_port_contracts() -> void:
 	var required := {
 		"RuntimeLifecyclePort": ["session_is_finished", "session_is_paused", "synchronize_forced_decisions", "blocks_global_time", "allows_card_resolution_progress", "advance_world_time"],
 		"RuntimeCardPort": ["advance_card_resolution_frame", "advance_card_cooldowns"],
-		"RuntimeEconomyPort": ["advance_city_gdp_derivative_timers", "advance_product_futures_timers", "advance_economic_boons", "advance_commodity_flow", "advance_runtime_commodity_flow", "tick_product_market_cycle"],
+		"RuntimeEconomyPort": ["advance_city_gdp_derivative_timers", "advance_product_futures_timers", "advance_economic_boons", "advance_commodity_flow", "advance_runtime_commodity_flow", "tick_product_market_cycle", "has_pending_postcommit_recovery", "recover_pending_postcommit"],
 		"RuntimeActorPort": ["tick_weather", "tick_ai", "tick_military"],
 		"RuntimeMonsterPort": ["tick_wager_decisions_realtime", "tick_battle_lifecycles", "tick_motion", "tick_actions", "tick_durations", "tick_revivals"],
 		"RuntimePresentationPort": ["advance_visual_cues", "advance_table_presentation"],
@@ -67,7 +67,8 @@ func _test_port_contracts() -> void:
 		for method_name in expected:
 			_check(child.has_method(method_name), "%s exposes %s" % [child.name, method_name])
 		var snapshot: Dictionary = child.debug_snapshot()
-		_check(int(snapshot.get("operation_count", 99)) <= 7, "%s stays below the seven-operation budget" % child.name)
+		var operation_budget := 8 if str(child.name) == "RuntimeEconomyPort" else 7
+		_check(int(snapshot.get("operation_count", 99)) <= operation_budget, "%s stays within its narrow operation budget" % child.name)
 	ports.free()
 
 

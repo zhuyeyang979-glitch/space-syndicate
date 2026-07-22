@@ -22,7 +22,6 @@ const AUTO_MONSTER_MOVE_RATIO := 0.72
 const EMBER_RING_BOMB_SELF_DAMAGE := 3
 const STARTING_CASH := 2000
 const CITY_PRODUCT_LEVEL_MAX := 5
-const CITY_GDP_HISTORY_LIMIT := 8
 const ECONOMY_LEGACY_TURN_SECONDS := 30.0
 const INTEL_CORRECT_GUESS_CASH := 120
 const INTEL_WRONG_GUESS_COST := 60
@@ -6161,10 +6160,6 @@ func _city_income_breakdown_summary(breakdown: Dictionary) -> String:
 	return "成交GDP %.2f/min｜最近%d秒 %d笔唯一回执" % [float(int(breakdown.get("net_cents", 0))) / 100.0, int(breakdown.get("observation_window_seconds", 0)), int(breakdown.get("receipt_count", 0))]
 
 
-func _city_gdp_change_reason_text(breakdown: Dictionary) -> String:
-	return "只统计观察窗口内已成交商品；生产、需求和回压本身不直接产生GDP。" if int(breakdown.get("receipt_count", 0)) > 0 else "尚无完成销售的商品回执。"
-
-
 func _city_gdp_history_path_text(city: Dictionary, limit: int = 5) -> String:
 	var history: Array = city.get("gdp_history", [])
 	if history.is_empty():
@@ -6202,31 +6197,6 @@ func _city_gdp_trend_text(city: Dictionary) -> String:
 	]
 
 
-func _sync_commodity_gdp_city_presentation(district_index: int, breakdown: Dictionary) -> void:
-	if district_index < 0 or district_index >= _game_runtime_coordinator_node().world_session_state().districts.size():
-		return
-	var city := _district_city(district_index)
-	var income := int(breakdown.get("net", 0))
-	var history: Array = city.get("gdp_history", [])
-	var previous := income
-	if not history.is_empty():
-		previous = int(history[history.size() - 1])
-	elif int(city.get("last_gdp", 0)) > 0:
-		previous = int(city.get("last_gdp", income))
-	var delta := income - previous
-	history.append(income)
-	while history.size() > CITY_GDP_HISTORY_LIMIT:
-		history.remove_at(0)
-	city["last_income"] = income
-	city["last_gdp"] = income
-	city["last_gdp_delta"] = delta
-	city["last_gdp_source"] = "商品成交回执"
-	city["last_gdp_reason"] = _city_gdp_change_reason_text(breakdown)
-	city["last_gdp_breakdown"] = breakdown.duplicate(true)
-	city["gdp_history"] = history
-	_game_runtime_coordinator_node().world_session_state().districts[district_index]["city"] = city
-
-
 func _refresh_route_network() -> void:
 	_route_network_runtime_call("refresh_routes")
 
@@ -6234,23 +6204,6 @@ func _refresh_route_network() -> void:
 func _route_network_routes_for_product(product_name: String) -> Array:
 	var value: Variant = _route_network_runtime_call("routes_for_product", [product_name])
 	return (value as Array).duplicate(true) if value is Array else []
-
-
-func _on_commodity_flow_receipt_batch(batch: Dictionary) -> void:
-	var affected_region_ids: Dictionary = {}
-	for receipt_variant in batch.get("receipts", []):
-		if receipt_variant is Dictionary:
-			affected_region_ids[str((receipt_variant as Dictionary).get("market_region_id", ""))] = true
-	for district_index in range(_game_runtime_coordinator_node().world_session_state().districts.size()):
-		var region_id := str((_game_runtime_coordinator_node().world_session_state().districts[district_index] as Dictionary).get("region_id", "region.%03d" % district_index))
-		if not affected_region_ids.has(region_id):
-			continue
-		var breakdown := _city_gdp_per_minute_breakdown(district_index, 0)
-		_sync_commodity_gdp_city_presentation(district_index, breakdown)
-		_city_gdp_derivative_runtime_call("settle_district", [district_index, int(breakdown.get("net", 0)), "商品成交回执", false])
-		_game_runtime_coordinator_node().pulse_visual_district(district_index, Color("#2dd4bf"))
-	for player_index in range(_game_runtime_coordinator_node().world_session_state().players.size()):
-		_record_player_cash_snapshot(player_index)
 
 
 func _append_unique_district_index(result: Array, index: int) -> void:

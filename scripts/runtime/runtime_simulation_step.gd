@@ -43,6 +43,46 @@ func is_ready() -> bool:
 		and _state_commit != null and _state_commit.is_ready()
 
 
+func recover_postcommit_before_frame(context: RuntimePhaseFrameContext) -> Dictionary:
+	if not is_ready() or context == null or not _resolution.has_pending_postcommit_recovery():
+		return {"needed": false, "completed": true}
+	_step_index += 1
+	context.simulation_step_index = _step_index
+	if mutation_authority != null:
+		var opened := mutation_authority.begin_step(_step_index)
+		if not bool(opened.get("opened", false)):
+			context.path = &"postcommit_recovery"
+			context.stopped_reason = StringName(str(opened.get("reason", "mutation_authority_unavailable")))
+			_last_step_receipt = {
+				"advanced": false,
+				"completed": false,
+				"recovery_only": true,
+				"step_index": _step_index,
+				"reason": str(opened.get("reason", "mutation_authority_unavailable")),
+			}
+			context.simulation_step_receipt = _last_step_receipt.duplicate(true)
+			return {"needed": true, "completed": false, "reason": str(_last_step_receipt.get("reason", "mutation_authority_unavailable"))}
+	var phase_start := context.phase_trace.size()
+	var mutation_start := context.trace.size()
+	var recovery := _resolution.recover_pending_postcommit_before_frame(context)
+	if mutation_authority != null:
+		mutation_authority.end_step()
+	_last_step_receipt = {
+		"advanced": true,
+		"completed": bool(recovery.get("completed", false)),
+		"recovery_only": true,
+		"step_index": _step_index,
+		"world_delta": 0.0,
+		"stopped_reason": context.stopped_reason,
+		"phase_trace": context.phase_trace.slice(phase_start),
+		"mutation_trace": context.trace.slice(mutation_start),
+	}
+	context.simulation_step_receipt = _last_step_receipt.duplicate(true)
+	var result := recovery.duplicate(true)
+	result["needed"] = true
+	return result
+
+
 func advance_active(context: RuntimePhaseFrameContext) -> Dictionary:
 	if not is_ready() or context == null or context.path != &"active":
 		_last_step_receipt = {

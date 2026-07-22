@@ -68,32 +68,17 @@ func advance_commodity_flow(delta_seconds: float, blocking_snapshot: Dictionary 
 	var merged := blocking_snapshot.duplicate(true)
 	merged["global_blocked"] = bool(merged.get("global_blocked", false)) or (_scheduler != null and _scheduler.blocks_global_time())
 	merged["session_paused"] = bool(merged.get("session_paused", false)) or (_session != null and _session.session_state() == "paused")
-	var flow_result := _commodity_flow.advance_world(delta_seconds, merged).duplicate(true)
-	if not bool(flow_result.get("advanced", false)):
-		return flow_result
-	if _bankruptcy == null:
-		flow_result["bankruptcy_checkpoint"] = {"finalized": false, "reason_code": "bankruptcy_checkpoint_missing"}
-		return flow_result
-	var bankruptcy := _bankruptcy.settle_checkpoint({
-		"transaction_id": "bankruptcy:%s" % str(flow_result.get("batch_id", "")),
-		"reason_code": "post_sale_receipt",
-		"occurred_at": float(merged.get("game_time", 0.0)),
-	})
-	flow_result["bankruptcy_checkpoint"] = bankruptcy.duplicate(true)
-	if not bool(bankruptcy.get("finalized", false)):
-		return flow_result
-	var color_gdp_by_player: Dictionary = {}
-	for player_index in range(maxi(0, int(merged.get("player_count", 0)))):
-		color_gdp_by_player[str(player_index)] = _commodity_flow.player_color_flow_snapshot(player_index)
-	if _player_mana == null:
-		flow_result["asset_recovery"] = {"advanced": false, "reason": "player_mana_runtime_missing"}
-		return flow_result
-	flow_result["asset_recovery"] = _player_mana.advance(
-		maxi(1, int(round(delta_seconds * 1000.0))),
-		float(merged.get("game_time", 0.0)),
-		color_gdp_by_player
-	).duplicate(true)
-	return flow_result
+	return _commodity_flow.advance_world(delta_seconds, merged).duplicate(true)
+
+
+func has_pending_postcommit_recovery() -> bool:
+	return _commodity_flow != null and _commodity_flow.has_pending_postcommit_recovery()
+
+
+func recover_pending_postcommit() -> Dictionary:
+	if _commodity_flow == null:
+		return {"needed": true, "completed": false, "reason": "commodity_flow_runtime_missing"}
+	return _commodity_flow.recover_pending_postcommit().duplicate(true)
 
 
 func advance_runtime_commodity_flow(delta_seconds: float) -> bool:
@@ -107,9 +92,8 @@ func advance_runtime_commodity_flow(delta_seconds: float) -> bool:
 		"game_time": _world_state.game_time,
 		"player_count": _world_state.players.size(),
 	})
-	var checkpoint: Dictionary = result.get("bankruptcy_checkpoint", {}) if result.get("bankruptcy_checkpoint", {}) is Dictionary else {}
-	return bool(result.get("advanced", false)) and bool(checkpoint.get("finalized", false))
+	return bool(result.get("advanced", false)) and bool(result.get("postcommit_completed", true))
 
 
 func debug_snapshot() -> Dictionary:
-	return {"port_kind": "economy", "ready": is_ready(), "operation_count": 6, "owns_economy_state": false}
+	return {"port_kind": "economy", "ready": is_ready(), "operation_count": 8, "owns_economy_state": false}

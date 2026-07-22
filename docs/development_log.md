@@ -1,7 +1,79 @@
 # 太空辛迪加开发日志
 
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
-> 最新记录日期：2026-07-22。
+> 最新记录日期：2026-07-23。
+
+## 2026-07-23 — CommodityFlow post-commit exact-once cutover
+
+- Added one scene-owned `CommodityFlowPostCommitReceiptConsumer` with a
+  persistent, fingerprint-bound forward-recovery journal nested in the existing
+  CommodityFlow save section.
+- Preserved the production order for every affected district: GDP/history,
+  due derivative settlement and public pulse; all player cash snapshots follow.
+  Stable bankruptcy and PlayerMana asset-recovery checkpoints now follow in the
+  same journal. Duplicate and interrupted batches only complete missing stages.
+- Added a RuntimeSimulationStep recovery-only fence before lifecycle, world
+  clock, commands, AI and autonomous phases; pending recovery consumes zero
+  world delta and never interleaves the next frame's mutations.
+- A recovered pending batch returns its original identity, time and delta and
+  cannot create a new flow batch in the same call, so bankruptcy and asset
+  recovery cannot be skipped.
+- Removed the dynamic CommodityFlowWorldBridge callback into Main together with
+  `Main._on_commodity_flow_receipt_batch`, the old city mutation helper and its
+  history-limit constant. No compatibility fallback remains.
+- Added one durable, privacy-safe typed public receipt for each non-empty batch.
+  The receipt is consumed once by the existing typed public-log target, then
+  the existing presentation scheduler receives one idempotent LIVE due-bit
+  invalidation before consumer finalization. Empty batches produce neither.
+- Kept presentation application outside gameplay authority: pulses remain in
+  the existing VisualCue owner, the scheduler remains cadence-only, and no
+  direct UI apply, second scheduler, public commodity-route signal or Main
+  fallback was added.
+- Added a pure-data v0.6 registry dependency contract across CommodityFlow,
+  Session, Bankruptcy and PlayerMana sections. It rejects finalized-consumer
+  ahead, target-ahead, fingerprint collision and invalid pending
+  caller-acknowledgement restores before any live owner mutates.
+- Bound the production CommodityFlow save section to a true pure
+  `preflight_save_data` implementation. A fresh detached owner/consumer performs
+  normalization; the formal 19-section registry harness proves accepted and
+  rejected envelopes never apply to or alter the live flow owner, consumer or
+  any other owner.
+- Froze journal capacity at 128 finalized records plus at most one pending
+  record. Pending finalization prunes back to 128, while 129 finalized records
+  and forged legacy markers fail closed with zero live mutation. The sole
+  compatibility marker is
+  `legacy_flow_batches_assumed_synchronously_completed`.
+- Hardened PublicLog save parsing to rebuild allowlisted typed entries instead
+  of trusting saved free text. PublicLog remains a transient projection rather
+  than a twentieth transactional Save Owner; complete finalized log-history
+  restoration stays in the later Alpha 0.2 save/resume program.
+- Added focused duplicate, collision, fault-window, save-roundtrip, privacy,
+  formal SessionEnvelope, strict cursor parity, malformed-save, downstream
+  target, public-tail, torn cross-owner restore, consecutive-new-run,
+  composition and Godot Bench evidence. Every
+  target-success/caller-interruption stage is covered.
+- Latest focused evidence: exact-once `115/115`, recovery `15/15`, formal
+  envelope `11/11`, restore dependency `15/15`, formal registry preflight
+  `9/9`, public-log save/privacy `15/15`, downstream checkpoint `6/6`, backlog
+  roundtrip `19/19`, Bankruptcy `155/155`, PlayerMana `21/21`, market-first
+  integration `11/11`, production v0.6 registry `12/12`, and table-presentation
+  query ports `63/63`.
+- The isolated 600-second full-smoke comparison remains blocked by the same
+  retired Main fixture debt on both sides. `origin/main@ce6853c` run
+  `20260722-192230-963-smoke_test-922d530a` and this cutover run
+  `20260722-192544-541-smoke_test-13627c2f` both reached `player table ui
+  checks`, reported 32 legacy fixture script errors (beginning with the removed
+  `_new_game` entry), then stopped advancing at the same stale
+  `_summon_monster_from_card` Dictionary-to-int call and timed out. Both scoped
+  runners left zero project processes. The separate production parse/load
+  `--check-only` gate passes; the full smoke is therefore reported as unchanged
+  baseline debt, not as green and not as a CommodityFlow regression.
+- Relative to `origin/main@ce6853c`, Main falls from 6,528 to 6,481 physical
+  lines, 5,497 to 5,456 nonblank lines, 476 to 473 methods, and 59 to 58
+  constants. Variables remain 46, preloads remain 7, and external caller files
+  remain 103. The budget tool's inherited absolute `103 <= 102` threshold is
+  red on both baseline and candidate; this cutover adds no Main caller and does
+  not hide that pre-existing threshold debt.
 
 ## 2026-07-22 — Developer diagnostics application-host cutover
 

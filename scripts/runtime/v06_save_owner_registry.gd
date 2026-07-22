@@ -4,6 +4,7 @@ class_name V06SaveOwnerRegistry
 
 const BindingScript := preload("res://scripts/runtime/v06_save_owner_binding_resource.gd")
 const CardHistoryRestoreDependencyContractScript := preload("res://scripts/runtime/card_history_restore_dependency_contract.gd")
+const CommodityFlowPostCommitRestoreDependencyContractScript := preload("res://scripts/runtime/commodity_flow_postcommit_restore_dependency_contract.gd")
 const REGISTRY_ID := "v06_save_owner_registry"
 const REGISTRY_VERSION := 1
 const SECTION_WRAPPER_KEYS := ["schema_version", "owner_id", "owner_state"]
@@ -369,9 +370,22 @@ func _preflight_cross_section_dependencies(plan: Dictionary) -> Dictionary:
 		(annotation_state_variant as Dictionary).duplicate(true),
 		(history_state_variant as Dictionary).duplicate(true)
 	)
+	if not bool(dependency.get("accepted", false)):
+		return {"accepted": false, "reason_code": "cross_section_dependency_rejected"}
+	for section_id in ["commodity_flow", "bankruptcy_neutral_estate", "player_mana"]:
+		var section_plan_variant: Variant = plan.get(section_id)
+		if not (section_plan_variant is Dictionary) \
+				or not ((section_plan_variant as Dictionary).get("normalized_owner_state") is Dictionary):
+			return {"accepted": false, "reason_code": "cross_section_dependency_rejected"}
+	var commodity_dependency: Dictionary = CommodityFlowPostCommitRestoreDependencyContractScript.validate_dependencies(
+		((plan.get("commodity_flow") as Dictionary).get("normalized_owner_state") as Dictionary).duplicate(true),
+		(session_state_variant as Dictionary).duplicate(true),
+		((plan.get("bankruptcy_neutral_estate") as Dictionary).get("normalized_owner_state") as Dictionary).duplicate(true),
+		((plan.get("player_mana") as Dictionary).get("normalized_owner_state") as Dictionary).duplicate(true)
+	)
 	return {
-		"accepted": bool(dependency.get("accepted", false)),
-		"reason_code": "cross_section_dependencies_valid" if bool(dependency.get("accepted", false)) else "cross_section_dependency_rejected",
+		"accepted": bool(commodity_dependency.get("accepted", false)),
+		"reason_code": "cross_section_dependencies_valid" if bool(commodity_dependency.get("accepted", false)) else "cross_section_dependency_rejected",
 	}
 
 
