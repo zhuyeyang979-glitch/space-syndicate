@@ -73,19 +73,43 @@ phase order:
 Wall time is scheduling-sensitive; the seed, first rack/quote/purchase order,
 accepted receipt kinds, visible listing path, and zero-invalid result reproduced.
 
+## Activated Alpha content rerun
+
+After the Alpha 0.1 runtime manifest was merged, the same bounded seed-0 run
+was repeated on integration head `07c104c87ff6effec711ce9fe26748f8366550c4`.
+The selected 28-card regional pool was active and exposed several real Rank-I
+factory and market listings, so the earlier uncurated-pool hypothesis is now
+closed.
+
+- `time_to_first_rack`: `0.382 s`
+- `time_to_first_quote`: `22.105 s`
+- `time_to_first_purchase`: `22.434 s`
+- actions attempted/progressed: `26 / 26`
+- invalid actions: `0`
+- typed receipt rejection: `0`
+- non-finite public facts: `0`
+- terminal status: `incomplete`
+- terminal reason: `observation_window_elapsed_before_settlement`
+- world time observed: `49.725 s`
+- owned facilities: `0`
+- controlled regions: `0`
+- top-three GDP/min: `0 / 108`
+
 ## First real failure
 
-No product action failed before the bounded observation gate. The terminal
-result was `observation_window_elapsed_before_settlement`, after the real
-purchase milestone. This is an honest incomplete full-run result, not a rack
-failure and not a settlement claim.
+The regional rack, quote, and purchase path is not the blocker. The first
+purchase is accepted through the production typed receipt, and the following
+public hand projection briefly reports `play.hand.hand_0.` instead of a
+playable `facility_v06` surface. The driver therefore cannot select the bought
+facility through the same player-facing hand action used by a human and
+continues rotating racks. No facility is installed and no GDP receipt can be
+produced.
 
-The current uncurated main pool still spends long periods looking for the
-opening facility chain and had `owned_facility_count=0`, GDP `0`, and no
-settlement at the 180-second boundary. This is recorded as the next observed
-product/content risk, not promoted to a final Alpha defect: the independently
-owned Alpha manifest activation changes the active pool and must be rerun after
-integration.
+This is the first real Alpha P0/P1 boundary to repair. The fix must preserve the
+existing private-viewer authorization and make the purchased card's stable
+catalog identity, facility kind, eligibility, and typed play action survive the
+private hand projection. It must not add a QA-only play path or submit directly
+to a gameplay owner.
 
 ## Verification
 
