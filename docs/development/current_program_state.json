@@ -1,126 +1,104 @@
 {
-  "schema_version": 3,
-  "generated_at": "2026-07-23T06:20:19+09:00",
+  "schema_version": 4,
+  "generated_at": "2026-07-23T06:46:24+09:00",
   "source": {
     "repository": "zhuyeyang979-glitch/space-syndicate",
     "branch": "main",
-    "main_sha": "fbbd35963d9b30b216546e3e72ca0e7012b21d05",
-    "latest_merge_pr": 48,
+    "main_sha": "53c4c02fcb6c17dbc8e97af88e753d78ea3cb225",
+    "latest_merge_pr": 49,
     "origin_divergence": {"ahead": 0, "behind": 0},
     "open_pull_requests": [],
-    "source_tree_clean_before_reconciliation": true,
-    "recent_main_commits_reviewed": 30
+    "recent_main_commits_reviewed": 30,
+    "remote_tag_count": 0,
+    "draft_release_count": 0,
+    "branch_protection_configured": false,
+    "main_ci": {
+      "workflow_run_count": 0,
+      "check_run_count": 0,
+      "commit_status_count": 0,
+      "required_status_context_count": 0
+    }
   },
   "program": {
-    "program_id": "ALPHA_0_1_TO_ALPHA_0_2_COMPLETE_PRODUCTIZATION",
+    "program_id": "ALPHA_0_3_CORE_COMPLETE_CLOSED_ALPHA",
     "status": "ACTIVE",
-    "initial_main_sha": "ce6853cb75c10fdfed457431d638af9009a01083",
-    "current_phase": "PHASE_1_REMAINING_P0",
+    "initial_main_sha": "53c4c02fcb6c17dbc8e97af88e753d78ea3cb225",
+    "current_phase": "GATE_A_REMAINING_P0",
     "final_status_claimed": false,
-    "alpha_0_1_complete_match_rc_green": false,
-    "alpha_0_1_external_playtest_complete": false,
-    "alpha_0_2_release_candidate_green": false,
+    "playable_game": false,
+    "complete_match_proven": false,
+    "full_run_resume_claim": false,
+    "content_pipeline_open": true,
+    "art_pipeline_open": true,
+    "closed_alpha_ready": false,
     "public_release_published": false
   },
-  "merged_milestones": [
+  "required_status_facts": [
     {
       "task_id": "P0-AI-BUSINESS-COST-TYPED-CASH-CUTOVER",
+      "status": "MERGED",
+      "pull_request": 45,
       "commit": "398e56837c0d782586d80a0dfe0d370f40ff5a8c",
-      "merge_commit": "ce6853cb75c10fdfed457431d638af9009a01083",
-      "pull_request": 45
+      "merge_commit": "ce6853cb75c10fdfed457431d638af9009a01083"
     },
     {
       "task_id": "P0-COMMODITY-FLOW-POSTCOMMIT-EXACT-ONCE",
+      "status": "MERGED",
+      "pull_request": 46,
       "commit": "87dd12a9b673a364592760cde148a43ab00ac65b",
-      "merge_commit": "cb9194a32e86c20287572b20b92acc0064fcd858",
-      "pull_request": 46
+      "merge_commit": "cb9194a32e86c20287572b20b92acc0064fcd858"
     },
     {
-      "task_id": "P2-ALPHA01-CARD-ART-PRODUCTION-CUTOVER",
-      "commit": "0a3c298e5fb69209bf5378fc4091f100bbd5a37a",
-      "merge_commit": "4393db5a63c740e94db2f44f2cf718f98dd7cff9",
-      "pull_request": 43
+      "task_id": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
+      "status": "ACTIVE",
+      "canonical_state": "ACTIVE_FOUNDATION_PORTS_MERGED",
+      "foundation_pull_request": 48,
+      "foundation_commit": "6596c3c",
+      "completion_claimed": false,
+      "remaining_scope": "migrate all AI production consumers and remove generic Main/world access"
+    },
+    {
+      "task_id": "P1-FOUR-SEAT-FIRST-ECONOMIC-ENGINE",
+      "status": "ACTIVE",
+      "completion_claimed": false
+    },
+    {
+      "task_id": "P1-FOUR-SEAT-TERMINAL-PATH",
+      "status": "BLOCKED",
+      "blocked_by": ["P1-FOUR-SEAT-FIRST-ECONOMIC-ENGINE"]
+    },
+    {
+      "task_id": "P1-SAVE-RESUME-OWNER-COVERAGE",
+      "status": "READY",
+      "readiness_stage": "OWNER_INVENTORY",
+      "canonical_state": "READY_FOR_OWNER_INVENTORY",
+      "transactional_owner_count": 12,
+      "required_owner_count": 19
+    },
+    {
+      "task_id": "P2-ALPHA01-CARD-ART-WAVE-1",
+      "status": "READY",
+      "canonical_state": "READY"
     }
   ],
-  "repository_inventory": {
-    "remote_branch_count": 62,
-    "remote_codex_branch_count": 57,
-    "remote_codex_merged_into_main_count": 48,
-    "remote_codex_unmerged_unique_count": 9,
-    "unmerged_remote_branches_require_semantic_triage": true,
-    "remote_codex_unmerged_unique": [
-      {"branch": "codex/a-v06-main-sceneization", "head": "ab5d331", "ahead": 2, "behind": 431},
-      {"branch": "codex/a-v06-product-codex", "head": "c98e323", "ahead": 3, "behind": 198},
-      {"branch": "codex/b-v06-bankruptcy-neutral-estate", "head": "a20c664", "ahead": 2, "behind": 431},
-      {"branch": "codex/b-v06-military-regression", "head": "7a4de27", "ahead": 4, "behind": 199},
-      {"branch": "codex/b-v06-runtime-owners", "head": "860bd851", "ahead": 1, "behind": 434},
-      {"branch": "codex/c-v06-save-privacy", "head": "f51b65c", "ahead": 3, "behind": 434},
-      {"branch": "codex/c-v06-save-privacy-18", "head": "ddb5b57", "ahead": 2, "behind": 427},
-      {"branch": "codex/c-v06-save-regression", "head": "cf11f61", "ahead": 3, "behind": 199},
-      {"branch": "codex/tutorial-coach-action-copy", "head": "35eeed2", "ahead": 1, "behind": 447}
-    ],
-    "registered_worktree_count": 61,
-    "clean_worktree_count": 50,
-    "preserved_dirty_worktree_count": 11,
-    "missing_worktree_count": 0,
-    "registered_c_path_junction_count": 52,
-    "physical_c_worktree_count": 0,
-    "running_godot_process_count": 0,
-    "running_exported_game_process_count": 0
-  },
-  "github_delivery": {
-    "open_pr_count": 0,
-    "actions_run_count": 0,
-    "actions_artifact_count": 0,
-    "remote_tag_count": 0,
-    "release_count": 0,
-    "main_status_context_count": 0,
-    "main_check_run_count": 0,
-    "branch_protection_configured": false
-  },
   "playable": {
     "status": "INTERNAL_PLAYABLE_FOUNDATION_FIRST_ECONOMIC_ENGINE_UNPROVEN",
-    "configuration": "1 local human plus 3 AI; challenge depth 1",
-    "complete_match_proven": false,
-    "full_run_resume_claim": false,
-    "latest_formal_four_seat_evidence": {
-      "evidence_branch": "codex/p1-post-facility-fullrun-a644f45",
-      "evidence_head": "1fff2abf57f32aad0da2b47766bb471488d0c46d",
-      "current_main_commits_behind": 12,
-      "observation_seconds": 180,
-      "actions_progressed": 28,
-      "actions_attempted": 28,
-      "invalid_actions": 0,
-      "facilities_installed": 2,
-      "forced_monster_wager_seen_and_cleared": true,
-      "first_sale_receipt_seen": false,
-      "nonzero_gdp_seen": false,
-      "settlement_seen": false,
-      "return_to_menu_and_restart_seen": false,
-      "terminal_reason": "observation_window_elapsed_before_settlement"
-    },
-    "verified_surfaces": [
+    "recommended_configuration": "1 local human plus 3 AI; challenge depth 1",
+    "verified": [
       "formal main scene composition",
       "four-seat session startup",
-      "viewer-authorized district rack open",
-      "typed quote and purchase",
-      "facility card visible in the private hand",
+      "typed district rack quote and purchase",
+      "facility card enters private hand",
       "typed facility play",
-      "two installed facilities",
-      "monster wager forced window open and clear",
-      "CommodityFlow post-commit duplicate and interrupted recovery exact-once"
+      "forced monster wager opens and clears",
+      "CommodityFlow post-commit exact-once"
     ],
-    "unverified_surfaces": [
-      "compatible factory and market economic engine",
+    "unverified": [
+      "compatible factory and market engine",
       "first authoritative Sale Receipt",
-      "positive GDP/minute",
-      "AI economic purchase and construction progression",
-      "stable target and one-layer counter in the complete path",
-      "monster battle in the complete path",
-      "victory qualification and 120-second audit",
-      "final settlement",
-      "return to menu and second four-seat session",
-      "20-30 minute complete-match duration"
+      "positive GDP per minute",
+      "complete match to settlement",
+      "return to menu and restart"
     ]
   },
   "architecture": {
@@ -138,161 +116,103 @@
       "latest_cutover_monotonic": true,
       "bootstrap_only": false
     },
-    "main_gd_reduction_from_frozen_baseline": {
-      "physical_lines_removed": 9007,
-      "nonblank_lines_removed": 8072,
-      "methods_removed": 443,
-      "fields_removed": 56,
-      "constants_removed": 63,
-      "preloads_removed": 8
-    },
     "cutover_ledger": {
       "total_domains": 43,
       "cut_over_domains": 39,
-      "pending_domains": 4,
-      "pending": [
+      "pending_domains": [
         "typed_world_ports",
         "save_restore",
         "presentation_action_routing",
         "remaining_root_responsibilities"
       ]
     },
-    "resolved_p0_risks": [
-      "ai_business_cost_cash_bypass",
-      "commodity_flow_postcommit_duplicate"
-    ],
-    "active_p0_risks": [
-      {
-        "id": "ai_world_capability_overexposure",
-        "summary": "AI runtime still reaches Main/world state through generic dynamic capability and requires actor-scoped typed query and command ports."
-      }
-    ],
-    "coordinator_risk": {
-      "script_lines": 6372,
-      "methods": 600,
-      "public_methods": 357,
-      "assessment": "integration_monolith_risk_not_yet_gameplay_owner",
-      "guardrail": "Do not move Main methods into another general facade; new cutovers bind narrow typed owners directly."
-    }
+    "active_p0": "P0-AI-WORLD-TYPED-PORTS-CUTOVER"
   },
   "content": {
-    "status": "ALPHA01_RUNTIME_MANIFEST_ACTIVE",
-    "alpha_role_count": 8,
-    "alpha_card_identity_count": 40,
-    "alpha_ranked_record_count": 160,
-    "alpha_monster_count": 8,
-    "product_count": 46,
-    "industry_count": 6,
-    "organization_card_count": 0,
-    "alpha_0_2_targets": {
-      "roles": 12,
-      "card_identities": 56,
-      "monsters": 10,
-      "products": 46
+    "current": {
+      "roles": 8,
+      "card_identities": 40,
+      "ranked_records": 160,
+      "monsters": 8,
+      "products": 46,
+      "industries": 6,
+      "organization_cards": 0
     },
-    "content_wave_2_started": false
+    "alpha_0_2_targets": {"roles": 12, "card_identities": 56, "monsters": 10, "products": 46},
+    "alpha_0_3_targets": {"roles": 16, "card_identities": 72, "monsters": 12, "products": 46, "industries": 6},
+    "organization_cards_status": "DEFERRED",
+    "data_only_content_required": true
   },
   "art": {
-    "alpha_roles": {
-      "selected": 8,
-      "rendered_front_and_side": 8,
-      "runtime_asset_parity": true,
-      "commercial_candidate_quality": 4,
-      "temporary_or_source_review_required": 4
-    },
-    "all_roles": {"total": 24, "rendered": 12, "pending": 12},
-    "alpha_cards": {
-      "selected": 40,
-      "production_rendered": 5,
-      "semantic_fallback": 35,
-      "production_consumer_active": true,
-      "fake_rendered_count": 0
-    },
-    "alpha_monsters": {
-      "selected": 8,
-      "asset_files_present": 8,
-      "license_records_present": 8,
-      "unique_visual_sources": 8
-    },
-    "products": {
-      "total": 46,
-      "proof_assets": 6,
-      "production_consumers": 0,
-      "proof_only": true
-    },
-    "audio": {"table_audio_host_cut_over": false, "formal_audio_manifest_ready": false}
+    "roles": {"catalog_total": 24, "rendered": 12, "pending": 12, "alpha_0_1_selected_pairs": 8},
+    "cards": {"alpha_identities": 40, "rendered": 5, "semantic_fallback": 35, "fake_rendered_count": 0},
+    "monsters": {"alpha_active_roster": 8, "licensed_assets": 8, "unique_visual_sources": 8},
+    "products": {"catalog_total": 46, "proof_assets": 6, "production_track_icons": 0},
+    "audio": {"table_audio_host": false, "formal_manifest": false}
   },
+  "manifest_evidence": [
+    {
+      "path": "docs/playtest/alpha_0_1/content_manifest.json",
+      "file_sha256": "152cebaed82edf804a69078e9b72fb9f23851e8e0fe82980129a8a09534c3e39",
+      "semantic_selection_fingerprint": "e1754e42641e0cc6bd3175326f6fea2b8a62802bf4068d340e11862132b6fb54"
+    },
+    {
+      "path": "assets/art/role_portraits/temporary/manifest.json",
+      "file_sha256": "86172650b490ce65ece04233de890b8ff225115069ff5e9410b47976dffd7d00"
+    },
+    {
+      "path": "data/art/alpha01_card_illustration_status_manifest.json",
+      "file_sha256": "8fcb0f5e00feffeb061b184d31b7253e896b82107134e71f78fd230da2a55f55"
+    },
+    {
+      "path": "data/art/monster_body_art_manifest.json",
+      "file_sha256": "88a1ed453b1fb15bd6319f4321cb1af09544121b0f7a04dc5fe110979da19aee"
+    },
+    {
+      "path": "data/art/alpha01_product_art_manifest.json",
+      "file_sha256": "0459c75cb1e5add8cb69b56a8266c3aac8d4ed8a77a417f157a64f30f0ab6e4f"
+    },
+    {
+      "path": "docs/rules/v06_mechanic_status_registry.json",
+      "file_sha256": "5190d609ccee228b33cc15d7be946fc99aa3d15d711f16c7dd834010ebd3d78f"
+    }
+  ],
   "save_resume": {
     "transactional_owner_count": 12,
     "required_owner_count": 19,
-    "unsupported_owner_count": 7,
+    "unsupported_owner_ids": [
+      "ruleset",
+      "routes",
+      "commodity_belt_visibility",
+      "card_inventory",
+      "military",
+      "card_resolution_queue",
+      "ai"
+    ],
+    "inventory_task_status": "READY",
     "resume_ready": false,
     "cold_restore_proven": false,
-    "policy": "fail_closed",
-    "commodity_flow_pure_registry_preflight": true,
-    "public_log_is_not_a_twentieth_save_owner": true
+    "full_run_resume_claim": false
   },
-  "windows_export": {
-    "export_preset_present": true,
-    "build_automation_present": true,
-    "last_known_startable_build_sha": "9d5c3457a34b9d5966b21d98ad40a6c98c579418",
-    "last_known_build_path": "E:/SpaceSyndicateWorkspace/space-syndicate-builds/playtest-alpha-0.1-integration-9d5c345/SpaceSyndicate-Alpha-0.1-Windows-x86_64.exe",
-    "last_known_build_is_ancestor_of_main": true,
-    "last_known_exe_bytes": 136739528,
-    "last_known_exe_sha256": "9B760955FF1071861FE46538E8D2A6C6310910051838B24832C0382A02AE6C18",
-    "commits_behind_current_main": 30,
+  "release": {
+    "alpha_0_1_export_preset_present": true,
+    "alpha_0_3_export_preset_present": false,
     "current_head_build_present": false,
-    "zip_present": false,
-    "alpha_rc": false,
-    "headed_status": "PASS_PENDING_VISUAL_REVIEW"
+    "tag_count": 0,
+    "draft_prerelease_count": 0,
+    "public_release_published": false
   },
   "known_test_state": {
-    "focused_phase_1a_regression": "PASS",
     "smoke_check_only": "PASS",
-    "full_smoke": "BASELINE_BLOCKED_BY_RETIRED_MAIN_FIXTURES",
-    "full_smoke_baseline_script_errors": 32,
-    "full_smoke_candidate_script_errors": 32,
-    "full_smoke_shared_stop": "stale _summon_monster_from_card Dictionary-to-int call after player table ui checks",
-    "residual_process_count": 0,
-    "policy": "Do not restore retired Main wrappers; migrate stale fixtures independently."
+    "full_smoke": "STALE_FIXTURE_DEBT_PRESENT",
+    "policy": "Do not restore retired Main wrappers; migrate one current fixture family per test-debt PR."
   },
-  "current_blockers": {
-    "alpha_0_1": [
-      "AI generic world capability has not yet been replaced by actor-scoped typed ports",
-      "No authoritative compatible factory-plus-market Sale Receipt/GDP milestone yet",
-      "No complete four-seat run to settlement and restart",
-      "No current-main Windows RC build",
-      "No external closed-playtest sample"
-    ],
-    "alpha_0_2": [
-      "Alpha 0.1 external playtest and P0/P1 triage are incomplete",
-      "Save/resume remains 12 of 19 transactional owners",
-      "Content Wave 2 has not started",
-      "Alpha 0.2 art, audio and UX targets are incomplete",
-      "No current-head Alpha 0.2 RC build or draft prerelease"
-    ]
-  },
-  "active_workstreams": [
-    {
-      "task_id": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
-      "branch": "codex/p0-ai-world-typed-ports-cb9194a",
-      "worktree": "E:/SpaceSyndicateWorkspace/space-syndicate-p0-ai-world-typed-ports-cb9194a",
-      "status": "ACTIVE_FOUNDATION_PORTS_MERGED"
-    },
-    {
-      "task_id": "P1-FOUR-SEAT-FIRST-ECONOMIC-ENGINE",
-      "branch": "codex/p1-post-facility-fullrun-a644f45",
-      "status": "ACTIVE_CURRENT_MAIN_EVIDENCE_REVIEW_REQUIRED"
-    },
-    {"task_id": "P1-SAVE-RESUME-OWNER-COVERAGE", "status": "READY_FOR_OWNER_INVENTORY"},
-    {"task_id": "P2-ALPHA01-CARD-ART-WAVE-1", "status": "READY"},
-    {"task_id": "P4-FULL-SMOKE-FIXTURE-MIGRATION", "status": "READY"}
-  ],
   "next_boundaries": {
     "architecture": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
-    "product": "P1-FOUR-SEAT-FIRST-ECONOMIC-ENGINE current-main validation",
-    "save": "P1-SAVE-RESUME-OWNER-COVERAGE inventory and child-task split",
-    "art": "P2-ALPHA01-CARD-ART-WAVE-1",
+    "product": "P1-FOUR-SEAT-FIRST-ECONOMIC-ENGINE",
+    "save": "P1-SAVE-RESUME-OWNER-COVERAGE inventory",
+    "content": "P2-ALPHA01-CARD-ART-WAVE-1",
+    "ux_audio": "TABLE-AUDIO-AND-LIGHTWEIGHT-ONBOARDING-PREFLIGHT",
     "test_debt": "P4-FULL-SMOKE-FIXTURE-MIGRATION"
   }
 }
