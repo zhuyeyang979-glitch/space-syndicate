@@ -28,7 +28,7 @@ func _ready() -> void:
 	var pending_available: bool = pending_skin.apply_public_view_model({
 		"seat_index": 5,
 		"player_display_name": "公开席位 06",
-		"public_role_name": "深海菌毯使团",
+		"public_role_name": "虹膜数据券商",
 		"player_color": Color("#facc15"),
 		"public_status": "waiting",
 		"inward_direction": "right",

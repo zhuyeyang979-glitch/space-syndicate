@@ -183,7 +183,7 @@ func _test_portrait_manifest_parity(catalog: RoleCatalogRuntimeService) -> void:
 			pending += 1
 	_expect(names == catalog.ordered_role_names(), "portrait_manifest_preserves_catalog_name_order")
 	_expect(slugs.size() == 24 and not _has_duplicate_count(slugs), "portrait_manifest_slugs_are_unique")
-	_expect(rendered == 8 and pending == 16, "portrait_manifest_rendered_pending_parity")
+	_expect(rendered == 12 and pending == 12, "portrait_manifest_rendered_pending_parity")
 
 
 func _field_union(catalog: RoleCatalogRuntimeService) -> Array[String]:

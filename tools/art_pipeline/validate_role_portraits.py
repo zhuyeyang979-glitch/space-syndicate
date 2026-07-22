@@ -36,6 +36,11 @@ def sha256(path: Path) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--require-complete", action="store_true")
+    parser.add_argument(
+        "--require-source-cache",
+        action="store_true",
+        help="also require ignored third-party source models to exist and match their recorded hashes",
+    )
     args = parser.parse_args()
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
     index = json.loads(INDEX_PATH.read_text(encoding="utf-8"))
@@ -81,8 +86,13 @@ def main() -> int:
                     raise ValueError(f"{entry['role_name']}: manifest/index mismatch for {key}")
             source_path = ROOT / entry["source_path"]
             license_path = ROOT / entry["license_path"]
-            if not source_path.is_file() or sha256(source_path) != entry["source_sha256"]:
-                raise ValueError(f"{entry['role_name']}: source model hash mismatch")
+            if source_path.is_file():
+                if sha256(source_path) != entry["source_sha256"]:
+                    raise ValueError(f"{entry['role_name']}: source model hash mismatch")
+            elif args.require_source_cache:
+                raise FileNotFoundError(
+                    f"{entry['role_name']}: source cache is required but missing: {source_path}"
+                )
             if not license_path.is_file() or sha256(license_path) != entry["license_sha256"]:
                 raise ValueError(f"{entry['role_name']}: license hash mismatch")
         for key in ("front_path", "side_inward_path"):

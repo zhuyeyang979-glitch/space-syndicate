@@ -3,6 +3,7 @@ extends SceneTree
 const SCENE := preload("res://scenes/tools/RolePortraitRenderRig.tscn")
 const MANIFEST_PATH := "res://assets/art/role_portraits/temporary/manifest.json"
 const INDEX_PATH := "res://tools/art_pipeline/source_asset_index.json"
+const GENERATED_SOURCE_KIND := "openai_generated"
 
 var checks := 0
 var failures: Array[String] = []
@@ -53,18 +54,30 @@ func _run() -> void:
 		names[role_name] = true
 		if str(entry.get("status", "")) == "rendered":
 			rendered_count += 1
-			var source_path := str(entry.get("source_path", ""))
 			var front_path := str(entry.get("front_path", ""))
 			var side_path := str(entry.get("side_inward_path", ""))
-			_check(source_path.begins_with("art_sources/unpacked/"), "rendered source stays in approved cache: %s" % role_name)
-			_check(not str(entry.get("asset_id", "")).is_empty(), "rendered role has indexed asset id: %s" % role_name)
+			if str(entry.get("source_kind", "")) == GENERATED_SOURCE_KIND:
+				_check(str(entry.get("provider", "")) == "OpenAI", "generated role records provider: %s" % role_name)
+				_check(not str(entry.get("model", "")).is_empty(), "generated role records model: %s" % role_name)
+				_check(entry.get("source_path") == null and entry.get("source_sha256") == null, "generated role does not invent a model source: %s" % role_name)
+				var generation_ids := entry.get("source_generation_ids", {}) as Dictionary
+				var source_hashes := entry.get("source_sha256_by_view", {}) as Dictionary
+				for view_kind in ["front", "side_inward"]:
+					_check(str(generation_ids.get(view_kind, "")).begins_with("imagegen-"), "generated role records %s id: %s" % [view_kind, role_name])
+					_check(str(source_hashes.get(view_kind, "")).length() == 64, "generated role records %s hash: %s" % [view_kind, role_name])
+				_check(FileAccess.file_exists("res://%s" % str(entry.get("license_path", ""))), "generated role provenance exists: %s" % role_name)
+				_check(FileAccess.file_exists("res://%s" % str(entry.get("prompt_record_path", ""))), "generated role prompt record exists: %s" % role_name)
+			else:
+				var source_path := str(entry.get("source_path", ""))
+				_check(source_path.begins_with("art_sources/unpacked/"), "rendered source stays in approved cache: %s" % role_name)
+				_check(not str(entry.get("asset_id", "")).is_empty(), "rendered role has indexed asset id: %s" % role_name)
 			_check(FileAccess.file_exists("res://%s" % front_path), "rendered front PNG exists: %s" % role_name)
 			_check(FileAccess.file_exists("res://%s" % side_path), "rendered side PNG exists: %s" % role_name)
 		else:
 			_check(entry.get("source_path") == null, "pending source path is not invented: %s" % role_name)
 			_check(entry.get("front_path") == null, "pending front PNG is not invented: %s" % role_name)
 			_check(entry.get("side_inward_path") == null, "pending side PNG is not invented: %s" % role_name)
-	_check(rendered_count == 8, "four original portraits plus four actual-model trial roles are rendered")
+	_check(rendered_count == 12, "eight existing portraits plus four Alpha generated originals are rendered")
 	for required_role in ["环港走私议会", "重力矿联董事会", "光合修复会", "幽幕播报社"]:
 		var required_entry: Dictionary = {}
 		for entry_variant in roles:
@@ -73,6 +86,14 @@ func _run() -> void:
 				break
 		_check(str(required_entry.get("status", "")) == "rendered", "actual trial role is rendered: %s" % required_role)
 		_check(str(required_entry.get("candidate_pack_id", "")) == "free_assets_fixed_commit", "actual trial role uses fixed CC0 source: %s" % required_role)
+	for generated_role in ["深海菌毯使团", "离子军购局", "孪星兽栏同盟", "蜂巢防务议会"]:
+		var generated_entry: Dictionary = {}
+		for entry_variant in roles:
+			if entry_variant is Dictionary and str((entry_variant as Dictionary).get("role_name", "")) == generated_role:
+				generated_entry = entry_variant as Dictionary
+				break
+		_check(str(generated_entry.get("status", "")) == "rendered", "Alpha generated role is rendered: %s" % generated_role)
+		_check(str(generated_entry.get("source_kind", "")) == GENERATED_SOURCE_KIND, "Alpha generated role uses declared source kind: %s" % generated_role)
 
 	var index := _json(INDEX_PATH)
 	_check(index.get("records", []) is Array, "source index records are machine-readable")
