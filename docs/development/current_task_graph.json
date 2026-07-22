@@ -1,7 +1,7 @@
 {
   "schema_version": 3,
-  "generated_at": "2026-07-23T04:56:00+09:00",
-  "base_main_sha": "cb9194a32e86c20287572b20b92acc0064fcd858",
+  "generated_at": "2026-07-23T06:20:19+09:00",
+  "base_main_sha": "fbbd35963d9b30b216546e3e72ca0e7012b21d05",
   "allowed_statuses": ["READY", "ACTIVE", "BLOCKED", "REVIEW", "MERGE_READY", "MERGED", "DEFERRED", "RETIRED"],
   "selection_policy": "P0 correctness/privacy/exact-once, then P1 playable path, P2 content and art production, P3 Main extinction, P4 stale fixtures. P4 does not block unrelated P0-P2 work.",
   "tasks": [

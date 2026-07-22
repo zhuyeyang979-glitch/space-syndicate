@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-23T06:20:19+09:00",
+  "latest_verified_main_sha": "fbbd35963d9b30b216546e3e72ca0e7012b21d05",
+  "latest_merge_pr": 48,
+  "current_phase": "PHASE_1_REMAINING_P0",
+  "completed_phases": [
+    "P0-AI-BUSINESS-COST-TYPED-CASH-CUTOVER",
+    "P0-COMMODITY-FLOW-POSTCOMMIT-EXACT-ONCE",
+    "P2-ALPHA01-CARD-ART-PRODUCTION-CUTOVER",
+    "P0-AI-WORLD-TYPED-PORTS-FOUNDATION-CHECKPOINT"
+  ],
+  "merged_prs": [45, 46, 47, 48],
+  "active_branches": [
+    "codex/p0-ai-world-typed-ports-cb9194a",
+    "codex/p1-post-facility-fullrun-a644f45"
+  ],
+  "active_worktrees": [
+    "E:/SpaceSyndicateWorkspace/space-syndicate-p0-ai-world-typed-ports-cb9194a",
+    "E:/SpaceSyndicateWorkspace/space-syndicate-p1-post-facility-fullrun-a644f45"
+  ],
+  "current_product_blockers": [
+    "first authoritative Sale Receipt and positive GDP milestone unproven",
+    "complete four-seat run through settlement and restart unproven",
+    "current-main Windows RC and external closed playtest incomplete"
+  ],
+  "current_architecture_blockers": [
+    "AI generic Main/world capability retirement remains incomplete",
+    "actor-scoped typed ports are present but not yet wired to all AI consumers"
+  ],
+  "current_save_blockers": [
+    "transactional save owner coverage remains 12 of 19",
+    "cold restore remains unproven"
+  ],
+  "current_content_status": "ALPHA01_RUNTIME_MANIFEST_ACTIVE",
+  "current_art_status": "ALPHA01_PARTIAL_PRODUCTION_COVERAGE",
+  "current_build_status": "NO_CURRENT_MAIN_ALPHA_RC",
+  "program_final_green": false,
+  "ai_world_typed_ports_cutover_green": false,
+  "open_pull_request_count": 0,
+  "workspace_storage_migration_complete": true,
+  "workspace_root": "E:/SpaceSyndicateWorkspace",
+  "c_drive_paths_are_compatibility_junctions": true,
+  "storage_relocation_forbidden": true,
+  "codex_sessions_out_of_scope": true
+}
