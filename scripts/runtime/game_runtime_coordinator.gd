@@ -47,6 +47,7 @@ func _ready() -> void:
 	_wire_run_rng_service()
 	_wire_table_selection_state()
 	_wire_world_session_state()
+	_wire_ai_world_typed_ports()
 	_wire_table_presentation_query_ports()
 	_wire_monster_wager_cash_commitment_query_port()
 	_wire_player_cash_mutation_port()
@@ -70,6 +71,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	_wire_run_rng_service()
 	_wire_table_selection_state()
 	_wire_world_session_state()
+	_wire_ai_world_typed_ports()
 	_wire_table_presentation_query_ports()
 	_wire_monster_wager_cash_commitment_query_port()
 	_wire_player_cash_mutation_port()
@@ -1461,6 +1463,30 @@ func _wire_world_session_state() -> void:
 		(card_player_state as CardPlayerStateProductionAdapterV06).set_world_session_state(state)
 	if card_inventory is CommodityCardInventoryRuntimeController:
 		(card_inventory as CommodityCardInventoryRuntimeController).set_world_session_state(state)
+
+
+func _wire_ai_world_typed_ports() -> void:
+	var actor_state_port := _ai_actor_state_port_node()
+	var region_query_port := _ai_region_knowledge_query_port_node()
+	var city_inference_port := _ai_city_inference_command_port_node()
+	var ai := _ai_runtime_controller_node() as AiRuntimeController
+	if actor_state_port == null or region_query_port == null or city_inference_port == null or ai == null:
+		push_error("GameRuntimeCoordinator requires the three AI typed world ports and AiRuntimeController; AI city inference fails closed.")
+		return
+	var actor_capability := AiActorStateCapability.new()
+	var region_capability := AiRegionKnowledgeCapability.new()
+	actor_state_port.bind_ai_capability(actor_capability)
+	region_query_port.bind_ai_capability(region_capability)
+	city_inference_port.bind_ai_capability(region_capability)
+	ai.set_world_typed_ports(
+		actor_state_port,
+		actor_capability,
+		region_query_port,
+		region_capability,
+		city_inference_port
+	)
+	if not actor_state_port.is_ready() or not region_query_port.is_ready():
+		push_error("AI typed world ports are missing authoritative runtime owners; AI city inference fails closed.")
 
 
 func _wire_monster_wager_cash_commitment_query_port() -> void:
@@ -5639,6 +5665,18 @@ func _ai_runtime_controller_node() -> Node:
 
 func _ai_runtime_world_bridge_node() -> Node:
 	return get_node_or_null("AiRuntimeWorldBridge")
+
+
+func _ai_actor_state_port_node() -> AiActorStatePort:
+	return get_node_or_null("AiActorStatePort") as AiActorStatePort
+
+
+func _ai_region_knowledge_query_port_node() -> AiRegionKnowledgeQueryPort:
+	return get_node_or_null("AiRegionKnowledgeQueryPort") as AiRegionKnowledgeQueryPort
+
+
+func _ai_city_inference_command_port_node() -> AiCityInferenceCommandPort:
+	return get_node_or_null("AiCityInferenceCommandPort") as AiCityInferenceCommandPort
 
 
 func _monster_runtime_controller_node() -> Node:

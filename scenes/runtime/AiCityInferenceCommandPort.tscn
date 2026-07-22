@@ -5,3 +5,4 @@
 [node name="AiCityInferenceCommandPort" type="Node"]
 script = ExtResource("1_port")
 world_session_state_path = NodePath("../WorldSessionState")
+game_session_runtime_controller_path = NodePath("../GameSessionRuntimeController")

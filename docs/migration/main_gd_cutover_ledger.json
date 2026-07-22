@@ -216,7 +216,26 @@
       "old_path_deleted": false,
       "duplicate_execution_checked": false,
       "commit_sha": "",
-      "status": "pending"
+      "status": "pending",
+      "atomic_progress": [
+        {
+          "domain": "ai_city_inference_query_command",
+          "status": "validated_delivery_pending",
+          "query_port": "res://scripts/runtime/ai_region_knowledge_query_port.gd",
+          "command_port": "res://scripts/runtime/ai_city_inference_command_port.gd",
+          "authoritative_owner": "res://scripts/runtime/world_session_state.gd",
+          "removed_old_symbols": [
+            "AiRuntimeWorldBridge.apply_city_owner_guess",
+            "Main.CITY_GUESS_CONFIDENCE_*",
+            "Main.CITY_GUESS_REASON_*"
+          ],
+          "tests": [
+            "res://tests/ai_city_inference_typed_ports_cutover_test.gd",
+            "res://scenes/tools/AiCityInferenceTypedPortsCutoverBench.tscn"
+          ],
+          "parent_domain_complete": false
+        }
+      ]
     },
     {
       "domain": "typed_world_ports_boundary_hardening",

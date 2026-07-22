@@ -37,6 +37,28 @@ The migrated functions retain their current v0.6 call order. This includes card 
 
 World legality and mutation remain with their existing owners. The controller asks the bridge for those facts or actions; it does not duplicate card, economy, city, route, monster, military, weather, contract, queue, or execution rules.
 
+## City Inference Typed-Port Boundary
+
+AI city ownership inference is the first production consumer migrated from the
+generic bridge to the foundation ports. `AiRegionKnowledgeQueryPort` returns
+detached actor-scoped public region facts plus only that actor's private city
+inference. `AiCityInferenceCommandPort` authorizes a stable, revision-bound,
+exact-once command before delegating the mutation to `WorldSessionState`.
+
+The public region projection may include anonymous warehouse count, units, and
+product names because those are existing public city clues. It must exclude the
+warehouse owner, private bucket and source identifiers, transaction lineage,
+debt, liability, expiry, rival cash, rival hand, hidden city owner, and rival
+inference. A city owner appears only for the actor's own city, that actor's own
+guess, or a previously authorized reveal.
+
+The query and command ports consume no RNG and do not own save data. Guess,
+confidence, and reason remain in `WorldSessionState` and continue through the
+existing session envelope v2. The generic bridge city-guess mutation and Main's
+city-inference constants are deleted with no fallback. Other AI domains remain
+on the generic bridge until their own atomic cutovers; this section is not a
+claim that the parent P0 is complete.
+
 AI business cost mutation must use `AiBusinessCostCashPort`, the existing
 `MonsterWagerCashCommitmentQueryPort`, and `PlayerCashMutationPort`. The market
 effect must use `ProductMarketRuntimeController`'s synchronous
