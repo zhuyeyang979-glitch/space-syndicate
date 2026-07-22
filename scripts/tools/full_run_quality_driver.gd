@@ -92,6 +92,7 @@ const SUMMARY_PUBLIC_KEYS := [
 	"capability",
 	"save",
 	"actions",
+	"milestones",
 	"phase",
 	"elapsed",
 	"progress",
@@ -115,6 +116,7 @@ const CAPABILITY_PUBLIC_KEYS := [
 	"unsupported_sections",
 	"resume_ready",
 	"capture_fail_closed",
+	"district_supply_query_ready",
 ]
 
 var _started_msec := 0
@@ -123,6 +125,14 @@ var _last_event := "driver_started"
 var _last_progress_feedback := ""
 var _district_supply_receipt_sequence := 0
 var _last_district_supply_receipt: Dictionary = {}
+var _district_supply_query_port: DistrictSupplyViewerQueryPort
+var _session_started_msec := 0
+var _milestones := {
+	"clock": "wall_seconds_from_session_start",
+	"time_to_first_rack": -1.0,
+	"time_to_first_quote": -1.0,
+	"time_to_first_purchase": -1.0,
+}
 var _action_stats := {
 	"attempted": 0,
 	"progressed": 0,
@@ -177,6 +187,8 @@ func _run() -> void:
 	coordinator = main_instance.get_node_or_null(COORDINATOR_PATH)
 	session = coordinator.get_node_or_null(SESSION_PATH) if coordinator != null else null
 	var district_supply_port := (coordinator as GameRuntimeCoordinator).district_supply_action_port() if coordinator is GameRuntimeCoordinator else null
+	_district_supply_query_port = coordinator.get_node_or_null("DistrictSupplyViewerQueryPort") as DistrictSupplyViewerQueryPort \
+		if coordinator != null else null
 	if district_supply_port != null and not district_supply_port.receipt_ready.is_connected(_on_district_supply_action_receipt):
 		district_supply_port.receipt_ready.connect(_on_district_supply_action_receipt)
 	var registry := session.get_node_or_null(REGISTRY_PATH) if session != null else null
@@ -218,6 +230,7 @@ func _run() -> void:
 		return
 
 	_last_event = "session_started"
+	_session_started_msec = Time.get_ticks_msec()
 	main_instance.set("time_scale", SIMULATION_TIME_SCALE)
 	var observation_started_msec := Time.get_ticks_msec()
 	var observation_limit_msec := int(options.get("observation_seconds", DEFAULT_OBSERVATION_SECONDS)) * 1000
@@ -239,9 +252,9 @@ func _run() -> void:
 		var ui_action := _scripted_ui_action(runtime_screen, exhausted_navigation_actions, public_progress, supply_rotation_state)
 		if _session_state(session) == "running":
 			var waiting_action_id := str(ui_action.get("id", "")) if bool(ui_action.get("disabled", false)) else ""
-			var waiting_for_world := waiting_action_id in ["district_supply_wait", "gdp_accumulation_wait"]
+			var waiting_for_world := waiting_action_id in ["district_supply_wait", "facility_play_wait", "gdp_accumulation_wait"]
 			main_instance.set("time_scale", WAIT_SIMULATION_TIME_SCALE if waiting_for_world else SIMULATION_TIME_SCALE)
-			Engine.time_scale = GDP_WAIT_ENGINE_TIME_SCALE if waiting_action_id == "gdp_accumulation_wait" else (SUPPLY_WAIT_ENGINE_TIME_SCALE if waiting_action_id == "district_supply_wait" else ACTION_ENGINE_TIME_SCALE)
+			Engine.time_scale = GDP_WAIT_ENGINE_TIME_SCALE if waiting_action_id == "gdp_accumulation_wait" else (SUPPLY_WAIT_ENGINE_TIME_SCALE if waiting_action_id in ["district_supply_wait", "facility_play_wait"] else ACTION_ENGINE_TIME_SCALE)
 		final_telemetry = _collect_telemetry(run_seed, coordinator, session, settlement_composition, runtime_screen, observation_started_msec, _last_event)
 		if int((final_telemetry.get("nonfinite", {}) as Dictionary).get("count", 0)) > 0:
 			final_status = "failed"
@@ -347,7 +360,7 @@ func _run() -> void:
 					"supply_receipt_sequence": supply_receipt_sequence_before_submission,
 				}
 				no_action_since_msec = now_msec
-			elif action_id in ["district_supply_wait", "gdp_accumulation_wait"] and bool(ui_action.get("disabled", false)):
+			elif action_id in ["district_supply_wait", "facility_play_wait", "gdp_accumulation_wait"] and bool(ui_action.get("disabled", false)):
 				if action_id == "district_supply_wait" and now_msec - last_supply_quote_refresh_msec >= SUPPLY_QUOTE_REFRESH_INTERVAL_MSEC:
 					var wait_facts := _public_supply_wait_facts(runtime_screen)
 					var rack_signature := str(wait_facts.get("rack_signature", ""))
@@ -376,7 +389,7 @@ func _run() -> void:
 							_action_stats["supply_rack_rotations"] = int(_action_stats.get("supply_rack_rotations", 0)) + 1
 					last_supply_quote_refresh_msec = now_msec
 				_last_event = ("waiting:district_supply_facility_visibility" if str(ui_action.get("phase", "")).contains("facility_not_visible") else "waiting:district_supply_quote_availability") \
-					if action_id == "district_supply_wait" else "waiting:gdp_accumulation_and_victory_qualification"
+					if action_id == "district_supply_wait" else ("waiting:facility_play_eligibility" if action_id == "facility_play_wait" else "waiting:gdp_accumulation_and_victory_qualification")
 				no_action_since_msec = now_msec
 			elif now_msec - no_action_since_msec >= int(NO_ACTION_TIMEOUT_SECONDS * 1000.0):
 				var exact_phase := str(final_telemetry.get("phase", "play"))
@@ -468,11 +481,15 @@ func _capability_preflight(main_instance: Node, coordinator: Node, session: Node
 	var settlement_ready := settlement_composition != null and settlement_composition.has_method("debug_snapshot") and settlement_composition.has_method("last_public_snapshot")
 	var scripted_ui_port_ready := runtime_screen is SpaceSyndicateGameScreen \
 		and runtime_screen.has_signal("action_requested") \
+		and runtime_screen.has_method("request_district_selection") \
 		and runtime_screen.has_method("request_district_supply_open") \
 		and runtime_screen.has_method("request_district_supply_close") \
+		and runtime_screen.has_method("request_selected_district_supply_purchase") \
 		and _temporary_decision_overlay(runtime_screen) != null
 	var setup_ready := main_instance.get_node_or_null(SETUP_DRAFT_PATH) is NewGameSetupDraftService \
 		and main_instance.get_node_or_null(SESSION_START_TRANSACTION_PATH) is SessionStartTransactionCoordinator
+	var district_supply_query_ready := _district_supply_query_port != null \
+		and _district_supply_query_port.has_method("snapshot_for_viewer")
 	var registry_valid := bool(registry_snapshot.get("valid", false)) and qa_path_ready
 	var required_sections := int(registry_snapshot.get("required_section_count", 0))
 	var transactional_sections := int(registry_snapshot.get("transactional_section_count", 0))
@@ -488,6 +505,7 @@ func _capability_preflight(main_instance: Node, coordinator: Node, session: Node
 		and session_ready \
 		and settlement_ready \
 		and scripted_ui_port_ready \
+		and district_supply_query_ready \
 		and setup_ready
 	return {
 		"fresh_run_ready": fresh_run_ready,
@@ -504,6 +522,7 @@ func _capability_preflight(main_instance: Node, coordinator: Node, session: Node
 			"unsupported_sections": maxi(0, unsupported_sections),
 			"resume_ready": resume_ready,
 			"capture_fail_closed": capture_fail_closed,
+			"district_supply_query_ready": district_supply_query_ready,
 		},
 	}
 
@@ -656,6 +675,13 @@ func _scripted_ui_action(
 	var facility_hand_action := _first_enabled_card_action_by_kind(hand_cards, "facility_v06")
 	if not facility_hand_action.is_empty():
 		return facility_hand_action
+	if _has_card_of_kind(hand_cards, "facility_v06"):
+		return {
+			"id": "facility_play_wait",
+			"phase": "play.hand.facility_v06.wait",
+			"disabled": true,
+			"origin": "economic_wait",
+		}
 	var visible_supply_action := _district_supply_ui_action(runtime_screen, facility_chain_incomplete)
 	if not visible_supply_action.is_empty():
 		return visible_supply_action
@@ -704,11 +730,19 @@ func _scripted_ui_action(
 
 func _district_supply_ui_action(runtime_screen: Node, facility_chain_incomplete := false) -> Dictionary:
 	var drawer := _district_supply_drawer(runtime_screen)
-	if drawer == null or not drawer.visible or not drawer.has_method("debug_snapshot") or not drawer.has_signal("supply_action_requested"):
+	if drawer == null or not drawer.visible or not drawer.has_signal("supply_action_requested"):
 		return {}
-	var snapshot_variant: Variant = drawer.call("debug_snapshot")
-	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
+	var snapshot := _district_supply_view_snapshot()
 	return district_supply_action_from_snapshot(snapshot, facility_chain_incomplete)
+
+
+func _district_supply_view_snapshot() -> Dictionary:
+	if _district_supply_query_port == null:
+		return {}
+	var surface := _district_supply_query_port.snapshot_for_viewer(SCRIPTED_PLAYER_INDEX)
+	if not bool(surface.get("visible", false)) or not (surface.get("snapshot", {}) is Dictionary):
+		return {}
+	return (surface.get("snapshot", {}) as Dictionary).duplicate(true)
 
 
 static func district_supply_action_from_snapshot(snapshot: Dictionary, facility_chain_incomplete := false) -> Dictionary:
@@ -778,10 +812,9 @@ static func district_supply_action_from_snapshot(snapshot: Dictionary, facility_
 
 func _refresh_visible_supply_quote(runtime_screen: Node) -> bool:
 	var drawer := _district_supply_drawer(runtime_screen)
-	if drawer == null or not drawer.visible or not drawer.has_method("debug_snapshot") or not drawer.has_signal("supply_action_requested"):
+	if drawer == null or not drawer.visible or not drawer.has_signal("supply_action_requested"):
 		return false
-	var snapshot_variant: Variant = drawer.call("debug_snapshot")
-	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
+	var snapshot := _district_supply_view_snapshot()
 	var preview: Dictionary = snapshot.get("preview", {}) if snapshot.get("preview", {}) is Dictionary else {}
 	var card_name := str(preview.get("card_name", "")).strip_edges()
 	if card_name.is_empty() or bool(preview.get("buy_enabled", false)):
@@ -806,10 +839,9 @@ func _new_supply_rotation_state() -> Dictionary:
 func _public_supply_wait_facts(runtime_screen: Node) -> Dictionary:
 	var screen := runtime_screen as SpaceSyndicateGameScreen
 	var drawer := _district_supply_drawer(runtime_screen)
-	if screen == null or drawer == null or not drawer.visible or not drawer.has_method("debug_snapshot"):
+	if screen == null or drawer == null or not drawer.visible:
 		return {}
-	var drawer_variant: Variant = drawer.call("debug_snapshot")
-	var drawer_snapshot: Dictionary = drawer_variant if drawer_variant is Dictionary else {}
+	var drawer_snapshot := _district_supply_view_snapshot()
 	var ui: Dictionary = screen.current_ui_data if screen.current_ui_data is Dictionary else {}
 	var selection: Dictionary = ui.get("selection_context", {}) if ui.get("selection_context", {}) is Dictionary else {}
 	var district_index := int(selection.get("selected_district", -1))
@@ -1014,6 +1046,13 @@ func _first_enabled_card_action_by_kind(cards: Array, kind: String) -> Dictionar
 	return {}
 
 
+func _has_card_of_kind(cards: Array, kind: String) -> bool:
+	for card_variant in cards:
+		if card_variant is Dictionary and str((card_variant as Dictionary).get("kind", "")) == kind:
+			return true
+	return false
+
+
 func _board_action_request(action: Dictionary, player_board: Dictionary, signature: String = "") -> Dictionary:
 	var action_signature := signature if not signature.is_empty() else _board_action_signature(action, player_board)
 	return {
@@ -1057,17 +1096,18 @@ func _submit_scripted_ui_action(runtime_screen: Node, action: Dictionary) -> boo
 			return true
 		return false
 	if str(action.get("origin", "")) == "district_supply":
+		var supply_screen := runtime_screen as SpaceSyndicateGameScreen
+		if action_id == "district_supply_purchase_card":
+			return supply_screen != null and supply_screen.request_selected_district_supply_purchase(&"qa_driver")
 		var drawer := _district_supply_drawer(runtime_screen)
 		if drawer != null and drawer.has_signal("supply_action_requested"):
 			drawer.emit_signal("supply_action_requested", str(action.get("id", "")), (action.get("payload", {}) as Dictionary).duplicate(true))
 			return true
 		return false
 	if str(action.get("origin", "")) == "planet_map":
-		var map_view: Control = runtime_screen.call("get_embedded_map_view") if runtime_screen.has_method("get_embedded_map_view") else null
-		if map_view != null and map_view.has_signal("district_selected"):
-			map_view.emit_signal("district_selected", int(action.get("district_index", -1)))
-			return true
-		return false
+		var selection_screen := runtime_screen as SpaceSyndicateGameScreen
+		return selection_screen != null \
+			and selection_screen.request_district_selection(int(action.get("district_index", -1)), &"qa_driver")
 	if runtime_screen == null or not runtime_screen.has_signal("action_requested") or action_id.is_empty():
 		return false
 	runtime_screen.emit_signal("action_requested", action_id)
@@ -1131,18 +1171,36 @@ func _on_district_supply_action_receipt(receipt: DistrictSupplyActionReceipt) ->
 		"action_kind": str(receipt.action_kind),
 		"request_id": receipt.request_id,
 	}
+	if not receipt.accepted:
+		return
+	match receipt.action_kind:
+		DistrictSupplyActionIntent.KIND_OPEN:
+			_mark_milestone("time_to_first_rack")
+		DistrictSupplyActionIntent.KIND_QUOTE:
+			_mark_milestone("time_to_first_quote")
+		DistrictSupplyActionIntent.KIND_PURCHASE:
+			_mark_milestone("time_to_first_purchase")
+
+
+func _mark_milestone(key: String) -> void:
+	if _session_started_msec <= 0 or float(_milestones.get(key, -1.0)) >= 0.0:
+		return
+	_milestones[key] = snappedf(
+		maxf(0.0, float(Time.get_ticks_msec() - _session_started_msec) / 1000.0),
+		0.001
+	)
 
 
 func _next_public_map_action(runtime_screen: Node) -> Dictionary:
-	var map_view: Control = runtime_screen.call("get_embedded_map_view") if runtime_screen.has_method("get_embedded_map_view") else null
-	if map_view == null or not map_view.has_method("get_sceneization_debug_snapshot") or not map_view.has_signal("district_selected"):
+	var screen := runtime_screen as SpaceSyndicateGameScreen
+	if screen == null:
 		return {}
-	var snapshot_variant: Variant = map_view.call("get_sceneization_debug_snapshot")
-	var snapshot: Dictionary = snapshot_variant if snapshot_variant is Dictionary else {}
-	var district_count := int(snapshot.get("district_count", 0))
+	var ui: Dictionary = screen.current_ui_data if screen.current_ui_data is Dictionary else {}
+	var selection: Dictionary = ui.get("selection_context", {}) if ui.get("selection_context", {}) is Dictionary else {}
+	var district_count := int(selection.get("district_count", 0))
 	if district_count <= 1:
 		return {}
-	var selected_district := int(snapshot.get("selected_district", -1))
+	var selected_district := int(selection.get("selected_district", -1))
 	var next_district := wrapi(selected_district + 1, 0, district_count)
 	return {
 		"id": "map_select_%d" % next_district,
@@ -1248,6 +1306,7 @@ func _summary(options: Dictionary, telemetry: Dictionary, status: String, failur
 		"capability": capability.duplicate(true),
 		"save": save_status.duplicate(true),
 		"actions": _action_stats.duplicate(true),
+		"milestones": _milestones.duplicate(true),
 		"wall_ms": maxi(0, Time.get_ticks_msec() - _started_msec),
 	}
 	for key_variant in FullRunQualitySnapshotScript.PUBLIC_KEYS:
