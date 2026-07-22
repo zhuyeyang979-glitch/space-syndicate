@@ -8,6 +8,7 @@ var _world: Node
 var _table_selection_state: TableSelectionState
 var _world_session_state: WorldSessionState
 var _card_effect_router: CardEffectRuntimeRouter
+var _card_catalog: CardRuntimeCatalogService
 var _role_catalog: RoleCatalogRuntimeService
 var _district_supply_query: DistrictSupplyRuntimeQueryPort
 var _build_count := 0
@@ -27,6 +28,10 @@ func set_world_session_state(state: WorldSessionState) -> void:
 
 func set_card_effect_router(router: CardEffectRuntimeRouter) -> void:
 	_card_effect_router = router
+
+
+func set_card_catalog_service(card_catalog: CardRuntimeCatalogService) -> void:
+	_card_catalog = card_catalog
 
 
 func set_role_catalog(role_catalog: RoleCatalogRuntimeService) -> void:
@@ -54,6 +59,8 @@ func build_world_snapshot(sample_only := false) -> Dictionary:
 		return {"world_ready": false, "reason": "coordinator_missing"}
 	if _table_selection_state == null:
 		return {"world_ready": false, "reason": "table_selection_state_missing"}
+	if _card_catalog == null or not is_instance_valid(_card_catalog):
+		return {"world_ready": false, "reason": "card_catalog_missing"}
 	var selected_player: int = _table_selection_state.selected_player
 	var cards := _card_facts(coordinator, selected_player, sample_only)
 	var snapshot := {
@@ -91,6 +98,7 @@ func debug_snapshot() -> Dictionary:
 		"world_mutation_authority": false,
 		"privacy_boundary": "public_and_developer_safe_facts_only",
 		"world_session_state_ready": _world_session_state != null,
+		"card_catalog_ready": _card_catalog != null and is_instance_valid(_card_catalog),
 		"district_supply_query_ready": _district_supply_query != null,
 	}
 
@@ -163,7 +171,7 @@ func _product_facts() -> Array:
 			"profile": profile,
 			"market": market,
 			"primary_strategy": _world_dictionary_call(&"_product_primary_strategy_entry", [product_name]),
-			"related_card_count": int(_world.call("_product_related_card_count", product_name)) if _world.has_method("_product_related_card_count") else 0,
+			"related_card_count": _card_catalog.product_related_card_count(product_name),
 			"monster_focus_count": int(_world.call("_product_monster_focus_count", product_name)) if _world.has_method("_product_monster_focus_count") else 0,
 			"profile_complete": bool(_world.call("_product_profile_has_required_fields", product_name)) if _world.has_method("_product_profile_has_required_fields") else false,
 		})

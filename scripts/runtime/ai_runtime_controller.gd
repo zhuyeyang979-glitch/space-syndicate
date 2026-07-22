@@ -5148,17 +5148,12 @@ func _ai_route_gap_adjustment(player_index: int, skill: Dictionary, district_ind
 		if _city_is_active(city):
 			resolved_owner = int(city.get("owner", -1))
 	var product_match := product_name == plan_product
-	if not product_match:
-		var contract_products_variant: Variant = skill.get("contract_products", [])
-		if contract_products_variant is Array:
-			product_match = (contract_products_variant as Array).has(plan_product)
 	if not product_match and district_index >= 0:
 		product_match = _ai_district_touches_product(district_index, plan_product)
 	var field_match := 1 if product_match else 0
 	var production_delta := int(skill.get("production_delta", 0))
 	var transport_delta := int(skill.get("transport_delta", 0))
 	var consumption_delta := int(skill.get("consumption_delta", 0))
-	var decline_pressure := 0
 	var supply_boost := maxi(0, production_delta) + int(skill.get("product_shift", 0))
 	var demand_boost := maxi(0, consumption_delta) + int(skill.get("demand_shift", 0)) + int(ceil(float(maxi(0, int(skill.get("market_demand_pressure", 0)))) / 2.0))
 	var traffic_boost := maxi(0, transport_delta) + int(skill.get("repair_routes", 0))
@@ -5176,7 +5171,7 @@ func _ai_route_gap_adjustment(player_index: int, skill: Dictionary, district_ind
 	if bool(derivative_terms.get("insurance", false)):
 		insurance_strength = maxi(1, int(round(float(derivative_terms.get("multiplier", 1.0))))) + int(float(int(derivative_terms.get("destroy_bonus", 0))) / 260.0)
 	var pressure_strength := maxi(0, -production_delta) + maxi(0, -transport_delta) + maxi(0, -consumption_delta)
-	pressure_strength += int(skill.get("route_damage", 0)) + int(skill.get("damage", 0)) + decline_pressure
+	pressure_strength += int(skill.get("route_damage", 0)) + int(skill.get("damage", 0))
 	pressure_strength += int(float(int(skill.get("panic", 0))) / 22.0) + int(ceil(float(maxi(0, int(skill.get("market_supply_pressure", 0)))) / 2.0))
 	if String(derivative_terms.get("direction", "")) == "down" and insurance_strength <= 0:
 		pressure_strength += maxi(1, int(round(float(derivative_terms.get("multiplier", 1.0))))) + int(float(int(derivative_terms.get("destroy_bonus", 0))) / 240.0)

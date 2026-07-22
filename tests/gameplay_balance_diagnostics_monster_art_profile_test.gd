@@ -12,6 +12,7 @@ func _init() -> void:
 
 
 func _run() -> void:
+	_verify_product_related_card_count_semantics()
 	_delete_qa_save_file()
 	var main := _instantiate_main()
 	if main == null:
@@ -29,11 +30,87 @@ func _run() -> void:
 	_expect(diagnostics != null, "GameRuntimeCoordinator exposes GameplayBalanceDiagnosticsRuntimeService")
 	var snapshot: Dictionary = diagnostics.refresh_world_snapshot(false) if diagnostics != null else {}
 	_expect(_monster_art_profiles_present(snapshot), "diagnostics monster facts use catalog-backed art profiles for every catalog entry")
+	_verify_production_product_related_card_counts(snapshot, coordinator)
 	_expect(_production_symbol_absent("_monster_art_profile"), "production scripts have zero executable _monster_art_profile references")
+	_expect(_production_symbol_absent("_product_related_card_count"), "production scripts have zero dynamic dependencies on the retired Main product-card helper")
 	main.queue_free()
 	await process_frame
 	_delete_qa_save_file()
 	_finish()
+
+
+func _verify_product_related_card_count_semantics() -> void:
+	var service := CardRuntimeCatalogService.new()
+	service.catalog = _synthetic_catalog()
+	_expect(service.product_related_card_count("测试商品") == 3, "catalog query counts play_product and supply_product matches, with a dual match counted once")
+	_expect(service.product_related_card_count("其他商品") == 1, "catalog query ignores unrelated cards")
+	_expect(service.product_related_card_count("退役商品") == 0, "catalog query does not restore retired contract_products semantics")
+	_expect(service.product_related_card_count("") == 0, "catalog query rejects an empty product id")
+	service.free()
+
+
+func _synthetic_catalog() -> CardRuntimeCatalogResource:
+	var definitions := [
+		_card_rank("出牌关联1", "出牌关联", {"play_product": "测试商品"}),
+		_card_rank("供应关联1", "供应关联", {"supply_product": "测试商品"}),
+		_card_rank("双重关联1", "双重关联", {"play_product": "测试商品", "supply_product": "测试商品"}),
+		_card_rank("其他关联1", "其他关联", {"play_product": "其他商品"}),
+		_card_rank("退役合同1", "退役合同", {"contract_products": ["退役商品"]}),
+	]
+	var families: Array[Resource] = []
+	var ordered_ids := PackedStringArray()
+	for definition_variant in definitions:
+		var definition := definition_variant as CardRuntimeRankResource
+		var family := CardRuntimeFamilyResource.new()
+		family.family_id = definition.family_id
+		family.pack_id = &"diagnostics_test"
+		family.authored_ranks = [definition]
+		families.append(family)
+		ordered_ids.append(definition.card_id)
+	var pack := CardRuntimePackResource.new()
+	pack.pack_id = &"diagnostics_test"
+	pack.families = families
+	var catalog := CardRuntimeCatalogResource.new()
+	catalog.packs = [pack]
+	catalog.authored_card_order = ordered_ids
+	return catalog
+
+
+func _card_rank(card_id: String, family_id: String, fields: Dictionary) -> CardRuntimeRankResource:
+	var definition := CardRuntimeRankResource.new()
+	definition.card_id = card_id
+	definition.family_id = family_id
+	definition.rank = 1
+	definition.authored_keys = PackedStringArray(fields.keys())
+	definition.play_product = str(fields.get("play_product", ""))
+	definition.supply_product = str(fields.get("supply_product", ""))
+	definition.effect_parameters = fields.duplicate(true)
+	return definition
+
+
+func _verify_production_product_related_card_counts(snapshot: Dictionary, coordinator: Node) -> void:
+	var expected_by_product := {}
+	for card_id_variant in coordinator.card_catalog_ordered_ids():
+		var definition: Dictionary = coordinator.card_authored_catalog_definition(str(card_id_variant))
+		for field_name in ["play_product", "supply_product"]:
+			var product_name := str(definition.get(field_name, ""))
+			if not product_name.is_empty():
+				expected_by_product[product_name] = true
+	var found_positive := false
+	for product_variant in snapshot.get("products", []):
+		if not (product_variant is Dictionary):
+			continue
+		var product := product_variant as Dictionary
+		var product_name := str(product.get("name", ""))
+		var expected := 0
+		for card_id_variant in coordinator.card_catalog_ordered_ids():
+			var definition: Dictionary = coordinator.card_authored_catalog_definition(str(card_id_variant))
+			if str(definition.get("play_product", "")) == product_name \
+					or str(definition.get("supply_product", "")) == product_name:
+				expected += 1
+		_expect(int(product.get("related_card_count", -1)) == expected, "diagnostics product %s uses the typed card catalog count" % product_name)
+		found_positive = found_positive or expected > 0
+	_expect(found_positive and not expected_by_product.is_empty(), "production diagnostics expose at least one catalog-backed product-card relationship")
 
 
 func _instantiate_main() -> Control:

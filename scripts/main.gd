@@ -2202,20 +2202,6 @@ func _product_profile_has_required_fields(product_name: String) -> bool:
 	return true
 
 
-func _product_related_card_count(product_name: String) -> int:
-	var count := 0
-	for skill_name_variant in _game_runtime_coordinator_node().card_catalog_ordered_ids():
-		var skill_name := String(skill_name_variant)
-		var skill: Dictionary = _game_runtime_coordinator_node().card_authored_catalog_definition(skill_name)
-		var matches := String(skill.get("play_product", "")) == product_name
-		var contract_products_variant: Variant = skill.get("contract_products", [])
-		if not matches and contract_products_variant is Array:
-			matches = (contract_products_variant as Array).has(product_name)
-		if matches:
-			count += 1
-	return count
-
-
 func _product_market_price_path_text(entry: Dictionary, limit: int = 7) -> String:
 	var history: Array = entry.get("price_history", [])
 	if history.is_empty():
@@ -4572,10 +4558,6 @@ func _skill_fixed_product_requirements(skill: Dictionary) -> Array:
 	var supply_product := String(skill.get("supply_product", skill.get("play_product", "")))
 	if supply_product != "":
 		monster_runtime_controller._append_unique_string(result, supply_product)
-	var contract_products_variant: Variant = skill.get("contract_products", [])
-	if contract_products_variant is Array:
-		for product_variant in contract_products_variant:
-			monster_runtime_controller._append_unique_string(result, String(product_variant))
 	return result
 
 

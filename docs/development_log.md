@@ -8696,3 +8696,18 @@ deleted. Evidence and the remaining action inventory are recorded in
 - Full evidence, catalog hashes, Main budget, and unchanged broad-fixture debt
   are recorded in
   `docs/migration/v06_legacy_contract_response_retirement_cutover.md`.
+
+## 2026-07-22 — Legacy contract-response dead-residue verification
+
+- Removed the unused response-window timing field, the production scene's
+  unused v0.5 registry injection, Victory's empty legacy contract asset slot,
+  retired `contract_products` readers, and the AI's constant-zero decline
+  pressure term.
+- Kept the v0.5 controller registry unchanged as historical save-version
+  evidence; v0.6 save composition and restore continue to use only the v0.6
+  registry, so no save manifest or migration behavior changed.
+- Extended the permanent retirement gate. The
+  active counter, forced-decision, target-choice and monster-wager tests remain
+  green, and no replacement contract owner, UI, receipt or save state exists.
+- Deleted one uncalled Main helper. Main falls by 18 physical lines, 16
+  nonblank lines and one method with no new Main caller.

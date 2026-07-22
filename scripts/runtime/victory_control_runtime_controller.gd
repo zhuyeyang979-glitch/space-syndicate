@@ -812,7 +812,6 @@ func _sanitize_private_assets(source: Dictionary) -> Dictionary:
 		"commodity_inventory": _safe_array(source.get("commodity_inventory", [])),
 		"color_gdp": _safe_dictionary(source.get("color_gdp", {})),
 		"units": _safe_array(source.get("units", [])),
-		"contracts": _safe_array(source.get("contracts", [])),
 		"financial_positions": _safe_array(source.get("financial_positions", [])),
 	}
 	return result if _is_data_only(result) else {}

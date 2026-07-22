@@ -69,6 +69,7 @@ func _test_public_audit_projection() -> void:
 	var private_zero: Dictionary = controller.call("private_snapshot", 0)
 	var own_assets: Dictionary = private_zero.get("own_economic_assets", {}) if private_zero.get("own_economic_assets", {}) is Dictionary else {}
 	_expect(int(own_assets.get("available_cents", -1)) == PLAYER_ZERO_AVAILABLE and int(own_assets.get("escrow_cents", -1)) == PLAYER_ZERO_ESCROW and int(own_assets.get("cash_ledger_cents", -1)) == PLAYER_ZERO_CASH, "viewer-private snapshot exposes exact cash only in own_economic_assets")
+	_expect(not own_assets.has("contracts") and not _contains_exact_value(own_assets, "retired-contract-private-marker"), "viewer-private victory assets discard the retired contract slot even when forged input supplies it")
 	_expect(_contains_exact_value(own_assets, PLAYER_ZERO_PRIVATE_CARD), "viewer-private snapshot retains the viewer's own hand asset")
 	_expect(not _contains_exact_value(private_zero, PLAYER_ONE_PRIVATE_CARD) and not _contains_exact_value(private_zero, PLAYER_ONE_CASH), "viewer-private snapshot never includes another seat's exact assets")
 	var private_money_paths: Array[String] = []
@@ -210,7 +211,7 @@ func _private_assets(available_cents: int, escrow_cents: int, cash_ledger_cents:
 		"commodity_inventory": [],
 		"color_gdp": {},
 		"units": [],
-		"contracts": [],
+		"contracts": [{"legacy_marker": "retired-contract-private-marker"}],
 		"financial_positions": [],
 	}
 
