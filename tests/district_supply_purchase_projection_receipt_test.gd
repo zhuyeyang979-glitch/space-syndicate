@@ -21,7 +21,8 @@ func _run() -> void:
 			"player_count": 3,
 			"ai_player_count": 2,
 			"challenge_depth": 1,
-			"role_indices": [0, 1, 2],
+			# Keep this target-binding fixture independent from product-triggered bonus draws.
+			"role_indices": [3, 0, 1],
 			"starter_monster_indices": [0, 1, 2],
 		},
 		QA_SAVE_PATH,
@@ -29,7 +30,7 @@ func _run() -> void:
 	)
 	var app_root := start.get("main_root") as Node
 	var coordinator := start.get("coordinator") as GameRuntimeCoordinator
-	_expect(bool(start.get("started", false)) and app_root != null and coordinator != null, "real production session starts")
+	_expect(bool(start.get("started", false)) and app_root != null and coordinator != null, "real production session starts: reason=%s" % str(start.get("reason_code", "missing")))
 	if app_root == null or coordinator == null:
 		_finish()
 		return
@@ -44,6 +45,7 @@ func _run() -> void:
 	var port := coordinator.district_supply_action_port()
 	var screen := app_root.find_child("RuntimeGameScreen", true, false) as SpaceSyndicateGameScreen
 	var overlay := screen.get_node_or_null("OverlayLayer") as SpaceSyndicateOverlayLayer if screen != null else null
+	var infrastructure_owner := coordinator.get_node_or_null("RegionInfrastructureRuntimeController") as RegionInfrastructureRuntimeController
 	var configured := coordinator.configure_region_supply_from_world(
 		FIXED_SEED,
 		world.districts if world != null else [],
@@ -51,8 +53,8 @@ func _run() -> void:
 		1
 	)
 	_expect(bool(configured.get("configured", false)), "fixed seed configures the target facility listing")
-	var district_index := _first_purchasable_target_district(coordinator, world)
-	_expect(district_index >= 0, "fixed seed exposes the target facility in a currently purchasable district")
+	var district_index := _first_purchasable_target_district(coordinator, world, infrastructure_owner)
+	_expect(district_index >= 0, "fixed seed exposes the target facility in a currently purchasable district with an empty technology-market slot")
 	_expect(query != null and table_query != null and query_ports != null and presentation != null and port != null and screen != null and overlay != null, "typed rack query, hand query, privacy ports, GameScreen and action port are composed")
 	if district_index < 0 or query == null or table_query == null or query_ports == null or presentation == null or port == null or screen == null or overlay == null:
 		_stop_audio(app_root)
@@ -63,6 +65,7 @@ func _run() -> void:
 
 	var human := (world.players[0] as Dictionary).duplicate(true)
 	human["cash"] = 100_000
+	human["action_cooldown"] = 0.0
 	world.players[0] = human
 	var context := coordinator.get_node("TablePresentationQueryPorts").viewer_context() as TablePresentationViewerContext
 	screen.bind_presentation_viewer(0, context.authorization_revision)
@@ -175,7 +178,6 @@ func _run() -> void:
 	var journal_before: Dictionary = inventory_owner.call("transaction_journal_snapshot") if inventory_owner != null else {}
 	var queue_owner := coordinator.get_node_or_null("CardResolutionQueueRuntimeService") as CardResolutionQueueRuntimeService
 	var queue_before_text := JSON.stringify(queue_owner.public_snapshot()) if queue_owner != null else ""
-	var infrastructure_owner := coordinator.get_node_or_null("RegionInfrastructureRuntimeController") as RegionInfrastructureRuntimeController
 	_expect(not runtime_instance_id.is_empty() and facility_slot >= 0, "formal hand slot resolves to one authoritative inventory instance before play")
 	_expect(infrastructure_owner != null, "the unique region-infrastructure owner is composed for exact-once verification")
 	var legacy_entry_before := JSON.stringify(infrastructure_owner.facilities_snapshot(true)) if infrastructure_owner != null else ""
@@ -189,9 +191,14 @@ func _run() -> void:
 	_expect((JSON.stringify(infrastructure_owner.facilities_snapshot(true)) if infrastructure_owner != null else "") == legacy_entry_before, "retired legacy public entry changes no authoritative facility state")
 	var occupied_region_id := ""
 	for district_variant in world.districts:
-		if district_variant is Dictionary and str((district_variant as Dictionary).get("region_id", "")) != region_id:
-			occupied_region_id = str((district_variant as Dictionary).get("region_id", ""))
-			break
+		if not (district_variant is Dictionary):
+			continue
+		var candidate_region_id := str((district_variant as Dictionary).get("region_id", ""))
+		if candidate_region_id == region_id \
+				or not _facility_for_slot(infrastructure_owner, candidate_region_id, "market", "technology").is_empty():
+			continue
+		occupied_region_id = candidate_region_id
+		break
 	var occupied_seed := infrastructure_owner.apply_facility_action({
 		"transaction_id": "qa-public-action-occupied-target",
 		"region_id": occupied_region_id,
@@ -205,11 +212,10 @@ func _run() -> void:
 	var occupied_finalized := infrastructure_owner.finalize_facility_action(occupied_seed) if infrastructure_owner != null and bool(occupied_seed.get("committed", false)) else {}
 	var exact_target_journal_before := JSON.stringify(inventory_owner.call("transaction_journal_snapshot")) if inventory_owner != null else ""
 	var exact_target_reject := coordinator.execute_v06_facility_play_action(actor_id, TARGET_CARD_ID, occupied_region_id)
-	_expect(bool(occupied_finalized.get("finalized", false)) and not bool(exact_target_reject.get("success", true)) and str(exact_target_reject.get("failure_code", "")) == "facility_play_target_unavailable", "public facility action rejects the exact occupied region instead of substituting the economic-source target")
+	_expect(bool(occupied_finalized.get("finalized", false)) and not bool(exact_target_reject.get("success", true)) and str(exact_target_reject.get("failure_code", "")) == "facility_play_target_unavailable", "public facility action rejects the exact occupied region instead of substituting the economic-source target: seed=%s reject=%s" % [JSON.stringify(occupied_finalized), JSON.stringify(exact_target_reject)])
 	_expect((JSON.stringify(inventory_owner.call("transaction_journal_snapshot")) if inventory_owner != null else "") == exact_target_journal_before and _inventory_card_count(coordinator.v06_card_player_snapshot(actor_id)) == _inventory_card_count(inventory_before_play), "invalid public target preserves the requested card and creates no formal play journal entry")
-	var blocked_player := (world.players[0] as Dictionary).duplicate(true)
-	blocked_player["action_cooldown"] = 5.0
-	world.players[0] = blocked_player
+	var cooldown_arm := coordinator.arm_player_action_cooldown(0, 5.0)
+	_expect(bool(cooldown_arm.get("armed", false)) and float((world.players[0] as Dictionary).get("action_cooldown", 0.0)) >= 5.0, "authoritative cooldown owner arms the deliberate rejection gate")
 	var gate_journal_before := JSON.stringify(inventory_owner.call("transaction_journal_snapshot")) if inventory_owner != null else ""
 	var gate_facilities_before := JSON.stringify(infrastructure_owner.facilities_snapshot(true)) if infrastructure_owner != null else ""
 	var gate_flow_before := JSON.stringify(coordinator.commodity_flow_to_save_data())
@@ -220,18 +226,23 @@ func _run() -> void:
 			and (JSON.stringify(infrastructure_owner.facilities_snapshot(true)) if infrastructure_owner != null else "") == gate_facilities_before \
 			and JSON.stringify(coordinator.commodity_flow_to_save_data()) == gate_flow_before \
 			and JSON.stringify(coordinator.player_mana_to_save_data()) == gate_mana_before, "eligibility rejection occurs before every card, facility, flow, asset and journal mutation")
-	blocked_player["action_cooldown"] = 0.0
-	world.players[0] = blocked_player
+	var cooldown_clear := coordinator.advance_card_cooldowns(5.0)
+	_expect(bool(cooldown_clear.get("advanced", false)) and float((world.players[0] as Dictionary).get("action_cooldown", -1.0)) <= 0.0, "authoritative cooldown owner clears the deliberately injected rejection gate")
 
+	var refreshed_table_state := table_query.compose_table_state(0, true)
+	var refreshed_player_board: Dictionary = refreshed_table_state.get("player_board", {}) if refreshed_table_state.get("player_board", {}) is Dictionary else {}
+	var refreshed_hand_cards: Array = refreshed_player_board.get("hand_cards", []) if refreshed_player_board.get("hand_cards", []) is Array else []
+	var refreshed_facility_hand := _first_card_of_kind(refreshed_hand_cards, "facility_v06")
+	var refreshed_facility_action := _first_enabled_play_action(refreshed_facility_hand)
+	_expect(str(refreshed_facility_action.get("id", "")) == "play_%d" % facility_slot, "fresh viewer projection re-enables the same authoritative facility slot after cooldown expiry")
 	var submission_before := coordinator.card_play_submission_controller().debug_snapshot()
-	screen.emit_signal("action_requested", str(facility_action.get("id", "")))
-	var submission_after := submission_before
+	screen.emit_signal("action_requested", str(refreshed_facility_action.get("id", "")))
+	var submission_after := coordinator.card_play_submission_controller().debug_snapshot()
 	for _frame in range(30):
+		if int(submission_after.get("submission_count", 0)) > int(submission_before.get("submission_count", 0)):
+			break
 		await process_frame
 		submission_after = coordinator.card_play_submission_controller().debug_snapshot()
-		if int(submission_after.get("accepted_count", 0)) + int(submission_after.get("rejected_count", 0)) \
-				> int(submission_before.get("accepted_count", 0)) + int(submission_before.get("rejected_count", 0)):
-			break
 	var play_receipt: Dictionary = submission_after.get("last_receipt", {}) if submission_after.get("last_receipt", {}) is Dictionary else {}
 	var v06_receipt: Dictionary = play_receipt.get("v06_receipt", {}) if play_receipt.get("v06_receipt", {}) is Dictionary else {}
 	var effect_finalization: Dictionary = v06_receipt.get("effect_finalization", {}) if v06_receipt.get("effect_finalization", {}) is Dictionary else {}
@@ -242,7 +253,9 @@ func _run() -> void:
 	var world_player_after_play: Dictionary = (world.players[0] as Dictionary).duplicate(true) if world.players[0] is Dictionary else {}
 	var journal_entry_after_play: Dictionary = (journal_after.get(play_transaction_id, {}) as Dictionary).duplicate(true) if journal_after.get(play_transaction_id, {}) is Dictionary else {}
 	var journal_result_after_play: Dictionary = (journal_entry_after_play.get("result", {}) as Dictionary).duplicate(true) if journal_entry_after_play.get("result", {}) is Dictionary else {}
-	_expect(int(submission_after.get("accepted_count", 0)) == int(submission_before.get("accepted_count", 0)) + 1 and bool(play_receipt.get("accepted", false)) and not bool(play_receipt.get("queued", true)), "formal GameScreen hand action reaches the shared typed submission entry and commits without entering the shared card queue|receipt=%s" % JSON.stringify(play_receipt))
+	_expect(int(submission_after.get("submission_count", 0)) == int(submission_before.get("submission_count", 0)) + 1 \
+			and int(submission_after.get("accepted_count", 0)) == int(submission_before.get("accepted_count", 0)) + 1 \
+			and bool(play_receipt.get("accepted", false)) and not bool(play_receipt.get("queued", true)), "formal GameScreen hand action reaches the shared typed submission entry exactly once and commits without entering the shared card queue|before=%s after=%s receipt=%s" % [JSON.stringify(submission_before), JSON.stringify(submission_after), JSON.stringify(play_receipt)])
 	_expect(bool(v06_receipt.get("committed", false)) and bool(effect_finalization.get("finalized", v06_receipt.get("finalized", false))) and str(v06_receipt.get("route_id", "")) == "core_economic_card_runtime", "internal receipt proves one finalized core-economic card transaction|v06=%s" % JSON.stringify(v06_receipt))
 	_expect(int(economic_after_play.get("owned_facility_count", 0)) == 1 and int(economic_after_play.get("production_installation_count", 0)) == 0, "technology market play creates exactly one market facility and no fake factory production installation")
 	_expect(_inventory_card_count(inventory_after_play) == _inventory_card_count(inventory_before_play) - 1 and journal_after.size() == journal_before.size() + 1, "successful play removes one authoritative hand instance and writes one inventory transaction")
@@ -353,12 +366,18 @@ func _run() -> void:
 	_finish()
 
 
-func _first_purchasable_target_district(coordinator: GameRuntimeCoordinator, world: WorldSessionState) -> int:
-	if coordinator == null or world == null:
+func _first_purchasable_target_district(
+	coordinator: GameRuntimeCoordinator,
+	world: WorldSessionState,
+	infrastructure: RegionInfrastructureRuntimeController
+) -> int:
+	if coordinator == null or world == null or infrastructure == null:
 		return -1
 	for district_index in range(world.districts.size()):
 		var district: Dictionary = world.districts[district_index] if world.districts[district_index] is Dictionary else {}
-		if coordinator.region_supply_listing(str(district.get("region_id", "")), TARGET_CARD_ID).is_empty():
+		var region_id := str(district.get("region_id", ""))
+		if coordinator.region_supply_listing(region_id, TARGET_CARD_ID).is_empty() \
+				or not _facility_for_slot(infrastructure, region_id, "market", "technology").is_empty():
 			continue
 		if bool(coordinator.card_market_listing_availability(district_index).get("purchasable", false)):
 			return district_index
