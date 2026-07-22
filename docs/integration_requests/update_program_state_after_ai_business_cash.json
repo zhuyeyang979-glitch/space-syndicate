@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "request_id": "UPDATE-PROGRAM-STATE-AFTER-AI-BUSINESS-CASH",
-  "status": "PENDING_AFTER_MERGE",
+  "status": "FULFILLED",
   "priority": "P0",
   "source_branch": "codex/p0-ai-business-cost-typed-cash-ff8fd40",
   "base_main_sha": "ff8fd4008cef25110d42237b0078afe057ccb052",
@@ -37,6 +37,8 @@
     "top_level_preloads": 0,
     "external_caller_files": 0
   },
-  "next_boundary": "P0-COMMODITY-FLOW-POSTCOMMIT-EXACT-ONCE",
+  "fulfilled_on_main_sha": "cb9194a32e86c20287572b20b92acc0064fcd858",
+  "fulfilled_by_branch": "codex/program-state-after-commodity-cb9194a",
+  "next_boundary": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
   "full_run_resume_claim": false
 }
