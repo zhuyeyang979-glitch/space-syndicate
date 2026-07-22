@@ -5,6 +5,16 @@ class_name CardPlayEligibilityWorldBridge
 ## Typed fact provider retained under its historical scene name so existing
 ## composition paths stay stable. It never stores or reflects the Main node.
 
+const PUBLIC_FACILITY_PREFLIGHT_REASONS := [
+	"public_facility_target_ready",
+	"public_facility_target_unavailable",
+	"public_facility_slot_occupied",
+	"public_facility_slot_incompatible",
+	"public_facility_product_unavailable",
+	"public_facility_card_unavailable",
+	"public_facility_preflight_unavailable",
+]
+
 var _table_selection_state: TableSelectionState
 var _world_session_state: WorldSessionState
 var _queue_service: CardResolutionQueueRuntimeService
@@ -16,6 +26,7 @@ var _session_controller: GameSessionRuntimeController
 var _forced_decision_scheduler: ForcedDecisionRuntimeScheduler
 var _commodity_flow_controller: CommodityFlowRuntimeController
 var _cash_commitment_query_port: MonsterWagerCashCommitmentQueryPort
+var _facility_target_preflight_port: CoreEconomicCardRuntimeAdapterV06
 var _build_count := 0
 
 
@@ -25,6 +36,10 @@ func set_table_selection_state(state: TableSelectionState) -> void:
 
 func set_world_session_state(state: WorldSessionState) -> void:
 	_world_session_state = state
+
+
+func set_facility_target_preflight_port(port: CoreEconomicCardRuntimeAdapterV06) -> void:
+	_facility_target_preflight_port = port
 
 
 func set_runtime_dependencies(
@@ -99,6 +114,13 @@ func build_facts(player_index: int, skill: Dictionary, context: Dictionary = {})
 	var spendable_cash_cents := int(player.get("cash_cents", int(player.get("cash", 0)) * 100))
 	if player_valid and _cash_commitment_query_port != null:
 		spendable_cash_cents = _cash_commitment_query_port.available_cash_cents(player_index)
+	var facility_target_preflight := _facility_target_preflight(
+		player_index,
+		skill,
+		context,
+		selected_district_valid,
+		selected_district_data
+	)
 	return {
 		"player_valid": player_valid,
 		"player_count": players.size(),
@@ -131,6 +153,7 @@ func build_facts(player_index: int, skill: Dictionary, context: Dictionary = {})
 		"military_deployment_valid": military_deployment_valid,
 		"military_deploy_terrain_label": military_terrain_label,
 		"desired_bid_cents": desired_bid_cash * 100,
+		"facility_target_preflight": facility_target_preflight,
 		"queue_preflight": {
 			"batch_locked": batch_locked,
 			"active_present": not active_entry.is_empty(),
@@ -146,6 +169,7 @@ func build_facts(player_index: int, skill: Dictionary, context: Dictionary = {})
 func debug_snapshot() -> Dictionary:
 	return {
 		"bridge_ready": _world_session_state != null and _table_selection_state != null and _queue_service != null,
+		"facility_target_preflight_bound": _facility_target_preflight_port != null,
 		"holds_world_reference": false,
 		"build_count": _build_count,
 		"fact_collection_authority": true,
@@ -153,6 +177,46 @@ func debug_snapshot() -> Dictionary:
 		"queue_authority": false,
 		"execution_authority": false,
 		"world_mutation_authority": false,
+	}
+
+
+func _facility_target_preflight(
+	player_index: int,
+	skill: Dictionary,
+	context: Dictionary,
+	selected_district_valid: bool,
+	selected_district_data: Dictionary
+) -> Dictionary:
+	if str(skill.get("kind", "")) != "public_facility":
+		return {"applicable": false, "ready": true, "reason_code": ""}
+	if not selected_district_valid or bool(selected_district_data.get("destroyed", false)):
+		return {"applicable": true, "ready": false, "reason_code": "public_facility_target_unavailable"}
+	if _facility_target_preflight_port == null or not _facility_target_preflight_port.has_method("preflight_facility_target"):
+		return {"applicable": true, "ready": false, "reason_code": "public_facility_preflight_unavailable"}
+	var slot_index := int(context.get("slot_index", -1))
+	var card_id := str(skill.get("card_id", skill.get("name", ""))).strip_edges()
+	var region_id := str(selected_district_data.get("region_id", "")).strip_edges()
+	if slot_index < 0 or card_id.is_empty() or region_id.is_empty():
+		return {"applicable": true, "ready": false, "reason_code": "public_facility_card_unavailable"}
+	var game_time := float(context.get("game_time", _world_session_state.game_time if _world_session_state != null else 0.0))
+	var value_variant: Variant = _facility_target_preflight_port.preflight_facility_target(
+		player_index,
+		slot_index,
+		card_id,
+		region_id,
+		game_time
+	)
+	var value: Dictionary = value_variant if value_variant is Dictionary else {}
+	var ready := bool(value.get("ready", false))
+	var reason_code := str(value.get("reason_code", ""))
+	if ready:
+		reason_code = "public_facility_target_ready"
+	elif not PUBLIC_FACILITY_PREFLIGHT_REASONS.has(reason_code):
+		reason_code = "public_facility_preflight_unavailable"
+	return {
+		"applicable": true,
+		"ready": ready,
+		"reason_code": reason_code,
 	}
 
 

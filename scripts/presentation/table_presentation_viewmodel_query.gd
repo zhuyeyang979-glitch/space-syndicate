@@ -4,11 +4,14 @@ class_name TablePresentationViewModelQuery
 
 const HAND_LIMIT := 5
 const COMMODITY_SUSHI_TRACK_SERVICE_SCRIPT := preload("res://scripts/runtime/commodity_sushi_track_runtime_service.gd")
+const V06_ASSET_COST_KEYS := ["life", "energy", "industry", "technology", "commerce", "shipping", "generic"]
+const MAX_EXACT_JSON_INTEGER := 9007199254740991.0
 
 var _ports: TablePresentationQueryPorts
 var _selection: TableSelectionState
 var _table_viewmodel: GameTableViewModelRuntimeService
 var _card_catalog: CardRuntimeCatalogService
+var _v06_card_catalog: CardRuntimeCatalogV06Resource
 var _eligibility_facts: CardPlayEligibilityWorldBridge
 var _eligibility: CardPlayEligibilityRuntimeService
 var _region_supply: RegionSupplyRuntimeController
@@ -56,12 +59,14 @@ func configure(
 	card_resolution_presentation: CardResolutionPresentationPort,
 	player_seat_sources: PlayerSeatPublicSourceService = null,
 	commodity_sushi_track: COMMODITY_SUSHI_TRACK_SERVICE_SCRIPT = null,
-	district_supply_query: DistrictSupplyViewerQueryPort = null
+	district_supply_query: DistrictSupplyViewerQueryPort = null,
+	v06_card_catalog: CardRuntimeCatalogV06Resource = null
 ) -> void:
 	_ports = ports
 	_selection = selection
 	_table_viewmodel = table_viewmodel
 	_card_catalog = card_catalog
+	_v06_card_catalog = v06_card_catalog
 	_eligibility_facts = eligibility_facts
 	_eligibility = eligibility
 	_region_supply = region_supply
@@ -213,14 +218,14 @@ func _hand_card_sources(viewer_index: int, private_world: Dictionary) -> Array:
 			continue
 		var private_card := _dictionary(card_variant)
 		var slot_index := int(private_card.get("slot_index", -1))
-		var card_name := str(private_card.get("name", private_card.get("card_id", "")))
+		var card_name := str(private_card.get("card_id", private_card.get("name", "")))
 		if slot_index < 0 or card_name.is_empty():
 			continue
 		var skill := _catalog_skill(card_name, private_card)
 		result.append({
 			"slot": slot_index,
 			"card": _card_source(skill),
-			"eligibility": _card_eligibility(viewer_index, skill),
+			"eligibility": _card_eligibility(viewer_index, skill, slot_index),
 		})
 	return result
 
@@ -294,23 +299,30 @@ func _enriched_track_entry(entry: Dictionary, _viewer_index: int) -> Dictionary:
 func _card_source(skill: Dictionary) -> Dictionary:
 	var card_name := str(skill.get("name", skill.get("card_id", "")))
 	var definition := _catalog_skill(card_name, skill)
+	var machine := _dictionary(definition.get("machine", {}))
+	var player := _dictionary(definition.get("player", {}))
 	return {
 		"card_name": card_name,
 		"skill": definition,
-		"display_name": str(definition.get("display_name", card_name)),
-		"display_text": str(definition.get("text", definition.get("display_text", ""))),
+		"display_name": str(definition.get("display_name", player.get("name", card_name))),
+		"display_text": str(definition.get("text", definition.get("display_text", player.get("effect", "")))),
 		"tag_text": str(definition.get("tag_text", "")),
-		"rank": maxi(1, int(definition.get("rank", _card_catalog.rank(card_name) if _card_catalog != null else 1))),
-		"price": maxi(0, int(definition.get("price", definition.get("purchase_cost", 0)))),
-		"play_requirement_text": str(definition.get("play_requirement_text", "条件：见卡面")),
+		"rank": maxi(1, int(definition.get("rank", machine.get("rank", _card_catalog.rank(card_name) if _card_catalog != null else 1)))),
+		"price": maxi(0, int(definition.get("price", definition.get("purchase_cost", machine.get("purchase_cash", 0))))),
+		"category_id": str(definition.get("category_id", machine.get("category_id", ""))),
+		"type_label": str(definition.get("type_label", player.get("type", ""))),
+		"subtype_label": str(definition.get("subtype_label", player.get("industry", ""))),
+		"use_case": str(definition.get("use_case", player.get("next_step", ""))),
+		"play_requirement_text": str(definition.get("play_requirement_text", player.get("cost", "条件：见卡面"))),
 	}
 
 
-func _card_eligibility(viewer_index: int, skill: Dictionary) -> Dictionary:
+func _card_eligibility(viewer_index: int, skill: Dictionary, slot_index: int = -1) -> Dictionary:
 	if _eligibility_facts == null or _eligibility == null:
 		return {"allowed": false, "actionable": false, "reason_code": "service_missing"}
 	var facts := _eligibility_facts.build_facts(viewer_index, skill, {
 		"selected_district": _selection.selected_district if _selection != null else -1,
+		"slot_index": slot_index,
 	})
 	if _commodity_flow != null:
 		facts["commodity_color_flow"] = _commodity_flow.player_color_flow_snapshot(viewer_index)
@@ -620,7 +632,95 @@ func _rack_slots(rack: Dictionary) -> Array:
 func _catalog_skill(card_name: String, fallback: Dictionary) -> Dictionary:
 	if _card_catalog != null and not card_name.is_empty() and _card_catalog.has_card(card_name):
 		return _card_catalog.definition(card_name)
+	if _v06_card_catalog != null and not card_name.is_empty():
+		var v06_card := _v06_card_catalog.card_snapshot(card_name)
+		var v06_machine := _dictionary(v06_card.get("machine", {}))
+		# This cutover is deliberately facility-only. Other v0.6 categories keep
+		# their existing fail-closed presentation until their typed target and
+		# eligibility semantics are migrated as separate atomic boundaries.
+		if str(v06_machine.get("category_id", "")) == "facility":
+			return _normalized_v06_skill(v06_card)
 	return fallback.duplicate(true)
+
+
+func _normalized_v06_skill(card: Dictionary) -> Dictionary:
+	var machine := _dictionary(card.get("machine", {}))
+	var player := _dictionary(card.get("player", {}))
+	var card_id := str(machine.get("card_id", ""))
+	var category_id := str(machine.get("category_id", ""))
+	var asset_cost := _normalized_asset_cost(machine.get("asset_cost", {}))
+	var keywords: Array = player.get("keywords", []) if player.get("keywords", []) is Array else []
+	var keyword_texts: Array[String] = []
+	for keyword_variant in keywords:
+		if keyword_variant is Dictionary:
+			var keyword_text := str((keyword_variant as Dictionary).get("text", "")).strip_edges()
+			if not keyword_text.is_empty():
+				keyword_texts.append(keyword_text)
+	return {
+		"name": card_id,
+		"card_id": card_id,
+		"family_id": str(machine.get("family_id", "")),
+		"schema_version": "v0.6",
+		"kind": "public_facility" if category_id == "facility" else str(machine.get("effect_kind", "")),
+		"rank": maxi(1, int(machine.get("rank", 1))),
+		"display_name": str(player.get("name", card_id)),
+		"text": str(player.get("effect", player.get("short_effect", ""))),
+		"display_text": str(player.get("effect", player.get("short_effect", ""))),
+		"tag_text": " / ".join(keyword_texts),
+		"tags": keyword_texts,
+		"asset_cost": asset_cost,
+		"play_cash": 0,
+		"cost": _v06_play_cost_text(asset_cost, player),
+		"purchase_cost": maxi(0, int(machine.get("purchase_cash", 0))),
+		"category_id": category_id,
+		"type_label": str(player.get("type", "")),
+		"subtype_label": str(player.get("industry", "")),
+		"play_requirement_text": str(player.get("cost", "条件：见卡面")),
+		"use_case": str(player.get("next_step", "")),
+		"target": str(player.get("target", "")),
+		"timing": str(player.get("timing", "")),
+		"duration": str(player.get("duration", "")),
+	}
+
+
+func _normalized_asset_cost(value: Variant) -> Dictionary:
+	var source := _dictionary(value)
+	var normalized := {}
+	for key_variant in source.keys():
+		var key := str(key_variant)
+		var amount_variant: Variant = source.get(key_variant, 0)
+		if V06_ASSET_COST_KEYS.has(key) and amount_variant is float \
+				and is_finite(float(amount_variant)) and float(amount_variant) >= 0.0 \
+				and float(amount_variant) <= MAX_EXACT_JSON_INTEGER \
+				and float(amount_variant) == floor(float(amount_variant)):
+			# Godot's JSON parser represents authored integral numbers as floats.
+			# Convert only a finite, non-negative mathematical integer; preserve every
+			# malformed value so CardPlayEligibility can reject it fail-closed.
+			normalized[key] = int(amount_variant)
+		else:
+			normalized[key] = amount_variant
+	return normalized
+
+
+func _asset_cost_total(asset_cost: Dictionary) -> int:
+	var total := 0
+	for amount_variant in asset_cost.values():
+		total += maxi(0, int(amount_variant))
+	return total
+
+
+func _v06_play_cost_text(asset_cost: Dictionary, player: Dictionary) -> String:
+	if asset_cost.size() != V06_ASSET_COST_KEYS.size():
+		return "费用数据异常"
+	for required_key in V06_ASSET_COST_KEYS:
+		if not asset_cost.has(required_key):
+			return "费用数据异常"
+	for key_variant in asset_cost.keys():
+		var key := str(key_variant)
+		var amount_variant: Variant = asset_cost.get(key_variant, 0)
+		if not V06_ASSET_COST_KEYS.has(key) or not (amount_variant is int) or int(amount_variant) < 0:
+			return "费用数据异常"
+	return "打出免费" if _asset_cost_total(asset_cost) <= 0 else str(player.get("cost", "条件：见卡面"))
 
 
 func _choice_card_name(choice: Dictionary, private_world: Dictionary) -> String:

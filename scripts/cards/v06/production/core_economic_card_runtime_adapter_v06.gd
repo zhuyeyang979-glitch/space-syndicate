@@ -13,6 +13,8 @@ const CANDIDATE_PORT_SCRIPT := preload("res://scripts/cards/v06/production/commo
 const ORGANIZATION_PORT_SCRIPT := preload("res://scripts/cards/v06/production/organization_production_port_v06.gd")
 const EFFECT_SUPPORT_SCRIPT := preload("res://scripts/cards/v06/effects/card_effect_adapter_support_v06.gd")
 const ORGANIZATION_EFFECT_KIND := "install_organization_upgrade"
+const FACILITY_EFFECT_KIND := "build_upgrade_or_repair_facility"
+const FACILITY_TARGET_KIND := "region_unique_facility_slot"
 const AUTOMATIC_SUPPLY_DEMAND_TARGETS := {
 	"global_order_budget": "global_matching_goods",
 	"global_supply_spawn": "global_matching_factories",
@@ -368,6 +370,81 @@ func _automatic_supply_demand_intent(
 	}
 
 
+func facility_target_context(
+	actor_id: String,
+	slot_index: int,
+	card_id: String,
+	region_id: String,
+	game_time: float
+) -> Dictionary:
+	if not _configured or not _source_api_ready() or _effect_router == null:
+		return {"ready": false, "reason_code": "core_economic_runtime_unavailable"}
+	var player := _authoritative_player_snapshot(actor_id)
+	var card := _authoritative_slot_card(player, slot_index)
+	var binding_error := _facility_card_binding_error(card, card_id)
+	if not binding_error.is_empty():
+		return {"ready": false, "reason_code": binding_error}
+	return _facility_target_context_for_card(card, region_id, game_time)
+
+
+func preflight_facility_target(
+	player_index: int,
+	slot_index: int,
+	card_id: String,
+	region_id: String,
+	game_time: float
+) -> Dictionary:
+	if not _configured or not _source_api_ready() or _effect_router == null \
+			or not _effect_router.has_method("abort_prepared_effect"):
+		return _public_facility_preflight(false, "core_economic_runtime_unavailable")
+	var actor_id := _actor_id_for_player_index(player_index)
+	if actor_id.is_empty():
+		return _public_facility_preflight(false, "actor_mapping_missing")
+	var player := _authoritative_player_snapshot(actor_id)
+	var card := _authoritative_slot_card(player, slot_index)
+	var binding_error := _facility_card_binding_error(card, card_id)
+	if not binding_error.is_empty():
+		return _public_facility_preflight(false, binding_error)
+	var target_result := _facility_target_context_for_card(card, region_id, game_time)
+	if not bool(target_result.get("ready", false)):
+		return _public_facility_preflight(false, str(target_result.get("reason_code", "facility_target_unavailable")))
+	var target_context: Dictionary = target_result.get("target_context", {}) if target_result.get("target_context", {}) is Dictionary else {}
+	var expected_player_revision := int(player.get("revision", -1))
+	var card_instance_id := str(card.get("runtime_instance_id", ""))
+	# This is the same deterministic transaction binding used by the formal v0.6
+	# submission. Prepare is safe here because neither CardFlow nor its journal is
+	# entered, and the router record is synchronously aborted below.
+	var transaction_id := "v06-play:%s:%s:%s" % [actor_id, card_instance_id, region_id]
+	var build := _facility_effect_intent(
+		actor_id,
+		slot_index,
+		card,
+		target_context,
+		expected_player_revision,
+		transaction_id
+	)
+	if not bool(build.get("valid", false)):
+		return _public_facility_preflight(false, str(build.get("reason_code", "facility_preflight_binding_invalid")))
+	var binding: Dictionary = (build.get("binding", {}) as Dictionary).duplicate(true)
+	var intent: Dictionary = (build.get("intent", {}) as Dictionary).duplicate(true)
+	var prepared_variant: Variant = _effect_router.call("prepare_effect", intent)
+	var prepared: Dictionary = prepared_variant if prepared_variant is Dictionary else {}
+	var prepared_ready := bool(prepared.get("prepared", false)) and EFFECT_SUPPORT_SCRIPT.binding_matches(prepared, binding)
+	var reason_code := "public_facility_target_ready" if prepared_ready else str(prepared.get("reason_code", "effect_prepare_failed"))
+	var abort_variant: Variant = _effect_router.call("abort_prepared_effect", prepared.duplicate(true))
+	var abort_receipt: Dictionary = abort_variant if abort_variant is Dictionary else {}
+	var abort_verified := (
+		bool(abort_receipt.get("aborted", false))
+		and bool(abort_receipt.get("verified", false))
+		and str(abort_receipt.get("transaction_id", "")) == transaction_id
+		and not bool(abort_receipt.get("transaction_pending", true))
+	)
+	var ready := prepared_ready and abort_verified
+	if prepared_ready and not abort_verified:
+		reason_code = "facility_preflight_abort_unverified"
+	return _public_facility_preflight(ready, reason_code)
+
+
 func play_card(
 	actor_id: String,
 	slot_index: int,
@@ -461,16 +538,149 @@ func organization_public_receipt(receipt: Dictionary) -> Dictionary:
 
 
 func _authoritative_slot_effect_kind(actor_id: String, slot_index: int) -> String:
+	var card := _authoritative_slot_card(_authoritative_player_snapshot(actor_id), slot_index)
+	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+	return str(machine.get("effect_kind", ""))
+
+
+func _authoritative_player_snapshot(actor_id: String) -> Dictionary:
+	if _card_source_owner == null or not _card_source_owner.has_method("player_snapshot"):
+		return {}
 	var value_variant: Variant = _card_source_owner.call("player_snapshot", actor_id)
-	if not (value_variant is Dictionary):
-		return ""
-	var player: Dictionary = value_variant
+	return (value_variant as Dictionary).duplicate(true) if value_variant is Dictionary else {}
+
+
+func _authoritative_slot_card(player: Dictionary, slot_index: int) -> Dictionary:
 	var inventory: Dictionary = player.get("inventory", {}) if player.get("inventory", {}) is Dictionary else {}
 	var slots: Array = inventory.get("slots", []) if inventory.get("slots", []) is Array else []
 	if slot_index < 0 or slot_index >= slots.size() or not (slots[slot_index] is Dictionary):
-		return ""
-	var machine: Dictionary = (slots[slot_index] as Dictionary).get("machine", {}) if (slots[slot_index] as Dictionary).get("machine", {}) is Dictionary else {}
-	return str(machine.get("effect_kind", ""))
+		return {}
+	return (slots[slot_index] as Dictionary).duplicate(true)
+
+
+func _actor_id_for_player_index(player_index: int) -> String:
+	for actor_variant in _actor_player_indices.keys():
+		if int(_actor_player_indices.get(actor_variant, -1)) == player_index:
+			return str(actor_variant)
+	return ""
+
+
+func _facility_card_binding_error(card: Dictionary, requested_card_id: String) -> String:
+	if card.is_empty():
+		return "facility_card_unavailable"
+	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+	var card_id := str(machine.get("card_id", ""))
+	if card_id.is_empty() or str(card.get("runtime_instance_id", "")).is_empty():
+		return "facility_card_binding_invalid"
+	if requested_card_id.strip_edges().is_empty() or requested_card_id != card_id:
+		return "facility_card_binding_changed"
+	if str(machine.get("effect_kind", "")) != FACILITY_EFFECT_KIND \
+			or str(machine.get("target_kind", "")) != FACILITY_TARGET_KIND:
+		return "facility_card_binding_invalid"
+	return ""
+
+
+func _facility_target_context_for_card(card: Dictionary, region_id: String, game_time: float) -> Dictionary:
+	var normalized_region_id := region_id.strip_edges()
+	if normalized_region_id.is_empty() or _infrastructure_owner == null:
+		return {"ready": false, "reason_code": "facility_target_region_missing"}
+	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+	var payload: Dictionary = machine.get("effect_payload", {}) if machine.get("effect_payload", {}) is Dictionary else {}
+	var facility_kind := str(payload.get("facility_kind", ""))
+	var industry_id := str(payload.get("industry_id", machine.get("industry_id", "")))
+	var slot_id := str(_infrastructure_owner.call("slot_id", normalized_region_id, facility_kind, industry_id))
+	var region_variant: Variant = _infrastructure_owner.call("region_snapshot", normalized_region_id)
+	var region: Dictionary = region_variant if region_variant is Dictionary else {}
+	if region.is_empty() or slot_id.is_empty():
+		return {"ready": false, "reason_code": "facility_target_unavailable"}
+	return {
+		"ready": true,
+		"reason_code": "facility_target_context_ready",
+		"target_context": {
+			"valid": true,
+			"target_kind": FACILITY_TARGET_KIND,
+			"region_id": normalized_region_id,
+			"slot_id": slot_id,
+			"industry_id": industry_id,
+			"game_time": game_time,
+		},
+	}
+
+
+func _facility_effect_intent(
+	actor_id: String,
+	slot_index: int,
+	card: Dictionary,
+	target_context: Dictionary,
+	expected_player_revision: int,
+	transaction_id: String
+) -> Dictionary:
+	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+	var payload: Dictionary = machine.get("effect_payload", {}) if machine.get("effect_payload", {}) is Dictionary else {}
+	var card_id := str(machine.get("card_id", ""))
+	var card_instance_id := str(card.get("runtime_instance_id", ""))
+	if actor_id.is_empty() or slot_index < 0 or card_id.is_empty() or card_instance_id.is_empty() \
+			or transaction_id.is_empty() or expected_player_revision < 0:
+		return {"valid": false, "reason_code": "facility_preflight_binding_invalid"}
+	var target_hash := _stable_hash(target_context)
+	var payload_hash := _stable_hash(payload)
+	# Keep this binding byte-for-byte aligned with CardFlowTransactionServiceV06.play_card.
+	var intent_hash := _stable_hash({
+		"operation": "play_card",
+		"actor_id": actor_id,
+		"slot_index": slot_index,
+		"target_hash": target_hash,
+		"expected_player_revision": expected_player_revision,
+	})
+	var binding := {
+		"transaction_id": transaction_id,
+		"actor_id": actor_id,
+		"card_id": card_id,
+		"card_instance_id": card_instance_id,
+		"effect_kind": FACILITY_EFFECT_KIND,
+		"target_hash": target_hash,
+		"payload_hash": payload_hash,
+		"intent_hash": intent_hash,
+	}
+	var intent := binding.duplicate(true)
+	intent["target_context"] = target_context.duplicate(true)
+	intent["effect_payload"] = payload.duplicate(true)
+	intent["contract"] = "prepare_is_side_effect_free"
+	return {
+		"valid": true,
+		"reason_code": "facility_preflight_intent_ready",
+		"binding": binding,
+		"intent": intent,
+	}
+
+
+func _public_facility_preflight(ready: bool, internal_reason_code: String) -> Dictionary:
+	return {
+		"applicable": true,
+		"ready": ready,
+		"reason_code": "public_facility_target_ready" if ready else _public_facility_reason_code(internal_reason_code),
+	}
+
+
+func _public_facility_reason_code(internal_reason_code: String) -> String:
+	match internal_reason_code:
+		"facility_owned_by_other":
+			return "public_facility_slot_occupied"
+		"facility_slot_state_mismatch":
+			return "public_facility_slot_incompatible"
+		"region_production_product_industry_mismatch", "region_commodity_facts_unavailable", \
+		"region_commodity_facts_invalid", "region_commodity_facts_changed":
+			return "public_facility_product_unavailable"
+		"region_not_found", "region_lifecycle_not_allowed", "facility_slot_mismatch", \
+		"facility_slot_missing", "facility_target_region_missing", "facility_target_unavailable":
+			return "public_facility_target_unavailable"
+		"facility_kind_invalid", "facility_rank_invalid", "facility_industry_invalid", \
+		"facility_industry_mismatch", "warehouse_industry_required", \
+		"transport_industry_must_be_empty", "facility_card_unavailable", \
+		"facility_card_binding_invalid", "facility_card_binding_changed":
+			return "public_facility_card_unavailable"
+		_:
+			return "public_facility_preflight_unavailable"
 
 
 func _source_api_ready() -> bool:

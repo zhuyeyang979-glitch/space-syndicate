@@ -209,12 +209,34 @@ func commit_effect(prepared: Dictionary) -> Dictionary:
 	return receipt
 
 
-func abort_prepared_effect(prepared: Dictionary) -> void:
+func abort_prepared_effect(prepared: Dictionary) -> Dictionary:
 	var transaction_id := str(prepared.get("transaction_id", ""))
-	if _prepared_by_transaction.has(transaction_id):
-		var expected: Dictionary = _prepared_by_transaction[transaction_id]
-		if SUPPORT.binding_matches(expected, prepared):
-			_prepared_by_transaction.erase(transaction_id)
+	if not _prepared_by_transaction.has(transaction_id):
+		return {
+			"aborted": false,
+			"reason_code": "facility_prepared_record_missing",
+			"transaction_id": transaction_id,
+			"prepared_token": str(prepared.get("prepared_token", "")),
+			"pending_transaction_count": _prepared_by_transaction.size(),
+		}
+	var expected: Dictionary = _prepared_by_transaction[transaction_id]
+	if not SUPPORT.binding_matches(expected, prepared) \
+			or str(expected.get("prepared_token", "")) != str(prepared.get("prepared_token", "")):
+		return {
+			"aborted": false,
+			"reason_code": "facility_prepared_record_mismatch",
+			"transaction_id": transaction_id,
+			"prepared_token": str(prepared.get("prepared_token", "")),
+			"pending_transaction_count": _prepared_by_transaction.size(),
+		}
+	_prepared_by_transaction.erase(transaction_id)
+	return {
+		"aborted": true,
+		"reason_code": "facility_prepared_aborted",
+		"transaction_id": transaction_id,
+		"prepared_token": str(expected.get("prepared_token", "")),
+		"pending_transaction_count": _prepared_by_transaction.size(),
+	}
 
 
 func rollback_effect(receipt: Dictionary) -> Dictionary:
@@ -291,8 +313,9 @@ func finalize_effect(receipt: Dictionary) -> Dictionary:
 			"commodity_result": commodity_result,
 			"facility_result": facility_result,
 		}
-	# A facility-only receipt is finalized by the inventory transaction boundary.
-	# The adapter owns finalization only when it must close both composite owners.
+	# Facility-only owner finalization belongs to the inventory transaction
+	# boundary, which can persist and retry a failed owner finalization. This
+	# adapter directly finalizes only the two-owner composite above.
 	return {
 		"finalized": false,
 		"reason_code": "facility_owner_finalize_delegated",

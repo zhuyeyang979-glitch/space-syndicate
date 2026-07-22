@@ -4,6 +4,7 @@ class_name CardPlayEligibilityRuntimeService
 
 const CARD_PLAY_REQUIREMENT_POLICY := preload("res://scripts/cards/card_play_requirement_policy.gd")
 const ASSET_IDS := ["life", "energy", "industry", "technology", "commerce", "shipping"]
+const V06_ASSET_COST_KEYS := ["life", "energy", "industry", "technology", "commerce", "shipping", "generic"]
 
 const DIRECT_MONSTER_KINDS := [
 	"move", "fly", "burrow", "attack", "charge_attack", "armor_gain", "guard",
@@ -14,6 +15,14 @@ const EXTRA_MONSTER_TARGET_KINDS := ["monster_lure", "special_monster_delay", "m
 const PLAYER_TARGET_KINDS := ["player_hand_disrupt", "player_hand_steal"]
 const COUNTERABLE_PLAYER_INTERACTION_KINDS := [
 	"player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage",
+]
+const PUBLIC_FACILITY_PREFLIGHT_REJECTIONS := [
+	"public_facility_target_unavailable",
+	"public_facility_slot_occupied",
+	"public_facility_slot_incompatible",
+	"public_facility_product_unavailable",
+	"public_facility_card_unavailable",
+	"public_facility_preflight_unavailable",
 ]
 
 var _configured := false
@@ -136,6 +145,7 @@ func requirement_status(request: Dictionary, facts: Dictionary) -> Dictionary:
 func target_status(request: Dictionary, facts: Dictionary) -> Dictionary:
 	var skill := _dictionary(request.get("skill", {}))
 	var kind := str(skill.get("kind", ""))
+	var targets_facility := kind == "public_facility"
 	var targets_monster := DIRECT_MONSTER_KINDS.has(kind) \
 		or EXTRA_MONSTER_TARGET_KINDS.has(kind) \
 		or (kind == "military_command" and str(skill.get("military_command", "")) == "attack_monster")
@@ -144,9 +154,13 @@ func target_status(request: Dictionary, facts: Dictionary) -> Dictionary:
 	var player_count := maxi(0, int(facts.get("player_count", 0)))
 	var requires_monster := monster_count > 0 and targets_monster
 	var requires_player := player_count > 1 and targets_player
-	var target_kind := "monster" if targets_monster else ("player" if targets_player else "none")
+	var target_kind := "region_unique_facility_slot" if targets_facility else ("monster" if targets_monster else ("player" if targets_player else "none"))
 	var target_ready := true
-	if targets_monster:
+	if targets_facility:
+		target_ready = bool(facts.get("selected_district_valid", false)) \
+			and not bool(facts.get("selected_district_destroyed", false)) \
+			and bool(_facility_target_preflight_status(facts).get("ready", false))
+	elif targets_monster:
 		target_ready = monster_count > 0
 	elif targets_player:
 		target_ready = player_count > 1
@@ -157,7 +171,7 @@ func target_status(request: Dictionary, facts: Dictionary) -> Dictionary:
 		"direct_monster_skill": DIRECT_MONSTER_KINDS.has(kind),
 		"targets_monster": targets_monster,
 		"targets_player": targets_player,
-		"target_required": requires_monster or requires_player,
+		"target_required": targets_facility or requires_monster or requires_player,
 		"target_ready": target_ready,
 		"requires_target_monster": requires_monster,
 		"requires_target_player": requires_player,
@@ -252,8 +266,12 @@ func _evaluate_rule(request: Dictionary, facts: Dictionary, common: Dictionary, 
 		return _result(false, false, "invalid_player", {}, requirement, target, mode, common)
 	if bool(facts.get("player_eliminated", false)):
 		return _result(false, false, "player_eliminated", {"player_name": str(facts.get("player_name", "玩家"))}, requirement, target, mode, common)
-	if str(skill.get("kind", "")) == "public_facility" and (int(facts.get("selected_district", -1)) < 0 or bool(facts.get("selected_district_destroyed", false))):
-		return _result(false, false, "public_facility_target_unavailable", {}, requirement, target, mode, common)
+	if str(skill.get("kind", "")) == "public_facility":
+		if int(facts.get("selected_district", -1)) < 0 or bool(facts.get("selected_district_destroyed", false)):
+			return _result(false, false, "public_facility_target_unavailable", {}, requirement, target, mode, common)
+		var facility_preflight := _facility_target_preflight_status(facts)
+		if not bool(facility_preflight.get("ready", false)):
+			return _result(false, false, str(facility_preflight.get("reason_code", "public_facility_preflight_unavailable")), {}, requirement, target, mode, common)
 	if _is_counter(skill):
 		if not bool(facts.get("counter_window_active", false)) or not bool(facts.get("active_resolution_present", false)):
 			return _result(false, false, "counter_window_closed", {}, requirement, target, mode, common)
@@ -323,8 +341,12 @@ func _evaluate_hand(request: Dictionary, facts: Dictionary, common: Dictionary) 
 			return _result(false, false, "counter_target_invalid", {}, requirement, target, "hand", common)
 	if bool(target.get("targets_monster", false)) and int(facts.get("monster_count", 0)) <= 0:
 		return _result(false, false, "monster_target_unavailable", {}, requirement, target, "hand", common)
-	if str(skill.get("kind", "")) == "public_facility" and (int(facts.get("selected_district", -1)) < 0 or bool(facts.get("selected_district_destroyed", false))):
-		return _result(false, false, "public_facility_target_unavailable", {}, requirement, target, "hand", common)
+	if str(skill.get("kind", "")) == "public_facility":
+		if int(facts.get("selected_district", -1)) < 0 or bool(facts.get("selected_district_destroyed", false)):
+			return _result(false, false, "public_facility_target_unavailable", {}, requirement, target, "hand", common)
+		var facility_preflight := _facility_target_preflight_status(facts)
+		if not bool(facility_preflight.get("ready", false)):
+			return _result(false, false, str(facility_preflight.get("reason_code", "public_facility_preflight_unavailable")), {}, requirement, target, "hand", common)
 	if str(skill.get("kind", "")) == "military_command":
 		if not bool(facts.get("military_unit_present", false)):
 			return _result(false, false, "military_unit_missing", {}, requirement, target, "hand", common)
@@ -360,6 +382,12 @@ func _asset_requirement_status(request: Dictionary, facts: Dictionary) -> Dictio
 	var source_cost: Variant = request.get("asset_cost", skill.get("asset_cost", {}))
 	if not (source_cost is Dictionary):
 		return _asset_requirement_failure("asset_cost_invalid", {})
+	if str(skill.get("schema_version", "")) == "v0.6":
+		for required_key in V06_ASSET_COST_KEYS:
+			if not (source_cost as Dictionary).has(required_key):
+				# Do not disclose which authored machine key is absent. The public
+				# eligibility surface only needs a safe, actionable fail-closed reason.
+				return _asset_requirement_failure("asset_cost_unavailable", {})
 	var asset_cost := {"generic": 0}
 	for asset_id_variant in ASSET_IDS:
 		asset_cost[str(asset_id_variant)] = 0
@@ -492,6 +520,18 @@ func _result(allowed: bool, actionable: bool, reason_code: String, reason_args: 
 
 func _is_counter(skill: Dictionary) -> bool:
 	return str(skill.get("kind", "")) == "card_counter"
+
+
+func _facility_target_preflight_status(facts: Dictionary) -> Dictionary:
+	var source := _dictionary(facts.get("facility_target_preflight", {}))
+	if not bool(source.get("applicable", false)):
+		return {"ready": false, "reason_code": "public_facility_preflight_unavailable"}
+	if bool(source.get("ready", false)):
+		return {"ready": true, "reason_code": "public_facility_target_ready"}
+	var reason_code := str(source.get("reason_code", ""))
+	if not PUBLIC_FACILITY_PREFLIGHT_REJECTIONS.has(reason_code):
+		reason_code = "public_facility_preflight_unavailable"
+	return {"ready": false, "reason_code": reason_code}
 
 
 func is_counterable_player_interaction(skill: Dictionary) -> bool:

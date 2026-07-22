@@ -1541,6 +1541,7 @@ func _wire_card_execution_typed_ports() -> void:
 	var cash_commitment_query := _monster_wager_cash_commitment_query_port_node()
 	if eligibility_facts != null:
 		eligibility_facts.set_runtime_dependencies(queue, resolution, target_choice, monster, military, session, scheduler, commodity_flow, cash_commitment_query)
+		eligibility_facts.set_facility_target_preflight_port(_core_economic_card_runtime_adapter_v06_node() as CoreEconomicCardRuntimeAdapterV06)
 	if history_query != null:
 		history_query.configure(history)
 	if history_annotations != null:
@@ -1931,28 +1932,13 @@ func region_infrastructure_world_bridge() -> Node:
 
 
 func submit_public_facility_card(request: Dictionary) -> Dictionary:
+	# The legacy queue entry cannot prove a v0.6 runtime instance, authoritative
+	# slot, or CardFlow binding. It must never mutate RegionInfrastructure beside
+	# the formal submission owner.
 	var skill: Dictionary = (request.get("skill", {}) as Dictionary).duplicate(true) if request.get("skill", {}) is Dictionary else {}
 	if str(skill.get("kind", "")) != "public_facility":
 		return {"committed": false, "reason": "legacy_city_development_retired"}
-	var transaction_id := str(request.get("transaction_id", "")).strip_edges()
-	if transaction_id.is_empty():
-		return {"committed": false, "reason": "transaction_id_missing"}
-	var bridge := _region_infrastructure_world_bridge_node()
-	if bridge == null or not bridge.has_method("submit_legacy_index_facility_action"):
-		return {"committed": false, "reason": "region_infrastructure_bridge_missing"}
-	var target_region_index := int(request.get("target_region_index", skill.get("target_region_index", -1)))
-	var normalized := {
-		"transaction_id": transaction_id,
-		"owner_kind": "player",
-		"owner_player_index": int(request.get("player_index", -1)),
-		"facility_type": str(skill.get("facility_type", "")),
-		"industry_id": str(skill.get("industry_id", "")),
-		"rank": int(skill.get("rank", 0)),
-		"occurred_at": float(request.get("occurred_at", 0.0)),
-		"source_card_id": str(skill.get("card_id", skill.get("name", ""))),
-	}
-	var value: Variant = bridge.call("submit_legacy_index_facility_action", target_region_index, normalized)
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {"committed": false, "reason": "region_infrastructure_receipt_invalid"}
+	return {"committed": false, "reason": "legacy_public_facility_entry_retired"}
 
 
 func military_runtime_controller() -> MilitaryRuntimeController:
@@ -2311,6 +2297,13 @@ func _ai_v06_is_rank_i_facility_card(card: Dictionary) -> bool:
 		and str(machine.get("effect_kind", "")) == "build_upgrade_or_repair_facility"
 
 
+func _v06_is_facility_card(card: Dictionary) -> bool:
+	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+	return str(machine.get("category_id", "")) == "facility" \
+		and str(machine.get("effect_kind", "")) == "build_upgrade_or_repair_facility" \
+		and str(machine.get("target_kind", "")) == "region_unique_facility_slot"
+
+
 func _ai_v06_current_facility_card(actor_id: String) -> Dictionary:
 	var player := v06_card_player_snapshot(actor_id)
 	var inventory: Dictionary = player.get("inventory", {}) if player.get("inventory", {}) is Dictionary else {}
@@ -2418,53 +2411,67 @@ func execute_v06_facility_play_action(actor_id: String, card_id: String, region_
 			continue
 		var card: Dictionary = slots[index]
 		var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
-		if str(machine.get("card_id", "")).strip_edges() == normalized_card_id and _ai_v06_is_rank_i_facility_card(card):
+		if str(machine.get("card_id", "")).strip_edges() == normalized_card_id and _v06_is_facility_card(card):
+			if slot_index >= 0:
+				slot_index = -1
+				runtime_instance_id = ""
+				break
 			slot_index = index
 			runtime_instance_id = str(card.get("runtime_instance_id", "")).strip_edges()
-			break
 	if slot_index < 0 or runtime_instance_id.is_empty():
 		action_source["failure_code"] = "ai_v06_facility_card_binding_changed"
 		return compose_action_result_v1(action_source)
-	var source := economic_source_snapshot(normalized_actor_id)
-	var resolved_region_id := normalized_region_id
-	var legal_region_ids: Array = source.get("legal_region_ids", []) if source.get("legal_region_ids", []) is Array else []
-	if not legal_region_ids.has(resolved_region_id):
-		var infrastructure := _region_infrastructure_runtime_controller_node()
-		var requested_region_variant: Variant = infrastructure.call("region_snapshot", resolved_region_id) if infrastructure != null and infrastructure.has_method("region_snapshot") else {}
-		var requested_region: Dictionary = requested_region_variant if requested_region_variant is Dictionary else {}
-		var recommended_region_id := str(source.get("target_region_id", "")).strip_edges()
-		if not requested_region.is_empty() and legal_region_ids.has(recommended_region_id):
-			resolved_region_id = recommended_region_id
-	var clock := world_effective_clock_snapshot()
-	var owner_request := {
+	var player_index := _ai_v06_actor_player_index(normalized_actor_id)
+	var submission := _card_play_submission_runtime_controller_node()
+	if player_index < 0 or submission == null or not submission.has_method("submit_v06_facility_play_action"):
+		action_source["failure_code"] = "facility_play_settlement_unavailable"
+		return compose_action_result_v1(action_source)
+	var submission_receipt := submission.submit_v06_facility_play_action({
+		"player_index": player_index,
 		"actor_id": normalized_actor_id,
 		"slot_index": slot_index,
+		"card_id": normalized_card_id,
 		"runtime_instance_id": runtime_instance_id,
-		"transaction_id": "facility-play:%s:%s:%s" % [normalized_actor_id, runtime_instance_id, resolved_region_id],
-		"region_id": resolved_region_id,
-		"expected_player_revision": int(player.get("revision", -1)),
-		"expected_source_revision": int(source.get("revision", -1)),
-		"game_time": float(clock.get("world_effective_seconds", 0.0)),
-	}
-	var owner_result := play_runtime_card(owner_request)
-	var finalized := bool(owner_result.get("committed", false)) and bool(owner_result.get("finalized", false))
+		"transaction_id": "v06-play:%s:%s:%s" % [normalized_actor_id, runtime_instance_id, normalized_region_id],
+		"region_id": normalized_region_id,
+	})
+	var owner_result: Dictionary = submission_receipt.get("v06_receipt", {}) if submission_receipt.get("v06_receipt", {}) is Dictionary else {}
+	var effect_finalization: Dictionary = owner_result.get("effect_finalization", {}) if owner_result.get("effect_finalization", {}) is Dictionary else {}
+	var finalized := bool(submission_receipt.get("accepted", false)) \
+		and bool(owner_result.get("committed", false)) \
+		and bool(effect_finalization.get("finalized", owner_result.get("finalized", false)))
 	if not finalized:
-		action_source["failure_code"] = str(owner_result.get("reason_code", "facility_play_settlement_unavailable"))
+		action_source["failure_code"] = _v06_facility_public_action_failure_code(
+			str(submission_receipt.get("reason", owner_result.get("reason_code", "facility_play_settlement_unavailable")))
+		)
 		return compose_action_result_v1(action_source)
 	var source_after := economic_source_snapshot(normalized_actor_id)
-	if not bool(source_after.get("available", false)) or not bool(source_after.get("has_source", false)) \
-			or int(source_after.get("owned_facility_count", 0)) < 1 \
-			or int(source_after.get("production_installation_count", 0)) < 1:
+	if not bool(source_after.get("available", false)) or int(source_after.get("owned_facility_count", 0)) < 1:
 		action_source["failure_code"] = "facility_play_settlement_unavailable"
 		return compose_action_result_v1(action_source)
 	action_source["public_receipt"] = {
 		"event_code": "facility_play_committed",
-		"region_id": resolved_region_id,
+		"region_id": normalized_region_id,
 		"owned_facility_count": int(source_after.get("owned_facility_count", 0)),
 		"production_installation_count": int(source_after.get("production_installation_count", 0)),
 		"idempotent_replay": bool(owner_result.get("idempotent_replay", false)),
 	}
 	return compose_action_result_v1(action_source)
+
+
+func _v06_facility_public_action_failure_code(reason_code: String) -> String:
+	match reason_code:
+		"public_facility_target_unavailable", "public_facility_slot_occupied", \
+		"public_facility_slot_incompatible", "public_facility_product_unavailable":
+			return "facility_play_target_unavailable"
+		"public_facility_card_unavailable", "v06_authoritative_slot_changed", \
+		"v06_authoritative_instance_missing":
+			return "facility_play_card_changed"
+		"game_over", "forced_decision_pending", "player_action_cooldown", \
+		"card_locked", "card_cooldown", "asset_cost_unavailable", \
+		"player_mana_snapshot_missing", "public_facility_preflight_unavailable":
+			return "facility_play_settlement_unavailable"
+	return reason_code
 
 
 func _v06_runtime_card_catalog() -> Resource:
@@ -2854,31 +2861,24 @@ func _v06_player_card_at(player: Dictionary, slot_index: int) -> Dictionary:
 
 func _v06_runtime_card_target_context(card: Dictionary, actor_id: String, request: Dictionary) -> Dictionary:
 	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
-	var payload: Dictionary = machine.get("effect_payload", {}) if machine.get("effect_payload", {}) is Dictionary else {}
 	var effect_kind := str(machine.get("effect_kind", ""))
 	var region_id := str(request.get("region_id", "")).strip_edges()
 	var game_time := float(request.get("game_time", 0.0))
 	if effect_kind == "build_upgrade_or_repair_facility":
-		var infrastructure := _region_infrastructure_runtime_controller_node()
-		if infrastructure == null or region_id.is_empty():
-			return {"ready": false, "reason_code": "facility_target_region_missing"}
-		var facility_kind := str(payload.get("facility_kind", ""))
-		var industry_id := str(payload.get("industry_id", machine.get("industry_id", "")))
-		var slot_id := str(infrastructure.call("slot_id", region_id, facility_kind, industry_id))
-		var region_variant: Variant = infrastructure.call("region_snapshot", region_id)
-		var region: Dictionary = region_variant if region_variant is Dictionary else {}
-		if region.is_empty() or slot_id.is_empty():
-			return {"ready": false, "reason_code": "facility_target_unavailable"}
-		return {
-			"ready": true,
-			"target_context": {
-				"valid": true,
-				"target_kind": str(machine.get("target_kind", "")),
-				"region_id": region_id,
-				"slot_id": slot_id,
-				"industry_id": industry_id,
-				"game_time": game_time,
-			},
+		var core_adapter := _core_economic_card_runtime_adapter_v06_node()
+		if core_adapter == null or not core_adapter.has_method("facility_target_context"):
+			return {"ready": false, "reason_code": "core_economic_runtime_unavailable"}
+		var target_variant: Variant = core_adapter.call(
+			"facility_target_context",
+			actor_id,
+			int(request.get("slot_index", -1)),
+			str(machine.get("card_id", "")),
+			region_id,
+			game_time
+		)
+		return (target_variant as Dictionary).duplicate(true) if target_variant is Dictionary else {
+			"ready": false,
+			"reason_code": "facility_target_context_invalid",
 		}
 	if effect_kind == "install_organization_upgrade":
 		var organization_owner := _player_organization_runtime_controller_node()
@@ -5140,7 +5140,8 @@ func _wire_table_presentation_source_target() -> void:
 		_card_resolution_presentation_port_node(),
 		_player_seat_public_source_node() as PlayerSeatPublicSourceService,
 		_commodity_sushi_track_runtime_service_node(),
-		district_supply_query
+		district_supply_query,
+		_v06_runtime_card_catalog() as CardRuntimeCatalogV06Resource
 	)
 	source.configure(
 		_table_presentation_query_ports_node(),
