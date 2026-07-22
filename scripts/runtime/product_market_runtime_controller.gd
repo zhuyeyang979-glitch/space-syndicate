@@ -24,9 +24,39 @@ const PRODUCT_GROWTH_MULTIPLIER_MAX := 3.0
 const ROUTE_FLOW_MULTIPLIER_MAX := 2.8
 const WEATHER_ECONOMY_MULTIPLIER_MIN := 0.70
 const WEATHER_ECONOMY_MULTIPLIER_MAX := 1.30
+const AI_BUSINESS_MARKET_PRESSURE_LIFECYCLE_VERSION := 1
+const AI_BUSINESS_MARKET_PRESSURE_JOURNAL_LIMIT := 256
+const AI_BUSINESS_PUBLICATION_RETRY_LIMIT_PER_TICK := 8
+const AI_BUSINESS_ACTION_PRICE_PUMP := "price_pump"
+const AI_BUSINESS_ACTION_ROUTE_SABOTAGE := "route_sabotage"
+const AI_BUSINESS_MARKET_PRESSURE_REQUEST_KEYS := [
+	"schema_version",
+	"transaction_id",
+	"action_kind",
+	"product_id",
+	"public_region_id",
+	"source_revision",
+	"expected_market_fingerprint",
+]
+const AI_BUSINESS_MARKET_PRESSURE_PUBLIC_RECEIPT_KEYS := [
+	"schema_version",
+	"public_event_id",
+	"event_kind",
+	"action_kind",
+	"product_id",
+	"public_region_id",
+	"pressure_units",
+	"price_before",
+	"price_after",
+	"price_delta",
+	"market_revision",
+	"localization_key",
+	"visibility_scope",
+]
 const PRODUCT_INDUSTRY_CATALOG := preload("res://resources/content/product_industry_catalog_v05.tres")
 const RuntimeBalanceModelScript := preload("res://scripts/balance/runtime_balance_model.gd")
 const FrozenTargetContext := preload("res://scripts/runtime/product_market_frozen_target_context.gd")
+const SimulationStateIdentityScript := preload("res://scripts/runtime/simulation_state_identity.gd")
 const WEATHER_PUBLIC_CONTRIBUTION_KEYS := [
 	"kind",
 	"weather_id",
@@ -131,6 +161,17 @@ var _futures_open_count := 0
 var _futures_settlement_count := 0
 var _legacy_positions_normalized := 0
 var _last_futures_receipt: Dictionary = {}
+var _ai_business_market_pressure_journal: Dictionary = {}
+var _ai_business_market_pressure_journal_order: Array[String] = []
+var _ai_business_market_pressure_prepare_count := 0
+var _ai_business_market_pressure_commit_count := 0
+var _ai_business_market_pressure_rollback_count := 0
+var _ai_business_market_pressure_finalize_count := 0
+var _ai_business_market_pressure_collision_count := 0
+var _ai_business_market_pressure_stale_count := 0
+var _ai_business_market_pressure_recovery_required_count := 0
+var _ai_business_market_pressure_telemetry_metric_count := 0
+var _ai_business_market_pressure_recovery_required := false
 
 
 func configure(ruleset_snapshot: Dictionary, formula_service: Node = null) -> void:
@@ -159,6 +200,7 @@ func set_weather_telemetry_runtime_service(service: Node) -> void:
 
 
 func reset_state() -> Dictionary:
+	_reset_ai_business_market_pressure_transactions()
 	product_market = generate_product_market()
 	business_cycle_count = 0
 	market_timer = _world_bridge.next_market_interval() if _world_bridge != null else 8.0
@@ -305,6 +347,7 @@ func apply_new_session_plan(plan_state: Dictionary) -> Dictionary:
 	var preflight := preflight_new_session(plan_state)
 	if not bool(preflight.get("accepted", false)):
 		return {"applied": false, "reason_code": str(preflight.get("reason_code", "product_market_new_session_plan_invalid"))}
+	_reset_ai_business_market_pressure_transactions()
 	product_market = (plan_state.get("product_market", {}) as Dictionary).duplicate(true)
 	business_cycle_count = 0
 	market_timer = float(plan_state.get("market_timer", 30.0))
@@ -470,6 +513,115 @@ func generate_product_market() -> Dictionary:
 
 func refresh_prices() -> Dictionary:
 	ensure_catalog()
+	var shared_rng := _shared_rng()
+	var checkpoint := shared_rng.capture_plan_checkpoint() if shared_rng != null else {}
+	var plan := _build_market_refresh_plan(product_market, checkpoint, shared_rng != null)
+	if not bool(plan.get("ok", false)):
+		push_error("Product market refresh planning failed: %s" % str(plan.get("reason_code", "product_market_refresh_plan_failed")))
+		return runtime_state_snapshot()
+	if shared_rng != null:
+		# Ordinary live draws never published plan-state signals. Keep that
+		# observable behavior while sharing the detached planner with transactions.
+		var rng_commit := shared_rng.commit_reversible_plan_state(checkpoint, plan.get("terminal_cursor", {}) as Dictionary)
+		if not bool(rng_commit.get("committed", false)):
+			push_error("Product market refresh RNG commit failed: %s" % str(rng_commit.get("reason_code", "product_market_refresh_rng_commit_failed")))
+			return runtime_state_snapshot()
+	product_market = (plan.get("product_market", {}) as Dictionary).duplicate(true)
+	_emit_weather_telemetry_batches(plan.get("telemetry_batches", []) as Array)
+	return runtime_state_snapshot()
+
+
+func _build_market_refresh_plan(source_market: Dictionary, cursor: Dictionary = {}, consume_rng := true, frozen_source_facts: Dictionary = {}) -> Dictionary:
+	if source_market.size() != PRODUCT_CATALOG.size():
+		return {"ok": false, "reason_code": "product_market_refresh_catalog_incomplete"}
+	if consume_rng and (int(cursor.get("schema_version", 0)) != 1 or int(cursor.get("rng_state", 0)) == 0):
+		return {"ok": false, "reason_code": "product_market_refresh_rng_cursor_invalid"}
+	var next_market := source_market.duplicate(true)
+	var next_cursor := cursor.duplicate(true)
+	var source_facts := frozen_source_facts.duplicate(true) if not frozen_source_facts.is_empty() else _market_refresh_source_facts()
+	if not TablePresentationPureDataPolicy.is_pure_data(source_facts):
+		return {"ok": false, "reason_code": "product_market_refresh_source_facts_invalid"}
+	var supply: Dictionary = (source_facts.get("supply", {}) as Dictionary).duplicate(true)
+	var demand: Dictionary = (source_facts.get("demand", {}) as Dictionary).duplicate(true)
+	var disrupted: Dictionary = (source_facts.get("disrupted", {}) as Dictionary).duplicate(true)
+	var weather_market_context: Dictionary = (source_facts.get("weather_market_context", {}) as Dictionary).duplicate(true)
+	var telemetry_batches: Array = []
+	var balance_model := RuntimeBalanceModelScript.new()
+	for product_variant in PRODUCT_CATALOG:
+		var product_name := str(product_variant)
+		var entry: Dictionary = next_market.get(product_name, {})
+		if entry.is_empty():
+			return {"ok": false, "reason_code": "product_market_refresh_product_missing", "product_id": product_name}
+		_normalize_boon_fields(entry)
+		var base_price := int(entry.get("base_price", 50))
+		var volatility := int(entry.get("volatility", 4))
+		var temporary_demand := int(entry.get("temporary_demand_pressure", 0))
+		var temporary_supply := int(entry.get("temporary_supply_pressure", 0))
+		var contract_seconds := _remaining_seconds(entry, "market_contract_seconds", "market_contract_turns")
+		var demand_score := int(demand.get(product_name, 0)) + temporary_demand + (int(entry.get("market_contract_demand", 0)) if contract_seconds > 0.0 else 0)
+		var supply_score := int(supply.get(product_name, 0)) + temporary_supply + (int(entry.get("market_contract_supply", 0)) if contract_seconds > 0.0 else 0)
+		var disrupted_score := int(disrupted.get(product_name, 0))
+		var growth_multiplier := clampf(float(entry.get("growth_multiplier", 1.0)), 1.0, PRODUCT_GROWTH_MULTIPLIER_MAX)
+		var weather_context: Dictionary = weather_market_context.get(product_name, {})
+		var total_exposure_weight := maxi(0, int(weather_context.get("total_exposure_weight", 0)))
+		var weighted_price_delta := float(weather_context.get("weighted_price_delta", 0.0))
+		var weather_price_growth_multiplier := 1.0
+		if total_exposure_weight > 0:
+			weather_price_growth_multiplier = clampf(
+				1.0 + weighted_price_delta / float(total_exposure_weight),
+				WEATHER_ECONOMY_MULTIPLIER_MIN,
+				WEATHER_ECONOMY_MULTIPLIER_MAX
+			)
+		var weather_modifier := int(round(float(base_price) * (weather_price_growth_multiplier - 1.0)))
+		var noise := 0.0
+		if consume_rng:
+			var noise_draw := RunRngService.detached_randf_range(next_cursor, -float(volatility), float(volatility))
+			if not bool(noise_draw.get("ok", false)):
+				return {"ok": false, "reason_code": str(noise_draw.get("reason_code", "product_market_refresh_rng_draw_failed")), "product_id": product_name}
+			noise = float(noise_draw.get("value", 0.0))
+			next_cursor = _cursor_from_detached_draw(noise_draw)
+		var price_model: Dictionary = balance_model.product_price_model(
+			base_price,
+			supply_score,
+			demand_score,
+			disrupted_score,
+			0,
+			weather_modifier,
+			volatility,
+			noise,
+			growth_multiplier
+		)
+		var trend := int(price_model.get("delta", 0))
+		var price := int(price_model.get("price", clampi(base_price + trend, PRODUCT_PRICE_MIN, PRODUCT_PRICE_MAX)))
+		entry["price"] = price
+		entry["trend"] = trend
+		entry["raw_trend"] = int(price_model.get("raw_delta", trend))
+		entry["price_step_cap"] = int(price_model.get("step_cap", balance_model.product_price_step_cap(volatility, base_price)))
+		entry["driver_summary"] = str(price_model.get("driver_summary", ""))
+		entry["supply"] = supply_score
+		entry["demand"] = demand_score
+		entry["disrupted"] = disrupted_score
+		entry["weather_price_growth_multiplier"] = weather_price_growth_multiplier
+		entry["weather_modifier"] = weather_modifier
+		entry["weather_contributions"] = _sanitize_weather_contributions(weather_context.get("contributions", []))
+		entry["weather_driver_summary"] = _weather_driver_summary(entry["weather_contributions"] as Array, weather_price_growth_multiplier)
+		telemetry_batches.append((entry["weather_contributions"] as Array).duplicate(true))
+		if temporary_demand > 0: entry["temporary_demand_pressure"] = maxi(0, temporary_demand - 1)
+		if temporary_supply > 0: entry["temporary_supply_pressure"] = maxi(0, temporary_supply - 1)
+		_append_price_history(entry, price)
+		next_market[product_name] = entry
+	return {
+		"ok": true,
+		"reason_code": "product_market_refresh_plan_ready",
+		"product_market": next_market,
+		"terminal_cursor": next_cursor,
+		"draw_count_delta": int(next_cursor.get("draw_count", 0)) - int(cursor.get("draw_count", 0)) if consume_rng else 0,
+		"telemetry_batches": telemetry_batches,
+		"source_facts_fingerprint": _stable_data_fingerprint(source_facts),
+	}
+
+
+func _market_refresh_source_facts() -> Dictionary:
 	var world := _world_snapshot()
 	var districts: Array = world.get("districts", []) as Array
 	var supply := {}
@@ -523,53 +675,28 @@ func refresh_prices() -> Dictionary:
 			aggregate["total_exposure_weight"] = int(aggregate.get("total_exposure_weight", 0)) + exposure_weight
 			_append_product_weather_contributions(aggregate, district_index, exposed_product, exposure_weight, district)
 			weather_market_context[exposed_product] = aggregate
-	var shared_rng := _shared_rng()
-	for product_variant in PRODUCT_CATALOG:
-		var product_name := str(product_variant)
-		var entry: Dictionary = product_market.get(product_name, {})
-		_normalize_boon_fields(entry)
-		var base_price := int(entry.get("base_price", 50))
-		var volatility := int(entry.get("volatility", 4))
-		var temporary_demand := int(entry.get("temporary_demand_pressure", 0))
-		var temporary_supply := int(entry.get("temporary_supply_pressure", 0))
-		var contract_seconds := _remaining_seconds(entry, "market_contract_seconds", "market_contract_turns")
-		var demand_score := int(demand.get(product_name, 0)) + temporary_demand + (int(entry.get("market_contract_demand", 0)) if contract_seconds > 0.0 else 0)
-		var supply_score := int(supply.get(product_name, 0)) + temporary_supply + (int(entry.get("market_contract_supply", 0)) if contract_seconds > 0.0 else 0)
-		var disrupted_score := int(disrupted.get(product_name, 0))
-		var growth_multiplier := clampf(float(entry.get("growth_multiplier", 1.0)), 1.0, PRODUCT_GROWTH_MULTIPLIER_MAX)
-		var weather_context: Dictionary = weather_market_context.get(product_name, {})
-		var total_exposure_weight := maxi(0, int(weather_context.get("total_exposure_weight", 0)))
-		var weighted_price_delta := float(weather_context.get("weighted_price_delta", 0.0))
-		var weather_price_growth_multiplier := 1.0
-		if total_exposure_weight > 0:
-			weather_price_growth_multiplier = clampf(
-				1.0 + weighted_price_delta / float(total_exposure_weight),
-				WEATHER_ECONOMY_MULTIPLIER_MIN,
-				WEATHER_ECONOMY_MULTIPLIER_MAX
-			)
-		var weather_modifier := int(round(float(base_price) * (weather_price_growth_multiplier - 1.0)))
-		var noise := shared_rng.randf_range(-float(volatility), float(volatility)) if shared_rng != null else 0.0
-		var price_model := _world_bridge.price_model(base_price, supply_score, demand_score, disrupted_score, volatility, noise, growth_multiplier, weather_modifier) if _world_bridge != null else {}
-		var trend := int(price_model.get("delta", 0))
-		var price := int(price_model.get("price", clampi(base_price + trend, PRODUCT_PRICE_MIN, PRODUCT_PRICE_MAX)))
-		entry["price"] = price
-		entry["trend"] = trend
-		entry["raw_trend"] = int(price_model.get("raw_delta", trend))
-		entry["price_step_cap"] = int(price_model.get("step_cap", _world_bridge.price_step_cap(volatility, base_price) if _world_bridge != null else volatility))
-		entry["driver_summary"] = str(price_model.get("driver_summary", ""))
-		entry["supply"] = supply_score
-		entry["demand"] = demand_score
-		entry["disrupted"] = disrupted_score
-		entry["weather_price_growth_multiplier"] = weather_price_growth_multiplier
-		entry["weather_modifier"] = weather_modifier
-		entry["weather_contributions"] = _sanitize_weather_contributions(weather_context.get("contributions", []))
-		entry["weather_driver_summary"] = _weather_driver_summary(entry["weather_contributions"] as Array, weather_price_growth_multiplier)
-		_record_weather_price_telemetry(entry["weather_contributions"] as Array)
-		if temporary_demand > 0: entry["temporary_demand_pressure"] = maxi(0, temporary_demand - 1)
-		if temporary_supply > 0: entry["temporary_supply_pressure"] = maxi(0, temporary_supply - 1)
-		_append_price_history(entry, price)
-		product_market[product_name] = entry
-	return runtime_state_snapshot()
+	return {
+		"supply": supply,
+		"demand": demand,
+		"disrupted": disrupted,
+		"weather_market_context": weather_market_context,
+	}
+
+
+func _authorized_ai_business_public_region_id(candidate: String) -> String:
+	var requested := candidate.strip_edges()
+	if requested.is_empty() or requested.length() > 128:
+		return ""
+	var districts: Array = _world_snapshot().get("districts", []) as Array
+	for district_index in range(districts.size()):
+		var district_variant: Variant = districts[district_index]
+		if not (district_variant is Dictionary):
+			continue
+		var district := district_variant as Dictionary
+		var region_id := str(district.get("region_id", "region.%03d" % district_index)).strip_edges()
+		if not region_id.is_empty() and region_id == requested:
+			return region_id
+	return ""
 
 
 func product_price(product_name: String) -> int:
@@ -982,12 +1109,473 @@ func _product_card_cash_transaction_id(target_context: Dictionary) -> String:
 func apply_external_pressure(product_name: String, demand_delta: int, supply_delta: int, volatility_delta := 0, refresh := true) -> Dictionary:
 	var entry := market_entry(product_name)
 	if entry.is_empty(): return {"changed": false, "reason": "product_missing"}
-	entry["temporary_demand_pressure"] = int(entry.get("temporary_demand_pressure", 0)) + maxi(0, demand_delta)
-	entry["temporary_supply_pressure"] = int(entry.get("temporary_supply_pressure", 0)) + maxi(0, supply_delta)
-	entry["volatility"] = clampi(int(entry.get("volatility", 4)) + volatility_delta, PRODUCT_VOLATILITY_MIN, PRODUCT_VOLATILITY_MAX)
+	entry = _market_entry_with_external_pressure(entry, demand_delta, supply_delta, volatility_delta)
 	product_market[product_name] = entry
 	if refresh: refresh_prices()
 	return {"changed": true, "product_name": product_name, "price": product_price(product_name)}
+
+
+func _market_entry_with_external_pressure(entry: Dictionary, demand_delta: int, supply_delta: int, volatility_delta: int) -> Dictionary:
+	var next_entry := entry.duplicate(true)
+	next_entry["temporary_demand_pressure"] = int(next_entry.get("temporary_demand_pressure", 0)) + maxi(0, demand_delta)
+	next_entry["temporary_supply_pressure"] = int(next_entry.get("temporary_supply_pressure", 0)) + maxi(0, supply_delta)
+	next_entry["volatility"] = clampi(int(next_entry.get("volatility", 4)) + volatility_delta, PRODUCT_VOLATILITY_MIN, PRODUCT_VOLATILITY_MAX)
+	return next_entry
+
+
+func ai_business_market_pressure_authority_snapshot() -> Dictionary:
+	var shared_rng := _shared_rng()
+	return {
+		"schema_version": AI_BUSINESS_MARKET_PRESSURE_LIFECYCLE_VERSION,
+		"available": _configured and _world_bridge != null and shared_rng != null and product_market.size() == PRODUCT_CATALOG.size(),
+		"market_fingerprint": _stable_data_fingerprint(runtime_state_snapshot()),
+		"market_revision": business_cycle_count,
+		"rollback_open_count": _ai_business_market_pressure_state_count("committed") \
+			+ _ai_business_market_pressure_state_count("finalize_ready"),
+		"recovery_required": _ai_business_market_pressure_recovery_required,
+		"journal_size": _ai_business_market_pressure_journal.size(),
+		"journal_limit": AI_BUSINESS_MARKET_PRESSURE_JOURNAL_LIMIT,
+	}
+
+
+func prepare_ai_business_market_pressure(request: Dictionary) -> Dictionary:
+	if _ai_business_market_pressure_recovery_required:
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_recovery_required", true)
+	if not _configured or _world_bridge == null or _shared_rng() == null:
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_owner_unavailable")
+	if not TablePresentationPureDataPolicy.is_pure_data(request):
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_request_not_pure_data")
+	for key_variant in request.keys():
+		if not AI_BUSINESS_MARKET_PRESSURE_REQUEST_KEYS.has(str(key_variant)):
+			return _ai_business_market_pressure_failure("ai_business_market_pressure_request_field_not_allowed")
+	if int(request.get("schema_version", 0)) != AI_BUSINESS_MARKET_PRESSURE_LIFECYCLE_VERSION:
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_schema_invalid")
+	if not request.has("source_revision") or int(request.get("source_revision", -1)) < 0:
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_source_revision_invalid")
+	var transaction_id := str(request.get("transaction_id", "")).strip_edges()
+	if transaction_id.is_empty():
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_transaction_id_missing")
+	if transaction_id.length() > 160:
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_transaction_id_invalid")
+	var public_region_id := _authorized_ai_business_public_region_id(str(request.get("public_region_id", "")))
+	if public_region_id.is_empty():
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_public_region_invalid")
+	var normalized_request := {
+		"schema_version": AI_BUSINESS_MARKET_PRESSURE_LIFECYCLE_VERSION,
+		"transaction_id": transaction_id,
+		"action_kind": str(request.get("action_kind", "")).strip_edges(),
+		"product_id": str(request.get("product_id", "")).strip_edges(),
+		"public_region_id": public_region_id,
+		"source_revision": int(request.get("source_revision", -1)),
+		"expected_market_fingerprint": str(request.get("expected_market_fingerprint", "")).strip_edges(),
+	}
+	var request_fingerprint := _stable_data_fingerprint(normalized_request)
+	if request_fingerprint.is_empty():
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_request_fingerprint_failed")
+	if _ai_business_market_pressure_journal.has(transaction_id):
+		var existing: Dictionary = _ai_business_market_pressure_journal.get(transaction_id, {}) as Dictionary
+		if str(existing.get("request_fingerprint", "")) != request_fingerprint:
+			_ai_business_market_pressure_collision_count += 1
+			return _ai_business_market_pressure_failure("ai_business_market_pressure_transaction_collision")
+		return _ai_business_market_pressure_lifecycle_receipt(existing, true)
+	var action_kind := str(normalized_request.get("action_kind", ""))
+	if action_kind == AI_BUSINESS_ACTION_ROUTE_SABOTAGE:
+		return _ai_business_market_pressure_failure("ai_business_route_sabotage_not_owned")
+	if action_kind != AI_BUSINESS_ACTION_PRICE_PUMP:
+		return _ai_business_market_pressure_failure("ai_business_action_kind_unsupported")
+	var product_id := str(normalized_request.get("product_id", ""))
+	if product_id.is_empty() or not PRODUCT_CATALOG.has(product_id) or not (product_market.get(product_id, {}) is Dictionary):
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_product_invalid")
+	if product_market.size() != PRODUCT_CATALOG.size():
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_catalog_incomplete")
+	var preimage := runtime_state_snapshot()
+	var preimage_fingerprint := _stable_data_fingerprint(preimage)
+	var expected_market_fingerprint := str(normalized_request.get("expected_market_fingerprint", ""))
+	if expected_market_fingerprint.is_empty():
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_expected_fingerprint_missing")
+	if not _is_sha256_fingerprint(expected_market_fingerprint):
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_expected_fingerprint_invalid")
+	if int(normalized_request.get("source_revision", -1)) != business_cycle_count \
+			or expected_market_fingerprint != preimage_fingerprint:
+		_ai_business_market_pressure_stale_count += 1
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_request_stale")
+	_trim_ai_business_market_pressure_journal(AI_BUSINESS_MARKET_PRESSURE_JOURNAL_LIMIT - 1)
+	if _ai_business_market_pressure_journal.size() >= AI_BUSINESS_MARKET_PRESSURE_JOURNAL_LIMIT:
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_journal_capacity_exhausted")
+	var shared_rng := _shared_rng()
+	var rng_checkpoint := shared_rng.capture_plan_checkpoint()
+	var action_draw := RunRngService.detached_randi_range(rng_checkpoint, 8, 18)
+	if not bool(action_draw.get("ok", false)):
+		return _ai_business_market_pressure_failure(str(action_draw.get("reason_code", "ai_business_market_pressure_action_rng_failed")))
+	var action_cursor := _cursor_from_detached_draw(action_draw)
+	var sampled_price_delta := int(action_draw.get("value", 8))
+	var pressure_units := maxi(1, int(ceil(float(sampled_price_delta) / 10.0)))
+	var postimage := preimage.duplicate(true)
+	var post_market := (postimage.get("product_market", {}) as Dictionary).duplicate(true)
+	var target_entry := (post_market.get(product_id, {}) as Dictionary).duplicate(true)
+	var price_before := int(target_entry.get("price", target_entry.get("base_price", 0)))
+	target_entry = _market_entry_with_external_pressure(target_entry, pressure_units, 0, 0)
+	post_market[product_id] = target_entry
+	var source_facts := _market_refresh_source_facts()
+	var source_facts_fingerprint := _stable_data_fingerprint(source_facts)
+	if source_facts_fingerprint.is_empty():
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_source_facts_invalid")
+	var refresh_plan := _build_market_refresh_plan(post_market, action_cursor, true, source_facts)
+	if not bool(refresh_plan.get("ok", false)):
+		return _ai_business_market_pressure_failure(str(refresh_plan.get("reason_code", "ai_business_market_pressure_refresh_plan_failed")))
+	if int(refresh_plan.get("draw_count_delta", -1)) != PRODUCT_CATALOG.size():
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_refresh_draw_count_invalid")
+	postimage["product_market"] = (refresh_plan.get("product_market", {}) as Dictionary).duplicate(true)
+	var terminal_cursor := (refresh_plan.get("terminal_cursor", {}) as Dictionary).duplicate(true)
+	var total_draw_count := int(terminal_cursor.get("draw_count", 0)) - int(rng_checkpoint.get("draw_count", 0))
+	if total_draw_count != PRODUCT_CATALOG.size() + 1:
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_total_draw_count_invalid")
+	var postimage_fingerprint := _stable_data_fingerprint(postimage)
+	var price_after := int((((postimage.get("product_market", {}) as Dictionary).get(product_id, {}) as Dictionary).get("price", price_before)))
+	var prepared_token := _stable_data_fingerprint({
+		"transaction_id": transaction_id,
+		"request_fingerprint": request_fingerprint,
+		"preimage_fingerprint": preimage_fingerprint,
+		"postimage_fingerprint": postimage_fingerprint,
+		"source_facts_fingerprint": source_facts_fingerprint,
+		"rng_checkpoint": rng_checkpoint,
+		"terminal_cursor": terminal_cursor,
+	})
+	var record := {
+		"state": "prepared",
+		"reason_code": "ai_business_market_pressure_prepared",
+		"transaction_id": transaction_id,
+		"request_fingerprint": request_fingerprint,
+		"prepared_token": prepared_token,
+		"action_kind": action_kind,
+		"product_id": product_id,
+		"public_region_id": str(normalized_request.get("public_region_id", "")),
+		"source_revision": int(normalized_request.get("source_revision", 0)),
+		"pressure_units": pressure_units,
+		"price_before": price_before,
+		"price_after": price_after,
+		"draw_count_delta": total_draw_count,
+		"preimage": preimage,
+		"preimage_fingerprint": preimage_fingerprint,
+		"postimage": postimage,
+		"postimage_fingerprint": postimage_fingerprint,
+		"source_facts_fingerprint": source_facts_fingerprint,
+		"rng_checkpoint": rng_checkpoint.duplicate(true),
+		"terminal_cursor": terminal_cursor,
+		"telemetry_batches": (refresh_plan.get("telemetry_batches", []) as Array).duplicate(true),
+		"rollback_open": false,
+		"recovery_required": false,
+	}
+	_ai_business_market_pressure_journal[transaction_id] = record
+	_ai_business_market_pressure_journal_order.append(transaction_id)
+	_ai_business_market_pressure_prepare_count += 1
+	return _ai_business_market_pressure_lifecycle_receipt(record, false)
+
+
+func commit_ai_business_market_pressure(prepared: Dictionary) -> Dictionary:
+	if not TablePresentationPureDataPolicy.is_pure_data(prepared):
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_prepare_receipt_not_pure_data")
+	var transaction_id := str(prepared.get("transaction_id", "")).strip_edges()
+	var record: Dictionary = _ai_business_market_pressure_journal.get(transaction_id, {}) if _ai_business_market_pressure_journal.get(transaction_id, {}) is Dictionary else {}
+	if record.is_empty():
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_transaction_missing")
+	if str(prepared.get("prepared_token", "")) != str(record.get("prepared_token", "")):
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_prepared_token_invalid")
+	if str(record.get("state", "")) in ["committed", "finalized"]:
+		return _ai_business_market_pressure_lifecycle_receipt(record, true)
+	if str(record.get("state", "")) == "rolled_back":
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_transaction_rolled_back")
+	if _ai_business_market_pressure_recovery_required:
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_recovery_required", true)
+	if str(record.get("state", "")) != "prepared":
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_prepared_token_invalid")
+	if _stable_data_fingerprint(runtime_state_snapshot()) != str(record.get("preimage_fingerprint", "")):
+		_ai_business_market_pressure_stale_count += 1
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_market_state_stale")
+	if _stable_data_fingerprint(_market_refresh_source_facts()) != str(record.get("source_facts_fingerprint", "")):
+		_ai_business_market_pressure_stale_count += 1
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_source_facts_stale")
+	var shared_rng := _shared_rng()
+	if shared_rng == null:
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_rng_unavailable")
+	var rng_preflight := shared_rng.preflight_plan_commit(record.get("rng_checkpoint", {}) as Dictionary, record.get("terminal_cursor", {}) as Dictionary)
+	if not bool(rng_preflight.get("accepted", false)):
+		_ai_business_market_pressure_stale_count += 1
+		return _ai_business_market_pressure_failure(str(rng_preflight.get("reason_code", "ai_business_market_pressure_rng_state_stale")))
+	var rng_commit := shared_rng.commit_reversible_plan_state(record.get("rng_checkpoint", {}) as Dictionary, record.get("terminal_cursor", {}) as Dictionary)
+	if not bool(rng_commit.get("committed", false)):
+		return _ai_business_market_pressure_failure(str(rng_commit.get("reason_code", "ai_business_market_pressure_rng_commit_failed")))
+	var postimage := record.get("postimage", {}) as Dictionary
+	var market_applied := _apply_ai_business_market_pressure_runtime_state(postimage)
+	var postimage_valid := market_applied and _stable_data_fingerprint(runtime_state_snapshot()) == str(record.get("postimage_fingerprint", ""))
+	if not postimage_valid:
+		var rng_restore := shared_rng.restore_plan_checkpoint(record.get("rng_checkpoint", {}) as Dictionary)
+		var market_restore := _apply_ai_business_market_pressure_runtime_state(record.get("preimage", {}) as Dictionary)
+		var restored := bool(rng_restore.get("restored", false)) and market_restore \
+			and _stable_data_fingerprint(runtime_state_snapshot()) == str(record.get("preimage_fingerprint", "")) \
+			and _rng_checkpoint_matches(shared_rng.capture_plan_checkpoint(), record.get("rng_checkpoint", {}) as Dictionary)
+		if restored:
+			record["state"] = "rolled_back"
+			record["reason_code"] = "ai_business_market_pressure_commit_postimage_failed"
+			record["rollback_open"] = false
+			record = _compact_ai_business_market_pressure_terminal_record(record)
+			_ai_business_market_pressure_journal[transaction_id] = record
+			return _ai_business_market_pressure_failure("ai_business_market_pressure_commit_postimage_failed")
+		return _mark_ai_business_market_pressure_recovery_required(transaction_id, record, "ai_business_market_pressure_commit_compensation_failed")
+	record["state"] = "committed"
+	record["reason_code"] = "ai_business_market_pressure_committed"
+	record["rollback_open"] = true
+	_ai_business_market_pressure_journal[transaction_id] = record
+	_ai_business_market_pressure_commit_count += 1
+	return _ai_business_market_pressure_lifecycle_receipt(record, false)
+
+
+func rollback_ai_business_market_pressure(receipt: Dictionary) -> Dictionary:
+	if not TablePresentationPureDataPolicy.is_pure_data(receipt):
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_commit_receipt_not_pure_data")
+	var transaction_id := str(receipt.get("transaction_id", "")).strip_edges()
+	var record: Dictionary = _ai_business_market_pressure_journal.get(transaction_id, {}) if _ai_business_market_pressure_journal.get(transaction_id, {}) is Dictionary else {}
+	if record.is_empty():
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_transaction_missing")
+	if str(receipt.get("prepared_token", "")) != str(record.get("prepared_token", "")):
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_receipt_token_invalid")
+	var state := str(record.get("state", ""))
+	if state == "rolled_back":
+		return _ai_business_market_pressure_lifecycle_receipt(record, true)
+	if state == "finalized":
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_already_finalized")
+	if state == "prepared":
+		record["state"] = "rolled_back"
+		record["reason_code"] = "ai_business_market_pressure_prepared_cancelled"
+		record["rollback_open"] = false
+		record = _compact_ai_business_market_pressure_terminal_record(record)
+		_ai_business_market_pressure_journal[transaction_id] = record
+		_ai_business_market_pressure_rollback_count += 1
+		return _ai_business_market_pressure_lifecycle_receipt(record, false)
+	if state not in ["committed", "finalize_ready"]:
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_not_rollbackable")
+	var shared_rng := _shared_rng()
+	if shared_rng == null:
+		return _mark_ai_business_market_pressure_recovery_required(transaction_id, record, "ai_business_market_pressure_rng_unavailable")
+	if _stable_data_fingerprint(runtime_state_snapshot()) != str(record.get("postimage_fingerprint", "")) \
+			or not _rng_checkpoint_matches(shared_rng.capture_plan_checkpoint(), record.get("terminal_cursor", {}) as Dictionary):
+		_ai_business_market_pressure_stale_count += 1
+		return _mark_ai_business_market_pressure_recovery_required(transaction_id, record, "ai_business_market_pressure_rollback_cas_failed")
+	var market_restored := _apply_ai_business_market_pressure_runtime_state(record.get("preimage", {}) as Dictionary)
+	if not market_restored or _stable_data_fingerprint(runtime_state_snapshot()) != str(record.get("preimage_fingerprint", "")):
+		_apply_ai_business_market_pressure_runtime_state(record.get("postimage", {}) as Dictionary)
+		return _mark_ai_business_market_pressure_recovery_required(transaction_id, record, "ai_business_market_pressure_market_rollback_failed")
+	var rng_restore := shared_rng.restore_plan_checkpoint(record.get("rng_checkpoint", {}) as Dictionary)
+	if not bool(rng_restore.get("restored", false)) or not _rng_checkpoint_matches(shared_rng.capture_plan_checkpoint(), record.get("rng_checkpoint", {}) as Dictionary):
+		_apply_ai_business_market_pressure_runtime_state(record.get("postimage", {}) as Dictionary)
+		return _mark_ai_business_market_pressure_recovery_required(transaction_id, record, "ai_business_market_pressure_rng_rollback_failed")
+	record["state"] = "rolled_back"
+	record["reason_code"] = "ai_business_market_pressure_rolled_back"
+	record["rollback_open"] = false
+	record = _compact_ai_business_market_pressure_terminal_record(record)
+	_ai_business_market_pressure_journal[transaction_id] = record
+	_ai_business_market_pressure_rollback_count += 1
+	return _ai_business_market_pressure_lifecycle_receipt(record, false)
+
+
+func seal_ai_business_market_pressure_finalization(receipt: Dictionary) -> Dictionary:
+	## Synchronously proves the market/RNG participant is finalizable before the
+	## cash owner commits. The returned token closes every ordinary failure path:
+	## cash mutation does not own market state or RNG, so finalization after this
+	## seal is a non-failing terminal write plus public receipt publication.
+	if not TablePresentationPureDataPolicy.is_pure_data(receipt):
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_commit_receipt_not_pure_data")
+	var transaction_id := str(receipt.get("transaction_id", "")).strip_edges()
+	var record: Dictionary = _ai_business_market_pressure_journal.get(transaction_id, {}) if _ai_business_market_pressure_journal.get(transaction_id, {}) is Dictionary else {}
+	if record.is_empty() or str(receipt.get("prepared_token", "")) != str(record.get("prepared_token", "")):
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_commit_receipt_invalid")
+	var state := str(record.get("state", ""))
+	if state == "finalize_ready":
+		return _ai_business_market_pressure_lifecycle_receipt(record, true)
+	if state != "committed":
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_commit_receipt_invalid")
+	var shared_rng := _shared_rng()
+	if shared_rng == null or _stable_data_fingerprint(runtime_state_snapshot()) != str(record.get("postimage_fingerprint", "")) \
+			or not _rng_checkpoint_matches(shared_rng.capture_plan_checkpoint(), record.get("terminal_cursor", {}) as Dictionary):
+		_ai_business_market_pressure_stale_count += 1
+		return _mark_ai_business_market_pressure_recovery_required(transaction_id, record, "ai_business_market_pressure_finalize_seal_cas_failed")
+	record["publication_required"] = true
+	var public_receipt := _ai_business_market_pressure_public_receipt(record)
+	var publication_preflight := _ai_business_market_pressure_publication_preflight(public_receipt)
+	if not bool(publication_preflight.get("ready", false)):
+		return _ai_business_market_pressure_failure(str(publication_preflight.get("reason_code", "ai_business_market_pressure_publication_unavailable")))
+	var finalize_token := _stable_data_fingerprint({
+		"transaction_id": transaction_id,
+		"prepared_token": str(record.get("prepared_token", "")),
+		"postimage_fingerprint": str(record.get("postimage_fingerprint", "")),
+		"terminal_cursor": record.get("terminal_cursor", {}),
+	})
+	if finalize_token.is_empty():
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_finalize_seal_failed")
+	record["state"] = "finalize_ready"
+	record["reason_code"] = "ai_business_market_pressure_finalize_ready"
+	record["finalize_token"] = finalize_token
+	record["public_receipt"] = public_receipt
+	record["rollback_open"] = true
+	_ai_business_market_pressure_journal[transaction_id] = record
+	return _ai_business_market_pressure_lifecycle_receipt(record, false)
+
+
+func finalize_ai_business_market_pressure(receipt: Dictionary) -> Dictionary:
+	if not TablePresentationPureDataPolicy.is_pure_data(receipt):
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_commit_receipt_not_pure_data")
+	var transaction_id := str(receipt.get("transaction_id", "")).strip_edges()
+	var record: Dictionary = _ai_business_market_pressure_journal.get(transaction_id, {}) if _ai_business_market_pressure_journal.get(transaction_id, {}) is Dictionary else {}
+	if record.is_empty():
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_transaction_missing")
+	if str(receipt.get("prepared_token", "")) != str(record.get("prepared_token", "")):
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_commit_receipt_invalid")
+	var state := str(record.get("state", ""))
+	if state == "finalized":
+		return _ai_business_market_pressure_lifecycle_receipt(record, true)
+	if state == "finalizing":
+		if str(receipt.get("finalize_token", "")) != str(record.get("finalize_token", "")):
+			return _ai_business_market_pressure_failure("ai_business_market_pressure_finalize_token_invalid")
+		if bool(record.get("finalization_active", false)):
+			var pending := _ai_business_market_pressure_failure("ai_business_market_pressure_finalization_in_progress")
+			pending["committed"] = true
+			pending["transaction_id"] = transaction_id
+			return pending
+		record["finalization_active"] = true
+		_ai_business_market_pressure_journal[transaction_id] = record
+		return _complete_ai_business_market_pressure_finalization(transaction_id, record)
+	if state not in ["committed", "finalize_ready"]:
+		return _ai_business_market_pressure_failure("ai_business_market_pressure_commit_receipt_invalid")
+	if state == "finalize_ready":
+		if str(receipt.get("finalize_token", "")) != str(record.get("finalize_token", "")):
+			return _ai_business_market_pressure_failure("ai_business_market_pressure_finalize_token_invalid")
+	else:
+		# Existing single-owner callers may still finalize directly. Cross-owner
+		# callers must seal first so they cannot commit another participant before
+		# this CAS gate has passed.
+		var shared_rng := _shared_rng()
+		if shared_rng == null or _stable_data_fingerprint(runtime_state_snapshot()) != str(record.get("postimage_fingerprint", "")) \
+				or not _rng_checkpoint_matches(shared_rng.capture_plan_checkpoint(), record.get("terminal_cursor", {}) as Dictionary):
+			_ai_business_market_pressure_stale_count += 1
+			return _mark_ai_business_market_pressure_recovery_required(transaction_id, record, "ai_business_market_pressure_finalize_cas_failed")
+	var stored_public_receipt: Variant = record.get("public_receipt", {})
+	var public_receipt: Dictionary = (stored_public_receipt as Dictionary).duplicate(true) \
+		if stored_public_receipt is Dictionary and not (stored_public_receipt as Dictionary).is_empty() \
+		else _ai_business_market_pressure_public_receipt(record)
+	# Claim finalization before invoking telemetry so a synchronous observer cannot
+	# re-enter this transaction and publish the same batch twice.
+	record["state"] = "finalizing"
+	record["reason_code"] = "ai_business_market_pressure_finalization_in_progress"
+	record["rollback_open"] = false
+	record["public_receipt"] = public_receipt
+	record["public_clue_applied"] = false
+	record["public_log_applied"] = false
+	record["telemetry_applied"] = false
+	record["publication_required"] = bool(record.get("publication_required", false))
+	record["finalization_active"] = true
+	_ai_business_market_pressure_journal[transaction_id] = record
+	return _complete_ai_business_market_pressure_finalization(transaction_id, record)
+
+
+func _complete_ai_business_market_pressure_finalization(transaction_id: String, record: Dictionary) -> Dictionary:
+	var public_receipt: Dictionary = (record.get("public_receipt", {}) as Dictionary).duplicate(true) \
+		if record.get("public_receipt", {}) is Dictionary else {}
+	if not bool(record.get("public_clue_applied", false)):
+		var public_clue_result := _world_bridge.append_ai_business_public_clue(public_receipt) if _world_bridge != null else {}
+		record["public_clue_applied"] = bool(public_clue_result.get("applied", false))
+	if not bool(record.get("public_log_applied", false)):
+		var public_log_result := _publish_ai_business_market_pressure_public_log(public_receipt)
+		record["public_log_applied"] = bool(public_log_result.get("applied", false)) \
+			or bool(public_log_result.get("duplicate", false))
+	if bool(record.get("publication_required", false)) \
+			and (not bool(record.get("public_clue_applied", false)) or not bool(record.get("public_log_applied", false))):
+		record["state"] = "finalizing"
+		record["reason_code"] = "ai_business_market_pressure_publication_pending"
+		record["rollback_open"] = false
+		record["finalization_active"] = false
+		_ai_business_market_pressure_journal[transaction_id] = record
+		return _ai_business_market_pressure_lifecycle_receipt(record, false)
+	if not bool(record.get("telemetry_applied", false)):
+		var telemetry_batches: Array = (record.get("telemetry_batches", []) as Array).duplicate(true)
+		_ai_business_market_pressure_telemetry_metric_count += _emit_weather_telemetry_batches(telemetry_batches)
+		record["telemetry_applied"] = true
+	record["state"] = "finalized"
+	record["reason_code"] = "ai_business_market_pressure_finalized"
+	record["rollback_open"] = false
+	record["finalization_active"] = false
+	record = _compact_ai_business_market_pressure_terminal_record(record)
+	_ai_business_market_pressure_journal[transaction_id] = record
+	_ai_business_market_pressure_finalize_count += 1
+	_trim_ai_business_market_pressure_journal()
+	return _ai_business_market_pressure_lifecycle_receipt(record, false)
+
+
+func ai_business_market_pressure_save_preflight() -> Dictionary:
+	if _ai_business_market_pressure_recovery_required:
+		return {"accepted": false, "reason_code": "ai_business_market_pressure_recovery_required"}
+	if _ai_business_market_pressure_state_count("committed") > 0 \
+			or _ai_business_market_pressure_state_count("finalize_ready") > 0 \
+			or _ai_business_market_pressure_state_count("finalizing") > 0:
+		return {"accepted": false, "reason_code": "ai_business_market_pressure_rollback_window_open"}
+	return {"accepted": true, "reason_code": "ai_business_market_pressure_save_safe"}
+
+
+func ai_business_market_pressure_debug_snapshot() -> Dictionary:
+	return {
+		"lifecycle_version": AI_BUSINESS_MARKET_PRESSURE_LIFECYCLE_VERSION,
+		"journal_size": _ai_business_market_pressure_journal.size(),
+		"journal_limit": AI_BUSINESS_MARKET_PRESSURE_JOURNAL_LIMIT,
+		"prepared_count": _ai_business_market_pressure_state_count("prepared"),
+		"rollback_open_count": _ai_business_market_pressure_state_count("committed") \
+			+ _ai_business_market_pressure_state_count("finalize_ready"),
+		"finalization_ready_count": _ai_business_market_pressure_state_count("finalize_ready"),
+		"rolled_back_count": _ai_business_market_pressure_state_count("rolled_back"),
+		"finalized_count": _ai_business_market_pressure_state_count("finalized"),
+		"finalizing_count": _ai_business_market_pressure_state_count("finalizing"),
+		"terminal_heavy_record_count": _ai_business_market_pressure_terminal_heavy_record_count(),
+		"prepare_call_count": _ai_business_market_pressure_prepare_count,
+		"commit_call_count": _ai_business_market_pressure_commit_count,
+		"rollback_call_count": _ai_business_market_pressure_rollback_count,
+		"finalize_call_count": _ai_business_market_pressure_finalize_count,
+		"collision_count": _ai_business_market_pressure_collision_count,
+		"stale_count": _ai_business_market_pressure_stale_count,
+		"recovery_required_count": _ai_business_market_pressure_recovery_required_count,
+		"telemetry_metric_count": _ai_business_market_pressure_telemetry_metric_count,
+		"recovery_required": _ai_business_market_pressure_recovery_required,
+		"transaction_owns_separate_market_state": false,
+		"transaction_owns_cash_state": false,
+		"journal_persisted": false,
+		"route_sabotage_supported": false,
+	}
+
+
+func retry_pending_ai_business_publications() -> Dictionary:
+	## Owner-level maintenance path for the presentation-only tail of an already
+	## committed transaction. It never replays cash, market mutation or RNG and
+	## visits stable journal order at most once per tick.
+	var attempted := 0
+	var finalized := 0
+	for transaction_id_variant in _ai_business_market_pressure_journal_order:
+		if attempted >= AI_BUSINESS_PUBLICATION_RETRY_LIMIT_PER_TICK:
+			break
+		var transaction_id := str(transaction_id_variant)
+		var record_variant: Variant = _ai_business_market_pressure_journal.get(transaction_id, {})
+		if not (record_variant is Dictionary):
+			continue
+		var record := record_variant as Dictionary
+		if str(record.get("state", "")) != "finalizing" or bool(record.get("finalization_active", false)):
+			continue
+		attempted += 1
+		record["finalization_active"] = true
+		_ai_business_market_pressure_journal[transaction_id] = record
+		var result := _complete_ai_business_market_pressure_finalization(transaction_id, record)
+		if bool(result.get("finalized", false)):
+			finalized += 1
+	return {
+		"attempted_count": attempted,
+		"finalized_count": finalized,
+		"pending_count": _ai_business_market_pressure_state_count("finalizing"),
+	}
 
 
 func apply_news_market_pressure(effect: Dictionary, target_context: Dictionary = {}) -> Dictionary:
@@ -1020,6 +1608,7 @@ func refresh_after_news_event() -> void:
 
 
 func tick_market_cycle(delta: float) -> Dictionary:
+	retry_pending_ai_business_publications()
 	market_timer -= maxf(0.0, delta)
 	if market_timer > 0.0: return {"ticked": false, "seconds_left": market_timer}
 	market_tick()
@@ -1036,10 +1625,20 @@ func market_tick() -> void:
 
 
 func to_save_data() -> Dictionary:
+	retry_pending_ai_business_publications()
+	if not bool(ai_business_market_pressure_save_preflight().get("accepted", false)):
+		return {}
 	return {"product_market": _product_market_save_snapshot(), "business_cycle_count": business_cycle_count, "market_timer": market_timer, "futures_position_sequence": futures_position_sequence}
 
 
 func apply_save_data(data: Dictionary) -> Dictionary:
+	var transaction_preflight := ai_business_market_pressure_save_preflight()
+	if not bool(transaction_preflight.get("accepted", false)):
+		var blocked := runtime_state_snapshot()
+		blocked["applied"] = false
+		blocked["reason_code"] = str(transaction_preflight.get("reason_code", "ai_business_market_pressure_restore_blocked"))
+		return blocked
+	_reset_ai_business_market_pressure_transactions()
 	product_market = (data.get("product_market", {}) as Dictionary).duplicate(true) if data.get("product_market", {}) is Dictionary else {}
 	_clear_weather_projection(product_market)
 	business_cycle_count = int(data.get("business_cycle_count", 0))
@@ -1053,6 +1652,10 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 func restore_new_session_checkpoint(checkpoint: Dictionary) -> Dictionary:
 	if not (checkpoint.get("product_market", {}) is Dictionary):
 		return {"restored": false, "reason_code": "product_market_new_session_checkpoint_invalid"}
+	var transaction_preflight := ai_business_market_pressure_save_preflight()
+	if not bool(transaction_preflight.get("accepted", false)):
+		return {"restored": false, "reason_code": str(transaction_preflight.get("reason_code", "ai_business_market_pressure_restore_blocked"))}
+	_reset_ai_business_market_pressure_transactions()
 	product_market = (checkpoint.get("product_market", {}) as Dictionary).duplicate(true)
 	_clear_weather_projection(product_market)
 	business_cycle_count = int(checkpoint.get("business_cycle_count", 0))
@@ -1432,9 +2035,9 @@ func _weather_driver_summary(rows: Array, weather_multiplier: float) -> String:
 	return "天气价格增速%+d%%（%d区）" % [int(round((weather_multiplier - 1.0) * 100.0)), region_ids.size()]
 
 
-func _record_weather_price_telemetry(rows: Array) -> void:
+func _record_weather_price_telemetry(rows: Array) -> int:
 	if _weather_telemetry_runtime_service == null or not _weather_telemetry_runtime_service.has_method("observe_public_metric"):
-		return
+		return 0
 	var event_samples: Dictionary = {}
 	for row_variant in rows:
 		if not (row_variant is Dictionary):
@@ -1447,12 +2050,285 @@ func _record_weather_price_telemetry(rows: Array) -> void:
 		var samples: Array = event_samples.get(event_id, []) if event_samples.get(event_id, []) is Array else []
 		samples.append((multiplier - 1.0) * 100.0)
 		event_samples[event_id] = samples
+	var emitted_count := 0
 	for event_id_variant in event_samples.keys():
 		var samples := event_samples[event_id_variant] as Array
 		var total := 0.0
 		for sample in samples:
 			total += float(sample)
 		_weather_telemetry_runtime_service.call("observe_public_metric", int(event_id_variant), "product_price_growth_delta_percent", total / float(samples.size()))
+		emitted_count += 1
+	return emitted_count
+
+
+func _emit_weather_telemetry_batches(batches: Array) -> int:
+	var emitted_count := 0
+	for batch_variant in batches:
+		if batch_variant is Array:
+			emitted_count += _record_weather_price_telemetry((batch_variant as Array).duplicate(true))
+	return emitted_count
+
+
+func _apply_ai_business_market_pressure_runtime_state(snapshot: Dictionary) -> bool:
+	if not (snapshot.get("product_market", {}) is Dictionary):
+		return false
+	var next_market := snapshot.get("product_market", {}) as Dictionary
+	if next_market.size() != PRODUCT_CATALOG.size():
+		return false
+	for product_variant in PRODUCT_CATALOG:
+		if not (next_market.get(str(product_variant), {}) is Dictionary):
+			return false
+	var next_market_timer := float(snapshot.get("market_timer", market_timer))
+	if not is_finite(next_market_timer):
+		return false
+	product_market = next_market.duplicate(true)
+	business_cycle_count = maxi(0, int(snapshot.get("business_cycle_count", business_cycle_count)))
+	# During tick_market_cycle's synchronous completion callback the timer may be
+	# slightly negative; clamping it here changes the participant fingerprint and
+	# breaks the real RuntimeLoop path even though no invalid time is introduced.
+	market_timer = next_market_timer
+	futures_position_sequence = maxi(0, int(snapshot.get("futures_position_sequence", futures_position_sequence)))
+	return true
+
+
+func _ai_business_market_pressure_public_receipt(record: Dictionary) -> Dictionary:
+	var candidate := {
+		"schema_version": AI_BUSINESS_MARKET_PRESSURE_LIFECYCLE_VERSION,
+		"public_event_id": _ai_business_market_pressure_public_event_id(record),
+		"event_kind": "ai_business_market_pressure_resolved",
+		"action_kind": AI_BUSINESS_ACTION_PRICE_PUMP,
+		"product_id": str(record.get("product_id", "")),
+		"public_region_id": str(record.get("public_region_id", "")),
+		"pressure_units": maxi(0, int(record.get("pressure_units", 0))),
+		"price_before": maxi(0, int(record.get("price_before", 0))),
+		"price_after": maxi(0, int(record.get("price_after", 0))),
+		"price_delta": int(record.get("price_after", 0)) - int(record.get("price_before", 0)),
+		"market_revision": maxi(0, int((record.get("postimage", {}) as Dictionary).get("business_cycle_count", business_cycle_count))) if record.get("postimage", {}) is Dictionary else maxi(0, business_cycle_count),
+		"localization_key": "ai_business.market_pressure_resolved",
+		"visibility_scope": "public",
+	}
+	var public_receipt := {}
+	for key_variant in AI_BUSINESS_MARKET_PRESSURE_PUBLIC_RECEIPT_KEYS:
+		var key := str(key_variant)
+		if candidate.has(key):
+			public_receipt[key] = candidate[key]
+	return public_receipt if TablePresentationPureDataPolicy.is_pure_data(public_receipt) else {}
+
+
+func _ai_business_market_pressure_public_event_id(record: Dictionary) -> String:
+	var product_id := str(record.get("product_id", "")).strip_edges()
+	var public_region_id := str(record.get("public_region_id", "")).strip_edges()
+	if product_id.is_empty() or public_region_id.is_empty():
+		return ""
+	var market_revision := maxi(0, int((record.get("postimage", {}) as Dictionary).get("business_cycle_count", business_cycle_count))) \
+		if record.get("postimage", {}) is Dictionary else maxi(0, business_cycle_count)
+	# The de-duplication identity is derived only from facts already present in
+	# the public receipt. It cannot be used to recover the anonymous actor or the
+	# private cash transaction lineage.
+	return "ai-business-market:%s" % JSON.stringify([
+		AI_BUSINESS_MARKET_PRESSURE_LIFECYCLE_VERSION,
+		AI_BUSINESS_ACTION_PRICE_PUMP,
+		product_id,
+		public_region_id,
+		maxi(0, int(record.get("pressure_units", 0))),
+		maxi(0, int(record.get("price_before", 0))),
+		maxi(0, int(record.get("price_after", 0))),
+		market_revision,
+	]).sha256_text()
+
+
+func _ai_business_market_pressure_publication_preflight(public_receipt: Dictionary) -> Dictionary:
+	if public_receipt.is_empty() or _world_bridge == null:
+		return {"ready": false, "reason_code": "ai_business_public_clue_owner_missing"}
+	var clue_preflight := _world_bridge.can_append_ai_business_public_clue(public_receipt)
+	if not bool(clue_preflight.get("ready", false)):
+		return {"ready": false, "reason_code": str(clue_preflight.get("reason_code", "ai_business_public_clue_unavailable"))}
+	if _public_log_producer_port == null or not _public_log_producer_port.is_ready() or _presentation_world_clock == null:
+		return {"ready": false, "reason_code": "ai_business_public_log_unavailable"}
+	return {"ready": true, "reason_code": "ai_business_publication_ready"}
+
+
+func _publish_ai_business_market_pressure_public_log(public_receipt: Dictionary) -> Dictionary:
+	if _public_log_producer_port == null or _presentation_world_clock == null:
+		return {"applied": false, "reason_code": "ai_business_public_log_unavailable"}
+	if str(public_receipt.get("visibility_scope", "")) != "public" \
+			or str(public_receipt.get("event_kind", "")) != "ai_business_market_pressure_resolved":
+		return {"applied": false, "reason_code": "ai_business_public_log_receipt_invalid"}
+	return _public_log_producer_port.publish(
+		&"ai_business_market_pressure_resolved",
+		&"public.ai_business.market_pressure_resolved",
+		{
+			"action_kind": "price_pump",
+			"commodity_id": str(public_receipt.get("product_id", "")),
+			"region_id": str(public_receipt.get("public_region_id", "")),
+			"pressure_units": maxi(0, int(public_receipt.get("pressure_units", 0))),
+			"price_before": maxi(0, int(public_receipt.get("price_before", 0))),
+			"price_after": maxi(0, int(public_receipt.get("price_after", 0))),
+		},
+		maxi(0, int(public_receipt.get("market_revision", 0))),
+		_presentation_world_clock.world_effective_seconds(),
+		str(public_receipt.get("public_event_id", ""))
+	)
+
+
+func _ai_business_market_pressure_lifecycle_receipt(record: Dictionary, is_duplicate: bool) -> Dictionary:
+	var state := str(record.get("state", ""))
+	var result := {
+		"prepared": state in ["prepared", "committed", "finalize_ready", "finalizing", "finalized"],
+		"committed": state in ["committed", "finalize_ready", "finalizing", "finalized"],
+		"finalization_ready": state == "finalize_ready",
+		"finalized": state == "finalized",
+		"rolled_back": state == "rolled_back",
+		"terminal": state in ["finalized", "rolled_back"],
+		"rollback_open": bool(record.get("rollback_open", false)),
+		"duplicate": is_duplicate,
+		"recovery_required": bool(record.get("recovery_required", false)),
+		"reason_code": str(record.get("reason_code", "ai_business_market_pressure_lifecycle_state")),
+		"transaction_id": str(record.get("transaction_id", "")),
+		"prepared_token": str(record.get("prepared_token", "")),
+		"action_kind": str(record.get("action_kind", "")),
+		"product_id": str(record.get("product_id", "")),
+		"pressure_units": maxi(0, int(record.get("pressure_units", 0))),
+		"draw_count_delta": maxi(0, int(record.get("draw_count_delta", 0))),
+	}
+	if state in ["finalize_ready", "finalizing"]:
+		result["finalize_token"] = str(record.get("finalize_token", ""))
+	if state == "finalizing":
+		result["public_clue_applied"] = bool(record.get("public_clue_applied", false))
+		result["public_log_applied"] = bool(record.get("public_log_applied", false))
+	if state == "finalized" and record.get("public_receipt", {}) is Dictionary:
+		result["public_receipt"] = (record.get("public_receipt", {}) as Dictionary).duplicate(true)
+		result["public_clue_applied"] = bool(record.get("public_clue_applied", false))
+		result["public_log_applied"] = bool(record.get("public_log_applied", false))
+	return result
+
+
+func _ai_business_market_pressure_failure(reason_code: String, recovery_required := false) -> Dictionary:
+	return {
+		"prepared": false,
+		"committed": false,
+		"finalized": false,
+		"rolled_back": false,
+		"terminal": false,
+		"duplicate": false,
+		"rollback_open": false,
+		"recovery_required": recovery_required,
+		"reason_code": reason_code,
+	}
+
+
+func _mark_ai_business_market_pressure_recovery_required(transaction_id: String, record: Dictionary, reason_code: String) -> Dictionary:
+	if not _ai_business_market_pressure_recovery_required:
+		_ai_business_market_pressure_recovery_required_count += 1
+	_ai_business_market_pressure_recovery_required = true
+	record["reason_code"] = reason_code
+	record["recovery_required"] = true
+	record["rollback_open"] = true
+	_ai_business_market_pressure_journal[transaction_id] = record
+	var result := _ai_business_market_pressure_failure(reason_code, true)
+	result["transaction_id"] = transaction_id
+	result["prepared_token"] = str(record.get("prepared_token", ""))
+	result["committed"] = str(record.get("state", "")) in ["committed", "finalize_ready"]
+	result["rollback_open"] = bool(record.get("rollback_open", false))
+	return result
+
+
+func _stable_data_fingerprint(value: Variant) -> String:
+	if not TablePresentationPureDataPolicy.is_pure_data(value):
+		return ""
+	var identity: SimulationStateIdentity = SimulationStateIdentityScript.new()
+	var serialized := identity.stable_serialize(value)
+	identity.free()
+	return str(serialized.get("fingerprint", "")) if bool(serialized.get("valid", false)) else ""
+
+
+func _is_sha256_fingerprint(value: String) -> bool:
+	if value.length() != 64:
+		return false
+	var normalized := value.to_lower()
+	for index in range(normalized.length()):
+		if not "0123456789abcdef".contains(normalized.substr(index, 1)):
+			return false
+	return true
+
+
+func _rng_checkpoint_matches(actual: Dictionary, expected: Dictionary) -> bool:
+	return int(actual.get("schema_version", 0)) == 1 \
+		and int(expected.get("schema_version", 0)) == 1 \
+		and int(actual.get("rng_state", 0)) == int(expected.get("rng_state", -1)) \
+		and int(actual.get("draw_count", -1)) == int(expected.get("draw_count", -2))
+
+
+func _ai_business_market_pressure_state_count(state: String) -> int:
+	var count := 0
+	for record_variant in _ai_business_market_pressure_journal.values():
+		if record_variant is Dictionary and str((record_variant as Dictionary).get("state", "")) == state:
+			count += 1
+	return count
+
+
+func _compact_ai_business_market_pressure_terminal_record(record: Dictionary) -> Dictionary:
+	var compacted := record.duplicate(true)
+	# Terminal records retain only the small identity/replay/public fields. Full
+	# market preimages, RNG cursors and telemetry batches exist solely while a
+	# synchronous rollback window is open.
+	for key in [
+		"preimage",
+		"postimage",
+		"source_facts_fingerprint",
+		"rng_checkpoint",
+		"terminal_cursor",
+		"telemetry_batches",
+		"finalize_token",
+	]:
+		compacted.erase(key)
+	return compacted
+
+
+func _ai_business_market_pressure_terminal_heavy_record_count() -> int:
+	var count := 0
+	for record_variant in _ai_business_market_pressure_journal.values():
+		if not (record_variant is Dictionary):
+			continue
+		var record := record_variant as Dictionary
+		if str(record.get("state", "")) not in ["finalized", "rolled_back"]:
+			continue
+		for key in ["preimage", "postimage", "rng_checkpoint", "terminal_cursor", "telemetry_batches"]:
+			if record.has(key):
+				count += 1
+				break
+	return count
+
+
+func _trim_ai_business_market_pressure_journal(target_size := AI_BUSINESS_MARKET_PRESSURE_JOURNAL_LIMIT) -> void:
+	var safe_target := clampi(target_size, 0, AI_BUSINESS_MARKET_PRESSURE_JOURNAL_LIMIT)
+	while _ai_business_market_pressure_journal.size() > safe_target:
+		var removed := false
+		for index in range(_ai_business_market_pressure_journal_order.size()):
+			var transaction_id := str(_ai_business_market_pressure_journal_order[index])
+			var record: Dictionary = _ai_business_market_pressure_journal.get(transaction_id, {}) if _ai_business_market_pressure_journal.get(transaction_id, {}) is Dictionary else {}
+			if str(record.get("state", "")) not in ["finalized", "rolled_back"]:
+				continue
+			_ai_business_market_pressure_journal.erase(transaction_id)
+			_ai_business_market_pressure_journal_order.remove_at(index)
+			removed = true
+			break
+		if not removed:
+			break
+
+
+func _reset_ai_business_market_pressure_transactions() -> void:
+	_ai_business_market_pressure_journal.clear()
+	_ai_business_market_pressure_journal_order.clear()
+	_ai_business_market_pressure_prepare_count = 0
+	_ai_business_market_pressure_commit_count = 0
+	_ai_business_market_pressure_rollback_count = 0
+	_ai_business_market_pressure_finalize_count = 0
+	_ai_business_market_pressure_collision_count = 0
+	_ai_business_market_pressure_stale_count = 0
+	_ai_business_market_pressure_recovery_required_count = 0
+	_ai_business_market_pressure_telemetry_metric_count = 0
+	_ai_business_market_pressure_recovery_required = false
 
 
 func _sanitize_weather_contributions(value: Variant) -> Array:

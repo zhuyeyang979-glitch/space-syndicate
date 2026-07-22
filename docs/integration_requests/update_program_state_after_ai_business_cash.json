@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "request_id": "UPDATE-PROGRAM-STATE-AFTER-AI-BUSINESS-CASH",
+  "status": "PENDING_AFTER_MERGE",
+  "priority": "P0",
+  "source_branch": "codex/p0-ai-business-cost-typed-cash-ff8fd40",
+  "base_main_sha": "ff8fd4008cef25110d42237b0078afe057ccb052",
+  "prerequisite_commit": "3e215d5b45a8485d77a41bd5a39e57acc6e1bcfc",
+  "task_id": "P0-AI-BUSINESS-COST-TYPED-CASH-CUTOVER",
+  "reason": "PROGRAM-CYCLE02 exclusively owns current_program_state.json, current_task_graph.json and current_file_ownership.json.",
+  "required_updates": {
+    "docs/development/current_program_state.json": [
+      "regenerate source.main_sha from post-merge origin/main",
+      "remove ai_business_cost_cash_bypass from confirmed P0 risks and blockers",
+      "set Main metrics to the post-merge measured values",
+      "set cutover ledger totals to include ai_business_cost_typed_cash",
+      "keep PLAYABLE_GAME=false and FULL_RUN_RESUME_CLAIM=false"
+    ],
+    "docs/development/current_task_graph.json": [
+      "set P0-AI-BUSINESS-COST-TYPED-CASH-CUTOVER to MERGED",
+      "set P0-COMMODITY-FLOW-POSTCOMMIT-EXACT-ONCE to ACTIVE",
+      "keep P0-AI-WORLD-TYPED-PORTS-CUTOVER BLOCKED on CommodityFlow",
+      "do not change P1/P2 task outcomes"
+    ],
+    "docs/development/current_file_ownership.json": [
+      "release P0-AI-BUSINESS-CASH Main/runtime composition lease",
+      "activate one writer for P0-COMMODITY-POSTCOMMIT",
+      "update physical worktree paths to E drive when the program owner next regenerates the file"
+    ]
+  },
+  "measured_main_delta": {
+    "physical_lines": -71,
+    "nonblank_lines": -63,
+    "methods": -4,
+    "constants": -5,
+    "top_level_variables": 0,
+    "top_level_preloads": 0,
+    "external_caller_files": 0
+  },
+  "next_boundary": "P0-COMMODITY-FLOW-POSTCOMMIT-EXACT-ONCE",
+  "full_run_resume_claim": false
+}

@@ -101,6 +101,48 @@ func cash_mutation_ready() -> bool:
 	return _cash_mutation_port != null and _cash_mutation_port.is_ready()
 
 
+func append_ai_business_public_clue(public_receipt: Dictionary) -> Dictionary:
+	if _world_session_state == null or not _is_pure_data(public_receipt):
+		return {"applied": false, "reason_code": "ai_business_public_clue_owner_missing"}
+	if str(public_receipt.get("visibility_scope", "")) != "public" \
+			or str(public_receipt.get("event_kind", "")) != "ai_business_market_pressure_resolved":
+		return {"applied": false, "reason_code": "ai_business_public_clue_receipt_invalid"}
+	var product_id := str(public_receipt.get("product_id", "")).strip_edges()
+	var region_id := str(public_receipt.get("public_region_id", "")).strip_edges()
+	var pressure_units := maxi(0, int(public_receipt.get("pressure_units", 0)))
+	var price_before := maxi(0, int(public_receipt.get("price_before", 0)))
+	var price_after := maxi(0, int(public_receipt.get("price_after", 0)))
+	var market_revision := maxi(0, int(public_receipt.get("market_revision", 0)))
+	var public_event_id := str(public_receipt.get("public_event_id", "")).strip_edges()
+	if product_id.is_empty() or region_id.is_empty() or pressure_units <= 0 or public_event_id.is_empty():
+		return {"applied": false, "reason_code": "ai_business_public_clue_terms_invalid"}
+	return _world_session_state.append_ai_business_market_pressure_public_clue(
+		public_event_id,
+		region_id,
+		product_id,
+		pressure_units,
+		price_before,
+		price_after,
+		market_revision,
+		_world_session_state.game_time
+	)
+
+
+func can_append_ai_business_public_clue(public_receipt: Dictionary) -> Dictionary:
+	if _world_session_state == null or not _is_pure_data(public_receipt):
+		return {"ready": false, "reason_code": "ai_business_public_clue_owner_missing"}
+	if str(public_receipt.get("visibility_scope", "")) != "public" \
+			or str(public_receipt.get("event_kind", "")) != "ai_business_market_pressure_resolved":
+		return {"ready": false, "reason_code": "ai_business_public_clue_receipt_invalid"}
+	return _world_session_state.can_append_ai_business_market_pressure_public_clue(
+		str(public_receipt.get("public_event_id", "")),
+		str(public_receipt.get("public_region_id", "")),
+		str(public_receipt.get("product_id", "")),
+		maxi(0, int(public_receipt.get("pressure_units", 0))),
+		maxi(0, int(public_receipt.get("market_revision", 0)))
+	)
+
+
 func read_world_value(property_name: StringName, default_value: Variant = null) -> Variant:
 	if not has_world():
 		return default_value

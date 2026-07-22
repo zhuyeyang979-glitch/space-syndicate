@@ -10,6 +10,7 @@ const LOCALIZED_MESSAGES := {
 	"public.military.updated": "军事部署已更新",
 	"public.monster.updated": "怪兽局势已更新",
 	"public.market.updated": "商品市场已更新",
+	"public.ai_business.market_pressure_resolved": "匿名财团在{region_id}制造{commodity_id}需求压力{pressure_units}，价格¥{price_before}→¥{price_after}",
 	"public.weather.updated": "天气局势已更新",
 }
 const VICTORY_STATE_LABELS := {
@@ -69,7 +70,14 @@ func append_receipt(receipt: PublicLogReceipt) -> Dictionary:
 func recent_public_entries(limit := 6) -> Array:
 	var normalized_limit := clampi(limit, 0, MAX_ENTRIES)
 	var start := maxi(0, _entries.size() - normalized_limit)
-	return _entries.slice(start, _entries.size()).duplicate(true)
+	var public_rows: Array = _entries.slice(start, _entries.size()).duplicate(true)
+	# Receipt identities are exact-once internals. They may encode domain lineage,
+	# so the player-facing projection never exposes them even though the owner
+	# retains them for de-duplication and save continuity.
+	for row_variant in public_rows:
+		if row_variant is Dictionary:
+			(row_variant as Dictionary).erase("receipt_id")
+	return public_rows
 
 
 func recent_public_messages(limit := 6) -> Array:
@@ -151,6 +159,14 @@ func _render_message(receipt: PublicLogReceipt) -> String:
 
 func _localized_message(receipt: PublicLogReceipt) -> String:
 	var localization_key := str(receipt.localization_key)
+	if localization_key == "public.ai_business.market_pressure_resolved":
+		return "匿名财团在%s制造%s需求压力%d，价格¥%d→¥%d" % [
+			str(receipt.public_values.get("region_id", "未知区域")),
+			str(receipt.public_values.get("commodity_id", "未知商品")),
+			maxi(0, int(receipt.public_values.get("pressure_units", 0))),
+			maxi(0, int(receipt.public_values.get("price_before", 0))),
+			maxi(0, int(receipt.public_values.get("price_after", 0))),
+		]
 	if LOCALIZED_MESSAGES.has(localization_key):
 		return str(LOCALIZED_MESSAGES[localization_key])
 	if localization_key == "victory.public.state_changed":

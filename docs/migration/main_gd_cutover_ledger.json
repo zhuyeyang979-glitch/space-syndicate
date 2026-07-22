@@ -1311,6 +1311,48 @@
       "status": "cut_over"
     },
     {
+      "domain": "ai_business_cost_typed_cash",
+      "old_symbols": [
+        "Main._pay_rival_business_cost",
+        "Main._apply_rival_price_pump",
+        "Main._apply_rival_business_action",
+        "Main.RIVAL_BUSINESS_ACTION_CHANCE_PERCENT",
+        "Main.RIVAL_BUSINESS_ACTION_MAX_PER_CYCLE",
+        "Main.RIVAL_BUSINESS_ACTION_COST",
+        "Main.RIVAL_BUSINESS_PRICE_DELTA_MIN/MAX"
+      ],
+      "old_consumers": [
+        "AiRuntimeController generic Main business action dispatch",
+        "Main direct WorldSessionState.players cash mutation"
+      ],
+      "new_owner_scene": "res://scenes/runtime/AiBusinessCostCashPort.tscn",
+      "new_owner_script": "res://scripts/runtime/ai_business_cost_cash_port.gd",
+      "new_public_api": [
+        "AiBusinessCostCashPort.private_request_context",
+        "AiBusinessCostCashPort.cached_receipt",
+        "AiBusinessCostCashPort.submit",
+        "PlayerCashMutationPort.commit_ai_business_action_cost",
+        "ProductMarketRuntimeController.prepare_ai_business_market_pressure",
+        "ProductMarketRuntimeController.commit_ai_business_market_pressure",
+        "ProductMarketRuntimeController.seal_ai_business_market_pressure_finalization",
+        "ProductMarketRuntimeController.rollback_ai_business_market_pressure",
+        "ProductMarketRuntimeController.finalize_ai_business_market_pressure",
+        "ProductMarketRuntimeController.retry_pending_ai_business_publications",
+        "WorldSessionState.append_ai_business_market_pressure_public_clue"
+      ],
+      "tests": [
+        "res://tests/ai_business_cost_typed_cash_cutover_test.gd",
+        "res://tests/ai_business_cost_formal_four_player_test.gd",
+        "res://tests/ai_business_cost_architecture_gate_test.gd",
+        "res://scenes/tools/AiBusinessCostTypedCashCutoverBench.tscn",
+        "res://tests/ai_business_action_transaction_boundary_test.gd"
+      ],
+      "old_path_deleted": true,
+      "duplicate_execution_checked": true,
+      "commit_sha": "THIS_CUTOVER",
+      "status": "cut_over"
+    },
+    {
       "domain": "developer_diagnostics_host",
       "old_symbols": [
         "Main developer_balance_panel",

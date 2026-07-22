@@ -10,6 +10,10 @@ func configure(log_owner: PublicLogPresentationOwner) -> void:
 	_owner = log_owner
 
 
+func is_ready() -> bool:
+	return _owner != null
+
+
 func reset_state() -> void:
 	_sequence = 0
 

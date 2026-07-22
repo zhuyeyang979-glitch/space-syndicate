@@ -18,6 +18,17 @@
 
 The runtime policy source is `res://resources/ai/ai_policy_profile_v1.tres`. Its `runtime_owner_script` is `res://scripts/runtime/ai_runtime_controller.gd` and `runtime_cutover_enabled` is `true`.
 
+The existing AI-only anonymous business action remains an active internal
+economic policy. Its `price_pump` action costs exactly 90 cash units (9000
+cents). That cost belongs to the policy Resource, not `main.gd`, UI copy or a
+request-supplied value. The value, trigger chance, per-cycle cap, candidate
+ordering, market effect and RNG order are frozen by the typed-cash cutover.
+Committed monster-wager cash is unavailable to this ordinary operating cost.
+Every typed cash request binds a SHA-256 fingerprint of the cost term. A
+decision-only QA policy may change trigger chance without changing cash
+authority, while any cost drift is rejected before cash mutation and rolls the
+reversible market/RNG participant back.
+
 There is no `main.gd` AI constant or personality-catalog fallback. Resource load or validation failure leaves the controller unconfigured and reports an explicit error.
 
 ## Preserved Behavior
@@ -26,9 +37,18 @@ The migrated functions retain their current v0.6 call order. This includes card 
 
 World legality and mutation remain with their existing owners. The controller asks the bridge for those facts or actions; it does not duplicate card, economy, city, route, monster, military, weather, contract, queue, or execution rules.
 
+AI business cost mutation must use `AiBusinessCostCashPort`, the existing
+`MonsterWagerCashCommitmentQueryPort`, and `PlayerCashMutationPort`. The market
+effect must use `ProductMarketRuntimeController`'s synchronous
+prepare/commit/finalization-seal/rollback/finalize lifecycle. No business-cost path may call Main
+or write `WorldSessionState.players` directly.
+
 ## RNG Contract
 
-The controller receives the existing `main.gd` `RandomNumberGenerator` instance through the world bridge. It never constructs a second RNG. Migrated function bodies therefore consume the same generator in the same decision order. Save version 1 continues to persist the world RNG state in its existing envelope.
+The controller receives the scene-owned `RunRngService` through its typed world
+bridge. It never constructs a second RNG. Migrated function bodies therefore
+consume the same generator in the same decision order. Save version 1 continues
+to persist the world RNG state in its existing envelope.
 
 ## Privacy Contract
 

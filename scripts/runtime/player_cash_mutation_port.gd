@@ -10,7 +10,7 @@ class_name PlayerCashMutationPort
 ## MonsterWagerCashCommitmentQueryPort remains the only composition boundary
 ## that can combine cash with unresolved wager commitments.
 
-const CURRENCY_SCALE := 100
+const CURRENCY_SCALE := WorldSessionState.CASH_CENTS_PER_UNIT
 const ECONOMY_HISTORY_LIMIT := 24
 const ECONOMY_LEDGER_LIMIT := 14
 const LEDGER_CATEGORY := "player_cash_mutation_v06"
@@ -147,6 +147,63 @@ func commit_role_monster_upgrade_cash(
 	)
 
 
+func commit_ai_business_action_cost(request: AiBusinessCostDebitRequest) -> Dictionary:
+	var terms := _ai_business_action_cost_terms(request)
+	if not bool(terms.get("valid", false)):
+		return _reject(str(terms.get("reason_code", "ai_business_cost_terms_invalid")), request.player_index if request != null else -1)
+	var events: Array[Dictionary] = _ai_business_action_cost_events(request)
+	return _commit_cash_delta(
+		request.request_id,
+		request.player_index,
+		-request.cost_cents,
+		"ai_business_cost_debit",
+		str(terms.get("source_id", "")),
+		"ai_business_action_cost",
+		0,
+		0,
+		events,
+		request.cost_cents,
+		request.expected_availability_fingerprint,
+		"ai_business_cost_debit",
+		"AiBusinessCostCashPort",
+		request.request_fingerprint
+	)
+
+
+func ai_business_action_cost_transaction_status(request: AiBusinessCostDebitRequest) -> Dictionary:
+	var terms := _ai_business_action_cost_terms(request)
+	if not bool(terms.get("valid", false)):
+		return {"found": false, "collision": false}
+	var player_result := _private_player_record(request.player_index)
+	if not bool(player_result.get("valid", false)):
+		return {"found": false, "collision": false}
+	var player := player_result.get("player", {}) as Dictionary
+	var prior := _prior_transaction(player, request.request_id)
+	if not bool(prior.get("found", false)):
+		return {"found": false, "collision": false}
+	var events: Array[Dictionary] = _ai_business_action_cost_events(request)
+	var expected_fingerprint := _command_fingerprint(
+		request.request_id,
+		request.player_index,
+		-request.cost_cents,
+		"ai_business_cost_debit",
+		str(terms.get("source_id", "")),
+		"ai_business_action_cost",
+		0,
+		0,
+		events,
+		request.cost_cents,
+		request.request_fingerprint
+	)
+	var collision := str(prior.get("category", "")) != LEDGER_CATEGORY \
+		or str(prior.get("command_fingerprint", "")) != expected_fingerprint
+	return {
+		"found": true,
+		"collision": collision,
+		"receipt": {} if collision else _receipt_from_ledger(prior, true),
+	}
+
+
 func debug_snapshot() -> Dictionary:
 	return {
 		"port_ready": is_ready(),
@@ -173,7 +230,12 @@ func _commit_cash_delta(
 	reason_code: String,
 	card_income_cents: int,
 	role_income_cents: int,
-	economic_events: Array[Dictionary]
+	economic_events: Array[Dictionary],
+	business_spend_cents: int = 0,
+	expected_availability_fingerprint: String = "",
+	authority_command_type: String = "player_cash_mutation",
+	authority_source: String = "",
+	external_request_fingerprint: String = ""
 ) -> Dictionary:
 	var identity := _validate_identity(transaction_id, player_index, mutation_kind, source_id, reason_code)
 	if not bool(identity.get("valid", false)):
@@ -184,6 +246,11 @@ func _commit_cash_delta(
 		return _reject("cash_income_counter_scale_invalid", player_index)
 	if not _events_are_valid(economic_events):
 		return _reject("cash_economic_event_invalid", player_index)
+	if business_spend_cents < 0 or business_spend_cents > maxi(0, -cash_delta_cents) \
+		or business_spend_cents % CURRENCY_SCALE != 0:
+		return _reject("cash_business_spend_invalid", player_index)
+	if authority_command_type.strip_edges().is_empty() or (not authority_source.is_empty() and authority_source != authority_source.strip_edges()):
+		return _reject("cash_mutation_authority_identity_invalid", player_index)
 	var player_result := _private_player_record(player_index)
 	if not bool(player_result.get("valid", false)):
 		return _reject(str(player_result.get("reason_code", "cash_player_invalid")), player_index)
@@ -197,7 +264,9 @@ func _commit_cash_delta(
 		reason_code,
 		card_income_cents,
 		role_income_cents,
-		economic_events
+		economic_events,
+		business_spend_cents,
+		external_request_fingerprint
 	)
 	var prior := _prior_transaction(player, transaction_id)
 	if bool(prior.get("found", false)):
@@ -208,9 +277,9 @@ func _commit_cash_delta(
 	if not is_ready():
 		return _reject("player_cash_mutation_port_unavailable", player_index)
 	var authority_command := {
-		"command_type": "player_cash_mutation",
+		"command_type": authority_command_type,
 		"command_id": transaction_id,
-		"source": mutation_kind,
+		"source": authority_source if not authority_source.is_empty() else mutation_kind,
 	}
 	var authority_receipt := _mutation_authority.authorize_mutation(authority_command)
 	if not bool(authority_receipt.get("authorized", false)):
@@ -221,12 +290,20 @@ func _commit_cash_delta(
 		return _reject(str(cash_snapshot.get("reason_code", "cash_snapshot_unavailable")), player_index)
 	var expected_cash_cents := int(cash_snapshot.get("cash_cents", 0))
 	var authorization_fingerprint := ""
+	var reserved_cents := 0
+	var available_cents_before := expected_cash_cents
 	if cash_delta_cents < 0:
-		var authorization := _cash_commitment_query_port.authorize_debit_cents(player_index, -cash_delta_cents)
+		var authorization := _cash_commitment_query_port.authorize_debit_cents(
+			player_index,
+			-cash_delta_cents,
+			expected_availability_fingerprint
+		)
 		if not bool(authorization.get("authorized", false)):
 			return _reject(str(authorization.get("reason_code", "cash_debit_not_authorized")), player_index)
 		expected_cash_cents = int(authorization.get("total_cents", expected_cash_cents))
 		authorization_fingerprint = str(authorization.get("availability_fingerprint", ""))
+		reserved_cents = int(authorization.get("reserved_cents", 0))
+		available_cents_before = int(authorization.get("available_cents", expected_cash_cents - reserved_cents))
 
 	player_result = _private_player_record(player_index)
 	if not bool(player_result.get("valid", false)):
@@ -253,6 +330,9 @@ func _commit_cash_delta(
 	if role_income_cents > 0:
 		next_player["total_role_income"] = int(next_player.get("total_role_income", 0)) \
 			+ floori(float(role_income_cents) / float(CURRENCY_SCALE))
+	if business_spend_cents > 0:
+		next_player["total_business_spend"] = int(next_player.get("total_business_spend", 0)) \
+			+ floori(float(business_spend_cents) / float(CURRENCY_SCALE))
 	_append_cash_history(next_player, cash_after_units)
 	_append_economic_events(next_player, economic_events, cash_after_units)
 	var ledger_entry := {
@@ -266,9 +346,14 @@ func _commit_cash_delta(
 		"cash_after_cents": cash_after_cents,
 		"card_income_cents": card_income_cents,
 		"role_income_cents": role_income_cents,
+		"business_spend_cents": business_spend_cents,
 		"source_id": source_id,
 		"reason_code": reason_code,
 		"authorization_fingerprint": authorization_fingerprint,
+		"reserved_cents": reserved_cents,
+		"available_cents_before": available_cents_before,
+		"available_cents_after": maxi(0, available_cents_before + cash_delta_cents),
+		"external_request_fingerprint": external_request_fingerprint,
 	}
 	var ledger: Array = next_player.get("v06_transaction_ledger", []) if next_player.get("v06_transaction_ledger", []) is Array else []
 	ledger.append(ledger_entry)
@@ -308,6 +393,7 @@ func _cash_projection(player_index: int, player: Dictionary) -> Dictionary:
 		"cash": int(player.get("cash", 0)),
 		"total_card_income": int(player.get("total_card_income", 0)),
 		"total_role_income": int(player.get("total_role_income", 0)),
+		"total_business_spend": int(player.get("total_business_spend", 0)),
 		"transaction_ids": transaction_ids,
 	}
 
@@ -366,6 +452,9 @@ func _receipt_from_ledger(ledger_entry: Dictionary, replayed: bool) -> Dictionar
 		"cash_before_cents": before_cents,
 		"cash_after_cents": after_cents,
 		"cash_delta_cents": delta_cents,
+		"reserved_cents": int(ledger_entry.get("reserved_cents", 0)),
+		"available_cents_before": int(ledger_entry.get("available_cents_before", before_cents)),
+		"available_cents_after": int(ledger_entry.get("available_cents_after", after_cents)),
 		"command_fingerprint": str(ledger_entry.get("command_fingerprint", "")),
 	}
 
@@ -433,7 +522,9 @@ func _command_fingerprint(
 	reason_code: String,
 	card_income_cents: int,
 	role_income_cents: int,
-	events: Array[Dictionary]
+	events: Array[Dictionary],
+	business_spend_cents: int = 0,
+	external_request_fingerprint: String = ""
 ) -> String:
 	return JSON.stringify({
 		"schema_version": 1,
@@ -445,11 +536,38 @@ func _command_fingerprint(
 		"reason_code": reason_code,
 		"card_income_cents": card_income_cents,
 		"role_income_cents": role_income_cents,
+		"business_spend_cents": business_spend_cents,
+		"external_request_fingerprint": external_request_fingerprint,
 		# The market cycle is presentation/history metadata captured at first
 		# commit. It must not turn a later retry of the same stable transaction
 		# into a conflict after time or a save/load boundary has advanced.
 		"events": _stable_event_fingerprint_rows(events),
 	}).sha256_text()
+
+
+func _ai_business_action_cost_terms(request: AiBusinessCostDebitRequest) -> Dictionary:
+	if request == null or not bool(request.validation_report().get("valid", false)):
+		return {"valid": false, "reason_code": "ai_business_cost_request_invalid"}
+	if request.cost_cents % CURRENCY_SCALE != 0:
+		return {"valid": false, "reason_code": "ai_business_cost_currency_scale_invalid"}
+	var source_id := "%s@%s@%s" % [request.business_action_id, request.product_id, request.public_region_id]
+	return {
+		"valid": true,
+		"reason_code": "ai_business_cost_terms_ready",
+		"source_id": source_id,
+	}
+
+
+func _ai_business_action_cost_events(request: AiBusinessCostDebitRequest) -> Array[Dictionary]:
+	var cost_units := floori(float(request.cost_cents) / float(CURRENCY_SCALE))
+	var events: Array[Dictionary] = [_event(
+			"商业支出",
+			"匿名商业行动",
+			-cost_units,
+			"市场刷新%d" % request.business_cycle_revision,
+			request.business_cycle_revision
+		)]
+	return events
 
 
 func _stable_event_fingerprint_rows(events: Array[Dictionary]) -> Array[Dictionary]:

@@ -127,14 +127,33 @@ func preflight_plan_commit(expected_checkpoint: Dictionary, terminal_cursor: Dic
 
 
 func commit_plan_state(expected_checkpoint: Dictionary, terminal_cursor: Dictionary) -> Dictionary:
+	return _commit_plan_state(expected_checkpoint, terminal_cursor, true)
+
+
+## Commits a detached plan without publishing an irreversible observer signal.
+## A caller may use this only inside a synchronous reversible transaction and
+## must either restore the captured checkpoint or finish the transaction before
+## yielding control.
+func commit_reversible_plan_state(expected_checkpoint: Dictionary, terminal_cursor: Dictionary) -> Dictionary:
+	return _commit_plan_state(expected_checkpoint, terminal_cursor, false)
+
+
+func _commit_plan_state(expected_checkpoint: Dictionary, terminal_cursor: Dictionary, publish_signal: bool) -> Dictionary:
 	var preflight := preflight_plan_commit(expected_checkpoint, terminal_cursor)
 	if not bool(preflight.get("accepted", false)):
 		return {"committed": false, "reason_code": str(preflight.get("reason_code", "rng_plan_commit_invalid"))}
 	var delta := int(terminal_cursor.get("draw_count", _draw_count)) - _draw_count
 	_rng.state = int(terminal_cursor.get("rng_state", _rng.state))
 	_draw_count += delta
-	plan_state_committed.emit(_rng.state, delta)
-	return {"committed": true, "reason_code": "rng_plan_state_committed", "rng_state": _rng.state, "draw_count_delta": delta}
+	if publish_signal:
+		plan_state_committed.emit(_rng.state, delta)
+	return {
+		"committed": true,
+		"reason_code": "rng_plan_state_committed" if publish_signal else "rng_reversible_plan_state_committed",
+		"rng_state": _rng.state,
+		"draw_count_delta": delta,
+		"observer_signal_published": publish_signal,
+	}
 
 
 func restore_plan_checkpoint(checkpoint: Dictionary) -> Dictionary:

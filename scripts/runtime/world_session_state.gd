@@ -19,6 +19,7 @@ const CITY_GUESS_CONFIDENCE_MEDIUM := 2
 const CITY_GUESS_CONFIDENCE_HIGH := 3
 const CITY_GUESS_AUTHORIZED_REVEAL := 100
 const CITY_GUESS_REASON_IDS := ["product", "route", "card", "monster", "role", "intuition"]
+const PUBLIC_REGION_CLUE_HISTORY_LIMIT := 6
 
 @export var role_catalog_path: NodePath
 
@@ -100,6 +101,106 @@ func advance_game_time(delta: float) -> float:
 	if delta <= 0.0:
 		return _game_time
 	return set_game_time(_game_time + delta)
+
+
+func can_append_ai_business_market_pressure_public_clue(
+	public_event_id: String,
+	region_id: String,
+	product_id: String,
+	pressure_units: int,
+	market_revision: int
+) -> Dictionary:
+	var normalized_event_id := public_event_id.strip_edges()
+	var normalized_region_id := region_id.strip_edges()
+	var normalized_product_id := product_id.strip_edges()
+	if not normalized_event_id.begins_with("ai-business-market:") \
+			or normalized_event_id.length() > 96 or normalized_region_id.is_empty() \
+			or normalized_product_id.is_empty() or pressure_units <= 0 or market_revision < 0:
+		return {"ready": false, "reason_code": "ai_business_public_clue_terms_invalid"}
+	var district_index := district_index_for_region_id(normalized_region_id)
+	if district_index < 0 or not (_districts[district_index] is Dictionary):
+		return {"ready": false, "reason_code": "ai_business_public_clue_region_missing"}
+	var district := _districts[district_index] as Dictionary
+	var city: Dictionary = district.get("city", {}) as Dictionary if district.get("city", {}) is Dictionary else {}
+	if city.is_empty() or not bool(city.get("active", true)):
+		return {"ready": false, "reason_code": "ai_business_public_clue_city_inactive"}
+	return {
+		"ready": true,
+		"reason_code": "ai_business_public_clue_ready",
+		"district_index": district_index,
+	}
+
+
+func append_ai_business_market_pressure_public_clue(
+	public_event_id: String,
+	region_id: String,
+	product_id: String,
+	pressure_units: int,
+	price_before: int,
+	price_after: int,
+	market_revision: int,
+	world_time: float
+) -> Dictionary:
+	## Purpose-built public mutation. Callers provide only typed public facts;
+	## WorldSessionState owns formatting and idempotence, so free-form text cannot
+	## smuggle cash, owner identity, hands, or AI plans into the table snapshot.
+	var preflight := can_append_ai_business_market_pressure_public_clue(
+		public_event_id,
+		region_id,
+		product_id,
+		pressure_units,
+		market_revision
+	)
+	if not bool(preflight.get("ready", false)) or price_before < 0 or price_after < 0 or not is_finite(world_time):
+		return {"applied": false, "reason_code": str(preflight.get("reason_code", "ai_business_public_clue_terms_invalid"))}
+	var normalized_event_id := public_event_id.strip_edges()
+	var normalized_region_id := region_id.strip_edges()
+	var normalized_product_id := product_id.strip_edges()
+	var district_index := int(preflight.get("district_index", -1))
+	var district := (_districts[district_index] as Dictionary).duplicate(true)
+	var city: Dictionary = (district.get("city", {}) as Dictionary).duplicate(true)
+	var clues: Array = city.get("public_clues", []) as Array if city.get("public_clues", []) is Array else []
+	clues = clues.duplicate(true)
+	for clue_variant in clues:
+		if clue_variant is Dictionary and str((clue_variant as Dictionary).get("public_event_id", "")) == normalized_event_id:
+			return {
+				"applied": true,
+				"idempotent": true,
+				"reason_code": "ai_business_public_clue_already_applied",
+				"region_id": normalized_region_id,
+				"district_index": district_index,
+				"clue_count": clues.size(),
+			}
+	var text := "刷新%d：匿名财团制造%s需求压力%d，市场按供需重算¥%d→¥%d；疑似有生产该商品的城市受益。" % [
+		market_revision,
+		normalized_product_id,
+		pressure_units,
+		price_before,
+		price_after,
+	]
+	var clean := {
+		"public_event_id": normalized_event_id,
+		"time": maxf(0.0, world_time),
+		"cycle": market_revision,
+		"kind": "市场",
+		"products": [normalized_product_id],
+		"text": text,
+	}
+	city["last_public_clue"] = text
+	clues.append(clean)
+	while clues.size() > PUBLIC_REGION_CLUE_HISTORY_LIMIT:
+		clues.pop_front()
+	city["public_clues"] = clues
+	district["city"] = city
+	_districts[district_index] = district
+	return {
+		"applied": true,
+		"idempotent": false,
+		"reason_code": "ai_business_public_clue_appended",
+		"region_id": normalized_region_id,
+		"district_index": district_index,
+		"clue_count": clues.size(),
+	}
 
 
 func private_player_cash_snapshot(player_index: int) -> Dictionary:

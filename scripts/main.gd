@@ -42,11 +42,6 @@ const RIVAL_AUTO_BUILD_MAX_PER_CYCLE := 2
 const RIVAL_AUTO_BUILD_BASE_CITY_CAP := 2
 const RIVAL_AUTO_BUILD_MAX_CITY_CAP := 5
 const RIVAL_AUTO_BUILD_MIN_CASH_RESERVE := 180
-const RIVAL_BUSINESS_ACTION_CHANCE_PERCENT := 76
-const RIVAL_BUSINESS_ACTION_MAX_PER_CYCLE := 2
-const RIVAL_BUSINESS_ACTION_COST := 90
-const RIVAL_BUSINESS_PRICE_DELTA_MIN := 8
-const RIVAL_BUSINESS_PRICE_DELTA_MAX := 18
 const ECONOMY_HISTORY_LIMIT := 24
 const ECONOMY_LEDGER_LIMIT := 14
 const PLAYER_HAND_LIMIT := 5
@@ -930,9 +925,6 @@ func _ai_runtime_world_constant_snapshot() -> Dictionary:
 		"RIVAL_AUTO_BUILD_MAX_CITY_CAP": RIVAL_AUTO_BUILD_MAX_CITY_CAP,
 		"RIVAL_AUTO_BUILD_MAX_PER_CYCLE": RIVAL_AUTO_BUILD_MAX_PER_CYCLE,
 		"RIVAL_AUTO_BUILD_MIN_CASH_RESERVE": RIVAL_AUTO_BUILD_MIN_CASH_RESERVE,
-		"RIVAL_BUSINESS_ACTION_CHANCE_PERCENT": RIVAL_BUSINESS_ACTION_CHANCE_PERCENT,
-		"RIVAL_BUSINESS_ACTION_COST": RIVAL_BUSINESS_ACTION_COST,
-		"RIVAL_BUSINESS_ACTION_MAX_PER_CYCLE": RIVAL_BUSINESS_ACTION_MAX_PER_CYCLE,
 	}
 
 
@@ -3514,17 +3506,6 @@ func _city_demand_names(city: Dictionary) -> Array:
 	return result
 
 
-func _pay_rival_business_cost(player_index: int) -> void:
-	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return
-	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[player_index]
-	player["cash"] = max(0, int(player.get("cash", 0)) - RIVAL_BUSINESS_ACTION_COST)
-	player["total_business_spend"] = int(player.get("total_business_spend", 0)) + RIVAL_BUSINESS_ACTION_COST
-	_game_runtime_coordinator_node().world_session_state().players[player_index] = player
-	_record_player_economic_event(player_index, "商业支出", "匿名商业行动", -RIVAL_BUSINESS_ACTION_COST, "市场刷新%d" % _product_market_cycle())
-	_record_player_cash_snapshot(player_index)
-
-
 func _city_public_clue_products_from_text(clue: String) -> Array:
 	var products := []
 	for product_variant in ProductMarketRuntimeController.PRODUCT_CATALOG:
@@ -3616,58 +3597,6 @@ func _append_city_public_clue(city: Dictionary, clue: String) -> Dictionary:
 		clues.pop_front()
 	city["public_clues"] = clues
 	return city
-
-
-func _set_city_public_clue(city_index: int, clue: String) -> void:
-	if city_index < 0 or city_index >= _game_runtime_coordinator_node().world_session_state().districts.size():
-		return
-	var city := _district_city(city_index)
-	if city.is_empty():
-		return
-	city = _append_city_public_clue(city, clue)
-	_game_runtime_coordinator_node().world_session_state().districts[city_index]["city"] = city
-
-
-func _apply_rival_price_pump(player_index: int, action: Dictionary) -> bool:
-	var own_city_index := int(action.get("own_city", -1))
-	var product_name := String(action.get("product", ""))
-	if own_city_index < 0 or own_city_index >= _game_runtime_coordinator_node().world_session_state().districts.size() or product_name == "":
-		return false
-	if not _city_is_active(_district_city(own_city_index)):
-		return false
-	var entry := _product_market_entry_snapshot(product_name)
-	if entry.is_empty():
-		return false
-	var before_price := _product_market_price(product_name)
-	var delta := _game_runtime_coordinator_node().run_rng_service().randi_range(RIVAL_BUSINESS_PRICE_DELTA_MIN, RIVAL_BUSINESS_PRICE_DELTA_MAX)
-	_pay_rival_business_cost(player_index)
-	var pressure := maxi(1, int(ceil(float(delta) / 10.0)))
-	_product_market_runtime_call("apply_external_pressure", [product_name, pressure, 0, 0, true])
-	var after_price := _product_market_price(product_name)
-	var clue := "刷新%d：匿名财团制造%s需求压力%d，市场按供需重算¥%d→¥%d；疑似有生产该商品的城市受益。" % [
-		_product_market_cycle(),
-		product_name,
-		pressure,
-		before_price,
-		after_price,
-	]
-	_set_city_public_clue(own_city_index, clue)
-	_game_runtime_coordinator_node().add_visual_action_callout(
-		"匿名商业",
-		"需求造势",
-		"%s需求压力+%d，价格由供需重算；可能暴露生产方利益。" % [product_name, pressure],
-		Color("#f59e0b"),
-		_district_center(own_city_index)
-	)
-	_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s" % clue)
-	return true
-
-
-func _apply_rival_business_action(player_index: int, action: Dictionary) -> bool:
-	match String(action.get("kind", "")):
-		"price_pump":
-			return _apply_rival_price_pump(player_index, action)
-	return false
 
 
 func _toggle_selected_trade_route() -> void:
