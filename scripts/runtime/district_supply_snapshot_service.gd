@@ -380,6 +380,7 @@ func _market_card_snapshot(card: Dictionary, source: Dictionary) -> Dictionary:
 		facts = _short_text(str(card.get("effect_text", "")), 26)
 	var result := {
 		"card_name": card_name,
+		"illustration_key": str(card.get("illustration_key", "")),
 		"display_name": display_name,
 		"selected": selected,
 		"actionable": actionable,
@@ -552,6 +553,7 @@ func _preview_card_face(card: Dictionary) -> Dictionary:
 	var facts: Dictionary = card.get("card_face_facts", {}) if card.get("card_face_facts", {}) is Dictionary else {}
 	return {
 		"name": "%s %s" % [str(card.get("icon", "◇")), str(card.get("display_name", card.get("card_name", "卡牌")))],
+		"illustration_key": str(card.get("illustration_key", "")),
 		"cost": "$%d" % int(card.get("price", 0)),
 		"effect": str(facts.get("quick_effect", "")),
 		"use_case": str(facts.get("use_case", "")),

@@ -1,0 +1,106 @@
+{
+  "schema_version": "alpha01.card_illustration_status.v1",
+  "ruleset_id": "space_syndicate_v0.6",
+  "runtime_contract": "player-facing snapshots expose illustration_key only; paths, provenance, hashes and licenses stay in this QA manifest and the typed catalog resource",
+  "counts": {
+    "alpha_card_identities": 40,
+    "rendered": 5,
+    "semantic_fallback": 35
+  },
+  "rendered_entries": {
+    "commodity.ring_crystal_battery.rank_1": {
+      "status": "rendered",
+      "presentation_key": "alpha01_art_001",
+      "illustration_path": "res://assets/art/cards/v06/style_keys/commodity/ring_crystal_battery_v01.png",
+      "sha256": "f980c9afabc85a5334f36bbf3fc2308e5754dae20351d318ea23ee91ec40a288",
+      "source_type": "authored",
+      "license": "project_generated_candidate",
+      "commercial_status": "review_before_release",
+      "license_evidence": "res://reports/art/card_placeholder_lab/card_placeholder_license_matrix_v06.md"
+    },
+    "supply_demand.remote_sea_order.rank_1": {
+      "status": "rendered",
+      "presentation_key": "alpha01_art_002",
+      "illustration_path": "res://assets/art/cards/v06/style_lock/supply_demand/remote_sea_order_v02.png",
+      "sha256": "a4c26fbea31c65dd8988f7eec4649c3c89ba808108ec395629579cc338f79fd8",
+      "source_type": "authored",
+      "license": "project_generated_candidate",
+      "commercial_status": "review_before_release",
+      "license_evidence": "res://reports/ui/card_visual_polish_v01/remote_sea_order_v02_edit_provenance.md"
+    },
+    "supply_demand.near_land_supply.rank_1": {
+      "status": "rendered",
+      "presentation_key": "alpha01_art_003",
+      "illustration_path": "res://assets/art/cards/v06/style_lock/supply_demand/near_land_supply_v01.png",
+      "sha256": "41eeeeecb8c0052377f7bc45326c2e387661b3cd204c7114cc7eeb7915d9b2aa",
+      "source_type": "authored",
+      "license": "project_generated_candidate",
+      "commercial_status": "review_before_release",
+      "license_evidence": "res://reports/art/card_style_lock_batch_v01/card_style_lock_batch_v01_provenance.md"
+    },
+    "unit.monster.spore_tide_emperor.rank_1": {
+      "status": "rendered",
+      "presentation_key": "alpha01_art_004",
+      "illustration_path": "res://assets/art/cards/v06/style_lock/monster/spore_tide_emperor_v01.png",
+      "sha256": "f8290b8f3b951916f0e67d577084f65359a4b2c2cc23b6cce4c747783d78c760",
+      "source_type": "authored",
+      "license": "project_generated_candidate",
+      "commercial_status": "review_before_release",
+      "license_evidence": "res://reports/art/card_style_lock_batch_v01/card_style_lock_batch_v01_provenance.md"
+    },
+    "interaction.phase_veto.rank_1": {
+      "status": "rendered",
+      "presentation_key": "alpha01_art_005",
+      "illustration_path": "res://assets/third_party/game_icons_ccby/cancel.svg",
+      "sha256": "e8d3551075bea82946e201c20ac6958a6a150644a6e8010aeabecafdd86daa8a",
+      "source_type": "open_source_placeholder",
+      "license": "CC-BY-3.0",
+      "attribution": "Cancel icon by Sbed, game-icons.net.",
+      "commercial_status": "attribution_required_or_replace",
+      "license_evidence": "res://assets/third_party/game_icons_ccby/license.txt"
+    }
+  },
+  "semantic_fallback_entries": [
+    "commodity.blue_tide_algae.rank_1",
+    "commodity.deep_sea_fungal_mat.rank_1",
+    "commodity.dream_fragrance.rank_1",
+    "commodity.gravity_ceramic.rank_1",
+    "commodity.living_chip.rank_1",
+    "commodity.photosynthetic_gel.rank_1",
+    "commodity.solar_scale.rank_1",
+    "commodity.star_whale_canning.rank_1",
+    "commodity.storm_pearl.rank_1",
+    "commodity.titanium_shell_clam.rank_1",
+    "commodity.trajectory_ink.rank_1",
+    "facility.factory.commerce.rank_1",
+    "facility.factory.energy.rank_1",
+    "facility.factory.industry.rank_1",
+    "facility.factory.life.rank_1",
+    "facility.factory.shipping.rank_1",
+    "facility.factory.technology.rank_1",
+    "facility.market.commerce.rank_1",
+    "facility.market.energy.rank_1",
+    "facility.market.industry.rank_1",
+    "facility.market.life.rank_1",
+    "facility.market.shipping.rank_1",
+    "facility.market.technology.rank_1",
+    "interaction.shadow_warehouse_traction.rank_1",
+    "interaction.starlink_dismantle.rank_1",
+    "unit.military.air_superiority_fighter.rank_1",
+    "unit.military.planetary_defense_force.rank_1",
+    "unit.military.submarine_fleet.rank_1",
+    "unit.monster.blue_edge_knight.rank_1",
+    "unit.monster.flame_ring_proto_star.rank_1",
+    "unit.monster.meteor_sentinel.rank_1",
+    "unit.monster.mirror_hunter.rank_1",
+    "unit.monster.oasis_repairer.rank_1",
+    "unit.monster.prism_blade_colossus.rank_1",
+    "unit.monster.sand_armor_rover.rank_1"
+  ],
+  "fallback_contract": {
+    "player_label": "语义卡面",
+    "uses_existing_card_art_view": true,
+    "missing_asset_is_not_rendered": true,
+    "missing_asset_does_not_block_card_use": true
+  }
+}

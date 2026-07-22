@@ -197,6 +197,7 @@ func _card_source(
 	var theme_color := _color_hex(presentation.get("accent", Color("#94a3b8")))
 	return {
 		"card_name": card_id,
+		"illustration_key": str(presentation.get("illustration_key", "")),
 		"display_name": str(presentation.get("display_name", public_card.get("display_name", card_id))),
 		"icon": str(presentation.get("icon", "◇")),
 		"rank": rank,

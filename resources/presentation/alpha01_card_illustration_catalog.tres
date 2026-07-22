@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardIllustrationCatalogResource" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/card_illustration_catalog_resource.gd" id="1_catalog"]
+[ext_resource type="Texture2D" path="res://assets/art/cards/v06/style_keys/commodity/ring_crystal_battery_v01.png" id="2_ring"]
+[ext_resource type="Texture2D" path="res://assets/art/cards/v06/style_lock/supply_demand/remote_sea_order_v02.png" id="3_remote"]
+[ext_resource type="Texture2D" path="res://assets/art/cards/v06/style_lock/supply_demand/near_land_supply_v01.png" id="4_near"]
+[ext_resource type="Texture2D" path="res://assets/art/cards/v06/style_lock/monster/spore_tide_emperor_v01.png" id="5_spore"]
+[ext_resource type="Texture2D" path="res://assets/third_party/game_icons_ccby/cancel.svg" id="6_veto"]
+
+[resource]
+script = ExtResource("1_catalog")
+schema_version = "alpha01.card_illustration_catalog.v1"
+alpha_card_ids = PackedStringArray("commodity.blue_tide_algae.rank_1", "commodity.deep_sea_fungal_mat.rank_1", "commodity.dream_fragrance.rank_1", "commodity.gravity_ceramic.rank_1", "commodity.living_chip.rank_1", "commodity.photosynthetic_gel.rank_1", "commodity.ring_crystal_battery.rank_1", "commodity.solar_scale.rank_1", "commodity.star_whale_canning.rank_1", "commodity.storm_pearl.rank_1", "commodity.titanium_shell_clam.rank_1", "commodity.trajectory_ink.rank_1", "facility.factory.commerce.rank_1", "facility.factory.energy.rank_1", "facility.factory.industry.rank_1", "facility.factory.life.rank_1", "facility.factory.shipping.rank_1", "facility.factory.technology.rank_1", "facility.market.commerce.rank_1", "facility.market.energy.rank_1", "facility.market.industry.rank_1", "facility.market.life.rank_1", "facility.market.shipping.rank_1", "facility.market.technology.rank_1", "interaction.phase_veto.rank_1", "interaction.shadow_warehouse_traction.rank_1", "interaction.starlink_dismantle.rank_1", "supply_demand.near_land_supply.rank_1", "supply_demand.remote_sea_order.rank_1", "unit.military.air_superiority_fighter.rank_1", "unit.military.planetary_defense_force.rank_1", "unit.military.submarine_fleet.rank_1", "unit.monster.blue_edge_knight.rank_1", "unit.monster.flame_ring_proto_star.rank_1", "unit.monster.meteor_sentinel.rank_1", "unit.monster.mirror_hunter.rank_1", "unit.monster.oasis_repairer.rank_1", "unit.monster.prism_blade_colossus.rank_1", "unit.monster.sand_armor_rover.rank_1", "unit.monster.spore_tide_emperor.rank_1")
+rendered_card_ids = PackedStringArray("commodity.ring_crystal_battery.rank_1", "supply_demand.remote_sea_order.rank_1", "supply_demand.near_land_supply.rank_1", "unit.monster.spore_tide_emperor.rank_1", "interaction.phase_veto.rank_1")
+presentation_keys = PackedStringArray("alpha01_art_001", "alpha01_art_002", "alpha01_art_003", "alpha01_art_004", "alpha01_art_005")
+rendered_textures = Array[Texture2D]([ExtResource("2_ring"), ExtResource("3_remote"), ExtResource("4_near"), ExtResource("5_spore"), ExtResource("6_veto")])
+fit_modes = PackedStringArray("cover", "cover", "cover", "cover", "contain")
+tint_modes = PackedStringArray("preserve", "preserve", "preserve", "preserve", "accent_monochrome")
+semantic_motifs = PackedStringArray("energy_orbit", "inbound_sea_procurement", "outbound_land_supply", "miasma_field", "phase_null")
+layout_variants = PackedStringArray("centered_crop_safe", "centered_crop_safe", "centered_crop_safe", "centered_crop_safe", "centered_contain")
+texture_filters = PackedStringArray("linear", "linear", "linear", "linear", "linear")
+overlay_intensities = PackedFloat32Array(0.34, 0.18, 0.12, 0.2, 0.5)
+source_kinds = PackedStringArray("authored", "authored", "authored", "authored", "open_source_placeholder")

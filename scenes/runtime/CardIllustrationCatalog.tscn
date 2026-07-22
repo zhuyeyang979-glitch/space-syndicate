@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/card_illustration_catalog.gd" id="1_catalog"]
+[ext_resource type="Resource" path="res://resources/presentation/alpha01_card_illustration_catalog.tres" id="2_resource"]
+
+[node name="CardIllustrationCatalog" type="Node"]
+script = ExtResource("1_catalog")
+catalog = ExtResource("2_resource")
+editor_description = "Read-only Alpha card illustration lookup. It returns only opaque presentation keys to player-facing ViewModels; paths, hashes, licenses and provenance remain in the internal catalog and QA manifest."
