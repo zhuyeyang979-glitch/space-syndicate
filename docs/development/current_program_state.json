@@ -1,12 +1,14 @@
 {
-  "schema_version": 1,
-  "generated_at": "2026-07-22T06:50:23+09:00",
+  "schema_version": 2,
+  "generated_at": "2026-07-22T13:13:51+09:00",
   "source": {
     "repository": "zhuyeyang979-glitch/space-syndicate",
     "branch": "main",
-    "main_sha": "033d0226a023f3c0acab8577fd57712dbce42202",
+    "main_sha": "a644f45d6d5d2bc930e5a63a41cc802160ebee74",
+    "origin_divergence": {"ahead": 0, "behind": 0},
     "open_pull_requests": [],
-    "working_tree_clean": true
+    "authoritative_worktree_clean": true,
+    "recent_main_commits_reviewed": 20
   },
   "long_term_outcomes": {
     "PLAYABLE_GAME": false,
@@ -16,109 +18,189 @@
     "RETIRED_MECHANIC_REVIVAL_COUNT": 0
   },
   "playable": {
-    "status": "DEVELOPMENT_SLICE_ONLY",
-    "internal_playable": false,
-    "alpha_0_1_rc": false,
-    "formal_four_seat_playthrough": "not_completed",
-    "headed_evidence": "formal four-seat startup and an 18-second table slice exist; no natural run-to-settlement evidence exists",
-    "full_run_driver": {
-      "status": "blocked_by_driver_boundary",
-      "last_observed_stop": "scripted_ui_action_no_progress:rack",
-      "interpretation": "the QA driver bypasses the typed GameScreen rack action path; this is not yet evidence of a product defect"
+    "status": "INTERNAL_PLAYABLE_FOUNDATION_ECONOMIC_ENGINE_UNPROVEN",
+    "internal_playable_foundation": true,
+    "complete_match_proven": false,
+    "formal_four_seat_path": {
+      "configuration": "1 local human plus 3 AI",
+      "latest_seed": 900626424,
+      "latest_observation_seconds": 180,
+      "latest_world_seconds": 50.406,
+      "actions_progressed": 28,
+      "actions_attempted": 28,
+      "invalid_actions": 0,
+      "nonfinite_public_facts": 0,
+      "facilities_installed": 2,
+      "first_rack_seconds": 0.36,
+      "first_quote_seconds": 22.69,
+      "first_purchase_seconds": 23.01,
+      "forced_monster_wager_seen_and_cleared": true,
+      "first_sale_receipt_seen": false,
+      "nonzero_gdp_seen": false,
+      "settlement_seen": false,
+      "return_to_menu_and_restart_seen": false,
+      "terminal_reason": "observation_window_elapsed_before_settlement"
     },
+    "verified_surfaces": [
+      "formal main scene composition",
+      "four-seat session startup",
+      "viewer-authorized district rack open",
+      "typed quote and purchase",
+      "facility card visible in the private hand",
+      "typed facility play",
+      "two installed facilities",
+      "monster wager forced window open and clear"
+    ],
+    "unverified_surfaces": [
+      "compatible factory and market economic engine",
+      "first CommodityFlow Sale Receipt",
+      "positive GDP/minute",
+      "AI economic purchase and construction progression",
+      "monster first summon milestone",
+      "target, counter and monster battle integrated path",
+      "victory qualification and 120-second audit",
+      "final settlement",
+      "return to menu and second four-seat session",
+      "complete player-facing privacy scan",
+      "full-run exact-once evidence"
+    ],
     "save_resume": {
       "transactional_owner_count": 12,
       "required_owner_count": 19,
       "resume_ready": false,
-      "unsupported_sections": [
-        "ruleset",
-        "routes",
-        "commodity_belt_visibility",
-        "card_inventory",
-        "military",
-        "card_resolution_queue",
-        "ai"
-      ]
+      "policy": "fail_closed"
     },
     "windows_export": {
-      "export_presets_present": false,
-      "exported_executable_present": false,
-      "packaging_automation_present": false
+      "export_preset_present": true,
+      "build_automation_present": true,
+      "last_known_startable_build_sha": "9d5c3457a34b9d5966b21d98ad40a6c98c579418",
+      "last_known_build_is_ancestor_of_main": true,
+      "commits_behind_current_main": 18,
+      "current_head_build_present": false,
+      "alpha_rc": false
     }
   },
   "architecture": {
     "main_gd": {
-      "physical_lines": 6741,
-      "nonblank_lines": 5690,
-      "methods": 486,
-      "top_level_variables": 47,
+      "physical_lines": 6617,
+      "nonblank_lines": 5576,
+      "methods": 481,
+      "top_level_variables": 46,
       "constants": 64,
       "top_level_preloads": 7,
       "external_caller_files": 102,
-      "external_call_occurrences": 1276,
-      "budget_gate": "PASS"
+      "external_call_occurrences": 1231,
+      "production_reference_files": 3,
+      "budget_gate": "PASS",
+      "bootstrap_only": false
+    },
+    "main_gd_reduction_from_frozen_baseline": {
+      "physical_lines_removed": 8871,
+      "nonblank_lines_removed": 7952,
+      "methods_removed": 435,
+      "fields_removed": 56,
+      "constants_removed": 57,
+      "preloads_removed": 8
     },
     "cutover_ledger": {
-      "cut_over_domains": 36,
+      "total_domains": 41,
+      "cut_over_domains": 37,
       "pending_domains": 4,
       "pending": [
         "typed_world_ports",
         "save_restore",
         "presentation_action_routing",
         "remaining_root_responsibilities"
-      ],
-      "ledger_quality": "needs_reconciliation"
+      ]
     },
     "confirmed_p0_risks": [
       {
-        "id": "cash_owner_commitment_bypass",
-        "summary": "three Main cash mutation paths write cash without the authoritative cents/commitment boundary"
+        "id": "ai_business_cost_cash_bypass",
+        "summary": "Main._pay_rival_business_cost directly mutates player cash outside the typed cash/commitment exact-once boundary."
+      },
+      {
+        "id": "commodity_flow_postcommit_duplicate",
+        "summary": "CommodityFlow receipt batches can repeat Main-side GDP history, derivative, visual pulse and cash-snapshot post-processing because that consumer lacks batch lineage."
       },
       {
         "id": "ai_world_capability_overexposure",
-        "summary": "AI and several world bridges still receive Main and generic get/set/callv capability"
-      },
-      {
-        "id": "sale_receipt_postcommit_duplicate",
-        "summary": "duplicate CommodityFlow receipt batches can repeat Main-side GDP/derivative/history post-processing"
+        "summary": "AI runtime is still bound to Main through generic get/set/callv capability, creating authority and hidden-information risk."
       }
-    ]
+    ],
+    "coordinator_risk": {
+      "script_lines": 6291,
+      "methods": 594,
+      "public_methods": 357,
+      "assessment": "integration_monolith_risk_not_yet_gameplay_owner",
+      "guardrail": "Do not move Main methods into another general facade; new cutovers bind narrow typed owners directly."
+    }
   },
   "content": {
-    "runtime_card_resource_count": 230,
-    "runtime_card_family_count": 113,
-    "runtime_card_pack_count": 10,
-    "runtime_common_pool_count": 116,
-    "runtime_effect_kind_count": 48,
-    "v06_catalog_record_count": 348,
-    "public_role_count": 24,
-    "active_monster_roster_count": 8,
+    "status": "ALPHA01_RUNTIME_MANIFEST_ACTIVE",
+    "alpha_manifest_present": true,
+    "alpha_role_count": 8,
+    "alpha_card_identity_count": 40,
+    "alpha_ranked_record_count": 160,
+    "alpha_monster_count": 8,
     "product_count": 46,
     "industry_count": 6,
-    "alpha_0_1_curated_manifest_present": false,
-    "status": "PIPELINE_OPEN_ALPHA_CURRATION_MISSING"
+    "alpha_card_mix": {
+      "commodity": 12,
+      "facility": 12,
+      "interaction": 3,
+      "supply_demand": 2,
+      "military": 3,
+      "monster": 8,
+      "organization": 0
+    },
+    "full_v06_family_count": 87,
+    "full_v06_ranked_record_count": 348,
+    "safe_data_only_families_outside_alpha": 42,
+    "known_exclusions": [
+      "organization_runtime_owner_pending families",
+      "roles whose remaining effect is consumed only by Main",
+      "v0.5 migration-only records",
+      "retired contract response content"
+    ]
   },
   "art": {
-    "role_portraits": {
-      "role_count": 24,
-      "rendered_roles": 8,
-      "pending_roles": 16,
-      "runtime_png_count": 16,
-      "manifest_status": "awaiting_official_source_models"
+    "status": "PIPELINES_OPEN_ALPHA_CARD_PRODUCTION_COVERAGE_INCOMPLETE",
+    "alpha_roles": {
+      "selected": 8,
+      "rendered": 8,
+      "front_and_side_files": 16,
+      "runtime_asset_parity": true,
+      "commercial_final_quality_roles": 4,
+      "temporary_or_low_detail_roles": 4
     },
-    "card_illustrations": {
-      "mapped_style_keys": 6,
-      "authored_candidates": 4,
-      "licensed_placeholders": 2,
-      "alpha_content_parity": false
+    "all_roles": {
+      "total": 24,
+      "rendered": 12,
+      "pending": 12
     },
-    "monster_bodies": {
-      "mapped_roster_entries": 8,
-      "missing_asset_files": 0,
-      "license_metadata_present": true
+    "alpha_cards": {
+      "selected": 40,
+      "art_manifest_covered": 5,
+      "authored": 4,
+      "licensed_placeholders": 1,
+      "production_card_ui_covered": 0,
+      "safe_fallback": 40
     },
-    "product_art_manifest_present": false,
-    "status": "PIPELINE_OPEN_ALPHA_PARITY_INCOMPLETE"
+    "alpha_monsters": {
+      "selected": 8,
+      "asset_files_present": 8,
+      "license_records_present": 8,
+      "unique_sprite_keys": 8,
+      "unique_visual_sources": 8,
+      "qa_assets_present": true,
+      "automated_gate": "BLOCKED_BY_STALE_MAIN_FIXTURE"
+    },
+    "products": {
+      "total": 46,
+      "proof_assets": 6,
+      "production_consumers": 0,
+      "proof_only": true
+    }
   },
   "rule_authority": {
     "gate": "GREEN",
@@ -128,51 +210,64 @@
       "docs/rules/v06_mechanic_status_registry.json"
     ],
     "retired_mechanic_revival_count": 0,
-    "contract_response_status": "RETIRED",
-    "conditional_order_auto_settlement_status": "ACTIVE"
+    "legacy_contract_response": "RETIRED",
+    "conditional_order_auto_settlement": "ACTIVE"
   },
   "known_test_state": {
-    "active_product_regressions": [],
+    "active_product_regression_count": 0,
     "stale_fixture_debt": [
-      "human_first_table gate references a deleted test",
-      "human_normal_table_playability_v06_test.gd has a parse failure",
-      "layout suite contains old Campaign/PublicTrack/Setup/CityDevelopment oracles",
-      "full smoke still invokes a retired _new_game fixture"
+      "tomorrow_playable_vertical_slice_test calls removed Main setup and action-entry methods",
+      "human-first-table documentation names a deleted test file",
+      "art_identity_gate_test calls three retired Main developer-audit methods",
+      "full smoke contains additional retired Main fixture entrypoints",
+      "layout smoke contains historical onboarding and presentation oracles"
     ],
-    "broad_gate_interpretation": "P4 debt unless a focused current-product gate reproduces the failure"
+    "broad_gate_policy": "Stale fixtures are P4 unless a current focused or production-scene gate reproduces a defect."
   },
-  "product_blockers": [
-    "no complete authoritative four-seat run-to-settlement",
-    "save resume is 12/19 and not resume-ready",
-    "no Windows export preset or executable",
-    "full-run QA driver does not yet use the typed rack action path"
-  ],
-  "architecture_blockers": [
-    "cash owner and monster wager commitment boundary can diverge",
-    "AI/world bridges retain generic Main capability",
-    "sale-receipt post-commit processing lacks an exact-once journal",
-    "main.gd is not bootstrap-only"
-  ],
-  "content_blockers": [
-    "no curated Alpha 0.1 manifest selecting 8 roles, 30-50 cards, 6-10 monsters and one map profile",
-    "selected content has not been proven free of dead cards and missing runtime consumers"
-  ],
-  "art_blockers": [
-    "16 of 24 role portraits remain pending",
-    "only 6 card identities have illustration mappings",
-    "no Alpha art parity manifest covers the curated content set"
-  ],
-  "worktrees": [
-    {"branch": "main", "head": "033d022", "state": "clean", "classification": "authoritative_main"},
-    {"branch": "integration/v06-playable", "head": "95f8b2c", "state": "dirty_generated_uid_only", "classification": "legacy_integration"},
-    {"branch": "codex/a-v06-product-codex", "head": "c98e323", "state": "clean", "classification": "available_legacy_role"},
-    {"branch": "codex/b-v06-military-regression", "head": "7a4de27", "state": "clean", "classification": "available_legacy_role"},
-    {"branch": "codex/c-v06-save-regression", "head": "cf11f61", "state": "clean", "classification": "available_legacy_role"},
-    {"branch": "codex/contract-forced-response-cutover", "head": "089088a", "state": "dirty", "classification": "preserved_retired_experiment_do_not_integrate"},
-    {"branch": "codex/scene-first-remove-main-gd", "head": "3ceda39", "state": "dirty_generated_artifacts", "classification": "historical_architecture_worktree"},
-    {"branch": "codex/playtest-alpha-0.1-19f2030", "head": "19f2030", "state": "dirty", "classification": "stale_unmerged_experiment_requires_reaudit"},
-    {"branch": "codex/temporary-role-table-art-20260717-012745", "head": "e0a19d0", "state": "clean", "classification": "historical_art_source"},
-    {"branch": "codex/v06-legacy-contract-response-retirement-19f2030", "head": "d09f119", "state": "clean", "classification": "merged_source_branch"},
-    {"branch": "codex/continuous-development-program-033d022", "head": "033d022", "state": "active", "classification": "program_coordinator"}
-  ]
+  "current_blockers": {
+    "product": [
+      "No authoritative compatible factory-plus-market Sale Receipt/GDP milestone yet",
+      "No complete four-seat run to settlement and restart",
+      "No current-head Windows playtest build",
+      "Save/resume remains 12 of 19 authoritative owners"
+    ],
+    "architecture": [
+      "One AI business cash mutation bypasses typed cash authority",
+      "CommodityFlow post-commit side effects lack exact-once lineage",
+      "AI world bridge retains generic Main capability",
+      "main.gd is not bootstrap-only"
+    ],
+    "content": [
+      "Organization card families remain blocked by missing active runtime owner",
+      "Some roles remain excluded because effects are consumed only by Main"
+    ],
+    "art": [
+      "Production CardUI consumes 0 of 40 Alpha illustration identities",
+      "35 of 40 Alpha cards lack any illustration mapping",
+      "Four selected role portraits remain temporary quality",
+      "Product proof art has no production consumer"
+    ]
+  },
+  "active_cycle": {
+    "program_branch": "codex/continuous-program-cycle02-a644f45",
+    "workstreams": [
+      {
+        "task_id": "P0-AI-BUSINESS-COST-TYPED-CASH-CUTOVER",
+        "branch": "codex/p0-ai-business-cash-a644f45",
+        "status": "ACTIVE"
+      },
+      {
+        "task_id": "P1-FOUR-SEAT-FIRST-ECONOMIC-ENGINE",
+        "branch": "codex/p1-post-facility-fullrun-a644f45",
+        "status": "ACTIVE"
+      },
+      {
+        "task_id": "P2-ALPHA01-CARD-ART-PRODUCTION-CUTOVER",
+        "branch": "codex/p2-alpha-card-art-production-cutover-a644f45",
+        "status": "ACTIVE"
+      }
+    ],
+    "write_ownership_conflict_count": 0,
+    "shared_hot_file_unauthorized_write_count": 0
+  }
 }
