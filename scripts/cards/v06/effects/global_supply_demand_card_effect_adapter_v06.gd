@@ -55,6 +55,27 @@ func prepare_effect(intent: Dictionary) -> Dictionary:
 	})
 
 
+func abort_prepared_effect(prepared: Dictionary) -> Dictionary:
+	var transaction_id := str(prepared.get("transaction_id", ""))
+	var prepared_token := str(prepared.get("prepared_token", ""))
+	var plan: Dictionary = prepared.get("owner_plan", {}) if prepared.get("owner_plan", {}) is Dictionary else {}
+	var binding: Dictionary = plan.get("binding", {}) if plan.get("binding", {}) is Dictionary else {}
+	var valid := (
+		bool(prepared.get("prepared", false))
+		and SUPPORT.binding_is_complete(prepared)
+		and not plan.is_empty()
+		and SUPPORT.binding_matches(binding, prepared)
+		and not prepared_token.is_empty()
+		and prepared_token == str(plan.get("plan_hash", ""))
+	)
+	return {
+		"aborted": valid,
+		"reason_code": "supply_demand_preview_aborted" if valid else "supply_demand_preview_abort_binding_invalid",
+		"transaction_id": transaction_id,
+		"prepared_token": prepared_token,
+	}
+
+
 func commit_effect(prepared: Dictionary) -> Dictionary:
 	if not bool(prepared.get("prepared", false)) or not SUPPORT.binding_is_complete(prepared):
 		return SUPPORT.failure_receipt(prepared, "prepared_receipt_invalid", "commit")

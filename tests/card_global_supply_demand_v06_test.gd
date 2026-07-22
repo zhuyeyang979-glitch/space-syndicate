@@ -87,6 +87,7 @@ func _run() -> void:
 	_verify_capacity_truncation(catalog)
 	_verify_zero_actor_gdp_rejects_without_consumption(catalog)
 	_verify_candidate_snapshot_rejects_nested_runtime_objects()
+	_verify_preview_abort_contract(catalog)
 	_verify_sink_child_failure_is_atomic(catalog)
 	_verify_missing_sink_fails_closed(catalog)
 	_finish()
@@ -292,6 +293,48 @@ func _verify_candidate_snapshot_rejects_nested_runtime_objects() -> void:
 	var result: Dictionary = owner.replace_authoritative_candidates(61, [candidate])
 	_expect(not bool(result.get("configured", true)) and str(result.get("reason_code", "")) == "candidate_not_pure_data", "candidate validation rejects a runtime Object hidden after a valid nested value")
 	nested_object.free()
+
+
+func _verify_preview_abort_contract(catalog: CardRuntimeCatalogV06Resource) -> void:
+	var owner = OWNER_SCRIPT.new()
+	var sink := FakeAtomicBatchSink.new()
+	owner.set_batch_sink(sink)
+	owner.replace_authoritative_candidates(66, [
+		_candidate("abort-contract", "market", "甲商品", "life", 0, 1, ["sea"], 3, 100, 4),
+	])
+	var adapter = ADAPTER_SCRIPT.new()
+	adapter.configure(owner, {"actor-0": 0})
+	var card := catalog.card_snapshot("%s.rank_1" % ORDER_FAMILY)
+	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+	var binding := {
+		"transaction_id": "tx-preview-abort-contract",
+		"actor_id": "actor-0",
+		"card_id": "test.global-order-preview-abort",
+		"card_instance_id": "instance-preview-abort-contract",
+		"effect_kind": str(machine.get("effect_kind", "")),
+		"target_hash": "target-preview-abort-contract",
+		"payload_hash": "payload-preview-abort-contract",
+		"intent_hash": "intent-preview-abort-contract",
+	}
+	var intent := binding.duplicate(true)
+	intent["target_context"] = {
+		"valid": true,
+		"target_kind": str(machine.get("target_kind", "")),
+		"candidate_snapshot_revision": 66,
+	}
+	intent["effect_payload"] = (machine.get("effect_payload", {}) as Dictionary).duplicate(true)
+	var prepared: Dictionary = adapter.prepare_effect(intent)
+	_expect(bool(prepared.get("prepared", false)), "automatic supply preview produces a typed prepared receipt")
+	var forged := prepared.duplicate(true)
+	forged["prepared_token"] = "forged-preview-token"
+	var rejected: Dictionary = adapter.abort_prepared_effect(forged)
+	_expect(not bool(rejected.get("aborted", true)), "forged preview token cannot produce an abort receipt")
+	var aborted: Dictionary = adapter.abort_prepared_effect(prepared)
+	_expect(bool(aborted.get("aborted", false)), "valid pure-preview binding produces a typed abort receipt")
+	_expect(str(aborted.get("transaction_id", "")) == str(prepared.get("transaction_id", "")), "preview abort preserves the transaction binding")
+	_expect(str(aborted.get("prepared_token", "")) == str(prepared.get("prepared_token", "")), "preview abort preserves the prepared token binding")
+	_expect(sink.prepare_calls == 0 and sink.commit_calls == 0 and sink.rollback_calls == 0, "preview abort performs no batch mutation")
+	_expect(owner.batch_receipts_snapshot().is_empty(), "preview abort writes no owner journal receipt")
 
 
 func _verify_sink_child_failure_is_atomic(catalog: CardRuntimeCatalogV06Resource) -> void:

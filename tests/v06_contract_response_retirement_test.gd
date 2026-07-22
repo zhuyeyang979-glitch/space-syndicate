@@ -241,6 +241,7 @@ func _test_automatic_supply_demand_preflight_and_exact_once() -> void:
 	var resolved := adapter.resolve_queued_automatic_supply_demand("player.0", card, context, "card-resolution:777:v06-supply-demand")
 	_expect(bool(resolved.get("resolved", false)) and bool(resolved.get("committed", false)) and bool(resolved.get("finalized", false)), "queued automatic supply resolves through prepare, commit, and finalize without a responder")
 	_expect(flow.prepare_calls == 1 and flow.commit_calls == 1 and flow.finalize_calls == 1 and flow.rollback_calls == 0, "automatic supply batch reaches each authoritative lifecycle stage exactly once")
+	_expect(int((adapter.debug_snapshot().get("router", {}) as Dictionary).get("pending_transaction_count", -1)) == 0, "first automatic supply finalization leaves no prepared router transaction")
 	var replay := adapter.resolve_queued_automatic_supply_demand("player.0", card, context, "card-resolution:777:v06-supply-demand")
 	_expect(bool(replay.get("resolved", false)) and bool(replay.get("idempotent_replay", false)), "automatic supply terminal replay returns the original finalized result")
 	_expect(flow.prepare_calls == 1 and flow.commit_calls == 1 and flow.finalize_calls == 1, "automatic supply replay does not duplicate CommodityFlow mutation")

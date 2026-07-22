@@ -310,12 +310,22 @@ func preflight_automatic_supply_demand(
 	var intent: Dictionary = (build.get("intent", {}) as Dictionary).duplicate(true)
 	var prepared_variant: Variant = _effect_router.call("prepare_effect", intent)
 	var prepared: Dictionary = prepared_variant if prepared_variant is Dictionary else {}
-	var ready := bool(prepared.get("prepared", false)) and EFFECT_SUPPORT_SCRIPT.binding_matches(prepared, binding)
-	if _effect_router.has_method("abort_prepared_effect"):
-		_effect_router.call("abort_prepared_effect", prepared.duplicate(true))
+	var prepared_ready := bool(prepared.get("prepared", false)) and EFFECT_SUPPORT_SCRIPT.binding_matches(prepared, binding)
+	var abort_variant: Variant = _effect_router.call("abort_prepared_effect", prepared.duplicate(true)) if _effect_router.has_method("abort_prepared_effect") else {}
+	var abort_receipt: Dictionary = abort_variant if abort_variant is Dictionary else {}
+	var abort_verified := (
+		bool(abort_receipt.get("aborted", false))
+		and bool(abort_receipt.get("verified", false))
+		and str(abort_receipt.get("transaction_id", "")) == transaction_id
+		and not bool(abort_receipt.get("transaction_pending", true))
+	)
+	var ready := prepared_ready and abort_verified
+	var reason_code := "automatic_supply_demand_preflight_ready" if ready else str(prepared.get("reason_code", "effect_prepare_failed"))
+	if prepared_ready and not abort_verified:
+		reason_code = "automatic_supply_demand_preflight_abort_unverified"
 	return {
 		"ready": ready,
-		"reason_code": "automatic_supply_demand_preflight_ready" if ready else str(prepared.get("reason_code", "effect_prepare_failed")),
+		"reason_code": reason_code,
 		"target_context": target_context.duplicate(true) if ready else {},
 	}
 
