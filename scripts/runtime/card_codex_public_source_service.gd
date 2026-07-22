@@ -259,6 +259,11 @@ func compose_card_facts(card_identity: String, card_index: int = -1) -> Dictiona
 		"read_chips": keyword_chips,
 		"resolution_animation_text": str(player.get("short_effect", "")),
 	}
+	var illustration_catalog := _illustration_catalog()
+	if illustration_catalog != null:
+		var illustration_key := illustration_catalog.presentation_key_for_card(card_id)
+		if illustration_key != StringName():
+			source["illustration_key"] = str(illustration_key)
 	var value: Variant = _adapter.call("compose_card_facts", source)
 	var result := (value as Dictionary).duplicate(true) if value is Dictionary else {}
 	if not result.is_empty():
@@ -341,8 +346,13 @@ func debug_snapshot() -> Dictionary:
 		"reads_legacy_v04_catalog": false,
 		"uses_v06_player_contract": true,
 		"uses_v06_machine_identity_and_cost": true,
+		"illustration_catalog_ready": _illustration_catalog() != null and bool(_illustration_catalog().validation_report().get("valid", false)),
 		"adapter": _adapter.call("debug_snapshot"),
 	}
+
+
+func _illustration_catalog() -> CardIllustrationCatalog:
+	return get_node_or_null("CardIllustrationCatalog") as CardIllustrationCatalog
 
 
 func _catalog_cards() -> Array:

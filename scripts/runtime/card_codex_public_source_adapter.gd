@@ -25,7 +25,7 @@ const CARD_FACT_FIELDS := [
 	"quick_effect_full", "full_effect_text", "rules_text_compact", "level_gradient_text", "detail_tooltip",
 	"face_route_text", "type_label", "requires_target", "requires_target_monster", "targets_player",
 	"targets_monster", "target_text", "timing_text", "duration_text", "visibility_text", "play_requirement_text",
-	"key_rule_facts", "read_chips", "resolution_animation_text",
+	"key_rule_facts", "read_chips", "resolution_animation_text", "illustration_key",
 ]
 const BROWSER_REQUEST_FIELDS := [
 	"names", "columns", "rows", "page_index", "filter_id", "filter_label", "selected_card", "icon_legend",

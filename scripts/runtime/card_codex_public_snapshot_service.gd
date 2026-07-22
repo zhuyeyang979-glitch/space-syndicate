@@ -79,6 +79,7 @@ func compose_detail(source: Dictionary) -> Dictionary:
 			"type": str(source.get("face_route_text", "")),
 			"rank": str(source.get("rank_label", "I")),
 			"accent": accent,
+			"illustration_key": str(source.get("illustration_key", "")),
 			"minimum_width": 230.0,
 			"minimum_height": 300.0,
 		},
@@ -149,6 +150,7 @@ func _browser_card_source(source: Dictionary) -> Dictionary:
 		"hint": "悬停预览｜双击详情",
 		"tooltip": str(source.get("detail_tooltip", "")),
 		"accent": accent,
+		"illustration_key": str(source.get("illustration_key", "")),
 		"index": int(source.get("index", 0)),
 	}
 

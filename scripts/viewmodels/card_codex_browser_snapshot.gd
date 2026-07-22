@@ -109,6 +109,7 @@ func _normalize_card(source_variant: Variant, card_index: int, selected_card: St
 		"hint": _first_text(source, ["hint"], "悬停预览｜双击详情"),
 		"tooltip": _first_text(source, ["tooltip"], ""),
 		"accent": source.get("accent", Color("#94a3b8")),
+		"illustration_key": _first_text(source, ["illustration_key"], ""),
 		"selected": card_name == selected_card,
 		"index": card_index,
 	}

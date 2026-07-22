@@ -9,6 +9,7 @@ var cost_text: String = ""
 var target_text: String = ""
 var effect_text: String = ""
 var use_case_text: String = ""
+var illustration_key: String = ""
 var chips: Array = []
 
 
@@ -21,6 +22,7 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	target_text = str(data.get("target", data.get("target_type", "")))
 	effect_text = str(data.get("effect", data.get("description", "")))
 	use_case_text = str(data.get("use_case", data.get("table_use", data.get("purpose", data.get("route", "")))))
+	illustration_key = str(data.get("illustration_key", ""))
 	chips = data.get("chips", []) if data.get("chips", []) is Array else []
 	return self
 
@@ -35,5 +37,6 @@ func to_ui_dictionary() -> Dictionary:
 		"target": target_text,
 		"effect": effect_text,
 		"use_case": use_case_text,
+		"illustration_key": illustration_key,
 		"chips": chips,
 	}

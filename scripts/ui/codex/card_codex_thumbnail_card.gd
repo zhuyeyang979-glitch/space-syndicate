@@ -7,6 +7,7 @@ signal detail_requested(card_name: String)
 @onready var title_label: Label = %CardCodexThumbnailTitle
 @onready var art_panel: PanelContainer = %CardCodexThumbnailArt
 @onready var art_view: Control = %CardCodexThumbnailArtView
+@onready var illustration_layer: SpaceSyndicateCardIllustrationLayer = %CardCodexThumbnailIllustrationLayer
 @onready var chip_rail: HFlowContainer = %CardCodexThumbnailChipRail
 @onready var route_label: Label = %CardCodexThumbnailRouteBand
 @onready var effect_label: Label = %CardCodexThumbnailEffectLine
@@ -36,9 +37,16 @@ func set_card(data: Dictionary) -> void:
 	title_label.tooltip_text = str(data.get("title_tooltip", title_label.text))
 	art_panel.add_theme_stylebox_override("panel", _card_style(accent, Color("#020617").lerp(accent, 0.20), 1, 8))
 	art_panel.set_meta("card_codex_thumbnail_uses_shared_art_view", true)
+	var illustration_active := false
+	var illustration_key := StringName(str(data.get("illustration_key", "")).strip_edges())
+	if illustration_layer != null and illustration_key != StringName():
+		illustration_active = illustration_layer.set_illustration_key(illustration_key, accent)
+	if illustration_layer != null:
+		illustration_layer.visible = illustration_active
 	if art_view != null:
+		art_view.visible = not illustration_active
 		art_view.set_meta("card_codex_thumbnail_visual_theme", "shared-card-art-night-patrol-frame")
-		if art_view.has_method("set_card"):
+		if not illustration_active and art_view.has_method("set_card"):
 			art_view.call(
 				"set_card",
 				str(data.get("display_name", data.get("title_tooltip", _card_name))),
@@ -50,6 +58,8 @@ func set_card(data: Dictionary) -> void:
 				str(data.get("card_art_stats", data.get("card_stats", "")))
 			)
 	_render_chips(data.get("chips", []))
+	set_meta("external_illustration_active", illustration_active)
+	set_meta("illustration_fallback_active", not illustration_active)
 	route_label.text = str(data.get("route", ""))
 	route_label.add_theme_color_override("font_color", accent.lightened(0.18))
 	route_label.tooltip_text = str(data.get("route_tooltip", ""))
