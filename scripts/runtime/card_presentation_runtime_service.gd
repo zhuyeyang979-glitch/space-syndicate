@@ -80,6 +80,9 @@ func compose_card(source: Dictionary) -> Dictionary:
 		"face_route_compact": "%s｜路线:%s" % [_short_text(icon_type_label, 8), _short_text(icon_route_label, 8)],
 		"chips": _face_chips(source, skill),
 	}
+	var illustration_key := _illustration_key_for_card(source, skill)
+	if illustration_key != StringName():
+		presentation["illustration_key"] = str(illustration_key)
 	presentation["detail_tooltip"] = _detail_tooltip(source, presentation, display_text)
 	return presentation
 
@@ -245,6 +248,8 @@ func compose_hand_card(source: Dictionary) -> Dictionary:
 			"tooltip": str(play_state.get("detail", "")),
 		}],
 	}
+	if presentation.has("illustration_key"):
+		card_source["illustration_key"] = str(presentation.get("illustration_key", ""))
 	return CARD_VIEW_SNAPSHOT_SCRIPT.new().apply_dictionary(card_source).to_ui_dictionary().merged(card_source, true)
 
 
@@ -320,8 +325,31 @@ func debug_snapshot() -> Dictionary:
 		"calculates_play_legality": false,
 		"mutates_game_state": false,
 		"reads_runtime_nodes": false,
+		"illustration_catalog_ready": _illustration_catalog() != null and bool(_illustration_catalog().validation_report().get("valid", false)),
 		"legacy_main_presentation_active": false,
 	}
+
+
+func _illustration_key_for_card(source: Dictionary, skill: Dictionary) -> StringName:
+	var catalog := _illustration_catalog()
+	if catalog == null:
+		return StringName()
+	var machine := _dictionary(skill.get("machine", {}))
+	for candidate_variant in [
+		source.get("card_id", ""), source.get("card_name", ""), skill.get("card_id", ""),
+		skill.get("name", ""), machine.get("card_id", ""),
+	]:
+		var candidate := str(candidate_variant).strip_edges()
+		if candidate == "":
+			continue
+		var key := catalog.presentation_key_for_card(candidate)
+		if key != StringName():
+			return key
+	return StringName()
+
+
+func _illustration_catalog() -> CardIllustrationCatalog:
+	return get_node_or_null("CardIllustrationCatalog") as CardIllustrationCatalog
 
 
 func _set_play_state(state: Dictionary, label: String, detail: String, actionable: bool, accent: Color) -> void:

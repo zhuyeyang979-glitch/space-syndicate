@@ -1,11 +1,16 @@
 extends Control
 class_name SpaceSyndicateCardIllustrationLayer
 
+const DEFAULT_ILLUSTRATION_CATALOG: CardIllustrationCatalogResource = preload("res://resources/presentation/alpha01_card_illustration_catalog.tres")
+
+@export var illustration_catalog: CardIllustrationCatalogResource = DEFAULT_ILLUSTRATION_CATALOG
+
 @onready var source_texture: TextureRect = %SourceTexture
 @onready var treatment_overlay: Control = %TreatmentOverlay
 
 var _accent := Color("#38bdf8")
 var _profile: Dictionary = {}
+var _presentation_key := StringName()
 
 
 func _ready() -> void:
@@ -24,7 +29,25 @@ func set_illustration(texture: Texture2D, accent: Color, profile: Dictionary) ->
 	queue_redraw()
 
 
+func set_illustration_key(presentation_key: StringName, accent: Color) -> bool:
+	if illustration_catalog == null:
+		clear_illustration()
+		return false
+	var texture := illustration_catalog.texture_for_key(presentation_key)
+	if texture == null:
+		clear_illustration()
+		return false
+	_presentation_key = presentation_key
+	set_illustration(texture, accent, illustration_catalog.presentation_profile_for_key(presentation_key))
+	return true
+
+
+func is_authored_key(presentation_key: StringName) -> bool:
+	return illustration_catalog != null and illustration_catalog.is_authored_key(presentation_key)
+
+
 func clear_illustration() -> void:
+	_presentation_key = StringName()
 	_profile.clear()
 	if is_instance_valid(source_texture):
 		source_texture.texture = null
@@ -41,6 +64,7 @@ func get_debug_snapshot() -> Dictionary:
 		overlay_snapshot = treatment_overlay.call("get_debug_snapshot") as Dictionary
 	return {
 		"active": visible and source_texture != null and source_texture.texture != null,
+		"presentation_key": str(_presentation_key),
 		"source_type": str(_profile.get("source_type", "")),
 		"visual_source_id": str(_profile.get("visual_source_id", "")),
 		"fit_mode": str(_profile.get("fit_mode", "cover")),

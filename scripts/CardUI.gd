@@ -43,7 +43,7 @@ var _interaction_state: Dictionary = {
 @onready var route_glyph_label: Label = get_node_or_null("%RouteGlyphLabel") as Label
 @onready var art_panel: PanelContainer = %ArtPanel
 @onready var art_view: Control = get_node_or_null("%ArtView") as Control
-@onready var illustration_layer: Control = get_node_or_null("%IllustrationLayer") as Control
+@onready var illustration_layer: SpaceSyndicateCardIllustrationLayer = get_node_or_null("%IllustrationLayer") as SpaceSyndicateCardIllustrationLayer
 @onready var art_label: Label = %ArtLabel
 @onready var keyword_chip_rail: HFlowContainer = %KeywordChipRail
 @onready var effect_label: Label = %EffectLabel
@@ -277,12 +277,23 @@ func _apply_external_illustration() -> void:
 	set_meta("illustration_fallback_reason", "no_external_asset")
 	set_meta("illustration_visual_source_id", "")
 	set_meta("illustration_source_type", "")
-	if illustration_layer.has_method("clear_illustration"):
-		illustration_layer.call("clear_illustration")
-	else:
-		illustration_layer.visible = false
+	illustration_layer.clear_illustration()
 	if art_view != null:
 		art_view.visible = true
+	var illustration_key := StringName(str(_card_data.get("illustration_key", "")).strip_edges())
+	if illustration_key != StringName():
+		var activated := illustration_layer.set_illustration_key(illustration_key, accent_color)
+		if not activated:
+			set_meta("illustration_fallback_reason", "key_unavailable")
+			_warn_illustration_fallback("CardUI could not resolve an approved illustration key; semantic art remains active.")
+			return
+		illustration_layer.visible = true
+		if art_view != null:
+			art_view.visible = false
+		set_meta("external_illustration_active", true)
+		set_meta("authored_illustration_active", illustration_layer.is_authored_key(illustration_key))
+		set_meta("illustration_fallback_reason", "")
+		return
 	var illustration_path := str(_card_data.get("illustration_path", "")).strip_edges()
 	if illustration_path == "":
 		return
@@ -301,11 +312,7 @@ func _apply_external_illustration() -> void:
 		set_meta("illustration_fallback_reason", "invalid_texture")
 		_warn_illustration_fallback("CardUI received an invalid approved card illustration; procedural art remains active.")
 		return
-	if not illustration_layer.has_method("set_illustration"):
-		set_meta("illustration_fallback_reason", "layer_api_missing")
-		_warn_illustration_fallback("CardUI illustration layer is unavailable; procedural art remains active.")
-		return
-	illustration_layer.call("set_illustration", texture_resource, accent_color, profile)
+	illustration_layer.set_illustration(texture_resource, accent_color, profile)
 	illustration_layer.visible = true
 	if art_view != null:
 		art_view.visible = false

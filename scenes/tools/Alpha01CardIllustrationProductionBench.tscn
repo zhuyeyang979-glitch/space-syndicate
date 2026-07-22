@@ -1,0 +1,117 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/alpha01_card_illustration_production_bench.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardPresentationRuntimeService.tscn" id="2_presentation"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_background"]
+bg_color = Color(0.018, 0.027, 0.052, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.16, 0.35, 0.45, 0.5)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_frame"]
+bg_color = Color(0.025, 0.047, 0.079, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.12, 0.56, 0.59, 0.55)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+shadow_color = Color(0, 0, 0, 0.55)
+shadow_size = 14
+
+[node name="Alpha01CardIllustrationProductionBench" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+custom_minimum_size = Vector2(1600, 960)
+script = ExtResource("1_script")
+
+[node name="Background" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBox_background")
+mouse_filter = 2
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 78
+theme_override_constants/margin_top = 58
+theme_override_constants/margin_right = 78
+theme_override_constants/margin_bottom = 58
+
+[node name="Frame" type="PanelContainer" parent="Margin"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBox_frame")
+
+[node name="ContentMargin" type="MarginContainer" parent="Margin/Frame"]
+layout_mode = 2
+theme_override_constants/margin_left = 36
+theme_override_constants/margin_top = 30
+theme_override_constants/margin_right = 36
+theme_override_constants/margin_bottom = 26
+
+[node name="Content" type="VBoxContainer" parent="Margin/Frame/ContentMargin"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Kicker" type="Label" parent="Margin/Frame/ContentMargin/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.36, 0.82, 0.8, 1)
+theme_override_font_sizes/font_size = 19
+text = "SPACE SYNDICATE · ALPHA 01"
+
+[node name="Title" type="Label" parent="Margin/Frame/ContentMargin/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.97, 1, 1)
+theme_override_font_sizes/font_size = 36
+text = "牌库视觉识别"
+
+[node name="SummaryLabel" type="Label" parent="Margin/Frame/ContentMargin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.65, 0.73, 0.8, 1)
+theme_override_font_sizes/font_size = 20
+text = "正式插画与语义图形并行呈现"
+
+[node name="Rule" type="HSeparator" parent="Margin/Frame/ContentMargin/Content"]
+layout_mode = 2
+theme_override_colors/separator = Color(0.18, 0.47, 0.52, 0.7)
+
+[node name="CardRow" type="HBoxContainer" parent="Margin/Frame/ContentMargin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 18
+alignment = 1
+
+[node name="Footer" type="Label" parent="Margin/Frame/ContentMargin/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.45, 0.56, 0.64, 1)
+theme_override_font_sizes/font_size = 16
+text = "未完成插画不会伪装为成品；规则、价格与卡牌效果保持不变。"
+horizontal_alignment = 1
+
+[node name="CardPresentationRuntimeService" parent="." instance=ExtResource("2_presentation")]
+unique_name_in_owner = true
