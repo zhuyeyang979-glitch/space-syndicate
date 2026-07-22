@@ -50,7 +50,7 @@
       "source_status": "indexed",
       "model_count": 7,
       "license_path": "docs/licenses/third_party_art/quaternius_animated_fish_CC0.txt",
-      "license_sha256": "2832c27ece15255677c5a6d7437ed05d6a2f49ccb73d867ab13d2be3f93e84e2"
+      "license_sha256": "a968925de9ac3f856a3fad9c3804881b85dba24559b02cd615ca4a7861b76442"
     }
   ],
   "records": [
@@ -88,7 +88,7 @@
       "format": "fbx",
       "source_sha256": "4b6f1ff9487bf25bd3dd7e3397723a356579ee9e3d62e915f978c003ee41644f",
       "license_path": "docs/licenses/third_party_art/quaternius_animated_fish_CC0.txt",
-      "license_sha256": "2832c27ece15255677c5a6d7437ed05d6a2f49ccb73d867ab13d2be3f93e84e2",
+      "license_sha256": "a968925de9ac3f856a3fad9c3804881b85dba24559b02cd615ca4a7861b76442",
       "candidate_tags": [
         "dolphin",
         "fish"
@@ -116,7 +116,7 @@
       "format": "fbx",
       "source_sha256": "1adea1cca2f02f351cf524b60d2448502e3acb3ef2965f74a21c45a5dfce77e3",
       "license_path": "docs/licenses/third_party_art/quaternius_animated_fish_CC0.txt",
-      "license_sha256": "2832c27ece15255677c5a6d7437ed05d6a2f49ccb73d867ab13d2be3f93e84e2",
+      "license_sha256": "a968925de9ac3f856a3fad9c3804881b85dba24559b02cd615ca4a7861b76442",
       "candidate_tags": [
         "fish"
       ],
@@ -143,7 +143,7 @@
       "format": "fbx",
       "source_sha256": "ab12853cbd9c205a3aeb1d2cff1fd0cced44e5faa707020637bfd41634201509",
       "license_path": "docs/licenses/third_party_art/quaternius_animated_fish_CC0.txt",
-      "license_sha256": "2832c27ece15255677c5a6d7437ed05d6a2f49ccb73d867ab13d2be3f93e84e2",
+      "license_sha256": "a968925de9ac3f856a3fad9c3804881b85dba24559b02cd615ca4a7861b76442",
       "candidate_tags": [
         "fish"
       ],
@@ -170,7 +170,7 @@
       "format": "fbx",
       "source_sha256": "142bb6559b928c61ff839eecbba4ee0cfafa964df37720db6a6ba3a90b4ed639",
       "license_path": "docs/licenses/third_party_art/quaternius_animated_fish_CC0.txt",
-      "license_sha256": "2832c27ece15255677c5a6d7437ed05d6a2f49ccb73d867ab13d2be3f93e84e2",
+      "license_sha256": "a968925de9ac3f856a3fad9c3804881b85dba24559b02cd615ca4a7861b76442",
       "candidate_tags": [
         "fish"
       ],
@@ -197,7 +197,7 @@
       "format": "fbx",
       "source_sha256": "bde315d4f35205215e1c0a2443f8256e7f5b3641c765686c941040530aaa81ec",
       "license_path": "docs/licenses/third_party_art/quaternius_animated_fish_CC0.txt",
-      "license_sha256": "2832c27ece15255677c5a6d7437ed05d6a2f49ccb73d867ab13d2be3f93e84e2",
+      "license_sha256": "a968925de9ac3f856a3fad9c3804881b85dba24559b02cd615ca4a7861b76442",
       "candidate_tags": [
         "fish",
         "manta"
@@ -225,7 +225,7 @@
       "format": "fbx",
       "source_sha256": "fee1cfe578643cefb06457332b5d323f4883eba2515eb255ae0f2abb497a75c9",
       "license_path": "docs/licenses/third_party_art/quaternius_animated_fish_CC0.txt",
-      "license_sha256": "2832c27ece15255677c5a6d7437ed05d6a2f49ccb73d867ab13d2be3f93e84e2",
+      "license_sha256": "a968925de9ac3f856a3fad9c3804881b85dba24559b02cd615ca4a7861b76442",
       "candidate_tags": [
         "fish",
         "shark"
@@ -253,7 +253,7 @@
       "format": "fbx",
       "source_sha256": "56cbdb5a6eeb8f9d334440fe384b7849eb84fba1ce03d8df9a997be981cbb8d9",
       "license_path": "docs/licenses/third_party_art/quaternius_animated_fish_CC0.txt",
-      "license_sha256": "2832c27ece15255677c5a6d7437ed05d6a2f49ccb73d867ab13d2be3f93e84e2",
+      "license_sha256": "a968925de9ac3f856a3fad9c3804881b85dba24559b02cd615ca4a7861b76442",
       "candidate_tags": [
         "fish",
         "whale"

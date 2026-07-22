@@ -22,6 +22,7 @@ REQUIRED_ACTUAL_ROLES = {
     "光合修复会",
     "幽幕播报社",
 }
+GENERATED_SOURCE_KIND = "openai_generated"
 
 
 def sha256(path: Path) -> str:
@@ -35,6 +36,11 @@ def sha256(path: Path) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--require-complete", action="store_true")
+    parser.add_argument(
+        "--require-source-cache",
+        action="store_true",
+        help="also require ignored third-party source models to exist and match their recorded hashes",
+    )
     args = parser.parse_args()
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
     index = json.loads(INDEX_PATH.read_text(encoding="utf-8"))
@@ -51,21 +57,44 @@ def main() -> int:
             if args.require_complete:
                 raise ValueError(f"portrait is not rendered: {entry['role_name']}")
             continue
-        if not entry.get("source_path") or not entry.get("source_sha256"):
-            raise ValueError(f"rendered role lacks source provenance: {entry['role_name']}")
-        asset_id = entry.get("asset_id")
-        if asset_id not in indexed:
-            raise ValueError(f"rendered role references unknown asset_id: {entry['role_name']}")
-        source_record = indexed[asset_id]
-        for key in ("source_path", "source_sha256", "license_path", "license_sha256"):
-            if entry.get(key) != source_record.get(key):
-                raise ValueError(f"{entry['role_name']}: manifest/index mismatch for {key}")
-        source_path = ROOT / entry["source_path"]
-        license_path = ROOT / entry["license_path"]
-        if not source_path.is_file() or sha256(source_path) != entry["source_sha256"]:
-            raise ValueError(f"{entry['role_name']}: source model hash mismatch")
-        if not license_path.is_file() or sha256(license_path) != entry["license_sha256"]:
-            raise ValueError(f"{entry['role_name']}: license hash mismatch")
+        if entry.get("source_kind") == GENERATED_SOURCE_KIND:
+            if entry.get("provider") != "OpenAI" or entry.get("model") != "imagegen_tool_unspecified":
+                raise ValueError(f"{entry['role_name']}: generated provider/model mismatch")
+            generation_ids = entry.get("source_generation_ids", {})
+            source_hashes = entry.get("source_sha256_by_view", {})
+            for view_kind in ("front", "side_inward"):
+                if not str(generation_ids.get(view_kind, "")).startswith("imagegen-"):
+                    raise ValueError(f"{entry['role_name']}: generated id missing for {view_kind}")
+                source_hash = str(source_hashes.get(view_kind, ""))
+                if len(source_hash) != 64 or any(char not in "0123456789abcdef" for char in source_hash):
+                    raise ValueError(f"{entry['role_name']}: source hash invalid for {view_kind}")
+            prompt_record_path = ROOT / str(entry.get("prompt_record_path", ""))
+            license_path = ROOT / str(entry.get("license_path", ""))
+            if not prompt_record_path.is_file() or sha256(prompt_record_path) != entry.get("prompt_record_sha256"):
+                raise ValueError(f"{entry['role_name']}: generated prompt record hash mismatch")
+            if not license_path.is_file() or sha256(license_path) != entry.get("license_sha256"):
+                raise ValueError(f"{entry['role_name']}: generated provenance hash mismatch")
+        else:
+            if not entry.get("source_path") or not entry.get("source_sha256"):
+                raise ValueError(f"rendered role lacks source provenance: {entry['role_name']}")
+            asset_id = entry.get("asset_id")
+            if asset_id not in indexed:
+                raise ValueError(f"rendered role references unknown asset_id: {entry['role_name']}")
+            source_record = indexed[asset_id]
+            for key in ("source_path", "source_sha256", "license_path", "license_sha256"):
+                if entry.get(key) != source_record.get(key):
+                    raise ValueError(f"{entry['role_name']}: manifest/index mismatch for {key}")
+            source_path = ROOT / entry["source_path"]
+            license_path = ROOT / entry["license_path"]
+            if source_path.is_file():
+                if sha256(source_path) != entry["source_sha256"]:
+                    raise ValueError(f"{entry['role_name']}: source model hash mismatch")
+            elif args.require_source_cache:
+                raise FileNotFoundError(
+                    f"{entry['role_name']}: source cache is required but missing: {source_path}"
+                )
+            if not license_path.is_file() or sha256(license_path) != entry["license_sha256"]:
+                raise ValueError(f"{entry['role_name']}: license hash mismatch")
         for key in ("front_path", "side_inward_path"):
             path = ROOT / entry[key]
             if not path.is_file():

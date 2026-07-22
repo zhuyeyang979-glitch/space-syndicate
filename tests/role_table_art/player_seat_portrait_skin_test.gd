@@ -53,7 +53,7 @@ func _run() -> void:
 	_check(bool(public.get("flip_horizontal", false)), "right-side seat flips the authored inward-facing portrait")
 	var pending_available: bool = skin.apply_public_view_model({
 		"seat_index": 1,
-		"public_role_name": "深海菌毯使团",
+		"public_role_name": "虹膜数据券商",
 		"inward_direction": "front",
 	})
 	_check(not pending_available and not skin.visible, "pending portrait hides skin for legacy host fallback")

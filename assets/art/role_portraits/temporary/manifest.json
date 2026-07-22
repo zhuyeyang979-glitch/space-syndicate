@@ -1,9 +1,10 @@
 {
   "schema_version": 1,
   "runtime_policy": "pre_rendered_png_only",
-  "source_policy": "quaternius_cc0_five_pack_allowlist",
+  "source_policy": "documented_cc0_models_or_openai_generated_originals",
   "render_scene": "scenes/tools/RolePortraitRenderRig.tscn",
   "source_index": "tools/art_pipeline/source_asset_index.json",
+  "generated_source_registry": "docs/licenses/generated_art/alpha01_roles/prompts.json",
   "original_size": [
     1024,
     1536
@@ -12,7 +13,7 @@
     512,
     768
   ],
-  "status": "awaiting_official_source_models",
+  "status": "partial_rendering_12_of_24",
   "roles": [
     {
       "role_name": "环港走私议会",
@@ -38,18 +39,35 @@
     {
       "role_name": "深海菌毯使团",
       "slug": "deepsea_mycelium_delegation",
-      "status": "pending_contact_sheet",
-      "candidate_pack_id": "ultimate_monsters",
-      "candidate_model_names": ["MushroomKing", "Mushnub"],
-      "secondary_candidate_pack_id": "animated_fish",
-      "secondary_candidate_model_names": ["Fish1", "Fish2", "Fish3"],
+      "status": "rendered",
+      "quality_tier": "alpha01_generated_original",
+      "source_kind": "openai_generated",
+      "provider": "OpenAI",
+      "model": "imagegen_tool_unspecified",
+      "source_generation_ids": {
+        "front": "imagegen-019f8762-deepsea-mycelium-front",
+        "side_inward": "imagegen-019f8762-deepsea-mycelium-side-inward"
+      },
+      "source_sha256_by_view": {
+        "front": "67b4d42e169d372cb7eedf782853d09d2b014b9e9b29636c3267a8fed579128a",
+        "side_inward": "a81d41788c9ffe33f991dbc65922e0ee6e0fe6d3b864e8a85e105681ee75ae9c"
+      },
       "source_path": null,
       "source_sha256": null,
-      "treatment": ["deep teal/fungus green", "small fin-like mist gills"],
+      "license_path": "docs/licenses/generated_art/alpha01_roles/README.md",
+      "license_sha256": "442258e1eaeb54e4bf9a1d08532da5066549f456ae2055d6ccf780cbfaae4b9f",
+      "prompt_record_path": "docs/licenses/generated_art/alpha01_roles/prompts.json",
+      "prompt_record_sha256": "7de35118e75b0d1eda1d3396f1b0129fe8fff51eff8539474526215cf3dc36c4",
+      "identity_signature": "fungal_cap_three_pearl_eyes_crescent_seat",
+      "front_direction": "front",
+      "side_inward_direction": "left_inward_three_quarter",
+      "treatment": ["broad asymmetrical fungal cap", "deep-ocean mist gills", "three pearl eyes", "crescent command seat"],
       "hidden_nodes": [],
-      "attachments": ["mist_gills"],
-      "front_path": null,
-      "side_inward_path": null
+      "attachments": ["mist_gills", "pearl_nodules", "cyan_throat_organ"],
+      "front_path": "assets/art/role_portraits/temporary/deepsea_mycelium_delegation/front.png",
+      "front_sha256": "87848f39bfa4932266361e0c636efa0db216fcf8c87605f5b9681e6fd3c9f4ba",
+      "side_inward_path": "assets/art/role_portraits/temporary/deepsea_mycelium_delegation/side_inward.png",
+      "side_inward_sha256": "ebb19e9cfaec595ef2fc7e4f87dc4b33aeaaf975efce542eb3f58bac026fea22"
     },
     {
       "role_name": "重力矿联董事会",
@@ -75,16 +93,35 @@
     {
       "role_name": "离子军购局",
       "slug": "ion_procurement_bureau",
-      "status": "pending_source_enumeration",
-      "candidate_pack_id": "scifi_essentials_standard",
-      "candidate_model_names": [],
+      "status": "rendered",
+      "quality_tier": "alpha01_generated_original",
+      "source_kind": "openai_generated",
+      "provider": "OpenAI",
+      "model": "imagegen_tool_unspecified",
+      "source_generation_ids": {
+        "front": "imagegen-019f8762-ion-procurement-front",
+        "side_inward": "imagegen-019f8762-ion-procurement-side-inward"
+      },
+      "source_sha256_by_view": {
+        "front": "a37731ec17c3064c9bfbb8742111f80df48eee2bc828588c027129f13ac9c714",
+        "side_inward": "54ce655353eb9a53cf67bea44130f5afd154d7b7ddd7228faba9c9a94c430a69"
+      },
       "source_path": null,
       "source_sha256": null,
-      "treatment": ["robot candidate from real contact sheet", "navy-black shell", "blue luminous face", "archive collar"],
+      "license_path": "docs/licenses/generated_art/alpha01_roles/README.md",
+      "license_sha256": "442258e1eaeb54e4bf9a1d08532da5066549f456ae2055d6ccf780cbfaae4b9f",
+      "prompt_record_path": "docs/licenses/generated_art/alpha01_roles/prompts.json",
+      "prompt_record_sha256": "7de35118e75b0d1eda1d3396f1b0129fe8fff51eff8539474526215cf3dc36c4",
+      "identity_signature": "triangular_ion_shell_three_capacitors_pedestal",
+      "front_direction": "front",
+      "side_inward_direction": "left_inward_three_quarter",
+      "treatment": ["tall faceted ceramic shell", "contained ion-plasma face", "archive collar", "three ion capacitors"],
       "hidden_nodes": [],
-      "attachments": ["archive_collar"],
-      "front_path": null,
-      "side_inward_path": null
+      "attachments": ["archive_collar", "registrar_seals", "ion_capacitors"],
+      "front_path": "assets/art/role_portraits/temporary/ion_procurement_bureau/front.png",
+      "front_sha256": "4b3942714e60b58052c84461e70b027b64ee4b2e2bed7033cea235983255f827",
+      "side_inward_path": "assets/art/role_portraits/temporary/ion_procurement_bureau/side_inward.png",
+      "side_inward_sha256": "3a1710ce1a4761c67d4123966313cd54d420cc236d9a2c5cffeb3a20d0c62061"
     },
     {
       "role_name": "光合修复会",
@@ -133,7 +170,7 @@
       "source_path": "art_sources/unpacked/animated_fish/FBX/Whale.fbx",
       "source_sha256": "56cbdb5a6eeb8f9d334440fe384b7849eb84fba1ce03d8df9a997be981cbb8d9",
       "license_path": "docs/licenses/third_party_art/quaternius_animated_fish_CC0.txt",
-      "license_sha256": "2832c27ece15255677c5a6d7437ed05d6a2f49ccb73d867ab13d2be3f93e84e2",
+      "license_sha256": "a968925de9ac3f856a3fad9c3804881b85dba24559b02cd615ca4a7861b76442",
       "treatment": ["upright head/neck crop", "hide lower body behind collar", "coral-red catering badge"],
       "hidden_nodes": ["lower_body"],
       "attachments": ["catering_badge"],
@@ -245,7 +282,7 @@
       "source_path": "art_sources/unpacked/animated_fish/FBX/Dolphin.fbx",
       "source_sha256": "4b6f1ff9487bf25bd3dd7e3397723a356579ee9e3d62e915f978c003ee41644f",
       "license_path": "docs/licenses/third_party_art/quaternius_animated_fish_CC0.txt",
-      "license_sha256": "2832c27ece15255677c5a6d7437ed05d6a2f49ccb73d867ab13d2be3f93e84e2",
+      "license_sha256": "a968925de9ac3f856a3fad9c3804881b85dba24559b02cd615ca4a7861b76442",
       "treatment": ["head/neck crop", "open red shipping ring", "storm-pearl badge"],
       "hidden_nodes": ["lower_body"],
       "attachments": ["open_shipping_ring", "storm_pearl"],
@@ -294,7 +331,7 @@
       "source_path": "art_sources/unpacked/animated_fish/FBX/Shark.fbx",
       "source_sha256": "fee1cfe578643cefb06457332b5d323f4883eba2515eb255ae0f2abb497a75c9",
       "license_path": "docs/licenses/third_party_art/quaternius_animated_fish_CC0.txt",
-      "license_sha256": "2832c27ece15255677c5a6d7437ed05d6a2f49ccb73d867ab13d2be3f93e84e2",
+      "license_sha256": "a968925de9ac3f856a3fad9c3804881b85dba24559b02cd615ca4a7861b76442",
       "selection_note": "Shark was selected over Manta ray because its portrait silhouette remains readable after the required lower-body crop.",
       "treatment": ["choose contact-sheet silhouette", "ink-black matte", "thin red/cyan ticker lines", "hide exaggerated teeth"],
       "hidden_nodes": ["teeth", "lower_body"],
@@ -344,7 +381,7 @@
       "source_path": "art_sources/unpacked/animated_fish/FBX/Fish2.fbx",
       "source_sha256": "ab12853cbd9c205a3aeb1d2cff1fd0cced44e5faa707020637bfd41634201509",
       "license_path": "docs/licenses/third_party_art/quaternius_animated_fish_CC0.txt",
-      "license_sha256": "2832c27ece15255677c5a6d7437ed05d6a2f49ccb73d867ab13d2be3f93e84e2",
+      "license_sha256": "a968925de9ac3f856a3fad9c3804881b85dba24559b02cd615ca4a7861b76442",
       "selection_note": "Fish2 is the closest available official-pack silhouette to the requested compact pufferfish/anglerfish read.",
       "treatment": ["select closest puffer/angler silhouette", "hide lower body", "dark coral crown", "aged-gold seal"],
       "hidden_nodes": ["lower_body"],
@@ -371,30 +408,68 @@
     {
       "role_name": "孪星兽栏同盟",
       "slug": "binary_star_stable_alliance",
-      "status": "pending_contact_sheet",
-      "candidate_pack_id": "ultimate_space_kit",
-      "candidate_model_names": ["Mech_FernandoTheFlamingo", "Mech_RaeTheRedPanda", "Mech_FinnTheFrog", "Mech_BarbaraTheBee"],
+      "status": "rendered",
+      "quality_tier": "alpha01_generated_original",
+      "source_kind": "openai_generated",
+      "provider": "OpenAI",
+      "model": "imagegen_tool_unspecified",
+      "source_generation_ids": {
+        "front": "imagegen-019f8762-binary-star-stable-front",
+        "side_inward": "imagegen-019f8762-binary-star-stable-side-inward"
+      },
+      "source_sha256_by_view": {
+        "front": "8342540a0440176e37bfff8421689e33f4928f8ec0b5441ccfbc64d529557c37",
+        "side_inward": "72bbe3defc4136e51dc441af20b610e98816e7e0fb5719ce3d334715b7d7678f"
+      },
       "source_path": null,
       "source_sha256": null,
-      "treatment": ["choose dual-shoulder mech", "hide weapons", "two cores", "cool cyan/warm orange"],
-      "hidden_nodes": ["weapon"],
-      "attachments": ["twin_cores"],
-      "front_path": null,
-      "side_inward_path": null
+      "license_path": "docs/licenses/generated_art/alpha01_roles/README.md",
+      "license_sha256": "442258e1eaeb54e4bf9a1d08532da5066549f456ae2055d6ccf780cbfaae4b9f",
+      "prompt_record_path": "docs/licenses/generated_art/alpha01_roles/prompts.json",
+      "prompt_record_sha256": "7de35118e75b0d1eda1d3396f1b0129fe8fff51eff8539474526215cf3dc36c4",
+      "identity_signature": "paired_heads_twin_hearts_horseshoe_saddle",
+      "front_direction": "front",
+      "side_inward_direction": "left_inward_three_quarter",
+      "treatment": ["symbiotic two-headed stablemaster", "shared four-armed body", "cool and warm twin cores", "horseshoe command saddle"],
+      "hidden_nodes": [],
+      "attachments": ["twin_cores", "grooming_ring", "feed_vessel"],
+      "front_path": "assets/art/role_portraits/temporary/binary_star_stable_alliance/front.png",
+      "front_sha256": "0e59c03020aeac8b9497aedcb47defc086dad293029c3bee1f67a2d025e83670",
+      "side_inward_path": "assets/art/role_portraits/temporary/binary_star_stable_alliance/side_inward.png",
+      "side_inward_sha256": "cff958522af28db96dd44d3986bc7529a139c61091477963f8fbe8e773c37b33"
     },
     {
       "role_name": "蜂巢防务议会",
       "slug": "hive_defense_council",
-      "status": "pending_contact_sheet",
-      "candidate_pack_id": "ultimate_space_kit",
-      "candidate_model_names": ["Mech_FernandoTheFlamingo", "Mech_RaeTheRedPanda", "Mech_FinnTheFrog", "Mech_BarbaraTheBee"],
+      "status": "rendered",
+      "quality_tier": "alpha01_generated_original",
+      "source_kind": "openai_generated",
+      "provider": "OpenAI",
+      "model": "imagegen_tool_unspecified",
+      "source_generation_ids": {
+        "front": "imagegen-019f8762-hive-defense-front",
+        "side_inward": "imagegen-019f8762-hive-defense-side-inward"
+      },
+      "source_sha256_by_view": {
+        "front": "d9001dedd9ab28cbcea83f575df89e0689ec703e151678b183e6753a38a11f5e",
+        "side_inward": "0b57e0bde714f040b6d94d3fbe28260963c89aa67ca3c291f7a6e7a4e2459ca3"
+      },
       "source_path": null,
       "source_sha256": null,
-      "treatment": ["choose square heavy mech", "hide weapons", "six hex staff nodes", "honey gold/cold cyan"],
-      "hidden_nodes": ["weapon"],
-      "attachments": ["six_hex_nodes"],
-      "front_path": null,
-      "side_inward_path": null
+      "license_path": "docs/licenses/generated_art/alpha01_roles/README.md",
+      "license_sha256": "442258e1eaeb54e4bf9a1d08532da5066549f456ae2055d6ccf780cbfaae4b9f",
+      "prompt_record_path": "docs/licenses/generated_art/alpha01_roles/prompts.json",
+      "prompt_record_sha256": "7de35118e75b0d1eda1d3396f1b0129fe8fff51eff8539474526215cf3dc36c4",
+      "identity_signature": "six_arms_basalt_hex_shell_six_staff_nodes",
+      "front_direction": "front",
+      "side_inward_direction": "left_inward_three_quarter",
+      "treatment": ["broad basalt honeycomb shell", "five cold-cyan eyes", "six voting arms", "six hex staff nodes"],
+      "hidden_nodes": [],
+      "attachments": ["six_hex_nodes", "geometric_vote_tokens", "amber_resin_inlays"],
+      "front_path": "assets/art/role_portraits/temporary/hive_defense_council/front.png",
+      "front_sha256": "600c25f3ffaffa309998c8bd404761adac368cb85d401ee60935aa22b89ff0d1",
+      "side_inward_path": "assets/art/role_portraits/temporary/hive_defense_council/side_inward.png",
+      "side_inward_sha256": "5209b1b0bf70f5df40bedda434a3ee28e1581f7d589826421c20eceaf6957b38"
     },
     {
       "role_name": "悖论兽契社",
