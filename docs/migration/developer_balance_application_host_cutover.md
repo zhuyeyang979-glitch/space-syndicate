@@ -1,6 +1,6 @@
 # Developer Balance Application Host Cutover
 
-Status: `FUNCTIONAL_CORE_READY`
+Status: `PRODUCTION_CUTOVER_GREEN`
 
 Rule authority gate:
 
@@ -88,6 +88,11 @@ cutover:
    `_ready()` call.
 5. Do not retain a Main fallback or a second refresh request.
 
+The production integration has now applied that request on the current Main
+line. `Main/RuntimeServices/DeveloperBalanceApplicationHost` is the only Host,
+it binds the existing `DeveloperBalancePresentationTarget`, and the four old
+Main symbols are physically absent. No Coordinator change was required.
+
 The Host must appear in scene order such that its synchronous `_ready()` runs
 before `GameRuntimeCoordinator` performs its existing deferred presentation
 wiring. The target's `enabled` state then causes the existing scheduler's first
@@ -109,6 +114,25 @@ The focused Bench and test cover:
 Production Main composition, architecture, budget, and broad smoke gates remain
 the integration writer's responsibility because their hot files are outside
 this worktree's lease.
+
+## Production-cutover evidence
+
+- Godot 4.7 isolated tests: Host cutover `32/32` (including Bench `24/24`),
+  table-presentation cutover `20/20`, Main architecture `209` checks, Main
+  composition PASS, UI text PASS, visual snapshot PASS, and smoke
+  `--check-only` PASS.
+- Godot MCP: the real Host Bench passed `24/24`; formal `main.tscn` started and
+  stopped without a script error or runtime crash. Existing project warnings
+  and six pathless Unicode/NUL diagnostics remain and are not reported as a
+  clean error console.
+- Main budget is monotonic: `6641 -> 6617` physical lines, `5596 -> 5576`
+  nonblank lines, `483 -> 481` methods, and `47 -> 46` top-level variables.
+  External caller files remain `102`; external occurrences fall to `1231`.
+- `layout_scene_smoke_test` remains a known P4 fixture debt: the integration
+  branch and clean `1fb5e733` baseline produce the same 62 failures in the same
+  order, so P3-only regressions are zero.
+- `git diff --check`, ledger JSON parsing, exact-one Host/target composition,
+  and negative Main symbol gates pass.
 
 ## Functional-core evidence
 

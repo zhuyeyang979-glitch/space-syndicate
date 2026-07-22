@@ -1,4 +1,4 @@
-[gd_scene load_steps=31 format=3]
+[gd_scene load_steps=32 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/ui/GameScreen.tscn" id="2_game_screen"]
@@ -30,6 +30,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/SetupApplicationFlowController.tscn" id="29_setup_controller"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/TableNavigationActionRouter.tscn" id="30_table_navigation_router"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/MenuLifecycleApplicationFlowController.tscn" id="31_menu_lifecycle_controller"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/presentation/DeveloperBalanceApplicationHost.tscn" id="32_developer_balance_application_host"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -54,6 +55,11 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 menu_overlay_path = NodePath("../../RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer/MenuModalOverlay")
 snapshot_service_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/FinalSettlementPublicSnapshotService")
+
+[node name="DeveloperBalanceApplicationHost" parent="RuntimeServices" instance=ExtResource("32_developer_balance_application_host")]
+unique_name_in_owner = true
+panel_parent_path = NodePath("../../RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer")
+presentation_target_path = NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/DeveloperBalancePresentationTarget")
 
 [node name="TableAudioHost" type="Node" parent="RuntimeServices"]
 unique_name_in_owner = true

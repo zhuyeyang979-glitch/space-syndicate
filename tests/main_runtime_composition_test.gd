@@ -173,6 +173,7 @@ func _check_static_composition(main: Control) -> void:
 		"RuntimeServices",
 		"RuntimeServices/RulesetRuntimeBridge",
 		"RuntimeServices/FinalSettlementRuntimeComposition",
+		"RuntimeServices/DeveloperBalanceApplicationHost",
 		"RuntimeServices/TableAudioHost",
 		"RuntimeServices/RuntimeControllerHost",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardResolutionRuntimeController",
@@ -268,6 +269,7 @@ func _check_static_composition(main: Control) -> void:
 	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
 	var solar_availability := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/SolarAvailabilityRuntimeService")
 	var final_settlement_composition := main.get_node_or_null("RuntimeServices/FinalSettlementRuntimeComposition")
+	var developer_balance_host := main.get_node_or_null("RuntimeServices/DeveloperBalanceApplicationHost") as DeveloperBalanceApplicationHost
 	var region_infrastructure := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionInfrastructureRuntimeController")
 	var region_infrastructure_bridge := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/RegionInfrastructureWorldBridge")
 	_expect(region_infrastructure != null and region_infrastructure.scene_file_path == REGION_INFRASTRUCTURE_RUNTIME_CONTROLLER and region_infrastructure.has_method("apply_facility_action") and region_infrastructure.has_method("rollback_facility_action") and region_infrastructure.has_method("finalize_facility_action") and region_infrastructure.has_method("facility_rollback_atomic_ready"), "GameRuntimeCoordinator owns the authoritative v0.6 RegionInfrastructure facility lifecycle")
@@ -498,6 +500,10 @@ func _check_static_composition(main: Control) -> void:
 	_expect(standings_public_snapshot != null and standings_public_snapshot.scene_file_path == "res://scenes/runtime/StandingsPublicSnapshotService.tscn" and standings_public_snapshot.has_method("compose"), "GameRuntimeCoordinator owns the editable StandingsPublicSnapshotService scene")
 	_expect(final_settlement_public_snapshot != null and final_settlement_public_snapshot.scene_file_path == "res://scenes/runtime/FinalSettlementPublicSnapshotService.tscn" and final_settlement_public_snapshot.has_method("compose"), "GameRuntimeCoordinator owns the editable FinalSettlementPublicSnapshotService scene")
 	_expect(final_settlement_composition != null and final_settlement_composition.scene_file_path == "res://scenes/runtime/FinalSettlementRuntimeComposition.tscn" and final_settlement_composition.has_method("present") and final_settlement_composition.has_method("compose_public_snapshot") and final_settlement_composition.get_node_or_null("FinalSettlementPublicSourceAdapter") != null and final_settlement_composition.get_node_or_null("FinalSettlementBoardPanel") != null, "main owns one editable FinalSettlementRuntimeComposition with the existing source adapter and board")
+	_expect(developer_balance_host != null and developer_balance_host.scene_file_path == "res://scenes/runtime/presentation/DeveloperBalanceApplicationHost.tscn", "main owns one scene-backed developer balance application host")
+	_expect(developer_balance_host != null and developer_balance_host.panel_parent_path == NodePath("../../RuntimeGameScreen/OverlayLayer/RuntimeSurfaceLayer") and developer_balance_host.presentation_target_path == NodePath("../RuntimeControllerHost/GameRuntimeCoordinator/DeveloperBalancePresentationTarget"), "developer balance host uses explicit overlay and existing typed-target paths")
+	_expect(main.find_children("DeveloperBalanceApplicationHost", "DeveloperBalanceApplicationHost", true, false).size() == 1, "production composition contains exactly one developer balance application host")
+	_expect(main.find_children("DeveloperBalancePresentationTarget", "DeveloperBalancePresentationTarget", true, false).size() == 1, "production composition retains exactly one developer balance presentation target")
 	for retired_final_settlement_symbol in ["_open_final_settlement_menu", "_populate_final_settlement_summary_cards", "_add_final_settlement_board_panel", "_final_settlement_public_facts", "_final_settlement_public_snapshot", "_on_final_settlement_action_requested", "_final_settlement_public_summary_text"]:
 		_expect(not main_source.contains("func %s(" % retired_final_settlement_symbol), "Final Settlement composition cutover deletes main.%s" % retired_final_settlement_symbol)
 	_expect(intel_dossier_public_snapshot != null and intel_dossier_public_snapshot.scene_file_path == "res://scenes/runtime/IntelDossierPublicSnapshotService.tscn" and intel_dossier_public_snapshot.has_method("compose"), "GameRuntimeCoordinator owns the editable IntelDossierPublicSnapshotService scene")

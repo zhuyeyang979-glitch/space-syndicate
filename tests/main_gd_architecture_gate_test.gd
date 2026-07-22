@@ -43,6 +43,12 @@ func _run() -> void:
 	_expect(not main_source.contains("_victory_control_escrow_cents") and not main_source.contains("&\"active_monster_wagers\"") and not main_source.contains("&\"resolved_monster_wager_history\"") and not main_source.contains("&\"monster_wager_sequence\"") and not main_source.contains("&\"public_card_bid_monster_wager_pool\""), "Main no longer proxies wager settlement state or escrow")
 	_expect(not main_source.contains("_update_monster_wagers") and not main_source.contains("tick_wagers"), "Main has no active monster-wager tick path")
 	_expect(not main_source.contains("func _active_bottom_countdown_state("), "Main no longer aggregates forced-decision countdown presentation state")
+	for retired_developer_balance_symbol in [
+		"developer_balance_panel",
+		"_developer_balance_greybox_enabled",
+		"_build_developer_balance_greybox",
+	]:
+		_expect(not main_source.contains(retired_developer_balance_symbol), "Main no longer owns developer diagnostics symbol %s" % retired_developer_balance_symbol)
 	var runtime_loop_source := FileAccess.get_file_as_string("res://scripts/runtime/runtime_loop.gd")
 	var runtime_ports_source := FileAccess.get_file_as_string("res://scripts/runtime/runtime_world_ports.gd")
 	var runtime_phases_source := FileAccess.get_file_as_string("res://scripts/runtime/runtime_phase_coordinator.gd")

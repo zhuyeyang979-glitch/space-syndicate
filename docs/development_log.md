@@ -1,7 +1,24 @@
 # 太空辛迪加开发日志
 
 > 本日志用于保存当前原型的规则决策、实现状态、验证方式和下一步开发方向。
-> 最新记录日期：2026-07-21。
+> 最新记录日期：2026-07-22。
+
+## 2026-07-22 — Developer diagnostics application-host cutover
+
+- Added one scene-owned `DeveloperBalanceApplicationHost` under the formal
+  `RuntimeServices` composition. It only evaluates the existing
+  `SPACE_SYNDICATE_DEV_BALANCE` mount gate, mounts one real developer panel,
+  and binds the existing typed `DeveloperBalancePresentationTarget`.
+- Removed `developer_balance_panel`, `_developer_balance_greybox_enabled`,
+  `_build_developer_balance_greybox`, and the startup call from `main.gd`.
+  There is no Main fallback, dynamic callback, duplicate target, second
+  presentation source, or second refresh cadence.
+- Kept the independent release-safety gate unchanged: the typed target still
+  requires a debug build plus `SPACE_SYNDICATE_DEVELOPER_PRESENTATION=1`
+  before applying a developer snapshot.
+- Added focused exact-once/fail-closed coverage, a real Godot Bench, production
+  composition checks, and source-negative Main gates. The Host owns no report,
+  gameplay state, save schema, or player-facing presentation data.
 
 ## 2026-07-21 — Monster battle lifecycle owner cutover
 

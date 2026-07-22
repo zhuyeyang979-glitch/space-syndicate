@@ -188,7 +188,6 @@ var card_resolution_timer_bar: ProgressBar
 var card_resolution_timer_label: Label
 var bottom_countdown_overlay: Control
 var bottom_countdown_panel: PanelContainer
-var developer_balance_panel: Control
 var table_bgm_player: AudioStreamPlayer
 var table_sfx_players := {}
 
@@ -197,7 +196,6 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	_game_runtime_coordinator_node().run_rng_service().randomize()
 	_build_layout()
-	_build_developer_balance_greybox()
 	_build_table_audio()
 	_game_runtime_coordinator_node().record_legacy_viewer_feedback("点击开局准备后确认玩家角色与起始怪兽牌；怪兽由怪兽卡匿名召唤，场上数量没有硬上限。")
 	_start_table_bgm()
@@ -1208,28 +1206,6 @@ func _runtime_composition_control(node_name: String) -> Control:
 		if screen_match != null:
 			return screen_match
 	return find_child(node_name, true, false) as Control
-
-
-func _developer_balance_greybox_enabled() -> bool:
-	var value := OS.get_environment("SPACE_SYNDICATE_DEV_BALANCE").strip_edges().to_lower()
-	return ["1", "true", "yes", "on", "dev"].has(value)
-
-
-func _build_developer_balance_greybox() -> void:
-	if not _developer_balance_greybox_enabled() or developer_balance_panel != null:
-		return
-	var panel_scene := load("res://scenes/ui/DeveloperBalancePanel.tscn") as PackedScene
-	if panel_scene == null:
-		return
-	var panel := panel_scene.instantiate() as Control
-	if panel == null:
-		return
-	panel.name = "DeveloperBalancePanel"
-	panel.visible = true
-	developer_balance_panel = panel
-	_runtime_overlay_parent().add_child(panel)
-	_game_runtime_coordinator_node().bind_developer_balance_presentation_panel(panel as DeveloperBalancePanel)
-	_game_runtime_coordinator_node().request_table_presentation_refresh(&"developer", &"main_state_changed")
 
 
 func _on_runtime_game_screen_action_requested(action_id: String) -> void:

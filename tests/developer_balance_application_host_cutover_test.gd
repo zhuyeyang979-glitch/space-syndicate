@@ -27,7 +27,7 @@ func _run() -> void:
 			if not hot_json.contains(required_path):
 				failures.append("integration request names hot file: %s" % required_path)
 	var host_source := FileAccess.get_file_as_string("res://scripts/presentation/developer_balance_application_host.gd")
-	for forbidden in ["scripts/" + "main.gd", "/root/" + "Main", "get_tree().current_scene", "build_developer_panel_snapshot", "set_diagnostics_service"]:
+	for forbidden in ["scripts/" + "main.gd", "/root/" + "Main", "get_tree()" + ".current_scene", "build_developer_panel_snapshot", "set_diagnostics_service"]:
 		if host_source.contains(forbidden):
 			failures.append("Host source excludes forbidden dependency: %s" % forbidden)
 	bench.queue_free()
