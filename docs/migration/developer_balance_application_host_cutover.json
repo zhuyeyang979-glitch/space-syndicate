@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "status": "FUNCTIONAL_CORE_READY",
+  "mechanic_id": "developer_diagnostics_host",
+  "rule_authority_gate": "GREEN",
+  "gameplay_mechanic": false,
+  "new_owner_justified": true,
+  "owner_scene": "res://scenes/runtime/presentation/DeveloperBalanceApplicationHost.tscn",
+  "owner_script": "res://scripts/presentation/developer_balance_application_host.gd",
+  "existing_data_owner": "res://scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd",
+  "existing_source_owner": "res://scripts/presentation/table_presentation_source_owner.gd",
+  "existing_refresh_owner": "res://scripts/presentation/table_presentation_refresh_port.gd",
+  "existing_target": "res://scripts/presentation/developer_balance_presentation_target.gd",
+  "host_owns": [
+    "optional panel instance",
+    "idempotent mount",
+    "typed target binding",
+    "bounded pure-data mount diagnostics"
+  ],
+  "host_does_not_own": [
+    "gameplay state",
+    "diagnostics report",
+    "refresh cadence",
+    "save schema",
+    "Main fallback"
+  ],
+  "mount_environment": "SPACE_SYNDICATE_DEV_BALANCE",
+  "target_environment": "SPACE_SYNDICATE_DEVELOPER_PRESENTATION",
+  "production_integrated": false,
+  "focused_test": "res://tests/developer_balance_application_host_cutover_test.gd",
+  "mcp_bench": "res://scenes/tools/DeveloperBalanceApplicationHostBench.tscn",
+  "validation": {
+    "focused_bench": "PASS 24/24",
+    "focused_cutover_test": "PASS 32/32",
+    "mcp_bench": "PASS 24/24",
+    "new_parse_or_runtime_errors": 0,
+    "mcp_stopped": true,
+    "balance_runtime_bridge_bench": "49/50; changed developer_panel_service_source passed; unrelated stale codex_consumers_use_diagnostics_service failed"
+  }
+}

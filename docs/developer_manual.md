@@ -234,9 +234,16 @@ AI 和 balance 统计应优先读字段，不靠卡名写特殊逻辑。
 
 开发者灰盒只在 dev 模式使用。当前入口：
 
+- `scenes/runtime/presentation/DeveloperBalanceApplicationHost.tscn`
 - `scenes/ui/DeveloperBalancePanel.tscn`
 - `scripts/ui/developer_balance_panel.gd`
 - `SPACE_SYNDICATE_DEV_BALANCE=1`
+- `SPACE_SYNDICATE_DEVELOPER_PRESENTATION=1`
+
+`DeveloperBalanceApplicationHost` 只负责按需挂载面板并绑定现有的类型化
+presentation target。第一个环境变量允许挂载开发面板；第二个环境变量连同
+Godot debug build 门禁允许目标消费开发快照。报告仍由现有诊断服务和
+`TablePresentationSourceOwner` 产生，Host 不拥有公式、刷新节奏或玩法状态。
 
 不要把 dev-only 报告接进玩家主 UI。
 

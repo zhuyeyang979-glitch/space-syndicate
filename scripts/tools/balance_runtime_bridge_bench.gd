@@ -391,8 +391,15 @@ func _run_diagnostics_case(flow_case: Dictionary) -> Dictionary:
 			flags["service_checked"] = true
 			flags["report_checked"] = true
 			var panel_source := FileAccess.get_file_as_string("res://scripts/ui/developer_balance_panel.gd")
-			var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
-			passed = panel_source.contains("set_diagnostics_service") and panel_source.contains("_diagnostics_service.build_developer_panel_snapshot") and main_source.contains("developer_balance_panel.call(\"set_diagnostics_service\", diagnostics)") and _report_dictionary_is_valid("developer_panel")
+			var host_source := FileAccess.get_file_as_string("res://scripts/presentation/developer_balance_application_host.gd")
+			var source_owner := FileAccess.get_file_as_string("res://scripts/presentation/table_presentation_source_owner.gd")
+			var target_source := FileAccess.get_file_as_string("res://scripts/presentation/developer_balance_presentation_target.gd")
+			passed = panel_source.contains("func set_report(report: Dictionary)") \
+				and host_source.contains("target.bind_panel(panel)") \
+				and source_owner.contains("_diagnostics.build_developer_panel_snapshot") \
+				and target_source.contains("_panel.set_report(snapshot.report)") \
+				and not host_source.contains("scripts/" + "main.gd") \
+				and _report_dictionary_is_valid("developer_panel")
 		"codex_consumers_use_diagnostics_service":
 			flags["service_checked"] = true
 			var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
