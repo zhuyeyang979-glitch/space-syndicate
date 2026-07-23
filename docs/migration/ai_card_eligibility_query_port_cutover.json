@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "boundary_id": "AI_CARD_ELIGIBILITY_QUERY_PORT_CUTOVER",
+  "base_sha": "91d7d3f12f5a93ee06a263ce24aab420a3feb3a9",
+  "final_p0_claim": false,
+  "full_run_resume_claim": false,
+  "scene": "res://scenes/runtime/AiCardEligibilityQueryPort.tscn",
+  "query_port": "res://scripts/runtime/ai_card_eligibility_query_port.gd",
+  "capability": "res://scripts/runtime/ai_card_eligibility_capability.gd",
+  "state_owner": false,
+  "save_section_added": false,
+  "dependencies": [
+    "CardPlayEligibilityWorldBridge",
+    "CardPlayEligibilityRuntimeService",
+    "CommodityFlowRuntimeController",
+    "PlayerManaRuntimeController",
+    "WorldSessionState",
+    "GameSessionRuntimeController"
+  ],
+  "actor_private_contract": {
+    "opaque_capability": true,
+    "one_token_per_ai_seat": true,
+    "human_access": false,
+    "rival_access": false,
+    "forged_access": false,
+    "stale_roster_access": false,
+    "stale_session_access": false,
+    "session_identity_reissue": true,
+    "formal_world_then_session_order_verified": true
+  },
+  "query_contract": {
+    "detached_receipts": true,
+    "raw_facts_returned": false,
+    "whole_players_returned": false,
+    "whole_districts_returned": false,
+    "table_selection_fallback": false,
+    "gameplay_mutation_count": 0,
+    "rng_delta": 0,
+    "save_dirty_count": 0
+  },
+  "cash_contract": {
+    "uses_monster_wager_commitment_authority": true,
+    "reserved_cash_integration_verified": true,
+    "commitment_owner_mutation_count": 0
+  },
+  "best_share_tie_break": [
+    "highest_share_basis_points",
+    "highest_region_gdp_per_minute",
+    "earliest_district_index"
+  ],
+  "removed_ai_routes": [
+    "_best_player_gdp_share_district",
+    "_card_play_requirement_snapshot",
+    "_card_play_eligibility_snapshot",
+    "_log_card_play_rejection"
+  ],
+  "main_budget": {
+    "physical_lines": 6373,
+    "nonblank_lines": 5356,
+    "methods": 468,
+    "fields": 46,
+    "constants": 47,
+    "preloads": 7,
+    "external_caller_files": 102,
+    "passed": true
+  },
+  "tests": {
+    "ai_card_eligibility_query_port": "31/31 PASS",
+    "associated_ai_card_gates": "PASS",
+    "main_runtime_composition": "PASS",
+    "main_architecture": "PASS",
+    "session_start_transaction": "PASS",
+    "session_envelope_cold_restore": "93/93 PASS",
+    "card_play_eligibility_runtime_bench": "41/44 exact inherited trio",
+    "git_diff_check": "PASS"
+  },
+  "remaining_scope": [
+    "generic card phase properties",
+    "product flow and card price helpers",
+    "monster and military typed ports",
+    "weather and victory typed queries",
+    "presentation helper retirement",
+    "Main-to-AI dispatcher retirement",
+    "AiRuntimeWorldBridge extinction"
+  ]
+}

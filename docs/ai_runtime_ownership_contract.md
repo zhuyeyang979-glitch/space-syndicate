@@ -161,6 +161,30 @@ effect must use `ProductMarketRuntimeController`'s synchronous
 prepare/commit/finalization-seal/rollback/finalize lifecycle. No business-cost path may call Main
 or write `WorldSessionState.players` directly.
 
+## Actor-Scoped Card Eligibility Boundary
+
+`AiCardEligibilityQueryPort` is the only AI-facing entry for card eligibility,
+requirement status, and best-share targeting. It owns no card or world state and
+delegates legality to the existing `CardPlayEligibilityRuntimeService` using
+the shared typed fact provider. Wager-reserved cash remains authoritative and
+AI queries use `PlayerManaRuntimeController.availability_snapshot_read_only()`
+so an inspection cannot create Mana state.
+
+The composition root issues one opaque token per current AI seat. Roster or
+GameSession identity replacement reissues every token; old, forged, rival, and
+human tokens fail before facts are collected. The stable session binding omits
+save operation sequence and pause/outcome state, so save bookkeeping cannot
+invalidate a live actor accidentally.
+
+AI target context is explicit. `-1` means no region and never falls back to the
+human table selection. The response is a detached receipt and never contains
+raw players, districts, queue rows, share tables, owner truth, or mutable
+runtime objects. This boundary adds no Save Registry section.
+
+Best-share parity is `share basis points`, then public region GDP/min, then the
+earliest district index. It must not be replaced with the historical bridge's
+share-only tie break.
+
 ## RNG Contract
 
 The controller receives the scene-owned `RunRngService` through its typed world

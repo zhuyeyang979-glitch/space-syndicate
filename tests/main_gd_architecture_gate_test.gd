@@ -53,6 +53,29 @@ func _run() -> void:
 	var runtime_ports_source := FileAccess.get_file_as_string("res://scripts/runtime/runtime_world_ports.gd")
 	var runtime_phases_source := FileAccess.get_file_as_string("res://scripts/runtime/runtime_phase_coordinator.gd")
 	var coordinator_scene := FileAccess.get_file_as_string("res://scenes/runtime/GameRuntimeCoordinator.tscn")
+	var ai_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_runtime_controller.gd")
+	var ai_eligibility_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_card_eligibility_query_port.gd")
+	_expect(
+		coordinator_scene.count("[node name=\"AiCardEligibilityQueryPort\"") == 1
+			and ai_eligibility_source.contains("class_name AiCardEligibilityQueryPort")
+			and not ai_eligibility_source.contains("TableSelectionState")
+			and not ai_eligibility_source.contains("to_save_data"),
+		"production composition owns one stateless actor-scoped AI card eligibility port"
+	)
+	for retired_ai_eligibility_route in [
+		"_call_world(&\"_best_player_gdp_share_district\"",
+		"_call_world(&\"_card_play_requirement_snapshot\"",
+		"_call_world(&\"_card_play_eligibility_snapshot\"",
+		"_call_world(&\"_log_card_play_rejection\"",
+	]:
+		_expect(
+			not ai_source.contains(retired_ai_eligibility_route),
+			"AI card eligibility route remains retired: %s" % retired_ai_eligibility_route
+		)
+	_expect(
+		not main_source.contains("func _best_player_gdp_share_district("),
+		"Main keeps the AI-only best-share helper physically deleted"
+	)
 	_expect(runtime_loop_source.contains("func _process(real_delta: float)"), "scene-owned RuntimeLoop owns the frame callback")
 	_expect(not runtime_loop_source.contains("/root/Main") and not runtime_loop_source.contains("current_scene") and not runtime_loop_source.contains("scripts/main.gd"), "RuntimeLoop has no Main callback or lookup")
 	_expect(not runtime_loop_source.contains("get_node") and not runtime_loop_source.contains("get_parent") and runtime_loop_source.contains("RuntimePhaseCoordinator") and not runtime_loop_source.contains("RuntimeWorldPorts"), "RuntimeLoop depends only on one explicitly injected phase coordinator")

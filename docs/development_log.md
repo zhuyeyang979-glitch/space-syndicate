@@ -8908,3 +8908,22 @@ deleted. Evidence and the remaining action inventory are recorded in
   39/39, market/route 15/15, card phase/counter 22/22, and business transaction
   68/68. The parent P0 remains active while generic world/monster calls and
   `TableSelectionState` coupling remain.
+
+## 2026-07-23 - AI actor-scoped card eligibility query
+
+- Added the scene-owned `AiCardEligibilityQueryPort` and one opaque capability
+  per current AI seat. Eligibility, requirement status, wager-aware cash, and
+  best-share targeting now use existing typed owners without a Main fallback.
+- GameSession identity changes now cause the composition root to reissue actor
+  capabilities. The focused fixture follows the formal World-then-GameSession
+  transaction order and proves old tokens fail after new-session commit.
+- Preserved the historical best-share order: highest share, then region
+  GDP/min, then earliest district. Explicit target `-1` never reads human table
+  focus, and read-only Mana inspection creates no state.
+- Added wager-commitment integration evidence: an AI with enough total cash but
+  insufficient unreserved cash cannot play the card, and the Monster owner is
+  unchanged by the query.
+- Focused 31/31, associated card gates, session-start transaction, Main
+  architecture/composition, and session-envelope 93/93 pass. The legacy
+  eligibility scene remains 41/44 with the exact inherited three stale cases.
+  Parent P0 and full-run resume remain incomplete.

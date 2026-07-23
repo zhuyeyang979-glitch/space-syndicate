@@ -2,6 +2,8 @@
 extends Node
 class_name GameSessionRuntimeController
 
+signal session_identity_changed()
+
 const STATE_IDLE := "idle"
 const STATE_STARTING := "starting"
 const STATE_RUNNING := "running"
@@ -79,6 +81,7 @@ func begin_session(setup_snapshot: Dictionary) -> Dictionary:
 	_save_state = "dirty"
 	_dirty_reason = "new_session"
 	_session_state = STATE_RUNNING
+	session_identity_changed.emit()
 	return session_summary()
 
 
@@ -137,6 +140,7 @@ func apply_new_session_plan(setup_snapshot: Dictionary, expected_revision: int) 
 	_save_state = "dirty"
 	_dirty_reason = "new_session"
 	_session_state = STATE_RUNNING
+	session_identity_changed.emit()
 	return {"applied": true, "reason_code": "game_session_start_committed", "session_revision": session_start_revision(), "session": session_summary()}
 
 
@@ -159,6 +163,7 @@ func rollback_new_session_checkpoint(checkpoint: Dictionary) -> Dictionary:
 	_last_operation = (checkpoint.get("last_operation", {}) as Dictionary).duplicate(true)
 	if _world_effective_clock != null and _world_effective_clock.has_method("restore_micros"):
 		_world_effective_clock.call("restore_micros", int(checkpoint.get("world_effective_us", 0)))
+	session_identity_changed.emit()
 	return {"restored": true, "reason_code": "game_session_checkpoint_restored", "session_revision": session_start_revision()}
 
 
@@ -237,6 +242,7 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	_outcome_receipt = next_outcome
 	_save_state = "clean"
 	_dirty_reason = ""
+	session_identity_changed.emit()
 	return {"applied": true, "legacy_default": false, "session_state": _session_state, "reason_code": "session_runtime_restored"}
 
 

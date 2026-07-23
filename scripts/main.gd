@@ -2408,23 +2408,6 @@ func _player_region_gdp_share_basis_points(player_index: int, district_index: in
 	return int(_commodity_flow_runtime_call("player_region_gdp_share_basis_points", [player_index, region_id]))
 
 
-func _best_player_gdp_share_district(player_index: int) -> int:
-	var best_district := -1
-	var best_share := -1
-	var best_gdp := -1
-	for district_index in range(_game_runtime_coordinator_node().world_session_state().districts.size()):
-		var share := _player_region_gdp_share_basis_points(player_index, district_index)
-		if share <= 0:
-			continue
-		var city := _district_city(district_index)
-		var city_gdp := _city_gdp_per_minute(district_index, int(city.get("competition_matches", _city_competition_matches(district_index))))
-		if share > best_share or (share == best_share and city_gdp > best_gdp):
-			best_district = district_index
-			best_share = share
-			best_gdp = city_gdp
-	return best_district
-
-
 func _signed_int_text(value: int) -> String:
 	if value > 0:
 		return "+%d" % value

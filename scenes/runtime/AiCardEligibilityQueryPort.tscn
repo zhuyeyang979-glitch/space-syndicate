@@ -1,0 +1,12 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/ai_card_eligibility_query_port.gd" id="1_port"]
+
+[node name="AiCardEligibilityQueryPort" type="Node"]
+script = ExtResource("1_port")
+card_play_eligibility_world_bridge_path = NodePath("../CardPlayEligibilityWorldBridge")
+card_play_eligibility_runtime_service_path = NodePath("../CardPlayEligibilityRuntimeService")
+commodity_flow_runtime_controller_path = NodePath("../CommodityFlowRuntimeController")
+player_mana_runtime_controller_path = NodePath("../PlayerManaRuntimeController")
+world_session_state_path = NodePath("../WorldSessionState")
+game_session_runtime_controller_path = NodePath("../GameSessionRuntimeController")

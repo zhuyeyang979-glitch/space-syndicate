@@ -1477,14 +1477,19 @@ func _wire_ai_world_typed_ports() -> void:
 	var market_public_port := _ai_market_public_query_port_node()
 	var route_public_port := _ai_route_public_query_port_node()
 	var card_queue_query_port := _ai_card_queue_query_port_node()
+	var card_eligibility_query_port := _ai_card_eligibility_query_port_node()
 	var ai := _ai_runtime_controller_node() as AiRuntimeController
 	if session_public_port == null or actor_state_port == null or region_query_port == null \
 			or city_inference_port == null or market_public_port == null \
-			or route_public_port == null or card_queue_query_port == null or ai == null:
-		push_error("GameRuntimeCoordinator requires the AI session, actor, region, card-queue, and inference typed ports; AI world queries fail closed.")
+			or route_public_port == null or card_queue_query_port == null \
+			or card_eligibility_query_port == null or ai == null:
+		push_error("GameRuntimeCoordinator requires the AI session, actor, region, card-queue, card-eligibility, and inference typed ports; AI world queries fail closed.")
 		return
 	if not actor_state_port.ai_capability_refresh_requested.is_connected(_refresh_ai_actor_state_capabilities):
 		actor_state_port.ai_capability_refresh_requested.connect(_refresh_ai_actor_state_capabilities)
+	var game_session := _session_node() as GameSessionRuntimeController
+	if game_session != null and not game_session.session_identity_changed.is_connected(_on_ai_session_identity_changed):
+		game_session.session_identity_changed.connect(_on_ai_session_identity_changed)
 	var region_capability := AiRegionKnowledgeCapability.new()
 	region_query_port.bind_ai_capability(region_capability)
 	city_inference_port.bind_ai_capability(region_capability)
@@ -1502,10 +1507,15 @@ func _wire_ai_world_typed_ports() -> void:
 		push_error("AI typed world ports are missing authoritative runtime owners; AI city inference fails closed.")
 
 
+func _on_ai_session_identity_changed() -> void:
+	_refresh_ai_actor_state_capabilities()
+
+
 func _refresh_ai_actor_state_capabilities() -> void:
 	var actor_state_port := _ai_actor_state_port_node()
 	var card_hand_query := _ai_card_hand_query_port_node()
 	var card_queue_query := _ai_card_queue_query_port_node()
+	var card_eligibility_query := _ai_card_eligibility_query_port_node()
 	var actor_economy_query := _ai_actor_economy_query_port_node()
 	var district_supply_query := district_supply_runtime_query_port()
 	var ai := _ai_runtime_controller_node() as AiRuntimeController
@@ -1533,6 +1543,18 @@ func _refresh_ai_actor_state_capabilities() -> void:
 		ai.set_card_queue_query_port(
 			card_queue_query,
 			queue_capabilities if queue_bound else {}
+		)
+	if card_eligibility_query != null:
+		var eligibility_capabilities: Dictionary = {}
+		for actor_index_variant in actor_state_port.ai_player_indices(true):
+			var actor_index := int(actor_index_variant)
+			eligibility_capabilities[actor_index] = AiCardEligibilityCapability.new()
+		var eligibility_bound := card_eligibility_query.bind_ai_capabilities(
+			eligibility_capabilities
+		)
+		ai.set_card_eligibility_query_port(
+			card_eligibility_query,
+			eligibility_capabilities if eligibility_bound else {}
 		)
 	if actor_economy_query != null:
 		var economy_capabilities: Dictionary = {}
@@ -5742,6 +5764,12 @@ func _ai_card_hand_query_port_node() -> AiCardHandQueryPort:
 
 func _ai_card_queue_query_port_node() -> AiCardQueueQueryPort:
 	return get_node_or_null("AiCardQueueQueryPort") as AiCardQueueQueryPort
+
+
+func _ai_card_eligibility_query_port_node() -> AiCardEligibilityQueryPort:
+	return get_node_or_null(
+		"AiCardEligibilityQueryPort"
+	) as AiCardEligibilityQueryPort
 
 
 func _ai_actor_economy_query_port_node() -> AiActorEconomyQueryPort:

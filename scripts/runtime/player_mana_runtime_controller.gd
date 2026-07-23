@@ -178,6 +178,22 @@ func availability_snapshot(player_index: int) -> Dictionary:
 	if not _configured or player_index < 0:
 		return {"valid": false, "reason": "invalid_player", "player_index": player_index}
 	_ensure_player(player_index)
+	return _availability_snapshot_for_existing_player(player_index)
+
+
+func availability_snapshot_read_only(player_index: int) -> Dictionary:
+	if not _configured or player_index < 0:
+		return {"valid": false, "reason": "invalid_player", "player_index": player_index}
+	if not _pools_by_player.has(str(player_index)):
+		return {
+			"valid": false,
+			"reason": "player_state_missing",
+			"player_index": player_index,
+		}
+	return _availability_snapshot_for_existing_player(player_index)
+
+
+func _availability_snapshot_for_existing_player(player_index: int) -> Dictionary:
 	var pools := _dictionary(_pools_by_player.get(str(player_index), {}))
 	var reserved := _reserved_milliunits_for_player(player_index)
 	var available_milliunits := _empty_asset_values()

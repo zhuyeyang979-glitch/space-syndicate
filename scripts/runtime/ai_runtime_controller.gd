@@ -32,6 +32,9 @@ var _ai_card_hand_capability_binding_initialized := false
 var _ai_card_queue_query_port: AiCardQueueQueryPort
 var _ai_card_queue_capabilities: Dictionary = {}
 var _ai_card_queue_capability_binding_initialized := false
+var _ai_card_eligibility_query_port: AiCardEligibilityQueryPort
+var _ai_card_eligibility_capabilities: Dictionary = {}
+var _ai_card_eligibility_capability_binding_initialized := false
 var _ai_actor_economy_query_port: AiActorEconomyQueryPort
 var _ai_actor_economy_capabilities: Dictionary = {}
 var _ai_actor_economy_capability_binding_initialized := false
@@ -140,6 +143,71 @@ func _ai_card_queue_snapshot(player_index: int) -> Dictionary:
 		return {}
 	return _ai_card_queue_query_port.private_actor_submission_snapshot(
 		_ai_card_queue_capabilities.get(player_index) as AiCardQueueCapability,
+		player_index
+	)
+
+
+func set_card_eligibility_query_port(
+	port: AiCardEligibilityQueryPort,
+	capabilities_by_actor: Dictionary
+) -> void:
+	_ai_card_eligibility_query_port = port
+	_ai_card_eligibility_capabilities = capabilities_by_actor.duplicate()
+	_ai_card_eligibility_capability_binding_initialized = true
+
+
+func _ai_card_eligibility_snapshot(
+	player_index: int,
+	skill: Dictionary,
+	evaluation_mode: String,
+	selected_district: int = -1
+) -> Dictionary:
+	if (
+		_ai_card_eligibility_query_port == null
+		or not _ai_card_eligibility_capability_binding_initialized
+	):
+		return {}
+	return _ai_card_eligibility_query_port.eligibility_snapshot(
+		_ai_card_eligibility_capabilities.get(
+			player_index
+		) as AiCardEligibilityCapability,
+		player_index,
+		skill,
+		evaluation_mode,
+		selected_district
+	)
+
+
+func _ai_card_requirement_snapshot(
+	player_index: int,
+	skill: Dictionary,
+	selected_district: int = -1
+) -> Dictionary:
+	if (
+		_ai_card_eligibility_query_port == null
+		or not _ai_card_eligibility_capability_binding_initialized
+	):
+		return {}
+	return _ai_card_eligibility_query_port.requirement_snapshot(
+		_ai_card_eligibility_capabilities.get(
+			player_index
+		) as AiCardEligibilityCapability,
+		player_index,
+		skill,
+		selected_district
+	)
+
+
+func _ai_card_best_share_snapshot(player_index: int) -> Dictionary:
+	if (
+		_ai_card_eligibility_query_port == null
+		or not _ai_card_eligibility_capability_binding_initialized
+	):
+		return {}
+	return _ai_card_eligibility_query_port.best_share_snapshot(
+		_ai_card_eligibility_capabilities.get(
+			player_index
+		) as AiCardEligibilityCapability,
 		player_index
 	)
 
@@ -1366,21 +1434,26 @@ func _skill_play_region_scope(skill: Dictionary, player_index: int) -> String:
 	return str(_skill_play_requirement_status(player_index, skill).get("scope", CardPlayRequirementPolicyScript.SCOPE_OWN_BEST_REGION))
 
 func _best_player_gdp_share_district(player_index: int) -> int:
-	return _call_world(&"_best_player_gdp_share_district", [player_index])
+	return int(_ai_card_best_share_snapshot(player_index).get(
+		"best_share_district",
+		-1
+	))
 
 func _skill_play_requirement_status(player_index: int, skill: Dictionary) -> Dictionary:
-	var value: Variant = _call_world(&"_card_play_requirement_snapshot", [player_index, skill])
+	var receipt := _ai_card_requirement_snapshot(player_index, skill, -1)
+	var value: Variant = receipt.get("requirement_status", {})
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 func _skill_play_cash_cost(skill: Dictionary, player_index: int) -> int:
 	return int(_skill_play_requirement_status(player_index, skill).get("cash_cost", 0))
 
-func _can_play_skill_now(player_index: int, skill: Dictionary, show_log: bool = true) -> bool:
-	var value: Variant = _call_world(&"_card_play_eligibility_snapshot", [player_index, skill, "rule", {}])
-	var result: Dictionary = value if value is Dictionary else {}
-	if not bool(result.get("allowed", false)) and show_log:
-		_call_world(&"_log_card_play_rejection", [result, skill])
-	return bool(result.get("allowed", false))
+func _can_play_skill_now(player_index: int, skill: Dictionary) -> bool:
+	return bool(_ai_card_eligibility_snapshot(
+		player_index,
+		skill,
+		"rule",
+		-1
+	).get("allowed", false))
 
 func _signed_int_text(value: int) -> String:
 	return _call_world(&"_signed_int_text", [value])
@@ -1855,8 +1928,13 @@ func _is_counter_skill(skill: Dictionary) -> bool:
 	return bool(_card_play_target_status(skill).get("is_counter", false))
 
 func _can_convert_monster_card_to_counter(player_index: int, skill: Dictionary) -> bool:
-	var value: Variant = _call_world(&"_card_play_eligibility_snapshot", [player_index, skill, "hand", {}])
-	return str((value as Dictionary).get("reason_code", "")) == "counter_conversion_ready" if value is Dictionary else false
+	var result := _ai_card_eligibility_snapshot(
+		player_index,
+		skill,
+		"hand",
+		-1
+	)
+	return str(result.get("reason_code", "")) == "counter_conversion_ready"
 
 func _skill_is_counterable_player_interaction(skill: Dictionary) -> bool:
 	return bool(_card_play_target_status(skill).get(
@@ -6349,7 +6427,7 @@ func _ai_counter_response_candidate(player_index: int, slot_index: int, source_s
 	var counter_skill := _counter_skill_for_ai_candidate(player_index, source_skill)
 	if counter_skill.is_empty():
 		return {}
-	if not _can_play_skill_now(player_index, counter_skill, false):
+	if not _can_play_skill_now(player_index, counter_skill):
 		return {}
 	var threat := _ai_counter_target_threat(player_index, entry)
 	var threat_score := int(threat.get("score", -999999))
