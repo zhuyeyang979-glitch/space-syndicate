@@ -402,9 +402,23 @@ func _test_load_classification_and_active_session_isolation(coordinator: GameRun
 
 func _test_main_v3_load_boundary() -> void:
 	var main_source := FileAccess.get_file_as_string("res://scripts/" + "main.gd")
+	var menu_source := FileAccess.get_file_as_string("res://scripts/runtime/menu_lifecycle_application_flow_controller.gd")
+	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
 	var session_source := FileAccess.get_file_as_string("res://scripts/runtime/game_session_runtime_controller.gd")
 	_check(not main_source.contains("func _load_run(") and not main_source.contains("func _run_save_summary_text(") and not main_source.contains("func _extract_legacy_city_gdp_derivative_positions(") and not main_source.contains("func _apply_run_domain_state_compatibility_adapter("), "main_legacy_payload_and_compatibility_methods_are_physically_absent")
-	_check(not main_source.contains("result.get(\"payload\"") and not main_source.contains("complete_run_load") and main_source.contains("inspect_run_save") and main_source.contains("request_run_load"), "main_consumes_only_high_level_load_and_inspection_receipts")
+	_check(
+		not main_source.contains("result.get(\"payload\"")
+			and not main_source.contains("complete_run_load")
+			and not main_source.contains("inspect_run_save")
+			and not main_source.contains("request_run_load")
+			and menu_source.contains("coordinator.request_run_load")
+			and menu_source.contains("coordinator.inspect_run_save")
+			and not menu_source.contains("result.get(\"payload\"")
+			and not menu_source.contains("result.get(\"envelope\"")
+			and coordinator_source.contains("func request_run_load(")
+			and coordinator_source.contains("func inspect_run_save("),
+		"menu_lifecycle_consumes_only_high_level_load_and_inspection_receipts"
+	)
 	_check(session_source.contains("result.get(\"envelope\"") and session_source.contains("owner_registry.call(\"apply_envelope\"") and session_source.contains("receipt[\"registry_apply_count\"] = 1"), "game_session_consumes_envelope_and_invokes_registry_exactly_once")
 
 
