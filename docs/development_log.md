@@ -8873,3 +8873,19 @@ deleted. Evidence and the remaining action inventory are recorded in
   and Main composition gates pass. The route-weather gate remains an inherited
   11-failure parent regression proven identical on `44dff18`; weather formulas
   were not changed in this boundary.
+
+## 2026-07-23 — AI whole-player collection retirement
+
+- Removed the `players` compatibility property and every whole-player indexed
+  read/write from `AiRuntimeController`. Player counts and public seat identity
+  now come from `AiActorStatePort`.
+- Extended the existing actor-economy projection with only the current actor's
+  income, spend, and build-progress counters. Runtime diagnostics use that
+  projection, while direct player-interaction capacity uses the existing
+  actor-scoped hand QueryPort.
+- Removed AI-owned runtime-default mutation. `SessionStartPlanBuilder` now
+  initializes the legacy zero-value income/cashflow counters before the sole
+  `WorldSessionState` owner applies the roster.
+- Actor economy, actor state, actor hand, and setup/session-start transaction
+  gates pass. No policy, personality, RNG, save owner, or save shape changed;
+  whole-district migration and generic bridge extinction remain pending.

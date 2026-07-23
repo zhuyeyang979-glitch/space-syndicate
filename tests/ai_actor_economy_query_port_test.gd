@@ -28,7 +28,7 @@ func _run() -> void:
 	world.restore({
 		"players": [
 			_player("Human", false, 990),
-			_player("AI-A", true, 700),
+			_player("AI-A", true, 700, 10),
 			_player("AI-B", true, -50),
 		],
 		"districts": [
@@ -52,10 +52,12 @@ func _run() -> void:
 	var snapshot := port.private_economy_snapshot(actor_capability, 1)
 	var text := JSON.stringify(snapshot)
 	var cash := snapshot.get("cash", {}) as Dictionary
+	var economy_summary := snapshot.get("economy_summary", {}) as Dictionary
 	var own_cities := snapshot.get("own_cities", []) as Array
 	var own_futures := snapshot.get("own_futures", []) as Array
 	var negative_cash := (port.private_economy_snapshot(rival_capability, 2).get("cash", {}) as Dictionary)
 	_expect(int(cash.get("total_units", -1)) == 700 and int(cash.get("available_units", -1)) == 700 and int(cash.get("reserved_units", -1)) == 0, "actor cash uses the shared wager-aware cash authority")
+	_expect(int(economy_summary.get("total_city_income", -1)) == 10 and int(economy_summary.get("total_card_income", -1)) == 20 and int(economy_summary.get("total_role_income", -1)) == 30 and int(economy_summary.get("total_business_spend", -1)) == 60, "actor economy summary exposes only the actor's progression counters")
 	_expect(int(negative_cash.get("total_units", 0)) == -50 and int(negative_cash.get("available_units", -1)) == 0, "signed total cash remains exact while bankruptcy leaves zero spendable cash")
 	_expect(own_cities.size() == 1 and str((own_cities[0] as Dictionary).get("region_id", "")) == "region:ai-a" and text.contains("AI_A_WAREHOUSE"), "actor snapshot contains only its own city and warehouse facts")
 	_expect(not text.contains("AI_B_WAREHOUSE") and not text.contains("HUMAN_WAREHOUSE") and not text.contains("-5000") and not text.contains("99000"), "rival and human private economy facts never cross the port")
@@ -87,6 +89,13 @@ func _run() -> void:
 		var body := _function_body(controller_source, function_name)
 		_expect((body.contains("_actor_cash_units") or body.contains("_actor_available_cash_units") or body.contains("_ai_actor_economy_snapshot")) and not body.contains("players["), "%s reads actor cash without whole-player access" % function_name)
 	_expect(not controller_source.contains("_cash_commitment_query_port") and not controller_source.contains("set_cash_commitment_query_port"), "AI no longer receives the unscoped cash query")
+	var whole_players_pattern := RegEx.new()
+	whole_players_pattern.compile("(^|[^A-Za-z0-9_])players\\s*(\\[|\\.size\\()")
+	_expect(not controller_source.contains("\nvar players:") and not controller_source.contains("_world_value(&\"players\"") and whole_players_pattern.search(controller_source) == null, "AI controller has no whole-player collection read or write")
+	var direct_interaction_body := _function_body(controller_source, "_ai_direct_player_interaction_plan")
+	_expect(direct_interaction_body.contains("_ai_card_hand_snapshot") and not direct_interaction_body.contains("_player_counted_hand_size"), "direct interaction reads only the actor-scoped hand snapshot")
+	var plan_source := FileAccess.get_file_as_string("res://scripts/runtime/session_start_plan_builder.gd")
+	_expect(plan_source.contains("\"last_cycle_income\": 0") and plan_source.contains("\"cashflow_remainder\": 0.0") and plan_source.contains("\"total_city_income\": 0"), "new-session plans initialize compatibility economy counters before AI starts")
 	var debug := port.debug_snapshot()
 	_expect(bool(debug.get("port_ready", false)) and int(debug.get("actor_scoped_capability_count", 0)) == 2 and not bool(debug.get("returns_rival_cash", true)) and not bool(debug.get("returns_rival_warehouse", true)) and not bool(debug.get("returns_rival_futures", true)) and not bool(debug.get("references_main", true)), "debug evidence records actor-private zero-Main scope")
 	coordinator.queue_free()
@@ -94,7 +103,7 @@ func _run() -> void:
 	_finish()
 
 
-func _player(name: String, is_ai: bool, cash_units: int) -> Dictionary:
+func _player(name: String, is_ai: bool, cash_units: int, progress_seed := 0) -> Dictionary:
 	return {
 		"id": name.hash(),
 		"actor_id": "actor:%s" % name,
@@ -105,6 +114,13 @@ func _player(name: String, is_ai: bool, cash_units: int) -> Dictionary:
 		"cash_cents": cash_units * 100,
 		"ai_profile": {},
 		"ai_memory": {},
+		"cities_built": progress_seed,
+		"total_city_income": progress_seed,
+		"total_card_income": progress_seed * 2,
+		"total_role_income": progress_seed * 3,
+		"total_card_spend": progress_seed * 4,
+		"total_build_spend": progress_seed * 5,
+		"total_business_spend": progress_seed * 6,
 	}
 
 

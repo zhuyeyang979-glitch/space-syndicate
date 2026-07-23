@@ -713,6 +713,10 @@ func _typed_ai_player_indices() -> Array:
 	return _ai_actor_state_port.ai_player_indices(false) if _actor_state_ready() else []
 
 
+func _player_count() -> int:
+	return _ai_actor_state_port.player_count() if _actor_state_ready() else 0
+
+
 func _world_value(property_name: StringName, default_value: Variant = null) -> Variant:
 	return _world_bridge.call("read_world_value", property_name, default_value) if _world_ready() else default_value
 
@@ -812,12 +816,6 @@ var game_time:
 var military_units:
 	get:
 		return _military_runtime_controller.roster_snapshot(true) if _military_runtime_controller != null else []
-
-var players:
-	get:
-		return _world_value(&"players", [])
-	set(value):
-		_write_world_value(&"players", value)
 
 var resolved_card_history:
 	get:
@@ -2011,7 +2009,7 @@ func _competing_city_indices_for_product(player_index: int, product_name: String
 	return result
 func _rival_business_candidates_for_player(player_index: int) -> Array:
 	var result := []
-	if player_index < 0 or player_index >= players.size() or not _player_is_ai(player_index):
+	if player_index < 0 or player_index >= _player_count() or not _player_is_ai(player_index):
 		return result
 	if _spendable_cash_units(player_index) < RIVAL_BUSINESS_ACTION_COST:
 		return result
@@ -2305,11 +2303,11 @@ func _publish_ai_business_market_pressure_callout(public_receipt: Dictionary, di
 
 
 func _auto_rival_business_actions(force: bool = false) -> int:
-	if session_finished or players.size() <= 1:
+	if session_finished or _player_count() <= 1:
 		return 0
 	var acted := 0
 	var attempt_ordinal := 0
-	var limit: int = int(players.size()) - 1 if force else int(RIVAL_BUSINESS_ACTION_MAX_PER_CYCLE)
+	var limit: int = _player_count() - 1 if force else int(RIVAL_BUSINESS_ACTION_MAX_PER_CYCLE)
 	for player_index_variant in _rival_build_player_order():
 		attempt_ordinal += 1
 		if acted >= limit:
@@ -2591,7 +2589,7 @@ func _ai_live_route_balance_report() -> Dictionary:
 	for player_index_variant in _ai_player_indices():
 		var player_index := int(player_index_variant)
 		ai_count += 1
-		var player: Dictionary = players[player_index]
+		var player: Dictionary = (_ai_actor_economy_snapshot(player_index).get("economy_summary", {}) as Dictionary).duplicate(true)
 		var profile := _ai_profile_for_player(player_index)
 		var primary := _ai_profile_primary_development_route(profile)
 		var primary_route := String(primary.get("route_id", ""))
@@ -3592,35 +3590,7 @@ func _normalized_ai_memory(source: Variant) -> Dictionary:
 		elif default_value is String and String(value) == "":
 			memory[key] = default_value
 	return memory
-func _ensure_player_runtime_defaults() -> void:
-	if players.is_empty():
-		return
-	var human_count := 0
-	for player_variant in players:
-		if player_variant is Dictionary and not bool((player_variant as Dictionary).get("is_ai", false)):
-			human_count += 1
-	human_count = maxi(1, human_count)
-	for i in range(players.size()):
-		var player: Dictionary = players[i]
-		var seat_type := String(player.get("seat_type", "ai" if i >= human_count else "human"))
-		var is_ai := seat_type == "ai" or bool(player.get("is_ai", false))
-		if not player.has("last_cycle_income"):
-			player["last_cycle_income"] = 0
-		if not player.has("last_cashflow_income"):
-			player["last_cashflow_income"] = int(player.get("last_cycle_income", 0))
-		if not player.has("cashflow_remainder"):
-			player["cashflow_remainder"] = 0.0
-		if not player.has("total_city_income"):
-			player["total_city_income"] = 0
-		if not player.has("total_role_income"):
-			player["total_role_income"] = 0
-		player["seat_type"] = "ai" if is_ai else "human"
-		player["is_ai"] = is_ai
-		players[i] = player
-
-
 func _ensure_player_ai_state() -> void:
-	_ensure_player_runtime_defaults()
 	if not _actor_state_ready():
 		return
 	for player_variant in _ai_actor_state_port.public_players_snapshot():
@@ -3671,7 +3641,7 @@ func _ai_competitive_posture(player_index: int) -> String:
 		return "trailing"
 	return "contesting"
 func _ai_endgame_urgency_score(player_index: int) -> int:
-	if player_index < 0 or player_index >= players.size():
+	if player_index < 0 or player_index >= _player_count():
 		return 0
 	var score := 0
 	var own_gdp := _victory_top_n_gdp(player_index)
@@ -3792,7 +3762,7 @@ func _ai_direct_interaction_target_player(player_index: int) -> int:
 	var plan := _ai_direct_player_interaction_plan(player_index, {})
 	return int(plan.get("target_player", -1))
 func _ai_direct_player_interaction_plan(player_index: int, skill: Dictionary) -> Dictionary:
-	if player_index < 0 or player_index >= players.size() or players.size() <= 1:
+	if player_index < 0 or player_index >= _player_count() or _player_count() <= 1:
 		return {}
 	var kind := String(skill.get("kind", "player_hand_disrupt"))
 	var phase_info := _ai_refresh_game_phase(player_index)
@@ -3807,14 +3777,14 @@ func _ai_direct_player_interaction_plan(player_index: int, skill: Dictionary) ->
 		hand_effect_pressure = 75
 	var receive_pressure := 0
 	if kind == "player_hand_steal":
-		var actor: Dictionary = players[player_index]
-		if _player_counted_hand_size(actor) < PLAYER_HAND_LIMIT:
+		var own_hand := _ai_card_hand_snapshot(player_index)
+		if int(own_hand.get("counted_hand_size", PLAYER_HAND_LIMIT)) < int(own_hand.get("hand_limit", PLAYER_HAND_LIMIT)):
 			receive_pressure += 46
 		else:
 			receive_pressure += int(float(maxi(0, int(skill.get("steal_fail_cash", 0)))) / 3.0) - 32
 	var best := {}
 	var best_score := -999999
-	for i in range(players.size()):
+	for i in range(_player_count()):
 		if i == player_index:
 			continue
 		var settlement := _victory_top_n_gdp(i)
@@ -3901,7 +3871,7 @@ func _ai_direct_city_target_score(player_index: int, district_index: int, skill:
 		score += route_damage * (34 if kind == "global_barrage" else 18)
 	return score
 func _ai_direct_city_interaction_plan(player_index: int, skill: Dictionary) -> Dictionary:
-	if player_index < 0 or player_index >= players.size():
+	if player_index < 0 or player_index >= _player_count():
 		return {}
 	var kind := String(skill.get("kind", "city_control_dispute"))
 	var best_city := -1
@@ -4067,7 +4037,7 @@ func _ai_victory_race_bonus_for_candidate(player_index: int, kind: String, distr
 		"role": "",
 		"reason": "",
 	}
-	if player_index < 0 or player_index >= players.size() or not _player_is_ai(player_index):
+	if player_index < 0 or player_index >= _player_count() or not _player_is_ai(player_index):
 		return result
 	var phase_info := _ai_refresh_game_phase(player_index)
 	var phase := String(phase_info.get("phase", "midgame"))
@@ -4681,7 +4651,7 @@ func _ai_episode_reward_for_player(player_index: int, rankings: Array, winner_in
 		reward += AI_EPISODE_WIN_BONUS + AI_EPISODE_GOAL_BONUS
 	else:
 		reward -= 95 * maxi(1, rank)
-	var seat_span := maxi(1, players.size() - 1)
+	var seat_span := maxi(1, _player_count() - 1)
 	reward += int(round((float(maxi(0, seat_span - rank)) / float(seat_span)) * 220.0)) - 90
 	return {
 		"reward": clampi(reward, -AI_EPISODE_REWARD_CLAMP, AI_EPISODE_REWARD_CLAMP),
@@ -4905,7 +4875,7 @@ func _ai_refresh_economic_focus(player_index: int, force: bool = false) -> Strin
 		return str(_ai_memory_for_player(player_index).get("economic_focus_product", ""))
 	return best_product
 func _ai_focus_product(player_index: int) -> String:
-	if player_index < 0 or player_index >= players.size():
+	if player_index < 0 or player_index >= _player_count():
 		return ""
 	if not _player_is_ai(player_index):
 		return _first_player_flow_product(player_index)
@@ -5176,7 +5146,7 @@ func _ai_profile_signature_bonus_for_candidate(player_index: int, kind: String, 
 		"route": "",
 		"reason": "",
 	}
-	if player_index < 0 or player_index >= players.size() or not _player_is_ai(player_index) or kind == "":
+	if player_index < 0 or player_index >= _player_count() or not _player_is_ai(player_index) or kind == "":
 		return result
 	var profile := _ai_profile_for_player(player_index)
 	var route_id := _ai_development_route_for_kind(kind, skill)
@@ -5325,7 +5295,7 @@ func _ai_strategy_intent_label(intent: String) -> String:
 	return "观察局势"
 func _ai_route_plan_candidates(player_index: int) -> Array:
 	var result := []
-	if player_index < 0 or player_index >= players.size() or not _player_is_ai(player_index):
+	if player_index < 0 or player_index >= _player_count() or not _player_is_ai(player_index):
 		return result
 	if _ai_market_public_query_port == null or not _ai_market_public_query_port.is_ready():
 		return result
@@ -6114,7 +6084,7 @@ func _ai_counter_entry_target_city(entry: Dictionary) -> int:
 	return -1
 func _ai_counter_entry_target_owner(entry: Dictionary) -> int:
 	var target_player := int(entry.get("target_player", -1))
-	if target_player >= 0 and target_player < players.size():
+	if target_player >= 0 and target_player < _player_count():
 		return target_player
 	var target_city := _ai_counter_entry_target_city(entry)
 	if target_city >= 0:

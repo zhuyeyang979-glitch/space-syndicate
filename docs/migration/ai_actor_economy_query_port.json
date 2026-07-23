@@ -39,11 +39,13 @@
     "ai_route_hand_affordability",
     "ai_card_play_affordability",
     "ai_card_purchase_affordability",
-    "ai_business_spendable_cash"
+    "ai_business_spendable_cash",
+    "ai_runtime_progress_report",
+    "ai_direct_interaction_own_hand_capacity"
   ],
+  "whole_player_collection_access_count": 0,
+  "runtime_default_owner": "SessionStartPlanBuilder",
   "remaining_boundaries": [
-    "ai_market_public_query_port",
-    "ai_route_public_query_port",
     "raw_district_targeting",
     "generic_world_bridge_extinction"
   ],

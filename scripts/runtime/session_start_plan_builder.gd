@@ -199,7 +199,9 @@ func _build_players(draft: Dictionary, roles: Array, catalog: RoleCatalogRuntime
 			"v06_transaction_ledger": [], "eliminated": false, "eliminated_at": -1.0, "elimination_reason": "",
 			"economic_ledger": [], "city_guesses": {}, "city_guess_confidence": {}, "city_guess_reasons": {},
 			"cities_built": 0, "total_card_spend": 0, "card_purchase_count": 0, "total_build_spend": 0,
-			"total_card_income": 0, "total_role_income": 0, "total_business_spend": 0,
+			"last_cycle_income": 0, "last_cashflow_income": 0, "cashflow_remainder": 0.0,
+			"total_city_income": 0, "total_card_income": 0, "total_role_income": 0,
+			"total_business_spend": 0,
 			"action_cooldown": 0.0, "queued_card_tip": 0, "slots": [starter_card],
 		})
 	return {"ok": true, "players": players}

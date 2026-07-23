@@ -493,6 +493,7 @@ func private_player_city_economy_snapshot(player_index: int) -> Dictionary:
 			"state_revision": "",
 		}
 	var cities: Array = []
+	var player := _players[player_index] as Dictionary
 	var total_income := 0
 	var warehouse_count := 0
 	var warehouse_units := 0
@@ -540,6 +541,13 @@ func private_player_city_economy_snapshot(player_index: int) -> Dictionary:
 		"warehouse_stockpile_count": warehouse_count,
 		"warehouse_stockpile_units": warehouse_units,
 		"warehouse_stockpile_products": warehouse_products,
+		"cities_built": maxi(0, int(player.get("cities_built", 0))),
+		"total_city_income": maxi(0, int(player.get("total_city_income", 0))),
+		"total_card_income": maxi(0, int(player.get("total_card_income", 0))),
+		"total_role_income": maxi(0, int(player.get("total_role_income", 0))),
+		"total_card_spend": maxi(0, int(player.get("total_card_spend", 0))),
+		"total_build_spend": maxi(0, int(player.get("total_build_spend", 0))),
+		"total_business_spend": maxi(0, int(player.get("total_business_spend", 0))),
 	}
 	return {
 		"valid": true,
@@ -547,7 +555,7 @@ func private_player_city_economy_snapshot(player_index: int) -> Dictionary:
 		"player_index": player_index,
 		"cities": cities.duplicate(true),
 		"summary": summary.duplicate(true),
-		"state_revision": _stable_hash(["player_city_economy_v1", player_index, cities]),
+		"state_revision": _stable_hash(["player_city_economy_v2", player_index, cities, summary]),
 	}
 
 

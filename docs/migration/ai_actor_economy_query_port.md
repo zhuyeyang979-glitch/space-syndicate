@@ -17,7 +17,8 @@ authoritative player roster is replaced.
 - `MonsterWagerCashCommitmentQueryPort` supplies wager-reserved and spendable
   cash. Negative totals remain exact while spendable cash fails closed at zero.
 - `WorldSessionState.private_player_city_economy_snapshot()` supplies only
-  cities whose authoritative owner is the actor.
+  cities whose authoritative owner is the actor, plus that actor's allowlisted
+  income, spend, and build-progress counters.
 - `ProductMarketRuntimeController.private_futures_positions_snapshot()`
   supplies only positions owned by the actor.
 
@@ -34,10 +35,16 @@ affordability, card-purchase affordability, and generic spendable-cash checks
 no longer read cash from a whole player record. Spending decisions use
 wager-aware available cash; learning observations use exact signed total cash.
 
-This boundary does not claim the market or route query cutover is complete.
-`AiRuntimeController` still has broad market and district consumers that must
-move to `AiMarketPublicQueryPort`, `AiRoutePublicQueryPort`, and actor-scoped
-region facts before the generic bridge can be deleted.
+The remaining runtime-diagnostic progress consumer now reads the same
+actor-private economy summary, and direct player interaction reads hand size
+from `AiCardHandQueryPort`. `AiRuntimeController` no longer has a `players`
+property, reads `players[index]`, writes the player collection, or supplies
+runtime compatibility defaults. New-session plans initialize those zero-value
+economy counters before the world owner applies the roster.
+
+Market and route public queries are now cut over separately. Broad district
+consumers still must move to actor-scoped region facts before the generic
+bridge can be deleted.
 
 ## Persistence
 
@@ -58,5 +65,6 @@ commitments, and futures remain persisted by their existing domain owners.
 
 The focused contract proves actor isolation, forged/stale/human rejection,
 signed cash, wager-aware available cash, own-city and own-futures filtering,
-public futures redaction, detached pure data, zero world mutation, and zero RNG
-consumption.
+actor-only progress counters, public futures redaction, detached pure data,
+zero world mutation, zero RNG consumption, and zero whole-player access from
+the AI controller.

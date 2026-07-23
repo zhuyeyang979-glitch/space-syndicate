@@ -79,6 +79,13 @@ or Main dependency. It adds no owner or save section. Broad ProductMarket,
 CommodityFlow, route, and district consumers remain pending their dedicated
 typed-port boundaries.
 
+The AI controller has no whole-player collection property or indexed player
+read/write. Counts and public seat facts come from `AiActorStatePort`; private
+progress counters come from `AiActorEconomyQueryPort`; own-hand capacity comes
+from `AiCardHandQueryPort`. Runtime compatibility defaults are authored in the
+deterministic new-session plan before `WorldSessionState` applies the roster,
+not patched into live players by AI.
+
 ## Market And Route Public Query Boundary
 
 `AiMarketPublicQueryPort` consumes only the complete 46-entry public market
