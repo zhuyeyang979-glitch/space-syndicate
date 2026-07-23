@@ -1490,20 +1490,22 @@ func _wire_ai_world_typed_ports() -> void:
 	var game_session := _session_node() as GameSessionRuntimeController
 	if game_session != null and not game_session.session_identity_changed.is_connected(_on_ai_session_identity_changed):
 		game_session.session_identity_changed.connect(_on_ai_session_identity_changed)
-	var region_capability := AiRegionKnowledgeCapability.new()
-	region_query_port.bind_ai_capability(region_capability)
-	city_inference_port.bind_ai_capability(region_capability)
 	ai.set_world_typed_ports(
 		session_public_port,
 		actor_state_port,
 		{},
 		region_query_port,
-		region_capability,
+		{},
 		city_inference_port
 	)
 	ai.set_market_route_query_ports(market_public_port, route_public_port)
 	_refresh_ai_actor_state_capabilities()
-	if not session_public_port.is_ready() or not actor_state_port.is_ready() or not region_query_port.is_ready():
+	if (
+		not session_public_port.is_ready()
+		or not actor_state_port.is_ready()
+		or not region_query_port.is_ready()
+		or not city_inference_port.is_ready()
+	):
 		push_error("AI typed world ports are missing authoritative runtime owners; AI city inference fails closed.")
 
 
@@ -1513,6 +1515,8 @@ func _on_ai_session_identity_changed() -> void:
 
 func _refresh_ai_actor_state_capabilities() -> void:
 	var actor_state_port := _ai_actor_state_port_node()
+	var region_query := _ai_region_knowledge_query_port_node()
+	var city_inference := _ai_city_inference_command_port_node()
 	var card_hand_query := _ai_card_hand_query_port_node()
 	var card_queue_query := _ai_card_queue_query_port_node()
 	var card_eligibility_query := _ai_card_eligibility_query_port_node()
@@ -1527,6 +1531,22 @@ func _refresh_ai_actor_state_capabilities() -> void:
 		actor_capabilities[actor_index] = AiActorStateCapability.new()
 	var bound := actor_state_port.bind_ai_capabilities(actor_capabilities)
 	ai.set_actor_state_capabilities(actor_capabilities if bound else {})
+	if region_query != null and city_inference != null:
+		var region_capabilities: Dictionary = {}
+		for actor_index_variant in actor_state_port.ai_player_indices(true):
+			var actor_index := int(actor_index_variant)
+			region_capabilities[actor_index] = AiRegionKnowledgeCapability.new()
+		var region_query_bound := region_query.bind_ai_capabilities(
+			region_capabilities
+		)
+		var city_inference_bound := city_inference.bind_ai_capabilities(
+			region_capabilities
+		)
+		ai.set_region_knowledge_capabilities(
+			region_capabilities
+			if region_query_bound and city_inference_bound
+			else {}
+		)
 	if card_hand_query != null:
 		var hand_capabilities: Dictionary = {}
 		for actor_index_variant in actor_state_port.ai_player_indices(true):

@@ -28,7 +28,9 @@ added. This PR only replaces a generic Main/world route with typed ports.
 
 `GameRuntimeCoordinator` composes one `AiActorStatePort`, one
 `AiRegionKnowledgeQueryPort`, and one `AiCityInferenceCommandPort`. It creates
-opaque capabilities and injects them into `AiRuntimeController`.
+one opaque capability per current AI seat and injects the actor-indexed map into
+`AiRuntimeController`. Roster replacement, World restore, and GameSession
+identity changes revoke the old map and issue fresh tokens.
 
 The migrated path is:
 
@@ -49,14 +51,15 @@ The query may expose only:
 
 - public region identity, geometry, terrain, damage, panic, products, demands,
   transport facts, public city activity, public clues, and public GDP;
-- public anonymous warehouse aggregate clues: count, units, and product names;
+- the requesting actor's own warehouse count, units, and product names;
 - the actor's own city ownership inference, confidence, reason, and authorized
   reveal sentinel;
 - the actor's own city as `actor_own`.
 
-Anonymous warehouse aggregates are existing public product/city evidence. The
-projection deliberately excludes warehouse owner, bucket identity, source
-installation, transaction identity, debt, remainder, liability, and expiry.
+Public and rival city rows contain no warehouse count, units, or product names.
+The actor's own city may contain those three fields, while warehouse owner,
+bucket identity, source installation, transaction identity, debt, remainder,
+liability, and expiry remain excluded everywhere.
 
 The query never exposes authoritative hidden owner truth, another actor's
 guess, exact rival cash, rival hand/discard, private warehouse ownership, AI
@@ -77,8 +80,8 @@ own city, otherwise it carries that actor's saved inference or `public_unknown`.
 Public route evidence is reduced to route count plus active/disrupted product
 names. Raw route rows, facility identity, hidden owner, capacity resources,
 rent recipients, and topology fingerprints do not enter candidate scoring.
-The existing public anonymous warehouse count/unit/product clues remain
-available, so this privacy correction does not erase legitimate table evidence.
+Per-city warehouse fields are actor-private. Removing their former rival-city
+contribution is the explicit `PRIVACY_CORRECTION` in this follow-up.
 
 The futures characterization now starts through
 `ProductionSessionStartDriver` and the formal session-start transaction. It no
@@ -91,7 +94,7 @@ and played, but they are not legal RegionSupply acquisition cards.
 Each command binds:
 
 - stable command ID and SHA-256 payload fingerprint;
-- opaque AI capability;
+- an opaque capability issued only for the command's AI actor;
 - AI actor index;
 - stable region ID;
 - suspected player index, confidence, and reason allowlists;
@@ -105,24 +108,27 @@ produce zero mutation.
 
 The journal is scoped to the existing `GameSessionRuntimeController` session
 identity. It is cleared when the session changes, the WorldSession emits a
-restore/reset boundary, or the opaque capability is rebound. A restored world
-therefore cannot receive an old success receipt without the mutation being
-applied to the current owner state.
+restore/reset boundary, or actor capabilities are rebound. A token issued for
+AI A cannot query or command AI B, and a restored world cannot receive an old
+success receipt without the mutation being applied to the current owner state.
 
 ## Behavior Parity
 
 - Six personality resources and candidate selection remain unchanged.
 - Query and command code draw no RNG, so RNG order is unchanged.
-- City candidate iteration and score comparison retain their prior order.
+- City candidate iteration and score comparison retain their algorithms.
 - Warehouse scoring values `34`, `8`, and `10` moved from Main constants to the
-  existing AI policy Resource without changing values.
-- The focused fixture freezes the representative city priority score at `84`.
+  existing AI policy Resource without changing values; they now consume only
+  the actor's own warehouse facts.
+- The representative rival-city priority changes from `84` to `54` solely
+  because the forbidden warehouse input is absent. This is a
+  `PRIVACY_CORRECTION`, not a balance change.
 - Guess, confidence, and reason continue to cold-roundtrip through the existing
   `WorldSessionState` session-envelope payload.
 
 ## Evidence
 
-- Focused SceneTree test: 52/52.
+- Focused SceneTree test: 57/57.
 - Commodity futures production fixture: 39/39.
 - Market/route public query ports: 15/15.
 - Card phase/counter owner regression: 22/22.
@@ -134,16 +140,17 @@ applied to the current owner state.
 - `ai_business_cost_architecture_gate_test.gd`: pass.
 - `git diff --check`: pass.
 
-Main moved from 6481 physical / 5456 nonblank / 473 methods / 58 constants to
-6461 / 5436 / 473 / 47. External caller files remain 103, so this task adds no
-caller. The repository's older absolute budget threshold remains 102 and is
-reported as inherited debt rather than a green absolute gate.
+The original cutover moved Main from 6481 physical / 5456 nonblank / 473
+methods / 58 constants to 6461 / 5436 / 473 / 47. At this privacy follow-up,
+Main is 6373 physical / 5356 nonblank / 468 methods / 47 constants, with 102
+external caller files and no new caller.
 
 ## Remaining P0 Scope
 
 This atomic cutover does not satisfy the parent hard gate. Whole-player and
-whole-district collection access are both zero, but the controller still has 42
-`_call_world` and 34 `_call_monster` occurrences for other domains. The generic
+whole-district collection access are both zero, but the controller still has 15
+`_call_world` call sites and 33 `_call_monster` call sites for other domains.
+The generic
 bridge and human `TableSelectionState` coupling therefore remain active parent
 work. The next atomic boundary is card query/target submission and selection
 retirement, followed by monster, military, weather, victory, and presentation

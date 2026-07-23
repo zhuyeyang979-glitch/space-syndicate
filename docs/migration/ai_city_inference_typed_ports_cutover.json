@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "status": "production_cutover_validated_delivery_pending",
   "parent_task": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
   "parent_task_status": "ACTIVE",
@@ -25,6 +25,8 @@
     "rival_private_cash_exposed": false,
     "rival_private_hand_exposed": false,
     "private_warehouse_owner_exposed": false,
+    "rival_warehouse_fields_exposed": false,
+    "public_warehouse_fields_exposed": false,
     "public_clue_allowlist": ["text", "time", "cycle", "kind", "products"],
     "arbitrary_pure_data_clue_keys_exposed": false,
     "whole_player_collection_access": false,
@@ -32,7 +34,7 @@
     "actor_scoped_city_owner_semantics": ["actor_own", "actor_guess", "authorized_reveal", "public_unknown"],
     "public_route_fields": ["trade_route_count", "active_trade_route_products", "disrupted_trade_route_products"],
     "raw_trade_routes_exposed": false,
-    "public_anonymous_warehouse_fields": [
+    "actor_own_warehouse_fields": [
       "warehouse_stockpile_count",
       "warehouse_stockpile_units",
       "warehouse_stockpile_products"
@@ -54,6 +56,11 @@
     "journal_session_scoped": true,
     "world_restore_clears_journal": true,
     "capability_rebind_clears_journal": true,
+    "actor_scoped_capability_map": true,
+    "cross_actor_capability_rejected": true,
+    "roster_replacement_reissues_capabilities": true,
+    "world_restore_reissues_capabilities": true,
+    "session_identity_reissues_capabilities": true,
     "session_identity_change_clears_journal": true,
     "non_running_session_rejected": true,
     "eliminated_actor_rejected": true,
@@ -69,9 +76,12 @@
   "behavior_parity": {
     "personality_count": 6,
     "rng_order_changed": false,
-    "candidate_order_changed": false,
-    "scoring_changed": false,
-    "frozen_priority_score": 84,
+    "candidate_order_changed": true,
+    "scoring_changed": true,
+    "candidate_order_difference_class": "PRIVACY_CORRECTION",
+    "privacy_correction": "rival warehouse inputs removed",
+    "frozen_priority_score_before": 84,
+    "frozen_priority_score_after": 54,
     "warehouse_pressure_weights": [34, 8, 10]
   },
   "persistence": {
@@ -101,8 +111,18 @@
     "external_caller_files": 103,
     "absolute_budget_gate": "INHERITED_CALLER_THRESHOLD_103_GT_102"
   },
+  "main_budget_current": {
+    "physical_lines": 6373,
+    "nonblank_lines": 5356,
+    "methods": 468,
+    "constants": 47,
+    "top_level_variables": 46,
+    "top_level_preloads": 7,
+    "external_caller_files": 102,
+    "passed": true
+  },
   "evidence": {
-    "focused_checks": 52,
+    "focused_checks": 57,
     "focused_result": "PASS",
     "commodity_futures_checks": 39,
     "commodity_futures_result": "PASS",
@@ -121,8 +141,8 @@
     "git_diff_check": "PASS"
   },
   "remaining_parent_counts": {
-    "ai_controller_call_world_references": 42,
-    "ai_controller_call_monster_references": 34,
+    "ai_controller_call_world_calls": 15,
+    "ai_controller_call_monster_calls": 33,
     "ai_whole_players_access": 0,
     "ai_whole_districts_access": 0,
     "parent_gate_complete": false

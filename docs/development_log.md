@@ -8927,3 +8927,20 @@ deleted. Evidence and the remaining action inventory are recorded in
   architecture/composition, and session-envelope 93/93 pass. The legacy
   eligibility scene remains 41/44 with the exact inherited three stale cases.
   Parent P0 and full-run resume remain incomplete.
+
+## 2026-07-23 - AI region capability and warehouse privacy correction
+
+- Replaced the shared RegionKnowledge/CityInference token with one opaque token
+  per current AI seat. Cross-actor, forged, human, old-roster, old-session, and
+  pre-restore capabilities now fail closed.
+- GameSession identity, World restore, and roster replacement reissue the
+  actor-indexed capability map and clear the existing session-scoped city
+  command journal.
+- Removed rival and public per-city warehouse count, unit, and product fields
+  from the AI region projection. Own-city warehouse facts remain available.
+- Kept all six personalities and warehouse weights unchanged. The focused
+  rival-city priority moves from 84 to 54 solely because forbidden warehouse
+  input is gone, recorded as `PRIVACY_CORRECTION`.
+- Focused 57/57 and actor-state, eligibility, Setup, cold-restore, Main
+  composition, and Main architecture gates pass. No state owner or save section
+  was added; parent P0 remains active.

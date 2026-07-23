@@ -4,21 +4,47 @@ class_name AiRegionKnowledgeQueryPort
 
 @export var world_session_state_path: NodePath
 @export var commodity_flow_runtime_controller_path: NodePath
+@export var game_session_runtime_controller_path: NodePath
 
-var _capability: AiRegionKnowledgeCapability
+var _capabilities_by_actor: Dictionary = {}
+var _capability_binding_initialized := false
+var _bound_actor_roster_revision := ""
 var _capability_revision := 0
 var _public_query_count := 0
 var _private_query_count := 0
 var _rejected_query_count := 0
 
 
-func bind_ai_capability(capability: AiRegionKnowledgeCapability) -> void:
-	_capability = capability
+func bind_ai_capabilities(capabilities_by_actor: Dictionary) -> bool:
+	var expected_actor_indices := _ai_player_indices()
+	if capabilities_by_actor.size() != expected_actor_indices.size():
+		return _reject_capability_binding()
+	var normalized: Dictionary = {}
+	var seen_tokens: Dictionary = {}
+	for actor_index_variant in expected_actor_indices:
+		var actor_index := int(actor_index_variant)
+		var capability_variant: Variant = capabilities_by_actor.get(actor_index)
+		if not (capability_variant is AiRegionKnowledgeCapability):
+			return _reject_capability_binding()
+		var token_id := (capability_variant as AiRegionKnowledgeCapability).get_instance_id()
+		if seen_tokens.has(token_id):
+			return _reject_capability_binding()
+		seen_tokens[token_id] = true
+		normalized[actor_index] = capability_variant
+	_capabilities_by_actor = normalized
+	_capability_binding_initialized = true
+	_bound_actor_roster_revision = _actor_roster_revision()
 	_capability_revision += 1
+	return true
 
 
 func is_ready() -> bool:
-	return _world() != null and _commodity_flow() != null and _capability != null
+	return (
+		_world() != null
+		and _commodity_flow() != null
+		and _game_session() != null
+		and _capability_binding_initialized
+	)
 
 
 func region_count() -> int:
@@ -104,11 +130,15 @@ func debug_snapshot() -> Dictionary:
 	return {
 		"port_ready": is_ready(),
 		"capability_revision": _capability_revision,
+		"actor_scoped_capability_count": _capabilities_by_actor.size(),
+		"actor_scoped_capabilities": true,
+		"session_scoped_capabilities": true,
 		"public_query_count": _public_query_count,
 		"private_query_count": _private_query_count,
 		"rejected_query_count": _rejected_query_count,
 		"hidden_owner_truth_exposed": false,
 		"rival_private_economy_exposed": false,
+		"rival_warehouse_exposed": false,
 		"future_supply_bag_exposed": false,
 		"mutable_world_collection_exposed": false,
 		"references_main": false,
@@ -158,8 +188,6 @@ func _project_city(
 		"competition_matches": _int_scalar(source.get("competition_matches", 0)),
 		"trade_disrupted_routes": _int_scalar(source.get("trade_disrupted_routes", 0)),
 		"trade_route_damage": _int_scalar(source.get("trade_route_damage", 0)),
-		"warehouse_stockpile_count": maxi(0, _int_scalar(source.get("warehouse_stockpile_count", 0))),
-		"warehouse_stockpile_units": maxi(0, _int_scalar(source.get("warehouse_stockpile_units", 0))),
 	}
 	result["product_names"] = _product_names(source.get("products", []))
 	result["demand_names"] = _string_values(source.get("demands", []))
@@ -169,7 +197,6 @@ func _project_city(
 	result["trade_route_count"] = int(route_summary.get("count", 0))
 	result["active_trade_route_products"] = (route_summary.get("active_products", []) as Array).duplicate()
 	result["disrupted_trade_route_products"] = (route_summary.get("disrupted_products", []) as Array).duplicate()
-	result["warehouse_stockpile_products"] = _string_values(source.get("warehouse_stockpile_products", []))
 	result["public_clues"] = _normalized_public_clues(source.get("public_clues", []))
 	result["last_public_clue"] = str(_normalize_public_clue(source.get("last_public_clue", "")).get("text", ""))
 	result["present"] = true
@@ -180,6 +207,17 @@ func _project_city(
 		if actual_owner == actor_index:
 			result["owner"] = actor_index
 			result["owner_knowledge"] = "actor_own"
+			result["warehouse_stockpile_count"] = maxi(
+				0,
+				_int_scalar(source.get("warehouse_stockpile_count", 0))
+			)
+			result["warehouse_stockpile_units"] = maxi(
+				0,
+				_int_scalar(source.get("warehouse_stockpile_units", 0))
+			)
+			result["warehouse_stockpile_products"] = _string_values(
+				source.get("warehouse_stockpile_products", [])
+			)
 		elif guesses.has(district_index):
 			var inference := guesses[district_index] as Dictionary
 			result["owner"] = int(inference.get("suspected_player_index", -1))
@@ -371,14 +409,76 @@ func _inference_by_district(projection: Dictionary) -> Dictionary:
 
 
 func _authorized(capability: AiRegionKnowledgeCapability, actor_index: int) -> bool:
-	return capability != null \
-		and capability == _capability \
-		and _world() != null \
-		and actor_index >= 0 \
-		and actor_index < _world().players.size() \
-		and _world().players[actor_index] is Dictionary \
-		and (bool((_world().players[actor_index] as Dictionary).get("is_ai", false)) \
-			or str((_world().players[actor_index] as Dictionary).get("seat_type", "human")) == "ai")
+	return (
+		capability != null
+		and is_ready()
+		and _bound_actor_roster_revision == _actor_roster_revision()
+		and _capabilities_by_actor.get(actor_index) == capability
+		and actor_index >= 0
+		and actor_index < _world().players.size()
+		and _world().players[actor_index] is Dictionary
+		and (
+			bool((_world().players[actor_index] as Dictionary).get("is_ai", false))
+			or str((_world().players[actor_index] as Dictionary).get("seat_type", "human")) == "ai"
+		)
+	)
+
+
+func _ai_player_indices() -> Array:
+	var result: Array = []
+	if _world() == null:
+		return result
+	for actor_index in range(_world().players.size()):
+		if (
+			_world().players[actor_index] is Dictionary
+			and (
+				bool((_world().players[actor_index] as Dictionary).get("is_ai", false))
+				or str((_world().players[actor_index] as Dictionary).get("seat_type", "human")) == "ai"
+			)
+		):
+			result.append(actor_index)
+	return result
+
+
+func _actor_roster_revision() -> String:
+	var roster_identity: Array = []
+	if _world() != null:
+		for actor_index_variant in _ai_player_indices():
+			var actor_index := int(actor_index_variant)
+			var actor := _world().players[actor_index] as Dictionary
+			roster_identity.append([
+				actor_index,
+				str(actor.get("actor_id", actor.get("id", actor_index))),
+				str(actor.get("id", actor_index)),
+				str(actor.get("name", "")),
+				str(actor.get("seat_type", "ai")),
+				bool(actor.get("eliminated", false)),
+			])
+	return JSON.stringify([
+		"ai_region_knowledge_actor_roster_v2",
+		_session_identity_revision(),
+		roster_identity,
+	]).sha256_text()
+
+
+func _session_identity_revision() -> String:
+	var summary := _game_session().session_summary() if _game_session() != null else {}
+	return JSON.stringify([
+		"ai_region_knowledge_session_identity_v2",
+		str(summary.get("ruleset_id", "")),
+		str(summary.get("session_id", "")),
+		str(summary.get("scenario_id", "")),
+		int(summary.get("seed", 0)),
+		summary.get("setup", {}),
+	]).sha256_text()
+
+
+func _reject_capability_binding() -> bool:
+	_capabilities_by_actor.clear()
+	_capability_binding_initialized = false
+	_bound_actor_roster_revision = ""
+	_capability_revision += 1
+	return false
 
 
 func _copy(value: Variant) -> Variant:
@@ -395,3 +495,9 @@ func _world() -> WorldSessionState:
 
 func _commodity_flow() -> CommodityFlowRuntimeController:
 	return get_node_or_null(commodity_flow_runtime_controller_path) as CommodityFlowRuntimeController
+
+
+func _game_session() -> GameSessionRuntimeController:
+	return get_node_or_null(
+		game_session_runtime_controller_path
+	) as GameSessionRuntimeController

@@ -35,7 +35,9 @@ func _run() -> void:
 		"warehouse_stockpile_unit_pressure": 8,
 		"warehouse_stockpile_product_pressure": 10,
 	}, "AI policy Resource preserves the three migrated warehouse-pressure weights")
-	var capability := ai.get("_ai_region_knowledge_capability") as AiRegionKnowledgeCapability
+	var capability: AiRegionKnowledgeCapability
+	var capability_b: AiRegionKnowledgeCapability
+	var capability_c: AiRegionKnowledgeCapability
 	game_session.configure({"ruleset_id": "v0.6"}, {})
 	var started_session := game_session.begin_session({"session_id": "ai-city-inference-session-a", "scenario_id": "focused", "seed": 17, "player_count": 4})
 	_expect(str(started_session.get("session_state", "")) == GameSessionRuntimeController.STATE_RUNNING, "focused fixture starts through the existing GameSession authority")
@@ -60,13 +62,56 @@ func _run() -> void:
 		],
 		"game_time": 15.0,
 	}, true)
+	var capabilities := ai.get("_ai_region_knowledge_capabilities") as Dictionary
+	capability = capabilities.get(1) as AiRegionKnowledgeCapability
+	capability_b = capabilities.get(2) as AiRegionKnowledgeCapability
+	capability_c = capabilities.get(3) as AiRegionKnowledgeCapability
+	_expect(
+		capability != null
+			and capability_b != null
+			and capability_c != null
+			and capability != capability_b
+			and capability != capability_c
+			and capability_b != capability_c,
+		"composition issues one distinct region capability per AI seat"
+	)
 	var roster := world.players.duplicate(true)
+	var capability_before_elimination := capability
 	(roster[3] as Dictionary)["eliminated"] = true
 	world.replace_players(roster, true)
-	var eliminated_command := command_port.submit_guess(capability, "test:ai-city-inference:eliminated", 3, "region.002", 1, 2, "intuition", world.city_inference_owner_revision(3))
-	_expect(not ai._typed_ai_player_indices().has(3) and not bool(eliminated_command.get("applied", true)), "typed AI enumeration and command authorization both exclude eliminated seats")
+	capabilities = ai.get("_ai_region_knowledge_capabilities") as Dictionary
+	capability = capabilities.get(1) as AiRegionKnowledgeCapability
+	capability_b = capabilities.get(2) as AiRegionKnowledgeCapability
+	capability_c = capabilities.get(3) as AiRegionKnowledgeCapability
+	var eliminated_command := command_port.submit_guess(capability_c, "test:ai-city-inference:eliminated", 3, "region.002", 1, 2, "intuition", world.city_inference_owner_revision(3))
+	_expect(
+		not ai._typed_ai_player_indices().has(3)
+			and not bool(eliminated_command.get("applied", true))
+			and region_port.actor_intelligence_snapshot(
+				capability_before_elimination,
+				1
+			).is_empty()
+			and not region_port.actor_intelligence_snapshot(
+				capability,
+				1
+			).is_empty(),
+		"roster replacement reissues actor-scoped tokens and excludes eliminated commands"
+	)
+	var capability_before_reactivation := capability
 	(roster[3] as Dictionary)["eliminated"] = false
 	world.replace_players(roster, true)
+	capabilities = ai.get("_ai_region_knowledge_capabilities") as Dictionary
+	capability = capabilities.get(1) as AiRegionKnowledgeCapability
+	capability_b = capabilities.get(2) as AiRegionKnowledgeCapability
+	capability_c = capabilities.get(3) as AiRegionKnowledgeCapability
+	_expect(
+		capability != capability_before_reactivation
+			and region_port.actor_intelligence_snapshot(
+				capability_before_reactivation,
+				1
+			).is_empty(),
+		"same roster with a changed seat lifecycle revokes prior region tokens"
+	)
 	var seeded := world.set_city_owner_guess(1, "region.001", 2, 2, "card", world.city_inference_owner_revision(1))
 	_expect(bool(seeded.get("applied", false)), "fixture seeds AI-A private inference through WorldSessionState")
 	game_session.pause_session()
@@ -78,13 +123,43 @@ func _run() -> void:
 	var players_before := world.players.duplicate(true)
 	var mutation_before := int(world.debug_snapshot().get("city_inference_mutation_count", -1))
 	var snapshot_a := region_port.actor_intelligence_snapshot(capability, 1)
-	var snapshot_b := region_port.actor_intelligence_snapshot(capability, 2)
+	var snapshot_b := region_port.actor_intelligence_snapshot(capability_b, 2)
 	var actor_a_own_city := (_region(snapshot_a, "region.000").get("city", {}) as Dictionary)
 	var actor_a_rival_city := (_region(snapshot_a, "region.001").get("city", {}) as Dictionary)
-	_expect(actor_a_own_city.has("warehouse_stockpile_units") and int(actor_a_rival_city.get("warehouse_stockpile_units", -1)) == 2 and actor_a_rival_city.has("warehouse_stockpile_products") and int(actor_a_rival_city.get("owner", -1)) != 3, "region projection preserves anonymous public warehouse clues without hidden owner truth")
+	var actor_b_own_city := (_region(snapshot_b, "region.002").get("city", {}) as Dictionary)
+	var public_rival_city := (region_port.public_region(1).get("city", {}) as Dictionary)
+	_expect(
+		actor_a_own_city.has("warehouse_stockpile_count")
+			and actor_a_own_city.has("warehouse_stockpile_units")
+			and actor_a_own_city.has("warehouse_stockpile_products")
+			and actor_b_own_city.has("warehouse_stockpile_count")
+			and not actor_a_rival_city.has("warehouse_stockpile_count")
+			and not actor_a_rival_city.has("warehouse_stockpile_units")
+			and not actor_a_rival_city.has("warehouse_stockpile_products")
+			and not public_rival_city.has("warehouse_stockpile_count")
+			and not public_rival_city.has("warehouse_stockpile_units")
+			and not public_rival_city.has("warehouse_stockpile_products"),
+		"region projection exposes warehouse facts only to the owning AI actor"
+	)
 	_expect(int(actor_a_own_city.get("trade_route_count", 0)) == 1 and (actor_a_own_city.get("active_trade_route_products", []) as Array).has("生命") and (actor_a_rival_city.get("disrupted_trade_route_products", []) as Array).has("能源"), "region projection exposes only public route count, product, and disruption summaries")
 	_expect(not snapshot_a.is_empty() and str(snapshot_a.get("visibility_scope", "")) == "actor_private", "authorized AI receives an actor-private region snapshot")
 	_expect(snapshot_b.get("regions", []) is Array and not (snapshot_b.get("regions", []) as Array).is_empty(), "second AI receives its own detached region snapshot")
+	var cross_actor_snapshot := region_port.actor_intelligence_snapshot(capability, 2)
+	var cross_actor_command := command_port.submit_guess(
+		capability,
+		"test:ai-city-inference:cross-actor",
+		2,
+		"region.001",
+		1,
+		2,
+		"intuition",
+		world.city_inference_owner_revision(2)
+	)
+	_expect(
+		cross_actor_snapshot.is_empty()
+			and not bool(cross_actor_command.get("applied", true)),
+		"AI-A capability cannot query or mutate AI-B private inference"
+	)
 	_expect(world.players == players_before and int(world.debug_snapshot().get("city_inference_mutation_count", -1)) == mutation_before, "typed queries perform zero world mutation")
 	_expect(rng == null or rng.capture_plan_checkpoint() == rng_before, "typed queries consume zero RNG")
 
@@ -107,7 +182,11 @@ func _run() -> void:
 	var entry := _entry(entries, 1)
 	_expect(not entry.is_empty() and str(entry.get("name", "")) == "环城港", "AI city inference consumes the typed region projection")
 	_expect(int(entry.get("guess", -1)) == 2 and int(entry.get("confidence", 0)) == 2 and str(entry.get("latest_clue", "")).contains("能源"), "typed query preserves guess, confidence, and public clue semantics")
-	_expect(int(entry.get("priority", -1)) == 84, "typed query preserves the public anonymous warehouse-pressure score")
+	_expect(
+		int(entry.get("priority", -1)) == 54
+			and int(entry.get("warehouse_pressure", -1)) == 0,
+		"PRIVACY_CORRECTION removes rival warehouse pressure without changing public clues"
+	)
 	_expect(_entry(entries, 3).is_empty(), "typed city inference excludes destroyed regions even when a stale city active flag remains true")
 
 	var owner_revision := str(snapshot_a.get("owner_revision", ""))
@@ -128,22 +207,61 @@ func _run() -> void:
 	_expect(not bool(stale.get("applied", true)) and str(stale.get("reason_code", "")) == "owner_revision_stale", "stale owner revision fails closed")
 	_expect(not bool(forged.get("applied", true)) and not bool(human.get("applied", true)), "forged capability and human actor are rejected")
 	_expect(int(world.debug_snapshot().get("city_inference_mutation_count", 0)) == command_mutations_before + 1, "all rejected commands preserve authoritative state")
+	var capability_before_restore := capability
 	var rewind := world.apply_save_data(pre_command_save)
+	capabilities = ai.get("_ai_region_knowledge_capabilities") as Dictionary
+	capability = capabilities.get(1) as AiRegionKnowledgeCapability
+	capability_b = capabilities.get(2) as AiRegionKnowledgeCapability
+	capability_c = capabilities.get(3) as AiRegionKnowledgeCapability
+	var stale_restore_command := command_port.submit_guess(capability_before_restore, "test:ai-city-inference:stale-restore-capability", 1, "region.001", 3, 3, "product", owner_revision)
 	var same_id_after_restore := command_port.submit_guess(capability, command_id, 1, "region.001", 3, 3, "product", owner_revision)
-	_expect(bool(rewind.get("applied", false)) and bool(same_id_after_restore.get("applied", false)) and bool(same_id_after_restore.get("changed", false)) and not bool(same_id_after_restore.get("idempotent_replay", true)), "WorldSession restore clears the command journal before a same-ID mutation is replayed against restored state")
+	_expect(
+		bool(rewind.get("applied", false))
+			and capability != capability_before_restore
+			and not bool(stale_restore_command.get("applied", true))
+			and bool(same_id_after_restore.get("applied", false))
+			and bool(same_id_after_restore.get("changed", false))
+			and not bool(same_id_after_restore.get("idempotent_replay", true)),
+		"WorldSession restore revokes old tokens and clears the exact-once journal"
+	)
 	_expect(int((_region(region_port.actor_intelligence_snapshot(capability, 1), "region.001").get("city", {}) as Dictionary).get("owner", -1)) == 3, "post-restore same-ID command mutates the current WorldSession instead of returning a stale receipt")
 	var reverted_for_session := world.set_city_owner_guess(1, "region.001", 2, 2, "card", world.city_inference_owner_revision(1))
+	var capability_before_session := capability
 	var next_session := game_session.begin_session({"session_id": "ai-city-inference-session-b", "scenario_id": "focused", "seed": 18, "player_count": 4})
+	capabilities = ai.get("_ai_region_knowledge_capabilities") as Dictionary
+	capability = capabilities.get(1) as AiRegionKnowledgeCapability
+	capability_b = capabilities.get(2) as AiRegionKnowledgeCapability
+	capability_c = capabilities.get(3) as AiRegionKnowledgeCapability
+	var stale_session_command := command_port.submit_guess(capability_before_session, "test:ai-city-inference:stale-session-capability", 1, "region.001", 3, 3, "product", world.city_inference_owner_revision(1))
 	var same_id_after_session := command_port.submit_guess(capability, command_id, 1, "region.001", 3, 3, "product", world.city_inference_owner_revision(1))
-	_expect(bool(reverted_for_session.get("applied", false)) and str(next_session.get("session_state", "")) == GameSessionRuntimeController.STATE_RUNNING and bool(same_id_after_session.get("changed", false)) and not bool(same_id_after_session.get("idempotent_replay", true)), "new GameSession identity clears the journal before the same command ID reaches current owner state")
+	_expect(
+		bool(reverted_for_session.get("applied", false))
+			and str(next_session.get("session_state", "")) == GameSessionRuntimeController.STATE_RUNNING
+			and capability != capability_before_session
+			and not bool(stale_session_command.get("applied", true))
+			and bool(same_id_after_session.get("changed", false))
+			and not bool(same_id_after_session.get("idempotent_replay", true)),
+		"new GameSession identity revokes old tokens and clears the command journal"
+	)
 	var reverted_for_capability := world.set_city_owner_guess(1, "region.001", 2, 2, "card", world.city_inference_owner_revision(1))
-	var replacement_capability := AiRegionKnowledgeCapability.new()
-	command_port.bind_ai_capability(replacement_capability)
-	var same_id_after_capability := command_port.submit_guess(replacement_capability, command_id, 1, "region.001", 3, 3, "product", world.city_inference_owner_revision(1))
-	command_port.bind_ai_capability(capability)
-	_expect(bool(reverted_for_capability.get("applied", false)) and bool(same_id_after_capability.get("changed", false)) and not bool(same_id_after_capability.get("idempotent_replay", true)), "capability replacement clears the journal before the same command ID reaches current owner state")
+	var capability_before_roster_refresh := capability
+	world.replace_players(world.players.duplicate(true), true)
+	capabilities = ai.get("_ai_region_knowledge_capabilities") as Dictionary
+	capability = capabilities.get(1) as AiRegionKnowledgeCapability
+	capability_b = capabilities.get(2) as AiRegionKnowledgeCapability
+	capability_c = capabilities.get(3) as AiRegionKnowledgeCapability
+	var stale_roster_command := command_port.submit_guess(capability_before_roster_refresh, "test:ai-city-inference:stale-roster-capability", 1, "region.001", 3, 3, "product", world.city_inference_owner_revision(1))
+	var same_id_after_capability := command_port.submit_guess(capability, command_id, 1, "region.001", 3, 3, "product", world.city_inference_owner_revision(1))
+	_expect(
+		bool(reverted_for_capability.get("applied", false))
+			and capability != capability_before_roster_refresh
+			and not bool(stale_roster_command.get("applied", true))
+			and bool(same_id_after_capability.get("changed", false))
+			and not bool(same_id_after_capability.get("idempotent_replay", true)),
+		"same-roster capability refresh revokes old tokens and clears the journal"
+	)
 
-	var snapshot_b_after := region_port.actor_intelligence_snapshot(capability, 2)
+	var snapshot_b_after := region_port.actor_intelligence_snapshot(capability_b, 2)
 	_expect(int((_region(snapshot_b_after, "region.001").get("city", {}) as Dictionary).get("owner", -1)) == -1, "AI-A command remains invisible to AI-B")
 	var saved := world.to_save_data()
 	var restored := WorldSessionState.new()
@@ -242,11 +360,24 @@ func _run_source_negative_gates() -> void:
 	var main_source := FileAccess.get_file_as_string("res://scripts/%s.%s" % ["main", "gd"])
 	var bridge_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_runtime_world_bridge.gd")
 	var controller_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_runtime_controller.gd")
+	var region_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_region_knowledge_query_port.gd")
+	var command_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_city_inference_command_port.gd")
 	var coordinator_scene := FileAccess.get_file_as_string("res://scenes/runtime/GameRuntimeCoordinator.tscn")
 	var registry_scene := FileAccess.get_file_as_string("res://scenes/runtime/V06SaveOwnerRegistry.tscn")
 	_expect(not main_source.contains("CITY_GUESS_CONFIDENCE_") and not main_source.contains("CITY_GUESS_REASON_"), "Main no longer owns AI city inference constants")
 	_expect(not bridge_source.contains("apply_city_owner_guess"), "generic AI world bridge no longer mutates city inference")
 	_expect(not controller_source.contains("_world_constant(&\"CITY_GUESS_"), "AI city inference no longer reads Main constant snapshots")
+	_expect(
+		not controller_source.contains("_ai_region_knowledge_capability:")
+			and not region_source.contains("func bind_ai_capability(")
+			and not command_source.contains("func bind_ai_capability("),
+		"region query and city command have no shared all-actor capability"
+	)
+	_expect(
+		region_source.contains("rival_warehouse_exposed\": false")
+			and region_source.contains("actual_owner == actor_index"),
+		"region projection permanently guards rival warehouse privacy"
+	)
 	var whole_districts_pattern := RegEx.new()
 	whole_districts_pattern.compile("(^|[^A-Za-z0-9_])districts\\s*(\\[|\\.size\\()")
 	_expect(not controller_source.contains("\nvar districts:") and not controller_source.contains("_world_value(&\"districts\"") and whole_districts_pattern.search(controller_source) == null, "AI controller has no whole-district collection read or write")

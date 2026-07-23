@@ -44,7 +44,8 @@ var _ai_actor_state_port: AiActorStatePort
 var _ai_actor_state_capabilities: Dictionary = {}
 var _ai_actor_state_capability_binding_initialized := false
 var _ai_region_knowledge_query_port: AiRegionKnowledgeQueryPort
-var _ai_region_knowledge_capability: AiRegionKnowledgeCapability
+var _ai_region_knowledge_capabilities: Dictionary = {}
+var _ai_region_knowledge_capability_binding_initialized := false
 var _ai_city_inference_command_port: AiCityInferenceCommandPort
 var _monster_runtime_controller: MonsterRuntimeController
 var _military_runtime_controller: MilitaryRuntimeController
@@ -85,15 +86,20 @@ func set_world_typed_ports(
 	actor_state_port: AiActorStatePort,
 	actor_state_capabilities: Dictionary,
 	region_knowledge_query_port: AiRegionKnowledgeQueryPort,
-	region_knowledge_capability: AiRegionKnowledgeCapability,
+	region_knowledge_capabilities: Dictionary,
 	city_inference_command_port: AiCityInferenceCommandPort
 ) -> void:
 	_ai_session_public_query_port = session_public_query_port
 	_ai_actor_state_port = actor_state_port
 	set_actor_state_capabilities(actor_state_capabilities)
 	_ai_region_knowledge_query_port = region_knowledge_query_port
-	_ai_region_knowledge_capability = region_knowledge_capability
+	set_region_knowledge_capabilities(region_knowledge_capabilities)
 	_ai_city_inference_command_port = city_inference_command_port
+
+
+func set_region_knowledge_capabilities(capabilities_by_actor: Dictionary) -> void:
+	_ai_region_knowledge_capabilities = capabilities_by_actor.duplicate()
+	_ai_region_knowledge_capability_binding_initialized = true
 
 
 func set_actor_state_capabilities(actor_state_capabilities: Dictionary) -> void:
@@ -668,8 +674,9 @@ func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 		"actor_state_capabilities_are_actor_scoped": true,
 		"actor_state_uses_main": false,
 		"actor_state_uses_whole_players": false,
-		"typed_region_knowledge_bound": _ai_region_knowledge_query_port != null and _ai_region_knowledge_capability != null,
-		"typed_city_inference_command_bound": _ai_city_inference_command_port != null,
+		"typed_region_knowledge_bound": _ai_region_knowledge_query_port != null and _ai_region_knowledge_capability_binding_initialized and _ai_region_knowledge_query_port.is_ready(),
+		"region_knowledge_capabilities_are_actor_scoped": true,
+		"typed_city_inference_command_bound": _ai_city_inference_command_port != null and _ai_city_inference_command_port.is_ready(),
 		"city_inference_uses_main": false,
 		"private_plan_exposed": false,
 	}
@@ -786,7 +793,7 @@ func _city_inference_ports_ready() -> bool:
 	return _ai_actor_state_port != null \
 		and _ai_actor_state_capability_binding_initialized \
 		and _ai_region_knowledge_query_port != null \
-		and _ai_region_knowledge_capability != null \
+		and _ai_region_knowledge_capability_binding_initialized \
 		and _ai_city_inference_command_port != null \
 		and _ai_actor_state_port.is_ready() \
 		and _ai_region_knowledge_query_port.is_ready() \
@@ -803,7 +810,7 @@ func _city_inference_snapshot(actor_index: int) -> Dictionary:
 	if not _city_inference_ports_ready():
 		return {}
 	return _ai_region_knowledge_query_port.actor_intelligence_snapshot(
-		_ai_region_knowledge_capability,
+		_ai_region_knowledge_capabilities.get(actor_index) as AiRegionKnowledgeCapability,
 		actor_index
 	)
 
@@ -828,7 +835,7 @@ func _public_district(district_index: int) -> Dictionary:
 
 func _actor_district(actor_index: int, district_index: int) -> Dictionary:
 	return _ai_region_knowledge_query_port.region_for_actor(
-		_ai_region_knowledge_capability,
+		_ai_region_knowledge_capabilities.get(actor_index) as AiRegionKnowledgeCapability,
 		actor_index,
 		district_index
 	) if _city_inference_ports_ready() else {}
@@ -1609,7 +1616,7 @@ func _mark_city_guess_for_player(viewer_index: int, city_index: int, guessed_pla
 		owner_revision,
 	]).sha256_text()
 	var receipt := _ai_city_inference_command_port.submit_guess(
-		_ai_region_knowledge_capability,
+		_ai_region_knowledge_capabilities.get(viewer_index) as AiRegionKnowledgeCapability,
 		command_id,
 		viewer_index,
 		region_id,

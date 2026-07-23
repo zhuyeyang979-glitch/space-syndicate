@@ -55,12 +55,32 @@ func _run() -> void:
 	var coordinator_scene := FileAccess.get_file_as_string("res://scenes/runtime/GameRuntimeCoordinator.tscn")
 	var ai_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_runtime_controller.gd")
 	var ai_eligibility_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_card_eligibility_query_port.gd")
+	var ai_region_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_region_knowledge_query_port.gd")
+	var ai_city_inference_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_city_inference_command_port.gd")
 	_expect(
 		coordinator_scene.count("[node name=\"AiCardEligibilityQueryPort\"") == 1
 			and ai_eligibility_source.contains("class_name AiCardEligibilityQueryPort")
 			and not ai_eligibility_source.contains("TableSelectionState")
 			and not ai_eligibility_source.contains("to_save_data"),
 		"production composition owns one stateless actor-scoped AI card eligibility port"
+	)
+	_expect(
+		coordinator_scene.count("[node name=\"AiRegionKnowledgeQueryPort\"") == 1
+			and coordinator_scene.count("[node name=\"AiCityInferenceCommandPort\"") == 1
+			and ai_region_source.contains("func bind_ai_capabilities(")
+			and ai_city_inference_source.contains("func bind_ai_capabilities(")
+			and not ai_region_source.contains("func bind_ai_capability(")
+			and not ai_city_inference_source.contains("func bind_ai_capability(")
+			and ai_region_source.contains("_capabilities_by_actor.get(actor_index) == capability")
+			and ai_city_inference_source.contains("_capabilities_by_actor.get(actor_index) == capability")
+			and not ai_source.contains("var _ai_region_knowledge_capability:"),
+		"region knowledge and city inference use actor-scoped capability maps"
+	)
+	_expect(
+		ai_region_source.contains("\"rival_warehouse_exposed\": false")
+			and ai_region_source.contains("if actual_owner == actor_index:")
+			and not ai_region_source.contains("\"warehouse_stockpile_count\": maxi"),
+		"AI region projection keeps warehouse facts behind own-actor authorization"
 	)
 	for retired_ai_eligibility_route in [
 		"_call_world(&\"_best_player_gdp_share_district\"",

@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "boundary_id": "AI_REGION_KNOWLEDGE_ACTOR_SCOPE_PRIVACY_CORRECTION",
+  "base_sha": "12603aa0e46e4a4d31eab9dc837e0598c88b9c08",
+  "parent_p0_complete": false,
+  "full_run_resume_claim": false,
+  "foundation_ports_reused": true,
+  "duplicate_port_count": 0,
+  "capability_contract": {
+    "one_token_per_ai_seat": true,
+    "cross_actor_access": false,
+    "human_access": false,
+    "forged_access": false,
+    "stale_roster_access": false,
+    "stale_restore_access": false,
+    "stale_session_access": false,
+    "roster_reissue": true,
+    "restore_reissue": true,
+    "session_reissue": true
+  },
+  "warehouse_contract": {
+    "actor_own_fields": [
+      "warehouse_stockpile_count",
+      "warehouse_stockpile_units",
+      "warehouse_stockpile_products"
+    ],
+    "rival_field_count": 0,
+    "public_field_count": 0,
+    "rival_warehouse_leak_count": 0
+  },
+  "behavior": {
+    "policy_changed": false,
+    "personality_changed": false,
+    "rng_changed": false,
+    "warehouse_pressure_weights": [34, 8, 10],
+    "priority_before": 84,
+    "priority_after": 54,
+    "difference_class": "PRIVACY_CORRECTION"
+  },
+  "persistence": {
+    "new_save_section_count": 0,
+    "new_state_owner_count": 0,
+    "save_schema_changed": false
+  },
+  "evidence": {
+    "focused_checks": 57,
+    "focused_result": "PASS",
+    "associated_gates": "PASS",
+    "scripts_scanned": 206,
+    "script_error_count": 0
+  }
+}

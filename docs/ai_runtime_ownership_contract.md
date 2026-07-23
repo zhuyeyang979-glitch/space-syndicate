@@ -42,15 +42,18 @@ World legality and mutation remain with their existing owners. The controller as
 AI city ownership inference is the first production consumer migrated from the
 generic bridge to the foundation ports. `AiRegionKnowledgeQueryPort` returns
 detached actor-scoped public region facts plus only that actor's private city
-inference. `AiCityInferenceCommandPort` authorizes a stable, revision-bound,
-exact-once command before delegating the mutation to `WorldSessionState`.
+inference. The composition root issues one opaque capability per AI seat and
+reissues it after roster replacement, session change, or restore.
+`AiCityInferenceCommandPort` authorizes the same actor-bound capability plus a
+stable, revision-bound, exact-once command before delegating the mutation to
+`WorldSessionState`.
 
-The public region projection may include anonymous warehouse count, units, and
-product names because those are existing public city clues. It must exclude the
-warehouse owner, private bucket and source identifiers, transaction lineage,
-debt, liability, expiry, rival cash, rival hand, hidden city owner, and rival
-inference. A city owner appears only for the actor's own city, that actor's own
-guess, or a previously authorized reveal.
+The region projection exposes warehouse count, units, and product names only
+when the city belongs to the requesting actor. Public and rival city rows omit
+all warehouse fields, along with warehouse owner, bucket and source identifiers,
+transaction lineage, debt, liability, expiry, rival cash, rival hand, hidden
+city owner, and rival inference. A city owner appears only for the actor's own
+city, that actor's own guess, or a previously authorized reveal.
 
 The query and command ports consume no RNG and do not own save data. Guess,
 confidence, and reason remain in `WorldSessionState` and continue through the
@@ -116,10 +119,14 @@ own inference or an unknown sentinel.
 Public city route evidence is intentionally narrower than the Route owner's
 row: count and active/disrupted product names only. Raw route dictionaries and
 their facility, owner, rent, capacity-resource, and topology fields remain
-inside their owners. Anonymous warehouse count/unit/product clues remain public
-under the existing table-information rule. This is a documented
-`PRIVACY_CORRECTION`; it does not alter AI policy weights, personality data,
-candidate order, or RNG use.
+inside their owners. Per-city warehouse count, units, and products are
+actor-private and appear only for the owning AI seat. Market-level anonymous
+aggregates do not authorize access to a rival city's warehouse facts.
+
+Removing the previously exposed rival warehouse inputs is a documented
+`PRIVACY_CORRECTION`. Policy weights, personality data, and RNG use remain
+unchanged; only scores or ordering that previously depended on those forbidden
+inputs may differ.
 
 ## Actor-Private State Typed-Port Boundary
 
