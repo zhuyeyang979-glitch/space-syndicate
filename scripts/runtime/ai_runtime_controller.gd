@@ -26,6 +26,9 @@ const AI_PLAYER_SAVE_FIELDS := ["player_index", "ai_profile", "ai_memory"]
 
 var _world_bridge: Node
 var _ai_session_public_query_port: AiSessionPublicQueryPort
+var _ai_card_hand_query_port: AiCardHandQueryPort
+var _ai_card_hand_capabilities: Dictionary = {}
+var _ai_card_hand_capability_binding_initialized := false
 var _ai_actor_state_port: AiActorStatePort
 var _ai_actor_state_capabilities: Dictionary = {}
 var _ai_actor_state_capability_binding_initialized := false
@@ -87,9 +90,27 @@ func set_actor_state_capabilities(actor_state_capabilities: Dictionary) -> void:
 	_ai_actor_state_capability_binding_initialized = true
 
 
+func set_card_hand_query_port(
+	port: AiCardHandQueryPort,
+	capabilities_by_actor: Dictionary
+) -> void:
+	_ai_card_hand_query_port = port
+	_ai_card_hand_capabilities = capabilities_by_actor.duplicate()
+	_ai_card_hand_capability_binding_initialized = true
+
+
 func _session_public_snapshot() -> Dictionary:
 	return _ai_session_public_query_port.public_snapshot() \
 		if _ai_session_public_query_port != null and _ai_session_public_query_port.is_ready() else {}
+
+
+func _ai_card_hand_snapshot(player_index: int) -> Dictionary:
+	if _ai_card_hand_query_port == null or not _ai_card_hand_capability_binding_initialized:
+		return {}
+	return _ai_card_hand_query_port.private_hand_snapshot(
+		_ai_card_hand_capabilities.get(player_index) as AiCardHandCapability,
+		player_index
+	)
 
 
 func set_monster_runtime_controller(controller: MonsterRuntimeController) -> void:
@@ -487,6 +508,8 @@ func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 		"typed_business_cost_cash_bound": _ai_business_cost_cash_port != null and _ai_business_cost_capability != null,
 		"typed_session_public_query_bound": _ai_session_public_query_port != null and _ai_session_public_query_port.is_ready(),
 		"session_public_query_uses_main": false,
+		"typed_card_hand_query_bound": _ai_card_hand_query_port != null and _ai_card_hand_query_port.is_ready(),
+		"card_hand_query_uses_whole_players": false,
 		"typed_actor_state_bound": _ai_actor_state_port != null and _ai_actor_state_capability_binding_initialized and _ai_actor_state_port.is_ready(),
 		"actor_state_capabilities_are_actor_scoped": true,
 		"actor_state_uses_main": false,
@@ -5504,13 +5527,13 @@ func _ai_route_hand_inventory(player_index: int, route_id: String) -> Dictionary
 		"blocked_cash": 0,
 		"blocked_gap": 0,
 	}
-	if player_index < 0 or player_index >= players.size() or route_id == "":
+	var hand := _ai_card_hand_snapshot(player_index)
+	if hand.is_empty() or route_id == "":
 		return result
-	var player: Dictionary = players[player_index]
-	var slots_variant: Variant = player.get("slots", [])
+	var slots_variant: Variant = hand.get("slots", [])
 	if not (slots_variant is Array):
 		return result
-	var cash := int(player.get("cash", 0))
+	var cash := int((players[player_index] as Dictionary).get("cash", 0))
 	for slot_variant in (slots_variant as Array):
 		if not (slot_variant is Dictionary):
 			continue
@@ -7517,11 +7540,12 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 	return context
 func _ai_card_play_candidates(player_index: int) -> Array:
 	var result := []
-	if not _player_is_ai(player_index) or float((players[player_index] as Dictionary).get("action_cooldown", 0.0)) > 0.0:
+	var hand := _ai_card_hand_snapshot(player_index)
+	if hand.is_empty() or float(hand.get("action_cooldown", 0.0)) > 0.0:
 		return result
 	if _queued_card_entry_index_for_player(player_index) >= 0 or _next_batch_card_entry_index_for_player(player_index) >= 0:
 		return result
-	var slots: Array = (players[player_index] as Dictionary).get("slots", [])
+	var slots: Array = hand.get("slots", []) if hand.get("slots", []) is Array else []
 	for slot_index in range(slots.size()):
 		if not (slots[slot_index] is Dictionary):
 			continue
@@ -7534,10 +7558,11 @@ func _ai_card_play_candidates(player_index: int) -> Array:
 	return result
 func _ai_card_buy_candidates(player_index: int) -> Array:
 	var result := []
-	if not _player_is_ai(player_index) or float((players[player_index] as Dictionary).get("action_cooldown", 0.0)) > 0.0:
+	var hand := _ai_card_hand_snapshot(player_index)
+	if hand.is_empty() or float(hand.get("action_cooldown", 0.0)) > 0.0:
 		return result
-	var player: Dictionary = players[player_index]
-	var cash := int(player.get("cash", 0))
+	var player := {"slots": (hand.get("slots", []) as Array).duplicate(true)}
+	var cash := int((players[player_index] as Dictionary).get("cash", 0))
 	var profile := _ai_profile_for_player(player_index)
 	var focus_product := _ai_focus_product(player_index)
 	var strategy_intent := _ai_strategy_intent(player_index)
@@ -7944,11 +7969,12 @@ func _ai_counter_response_candidates(player_index: int) -> Array:
 	var result := []
 	if not _player_is_ai(player_index) or not card_resolution_counter_window_active or _card_resolution_active_entry().is_empty():
 		return result
-	if float((players[player_index] as Dictionary).get("action_cooldown", 0.0)) > 0.0:
+	var hand := _ai_card_hand_snapshot(player_index)
+	if hand.is_empty() or float(hand.get("action_cooldown", 0.0)) > 0.0:
 		return result
 	if _queued_card_entry_index_for_player(player_index) >= 0 or _next_batch_card_entry_index_for_player(player_index) >= 0:
 		return result
-	var slots: Array = (players[player_index] as Dictionary).get("slots", [])
+	var slots: Array = hand.get("slots", []) if hand.get("slots", []) is Array else []
 	for slot_index in range(slots.size()):
 		if not (slots[slot_index] is Dictionary):
 			continue
@@ -7961,9 +7987,10 @@ func _ai_counter_response_candidates(player_index: int) -> Array:
 	return result
 func _ai_queue_counter_response_candidate(player_index: int, candidate: Dictionary, all_candidates: Array = []) -> bool:
 	var slot_index := int(candidate.get("slot_index", -1))
-	if player_index < 0 or player_index >= players.size():
+	var hand := _ai_card_hand_snapshot(player_index)
+	if hand.is_empty():
 		return false
-	var slots: Array = (players[player_index] as Dictionary).get("slots", [])
+	var slots: Array = hand.get("slots", []) if hand.get("slots", []) is Array else []
 	if slot_index < 0 or slot_index >= slots.size() or not (slots[slot_index] is Dictionary):
 		return false
 	var source_skill: Dictionary = slots[slot_index]
@@ -8221,12 +8248,13 @@ func _update_ai_decisions(delta: float) -> void:
 		_auto_ai_intel_decisions(false)
 		ai_intel_decision_timer = AI_INTEL_DECISION_INTERVAL_SECONDS
 func _ai_discard_keep_value(player_index: int, slot_index: int) -> int:
-	if player_index < 0 or player_index >= players.size():
+	var hand := _ai_card_hand_snapshot(player_index)
+	if hand.is_empty():
 		return 99999
-	var player: Dictionary = players[player_index]
-	if slot_index < 0 or slot_index >= player.get("slots", []).size():
+	var slots: Array = hand.get("slots", []) if hand.get("slots", []) is Array else []
+	if slot_index < 0 or slot_index >= slots.size():
 		return 99999
-	var skill_variant = player["slots"][slot_index]
+	var skill_variant: Variant = slots[slot_index]
 	if not (skill_variant is Dictionary):
 		return 99999
 	var skill := skill_variant as Dictionary
@@ -8240,7 +8268,7 @@ func _ai_discard_keep_value(player_index: int, slot_index: int) -> int:
 		value += 140
 	return value
 func _ai_discard_slot_for_purchase(player_index: int, _incoming_card_name: String) -> int:
-	if player_index < 0 or player_index >= players.size():
+	if _ai_card_hand_snapshot(player_index).is_empty():
 		return -1
 	var slots := _discardable_hand_slots_for_purchase(player_index)
 	var best_slot := -1

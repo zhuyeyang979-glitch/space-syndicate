@@ -1,6 +1,6 @@
 extends SceneTree
 
-const MAIN_SCENE := preload("res://scenes/main.tscn")
+const SESSION_DRIVER := preload("res://tests/support/production_session_start_driver.gd")
 const QA_SAVE_PATH := "user://test_runs/ai_card_phase_counter_owner.save"
 const PRIVATE_HAND_SENTINEL := "J_PRIVATE_HUMAN_HAND_SENTINEL"
 const PRIVATE_DISCARD_SENTINEL := "J_PRIVATE_HUMAN_DISCARD_SENTINEL"
@@ -15,23 +15,31 @@ func _init() -> void:
 
 func _run() -> void:
 	_remove_qa_save()
-	var main := MAIN_SCENE.instantiate()
-	main.process_mode = Node.PROCESS_MODE_DISABLED
-	var save := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController/GameSaveRuntimeCoordinator")
-	_expect(save != null and bool(save.call("set_qa_default_save_path_override", QA_SAVE_PATH)), "fixture isolates the production save path")
-	root.add_child(main)
-	await _wait_frames(3)
-	_expect(main.has_method("_new_game"), "production Main exposes the current new-game entry before the owner fixture starts")
-	if not main.has_method("_new_game"):
-		main.queue_free()
+	var start: Dictionary = await SESSION_DRIVER.start_configured_session(
+		self,
+		{
+			"player_count": 3,
+			"ai_player_count": 2,
+			"challenge_depth": 1,
+			"role_indices": [0, 1, 2],
+			"starter_monster_indices": [0, 1, 2],
+		},
+		QA_SAVE_PATH,
+		"ai-card-phase-counter-owner"
+	)
+	var main := start.get("main_root") as Node
+	var coordinator := start.get("coordinator") as GameRuntimeCoordinator
+	_expect(bool(start.get("qa_save_override_ready", false)), "fixture isolates the production save path")
+	_expect(bool(start.get("started", false)) and int(start.get("main_start_call_count", -1)) == 0 and int(start.get("setup_fallback_count", -1)) == 0, "production SessionStartTransaction creates the owner fixture without Main fallback")
+	if not bool(start.get("started", false)) or main == null or coordinator == null:
+		if main != null:
+			main.queue_free()
 		await _wait_frames(2)
 		_remove_qa_save()
 		_finish()
 		return
-	main.call("_new_game")
-	await _wait_frames(5)
-
-	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
+	coordinator.pause_session()
+	await _wait_frames(2)
 	var ai := coordinator.get_node_or_null("AiRuntimeController") if coordinator != null else null
 	var queue := coordinator.get_node_or_null("CardResolutionQueueRuntimeService") if coordinator != null else null
 	var timing := coordinator.get_node_or_null("CardResolutionRuntimeController") if coordinator != null else null

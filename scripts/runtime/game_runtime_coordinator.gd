@@ -1494,6 +1494,7 @@ func _wire_ai_world_typed_ports() -> void:
 
 func _refresh_ai_actor_state_capabilities() -> void:
 	var actor_state_port := _ai_actor_state_port_node()
+	var card_hand_query := _ai_card_hand_query_port_node()
 	var district_supply_query := district_supply_runtime_query_port()
 	var ai := _ai_runtime_controller_node() as AiRuntimeController
 	if actor_state_port == null or ai == null:
@@ -1504,6 +1505,13 @@ func _refresh_ai_actor_state_capabilities() -> void:
 		actor_capabilities[actor_index] = AiActorStateCapability.new()
 	var bound := actor_state_port.bind_ai_capabilities(actor_capabilities)
 	ai.set_actor_state_capabilities(actor_capabilities if bound else {})
+	if card_hand_query != null:
+		var hand_capabilities: Dictionary = {}
+		for actor_index_variant in actor_state_port.ai_player_indices(true):
+			var actor_index := int(actor_index_variant)
+			hand_capabilities[actor_index] = AiCardHandCapability.new()
+		var hand_bound := card_hand_query.bind_ai_capabilities(hand_capabilities)
+		ai.set_card_hand_query_port(card_hand_query, hand_capabilities if hand_bound else {})
 	if district_supply_query != null:
 		var supply_capabilities: Dictionary = {}
 		for actor_index_variant in actor_state_port.ai_player_indices(true):
@@ -5697,6 +5705,10 @@ func _ai_actor_state_port_node() -> AiActorStatePort:
 
 func _ai_session_public_query_port_node() -> AiSessionPublicQueryPort:
 	return get_node_or_null("AiSessionPublicQueryPort") as AiSessionPublicQueryPort
+
+
+func _ai_card_hand_query_port_node() -> AiCardHandQueryPort:
+	return get_node_or_null("AiCardHandQueryPort") as AiCardHandQueryPort
 
 
 func _ai_region_knowledge_query_port_node() -> AiRegionKnowledgeQueryPort:

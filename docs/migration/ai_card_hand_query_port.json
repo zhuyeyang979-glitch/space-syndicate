@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "parent_task": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
+  "parent_task_status": "ACTIVE",
+  "port": "res://scripts/runtime/ai_card_hand_query_port.gd",
+  "scene": "res://scenes/runtime/AiCardHandQueryPort.tscn",
+  "capability": "res://scripts/runtime/ai_card_hand_capability.gd",
+  "owner": false,
+  "query_only": true,
+  "record_owner": "WorldSessionState",
+  "rule_library": "CardFlowPolicyV06",
+  "actor_scoped_capabilities": true,
+  "human_capability_count": 0,
+  "cross_actor_query_accept_count": 0,
+  "forged_query_accept_count": 0,
+  "stale_query_accept_count": 0,
+  "snapshot_fields": [
+    "actor_index",
+    "actor_id",
+    "visibility_scope",
+    "state_revision",
+    "action_cooldown",
+    "slots",
+    "discard",
+    "discarded_cards",
+    "counted_hand_size",
+    "discardable_slots",
+    "hand_limit"
+  ],
+  "forbidden_fields": [
+    "cash",
+    "rival_hand",
+    "players",
+    "districts",
+    "ai_plan",
+    "ai_score"
+  ],
+  "migrated_consumers": [
+    "AiRuntimeController._ai_card_play_candidates",
+    "AiRuntimeController._ai_counter_response_candidates",
+    "AiRuntimeController._ai_queue_counter_response_candidate",
+    "AiRuntimeController._ai_discard_keep_value",
+    "AiRuntimeController._ai_discard_slot_for_purchase",
+    "AiRuntimeController._ai_route_hand_inventory"
+  ],
+  "query_mutation_count": 0,
+  "query_rng_delta": 0,
+  "new_save_section_count": 0,
+  "focused_test": {
+    "path": "res://tests/ai_card_hand_query_port_test.gd",
+    "checks": 15,
+    "result": "PASS",
+    "run_id": "20260723-091120-023-ai_card_hand_query_port_test-7f81ddc8"
+  },
+  "card_counter_regression": {
+    "path": "res://tests/ai_card_phase_counter_owner_test.gd",
+    "checks": 22,
+    "result": "PASS",
+    "run_id": "20260723-091320-531-ai_card_phase_counter_owner_test-d50fc173",
+    "fixture_entry": "ProductionSessionStartDriver"
+  },
+  "main_composition": {
+    "result": "PASS",
+    "run_id": "20260723-091408-145-main_runtime_composition_test-9efb73cf"
+  },
+  "table_selection_cutover_complete": false,
+  "card_command_cutover_complete": false,
+  "parent_generic_bridge_complete": false,
+  "full_run_resume_claim": false,
+  "next_boundary": "AI_ACTOR_ECONOMY_QUERY_PORT"
+}
