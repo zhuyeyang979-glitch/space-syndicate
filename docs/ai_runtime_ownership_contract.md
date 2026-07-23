@@ -59,6 +59,40 @@ city-inference constants are deleted with no fallback. Other AI domains remain
 on the generic bridge until their own atomic cutovers; this section is not a
 claim that the parent P0 is complete.
 
+## Actor-Private State Typed-Port Boundary
+
+`AiRuntimeController` remains the semantic owner of the six personality
+definitions, AI learning memory, candidate behavior, and checkpoint meaning.
+`WorldSessionState` remains the sole owner of the player records that contain
+`ai_profile` and `ai_memory`. `AiActorStatePort` is a stateless capability gate
+between them; it must never become a second player or AI-state owner.
+
+The public actor query contains only public seat, role, and elimination facts.
+The private AI query requires the exact opaque capability and returns only the
+requested actor's profile and memory plus public context. It excludes cash,
+hand/slots/discard, action cooldown, city inference, rival AI state, Nodes,
+Objects, Callables, and mutable world collections. Queries are detached,
+read-only, and consume no RNG.
+
+Profile/memory mutation uses compare-and-swap. Its revision binds actor index,
+restore epoch, profile, and memory; stale or pre-restore writes fail closed.
+The exact patch allowlist is `ai_profile` plus `ai_memory`, and nonfinite or
+retired-contract payloads are rejected. Strategy and route-plan consumers must
+re-read the actor snapshot after nested memory updates before their final CAS.
+
+AI checkpoint capture/apply uses a preflighted batch. Every row is authorized,
+validated, and revision-checked before one replacement players array is
+assigned. A typed capture receipt distinguishes zero AI from capture failure,
+and apply requires the saved actor-index set to equal the current AI roster.
+`AiRuntimeController` retains its existing timer and `player_states` save
+shape, and timer fields change only after the actor batch succeeds. Its
+new-session rollback checkpoint contains only controller-local timers and
+receipts; `WorldSessionState` restores profile and memory at the world rollback
+stage. No
+Registry section or schema is added. The existing formal `ai` section remains
+unsupported until its own Save Owner task, so this boundary does not establish
+full-run resume.
+
 AI business cost mutation must use `AiBusinessCostCashPort`, the existing
 `MonsterWagerCashCommitmentQueryPort`, and `PlayerCashMutationPort`. The market
 effect must use `ProductMarketRuntimeController`'s synchronous
