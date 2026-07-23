@@ -1478,12 +1478,19 @@ func _wire_ai_world_typed_ports() -> void:
 	var route_public_port := _ai_route_public_query_port_node()
 	var card_queue_query_port := _ai_card_queue_query_port_node()
 	var card_eligibility_query_port := _ai_card_eligibility_query_port_node()
+	var monster_public_query_port := _ai_monster_public_query_port_node()
+	var monster_actor_query_port := _ai_monster_actor_query_port_node()
+	var military_public_query_port := _ai_military_public_query_port_node()
+	var military_actor_query_port := _ai_military_actor_query_port_node()
 	var ai := _ai_runtime_controller_node() as AiRuntimeController
 	if session_public_port == null or actor_state_port == null or region_query_port == null \
 			or city_inference_port == null or market_public_port == null \
 			or route_public_port == null or card_queue_query_port == null \
-			or card_eligibility_query_port == null or ai == null:
-		push_error("GameRuntimeCoordinator requires the AI session, actor, region, card-queue, card-eligibility, and inference typed ports; AI world queries fail closed.")
+			or card_eligibility_query_port == null \
+			or monster_public_query_port == null or monster_actor_query_port == null \
+			or military_public_query_port == null or military_actor_query_port == null \
+			or ai == null:
+		push_error("GameRuntimeCoordinator requires the AI session, actor, region, card, monster, military, and inference typed ports; AI world queries fail closed.")
 		return
 	if not actor_state_port.ai_capability_refresh_requested.is_connected(_refresh_ai_actor_state_capabilities):
 		actor_state_port.ai_capability_refresh_requested.connect(_refresh_ai_actor_state_capabilities)
@@ -1499,6 +1506,14 @@ func _wire_ai_world_typed_ports() -> void:
 		city_inference_port
 	)
 	ai.set_market_route_query_ports(market_public_port, route_public_port)
+	ai.set_monster_military_query_ports(
+		monster_public_query_port,
+		monster_actor_query_port,
+		{},
+		military_public_query_port,
+		military_actor_query_port,
+		{}
+	)
 	_refresh_ai_actor_state_capabilities()
 	if (
 		not session_public_port.is_ready()
@@ -1521,6 +1536,8 @@ func _refresh_ai_actor_state_capabilities() -> void:
 	var card_queue_query := _ai_card_queue_query_port_node()
 	var card_eligibility_query := _ai_card_eligibility_query_port_node()
 	var actor_economy_query := _ai_actor_economy_query_port_node()
+	var monster_actor_query := _ai_monster_actor_query_port_node()
+	var military_actor_query := _ai_military_actor_query_port_node()
 	var district_supply_query := district_supply_runtime_query_port()
 	var ai := _ai_runtime_controller_node() as AiRuntimeController
 	if actor_state_port == null or ai == null:
@@ -1586,6 +1603,17 @@ func _refresh_ai_actor_state_capabilities() -> void:
 			actor_economy_query,
 			economy_capabilities if economy_bound else {}
 		)
+	if monster_actor_query != null and military_actor_query != null:
+		var monster_capabilities: Dictionary = {}
+		var military_capabilities: Dictionary = {}
+		for actor_index_variant in actor_state_port.ai_player_indices(true):
+			var actor_index := int(actor_index_variant)
+			monster_capabilities[actor_index] = AiMonsterActorCapability.new()
+			military_capabilities[actor_index] = AiMilitaryActorCapability.new()
+		var monster_bound := monster_actor_query.bind_ai_capabilities(monster_capabilities)
+		var military_bound := military_actor_query.bind_ai_capabilities(military_capabilities)
+		ai.set_monster_actor_capabilities(monster_capabilities if monster_bound else {})
+		ai.set_military_actor_capabilities(military_capabilities if military_bound else {})
 	if district_supply_query != null:
 		var supply_capabilities: Dictionary = {}
 		for actor_index_variant in actor_state_port.ai_player_indices(true):
@@ -5810,6 +5838,22 @@ func _ai_region_knowledge_query_port_node() -> AiRegionKnowledgeQueryPort:
 
 func _ai_city_inference_command_port_node() -> AiCityInferenceCommandPort:
 	return get_node_or_null("AiCityInferenceCommandPort") as AiCityInferenceCommandPort
+
+
+func _ai_monster_public_query_port_node() -> AiMonsterPublicQueryPort:
+	return get_node_or_null("AiMonsterPublicQueryPort") as AiMonsterPublicQueryPort
+
+
+func _ai_monster_actor_query_port_node() -> AiMonsterActorQueryPort:
+	return get_node_or_null("AiMonsterActorQueryPort") as AiMonsterActorQueryPort
+
+
+func _ai_military_public_query_port_node() -> AiMilitaryPublicQueryPort:
+	return get_node_or_null("AiMilitaryPublicQueryPort") as AiMilitaryPublicQueryPort
+
+
+func _ai_military_actor_query_port_node() -> AiMilitaryActorQueryPort:
+	return get_node_or_null("AiMilitaryActorQueryPort") as AiMilitaryActorQueryPort
 
 
 func _monster_runtime_controller_node() -> Node:

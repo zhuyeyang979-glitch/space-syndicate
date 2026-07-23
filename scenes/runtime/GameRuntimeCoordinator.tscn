@@ -1,4 +1,4 @@
-[gd_scene load_steps=131 format=3]
+[gd_scene load_steps=135 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -130,6 +130,10 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiRoutePublicQueryPort.tscn" id="137_ai_route_public"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiCardQueueQueryPort.tscn" id="138_ai_card_queue"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiCardEligibilityQueryPort.tscn" id="139_ai_card_eligibility"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/AiMonsterPublicQueryPort.tscn" id="140_ai_monster_public"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/AiMonsterActorQueryPort.tscn" id="141_ai_monster_actor"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/AiMilitaryPublicQueryPort.tscn" id="142_ai_military_public"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/AiMilitaryActorQueryPort.tscn" id="143_ai_military_actor"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -367,6 +371,18 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="AiRegionKnowledgeQueryPort" parent="." instance=ExtResource("131_ai_region_knowledge")]
+unique_name_in_owner = true
+
+[node name="AiMonsterPublicQueryPort" parent="." instance=ExtResource("140_ai_monster_public")]
+unique_name_in_owner = true
+
+[node name="AiMonsterActorQueryPort" parent="." instance=ExtResource("141_ai_monster_actor")]
+unique_name_in_owner = true
+
+[node name="AiMilitaryPublicQueryPort" parent="." instance=ExtResource("142_ai_military_public")]
+unique_name_in_owner = true
+
+[node name="AiMilitaryActorQueryPort" parent="." instance=ExtResource("143_ai_military_actor")]
 unique_name_in_owner = true
 
 [node name="AiCityInferenceCommandPort" parent="." instance=ExtResource("132_ai_city_inference")]

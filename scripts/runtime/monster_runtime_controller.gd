@@ -4024,7 +4024,8 @@ func _upgrade_field_monster_from_card(player_index: int, skill: Dictionary) -> b
 	request_table_presentation_refresh()
 	return true
 
-func _summon_monster_from_card(acting_player_index: int, skill: Dictionary) -> bool:
+func _summon_monster_from_card(acting_player_index: int, skill: Dictionary, target_district_index: int) -> bool:
+	var summon_district_index := target_district_index
 	if acting_player_index < 0 or acting_player_index >= players.size():
 		return false
 	var catalog_index := int(skill.get("catalog_index", -1))
@@ -4045,10 +4046,10 @@ func _summon_monster_from_card(acting_player_index: int, skill: Dictionary) -> b
 			"（包括怪%d·%s）" % [existing_owned_slot + 1, String(owned_actor.get("name", "怪兽"))] if existing_owned_slot >= 0 else "",
 		])
 		return false
-	if selected_district < 0 or selected_district >= districts.size() or bool(districts[selected_district].get("destroyed", false)):
+	if summon_district_index < 0 or summon_district_index >= districts.size() or bool(districts[summon_district_index].get("destroyed", false)):
 		_log("%s需要选中一个未毁区域作为召唤落点。" % String(skill.get("name", "怪兽卡")))
 		return false
-	if not _can_summon_monster_card_at_district(skill, selected_district):
+	if not _can_summon_monster_card_at_district(skill, summon_district_index):
 		_log("%s需要在%s打出；起始怪兽牌例外。" % [
 			String(skill.get("name", "怪兽卡")),
 			_monster_card_region_text(skill),
@@ -4057,7 +4058,7 @@ func _summon_monster_from_card(acting_player_index: int, skill: Dictionary) -> b
 	var fallback_rank := _skill_rank(String(skill.get("name", "")))
 	var rank := clampi(int(skill.get("rank", fallback_rank)), 1, 4)
 	var slot := auto_monsters.size()
-	var actor := _make_auto_monster(slot, catalog_index, selected_district, acting_player_index, rank)
+	var actor := _make_auto_monster(slot, catalog_index, summon_district_index, acting_player_index, rank)
 	var card_hp := maxi(1, int(skill.get("hp", actor.get("max_hp", 1))))
 	actor["hp"] = card_hp
 	actor["max_hp"] = card_hp
@@ -4071,13 +4072,13 @@ func _summon_monster_from_card(acting_player_index: int, skill: Dictionary) -> b
 	_refresh_product_market_prices()
 	var fixed_skill_count := int(skill.get("fixed_skill_count", rank))
 	var granted := _grant_bound_monster_skills(acting_player_index, int(actor.get("uid", 0)), String(actor.get("name", "怪兽")), rank, fixed_skill_count)
-	_add_visual_trail(_district_center(selected_district) + Vector2(0, -80), _district_center(selected_district), _auto_monster_color(slot), "召唤")
+	_add_visual_trail(_district_center(summon_district_index) + Vector2(0, -80), _district_center(summon_district_index), _auto_monster_color(slot), "召唤")
 	_add_action_callout(
 		"匿名怪兽卡",
 		"召唤%s" % String(actor.get("name", "怪兽")),
 		"%s降落在%s；HP%d｜在场%s｜区域限制%s；归属暂不公开，固定技能%d张进入召唤者手牌。" % [
 			String(actor.get("name", "怪兽")),
-			districts[selected_district]["name"],
+			districts[summon_district_index]["name"],
 			int(actor.get("max_hp", 0)),
 			_monster_card_duration_text(skill),
 			_monster_card_region_text(skill),
@@ -4089,11 +4090,11 @@ func _summon_monster_from_card(acting_player_index: int, skill: Dictionary) -> b
 	_log("匿名怪兽卡召唤%s %s至%s；归属暂不公开。召唤者获得固定技能：%s。" % [
 		String(actor.get("name", "怪兽")),
 		_level_text(rank),
-		districts[selected_district]["name"],
+		districts[summon_district_index]["name"],
 		_limited_name_list(granted, 4, "无"),
 	])
 	if acting_player_index >= 0 and acting_player_index < players.size():
-		_complete_scenario_signal("monster_summoned", "首召怪兽：%s降落在%s。" % [String(actor.get("name", "怪兽")), String(districts[selected_district].get("name", "区域"))], "after_summon", "scenario_coach")
+		_complete_scenario_signal("monster_summoned", "首召怪兽：%s降落在%s。" % [String(actor.get("name", "怪兽")), String(districts[summon_district_index].get("name", "区域"))], "after_summon", "scenario_coach")
 	request_table_presentation_refresh()
 	return true
 
@@ -6865,7 +6866,7 @@ func _trigger_auto_monster_card_command(skill: Dictionary, _player: Dictionary, 
 	)
 	return true
 
-func _trigger_bound_monster_skill(skill: Dictionary, _player: Dictionary) -> bool:
+func _trigger_bound_monster_skill(skill: Dictionary, _player: Dictionary, target_district_index: int) -> bool:
 	var uid := int(skill.get("bound_monster_uid", 0))
 	var slot := _auto_monster_slot_by_uid(uid)
 	if slot < 0:
@@ -6875,16 +6876,14 @@ func _trigger_bound_monster_skill(skill: Dictionary, _player: Dictionary) -> boo
 	if bool(actor.get("down", false)):
 		_log("怪%d·%s已倒地，无法释放%s。" % [slot + 1, String(actor.get("name", "怪兽")), String(skill.get("name", "固定技能"))])
 		return false
-	if _entity_has_linear_motion(actor):
-		_log("怪%d·%s正在移动中，固定技能会等它抵达后再释放。" % [slot + 1, String(actor.get("name", "怪兽"))])
-		return false
 	var action: Dictionary = (skill.get("action", {}) as Dictionary).duplicate(true)
 	if action.is_empty():
 		return false
-	var target := selected_district
+	var target := target_district_index
 	if target < 0 or target >= districts.size() or bool(districts[target].get("destroyed", false)):
-		target = _weighted_auto_monster_target(actor)
-	if target < 0:
+		return false
+	if _entity_has_linear_motion(actor):
+		_log("怪%d·%s正在移动中，固定技能会等它抵达后再释放。" % [slot + 1, String(actor.get("name", "怪兽"))])
 		return false
 	var before := _entity_world_position(actor)
 	var required_range: float = float(action.get("range", 0.0))

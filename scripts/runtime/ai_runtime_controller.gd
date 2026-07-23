@@ -47,6 +47,14 @@ var _ai_region_knowledge_query_port: AiRegionKnowledgeQueryPort
 var _ai_region_knowledge_capabilities: Dictionary = {}
 var _ai_region_knowledge_capability_binding_initialized := false
 var _ai_city_inference_command_port: AiCityInferenceCommandPort
+var _ai_monster_public_query_port: AiMonsterPublicQueryPort
+var _ai_monster_actor_query_port: AiMonsterActorQueryPort
+var _ai_monster_actor_capabilities: Dictionary = {}
+var _ai_monster_actor_capability_binding_initialized := false
+var _ai_military_public_query_port: AiMilitaryPublicQueryPort
+var _ai_military_actor_query_port: AiMilitaryActorQueryPort
+var _ai_military_actor_capabilities: Dictionary = {}
+var _ai_military_actor_capability_binding_initialized := false
 var _monster_runtime_controller: MonsterRuntimeController
 var _military_runtime_controller: MilitaryRuntimeController
 var _weather_runtime_controller: WeatherRuntimeController
@@ -264,6 +272,71 @@ func _market_public_product(product_id: String) -> Dictionary:
 func _route_public_summary(district_index: int) -> Dictionary:
 	return _ai_route_public_query_port.region_route_summary(district_index) \
 		if _ai_route_public_query_port != null else {}
+
+
+func set_monster_military_query_ports(
+	monster_public_query_port: AiMonsterPublicQueryPort,
+	monster_actor_query_port: AiMonsterActorQueryPort,
+	monster_actor_capabilities: Dictionary,
+	military_public_query_port: AiMilitaryPublicQueryPort,
+	military_actor_query_port: AiMilitaryActorQueryPort,
+	military_actor_capabilities: Dictionary
+) -> void:
+	_ai_monster_public_query_port = monster_public_query_port
+	_ai_monster_actor_query_port = monster_actor_query_port
+	set_monster_actor_capabilities(monster_actor_capabilities)
+	_ai_military_public_query_port = military_public_query_port
+	_ai_military_actor_query_port = military_actor_query_port
+	set_military_actor_capabilities(military_actor_capabilities)
+
+
+func set_monster_actor_capabilities(capabilities_by_actor: Dictionary) -> void:
+	_ai_monster_actor_capabilities = capabilities_by_actor.duplicate()
+	_ai_monster_actor_capability_binding_initialized = true
+
+
+func set_military_actor_capabilities(capabilities_by_actor: Dictionary) -> void:
+	_ai_military_actor_capabilities = capabilities_by_actor.duplicate()
+	_ai_military_actor_capability_binding_initialized = true
+
+
+func _monster_public_roster() -> Array:
+	return _ai_monster_public_query_port.public_roster_snapshot() \
+		if _ai_monster_public_query_port != null and _ai_monster_public_query_port.is_ready() else []
+
+
+func _monster_actor_roster(actor_index: int) -> Array:
+	if _ai_monster_actor_query_port == null or not _ai_monster_actor_capability_binding_initialized:
+		return []
+	var snapshot := _ai_monster_actor_query_port.actor_roster_snapshot(
+		_ai_monster_actor_capabilities.get(actor_index) as AiMonsterActorCapability,
+		actor_index
+	)
+	var roster: Variant = snapshot.get("roster", [])
+	return (roster as Array).duplicate(true) if roster is Array else []
+
+
+func _monster_actor_at_slot(actor_index: int, slot_index: int) -> Dictionary:
+	for actor_variant in _monster_actor_roster(actor_index):
+		var actor := actor_variant as Dictionary
+		if int(actor.get("slot", -1)) == slot_index:
+			return actor.duplicate(true)
+	return {}
+
+
+func _monster_uid_at_slot(actor_index: int, slot_index: int) -> int:
+	return int(_monster_actor_at_slot(actor_index, slot_index).get("uid", -1))
+
+
+func _military_actor_roster(actor_index: int) -> Array:
+	if _ai_military_actor_query_port == null or not _ai_military_actor_capability_binding_initialized:
+		return []
+	var snapshot := _ai_military_actor_query_port.actor_roster_snapshot(
+		_ai_military_actor_capabilities.get(actor_index) as AiMilitaryActorCapability,
+		actor_index
+	)
+	var roster: Variant = snapshot.get("roster", [])
+	return (roster as Array).duplicate(true) if roster is Array else []
 
 
 func set_monster_runtime_controller(controller: MonsterRuntimeController) -> void:
@@ -865,13 +938,18 @@ func _call_monster(method_name: StringName, arguments: Array = []) -> Variant:
 
 
 func _active_monster_wager_ids() -> Array:
-	var result: Variant = _call_monster(&"active_wager_ids_snapshot")
-	return (result as Array).duplicate() if result is Array else []
+	return _ai_monster_public_query_port.active_wager_ids_snapshot() \
+		if _ai_monster_public_query_port != null else []
 
 
 func _monster_wager_decision_snapshot_for_actor(wager_id: int, player_index: int) -> Dictionary:
-	var result: Variant = _call_monster(&"monster_wager_decision_snapshot_for_actor", [wager_id, player_index])
-	return (result as Dictionary).duplicate(true) if result is Dictionary else {}
+	if _ai_monster_actor_query_port == null or not _ai_monster_actor_capability_binding_initialized:
+		return {}
+	return _ai_monster_actor_query_port.wager_decision_snapshot(
+		_ai_monster_actor_capabilities.get(player_index) as AiMonsterActorCapability,
+		player_index,
+		wager_id
+	)
 
 
 func _policy_value(group: String, field: String, default_value: Variant) -> Variant:
@@ -893,13 +971,6 @@ func _business_action_policy_fingerprint(terms: Dictionary) -> String:
 		int(terms.get("cost_units", -1)),
 	]).sha256_text()
 
-
-var auto_monsters:
-	get:
-		return _monster_runtime_controller.auto_monsters if _monster_runtime_controller != null else []
-	set(value):
-		if _monster_runtime_controller != null and value is Array:
-			_monster_runtime_controller.auto_monsters = (value as Array).duplicate(true)
 
 var business_cycle_count:
 	get:
@@ -930,10 +1001,6 @@ var session_finished:
 var game_time:
 	get:
 		return float(_session_public_snapshot().get("game_time", 0.0))
-
-var military_units:
-	get:
-		return _military_runtime_controller.roster_snapshot(true) if _military_runtime_controller != null else []
 
 var resolved_card_history:
 	get:
@@ -1481,28 +1548,52 @@ func _product_price(product_name: String) -> int:
 		if _ai_market_public_query_port != null else 0
 
 func _active_auto_monster_count() -> int:
-	return _call_monster(&"_active_auto_monster_count")
+	return _ai_monster_public_query_port.active_monster_count() \
+		if _ai_monster_public_query_port != null else 0
+
 
 func _auto_monster_slot_by_uid(uid: int) -> int:
-	return _call_monster(&"_auto_monster_slot_by_uid", [uid])
+	return _ai_monster_public_query_port.slot_for_uid(uid) \
+		if _ai_monster_public_query_port != null else -1
+
 
 func _military_unit_type_label(unit_or_skill: Dictionary) -> String:
-	return _military_runtime_controller.unit_type_label(unit_or_skill) if _military_runtime_controller != null else "行星防卫军"
+	return _ai_military_public_query_port.unit_type_label(unit_or_skill) \
+		if _ai_military_public_query_port != null else "military"
+
 
 func _can_deploy_military_card_at_district(skill: Dictionary, district_index: int) -> bool:
-	return _military_runtime_controller.can_deploy_at_district(skill, district_index) if _military_runtime_controller != null else false
+	return _ai_military_public_query_port.can_deploy_at_district(skill, district_index) \
+		if _ai_military_public_query_port != null else false
+
 
 func _military_unit_terrain_move_multiplier(unit_or_skill: Dictionary, district_index: int) -> float:
-	return _military_runtime_controller.terrain_move_multiplier(unit_or_skill, district_index) if _military_runtime_controller != null else 1.0
+	return _ai_military_public_query_port.terrain_move_multiplier(unit_or_skill, district_index) \
+		if _ai_military_public_query_port != null else 1.0
+
 
 func _military_unit_mobility_summary(unit_or_skill: Dictionary) -> String:
-	return _military_runtime_controller.mobility_summary(unit_or_skill) if _military_runtime_controller != null else ""
+	return _ai_military_public_query_port.mobility_summary(unit_or_skill) \
+		if _ai_military_public_query_port != null else ""
+
 
 func _military_unit_index_by_uid(uid: int) -> int:
-	return _military_runtime_controller.unit_index_by_uid(uid) if _military_runtime_controller != null else -1
+	var roster := _ai_military_public_query_port.public_roster_snapshot() \
+		if _ai_military_public_query_port != null else []
+	for index in range(roster.size()):
+		if int((roster[index] as Dictionary).get("uid", 0)) == uid:
+			return index
+	return -1
+
 
 func _owned_active_military_unit_index(player_index: int) -> int:
-	return _military_runtime_controller.owned_active_unit_index(player_index) if _military_runtime_controller != null else -1
+	var roster := _military_actor_roster(player_index)
+	for index in range(roster.size()):
+		var unit := roster[index] as Dictionary
+		if str(unit.get("ownership_scope", "")) == "actor_own" \
+			and int(unit.get("hp", 0)) > 0 and float(unit.get("remaining_time", 0.0)) > 0.0:
+			return index
+	return -1
 
 func _make_skill(skill_name: String) -> Dictionary:
 	var skill := _skill_definition(skill_name)
@@ -1774,7 +1865,8 @@ func _district_event_weight(index: int) -> int:
 	return _call_world(&"_district_event_weight", [index])
 
 func _monster_resource_match_score(actor: Dictionary, index: int) -> int:
-	return _call_monster(&"_monster_resource_match_score", [actor, index])
+	return _ai_monster_public_query_port.public_resource_match_score_for_actor(actor, index) \
+		if _ai_monster_public_query_port != null else 0
 
 func _route_network_load_for_legacy_region(index: int) -> int:
 	return int(_route_public_summary(index).get("legal_route_count", 0))
@@ -1914,7 +2006,8 @@ func _queue_skill_resolution(
 	target_player: int = -1,
 	selected_resolution_id: int = -1,
 	target_district: int = -1,
-	target_product: String = ""
+	target_product: String = "",
+	target_monster_uid: int = -1
 ) -> Dictionary:
 	if _card_play_submission_controller == null:
 		return {"accepted": false, "reason": "submission_controller_missing"}
@@ -1922,6 +2015,7 @@ func _queue_skill_resolution(
 		"player_index": player_index,
 		"slot_index": slot_index,
 		"target_slot": target_slot,
+		"target_monster_uid": target_monster_uid,
 		"target_player": target_player,
 		"selected_district": target_district,
 		"selected_trade_product": target_product,
@@ -2007,19 +2101,33 @@ func _auto_monster_target_factor_summary(actor: Dictionary, index: int) -> Strin
 	return _call_monster(&"_auto_monster_target_factor_summary", [actor, index])
 
 func _district_center(index: int) -> Vector2:
-	return _call_monster(&"_district_center", [index])
+	var district := _public_district(index)
+	return district.get("center", Vector2.ZERO) if district.get("center", Vector2.ZERO) is Vector2 else Vector2.ZERO
+
 
 func _entity_world_position(entity: Dictionary) -> Vector2:
-	return _call_monster(&"_entity_world_position", [entity])
+	var value: Variant = entity.get("world_position", Vector2.ZERO)
+	if value is Vector2:
+		return value
+	if value is Dictionary:
+		return Vector2(float((value as Dictionary).get("x", 0.0)), float((value as Dictionary).get("y", 0.0)))
+	return Vector2.ZERO
+
 
 func _wrapped_distance(from_position: Vector2, to_position: Vector2) -> float:
-	return _call_monster(&"_wrapped_distance", [from_position, to_position])
+	return _ai_monster_public_query_port.public_distance_between_entities(
+		{"world_position": from_position},
+		{"world_position": to_position}
+	) if _ai_monster_public_query_port != null else INF
+
 
 func _entity_distance_to_district(entity: Dictionary, district_index: int) -> float:
-	return _call_monster(&"_entity_distance_to_district", [entity, district_index])
+	return _wrapped_distance(_entity_world_position(entity), _district_center(district_index))
+
 
 func _meters_text(value: float) -> String:
-	return _call_monster(&"_meters_text", [value])
+	return _ai_monster_public_query_port.meters_text(value) \
+		if _ai_monster_public_query_port != null else ""
 
 func _log(message: String) -> void:
 	return _call_monster(&"publish_public_log_message", [message])
@@ -2177,7 +2285,7 @@ func _auto_build_monster_risk_score(district_index: int) -> int:
 	if district_index < 0 or district_index >= _district_count():
 		return 0
 	var risk := int(round(float(_public_district(district_index).get("panic", 0)) / 4.0))
-	for actor_variant in auto_monsters:
+	for actor_variant in _monster_public_roster():
 		var actor: Dictionary = actor_variant
 		if bool(actor.get("down", false)):
 			continue
@@ -3812,12 +3920,12 @@ func _ensure_player_ai_state() -> void:
 		var memory := _normalized_ai_memory(actor.get("ai_memory", {}))
 		_commit_ai_actor_state(player_index, profile, memory, actor)
 func _ai_owned_active_monster_count(player_index: int) -> int:
-	var count := 0
-	for actor_variant in auto_monsters:
-		var actor: Dictionary = actor_variant
-		if not bool(actor.get("down", false)) and int(actor.get("owner", -1)) == player_index:
-			count += 1
-	return count
+	if _ai_monster_actor_query_port == null or not _ai_monster_actor_capability_binding_initialized:
+		return 0
+	return _ai_monster_actor_query_port.own_active_monster_count(
+		_ai_monster_actor_capabilities.get(player_index) as AiMonsterActorCapability,
+		player_index
+	)
 func _ai_score_gap_to_leader(player_index: int) -> int:
 	var leader := _visible_score_leader_entry(player_index)
 	if int(leader.get("player_index", -1)) < 0:
@@ -4564,8 +4672,9 @@ func _monster_target_weight_audit() -> Dictionary:
 	var factor_key_presence := {}
 	for key_variant in factor_keys:
 		factor_key_presence[String(key_variant)] = false
-	for actor_index in range(auto_monsters.size()):
-		var actor: Dictionary = auto_monsters[actor_index]
+	var audit_roster := _monster_public_roster()
+	for actor_index in range(audit_roster.size()):
+		var actor: Dictionary = audit_roster[actor_index]
 		if bool(actor.get("down", false)):
 			continue
 		var district_reports := []
@@ -5096,7 +5205,7 @@ func _ai_own_route_threat_score(player_index: int) -> int:
 		score += int(_public_district(city_index).get("damage", 0)) * 18
 		score += int(float(int(_public_district(city_index).get("panic", 0))) / 3.0)
 		score += _city_warehouse_stockpile_pressure(city)
-		for actor_variant in auto_monsters:
+		for actor_variant in _monster_public_roster():
 			var actor: Dictionary = actor_variant
 			if bool(actor.get("down", false)):
 				continue
@@ -6060,9 +6169,12 @@ func _ai_monster_card_landing_score(player_index: int, skill: Dictionary, distri
 	return score
 func _ai_best_monster_card_district(player_index: int, skill: Dictionary) -> int:
 	var monster_name := String(skill.get("monster_name", ""))
-	for actor_variant in auto_monsters:
-		var actor: Dictionary = actor_variant
-		if not bool(actor.get("down", false)) and int(actor.get("owner", -1)) == player_index and String(actor.get("name", "")) == monster_name and int(actor.get("rank", 1)) < 4:
+	for actor_variant in _monster_actor_roster(player_index):
+		var actor := actor_variant as Dictionary
+		if not bool(actor.get("down", false)) \
+				and str(actor.get("ownership_scope", "")) == "actor_own" \
+				and String(actor.get("name", "")) == monster_name \
+				and int(actor.get("rank", 1)) < 4:
 			return int(actor.get("position", _ai_first_alive_district()))
 	var best_index := -1
 	var best_score := -1
@@ -6072,36 +6184,43 @@ func _ai_best_monster_card_district(player_index: int, skill: Dictionary) -> int
 			best_score = score
 			best_index = i
 	return best_index
-func _ai_monster_target_for_skill(player_index: int, skill: Dictionary) -> int:
+
+func _ai_monster_actor_for_skill(player_index: int, skill: Dictionary) -> Dictionary:
+	var roster := _monster_actor_roster(player_index)
 	var bound_uid := int(skill.get("bound_monster_uid", 0))
 	if bound_uid > 0:
-		var bound_slot := _auto_monster_slot_by_uid(bound_uid)
-		if bound_slot >= 0 and not bool((auto_monsters[bound_slot] as Dictionary).get("down", false)):
-			return bound_slot
+		for actor_variant in roster:
+			var bound_actor := actor_variant as Dictionary
+			if int(bound_actor.get("uid", -1)) == bound_uid \
+					and not bool(bound_actor.get("down", false)) \
+					and str(bound_actor.get("ownership_scope", "")) == "actor_own":
+				return bound_actor.duplicate(true)
+		return {}
 	var kind := String(skill.get("kind", ""))
 	var prefer_foreign := ["monster_lure", "special_monster_delay", "mudslide", "monster_takeover"].has(kind)
-	var best_slot := -1
+	var best_actor := {}
 	var best_score := -1
-	for slot in range(auto_monsters.size()):
-		var actor: Dictionary = auto_monsters[slot]
+	for actor_variant in roster:
+		var actor := actor_variant as Dictionary
 		if bool(actor.get("down", false)):
 			continue
-		var is_owned := int(actor.get("owner", -1)) == player_index
+		var is_owned := str(actor.get("ownership_scope", "")) == "actor_own"
 		if prefer_foreign and is_owned:
 			continue
 		if not prefer_foreign and not is_owned:
 			continue
-		var score := int(actor.get("rank", 1)) * 45 + int(actor.get("hp", 0)) + int(actor.get("armor", 0)) * 8
-		if prefer_foreign:
-			score += int(float(int(actor.get("owner_damage_cash_pool", 0))) / 20.0)
+		var score := int(actor.get("rank", 1)) * 45 \
+			+ int(actor.get("hp", 0)) \
+			+ int(actor.get("armor", 0)) * 8
 		if score > best_score:
 			best_score = score
-			best_slot = slot
-	return best_slot
-func _ai_best_district_near_monster(player_index: int, monster_slot: int, range_limit: float = -1.0) -> int:
-	if monster_slot < 0 or monster_slot >= auto_monsters.size():
+			best_actor = actor.duplicate(true)
+	return best_actor
+
+
+func _ai_best_district_near_monster(player_index: int, actor: Dictionary, range_limit: float = -1.0) -> int:
+	if actor.is_empty():
 		return _ai_best_city_district(player_index, false)
-	var actor: Dictionary = auto_monsters[monster_slot]
 	var best_index := -1
 	var best_score := -1
 	for i in range(_district_count()):
@@ -6119,6 +6238,7 @@ func _ai_best_district_near_monster(player_index: int, monster_slot: int, range_
 	if best_index >= 0:
 		return best_index
 	return int(actor.get("position", _ai_first_alive_district()))
+
 func _ai_city_product_overlap_score(player_index: int, target_city_index: int) -> int:
 	var target_city := _district_city(target_city_index, player_index)
 	if not _city_is_active(target_city):
@@ -6168,11 +6288,12 @@ func _ai_rival_city_pressure_score(player_index: int, district_index: int) -> in
 func _ai_monster_lure_plan(player_index: int, _skill: Dictionary, range_limit: float = -1.0) -> Dictionary:
 	var best := {}
 	var best_score := -1
-	for slot in range(auto_monsters.size()):
-		var actor: Dictionary = auto_monsters[slot]
+	for actor_variant in _monster_actor_roster(player_index):
+		var actor := actor_variant as Dictionary
 		if bool(actor.get("down", false)):
 			continue
-		var actor_owner := int(actor.get("owner", -1))
+		var slot := int(actor.get("slot", -1))
+		var ownership_scope := str(actor.get("ownership_scope", "public_unknown"))
 		for city_index_variant in _active_city_district_indices():
 			var city_index := int(city_index_variant)
 			var attack_value := _ai_rival_city_pressure_score(player_index, city_index)
@@ -6192,9 +6313,9 @@ func _ai_monster_lure_plan(player_index: int, _skill: Dictionary, range_limit: f
 			score += int(float(int(actor.get("hp", 0))) / 2.0)
 			score += _route_network_load_for_legacy_region(city_index) * 8
 			score -= int(round(distance / 34.0))
-			if actor_owner == player_index:
+			if ownership_scope == "actor_own":
 				score -= 28
-			elif actor_owner >= 0:
+			elif ownership_scope == "public_revealed":
 				score += 36
 			else:
 				score += 12
@@ -6208,6 +6329,7 @@ func _ai_monster_lure_plan(player_index: int, _skill: Dictionary, range_limit: f
 			best_score = score
 			best = {
 				"target_slot": slot,
+				"target_monster_uid": int(actor.get("uid", -1)),
 				"district": city_index,
 				"target_city": city_index,
 				"target_owner": int(city.get("owner", -1)),
@@ -6229,13 +6351,16 @@ func _ai_monster_lure_plan(player_index: int, _skill: Dictionary, range_limit: f
 				],
 			}
 	return best
+
 func _ai_monster_delay_plan(player_index: int, _skill: Dictionary) -> Dictionary:
 	var best := {}
 	var best_score := -1
-	for slot in range(auto_monsters.size()):
-		var actor: Dictionary = auto_monsters[slot]
-		if bool(actor.get("down", false)) or int(actor.get("owner", -1)) == player_index:
+	for actor_variant in _monster_actor_roster(player_index):
+		var actor := actor_variant as Dictionary
+		if bool(actor.get("down", false)) \
+				or str(actor.get("ownership_scope", "")) == "actor_own":
 			continue
+		var slot := int(actor.get("slot", -1))
 		for city_index_variant in _active_city_indices_for_player(player_index):
 			var city_index := int(city_index_variant)
 			var city_score := _ai_city_target_score(player_index, city_index, true, false)
@@ -6243,12 +6368,14 @@ func _ai_monster_delay_plan(player_index: int, _skill: Dictionary) -> Dictionary
 				continue
 			var distance := _entity_distance_to_district(actor, city_index)
 			var resource_match := _monster_resource_match_score(actor, city_index)
-			var score := 72 + city_score + resource_match * 42 + int(actor.get("rank", 1)) * 25 - int(round(distance / 28.0))
+			var score := 72 + city_score + resource_match * 42 \
+				+ int(actor.get("rank", 1)) * 25 - int(round(distance / 28.0))
 			if score <= best_score:
 				continue
 			best_score = score
 			best = {
 				"target_slot": slot,
+				"target_monster_uid": int(actor.get("uid", -1)),
 				"district": city_index,
 				"target_city": city_index,
 				"target_owner": player_index,
@@ -6266,6 +6393,7 @@ func _ai_monster_delay_plan(player_index: int, _skill: Dictionary) -> Dictionary
 				],
 			}
 	return best
+
 func _ai_card_kind_bias(player_index: int, kind: String) -> float:
 	var profile := _ai_profile_for_player(player_index)
 	if kind == "card_counter":
@@ -6968,7 +7096,7 @@ func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, distric
 			if harmful_target or target_owner == -999:
 				score += warehouse_pressure
 		"attack_monster":
-			score += 96 if not auto_monsters.is_empty() else 18
+			score += 96 if not _monster_public_roster().is_empty() else 18
 	score += int(float(int(skill.get("revenue_amount", 0))) / 2.0)
 	score += int(float(int(skill.get("contract_income", 0)) * maxi(1, int(ceil(float(_skill_duration_seconds(skill, "contract_seconds", "contract_turns", 1)) / ProductMarketRuntimeController.ECONOMY_LEGACY_TURN_SECONDS)))) / 5.0)
 	score += int(round((float(skill.get("route_flow_multiplier", 1.0)) - 1.0) * 120.0)) if helpful_target else 0
@@ -7159,19 +7287,15 @@ func _ai_best_military_deploy_district(player_index: int, skill: Dictionary) -> 
 	var plan := _ai_military_deploy_plan(player_index, skill)
 	return int(plan.get("district", -1)) if not plan.is_empty() else -1
 func _ai_military_unit_for_command(player_index: int, skill: Dictionary) -> Dictionary:
-	var bound_uid := int(skill.get("bound_military_uid", 0))
-	if bound_uid > 0:
-		var bound_index := _military_unit_index_by_uid(bound_uid)
-		if bound_index >= 0:
-			var bound_unit: Dictionary = military_units[bound_index]
-			if int(bound_unit.get("owner", -1)) == player_index and float(bound_unit.get("cooldown_left", 0.0)) <= 0.0:
-				return bound_unit.duplicate(true)
-	var fallback_index := _owned_active_military_unit_index(player_index)
-	if fallback_index >= 0:
-		var unit: Dictionary = military_units[fallback_index]
-		if float(unit.get("cooldown_left", 0.0)) <= 0.0:
-			return unit.duplicate(true)
-	return {}
+	if _ai_military_actor_query_port == null \
+			or not _ai_military_actor_capability_binding_initialized:
+		return {}
+	return _ai_military_actor_query_port.first_ready_owned_unit(
+		_ai_military_actor_capabilities.get(player_index) as AiMilitaryActorCapability,
+		player_index,
+		int(skill.get("bound_military_uid", 0))
+	)
+
 func _ai_military_guard_target(player_index: int, unit: Dictionary, command_range: float) -> Dictionary:
 	var best := {}
 	var best_score := -999999
@@ -7250,10 +7374,11 @@ func _ai_military_strike_target(player_index: int, unit: Dictionary, command_ran
 func _ai_military_monster_target(player_index: int, unit: Dictionary, command_range: float) -> Dictionary:
 	var best := {}
 	var best_score := -999999
-	for slot in range(auto_monsters.size()):
-		var actor: Dictionary = auto_monsters[slot]
+	for actor_variant in _monster_actor_roster(player_index):
+		var actor := actor_variant as Dictionary
 		if bool(actor.get("down", false)):
 			continue
+		var slot := int(actor.get("slot", -1))
 		var distance := _wrapped_distance(_entity_world_position(unit), _entity_world_position(actor))
 		if distance > command_range:
 			continue
@@ -7266,20 +7391,25 @@ func _ai_military_monster_target(player_index: int, unit: Dictionary, command_ra
 			if city_distance < nearest_own_city_distance:
 				nearest_own_city_distance = city_distance
 				nearest_own_city = city_index
-		var resource_pressure := _monster_resource_match_score(actor, monster_position) if monster_position >= 0 and monster_position < _district_count() else 0
-		var monster_owner := int(actor.get("owner", -1))
-		var score := 72 + int(actor.get("rank", 1)) * 42 + int(actor.get("hp", 0)) * 3 + resource_pressure * 65 + int(unit.get("damage", 1)) * 58
+		var resource_pressure := _monster_resource_match_score(actor, monster_position) \
+			if monster_position >= 0 and monster_position < _district_count() else 0
+		var ownership_scope := str(actor.get("ownership_scope", "public_unknown"))
+		var score := 72 + int(actor.get("rank", 1)) * 42 \
+			+ int(actor.get("hp", 0)) * 3 \
+			+ resource_pressure * 65 \
+			+ int(unit.get("damage", 1)) * 58
 		if nearest_own_city >= 0:
 			score += maxi(0, 260 - int(round(nearest_own_city_distance))) * 2
 			score += int(float(_ai_city_target_score(player_index, nearest_own_city, true, true)) / 4.0)
-		if monster_owner == player_index:
+		if ownership_scope == "actor_own":
 			score -= 120
-		elif monster_owner >= 0:
+		elif ownership_scope == "public_revealed":
 			score += 50
 		if score > best_score:
 			best_score = score
 			best = {
 				"target_slot": slot,
+				"target_monster_uid": int(actor.get("uid", -1)),
 				"district": monster_position if monster_position >= 0 else int(unit.get("position", _ai_first_alive_district())),
 				"target_city": nearest_own_city,
 				"target_owner": player_index if nearest_own_city >= 0 else -999,
@@ -7299,6 +7429,7 @@ func _ai_military_monster_target(player_index: int, unit: Dictionary, command_ra
 				],
 			}
 	return best
+
 func _ai_military_move_target(player_index: int, unit: Dictionary) -> Dictionary:
 	var best := {}
 	var best_score := -999999
@@ -7390,6 +7521,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		"policy_kind": kind,
 		"district": fallback,
 		"target_slot": -1,
+		"target_monster_uid": -1,
 		"target_player": -1,
 		"product": planned_product,
 		"focus_product": focus_product,
@@ -7427,11 +7559,12 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		context["district"] = _ai_best_monster_card_district(player_index, skill)
 		context["score"] = 1180 if bool(skill.get("starter_play_free", false)) else int(context["score"]) + 150
 	elif kind == "monster_bound_action":
-		var bound_slot := _ai_monster_target_for_skill(player_index, skill)
-		if bound_slot < 0:
+		var bound_actor := _ai_monster_actor_for_skill(player_index, skill)
+		if bound_actor.is_empty():
 			return {}
-		context["target_slot"] = bound_slot
-		context["district"] = _ai_best_district_near_monster(player_index, bound_slot)
+		context["target_slot"] = int(bound_actor.get("slot", -1))
+		context["target_monster_uid"] = int(bound_actor.get("uid", -1))
+		context["district"] = _ai_best_district_near_monster(player_index, bound_actor)
 		context["score"] = int(context["score"]) + 95
 	elif kind == "monster_lure":
 		var lure_plan := _ai_monster_lure_plan(player_index, skill)
@@ -7466,12 +7599,13 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		context["score"] = base_command_score + int(command_plan.get("score", 0))
 		context["reason"] = String(command_plan.get("reason", "执行军令"))
 	elif _skill_targets_monster(skill):
-		var target_slot := _ai_monster_target_for_skill(player_index, skill)
-		if target_slot < 0:
+		var target_actor := _ai_monster_actor_for_skill(player_index, skill)
+		if target_actor.is_empty():
 			return {}
-		context["target_slot"] = target_slot
+		context["target_slot"] = int(target_actor.get("slot", -1))
+		context["target_monster_uid"] = int(target_actor.get("uid", -1))
 		var target_range := float(skill.get("range", -1.0)) if kind == "mudslide" else -1.0
-		context["district"] = _ai_best_district_near_monster(player_index, target_slot, target_range)
+		context["district"] = _ai_best_district_near_monster(player_index, target_actor, target_range)
 		context["score"] = int(context["score"]) + 80
 	elif _skill_targets_player(skill):
 		var direct_plan := _ai_direct_player_interaction_plan(player_index, skill)
@@ -8053,6 +8187,7 @@ func _ai_card_decision_metadata(candidate: Dictionary, target_slot: int) -> Dict
 	var metadata := {
 		"card_name": String(candidate.get("card_name", "")),
 		"target_slot": target_slot,
+		"target_monster_uid": int(candidate.get("target_monster_uid", -1)),
 		"target_player": int(candidate.get("target_player", -1)),
 	}
 	for field_name in _ai_training_metadata_field_names():
@@ -8072,7 +8207,8 @@ func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_cand
 		target_player,
 		int(candidate.get("selected_card_resolution_id", -1)),
 		target_district,
-		target_product
+		target_product,
+		int(candidate.get("target_monster_uid", -1))
 	)
 	var queued := bool(receipt.get("accepted", false))
 	if queued:
@@ -8531,24 +8667,28 @@ func _ai_monster_wager_side_score(player_index: int, entry: Dictionary, side: St
 	var city_bias := 0
 	var resource_bias := 0
 	var reason_key := "unknown"
-	if slot >= 0 and slot < auto_monsters.size():
-		var actor: Dictionary = auto_monsters[slot]
+	var actor := _monster_actor_at_slot(player_index, slot)
+	if not actor.is_empty():
 		var expected_damage := _monster_wager_actor_expected_damage_score(actor)
-		combat_score = expected_damage * 38 + int(actor.get("hp", 0)) + int(actor.get("armor", 0)) * 6 + int(actor.get("rank", 1)) * 32
-		var monster_owner := int(actor.get("owner", -1))
-		if monster_owner == player_index:
+		combat_score = expected_damage * 38 \
+			+ int(actor.get("hp", 0)) \
+			+ int(actor.get("armor", 0)) * 6 \
+			+ int(actor.get("rank", 1)) * 32
+		var ownership_scope := str(actor.get("ownership_scope", "public_unknown"))
+		if ownership_scope == "actor_own":
 			owner_bias = 120
 			if not bool(actor.get("owner_revealed", false)):
 				owner_bias -= 28
 			reason_key = "own_monster"
-		elif monster_owner >= 0:
+		elif ownership_scope == "public_revealed":
+			var public_owner := int(actor.get("public_owner_index", -1))
 			var leader_index := int(_ai_refresh_game_phase(player_index).get("leader_index", -1))
 			owner_bias = 38
-			if monster_owner == leader_index and monster_owner != player_index:
+			if public_owner == leader_index and public_owner != player_index:
 				owner_bias -= 42
 				reason_key = "leader_monster"
 			else:
-				reason_key = "rival_monster"
+				reason_key = "revealed_rival_monster"
 		else:
 			owner_bias = 18
 			reason_key = "unknown_owner"
@@ -8570,6 +8710,7 @@ func _ai_monster_wager_side_score(player_index: int, entry: Dictionary, side: St
 		"resource_bias": resource_bias,
 		"reason_key": reason_key,
 	}
+
 func _ai_monster_wager_plan(player_index: int, entry: Dictionary) -> Dictionary:
 	var best := {}
 	var second_score := -999999

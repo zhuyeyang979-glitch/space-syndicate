@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/ai_military_actor_query_port.gd" id="1_port"]
+
+[node name="AiMilitaryActorQueryPort" type="Node"]
+script = ExtResource("1_port")
+military_runtime_controller_path = NodePath("../MilitaryRuntimeController")
+military_public_query_port_path = NodePath("../AiMilitaryPublicQueryPort")
+world_session_state_path = NodePath("../WorldSessionState")
+game_session_runtime_controller_path = NodePath("../GameSessionRuntimeController")

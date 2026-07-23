@@ -591,11 +591,10 @@ func refresh_unit_from_skill(unit: Dictionary, skill: Dictionary, district_index
 	return unit
 
 
-func summon_from_card(player_index: int, skill: Dictionary) -> bool:
+func summon_from_card(player_index: int, skill: Dictionary, target_district_index: int) -> bool:
 	var players := _players()
 	var districts := _districts()
-	var selection: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
-	var selected_district: int = selection.selected_district if selection != null else -1
+	var selected_district := target_district_index
 	if player_index < 0 or player_index >= players.size():
 		return false
 	if selected_district < 0 or selected_district >= districts.size() or bool((districts[selected_district] as Dictionary).get("destroyed", false)):
@@ -668,8 +667,9 @@ func trigger_command(skill: Dictionary, target_slot: int = -1, acting_player_ind
 	var player_index := acting_player_index
 	if player_index < 0 or player_index >= players.size():
 		return false
-	var unit_index := unit_index_by_uid(int(skill.get("bound_military_uid", 0)))
-	if unit_index < 0:
+	var bound_unit_uid := int(skill.get("bound_military_uid", 0))
+	var unit_index := unit_index_by_uid(bound_unit_uid)
+	if unit_index < 0 and bound_unit_uid <= 0:
 		unit_index = owned_active_unit_index(player_index)
 	if unit_index < 0:
 		_log("%s没有可接收军令的防卫军。" % str(skill.get("name", "军令")))
@@ -693,8 +693,7 @@ func trigger_command(skill: Dictionary, target_slot: int = -1, acting_player_ind
 	var command_move := maxf(1.0, float(unit.get("move", skill.get("move", 220.0))))
 	var source := "匿名%s·%s" % [label, _skill_family(str(skill.get("name", "军令")))]
 	var before := _entity_world_position(unit)
-	var table_selection: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
-	var selected_district: int = table_selection.selected_district if table_selection != null else -1
+	var selected_district := int(command_context.get("selected_district", -1))
 	match command:
 		"move":
 			if not _valid_target_district(selected_district, districts):

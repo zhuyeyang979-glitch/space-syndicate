@@ -695,6 +695,7 @@ func _prepare_legacy_submission(
 	var envelope := _capture_stable_target_envelope(selection_snapshot, {
 		"target_kind": _envelope_target_kind(choice_kind),
 		"target_slot": int(request.get("target_slot", -1)),
+		"target_monster_uid": int(request.get("target_monster_uid", -1)),
 		"target_player": int(request.get("target_player", -1)),
 		"play_requirement_district": int(requirement_status.get("qualifying_district", -1)),
 		"capture_source": str(request.get("submission_source", "card_play_submission")),

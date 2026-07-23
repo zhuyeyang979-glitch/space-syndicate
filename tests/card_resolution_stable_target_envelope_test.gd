@@ -29,17 +29,18 @@ class StableEligibilityService:
 	func evaluate_play(request: Dictionary, _facts: Dictionary) -> Dictionary:
 		var skill: Dictionary = request.get("skill", {}) if request.get("skill", {}) is Dictionary else {}
 		var player_target := bool(skill.get("target_player_required", false))
+		var monster_target := bool(skill.get("target_monster_required", false))
 		return {
 			"allowed": true,
 			"reason_code": "playable",
-			"requires_target_monster": false,
+			"requires_target_monster": monster_target,
 			"requires_target_player": player_target,
 			"cash_cost": 0,
 			"financial_margin_cash": 0,
 			"financial_terms_version": "",
 			"asset_cost": {},
 			"target_status": {
-				"target_kind": "player" if player_target else "none",
+				"target_kind": "monster" if monster_target else ("player" if player_target else "none"),
 				"is_counter": false,
 			},
 			"requirement_status": {
@@ -81,6 +82,38 @@ class SubmissionCoordinator:
 		return {"available": true}
 
 
+class FrozenMonsterOwner:
+	extends MonsterRuntimeController
+
+	var captured_districts: Array[int] = []
+
+	func _summon_monster_from_card(_acting_player_index: int, _skill: Dictionary, target_district_index: int) -> bool:
+		captured_districts.append(target_district_index)
+		return true
+
+	func _trigger_bound_monster_skill(_skill: Dictionary, _player: Dictionary, target_district_index: int) -> bool:
+		captured_districts.append(target_district_index)
+		return true
+
+
+class FrozenMilitaryOwner:
+	extends MilitaryRuntimeController
+
+	var captured_districts: Array[int] = []
+
+	func summon_from_card(_player_index: int, _skill: Dictionary, target_district_index: int) -> bool:
+		captured_districts.append(target_district_index)
+		return true
+
+	func trigger_command(
+		_skill: Dictionary,
+		_target_slot: int = -1,
+		_acting_player_index: int = -1,
+		command_context: Dictionary = {}
+	) -> bool:
+		captured_districts.append(int(command_context.get("selected_district", -1)))
+		return true
+
 func _init() -> void:
 	call_deferred("_run")
 
@@ -89,6 +122,7 @@ func _run() -> void:
 	_build_catalog_fixture()
 	_test_envelope_contract()
 	_test_target_choice_focus_drift()
+	_test_effect_router_frozen_region_dispatch()
 	_test_queue_and_privacy_contracts()
 	_test_source_boundaries()
 	_host.free()
@@ -198,6 +232,33 @@ func _test_target_choice_focus_drift() -> void:
 		_query,
 		coordinator
 	)
+	var prepared_monster := submission._prepare_legacy_submission(0, {
+		"name": "Focused Monster Target",
+		"kind": "monster_lure",
+		"target_monster_required": true,
+		"persistent": false,
+	}, "rule", {
+		"target_slot": 0,
+		"target_monster_uid": 42,
+		"target_player": -1,
+		"submission_source": "focused_monster_uid",
+	})
+	var prepared_envelope: Dictionary = prepared_monster.get("envelope", {}) if prepared_monster.get("envelope", {}) is Dictionary else {}
+	var prepared_context := StableTargetEnvelope.context_at_capture(prepared_envelope)
+	_expect(bool(prepared_monster.get("prepared", false)) and int(prepared_context.get("target_monster_uid", -1)) == 42, "CardPlaySubmissionRuntimeController carries the stable Monster UID into its official envelope")
+	var monster_owner := MonsterRuntimeController.new()
+	monster_owner.auto_monsters = [
+		{"uid": 42, "slot": 0, "name": "Alpha", "hp": 10, "down": false},
+		{"uid": 43, "slot": 1, "name": "Beta", "hp": 10, "down": false},
+	]
+	var effect_router := CardEffectRuntimeRouter.new()
+	effect_router.set_dependencies(_world, _selection, monster_owner, null, null, null, null, null, null, null, null)
+	_expect(effect_router._resolved_monster_target_slot({"target_slot": 0, "target_monster_uid": 42}) == 0, "effect routing resolves the original Monster slot by stable UID")
+	monster_owner.auto_monsters = [monster_owner.auto_monsters[1], monster_owner.auto_monsters[0]]
+	_expect(effect_router._resolved_monster_target_slot({"target_slot": 0, "target_monster_uid": 42}) == 1, "slot drift follows the Monster UID instead of striking the old array position")
+	effect_router.free()
+	monster_owner.free()
+
 	var begin := submission.request_hand_play({
 		"player_index": 0,
 		"slot_index": 0,
@@ -262,6 +323,33 @@ func _test_target_choice_focus_drift() -> void:
 		node.free()
 	_world.replace_districts(_district_fixture(), true)
 
+
+func _test_effect_router_frozen_region_dispatch() -> void:
+	_selection.restore({"selected_district": 2})
+	var monster_owner := FrozenMonsterOwner.new()
+	var military_owner := FrozenMilitaryOwner.new()
+	var router := CardEffectRuntimeRouter.new()
+	router.set_dependencies(_world, _selection, monster_owner, military_owner, null, null, null, null, null, null, null)
+	var frozen_entry := {"selected_district": 0, "resolution_id": 6401}
+	var player := _world.players[0] as Dictionary
+	var monster_summon := router._dispatch_domain_handler("monster_card", 0, player, frozen_entry, {"kind": "monster_card"})
+	var monster_bound := router._dispatch_domain_handler("monster_bound_action", 0, player, frozen_entry, {"kind": "monster_bound_action"})
+	var military_summon := router._dispatch_domain_handler("military_force", 0, player, frozen_entry, {"kind": "military_force"})
+	var military_command := router._dispatch_domain_handler("military_command", 0, player, frozen_entry, {"kind": "military_command"})
+	var military_targeted := router._resolve_targeted_skill({"kind": "military_command"}, player, 0, 0, 0, frozen_entry)
+	_expect(
+		monster_summon and monster_bound \
+			and monster_owner.captured_districts == [0, 0],
+		"Monster summon and bound actions receive the frozen queue district"
+	)
+	_expect(
+		military_summon and military_command and military_targeted \
+			and military_owner.captured_districts == [0, 0, 0],
+		"Military deploy and command actions receive the frozen queue district"
+	)
+	_expect(int(_selection.selected_district) == 2, "effect routing neither reads nor mutates the live table district focus")
+	for node in [router, monster_owner, military_owner]:
+		node.free()
 
 func _test_queue_and_privacy_contracts() -> void:
 	var queue := CardResolutionQueueRuntimeService.new()

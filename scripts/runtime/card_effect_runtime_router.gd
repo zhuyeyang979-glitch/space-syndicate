@@ -129,7 +129,7 @@ func _dispatch_economy_family(handler_id: String, entry: Dictionary, skill: Dict
 func _dispatch_domain_handler(handler_id: String, player_index: int, player: Dictionary, entry: Dictionary, skill: Dictionary) -> bool:
 	match handler_id:
 		"monster_card":
-			return _monster_controller != null and _monster_controller._summon_monster_from_card(player_index, skill)
+			return _monster_controller != null and _monster_controller._summon_monster_from_card(player_index, skill, int(entry.get("selected_district", -1)))
 		"public_facility":
 			if _runtime_coordinator == null:
 				return false
@@ -143,11 +143,11 @@ func _dispatch_domain_handler(handler_id: String, player_index: int, player: Dic
 			})
 			return bool(result.get("committed", false))
 		"monster_bound_action":
-			return _monster_controller != null and _monster_controller._trigger_bound_monster_skill(skill, player)
+			return _monster_controller != null and _monster_controller._trigger_bound_monster_skill(skill, player, int(entry.get("selected_district", -1)))
 		"military_force":
-			return _military_controller != null and _military_controller.summon_from_card(player_index, skill)
+			return _military_controller != null and _military_controller.summon_from_card(player_index, skill, int(entry.get("selected_district", -1)))
 		"military_command":
-			return _military_controller != null and _military_controller.trigger_command(skill, -1, player_index, {"resolution_id": int(entry.get("resolution_id", entry.get("queued_order", -1)))})
+			return _military_controller != null and _military_controller.trigger_command(skill, -1, player_index, {"resolution_id": int(entry.get("resolution_id", entry.get("queued_order", -1))), "selected_district": int(entry.get("selected_district", -1))})
 		"card_counter":
 			return false
 		"weather_control":
@@ -161,7 +161,7 @@ func _dispatch_domain_handler(handler_id: String, player_index: int, player: Dic
 
 func _resolve_targeted_skill(skill: Dictionary, player: Dictionary, target_slot: int, player_index: int, selected_district: int, entry: Dictionary = {}) -> bool:
 	if str(skill.get("kind", "")) == "military_command":
-		return _military_controller != null and _military_controller.trigger_command(skill, target_slot, player_index, {"resolution_id": int(entry.get("resolution_id", entry.get("queued_order", -1)))})
+		return _military_controller != null and _military_controller.trigger_command(skill, target_slot, player_index, {"resolution_id": int(entry.get("resolution_id", entry.get("queued_order", -1))), "selected_district": int(entry.get("selected_district", -1))})
 	return _monster_controller != null and _monster_controller.resolve_targeted_skill(skill, player, target_slot, player_index, selected_district)
 
 

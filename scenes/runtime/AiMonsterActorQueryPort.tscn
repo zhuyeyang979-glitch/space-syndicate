@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/ai_monster_actor_query_port.gd" id="1_port"]
+
+[node name="AiMonsterActorQueryPort" type="Node"]
+script = ExtResource("1_port")
+monster_runtime_controller_path = NodePath("../MonsterRuntimeController")
+monster_public_query_port_path = NodePath("../AiMonsterPublicQueryPort")
+world_session_state_path = NodePath("../WorldSessionState")
+game_session_runtime_controller_path = NodePath("../GameSessionRuntimeController")

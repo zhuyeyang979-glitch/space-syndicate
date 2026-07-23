@@ -159,8 +159,8 @@ func _verify_invalid_actor_is_atomic() -> void:
 	var before_players := state.players.duplicate(true)
 	var before_calls := int(bridge.debug_snapshot().get("world_call_count", -1))
 	var before_uid := owner.next_auto_monster_uid
-	var direct_negative := bool(owner.call("_summon_monster_from_card", -1, skill))
-	var direct_overflow := bool(owner.call("_summon_monster_from_card", state.players.size(), skill))
+	var direct_negative := bool(owner.call("_summon_monster_from_card", -1, skill, 0))
+	var direct_overflow := bool(owner.call("_summon_monster_from_card", state.players.size(), skill, 0))
 	_check(not direct_negative and not direct_overflow, "MonsterRuntime rejects negative and out-of-range actors")
 	_check(owner.auto_monsters.is_empty() and owner.next_auto_monster_uid == before_uid, "invalid actor creates no monster and consumes no owner sequence")
 	_check(state.players == before_players and int(bridge.debug_snapshot().get("world_call_count", -2)) == before_calls, "invalid actor performs no skill, log, scenario, or world mutation")
@@ -228,7 +228,7 @@ func _verify_public_output_and_source_boundary() -> void:
 	var monster_source := FileAccess.get_file_as_string("res://scripts/runtime/monster_runtime_controller.gd")
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 	var summon_body := _function_body(monster_source, "func _summon_monster_from_card(", "func _player_monster_control_limit(")
-	_check(router_source.contains("_summon_monster_from_card(player_index, skill)"), "Router explicitly forwards active-entry player_index")
+	_check(router_source.contains("_summon_monster_from_card(player_index, skill, int(entry.get(\"selected_district\", -1)))"), "Router explicitly forwards active-entry player_index")
 	_check(not summon_body.contains("selected_player") and summon_body.contains("acting_player_index"), "monster-card summon graph has zero selected-player actor reads")
 	_check(not main_source.contains("func _summon_monster_from_card("), "monster-card summon routing has no Main implementation")
 
