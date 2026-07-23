@@ -893,7 +893,6 @@ func _ai_runtime_world_constant_snapshot() -> Dictionary:
 		"ACTION_CALLOUT_DURATION": ACTION_CALLOUT_DURATION,
 		"AUTO_MONSTER_ENCOUNTER_RANGE_METERS": MonsterRuntimeController.AUTO_MONSTER_ENCOUNTER_RANGE_METERS,
 		"DEFAULT_AOE_RADIUS_METERS": DEFAULT_AOE_RADIUS_METERS,
-		"ECONOMY_LEGACY_TURN_SECONDS": ECONOMY_LEGACY_TURN_SECONDS,
 		"MAX_PLAYER_COUNT": MAX_PLAYER_COUNT,
 		"MIN_PLAYER_COUNT": MIN_PLAYER_COUNT,
 		"NEARBY_RADIUS_METERS": NEARBY_RADIUS_METERS,
@@ -2402,10 +2401,6 @@ func _skill_play_product(skill: Dictionary, player_index: int) -> String:
 	return _first_player_flow_product(player_index)
 
 
-func _skill_play_flow_required(skill: Dictionary, _player_index: int = -1) -> int:
-	# Deprecated compatibility hook. The live gate is regional GDP share; an
-	# old fixed-product field may still be kept as supply affinity.
-	return maxi(0, int(skill.get("play_flow_required", 0))) if bool(skill.get("legacy_flow_gate_enabled", false)) else 0
 func _player_region_gdp_share_basis_points(player_index: int, district_index: int) -> int:
 	if district_index < 0 or district_index >= _game_runtime_coordinator_node().world_session_state().districts.size():
 		return 0
@@ -3990,12 +3985,6 @@ func _legacy_turns_to_seconds(turns: int) -> float:
 	return float(maxi(0, turns)) * ECONOMY_LEGACY_TURN_SECONDS
 
 
-func _skill_duration_seconds(skill: Dictionary, seconds_key: String, turns_key: String, default_turns: int = 0) -> float:
-	if skill.has(seconds_key):
-		return maxf(0.0, float(skill.get(seconds_key, 0.0)))
-	return _legacy_turns_to_seconds(maxi(0, int(skill.get(turns_key, default_turns))))
-
-
 func _remaining_effect_seconds(source: Dictionary, seconds_key: String, turns_key: String) -> float:
 	if source.has(seconds_key):
 		return maxf(0.0, float(source.get(seconds_key, 0.0)))
@@ -5178,24 +5167,6 @@ func _next_upgrade_name(skill_name: String) -> String:
 		return ""
 	var next_name := "%s%d" % [family, rank + 1]
 	return next_name if _game_runtime_coordinator_node().card_exists(next_name) else ""
-
-
-func _find_highest_family_card_slot(player: Dictionary, skill_name: String) -> int:
-	var family := _game_runtime_coordinator_node().card_family_id(skill_name)
-	var best_slot := -1
-	var best_rank := -1
-	for i in range(player["slots"].size()):
-		var skill = player["slots"][i]
-		if skill == null:
-			continue
-		var current_name := String(skill.get("name", ""))
-		if _game_runtime_coordinator_node().card_family_id(current_name) != family:
-			continue
-		var rank := maxi(1, _game_runtime_coordinator_node().card_rank(current_name))
-		if rank > best_rank:
-			best_rank = rank
-			best_slot = i
-	return best_slot
 
 
 func _first_empty_or_new_slot(player: Dictionary) -> int:

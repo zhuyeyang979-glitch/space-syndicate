@@ -347,7 +347,11 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	if ai_controller != null and ai_controller.has_method("set_city_gdp_derivative_runtime_controller"):
 		ai_controller.call("set_city_gdp_derivative_runtime_controller", city_gdp_derivative_controller)
 	if ai_controller != null and ai_controller.has_method("set_card_definition_bridge"):
-		ai_controller.call("set_card_definition_bridge", card_definition_bridge)
+		ai_controller.call(
+			"set_card_definition_bridge",
+			card_definition_bridge,
+			_card_play_eligibility_node()
+		)
 	if ai_controller != null and ai_controller.has_method("set_gameplay_balance_diagnostics_service"):
 		ai_controller.call("set_gameplay_balance_diagnostics_service", balance_diagnostics)
 	if ai_controller != null and ai_controller.has_method("set_victory_control_runtime_controller"):

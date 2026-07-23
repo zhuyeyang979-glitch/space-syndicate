@@ -49,6 +49,7 @@ var _weather_runtime_controller: WeatherRuntimeController
 var _product_market_runtime_controller: ProductMarketRuntimeController
 var _city_gdp_derivative_runtime_controller: CityGdpDerivativeRuntimeController
 var _card_definition_bridge: CardRuntimeDefinitionWorldBridge
+var _card_play_eligibility_runtime_service: CardPlayEligibilityRuntimeService
 var _gameplay_balance_diagnostics_service: GameplayBalanceDiagnosticsRuntimeService
 var _victory_control_runtime_controller: VictoryControlRuntimeController
 var _route_network_runtime_controller: RouteNetworkRuntimeController
@@ -211,8 +212,12 @@ func set_city_gdp_derivative_runtime_controller(controller: CityGdpDerivativeRun
 	_city_gdp_derivative_runtime_controller = controller
 
 
-func set_card_definition_bridge(bridge: CardRuntimeDefinitionWorldBridge) -> void:
+func set_card_definition_bridge(
+	bridge: CardRuntimeDefinitionWorldBridge,
+	eligibility_service: CardPlayEligibilityRuntimeService = null
+) -> void:
 	_card_definition_bridge = bridge
+	_card_play_eligibility_runtime_service = eligibility_service
 
 
 func set_gameplay_balance_diagnostics_service(service: GameplayBalanceDiagnosticsRuntimeService) -> void:
@@ -1053,10 +1058,6 @@ var ACTION_CALLOUT_DURATION:
 	get:
 		return _world_constant(&"ACTION_CALLOUT_DURATION")
 
-var ECONOMY_LEGACY_TURN_SECONDS:
-	get:
-		return _world_constant(&"ECONOMY_LEGACY_TURN_SECONDS")
-
 var MAX_PLAYER_COUNT:
 	get:
 		return _world_constant(&"MAX_PLAYER_COUNT")
@@ -1358,7 +1359,8 @@ func _skill_play_product(skill: Dictionary, player_index: int) -> String:
 	return explicit if not explicit.is_empty() else _first_player_flow_product(player_index)
 
 func _skill_play_flow_required(skill: Dictionary, _player_index: int = -1) -> int:
-	return _call_world(&"_skill_play_flow_required", [skill, _player_index])
+	return maxi(0, int(skill.get("play_flow_required", 0))) \
+		if bool(skill.get("legacy_flow_gate_enabled", false)) else 0
 
 func _skill_play_region_scope(skill: Dictionary, player_index: int) -> String:
 	return str(_skill_play_requirement_status(player_index, skill).get("scope", CardPlayRequirementPolicyScript.SCOPE_OWN_BEST_REGION))
@@ -1583,8 +1585,16 @@ func _development_route_pressure_audit() -> Dictionary:
 func _duration_short_text(seconds: float) -> String:
 	return _call_monster(&"_duration_short_text", [seconds])
 
-func _skill_duration_seconds(skill: Dictionary, seconds_key: String, turns_key: String, default_turns: int = 0) -> float:
-	return _call_world(&"_skill_duration_seconds", [skill, seconds_key, turns_key, default_turns])
+func _skill_duration_seconds(
+	skill: Dictionary,
+	seconds_key: String,
+	turns_key: String,
+	default_turns: int = 0
+) -> float:
+	if skill.has(seconds_key):
+		return maxf(0.0, float(skill.get(seconds_key, 0.0)))
+	return float(maxi(0, int(skill.get(turns_key, default_turns)))) \
+		* ProductMarketRuntimeController.ECONOMY_LEGACY_TURN_SECONDS
 
 func _city_gdp_derivative_duration_seconds(skill: Dictionary) -> float:
 	return float(_city_gdp_derivative_terms(skill).get("duration_seconds", 0.0))
@@ -1633,7 +1643,13 @@ func _catalog_entry(index: int) -> Dictionary:
 	return _call_monster(&"_catalog_entry", [index])
 
 func _canonical_card_supply_name(skill_name: String) -> String:
-	return _call_world(&"_canonical_card_supply_name", [skill_name])
+	if skill_name.is_empty() or _card_definition_bridge == null:
+		return ""
+	var rank := _card_definition_bridge.rank(skill_name)
+	if rank <= 0:
+		return skill_name if _card_definition_bridge.has_runtime_card(skill_name) else ""
+	var base_name := "%s1" % _card_definition_bridge.family_id(skill_name)
+	return base_name if _card_definition_bridge.has_runtime_card(base_name) else ""
 
 func _district_supply_card_ids(district_index: int) -> Array:
 	return _district_supply_runtime_query_port.public_card_ids_for_district(district_index) \
@@ -1663,7 +1679,16 @@ func _weighted_pick_index(weights: Array) -> int:
 	return _call_monster(&"_weighted_pick_index", [weights])
 
 func _card_display_name(card_name: String) -> String:
-	return _call_world(&"_card_display_name", [card_name])
+	if card_name.is_empty() or _card_definition_bridge == null:
+		return ""
+	var family := _card_definition_bridge.family_id(card_name)
+	var rank := maxi(1, _card_definition_bridge.rank(card_name))
+	return "%s %s" % [family, _card_rank_level_text(rank)]
+
+
+func _card_rank_level_text(rank: int) -> String:
+	var roman_levels := ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"]
+	return "%s级" % roman_levels[clampi(rank, 1, roman_levels.size()) - 1]
 
 func _district_event_weight(index: int) -> int:
 	return _call_world(&"_district_event_weight", [index])
@@ -1690,10 +1715,35 @@ func _ai_has_next_card_submission(player_index: int) -> bool:
 	return snapshot.is_empty() or bool(snapshot.get("has_next_submission", false))
 
 func _find_highest_family_card_slot(player: Dictionary, skill_name: String) -> int:
-	return _call_world(&"_find_highest_family_card_slot", [player, skill_name])
+	if _card_definition_bridge == null:
+		return -1
+	var family := _card_definition_bridge.family_id(skill_name)
+	var slots: Array = player.get("slots", []) if player.get("slots", []) is Array else []
+	var best_slot := -1
+	var best_rank := -1
+	for slot_index in range(slots.size()):
+		if not (slots[slot_index] is Dictionary):
+			continue
+		var current_name := str((slots[slot_index] as Dictionary).get("name", ""))
+		if _card_definition_bridge.family_id(current_name) != family:
+			continue
+		var rank := maxi(1, _card_definition_bridge.rank(current_name))
+		if rank > best_rank:
+			best_rank = rank
+			best_slot = slot_index
+	return best_slot
 
 func _player_counted_hand_size(player: Dictionary) -> int:
-	return _call_world(&"_player_counted_hand_size", [player])
+	var count := 0
+	for skill_variant in player.get("slots", []):
+		if not (skill_variant is Dictionary):
+			continue
+		var skill := skill_variant as Dictionary
+		var persistent_bound_action := bool(skill.get("persistent", false)) \
+			and ["monster_bound_action", "military_command"].has(str(skill.get("kind", "")))
+		if not persistent_bound_action:
+			count += 1
+	return count
 
 func _discardable_hand_slots_for_purchase(player_index: int) -> Array:
 	return _district_supply_runtime_query_port.private_discardable_slots_for_actor(
@@ -1756,13 +1806,17 @@ func _buy_card_for_player_from_district(player_index: int, district_index: int, 
 		return false
 	return _district_supply_action_port.submit_ai_purchase(player_index, district_index, skill_name, discard_slot)
 
+func _card_play_target_status(skill: Dictionary) -> Dictionary:
+	return _card_play_eligibility_runtime_service.target_status({"skill": skill}, {}) \
+		if _card_play_eligibility_runtime_service != null else {}
+
+
 func _skill_targets_monster(skill: Dictionary) -> bool:
-	var value: Variant = _call_world(&"_card_play_target_snapshot", [skill])
-	return bool((value as Dictionary).get("targets_monster", false)) if value is Dictionary else false
+	return bool(_card_play_target_status(skill).get("targets_monster", false))
+
 
 func _skill_targets_player(skill: Dictionary) -> bool:
-	var value: Variant = _call_world(&"_card_play_target_snapshot", [skill])
-	return bool((value as Dictionary).get("targets_player", false)) if value is Dictionary else false
+	return bool(_card_play_target_status(skill).get("targets_player", false))
 
 func _playable_card_resolution_coverage_report() -> Dictionary:
 	return _gameplay_balance_diagnostics_service.playable_card_resolution_coverage_report() if _gameplay_balance_diagnostics_service != null else {}
@@ -1798,16 +1852,17 @@ func _queue_skill_resolution(
 
 
 func _is_counter_skill(skill: Dictionary) -> bool:
-	var value: Variant = _call_world(&"_card_play_target_snapshot", [skill])
-	return bool((value as Dictionary).get("is_counter", false)) if value is Dictionary else false
+	return bool(_card_play_target_status(skill).get("is_counter", false))
 
 func _can_convert_monster_card_to_counter(player_index: int, skill: Dictionary) -> bool:
 	var value: Variant = _call_world(&"_card_play_eligibility_snapshot", [player_index, skill, "hand", {}])
 	return str((value as Dictionary).get("reason_code", "")) == "counter_conversion_ready" if value is Dictionary else false
 
 func _skill_is_counterable_player_interaction(skill: Dictionary) -> bool:
-	var value: Variant = _call_world(&"_card_play_target_snapshot", [skill])
-	return bool((value as Dictionary).get("counterable_player_interaction", false)) if value is Dictionary else false
+	return bool(_card_play_target_status(skill).get(
+		"counterable_player_interaction",
+		false
+	))
 
 func _append_unique_string(result: Array, value: String) -> void:
 	return _call_monster(&"_append_unique_string", [result, value])
@@ -6830,7 +6885,7 @@ func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, distric
 		"attack_monster":
 			score += 96 if not auto_monsters.is_empty() else 18
 	score += int(float(int(skill.get("revenue_amount", 0))) / 2.0)
-	score += int(float(int(skill.get("contract_income", 0)) * maxi(1, int(ceil(float(_skill_duration_seconds(skill, "contract_seconds", "contract_turns", 1)) / float(ECONOMY_LEGACY_TURN_SECONDS))))) / 5.0)
+	score += int(float(int(skill.get("contract_income", 0)) * maxi(1, int(ceil(float(_skill_duration_seconds(skill, "contract_seconds", "contract_turns", 1)) / ProductMarketRuntimeController.ECONOMY_LEGACY_TURN_SECONDS)))) / 5.0)
 	score += int(round((float(skill.get("route_flow_multiplier", 1.0)) - 1.0) * 120.0)) if helpful_target else 0
 	score += int(skill.get("repair_routes", 0)) * (55 if helpful_target else 18)
 	var economy_delta := int(skill.get("production_delta", 0)) + int(skill.get("transport_delta", 0)) + int(skill.get("consumption_delta", 0))

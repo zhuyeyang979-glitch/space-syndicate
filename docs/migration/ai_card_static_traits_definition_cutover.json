@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "boundary_id": "AI_CARD_STATIC_TRAITS_DEFINITION_CUTOVER",
+  "base_sha": "a3eb6db2a12b3b08f5336e9c949c3df635c0cdd2",
+  "final_p0_claim": false,
+  "owners_reused": {
+    "target_traits": "CardPlayEligibilityRuntimeService",
+    "card_definitions": "CardRuntimeDefinitionWorldBridge",
+    "legacy_turn_seconds": "ProductMarketRuntimeController",
+    "hand_projection": "AiCardHandQueryPort"
+  },
+  "new_state_owner_count": 0,
+  "new_save_section_count": 0,
+  "removed_ai_generic_routes": {
+    "card_play_target_snapshot": 0,
+    "skill_play_flow_required": 0,
+    "skill_duration_seconds": 0,
+    "canonical_card_supply_name": 0,
+    "card_display_name": 0,
+    "find_highest_family_card_slot": 0,
+    "player_counted_hand_size": 0
+  },
+  "removed_ai_constant_routes": {
+    "ECONOMY_LEGACY_TURN_SECONDS": 0
+  },
+  "main_helpers_physically_deleted": [
+    "_skill_play_flow_required",
+    "_skill_duration_seconds",
+    "_find_highest_family_card_slot"
+  ],
+  "query_mutation_count": 0,
+  "query_rng_delta": 0,
+  "ai_call_world_invocations_before": 30,
+  "ai_call_world_invocations_after": 20,
+  "ai_call_world_unique_methods_before": 26,
+  "ai_call_world_unique_methods_after": 19,
+  "ai_world_constant_unique_after": 12,
+  "main_budget_after": {
+    "physical_lines": 6390,
+    "nonblank_lines": 5371,
+    "methods": 469,
+    "fields": 46,
+    "constants": 47,
+    "preloads": 7,
+    "external_caller_files": 102
+  },
+  "tests": {
+    "ai_card_static_traits_definition_cutover": "PASS",
+    "ai_card_queue_query_port": "PASS",
+    "ai_card_phase_counter_owner": "PASS",
+    "ai_card_hand_query_port": "PASS",
+    "card_execution_typed_ports_cutover": "PASS",
+    "card_resolution_stable_target_envelope": "PASS",
+    "main_runtime_composition": "PASS",
+    "main_gd_architecture_gate": "PASS",
+    "formal_main_scene_mcp": "PASS (819 nodes, 120 FPS)",
+    "git_diff_check": "PASS"
+  },
+  "remaining_scope": [
+    "actor-scoped stateful card eligibility facts",
+    "market-derived strategy helpers",
+    "monster and military typed ports",
+    "weather and victory typed queries",
+    "public log and visual cue routes",
+    "generic bridge extinction"
+  ]
+}
