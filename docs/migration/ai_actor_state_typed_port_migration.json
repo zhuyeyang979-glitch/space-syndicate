@@ -44,6 +44,12 @@
   },
   "command_contract": {
     "opaque_capability_required": true,
+    "capability_scope": "one_current_ai_actor",
+    "human_capability_count": 0,
+    "shared_ai_capability_count": 0,
+    "roster_replacement_reissues_capabilities": true,
+    "old_capability_accepted_after_replacement": false,
+    "zero_ai_capability_set_allowed": true,
     "ai_actor_required": true,
     "exact_patch_allowlist": ["ai_profile", "ai_memory"],
     "expected_revision_required": true,
@@ -76,7 +82,7 @@
     "restore_invalidates_old_revision": true,
     "players_replacement_invalidates_old_revision": true,
     "saved_actor_roster_must_equal_current_ai_roster": true,
-    "empty_batch_requires_capability": true,
+    "empty_batch_requires_current_capability_set": true,
     "empty_batch_requires_zero_ai_roster": true,
     "controller_zero_ai_roundtrip": true,
     "truncated_roster_rejected": true
@@ -104,15 +110,15 @@
     "nested_route_plan_cas_refresh": true
   },
   "evidence": {
-    "focused_checks": 93,
+    "focused_checks": 95,
     "focused_result": "PASS",
-    "production_bench_checks": 37,
+    "production_bench_checks": 39,
     "production_bench_result": "PASS",
     "privacy_leaks": 0,
     "partial_batch_mutations": 0,
     "script_errors": 0,
-    "focused_run_id": "20260723-001934-522-ai_actor_state_typed_port_migration_test-f91ca55c",
-    "production_bench_run_id": "20260723-001940-168-AiActorStateTypedPortMigrationBench-3ab4cc03",
+    "focused_run_id": "20260723-084604-062-ai_actor_state_typed_port_migration_test-64d6b992",
+    "production_bench_run_id": "20260723-084642-863-AiActorStateTypedPortMigrationBench-b9996f6d",
     "wrapper_script_error_count": 0,
     "wrapper_residual_process_count": 0,
     "setup_session_start_transaction": "133/133 PASS",
@@ -136,7 +142,7 @@
       "city_strategy_parity",
       "candidate_legality_preserved"
     ],
-    "candidate_main_differs_from_origin_main": false,
+    "candidate_main_differs_from_origin_main": true,
     "git_diff_check": "PASS",
     "tier_0_3_result": "PASS_WITH_DOCUMENTED_INHERITED_STALE_FIXTURE_DEBT"
   },

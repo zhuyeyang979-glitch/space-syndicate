@@ -2,6 +2,8 @@
 extends Node
 class_name AiActorStatePort
 
+signal ai_capability_refresh_requested()
+
 const PUBLIC_PLAYER_KEYS := [
 	"name",
 	"seat_type",
@@ -10,30 +12,6 @@ const PUBLIC_PLAYER_KEYS := [
 	"eliminated",
 	"eliminated_at",
 	"elimination_reason",
-]
-const PRIVATE_ACTOR_KEYS := [
-	"cash",
-	"cash_cents",
-	"action_cooldown",
-	"cities_built",
-	"last_cycle_income",
-	"last_cashflow_income",
-	"cashflow_remainder",
-	"total_city_income",
-	"total_role_income",
-	"total_card_income",
-	"total_card_spend",
-	"total_build_spend",
-	"total_business_spend",
-	"city_guesses",
-	"city_guess_confidence",
-	"city_guess_reasons",
-	"known_card_owners",
-	"ai_profile",
-	"ai_memory",
-	"slots",
-	"discard",
-	"discarded_cards",
 ]
 const AI_STATE_PATCH_KEYS := ["ai_profile", "ai_memory"]
 const AI_STATE_BATCH_ROW_KEYS := ["player_index", "ai_profile", "ai_memory", "expected_revision"]
@@ -51,10 +29,10 @@ const AI_STATE_SNAPSHOT_KEYS := [
 
 @export var world_session_state_path: NodePath
 
-var _capability: AiActorStateCapability
+var _capabilities_by_actor: Dictionary = {}
+var _capability_binding_initialized := false
 var _capability_revision := 0
 var _public_query_count := 0
-var _private_query_count := 0
 var _ai_state_query_count := 0
 var _state_commit_count := 0
 var _duplicate_commit_count := 0
@@ -71,14 +49,34 @@ func _ready() -> void:
 	_bind_world_lifecycle()
 
 
-func bind_ai_capability(capability: AiActorStateCapability) -> void:
+func bind_ai_capabilities(capabilities_by_actor: Dictionary) -> bool:
 	_bind_world_lifecycle()
-	_capability = capability
+	var expected_actor_indices := ai_player_indices(true)
+	expected_actor_indices.sort()
+	if capabilities_by_actor.size() != expected_actor_indices.size():
+		return _reject_capability_binding()
+	var normalized: Dictionary = {}
+	var seen_tokens: Dictionary = {}
+	for actor_index_variant in expected_actor_indices:
+		if not (actor_index_variant is int) or not capabilities_by_actor.has(actor_index_variant):
+			return _reject_capability_binding()
+		var actor_index := int(actor_index_variant)
+		var capability_variant: Variant = capabilities_by_actor[actor_index_variant]
+		if actor_index < 0 or not (capability_variant is AiActorStateCapability):
+			return _reject_capability_binding()
+		var token_id := (capability_variant as AiActorStateCapability).get_instance_id()
+		if seen_tokens.has(token_id):
+			return _reject_capability_binding()
+		seen_tokens[token_id] = true
+		normalized[actor_index] = capability_variant
+	_capabilities_by_actor = normalized
+	_capability_binding_initialized = true
 	_capability_revision += 1
+	return true
 
 
 func is_ready() -> bool:
-	return _world() != null and _capability != null
+	return _world() != null and _capability_binding_initialized
 
 
 func player_count() -> int:
@@ -154,20 +152,21 @@ func ai_actor_state_snapshot(
 
 
 func capture_ai_state_batch(
-	capability: AiActorStateCapability,
+	capabilities_by_actor: Dictionary,
 	include_eliminated := true
 ) -> Array:
-	var receipt := capture_ai_state_batch_receipt(capability, include_eliminated)
+	var receipt := capture_ai_state_batch_receipt(capabilities_by_actor, include_eliminated)
 	return (receipt.get("rows", []) as Array).duplicate(true) \
 		if bool(receipt.get("captured", false)) else []
 
 
 func capture_ai_state_batch_receipt(
-	capability: AiActorStateCapability,
+	capabilities_by_actor: Dictionary,
 	include_eliminated := true
 ) -> Dictionary:
 	_bind_world_lifecycle()
-	if not is_ready() or capability == null or capability != _capability:
+	var actor_indices := ai_player_indices(include_eliminated)
+	if not is_ready() or not _batch_authorized(capabilities_by_actor, actor_indices):
 		_rejected_query_count += 1
 		return {
 			"captured": false,
@@ -175,11 +174,13 @@ func capture_ai_state_batch_receipt(
 			"rows": [],
 			"actor_indices": [],
 		}
-	var actor_indices := ai_player_indices(include_eliminated)
 	var result: Array = []
 	for player_index_variant in actor_indices:
 		var player_index := int(player_index_variant)
-		var snapshot := ai_actor_state_snapshot(capability, player_index)
+		var snapshot := ai_actor_state_snapshot(
+			capabilities_by_actor.get(player_index) as AiActorStateCapability,
+			player_index
+		)
 		if snapshot.is_empty():
 			return {
 				"captured": false,
@@ -202,18 +203,18 @@ func capture_ai_state_batch_receipt(
 
 
 func apply_ai_state_batch(
-	capability: AiActorStateCapability,
+	capabilities_by_actor: Dictionary,
 	rows: Array
 ) -> Dictionary:
 	_bind_world_lifecycle()
-	if not is_ready() or capability == null or capability != _capability:
+	var expected_actor_indices := ai_player_indices(true)
+	expected_actor_indices.sort()
+	if not is_ready() or not _batch_authorized(capabilities_by_actor, expected_actor_indices):
 		_rejected_commit_count += 1
 		return _batch_receipt(false, false, "ai_actor_state_batch_unauthorized", 0)
 	if not _pure(rows):
 		_rejected_commit_count += 1
 		return _batch_receipt(false, false, "ai_actor_state_batch_invalid", 0)
-	var expected_actor_indices := ai_player_indices(true)
-	expected_actor_indices.sort()
 	if rows.is_empty():
 		if not expected_actor_indices.is_empty():
 			_rejected_commit_count += 1
@@ -230,7 +231,8 @@ func apply_ai_state_batch(
 			_rejected_commit_count += 1
 			return _batch_receipt(false, false, "ai_actor_state_batch_invalid", 0)
 		var player_index := int(row.get("player_index", -1))
-		if seen_indices.has(player_index) or not _authorized(capability, player_index):
+		var actor_capability := capabilities_by_actor.get(player_index) as AiActorStateCapability
+		if seen_indices.has(player_index) or not _authorized(actor_capability, player_index):
 			_rejected_commit_count += 1
 			return _batch_receipt(false, false, "ai_actor_state_batch_unauthorized", 0)
 		seen_indices[player_index] = true
@@ -276,14 +278,6 @@ func apply_ai_state_batch(
 	else:
 		_duplicate_commit_count += rows.size()
 	return _batch_receipt(true, changed_count > 0, "ai_actor_state_batch_committed" if changed_count > 0 else "ai_actor_state_batch_unchanged", changed_count)
-
-
-func private_actor_snapshot(
-	capability: AiActorStateCapability,
-	player_index: int
-) -> Dictionary:
-	_private_query_count += 1
-	return _private_snapshot(capability, player_index, PUBLIC_PLAYER_KEYS + PRIVATE_ACTOR_KEYS)
 
 
 func _private_snapshot(
@@ -344,8 +338,9 @@ func debug_snapshot() -> Dictionary:
 	return {
 		"port_ready": is_ready(),
 		"capability_revision": _capability_revision,
+		"capability_binding_initialized": _capability_binding_initialized,
+		"actor_scoped_capability_count": _capabilities_by_actor.size(),
 		"public_query_count": _public_query_count,
-		"private_query_count": _private_query_count,
 		"ai_state_query_count": _ai_state_query_count,
 		"state_commit_count": _state_commit_count,
 		"duplicate_commit_count": _duplicate_commit_count,
@@ -358,6 +353,8 @@ func debug_snapshot() -> Dictionary:
 		"public_snapshot_exposes_ai_memory": false,
 		"ai_state_snapshot_exposes_cash": false,
 		"ai_state_snapshot_exposes_hand": false,
+		"broad_private_actor_snapshot_available": false,
+		"capabilities_are_actor_scoped": true,
 		"ai_state_commit_requires_revision": true,
 		"batch_preflight_before_apply": true,
 		"restore_epoch": _restore_epoch,
@@ -369,13 +366,34 @@ func debug_snapshot() -> Dictionary:
 
 func _authorized(capability: AiActorStateCapability, player_index: int) -> bool:
 	return capability != null \
-		and capability == _capability \
+		and _capabilities_by_actor.get(player_index) == capability \
 		and _world() != null \
 		and player_index >= 0 \
 		and player_index < _world().players.size() \
 		and _world().players[player_index] is Dictionary \
 		and (bool((_world().players[player_index] as Dictionary).get("is_ai", false)) \
 			or str((_world().players[player_index] as Dictionary).get("seat_type", "human")) == "ai")
+
+
+func _batch_authorized(capabilities_by_actor: Dictionary, actor_indices: Array) -> bool:
+	if capabilities_by_actor.size() != _capabilities_by_actor.size():
+		return false
+	for actor_index_variant in _capabilities_by_actor:
+		var actor_index := int(actor_index_variant)
+		if capabilities_by_actor.get(actor_index) != _capabilities_by_actor[actor_index]:
+			return false
+	for actor_index_variant in actor_indices:
+		var actor_index := int(actor_index_variant)
+		if not _authorized(capabilities_by_actor.get(actor_index) as AiActorStateCapability, actor_index):
+			return false
+	return true
+
+
+func _reject_capability_binding() -> bool:
+	_capabilities_by_actor.clear()
+	_capability_binding_initialized = false
+	_capability_revision += 1
+	return false
 
 
 func _exact_patch(patch: Dictionary) -> bool:
@@ -489,6 +507,10 @@ func _on_world_session_restored(_summary: Dictionary) -> void:
 func _on_world_players_replaced(_player_count: int) -> void:
 	if not _actor_state_write_in_progress:
 		_restore_epoch += 1
+		_capabilities_by_actor.clear()
+		_capability_binding_initialized = false
+		_capability_revision += 1
+		ai_capability_refresh_requested.emit()
 
 
 func _allowlist(source: Dictionary, keys: Array) -> Dictionary:

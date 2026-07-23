@@ -51,8 +51,10 @@ func _run() -> void:
 		"game_time": 14.0,
 	}, true)
 	ai._ensure_player_ai_state()
-	var capability := ai.get("_ai_actor_state_capability") as AiActorStateCapability
-	_check(capability != null, "opaque_capability_bound")
+	var capabilities := ai.get("_ai_actor_state_capabilities") as Dictionary
+	var capability := capabilities.get(1) as AiActorStateCapability
+	var rival_capability := capabilities.get(2) as AiActorStateCapability
+	_check(capabilities.size() == 3 and not capabilities.has(0) and capability != null and rival_capability != null, "actor_scoped_capabilities_bound")
 
 	var rng_before := rng.capture_plan_checkpoint()
 	var world_before_queries := world.to_save_data()
@@ -64,23 +66,31 @@ func _run() -> void:
 	var actor_a_text := JSON.stringify(actor_a)
 	_check(actor_a_text.contains("ACTOR_A_PRIVATE") and not actor_a_text.contains("ACTOR_B_PRIVATE") and not actor_a_text.contains("ACTOR_C_PRIVATE"), "actor_private_isolation")
 	_check(not actor_a.has("cash") and not actor_a.has("slots") and not actor_a.has("action_cooldown") and not actor_a.has("city_guesses"), "deferred_private_domains_excluded")
-	_check(port.ai_actor_state_snapshot(AiActorStateCapability.new(), 1).is_empty() and port.ai_actor_state_snapshot(capability, 0).is_empty(), "forged_or_human_query_rejected")
-	var capture := port.capture_ai_state_batch_receipt(capability, true)
-	var forged_capture := port.capture_ai_state_batch_receipt(AiActorStateCapability.new(), true)
+	_check(port.ai_actor_state_snapshot(AiActorStateCapability.new(), 1).is_empty() and port.ai_actor_state_snapshot(capability, 0).is_empty() and port.ai_actor_state_snapshot(rival_capability, 1).is_empty(), "forged_human_or_rival_query_rejected")
+	var forged_capabilities := capabilities.duplicate()
+	forged_capabilities[1] = AiActorStateCapability.new()
+	var capture := port.capture_ai_state_batch_receipt(capabilities, true)
+	var forged_capture := port.capture_ai_state_batch_receipt(forged_capabilities, true)
+	var first_session_capability := capability
 	var roster_checkpoint := world.to_save_data()
 	world.replace_players([_player("Human-A", "HUMAN_A_PRIVATE", false, -1), _player("Human-B", "HUMAN_B_PRIVATE", false, -1)], true)
-	var zero_ai_capture := port.capture_ai_state_batch_receipt(capability, true)
-	var zero_ai_apply := port.apply_ai_state_batch(capability, [])
-	var forged_zero_ai_apply := port.apply_ai_state_batch(AiActorStateCapability.new(), [])
+	var zero_capabilities := ai.get("_ai_actor_state_capabilities") as Dictionary
+	var zero_ai_capture := port.capture_ai_state_batch_receipt(zero_capabilities, true)
+	var zero_ai_apply := port.apply_ai_state_batch(zero_capabilities, [])
+	var forged_zero_ai_apply := port.apply_ai_state_batch({1: AiActorStateCapability.new()}, [])
 	var zero_ai_saved := ai.to_save_data()
 	var zero_ai_timer := ai.ai_card_decision_timer
 	ai.ai_card_decision_timer += 9.0
 	var zero_ai_restore := ai.apply_save_data(zero_ai_saved)
 	world.apply_save_data(roster_checkpoint)
+	capabilities = ai.get("_ai_actor_state_capabilities") as Dictionary
+	capability = capabilities.get(1) as AiActorStateCapability
+	rival_capability = capabilities.get(2) as AiActorStateCapability
 	_check(bool(capture.get("captured", false)) and (capture.get("rows", []) as Array).size() == 3 and bool(zero_ai_capture.get("captured", false)) and (zero_ai_capture.get("rows", []) as Array).is_empty() and not bool(forged_capture.get("captured", true)), "typed_capture_receipt")
-	var truncated_direct_apply := port.apply_ai_state_batch(capability, [])
+	var truncated_direct_apply := port.apply_ai_state_batch(capabilities, [])
 	_check(bool(zero_ai_apply.get("accepted", false)) and not bool(forged_zero_ai_apply.get("accepted", true)) and not bool(truncated_direct_apply.get("accepted", true)) and str(truncated_direct_apply.get("reason_code", "")) == "ai_actor_state_batch_roster_mismatch", "empty_batch_capability_and_roster_guard")
 	_check(bool(zero_ai_restore.get("applied", false)) and int(zero_ai_restore.get("player_state_count", -1)) == 0 and is_equal_approx(ai.ai_card_decision_timer, zero_ai_timer), "controller_zero_ai_roundtrip")
+	_check(zero_capabilities.is_empty() and capability != null and capability != first_session_capability and port.ai_actor_state_snapshot(first_session_capability, 1).is_empty(), "session_capability_reissue")
 	actor_a = port.ai_actor_state_snapshot(capability, 1)
 	_check(world.to_save_data() == world_before_queries and rng.capture_plan_checkpoint() == rng_before, "query_zero_mutation_and_rng")
 
@@ -141,35 +151,46 @@ func _run() -> void:
 	_check(not bool(reverse_delete_conflict.get("accepted", true)) and str((port.ai_actor_state_snapshot(capability, 1).get("ai_memory", {}) as Dictionary).get("reverse_delete_conflict_key", "")) == "concurrent-update", "delete_update_conflict_rejected")
 	_check(ai._committed_change_count({"accepted": true, "changed": true}, 2) == 2 and ai._committed_change_count({"accepted": true, "changed": false}, 2) == 0, "finalization_count_requires_change")
 
-	var invalid_batch := port.capture_ai_state_batch(capability, true)
+	var invalid_batch := port.capture_ai_state_batch(capabilities, true)
 	((invalid_batch[0] as Dictionary).get("ai_memory", {}) as Dictionary)["batch_marker"] = "A"
 	((invalid_batch[1] as Dictionary).get("ai_memory", {}) as Dictionary)["batch_marker"] = "B"
 	(invalid_batch[1] as Dictionary)["expected_revision"] = "stale"
 	var before_invalid_batch := world.to_save_data()
-	var invalid_batch_receipt := port.apply_ai_state_batch(capability, invalid_batch)
+	var invalid_batch_receipt := port.apply_ai_state_batch(capabilities, invalid_batch)
 	_check(not bool(invalid_batch_receipt.get("accepted", true)) and world.to_save_data() == before_invalid_batch, "batch_preflight_before_apply")
-	var valid_batch := port.capture_ai_state_batch(capability, true)
+	var valid_batch := port.capture_ai_state_batch(capabilities, true)
 	((valid_batch[0] as Dictionary).get("ai_memory", {}) as Dictionary)["batch_marker"] = "A"
 	((valid_batch[1] as Dictionary).get("ai_memory", {}) as Dictionary)["batch_marker"] = "B"
-	var valid_batch_receipt := port.apply_ai_state_batch(capability, valid_batch)
+	var valid_batch_receipt := port.apply_ai_state_batch(capabilities, valid_batch)
 	_check(bool(valid_batch_receipt.get("accepted", false)) and int(valid_batch_receipt.get("changed_count", 0)) == 2, "atomic_batch_commit")
-	_check(str((port.ai_actor_state_snapshot(capability, 1).get("ai_memory", {}) as Dictionary).get("batch_marker", "")) == "A" and str((port.ai_actor_state_snapshot(capability, 2).get("ai_memory", {}) as Dictionary).get("batch_marker", "")) == "B", "batch_actor_isolation")
+	_check(str((port.ai_actor_state_snapshot(capability, 1).get("ai_memory", {}) as Dictionary).get("batch_marker", "")) == "A" and str((port.ai_actor_state_snapshot(rival_capability, 2).get("ai_memory", {}) as Dictionary).get("batch_marker", "")) == "B", "batch_actor_isolation")
 	var pre_replacement_revision := str(port.ai_actor_state_snapshot(capability, 1).get("state_revision", ""))
 	var replacement_actor := port.ai_actor_state_snapshot(capability, 1)
 	var replacement_memory := (replacement_actor.get("ai_memory", {}) as Dictionary).duplicate(true)
 	replacement_memory["replacement_marker"] = true
+	var pre_replacement_capability := capability
 	world.replace_players(world.players.duplicate(true), true)
-	var stale_after_replacement := port.commit_ai_state(capability, 1, {"ai_profile": replacement_actor.get("ai_profile", {}), "ai_memory": replacement_memory}, pre_replacement_revision)
+	var stale_after_replacement := port.commit_ai_state(pre_replacement_capability, 1, {"ai_profile": replacement_actor.get("ai_profile", {}), "ai_memory": replacement_memory}, pre_replacement_revision)
 	_check(not bool(stale_after_replacement.get("accepted", true)), "players_replacement_invalidates_revision")
+	capabilities = ai.get("_ai_actor_state_capabilities") as Dictionary
+	capability = capabilities.get(1) as AiActorStateCapability
+	rival_capability = capabilities.get(2) as AiActorStateCapability
+	_check(capability != pre_replacement_capability and port.ai_actor_state_snapshot(pre_replacement_capability, 1).is_empty(), "players_replacement_revokes_capability")
 	var generation_source := port.ai_actor_state_snapshot(capability, 1)
 	var generation_memory := (generation_source.get("ai_memory", {}) as Dictionary).duplicate(true)
 	generation_memory["old_session_marker"] = true
 	world.replace_players(world.players.duplicate(true), true)
 	var generation_commit := ai._commit_ai_memory(1, generation_memory, generation_source)
+	capabilities = ai.get("_ai_actor_state_capabilities") as Dictionary
+	capability = capabilities.get(1) as AiActorStateCapability
+	rival_capability = capabilities.get(2) as AiActorStateCapability
 	_check(not bool(generation_commit.get("accepted", true)) and str(generation_commit.get("rebase_rejected", "")) == "actor_state_generation_changed", "controller_rebase_generation_guard")
 
 	var pre_restore_revision := str(port.ai_actor_state_snapshot(capability, 1).get("state_revision", ""))
 	var restored := world.apply_save_data(world.to_save_data())
+	capabilities = ai.get("_ai_actor_state_capabilities") as Dictionary
+	capability = capabilities.get(1) as AiActorStateCapability
+	rival_capability = capabilities.get(2) as AiActorStateCapability
 	var post_restore := port.ai_actor_state_snapshot(capability, 1)
 	var post_restore_memory := (post_restore.get("ai_memory", {}) as Dictionary).duplicate(true)
 	post_restore_memory["restore_marker"] = true
@@ -208,7 +229,7 @@ func _run() -> void:
 	_check(route_candidates_at >= 0 and route_body.find("var actor_state := _ai_actor_state_snapshot", route_candidates_at) > route_candidates_at, "nested_route_plan_cas_refresh")
 	_check(not controller_source.contains("player[\"ai_profile\"]") and not controller_source.contains("player[\"ai_memory\"]"), "no_whole_player_actor_state_write")
 	var debug := port.debug_snapshot()
-	_check(bool(debug.get("ai_state_commit_requires_revision", false)) and bool(debug.get("batch_preflight_before_apply", false)), "debug_contract_evidence")
+	_check(bool(debug.get("ai_state_commit_requires_revision", false)) and bool(debug.get("batch_preflight_before_apply", false)) and bool(debug.get("capability_binding_initialized", false)) and int(debug.get("actor_scoped_capability_count", -1)) == 3, "debug_contract_evidence")
 	_finish()
 
 

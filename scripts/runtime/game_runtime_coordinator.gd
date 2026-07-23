@@ -1473,20 +1473,34 @@ func _wire_ai_world_typed_ports() -> void:
 	if actor_state_port == null or region_query_port == null or city_inference_port == null or ai == null:
 		push_error("GameRuntimeCoordinator requires the three AI typed world ports and AiRuntimeController; AI city inference fails closed.")
 		return
-	var actor_capability := AiActorStateCapability.new()
+	if not actor_state_port.ai_capability_refresh_requested.is_connected(_refresh_ai_actor_state_capabilities):
+		actor_state_port.ai_capability_refresh_requested.connect(_refresh_ai_actor_state_capabilities)
 	var region_capability := AiRegionKnowledgeCapability.new()
-	actor_state_port.bind_ai_capability(actor_capability)
 	region_query_port.bind_ai_capability(region_capability)
 	city_inference_port.bind_ai_capability(region_capability)
 	ai.set_world_typed_ports(
 		actor_state_port,
-		actor_capability,
+		{},
 		region_query_port,
 		region_capability,
 		city_inference_port
 	)
+	_refresh_ai_actor_state_capabilities()
 	if not actor_state_port.is_ready() or not region_query_port.is_ready():
 		push_error("AI typed world ports are missing authoritative runtime owners; AI city inference fails closed.")
+
+
+func _refresh_ai_actor_state_capabilities() -> void:
+	var actor_state_port := _ai_actor_state_port_node()
+	var ai := _ai_runtime_controller_node() as AiRuntimeController
+	if actor_state_port == null or ai == null:
+		return
+	var actor_capabilities: Dictionary = {}
+	for actor_index_variant in actor_state_port.ai_player_indices(true):
+		var actor_index := int(actor_index_variant)
+		actor_capabilities[actor_index] = AiActorStateCapability.new()
+	var bound := actor_state_port.bind_ai_capabilities(actor_capabilities)
+	ai.set_actor_state_capabilities(actor_capabilities if bound else {})
 
 
 func _wire_monster_wager_cash_commitment_query_port() -> void:

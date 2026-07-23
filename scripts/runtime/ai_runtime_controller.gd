@@ -26,7 +26,8 @@ const AI_PLAYER_SAVE_FIELDS := ["player_index", "ai_profile", "ai_memory"]
 
 var _world_bridge: Node
 var _ai_actor_state_port: AiActorStatePort
-var _ai_actor_state_capability: AiActorStateCapability
+var _ai_actor_state_capabilities: Dictionary = {}
+var _ai_actor_state_capability_binding_initialized := false
 var _ai_region_knowledge_query_port: AiRegionKnowledgeQueryPort
 var _ai_region_knowledge_capability: AiRegionKnowledgeCapability
 var _ai_city_inference_command_port: AiCityInferenceCommandPort
@@ -65,16 +66,21 @@ func set_world_bridge(bridge: Node) -> void:
 
 func set_world_typed_ports(
 	actor_state_port: AiActorStatePort,
-	actor_state_capability: AiActorStateCapability,
+	actor_state_capabilities: Dictionary,
 	region_knowledge_query_port: AiRegionKnowledgeQueryPort,
 	region_knowledge_capability: AiRegionKnowledgeCapability,
 	city_inference_command_port: AiCityInferenceCommandPort
 ) -> void:
 	_ai_actor_state_port = actor_state_port
-	_ai_actor_state_capability = actor_state_capability
+	set_actor_state_capabilities(actor_state_capabilities)
 	_ai_region_knowledge_query_port = region_knowledge_query_port
 	_ai_region_knowledge_capability = region_knowledge_capability
 	_ai_city_inference_command_port = city_inference_command_port
+
+
+func set_actor_state_capabilities(actor_state_capabilities: Dictionary) -> void:
+	_ai_actor_state_capabilities = actor_state_capabilities.duplicate()
+	_ai_actor_state_capability_binding_initialized = true
 
 
 func set_monster_runtime_controller(controller: MonsterRuntimeController) -> void:
@@ -329,7 +335,7 @@ func to_save_data() -> Dictionary:
 	if not _actor_state_ready():
 		return {}
 	var capture := _ai_actor_state_port.capture_ai_state_batch_receipt(
-		_ai_actor_state_capability,
+		_ai_actor_state_capabilities,
 		true
 	)
 	if not bool(capture.get("captured", false)):
@@ -421,7 +427,7 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 			"expected_revision": str(actor.get("state_revision", "")),
 		})
 	var batch_receipt := _ai_actor_state_port.apply_ai_state_batch(
-		_ai_actor_state_capability,
+		_ai_actor_state_capabilities,
 		actor_rows
 	)
 	if not bool(batch_receipt.get("accepted", false)):
@@ -469,7 +475,8 @@ func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 		"typed_card_submission_bound": _card_play_submission_controller != null,
 		"typed_card_history_bound": _card_resolution_history_service != null,
 		"typed_business_cost_cash_bound": _ai_business_cost_cash_port != null and _ai_business_cost_capability != null,
-		"typed_actor_state_bound": _ai_actor_state_port != null and _ai_actor_state_capability != null,
+		"typed_actor_state_bound": _ai_actor_state_port != null and _ai_actor_state_capability_binding_initialized and _ai_actor_state_port.is_ready(),
+		"actor_state_capabilities_are_actor_scoped": true,
 		"actor_state_uses_main": false,
 		"actor_state_uses_whole_players": false,
 		"typed_region_knowledge_bound": _ai_region_knowledge_query_port != null and _ai_region_knowledge_capability != null,
@@ -495,7 +502,7 @@ func _world_ready() -> bool:
 
 func _actor_state_ready() -> bool:
 	return _ai_actor_state_port != null \
-		and _ai_actor_state_capability != null \
+		and _ai_actor_state_capability_binding_initialized \
 		and _ai_actor_state_port.is_ready()
 
 
@@ -503,7 +510,7 @@ func _ai_actor_state_snapshot(player_index: int) -> Dictionary:
 	if not _actor_state_ready():
 		return {}
 	return _ai_actor_state_port.ai_actor_state_snapshot(
-		_ai_actor_state_capability,
+		_ai_actor_state_capabilities.get(player_index) as AiActorStateCapability,
 		player_index
 	)
 
@@ -518,7 +525,7 @@ func _commit_ai_actor_state(
 	if source.is_empty() or int(source.get("player_index", -1)) != player_index:
 		return {"accepted": false, "changed": false, "reason_code": "ai_actor_state_snapshot_missing"}
 	return _ai_actor_state_port.commit_ai_state(
-		_ai_actor_state_capability,
+		_ai_actor_state_capabilities.get(player_index) as AiActorStateCapability,
 		player_index,
 		{
 			"ai_profile": profile.duplicate(true),
@@ -588,7 +595,7 @@ func _committed_change_count(receipt: Dictionary, proposed_count: int) -> int:
 
 func _city_inference_ports_ready() -> bool:
 	return _ai_actor_state_port != null \
-		and _ai_actor_state_capability != null \
+		and _ai_actor_state_capability_binding_initialized \
 		and _ai_region_knowledge_query_port != null \
 		and _ai_region_knowledge_capability != null \
 		and _ai_city_inference_command_port != null \

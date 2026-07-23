@@ -45,10 +45,13 @@ remaining generic world bridge is not considered green.
 
 ## Production Contract
 
-`GameRuntimeCoordinator` already composes one `AiActorStatePort` and injects one
-opaque `AiActorStateCapability` into `AiRuntimeController`. The port is
-stateless apart from counters, capability identity, and restore epoch; it does
-not own player records.
+`GameRuntimeCoordinator` composes one `AiActorStatePort` and issues one opaque
+`AiActorStateCapability` for each current AI seat. Human seats receive no
+token, different AI seats never share one, and every external player-roster
+replacement revokes the old set before the composition root issues the next
+set. A valid zero-AI roster binds an empty set. The port is stateless apart
+from counters, capability identities, and restore epoch; it does not own
+player records.
 
 The public query exposes only public seat identity, role identity, and
 elimination facts. The actor-private query exposes that same public context plus
@@ -59,7 +62,8 @@ pure data. Queries mutate no state and consume no RNG.
 
 AI state mutation requires:
 
-- the exact opaque capability instance;
+- the exact opaque capability instance issued for that actor in the current
+  roster generation;
 - an AI actor index;
 - the exact `ai_profile` and `ai_memory` patch allowlist;
 - a non-empty expected revision;
@@ -82,12 +86,14 @@ for an accepted, changed commit.
 an unauthorized, unsafe, or incomplete capture. It returns every AI actor,
 including eliminated actors, as detached profile/memory rows. A malformed
 profile or memory fails the whole capture instead of silently omitting one
-field or actor. `apply_ai_state_batch` validates every row, capability, actor,
+field or actor. `apply_ai_state_batch` validates every row, the complete
+actor-scoped capability set, actor,
 shape, serializability, uniqueness, expected revision, and exact current AI
 roster before constructing a replacement players array. It assigns that array
 once; an invalid later row therefore cannot leave an earlier actor applied.
-Even an empty apply requires the exact capability and is accepted only when the
-current authoritative roster contains zero AI actors. Controller save capture
+Even an empty apply requires the exact current empty capability set and is
+accepted only when the current authoritative roster contains zero AI actors.
+Controller save capture
 and apply roundtrip that zero-actor state without inventing player rows.
 
 `AiRuntimeController.to_save_data` and `apply_save_data` keep their existing
@@ -114,8 +120,8 @@ not claim formal AI resume or full-run resume.
 
 ## Evidence
 
-- Focused SceneTree test: 93/93.
-- Production scene Bench: 37/37, privacy leaks 0, partial batch mutations 0.
+- Focused SceneTree test: 95/95.
+- Production scene Bench: 39/39, privacy leaks 0, partial batch mutations 0.
 - Setup session-start transaction: 133/133, including eight-seat active-table
   failure rollback.
 - City inference: 48/48; TypedWorldPorts: 83/83; AI business architecture: 37/37.
