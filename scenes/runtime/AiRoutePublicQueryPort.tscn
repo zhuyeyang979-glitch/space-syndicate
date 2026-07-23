@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/ai_route_public_query_port.gd" id="1_port"]
+
+[node name="AiRoutePublicQueryPort" type="Node"]
+script = ExtResource("1_port")
+route_network_runtime_controller_path = NodePath("../RouteNetworkRuntimeController")
+world_session_state_path = NodePath("../WorldSessionState")

@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "boundary_id": "ai_market_route_public_query_ports",
+  "status": "cut_over",
+  "ports": {
+    "market": "res://scenes/runtime/AiMarketPublicQueryPort.tscn",
+    "route": "res://scenes/runtime/AiRoutePublicQueryPort.tscn"
+  },
+  "owners": {
+    "market": "ProductMarketRuntimeController",
+    "route": "RouteNetworkRuntimeController"
+  },
+  "state_owner_count": 0,
+  "save_owner_count": 0,
+  "new_save_section_count": 0,
+  "market_contract": {
+    "required_product_count": 46,
+    "private_runtime_snapshot_used_by_ai": false,
+    "query_calls_ensure_catalog": false,
+    "query_mutation_count": 0,
+    "query_rng_delta": 0,
+    "private_futures_fields_exposed": false
+  },
+  "route_contract": {
+    "uses_cached_public_projection": true,
+    "refreshes_routes": false,
+    "query_mutation_count": 0,
+    "query_rng_delta": 0,
+    "facility_ids_exposed": false,
+    "capacity_resource_ids_exposed": false,
+    "rent_recipients_exposed": false,
+    "topology_fingerprint_exposed": false
+  },
+  "ai_consumer_cutover": {
+    "private_product_market_snapshot_count": 0,
+    "query_time_catalog_generation_count": 0,
+    "raw_route_scoring_read_count": 0,
+    "main_fallback_count": 0
+  },
+  "focused_checks": "15/15",
+  "inherited_gates": {
+    "route_weather_integration_v1_test": {
+      "parent_commit": "44dff1895a0b95bceeb3367230c732537cb5e2d7",
+      "parent_failures": 11,
+      "candidate_failures": 11,
+      "introduced_by_boundary": false
+    }
+  },
+  "remaining_boundaries": [
+    "commodity_flow_public_and_actor_queries",
+    "actor_facility_inventory_queries",
+    "raw_district_targeting",
+    "weather_public_query",
+    "generic_world_bridge_extinction"
+  ],
+  "full_run_resume_claim": false
+}

@@ -79,6 +79,25 @@ or Main dependency. It adds no owner or save section. Broad ProductMarket,
 CommodityFlow, route, and district consumers remain pending their dedicated
 typed-port boundaries.
 
+## Market And Route Public Query Boundary
+
+`AiMarketPublicQueryPort` consumes only the complete 46-entry public market
+projection. It fail-closes instead of calling `ensure_catalog()`, so AI reads
+cannot generate prices, mutate market state, or advance RNG. Product entries
+use a strict allowlist and anonymous futures omit actor, source-card, margin,
+warehouse-identity, and settlement-internal fields.
+
+`AiRoutePublicQueryPort` consumes only the Route owner's cached public
+projection. Public route rows carry stable route and region IDs, mode tags,
+distance, transfer count, bottleneck, and efficiency. Facility IDs, capacity
+resource IDs, rent recipients, expected rents, and topology fingerprints stay
+inside the owner. Querying does not refresh topology or consume weather RNG.
+
+AI market scoring no longer receives ProductMarket's private runtime snapshot,
+and route scoring no longer receives raw route candidates. The existing typed
+market mutation transaction and all other domain owners are unchanged. These
+Ports add no state or save section.
+
 ## Actor-Private State Typed-Port Boundary
 
 `AiRuntimeController` remains the semantic owner of the six personality

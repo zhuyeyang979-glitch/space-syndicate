@@ -8853,3 +8853,23 @@ deleted. Evidence and the remaining action inventory are recorded in
 - Focused actor-economy, city-inference, wager-cash, hand, business transaction,
   card/counter, and production-composition gates pass. Market, route, raw
   district targeting, and generic bridge extinction remain pending.
+
+## 2026-07-23 — AI public market and route query cutover
+
+- Added scene-owned `AiMarketPublicQueryPort` and `AiRoutePublicQueryPort`.
+  Both are detached, public, zero-mutation, zero-RNG queries with no Main or
+  save ownership.
+- Market queries require all 46 products, use a strict public allowlist, redact
+  private futures identity/lineage, and fail closed instead of invoking
+  `ensure_catalog()` from an AI read.
+- Route queries read only the existing cached public projection. The Route
+  owner now projects its real mode-tag, bottleneck, distance, transfer, and
+  route-ID fields while excluding facilities, resource IDs, rent recipients,
+  and topology lineage.
+- Removed AI's private ProductMarket snapshot and raw route-candidate reads from
+  the migrated scoring consumers. Existing ProductMarket mutation transactions
+  remain unchanged and no new mutation command was introduced.
+- Focused market/route, business transaction, card/counter, ProductMarket owner,
+  and Main composition gates pass. The route-weather gate remains an inherited
+  11-failure parent regression proven identical on `44dff18`; weather formulas
+  were not changed in this boundary.

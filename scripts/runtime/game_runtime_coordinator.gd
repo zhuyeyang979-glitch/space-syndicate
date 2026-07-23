@@ -1470,8 +1470,12 @@ func _wire_ai_world_typed_ports() -> void:
 	var actor_state_port := _ai_actor_state_port_node()
 	var region_query_port := _ai_region_knowledge_query_port_node()
 	var city_inference_port := _ai_city_inference_command_port_node()
+	var market_public_port := _ai_market_public_query_port_node()
+	var route_public_port := _ai_route_public_query_port_node()
 	var ai := _ai_runtime_controller_node() as AiRuntimeController
-	if session_public_port == null or actor_state_port == null or region_query_port == null or city_inference_port == null or ai == null:
+	if session_public_port == null or actor_state_port == null or region_query_port == null \
+			or city_inference_port == null or market_public_port == null \
+			or route_public_port == null or ai == null:
 		push_error("GameRuntimeCoordinator requires the AI session, actor, region, and inference typed ports; AI world queries fail closed.")
 		return
 	if not actor_state_port.ai_capability_refresh_requested.is_connected(_refresh_ai_actor_state_capabilities):
@@ -1487,6 +1491,7 @@ func _wire_ai_world_typed_ports() -> void:
 		region_capability,
 		city_inference_port
 	)
+	ai.set_market_route_query_ports(market_public_port, route_public_port)
 	_refresh_ai_actor_state_capabilities()
 	if not session_public_port.is_ready() or not actor_state_port.is_ready() or not region_query_port.is_ready():
 		push_error("AI typed world ports are missing authoritative runtime owners; AI city inference fails closed.")
@@ -5721,6 +5726,14 @@ func _ai_card_hand_query_port_node() -> AiCardHandQueryPort:
 
 func _ai_actor_economy_query_port_node() -> AiActorEconomyQueryPort:
 	return get_node_or_null("AiActorEconomyQueryPort") as AiActorEconomyQueryPort
+
+
+func _ai_market_public_query_port_node() -> AiMarketPublicQueryPort:
+	return get_node_or_null("AiMarketPublicQueryPort") as AiMarketPublicQueryPort
+
+
+func _ai_route_public_query_port_node() -> AiRoutePublicQueryPort:
+	return get_node_or_null("AiRoutePublicQueryPort") as AiRoutePublicQueryPort
 
 
 func _ai_region_knowledge_query_port_node() -> AiRegionKnowledgeQueryPort:

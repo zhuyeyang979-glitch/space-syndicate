@@ -32,6 +32,8 @@ var _ai_card_hand_capability_binding_initialized := false
 var _ai_actor_economy_query_port: AiActorEconomyQueryPort
 var _ai_actor_economy_capabilities: Dictionary = {}
 var _ai_actor_economy_capability_binding_initialized := false
+var _ai_market_public_query_port: AiMarketPublicQueryPort
+var _ai_route_public_query_port: AiRoutePublicQueryPort
 var _ai_actor_state_port: AiActorStatePort
 var _ai_actor_state_capabilities: Dictionary = {}
 var _ai_actor_state_capability_binding_initialized := false
@@ -143,6 +145,24 @@ func _actor_available_cash_units(player_index: int) -> int:
 	var snapshot := _ai_actor_economy_snapshot(player_index)
 	var cash: Dictionary = snapshot.get("cash", {}) if snapshot.get("cash", {}) is Dictionary else {}
 	return maxi(0, int(cash.get("available_units", 0)))
+
+
+func set_market_route_query_ports(
+	market_public_query_port: AiMarketPublicQueryPort,
+	route_public_query_port: AiRoutePublicQueryPort
+) -> void:
+	_ai_market_public_query_port = market_public_query_port
+	_ai_route_public_query_port = route_public_query_port
+
+
+func _market_public_product(product_id: String) -> Dictionary:
+	return _ai_market_public_query_port.public_product(product_id) \
+		if _ai_market_public_query_port != null else {}
+
+
+func _route_public_summary(district_index: int) -> Dictionary:
+	return _ai_route_public_query_port.region_route_summary(district_index) \
+		if _ai_route_public_query_port != null else {}
 
 
 func set_monster_runtime_controller(controller: MonsterRuntimeController) -> void:
@@ -542,6 +562,9 @@ func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 		"actor_economy_capabilities_are_actor_scoped": true,
 		"actor_economy_query_uses_main": false,
 		"actor_economy_query_exposes_rival_private_state": false,
+		"typed_market_public_query_bound": _ai_market_public_query_port != null and _ai_market_public_query_port.is_ready(),
+		"typed_route_public_query_bound": _ai_route_public_query_port != null and _ai_route_public_query_port.is_ready(),
+		"market_route_queries_use_main": false,
 		"typed_actor_state_bound": _ai_actor_state_port != null and _ai_actor_state_capability_binding_initialized and _ai_actor_state_port.is_ready(),
 		"actor_state_capabilities_are_actor_scoped": true,
 		"actor_state_uses_main": false,
@@ -752,7 +775,7 @@ var auto_monsters:
 
 var business_cycle_count:
 	get:
-		return _product_market_runtime_controller.business_cycle_count if _product_market_runtime_controller != null else 0
+		return int(_session_public_snapshot().get("business_cycle_revision", 0))
 
 var card_resolution_auction_open:
 	get:
@@ -795,10 +818,6 @@ var players:
 		return _world_value(&"players", [])
 	set(value):
 		_write_world_value(&"players", value)
-
-var product_market:
-	get:
-		return _product_market_runtime_controller.runtime_state_snapshot().get("product_market", {}) if _product_market_runtime_controller != null else {}
 
 var resolved_card_history:
 	get:
@@ -1296,10 +1315,6 @@ func _product_count_summary(counts: Dictionary, limit: int = 4, empty_text: Stri
 func _product_strategy_scores(product_name: String) -> Dictionary:
 	return _call_world(&"_product_strategy_scores", [product_name])
 
-func _ensure_product_market_catalog() -> void:
-	if _product_market_runtime_controller != null:
-		_product_market_runtime_controller.ensure_catalog()
-
 func _limited_name_list(names: Array, limit: int = 6, empty_text: String = "无") -> String:
 	return _call_monster(&"_limited_name_list", [names, limit, empty_text])
 
@@ -1353,7 +1368,8 @@ func _card_strength_budget_points(card_name: String) -> int:
 	return _gameplay_balance_diagnostics_service.card_budget_points_for_id(card_name) if _gameplay_balance_diagnostics_service != null else 0
 
 func _product_price(product_name: String) -> int:
-	return _product_market_runtime_controller.product_price(product_name) if _product_market_runtime_controller != null else 0
+	return _ai_market_public_query_port.public_price(product_name) \
+		if _ai_market_public_query_port != null else 0
 
 func _active_auto_monster_count() -> int:
 	return _call_monster(&"_active_auto_monster_count")
@@ -1610,7 +1626,7 @@ func _monster_resource_match_score(actor: Dictionary, index: int) -> int:
 	return _call_monster(&"_monster_resource_match_score", [actor, index])
 
 func _route_network_load_for_legacy_region(index: int) -> int:
-	return _route_network_runtime_controller.route_load_for_legacy_region(index) if _route_network_runtime_controller != null else 0
+	return int(_route_public_summary(index).get("legal_route_count", 0))
 
 func _market_listing_purchasable(district_index: int) -> bool:
 	return _district_supply_runtime_query_port.public_market_purchasable(district_index) \
@@ -1768,7 +1784,8 @@ func _city_competition_matches(district_index: int) -> int:
 	return _call_world(&"_city_competition_matches", [district_index])
 
 func _route_network_routes_for_legacy_region(district_index: int) -> Array:
-	return _route_network_runtime_controller.routes_for_legacy_region(district_index) if _route_network_runtime_controller != null else []
+	var rows: Variant = _route_public_summary(district_index).get("rows", [])
+	return (rows as Array).duplicate(true) if rows is Array else []
 
 func _city_cycle_income(district_index: int, competition_matches: int) -> int:
 	return _call_world(&"_city_cycle_income", [district_index, competition_matches])
@@ -1998,7 +2015,8 @@ func _rival_business_candidates_for_player(player_index: int) -> Array:
 		return result
 	if _spendable_cash_units(player_index) < RIVAL_BUSINESS_ACTION_COST:
 		return result
-	_ensure_product_market_catalog()
+	if _ai_market_public_query_port == null or not _ai_market_public_query_port.is_ready():
+		return result
 	var focus_product := _ai_focus_product(player_index)
 	var strategy_intent := _ai_strategy_intent(player_index)
 	var strategy_score := _ai_strategy_score(player_index)
@@ -2013,7 +2031,7 @@ func _rival_business_candidates_for_player(player_index: int) -> Array:
 		var own_city := _district_city(own_city_index)
 		for product_name_variant in _city_product_names(own_city):
 			var product_name := String(product_name_variant)
-			var entry: Dictionary = product_market.get(product_name, {})
+			var entry := _market_public_product(product_name)
 			var price := int(entry.get("price", entry.get("base_price", _product_price(product_name))))
 			var demand_score := int(entry.get("demand", 0))
 			var supply_score := int(entry.get("supply", 0))
@@ -4770,10 +4788,9 @@ func _ai_product_rival_city_count(player_index: int, product_name: String) -> in
 func _ai_product_market_signal_score(product_name: String) -> int:
 	if product_name == "":
 		return 0
-	_ensure_product_market_catalog()
-	var entry: Dictionary = product_market.get(product_name, {})
+	var entry := _market_public_product(product_name)
 	if entry.is_empty():
-		return int(float(_product_price(product_name)) / 3.0)
+		return 0
 	var price := int(entry.get("price", entry.get("base_price", _product_price(product_name))))
 	var base_price := int(entry.get("base_price", price))
 	var demand := int(entry.get("demand", 0))
@@ -5310,7 +5327,8 @@ func _ai_route_plan_candidates(player_index: int) -> Array:
 	var result := []
 	if player_index < 0 or player_index >= players.size() or not _player_is_ai(player_index):
 		return result
-	_ensure_product_market_catalog()
+	if _ai_market_public_query_port == null or not _ai_market_public_query_port.is_ready():
+		return result
 	var focus := _ai_focus_product(player_index)
 	var strategy := _ai_strategy_intent(player_index)
 	var gdp_gap := maxi(0, _victory_required_gdp() - _victory_top_n_gdp(player_index))

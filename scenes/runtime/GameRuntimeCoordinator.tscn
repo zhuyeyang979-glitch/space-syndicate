@@ -1,4 +1,4 @@
-[gd_scene load_steps=128 format=3]
+[gd_scene load_steps=130 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -126,6 +126,8 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiSessionPublicQueryPort.tscn" id="133_ai_session_public"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiCardHandQueryPort.tscn" id="134_ai_card_hand"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiActorEconomyQueryPort.tscn" id="135_ai_actor_economy"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/AiMarketPublicQueryPort.tscn" id="136_ai_market_public"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/AiRoutePublicQueryPort.tscn" id="137_ai_route_public"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -348,6 +350,12 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="AiActorEconomyQueryPort" parent="." instance=ExtResource("135_ai_actor_economy")]
+unique_name_in_owner = true
+
+[node name="AiMarketPublicQueryPort" parent="." instance=ExtResource("136_ai_market_public")]
+unique_name_in_owner = true
+
+[node name="AiRoutePublicQueryPort" parent="." instance=ExtResource("137_ai_route_public")]
 unique_name_in_owner = true
 
 [node name="AiRegionKnowledgeQueryPort" parent="." instance=ExtResource("131_ai_region_knowledge")]

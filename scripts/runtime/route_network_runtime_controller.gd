@@ -125,13 +125,25 @@ func public_cached_route_snapshot() -> Dictionary:
 		if not (candidate_variant is Dictionary):
 			continue
 		var candidate := candidate_variant as Dictionary
+		var mode_tags: Array = candidate.get("mode_tags", []) \
+			if candidate.get("mode_tags", []) is Array else []
+		var ordered_region_ids: Array = candidate.get("ordered_region_ids", []) \
+			if candidate.get("ordered_region_ids", []) is Array else []
+		var bottleneck := maxi(0, int(candidate.get("bottleneck_units_per_minute", 0)))
+		var route_efficiency := maxf(0.0, float(candidate.get("route_efficiency_multiplier", 1.0)))
 		rows.append({
+			"route_id": str(candidate.get("route_id", "")),
 			"source_region_id": str(candidate.get("source_region_id", "")),
 			"market_region_id": str(candidate.get("market_region_id", "")),
-			"transport_mode": str(candidate.get("transport_mode", candidate.get("mode", "land"))),
-			"capacity_units_per_minute": maxi(0, int(candidate.get("capacity_units_per_minute", candidate.get("throughput_units_per_minute", 0)))),
-			"weather_multiplier": maxf(0.0, float(candidate.get("weather_multiplier", 1.0))),
-			"bottleneck": bool(candidate.get("rent_rate_pending", false)) or maxi(0, int(candidate.get("capacity_units_per_minute", 0))) == 0,
+			"ordered_region_ids": ordered_region_ids.duplicate(),
+			"mode_tags": mode_tags.duplicate(),
+			"actual_distance": maxi(0, int(candidate.get("actual_distance", 0))),
+			"shortest_legal_distance": maxi(0, int(candidate.get("shortest_legal_distance", 0))),
+			"transfer_count": maxi(0, int(candidate.get("transfer_count", 0))),
+			"bottleneck_units_per_minute": bottleneck,
+			"route_efficiency_multiplier": route_efficiency,
+			"effective_bottleneck_units_per_minute": maxi(0, int(floor(float(bottleneck) * route_efficiency + 0.000001))),
+			"bottleneck": bool(candidate.get("rent_rate_pending", false)) or bottleneck == 0,
 		})
 	return {
 		"available": _configured and not _cached_topology_revision.is_empty(),
