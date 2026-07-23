@@ -47,6 +47,13 @@ func _run() -> void:
 	if coordinator != null and ai != null and queue != null and timing != null:
 		_test_anonymous_simultaneous_card_policy(main, ai, queue, timing)
 		_test_phase_counter_response(main, ai, queue, timing)
+	var ai_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_runtime_controller.gd")
+	_expect(
+		not ai_source.contains("table_selection_state()")
+			and not ai_source.contains("var selected_district:")
+			and not ai_source.contains("var selected_trade_product:"),
+		"AI controller has no human TableSelection read or write surface"
+	)
 
 	main.queue_free()
 	await _wait_frames(3)
@@ -71,7 +78,13 @@ func _test_anonymous_simultaneous_card_policy(main: Node, ai: Node, queue: Node,
 		player["slots"] = [card]
 		players[player_index] = player
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = players
-	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = _first_alive_district(main)
+	var table_selection := (main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()
+	table_selection.restore({
+		"selected_district": _first_alive_district(main),
+		"selected_trade_product": "J_UI_FOCUS_SENTINEL",
+		"selected_card_resolution_id": 88001,
+	})
+	var selection_before := table_selection.snapshot()
 	main.set("card_resolution_force_duration", 5.0)
 	main.set("card_resolution_force_simultaneous_window", 0.5)
 	ai.set("ai_card_decision_enabled", true)
@@ -81,6 +94,7 @@ func _test_anonymous_simultaneous_card_policy(main: Node, ai: Node, queue: Node,
 	_expect(_has_anonymous_card_candidate(candidates_one) and _has_anonymous_card_candidate(candidates_two), "two AI seats expose live anonymous card-play candidates")
 	var first_result := str(ai.call("_ai_execute_card_turn", 1, true))
 	var second_result := str(ai.call("_ai_execute_card_turn", 2, true))
+	_expect(table_selection.snapshot() == selection_before, "AI card submissions leave the complete human table focus unchanged")
 	var raw_current: Array = queue.call("current_queue")
 	var public_before_bid: Dictionary = queue.call("public_snapshot")
 	_expect(first_result == "play" and second_result == "play", "two AI seats commit card-play decisions through the live owner")
@@ -168,7 +182,15 @@ func _test_phase_counter_response(main: Node, ai: Node, queue: Node, timing: Nod
 	_expect(bool(plan_before.get("planned", false)) and plan_before == plan_after, "phase-response plan is invariant to another player's private hand and discard")
 	_expect(str((plan_before.get("selected", {}) as Dictionary).get("policy_kind", "")) == "counter_response", "AI owner selects the live counter-response policy")
 
+	var table_selection := (main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()
+	table_selection.restore({
+		"selected_district": rival_index,
+		"selected_trade_product": "J_COUNTER_UI_FOCUS_SENTINEL",
+		"selected_card_resolution_id": 88002,
+	})
+	var selection_before := table_selection.snapshot()
 	var acted := int(ai.call("_auto_ai_counter_responses", true))
+	_expect(table_selection.snapshot() == selection_before, "AI counter submission leaves the complete human table focus unchanged")
 	var raw_next: Array = queue.call("next_queue")
 	var public_next: Dictionary = queue.call("public_snapshot")
 	var raw_entry: Dictionary = raw_next[0] as Dictionary if not raw_next.is_empty() and raw_next[0] is Dictionary else {}

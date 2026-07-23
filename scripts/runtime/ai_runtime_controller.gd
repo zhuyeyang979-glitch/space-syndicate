@@ -837,23 +837,6 @@ var rng:
 	get:
 		return _world_bridge.shared_rng() if _world_bridge != null else null
 
-var selected_district:
-	get:
-		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
-		return state.selected_district if state != null else 0
-	set(value):
-		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
-		if state != null:
-			state.selected_district = int(value)
-
-var selected_trade_product:
-	get:
-		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
-		return state.selected_trade_product if state != null else ""
-	set(value):
-		var state: TableSelectionState = _world_bridge.table_selection_state() if _world_bridge != null else null
-		if state != null:
-			state.selected_trade_product = str(value)
 
 var victory_control_active:
 	get:
@@ -1332,13 +1315,28 @@ func _player_product_flow(player_index: int, product_name: String) -> int:
 	return _call_world(&"_player_product_flow", [player_index, product_name])
 
 func _first_player_flow_product(player_index: int) -> String:
-	return _call_world(&"_first_player_flow_product", [player_index])
+	var economy := _ai_actor_economy_snapshot(player_index)
+	for city_variant in economy.get("own_cities", []) as Array:
+		if not (city_variant is Dictionary):
+			continue
+		var city := city_variant as Dictionary
+		for key in ["product_names", "demand_names"]:
+			var names: Array = city.get(key, []) if city.get(key, []) is Array else []
+			if not names.is_empty():
+				return str(names[0])
+	if _ai_market_public_query_port == null:
+		return ""
+	var market := _ai_market_public_query_port.public_snapshot()
+	var products: Array = market.get("products", []) if market.get("products", []) is Array else []
+	return str((products[0] as Dictionary).get("product_id", "")) \
+		if not products.is_empty() and products[0] is Dictionary else ""
 
 func _best_player_flow_product(player_index: int, required: int = 1, preferred_products: Array = []) -> String:
 	return _call_world(&"_best_player_flow_product", [player_index, required, preferred_products])
 
 func _skill_play_product(skill: Dictionary, player_index: int) -> String:
-	return _call_world(&"_skill_play_product", [skill, player_index])
+	var explicit := str(skill.get("play_product", "")).strip_edges()
+	return explicit if not explicit.is_empty() else _first_player_flow_product(player_index)
 
 func _skill_play_flow_required(skill: Dictionary, _player_index: int = -1) -> int:
 	return _call_world(&"_skill_play_flow_required", [skill, _player_index])
@@ -1578,8 +1576,23 @@ func _can_summon_monster_card_at_district(skill: Dictionary, district_index: int
 func _short_card_text(text: String, max_len: int) -> String:
 	return _call_world(&"_short_card_text", [text, max_len])
 
-func _queue_monster_card_as_counter(player_index: int, slot_index: int, source_skill: Dictionary) -> bool:
-	return _call_world(&"_queue_monster_card_as_counter", [player_index, slot_index, source_skill])
+func _queue_monster_card_as_counter(
+	player_index: int,
+	slot_index: int,
+	source_skill: Dictionary,
+	target_district: int,
+	target_product: String,
+	selected_resolution_id: int
+) -> bool:
+	return _call_world(&"_queue_monster_card_as_counter", [
+		player_index,
+		slot_index,
+		source_skill,
+		target_district,
+		target_product,
+		selected_resolution_id,
+		int(_session_public_snapshot().get("session_revision", 0)),
+	])
 
 func _player_is_ai(player_index: int) -> bool:
 	return _ai_actor_state_port.is_ai_player(player_index) if _actor_state_ready() else false
@@ -1737,7 +1750,15 @@ func _card_can_open_counter_window(entry: Dictionary) -> bool:
 func _card_resolution_entry_card_label(entry: Dictionary) -> String:
 	return _call_world(&"_card_resolution_entry_card_label", [entry])
 
-func _queue_skill_resolution(player_index: int, slot_index: int, target_slot: int = -1, target_player: int = -1, selected_resolution_id: int = -1) -> bool:
+func _queue_skill_resolution(
+	player_index: int,
+	slot_index: int,
+	target_slot: int = -1,
+	target_player: int = -1,
+	selected_resolution_id: int = -1,
+	target_district: int = -1,
+	target_product: String = ""
+) -> bool:
 	if _card_play_submission_controller == null:
 		return false
 	return bool(_card_play_submission_controller.submit_card_play({
@@ -1745,7 +1766,10 @@ func _queue_skill_resolution(player_index: int, slot_index: int, target_slot: in
 		"slot_index": slot_index,
 		"target_slot": target_slot,
 		"target_player": target_player,
+		"selected_district": target_district,
+		"selected_trade_product": target_product,
 		"selected_card_resolution_id": selected_resolution_id,
+		"target_source_revision": int(_session_public_snapshot().get("session_revision", 0)),
 		"submission_source": "ai",
 	}).get("accepted", false))
 
@@ -7873,11 +7897,17 @@ func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_cand
 	var slot_index := int(candidate.get("slot_index", -1))
 	var target_slot := int(candidate.get("target_slot", -1))
 	var target_player := int(candidate.get("target_player", -1))
-	var previous_district := int(selected_district)
-	var previous_product := str(selected_trade_product)
-	selected_district = int(candidate.get("district", _ai_first_alive_district()))
-	selected_trade_product = String(candidate.get("product", ""))
-	var queued := _queue_skill_resolution(player_index, slot_index, target_slot, target_player, int(candidate.get("selected_card_resolution_id", -1)))
+	var target_district := int(candidate.get("district", _ai_first_alive_district()))
+	var target_product := String(candidate.get("product", ""))
+	var queued := _queue_skill_resolution(
+		player_index,
+		slot_index,
+		target_slot,
+		target_player,
+		int(candidate.get("selected_card_resolution_id", -1)),
+		target_district,
+		target_product
+	)
 	if queued:
 		var queue_index := _queued_card_entry_index_for_player(player_index)
 		var in_next_batch := false
@@ -7913,8 +7943,6 @@ func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_cand
 			all_candidates,
 			decision_metadata
 		)
-	selected_district = previous_district
-	selected_trade_product = previous_product
 	return queued
 func _ai_execute_card_turn(player_index: int, force: bool = false) -> String:
 	var play_candidates := _ai_card_play_candidates(player_index)
@@ -8025,15 +8053,29 @@ func _ai_queue_counter_response_candidate(player_index: int, candidate: Dictiona
 	if slot_index < 0 or slot_index >= slots.size() or not (slots[slot_index] is Dictionary):
 		return false
 	var source_skill: Dictionary = slots[slot_index]
-	var previous_district := int(selected_district)
-	var previous_product := str(selected_trade_product)
-	selected_district = int(candidate.get("district", int(_card_resolution_active_entry().get("selected_district", _ai_first_alive_district()))))
-	selected_trade_product = String(candidate.get("product", _skill_play_product(source_skill, player_index)))
+	var target_district := int(candidate.get("district", int(_card_resolution_active_entry().get("selected_district", _ai_first_alive_district()))))
+	var target_product := String(candidate.get("product", _skill_play_product(source_skill, player_index)))
+	var selected_resolution_id := int(candidate.get("counter_target_resolution_id", -1))
 	var queued := false
 	if bool(candidate.get("counter_converted_monster", false)):
-		queued = _queue_monster_card_as_counter(player_index, slot_index, source_skill)
+		queued = _queue_monster_card_as_counter(
+			player_index,
+			slot_index,
+			source_skill,
+			target_district,
+			target_product,
+			selected_resolution_id
+		)
 	else:
-		queued = _queue_skill_resolution(player_index, slot_index, -1)
+		queued = _queue_skill_resolution(
+			player_index,
+			slot_index,
+			-1,
+			-1,
+			selected_resolution_id,
+			target_district,
+			target_product
+		)
 	if queued:
 		var queue_index := _next_batch_card_entry_index_for_player(player_index)
 		var in_next_batch := true
@@ -8079,8 +8121,6 @@ func _ai_queue_counter_response_candidate(player_index: int, candidate: Dictiona
 				"learning_bonus": int(candidate.get("learning_bonus", 0)),
 			}
 		)
-	selected_district = previous_district
-	selected_trade_product = previous_product
 	return queued
 func _auto_ai_counter_responses(force: bool = false) -> int:
 	if not ai_card_decision_enabled or not card_resolution_counter_window_active or _card_resolution_active_entry().is_empty():

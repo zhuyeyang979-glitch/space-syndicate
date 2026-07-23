@@ -636,7 +636,7 @@ func _prepare_legacy_submission(
 
 
 func _capture_stable_target_envelope(selection_or_request: Dictionary, context: Dictionary) -> Dictionary:
-	if _selection_catalog_query_port == null or _table_selection_state == null:
+	if _selection_catalog_query_port == null:
 		return {}
 	var selection_snapshot := selection_or_request
 	if not selection_snapshot.has("schema_version") \
@@ -655,6 +655,23 @@ func _capture_stable_target_envelope(selection_or_request: Dictionary, context: 
 
 
 func _selection_snapshot(request: Dictionary) -> Dictionary:
+	var submission_source := str(request.get("submission_source", ""))
+	if submission_source in ["ai", "ai_counter_conversion"]:
+		for key in ["selected_district", "selected_trade_product", "selected_card_resolution_id", "target_source_revision"]:
+			if not request.has(key):
+				return {}
+		if typeof(request["selected_district"]) != TYPE_INT \
+				or typeof(request["selected_trade_product"]) != TYPE_STRING \
+				or typeof(request["selected_card_resolution_id"]) != TYPE_INT \
+				or typeof(request["target_source_revision"]) != TYPE_INT:
+			return {}
+		return {
+			"schema_version": 1,
+			"revision": maxi(0, int(request["target_source_revision"])),
+			"selected_district": int(request["selected_district"]),
+			"selected_trade_product": str(request["selected_trade_product"]),
+			"selected_card_resolution_id": int(request["selected_card_resolution_id"]),
+		}
 	if _table_selection_state == null:
 		return {}
 	var result := _table_selection_state.snapshot()

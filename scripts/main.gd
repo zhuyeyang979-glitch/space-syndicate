@@ -4087,7 +4087,15 @@ func _has_pending_blocking_decision() -> bool:
 	return global_blocked or player_blocked
 
 
-func _queue_monster_card_as_counter(player_index: int, slot_index: int, source_skill: Dictionary) -> bool:
+func _queue_monster_card_as_counter(
+	player_index: int,
+	slot_index: int,
+	source_skill: Dictionary,
+	target_district: int,
+	target_product: String,
+	selected_resolution_id: int,
+	target_source_revision: int
+) -> bool:
 	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
 		return false
 	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[player_index]
@@ -4112,8 +4120,11 @@ func _queue_monster_card_as_counter(player_index: int, slot_index: int, source_s
 		"slot_index": slot_index,
 		"target_slot": -1,
 		"target_player": -1,
-		"selected_card_resolution_id": _game_runtime_coordinator_node().table_selection_state().selected_card_resolution_id,
-		"submission_source": "role_counter_conversion",
+		"selected_district": target_district,
+		"selected_trade_product": target_product,
+		"selected_card_resolution_id": selected_resolution_id,
+		"target_source_revision": target_source_revision,
+		"submission_source": "ai_counter_conversion",
 	})
 	_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(counter_receipt.get("player_message", "卡牌提交已处理。")))
 	var queued := bool(counter_receipt.get("accepted", false))

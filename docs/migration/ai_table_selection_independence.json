@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "parent_task": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
+  "atomic_boundary": "ai_table_selection_independence",
+  "status": "validated",
+  "production": {
+    "ai_table_selection_read_count": 0,
+    "ai_table_selection_write_count": 0,
+    "human_focus_mutation_count": 0,
+    "main_fallback_count": 0,
+    "new_state_owner_count": 0,
+    "new_save_section_count": 0,
+    "explicit_submission_sources": [
+      "ai",
+      "ai_counter_conversion"
+    ],
+    "required_explicit_fields": [
+      "selected_district",
+      "selected_trade_product",
+      "selected_card_resolution_id",
+      "target_source_revision"
+    ],
+    "stable_binding": [
+      "session_id",
+      "session_revision",
+      "region_id",
+      "region_ordering_revision",
+      "region_ordering_fingerprint",
+      "product_id",
+      "product_ordering_revision",
+      "product_ordering_fingerprint",
+      "selected_card_resolution_id"
+    ]
+  },
+  "authority": {
+    "human_focus_owner": "res://scripts/runtime/table_selection_state.gd",
+    "submission_owner": "res://scripts/runtime/card_play_submission_runtime_controller.gd",
+    "queue_owner": "res://scripts/runtime/card_resolution_queue_runtime_service.gd",
+    "own_economy_query": "res://scripts/runtime/ai_actor_economy_query_port.gd",
+    "public_market_query": "res://scripts/runtime/ai_market_public_query_port.gd",
+    "session_query": "res://scripts/runtime/ai_session_public_query_port.gd"
+  },
+  "tests": [
+    {"path": "res://tests/ai_card_phase_counter_owner_test.gd", "checks": 25, "failures": 0},
+    {"path": "res://tests/card_resolution_stable_target_envelope_test.gd", "checks": 39, "failures": 0},
+    {"path": "res://tests/public_card_track_focus_selection_cutover_test.gd", "checks": 72, "failures": 0},
+    {"path": "res://tests/district_product_hand_selection_cutover_test.gd", "checks": 64, "failures": 0},
+    {"path": "res://tests/selected_player_actor_authority_split_test.gd", "checks": 78, "failures": 0}
+  ],
+  "godot_mcp": {
+    "production_scripts_checked": 718,
+    "script_error_count": 0,
+    "formal_main_scene": "PASS",
+    "runtime_bridge_ready": true
+  },
+  "parent_complete": false,
+  "generic_bridge_deleted": false,
+  "full_run_resume_claim": false
+}
