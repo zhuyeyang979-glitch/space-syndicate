@@ -86,6 +86,8 @@ func _public_unit(source: Dictionary) -> Dictionary:
 		"hp": int(source.get("hp", 0)),
 		"max_hp": int(source.get("max_hp", source.get("hp", 0))),
 		"damage": int(source.get("damage", 0)),
+		"military_gdp_penalty": int(source.get("military_gdp_penalty", 0)),
+		"military_strike_route_damage": int(source.get("military_strike_route_damage", 0)),
 		"range": maxf(0.0, float(source.get("range", 0.0))),
 		"move": maxf(0.0, float(source.get("move", 0.0))),
 		"remaining_time": maxf(0.0, float(source.get("remaining_time", 0.0))),

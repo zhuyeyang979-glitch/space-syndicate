@@ -114,6 +114,96 @@ class FrozenMilitaryOwner:
 		captured_districts.append(int(command_context.get("selected_district", -1)))
 		return true
 
+
+class RealMonsterCommandWorld:
+	extends Node
+
+	func _entity_has_linear_motion(_entity: Dictionary) -> bool:
+		return false
+
+	func _entity_world_position(entity: Dictionary) -> Vector2:
+		var value: Variant = entity.get("world_position", Vector2.ZERO)
+		return value if value is Vector2 else Vector2.ZERO
+
+	func _card_play_target_snapshot(skill: Dictionary) -> Dictionary:
+		return {"direct_monster_skill": str(skill.get("kind", "")) in ["armor_gain", "guard", "move", "fly", "burrow", "area_damage"]}
+class RealMilitaryCommandWorld:
+	extends Node
+
+	var linear_targets: Array[Vector2] = []
+
+	func _player_role_card_for_index(_player_index: int) -> Dictionary:
+		return {}
+
+	func _acquire_inventory_skill_for_player(player: Dictionary, skill: Dictionary, _consume: bool) -> bool:
+		var slots: Array = player.get("slots", []) if player.get("slots", []) is Array else []
+		slots.append(skill.duplicate(true))
+		player["slots"] = slots
+		return true
+
+	func _level_text(rank: int) -> String:
+		return "L%d" % rank
+
+	func _limited_name_list(names: Array, _limit: int = 6, empty_text: String = "None") -> String:
+		return empty_text if names.is_empty() else ",".join(names)
+
+	func _current_balance_region_radius_m() -> float:
+		return 240.0
+
+	func _district_center(index: int) -> Vector2:
+		return Vector2(float(index) * 100.0, 0.0)
+
+	func _entity_world_position(entity: Dictionary) -> Vector2:
+		var value: Variant = entity.get("world_position", Vector2.ZERO)
+		return value if value is Vector2 else Vector2.ZERO
+
+	func _entity_has_linear_motion(entity: Dictionary) -> bool:
+		return entity.has("linear_move_target")
+
+	func _entity_distance_to_district(entity: Dictionary, district_index: int) -> float:
+		return _entity_world_position(entity).distance_to(_district_center(district_index))
+
+	func _entity_distance_to_district_label(entity: Dictionary, district_index: int) -> String:
+		return "%.0fm" % _entity_distance_to_district(entity, district_index)
+
+	func _duration_short_text(seconds: float) -> String:
+		return "%.1fs" % seconds
+
+	func _meters_text(distance: float) -> String:
+		return "%.0fm" % distance
+
+	func _start_entity_linear_motion(
+		entity: Dictionary,
+		target_position: Vector2,
+		speed_mps: float,
+		_source: String,
+		_domain: String,
+		_stop_distance: float,
+		_kind: String
+	) -> float:
+		var distance := _entity_world_position(entity).distance_to(target_position)
+		if distance <= 0.5:
+			return 0.0
+		entity["linear_move_target"] = target_position
+		entity["linear_move_speed_mps"] = speed_mps
+		linear_targets.append(target_position)
+		return distance
+
+
+class MilitaryInfrastructureProbe:
+	extends Node
+
+	var repair_targets: Array[int] = []
+	var damage_targets: Array[int] = []
+
+	func submit_legacy_index_repair(district_index: int, amount: int, _source_kind: String, _source: String, _world_time: float) -> Dictionary:
+		repair_targets.append(district_index)
+		return {"committed": true, "applied_repair": maxi(1, amount)}
+
+	func submit_legacy_index_unit_damage(district_index: int, amount: int, _source_kind: String, _source: String, _world_time: float) -> Dictionary:
+		damage_targets.append(district_index)
+		return {"committed": true, "applied_damage": maxi(1, amount)}
+
 func _init() -> void:
 	call_deferred("_run")
 
@@ -122,6 +212,8 @@ func _run() -> void:
 	_build_catalog_fixture()
 	_test_envelope_contract()
 	_test_target_choice_focus_drift()
+	_test_real_owner_full_frozen_region_chain()
+	_test_real_military_router_owner_one_shot()
 	_test_effect_router_frozen_region_dispatch()
 	_test_queue_and_privacy_contracts()
 	_test_source_boundaries()
@@ -203,6 +295,8 @@ func _test_envelope_contract() -> void:
 	)
 	var monster_bound := StableTargetEnvelope.bind_target(monster_pending, StableTargetEnvelope.TARGET_MONSTER, 0, -1, 42)
 	_expect(bool(StableTargetEnvelope.validate(monster_bound).get("valid", false)) and int(StableTargetEnvelope.context_at_capture(monster_bound).get("target_monster_uid", -1)) == 42, "monster target envelope fingerprints the stable monster UID together with its slot mirror")
+	var zero_uid_binding := StableTargetEnvelope.bind_target(monster_pending, StableTargetEnvelope.TARGET_MONSTER, 0, -1, 0)
+	_expect(zero_uid_binding.is_empty(), "monster target envelope rejects UID zero instead of treating the slot mirror as authority")
 	var monster_tampered := monster_bound.duplicate(true)
 	monster_tampered["target_monster_uid"] = 43
 	_expect(not bool(StableTargetEnvelope.validate(monster_tampered).get("valid", false)), "monster UID tampering invalidates the target envelope")
@@ -256,6 +350,11 @@ func _test_target_choice_focus_drift() -> void:
 	_expect(effect_router._resolved_monster_target_slot({"target_slot": 0, "target_monster_uid": 42}) == 0, "effect routing resolves the original Monster slot by stable UID")
 	monster_owner.auto_monsters = [monster_owner.auto_monsters[1], monster_owner.auto_monsters[0]]
 	_expect(effect_router._resolved_monster_target_slot({"target_slot": 0, "target_monster_uid": 42}) == 1, "slot drift follows the Monster UID instead of striking the old array position")
+	_expect(
+		effect_router._resolved_monster_target_slot({"target_slot": 0, "target_monster_uid": 0}) == -1 \
+			and effect_router._resolved_monster_target_slot({"target_slot": 0}) == -1,
+		"effect routing rejects zero or missing Monster UID instead of falling back to a stale slot"
+	)
 	effect_router.free()
 	monster_owner.free()
 
@@ -323,6 +422,224 @@ func _test_target_choice_focus_drift() -> void:
 		node.free()
 	_world.replace_districts(_district_fixture(), true)
 
+
+func _test_real_owner_full_frozen_region_chain() -> void:
+	var saved_players := _world.players.duplicate(true)
+	var saved_districts := _world.districts.duplicate(true)
+	var direct_skill := {
+		"name": "Frozen Region Armor",
+		"kind": "armor_gain",
+		"target_monster_required": true,
+		"persistent": false,
+		"armor": 3,
+	}
+	var players := _world.players.duplicate(true)
+	var player := (players[0] as Dictionary).duplicate(true)
+	var slots: Array = (player.get("slots", []) as Array).duplicate(true)
+	slots[0] = direct_skill.duplicate(true)
+	player["slots"] = slots
+	players[0] = player
+	_world.replace_players(players, true)
+	var districts := _district_fixture()
+	(districts[1] as Dictionary)["destroyed"] = true
+	_world.replace_districts(districts, true)
+	_selection.restore({
+		"selected_district": 0,
+		"selected_card_resolution_id": 33,
+		"selected_hand_slot": 0,
+	})
+
+	var queue := CardResolutionQueueRuntimeService.new()
+	queue.configure(_queue_rules())
+	var resolution := CardResolutionRuntimeController.new()
+	resolution.configure(_queue_rules().get("card_group", {}))
+	var target_choice := CardTargetChoiceRuntimeController.new()
+	var facts := StableFactsBridge.new()
+	var eligibility := StableEligibilityService.new()
+	var coordinator := SubmissionCoordinator.new()
+	coordinator.queue_service = queue
+	var submission := CardPlaySubmissionRuntimeController.new()
+	submission.set_dependencies(
+		_world,
+		_selection,
+		facts,
+		eligibility,
+		queue,
+		resolution,
+		target_choice,
+		_market,
+		null,
+		_query,
+		coordinator
+	)
+	var command_world := RealMonsterCommandWorld.new()
+	var bridge := MonsterRuntimeWorldBridge.new()
+	bridge.bind_world(command_world)
+	bridge.set_world_session_state(_world)
+	bridge.set_table_selection_state(_selection)
+	var owner := MonsterRuntimeController.new()
+	owner.set_world_bridge(bridge)
+	owner.auto_monsters = [{
+		"uid": 42,
+		"slot": 0,
+		"name": "Frozen Target",
+		"rank": 1,
+		"hp": 20,
+		"max_hp": 20,
+		"armor": 4,
+		"position": 0,
+		"world_position": Vector2(20.0, 20.0),
+		"down": false,
+	}]
+	var router := CardEffectRuntimeRouter.new()
+	router.set_dependencies(_world, _selection, owner, null, null, null, null, null, null, null, null)
+
+	var begin := submission.request_hand_play({
+		"player_index": 0,
+		"slot_index": 0,
+		"selected_card_resolution_id": 33,
+		"submission_source": "focused_real_owner",
+	})
+	_selection.restore({"selected_district": 1, "selected_card_resolution_id": 99})
+	var submitted := submission.submit_card_play({
+		"player_index": 0,
+		"slot_index": 0,
+		"target_slot": 0,
+		"target_monster_uid": 42,
+		"target_player": -1,
+		"selected_card_resolution_id": 99,
+		"submission_source": "focused_real_owner_target",
+	})
+	var locked := queue.lock_batch(_queue_facts())
+	var started := queue.start_next({"game_time": 16.0})
+	var resolved := StableTargetEnvelope.resolved_entry(queue.active_entry(), _world)
+	var resolved_entry: Dictionary = resolved.get("entry", {}) if resolved.get("entry", {}) is Dictionary else {}
+	var resolved_skill: Dictionary = resolved_entry.get("skill", {}) if resolved_entry.get("skill", {}) is Dictionary else {}
+	var armor_before := int((owner.auto_monsters[0] as Dictionary).get("armor", 0))
+	var receipt := router.dispatch({
+		"handler_id": "target_monster",
+		"active_entry": resolved_entry,
+		"skill": resolved_skill,
+	})
+	_expect(
+		bool(begin.get("target_choice_started", false)) \
+			and bool(submitted.get("accepted", false)) and bool(submitted.get("queued", false)) \
+			and bool(locked.get("locked", false)) and bool(started.get("started", false)) \
+			and bool(resolved.get("valid", false)) \
+			and int(resolved_entry.get("selected_district", -1)) == 0 \
+			and int(resolved_entry.get("target_monster_uid", -1)) == 42,
+		"official submission, stable envelope, queue, and delayed resolver retain the first-intent region and Monster UID"
+	)
+	_expect(
+		bool(receipt.get("dispatched", false)) and bool(receipt.get("resolved", false)) \
+			and int((owner.auto_monsters[0] as Dictionary).get("armor", 0)) == armor_before + 3 \
+			and int(_selection.selected_district) == 1 \
+			and bool((_world.districts[1] as Dictionary).get("destroyed", false)),
+		"real Router and Monster Owner execute against frozen region zero while live UI focus remains on destroyed region one"
+	)
+
+	for node in [router, owner, bridge, command_world, submission, coordinator, eligibility, facts, target_choice, resolution, queue]:
+		node.free()
+	_world.replace_players(saved_players, true)
+	_world.replace_districts(saved_districts, true)
+	_selection.restore({"selected_district": 0, "selected_card_resolution_id": 17, "selected_hand_slot": 0})
+
+func _test_real_military_router_owner_one_shot() -> void:
+	var saved_players := _world.players.duplicate(true)
+	var saved_districts := _world.districts.duplicate(true)
+	_world.replace_districts([
+		{"region_id": "region.000", "name": "Alpha", "terrain": "land", "destroyed": false, "center": Vector2(0.0, 0.0)},
+		{"region_id": "region.001", "name": "Beta", "terrain": "land", "destroyed": false, "center": Vector2(100.0, 0.0)},
+		{"region_id": "region.002", "name": "Gamma", "terrain": "land", "destroyed": false, "center": Vector2(200.0, 0.0)},
+	], true)
+	var command_world := RealMilitaryCommandWorld.new()
+	var bridge := MilitaryRuntimeWorldBridge.new()
+	bridge.bind_world(command_world)
+	bridge.set_world_session_state(_world)
+	bridge.set_table_selection_state(_selection)
+	var infrastructure := MilitaryInfrastructureProbe.new()
+	var owner := MilitaryRuntimeController.new()
+	owner.set_world_bridge(bridge)
+	owner.set_region_infrastructure_world_bridge(infrastructure)
+	var router := CardEffectRuntimeRouter.new()
+	router.set_dependencies(_world, _selection, null, owner, null, null, null, null, null, null, null)
+
+	_selection.selected_district = 1
+	var deploy_skill := {
+		"name": "Frozen Deploy",
+		"kind": "military_force",
+		"rank": 1,
+		"military_type": "tank",
+		"military_domain": "land",
+		"military_deploy_terrain": "land",
+		"movement_traits": ["land"],
+		"terrain_move_multiplier": {"land": 1.0, "ocean": 0.5},
+		"military_hp": 12,
+		"military_damage": 4,
+		"military_range": 500.0,
+		"military_move": 200.0,
+		"military_duration_seconds": 90.0,
+		"fixed_skill_count": 1,
+	}
+	var deploy_receipt := router.dispatch({
+		"handler_id": "military_force",
+		"active_entry": {"player_index": 0, "selected_district": 0, "resolution_id": 6501},
+		"skill": deploy_skill,
+	})
+	var deployed_unit: Dictionary = owner.military_units[0] if owner.military_units.size() == 1 else {}
+	var unit_uid := int(deployed_unit.get("uid", 0))
+	_expect(
+		bool(deploy_receipt.get("resolved", false)) and unit_uid > 0 \
+			and int(deployed_unit.get("owner", -1)) == 0 \
+			and int(deployed_unit.get("position", -1)) == 0 \
+			and int(_selection.selected_district) == 1,
+		"Router-to-owner one-shot: real Military deploy uses frozen region zero without reading live UI region one"
+	)
+
+	_selection.selected_district = 0
+	var move_receipt := router.dispatch({
+		"handler_id": "military_command",
+		"active_entry": {"player_index": 0, "selected_district": 1, "resolution_id": 6502},
+		"skill": {"name": "Frozen Move", "kind": "military_command", "military_command": "move", "bound_military_uid": unit_uid, "move": 200.0, "range": 500.0, "cooldown": 1.0},
+	})
+	var moving_unit: Dictionary = owner.military_units[0] if owner.military_units.size() == 1 else {}
+	_expect(
+		bool(move_receipt.get("resolved", false)) \
+			and command_world.linear_targets == [Vector2(100.0, 0.0)] \
+			and moving_unit.get("linear_move_target", Vector2.ZERO) == Vector2(100.0, 0.0) \
+			and int(_selection.selected_district) == 0,
+		"Router-to-owner one-shot: real Military move uses frozen region one while live UI remains on region zero"
+	)
+
+	moving_unit.erase("linear_move_target")
+	moving_unit.erase("linear_move_speed_mps")
+	moving_unit["cooldown_left"] = 0.0
+	owner.military_units[0] = moving_unit
+	var guard_receipt := router.dispatch({
+		"handler_id": "military_command",
+		"active_entry": {"player_index": 0, "selected_district": 1, "resolution_id": 6503},
+		"skill": {"name": "Frozen Guard", "kind": "military_command", "military_command": "guard", "bound_military_uid": unit_uid, "rank": 2, "range": 500.0, "cooldown": 1.0},
+	})
+	var guarded_unit: Dictionary = owner.military_units[0] if owner.military_units.size() == 1 else {}
+	guarded_unit["cooldown_left"] = 0.0
+	owner.military_units[0] = guarded_unit
+	var strike_receipt := router.dispatch({
+		"handler_id": "military_command",
+		"active_entry": {"player_index": 0, "selected_district": 1, "resolution_id": 6504},
+		"skill": {"name": "Frozen Strike", "kind": "military_command", "military_command": "strike_district", "bound_military_uid": unit_uid, "damage": 4, "range": 500.0, "cooldown": 1.0},
+	})
+	_expect(
+		bool(guard_receipt.get("resolved", false)) and infrastructure.repair_targets == [1] \
+			and bool(strike_receipt.get("resolved", false)) and infrastructure.damage_targets == [1] \
+			and int(_selection.selected_district) == 0,
+		"Router-to-owner one-shot: real Military guard and strike route to frozen region one without mutating UI focus"
+	)
+
+	for node in [router, owner, infrastructure, bridge, command_world]:
+		node.free()
+	_world.replace_players(saved_players, true)
+	_world.replace_districts(saved_districts, true)
+	_selection.restore({"selected_district": 0, "selected_card_resolution_id": 17, "selected_hand_slot": 0})
 
 func _test_effect_router_frozen_region_dispatch() -> void:
 	_selection.restore({"selected_district": 2})

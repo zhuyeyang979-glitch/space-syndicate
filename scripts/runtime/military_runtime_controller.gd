@@ -486,14 +486,13 @@ func player_control_limit(player_index: int) -> int:
 
 
 func active_unit_for_player(player_index: int, bound_uid: int = 0) -> Dictionary:
-	if bound_uid > 0:
-		var bound_index := unit_index_by_uid(bound_uid)
-		if bound_index >= 0:
-			var bound_unit := military_units[bound_index] as Dictionary
-			if int(bound_unit.get("owner", -1)) == player_index:
-				return bound_unit.duplicate(true)
-	var index := owned_active_unit_index(player_index)
-	return (military_units[index] as Dictionary).duplicate(true) if index >= 0 else {}
+	if player_index < 0 or bound_uid <= 0:
+		return {}
+	var bound_index := unit_index_by_uid(bound_uid)
+	if bound_index < 0:
+		return {}
+	var bound_unit := military_units[bound_index] as Dictionary
+	return bound_unit.duplicate(true) if int(bound_unit.get("owner", -1)) == player_index else {}
 
 
 func visible_unit_count(player_index: int, viewer_index: int) -> int:
@@ -668,9 +667,9 @@ func trigger_command(skill: Dictionary, target_slot: int = -1, acting_player_ind
 	if player_index < 0 or player_index >= players.size():
 		return false
 	var bound_unit_uid := int(skill.get("bound_military_uid", 0))
+	if bound_unit_uid <= 0:
+		return false
 	var unit_index := unit_index_by_uid(bound_unit_uid)
-	if unit_index < 0 and bound_unit_uid <= 0:
-		unit_index = owned_active_unit_index(player_index)
 	if unit_index < 0:
 		_log("%s没有可接收军令的防卫军。" % str(skill.get("name", "军令")))
 		return false

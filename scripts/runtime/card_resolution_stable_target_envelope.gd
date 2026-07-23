@@ -153,8 +153,7 @@ static func validate(envelope: Dictionary) -> Dictionary:
 		return _invalid("stable_target_kind_invalid")
 	if target_kind == TARGET_NONE and (target_slot != -1 or target_monster_uid != -1 or target_player != -1):
 		return _invalid("stable_target_none_binding_invalid")
-	if target_kind == TARGET_MONSTER and (target_slot < -1 or target_monster_uid < -1 or target_player != -1 \
-			or ((target_slot == -1) != (target_monster_uid == -1))):
+	if target_kind == TARGET_MONSTER and (target_player != -1 or not ((target_slot == -1 and target_monster_uid == -1) or (target_slot >= 0 and target_monster_uid > 0))):
 		return _invalid("stable_target_monster_binding_invalid")
 	if target_kind == TARGET_PLAYER and (target_player < -1 or target_slot != -1 or target_monster_uid != -1):
 		return _invalid("stable_target_player_binding_invalid")

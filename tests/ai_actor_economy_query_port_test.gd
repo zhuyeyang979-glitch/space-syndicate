@@ -18,11 +18,18 @@ func _run() -> void:
 	var world := coordinator.world_session_state()
 	var ai := coordinator.get_node_or_null("AiRuntimeController") as AiRuntimeController
 	var port := coordinator.get_node_or_null("AiActorEconomyQueryPort") as AiActorEconomyQueryPort
+	var monster := coordinator.get_node_or_null("MonsterRuntimeController") as MonsterRuntimeController
+	var monster_bridge := coordinator.get_node_or_null("MonsterRuntimeWorldBridge") as MonsterRuntimeWorldBridge
 	var market := coordinator.get_node_or_null("ProductMarketRuntimeController") as ProductMarketRuntimeController
 	var region_port := coordinator.get_node_or_null("AiRegionKnowledgeQueryPort") as AiRegionKnowledgeQueryPort
 	var rng := coordinator.get_node_or_null("RunRngService") as RunRngService
-	_expect(session != null and world != null and ai != null and port != null and market != null and region_port != null and rng != null, "production composition owns the actor economy query and existing authorities")
-	coordinator.configure({"ruleset_id": "v0.6"})
+	_expect(
+		session != null and world != null and ai != null and port != null \
+			and monster != null and monster_bridge != null and market != null \
+			and region_port != null and rng != null,
+		"production composition owns the actor economy query and existing authorities"
+	)
+	monster.set_world_bridge(monster_bridge)
 	session.configure({"ruleset_id": "v0.6"}, {})
 	session.begin_session({"session_id": "ai-actor-economy-focused", "scenario_id": "focused", "seed": 127, "player_count": 3})
 	world.restore({
@@ -38,6 +45,7 @@ func _run() -> void:
 		],
 		"game_time": 8.0,
 	}, true)
+	coordinator._wire_ai_world_typed_ports()
 	market.product_market = {
 		"AI_A_PRODUCT": {"price": 100, "futures_positions": [_position(11, 1, "AI_A_PRODUCT", 30), _position(12, 2, "AI_B_PRODUCT", 40)]},
 		"HUMAN_PRODUCT": {"price": 120, "futures_positions": [_position(13, 0, "HUMAN_PRODUCT", 50)]},
@@ -70,13 +78,25 @@ func _run() -> void:
 	(detached.get("cash", {}) as Dictionary)["total_units"] = 1
 	_expect(int(((port.private_economy_snapshot(actor_capability, 1).get("cash", {}) as Dictionary).get("total_units", 0))) == 700, "economy snapshots are detached")
 	_expect(world.to_save_data() == world_before and market.runtime_state_snapshot() == market_before and rng.capture_plan_checkpoint() == rng_before, "economy queries perform zero mutation and consume zero RNG")
-	var region_capability := ai.get("_ai_region_knowledge_capability") as AiRegionKnowledgeCapability
+	var region_capabilities := ai.get("_ai_region_knowledge_capabilities") as Dictionary
+	var region_capability := region_capabilities.get(1) as AiRegionKnowledgeCapability
 	var actor_regions := region_port.actor_intelligence_snapshot(region_capability, 1)
 	var own_region_city := _region_city(actor_regions, "region:ai-a")
 	var rival_region_city := _region_city(actor_regions, "region:ai-b")
 	var public_region_city := _region_city({"regions": region_port.public_regions_snapshot()}, "region:ai-a")
-	_expect(int(own_region_city.get("warehouse_stockpile_units", -1)) == 3, "actor region projection retains its own public warehouse clues")
-	_expect(int(rival_region_city.get("warehouse_stockpile_units", -1)) == 7 and int(public_region_city.get("warehouse_stockpile_units", -1)) == 3 and int(rival_region_city.get("owner", -1)) == -1, "region projections preserve anonymous public warehouse clues without hidden owner truth")
+	_expect(
+		region_capability != null \
+			and int(own_region_city.get("warehouse_stockpile_units", -1)) == 3,
+		"actor-scoped region projection retains only its own warehouse facts"
+	)
+	_expect(
+		not rival_region_city.has("warehouse_stockpile_units") \
+			and not rival_region_city.has("warehouse_stockpile_products") \
+			and not public_region_city.has("warehouse_stockpile_units") \
+			and not public_region_city.has("warehouse_stockpile_products") \
+			and int(rival_region_city.get("owner", -1)) == -1,
+		"rival and public region projections redact private warehouse inventory and hidden owner truth"
+	)
 	var old_capability := actor_capability
 	(world.players[1] as Dictionary)["actor_id"] = "actor:AI-A:rebound"
 	_expect(port.private_economy_snapshot(old_capability, 1).is_empty(), "unsignaled actor identity replacement invalidates the bound capability")

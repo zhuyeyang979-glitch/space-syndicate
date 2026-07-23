@@ -103,25 +103,20 @@ func own_unit_by_uid(
 	return {}
 
 
-func first_ready_owned_unit(
+func ready_owned_unit_by_uid(
 	capability: AiMilitaryActorCapability,
 	actor_index: int,
-	preferred_uid: int = 0
+	unit_uid: int
 ) -> Dictionary:
-	var snapshot := actor_roster_snapshot(capability, actor_index)
-	var fallback := {}
-	for unit_variant in snapshot.get("roster", []) as Array:
-		var unit := unit_variant as Dictionary
-		if str(unit.get("ownership_scope", "")) != "actor_own" \
+	if unit_uid <= 0:
+		return {}
+	var unit := own_unit_by_uid(capability, actor_index, unit_uid)
+	if unit.is_empty() \
 			or float(unit.get("remaining_time", 0.0)) <= 0.0 \
 			or int(unit.get("hp", 0)) <= 0 \
 			or float(unit.get("cooldown_left", 0.0)) > 0.0:
-			continue
-		if preferred_uid > 0 and int(unit.get("uid", 0)) == preferred_uid:
-			return unit.duplicate(true)
-		if fallback.is_empty():
-			fallback = unit.duplicate(true)
-	return {} if preferred_uid > 0 else fallback
+		return {}
+	return unit
 
 
 func debug_snapshot() -> Dictionary:
@@ -175,12 +170,22 @@ func _actor_roster_revision() -> String:
 				str(actor.get("actor_id", actor.get("id", actor_index))),
 				str(actor.get("seat_type", "ai")),
 			])
-	var session := _game_session().session_summary() if _game_session() != null else {}
 	return JSON.stringify([
 		"ai_military_actor_roster_v1",
-		str(session.get("session_id", "")),
-		int(session.get("revision", session.get("session_revision", 0))),
+		_session_identity_revision(),
 		roster_identity,
+	]).sha256_text()
+
+
+func _session_identity_revision() -> String:
+	var summary := _game_session().session_summary() if _game_session() != null else {}
+	return JSON.stringify([
+		"ai_military_actor_session_identity_v1",
+		str(summary.get("ruleset_id", "")),
+		str(summary.get("session_id", "")),
+		str(summary.get("scenario_id", "")),
+		int(summary.get("seed", 0)),
+		summary.get("setup", {}),
 	]).sha256_text()
 
 

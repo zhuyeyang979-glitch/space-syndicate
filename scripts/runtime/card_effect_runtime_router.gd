@@ -168,7 +168,7 @@ func _resolve_targeted_skill(skill: Dictionary, player: Dictionary, target_slot:
 func _resolved_monster_target_slot(entry: Dictionary) -> int:
 	var target_uid := int(entry.get("target_monster_uid", -1))
 	if target_uid <= 0 or _monster_controller == null:
-		return int(entry.get("target_slot", -1))
+		return -1
 	var roster := _monster_controller.roster_snapshot(false)
 	for index in range(roster.size()):
 		if roster[index] is Dictionary and int((roster[index] as Dictionary).get("uid", -1)) == target_uid:

@@ -1864,9 +1864,33 @@ func _card_rank_level_text(rank: int) -> String:
 func _district_event_weight(index: int) -> int:
 	return _call_world(&"_district_event_weight", [index])
 
-func _monster_resource_match_score(actor: Dictionary, index: int) -> int:
-	return _ai_monster_public_query_port.public_resource_match_score_for_actor(actor, index) \
-		if _ai_monster_public_query_port != null else 0
+func _monster_resource_match_score(actor: Dictionary, index: int, player_index: int) -> int:
+	if _ai_monster_public_query_port == null or not _ai_monster_public_query_port.is_ready():
+		return 0
+	var focus: Array = actor.get("resource_focus", []) if actor.get("resource_focus", []) is Array else []
+	if focus.is_empty():
+		return 0
+	var score := _ai_monster_public_query_port.public_resource_match_score_for_actor(actor, index)
+	if player_index < 0 or score >= 8:
+		return mini(score, 8)
+	var economy := _ai_actor_economy_snapshot(player_index)
+	var own_cities_variant: Variant = economy.get("own_cities", [])
+	if not (own_cities_variant is Array):
+		return mini(score, 8)
+	for city_variant in own_cities_variant as Array:
+		if not (city_variant is Dictionary):
+			continue
+		var city := city_variant as Dictionary
+		if int(city.get("district_index", -1)) != index:
+			continue
+		var warehouse_products: Array = city.get("warehouse_stockpile_products", []) \
+			if city.get("warehouse_stockpile_products", []) is Array else []
+		var warehouse_units := maxi(0, int(city.get("warehouse_stockpile_units", 0)))
+		for product_variant in focus:
+			if warehouse_products.has(str(product_variant)):
+				score += 2 + mini(3, int(float(warehouse_units) / 2.0))
+		break
+	return mini(score, 8)
 
 func _route_network_load_for_legacy_region(index: int) -> int:
 	return int(_route_public_summary(index).get("legal_route_count", 0))
@@ -2281,7 +2305,7 @@ func _district_ocean_neighbor_count(district_index: int) -> int:
 		if neighbor >= 0 and neighbor < _district_count() and String(_public_district(neighbor).get("terrain", "land")) == "ocean":
 			count += 1
 	return count
-func _auto_build_monster_risk_score(district_index: int) -> int:
+func _auto_build_monster_risk_score(district_index: int, player_index: int) -> int:
 	if district_index < 0 or district_index >= _district_count():
 		return 0
 	var risk := int(round(float(_public_district(district_index).get("panic", 0)) / 4.0))
@@ -2296,7 +2320,7 @@ func _auto_build_monster_risk_score(district_index: int) -> int:
 			risk += 34
 		elif distance <= NEARBY_RADIUS_METERS * 1.75:
 			risk += 16
-		risk += _monster_resource_match_score(actor, district_index) * 8
+		risk += _monster_resource_match_score(actor, district_index, player_index) * 8
 	return risk
 func _active_city_indices_for_player(player_index: int) -> Array:
 	var result := []
@@ -5216,7 +5240,7 @@ func _ai_own_route_threat_score(player_index: int) -> int:
 				score += 44
 			elif distance <= NEARBY_RADIUS_METERS * 1.6:
 				score += 22
-			score += _monster_resource_match_score(actor, city_index) * 18
+			score += _monster_resource_match_score(actor, city_index, player_index) * 18
 	return score
 func _ai_focus_rival_pressure_score(player_index: int) -> int:
 	var focus := _ai_focus_product(player_index)
@@ -6154,7 +6178,7 @@ func _ai_monster_card_landing_score(player_index: int, skill: Dictionary, distri
 	var catalog_index := int(skill.get("catalog_index", 0))
 	var template := _catalog_entry(catalog_index)
 	var probe := {"resource_focus": (template.get("resource_focus", []) as Array).duplicate(true)}
-	score += _monster_resource_match_score(probe, district_index) * 28
+	score += _monster_resource_match_score(probe, district_index, player_index) * 28
 	for product_variant in district.get("products", []):
 		score += int(round(float(_product_price(String(product_variant))) / 8.0))
 	score += int(round(float(district.get("transport_score", 1.0)) * 15.0))
@@ -6302,7 +6326,7 @@ func _ai_monster_lure_plan(player_index: int, _skill: Dictionary, range_limit: f
 			var distance := _entity_distance_to_district(actor, city_index)
 			if range_limit > 0.0 and distance > range_limit:
 				continue
-			var resource_match := _monster_resource_match_score(actor, city_index)
+			var resource_match := _monster_resource_match_score(actor, city_index, player_index)
 			var product_overlap := _ai_city_product_overlap_score(player_index, city_index)
 			var score := attack_value
 			score += product_overlap * 2
@@ -6367,7 +6391,7 @@ func _ai_monster_delay_plan(player_index: int, _skill: Dictionary) -> Dictionary
 			if city_score <= 0:
 				continue
 			var distance := _entity_distance_to_district(actor, city_index)
-			var resource_match := _monster_resource_match_score(actor, city_index)
+			var resource_match := _monster_resource_match_score(actor, city_index, player_index)
 			var score := 72 + city_score + resource_match * 42 \
 				+ int(actor.get("rank", 1)) * 25 - int(round(distance / 28.0))
 			if score <= best_score:
@@ -6846,7 +6870,7 @@ func _ai_city_gdp_insurance_score(player_index: int, district_index: int) -> int
 	var score := 90 + maxi(0, last_income)
 	score += damage * 58 + disrupted * 72 + int(float(int(_public_district(district_index).get("panic", 0))) / 2.0)
 	score += _city_warehouse_stockpile_pressure(city)
-	score += int(float(_auto_build_monster_risk_score(district_index)) / 2.0)
+	score += int(float(_auto_build_monster_risk_score(district_index, player_index)) / 2.0)
 	score += _route_network_load_for_legacy_region(district_index) * 12
 	score += _ai_district_focus_score(player_index, district_index)
 	return score
@@ -6988,7 +7012,7 @@ func _ai_best_warehouse_city_for_product(player_index: int, product_name: String
 		score -= int(_public_district(index).get("damage", 0)) * 34
 		score -= int(city.get("trade_route_damage", 0)) * 38
 		score -= int(city.get("trade_disrupted_routes", 0)) * 28
-		score -= int(float(_auto_build_monster_risk_score(index)) / 3.0)
+		score -= int(float(_auto_build_monster_risk_score(index, player_index)) / 3.0)
 		if score > best_score:
 			best_score = score
 			best_index = index
@@ -7176,7 +7200,7 @@ func _ai_military_deploy_plan_for_district(player_index: int, skill: Dictionary,
 	var route_pressure := int(city.get("trade_route_damage", 0)) + int(city.get("trade_disrupted_routes", 0)) if _city_is_active(city) else 0
 	var warehouse_pressure := _city_warehouse_stockpile_pressure(city) if _city_is_active(city) else 0
 	var route_load := _route_network_load_for_legacy_region(district_index)
-	var monster_risk := _auto_build_monster_risk_score(district_index)
+	var monster_risk := _auto_build_monster_risk_score(district_index, player_index)
 	var damage := int(_public_district(district_index).get("damage", 0))
 	var panic := int(_public_district(district_index).get("panic", 0))
 	var stat_score := int(skill.get("military_hp", 0)) * 2 \
@@ -7290,7 +7314,7 @@ func _ai_military_unit_for_command(player_index: int, skill: Dictionary) -> Dict
 	if _ai_military_actor_query_port == null \
 			or not _ai_military_actor_capability_binding_initialized:
 		return {}
-	return _ai_military_actor_query_port.first_ready_owned_unit(
+	return _ai_military_actor_query_port.ready_owned_unit_by_uid(
 		_ai_military_actor_capabilities.get(player_index) as AiMilitaryActorCapability,
 		player_index,
 		int(skill.get("bound_military_uid", 0))
@@ -7309,7 +7333,7 @@ func _ai_military_guard_target(player_index: int, unit: Dictionary, command_rang
 		var route_damage := int(city.get("trade_route_damage", 0))
 		var disrupted := int(city.get("trade_disrupted_routes", 0))
 		var warehouse_pressure := _city_warehouse_stockpile_pressure(city)
-		var monster_risk := _auto_build_monster_risk_score(city_index)
+		var monster_risk := _auto_build_monster_risk_score(city_index, player_index)
 		var income := int(city.get("last_income", _city_cycle_income(city_index, _city_competition_matches(city_index))))
 		var score := 96 + int(float(income) / 4.0) + damage * 54 + int(float(panic) / 2.0) + route_damage * 92 + disrupted * 48 + warehouse_pressure + int(float(monster_risk) / 2.0)
 		score += _ai_district_focus_score(player_index, city_index)
@@ -7340,6 +7364,7 @@ func _ai_military_strike_target(player_index: int, unit: Dictionary, command_ran
 		var city_index := int(city_index_variant)
 		var city := _district_city(city_index, player_index)
 		var city_owner := int(city.get("owner", -1))
+
 		if city_owner == player_index or city_owner < 0:
 			continue
 		if _entity_distance_to_district(unit, city_index) > command_range:
@@ -7351,6 +7376,7 @@ func _ai_military_strike_target(player_index: int, unit: Dictionary, command_ran
 		var score := 110 + attack_value + warehouse_pressure * 2 + route_load * 16 + route_damage * 24
 		score += int(unit.get("damage", 1)) * 54 + int(unit.get("military_gdp_penalty", 0)) * 5 + int(unit.get("military_strike_route_damage", 0)) * 72
 		score += int(float(_ai_district_focus_score(player_index, city_index)) / 2.0)
+
 		if score > best_score:
 			best_score = score
 			best = {
@@ -7391,7 +7417,7 @@ func _ai_military_monster_target(player_index: int, unit: Dictionary, command_ra
 			if city_distance < nearest_own_city_distance:
 				nearest_own_city_distance = city_distance
 				nearest_own_city = city_index
-		var resource_pressure := _monster_resource_match_score(actor, monster_position) \
+		var resource_pressure := _monster_resource_match_score(actor, monster_position, player_index) \
 			if monster_position >= 0 and monster_position < _district_count() else 0
 		var ownership_scope := str(actor.get("ownership_scope", "public_unknown"))
 		var score := 72 + int(actor.get("rank", 1)) * 42 \
@@ -7444,7 +7470,7 @@ func _ai_military_move_target(player_index: int, unit: Dictionary) -> Dictionary
 		var score := int(round(terrain_multiplier * 55.0)) - int(round(distance / 20.0))
 		if city_owner == player_index:
 			score += 80 + int(float(_ai_city_target_score(player_index, index, true, true)) / 3.0)
-			score += int(float(_auto_build_monster_risk_score(index)) / 2.0)
+			score += int(float(_auto_build_monster_risk_score(index, player_index)) / 2.0)
 		elif city_owner >= 0:
 			score += 65 + int(float(_ai_rival_city_pressure_score(player_index, index)) / 4.0)
 			if ["bomber", "missile", "submarine", "warship"].has(unit_type):
@@ -8696,7 +8722,7 @@ func _ai_monster_wager_side_score(player_index: int, entry: Dictionary, side: St
 		var own_pressure := int(city_pressure.get("own_pressure", 0))
 		var rival_pressure := int(city_pressure.get("rival_pressure", 0))
 		city_bias = int(float(rival_pressure) / 6.0) - int(float(own_pressure) / 8.0)
-		resource_bias = _monster_resource_match_score(actor, int(actor.get("position", -1))) * 18
+		resource_bias = _monster_resource_match_score(actor, int(actor.get("position", -1)), player_index) * 18
 	var score := damage_score + combat_score + owner_bias + city_bias + resource_bias
 	score += int(_ai_profile_for_player(player_index).get("risk_tolerance", 1.0) * 18.0)
 	score += (player_index + int(entry.get("wager_id", 0)) + slot) % 7

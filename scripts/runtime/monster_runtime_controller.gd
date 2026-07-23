@@ -500,7 +500,7 @@ func resolve_targeted_skill(skill: Dictionary, player: Dictionary, target_slot: 
 	var target_snapshot_variant: Variant = _world_call(&"_card_play_target_snapshot", [skill])
 	var target_snapshot: Dictionary = target_snapshot_variant if target_snapshot_variant is Dictionary else {}
 	if bool(target_snapshot.get("direct_monster_skill", false)):
-		return _trigger_auto_monster_card_command(skill, player, target_slot)
+		return _trigger_auto_monster_card_command(skill, player, target_slot, target_district)
 	if kind == "monster_lure":
 		var actor: Dictionary = auto_monsters[target_slot]
 		selected_auto_monster_slot = target_slot
@@ -6717,7 +6717,12 @@ func _wrapped_distance(from_position: Vector2, to_position: Vector2) -> float:
 	return _world_call(&"_wrapped_distance", [from_position, to_position])
 
 
-func _trigger_auto_monster_card_command(skill: Dictionary, _player: Dictionary, target_slot: int) -> bool:
+func _trigger_auto_monster_card_command(
+	skill: Dictionary,
+	_player: Dictionary,
+	target_slot: int,
+	target_district_index: int
+) -> bool:
 	var slot := _valid_auto_monster_slot(target_slot)
 	if slot < 0 or slot >= auto_monsters.size():
 		_log("%s没有找到可指挥的怪兽。" % skill["name"])
@@ -6730,7 +6735,7 @@ func _trigger_auto_monster_card_command(skill: Dictionary, _player: Dictionary, 
 	if _entity_has_linear_motion(actor):
 		_log("怪%d·%s正在按米/秒移动，暂时不能接收新的直接指挥。" % [slot + 1, String(actor.get("name", "怪兽"))])
 		return false
-	var target: int = selected_district
+	var target := target_district_index
 	if target < 0 or target >= districts.size() or districts[target]["destroyed"]:
 		_log("%s的目标区域无效或已破坏。" % skill["name"])
 		return false

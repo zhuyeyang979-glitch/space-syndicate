@@ -180,12 +180,22 @@ func _actor_roster_revision() -> String:
 				str(actor.get("actor_id", actor.get("id", actor_index))),
 				str(actor.get("seat_type", "ai")),
 			])
-	var session := _game_session().session_summary() if _game_session() != null else {}
 	return JSON.stringify([
 		"ai_monster_actor_roster_v1",
-		str(session.get("session_id", "")),
-		int(session.get("revision", session.get("session_revision", 0))),
+		_session_identity_revision(),
 		roster_identity,
+	]).sha256_text()
+
+
+func _session_identity_revision() -> String:
+	var summary := _game_session().session_summary() if _game_session() != null else {}
+	return JSON.stringify([
+		"ai_monster_actor_session_identity_v1",
+		str(summary.get("ruleset_id", "")),
+		str(summary.get("session_id", "")),
+		str(summary.get("scenario_id", "")),
+		int(summary.get("seed", 0)),
+		summary.get("setup", {}),
 	]).sha256_text()
 
 
