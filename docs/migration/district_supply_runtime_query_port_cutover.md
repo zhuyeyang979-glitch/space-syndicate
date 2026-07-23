@@ -1,6 +1,6 @@
 # District Supply Runtime Query Port Cutover
 
-Status: cut over locally; no commit or push was requested.
+Status: cut over; actor-private capability hardening validated.
 
 ## Boundary
 
@@ -12,7 +12,7 @@ WorldSessionState
 RegionSupplyRuntimeController
 CardMarketPricingRuntimeController
 CardRuntimeCatalogService
-CardInventoryRuntimeService
+CommodityCardInventoryRuntimeController / CardFlow transaction service
 GameSessionRuntimeController
                     ↓
 DistrictSupplyRuntimeQueryPort
@@ -41,13 +41,15 @@ refills a slot, advances RNG or mutates purchase state.
 
 The AI can ask for its own inventory receive preview and discardable slots by
 seat index only while presenting the opaque `DistrictSupplyAiQueryCapability`
-injected by the production coordinator. The capability is identity checked,
-rotated whenever the composition is rewired, and additionally requires an
-active session and an AI seat. Missing, forged, human-seat and finished-session
-queries fail closed. These results are internal policy facts and are never
-routed to presentation. `CardInventoryRuntimeService` remains the single
-inventory rule owner; the query uses `preview_receive`, not a second planning
-or mutation implementation.
+issued for that exact AI actor by the production coordinator. Human seats
+receive no token, AI actors never share one, and player-roster replacement
+rotates the complete set alongside the actor-state capabilities. A token for
+AI B cannot query AI A. Missing, forged, stale, cross-actor, human-seat and
+finished-session queries fail closed. These results are internal policy facts
+and are never routed to presentation. `CommodityCardInventoryRuntimeController`
+and its CardFlow transaction service remain the inventory authority; the query
+calls the existing `player_snapshot`, `discardable_slots`, and
+`region_supply_receive_preview` APIs rather than implementing another planner.
 
 ## Deleted Main surface
 
@@ -72,6 +74,10 @@ that formatting is removed by its own presentation boundary.
 - `main_runtime_composition_test.gd`
 - `district_supply_action_port_cutover_test.gd`
 - `main_gd_architecture_gate_test.gd`
+
+The actor-scoped focused run passes 31/31 checks
+(`20260723-090537-962-district_supply_runtime_query_port_cutover_test-89718267`).
+Actor-state regression remains 95/95 and Main composition remains green.
 
 The focused test compares rack save/RNG state, inventory diagnostics and
 purchase diagnostics before and after queries. It also scans the production

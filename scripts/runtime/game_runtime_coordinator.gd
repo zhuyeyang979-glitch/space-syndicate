@@ -1494,6 +1494,7 @@ func _wire_ai_world_typed_ports() -> void:
 
 func _refresh_ai_actor_state_capabilities() -> void:
 	var actor_state_port := _ai_actor_state_port_node()
+	var district_supply_query := district_supply_runtime_query_port()
 	var ai := _ai_runtime_controller_node() as AiRuntimeController
 	if actor_state_port == null or ai == null:
 		return
@@ -1503,6 +1504,16 @@ func _refresh_ai_actor_state_capabilities() -> void:
 		actor_capabilities[actor_index] = AiActorStateCapability.new()
 	var bound := actor_state_port.bind_ai_capabilities(actor_capabilities)
 	ai.set_actor_state_capabilities(actor_capabilities if bound else {})
+	if district_supply_query != null:
+		var supply_capabilities: Dictionary = {}
+		for actor_index_variant in actor_state_port.ai_player_indices(true):
+			var actor_index := int(actor_index_variant)
+			supply_capabilities[actor_index] = DistrictSupplyAiQueryCapability.new()
+		var supply_bound := district_supply_query.bind_ai_private_capabilities(supply_capabilities)
+		ai.set_district_supply_runtime_query_port(
+			district_supply_query,
+			supply_capabilities if supply_bound else {}
+		)
 
 
 func _wire_monster_wager_cash_commitment_query_port() -> void:
@@ -5352,12 +5363,9 @@ func _wire_district_supply_action_port() -> void:
 		if not presentation_game_screen_path.is_empty() else null
 	if port == null or query == null:
 		return
-	var ai_query_capability := DistrictSupplyAiQueryCapability.new()
-	query.bind_ai_private_capability(ai_query_capability)
 	var ai := _ai_runtime_controller_node() as AiRuntimeController
 	if ai != null:
 		ai.set_district_supply_action_port(port)
-		ai.set_district_supply_runtime_query_port(query, ai_query_capability)
 	var diagnostics_bridge := _gameplay_balance_diagnostics_world_bridge_node() as GameplayBalanceDiagnosticsWorldBridge
 	if diagnostics_bridge != null:
 		diagnostics_bridge.set_district_supply_runtime_query_port(query)

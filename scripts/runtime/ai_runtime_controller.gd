@@ -46,7 +46,8 @@ var _card_play_submission_controller: CardPlaySubmissionRuntimeController
 var _card_resolution_history_service: CardResolutionHistoryRuntimeService
 var _district_supply_action_port: DistrictSupplyActionPort
 var _district_supply_runtime_query_port: DistrictSupplyRuntimeQueryPort
-var _district_supply_ai_query_capability: DistrictSupplyAiQueryCapability
+var _district_supply_ai_query_capabilities: Dictionary = {}
+var _district_supply_ai_capability_binding_initialized := false
 var _cash_commitment_query_port: MonsterWagerCashCommitmentQueryPort
 var _ai_business_cost_cash_port: AiBusinessCostCashPort
 var _ai_business_cost_capability: AiBusinessCostCapability
@@ -145,10 +146,11 @@ func set_district_supply_action_port(port: DistrictSupplyActionPort) -> void:
 
 func set_district_supply_runtime_query_port(
 	port: DistrictSupplyRuntimeQueryPort,
-	capability: DistrictSupplyAiQueryCapability
+	capabilities_by_actor: Dictionary
 ) -> void:
 	_district_supply_runtime_query_port = port
-	_district_supply_ai_query_capability = capability
+	_district_supply_ai_query_capabilities = capabilities_by_actor.duplicate()
+	_district_supply_ai_capability_binding_initialized = true
 
 
 func set_cash_commitment_query_port(port: MonsterWagerCashCommitmentQueryPort) -> void:
@@ -1576,20 +1578,20 @@ func _player_counted_hand_size(player: Dictionary) -> int:
 
 func _discardable_hand_slots_for_purchase(player_index: int) -> Array:
 	return _district_supply_runtime_query_port.private_discardable_slots_for_actor(
-		_district_supply_ai_query_capability,
+		_district_supply_ai_query_capabilities.get(player_index) as DistrictSupplyAiQueryCapability,
 		player_index
 	) if _district_supply_runtime_query_port != null else []
 
 func _player_can_receive_card_with_discard(player_index: int, skill_name: String) -> bool:
 	return _district_supply_runtime_query_port.private_can_receive_with_discard(
-		_district_supply_ai_query_capability,
+		_district_supply_ai_query_capabilities.get(player_index) as DistrictSupplyAiQueryCapability,
 		player_index,
 		skill_name
 	) if _district_supply_runtime_query_port != null else false
 
 func _purchase_requires_discard(player_index: int, skill_name: String) -> bool:
 	return _district_supply_runtime_query_port.private_requires_discard(
-		_district_supply_ai_query_capability,
+		_district_supply_ai_query_capabilities.get(player_index) as DistrictSupplyAiQueryCapability,
 		player_index,
 		skill_name
 	) if _district_supply_runtime_query_port != null else false

@@ -58,6 +58,11 @@ func _run() -> void:
 	var listing := query.public_listing_for_district(district_index, str(query_ids[0]) if not query_ids.is_empty() else "")
 	var unauthorized_plan := query.private_inventory_plan_for_actor(null, 1, str(query_ids[0]) if not query_ids.is_empty() else "")
 	var unauthorized_human_plan := query.private_inventory_plan_for_actor(DistrictSupplyAiQueryCapability.new(), 0, str(query_ids[0]) if not query_ids.is_empty() else "")
+	var capabilities := ai.get("_district_supply_ai_query_capabilities") as Dictionary if ai != null else {}
+	var actor_capability := capabilities.get(1) as DistrictSupplyAiQueryCapability
+	var rival_capability := capabilities.get(2) as DistrictSupplyAiQueryCapability
+	var authorized_actor_snapshot := query.private_inventory_snapshot_for_actor(actor_capability, 1)
+	var rival_token_snapshot := query.private_inventory_snapshot_for_actor(rival_capability, 1)
 	var ai_discardable: Variant = ai.call("_discardable_hand_slots_for_purchase", 1) if ai != null else null
 	_expect(query_ids == owner_ids and not query_ids.is_empty(), "public query exactly matches the authoritative current rack")
 	_expect(not listing.is_empty() and int(listing.get("price_cash", -1)) >= 0, "public listing preserves authoritative rack price")
@@ -65,6 +70,7 @@ func _run() -> void:
 	_expect(inventory.debug_snapshot() == inventory_before, "AI inventory preview does not mutate inventory diagnostics")
 	_expect(purchase.debug_snapshot() == purchase_before, "query does not create quotes or purchase windows")
 	_expect(unauthorized_plan.is_empty() and unauthorized_human_plan.is_empty(), "private inventory facts reject missing, forged and human-seat authorization")
+	_expect(not authorized_actor_snapshot.is_empty() and rival_token_snapshot.is_empty(), "AI-private inventory capability is bound to exactly one actor")
 	_expect(ai_discardable is Array, "the injected AI capability can read only its own inventory feasibility")
 	var public_text := JSON.stringify({"ids": query_ids, "listing": listing})
 	for forbidden in ["player_cash", "hand", "discard", "ai_plan", "true_owner", "owner_truth", "future_bag"]:
@@ -87,7 +93,7 @@ func _run() -> void:
 	_expect(not query_source.contains("CardInventoryRuntimeService") and not query_source.contains("current_facts"), "query port has no duplicate legacy inventory projection")
 	var debug := query.debug_snapshot()
 	_expect(not bool(debug.get("mutates_gameplay", true)) and not bool(debug.get("reads_future_supply_bag", true)) and not bool(debug.get("references_main", true)), "query boundary is read-only and Main-free")
-	_expect(bool(debug.get("ai_capability_bound", false)) and int(debug.get("rejected_query_count", 0)) >= 2, "AI-private query capability is bound and unauthorized reads are audited")
+	_expect(bool(debug.get("ai_capability_bound", false)) and bool(debug.get("capabilities_are_actor_scoped", false)) and int(debug.get("actor_scoped_capability_count", 0)) == 2 and int(debug.get("rejected_query_count", 0)) >= 3, "AI-private query capabilities are actor-scoped and unauthorized reads are audited")
 	var game_session := coordinator.get_node_or_null("GameSessionRuntimeController") as GameSessionRuntimeController
 	if game_session != null:
 		game_session.finish_session({"reason": "query_terminal_copy_test"})

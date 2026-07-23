@@ -11,13 +11,33 @@ class_name DistrictSupplyRuntimeQueryPort
 var _public_query_count := 0
 var _private_ai_query_count := 0
 var _rejected_query_count := 0
-var _ai_private_capability: DistrictSupplyAiQueryCapability
+var _ai_private_capabilities: Dictionary = {}
+var _ai_capability_binding_initialized := false
+var _bound_actor_roster_revision := ""
 var _ai_capability_revision := 0
 
 
-func bind_ai_private_capability(capability: DistrictSupplyAiQueryCapability) -> void:
-	_ai_private_capability = capability
+func bind_ai_private_capabilities(capabilities_by_actor: Dictionary) -> bool:
+	var expected_actor_indices := _ai_player_indices()
+	if capabilities_by_actor.size() != expected_actor_indices.size():
+		return _reject_capability_binding()
+	var normalized: Dictionary = {}
+	var seen_tokens: Dictionary = {}
+	for actor_index_variant in expected_actor_indices:
+		var actor_index := int(actor_index_variant)
+		var capability_variant: Variant = capabilities_by_actor.get(actor_index)
+		if not (capability_variant is DistrictSupplyAiQueryCapability):
+			return _reject_capability_binding()
+		var token_id := (capability_variant as DistrictSupplyAiQueryCapability).get_instance_id()
+		if seen_tokens.has(token_id):
+			return _reject_capability_binding()
+		seen_tokens[token_id] = true
+		normalized[actor_index] = capability_variant
+	_ai_private_capabilities = normalized
+	_ai_capability_binding_initialized = true
+	_bound_actor_roster_revision = _actor_roster_revision()
 	_ai_capability_revision += 1
+	return true
 
 
 func public_card_ids_for_district(district_index: int) -> Array:
@@ -157,7 +177,9 @@ func debug_snapshot() -> Dictionary:
 		"public_query_count": _public_query_count,
 		"private_ai_query_count": _private_ai_query_count,
 		"rejected_query_count": _rejected_query_count,
-		"ai_capability_bound": _ai_private_capability != null,
+		"ai_capability_bound": _ai_capability_binding_initialized,
+		"actor_scoped_capability_count": _ai_private_capabilities.size(),
+		"capabilities_are_actor_scoped": true,
 		"ai_capability_revision": _ai_capability_revision,
 		"reads_future_supply_bag": false,
 		"mutates_gameplay": false,
@@ -168,11 +190,51 @@ func debug_snapshot() -> Dictionary:
 
 func _ai_private_authorized(capability: DistrictSupplyAiQueryCapability, player_index: int) -> bool:
 	return capability != null \
-		and capability == _ai_private_capability \
+		and _ai_capability_binding_initialized \
+		and _bound_actor_roster_revision == _actor_roster_revision() \
+		and _ai_private_capabilities.get(player_index) == capability \
 		and _game_session() != null \
 		and not _game_session().is_finished() \
 		and _player_valid(player_index) \
 		and bool((_world().players[player_index] as Dictionary).get("is_ai", false))
+
+
+func _ai_player_indices() -> Array:
+	var result: Array = []
+	if _world() == null:
+		return result
+	for player_index in range(_world().players.size()):
+		if _world().players[player_index] is Dictionary \
+				and (bool((_world().players[player_index] as Dictionary).get("is_ai", false)) \
+				or str((_world().players[player_index] as Dictionary).get("seat_type", "human")) == "ai"):
+			result.append(player_index)
+	return result
+
+
+func _actor_roster_revision() -> String:
+	var roster_identity: Array = []
+	if _world() != null:
+		for actor_index_variant in _ai_player_indices():
+			var actor_index := int(actor_index_variant)
+			var actor := _world().players[actor_index] as Dictionary
+			roster_identity.append([
+				actor_index,
+				int(actor.get("id", actor_index)),
+				str(actor.get("name", "")),
+				str(actor.get("seat_type", "ai")),
+			])
+	return JSON.stringify([
+		"district_supply_ai_actor_roster_v1",
+		roster_identity,
+	]).sha256_text()
+
+
+func _reject_capability_binding() -> bool:
+	_ai_private_capabilities.clear()
+	_ai_capability_binding_initialized = false
+	_bound_actor_roster_revision = ""
+	_ai_capability_revision += 1
+	return false
 
 
 func _public_rack_row(district_index: int) -> Dictionary:
