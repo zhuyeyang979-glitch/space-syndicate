@@ -8812,3 +8812,24 @@ deleted. Evidence and the remaining action inventory are recorded in
 - This is deliberately a prerequisite rather than production AI wiring. The
   subsequent typed-cash cutover must consume this participant and remove the
   Main path without adding a parallel market or cash owner.
+
+## 2026-07-23 — AI actor-private state typed-port migration
+
+- Routed public AI identity/elimination queries and actor-private
+  `ai_profile`/`ai_memory` reads and writes through the existing
+  `AiActorStatePort` capability boundary. `AiRuntimeController` keeps semantic
+  ownership; `WorldSessionState` remains the only player-record owner.
+- Added revision-bound CAS, restore/replacement generation invalidation, one
+  safe rebase for concurrent top-level memory updates, and a complete typed
+  batch capture/apply contract. Truncated, unsafe, duplicate, extra, or stale
+  actor rows fail before timer or world mutation.
+- New-session rollback checkpoints now contain only controller-local timers
+  and receipts. WorldSession rollback restores profile and memory afterward,
+  preserving an active eight-seat table when a smaller replacement fails.
+- Added a formal production Bench and focused gate. Final local evidence is
+  93/93 focused, 37/37 Bench, 133/133 session-start transaction, zero privacy
+  leaks, zero partial batch mutation, and zero RNG delta.
+- The Registry remains 19 sections and its existing AI section remains
+  unsupported; full-run resume is still false. The inherited
+  `session_envelope_save_owner_test` Main-string Oracle remains 92/93 on both
+  candidate and `origin/main`, and no retired Main wrapper was restored.

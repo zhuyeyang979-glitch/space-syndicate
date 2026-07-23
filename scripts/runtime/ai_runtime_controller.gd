@@ -203,8 +203,7 @@ func reset_state() -> void:
 
 func capture_new_session_checkpoint() -> Dictionary:
 	return {
-		"schema_version": 1,
-		"save_data": to_save_data().duplicate(true),
+		"schema_version": 2,
 		"ai_card_decision_timer": ai_card_decision_timer,
 		"ai_auction_reaction_timer": ai_auction_reaction_timer,
 		"ai_intel_decision_timer": ai_intel_decision_timer,
@@ -214,11 +213,15 @@ func capture_new_session_checkpoint() -> Dictionary:
 
 
 func restore_new_session_checkpoint(checkpoint: Dictionary) -> Dictionary:
-	if int(checkpoint.get("schema_version", 0)) != 1 or not (checkpoint.get("save_data", {}) is Dictionary):
+	if int(checkpoint.get("schema_version", 0)) != 2 \
+			or not TablePresentationPureDataPolicy.is_pure_data(checkpoint) \
+			or not (checkpoint.get("last_receipts", []) is Array) \
+			or not (checkpoint.get("ai_card_decision_enabled") is bool):
 		return {"restored": false, "reason_code": "ai_new_session_checkpoint_invalid"}
-	var applied := apply_save_data(checkpoint.get("save_data", {}) as Dictionary)
-	if not bool(applied.get("applied", false)):
-		return {"restored": false, "reason_code": str(applied.get("reason_code", "ai_new_session_restore_failed"))}
+	for timer_key in ["ai_card_decision_timer", "ai_auction_reaction_timer", "ai_intel_decision_timer"]:
+		var timer_value: Variant = checkpoint.get(timer_key)
+		if not (timer_value is int or timer_value is float) or not is_finite(float(timer_value)):
+			return {"restored": false, "reason_code": "ai_new_session_checkpoint_invalid"}
 	ai_card_decision_timer = float(checkpoint.get("ai_card_decision_timer", 0.0))
 	ai_auction_reaction_timer = float(checkpoint.get("ai_auction_reaction_timer", 0.0))
 	ai_intel_decision_timer = float(checkpoint.get("ai_intel_decision_timer", 0.0))
@@ -323,16 +326,21 @@ func route_intent(intent: Dictionary) -> Dictionary:
 
 func to_save_data() -> Dictionary:
 	var player_states: Array = []
-	if _world_ready():
-		for player_index in range(players.size()):
-			if not _player_is_ai(player_index):
-				continue
-			var player: Dictionary = players[player_index]
-			player_states.append({
-				"player_index": player_index,
-				"ai_profile": (player.get("ai_profile", {}) as Dictionary).duplicate(true) if player.get("ai_profile", {}) is Dictionary else {},
-				"ai_memory": (player.get("ai_memory", {}) as Dictionary).duplicate(true) if player.get("ai_memory", {}) is Dictionary else {},
-			})
+	if not _actor_state_ready():
+		return {}
+	var capture := _ai_actor_state_port.capture_ai_state_batch_receipt(
+		_ai_actor_state_capability,
+		true
+	)
+	if not bool(capture.get("captured", false)):
+		return {}
+	for row_variant in capture.get("rows", []) as Array:
+		var player := row_variant as Dictionary
+		player_states.append({
+			"player_index": int(player.get("player_index", -1)),
+			"ai_profile": (player.get("ai_profile", {}) as Dictionary).duplicate(true),
+			"ai_memory": (player.get("ai_memory", {}) as Dictionary).duplicate(true),
+		})
 	return {
 		"ai_card_decision_timer": ai_card_decision_timer,
 		"ai_auction_reaction_timer": ai_auction_reaction_timer,
@@ -389,23 +397,39 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	if not bool(preflight.get("accepted", false)):
 		return {"applied": false, "reason_code": str(preflight.get("reason_code", "ai_save_invalid")), "player_state_count": 0}
 	var normalized := preflight.get("normalized_state", {}) as Dictionary
+	if not _actor_state_ready():
+		return {"applied": false, "reason_code": "ai_actor_state_port_missing", "player_state_count": 0}
+	var saved_actor_indices: Array = []
+	for state_variant in normalized.get("player_states", []) as Array:
+		saved_actor_indices.append(int((state_variant as Dictionary).get("player_index", -1)))
+	saved_actor_indices.sort()
+	var expected_actor_indices := _ai_actor_state_port.ai_player_indices(true)
+	expected_actor_indices.sort()
+	if saved_actor_indices != expected_actor_indices:
+		return {"applied": false, "reason_code": "ai_save_actor_roster_mismatch", "player_state_count": 0}
+	var actor_rows: Array = []
+	for state_variant in normalized.get("player_states", []) as Array:
+		var state: Dictionary = state_variant
+		var player_index := int(state.get("player_index", -1))
+		var actor := _ai_actor_state_snapshot(player_index)
+		if actor.is_empty():
+			return {"applied": false, "reason_code": "ai_save_actor_missing", "player_state_count": 0}
+		actor_rows.append({
+			"player_index": player_index,
+			"ai_profile": (state.get("ai_profile", {}) as Dictionary).duplicate(true),
+			"ai_memory": _normalized_ai_memory(state.get("ai_memory", {})),
+			"expected_revision": str(actor.get("state_revision", "")),
+		})
+	var batch_receipt := _ai_actor_state_port.apply_ai_state_batch(
+		_ai_actor_state_capability,
+		actor_rows
+	)
+	if not bool(batch_receipt.get("accepted", false)):
+		return {"applied": false, "reason_code": str(batch_receipt.get("reason_code", "ai_save_actor_batch_rejected")), "player_state_count": 0}
 	ai_card_decision_timer = float(normalized.get("ai_card_decision_timer", _policy_value("timing", "card_decision_interval_seconds", 2.2)))
 	ai_auction_reaction_timer = float(normalized.get("ai_auction_reaction_timer", _policy_value("timing", "auction_reaction_interval_seconds", 0.7)))
 	ai_intel_decision_timer = float(normalized.get("ai_intel_decision_timer", _policy_value("timing", "intel_decision_interval_seconds", 5.5)))
 	ai_card_decision_enabled = bool(normalized.get("ai_card_decision_enabled", true))
-	if _world_ready():
-		for state_variant in normalized.get("player_states", []) as Array:
-			var state: Dictionary = state_variant
-			var player_index := int(state.get("player_index", -1))
-			if player_index < 0 or player_index >= players.size():
-				continue
-			var player: Dictionary = players[player_index]
-			if state.get("ai_profile", {}) is Dictionary:
-				player["ai_profile"] = (state.get("ai_profile", {}) as Dictionary).duplicate(true)
-			if state.get("ai_memory", {}) is Dictionary:
-				player["ai_memory"] = (state.get("ai_memory", {}) as Dictionary).duplicate(true)
-			players[player_index] = player
-		_ensure_player_ai_state()
 	return {"applied": true, "reason_code": "ai_save_applied", "player_state_count": int((normalized.get("player_states", []) as Array).size())}
 
 
@@ -446,6 +470,8 @@ func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 		"typed_card_history_bound": _card_resolution_history_service != null,
 		"typed_business_cost_cash_bound": _ai_business_cost_cash_port != null and _ai_business_cost_capability != null,
 		"typed_actor_state_bound": _ai_actor_state_port != null and _ai_actor_state_capability != null,
+		"actor_state_uses_main": false,
+		"actor_state_uses_whole_players": false,
 		"typed_region_knowledge_bound": _ai_region_knowledge_query_port != null and _ai_region_knowledge_capability != null,
 		"typed_city_inference_command_bound": _ai_city_inference_command_port != null,
 		"city_inference_uses_main": false,
@@ -465,6 +491,99 @@ func _candidate_stable_id(candidate: Dictionary) -> String:
 
 func _world_ready() -> bool:
 	return _world_bridge != null and _world_bridge.has_method("has_world") and bool(_world_bridge.call("has_world"))
+
+
+func _actor_state_ready() -> bool:
+	return _ai_actor_state_port != null \
+		and _ai_actor_state_capability != null \
+		and _ai_actor_state_port.is_ready()
+
+
+func _ai_actor_state_snapshot(player_index: int) -> Dictionary:
+	if not _actor_state_ready():
+		return {}
+	return _ai_actor_state_port.ai_actor_state_snapshot(
+		_ai_actor_state_capability,
+		player_index
+	)
+
+
+func _commit_ai_actor_state(
+	player_index: int,
+	profile: Dictionary,
+	memory: Dictionary,
+	actor_snapshot: Dictionary = {}
+) -> Dictionary:
+	var source := actor_snapshot if not actor_snapshot.is_empty() else _ai_actor_state_snapshot(player_index)
+	if source.is_empty() or int(source.get("player_index", -1)) != player_index:
+		return {"accepted": false, "changed": false, "reason_code": "ai_actor_state_snapshot_missing"}
+	return _ai_actor_state_port.commit_ai_state(
+		_ai_actor_state_capability,
+		player_index,
+		{
+			"ai_profile": profile.duplicate(true),
+			"ai_memory": memory.duplicate(true),
+		},
+		str(source.get("state_revision", ""))
+	)
+
+
+func _commit_ai_memory(
+	player_index: int,
+	memory: Dictionary,
+	actor_snapshot: Dictionary = {}
+) -> Dictionary:
+	var source := actor_snapshot if not actor_snapshot.is_empty() else _ai_actor_state_snapshot(player_index)
+	if source.is_empty():
+		return {"accepted": false, "changed": false, "reason_code": "ai_actor_state_snapshot_missing"}
+	var profile: Dictionary = source.get("ai_profile", {}) \
+		if source.get("ai_profile", {}) is Dictionary else {}
+	var baseline_memory := _normalized_ai_memory(source.get("ai_memory", {}))
+	var first := _commit_ai_actor_state(player_index, profile, memory, source)
+	if bool(first.get("accepted", false)) \
+			or str(first.get("reason_code", "")) != "ai_actor_state_revision_changed":
+		return first
+	var latest := _ai_actor_state_snapshot(player_index)
+	if latest.is_empty():
+		return first
+	if int(latest.get("state_generation", -1)) != int(source.get("state_generation", -2)):
+		first["rebase_rejected"] = "actor_state_generation_changed"
+		return first
+	var rebased_memory := _normalized_ai_memory(latest.get("ai_memory", {}))
+	for key_variant in memory.keys():
+		var key: Variant = key_variant
+		var baseline_has := baseline_memory.has(key)
+		var latest_has := rebased_memory.has(key)
+		var desired_value: Variant = memory.get(key)
+		var local_changed: bool = not baseline_has or baseline_memory.get(key) != desired_value
+		if not local_changed:
+			continue
+		var latest_changed: bool = latest_has != baseline_has \
+			or (latest_has and baseline_has and rebased_memory.get(key) != baseline_memory.get(key))
+		if latest_changed and (not latest_has or rebased_memory.get(key) != desired_value):
+			first["rebase_rejected"] = "actor_state_memory_conflict"
+			first["conflict_key"] = key
+			return first
+		rebased_memory[key] = TablePresentationPureDataPolicy.detached_copy(desired_value)
+	for key_variant in baseline_memory.keys():
+		var key: Variant = key_variant
+		if not memory.has(key):
+			var latest_has := rebased_memory.has(key)
+			if latest_has and rebased_memory.get(key) != baseline_memory.get(key):
+				first["rebase_rejected"] = "actor_state_memory_conflict"
+				first["conflict_key"] = key
+				return first
+			rebased_memory.erase(key)
+	var latest_profile: Dictionary = latest.get("ai_profile", {}) \
+		if latest.get("ai_profile", {}) is Dictionary else {}
+	var retry := _commit_ai_actor_state(player_index, latest_profile, rebased_memory, latest)
+	retry["rebased"] = true
+	return retry
+
+
+func _committed_change_count(receipt: Dictionary, proposed_count: int) -> int:
+	return maxi(0, proposed_count) \
+		if bool(receipt.get("accepted", false)) and bool(receipt.get("changed", false)) else 0
 
 
 func _city_inference_ports_ready() -> bool:
@@ -494,17 +613,7 @@ func _city_inference_snapshot(actor_index: int) -> Dictionary:
 
 
 func _typed_ai_player_indices() -> Array:
-	var result: Array = []
-	if not _city_inference_ports_ready():
-		return result
-	for player_variant in _ai_actor_state_port.public_players_snapshot():
-		if not (player_variant is Dictionary):
-			continue
-		var player := player_variant as Dictionary
-		if (bool(player.get("is_ai", false)) or str(player.get("seat_type", "human")) == "ai") \
-				and not bool(player.get("eliminated", false)):
-			result.append(int(player.get("player_index", -1)))
-	return result
+	return _ai_actor_state_port.ai_player_indices(false) if _actor_state_ready() else []
 
 
 func _world_value(property_name: StringName, default_value: Variant = null) -> Variant:
@@ -1107,7 +1216,7 @@ func _victory_rank_for_player(rankings: Array, player_index: int) -> int:
 	return rankings.size()
 
 func _player_is_eliminated(player_index: int) -> bool:
-	return _call_world(&"_player_is_eliminated", [player_index])
+	return _ai_actor_state_port.is_player_eliminated(player_index) if _actor_state_ready() else true
 
 func _product_count_summary(counts: Dictionary, limit: int = 4, empty_text: String = "暂无") -> String:
 	return _call_world(&"_product_count_summary", [counts, limit, empty_text])
@@ -1373,7 +1482,7 @@ func _queue_monster_card_as_counter(player_index: int, slot_index: int, source_s
 	return _call_world(&"_queue_monster_card_as_counter", [player_index, slot_index, source_skill])
 
 func _player_is_ai(player_index: int) -> bool:
-	return _call_world(&"_player_is_ai", [player_index])
+	return _ai_actor_state_port.is_ai_player(player_index) if _actor_state_ready() else false
 
 func _player_facing_text_snapshot() -> Array:
 	return _call_world(&"_player_facing_text_snapshot")
@@ -1656,10 +1765,7 @@ func _ai_sample_development_route_id(sample: Dictionary) -> String:
 				best_score = candidate_score
 	return best_route
 func _ai_profile_development_route_summary(player_index: int) -> Dictionary:
-	if player_index < 0 or player_index >= players.size():
-		return {}
-	var player: Dictionary = players[player_index]
-	var profile_variant: Variant = player.get("ai_profile", {})
+	var profile_variant: Variant = _ai_profile_for_player(player_index)
 	if not (profile_variant is Dictionary):
 		return {}
 	var preferences_variant: Variant = (profile_variant as Dictionary).get("route_preferences", {})
@@ -1684,10 +1790,7 @@ func _ai_profile_development_route_summary(player_index: int) -> Dictionary:
 		"source": "性格偏好",
 	}
 func _ai_development_route_sample_summary(player_index: int) -> Dictionary:
-	if player_index < 0 or player_index >= players.size():
-		return {}
-	var player: Dictionary = players[player_index]
-	var memory_variant: Variant = player.get("ai_memory", {})
+	var memory_variant: Variant = _ai_memory_for_player(player_index)
 	if not (memory_variant is Dictionary):
 		return _ai_profile_development_route_summary(player_index)
 	var samples_variant: Variant = (memory_variant as Dictionary).get("decision_samples", [])
@@ -1748,10 +1851,8 @@ func _rival_auto_city_cap() -> int:
 	)
 func _rival_build_player_order() -> Array:
 	var result := []
-	for i in range(players.size()):
-		if not _player_is_ai(i):
-			continue
-		result.append(i)
+	for player_index_variant in (_ai_actor_state_port.ai_player_indices(true) if _actor_state_ready() else []):
+		result.append(int(player_index_variant))
 	for i in range(result.size()):
 		var swap_index := int(rng.randi_range(i, result.size() - 1))
 		var tmp = result[i]
@@ -2292,10 +2393,7 @@ func _ai_profile_route_action_report() -> Dictionary:
 	var distinct_routes := {}
 	for player_index_variant in _ai_player_indices():
 		var player_index := int(player_index_variant)
-		if player_index < 0 or player_index >= players.size():
-			continue
-		var player: Dictionary = players[player_index]
-		var profile_variant: Variant = player.get("ai_profile", {})
+		var profile_variant: Variant = _ai_profile_for_player(player_index)
 		if not (profile_variant is Dictionary):
 			continue
 		var profile := profile_variant as Dictionary
@@ -2306,7 +2404,7 @@ func _ai_profile_route_action_report() -> Dictionary:
 		entry["player_count"] = int(entry.get("player_count", 0)) + 1
 		var route_counts := (entry.get("route_counts", {}) as Dictionary).duplicate(true)
 		var action_counts := (entry.get("action_counts", {}) as Dictionary).duplicate(true)
-		var memory_variant: Variant = player.get("ai_memory", {})
+		var memory_variant: Variant = _ai_memory_for_player(player_index)
 		var samples := []
 		if memory_variant is Dictionary:
 			var samples_variant: Variant = (memory_variant as Dictionary).get("decision_samples", [])
@@ -2404,14 +2502,12 @@ func _ai_live_route_balance_report() -> Dictionary:
 	var total_samples := 0
 	for player_index_variant in _ai_player_indices():
 		var player_index := int(player_index_variant)
-		if player_index < 0 or player_index >= players.size():
-			continue
 		ai_count += 1
 		var player: Dictionary = players[player_index]
-		var profile: Dictionary = player.get("ai_profile", {}) as Dictionary
+		var profile := _ai_profile_for_player(player_index)
 		var primary := _ai_profile_primary_development_route(profile)
 		var primary_route := String(primary.get("route_id", ""))
-		var memory_variant: Variant = player.get("ai_memory", {})
+		var memory_variant: Variant = _ai_memory_for_player(player_index)
 		var samples := []
 		if memory_variant is Dictionary:
 			var samples_variant: Variant = (memory_variant as Dictionary).get("decision_samples", [])
@@ -2710,14 +2806,11 @@ func _ai_route_viability_report() -> Dictionary:
 	var primary_route_players := {}
 	for player_index_variant in _ai_player_indices():
 		var player_index := int(player_index_variant)
-		if player_index < 0 or player_index >= players.size():
-			continue
-		var player: Dictionary = players[player_index]
-		var profile: Dictionary = player.get("ai_profile", {}) as Dictionary
+		var profile := _ai_profile_for_player(player_index)
 		var primary := _ai_profile_primary_development_route(profile)
 		var primary_route := String(primary.get("route_id", ""))
 		var samples := []
-		var memory_variant: Variant = player.get("ai_memory", {})
+		var memory_variant: Variant = _ai_memory_for_player(player_index)
 		if memory_variant is Dictionary:
 			var samples_variant: Variant = (memory_variant as Dictionary).get("decision_samples", [])
 			if samples_variant is Array:
@@ -2922,12 +3015,9 @@ func _ai_product_route_bridge_report() -> Dictionary:
 	var distinct_products := []
 	for player_index_variant in _ai_player_indices():
 		var player_index := int(player_index_variant)
-		if player_index < 0 or player_index >= players.size():
-			continue
 		ai_count += 1
-		var player: Dictionary = players[player_index]
-		var profile: Dictionary = player.get("ai_profile", {}) as Dictionary
-		var memory_variant: Variant = player.get("ai_memory", {})
+		var profile := _ai_profile_for_player(player_index)
+		var memory_variant: Variant = _ai_memory_for_player(player_index)
 		var samples := []
 		if memory_variant is Dictionary:
 			var samples_variant: Variant = (memory_variant as Dictionary).get("decision_samples", [])
@@ -2990,9 +3080,9 @@ func _ai_product_route_bridge_report() -> Dictionary:
 			"route_product_sample_count": player_route_product_sample_count,
 			"focus_product_sample_count": player_focus_product_sample_count,
 			"aligned_sample_count": player_aligned_sample_count,
-			"focus_product": String((player.get("ai_memory", {}) as Dictionary).get("economic_focus_product", "")) if player.get("ai_memory", {}) is Dictionary else "",
-			"route_plan_product": String((player.get("ai_memory", {}) as Dictionary).get("route_plan_product", "")) if player.get("ai_memory", {}) is Dictionary else "",
-			"route_plan_stage": String((player.get("ai_memory", {}) as Dictionary).get("route_plan_stage", "")) if player.get("ai_memory", {}) is Dictionary else "",
+			"focus_product": String((memory_variant as Dictionary).get("economic_focus_product", "")),
+			"route_plan_product": String((memory_variant as Dictionary).get("route_plan_product", "")),
+			"route_plan_stage": String((memory_variant as Dictionary).get("route_plan_stage", "")),
 			"products": player_products,
 			"policy_families": player_policy_families,
 		})
@@ -3169,11 +3259,8 @@ func _ai_profile_strategy_identity_report() -> Dictionary:
 	var global_signature_bonus_profiles := {}
 	for player_index_variant in _ai_player_indices():
 		var player_index := int(player_index_variant)
-		if player_index < 0 or player_index >= players.size():
-			continue
 		ai_count += 1
-		var player: Dictionary = players[player_index]
-		var profile_variant: Variant = player.get("ai_profile", {})
+		var profile_variant: Variant = _ai_profile_for_player(player_index)
 		if not (profile_variant is Dictionary):
 			continue
 		var profile := profile_variant as Dictionary
@@ -3190,7 +3277,7 @@ func _ai_profile_strategy_identity_report() -> Dictionary:
 		var product_counts := (entry.get("product_counts", {}) as Dictionary).duplicate(true)
 		var strategy_intent_counts := (entry.get("strategy_intent_counts", {}) as Dictionary).duplicate(true)
 		var policy_kind_counts := (entry.get("policy_kind_counts", {}) as Dictionary).duplicate(true)
-		var memory_variant: Variant = player.get("ai_memory", {})
+		var memory_variant: Variant = _ai_memory_for_player(player_index)
 		var samples := []
 		if memory_variant is Dictionary:
 			var samples_variant: Variant = (memory_variant as Dictionary).get("decision_samples", [])
@@ -3341,23 +3428,18 @@ func _ai_profile_strategy_identity_summary(report: Dictionary = {}) -> String:
 		"；".join(profile_pieces) if not profile_pieces.is_empty() else "暂无AI性格样本",
 	]
 func _ai_player_count() -> int:
-	var count := 0
-	for i in range(players.size()):
-		if _player_is_ai(i):
-			count += 1
-	return count
+	return _ai_actor_state_port.ai_player_indices(true).size() if _actor_state_ready() else 0
 func _ai_player_indices() -> Array:
-	var result := []
-	for i in range(players.size()):
-		if _player_is_ai(i) and not _player_is_eliminated(i):
-			result.append(i)
-	return result
+	return _typed_ai_player_indices()
 func _ai_profile_for_config_index(player_index: int) -> Dictionary:
 	if AI_PERSONALITY_CATALOG.is_empty():
 		return {}
 	var human_count := 0
-	for player_variant in players:
-		if player_variant is Dictionary and not bool((player_variant as Dictionary).get("is_ai", false)):
+	for player_variant in (_ai_actor_state_port.public_players_snapshot() if _actor_state_ready() else []):
+		if not (player_variant is Dictionary):
+			continue
+		var player := player_variant as Dictionary
+		if not (bool(player.get("is_ai", false)) or str(player.get("seat_type", "human")) == "ai"):
 			human_count += 1
 	human_count = maxi(1, human_count)
 	var ai_order: int = maxi(0, player_index - human_count)
@@ -3405,7 +3487,24 @@ func _empty_ai_memory() -> Dictionary:
 		"episode_last_result": "",
 		"training_note": "记录状态向量、候选评分、Top-N归属GDP、区域控制和公开审计结果，并把版本化胜负结果回写到行动/策略/路线偏好。",
 	}
-func _ensure_player_ai_state() -> void:
+func _normalized_ai_memory(source: Variant) -> Dictionary:
+	var memory := (source as Dictionary).duplicate(true) if source is Dictionary else _empty_ai_memory()
+	var defaults := _empty_ai_memory()
+	for key_variant in defaults.keys():
+		var key := String(key_variant)
+		var default_value: Variant = defaults[key]
+		if not memory.has(key):
+			memory[key] = TablePresentationPureDataPolicy.detached_copy(default_value)
+			continue
+		var value: Variant = memory[key]
+		if default_value is Array and not (value is Array):
+			memory[key] = (default_value as Array).duplicate(true)
+		elif default_value is Dictionary and not (value is Dictionary):
+			memory[key] = (default_value as Dictionary).duplicate(true)
+		elif default_value is String and String(value) == "":
+			memory[key] = default_value
+	return memory
+func _ensure_player_runtime_defaults() -> void:
 	if players.is_empty():
 		return
 	var human_count := 0
@@ -3429,92 +3528,29 @@ func _ensure_player_ai_state() -> void:
 			player["total_role_income"] = 0
 		player["seat_type"] = "ai" if is_ai else "human"
 		player["is_ai"] = is_ai
-		if is_ai:
-			if not (player.get("ai_profile", {}) is Dictionary) or (player.get("ai_profile", {}) as Dictionary).is_empty():
-				player["ai_profile"] = _ai_profile_for_config_index(i)
-			if not (player.get("ai_memory", {}) is Dictionary):
-				player["ai_memory"] = _empty_ai_memory()
-			else:
-				var memory := (player.get("ai_memory", {}) as Dictionary).duplicate(true)
-				if not (memory.get("decision_samples", []) is Array):
-					memory["decision_samples"] = []
-				if not (memory.get("action_counts", {}) is Dictionary):
-					memory["action_counts"] = {}
-				if String(memory.get("last_plan", "")) == "":
-					memory["last_plan"] = "等待牌局决策"
-				if String(memory.get("economic_focus_product", "")) == "":
-					memory["economic_focus_product"] = ""
-				if not memory.has("economic_focus_score"):
-					memory["economic_focus_score"] = 0
-				if String(memory.get("economic_focus_reason", "")) == "":
-					memory["economic_focus_reason"] = "尚未形成商品焦点"
-				if not memory.has("economic_focus_cycle"):
-					memory["economic_focus_cycle"] = -1
-				if not (memory.get("economic_focus_rankings", []) is Array):
-					memory["economic_focus_rankings"] = []
-				if String(memory.get("strategic_intent", "")) == "":
-					memory["strategic_intent"] = ""
-				if not memory.has("strategic_intent_score"):
-					memory["strategic_intent_score"] = 0
-				if String(memory.get("strategic_intent_reason", "")) == "":
-					memory["strategic_intent_reason"] = "尚未形成多步策略意图"
-				if not memory.has("strategic_intent_cycle"):
-					memory["strategic_intent_cycle"] = -1
-				if not (memory.get("strategic_intent_rankings", []) is Array):
-					memory["strategic_intent_rankings"] = []
-				if String(memory.get("route_plan_product", "")) == "":
-					memory["route_plan_product"] = ""
-				if String(memory.get("route_plan_stage", "")) == "":
-					memory["route_plan_stage"] = ""
-				if not memory.has("route_plan_score"):
-					memory["route_plan_score"] = 0
-				if String(memory.get("route_plan_reason", "")) == "":
-					memory["route_plan_reason"] = "尚未形成商品路线计划"
-				if not memory.has("route_plan_cycle"):
-					memory["route_plan_cycle"] = -1
-				if not memory.has("route_plan_target_city"):
-					memory["route_plan_target_city"] = -1
-				if not memory.has("route_plan_partner_district"):
-					memory["route_plan_partner_district"] = -1
-				if not (memory.get("route_plan_rankings", []) is Array):
-					memory["route_plan_rankings"] = []
-				if String(memory.get("game_phase", "")) == "":
-					memory["game_phase"] = "opening"
-				if String(memory.get("competitive_posture", "")) == "":
-					memory["competitive_posture"] = "contesting"
-				if not memory.has("score_gap_to_leader"):
-					memory["score_gap_to_leader"] = 0
-				if not memory.has("leader_index"):
-					memory["leader_index"] = -1
-				if String(memory.get("phase_reason", "")) == "":
-					memory["phase_reason"] = "开局：召唤自愿，优先城市发展牌和基础经营牌。"
-				if not (memory.get("learned_policy_values", {}) is Dictionary):
-					memory["learned_policy_values"] = {}
-				if not memory.has("learning_updates"):
-					memory["learning_updates"] = 0
-				if not memory.has("learning_last_reward"):
-					memory["learning_last_reward"] = 0
-				if not (memory.get("learning_last_tags", []) is Array):
-					memory["learning_last_tags"] = []
-				if not memory.has("episode_learning_updates"):
-					memory["episode_learning_updates"] = 0
-				if not memory.has("episode_last_reward"):
-					memory["episode_last_reward"] = 0
-				if not memory.has("episode_last_top_n_gdp"):
-					memory["episode_last_top_n_gdp"] = 0
-				if not memory.has("episode_last_controlled_regions"):
-					memory["episode_last_controlled_regions"] = 0
-				if not memory.has("episode_last_rank"):
-					memory["episode_last_rank"] = -1
-				if not memory.has("episode_last_result"):
-					memory["episode_last_result"] = ""
-				if String(memory.get("training_note", "")) == "":
-					memory["training_note"] = "记录状态向量、候选评分、Top-N归属GDP、区域控制和公开审计结果，并把版本化胜负结果回写到行动/策略/路线偏好。"
-				player["ai_memory"] = memory
-		else:
-			player["ai_profile"] = {}
-			player["ai_memory"] = {}
 		players[i] = player
+
+
+func _ensure_player_ai_state() -> void:
+	_ensure_player_runtime_defaults()
+	if not _actor_state_ready():
+		return
+	for player_variant in _ai_actor_state_port.public_players_snapshot():
+		if not (player_variant is Dictionary):
+			continue
+		var player := player_variant as Dictionary
+		if not (bool(player.get("is_ai", false)) or str(player.get("seat_type", "human")) == "ai"):
+			continue
+		var player_index := int(player.get("player_index", -1))
+		var actor := _ai_actor_state_snapshot(player_index)
+		if actor.is_empty():
+			continue
+		var profile: Dictionary = actor.get("ai_profile", {}) \
+			if actor.get("ai_profile", {}) is Dictionary else {}
+		if profile.is_empty():
+			profile = _ai_profile_for_config_index(player_index)
+		var memory := _normalized_ai_memory(actor.get("ai_memory", {}))
+		_commit_ai_actor_state(player_index, profile, memory, actor)
 func _ai_owned_active_monster_count(player_index: int) -> int:
 	var count := 0
 	for actor_variant in auto_monsters:
@@ -3577,7 +3613,7 @@ func _ai_game_phase_reason(_player_index: int, phase: String, posture: String, g
 			]
 	return "中局：围绕商品路线强化GDP，并开始保护己方收益或攻击竞争城市。"
 func _ai_refresh_game_phase(player_index: int, force: bool = false) -> Dictionary:
-	if player_index < 0 or player_index >= players.size() or not _player_is_ai(player_index):
+	if not _player_is_ai(player_index):
 		return {
 			"phase": "human",
 			"posture": "human",
@@ -3585,8 +3621,10 @@ func _ai_refresh_game_phase(player_index: int, force: bool = false) -> Dictionar
 			"leader_index": -1,
 			"reason": "真人玩家",
 		}
-	var player: Dictionary = players[player_index]
-	var memory := (player.get("ai_memory", _empty_ai_memory()) as Dictionary).duplicate(true)
+	var actor := _ai_actor_state_snapshot(player_index)
+	if actor.is_empty():
+		return {}
+	var memory := _normalized_ai_memory(actor.get("ai_memory", {}))
 	var leader := _visible_score_leader_entry(player_index)
 	var leader_index := int(leader.get("player_index", -1))
 	var gap := _ai_score_gap_to_leader(player_index)
@@ -3606,8 +3644,9 @@ func _ai_refresh_game_phase(player_index: int, force: bool = false) -> Dictionar
 	memory["score_gap_to_leader"] = gap
 	memory["leader_index"] = leader_index
 	memory["phase_reason"] = reason
-	player["ai_memory"] = memory
-	players[player_index] = player
+	var commit := _commit_ai_memory(player_index, memory, actor)
+	if not bool(commit.get("accepted", false)):
+		return {}
 	return {
 		"phase": phase,
 		"posture": posture,
@@ -4030,7 +4069,7 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 	var focus_product := _ai_focus_product(player_index)
 	var phase_info := _ai_refresh_game_phase(player_index)
 	var player: Dictionary = players[player_index]
-	var memory := (player.get("ai_memory", _empty_ai_memory()) as Dictionary)
+	var memory := _ai_memory_for_player(player_index)
 	var total_flow := 0
 	for product_variant in PRODUCT_CATALOG:
 		total_flow += _player_product_flow(player_index, String(product_variant))
@@ -4424,9 +4463,9 @@ func _ai_apply_learning_sample(player_index: int, memory: Dictionary, sample: Di
 	var tags := _ai_learning_tags_for_sample(sample)
 	return _ai_apply_learning_tags(player_index, memory, tags, reward_score)
 func _ai_learned_tag_bonus(player_index: int, tag: String) -> int:
-	if tag == "" or player_index < 0 or player_index >= players.size() or not _player_is_ai(player_index):
+	if tag == "" or not _player_is_ai(player_index):
 		return 0
-	var memory := ((players[player_index] as Dictionary).get("ai_memory", _empty_ai_memory()) as Dictionary)
+	var memory := _ai_memory_for_player(player_index)
 	var values := memory.get("learned_policy_values", {}) as Dictionary
 	var entry := values.get(tag, {}) as Dictionary
 	var sample_count := int(entry.get("samples", 0))
@@ -4445,8 +4484,11 @@ func _record_ai_decision(player_index: int, kind: String, target_index: int, sco
 	_ai_refresh_economic_focus(player_index)
 	var phase_info := _ai_refresh_game_phase(player_index)
 	var observation := _ai_observation_vector(player_index)
+	var actor_state := _ai_actor_state_snapshot(player_index)
+	if actor_state.is_empty():
+		return
 	var player: Dictionary = players[player_index]
-	var memory := (player.get("ai_memory", _empty_ai_memory()) as Dictionary).duplicate(true)
+	var memory := _normalized_ai_memory(actor_state.get("ai_memory", {}))
 	var samples := (memory.get("decision_samples", []) as Array).duplicate(true)
 	var focus_product := String(memory.get("economic_focus_product", ""))
 	var sample := {
@@ -4500,16 +4542,21 @@ func _record_ai_decision(player_index: int, kind: String, target_index: int, sco
 	action_counts[kind] = int(action_counts.get(kind, 0)) + 1
 	memory["action_counts"] = action_counts
 	memory["last_plan"] = "%s｜目标%d｜评分%d｜%s" % [kind, target_index + 1, score, reason]
-	player["ai_memory"] = memory
-	players[player_index] = player
+	var commit := _commit_ai_memory(player_index, memory, actor_state)
+	if not bool(commit.get("accepted", false)):
+		return
 func _finalize_ai_decision_rewards() -> int:
 	var finalized := 0
 	for player_index_variant in _ai_player_indices():
 		var player_index := int(player_index_variant)
+		var actor_state := _ai_actor_state_snapshot(player_index)
+		if actor_state.is_empty():
+			continue
 		var player: Dictionary = players[player_index]
-		var memory := (player.get("ai_memory", _empty_ai_memory()) as Dictionary).duplicate(true)
+		var memory := _normalized_ai_memory(actor_state.get("ai_memory", {}))
 		var samples := (memory.get("decision_samples", []) as Array).duplicate(true)
 		var changed := false
+		var player_finalized := 0
 		for i in range(samples.size()):
 			if not (samples[i] is Dictionary):
 				continue
@@ -4526,12 +4573,12 @@ func _finalize_ai_decision_rewards() -> int:
 			sample["learning_tags"] = _ai_learning_tags_for_sample(sample)
 			sample["learning_applied"] = true
 			samples[i] = sample
-			finalized += 1
+			player_finalized += 1
 			changed = true
 		if changed:
 			memory["decision_samples"] = samples
-			player["ai_memory"] = memory
-			players[player_index] = player
+			var commit := _commit_ai_memory(player_index, memory, actor_state)
+			finalized += _committed_change_count(commit, player_finalized)
 	return finalized
 func _ai_episode_reward_for_player(player_index: int, rankings: Array, winner_indices: Array) -> Dictionary:
 	var rank := _victory_rank_for_player(rankings, player_index)
@@ -4564,7 +4611,7 @@ func _ai_episode_sample_reward(base_reward: int, sample: Dictionary) -> int:
 	var decayed := int(round(float(base_reward) * pow(AI_EPISODE_SAMPLE_DECAY, float(age))))
 	return clampi(decayed, -AI_EPISODE_REWARD_CLAMP, AI_EPISODE_REWARD_CLAMP)
 func finalize_victory_outcome_learning(receipt: Dictionary) -> int:
-	if players.is_empty() or receipt.is_empty() or not (receipt.get("rankings", []) is Array) or not (receipt.get("winner_player_indices", []) is Array):
+	if _ai_player_count() <= 0 or receipt.is_empty() or not (receipt.get("rankings", []) is Array) or not (receipt.get("winner_player_indices", []) is Array):
 		return 0
 	var rankings := (receipt.get("rankings", []) as Array).duplicate(true)
 	var winner_indices := (receipt.get("winner_player_indices", []) as Array).duplicate()
@@ -4572,8 +4619,10 @@ func finalize_victory_outcome_learning(receipt: Dictionary) -> int:
 	var updated := 0
 	for player_index_variant in _ai_player_indices():
 		var player_index := int(player_index_variant)
-		var player: Dictionary = players[player_index]
-		var memory := (player.get("ai_memory", _empty_ai_memory()) as Dictionary).duplicate(true)
+		var actor_state := _ai_actor_state_snapshot(player_index)
+		if actor_state.is_empty():
+			continue
+		var memory := _normalized_ai_memory(actor_state.get("ai_memory", {}))
 		var samples := (memory.get("decision_samples", []) as Array).duplicate(true)
 		var episode := _ai_episode_reward_for_player(player_index, rankings, winner_indices)
 		var base_reward := int(episode.get("reward", 0))
@@ -4612,15 +4661,17 @@ func finalize_victory_outcome_learning(receipt: Dictionary) -> int:
 		memory["episode_last_controlled_regions"] = int(episode.get("controlled_region_count", 0))
 		memory["episode_last_rank"] = int(episode.get("rank", -1))
 		memory["episode_last_result"] = String(episode.get("result", ""))
-		player["ai_memory"] = memory
-		players[player_index] = player
-		updated += sample_updates
+		var commit := _commit_ai_memory(player_index, memory, actor_state)
+		updated += _committed_change_count(commit, sample_updates)
 	return updated
 func _ai_profile_for_player(player_index: int) -> Dictionary:
-	if player_index < 0 or player_index >= players.size():
-		return {}
-	var profile_variant: Variant = (players[player_index] as Dictionary).get("ai_profile", {})
-	return profile_variant as Dictionary if profile_variant is Dictionary else {}
+	var actor := _ai_actor_state_snapshot(player_index)
+	var profile_variant: Variant = actor.get("ai_profile", {})
+	return (profile_variant as Dictionary).duplicate(true) if profile_variant is Dictionary else {}
+func _ai_memory_for_player(player_index: int) -> Dictionary:
+	var actor := _ai_actor_state_snapshot(player_index)
+	var memory_variant: Variant = actor.get("ai_memory", {})
+	return (memory_variant as Dictionary).duplicate(true) if memory_variant is Dictionary else _empty_ai_memory()
 func _ai_development_route_bias(player_index: int, route_id: String) -> float:
 	var profile := _ai_profile_for_player(player_index)
 	var preferences_variant: Variant = profile.get("route_preferences", {})
@@ -4727,10 +4778,12 @@ func _ai_focus_reason(player_index: int, product_name: String, score: int) -> St
 		score,
 	]
 func _ai_refresh_economic_focus(player_index: int, force: bool = false) -> String:
-	if player_index < 0 or player_index >= players.size() or not _player_is_ai(player_index):
+	if not _player_is_ai(player_index):
 		return ""
-	var player: Dictionary = players[player_index]
-	var memory := (player.get("ai_memory", _empty_ai_memory()) as Dictionary).duplicate(true)
+	var actor_state := _ai_actor_state_snapshot(player_index)
+	if actor_state.is_empty():
+		return ""
+	var memory := _normalized_ai_memory(actor_state.get("ai_memory", {}))
 	var cached_product := String(memory.get("economic_focus_product", ""))
 	if not force and int(memory.get("economic_focus_cycle", -1)) == business_cycle_count and cached_product != "" and PRODUCT_CATALOG.has(cached_product):
 		return cached_product
@@ -4760,8 +4813,9 @@ func _ai_refresh_economic_focus(player_index: int, force: bool = false) -> Strin
 	memory["economic_focus_reason"] = _ai_focus_reason(player_index, best_product, best_score)
 	memory["economic_focus_cycle"] = business_cycle_count
 	memory["economic_focus_rankings"] = compact_rankings
-	player["ai_memory"] = memory
-	players[player_index] = player
+	var commit := _commit_ai_memory(player_index, memory, actor_state)
+	if not bool(commit.get("accepted", false)):
+		return str(_ai_memory_for_player(player_index).get("economic_focus_product", ""))
 	return best_product
 func _ai_focus_product(player_index: int) -> String:
 	if player_index < 0 or player_index >= players.size():
@@ -4770,10 +4824,10 @@ func _ai_focus_product(player_index: int) -> String:
 		return _first_player_flow_product(player_index)
 	return _ai_refresh_economic_focus(player_index)
 func _ai_focus_score(player_index: int) -> int:
-	if player_index < 0 or player_index >= players.size() or not _player_is_ai(player_index):
+	if not _player_is_ai(player_index):
 		return 0
 	_ai_refresh_economic_focus(player_index)
-	var memory := ((players[player_index] as Dictionary).get("ai_memory", _empty_ai_memory()) as Dictionary)
+	var memory := _ai_memory_for_player(player_index)
 	return int(memory.get("economic_focus_score", 0))
 func _ai_own_route_threat_score(player_index: int) -> int:
 	var score := 0
@@ -4903,11 +4957,13 @@ func _ai_strategy_candidates(player_index: int) -> Array:
 		},
 	]
 func _ai_refresh_strategy_intent(player_index: int, force: bool = false) -> Dictionary:
-	if player_index < 0 or player_index >= players.size() or not _player_is_ai(player_index):
+	if not _player_is_ai(player_index):
 		return {}
 	_ai_refresh_economic_focus(player_index, force)
-	var player: Dictionary = players[player_index]
-	var memory := (player.get("ai_memory", _empty_ai_memory()) as Dictionary).duplicate(true)
+	var cached_actor_state := _ai_actor_state_snapshot(player_index)
+	if cached_actor_state.is_empty():
+		return {}
+	var memory := _normalized_ai_memory(cached_actor_state.get("ai_memory", {}))
 	var cached_intent := String(memory.get("strategic_intent", ""))
 	if not force and int(memory.get("strategic_intent_cycle", -1)) == business_cycle_count and cached_intent != "":
 		return {
@@ -4918,6 +4974,13 @@ func _ai_refresh_strategy_intent(player_index: int, force: bool = false) -> Dict
 	var rankings := _ai_strategy_candidates(player_index)
 	if rankings.is_empty():
 		return {}
+	# Candidate construction may refresh game phase, which commits the same actor
+	# memory. Re-read before writing the strategy fields so CAS cannot discard the
+	# first strategy refresh as stale.
+	var actor_state := _ai_actor_state_snapshot(player_index)
+	if actor_state.is_empty():
+		return {}
+	memory = _normalized_ai_memory(actor_state.get("ai_memory", {}))
 	rankings.sort_custom(Callable(self, "_sort_ai_candidate_score_desc"))
 	var best := rankings[0] as Dictionary
 	var compact_rankings := []
@@ -4928,8 +4991,15 @@ func _ai_refresh_strategy_intent(player_index: int, force: bool = false) -> Dict
 	memory["strategic_intent_reason"] = String(best.get("reason", ""))
 	memory["strategic_intent_cycle"] = business_cycle_count
 	memory["strategic_intent_rankings"] = compact_rankings
-	player["ai_memory"] = memory
-	players[player_index] = player
+	var commit := _commit_ai_memory(player_index, memory, actor_state)
+	if not bool(commit.get("accepted", false)):
+		var stored_memory := _ai_memory_for_player(player_index)
+		var latest_intent := str(stored_memory.get("strategic_intent", ""))
+		return {} if latest_intent.is_empty() else {
+			"intent": latest_intent,
+			"score": int(stored_memory.get("strategic_intent_score", 0)),
+			"reason": str(stored_memory.get("strategic_intent_reason", "")),
+		}
 	return best
 func _ai_strategy_intent(player_index: int) -> String:
 	var strategy := _ai_refresh_strategy_intent(player_index)
@@ -5245,11 +5315,13 @@ func _ai_route_plan_candidates(player_index: int) -> Array:
 		})
 	return result
 func _ai_refresh_route_plan(player_index: int, force: bool = false) -> Dictionary:
-	if player_index < 0 or player_index >= players.size() or not _player_is_ai(player_index):
+	if not _player_is_ai(player_index):
 		return {}
 	_ai_refresh_economic_focus(player_index, force)
-	var player: Dictionary = players[player_index]
-	var memory := (player.get("ai_memory", _empty_ai_memory()) as Dictionary).duplicate(true)
+	var cached_actor_state := _ai_actor_state_snapshot(player_index)
+	if cached_actor_state.is_empty():
+		return {}
+	var memory := _normalized_ai_memory(cached_actor_state.get("ai_memory", {}))
 	var cached_product := String(memory.get("route_plan_product", ""))
 	var cached_stage := String(memory.get("route_plan_stage", ""))
 	if not force and int(memory.get("route_plan_cycle", -1)) == business_cycle_count and cached_product != "" and cached_stage != "":
@@ -5264,6 +5336,12 @@ func _ai_refresh_route_plan(player_index: int, force: bool = false) -> Dictionar
 	var rankings := _ai_route_plan_candidates(player_index)
 	if rankings.is_empty():
 		return {}
+	# Route candidates may commit strategy and phase updates. Preserve those
+	# fields by refreshing the actor snapshot before the route-plan CAS write.
+	var actor_state := _ai_actor_state_snapshot(player_index)
+	if actor_state.is_empty():
+		return {}
+	var latest_memory := _normalized_ai_memory(actor_state.get("ai_memory", {}))
 	rankings.sort_custom(Callable(self, "_sort_ai_candidate_score_desc"))
 	var best := rankings[0] as Dictionary
 	if cached_product != "" and cached_product != String(best.get("product", "")):
@@ -5298,6 +5376,7 @@ func _ai_refresh_route_plan(player_index: int, force: bool = false) -> Dictionar
 	var compact_rankings := []
 	for i in range(mini(AI_ROUTE_PLAN_TOP_LIMIT, rankings.size())):
 		compact_rankings.append(rankings[i])
+	memory = latest_memory
 	memory["route_plan_product"] = String(best.get("product", ""))
 	memory["route_plan_stage"] = String(best.get("stage", ""))
 	memory["route_plan_score"] = int(best.get("score", 0))
@@ -5306,8 +5385,19 @@ func _ai_refresh_route_plan(player_index: int, force: bool = false) -> Dictionar
 	memory["route_plan_target_city"] = int(best.get("target_city", -1))
 	memory["route_plan_partner_district"] = int(best.get("partner_district", -1))
 	memory["route_plan_rankings"] = compact_rankings
-	player["ai_memory"] = memory
-	players[player_index] = player
+	var commit := _commit_ai_memory(player_index, memory, actor_state)
+	if not bool(commit.get("accepted", false)):
+		var stored_memory := _ai_memory_for_player(player_index)
+		var latest_product := str(stored_memory.get("route_plan_product", ""))
+		var latest_stage := str(stored_memory.get("route_plan_stage", ""))
+		return {} if latest_product.is_empty() or latest_stage.is_empty() else {
+			"product": latest_product,
+			"stage": latest_stage,
+			"score": int(stored_memory.get("route_plan_score", 0)),
+			"reason": str(stored_memory.get("route_plan_reason", "")),
+			"target_city": int(stored_memory.get("route_plan_target_city", -1)),
+			"partner_district": int(stored_memory.get("route_plan_partner_district", -1)),
+		}
 	return best
 func _ai_route_plan_product(player_index: int) -> String:
 	var plan := _ai_refresh_route_plan(player_index)
@@ -8098,7 +8188,7 @@ func _auto_ai_intel_decisions(force: bool = false) -> int:
 			return acted
 	return acted
 func _update_ai_decisions(delta: float) -> void:
-	if not ai_card_decision_enabled or players.is_empty():
+	if not ai_card_decision_enabled or _ai_player_count() <= 0:
 		return
 	ai_auction_reaction_timer -= delta
 	if ai_auction_reaction_timer <= 0.0:
@@ -8266,9 +8356,8 @@ func _auto_ai_monster_wagers_for_entry(wager_id: int) -> int:
 	if not _active_monster_wager_ids().has(wager_id):
 		return 0
 	var acted := 0
-	for player_index in range(players.size()):
-		if not _player_is_ai(player_index):
-			continue
+	for player_index_variant in (_ai_actor_state_port.ai_player_indices(true) if _actor_state_ready() else []):
+		var player_index := int(player_index_variant)
 		var entry := _monster_wager_decision_snapshot_for_actor(wager_id, player_index)
 		if entry.is_empty():
 			continue
