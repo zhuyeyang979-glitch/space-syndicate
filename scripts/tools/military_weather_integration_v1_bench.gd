@@ -3,6 +3,7 @@ class_name MilitaryWeatherIntegrationV1Bench
 
 const MILITARY_SCENE := preload("res://scenes/runtime/MilitaryRuntimeController.tscn")
 const BRIDGE_SCENE := preload("res://scenes/runtime/MilitaryRuntimeWorldBridge.tscn")
+const WORLD_SESSION_SCENE := preload("res://scenes/runtime/WorldSessionState.tscn")
 const WEATHER_CATALOG := preload("res://resources/weather/weather_definition_catalog_v1.tres")
 const CARD_CATALOG := preload("res://resources/cards/runtime/card_runtime_catalog_v04.tres")
 const FIGHTER_FAMILY := preload("res://resources/cards/runtime/families/056_制空战斗机.tres")
@@ -21,6 +22,7 @@ var _controller: MilitaryRuntimeController
 var _bridge: MilitaryRuntimeWorldBridge
 var _weather: FakeWeather
 var _world: FakeWorld
+var _world_session: WorldSessionState
 var _checks := 0
 var _failures: Array[String] = []
 var _case_lines: Array[String] = []
@@ -125,15 +127,19 @@ func debug_snapshot() -> Dictionary:
 
 func _setup() -> void:
 	_world = FakeWorld.new()
+	_world_session = WORLD_SESSION_SCENE.instantiate() as WorldSessionState
 	_bridge = BRIDGE_SCENE.instantiate() as MilitaryRuntimeWorldBridge
 	_controller = MILITARY_SCENE.instantiate() as MilitaryRuntimeController
 	_weather = FakeWeather.new()
 	_weather.catalog = WEATHER_CATALOG
 	add_child(_world)
+	add_child(_world_session)
 	add_child(_bridge)
 	add_child(_weather)
 	add_child(_controller)
+	_world_session.districts = _world.districts.duplicate(true)
 	_bridge.bind_world(_world)
+	_bridge.set_world_session_state(_world_session)
 	_controller.set_world_bridge(_bridge)
 	_controller.set_weather_runtime_controller(_weather)
 
