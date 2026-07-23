@@ -128,6 +128,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiActorEconomyQueryPort.tscn" id="135_ai_actor_economy"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiMarketPublicQueryPort.tscn" id="136_ai_market_public"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiRoutePublicQueryPort.tscn" id="137_ai_route_public"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/AiCardQueueQueryPort.tscn" id="138_ai_card_queue"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -350,6 +351,9 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="AiActorEconomyQueryPort" parent="." instance=ExtResource("135_ai_actor_economy")]
+unique_name_in_owner = true
+
+[node name="AiCardQueueQueryPort" parent="." instance=ExtResource("138_ai_card_queue")]
 unique_name_in_owner = true
 
 [node name="AiMarketPublicQueryPort" parent="." instance=ExtResource("136_ai_market_public")]

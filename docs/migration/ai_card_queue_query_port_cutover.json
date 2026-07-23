@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "boundary_id": "AI_CARD_QUEUE_QUERY_SUBMISSION_CUTOVER",
+  "base_sha": "0f40e1d909a10a35569141cc0b4aa4657b15c75a",
+  "final_p0_claim": false,
+  "query_port": "res://scripts/runtime/ai_card_queue_query_port.gd",
+  "capability": "res://scripts/runtime/ai_card_queue_capability.gd",
+  "scene": "res://scenes/runtime/AiCardQueueQueryPort.tscn",
+  "command_owner": "res://scripts/runtime/card_play_submission_runtime_controller.gd",
+  "public_projection": {
+    "detached": true,
+    "queue_entry_allowlist": true,
+    "card_fact_allowlist": true,
+    "source_player_identity": false,
+    "slot_identity": false,
+    "ai_score": false,
+    "ai_reason": false,
+    "target_owner": false
+  },
+  "actor_private_projection": {
+    "opaque_capability": true,
+    "active_resolution_id": true,
+    "current_resolution_id": true,
+    "next_resolution_id": true,
+    "rival_access": false,
+    "human_access": false,
+    "stale_capability_access": false
+  },
+  "removed_route_scope": "AiRuntimeController generic Main routes",
+  "removed_ai_controller_route_counts": {
+    "card_resolution_current_queue": 0,
+    "card_resolution_next_queue": 0,
+    "store_card_resolution_entry": 0,
+    "queued_card_entry_index_for_player": 0,
+    "next_batch_card_entry_index_for_player": 0,
+    "main_monster_counter_call": 0,
+    "main_monster_counter_helper": 0
+  },
+  "diagnostics_owner": "AiRuntimeController ai_memory",
+  "queue_ai_diagnostic_copy_count": 0,
+  "monster_counter_conversion": {
+    "typed_owner": "CardPlaySubmissionRuntimeController",
+    "temporary_live_world_mutation": false,
+    "shared_inventory_queue_transaction": true,
+    "success_verified": true,
+    "rejection_rollback_verified": true,
+    "rejection_world_queue_mana_checkpoints_unchanged": true,
+    "canonical_use_case_preserved": true,
+    "canonical_source_card_label_preserved": true,
+    "main_callback_count": 0
+  },
+  "main_budget": {
+    "physical_lines": 6419,
+    "nonblank_lines": 5396,
+    "methods": 472,
+    "fields": 46,
+    "constants": 47,
+    "preloads": 7,
+    "external_caller_files": 102,
+    "passed": true
+  },
+  "tests": {
+    "godot_mcp_production_scripts": "720/720",
+    "ai_card_queue_query_port": "PASS",
+    "ai_card_phase_counter_owner": "PASS",
+    "card_resolution_stable_target_envelope": "PASS",
+    "card_execution_typed_ports_cutover": "PASS",
+    "counter_response_window_v06": "PASS",
+    "ai_card_hand_query_port": "PASS",
+    "formal_main_scene_mcp": "PASS (819 nodes, 120 FPS)",
+    "git_diff_check": "PASS"
+  },
+  "inherited_fixture_debt": [
+    {
+      "gate": "CardPlayEligibilityRuntimeBench",
+      "current": "41/44",
+      "baseline": "41/44",
+      "baseline_sha": "0f40e1d909a10a35569141cc0b4aa4657b15c75a"
+    },
+    {
+      "gate": "card_play_requirement_policy_test.gd",
+      "reason": "stale Main._new_game fixture"
+    }
+  ],
+  "remaining_scope": [
+    "card eligibility and definition helpers",
+    "market-derived strategy helpers",
+    "monster and military typed ports",
+    "weather and victory typed queries",
+    "public log and visual cue routes",
+    "generic bridge extinction"
+  ]
+}

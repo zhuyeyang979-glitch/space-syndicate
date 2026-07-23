@@ -4087,59 +4087,6 @@ func _has_pending_blocking_decision() -> bool:
 	return global_blocked or player_blocked
 
 
-func _queue_monster_card_as_counter(
-	player_index: int,
-	slot_index: int,
-	source_skill: Dictionary,
-	target_district: int,
-	target_product: String,
-	selected_resolution_id: int,
-	target_source_revision: int
-) -> bool:
-	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return false
-	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[player_index]
-	var slots: Array = player.get("slots", [])
-	if slot_index < 0 or slot_index >= slots.size() or not (slots[slot_index] is Dictionary):
-		return false
-	var counter_rank := clampi(_game_runtime_coordinator_node().card_rank(String(source_skill.get("name", ""))), 1, 4)
-	var counter_skill := _make_skill("相位否决%d" % counter_rank)
-	if counter_skill.is_empty():
-		return false
-	counter_skill["source_card_name"] = String(source_skill.get("name", "怪兽牌"))
-	counter_skill["text"] = "%s（由%s临时改写；会消耗该怪兽牌。）" % [
-		String(counter_skill.get("text", "")),
-		_card_display_name(String(source_skill.get("name", "怪兽牌"))),
-	]
-	var original_skill := (slots[slot_index] as Dictionary).duplicate(true)
-	slots[slot_index] = counter_skill
-	player["slots"] = slots
-	_game_runtime_coordinator_node().world_session_state().players[player_index] = player
-	var counter_receipt := _game_runtime_coordinator_node().submit_card_play({
-		"player_index": player_index,
-		"slot_index": slot_index,
-		"target_slot": -1,
-		"target_player": -1,
-		"selected_district": target_district,
-		"selected_trade_product": target_product,
-		"selected_card_resolution_id": selected_resolution_id,
-		"target_source_revision": target_source_revision,
-		"submission_source": "ai_counter_conversion",
-	})
-	_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(counter_receipt.get("player_message", "卡牌提交已处理。")))
-	var queued := bool(counter_receipt.get("accepted", false))
-	if queued:
-		_game_runtime_coordinator_node().record_legacy_viewer_feedback("%s触发角色被动：一张怪兽牌被临时改写为相位否决并进入匿名反制等待。" % _player_name(player_index))
-		return true
-	player = _game_runtime_coordinator_node().world_session_state().players[player_index]
-	slots = player.get("slots", [])
-	if slot_index >= 0 and slot_index < slots.size():
-		slots[slot_index] = original_skill
-		player["slots"] = slots
-		_game_runtime_coordinator_node().world_session_state().players[player_index] = player
-	return false
-
-
 
 func _player_is_ai(player_index: int) -> bool:
 	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size():

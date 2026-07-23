@@ -5,6 +5,7 @@ class_name CardPlaySubmissionRuntimeController
 const TARGET_MONSTER := CardTargetChoiceRuntimeController.KIND_MONSTER
 const TARGET_PLAYER := CardTargetChoiceRuntimeController.KIND_PLAYER
 const StableTargetEnvelope := preload("res://scripts/runtime/card_resolution_stable_target_envelope.gd")
+const CardPlayRequirementPolicyScript := preload("res://scripts/cards/card_play_requirement_policy.gd")
 const SHARED_RESOLUTION_EFFECT_KINDS_V06 := [
 	"global_order_budget",
 	"global_supply_spawn",
@@ -109,6 +110,66 @@ func submit_card_play(request: Dictionary) -> Dictionary:
 	return _remember(_submit_legacy(player_index, slot_index, eligibility, _dictionary(frozen.get("envelope", {}))))
 
 
+func submit_monster_counter_conversion(request: Dictionary) -> Dictionary:
+	_submission_count += 1
+	if str(request.get("submission_source", "")) != "ai_counter_conversion":
+		return _remember(_rejection("counter_conversion_source_invalid"))
+	var player_index := int(request.get("player_index", -1))
+	var slot_index := int(request.get("slot_index", -1))
+	var card_context := _card_at(player_index, slot_index)
+	if not bool(card_context.get("valid", false)):
+		return _remember(_rejection("card_slot_invalid"))
+	var source_skill := _dictionary(card_context.get("skill", {}))
+	var conversion_preflight := _prepare_legacy_submission(
+		player_index,
+		source_skill,
+		"hand",
+		request
+	)
+	if not bool(conversion_preflight.get("prepared", false)):
+		return _remember(_rejection(str(conversion_preflight.get(
+			"reason",
+			"counter_conversion_preflight_failed"
+		))))
+	var conversion_eligibility := _dictionary(conversion_preflight.get("eligibility", {}))
+	if str(conversion_eligibility.get("reason_code", "")) != "counter_conversion_ready":
+		return _remember(_rejection(str(conversion_eligibility.get(
+			"reason_code",
+			"counter_conversion_not_allowed"
+		))))
+	var counter_skill := _counter_skill_from_monster(source_skill)
+	if counter_skill.is_empty():
+		return _remember(_rejection("counter_conversion_definition_missing"))
+	var prepared := _prepare_legacy_submission(
+		player_index,
+		counter_skill,
+		"rule",
+		request
+	)
+	if not bool(prepared.get("prepared", false)):
+		return _remember(_rejection(str(prepared.get(
+			"reason",
+			"counter_submission_preflight_failed"
+		))))
+	var eligibility := _dictionary(prepared.get("eligibility", {}))
+	if not bool(eligibility.get("allowed", false)):
+		return _remember(_rejection(
+			str(eligibility.get("reason_code", "counter_submission_rejected")),
+			eligibility
+		))
+	var receipt := _submit_legacy(
+		player_index,
+		slot_index,
+		eligibility,
+		_dictionary(prepared.get("envelope", {})),
+		counter_skill
+	)
+	if bool(receipt.get("accepted", false)):
+		receipt["converted_monster_counter"] = true
+		receipt["source_card_name"] = str(source_skill.get("name", ""))
+	return _remember(receipt)
+
+
 func submit_v06_facility_play_action(request: Dictionary) -> Dictionary:
 	_submission_count += 1
 	if _runtime_coordinator == null or _world_session_state == null:
@@ -177,7 +238,13 @@ func debug_snapshot() -> Dictionary:
 	}
 
 
-func _submit_legacy(player_index: int, slot_index: int, eligibility: Dictionary, stable_target_envelope: Dictionary) -> Dictionary:
+func _submit_legacy(
+	player_index: int,
+	slot_index: int,
+	eligibility: Dictionary,
+	stable_target_envelope: Dictionary,
+	queued_skill_override: Dictionary = {}
+) -> Dictionary:
 	var envelope_validation := StableTargetEnvelope.validate(stable_target_envelope)
 	if not bool(envelope_validation.get("valid", false)):
 		return _rejection(str(envelope_validation.get("reason_code", "stable_target_invalid")))
@@ -187,13 +254,15 @@ func _submit_legacy(player_index: int, slot_index: int, eligibility: Dictionary,
 	var players := _world_session_state.players
 	var player: Dictionary = players[player_index]
 	var slots: Array = player.get("slots", [])
-	var skill: Dictionary = (slots[slot_index] as Dictionary).duplicate(true)
-	if bool(skill.get("queued_for_resolution", false)):
+	var source_skill: Dictionary = (slots[slot_index] as Dictionary).duplicate(true)
+	if bool(source_skill.get("queued_for_resolution", false)):
 		return _rejection("already_queued")
 	var target_status: Dictionary = eligibility.get("target_status", {}) if eligibility.get("target_status", {}) is Dictionary else {}
 	var runtime_state := _resolution_controller.card_play_fact_snapshot() if _resolution_controller != null else {}
 	var reactive_counter := bool(target_status.get("is_counter", false)) and bool(runtime_state.get("counter_window_active", false)) and not _queue_service.active_entry().is_empty()
-	var queued_skill := _skill_with_financial_terms(skill)
+	var submitted_skill := queued_skill_override.duplicate(true) \
+		if not queued_skill_override.is_empty() else source_skill
+	var queued_skill := _skill_with_financial_terms(submitted_skill)
 	if queued_skill.has("submission_terms_error"):
 		return _rejection(str(queued_skill.get("submission_terms_error", "financial_terms_missing")))
 	if str(queued_skill.get("kind", "")) == "public_facility":
@@ -223,7 +292,7 @@ func _submit_legacy(player_index: int, slot_index: int, eligibility: Dictionary,
 	var queue_plan := _runtime_coordinator.plan_card_resolution_queue_submission({
 		"player_index": player_index,
 		"slot_index": slot_index,
-		"already_queued": bool(skill.get("queued_for_resolution", false)),
+		"already_queued": bool(source_skill.get("queued_for_resolution", false)),
 		"reactive_counter": reactive_counter,
 		"group_card_limit": 1,
 		"play_cash_cost_cents": play_cash_cost * 100,
@@ -825,6 +894,43 @@ func _rejection(reason: String, details: Dictionary = {}) -> Dictionary:
 func _remember(receipt: Dictionary) -> Dictionary:
 	_last_receipt = receipt.duplicate(true)
 	return receipt
+
+
+func _counter_skill_from_monster(source_skill: Dictionary) -> Dictionary:
+	if _runtime_coordinator == null or str(source_skill.get("kind", "")) != "monster_card":
+		return {}
+	var source_name := str(source_skill.get("name", "怪兽牌"))
+	var counter_rank := clampi(_runtime_coordinator.card_rank(source_name), 1, 4)
+	var counter_name := "相位否决%d" % counter_rank
+	var counter_skill := _runtime_coordinator.card_definition(counter_name)
+	if counter_skill.is_empty():
+		return {}
+	counter_skill["name"] = counter_name
+	counter_skill = CardPlayRequirementPolicyScript.apply_to_card(counter_name, counter_skill)
+	if str(counter_skill.get("use_case", "")).strip_edges().is_empty():
+		var presentation := _runtime_coordinator.compose_card_presentation({
+			"card_name": counter_name,
+			"skill": counter_skill,
+		})
+		counter_skill["use_case"] = str(presentation.get("use_case", ""))
+	counter_skill["cooldown"] = float(counter_skill.get("cooldown", 0.0))
+	counter_skill["cooldown_left"] = 0.0
+	counter_skill["lock_left"] = 0.0
+	counter_skill["source_card_name"] = source_name
+	counter_skill["text"] = "%s（由%s临时改写；会消耗该怪兽牌。）" % [
+		str(counter_skill.get("text", "")),
+		_card_display_name(source_name),
+	]
+	return counter_skill
+
+
+func _card_display_name(card_name: String) -> String:
+	if card_name.is_empty() or _runtime_coordinator == null:
+		return ""
+	var family := _runtime_coordinator.card_family_id(card_name)
+	var rank := clampi(_runtime_coordinator.card_rank(card_name), 1, 4)
+	var roman_levels := ["I", "II", "III", "IV"]
+	return "%s %s级" % [family, roman_levels[rank - 1]]
 
 
 func _dictionary(value: Variant) -> Dictionary:

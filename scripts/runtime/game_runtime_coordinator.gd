@@ -1472,11 +1472,12 @@ func _wire_ai_world_typed_ports() -> void:
 	var city_inference_port := _ai_city_inference_command_port_node()
 	var market_public_port := _ai_market_public_query_port_node()
 	var route_public_port := _ai_route_public_query_port_node()
+	var card_queue_query_port := _ai_card_queue_query_port_node()
 	var ai := _ai_runtime_controller_node() as AiRuntimeController
 	if session_public_port == null or actor_state_port == null or region_query_port == null \
 			or city_inference_port == null or market_public_port == null \
-			or route_public_port == null or ai == null:
-		push_error("GameRuntimeCoordinator requires the AI session, actor, region, and inference typed ports; AI world queries fail closed.")
+			or route_public_port == null or card_queue_query_port == null or ai == null:
+		push_error("GameRuntimeCoordinator requires the AI session, actor, region, card-queue, and inference typed ports; AI world queries fail closed.")
 		return
 	if not actor_state_port.ai_capability_refresh_requested.is_connected(_refresh_ai_actor_state_capabilities):
 		actor_state_port.ai_capability_refresh_requested.connect(_refresh_ai_actor_state_capabilities)
@@ -1500,6 +1501,7 @@ func _wire_ai_world_typed_ports() -> void:
 func _refresh_ai_actor_state_capabilities() -> void:
 	var actor_state_port := _ai_actor_state_port_node()
 	var card_hand_query := _ai_card_hand_query_port_node()
+	var card_queue_query := _ai_card_queue_query_port_node()
 	var actor_economy_query := _ai_actor_economy_query_port_node()
 	var district_supply_query := district_supply_runtime_query_port()
 	var ai := _ai_runtime_controller_node() as AiRuntimeController
@@ -1518,6 +1520,16 @@ func _refresh_ai_actor_state_capabilities() -> void:
 			hand_capabilities[actor_index] = AiCardHandCapability.new()
 		var hand_bound := card_hand_query.bind_ai_capabilities(hand_capabilities)
 		ai.set_card_hand_query_port(card_hand_query, hand_capabilities if hand_bound else {})
+	if card_queue_query != null:
+		var queue_capabilities: Dictionary = {}
+		for actor_index_variant in actor_state_port.ai_player_indices(true):
+			var actor_index := int(actor_index_variant)
+			queue_capabilities[actor_index] = AiCardQueueCapability.new()
+		var queue_bound := card_queue_query.bind_ai_capabilities(queue_capabilities)
+		ai.set_card_queue_query_port(
+			card_queue_query,
+			queue_capabilities if queue_bound else {}
+		)
 	if actor_economy_query != null:
 		var economy_capabilities: Dictionary = {}
 		for actor_index_variant in actor_state_port.ai_player_indices(true):
@@ -5722,6 +5734,10 @@ func _ai_session_public_query_port_node() -> AiSessionPublicQueryPort:
 
 func _ai_card_hand_query_port_node() -> AiCardHandQueryPort:
 	return get_node_or_null("AiCardHandQueryPort") as AiCardHandQueryPort
+
+
+func _ai_card_queue_query_port_node() -> AiCardQueueQueryPort:
+	return get_node_or_null("AiCardQueueQueryPort") as AiCardQueueQueryPort
 
 
 func _ai_actor_economy_query_port_node() -> AiActorEconomyQueryPort:

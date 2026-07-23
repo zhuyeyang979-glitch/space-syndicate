@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://y6otyhqsecut"]
+
+[ext_resource type="Script" uid="uid://xdbctcvw18ks" path="res://scripts/runtime/ai_card_queue_query_port.gd" id="1_76f4r"]
+
+[node name="AiCardQueueQueryPort" type="Node" unique_id=125085448]
+script = ExtResource("1_76f4r")
+card_resolution_queue_runtime_service_path = NodePath("../CardResolutionQueueRuntimeService")
+card_play_eligibility_runtime_service_path = NodePath("../CardPlayEligibilityRuntimeService")
+world_session_state_path = NodePath("../WorldSessionState")
+game_session_runtime_controller_path = NodePath("../GameSessionRuntimeController")

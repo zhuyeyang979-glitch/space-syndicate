@@ -29,6 +29,9 @@ var _ai_session_public_query_port: AiSessionPublicQueryPort
 var _ai_card_hand_query_port: AiCardHandQueryPort
 var _ai_card_hand_capabilities: Dictionary = {}
 var _ai_card_hand_capability_binding_initialized := false
+var _ai_card_queue_query_port: AiCardQueueQueryPort
+var _ai_card_queue_capabilities: Dictionary = {}
+var _ai_card_queue_capability_binding_initialized := false
 var _ai_actor_economy_query_port: AiActorEconomyQueryPort
 var _ai_actor_economy_capabilities: Dictionary = {}
 var _ai_actor_economy_capability_binding_initialized := false
@@ -113,6 +116,29 @@ func _ai_card_hand_snapshot(player_index: int) -> Dictionary:
 		return {}
 	return _ai_card_hand_query_port.private_hand_snapshot(
 		_ai_card_hand_capabilities.get(player_index) as AiCardHandCapability,
+		player_index
+	)
+
+
+func set_card_queue_query_port(
+	port: AiCardQueueQueryPort,
+	capabilities_by_actor: Dictionary
+) -> void:
+	_ai_card_queue_query_port = port
+	_ai_card_queue_capabilities = capabilities_by_actor.duplicate()
+	_ai_card_queue_capability_binding_initialized = true
+
+
+func _card_queue_public_snapshot() -> Dictionary:
+	return _ai_card_queue_query_port.public_resolution_snapshot() \
+		if _ai_card_queue_query_port != null and _ai_card_queue_query_port.is_ready() else {}
+
+
+func _ai_card_queue_snapshot(player_index: int) -> Dictionary:
+	if _ai_card_queue_query_port == null or not _ai_card_queue_capability_binding_initialized:
+		return {}
+	return _ai_card_queue_query_port.private_actor_submission_snapshot(
+		_ai_card_queue_capabilities.get(player_index) as AiCardQueueCapability,
 		player_index
 	)
 
@@ -1108,17 +1134,10 @@ var WEATHER_ZONE_MAX:
 func _ruleset_timing_seconds(rule_id: StringName) -> float:
 	return _call_monster(&"_ruleset_timing_seconds", [rule_id])
 
-func _card_resolution_current_queue() -> Array:
-	return _call_world(&"_card_resolution_current_queue")
-
-func _card_resolution_next_queue() -> Array:
-	return _call_world(&"_card_resolution_next_queue")
-
 func _card_resolution_active_entry() -> Dictionary:
-	return _call_world(&"_card_resolution_active_entry")
-
-func _store_card_resolution_entry(entry: Dictionary) -> bool:
-	return _call_world(&"_store_card_resolution_entry", [entry])
+	var snapshot := _card_queue_public_snapshot()
+	return (snapshot.get("active", {}) as Dictionary).duplicate(true) \
+		if snapshot.get("active", {}) is Dictionary else {}
 
 func _intel_city_guess_entries(viewer_index: int, limit: int = 6) -> Array:
 	var entries: Array = []
@@ -1579,20 +1598,22 @@ func _short_card_text(text: String, max_len: int) -> String:
 func _queue_monster_card_as_counter(
 	player_index: int,
 	slot_index: int,
-	source_skill: Dictionary,
 	target_district: int,
 	target_product: String,
 	selected_resolution_id: int
-) -> bool:
-	return _call_world(&"_queue_monster_card_as_counter", [
-		player_index,
-		slot_index,
-		source_skill,
-		target_district,
-		target_product,
-		selected_resolution_id,
-		int(_session_public_snapshot().get("session_revision", 0)),
-	])
+) -> Dictionary:
+	if _card_play_submission_controller == null:
+		return {"accepted": false, "reason": "submission_controller_missing"}
+	return _card_play_submission_controller.submit_monster_counter_conversion({
+		"player_index": player_index,
+		"slot_index": slot_index,
+		"selected_district": target_district,
+		"selected_trade_product": target_product,
+		"selected_card_resolution_id": selected_resolution_id,
+		"target_source_revision": int(_session_public_snapshot().get("session_revision", 0)),
+		"submission_source": "ai_counter_conversion",
+	})
+
 
 func _player_is_ai(player_index: int) -> bool:
 	return _ai_actor_state_port.is_ai_player(player_index) if _actor_state_ready() else false
@@ -1660,11 +1681,13 @@ func _market_listing_purchasable(district_index: int) -> bool:
 func _skill_rank(skill_name: String) -> int:
 	return _card_definition_bridge.rank(skill_name) if _card_definition_bridge != null else 0
 
-func _queued_card_entry_index_for_player(player_index: int) -> int:
-	return _call_world(&"_queued_card_entry_index_for_player", [player_index])
+func _ai_has_current_card_submission(player_index: int) -> bool:
+	var snapshot := _ai_card_queue_snapshot(player_index)
+	return snapshot.is_empty() or bool(snapshot.get("has_current_submission", false))
 
-func _next_batch_card_entry_index_for_player(player_index: int) -> int:
-	return _call_world(&"_next_batch_card_entry_index_for_player", [player_index])
+func _ai_has_next_card_submission(player_index: int) -> bool:
+	var snapshot := _ai_card_queue_snapshot(player_index)
+	return snapshot.is_empty() or bool(snapshot.get("has_next_submission", false))
 
 func _find_highest_family_card_slot(player: Dictionary, skill_name: String) -> int:
 	return _call_world(&"_find_highest_family_card_slot", [player, skill_name])
@@ -1745,10 +1768,10 @@ func _playable_card_resolution_coverage_report() -> Dictionary:
 	return _gameplay_balance_diagnostics_service.playable_card_resolution_coverage_report() if _gameplay_balance_diagnostics_service != null else {}
 
 func _card_can_open_counter_window(entry: Dictionary) -> bool:
-	return _call_world(&"_card_can_open_counter_window", [entry])
+	return bool(entry.get("counterable", false))
 
 func _card_resolution_entry_card_label(entry: Dictionary) -> String:
-	return _call_world(&"_card_resolution_entry_card_label", [entry])
+	return str(entry.get("card_label", entry.get("card_name", "匿名卡牌")))
 
 func _queue_skill_resolution(
 	player_index: int,
@@ -1758,10 +1781,10 @@ func _queue_skill_resolution(
 	selected_resolution_id: int = -1,
 	target_district: int = -1,
 	target_product: String = ""
-) -> bool:
+) -> Dictionary:
 	if _card_play_submission_controller == null:
-		return false
-	return bool(_card_play_submission_controller.submit_card_play({
+		return {"accepted": false, "reason": "submission_controller_missing"}
+	return _card_play_submission_controller.submit_card_play({
 		"player_index": player_index,
 		"slot_index": slot_index,
 		"target_slot": target_slot,
@@ -1771,7 +1794,8 @@ func _queue_skill_resolution(
 		"selected_card_resolution_id": selected_resolution_id,
 		"target_source_revision": int(_session_public_snapshot().get("session_revision", 0)),
 		"submission_source": "ai",
-	}).get("accepted", false))
+	})
+
 
 func _is_counter_skill(skill: Dictionary) -> bool:
 	var value: Variant = _call_world(&"_card_play_target_snapshot", [skill])
@@ -4197,8 +4221,8 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 		"learned_policy_count": (memory.get("learned_policy_values", {}) as Dictionary).size(),
 		"victory_gdp_gap": maxi(0, _victory_required_gdp() - _victory_top_n_gdp(player_index)),
 		"victory_region_gap": maxi(0, _victory_required_regions() - _victory_controlled_regions(player_index)),
-		"queue_current": _card_resolution_current_queue().size(),
-		"queue_next": _card_resolution_next_queue().size(),
+		"queue_current": int(_card_queue_public_snapshot().get("current_count", 0)),
+		"queue_next": int(_card_queue_public_snapshot().get("next_count", 0)),
 		"auction_open": card_resolution_auction_open,
 		"cycle": business_cycle_count,
 	}
@@ -6140,12 +6164,14 @@ func _ai_counter_nearest_owned_city_pressure(player_index: int, district_index: 
 func _ai_counter_target_threat(player_index: int, target_entry: Dictionary) -> Dictionary:
 	if target_entry.is_empty():
 		return {"score": -999999, "reason_key": "no_target", "summary": "没有可反制目标。"}
-	var skill: Dictionary = target_entry.get("skill", {}) as Dictionary
-	if skill.is_empty() or _is_counter_skill(skill):
+	var skill: Dictionary = target_entry.get("card_facts", {}) as Dictionary
+	if skill.is_empty() or bool(target_entry.get("is_counter", false)):
 		return {"score": -999999, "reason_key": "not_counterable", "summary": "当前牌不可反制。"}
-	if not _skill_is_counterable_player_interaction(skill):
+	if not bool(target_entry.get("counterable_player_interaction", false)):
 		return {"score": -999999, "reason_key": "not_player_interaction", "summary": "相位否决只响应直接玩家互动牌。"}
-	if int(target_entry.get("player_index", -1)) == player_index:
+	var own_queue := _ai_card_queue_snapshot(player_index)
+	if bool(own_queue.get("has_active_submission", false)) \
+			and int(own_queue.get("active_resolution_id", -1)) == int(target_entry.get("resolution_id", -1)):
 		return {"score": -999999, "reason_key": "own_card", "summary": "AI不会反制自己已经提交的匿名牌。"}
 	var kind := String(skill.get("kind", ""))
 	var derivative_terms := _city_gdp_derivative_terms(skill) if kind == "city_gdp_derivative" else {}
@@ -6260,7 +6286,7 @@ func _ai_counter_response_candidate(player_index: int, slot_index: int, source_s
 		return {}
 	if _card_resolution_active_entry().is_empty() or not card_resolution_counter_window_active:
 		return {}
-	if _queued_card_entry_index_for_player(player_index) >= 0 or _next_batch_card_entry_index_for_player(player_index) >= 0:
+	if _ai_has_current_card_submission(player_index) or _ai_has_next_card_submission(player_index):
 		return {}
 	var entry := _card_resolution_active_entry() if target_entry.is_empty() else target_entry
 	if not _card_can_open_counter_window(entry):
@@ -7598,7 +7624,7 @@ func _ai_card_play_candidates(player_index: int) -> Array:
 	var hand := _ai_card_hand_snapshot(player_index)
 	if hand.is_empty() or float(hand.get("action_cooldown", 0.0)) > 0.0:
 		return result
-	if _queued_card_entry_index_for_player(player_index) >= 0 or _next_batch_card_entry_index_for_player(player_index) >= 0:
+	if _ai_has_current_card_submission(player_index) or _ai_has_next_card_submission(player_index):
 		return result
 	var slots: Array = hand.get("slots", []) if hand.get("slots", []) is Array else []
 	for slot_index in range(slots.size()):
@@ -7899,7 +7925,7 @@ func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_cand
 	var target_player := int(candidate.get("target_player", -1))
 	var target_district := int(candidate.get("district", _ai_first_alive_district()))
 	var target_product := String(candidate.get("product", ""))
-	var queued := _queue_skill_resolution(
+	var receipt := _queue_skill_resolution(
 		player_index,
 		slot_index,
 		target_slot,
@@ -7908,17 +7934,8 @@ func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_cand
 		target_district,
 		target_product
 	)
+	var queued := bool(receipt.get("accepted", false))
 	if queued:
-		var queue_index := _queued_card_entry_index_for_player(player_index)
-		var in_next_batch := false
-		if queue_index < 0:
-			queue_index = _next_batch_card_entry_index_for_player(player_index)
-			in_next_batch = true
-		if queue_index >= 0:
-			var entry: Dictionary = (_card_resolution_next_queue()[queue_index] if in_next_batch else _card_resolution_current_queue()[queue_index]) as Dictionary
-			entry["ai_utility_score"] = int(candidate.get("score", 0))
-			entry["ai_reason"] = String(candidate.get("reason", ""))
-			_store_card_resolution_entry(entry)
 		var decision_metadata := _ai_card_decision_metadata(candidate, target_slot)
 		if String(decision_metadata.get("focus_product", "")) == "":
 			decision_metadata["focus_product"] = _ai_focus_product(player_index)
@@ -7944,6 +7961,8 @@ func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_cand
 			decision_metadata
 		)
 	return queued
+
+
 func _ai_execute_card_turn(player_index: int, force: bool = false) -> String:
 	var play_candidates := _ai_card_play_candidates(player_index)
 	var play_choice := _ai_pick_candidate(player_index, play_candidates, force)
@@ -8031,7 +8050,7 @@ func _ai_counter_response_candidates(player_index: int) -> Array:
 	var hand := _ai_card_hand_snapshot(player_index)
 	if hand.is_empty() or float(hand.get("action_cooldown", 0.0)) > 0.0:
 		return result
-	if _queued_card_entry_index_for_player(player_index) >= 0 or _next_batch_card_entry_index_for_player(player_index) >= 0:
+	if _ai_has_current_card_submission(player_index) or _ai_has_next_card_submission(player_index):
 		return result
 	var slots: Array = hand.get("slots", []) if hand.get("slots", []) is Array else []
 	for slot_index in range(slots.size()):
@@ -8056,18 +8075,17 @@ func _ai_queue_counter_response_candidate(player_index: int, candidate: Dictiona
 	var target_district := int(candidate.get("district", int(_card_resolution_active_entry().get("selected_district", _ai_first_alive_district()))))
 	var target_product := String(candidate.get("product", _skill_play_product(source_skill, player_index)))
 	var selected_resolution_id := int(candidate.get("counter_target_resolution_id", -1))
-	var queued := false
+	var receipt: Dictionary
 	if bool(candidate.get("counter_converted_monster", false)):
-		queued = _queue_monster_card_as_counter(
+		receipt = _queue_monster_card_as_counter(
 			player_index,
 			slot_index,
-			source_skill,
 			target_district,
 			target_product,
 			selected_resolution_id
 		)
 	else:
-		queued = _queue_skill_resolution(
+		receipt = _queue_skill_resolution(
 			player_index,
 			slot_index,
 			-1,
@@ -8076,21 +8094,8 @@ func _ai_queue_counter_response_candidate(player_index: int, candidate: Dictiona
 			target_district,
 			target_product
 		)
+	var queued := bool(receipt.get("accepted", false))
 	if queued:
-		var queue_index := _next_batch_card_entry_index_for_player(player_index)
-		var in_next_batch := true
-		if queue_index < 0:
-			queue_index = _queued_card_entry_index_for_player(player_index)
-			in_next_batch = false
-		if queue_index >= 0:
-			var entry: Dictionary = (_card_resolution_next_queue()[queue_index] if in_next_batch else _card_resolution_current_queue()[queue_index]) as Dictionary
-			entry["ai_utility_score"] = int(candidate.get("score", 0))
-			entry["ai_reason"] = String(candidate.get("reason", "相位反制"))
-			entry["ai_counter_response"] = true
-			for field_name in ["counter_target_resolution_id", "counter_target_card", "counter_strength", "counter_threat_score", "counter_opportunity_cost", "counter_reason_key", "counter_source_card", "counter_converted_monster", "counter_card_name", "target_city", "target_owner", "game_phase", "competitive_posture", "score_gap_to_leader", "leader_index", "endgame_urgency", "learning_bonus"]:
-				if candidate.has(field_name):
-					entry[field_name] = candidate[field_name]
-			_store_card_resolution_entry(entry)
 		_record_ai_decision(
 			player_index,
 			"相位反制",
@@ -8122,6 +8127,8 @@ func _ai_queue_counter_response_candidate(player_index: int, candidate: Dictiona
 			}
 		)
 	return queued
+
+
 func _auto_ai_counter_responses(force: bool = false) -> int:
 	if not ai_card_decision_enabled or not card_resolution_counter_window_active or _card_resolution_active_entry().is_empty():
 		return 0

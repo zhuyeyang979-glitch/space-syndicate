@@ -85,7 +85,8 @@ func build_facts(player_index: int, skill: Dictionary, context: Dictionary = {})
 	var monsters := _monster_controller.roster_snapshot(true) if _monster_controller != null else []
 	var player_valid := player_index >= 0 and player_index < players.size()
 	var player: Dictionary = (players[player_index] as Dictionary).duplicate(true) if player_valid and players[player_index] is Dictionary else {}
-	var selected_district := int(context.get("selected_district", _table_selection_state.selected_district))
+	var selected_district := int(context["selected_district"]) \
+		if context.has("selected_district") else _table_selection_state.selected_district
 	var selected_district_valid := selected_district >= 0 and selected_district < districts.size()
 	var selected_district_data: Dictionary = (districts[selected_district] as Dictionary).duplicate(true) if selected_district_valid and districts[selected_district] is Dictionary else {}
 	var active_entry := _queue_service.active_entry() if _queue_service != null else {}

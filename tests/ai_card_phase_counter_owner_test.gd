@@ -47,7 +47,13 @@ func _run() -> void:
 	if coordinator != null and ai != null and queue != null and timing != null:
 		_test_anonymous_simultaneous_card_policy(main, ai, queue, timing)
 		_test_phase_counter_response(main, ai, queue, timing)
+		_test_monster_counter_conversion(main, queue, timing)
 	var ai_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_runtime_controller.gd")
+	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
+	_expect(
+		not main_source.contains("func _queue_monster_card_as_counter("),
+		"Main no longer owns the AI monster-counter conversion helper"
+	)
 	_expect(
 		not ai_source.contains("table_selection_state()")
 			and not ai_source.contains("var selected_district:")
@@ -194,11 +200,158 @@ func _test_phase_counter_response(main: Node, ai: Node, queue: Node, timing: Nod
 	var raw_next: Array = queue.call("next_queue")
 	var public_next: Dictionary = queue.call("public_snapshot")
 	var raw_entry: Dictionary = raw_next[0] as Dictionary if not raw_next.is_empty() and raw_next[0] is Dictionary else {}
-	_expect(acted == 1 and raw_next.size() == 1 and bool(raw_entry.get("ai_counter_response", false)), "AI queues one counter into the owner next-batch lane")
-	_expect(int(raw_entry.get("counter_target_resolution_id", -1)) == 99001 and int(raw_entry.get("counter_threat_score", 0)) > 0, "private owner entry binds the counter to the active resolution")
+	var players_after := _players(main)
+	var ai_memory := (players_after[1] as Dictionary).get("ai_memory", {}) as Dictionary
+	var decision_samples: Array = ai_memory.get("decision_samples", []) if ai_memory.get("decision_samples", []) is Array else []
+	var latest_sample: Dictionary = decision_samples[-1] as Dictionary if not decision_samples.is_empty() and decision_samples[-1] is Dictionary else {}
+	_expect(
+		acted == 1 and raw_next.size() == 1 and not _contains_any_key(raw_entry, [
+			"ai_utility_score",
+			"ai_reason",
+			"ai_counter_response",
+			"counter_threat_score",
+			"counter_opportunity_cost",
+			"counter_reason_key",
+			"counter_source_card",
+			"counter_converted_monster",
+		]),
+		"AI queues one counter while the authoritative queue stores no private AI diagnostics"
+	)
+	_expect(
+		int(latest_sample.get("counter_target_resolution_id", -1)) == 99001
+			and int(latest_sample.get("counter_threat_score", 0)) > 0,
+		"AI-owned memory retains counter diagnostics without duplicating them into the queue"
+	)
 	_expect(int(public_next.get("next_count", 0)) == 1 and _all_entries_anonymous(public_next.get("next", []) as Array), "public projection exposes the waiting anonymous counter without its owner")
 	_expect(not _contains_hidden_counter_metadata(public_next), "counter score, reason, source conversion and target binding stay out of the public projection")
 	_expect(not _contains_sentinel(plan_before) and not _contains_sentinel(public_next), "AI plan and public queue never echo private human hand sentinels")
+
+
+func _test_monster_counter_conversion(main: Node, queue: Node, timing: Node) -> void:
+	queue.call("reset_state")
+	timing.call("reset_state")
+	var coordinator := main.get_node_or_null(
+		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator"
+	) as GameRuntimeCoordinator
+	var submission := coordinator.get_node_or_null(
+		"CardPlaySubmissionRuntimeController"
+	) as CardPlaySubmissionRuntimeController
+	var district_index := _first_alive_district(main)
+	var flow := coordinator.get_node_or_null("CommodityFlowRuntimeController") as CommodityFlowRuntimeController
+	_expect(
+		submission != null and flow != null and district_index >= 0,
+		"conversion fixture resolves the formal submission, GDP, and region owners"
+	)
+	if submission == null or flow == null or district_index < 0:
+		return
+	var district := coordinator.world_session_state().districts[district_index] as Dictionary
+	var region_id := str(district.get("region_id", "region.%03d" % district_index))
+	flow.set("_current_game_time", 10.0)
+	flow.set("_recent_sale_receipts", [{
+		"settled_at": 10.0,
+		"market_region_id": region_id,
+		"gdp_value": 10000,
+		"commodity_owner": 1,
+		"receipt_id": "qa:counter-conversion-gdp",
+	}])
+	var players := _players(main)
+	var actor := (players[1] as Dictionary).duplicate(true)
+	var role_card := (actor.get("role_card", {}) as Dictionary).duplicate(true)
+	role_card["monster_cards_as_counter"] = true
+	actor["role_card"] = role_card
+	actor["action_cooldown"] = 0.0
+	actor["slots"] = [_monster_counter_source()]
+	players[1] = actor
+	coordinator.world_session_state().players = players
+	var active_entry := {
+		"player_index": 2,
+		"slot_index": -1,
+		"selected_district": district_index,
+		"selected_trade_product": "环晶电池",
+		"queued_order": 99101,
+		"resolution_id": 99101,
+		"window_sequence": 6,
+		"group_id": "group_6_2",
+		"group_order": 1,
+		"group_size": 1,
+		"skill": main.call("_make_skill", "轨道齐射1"),
+	}
+	queue.call("replace_active_entry", active_entry)
+	timing.call("begin_counter", 5.0)
+	var request := {
+		"player_index": 1,
+		"slot_index": 0,
+		"selected_district": district_index,
+		"selected_trade_product": "环晶电池",
+		"selected_card_resolution_id": 99101,
+		"target_source_revision": 0,
+		"submission_source": "ai_counter_conversion",
+	}
+	var receipt := submission.submit_monster_counter_conversion(request)
+	var next_entries: Array = queue.call("next_queue")
+	var counter_entry: Dictionary = next_entries[0] as Dictionary \
+		if not next_entries.is_empty() and next_entries[0] is Dictionary else {}
+	var counter_skill := counter_entry.get("skill", {}) as Dictionary
+	_expect(
+		bool(receipt.get("accepted", false))
+			and bool(receipt.get("converted_monster_counter", false))
+			and str(counter_skill.get("name", "")).begins_with("相位否决")
+			and str(counter_skill.get("source_card_name", "")) == "TEST_MONSTER_CARD1"
+			and str(counter_skill.get("use_case", "")) == "反制互动牌"
+			and str(counter_skill.get("text", "")).contains(" I级"),
+		"formal submission preserves canonical counter payload while atomically consuming the monster card: receipt=%s next=%s skill=%s" % [
+			JSON.stringify(receipt),
+			JSON.stringify(next_entries),
+			JSON.stringify(counter_skill),
+		]
+	)
+	_expect(
+		not _contains_any_key(counter_entry, [
+			"ai_utility_score",
+			"ai_reason",
+			"ai_counter_response",
+			"counter_threat_score",
+			"counter_opportunity_cost",
+			"counter_reason_key",
+		]),
+		"converted counter queue entry stores gameplay authority without AI diagnostics"
+	)
+	players = _players(main)
+	actor = (players[1] as Dictionary).duplicate(true)
+	actor["slots"] = [_monster_counter_source()]
+	players[1] = actor
+	coordinator.world_session_state().players = players
+	queue.call("replace_active_entry", active_entry)
+	queue.call("replace_current_queue", [])
+	queue.call("replace_next_queue", [{
+		"player_index": 1,
+		"slot_index": -1,
+		"queued_order": 99102,
+		"resolution_id": 99102,
+		"skill": main.call("_make_skill", "轨道融资1"),
+	}])
+	timing.call("begin_counter", 5.0)
+	var world_before := coordinator.world_session_state().to_save_data()
+	var queue_before: Dictionary = queue.call("queue_state_snapshot")
+	var mana_before := coordinator.player_mana_to_save_data()
+	var rejected := submission.submit_monster_counter_conversion(request)
+	_expect(
+		not bool(rejected.get("accepted", false))
+			and coordinator.world_session_state().to_save_data() == world_before
+			and queue.call("queue_state_snapshot") == queue_before
+			and coordinator.player_mana_to_save_data() == mana_before,
+		"rejected conversion leaves world, queue, and mana reservation state unchanged"
+	)
+
+
+func _monster_counter_source() -> Dictionary:
+	return {
+		"name": "TEST_MONSTER_CARD1",
+		"kind": "monster_card",
+		"cooldown_left": 0.0,
+		"lock_left": 0.0,
+		"queued_for_resolution": false,
+	}
 
 
 func _players(main: Node) -> Array:
