@@ -190,9 +190,12 @@ func _test_production_composition_and_privacy_gates() -> void:
 		"res://scripts/runtime/player_hand_interaction_runtime_service.gd",
 		"res://scripts/runtime/district_purchase_settlement_runtime_service.gd",
 		"res://scripts/runtime/commodity_flow_world_bridge.gd",
-		"res://scripts/runtime/ai_runtime_controller.gd",
 	]:
 		_expect(FileAccess.get_file_as_string(consumer_path).contains("_cash_commitment_query_port"), "%s consumes the shared private cash boundary" % consumer_path.get_file())
+	var actor_economy_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_actor_economy_query_port.gd")
+	var ai_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_runtime_controller.gd")
+	_expect(actor_economy_source.contains("MonsterWagerCashCommitmentQueryPort") and actor_economy_source.contains("private_cash_availability_snapshot"), "actor-scoped AI economy query wraps the shared private cash boundary")
+	_expect(not ai_source.contains("_cash_commitment_query_port") and ai_source.contains("_ai_actor_economy_query_port"), "AI receives only its capability-scoped economy projection")
 	_expect(coordinator_source.contains("_wire_monster_wager_cash_commitment_query_port"), "coordinator explicitly injects the one query port")
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 	_expect(not main_source.contains("MonsterWagerCashCommitmentQueryPort") and not main_source.contains("private_wager_cash_commitment_snapshot"), "Main receives no new cash or wager dependency")

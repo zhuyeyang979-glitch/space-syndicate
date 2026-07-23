@@ -480,6 +480,77 @@ func private_player_cash_snapshot(player_index: int) -> Dictionary:
 	return normalized
 
 
+func private_player_city_economy_snapshot(player_index: int) -> Dictionary:
+	## Narrow internal projection for an actor-scoped economy QueryPort. It
+	## exposes only cities whose authoritative owner is the requested player.
+	if player_index < 0 or player_index >= _players.size() or not (_players[player_index] is Dictionary):
+		return {
+			"valid": false,
+			"reason_code": "player_city_economy_unavailable",
+			"player_index": player_index,
+			"cities": [],
+			"summary": {},
+			"state_revision": "",
+		}
+	var cities: Array = []
+	var total_income := 0
+	var warehouse_count := 0
+	var warehouse_units := 0
+	var warehouse_products: Array[String] = []
+	for district_index in range(_districts.size()):
+		if not (_districts[district_index] is Dictionary):
+			continue
+		var district := _districts[district_index] as Dictionary
+		var city: Dictionary = district.get("city", {}) if district.get("city", {}) is Dictionary else {}
+		if city.is_empty() or not bool(city.get("active", true)) or int(city.get("owner", -1)) != player_index:
+			continue
+		var city_products := _private_city_product_names(city.get("products", []))
+		var city_demands := _canonical_string_array(city.get("demands", []))
+		var stockpile_products := _canonical_string_array(city.get("warehouse_stockpile_products", []))
+		var city_income := int(city.get("last_income", city.get("last_cycle_income", 0)))
+		var city_warehouse_count := maxi(0, int(city.get("warehouse_stockpile_count", 0)))
+		var city_warehouse_units := maxi(0, int(city.get("warehouse_stockpile_units", 0)))
+		total_income += city_income
+		warehouse_count += city_warehouse_count
+		warehouse_units += city_warehouse_units
+		for product_id in stockpile_products:
+			if not warehouse_products.has(product_id):
+				warehouse_products.append(product_id)
+		cities.append({
+			"district_index": district_index,
+			"region_id": _region_id_for_district(district_index),
+			"public_name": str(district.get("name", "区域%d" % (district_index + 1))),
+			"terrain": str(district.get("terrain", "land")),
+			"active": true,
+			"level": maxi(0, int(city.get("level", 0))),
+			"product_names": city_products,
+			"demand_names": city_demands,
+			"last_income": city_income,
+			"competition_matches": maxi(0, int(city.get("competition_matches", 0))),
+			"trade_disrupted_routes": maxi(0, int(city.get("trade_disrupted_routes", 0))),
+			"trade_route_damage": maxi(0, int(city.get("trade_route_damage", 0))),
+			"warehouse_stockpile_count": city_warehouse_count,
+			"warehouse_stockpile_units": city_warehouse_units,
+			"warehouse_stockpile_products": stockpile_products,
+		})
+	warehouse_products.sort()
+	var summary := {
+		"active_city_count": cities.size(),
+		"last_income_total": total_income,
+		"warehouse_stockpile_count": warehouse_count,
+		"warehouse_stockpile_units": warehouse_units,
+		"warehouse_stockpile_products": warehouse_products,
+	}
+	return {
+		"valid": true,
+		"reason_code": "player_city_economy_ready",
+		"player_index": player_index,
+		"cities": cities.duplicate(true),
+		"summary": summary.duplicate(true),
+		"state_revision": _stable_hash(["player_city_economy_v1", player_index, cities]),
+	}
+
+
 func reconcile_private_player_cash_after_unit_mutation(
 	player_index: int,
 	before_snapshot: Dictionary
@@ -1154,6 +1225,21 @@ func _canonical_string_array(value: Variant) -> Array:
 			var item := str(item_variant).strip_edges()
 			if not item.is_empty() and not result.has(item):
 				result.append(item)
+	result.sort()
+	return result
+
+
+func _private_city_product_names(value: Variant) -> Array[String]:
+	var result: Array[String] = []
+	if value is Array:
+		for product_variant in value as Array:
+			var product_id := ""
+			if product_variant is Dictionary:
+				product_id = str((product_variant as Dictionary).get("name", "")).strip_edges()
+			elif product_variant is String or product_variant is StringName:
+				product_id = str(product_variant).strip_edges()
+			if not product_id.is_empty() and not result.has(product_id):
+				result.append(product_id)
 	result.sort()
 	return result
 

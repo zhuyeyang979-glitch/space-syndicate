@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/ai_actor_economy_query_port.gd" id="1_port"]
+
+[node name="AiActorEconomyQueryPort" type="Node"]
+script = ExtResource("1_port")
+world_session_state_path = NodePath("../WorldSessionState")
+game_session_runtime_controller_path = NodePath("../GameSessionRuntimeController")
+cash_commitment_query_port_path = NodePath("../MonsterWagerCashCommitmentQueryPort")
+product_market_runtime_controller_path = NodePath("../ProductMarketRuntimeController")

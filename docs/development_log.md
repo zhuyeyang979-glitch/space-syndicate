@@ -8833,3 +8833,23 @@ deleted. Evidence and the remaining action inventory are recorded in
   unsupported; full-run resume is still false. The inherited
   `session_envelope_save_owner_test` Main-string Oracle remains 92/93 on both
   candidate and `origin/main`, and no retired Main wrapper was restored.
+
+## 2026-07-23 — AI actor-economy typed query cutover
+
+- Added the scene-owned `AiActorEconomyQueryPort` with one opaque capability per
+  current AI seat. Human, forged, rival, and stale-capability queries fail
+  closed.
+- Exact signed cash remains owned by `WorldSessionState`; wager-reserved and
+  available cash remain owned by `MonsterWagerCashCommitmentQueryPort`.
+  Spending plans now use available cash, while learning observations retain the
+  exact signed total.
+- Added narrow owner projections for actor-owned city economy and futures.
+  Public futures now redact source-card, warehouse-identity, margin, position,
+  owner, and settlement-internal fields. Anonymous warehouse clues remain
+  public without revealing their owner.
+- Migrated all direct AI cash reads in observation, learning, route-hand,
+  card-play, card-purchase, and business-affordability paths. No Main fallback,
+  save section, policy parameter, personality, or RNG order was added.
+- Focused actor-economy, city-inference, wager-cash, hand, business transaction,
+  card/counter, and production-composition gates pass. Market, route, raw
+  district targeting, and generic bridge extinction remain pending.

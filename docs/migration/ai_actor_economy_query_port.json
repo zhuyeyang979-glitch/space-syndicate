@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "boundary_id": "ai_actor_economy_query_port",
+  "status": "cut_over",
+  "scene": "res://scenes/runtime/AiActorEconomyQueryPort.tscn",
+  "script": "res://scripts/runtime/ai_actor_economy_query_port.gd",
+  "capability": "res://scripts/runtime/ai_actor_economy_capability.gd",
+  "state_owner": false,
+  "save_owner": false,
+  "new_save_section_count": 0,
+  "authorities": {
+    "signed_total_cash": "WorldSessionState",
+    "reserved_and_available_cash": "MonsterWagerCashCommitmentQueryPort",
+    "own_city_economy": "WorldSessionState",
+    "own_futures": "ProductMarketRuntimeController"
+  },
+  "privacy": {
+    "actor_scoped_capability": true,
+    "human_capability_count": 0,
+    "rival_cash": false,
+    "rival_city_owner": false,
+    "rival_private_warehouse_lineage": false,
+    "rival_futures": false,
+    "whole_players": false,
+    "whole_districts": false,
+    "anonymous_public_warehouse_clues_preserved": true,
+    "public_futures_source_card_redacted": true
+  },
+  "query_contract": {
+    "pure_data": true,
+    "detached": true,
+    "mutation_count": 0,
+    "rng_delta": 0,
+    "references_main": false
+  },
+  "consumer_cutover": [
+    "ai_observation_vector",
+    "ai_decision_learning_cash",
+    "ai_route_hand_affordability",
+    "ai_card_play_affordability",
+    "ai_card_purchase_affordability",
+    "ai_business_spendable_cash"
+  ],
+  "remaining_boundaries": [
+    "ai_market_public_query_port",
+    "ai_route_public_query_port",
+    "raw_district_targeting",
+    "generic_world_bridge_extinction"
+  ],
+  "full_run_resume_claim": false
+}

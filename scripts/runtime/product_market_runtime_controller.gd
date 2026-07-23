@@ -1682,6 +1682,66 @@ func public_market_snapshot() -> Dictionary:
 	}
 
 
+func private_futures_positions_snapshot(owner_index: int) -> Dictionary:
+	## Internal owner projection consumed by an actor-capability QueryPort. Public
+	## market snapshots continue to erase position owner, ID, and locked margin.
+	if owner_index < 0:
+		return {
+			"valid": false,
+			"reason_code": "futures_owner_invalid",
+			"owner_index": owner_index,
+			"positions": [],
+			"state_revision": "",
+		}
+	var positions: Array = []
+	for product_variant in product_market.keys():
+		var product_id := str(product_variant)
+		var entry: Dictionary = product_market.get(product_variant, {}) \
+			if product_market.get(product_variant, {}) is Dictionary else {}
+		for position_variant in entry.get("futures_positions", []) as Array:
+			if not (position_variant is Dictionary):
+				continue
+			var source := position_variant as Dictionary
+			if int(source.get("owner", -1)) != owner_index:
+				continue
+			positions.append({
+				"position_id": int(source.get("position_id", -1)),
+				"product_id": str(source.get("product_id", product_id)),
+				"card_id": str(source.get("card_id", source.get("source", ""))),
+				"direction": str(source.get("direction", "")),
+				"baseline_price": int(source.get("baseline_price", 0)),
+				"opened_at": float(source.get("opened_at", 0.0)),
+				"expires_at": float(source.get("expires_at", 0.0)),
+				"duration_seconds": float(source.get("duration_seconds", 0.0)),
+				"multiplier": float(source.get("multiplier", 1.0)),
+				"units": maxi(0, int(source.get("units", 0))),
+				"warehouse_region_id": str(source.get("warehouse_region_id", "")),
+				"locked_margin": maxi(0, int(source.get("locked_margin", 0))),
+				"maximum_gain": maxi(0, int(source.get("maximum_gain", 0))),
+				"maximum_loss": maxi(0, int(source.get("maximum_loss", 0))),
+				"settled": bool(source.get("settled", false)),
+			})
+	positions.sort_custom(func(left: Variant, right: Variant) -> bool:
+		var left_row := left as Dictionary
+		var right_row := right as Dictionary
+		if int(left_row.get("position_id", -1)) != int(right_row.get("position_id", -1)):
+			return int(left_row.get("position_id", -1)) < int(right_row.get("position_id", -1))
+		return str(left_row.get("product_id", "")) < str(right_row.get("product_id", ""))
+	)
+	return {
+		"valid": true,
+		"reason_code": "private_futures_positions_ready",
+		"owner_index": owner_index,
+		"positions": positions.duplicate(true),
+		"state_revision": JSON.stringify([
+			"private_futures_positions_v1",
+			owner_index,
+			business_cycle_count,
+			positions,
+		]).sha256_text(),
+	}
+
+
 func public_product_selection_catalog_source() -> Dictionary:
 	return _public_product_selection_catalog_source_from(PRODUCT_CATALOG, PRODUCT_PROFILES)
 
@@ -2366,8 +2426,14 @@ func _sanitize_entry(entry: Dictionary) -> Dictionary:
 		var position: Dictionary = (position_variant as Dictionary).duplicate(true)
 		position.erase("owner")
 		position.erase("position_id")
+		position.erase("source")
+		position.erase("card_id")
 		position.erase("locked_margin")
 		position.erase("action_fee_cash")
+		position.erase("warehouse_district")
+		position.erase("warehouse_region_id")
+		position.erase("settlement_formula_id")
+		position.erase("warehouse_loss_formula_id")
 		public_futures.append(position)
 	sanitized["futures_positions"] = public_futures
 	sanitized["weather_contributions"] = _sanitize_weather_contributions(sanitized.get("weather_contributions", []))

@@ -1495,6 +1495,7 @@ func _wire_ai_world_typed_ports() -> void:
 func _refresh_ai_actor_state_capabilities() -> void:
 	var actor_state_port := _ai_actor_state_port_node()
 	var card_hand_query := _ai_card_hand_query_port_node()
+	var actor_economy_query := _ai_actor_economy_query_port_node()
 	var district_supply_query := district_supply_runtime_query_port()
 	var ai := _ai_runtime_controller_node() as AiRuntimeController
 	if actor_state_port == null or ai == null:
@@ -1512,6 +1513,16 @@ func _refresh_ai_actor_state_capabilities() -> void:
 			hand_capabilities[actor_index] = AiCardHandCapability.new()
 		var hand_bound := card_hand_query.bind_ai_capabilities(hand_capabilities)
 		ai.set_card_hand_query_port(card_hand_query, hand_capabilities if hand_bound else {})
+	if actor_economy_query != null:
+		var economy_capabilities: Dictionary = {}
+		for actor_index_variant in actor_state_port.ai_player_indices(true):
+			var actor_index := int(actor_index_variant)
+			economy_capabilities[actor_index] = AiActorEconomyCapability.new()
+		var economy_bound := actor_economy_query.bind_ai_capabilities(economy_capabilities)
+		ai.set_actor_economy_query_port(
+			actor_economy_query,
+			economy_capabilities if economy_bound else {}
+		)
 	if district_supply_query != null:
 		var supply_capabilities: Dictionary = {}
 		for actor_index_variant in actor_state_port.ai_player_indices(true):
@@ -1550,9 +1561,6 @@ func _wire_monster_wager_cash_commitment_query_port() -> void:
 	var purchase_settlement := _purchase_settlement_node()
 	if purchase_settlement is DistrictPurchaseSettlementRuntimeService:
 		(purchase_settlement as DistrictPurchaseSettlementRuntimeService).set_cash_commitment_query_port(port)
-	var ai := _ai_runtime_controller_node()
-	if ai is AiRuntimeController:
-		(ai as AiRuntimeController).set_cash_commitment_query_port(port)
 	if not port.is_ready():
 		push_error("MonsterWagerCashCommitmentQueryPort dependencies are unavailable; bound consumers will fail closed.")
 
@@ -5709,6 +5717,10 @@ func _ai_session_public_query_port_node() -> AiSessionPublicQueryPort:
 
 func _ai_card_hand_query_port_node() -> AiCardHandQueryPort:
 	return get_node_or_null("AiCardHandQueryPort") as AiCardHandQueryPort
+
+
+func _ai_actor_economy_query_port_node() -> AiActorEconomyQueryPort:
+	return get_node_or_null("AiActorEconomyQueryPort") as AiActorEconomyQueryPort
 
 
 func _ai_region_knowledge_query_port_node() -> AiRegionKnowledgeQueryPort:

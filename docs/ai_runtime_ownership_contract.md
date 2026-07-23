@@ -59,6 +59,26 @@ city-inference constants are deleted with no fallback. Other AI domains remain
 on the generic bridge until their own atomic cutovers; this section is not a
 claim that the parent P0 is complete.
 
+## Actor Economy Typed-Port Boundary
+
+`AiActorEconomyQueryPort` combines four existing authorities without storing a
+second copy: exact signed cash from `WorldSessionState`, wager-reserved and
+available cash from `MonsterWagerCashCommitmentQueryPort`, actor-owned city
+economy facts from `WorldSessionState`, and actor-owned futures from
+`ProductMarketRuntimeController`. The composition root issues one opaque token
+per current AI seat and no token to human seats.
+
+Spending decisions use available cash after unresolved wager commitments;
+learning observations use the exact signed total. Public futures remove owner,
+position, source-card, margin, warehouse-identity, and settlement-internal
+fields. Existing anonymous warehouse product/count/unit clues stay public, but
+they never include hidden owner truth or private bucket/source lineage.
+
+The port is a detached pure-data query with zero mutation, RNG, log, save dirty,
+or Main dependency. It adds no owner or save section. Broad ProductMarket,
+CommodityFlow, route, and district consumers remain pending their dedicated
+typed-port boundaries.
+
 ## Actor-Private State Typed-Port Boundary
 
 `AiRuntimeController` remains the semantic owner of the six personality

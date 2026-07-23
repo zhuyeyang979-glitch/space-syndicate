@@ -79,6 +79,9 @@ func _run() -> void:
 	var mutation_before := int(world.debug_snapshot().get("city_inference_mutation_count", -1))
 	var snapshot_a := region_port.actor_intelligence_snapshot(capability, 1)
 	var snapshot_b := region_port.actor_intelligence_snapshot(capability, 2)
+	var actor_a_own_city := (_region(snapshot_a, "region.000").get("city", {}) as Dictionary)
+	var actor_a_rival_city := (_region(snapshot_a, "region.001").get("city", {}) as Dictionary)
+	_expect(actor_a_own_city.has("warehouse_stockpile_units") and int(actor_a_rival_city.get("warehouse_stockpile_units", -1)) == 2 and actor_a_rival_city.has("warehouse_stockpile_products") and int(actor_a_rival_city.get("owner", -1)) != 3, "region projection preserves anonymous public warehouse clues without hidden owner truth")
 	_expect(not snapshot_a.is_empty() and str(snapshot_a.get("visibility_scope", "")) == "actor_private", "authorized AI receives an actor-private region snapshot")
 	_expect(snapshot_b.get("regions", []) is Array and not (snapshot_b.get("regions", []) as Array).is_empty(), "second AI receives its own detached region snapshot")
 	_expect(world.players == players_before and int(world.debug_snapshot().get("city_inference_mutation_count", -1)) == mutation_before, "typed queries perform zero world mutation")
@@ -103,7 +106,7 @@ func _run() -> void:
 	var entry := _entry(entries, 1)
 	_expect(not entry.is_empty() and str(entry.get("name", "")) == "环城港", "AI city inference consumes the typed region projection")
 	_expect(int(entry.get("guess", -1)) == 2 and int(entry.get("confidence", 0)) == 2 and str(entry.get("latest_clue", "")).contains("能源"), "typed query preserves guess, confidence, and public clue semantics")
-	_expect(int(entry.get("priority", -1)) == 84, "typed query preserves the frozen city inference priority score")
+	_expect(int(entry.get("priority", -1)) == 84, "typed query preserves the public anonymous warehouse-pressure score")
 	_expect(_entry(entries, 3).is_empty(), "typed city inference excludes destroyed regions even when a stale city active flag remains true")
 
 	var owner_revision := str(snapshot_a.get("owner_revision", ""))
