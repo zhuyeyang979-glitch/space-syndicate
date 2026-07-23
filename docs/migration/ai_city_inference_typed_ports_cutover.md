@@ -2,7 +2,7 @@
 
 ## Status
 
-`STATUS=AI_CITY_INFERENCE_TYPED_PORTS_ATOMIC_CUTOVER_VALIDATED`
+`STATUS=AI_ACTOR_SCOPED_REGION_QUERY_ATOMIC_CUTOVER_VALIDATED`
 
 This is one completed atomic domain inside the still-active
 `P0-AI-WORLD-TYPED-PORTS-CUTOVER`. It does not claim that all AI world access,
@@ -67,6 +67,25 @@ Public clue dictionaries are rebuilt from the explicit `text`, `time`,
 `cycle`, `kind`, and string-only `products` allowlist. Arbitrary pure-data keys
 are not copied, and `last_public_clue` is reduced to its sanitized text.
 
+## Whole-Region Consumer Completion
+
+All AI production consumers now iterate the detached region projection instead
+of reading the live `WorldSessionState.districts` collection. City lookup is
+actor-scoped: the result carries the authoritative owner only for the actor's
+own city, otherwise it carries that actor's saved inference or `public_unknown`.
+
+Public route evidence is reduced to route count plus active/disrupted product
+names. Raw route rows, facility identity, hidden owner, capacity resources,
+rent recipients, and topology fingerprints do not enter candidate scoring.
+The existing public anonymous warehouse count/unit/product clues remain
+available, so this privacy correction does not erase legitimate table evidence.
+
+The futures characterization now starts through
+`ProductionSessionStartDriver` and the formal session-start transaction. It no
+longer calls retired `Main._new_game` or mutates `TableSelectionState`. The
+fixture also freezes the current catalog rule: futures cards may be fixture-owned
+and played, but they are not legal RegionSupply acquisition cards.
+
 ## Command Contract
 
 Each command binds:
@@ -103,9 +122,13 @@ applied to the current owner state.
 
 ## Evidence
 
-- Focused SceneTree test: 48/48.
+- Focused SceneTree test: 52/52.
+- Commodity futures production fixture: 39/39.
+- Market/route public query ports: 15/15.
+- Card phase/counter owner regression: 22/22.
+- AI business transaction regression: 68/68.
 - Production scene Bench: 14/14, privacy leaks 0, duplicate mutations 0.
-- Godot MCP script scan: 200 runtime scripts, 0 parser errors.
+- Godot MCP script scan: 206 GDScript files, 0 parser errors.
 - `main_runtime_composition_test.gd`: pass.
 - `world_session_state_cutover_test.gd`: pass.
 - `ai_business_cost_architecture_gate_test.gd`: pass.
@@ -118,9 +141,10 @@ reported as inherited debt rather than a green absolute gate.
 
 ## Remaining P0 Scope
 
-This atomic cutover does not satisfy the parent hard gate. Current controller
-source still contains 45 `_call_world` references, 93 `players` tokens, and 95
-`districts` tokens; the generic bridge also remains for other domains. The next
-atomic boundary is AI actor-private state, followed by public players, market,
-routes, cards, supply, monster, military, weather, victory, and presentation
-ports until all parent counts reach zero.
+This atomic cutover does not satisfy the parent hard gate. Whole-player and
+whole-district collection access are both zero, but the controller still has 42
+`_call_world` and 34 `_call_monster` occurrences for other domains. The generic
+bridge and human `TableSelectionState` coupling therefore remain active parent
+work. The next atomic boundary is card query/target submission and selection
+retirement, followed by monster, military, weather, victory, and presentation
+ports until every parent count reaches zero.

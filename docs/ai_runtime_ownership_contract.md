@@ -105,6 +105,22 @@ and route scoring no longer receives raw route candidates. The existing typed
 market mutation transaction and all other domain owners are unchanged. These
 Ports add no state or save section.
 
+## Actor-Scoped Region Consumer Boundary
+
+AI production code has no whole `players` or `districts` collection access.
+District count, public rows, actor-scoped city facts, active-region iteration,
+and city inference all come from the existing typed ports. A rival city owner
+is never inferred from hidden world truth: the projection returns the actor's
+own inference or an unknown sentinel.
+
+Public city route evidence is intentionally narrower than the Route owner's
+row: count and active/disrupted product names only. Raw route dictionaries and
+their facility, owner, rent, capacity-resource, and topology fields remain
+inside their owners. Anonymous warehouse count/unit/product clues remain public
+under the existing table-information rule. This is a documented
+`PRIVACY_CORRECTION`; it does not alter AI policy weights, personality data,
+candidate order, or RNG use.
+
 ## Actor-Private State Typed-Port Boundary
 
 `AiRuntimeController` remains the semantic owner of the six personality

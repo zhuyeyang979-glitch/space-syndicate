@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "status": "production_cutover_validated_delivery_pending",
   "parent_task": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
   "parent_task_status": "ACTIVE",
@@ -27,6 +27,11 @@
     "private_warehouse_owner_exposed": false,
     "public_clue_allowlist": ["text", "time", "cycle", "kind", "products"],
     "arbitrary_pure_data_clue_keys_exposed": false,
+    "whole_player_collection_access": false,
+    "whole_district_collection_access": false,
+    "actor_scoped_city_owner_semantics": ["actor_own", "actor_guess", "authorized_reveal", "public_unknown"],
+    "public_route_fields": ["trade_route_count", "active_trade_route_products", "disrupted_trade_route_products"],
+    "raw_trade_routes_exposed": false,
     "public_anonymous_warehouse_fields": [
       "warehouse_stockpile_count",
       "warehouse_stockpile_units",
@@ -97,24 +102,33 @@
     "absolute_budget_gate": "INHERITED_CALLER_THRESHOLD_103_GT_102"
   },
   "evidence": {
-    "focused_checks": 48,
+    "focused_checks": 52,
     "focused_result": "PASS",
+    "commodity_futures_checks": 39,
+    "commodity_futures_result": "PASS",
+    "market_route_checks": 15,
+    "market_route_result": "PASS",
+    "card_phase_counter_checks": 22,
+    "card_phase_counter_result": "PASS",
+    "business_transaction_checks": 68,
+    "business_transaction_result": "PASS",
     "production_bench_checks": 14,
     "production_bench_result": "PASS",
     "privacy_leaks": 0,
     "duplicate_mutations": 0,
-    "runtime_scripts_scanned": 200,
+    "runtime_scripts_scanned": 206,
     "parser_errors": 0,
     "git_diff_check": "PASS"
   },
   "remaining_parent_counts": {
-    "ai_controller_call_world_references": 45,
-    "ai_controller_players_tokens": 93,
-    "ai_controller_districts_tokens": 95,
+    "ai_controller_call_world_references": 42,
+    "ai_controller_call_monster_references": 34,
+    "ai_whole_players_access": 0,
+    "ai_whole_districts_access": 0,
     "parent_gate_complete": false
   },
   "full_run_resume_claim": false,
   "complete_match_proven": false,
   "alpha_0_3_complete": false,
-  "next_boundary": "AI_ACTOR_STATE_TYPED_PORT_MIGRATION"
+  "next_boundary": "AI_CARD_QUERY_AND_TABLE_SELECTION_RETIREMENT"
 }

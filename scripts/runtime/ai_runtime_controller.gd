@@ -717,6 +717,24 @@ func _player_count() -> int:
 	return _ai_actor_state_port.player_count() if _actor_state_ready() else 0
 
 
+func _district_count() -> int:
+	return _ai_region_knowledge_query_port.region_count() \
+		if _ai_region_knowledge_query_port != null and _ai_region_knowledge_query_port.is_ready() else 0
+
+
+func _public_district(district_index: int) -> Dictionary:
+	return _ai_region_knowledge_query_port.public_region(district_index) \
+		if _ai_region_knowledge_query_port != null and _ai_region_knowledge_query_port.is_ready() else {}
+
+
+func _actor_district(actor_index: int, district_index: int) -> Dictionary:
+	return _ai_region_knowledge_query_port.region_for_actor(
+		_ai_region_knowledge_capability,
+		actor_index,
+		district_index
+	) if _city_inference_ports_ready() else {}
+
+
 func _world_value(property_name: StringName, default_value: Variant = null) -> Variant:
 	return _world_bridge.call("read_world_value", property_name, default_value) if _world_ready() else default_value
 
@@ -798,12 +816,6 @@ var card_resolution_counter_window_active:
 		return _world_value(&"card_resolution_counter_window_active", false)
 	set(value):
 		_write_world_value(&"card_resolution_counter_window_active", value)
-
-var districts:
-	get:
-		return _world_value(&"districts", [])
-	set(value):
-		_write_world_value(&"districts", value)
 
 var session_finished:
 	get:
@@ -1406,9 +1418,9 @@ func _player_role_card_for_index(player_index: int) -> Dictionary:
 	return _call_monster(&"_player_role_card_for_index", [player_index])
 
 func _district_or_city_has_product(district_index: int, product_name: String) -> bool:
-	if product_name.is_empty() or district_index < 0 or district_index >= districts.size():
+	if product_name.is_empty() or district_index < 0 or district_index >= _district_count():
 		return false
-	var district: Dictionary = districts[district_index] if districts[district_index] is Dictionary else {}
+	var district := _public_district(district_index)
 	if (district.get("products", []) as Array).has(product_name) or (district.get("demands", []) as Array).has(product_name):
 		return true
 	var city := _district_city(district_index)
@@ -1423,8 +1435,10 @@ func _skill_definition(skill_name: String) -> Dictionary:
 func _request_table_presentation_refresh() -> void:
 	return _call_monster(&"request_table_presentation_refresh")
 
-func _district_city(index: int) -> Dictionary:
-	return _call_monster(&"_district_city", [index])
+func _district_city(index: int, actor_index := -1) -> Dictionary:
+	var district := _actor_district(actor_index, index) if actor_index >= 0 else _public_district(index)
+	return (district.get("city", {}) as Dictionary).duplicate(true) \
+		if district.get("city", {}) is Dictionary else {}
 
 func _city_is_active(city: Dictionary) -> bool:
 	return not city.is_empty() and bool(city.get("active", true))
@@ -1947,15 +1961,15 @@ func _rival_build_player_order() -> Array:
 		result[swap_index] = tmp
 	return result
 func _district_product_overlap_with_rival_cities(player_index: int, district_index: int) -> int:
-	if district_index < 0 or district_index >= districts.size():
+	if district_index < 0 or district_index >= _district_count():
 		return 0
-	var local_products: Array = districts[district_index].get("products", [])
+	var local_products: Array = _public_district(district_index).get("products", [])
 	if local_products.is_empty():
 		return 0
 	var matches := 0
 	for city_index_variant in _active_city_district_indices():
 		var city_index := int(city_index_variant)
-		var city := _district_city(city_index)
+		var city := _district_city(city_index, player_index)
 		if int(city.get("owner", -1)) == player_index:
 			continue
 		for product_name in _city_product_names(city):
@@ -1963,18 +1977,18 @@ func _district_product_overlap_with_rival_cities(player_index: int, district_ind
 				matches += 1
 	return matches
 func _district_ocean_neighbor_count(district_index: int) -> int:
-	if district_index < 0 or district_index >= districts.size():
+	if district_index < 0 or district_index >= _district_count():
 		return 0
 	var count := 0
-	for neighbor_variant in districts[district_index].get("neighbors", []):
+	for neighbor_variant in _public_district(district_index).get("neighbors", []):
 		var neighbor := int(neighbor_variant)
-		if neighbor >= 0 and neighbor < districts.size() and String(districts[neighbor].get("terrain", "land")) == "ocean":
+		if neighbor >= 0 and neighbor < _district_count() and String(_public_district(neighbor).get("terrain", "land")) == "ocean":
 			count += 1
 	return count
 func _auto_build_monster_risk_score(district_index: int) -> int:
-	if district_index < 0 or district_index >= districts.size():
+	if district_index < 0 or district_index >= _district_count():
 		return 0
-	var risk := int(round(float(districts[district_index].get("panic", 0)) / 4.0))
+	var risk := int(round(float(_public_district(district_index).get("panic", 0)) / 4.0))
 	for actor_variant in auto_monsters:
 		var actor: Dictionary = actor_variant
 		if bool(actor.get("down", false)):
@@ -1992,7 +2006,7 @@ func _active_city_indices_for_player(player_index: int) -> Array:
 	var result := []
 	for city_index_variant in _active_city_district_indices():
 		var city_index := int(city_index_variant)
-		if int(_district_city(city_index).get("owner", -1)) == player_index:
+		if int(_district_city(city_index, player_index).get("owner", -1)) == player_index:
 			result.append(city_index)
 	return result
 func _competing_city_indices_for_product(player_index: int, product_name: String) -> Array:
@@ -2001,7 +2015,7 @@ func _competing_city_indices_for_product(player_index: int, product_name: String
 		return result
 	for city_index_variant in _active_city_district_indices():
 		var city_index := int(city_index_variant)
-		var city := _district_city(city_index)
+		var city := _district_city(city_index, player_index)
 		if int(city.get("owner", -1)) == player_index:
 			continue
 		if _city_product_names(city).has(product_name):
@@ -2026,7 +2040,7 @@ func _rival_business_candidates_for_player(player_index: int) -> Array:
 	var posture := String(phase_info.get("posture", "contesting"))
 	for own_city_index_variant in _active_city_indices_for_player(player_index):
 		var own_city_index := int(own_city_index_variant)
-		var own_city := _district_city(own_city_index)
+		var own_city := _district_city(own_city_index, player_index)
 		for product_name_variant in _city_product_names(own_city):
 			var product_name := String(product_name_variant)
 			var entry := _market_public_product(product_name)
@@ -2082,9 +2096,9 @@ func _rival_business_candidates_for_player(player_index: int) -> Array:
 			})
 			for target_city_variant in competitors:
 				var target_city_index := int(target_city_variant)
-				var target_city := _district_city(target_city_index)
+				var target_city := _district_city(target_city_index, player_index)
 				var route_score := 42 + int(round(float(price) / 5.0))
-				route_score += (target_city.get("trade_routes", []) as Array).size() * 4
+				route_score += int(target_city.get("trade_route_count", 0)) * 4
 				route_score += int(float(int(target_city.get("last_income", 0))) / 8.0)
 				route_score += int(target_city.get("competition_matches", 0)) * 7
 				if product_name == focus_product:
@@ -2256,9 +2270,9 @@ func _execute_rival_business_action_transaction(
 
 
 func _ai_business_public_region_id(district_index: int) -> String:
-	if district_index < 0 or district_index >= districts.size() or not (districts[district_index] is Dictionary):
+	if district_index < 0 or district_index >= _district_count():
 		return ""
-	var district := districts[district_index] as Dictionary
+	var district := _public_district(district_index)
 	if bool(district.get("destroyed", false)) or not _city_is_active(_district_city(district_index)):
 		return ""
 	return str(district.get("region_id", "region.%03d" % district_index)).strip_edges()
@@ -3730,22 +3744,22 @@ func _ai_competitive_posture_label(posture: String) -> String:
 		"contesting":
 			return "争夺中"
 	return "未知态势"
-func _ai_best_city_for_owner(owner_index: int, prefer_damaged: bool = false) -> int:
+func _ai_best_city_for_owner(viewer_index: int, owner_index: int, prefer_damaged: bool = false) -> int:
 	var best_index := -1
 	var best_score := -999999
 	for city_index_variant in _active_city_district_indices():
 		var city_index := int(city_index_variant)
-		var city := _district_city(city_index)
+		var city := _district_city(city_index, viewer_index)
 		if int(city.get("owner", -1)) != owner_index:
 			continue
 		var score := int(city.get("last_income", 0)) + _city_cycle_income(city_index, _city_competition_matches(city_index))
 		score += (city.get("products", []) as Array).size() * 28
 		score += (city.get("demands", []) as Array).size() * 18
 		score -= int(city.get("trade_route_damage", 0)) * 22
-		score -= int(districts[city_index].get("damage", 0)) * 14
+		score -= int(_public_district(city_index).get("damage", 0)) * 14
 		score += _city_warehouse_stockpile_pressure(city) * 2
 		if prefer_damaged:
-			score += int(city.get("trade_route_damage", 0)) * 74 + int(districts[city_index].get("damage", 0)) * 36
+			score += int(city.get("trade_route_damage", 0)) * 74 + int(_public_district(city_index).get("damage", 0)) * 36
 		if score > best_score:
 			best_score = score
 			best_index = city_index
@@ -3754,7 +3768,7 @@ func _ai_best_pressure_target_city(player_index: int) -> int:
 	var leader := _visible_score_leader_entry(player_index)
 	var leader_index := int(leader.get("player_index", -1))
 	if leader_index >= 0 and leader_index != player_index:
-		var leader_city := _ai_best_city_for_owner(leader_index, _ai_competitive_posture(player_index) == "trailing")
+		var leader_city := _ai_best_city_for_owner(player_index, leader_index, _ai_competitive_posture(player_index) == "trailing")
 		if leader_city >= 0:
 			return leader_city
 	return _ai_best_city_district(player_index, false)
@@ -3839,9 +3853,9 @@ func _ai_direct_player_interaction_plan(player_index: int, skill: Dictionary) ->
 			}
 	return best
 func _ai_direct_city_target_score(player_index: int, district_index: int, skill: Dictionary) -> int:
-	if district_index < 0 or district_index >= districts.size():
+	if district_index < 0 or district_index >= _district_count():
 		return -999999
-	var city := _district_city(district_index)
+	var city := _district_city(district_index, player_index)
 	if not _city_is_active(city):
 		return -999999
 	var city_owner := int(city.get("owner", -1))
@@ -3851,10 +3865,10 @@ func _ai_direct_city_target_score(player_index: int, district_index: int, skill:
 	var phase_info := _ai_refresh_game_phase(player_index)
 	var leader_index := int(phase_info.get("leader_index", -1))
 	var income := int(city.get("last_income", _city_cycle_income(district_index, _city_competition_matches(district_index))))
-	var route_load := (city.get("trade_routes", []) as Array).size()
+	var route_load := int(city.get("trade_route_count", 0))
 	var warehouse_pressure := _city_warehouse_stockpile_pressure(city)
 	var route_damage := int(city.get("trade_route_damage", 0)) + int(city.get("trade_disrupted_routes", 0))
-	var district_damage := int(districts[district_index].get("damage", 0))
+	var district_damage := int(_public_district(district_index).get("damage", 0))
 	var score := 80 + maxi(0, _ai_city_target_score(player_index, district_index, false, false))
 	score += int(float(income) / 2.0) + route_load * 22 + warehouse_pressure * 2
 	if city_owner == leader_index and leader_index != player_index:
@@ -3884,11 +3898,11 @@ func _ai_direct_city_interaction_plan(player_index: int, skill: Dictionary) -> D
 			best_city = city_index
 	if best_city < 0:
 		return {}
-	var city := _district_city(best_city)
+	var city := _district_city(best_city, player_index)
 	var city_owner := int(city.get("owner", -1))
 	var warehouse_pressure := _city_warehouse_stockpile_pressure(city)
 	var route_damage := int(city.get("trade_route_damage", 0)) + int(city.get("trade_disrupted_routes", 0))
-	var district_damage := int(districts[best_city].get("damage", 0))
+	var district_damage := int(_public_district(best_city).get("damage", 0))
 	var expected_damage := 0
 	var role := "freeze_rival_city"
 	if kind == "global_barrage":
@@ -3918,7 +3932,7 @@ func _ai_direct_city_interaction_plan(player_index: int, skill: Dictionary) -> D
 		"score": best_score,
 		"reason": "直接城市互动｜%s｜%s｜GDP/min%d｜仓储压强%d｜商路损伤%d" % [
 			role,
-			String(districts[best_city].get("name", "城市")),
+			String(_public_district(best_city).get("name", "城市")),
 			int(city.get("last_income", 0)),
 			warehouse_pressure,
 			route_damage,
@@ -4053,8 +4067,8 @@ func _ai_victory_race_bonus_for_candidate(player_index: int, kind: String, distr
 	if not is_endgame_pressure:
 		return result
 	var resolved_owner := target_owner
-	if resolved_owner == -999 and district_index >= 0 and district_index < districts.size():
-		var city := _district_city(district_index)
+	if resolved_owner == -999 and district_index >= 0 and district_index < _district_count():
+		var city := _district_city(district_index, player_index)
 		if _city_is_active(city):
 			resolved_owner = int(city.get("owner", -1))
 	var helpful_target := resolved_owner == player_index
@@ -4368,10 +4382,10 @@ func _monster_target_weight_audit() -> Dictionary:
 			continue
 		var district_reports := []
 		var positive_alive_count := 0
-		for district_index in range(districts.size()):
+		for district_index in range(_district_count()):
 			var parts := _auto_monster_target_weight_parts(actor, district_index)
 			var weight := _auto_monster_target_weight(actor, district_index)
-			var destroyed := bool((districts[district_index] as Dictionary).get("destroyed", false))
+			var destroyed := bool(_public_district(district_index).get("destroyed", false))
 			if destroyed and weight != 0:
 				destroyed_zero_ok = false
 			if not destroyed and weight > 0:
@@ -4749,7 +4763,7 @@ func _ai_product_rival_city_count(player_index: int, product_name: String) -> in
 		return count
 	for city_index_variant in _active_city_district_indices():
 		var city_index := int(city_index_variant)
-		var city := _district_city(city_index)
+		var city := _district_city(city_index, player_index)
 		if int(city.get("owner", -1)) == player_index:
 			continue
 		if _city_product_names(city).has(product_name) or _city_demand_names(city).has(product_name):
@@ -4786,7 +4800,7 @@ func _ai_product_city_exposure_score(player_index: int, product_name: String) ->
 	var score := _player_product_flow(player_index, product_name) * 74
 	for city_index_variant in _active_city_district_indices():
 		var city_index := int(city_index_variant)
-		var city := _district_city(city_index)
+		var city := _district_city(city_index, player_index)
 		var city_owner := int(city.get("owner", -1))
 		var product_match := _city_product_names(city).has(product_name)
 		var demand_match := _city_demand_names(city).has(product_name)
@@ -4795,10 +4809,8 @@ func _ai_product_city_exposure_score(player_index: int, product_name: String) ->
 				score += 72 + int(float(int(city.get("last_income", 0))) / 4.0)
 			if demand_match:
 				score += 46
-			for route_variant in city.get("trade_routes", []):
-				var route: Dictionary = route_variant
-				if String(route.get("product", "")) == product_name and not bool(route.get("disrupted", false)):
-					score += 34
+			if (city.get("active_trade_route_products", []) as Array).has(product_name):
+				score += 34
 		elif product_match or demand_match:
 			score += 26
 			if product_match and _player_product_flow(player_index, product_name) > 0:
@@ -4890,11 +4902,11 @@ func _ai_own_route_threat_score(player_index: int) -> int:
 	var score := 0
 	for city_index_variant in _active_city_indices_for_player(player_index):
 		var city_index := int(city_index_variant)
-		var city := _district_city(city_index)
+		var city := _district_city(city_index, player_index)
 		score += int(city.get("trade_route_damage", 0)) * 84
 		score += int(city.get("trade_disrupted_routes", 0)) * 46
-		score += int(districts[city_index].get("damage", 0)) * 18
-		score += int(float(int(districts[city_index].get("panic", 0))) / 3.0)
+		score += int(_public_district(city_index).get("damage", 0)) * 18
+		score += int(float(int(_public_district(city_index).get("panic", 0))) / 3.0)
 		score += _city_warehouse_stockpile_pressure(city)
 		for actor_variant in auto_monsters:
 			var actor: Dictionary = actor_variant
@@ -4916,7 +4928,7 @@ func _ai_focus_rival_pressure_score(player_index: int) -> int:
 	var score := 0
 	for city_index_variant in _active_city_district_indices():
 		var city_index := int(city_index_variant)
-		var city := _district_city(city_index)
+		var city := _district_city(city_index, player_index)
 		if int(city.get("owner", -1)) == player_index:
 			continue
 		var product_match := _city_product_names(city).has(focus)
@@ -5071,8 +5083,8 @@ func _ai_strategy_bonus_for_candidate(player_index: int, kind: String, district_
 		return 0
 	var focus := _ai_focus_product(player_index)
 	var resolved_owner := target_owner
-	if resolved_owner == -999 and district_index >= 0 and district_index < districts.size():
-		var city := _district_city(district_index)
+	if resolved_owner == -999 and district_index >= 0 and district_index < _district_count():
+		var city := _district_city(district_index, player_index)
 		if _city_is_active(city):
 			resolved_owner = int(city.get("owner", -1))
 	var bonus := 0
@@ -5170,8 +5182,8 @@ func _ai_profile_signature_bonus_for_candidate(player_index: int, kind: String, 
 		bonus += 20
 		reasons.append("商品吻合+20")
 	var resolved_owner := target_owner
-	if resolved_owner == -999 and district_index >= 0 and district_index < districts.size():
-		var city := _district_city(district_index)
+	if resolved_owner == -999 and district_index >= 0 and district_index < _district_count():
+		var city := _district_city(district_index, player_index)
 		if _city_is_active(city):
 			resolved_owner = int(city.get("owner", -1))
 	if route_id == "city_growth" and resolved_owner == player_index:
@@ -5190,7 +5202,7 @@ func _ai_owned_city_product_count(player_index: int, product_name: String, deman
 		return 0
 	var count := 0
 	for city_index_variant in _active_city_indices_for_player(player_index):
-		var city := _district_city(int(city_index_variant))
+		var city := _district_city(int(city_index_variant), player_index)
 		if demand_side:
 			if _city_demand_names(city).has(product_name):
 				count += 1
@@ -5202,9 +5214,9 @@ func _ai_city_touches_product(city: Dictionary, product_name: String) -> bool:
 		return false
 	return _city_product_names(city).has(product_name) or _city_demand_names(city).has(product_name)
 func _ai_district_touches_product(district_index: int, product_name: String) -> bool:
-	if product_name == "" or district_index < 0 or district_index >= districts.size():
+	if product_name == "" or district_index < 0 or district_index >= _district_count():
 		return false
-	var district: Dictionary = districts[district_index]
+	var district := _public_district(district_index)
 	if (district.get("products", []) as Array).has(product_name) or (district.get("demands", []) as Array).has(product_name):
 		return true
 	var city := _district_city(district_index)
@@ -5215,38 +5227,38 @@ func _ai_product_route_threat_score(player_index: int, product_name: String) -> 
 	var score := 0
 	for city_index_variant in _active_city_indices_for_player(player_index):
 		var city_index := int(city_index_variant)
-		var city := _district_city(city_index)
+		var city := _district_city(city_index, player_index)
 		var related := _ai_city_touches_product(city, product_name)
-		for route_variant in city.get("trade_routes", []):
-			var route: Dictionary = route_variant
-			if String(route.get("product", "")) == product_name:
-				related = true
-				if bool(route.get("disrupted", false)):
-					score += 58
+		var active_route_products: Array = city.get("active_trade_route_products", [])
+		var disrupted_route_products: Array = city.get("disrupted_trade_route_products", [])
+		if active_route_products.has(product_name) or disrupted_route_products.has(product_name):
+			related = true
+			if disrupted_route_products.has(product_name):
+				score += 58
 		if not related:
 			continue
 		score += int(city.get("trade_route_damage", 0)) * 92
 		score += int(city.get("trade_disrupted_routes", 0)) * 54
-		score += int(districts[city_index].get("damage", 0)) * 18
-		score += int(float(int(districts[city_index].get("panic", 0))) / 4.0)
+		score += int(_public_district(city_index).get("damage", 0)) * 18
+		score += int(float(int(_public_district(city_index).get("panic", 0))) / 4.0)
 	return score
 func _ai_best_owned_route_city_for_product(player_index: int, product_name: String, prefer_damaged: bool = false) -> int:
 	var best_index := -1
 	var best_score := -1
 	for city_index_variant in _active_city_indices_for_player(player_index):
 		var city_index := int(city_index_variant)
-		var city := _district_city(city_index)
+		var city := _district_city(city_index, player_index)
 		var score := 20 + _ai_city_target_score(player_index, city_index, true, prefer_damaged)
 		if _city_product_names(city).has(product_name):
 			score += 120
 		if _city_demand_names(city).has(product_name):
 			score += 82
-		for route_variant in city.get("trade_routes", []):
-			var route: Dictionary = route_variant
-			if String(route.get("product", "")) == product_name:
-				score += 48
-				if bool(route.get("disrupted", false)):
-					score += 66
+		var active_route_products: Array = city.get("active_trade_route_products", [])
+		var disrupted_route_products: Array = city.get("disrupted_trade_route_products", [])
+		if active_route_products.has(product_name) or disrupted_route_products.has(product_name):
+			score += 48
+			if disrupted_route_products.has(product_name):
+				score += 66
 		if score > best_score:
 			best_score = score
 			best_index = city_index
@@ -5257,7 +5269,7 @@ func _ai_best_rival_route_city_for_product(player_index: int, product_name: Stri
 		return best
 	for city_index_variant in _active_city_district_indices():
 		var city_index := int(city_index_variant)
-		var city := _district_city(city_index)
+		var city := _district_city(city_index, player_index)
 		if int(city.get("owner", -1)) == player_index:
 			continue
 		if not _ai_city_touches_product(city, product_name):
@@ -5473,8 +5485,8 @@ func _ai_route_plan_bonus_for_candidate(player_index: int, kind: String, distric
 	if plan_product == "" or stage == "":
 		return 0
 	var resolved_owner := target_owner
-	if resolved_owner == -999 and district_index >= 0 and district_index < districts.size():
-		var city := _district_city(district_index)
+	if resolved_owner == -999 and district_index >= 0 and district_index < _district_count():
+		var city := _district_city(district_index, player_index)
 		if _city_is_active(city):
 			resolved_owner = int(city.get("owner", -1))
 	var product_match := product_name == plan_product
@@ -5621,8 +5633,8 @@ func _ai_route_gap_adjustment(player_index: int, skill: Dictionary, district_ind
 	result["product"] = plan_product
 	var kind := String(skill.get("kind", ""))
 	var resolved_owner := target_owner
-	if resolved_owner == -999 and district_index >= 0 and district_index < districts.size():
-		var city := _district_city(district_index)
+	if resolved_owner == -999 and district_index >= 0 and district_index < _district_count():
+		var city := _district_city(district_index, player_index)
 		if _city_is_active(city):
 			resolved_owner = int(city.get("owner", -1))
 	var product_match := product_name == plan_product
@@ -5725,14 +5737,14 @@ func _ai_route_gap_adjustment(player_index: int, skill: Dictionary, district_ind
 	return result
 func _ai_district_focus_score(player_index: int, district_index: int) -> int:
 	var focus := _ai_focus_product(player_index)
-	if focus == "" or district_index < 0 or district_index >= districts.size():
+	if focus == "" or district_index < 0 or district_index >= _district_count():
 		return 0
 	var score := 0
-	if (districts[district_index].get("products", []) as Array).has(focus):
+	if (_public_district(district_index).get("products", []) as Array).has(focus):
 		score += AI_ECONOMIC_FOCUS_MATCH_BONUS + int(round(float(_product_price(focus)) / 4.0))
-	if (districts[district_index].get("demands", []) as Array).has(focus):
+	if (_public_district(district_index).get("demands", []) as Array).has(focus):
 		score += 48
-	var city := _district_city(district_index)
+	var city := _district_city(district_index, player_index)
 	if _city_is_active(city):
 		if _city_product_names(city).has(focus):
 			score += 72
@@ -5757,12 +5769,12 @@ func _ai_product_for_skill(player_index: int, skill: Dictionary) -> String:
 		return focus
 	return _skill_play_product(skill, player_index)
 func _ai_first_alive_district() -> int:
-	for i in range(districts.size()):
-		if not bool(districts[i].get("destroyed", false)):
+	for i in range(_district_count()):
+		if not bool(_public_district(i).get("destroyed", false)):
 			return i
 	return -1
 func _ai_city_target_score(player_index: int, district_index: int, own_city: bool, prefer_damaged: bool = false) -> int:
-	var city := _district_city(district_index)
+	var city := _district_city(district_index, player_index)
 	if not _city_is_active(city):
 		return -1
 	var is_owned := int(city.get("owner", -1)) == player_index
@@ -5772,7 +5784,7 @@ func _ai_city_target_score(player_index: int, district_index: int, own_city: boo
 	score += int(city.get("last_income", 0))
 	score += (city.get("products", []) as Array).size() * 28
 	score += (city.get("demands", []) as Array).size() * 18
-	score += (city.get("trade_routes", []) as Array).size() * 10
+	score += int(city.get("trade_route_count", 0)) * 10
 	score += int(city.get("competition_matches", 0)) * 8
 	var warehouse_pressure := _city_warehouse_stockpile_pressure(city)
 	if warehouse_pressure > 0:
@@ -5792,7 +5804,7 @@ func _ai_city_target_score(player_index: int, district_index: int, own_city: boo
 			score += 78
 	if prefer_damaged:
 		score += int(city.get("trade_route_damage", 0)) * 80
-		score += int(districts[district_index].get("damage", 0)) * 20
+		score += int(_public_district(district_index).get("damage", 0)) * 20
 	else:
 		score -= int(city.get("trade_route_damage", 0)) * 6
 	return score
@@ -5816,7 +5828,7 @@ func _ai_preferred_product(player_index: int, use_rivals: bool = false) -> Strin
 	var scores := {}
 	for district_index_variant in _active_city_district_indices():
 		var district_index := int(district_index_variant)
-		var city := _district_city(district_index)
+		var city := _district_city(district_index, player_index)
 		var is_owned := int(city.get("owner", -1)) == player_index
 		if is_owned == use_rivals:
 			continue
@@ -5841,7 +5853,7 @@ func _ai_monster_card_landing_score(player_index: int, skill: Dictionary, distri
 	if not _can_summon_monster_card_at_district(skill, district_index):
 		return -1
 	var score := 40
-	var district: Dictionary = districts[district_index]
+	var district := _public_district(district_index)
 	var catalog_index := int(skill.get("catalog_index", 0))
 	var template := _catalog_entry(catalog_index)
 	var probe := {"resource_focus": (template.get("resource_focus", []) as Array).duplicate(true)}
@@ -5850,7 +5862,7 @@ func _ai_monster_card_landing_score(player_index: int, skill: Dictionary, distri
 		score += int(round(float(_product_price(String(product_variant))) / 8.0))
 	score += int(round(float(district.get("transport_score", 1.0)) * 15.0))
 	score += _district_supply_card_ids(district_index).size() * 7
-	var city := _district_city(district_index)
+	var city := _district_city(district_index, player_index)
 	if _city_is_active(city):
 		if int(city.get("owner", -1)) == player_index:
 			score -= 120
@@ -5866,7 +5878,7 @@ func _ai_best_monster_card_district(player_index: int, skill: Dictionary) -> int
 			return int(actor.get("position", _ai_first_alive_district()))
 	var best_index := -1
 	var best_score := -1
-	for i in range(districts.size()):
+	for i in range(_district_count()):
 		var score := _ai_monster_card_landing_score(player_index, skill, i)
 		if score > best_score:
 			best_score = score
@@ -5904,13 +5916,13 @@ func _ai_best_district_near_monster(player_index: int, monster_slot: int, range_
 	var actor: Dictionary = auto_monsters[monster_slot]
 	var best_index := -1
 	var best_score := -1
-	for i in range(districts.size()):
-		if bool(districts[i].get("destroyed", false)):
+	for i in range(_district_count()):
+		if bool(_public_district(i).get("destroyed", false)):
 			continue
 		if range_limit > 0.0 and _entity_distance_to_district(actor, i) > range_limit:
 			continue
 		var score := _district_event_weight(i)
-		var city := _district_city(i)
+		var city := _district_city(i, player_index)
 		if _city_is_active(city):
 			score += 100 if int(city.get("owner", -1)) != player_index else -120
 		if score > best_score:
@@ -5920,14 +5932,14 @@ func _ai_best_district_near_monster(player_index: int, monster_slot: int, range_
 		return best_index
 	return int(actor.get("position", _ai_first_alive_district()))
 func _ai_city_product_overlap_score(player_index: int, target_city_index: int) -> int:
-	var target_city := _district_city(target_city_index)
+	var target_city := _district_city(target_city_index, player_index)
 	if not _city_is_active(target_city):
 		return 0
 	var target_products := _city_product_names(target_city)
 	var target_demands := _city_demand_names(target_city)
 	var score := 0
 	for own_city_index_variant in _active_city_indices_for_player(player_index):
-		var own_city := _district_city(int(own_city_index_variant))
+		var own_city := _district_city(int(own_city_index_variant), player_index)
 		for product_variant in _city_product_names(own_city):
 			var product_name := String(product_variant)
 			if target_products.has(product_name):
@@ -5940,9 +5952,9 @@ func _ai_city_product_overlap_score(player_index: int, target_city_index: int) -
 				score += 26
 	return score
 func _ai_rival_city_pressure_score(player_index: int, district_index: int) -> int:
-	if district_index < 0 or district_index >= districts.size() or bool(districts[district_index].get("destroyed", false)):
+	if district_index < 0 or district_index >= _district_count() or bool(_public_district(district_index).get("destroyed", false)):
 		return -1
-	var city := _district_city(district_index)
+	var city := _district_city(district_index, player_index)
 	if not _city_is_active(city):
 		return -1
 	var city_owner := int(city.get("owner", -1))
@@ -5954,14 +5966,14 @@ func _ai_rival_city_pressure_score(player_index: int, district_index: int) -> in
 	score += int(breakdown.get("net", 0))
 	score += int(city.get("last_income", 0))
 	score += _ai_city_product_overlap_score(player_index, district_index)
-	score += (city.get("trade_routes", []) as Array).size() * 20
+	score += int(city.get("trade_route_count", 0)) * 20
 	score += _route_network_load_for_legacy_region(district_index) * 14
 	score += _city_product_names(city).size() * 24
 	score += _city_demand_names(city).size() * 14
 	score += _city_warehouse_stockpile_pressure(city) * 2
 	score += competition * 18
 	score -= int(city.get("trade_route_damage", 0)) * 12
-	score -= int(districts[district_index].get("damage", 0)) * 5
+	score -= int(_public_district(district_index).get("damage", 0)) * 5
 	if city_owner < 0:
 		score -= 25
 	return maxi(1, score)
@@ -6002,7 +6014,7 @@ func _ai_monster_lure_plan(player_index: int, _skill: Dictionary, range_limit: f
 				score += 34
 			if score <= best_score:
 				continue
-			var city := _district_city(city_index)
+			var city := _district_city(city_index, player_index)
 			var target_products := _city_product_names(city)
 			var product_name := String(target_products[0]) if not target_products.is_empty() else _ai_preferred_product(player_index, true)
 			best_score = score
@@ -6021,7 +6033,7 @@ func _ai_monster_lure_plan(player_index: int, _skill: Dictionary, range_limit: f
 				"reason": "诱导怪%d·%s压向%s｜城市价值%d｜竞品压力%d｜资源吻合%d｜距离%s" % [
 					slot + 1,
 					String(actor.get("name", "怪兽")),
-					String(districts[city_index].get("name", "竞争城市")),
+					String(_public_district(city_index).get("name", "竞争城市")),
 					attack_value,
 					product_overlap,
 					resource_match,
@@ -6060,7 +6072,7 @@ func _ai_monster_delay_plan(player_index: int, _skill: Dictionary) -> Dictionary
 				"reason": "延后怪%d·%s接近己方%s｜防守价值%d｜距离%s" % [
 					slot + 1,
 					String(actor.get("name", "怪兽")),
-					String(districts[city_index].get("name", "城市")),
+					String(_public_district(city_index).get("name", "城市")),
 					city_score,
 					_meters_text(distance),
 				],
@@ -6079,19 +6091,19 @@ func _ai_card_kind_bias(player_index: int, kind: String) -> float:
 	return float(profile.get("economy_bias", 1.0))
 func _ai_counter_entry_target_city(entry: Dictionary) -> int:
 	var district_index := int(entry.get("selected_district", -1))
-	if district_index >= 0 and district_index < districts.size() and _city_is_active(_district_city(district_index)):
+	if district_index >= 0 and district_index < _district_count() and _city_is_active(_district_city(district_index)):
 		return district_index
 	return -1
-func _ai_counter_entry_target_owner(entry: Dictionary) -> int:
+func _ai_counter_entry_target_owner(viewer_index: int, entry: Dictionary) -> int:
 	var target_player := int(entry.get("target_player", -1))
 	if target_player >= 0 and target_player < _player_count():
 		return target_player
 	var target_city := _ai_counter_entry_target_city(entry)
 	if target_city >= 0:
-		return int(_district_city(target_city).get("owner", -1))
+		return int(_district_city(target_city, viewer_index).get("owner", -1))
 	return -1
 func _ai_counter_nearest_owned_city_pressure(player_index: int, district_index: int) -> int:
-	if district_index < 0 or district_index >= districts.size():
+	if district_index < 0 or district_index >= _district_count():
 		return 0
 	var best := 0
 	for city_variant in _active_city_indices_for_player(player_index):
@@ -6115,7 +6127,7 @@ func _ai_counter_target_threat(player_index: int, target_entry: Dictionary) -> D
 	var derivative_terms := _city_gdp_derivative_terms(skill) if kind == "city_gdp_derivative" else {}
 	var district_index := int(target_entry.get("selected_district", -1))
 	var target_player := int(target_entry.get("target_player", -1))
-	var target_owner := _ai_counter_entry_target_owner(target_entry)
+	var target_owner := _ai_counter_entry_target_owner(player_index, target_entry)
 	var own_city_target := target_owner == player_index
 	var rival_city_target := target_owner >= 0 and target_owner != player_index
 	var direct_self_target := target_player == player_index
@@ -6132,7 +6144,7 @@ func _ai_counter_target_threat(player_index: int, target_entry: Dictionary) -> D
 			score += direct_pressure + 80
 			reasons.append("直接打击自己+%d" % (direct_pressure + 80))
 	if own_city_target:
-		var city := _district_city(district_index)
+		var city := _district_city(district_index, player_index)
 		var negative_delta := maxi(0, -int(skill.get("production_delta", 0))) \
 			+ maxi(0, -int(skill.get("transport_delta", 0))) \
 			+ maxi(0, -int(skill.get("consumption_delta", 0)))
@@ -6299,9 +6311,9 @@ func _ai_counter_response_candidate(player_index: int, slot_index: int, source_s
 		],
 	}
 func _ai_weather_city_value(player_index: int, district_index: int) -> int:
-	if district_index < 0 or district_index >= districts.size():
+	if district_index < 0 or district_index >= _district_count():
 		return 0
-	var city := _district_city(district_index)
+	var city := _district_city(district_index, player_index)
 	if not _city_is_active(city):
 		return 0
 	var city_owner := int(city.get("owner", -1))
@@ -6312,18 +6324,18 @@ func _ai_weather_city_value(player_index: int, district_index: int) -> int:
 	var income := int(city.get("last_income", _city_cycle_income(district_index, _city_competition_matches(district_index))))
 	return maxi(1, 100 + income + _route_network_load_for_legacy_region(district_index) * 16)
 func _ai_weather_city_effect(player_index: int, district_index: int, type_id: String) -> Dictionary:
-	var city := _district_city(district_index)
+	var city := _district_city(district_index, player_index)
 	if not _city_is_active(city):
 		return {"score": 0, "owner": -1, "positive": 0, "negative": 0, "value": 0}
 	var template := _weather_template(type_id)
 	var production_multiplier := float(template.get("production_multiplier", 1.0))
 	var transport_multiplier := float(template.get("route_efficiency_multiplier", template.get("transport_multiplier", 1.0)))
-	if String(districts[district_index].get("terrain", "land")) == "ocean":
+	if String(_public_district(district_index).get("terrain", "land")) == "ocean":
 		transport_multiplier *= float(template.get("ocean_movement_multiplier", 1.0))
 	var consumption_multiplier := float(template.get("demand_multiplier", 1.0))
 	var route_load := _route_network_load_for_legacy_region(district_index)
 	var product_weight := 110 + _city_product_names(city).size() * 34 + int(float(int(city.get("last_income", 0))) / 10.0)
-	var transport_weight := 120 + route_load * 48 + (_route_network_routes_for_legacy_region(district_index) as Array).size() * 36 + int(round(float(districts[district_index].get("transport_score", 1.0)) * 28.0))
+	var transport_weight := 120 + route_load * 48 + (_route_network_routes_for_legacy_region(district_index) as Array).size() * 36 + int(round(float(_public_district(district_index).get("transport_score", 1.0)) * 28.0))
 	var consumption_weight := 92 + _city_demand_names(city).size() * 30
 	var positive := int(round(maxf(0.0, production_multiplier - 1.0) * product_weight * 5.0)) \
 		+ int(round(maxf(0.0, transport_multiplier - 1.0) * transport_weight * 5.0)) \
@@ -6351,10 +6363,10 @@ func _ai_weather_city_effect(player_index: int, district_index: int, type_id: St
 		"route_load": route_load,
 	}
 func _ai_weather_empty_district_effect(player_index: int, district_index: int, type_id: String) -> int:
-	if district_index < 0 or district_index >= districts.size():
+	if district_index < 0 or district_index >= _district_count():
 		return 0
 	var template := _weather_template(type_id)
-	var terrain := String(districts[district_index].get("terrain", "land"))
+	var terrain := String(_public_district(district_index).get("terrain", "land"))
 	var transport_multiplier := float(template.get("route_efficiency_multiplier", template.get("transport_multiplier", 1.0)))
 	if terrain == "ocean":
 		transport_multiplier *= float(template.get("ocean_movement_multiplier", 1.0))
@@ -6366,11 +6378,11 @@ func _ai_weather_empty_district_effect(player_index: int, district_index: int, t
 		score += int(round((1.0 - transport_multiplier) * 180.0)) + route_load * 18
 	var focus := _ai_focus_product(player_index)
 	var route_product := _ai_route_plan_product(player_index)
-	for product_variant in districts[district_index].get("products", []):
+	for product_variant in _public_district(district_index).get("products", []):
 		var product_name := String(product_variant)
 		if product_name != "" and (product_name == focus or product_name == route_product):
 			score += 28
-	for demand_variant in districts[district_index].get("demands", []):
+	for demand_variant in _public_district(district_index).get("demands", []):
 		var demand_name := String(demand_variant)
 		if demand_name != "" and (demand_name == focus or demand_name == route_product):
 			score += 22
@@ -6409,7 +6421,7 @@ func _ai_weather_control_plan(player_index: int, skill: Dictionary) -> Dictionar
 		for covered_variant in covered:
 			var district_index := int(covered_variant)
 			route_load += _route_network_load_for_legacy_region(district_index)
-			if String(districts[district_index].get("terrain", "land")) == "ocean":
+			if String(_public_district(district_index).get("terrain", "land")) == "ocean":
 				var weather_template := _weather_template(type_id)
 				var ocean_transport := float(weather_template.get("route_efficiency_multiplier", weather_template.get("transport_multiplier", 1.0))) * float(weather_template.get("ocean_movement_multiplier", 1.0))
 				if ocean_transport > 1.001:
@@ -6418,7 +6430,7 @@ func _ai_weather_control_plan(player_index: int, skill: Dictionary) -> Dictionar
 					terrain_bonus += 20
 			var empty_score := _ai_weather_empty_district_effect(player_index, district_index, type_id)
 			neutral_value += empty_score
-			var city := _district_city(district_index)
+			var city := _district_city(district_index, player_index)
 			if _city_is_active(city):
 				covered_cities += 1
 				var city_effect := _ai_weather_city_effect(player_index, district_index, type_id)
@@ -6482,7 +6494,7 @@ func _ai_weather_control_plan(player_index: int, skill: Dictionary) -> Dictionar
 				"weather_plan_role": role,
 				"weather_plan_score": maxi(1, score),
 				"weather_zone_count": zone_count,
-				"weather_target_terrain": String(districts[anchor].get("terrain", "land")),
+				"weather_target_terrain": String(_public_district(anchor).get("terrain", "land")),
 				"weather_covered_cities": covered_cities,
 				"weather_route_load": route_load,
 				"weather_own_value": own_value,
@@ -6494,7 +6506,7 @@ func _ai_weather_control_plan(player_index: int, skill: Dictionary) -> Dictionar
 				"reason": "天气规划｜%s｜%s｜锚点%s｜覆盖%d区/%d城｜己方%d｜竞品%d｜商路%d｜商品%d" % [
 					_weather_label(type_id),
 					role,
-					String(districts[anchor].get("name", "区域")),
+					String(_public_district(anchor).get("name", "区域")),
 					covered.size(),
 					covered_cities,
 					own_value,
@@ -6505,16 +6517,16 @@ func _ai_weather_control_plan(player_index: int, skill: Dictionary) -> Dictionar
 			}
 	return best
 func _ai_city_gdp_insurance_score(player_index: int, district_index: int) -> int:
-	if district_index < 0 or district_index >= districts.size():
+	if district_index < 0 or district_index >= _district_count():
 		return -1
-	var city := _district_city(district_index)
+	var city := _district_city(district_index, player_index)
 	if not _city_is_active(city) or int(city.get("owner", -1)) != player_index:
 		return -1
 	var last_income := int(city.get("last_income", _city_cycle_income(district_index, _city_competition_matches(district_index))))
-	var damage := int(districts[district_index].get("damage", 0))
+	var damage := int(_public_district(district_index).get("damage", 0))
 	var disrupted := int(city.get("trade_disrupted_routes", 0)) + int(city.get("trade_route_damage", 0))
 	var score := 90 + maxi(0, last_income)
-	score += damage * 58 + disrupted * 72 + int(float(int(districts[district_index].get("panic", 0))) / 2.0)
+	score += damage * 58 + disrupted * 72 + int(float(int(_public_district(district_index).get("panic", 0))) / 2.0)
 	score += _city_warehouse_stockpile_pressure(city)
 	score += int(float(_auto_build_monster_risk_score(district_index)) / 2.0)
 	score += _route_network_load_for_legacy_region(district_index) * 12
@@ -6537,10 +6549,10 @@ func _ai_best_city_for_gdp_derivative(player_index: int, direction: String, skil
 	var best_score := -999999
 	for index_variant in _active_city_district_indices():
 		var index := int(index_variant)
-		var city := _district_city(index)
+		var city := _district_city(index, player_index)
 		var city_owner := int(city.get("owner", -1))
 		var last_income := int(city.get("last_income", _city_cycle_income(index, _city_competition_matches(index))))
-		var damage := int(districts[index].get("damage", 0))
+		var damage := int(_public_district(index).get("damage", 0))
 		var disrupted := int(city.get("trade_disrupted_routes", 0)) + int(city.get("trade_route_damage", 0))
 		var warehouse_pressure := _city_warehouse_stockpile_pressure(city)
 		var score := last_income
@@ -6552,7 +6564,7 @@ func _ai_best_city_for_gdp_derivative(player_index: int, direction: String, skil
 				score += int(float(warehouse_pressure) / 4.0)
 		else:
 			score += 150 if city_owner >= 0 and city_owner != player_index else -40
-			score += damage * 52 + disrupted * 62 + int(float(int(districts[index].get("panic", 0))) / 2.0)
+			score += damage * 52 + disrupted * 62 + int(float(int(_public_district(index).get("panic", 0))) / 2.0)
 			score += int(float(_ai_district_focus_score(player_index, index)) / 3.0)
 			if city_owner >= 0 and city_owner != player_index:
 				score += warehouse_pressure * 2
@@ -6646,16 +6658,16 @@ func _ai_best_warehouse_city_for_product(player_index: int, product_name: String
 	var best_score := -999999
 	for index_variant in _active_city_indices_for_player(player_index):
 		var index := int(index_variant)
-		var city := _district_city(index)
+		var city := _district_city(index, player_index)
 		var score := 80 + _ai_city_target_score(player_index, index, true, false)
 		if _city_product_names(city).has(product_name):
 			score += 130
 		if _city_demand_names(city).has(product_name):
 			score += 92
 		score += int(float(int(city.get("last_income", 0))) / 4.0)
-		score += int(round(float(districts[index].get("transport_score", 1.0)) * 36.0))
+		score += int(round(float(_public_district(index).get("transport_score", 1.0)) * 36.0))
 		score += _route_network_load_for_legacy_region(index) * 12
-		score -= int(districts[index].get("damage", 0)) * 34
+		score -= int(_public_district(index).get("damage", 0)) * 34
 		score -= int(city.get("trade_route_damage", 0)) * 38
 		score -= int(city.get("trade_disrupted_routes", 0)) * 28
 		score -= int(float(_auto_build_monster_risk_score(index)) / 3.0)
@@ -6693,8 +6705,8 @@ func _ai_product_futures_plan(player_index: int, skill: Dictionary, preferred_pr
 	var futures_score := maxi(1, _ai_product_futures_product_score(player_index, skill, product_name))
 	var flow := _player_product_flow(player_index, product_name)
 	var target_owner := -999
-	if district_index >= 0 and district_index < districts.size():
-		var target_city := _district_city(district_index)
+	if district_index >= 0 and district_index < _district_count():
+		var target_city := _district_city(district_index, player_index)
 		if _city_is_active(target_city):
 			target_owner = int(target_city.get("owner", -1))
 	var result := {
@@ -6724,7 +6736,7 @@ func _ai_product_futures_plan(player_index: int, skill: Dictionary, preferred_pr
 			futures_score,
 			flow,
 			maxf(0.1, float(terms.get("multiplier", 1.0))),
-			("仓库:%s｜" % String(districts[warehouse_city].get("name", "城市"))) if warehouse_city >= 0 else "",
+			("仓库:%s｜" % String(_public_district(warehouse_city).get("name", "城市"))) if warehouse_city >= 0 else "",
 			_duration_short_text(_product_futures_duration_seconds(skill)),
 		],
 	}
@@ -6733,7 +6745,7 @@ func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, distric
 	var score := 0
 	var harmful_target := target_owner >= 0 and target_owner != player_index
 	var helpful_target := target_owner == player_index
-	var target_city := _district_city(district_index)
+	var target_city := _district_city(district_index, player_index)
 	var warehouse_pressure := _city_warehouse_stockpile_pressure(target_city) if _city_is_active(target_city) else 0
 	score += int(float(int(skill.get("cash", 0))) / 4.0)
 	score += int(skill.get("draw_amount", 0)) * 45
@@ -6805,9 +6817,9 @@ func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, distric
 	var gdp_multiplier := float(derivative_terms.get("multiplier", 0.0))
 	if gdp_multiplier > 0.0:
 		var direction := String(derivative_terms.get("direction", "up"))
-		var city := _district_city(district_index)
+		var city := _district_city(district_index, player_index)
 		var last_income := int(city.get("last_income", 0))
-		var risk := int(districts[district_index].get("damage", 0)) * 26 + int(city.get("trade_disrupted_routes", 0)) * 32 if district_index >= 0 and district_index < districts.size() else 0
+		var risk := int(_public_district(district_index).get("damage", 0)) * 26 + int(city.get("trade_disrupted_routes", 0)) * 32 if district_index >= 0 and district_index < _district_count() else 0
 		if direction == "up":
 			score += int(round(gdp_multiplier * 55.0)) + (80 if helpful_target else 20) + maxi(0, int(float(last_income) / 6.0) - risk)
 		elif bool(derivative_terms.get("insurance", false)):
@@ -6838,17 +6850,17 @@ func _ai_military_deploy_plan_for_district(player_index: int, skill: Dictionary,
 	var military_type := String(skill.get("military_type", "defense"))
 	var prefers_offense := ["bomber", "missile", "submarine"].has(military_type)
 	var prefers_sea_routes := ["submarine", "warship"].has(military_type)
-	var city := _district_city(district_index)
+	var city := _district_city(district_index, player_index)
 	var city_owner := int(city.get("owner", -1)) if _city_is_active(city) else -1
-	var terrain := String(districts[district_index].get("terrain", "land"))
+	var terrain := String(_public_district(district_index).get("terrain", "land"))
 	var terrain_multiplier := _military_unit_terrain_move_multiplier(skill, district_index)
 	var income := int(city.get("last_income", _city_cycle_income(district_index, _city_competition_matches(district_index)))) if _city_is_active(city) else 0
 	var route_pressure := int(city.get("trade_route_damage", 0)) + int(city.get("trade_disrupted_routes", 0)) if _city_is_active(city) else 0
 	var warehouse_pressure := _city_warehouse_stockpile_pressure(city) if _city_is_active(city) else 0
 	var route_load := _route_network_load_for_legacy_region(district_index)
 	var monster_risk := _auto_build_monster_risk_score(district_index)
-	var damage := int(districts[district_index].get("damage", 0))
-	var panic := int(districts[district_index].get("panic", 0))
+	var damage := int(_public_district(district_index).get("damage", 0))
+	var panic := int(_public_district(district_index).get("panic", 0))
 	var stat_score := int(skill.get("military_hp", 0)) * 2 \
 		+ int(skill.get("military_damage", 0)) * 18 \
 		+ int(round(float(skill.get("military_range", 0.0)) / 24.0)) \
@@ -6929,7 +6941,7 @@ func _ai_military_deploy_plan_for_district(player_index: int, skill: Dictionary,
 		"reason": "部署%s｜%s｜%s｜地形×%.2f｜GDP%d｜商路%d｜仓储%d｜怪兽%d" % [
 			_military_unit_type_label(skill),
 			String(reason_label),
-			String(districts[district_index].get("name", "区域")),
+			String(_public_district(district_index).get("name", "区域")),
 			terrain_multiplier,
 			income,
 			route_load + route_pressure,
@@ -6942,7 +6954,7 @@ func _ai_military_deploy_plan(player_index: int, skill: Dictionary) -> Dictionar
 		return {}
 	var best := {}
 	var best_score := -999999
-	for index in range(districts.size()):
+	for index in range(_district_count()):
 		var plan := _ai_military_deploy_plan_for_district(player_index, skill, index)
 		if plan.is_empty():
 			continue
@@ -6977,9 +6989,9 @@ func _ai_military_guard_target(player_index: int, unit: Dictionary, command_rang
 		var city_index := int(city_index_variant)
 		if _entity_distance_to_district(unit, city_index) > command_range:
 			continue
-		var city := _district_city(city_index)
-		var damage := int(districts[city_index].get("damage", 0))
-		var panic := int(districts[city_index].get("panic", 0))
+		var city := _district_city(city_index, player_index)
+		var damage := int(_public_district(city_index).get("damage", 0))
+		var panic := int(_public_district(city_index).get("panic", 0))
 		var route_damage := int(city.get("trade_route_damage", 0))
 		var disrupted := int(city.get("trade_disrupted_routes", 0))
 		var warehouse_pressure := _city_warehouse_stockpile_pressure(city)
@@ -6998,7 +7010,7 @@ func _ai_military_guard_target(player_index: int, unit: Dictionary, command_rang
 				"military_command_score": maxi(1, score),
 				"military_command_distance_m": int(round(_entity_distance_to_district(unit, city_index))),
 				"reason": "军令保卫己方%s｜GDP%d｜区域伤%d｜断路%d｜仓储%d｜怪兽风险%d" % [
-					String(districts[city_index].get("name", "城市")),
+					String(_public_district(city_index).get("name", "城市")),
 					income,
 					damage,
 					route_damage + disrupted,
@@ -7012,7 +7024,7 @@ func _ai_military_strike_target(player_index: int, unit: Dictionary, command_ran
 	var best_score := -999999
 	for city_index_variant in _active_city_district_indices():
 		var city_index := int(city_index_variant)
-		var city := _district_city(city_index)
+		var city := _district_city(city_index, player_index)
 		var city_owner := int(city.get("owner", -1))
 		if city_owner == player_index or city_owner < 0:
 			continue
@@ -7037,7 +7049,7 @@ func _ai_military_strike_target(player_index: int, unit: Dictionary, command_ran
 				"military_command_score": maxi(1, score),
 				"military_command_distance_m": int(round(_entity_distance_to_district(unit, city_index))),
 				"reason": "军令轰击竞品%s｜城市价值%d｜仓储%d｜商路%d｜火力%d" % [
-					String(districts[city_index].get("name", "城市")),
+					String(_public_district(city_index).get("name", "城市")),
 					attack_value,
 					warehouse_pressure,
 					route_load,
@@ -7064,7 +7076,7 @@ func _ai_military_monster_target(player_index: int, unit: Dictionary, command_ra
 			if city_distance < nearest_own_city_distance:
 				nearest_own_city_distance = city_distance
 				nearest_own_city = city_index
-		var resource_pressure := _monster_resource_match_score(actor, monster_position) if monster_position >= 0 and monster_position < districts.size() else 0
+		var resource_pressure := _monster_resource_match_score(actor, monster_position) if monster_position >= 0 and monster_position < _district_count() else 0
 		var monster_owner := int(actor.get("owner", -1))
 		var score := 72 + int(actor.get("rank", 1)) * 42 + int(actor.get("hp", 0)) * 3 + resource_pressure * 65 + int(unit.get("damage", 1)) * 58
 		if nearest_own_city >= 0:
@@ -7101,10 +7113,10 @@ func _ai_military_move_target(player_index: int, unit: Dictionary) -> Dictionary
 	var best := {}
 	var best_score := -999999
 	var unit_type := String(unit.get("military_type", "defense"))
-	for index in range(districts.size()):
-		if bool(districts[index].get("destroyed", false)):
+	for index in range(_district_count()):
+		if bool(_public_district(index).get("destroyed", false)):
 			continue
-		var city := _district_city(index)
+		var city := _district_city(index, player_index)
 		var city_owner := int(city.get("owner", -1)) if _city_is_active(city) else -1
 		var distance := _entity_distance_to_district(unit, index)
 		var terrain_multiplier := _military_unit_terrain_move_multiplier(unit, index)
@@ -7117,9 +7129,9 @@ func _ai_military_move_target(player_index: int, unit: Dictionary) -> Dictionary
 			if ["bomber", "missile", "submarine", "warship"].has(unit_type):
 				score += 70
 		score += _route_network_load_for_legacy_region(index) * (18 if ["submarine", "warship"].has(unit_type) else 8)
-		if String(districts[index].get("terrain", "land")) == "ocean" and ["submarine", "warship"].has(unit_type):
+		if String(_public_district(index).get("terrain", "land")) == "ocean" and ["submarine", "warship"].has(unit_type):
 			score += 85
-		if String(districts[index].get("terrain", "land")) == "land" and unit_type == "tank":
+		if String(_public_district(index).get("terrain", "land")) == "land" and unit_type == "tank":
 			score += 65
 		if distance <= 5.0:
 			score -= 160
@@ -7134,7 +7146,7 @@ func _ai_military_move_target(player_index: int, unit: Dictionary) -> Dictionary
 				"military_command_score": maxi(1, score),
 				"military_command_distance_m": int(round(distance)),
 				"reason": "军令前进至%s｜地形×%.2f｜距离%s｜角色:%s" % [
-					String(districts[index].get("name", "区域")),
+					String(_public_district(index).get("name", "区域")),
 					terrain_multiplier,
 					_meters_text(distance),
 					unit_type,
@@ -7299,13 +7311,13 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		context["focus_bonus"] = int(context.get("focus_bonus", 0)) + _ai_district_focus_score(player_index, own_city)
 	elif kind == "route_insurance":
 		var damaged_city := _ai_best_city_district(player_index, true, true)
-		if damaged_city < 0 or int(_district_city(damaged_city).get("trade_route_damage", 0)) <= 0:
+		if damaged_city < 0 or int(_district_city(damaged_city, player_index).get("trade_route_damage", 0)) <= 0:
 			var route_city := _ai_best_owned_route_city_for_product(player_index, route_product, false) if route_product != "" else -1
 			damaged_city = route_city if route_city >= 0 else own_city
 		if damaged_city < 0:
 			return {}
 		context["district"] = damaged_city
-		var defense_city := _district_city(damaged_city)
+		var defense_city := _district_city(damaged_city, player_index)
 		context["target_city"] = damaged_city
 		context["target_owner"] = int(defense_city.get("owner", -1))
 		var route_pressure := int(defense_city.get("trade_route_damage", 0)) + int(defense_city.get("trade_disrupted_routes", 0))
@@ -7336,13 +7348,13 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		var gdp_insurance := bool(derivative_terms.get("insurance", false))
 		context["policy_kind"] = "%s_%s" % [kind, "insurance" if gdp_insurance else gdp_direction]
 		context["target_city"] = gdp_target
-		context["target_owner"] = int(_district_city(gdp_target).get("owner", -1))
+		context["target_owner"] = int(_district_city(gdp_target, player_index).get("owner", -1))
 		context["score"] = int(context["score"]) + 110 + int(round(float(derivative_terms.get("multiplier", 1.0)) * 35.0)) + int(float(int(derivative_terms.get("destroy_bonus", 0))) / 10.0) + _city_gdp_derivative_risk_adjusted_value(derivative_terms)
 		if gdp_insurance:
 			context["score"] = int(context["score"]) + int(float(_ai_city_gdp_insurance_score(player_index, gdp_target)) / 3.0)
 		context["reason"] = "匿名%s%sGDP｜倍率×%.2f｜持仓%s" % [
 			"灾害保单对冲" if gdp_insurance else ("买涨" if gdp_direction == "up" else "做空"),
-			districts[gdp_target]["name"],
+			_public_district(gdp_target)["name"],
 			float(derivative_terms.get("multiplier", 1.0)),
 			_duration_short_text(_city_gdp_derivative_duration_seconds(skill)),
 		]
@@ -7351,7 +7363,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 			return {}
 		context["district"] = rival_city
 		context["target_city"] = rival_city
-		context["target_owner"] = int(_district_city(rival_city).get("owner", -1))
+		context["target_owner"] = int(_district_city(rival_city, player_index).get("owner", -1))
 		context["product"] = _ai_preferred_product(player_index, true)
 		if String(context.get("product", "")) == focus_product and focus_product != "":
 			context["focus_bonus"] = int(context.get("focus_bonus", 0)) + AI_ECONOMIC_FOCUS_MATCH_BONUS
@@ -7372,7 +7384,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 			return {}
 		context["district"] = rival_city
 		context["target_city"] = rival_city
-		context["target_owner"] = int(_district_city(rival_city).get("owner", -1))
+		context["target_owner"] = int(_district_city(rival_city, player_index).get("owner", -1))
 		context["product"] = _ai_preferred_product(player_index, true)
 		if String(context.get("product", "")) == focus_product and focus_product != "":
 			context["focus_bonus"] = int(context.get("focus_bonus", 0)) + AI_ECONOMIC_FOCUS_MATCH_BONUS
@@ -7382,7 +7394,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		context["district"] = own_city if net_shift >= 0 else rival_city
 		if int(context["district"]) < 0:
 			return {}
-		var shifted_city := _district_city(int(context["district"]))
+		var shifted_city := _district_city(int(context["district"]), player_index)
 		if _city_is_active(shifted_city):
 			context["target_city"] = int(context["district"])
 			context["target_owner"] = int(shifted_city.get("owner", -1))
@@ -7414,7 +7426,8 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		if rival_city < 0:
 			return {}
 		context["district"] = rival_city
-		context["score"] = int(context["score"]) + 88 + _city_intel_priority_score({"potential_income": int(_district_city(rival_city).get("last_income", 0)), "last_income": int(_district_city(rival_city).get("last_income", 0)), "competition": _city_competition_matches(rival_city), "disrupted": int(_district_city(rival_city).get("trade_disrupted_routes", 0)), "products": _city_product_names(_district_city(rival_city)), "demands": _city_demand_names(_district_city(rival_city)), "marked": false})
+		var rival_city_snapshot := _district_city(rival_city, player_index)
+		context["score"] = int(context["score"]) + 88 + _city_intel_priority_score({"potential_income": int(rival_city_snapshot.get("last_income", 0)), "last_income": int(rival_city_snapshot.get("last_income", 0)), "competition": _city_competition_matches(rival_city), "disrupted": int(rival_city_snapshot.get("trade_disrupted_routes", 0)), "products": _city_product_names(rival_city_snapshot), "demands": _city_demand_names(rival_city_snapshot), "marked": false})
 	elif ["card_history_public_review", "card_history_subscription"].has(kind):
 		var history_resolution_id := _latest_public_history_resolution_id()
 		if history_resolution_id < 0:
@@ -7424,7 +7437,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		context["score"] = int(context["score"]) + 70 + mini(36, resolved_card_history.size() * 3)
 	elif kind == "supply_draw":
 		context["district"] = -1
-		for i in range(districts.size()):
+		for i in range(_district_count()):
 			if _market_listing_purchasable(i) and not _district_supply_card_ids(i).is_empty():
 				context["district"] = i
 				break
@@ -7480,8 +7493,8 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 	var context_district := int(context.get("district", -1))
 	if context.has("target_owner"):
 		target_owner = int(context.get("target_owner", -999))
-	elif context_district >= 0 and context_district < districts.size():
-		var target_city := _district_city(context_district)
+	elif context_district >= 0 and context_district < _district_count():
+		var target_city := _district_city(context_district, player_index)
 		if _city_is_active(target_city):
 			target_owner = int(target_city.get("owner", -1))
 	var strategy_bonus := _ai_strategy_bonus_for_candidate(player_index, kind, context_district, String(context.get("product", "")), target_owner, skill)
@@ -7595,8 +7608,8 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 	var phase_label := _ai_game_phase_label(phase)
 	var posture_label := _ai_competitive_posture_label(posture)
 	var counted_hand := _player_counted_hand_size(player)
-	for district_index in range(districts.size()):
-		if not _market_listing_purchasable(district_index) or bool(districts[district_index].get("destroyed", false)):
+	for district_index in range(_district_count()):
+		if not _market_listing_purchasable(district_index) or bool(_public_district(district_index).get("destroyed", false)):
 			continue
 		for card_variant in _district_supply_card_ids(district_index):
 			var card_name := String(card_variant)
@@ -7651,7 +7664,7 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 			var strategy_bonus := _ai_strategy_bonus_for_candidate(player_index, kind, district_index, product_name, -999, skill)
 			var route_bonus := _ai_route_plan_bonus_for_candidate(player_index, kind, district_index, product_name, -999, skill)
 			var target_owner := -999
-			var city := _district_city(district_index)
+			var city := _district_city(district_index, player_index)
 			if _city_is_active(city):
 				target_owner = int(city.get("owner", -1))
 			var generic_bonus := _ai_generic_card_effect_score(player_index, skill, district_index, product_name, target_owner)
@@ -8305,7 +8318,7 @@ func _ai_monster_wager_nearest_city_pressure(player_index: int, actor: Dictionar
 	var nearest_rival := 999999.0
 	for city_index_variant in _active_city_district_indices():
 		var city_index := int(city_index_variant)
-		var city := _district_city(city_index)
+		var city := _district_city(city_index, player_index)
 		var city_owner := int(city.get("owner", -1))
 		var distance := _entity_distance_to_district(actor, city_index)
 		var city_value := _ai_city_target_score(player_index, city_index, city_owner == player_index, true)

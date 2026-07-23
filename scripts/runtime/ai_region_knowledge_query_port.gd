@@ -163,6 +163,12 @@ func _project_city(
 	}
 	result["product_names"] = _product_names(source.get("products", []))
 	result["demand_names"] = _string_values(source.get("demands", []))
+	result["products"] = (result["product_names"] as Array).duplicate()
+	result["demands"] = (result["demand_names"] as Array).duplicate()
+	var route_summary := _public_trade_route_summary(source.get("trade_routes", []))
+	result["trade_route_count"] = int(route_summary.get("count", 0))
+	result["active_trade_route_products"] = (route_summary.get("active_products", []) as Array).duplicate()
+	result["disrupted_trade_route_products"] = (route_summary.get("disrupted_products", []) as Array).duplicate()
 	result["warehouse_stockpile_products"] = _string_values(source.get("warehouse_stockpile_products", []))
 	result["public_clues"] = _normalized_public_clues(source.get("public_clues", []))
 	result["last_public_clue"] = str(_normalize_public_clue(source.get("last_public_clue", "")).get("text", ""))
@@ -210,6 +216,33 @@ func _string_values(value: Variant) -> Array:
 			if not normalized.is_empty():
 				result.append(normalized)
 	return result
+
+
+func _public_trade_route_summary(value: Variant) -> Dictionary:
+	var active_products: Array = []
+	var disrupted_products: Array = []
+	var count := 0
+	if value is Array:
+		for route_variant in value as Array:
+			if not (route_variant is Dictionary):
+				continue
+			count += 1
+			var route := route_variant as Dictionary
+			var product_id := _string_scalar(route.get("product", ""))
+			if product_id.is_empty():
+				continue
+			if bool(route.get("disrupted", false)):
+				if not disrupted_products.has(product_id):
+					disrupted_products.append(product_id)
+			elif not active_products.has(product_id):
+				active_products.append(product_id)
+	active_products.sort()
+	disrupted_products.sort()
+	return {
+		"count": count,
+		"active_products": active_products,
+		"disrupted_products": disrupted_products,
+	}
 
 
 func _normalized_public_clues(value: Variant) -> Array:

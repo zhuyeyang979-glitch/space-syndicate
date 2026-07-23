@@ -8889,3 +8889,22 @@ deleted. Evidence and the remaining action inventory are recorded in
 - Actor economy, actor state, actor hand, and setup/session-start transaction
   gates pass. No policy, personality, RNG, save owner, or save shape changed;
   whole-district migration and generic bridge extinction remain pending.
+# 2026-07-23 | AI actor-scoped region query boundary
+
+- AI production consumers no longer read the complete `players` or `districts`
+  collections. Region iteration and city facts now come from detached public or
+  actor-scoped typed projections.
+- Rival hidden city ownership is replaced by the current AI actor's own saved
+  inference or an explicit unknown sentinel. Existing anonymous warehouse
+  count/unit/product clues remain public.
+- Public city route evidence is reduced to count and active/disrupted product
+  names; raw route rows and private topology/ownership fields do not reach AI
+  scoring.
+- The futures policy fixture now uses the formal session-start transaction and
+  freezes the current RegionSupply acquisition catalog instead of calling the
+  retired `Main._new_game` path.
+- Godot MCP validated the formal worktree with Godot 4.7 and compiled 206
+  GDScript files with zero errors. Focused gates passed: region 52/52, futures
+  39/39, market/route 15/15, card phase/counter 22/22, and business transaction
+  68/68. The parent P0 remains active while generic world/monster calls and
+  `TableSelectionState` coupling remain.

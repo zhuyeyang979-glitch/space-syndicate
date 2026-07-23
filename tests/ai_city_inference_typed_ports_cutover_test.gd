@@ -82,6 +82,7 @@ func _run() -> void:
 	var actor_a_own_city := (_region(snapshot_a, "region.000").get("city", {}) as Dictionary)
 	var actor_a_rival_city := (_region(snapshot_a, "region.001").get("city", {}) as Dictionary)
 	_expect(actor_a_own_city.has("warehouse_stockpile_units") and int(actor_a_rival_city.get("warehouse_stockpile_units", -1)) == 2 and actor_a_rival_city.has("warehouse_stockpile_products") and int(actor_a_rival_city.get("owner", -1)) != 3, "region projection preserves anonymous public warehouse clues without hidden owner truth")
+	_expect(int(actor_a_own_city.get("trade_route_count", 0)) == 1 and (actor_a_own_city.get("active_trade_route_products", []) as Array).has("生命") and (actor_a_rival_city.get("disrupted_trade_route_products", []) as Array).has("能源"), "region projection exposes only public route count, product, and disruption summaries")
 	_expect(not snapshot_a.is_empty() and str(snapshot_a.get("visibility_scope", "")) == "actor_private", "authorized AI receives an actor-private region snapshot")
 	_expect(snapshot_b.get("regions", []) is Array and not (snapshot_b.get("regions", []) as Array).is_empty(), "second AI receives its own detached region snapshot")
 	_expect(world.players == players_before and int(world.debug_snapshot().get("city_inference_mutation_count", -1)) == mutation_before, "typed queries perform zero world mutation")
@@ -199,6 +200,12 @@ func _district(region_id: String, name: String, owner: int, product: String, dem
 			"trade_disrupted_routes": disrupted,
 			"competition_matches": {"private_plan": "CLUE_PRIVATE_COMPETITION"},
 			"trade_route_damage": {"private_plan": "CLUE_PRIVATE_ROUTE_DAMAGE"},
+			"trade_routes": [{
+				"product": product,
+				"disrupted": disrupted > 0,
+				"owner": "CLUE_PRIVATE_ROUTE_OWNER",
+				"facility_id": "CLUE_PRIVATE_ROUTE_FACILITY",
+			}],
 			"public_clues": [{
 				"text": "%s卡牌公开线索" % product,
 				"products": [product],
@@ -240,6 +247,10 @@ func _run_source_negative_gates() -> void:
 	_expect(not main_source.contains("CITY_GUESS_CONFIDENCE_") and not main_source.contains("CITY_GUESS_REASON_"), "Main no longer owns AI city inference constants")
 	_expect(not bridge_source.contains("apply_city_owner_guess"), "generic AI world bridge no longer mutates city inference")
 	_expect(not controller_source.contains("_world_constant(&\"CITY_GUESS_"), "AI city inference no longer reads Main constant snapshots")
+	var whole_districts_pattern := RegEx.new()
+	whole_districts_pattern.compile("(^|[^A-Za-z0-9_])districts\\s*(\\[|\\.size\\()")
+	_expect(not controller_source.contains("\nvar districts:") and not controller_source.contains("_world_value(&\"districts\"") and whole_districts_pattern.search(controller_source) == null, "AI controller has no whole-district collection read or write")
+	_expect(not controller_source.contains("_call_monster(&\"_district_city\"") and not controller_source.contains("trade_routes"), "AI region reads use typed projections without Monster or raw city-route fallback")
 	for function_name in ["_intel_city_guess_entries", "_ai_public_player_product_signal", "_ai_city_guess_owner_candidate", "_ai_city_guess_candidates", "_auto_ai_intel_decisions"]:
 		var body := _function_body(controller_source, function_name)
 		_expect(not body.contains("players") and not body.contains("districts") and not body.contains("_call_world"), "%s contains no whole-world or Main dynamic access" % function_name)

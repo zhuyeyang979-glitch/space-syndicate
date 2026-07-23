@@ -1,5 +1,7 @@
 extends SceneTree
 
+const SESSION_START_DRIVER := preload("res://tests/support/production_session_start_driver.gd")
+const QA_SAVE_PATH := "user://test_runs/ai_commodity_futures_policy_runtime.save"
 const PRODUCT := "环晶电池"
 const LONG_CARD := "商品看涨1"
 const SHORT_CARD := "商品看跌1"
@@ -14,20 +16,25 @@ func _init() -> void:
 
 
 func _run() -> void:
-	var packed := load("res://scenes/main.tscn") as PackedScene
-	_expect(packed != null, "real main scene loads the production runtime composition")
-	if packed == null:
+	_remove_qa_save()
+	var start := await SESSION_START_DRIVER.start_configured_session(
+		self,
+		{"player_count": 4, "ai_player_count": 3, "challenge_depth": 1},
+		QA_SAVE_PATH,
+		"ai-commodity-futures-policy"
+	)
+	var main := start.get("main_root") as Node
+	var coordinator := start.get("coordinator") as GameRuntimeCoordinator
+	_expect(bool(start.get("qa_save_override_ready", false)), "fixture isolates the production save path")
+	_expect(bool(start.get("started", false)) and int(start.get("main_start_call_count", -1)) == 0 and int(start.get("setup_fallback_count", -1)) == 0, "formal SessionStartTransaction starts the production fixture without Main fallback")
+	if main == null or coordinator == null or not bool(start.get("started", false)):
+		if main != null:
+			_dispose(main)
+		await process_frame
+		_remove_qa_save()
 		_finish()
 		return
-	var main := packed.instantiate()
-	root.add_child(main)
-	await process_frame
-	await process_frame
-	main.call("_new_game")
-	await process_frame
-	await process_frame
 
-	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
 	var ai := coordinator.get_node_or_null("AiRuntimeController") if coordinator != null else null
 	var market := coordinator.get_node_or_null("ProductMarketRuntimeController") if coordinator != null else null
 	var commodity := coordinator.get_node_or_null("CommodityFlowRuntimeController") if coordinator != null else null
@@ -52,17 +59,22 @@ func _run() -> void:
 		_check_owner_privacy(commodity, market)
 
 	_dispose(main)
+	await process_frame
+	await process_frame
+	_remove_qa_save()
 	_finish()
 
 
 func _install_fixture(main: Node, ai: Node, market: Node) -> Dictionary:
-	var districts: Array = (((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts as Array).duplicate(true)
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	var supply_query := coordinator.district_supply_runtime_query_port() if coordinator != null else null
+	var districts: Array = (coordinator.world_session_state().districts as Array).duplicate(true) if coordinator != null else []
 	var own_index := -1
 	for index in range(districts.size()):
 		var district: Dictionary = districts[index]
 		if bool(district.get("destroyed", false)) or str(district.get("terrain", "")) == "ocean":
 			continue
-		if bool(main.call("_district_market_currently_purchasable", index)):
+		if supply_query != null and supply_query.public_market_purchasable(index):
 			own_index = index
 			break
 	var rival_index := -1
@@ -119,8 +131,7 @@ func _install_fixture(main: Node, ai: Node, market: Node) -> Dictionary:
 	rival_district["demands"] = ["轨迹墨水"]
 	rival_district["city"] = _city(2, "AI期货竞品城", PRODUCT, "轨迹墨水", 1180, 4)
 	districts[rival_index] = rival_district
-	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).districts = districts
-	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_trade_product = PRODUCT
+	coordinator.world_session_state().districts = districts
 
 	var market_save := market.call("to_save_data") as Dictionary
 	var product_market: Dictionary = (market_save.get("product_market", {}) as Dictionary).duplicate(true)
@@ -209,16 +220,19 @@ func _set_market_bias(main: Node, bullish: bool) -> void:
 	market.call("apply_save_data", saved)
 
 
-func _check_buy_candidates(_main: Node, ai: Node, fixture: Dictionary) -> void:
+func _check_buy_candidates(main: Node, ai: Node, fixture: Dictionary) -> void:
+	var coordinator := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator
+	var players := coordinator.world_session_state().players.duplicate(true)
+	var buyer := (players[1] as Dictionary).duplicate(true)
+	buyer["slots"] = []
+	players[1] = buyer
+	coordinator.world_session_state().replace_players(players, true)
 	var candidates := ai.call("_ai_card_buy_candidates", 1) as Array
 	var long_buy := _candidate(candidates, LONG_CARD)
 	var stockpile_buy := _candidate(candidates, STOCKPILE_CARD)
-	fixture["long_buy"] = long_buy
-	fixture["stockpile_buy"] = stockpile_buy
-	_expect(not long_buy.is_empty(), "affordable sunlit market exposes a long-card buy candidate")
-	_expect(str(long_buy.get("policy_kind", "")) == "product_futures_up" and int(long_buy.get("futures_play_district", -1)) >= 0, "long buy candidate carries a playable futures plan")
-	_expect(not stockpile_buy.is_empty(), "affordable sunlit market exposes a stockpile-card buy candidate")
-	_expect(int(stockpile_buy.get("futures_warehouse_city", -1)) == int(fixture.own_index), "stockpile buy candidate retains the owned warehouse target")
+	var acquisition_catalog := coordinator.region_supply_catalog_card_ids()
+	_expect(not acquisition_catalog.has(LONG_CARD) and not acquisition_catalog.has(STOCKPILE_CARD), "current RegionSupply acquisition catalog excludes injected product-futures cards")
+	_expect(long_buy.is_empty() and stockpile_buy.is_empty(), "AI creates no illegal RegionSupply buy candidate for non-acquisition futures cards")
 
 
 func _check_budget_discipline(main: Node, ai: Node) -> void:
@@ -241,7 +255,7 @@ func _check_budget_discipline(main: Node, ai: Node) -> void:
 
 
 func _check_training_metadata(ai: Node, fixture: Dictionary) -> void:
-	for label in ["long_context", "short_context", "stockpile_context", "long_buy", "stockpile_buy"]:
+	for label in ["long_context", "short_context", "stockpile_context"]:
 		var candidate: Dictionary = fixture.get(label, {})
 		var training := ai.call("_ai_candidate_training_view", candidate) as Dictionary
 		_expect(training.has("policy_kind") and training.has("futures_signal"), "%s keeps policy and signal training metadata" % label)
@@ -323,6 +337,11 @@ func _dispose(main: Node) -> void:
 	if is_instance_valid(main):
 		root.remove_child(main)
 		main.queue_free()
+
+
+func _remove_qa_save() -> void:
+	if FileAccess.file_exists(QA_SAVE_PATH):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(QA_SAVE_PATH))
 
 
 func _finish() -> void:
