@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "parent_task": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
+  "parent_task_status": "ACTIVE",
+  "port": "res://scripts/runtime/ai_session_public_query_port.gd",
+  "scene": "res://scenes/runtime/AiSessionPublicQueryPort.tscn",
+  "owner": false,
+  "query_only": true,
+  "snapshot_fields": [
+    "session_id",
+    "session_revision",
+    "session_state",
+    "session_finished",
+    "world_effective_time",
+    "game_time",
+    "business_cycle_revision",
+    "player_count",
+    "district_count",
+    "map_width_m",
+    "map_height_m",
+    "challenge_depth",
+    "active_resolution_present",
+    "public_phase"
+  ],
+  "authoritative_dependencies": [
+    "GameSessionRuntimeController",
+    "WorldSessionState",
+    "WorldEffectiveClockRuntimeController",
+    "ProductMarketRuntimeController",
+    "CardResolutionRuntimeController",
+    "CardResolutionQueueRuntimeService"
+  ],
+  "generic_consumers_removed": [
+    "AiRuntimeController.session_finished -> _call_world(_runtime_session_finished)",
+    "AiRuntimeController.game_time -> _world_value(game_time)"
+  ],
+  "privacy": {
+    "whole_players_returned": false,
+    "whole_districts_returned": false,
+    "cash_returned": false,
+    "hand_returned": false,
+    "nodes_returned": false,
+    "main_referenced": false
+  },
+  "query_mutation_count": 0,
+  "query_rng_delta": 0,
+  "new_save_section_count": 0,
+  "focused_test": {
+    "path": "res://tests/ai_session_public_query_port_test.gd",
+    "checks": 16,
+    "result": "PASS",
+    "run_id": "20260723-085922-515-ai_session_public_query_port_test-51c422cd"
+  },
+  "actor_regression": {
+    "checks": 95,
+    "result": "PASS",
+    "run_id": "20260723-085940-747-ai_actor_state_typed_port_migration_test-939eff4f"
+  },
+  "parent_generic_bridge_complete": false,
+  "full_run_resume_claim": false,
+  "next_boundary": "AI_CARD_AND_ACTOR_ECONOMY_QUERY_PORTS"
+}

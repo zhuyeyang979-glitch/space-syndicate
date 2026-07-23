@@ -1,4 +1,4 @@
-[gd_scene load_steps=125 format=3]
+[gd_scene load_steps=126 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -123,6 +123,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiActorStatePort.tscn" id="130_ai_actor_state"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiRegionKnowledgeQueryPort.tscn" id="131_ai_region_knowledge"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiCityInferenceCommandPort.tscn" id="132_ai_city_inference"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/AiSessionPublicQueryPort.tscn" id="133_ai_session_public"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -336,6 +337,9 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="AiActorStatePort" parent="." instance=ExtResource("130_ai_actor_state")]
+unique_name_in_owner = true
+
+[node name="AiSessionPublicQueryPort" parent="." instance=ExtResource("133_ai_session_public")]
 unique_name_in_owner = true
 
 [node name="AiRegionKnowledgeQueryPort" parent="." instance=ExtResource("131_ai_region_knowledge")]

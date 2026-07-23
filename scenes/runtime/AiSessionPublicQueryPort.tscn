@@ -1,0 +1,12 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/ai_session_public_query_port.gd" id="1_port"]
+
+[node name="AiSessionPublicQueryPort" type="Node"]
+script = ExtResource("1_port")
+world_session_state_path = NodePath("../WorldSessionState")
+game_session_runtime_controller_path = NodePath("../GameSessionRuntimeController")
+world_effective_clock_path = NodePath("../WorldEffectiveClockRuntimeController")
+product_market_runtime_controller_path = NodePath("../ProductMarketRuntimeController")
+card_resolution_runtime_controller_path = NodePath("../CardResolutionRuntimeController")
+card_resolution_queue_path = NodePath("../CardResolutionQueueRuntimeService")

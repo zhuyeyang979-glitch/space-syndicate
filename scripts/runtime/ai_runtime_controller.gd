@@ -25,6 +25,7 @@ const AI_PLAYER_SAVE_FIELDS := ["player_index", "ai_profile", "ai_memory"]
 @export var policy_profile: Resource = DEFAULT_POLICY_PROFILE
 
 var _world_bridge: Node
+var _ai_session_public_query_port: AiSessionPublicQueryPort
 var _ai_actor_state_port: AiActorStatePort
 var _ai_actor_state_capabilities: Dictionary = {}
 var _ai_actor_state_capability_binding_initialized := false
@@ -65,12 +66,14 @@ func set_world_bridge(bridge: Node) -> void:
 
 
 func set_world_typed_ports(
+	session_public_query_port: AiSessionPublicQueryPort,
 	actor_state_port: AiActorStatePort,
 	actor_state_capabilities: Dictionary,
 	region_knowledge_query_port: AiRegionKnowledgeQueryPort,
 	region_knowledge_capability: AiRegionKnowledgeCapability,
 	city_inference_command_port: AiCityInferenceCommandPort
 ) -> void:
+	_ai_session_public_query_port = session_public_query_port
 	_ai_actor_state_port = actor_state_port
 	set_actor_state_capabilities(actor_state_capabilities)
 	_ai_region_knowledge_query_port = region_knowledge_query_port
@@ -81,6 +84,11 @@ func set_world_typed_ports(
 func set_actor_state_capabilities(actor_state_capabilities: Dictionary) -> void:
 	_ai_actor_state_capabilities = actor_state_capabilities.duplicate()
 	_ai_actor_state_capability_binding_initialized = true
+
+
+func _session_public_snapshot() -> Dictionary:
+	return _ai_session_public_query_port.public_snapshot() \
+		if _ai_session_public_query_port != null and _ai_session_public_query_port.is_ready() else {}
 
 
 func set_monster_runtime_controller(controller: MonsterRuntimeController) -> void:
@@ -475,6 +483,8 @@ func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 		"typed_card_submission_bound": _card_play_submission_controller != null,
 		"typed_card_history_bound": _card_resolution_history_service != null,
 		"typed_business_cost_cash_bound": _ai_business_cost_cash_port != null and _ai_business_cost_capability != null,
+		"typed_session_public_query_bound": _ai_session_public_query_port != null and _ai_session_public_query_port.is_ready(),
+		"session_public_query_uses_main": false,
 		"typed_actor_state_bound": _ai_actor_state_port != null and _ai_actor_state_capability_binding_initialized and _ai_actor_state_port.is_ready(),
 		"actor_state_capabilities_are_actor_scoped": true,
 		"actor_state_uses_main": false,
@@ -713,13 +723,11 @@ var districts:
 
 var session_finished:
 	get:
-		return bool(_call_world(&"_runtime_session_finished"))
+		return bool(_session_public_snapshot().get("session_finished", false))
 
 var game_time:
 	get:
-		return _world_value(&"game_time", 0.0)
-	set(value):
-		_write_world_value(&"game_time", value)
+		return float(_session_public_snapshot().get("game_time", 0.0))
 
 var military_units:
 	get:
