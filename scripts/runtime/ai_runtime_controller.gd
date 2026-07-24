@@ -80,8 +80,9 @@ var _ai_victory_public_query_port: AiVictoryPublicQueryPort
 var _ai_actor_victory_query_port: AiActorVictoryQueryPort
 var _ai_actor_victory_capabilities: Dictionary = {}
 var _ai_actor_victory_capability_binding_initialized := false
+var _role_catalog_runtime_service: RoleCatalogRuntimeService
+var _table_presentation_refresh_port: TablePresentationRefreshPort
 var _monster_runtime_controller: MonsterRuntimeController
-var _military_runtime_controller: MilitaryRuntimeController
 var _product_market_runtime_controller: ProductMarketRuntimeController
 var _city_gdp_derivative_runtime_controller: CityGdpDerivativeRuntimeController
 var _card_definition_bridge: CardRuntimeDefinitionWorldBridge
@@ -393,9 +394,12 @@ func set_monster_runtime_controller(controller: MonsterRuntimeController) -> voi
 	_monster_runtime_controller = controller
 
 
-func set_military_runtime_controller(controller: MilitaryRuntimeController) -> void:
-	_military_runtime_controller = controller
+func set_role_catalog_runtime_service(service: RoleCatalogRuntimeService) -> void:
+	_role_catalog_runtime_service = service
 
+
+func set_table_presentation_refresh_port(port: TablePresentationRefreshPort) -> void:
+	_table_presentation_refresh_port = port
 
 
 func set_product_market_runtime_controller(controller: ProductMarketRuntimeController) -> void:
@@ -957,11 +961,6 @@ func _actor_district(actor_index: int, district_index: int) -> Dictionary:
 	) if _city_inference_ports_ready() else {}
 
 
-func _call_monster(method_name: StringName, arguments: Array = []) -> Variant:
-	if _monster_runtime_controller == null or not _monster_runtime_controller.has_method(method_name):
-		return null
-	return _monster_runtime_controller.callv(method_name, arguments)
-
 
 func _active_monster_wager_ids() -> Array:
 	return _ai_monster_public_query_port.active_wager_ids_snapshot() \
@@ -1247,9 +1246,6 @@ var WEATHER_ZONE_MAX:
 
 # World fact and mutation adapters. Decision ownership stays above this boundary.
 
-func _ruleset_timing_seconds(rule_id: StringName) -> float:
-	return _call_monster(&"_ruleset_timing_seconds", [rule_id])
-
 func _card_resolution_active_entry() -> Dictionary:
 	var snapshot := _card_queue_public_snapshot()
 	return (snapshot.get("active", {}) as Dictionary).duplicate(true) \
@@ -1516,9 +1512,6 @@ func _product_strategy_scores(product_name: String, player_index: int = -1) -> D
 		"volatility": volatility,
 	}
 
-func _limited_name_list(names: Array, limit: int = 6, empty_text: String = "无") -> String:
-	return _call_monster(&"_limited_name_list", [names, limit, empty_text])
-
 func _player_product_flow(player_index: int, product_name: String) -> int:
 	var economy := _ai_actor_economy_snapshot(player_index)
 	var summary: Dictionary = economy.get("economy_summary", {}) \
@@ -1691,7 +1684,10 @@ func _make_skill(skill_name: String) -> Dictionary:
 	return skill
 
 func _player_role_card_for_index(player_index: int) -> Dictionary:
-	return _call_monster(&"_player_role_card_for_index", [player_index])
+	if not _actor_state_ready() or _role_catalog_runtime_service == null:
+		return {}
+	var player := _ai_actor_state_port.public_player_snapshot(player_index)
+	return _role_catalog_runtime_service.public_definition_at(int(player.get("role_index", -1)))
 
 func _district_or_city_has_product(district_index: int, product_name: String) -> bool:
 	if product_name.is_empty() or district_index < 0 or district_index >= _district_count():
@@ -1709,7 +1705,8 @@ func _skill_definition(skill_name: String) -> Dictionary:
 	return _card_definition_bridge.resolve_definition(skill_name) if _card_definition_bridge != null else {}
 
 func _request_table_presentation_refresh() -> void:
-	return _call_monster(&"request_table_presentation_refresh")
+	if _table_presentation_refresh_port != null:
+		_table_presentation_refresh_port.request_immediate(&"full", &"ai_business_state_changed")
 
 func _district_city(index: int, actor_index := -1) -> Dictionary:
 	var district := _actor_district(actor_index, index) if actor_index >= 0 else _public_district(index)
@@ -1816,13 +1813,21 @@ func _latest_public_history_resolution_id() -> int:
 	return -1
 
 func _monster_wager_base_percent(entry: Dictionary) -> int:
-	return _call_monster(&"_monster_wager_base_percent", [entry])
+	return maxi(0, int(entry.get("base_percent", 0)))
 
-func _monster_wager_clamped_percent(entry: Dictionary, percent: int) -> int:
-	return _call_monster(&"_monster_wager_clamped_percent", [entry, percent])
 
-func _monster_wager_amount_for_percent(player_index: int, percent: int, entry: Dictionary = {}) -> int:
-	return _call_monster(&"_monster_wager_amount_for_percent", [player_index, percent, entry])
+func _monster_wager_stake_option(entry: Dictionary, desired_percent: int) -> Dictionary:
+	var best: Dictionary = {}
+	for option_variant in entry.get("stake_options", []) as Array:
+		if not (option_variant is Dictionary):
+			continue
+		var option := option_variant as Dictionary
+		var percent := int(option.get("percent", -1))
+		if percent == desired_percent:
+			return option.duplicate(true)
+		if percent <= desired_percent and (best.is_empty() or percent > int(best.get("percent", -1))):
+			best = option
+	return best.duplicate(true)
 
 func _development_route_archetypes() -> Array:
 	return _gameplay_balance_diagnostics_service.development_routes() if _gameplay_balance_diagnostics_service != null else []
@@ -1840,7 +1845,14 @@ func _development_route_pressure_audit() -> Dictionary:
 	return _gameplay_balance_diagnostics_service.development_route_pressure_audit() if _gameplay_balance_diagnostics_service != null else {}
 
 func _duration_short_text(seconds: float) -> String:
-	return _call_monster(&"_duration_short_text", [seconds])
+	var total := maxi(1, int(round(seconds)))
+	if total < 60:
+		return "%d秒" % total
+	var minutes := int(float(total) / 60.0)
+	var rest := total % 60
+	if rest == 0:
+		return "%d分钟" % minutes
+	return "%d分%d秒" % [minutes, rest]
 
 func _skill_duration_seconds(
 	skill: Dictionary,
@@ -1857,7 +1869,8 @@ func _city_gdp_derivative_duration_seconds(skill: Dictionary) -> float:
 	return float(_city_gdp_derivative_terms(skill).get("duration_seconds", 0.0))
 
 func _can_summon_monster_card_at_district(skill: Dictionary, district_index: int) -> bool:
-	return _call_monster(&"_can_summon_monster_card_at_district", [skill, district_index])
+	return _ai_monster_public_query_port.can_summon_at_region(skill, district_index) \
+		if _ai_monster_public_query_port != null else false
 
 func _short_card_text(text: String, max_len: int) -> String:
 	if text.length() <= max_len:
@@ -1896,7 +1909,8 @@ func _counter_skill_for_ai_candidate(player_index: int, source_skill: Dictionary
 	return _make_skill("相位否决%d" % counter_rank)
 
 func _catalog_entry(index: int) -> Dictionary:
-	return _call_monster(&"_catalog_entry", [index])
+	return _ai_monster_public_query_port.public_catalog_entry(index) \
+		if _ai_monster_public_query_port != null else {}
 
 func _canonical_card_supply_name(skill_name: String) -> String:
 	if skill_name.is_empty() or _card_definition_bridge == null:
@@ -1940,7 +1954,18 @@ func _weather_preview_districts(anchor_index: int, zone_count: int) -> Array:
 		if _ai_weather_public_query_port != null else []
 
 func _weighted_pick_index(weights: Array) -> int:
-	return _call_monster(&"_weighted_pick_index", [weights])
+	var total := 0
+	for weight_variant in weights:
+		total += maxi(0, int(weight_variant))
+	if total <= 0 or _run_rng_service == null:
+		return -1
+	var ticket := _run_rng_service.randi_range(1, total)
+	var running := 0
+	for index in range(weights.size()):
+		running += maxi(0, int(weights[index]))
+		if ticket <= running:
+			return index
+	return weights.size() - 1
 
 func _card_display_name(card_name: String) -> String:
 	if card_name.is_empty() or _card_definition_bridge == null:
@@ -2192,29 +2217,51 @@ func _skill_is_counterable_player_interaction(skill: Dictionary) -> bool:
 	))
 
 func _append_unique_string(result: Array, value: String) -> void:
-	return _call_monster(&"_append_unique_string", [result, value])
+	if not value.is_empty() and not result.has(value):
+		result.append(value)
 
-func _monster_wager_entry_index_by_id(wager_id: int) -> int:
-	return _call_monster(&"_monster_wager_entry_index_by_id", [wager_id])
 
 func _monster_wager_current_slot(entry: Dictionary, side: String) -> int:
-	return _call_monster(&"_monster_wager_current_slot", [entry, side])
+	for competitor_variant in _monster_wager_competitors(entry):
+		if competitor_variant is Dictionary and str((competitor_variant as Dictionary).get("side", "")) == side:
+			return int((competitor_variant as Dictionary).get("slot", -1))
+	return -1
+
 
 func _monster_wager_competitors(entry: Dictionary) -> Array:
-	return _call_monster(&"_monster_wager_competitors", [entry])
+	var competitors: Variant = entry.get("competitors", [])
+	return (competitors as Array).duplicate(true) if competitors is Array else []
+
 
 func _monster_wager_damage_for_side(entry: Dictionary, side: String) -> int:
-	return _call_monster(&"_monster_wager_damage_for_side", [entry, side])
+	return maxi(0, int(entry.get("damage_%s" % side, 0)))
+
 
 func _monster_wager_player_side(entry: Dictionary, player_index: int) -> String:
-	return _call_monster(&"_monster_wager_player_side", [entry, player_index])
+	var bets: Variant = entry.get("bets", {})
+	if not (bets is Dictionary):
+		return ""
+	var own_bet: Variant = (bets as Dictionary).get(str(player_index), {})
+	return str((own_bet as Dictionary).get("side", "")) if own_bet is Dictionary else ""
+
 
 func _place_monster_wager_percent(wager_id: int, side: String, stake_percent: int = 0, player_index: int = -1, forced: bool = false, metadata: Dictionary = {}) -> bool:
-	var response: Variant = _call_monster(&"submit_monster_wager_response", [wager_id, player_index, StringName(side), stake_percent, forced, metadata])
-	return bool((response as Dictionary).get("applied", false)) if response is Dictionary else false
+	if _monster_runtime_controller == null:
+		return false
+	var response := _monster_runtime_controller.submit_monster_wager_response(
+		wager_id,
+		player_index,
+		StringName(side),
+		stake_percent,
+		forced,
+		metadata
+	)
+	return bool(response.get("applied", false))
+
 
 func _monster_wager_actor_expected_damage_score(actor: Dictionary) -> int:
-	return _call_monster(&"_monster_wager_actor_expected_damage_score", [actor])
+	return _ai_monster_public_query_port.public_expected_damage_score(int(actor.get("uid", 0))) \
+		if _ai_monster_public_query_port != null else 0
 
 func _active_city_district_indices() -> Array:
 	return _route_network_runtime_controller.active_region_legacy_indices() if _route_network_runtime_controller != null else []
@@ -2266,14 +2313,6 @@ func _add_action_callout(actor: String, action: String, detail: String, color: C
 	if _visual_cue_runtime_owner != null:
 		_visual_cue_runtime_owner.add_action_callout(actor, action, detail, color, world_position, duration)
 
-func _auto_monster_target_weight_parts(actor: Dictionary, index: int) -> Dictionary:
-	return _call_monster(&"_auto_monster_target_weight_parts", [actor, index])
-
-func _auto_monster_target_weight(actor: Dictionary, index: int) -> int:
-	return _call_monster(&"_auto_monster_target_weight", [actor, index])
-
-func _auto_monster_target_factor_summary(actor: Dictionary, index: int) -> String:
-	return _call_monster(&"_auto_monster_target_factor_summary", [actor, index])
 
 func _district_center(index: int) -> Vector2:
 	var district := _public_district(index)
@@ -2304,8 +2343,6 @@ func _meters_text(value: float) -> String:
 	return _ai_monster_public_query_port.meters_text(value) \
 		if _ai_monster_public_query_port != null else ""
 
-func _log(message: String) -> void:
-	return _call_monster(&"publish_public_log_message", [message])
 
 # Migrated AI decision ownership.
 
@@ -2834,7 +2871,6 @@ func _auto_rival_business_actions(force: bool = false) -> int:
 			)
 			acted += 1
 	if acted > 0:
-		_log("经营暗流：%d次匿名商业行动留下公开线索，但没有揭示真实业主。" % acted)
 		_request_table_presentation_refresh()
 	return acted
 
@@ -4849,47 +4885,61 @@ func _ai_policy_candidate_audit(player_index: int) -> Dictionary:
 		"negative_anomalies": negative_anomalies,
 	}
 func _monster_target_weight_audit() -> Dictionary:
-	var factor_keys := ["base", "panic", "city", "competition", "warehouse", "resource", "distance", "miasma", "monster"]
-	var actor_reports := []
-	var destroyed_zero_ok := true
-	var any_positive_alive := false
-	var factor_key_presence := {}
+	var factor_keys := ["distance", "city", "competition", "warehouse", "resource", "miasma", "other_monster"]
+	var factor_key_presence: Dictionary = {}
 	for key_variant in factor_keys:
-		factor_key_presence[String(key_variant)] = false
+		factor_key_presence[str(key_variant)] = false
+	var actor_reports: Array = []
+	var actor_report_index_by_ordinal: Dictionary = {}
 	var audit_roster := _monster_public_roster()
 	for actor_index in range(audit_roster.size()):
-		var actor: Dictionary = audit_roster[actor_index]
+		var actor := audit_roster[actor_index] as Dictionary
 		if bool(actor.get("down", false)):
 			continue
-		var district_reports := []
-		var positive_alive_count := 0
-		for district_index in range(_district_count()):
-			var parts := _auto_monster_target_weight_parts(actor, district_index)
-			var weight := _auto_monster_target_weight(actor, district_index)
-			var destroyed := bool(_public_district(district_index).get("destroyed", false))
-			if destroyed and weight != 0:
-				destroyed_zero_ok = false
-			if not destroyed and weight > 0:
-				positive_alive_count += 1
-				any_positive_alive = true
-			for key_variant in factor_keys:
-				var key := String(key_variant)
-				if parts.has(key):
-					factor_key_presence[key] = true
-			if district_reports.size() < 12:
-				district_reports.append({
+		var ordinal := int(actor.get("slot", actor_index)) + 1
+		actor_report_index_by_ordinal[ordinal] = actor_reports.size()
+		actor_reports.append({
+			"actor_index": int(actor.get("slot", actor_index)),
+			"name": str(actor.get("name", "怪兽")),
+			"positive_alive_count": 0,
+			"districts": [],
+		})
+	var destroyed_zero_ok := true
+	var any_positive_alive := false
+	for district_index in range(_district_count()):
+		var destroyed := bool(_public_district(district_index).get("destroyed", false))
+		var snapshot := _ai_monster_public_query_port.public_region_attraction_snapshot(district_index) \
+			if _ai_monster_public_query_port != null else {}
+		var entries: Array = snapshot.get("entries", []) if snapshot.get("entries", []) is Array else []
+		if destroyed and not entries.is_empty():
+			destroyed_zero_ok = false
+		if not destroyed and not entries.is_empty():
+			any_positive_alive = true
+		for entry_variant in entries:
+			if not (entry_variant is Dictionary):
+				continue
+			var entry := entry_variant as Dictionary
+			var factor_codes: Array = entry.get("factor_codes", []) if entry.get("factor_codes", []) is Array else []
+			for code_variant in factor_codes:
+				var code := str(code_variant)
+				if factor_key_presence.has(code):
+					factor_key_presence[code] = true
+			var ordinal := int(entry.get("ordinal", 0))
+			if not actor_report_index_by_ordinal.has(ordinal):
+				continue
+			var report_index := int(actor_report_index_by_ordinal[ordinal])
+			var report := actor_reports[report_index] as Dictionary
+			report["positive_alive_count"] = int(report.get("positive_alive_count", 0)) + (0 if destroyed else 1)
+			var districts: Array = report.get("districts", []) if report.get("districts", []) is Array else []
+			if districts.size() < 12:
+				districts.append({
 					"district": district_index,
 					"destroyed": destroyed,
-					"weight": weight,
-					"parts": parts,
-					"summary": _auto_monster_target_factor_summary(actor, district_index),
+					"factor_codes": factor_codes.duplicate(),
+					"summary": str(entry.get("reason", "")),
 				})
-		actor_reports.append({
-			"actor_index": actor_index,
-			"name": String(actor.get("name", "怪兽")),
-			"positive_alive_count": positive_alive_count,
-			"districts": district_reports,
-		})
+			report["districts"] = districts
+			actor_reports[report_index] = report
 	return {
 		"actor_count": actor_reports.size(),
 		"factor_keys": factor_keys,
@@ -4897,6 +4947,7 @@ func _monster_target_weight_audit() -> Dictionary:
 		"destroyed_zero_ok": destroyed_zero_ok,
 		"any_positive_alive": any_positive_alive,
 		"actors": actor_reports,
+		"evidence_scope": "monster_public_region_attraction_v06",
 	}
 func _agent_policy_audit_report() -> Dictionary:
 	var player_reports := []
@@ -8891,8 +8942,15 @@ func _ai_monster_wager_plan(player_index: int, entry: Dictionary) -> Dictionary:
 		raise_steps = 2
 	elif confidence >= 70:
 		raise_steps = 1
-	var stake_percent := _monster_wager_clamped_percent(entry, base_percent + raise_steps)
-	var stake := _monster_wager_amount_for_percent(player_index, stake_percent, entry)
+	var desired_percent := mini(
+		maxi(base_percent, int(entry.get("max_percent", base_percent))),
+		base_percent + raise_steps
+	)
+	var stake_option := _monster_wager_stake_option(entry, desired_percent)
+	if stake_option.is_empty():
+		return {}
+	var stake_percent := int(stake_option.get("percent", base_percent))
+	var stake := maxi(0, int(stake_option.get("stake", 0)))
 	best["confidence"] = confidence
 	best["stake"] = stake
 	best["stake_percent"] = stake_percent

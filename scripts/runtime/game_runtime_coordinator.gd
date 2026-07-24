@@ -333,10 +333,6 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var weather_presentation := _weather_presentation_runtime_service_node()
 	if weather_presentation != null and weather_presentation.has_method("configure"):
 		weather_presentation.call("configure", weather_controller)
-	if ai_controller != null and ai_controller.has_method("set_monster_runtime_controller"):
-		ai_controller.call("set_monster_runtime_controller", monster_controller)
-	if ai_controller != null and ai_controller.has_method("set_military_runtime_controller"):
-		ai_controller.call("set_military_runtime_controller", military_controller)
 
 	if ai_controller != null and ai_controller.has_method("set_product_market_runtime_controller"):
 		ai_controller.call("set_product_market_runtime_controller", product_market_controller)
@@ -1494,6 +1490,9 @@ func _wire_ai_world_typed_ports() -> void:
 		city_inference_port
 	)
 	ai.set_market_route_query_ports(market_public_port, route_public_port)
+	ai.set_monster_runtime_controller(_monster_runtime_controller_node() as MonsterRuntimeController)
+	ai.set_role_catalog_runtime_service(_role_catalog_runtime_service_node() as RoleCatalogRuntimeService)
+	ai.set_table_presentation_refresh_port(_table_presentation_refresh_port_node())
 	ai.set_monster_military_query_ports(
 		monster_public_query_port,
 		monster_actor_query_port,

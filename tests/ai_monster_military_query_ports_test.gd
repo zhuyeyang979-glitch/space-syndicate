@@ -104,6 +104,7 @@ func _run() -> void:
 				"region_id": "region.000",
 				"name": "甲区",
 				"center": Vector2(10.0, 10.0),
+				"terrain": "land",
 				"products": ["晶矿"],
 				"demands": [],
 				"destroyed": false,
@@ -121,6 +122,7 @@ func _run() -> void:
 				"region_id": "region.001",
 				"name": "乙区",
 				"center": Vector2(40.0, 10.0),
+				"terrain": "land",
 				"products": ["生物质"],
 				"demands": [],
 				"destroyed": false,
@@ -246,6 +248,21 @@ func _run() -> void:
 			and is_equal_approx(float(public_monster_101.get("weather_resistance", 0.0)), 0.25) \
 			and is_equal_approx(float(public_monster_101.get("weather_exploitation_multiplier", 0.0)), 1.4),
 		"Monster public projection preserves public combat and weather traits used by candidate scoring"
+	)
+	monster._rebuild_monster_codex_public_catalog_cache_v06()
+	var public_catalog_entry := monster_public.public_catalog_entry(0)
+	_expect(
+		not public_catalog_entry.is_empty() \
+			and public_catalog_entry.get("resource_focus", []) is Array \
+			and monster_public.can_summon_at_region({"starter_play_free": true}, 0) \
+			and monster_public.can_summon_at_region({"summon_access": "land"}, 0) \
+			and not monster_public.can_summon_at_region({"summon_access": "ocean"}, 0),
+		"Monster public port owns catalog and summon-legality queries over detached public region facts"
+	)
+	_expect(
+		monster_public.public_expected_damage_score(101) > 0 \
+			and monster_public.public_expected_damage_score(-1) == 0,
+		"Monster owner exposes expected damage only through a stable public Monster UID"
 	)
 	var monster_a_snapshot := monster_actor.actor_roster_snapshot(monster_cap_a, 1)
 	var monster_a_own := _row_by_uid(monster_a_snapshot.get("roster", []) as Array, 101)
@@ -630,6 +647,7 @@ func _run_source_negative_gates() -> void:
 	var router_source := FileAccess.get_file_as_string("res://scripts/runtime/card_effect_runtime_router.gd")
 	var monster_source := FileAccess.get_file_as_string("res://scripts/runtime/monster_runtime_controller.gd")
 	var military_source := FileAccess.get_file_as_string("res://scripts/runtime/military_runtime_controller.gd")
+	var monster_public_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_monster_public_query_port.gd")
 	var monster_actor_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_monster_actor_query_port.gd")
 	var military_actor_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_military_actor_query_port.gd")
 	for scene_name in [
@@ -640,6 +658,15 @@ func _run_source_negative_gates() -> void:
 	]:
 		_expect(scene_source.contains(scene_name), "production coordinator composes %s" % scene_name)
 	_expect(not ai_source.contains("var auto_monsters:") and not ai_source.contains("var military_units:"), "AI controller owns no broad Monster or Military roster property")
+	_expect(
+		not ai_source.contains("func _call_monster") \
+			and not ai_source.contains("_call_monster(") \
+			and not ai_source.contains("set_military_runtime_controller") \
+			and monster_public_source.contains("func can_summon_at_region") \
+			and monster_public_source.contains("func public_expected_damage_score") \
+			and monster_public_source.contains("func public_region_attraction_snapshot"),
+		"AI Monster queries use explicit typed methods with zero arbitrary Monster method dispatch"
+	)
 	_expect(
 		monster_actor_source.contains("_session_identity_revision()") \
 			and military_actor_source.contains("_session_identity_revision()") \

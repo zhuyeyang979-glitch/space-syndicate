@@ -119,11 +119,25 @@ func _test_scene_contract() -> void:
 	_expect(bool(debug.get("typed_response_required", false)) and bool(debug.get("live_action_binding_required", false)), "sink requires typed identity and a live advertised wager option")
 	_expect(not bool(debug.get("owns_wager_state", true)) and not bool(debug.get("owns_player_cash", true)) and not bool(debug.get("owns_public_pool", true)), "sink duplicates no wager, cash, or public-pool ownership")
 	_expect(not bool(debug.get("owns_save_state", true)) and not bool(debug.get("references_main", true)), "sink is not a save owner and never references Main")
-	_expect(ai_source.contains("_call_monster(&\"submit_monster_wager_response\""), "human and AI wager decisions converge on the same typed monster-owner entry")
+	_expect(ai_source.contains("_monster_runtime_controller.submit_monster_wager_response(") \
+		and not ai_source.contains("_call_monster"), "human and AI wager decisions converge on the same typed monster-owner entry without dynamic dispatch")
 
 
 func _test_valid_response_exact_once() -> void:
 	_seed_wager(41, 5, ["a", "b"])
+	var decision := _monster.monster_wager_decision_snapshot_for_actor(41, 0)
+	var stake_options: Array = decision.get("stake_options", []) if decision.get("stake_options", []) is Array else []
+	var opening_cash: Dictionary = decision.get("opening_cash_units_by_player", {}) if decision.get("opening_cash_units_by_player", {}) is Dictionary else {}
+	_expect(
+		int(decision.get("base_percent", -1)) == 5 \
+			and int(decision.get("max_percent", -1)) == 20 \
+			and stake_options.size() == 16 \
+			and int((stake_options[0] as Dictionary).get("percent", -1)) == 5 \
+			and int((stake_options[0] as Dictionary).get("stake", -1)) == 5 \
+			and int((stake_options[-1] as Dictionary).get("percent", -1)) == 20 \
+			and opening_cash.keys() == ["0"],
+		"Monster owner advertises actor-scoped stake options without rival opening cash"
+	)
 	var request := _request("wager:valid", "monster_wager:41:a:5", 1)
 	var port_receipt := _port.submit_response(request)
 	_expect(port_receipt.accepted and _last_sink_receipt != null and _last_sink_receipt.applied, "authorized wager response reaches the typed sink and mutates once")

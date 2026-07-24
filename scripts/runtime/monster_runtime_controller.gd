@@ -1186,10 +1186,10 @@ func _monster_region_public_live_records_v06() -> Array:
 
 
 func summon_zone_available(district_index: int, required_terrain: String = "") -> bool:
-	var districts_variant: Variant = _world_value(&"districts", [])
-	if not (districts_variant is Array):
+	var state := _world_bridge.world_session_state() if _world_bridge != null else null
+	if state == null:
 		return false
-	var districts := districts_variant as Array
+	var districts := state.districts
 	if district_index < 0 or district_index >= districts.size() or not (districts[district_index] is Dictionary):
 		return false
 	var target := districts[district_index] as Dictionary
@@ -1253,6 +1253,15 @@ func active_wager_ids_snapshot() -> Array:
 	return result
 
 
+func public_expected_damage_score(monster_uid: int) -> int:
+	if monster_uid <= 0:
+		return 0
+	var slot := _auto_monster_slot_by_uid(monster_uid)
+	if slot < 0 or slot >= auto_monsters.size() or not (auto_monsters[slot] is Dictionary):
+		return 0
+	return _monster_wager_actor_expected_damage_score(auto_monsters[slot] as Dictionary)
+
+
 func monster_wager_decision_snapshot_for_actor(wager_id: int, player_index: int) -> Dictionary:
 	# AI and other decision actors receive public wager facts plus exactly one
 	# private opening-cash value: their own.  The authoritative active entry and
@@ -1271,10 +1280,19 @@ func monster_wager_decision_snapshot_for_actor(wager_id: int, player_index: int)
 	var actor_bets: Dictionary = {}
 	if not own_bet.is_empty():
 		actor_bets[actor_key] = own_bet
+	var stake_options: Array = []
+	for percent_variant in _monster_wager_percent_options(entry):
+		var percent := int(percent_variant)
+		stake_options.append({
+			"percent": percent,
+			"stake": _monster_wager_amount_for_percent(player_index, percent, entry),
+		})
 	var result := {
 		"wager_id": wager_id,
 		"settlement_revision": int(entry.get("settlement_revision", -1)),
 		"base_percent": _monster_wager_base_percent(entry),
+		"max_percent": MONSTER_WAGER_MAX_STAKE_PERCENT,
+		"stake_options": stake_options,
 		"competitors": _monster_wager_competitors(entry).duplicate(true),
 		"bets": actor_bets,
 		"public_bets": (entry.get("public_bets", []) as Array).duplicate(true),
@@ -6590,7 +6608,13 @@ func _first_empty_or_new_slot(player: Dictionary) -> int:
 	return _world_call(&"_first_empty_or_new_slot", [player])
 
 func _has_destroyed_district() -> bool:
-	return _world_call(&"_has_destroyed_district", [])
+	var state := _world_bridge.world_session_state() if _world_bridge != null else null
+	if state == null:
+		return false
+	for district_variant in state.districts:
+		if district_variant is Dictionary and bool((district_variant as Dictionary).get("destroyed", false)):
+			return true
+	return false
 
 func _level_text(rank: int) -> String:
 	return MONSTER_CATALOG_V06.level_text(rank)

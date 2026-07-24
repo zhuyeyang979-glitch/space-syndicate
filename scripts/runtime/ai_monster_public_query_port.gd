@@ -88,6 +88,53 @@ func public_catalog_snapshot() -> Array:
 	return TablePresentationPureDataPolicy.detached_copy(result)
 
 
+func can_summon_at_region(skill: Dictionary, district_index: int) -> bool:
+	_query_count += 1
+	if not is_ready() or not TablePresentationPureDataPolicy.is_pure_data(skill):
+		_rejected_query_count += 1
+		return false
+	var district := _regions().public_region(district_index)
+	if district.is_empty() or bool(district.get("destroyed", false)):
+		return false
+	if bool(skill.get("starter_play_free", false)):
+		return true
+	var terrain := str(district.get("terrain", "land"))
+	match str(skill.get("summon_access", "any")):
+		"monster_zone":
+			return _monster().summon_zone_available(district_index)
+		"land_monster_zone":
+			return _monster().summon_zone_available(district_index, "land")
+		"ocean_monster_zone":
+			return _monster().summon_zone_available(district_index, "ocean")
+		"land":
+			return terrain == "land"
+		"ocean":
+			return terrain == "ocean"
+		"any", "":
+			return true
+	return true
+
+
+func public_expected_damage_score(monster_uid: int) -> int:
+	_query_count += 1
+	if not is_ready() or monster_uid <= 0:
+		_rejected_query_count += 1
+		return 0
+	return maxi(0, _monster().public_expected_damage_score(monster_uid))
+
+
+func public_region_attraction_snapshot(district_index: int) -> Dictionary:
+	_query_count += 1
+	if not is_ready():
+		_rejected_query_count += 1
+		return {}
+	var snapshot := _monster().region_attraction_public_snapshot_v06(district_index)
+	if not TablePresentationPureDataPolicy.is_pure_data(snapshot):
+		_rejected_query_count += 1
+		return {}
+	return TablePresentationPureDataPolicy.detached_copy(snapshot)
+
+
 func public_resource_match_score(monster_uid: int, district_index: int) -> int:
 	return public_resource_match_score_for_actor(public_monster_by_uid(monster_uid), district_index)
 
@@ -152,6 +199,9 @@ func debug_snapshot() -> Dictionary:
 		"returns_owner_damage_cash_pool": false,
 		"returns_private_target": false,
 		"resource_match_uses_public_facts_only": true,
+		"summon_legality_uses_public_region_facts": true,
+		"expected_damage_owned_by_monster_runtime": true,
+		"region_attraction_returns_public_evidence_only": true,
 		"mutates_world": false,
 		"consumes_rng": false,
 		"references_main": false,
