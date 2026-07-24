@@ -548,17 +548,26 @@ func apply_script_refactor(arguments: Dictionary) -> String:
 		})
 
 	var editor_sync: Array = []
+	var editor_sync_failed := false
 	for changed_file in changed_files:
 		if not (changed_file is Dictionary):
 			continue
 		var changed_path: String = str(changed_file.get("path", ""))
 		var sync_result: Dictionary = _synchronize_editor_after_file_write(changed_path)
+		var sync_error := _editor_sync_error(changed_path, sync_result)
+		if sync_error != "":
+			editor_sync_failed = true
+			errors.append({
+				"path": changed_path,
+				"error": sync_error,
+			})
 		if bool(sync_result.get("open_scene", false)):
 			editor_sync.append({
 				"path": changed_path,
 				"sync": sync_result,
 			})
-	_refresh_filesystem()
+	if not editor_sync_failed:
+		_refresh_filesystem()
 	return _render_variant({
 		"success": errors.is_empty(),
 		"applied": errors.is_empty(),
@@ -790,6 +799,9 @@ func write_file(arguments: Dictionary) -> String:
 	if write_error != OK:
 		return "Error: Failed to write file: %s (%s)" % [path, error_string(write_error)]
 	var editor_sync := _synchronize_editor_after_file_write(path)
+	var editor_sync_error := _editor_sync_error(path, editor_sync)
+	if editor_sync_error != "":
+		return "Error: %s" % editor_sync_error
 	_refresh_filesystem()
 	return _render_variant({
 		"path": path,
@@ -822,22 +834,75 @@ func _synchronize_editor_after_file_write(path: String) -> Dictionary:
 	var result := {
 		"open_scene": false,
 		"reload_requested": false,
+		"reload_attempt_count": 0,
 		"scene_reloaded": false,
 		"scene_clean": false,
+		"scene_identity_verified": false,
+		"previous_scene_path": "",
+		"previous_scene_restored": true,
+		"failure_reason": "",
 	}
 	if not _is_scene_file(path):
 		return result
 	var editor = _editor()
 	if editor == null or not editor.get_open_scenes().has(path):
 		return result
+	var previous_root: Node = editor.get_edited_scene_root()
+	var previous_scene_path: String = (
+		str(previous_root.scene_file_path)
+		if previous_root != null
+		else ""
+	)
 	result["open_scene"] = true
+	result["previous_scene_path"] = previous_scene_path
+	if previous_scene_path != path:
+		editor.open_scene_from_path(path)
 	result["reload_requested"] = true
+	result["reload_attempt_count"] = 1
 	editor.reload_scene_from_path(path)
+	var reloaded_root: Node = editor.get_edited_scene_root()
 	var still_open: bool = editor.get_open_scenes().has(path)
 	var scene_clean: bool = still_open and not editor.get_unsaved_scenes().has(path)
-	result["scene_reloaded"] = still_open and scene_clean
+	var scene_identity_verified: bool = (
+		reloaded_root != null
+		and str(reloaded_root.scene_file_path) == path
+	)
 	result["scene_clean"] = scene_clean
+	result["scene_identity_verified"] = scene_identity_verified
+	result["scene_reloaded"] = (
+		still_open
+		and scene_clean
+		and scene_identity_verified
+	)
+	if not bool(result["scene_reloaded"]):
+		result["failure_reason"] = "scene_reload_not_verified"
+	if (
+		previous_scene_path != ""
+		and previous_scene_path != path
+		and editor.get_open_scenes().has(previous_scene_path)
+	):
+		editor.open_scene_from_path(previous_scene_path)
+		var restored_root: Node = editor.get_edited_scene_root()
+		result["previous_scene_restored"] = (
+			restored_root != null
+			and str(restored_root.scene_file_path) == previous_scene_path
+		)
+		if not bool(result["previous_scene_restored"]):
+			result["failure_reason"] = "previous_scene_not_restored"
 	return result
+
+
+func _editor_sync_error(path: String, sync_result: Dictionary) -> String:
+	if not bool(sync_result.get("open_scene", false)):
+		return ""
+	if not bool(sync_result.get("scene_reloaded", false)):
+		return (
+			"Editor scene reload could not be verified after writing %s (%s)."
+			% [path, str(sync_result.get("failure_reason", "unknown"))]
+		)
+	if not bool(sync_result.get("previous_scene_restored", true)):
+		return "Editor scene context could not be restored after writing %s." % path
+	return ""
 
 
 func _is_scene_file(path: String) -> bool:
@@ -886,6 +951,9 @@ func move_file(arguments: Dictionary) -> String:
 		return "Error: Failed to move '%s' to '%s' (code %s)." % [from_path, to_path, str(err)]
 
 	var editor_sync: Dictionary = _synchronize_editor_after_file_write(to_path)
+	var editor_sync_error := _editor_sync_error(to_path, editor_sync)
+	if editor_sync_error != "":
+		return "Error: %s" % editor_sync_error
 	_refresh_filesystem()
 	return _render_variant({
 		"from_path": from_path,
@@ -912,6 +980,9 @@ func copy_file(arguments: Dictionary) -> String:
 		return "Error: Failed to copy '%s' to '%s' (code %s)." % [from_path, to_path, str(err)]
 
 	var editor_sync: Dictionary = _synchronize_editor_after_file_write(to_path)
+	var editor_sync_error := _editor_sync_error(to_path, editor_sync)
+	if editor_sync_error != "":
+		return "Error: %s" % editor_sync_error
 	_refresh_filesystem()
 	return _render_variant({
 		"from_path": from_path,
@@ -2338,6 +2409,9 @@ func create_packed_scene_from_node(arguments: Dictionary) -> String:
 		return "Error: Failed to save PackedScene to %s (code %s)." % [path, str(save_err)]
 
 	var editor_sync: Dictionary = _synchronize_editor_after_file_write(path)
+	var editor_sync_error := _editor_sync_error(path, editor_sync)
+	if editor_sync_error != "":
+		return "Error: %s" % editor_sync_error
 	if bool(arguments.get("select_file", true)):
 		_editor().select_file(path)
 	_refresh_filesystem()
