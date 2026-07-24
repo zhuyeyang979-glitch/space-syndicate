@@ -10,6 +10,7 @@ const SESSION_START_DRIVER := preload("res://tests/support/production_session_st
 const V06_RULES_SNAPSHOT := preload("res://scripts/viewmodels/rules_quick_reference_snapshot_v06.gd")
 const CARD_RESOLUTION_QUEUE_SCRIPT := preload("res://scripts/runtime/card_resolution_queue_runtime_service.gd")
 const RUNTIME_BALANCE_MODEL_SCRIPT := preload("res://scripts/balance/runtime_balance_model.gd")
+const MONSTER_CATALOG := preload("res://scripts/runtime/monster_catalog_v06.gd")
 const TEST_RUN_SAVE_PATH := "user://test_runs/smoke_test_current_run.save"
 const RANDOM_ROLE_TEST_RUN_SAVE_PATH := "user://test_runs/smoke_test_random_ai_roles.save"
 const SAVE_COORDINATOR_NODE_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController/GameSaveRuntimeCoordinator"
@@ -60,7 +61,7 @@ func _run() -> void:
 	var save_operation: Dictionary = save_coordinator.call("operation_snapshot")
 	_expect(str(save_operation.get("default_save_path", "")) == TEST_RUN_SAVE_PATH and bool(save_operation.get("qa_save_path_override_active", false)), "Main and menu save queries use only the isolated QA save path")
 	_mark_smoke_progress("isolated run save path active")
-	var catalog_probe := int(main.call("_catalog_size"))
+	var catalog_probe := MONSTER_CATALOG.catalog_size()
 	_mark_smoke_progress("after catalog probe %d" % catalog_probe)
 	_mark_smoke_progress("before open main menu")
 	_open_runtime_root_menu(main)
@@ -321,19 +322,26 @@ func _run() -> void:
 	_expect(_players_have_starting_monster_cards(main, players), "each player starts with a free first monster card")
 	var first_starting_card := ((_as_array((players[0] as Dictionary).get("slots", [])))[0]) as Dictionary
 	_expect(String(first_starting_card.get("summon_access", "")) == "any", "the starter monster card explicitly has no region restriction")
-	_expect(String(main.call("_monster_card_region_text", first_starting_card)).contains("起始怪兽牌"), "starter card rules visibly say that its summon region is unrestricted")
-	var regular_monster_card := main.call("_make_skill", String(first_starting_card.get("name", main.call("_monster_card_name", 0, 1)))) as Dictionary
+	_expect(MONSTER_CATALOG.monster_card_region_text(first_starting_card).contains("起始怪兽牌"), "starter card rules visibly say that its summon region is unrestricted")
+	var regular_monster_card_id := String(first_starting_card.get("name", MONSTER_CATALOG.monster_card_name(0, 1)))
+	var regular_monster_card := _runtime_card_definition(main, regular_monster_card_id)
 	_expect(int(regular_monster_card.get("hp", 0)) > 0 and float(regular_monster_card.get("duration", 0.0)) > 0.0 and float(regular_monster_card.get("move", 0.0)) > 0.0, "monster cards carry HP, field duration, and movement attributes")
 	_expect(String(first_starting_card.get("role_passive_summary", "")) == "" and is_equal_approx(float(first_starting_card.get("move", 0.0)), float(regular_monster_card.get("move", 0.0))), "role passives do not modify starter monster movement or expose ownership fingerprints")
 	var fourth_starter := ((_as_array((players[3] as Dictionary).get("slots", [])))[0]) as Dictionary
-	_expect(int(fourth_starter.get("fixed_skill_count", 0)) == int((main.call("_make_skill", String(fourth_starter.get("name", ""))) as Dictionary).get("fixed_skill_count", 0)), "role passives do not increase starter monster bound-skill count")
+	_expect(int(fourth_starter.get("fixed_skill_count", 0)) == int(_runtime_card_definition(main, String(fourth_starter.get("name", ""))).get("fixed_skill_count", 0)), "role passives do not increase starter monster bound-skill count")
 	_expect(String(regular_monster_card.get("summon_access", "")).ends_with("monster_zone"), "post-start monster cards carry a landed-or-adjacent monster-zone summon restriction")
-	var regular_monster_art_stats := _card_presentation_text(main, regular_monster_card, "art_stats")
-	_expect(regular_monster_art_stats.contains("HP") and regular_monster_art_stats.contains("怪区"), "monster-card artwork prints HP, duration, movement, and region access")
+	var regular_monster_public_facts := _card_presentation_snapshot(main, regular_monster_card, regular_monster_card_id)
+	_expect(
+		bool(regular_monster_public_facts.get("valid", false))
+			and str(regular_monster_public_facts.get("category_id", "")) == "monster"
+			and str(regular_monster_public_facts.get("full_effect_text", "")) != ""
+			and str(regular_monster_public_facts.get("visibility_text", "")) != "",
+		"monster-card artwork uses the current v0.6 public player contract"
+	)
 	_expect(_all_monster_cards_have_field_attributes(main), "every monster card rank defines HP, movement, duration, and summon-region attributes")
-	_expect(_verify_monster_catalog_public_probability_contract(main, 0), "rank-IV monster catalog exposes public I/IV action probability progression without raw weights")
+	_expect(_verify_monster_catalog_public_probability_contract(main, 0), "monster catalog exposes public effects while hiding action probabilities and raw weights")
 	_expect(_verify_monster_ecology_balance_audit(main), "monster ecology balance audit preserves movement, resources, actions, bound skills, and art identities")
-	var regular_summon_rejected := not bool(_monster_controller(main).call("_summon_monster_from_card", players[0] as Dictionary, regular_monster_card))
+	var regular_summon_rejected := not _monster_controller(main)._summon_monster_from_card(0, regular_monster_card, -1)
 	_expect(regular_summon_rejected and _as_array(main.get("auto_monsters")).is_empty(), "post-start monster cards cannot summon outside a landed or adjacent monster region")
 	_expect(_verify_monster_card_terrain_restriction(main, players, districts), "terrain-restricted monster cards reject the wrong land/ocean district even inside a monster zone")
 	_expect(not skill_market.is_empty(), "new game creates a card/skill market")
@@ -372,7 +380,7 @@ func _run() -> void:
 	_expect(_verify_single_owned_monster_limit_and_rank_iv_refresh(main), "one-player monster cap blocks new monsters but allows same-name rank-IV refresh")
 	_expect(_verify_monster_duration_expiry(main), "a monster automatically leaves when its card field duration expires")
 	_expect(_verify_monster_card_play_cash_cost(main), "monster-card play cash cost scales with field monster count and records card spend")
-	_expect(_verify_ranked_monster_public_action_probabilities(main, first_actor), "summoned higher-rank monsters use public rank-tilted auto-action probabilities")
+	_expect(_verify_ranked_monster_public_action_probabilities(main, first_actor), "summoned monsters preserve the public effect and hidden-weight boundary")
 	_expect(_player_has_bound_monster_skill(players, 0), "summoning a monster grants its owner a persistent bound skill card")
 	_expect(_player_bound_monster_skill_count(players, 3) >= 1, "summoning grants printed bound monster skills without role-based starter boosts")
 	_expect(_verify_bound_monster_skill_persistence(main), "bound monster skills stay in hand and enter cooldown after use")
@@ -394,7 +402,7 @@ func _run() -> void:
 	_expect(_product_market_float(product_market, "环晶电池", "route_flow_multiplier") >= 1.35, "流星哨兵 applies a positive route-flow economy weather at new game start")
 	var basic_card_price := int(main.call("_card_price", "移动1"))
 	var premium_card_price := int(main.call("_card_price", "垄断协议1"))
-	var first_monster_card := String(main.call("_monster_card_name", 0, 1))
+	var first_monster_card := String(MONSTER_CATALOG.monster_card_name(0, 1))
 	_expect(String(main.call("_card_display_name", "怪兽·孢雾海皇4")).contains("IV级") and not String(main.call("_card_display_name", "怪兽·孢雾海皇4")).contains("Lv"), "visible card names use Roman-numeral rank text without legacy Lv labels")
 	_expect(premium_card_price > basic_card_price, "card prices rise with the card's economic power cost")
 	_expect(int(main.call("_card_price", "价格套利2")) == int(main.call("_card_price", "价格套利1")), "higher-rank economy cards keep the same rank-I base price")
@@ -1090,7 +1098,7 @@ func _players_have_starting_monster_cards(main: Node, players: Array) -> bool:
 			return false
 		var skill := slots[0] as Dictionary
 		var skill_name := String(skill.get("name", ""))
-		if not bool(main.call("_is_monster_card_name", skill_name)):
+		if str(_runtime_card_definition(main, skill_name).get("kind", "")) != "monster_card":
 			return false
 		if not bool(skill.get("starter_play_free", false)):
 			return false
@@ -3953,7 +3961,7 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 	var max_ai := 7
 	var role_indices := []
 	var starter_indices := []
-	var catalog_size := int(main.call("_catalog_size"))
+	var catalog_size := int(MONSTER_CATALOG.catalog_size())
 	for i in range(max_players):
 		role_indices.append(i)
 		starter_indices.append(i % max(1, catalog_size))
@@ -4237,7 +4245,7 @@ func _starting_monster_cards_match_configured_choices(main: Node, players: Array
 			return false
 		var starter := slots[0] as Dictionary
 		var expected_index := int(main.call("_configured_starter_monster_index", player_index))
-		var expected_name := String(main.call("_monster_card_name", expected_index, 1))
+		var expected_name := String(MONSTER_CATALOG.monster_card_name(expected_index, 1))
 		if String(starter.get("name", "")) != expected_name:
 			return false
 		for starter_field in ["starter_monster_index", "starter_monster_name", "starter_monster_card", "starter_hp_bonus", "starter_duration_bonus", "starter_move_multiplier", "starter_fixed_skill_bonus"]:
@@ -4253,9 +4261,9 @@ func _all_monster_cards_have_field_attributes(main: Node) -> bool:
 	var finite_duration_count := 0
 	var land_zone_count := 0
 	var ocean_zone_count := 0
-	for catalog_index in range(int(main.call("_catalog_size"))):
+	for catalog_index in range(int(MONSTER_CATALOG.catalog_size())):
 		for rank in range(1, 5):
-			var card := main.call("_make_skill", main.call("_monster_card_name", catalog_index, rank)) as Dictionary
+			var card := _runtime_card_definition(main, MONSTER_CATALOG.monster_card_name(catalog_index, rank))
 			total += 1
 			if int(card.get("hp", 0)) <= 0:
 				return false
@@ -4392,12 +4400,14 @@ func _verify_monster_card_terrain_restriction(main: Node, players: Array, distri
 	var ocean_index := _first_terrain_district(districts, "ocean")
 	if ocean_index < 0:
 		return false
-	var land_card := main.call("_make_skill", main.call("_monster_card_name", 1, 1)) as Dictionary
+	var land_card_id := MONSTER_CATALOG.monster_card_name(1, 1)
+	var land_card := _runtime_card_definition(main, land_card_id)
 	if String(land_card.get("summon_access", "")) != "land_monster_zone":
 		return false
-	if not String(main.call("_monster_card_region_text", land_card)).contains("陆地"):
+	if not MONSTER_CATALOG.monster_card_region_text(land_card).contains("陆地"):
 		return false
-	if not _card_presentation_text(main, land_card, "art_stats").contains("陆地怪区"):
+	var land_public_facts := _card_presentation_snapshot(main, land_card, land_card_id)
+	if not bool(land_public_facts.get("valid", false)) or str(land_public_facts.get("category_id", "")) != "monster":
 		return false
 	var previous_monsters := _as_array(main.get("auto_monsters")).duplicate(true)
 	var previous_players := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players).duplicate(true)
@@ -4407,7 +4417,7 @@ func _verify_monster_card_terrain_restriction(main: Node, players: Array, distri
 	main.set("auto_monsters", [temp_actor])
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = ocean_index
-	var rejected := not bool(_monster_controller(main).call("_summon_monster_from_card", players[0] as Dictionary, land_card))
+	var rejected := not _monster_controller(main)._summon_monster_from_card(0, land_card, ocean_index)
 	var monster_count_after := _as_array(main.get("auto_monsters")).size()
 	main.set("auto_monsters", previous_monsters)
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players = previous_players
@@ -4567,11 +4577,11 @@ func _verify_field_monster_card_upgrade_refreshes_state(main: Node) -> bool:
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = owner
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = -1
 	var active_bound_before := _active_bound_skill_count_for_uid(players, owner, monster_uid)
-	var upgrade_card := main.call("_make_skill", main.call("_monster_card_name", catalog_index, 2)) as Dictionary
+	var upgrade_card := _runtime_card_definition(main, MONSTER_CATALOG.monster_card_name(catalog_index, 2))
 	var expected_fixed_skill_count := int(upgrade_card.get("fixed_skill_count", 2))
 	var expected_hp := int(upgrade_card.get("hp", 0))
 	var expected_duration := float(upgrade_card.get("duration", 0.0))
-	var upgraded := bool(_monster_controller(main).call("_summon_monster_from_card", players[owner] as Dictionary, upgrade_card))
+	var upgraded := _monster_controller(main)._summon_monster_from_card(owner, upgrade_card, int(actor.get("position", -1)))
 	var after_monsters := _as_array(main.get("auto_monsters"))
 	var after_players := _as_array(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).world_session_state()).players)
 	if after_monsters.is_empty():
@@ -4649,15 +4659,15 @@ func _verify_single_owned_monster_limit_and_rank_iv_refresh(main: Node) -> bool:
 	var monsters := previous_monsters.duplicate(true)
 	var actor := (monsters[owned_slot] as Dictionary).duplicate(true)
 	var catalog_index := int(actor.get("catalog_index", 0))
-	var other_catalog_index := (catalog_index + 1) % int(main.call("_catalog_size"))
+	var other_catalog_index := (catalog_index + 1) % int(MONSTER_CATALOG.catalog_size())
 	var district_index := clampi(int(actor.get("position", previous_selected_district)), 0, districts.size() - 1)
 	main.set("auto_monsters", monsters)
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = owner
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = district_index
-	var other_card := main.call("_make_skill", main.call("_monster_card_name", other_catalog_index, 1)) as Dictionary
+	var other_card := _runtime_card_definition(main, MONSTER_CATALOG.monster_card_name(other_catalog_index, 1))
 	other_card["starter_play_free"] = true
 	other_card["summon_access"] = "any"
-	var rejected_new_monster := not bool(_monster_controller(main).call("_summon_monster_from_card", previous_players[owner] as Dictionary, other_card))
+	var rejected_new_monster := not _monster_controller(main)._summon_monster_from_card(owner, other_card, district_index)
 	var after_reject := _as_array(main.get("auto_monsters"))
 	var cap_ok := rejected_new_monster and after_reject.size() == previous_monsters.size()
 	monsters = after_reject.duplicate(true)
@@ -4669,11 +4679,11 @@ func _verify_single_owned_monster_limit_and_rank_iv_refresh(main: Node) -> bool:
 	actor["owner_clue"] = ""
 	monsters[owned_slot] = actor
 	main.set("auto_monsters", monsters)
-	var same_card := main.call("_make_skill", main.call("_monster_card_name", catalog_index, 1)) as Dictionary
+	var same_card := _runtime_card_definition(main, MONSTER_CATALOG.monster_card_name(catalog_index, 1))
 	same_card["starter_play_free"] = true
 	same_card["summon_access"] = "any"
-	var rank_four_card := main.call("_make_skill", main.call("_monster_card_name", catalog_index, 4)) as Dictionary
-	var refreshed := bool(_monster_controller(main).call("_summon_monster_from_card", previous_players[owner] as Dictionary, same_card))
+	var rank_four_card := _runtime_card_definition(main, MONSTER_CATALOG.monster_card_name(catalog_index, 4))
+	var refreshed := _monster_controller(main)._summon_monster_from_card(owner, same_card, district_index)
 	var after_refresh := _as_array(main.get("auto_monsters"))
 	var refreshed_actor := after_refresh[owned_slot] as Dictionary
 	var refresh_ok := refreshed \
@@ -5861,15 +5871,16 @@ func _verify_monster_card_runtime_overrides(main: Node) -> bool:
 			test_monsters.append(actor)
 	main.set("auto_monsters", test_monsters)
 	var before_count := test_monsters.size()
-	var card := main.call("_make_skill", main.call("_monster_card_name", 0, 1)) as Dictionary
+	var card := _runtime_card_definition(main, MONSTER_CATALOG.monster_card_name(0, 1))
 	card["starter_play_free"] = true
 	card["summon_access"] = "any"
 	card["hp"] = 77
 	card["duration"] = 13.5
 	card["move"] = 333.0
 	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = 0
-	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = clampi(int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district), 0, districts.size() - 1)
-	if not bool(_monster_controller(main).call("_summon_monster_from_card", players[0] as Dictionary, card)):
+	var summon_district_index := clampi(int(((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district), 0, districts.size() - 1)
+	((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = summon_district_index
+	if not _monster_controller(main)._summon_monster_from_card(0, card, summon_district_index):
 		main.set("auto_monsters", previous_monsters)
 		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_player = previous_selected_player
 		((main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator") as GameRuntimeCoordinator).table_selection_state()).selected_district = previous_selected_district
@@ -5897,7 +5908,7 @@ func _verify_monster_card_play_cash_cost(main: Node) -> bool:
 	var monster_count := _as_array(main.get("auto_monsters")).size()
 	if previous_players.is_empty() or monster_count <= 0:
 		return false
-	var card := main.call("_make_skill", main.call("_monster_card_name", 0, 1)) as Dictionary
+	var card := _runtime_card_definition(main, MONSTER_CATALOG.monster_card_name(0, 1))
 	var expected_cost := monster_count * 100
 	if int((main.call("_card_play_requirement_snapshot", 0, card) as Dictionary).get("cash_cost", 0)) != expected_cost:
 		return false
@@ -5941,65 +5952,41 @@ func _verify_ranked_monster_public_action_probabilities(main: Node, actor: Dicti
 
 func _verify_monster_catalog_public_probability_contract(main: Node, catalog_index: int) -> bool:
 	var monster := _monster_controller(main)
-	if monster == null or not monster.has_method("monster_codex_public_catalog_source_v06"):
+	if monster == null:
 		return false
-	var value: Variant = monster.call("monster_codex_public_catalog_source_v06", catalog_index)
-	var source := (value as Dictionary).duplicate(true) if value is Dictionary else {}
+	var source := monster.monster_codex_public_catalog_source_v06(catalog_index)
 	return _monster_public_probability_source_ok(source)
 
 
 func _monster_public_probability_source_ok(source: Dictionary) -> bool:
-	if not bool(source.get("valid", false)):
+	if not bool(source.get("valid", false)) or _as_array(source.get("actions", [])).is_empty():
 		return false
-	if _monster_probability_text_has_raw_weight(str(source.get("rank_iv_probability_summary", ""))):
-		return false
-	var ecology := source.get("ecology", {}) as Dictionary
-	if _monster_probability_text_has_raw_weight(str(ecology.get("rank_iv_probability_shift", ""))):
-		return false
-	var actions := _as_array(source.get("actions", []))
-	if actions.is_empty():
-		return false
-	var has_probability_row := false
-	var has_i_to_iv_progression := false
-	var has_destroyed_progression := false
-	for action_variant in actions:
-		if not (action_variant is Dictionary):
-			continue
-		var action := action_variant as Dictionary
-		var i_open := _monster_public_probability_percent_value(action.get("i_open", ""))
-		var i_destroyed := _monster_public_probability_percent_value(action.get("i_destroyed", ""))
-		var iv_open := _monster_public_probability_percent_value(action.get("iv_open", ""))
-		var iv_destroyed := _monster_public_probability_percent_value(action.get("iv_destroyed", ""))
-		if i_open < 0 or i_destroyed < 0 or iv_open < 0 or iv_destroyed < 0:
+	for forbidden_key in [
+		"rank_iv_probability_summary", "rank_iv_probability_shift", "probability",
+		"probability_tooltip", "i_open", "i_destroyed", "iv_open", "iv_destroyed",
+		"weight", "weights", "target_weight", "target_weights", "rng", "rng_state",
+		"actual_target", "committed_target", "preselected_target", "hidden_owner",
+	]:
+		if _variant_has_dictionary_key(source, forbidden_key):
 			return false
-		var tooltip := str(action.get("probability_tooltip", ""))
-		if not (tooltip.contains("I开局") and tooltip.contains("I破坏后") and tooltip.contains("IV开局") and tooltip.contains("IV破坏后")):
-			return false
-		if _monster_probability_text_has_raw_weight(tooltip):
-			return false
-		has_probability_row = true
-		has_i_to_iv_progression = has_i_to_iv_progression or iv_open != i_open
-		has_destroyed_progression = has_destroyed_progression or i_destroyed != i_open or iv_destroyed != iv_open
-	return has_probability_row and has_i_to_iv_progression and has_destroyed_progression
+	return not _variant_contains_percent_literal(source)
 
 
-func _monster_public_probability_percent_value(value: Variant) -> int:
-	var text := str(value).strip_edges()
-	if not text.ends_with("%"):
-		return -1
-	text = text.trim_suffix("%").strip_edges()
-	if not text.is_valid_int():
-		return -1
-	var percent := int(text)
-	return percent if percent >= 0 and percent <= 100 else -1
-
-
-func _monster_probability_text_has_raw_weight(text: String) -> bool:
-	var lower := text.to_lower()
-	for token in ["weight", "raw_weight", "weight_delta", "numerator", "denominator", "total_weight", "rng", "actual_target", "committed_target"]:
-		if lower.contains(token):
-			return true
-	return text.contains("权重") or text.contains("分子") or text.contains("分母") or text.contains("随机票")
+func _variant_contains_percent_literal(value: Variant) -> bool:
+	if value is String or value is StringName:
+		var text := str(value)
+		for index in range(1, text.length()):
+			if text[index] == "%" and str(text[index - 1]).is_valid_int():
+				return true
+	elif value is Dictionary:
+		for key_variant in (value as Dictionary).keys():
+			if _variant_contains_percent_literal((value as Dictionary)[key_variant]):
+				return true
+	elif value is Array:
+		for item_variant in value as Array:
+			if _variant_contains_percent_literal(item_variant):
+				return true
+	return false
 
 
 func _verify_monster_ecology_balance_audit(main: Node) -> bool:
@@ -7459,7 +7446,10 @@ func _runtime_card_exists(main: Node, card_id: String) -> bool:
 func _runtime_card_definition(main: Node, card_id: String) -> Dictionary:
 	var coordinator := _runtime_card_coordinator(main)
 	var value: Variant = coordinator.call("card_definition", card_id) if coordinator != null else {}
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+	var result := (value as Dictionary).duplicate(true) if value is Dictionary else {}
+	if not result.is_empty() and not result.has("name"):
+		result["name"] = card_id
+	return result
 
 
 func _card_presentation_snapshot(main: Node, skill: Dictionary, card_name: String = "") -> Dictionary:
@@ -8597,8 +8587,8 @@ func _diagnostics(main: Node) -> GameplayBalanceDiagnosticsRuntimeService:
 	return coordinator.gameplay_balance_diagnostics_service()
 
 
-func _monster_controller(main: Node) -> Node:
-	var controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterRuntimeController")
+func _monster_controller(main: Node) -> MonsterRuntimeController:
+	var controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/MonsterRuntimeController") as MonsterRuntimeController
 	if controller == null:
 		push_error("Smoke test requires scene-owned MonsterRuntimeController.")
 	return controller
