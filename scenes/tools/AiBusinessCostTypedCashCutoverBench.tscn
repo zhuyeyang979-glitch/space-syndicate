@@ -1,4 +1,4 @@
-[gd_scene load_steps=21 format=3]
+[gd_scene load_steps=23 format=3]
 
 [ext_resource type="Script" path="res://scripts/tools/ai_business_cost_typed_cash_cutover_bench.gd" id="1_bench"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/RunRngService.tscn" id="2_rng"]
@@ -20,12 +20,16 @@
 [ext_resource type="Script" path="res://scripts/presentation/public_log_presentation_owner.gd" id="18_log_owner"]
 [ext_resource type="Script" path="res://scripts/presentation/public_log_producer_port.gd" id="19_log_port"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/WorldEffectiveClockRuntimeController.tscn" id="20_clock"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CommodityFlowRuntimeController.tscn" id="21_flow"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/AiRegionKnowledgeQueryPort.tscn" id="22_region"]
 
 [node name="AiBusinessCostTypedCashCutoverBench" type="Node"]
 script = ExtResource("1_bench")
 
 [node name="RunRngService" parent="." instance=ExtResource("2_rng")]
 [node name="WorldSessionState" parent="." instance=ExtResource("3_world")]
+[node name="CommodityFlowRuntimeController" parent="." instance=ExtResource("21_flow")]
+[node name="AiRegionKnowledgeQueryPort" parent="." instance=ExtResource("22_region")]
 [node name="CardEconomyProductRouteFormulaRuntimeService" parent="." instance=ExtResource("4_formula")]
 [node name="ProductMarketRuntimeWorldBridge" parent="." instance=ExtResource("5_market_bridge")]
 [node name="ProductMarketRuntimeController" parent="." instance=ExtResource("6_market")]

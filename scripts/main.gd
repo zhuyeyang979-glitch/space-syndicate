@@ -8,12 +8,7 @@ const SharedCardGroupWindowScript := preload("res://scripts/cards/shared_card_gr
 const RoguelikeEconomicViabilityPolicyScript := preload("res://scripts/runtime/roguelike_economic_viability_policy.gd")
 const PlayerBoardStrategyActionSnapshotScript := preload("res://scripts/viewmodels/player_board_strategy_action_snapshot.gd")
 const TABLE_SFX_KEYS := ["card", "impact", "storm"]
-const MIN_PLAYER_COUNT := 3
-const MAX_PLAYER_COUNT := 8
 const MONSTER_COMMAND_MOVE_METERS := 220.0
-const NEARBY_RADIUS_METERS := 240.0
-const DEFAULT_AOE_RADIUS_METERS := 180.0
-const ACTION_CALLOUT_DURATION := 4.5
 const CITY_PUBLIC_CLUE_HISTORY_LIMIT := 6
 const DISTRICT_CARD_CHOICE_MIN := 4
 const DISTRICT_CARD_CHOICE_MAX := 5
@@ -25,11 +20,6 @@ const CITY_PRODUCT_LEVEL_MAX := 5
 const ECONOMY_LEGACY_TURN_SECONDS := 30.0
 const INTEL_CORRECT_GUESS_CASH := 120
 const INTEL_WRONG_GUESS_COST := 60
-const RIVAL_AUTO_BUILD_CHANCE_PERCENT := 72
-const RIVAL_AUTO_BUILD_MAX_PER_CYCLE := 2
-const RIVAL_AUTO_BUILD_BASE_CITY_CAP := 2
-const RIVAL_AUTO_BUILD_MAX_CITY_CAP := 5
-const RIVAL_AUTO_BUILD_MIN_CASH_RESERVE := 180
 const ECONOMY_HISTORY_LIMIT := 24
 const ECONOMY_LEDGER_LIMIT := 14
 const PLAYER_HAND_LIMIT := 5
@@ -327,11 +317,6 @@ func _game_runtime_coordinator_node() -> GameRuntimeCoordinator:
 	game_runtime_coordinator = get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator")
 	game_runtime_coordinator_bound = false
 	return game_runtime_coordinator as GameRuntimeCoordinator
-
-
-func _ai_runtime_controller_node() -> Node:
-	var coordinator := _game_runtime_coordinator_node()
-	return coordinator.get_node_or_null("AiRuntimeController") if coordinator != null else null
 
 
 func _product_market_runtime_controller_node() -> ProductMarketRuntimeController:
@@ -860,19 +845,6 @@ func _ai_runtime_call(method_name: StringName, arguments: Array = []) -> Variant
 		_mark_game_runtime_coordinator_missing(true)
 		return null
 	return coordinator.call("ai_runtime_call", method_name, arguments)
-
-
-func _ai_runtime_world_snapshot(player_index: int) -> Dictionary:
-	return {
-		"context_revision": int(_game_runtime_coordinator_node().world_session_state().game_time * 1000.0),
-		"player_index": player_index,
-		"player_count": _game_runtime_coordinator_node().world_session_state().players.size(),
-		"district_count": _game_runtime_coordinator_node().world_session_state().districts.size(),
-		"business_cycle_count": _product_market_cycle(),
-		"session_finished": _runtime_session_finished(),
-		"victory_control": _victory_control_private_snapshot(player_index),
-		"active_resolution_present": not _card_resolution_active_entry().is_empty(),
-	}
 
 
 func _card_resolution_queue_service_node() -> Node:

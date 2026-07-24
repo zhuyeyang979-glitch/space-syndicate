@@ -17,6 +17,8 @@ const PUBLIC_PRODUCT_KEYS := [
 	"temporary_supply_pressure",
 	"market_contract_demand",
 	"market_contract_supply",
+	"market_contract_seconds",
+	"market_contract_turns",
 	"growth_multiplier",
 	"route_flow_multiplier",
 	"weather_price_growth_multiplier",

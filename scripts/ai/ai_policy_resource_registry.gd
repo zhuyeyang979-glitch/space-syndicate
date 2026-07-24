@@ -39,7 +39,7 @@ const RUNTIME_CASES := [
 	["policy_resource_is_runtime_source", "Runtime Cutover"],
 	["six_personality_profile_parity", "Runtime Parity"],
 	["ai_state_reset", "Runtime State"],
-	["ai_state_save_load", "Runtime State"],
+	["ai_state_codec_roundtrip", "Runtime State"],
 	["card_play_candidate_parity", "Runtime Parity"],
 	["card_buy_candidate_parity", "Runtime Parity"],
 	["counter_response_parity", "Runtime Parity"],
@@ -47,17 +47,17 @@ const RUNTIME_CASES := [
 	["monster_wager_parity", "Runtime Parity"],
 	["military_plan_parity", "Runtime Parity"],
 	["weather_plan_parity", "Runtime Parity"],
-	["city_strategy_parity", "Runtime Parity"],
+	["legal_city_target_strategy_present", "Runtime Parity"],
 	["product_strategy_parity", "Runtime Parity"],
 	["route_strategy_parity", "Runtime Parity"],
-	["monster_strategy_parity", "Runtime Parity"],
-	["candidate_legality_preserved", "Runtime Parity"],
+	["stable_monster_target_strategy_present", "Runtime Parity"],
+	["typed_candidate_legality_contract_present", "Runtime Parity"],
 	["score_order_preserved", "Runtime Parity"],
 	["deterministic_tie_break", "RNG"],
 	["shared_rng_order_preserved", "RNG"],
 	["fallback_order_preserved", "Runtime Parity"],
-	["ai_intent_routes_once", "World Bridge"],
-	["failed_intent_no_partial_mutation", "World Bridge"],
+	["legacy_world_intent_route_removed", "World Bridge"],
+	["legacy_world_intent_apply_removed", "World Bridge"],
 	["public_private_boundary", "Privacy"],
 	["three_ai_players_complete_cycle", "Runtime Flow"],
 	["main_ai_algorithms_absent", "Main Deletion"],
@@ -188,7 +188,7 @@ func _runtime_case_passed(case_id: String, controller: String, bridge: String, c
 		"policy_resource_is_runtime_source": return controller.contains("DEFAULT_POLICY_PROFILE") and controller.contains("runtime_cutover_enabled") and not main_source.contains("const AI_CARD_DECISION_INTERVAL_SECONDS")
 		"six_personality_profile_parity": return _personality_resources_valid() and controller.contains("AI_PERSONALITY_CATALOG")
 		"ai_state_reset": return controller.contains("func reset_state(") and controller.contains("_last_receipts.clear()")
-		"ai_state_save_load": return controller.contains("func to_save_data(") and controller.contains("func apply_save_data(") and main_source.contains("ai_runtime_state")
+		"ai_state_codec_roundtrip": return controller.contains("func to_save_data(") and controller.contains("func preflight_save_data(") and controller.contains("func apply_save_data(") and not main_source.contains("ai_runtime_state")
 		"card_play_candidate_parity": return controller.contains("func _ai_card_play_candidates(") and controller.contains("func _ai_card_play_context(")
 		"card_buy_candidate_parity": return controller.contains("func _ai_card_buy_candidates(")
 		"counter_response_parity": return controller.contains("func _ai_counter_response_candidates(")
@@ -196,17 +196,17 @@ func _runtime_case_passed(case_id: String, controller: String, bridge: String, c
 		"monster_wager_parity": return controller.contains("func _ai_monster_wager_plan(")
 		"military_plan_parity": return controller.contains("func _ai_military_command_plan(")
 		"weather_plan_parity": return controller.contains("func _ai_weather_control_plan(")
-		"city_strategy_parity": return controller.contains("func _auto_build_score_for_player(")
+		"legal_city_target_strategy_present": return controller.contains("func _ai_city_target_score(") and not controller.contains("func _auto_build_score_for_player(")
 		"product_strategy_parity": return controller.contains("func _ai_product_focus_score(")
 		"route_strategy_parity": return controller.contains("func _ai_route_plan_candidates(")
-		"monster_strategy_parity": return controller.contains("func _ai_monster_target_for_skill(")
-		"candidate_legality_preserved": return controller.contains("_skill_play_requirement_status") and controller.contains("_market_listing_purchasable") and coordinator_source.contains("func card_market_listing_availability(") and coordinator_source.contains("func card_market_preview(") and coordinator_source.contains("func request_card_market_quote(") and coordinator_source.contains("func authorize_card_market_purchase(")
+		"stable_monster_target_strategy_present": return controller.contains("func _ai_best_monster_card_district(") and not controller.contains("func _ai_monster_target_for_skill(")
+		"typed_candidate_legality_contract_present": return controller.contains("func _ai_card_eligibility_snapshot(") and controller.contains("func _market_listing_purchasable(") and coordinator_source.contains("func card_market_listing_availability(") and coordinator_source.contains("func card_market_preview(") and coordinator_source.contains("func card_market_quote(") and coordinator_source.contains("func authorize_card_market_purchase(") and FileAccess.file_exists("res://tests/ai_card_eligibility_query_port_test.gd") and FileAccess.file_exists("res://tests/district_supply_purchase_projection_receipt_test.gd")
 		"score_order_preserved": return controller.contains("func _ai_pick_candidate(") and controller.contains("sort_custom")
 		"deterministic_tie_break": return controller.contains("func _candidate_stable_id(")
 		"shared_rng_order_preserved": return controller.contains("func set_run_rng_service(") and controller.contains("return _run_rng_service") and not controller.contains("RandomNumberGenerator.new") and coordinator_source.contains("ai_controller.set_run_rng_service(service)")
 		"fallback_order_preserved": return controller.contains("func _ai_pick_candidate(") and controller.contains("exploration")
-		"ai_intent_routes_once": return bridge_ready and not controller.contains("func route_intent(") and not bridge.contains("func route_intent(")
-		"failed_intent_no_partial_mutation": return not bridge.contains("_apply_ai_runtime_intent") and controller.contains("func commit_plan_receipt(")
+		"legacy_world_intent_route_removed": return not controller.contains("func route_intent(") and not bridge.contains("func route_intent(") and not main_source.contains("_apply_ai_runtime_intent")
+		"legacy_world_intent_apply_removed": return not bridge.contains("_apply_ai_runtime_intent") and not controller.contains("_apply_ai_runtime_intent") and not main_source.contains("_apply_ai_runtime_intent")
 		"public_private_boundary": return controller.contains("private_plan_exposed\": false") and not bridge.contains("intent_routed") and not bridge.contains("func _public_intent(")
 		"three_ai_players_complete_cycle": return controller.contains("func _update_ai_decisions(") and controller.contains("func _ai_player_indices(")
 		"main_ai_algorithms_absent": return no_main_algorithms
@@ -290,7 +290,7 @@ func _main_ai_algorithm_function_count(source: String) -> int:
 
 func _main_ai_adapter_line_count(source: String) -> int:
 	var total := 0
-	for method_name in ["_ai_runtime_controller_node", "_ai_runtime_call", "_ai_runtime_world_snapshot"]:
+	for method_name in ["_ai_runtime_call"]:
 		var start := source.find("func %s(" % method_name)
 		if start < 0:
 			continue

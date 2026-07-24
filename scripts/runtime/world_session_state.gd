@@ -498,6 +498,8 @@ func private_player_city_economy_snapshot(player_index: int) -> Dictionary:
 	var warehouse_count := 0
 	var warehouse_units := 0
 	var warehouse_products: Array[String] = []
+	var product_flow_by_id: Dictionary = {}
+	var product_flow_order: Array[String] = []
 	for district_index in range(_districts.size()):
 		if not (_districts[district_index] is Dictionary):
 			continue
@@ -508,6 +510,30 @@ func private_player_city_economy_snapshot(player_index: int) -> Dictionary:
 		var city_products := _private_city_product_names(city.get("products", []))
 		var city_demands := _canonical_string_array(city.get("demands", []))
 		var stockpile_products := _canonical_string_array(city.get("warehouse_stockpile_products", []))
+		for product_variant in city.get("products", []) as Array:
+			var product_id := str((product_variant as Dictionary).get("name", "")) \
+				if product_variant is Dictionary else str(product_variant)
+			product_id = product_id.strip_edges()
+			if product_id.is_empty():
+				continue
+			if not product_flow_order.has(product_id):
+				product_flow_order.append(product_id)
+			var product_units := maxi(1, int((product_variant as Dictionary).get("level", 1))) \
+				if product_variant is Dictionary else 1
+			product_flow_by_id[product_id] = int(product_flow_by_id.get(product_id, 0)) + product_units
+		for demand_id in city_demands:
+			if not product_flow_order.has(demand_id):
+				product_flow_order.append(demand_id)
+			product_flow_by_id[demand_id] = int(product_flow_by_id.get(demand_id, 0)) + 1
+		for route_variant in city.get("trade_routes", []) as Array:
+			if not (route_variant is Dictionary) or bool((route_variant as Dictionary).get("disrupted", false)):
+				continue
+			var route_product := str((route_variant as Dictionary).get("product", "")).strip_edges()
+			if route_product.is_empty():
+				continue
+			if not product_flow_order.has(route_product):
+				product_flow_order.append(route_product)
+			product_flow_by_id[route_product] = int(product_flow_by_id.get(route_product, 0)) + 1
 		var city_income := int(city.get("last_income", city.get("last_cycle_income", 0)))
 		var city_warehouse_count := maxi(0, int(city.get("warehouse_stockpile_count", 0)))
 		var city_warehouse_units := maxi(0, int(city.get("warehouse_stockpile_units", 0)))
@@ -541,6 +567,8 @@ func private_player_city_economy_snapshot(player_index: int) -> Dictionary:
 		"warehouse_stockpile_count": warehouse_count,
 		"warehouse_stockpile_units": warehouse_units,
 		"warehouse_stockpile_products": warehouse_products,
+		"product_flow_by_id": product_flow_by_id.duplicate(true),
+		"product_flow_order": product_flow_order.duplicate(),
 		"cities_built": maxi(0, int(player.get("cities_built", 0))),
 		"total_city_income": maxi(0, int(player.get("total_city_income", 0))),
 		"total_card_income": maxi(0, int(player.get("total_card_income", 0))),
@@ -555,7 +583,7 @@ func private_player_city_economy_snapshot(player_index: int) -> Dictionary:
 		"player_index": player_index,
 		"cities": cities.duplicate(true),
 		"summary": summary.duplicate(true),
-		"state_revision": _stable_hash(["player_city_economy_v2", player_index, cities, summary]),
+		"state_revision": _stable_hash(["player_city_economy_v3", player_index, cities, summary]),
 	}
 
 

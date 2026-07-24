@@ -21,7 +21,6 @@ func _ready() -> void:
 		if state.to_save_data() != snapshot:
 			failures.append("selection_save_not_exact")
 	for bridge_name in [
-		"AiRuntimeWorldBridge",
 		"MonsterRuntimeWorldBridge",
 		"MilitaryRuntimeWorldBridge",
 		"ProductMarketRuntimeWorldBridge",
@@ -34,6 +33,12 @@ func _ready() -> void:
 		var bridge := coordinator.get_node_or_null(bridge_name)
 		if bridge == null or bridge.call("table_selection_state") != state:
 			failures.append("typed_selection_bridge_missing:%s" % bridge_name)
+	var ai_bridge := coordinator.get_node_or_null("AiRuntimeWorldBridge") as AiRuntimeWorldBridge
+	var ai_bridge_debug := ai_bridge.debug_snapshot() if ai_bridge != null else {}
+	if ai_bridge == null or ai_bridge.has_method("table_selection_state") \
+			or ai_bridge.has_method("set_table_selection_state") \
+			or bool(ai_bridge_debug.get("table_selection_state_ready", true)):
+		failures.append("ai_bridge_still_exposes_table_selection")
 	print(
 		"TABLE_SELECTION_STATE_CUTOVER_BENCH|status=%s|checks=13|failures=%d|notes=%s"
 		% ["PASS" if failures.is_empty() else "FAIL", failures.size(), JSON.stringify(failures)]

@@ -192,6 +192,26 @@ func _run() -> void:
 		_military_unit(301, 1, "AI_A_MILITARY_TARGET", ["AI_A_BOUND_1", "AI_A_BOUND_2"]),
 		_military_unit(302, 2, "AI_B_MILITARY_TARGET", ["AI_B_BOUND"]),
 	], 303)
+	var own_event_weight := ai._district_event_weight(0, 1)
+	var rival_event_weight_before := ai._district_event_weight(1, 1)
+	var original_districts := world.districts.duplicate(true)
+	var private_probe_districts := original_districts.duplicate(true)
+	var rival_private_city := ((private_probe_districts[1] as Dictionary).get("city", {}) as Dictionary).duplicate(true)
+	rival_private_city["warehouse_stockpile_count"] = 99
+	rival_private_city["warehouse_stockpile_units"] = 999
+	rival_private_city["warehouse_stockpile_products"] = ["RIVAL_WAREHOUSE_PRIVATE"]
+	(private_probe_districts[1] as Dictionary)["city"] = rival_private_city
+	world.replace_districts(private_probe_districts, true)
+	var rival_event_weight_after := ai._district_event_weight(1, 1)
+	world.replace_districts(original_districts, true)
+	_expect(
+		own_event_weight > rival_event_weight_before,
+		"Monster-card target weighting may use the actor's own warehouse pressure through actor-scoped region facts"
+	)
+	_expect(
+		rival_event_weight_after == rival_event_weight_before,
+		"Monster-card target weighting ignores rival private warehouse pressure"
+	)
 	var clean_checkpoint := game_session.capture_new_session_checkpoint()
 	clean_checkpoint["save_state"] = "clean"
 	clean_checkpoint["dirty_reason"] = ""

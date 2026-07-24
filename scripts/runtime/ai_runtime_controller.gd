@@ -3,6 +3,7 @@ extends Node
 class_name AiRuntimeController
 
 const CardPlayRequirementPolicyScript := preload("res://scripts/cards/card_play_requirement_policy.gd")
+const RuntimeBalanceModelScript := preload("res://scripts/balance/runtime_balance_model.gd")
 const DEFAULT_POLICY_PROFILE := preload("res://resources/ai/ai_policy_profile_v1.tres")
 const ACTIVE_RESPONSE_KINDS := [
 	"counter_response",
@@ -28,8 +29,20 @@ const NEARBY_RADIUS_METERS := MonsterRuntimeController.NEARBY_RADIUS_METERS
 const PLAYER_HAND_LIMIT := CardFlowPolicyV06.HAND_LIMIT
 const RIVAL_AUTO_BUILD_BASE_CITY_CAP := 2
 const RIVAL_AUTO_BUILD_MAX_CITY_CAP := 5
+const AI_EVENT_TARGET_BASE_WEIGHT := 8
+const AI_EVENT_TARGET_PANIC_WEIGHT := 1
+const AI_EVENT_TARGET_MIASMA_BONUS := 14
+const AI_EVENT_TARGET_MONSTER_BONUS := 10
+const AI_EVENT_TARGET_CITY_BONUS := 24
+const AI_EVENT_TARGET_COMPETITION_WEIGHT := 3
+const AI_EVENT_TARGET_TRADE_WEIGHT := 4
+const AI_OWN_WAREHOUSE_COUNT_PRESSURE := 34
+const AI_OWN_WAREHOUSE_UNIT_PRESSURE := 8
+const AI_OWN_WAREHOUSE_PRODUCT_PRESSURE := 10
 
 @export var policy_profile: Resource = DEFAULT_POLICY_PROFILE
+
+var _runtime_balance_model := RuntimeBalanceModelScript.new()
 
 var _world_bridge: Node
 var _run_rng_service: RunRngService
@@ -1431,16 +1444,93 @@ func _player_is_eliminated(player_index: int) -> bool:
 	return _ai_actor_state_port.is_player_eliminated(player_index) if _actor_state_ready() else true
 
 func _product_count_summary(counts: Dictionary, limit: int = 4, empty_text: String = "暂无") -> String:
-	return _call_world(&"_product_count_summary", [counts, limit, empty_text])
+	var entries: Array = []
+	for key_variant in counts.keys():
+		var key := str(key_variant)
+		entries.append({"label": key, "count": int(counts.get(key, 0))})
+	entries.sort_custom(func(left: Variant, right: Variant) -> bool:
+		var left_entry := left as Dictionary
+		var right_entry := right as Dictionary
+		var left_count := int(left_entry.get("count", 0))
+		var right_count := int(right_entry.get("count", 0))
+		if left_count != right_count:
+			return left_count > right_count
+		return str(left_entry.get("label", "")) < str(right_entry.get("label", ""))
+	)
+	var pieces: Array[String] = []
+	for index in range(mini(limit, entries.size())):
+		var entry := entries[index] as Dictionary
+		pieces.append("%s×%d" % [str(entry.get("label", "")), int(entry.get("count", 0))])
+	return " / ".join(pieces) if not pieces.is_empty() else empty_text
 
-func _product_strategy_scores(product_name: String) -> Dictionary:
-	return _call_world(&"_product_strategy_scores", [product_name])
+func _product_strategy_scores(product_name: String, player_index: int = -1) -> Dictionary:
+	var entry := _market_public_product(product_name)
+	var supply := int(entry.get("supply", 0))
+	var demand := int(entry.get("demand", 0))
+	var disrupted := int(entry.get("disrupted", 0))
+	var volatility := int(entry.get("volatility", 0))
+	var temporary_demand := int(entry.get("temporary_demand_pressure", 0))
+	var temporary_supply := int(entry.get("temporary_supply_pressure", 0))
+	var contract_seconds := maxf(0.0, float(entry.get("market_contract_seconds", 0.0)))
+	if not entry.has("market_contract_seconds"):
+		contract_seconds = float(maxi(0, int(entry.get("market_contract_turns", 0)))) \
+			* ProductMarketRuntimeController.ECONOMY_LEGACY_TURN_SECONDS
+	var contract_demand := int(entry.get("market_contract_demand", 0)) if contract_seconds > 0.0 else 0
+	var contract_supply := int(entry.get("market_contract_supply", 0)) if contract_seconds > 0.0 else 0
+	var futures_up := 0
+	var futures_down := 0
+	for position_variant in entry.get("futures_positions", []) as Array:
+		if not (position_variant is Dictionary):
+			continue
+		if str((position_variant as Dictionary).get("direction", "up")) == "down":
+			futures_down += 1
+		else:
+			futures_up += 1
+	var warehouse_units := 0
+	if player_index >= 0:
+		var economy := _ai_actor_economy_snapshot(player_index)
+		for position_variant in economy.get("own_futures", []) as Array:
+			if not (position_variant is Dictionary):
+				continue
+			var position := position_variant as Dictionary
+			if str(position.get("product_id", "")) == product_name \
+					and not str(position.get("warehouse_region_id", "")).is_empty():
+				warehouse_units += maxi(1, int(position.get("units", 1)))
+	var monster_focus_count := 0
+	if _ai_monster_public_query_port != null:
+		for monster_variant in _ai_monster_public_query_port.public_catalog_snapshot():
+			if monster_variant is Dictionary \
+					and ((monster_variant as Dictionary).get("resource_focus", []) as Array).has(product_name):
+				monster_focus_count += 1
+	var growth_bonus := int(round(maxf(0.0, float(entry.get("growth_multiplier", 1.0)) - 1.0) * 40.0))
+	var route_bonus := int(round(maxf(0.0, float(entry.get("route_flow_multiplier", 1.0)) - 1.0) * 32.0))
+	var long_score := maxi(0, demand - supply) * 14 + demand * 3 + disrupted * 10 + temporary_demand * 8 + contract_demand * 9 + growth_bonus + futures_up * 3
+	var short_score := maxi(0, supply - demand) * 14 + supply * 3 + temporary_supply * 8 + contract_supply * 9 + volatility * 2 + futures_down * 3
+	var stockpile_score := long_score + volatility * 4 + warehouse_units * 5 + route_bonus
+	var route_score := (supply + demand) * 6 + route_bonus + disrupted * 4 + contract_demand * 3 + contract_supply * 3
+	var monster_risk_score := monster_focus_count * 18 + warehouse_units * 7 + disrupted * 3
+	return {
+		"long": maxi(0, long_score),
+		"short": maxi(0, short_score),
+		"stockpile": maxi(0, stockpile_score),
+		"route": maxi(0, route_score),
+		"monster": maxi(0, monster_risk_score),
+		"supply": supply,
+		"demand": demand,
+		"disrupted": disrupted,
+		"volatility": volatility,
+	}
 
 func _limited_name_list(names: Array, limit: int = 6, empty_text: String = "无") -> String:
 	return _call_monster(&"_limited_name_list", [names, limit, empty_text])
 
 func _player_product_flow(player_index: int, product_name: String) -> int:
-	return _call_world(&"_player_product_flow", [player_index, product_name])
+	var economy := _ai_actor_economy_snapshot(player_index)
+	var summary: Dictionary = economy.get("economy_summary", {}) \
+		if economy.get("economy_summary", {}) is Dictionary else {}
+	var flow_by_id: Dictionary = summary.get("product_flow_by_id", {}) \
+		if summary.get("product_flow_by_id", {}) is Dictionary else {}
+	return maxi(0, int(flow_by_id.get(product_name, 0)))
 
 func _first_player_flow_product(player_index: int) -> String:
 	var economy := _ai_actor_economy_snapshot(player_index)
@@ -1460,7 +1550,34 @@ func _first_player_flow_product(player_index: int) -> String:
 		if not products.is_empty() and products[0] is Dictionary else ""
 
 func _best_player_flow_product(player_index: int, required: int = 1, preferred_products: Array = []) -> String:
-	return _call_world(&"_best_player_flow_product", [player_index, required, preferred_products])
+	var safe_required := maxi(1, required)
+	var economy := _ai_actor_economy_snapshot(player_index)
+	var summary: Dictionary = economy.get("economy_summary", {}) \
+		if economy.get("economy_summary", {}) is Dictionary else {}
+	var flow_by_id: Dictionary = summary.get("product_flow_by_id", {}) \
+		if summary.get("product_flow_by_id", {}) is Dictionary else {}
+	var flow_order: Array = summary.get("product_flow_order", []) \
+		if summary.get("product_flow_order", []) is Array else []
+	var seen: Dictionary = {}
+	for product_variant in preferred_products:
+		var product_id := str(product_variant).strip_edges()
+		if product_id.is_empty() or seen.has(product_id):
+			continue
+		seen[product_id] = true
+		if int(flow_by_id.get(product_id, 0)) >= safe_required:
+			return product_id
+	var best_product := ""
+	var best_flow := -1
+	for product_variant in flow_order:
+		var product_id := str(product_variant)
+		if product_id.is_empty() or seen.has(product_id):
+			continue
+		seen[product_id] = true
+		var flow := int(flow_by_id.get(product_id, 0))
+		if flow >= safe_required and flow > best_flow:
+			best_product = product_id
+			best_flow = flow
+	return best_product
 
 func _skill_play_product(skill: Dictionary, player_index: int) -> String:
 	var explicit := str(skill.get("play_product", "")).strip_edges()
@@ -1496,15 +1613,23 @@ func _can_play_skill_now(player_index: int, skill: Dictionary) -> bool:
 	).get("allowed", false))
 
 func _signed_int_text(value: int) -> String:
-	return _call_world(&"_signed_int_text", [value])
+	return "+%d" % value if value > 0 else "%d" % value
 
-func _card_price(skill_name: String, district_index: int = -1, player_index: int = -1) -> int:
+func _card_price(skill_name: String, district_index: int = -1, _player_index: int = -1) -> int:
+	if skill_name.is_empty():
+		return 0
 	if district_index >= 0:
 		if _district_supply_runtime_query_port == null:
 			return 0
 		var preview := _district_supply_runtime_query_port.public_price_preview(district_index, skill_name)
 		return int(preview.get("final_price", 0)) if not preview.is_empty() else 0
-	return _call_world(&"_card_price", [skill_name, district_index, player_index])
+	if _card_definition_bridge == null:
+		return 0
+	var price_name := "%s1" % _card_definition_bridge.family_id(skill_name)
+	if not _card_definition_bridge.has_runtime_card(price_name):
+		price_name = skill_name
+	var skill := _card_definition_bridge.resolve_definition(price_name)
+	return int(_runtime_balance_model.card_price_for_skill(skill)) if not skill.is_empty() else 0
 
 func _card_strength_budget_points(card_name: String) -> int:
 	return _gameplay_balance_diagnostics_service.card_budget_points_for_id(card_name) if _gameplay_balance_diagnostics_service != null else 0
@@ -1831,8 +1956,39 @@ func _card_rank_level_text(rank: int) -> String:
 	var roman_levels := ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"]
 	return "%s级" % roman_levels[clampi(rank, 1, roman_levels.size()) - 1]
 
-func _district_event_weight(index: int) -> int:
-	return _call_world(&"_district_event_weight", [index])
+func _district_event_weight(index: int, actor_index: int = -1) -> int:
+	if index < 0 or index >= _district_count():
+		return 0
+	var district := _public_district(index)
+	if district.is_empty() or bool(district.get("destroyed", false)):
+		return 0
+	var score := AI_EVENT_TARGET_BASE_WEIGHT
+	score += maxi(0, int(district.get("panic", 0))) * AI_EVENT_TARGET_PANIC_WEIGHT
+	var public_city: Dictionary = district.get("city", {}) \
+		if district.get("city", {}) is Dictionary else {}
+	if _city_is_active(public_city):
+		score += AI_EVENT_TARGET_CITY_BONUS + (public_city.get("products", []) as Array).size()
+		score += maxi(0, int(public_city.get("competition_matches", 0))) * AI_EVENT_TARGET_COMPETITION_WEIGHT
+	if actor_index >= 0:
+		var actor_region := _actor_district(actor_index, index)
+		var actor_city: Dictionary = actor_region.get("city", {}) \
+			if actor_region.get("city", {}) is Dictionary else {}
+		if str(actor_city.get("owner_knowledge", "")) == "actor_own":
+			score += maxi(0, int(actor_city.get("warehouse_stockpile_count", 0))) * AI_OWN_WAREHOUSE_COUNT_PRESSURE
+			score += maxi(0, int(actor_city.get("warehouse_stockpile_units", 0))) * AI_OWN_WAREHOUSE_UNIT_PRESSURE
+			score += (actor_city.get("warehouse_stockpile_products", []) as Array).size() * AI_OWN_WAREHOUSE_PRODUCT_PRESSURE
+	if _ai_route_public_query_port != null and _ai_route_public_query_port.is_ready():
+		var route_summary := _ai_route_public_query_port.region_route_summary(index)
+		score += maxi(0, int(route_summary.get("legal_route_count", 0))) * AI_EVENT_TARGET_TRADE_WEIGHT
+	if bool(district.get("miasma", false)):
+		score += AI_EVENT_TARGET_MIASMA_BONUS
+	for actor_variant in _monster_public_roster():
+		if not (actor_variant is Dictionary):
+			continue
+		var monster := actor_variant as Dictionary
+		if not bool(monster.get("down", false)) and int(monster.get("position", -1)) == index:
+			score += AI_EVENT_TARGET_MONSTER_BONUS
+	return maxi(1, score)
 
 func _monster_resource_match_score(actor: Dictionary, index: int, player_index: int) -> int:
 	if _ai_monster_public_query_port == null or not _ai_monster_public_query_port.is_ready():
@@ -6253,7 +6409,7 @@ func _ai_best_district_near_monster(player_index: int, actor: Dictionary, range_
 			continue
 		if range_limit > 0.0 and _entity_distance_to_district(actor, i) > range_limit:
 			continue
-		var score := _district_event_weight(i)
+		var score := _district_event_weight(i, player_index)
 		var city := _district_city(i, player_index)
 		if _city_is_active(city):
 			score += 100 if int(city.get("owner", -1)) != player_index else -120

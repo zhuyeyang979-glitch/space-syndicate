@@ -8,6 +8,7 @@ const FailOncePublicLogPortScript := preload("res://scripts/tools/ai_business_co
 
 @onready var rng: RunRngService = $RunRngService
 @onready var world: WorldSessionState = $WorldSessionState
+@onready var region_query: AiRegionKnowledgeQueryPort = $AiRegionKnowledgeQueryPort
 @onready var formula: CardEconomyProductRouteFormulaRuntimeService = $CardEconomyProductRouteFormulaRuntimeService
 @onready var market_bridge: ProductMarketRuntimeWorldBridge = $ProductMarketRuntimeWorldBridge
 @onready var market: ProductMarketRuntimeController = $ProductMarketRuntimeController
@@ -28,6 +29,7 @@ const FailOncePublicLogPortScript := preload("res://scripts/tools/ai_business_co
 
 var _balance := RuntimeBalanceModelScript.new()
 var _capability: AiBusinessCostCapability
+var _region_capabilities: Dictionary = {}
 var _step_index := 0
 var _checks := 0
 var _failures: Array[String] = []
@@ -152,6 +154,13 @@ func _reset_case(case_id: String, ai_cash_cents: int, reserved_cents: int = 0) -
 		"seed": 20260722,
 		"player_count": 4,
 	})
+	_region_capabilities = {
+		1: AiRegionKnowledgeCapability.new(),
+		2: AiRegionKnowledgeCapability.new(),
+		3: AiRegionKnowledgeCapability.new(),
+	}
+	region_query.bind_ai_capabilities(_region_capabilities)
+	ai.set_world_typed_ports(null, null, {}, region_query, _region_capabilities, null)
 	authority.begin_step(_step_index)
 	_capability = AiBusinessCostCapability.new()
 	cash_port.configure(
@@ -232,11 +241,15 @@ func _case_success_duplicate_and_public_privacy() -> void:
 	_expect(int(market.ai_business_market_pressure_debug_snapshot().get("finalize_call_count", 0)) == 1, "success finalizes the market participant once")
 	_expect(audit.recent_mutations(32).size() == mutation_before + 1, "success records one cash mutation through SimulationMutationAuthority")
 	var public_clues: Array = (((world.districts[0] as Dictionary).get("city", {}) as Dictionary).get("public_clues", []) as Array)
-	_expect(public_clues.size() == 1 and str((public_clues[0] as Dictionary).get("text", "")).contains("供需重算"), "success persists one legacy-equivalent public region clue through WorldSessionState")
+	var first_public_clue: Dictionary = public_clues[0] as Dictionary \
+		if not public_clues.is_empty() and public_clues[0] is Dictionary else {}
+	_expect(public_clues.size() == 1 and str(first_public_clue.get("text", "")).contains("供需重算"), "success persists one legacy-equivalent public region clue through WorldSessionState")
 	var public_entries := public_log_owner.recent_public_entries(8)
-	_expect(public_entries.size() == 1 and str((public_entries[0] as Dictionary).get("event_kind", "")) == "ai_business_market_pressure_resolved", "success publishes one typed detailed public log receipt")
+	var first_public_entry: Dictionary = public_entries[0] as Dictionary \
+		if not public_entries.is_empty() and public_entries[0] is Dictionary else {}
+	_expect(public_entries.size() == 1 and str(first_public_entry.get("event_kind", "")) == "ai_business_market_pressure_resolved", "success publishes one typed detailed public log receipt")
 	var public_entries_text := JSON.stringify(public_entries).to_lower()
-	_expect(not (public_entries[0] as Dictionary).has("receipt_id") and not public_entries_text.contains("ai-business:") and not public_entries_text.contains("player_index"), "player-facing public log projection exposes no internal transaction identity")
+	_expect(not first_public_entry.has("receipt_id") and not public_entries_text.contains("ai-business:") and not public_entries_text.contains("player_index"), "player-facing public log projection exposes no internal transaction identity")
 	var cash_after := int(player.get("cash_cents", 0))
 	var market_after := market.runtime_state_snapshot()
 	var rng_after := rng.capture_plan_checkpoint()

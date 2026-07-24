@@ -2,6 +2,8 @@
 extends Node
 class_name AiMonsterPublicQueryPort
 
+const MONSTER_CATALOG_V06 := preload("res://scripts/runtime/monster_catalog_v06.gd")
+
 const MonsterCatalog := preload("res://scripts/runtime/monster_catalog_v06.gd")
 
 @export var monster_runtime_controller_path: NodePath
@@ -75,6 +77,17 @@ func public_catalog_entry(catalog_index: int) -> Dictionary:
 	return TablePresentationPureDataPolicy.detached_copy(entry)
 
 
+func public_catalog_snapshot() -> Array:
+	if not is_ready():
+		return []
+	var result: Array = []
+	for catalog_index in range(MONSTER_CATALOG_V06.catalog_size()):
+		var entry := public_catalog_entry(catalog_index)
+		if not entry.is_empty():
+			result.append(entry)
+	return TablePresentationPureDataPolicy.detached_copy(result)
+
+
 func public_resource_match_score(monster_uid: int, district_index: int) -> int:
 	return public_resource_match_score_for_actor(public_monster_by_uid(monster_uid), district_index)
 
@@ -134,6 +147,7 @@ func debug_snapshot() -> Dictionary:
 		"query_count": _query_count,
 		"rejected_query_count": _rejected_query_count,
 		"returns_public_roster_only": true,
+		"returns_public_catalog": true,
 		"returns_hidden_owner": false,
 		"returns_owner_damage_cash_pool": false,
 		"returns_private_target": false,

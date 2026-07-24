@@ -19,7 +19,6 @@ func _ready() -> void:
 		if not is_equal_approx(state.advance_game_time(2.0), 20.0):
 			failures.append("world_session_time_invalid")
 	for bridge_name in [
-		"AiRuntimeWorldBridge",
 		"MonsterRuntimeWorldBridge",
 		"MilitaryRuntimeWorldBridge",
 		"WeatherRuntimeWorldBridge",
@@ -38,6 +37,12 @@ func _ready() -> void:
 		var bridge := coordinator.get_node_or_null(bridge_name)
 		if bridge == null or bridge.call("world_session_state") != state:
 			failures.append("typed_world_session_bridge_missing:%s" % bridge_name)
+	var ai_bridge := coordinator.get_node_or_null("AiRuntimeWorldBridge") as AiRuntimeWorldBridge
+	var ai_bridge_debug := ai_bridge.debug_snapshot() if ai_bridge != null else {}
+	if ai_bridge == null or ai_bridge.has_method("world_session_state") \
+			or ai_bridge.has_method("set_world_session_state") \
+			or bool(ai_bridge_debug.get("world_session_state_ready", true)):
+		failures.append("ai_bridge_still_exposes_world_session_state")
 	print(
 		"WORLD_SESSION_STATE_CUTOVER_BENCH|status=%s|checks=19|failures=%d|notes=%s"
 		% ["PASS" if failures.is_empty() else "FAIL", failures.size(), JSON.stringify(failures)]

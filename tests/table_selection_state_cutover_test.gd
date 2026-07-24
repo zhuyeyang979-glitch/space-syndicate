@@ -46,7 +46,6 @@ func _run() -> void:
 	_expect(not bool(state.apply_save_data({"schema_version": 0}).get("applied", true)), "invalid selection save fails closed")
 
 	for bridge_name in [
-		"AiRuntimeWorldBridge",
 		"MonsterRuntimeWorldBridge",
 		"MilitaryRuntimeWorldBridge",
 		"ProductMarketRuntimeWorldBridge",
@@ -61,6 +60,26 @@ func _run() -> void:
 			bridge != null and bridge.call("table_selection_state") == state,
 			"%s consumes the typed selection owner" % bridge_name
 		)
+
+	var ai_bridge := coordinator.get_node_or_null("AiRuntimeWorldBridge") as AiRuntimeWorldBridge
+	var ai_bridge_debug := ai_bridge.debug_snapshot() if ai_bridge != null else {}
+	_expect(
+		ai_bridge != null \
+			and not ai_bridge.has_method("table_selection_state") \
+			and not ai_bridge.has_method("set_table_selection_state") \
+			and not bool(ai_bridge_debug.get("table_selection_state_ready", true)),
+		"AI bridge exposes no human table-selection capability"
+	)
+
+	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
+	var wire_start := coordinator_source.find("func _wire_table_selection_state(")
+	var wire_end := coordinator_source.find("\nfunc ", wire_start + 5)
+	var wire_body := coordinator_source.substr(wire_start, wire_end - wire_start) \
+		if wire_start >= 0 and wire_end > wire_start else ""
+	_expect(
+		not wire_body.is_empty() and not wire_body.contains("AiRuntime") and not wire_body.contains("_ai_runtime"),
+		"Coordinator table-selection wiring injects no selection owner into AI"
+	)
 
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 	for field_name in [
