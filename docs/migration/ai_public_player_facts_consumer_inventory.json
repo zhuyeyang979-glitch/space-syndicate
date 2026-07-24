@@ -1,0 +1,248 @@
+{
+  "schema_version": 1,
+  "task_id": "AI_PUBLIC_PLAYER_FACTS_TYPED_PORT_MIGRATION",
+  "parent_task": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
+  "parent_status": "ACTIVE",
+  "rule_authority_gate": "GREEN",
+  "unknown_count": 0,
+  "new_query_port_justified": false,
+  "reused_query_port": "res://scripts/runtime/ai_actor_state_port.gd",
+  "authorities": {
+    "public_player_identity": "WorldSessionState",
+    "public_elimination_fields": ["eliminated"],
+    "session_identity": "GameSessionRuntimeController",
+    "role_definition": "RoleCatalogRuntimeService",
+    "public_victory_audit": "VictoryControlRuntimeController.public_snapshot",
+    "semantic_owner": "AiRuntimeController"
+  },
+  "consumers": [
+    {
+      "function": "_typed_ai_player_indices",
+      "classification": "ALREADY_TYPED_PUBLIC_IDENTITY",
+      "current_source": "AiActorStatePort",
+      "intended_source": "AiActorStatePort.ai_player_indices",
+      "in_scope": true,
+      "status": "retained"
+    },
+    {
+      "function": "_player_is_ai",
+      "classification": "ALREADY_TYPED_PUBLIC_IDENTITY",
+      "current_source": "AiActorStatePort",
+      "intended_source": "AiActorStatePort.is_ai_player",
+      "in_scope": true,
+      "status": "migrated_strict"
+    },
+    {
+      "function": "_player_is_eliminated",
+      "classification": "ALREADY_TYPED_PUBLIC_IDENTITY",
+      "current_source": "AiActorStatePort",
+      "intended_source": "AiActorStatePort.is_player_eliminated",
+      "in_scope": true,
+      "status": "migrated_strict"
+    },
+    {
+      "function": "_ai_player_count",
+      "classification": "PUBLIC_PLAYER_FACT",
+      "current_source": "AI index array",
+      "intended_source": "AiActorStatePort.ai_player_count",
+      "in_scope": true,
+      "status": "migrated"
+    },
+    {
+      "function": "_ai_profile_for_config_index",
+      "classification": "PUBLIC_PLAYER_FACT",
+      "current_source": "public roster scan",
+      "intended_source": "AiActorStatePort.human_player_count",
+      "in_scope": true,
+      "status": "migrated"
+    },
+    {
+      "function": "_rival_build_player_order",
+      "classification": "PUBLIC_PLAYER_FACT",
+      "current_source": "typed AI indices",
+      "intended_source": "AiActorStatePort.ai_player_indices(true)",
+      "in_scope": true,
+      "status": "retained_rng_frozen"
+    },
+    {
+      "function": "player_count_and_bounds_family",
+      "classification": "PUBLIC_PLAYER_FACT",
+      "current_source": "players.size",
+      "intended_source": "AiRuntimeController._public_player_count",
+      "in_scope": true,
+      "status": "migrated"
+    },
+    {
+      "function": "_player_role_card_for_index",
+      "classification": "PUBLIC_PLAYER_FACT",
+      "current_source": "Monster method-name bridge",
+      "intended_source": "AiActorStatePort.public_role_definition",
+      "in_scope": true,
+      "status": "migrated"
+    },
+    {
+      "function": "_interaction_target_label",
+      "classification": "PRESENTATION_ONLY",
+      "current_source": "Main method-name helper",
+      "intended_source": "AiActorStatePort.public_target_label",
+      "in_scope": true,
+      "status": "migrated"
+    },
+    {
+      "function": "_ai_direct_player_interaction_plan.target_identity",
+      "classification": "PUBLIC_PLAYER_FACT",
+      "current_source": "whole players array",
+      "intended_source": "AiActorStatePort.public_active_target_rows",
+      "in_scope": true,
+      "status": "migrated"
+    },
+    {
+      "function": "_queue_skill_resolution.target_revalidation",
+      "classification": "PUBLIC_PLAYER_FACT",
+      "current_source": "planned target_player",
+      "intended_source": "current AiActorStatePort.public_player_snapshot before submit_card_play",
+      "in_scope": true,
+      "status": "migrated_fail_closed"
+    },
+    {
+      "function": "_ai_direct_player_interaction_plan.rival_victory",
+      "classification": "VICTORY_PUBLIC_FACT",
+      "current_source": "rival private snapshot",
+      "intended_source": "Victory public audit row or unknown",
+      "in_scope": true,
+      "status": "privacy_corrected"
+    },
+    {
+      "function": "_ai_direct_player_interaction_plan.rival_city_owner",
+      "classification": "PUBLIC_REGION_FACT",
+      "current_source": "hidden city owner",
+      "intended_source": "deferred public Region owner",
+      "in_scope": true,
+      "status": "privacy_corrected_to_zero"
+    },
+    {
+      "function": "_ai_direct_player_interaction_plan.rival_monster_owner",
+      "classification": "PUBLIC_MONSTER_FACT",
+      "current_source": "hidden monster owner",
+      "intended_source": "deferred public Monster owner",
+      "in_scope": true,
+      "status": "privacy_corrected_to_zero"
+    },
+    {
+      "function": "_ai_actor_private_receive_pressure",
+      "classification": "ACTOR_PRIVATE_FACT",
+      "current_source": "own mutable hand",
+      "intended_source": "future actor hand typed port",
+      "in_scope": false,
+      "status": "deferred"
+    },
+    {
+      "function": "_ensure_player_runtime_defaults",
+      "classification": "ACTOR_PRIVATE_FACT",
+      "current_source": "mutable players",
+      "intended_source": "future owner transaction",
+      "in_scope": false,
+      "status": "deferred"
+    },
+    {
+      "function": "city_inference_consumers",
+      "classification": "ACTOR_CITY_INFERENCE",
+      "current_source": "AiRegionKnowledgeQueryPort",
+      "intended_source": "existing actor-scoped port",
+      "in_scope": false,
+      "status": "deferred_except_public_labels"
+    },
+    {
+      "function": "product_market_route_consumers",
+      "classification": "PUBLIC_MARKET_FACT",
+      "current_source": "domain controllers and bridge",
+      "intended_source": "future domain typed queries",
+      "in_scope": false,
+      "status": "deferred"
+    },
+    {
+      "function": "monster_consumers",
+      "classification": "PUBLIC_MONSTER_FACT",
+      "current_source": "mixed public and hidden roster",
+      "intended_source": "future Monster typed queries",
+      "in_scope": false,
+      "status": "deferred"
+    },
+    {
+      "function": "military_consumers",
+      "classification": "PUBLIC_MILITARY_FACT",
+      "current_source": "mixed public and actor-private roster",
+      "intended_source": "future Military typed queries",
+      "in_scope": false,
+      "status": "deferred"
+    },
+    {
+      "function": "victory_rank_and_posture",
+      "classification": "VICTORY_PUBLIC_FACT",
+      "current_source": "own private plus public audit",
+      "intended_source": "future Victory typed query",
+      "in_scope": false,
+      "status": "deferred"
+    },
+    {
+      "function": "training_and_balance_reports",
+      "classification": "DIAGNOSTIC_ONLY",
+      "current_source": "mixed domains",
+      "intended_source": "future narrow diagnostics",
+      "in_scope": false,
+      "status": "deferred"
+    }
+  ],
+  "main": {
+    "deleted": [
+      "MIN_PLAYER_COUNT",
+      "MAX_PLAYER_COUNT",
+      "AI constant snapshot entries",
+      "_player_is_ai",
+      "_human_player_count",
+      "_interaction_target_label"
+    ],
+    "retained": [
+      "_player_name",
+      "_player_is_eliminated",
+      "AiRuntimeWorldBridge.call_world",
+      "AiRuntimeController._call_world",
+      "deferred players bridge"
+    ],
+    "new_production_caller_count": 0
+  },
+  "remaining_parent_counts": {
+    "ai_controller_call_world_references": 42,
+    "ai_controller_players_tokens": 27,
+    "ai_controller_districts_tokens": 95
+  },
+  "privacy_corrections": [
+    "rival_private_victory_removed",
+    "hidden_city_owner_score_removed",
+    "hidden_monster_owner_score_removed",
+    "eliminated_at_public_field_removed",
+    "elimination_reason_public_field_removed"
+  ],
+  "qa_hardening": {
+    "hostile_early_enter_tree_accept_count": 0,
+    "hostile_early_ready_accept_count": 0,
+    "production_capability_creation_site_count": 1,
+    "public_elimination_detail_leak_count": 0,
+    "post_plan_eliminated_target_submission_delta": 0,
+    "focused_pre_submit_rejection_count": 3,
+    "card_rule_owner_changed": false,
+    "post_submission_revalidation_claim": false
+  },
+  "persistence": {
+    "new_save_section_count": 0,
+    "save_registry_changed": false,
+    "full_run_resume_claim": false
+  },
+  "evidence": {
+    "focused": "128/128 PASS",
+    "actor_state_regression": "93/93 PASS",
+    "city_inference_regression": "48/48 PASS",
+    "typed_world_ports_regression": "83/83 PASS",
+    "production_bench": "31/31 PASS"
+  }
+}

@@ -1,26 +1,26 @@
 {
   "branch": "main",
-  "commit": "80817847cfd0061de19516829460ca45b41558dc",
+  "commit": "0b4b72a742e4d3ac08cc6308d596d26383942a2d",
   "task": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
-  "status": "ACTIVE_CITY_INFERENCE_ATOMIC_CUTOVER_MERGED_ACTOR_STATE_READY",
+  "status": "ACTIVE_ACTOR_STATE_ATOMIC_CUTOVER_MERGED_PUBLIC_PLAYER_FACTS_PREFLIGHT_STARTED",
   "logical_ownership_set": [
-    "AI city-inference actor-scoped query",
-    "AI city-inference exact-once command",
-    "AI runtime city-inference consumer",
+    "AI actor-private state query and revision-bound mutation",
+    "AI actor-state batch capture and apply",
+    "AI runtime actor-state consumers",
     "runtime composition integration",
-    "Main city-inference residue deletion",
+    "Main actor-state residue deletion",
     "Alpha 0.3 checkpoint"
   ],
   "pr": {
-    "number": 51,
+    "number": 53,
     "status": "MERGED",
-    "head_commit": "90014ec92a5b2f1f15e658d007ce9c87f2c4fbef",
-    "merge_commit": "80817847cfd0061de19516829460ca45b41558dc"
+    "head_commit": "bb3a7af95907ec44b4f3e2c7274a791bab83455a",
+    "merge_commit": "0b4b72a742e4d3ac08cc6308d596d26383942a2d"
   },
   "test_result": {
     "rule_authority_gate": "GREEN",
-    "focused_test": "48/48 PASS",
-    "production_scene_bench": "14/14 PASS",
+    "focused_test": "93/93 PASS",
+    "production_scene_bench": "37/37 PASS",
     "privacy_leak_count": 0,
     "duplicate_mutation_count": 0,
     "main_runtime_composition": "PASS",
@@ -41,5 +41,5 @@
     "full_run_resume_claim": false,
     "alpha_0_3_complete": false
   },
-  "next_atomic_boundary": "AI_ACTOR_STATE_TYPED_PORT_MIGRATION"
+  "next_atomic_boundary": "AI_PUBLIC_PLAYER_FACTS_TYPED_PORT_MIGRATION"
 }

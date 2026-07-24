@@ -53,6 +53,7 @@ var _policy_main_payload: Dictionary = {}
 var _business_action_policy: Dictionary = {}
 var _configured := false
 var _last_receipts: Array = []
+var _card_target_pre_submit_rejection_count := 0
 var ai_card_decision_timer := 2.2
 var ai_auction_reaction_timer := 0.7
 var ai_intel_decision_timer := 5.5
@@ -467,6 +468,8 @@ func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 		"weather_controller_bound": _weather_runtime_controller != null,
 		"victory_control_controller_bound": _victory_control_runtime_controller != null,
 		"typed_card_submission_bound": _card_play_submission_controller != null,
+		"card_target_pre_submit_validation": true,
+		"card_target_pre_submit_rejection_count": _card_target_pre_submit_rejection_count,
 		"typed_card_history_bound": _card_resolution_history_service != null,
 		"typed_business_cost_cash_bound": _ai_business_cost_cash_port != null and _ai_business_cost_capability != null,
 		"typed_actor_state_bound": _ai_actor_state_port != null and _ai_actor_state_capability != null,
@@ -614,6 +617,18 @@ func _city_inference_snapshot(actor_index: int) -> Dictionary:
 
 func _typed_ai_player_indices() -> Array:
 	return _ai_actor_state_port.ai_player_indices(false) if _actor_state_ready() else []
+
+
+func _public_player_count() -> int:
+	return _ai_actor_state_port.public_player_count() if _actor_state_ready() else 0
+
+
+func _public_player_snapshot(player_index: int) -> Dictionary:
+	return _ai_actor_state_port.public_player_snapshot(player_index) if _actor_state_ready() else {}
+
+
+func _public_active_target_rows(actor_index: int) -> Array:
+	return _ai_actor_state_port.public_active_target_rows(actor_index) if _actor_state_ready() else []
 
 
 func _world_value(property_name: StringName, default_value: Variant = null) -> Variant:
@@ -947,14 +962,6 @@ var ECONOMY_LEGACY_TURN_SECONDS:
 	get:
 		return _world_constant(&"ECONOMY_LEGACY_TURN_SECONDS")
 
-var MAX_PLAYER_COUNT:
-	get:
-		return _world_constant(&"MAX_PLAYER_COUNT")
-
-var MIN_PLAYER_COUNT:
-	get:
-		return _world_constant(&"MIN_PLAYER_COUNT")
-
 var NEARBY_RADIUS_METERS:
 	get:
 		return _world_constant(&"NEARBY_RADIUS_METERS")
@@ -1139,6 +1146,16 @@ func _victory_public_snapshot() -> Dictionary:
 	var value: Variant = _victory_control_runtime_controller.call("public_snapshot")
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
+
+func _public_victory_audit_row(player_index: int) -> Dictionary:
+	for entry_variant in _victory_public_snapshot().get("audit_entries", []):
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		if int(entry.get("player_index", -1)) == player_index:
+			return entry.duplicate(true)
+	return {}
+
 func _victory_private_snapshot(player_index: int) -> Dictionary:
 	if _victory_control_runtime_controller == null or not _victory_control_runtime_controller.has_method("private_snapshot"):
 		return {}
@@ -1317,7 +1334,7 @@ func _make_skill(skill_name: String) -> Dictionary:
 	return skill
 
 func _player_role_card_for_index(player_index: int) -> Dictionary:
-	return _call_monster(&"_player_role_card_for_index", [player_index])
+	return _ai_actor_state_port.public_role_definition(player_index) if _actor_state_ready() else {}
 
 func _district_or_city_has_product(district_index: int, product_name: String) -> bool:
 	if product_name.is_empty() or district_index < 0 or district_index >= districts.size():
@@ -1613,7 +1630,7 @@ func _city_gdp_derivative_risk_adjusted_value(terms: Dictionary) -> int:
 	return int(round((float(maximum_gain) - float(maximum_loss) * 0.45 - float(margin_cash) * 0.12) / 10.0))
 
 func _interaction_target_label(player_index: int) -> String:
-	return _call_world(&"_interaction_target_label", [player_index])
+	return _ai_actor_state_port.public_target_label(player_index) if _actor_state_ready() else "未知玩家"
 
 func _buy_card_for_player_from_district(player_index: int, district_index: int, skill_name: String, _anonymous: bool = false, _ignore_cooldown: bool = false, discard_slot: int = -1) -> bool:
 	if _district_supply_action_port == null:
@@ -1637,7 +1654,19 @@ func _card_can_open_counter_window(entry: Dictionary) -> bool:
 func _card_resolution_entry_card_label(entry: Dictionary) -> String:
 	return _call_world(&"_card_resolution_entry_card_label", [entry])
 
+func _current_public_card_target_is_valid(player_index: int, target_player: int) -> bool:
+	if target_player < 0:
+		return true
+	if target_player == player_index:
+		return false
+	var target_row := _public_player_snapshot(target_player)
+	return not target_row.is_empty() and not bool(target_row.get("eliminated", false))
+
+
 func _queue_skill_resolution(player_index: int, slot_index: int, target_slot: int = -1, target_player: int = -1, selected_resolution_id: int = -1) -> bool:
+	if not _current_public_card_target_is_valid(player_index, target_player):
+		_card_target_pre_submit_rejection_count += 1
+		return false
 	if _card_play_submission_controller == null:
 		return false
 	return bool(_card_play_submission_controller.submit_card_play({
@@ -1922,7 +1951,7 @@ func _competing_city_indices_for_product(player_index: int, product_name: String
 	return result
 func _rival_business_candidates_for_player(player_index: int) -> Array:
 	var result := []
-	if player_index < 0 or player_index >= players.size() or not _player_is_ai(player_index):
+	if player_index < 0 or player_index >= _public_player_count() or not _player_is_ai(player_index):
 		return result
 	if _spendable_cash_units(player_index) < RIVAL_BUSINESS_ACTION_COST:
 		return result
@@ -2215,11 +2244,11 @@ func _publish_ai_business_market_pressure_callout(public_receipt: Dictionary, di
 
 
 func _auto_rival_business_actions(force: bool = false) -> int:
-	if session_finished or players.size() <= 1:
+	if session_finished or _public_player_count() <= 1:
 		return 0
 	var acted := 0
 	var attempt_ordinal := 0
-	var limit: int = int(players.size()) - 1 if force else int(RIVAL_BUSINESS_ACTION_MAX_PER_CYCLE)
+	var limit: int = int(_public_player_count()) - 1 if force else int(RIVAL_BUSINESS_ACTION_MAX_PER_CYCLE)
 	for player_index_variant in _rival_build_player_order():
 		attempt_ordinal += 1
 		if acted >= limit:
@@ -3428,20 +3457,13 @@ func _ai_profile_strategy_identity_summary(report: Dictionary = {}) -> String:
 		"；".join(profile_pieces) if not profile_pieces.is_empty() else "暂无AI性格样本",
 	]
 func _ai_player_count() -> int:
-	return _ai_actor_state_port.ai_player_indices(true).size() if _actor_state_ready() else 0
+	return _ai_actor_state_port.ai_player_count(true) if _actor_state_ready() else 0
 func _ai_player_indices() -> Array:
 	return _typed_ai_player_indices()
 func _ai_profile_for_config_index(player_index: int) -> Dictionary:
 	if AI_PERSONALITY_CATALOG.is_empty():
 		return {}
-	var human_count := 0
-	for player_variant in (_ai_actor_state_port.public_players_snapshot() if _actor_state_ready() else []):
-		if not (player_variant is Dictionary):
-			continue
-		var player := player_variant as Dictionary
-		if not (bool(player.get("is_ai", false)) or str(player.get("seat_type", "human")) == "ai"):
-			human_count += 1
-	human_count = maxi(1, human_count)
+	var human_count := maxi(1, _ai_actor_state_port.human_player_count(true)) if _actor_state_ready() else 1
 	var ai_order: int = maxi(0, player_index - human_count)
 	var profile_index := wrapi(ai_order, 0, AI_PERSONALITY_CATALOG.size())
 	var profile := (AI_PERSONALITY_CATALOG[profile_index] as Dictionary).duplicate(true)
@@ -3583,7 +3605,7 @@ func _ai_competitive_posture(player_index: int) -> String:
 		return "trailing"
 	return "contesting"
 func _ai_endgame_urgency_score(player_index: int) -> int:
-	if player_index < 0 or player_index >= players.size():
+	if player_index < 0 or player_index >= _public_player_count():
 		return 0
 	var score := 0
 	var own_gdp := _victory_top_n_gdp(player_index)
@@ -3703,13 +3725,22 @@ func _ai_best_pressure_target_city(player_index: int) -> int:
 func _ai_direct_interaction_target_player(player_index: int) -> int:
 	var plan := _ai_direct_player_interaction_plan(player_index, {})
 	return int(plan.get("target_player", -1))
+func _ai_actor_private_receive_pressure(player_index: int, kind: String, skill: Dictionary) -> int:
+	if kind != "player_hand_steal" or player_index < 0 or player_index >= _public_player_count():
+		return 0
+	var actor: Dictionary = players[player_index]
+	if _player_counted_hand_size(actor) < PLAYER_HAND_LIMIT:
+		return 46
+	return int(float(maxi(0, int(skill.get("steal_fail_cash", 0)))) / 3.0) - 32
+
+
 func _ai_direct_player_interaction_plan(player_index: int, skill: Dictionary) -> Dictionary:
-	if player_index < 0 or player_index >= players.size() or players.size() <= 1:
+	var target_rows := _public_active_target_rows(player_index)
+	if _public_player_snapshot(player_index).is_empty() or target_rows.is_empty():
 		return {}
 	var kind := String(skill.get("kind", "player_hand_disrupt"))
-	var phase_info := _ai_refresh_game_phase(player_index)
-	var leader_index := int(phase_info.get("leader_index", -1))
-	var posture := String(phase_info.get("posture", "contesting"))
+	var leader_index := int(_visible_score_leader_entry(player_index).get("player_index", -1))
+	var posture := _ai_competitive_posture(player_index)
 	var self_estimate := _victory_top_n_gdp(player_index)
 	var hand_effect_pressure := int(skill.get("hand_discard_count", 0)) * 118 \
 		+ int(skill.get("hand_steal_count", 0)) * 154 \
@@ -3717,63 +3748,52 @@ func _ai_direct_player_interaction_plan(player_index: int, skill: Dictionary) ->
 		+ int(float(int(skill.get("target_cash_penalty", 0))) / 2.0)
 	if hand_effect_pressure <= 0:
 		hand_effect_pressure = 75
-	var receive_pressure := 0
-	if kind == "player_hand_steal":
-		var actor: Dictionary = players[player_index]
-		if _player_counted_hand_size(actor) < PLAYER_HAND_LIMIT:
-			receive_pressure += 46
-		else:
-			receive_pressure += int(float(maxi(0, int(skill.get("steal_fail_cash", 0)))) / 3.0) - 32
+	var receive_pressure := _ai_actor_private_receive_pressure(player_index, kind, skill)
 	var best := {}
 	var best_score := -999999
-	for i in range(players.size()):
-		if i == player_index:
-			continue
-		var settlement := _victory_top_n_gdp(i)
-		var settlement_gap := settlement - self_estimate
-		var city_pressure := _player_active_city_count(i) * 74
-		var monster_pressure := _ai_owned_active_monster_count(i) * 42
+	for target_variant in target_rows:
+		var target := target_variant as Dictionary
+		var target_index := int(target.get("player_index", -1))
+		var public_audit := _public_victory_audit_row(target_index)
+		var settlement_known := not public_audit.is_empty()
+		var settlement := maxi(0, int(public_audit.get("top_n_gdp_per_minute", 0))) if settlement_known else 0
+		var settlement_gap := settlement - self_estimate if settlement_known else 0
 		var leader_bonus := 0
-		if i == leader_index:
+		if target_index == leader_index and settlement_known:
 			leader_bonus = 245 + int(float(_ai_endgame_urgency_score(player_index)) / 2.0)
 		var posture_bonus := 0
-		if posture == "trailing":
+		if posture == "trailing" and settlement_known:
 			posture_bonus = 92 + int(float(maxi(0, settlement_gap)) / 12.0)
 		elif posture == "leader":
 			posture_bonus = 38
 		var score := 90 \
 			+ int(float(settlement) / 24.0) \
 			+ int(float(maxi(0, settlement_gap)) / 10.0) \
-			+ city_pressure \
-			+ monster_pressure \
 			+ leader_bonus \
 			+ posture_bonus \
 			+ hand_effect_pressure \
 			+ receive_pressure
-		score += (i * 13 + player_index * 7 + business_cycle_count) % 17
+		score += (target_index * 13 + player_index * 7 + business_cycle_count) % 17
 		var role := "pressure_high_value_player"
-		if i == leader_index:
+		if target_index == leader_index and settlement_known:
 			role = "pressure_leader_hand"
-		elif city_pressure >= 140:
-			role = "pressure_city_operator"
-		elif monster_pressure >= 84:
-			role = "pressure_monster_operator"
 		if score > best_score:
 			best_score = score
 			best = {
 				"policy_kind": "direct_%s" % kind,
-				"target_player": i,
-				"target_owner": i,
+				"target_player": target_index,
+				"target_owner": target_index,
 				"direct_interaction_role": role,
 				"direct_interaction_score": score,
 				"direct_target_settlement": settlement,
 				"direct_target_gap": settlement_gap,
-				"direct_target_city_pressure": city_pressure,
-				"direct_target_monster_pressure": monster_pressure,
+				"direct_target_city_pressure": 0,
+				"direct_target_monster_pressure": 0,
+				"direct_target_public_audit_known": settlement_known,
 				"direct_effect_pressure": hand_effect_pressure,
 				"score": score,
 				"reason": "直接互动%s｜%s｜估值差%d｜效果压强%d" % [
-					_interaction_target_label(i),
+					_interaction_target_label(target_index),
 					role,
 					settlement_gap,
 					hand_effect_pressure,
@@ -3813,7 +3833,7 @@ func _ai_direct_city_target_score(player_index: int, district_index: int, skill:
 		score += route_damage * (34 if kind == "global_barrage" else 18)
 	return score
 func _ai_direct_city_interaction_plan(player_index: int, skill: Dictionary) -> Dictionary:
-	if player_index < 0 or player_index >= players.size():
+	if player_index < 0 or player_index >= _public_player_count():
 		return {}
 	var kind := String(skill.get("kind", "city_control_dispute"))
 	var best_city := -1
@@ -3979,7 +3999,7 @@ func _ai_victory_race_bonus_for_candidate(player_index: int, kind: String, distr
 		"role": "",
 		"reason": "",
 	}
-	if player_index < 0 or player_index >= players.size() or not _player_is_ai(player_index):
+	if player_index < 0 or player_index >= _public_player_count() or not _player_is_ai(player_index):
 		return result
 	var phase_info := _ai_refresh_game_phase(player_index)
 	var phase := String(phase_info.get("phase", "midgame"))
@@ -4064,7 +4084,7 @@ func _ai_victory_race_bonus_for_candidate(player_index: int, kind: String, distr
 	result["reason"] = "、".join(reasons) if not reasons.is_empty() else "审计竞速观察"
 	return result
 func _ai_observation_vector(player_index: int) -> Dictionary:
-	if player_index < 0 or player_index >= players.size():
+	if player_index < 0 or player_index >= _public_player_count():
 		return {}
 	var focus_product := _ai_focus_product(player_index)
 	var phase_info := _ai_refresh_game_phase(player_index)
@@ -4593,7 +4613,7 @@ func _ai_episode_reward_for_player(player_index: int, rankings: Array, winner_in
 		reward += AI_EPISODE_WIN_BONUS + AI_EPISODE_GOAL_BONUS
 	else:
 		reward -= 95 * maxi(1, rank)
-	var seat_span := maxi(1, players.size() - 1)
+	var seat_span := maxi(1, _public_player_count() - 1)
 	reward += int(round((float(maxi(0, seat_span - rank)) / float(seat_span)) * 220.0)) - 90
 	return {
 		"reward": clampi(reward, -AI_EPISODE_REWARD_CLAMP, AI_EPISODE_REWARD_CLAMP),
@@ -4818,7 +4838,7 @@ func _ai_refresh_economic_focus(player_index: int, force: bool = false) -> Strin
 		return str(_ai_memory_for_player(player_index).get("economic_focus_product", ""))
 	return best_product
 func _ai_focus_product(player_index: int) -> String:
-	if player_index < 0 or player_index >= players.size():
+	if player_index < 0 or player_index >= _public_player_count():
 		return ""
 	if not _player_is_ai(player_index):
 		return _first_player_flow_product(player_index)
@@ -5089,7 +5109,7 @@ func _ai_profile_signature_bonus_for_candidate(player_index: int, kind: String, 
 		"route": "",
 		"reason": "",
 	}
-	if player_index < 0 or player_index >= players.size() or not _player_is_ai(player_index) or kind == "":
+	if player_index < 0 or player_index >= _public_player_count() or not _player_is_ai(player_index) or kind == "":
 		return result
 	var profile := _ai_profile_for_player(player_index)
 	var route_id := _ai_development_route_for_kind(kind, skill)
@@ -5238,7 +5258,7 @@ func _ai_strategy_intent_label(intent: String) -> String:
 	return "观察局势"
 func _ai_route_plan_candidates(player_index: int) -> Array:
 	var result := []
-	if player_index < 0 or player_index >= players.size() or not _player_is_ai(player_index):
+	if player_index < 0 or player_index >= _public_player_count() or not _player_is_ai(player_index):
 		return result
 	_ensure_product_market_catalog()
 	var focus := _ai_focus_product(player_index)
@@ -5487,7 +5507,7 @@ func _ai_route_hand_inventory(player_index: int, route_id: String) -> Dictionary
 		"blocked_cash": 0,
 		"blocked_gap": 0,
 	}
-	if player_index < 0 or player_index >= players.size() or route_id == "":
+	if player_index < 0 or player_index >= _public_player_count() or route_id == "":
 		return result
 	var player: Dictionary = players[player_index]
 	var slots_variant: Variant = player.get("slots", [])
@@ -6026,7 +6046,7 @@ func _ai_counter_entry_target_city(entry: Dictionary) -> int:
 	return -1
 func _ai_counter_entry_target_owner(entry: Dictionary) -> int:
 	var target_player := int(entry.get("target_player", -1))
-	if target_player >= 0 and target_player < players.size():
+	if target_player >= 0 and target_player < _public_player_count():
 		return target_player
 	var target_city := _ai_counter_entry_target_city(entry)
 	if target_city >= 0:
@@ -7834,7 +7854,7 @@ func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_cand
 			int(candidate.get("score", 0)),
 			"%s｜目标%s｜%s" % [
 				String(candidate.get("card_name", "卡牌")),
-				("玩家%d" % (target_player + 1)) if target_player >= 0 else ("怪兽%d" % (target_slot + 1) if target_slot >= 0 else "当前区域/商品"),
+				_interaction_target_label(target_player) if target_player >= 0 else ("怪兽%d" % (target_slot + 1) if target_slot >= 0 else "当前区域/商品"),
 				String(candidate.get("reason", "按卡牌策略评分")),
 			],
 			all_candidates,
@@ -7944,7 +7964,7 @@ func _ai_counter_response_candidates(player_index: int) -> Array:
 	return result
 func _ai_queue_counter_response_candidate(player_index: int, candidate: Dictionary, all_candidates: Array = []) -> bool:
 	var slot_index := int(candidate.get("slot_index", -1))
-	if player_index < 0 or player_index >= players.size():
+	if player_index < 0 or player_index >= _public_player_count():
 		return false
 	var slots: Array = (players[player_index] as Dictionary).get("slots", [])
 	if slot_index < 0 or slot_index >= slots.size() or not (slots[slot_index] is Dictionary):
@@ -8124,9 +8144,9 @@ func _ai_city_guess_owner_candidate(viewer_index: int, city_entry: Dictionary, g
 		"reason_key": reason_key,
 		"learning_bonus": learning_bonus,
 		"score": maxi(1, score),
-		"reason": "%s→玩家%d｜%s" % [
+		"reason": "%s→%s｜%s" % [
 			str(city_entry.get("name", "城市")),
-			guessed_player + 1,
+			_interaction_target_label(guessed_player),
 			"、".join(reason_bits),
 		],
 	}
@@ -8204,7 +8224,7 @@ func _update_ai_decisions(delta: float) -> void:
 		_auto_ai_intel_decisions(false)
 		ai_intel_decision_timer = AI_INTEL_DECISION_INTERVAL_SECONDS
 func _ai_discard_keep_value(player_index: int, slot_index: int) -> int:
-	if player_index < 0 or player_index >= players.size():
+	if player_index < 0 or player_index >= _public_player_count():
 		return 99999
 	var player: Dictionary = players[player_index]
 	if slot_index < 0 or slot_index >= player.get("slots", []).size():
@@ -8223,7 +8243,7 @@ func _ai_discard_keep_value(player_index: int, slot_index: int) -> int:
 		value += 140
 	return value
 func _ai_discard_slot_for_purchase(player_index: int, _incoming_card_name: String) -> int:
-	if player_index < 0 or player_index >= players.size():
+	if player_index < 0 or player_index >= _public_player_count():
 		return -1
 	var slots := _discardable_hand_slots_for_purchase(player_index)
 	var best_slot := -1

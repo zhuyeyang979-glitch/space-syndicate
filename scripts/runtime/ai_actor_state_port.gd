@@ -2,7 +2,25 @@
 extends Node
 class_name AiActorStatePort
 
-const PUBLIC_PLAYER_KEYS := [
+const PUBLIC_PLAYER_SCHEMA_VERSION := 1
+const PUBLIC_PLAYER_VISIBILITY_SCOPE := "public"
+const PUBLIC_PLAYER_ROW_KEYS := [
+	"schema_version",
+	"session_id",
+	"session_revision",
+	"source_revision",
+	"fingerprint",
+	"visibility_scope",
+	"player_index",
+	"public_seat_order",
+	"public_player_name",
+	"seat_type",
+	"is_ai",
+	"role_index",
+	"role_name",
+	"eliminated",
+]
+const PRIVATE_ACTOR_PUBLIC_KEYS := [
 	"name",
 	"seat_type",
 	"is_ai",
@@ -50,10 +68,12 @@ const AI_STATE_SNAPSHOT_KEYS := [
 ]
 
 @export var world_session_state_path: NodePath
+@export var game_session_runtime_controller_path: NodePath
+@export var role_catalog_runtime_service_path: NodePath
 
 var _capability: AiActorStateCapability
 var _capability_revision := 0
-var _public_query_count := 0
+var _capability_bind_rejection_count := 0
 var _private_query_count := 0
 var _ai_state_query_count := 0
 var _state_commit_count := 0
@@ -71,50 +91,163 @@ func _ready() -> void:
 	_bind_world_lifecycle()
 
 
-func bind_ai_capability(capability: AiActorStateCapability) -> void:
+func bind_ai_capability(capability: AiActorStateCapability) -> bool:
 	_bind_world_lifecycle()
-	_capability = capability
-	_capability_revision += 1
+	if capability == null:
+		_capability_bind_rejection_count += 1
+		return false
+	if _capability == null:
+		_capability = capability
+		_capability_revision = 1
+		return true
+	if capability == _capability:
+		return true
+	_capability_bind_rejection_count += 1
+	return false
 
 
 func is_ready() -> bool:
-	return _world() != null and _capability != null
+	return _public_dependencies_ready() and _capability != null
 
 
 func player_count() -> int:
-	_public_query_count += 1
-	return _world().players.size() if _world() != null else 0
+	return public_player_count()
+
+
+func public_player_count() -> int:
+	return public_players_snapshot().size()
+
+
+func human_player_count(include_eliminated := true) -> int:
+	var count := 0
+	for row_variant in public_players_snapshot():
+		var row := row_variant as Dictionary
+		if bool(row.get("is_ai", false)):
+			continue
+		if not include_eliminated and bool(row.get("eliminated", false)):
+			continue
+		count += 1
+	return count
+
+
+func ai_player_count(include_eliminated := true) -> int:
+	return ai_player_indices(include_eliminated).size()
 
 
 func public_players_snapshot() -> Array:
-	_public_query_count += 1
+	var context := _public_context()
+	var base_rows := _normalized_public_roster_base()
+	if (
+		context.is_empty()
+		or base_rows.is_empty()
+		or _world() == null
+		or base_rows.size() != _world().players.size()
+	):
+		return []
+	var roster_fingerprint := JSON.stringify([
+		"ai_public_player_roster_v1",
+		context.get("session_id", ""),
+		context.get("session_revision", -1),
+		base_rows,
+	]).sha256_text()
+	var source_revision := JSON.stringify([
+		"ai_public_player_source_v1",
+		context.get("session_id", ""),
+		context.get("session_revision", -1),
+		_restore_epoch,
+		roster_fingerprint,
+	]).sha256_text()
 	var result: Array = []
-	if _world() == null:
-		return result
-	for player_index in range(_world().players.size()):
-		var source: Dictionary = _world().players[player_index] \
-			if _world().players[player_index] is Dictionary else {}
-		var row := _allowlist(source, PUBLIC_PLAYER_KEYS)
-		row["player_index"] = player_index
-		row["public_player_name"] = str(source.get("name", "玩家%d" % (player_index + 1)))
-		var role: Dictionary = source.get("role_card", {}) \
-			if source.get("role_card", {}) is Dictionary else {}
-		row["role_name"] = str(role.get("name", ""))
-		if _pure(row):
-			result.append(_copy(row))
+	for base_variant in base_rows:
+		var base := base_variant as Dictionary
+		var row := {
+			"schema_version": PUBLIC_PLAYER_SCHEMA_VERSION,
+			"session_id": str(context.get("session_id", "")),
+			"session_revision": int(context.get("session_revision", -1)),
+			"source_revision": source_revision,
+			"fingerprint": JSON.stringify([
+				"ai_public_player_row_v1",
+				roster_fingerprint,
+				int(base.get("player_index", -1)),
+			]).sha256_text(),
+			"visibility_scope": PUBLIC_PLAYER_VISIBILITY_SCOPE,
+			"player_index": int(base.get("player_index", -1)),
+			"public_seat_order": int(base.get("public_seat_order", -1)),
+			"public_player_name": str(base.get("public_player_name", "")),
+			"seat_type": str(base.get("seat_type", "")),
+			"is_ai": bool(base.get("is_ai", false)),
+			"role_index": int(base.get("role_index", -1)),
+			"role_name": str(base.get("role_name", "")),
+			"eliminated": bool(base.get("eliminated", false)),
+		}
+		if not _exact_keys(row, PUBLIC_PLAYER_ROW_KEYS) or not _pure(row):
+			return []
+		result.append(_copy(row))
 	return result
 
 
 func public_player_snapshot(player_index: int) -> Dictionary:
+	if player_index < 0:
+		return {}
 	for row_variant in public_players_snapshot():
-		if row_variant is Dictionary and int((row_variant as Dictionary).get("player_index", -1)) == player_index:
-			return (row_variant as Dictionary).duplicate(true)
+		var row := row_variant as Dictionary
+		if int(row.get("player_index", -1)) == player_index:
+			return row.duplicate(true)
 	return {}
+
+
+func is_current_public_player_snapshot(snapshot: Dictionary) -> bool:
+	if not _exact_keys(snapshot, PUBLIC_PLAYER_ROW_KEYS) or not _pure(snapshot):
+		return false
+	var current := public_player_snapshot(int(snapshot.get("player_index", -1)))
+	return not current.is_empty() and current == snapshot
+
+
+func public_player_name(player_index: int) -> String:
+	return str(public_player_snapshot(player_index).get("public_player_name", ""))
+
+
+func public_target_label(player_index: int) -> String:
+	return "玩家%d" % (player_index + 1) if not public_player_snapshot(player_index).is_empty() else "未知玩家"
+
+
+func public_role_definition(player_index: int) -> Dictionary:
+	var row := public_player_snapshot(player_index)
+	var catalog := _role_catalog()
+	if row.is_empty() or catalog == null:
+		return {}
+	var definition := catalog.public_definition_at(int(row.get("role_index", -1)))
+	if definition.is_empty() or str(definition.get("name", "")) != str(row.get("role_name", "")):
+		return {}
+	definition["role_index"] = int(row.get("role_index", -1))
+	definition["role_name"] = str(row.get("role_name", ""))
+	definition["visibility_scope"] = PUBLIC_PLAYER_VISIBILITY_SCOPE
+	return _copy(definition)
+
+
+func public_active_target_rows(actor_index: int) -> Array:
+	var actor := public_player_snapshot(actor_index)
+	if actor.is_empty() or bool(actor.get("eliminated", false)):
+		return []
+	var result: Array = []
+	for row_variant in public_players_snapshot():
+		var row := row_variant as Dictionary
+		if int(row.get("player_index", -1)) == actor_index or bool(row.get("eliminated", false)):
+			continue
+		result.append(row.duplicate(true))
+	return result
+
+
+func active_target_player_indices(actor_index: int) -> Array:
+	var result: Array = []
+	for row_variant in public_active_target_rows(actor_index):
+		result.append(int((row_variant as Dictionary).get("player_index", -1)))
+	return result
 
 
 func is_ai_player(player_index: int) -> bool:
 	var row := public_player_snapshot(player_index)
-	return bool(row.get("is_ai", false)) or str(row.get("seat_type", "human")) == "ai"
+	return not row.is_empty() and bool(row.get("is_ai", false))
 
 
 func is_player_eliminated(player_index: int) -> bool:
@@ -125,10 +258,8 @@ func is_player_eliminated(player_index: int) -> bool:
 func ai_player_indices(include_eliminated := false) -> Array:
 	var result: Array = []
 	for row_variant in public_players_snapshot():
-		if not (row_variant is Dictionary):
-			continue
 		var row := row_variant as Dictionary
-		if not (bool(row.get("is_ai", false)) or str(row.get("seat_type", "human")) == "ai"):
+		if not bool(row.get("is_ai", false)):
 			continue
 		if not include_eliminated and bool(row.get("eliminated", false)):
 			continue
@@ -283,7 +414,7 @@ func private_actor_snapshot(
 	player_index: int
 ) -> Dictionary:
 	_private_query_count += 1
-	return _private_snapshot(capability, player_index, PUBLIC_PLAYER_KEYS + PRIVATE_ACTOR_KEYS)
+	return _private_snapshot(capability, player_index, PRIVATE_ACTOR_PUBLIC_KEYS + PRIVATE_ACTOR_KEYS)
 
 
 func _private_snapshot(
@@ -344,7 +475,11 @@ func debug_snapshot() -> Dictionary:
 	return {
 		"port_ready": is_ready(),
 		"capability_revision": _capability_revision,
-		"public_query_count": _public_query_count,
+		"capability_bind_rejection_count": _capability_bind_rejection_count,
+		"public_query_count": 0,
+		"public_query_literal_zero_mutation": true,
+		"public_snapshot_schema_version": PUBLIC_PLAYER_SCHEMA_VERSION,
+		"public_snapshot_session_bound": true,
 		"private_query_count": _private_query_count,
 		"ai_state_query_count": _ai_state_query_count,
 		"state_commit_count": _state_commit_count,
@@ -356,6 +491,7 @@ func debug_snapshot() -> Dictionary:
 		"public_snapshot_exposes_cash": false,
 		"public_snapshot_exposes_hand": false,
 		"public_snapshot_exposes_ai_memory": false,
+		"public_snapshot_exposes_elimination_details": false,
 		"ai_state_snapshot_exposes_cash": false,
 		"ai_state_snapshot_exposes_hand": false,
 		"ai_state_commit_requires_revision": true,
@@ -491,6 +627,102 @@ func _on_world_players_replaced(_player_count: int) -> void:
 		_restore_epoch += 1
 
 
+func _public_dependencies_ready() -> bool:
+	return _world() != null and _session() != null and _role_catalog() != null
+
+
+func _public_context() -> Dictionary:
+	var session := _session()
+	if not _public_dependencies_ready() or session == null:
+		return {}
+	var summary := session.session_summary()
+	var session_id := str(summary.get("session_id", "")).strip_edges()
+	if session_id.is_empty():
+		return {}
+	return {
+		"session_id": session_id,
+		"session_revision": session.session_start_revision(),
+	}
+
+
+func _normalized_public_roster_base() -> Array:
+	var world := _world()
+	var catalog := _role_catalog()
+	if world == null or catalog == null:
+		return []
+	var result: Array = []
+	var seen_player_indices: Dictionary = {}
+	for player_index in range(world.players.size()):
+		var source_variant: Variant = world.players[player_index]
+		if not (source_variant is Dictionary):
+			return []
+		var source := source_variant as Dictionary
+		if (
+			not source.has("id")
+			or not (source.get("id") is int)
+			or int(source.get("id", -1)) != player_index
+			or seen_player_indices.has(player_index)
+		):
+			return []
+		seen_player_indices[player_index] = true
+		if (
+			not source.has("name")
+			or not (source.get("name") is String)
+			or str(source.get("name", "")).strip_edges().is_empty()
+		):
+			return []
+		if (
+			not source.has("seat_type")
+			or not (source.get("seat_type") is String)
+			or str(source.get("seat_type", "")) not in ["human", "ai"]
+			or not source.has("is_ai")
+			or not (source.get("is_ai") is bool)
+			or bool(source.get("is_ai", false)) != (str(source.get("seat_type", "")) == "ai")
+		):
+			return []
+		if (
+			not source.has("role_index")
+			or not (source.get("role_index") is int)
+			or not source.has("role_card")
+			or not (source.get("role_card") is Dictionary)
+		):
+			return []
+		var role_index := int(source.get("role_index", -1))
+		var role_card := source.get("role_card", {}) as Dictionary
+		var role_definition := catalog.public_definition_at(role_index)
+		if (
+			role_definition.is_empty()
+			or int(role_card.get("role_index", -1)) != role_index
+			or str(role_card.get("name", "")) != str(role_definition.get("name", ""))
+		):
+			return []
+		if (
+			not source.has("eliminated")
+			or not (source.get("eliminated") is bool)
+		):
+			return []
+		result.append({
+			"player_index": player_index,
+			"public_seat_order": player_index,
+			"public_player_name": str(source.get("name", "")),
+			"seat_type": str(source.get("seat_type", "")),
+			"is_ai": bool(source.get("is_ai", false)),
+			"role_index": role_index,
+			"role_name": str(role_definition.get("name", "")),
+			"eliminated": bool(source.get("eliminated", false)),
+		})
+	return result
+
+
+func _exact_keys(value: Dictionary, keys: Array) -> bool:
+	if value.size() != keys.size():
+		return false
+	for key_variant in keys:
+		if not value.has(str(key_variant)):
+			return false
+	return true
+
+
 func _allowlist(source: Dictionary, keys: Array) -> Dictionary:
 	var result := {}
 	for key_variant in keys:
@@ -506,6 +738,14 @@ func _copy(value: Variant) -> Variant:
 
 func _pure(value: Variant) -> bool:
 	return TablePresentationPureDataPolicy.is_pure_data(value)
+
+
+func _session() -> GameSessionRuntimeController:
+	return get_node_or_null(game_session_runtime_controller_path) as GameSessionRuntimeController
+
+
+func _role_catalog() -> RoleCatalogRuntimeService:
+	return get_node_or_null(role_catalog_runtime_service_path) as RoleCatalogRuntimeService
 
 
 func _world() -> WorldSessionState:

@@ -8,8 +8,6 @@ const SharedCardGroupWindowScript := preload("res://scripts/cards/shared_card_gr
 const RoguelikeEconomicViabilityPolicyScript := preload("res://scripts/runtime/roguelike_economic_viability_policy.gd")
 const PlayerBoardStrategyActionSnapshotScript := preload("res://scripts/viewmodels/player_board_strategy_action_snapshot.gd")
 const TABLE_SFX_KEYS := ["card", "impact", "storm"]
-const MIN_PLAYER_COUNT := 3
-const MAX_PLAYER_COUNT := 8
 const MONSTER_COMMAND_MOVE_METERS := 220.0
 const NEARBY_RADIUS_METERS := 240.0
 const DEFAULT_AOE_RADIUS_METERS := 180.0
@@ -894,8 +892,6 @@ func _ai_runtime_world_constant_snapshot() -> Dictionary:
 		"AUTO_MONSTER_ENCOUNTER_RANGE_METERS": MonsterRuntimeController.AUTO_MONSTER_ENCOUNTER_RANGE_METERS,
 		"DEFAULT_AOE_RADIUS_METERS": DEFAULT_AOE_RADIUS_METERS,
 		"ECONOMY_LEGACY_TURN_SECONDS": ECONOMY_LEGACY_TURN_SECONDS,
-		"MAX_PLAYER_COUNT": MAX_PLAYER_COUNT,
-		"MIN_PLAYER_COUNT": MIN_PLAYER_COUNT,
 		"NEARBY_RADIUS_METERS": NEARBY_RADIUS_METERS,
 		"PLAYER_HAND_LIMIT": PLAYER_HAND_LIMIT,
 		"ProductMarketRuntimeController.PRODUCT_CATALOG": ProductMarketRuntimeController.PRODUCT_CATALOG,
@@ -4130,19 +4126,6 @@ func _queue_monster_card_as_counter(player_index: int, slot_index: int, source_s
 
 
 
-func _player_is_ai(player_index: int) -> bool:
-	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
-		return false
-	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[player_index]
-	if player.has("is_ai"):
-		return bool(player.get("is_ai", false))
-	return String(player.get("seat_type", "human")) == "ai"
-
-
-func _human_player_count() -> int:
-	return max(0, _game_runtime_coordinator_node().world_session_state().players.size() - _ai_runtime_call("_ai_player_count"))
-
-
 func _player_facing_text_snapshot() -> Array:
 	var result := []
 	_collect_player_facing_text(self, result)
@@ -5636,10 +5619,6 @@ func _economy_effect_callout_position() -> Vector2:
 
 
 
-
-
-func _interaction_target_label(player_index: int) -> String:
-	return "玩家%d" % (player_index + 1) if player_index >= 0 and player_index < _game_runtime_coordinator_node().world_session_state().players.size() else "未知玩家"
 
 
 

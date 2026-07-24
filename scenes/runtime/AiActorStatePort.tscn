@@ -5,3 +5,5 @@
 [node name="AiActorStatePort" type="Node"]
 script = ExtResource("1_port")
 world_session_state_path = NodePath("../WorldSessionState")
+game_session_runtime_controller_path = NodePath("../GameSessionRuntimeController")
+role_catalog_runtime_service_path = NodePath("../RoleCatalogRuntimeService")

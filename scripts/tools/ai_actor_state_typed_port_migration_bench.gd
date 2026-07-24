@@ -27,8 +27,9 @@ func _run() -> void:
 	var ai := coordinator.get_node_or_null("AiRuntimeController") as AiRuntimeController
 	var port := coordinator.get_node_or_null("AiActorStatePort") as AiActorStatePort
 	var game_session := coordinator.get_node_or_null("GameSessionRuntimeController") as GameSessionRuntimeController
+	var catalog := coordinator.get_node_or_null("RoleCatalogRuntimeService") as RoleCatalogRuntimeService
 	var rng := coordinator.get_node_or_null("RunRngService") as RunRngService
-	_check(world != null and ai != null and port != null and game_session != null and rng != null, "production_composition")
+	_check(world != null and ai != null and port != null and game_session != null and catalog != null and rng != null, "production_composition")
 	_check(port.is_ready() and bool(ai.debug_snapshot().get("typed_actor_state_bound", false)), "typed_actor_state_ready")
 
 	ai.configure({"ruleset_id": "v0.6"})
@@ -42,10 +43,10 @@ func _run() -> void:
 	_check(str(started.get("session_state", "")) == GameSessionRuntimeController.STATE_RUNNING, "game_session_running")
 	world.restore({
 		"players": [
-			_player("Human", "HUMAN_PRIVATE", false, -1),
-			_player("AI-A", "ACTOR_A_PRIVATE", true, 0),
-			_player("AI-B", "ACTOR_B_PRIVATE", true, 1),
-			_player("AI-C", "ACTOR_C_PRIVATE", true, 2, true),
+			_player(catalog, 0, "Human", "HUMAN_PRIVATE", false, -1),
+			_player(catalog, 1, "AI-A", "ACTOR_A_PRIVATE", true, 0),
+			_player(catalog, 2, "AI-B", "ACTOR_B_PRIVATE", true, 1),
+			_player(catalog, 3, "AI-C", "ACTOR_C_PRIVATE", true, 2, true),
 		],
 		"districts": [],
 		"game_time": 14.0,
@@ -68,7 +69,7 @@ func _run() -> void:
 	var capture := port.capture_ai_state_batch_receipt(capability, true)
 	var forged_capture := port.capture_ai_state_batch_receipt(AiActorStateCapability.new(), true)
 	var roster_checkpoint := world.to_save_data()
-	world.replace_players([_player("Human-A", "HUMAN_A_PRIVATE", false, -1), _player("Human-B", "HUMAN_B_PRIVATE", false, -1)], true)
+	world.replace_players([_player(catalog, 0, "Human-A", "HUMAN_A_PRIVATE", false, -1), _player(catalog, 1, "Human-B", "HUMAN_B_PRIVATE", false, -1)], true)
 	var zero_ai_capture := port.capture_ai_state_batch_receipt(capability, true)
 	var zero_ai_apply := port.apply_ai_state_batch(capability, [])
 	var forged_zero_ai_apply := port.apply_ai_state_batch(AiActorStateCapability.new(), [])
@@ -212,12 +213,19 @@ func _run() -> void:
 	_finish()
 
 
-func _player(name: String, marker: String, is_ai: bool, profile_index: int, eliminated := false) -> Dictionary:
+func _player(catalog: RoleCatalogRuntimeService, player_index: int, name: String, marker: String, is_ai: bool, profile_index: int, eliminated := false) -> Dictionary:
+	var role := catalog.definition_at(player_index)
+	role["role_index"] = player_index
 	return {
+		"id": player_index,
 		"name": name,
 		"seat_type": "ai" if is_ai else "human",
 		"is_ai": is_ai,
+		"role_index": player_index,
+		"role_card": role,
 		"eliminated": eliminated,
+		"eliminated_at": 1.0 if eliminated else -1.0,
+		"elimination_reason": "fixture" if eliminated else "",
 		"cash": 700,
 		"action_cooldown": 0.0,
 		"slots": [{"private_marker": marker}],
