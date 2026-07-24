@@ -2,18 +2,18 @@
 extends Node
 class_name CardRuntimeDefinitionWorldBridge
 
-var _world: Node
 var _catalog_service: CardRuntimeCatalogService
+var _monster_runtime_controller: MonsterRuntimeController
 var _product_market_runtime_controller: ProductMarketRuntimeController
 var _city_gdp_derivative_runtime_controller: CityGdpDerivativeRuntimeController
 
 
-func bind_world(world: Node) -> void:
-	_world = world
-
-
 func set_catalog_service(service: CardRuntimeCatalogService) -> void:
 	_catalog_service = service
+
+
+func set_monster_runtime_controller(controller: MonsterRuntimeController) -> void:
+	_monster_runtime_controller = controller
 
 
 func set_product_market_runtime_controller(controller: ProductMarketRuntimeController) -> void:
@@ -66,8 +66,8 @@ func upgradeable_families() -> Array:
 func debug_snapshot() -> Dictionary:
 	return {
 		"bridge_ready": _catalog_service != null,
-		"world_bound": _world != null,
 		"catalog_service_ready": bool(_catalog_service.debug_snapshot().get("service_ready", false)) if _catalog_service != null else false,
+		"monster_definition_source_bound": _monster_runtime_controller != null,
 		"product_terms_bound": _product_market_runtime_controller != null,
 		"city_gdp_terms_bound": _city_gdp_derivative_runtime_controller != null,
 		"source_precedence": ["catalog_exact", "financial_terms", "monster", "catalog_derived"],
@@ -75,15 +75,12 @@ func debug_snapshot() -> Dictionary:
 
 
 func _monster_definition(card_id: String) -> Dictionary:
-	if _world == null:
+	if _monster_runtime_controller == null:
 		return {}
-	if _world.has_method("_is_monster_card_name") and bool(_world.call("_is_monster_card_name", card_id)):
-		var card_variant: Variant = _world.call("_monster_card_definition", card_id)
-		return (card_variant as Dictionary).duplicate(true) if card_variant is Dictionary else {}
-	if _world.has_method("_is_monster_technique_card_name") and bool(_world.call("_is_monster_technique_card_name", card_id)):
-		var technique_variant: Variant = _world.call("_monster_technique_definition", card_id)
-		return (technique_variant as Dictionary).duplicate(true) if technique_variant is Dictionary else {}
-	return {}
+	var definition := _monster_runtime_controller.public_monster_card_definition(card_id)
+	if not definition.is_empty():
+		return definition
+	return _monster_runtime_controller.public_monster_technique_definition(card_id)
 
 
 func _enrich_external_terms(card_id: String, definition: Dictionary) -> Dictionary:

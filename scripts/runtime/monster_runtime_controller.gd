@@ -56,6 +56,8 @@ const MONSTER_COMMAND_MOVE_METERS := 220.0
 const NEARBY_RADIUS_METERS := 240.0
 const DEFAULT_AOE_RADIUS_METERS := 180.0
 const CASH_CENTS_PER_UNIT := 100
+const MONSTER_CARD_PLAY_CASH_PER_EXISTING := 100
+const MONSTER_BOUND_SKILL_DEFAULT_COOLDOWN := 3.0
 
 var _world_bridge: MonsterRuntimeWorldBridge
 var _monster_binding_capability_provider_v06: Object
@@ -125,6 +127,106 @@ func set_route_network_runtime_controller(controller: RouteNetworkRuntimeControl
 
 func set_card_runtime_catalog_service(service: CardRuntimeCatalogService) -> void:
 	_card_runtime_catalog_service = service
+
+
+func public_monster_card_definition(card_id: String) -> Dictionary:
+	if _card_runtime_catalog_service == null:
+		return {}
+	var family := _card_runtime_catalog_service.family_id(card_id)
+	var prefix := "怪兽·"
+	if not family.begins_with(prefix):
+		return {}
+	var monster_name := family.substr(prefix.length())
+	var catalog_index := _monster_catalog_index_by_name(monster_name)
+	if catalog_index < 0:
+		return {}
+	var rank := clampi(_card_runtime_catalog_service.rank(card_id), 1, 4)
+	var entry := _catalog_entry(catalog_index)
+	var resource_focus: Array = entry.get("resource_focus", [])
+	var supply_product := String(resource_focus[0]) if not resource_focus.is_empty() else "活体芯片"
+	var hp_bonus := int(round(float(entry.get("hp", 40)) * (1.0 + float(rank - 1) * 0.22)))
+	var move_bonus := float(entry.get("move", MONSTER_RAMPAGE_MOVE_METERS)) * (1.0 + float(rank - 1) * 0.10)
+	var duration := float(entry.get("duration", MONSTER_CARD_DURATION_BASE_SECONDS + float(rank - 1) * MONSTER_CARD_DURATION_RANK_STEP_SECONDS))
+	var duration_text := "不限时" if duration < 0.0 else "%.0fs" % duration
+	var summon_access := String(entry.get("summon_access", "monster_zone"))
+	var movement_traits: Array = (entry.get("movement_traits", []) as Array).duplicate(true)
+	var terrain_move_multiplier: Dictionary = (entry.get("terrain_move_multiplier", {}) as Dictionary).duplicate(true)
+	return {
+		"kind": "monster_card",
+		"monster_name": monster_name,
+		"catalog_index": catalog_index,
+		"cost": 5 + rank,
+		"rank": rank,
+		"supply_product": supply_product,
+		"play_cash_per_monster": MONSTER_CARD_PLAY_CASH_PER_EXISTING,
+		"summon_access": summon_access,
+		"fixed_skill_count": rank,
+		"hp": hp_bonus,
+		"duration": duration,
+		"move": move_bonus,
+		"movement_traits": movement_traits,
+		"terrain_move_multiplier": terrain_move_multiplier,
+		"damage": 0,
+		"range": 0.0,
+		"tags": ["怪兽卡", "召唤", _level_text(rank)],
+		"text": "召唤%s入场，或升级同名己方怪兽并刷新生命/在场时间。生命%d｜在场%s｜移动%s｜机动:%s｜区域:%s。I级免GDP门槛；II/III/IV级要求任一经营区GDP份额达到15%%/25%%/35%%。获得或刷新%d张固定技能；怪兽仍自动行动。场上每只已有怪兽使费用+¥%d。" % [
+			monster_name,
+			hp_bonus,
+			duration_text,
+			_meters_text(move_bonus),
+			_monster_mobility_summary_from_fields(movement_traits, terrain_move_multiplier),
+			_monster_card_region_text({"summon_access": summon_access}),
+			rank,
+			MONSTER_CARD_PLAY_CASH_PER_EXISTING,
+		],
+	}
+
+
+func public_monster_technique_definition(card_id: String) -> Dictionary:
+	if _card_runtime_catalog_service == null:
+		return {}
+	var family := _card_runtime_catalog_service.family_id(card_id)
+	var prefix := "兽技·"
+	if not family.begins_with(prefix):
+		return {}
+	var pieces := family.substr(prefix.length()).split("·")
+	if pieces.size() < 2:
+		return {}
+	var monster_name := String(pieces[0])
+	var catalog_index := _monster_catalog_index_by_name(monster_name)
+	if catalog_index < 0:
+		return {}
+	var action_index := maxi(0, int(String(pieces[1]).left(2)) - 1)
+	var actions := _catalog_actions(catalog_index)
+	if action_index < 0 or action_index >= actions.size():
+		return {}
+	var rank := clampi(_card_runtime_catalog_service.rank(card_id), 1, 4)
+	var scaled_action: Dictionary = (actions[action_index] as Dictionary).duplicate(true)
+	if scaled_action.has("damage"):
+		scaled_action["damage"] = maxi(1, int(round(float(scaled_action.get("damage", 1)) * (1.0 + float(rank - 1) * 0.20))))
+	if scaled_action.has("move_override") and float(scaled_action.get("move_override", -1.0)) > 0.0:
+		scaled_action["move_override"] = float(scaled_action.get("move_override", 0.0)) * (1.0 + float(rank - 1) * 0.08)
+	var resource_focus: Array = _catalog_entry(catalog_index).get("resource_focus", [])
+	return {
+		"kind": "monster_bound_action",
+		"monster_name": monster_name,
+		"catalog_index": catalog_index,
+		"action_index": action_index,
+		"action": scaled_action,
+		"cost": 2 + rank,
+		"rank": rank,
+		"persistent": true,
+		"cooldown": maxf(2.0, MONSTER_BOUND_SKILL_DEFAULT_COOLDOWN - float(rank - 1) * 0.25),
+		"supply_product": String(resource_focus[0]) if not resource_focus.is_empty() else "活体芯片",
+		"damage": int(scaled_action.get("damage", 0)),
+		"move": float(scaled_action.get("move_override", 0.0)),
+		"range": float(scaled_action.get("range", 0.0)),
+		"tags": ["固定技能", monster_name],
+		"text": "%s的绑定固定技能：%s。使用后不会消失，但会进入冷却；怪兽本身仍会随机自动行动。" % [
+			monster_name,
+			String(scaled_action.get("text", "释放怪兽招式。")),
+		],
+	}
 
 
 func set_weather_runtime_controller(controller: WeatherRuntimeController) -> void:
@@ -6618,6 +6720,20 @@ func _has_destroyed_district() -> bool:
 
 func _level_text(rank: int) -> String:
 	return MONSTER_CATALOG_V06.level_text(rank)
+
+
+func _monster_mobility_summary_from_fields(traits: Array, terrain_multiplier: Dictionary) -> String:
+	var pieces: Array[String] = []
+	if traits.has("flying"):
+		pieces.append("飞行免碾压")
+	if traits.has("aquatic"):
+		pieces.append("水栖")
+	var ocean := float(terrain_multiplier.get("ocean", 1.0))
+	var land := float(terrain_multiplier.get("land", 1.0))
+	if absf(ocean - 1.0) > 0.01 or absf(land - 1.0) > 0.01:
+		pieces.append("海×%.2f/陆×%.2f" % [ocean, land])
+	return "普通步行" if pieces.is_empty() else "、".join(pieces)
+
 
 func _limited_name_list(names: Array, limit: int = 6, empty_text: String = "无") -> String:
 	return _world_call(&"_limited_name_list", [names, limit, empty_text])

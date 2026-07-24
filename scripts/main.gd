@@ -27,10 +27,10 @@ const CARD_RESOLUTION_DISPLAY_SECONDS := 5.0
 const CARD_RESOLUTION_AFTERMATH_SECONDS := 8.0
 const CARD_RESOLUTION_HISTORY_LIMIT := 24
 const TEMP_DECISION_DISCARD := "discard_purchase"
-const MONSTER_CARD_PLAY_CASH_PER_EXISTING := 100
+
 const MONSTER_OWNER_DAMAGE_CASH_RANK_STEP := 170
 const COMMAND_COOLDOWN := 1.0
-const DEFAULT_SKILL_COOLDOWN := 3.0
+
 
 const PLAYER_COLORS := [
 	Color("#38bdf8"),
@@ -3067,7 +3067,7 @@ func _card_presentation_source(card_name: String, supplied_skill: Dictionary = {
 		"targets_player": bool(target.get("targets_player", false)),
 		"requires_target_monster": bool(target.get("requires_target_monster", false)),
 		"requires_target_player": bool(target.get("requires_target_player", false)),
-		"is_monster_card": _is_monster_card_name(card_name),
+		"is_monster_card": kind == "monster_card",
 		"is_direct_monster_skill": bool(target.get("targets_monster", false)) and not ["monster_lure", "special_monster_delay", "mudslide", "monster_takeover", "military_command"].has(kind),
 		"city_gdp_derivative_duration_seconds": _city_gdp_derivative_duration_seconds(skill) if kind == "city_gdp_derivative" else 0.0,
 		"product_futures_duration_seconds": _product_market_futures_duration_seconds(skill) if kind == "product_futures" else 0.0,
@@ -4025,21 +4025,6 @@ func _catalog_move_speed(index: int) -> float:
 	return MonsterCatalogV06.catalog_move_speed(index)
 
 
-func _monster_mobility_summary_from_fields(traits: Array, terrain_multiplier: Dictionary) -> String:
-	var pieces := []
-	if traits.has("flying"):
-		pieces.append("飞行免碾压")
-	if traits.has("aquatic"):
-		pieces.append("水栖")
-	var ocean := float(terrain_multiplier.get("ocean", 1.0))
-	var land := float(terrain_multiplier.get("land", 1.0))
-	if absf(ocean - 1.0) > 0.01 or absf(land - 1.0) > 0.01:
-		pieces.append("海×%.2f/陆×%.2f" % [ocean, land])
-	if pieces.is_empty():
-		return "普通步行"
-	return "、".join(pieces)
-
-
 func _monster_catalog_index_by_name(monster_name: String) -> int:
 	return MonsterCatalogV06.monster_catalog_index_by_name(monster_name)
 
@@ -4052,122 +4037,8 @@ func _monster_card_names(rank: int = 1) -> Array:
 	return MonsterCatalogV06.monster_card_names(rank)
 
 
-func _monster_name_from_card_name(card_name: String) -> String:
-	var family := _game_runtime_coordinator_node().card_family_id(card_name)
-	var prefix := "怪兽·"
-	if not family.begins_with(prefix):
-		return ""
-	return family.substr(prefix.length())
-
-
-func _is_monster_card_name(card_name: String) -> bool:
-	return _monster_catalog_index_by_name(_monster_name_from_card_name(card_name)) >= 0
-
-
-func _monster_card_definition(card_name: String) -> Dictionary:
-	var monster_name := _monster_name_from_card_name(card_name)
-	var catalog_index := _monster_catalog_index_by_name(monster_name)
-	if catalog_index < 0:
-		return {}
-	var rank := clampi(_game_runtime_coordinator_node().card_rank(card_name), 1, 4)
-	var entry := _catalog_entry(catalog_index)
-	var resource_focus: Array = entry.get("resource_focus", [])
-	var supply_product := String(resource_focus[0]) if not resource_focus.is_empty() else "活体芯片"
-	var hp_bonus := int(round(float(entry.get("hp", 40)) * (1.0 + float(rank - 1) * 0.22)))
-	var move_bonus := float(entry.get("move", MonsterRuntimeController.MONSTER_RAMPAGE_MOVE_METERS)) * (1.0 + float(rank - 1) * 0.10)
-	var duration := float(entry.get("duration", MonsterRuntimeController.MONSTER_CARD_DURATION_BASE_SECONDS + float(rank - 1) * MonsterRuntimeController.MONSTER_CARD_DURATION_RANK_STEP_SECONDS))
-	var duration_text := "不限时" if duration < 0.0 else "%.0fs" % duration
-	var summon_access := String(entry.get("summon_access", "monster_zone"))
-	var summon_access_text := _monster_card_region_text({"summon_access": summon_access})
-	var movement_traits: Array = (entry.get("movement_traits", []) as Array).duplicate(true)
-	var terrain_move_multiplier: Dictionary = (entry.get("terrain_move_multiplier", {}) as Dictionary).duplicate(true)
-	var mobility_text := _monster_mobility_summary_from_fields(movement_traits, terrain_move_multiplier)
-	return {
-		"kind": "monster_card",
-		"monster_name": monster_name,
-		"catalog_index": catalog_index,
-		"cost": 5 + rank,
-		"rank": rank,
-		"supply_product": supply_product,
-		"play_cash_per_monster": MONSTER_CARD_PLAY_CASH_PER_EXISTING,
-		"summon_access": summon_access,
-		"fixed_skill_count": rank,
-		"hp": hp_bonus,
-		"duration": duration,
-		"move": move_bonus,
-		"movement_traits": movement_traits,
-		"terrain_move_multiplier": terrain_move_multiplier,
-		"damage": 0,
-		"range": 0.0,
-		"tags": ["怪兽卡", "召唤", _level_text(rank)],
-		"text": "召唤%s入场，或升级同名己方怪兽并刷新生命/在场时间。生命%d｜在场%s｜移动%s｜机动:%s｜区域:%s。I级免GDP门槛；II/III/IV级要求任一经营区GDP份额达到15%%/25%%/35%%。获得或刷新%d张固定技能；怪兽仍自动行动。场上每只已有怪兽使费用+¥%d。" % [
-			monster_name,
-			hp_bonus,
-			duration_text,
-			_meters_text(move_bonus),
-			mobility_text,
-			summon_access_text,
-			rank,
-			MONSTER_CARD_PLAY_CASH_PER_EXISTING,
-		],
-	}
-
-
 func _monster_technique_card_name(monster_name: String, action_index: int, rank: int = 1) -> String:
 	return MonsterCatalogV06.monster_technique_card_name(monster_name, action_index, rank)
-
-
-func _is_monster_technique_card_name(card_name: String) -> bool:
-	return _game_runtime_coordinator_node().card_family_id(card_name).begins_with("兽技·")
-
-
-func _monster_technique_definition(card_name: String) -> Dictionary:
-	var family := _game_runtime_coordinator_node().card_family_id(card_name)
-	var prefix := "兽技·"
-	if not family.begins_with(prefix):
-		return {}
-	var body := family.substr(prefix.length())
-	var pieces := body.split("·")
-	if pieces.size() < 2:
-		return {}
-	var monster_name := String(pieces[0])
-	var catalog_index := _monster_catalog_index_by_name(monster_name)
-	if catalog_index < 0:
-		return {}
-	var index_text := String(pieces[1]).left(2)
-	var action_index := maxi(0, int(index_text) - 1)
-	var actions := _catalog_actions(catalog_index)
-	if action_index < 0 or action_index >= actions.size():
-		return {}
-	var rank := clampi(_game_runtime_coordinator_node().card_rank(card_name), 1, 4)
-	var action: Dictionary = (actions[action_index] as Dictionary).duplicate(true)
-	var resource_focus: Array = _catalog_entry(catalog_index).get("resource_focus", [])
-	var supply_product := String(resource_focus[0]) if not resource_focus.is_empty() else "活体芯片"
-	var scaled_action := action.duplicate(true)
-	if scaled_action.has("damage"):
-		scaled_action["damage"] = maxi(1, int(round(float(scaled_action.get("damage", 1)) * (1.0 + float(rank - 1) * 0.20))))
-	if scaled_action.has("move_override") and float(scaled_action.get("move_override", -1.0)) > 0.0:
-		scaled_action["move_override"] = float(scaled_action.get("move_override", 0.0)) * (1.0 + float(rank - 1) * 0.08)
-	return {
-		"kind": "monster_bound_action",
-		"monster_name": monster_name,
-		"catalog_index": catalog_index,
-		"action_index": action_index,
-		"action": scaled_action,
-		"cost": 2 + rank,
-		"rank": rank,
-		"persistent": true,
-		"cooldown": maxf(2.0, DEFAULT_SKILL_COOLDOWN - float(rank - 1) * 0.25),
-		"supply_product": supply_product,
-		"damage": int(scaled_action.get("damage", 0)),
-		"move": float(scaled_action.get("move_override", 0.0)),
-		"range": float(scaled_action.get("range", 0.0)),
-		"tags": ["固定技能", monster_name],
-		"text": "%s的绑定固定技能：%s。使用后不会消失，但会进入冷却；怪兽本身仍会随机自动行动。" % [
-			monster_name,
-			String(scaled_action.get("text", "释放怪兽招式。")),
-		],
-	}
 
 
 func _catalog_actions(index: int) -> Array:
@@ -4340,7 +4211,7 @@ func _monster_card_allowed_by_run_products(skill_name: String) -> bool:
 	# Every region reserves a stable monster-card slot. Product and terrain
 	# affinity decide *where* each monster is offered, not whether the family is
 	# deleted from the run entirely.
-	return _is_monster_card_name(skill_name)
+	return String(_game_runtime_coordinator_node().card_definition(skill_name).get("kind", "")) == "monster_card"
 
 
 func _run_allowed_monster_card_names(rank: int = 1) -> Array:
@@ -5179,7 +5050,7 @@ func _player_tableau_progress_entries(player_index: int) -> Array:
 		{"text": "怪兽牌", "state": "已召" if has_monster else "可选", "accent": Color("#fb7185"), "active": has_monster, "tip": "起始怪兽牌已持有；召唤完全自愿，不阻断经济或购牌。"},
 		{"text": "建城", "state": "城%d" % city_count if city_count > 0 else "待建", "accent": Color("#22c55e"), "active": city_count > 0, "tip": "项目归属GDP决定收入、区域控制和审计资格。"},
 		{"text": "买牌", "state": "已买" if bought_card else "看牌架", "accent": Color("#f59e0b"), "active": bought_card, "tip": "双击区域查看全局挂牌；来源区域受光时可锁定5秒报价。"},
-		{"text": "匿名牌", "state": "已入轨" if committed_card else "待出牌", "accent": Color("#c084fc"), "active": committed_card, "tip": "打出的牌进入公开匿名牌轨；条件和结果会给其他玩家推理线索。"},
+		{"text": "匿名牌", "state": "已入轨" if committed_card else "待出牌", "accent": Color("#c084fc"), "active": committed_card, "tip": "打出的牌进入公开匿名牌轨；条件和结果会成为其他玩家推理线索。"},
 		{"text": "审计", "state": _victory_control_status_text(), "accent": Color("#f97316"), "active": _victory_control_is_active() or score >= goal, "tip": "控制当前存续区域的40%并达到前K区商品GDP门槛后，先保持10秒，再进入120秒公开审计。"},
 	]
 

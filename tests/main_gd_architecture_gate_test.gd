@@ -96,6 +96,28 @@ func _run() -> void:
 		not main_source.contains("func _best_player_gdp_share_district("),
 		"Main keeps the AI-only best-share helper physically deleted"
 	)
+	for retired_monster_definition_helper in [
+		"_monster_mobility_summary_from_fields",
+		"_monster_name_from_card_name",
+		"_is_monster_card_name",
+		"_monster_card_definition",
+		"_is_monster_technique_card_name",
+		"_monster_technique_definition",
+	]:
+		_expect(
+			not main_source.contains("func %s(" % retired_monster_definition_helper),
+			"Main retires monster definition helper %s" % retired_monster_definition_helper
+		)
+	var card_definition_bridge_source := FileAccess.get_file_as_string(
+		"res://scripts/runtime/card_runtime_definition_world_bridge.gd"
+	)
+	_expect(
+		not card_definition_bridge_source.contains("var _world")
+			and not card_definition_bridge_source.contains("func bind_world(")
+			and not card_definition_bridge_source.contains(".has_method(")
+			and not card_definition_bridge_source.contains(".call("),
+		"card definition bridge has no Main binding or arbitrary dispatch"
+	)
 	_expect(runtime_loop_source.contains("func _process(real_delta: float)"), "scene-owned RuntimeLoop owns the frame callback")
 	_expect(not runtime_loop_source.contains("/root/Main") and not runtime_loop_source.contains("current_scene") and not runtime_loop_source.contains("scripts/main.gd"), "RuntimeLoop has no Main callback or lookup")
 	_expect(not runtime_loop_source.contains("get_node") and not runtime_loop_source.contains("get_parent") and runtime_loop_source.contains("RuntimePhaseCoordinator") and not runtime_loop_source.contains("RuntimeWorldPorts"), "RuntimeLoop depends only on one explicitly injected phase coordinator")

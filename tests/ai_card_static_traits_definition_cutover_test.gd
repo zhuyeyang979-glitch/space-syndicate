@@ -1,6 +1,7 @@
 extends SceneTree
 
 const COORDINATOR_SCENE := preload("res://scenes/runtime/GameRuntimeCoordinator.tscn")
+const MONSTER_CATALOG := preload("res://scripts/runtime/monster_catalog_v06.gd")
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -25,13 +26,19 @@ func _run() -> void:
 	var definitions := coordinator.get_node_or_null(
 		"CardRuntimeDefinitionWorldBridge"
 	) as CardRuntimeDefinitionWorldBridge
+	var monster := coordinator.get_node_or_null(
+		"MonsterRuntimeController"
+	) as MonsterRuntimeController
 	var rng := coordinator.get_node_or_null("RunRngService") as RunRngService
 	_expect(
 		session != null and world != null and ai != null
-			and eligibility != null and definitions != null and rng != null,
-		"production composition injects existing eligibility and definition owners"
+			and eligibility != null and definitions != null
+			and monster != null and rng != null,
+		"production composition injects existing eligibility, definition, and monster owners"
 	)
-	if session == null or world == null or ai == null 			or eligibility == null or definitions == null or rng == null:
+	if session == null or world == null or ai == null \
+			or eligibility == null or definitions == null \
+			or monster == null or rng == null:
 		coordinator.queue_free()
 		await process_frame
 		_finish()
@@ -107,6 +114,97 @@ func _run() -> void:
 		str(ai.call("_card_display_name", "轨道齐射3")) == "轨道齐射 III级",
 		"display identity preserves family and rank formatting"
 	)
+	_expect(
+		bool(definitions.debug_snapshot().get("monster_definition_source_bound", false)),
+		"definition bridge binds the existing Monster owner as its typed public source"
+	)
+	for catalog_index in range(MONSTER_CATALOG.catalog_size()):
+		var entry := MONSTER_CATALOG.catalog_entry(catalog_index)
+		var monster_name := str(entry.get("name", ""))
+		var actions := MONSTER_CATALOG.catalog_actions(catalog_index)
+		for rank in range(1, 5):
+			var monster_card_id := MONSTER_CATALOG.monster_card_name(catalog_index, rank)
+			var monster_definition := definitions.resolve_definition(monster_card_id)
+			var expected_hp := int(round(float(entry.get("hp", 40)) * (1.0 + float(rank - 1) * 0.22)))
+			var expected_move := float(entry.get(
+				"move",
+				MonsterRuntimeController.MONSTER_RAMPAGE_MOVE_METERS
+			)) * (1.0 + float(rank - 1) * 0.10)
+			var expected_duration := float(entry.get(
+				"duration",
+				MonsterRuntimeController.MONSTER_CARD_DURATION_BASE_SECONDS
+					+ float(rank - 1)
+						* MonsterRuntimeController.MONSTER_CARD_DURATION_RANK_STEP_SECONDS
+			))
+			var terrain_multiplier: Dictionary = entry.get("terrain_move_multiplier", {})
+			var ocean_multiplier := float(terrain_multiplier.get("ocean", 1.0))
+			var land_multiplier := float(terrain_multiplier.get("land", 1.0))
+			if absf(ocean_multiplier - 1.0) > 0.01 \
+					or absf(land_multiplier - 1.0) > 0.01:
+				_expect(
+					str(monster_definition.get("text", "")).contains(
+						"海×%.2f/陆×%.2f" % [ocean_multiplier, land_multiplier]
+					),
+					"typed Monster owner preserves %s mobility text" % monster_name
+				)
+			_expect(
+				str(monster_definition.get("kind", "")) == "monster_card"
+					and str(monster_definition.get("monster_name", "")) == monster_name
+					and int(monster_definition.get("catalog_index", -1)) == catalog_index
+					and int(monster_definition.get("rank", 0)) == rank
+					and int(monster_definition.get("cost", 0)) == 5 + rank
+					and int(monster_definition.get("hp", 0)) == expected_hp
+					and is_equal_approx(float(monster_definition.get("move", 0.0)), expected_move)
+					and is_equal_approx(
+						float(monster_definition.get("duration", 0.0)),
+						expected_duration
+					)
+					and int(monster_definition.get("fixed_skill_count", 0)) == rank
+					and int(monster_definition.get("play_cash_per_monster", 0))
+						== MonsterRuntimeController.MONSTER_CARD_PLAY_CASH_PER_EXISTING,
+				"typed Monster owner preserves %s rank %d definition fields" % [
+					monster_name,
+					rank,
+				]
+			)
+			for action_index in range(actions.size()):
+				var technique_id := MONSTER_CATALOG.monster_technique_card_name(
+					monster_name,
+					action_index,
+					rank
+				)
+				var technique := definitions.resolve_definition(technique_id)
+				var expected_action: Dictionary = (
+					actions[action_index] as Dictionary
+				).duplicate(true)
+				if expected_action.has("damage"):
+					expected_action["damage"] = maxi(
+						1,
+						int(round(
+							float(expected_action.get("damage", 1))
+								* (1.0 + float(rank - 1) * 0.20)
+						))
+					)
+				if expected_action.has("move_override") \
+						and float(expected_action.get("move_override", -1.0)) > 0.0:
+					expected_action["move_override"] = float(
+						expected_action.get("move_override", 0.0)
+					) * (1.0 + float(rank - 1) * 0.08)
+				_expect(
+					str(technique.get("kind", "")) == "monster_bound_action"
+						and str(technique.get("monster_name", "")) == monster_name
+						and int(technique.get("catalog_index", -1)) == catalog_index
+						and int(technique.get("action_index", -1)) == action_index
+						and int(technique.get("rank", 0)) == rank
+						and int(technique.get("cost", 0)) == 2 + rank
+						and bool(technique.get("persistent", false))
+						and technique.get("action", {}) == expected_action,
+					"typed Monster owner preserves %s action %d rank %d definition" % [
+						monster_name,
+						action_index,
+						rank,
+					]
+				)
 	var hand := {
 		"slots": [
 			_card(definitions, "轨道齐射1"),
@@ -151,6 +249,23 @@ func _run() -> void:
 		_expect(
 			not ai_source.contains(forbidden),
 			"AI source retires generic route %s" % forbidden
+		)
+	var definition_bridge_source := FileAccess.get_file_as_string(
+		"res://scripts/runtime/card_runtime_definition_world_bridge.gd"
+	)
+	for forbidden in [
+		"var _world",
+		"func bind_world(",
+		".has_method(",
+		".call(",
+		"\"_is_monster_card_name\"",
+		"\"_monster_card_definition\"",
+		"\"_is_monster_technique_card_name\"",
+		"\"_monster_technique_definition\"",
+	]:
+		_expect(
+			not definition_bridge_source.contains(forbidden),
+			"definition bridge cannot regain Main/dynamic route %s" % forbidden
 		)
 	coordinator.queue_free()
 	await process_frame

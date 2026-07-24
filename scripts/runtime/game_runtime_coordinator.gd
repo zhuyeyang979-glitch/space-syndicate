@@ -110,9 +110,9 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var card_runtime_catalog := _card_runtime_catalog_node() as CardRuntimeCatalogService
 	if card_runtime_catalog != null and card_runtime_catalog.has_method("configure"):
 		card_runtime_catalog.call("configure", ruleset_snapshot)
-	var card_definition_bridge := _card_runtime_definition_bridge_node()
-	if card_definition_bridge != null and card_definition_bridge.has_method("set_catalog_service"):
-		card_definition_bridge.call("set_catalog_service", card_runtime_catalog)
+	var card_definition_bridge := _card_runtime_definition_bridge_node() as CardRuntimeDefinitionWorldBridge
+	if card_definition_bridge != null:
+		card_definition_bridge.set_catalog_service(card_runtime_catalog)
 	var balance_diagnostics := _gameplay_balance_diagnostics_node()
 	var balance_diagnostics_bridge := _gameplay_balance_diagnostics_world_bridge_node() as GameplayBalanceDiagnosticsWorldBridge
 	if balance_diagnostics_bridge != null:
@@ -173,10 +173,9 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		city_gdp_derivative_controller.call("set_world_bridge", city_gdp_derivative_world_bridge)
 	if city_gdp_derivative_controller != null and city_gdp_derivative_controller.has_method("configure"):
 		city_gdp_derivative_controller.call("configure", ruleset_snapshot, economy_product_route_formula)
-	if card_definition_bridge != null and card_definition_bridge.has_method("set_product_market_runtime_controller"):
-		card_definition_bridge.call("set_product_market_runtime_controller", product_market_controller)
-	if card_definition_bridge != null and card_definition_bridge.has_method("set_city_gdp_derivative_runtime_controller"):
-		card_definition_bridge.call("set_city_gdp_derivative_runtime_controller", city_gdp_derivative_controller)
+	if card_definition_bridge != null:
+		card_definition_bridge.set_product_market_runtime_controller(product_market_controller)
+		card_definition_bridge.set_city_gdp_derivative_runtime_controller(city_gdp_derivative_controller)
 	var hand_interaction := _player_hand_interaction_node()
 	if hand_interaction != null and hand_interaction.has_method("set_inventory_service"):
 		hand_interaction.call("set_inventory_service", card_inventory)
@@ -299,8 +298,10 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var table_viewmodel := _table_viewmodel_node()
 	if table_viewmodel != null and table_viewmodel.has_method("configure"):
 		table_viewmodel.call("configure", card_presentation)
-	var monster_controller := _monster_runtime_controller_node()
+	var monster_controller := _monster_runtime_controller_node() as MonsterRuntimeController
 	var monster_world_bridge := _monster_runtime_world_bridge_node()
+	if card_definition_bridge != null and monster_controller != null:
+		card_definition_bridge.set_monster_runtime_controller(monster_controller)
 	var military_controller := _military_runtime_controller_node()
 	var military_world_bridge := _military_runtime_world_bridge_node()
 	var weather_controller := _weather_runtime_controller_node()
@@ -513,9 +514,6 @@ func bind_runtime_world(world: Node) -> void:
 	var balance_diagnostics := _gameplay_balance_diagnostics_node()
 	if balance_diagnostics != null and balance_diagnostics.has_method("set_world_bridge"):
 		balance_diagnostics.call("set_world_bridge", balance_diagnostics_bridge)
-	var card_definition_bridge := _card_runtime_definition_bridge_node()
-	if card_definition_bridge != null and card_definition_bridge.has_method("bind_world"):
-		card_definition_bridge.call("bind_world", world)
 	var product_market_bridge := _product_market_runtime_world_bridge_node()
 	if product_market_bridge != null and product_market_bridge.has_method("bind_world"):
 		product_market_bridge.call("bind_world", world)
