@@ -247,7 +247,7 @@
   "known_test_state": {
     "smoke_check_only": "PASS",
     "full_smoke": "STALE_FIXTURE_DEBT_PRESENT",
-    "current_atomic_focused_gate": "72/72 PASS",
+    "current_atomic_focused_gate": "81/81 PASS",
     "known_non_product_red_tests": [
       "ai_commodity_futures_policy_runtime_test.gd calls retired Main._new_game",
       "intel_query_command_cutover_test.gd expects retired world envelope schema v1",

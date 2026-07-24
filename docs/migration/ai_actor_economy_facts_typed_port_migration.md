@@ -18,11 +18,11 @@ This is one completed atomic domain inside the active `P0-AI-WORLD-TYPED-PORTS-C
 - New gameplay owner: none
 - New save field or section: none
 
-Training continues to use total ledger cash. Affordability continues to use cash available after unresolved monster-wager commitments. A positive action cooldown continues to block only play, buy, and counter candidates.
+Training continues to use signed total ledger cash, including legal pre-elimination debt. Affordability continues to use non-negative cash available after unresolved monster-wager commitments. A positive action cooldown continues to block only play, buy, and counter candidates.
 
 ## Production Contract
 
-The production composition owns exactly one `AiActorEconomyFactsQueryPort` and creates exactly one opaque `AiActorEconomyFactsCapability` before child lifecycle callbacks. A hostile early bind, human seat, eliminated AI, forged capability, stale session, malformed cash/commitment, malformed cooldown, or malformed training counter fails closed.
+The production composition owns exactly one `AiActorEconomyFactsQueryPort` and creates exactly one opaque `AiActorEconomyFactsCapability` before child lifecycle callbacks. `AiRuntimeController.controller_ready` now requires both the actor-state and actor-economy boundaries. A hostile early bind, missing boundary, human seat, eliminated AI, forged capability, stale session, malformed cash/commitment, malformed cooldown, or malformed training counter fails closed.
 
 The QueryPort exposes two detached schema-v1 snapshots:
 
@@ -78,10 +78,11 @@ The budget tool still reports the inherited absolute threshold `103 > 102`; this
 
 ## Verification
 
-- Focused actor-economy migration: `72/72 PASS`
-  - Run ID: `20260724-153335-645-ai_actor_economy_facts_typed_port_migration_test-eb737553`
-- Production scene Bench: `16/16 PASS`
-  - Run ID: `20260724-153335-609-AiActorEconomyFactsTypedPortMigrationBench-bf4dda57`
+- Focused actor-economy migration: `81/81 PASS`
+  - Run ID: `20260724-160719-934-ai_actor_economy_facts_typed_port_migration_test-ca8a03fa`
+  - Covers signed debt through training snapshot, live observation, decision recording, and reward finalization.
+- Production scene Bench: `19/19 PASS`
+  - Run ID: `20260724-160737-316-AiActorEconomyFactsTypedPortMigrationBench-c7429e36`
   - Marker: `available_cents=80000|total_cents=100000`
 - Public-player facts: `128/128 PASS`
 - Actor-state facts: `93/93 PASS`
@@ -106,7 +107,9 @@ The budget tool still reports the inherited absolute threshold `103 > 102`; this
   - capability bind rejection count `0`
   - product error log lines `0`
   - play mode stopped cleanly
-- MCP project script diagnostics: `286 checked, 0 errors`
+- MCP production-runtime script diagnostics: `232 checked, 0 errors`
+- Six changed GDScript files: `0 errors`
+- Repository-wide scan: `986 checked`, with only the three already-recorded stale fixture files failing; no changed production or focused-test file is among them.
 
 ## Godot MCP Write Safety Prerequisite
 
@@ -114,11 +117,12 @@ The recurring “Files have been modified outside Godot” prompt was caused by 
 
 1. An open scene with unsaved editor changes is rejected before any target write.
 2. Delete or move refuses an open source scene.
-3. A clean open target is reloaded and verified clean before filesystem refresh.
-4. Text tools reject binary `.scn`; scene creation refuses accidental overwrite.
-5. Bulk refactor closes every handle, reloads affected scenes, then scans once.
+3. A clean open target is activated, reloaded, and verified by open state, clean state, and exact scene identity before filesystem refresh.
+4. Reload or previous-tab restoration failure returns an error and suppresses filesystem refresh instead of reporting a false success.
+5. Text tools reject binary `.scn`; scene creation refuses accidental overwrite.
+6. Bulk refactor closes every handle, verifies every affected scene reload, then scans once.
 
-The source lifecycle test is `14/14 PASS`. Live verification proved a clean open-scene write returned `scene_reloaded=true` with no delayed dialog; an unsaved write preserved both hash and mtime; and a text `.scn` write was rejected without creating a file.
+The source lifecycle test is `15/15 PASS`. Live verification wrote the clean, separately open `GameRuntimeCoordinator.tscn` while `main.tscn` was active and returned `scene_reloaded=true`, `scene_identity_verified=true`, and `previous_scene_restored=true`. An unsaved write was rejected while preserving both SHA-256 and mtime. No delayed external-change dialog was produced.
 
 ## Deferred Boundary
 

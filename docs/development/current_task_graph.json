@@ -82,8 +82,8 @@
           "domain": "actor_economy_facts",
           "status": "VALIDATED_CANDIDATE",
           "base_main_sha": "d78ca8973c86563dea502b725600b5840c9941c3",
-          "focused_gate": "72/72 PASS",
-          "production_scene_bench": "16/16 PASS"
+          "focused_gate": "81/81 PASS",
+          "production_scene_bench": "19/19 PASS"
         }
       ],
       "next_atomic_boundary": "AI_ACTOR_ECONOMY_FACTS_TYPED_PORT_MIGRATION",

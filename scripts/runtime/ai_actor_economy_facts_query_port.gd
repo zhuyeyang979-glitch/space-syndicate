@@ -145,12 +145,12 @@ func actor_training_economy_facts(
 	var source := _authorized_source(capability, actor_index)
 	if source.is_empty():
 		return {}
-	var availability := source.get("availability", {}) as Dictionary
+	var ledger_cash := source.get("ledger_cash", {}) as Dictionary
 	var player := source.get("player", {}) as Dictionary
 	var counters := _training_counters(player)
 	if counters.size() != TRAINING_COUNTER_FIELDS.size():
 		return {}
-	var total_cents := int(availability.get("total_cents", 0))
+	var total_cents := int(ledger_cash.get("cash_cents", 0))
 	var source_revision := JSON.stringify([
 		"ai_actor_economy_training_source_v1",
 		source.get("session_id", ""),
@@ -263,11 +263,18 @@ func _authorized_source(
 		or not (world.players[actor_index] is Dictionary)
 	):
 		return {}
+	var ledger_cash := world.private_player_cash_snapshot(actor_index)
+	if (
+		not bool(ledger_cash.get("valid", false))
+		or int(ledger_cash.get("player_index", -1)) != actor_index
+	):
+		return {}
+	var signed_total_cents := int(ledger_cash.get("cash_cents", 0))
 	var availability := _cash_query_port().private_cash_availability_projection(actor_index)
 	if (
 		not bool(availability.get("valid", false))
 		or int(availability.get("player_index", -1)) != actor_index
-		or int(availability.get("total_cents", -1)) < 0
+		or int(availability.get("total_cents", -1)) != maxi(0, signed_total_cents)
 		or int(availability.get("reserved_cents", -1)) < 0
 		or int(availability.get("available_cents", -1)) < 0
 		or int(availability.get("total_cents", -1))
@@ -279,6 +286,7 @@ func _authorized_source(
 		"session_id": str(session_context.get("session_id", "")),
 		"session_revision": int(session_context.get("session_revision", -1)),
 		"player": world.players[actor_index],
+		"ledger_cash": ledger_cash,
 		"availability": availability,
 	}
 

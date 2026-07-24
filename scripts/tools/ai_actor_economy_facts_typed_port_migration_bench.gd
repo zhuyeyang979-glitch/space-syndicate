@@ -2,6 +2,35 @@ extends Node
 
 const BATTLE_LIFECYCLE_POLICY := preload("res://scripts/runtime/monster_battle_lifecycle_policy_v06.gd")
 
+
+class AiConsumerWorldProbe:
+	extends Node
+
+	func _runtime_session_finished() -> bool:
+		return false
+
+	func _player_product_flow(
+		_player_index: int,
+		_product_name: String
+	) -> int:
+		return 0
+
+	func _signed_int_text(value: int) -> String:
+		return "+%d" % value if value > 0 else str(value)
+
+	func _player_counted_hand_size(player: Dictionary) -> int:
+		return (player.get("slots", []) as Array).size()
+
+	func _player_active_city_count(_player_index: int) -> int:
+		return 0
+
+	func _card_resolution_current_queue() -> Array:
+		return []
+
+	func _card_resolution_next_queue() -> Array:
+		return []
+
+
 var _checks := 0
 var _failures: Array[String] = []
 
@@ -21,6 +50,9 @@ func _run() -> void:
 	var catalog := coordinator.get_node_or_null(
 		"RoleCatalogRuntimeService"
 	) as RoleCatalogRuntimeService if coordinator != null else null
+	var market := coordinator.get_node_or_null(
+		"ProductMarketRuntimeController"
+	) as ProductMarketRuntimeController if coordinator != null else null
 	var port := coordinator.get_node_or_null(
 		"AiActorEconomyFactsQueryPort"
 	) as AiActorEconomyFactsQueryPort if coordinator != null else null
@@ -45,6 +77,7 @@ func _run() -> void:
 			and world != null
 			and session != null
 			and catalog != null
+			and market != null
 			and port != null
 			and cash_query != null
 			and monster != null
@@ -58,11 +91,17 @@ func _run() -> void:
 		await _finish({}, {})
 		return
 
+	var consumer_world := AiConsumerWorldProbe.new()
+	consumer_world.name = "AiConsumerWorldProbe"
+	coordinator.add_child(consumer_world)
+	bridge.bind_world(consumer_world)
 	bridge.set_rng_service(rng)
 	bridge.set_world_session_state(world)
 	ai.set_world_bridge(bridge)
 	monster_bridge.set_world_session_state(world)
 	monster.set_world_bridge(monster_bridge)
+	ai.set_monster_runtime_controller(monster)
+	ai.set_product_market_runtime_controller(market)
 	ai.configure({"ruleset_id": "v0.6"})
 	session.configure({"ruleset_id": "v0.6"}, {})
 	session.begin_session({
@@ -154,6 +193,33 @@ func _run() -> void:
 			and not bool(port.debug_snapshot().get("owns_save_section", true)),
 		"query_is_not_state_owner"
 	)
+	_check(
+		bool(ai.debug_snapshot().get("controller_ready", false)),
+		"ai_lifecycle_requires_economy_port"
+	)
+	var positive_actor := (world.players[1] as Dictionary).duplicate(true)
+	var indebted_actor := positive_actor.duplicate(true)
+	indebted_actor["cash"] = -4
+	indebted_actor["cash_cents"] = -400
+	world.players[1] = indebted_actor
+	var indebted_decision := port.actor_decision_facts(capability, 1)
+	var indebted_training := port.actor_training_economy_facts(capability, 1)
+	_check(
+		int(indebted_decision.get("available_cash_cents", -1)) == 0,
+		"indebted_decision_cash_clamped"
+	)
+	_check(
+		int(indebted_training.get("total_cash_cents", 0)) == -400
+			and int(indebted_training.get("total_cash_units", 0)) == -4
+			and int(
+				(ai.call("_ai_observation_vector", 1) as Dictionary).get(
+					"cash",
+					0
+				)
+			) == -4,
+		"signed_training_cash_preserved_end_to_end"
+	)
+	world.players[1] = positive_actor
 	await _finish(decision, training)
 
 

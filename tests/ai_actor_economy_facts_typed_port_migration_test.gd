@@ -28,6 +28,34 @@ class HostileEarlyBindProbe:
 		ready_accepted = port != null and port.bind_ai_capability(capability)
 
 
+class AiConsumerWorldProbe:
+	extends Node
+
+	func _runtime_session_finished() -> bool:
+		return false
+
+	func _player_product_flow(
+		_player_index: int,
+		_product_name: String
+	) -> int:
+		return 0
+
+	func _signed_int_text(value: int) -> String:
+		return "+%d" % value if value > 0 else str(value)
+
+	func _player_counted_hand_size(player: Dictionary) -> int:
+		return (player.get("slots", []) as Array).size()
+
+	func _player_active_city_count(_player_index: int) -> int:
+		return 0
+
+	func _card_resolution_current_queue() -> Array:
+		return []
+
+	func _card_resolution_next_queue() -> Array:
+		return []
+
+
 var _checks := 0
 var _failures: Array[String] = []
 
@@ -72,6 +100,9 @@ func _run() -> void:
 	var ai_bridge := coordinator.get_node_or_null(
 		"AiRuntimeWorldBridge"
 	) as AiRuntimeWorldBridge
+	var market := coordinator.get_node_or_null(
+		"ProductMarketRuntimeController"
+	) as ProductMarketRuntimeController
 	var rng := coordinator.run_rng_service()
 
 	_expect(
@@ -85,6 +116,7 @@ func _run() -> void:
 			and monster_bridge != null
 			and ai != null
 			and ai_bridge != null
+			and market != null
 			and rng != null,
 		"production composition exposes every actor-economy authority"
 	)
@@ -92,11 +124,17 @@ func _run() -> void:
 		_finish()
 		return
 
+	var consumer_world := AiConsumerWorldProbe.new()
+	consumer_world.name = "AiConsumerWorldProbe"
+	coordinator.add_child(consumer_world)
+	ai_bridge.bind_world(consumer_world)
 	ai_bridge.set_rng_service(rng)
 	ai_bridge.set_world_session_state(world)
 	ai.set_world_bridge(ai_bridge)
 	monster_bridge.set_world_session_state(world)
 	monster.set_world_bridge(monster_bridge)
+	ai.set_monster_runtime_controller(monster)
+	ai.set_product_market_runtime_controller(market)
 	ai.configure({"ruleset_id": "v0.6"})
 	session.configure({"ruleset_id": "v0.6"}, {})
 	var started := session.begin_session({
@@ -125,6 +163,23 @@ func _run() -> void:
 	_expect(
 		capability == coordinator.get("_ai_actor_economy_facts_capability"),
 		"AI and Coordinator share one prebound capability"
+	)
+	_expect(
+		bool(ai.debug_snapshot().get("controller_ready", false)),
+		"AI lifecycle is ready only with the economy facts boundary"
+	)
+	var bound_economy_port := ai.get(
+		"_ai_actor_economy_facts_query_port"
+	) as AiActorEconomyFactsQueryPort
+	ai.set("_ai_actor_economy_facts_query_port", null)
+	_expect(
+		not bool(ai.debug_snapshot().get("controller_ready", true)),
+		"missing economy facts boundary fails AI lifecycle readiness closed"
+	)
+	ai.set("_ai_actor_economy_facts_query_port", bound_economy_port)
+	_expect(
+		bool(ai.debug_snapshot().get("controller_ready", false)),
+		"restored economy facts boundary restores AI lifecycle readiness"
 	)
 	_expect(
 		hostile.enter_tree_attempted and not hostile.enter_tree_accepted,
@@ -326,6 +381,114 @@ func _run() -> void:
 		int(ai.call("_spendable_cash_units", 1)) == 800,
 		"AI spendable-cash helper consumes the typed decision snapshot"
 	)
+
+	var actor_state_capability := ai.get(
+		"_ai_actor_state_capability"
+	) as AiActorStateCapability
+	_expect(
+		actor_state_capability != null,
+		"AI owns the actor-state capability used by live training consumers"
+	)
+	var negative_cash_player := (
+		world.players[1] as Dictionary
+	).duplicate(true)
+	negative_cash_player["cash"] = -5
+	negative_cash_player["cash_cents"] = -500
+	world.players[1] = negative_cash_player
+	var negative_decision := port.actor_decision_facts(capability, 1)
+	var negative_training := port.actor_training_economy_facts(capability, 1)
+	_expect(
+		int(negative_decision.get("available_cash_cents", -1)) == 0
+			and int(negative_decision.get("available_cash_units", -1)) == 0,
+		"decision consumers clamp indebted cash to zero spendable balance"
+	)
+	_expect(
+		int(negative_training.get("total_cash_cents", 0)) == -500
+			and int(negative_training.get("total_cash_units", 0)) == -5,
+		"training consumers preserve signed canonical ledger cash"
+	)
+	var negative_observation := ai.call(
+		"_ai_observation_vector",
+		1
+	) as Dictionary
+	_expect(
+		int(negative_observation.get("cash", 0)) == -5,
+		"live AI observation consumes signed training cash end to end"
+	)
+	ai.call(
+		"_record_ai_decision",
+		1,
+		"economy_port_probe",
+		0,
+		1,
+		"typed economy probe"
+	)
+	var actor_after_record := actor_state.ai_actor_state_snapshot(
+		actor_state_capability,
+		1
+	)
+	var recorded_samples := (
+		(actor_after_record.get("ai_memory", {}) as Dictionary).get(
+			"decision_samples",
+			[]
+		) as Array
+	)
+	var recorded_sample: Dictionary = {}
+	if (
+		not recorded_samples.is_empty()
+		and recorded_samples[-1] is Dictionary
+	):
+		recorded_sample = recorded_samples[-1] as Dictionary
+	_expect(
+		int(recorded_sample.get("baseline_cash", 0)) == -5,
+		"live decision recording stores signed baseline cash"
+	)
+	var recovering_player := (
+		world.players[1] as Dictionary
+	).duplicate(true)
+	recovering_player["cash"] = -3
+	recovering_player["cash_cents"] = -300
+	world.players[1] = recovering_player
+	var cycle_before := market.business_cycle_count
+	market.business_cycle_count = cycle_before + 1
+	var finalized_count := int(ai.call("_finalize_ai_decision_rewards"))
+	var actor_after_finalize := actor_state.ai_actor_state_snapshot(
+		actor_state_capability,
+		1
+	)
+	var finalized_samples := (
+		(actor_after_finalize.get("ai_memory", {}) as Dictionary).get(
+			"decision_samples",
+			[]
+		) as Array
+	)
+	var finalized_sample: Dictionary = {}
+	if (
+		not finalized_samples.is_empty()
+		and finalized_samples[-1] is Dictionary
+	):
+		finalized_sample = finalized_samples[-1] as Dictionary
+	_expect(
+		finalized_count == 1
+			and bool(finalized_sample.get("reward_finalized", false))
+			and int(finalized_sample.get("reward_cash", 0)) == 2,
+		(
+			"live reward finalization compares signed ledger cash without zero truncation "
+			+ "(count=%d finalized=%s reward=%d samples=%d)"
+		) % [
+			finalized_count,
+			str(finalized_sample.get("reward_finalized", false)),
+			int(finalized_sample.get("reward_cash", 0)),
+			finalized_samples.size(),
+		]
+	)
+	market.business_cycle_count = cycle_before
+	var restored_cash_player := (
+		world.players[1] as Dictionary
+	).duplicate(true)
+	restored_cash_player["cash"] = 1000
+	restored_cash_player["cash_cents"] = 100000
+	world.players[1] = restored_cash_player
 
 	var cooldown_changed := (world.players[1] as Dictionary).duplicate(true)
 	cooldown_changed["action_cooldown"] = 0.0

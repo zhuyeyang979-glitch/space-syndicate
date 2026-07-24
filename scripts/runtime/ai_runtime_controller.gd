@@ -458,7 +458,12 @@ func policy_snapshot() -> Dictionary:
 func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 	var profile := policy_snapshot()
 	return {
-		"controller_ready": _configured and _world_ready(),
+		"controller_ready": (
+			_configured
+			and _world_ready()
+			and _actor_state_ready()
+			and _actor_economy_facts_ready()
+		),
 		"runtime_owner": "res://scripts/runtime/ai_runtime_controller.gd",
 		"runtime_cutover_enabled": bool(profile.get("runtime_cutover_enabled", false)),
 		"policy_profile_id": str(profile.get("profile_id", "")),
