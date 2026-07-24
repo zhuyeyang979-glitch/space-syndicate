@@ -87,6 +87,7 @@ var _product_market_runtime_controller: ProductMarketRuntimeController
 var _city_gdp_derivative_runtime_controller: CityGdpDerivativeRuntimeController
 var _card_definition_bridge: CardRuntimeDefinitionWorldBridge
 var _card_play_eligibility_runtime_service: CardPlayEligibilityRuntimeService
+var _ai_card_strategy_query_port: AiCardStrategyQueryPort
 var _gameplay_balance_diagnostics_service: GameplayBalanceDiagnosticsRuntimeService
 var _route_network_runtime_controller: RouteNetworkRuntimeController
 var _visual_cue_runtime_owner: VisualCueRuntimeOwner
@@ -416,6 +417,10 @@ func set_card_definition_bridge(
 ) -> void:
 	_card_definition_bridge = bridge
 	_card_play_eligibility_runtime_service = eligibility_service
+
+
+func set_card_strategy_query_port(port: AiCardStrategyQueryPort) -> void:
+	_ai_card_strategy_query_port = port
 
 
 func set_gameplay_balance_diagnostics_service(service: GameplayBalanceDiagnosticsRuntimeService) -> void:
@@ -1619,9 +1624,6 @@ func _card_price(skill_name: String, district_index: int = -1, _player_index: in
 	var skill := _card_definition_bridge.resolve_definition(price_name)
 	return int(_runtime_balance_model.card_price_for_skill(skill)) if not skill.is_empty() else 0
 
-func _card_strength_budget_points(card_name: String) -> int:
-	return _gameplay_balance_diagnostics_service.card_budget_points_for_id(card_name) if _gameplay_balance_diagnostics_service != null else 0
-
 func _product_price(product_name: String) -> int:
 	return _ai_market_public_query_port.public_price(product_name) \
 		if _ai_market_public_query_port != null else 0
@@ -1830,13 +1832,15 @@ func _monster_wager_stake_option(entry: Dictionary, desired_percent: int) -> Dic
 	return best.duplicate(true)
 
 func _development_route_archetypes() -> Array:
-	return _gameplay_balance_diagnostics_service.development_routes() if _gameplay_balance_diagnostics_service != null else []
+	return _ai_card_strategy_query_port.development_routes() if _ai_card_strategy_query_port != null else []
+
 
 func _card_development_route_id(skill: Dictionary) -> String:
-	return _gameplay_balance_diagnostics_service.route_id_for_card(skill) if _gameplay_balance_diagnostics_service != null else "tactical_support"
+	return _ai_card_strategy_query_port.route_id_for_card(skill) if _ai_card_strategy_query_port != null else "tactical_support"
+
 
 func _development_route_label(route_id: String) -> String:
-	return _gameplay_balance_diagnostics_service.route_label(route_id) if _gameplay_balance_diagnostics_service != null else "即时战术"
+	return _ai_card_strategy_query_port.route_label(route_id) if _ai_card_strategy_query_port != null else "即时战术"
 
 func _development_route_pressure_card_entry(card_name: String, skill: Dictionary) -> Dictionary:
 	return _gameplay_balance_diagnostics_service.development_route_pressure_card_entry(card_name, skill) if _gameplay_balance_diagnostics_service != null else {}

@@ -1456,6 +1456,7 @@ func _wire_ai_world_typed_ports() -> void:
 	var route_public_port := _ai_route_public_query_port_node()
 	var card_queue_query_port := _ai_card_queue_query_port_node()
 	var card_eligibility_query_port := _ai_card_eligibility_query_port_node()
+	var card_strategy_query_port := _ai_card_strategy_query_port_node()
 	var monster_public_query_port := _ai_monster_public_query_port_node()
 	var monster_actor_query_port := _ai_monster_actor_query_port_node()
 	var military_public_query_port := _ai_military_public_query_port_node()
@@ -1467,7 +1468,7 @@ func _wire_ai_world_typed_ports() -> void:
 	if session_public_port == null or actor_state_port == null or region_query_port == null \
 			or city_inference_port == null or market_public_port == null \
 			or route_public_port == null or card_queue_query_port == null \
-			or card_eligibility_query_port == null \
+			or card_eligibility_query_port == null or card_strategy_query_port == null \
 			or monster_public_query_port == null or monster_actor_query_port == null \
 			or military_public_query_port == null or military_actor_query_port == null \
 			or weather_public_query_port == null or victory_public_query_port == null \
@@ -1488,6 +1489,7 @@ func _wire_ai_world_typed_ports() -> void:
 		city_inference_port
 	)
 	ai.set_market_route_query_ports(market_public_port, route_public_port)
+	ai.set_card_strategy_query_port(card_strategy_query_port)
 	ai.set_monster_runtime_controller(_monster_runtime_controller_node() as MonsterRuntimeController)
 	ai.set_role_catalog_runtime_service(_role_catalog_runtime_service_node() as RoleCatalogRuntimeService)
 	ai.set_table_presentation_refresh_port(_table_presentation_refresh_port_node())
@@ -5820,6 +5822,10 @@ func _ai_card_eligibility_query_port_node() -> AiCardEligibilityQueryPort:
 
 func _ai_actor_economy_query_port_node() -> AiActorEconomyQueryPort:
 	return get_node_or_null("AiActorEconomyQueryPort") as AiActorEconomyQueryPort
+
+
+func _ai_card_strategy_query_port_node() -> AiCardStrategyQueryPort:
+	return get_node_or_null("AiCardStrategyQueryPort") as AiCardStrategyQueryPort
 
 
 func _ai_market_public_query_port_node() -> AiMarketPublicQueryPort:

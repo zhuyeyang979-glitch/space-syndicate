@@ -3,6 +3,7 @@ extends Node
 class_name CardPresentationRuntimeService
 
 const CARD_VIEW_SNAPSHOT_SCRIPT := preload("res://scripts/viewmodels/card_view_snapshot.gd")
+const DEVELOPMENT_ROUTE_CATALOG := preload("res://resources/balance/development_route_catalog_v04.tres")
 
 var _configured := false
 var _compose_count := 0
@@ -449,31 +450,7 @@ func _theme_color(skill: Dictionary) -> Color:
 
 
 func _strategy_route_label(skill: Dictionary) -> String:
-	var kind := str(skill.get("kind", ""))
-	var tags := str(skill.get("tag_text", " "))
-	if tags.strip_edges() == "" and skill.get("tags", []) is Array:
-		tags = " / ".join(skill.get("tags", []))
-	var route_damage := int(skill.get("route_damage", 0))
-	var repair_routes := int(skill.get("repair_routes", 0))
-	var economy_delta := int(skill.get("production_delta", 0)) + int(skill.get("transport_delta", 0)) + int(skill.get("consumption_delta", 0))
-	var market_pressure := int(skill.get("market_demand_pressure", 0)) + int(skill.get("market_supply_pressure", 0)) + int(skill.get("price_delta", 0))
-	if kind == "public_facility": return "城市成长"
-	if kind == "card_counter": return "直接互动"
-	if kind in ["military_force", "military_command"]: return "战斗破坏"
-	if kind in ["monster_card", "monster_bound_action", "monster_lure", "monster_takeover"] or tags.contains("怪兽"): return "怪兽路线"
-	if kind in ["player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage"] or tags.contains("互动"): return "直接互动"
-	if kind in ["intel_city_reveal", "card_history_public_review", "card_history_subscription"] or tags.contains("情报"): return "情报推理"
-	if kind == "news_event" or tags.contains("新闻"): return "新闻信息战"
-	if kind == "weather_control" or tags.contains("天气"): return "天气博弈"
-	if kind == "product_contract_boon" or int(skill.get("contract_income", 0)) > 0: return "订单经济"
-	if route_damage > 0 or economy_delta < 0 or kind in ["route_sabotage", "area_damage"]: return "城市压制"
-	if kind in ["city_gdp_derivative", "product_speculation", "market_stabilize"] or market_pressure != 0: return "金融投机"
-	if kind == "supply_draw" or int(skill.get("draw_amount", 0)) > 0: return "补给构筑"
-	if repair_routes > 0 or economy_delta > 0 or kind in ["city_revenue_boost", "cash_gain", "route_insurance", "city_product_upgrade", "city_product_shift", "city_demand_shift", "route_flow_boon", "product_growth_boon", "city_contract_boon"] or float(skill.get("route_flow_multiplier", 1.0)) > 1.001 or float(skill.get("growth_multiplier", 1.0)) > 1.001 or int(skill.get("revenue_amount", 0)) > 0 or int(skill.get("cash", 0)) > 0: return "城市成长"
-	if int(skill.get("damage", 0)) > 0 or kind in ["attack", "charge_attack", "roll_attack", "mudslide", "miasma_shot", "corrosive_breath"]: return "战斗破坏"
-	if int(skill.get("panic", 0)) > 0 or kind == "panic_shift": return "怪兽诱导"
-	return "即时战术"
-
+	return DEVELOPMENT_ROUTE_CATALOG.strategy_label_for_skill(skill)
 
 func _use_case_text(source: Dictionary, skill: Dictionary, route_label: String) -> String:
 	for key in ["use_case", "table_use", "purpose", "when_to_use"]:

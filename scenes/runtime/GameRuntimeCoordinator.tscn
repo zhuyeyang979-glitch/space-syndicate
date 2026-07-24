@@ -1,4 +1,4 @@
-[gd_scene load_steps=134 format=3]
+[gd_scene load_steps=135 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -136,6 +136,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiWeatherPublicQueryPort.tscn" id="144_ai_weather_public"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiVictoryPublicQueryPort.tscn" id="145_ai_victory_public"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiActorVictoryQueryPort.tscn" id="146_ai_actor_victory"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/AiCardStrategyQueryPort.tscn" id="147_ai_card_strategy"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -361,6 +362,9 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="AiCardEligibilityQueryPort" parent="." instance=ExtResource("139_ai_card_eligibility")]
+unique_name_in_owner = true
+
+[node name="AiCardStrategyQueryPort" parent="." instance=ExtResource("147_ai_card_strategy")]
 unique_name_in_owner = true
 
 [node name="AiMarketPublicQueryPort" parent="." instance=ExtResource("136_ai_market_public")]

@@ -55,6 +55,7 @@ func _run() -> void:
 	var coordinator_scene := FileAccess.get_file_as_string("res://scenes/runtime/GameRuntimeCoordinator.tscn")
 	var ai_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_runtime_controller.gd")
 	var ai_eligibility_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_card_eligibility_query_port.gd")
+	var ai_strategy_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_card_strategy_query_port.gd")
 	var ai_region_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_region_knowledge_query_port.gd")
 	var ai_city_inference_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_city_inference_command_port.gd")
 	_expect(
@@ -63,6 +64,15 @@ func _run() -> void:
 			and not ai_eligibility_source.contains("TableSelectionState")
 			and not ai_eligibility_source.contains("to_save_data"),
 		"production composition owns one stateless actor-scoped AI card eligibility port"
+	)
+	_expect(
+		coordinator_scene.count("[node name=\"AiCardStrategyQueryPort\"") == 1
+			and ai_strategy_source.contains("class_name AiCardStrategyQueryPort")
+			and not ai_strategy_source.contains("GameplayBalanceDiagnostics")
+			and not ai_strategy_source.contains("TableSelectionState")
+			and not ai_strategy_source.contains("WorldSessionState")
+			and not ai_strategy_source.contains("to_save_data"),
+		"production composition owns one pure public AI card strategy query port"
 	)
 	_expect(
 		coordinator_scene.count("[node name=\"AiRegionKnowledgeQueryPort\"") == 1

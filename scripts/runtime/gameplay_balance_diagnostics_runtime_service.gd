@@ -62,18 +62,11 @@ func route_profile(route_id: String) -> Dictionary:
 
 
 func route_for_card(card_facts: Dictionary) -> Dictionary:
-	var skill := _dictionary(card_facts.get("skill", card_facts))
-	var card_name := str(card_facts.get("card_name", card_facts.get("card_id", skill.get("name", ""))))
-	var authored_route_label := str(card_facts.get("route_label", card_facts.get("strategy_route_label", "")))
-	if authored_route_label == "" and card_name != "":
-		var known := _card_fact(card_name, _snapshot(false))
-		authored_route_label = str(known.get("route_label", ""))
-	var route_id := route_catalog.route_id_for_strategy_label(authored_route_label) if route_catalog != null and authored_route_label != "" else _fallback_route_id(skill)
+	if route_catalog == null:
+		return {}
+	var route_id := route_catalog.route_id_for_card(card_facts)
 	var profile := route_profile(route_id)
-	if profile.is_empty():
-		profile = route_profile("tactical_support")
-	return profile
-
+	return profile if not profile.is_empty() else route_profile("tactical_support")
 
 func route_id_for_card(card_facts: Dictionary) -> String:
 	return str(route_for_card(card_facts).get("id", "tactical_support"))
@@ -879,17 +872,6 @@ func _family_complete(family: String, ids: Dictionary) -> bool:
 	for rank in range(1, 5):
 		if not ids.has("%s%d" % [family, rank]): return false
 	return true
-
-
-func _fallback_route_id(skill: Dictionary) -> String:
-	var kind := str(skill.get("kind", ""))
-	if kind in ["city_revenue_boost", "city_product_upgrade", "city_product_shift", "city_demand_shift", "route_flow_boon", "route_insurance"]: return "city_growth"
-	if kind in ["product_contract_boon", "city_contract_boon"]: return "contract_route"
-	if kind in ["product_speculation", "product_futures", "city_gdp_derivative", "market_stabilize", "product_growth_boon"]: return "finance_speculation"
-	if kind in ["monster_card", "monster_bound_action", "monster_lure", "monster_takeover", "route_sabotage", "weather_control", "news_event", "military_force", "military_command"]: return "monster_pressure"
-	if kind.begins_with("intel_") or kind == "supply_draw": return "intel_supply"
-	if kind in ["player_hand_disrupt", "player_hand_steal", "city_control_dispute", "global_barrage", "card_counter"]: return "direct_interaction"
-	return "tactical_support"
 
 
 func _runtime_balance_snapshot(snapshot: Dictionary) -> Dictionary:

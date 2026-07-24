@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/ai_card_strategy_query_port.gd" id="1_port"]
+[ext_resource type="Resource" path="res://resources/balance/development_route_catalog_v04.tres" id="2_routes"]
+
+[node name="AiCardStrategyQueryPort" type="Node"]
+script = ExtResource("1_port")
+route_catalog = ExtResource("2_routes")
+editor_description = "Pure public catalog query for AI card strategy routes. It has no world, selection, diagnostics, command, RNG, or save dependency."
