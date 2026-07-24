@@ -728,6 +728,11 @@ func write_file(arguments: Dictionary) -> String:
 		return "Error: Failed to open file for writing: %s" % path
 
 	file.store_string(content)
+	file.flush()
+	var write_error = file.get_error()
+	file.close()
+	if write_error != OK:
+		return "Error: Failed to write file: %s (%s)" % [path, error_string(write_error)]
 	_refresh_filesystem()
 	return _render_variant({
 		"path": path,
@@ -967,6 +972,7 @@ func patch_script(arguments: Dictionary) -> String:
 		return "Error: Failed to open file: %s" % path
 
 	var content = file.get_as_text()
+	file.close()
 	var find_text = str(arguments.get("find", ""))
 	var replace_text = str(arguments.get("replace", ""))
 	var prepend_text = str(arguments.get("prepend", ""))
