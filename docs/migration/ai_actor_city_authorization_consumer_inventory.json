@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "task": "AI_ACTOR_CITY_AUTHORIZATION_TYPED_PORT_MIGRATION",
+  "parent_task": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
+  "parent_status": "ACTIVE",
+  "rule_authority_gate": "GREEN_WITH_SCOPE_LIMIT",
+  "existing_query_port": "res://scripts/runtime/ai_region_knowledge_query_port.gd",
+  "authoritative_owner": "res://scripts/runtime/world_session_state.gd",
+  "semantic_owner": "res://scripts/runtime/ai_runtime_controller.gd",
+  "new_query_port_count": 0,
+  "new_capability_count": 0,
+  "new_state_owner_count": 0,
+  "new_save_section_count": 0,
+  "save_registry_section_count": 19,
+  "schema": {
+    "version": 1,
+    "visibility_scope": "actor_private",
+    "keys": ["schema_version","visibility_scope","actor_index","district_index","region_id","present","active","perceived_owner_index","owner_knowledge","confidence","reason_id","reason_kind","authorized_reveal","owner_revision","fingerprint"],
+    "owner_knowledge_values": ["public_unknown","actor_own","actor_guess","authorized_reveal"],
+    "detached_pure_data": true
+  },
+  "semantics": {
+    "actor_guess_is_authoritative_ownership": false,
+    "authorized_reveal_confidence": 100,
+    "gameplay_owner_revalidation_required": true,
+    "formula_changed": false,
+    "candidate_order_changed": false,
+    "rng_order_changed": false
+  },
+  "migrated_consumers": [
+    "_district_product_overlap_with_rival_cities",
+    "_active_city_indices_for_player",
+    "_competing_city_indices_for_product",
+    "_ai_product_rival_city_count",
+    "_ai_owned_city_product_count",
+    "_ai_district_focus_score",
+    "_ai_preferred_product",
+    "_ai_city_product_overlap_score"
+  ],
+  "deferred_domains": ["routes","market_and_supply","monsters","weather","military","victory","mixed_card_effects","mutations"],
+  "source_metrics": {
+    "district_city_tokens_before": 60,
+    "district_city_tokens_after": 51,
+    "district_city_calls_before": 59,
+    "district_city_calls_after": 50,
+    "districts_tokens_before": 80,
+    "districts_tokens_after": 75,
+    "call_world_tokens_before": 39,
+    "call_world_tokens_after": 39,
+    "owner_get_tokens_before": 54,
+    "owner_get_tokens_after": 49
+  },
+  "privacy": {
+    "hidden_owner_leak_count": 0,
+    "rival_guess_leak_count": 0,
+    "rival_private_state_leak_count": 0,
+    "hidden_owner_output_delta_count": 0
+  },
+  "verification": {
+    "focused": {"result":"128/128 PASS","run_id":"20260724-191654-216-ai_actor_city_authorization_typed_port_migration_test-59993dc4"},
+    "production_bench": {"result":"24/24 PASS","runner":"Godot MCP headed play mode","privacy_leaks":0,"hidden_owner_output_deltas":0},
+    "city_inference": "48/48 PASS",
+    "public_district": "104/104 PASS",
+    "actor_state": "93/93 PASS",
+    "public_player": "128/128 PASS",
+    "actor_economy": "81/81 PASS",
+    "actor_hand": "92/92 PASS"
+  }
+}

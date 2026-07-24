@@ -302,7 +302,10 @@
         },
         {
           "domain": "ai_public_district_facts",
-          "status": "validated_candidate",
+          "status": "merged",
+          "pull_request": 57,
+          "commit_sha": "ecc92f7ec9863e684825fd9f4e4f2afbfae88ac9",
+          "merge_commit_sha": "ad3b3184533a8cd08cfbf1107399d80f4fdd2ce6",
           "query_port": "res://scripts/runtime/ai_region_knowledge_query_port.gd",
           "authoritative_owner": "res://scripts/runtime/world_session_state.gd",
           "migrated_consumers": [
@@ -324,6 +327,39 @@
           "new_query_port_count": 0,
           "new_main_caller_count": 0,
           "new_save_section_count": 0,
+          "parent_domain_complete": false
+        },
+        {
+          "domain": "ai_actor_city_authorization",
+          "status": "validated_candidate",
+          "query_port": "res://scripts/runtime/ai_region_knowledge_query_port.gd",
+          "authoritative_owner": "res://scripts/runtime/world_session_state.gd",
+          "owner_knowledge_values": [
+            "public_unknown",
+            "actor_own",
+            "actor_guess",
+            "authorized_reveal"
+          ],
+          "migrated_consumers": [
+            "_district_product_overlap_with_rival_cities",
+            "_active_city_indices_for_player",
+            "_competing_city_indices_for_product",
+            "_ai_product_rival_city_count",
+            "_ai_owned_city_product_count",
+            "_ai_district_focus_score",
+            "_ai_preferred_product",
+            "_ai_city_product_overlap_score"
+          ],
+          "tests": [
+            "res://tests/ai_actor_city_authorization_typed_port_migration_test.gd",
+            "res://scenes/tools/AiActorCityAuthorizationTypedPortMigrationBench.tscn"
+          ],
+          "new_query_port_count": 0,
+          "new_capability_count": 0,
+          "new_main_caller_count": 0,
+          "new_save_section_count": 0,
+          "actor_guess_is_authoritative_ownership": false,
+          "mixed_domain_consumers_deferred": true,
           "parent_domain_complete": false
         }
       ]

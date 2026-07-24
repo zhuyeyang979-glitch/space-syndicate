@@ -509,6 +509,12 @@ func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 		"public_district_facts_uses_main": false,
 		"public_district_facts_uses_whole_districts": false,
 		"public_district_facts_stores_state": false,
+		"typed_actor_city_authorization_bound": _city_inference_ports_ready(),
+		"actor_city_authorization_uses_main": false,
+		"actor_city_authorization_uses_hidden_owner_truth": false,
+		"actor_city_authorization_stores_state": false,
+		"actor_city_authorization_migrated_consumer_count": 8,
+		"actor_city_authorization_mixed_domain_consumers_deferred": true,
 		"typed_city_inference_command_bound": _ai_city_inference_command_port != null,
 		"city_inference_uses_main": false,
 		"private_plan_exposed": false,
@@ -740,6 +746,30 @@ func _city_inference_snapshot(actor_index: int) -> Dictionary:
 		_ai_region_knowledge_capability,
 		actor_index
 	)
+
+
+func _actor_city_authorization_snapshot(actor_index: int) -> Array:
+	if not _city_inference_ports_ready():
+		return []
+	return _ai_region_knowledge_query_port.actor_city_authorization_snapshot(
+		_ai_region_knowledge_capability,
+		actor_index
+	)
+
+
+func _actor_city_authorization_fact(rows: Array, district_index: int) -> Dictionary:
+	for row_variant in rows:
+		if row_variant is Dictionary and int((row_variant as Dictionary).get("district_index", -1)) == district_index:
+			return (row_variant as Dictionary).duplicate(true)
+	return {}
+
+
+func _actor_city_is_own(rows: Array, actor_index: int, district_index: int) -> bool:
+	var fact := _actor_city_authorization_fact(rows, district_index)
+	return not fact.is_empty() \
+		and str(fact.get("owner_knowledge", "")) == "actor_own" \
+		and int(fact.get("actor_index", -1)) == actor_index \
+		and int(fact.get("perceived_owner_index", -1)) == actor_index
 
 
 func _public_district_facts_ready() -> bool:
@@ -2036,16 +2066,19 @@ func _rival_build_player_order() -> Array:
 		result[swap_index] = tmp
 	return result
 func _district_product_overlap_with_rival_cities(player_index: int, district_index: int) -> int:
-	if district_index < 0 or district_index >= districts.size():
+	var public_rows := _public_district_facts_snapshot()
+	var district := _public_district_fact(public_rows, district_index)
+	var authorization_rows := _actor_city_authorization_snapshot(player_index)
+	if district.is_empty() or authorization_rows.is_empty():
 		return 0
-	var local_products: Array = districts[district_index].get("products", [])
+	var local_products: Array = (district.get("products", []) as Array).duplicate(true)
 	if local_products.is_empty():
 		return 0
 	var matches := 0
 	for city_index_variant in _active_city_district_indices():
 		var city_index := int(city_index_variant)
-		var city := _district_city(city_index)
-		if int(city.get("owner", -1)) == player_index:
+		var city := _public_district_city_fact(public_rows, city_index)
+		if city.is_empty() or _actor_city_is_own(authorization_rows, player_index, city_index):
 			continue
 		for product_name in _city_product_names(city):
 			if local_products.has(product_name):
@@ -2082,19 +2115,26 @@ func _auto_build_monster_risk_score(district_index: int) -> int:
 	return risk
 func _active_city_indices_for_player(player_index: int) -> Array:
 	var result := []
+	var authorization_rows := _actor_city_authorization_snapshot(player_index)
+	if authorization_rows.is_empty():
+		return result
 	for city_index_variant in _active_city_district_indices():
 		var city_index := int(city_index_variant)
-		if int(_district_city(city_index).get("owner", -1)) == player_index:
+		if _actor_city_is_own(authorization_rows, player_index, city_index):
 			result.append(city_index)
 	return result
 func _competing_city_indices_for_product(player_index: int, product_name: String) -> Array:
 	var result := []
-	if product_name == "":
+	if product_name.is_empty():
+		return result
+	var public_rows := _public_district_facts_snapshot()
+	var authorization_rows := _actor_city_authorization_snapshot(player_index)
+	if public_rows.is_empty() or authorization_rows.is_empty():
 		return result
 	for city_index_variant in _active_city_district_indices():
 		var city_index := int(city_index_variant)
-		var city := _district_city(city_index)
-		if int(city.get("owner", -1)) == player_index:
+		var city := _public_district_city_fact(public_rows, city_index)
+		if city.is_empty() or _actor_city_is_own(authorization_rows, player_index, city_index):
 			continue
 		if _city_product_names(city).has(product_name):
 			result.append(city_index)
@@ -4866,12 +4906,16 @@ func _ai_development_route_learning_bonus(player_index: int, route_id: String) -
 	return _ai_learned_tag_bonus(player_index, "development_route:%s" % route_id)
 func _ai_product_rival_city_count(player_index: int, product_name: String) -> int:
 	var count := 0
-	if product_name == "":
+	if product_name.is_empty():
+		return count
+	var public_rows := _public_district_facts_snapshot()
+	var authorization_rows := _actor_city_authorization_snapshot(player_index)
+	if public_rows.is_empty() or authorization_rows.is_empty():
 		return count
 	for city_index_variant in _active_city_district_indices():
 		var city_index := int(city_index_variant)
-		var city := _district_city(city_index)
-		if int(city.get("owner", -1)) == player_index:
+		var city := _public_district_city_fact(public_rows, city_index)
+		if city.is_empty() or _actor_city_is_own(authorization_rows, player_index, city_index):
 			continue
 		if _city_product_names(city).has(product_name) or _city_demand_names(city).has(product_name):
 			count += 1
@@ -5308,11 +5352,16 @@ func _ai_profile_signature_bonus_for_candidate(player_index: int, kind: String, 
 	result["reason"] = "、".join(reasons) if not reasons.is_empty() else "无签名偏置"
 	return result
 func _ai_owned_city_product_count(player_index: int, product_name: String, demand_side: bool = false) -> int:
-	if product_name == "":
+	if product_name.is_empty():
+		return 0
+	var public_rows := _public_district_facts_snapshot()
+	if public_rows.is_empty():
 		return 0
 	var count := 0
 	for city_index_variant in _active_city_indices_for_player(player_index):
-		var city := _district_city(int(city_index_variant))
+		var city := _public_district_city_fact(public_rows, int(city_index_variant))
+		if city.is_empty():
+			continue
 		if demand_side:
 			if _city_demand_names(city).has(product_name):
 				count += 1
@@ -5851,14 +5900,16 @@ func _ai_route_gap_adjustment(player_index: int, skill: Dictionary, district_ind
 	return result
 func _ai_district_focus_score(player_index: int, district_index: int) -> int:
 	var focus := _ai_focus_product(player_index)
-	if focus == "" or district_index < 0 or district_index >= districts.size():
+	var public_rows := _public_district_facts_snapshot()
+	var district := _public_district_fact(public_rows, district_index)
+	if focus.is_empty() or district.is_empty():
 		return 0
 	var score := 0
-	if (districts[district_index].get("products", []) as Array).has(focus):
+	if (district.get("products", []) as Array).has(focus):
 		score += AI_ECONOMIC_FOCUS_MATCH_BONUS + int(round(float(_product_price(focus)) / 4.0))
-	if (districts[district_index].get("demands", []) as Array).has(focus):
+	if (district.get("demands", []) as Array).has(focus):
 		score += 48
-	var city := _district_city(district_index)
+	var city := _public_district_city_fact(public_rows, district_index)
 	if _city_is_active(city):
 		if _city_product_names(city).has(focus):
 			score += 72
@@ -5932,16 +5983,22 @@ func _ai_best_city_district(player_index: int, own_city: bool, prefer_damaged: b
 	return best_index
 func _ai_preferred_product(player_index: int, use_rivals: bool = false) -> String:
 	var focus := _ai_focus_product(player_index)
-	if focus != "":
+	if not focus.is_empty():
 		if not use_rivals and _player_product_flow(player_index, focus) > 0:
 			return focus
 		if use_rivals and not _competing_city_indices_for_product(player_index, focus).is_empty():
 			return focus
+	var public_rows := _public_district_facts_snapshot()
+	var authorization_rows := _actor_city_authorization_snapshot(player_index)
+	if public_rows.is_empty() or authorization_rows.is_empty():
+		return ""
 	var scores := {}
 	for district_index_variant in _active_city_district_indices():
 		var district_index := int(district_index_variant)
-		var city := _district_city(district_index)
-		var is_owned := int(city.get("owner", -1)) == player_index
+		var city := _public_district_city_fact(public_rows, district_index)
+		if city.is_empty():
+			continue
+		var is_owned := _actor_city_is_own(authorization_rows, player_index, district_index)
 		if is_owned == use_rivals:
 			continue
 		for product_variant in _city_product_names(city):
@@ -6044,14 +6101,17 @@ func _ai_best_district_near_monster(player_index: int, monster_slot: int, range_
 		return best_index
 	return int(actor.get("position", _ai_first_alive_district()))
 func _ai_city_product_overlap_score(player_index: int, target_city_index: int) -> int:
-	var target_city := _district_city(target_city_index)
+	var public_rows := _public_district_facts_snapshot()
+	var target_city := _public_district_city_fact(public_rows, target_city_index)
 	if not _city_is_active(target_city):
 		return 0
 	var target_products := _city_product_names(target_city)
 	var target_demands := _city_demand_names(target_city)
 	var score := 0
 	for own_city_index_variant in _active_city_indices_for_player(player_index):
-		var own_city := _district_city(int(own_city_index_variant))
+		var own_city := _public_district_city_fact(public_rows, int(own_city_index_variant))
+		if own_city.is_empty():
+			continue
 		for product_variant in _city_product_names(own_city):
 			var product_name := String(product_variant)
 			if target_products.has(product_name):

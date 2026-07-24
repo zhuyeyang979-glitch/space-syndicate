@@ -8864,3 +8864,27 @@ deleted. Evidence and the remaining action inventory are recorded in
 - Focused coverage now executes live observation, decision recording, and reward finalization across a -5 to -3 debt recovery: 81/81 PASS. The production Bench is 19/19 PASS.
 - Funplay MCP scene writes now verify exact reloaded scene identity, restore the previous editor tab, fail closed on unverified reload, and suppress filesystem refresh after synchronization failure. Source gate: 15/15 PASS. Live clean and dirty open-scene probes both passed.
 - main_gd_cutover_ledger.json now records merged foundation, city-inference, actor-state, and public-player atomic domains plus this validated actor-economy candidate. The parent typed-world P0 remains ACTIVE.
+
+## 2026-07-25 - AI actor-city authorization typed-port migration
+
+- Reused `AiRegionKnowledgeQueryPort` to expose strict actor-private city
+  authorization facts without adding a capability, state owner, save field, or
+  save section. `WorldSessionState` remains the city-truth and private-inference
+  owner; the Registry remains at 19 sections.
+- Froze four states: public unknown, exact actor-own, possibly wrong actor
+  guess, and authorized reveal. Only actor-own is accepted as authoritative
+  self-ownership; gameplay owners still revalidate live mutations.
+- Migrated eight safe AI leaf consumers away from raw city truth and whole
+  district access. Mixed route, market, supply, monster, weather, military,
+  Victory, and card consumers remain explicitly deferred.
+- Focused evidence is 128/128 and the real headed Godot MCP Bench is 24/24,
+  with zero privacy leak, hidden-owner output delta, query mutation, RNG delta,
+  Main fallback, or console error. Related AI, Main architecture, Main
+  composition, and smoke check-only gates pass.
+- Corrected the atomic-test policy after an unauthorized full smoke was
+  started. Full smoke is not an atomic PR gate until
+  `P4-FULL-SMOKE-FIXTURE-MIGRATION`; check-only uses no test-body marker,
+  single-test timeout is capped at 180 seconds, and 30 seconds without a new
+  stage requires stopping the exact test process. The aborted diagnostic
+  reached the known retired `Main._new_game` fixture and is not a product
+  failure.

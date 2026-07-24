@@ -1,7 +1,7 @@
 {
   "schema_version": 4,
-  "generated_at": "2026-07-25T03:26:45+09:00",
-  "base_main_sha": "ebaf91942c23b9c78ffa05873fff73d2b2262f8e",
+  "generated_at": "2026-07-25T04:32:00+09:00",
+  "base_main_sha": "ad3b3184533a8cd08cfbf1107399d80f4fdd2ce6",
   "allowed_statuses": [
     "MERGED",
     "ACTIVE",
@@ -102,17 +102,33 @@
         },
         {
           "domain": "public_district_facts",
-          "status": "VALIDATED_CANDIDATE",
+          "status": "MERGED",
           "base_main_sha": "ebaf91942c23b9c78ffa05873fff73d2b2262f8e",
           "focused_gate": "104/104 PASS",
           "production_scene_bench": "22/22 PASS",
+          "pull_request": 57,
+          "commit": "ecc92f7ec9863e684825fd9f4e4f2afbfae88ac9",
+          "merge_commit": "ad3b3184533a8cd08cfbf1107399d80f4fdd2ce6",
           "migrated_consumer_count": 7,
           "new_query_port_count": 0,
           "new_main_caller_count": 0,
           "new_save_section_count": 0
+        },
+        {
+          "domain": "actor_city_authorization",
+          "status": "VALIDATED_CANDIDATE",
+          "base_main_sha": "ad3b3184533a8cd08cfbf1107399d80f4fdd2ce6",
+          "focused_gate": "128/128 PASS",
+          "production_scene_bench": "24/24 PASS",
+          "migrated_consumer_count": 8,
+          "new_query_port_count": 0,
+          "new_capability_count": 0,
+          "new_main_caller_count": 0,
+          "new_save_section_count": 0,
+          "mixed_domain_consumers_deferred": true
         }
       ],
-      "next_atomic_boundary": "AI_PUBLIC_DISTRICT_FACTS_TYPED_PORT_MIGRATION",
+      "next_atomic_boundary": "AI_ACTOR_CITY_AUTHORIZATION_TYPED_PORT_MIGRATION",
       "dependencies": [
         "P0-AI-BUSINESS-COST-TYPED-CASH-CUTOVER",
         "P0-COMMODITY-FLOW-POSTCOMMIT-EXACT-ONCE"

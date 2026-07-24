@@ -25,6 +25,30 @@ const PUBLIC_DISTRICT_CITY_FACT_KEYS := [
 	"product_names",
 	"demand_names",
 ]
+const ACTOR_CITY_AUTHORIZATION_SCHEMA_VERSION := 1
+const ACTOR_CITY_AUTHORIZATION_FACT_KEYS := [
+	"schema_version",
+	"visibility_scope",
+	"actor_index",
+	"district_index",
+	"region_id",
+	"present",
+	"active",
+	"perceived_owner_index",
+	"owner_knowledge",
+	"confidence",
+	"reason_id",
+	"reason_kind",
+	"authorized_reveal",
+	"owner_revision",
+	"fingerprint",
+]
+const ACTOR_CITY_OWNER_KNOWLEDGE_VALUES := [
+	"public_unknown",
+	"actor_own",
+	"actor_guess",
+	"authorized_reveal",
+]
 
 @export var world_session_state_path: NodePath
 @export var commodity_flow_runtime_controller_path: NodePath
@@ -132,6 +156,64 @@ func actor_intelligence_snapshot(
 	return _copy(result)
 
 
+func actor_city_authorization_snapshot(
+	capability: AiRegionKnowledgeCapability,
+	actor_index: int
+) -> Array:
+	_private_query_count += 1
+	if not _authorized(capability, actor_index):
+		_rejected_query_count += 1
+		return []
+	var inference := _world().city_inference_projection(actor_index)
+	var guesses := _inference_by_district(inference)
+	var owner_revision := str(inference.get("owner_revision", ""))
+	var result: Array = []
+	for district_index in range(_world().districts.size()):
+		if not (_world().districts[district_index] is Dictionary):
+			_rejected_query_count += 1
+			return []
+		var district := _world().districts[district_index] as Dictionary
+		var city: Dictionary = district.get("city", {}) if district.get("city", {}) is Dictionary else {}
+		var authorization := _actor_city_owner_authorization(city, district_index, actor_index, guesses)
+		var row := {
+			"schema_version": ACTOR_CITY_AUTHORIZATION_SCHEMA_VERSION,
+			"visibility_scope": "actor_private",
+			"actor_index": actor_index,
+			"district_index": district_index,
+			"region_id": _string_scalar(district.get("region_id", ""), "region.%03d" % district_index),
+			"present": not city.is_empty(),
+			"active": not city.is_empty() and _bool_scalar(city.get("active", true), true),
+			"perceived_owner_index": int(authorization.get("perceived_owner_index", -1)),
+			"owner_knowledge": str(authorization.get("owner_knowledge", "public_unknown")),
+			"confidence": int(authorization.get("confidence", 0)),
+			"reason_id": str(authorization.get("reason_id", "")),
+			"reason_kind": str(authorization.get("reason_kind", "none")),
+			"authorized_reveal": bool(authorization.get("authorized_reveal", false)),
+			"owner_revision": owner_revision,
+			"fingerprint": "",
+		}
+		row["fingerprint"] = JSON.stringify([
+			"ai_actor_city_authorization_v1",
+			row,
+		]).sha256_text()
+		if row.keys() != ACTOR_CITY_AUTHORIZATION_FACT_KEYS or not _pure(row):
+			_rejected_query_count += 1
+			return []
+		result.append(_copy(row))
+	return result
+
+
+func actor_city_authorization_for_district(
+	capability: AiRegionKnowledgeCapability,
+	actor_index: int,
+	district_index: int
+) -> Dictionary:
+	for row_variant in actor_city_authorization_snapshot(capability, actor_index):
+		if row_variant is Dictionary and int((row_variant as Dictionary).get("district_index", -1)) == district_index:
+			return (row_variant as Dictionary).duplicate(true)
+	return {}
+
+
 func inference_rules_snapshot() -> Dictionary:
 	return {
 		"schema_version": 1,
@@ -181,6 +263,10 @@ func debug_snapshot() -> Dictionary:
 		"public_district_facts_exposes_owner": false,
 		"public_district_facts_exposes_damage": false,
 		"public_district_facts_exposes_panic": false,
+		"actor_city_authorization_schema_version": ACTOR_CITY_AUTHORIZATION_SCHEMA_VERSION,
+		"actor_city_authorization_owner_knowledge_values": ACTOR_CITY_OWNER_KNOWLEDGE_VALUES.duplicate(),
+		"actor_city_authorization_stores_state": false,
+		"actor_city_authorization_exposes_hidden_owner": false,
 		"hidden_owner_truth_exposed": false,
 		"rival_private_economy_exposed": false,
 		"future_supply_bag_exposed": false,
@@ -272,20 +358,50 @@ func _project_city(
 	result["public_clues"] = _normalized_public_clues(source.get("public_clues", []))
 	result["last_public_clue"] = str(_normalize_public_clue(source.get("last_public_clue", "")).get("text", ""))
 	result["present"] = true
-	result["owner"] = -1
-	result["owner_knowledge"] = "public_unknown"
-	if actor_index >= 0:
-		var actual_owner := int(source.get("owner", -1))
-		if actual_owner == actor_index:
-			result["owner"] = actor_index
-			result["owner_knowledge"] = "actor_own"
-		elif guesses.has(district_index):
-			var inference := guesses[district_index] as Dictionary
-			result["owner"] = int(inference.get("suspected_player_index", -1))
-			result["owner_knowledge"] = "authorized_reveal" \
-				if bool(inference.get("authorized_reveal", false)) else "actor_guess"
-			result["owner_confidence"] = int(inference.get("confidence", 0))
-			result["owner_reason_id"] = str(inference.get("reason_id", ""))
+	var authorization := _actor_city_owner_authorization(source, district_index, actor_index, guesses)
+	result["owner"] = int(authorization.get("perceived_owner_index", -1))
+	result["owner_knowledge"] = str(authorization.get("owner_knowledge", "public_unknown"))
+	if str(result["owner_knowledge"]) in ["actor_guess", "authorized_reveal"]:
+		result["owner_confidence"] = int(authorization.get("confidence", 0))
+		result["owner_reason_id"] = str(authorization.get("reason_id", ""))
+	return result
+
+
+func _actor_city_owner_authorization(
+	source: Dictionary,
+	district_index: int,
+	actor_index: int,
+	guesses: Dictionary
+) -> Dictionary:
+	var result := {
+		"perceived_owner_index": -1,
+		"owner_knowledge": "public_unknown",
+		"confidence": 0,
+		"reason_id": "",
+		"reason_kind": "none",
+		"authorized_reveal": false,
+	}
+	if source.is_empty() or actor_index < 0:
+		return result
+	var actual_owner := int(source.get("owner", -1))
+	if actual_owner == actor_index:
+		result["perceived_owner_index"] = actor_index
+		result["owner_knowledge"] = "actor_own"
+		result["reason_kind"] = "actor_own"
+		return result
+	if not guesses.has(district_index) or not (guesses[district_index] is Dictionary):
+		return result
+	var inference := guesses[district_index] as Dictionary
+	var perceived_owner := int(inference.get("suspected_player_index", -1))
+	if _world() == null or perceived_owner < 0 or perceived_owner >= _world().players.size() or perceived_owner == actor_index:
+		return result
+	var authorized_reveal := bool(inference.get("authorized_reveal", false))
+	result["perceived_owner_index"] = perceived_owner
+	result["owner_knowledge"] = "authorized_reveal" if authorized_reveal else "actor_guess"
+	result["confidence"] = int(inference.get("confidence", 0))
+	result["reason_id"] = str(inference.get("reason_id", ""))
+	result["reason_kind"] = str(inference.get("reason_kind", "public_reveal" if authorized_reveal else "manual"))
+	result["authorized_reveal"] = authorized_reveal
 	return result
 
 
@@ -449,6 +565,7 @@ func _authorized(capability: AiRegionKnowledgeCapability, actor_index: int) -> b
 		and actor_index >= 0 \
 		and actor_index < _world().players.size() \
 		and _world().players[actor_index] is Dictionary \
+		and not bool((_world().players[actor_index] as Dictionary).get("eliminated", false)) \
 		and (bool((_world().players[actor_index] as Dictionary).get("is_ai", false)) \
 			or str((_world().players[actor_index] as Dictionary).get("seat_type", "human")) == "ai")
 

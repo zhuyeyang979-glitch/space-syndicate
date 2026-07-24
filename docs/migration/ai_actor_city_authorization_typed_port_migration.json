@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "status": "AI_ACTOR_CITY_AUTHORIZATION_TYPED_PORT_MIGRATION_VALIDATED_CANDIDATE",
+  "task": "AI_ACTOR_CITY_AUTHORIZATION_TYPED_PORT_MIGRATION",
+  "parent_task": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
+  "parent_status": "ACTIVE",
+  "base_main_sha": "ad3b3184533a8cd08cfbf1107399d80f4fdd2ce6",
+  "branch": "codex/alpha03-ai-actor-city-authorization-ad3b318",
+  "rule_authority_gate": "GREEN_WITH_SCOPE_LIMIT",
+  "architecture": {
+    "query_port": "res://scripts/runtime/ai_region_knowledge_query_port.gd",
+    "semantic_consumer": "res://scripts/runtime/ai_runtime_controller.gd",
+    "state_owner": "res://scripts/runtime/world_session_state.gd",
+    "query_port_count": 1,
+    "new_query_port_count": 0,
+    "new_capability_count": 0,
+    "new_state_owner_count": 0,
+    "new_save_section_count": 0,
+    "save_registry_section_count": 19,
+    "main_fallback_count": 0
+  },
+  "cutover": {
+    "schema_version": 1,
+    "migrated_consumer_count": 8,
+    "owner_knowledge_values": ["public_unknown","actor_own","actor_guess","authorized_reveal"],
+    "actor_guess_is_authoritative_ownership": false,
+    "query_mutation_count": 0,
+    "query_rng_delta": 0,
+    "privacy_leak_count": 0,
+    "hidden_owner_output_delta_count": 0,
+    "gameplay_formula_changed": false,
+    "candidate_order_changed": false,
+    "rng_order_changed": false
+  },
+  "source_metrics": {
+    "ai_controller_before": {"district_city_tokens":60,"district_city_calls":59,"districts_tokens":80,"call_world_tokens":39,"owner_get_tokens":54},
+    "ai_controller_after": {"district_city_tokens":51,"district_city_calls":50,"districts_tokens":75,"call_world_tokens":39,"owner_get_tokens":49},
+    "main_before": {"physical_lines":6433,"nonblank_lines":5415,"methods":469,"fields":46,"constants":45,"preloads":7,"external_caller_files":103},
+    "main_after": {"physical_lines":6433,"nonblank_lines":5415,"methods":469,"fields":46,"constants":45,"preloads":7,"external_caller_files":103},
+    "inherited_budget_failure": "main_callers_increased:external_caller_files:103>102",
+    "new_main_caller_count": 0
+  },
+  "verification": {
+    "focused": {"result":"128/128 PASS","run_id":"20260724-191654-216-ai_actor_city_authorization_typed_port_migration_test-59993dc4"},
+    "production_bench": {"result":"24/24 PASS","runner":"Godot MCP headed play mode","script_diagnostics":0,"console_errors":0},
+    "city_inference": "48/48 PASS",
+    "public_district": "104/104 PASS",
+    "actor_state": "93/93 PASS",
+    "public_player": "128/128 PASS",
+    "actor_economy": "81/81 PASS",
+    "actor_hand": "92/92 PASS",
+    "main_architecture": "217/217 PASS",
+    "main_composition": "PASS",
+    "smoke_check_only": {"result":"PASS","run_id":"20260724-191928-815-smoke_test-0fc0d229","configured_timeout_seconds":180,"completed_seconds":5.048,"policy_timeout_seconds":60,"completion_marker_used":false},
+    "git_diff_check": "PASS"
+  },
+  "test_policy": {
+    "version": 2,
+    "full_smoke_allowed": false,
+    "full_smoke_required_gate_count": 0,
+    "full_smoke_aborted_by_policy": true,
+    "aborted_run_id": "20260724-191934-280-smoke_test-43026c7b",
+    "aborted_run_classification": "STALE_OR_UNRELATED_FULL_SMOKE_DIAGNOSTIC",
+    "full_smoke_product_failure_claimed": false,
+    "max_single_test_timeout_seconds": 180,
+    "no_stage_progress_timeout_seconds": 30
+  },
+  "completion_claims": {
+    "parent_p0_complete": false,
+    "complete_match_proven": false,
+    "alpha_0_3_complete": false,
+    "full_run_resume_claim": false
+  },
+  "next_boundary": "AI_REMAINING_MIXED_CITY_OWNER_CONSUMER_PREFLIGHT"
+}

@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "policy_id": "ATOMIC_TASK_TEST_POLICY_VERSION_2",
+  "status": "ACTIVE_INTEGRATION_REQUEST",
+  "reason_for_separate_file": "AGENTS.md is a shared workflow file; this task records the permanent policy without concurrent shared-file mutation.",
+  "scope": "ordinary atomic production pull requests",
+  "rules": {
+    "full_smoke_allowed": false,
+    "smoke_mode": "CHECK_ONLY",
+    "smoke_command": "tools/invoke_godot_test.ps1 -TestScript res://tests/smoke_test.gd -TestArgument '--check-only' -TimeoutSeconds 60",
+    "smoke_completion_marker_allowed": false,
+    "max_single_test_timeout_seconds": 180,
+    "focused_default_timeout_seconds": 120,
+    "production_scene_default_timeout_seconds": 90,
+    "no_stage_progress_timeout_seconds": 30,
+    "cpu_activity_counts_as_stage_progress": false,
+    "stronger_evidence_scope_escalation_allowed": false,
+    "repeat_valid_gate_without_code_change_allowed": false,
+    "full_smoke_restore_dependency": "P4-FULL-SMOKE-FIXTURE-MIGRATION",
+    "complete_match_scope": ["Playtest RC","Release Candidate"],
+    "long_run_scope": ["Playtest RC","Release Candidate","Balance Simulation","Stability Soak"]
+  },
+  "runner_error_classification": "TEST_RUNNER_INVOCATION_ERROR",
+  "no_progress_status": "TEST_NO_PROGRESS_TIMEOUT",
+  "current_correction": {
+    "task": "AI_ACTOR_CITY_AUTHORIZATION_TYPED_PORT_MIGRATION",
+    "long_smoke_policy_violation": true,
+    "full_smoke_aborted": true,
+    "full_smoke_result": "NOT_REQUIRED",
+    "full_smoke_product_failure_claimed": false,
+    "smoke_check_only_run_id": "20260724-191928-815-smoke_test-0fc0d229",
+    "smoke_check_only_result": "PASS"
+  }
+}

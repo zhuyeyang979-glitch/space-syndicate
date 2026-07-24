@@ -1,46 +1,49 @@
 {
-  "branch": "codex/alpha03-ai-public-district-facts-ebaf919",
+  "branch": "codex/alpha03-ai-actor-city-authorization-ad3b318",
   "commit": "THIS_CUTOVER",
   "task": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
-  "status": "ACTIVE_ACTOR_HAND_INVENTORY_MERGED_PUBLIC_DISTRICT_FACTS_VALIDATED_CANDIDATE",
+  "status": "ACTIVE_PUBLIC_DISTRICT_FACTS_MERGED_ACTOR_CITY_AUTHORIZATION_VALIDATED_CANDIDATE",
   "completed_atomic_domains": [
     "foundation_ports",
     "city_inference_query_command",
     "actor_state",
     "public_player_facts",
     "actor_economy_facts",
-    "actor_hand_inventory"
+    "actor_hand_inventory",
+    "public_district_facts"
   ],
   "logical_ownership_set": [
-    "AI public district facts query",
-    "public region identity and lifecycle projection",
-    "public district and city product-demand projection",
-    "seven AI leaf consumer cutovers",
-    "Main alive-district helper deletion",
+    "AI actor-private city authorization projection",
+    "public unknown, actor-own, actor-guess and authorized-reveal states",
+    "eight AI city-authorization leaf consumer cutovers",
+    "hidden-owner invariance and viewer isolation",
     "Alpha 0.3 checkpoint"
   ],
   "latest_merged_pr": {
-    "number": 56,
+    "number": 57,
     "status": "MERGED",
-    "head_commit": "7a2d37c056d685dbee84d133fabe7768165c9ec6",
-    "merge_commit": "ebaf91942c23b9c78ffa05873fff73d2b2262f8e",
-    "atomic_domain": "actor_hand_inventory"
+    "head_commit": "ecc92f7ec9863e684825fd9f4e4f2afbfae88ac9",
+    "merge_commit": "ad3b3184533a8cd08cfbf1107399d80f4fdd2ce6",
+    "atomic_domain": "public_district_facts"
   },
   "current_candidate": {
-    "branch": "codex/alpha03-ai-public-district-facts-ebaf919",
-    "base_main_sha": "ebaf91942c23b9c78ffa05873fff73d2b2262f8e",
-    "atomic_domain": "AI_PUBLIC_DISTRICT_FACTS_TYPED_PORT_MIGRATION",
+    "branch": "codex/alpha03-ai-actor-city-authorization-ad3b318",
+    "base_main_sha": "ad3b3184533a8cd08cfbf1107399d80f4fdd2ce6",
+    "atomic_domain": "AI_ACTOR_CITY_AUTHORIZATION_TYPED_PORT_MIGRATION",
     "status": "VALIDATED_CANDIDATE",
-    "focused_test": "104/104 PASS",
-    "production_scene_bench": "22/22 PASS",
+    "focused_test": "128/128 PASS",
+    "production_scene_bench": "24/24 PASS",
     "privacy_leak_count": 0,
     "query_mutation_count": 0,
     "query_rng_delta": 0,
     "new_query_port_count": 0,
+    "new_capability_count": 0,
     "new_save_section_count": 0,
     "new_main_caller_count": 0
   },
   "regression_result": {
+    "actor_city_authorization": "128/128 PASS",
+    "actor_city_authorization_bench": "24/24 PASS",
     "public_district_facts": "104/104 PASS",
     "public_district_facts_bench": "22/22 PASS",
     "actor_hand": "92/92 PASS",
@@ -57,16 +60,15 @@
     "smoke_check_only": "PASS",
     "godot_mcp_script_errors": 0,
     "godot_mcp_cold_scene_composition": "PASS",
-    "godot_mcp_live_bench": "PASS",
+    "godot_mcp_live_bench": "24/24 PASS",
     "git_diff_check": "PASS",
     "main_budget": "MONOTONIC_WITH_INHERITED_CALLER_THRESHOLD_103_GT_102"
   },
   "remaining_parent_scope": {
-    "districts_tokens": 80,
-    "raw_city_call_count": 63,
-    "raw_city_owner_read_count": 43,
+    "districts_tokens": 75,
+    "raw_city_call_count": 50,
+    "raw_city_owner_get_token_count": 49,
     "deferred_domains": [
-      "actor_city_authorization",
       "routes",
       "market_and_supply",
       "monsters",
@@ -85,12 +87,22 @@
     ],
     "policy": "Do not restore retired Main wrappers; migrate fixture families in their own test-debt boundary."
   },
+  "atomic_test_policy": {
+    "version": 2,
+    "full_smoke_allowed": false,
+    "smoke_mode": "CHECK_ONLY",
+    "max_single_test_timeout_seconds": 180,
+    "no_stage_progress_timeout_seconds": 30,
+    "check_only_run_id": "20260724-191928-815-smoke_test-0fc0d229",
+    "aborted_full_smoke_run_id": "20260724-191934-280-smoke_test-43026c7b",
+    "aborted_full_smoke_classification": "STALE_OR_UNRELATED_FULL_SMOKE_DIAGNOSTIC"
+  },
   "completion_claims": {
     "parent_p0_complete": false,
     "complete_match_proven": false,
     "full_run_resume_claim": false,
     "alpha_0_3_complete": false
   },
-  "next_atomic_boundary": "AI_PUBLIC_DISTRICT_FACTS_TYPED_PORT_MIGRATION",
-  "post_merge_recommendation": "AI_ACTOR_CITY_AUTHORIZATION_TYPED_PORT_MIGRATION_PREFLIGHT"
+  "next_atomic_boundary": "AI_ACTOR_CITY_AUTHORIZATION_TYPED_PORT_MIGRATION",
+  "post_merge_recommendation": "AI_REMAINING_MIXED_CITY_OWNER_CONSUMER_PREFLIGHT"
 }
