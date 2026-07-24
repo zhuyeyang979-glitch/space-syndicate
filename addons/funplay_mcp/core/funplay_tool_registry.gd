@@ -320,7 +320,7 @@ func _register_tools() -> void:
 		},
 		"required": ["path"],
 	}, "read_file", ["core", "full"])
-	_register_tool("write_file", "Write a UTF-8 text file into the project.", {
+	_register_tool("write_file", "Write a UTF-8 text file into the project. Unsaved open scenes are protected; clean open scenes reload from disk automatically.", {
 		"type": "object",
 		"properties": {
 			"path": {"type": "string"},

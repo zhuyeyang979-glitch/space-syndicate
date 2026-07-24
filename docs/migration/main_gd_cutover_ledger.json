@@ -219,8 +219,17 @@
       "status": "pending",
       "atomic_progress": [
         {
+          "domain": "foundation_ports",
+          "status": "merged",
+          "pull_request": 48,
+          "parent_domain_complete": false
+        },
+        {
           "domain": "ai_city_inference_query_command",
-          "status": "validated_delivery_pending",
+          "status": "merged",
+          "pull_request": 51,
+          "commit_sha": "90014ec92a5b2f1f15e658d007ce9c87f2c4fbef",
+          "merge_commit_sha": "80817847cfd0061de19516829460ca45b41558dc",
           "query_port": "res://scripts/runtime/ai_region_knowledge_query_port.gd",
           "command_port": "res://scripts/runtime/ai_city_inference_command_port.gd",
           "authoritative_owner": "res://scripts/runtime/world_session_state.gd",
@@ -232,6 +241,39 @@
           "tests": [
             "res://tests/ai_city_inference_typed_ports_cutover_test.gd",
             "res://scenes/tools/AiCityInferenceTypedPortsCutoverBench.tscn"
+          ],
+          "parent_domain_complete": false
+        },
+        {
+          "domain": "ai_actor_state",
+          "status": "merged",
+          "pull_request": 53,
+          "commit_sha": "bb3a7af95907ec44b4f3e2c7274a791bab83455a",
+          "merge_commit_sha": "0b4b72a742e4d3ac08cc6308d596d26383942a2d",
+          "query_port": "res://scripts/runtime/ai_actor_state_port.gd",
+          "parent_domain_complete": false
+        },
+        {
+          "domain": "ai_public_player_facts",
+          "status": "merged",
+          "pull_request": 54,
+          "commit_sha": "65bd34be41303572cb70ff319dc79c682283f651",
+          "merge_commit_sha": "d78ca8973c86563dea502b725600b5840c9941c3",
+          "query_port": "res://scripts/runtime/ai_actor_state_port.gd",
+          "parent_domain_complete": false
+        },
+        {
+          "domain": "ai_actor_economy_facts",
+          "status": "validated_candidate",
+          "query_port": "res://scripts/runtime/ai_actor_economy_facts_query_port.gd",
+          "authoritative_owners": [
+            "res://scripts/runtime/world_session_state.gd",
+            "res://scripts/runtime/monster_runtime_controller.gd",
+            "res://scripts/runtime/game_session_runtime_controller.gd"
+          ],
+          "tests": [
+            "res://tests/ai_actor_economy_facts_typed_port_migration_test.gd",
+            "res://scenes/tools/AiActorEconomyFactsTypedPortMigrationBench.tscn"
           ],
           "parent_domain_complete": false
         }

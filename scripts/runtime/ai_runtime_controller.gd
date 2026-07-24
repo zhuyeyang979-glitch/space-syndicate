@@ -45,7 +45,8 @@ var _card_resolution_history_service: CardResolutionHistoryRuntimeService
 var _district_supply_action_port: DistrictSupplyActionPort
 var _district_supply_runtime_query_port: DistrictSupplyRuntimeQueryPort
 var _district_supply_ai_query_capability: DistrictSupplyAiQueryCapability
-var _cash_commitment_query_port: MonsterWagerCashCommitmentQueryPort
+var _ai_actor_economy_facts_query_port: AiActorEconomyFactsQueryPort
+var _ai_actor_economy_facts_capability: AiActorEconomyFactsCapability
 var _ai_business_cost_cash_port: AiBusinessCostCashPort
 var _ai_business_cost_capability: AiBusinessCostCapability
 var _ruleset_snapshot: Dictionary = {}
@@ -138,8 +139,12 @@ func set_district_supply_runtime_query_port(
 	_district_supply_ai_query_capability = capability
 
 
-func set_cash_commitment_query_port(port: MonsterWagerCashCommitmentQueryPort) -> void:
-	_cash_commitment_query_port = port
+func set_actor_economy_facts_query_port(
+	port: AiActorEconomyFactsQueryPort,
+	capability: AiActorEconomyFactsCapability
+) -> void:
+	_ai_actor_economy_facts_query_port = port
+	_ai_actor_economy_facts_capability = capability
 
 
 func set_ai_business_cost_cash_port(
@@ -453,7 +458,12 @@ func policy_snapshot() -> Dictionary:
 func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 	var profile := policy_snapshot()
 	return {
-		"controller_ready": _configured and _world_ready(),
+		"controller_ready": (
+			_configured
+			and _world_ready()
+			and _actor_state_ready()
+			and _actor_economy_facts_ready()
+		),
 		"runtime_owner": "res://scripts/runtime/ai_runtime_controller.gd",
 		"runtime_cutover_enabled": bool(profile.get("runtime_cutover_enabled", false)),
 		"policy_profile_id": str(profile.get("profile_id", "")),
@@ -472,6 +482,9 @@ func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 		"card_target_pre_submit_rejection_count": _card_target_pre_submit_rejection_count,
 		"typed_card_history_bound": _card_resolution_history_service != null,
 		"typed_business_cost_cash_bound": _ai_business_cost_cash_port != null and _ai_business_cost_capability != null,
+		"typed_actor_economy_facts_bound": _actor_economy_facts_ready(),
+		"actor_economy_uses_main": false,
+		"actor_economy_uses_whole_players": false,
 		"typed_actor_state_bound": _ai_actor_state_port != null and _ai_actor_state_capability != null,
 		"actor_state_uses_main": false,
 		"actor_state_uses_whole_players": false,
@@ -500,6 +513,32 @@ func _actor_state_ready() -> bool:
 	return _ai_actor_state_port != null \
 		and _ai_actor_state_capability != null \
 		and _ai_actor_state_port.is_ready()
+
+
+func _actor_economy_facts_ready() -> bool:
+	return (
+		_ai_actor_economy_facts_query_port != null
+		and _ai_actor_economy_facts_capability != null
+		and _ai_actor_economy_facts_query_port.is_ready()
+	)
+
+
+func _actor_decision_economy_facts(player_index: int) -> Dictionary:
+	if not _actor_economy_facts_ready():
+		return {}
+	return _ai_actor_economy_facts_query_port.actor_decision_facts(
+		_ai_actor_economy_facts_capability,
+		player_index
+	)
+
+
+func _actor_training_economy_facts(player_index: int) -> Dictionary:
+	if not _actor_economy_facts_ready():
+		return {}
+	return _ai_actor_economy_facts_query_port.actor_training_economy_facts(
+		_ai_actor_economy_facts_capability,
+		player_index
+	)
 
 
 func _ai_actor_state_snapshot(player_index: int) -> Dictionary:
@@ -2296,9 +2335,12 @@ func _auto_rival_business_actions(force: bool = false) -> int:
 
 
 func _spendable_cash_units(player_index: int) -> int:
-	if _cash_commitment_query_port != null:
-		return _cash_commitment_query_port.available_cash_units(player_index)
-	return 0
+	return int(
+		_actor_decision_economy_facts(player_index).get(
+			"available_cash_units",
+			0
+		)
+	)
 func _ai_development_route_preference_audit() -> Dictionary:
 	var coverage := {}
 	for profile_variant in AI_PERSONALITY_CATALOG:
@@ -2532,7 +2574,7 @@ func _ai_live_route_balance_report() -> Dictionary:
 	for player_index_variant in _ai_player_indices():
 		var player_index := int(player_index_variant)
 		ai_count += 1
-		var player: Dictionary = players[player_index]
+		var economy_facts := _actor_training_economy_facts(player_index)
 		var profile := _ai_profile_for_player(player_index)
 		var primary := _ai_profile_primary_development_route(profile)
 		var primary_route := String(primary.get("route_id", ""))
@@ -2582,16 +2624,16 @@ func _ai_live_route_balance_report() -> Dictionary:
 			if score > top_route_score or (score == top_route_score and count > best_count):
 				top_route = route_id
 				top_route_score = score
-		var money_progress := maxi(0, int(player.get("total_city_income", 0))) \
-			+ maxi(0, int(player.get("total_card_income", 0))) \
-			+ maxi(0, int(player.get("total_role_income", 0)))
-		var board_progress := int(player.get("cities_built", 0)) \
+		var money_progress := maxi(0, int(economy_facts.get("total_city_income_units", 0))) \
+			+ maxi(0, int(economy_facts.get("total_card_income_units", 0))) \
+			+ maxi(0, int(economy_facts.get("total_role_income_units", 0)))
+		var board_progress := int(economy_facts.get("cities_built", 0)) \
 			+ _player_active_city_count(player_index) \
 			+ _ai_owned_active_monster_count(player_index)
 		var victory_top_n_gdp := _victory_top_n_gdp(player_index)
-		var spent_pressure := maxi(0, int(player.get("total_card_spend", 0))) \
-			+ maxi(0, int(player.get("total_build_spend", 0))) \
-			+ maxi(0, int(player.get("total_business_spend", 0)))
+		var spent_pressure := maxi(0, int(economy_facts.get("total_card_spend_units", 0))) \
+			+ maxi(0, int(economy_facts.get("total_build_spend_units", 0))) \
+			+ maxi(0, int(economy_facts.get("total_business_spend_units", 0)))
 		var has_money_progress := money_progress > 0
 		if has_money_progress:
 			money_progress_ai_count += 1
@@ -4089,12 +4131,15 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 	var focus_product := _ai_focus_product(player_index)
 	var phase_info := _ai_refresh_game_phase(player_index)
 	var player: Dictionary = players[player_index]
+	var economy_facts := _actor_training_economy_facts(player_index)
+	if economy_facts.is_empty():
+		return {}
 	var memory := _ai_memory_for_player(player_index)
 	var total_flow := 0
 	for product_variant in PRODUCT_CATALOG:
 		total_flow += _player_product_flow(player_index, String(product_variant))
 	return {
-		"cash": int(player.get("cash", 0)),
+		"cash": int(economy_facts.get("total_cash_units", 0)),
 		"victory_top_n_gdp_per_minute": _victory_top_n_gdp(player_index),
 		"victory_controlled_region_count": _victory_controlled_regions(player_index),
 		"counted_hand": _player_counted_hand_size(player),
@@ -4505,9 +4550,8 @@ func _record_ai_decision(player_index: int, kind: String, target_index: int, sco
 	var phase_info := _ai_refresh_game_phase(player_index)
 	var observation := _ai_observation_vector(player_index)
 	var actor_state := _ai_actor_state_snapshot(player_index)
-	if actor_state.is_empty():
+	if actor_state.is_empty() or observation.is_empty():
 		return
-	var player: Dictionary = players[player_index]
 	var memory := _normalized_ai_memory(actor_state.get("ai_memory", {}))
 	var samples := (memory.get("decision_samples", []) as Array).duplicate(true)
 	var focus_product := String(memory.get("economic_focus_product", ""))
@@ -4536,7 +4580,7 @@ func _record_ai_decision(player_index: int, kind: String, target_index: int, sco
 		"leader_index": int(phase_info.get("leader_index", -1)),
 		"phase_reason": String(phase_info.get("reason", "")),
 		"endgame_urgency": _ai_endgame_urgency_score(player_index),
-		"baseline_cash": int(player.get("cash", 0)),
+		"baseline_cash": int(observation.get("cash", 0)),
 		"baseline_victory_gdp": int(observation.get("victory_top_n_gdp_per_minute", 0)),
 		"baseline_victory_regions": int(observation.get("victory_controlled_region_count", 0)),
 		"reward_cash": 0,
@@ -4570,9 +4614,10 @@ func _finalize_ai_decision_rewards() -> int:
 	for player_index_variant in _ai_player_indices():
 		var player_index := int(player_index_variant)
 		var actor_state := _ai_actor_state_snapshot(player_index)
-		if actor_state.is_empty():
+		var economy_facts := _actor_training_economy_facts(player_index)
+		if actor_state.is_empty() or economy_facts.is_empty():
 			continue
-		var player: Dictionary = players[player_index]
+		var current_cash := int(economy_facts.get("total_cash_units", 0))
 		var memory := _normalized_ai_memory(actor_state.get("ai_memory", {}))
 		var samples := (memory.get("decision_samples", []) as Array).duplicate(true)
 		var changed := false
@@ -4583,7 +4628,7 @@ func _finalize_ai_decision_rewards() -> int:
 			var sample: Dictionary = samples[i]
 			if bool(sample.get("reward_finalized", false)) or int(sample.get("cycle", business_cycle_count)) >= business_cycle_count:
 				continue
-			sample["reward_cash"] = int(player.get("cash", 0)) - int(sample.get("baseline_cash", int(player.get("cash", 0))))
+			sample["reward_cash"] = current_cash - int(sample.get("baseline_cash", current_cash))
 			sample["reward_victory_gdp"] = _victory_top_n_gdp(player_index) - int(sample.get("baseline_victory_gdp", 0))
 			sample["reward_victory_regions"] = _victory_controlled_regions(player_index) - int(sample.get("baseline_victory_regions", 0))
 			sample["reward_score"] = _ai_learning_reward_for_sample(sample)
@@ -5513,7 +5558,7 @@ func _ai_route_hand_inventory(player_index: int, route_id: String) -> Dictionary
 	var slots_variant: Variant = player.get("slots", [])
 	if not (slots_variant is Array):
 		return result
-	var cash := int(player.get("cash", 0))
+	var cash := _spendable_cash_units(player_index)
 	for slot_variant in (slots_variant as Array):
 		if not (slot_variant is Dictionary):
 			continue
@@ -7436,7 +7481,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 			return {}
 		context.merge(refreshed_futures_plan, true)
 	var cash_cost := _skill_play_cash_cost(skill, player_index)
-	if int((players[player_index] as Dictionary).get("cash", 0)) < cash_cost:
+	if _spendable_cash_units(player_index) < cash_cost:
 		return {}
 	var target_owner := -999
 	var context_district := int(context.get("district", -1))
@@ -7520,7 +7565,12 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 	return context
 func _ai_card_play_candidates(player_index: int) -> Array:
 	var result := []
-	if not _player_is_ai(player_index) or float((players[player_index] as Dictionary).get("action_cooldown", 0.0)) > 0.0:
+	var economy_facts := _actor_decision_economy_facts(player_index)
+	if (
+		not _player_is_ai(player_index)
+		or economy_facts.is_empty()
+		or not bool(economy_facts.get("action_ready", false))
+	):
 		return result
 	if _queued_card_entry_index_for_player(player_index) >= 0 or _next_batch_card_entry_index_for_player(player_index) >= 0:
 		return result
@@ -7537,10 +7587,15 @@ func _ai_card_play_candidates(player_index: int) -> Array:
 	return result
 func _ai_card_buy_candidates(player_index: int) -> Array:
 	var result := []
-	if not _player_is_ai(player_index) or float((players[player_index] as Dictionary).get("action_cooldown", 0.0)) > 0.0:
+	var economy_facts := _actor_decision_economy_facts(player_index)
+	if (
+		not _player_is_ai(player_index)
+		or economy_facts.is_empty()
+		or not bool(economy_facts.get("action_ready", false))
+	):
 		return result
 	var player: Dictionary = players[player_index]
-	var cash := int(player.get("cash", 0))
+	var cash := int(economy_facts.get("available_cash_units", 0))
 	var profile := _ai_profile_for_player(player_index)
 	var focus_product := _ai_focus_product(player_index)
 	var strategy_intent := _ai_strategy_intent(player_index)
@@ -7947,7 +8002,8 @@ func _ai_counter_response_candidates(player_index: int) -> Array:
 	var result := []
 	if not _player_is_ai(player_index) or not card_resolution_counter_window_active or _card_resolution_active_entry().is_empty():
 		return result
-	if float((players[player_index] as Dictionary).get("action_cooldown", 0.0)) > 0.0:
+	var economy_facts := _actor_decision_economy_facts(player_index)
+	if economy_facts.is_empty() or not bool(economy_facts.get("action_ready", false)):
 		return result
 	if _queued_card_entry_index_for_player(player_index) >= 0 or _next_batch_card_entry_index_for_player(player_index) >= 0:
 		return result

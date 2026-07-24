@@ -37,6 +37,7 @@ func _init() -> void:
 		_expect(statuses.get("monster_wager_response") == "ACTIVE", "monster wager remains active")
 		_expect(statuses.get("card_target_choice") == "ACTIVE", "card target choice remains active")
 		_expect(statuses.get("conditional_order_auto_settlement") == "ACTIVE", "automatic conditional orders remain active")
+		_expect(statuses.get("ai_actor_economy_facts_typed_port_migration") == "MIGRATION_ONLY", "actor-private economy facts remain a migration boundary, not a new mechanic")
 	_finish()
 
 

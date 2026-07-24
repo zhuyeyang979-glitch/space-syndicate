@@ -66,10 +66,27 @@
         },
         {
           "domain": "actor_state",
-          "status": "READY",
-          "base_main_sha": "80817847cfd0061de19516829460ca45b41558dc"
+          "status": "MERGED",
+          "pull_request": 53,
+          "commit": "bb3a7af95907ec44b4f3e2c7274a791bab83455a",
+          "merge_commit": "0b4b72a742e4d3ac08cc6308d596d26383942a2d"
+        },
+        {
+          "domain": "public_player_facts",
+          "status": "MERGED",
+          "pull_request": 54,
+          "commit": "65bd34be41303572cb70ff319dc79c682283f651",
+          "merge_commit": "d78ca8973c86563dea502b725600b5840c9941c3"
+        },
+        {
+          "domain": "actor_economy_facts",
+          "status": "VALIDATED_CANDIDATE",
+          "base_main_sha": "d78ca8973c86563dea502b725600b5840c9941c3",
+          "focused_gate": "81/81 PASS",
+          "production_scene_bench": "19/19 PASS"
         }
       ],
+      "next_atomic_boundary": "AI_ACTOR_ECONOMY_FACTS_TYPED_PORT_MIGRATION",
       "dependencies": [
         "P0-AI-BUSINESS-COST-TYPED-CASH-CUTOVER",
         "P0-COMMODITY-FLOW-POSTCOMMIT-EXACT-ONCE"

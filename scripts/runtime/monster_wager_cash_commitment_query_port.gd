@@ -37,6 +37,11 @@ func is_ready() -> bool:
 
 func private_cash_availability_snapshot(player_index: int) -> Dictionary:
 	_query_count += 1
+	return private_cash_availability_projection(player_index)
+
+
+func private_cash_availability_projection(player_index: int) -> Dictionary:
+	## Literal zero-mutation projection for capability-guarded query ports.
 	if not is_ready():
 		return _failure(player_index, "monster_wager_cash_commitment_query_unavailable")
 	var players_variant: Variant = _world_session_state.players

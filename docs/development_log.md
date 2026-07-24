@@ -8833,3 +8833,34 @@ deleted. Evidence and the remaining action inventory are recorded in
   unsupported; full-run resume is still false. The inherited
   `session_envelope_save_owner_test` Main-string Oracle remains 92/93 on both
   candidate and `origin/main`, and no retired Main wrapper was restored.
+
+## 2026-07-25 - AI actor economy facts typed-port migration
+
+- Added one capability-guarded, stateless `AiActorEconomyFactsQueryPort` to the
+  production `GameRuntimeCoordinator`. It composes WorldSession total cash and
+  cooldown, Monster wager commitments, GameSession identity, and public AI-seat
+  authorization without becoming a second state or save owner.
+- Split decision facts from training facts: purchases, explicit card costs and
+  ordinary operating affordability use wager-adjusted available cash, while
+  observations and cash rewards keep total ledger cash. The existing positive
+  cooldown gate for play, buy and counter candidates is unchanged.
+- Removed direct cash and cooldown reads from the frozen AI consumer set.
+  `AiRuntimeController` drops from 27 to 20 `players` tokens; the remaining
+  residue is primarily the separate hand/inventory boundary and one deferred
+  initialization mutation.
+- Focused verification is 72/72 and the production scene Bench is 16/16.
+  Public-player, actor-state, city-inference, typed-cash, formal four-player
+  `main.tscn`, Setup, WorldSession, Save Registry, envelope, Main architecture,
+  composition, and smoke gates remain green. The parent AI typed-world P0,
+  complete-match claim, and full-run resume remain open.
+- Permanently fixed the Godot MCP external-scene-change dialog: unsaved open
+  scenes now reject disk writes, while clean open scenes reload automatically
+  after a write. The source gate is 14/14; clean, dirty, and binary-scene live paths were verified.
+
+## 2026-07-24 | AI actor-economy final-QA hardening
+
+- Independent QA found that training total cash reused the wager-availability projection, which clamps legal negative debt to zero. The query now reads signed canonical cash directly from WorldSessionState for training while retaining non-negative wager-adjusted cash for decisions.
+- AiRuntimeController lifecycle readiness now requires both actor-state and actor-economy typed boundaries.
+- Focused coverage now executes live observation, decision recording, and reward finalization across a -5 to -3 debt recovery: 81/81 PASS. The production Bench is 19/19 PASS.
+- Funplay MCP scene writes now verify exact reloaded scene identity, restore the previous editor tab, fail closed on unverified reload, and suppress filesystem refresh after synchronization failure. Source gate: 15/15 PASS. Live clean and dirty open-scene probes both passed.
+- main_gd_cutover_ledger.json now records merged foundation, city-inference, actor-state, and public-player atomic domains plus this validated actor-economy candidate. The parent typed-world P0 remains ACTIVE.
