@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://rkbqtecp63xv"]
+
+[ext_resource type="Script" uid="uid://bk331tba1r0ii" path="res://scripts/runtime/ai_actor_hand_inventory_query_port.gd" id="1_iwijj"]
+
+[node name="AiActorHandInventoryQueryPort" type="Node" unique_id=17745376]
+script = ExtResource("1_iwijj")
+world_session_state_path = NodePath("../WorldSessionState")
+game_session_runtime_controller_path = NodePath("../GameSessionRuntimeController")
+ai_actor_state_port_path = NodePath("../AiActorStatePort")
+card_inventory_runtime_service_path = NodePath("../CardInventoryRuntimeService")

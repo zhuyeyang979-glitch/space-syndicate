@@ -1191,9 +1191,7 @@ func _canonical_card_id(card: Dictionary) -> String:
 
 
 func _world_card_counts_toward_limit(card: Dictionary) -> bool:
-	if card.has("counts_toward_hand_limit"):
-		return bool(card.get("counts_toward_hand_limit", true))
-	return not (["monster_bound_action", "military_command"].has(str(card.get("kind", ""))) and bool(card.get("persistent", false)))
+	return CardInventoryRuntimeService.canonical_card_counts_toward_hand_limit(card)
 
 
 func _asset_total(values: Dictionary) -> int:

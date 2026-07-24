@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "status": "FROZEN",
+  "task_id": "AI_ACTOR_HAND_INVENTORY_TYPED_PORT_MIGRATION",
+  "parent_task": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
+  "parent_status": "ACTIVE",
+  "unknown_count": 0,
+  "authorities": {
+    "hand_storage": "WorldSessionState.players[].slots",
+    "hand_policy": "CardInventoryRuntimeService",
+    "session_identity": "GameSessionRuntimeController",
+    "ai_identity_authorization": "AiActorStatePort",
+    "card_catalog": "CardRuntimeCatalogService"
+  },
+  "consumers": [
+    {"function":"_ai_actor_private_receive_pressure","classification":"MIGRATED","typed_facts":["counted_hand_size","hand_limit"]},
+    {"function":"_ai_observation_vector","classification":"MIGRATED","typed_facts":["counted_hand_size"]},
+    {"function":"_ai_route_hand_inventory","classification":"MIGRATED","typed_facts":["stable_slot_rows","card_runtime_flags"]},
+    {"function":"_ai_card_play_candidates","classification":"MIGRATED","typed_facts":["stable_slot_rows","card_runtime_flags"]},
+    {"function":"_ai_card_buy_candidates","classification":"MIGRATED","typed_facts":["counted_hand_size","hand_limit","discardable_slot_indices","stable_slot_rows"]},
+    {"function":"_ai_counter_response_candidates","classification":"MIGRATED","typed_facts":["stable_slot_rows","card_runtime_flags"]},
+    {"function":"_ai_queue_counter_response_candidate","classification":"MIGRATED","typed_facts":["stable_slot_revalidation"]},
+    {"function":"_ai_discard_keep_value","classification":"MIGRATED","typed_facts":["detached_card_row"]},
+    {"function":"_ai_discard_slot_for_purchase","classification":"MIGRATED","typed_facts":["discardable_slot_indices"]}
+  ],
+  "preserved_semantics": {
+    "slot_compaction": false,
+    "play_counter_filters": ["queued_for_resolution","cooldown_left_positive","lock_left_positive"],
+    "route_filters": ["queued_for_resolution","lock_left_positive"],
+    "discard_filters": ["hand_limit_exempt","queued_for_resolution","lock_left_positive"],
+    "explicit_count_metadata_authority": "CardInventoryRuntimeService",
+    "query_port_policy_copy_count": 0,
+    "equal_discard_tie_break": "first_slot",
+    "rng_order_changed": false,
+    "candidate_order_changed": false,
+    "gameplay_formula_changed": false
+  },
+  "deferred": [
+    "ROUTE_HAND_COOLDOWN_PARITY",
+    "LIVE_AI_STABLE_TIE_BREAK",
+    "AI_HAND_SAVE_DIRTY_CORRECTION",
+    "DISTRICT_SUPPLY_PRIVATE_QUERY_READ_MUTATION",
+    "SESSION_DEFAULT_MUTATION_OWNER",
+    "REMAINING_DISTRICT_AND_GAMEPLAY_FACTS"
+  ],
+  "source_metrics": {
+    "before": {"players_tokens":20,"districts_tokens":95,"call_world_tokens":42,"direct_hand_reads":8,"player_hand_limit_tokens":3},
+    "after": {"players_tokens":12,"districts_tokens":95,"call_world_tokens":40,"direct_hand_reads":0,"player_hand_limit_tokens":0}
+  },
+  "scope_guards": {
+    "new_main_route_count": 0,
+    "new_main_caller_count": 0,
+    "new_save_section_count": 0,
+    "second_hand_owner_count": 0,
+    "second_world_owner_count": 0,
+    "rival_hand_leak_count": 0,
+    "parent_p0_claimed": false,
+    "full_run_resume_claim": false
+  }
+}

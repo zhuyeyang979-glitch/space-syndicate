@@ -71,6 +71,9 @@ func _run() -> void:
 	var bridge := coordinator.get_node_or_null(
 		"AiRuntimeWorldBridge"
 	) as AiRuntimeWorldBridge if coordinator != null else null
+	var hand_inventory := coordinator.get_node_or_null(
+		"CardInventoryRuntimeService"
+	) as CardInventoryRuntimeService if coordinator != null else null
 	var rng := coordinator.run_rng_service() if coordinator != null else null
 	_check(
 		coordinator != null
@@ -84,6 +87,7 @@ func _run() -> void:
 			and monster_bridge != null
 			and ai != null
 			and bridge != null
+			and hand_inventory != null
 			and rng != null,
 		"production_dependencies"
 	)
@@ -102,6 +106,13 @@ func _run() -> void:
 	monster.set_world_bridge(monster_bridge)
 	ai.set_monster_runtime_controller(monster)
 	ai.set_product_market_runtime_controller(market)
+	hand_inventory.configure({
+		"ruleset_id": "v0.4",
+		"card_inventory": {
+			"ordinary_hand_limit": 5,
+			"maximum_card_rank": 4,
+		},
+	})
 	ai.configure({"ruleset_id": "v0.6"})
 	session.configure({"ruleset_id": "v0.6"}, {})
 	session.begin_session({
@@ -248,7 +259,15 @@ func _players(catalog: RoleCatalogRuntimeService) -> Array:
 			"total_card_spend": 0,
 			"total_build_spend": 0,
 			"total_business_spend": 34 if player_index == 1 else 0,
-			"slots": [{"private_marker": "RIVAL_PRIVATE"}],
+			"slots": [{
+				"name": "城市融资1",
+				"kind": "card",
+				"persistent": false,
+				"queued_for_resolution": false,
+				"cooldown_left": 0.0,
+				"lock_left": 0.0,
+				"private_marker": "RIVAL_PRIVATE",
+			}],
 			"discard": [],
 			"city_guesses": {},
 			"ai_profile": {"profile_index": maxi(0, player_index - 1)} if is_ai else {},

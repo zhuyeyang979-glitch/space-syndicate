@@ -1,7 +1,7 @@
 {
   "schema_version": 4,
-  "generated_at": "2026-07-23T08:02:01+09:00",
-  "base_main_sha": "80817847cfd0061de19516829460ca45b41558dc",
+  "generated_at": "2026-07-25T02:19:34+09:00",
+  "base_main_sha": "3d659323b8ed36088489cadc485cc3ffb8bf64e8",
   "allowed_statuses": [
     "MERGED",
     "ACTIVE",
@@ -80,13 +80,25 @@
         },
         {
           "domain": "actor_economy_facts",
-          "status": "VALIDATED_CANDIDATE",
+          "status": "MERGED",
           "base_main_sha": "d78ca8973c86563dea502b725600b5840c9941c3",
           "focused_gate": "81/81 PASS",
-          "production_scene_bench": "19/19 PASS"
+          "production_scene_bench": "19/19 PASS",
+          "pull_request": 55,
+          "commit": "b50d0fc5de13d9b5eb88806d1c2b38c7da84374f",
+          "merge_commit": "3d659323b8ed36088489cadc485cc3ffb8bf64e8"
+        },
+        {
+          "domain": "actor_hand_inventory",
+          "status": "VALIDATED_CANDIDATE",
+          "base_main_sha": "3d659323b8ed36088489cadc485cc3ffb8bf64e8",
+          "focused_gate": "92/92 PASS",
+          "production_scene_bench": "21/21 PASS",
+          "new_main_caller_count": 0,
+          "new_save_section_count": 0
         }
       ],
-      "next_atomic_boundary": "AI_ACTOR_ECONOMY_FACTS_TYPED_PORT_MIGRATION",
+      "next_atomic_boundary": "AI_ACTOR_HAND_INVENTORY_TYPED_PORT_MIGRATION",
       "dependencies": [
         "P0-AI-BUSINESS-COST-TYPED-CASH-CUTOVER",
         "P0-COMMODITY-FLOW-POSTCOMMIT-EXACT-ONCE"

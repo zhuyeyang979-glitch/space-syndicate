@@ -40,6 +40,7 @@ var _new_session_commit_side_effect_count := 0
 var _new_session_presentation_refresh_count := 0
 var _last_new_session_commit_only_receipt: Dictionary = {}
 var _ai_actor_state_capability: AiActorStateCapability
+var _ai_actor_hand_inventory_capability: AiActorHandInventoryCapability
 var _ai_actor_economy_facts_capability: AiActorEconomyFactsCapability
 
 
@@ -48,6 +49,8 @@ func _enter_tree() -> void:
 		return
 	if not _prebind_ai_actor_state_capability():
 		push_error("GameRuntimeCoordinator could not prebind the one-shot AI actor-state capability before child lifecycle callbacks.")
+	if not _prebind_ai_actor_hand_inventory_capability():
+		push_error("GameRuntimeCoordinator could not prebind the one-shot AI actor-hand capability before child lifecycle callbacks.")
 	if not _prebind_ai_actor_economy_facts_capability():
 		push_error("GameRuntimeCoordinator could not prebind the one-shot AI actor-economy capability before child lifecycle callbacks.")
 
@@ -59,6 +62,7 @@ func _ready() -> void:
 	_wire_table_selection_state()
 	_wire_world_session_state()
 	_wire_ai_world_typed_ports()
+	_wire_ai_actor_hand_inventory_query_port()
 	_wire_table_presentation_query_ports()
 	_wire_monster_wager_cash_commitment_query_port()
 	_wire_ai_actor_economy_facts_query_port()
@@ -84,6 +88,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	_wire_table_selection_state()
 	_wire_world_session_state()
 	_wire_ai_world_typed_ports()
+	_wire_ai_actor_hand_inventory_query_port()
 	_wire_table_presentation_query_ports()
 	_wire_monster_wager_cash_commitment_query_port()
 	_wire_ai_actor_economy_facts_query_port()
@@ -1487,6 +1492,15 @@ func _prebind_ai_actor_state_capability() -> bool:
 	return actor_state_port.bind_ai_capability(_ai_actor_state_capability)
 
 
+func _prebind_ai_actor_hand_inventory_capability() -> bool:
+	var hand_port := _ai_actor_hand_inventory_query_port_node()
+	if hand_port == null:
+		return false
+	if _ai_actor_hand_inventory_capability == null:
+		_ai_actor_hand_inventory_capability = AiActorHandInventoryCapability.new()
+	return hand_port.bind_ai_capability(_ai_actor_hand_inventory_capability)
+
+
 func _prebind_ai_actor_economy_facts_capability() -> bool:
 	var economy_port := _ai_actor_economy_facts_query_port_node()
 	if economy_port == null:
@@ -1520,6 +1534,21 @@ func _wire_ai_world_typed_ports() -> void:
 	)
 	if not actor_state_port.is_ready() or not region_query_port.is_ready():
 		push_error("AI typed world ports are missing authoritative runtime owners; AI city inference fails closed.")
+
+
+func _wire_ai_actor_hand_inventory_query_port() -> void:
+	var port := _ai_actor_hand_inventory_query_port_node()
+	var ai := _ai_runtime_controller_node() as AiRuntimeController
+	if port == null or ai == null:
+		push_error("GameRuntimeCoordinator requires one AI actor-hand query port and AiRuntimeController; private hand decisions fail closed.")
+		return
+	if not _prebind_ai_actor_hand_inventory_capability():
+		push_error("GameRuntimeCoordinator could not reuse the prebound one-shot AI actor-hand capability.")
+		return
+	ai.set_actor_hand_inventory_query_port(
+		port,
+		_ai_actor_hand_inventory_capability
+	)
 
 
 func _wire_monster_wager_cash_commitment_query_port() -> void:
@@ -5716,6 +5745,11 @@ func _ai_runtime_world_bridge_node() -> Node:
 
 func _ai_actor_state_port_node() -> AiActorStatePort:
 	return get_node_or_null("AiActorStatePort") as AiActorStatePort
+
+
+func _ai_actor_hand_inventory_query_port_node() -> AiActorHandInventoryQueryPort:
+	return get_node_or_null("AiActorHandInventoryQueryPort") \
+		as AiActorHandInventoryQueryPort
 
 
 func _ai_actor_economy_facts_query_port_node() -> AiActorEconomyFactsQueryPort:

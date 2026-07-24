@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://gdph51w5sn5y"]
+
+[ext_resource type="Script" path="res://scripts/tools/ai_actor_hand_inventory_typed_port_migration_bench.gd" id="1_f260h"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/GameRuntimeCoordinator.tscn" id="2_tgv2w"]
+[ext_resource type="Script" uid="uid://jjshdmraadd6" path="res://scripts/runtime/game_runtime_coordinator.gd" id="3_244vv"]
+
+[node name="AiActorHandInventoryTypedPortMigrationBench" type="Node" unique_id=1836636261]
+script = ExtResource("1_f260h")
+
+[node name="GameRuntimeCoordinator" type="Node" parent="." unique_id=410932861 instance=ExtResource("2_tgv2w")]
+editor_description = "Thin replacement-foundation coordinator. It composes runtime services without owning economy, card, monster, AI decision, or UI rules."
+script = ExtResource("3_244vv")
