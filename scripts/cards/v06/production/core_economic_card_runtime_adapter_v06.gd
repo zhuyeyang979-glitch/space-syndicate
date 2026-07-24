@@ -15,6 +15,8 @@ const EFFECT_SUPPORT_SCRIPT := preload("res://scripts/cards/v06/effects/card_eff
 const ORGANIZATION_EFFECT_KIND := "install_organization_upgrade"
 const FACILITY_EFFECT_KIND := "build_upgrade_or_repair_facility"
 const FACILITY_TARGET_KIND := "region_unique_facility_slot"
+const COMMODITY_EFFECT_KIND := "install_commodity_rate"
+const COMMODITY_TARGET_KIND := "same_industry_factory_or_market"
 const AUTOMATIC_SUPPLY_DEMAND_TARGETS := {
 	"global_order_budget": "global_matching_goods",
 	"global_supply_spawn": "global_matching_factories",
@@ -397,6 +399,23 @@ func facility_target_context(
 	return _facility_target_context_for_card(card, region_id, game_time)
 
 
+func commodity_target_context(
+	actor_id: String,
+	slot_index: int,
+	card_id: String,
+	region_id: String,
+	game_time: float
+) -> Dictionary:
+	if not _configured or not _source_api_ready() or _effect_router == null:
+		return {"ready": false, "reason_code": "core_economic_runtime_unavailable"}
+	var player := _authoritative_player_snapshot(actor_id)
+	var card := _authoritative_slot_card(player, slot_index)
+	var binding_error := _commodity_card_binding_error(card, card_id)
+	if not binding_error.is_empty():
+		return {"ready": false, "reason_code": binding_error}
+	return _commodity_target_context_for_card(card, region_id, game_time)
+
+
 func preflight_facility_target(
 	player_index: int,
 	slot_index: int,
@@ -588,6 +607,68 @@ func _facility_card_binding_error(card: Dictionary, requested_card_id: String) -
 			or str(machine.get("target_kind", "")) != FACILITY_TARGET_KIND:
 		return "facility_card_binding_invalid"
 	return ""
+
+
+func _commodity_card_binding_error(card: Dictionary, requested_card_id: String) -> String:
+	if card.is_empty():
+		return "commodity_card_unavailable"
+	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+	var card_id := str(machine.get("card_id", ""))
+	if card_id.is_empty() or str(card.get("runtime_instance_id", "")).is_empty():
+		return "commodity_card_binding_invalid"
+	if requested_card_id.strip_edges().is_empty() or requested_card_id != card_id:
+		return "commodity_card_binding_changed"
+	if str(machine.get("effect_kind", "")) != COMMODITY_EFFECT_KIND \
+			or str(machine.get("target_kind", "")) != COMMODITY_TARGET_KIND:
+		return "commodity_card_binding_invalid"
+	return ""
+
+
+func _commodity_target_context_for_card(card: Dictionary, region_id: String, game_time: float) -> Dictionary:
+	var normalized_region_id := region_id.strip_edges()
+	if normalized_region_id.is_empty() or _infrastructure_owner == null:
+		return {"ready": false, "reason_code": "commodity_target_region_missing"}
+	var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+	var payload: Dictionary = machine.get("effect_payload", {}) if machine.get("effect_payload", {}) is Dictionary else {}
+	var industry_id := str(payload.get("industry_id", machine.get("industry_id", "")))
+	if industry_id.is_empty():
+		return {"ready": false, "reason_code": "commodity_target_industry_missing"}
+	var facilities_variant: Variant = _infrastructure_owner.call("facilities_snapshot", false)
+	if not (facilities_variant is Array):
+		return {"ready": false, "reason_code": "commodity_target_facilities_unavailable"}
+	var candidates: Array[Dictionary] = []
+	for facility_variant in facilities_variant as Array:
+		if not (facility_variant is Dictionary):
+			continue
+		var facility := facility_variant as Dictionary
+		var facility_type := str(facility.get("facility_type", ""))
+		if bool(facility.get("active", false)) \
+				and str(facility.get("region_id", "")) == normalized_region_id \
+				and str(facility.get("industry_id", "")) == industry_id \
+				and facility_type in ["factory", "market"]:
+			candidates.append(facility.duplicate(true))
+	candidates.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		return str(left.get("facility_id", "")) < str(right.get("facility_id", ""))
+	)
+	if candidates.is_empty():
+		return {"ready": false, "reason_code": "commodity_target_facility_missing"}
+	if candidates.size() != 1:
+		return {"ready": false, "reason_code": "commodity_target_facility_ambiguous", "candidate_count": candidates.size()}
+	var facility := candidates[0]
+	var facility_type := str(facility.get("facility_type", ""))
+	return {
+		"ready": true,
+		"reason_code": "commodity_target_context_ready",
+		"target_context": {
+			"valid": true,
+			"target_kind": COMMODITY_TARGET_KIND,
+			"facility_id": str(facility.get("facility_id", "")),
+			"region_id": normalized_region_id,
+			"industry_id": industry_id,
+			"direction": "production" if facility_type == "factory" else "demand",
+			"game_time": game_time,
+		},
+	}
 
 
 func _facility_target_context_for_card(card: Dictionary, region_id: String, game_time: float) -> Dictionary:

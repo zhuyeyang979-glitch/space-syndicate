@@ -2920,6 +2920,33 @@ func _v06_runtime_card_replay_target_context(card: Dictionary, request: Dictiona
 			"game_time": game_time,
 		}
 		return {"ready": _v06_stable_hash(target_context) == target_hash, "reason_code": "v06_card_play_replay_binding_mismatch", "target_context": target_context}
+	if effect_kind == "install_commodity_rate":
+		var owner_receipt: Dictionary = effect_receipt.get("owner_receipt", {}) if effect_receipt.get("owner_receipt", {}) is Dictionary else {}
+		var installation: Dictionary = owner_receipt.get("installation", {}) if owner_receipt.get("installation", {}) is Dictionary else {}
+		var facility_id := str(installation.get("facility_id", "")).strip_edges()
+		var installed_region_id := str(installation.get("region_id", "")).strip_edges()
+		var industry_id := str(payload.get("industry_id", machine.get("industry_id", "")))
+		var direction := str(installation.get("direction", ""))
+		var commodity_id := str(payload.get("product_id", ""))
+		if facility_id.is_empty() or installed_region_id.is_empty() or installed_region_id != region_id \
+				or industry_id.is_empty() or str(installation.get("color", "")) != industry_id \
+				or commodity_id.is_empty() or str(installation.get("commodity_id", "")) != commodity_id \
+				or direction not in ["production", "demand"]:
+			return {"ready": false, "reason_code": "v06_card_play_terminal_invalid"}
+		var target_context := {
+			"valid": true,
+			"target_kind": str(machine.get("target_kind", "")),
+			"facility_id": facility_id,
+			"region_id": installed_region_id,
+			"industry_id": industry_id,
+			"direction": direction,
+			"game_time": float(installation.get("installed_at", game_time)),
+		}
+		return {
+			"ready": _v06_stable_hash(target_context) == target_hash,
+			"reason_code": "v06_card_play_replay_binding_mismatch",
+			"target_context": target_context,
+		}
 	if effect_kind == "install_organization_upgrade":
 		var actor_id := str(request.get("actor_id", "")).strip_edges()
 		var activation_sequence := int(effect_receipt.get("activation_window_sequence", -1))
@@ -3035,6 +3062,22 @@ func _v06_runtime_card_target_context(card: Dictionary, actor_id: String, reques
 		return (target_variant as Dictionary).duplicate(true) if target_variant is Dictionary else {
 			"ready": false,
 			"reason_code": "facility_target_context_invalid",
+		}
+	if effect_kind == "install_commodity_rate":
+		var core_adapter := _core_economic_card_runtime_adapter_v06_node()
+		if core_adapter == null or not core_adapter.has_method("commodity_target_context"):
+			return {"ready": false, "reason_code": "core_economic_runtime_unavailable"}
+		var target_variant: Variant = core_adapter.call(
+			"commodity_target_context",
+			actor_id,
+			int(request.get("slot_index", -1)),
+			str(machine.get("card_id", "")),
+			region_id,
+			game_time
+		)
+		return (target_variant as Dictionary).duplicate(true) if target_variant is Dictionary else {
+			"ready": false,
+			"reason_code": "commodity_target_context_invalid",
 		}
 	if effect_kind == "install_organization_upgrade":
 		var organization_owner := _player_organization_runtime_controller_node()
