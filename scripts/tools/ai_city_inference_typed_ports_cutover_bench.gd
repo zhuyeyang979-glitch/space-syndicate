@@ -29,6 +29,7 @@ func _run() -> void:
 	var region_port := coordinator.get_node_or_null("AiRegionKnowledgeQueryPort") as AiRegionKnowledgeQueryPort
 	var command_port := coordinator.get_node_or_null("AiCityInferenceCommandPort") as AiCityInferenceCommandPort
 	var game_session := coordinator.get_node_or_null("GameSessionRuntimeController") as GameSessionRuntimeController
+	var catalog := coordinator.get_node_or_null("RoleCatalogRuntimeService") as RoleCatalogRuntimeService
 	_check(world != null and ai != null and actor_port != null and region_port != null and command_port != null and game_session != null, "production_composition")
 	_check(actor_port.is_ready() and region_port.is_ready(), "typed_ports_ready")
 	game_session.configure({"ruleset_id": "v0.6"}, {})
@@ -36,11 +37,7 @@ func _run() -> void:
 	_check(str(started_session.get("session_state", "")) == GameSessionRuntimeController.STATE_RUNNING, "game_session_running")
 
 	world.restore({
-		"players": [
-			{"name": "人类", "is_ai": false, "seat_type": "human", "city_guesses": {}, "city_guess_confidence": {}, "city_guess_reasons": {}},
-			{"name": "AI-A", "is_ai": true, "seat_type": "ai", "city_guesses": {}, "city_guess_confidence": {}, "city_guess_reasons": {}, "ai_profile": {}, "ai_memory": {}},
-			{"name": "AI-B", "is_ai": true, "seat_type": "ai", "city_guesses": {}, "city_guess_confidence": {}, "city_guess_reasons": {}, "ai_profile": {}, "ai_memory": {}},
-		],
+		"players": _players(catalog),
 		"districts": [
 			{"region_id": "region.000", "name": "AI-A城", "destroyed": false, "city": {"active": true, "owner": 1, "products": [{"name": "生命"}], "demands": ["能源"]}},
 			{"region_id": "region.001", "name": "匿名城", "destroyed": false, "city": {"active": true, "owner": 2, "products": [{"name": "能源"}], "demands": ["生命"], "last_income": 40, "public_clues": ["能源卡牌公开线索"]}},
@@ -94,6 +91,34 @@ func _run() -> void:
 	push_error("AI city inference typed ports Bench failed: %s" % ", ".join(_failures))
 	if DisplayServer.get_name() == "headless":
 		get_tree().quit(1)
+
+
+func _players(catalog: RoleCatalogRuntimeService) -> Array:
+	var result: Array = []
+	var names: Array[String] = ["人类", "AI-A", "AI-B"]
+	for player_index in range(names.size()):
+		var role := catalog.definition_at(player_index)
+		role["role_index"] = player_index
+		var is_ai := player_index > 0
+		var player := {
+			"id": player_index,
+			"name": names[player_index],
+			"is_ai": is_ai,
+			"seat_type": "ai" if is_ai else "human",
+			"role_index": player_index,
+			"role_card": role,
+			"eliminated": false,
+			"eliminated_at": -1.0,
+			"elimination_reason": "",
+			"city_guesses": {},
+			"city_guess_confidence": {},
+			"city_guess_reasons": {},
+		}
+		if is_ai:
+			player["ai_profile"] = {}
+			player["ai_memory"] = {}
+		result.append(player)
+	return result
 
 
 func _region_city(snapshot: Dictionary, region_id: String) -> Dictionary:

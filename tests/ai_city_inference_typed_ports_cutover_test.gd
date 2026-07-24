@@ -21,6 +21,7 @@ func _run() -> void:
 	var region_port := coordinator.get_node_or_null("AiRegionKnowledgeQueryPort") as AiRegionKnowledgeQueryPort
 	var command_port := coordinator.get_node_or_null("AiCityInferenceCommandPort") as AiCityInferenceCommandPort
 	var game_session := coordinator.get_node_or_null("GameSessionRuntimeController") as GameSessionRuntimeController
+	var catalog := coordinator.get_node_or_null("RoleCatalogRuntimeService") as RoleCatalogRuntimeService
 	var rng := coordinator.get_node_or_null("RunRngService") as RunRngService
 	_expect(world != null and ai != null and actor_port != null and region_port != null and command_port != null and game_session != null, "production composition owns the three typed AI ports and existing GameSession authority")
 	_expect(actor_port.is_ready() and region_port.is_ready(), "typed AI ports bind authoritative production owners")
@@ -42,10 +43,10 @@ func _run() -> void:
 
 	world.restore({
 		"players": [
-			_player("人类", false, "HUMAN_PRIVATE"),
-			_player("AI-A", true, "AI_A_PRIVATE"),
-			_player("AI-B", true, "AI_B_PRIVATE"),
-			_player("AI-C", true, "AI_C_PRIVATE"),
+			_player(catalog, 0, "人类", false, "HUMAN_PRIVATE"),
+			_player(catalog, 1, "AI-A", true, "AI_A_PRIVATE"),
+			_player(catalog, 2, "AI-B", true, "AI_B_PRIVATE"),
+			_player(catalog, 3, "AI-C", true, "AI_C_PRIVATE"),
 		],
 		"districts": [
 			_district("region.000", "自有港", 1, "生命", "能源", 20, 0, 0, 0),
@@ -158,11 +159,19 @@ func _run() -> void:
 	_finish()
 
 
-func _player(name: String, is_ai: bool, private_marker: String) -> Dictionary:
+func _player(catalog: RoleCatalogRuntimeService, player_index: int, name: String, is_ai: bool, private_marker: String) -> Dictionary:
+	var role := catalog.definition_at(player_index)
+	role["role_index"] = player_index
 	return {
+		"id": player_index,
 		"name": name,
 		"seat_type": "ai" if is_ai else "human",
 		"is_ai": is_ai,
+		"role_index": player_index,
+		"role_card": role,
+		"eliminated": false,
+		"eliminated_at": -1.0,
+		"elimination_reason": "",
 		"cash": 700,
 		"slots": [{"private_marker": private_marker}],
 		"discard": [private_marker],

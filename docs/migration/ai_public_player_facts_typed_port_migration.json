@@ -1,0 +1,264 @@
+{
+  "schema_version": 1,
+  "status": "committed_candidate",
+  "candidate_truth_scope": "immediately_after_next_commit",
+  "task_id": "AI_PUBLIC_PLAYER_FACTS_TYPED_PORT_MIGRATION",
+  "parent_task": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
+  "parent_status": "ACTIVE",
+  "rule_authority": {
+    "gate": "GREEN",
+    "parent_mechanic_id": "ai_runtime_world_interaction",
+    "parent_mechanic_status": "ACTIVE",
+    "mechanic_id": "ai_public_player_facts_typed_port_migration",
+    "mechanic_status": "MIGRATION_ONLY",
+    "semantic_owner": "AiRuntimeController",
+    "public_identity_owner": "WorldSessionState",
+    "session_identity_owner": "GameSessionRuntimeController",
+    "role_definition_owner": "RoleCatalogRuntimeService"
+  },
+  "architecture": {
+    "ai_actor_state_port_reused": true,
+    "duplicate_actor_state_port_count": 0,
+    "new_query_port_justified": false,
+    "new_gameplay_owner_count": 0,
+    "new_save_section_count": 0
+  },
+  "public_row_schema": {
+    "version": 1,
+    "visibility_scope": "public",
+    "exact_keys": [
+      "schema_version",
+      "session_id",
+      "session_revision",
+      "source_revision",
+      "fingerprint",
+      "visibility_scope",
+      "player_index",
+      "public_seat_order",
+      "public_player_name",
+      "seat_type",
+      "is_ai",
+      "role_index",
+      "role_name",
+      "eliminated"
+    ],
+    "detached_pure_data": true,
+    "stable_order": true,
+    "session_bound": true,
+    "deterministic_fingerprint": true,
+    "restore_rotates_source_revision": true,
+    "malformed_row_accept_count": 0,
+    "duplicate_player_index_accept_count": 0,
+    "role_mismatch_accept_count": 0,
+    "seat_mismatch_accept_count": 0,
+    "stale_session_accept_count": 0
+  },
+  "privacy": {
+    "cash_leak_count": 0,
+    "hand_leak_count": 0,
+    "discard_leak_count": 0,
+    "warehouse_leak_count": 0,
+    "futures_leak_count": 0,
+    "ai_profile_leak_count": 0,
+    "ai_memory_leak_count": 0,
+    "decision_sample_leak_count": 0,
+    "city_inference_leak_count": 0,
+    "hidden_owner_leak_count": 0,
+    "eliminated_at_leak_count": 0,
+    "elimination_reason_leak_count": 0,
+    "rival_private_victory_score_removed": true,
+    "rival_hidden_city_score_removed": true,
+    "rival_hidden_monster_score_removed": true
+  },
+  "query": {
+    "gameplay_mutation_count": 0,
+    "port_internal_mutation_count": 0,
+    "rng_delta": 0,
+    "log_delta": 0,
+    "save_dirty_delta": 0
+  },
+  "capability": {
+    "one_shot": true,
+    "same_instance_idempotent": true,
+    "hostile_replacement_accepted": false,
+    "hostile_early_enter_tree_accept_count": 0,
+    "hostile_early_ready_accept_count": 0,
+    "created_before_child_lifecycle": true,
+    "production_creation_site_count": 1,
+    "coordinator_reuses_single_instance": true
+  },
+  "behavior": {
+    "target_label_parity": "PASS",
+    "public_name_parity": "PASS",
+    "human_count_parity": "PASS",
+    "ai_count_parity": "PASS",
+    "elimination_filter_parity": "PASS",
+    "pre_submit_target_validation": "PASS",
+    "invalid_target_submission_delta": 0,
+    "focused_pre_submit_rejection_count": 3,
+    "card_rule_owner_changed": false,
+    "post_submission_revalidation_claim": false,
+    "build_order_rng_parity": "PASS",
+    "personality_count": 6,
+    "personality_order_changed": false,
+    "action_frequency_changed": false,
+    "privacy_correction": true
+  },
+  "routing": {
+    "ai_public_player_to_main_route_count": 0,
+    "interaction_target_method_string_count": 0,
+    "direct_target_whole_players_read_count": 0,
+    "direct_target_table_selection_count": 0,
+    "old_new_dual_path_count": 0,
+    "remaining_parent_call_world_references": 42,
+    "remaining_parent_players_tokens": 27,
+    "remaining_parent_districts_tokens": 95
+  },
+  "main_budget": {
+    "before": {
+      "physical_lines": 6461,
+      "nonblank_lines": 5436,
+      "methods": 473,
+      "fields": 46,
+      "constants": 47,
+      "preloads": 7,
+      "external_caller_files": 103
+    },
+    "after": {
+      "physical_lines": 6440,
+      "nonblank_lines": 5421,
+      "methods": 470,
+      "fields": 46,
+      "constants": 45,
+      "preloads": 7,
+      "external_caller_files": 103
+    },
+    "new_production_caller_count": 0,
+    "inherited_absolute_caller_threshold": "103 > 102"
+  },
+  "evidence": {
+    "focused": {
+      "result": "128/128 PASS",
+      "run_id": "20260724-131156-800-ai_public_player_facts_typed_port_migration_test-4b01d587",
+      "marker": "AI_PUBLIC_PLAYER_FACTS_TYPED_PORT_MIGRATION_COMPLETE",
+      "script_errors": 0,
+      "residual_processes": 0
+    },
+    "actor_state_regression": {
+      "result": "93/93 PASS",
+      "run_id": "20260724-131325-192-ai_actor_state_typed_port_migration_test-3273722d"
+    },
+    "actor_state_bench": {
+      "result": "37/37 PASS"
+    },
+    "city_inference_regression": {
+      "result": "48/48 PASS",
+      "run_id": "20260724-131336-073-ai_city_inference_typed_ports_cutover_test-9489354d"
+    },
+    "city_inference_bench": {
+      "result": "14/14 PASS"
+    },
+    "typed_world_ports_regression": {
+      "result": "83/83 PASS",
+      "run_id": "20260724-131416-947-typed_world_ports_boundary_test-2bddc8ee"
+    },
+    "independent_regressions": {
+      "ai_business_architecture": "37/37 PASS",
+      "typed_cash": "72/72 PASS",
+      "formal_ai_cash": "28/28 PASS",
+      "formal_ai_cash_seed": 20260722,
+      "setup_session_start": "133/133 PASS",
+      "world_session": "44/44 PASS",
+      "save_registry": "12/12 PASS",
+      "envelope_runtime": "60/60 PASS",
+      "main_architecture": "217/217 PASS",
+      "main_composition": "PASS",
+      "smoke_check_only": "PASS",
+      "git_diff_check": "PASS"
+    },
+    "production_bench": {
+      "result": "31/31 PASS",
+      "entry": "res://scenes/tools/AiPublicPlayerFactsTypedPortMigrationBench.tscn",
+      "marker": "AI_PUBLIC_PLAYER_FACTS_TYPED_PORT_MIGRATION_BENCH|status=PASS|checks=31|privacy_leaks=0|main_routes=0|hostile_early_bind_accepts=0|elimination_detail_leaks=0|invalid_target_submission_delta=0|pre_submit_rejections=1",
+      "mcp_play_state_after": false,
+      "product_error_count": 0
+    },
+    "qa_findings": {
+      "hostile_early_bind_accept_count": 0,
+      "public_elimination_detail_leak_count": 0,
+      "invalid_target_submission_delta": 0,
+      "focused_pre_submit_rejection_count": 3,
+      "bench_pre_submit_rejection_count": 1
+    },
+    "mcp_validation_diagnostic_count": 0,
+    "script_error_count": 0,
+    "residual_runtime_process_count": 0,
+    "environment_only_logs": [
+      "shader_cache_directory_unavailable",
+      "pre_existing_nul_decoding_notices"
+    ]
+  },
+  "formal_product_path": {
+    "entry": "res://scenes/main.tscn",
+    "setup_page": {
+      "seat_count": 4,
+      "human_count": 1,
+      "ai_count": 3,
+      "challenge_depth": "I",
+      "roles_unique": true
+    },
+    "start": {
+      "succeeded": true,
+      "session_state": "running",
+      "menu_closed": true,
+      "district_count": 8,
+      "game_time_advanced": true
+    },
+    "runtime_loop": {
+      "path_active": true,
+      "full_phase_trace_observed": true
+    },
+    "typed_actor_capability": {
+      "revision": 1,
+      "hostile_bind_rejection_count": 0,
+      "hostile_probe_injected": false
+    },
+    "console_error_count": 0,
+    "play_mode_stopped_cleanly": true,
+    "interactive_seed_control_available": false,
+    "interactive_seed_fixed_claim": false
+  },
+  "deterministic_rng_evidence": {
+    "focused_seed": 98765,
+    "formal_ai_cash_seed": 20260722,
+    "interactive_main_scene_seed_claimed_fixed": false
+  },
+  "inherited_debt": {
+    "typed_world_ports_boundary_bench": {
+      "candidate_result": "7/8",
+      "exact_origin_main_result": "7/8",
+      "reason": "stale_six_coordinators_oracle",
+      "task_regression": false
+    },
+    "main_budget_checker": {
+      "inherited_result": "103 > 102",
+      "task_delta": 0
+    }
+  },
+  "claims": {
+    "complete_match": false,
+    "parent_p0_complete": false,
+    "alpha_0_3_complete": false,
+    "full_run_resume": false
+  },
+  "persistence": {
+    "registry_changed": false,
+    "save_schema_changed": false,
+    "full_run_resume_claim": false
+  },
+  "delivery": {
+    "committed": true,
+    "pushed": false,
+    "merged": false
+  }
+}

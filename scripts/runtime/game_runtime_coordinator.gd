@@ -39,6 +39,14 @@ var _new_session_test_fault_stage := ""
 var _new_session_commit_side_effect_count := 0
 var _new_session_presentation_refresh_count := 0
 var _last_new_session_commit_only_receipt: Dictionary = {}
+var _ai_actor_state_capability: AiActorStateCapability
+
+
+func _enter_tree() -> void:
+	if Engine.is_editor_hint():
+		return
+	if not _prebind_ai_actor_state_capability():
+		push_error("GameRuntimeCoordinator could not prebind the one-shot AI actor-state capability before child lifecycle callbacks.")
 
 
 func _ready() -> void:
@@ -1465,6 +1473,15 @@ func _wire_world_session_state() -> void:
 		(card_inventory as CommodityCardInventoryRuntimeController).set_world_session_state(state)
 
 
+func _prebind_ai_actor_state_capability() -> bool:
+	var actor_state_port := _ai_actor_state_port_node()
+	if actor_state_port == null:
+		return false
+	if _ai_actor_state_capability == null:
+		_ai_actor_state_capability = AiActorStateCapability.new()
+	return actor_state_port.bind_ai_capability(_ai_actor_state_capability)
+
+
 func _wire_ai_world_typed_ports() -> void:
 	var actor_state_port := _ai_actor_state_port_node()
 	var region_query_port := _ai_region_knowledge_query_port_node()
@@ -1473,9 +1490,11 @@ func _wire_ai_world_typed_ports() -> void:
 	if actor_state_port == null or region_query_port == null or city_inference_port == null or ai == null:
 		push_error("GameRuntimeCoordinator requires the three AI typed world ports and AiRuntimeController; AI city inference fails closed.")
 		return
-	var actor_capability := AiActorStateCapability.new()
+	if not _prebind_ai_actor_state_capability():
+		push_error("GameRuntimeCoordinator could not reuse the prebound one-shot AI actor-state capability.")
+		return
+	var actor_capability := _ai_actor_state_capability
 	var region_capability := AiRegionKnowledgeCapability.new()
-	actor_state_port.bind_ai_capability(actor_capability)
 	region_query_port.bind_ai_capability(region_capability)
 	city_inference_port.bind_ai_capability(region_capability)
 	ai.set_world_typed_ports(
