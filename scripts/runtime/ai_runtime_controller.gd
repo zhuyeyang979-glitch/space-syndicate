@@ -155,6 +155,11 @@ func _card_queue_public_snapshot() -> Dictionary:
 		if _ai_card_queue_query_port != null and _ai_card_queue_query_port.is_ready() else {}
 
 
+func _card_queue_window_snapshot() -> Dictionary:
+	return _ai_card_queue_query_port.public_window_snapshot() \
+		if _ai_card_queue_query_port != null and _ai_card_queue_query_port.is_ready() else {}
+
+
 func _ai_card_queue_snapshot(player_index: int) -> Dictionary:
 	if _ai_card_queue_query_port == null or not _ai_card_queue_capability_binding_initialized:
 		return {}
@@ -937,15 +942,6 @@ func _actor_district(actor_index: int, district_index: int) -> Dictionary:
 	) if _city_inference_ports_ready() else {}
 
 
-func _world_value(property_name: StringName, default_value: Variant = null) -> Variant:
-	return _world_bridge.call("read_world_value", property_name, default_value) if _world_ready() else default_value
-
-
-func _write_world_value(property_name: StringName, value: Variant) -> void:
-	if _world_ready():
-		_world_bridge.call("write_world_value", property_name, value)
-
-
 func _world_constant(constant_name: StringName, default_value: Variant = null) -> Variant:
 	return _world_bridge.call("read_world_constant", constant_name, default_value) if _world_ready() else default_value
 
@@ -1001,21 +997,15 @@ var business_cycle_count:
 
 var card_resolution_auction_open:
 	get:
-		return _world_value(&"card_resolution_auction_open", false)
-	set(value):
-		_write_world_value(&"card_resolution_auction_open", value)
+		return bool(_card_queue_window_snapshot().get("auction_open", false))
 
 var card_resolution_batch_locked:
 	get:
-		return _world_value(&"card_resolution_batch_locked", false)
-	set(value):
-		_write_world_value(&"card_resolution_batch_locked", value)
+		return bool(_card_queue_window_snapshot().get("batch_locked", false))
 
 var card_resolution_counter_window_active:
 	get:
-		return _world_value(&"card_resolution_counter_window_active", false)
-	set(value):
-		_write_world_value(&"card_resolution_counter_window_active", value)
+		return bool(_card_queue_window_snapshot().get("counter_window_active", false))
 
 var session_finished:
 	get:

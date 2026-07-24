@@ -57,6 +57,7 @@ const PUBLIC_CARD_FACT_KEYS := [
 ]
 
 @export var card_resolution_queue_runtime_service_path: NodePath
+@export var card_resolution_runtime_controller_path: NodePath
 @export var card_play_eligibility_runtime_service_path: NodePath
 @export var world_session_state_path: NodePath
 @export var game_session_runtime_controller_path: NodePath
@@ -95,6 +96,7 @@ func bind_ai_capabilities(capabilities_by_actor: Dictionary) -> bool:
 
 func is_ready() -> bool:
 	return _queue() != null \
+		and _card_resolution() != null \
 		and _eligibility() != null \
 		and _world() != null \
 		and _game_session() != null \
@@ -123,6 +125,27 @@ func public_resolution_snapshot() -> Dictionary:
 	}
 	result["state_revision"] = JSON.stringify(["ai_card_queue_public_v1", result]).sha256_text()
 	if not TablePresentationPureDataPolicy.is_pure_data(result) or _contains_forbidden_public_key(result):
+		_rejected_query_count += 1
+		return {}
+	return TablePresentationPureDataPolicy.detached_copy(result)
+
+
+func public_window_snapshot() -> Dictionary:
+	_public_query_count += 1
+	if not is_ready():
+		_rejected_query_count += 1
+		return {}
+	var controller := _card_resolution()
+	var result := {
+		"schema_version": 1,
+		"visibility_scope": "public",
+		"auction_open": controller.auction_open,
+		"batch_locked": controller.batch_locked,
+		"counter_window_active": controller.counter_window_active,
+		"phase": controller.current_phase(),
+	}
+	result["state_revision"] = JSON.stringify(["ai_card_window_public_v1", result]).sha256_text()
+	if not TablePresentationPureDataPolicy.is_pure_data(result):
 		_rejected_query_count += 1
 		return {}
 	return TablePresentationPureDataPolicy.detached_copy(result)
@@ -182,6 +205,7 @@ func debug_snapshot() -> Dictionary:
 		"private_query_count": _private_query_count,
 		"rejected_query_count": _rejected_query_count,
 		"returns_public_queue_only": true,
+		"returns_public_window_state": true,
 		"returns_actor_submission_identity_only": true,
 		"returns_rival_submission_identity": false,
 		"returns_private_entry": false,
@@ -339,6 +363,10 @@ func _dictionary(value: Variant) -> Dictionary:
 
 func _queue() -> CardResolutionQueueRuntimeService:
 	return get_node_or_null(card_resolution_queue_runtime_service_path) as CardResolutionQueueRuntimeService
+
+
+func _card_resolution() -> CardResolutionRuntimeController:
+	return get_node_or_null(card_resolution_runtime_controller_path) as CardResolutionRuntimeController
 
 
 func _eligibility() -> CardPlayEligibilityRuntimeService:

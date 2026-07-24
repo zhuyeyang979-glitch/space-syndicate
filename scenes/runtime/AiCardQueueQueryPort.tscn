@@ -5,6 +5,7 @@
 [node name="AiCardQueueQueryPort" type="Node" unique_id=125085448]
 script = ExtResource("1_76f4r")
 card_resolution_queue_runtime_service_path = NodePath("../CardResolutionQueueRuntimeService")
+card_resolution_runtime_controller_path = NodePath("../CardResolutionRuntimeController")
 card_play_eligibility_runtime_service_path = NodePath("../CardPlayEligibilityRuntimeService")
 world_session_state_path = NodePath("../WorldSessionState")
 game_session_runtime_controller_path = NodePath("../GameSessionRuntimeController")

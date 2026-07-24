@@ -19,9 +19,11 @@ func _run() -> void:
 	var ai := coordinator.get_node_or_null("AiRuntimeController") as AiRuntimeController
 	var port := coordinator.get_node_or_null("AiCardQueueQueryPort") as AiCardQueueQueryPort
 	var queue := coordinator.get_node_or_null("CardResolutionQueueRuntimeService") as CardResolutionQueueRuntimeService
+	var card_resolution := coordinator.get_node_or_null("CardResolutionRuntimeController") as CardResolutionRuntimeController
 	var rng := coordinator.get_node_or_null("RunRngService") as RunRngService
 	_expect(
-		session != null and world != null and ai != null and port != null and queue != null and rng != null,
+		session != null and world != null and ai != null and port != null and queue != null
+			and card_resolution != null and rng != null,
 		"production composition owns the queue query and existing authorities"
 	)
 	session.configure({"ruleset_id": "v0.6"}, {})
@@ -62,6 +64,21 @@ func _run() -> void:
 	var world_before := world.to_save_data()
 	var queue_before := _queue_state(queue)
 	var rng_before := rng.capture_plan_checkpoint()
+	card_resolution.auction_open = true
+	card_resolution.batch_locked = true
+	card_resolution.counter_window_active = true
+	var card_resolution_before := card_resolution.to_save_data()
+	var window_snapshot := port.public_window_snapshot()
+	_expect(
+		str(window_snapshot.get("visibility_scope", "")) == "public"
+			and bool(window_snapshot.get("auction_open", false))
+			and bool(window_snapshot.get("batch_locked", false))
+			and bool(window_snapshot.get("counter_window_active", false))
+			and ai.card_resolution_auction_open
+			and ai.card_resolution_batch_locked
+			and ai.card_resolution_counter_window_active,
+		"AI reads public card-window state through the typed queue query port"
+	)
 	var public_snapshot := port.public_resolution_snapshot()
 	var public_text := JSON.stringify(public_snapshot)
 	var public_active := public_snapshot.get("active", {}) as Dictionary
@@ -132,9 +149,13 @@ func _run() -> void:
 	_expect(
 		world.to_save_data() == world_before
 			and _queue_state(queue) == queue_before
+			and card_resolution.to_save_data() == card_resolution_before
 			and rng.capture_plan_checkpoint() == rng_before,
 		"queue queries perform zero world or queue mutation and consume zero RNG"
 	)
+	card_resolution.auction_open = false
+	card_resolution.batch_locked = false
+	card_resolution.counter_window_active = false
 	var legacy_current := current_entry.duplicate(true)
 	legacy_current.erase("resolution_id")
 	legacy_current.erase("queued_order")
@@ -189,6 +210,10 @@ func _run() -> void:
 		"_queued_card_entry_index_for_player",
 		"_next_batch_card_entry_index_for_player",
 		"_call_world(&\"_queue_monster_card_as_counter\"",
+		"func _world_value",
+		"func _write_world_value",
+		"read_world_value",
+		"write_world_value",
 	]:
 		_expect(not ai_source.contains(forbidden), "AI source retires %s" % forbidden)
 	_expect(
@@ -200,6 +225,7 @@ func _run() -> void:
 	var debug := port.debug_snapshot()
 	_expect(
 		bool(debug.get("port_ready", false))
+			and bool(debug.get("returns_public_window_state", false))
 			and int(debug.get("actor_scoped_capability_count", 0)) == 2
 			and not bool(debug.get("returns_rival_submission_identity", true))
 			and not bool(debug.get("returns_private_entry", true))
