@@ -134,6 +134,9 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiMonsterActorQueryPort.tscn" id="141_ai_monster_actor"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiMilitaryPublicQueryPort.tscn" id="142_ai_military_public"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiMilitaryActorQueryPort.tscn" id="143_ai_military_actor"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/AiWeatherPublicQueryPort.tscn" id="144_ai_weather_public"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/AiVictoryPublicQueryPort.tscn" id="145_ai_victory_public"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/AiActorVictoryQueryPort.tscn" id="146_ai_actor_victory"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -383,6 +386,15 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="AiMilitaryActorQueryPort" parent="." instance=ExtResource("143_ai_military_actor")]
+unique_name_in_owner = true
+
+[node name="AiWeatherPublicQueryPort" parent="." instance=ExtResource("144_ai_weather_public")]
+unique_name_in_owner = true
+
+[node name="AiVictoryPublicQueryPort" parent="." instance=ExtResource("145_ai_victory_public")]
+unique_name_in_owner = true
+
+[node name="AiActorVictoryQueryPort" parent="." instance=ExtResource("146_ai_actor_victory")]
 unique_name_in_owner = true
 
 [node name="AiCityInferenceCommandPort" parent="." instance=ExtResource("132_ai_city_inference")]

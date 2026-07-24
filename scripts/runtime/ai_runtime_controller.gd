@@ -55,15 +55,18 @@ var _ai_military_public_query_port: AiMilitaryPublicQueryPort
 var _ai_military_actor_query_port: AiMilitaryActorQueryPort
 var _ai_military_actor_capabilities: Dictionary = {}
 var _ai_military_actor_capability_binding_initialized := false
+var _ai_weather_public_query_port: AiWeatherPublicQueryPort
+var _ai_victory_public_query_port: AiVictoryPublicQueryPort
+var _ai_actor_victory_query_port: AiActorVictoryQueryPort
+var _ai_actor_victory_capabilities: Dictionary = {}
+var _ai_actor_victory_capability_binding_initialized := false
 var _monster_runtime_controller: MonsterRuntimeController
 var _military_runtime_controller: MilitaryRuntimeController
-var _weather_runtime_controller: WeatherRuntimeController
 var _product_market_runtime_controller: ProductMarketRuntimeController
 var _city_gdp_derivative_runtime_controller: CityGdpDerivativeRuntimeController
 var _card_definition_bridge: CardRuntimeDefinitionWorldBridge
 var _card_play_eligibility_runtime_service: CardPlayEligibilityRuntimeService
 var _gameplay_balance_diagnostics_service: GameplayBalanceDiagnosticsRuntimeService
-var _victory_control_runtime_controller: VictoryControlRuntimeController
 var _route_network_runtime_controller: RouteNetworkRuntimeController
 var _visual_cue_runtime_owner: VisualCueRuntimeOwner
 var _card_play_submission_controller: CardPlaySubmissionRuntimeController
@@ -300,6 +303,28 @@ func set_military_actor_capabilities(capabilities_by_actor: Dictionary) -> void:
 	_ai_military_actor_capability_binding_initialized = true
 
 
+func set_weather_victory_query_ports(
+	weather_public_query_port: AiWeatherPublicQueryPort,
+	victory_public_query_port: AiVictoryPublicQueryPort,
+	actor_victory_query_port: AiActorVictoryQueryPort,
+	actor_victory_capabilities: Dictionary
+) -> void:
+	_ai_weather_public_query_port = weather_public_query_port
+	_ai_victory_public_query_port = victory_public_query_port
+	_ai_actor_victory_query_port = actor_victory_query_port
+	set_actor_victory_capabilities(actor_victory_capabilities)
+
+
+func set_actor_victory_capabilities(capabilities_by_actor: Dictionary) -> void:
+	_ai_actor_victory_capabilities = capabilities_by_actor.duplicate()
+	_ai_actor_victory_capability_binding_initialized = true
+
+
+func _weather_rules_snapshot() -> Dictionary:
+	return _ai_weather_public_query_port.rules_snapshot() \
+		if _ai_weather_public_query_port != null and _ai_weather_public_query_port.is_ready() else {}
+
+
 func _monster_public_roster() -> Array:
 	return _ai_monster_public_query_port.public_roster_snapshot() \
 		if _ai_monster_public_query_port != null and _ai_monster_public_query_port.is_ready() else []
@@ -347,9 +372,6 @@ func set_military_runtime_controller(controller: MilitaryRuntimeController) -> v
 	_military_runtime_controller = controller
 
 
-func set_weather_runtime_controller(controller: WeatherRuntimeController) -> void:
-	_weather_runtime_controller = controller
-
 
 func set_product_market_runtime_controller(controller: ProductMarketRuntimeController) -> void:
 	_product_market_runtime_controller = controller
@@ -370,9 +392,6 @@ func set_card_definition_bridge(
 func set_gameplay_balance_diagnostics_service(service: GameplayBalanceDiagnosticsRuntimeService) -> void:
 	_gameplay_balance_diagnostics_service = service
 
-
-func set_victory_control_runtime_controller(controller: VictoryControlRuntimeController) -> void:
-	_victory_control_runtime_controller = controller
 
 
 func set_route_network_runtime_controller(controller: RouteNetworkRuntimeController) -> void:
@@ -727,8 +746,12 @@ func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 		},
 		"receipt_count": _last_receipts.size(),
 		"shared_rng": _world_ready() and rng != null,
-		"weather_controller_bound": _weather_runtime_controller != null,
-		"victory_control_controller_bound": _victory_control_runtime_controller != null,
+		"typed_weather_public_query_bound": _ai_weather_public_query_port != null and _ai_weather_public_query_port.is_ready(),
+		"weather_query_uses_direct_owner": false,
+		"typed_victory_public_query_bound": _ai_victory_public_query_port != null and _ai_victory_public_query_port.is_ready(),
+		"typed_actor_victory_query_bound": _ai_actor_victory_query_port != null and _ai_actor_victory_capability_binding_initialized and _ai_actor_victory_query_port.is_ready(),
+		"victory_query_capabilities_are_actor_scoped": true,
+		"victory_query_uses_direct_owner": false,
 		"typed_card_submission_bound": _card_play_submission_controller != null,
 		"typed_card_history_bound": _card_resolution_history_service != null,
 		"typed_business_cost_cash_bound": _ai_business_cost_cash_port != null and _ai_business_cost_capability != null,
@@ -1013,11 +1036,15 @@ var rng:
 
 var victory_control_active:
 	get:
-		return str(_victory_public_snapshot().get("state", "idle")) in ["qualification", "audit"]
+		var snapshot := _victory_public_snapshot()
+		return bool(snapshot.get("available", false)) \
+			and str(snapshot.get("state", "idle")) in ["qualification", "audit"]
 
 var victory_control_remaining_seconds:
 	get:
 		var snapshot := _victory_public_snapshot()
+		if not bool(snapshot.get("available", false)):
+			return 0.0
 		match str(snapshot.get("state", "idle")):
 			"qualification": return float(snapshot.get("qualification_remaining_seconds", 0.0))
 			"audit": return float(snapshot.get("audit_remaining_seconds", 0.0))
@@ -1254,23 +1281,20 @@ var RIVAL_BUSINESS_ACTION_MAX_PER_CYCLE:
 
 var WEATHER_DURATION_MIN_SECONDS:
 	get:
-		return WeatherRuntimeController.DURATION_MIN_SECONDS
+		return float(_weather_rules_snapshot().get("duration_min_seconds", 45.0))
 
 var WEATHER_FORECAST_LEAD_MAX_SECONDS:
 	get:
-		return WeatherRuntimeController.FORECAST_LEAD_MAX_SECONDS
+		return float(_weather_rules_snapshot().get("forecast_lead_max_seconds", 60.0))
 
 var WEATHER_FORECAST_LEAD_MIN_SECONDS:
 	get:
-		return WeatherRuntimeController.FORECAST_LEAD_MIN_SECONDS
+		return float(_weather_rules_snapshot().get("forecast_lead_min_seconds", 30.0))
 
-var WEATHER_TYPES:
-	get:
-		return WeatherRuntimeController.WEATHER_TYPES
 
 var WEATHER_ZONE_MAX:
 	get:
-		return WeatherRuntimeController.ZONE_MAX
+		return maxi(1, int(_weather_rules_snapshot().get("zone_max", 1)))
 
 # World fact and mutation adapters. Decision ownership stays above this boundary.
 
@@ -1380,26 +1404,27 @@ func _ai_latest_city_public_clue_text(city: Dictionary) -> String:
 	return last_clue if not last_clue.is_empty() else "暂无公开线索"
 
 func _victory_public_snapshot() -> Dictionary:
-	if _victory_control_runtime_controller == null or not _victory_control_runtime_controller.has_method("public_snapshot"):
+	return _ai_victory_public_query_port.public_snapshot() \
+		if _ai_victory_public_query_port != null and _ai_victory_public_query_port.is_ready() else {}
+
+func _victory_snapshot_available() -> bool:
+	return bool(_victory_public_snapshot().get("available", false))
+
+func _victory_candidate(viewer_index: int, subject_index: int = -1) -> Dictionary:
+	if _ai_actor_victory_query_port == null or not _ai_actor_victory_capability_binding_initialized:
 		return {}
-	var value: Variant = _victory_control_runtime_controller.call("public_snapshot")
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+	var resolved_subject := viewer_index if subject_index < 0 else subject_index
+	return _ai_actor_victory_query_port.candidate_visible_to_actor(
+		_ai_actor_victory_capabilities.get(viewer_index) as AiActorVictoryCapability,
+		viewer_index,
+		resolved_subject
+	)
 
-func _victory_private_snapshot(player_index: int) -> Dictionary:
-	if _victory_control_runtime_controller == null or not _victory_control_runtime_controller.has_method("private_snapshot"):
-		return {}
-	var value: Variant = _victory_control_runtime_controller.call("private_snapshot", player_index)
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
+func _victory_top_n_gdp(viewer_index: int, subject_index: int = -1) -> int:
+	return maxi(0, int(_victory_candidate(viewer_index, subject_index).get("top_n_gdp_per_minute", 0)))
 
-func _victory_candidate(player_index: int) -> Dictionary:
-	var value: Variant = _victory_private_snapshot(player_index).get("own_candidate", {})
-	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
-
-func _victory_top_n_gdp(player_index: int) -> int:
-	return maxi(0, int(_victory_candidate(player_index).get("top_n_gdp_per_minute", 0)))
-
-func _victory_controlled_regions(player_index: int) -> int:
-	return maxi(0, int(_victory_candidate(player_index).get("controlled_region_count", 0)))
+func _victory_controlled_regions(viewer_index: int, subject_index: int = -1) -> int:
+	return maxi(0, int(_victory_candidate(viewer_index, subject_index).get("controlled_region_count", 0)))
 
 func _victory_dynamic_rule() -> Dictionary:
 	var public_rule: Variant = _victory_public_snapshot().get("victory_rule", {})
@@ -1414,11 +1439,11 @@ func _victory_required_regions() -> int:
 	return maxi(0, int(_victory_dynamic_rule().get("required_region_count", 0)))
 
 func _victory_timer_total_seconds() -> float:
-	if _victory_control_runtime_controller == null or not _victory_control_runtime_controller.has_method("timer_duration"):
+	if _ai_victory_public_query_port == null or not _ai_victory_public_query_port.is_ready():
 		return 1.0
 	var state := str(_victory_public_snapshot().get("state", "idle"))
 	var timer_id := "public_audit" if state == "audit" else "victory_qualification"
-	return maxf(1.0, float(_victory_control_runtime_controller.call("timer_duration", timer_id)))
+	return maxf(1.0, _ai_victory_public_query_port.timer_duration(timer_id))
 
 func _victory_visible_rankings(viewer_index: int) -> Array:
 	var by_player := {}
@@ -1830,21 +1855,25 @@ func _alive_district_indices() -> Array:
 	return _call_world(&"_alive_district_indices")
 
 func _weather_template(type_id: String) -> Dictionary:
-	return _weather_runtime_controller.template(type_id) if _weather_runtime_controller != null else {}
+	return _ai_weather_public_query_port.definition_snapshot(type_id) \
+		if _ai_weather_public_query_port != null else {}
 
 func _weather_label(type_id: String) -> String:
-	return _weather_runtime_controller.label(type_id) if _weather_runtime_controller != null else type_id
+	return _ai_weather_public_query_port.label(type_id) \
+		if _ai_weather_public_query_port != null else type_id
 
 func _weather_zone_count_for_planet() -> int:
-	return _weather_runtime_controller.zone_count_for_planet() if _weather_runtime_controller != null else 1
+	return maxi(1, int(_weather_rules_snapshot().get("zone_count_for_planet", 1)))
 
 
 func _weather_type_ids() -> Array:
-	return _weather_runtime_controller.weather_type_ids() if _weather_runtime_controller != null else []
+	var value: Variant = _weather_rules_snapshot().get("weather_type_ids", [])
+	return (value as Array).duplicate() if value is Array else []
 
 
 func _weather_preview_districts(anchor_index: int, zone_count: int) -> Array:
-	return _weather_runtime_controller.preview_districts(anchor_index, zone_count) if _weather_runtime_controller != null else []
+	return _ai_weather_public_query_port.preview_districts(anchor_index, zone_count) \
+		if _ai_weather_public_query_port != null else []
 
 func _weighted_pick_index(weights: Array) -> int:
 	return _call_monster(&"_weighted_pick_index", [weights])
@@ -2097,6 +2126,28 @@ func _active_city_district_indices() -> Array:
 
 func _player_active_city_count(player_index: int) -> int:
 	return _call_world(&"_player_active_city_count", [player_index])
+
+func _visible_active_city_count_for_actor(viewer_index: int, subject_index: int) -> int:
+	var result := 0
+	for district_index in range(_district_count()):
+		var city := _district_city(district_index, viewer_index)
+		if _city_is_active(city) and int(city.get("owner", -1)) == subject_index:
+			result += 1
+	return result
+
+func _visible_active_monster_count_for_actor(viewer_index: int, subject_index: int) -> int:
+	var result := 0
+	for actor_variant in _monster_actor_roster(viewer_index):
+		var actor := actor_variant as Dictionary
+		if bool(actor.get("down", false)):
+			continue
+		var ownership_scope := str(actor.get("ownership_scope", "public_unknown"))
+		if subject_index == viewer_index and ownership_scope == "actor_own":
+			result += 1
+		elif ownership_scope == "public_revealed" \
+				and int(actor.get("public_owner_index", -1)) == subject_index:
+			result += 1
+	return result
 
 func _city_competition_matches(district_index: int) -> int:
 	return _call_world(&"_city_competition_matches", [district_index])
@@ -3951,6 +4002,8 @@ func _ai_owned_active_monster_count(player_index: int) -> int:
 		player_index
 	)
 func _ai_score_gap_to_leader(player_index: int) -> int:
+	if not _victory_snapshot_available():
+		return 0
 	var leader := _visible_score_leader_entry(player_index)
 	if int(leader.get("player_index", -1)) < 0:
 		return 0
@@ -3958,12 +4011,17 @@ func _ai_score_gap_to_leader(player_index: int) -> int:
 func _ai_game_phase(player_index: int) -> String:
 	var score := _victory_top_n_gdp(player_index)
 	var gdp_goal := _victory_required_gdp()
-	if victory_control_active or score >= int(round(float(gdp_goal) * AI_ENDGAME_GOAL_RATIO)) or business_cycle_count >= AI_ENDGAME_CYCLE:
+	if victory_control_active \
+			or (_victory_snapshot_available() and gdp_goal > 0 \
+				and score >= int(round(float(gdp_goal) * AI_ENDGAME_GOAL_RATIO))) \
+			or business_cycle_count >= AI_ENDGAME_CYCLE:
 		return "endgame"
 	if business_cycle_count <= AI_OPENING_CYCLE_MAX or _ai_owned_active_monster_count(player_index) <= 0 or _player_active_city_count(player_index) <= 0:
 		return "opening"
 	return "midgame"
 func _ai_competitive_posture(player_index: int) -> String:
+	if not _victory_snapshot_available():
+		return "contesting"
 	var leader := _visible_score_leader_entry(player_index)
 	var leader_index := int(leader.get("player_index", -1))
 	var gap := _ai_score_gap_to_leader(player_index)
@@ -3975,7 +4033,7 @@ func _ai_competitive_posture(player_index: int) -> String:
 		return "trailing"
 	return "contesting"
 func _ai_endgame_urgency_score(player_index: int) -> int:
-	if player_index < 0 or player_index >= _player_count():
+	if player_index < 0 or player_index >= _player_count() or not _victory_snapshot_available():
 		return 0
 	var score := 0
 	var own_gdp := _victory_top_n_gdp(player_index)
@@ -4121,10 +4179,10 @@ func _ai_direct_player_interaction_plan(player_index: int, skill: Dictionary) ->
 	for i in range(_player_count()):
 		if i == player_index:
 			continue
-		var settlement := _victory_top_n_gdp(i)
+		var settlement := _victory_top_n_gdp(player_index, i)
 		var settlement_gap := settlement - self_estimate
-		var city_pressure := _player_active_city_count(i) * 74
-		var monster_pressure := _ai_owned_active_monster_count(i) * 42
+		var city_pressure := _visible_active_city_count_for_actor(player_index, i) * 74
+		var monster_pressure := _visible_active_monster_count_for_actor(player_index, i) * 42
 		var leader_bonus := 0
 		if i == leader_index:
 			leader_bonus = 245 + int(float(_ai_endgame_urgency_score(player_index)) / 2.0)
@@ -4372,6 +4430,8 @@ func _ai_victory_race_bonus_for_candidate(player_index: int, kind: String, distr
 		"reason": "",
 	}
 	if player_index < 0 or player_index >= _player_count() or not _player_is_ai(player_index):
+		return result
+	if not _victory_snapshot_available():
 		return result
 	var phase_info := _ai_refresh_game_phase(player_index)
 	var phase := String(phase_info.get("phase", "midgame"))

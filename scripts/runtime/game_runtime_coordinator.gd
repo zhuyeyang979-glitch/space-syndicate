@@ -340,8 +340,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		ai_controller.call("set_monster_runtime_controller", monster_controller)
 	if ai_controller != null and ai_controller.has_method("set_military_runtime_controller"):
 		ai_controller.call("set_military_runtime_controller", military_controller)
-	if ai_controller != null and ai_controller.has_method("set_weather_runtime_controller"):
-		ai_controller.call("set_weather_runtime_controller", weather_controller)
+
 	if ai_controller != null and ai_controller.has_method("set_product_market_runtime_controller"):
 		ai_controller.call("set_product_market_runtime_controller", product_market_controller)
 	if ai_controller != null and ai_controller.has_method("set_city_gdp_derivative_runtime_controller"):
@@ -354,8 +353,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 		)
 	if ai_controller != null and ai_controller.has_method("set_gameplay_balance_diagnostics_service"):
 		ai_controller.call("set_gameplay_balance_diagnostics_service", balance_diagnostics)
-	if ai_controller != null and ai_controller.has_method("set_victory_control_runtime_controller"):
-		ai_controller.call("set_victory_control_runtime_controller", victory_controller)
+
 	if ai_controller != null and ai_controller.has_method("set_route_network_runtime_controller"):
 		ai_controller.call("set_route_network_runtime_controller", route_network_controller)
 	if ai_controller != null and ai_controller.has_method("set_visual_cue_runtime_owner"):
@@ -1482,6 +1480,9 @@ func _wire_ai_world_typed_ports() -> void:
 	var monster_actor_query_port := _ai_monster_actor_query_port_node()
 	var military_public_query_port := _ai_military_public_query_port_node()
 	var military_actor_query_port := _ai_military_actor_query_port_node()
+	var weather_public_query_port := _ai_weather_public_query_port_node()
+	var victory_public_query_port := _ai_victory_public_query_port_node()
+	var actor_victory_query_port := _ai_actor_victory_query_port_node()
 	var ai := _ai_runtime_controller_node() as AiRuntimeController
 	if session_public_port == null or actor_state_port == null or region_query_port == null \
 			or city_inference_port == null or market_public_port == null \
@@ -1489,8 +1490,9 @@ func _wire_ai_world_typed_ports() -> void:
 			or card_eligibility_query_port == null \
 			or monster_public_query_port == null or monster_actor_query_port == null \
 			or military_public_query_port == null or military_actor_query_port == null \
-			or ai == null:
-		push_error("GameRuntimeCoordinator requires the AI session, actor, region, card, monster, military, and inference typed ports; AI world queries fail closed.")
+			or weather_public_query_port == null or victory_public_query_port == null \
+			or actor_victory_query_port == null or ai == null:
+		push_error("GameRuntimeCoordinator requires the AI session, actor, region, card, monster, military, weather, victory, and inference typed ports; AI world queries fail closed.")
 		return
 	if not actor_state_port.ai_capability_refresh_requested.is_connected(_refresh_ai_actor_state_capabilities):
 		actor_state_port.ai_capability_refresh_requested.connect(_refresh_ai_actor_state_capabilities)
@@ -1514,14 +1516,23 @@ func _wire_ai_world_typed_ports() -> void:
 		military_actor_query_port,
 		{}
 	)
+	ai.set_weather_victory_query_ports(
+		weather_public_query_port,
+		victory_public_query_port,
+		actor_victory_query_port,
+		{}
+	)
 	_refresh_ai_actor_state_capabilities()
 	if (
 		not session_public_port.is_ready()
 		or not actor_state_port.is_ready()
 		or not region_query_port.is_ready()
 		or not city_inference_port.is_ready()
+		or not weather_public_query_port.is_ready()
+		or not victory_public_query_port.is_ready()
+		or not actor_victory_query_port.is_ready()
 	):
-		push_error("AI typed world ports are missing authoritative runtime owners; AI city inference fails closed.")
+		push_error("AI typed world ports are missing authoritative runtime owners; AI world queries fail closed.")
 
 
 func _on_ai_session_identity_changed() -> void:
@@ -1538,6 +1549,7 @@ func _refresh_ai_actor_state_capabilities() -> void:
 	var actor_economy_query := _ai_actor_economy_query_port_node()
 	var monster_actor_query := _ai_monster_actor_query_port_node()
 	var military_actor_query := _ai_military_actor_query_port_node()
+	var actor_victory_query := _ai_actor_victory_query_port_node()
 	var district_supply_query := district_supply_runtime_query_port()
 	var ai := _ai_runtime_controller_node() as AiRuntimeController
 	if actor_state_port == null or ai == null:
@@ -1614,6 +1626,13 @@ func _refresh_ai_actor_state_capabilities() -> void:
 		var military_bound := military_actor_query.bind_ai_capabilities(military_capabilities)
 		ai.set_monster_actor_capabilities(monster_capabilities if monster_bound else {})
 		ai.set_military_actor_capabilities(military_capabilities if military_bound else {})
+	if actor_victory_query != null:
+		var victory_capabilities: Dictionary = {}
+		for actor_index_variant in actor_state_port.ai_player_indices(true):
+			var actor_index := int(actor_index_variant)
+			victory_capabilities[actor_index] = AiActorVictoryCapability.new()
+		var victory_bound := actor_victory_query.bind_ai_capabilities(victory_capabilities)
+		ai.set_actor_victory_capabilities(victory_capabilities if victory_bound else {})
 	if district_supply_query != null:
 		var supply_capabilities: Dictionary = {}
 		for actor_index_variant in actor_state_port.ai_player_indices(true):
@@ -5854,6 +5873,18 @@ func _ai_military_public_query_port_node() -> AiMilitaryPublicQueryPort:
 
 func _ai_military_actor_query_port_node() -> AiMilitaryActorQueryPort:
 	return get_node_or_null("AiMilitaryActorQueryPort") as AiMilitaryActorQueryPort
+
+
+func _ai_weather_public_query_port_node() -> AiWeatherPublicQueryPort:
+	return get_node_or_null("AiWeatherPublicQueryPort") as AiWeatherPublicQueryPort
+
+
+func _ai_victory_public_query_port_node() -> AiVictoryPublicQueryPort:
+	return get_node_or_null("AiVictoryPublicQueryPort") as AiVictoryPublicQueryPort
+
+
+func _ai_actor_victory_query_port_node() -> AiActorVictoryQueryPort:
+	return get_node_or_null("AiActorVictoryQueryPort") as AiActorVictoryQueryPort
 
 
 func _monster_runtime_controller_node() -> Node:

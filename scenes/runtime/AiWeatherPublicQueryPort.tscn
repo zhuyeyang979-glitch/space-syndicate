@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/ai_weather_public_query_port.gd" id="1_port"]
+
+[node name="AiWeatherPublicQueryPort" type="Node"]
+script = ExtResource("1_port")
+weather_runtime_controller_path = NodePath("../WeatherRuntimeController")
+region_knowledge_query_port_path = NodePath("../AiRegionKnowledgeQueryPort")

@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/ai_victory_public_query_port.gd" id="1_port"]
+
+[node name="AiVictoryPublicQueryPort" type="Node"]
+script = ExtResource("1_port")
+victory_control_runtime_controller_path = NodePath("../VictoryControlRuntimeController")

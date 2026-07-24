@@ -702,8 +702,11 @@ func _case_pause_freeze() -> Dictionary:
 
 func _case_ai_route() -> Dictionary:
 	var effect_source := _function_source(_main_source, "_apply_card_resolution_effect_request")
-	var observed := _ai_source.contains("func _ai_weather_control_plan(") and _ai_source.contains("_weather_runtime_controller.preview_districts") and effect_source.contains("apply_weather_control_at")
-	return _record("ai_weather_intent_uses_same_route", observed, observed, "AI owns intent selection only and commits through the same explicit-target Controller route.", {"privacy_checked": true})
+	var observed := _ai_source.contains("func _ai_weather_control_plan(") \
+		and _ai_source.contains("_ai_weather_public_query_port.preview_districts") \
+		and not _ai_source.contains("_weather_runtime_controller") \
+		and effect_source.contains("apply_weather_control_at")
+	return _record("ai_weather_intent_uses_same_route", observed, observed, "AI reads public weather planning facts through the typed query port and commits through the same explicit-target Controller route.", {"privacy_checked": true})
 
 
 func _case_card_resolution_route() -> Dictionary:
@@ -832,8 +835,12 @@ func _case_save_owner() -> Dictionary:
 
 func _case_ai_binding() -> Dictionary:
 	var ai_snapshot := _ai_controller.debug_snapshot()
-	var observed := bool(ai_snapshot.get("weather_controller_bound", false)) and _coordinator_source.contains("set_weather_runtime_controller") and _ai_source.contains("_weather_runtime_controller.preview_districts")
-	return _record("ai_controller_binding", observed, observed, "AI remains decision owner and reads weather facts from the authoritative Controller.", {"privacy_checked": true})
+	var observed := bool(ai_snapshot.get("typed_weather_public_query_bound", false)) \
+		and _coordinator_scene_source.contains("AiWeatherPublicQueryPort.tscn") \
+		and _coordinator_source.contains("_ai_weather_public_query_port_node") \
+		and not _coordinator_source.contains('ai_controller.call("set_weather_runtime_controller"') \
+		and not _ai_source.contains("_weather_runtime_controller")
+	return _record("ai_controller_binding", observed, observed, "AI remains decision owner and reads public weather facts through the scene-owned typed query port.", {"privacy_checked": true})
 
 
 func _case_pure_debug() -> Dictionary:
