@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "status": "VALIDATED_CANDIDATE",
+  "task_id": "AI_ACTOR_ECONOMY_FACTS_TYPED_PORT_MIGRATION",
+  "parent_task": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
+  "parent_status": "ACTIVE",
+  "rule_authority_gate": "GREEN",
+  "architecture": {
+    "query_port": "res://scripts/runtime/ai_actor_economy_facts_query_port.gd",
+    "capability": "res://scripts/runtime/ai_actor_economy_facts_capability.gd",
+    "composition_scene": "res://scenes/runtime/GameRuntimeCoordinator.tscn",
+    "query_port_count": 1,
+    "capability_creation_count": 1,
+    "new_gameplay_owner_count": 0,
+    "new_save_section_count": 0,
+    "second_cash_owner_count": 0,
+    "second_world_owner_count": 0,
+    "main_route_count": 0
+  },
+  "owners": {
+    "total_cash_cooldown_training_counters": "WorldSessionState",
+    "wager_commitments": "MonsterRuntimeController",
+    "session_identity": "GameSessionRuntimeController",
+    "ai_identity_authorization": "AiActorStatePort",
+    "semantic_consumer": "AiRuntimeController"
+  },
+  "schemas": {
+    "version": 1,
+    "visibility_scope": "actor_private",
+    "decision_fact_keys": ["schema_version","session_id","session_revision","source_revision","fingerprint","visibility_scope","actor_index","available_cash_cents","available_cash_units","action_cooldown_seconds","action_ready"],
+    "training_fact_keys": ["schema_version","session_id","session_revision","source_revision","fingerprint","visibility_scope","actor_index","total_cash_cents","total_cash_units","cities_built","total_city_income_units","total_card_income_units","total_role_income_units","total_card_spend_units","total_build_spend_units","total_business_spend_units"],
+    "detached_pure_data": true,
+    "restore_invalidates_stale_snapshots": true,
+    "deterministic_fingerprint": true
+  },
+  "semantics": {
+    "training_cash_source": "total_ledger_cash",
+    "decision_cash_source": "available_after_wager_commitments",
+    "cooldown_gate": "action_cooldown_seconds > 0 blocks play_buy_counter",
+    "personality_changed": false,
+    "score_formula_changed": false,
+    "rng_order_changed": false,
+    "gameplay_formula_changed": false
+  },
+  "privacy": {
+    "rival_exact_cash_leak_count": 0,
+    "rival_wager_leak_count": 0,
+    "hand_inventory_leak_count": 0,
+    "city_inference_leak_count": 0,
+    "ai_memory_leak_count": 0,
+    "public_snapshot_provider": false
+  },
+  "query_side_effects": {
+    "world_mutation_count": 0,
+    "wager_mutation_count": 0,
+    "rng_delta": 0,
+    "log_delta": 0,
+    "save_dirty_delta": 0,
+    "diagnostic_counter_delta": 0
+  },
+  "source_metrics": {
+    "ai_controller_before": {"players_tokens":27,"districts_tokens":95,"call_world_tokens":42,"direct_cash_gets":6,"direct_cooldown_gets":3},
+    "ai_controller_after": {"players_tokens":20,"districts_tokens":95,"call_world_tokens":42,"direct_cash_gets":0,"direct_cooldown_gets":0},
+    "main_before": {"physical_lines":6440,"nonblank_lines":5421,"methods":470,"fields":46,"constants":45,"preloads":7,"external_caller_files":103},
+    "main_after": {"physical_lines":6440,"nonblank_lines":5421,"methods":470,"fields":46,"constants":45,"preloads":7,"external_caller_files":103},
+    "new_main_caller_count": 0,
+    "inherited_budget_failure": "main_callers_increased:external_caller_files:103>102"
+  },
+  "evidence": {
+    "focused": {"result":"72/72 PASS","run_id":"20260724-153335-645-ai_actor_economy_facts_typed_port_migration_test-eb737553"},
+    "production_bench": {"result":"16/16 PASS","run_id":"20260724-153335-609-AiActorEconomyFactsTypedPortMigrationBench-bf4dda57","available_cents":80000,"total_cents":100000},
+    "public_player": "128/128 PASS",
+    "actor_state": "93/93 PASS",
+    "actor_state_bench": "37/37 PASS",
+    "city_inference": "48/48 PASS",
+    "typed_world": "83/83 PASS",
+    "ai_business_architecture": "37/37 PASS",
+    "ai_typed_cash": "72/72 PASS",
+    "formal_main_four_player": "28/28 PASS",
+    "card_cooldown": "23/23 PASS",
+    "setup": "133/133 PASS",
+    "world_session": "44/44 PASS",
+    "save_registry": "12/12 PASS",
+    "envelope_runtime": "60/60 PASS",
+    "contract_retirement": "114/114 PASS",
+    "main_architecture": "217/217 PASS",
+    "main_composition": "PASS",
+    "smoke_check_only": "PASS",
+    "mcp_direct_main_scene": {
+      "result": "PASS",
+      "root_path": "/root/Main",
+      "viewport": "1600x960",
+      "actor_economy_capability_revision": 1,
+      "capability_bind_rejection_count": 0,
+      "product_error_log_line_count": 0,
+      "play_mode_stopped": true
+    },
+    "mcp_script_diagnostics": {"checked":286,"error_count":0}
+  },
+  "mcp_scene_write_fix": {
+    "base_commit": "f0c2058",
+    "complete_guard_commit": "57483a6",
+    "source_test": "14/14 PASS",
+    "all_scene_disk_writers_guarded": true,
+    "clean_open_scene_reloaded": true,
+    "unsaved_open_scene_write_rejected": true,
+    "unsaved_write_hash_unchanged": true,
+    "unsaved_write_mtime_unchanged": true,
+    "binary_scn_text_write_rejected": true,
+    "external_change_dialog_after_fix": false
+  },
+  "completion_claims": {
+    "parent_p0_complete": false,
+    "complete_match_proven": false,
+    "full_run_resume_claim": false,
+    "alpha_0_3_complete": false
+  },
+  "next_boundary": "AI_ACTOR_HAND_INVENTORY_TYPED_PORT_MIGRATION"
+}

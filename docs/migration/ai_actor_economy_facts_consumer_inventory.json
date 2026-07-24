@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "status": "FROZEN",
+  "task_id": "AI_ACTOR_ECONOMY_FACTS_TYPED_PORT_MIGRATION",
+  "parent_task": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
+  "parent_status": "ACTIVE",
+  "unknown_count": 0,
+  "consumer_count": 13,
+  "fully_migrated_count": 8,
+  "partially_migrated_count": 4,
+  "deferred_mutation_count": 1,
+  "authorities": {
+    "total_cash": "WorldSessionState.players[].cash_cents",
+    "wager_commitments": "MonsterRuntimeController.active_monster_wagers",
+    "available_cash": "derived_total_minus_commitment",
+    "action_cooldown_state": "WorldSessionState.players[].action_cooldown",
+    "action_cooldown_mutator": "CardCooldownRuntimeController",
+    "training_counters": "WorldSessionState.players[]",
+    "session_identity": "GameSessionRuntimeController",
+    "ai_identity_authorization": "AiActorStatePort"
+  },
+  "consumers": [
+    {"function":"_rival_business_candidates_for_player","classification":"MIGRATED","typed_fact":"available_cash","deferred":[]},
+    {"function":"_auto_rival_business_actions","classification":"MIGRATED","typed_fact":"available_cash","deferred":[]},
+    {"function":"_spendable_cash_units","classification":"MIGRATED","typed_fact":"available_cash","deferred":[]},
+    {"function":"_ai_live_route_balance_report","classification":"MIGRATED","typed_fact":"training_counters","deferred":["route","monster","victory"]},
+    {"function":"_ai_observation_vector","classification":"MIGRATED","typed_fact":"total_cash","deferred":["hand","other_observation_domains"]},
+    {"function":"_record_ai_decision","classification":"MIGRATED","typed_fact":"total_cash_baseline","deferred":["actor_memory"]},
+    {"function":"_finalize_ai_decision_rewards","classification":"MIGRATED","typed_fact":"total_cash_delta","deferred":[]},
+    {"function":"_ai_route_hand_inventory","classification":"PARTIALLY_MIGRATED","typed_fact":"available_cash","deferred":["hand_inventory"]},
+    {"function":"_ai_card_play_context","classification":"MIGRATED","typed_fact":"available_cash","deferred":["card_legality_owner"]},
+    {"function":"_ai_card_play_candidates","classification":"PARTIALLY_MIGRATED","typed_fact":"action_ready","deferred":["slots","hand_inventory"]},
+    {"function":"_ai_card_buy_candidates","classification":"PARTIALLY_MIGRATED","typed_fact":"available_cash_and_action_ready","deferred":["slots","hand_inventory"]},
+    {"function":"_ai_counter_response_candidates","classification":"PARTIALLY_MIGRATED","typed_fact":"action_ready","deferred":["counter_hand"]},
+    {"function":"_ensure_player_runtime_defaults","classification":"DEFERRED_MUTATION","typed_fact":null,"deferred":["formal_player_session_initializer"]}
+  ],
+  "source_metrics": {
+    "before": {"players_tokens":27,"districts_tokens":95,"call_world_tokens":42,"direct_cash_gets":6,"direct_cooldown_gets":3},
+    "after": {"players_tokens":20,"districts_tokens":95,"call_world_tokens":42,"direct_cash_gets":0,"direct_cooldown_gets":0}
+  },
+  "scope_guards": {
+    "new_main_route_count": 0,
+    "new_save_section_count": 0,
+    "second_cash_owner_count": 0,
+    "second_world_owner_count": 0,
+    "hand_inventory_migrated": false,
+    "market_route_migrated": false,
+    "full_parent_p0_claimed": false
+  }
+}

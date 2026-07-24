@@ -123,6 +123,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiActorStatePort.tscn" id="130_ai_actor_state"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiRegionKnowledgeQueryPort.tscn" id="131_ai_region_knowledge"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiCityInferenceCommandPort.tscn" id="132_ai_city_inference"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/AiActorEconomyFactsQueryPort.tscn" id="133_ai_actor_economy"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -336,6 +337,9 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="AiActorStatePort" parent="." instance=ExtResource("130_ai_actor_state")]
+unique_name_in_owner = true
+
+[node name="AiActorEconomyFactsQueryPort" parent="." instance=ExtResource("133_ai_actor_economy")]
 unique_name_in_owner = true
 
 [node name="AiRegionKnowledgeQueryPort" parent="." instance=ExtResource("131_ai_region_knowledge")]

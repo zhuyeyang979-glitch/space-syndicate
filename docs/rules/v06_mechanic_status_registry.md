@@ -11,6 +11,7 @@ does not define gameplay independently of the rulebook and runtime directive.
 | `forced_decision` | ACTIVE | Other temporary decisions explicitly required by active v0.6 rules. |
 | `ai_runtime_world_interaction` | ACTIVE | AI policy remains owned by `AiRuntimeController`; it may consume only active-rule public facts or explicitly actor-scoped private facts, while legality and mutation remain with existing domain owners. |
 | `ai_public_player_facts_typed_port_migration` | MIGRATION_ONLY | Replaces generic Main access with a session-bound public seat/role/elimination projection through the existing `AiActorStatePort`; adds no gameplay or save state. |
+| `ai_actor_economy_facts_typed_port_migration` | MIGRATION_ONLY | Gives each active AI only its capability-guarded total/available cash, cooldown, and existing training counters; authority remains in WorldSession, Monster wager, and GameSession owners with no save change. |
 | `ai_business_action_cash_cost` | ACTIVE | AI-only anonymous market pressure costs 90 cash units through `AiBusinessCostCashPort`; committed monster-wager cash is unavailable and exact rival cash remains private. |
 | `conditional_order_auto_settlement` | ACTIVE | Section 8: `GlobalSupplyDemandRuntimeServiceV06` plans the effect, CardResolution carries its exact-once lineage, and `CommodityFlowRuntimeController` applies the atomic sink. No responder exists. |
 | `legacy_project_contract` | RETIRED | v0.5 project-to-project contract state. |

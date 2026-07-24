@@ -65,6 +65,7 @@ ALLOWLIST = {
 	"tests/anonymous_interaction_schema_v06_test.gd": "NEGATIVE_TEST",
 	"tests/anonymous_interaction_router_v06_test.gd": "NEGATIVE_TEST",
 	"tests/compendium_v06_public_semantics_test.gd": "NEGATIVE_TEST",
+	"tests/ai_actor_state_typed_port_migration_test.gd": "NEGATIVE_TEST",
     "tests/v06_mechanic_authority_gate_test.gd": "NEGATIVE_TEST",
     "tests/v06_contract_response_retirement_test.gd": "NEGATIVE_TEST",
     "scripts/tools/v06_contract_response_retirement_bench.gd": "NEGATIVE_TEST",

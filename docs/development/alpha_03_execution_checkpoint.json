@@ -1,39 +1,62 @@
 {
   "branch": "main",
-  "commit": "0b4b72a742e4d3ac08cc6308d596d26383942a2d",
+  "commit": "d78ca8973c86563dea502b725600b5840c9941c3",
   "task": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
-  "status": "ACTIVE_ACTOR_STATE_ATOMIC_CUTOVER_MERGED_PUBLIC_PLAYER_FACTS_PREFLIGHT_STARTED",
+  "status": "ACTIVE_PUBLIC_PLAYER_FACTS_MERGED_ACTOR_ECONOMY_FACTS_VALIDATED_CANDIDATE",
+  "completed_atomic_domains": [
+    "foundation_ports",
+    "city_inference_query_command",
+    "actor_state",
+    "public_player_facts"
+  ],
   "logical_ownership_set": [
-    "AI actor-private state query and revision-bound mutation",
-    "AI actor-state batch capture and apply",
-    "AI runtime actor-state consumers",
+    "AI actor-private total and available cash query",
+    "AI action-cooldown query",
+    "AI private economy training counters",
     "runtime composition integration",
-    "Main actor-state residue deletion",
+    "cash and cooldown consumer cutover",
     "Alpha 0.3 checkpoint"
   ],
-  "pr": {
-    "number": 53,
+  "latest_merged_pr": {
+    "number": 54,
     "status": "MERGED",
-    "head_commit": "bb3a7af95907ec44b4f3e2c7274a791bab83455a",
-    "merge_commit": "0b4b72a742e4d3ac08cc6308d596d26383942a2d"
+    "head_commit": "65bd34be41303572cb70ff319dc79c682283f651",
+    "merge_commit": "d78ca8973c86563dea502b725600b5840c9941c3",
+    "atomic_domain": "public_player_facts"
   },
-  "test_result": {
-    "rule_authority_gate": "GREEN",
-    "focused_test": "93/93 PASS",
-    "production_scene_bench": "37/37 PASS",
+  "current_candidate": {
+    "branch": "codex/alpha03-ai-actor-economy-facts-d78ca89",
+    "base_main_sha": "d78ca8973c86563dea502b725600b5840c9941c3",
+    "atomic_domain": "AI_ACTOR_ECONOMY_FACTS_TYPED_PORT_MIGRATION",
+    "status": "VALIDATED_CANDIDATE",
+    "focused_test": "72/72 PASS",
+    "production_scene_bench": "16/16 PASS",
     "privacy_leak_count": 0,
-    "duplicate_mutation_count": 0,
+    "query_mutation_count": 0,
+    "query_rng_delta": 0,
+    "new_save_section_count": 0,
+    "new_main_caller_count": 0
+  },
+  "regression_result": {
+    "public_player_facts": "128/128 PASS",
+    "actor_state": "93/93 PASS",
+    "actor_state_bench": "37/37 PASS",
+    "city_inference": "48/48 PASS",
+    "typed_world": "83/83 PASS",
+    "ai_business_architecture": "37/37 PASS",
+    "ai_typed_cash": "72/72 PASS",
+    "formal_main_four_player": "28/28 PASS",
+    "setup": "133/133 PASS",
+    "world_session": "44/44 PASS",
+    "save_registry": "12/12 PASS",
+    "envelope_runtime": "60/60 PASS",
+    "contract_retirement": "114/114 PASS",
+    "main_architecture": "217/217 PASS",
     "main_runtime_composition": "PASS",
-    "world_session_state": "PASS",
-    "ai_business_cost_architecture": "PASS",
+    "smoke_check_only": "PASS",
     "godot_runtime_script_errors": 0,
     "git_diff_check": "PASS",
-    "main_budget": "MONOTONIC_WITH_INHERITED_CALLER_THRESHOLD_103_GT_102"
-  },
-  "release_result": {
-    "tag": null,
-    "draft_prerelease": null,
-    "public_release_published": false
+    "main_budget": "UNCHANGED_WITH_INHERITED_CALLER_THRESHOLD_103_GT_102"
   },
   "completion_claims": {
     "parent_p0_complete": false,
@@ -41,5 +64,6 @@
     "full_run_resume_claim": false,
     "alpha_0_3_complete": false
   },
-  "next_atomic_boundary": "AI_PUBLIC_PLAYER_FACTS_TYPED_PORT_MIGRATION"
+  "next_atomic_boundary": "AI_ACTOR_ECONOMY_FACTS_TYPED_PORT_MIGRATION",
+  "post_merge_recommendation": "AI_ACTOR_HAND_INVENTORY_TYPED_PORT_MIGRATION"
 }

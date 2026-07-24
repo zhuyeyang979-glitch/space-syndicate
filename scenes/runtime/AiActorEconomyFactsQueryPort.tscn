@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/ai_actor_economy_facts_query_port.gd" id="1_port"]
+
+[node name="AiActorEconomyFactsQueryPort" type="Node"]
+script = ExtResource("1_port")
+world_session_state_path = NodePath("../WorldSessionState")
+game_session_runtime_controller_path = NodePath("../GameSessionRuntimeController")
+ai_actor_state_port_path = NodePath("../AiActorStatePort")
+cash_commitment_query_port_path = NodePath("../MonsterWagerCashCommitmentQueryPort")
+editor_description = "Capability-guarded, actor-private AI economy query. It composes authoritative cash, wager commitment, and cooldown state without storing gameplay data."
