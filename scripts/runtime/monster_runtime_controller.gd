@@ -2,6 +2,8 @@
 extends Node
 class_name MonsterRuntimeController
 
+signal monster_wager_opened(wager_id: int, settlement_revision: int)
+
 const UNIT_CARD_SCHEMA_V06 := preload("res://scripts/cards/v06/units/unit_card_runtime_schema_v06.gd")
 const CARD_RUNTIME_CATALOG_V06 := preload("res://resources/cards/runtime/card_runtime_catalog_v06.tres")
 const MONSTER_CATALOG_V06 := preload("res://scripts/runtime/monster_catalog_v06.gd")
@@ -83,6 +85,7 @@ var monster_wager_sequence := 0
 var public_card_bid_monster_wager_pool := 0
 var _monster_wager_settlement_revision := 0
 var _monster_wager_settlement_terminal_journal: Dictionary = {}
+var _ai_monster_wager_command_journal: Dictionary = {}
 var monster_timer := 4.0
 var special_monster_timer := 5.0
 
@@ -448,6 +451,7 @@ func reset_state() -> void:
 	public_card_bid_monster_wager_pool = 0
 	_monster_wager_settlement_revision = 0
 	_monster_wager_settlement_terminal_journal.clear()
+	_ai_monster_wager_command_journal.clear()
 	monster_timer = 4.0
 	special_monster_timer = 5.0
 	_monster_card_revision_v06 = 0
@@ -1502,7 +1506,7 @@ func submit_monster_wager_response(
 		side: StringName,
 		stake_percent: int,
 		forced: bool = false,
-		_metadata: Dictionary = {}
+		metadata: Dictionary = {}
 ) -> Dictionary:
 	if player_index < 0 or player_index >= players.size():
 		return _monster_wager_response_failure(wager_id, player_index, side, stake_percent, "monster_wager_player_invalid")
@@ -1514,9 +1518,37 @@ func submit_monster_wager_response(
 		return _monster_wager_response_failure(wager_id, player_index, side, stake_percent, "monster_wager_not_active")
 	if not _monster_wager_eligible_player_indices(entry).has(player_index):
 		return _monster_wager_response_failure(wager_id, player_index, side, stake_percent, "monster_wager_player_ineligible")
+	var normalized_side := str(side).to_lower().strip_edges()
+	var command_context := _ai_monster_wager_command_context(
+		metadata,
+		wager_id,
+		entry,
+		player_index,
+		normalized_side,
+		stake_percent
+	)
+	if not bool(command_context.get("valid", false)):
+		return _monster_wager_response_failure(
+			wager_id,
+			player_index,
+			StringName(normalized_side),
+			stake_percent,
+			str(command_context.get("reason_code", "monster_wager_command_invalid"))
+		)
+	if bool(command_context.get("ai_command", false)):
+		var command_id := str(command_context.get("command_id", ""))
+		var fingerprint := str(command_context.get("fingerprint", ""))
+		if _ai_monster_wager_command_journal.has(command_id):
+			if str(_ai_monster_wager_command_journal.get(command_id, "")) != fingerprint:
+				var collision := _monster_wager_response_failure(wager_id, player_index, StringName(normalized_side), stake_percent, "monster_wager_command_id_collision")
+				collision["request_id_collision"] = true
+				return collision
+			var replay := _monster_wager_response_failure(wager_id, player_index, StringName(normalized_side), stake_percent, "monster_wager_command_replayed")
+			replay["accepted"] = true
+			replay["idempotent_replay"] = true
+			return replay
 	if not _monster_wager_player_bet(entry, player_index).is_empty():
 		return _monster_wager_response_failure(wager_id, player_index, side, stake_percent, "monster_wager_already_decided")
-	var normalized_side := str(side).to_lower().strip_edges()
 	var side_available := false
 	for competitor_variant in _monster_wager_competitors(entry):
 		if competitor_variant is Dictionary and str((competitor_variant as Dictionary).get("side", "")).to_lower() == normalized_side:
@@ -1529,6 +1561,10 @@ func submit_monster_wager_response(
 	var stake := _monster_wager_amount_for_percent(player_index, stake_percent, entry)
 	if not _place_monster_wager(wager_id, normalized_side, stake_percent, player_index, forced):
 		return _monster_wager_response_failure(wager_id, player_index, StringName(normalized_side), stake_percent, "monster_wager_response_rejected")
+	if bool(command_context.get("ai_command", false)):
+		_ai_monster_wager_command_journal[str(command_context.get("command_id", ""))] = str(command_context.get("fingerprint", ""))
+		while _ai_monster_wager_command_journal.size() > 512:
+			_ai_monster_wager_command_journal.erase(_ai_monster_wager_command_journal.keys()[0])
 	var current_index := _monster_wager_entry_index_by_id(wager_id)
 	var decision_closed := current_index < 0
 	if current_index >= 0:
@@ -1545,8 +1581,47 @@ func submit_monster_wager_response(
 		"stake": stake,
 		"forced": forced,
 		"decision_closed": decision_closed,
+		"idempotent_replay": false,
+		"request_id_collision": false,
 	}
 
+
+func _ai_monster_wager_command_context(
+	metadata: Dictionary,
+	wager_id: int,
+	entry: Dictionary,
+	player_index: int,
+	side: String,
+	stake_percent: int
+) -> Dictionary:
+	if str(metadata.get("source_context", "")) != "ai":
+		return {"valid": metadata.is_empty(), "ai_command": false, "reason_code": "monster_wager_metadata_invalid" if not metadata.is_empty() else ""}
+	var expected_keys := ["source_context", "command_id", "expected_settlement_revision"]
+	if metadata.size() != expected_keys.size():
+		return {"valid": false, "ai_command": true, "reason_code": "monster_wager_ai_command_invalid"}
+	for key in expected_keys:
+		if not metadata.has(key):
+			return {"valid": false, "ai_command": true, "reason_code": "monster_wager_ai_command_invalid"}
+	var command_id := str(metadata.get("command_id", "")).strip_edges()
+	var expected_revision := int(metadata.get("expected_settlement_revision", -1))
+	if command_id.is_empty() or command_id.length() > 160 or command_id.contains("\n") or command_id.contains("\r"):
+		return {"valid": false, "ai_command": true, "reason_code": "monster_wager_ai_command_id_invalid"}
+	if expected_revision != int(entry.get("settlement_revision", -1)):
+		return {"valid": false, "ai_command": true, "reason_code": "monster_wager_settlement_revision_stale"}
+	return {
+		"valid": true,
+		"ai_command": true,
+		"reason_code": "",
+		"command_id": command_id,
+		"fingerprint": JSON.stringify([
+			"ai_monster_wager_command_v1",
+			wager_id,
+			expected_revision,
+			player_index,
+			side,
+			stake_percent,
+		]).sha256_text(),
+	}
 
 func _monster_wager_response_failure(
 		wager_id: int,
@@ -1617,6 +1692,7 @@ func apply_save_data(data: Dictionary) -> Dictionary:
 	public_card_bid_monster_wager_pool = int(next_state.get("public_card_bid_monster_wager_pool", 0))
 	_monster_wager_settlement_revision = int(next_state.get("monster_wager_settlement_revision", 0))
 	_monster_wager_settlement_terminal_journal = (next_state.get("monster_wager_settlement_terminal_journal", {}) as Dictionary).duplicate(true)
+	_ai_monster_wager_command_journal.clear()
 	monster_timer = float(next_state.get("monster_timer", 4.0))
 	special_monster_timer = float(next_state.get("special_monster_timer", 5.0))
 	_monster_card_revision_v06 = int(next_state.get("monster_card_atomic_owner_revision", 0))
@@ -5704,7 +5780,7 @@ func _open_monster_wager_for_pair(slot_a: int, slot_b: int, context: String = "æ
 		Color("#fb923c"),
 		_entity_world_position(actor_a)
 	)
-	_ai_runtime_call("_auto_ai_monster_wagers_for_entry", [monster_wager_sequence])
+	monster_wager_opened.emit(monster_wager_sequence, _monster_wager_settlement_revision)
 	_try_finish_monster_wager_if_ready(monster_wager_sequence)
 	request_table_presentation_refresh()
 	return monster_wager_sequence
@@ -6563,8 +6639,6 @@ func _advance_entity_linear_motion(entity: Dictionary, delta_seconds: float) -> 
 		entity["position"] = transient.get("position")
 	return info_variant as Dictionary if info_variant is Dictionary else {"moved": 0.0, "arrived": false}
 
-func _ai_runtime_call(method_name: StringName, arguments: Array = []) -> Variant:
-	return _world_call(&"_ai_runtime_call", [method_name, arguments])
 
 func _append_unique_district_index(result: Array, index: int) -> void:
 	_world_call(&"_append_unique_district_index", [result, index])

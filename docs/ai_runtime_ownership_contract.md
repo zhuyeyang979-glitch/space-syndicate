@@ -1,18 +1,20 @@
 # AI Runtime Ownership Contract
 
-## Sprint 41 Boundary
+## Current Boundary
 
 `AiRuntimeController` is the only runtime owner for AI state, personality policy, candidate generation, scoring, ranking, tie-breaks, fallback order, turn plans, response plans, learning records, and AI save/load data.
 
-`AiRuntimeWorldBridge` is stateless. It binds the controller to the real `Main` world, exposes world facts required by the migrated algorithms, and routes stable intents. It must not score candidates, select actions, keep private AI state, or create an RNG.
+`AiRuntimeWorldBridge` is physically deleted. `main.gd` and
+`GameRuntimeCoordinator` expose no arbitrary AI method-name or `callv` gateway.
+The production scene composes explicit query/command ports and binds concrete
+domain events directly to `AiRuntimeController`.
 
-`main.gd` may retain only narrow adapters:
-
-- locate and call the scene-owned controller;
-- provide public world revision/count facts;
-- apply supported world intents through existing rule owners;
-- forward public AI events;
-- expose existing constants and the existing shared RNG object to the bridge.
+ProductMarket cycle completion and Monster wager opening are typed events. The
+market event preserves the existing business-action then reward-finalization
+order. The wager event carries the stable wager ID plus settlement revision;
+each AI response carries a deterministic command ID and expected revision to
+the existing Monster owner. Neither event contains an actor-private snapshot,
+method name, Node, Callable, save payload, or Main fallback.
 
 ## Policy Source
 
@@ -35,7 +37,10 @@ There is no `main.gd` AI constant or personality-catalog fallback. Resource load
 
 The migrated functions retain their current v0.6 call order. This includes card play and purchase candidates, auction/counter decisions, automatic conditional-order evaluation, intel, monster wagers, military, weather, city/product/route/monster strategy, online learning, and public audit reports.
 
-World legality and mutation remain with their existing owners. The controller asks the bridge for those facts or actions; it does not duplicate card, economy, city, route, monster, military, weather, contract, queue, or execution rules.
+World legality and mutation remain with their existing owners. The controller
+uses narrow typed ports and concrete owner APIs; it does not duplicate card,
+economy, city, route, monster, military, weather, contract, queue, or execution
+rules.
 
 ## City Inference Typed-Port Boundary
 
@@ -194,16 +199,16 @@ share-only tie break.
 
 ## RNG Contract
 
-The controller receives the scene-owned `RunRngService` through its typed world
-bridge. It never constructs a second RNG. Migrated function bodies therefore
-consume the same generator in the same decision order. Save version 1 continues
-to persist the world RNG state in its existing envelope.
+The controller receives the scene-owned `RunRngService` through explicit scene
+composition. It never constructs a second RNG. Migrated function bodies
+therefore consume the same generator in the same decision order. Save version
+1 continues to persist the world RNG state in its existing envelope.
 
 ## Privacy Contract
 
-AI plans, opponent-hand knowledge, hidden owners, private targets, private discards, and learning samples may exist in controller-private state or save data. They must not appear in public debug snapshots, UI snapshots, QA manifests, reports, or bridge events.
+AI plans, opponent-hand knowledge, hidden owners, private targets, private discards, and learning samples may exist in controller-private state or save data. They must not appear in public debug snapshots, UI snapshots, QA manifests, reports, or typed domain events.
 
-`debug_snapshot(-1)` exposes only controller readiness, policy identity, timer state, AI count, receipt count, and shared-RNG status. The bridge emits sanitized intent and receipt summaries without `player_index` or private payload data.
+`debug_snapshot(-1)` exposes only controller readiness, policy identity, timer state, AI count, receipt count, shared-RNG status, and aggregate typed-event counters. Domain events and public receipts omit AI plans, scores, private cash, hidden owners, and decision samples.
 
 ## Deletion Gate
 

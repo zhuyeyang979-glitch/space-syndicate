@@ -103,6 +103,12 @@ var _policy_main_payload: Dictionary = {}
 var _business_action_policy: Dictionary = {}
 var _configured := false
 var _last_receipts: Array = []
+var _market_cycle_event_count := 0
+var _duplicate_market_cycle_event_count := 0
+var _monster_wager_open_event_count := 0
+var _monster_wager_open_event_rejection_count := 0
+var _last_market_cycle_event_id := ""
+var _last_market_cycle_receipt: Dictionary = {}
 var ai_card_decision_timer := 2.2
 var ai_auction_reaction_timer := 0.7
 var ai_intel_decision_timer := 5.5
@@ -765,6 +771,12 @@ func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 			"intel_decision": ai_intel_decision_timer,
 		},
 		"receipt_count": _last_receipts.size(),
+		"typed_market_cycle_event_boundary": true,
+		"typed_monster_wager_open_event_boundary": true,
+		"monster_wager_open_event_count": _monster_wager_open_event_count,
+		"monster_wager_open_event_rejection_count": _monster_wager_open_event_rejection_count,
+		"market_cycle_event_count": _market_cycle_event_count,
+		"duplicate_market_cycle_event_count": _duplicate_market_cycle_event_count,
 		"shared_rng": rng != null,
 		"typed_weather_public_query_bound": _ai_weather_public_query_port != null and _ai_weather_public_query_port.is_ready(),
 		"weather_query_uses_direct_owner": false,
@@ -2815,6 +2827,39 @@ func _publish_ai_business_market_pressure_callout(public_receipt: Dictionary, di
 		_district_center(district_index)
 	)
 
+
+func apply_market_cycle_event(cycle_count: int) -> Dictionary:
+	var session := _session_public_snapshot()
+	var session_id := str(session.get("session_id", ""))
+	if session_id.is_empty() or cycle_count <= 0 or cycle_count != business_cycle_count:
+		return {
+			"accepted": false,
+			"duplicate": false,
+			"reason_code": "ai_market_cycle_event_stale",
+			"cycle_count": cycle_count,
+			"business_action_count": 0,
+			"reward_finalize_count": 0,
+		}
+	var event_id := JSON.stringify(["ai_market_cycle_v1", session_id, cycle_count]).sha256_text()
+	if event_id == _last_market_cycle_event_id:
+		_duplicate_market_cycle_event_count += 1
+		var replay := _last_market_cycle_receipt.duplicate(true)
+		replay["duplicate"] = true
+		replay["reason_code"] = "ai_market_cycle_event_replayed"
+		return replay
+	var business_action_count := _auto_rival_business_actions(false)
+	var reward_finalize_count := _finalize_ai_decision_rewards()
+	_market_cycle_event_count += 1
+	_last_market_cycle_event_id = event_id
+	_last_market_cycle_receipt = {
+		"accepted": true,
+		"duplicate": false,
+		"reason_code": "ai_market_cycle_event_applied",
+		"cycle_count": cycle_count,
+		"business_action_count": business_action_count,
+		"reward_finalize_count": reward_finalize_count,
+	}
+	return _last_market_cycle_receipt.duplicate(true)
 
 func _auto_rival_business_actions(force: bool = false) -> int:
 	if session_finished or _player_count() <= 1:
@@ -8955,7 +9000,28 @@ func _ai_monster_wager_plan(player_index: int, entry: Dictionary) -> Dictionary:
 func _ai_monster_wager_side(player_index: int, entry: Dictionary) -> String:
 	var plan := _ai_monster_wager_plan(player_index, entry)
 	return String(plan.get("side", ""))
-func _auto_ai_monster_wagers_for_entry(wager_id: int) -> int:
+func apply_monster_wager_open_event(wager_id: int, settlement_revision: int) -> Dictionary:
+	if settlement_revision < 0 or not _active_monster_wager_ids().has(wager_id):
+		_monster_wager_open_event_rejection_count += 1
+		return {
+			"accepted": false,
+			"reason_code": "ai_monster_wager_open_event_stale",
+			"wager_id": wager_id,
+			"settlement_revision": settlement_revision,
+			"response_count": 0,
+		}
+	var response_count := _auto_ai_monster_wagers_for_entry(wager_id, settlement_revision)
+	_monster_wager_open_event_count += 1
+	return {
+		"accepted": true,
+		"reason_code": "ai_monster_wager_open_event_applied",
+		"wager_id": wager_id,
+		"settlement_revision": settlement_revision,
+		"response_count": response_count,
+	}
+
+
+func _auto_ai_monster_wagers_for_entry(wager_id: int, expected_settlement_revision: int = -1) -> int:
 	if not _active_monster_wager_ids().has(wager_id):
 		return 0
 	var acted := 0
@@ -8964,6 +9030,9 @@ func _auto_ai_monster_wagers_for_entry(wager_id: int) -> int:
 		var entry := _monster_wager_decision_snapshot_for_actor(wager_id, player_index)
 		if entry.is_empty():
 			continue
+		var settlement_revision := int(entry.get("settlement_revision", -1))
+		if expected_settlement_revision >= 0 and settlement_revision != expected_settlement_revision:
+			return 0
 		if not bool(entry.get("decision_open", false)):
 			break
 		if _monster_wager_player_side(entry, player_index) != "":
@@ -8973,16 +9042,29 @@ func _auto_ai_monster_wagers_for_entry(wager_id: int) -> int:
 		if side == "":
 			continue
 		var stake_percent := int(plan.get("stake_percent", _monster_wager_base_percent(entry)))
-		var metadata := {}
-		for key_variant in plan.keys():
-			var key := String(key_variant)
-			if key.begins_with("ai_wager_"):
-				metadata[key] = plan[key_variant]
-		if _place_monster_wager_percent(wager_id, side, stake_percent, player_index, false, metadata):
+		var command_id := _ai_monster_wager_command_id(wager_id, settlement_revision, player_index)
+		var command_metadata := {
+			"source_context": "ai",
+			"command_id": command_id,
+			"expected_settlement_revision": settlement_revision,
+		}
+		if _place_monster_wager_percent(wager_id, side, stake_percent, player_index, false, command_metadata):
 			acted += 1
 			if not _active_monster_wager_ids().has(wager_id):
 				break
 	return acted
+
+
+func _ai_monster_wager_command_id(wager_id: int, settlement_revision: int, player_index: int) -> String:
+	var session_id := str(_session_public_snapshot().get("session_id", ""))
+	return "ai-monster-wager:%s" % JSON.stringify([
+		"ai_monster_wager_command_v1",
+		session_id,
+		wager_id,
+		settlement_revision,
+		player_index,
+	]).sha256_text()
+
 func _auto_ai_monster_wagers() -> int:
 	var acted := 0
 	for wager_id_variant: Variant in _active_monster_wager_ids():

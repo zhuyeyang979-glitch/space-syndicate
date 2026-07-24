@@ -8944,3 +8944,22 @@ deleted. Evidence and the remaining action inventory are recorded in
 - Focused 57/57 and actor-state, eligibility, Setup, cold-restore, Main
   composition, and Main architecture gates pass. No state owner or save section
   was added; parent P0 remains active.
+
+## 2026-07-24 - AI dynamic runtime dispatcher retirement
+
+- Removed `Main._ai_runtime_call` and
+  `GameRuntimeCoordinator.ai_runtime_call`; production code can no longer send
+  an arbitrary method name or argument array into `AiRuntimeController`.
+- ProductMarket cycle completion now reaches AI through a concrete typed signal
+  while preserving business-action then reward-finalization order. Main's
+  remaining product-flow presentation helpers use domain-owned city facts.
+- Monster wager opening now emits stable wager ID plus settlement revision.
+  AI wager responses carry a deterministic command ID and expected revision;
+  the Monster owner rejects stale revisions, replay collisions, and duplicate
+  mutation without exposing AI planning metadata.
+- Godot MCP compiled every changed script. Focused dispatcher, formal four-seat
+  AI cash, AI business transaction, typed wager response/cooldown, Main
+  architecture, and Main composition gates pass. No policy, personality, RNG
+  formula, save field, save section, or state owner changed. Parent P0 remains
+  active; capability issuance hardening and the remaining forced-decision/card
+  command cutovers are still pending.

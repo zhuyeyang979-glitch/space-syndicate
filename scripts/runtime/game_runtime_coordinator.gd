@@ -1484,8 +1484,14 @@ func _wire_ai_world_typed_ports() -> void:
 		city_inference_port
 	)
 	ai.set_market_route_query_ports(market_public_port, route_public_port)
+	var market_cycle_source := _product_market_runtime_controller_node() as ProductMarketRuntimeController
+	if market_cycle_source != null and not market_cycle_source.market_cycle_completed.is_connected(ai.apply_market_cycle_event):
+		market_cycle_source.market_cycle_completed.connect(ai.apply_market_cycle_event)
 	ai.set_card_strategy_query_port(card_strategy_query_port)
-	ai.set_monster_runtime_controller(_monster_runtime_controller_node() as MonsterRuntimeController)
+	var monster_wager_source := _monster_runtime_controller_node() as MonsterRuntimeController
+	ai.set_monster_runtime_controller(monster_wager_source)
+	if monster_wager_source != null and not monster_wager_source.monster_wager_opened.is_connected(ai.apply_monster_wager_open_event):
+		monster_wager_source.monster_wager_opened.connect(ai.apply_monster_wager_open_event)
 	ai.set_role_catalog_runtime_service(_role_catalog_runtime_service_node() as RoleCatalogRuntimeService)
 	ai.set_table_presentation_refresh_port(_table_presentation_refresh_port_node())
 	ai.set_monster_military_query_ports(
@@ -3380,13 +3386,6 @@ func tick_ai(delta: float) -> void:
 	if ports != null and _runtime_actor_port_node() != null:
 		_runtime_actor_port_node().tick_ai(delta)
 
-
-func ai_runtime_call(method_name: StringName, arguments: Array = []) -> Variant:
-	var controller := _ai_runtime_controller_node()
-	if controller == null or not controller.has_method(method_name):
-		push_error("AiRuntimeController method unavailable: %s" % method_name)
-		return null
-	return controller.callv(method_name, arguments)
 
 
 func ai_to_save_data() -> Dictionary:

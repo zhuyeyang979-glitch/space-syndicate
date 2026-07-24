@@ -2,6 +2,8 @@
 extends Node
 class_name ProductMarketRuntimeController
 
+signal market_cycle_completed(cycle_count: int)
+
 var _public_log_producer_port: PublicLogProducerPort
 var _presentation_world_clock: WorldEffectiveClockRuntimeController
 
@@ -1621,6 +1623,7 @@ func market_tick() -> void:
 	if _route_network_runtime_controller != null:
 		_route_network_runtime_controller.refresh_routes()
 	refresh_prices()
+	market_cycle_completed.emit(business_cycle_count)
 	_world_bridge.call_world("_on_product_market_cycle_completed", [business_cycle_count])
 
 

@@ -833,18 +833,9 @@ func _age_product_market_world_boons(delta_seconds: float) -> bool:
 
 func _on_product_market_cycle_completed(cycle_count: int) -> void:
 	_game_runtime_coordinator_node().record_legacy_viewer_feedback("全局市场刷新%d：商品公开基础价格已更新；现金与GDP只由实际成交回执产生。" % cycle_count)
-	_ai_runtime_call("_auto_rival_business_actions", [false])
-	_ai_runtime_call("_finalize_ai_decision_rewards")
 	for player_index in range(_game_runtime_coordinator_node().world_session_state().players.size()):
 		_record_player_cash_snapshot(player_index)
 
-
-func _ai_runtime_call(method_name: StringName, arguments: Array = []) -> Variant:
-	var coordinator := _game_runtime_coordinator_node()
-	if coordinator == null or not coordinator.has_method("ai_runtime_call"):
-		_mark_game_runtime_coordinator_missing(true)
-		return null
-	return coordinator.call("ai_runtime_call", method_name, arguments)
 
 
 func _card_resolution_queue_service_node() -> Node:
@@ -2190,9 +2181,10 @@ func _player_product_flow(player_index: int, product_name: String) -> int:
 	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size() or product_name == "":
 		return 0
 	var flow := 0
-	for city_index_variant in _ai_runtime_call("_active_city_indices_for_player", [player_index]):
+	for city_index_variant in _active_city_district_indices():
 		var city_index := int(city_index_variant)
 		var city := _district_city(city_index)
+		if int(city.get("owner", -1)) != player_index: continue
 		for product_variant in city.get("products", []):
 			var product: Dictionary = product_variant
 			if String(product.get("name", "")) == product_name:
@@ -2212,8 +2204,9 @@ func _player_product_flow(player_index: int, product_name: String) -> int:
 func _first_player_flow_product(player_index: int) -> String:
 	if player_index < 0 or player_index >= _game_runtime_coordinator_node().world_session_state().players.size():
 		return ""
-	for city_index_variant in _ai_runtime_call("_active_city_indices_for_player", [player_index]):
+	for city_index_variant in _active_city_district_indices():
 		var city := _district_city(int(city_index_variant))
+		if int(city.get("owner", -1)) != player_index: continue
 		var products := _city_product_names(city)
 		if not products.is_empty():
 			return String(products[0])
@@ -2240,8 +2233,9 @@ func _best_player_flow_product(player_index: int, required: int = 1, preferred_p
 			return String(product_variant)
 	var best_product := ""
 	var best_flow := -1
-	for city_index_variant in _ai_runtime_call("_active_city_indices_for_player", [player_index]):
+	for city_index_variant in _active_city_district_indices():
 		var city := _district_city(int(city_index_variant))
+		if int(city.get("owner", -1)) != player_index: continue
 		var products := _city_product_names(city)
 		for product_variant in products:
 			var product_name := String(product_variant)
@@ -4010,7 +4004,9 @@ func _player_is_ai(player_index: int) -> bool:
 
 
 func _human_player_count() -> int:
-	return max(0, _game_runtime_coordinator_node().world_session_state().players.size() - _ai_runtime_call("_ai_player_count"))
+	var count := 0
+	for player_index in range(_game_runtime_coordinator_node().world_session_state().players.size()): count += 0 if _player_is_ai(player_index) else 1
+	return count
 
 
 func _catalog_size() -> int:
@@ -5040,7 +5036,7 @@ func _player_tableau_progress_entries(player_index: int) -> Array:
 			{"text": "资金/手牌", "state": "隐私", "accent": Color("#94a3b8"), "active": false, "tip": "对手现金、真实手牌数量、弃牌和AI内部计划不显示。"},
 		]
 	var player: Dictionary = _game_runtime_coordinator_node().world_session_state().players[player_index]
-	var has_monster := int(_ai_runtime_call("_ai_owned_active_monster_count", [player_index])) > 0
+	var has_monster := _player_visible_monster_count(player_index, viewer_index) > 0
 	var city_count := _player_active_city_count(player_index)
 	var bought_card := int(player.get("card_purchase_count", 0)) > 0
 	var committed_card := _player_has_committed_or_resolved_card(player_index)
