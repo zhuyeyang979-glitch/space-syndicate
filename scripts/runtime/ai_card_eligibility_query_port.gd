@@ -12,6 +12,7 @@ const EVALUATION_MODES := ["rule", "hand", "catalog"]
 @export var game_session_runtime_controller_path: NodePath
 
 var _capabilities_by_actor: Dictionary = {}
+var _capability_binding_authority: AiCapabilityBindingAuthority
 var _capability_binding_initialized := false
 var _bound_actor_roster_revision := ""
 var _capability_revision := 0
@@ -21,7 +22,12 @@ var _best_share_query_count := 0
 var _rejected_query_count := 0
 
 
-func bind_ai_capabilities(capabilities_by_actor: Dictionary) -> bool:
+func bind_ai_capabilities(
+	binding_authority: AiCapabilityBindingAuthority,
+	capabilities_by_actor: Dictionary
+) -> bool:
+	if binding_authority == null or (_capability_binding_authority != null and _capability_binding_authority != binding_authority):
+		return false
 	var expected_actor_indices := _ai_player_indices()
 	if capabilities_by_actor.size() != expected_actor_indices.size():
 		return _reject_capability_binding()
@@ -37,6 +43,7 @@ func bind_ai_capabilities(capabilities_by_actor: Dictionary) -> bool:
 			return _reject_capability_binding()
 		seen_tokens[token_id] = true
 		normalized[actor_index] = capability_variant
+	_capability_binding_authority = binding_authority
 	_capabilities_by_actor = normalized
 	_capability_binding_initialized = true
 	_bound_actor_roster_revision = _actor_roster_revision()

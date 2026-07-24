@@ -8,6 +8,7 @@ const JOURNAL_LIMIT := 128
 @export var game_session_runtime_controller_path: NodePath
 
 var _capabilities_by_actor: Dictionary = {}
+var _capability_binding_authority: AiCapabilityBindingAuthority
 var _capability_binding_initialized := false
 var _bound_actor_roster_revision := ""
 var _capability_revision := 0
@@ -26,7 +27,12 @@ func _ready() -> void:
 	_bind_world_lifecycle()
 
 
-func bind_ai_capabilities(capabilities_by_actor: Dictionary) -> bool:
+func bind_ai_capabilities(
+	binding_authority: AiCapabilityBindingAuthority,
+	capabilities_by_actor: Dictionary
+) -> bool:
+	if binding_authority == null or (_capability_binding_authority != null and _capability_binding_authority != binding_authority):
+		return false
 	_bind_world_lifecycle()
 	var expected_actor_indices := _ai_player_indices()
 	if capabilities_by_actor.size() != expected_actor_indices.size():
@@ -45,6 +51,7 @@ func bind_ai_capabilities(capabilities_by_actor: Dictionary) -> bool:
 		normalized[actor_index] = capability_variant
 	_clear_journal()
 	_journal_session_id = _current_session_id()
+	_capability_binding_authority = binding_authority
 	_capabilities_by_actor = normalized
 	_capability_binding_initialized = true
 	_bound_actor_roster_revision = _actor_roster_revision()

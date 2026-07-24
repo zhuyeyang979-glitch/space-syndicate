@@ -30,6 +30,7 @@ const AI_STATE_SNAPSHOT_KEYS := [
 @export var world_session_state_path: NodePath
 
 var _capabilities_by_actor: Dictionary = {}
+var _capability_binding_authority: AiCapabilityBindingAuthority
 var _capability_binding_initialized := false
 var _capability_revision := 0
 var _public_query_count := 0
@@ -49,7 +50,12 @@ func _ready() -> void:
 	_bind_world_lifecycle()
 
 
-func bind_ai_capabilities(capabilities_by_actor: Dictionary) -> bool:
+func bind_ai_capabilities(
+	binding_authority: AiCapabilityBindingAuthority,
+	capabilities_by_actor: Dictionary
+) -> bool:
+	if binding_authority == null or (_capability_binding_authority != null and _capability_binding_authority != binding_authority):
+		return false
 	_bind_world_lifecycle()
 	var expected_actor_indices := ai_player_indices(true)
 	expected_actor_indices.sort()
@@ -69,6 +75,7 @@ func bind_ai_capabilities(capabilities_by_actor: Dictionary) -> bool:
 			return _reject_capability_binding()
 		seen_tokens[token_id] = true
 		normalized[actor_index] = capability_variant
+	_capability_binding_authority = binding_authority
 	_capabilities_by_actor = normalized
 	_capability_binding_initialized = true
 	_capability_revision += 1
