@@ -718,8 +718,6 @@ const AI_POLICY_RESOURCE_OUTPUT_DIR := "user://space_syndicate_design_qa/ai_poli
 const AI_POLICY_RESOURCE_SCREENSHOT_PATH := "user://space_syndicate_design_qa/ai_runtime_hard_cutover_sprint_41.png"
 const AI_RUNTIME_CONTROLLER_SCENE := "res://scenes/runtime/AiRuntimeController.tscn"
 const AI_RUNTIME_CONTROLLER_SCRIPT := "res://scripts/runtime/ai_runtime_controller.gd"
-const AI_RUNTIME_WORLD_BRIDGE_SCENE := "res://scenes/runtime/AiRuntimeWorldBridge.tscn"
-const AI_RUNTIME_WORLD_BRIDGE_SCRIPT := "res://scripts/runtime/ai_runtime_world_bridge.gd"
 const COMPENDIUM_CONTENT_MIN_TOTAL_ENTRIES := 42
 const COMPENDIUM_CONTENT_MIN_CARD_ENTRIES := 25
 const COMPENDIUM_CONTENT_MIN_PRODUCT_ENTRIES := 8
@@ -9612,11 +9610,10 @@ func _check_ai_policy_resourceization_component() -> void:
 		AI_POLICY_RESOURCE_PREVIEW_SCRIPT,
 		AI_POLICY_RESOURCE_BENCH_SCRIPT,
 		AI_RUNTIME_CONTROLLER_SCRIPT,
-		AI_RUNTIME_WORLD_BRIDGE_SCRIPT,
 	]:
 		_expect(ResourceLoader.exists(script_path) and load(script_path) != null, "%s loads for AI Policy Resourceization" % script_path)
 	_expect(ResourceLoader.exists(AI_POLICY_PROFILE_RESOURCE), "AI Policy profile Resource exists")
-	_expect(load(AI_RUNTIME_CONTROLLER_SCENE) is PackedScene and load(AI_RUNTIME_WORLD_BRIDGE_SCENE) is PackedScene, "AI runtime Controller and WorldBridge scenes load")
+	_expect(load(AI_RUNTIME_CONTROLLER_SCENE) is PackedScene and not ResourceLoader.exists("res://scenes/runtime/AiRuntimeWorldBridge.tscn") and not FileAccess.file_exists("res://scripts/runtime/ai_runtime_world_bridge.gd"), "AI runtime Controller loads and the retired generic WorldBridge is physically absent")
 	var profile := load(AI_POLICY_PROFILE_RESOURCE) as Resource
 	_expect(profile != null and profile.has_method("parameter_groups") and profile.has_method("to_policy_dictionary") and profile.has_method("to_main_source_dictionary") and profile.has_method("validate_profile") and profile.has_method("resource_summary"), "AI Policy profile exposes Inspector payload and validation methods")
 	if profile != null:
@@ -9694,7 +9691,7 @@ func _check_ai_policy_resourceization_component() -> void:
 	var scene_registry: RefCounted = scene_registry_script.new() if scene_registry_script != null else null
 	if scene_registry != null and scene_registry.has_method("records"):
 		var scene_records: Array = scene_registry.call("records")
-		for required_path in [AI_RUNTIME_CONTROLLER_SCENE, AI_RUNTIME_WORLD_BRIDGE_SCENE, AI_POLICY_RESOURCE_PREVIEW_SCENE, AI_POLICY_RESOURCE_BENCH_SCENE]:
+		for required_path in [AI_RUNTIME_CONTROLLER_SCENE, AI_POLICY_RESOURCE_PREVIEW_SCENE, AI_POLICY_RESOURCE_BENCH_SCENE]:
 			var found := false
 			for record_variant in scene_records:
 				var record: Dictionary = record_variant if record_variant is Dictionary else {}
@@ -9721,9 +9718,9 @@ func _check_ai_policy_resourceization_component() -> void:
 		viewport.add_child(dock)
 		await process_frame
 		_expect(dock.find_child("OpenAiPolicyResourcePreviewButton", true, false) != null and dock.find_child("RunAiPolicyResourceBenchButton", true, false) != null and dock.find_child("OpenAiPolicyResourceOutputFolderButton", true, false) != null, "SpaceSyndicateDesignQADock contains AI Policy Resource controls")
-		_expect(dock.find_child("OpenAiRuntimeControllerButton", true, false) != null and dock.find_child("OpenAiRuntimeWorldBridgeButton", true, false) != null, "SpaceSyndicateDesignQADock contains AI Runtime Controller and WorldBridge controls")
+		_expect(dock.find_child("OpenAiRuntimeControllerButton", true, false) != null and dock.find_child("OpenAiRuntimeWorldBridgeButton", true, false) == null, "SpaceSyndicateDesignQADock exposes the AI Runtime Controller without the retired WorldBridge control")
 		_expect(dock.has_method("ai_policy_resource_preview_scene_path") and dock.has_method("ai_policy_resource_bench_scene_path") and dock.has_method("ai_policy_resource_qa_output_dir"), "SpaceSyndicateDesignQADock exposes AI Policy Resource path helpers")
-		_expect(dock.has_method("ai_runtime_controller_scene_path") and dock.has_method("ai_runtime_world_bridge_scene_path") and str(dock.call("ai_runtime_controller_scene_path")) == AI_RUNTIME_CONTROLLER_SCENE and str(dock.call("ai_runtime_world_bridge_scene_path")) == AI_RUNTIME_WORLD_BRIDGE_SCENE, "SpaceSyndicateDesignQADock exposes AI runtime scene path helpers")
+		_expect(dock.has_method("ai_runtime_controller_scene_path") and not dock.has_method("ai_runtime_world_bridge_scene_path") and str(dock.call("ai_runtime_controller_scene_path")) == AI_RUNTIME_CONTROLLER_SCENE, "SpaceSyndicateDesignQADock exposes only the active AI runtime scene helper")
 		_expect(str(dock.call("ai_policy_resource_preview_scene_path")) == AI_POLICY_RESOURCE_PREVIEW_SCENE and str(dock.call("ai_policy_resource_bench_scene_path")) == AI_POLICY_RESOURCE_BENCH_SCENE and str(dock.call("ai_policy_resource_qa_output_dir")) == AI_POLICY_RESOURCE_OUTPUT_DIR, "SpaceSyndicateDesignQADock targets AI Policy preview, bench, and user output")
 		var open_paths: Array[String] = []
 		var run_paths: Array[String] = []

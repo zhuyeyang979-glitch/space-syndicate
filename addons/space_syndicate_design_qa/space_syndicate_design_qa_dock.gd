@@ -185,7 +185,6 @@ signal run_new_game_setup_page_cutover_bench_requested(scene_path: String)
 signal open_ai_policy_resource_preview_requested(scene_path: String)
 signal run_ai_policy_resource_bench_requested(scene_path: String)
 signal open_ai_runtime_controller_requested(scene_path: String)
-signal open_ai_runtime_world_bridge_requested(scene_path: String)
 
 const PREVIEW_SCENE_PATH := "res://scenes/ui/TemporaryDecisionOverlayPreview.tscn"
 const CAPTURE_BENCH_SCENE_PATH := "res://scenes/ui/TemporaryDecisionOverlayCaptureBench.tscn"
@@ -333,7 +332,6 @@ const NEW_GAME_SETUP_PAGE_CUTOVER_BENCH_SCENE_PATH := "res://scenes/tools/NewGam
 const AI_POLICY_RESOURCE_PREVIEW_SCENE_PATH := "res://scenes/tools/AiPolicyResourceMcpPreview.tscn"
 const AI_POLICY_RESOURCE_BENCH_SCENE_PATH := "res://scenes/tools/AiPolicyResourceBench.tscn"
 const AI_RUNTIME_CONTROLLER_SCENE_PATH := "res://scenes/runtime/AiRuntimeController.tscn"
-const AI_RUNTIME_WORLD_BRIDGE_SCENE_PATH := "res://scenes/runtime/AiRuntimeWorldBridge.tscn"
 const FIXTURE_SCRIPT_PATH := "res://scripts/ui/temporary_decision_preview_fixtures.gd"
 const DESIGN_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/temporary_decision_overlay/"
 const INTERACTION_QA_OUTPUT_DIR := "user://space_syndicate_design_qa/temporary_decision_overlay_interactions/"
@@ -640,7 +638,6 @@ const PANEL_BY_FIXTURE_ID := {
 @onready var run_ai_policy_resource_bench_button: Button = %RunAiPolicyResourceBenchButton
 @onready var open_ai_policy_resource_output_folder_button: Button = %OpenAiPolicyResourceOutputFolderButton
 @onready var open_ai_runtime_controller_button: Button = %OpenAiRuntimeControllerButton
-@onready var open_ai_runtime_world_bridge_button: Button = %OpenAiRuntimeWorldBridgeButton
 @onready var monster_wager_button: Button = %MonsterWagerFixtureButton
 @onready var discard_button: Button = %DiscardPurchaseFixtureButton
 @onready var monster_target_button: Button = %MonsterTargetFixtureButton
@@ -1225,10 +1222,6 @@ func ai_policy_resource_bench_scene_path() -> String:
 
 func ai_runtime_controller_scene_path() -> String:
 	return AI_RUNTIME_CONTROLLER_SCENE_PATH
-
-
-func ai_runtime_world_bridge_scene_path() -> String:
-	return AI_RUNTIME_WORLD_BRIDGE_SCENE_PATH
 
 
 func fixture_script_path() -> String:
@@ -2969,14 +2962,6 @@ func open_ai_runtime_controller_scene() -> void:
 	_set_status("Open AI Runtime Controller: %s" % AI_RUNTIME_CONTROLLER_SCENE_PATH)
 
 
-func open_ai_runtime_world_bridge_scene() -> void:
-	if _editor_plugin != null and _editor_plugin.has_method("open_scene"):
-		_editor_plugin.call("open_scene", AI_RUNTIME_WORLD_BRIDGE_SCENE_PATH)
-	else:
-		open_ai_runtime_world_bridge_requested.emit(AI_RUNTIME_WORLD_BRIDGE_SCENE_PATH)
-	_set_status("Open AI Runtime World Bridge: %s" % AI_RUNTIME_WORLD_BRIDGE_SCENE_PATH)
-
-
 func open_qa_output_folder() -> void:
 	var absolute_path := ProjectSettings.globalize_path(DESIGN_QA_OUTPUT_DIR)
 	var error := OS.shell_open(absolute_path)
@@ -3733,7 +3718,6 @@ func _connect_buttons() -> void:
 	_connect_button(run_ai_policy_resource_bench_button, "run_ai_policy_resource_bench_scene")
 	_connect_button(open_ai_policy_resource_output_folder_button, "open_ai_policy_resource_qa_output_folder")
 	_connect_button(open_ai_runtime_controller_button, "open_ai_runtime_controller_scene")
-	_connect_button(open_ai_runtime_world_bridge_button, "open_ai_runtime_world_bridge_scene")
 	_connect_button(monster_wager_button, "_on_monster_wager_fixture_pressed")
 	_connect_button(discard_button, "_on_discard_fixture_pressed")
 	_connect_button(monster_target_button, "_on_monster_target_fixture_pressed")

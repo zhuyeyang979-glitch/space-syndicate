@@ -156,7 +156,7 @@ const RECORDS := [
 		"rule_id": "ai_policy_runtime_ownership",
 		"rulebook_section": "Automated opponents / privacy and action legality",
 		"expected_behavior": "AI uses the same legal world actions as players while its private plan, targets, and ownership knowledge remain hidden.",
-		"current_owner": "AiRuntimeController + AiRuntimeWorldBridge + AI Policy Resource",
+		"current_owner": "AiRuntimeController + narrow typed domain ports + AI Policy Resource",
 		"current_status": STATUS_CUTOVER_COMPLETE,
 		"runtime_evidence": ["AI Policy Resource runtime cutover enabled", "AiPolicyResourceBench passes 44/44", "main.gd AI candidate and scoring algorithms absent", "FirstMission runtime remains 37/37 after balance and pacing instrumentation"],
 		"cutover_action": "Keep Controller as the only AI decision owner and route world effects through existing mutation owners.",

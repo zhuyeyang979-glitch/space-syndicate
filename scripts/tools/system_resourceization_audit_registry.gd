@@ -464,7 +464,7 @@ const RECORDS := [
 		"category": CATEGORY_AI,
 		"current_status": STATUS_SCENEIZED,
 		"current_path": "res://scenes/runtime/AiRuntimeController.tscn",
-		"related_paths": ["res://scenes/runtime/AiRuntimeController.tscn", "res://scripts/runtime/ai_runtime_controller.gd", "res://scenes/runtime/AiRuntimeWorldBridge.tscn", "res://scripts/main.gd"],
+		"related_paths": ["res://scenes/runtime/AiRuntimeController.tscn", "res://scripts/runtime/ai_runtime_controller.gd", "res://scripts/main.gd"],
 		"function_count": 0,
 		"key_functions": [
 			"_ai_",
@@ -476,7 +476,7 @@ const RECORDS := [
 		"editor_visibility": "scene_tree_inspector_and_script",
 		"risk_level": "high",
 		"recommended_next_step": "Keep AiRuntimeController as the single decision owner and split internal policy families only behind the 44-case gate.",
-		"mcp_notes": "Decision state, candidates, scores, responses, learning, and Policy Resource consumption are Controller-owned; main keeps a narrow world adapter.",
+		"mcp_notes": "Decision state, candidates, scores, responses, learning, and Policy Resource consumption are Controller-owned; typed domain ports replace the retired generic Main adapter.",
 	},
 	{
 		"id": "main_gd_monster_ai_runtime",
@@ -577,7 +577,6 @@ const RECORDS := [
 			"res://scripts/ai/ai_policy_resource_registry.gd",
 			"res://scenes/runtime/AiRuntimeController.tscn",
 			"res://scripts/runtime/ai_runtime_controller.gd",
-			"res://scenes/runtime/AiRuntimeWorldBridge.tscn",
 			"res://scenes/tools/AiPolicyResourceMcpPreview.tscn",
 			"res://scenes/tools/AiPolicyResourceBench.tscn",
 		],
