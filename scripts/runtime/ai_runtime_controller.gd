@@ -44,7 +44,6 @@ const AI_OWN_WAREHOUSE_PRODUCT_PRESSURE := 10
 
 var _runtime_balance_model := RuntimeBalanceModelScript.new()
 
-var _world_bridge: Node
 var _run_rng_service: RunRngService
 var _ai_session_public_query_port: AiSessionPublicQueryPort
 var _ai_card_hand_query_port: AiCardHandQueryPort
@@ -107,10 +106,6 @@ var ai_card_decision_timer := 2.2
 var ai_auction_reaction_timer := 0.7
 var ai_intel_decision_timer := 5.5
 var ai_card_decision_enabled := true
-
-
-func set_world_bridge(bridge: Node) -> void:
-	_world_bridge = bridge
 
 
 func set_run_rng_service(service: RunRngService) -> void:
@@ -543,18 +538,18 @@ func restore_new_session_checkpoint(checkpoint: Dictionary) -> Dictionary:
 
 
 func tick(delta: float) -> void:
-	if not _configured or not _world_ready():
+	if not _configured or not _typed_world_ports_ready():
 		return
 	_update_ai_decisions(delta)
 
 
 func ensure_player_state() -> void:
-	if _configured and _world_ready():
+	if _configured and _typed_world_ports_ready():
 		_ensure_player_ai_state()
 
 
 func build_turn_plan(player_index: int, world_snapshot: Dictionary) -> Dictionary:
-	if not _configured or not _world_ready():
+	if not _configured or not _typed_world_ports_ready():
 		return {"planned": false, "reason": "controller_not_ready", "player_index": player_index}
 	var supplied_variant: Variant = world_snapshot.get("candidates", [])
 	var candidates: Array = (supplied_variant as Array).duplicate(true) if supplied_variant is Array else []
@@ -573,7 +568,7 @@ func build_turn_plan(player_index: int, world_snapshot: Dictionary) -> Dictionar
 
 
 func build_response_plan(response_kind: String, player_index: int, context: Dictionary) -> Dictionary:
-	if not _configured or not _world_ready():
+	if not _configured or not _typed_world_ports_ready():
 		return {"planned": false, "reason": "controller_not_ready", "response_kind": response_kind, "player_index": player_index}
 	if response_kind not in ACTIVE_RESPONSE_KINDS:
 		return {"planned": false, "reason": "response_kind_unsupported", "response_kind": response_kind, "player_index": player_index, "candidate_count": 0, "selected": {}}
@@ -755,11 +750,11 @@ func policy_snapshot() -> Dictionary:
 func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 	var profile := policy_snapshot()
 	return {
-		"controller_ready": _configured and _world_ready(),
+		"controller_ready": _configured and _typed_world_ports_ready(),
 		"runtime_owner": "res://scripts/runtime/ai_runtime_controller.gd",
 		"runtime_cutover_enabled": bool(profile.get("runtime_cutover_enabled", false)),
 		"policy_profile_id": str(profile.get("profile_id", "")),
-		"ai_player_count": _ai_player_count() if _world_ready() else 0,
+		"ai_player_count": _ai_player_count() if _typed_world_ports_ready() else 0,
 		"timers": {
 			"card_decision": ai_card_decision_timer,
 			"auction_reaction": ai_auction_reaction_timer,
@@ -809,8 +804,12 @@ func _candidate_stable_id(candidate: Dictionary) -> String:
 	]
 
 
-func _world_ready() -> bool:
-	return _world_bridge != null and _world_bridge.has_method("has_world") and bool(_world_bridge.call("has_world"))
+func _typed_world_ports_ready() -> bool:
+	return _ai_session_public_query_port != null \
+		and _ai_session_public_query_port.is_ready() \
+		and _actor_state_ready() \
+		and _ai_region_knowledge_query_port != null \
+		and _ai_region_knowledge_query_port.is_ready()
 
 
 func _actor_state_ready() -> bool:
@@ -956,10 +955,6 @@ func _actor_district(actor_index: int, district_index: int) -> Dictionary:
 		actor_index,
 		district_index
 	) if _city_inference_ports_ready() else {}
-
-
-func _call_world(method_name: StringName, arguments: Array = []) -> Variant:
-	return _world_bridge.call("call_world", method_name, arguments) if _world_ready() else null
 
 
 func _call_monster(method_name: StringName, arguments: Array = []) -> Variant:
@@ -1865,7 +1860,9 @@ func _can_summon_monster_card_at_district(skill: Dictionary, district_index: int
 	return _call_monster(&"_can_summon_monster_card_at_district", [skill, district_index])
 
 func _short_card_text(text: String, max_len: int) -> String:
-	return _call_world(&"_short_card_text", [text, max_len])
+	if text.length() <= max_len:
+		return text
+	return text.left(maxi(1, max_len - 1)) + "…"
 
 func _queue_monster_card_as_counter(
 	player_index: int,
@@ -1889,9 +1886,6 @@ func _queue_monster_card_as_counter(
 
 func _player_is_ai(player_index: int) -> bool:
 	return _ai_actor_state_port.is_ai_player(player_index) if _actor_state_ready() else false
-
-func _player_facing_text_snapshot() -> Array:
-	return _call_world(&"_player_facing_text_snapshot")
 
 func _counter_skill_for_ai_candidate(player_index: int, source_skill: Dictionary) -> Dictionary:
 	if _is_counter_skill(source_skill):
@@ -1918,7 +1912,11 @@ func _district_supply_card_ids(district_index: int) -> Array:
 		if _district_supply_runtime_query_port != null else []
 
 func _alive_district_indices() -> Array:
-	return _call_world(&"_alive_district_indices")
+	var result: Array = []
+	for district_index in range(_district_count()):
+		if not bool(_public_district(district_index).get("destroyed", false)):
+			result.append(district_index)
+	return result
 
 func _weather_template(type_id: String) -> Dictionary:
 	return _ai_weather_public_query_port.definition_snapshot(type_id) \
@@ -2121,7 +2119,7 @@ func _city_gdp_derivative_risk_adjusted_value(terms: Dictionary) -> int:
 	return int(round((float(maximum_gain) - float(maximum_loss) * 0.45 - float(margin_cash) * 0.12) / 10.0))
 
 func _interaction_target_label(player_index: int) -> String:
-	return _call_world(&"_interaction_target_label", [player_index])
+	return "玩家%d" % (player_index + 1) if player_index >= 0 and player_index < _player_count() else "未知玩家"
 
 func _buy_card_for_player_from_district(player_index: int, district_index: int, skill_name: String, _anonymous: bool = false, _ignore_cooldown: bool = false, discard_slot: int = -1) -> bool:
 	if _district_supply_action_port == null:
@@ -2222,7 +2220,7 @@ func _active_city_district_indices() -> Array:
 	return _route_network_runtime_controller.active_region_legacy_indices() if _route_network_runtime_controller != null else []
 
 func _player_active_city_count(player_index: int) -> int:
-	return _call_world(&"_player_active_city_count", [player_index])
+	return _active_city_indices_for_player(player_index).size()
 
 func _visible_active_city_count_for_actor(viewer_index: int, subject_index: int) -> int:
 	var result := 0
@@ -2247,17 +2245,22 @@ func _visible_active_monster_count_for_actor(viewer_index: int, subject_index: i
 	return result
 
 func _city_competition_matches(district_index: int) -> int:
-	return _call_world(&"_city_competition_matches", [district_index])
+	var district := _public_district(district_index)
+	var city: Dictionary = district.get("city", {}) if district.get("city", {}) is Dictionary else {}
+	return maxi(0, int(city.get("competition_matches", 0)))
 
 func _route_network_routes_for_legacy_region(district_index: int) -> Array:
 	var rows: Variant = _route_public_summary(district_index).get("rows", [])
 	return (rows as Array).duplicate(true) if rows is Array else []
 
-func _city_cycle_income(district_index: int, competition_matches: int) -> int:
-	return _call_world(&"_city_cycle_income", [district_index, competition_matches])
+func _city_cycle_income(district_index: int, _competition_matches: int) -> int:
+	return maxi(0, int(_public_district(district_index).get("current_gdp_per_minute", 0)))
 
 func _city_cycle_income_breakdown(district_index: int, competition_matches: int) -> Dictionary:
-	return _call_world(&"_city_cycle_income_breakdown", [district_index, competition_matches])
+	return {
+		"net": _city_cycle_income(district_index, competition_matches),
+		"competition_matches": maxi(0, competition_matches),
+	}
 
 func _add_action_callout(actor: String, action: String, detail: String, color: Color, world_position: Vector2, duration: float = ACTION_CALLOUT_DURATION) -> void:
 	if _visual_cue_runtime_owner != null:
@@ -4895,40 +4898,6 @@ func _monster_target_weight_audit() -> Dictionary:
 		"any_positive_alive": any_positive_alive,
 		"actors": actor_reports,
 	}
-func _hidden_info_leak_audit() -> Dictionary:
-	var forbidden_terms := [
-		"ai_reason",
-		"ai_utility_score",
-		"route_plan_score",
-		"pressure bucket",
-		"pressure_bucket",
-		"decision_samples",
-		"learning_bonus",
-		"rival exact hand",
-		"rival exact discard",
-		"private route plan",
-		"exact AI score",
-	]
-	var texts := _player_facing_text_snapshot()
-	var leaks := []
-	for text_index in range(texts.size()):
-		var text := String(texts[text_index])
-		var lower_text := text.to_lower()
-		for term_variant in forbidden_terms:
-			var term := String(term_variant)
-			if lower_text.contains(term.to_lower()):
-				leaks.append({
-					"term": term,
-					"text_index": text_index,
-					"excerpt": _short_card_text(text, 96),
-				})
-	return {
-		"checked_text_count": texts.size(),
-		"leak_count": leaks.size(),
-		"leaks": leaks,
-		"test_only": true,
-		"internal_metadata_terms_allowed": forbidden_terms,
-	}
 func _agent_policy_audit_report() -> Dictionary:
 	var player_reports := []
 	for player_index_variant in _ai_player_indices():
@@ -4939,7 +4908,6 @@ func _agent_policy_audit_report() -> Dictionary:
 		"ai_player_count": player_reports.size(),
 		"ai_players": player_reports,
 		"monster_target": _monster_target_weight_audit(),
-		"hidden_info": _hidden_info_leak_audit(),
 		"playable_card_resolution_coverage": coverage,
 		"playable_missing_handlers": (coverage.get("missing", []) as Array).duplicate(true),
 	}
@@ -7090,7 +7058,7 @@ func _ai_product_futures_product_score(player_index: int, skill: Dictionary, pro
 	if terms.is_empty():
 		return -999999
 	var direction := String(terms.get("direction", "up"))
-	var scores := _product_strategy_scores(product_name)
+	var scores := _product_strategy_scores(product_name, player_index)
 	var stockpile_required := bool(terms.get("requires_warehouse", false))
 	var market_score := int(scores.get("short", 0)) if direction == "down" else int(scores.get("long", 0))
 	if stockpile_required:
@@ -7198,7 +7166,7 @@ func _ai_product_futures_plan(player_index: int, skill: Dictionary, preferred_pr
 		if warehouse_city < 0:
 			return {}
 		district_index = warehouse_city
-	var scores := _product_strategy_scores(product_name)
+	var scores := _product_strategy_scores(product_name, player_index)
 	var market_score := int(scores.get("short", 0)) if direction == "down" else int(scores.get("long", 0))
 	var stockpile_score := int(scores.get("stockpile", 0))
 	var futures_score := maxi(1, _ai_product_futures_product_score(player_index, skill, product_name))

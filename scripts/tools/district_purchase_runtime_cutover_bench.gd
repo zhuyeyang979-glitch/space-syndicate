@@ -106,7 +106,7 @@ func _prepare_runtime() -> void:
 	_world = MarketWorld.new()
 	add_child(_world)
 	coordinator.configure(RULESET_PROFILE.debug_snapshot())
-	coordinator.bind_ai_world(_world)
+	coordinator.bind_runtime_world(_world)
 	coordinator.restore_world_effective_seconds(0.0)
 
 

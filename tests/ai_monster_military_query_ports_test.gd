@@ -20,19 +20,6 @@ class MonsterCommandWorld:
 		return from_position.distance_to(to_position)
 
 
-class PlannerWorld:
-	extends Node
-
-	func _city_competition_matches(_district_index: int) -> int:
-		return 0
-
-	func _city_cycle_income(_district_index: int, _competition_matches: int) -> int:
-		return 0
-
-	func _city_cycle_income_breakdown(_district_index: int, _competition_matches: int) -> Dictionary:
-		return {"net": 0}
-
-
 func _init() -> void:
 	call_deferred("_run")
 
@@ -45,7 +32,6 @@ func _run() -> void:
 	var game_session := coordinator.get_node_or_null("GameSessionRuntimeController") as GameSessionRuntimeController
 	var rng := coordinator.get_node_or_null("RunRngService") as RunRngService
 	var ai := coordinator.get_node_or_null("AiRuntimeController") as AiRuntimeController
-	var ai_bridge := coordinator.get_node_or_null("AiRuntimeWorldBridge") as AiRuntimeWorldBridge
 	var monster := coordinator.get_node_or_null("MonsterRuntimeController") as MonsterRuntimeController
 	var monster_bridge := coordinator.get_node_or_null("MonsterRuntimeWorldBridge") as MonsterRuntimeWorldBridge
 	var military := coordinator.get_node_or_null("MilitaryRuntimeController") as MilitaryRuntimeController
@@ -65,7 +51,7 @@ func _run() -> void:
 	var world_clock := coordinator.get_node_or_null("WorldEffectiveClockRuntimeController") as WorldEffectiveClockRuntimeController
 	var visual_owner := coordinator.get_node_or_null("VisualCueRuntimeOwner") as VisualCueRuntimeOwner
 	_expect(
-		world != null and game_session != null and rng != null and ai != null and ai_bridge != null \
+		world != null and game_session != null and rng != null and ai != null \
 			and monster != null and monster_bridge != null \
 			and military != null and military_bridge != null and route_bridge != null \
 			and monster_public != null and monster_actor != null \
@@ -81,10 +67,6 @@ func _run() -> void:
 		_finish()
 		return
 
-	var planner_world := PlannerWorld.new()
-	coordinator.add_child(planner_world)
-	ai_bridge.bind_world(planner_world)
-	ai.set_world_bridge(ai_bridge)
 	ai.set_route_network_runtime_controller(route_network)
 	var command_world := MonsterCommandWorld.new()
 	coordinator.add_child(command_world)

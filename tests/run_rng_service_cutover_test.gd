@@ -17,12 +17,11 @@ func _run() -> void:
 	coordinator.configure({"ruleset_id": "v0.6"})
 	var service := coordinator.run_rng_service()
 	var ai := coordinator.get_node_or_null("AiRuntimeController") as AiRuntimeController
-	var ai_bridge := coordinator.get_node_or_null("AiRuntimeWorldBridge") as AiRuntimeWorldBridge
 	var world := coordinator.world_session_state()
 	var game_session := coordinator.get_node_or_null("GameSessionRuntimeController") as GameSessionRuntimeController
 	var market := coordinator.get_node_or_null("ProductMarketRuntimeController") as ProductMarketRuntimeController
 	_expect(
-		service != null and ai != null and ai_bridge != null and world != null \
+		service != null and ai != null and world != null \
 			and game_session != null and market != null,
 		"production composition exposes the typed RNG owner and its direct AI consumer"
 	)
@@ -118,14 +117,12 @@ func _run() -> void:
 			"%s consumes the typed RNG owner" % bridge_name
 		)
 	_expect(
-		ai_bridge != null and not ai_bridge.has_method("shared_rng") and not ai_bridge.has_method("set_rng_service") \
-			and not bool(ai_bridge.debug_snapshot().get("rng_service_ready", true)),
-		"AiRuntimeWorldBridge exposes no RNG capability"
+		coordinator.get_node_or_null("AiRuntimeWorldBridge") == null,
+		"production composition contains no AI WorldBridge"
 	)
 
 	var main_source := FileAccess.get_file_as_string("res://scripts/main.gd")
 	var ai_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_runtime_controller.gd")
-	var ai_bridge_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_runtime_world_bridge.gd")
 	_expect(not main_source.contains("var rng :="), "Main no longer owns a RandomNumberGenerator")
 	_expect(not main_source.contains("func _ai_runtime_rng_gateway("), "Main RNG compatibility gateway is physically deleted")
 	_expect(not main_source.contains("_world.get(\"rng\")"), "Main does not provide an RNG compatibility property")
@@ -135,8 +132,8 @@ func _run() -> void:
 		"AI declares only the direct typed RNG dependency"
 	)
 	_expect(
-		not ai_bridge_source.contains("RunRngService") and not ai_bridge_source.contains("shared_rng"),
-		"AI bridge source contains no RNG owner or forwarding API"
+		not FileAccess.file_exists("res://scripts/runtime/ai_runtime_world_bridge.gd"),
+		"retired AI WorldBridge source is physically deleted"
 	)
 	var coordinator_scene_source := FileAccess.get_file_as_string("res://scenes/runtime/GameRuntimeCoordinator.tscn")
 	_expect(coordinator_scene_source.count("RunRngService.tscn") == 1, "production composition contains exactly one RunRngService scene")

@@ -88,7 +88,6 @@ func validation_records() -> Array:
 	var profile := _profile_resource()
 	var resource_payload := policy_resource_main_payload()
 	var controller_source := FileAccess.get_file_as_string(CONTROLLER_SCRIPT_PATH)
-	var bridge_source := FileAccess.get_file_as_string(WORLD_BRIDGE_SCRIPT_PATH)
 	var coordinator_scene := FileAccess.get_file_as_string(COORDINATOR_SCENE_PATH)
 	var main_source := FileAccess.get_file_as_string(MAIN_SCRIPT_PATH)
 	var records: Array = []
@@ -104,7 +103,7 @@ func validation_records() -> Array:
 	records.append(_record("payloads_stay_pure_data", pure_payloads, "policy payloads contain no Callable, Node, Resource, or Object", false, false, true, true))
 	for definition in RUNTIME_CASES:
 		var case_id := str(definition[0])
-		var passed := _runtime_case_passed(case_id, controller_source, bridge_source, coordinator_scene, main_source)
+		var passed := _runtime_case_passed(case_id, controller_source, coordinator_scene, main_source)
 		records.append(_record(case_id, passed, _runtime_case_note(case_id), false, case_id == "six_personality_profile_parity", true, case_id in ["public_private_boundary", "pure_data_snapshots"]))
 	return records
 
@@ -171,16 +170,14 @@ func main_source_payload() -> Dictionary:
 	return policy_resource_main_payload()
 
 
-func _runtime_case_passed(case_id: String, controller: String, bridge: String, coordinator_scene: String, main_source: String) -> bool:
-	var controller_scene_ready := ResourceLoader.exists(CONTROLLER_SCENE_PATH) and ResourceLoader.exists(WORLD_BRIDGE_SCENE_PATH) and coordinator_scene.contains("AiRuntimeController") and coordinator_scene.contains("AiRuntimeWorldBridge")
+func _runtime_case_passed(case_id: String, controller: String, coordinator_scene: String, main_source: String) -> bool:
+	var controller_scene_ready := ResourceLoader.exists(CONTROLLER_SCENE_PATH) \
+		and coordinator_scene.contains("AiRuntimeController")
+	var generic_bridge_deleted := not ResourceLoader.exists(WORLD_BRIDGE_SCENE_PATH) \
+		and not FileAccess.file_exists(WORLD_BRIDGE_SCRIPT_PATH) \
+		and not coordinator_scene.contains("AiRuntimeWorldBridge")
 	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
 	var controller_api_ready := _source_has_functions(controller, ["configure", "reset_state", "build_turn_plan", "build_response_plan", "rank_candidates", "commit_plan_receipt", "to_save_data", "apply_save_data", "policy_snapshot", "debug_snapshot"])
-	var bridge_ready := _source_has_functions(bridge, ["bind_world", "call_world", "debug_snapshot"]) \
-		and not bridge.contains("func read_world_value(") \
-		and not bridge.contains("func write_world_value(") \
-		and not bridge.contains("func read_world_constant(") \
-		and not bridge.contains("func route_intent(") \
-		and not bridge.contains("TableSelectionState")
 	var no_main_algorithms := _main_ai_algorithm_function_count(main_source) == 0
 	match case_id:
 		"controller_scene_composition": return controller_scene_ready
@@ -205,15 +202,15 @@ func _runtime_case_passed(case_id: String, controller: String, bridge: String, c
 		"deterministic_tie_break": return controller.contains("func _candidate_stable_id(")
 		"shared_rng_order_preserved": return controller.contains("func set_run_rng_service(") and controller.contains("return _run_rng_service") and not controller.contains("RandomNumberGenerator.new") and coordinator_source.contains("ai_controller.set_run_rng_service(service)")
 		"fallback_order_preserved": return controller.contains("func _ai_pick_candidate(") and controller.contains("exploration")
-		"legacy_world_intent_route_removed": return not controller.contains("func route_intent(") and not bridge.contains("func route_intent(") and not main_source.contains("_apply_ai_runtime_intent")
-		"legacy_world_intent_apply_removed": return not bridge.contains("_apply_ai_runtime_intent") and not controller.contains("_apply_ai_runtime_intent") and not main_source.contains("_apply_ai_runtime_intent")
-		"public_private_boundary": return controller.contains("private_plan_exposed\": false") and not bridge.contains("intent_routed") and not bridge.contains("func _public_intent(")
+		"legacy_world_intent_route_removed": return generic_bridge_deleted and not controller.contains("func route_intent(") and not controller.contains("_call_world") and not main_source.contains("_apply_ai_runtime_intent")
+		"legacy_world_intent_apply_removed": return generic_bridge_deleted and not controller.contains("_apply_ai_runtime_intent") and not main_source.contains("_apply_ai_runtime_intent")
+		"public_private_boundary": return controller.contains("private_plan_exposed\": false") and generic_bridge_deleted
 		"three_ai_players_complete_cycle": return controller.contains("func _update_ai_decisions(") and controller.contains("func _ai_player_indices(")
 		"main_ai_algorithms_absent": return no_main_algorithms
 		"main_ai_adapter_under_300_lines": return _main_ai_adapter_line_count(main_source) <= 300
 		"execution_service_unchanged": return not FileAccess.get_file_as_string("res://scripts/runtime/card_resolution_execution_runtime_service.gd").contains("AiRuntimeController")
 		"pure_data_snapshots": return _is_pure_data(policy_resource_payload()) and controller.contains("private_plan_exposed\": false")
-		"no_parallel_ai_owner": return no_main_algorithms and controller_scene_ready and bridge_ready
+		"no_parallel_ai_owner": return no_main_algorithms and controller_scene_ready and generic_bridge_deleted
 	return false
 
 

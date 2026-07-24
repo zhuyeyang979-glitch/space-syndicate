@@ -61,14 +61,9 @@ func _run() -> void:
 			"%s consumes the typed selection owner" % bridge_name
 		)
 
-	var ai_bridge := coordinator.get_node_or_null("AiRuntimeWorldBridge") as AiRuntimeWorldBridge
-	var ai_bridge_debug := ai_bridge.debug_snapshot() if ai_bridge != null else {}
 	_expect(
-		ai_bridge != null \
-			and not ai_bridge.has_method("table_selection_state") \
-			and not ai_bridge.has_method("set_table_selection_state") \
-			and not bool(ai_bridge_debug.get("table_selection_state_ready", true)),
-		"AI bridge exposes no human table-selection capability"
+		coordinator.get_node_or_null("AiRuntimeWorldBridge") == null,
+		"AI has no human table-selection bridge component"
 	)
 
 	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")

@@ -2,7 +2,6 @@ extends SceneTree
 
 const AI_SCRIPT := preload("res://scripts/runtime/ai_runtime_controller.gd")
 const PORT_SCRIPT := preload("res://scripts/runtime/ai_v06_economy_action_port.gd")
-const WORLD_BRIDGE_SCRIPT := preload("res://scripts/runtime/ai_runtime_world_bridge.gd")
 const MONSTER_SCRIPT := preload("res://scripts/runtime/monster_runtime_controller.gd")
 
 const ACTOR_ONE := "ai.one"
@@ -298,17 +297,13 @@ func _run() -> void:
 
 func _fixture(bind_port := true) -> Dictionary:
 	var world := FakeWorld.new()
-	var bridge: Node = WORLD_BRIDGE_SCRIPT.new()
 	var monster: Node = MONSTER_SCRIPT.new()
 	var ai: Node = AI_SCRIPT.new()
 	var delegate := FakeEconomyDelegate.new()
 	var port: RefCounted = PORT_SCRIPT.new()
 	get_root().add_child(world)
-	get_root().add_child(bridge)
 	get_root().add_child(monster)
 	get_root().add_child(ai)
-	bridge.call("bind_world", world)
-	ai.call("set_world_bridge", bridge)
 	ai.call("set_monster_runtime_controller", monster)
 	ai.call("configure", {}, null)
 	var starter_state := {
@@ -322,7 +317,6 @@ func _fixture(bind_port := true) -> Dictionary:
 		ai.call("set_v06_economy_action_port", port)
 	return {
 		"world": world,
-		"bridge": bridge,
 		"monster": monster,
 		"ai": ai,
 		"delegate": delegate,
@@ -331,7 +325,7 @@ func _fixture(bind_port := true) -> Dictionary:
 
 
 func _dispose(fixture: Dictionary) -> void:
-	for key in ["ai", "monster", "bridge", "world"]:
+	for key in ["ai", "monster", "world"]:
 		var value: Variant = fixture.get(key)
 		if value is Node and is_instance_valid(value):
 			(value as Node).free()

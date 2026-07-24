@@ -358,14 +358,13 @@ func _entry(entries: Array, district_index: int) -> Dictionary:
 
 func _run_source_negative_gates() -> void:
 	var main_source := FileAccess.get_file_as_string("res://scripts/%s.%s" % ["main", "gd"])
-	var bridge_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_runtime_world_bridge.gd")
 	var controller_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_runtime_controller.gd")
 	var region_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_region_knowledge_query_port.gd")
 	var command_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_city_inference_command_port.gd")
 	var coordinator_scene := FileAccess.get_file_as_string("res://scenes/runtime/GameRuntimeCoordinator.tscn")
 	var registry_scene := FileAccess.get_file_as_string("res://scenes/runtime/V06SaveOwnerRegistry.tscn")
 	_expect(not main_source.contains("CITY_GUESS_CONFIDENCE_") and not main_source.contains("CITY_GUESS_REASON_"), "Main no longer owns AI city inference constants")
-	_expect(not bridge_source.contains("apply_city_owner_guess"), "generic AI world bridge no longer mutates city inference")
+	_expect(not FileAccess.file_exists("res://scripts/runtime/ai_runtime_world_bridge.gd"), "generic AI world bridge is physically deleted")
 	_expect(not controller_source.contains("_world_constant(&\"CITY_GUESS_"), "AI city inference no longer reads Main constant snapshots")
 	_expect(
 		not controller_source.contains("_ai_region_knowledge_capability:")

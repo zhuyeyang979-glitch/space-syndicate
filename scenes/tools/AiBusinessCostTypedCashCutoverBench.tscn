@@ -1,4 +1,4 @@
-[gd_scene load_steps=23 format=3]
+[gd_scene load_steps=22 format=3]
 
 [ext_resource type="Script" path="res://scripts/tools/ai_business_cost_typed_cash_cutover_bench.gd" id="1_bench"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/RunRngService.tscn" id="2_rng"]
@@ -15,7 +15,6 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/SimulationDeterminismAudit.tscn" id="13_audit"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/SimulationMutationAuthority.tscn" id="14_authority"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiBusinessCostCashPort.tscn" id="15_port"]
-[ext_resource type="PackedScene" path="res://scenes/runtime/AiRuntimeWorldBridge.tscn" id="16_ai_bridge"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiRuntimeController.tscn" id="17_ai"]
 [ext_resource type="Script" path="res://scripts/presentation/public_log_presentation_owner.gd" id="18_log_owner"]
 [ext_resource type="Script" path="res://scripts/presentation/public_log_producer_port.gd" id="19_log_port"]
@@ -44,7 +43,6 @@ script = ExtResource("8_monster")
 [node name="SimulationDeterminismAudit" parent="." instance=ExtResource("13_audit")]
 [node name="SimulationMutationAuthority" parent="." instance=ExtResource("14_authority")]
 [node name="AiBusinessCostCashPort" parent="." instance=ExtResource("15_port")]
-[node name="AiRuntimeWorldBridge" parent="." instance=ExtResource("16_ai_bridge")]
 [node name="AiRuntimeController" parent="." instance=ExtResource("17_ai")]
 [node name="PublicLogPresentationOwner" type="Node" parent="."]
 script = ExtResource("18_log_owner")

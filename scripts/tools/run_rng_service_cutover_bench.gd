@@ -9,12 +9,11 @@ func _ready() -> void:
 	coordinator.configure({"ruleset_id": "v0.6"})
 	var service := coordinator.run_rng_service()
 	var ai := coordinator.get_node_or_null("AiRuntimeController") as AiRuntimeController
-	var ai_bridge := coordinator.get_node_or_null("AiRuntimeWorldBridge") as AiRuntimeWorldBridge
 	var world := coordinator.world_session_state()
 	var game_session := coordinator.get_node_or_null("GameSessionRuntimeController") as GameSessionRuntimeController
 	var market := coordinator.get_node_or_null("ProductMarketRuntimeController") as ProductMarketRuntimeController
 	checks += 1
-	if service == null or ai == null or ai_bridge == null or world == null or game_session == null or market == null:
+	if service == null or ai == null or world == null or game_session == null or market == null:
 		failures.append("typed_rng_composition_missing")
 	else:
 		checks += 1
@@ -90,9 +89,8 @@ func _ready() -> void:
 		if bridge == null or not bridge.has_method("shared_rng") or bridge.call("shared_rng") != service:
 			failures.append("typed_rng_bridge_missing:%s" % bridge_name)
 	checks += 1
-	if ai_bridge == null or ai_bridge.has_method("shared_rng") or ai_bridge.has_method("set_rng_service") \
-			or bool(ai_bridge.debug_snapshot().get("rng_service_ready", true)):
-		failures.append("ai_bridge_still_exposes_rng")
+	if coordinator.get_node_or_null("AiRuntimeWorldBridge") != null:
+		failures.append("ai_world_bridge_not_deleted")
 
 	var snapshot := service.debug_snapshot() if service != null else {}
 	checks += 1

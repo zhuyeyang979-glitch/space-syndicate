@@ -35,7 +35,7 @@ func _run() -> void:
 	add_child(_coordinator)
 	await get_tree().process_frame
 	_coordinator.configure(RULESET_V04.debug_snapshot())
-	_coordinator.bind_ai_world(self)
+	_coordinator.bind_runtime_world(self)
 	_estate = _coordinator.get_node_or_null("BankruptcyNeutralEstateRuntimeController") as BankruptcyNeutralEstateRuntimeController
 	_flow = _coordinator.get_node_or_null("CommodityFlowRuntimeController") as CommodityFlowRuntimeController
 	_flow_bridge = _coordinator.get_node_or_null("CommodityFlowWorldBridge") as CommodityFlowWorldBridge

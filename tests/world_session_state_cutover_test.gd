@@ -21,11 +21,10 @@ func _run() -> void:
 	var actor_port := coordinator.get_node_or_null("AiActorStatePort") as AiActorStatePort
 	var region_port := coordinator.get_node_or_null("AiRegionKnowledgeQueryPort") as AiRegionKnowledgeQueryPort
 	var ai := coordinator.get_node_or_null("AiRuntimeController") as AiRuntimeController
-	var ai_bridge := coordinator.get_node_or_null("AiRuntimeWorldBridge") as AiRuntimeWorldBridge
 	var rng := coordinator.run_rng_service()
 	_expect(
 		state != null and game_session != null and session_port != null and actor_port != null \
-			and region_port != null and ai != null and ai_bridge != null and rng != null,
+			and region_port != null and ai != null and rng != null,
 		"production coordinator owns WorldSessionState and the scoped AI query ports"
 	)
 	_expect(coordinator.get_node_or_null("WorldSessionState") == state, "production composition contains one stable world-session owner")
@@ -148,12 +147,9 @@ func _run() -> void:
 			bridge != null and bridge.call("world_session_state") == state,
 			"%s consumes the typed world-session owner" % bridge_name
 		)
-	var ai_bridge_debug := ai_bridge.debug_snapshot()
 	_expect(
-		not ai_bridge.has_method("world_session_state") \
-			and not ai_bridge.has_method("set_world_session_state") \
-			and not bool(ai_bridge_debug.get("world_session_state_ready", true)),
-		"AI bridge exposes no mutable WorldSessionState capability"
+		coordinator.get_node_or_null("AiRuntimeWorldBridge") == null,
+		"AI consumes WorldSessionState only through scoped typed ports"
 	)
 
 	var player_state_adapter := coordinator.get_node_or_null("CardPlayerStateProductionAdapterV06")

@@ -58,7 +58,7 @@ func run_checks() -> Dictionary:
 	var world := RuntimeWorld.new()
 	world.name = "RuntimeWorldFixture"
 	add_child(world)
-	coordinator.bind_ai_world(world)
+	coordinator.bind_runtime_world(world)
 	coordinator.world_session_state().replace_players(world.players, true)
 	coordinator.world_session_state().replace_districts(world.districts, true)
 	coordinator.refresh_v06_production_player_bindings(world)

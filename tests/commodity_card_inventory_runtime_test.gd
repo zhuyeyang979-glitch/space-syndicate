@@ -29,7 +29,7 @@ func _run() -> void:
 	var world := RuntimeWorld.new()
 	world.players = [_player_fixture(0), _player_fixture(1)]
 	root.add_child(world)
-	coordinator.bind_ai_world(world)
+	coordinator.bind_runtime_world(world)
 	var controller := coordinator.commodity_card_inventory_runtime_controller()
 	var state_adapter := coordinator.card_player_state_production_adapter_v06()
 	var core_adapter := coordinator.core_economic_card_runtime_adapter_v06()

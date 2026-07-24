@@ -111,7 +111,7 @@ func run_checks() -> Dictionary:
 
 	var world := RuntimeWorld.new()
 	add_child(world)
-	coordinator.call("bind_ai_world", world)
+	coordinator.call("bind_runtime_world", world)
 	var catalog: Resource = inventory.call("catalog")
 	var supply_configured: Dictionary = source.call(
 		"configure",

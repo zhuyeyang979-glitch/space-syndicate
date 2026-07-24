@@ -424,7 +424,7 @@ func _run() -> void:
 	_expect(_verify_reacquired_card_upgrade_rules(main), "reacquiring an owned card upgrades its family and stops at rank IV")
 	_expect(_verify_card_rank_ladders_are_complete(main), "all base card families expose non-regressing I-IV rank ladders at the rank-I price")
 	_expect(_verify_playable_card_resolution_coverage(main), "all codex cards and generated monster fixed-skill cards have concrete resolution handlers")
-	_expect(_verify_agent_policy_audit_report(main), "test-only Agent audit reports AI candidate metadata, monster target weights, hidden-info leaks, and missing handlers without player UI exposure")
+	_expect(_verify_agent_policy_audit_report(main), "test-only Agent audit reports AI candidate metadata, monster target weights, and missing handlers without player UI exposure")
 	_expect(_verify_hidden_info_leak_audit(main), "player-facing UI does not leak AI reason, exact scores, pressure buckets, decision samples, or private rival state")
 	_mark_smoke_progress("card supply and product ecosystem")
 	_expect(_all_card_supply_entries_are_base_rank(main, districts), "card supplies and codex indexes offer base copies while upgrades happen through hand merging")
@@ -6270,9 +6270,6 @@ func _verify_agent_policy_audit_report(main: Node) -> bool:
 		failures.append("monster target destroyed_zero_ok false")
 	if int(monster_target.get("actor_count", 0)) > 0 and not bool(monster_target.get("any_positive_alive", false)):
 		failures.append("no positive alive monster target")
-	var hidden_info := report.get("hidden_info", {}) as Dictionary
-	if int(hidden_info.get("leak_count", -1)) != 0:
-		failures.append("hidden leak report: %s" % str(hidden_info.get("leaks", [])))
 	var ai_reports := _as_array(report.get("ai_players", []))
 	var required_groups := ["card_play", "card_buy", "auction", "counter", "contract", "intel", "monster_wager", "military", "weather"]
 	var saw_candidate_group := false
@@ -6326,16 +6323,56 @@ func _reset_card_resolution_state_for_test(main: Node) -> void:
 
 func _verify_hidden_info_leak_audit(main: Node) -> bool:
 	main.call("_refresh_ui")
-	if not _ai_controller(main).has_method("_hidden_info_leak_audit"):
-		print("Hidden info leak audit helper missing")
+	var texts: Array = []
+	_collect_visible_player_facing_text(main, texts)
+	if texts.is_empty():
+		print("Hidden info leak audit found no visible player-facing text")
 		return false
-	var report := _ai_controller(main).call("_hidden_info_leak_audit") as Dictionary
-	var ok := bool(report.get("test_only", false)) \
-		and int(report.get("checked_text_count", 0)) > 0 \
-		and int(report.get("leak_count", -1)) == 0
-	if not ok:
-		print("Hidden info leak audit failed: %s" % str(report))
-	return ok
+	var forbidden_terms := [
+		"ai_reason",
+		"ai_utility_score",
+		"route_plan_score",
+		"pressure bucket",
+		"pressure_bucket",
+		"decision_samples",
+		"learning_bonus",
+		"rival exact hand",
+		"rival exact discard",
+		"private route plan",
+		"exact AI score",
+	]
+	var leaks: Array = []
+	for text_index in range(texts.size()):
+		var text := str(texts[text_index])
+		var lower_text := text.to_lower()
+		for term_variant in forbidden_terms:
+			var term := str(term_variant)
+			if lower_text.contains(term.to_lower()):
+				leaks.append({"term": term, "text_index": text_index, "text": text.left(96)})
+	if not leaks.is_empty():
+		print("Hidden info leak audit failed: %s" % str(leaks))
+	return leaks.is_empty()
+
+
+func _collect_visible_player_facing_text(node: Node, result: Array) -> void:
+	if node == null:
+		return
+	if node is CanvasItem and not (node as CanvasItem).is_visible_in_tree():
+		return
+	if node is Label:
+		result.append(str((node as Label).text))
+	elif node is RichTextLabel:
+		result.append(str((node as RichTextLabel).text))
+	elif node is Button:
+		result.append(str((node as Button).text))
+	elif node is LineEdit:
+		result.append(str((node as LineEdit).text))
+	if node is Control:
+		var tooltip := str((node as Control).tooltip_text)
+		if not tooltip.is_empty():
+			result.append(tooltip)
+	for child in node.get_children():
+		_collect_visible_player_facing_text(child, result)
 
 
 func _map_view_uses_unified_monster_markers() -> bool:

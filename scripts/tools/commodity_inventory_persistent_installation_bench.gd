@@ -176,7 +176,7 @@ func _setup_runtime() -> void:
 	_world = RuntimeWorld.new()
 	_world.players = [_player_fixture(0), _player_fixture(1)]
 	runtime_host.add_child(_world)
-	_coordinator.bind_ai_world(_world)
+	_coordinator.bind_runtime_world(_world)
 	_controller = _coordinator.commodity_card_inventory_runtime_controller()
 	_state_adapter = _coordinator.card_player_state_production_adapter_v06()
 	_core_economic_adapter = _coordinator.core_economic_card_runtime_adapter_v06()

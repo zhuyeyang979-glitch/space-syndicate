@@ -21,7 +21,6 @@ const FailOncePublicLogPortScript := preload("res://scripts/tools/ai_business_co
 @onready var audit: SimulationDeterminismAudit = $SimulationDeterminismAudit
 @onready var authority: SimulationMutationAuthority = $SimulationMutationAuthority
 @onready var cash_port: AiBusinessCostCashPort = $AiBusinessCostCashPort
-@onready var ai_bridge: AiRuntimeWorldBridge = $AiRuntimeWorldBridge
 @onready var ai: AiRuntimeController = $AiRuntimeController
 @onready var public_log_owner: PublicLogPresentationOwner = $PublicLogPresentationOwner
 @onready var public_log_port: PublicLogProducerPort = $PublicLogProducerPort
@@ -108,8 +107,6 @@ func _configure_static_dependencies() -> void:
 	monster.set_qa_world_session_state(world)
 	query.configure(world, monster)
 	cash.configure(world, query, authority)
-	ai_bridge.bind_world(self)
-	ai.set_world_bridge(ai_bridge)
 	ai.set_run_rng_service(rng)
 	ai.set_monster_runtime_controller(monster)
 	ai.set_product_market_runtime_controller(market)

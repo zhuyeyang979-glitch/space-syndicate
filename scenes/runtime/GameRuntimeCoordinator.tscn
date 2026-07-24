@@ -1,4 +1,4 @@
-[gd_scene load_steps=135 format=3]
+[gd_scene load_steps=134 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -30,7 +30,6 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardEconomyProductRouteEffectWorldBridge.tscn" id="26_economy_product_route_bridge"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardEconomyProductRouteFormulaRuntimeService.tscn" id="27_economy_product_route_formula"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiRuntimeController.tscn" id="28_ai_runtime"]
-[ext_resource type="PackedScene" path="res://scenes/runtime/AiRuntimeWorldBridge.tscn" id="29_ai_world_bridge"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardPresentationRuntimeService.tscn" id="30_card_presentation"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/GameTableViewModelRuntimeService.tscn" id="31_table_viewmodel"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/PlayerSeatPublicSourceService.tscn" id="81_player_seat_source"]
@@ -344,9 +343,6 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="AiRuntimeController" parent="." instance=ExtResource("28_ai_runtime")]
-unique_name_in_owner = true
-
-[node name="AiRuntimeWorldBridge" parent="." instance=ExtResource("29_ai_world_bridge")]
 unique_name_in_owner = true
 
 [node name="AiActorStatePort" parent="." instance=ExtResource("130_ai_actor_state")]

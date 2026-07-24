@@ -306,7 +306,6 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var weather_controller := _weather_runtime_controller_node()
 	var weather_world_bridge := _weather_runtime_world_bridge_node()
 	var ai_controller := _ai_runtime_controller_node()
-	var ai_world_bridge := _ai_runtime_world_bridge_node()
 	var visual_cue_owner := _visual_cue_runtime_owner_node()
 	var victory_controller := _victory_control_runtime_controller_node()
 	var victory_world_bridge := _victory_control_world_bridge_node()
@@ -334,8 +333,6 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	var weather_presentation := _weather_presentation_runtime_service_node()
 	if weather_presentation != null and weather_presentation.has_method("configure"):
 		weather_presentation.call("configure", weather_controller)
-	if ai_controller != null and ai_controller.has_method("set_world_bridge"):
-		ai_controller.call("set_world_bridge", ai_world_bridge)
 	if ai_controller != null and ai_controller.has_method("set_monster_runtime_controller"):
 		ai_controller.call("set_monster_runtime_controller", monster_controller)
 	if ai_controller != null and ai_controller.has_method("set_military_runtime_controller"):
@@ -501,7 +498,7 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	_refresh_coordinator_readiness()
 
 
-func bind_ai_world(world: Node) -> void:
+func bind_runtime_world(world: Node) -> void:
 	_bound_world = world
 	var card_market_bridge := _card_market_policy_world_bridge_node()
 	if card_market_bridge != null and card_market_bridge.has_method("bind_world"):
@@ -555,12 +552,7 @@ func bind_ai_world(world: Node) -> void:
 		commodity_flow_controller.call("set_world_bridge", commodity_flow_bridge)
 	_wire_commodity_flow_postcommit()
 	refresh_v06_production_player_bindings(world)
-	var bridge := _ai_runtime_world_bridge_node()
-	if bridge != null and bridge.has_method("bind_world"):
-		bridge.call("bind_world", world)
 	var controller := _ai_runtime_controller_node()
-	if controller != null and controller.has_method("set_world_bridge"):
-		controller.call("set_world_bridge", bridge)
 	if controller != null and controller.has_method("set_gameplay_balance_diagnostics_service"):
 		controller.call("set_gameplay_balance_diagnostics_service", balance_diagnostics)
 	if controller != null and controller.has_method("set_route_network_runtime_controller"):
@@ -5805,10 +5797,6 @@ func _victory_control_world_bridge_node() -> Node:
 
 func _ai_runtime_controller_node() -> Node:
 	return get_node_or_null("AiRuntimeController")
-
-
-func _ai_runtime_world_bridge_node() -> Node:
-	return get_node_or_null("AiRuntimeWorldBridge")
 
 
 func _ai_actor_state_port_node() -> AiActorStatePort:

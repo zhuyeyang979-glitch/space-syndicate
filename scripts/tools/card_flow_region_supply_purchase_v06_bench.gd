@@ -55,7 +55,7 @@ func _run() -> void:
 	)
 	var world := RuntimeWorld.new()
 	add_child(world)
-	coordinator.call("bind_ai_world", world)
+	coordinator.call("bind_runtime_world", world)
 	var inventory: Node = coordinator.call(
 		"commodity_card_inventory_runtime_controller"
 	)

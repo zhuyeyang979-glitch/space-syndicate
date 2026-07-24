@@ -68,7 +68,7 @@ func _run() -> void:
 	var other_after := region_port.actor_intelligence_snapshot(capability, 2)
 	_check(int(_region_city(after, "region.001").get("owner", -1)) == 2, "own_guess_visible")
 	_check(int(_region_city(other_after, "region.001").get("owner", -1)) == 2 and str(_region_city(other_after, "region.001").get("owner_knowledge", "")) == "actor_own", "other_actor_sees_only_own_city")
-	_check(not FileAccess.get_file_as_string("res://scripts/runtime/ai_runtime_world_bridge.gd").contains("apply_city_owner_guess"), "generic_bridge_mutation_removed")
+	_check(not FileAccess.file_exists("res://scripts/runtime/ai_runtime_world_bridge.gd"), "generic_bridge_deleted")
 	_check(not FileAccess.get_file_as_string("res://scripts/%s.%s" % ["main", "gd"]).contains("CITY_GUESS_CONFIDENCE_"), "main_inference_constants_removed")
 
 	if _failures.is_empty():

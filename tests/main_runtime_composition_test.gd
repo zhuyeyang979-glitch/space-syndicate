@@ -10,7 +10,6 @@ const CARD_ECONOMY_PRODUCT_ROUTE_EFFECT_SERVICE := "res://scenes/runtime/CardEco
 const CARD_ECONOMY_PRODUCT_ROUTE_EFFECT_WORLD_BRIDGE := "res://scenes/runtime/CardEconomyProductRouteEffectWorldBridge.tscn"
 const CARD_ECONOMY_PRODUCT_ROUTE_FORMULA_SERVICE := "res://scenes/runtime/CardEconomyProductRouteFormulaRuntimeService.tscn"
 const AI_RUNTIME_CONTROLLER := "res://scenes/runtime/AiRuntimeController.tscn"
-const AI_RUNTIME_WORLD_BRIDGE := "res://scenes/runtime/AiRuntimeWorldBridge.tscn"
 const CARD_PRESENTATION_RUNTIME_SERVICE := "res://scenes/runtime/CardPresentationRuntimeService.tscn"
 const GAME_TABLE_VIEWMODEL_RUNTIME_SERVICE := "res://scenes/runtime/GameTableViewModelRuntimeService.tscn"
 const ACTION_RESULT_PRESENTATION_SERVICE := "res://scenes/runtime/ActionResultPresentationService.tscn"
@@ -191,7 +190,6 @@ func _check_static_composition(main: Control) -> void:
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/AiRuntimeController",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/AiRegionKnowledgeQueryPort",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/AiCityInferenceCommandPort",
-		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/AiRuntimeWorldBridge",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardPresentationRuntimeService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameTableViewModelRuntimeService",
 		"RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/CardPlayEligibilityRuntimeService",
@@ -280,7 +278,6 @@ func _check_static_composition(main: Control) -> void:
 	var balance_diagnostics := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameplayBalanceDiagnosticsRuntimeService")
 	var balance_diagnostics_world_bridge := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameplayBalanceDiagnosticsWorldBridge")
 	var ai_runtime_controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/AiRuntimeController")
-	var ai_runtime_world_bridge := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/AiRuntimeWorldBridge")
 	var ai_session_public_query := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/AiSessionPublicQueryPort")
 	var ai_card_hand_query := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/AiCardHandQueryPort")
 	var ai_card_eligibility_query := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/AiCardEligibilityQueryPort")
@@ -360,22 +357,14 @@ func _check_static_composition(main: Control) -> void:
 	_expect(ai_region_knowledge_query != null and ai_region_knowledge_query.scene_file_path == "res://scenes/runtime/AiRegionKnowledgeQueryPort.tscn" and ai_region_knowledge_query.has_method("actor_intelligence_snapshot") and ai_region_knowledge_query.has_method("bind_ai_capabilities") and not ai_region_knowledge_query.has_method("bind_ai_capability") and not ai_region_knowledge_query.has_method("to_save_data"), "GameRuntimeCoordinator owns one actor-scoped non-owning AI region-knowledge query port")
 	_expect(ai_city_inference_command != null and ai_city_inference_command.scene_file_path == "res://scenes/runtime/AiCityInferenceCommandPort.tscn" and ai_city_inference_command.has_method("submit_guess") and ai_city_inference_command.has_method("bind_ai_capabilities") and not ai_city_inference_command.has_method("bind_ai_capability") and not ai_city_inference_command.has_method("to_save_data"), "GameRuntimeCoordinator owns one actor-scoped non-owning AI city-inference command port")
 	_expect(
-		ai_runtime_world_bridge != null
-			and ai_runtime_world_bridge.scene_file_path == AI_RUNTIME_WORLD_BRIDGE
-			and ai_runtime_world_bridge.has_method("bind_world")
-			and ai_runtime_world_bridge.has_method("call_world")
-			and ai_runtime_world_bridge.has_method("debug_snapshot")
-			and not ai_runtime_world_bridge.has_method("read_world_value")
-			and not ai_runtime_world_bridge.has_method("write_world_value")
-			and not ai_runtime_world_bridge.has_method("read_world_constant")
-			and not ai_runtime_world_bridge.has_method("route_intent")
-			and not ai_runtime_world_bridge.has_method("table_selection_state")
-			and not ai_runtime_world_bridge.has_method("world_session_state")
-			and not ai_runtime_world_bridge.has_method("shared_rng")
+		coordinator.get_node_or_null("AiRuntimeWorldBridge") == null
+			and not ResourceLoader.exists("res://scenes/runtime/AiRuntimeWorldBridge.tscn")
+			and not FileAccess.file_exists("res://scripts/runtime/ai_runtime_world_bridge.gd")
+			and not main_source.contains("bind_ai_world")
 			and not main_source.contains("func _apply_ai_runtime_intent(")
 			and not main_source.contains("func _on_ai_runtime_event(")
 			and not main_source.contains("func _ai_runtime_world_constant_snapshot("),
-		"AI bridge retains only the remaining call-world boundary and no generic get, set, constant, intent, selection, world-state, or RNG access"
+		"AI runtime is composed only from typed ports; the generic WorldBridge and Main binding are deleted"
 	)
 	_expect(card_presentation != null and card_presentation.scene_file_path == CARD_PRESENTATION_RUNTIME_SERVICE and card_presentation.has_method("compose_card") and card_presentation.has_method("compose_hand_card") and card_presentation.has_method("compose_resolution") and card_presentation.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the authoritative CardPresentationRuntimeService scene")
 	_expect(table_viewmodel != null and table_viewmodel.scene_file_path == GAME_TABLE_VIEWMODEL_RUNTIME_SERVICE and table_viewmodel.has_method("compose_table") and table_viewmodel.has_method("compose_card_surfaces") and table_viewmodel.has_method("compose_resolution_overlay_badges") and table_viewmodel.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the authoritative GameTableViewModelRuntimeService scene")

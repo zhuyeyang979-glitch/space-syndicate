@@ -1001,8 +1001,7 @@ func _bind_game_runtime_coordinator() -> void:
 	if coordinator == null or not coordinator.has_method("configure") or not coordinator.has_method("debug_snapshot"):
 		_mark_game_runtime_coordinator_missing(true)
 		return
-	if coordinator.has_method("bind_ai_world"):
-		coordinator.call("bind_ai_world", self)
+	coordinator.bind_runtime_world(self)
 	coordinator.call("configure", _ruleset_runtime_debug_snapshot())
 	monster_runtime_controller = coordinator.call("monster_runtime_controller") as MonsterRuntimeController if coordinator.has_method("monster_runtime_controller") else null
 	military_runtime_controller = coordinator.call("military_runtime_controller") as MilitaryRuntimeController if coordinator.has_method("military_runtime_controller") else null
@@ -4012,33 +4011,6 @@ func _player_is_ai(player_index: int) -> bool:
 
 func _human_player_count() -> int:
 	return max(0, _game_runtime_coordinator_node().world_session_state().players.size() - _ai_runtime_call("_ai_player_count"))
-
-
-func _player_facing_text_snapshot() -> Array:
-	var result := []
-	_collect_player_facing_text(self, result)
-	return result
-
-
-func _collect_player_facing_text(node: Node, result: Array) -> void:
-	if node == null:
-		return
-	if node is CanvasItem and not (node as CanvasItem).is_visible_in_tree():
-		return
-	if node is Label:
-		result.append(String((node as Label).text))
-	elif node is RichTextLabel:
-		result.append(String((node as RichTextLabel).text))
-	elif node is Button:
-		result.append(String((node as Button).text))
-	elif node is LineEdit:
-		result.append(String((node as LineEdit).text))
-	if node is Control:
-		var tooltip := String((node as Control).tooltip_text)
-		if tooltip != "":
-			result.append(tooltip)
-	for child in node.get_children():
-		_collect_player_facing_text(child, result)
 
 
 func _catalog_size() -> int:
