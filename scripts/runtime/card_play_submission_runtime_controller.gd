@@ -752,7 +752,8 @@ func _inventory_snapshot(player: Dictionary) -> Dictionary:
 			slot_facts.append({"slot_index": slot_index, "occupied": false})
 			continue
 		var card: Dictionary = slots[slot_index]
-		var counts := not (bool(card.get("persistent", false)) and str(card.get("kind", "")) in ["monster_bound_action", "military_command"])
+		var counts := CardInventoryRuntimeService \
+			.canonical_card_counts_toward_hand_limit(card)
 		if counts:
 			counted += 1
 		slot_facts.append({

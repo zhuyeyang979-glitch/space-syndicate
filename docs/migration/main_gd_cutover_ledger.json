@@ -264,7 +264,10 @@
         },
         {
           "domain": "ai_actor_economy_facts",
-          "status": "validated_candidate",
+          "status": "merged",
+          "pull_request": 55,
+          "commit_sha": "b50d0fc5de13d9b5eb88806d1c2b38c7da84374f",
+          "merge_commit_sha": "3d659323b8ed36088489cadc485cc3ffb8bf64e8",
           "query_port": "res://scripts/runtime/ai_actor_economy_facts_query_port.gd",
           "authoritative_owners": [
             "res://scripts/runtime/world_session_state.gd",
@@ -275,6 +278,23 @@
             "res://tests/ai_actor_economy_facts_typed_port_migration_test.gd",
             "res://scenes/tools/AiActorEconomyFactsTypedPortMigrationBench.tscn"
           ],
+          "parent_domain_complete": false
+        },
+        {
+          "domain": "ai_actor_hand_inventory",
+          "status": "validated_candidate",
+          "query_port": "res://scripts/runtime/ai_actor_hand_inventory_query_port.gd",
+          "authoritative_owners": [
+            "res://scripts/runtime/world_session_state.gd",
+            "res://scripts/runtime/card_inventory_runtime_service.gd",
+            "res://scripts/runtime/game_session_runtime_controller.gd"
+          ],
+          "tests": [
+            "res://tests/ai_actor_hand_inventory_typed_port_migration_test.gd",
+            "res://scenes/tools/AiActorHandInventoryTypedPortMigrationBench.tscn"
+          ],
+          "new_main_caller_count": 0,
+          "new_save_section_count": 0,
           "parent_domain_complete": false
         }
       ]

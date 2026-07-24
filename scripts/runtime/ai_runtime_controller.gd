@@ -27,6 +27,8 @@ const AI_PLAYER_SAVE_FIELDS := ["player_index", "ai_profile", "ai_memory"]
 var _world_bridge: Node
 var _ai_actor_state_port: AiActorStatePort
 var _ai_actor_state_capability: AiActorStateCapability
+var _ai_actor_hand_inventory_query_port: AiActorHandInventoryQueryPort
+var _ai_actor_hand_inventory_capability: AiActorHandInventoryCapability
 var _ai_region_knowledge_query_port: AiRegionKnowledgeQueryPort
 var _ai_region_knowledge_capability: AiRegionKnowledgeCapability
 var _ai_city_inference_command_port: AiCityInferenceCommandPort
@@ -77,6 +79,14 @@ func set_world_typed_ports(
 	_ai_region_knowledge_query_port = region_knowledge_query_port
 	_ai_region_knowledge_capability = region_knowledge_capability
 	_ai_city_inference_command_port = city_inference_command_port
+
+
+func set_actor_hand_inventory_query_port(
+	port: AiActorHandInventoryQueryPort,
+	capability: AiActorHandInventoryCapability
+) -> void:
+	_ai_actor_hand_inventory_query_port = port
+	_ai_actor_hand_inventory_capability = capability
 
 
 func set_monster_runtime_controller(controller: MonsterRuntimeController) -> void:
@@ -462,6 +472,7 @@ func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 			_configured
 			and _world_ready()
 			and _actor_state_ready()
+			and _actor_hand_inventory_ready()
 			and _actor_economy_facts_ready()
 		),
 		"runtime_owner": "res://scripts/runtime/ai_runtime_controller.gd",
@@ -488,6 +499,10 @@ func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 		"typed_actor_state_bound": _ai_actor_state_port != null and _ai_actor_state_capability != null,
 		"actor_state_uses_main": false,
 		"actor_state_uses_whole_players": false,
+		"typed_actor_hand_inventory_bound": _actor_hand_inventory_ready(),
+		"actor_hand_inventory_uses_main": false,
+		"actor_hand_inventory_uses_whole_players": false,
+		"actor_hand_inventory_stores_state": false,
 		"typed_region_knowledge_bound": _ai_region_knowledge_query_port != null and _ai_region_knowledge_capability != null,
 		"typed_city_inference_command_bound": _ai_city_inference_command_port != null,
 		"city_inference_uses_main": false,
@@ -513,6 +528,74 @@ func _actor_state_ready() -> bool:
 	return _ai_actor_state_port != null \
 		and _ai_actor_state_capability != null \
 		and _ai_actor_state_port.is_ready()
+
+
+func _actor_hand_inventory_ready() -> bool:
+	return (
+		_ai_actor_hand_inventory_query_port != null
+		and _ai_actor_hand_inventory_capability != null
+		and _ai_actor_hand_inventory_query_port.is_ready()
+	)
+
+
+func _actor_hand_inventory_snapshot(player_index: int) -> Dictionary:
+	if not _actor_hand_inventory_ready():
+		return {}
+	return _ai_actor_hand_inventory_query_port.actor_hand_snapshot(
+		_ai_actor_hand_inventory_capability,
+		player_index
+	)
+
+
+func _actor_hand_slot_entries(snapshot: Dictionary) -> Array:
+	var value: Variant = snapshot.get("slots", [])
+	return (value as Array).duplicate(true) if value is Array else []
+
+
+func _actor_hand_card_at(snapshot: Dictionary, slot_index: int) -> Dictionary:
+	var slots := _actor_hand_slot_entries(snapshot)
+	if slot_index < 0 or slot_index >= slots.size() or not (slots[slot_index] is Dictionary):
+		return {}
+	var entry := slots[slot_index] as Dictionary
+	var card_variant: Variant = entry.get("card", {})
+	return (card_variant as Dictionary).duplicate(true) if card_variant is Dictionary else {}
+
+
+func _actor_counted_hand_size(snapshot: Dictionary) -> int:
+	return maxi(0, int(snapshot.get("counted_hand_size", 0))) if not snapshot.is_empty() else 0
+
+
+func _actor_hand_limit(snapshot: Dictionary) -> int:
+	return maxi(0, int(snapshot.get("hand_limit", 0))) if not snapshot.is_empty() else 0
+
+
+func _actor_discardable_slot_indices(snapshot: Dictionary) -> Array:
+	var value: Variant = snapshot.get("discardable_slot_indices", [])
+	return (value as Array).duplicate() if value is Array else []
+
+
+func _actor_highest_family_card_slot(snapshot: Dictionary, skill_name: String) -> int:
+	if snapshot.is_empty() or skill_name.is_empty() or _card_definition_bridge == null:
+		return -1
+	var family := _card_definition_bridge.family_id(skill_name)
+	if family.is_empty():
+		return -1
+	var best_slot := -1
+	var best_rank := -1
+	for entry_variant in _actor_hand_slot_entries(snapshot):
+		if not (entry_variant is Dictionary):
+			continue
+		var entry := entry_variant as Dictionary
+		if not bool(entry.get("occupied", false)):
+			continue
+		var current_name := str(entry.get("card_id", ""))
+		if _card_definition_bridge.family_id(current_name) != family:
+			continue
+		var rank := maxi(1, _card_definition_bridge.rank(current_name))
+		if rank > best_rank:
+			best_rank = rank
+			best_slot = int(entry.get("slot_index", -1))
+	return best_slot
 
 
 func _actor_economy_facts_ready() -> bool:
@@ -1004,10 +1087,6 @@ var ECONOMY_LEGACY_TURN_SECONDS:
 var NEARBY_RADIUS_METERS:
 	get:
 		return _world_constant(&"NEARBY_RADIUS_METERS")
-
-var PLAYER_HAND_LIMIT:
-	get:
-		return _world_constant(&"PLAYER_HAND_LIMIT")
 
 var PRODUCT_CATALOG:
 	get:
@@ -1609,17 +1688,10 @@ func _queued_card_entry_index_for_player(player_index: int) -> int:
 func _next_batch_card_entry_index_for_player(player_index: int) -> int:
 	return _call_world(&"_next_batch_card_entry_index_for_player", [player_index])
 
-func _find_highest_family_card_slot(player: Dictionary, skill_name: String) -> int:
-	return _call_world(&"_find_highest_family_card_slot", [player, skill_name])
-
-func _player_counted_hand_size(player: Dictionary) -> int:
-	return _call_world(&"_player_counted_hand_size", [player])
-
 func _discardable_hand_slots_for_purchase(player_index: int) -> Array:
-	return _district_supply_runtime_query_port.private_discardable_slots_for_actor(
-		_district_supply_ai_query_capability,
-		player_index
-	) if _district_supply_runtime_query_port != null else []
+	return _actor_discardable_slot_indices(
+		_actor_hand_inventory_snapshot(player_index)
+	)
 
 func _player_can_receive_card_with_discard(player_index: int, skill_name: String) -> bool:
 	return _district_supply_runtime_query_port.private_can_receive_with_discard(
@@ -3770,8 +3842,10 @@ func _ai_direct_interaction_target_player(player_index: int) -> int:
 func _ai_actor_private_receive_pressure(player_index: int, kind: String, skill: Dictionary) -> int:
 	if kind != "player_hand_steal" or player_index < 0 or player_index >= _public_player_count():
 		return 0
-	var actor: Dictionary = players[player_index]
-	if _player_counted_hand_size(actor) < PLAYER_HAND_LIMIT:
+	var hand_snapshot := _actor_hand_inventory_snapshot(player_index)
+	if hand_snapshot.is_empty():
+		return 0
+	if _actor_counted_hand_size(hand_snapshot) < _actor_hand_limit(hand_snapshot):
 		return 46
 	return int(float(maxi(0, int(skill.get("steal_fail_cash", 0)))) / 3.0) - 32
 
@@ -4130,9 +4204,9 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 		return {}
 	var focus_product := _ai_focus_product(player_index)
 	var phase_info := _ai_refresh_game_phase(player_index)
-	var player: Dictionary = players[player_index]
 	var economy_facts := _actor_training_economy_facts(player_index)
-	if economy_facts.is_empty():
+	var hand_snapshot := _actor_hand_inventory_snapshot(player_index)
+	if economy_facts.is_empty() or hand_snapshot.is_empty():
 		return {}
 	var memory := _ai_memory_for_player(player_index)
 	var total_flow := 0
@@ -4142,7 +4216,7 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 		"cash": int(economy_facts.get("total_cash_units", 0)),
 		"victory_top_n_gdp_per_minute": _victory_top_n_gdp(player_index),
 		"victory_controlled_region_count": _victory_controlled_regions(player_index),
-		"counted_hand": _player_counted_hand_size(player),
+		"counted_hand": _actor_counted_hand_size(hand_snapshot),
 		"cities": _player_active_city_count(player_index),
 		"owned_monsters": _ai_owned_active_monster_count(player_index),
 		"field_monsters": _active_auto_monster_count(),
@@ -5543,7 +5617,7 @@ func _ai_play_requirement_metadata(player_index: int, skill: Dictionary, planned
 		"qualifying_district": int(status.get("qualifying_district", -1)),
 		"requirement_satisfied": bool(status.get("requirement_satisfied", false)),
 	}
-func _ai_route_hand_inventory(player_index: int, route_id: String) -> Dictionary:
+func _ai_route_hand_inventory(player_index: int, route_id: String, hand_snapshot: Dictionary = {}) -> Dictionary:
 	var result := {
 		"total": 0,
 		"playable": 0,
@@ -5554,15 +5628,18 @@ func _ai_route_hand_inventory(player_index: int, route_id: String) -> Dictionary
 	}
 	if player_index < 0 or player_index >= _public_player_count() or route_id == "":
 		return result
-	var player: Dictionary = players[player_index]
-	var slots_variant: Variant = player.get("slots", [])
-	if not (slots_variant is Array):
+	var snapshot := hand_snapshot if not hand_snapshot.is_empty() \
+		else _actor_hand_inventory_snapshot(player_index)
+	if snapshot.is_empty():
 		return result
 	var cash := _spendable_cash_units(player_index)
-	for slot_variant in (slots_variant as Array):
-		if not (slot_variant is Dictionary):
+	for entry_variant in _actor_hand_slot_entries(snapshot):
+		if not (entry_variant is Dictionary):
 			continue
-		var skill := slot_variant as Dictionary
+		var entry := entry_variant as Dictionary
+		if not bool(entry.get("occupied", false)):
+			continue
+		var skill := entry.get("card", {}) as Dictionary
 		if bool(skill.get("queued_for_resolution", false)) or float(skill.get("lock_left", 0.0)) > 0.0:
 			continue
 		if _card_development_route_id(skill) != route_id:
@@ -5580,8 +5657,8 @@ func _ai_route_hand_inventory(player_index: int, route_id: String) -> Dictionary
 			if cash < cash_cost:
 				result["blocked_cash"] = int(result.get("blocked_cash", 0)) + 1
 	return result
-func _ai_route_inventory_adjustment(player_index: int, route_id: String, required: int, available: int, counted_hand: int, route_bonus: int, development_route_bonus: int) -> Dictionary:
-	var inventory := _ai_route_hand_inventory(player_index, route_id)
+func _ai_route_inventory_adjustment(player_index: int, route_id: String, required: int, available: int, counted_hand: int, route_bonus: int, development_route_bonus: int, hand_snapshot: Dictionary = {}) -> Dictionary:
+	var inventory := _ai_route_hand_inventory(player_index, route_id, hand_snapshot)
 	var total := int(inventory.get("total", 0))
 	var playable := int(inventory.get("playable", 0))
 	var blocked_flow := int(inventory.get("blocked_flow", 0))
@@ -5607,7 +5684,8 @@ func _ai_route_inventory_adjustment(player_index: int, route_id: String, require
 			adjustment["penalty"] = int(adjustment.get("penalty", 0)) + 46 + blocked_flow * 28 + blocked_gap * 12 + counted_hand * 8
 		elif total >= 2:
 			adjustment["penalty"] = int(adjustment.get("penalty", 0)) + 30 + total * 16
-		if counted_hand >= PLAYER_HAND_LIMIT - 1:
+		var hand_limit := _actor_hand_limit(hand_snapshot)
+		if hand_limit > 0 and counted_hand >= hand_limit - 1:
 			adjustment["penalty"] = int(adjustment.get("penalty", 0)) + 36
 	return adjustment
 func _ai_route_gap_adjustment(player_index: int, skill: Dictionary, district_index: int, product_name: String = "", target_owner: int = -999) -> Dictionary:
@@ -7566,19 +7644,24 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 func _ai_card_play_candidates(player_index: int) -> Array:
 	var result := []
 	var economy_facts := _actor_decision_economy_facts(player_index)
+	var hand_snapshot := _actor_hand_inventory_snapshot(player_index)
 	if (
 		not _player_is_ai(player_index)
 		or economy_facts.is_empty()
+		or hand_snapshot.is_empty()
 		or not bool(economy_facts.get("action_ready", false))
 	):
 		return result
 	if _queued_card_entry_index_for_player(player_index) >= 0 or _next_batch_card_entry_index_for_player(player_index) >= 0:
 		return result
-	var slots: Array = (players[player_index] as Dictionary).get("slots", [])
-	for slot_index in range(slots.size()):
-		if not (slots[slot_index] is Dictionary):
+	for entry_variant in _actor_hand_slot_entries(hand_snapshot):
+		if not (entry_variant is Dictionary):
 			continue
-		var skill: Dictionary = slots[slot_index]
+		var entry := entry_variant as Dictionary
+		if not bool(entry.get("occupied", false)):
+			continue
+		var slot_index := int(entry.get("slot_index", -1))
+		var skill: Dictionary = entry.get("card", {})
 		if bool(skill.get("queued_for_resolution", false)) or float(skill.get("cooldown_left", 0.0)) > 0.0 or float(skill.get("lock_left", 0.0)) > 0.0:
 			continue
 		var context := _ai_card_play_context(player_index, slot_index, skill)
@@ -7588,13 +7671,14 @@ func _ai_card_play_candidates(player_index: int) -> Array:
 func _ai_card_buy_candidates(player_index: int) -> Array:
 	var result := []
 	var economy_facts := _actor_decision_economy_facts(player_index)
+	var hand_snapshot := _actor_hand_inventory_snapshot(player_index)
 	if (
 		not _player_is_ai(player_index)
 		or economy_facts.is_empty()
+		or hand_snapshot.is_empty()
 		or not bool(economy_facts.get("action_ready", false))
 	):
 		return result
-	var player: Dictionary = players[player_index]
 	var cash := int(economy_facts.get("available_cash_units", 0))
 	var profile := _ai_profile_for_player(player_index)
 	var focus_product := _ai_focus_product(player_index)
@@ -7609,7 +7693,8 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 	var endgame_urgency := _ai_endgame_urgency_score(player_index)
 	var phase_label := _ai_game_phase_label(phase)
 	var posture_label := _ai_competitive_posture_label(posture)
-	var counted_hand := _player_counted_hand_size(player)
+	var counted_hand := _actor_counted_hand_size(hand_snapshot)
+	var hand_limit := _actor_hand_limit(hand_snapshot)
 	for district_index in range(districts.size()):
 		if not _market_listing_purchasable(district_index) or bool(districts[district_index].get("destroyed", false)):
 			continue
@@ -7631,13 +7716,13 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 			var discard_keep_value := 0
 			var hand_pressure_penalty := 0
 			if needs_discard:
-				discard_slot = _ai_discard_slot_for_purchase(player_index, card_name)
+				discard_slot = _ai_discard_slot_for_purchase(player_index, card_name, hand_snapshot)
 				if discard_slot < 0:
 					continue
-				discard_keep_value = _ai_discard_keep_value(player_index, discard_slot)
+				discard_keep_value = _ai_discard_keep_value(player_index, discard_slot, hand_snapshot)
 				hand_pressure_penalty = maxi(45, int(round(float(discard_keep_value) * 0.55)) + 30)
 			var focus_bonus := int(float(_ai_district_focus_score(player_index, district_index)) / 2.0)
-			var family_slot := _find_highest_family_card_slot(player, card_name)
+			var family_slot := _actor_highest_family_card_slot(hand_snapshot, card_name)
 			if family_slot >= 0:
 				score += 85
 			var product_name := _ai_product_for_skill(player_index, skill)
@@ -7680,7 +7765,7 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 			var route_gap_penalty := int(route_gap.get("penalty", 0))
 			var route_gap_reason := String(route_gap.get("reason", ""))
 			var route_gap_field_match := int(route_gap.get("field_match", 0))
-			var route_inventory := _ai_route_inventory_adjustment(player_index, development_route, required, available, counted_hand, route_bonus, development_route_bonus)
+			var route_inventory := _ai_route_inventory_adjustment(player_index, development_route, required, available, counted_hand, route_bonus, development_route_bonus, hand_snapshot)
 			var route_inventory_bonus := int(route_inventory.get("bonus", 0))
 			var route_inventory_penalty := int(route_inventory.get("penalty", 0))
 			var route_hand_total := int(route_inventory.get("total", 0))
@@ -7699,7 +7784,7 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 			score += playability_bonus
 			if needs_discard:
 				score -= hand_pressure_penalty
-			elif counted_hand >= PLAYER_HAND_LIMIT - 1 and not requirement_satisfied:
+			elif hand_limit > 0 and counted_hand >= hand_limit - 1 and not requirement_satisfied:
 				hand_pressure_penalty = 38 + maxi(0, required_share_percent - current_share_percent) * 4
 				score -= hand_pressure_penalty
 			if focus_product != "" and product_name == focus_product:
@@ -8003,15 +8088,19 @@ func _ai_counter_response_candidates(player_index: int) -> Array:
 	if not _player_is_ai(player_index) or not card_resolution_counter_window_active or _card_resolution_active_entry().is_empty():
 		return result
 	var economy_facts := _actor_decision_economy_facts(player_index)
-	if economy_facts.is_empty() or not bool(economy_facts.get("action_ready", false)):
+	var hand_snapshot := _actor_hand_inventory_snapshot(player_index)
+	if economy_facts.is_empty() or hand_snapshot.is_empty() or not bool(economy_facts.get("action_ready", false)):
 		return result
 	if _queued_card_entry_index_for_player(player_index) >= 0 or _next_batch_card_entry_index_for_player(player_index) >= 0:
 		return result
-	var slots: Array = (players[player_index] as Dictionary).get("slots", [])
-	for slot_index in range(slots.size()):
-		if not (slots[slot_index] is Dictionary):
+	for entry_variant in _actor_hand_slot_entries(hand_snapshot):
+		if not (entry_variant is Dictionary):
 			continue
-		var source_skill: Dictionary = slots[slot_index]
+		var entry := entry_variant as Dictionary
+		if not bool(entry.get("occupied", false)):
+			continue
+		var slot_index := int(entry.get("slot_index", -1))
+		var source_skill: Dictionary = entry.get("card", {})
 		if bool(source_skill.get("queued_for_resolution", false)) or float(source_skill.get("cooldown_left", 0.0)) > 0.0 or float(source_skill.get("lock_left", 0.0)) > 0.0:
 			continue
 		var candidate := _ai_counter_response_candidate(player_index, slot_index, source_skill)
@@ -8022,10 +8111,10 @@ func _ai_queue_counter_response_candidate(player_index: int, candidate: Dictiona
 	var slot_index := int(candidate.get("slot_index", -1))
 	if player_index < 0 or player_index >= _public_player_count():
 		return false
-	var slots: Array = (players[player_index] as Dictionary).get("slots", [])
-	if slot_index < 0 or slot_index >= slots.size() or not (slots[slot_index] is Dictionary):
+	var hand_snapshot := _actor_hand_inventory_snapshot(player_index)
+	var source_skill := _actor_hand_card_at(hand_snapshot, slot_index)
+	if source_skill.is_empty():
 		return false
-	var source_skill: Dictionary = slots[slot_index]
 	var previous_district := int(selected_district)
 	var previous_product := str(selected_trade_product)
 	selected_district = int(candidate.get("district", int(_card_resolution_active_entry().get("selected_district", _ai_first_alive_district()))))
@@ -8279,16 +8368,14 @@ func _update_ai_decisions(delta: float) -> void:
 	if ai_intel_decision_timer <= 0.0:
 		_auto_ai_intel_decisions(false)
 		ai_intel_decision_timer = AI_INTEL_DECISION_INTERVAL_SECONDS
-func _ai_discard_keep_value(player_index: int, slot_index: int) -> int:
+func _ai_discard_keep_value(player_index: int, slot_index: int, hand_snapshot: Dictionary = {}) -> int:
 	if player_index < 0 or player_index >= _public_player_count():
 		return 99999
-	var player: Dictionary = players[player_index]
-	if slot_index < 0 or slot_index >= player.get("slots", []).size():
+	var snapshot := hand_snapshot if not hand_snapshot.is_empty() \
+		else _actor_hand_inventory_snapshot(player_index)
+	var skill := _actor_hand_card_at(snapshot, slot_index)
+	if skill.is_empty():
 		return 99999
-	var skill_variant = player["slots"][slot_index]
-	if not (skill_variant is Dictionary):
-		return 99999
-	var skill := skill_variant as Dictionary
 	var value := int(skill.get("cost", 2)) * 22 + maxi(1, _skill_rank(String(skill.get("name", "")))) * 18
 	var context := _ai_card_play_context(player_index, slot_index, skill)
 	if context.is_empty():
@@ -8298,15 +8385,17 @@ func _ai_discard_keep_value(player_index: int, slot_index: int) -> int:
 	if String(skill.get("kind", "")) == "monster_card" and _ai_owned_active_monster_count(player_index) <= 0:
 		value += 140
 	return value
-func _ai_discard_slot_for_purchase(player_index: int, _incoming_card_name: String) -> int:
+func _ai_discard_slot_for_purchase(player_index: int, _incoming_card_name: String, hand_snapshot: Dictionary = {}) -> int:
 	if player_index < 0 or player_index >= _public_player_count():
 		return -1
-	var slots := _discardable_hand_slots_for_purchase(player_index)
+	var snapshot := hand_snapshot if not hand_snapshot.is_empty() \
+		else _actor_hand_inventory_snapshot(player_index)
+	var slots := _actor_discardable_slot_indices(snapshot)
 	var best_slot := -1
 	var best_value := 999999
 	for slot_variant in slots:
 		var slot_index := int(slot_variant)
-		var value := _ai_discard_keep_value(player_index, slot_index)
+		var value := _ai_discard_keep_value(player_index, slot_index, snapshot)
 		if value < best_value:
 			best_value = value
 			best_slot = slot_index

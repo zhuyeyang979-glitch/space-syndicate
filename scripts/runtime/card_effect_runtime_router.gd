@@ -239,7 +239,7 @@ func _interaction_catalog(actor: Dictionary, target: Dictionary) -> Dictionary:
 			result[card_id] = {
 				"family": str(card.get("family_id", card_id)),
 				"rank": maxi(1, int(card.get("rank", 1))),
-				"counts_toward_hand_limit": not (bool(card.get("persistent", false)) and str(card.get("kind", "")) in ["monster_bound_action", "military_command"]),
+				"counts_toward_hand_limit": CardInventoryRuntimeService.canonical_card_counts_toward_hand_limit(card),
 				"next_upgrade_id": "",
 				"next_upgrade_card": {},
 			}

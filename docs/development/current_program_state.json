@@ -1,11 +1,11 @@
 {
   "schema_version": 4,
-  "generated_at": "2026-07-25T00:09:48+09:00",
+  "generated_at": "2026-07-25T02:19:34+09:00",
   "source": {
     "repository": "zhuyeyang979-glitch/space-syndicate",
     "branch": "main",
-    "main_sha": "d78ca8973c86563dea502b725600b5840c9941c3",
-    "latest_merge_pr": 54,
+    "main_sha": "3d659323b8ed36088489cadc485cc3ffb8bf64e8",
+    "latest_merge_pr": 55,
     "origin_divergence": {"ahead": 0, "behind": 0},
     "open_pull_requests": [],
     "recent_main_commits_reviewed": 30,
@@ -51,14 +51,15 @@
     {
       "task_id": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
       "status": "ACTIVE",
-      "canonical_state": "ACTIVE_PUBLIC_PLAYER_FACTS_MERGED_ACTOR_ECONOMY_FACTS_VALIDATED",
+      "canonical_state": "ACTIVE_ACTOR_ECONOMY_FACTS_MERGED_ACTOR_HAND_INVENTORY_VALIDATED",
       "foundation_pull_request": 48,
       "foundation_commit": "6596c3c",
       "completed_atomic_domains": [
         "foundation_ports",
         "city_inference_query_command",
         "actor_state",
-        "public_player_facts"
+        "public_player_facts",
+        "actor_economy_facts"
       ],
       "city_inference_pull_request": 51,
       "city_inference_commit": "90014ec92a5b2f1f15e658d007ce9c87f2c4fbef",
@@ -69,7 +70,10 @@
       "public_player_facts_pull_request": 54,
       "public_player_facts_commit": "65bd34be41303572cb70ff319dc79c682283f651",
       "public_player_facts_merge_commit": "d78ca8973c86563dea502b725600b5840c9941c3",
-      "next_atomic_boundary": "AI_ACTOR_ECONOMY_FACTS_TYPED_PORT_MIGRATION",
+      "actor_economy_facts_pull_request": 55,
+      "actor_economy_facts_commit": "b50d0fc5de13d9b5eb88806d1c2b38c7da84374f",
+      "actor_economy_facts_merge_commit": "3d659323b8ed36088489cadc485cc3ffb8bf64e8",
+      "next_atomic_boundary": "AI_ACTOR_HAND_INVENTORY_TYPED_PORT_MIGRATION",
       "completion_claimed": false,
       "remaining_scope": "migrate all AI production consumers and remove generic Main/world access"
     },
@@ -144,19 +148,19 @@
     },
     "active_p0": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
     "last_atomic_delivery": {
-      "branch": "codex/alpha03-ai-public-player-facts-0b4b72a",
-      "base_main_sha": "0b4b72a742e4d3ac08cc6308d596d26383942a2d",
-      "atomic_domain": "public_player_facts",
+      "branch": "codex/alpha03-ai-actor-economy-facts-d78ca89",
+      "base_main_sha": "d78ca8973c86563dea502b725600b5840c9941c3",
+      "atomic_domain": "actor_economy_facts",
       "status": "MERGED",
-      "pull_request": 54,
-      "commit": "65bd34be41303572cb70ff319dc79c682283f651",
-      "merge_commit": "d78ca8973c86563dea502b725600b5840c9941c3",
+      "pull_request": 55,
+      "commit": "b50d0fc5de13d9b5eb88806d1c2b38c7da84374f",
+      "merge_commit": "3d659323b8ed36088489cadc485cc3ffb8bf64e8",
       "main_gd": {
-        "physical_lines": 6461,
-        "nonblank_lines": 5436,
-        "methods": 473,
+        "physical_lines": 6440,
+        "nonblank_lines": 5421,
+        "methods": 470,
         "top_level_variables": 46,
-        "constants": 47,
+        "constants": 45,
         "top_level_preloads": 7,
         "external_caller_files": 103,
         "new_caller_files": 0
@@ -164,9 +168,11 @@
       "parent_gate_complete": false
     },
     "next_atomic_candidate": {
-      "base_main_sha": "d78ca8973c86563dea502b725600b5840c9941c3",
-      "atomic_domain": "AI_ACTOR_ECONOMY_FACTS_TYPED_PORT_MIGRATION",
+      "base_main_sha": "3d659323b8ed36088489cadc485cc3ffb8bf64e8",
+      "atomic_domain": "AI_ACTOR_HAND_INVENTORY_TYPED_PORT_MIGRATION",
       "status": "VALIDATED_CANDIDATE",
+      "focused_gate": "92/92 PASS",
+      "production_scene_bench": "21/21 PASS",
       "parent_gate_complete": false
     }
   },
@@ -247,16 +253,19 @@
   "known_test_state": {
     "smoke_check_only": "PASS",
     "full_smoke": "STALE_FIXTURE_DEBT_PRESENT",
-    "current_atomic_focused_gate": "81/81 PASS",
+    "current_atomic_focused_gate": "92/92 PASS",
     "known_non_product_red_tests": [
       "ai_commodity_futures_policy_runtime_test.gd calls retired Main._new_game",
       "intel_query_command_cutover_test.gd expects retired world envelope schema v1",
-      "AiPolicyResourceBench.tscn has three inherited source-string fixture failures (38/41 on base and candidate)"
+      "AiPolicyResourceBench.tscn has three inherited source-string fixture failures (38/41 on base and candidate)",
+      "CardInventoryRuntimeCharacterizationBench.tscn calls retired Main._new_game",
+      "PlayerHandInteractionRuntimeCharacterizationBench.tscn calls retired Main._new_game",
+      "session_envelope_save_owner_test.gd has one stale Main source-string oracle"
     ],
     "policy": "Do not restore retired Main wrappers; migrate one current fixture family per test-debt PR."
   },
   "next_boundaries": {
-    "architecture": "P0-AI-WORLD-TYPED-PORTS-CUTOVER / AI_ACTOR_ECONOMY_FACTS_TYPED_PORT_MIGRATION",
+    "architecture": "P0-AI-WORLD-TYPED-PORTS-CUTOVER / AI_ACTOR_HAND_INVENTORY_TYPED_PORT_MIGRATION",
     "product": "P1-FOUR-SEAT-FIRST-ECONOMIC-ENGINE",
     "save": "P1-SAVE-RESUME-OWNER-COVERAGE inventory",
     "content": "P2-ALPHA01-CARD-ART-WAVE-1",

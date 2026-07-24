@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "status": "VALIDATED_CANDIDATE",
+  "task_id": "AI_ACTOR_HAND_INVENTORY_TYPED_PORT_MIGRATION",
+  "parent_task": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
+  "parent_status": "ACTIVE",
+  "rule_authority_gate": "GREEN",
+  "base_main_sha": "3d659323b8ed36088489cadc485cc3ffb8bf64e8",
+  "architecture": {
+    "query_port": "res://scripts/runtime/ai_actor_hand_inventory_query_port.gd",
+    "capability": "res://scripts/runtime/ai_actor_hand_inventory_capability.gd",
+    "query_scene": "res://scenes/runtime/AiActorHandInventoryQueryPort.tscn",
+    "composition_scene": "res://scenes/runtime/GameRuntimeCoordinator.tscn",
+    "query_port_count": 1,
+    "capability_creation_count": 1,
+    "new_gameplay_owner_count": 0,
+    "new_save_section_count": 0,
+    "second_hand_owner_count": 0,
+    "second_world_owner_count": 0,
+    "main_route_count": 0,
+    "ai_lifecycle_requires_actor_hand_port": true,
+    "inventory_service_readiness_required": true,
+    "hand_policy_interpreted_by_inventory_service": true,
+    "forbidden_card_private_keys_fail_closed": true
+  },
+  "owners": {
+    "hand_storage": "WorldSessionState",
+    "hand_policy": "CardInventoryRuntimeService",
+    "session_identity": "GameSessionRuntimeController",
+    "ai_identity_authorization": "AiActorStatePort",
+    "semantic_consumer": "AiRuntimeController"
+  },
+  "schema": {
+    "version": 1,
+    "visibility_scope": "actor_private",
+    "snapshot_keys": ["schema_version","session_id","session_revision","source_revision","fingerprint","visibility_scope","actor_index","hand_limit","counted_hand_size","discardable_slot_indices","slots"],
+    "slot_keys": ["slot_index","occupied","card_id","runtime_instance_id","family_id","rank","kind","counts_toward_hand_limit","persistent","queued_for_resolution","cooldown_left","lock_left","card"],
+    "detached_pure_data": true,
+    "stable_slot_indices": true,
+    "restore_invalidates_stale_snapshots": true,
+    "session_change_invalidates_stale_snapshots": true,
+    "deterministic_fingerprint": true
+  },
+  "privacy": {
+    "rival_hand_leak_count": 0,
+    "human_hand_leak_count": 0,
+    "cash_leak_count": 0,
+    "city_inference_leak_count": 0,
+    "ai_memory_leak_count": 0,
+    "hidden_owner_leak_count": 0,
+    "save_payload_leak_count": 0,
+    "public_snapshot_provider": false
+  },
+  "query_side_effects": {
+    "world_mutation_count": 0,
+    "inventory_mutation_count": 0,
+    "session_mutation_count": 0,
+    "rng_delta": 0,
+    "save_dirty_delta": 0,
+    "diagnostic_counter_delta": 0
+  },
+  "source_metrics": {
+    "ai_controller_before": {"players_tokens":20,"districts_tokens":95,"call_world_tokens":42,"direct_hand_reads":8,"player_hand_limit_tokens":3},
+    "ai_controller_after": {"players_tokens":12,"districts_tokens":95,"call_world_tokens":40,"direct_hand_reads":0,"player_hand_limit_tokens":0},
+    "main_before": {"physical_lines":6440,"nonblank_lines":5421,"methods":470,"fields":46,"constants":45,"preloads":7,"external_caller_files":103},
+    "main_after": {"physical_lines":6440,"nonblank_lines":5421,"methods":470,"fields":46,"constants":45,"preloads":7,"external_caller_files":103},
+    "new_main_caller_count": 0,
+    "inherited_budget_failure": "main_callers_increased:external_caller_files:103>102"
+  },
+  "evidence": {
+    "focused": {"result":"92/92 PASS","run_id":"20260724-173540-931-ai_actor_hand_inventory_typed_port_migration_test-4034c9ae"},
+    "production_bench": {"result":"21/21 PASS","run_id":"20260724-173558-333-AiActorHandInventoryTypedPortMigrationBench-68aa92cc","counted_hand":3,"discardable_slots":[0]},
+    "actor_economy": "81/81 PASS",
+    "actor_economy_bench": "19/19 PASS",
+    "public_player": "128/128 PASS",
+    "actor_state": "93/93 PASS",
+    "actor_state_bench": "37/37 PASS",
+    "city_inference": "48/48 PASS",
+    "typed_world": "83/83 PASS",
+    "ai_business_architecture": "37/37 PASS",
+    "ai_typed_cash": "72/72 PASS",
+    "formal_main_four_player": "28/28 PASS",
+    "setup": "133/133 PASS",
+    "world_session": "44/44 PASS",
+    "save_registry": "12/12 PASS",
+    "envelope_runtime": "60/60 PASS",
+    "main_architecture": "217/217 PASS",
+    "main_composition": "PASS",
+    "smoke_check_only": "PASS",
+    "mcp_scene_cold_load": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "inherited_test_debt": [
+    "CardInventoryRuntimeCharacterizationBench.tscn retired Main._new_game fixture",
+    "PlayerHandInteractionRuntimeCharacterizationBench.tscn retired Main._new_game fixture",
+    "session_envelope_save_owner_test.gd stale Main source-string oracle"
+  ],
+  "completion_claims": {
+    "parent_p0_complete": false,
+    "complete_match_proven": false,
+    "full_run_resume_claim": false,
+    "alpha_0_3_complete": false
+  },
+  "next_boundary": "AI_PUBLIC_DISTRICT_FACTS_TYPED_PORT_MIGRATION_PREFLIGHT"
+}

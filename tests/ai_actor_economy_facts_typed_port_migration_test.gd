@@ -100,6 +100,9 @@ func _run() -> void:
 	var ai_bridge := coordinator.get_node_or_null(
 		"AiRuntimeWorldBridge"
 	) as AiRuntimeWorldBridge
+	var hand_inventory := coordinator.get_node_or_null(
+		"CardInventoryRuntimeService"
+	) as CardInventoryRuntimeService
 	var market := coordinator.get_node_or_null(
 		"ProductMarketRuntimeController"
 	) as ProductMarketRuntimeController
@@ -116,6 +119,7 @@ func _run() -> void:
 			and monster_bridge != null
 			and ai != null
 			and ai_bridge != null
+			and hand_inventory != null
 			and market != null
 			and rng != null,
 		"production composition exposes every actor-economy authority"
@@ -135,6 +139,13 @@ func _run() -> void:
 	monster.set_world_bridge(monster_bridge)
 	ai.set_monster_runtime_controller(monster)
 	ai.set_product_market_runtime_controller(market)
+	hand_inventory.configure({
+		"ruleset_id": "v0.4",
+		"card_inventory": {
+			"ordinary_hand_limit": 5,
+			"maximum_card_rank": 4,
+		},
+	})
 	ai.configure({"ruleset_id": "v0.6"})
 	session.configure({"ruleset_id": "v0.6"}, {})
 	var started := session.begin_session({
@@ -552,7 +563,16 @@ func _players(catalog: RoleCatalogRuntimeService) -> Array:
 			"total_card_spend": 44 if player_index == 1 else 0,
 			"total_build_spend": 55 if player_index == 1 else 0,
 			"total_business_spend": 66 if player_index == 1 else 0,
-			"slots": [{"private_marker": "HUMAN_PRIVATE" if not is_ai else "AI_%d_PRIVATE" % player_index}],
+			"slots": [{
+				"name": "城市融资1",
+				"kind": "card",
+				"persistent": false,
+				"queued_for_resolution": false,
+				"cooldown_left": 0.0,
+				"lock_left": 0.0,
+				"private_marker": "HUMAN_PRIVATE"
+					if not is_ai else "AI_%d_PRIVATE" % player_index,
+			}],
 			"discard": ["DISCARD_%d" % player_index],
 			"city_guesses": {"region.0": player_index},
 			"ai_profile": {"profile_index": maxi(0, player_index - 1)} if is_ai else {},

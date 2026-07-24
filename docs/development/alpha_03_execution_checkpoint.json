@@ -1,36 +1,37 @@
 {
-  "branch": "main",
-  "commit": "d78ca8973c86563dea502b725600b5840c9941c3",
+  "branch": "codex/alpha03-ai-actor-hand-inventory-3d65932",
+  "commit": "3d659323b8ed36088489cadc485cc3ffb8bf64e8",
   "task": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
-  "status": "ACTIVE_PUBLIC_PLAYER_FACTS_MERGED_ACTOR_ECONOMY_FACTS_VALIDATED_CANDIDATE",
+  "status": "ACTIVE_ACTOR_ECONOMY_FACTS_MERGED_ACTOR_HAND_INVENTORY_VALIDATED_CANDIDATE",
   "completed_atomic_domains": [
     "foundation_ports",
     "city_inference_query_command",
     "actor_state",
-    "public_player_facts"
+    "public_player_facts",
+    "actor_economy_facts"
   ],
   "logical_ownership_set": [
-    "AI actor-private total and available cash query",
-    "AI action-cooldown query",
-    "AI private economy training counters",
+    "AI actor-private own-hand query",
+    "stable hand slot projection",
+    "hand limit and discardability projection",
     "runtime composition integration",
-    "cash and cooldown consumer cutover",
+    "AI pressure observation route play buy counter and discard consumer cutover",
     "Alpha 0.3 checkpoint"
   ],
   "latest_merged_pr": {
-    "number": 54,
+    "number": 55,
     "status": "MERGED",
-    "head_commit": "65bd34be41303572cb70ff319dc79c682283f651",
-    "merge_commit": "d78ca8973c86563dea502b725600b5840c9941c3",
-    "atomic_domain": "public_player_facts"
+    "head_commit": "b50d0fc5de13d9b5eb88806d1c2b38c7da84374f",
+    "merge_commit": "3d659323b8ed36088489cadc485cc3ffb8bf64e8",
+    "atomic_domain": "actor_economy_facts"
   },
   "current_candidate": {
-    "branch": "codex/alpha03-ai-actor-economy-facts-d78ca89",
-    "base_main_sha": "d78ca8973c86563dea502b725600b5840c9941c3",
-    "atomic_domain": "AI_ACTOR_ECONOMY_FACTS_TYPED_PORT_MIGRATION",
+    "branch": "codex/alpha03-ai-actor-hand-inventory-3d65932",
+    "base_main_sha": "3d659323b8ed36088489cadc485cc3ffb8bf64e8",
+    "atomic_domain": "AI_ACTOR_HAND_INVENTORY_TYPED_PORT_MIGRATION",
     "status": "VALIDATED_CANDIDATE",
-    "focused_test": "81/81 PASS",
-    "production_scene_bench": "19/19 PASS",
+    "focused_test": "92/92 PASS",
+    "production_scene_bench": "21/21 PASS",
     "privacy_leak_count": 0,
     "query_mutation_count": 0,
     "query_rng_delta": 0,
@@ -38,6 +39,8 @@
     "new_main_caller_count": 0
   },
   "regression_result": {
+    "actor_economy": "81/81 PASS",
+    "actor_economy_bench": "19/19 PASS",
     "public_player_facts": "128/128 PASS",
     "actor_state": "93/93 PASS",
     "actor_state_bench": "37/37 PASS",
@@ -48,15 +51,25 @@
     "formal_main_four_player": "28/28 PASS",
     "setup": "133/133 PASS",
     "world_session": "44/44 PASS",
+    "card_flow_policy": "PASS",
     "save_registry": "12/12 PASS",
     "envelope_runtime": "60/60 PASS",
-    "contract_retirement": "114/114 PASS",
     "main_architecture": "217/217 PASS",
     "main_runtime_composition": "PASS",
     "smoke_check_only": "PASS",
-    "godot_runtime_script_errors": 0,
+    "godot_mcp_script_errors": 0,
+    "godot_mcp_cold_scene_composition": "PASS",
     "git_diff_check": "PASS",
     "main_budget": "UNCHANGED_WITH_INHERITED_CALLER_THRESHOLD_103_GT_102"
+  },
+  "inherited_test_debt": {
+    "active_gate_impact": false,
+    "items": [
+      "CardInventoryRuntimeCharacterizationBench uses retired Main._new_game",
+      "PlayerHandInteractionRuntimeCharacterizationBench uses retired Main._new_game",
+      "session_envelope_save_owner_test has one stale Main source-string oracle"
+    ],
+    "policy": "Do not restore retired Main wrappers; migrate fixture families in their own test-debt boundary."
   },
   "completion_claims": {
     "parent_p0_complete": false,
@@ -64,6 +77,6 @@
     "full_run_resume_claim": false,
     "alpha_0_3_complete": false
   },
-  "next_atomic_boundary": "AI_ACTOR_ECONOMY_FACTS_TYPED_PORT_MIGRATION",
-  "post_merge_recommendation": "AI_ACTOR_HAND_INVENTORY_TYPED_PORT_MIGRATION"
+  "next_atomic_boundary": "AI_ACTOR_HAND_INVENTORY_TYPED_PORT_MIGRATION",
+  "post_merge_recommendation": "AI_PUBLIC_DISTRICT_FACTS_TYPED_PORT_MIGRATION_PREFLIGHT"
 }

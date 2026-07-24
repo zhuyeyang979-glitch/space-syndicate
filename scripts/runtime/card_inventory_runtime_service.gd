@@ -6,6 +6,7 @@ const STATUS_READY := "ready"
 const STATUS_REQUIRES_DISCARD := "requires_discard"
 const STATUS_REJECTED := "rejected"
 const FAILURE_POLICY_CONVERT_TO_REMOVE := "convert_to_remove"
+const HAND_LIMIT_EXEMPT_KINDS := ["monster_bound_action", "military_command"]
 
 var _ruleset_id := ""
 var _ordinary_hand_limit := 0
@@ -82,6 +83,35 @@ func preview_receive(request: Dictionary) -> Dictionary:
 
 func ordinary_hand_limit() -> int:
 	return _ordinary_hand_limit
+
+
+func is_ready() -> bool:
+	return _configured
+
+
+func card_counts_toward_hand_limit(card: Dictionary) -> bool:
+	return (
+		_configured
+		and _is_data_only(card)
+		and canonical_card_counts_toward_hand_limit(card)
+	)
+
+
+static func canonical_card_counts_toward_hand_limit(card: Dictionary) -> bool:
+	if card.has("counts_toward_hand_limit"):
+		return bool(card.get("counts_toward_hand_limit", true))
+	return not (
+		HAND_LIMIT_EXEMPT_KINDS.has(str(card.get("kind", "")))
+		and bool(card.get("persistent", false))
+	)
+
+
+func counted_hand_size(current_facts: Dictionary) -> int:
+	if not _configured or not _is_data_only(current_facts):
+		return -1
+	var slots: Array = current_facts.get("slots", []) \
+		if current_facts.get("slots", []) is Array else []
+	return _counted_hand_size(slots)
 
 
 func commit_receive(player_state: Dictionary, current_facts: Dictionary, plan: Dictionary) -> Dictionary:
