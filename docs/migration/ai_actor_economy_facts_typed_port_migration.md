@@ -79,10 +79,10 @@ The budget tool still reports the inherited absolute threshold `103 > 102`; this
 ## Verification
 
 - Focused actor-economy migration: `81/81 PASS`
-  - Run ID: `20260724-160719-934-ai_actor_economy_facts_typed_port_migration_test-ca8a03fa`
+  - Run ID: `20260724-161825-363-ai_actor_economy_facts_typed_port_migration_test-57c29a83`
   - Covers signed debt through training snapshot, live observation, decision recording, and reward finalization.
 - Production scene Bench: `19/19 PASS`
-  - Run ID: `20260724-160737-316-AiActorEconomyFactsTypedPortMigrationBench-c7429e36`
+  - Run ID: `20260724-161841-178-AiActorEconomyFactsTypedPortMigrationBench-d3b30c86`
   - Marker: `available_cents=80000|total_cents=100000`
 - Public-player facts: `128/128 PASS`
 - Actor-state facts: `93/93 PASS`
@@ -113,7 +113,7 @@ The budget tool still reports the inherited absolute threshold `103 > 102`; this
 
 ## Godot MCP Write Safety Prerequisite
 
-The recurring “Files have been modified outside Godot” prompt was caused by Funplay MCP disk writers scanning an externally changed open scene before reloading the editor copy. Commit `f0c2058` introduced the base fix; follow-up commit `57483a6` applies the same contract to text writes, patching, bulk refactors, PackedScene writes, copy/move/delete, and scene creation:
+The recurring “Files have been modified outside Godot” prompt was caused by Funplay MCP disk writers scanning an externally changed open scene before reloading the editor copy. Commit `f0c2058` introduced the base fix; commit `57483a6` guarded every scene disk writer; final follow-up `2c9bede` makes reload identity and previous-tab restoration mandatory before a write can report success:
 
 1. An open scene with unsaved editor changes is rejected before any target write.
 2. Delete or move refuses an open source scene.
