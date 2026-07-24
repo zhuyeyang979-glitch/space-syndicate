@@ -4918,13 +4918,6 @@ func _roll_timer(prefix: String) -> float:
 	return low + _game_runtime_coordinator_node().run_rng_service().randf_range(0.0, max(0.0, high - low))
 
 
-func _alive_district_indices() -> Array:
-	var result := []
-	for i in range(_game_runtime_coordinator_node().world_session_state().districts.size()):
-		if not bool(_game_runtime_coordinator_node().world_session_state().districts[i].get("destroyed", false)):
-			result.append(i)
-	return result
-
 
 func _weight_total(weights: Array) -> int:
 	var total := 0
