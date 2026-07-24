@@ -53,6 +53,7 @@ func _run() -> void:
 	var runtime_ports_source := FileAccess.get_file_as_string("res://scripts/runtime/runtime_world_ports.gd")
 	var runtime_phases_source := FileAccess.get_file_as_string("res://scripts/runtime/runtime_phase_coordinator.gd")
 	var coordinator_scene := FileAccess.get_file_as_string("res://scenes/runtime/GameRuntimeCoordinator.tscn")
+	var coordinator_source := FileAccess.get_file_as_string("res://scripts/runtime/game_runtime_coordinator.gd")
 	var ai_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_runtime_controller.gd")
 	var ai_eligibility_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_card_eligibility_query_port.gd")
 	var ai_strategy_source := FileAccess.get_file_as_string("res://scripts/runtime/ai_card_strategy_query_port.gd")
@@ -73,6 +74,12 @@ func _run() -> void:
 			and not ai_strategy_source.contains("WorldSessionState")
 			and not ai_strategy_source.contains("to_save_data"),
 		"production composition owns one pure public AI card strategy query port"
+	)
+	_expect(
+		not ai_source.contains("GameplayBalanceDiagnosticsRuntimeService")
+			and not ai_source.contains("_gameplay_balance_diagnostics_service")
+			and not coordinator_source.contains("set_gameplay_balance_diagnostics_service"),
+		"AI runtime receives no implicit developer-diagnostics capability"
 	)
 	_expect(
 		coordinator_scene.count("[node name=\"AiRegionKnowledgeQueryPort\"") == 1

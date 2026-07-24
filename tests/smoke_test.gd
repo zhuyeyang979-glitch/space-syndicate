@@ -4099,8 +4099,11 @@ func _verify_max_ai_seat_complete_smoke(main: Node) -> bool:
 	if int(live_route_report.get("action_kind_count", 0)) < 3:
 		failures.append("live route actions %d %s" % [int(live_route_report.get("action_kind_count", 0)), live_route_summary])
 		ok = false
-	var route_viability_report := _ai_controller(main).call("_ai_route_viability_report") as Dictionary
-	var route_viability_summary := String(_ai_controller(main).call("_ai_route_viability_summary", route_viability_report))
+	var route_viability_report := _ai_controller(main)._ai_route_viability_report(
+		_diagnostics(main).development_route_pressure_audit(),
+		_development_route_pressure_index(main)
+	)
+	var route_viability_summary := _ai_controller(main)._ai_route_viability_summary(route_viability_report)
 	_mark_smoke_progress("max ai route viability report")
 	if not bool(route_viability_report.get("ok", false)):
 		failures.append("route viability audit %s" % route_viability_summary)
@@ -6254,10 +6257,8 @@ func _verify_monster_lure_replaces_control_window(_main: Node) -> bool:
 
 
 func _verify_agent_policy_audit_report(main: Node) -> bool:
-	if not _ai_controller(main).has_method("_agent_policy_audit_report"):
-		print("Agent audit helper missing")
-		return false
-	var report := _ai_controller(main).call("_agent_policy_audit_report") as Dictionary
+	var coverage := _diagnostics(main).playable_card_resolution_coverage_report()
+	var report := _ai_controller(main)._agent_policy_audit_report(coverage)
 	var failures := []
 	if not bool(report.get("test_only", false)):
 		failures.append("report is not marked test_only")
@@ -8453,8 +8454,8 @@ func _verify_v06_market_rule_contract() -> bool:
 		and rulebook.contains("观察镜头不属于")
 
 
-func _ai_controller(main: Node) -> Node:
-	var controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/AiRuntimeController")
+func _ai_controller(main: Node) -> AiRuntimeController:
+	var controller := main.get_node_or_null("RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/AiRuntimeController") as AiRuntimeController
 	if controller == null:
 		push_error("Smoke test requires scene-owned AiRuntimeController.")
 	return controller
@@ -8474,6 +8475,22 @@ func _replace_card_resolution_history_for_test(main: Node, entries: Array) -> bo
 		push_error("Smoke test requires scene-owned CardResolutionHistoryRuntimeService.")
 		return false
 	return bool(history.replace_legacy_entries(entries).get("applied", false))
+
+
+func _development_route_pressure_index(main: Node) -> Dictionary:
+	var coordinator := _runtime_coordinator(main) as GameRuntimeCoordinator
+	var catalog := coordinator.card_runtime_catalog_service() if coordinator != null else null
+	var diagnostics := _diagnostics(main)
+	var result := {}
+	if catalog == null or diagnostics == null:
+		return result
+	for card_id_variant in catalog.ordered_card_ids():
+		var card_id := str(card_id_variant)
+		result[card_id] = diagnostics.development_route_pressure_card_entry(
+			card_id,
+			catalog.definition(card_id)
+		)
+	return result
 
 
 func _runtime_card_catalog_ids(main: Node, category_id: String = "") -> Array:

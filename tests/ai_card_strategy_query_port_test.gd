@@ -39,11 +39,14 @@ func _run() -> void:
 		await process_frame
 		_finish()
 		return
+	var ai_debug := ai.debug_snapshot()
 	_expect(
 		port.is_ready()
 			and port.development_routes().size() == 7
-			and bool(port.debug_snapshot().get("returns_pure_data", false)),
-		"strategy query reads the valid seven-route public catalog"
+			and bool(port.debug_snapshot().get("returns_pure_data", false))
+			and bool(ai_debug.get("typed_card_strategy_query_bound", false))
+			and not bool(ai_debug.get("card_strategy_uses_developer_diagnostics", true)),
+		"strategy query reads the valid seven-route public catalog without diagnostics"
 	)
 	var world_before := world.to_save_data()
 	var rng_before := rng.capture_plan_checkpoint()
@@ -111,11 +114,16 @@ func _run() -> void:
 		route_helper_start,
 		route_helper_end - route_helper_start
 	)
+	var coordinator_source := FileAccess.get_file_as_string(
+		"res://scripts/runtime/game_runtime_coordinator.gd"
+	)
 	_expect(
 		route_helper_start >= 0 and route_helper_end > route_helper_start
 			and route_helper_source.contains("_ai_card_strategy_query_port")
-			and not route_helper_source.contains("_gameplay_balance_diagnostics_service"),
-		"normal AI card classification cannot enter diagnostics"
+			and not ai_source.contains("GameplayBalanceDiagnosticsRuntimeService")
+			and not ai_source.contains("_gameplay_balance_diagnostics_service")
+			and not coordinator_source.contains("set_gameplay_balance_diagnostics_service"),
+		"normal AI card classification and QA audit cannot enter diagnostics implicitly"
 	)
 	coordinator.queue_free()
 	await process_frame

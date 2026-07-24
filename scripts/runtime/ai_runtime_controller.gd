@@ -88,7 +88,6 @@ var _city_gdp_derivative_runtime_controller: CityGdpDerivativeRuntimeController
 var _card_definition_bridge: CardRuntimeDefinitionWorldBridge
 var _card_play_eligibility_runtime_service: CardPlayEligibilityRuntimeService
 var _ai_card_strategy_query_port: AiCardStrategyQueryPort
-var _gameplay_balance_diagnostics_service: GameplayBalanceDiagnosticsRuntimeService
 var _route_network_runtime_controller: RouteNetworkRuntimeController
 var _visual_cue_runtime_owner: VisualCueRuntimeOwner
 var _card_play_submission_controller: CardPlaySubmissionRuntimeController
@@ -421,10 +420,6 @@ func set_card_definition_bridge(
 
 func set_card_strategy_query_port(port: AiCardStrategyQueryPort) -> void:
 	_ai_card_strategy_query_port = port
-
-
-func set_gameplay_balance_diagnostics_service(service: GameplayBalanceDiagnosticsRuntimeService) -> void:
-	_gameplay_balance_diagnostics_service = service
 
 
 
@@ -778,6 +773,8 @@ func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 		"victory_query_capabilities_are_actor_scoped": true,
 		"victory_query_uses_direct_owner": false,
 		"typed_card_submission_bound": _card_play_submission_controller != null,
+		"typed_card_strategy_query_bound": _ai_card_strategy_query_port != null and _ai_card_strategy_query_port.is_ready(),
+		"card_strategy_uses_developer_diagnostics": false,
 		"typed_card_history_bound": _card_resolution_history_service != null,
 		"typed_business_cost_cash_bound": _ai_business_cost_cash_port != null and _ai_business_cost_capability != null,
 		"typed_session_public_query_bound": _ai_session_public_query_port != null and _ai_session_public_query_port.is_ready(),
@@ -1842,12 +1839,6 @@ func _card_development_route_id(skill: Dictionary) -> String:
 func _development_route_label(route_id: String) -> String:
 	return _ai_card_strategy_query_port.route_label(route_id) if _ai_card_strategy_query_port != null else "即时战术"
 
-func _development_route_pressure_card_entry(card_name: String, skill: Dictionary) -> Dictionary:
-	return _gameplay_balance_diagnostics_service.development_route_pressure_card_entry(card_name, skill) if _gameplay_balance_diagnostics_service != null else {}
-
-func _development_route_pressure_audit() -> Dictionary:
-	return _gameplay_balance_diagnostics_service.development_route_pressure_audit() if _gameplay_balance_diagnostics_service != null else {}
-
 func _duration_short_text(seconds: float) -> String:
 	var total := maxi(1, int(round(seconds)))
 	if total < 60:
@@ -2166,9 +2157,6 @@ func _skill_targets_monster(skill: Dictionary) -> bool:
 
 func _skill_targets_player(skill: Dictionary) -> bool:
 	return bool(_card_play_target_status(skill).get("targets_player", false))
-
-func _playable_card_resolution_coverage_report() -> Dictionary:
-	return _gameplay_balance_diagnostics_service.playable_card_resolution_coverage_report() if _gameplay_balance_diagnostics_service != null else {}
 
 func _card_can_open_counter_window(entry: Dictionary) -> bool:
 	return bool(entry.get("counterable", false))
@@ -3279,7 +3267,7 @@ func _ai_live_route_balance_summary(report: Dictionary = {}) -> String:
 		"" if issues.is_empty() else "｜问题:%s" % "、".join(issues),
 		"；".join(route_pieces) if not route_pieces.is_empty() else "暂无路线样本",
 	]
-func _ai_sample_viability_entry(sample: Dictionary) -> Dictionary:
+func _ai_sample_viability_entry(sample: Dictionary, static_pressure_by_card: Dictionary) -> Dictionary:
 	var route_id := _ai_sample_development_route_id(sample)
 	var kind := String(sample.get("kind", ""))
 	var policy_kind := String(sample.get("policy_kind", ""))
@@ -3303,7 +3291,8 @@ func _ai_sample_viability_entry(sample: Dictionary) -> Dictionary:
 	var clue_score := 0
 	var pressure_score := 0
 	if not skill.is_empty():
-		var pressure := _development_route_pressure_card_entry(canonical_card, skill)
+		var pressure_variant: Variant = static_pressure_by_card.get(canonical_card, {})
+		var pressure: Dictionary = pressure_variant if pressure_variant is Dictionary else {}
 		money_score += int(pressure.get("money_score", 0))
 		disruption_score += int(pressure.get("disruption_score", 0))
 		protection_score += int(pressure.get("protection_score", 0))
@@ -3373,10 +3362,9 @@ func _ai_sample_viability_entry(sample: Dictionary) -> Dictionary:
 		"kind": kind,
 		"policy_kind": policy_kind,
 	}
-func _ai_route_viability_report() -> Dictionary:
+func _ai_route_viability_report(static_pressure_report: Dictionary, static_pressure_by_card: Dictionary) -> Dictionary:
 	var route_entries := {}
 	var required_routes := []
-	var static_pressure_report := _development_route_pressure_audit()
 	var static_by_route := {}
 	for static_route_variant in (static_pressure_report.get("routes", []) as Array):
 		if not (static_route_variant is Dictionary):
@@ -3430,7 +3418,7 @@ func _ai_route_viability_report() -> Dictionary:
 			if not (sample_variant is Dictionary):
 				continue
 			var sample := sample_variant as Dictionary
-			var viability := _ai_sample_viability_entry(sample)
+			var viability := _ai_sample_viability_entry(sample, static_pressure_by_card)
 			var route_id := String(viability.get("route_id", "tactical_support"))
 			if not route_entries.has(route_id):
 				route_id = "tactical_support"
@@ -3524,10 +3512,8 @@ func _ai_route_viability_report() -> Dictionary:
 		"viable_required_route_count": viable_required_routes.size(),
 		"minimum_viable_required_routes": minimum_viable_required_routes,
 	}
-func _ai_route_viability_summary(report: Dictionary = {}) -> String:
+func _ai_route_viability_summary(report: Dictionary) -> String:
 	var source := report
-	if source.is_empty():
-		source = _ai_route_viability_report()
 	var pieces := []
 	for entry_variant in (source.get("routes", []) as Array):
 		if not (entry_variant is Dictionary):
@@ -4953,11 +4939,11 @@ func _monster_target_weight_audit() -> Dictionary:
 		"actors": actor_reports,
 		"evidence_scope": "monster_public_region_attraction_v06",
 	}
-func _agent_policy_audit_report() -> Dictionary:
+func _agent_policy_audit_report(playable_card_resolution_coverage: Dictionary) -> Dictionary:
 	var player_reports := []
 	for player_index_variant in _ai_player_indices():
 		player_reports.append(_ai_policy_candidate_audit(int(player_index_variant)))
-	var coverage := _playable_card_resolution_coverage_report()
+	var coverage := playable_card_resolution_coverage.duplicate(true)
 	return {
 		"test_only": true,
 		"ai_player_count": player_reports.size(),

@@ -345,9 +345,6 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 			card_definition_bridge,
 			_card_play_eligibility_node()
 		)
-	if ai_controller != null and ai_controller.has_method("set_gameplay_balance_diagnostics_service"):
-		ai_controller.call("set_gameplay_balance_diagnostics_service", balance_diagnostics)
-
 	if ai_controller != null and ai_controller.has_method("set_route_network_runtime_controller"):
 		ai_controller.call("set_route_network_runtime_controller", route_network_controller)
 	if ai_controller != null and ai_controller.has_method("set_visual_cue_runtime_owner"):
@@ -547,8 +544,6 @@ func bind_runtime_world(world: Node) -> void:
 	_wire_commodity_flow_postcommit()
 	refresh_v06_production_player_bindings(world)
 	var controller := _ai_runtime_controller_node()
-	if controller != null and controller.has_method("set_gameplay_balance_diagnostics_service"):
-		controller.call("set_gameplay_balance_diagnostics_service", balance_diagnostics)
 	if controller != null and controller.has_method("set_route_network_runtime_controller"):
 		controller.call("set_route_network_runtime_controller", route_network_controller)
 	var card_play_bridge := _card_play_world_bridge_node()
