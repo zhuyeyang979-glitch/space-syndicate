@@ -2,6 +2,30 @@
 extends Node
 class_name AiRegionKnowledgeQueryPort
 
+const PUBLIC_DISTRICT_FACTS_SCHEMA_VERSION := 1
+const PUBLIC_DISTRICT_FACT_KEYS := [
+	"schema_version",
+	"source_revision",
+	"fingerprint",
+	"visibility_scope",
+	"district_index",
+	"region_index",
+	"region_id",
+	"name",
+	"destroyed",
+	"terrain",
+	"products",
+	"demands",
+	"neighbors",
+	"city",
+]
+const PUBLIC_DISTRICT_CITY_FACT_KEYS := [
+	"present",
+	"active",
+	"product_names",
+	"demand_names",
+]
+
 @export var world_session_state_path: NodePath
 @export var commodity_flow_runtime_controller_path: NodePath
 
@@ -19,6 +43,50 @@ func bind_ai_capability(capability: AiRegionKnowledgeCapability) -> void:
 
 func is_ready() -> bool:
 	return _world() != null and _commodity_flow() != null and _capability != null
+
+
+func public_district_facts_ready() -> bool:
+	return _world() != null
+
+
+func public_district_facts_snapshot() -> Array:
+	if not public_district_facts_ready():
+		return []
+	var base_rows: Array = []
+	for district_index in range(_world().districts.size()):
+		if not (_world().districts[district_index] is Dictionary):
+			return []
+		var row := _project_public_district_fact_row(
+			_world().districts[district_index] as Dictionary,
+			district_index
+		)
+		if row.is_empty():
+			return []
+		base_rows.append(row)
+	var source_revision := JSON.stringify([
+		"ai_public_district_facts_v1",
+		base_rows,
+	]).sha256_text()
+	var result: Array = []
+	for row_variant in base_rows:
+		var row := (row_variant as Dictionary).duplicate(true)
+		row["source_revision"] = source_revision
+		row["fingerprint"] = JSON.stringify([
+			"ai_public_district_fact_row_v1",
+			source_revision,
+			int(row.get("district_index", -1)),
+		]).sha256_text()
+		if row.keys() != PUBLIC_DISTRICT_FACT_KEYS or not _pure(row):
+			return []
+		result.append(_copy(row))
+	return result
+
+
+func public_district_fact(district_index: int) -> Dictionary:
+	var rows := public_district_facts_snapshot()
+	if district_index < 0 or district_index >= rows.size() or not (rows[district_index] is Dictionary):
+		return {}
+	return (rows[district_index] as Dictionary).duplicate(true)
 
 
 func region_count() -> int:
@@ -103,16 +171,53 @@ func public_region(district_index: int) -> Dictionary:
 func debug_snapshot() -> Dictionary:
 	return {
 		"port_ready": is_ready(),
+		"public_district_facts_ready": public_district_facts_ready(),
 		"capability_revision": _capability_revision,
 		"public_query_count": _public_query_count,
 		"private_query_count": _private_query_count,
 		"rejected_query_count": _rejected_query_count,
+		"public_district_facts_schema_version": PUBLIC_DISTRICT_FACTS_SCHEMA_VERSION,
+		"public_district_facts_literal_zero_mutation": true,
+		"public_district_facts_exposes_owner": false,
+		"public_district_facts_exposes_damage": false,
+		"public_district_facts_exposes_panic": false,
 		"hidden_owner_truth_exposed": false,
 		"rival_private_economy_exposed": false,
 		"future_supply_bag_exposed": false,
 		"mutable_world_collection_exposed": false,
 		"references_main": false,
 	}
+
+
+func _project_public_district_fact_row(source: Dictionary, district_index: int) -> Dictionary:
+	var raw_city: Dictionary = source.get("city", {}) if source.get("city", {}) is Dictionary else {}
+	var city: Dictionary = {}
+	if not raw_city.is_empty():
+		city = {
+			"present": true,
+			"active": _bool_scalar(raw_city.get("active", true), true),
+			"product_names": _product_names(raw_city.get("products", [])),
+			"demand_names": _string_values(raw_city.get("demands", [])),
+		}
+		if city.keys() != PUBLIC_DISTRICT_CITY_FACT_KEYS:
+			return {}
+	var result := {
+		"schema_version": PUBLIC_DISTRICT_FACTS_SCHEMA_VERSION,
+		"source_revision": "",
+		"fingerprint": "",
+		"visibility_scope": "public",
+		"district_index": district_index,
+		"region_index": district_index,
+		"region_id": _string_scalar(source.get("region_id", ""), "region.%03d" % district_index),
+		"name": _string_scalar(source.get("name", ""), "区域%d" % (district_index + 1)),
+		"destroyed": _bool_scalar(source.get("destroyed", false)),
+		"terrain": _string_scalar(source.get("terrain", ""), "land"),
+		"products": _string_values(source.get("products", [])),
+		"demands": _string_values(source.get("demands", [])),
+		"neighbors": _public_scalar_values(source.get("neighbors", [])),
+		"city": city,
+	}
+	return result if _pure(result) else {}
 
 
 func _project_regions(actor_index: int, guesses: Dictionary) -> Array:

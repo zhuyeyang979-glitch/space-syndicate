@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "status": "AI_PUBLIC_DISTRICT_FACTS_TYPED_PORT_MIGRATION_VALIDATED_CANDIDATE",
+  "task": "AI_PUBLIC_DISTRICT_FACTS_TYPED_PORT_MIGRATION",
+  "parent_task": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
+  "parent_status": "ACTIVE",
+  "base_main_sha": "ebaf91942c23b9c78ffa05873fff73d2b2262f8e",
+  "branch": "codex/alpha03-ai-public-district-facts-ebaf919",
+  "authority": {
+    "public_base": "WorldSessionState",
+    "query_port": "AiRegionKnowledgeQueryPort",
+    "semantic_consumer": "AiRuntimeController",
+    "infrastructure_damage": "RegionInfrastructureRuntimeController_DEFERRED",
+    "panic": "RETIRED_EXCLUDED",
+    "city_owner_truth": "PRIVATE_EXCLUDED"
+  },
+  "ownership": {
+    "new_query_port_count": 0,
+    "new_capability_count": 0,
+    "new_state_owner_count": 0,
+    "new_save_section_count": 0,
+    "save_registry_section_count": 19
+  },
+  "cutover": {
+    "migrated_consumer_count": 7,
+    "main_alive_district_helper_deleted": true,
+    "main_fallback_count": 0,
+    "query_mutation_count": 0,
+    "query_rng_delta": 0,
+    "private_leak_count": 0,
+    "candidate_order_changed": false,
+    "gameplay_formula_changed": false
+  },
+  "main_budget": {
+    "before": {"physical_lines":6440,"nonblank_lines":5421,"methods":470,"fields":46,"constants":45,"preloads":7,"external_caller_files":103,"production_reference_files":3},
+    "after": {"physical_lines":6433,"nonblank_lines":5415,"methods":469,"fields":46,"constants":45,"preloads":7,"external_caller_files":103,"production_reference_files":3},
+    "inherited_failure": "external_caller_files_103_gt_102",
+    "new_main_caller_count": 0
+  },
+  "verification": {
+    "focused": {"result":"104/104 PASS","run_id":"20260724-183457-829-ai_public_district_facts_typed_port_migration_test-890a97dd"},
+    "production_bench": {"result":"22/22 PASS","run_id":"20260724-183535-588-AiPublicDistrictFactsTypedPortMigrationBench-8719f1ee"},
+    "godot_mcp_script_diagnostics": 0,
+    "godot_mcp_scene_cold_load": "PASS",
+    "godot_mcp_live_bench": "PASS",
+    "godot_mcp_formal_main_scene": "PASS",
+    "actor_hand": "92/92 PASS",
+    "public_player": "128/128 PASS",
+    "city_inference": "48/48 PASS",
+    "typed_world": "83/83 PASS",
+    "actor_economy": "81/81 PASS",
+    "actor_economy_bench": "19/19 PASS",
+    "ai_business_transaction": "68/68 PASS",
+    "weather_ai": "49/49 PASS",
+    "formal_main_four_player": "28/28 PASS",
+    "main_architecture": "217/217 PASS",
+    "main_composition": "PASS",
+    "smoke_check_only": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "completion_claims": {
+    "parent_p0_complete": false,
+    "complete_match_proven": false,
+    "alpha_0_3_complete": false,
+    "full_run_resume_claim": false
+  },
+  "next_boundary": "AI_ACTOR_CITY_AUTHORIZATION_TYPED_PORT_MIGRATION_PREFLIGHT"
+}

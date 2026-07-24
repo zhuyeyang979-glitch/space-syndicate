@@ -474,6 +474,7 @@ func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 			and _actor_state_ready()
 			and _actor_hand_inventory_ready()
 			and _actor_economy_facts_ready()
+			and _public_district_facts_ready()
 		),
 		"runtime_owner": "res://scripts/runtime/ai_runtime_controller.gd",
 		"runtime_cutover_enabled": bool(profile.get("runtime_cutover_enabled", false)),
@@ -504,6 +505,10 @@ func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 		"actor_hand_inventory_uses_whole_players": false,
 		"actor_hand_inventory_stores_state": false,
 		"typed_region_knowledge_bound": _ai_region_knowledge_query_port != null and _ai_region_knowledge_capability != null,
+		"typed_public_district_facts_bound": _public_district_facts_ready(),
+		"public_district_facts_uses_main": false,
+		"public_district_facts_uses_whole_districts": false,
+		"public_district_facts_stores_state": false,
 		"typed_city_inference_command_bound": _ai_city_inference_command_port != null,
 		"city_inference_uses_main": false,
 		"private_plan_exposed": false,
@@ -735,6 +740,31 @@ func _city_inference_snapshot(actor_index: int) -> Dictionary:
 		_ai_region_knowledge_capability,
 		actor_index
 	)
+
+
+func _public_district_facts_ready() -> bool:
+	if _ai_region_knowledge_query_port == null:
+		return false
+	return _ai_region_knowledge_query_port.public_district_facts_ready()
+
+
+func _public_district_facts_snapshot() -> Array:
+	if not _public_district_facts_ready():
+		return []
+	return _ai_region_knowledge_query_port.public_district_facts_snapshot()
+
+
+func _public_district_fact(rows: Array, district_index: int) -> Dictionary:
+	if district_index < 0 or district_index >= rows.size() or not (rows[district_index] is Dictionary):
+		return {}
+	return (rows[district_index] as Dictionary).duplicate(true)
+
+
+func _public_district_city_fact(rows: Array, district_index: int) -> Dictionary:
+	var district := _public_district_fact(rows, district_index)
+	if not (district.get("city", {}) is Dictionary):
+		return {}
+	return (district.get("city", {}) as Dictionary).duplicate(true)
 
 
 func _typed_ai_player_indices() -> Array:
@@ -1455,12 +1485,13 @@ func _player_role_card_for_index(player_index: int) -> Dictionary:
 	return _ai_actor_state_port.public_role_definition(player_index) if _actor_state_ready() else {}
 
 func _district_or_city_has_product(district_index: int, product_name: String) -> bool:
-	if product_name.is_empty() or district_index < 0 or district_index >= districts.size():
+	var rows := _public_district_facts_snapshot()
+	var district := _public_district_fact(rows, district_index)
+	if product_name.is_empty() or district.is_empty():
 		return false
-	var district: Dictionary = districts[district_index] if districts[district_index] is Dictionary else {}
 	if (district.get("products", []) as Array).has(product_name) or (district.get("demands", []) as Array).has(product_name):
 		return true
-	var city := _district_city(district_index)
+	var city := _public_district_city_fact(rows, district_index)
 	return _city_is_active(city) and (_city_product_names(city).has(product_name) or _city_demand_names(city).has(product_name))
 
 func _skill_exists(skill_name: String) -> bool:
@@ -1641,7 +1672,12 @@ func _district_supply_card_ids(district_index: int) -> Array:
 		if _district_supply_runtime_query_port != null else []
 
 func _alive_district_indices() -> Array:
-	return _call_world(&"_alive_district_indices")
+	var result: Array = []
+	for row_variant in _public_district_facts_snapshot():
+		var row := row_variant as Dictionary
+		if not bool(row.get("destroyed", false)):
+			result.append(int(row.get("district_index", -1)))
+	return result
 
 func _weather_template(type_id: String) -> Dictionary:
 	return _weather_runtime_controller.template(type_id) if _weather_runtime_controller != null else {}
@@ -2016,12 +2052,15 @@ func _district_product_overlap_with_rival_cities(player_index: int, district_ind
 				matches += 1
 	return matches
 func _district_ocean_neighbor_count(district_index: int) -> int:
-	if district_index < 0 or district_index >= districts.size():
+	var rows := _public_district_facts_snapshot()
+	var district := _public_district_fact(rows, district_index)
+	if district.is_empty():
 		return 0
 	var count := 0
-	for neighbor_variant in districts[district_index].get("neighbors", []):
+	for neighbor_variant in district.get("neighbors", []):
 		var neighbor := int(neighbor_variant)
-		if neighbor >= 0 and neighbor < districts.size() and String(districts[neighbor].get("terrain", "land")) == "ocean":
+		var neighbor_row := _public_district_fact(rows, neighbor)
+		if not neighbor_row.is_empty() and str(neighbor_row.get("terrain", "land")) == "ocean":
 			count += 1
 	return count
 func _auto_build_monster_risk_score(district_index: int) -> int:
@@ -2308,10 +2347,11 @@ func _execute_rival_business_action_transaction(
 
 
 func _ai_business_public_region_id(district_index: int) -> String:
-	if district_index < 0 or district_index >= districts.size() or not (districts[district_index] is Dictionary):
+	var rows := _public_district_facts_snapshot()
+	var district := _public_district_fact(rows, district_index)
+	if district.is_empty() or bool(district.get("destroyed", false)):
 		return ""
-	var district := districts[district_index] as Dictionary
-	if bool(district.get("destroyed", false)) or not _city_is_active(_district_city(district_index)):
+	if not _city_is_active(_public_district_city_fact(rows, district_index)):
 		return ""
 	return str(district.get("region_id", "region.%03d" % district_index)).strip_edges()
 
@@ -5284,12 +5324,13 @@ func _ai_city_touches_product(city: Dictionary, product_name: String) -> bool:
 		return false
 	return _city_product_names(city).has(product_name) or _city_demand_names(city).has(product_name)
 func _ai_district_touches_product(district_index: int, product_name: String) -> bool:
-	if product_name == "" or district_index < 0 or district_index >= districts.size():
+	var rows := _public_district_facts_snapshot()
+	var district := _public_district_fact(rows, district_index)
+	if product_name.is_empty() or district.is_empty():
 		return false
-	var district: Dictionary = districts[district_index]
 	if (district.get("products", []) as Array).has(product_name) or (district.get("demands", []) as Array).has(product_name):
 		return true
-	var city := _district_city(district_index)
+	var city := _public_district_city_fact(rows, district_index)
 	return _city_is_active(city) and _ai_city_touches_product(city, product_name)
 func _ai_product_route_threat_score(player_index: int, product_name: String) -> int:
 	if product_name == "":
@@ -5842,10 +5883,8 @@ func _ai_product_for_skill(player_index: int, skill: Dictionary) -> String:
 		return focus
 	return _skill_play_product(skill, player_index)
 func _ai_first_alive_district() -> int:
-	for i in range(districts.size()):
-		if not bool(districts[i].get("destroyed", false)):
-			return i
-	return -1
+	var alive := _alive_district_indices()
+	return int(alive[0]) if not alive.is_empty() else -1
 func _ai_city_target_score(player_index: int, district_index: int, own_city: bool, prefer_damaged: bool = false) -> int:
 	var city := _district_city(district_index)
 	if not _city_is_active(city):
@@ -6164,9 +6203,8 @@ func _ai_card_kind_bias(player_index: int, kind: String) -> float:
 	return float(profile.get("economy_bias", 1.0))
 func _ai_counter_entry_target_city(entry: Dictionary) -> int:
 	var district_index := int(entry.get("selected_district", -1))
-	if district_index >= 0 and district_index < districts.size() and _city_is_active(_district_city(district_index)):
-		return district_index
-	return -1
+	var rows := _public_district_facts_snapshot()
+	return district_index if _city_is_active(_public_district_city_fact(rows, district_index)) else -1
 func _ai_counter_entry_target_owner(entry: Dictionary) -> int:
 	var target_player := int(entry.get("target_player", -1))
 	if target_player >= 0 and target_player < _public_player_count():

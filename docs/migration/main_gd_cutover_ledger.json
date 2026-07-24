@@ -282,7 +282,10 @@
         },
         {
           "domain": "ai_actor_hand_inventory",
-          "status": "validated_candidate",
+          "status": "merged",
+          "pull_request": 56,
+          "commit_sha": "7a2d37c056d685dbee84d133fabe7768165c9ec6",
+          "merge_commit_sha": "ebaf91942c23b9c78ffa05873fff73d2b2262f8e",
           "query_port": "res://scripts/runtime/ai_actor_hand_inventory_query_port.gd",
           "authoritative_owners": [
             "res://scripts/runtime/world_session_state.gd",
@@ -293,6 +296,32 @@
             "res://tests/ai_actor_hand_inventory_typed_port_migration_test.gd",
             "res://scenes/tools/AiActorHandInventoryTypedPortMigrationBench.tscn"
           ],
+          "new_main_caller_count": 0,
+          "new_save_section_count": 0,
+          "parent_domain_complete": false
+        },
+        {
+          "domain": "ai_public_district_facts",
+          "status": "validated_candidate",
+          "query_port": "res://scripts/runtime/ai_region_knowledge_query_port.gd",
+          "authoritative_owner": "res://scripts/runtime/world_session_state.gd",
+          "migrated_consumers": [
+            "_district_or_city_has_product",
+            "_alive_district_indices",
+            "_district_ocean_neighbor_count",
+            "_ai_business_public_region_id",
+            "_ai_district_touches_product",
+            "_ai_first_alive_district",
+            "_ai_counter_entry_target_city"
+          ],
+          "removed_main_symbols": [
+            "Main._alive_district_indices"
+          ],
+          "tests": [
+            "res://tests/ai_public_district_facts_typed_port_migration_test.gd",
+            "res://scenes/tools/AiPublicDistrictFactsTypedPortMigrationBench.tscn"
+          ],
+          "new_query_port_count": 0,
           "new_main_caller_count": 0,
           "new_save_section_count": 0,
           "parent_domain_complete": false
