@@ -359,7 +359,24 @@ func _check_static_composition(main: Control) -> void:
 	_expect(ai_card_eligibility_query != null and ai_card_eligibility_query.scene_file_path == "res://scenes/runtime/AiCardEligibilityQueryPort.tscn" and ai_card_eligibility_query.has_method("eligibility_snapshot") and ai_card_eligibility_query.has_method("requirement_snapshot") and ai_card_eligibility_query.has_method("best_share_snapshot") and ai_card_eligibility_query.has_method("bind_ai_capabilities") and not ai_card_eligibility_query.has_method("to_save_data"), "GameRuntimeCoordinator owns one actor-scoped non-owning AI card-eligibility query port")
 	_expect(ai_region_knowledge_query != null and ai_region_knowledge_query.scene_file_path == "res://scenes/runtime/AiRegionKnowledgeQueryPort.tscn" and ai_region_knowledge_query.has_method("actor_intelligence_snapshot") and ai_region_knowledge_query.has_method("bind_ai_capabilities") and not ai_region_knowledge_query.has_method("bind_ai_capability") and not ai_region_knowledge_query.has_method("to_save_data"), "GameRuntimeCoordinator owns one actor-scoped non-owning AI region-knowledge query port")
 	_expect(ai_city_inference_command != null and ai_city_inference_command.scene_file_path == "res://scenes/runtime/AiCityInferenceCommandPort.tscn" and ai_city_inference_command.has_method("submit_guess") and ai_city_inference_command.has_method("bind_ai_capabilities") and not ai_city_inference_command.has_method("bind_ai_capability") and not ai_city_inference_command.has_method("to_save_data"), "GameRuntimeCoordinator owns one actor-scoped non-owning AI city-inference command port")
-	_expect(ai_runtime_world_bridge != null and ai_runtime_world_bridge.scene_file_path == AI_RUNTIME_WORLD_BRIDGE and ai_runtime_world_bridge.has_method("bind_world") and ai_runtime_world_bridge.has_method("route_intent") and ai_runtime_world_bridge.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the stateless AiRuntimeWorldBridge scene")
+	_expect(
+		ai_runtime_world_bridge != null
+			and ai_runtime_world_bridge.scene_file_path == AI_RUNTIME_WORLD_BRIDGE
+			and ai_runtime_world_bridge.has_method("bind_world")
+			and ai_runtime_world_bridge.has_method("call_world")
+			and ai_runtime_world_bridge.has_method("debug_snapshot")
+			and not ai_runtime_world_bridge.has_method("read_world_value")
+			and not ai_runtime_world_bridge.has_method("write_world_value")
+			and not ai_runtime_world_bridge.has_method("read_world_constant")
+			and not ai_runtime_world_bridge.has_method("route_intent")
+			and not ai_runtime_world_bridge.has_method("table_selection_state")
+			and not ai_runtime_world_bridge.has_method("world_session_state")
+			and not ai_runtime_world_bridge.has_method("shared_rng")
+			and not main_source.contains("func _apply_ai_runtime_intent(")
+			and not main_source.contains("func _on_ai_runtime_event(")
+			and not main_source.contains("func _ai_runtime_world_constant_snapshot("),
+		"AI bridge retains only the remaining call-world boundary and no generic get, set, constant, intent, selection, world-state, or RNG access"
+	)
 	_expect(card_presentation != null and card_presentation.scene_file_path == CARD_PRESENTATION_RUNTIME_SERVICE and card_presentation.has_method("compose_card") and card_presentation.has_method("compose_hand_card") and card_presentation.has_method("compose_resolution") and card_presentation.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the authoritative CardPresentationRuntimeService scene")
 	_expect(table_viewmodel != null and table_viewmodel.scene_file_path == GAME_TABLE_VIEWMODEL_RUNTIME_SERVICE and table_viewmodel.has_method("compose_table") and table_viewmodel.has_method("compose_card_surfaces") and table_viewmodel.has_method("compose_resolution_overlay_badges") and table_viewmodel.has_method("debug_snapshot"), "GameRuntimeCoordinator owns the authoritative GameTableViewModelRuntimeService scene")
 	_expect(card_play_eligibility != null and card_play_eligibility.scene_file_path == CARD_PLAY_ELIGIBILITY_RUNTIME_SERVICE and card_play_eligibility.has_method("evaluate_play") and card_play_eligibility.has_method("evaluate_hand") and card_play_eligibility.has_method("requirement_status") and card_play_eligibility.has_method("target_status"), "GameRuntimeCoordinator owns the authoritative CardPlayEligibilityRuntimeService scene")

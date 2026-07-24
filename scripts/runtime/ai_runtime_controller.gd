@@ -21,10 +21,18 @@ const AI_SAVE_FIELDS := [
 	"player_states",
 ]
 const AI_PLAYER_SAVE_FIELDS := ["player_index", "ai_profile", "ai_memory"]
+const AUTO_MONSTER_ENCOUNTER_RANGE_METERS := MonsterRuntimeController.AUTO_MONSTER_ENCOUNTER_RANGE_METERS
+const DEFAULT_AOE_RADIUS_METERS := MonsterRuntimeController.DEFAULT_AOE_RADIUS_METERS
+const ACTION_CALLOUT_DURATION := VisualCueRuntimeOwner.ACTION_CALLOUT_DURATION
+const NEARBY_RADIUS_METERS := MonsterRuntimeController.NEARBY_RADIUS_METERS
+const PLAYER_HAND_LIMIT := CardFlowPolicyV06.HAND_LIMIT
+const RIVAL_AUTO_BUILD_BASE_CITY_CAP := 2
+const RIVAL_AUTO_BUILD_MAX_CITY_CAP := 5
 
 @export var policy_profile: Resource = DEFAULT_POLICY_PROFILE
 
 var _world_bridge: Node
+var _run_rng_service: RunRngService
 var _ai_session_public_query_port: AiSessionPublicQueryPort
 var _ai_card_hand_query_port: AiCardHandQueryPort
 var _ai_card_hand_capabilities: Dictionary = {}
@@ -90,6 +98,10 @@ var ai_card_decision_enabled := true
 
 func set_world_bridge(bridge: Node) -> void:
 	_world_bridge = bridge
+
+
+func set_run_rng_service(service: RunRngService) -> void:
+	_run_rng_service = service
 
 
 func set_world_typed_ports(
@@ -602,15 +614,6 @@ func commit_plan_receipt(receipt: Dictionary) -> Dictionary:
 	return normalized.duplicate(true)
 
 
-func route_intent(intent: Dictionary) -> Dictionary:
-	if _world_bridge == null or not _world_bridge.has_method("route_intent"):
-		return {"applied": false, "reason": "world_bridge_missing", "intent_id": str(intent.get("intent_id", ""))}
-	var receipt_variant: Variant = _world_bridge.call("route_intent", intent)
-	var receipt: Dictionary = (receipt_variant as Dictionary).duplicate(true) if receipt_variant is Dictionary else {}
-	commit_plan_receipt(receipt)
-	return receipt
-
-
 func to_save_data() -> Dictionary:
 	var player_states: Array = []
 	if not _actor_state_ready():
@@ -750,7 +753,7 @@ func debug_snapshot(_viewer_index: int = -1) -> Dictionary:
 			"intel_decision": ai_intel_decision_timer,
 		},
 		"receipt_count": _last_receipts.size(),
-		"shared_rng": _world_ready() and rng != null,
+		"shared_rng": rng != null,
 		"typed_weather_public_query_bound": _ai_weather_public_query_port != null and _ai_weather_public_query_port.is_ready(),
 		"weather_query_uses_direct_owner": false,
 		"typed_victory_public_query_bound": _ai_victory_public_query_port != null and _ai_victory_public_query_port.is_ready(),
@@ -942,10 +945,6 @@ func _actor_district(actor_index: int, district_index: int) -> Dictionary:
 	) if _city_inference_ports_ready() else {}
 
 
-func _world_constant(constant_name: StringName, default_value: Variant = null) -> Variant:
-	return _world_bridge.call("read_world_constant", constant_name, default_value) if _world_ready() else default_value
-
-
 func _call_world(method_name: StringName, arguments: Array = []) -> Variant:
 	return _world_bridge.call("call_world", method_name, arguments) if _world_ready() else null
 
@@ -1021,7 +1020,7 @@ var resolved_card_history:
 
 var rng:
 	get:
-		return _world_bridge.shared_rng() if _world_bridge != null else null
+		return _run_rng_service
 
 
 var victory_control_active:
@@ -1169,10 +1168,6 @@ var AI_PERSONALITY_CATALOG:
 		var personalities: Variant = _policy_main_payload.get("personalities", [])
 		return personalities if personalities is Array else []
 
-var AUTO_MONSTER_ENCOUNTER_RANGE_METERS:
-	get:
-		return _world_constant(&"AUTO_MONSTER_ENCOUNTER_RANGE_METERS")
-
 var CITY_GUESS_CONFIDENCE_DEFAULT:
 	get:
 		return int(_city_inference_rules().get("confidence_default", WorldSessionState.CITY_GUESS_CONFIDENCE_MEDIUM))
@@ -1209,53 +1204,9 @@ var CITY_GUESS_REASON_ROUTE:
 	get:
 		return str(_city_inference_rules().get("reason_route", "route"))
 
-var DEFAULT_AOE_RADIUS_METERS:
-	get:
-		return _world_constant(&"DEFAULT_AOE_RADIUS_METERS")
-
-var ACTION_CALLOUT_DURATION:
-	get:
-		return _world_constant(&"ACTION_CALLOUT_DURATION")
-
-var MAX_PLAYER_COUNT:
-	get:
-		return _world_constant(&"MAX_PLAYER_COUNT")
-
-var MIN_PLAYER_COUNT:
-	get:
-		return _world_constant(&"MIN_PLAYER_COUNT")
-
-var NEARBY_RADIUS_METERS:
-	get:
-		return _world_constant(&"NEARBY_RADIUS_METERS")
-
-var PLAYER_HAND_LIMIT:
-	get:
-		return _world_constant(&"PLAYER_HAND_LIMIT")
-
 var PRODUCT_CATALOG:
 	get:
 		return ProductMarketRuntimeController.PRODUCT_CATALOG
-
-var RIVAL_AUTO_BUILD_BASE_CITY_CAP:
-	get:
-		return _world_constant(&"RIVAL_AUTO_BUILD_BASE_CITY_CAP")
-
-var RIVAL_AUTO_BUILD_CHANCE_PERCENT:
-	get:
-		return _world_constant(&"RIVAL_AUTO_BUILD_CHANCE_PERCENT")
-
-var RIVAL_AUTO_BUILD_MAX_CITY_CAP:
-	get:
-		return _world_constant(&"RIVAL_AUTO_BUILD_MAX_CITY_CAP")
-
-var RIVAL_AUTO_BUILD_MAX_PER_CYCLE:
-	get:
-		return _world_constant(&"RIVAL_AUTO_BUILD_MAX_PER_CYCLE")
-
-var RIVAL_AUTO_BUILD_MIN_CASH_RESERVE:
-	get:
-		return _world_constant(&"RIVAL_AUTO_BUILD_MIN_CASH_RESERVE")
 
 var RIVAL_BUSINESS_ACTION_CHANCE_PERCENT:
 	get:

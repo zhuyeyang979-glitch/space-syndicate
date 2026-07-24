@@ -1360,12 +1360,12 @@ func _wire_run_rng_service() -> void:
 	if service == null:
 		return
 	service.configure({})
-	var ai_bridge := _ai_runtime_world_bridge_node()
+	var ai_controller := _ai_runtime_controller_node() as AiRuntimeController
 	var monster_bridge := _monster_runtime_world_bridge_node()
 	var weather_bridge := _weather_runtime_world_bridge_node()
 	var product_market_bridge := _product_market_runtime_world_bridge_node()
-	if ai_bridge is AiRuntimeWorldBridge:
-		(ai_bridge as AiRuntimeWorldBridge).set_rng_service(service)
+	if ai_controller != null:
+		ai_controller.set_run_rng_service(service)
 	if monster_bridge is MonsterRuntimeWorldBridge:
 		(monster_bridge as MonsterRuntimeWorldBridge).set_rng_service(service)
 	if weather_bridge is WeatherRuntimeWorldBridge:
@@ -1378,7 +1378,6 @@ func _wire_table_selection_state() -> void:
 	var state := _table_selection_state_node()
 	if state == null:
 		return
-	var ai_bridge := _ai_runtime_world_bridge_node()
 	var monster_bridge := _monster_runtime_world_bridge_node()
 	var military_bridge := _military_runtime_world_bridge_node()
 	var market_bridge := _product_market_runtime_world_bridge_node()
@@ -1387,8 +1386,6 @@ func _wire_table_selection_state() -> void:
 	var infrastructure_bridge := _region_infrastructure_world_bridge_node()
 	var resolution_bridge := _card_resolution_execution_world_bridge_node()
 	var economy_bridge := _card_economy_product_route_effect_world_bridge_node()
-	if ai_bridge is AiRuntimeWorldBridge:
-		(ai_bridge as AiRuntimeWorldBridge).set_table_selection_state(state)
 	if monster_bridge is MonsterRuntimeWorldBridge:
 		(monster_bridge as MonsterRuntimeWorldBridge).set_table_selection_state(state)
 	if military_bridge is MilitaryRuntimeWorldBridge:
@@ -1411,7 +1408,6 @@ func _wire_world_session_state() -> void:
 	var state := _world_session_state_node()
 	if state == null:
 		return
-	var ai_bridge := _ai_runtime_world_bridge_node()
 	var monster_bridge := _monster_runtime_world_bridge_node()
 	var military_bridge := _military_runtime_world_bridge_node()
 	var weather_bridge := _weather_runtime_world_bridge_node()
@@ -1429,8 +1425,6 @@ func _wire_world_session_state() -> void:
 	var bankruptcy_bridge := _bankruptcy_neutral_estate_world_bridge_node()
 	var card_player_state := _card_player_state_production_adapter_v06_node()
 	var card_inventory := _commodity_card_inventory_runtime_controller_node()
-	if ai_bridge is AiRuntimeWorldBridge:
-		(ai_bridge as AiRuntimeWorldBridge).set_world_session_state(state)
 	if monster_bridge is MonsterRuntimeWorldBridge:
 		(monster_bridge as MonsterRuntimeWorldBridge).set_world_session_state(state)
 	if military_bridge is MilitaryRuntimeWorldBridge:

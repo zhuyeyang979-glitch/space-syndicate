@@ -93,12 +93,6 @@ func _balance_product_price_step_cap(volatility: int, base_price: int) -> int:
 	return int(_balance.product_price_step_cap(volatility, base_price))
 
 
-func _ai_runtime_world_constant_snapshot() -> Dictionary:
-	# The focused fixture supplies only the unrelated legacy visual duration;
-	# business chance/limit/cost must come from AiPolicyProfileResource.
-	return {"ACTION_CALLOUT_DURATION": 2.8}
-
-
 func _configure_static_dependencies() -> void:
 	market_bridge.bind_world(self)
 	market_bridge.set_rng_service(rng)
@@ -113,9 +107,8 @@ func _configure_static_dependencies() -> void:
 	query.configure(world, monster)
 	cash.configure(world, query, authority)
 	ai_bridge.bind_world(self)
-	ai_bridge.set_rng_service(rng)
-	ai_bridge.set_world_session_state(world)
 	ai.set_world_bridge(ai_bridge)
+	ai.set_run_rng_service(rng)
 	ai.set_monster_runtime_controller(monster)
 	ai.set_product_market_runtime_controller(market)
 	ai.configure({"ruleset_id": "v0.4"}, ai.policy_profile)

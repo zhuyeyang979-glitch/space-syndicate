@@ -23,15 +23,6 @@ class MonsterCommandWorld:
 class PlannerWorld:
 	extends Node
 
-	const AUTO_MONSTER_ENCOUNTER_RANGE_METERS := 170.0
-	const NEARBY_RADIUS_METERS := 240.0
-
-	func _ai_runtime_world_constant_snapshot() -> Dictionary:
-		return {
-			"AUTO_MONSTER_ENCOUNTER_RANGE_METERS": AUTO_MONSTER_ENCOUNTER_RANGE_METERS,
-			"NEARBY_RADIUS_METERS": NEARBY_RADIUS_METERS,
-		}
-
 	func _city_competition_matches(_district_index: int) -> int:
 		return 0
 

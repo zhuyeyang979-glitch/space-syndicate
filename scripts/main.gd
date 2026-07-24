@@ -875,37 +875,6 @@ func _ai_runtime_world_snapshot(player_index: int) -> Dictionary:
 	}
 
 
-func _apply_ai_runtime_intent(intent: Dictionary) -> Dictionary:
-	var intent_id := str(intent.get("intent_id", ""))
-	var action_id := str(intent.get("action_id", ""))
-	if action_id == "ai_runtime_noop":
-		return {"applied": true, "reason": "noop", "intent_id": intent_id, "action_id": action_id}
-	return {"applied": false, "reason": "unsupported_intent", "intent_id": intent_id, "action_id": action_id}
-
-
-func _on_ai_runtime_event(event: Dictionary) -> void:
-	if bool(event.get("public", false)) and str(event.get("summary", "")) != "":
-		_game_runtime_coordinator_node().record_legacy_viewer_feedback(str(event.get("summary", "")))
-
-
-func _ai_runtime_world_constant_snapshot() -> Dictionary:
-	return {
-		"ACTION_CALLOUT_DURATION": ACTION_CALLOUT_DURATION,
-		"AUTO_MONSTER_ENCOUNTER_RANGE_METERS": MonsterRuntimeController.AUTO_MONSTER_ENCOUNTER_RANGE_METERS,
-		"DEFAULT_AOE_RADIUS_METERS": DEFAULT_AOE_RADIUS_METERS,
-		"MAX_PLAYER_COUNT": MAX_PLAYER_COUNT,
-		"MIN_PLAYER_COUNT": MIN_PLAYER_COUNT,
-		"NEARBY_RADIUS_METERS": NEARBY_RADIUS_METERS,
-		"PLAYER_HAND_LIMIT": PLAYER_HAND_LIMIT,
-		"ProductMarketRuntimeController.PRODUCT_CATALOG": ProductMarketRuntimeController.PRODUCT_CATALOG,
-		"RIVAL_AUTO_BUILD_BASE_CITY_CAP": RIVAL_AUTO_BUILD_BASE_CITY_CAP,
-		"RIVAL_AUTO_BUILD_CHANCE_PERCENT": RIVAL_AUTO_BUILD_CHANCE_PERCENT,
-		"RIVAL_AUTO_BUILD_MAX_CITY_CAP": RIVAL_AUTO_BUILD_MAX_CITY_CAP,
-		"RIVAL_AUTO_BUILD_MAX_PER_CYCLE": RIVAL_AUTO_BUILD_MAX_PER_CYCLE,
-		"RIVAL_AUTO_BUILD_MIN_CASH_RESERVE": RIVAL_AUTO_BUILD_MIN_CASH_RESERVE,
-	}
-
-
 func _card_resolution_queue_service_node() -> Node:
 	var coordinator := _game_runtime_coordinator_node()
 	return coordinator.get_node_or_null("CardResolutionQueueRuntimeService") if coordinator != null else null
