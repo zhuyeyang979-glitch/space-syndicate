@@ -1,11 +1,11 @@
 {
   "schema_version": 4,
-  "generated_at": "2026-07-23T08:02:01+09:00",
+  "generated_at": "2026-07-24T20:53:57+09:00",
   "source": {
     "repository": "zhuyeyang979-glitch/space-syndicate",
     "branch": "main",
-    "main_sha": "80817847cfd0061de19516829460ca45b41558dc",
-    "latest_merge_pr": 51,
+    "main_sha": "0b4b72a742e4d3ac08cc6308d596d26383942a2d",
+    "latest_merge_pr": 53,
     "origin_divergence": {"ahead": 0, "behind": 0},
     "open_pull_requests": [],
     "recent_main_commits_reviewed": 30,
@@ -51,17 +51,21 @@
     {
       "task_id": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
       "status": "ACTIVE",
-      "canonical_state": "ACTIVE_CITY_INFERENCE_ATOMIC_CUTOVER_MERGED",
+      "canonical_state": "ACTIVE_ACTOR_STATE_ATOMIC_CUTOVER_MERGED",
       "foundation_pull_request": 48,
       "foundation_commit": "6596c3c",
       "completed_atomic_domains": [
         "foundation_ports",
-        "city_inference_query_command"
+        "city_inference_query_command",
+        "actor_state"
       ],
       "city_inference_pull_request": 51,
       "city_inference_commit": "90014ec92a5b2f1f15e658d007ce9c87f2c4fbef",
       "city_inference_merge_commit": "80817847cfd0061de19516829460ca45b41558dc",
-      "next_atomic_boundary": "actor_state",
+      "actor_state_pull_request": 53,
+      "actor_state_commit": "bb3a7af95907ec44b4f3e2c7274a791bab83455a",
+      "actor_state_merge_commit": "0b4b72a742e4d3ac08cc6308d596d26383942a2d",
+      "next_atomic_boundary": "AI_PUBLIC_PLAYER_FACTS_TYPED_PORT_MIGRATION",
       "completion_claimed": false,
       "remaining_scope": "migrate all AI production consumers and remove generic Main/world access"
     },
@@ -136,13 +140,13 @@
     },
     "active_p0": "P0-AI-WORLD-TYPED-PORTS-CUTOVER",
     "last_atomic_delivery": {
-      "branch": "codex/alpha03-ai-world-typed-ports-e49ad50",
-      "base_main_sha": "e49ad50444064804ccafc91cd47bb8fc73e7d34d",
-      "atomic_domain": "city_inference_query_command",
+      "branch": "codex/alpha03-ai-actor-state-371b9d5",
+      "base_main_sha": "371b9d52b5c77f33995e187ce09d0602e5364ac9",
+      "atomic_domain": "actor_state",
       "status": "MERGED",
-      "pull_request": 51,
-      "commit": "90014ec92a5b2f1f15e658d007ce9c87f2c4fbef",
-      "merge_commit": "80817847cfd0061de19516829460ca45b41558dc",
+      "pull_request": 53,
+      "commit": "bb3a7af95907ec44b4f3e2c7274a791bab83455a",
+      "merge_commit": "0b4b72a742e4d3ac08cc6308d596d26383942a2d",
       "main_gd": {
         "physical_lines": 6461,
         "nonblank_lines": 5436,
@@ -156,9 +160,9 @@
       "parent_gate_complete": false
     },
     "next_atomic_candidate": {
-      "base_main_sha": "80817847cfd0061de19516829460ca45b41558dc",
-      "atomic_domain": "actor_state",
-      "status": "READY_FOR_BRANCH",
+      "base_main_sha": "0b4b72a742e4d3ac08cc6308d596d26383942a2d",
+      "atomic_domain": "AI_PUBLIC_PLAYER_FACTS_TYPED_PORT_MIGRATION",
+      "status": "PREFLIGHT_STARTED",
       "parent_gate_complete": false
     }
   },
@@ -239,7 +243,7 @@
   "known_test_state": {
     "smoke_check_only": "PASS",
     "full_smoke": "STALE_FIXTURE_DEBT_PRESENT",
-    "current_atomic_focused_gate": "48/48 PASS",
+    "current_atomic_focused_gate": "93/93 PASS",
     "known_non_product_red_tests": [
       "ai_commodity_futures_policy_runtime_test.gd calls retired Main._new_game",
       "intel_query_command_cutover_test.gd expects retired world envelope schema v1",
@@ -248,7 +252,7 @@
     "policy": "Do not restore retired Main wrappers; migrate one current fixture family per test-debt PR."
   },
   "next_boundaries": {
-    "architecture": "P0-AI-WORLD-TYPED-PORTS-CUTOVER / AI_ACTOR_STATE_TYPED_PORT_MIGRATION",
+    "architecture": "P0-AI-WORLD-TYPED-PORTS-CUTOVER / AI_PUBLIC_PLAYER_FACTS_TYPED_PORT_MIGRATION",
     "product": "P1-FOUR-SEAT-FIRST-ECONOMIC-ENGINE",
     "save": "P1-SAVE-RESUME-OWNER-COVERAGE inventory",
     "content": "P2-ALPHA01-CARD-ART-WAVE-1",
