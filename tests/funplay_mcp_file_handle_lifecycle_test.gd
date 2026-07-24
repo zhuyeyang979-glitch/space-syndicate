@@ -20,6 +20,7 @@ func _run() -> void:
 	file.close()
 
 	var write_block := _function_block(source, "func write_file(")
+	var binary_guard_index := write_block.find("_is_binary_scene_file(path)")
 	var preflight_index := write_block.find("_scene_write_preflight_error(path)")
 	var write_open_index := write_block.find("FileAccess.open(path, FileAccess.WRITE)")
 	var store_index := write_block.find("file.store_string(content)")
@@ -27,14 +28,64 @@ func _run() -> void:
 	var close_index := write_block.find("file.close()")
 	var sync_index := write_block.find("_synchronize_editor_after_file_write(path)")
 	var refresh_index := write_block.find("_refresh_filesystem()")
-	_expect(preflight_index >= 0 and write_open_index > preflight_index, "write_file rejects unsafe open-scene writes before opening the disk file")
+	_expect(binary_guard_index >= 0 and preflight_index > binary_guard_index and write_open_index > preflight_index, "write_file rejects binary scenes and unsafe open-scene writes before opening the disk file")
 	_expect(store_index > write_open_index and flush_index > store_index and close_index > flush_index, "write_file flushes and closes its write handle")
 	_expect(sync_index > close_index and refresh_index > sync_index, "write_file synchronizes an open scene before filesystem refresh")
 
 	var preflight_block := _function_block(source, "func _scene_write_preflight_error(")
 	_expect(preflight_block.contains("get_unsaved_scenes().has(path)"), "scene write preflight refuses to overwrite unsaved editor state")
 	var sync_block := _function_block(source, "func _synchronize_editor_after_file_write(")
-	_expect(sync_block.contains("reload_scene_from_path(path)"), "clean open scenes reload automatically after MCP disk writes")
+	var reload_call_index := sync_block.find("reload_scene_from_path(path)")
+	_expect(
+		reload_call_index >= 0
+			and sync_block.contains("scene_reloaded")
+			and sync_block.find("get_open_scenes().has(path)", reload_call_index) > reload_call_index
+			and sync_block.find("get_unsaved_scenes().has(path)", reload_call_index) > reload_call_index,
+		"clean open-scene reload receipts are verified from post-reload editor state"
+	)
+
+	var create_scene_block := _function_block(source, "func create_new_scene(")
+	_expect(
+		create_scene_block.find("FileAccess.file_exists(path)") >= 0
+			and create_scene_block.find("FileAccess.file_exists(path)") < create_scene_block.find("ResourceSaver.save("),
+		"create_new_scene refuses existing targets before ResourceSaver writes"
+	)
+
+	var refactor_block := _function_block(source, "func apply_script_refactor(")
+	var refactor_preflight_index := refactor_block.find("_scene_write_preflight_error(preflight_path)")
+	var refactor_write_index := refactor_block.find("FileAccess.open(path, FileAccess.WRITE)")
+	var refactor_close_index := refactor_block.find("output.close()")
+	var refactor_sync_index := refactor_block.find("_synchronize_editor_after_file_write(changed_path)")
+	var refactor_refresh_index := refactor_block.find("_refresh_filesystem()")
+	_expect(refactor_preflight_index >= 0 and refactor_write_index > refactor_preflight_index, "bulk refactor preflights every affected open scene before any write")
+	_expect(refactor_close_index > refactor_write_index and refactor_sync_index > refactor_close_index and refactor_refresh_index > refactor_sync_index, "bulk refactor closes writes, reloads open scenes, then scans once")
+
+	var delete_block := _function_block(source, "func delete_file(")
+	_expect(
+		delete_block.find('_open_scene_source_mutation_error(path, "delete")') >= 0
+			and delete_block.find("DirAccess.remove_absolute(path)") > delete_block.find('_open_scene_source_mutation_error(path, "delete")'),
+		"delete_file refuses to remove an open scene"
+	)
+	var move_block := _function_block(source, "func move_file(")
+	_expect(
+		move_block.find('_open_scene_source_mutation_error(from_path, "move")') >= 0
+			and move_block.find("_scene_write_preflight_error(to_path)") >= 0
+			and move_block.find("_synchronize_editor_after_file_write(to_path)") > move_block.find("DirAccess.rename_absolute("),
+		"move_file protects the open source and synchronizes a clean open target"
+	)
+	var copy_block := _function_block(source, "func copy_file(")
+	_expect(
+		copy_block.find("_scene_write_preflight_error(to_path)") >= 0
+			and copy_block.find("_synchronize_editor_after_file_write(to_path)") > copy_block.find("DirAccess.copy_absolute("),
+		"copy_file protects and synchronizes an open scene target"
+	)
+	var packed_block := _function_block(source, "func create_packed_scene_from_node(")
+	_expect(
+		packed_block.find("_scene_write_preflight_error(path)") >= 0
+			and packed_block.find("_synchronize_editor_after_file_write(path)") > packed_block.find("ResourceSaver.save(")
+			and packed_block.find("_refresh_filesystem()") > packed_block.find("_synchronize_editor_after_file_write(path)"),
+		"PackedScene writes preflight, reload, and only then refresh"
+	)
 
 	var patch_block := _function_block(source, "func patch_script(")
 	var read_index := patch_block.find("var content = file.get_as_text()")
