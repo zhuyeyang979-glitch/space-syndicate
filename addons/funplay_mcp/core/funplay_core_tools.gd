@@ -722,6 +722,10 @@ func write_file(arguments: Dictionary) -> String:
 	if ensure_err != OK:
 		return "Error: Failed to create parent directory for %s" % path
 
+	var scene_write_error := _scene_write_preflight_error(path)
+	if scene_write_error != "":
+		return "Error: %s" % scene_write_error
+
 	var content = str(arguments.get("content", ""))
 	var file = FileAccess.open(path, FileAccess.WRITE)
 	if file == null:
@@ -733,11 +737,44 @@ func write_file(arguments: Dictionary) -> String:
 	file.close()
 	if write_error != OK:
 		return "Error: Failed to write file: %s (%s)" % [path, error_string(write_error)]
+	var editor_sync := _synchronize_editor_after_file_write(path)
 	_refresh_filesystem()
 	return _render_variant({
 		"path": path,
 		"bytes_written": content.to_utf8_buffer().size(),
+		"editor_sync": editor_sync,
 	})
+
+
+func _scene_write_preflight_error(path: String) -> String:
+	if not _is_scene_file(path):
+		return ""
+	var editor = _editor()
+	if editor == null or not editor.get_open_scenes().has(path):
+		return ""
+	if editor.get_unsaved_scenes().has(path):
+		return "Refusing to overwrite an open scene with unsaved editor changes: %s" % path
+	return ""
+
+
+func _synchronize_editor_after_file_write(path: String) -> Dictionary:
+	var result := {
+		"open_scene": false,
+		"scene_reloaded": false,
+	}
+	if not _is_scene_file(path):
+		return result
+	var editor = _editor()
+	if editor == null or not editor.get_open_scenes().has(path):
+		return result
+	result["open_scene"] = true
+	editor.reload_scene_from_path(path)
+	result["scene_reloaded"] = true
+	return result
+
+
+func _is_scene_file(path: String) -> bool:
+	return path.ends_with(".tscn") or path.ends_with(".scn")
 
 
 func delete_file(arguments: Dictionary) -> String:

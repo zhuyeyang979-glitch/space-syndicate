@@ -20,12 +20,21 @@ func _run() -> void:
 	file.close()
 
 	var write_block := _function_block(source, "func write_file(")
+	var preflight_index := write_block.find("_scene_write_preflight_error(path)")
+	var write_open_index := write_block.find("FileAccess.open(path, FileAccess.WRITE)")
 	var store_index := write_block.find("file.store_string(content)")
 	var flush_index := write_block.find("file.flush()")
 	var close_index := write_block.find("file.close()")
+	var sync_index := write_block.find("_synchronize_editor_after_file_write(path)")
 	var refresh_index := write_block.find("_refresh_filesystem()")
-	_expect(store_index >= 0 and flush_index > store_index and close_index > flush_index, "write_file flushes and closes its write handle")
-	_expect(refresh_index > close_index, "write_file closes its handle before filesystem refresh")
+	_expect(preflight_index >= 0 and write_open_index > preflight_index, "write_file rejects unsafe open-scene writes before opening the disk file")
+	_expect(store_index > write_open_index and flush_index > store_index and close_index > flush_index, "write_file flushes and closes its write handle")
+	_expect(sync_index > close_index and refresh_index > sync_index, "write_file synchronizes an open scene before filesystem refresh")
+
+	var preflight_block := _function_block(source, "func _scene_write_preflight_error(")
+	_expect(preflight_block.contains("get_unsaved_scenes().has(path)"), "scene write preflight refuses to overwrite unsaved editor state")
+	var sync_block := _function_block(source, "func _synchronize_editor_after_file_write(")
+	_expect(sync_block.contains("reload_scene_from_path(path)"), "clean open scenes reload automatically after MCP disk writes")
 
 	var patch_block := _function_block(source, "func patch_script(")
 	var read_index := patch_block.find("var content = file.get_as_text()")
