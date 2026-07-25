@@ -88,6 +88,15 @@ const GOLDEN_NORMAL_TERMINAL := {
 const GOLDEN_STATE_COMMIT_COUNT_DELTA := 4
 const GOLDEN_PRIVATE_AI_QUERY_COUNT_DELTA := 12
 const AI_STATE_QUERY_COUNT_UPPER_BOUND := 320
+const DISCARD_PRESSURE_GRANT_CARD_ID := "interaction.starlink_dismantle.rank_1"
+const DISCARD_PRESSURE_LIMIT_MSEC := 60_000
+const DISCARD_PRESSURE_GOLDEN_LOCKED := true
+const DISCARD_PRESSURE_GOLDEN_CANDIDATE_COUNT := 16
+const DISCARD_PRESSURE_GOLDEN_DISCARD_CANDIDATE_COUNT := 14
+const DISCARD_PRESSURE_GOLDEN_PROJECTION_SHA256 := "06454d9b06dda5850ef497f918153f23f3569f2fe62659c920d27c3e46dc9118"
+const DISCARD_PRESSURE_GOLDEN_AI_STATE_QUERY_COUNT_DELTA := 374
+const DISCARD_PRESSURE_GOLDEN_STATE_COMMIT_COUNT_DELTA := 0
+const DISCARD_PRESSURE_GOLDEN_PRIVATE_AI_QUERY_COUNT_DELTA := 12
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -322,6 +331,57 @@ func _run() -> void:
 		_expect(_selection_identity(normal_selection_first) == GOLDEN_NORMAL_SELECTION, "normal selected action matches the explicit golden")
 		_expect(normal_terminal_first == GOLDEN_NORMAL_TERMINAL, "normal selection reaches the frozen terminal RNG cursor")
 
+	var discard_pressure_fixture := _prepare_discard_pressure_fixture(coordinator, actor_index)
+	_expect(bool(discard_pressure_fixture.get("prepared", false)), "formal inventory owner prepares one full-hand discard-pressure fixture")
+	if bool(discard_pressure_fixture.get("prepared", false)):
+		var pressure_rng_before := rng.capture_plan_checkpoint()
+		var pressure_actor_state_before := actor_state_port.debug_snapshot()
+		var pressure_supply_before := district_supply_query.debug_snapshot()
+		print("AI_CARD_BUY_DISCARD_PRESSURE|CALL_STARTED")
+		var pressure_started_msec := Time.get_ticks_msec()
+		var pressure_candidates := ai.call("_ai_card_buy_candidates", actor_index) as Array
+		var pressure_elapsed_msec := Time.get_ticks_msec() - pressure_started_msec
+		var pressure_actor_state_after := actor_state_port.debug_snapshot()
+		var pressure_supply_after := district_supply_query.debug_snapshot()
+		var pressure_ai_query_delta := int(pressure_actor_state_after.get("ai_state_query_count", 0)) - int(pressure_actor_state_before.get("ai_state_query_count", 0))
+		var pressure_commit_delta := int(pressure_actor_state_after.get("state_commit_count", 0)) - int(pressure_actor_state_before.get("state_commit_count", 0))
+		var pressure_private_query_delta := int(pressure_supply_after.get("private_ai_query_count", 0)) - int(pressure_supply_before.get("private_ai_query_count", 0))
+		var pressure_rng_after := rng.capture_plan_checkpoint()
+		var pressure_projection := _candidate_projection(pressure_candidates)
+		var pressure_projection_sha256 := JSON.stringify(pressure_projection).sha256_text()
+		var discard_candidate_count := _discard_candidate_count(pressure_projection)
+		var discard_plan_variant_count := _discard_plan_variant_count(pressure_projection)
+		print(
+			"AI_CARD_BUY_DISCARD_PRESSURE|CALL_COMPLETED|elapsed_msec=%d|candidate_count=%d|discard_candidate_count=%d"
+				% [pressure_elapsed_msec, pressure_candidates.size(), discard_candidate_count]
+		)
+		print(
+			"AI_CARD_BUY_DISCARD_PRESSURE|QUERY_COUNTERS|ai_state_query_count_delta=%d|state_commit_count_delta=%d|private_ai_query_count_delta=%d"
+				% [pressure_ai_query_delta, pressure_commit_delta, pressure_private_query_delta]
+		)
+		print("AI_CARD_BUY_DISCARD_PRESSURE|SAFE_SUMMARY|%s" % JSON.stringify({
+			"elapsed_msec": pressure_elapsed_msec,
+			"candidate_count": pressure_candidates.size(),
+			"discard_candidate_count": discard_candidate_count,
+			"discard_plan_variant_count": discard_plan_variant_count,
+			"ai_state_query_count_delta": pressure_ai_query_delta,
+			"state_commit_count_delta": pressure_commit_delta,
+			"private_ai_query_count_delta": pressure_private_query_delta,
+			"projection_sha256": pressure_projection_sha256,
+		}))
+		_expect(pressure_elapsed_msec < DISCARD_PRESSURE_LIMIT_MSEC, "discard-pressure candidate generation stays below the focused limit")
+		_expect(pressure_rng_after == pressure_rng_before, "discard-pressure candidate generation consumes zero RunRngService draws")
+		_expect(discard_candidate_count > 1, "full-hand fixture reaches repeated requires-discard candidates")
+		_expect(discard_plan_variant_count == 1, "all requires-discard candidates preserve one discard slot and keep value")
+		_expect(TablePresentationPureDataPolicy.is_pure_data(pressure_projection), "discard-pressure projection is detached pure data")
+		if DISCARD_PRESSURE_GOLDEN_LOCKED:
+			_expect(pressure_candidates.size() == DISCARD_PRESSURE_GOLDEN_CANDIDATE_COUNT, "discard-pressure candidate count matches the frozen baseline")
+			_expect(discard_candidate_count == DISCARD_PRESSURE_GOLDEN_DISCARD_CANDIDATE_COUNT, "discard-pressure candidate subset matches the frozen baseline")
+			_expect(pressure_projection_sha256 == DISCARD_PRESSURE_GOLDEN_PROJECTION_SHA256, "discard-pressure projection matches the frozen baseline")
+			_expect(pressure_ai_query_delta == DISCARD_PRESSURE_GOLDEN_AI_STATE_QUERY_COUNT_DELTA, "discard-pressure actor-state query count matches the frozen baseline")
+			_expect(pressure_commit_delta == DISCARD_PRESSURE_GOLDEN_STATE_COMMIT_COUNT_DELTA, "discard-pressure actor-state commit count matches the frozen baseline")
+			_expect(pressure_private_query_delta == DISCARD_PRESSURE_GOLDEN_PRIVATE_AI_QUERY_COUNT_DELTA, "discard-pressure private inventory query count matches the frozen baseline")
+
 	await _cleanup(app_root)
 	_finish()
 
@@ -421,6 +481,65 @@ func _candidate_memory_context_projection(candidate: Dictionary) -> Dictionary:
 		"route_stage": str(candidate.get("route_plan_stage", "")),
 		"route_score": int(candidate.get("route_plan_score", 0)),
 	}
+
+
+func _prepare_discard_pressure_fixture(coordinator: GameRuntimeCoordinator, player_index: int) -> Dictionary:
+	var inventory := coordinator.get_node_or_null("CommodityCardInventoryRuntimeController") as CommodityCardInventoryRuntimeController
+	var actor_mapping := coordinator.actor_id_for_player_index(player_index)
+	var actor_id := str(actor_mapping.get("actor_id", ""))
+	if inventory == null or not bool(actor_mapping.get("available", false)) or actor_id.is_empty():
+		return {"prepared": false}
+	var grant_count := 0
+	for grant_index in range(8):
+		var player := inventory.player_snapshot(actor_id)
+		var inventory_state: Dictionary = player.get("inventory", {}) if player.get("inventory", {}) is Dictionary else {}
+		var hand_limit := int(inventory_state.get("hand_limit", 5))
+		if _counted_inventory_size(inventory_state) >= hand_limit:
+			return {"prepared": true, "grant_count": grant_count}
+		var grant := inventory.grant_card(
+			actor_id,
+			DISCARD_PRESSURE_GRANT_CARD_ID,
+			int(player.get("revision", -1)),
+			"ai-card-buy-discard-pressure-grant-%d" % grant_index,
+			"focused_discard_pressure"
+		)
+		if not bool(grant.get("committed", false)):
+			return {"prepared": false, "grant_count": grant_count}
+		grant_count += 1
+	return {"prepared": false, "grant_count": grant_count}
+
+
+func _counted_inventory_size(inventory: Dictionary) -> int:
+	var count := 0
+	var slots: Array = inventory.get("slots", []) if inventory.get("slots", []) is Array else []
+	for slot_variant in slots:
+		if not (slot_variant is Dictionary):
+			continue
+		var card := slot_variant as Dictionary
+		var machine: Dictionary = card.get("machine", {}) if card.get("machine", {}) is Dictionary else {}
+		if bool(machine.get("counts_toward_hand_limit", true)):
+			count += 1
+	return count
+
+
+func _discard_candidate_count(projection: Array) -> int:
+	var count := 0
+	for candidate_variant in projection:
+		if candidate_variant is Dictionary and bool((candidate_variant as Dictionary).get("requires_discard", false)):
+			count += 1
+	return count
+
+
+func _discard_plan_variant_count(projection: Array) -> int:
+	var variants := {}
+	for candidate_variant in projection:
+		if not (candidate_variant is Dictionary):
+			continue
+		var candidate := candidate_variant as Dictionary
+		if not bool(candidate.get("requires_discard", false)):
+			continue
+		variants["%d|%d" % [int(candidate.get("discard_slot", -1)), int(candidate.get("discard_keep_value", 0))]] = true
+	return variants.size()
 
 
 func _first_legal_ai_actor(world: WorldSessionState) -> int:

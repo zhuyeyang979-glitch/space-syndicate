@@ -7885,6 +7885,9 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 	var focus_score := 0
 	var learning_memory_ready := false
 	var learning_memory: Dictionary = {}
+	var discard_plan_ready := false
+	var cached_discard_slot := -1
+	var cached_discard_keep_value := 0
 	var strategy_candidate_context := {
 		"strategy": strategy,
 		"focus_product": focus_product,
@@ -7925,10 +7928,15 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 			var discard_keep_value := 0
 			var hand_pressure_penalty := 0
 			if needs_discard:
-				discard_slot = _ai_discard_slot_for_purchase(player_index, card_name, hand_snapshot)
+				if not discard_plan_ready:
+					cached_discard_slot = _ai_discard_slot_for_purchase(player_index, card_name, hand_snapshot)
+					if cached_discard_slot >= 0:
+						cached_discard_keep_value = _ai_discard_keep_value(player_index, cached_discard_slot, hand_snapshot)
+					discard_plan_ready = true
+				discard_slot = cached_discard_slot
 				if discard_slot < 0:
 					continue
-				discard_keep_value = _ai_discard_keep_value(player_index, discard_slot, hand_snapshot)
+				discard_keep_value = cached_discard_keep_value
 				hand_pressure_penalty = maxi(45, int(round(float(discard_keep_value) * 0.55)) + 30)
 			if not district_focus_score_by_index.has(district_index):
 				district_focus_score_by_index[district_index] = _ai_district_focus_score(player_index, district_index)
