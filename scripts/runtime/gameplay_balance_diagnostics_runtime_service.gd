@@ -61,12 +61,17 @@ func route_profile(route_id: String) -> Dictionary:
 	return route_catalog.route_profile(route_id)
 
 
-func route_for_card(card_facts: Dictionary) -> Dictionary:
+func route_for_card(card_facts: Dictionary, lookup_context: Dictionary = {}) -> Dictionary:
 	var skill := _dictionary(card_facts.get("skill", card_facts))
 	var card_name := str(card_facts.get("card_name", card_facts.get("card_id", skill.get("name", ""))))
 	var authored_route_label := str(card_facts.get("route_label", card_facts.get("strategy_route_label", "")))
 	if authored_route_label == "" and card_name != "":
-		var known := _card_fact(card_name, _snapshot(false))
+		var route_lookup_snapshot: Dictionary = lookup_context.get("world_snapshot", {}) \
+			if lookup_context.get("world_snapshot", {}) is Dictionary else {}
+		if not lookup_context.has("world_snapshot"):
+			route_lookup_snapshot = _snapshot(false)
+			lookup_context["world_snapshot"] = route_lookup_snapshot
+		var known := _card_fact(card_name, route_lookup_snapshot)
 		authored_route_label = str(known.get("route_label", ""))
 	var route_id := route_catalog.route_id_for_strategy_label(authored_route_label) if route_catalog != null and authored_route_label != "" else _fallback_route_id(skill)
 	var profile := route_profile(route_id)
@@ -75,8 +80,8 @@ func route_for_card(card_facts: Dictionary) -> Dictionary:
 	return profile
 
 
-func route_id_for_card(card_facts: Dictionary) -> String:
-	return str(route_for_card(card_facts).get("id", "tactical_support"))
+func route_id_for_card(card_facts: Dictionary, lookup_context: Dictionary = {}) -> String:
+	return str(route_for_card(card_facts, lookup_context).get("id", "tactical_support"))
 
 
 func route_label(route_id: String) -> String:

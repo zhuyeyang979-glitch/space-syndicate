@@ -73,6 +73,8 @@ class CapturingRejectedPurchase:
 
 var _checks := 0
 var _failures: Array[String] = []
+var _route_lookup_profile: Dictionary = {}
+var _route_hand_inventory_profile: Dictionary = {}
 
 
 func _init() -> void:
@@ -194,6 +196,8 @@ func _run() -> void:
 		) and fallback_fixture_ready
 	_expect(fallback_fixture_ready, "fallback fixture installs five evaluated but unplayable cards for every AI actor")
 	if fallback_fixture_ready:
+		_run_development_route_lookup_context_gate(ai, actor_state_port, rng, world, actor_indices[0])
+		_run_route_hand_inventory_cache_review_gate(ai, actor_state_port, rng, world, actor_indices[0])
 		_run_fallback_aggregate(ai, actor_state_port, rng, world, actor_indices)
 
 	await _cleanup(app_root)
@@ -307,14 +311,23 @@ func _run_fallback_aggregate(
 		and int(baseline.get("state_commit_delta", -1)) == int(optimized.get("state_commit_delta", -2))
 	var terminal_rng_parity: bool = baseline.get("rng_checkpoint", {}) == optimized.get("rng_checkpoint", {})
 	var query_reduction := int(optimized.get("ai_state_query_delta", 0)) < int(baseline.get("ai_state_query_delta", 0))
+	var buy_query_reduction := int(optimized.get("buy_ai_state_query_delta", 0)) \
+		< int(baseline.get("buy_ai_state_query_delta", 0))
+	var buy_elapsed_reduction := int(optimized.get("buy_elapsed_msec", 0)) \
+		< int(baseline.get("buy_elapsed_msec", 0))
 	var optimized_elapsed_msec := int(optimized.get("elapsed_msec", FALLBACK_ABSOLUTE_LIMIT_MSEC))
 	var absolute_limit_met := optimized_elapsed_msec < FALLBACK_ABSOLUTE_LIMIT_MSEC
 	var suggested_limit_met := optimized_elapsed_msec < FALLBACK_SUGGESTED_LIMIT_MSEC
+	var route_lookup_gate := bool(_route_lookup_profile.get("passed", false))
+	var route_hand_gate := bool(_route_hand_inventory_profile.get("passed", false))
 	var gate_passed: bool = semantic_parity \
 		and memory_parity \
 		and commit_parity \
 		and terminal_rng_parity \
 		and query_reduction \
+		and buy_query_reduction \
+		and route_lookup_gate \
+		and route_hand_gate \
 		and absolute_limit_met
 
 	print("AI_CARD_TURN_FALLBACK_AGGREGATE|BASELINE|%s" % JSON.stringify(baseline))
@@ -330,12 +343,293 @@ func _run_fallback_aggregate(
 				str(suggested_limit_met),
 			]
 	)
+	print(
+		"ROUTE_LOOKUP_CACHE_REVIEW_REPAIR_GATE|status=%s|fresh_snapshot_contexts=%d|shared_snapshot_contexts=%d|snapshot_identity_preserved=%s|uncached_route_hand_scans=%d|cached_route_hand_scans=%d|unique_route_count=%d|candidate_order_selection_parity=%s|memory_parity=%s|commit_parity=%s|rng_parity=%s"
+			% [
+				"PASS" if gate_passed else "FAIL",
+				int(_route_lookup_profile.get("baseline_snapshot_lookup_count", -1)),
+				int(_route_lookup_profile.get("optimized_snapshot_lookup_count", -1)),
+				str(bool(_route_lookup_profile.get("snapshot_identity_preserved", false))),
+				int(_route_hand_inventory_profile.get("uncached_scan_count", -1)),
+				int(_route_hand_inventory_profile.get("cached_scan_count", -1)),
+				int(_route_hand_inventory_profile.get("unique_route_count", -1)),
+				str(semantic_parity),
+				str(memory_parity),
+				str(commit_parity),
+				str(terminal_rng_parity),
+			]
+	)
+	print(
+		"NEXT_AI_FRAME_HOTSPOT_GATE|status=%s|hotspot=development_route_lookup|baseline_route_usec=%d|optimized_route_usec=%d|baseline_snapshot_lookups=%d|optimized_snapshot_lookups=%d|fallback_buy_elapsed_msec=%d|fallback_buy_queries=%d|semantic_parity=%s|order_selection_parity=%s|memory_parity=%s|commit_parity=%s|rng_parity=%s"
+			% [
+				"PASS" if gate_passed else "FAIL",
+				int(_route_lookup_profile.get("baseline_elapsed_usec", -1)),
+				int(_route_lookup_profile.get("optimized_elapsed_usec", -1)),
+				int(_route_lookup_profile.get("baseline_snapshot_lookup_count", -1)),
+				int(_route_lookup_profile.get("optimized_snapshot_lookup_count", -1)),
+				int(optimized.get("buy_elapsed_msec", -1)),
+				int(optimized.get("buy_ai_state_query_delta", -1)),
+				str(semantic_parity),
+				str(semantic_parity),
+				str(memory_parity),
+				str(commit_parity),
+				str(terminal_rng_parity),
+			]
+	)
 	_expect(semantic_parity, "three-AI shared turn context preserves candidate semantics, original/ranked order, and force/normal selection")
 	_expect(memory_parity, "three-AI shared turn context preserves each actor's final memory")
 	_expect(commit_parity, "three-AI shared turn context preserves per-actor and aggregate state commit counts")
 	_expect(terminal_rng_parity, "three-AI shared turn context preserves terminal RNG")
 	_expect(query_reduction, "three-AI shared turn context reduces actor-state queries")
+	_expect(buy_query_reduction, "three-AI shared turn context reduces fallback-buy actor-state queries")
+	_expect(route_lookup_gate, "call-local development-route lookup gate passes")
+	_expect(route_hand_gate, "route-hand uncached/cached review gate passes")
 	_expect(absolute_limit_met, "three-AI shared turn context stays below the absolute 15 second limit")
+	print("NEXT_AI_FRAME_HOTSPOT_TIMING|buy_elapsed_reduction=%s" % str(buy_elapsed_reduction))
+
+
+func _run_development_route_lookup_context_gate(
+	ai: AiRuntimeController,
+	actor_state_port: AiActorStatePort,
+	rng: RunRngService,
+	world: WorldSessionState,
+	actor_index: int
+) -> void:
+	var skills: Array = []
+	for district_index in range(world.districts.size()):
+		for card_variant in ai.call("_district_supply_card_ids", district_index) as Array:
+			var card_name := str(card_variant)
+			if not card_name.is_empty():
+				skills.append(ai.call("_make_skill", card_name) as Dictionary)
+	if skills.is_empty():
+		_route_lookup_profile = {"passed": false}
+		print("DEVELOPMENT_ROUTE_LOOKUP_CONTEXT_GATE|status=FAIL|reason=no_supply_skills")
+		_expect(false, "route lookup fixture exposes formal district-supply skills")
+		return
+
+	var memory_before := ai.call("_ai_memory_for_player", actor_index) as Dictionary
+	var rng_before := rng.capture_plan_checkpoint()
+	var baseline_state_before := actor_state_port.debug_snapshot()
+	var baseline_started_usec := Time.get_ticks_usec()
+	var baseline_routes: Array = []
+	var baseline_snapshot_lookup_count := 0
+	for skill_variant in skills:
+		var uncached_lookup_context: Dictionary = {}
+		baseline_routes.append(ai.call(
+			"_card_development_route_id",
+			skill_variant as Dictionary,
+			uncached_lookup_context
+		))
+		if uncached_lookup_context.has("world_snapshot"):
+			baseline_snapshot_lookup_count += 1
+	var baseline_elapsed_usec := Time.get_ticks_usec() - baseline_started_usec
+	var baseline_state_after := actor_state_port.debug_snapshot()
+
+	var lookup_context: Dictionary = {}
+	var optimized_state_before := actor_state_port.debug_snapshot()
+	var optimized_started_usec := Time.get_ticks_usec()
+	var optimized_routes: Array = []
+	var optimized_snapshot_lookup_count := 0
+	var snapshot_identity_preserved := false
+	var first_skill := skills[0] as Dictionary
+	optimized_routes.append(ai.call(
+		"_card_development_route_id",
+		first_skill,
+		lookup_context
+	))
+	var shared_snapshot: Dictionary = lookup_context.get("world_snapshot", {}) \
+		if lookup_context.get("world_snapshot", {}) is Dictionary else {}
+	if not shared_snapshot.is_empty():
+		optimized_snapshot_lookup_count = 1
+		shared_snapshot["__route_lookup_review_sentinel"] = "preserved"
+	for skill_index in range(1, skills.size()):
+		optimized_routes.append(ai.call(
+			"_card_development_route_id",
+			skills[skill_index] as Dictionary,
+			lookup_context
+		))
+	var final_shared_snapshot: Dictionary = lookup_context.get("world_snapshot", {}) \
+		if lookup_context.get("world_snapshot", {}) is Dictionary else {}
+	snapshot_identity_preserved = str(final_shared_snapshot.get("__route_lookup_review_sentinel", "")) == "preserved"
+	final_shared_snapshot.erase("__route_lookup_review_sentinel")
+	var optimized_elapsed_usec := Time.get_ticks_usec() - optimized_started_usec
+	var optimized_state_after := actor_state_port.debug_snapshot()
+	var memory_after := ai.call("_ai_memory_for_player", actor_index) as Dictionary
+	var rng_after := rng.capture_plan_checkpoint()
+
+	var result_parity: bool = baseline_routes == optimized_routes
+	var memory_parity: bool = _canonicalize(memory_before) == _canonicalize(memory_after)
+	var commit_parity: bool = (
+		int(baseline_state_after.get("state_commit_count", 0))
+			- int(baseline_state_before.get("state_commit_count", 0))
+	) == 0 and (
+		int(optimized_state_after.get("state_commit_count", 0))
+			- int(optimized_state_before.get("state_commit_count", 0))
+	) == 0
+	var rng_parity: bool = rng_after == rng_before
+	var elapsed_reduction: bool = optimized_elapsed_usec < baseline_elapsed_usec
+	var gate_passed: bool = result_parity \
+		and memory_parity \
+		and commit_parity \
+		and rng_parity \
+		and elapsed_reduction \
+		and baseline_snapshot_lookup_count > optimized_snapshot_lookup_count \
+		and optimized_snapshot_lookup_count == 1 \
+		and snapshot_identity_preserved
+	_route_lookup_profile = {
+		"passed": gate_passed,
+		"baseline_elapsed_usec": baseline_elapsed_usec,
+		"optimized_elapsed_usec": optimized_elapsed_usec,
+		"baseline_queries": int(baseline_state_after.get("ai_state_query_count", 0))
+			- int(baseline_state_before.get("ai_state_query_count", 0)),
+		"optimized_queries": int(optimized_state_after.get("ai_state_query_count", 0))
+			- int(optimized_state_before.get("ai_state_query_count", 0)),
+		"baseline_snapshot_lookup_count": baseline_snapshot_lookup_count,
+		"optimized_snapshot_lookup_count": optimized_snapshot_lookup_count,
+		"snapshot_identity_preserved": snapshot_identity_preserved,
+		"result_sha256": JSON.stringify(baseline_routes).sha256_text(),
+	}
+	print("DEVELOPMENT_ROUTE_LOOKUP_CONTEXT_GATE|status=%s|calls=%d|baseline_usec=%d|optimized_usec=%d|baseline_queries=%d|optimized_queries=%d|baseline_snapshot_lookups=%d|optimized_snapshot_lookups=%d|snapshot_identity_preserved=%s|result_parity=%s|memory_parity=%s|commit_parity=%s|rng_parity=%s" % [
+		"PASS" if gate_passed else "FAIL",
+		skills.size(),
+		baseline_elapsed_usec,
+		optimized_elapsed_usec,
+		int(_route_lookup_profile.get("baseline_queries", -1)),
+		int(_route_lookup_profile.get("optimized_queries", -1)),
+		baseline_snapshot_lookup_count,
+		optimized_snapshot_lookup_count,
+		str(snapshot_identity_preserved),
+		str(result_parity),
+		str(memory_parity),
+		str(commit_parity),
+		str(rng_parity),
+	])
+	_expect(gate_passed, "call-local development-route lookup context preserves results, memory, commits, and RNG while reducing elapsed time")
+
+
+func _run_route_hand_inventory_cache_review_gate(
+	ai: AiRuntimeController,
+	actor_state_port: AiActorStatePort,
+	rng: RunRngService,
+	world: WorldSessionState,
+	actor_index: int
+) -> void:
+	var initial_players := world.players.duplicate(true)
+	var initial_rng := rng.capture_plan_checkpoint()
+	var turn_context := ai.call("_ai_card_turn_scoring_context", actor_index) as Dictionary
+	var play_candidates := ai.call("_ai_card_play_candidates", actor_index, turn_context) as Array
+	var buy_candidates := ai.call("_ai_card_buy_candidates", actor_index, turn_context) as Array
+	var hand_snapshot := ai.call("_actor_hand_inventory_snapshot", actor_index) as Dictionary
+	var best_district := int(ai.call("_best_player_gdp_share_district", actor_index))
+	if not play_candidates.is_empty() or buy_candidates.is_empty() or hand_snapshot.is_empty():
+		_route_hand_inventory_profile = {"passed": false}
+		world.players = initial_players.duplicate(true)
+		rng.restore_plan_checkpoint(initial_rng)
+		print("ROUTE_HAND_INVENTORY_CACHE_REVIEW_GATE|status=FAIL|reason=formal_candidate_fixture_unavailable")
+		_expect(false, "route-hand review fixture exposes fallback buy candidates and a formal hand snapshot")
+		return
+
+	var route_lookup_context: Dictionary = {}
+	var candidate_routes: Array = []
+	var unique_routes: Array = []
+	var unique_route_set: Dictionary = {}
+	for candidate_variant in buy_candidates:
+		var candidate := candidate_variant as Dictionary
+		var skill := ai.call("_make_skill", str(candidate.get("card_name", ""))) as Dictionary
+		var route_id := str(ai.call("_card_development_route_id", skill, route_lookup_context))
+		candidate_routes.append(route_id)
+		if not unique_route_set.has(route_id):
+			unique_route_set[route_id] = true
+			unique_routes.append(route_id)
+
+	var candidate_projection_before := _candidate_projection(buy_candidates)
+	var memory_before := ai.call("_ai_memory_for_player", actor_index) as Dictionary
+	var rng_before := rng.capture_plan_checkpoint()
+	var state_before := actor_state_port.debug_snapshot()
+	var uncached_inventory_projection: Array = []
+	var uncached_scan_count := 0
+	for route_variant in candidate_routes:
+		var uncached_inventory := ai.call(
+			"_ai_route_hand_inventory",
+			actor_index,
+			str(route_variant),
+			hand_snapshot,
+			best_district,
+			true,
+			{},
+			{}
+		) as Dictionary
+		uncached_inventory_projection.append(_canonicalize(uncached_inventory))
+		uncached_scan_count += 1
+
+	var cached_inventory_by_route: Dictionary = {}
+	var cached_route_by_card_name: Dictionary = {}
+	var cached_lookup_context: Dictionary = {}
+	var cached_scan_count := 0
+	for route_variant in unique_routes:
+		var route_id := str(route_variant)
+		cached_inventory_by_route[route_id] = ai.call(
+			"_ai_route_hand_inventory",
+			actor_index,
+			route_id,
+			hand_snapshot,
+			best_district,
+			true,
+			cached_route_by_card_name,
+			cached_lookup_context
+		) as Dictionary
+		cached_scan_count += 1
+	var cached_inventory_projection: Array = []
+	for route_variant in candidate_routes:
+		cached_inventory_projection.append(_canonicalize(
+			cached_inventory_by_route.get(str(route_variant), {}) as Dictionary
+		))
+
+	var state_after := actor_state_port.debug_snapshot()
+	var rng_after := rng.capture_plan_checkpoint()
+	var memory_after := ai.call("_ai_memory_for_player", actor_index) as Dictionary
+	var candidate_projection_after := _candidate_projection(buy_candidates)
+	var inventory_result_parity: bool = uncached_inventory_projection == cached_inventory_projection
+	var scan_count_reduction: bool = uncached_scan_count > cached_scan_count \
+		and cached_scan_count == unique_routes.size()
+	var candidate_order_parity: bool = candidate_projection_before == candidate_projection_after \
+		and _candidate_order(candidate_projection_before) == _candidate_order(candidate_projection_after)
+	var memory_parity: bool = _canonicalize(memory_before) == _canonicalize(memory_after)
+	var commit_parity: bool = int(state_after.get("state_commit_count", 0)) \
+		- int(state_before.get("state_commit_count", 0)) == 0
+	var rng_parity: bool = rng_after == rng_before
+	var gate_passed: bool = inventory_result_parity \
+		and scan_count_reduction \
+		and candidate_order_parity \
+		and memory_parity \
+		and commit_parity \
+		and rng_parity
+	_route_hand_inventory_profile = {
+		"passed": gate_passed,
+		"candidate_count": buy_candidates.size(),
+		"unique_route_count": unique_routes.size(),
+		"uncached_scan_count": uncached_scan_count,
+		"cached_scan_count": cached_scan_count,
+		"inventory_sha256": JSON.stringify(uncached_inventory_projection).sha256_text(),
+	}
+	print("ROUTE_HAND_INVENTORY_CACHE_REVIEW_GATE|status=%s|candidate_count=%d|unique_route_count=%d|uncached_scan_count=%d|cached_scan_count=%d|inventory_result_parity=%s|candidate_order_parity=%s|memory_parity=%s|commit_parity=%s|rng_parity=%s" % [
+		"PASS" if gate_passed else "FAIL",
+		buy_candidates.size(),
+		unique_routes.size(),
+		uncached_scan_count,
+		cached_scan_count,
+		str(inventory_result_parity),
+		str(candidate_order_parity),
+		str(memory_parity),
+		str(commit_parity),
+		str(rng_parity),
+	])
+	_expect(gate_passed, "route-hand cached inventories match the per-candidate uncached reference with fewer scans")
+	world.players = initial_players.duplicate(true)
+	var restore_rng := rng.restore_plan_checkpoint(initial_rng)
+	_expect(bool(restore_rng.get("restored", false)), "route-hand review restores its initial RNG checkpoint")
+
+
 
 
 func _run_queue_failure_fresh_context(
@@ -520,12 +814,19 @@ func _measure_fallback_aggregate(
 	var final_memory_projection: Array = []
 	var commit_projection: Array = []
 	var total_buy_candidates := 0
+	var total_play_elapsed_msec := 0
+	var total_buy_elapsed_msec := 0
+	var total_play_query_delta := 0
+	var total_buy_query_delta := 0
+	var total_play_commit_delta := 0
+	var total_buy_commit_delta := 0
 	print("AI_CARD_TURN_FALLBACK_AGGREGATE|CALL_STARTED|mode=%s|actor_count=%d" % [mode, actor_indices.size()])
 	for actor_index in actor_indices:
 		var actor_state_before := actor_state_port.debug_snapshot()
 		var turn_scoring_context: Dictionary = {}
 		if reuse_turn_context:
 			turn_scoring_context = ai.call("_ai_card_turn_scoring_context", actor_index) as Dictionary
+		var play_state_before := actor_state_port.debug_snapshot()
 		var play_started_msec := Time.get_ticks_msec()
 		var play_candidates: Array = []
 		if reuse_turn_context:
@@ -533,7 +834,11 @@ func _measure_fallback_aggregate(
 		else:
 			play_candidates = ai.call("_ai_card_play_candidates", actor_index) as Array
 		var play_elapsed_msec := Time.get_ticks_msec() - play_started_msec
+		var play_state_after := actor_state_port.debug_snapshot()
+		var play_query_delta := int(play_state_after.get("ai_state_query_count", 0)) - int(play_state_before.get("ai_state_query_count", 0))
+		var play_commit_delta := int(play_state_after.get("state_commit_count", 0)) - int(play_state_before.get("state_commit_count", 0))
 		var play_choice := ai.call("_ai_pick_candidate", actor_index, play_candidates, false) as Dictionary
+		var buy_state_before := actor_state_port.debug_snapshot()
 		var buy_started_msec := Time.get_ticks_msec()
 		var buy_candidates: Array = []
 		if reuse_turn_context and play_choice.is_empty():
@@ -541,6 +846,15 @@ func _measure_fallback_aggregate(
 		else:
 			buy_candidates = ai.call("_ai_card_buy_candidates", actor_index) as Array
 		var buy_elapsed_msec := Time.get_ticks_msec() - buy_started_msec
+		var buy_state_after := actor_state_port.debug_snapshot()
+		var buy_query_delta := int(buy_state_after.get("ai_state_query_count", 0)) - int(buy_state_before.get("ai_state_query_count", 0))
+		var buy_commit_delta := int(buy_state_after.get("state_commit_count", 0)) - int(buy_state_before.get("state_commit_count", 0))
+		total_play_elapsed_msec += play_elapsed_msec
+		total_buy_elapsed_msec += buy_elapsed_msec
+		total_play_query_delta += play_query_delta
+		total_buy_query_delta += buy_query_delta
+		total_play_commit_delta += play_commit_delta
+		total_buy_commit_delta += buy_commit_delta
 		total_buy_candidates += buy_candidates.size()
 		var projection := _candidate_projection(buy_candidates)
 		var ranked := ai.rank_candidates(actor_index, buy_candidates, {"source_context": "fallback_aggregate_performance"})
@@ -569,6 +883,10 @@ func _measure_fallback_aggregate(
 			"actor_index": actor_index,
 			"play_elapsed_msec": play_elapsed_msec,
 			"buy_elapsed_msec": buy_elapsed_msec,
+			"play_ai_state_query_delta": play_query_delta,
+			"buy_ai_state_query_delta": buy_query_delta,
+			"play_state_commit_delta": play_commit_delta,
+			"buy_state_commit_delta": buy_commit_delta,
 			"ai_state_query_delta": actor_query_delta,
 			"state_commit_delta": actor_commit_delta,
 			"play_candidate_count": play_candidates.size(),
@@ -616,6 +934,18 @@ func _measure_fallback_aggregate(
 		"AI_CARD_TURN_FALLBACK_AGGREGATE|QUERY_COUNTERS|mode=%s|ai_state_query_delta=%d|state_commit_delta=%d"
 			% [mode, query_delta, commit_delta]
 	)
+	print(
+		"NEXT_AI_FRAME_HOTSPOT_CHARACTERIZATION|mode=%s|play_elapsed_msec=%d|buy_elapsed_msec=%d|play_queries=%d|buy_queries=%d|play_commits=%d|buy_commits=%d"
+			% [
+				mode,
+				total_play_elapsed_msec,
+				total_buy_elapsed_msec,
+				total_play_query_delta,
+				total_buy_query_delta,
+				total_play_commit_delta,
+				total_buy_commit_delta,
+			]
+	)
 	var result := {
 		"mode": mode,
 		"elapsed_msec": elapsed_msec,
@@ -623,6 +953,12 @@ func _measure_fallback_aggregate(
 		"buy_candidate_count": total_buy_candidates,
 		"ai_state_query_delta": query_delta,
 		"state_commit_delta": commit_delta,
+		"play_elapsed_msec": total_play_elapsed_msec,
+		"buy_elapsed_msec": total_buy_elapsed_msec,
+		"play_ai_state_query_delta": total_play_query_delta,
+		"buy_ai_state_query_delta": total_buy_query_delta,
+		"play_state_commit_delta": total_play_commit_delta,
+		"buy_state_commit_delta": total_buy_commit_delta,
 		"semantic_sha256": semantic_sha256,
 		"terminal_sha256": terminal_sha256,
 		"actors": actor_summaries,

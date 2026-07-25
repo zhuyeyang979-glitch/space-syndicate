@@ -1622,8 +1622,8 @@ func _monster_wager_amount_for_percent(player_index: int, percent: int, entry: D
 func _development_route_archetypes() -> Array:
 	return _gameplay_balance_diagnostics_service.development_routes() if _gameplay_balance_diagnostics_service != null else []
 
-func _card_development_route_id(skill: Dictionary) -> String:
-	return _gameplay_balance_diagnostics_service.route_id_for_card(skill) if _gameplay_balance_diagnostics_service != null else "tactical_support"
+func _card_development_route_id(skill: Dictionary, lookup_context: Dictionary = {}) -> String:
+	return _gameplay_balance_diagnostics_service.route_id_for_card(skill, lookup_context) if _gameplay_balance_diagnostics_service != null else "tactical_support"
 
 func _development_route_label(route_id: String) -> String:
 	return _gameplay_balance_diagnostics_service.route_label(route_id) if _gameplay_balance_diagnostics_service != null else "即时战术"
@@ -4214,7 +4214,8 @@ func _ai_victory_race_bonus_for_candidate(player_index: int, kind: String, distr
 	var helpful_target := resolved_owner == player_index
 	var harmful_target := resolved_owner >= 0 and resolved_owner != player_index
 	var targets_leader := leader_index >= 0 and leader_index != player_index and resolved_owner == leader_index
-	var route_id := _ai_development_route_for_kind(kind, skill)
+	var route_id := String(cached_context.get("development_route", "")) \
+		if cached_context.has("development_route") else _ai_development_route_for_kind(kind, skill)
 	var product_match := false
 	if product_name != "":
 		var focus_product := String(cached_context.get("focus_product", "")) \
@@ -5544,7 +5545,8 @@ func _ai_profile_signature_bonus_for_candidate_with_context(
 		profile = cached_profile_variant as Dictionary if cached_profile_variant is Dictionary else {}
 	else:
 		profile = _ai_profile_for_player(player_index)
-	var route_id := _ai_development_route_for_kind(kind, skill)
+	var route_id := String(cached_context.get("development_route", "")) \
+		if cached_context.has("development_route") else _ai_development_route_for_kind(kind, skill)
 	var family := _ai_policy_family_for_kind(kind, skill)
 	var expected_routes := _ai_profile_expected_route_ids(profile)
 	var expected_families := _ai_profile_expected_policy_families(profile)
@@ -5979,7 +5981,9 @@ func _ai_route_hand_inventory(
 	route_id: String,
 	hand_snapshot: Dictionary = {},
 	best_district: int = -1,
-	best_district_is_precomputed: bool = false
+	best_district_is_precomputed: bool = false,
+	development_route_by_card_name: Dictionary = {},
+	development_route_lookup_context: Dictionary = {}
 ) -> Dictionary:
 	var result := {
 		"total": 0,
@@ -6005,7 +6009,13 @@ func _ai_route_hand_inventory(
 		var skill := entry.get("card", {}) as Dictionary
 		if bool(skill.get("queued_for_resolution", false)) or float(skill.get("lock_left", 0.0)) > 0.0:
 			continue
-		if _card_development_route_id(skill) != route_id:
+		var card_name := String(skill.get("name", entry.get("card_id", "")))
+		if not development_route_by_card_name.has(card_name):
+			development_route_by_card_name[card_name] = _card_development_route_id(
+				skill,
+				development_route_lookup_context
+			)
+		if String(development_route_by_card_name.get(card_name, "")) != route_id:
 			continue
 		result["total"] = int(result.get("total", 0)) + 1
 		var requirement := _ai_play_requirement_metadata(
@@ -6035,9 +6045,10 @@ func _ai_route_inventory_adjustment(
 	development_route_bonus: int,
 	hand_snapshot: Dictionary = {},
 	best_district: int = -1,
-	best_district_is_precomputed: bool = false
+	best_district_is_precomputed: bool = false,
+	precomputed_inventory: Dictionary = {}
 ) -> Dictionary:
-	var inventory := _ai_route_hand_inventory(
+	var inventory := precomputed_inventory if not precomputed_inventory.is_empty() else _ai_route_hand_inventory(
 		player_index,
 		route_id,
 		hand_snapshot,
@@ -8261,6 +8272,9 @@ func _ai_card_buy_candidates(player_index: int, supplied_discard_scoring_context
 	var inventory_receive_plan_by_card_name: Dictionary = {}
 	var district_focus_score_by_index: Dictionary = {}
 	var product_for_card_name: Dictionary = {}
+	var development_route_by_card_name: Dictionary = {}
+	var development_route_lookup_context: Dictionary = {}
+	var route_hand_inventory_by_route: Dictionary = {}
 	var best_district_ready := false
 	var best_district := -1
 	var role_card_ready := false
@@ -8304,7 +8318,12 @@ func _ai_card_buy_candidates(player_index: int, supplied_discard_scoring_context
 				continue
 			var skill := _make_skill(card_name)
 			var kind := String(skill.get("kind", ""))
-			var development_route := _card_development_route_id(skill)
+			if not development_route_by_card_name.has(card_name):
+				development_route_by_card_name[card_name] = _card_development_route_id(
+					skill,
+					development_route_lookup_context
+				)
+			var development_route := String(development_route_by_card_name.get(card_name, ""))
 			var development_route_bias := _ai_development_route_bias_from_profile(profile, development_route)
 			var development_route_bonus := _ai_development_route_bonus_from_profile(profile, development_route)
 			var score := 55 + int(skill.get("cost", 2)) * 11 - int(round(float(price) / 12.0))
@@ -8378,8 +8397,10 @@ func _ai_card_buy_candidates(player_index: int, supplied_discard_scoring_context
 					"route_product": route_product,
 				}
 				victory_race_context_ready = true
+			victory_race_context["development_route"] = development_route
 			var victory_race := _ai_victory_race_bonus_for_candidate(player_index, kind, district_index, product_name, target_owner, skill, victory_race_context)
 			var victory_race_bonus := int(victory_race.get("bonus", 0))
+			buy_profile_context["development_route"] = development_route
 			var profile_signature := _ai_profile_signature_bonus_for_candidate_with_context(
 				player_index,
 				kind,
@@ -8395,6 +8416,17 @@ func _ai_card_buy_candidates(player_index: int, supplied_discard_scoring_context
 			var route_gap_penalty := int(route_gap.get("penalty", 0))
 			var route_gap_reason := String(route_gap.get("reason", ""))
 			var route_gap_field_match := int(route_gap.get("field_match", 0))
+			if not route_hand_inventory_by_route.has(development_route):
+				route_hand_inventory_by_route[development_route] = _ai_route_hand_inventory(
+					player_index,
+					development_route,
+					hand_snapshot,
+					best_district,
+					true,
+					development_route_by_card_name,
+					development_route_lookup_context
+				)
+			var route_hand_inventory := route_hand_inventory_by_route.get(development_route) as Dictionary
 			var route_inventory := _ai_route_inventory_adjustment(
 				player_index,
 				development_route,
@@ -8405,7 +8437,8 @@ func _ai_card_buy_candidates(player_index: int, supplied_discard_scoring_context
 				development_route_bonus,
 				hand_snapshot,
 				best_district,
-				true
+				true,
+				route_hand_inventory
 			)
 			var route_inventory_bonus := int(route_inventory.get("bonus", 0))
 			var route_inventory_penalty := int(route_inventory.get("penalty", 0))
