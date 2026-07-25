@@ -6241,7 +6241,9 @@ func _ai_product_for_skill(player_index: int, skill: Dictionary, cached_context:
 	var explicit := String(skill.get("play_product", ""))
 	if explicit != "":
 		return explicit
-	var cache_active := bool(cached_context.get("cache_active", false))
+	var cache_active := bool(cached_context.get("cache_active", false)) \
+		and int(cached_context.get("player_index", -1)) == player_index
+	var actor_context: Dictionary = cached_context if cache_active else {}
 	var focus := String(cached_context.get("focus_product", "")) \
 		if cache_active and cached_context.has("focus_product") else _ai_focus_product(player_index)
 	if cache_active and not cached_context.has("focus_product"):
@@ -6258,7 +6260,7 @@ func _ai_product_for_skill(player_index: int, skill: Dictionary, cached_context:
 	var kind := String(skill.get("kind", ""))
 	var harmful_supply := int(skill.get("price_delta", 0)) < 0 or int(skill.get("market_supply_pressure", 0)) > int(skill.get("market_demand_pressure", 0))
 	if harmful_supply:
-		var rival_product := _ai_preferred_product(player_index, true, cached_context)
+		var rival_product := _ai_preferred_product(player_index, true, actor_context)
 		if rival_product != "":
 			return rival_product
 	if route_product != "" and (_player_product_flow(player_index, route_product) > 0 or ["product_speculation", "product_futures", "product_contract_boon", "product_growth_boon", "market_stabilize", "city_product_shift", "city_demand_shift", "region_economy_shift", "news_event", "weather_control"].has(kind)):
@@ -7097,7 +7099,12 @@ func _ai_product_futures_policy_kind(skill: Dictionary) -> String:
 	if bool(terms.get("requires_warehouse", false)):
 		return "product_futures_stockpile"
 	return "product_futures_%s" % String(terms.get("direction", "up"))
-func _ai_product_futures_product_score(player_index: int, skill: Dictionary, product_name: String) -> int:
+func _ai_product_futures_product_score(
+	player_index: int,
+	skill: Dictionary,
+	product_name: String,
+	cached_context: Dictionary = {}
+) -> int:
 	if product_name == "" or not PRODUCT_CATALOG.has(product_name):
 		return -999999
 	var terms := _product_futures_terms(skill)
@@ -7124,20 +7131,41 @@ func _ai_product_futures_product_score(player_index: int, skill: Dictionary, pro
 	score += flow * 36
 	if required > 0 and flow < required:
 		score -= (required - flow) * 140
-	var focus := _ai_focus_product(player_index)
+	var cache_active := bool(cached_context.get("cache_active", false)) \
+		and int(cached_context.get("player_index", -1)) == player_index \
+		and cached_context.has("focus_product") \
+		and cached_context.has("route_product")
+	var focus := String(cached_context.get("focus_product", "")) \
+		if cache_active else _ai_focus_product(player_index)
 	if product_name == focus and focus != "":
 		score += 95
-	var route_product := _ai_route_plan_product(player_index)
+	var route_product := String(cached_context.get("route_product", "")) \
+		if cache_active else _ai_route_plan_product(player_index)
 	if product_name == route_product and route_product != "":
 		score += 80
 	if _ai_product_rival_city_count(player_index, product_name) > 0 and direction == "down":
 		score += 62
 	return score
-func _ai_product_for_futures_skill(player_index: int, skill: Dictionary, preferred_product: String = "") -> String:
+func _ai_product_for_futures_skill(
+	player_index: int,
+	skill: Dictionary,
+	preferred_product: String = "",
+	cached_context: Dictionary = {}
+) -> String:
 	var candidates := []
 	var seen := {}
 	var required := _skill_play_flow_required(skill, player_index)
-	for product_variant in [preferred_product, _ai_route_plan_product(player_index), _ai_focus_product(player_index), _best_player_flow_product(player_index, required, [preferred_product]), _ai_preferred_product(player_index), _ai_preferred_product(player_index, true), _skill_play_product(skill, player_index)]:
+	var actor_context_valid := bool(cached_context.get("cache_active", false)) \
+		and int(cached_context.get("player_index", -1)) == player_index
+	var actor_context: Dictionary = cached_context if actor_context_valid else {}
+	var cache_active := actor_context_valid \
+		and cached_context.has("focus_product") \
+		and cached_context.has("route_product")
+	var route_product := String(cached_context.get("route_product", "")) \
+		if cache_active else _ai_route_plan_product(player_index)
+	var focus_product := String(cached_context.get("focus_product", "")) \
+		if cache_active else _ai_focus_product(player_index)
+	for product_variant in [preferred_product, route_product, focus_product, _best_player_flow_product(player_index, required, [preferred_product]), _ai_preferred_product(player_index, false, actor_context), _ai_preferred_product(player_index, true, actor_context), _skill_play_product(skill, player_index)]:
 		var product_name := String(product_variant)
 		if product_name == "" or seen.has(product_name) or not PRODUCT_CATALOG.has(product_name):
 			continue
@@ -7161,18 +7189,26 @@ func _ai_product_for_futures_skill(player_index: int, skill: Dictionary, preferr
 	var best_score := -999999
 	for candidate_variant in candidates:
 		var candidate_product := String(candidate_variant)
-		var score := _ai_product_futures_product_score(player_index, skill, candidate_product)
+		var score := _ai_product_futures_product_score(player_index, skill, candidate_product, actor_context)
 		if score > best_score:
 			best_score = score
 			best_product = candidate_product
 	return best_product
-func _ai_best_warehouse_city_for_product(player_index: int, product_name: String) -> int:
+func _ai_best_warehouse_city_for_product(
+	player_index: int,
+	product_name: String,
+	cached_context: Dictionary = {}
+) -> int:
+	var actor_context: Dictionary = cached_context \
+		if bool(cached_context.get("cache_active", false)) \
+			and int(cached_context.get("player_index", -1)) == player_index \
+		else {}
 	var best_index := -1
 	var best_score := -999999
 	for index_variant in _active_city_indices_for_player(player_index):
 		var index := int(index_variant)
 		var city := _district_city(index)
-		var score := 80 + _ai_city_target_score(player_index, index, true, false)
+		var score := 80 + _ai_city_target_score(player_index, index, true, false, actor_context)
 		if _city_product_names(city).has(product_name):
 			score += 130
 		if _city_demand_names(city).has(product_name):
@@ -7188,10 +7224,19 @@ func _ai_best_warehouse_city_for_product(player_index: int, product_name: String
 			best_score = score
 			best_index = index
 	return best_index
-func _ai_product_futures_plan(player_index: int, skill: Dictionary, preferred_product: String = "") -> Dictionary:
+func _ai_product_futures_plan(
+	player_index: int,
+	skill: Dictionary,
+	preferred_product: String = "",
+	cached_context: Dictionary = {}
+) -> Dictionary:
 	if String(skill.get("kind", "")) != "product_futures":
 		return {}
-	var product_name := _ai_product_for_futures_skill(player_index, skill, preferred_product)
+	var actor_context: Dictionary = cached_context \
+		if bool(cached_context.get("cache_active", false)) \
+			and int(cached_context.get("player_index", -1)) == player_index \
+		else {}
+	var product_name := _ai_product_for_futures_skill(player_index, skill, preferred_product, actor_context)
 	if product_name == "" or not PRODUCT_CATALOG.has(product_name):
 		return {}
 	var terms := _product_futures_terms(skill)
@@ -7201,21 +7246,21 @@ func _ai_product_futures_plan(player_index: int, skill: Dictionary, preferred_pr
 	if not ["up", "down"].has(direction):
 		return {}
 	var stockpile_required := bool(terms.get("requires_warehouse", false))
-	var district_index := _ai_best_owned_route_city_for_product(player_index, product_name, false)
+	var district_index := _ai_best_owned_route_city_for_product(player_index, product_name, false, actor_context)
 	if district_index < 0:
 		district_index = _ai_best_city_district(player_index, true)
 	if district_index < 0:
 		district_index = _ai_first_alive_district()
 	var warehouse_city := -1
 	if stockpile_required:
-		warehouse_city = _ai_best_warehouse_city_for_product(player_index, product_name)
+		warehouse_city = _ai_best_warehouse_city_for_product(player_index, product_name, actor_context)
 		if warehouse_city < 0:
 			return {}
 		district_index = warehouse_city
 	var scores := _product_strategy_scores(product_name)
 	var market_score := int(scores.get("short", 0)) if direction == "down" else int(scores.get("long", 0))
 	var stockpile_score := int(scores.get("stockpile", 0))
-	var futures_score := maxi(1, _ai_product_futures_product_score(player_index, skill, product_name))
+	var futures_score := maxi(1, _ai_product_futures_product_score(player_index, skill, product_name, actor_context))
 	var flow := _player_product_flow(player_index, product_name)
 	var target_owner := -999
 	if district_index >= 0 and district_index < districts.size():
@@ -7254,8 +7299,23 @@ func _ai_product_futures_plan(player_index: int, skill: Dictionary, preferred_pr
 		],
 	}
 	return result
-func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, district_index: int, product_name: String = "", target_owner: int = -999) -> int:
+func _ai_generic_card_effect_score(
+	player_index: int,
+	skill: Dictionary,
+	district_index: int,
+	product_name: String = "",
+	target_owner: int = -999,
+	cached_context: Dictionary = {}
+) -> int:
 	var score := 0
+	var actor_context_valid := bool(cached_context.get("cache_active", false)) \
+		and int(cached_context.get("player_index", -1)) == player_index
+	var actor_context: Dictionary = cached_context if actor_context_valid else {}
+	var cache_active := actor_context_valid \
+		and cached_context.has("focus_product") \
+		and cached_context.has("route_product")
+	var cached_focus_product := String(cached_context.get("focus_product", "")) if cache_active else ""
+	var cached_route_product := String(cached_context.get("route_product", "")) if cache_active else ""
 	var harmful_target := target_owner >= 0 and target_owner != player_index
 	var helpful_target := target_owner == player_index
 	var target_city := _district_city(district_index)
@@ -7314,17 +7374,27 @@ func _ai_generic_card_effect_score(player_index: int, skill: Dictionary, distric
 	var demand_pressure := int(skill.get("market_demand_pressure", 0))
 	var supply_pressure := int(skill.get("market_supply_pressure", 0))
 	if product_name != "":
-		if product_name == _ai_focus_product(player_index) or product_name == _ai_route_plan_product(player_index):
+		var matches_frozen_product: bool = product_name == cached_focus_product or product_name == cached_route_product \
+			if cache_active else (product_name == _ai_focus_product(player_index) or product_name == _ai_route_plan_product(player_index))
+		if matches_frozen_product:
 			score += abs(demand_pressure - supply_pressure) * 18
 		score += int(float(int(skill.get("price_delta", 0))) / 2.0)
 	if String(skill.get("kind", "")) == "product_futures":
-		var futures_plan := _ai_product_futures_plan(player_index, skill, product_name)
+		var futures_plan: Dictionary = {}
+		if actor_context.has("product_futures_plan"):
+			if actor_context.get("product_futures_plan") is Dictionary:
+				futures_plan = actor_context.get("product_futures_plan") as Dictionary
+		else:
+			futures_plan = _ai_product_futures_plan(player_index, skill, product_name, actor_context)
 		if not futures_plan.is_empty():
 			var futures_bonus := int(futures_plan.get("futures_signal", 0))
 			score += futures_bonus
 			if bool(futures_plan.get("futures_warehouse_required", false)):
 				score += int(futures_plan.get("futures_stockpile_units", 1)) * 24
-			if String(futures_plan.get("product", "")) == _ai_focus_product(player_index) or String(futures_plan.get("product", "")) == _ai_route_plan_product(player_index):
+			var futures_product := String(futures_plan.get("product", ""))
+			var futures_matches_frozen_product: bool = futures_product == cached_focus_product or futures_product == cached_route_product \
+				if cache_active else (futures_product == _ai_focus_product(player_index) or futures_product == _ai_route_plan_product(player_index))
+			if futures_matches_frozen_product:
 				score += 54
 	var derivative_terms := _city_gdp_derivative_terms(skill) if String(skill.get("kind", "")) == "city_gdp_derivative" else {}
 	var gdp_multiplier := float(derivative_terms.get("multiplier", 0.0))
@@ -8252,9 +8322,10 @@ func _ai_card_buy_candidates(player_index: int, supplied_discard_scoring_context
 	var strategy := _ai_refresh_strategy_intent(player_index)
 	var strategy_intent := String(strategy.get("intent", ""))
 	var strategy_score := int(strategy.get("score", 0))
+	var buy_call_context_active := bool(supplied_discard_scoring_context.get("cache_active", false)) \
+		and int(supplied_discard_scoring_context.get("player_index", -1)) == player_index
 	var route_plan_context: Dictionary = {}
-	if bool(supplied_discard_scoring_context.get("cache_active", false)) \
-			and int(supplied_discard_scoring_context.get("player_index", -1)) == player_index:
+	if buy_call_context_active:
 		var route_actor_state := _ai_actor_state_snapshot(player_index)
 		if not route_actor_state.is_empty():
 			var route_learning_memory := _normalized_ai_memory(route_actor_state.get("ai_memory", {}))
@@ -8270,6 +8341,15 @@ func _ai_card_buy_candidates(player_index: int, supplied_discard_scoring_context
 	var route_plan := _ai_refresh_route_plan(player_index, false, route_plan_context)
 	route_plan_context.clear()
 	var route_product := String(route_plan.get("product", ""))
+	var generic_effect_context: Dictionary = {}
+	if buy_call_context_active:
+		generic_effect_context = {
+			"cache_active": true,
+			"player_index": player_index,
+			"focus_product": focus_product,
+			"route_product": route_product,
+			"route_plan": route_plan,
+		}
 	var buy_profile_context := {
 		"profile": profile,
 		"focus_product": focus_product,
@@ -8365,11 +8445,16 @@ func _ai_card_buy_candidates(player_index: int, supplied_discard_scoring_context
 			if family_slot >= 0:
 				score += 85
 			if not product_for_card_name.has(card_name):
-				product_for_card_name[card_name] = _ai_product_for_skill(player_index, skill)
+				product_for_card_name[card_name] = _ai_product_for_skill(player_index, skill, generic_effect_context)
 			var product_name := str(product_for_card_name[card_name])
 			var futures_plan := {}
+			var candidate_effect_context := generic_effect_context
 			if kind == "product_futures":
-				futures_plan = _ai_product_futures_plan(player_index, skill, product_name)
+				futures_plan = _ai_product_futures_plan(player_index, skill, product_name, generic_effect_context)
+				candidate_effect_context = generic_effect_context.duplicate()
+				candidate_effect_context["cache_active"] = true
+				candidate_effect_context["player_index"] = player_index
+				candidate_effect_context["product_futures_plan"] = futures_plan
 				if bool(_product_futures_terms(skill).get("requires_warehouse", false)) and futures_plan.is_empty():
 					continue
 				if not futures_plan.is_empty():
@@ -8399,7 +8484,7 @@ func _ai_card_buy_candidates(player_index: int, supplied_discard_scoring_context
 			var city := _district_city(district_index)
 			if _city_is_active(city):
 				target_owner = int(city.get("owner", -1))
-			var generic_bonus := _ai_generic_card_effect_score(player_index, skill, district_index, product_name, target_owner)
+			var generic_bonus := _ai_generic_card_effect_score(player_index, skill, district_index, product_name, target_owner, candidate_effect_context)
 			var phase_bonus := _ai_phase_bonus_for_candidate(player_index, kind, district_index, product_name, target_owner, skill, phase_candidate_context)
 			if not victory_race_context_ready:
 				victory_race_context = {
@@ -8629,6 +8714,7 @@ func _ai_card_buy_candidates(player_index: int, supplied_discard_scoring_context
 					String(military_plan.get("reason", "")),
 				]
 			result.append(candidate)
+	generic_effect_context.clear()
 	return result
 func _ai_pick_candidate(player_index: int, candidates: Array, force: bool = false) -> Dictionary:
 	if candidates.is_empty():
