@@ -247,7 +247,7 @@ func _run_saturated_decision_record_copy_gate(
 		"learning_bonus": int(choice.get("learning_bonus", 0)),
 		"copy_gate_marker": {
 			"sample_count": SATURATED_RECORD_SAMPLE_COUNT,
-			"values": ["A", "C", "D"],
+			"values": ["A", "B", "C", "D"],
 		},
 	}
 	var context_contract := _provided_decision_memory_reference_contract(
@@ -255,6 +255,13 @@ func _run_saturated_decision_record_copy_gate(
 		actor_state_port,
 		actor_index,
 		candidates
+	) if fixture_ready else {}
+	var binding_contract := _decision_record_binding_fail_closed_gate(
+		ai,
+		actor_state_port,
+		rng,
+		world,
+		actor_index
 	) if fixture_ready else {}
 	var source_contract := _decision_record_copy_source_contract()
 
@@ -317,6 +324,14 @@ func _run_saturated_decision_record_copy_gate(
 	var last_plan_parity: bool = str(reference_memory.get("last_plan", "")) == expected_last_plan \
 		and str(optimized_memory.get("last_plan", "")) == expected_last_plan
 	var memory_parity: bool = _canonicalize(reference_memory) == _canonicalize(optimized_memory)
+	var fixture_route := _decision_record_route_projection(fixture_memory)
+	var current_route_fields: bool = not fixture_route.is_empty() \
+		and _decision_record_route_projection(reference_memory) == fixture_route \
+		and _decision_record_route_projection(optimized_memory) == fixture_route \
+		and str(reference_sample.get("route_plan_product", "")) == str(fixture_route.get("product", "")) \
+		and str(optimized_sample.get("route_plan_product", "")) == str(fixture_route.get("product", "")) \
+		and str(reference_sample.get("route_plan_stage", "")) == str(fixture_route.get("stage", "")) \
+		and str(optimized_sample.get("route_plan_stage", "")) == str(fixture_route.get("stage", ""))
 	var commit_parity: bool = int(reference.get("commit_delta", -1)) == 1 \
 		and int(optimized.get("commit_delta", -1)) == 1
 	var rng_parity: bool = reference.get("rng_terminal", {}) == optimized.get("rng_terminal", {}) \
@@ -338,6 +353,18 @@ func _run_saturated_decision_record_copy_gate(
 		and bool(source_contract.get("passed", false)) \
 		and bool(source_contract.get("reference_detached", false)) \
 		and bool(context_contract.get("passed", false))
+	var stale_pair := _run_stale_saturated_decision_record_pair(
+		ai,
+		actor_state_port,
+		rng,
+		world,
+		actor_index,
+		candidates,
+		choice,
+		metadata,
+		fixture_world,
+		fixture_rng
+	) if fixture_ready else {}
 	var final_world_restore := world.restore_runtime_checkpoint(original_world)
 	var final_rng_restore := rng.restore_plan_checkpoint(original_rng)
 	var final_restore: bool = bool(final_world_restore.get("applied", false)) \
@@ -354,6 +381,7 @@ func _run_saturated_decision_record_copy_gate(
 		and action_count_once \
 		and last_plan_parity \
 		and memory_parity \
+		and current_route_fields \
 		and commit_parity \
 		and rng_parity \
 		and source_immutable \
@@ -361,8 +389,10 @@ func _run_saturated_decision_record_copy_gate(
 		and elapsed_reduced \
 		and query_not_increased \
 		and independent_reference_valid \
+		and bool(binding_contract.get("passed", false)) \
+		and bool(stale_pair.get("passed", false)) \
 		and final_restore
-	print("SATURATED_DECISION_RECORD_COPY_GATE|status=%s|sample_count=%d|reference_path=%s|optimized_path=%s|reference_usec=%d|optimized_usec=%d|reduction_usec=%d|reference_queries=%d|optimized_queries=%d|reference_commits=%d|optimized_commits=%d|new_sample_parity=%s|samples_hash_parity=%s|candidate_views_parity=%s|action_counts_parity=%s|last_plan_parity=%s|full_memory_parity=%s|rng_parity=%s|source_immutable=%s|caller_reference_read_only=%s|independent_reference=%s|cas_contract=%s|restored=%s" % [
+	print("SATURATED_DECISION_RECORD_COPY_GATE|status=%s|sample_count=%d|reference_path=%s|optimized_path=%s|reference_usec=%d|optimized_usec=%d|reduction_usec=%d|reference_queries=%d|optimized_queries=%d|reference_commits=%d|optimized_commits=%d|new_sample_parity=%s|samples_hash_parity=%s|candidate_views_parity=%s|action_counts_parity=%s|last_plan_parity=%s|full_memory_parity=%s|current_route_fields=%s|stale_route_parity=%s|rng_parity=%s|source_immutable=%s|caller_reference_read_only=%s|binding_fail_closed=%s|independent_reference=%s|cas_contract=%s|restored=%s" % [
 		"PASS" if gate_passed else "FAIL",
 		reference_samples.size(),
 		str(reference.get("record_path", "")),
@@ -380,9 +410,12 @@ func _run_saturated_decision_record_copy_gate(
 		str(action_counts_parity and action_count_once),
 		str(last_plan_parity),
 		str(memory_parity),
+		str(current_route_fields),
+		str(bool(stale_pair.get("passed", false))),
 		str(rng_parity),
 		str(source_immutable),
 		str(bool(context_contract.get("passed", false))),
+		str(bool(binding_contract.get("passed", false))),
 		str(independent_reference_valid),
 		str(bool(source_contract.get("passed", false))),
 		str(final_restore),
@@ -391,11 +424,13 @@ func _run_saturated_decision_record_copy_gate(
 	_expect(sample_parity and samples_parity and sample_limit_preserved, "copy optimization preserves the complete new sample and all 48 retained samples")
 	_expect(candidate_views_parity, "copy optimization preserves detached candidate training views and their order")
 	_expect(action_counts_parity and action_count_once and last_plan_parity, "copy optimization preserves action_counts and last_plan with one record")
-	_expect(memory_parity, "copy optimization preserves complete final AI memory")
+	_expect(memory_parity and current_route_fields, "current-route reuse preserves complete memory and bound route fields")
 	_expect(commit_parity, "copy optimization preserves exactly one successful CAS commit")
 	_expect(rng_parity, "copy optimization preserves terminal RNG")
 	_expect(source_immutable, "recording leaves candidates, metadata, caller memory, and detached actor snapshots unchanged")
+	_expect(bool(binding_contract.get("passed", false)), "wrong actor, revision, and generation bindings fail closed with detached memory")
 	_expect(independent_reference_valid, "saturated reference uses the independent detached recorder while optimized uses production")
+	_expect(bool(stale_pair.get("passed", false)), "stale route refresh preserves detached reference semantics and post-CAS route fields")
 	_expect(elapsed_reduced and query_not_increased, "optimized saturated record is faster without increasing actor-state queries")
 	_expect(final_restore, "saturated decision-record fixture restores complete World and RNG state")
 
@@ -458,6 +493,173 @@ func _prepare_saturated_decision_record_fixture(
 		and not str(stored.get("strategic_intent", "")).is_empty() \
 		and not str(stored.get("route_plan_product", "")).is_empty() \
 		and not str(stored.get("route_plan_stage", "")).is_empty()
+
+
+func _run_stale_saturated_decision_record_pair(
+	ai: AiRuntimeController,
+	actor_state_port: AiActorStatePort,
+	rng: RunRngService,
+	world: WorldSessionState,
+	actor_index: int,
+	candidates: Array,
+	choice: Dictionary,
+	metadata: Dictionary,
+	current_world: Dictionary,
+	current_rng: Dictionary
+) -> Dictionary:
+	var base_restore := world.restore_runtime_checkpoint(current_world)
+	var base_rng_restore := rng.restore_plan_checkpoint(current_rng)
+	var players := world.players.duplicate(true)
+	var player := (players[actor_index] as Dictionary).duplicate(true) \
+		if actor_index >= 0 and actor_index < players.size() and players[actor_index] is Dictionary else {}
+	var memory := (player.get("ai_memory", {}) as Dictionary).duplicate(true) \
+		if player.get("ai_memory", {}) is Dictionary else {}
+	memory["route_plan_cycle"] = int(ai.get("business_cycle_count")) - 1
+	player["ai_memory"] = memory
+	if not player.is_empty():
+		players[actor_index] = player
+		world.players = players
+	var stale_fixture_memory := ai.call("_ai_memory_for_player", actor_index) as Dictionary
+	var cycle := int(ai.get("business_cycle_count"))
+	var stale_fixture_ready: bool = bool(base_restore.get("applied", false)) \
+		and bool(base_rng_restore.get("restored", false)) \
+		and int(stale_fixture_memory.get("economic_focus_cycle", -1)) == cycle \
+		and int(stale_fixture_memory.get("strategic_intent_cycle", -1)) == cycle \
+		and int(stale_fixture_memory.get("route_plan_cycle", cycle)) != cycle
+	var stale_world := world.capture_runtime_checkpoint() if stale_fixture_ready else {}
+	var stale_rng := rng.capture_plan_checkpoint() if stale_fixture_ready else {}
+	var reference := _measure_saturated_decision_record_path(
+		ai,
+		actor_state_port,
+		rng,
+		actor_index,
+		candidates,
+		choice,
+		metadata,
+		true
+	) if stale_fixture_ready else {}
+	var optimized_world_restore := world.restore_runtime_checkpoint(stale_world) \
+		if stale_fixture_ready else {}
+	var optimized_rng_restore := rng.restore_plan_checkpoint(stale_rng) \
+		if stale_fixture_ready else {}
+	var optimized := _measure_saturated_decision_record_path(
+		ai,
+		actor_state_port,
+		rng,
+		actor_index,
+		candidates,
+		choice,
+		metadata,
+		false
+	) if stale_fixture_ready else {}
+	var reference_memory := reference.get("memory", {}) as Dictionary
+	var optimized_memory := optimized.get("memory", {}) as Dictionary
+	var reference_samples := reference_memory.get("decision_samples", []) as Array \
+		if reference_memory.get("decision_samples", []) is Array else []
+	var optimized_samples := optimized_memory.get("decision_samples", []) as Array \
+		if optimized_memory.get("decision_samples", []) is Array else []
+	var reference_sample := reference_samples[-1] as Dictionary \
+		if not reference_samples.is_empty() and reference_samples[-1] is Dictionary else {}
+	var optimized_sample := optimized_samples[-1] as Dictionary \
+		if not optimized_samples.is_empty() and optimized_samples[-1] is Dictionary else {}
+	var expected_views := ai.call("_ai_candidate_training_views_for_decision", candidates) as Array
+	var expected_action_count := int((stale_fixture_memory.get("action_counts", {}) as Dictionary).get("城市业主推理", 0)) + 1
+	var expected_last_plan := "城市业主推理｜目标%d｜评分%d｜%s" % [
+		int(choice.get("district", -1)) + 1,
+		int(choice.get("score", 0)),
+		str(choice.get("reason", "按公开商品和城市线索标注")),
+	]
+	var reference_route := _decision_record_route_projection(reference_memory)
+	var optimized_route := _decision_record_route_projection(optimized_memory)
+	var post_cas_route_fields: bool = not reference_route.is_empty() \
+		and reference_route == optimized_route \
+		and int(reference_memory.get("route_plan_cycle", -1)) == cycle \
+		and int(optimized_memory.get("route_plan_cycle", -1)) == cycle \
+		and str(reference_sample.get("route_plan_product", "")) == str(reference_route.get("product", "")) \
+		and str(optimized_sample.get("route_plan_product", "")) == str(optimized_route.get("product", "")) \
+		and str(reference_sample.get("route_plan_stage", "")) == str(reference_route.get("stage", "")) \
+		and str(optimized_sample.get("route_plan_stage", "")) == str(optimized_route.get("stage", "")) \
+		and int(reference_sample.get("route_plan_score", -1)) == int(reference_route.get("score", -2)) \
+		and int(optimized_sample.get("route_plan_score", -1)) == int(optimized_route.get("score", -2))
+	var parity: bool = _canonicalize(reference_samples) == _canonicalize(optimized_samples) \
+		and _canonicalize(reference_sample) == _canonicalize(optimized_sample) \
+		and _canonicalize(reference_sample.get("candidates", [])) == _canonicalize(expected_views) \
+		and _canonicalize(optimized_sample.get("candidates", [])) == _canonicalize(expected_views) \
+		and _canonicalize(reference_memory.get("action_counts", {})) == _canonicalize(optimized_memory.get("action_counts", {})) \
+		and int((reference_memory.get("action_counts", {}) as Dictionary).get("城市业主推理", -1)) == expected_action_count \
+		and int((optimized_memory.get("action_counts", {}) as Dictionary).get("城市业主推理", -1)) == expected_action_count \
+		and str(reference_memory.get("last_plan", "")) == expected_last_plan \
+		and str(optimized_memory.get("last_plan", "")) == expected_last_plan \
+		and _canonicalize(reference_memory) == _canonicalize(optimized_memory)
+	var commit_parity: bool = int(reference.get("commit_delta", -1)) == 2 \
+		and int(optimized.get("commit_delta", -1)) == 2
+	var rng_parity: bool = reference.get("rng_before", {}) == stale_rng \
+		and optimized.get("rng_before", {}) == stale_rng \
+		and reference.get("rng_terminal", {}) == optimized.get("rng_terminal", {})
+	var source_immutable: bool = bool(reference.get("source_immutable", false)) \
+		and bool(optimized.get("source_immutable", false))
+	# Stale-route work deliberately retains the full production refresh. Its wall
+	# time is order-sensitive, while the actor-state query count is deterministic.
+	var query_not_increased: bool = int(optimized.get("query_delta", 999999)) \
+		<= int(reference.get("query_delta", -1))
+	var current_restore := world.restore_runtime_checkpoint(current_world)
+	var current_rng_restore := rng.restore_plan_checkpoint(current_rng)
+	var restored: bool = bool(current_restore.get("applied", false)) \
+		and bool(current_rng_restore.get("restored", false))
+	var passed: bool = stale_fixture_ready \
+		and bool(optimized_world_restore.get("applied", false)) \
+		and bool(optimized_rng_restore.get("restored", false)) \
+		and reference_samples.size() == SATURATED_RECORD_SAMPLE_COUNT + 1 \
+		and optimized_samples.size() == SATURATED_RECORD_SAMPLE_COUNT + 1 \
+		and parity \
+		and commit_parity \
+		and post_cas_route_fields \
+		and rng_parity \
+		and source_immutable \
+		and query_not_increased \
+		and restored
+	print("SATURATED_DECISION_RECORD_STALE_ROUTE_GATE|status=%s|reference_usec=%d|optimized_usec=%d|reference_queries=%d|optimized_queries=%d|query_not_increased=%s|reference_commits=%d|optimized_commits=%d|samples_parity=%s|candidate_views_parity=%s|full_memory_parity=%s|post_cas_route_fields=%s|rng_parity=%s|restored=%s" % [
+		"PASS" if passed else "FAIL",
+		int(reference.get("elapsed_usec", -1)),
+		int(optimized.get("elapsed_usec", -1)),
+		int(reference.get("query_delta", -1)),
+		int(optimized.get("query_delta", -1)),
+		str(query_not_increased),
+		int(reference.get("commit_delta", -1)),
+		int(optimized.get("commit_delta", -1)),
+		str(_canonicalize(reference_samples) == _canonicalize(optimized_samples)),
+		str(_canonicalize(reference_sample.get("candidates", [])) == _canonicalize(optimized_sample.get("candidates", []))),
+		str(_canonicalize(reference_memory) == _canonicalize(optimized_memory)),
+		str(post_cas_route_fields),
+		str(rng_parity),
+		str(restored),
+	])
+	return {
+		"passed": passed,
+		"post_cas_route_fields": post_cas_route_fields,
+		"commit_parity": commit_parity,
+		"reference_usec": int(reference.get("elapsed_usec", -1)),
+		"optimized_usec": int(optimized.get("elapsed_usec", -1)),
+		"reference_queries": int(reference.get("query_delta", -1)),
+		"optimized_queries": int(optimized.get("query_delta", -1)),
+		"query_not_increased": query_not_increased,
+	}
+
+
+func _decision_record_route_projection(memory: Dictionary) -> Dictionary:
+	var product := str(memory.get("route_plan_product", ""))
+	var stage := str(memory.get("route_plan_stage", ""))
+	if product.is_empty() or stage.is_empty():
+		return {}
+	return {
+		"product": product,
+		"stage": stage,
+		"score": int(memory.get("route_plan_score", 0)),
+		"reason": str(memory.get("route_plan_reason", "")),
+		"target_city": int(memory.get("route_plan_target_city", -1)),
+		"partner_district": int(memory.get("route_plan_partner_district", -1)),
+		"rankings_sha256": JSON.stringify(_canonicalize(memory.get("route_plan_rankings", []))).sha256_text(),
+	}
 
 
 func _measure_saturated_decision_record_path(
@@ -533,8 +735,12 @@ func _provided_decision_memory_reference_contract(
 ) -> Dictionary:
 	var actor_state := ai.call("_ai_actor_state_snapshot", actor_index) as Dictionary
 	var caller_memory := ai.call("_normalized_ai_memory", actor_state.get("ai_memory", {})) as Dictionary
+	var caller_binding := ai.call(
+		"_ai_decision_record_memory_binding", actor_index, actor_state
+	) as Dictionary
 	var actor_state_before: Variant = _canonicalize(actor_state.duplicate(true))
 	var caller_before: Variant = _canonicalize(caller_memory.duplicate(true))
+	var binding_before: Variant = _canonicalize(caller_binding.duplicate(true))
 	var phase_info := ai.call("_ai_refresh_game_phase", actor_index) as Dictionary
 	var state_before := actor_state_port.debug_snapshot()
 	var context := ai.call(
@@ -544,19 +750,28 @@ func _provided_decision_memory_reference_contract(
 		phase_info,
 		candidates,
 		actor_state,
-		caller_memory
+		caller_memory,
+		caller_binding
 	) as Dictionary
 	var state_after := actor_state_port.debug_snapshot()
 	var inputs_unchanged: bool = _canonicalize(actor_state) == actor_state_before \
 		and _canonicalize(caller_memory) == caller_before \
+		and _canonicalize(caller_binding) == binding_before \
 		and int(state_after.get("state_commit_count", 0)) == int(state_before.get("state_commit_count", 0))
 	var observation_memory := context.get("observation_memory", {}) as Dictionary \
 		if context.get("observation_memory", {}) is Dictionary else {}
+	var record_memory := context.get("record_memory", {}) as Dictionary \
+		if context.get("record_memory", {}) is Dictionary else {}
+	var record_binding := context.get("record_memory_binding", {}) as Dictionary \
+		if context.get("record_memory_binding", {}) is Dictionary else {}
 	caller_memory["__copy_gate_reference_probe__"] = "visible"
-	var reference_observed: bool = str(observation_memory.get("__copy_gate_reference_probe__", "")) == "visible"
+	var reference_observed: bool = str(observation_memory.get("__copy_gate_reference_probe__", "")) == "visible" \
+		and str(record_memory.get("__copy_gate_reference_probe__", "")) == "visible"
 	caller_memory.erase("__copy_gate_reference_probe__")
 	var restored_after_probe: bool = _canonicalize(caller_memory) == caller_before \
-		and _canonicalize(observation_memory) == caller_before
+		and _canonicalize(observation_memory) == caller_before \
+		and _canonicalize(record_memory) == caller_before \
+		and _canonicalize(record_binding) == binding_before
 	return {
 		"passed": not context.is_empty() \
 			and inputs_unchanged \
@@ -567,14 +782,99 @@ func _provided_decision_memory_reference_contract(
 	}
 
 
+func _decision_record_binding_fail_closed_gate(
+	ai: AiRuntimeController,
+	actor_state_port: AiActorStatePort,
+	rng: RunRngService,
+	world: WorldSessionState,
+	actor_index: int
+) -> Dictionary:
+	var actor_state := ai.call("_ai_actor_state_snapshot", actor_index) as Dictionary
+	var record_memory := ai.call("_normalized_ai_memory", actor_state.get("ai_memory", {})) as Dictionary
+	var binding := ai.call("_ai_decision_record_memory_binding", actor_index, actor_state) as Dictionary
+	var expected_memory: Variant = _canonicalize(record_memory.duplicate(true))
+	var world_before: Variant = _canonicalize(world.capture_runtime_checkpoint())
+	var rng_before := rng.capture_plan_checkpoint()
+	var state_before := actor_state_port.debug_snapshot()
+	var valid_context := {
+		"record_memory": record_memory,
+		"record_memory_binding": binding,
+	}
+	var valid_result := ai.call(
+		"_ai_decision_record_memory_from_context", actor_index, actor_state, valid_context
+	) as Dictionary
+	valid_result["__binding_detached_probe__"] = true
+	var detached_alias: bool = not (actor_state.get("ai_memory", {}) as Dictionary).has("__binding_detached_probe__") \
+		and not (world.players[actor_index] as Dictionary).get("ai_memory", {}).has("__binding_detached_probe__")
+	valid_result.erase("__binding_detached_probe__")
+	var valid_restored: bool = _canonicalize(valid_result) == expected_memory \
+		and _canonicalize(record_memory) == expected_memory
+
+	var poisoned_memory := record_memory.duplicate(true)
+	poisoned_memory["__poisoned_record_memory__"] = true
+	var wrong_actor_binding := binding.duplicate(true)
+	wrong_actor_binding["player_index"] = actor_index + 1
+	var wrong_revision_binding := binding.duplicate(true)
+	wrong_revision_binding["state_revision"] = "wrong-revision"
+	var wrong_generation_binding := binding.duplicate(true)
+	wrong_generation_binding["state_generation"] = int(binding.get("state_generation", 0)) + 1
+	var poisoned_contexts := [
+		{"record_memory": poisoned_memory, "record_memory_binding": wrong_actor_binding},
+		{"record_memory": poisoned_memory, "record_memory_binding": wrong_revision_binding},
+		{"record_memory": poisoned_memory, "record_memory_binding": wrong_generation_binding},
+	]
+	var poisoned_before: Variant = _canonicalize(poisoned_contexts.duplicate(true))
+	var fail_closed := true
+	for poisoned_context_variant in poisoned_contexts:
+		var fallback := ai.call(
+			"_ai_decision_record_memory_from_context",
+			actor_index,
+			actor_state,
+			poisoned_context_variant as Dictionary
+		) as Dictionary
+		fail_closed = fail_closed \
+			and not fallback.has("__poisoned_record_memory__") \
+			and _canonicalize(fallback) == expected_memory
+	var wrong_actor_state := actor_state.duplicate(true)
+	wrong_actor_state["player_index"] = actor_index + 1
+	var wrong_actor_result := ai.call(
+		"_ai_decision_record_memory_from_context", actor_index, wrong_actor_state, valid_context
+	) as Dictionary
+	var inputs_immutable: bool = _canonicalize(poisoned_contexts) == poisoned_before \
+		and _canonicalize(binding) == _canonicalize(valid_context.get("record_memory_binding", {}))
+	var state_after := actor_state_port.debug_snapshot()
+	var no_side_effects: bool = int(state_after.get("state_commit_count", 0)) \
+		== int(state_before.get("state_commit_count", 0)) \
+		and _canonicalize(world.capture_runtime_checkpoint()) == world_before \
+		and rng.capture_plan_checkpoint() == rng_before
+	return {
+		"passed": not actor_state.is_empty() \
+			and not binding.is_empty() \
+			and detached_alias \
+			and valid_restored \
+			and fail_closed \
+			and wrong_actor_result.is_empty() \
+			and inputs_immutable \
+			and no_side_effects,
+		"detached_alias": detached_alias and valid_restored,
+		"wrong_actor_fail_closed": fail_closed and wrong_actor_result.is_empty(),
+		"wrong_revision_fail_closed": fail_closed,
+		"wrong_generation_fail_closed": fail_closed,
+		"inputs_immutable": inputs_immutable,
+	}
+
+
 func _decision_record_copy_source_contract() -> Dictionary:
 	var source := FileAccess.get_file_as_string("res://scripts/runtime/ai_runtime_controller.gd")
 	var context_body := _source_function_body(source, "func _ai_decision_record_context(")
 	var record_body := _source_function_body(source, "func _record_ai_decision(")
 	var commit_body := _source_function_body(source, "func _commit_ai_memory(")
+	var binding_body := _source_function_body(source, "func _ai_decision_record_memory_binding(")
+	var selector_body := _source_function_body(source, "func _ai_decision_record_memory_from_context(")
+	var route_body := _source_function_body(source, "func _ai_refresh_route_plan(")
 	var test_source := FileAccess.get_file_as_string("res://tests/ai_city_guess_candidate_performance_parity_test.gd")
 	var reference_body := _source_function_body(test_source, "\nfunc _record_ai_decision_reference(")
-	var context_reference: bool = context_body.find("var observation_memory := decision_memory") >= 0 \
+	var context_reference: bool = context_body.find("var record_memory := decision_memory") >= 0 \
 		and context_body.find("decision_memory.duplicate(true)") < 0
 	var record_local_children: bool = record_body.find("var samples := memory.get(\"decision_samples\", []) as Array") >= 0 \
 		and record_body.find("var action_counts := memory.get(\"action_counts\", {}) as Dictionary") >= 0 \
@@ -592,12 +892,31 @@ func _decision_record_copy_source_contract() -> Dictionary:
 		and reference_body.find("(memory.get(\"decision_samples\", []) as Array).duplicate(true)") >= 0 \
 		and reference_body.find("(memory.get(\"action_counts\", {}) as Dictionary).duplicate(true)") >= 0 \
 		and reference_body.find("_commit_ai_memory") >= 0
+	var binding_complete: bool = binding_body.find("player_index") >= 0 \
+		and binding_body.find("state_revision") >= 0 \
+		and binding_body.find("state_generation") >= 0 \
+		and selector_body.find("_ai_decision_record_memory_binding_matches") >= 0
+	var decision_local_reuse: bool = context_body.find("_ai_decision_route_plan_from_memory(record_memory)") >= 0 \
+		and context_body.find("var refreshed_route_plan := _ai_refresh_route_plan(player_index)") >= 0 \
+		and context_body.find("record_actor_state = _ai_actor_state_snapshot(player_index)", context_body.find("var refreshed_route_plan")) >= 0 \
+		and context_body.find("\"record_memory\": record_memory") >= 0 \
+		and context_body.find("\"record_memory_binding\": record_memory_binding") >= 0 \
+		and record_body.find("_ai_decision_record_memory_from_context") >= 0 \
+		and record_body.find("var memory := _normalized_ai_memory(actor_state.get(\"ai_memory\", {}))") < 0 \
+		and route_body.find("record_memory_binding") < 0
 	return {
-		"passed": context_reference and record_local_children and lazy_baseline and reference_detached,
+		"passed": context_reference \
+			and record_local_children \
+			and lazy_baseline \
+			and reference_detached \
+			and binding_complete \
+			and decision_local_reuse,
 		"context_reference": context_reference,
 		"record_local_children": record_local_children,
 		"lazy_baseline": lazy_baseline,
 		"reference_detached": reference_detached,
+		"binding_complete": binding_complete,
+		"decision_local_reuse": decision_local_reuse,
 	}
 
 

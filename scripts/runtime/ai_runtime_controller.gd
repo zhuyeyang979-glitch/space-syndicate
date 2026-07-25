@@ -4773,23 +4773,98 @@ func _ai_learning_bonus_from_memory(memory: Dictionary, policy_kind: String = ""
 	for tag_variant in _ai_learning_tags(action_kind, policy_kind, strategy_intent, route_stage, product_name):
 		bonus += _ai_learned_tag_bonus_from_memory(memory, String(tag_variant))
 	return clampi(bonus, -AI_LEARNING_BONUS_CLAMP, AI_LEARNING_BONUS_CLAMP)
+func _ai_decision_record_memory_binding(player_index: int, actor_state: Dictionary) -> Dictionary:
+	var state_revision := str(actor_state.get("state_revision", ""))
+	var state_generation := int(actor_state.get("state_generation", -1))
+	if actor_state.is_empty() \
+			or int(actor_state.get("player_index", -1)) != player_index \
+			or state_revision.is_empty() \
+			or state_generation < 0:
+		return {}
+	return {
+		"player_index": player_index,
+		"state_revision": state_revision,
+		"state_generation": state_generation,
+	}
+func _ai_decision_record_memory_binding_matches(
+	player_index: int,
+	actor_state: Dictionary,
+	binding: Dictionary
+) -> bool:
+	var expected := _ai_decision_record_memory_binding(player_index, actor_state)
+	return not expected.is_empty() \
+		and int(binding.get("player_index", -1)) == int(expected.get("player_index", -2)) \
+		and str(binding.get("state_revision", "")) == str(expected.get("state_revision", "__missing__")) \
+		and int(binding.get("state_generation", -1)) == int(expected.get("state_generation", -2))
+func _ai_decision_record_memory_from_context(
+	player_index: int,
+	actor_state: Dictionary,
+	decision_context: Dictionary
+) -> Dictionary:
+	if actor_state.is_empty() or int(actor_state.get("player_index", -1)) != player_index:
+		return {}
+	var record_memory: Dictionary = decision_context.get("record_memory", {}) \
+		if decision_context.get("record_memory", {}) is Dictionary else {}
+	var binding: Dictionary = decision_context.get("record_memory_binding", {}) \
+		if decision_context.get("record_memory_binding", {}) is Dictionary else {}
+	if not record_memory.is_empty() \
+			and _ai_decision_record_memory_binding_matches(player_index, actor_state, binding):
+		return record_memory
+	return _normalized_ai_memory(actor_state.get("ai_memory", {}))
+func _ai_decision_strategy_from_memory(memory: Dictionary) -> Dictionary:
+	var intent := String(memory.get("strategic_intent", ""))
+	if int(memory.get("strategic_intent_cycle", -1)) != business_cycle_count or intent.is_empty():
+		return {}
+	return {
+		"intent": intent,
+		"score": int(memory.get("strategic_intent_score", 0)),
+		"reason": String(memory.get("strategic_intent_reason", "")),
+	}
+func _ai_decision_route_plan_from_memory(memory: Dictionary) -> Dictionary:
+	var product := String(memory.get("route_plan_product", ""))
+	var stage := String(memory.get("route_plan_stage", ""))
+	if int(memory.get("route_plan_cycle", -1)) != business_cycle_count \
+			or product.is_empty() \
+			or stage.is_empty():
+		return {}
+	return {
+		"product": product,
+		"stage": stage,
+		"score": int(memory.get("route_plan_score", 0)),
+		"reason": String(memory.get("route_plan_reason", "")),
+		"target_city": int(memory.get("route_plan_target_city", -1)),
+		"partner_district": int(memory.get("route_plan_partner_district", -1)),
+	}
 func _ai_decision_record_context(
 	player_index: int,
 	focus_product: String,
 	phase_info: Dictionary,
 	candidates: Array,
 	decision_actor_state: Dictionary = {},
-	decision_memory: Dictionary = {}
+	decision_memory: Dictionary = {},
+	decision_memory_binding: Dictionary = {}
 ) -> Dictionary:
 	var economy_facts := _actor_training_economy_facts(player_index)
 	var hand_snapshot := _actor_hand_inventory_snapshot(player_index)
 	if economy_facts.is_empty() or hand_snapshot.is_empty() or phase_info.is_empty():
 		return {}
 	var provided_state_valid: bool = not decision_actor_state.is_empty() \
-		and int(decision_actor_state.get("player_index", -1)) == player_index \
-		and not decision_memory.is_empty()
-	var observation_memory := decision_memory \
-		if provided_state_valid else _ai_memory_for_player(player_index)
+		and not decision_memory.is_empty() \
+		and _ai_decision_record_memory_binding_matches(
+			player_index,
+			decision_actor_state,
+			decision_memory_binding
+		)
+	var record_actor_state := decision_actor_state \
+		if provided_state_valid else _ai_actor_state_snapshot(player_index)
+	if record_actor_state.is_empty():
+		return {}
+	var record_memory := decision_memory \
+		if provided_state_valid else _normalized_ai_memory(record_actor_state.get("ai_memory", {}))
+	var record_memory_binding := decision_memory_binding \
+		if provided_state_valid else _ai_decision_record_memory_binding(player_index, record_actor_state)
+	if record_memory.is_empty() or record_memory_binding.is_empty():
+		return {}
 	var flow_by_product: Dictionary = {}
 	var total_product_flow := 0
 	for product_variant in PRODUCT_CATALOG:
@@ -4802,40 +4877,35 @@ func _ai_decision_record_context(
 	var active_city_count := _player_active_city_count(player_index)
 	var owned_monster_count := _ai_owned_active_monster_count(player_index)
 	var field_monster_count := _active_auto_monster_count()
-	var cached_strategy_intent := String(observation_memory.get("strategic_intent", ""))
-	var strategy_current: bool = int(observation_memory.get("strategic_intent_cycle", -1)) == business_cycle_count \
-		and not cached_strategy_intent.is_empty()
-	var strategy := {
-		"intent": cached_strategy_intent,
-		"score": int(observation_memory.get("strategic_intent_score", 0)),
-		"reason": String(observation_memory.get("strategic_intent_reason", "")),
-	} if strategy_current else _ai_refresh_strategy_intent(player_index)
-	var route_actor_state := decision_actor_state \
-		if provided_state_valid and strategy_current \
-		else _ai_actor_state_snapshot(player_index)
-	if route_actor_state.is_empty():
-		return {}
-	var route_memory := _normalized_ai_memory(route_actor_state.get("ai_memory", {}))
-	var route_current: bool = int(route_memory.get("route_plan_cycle", -1)) == business_cycle_count \
-		and not String(route_memory.get("route_plan_product", "")).is_empty() \
-		and not String(route_memory.get("route_plan_stage", "")).is_empty()
-	var route_context := {
-		"cache_active": true,
-		"player_index": player_index,
-		"focus_product": focus_product,
-		"focus_score": int(route_memory.get("economic_focus_score", 0)),
-		"strategy": strategy,
-		"phase_info": phase_info,
-		"flow_by_product": flow_by_product,
-		"learning_memory": route_memory,
-		"actor_state": route_actor_state,
-	}
-	var route_plan := _ai_refresh_route_plan(player_index, false, route_context)
+	var strategy := _ai_decision_strategy_from_memory(record_memory)
+	if strategy.is_empty():
+		var refreshed_strategy := _ai_refresh_strategy_intent(player_index)
+		record_actor_state = _ai_actor_state_snapshot(player_index)
+		if record_actor_state.is_empty():
+			return {}
+		record_memory = _normalized_ai_memory(record_actor_state.get("ai_memory", {}))
+		record_memory_binding = _ai_decision_record_memory_binding(player_index, record_actor_state)
+		strategy = _ai_decision_strategy_from_memory(record_memory)
+		if strategy.is_empty():
+			strategy = refreshed_strategy
+	var route_plan := _ai_decision_route_plan_from_memory(record_memory)
+	if route_plan.is_empty():
+		var refreshed_route_plan := _ai_refresh_route_plan(player_index)
+		# A stale route may commit focus, strategy, and route state. Always bind the
+		# record to the post-CAS snapshot instead of retaining any pre-refresh data.
+		record_actor_state = _ai_actor_state_snapshot(player_index)
+		if record_actor_state.is_empty():
+			return {}
+		record_memory = _normalized_ai_memory(record_actor_state.get("ai_memory", {}))
+		record_memory_binding = _ai_decision_record_memory_binding(player_index, record_actor_state)
+		route_plan = _ai_decision_route_plan_from_memory(record_memory)
+		if route_plan.is_empty():
+			route_plan = refreshed_route_plan
+		var post_route_strategy := _ai_decision_strategy_from_memory(record_memory)
+		if not post_route_strategy.is_empty():
+			strategy = post_route_strategy
 	var endgame_urgency := _ai_endgame_urgency_score(player_index)
-	var actor_state := route_actor_state \
-		if provided_state_valid and strategy_current and route_current \
-		else _ai_actor_state_snapshot(player_index)
-	if actor_state.is_empty():
+	if record_memory_binding.is_empty():
 		return {}
 	return {
 		"cache_active": true,
@@ -4844,7 +4914,7 @@ func _ai_decision_record_context(
 		"phase_info": phase_info,
 		"economy_facts": economy_facts,
 		"hand_snapshot": hand_snapshot,
-		"observation_memory": observation_memory,
+		"observation_memory": record_memory,
 		"flow_by_product": flow_by_product,
 		"total_product_flow": total_product_flow,
 		"victory_top_n_gdp": victory_top_n_gdp,
@@ -4861,7 +4931,9 @@ func _ai_decision_record_context(
 		"queue_next": _card_resolution_next_queue().size(),
 		"auction_open": card_resolution_auction_open,
 		"cycle": business_cycle_count,
-		"actor_state": actor_state,
+		"actor_state": record_actor_state,
+		"record_memory": record_memory,
+		"record_memory_binding": record_memory_binding,
 		"candidate_training_views": _ai_candidate_training_views_for_decision(candidates),
 	}
 func _record_ai_decision(player_index: int, kind: String, target_index: int, score: int, reason: String, candidates: Array = [], metadata: Dictionary = {}) -> void:
@@ -4882,24 +4954,29 @@ func _record_ai_decision(player_index: int, kind: String, target_index: int, sco
 		and int(initial_memory.get("leader_index", -1)) == int(phase_info.get("leader_index", -1))
 	var decision_actor_state := initial_actor_state
 	var decision_memory := initial_memory
+	var decision_memory_binding := _ai_decision_record_memory_binding(player_index, decision_actor_state)
 	if not focus_current or not phase_current:
 		decision_actor_state = _ai_actor_state_snapshot(player_index)
 		decision_memory = _normalized_ai_memory(decision_actor_state.get("ai_memory", {})) \
 			if not decision_actor_state.is_empty() else {}
+		decision_memory_binding = _ai_decision_record_memory_binding(player_index, decision_actor_state)
 	var decision_context := _ai_decision_record_context(
 		player_index,
 		focus_product,
 		phase_info,
 		candidates,
 		decision_actor_state,
-		decision_memory
+		decision_memory,
+		decision_memory_binding
 	)
 	var observation := _ai_observation_vector(player_index, decision_context)
 	var actor_state: Dictionary = decision_context.get("actor_state", {}) \
 		if decision_context.get("actor_state", {}) is Dictionary else {}
 	if actor_state.is_empty() or observation.is_empty():
 		return
-	var memory := _normalized_ai_memory(actor_state.get("ai_memory", {}))
+	var memory := _ai_decision_record_memory_from_context(player_index, actor_state, decision_context)
+	if memory.is_empty():
+		return
 	var samples := memory.get("decision_samples", []) as Array
 	var sample := {
 		"time": game_time,
