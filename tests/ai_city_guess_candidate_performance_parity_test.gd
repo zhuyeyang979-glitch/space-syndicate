@@ -16,6 +16,7 @@ const GOLDEN_REGION_PRIVATE_QUERY_DELTA := 3
 const GOLDEN_AI_STATE_QUERY_DELTA := 171
 const GOLDEN_STATE_COMMIT_DELTA := 0
 const PROFILE_ACTION_COUNT := 2
+const SATURATED_RECORD_SAMPLE_COUNT := 47
 const INTEL_TWO_ACTION_LIMIT_MSEC := 2_000
 const FOCUS_CURRENT_TWO_ACTION_LIMIT_MSEC := 800
 const PRODUCT_MARGIN_MIN_MSEC := 5_000
@@ -208,12 +209,403 @@ func _run() -> void:
 			and app_root.process_mode == Node.PROCESS_MODE_DISABLED,
 		"Intel mutation profiling is authorized while automatic RuntimeLoop processing stays frozen"
 	)
+	_run_saturated_decision_record_copy_gate(ai, actor_state_port, rng, world, actor_indices[0])
 	_run_intel_record_parity(ai, actor_state_port, rng, world, actor_indices)
 	_profile_record_context_substages(ai, actor_state_port, actor_indices[-1])
 	_run_city_candidate_cache_reference_parity(ai, rng, world, actor_indices)
 
 	await _cleanup(app_root)
 	_finish()
+
+
+func _run_saturated_decision_record_copy_gate(
+	ai: AiRuntimeController,
+	actor_state_port: AiActorStatePort,
+	rng: RunRngService,
+	world: WorldSessionState,
+	actor_index: int
+) -> void:
+	var original_world := world.capture_runtime_checkpoint()
+	var original_rng := rng.capture_plan_checkpoint()
+	var seed_candidates := ai.call("_ai_city_guess_candidates", actor_index) as Array
+	var fixture_ready := not seed_candidates.is_empty() \
+		and _prepare_saturated_decision_record_fixture(ai, actor_index, seed_candidates)
+	var candidates := ai.call("_ai_city_guess_candidates", actor_index) as Array \
+		if fixture_ready else []
+	var choice := ai.call("_ai_pick_candidate", actor_index, candidates, true) as Dictionary \
+		if fixture_ready else {}
+	fixture_ready = fixture_ready and not candidates.is_empty() and not choice.is_empty()
+	var fixture_world := world.capture_runtime_checkpoint() if fixture_ready else {}
+	var fixture_rng := rng.capture_plan_checkpoint() if fixture_ready else {}
+	var fixture_memory := ai.call("_ai_memory_for_player", actor_index) as Dictionary \
+		if fixture_ready else {}
+	var metadata := {
+		"policy_kind": str(choice.get("policy_kind", "city_owner_guess")),
+		"guessed_player": int(choice.get("guessed_player", -1)),
+		"confidence": int(choice.get("confidence", 0)),
+		"reason_key": str(choice.get("reason_key", "")),
+		"learning_bonus": int(choice.get("learning_bonus", 0)),
+		"copy_gate_marker": {
+			"sample_count": SATURATED_RECORD_SAMPLE_COUNT,
+			"values": ["A", "C", "D"],
+		},
+	}
+	var context_contract := _provided_decision_memory_reference_contract(
+		ai,
+		actor_state_port,
+		actor_index,
+		candidates
+	) if fixture_ready else {}
+	var source_contract := _decision_record_copy_source_contract()
+
+	var reference := _measure_saturated_decision_record_path(
+		ai,
+		actor_state_port,
+		rng,
+		actor_index,
+		candidates,
+		choice,
+		metadata,
+		true
+	) if fixture_ready else {}
+	var optimized_world_restore := world.restore_runtime_checkpoint(fixture_world) \
+		if fixture_ready else {}
+	var optimized_rng_restore := rng.restore_plan_checkpoint(fixture_rng) \
+		if fixture_ready else {}
+	var optimized := _measure_saturated_decision_record_path(
+		ai,
+		actor_state_port,
+		rng,
+		actor_index,
+		candidates,
+		choice,
+		metadata,
+		false
+	) if fixture_ready else {}
+
+	var reference_memory := reference.get("memory", {}) as Dictionary
+	var optimized_memory := optimized.get("memory", {}) as Dictionary
+	var reference_samples := reference_memory.get("decision_samples", []) as Array \
+		if reference_memory.get("decision_samples", []) is Array else []
+	var optimized_samples := optimized_memory.get("decision_samples", []) as Array \
+		if optimized_memory.get("decision_samples", []) is Array else []
+	var reference_sample := reference_samples[-1] as Dictionary \
+		if not reference_samples.is_empty() and reference_samples[-1] is Dictionary else {}
+	var optimized_sample := optimized_samples[-1] as Dictionary \
+		if not optimized_samples.is_empty() and optimized_samples[-1] is Dictionary else {}
+	var expected_training_views := ai.call(
+		"_ai_candidate_training_views_for_decision", candidates
+	) as Array
+	var sample_parity: bool = _canonicalize(reference_sample) == _canonicalize(optimized_sample)
+	var samples_parity: bool = _canonicalize(reference_samples) == _canonicalize(optimized_samples) \
+		and str(reference.get("samples_sha256", "")) == str(optimized.get("samples_sha256", ""))
+	var candidate_views_parity: bool = _canonicalize(reference_sample.get("candidates", [])) \
+		== _canonicalize(expected_training_views) \
+		and _canonicalize(optimized_sample.get("candidates", [])) == _canonicalize(expected_training_views)
+	var action_counts_parity: bool = _canonicalize(reference_memory.get("action_counts", {})) \
+		== _canonicalize(optimized_memory.get("action_counts", {}))
+	var expected_action_count := int((fixture_memory.get("action_counts", {}) as Dictionary).get("城市业主推理", 0)) + 1
+	var action_count_once: bool = int((reference_memory.get("action_counts", {}) as Dictionary).get("城市业主推理", -1)) \
+		== expected_action_count \
+		and int((optimized_memory.get("action_counts", {}) as Dictionary).get("城市业主推理", -1)) \
+		== expected_action_count
+	var expected_last_plan := "城市业主推理｜目标%d｜评分%d｜%s" % [
+		int(choice.get("district", -1)) + 1,
+		int(choice.get("score", 0)),
+		str(choice.get("reason", "按公开商品和城市线索标注")),
+	]
+	var last_plan_parity: bool = str(reference_memory.get("last_plan", "")) == expected_last_plan \
+		and str(optimized_memory.get("last_plan", "")) == expected_last_plan
+	var memory_parity: bool = _canonicalize(reference_memory) == _canonicalize(optimized_memory)
+	var commit_parity: bool = int(reference.get("commit_delta", -1)) == 1 \
+		and int(optimized.get("commit_delta", -1)) == 1
+	var rng_parity: bool = reference.get("rng_terminal", {}) == optimized.get("rng_terminal", {}) \
+		and reference.get("rng_before", {}) == fixture_rng \
+		and optimized.get("rng_before", {}) == fixture_rng
+	var source_immutable: bool = bool(reference.get("source_immutable", false)) \
+		and bool(optimized.get("source_immutable", false)) \
+		and bool(context_contract.get("inputs_unchanged", false))
+	var sample_limit_preserved: bool = reference_samples.size() == int(ai.get("AI_DECISION_SAMPLE_LIMIT")) \
+		and optimized_samples.size() == int(ai.get("AI_DECISION_SAMPLE_LIMIT")) \
+		and reference_samples.size() == SATURATED_RECORD_SAMPLE_COUNT + 1
+	var reference_usec := int(reference.get("elapsed_usec", 0))
+	var optimized_usec := int(optimized.get("elapsed_usec", reference_usec))
+	var elapsed_reduced: bool = optimized_usec < reference_usec
+	var query_not_increased: bool = int(optimized.get("query_delta", 999999)) \
+		<= int(reference.get("query_delta", -1))
+	var independent_reference_valid: bool = str(reference.get("record_path", "")) == "detached_reference" \
+		and str(optimized.get("record_path", "")) == "production" \
+		and bool(source_contract.get("passed", false)) \
+		and bool(source_contract.get("reference_detached", false)) \
+		and bool(context_contract.get("passed", false))
+	var final_world_restore := world.restore_runtime_checkpoint(original_world)
+	var final_rng_restore := rng.restore_plan_checkpoint(original_rng)
+	var final_restore: bool = bool(final_world_restore.get("applied", false)) \
+		and bool(final_rng_restore.get("restored", false)) \
+		and _canonicalize(world.capture_runtime_checkpoint()) == _canonicalize(original_world) \
+		and rng.capture_plan_checkpoint() == original_rng
+	var gate_passed: bool = fixture_ready \
+		and bool(optimized_world_restore.get("applied", false)) \
+		and bool(optimized_rng_restore.get("restored", false)) \
+		and sample_parity \
+		and samples_parity \
+		and candidate_views_parity \
+		and action_counts_parity \
+		and action_count_once \
+		and last_plan_parity \
+		and memory_parity \
+		and commit_parity \
+		and rng_parity \
+		and source_immutable \
+		and sample_limit_preserved \
+		and elapsed_reduced \
+		and query_not_increased \
+		and independent_reference_valid \
+		and final_restore
+	print("SATURATED_DECISION_RECORD_COPY_GATE|status=%s|sample_count=%d|reference_path=%s|optimized_path=%s|reference_usec=%d|optimized_usec=%d|reduction_usec=%d|reference_queries=%d|optimized_queries=%d|reference_commits=%d|optimized_commits=%d|new_sample_parity=%s|samples_hash_parity=%s|candidate_views_parity=%s|action_counts_parity=%s|last_plan_parity=%s|full_memory_parity=%s|rng_parity=%s|source_immutable=%s|caller_reference_read_only=%s|independent_reference=%s|cas_contract=%s|restored=%s" % [
+		"PASS" if gate_passed else "FAIL",
+		reference_samples.size(),
+		str(reference.get("record_path", "")),
+		str(optimized.get("record_path", "")),
+		reference_usec,
+		optimized_usec,
+		reference_usec - optimized_usec,
+		int(reference.get("query_delta", -1)),
+		int(optimized.get("query_delta", -1)),
+		int(reference.get("commit_delta", -1)),
+		int(optimized.get("commit_delta", -1)),
+		str(sample_parity),
+		str(samples_parity),
+		str(candidate_views_parity),
+		str(action_counts_parity and action_count_once),
+		str(last_plan_parity),
+		str(memory_parity),
+		str(rng_parity),
+		str(source_immutable),
+		str(bool(context_contract.get("passed", false))),
+		str(independent_reference_valid),
+		str(bool(source_contract.get("passed", false))),
+		str(final_restore),
+	])
+	_expect(fixture_ready, "decision-record copy fixture keeps current focus, phase, strategy, route, and 47 samples")
+	_expect(sample_parity and samples_parity and sample_limit_preserved, "copy optimization preserves the complete new sample and all 48 retained samples")
+	_expect(candidate_views_parity, "copy optimization preserves detached candidate training views and their order")
+	_expect(action_counts_parity and action_count_once and last_plan_parity, "copy optimization preserves action_counts and last_plan with one record")
+	_expect(memory_parity, "copy optimization preserves complete final AI memory")
+	_expect(commit_parity, "copy optimization preserves exactly one successful CAS commit")
+	_expect(rng_parity, "copy optimization preserves terminal RNG")
+	_expect(source_immutable, "recording leaves candidates, metadata, caller memory, and detached actor snapshots unchanged")
+	_expect(independent_reference_valid, "saturated reference uses the independent detached recorder while optimized uses production")
+	_expect(elapsed_reduced and query_not_increased, "optimized saturated record is faster without increasing actor-state queries")
+	_expect(final_restore, "saturated decision-record fixture restores complete World and RNG state")
+
+
+func _prepare_saturated_decision_record_fixture(
+	ai: AiRuntimeController,
+	actor_index: int,
+	candidates: Array
+) -> bool:
+	ai.call("_ai_refresh_economic_focus", actor_index)
+	ai.call("_ai_refresh_game_phase", actor_index)
+	ai.call("_ai_refresh_strategy_intent", actor_index)
+	ai.call("_ai_refresh_route_plan", actor_index)
+	var actor_state := ai.call("_ai_actor_state_snapshot", actor_index) as Dictionary
+	if actor_state.is_empty():
+		return false
+	var memory := ai.call("_normalized_ai_memory", actor_state.get("ai_memory", {})) as Dictionary
+	var training_views := ai.call("_ai_candidate_training_views_for_decision", candidates) as Array
+	var samples: Array = []
+	for sample_index in range(SATURATED_RECORD_SAMPLE_COUNT):
+		samples.append({
+			"time": float(sample_index),
+			"cycle": int(ai.get("business_cycle_count")),
+			"kind": "saturated-copy-fixture",
+			"target": sample_index % 12,
+			"score": 1000 + sample_index,
+			"reason": "decision-record-copy-fixture-%d" % sample_index,
+			"state": {
+				"cash": 2000 + sample_index,
+				"active_city_count": 2,
+				"total_product_flow": 12,
+				"nested_copy_payload": {
+					"actor_index": actor_index,
+					"sequence": sample_index,
+					"products": (ai.get("PRODUCT_CATALOG") as Array).duplicate(),
+				},
+			},
+			"candidates": training_views.duplicate(true),
+			"focus_product": str(memory.get("economic_focus_product", "")),
+			"strategy_intent": str(memory.get("strategic_intent", "")),
+			"route_plan_product": str(memory.get("route_plan_product", "")),
+			"route_plan_stage": str(memory.get("route_plan_stage", "")),
+			"reward_finalized": false,
+			"learning_applied": false,
+		})
+	memory["decision_samples"] = samples
+	var action_counts := memory.get("action_counts", {}) as Dictionary
+	action_counts["saturated-copy-fixture"] = SATURATED_RECORD_SAMPLE_COUNT
+	memory["action_counts"] = action_counts
+	var commit := ai.call("_commit_ai_memory", actor_index, memory, actor_state) as Dictionary
+	if not bool(commit.get("accepted", false)):
+		return false
+	var stored := ai.call("_ai_memory_for_player", actor_index) as Dictionary
+	var cycle := int(ai.get("business_cycle_count"))
+	return (stored.get("decision_samples", []) as Array).size() == SATURATED_RECORD_SAMPLE_COUNT \
+		and int(stored.get("economic_focus_cycle", -1)) == cycle \
+		and int(stored.get("strategic_intent_cycle", -1)) == cycle \
+		and int(stored.get("route_plan_cycle", -1)) == cycle \
+		and not str(stored.get("economic_focus_product", "")).is_empty() \
+		and not str(stored.get("strategic_intent", "")).is_empty() \
+		and not str(stored.get("route_plan_product", "")).is_empty() \
+		and not str(stored.get("route_plan_stage", "")).is_empty()
+
+
+func _measure_saturated_decision_record_path(
+	ai: AiRuntimeController,
+	actor_state_port: AiActorStatePort,
+	rng: RunRngService,
+	actor_index: int,
+	candidates: Array,
+	choice: Dictionary,
+	metadata: Dictionary,
+	use_reference_record: bool
+) -> Dictionary:
+	var source_state := ai.call("_ai_actor_state_snapshot", actor_index) as Dictionary
+	var source_memory := ai.call("_normalized_ai_memory", source_state.get("ai_memory", {})) as Dictionary
+	var source_state_before: Variant = _canonicalize(source_state.duplicate(true))
+	var source_memory_before: Variant = _canonicalize(source_memory.duplicate(true))
+	var candidates_before: Variant = _canonicalize(candidates.duplicate(true))
+	var metadata_before: Variant = _canonicalize(metadata.duplicate(true))
+	var state_before := actor_state_port.debug_snapshot()
+	var rng_before := rng.capture_plan_checkpoint()
+	var record_started_usec := Time.get_ticks_usec()
+	if use_reference_record:
+		_record_ai_decision_reference(
+			ai,
+			actor_index,
+			"城市业主推理",
+			int(choice.get("district", -1)),
+			int(choice.get("score", 0)),
+			str(choice.get("reason", "按公开商品和城市线索标注")),
+			candidates,
+			metadata
+		)
+	else:
+		ai.call(
+			"_record_ai_decision",
+			actor_index,
+			"城市业主推理",
+			int(choice.get("district", -1)),
+			int(choice.get("score", 0)),
+			str(choice.get("reason", "按公开商品和城市线索标注")),
+			candidates,
+			metadata
+		)
+	var record_elapsed_usec := Time.get_ticks_usec() - record_started_usec
+	var state_after := actor_state_port.debug_snapshot()
+	var rng_terminal := rng.capture_plan_checkpoint()
+	var final_memory := ai.call("_ai_memory_for_player", actor_index) as Dictionary
+	var final_samples := final_memory.get("decision_samples", []) as Array \
+		if final_memory.get("decision_samples", []) is Array else []
+	return {
+		"record_path": "detached_reference" if use_reference_record else "production",
+		"elapsed_usec": record_elapsed_usec,
+		"query_delta": int(state_after.get("ai_state_query_count", 0)) \
+			- int(state_before.get("ai_state_query_count", 0)),
+		"commit_delta": int(state_after.get("state_commit_count", 0)) \
+			- int(state_before.get("state_commit_count", 0)),
+		"rng_before": rng_before,
+		"rng_terminal": rng_terminal,
+		"memory": final_memory,
+		"samples_sha256": JSON.stringify(_canonicalize(final_samples)).sha256_text(),
+		"source_immutable": _canonicalize(source_state) == source_state_before \
+			and _canonicalize(source_memory) == source_memory_before \
+			and _canonicalize(candidates) == candidates_before \
+			and _canonicalize(metadata) == metadata_before,
+	}
+
+
+func _provided_decision_memory_reference_contract(
+	ai: AiRuntimeController,
+	actor_state_port: AiActorStatePort,
+	actor_index: int,
+	candidates: Array
+) -> Dictionary:
+	var actor_state := ai.call("_ai_actor_state_snapshot", actor_index) as Dictionary
+	var caller_memory := ai.call("_normalized_ai_memory", actor_state.get("ai_memory", {})) as Dictionary
+	var actor_state_before: Variant = _canonicalize(actor_state.duplicate(true))
+	var caller_before: Variant = _canonicalize(caller_memory.duplicate(true))
+	var phase_info := ai.call("_ai_refresh_game_phase", actor_index) as Dictionary
+	var state_before := actor_state_port.debug_snapshot()
+	var context := ai.call(
+		"_ai_decision_record_context",
+		actor_index,
+		str(caller_memory.get("economic_focus_product", "")),
+		phase_info,
+		candidates,
+		actor_state,
+		caller_memory
+	) as Dictionary
+	var state_after := actor_state_port.debug_snapshot()
+	var inputs_unchanged: bool = _canonicalize(actor_state) == actor_state_before \
+		and _canonicalize(caller_memory) == caller_before \
+		and int(state_after.get("state_commit_count", 0)) == int(state_before.get("state_commit_count", 0))
+	var observation_memory := context.get("observation_memory", {}) as Dictionary \
+		if context.get("observation_memory", {}) is Dictionary else {}
+	caller_memory["__copy_gate_reference_probe__"] = "visible"
+	var reference_observed: bool = str(observation_memory.get("__copy_gate_reference_probe__", "")) == "visible"
+	caller_memory.erase("__copy_gate_reference_probe__")
+	var restored_after_probe: bool = _canonicalize(caller_memory) == caller_before \
+		and _canonicalize(observation_memory) == caller_before
+	return {
+		"passed": not context.is_empty() \
+			and inputs_unchanged \
+			and reference_observed \
+			and restored_after_probe,
+		"inputs_unchanged": inputs_unchanged and restored_after_probe,
+		"reference_observed": reference_observed,
+	}
+
+
+func _decision_record_copy_source_contract() -> Dictionary:
+	var source := FileAccess.get_file_as_string("res://scripts/runtime/ai_runtime_controller.gd")
+	var context_body := _source_function_body(source, "func _ai_decision_record_context(")
+	var record_body := _source_function_body(source, "func _record_ai_decision(")
+	var commit_body := _source_function_body(source, "func _commit_ai_memory(")
+	var test_source := FileAccess.get_file_as_string("res://tests/ai_city_guess_candidate_performance_parity_test.gd")
+	var reference_body := _source_function_body(test_source, "\nfunc _record_ai_decision_reference(")
+	var context_reference: bool = context_body.find("var observation_memory := decision_memory") >= 0 \
+		and context_body.find("decision_memory.duplicate(true)") < 0
+	var record_local_children: bool = record_body.find("var samples := memory.get(\"decision_samples\", []) as Array") >= 0 \
+		and record_body.find("var action_counts := memory.get(\"action_counts\", {}) as Dictionary") >= 0 \
+		and record_body.find("(memory.get(\"decision_samples\", []) as Array).duplicate(true)") < 0 \
+		and record_body.find("(memory.get(\"action_counts\", {}) as Dictionary).duplicate(true)") < 0
+	var first_commit_at := commit_body.find("var first := _commit_ai_actor_state")
+	var revision_guard_at := commit_body.find("ai_actor_state_revision_changed")
+	var generation_guard_at := commit_body.find("actor_state_generation_changed")
+	var baseline_at := commit_body.find("var baseline_memory := _normalized_ai_memory")
+	var lazy_baseline: bool = first_commit_at >= 0 \
+		and revision_guard_at > first_commit_at \
+		and generation_guard_at > revision_guard_at \
+		and baseline_at > generation_guard_at
+	var reference_detached: bool = reference_body.find("_normalized_ai_memory") >= 0 \
+		and reference_body.find("(memory.get(\"decision_samples\", []) as Array).duplicate(true)") >= 0 \
+		and reference_body.find("(memory.get(\"action_counts\", {}) as Dictionary).duplicate(true)") >= 0 \
+		and reference_body.find("_commit_ai_memory") >= 0
+	return {
+		"passed": context_reference and record_local_children and lazy_baseline and reference_detached,
+		"context_reference": context_reference,
+		"record_local_children": record_local_children,
+		"lazy_baseline": lazy_baseline,
+		"reference_detached": reference_detached,
+	}
+
+
+func _source_function_body(source: String, signature: String) -> String:
+	var function_start := source.find(signature)
+	var function_end := source.find("\nfunc ", function_start + 1)
+	return source.substr(function_start, function_end - function_start) \
+		if function_start >= 0 and function_end > function_start else ""
 
 
 func _run_intel_record_parity(

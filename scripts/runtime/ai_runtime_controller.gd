@@ -668,7 +668,6 @@ func _commit_ai_memory(
 		return {"accepted": false, "changed": false, "reason_code": "ai_actor_state_snapshot_missing"}
 	var profile: Dictionary = source.get("ai_profile", {}) \
 		if source.get("ai_profile", {}) is Dictionary else {}
-	var baseline_memory := _normalized_ai_memory(source.get("ai_memory", {}))
 	var first := _commit_ai_actor_state(player_index, profile, memory, source)
 	if bool(first.get("accepted", false)) \
 			or str(first.get("reason_code", "")) != "ai_actor_state_revision_changed":
@@ -679,6 +678,7 @@ func _commit_ai_memory(
 	if int(latest.get("state_generation", -1)) != int(source.get("state_generation", -2)):
 		first["rebase_rejected"] = "actor_state_generation_changed"
 		return first
+	var baseline_memory := _normalized_ai_memory(source.get("ai_memory", {}))
 	var rebased_memory := _normalized_ai_memory(latest.get("ai_memory", {}))
 	for key_variant in memory.keys():
 		var key: Variant = key_variant
@@ -4788,7 +4788,7 @@ func _ai_decision_record_context(
 	var provided_state_valid: bool = not decision_actor_state.is_empty() \
 		and int(decision_actor_state.get("player_index", -1)) == player_index \
 		and not decision_memory.is_empty()
-	var observation_memory := decision_memory.duplicate(true) \
+	var observation_memory := decision_memory \
 		if provided_state_valid else _ai_memory_for_player(player_index)
 	var flow_by_product: Dictionary = {}
 	var total_product_flow := 0
@@ -4900,7 +4900,7 @@ func _record_ai_decision(player_index: int, kind: String, target_index: int, sco
 	if actor_state.is_empty() or observation.is_empty():
 		return
 	var memory := _normalized_ai_memory(actor_state.get("ai_memory", {}))
-	var samples := (memory.get("decision_samples", []) as Array).duplicate(true)
+	var samples := memory.get("decision_samples", []) as Array
 	var sample := {
 		"time": game_time,
 		"cycle": business_cycle_count,
@@ -4948,7 +4948,7 @@ func _record_ai_decision(player_index: int, kind: String, target_index: int, sco
 	while samples.size() > AI_DECISION_SAMPLE_LIMIT:
 		samples.pop_front()
 	memory["decision_samples"] = samples
-	var action_counts := (memory.get("action_counts", {}) as Dictionary).duplicate(true)
+	var action_counts := memory.get("action_counts", {}) as Dictionary
 	action_counts[kind] = int(action_counts.get(kind, 0)) + 1
 	memory["action_counts"] = action_counts
 	memory["last_plan"] = "%s｜目标%d｜评分%d｜%s" % [kind, target_index + 1, score, reason]
