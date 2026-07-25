@@ -7764,75 +7764,77 @@ func _ai_military_command_plan(player_index: int, skill: Dictionary) -> Dictiona
 	return plan
 func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary, cached_context: Dictionary = {}) -> Dictionary:
 	var kind := String(skill.get("kind", ""))
-	var cache_active := bool(cached_context.get("cache_active", false))
-	var own_city := int(cached_context.get("own_city", -1)) \
-		if cache_active and cached_context.has("own_city") else _ai_best_city_district(player_index, true)
-	if cache_active and not cached_context.has("own_city"):
-		cached_context["own_city"] = own_city
-	var rival_city := int(cached_context.get("rival_city", -1)) \
-		if cache_active and cached_context.has("rival_city") else _ai_best_pressure_target_city(player_index)
-	if cache_active and not cached_context.has("rival_city"):
-		cached_context["rival_city"] = rival_city
-	var fallback := int(cached_context.get("fallback_district", -1)) \
-		if cache_active and cached_context.has("fallback_district") \
+	var cache_active := bool(cached_context.get("cache_active", false)) \
+		and int(cached_context.get("player_index", -1)) == player_index
+	var turn_context: Dictionary = cached_context if cache_active else {}
+	var own_city := int(turn_context.get("own_city", -1)) \
+		if cache_active and turn_context.has("own_city") else _ai_best_city_district(player_index, true)
+	if cache_active and not turn_context.has("own_city"):
+		turn_context["own_city"] = own_city
+	var rival_city := int(turn_context.get("rival_city", -1)) \
+		if cache_active and turn_context.has("rival_city") else _ai_best_pressure_target_city(player_index)
+	if cache_active and not turn_context.has("rival_city"):
+		turn_context["rival_city"] = rival_city
+	var fallback := int(turn_context.get("fallback_district", -1)) \
+		if cache_active and turn_context.has("fallback_district") \
 		else (own_city if own_city >= 0 else _ai_first_alive_district())
-	if cache_active and not cached_context.has("fallback_district"):
-		cached_context["fallback_district"] = fallback
-	var focus_product := String(cached_context.get("focus_product", "")) \
-		if cache_active and cached_context.has("focus_product") else _ai_focus_product(player_index)
-	if cache_active and not cached_context.has("focus_product"):
-		cached_context["focus_product"] = focus_product
-	var planned_product := _ai_product_for_skill(player_index, skill, cached_context)
+	if cache_active and not turn_context.has("fallback_district"):
+		turn_context["fallback_district"] = fallback
+	var focus_product := String(turn_context.get("focus_product", "")) \
+		if cache_active and turn_context.has("focus_product") else _ai_focus_product(player_index)
+	if cache_active and not turn_context.has("focus_product"):
+		turn_context["focus_product"] = focus_product
+	var planned_product := _ai_product_for_skill(player_index, skill, turn_context)
 	var route_plan: Dictionary = {}
 	var route_product := ""
 	var route_stage := ""
 	if cache_active:
-		if cached_context.has("route_plan") and cached_context.get("route_plan") is Dictionary:
-			route_plan = cached_context.get("route_plan") as Dictionary
+		if turn_context.has("route_plan") and turn_context.get("route_plan") is Dictionary:
+			route_plan = turn_context.get("route_plan") as Dictionary
 		else:
 			route_plan = _ai_refresh_route_plan(player_index)
-			cached_context["route_plan"] = route_plan
+			turn_context["route_plan"] = route_plan
 		route_product = String(route_plan.get("product", ""))
 		route_stage = String(route_plan.get("stage", ""))
-		cached_context["route_product"] = route_product
-		cached_context["route_stage"] = route_stage
+		turn_context["route_product"] = route_product
+		turn_context["route_stage"] = route_stage
 	else:
 		route_product = _ai_route_plan_product(player_index)
 		route_stage = _ai_route_plan_stage(player_index)
 	var phase_info: Dictionary = {}
-	if cache_active and cached_context.has("phase_info") and cached_context.get("phase_info") is Dictionary:
-		phase_info = cached_context.get("phase_info") as Dictionary
+	if cache_active and turn_context.has("phase_info") and turn_context.get("phase_info") is Dictionary:
+		phase_info = turn_context.get("phase_info") as Dictionary
 	else:
 		phase_info = _ai_refresh_game_phase(player_index)
 		if cache_active:
-			cached_context["phase_info"] = phase_info
-	var endgame_urgency := int(cached_context.get("endgame_urgency", 0)) \
-		if cache_active and cached_context.has("endgame_urgency") else _ai_endgame_urgency_score(player_index)
-	if cache_active and not cached_context.has("endgame_urgency"):
-		cached_context["endgame_urgency"] = endgame_urgency
+			turn_context["phase_info"] = phase_info
+	var endgame_urgency := int(turn_context.get("endgame_urgency", 0)) \
+		if cache_active and turn_context.has("endgame_urgency") else _ai_endgame_urgency_score(player_index)
+	if cache_active and not turn_context.has("endgame_urgency"):
+		turn_context["endgame_urgency"] = endgame_urgency
 	var development_route := _card_development_route_id(skill)
 	var profile: Dictionary = {}
 	if cache_active:
-		if cached_context.has("profile") and cached_context.get("profile") is Dictionary:
-			profile = cached_context.get("profile") as Dictionary
+		if turn_context.has("profile") and turn_context.get("profile") is Dictionary:
+			profile = turn_context.get("profile") as Dictionary
 		else:
 			profile = _ai_profile_for_player(player_index)
-			cached_context["profile"] = profile
+			turn_context["profile"] = profile
 	var development_route_bias := _ai_development_route_bias_from_profile(profile, development_route) \
 		if cache_active else _ai_development_route_bias(player_index, development_route)
-	var focus_score := int(cached_context.get("focus_score", 0)) \
-		if cache_active and cached_context.has("focus_score") else _ai_focus_score(player_index)
-	if cache_active and not cached_context.has("focus_score"):
-		cached_context["focus_score"] = focus_score
+	var focus_score := int(turn_context.get("focus_score", 0)) \
+		if cache_active and turn_context.has("focus_score") else _ai_focus_score(player_index)
+	if cache_active and not turn_context.has("focus_score"):
+		turn_context["focus_score"] = focus_score
 	var strategy: Dictionary = {}
 	var strategy_intent := ""
 	var strategy_score := 0
 	if cache_active:
-		if cached_context.has("strategy") and cached_context.get("strategy") is Dictionary:
-			strategy = cached_context.get("strategy") as Dictionary
+		if turn_context.has("strategy") and turn_context.get("strategy") is Dictionary:
+			strategy = turn_context.get("strategy") as Dictionary
 		else:
 			strategy = _ai_refresh_strategy_intent(player_index)
-			cached_context["strategy"] = strategy
+			turn_context["strategy"] = strategy
 		strategy_intent = String(strategy.get("intent", ""))
 		strategy_score = int(strategy.get("score", 0))
 	else:
@@ -7840,6 +7842,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		strategy_score = _ai_strategy_score(player_index)
 	var route_plan_score := int(route_plan.get("score", 0)) \
 		if cache_active else _ai_route_plan_score(player_index)
+	var final_futures_plan: Dictionary = {}
 	var context := {
 		"action": "出牌",
 		"slot_index": slot_index,
@@ -7956,7 +7959,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 			return {}
 		context["district"] = own_city
 		context["score"] = int(context["score"]) + 90
-		context["focus_bonus"] = int(context.get("focus_bonus", 0)) + _ai_district_focus_score(player_index, own_city, cached_context)
+		context["focus_bonus"] = int(context.get("focus_bonus", 0)) + _ai_district_focus_score(player_index, own_city, turn_context)
 	elif kind == "route_insurance":
 		var damaged_city := _ai_best_city_district(player_index, true, true)
 		if damaged_city < 0 or int(_district_city(damaged_city).get("trade_route_damage", 0)) <= 0:
@@ -7980,9 +7983,10 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 			float(skill.get("route_flow_multiplier", 1.0)),
 		]
 	elif kind == "product_futures":
-		var futures_plan := _ai_product_futures_plan(player_index, skill, planned_product)
+		var futures_plan := _ai_product_futures_plan(player_index, skill, planned_product, turn_context)
 		if futures_plan.is_empty():
 			return {}
+		final_futures_plan = futures_plan
 		context.merge(futures_plan, true)
 	elif kind == "city_gdp_derivative":
 		var derivative_terms := _city_gdp_derivative_terms(skill)
@@ -8012,7 +8016,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		context["district"] = rival_city
 		context["target_city"] = rival_city
 		context["target_owner"] = int(_district_city(rival_city).get("owner", -1))
-		context["product"] = _ai_preferred_product(player_index, true, cached_context)
+		context["product"] = _ai_preferred_product(player_index, true, turn_context)
 		if String(context.get("product", "")) == focus_product and focus_product != "":
 			context["focus_bonus"] = int(context.get("focus_bonus", 0)) + AI_ECONOMIC_FOCUS_MATCH_BONUS
 		context["score"] = int(context["score"]) + 115 + int(skill.get("panic", 0)) + int(skill.get("route_damage", 0)) * 45
@@ -8033,7 +8037,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		context["district"] = rival_city
 		context["target_city"] = rival_city
 		context["target_owner"] = int(_district_city(rival_city).get("owner", -1))
-		context["product"] = _ai_preferred_product(player_index, true, cached_context)
+		context["product"] = _ai_preferred_product(player_index, true, turn_context)
 		if String(context.get("product", "")) == focus_product and focus_product != "":
 			context["focus_bonus"] = int(context.get("focus_bonus", 0)) + AI_ECONOMIC_FOCUS_MATCH_BONUS
 		context["score"] = int(context["score"]) + 105
@@ -8046,7 +8050,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		if _city_is_active(shifted_city):
 			context["target_city"] = int(context["district"])
 			context["target_owner"] = int(shifted_city.get("owner", -1))
-		context["focus_bonus"] = int(context.get("focus_bonus", 0)) + _ai_district_focus_score(player_index, int(context["district"]), cached_context)
+		context["focus_bonus"] = int(context.get("focus_bonus", 0)) + _ai_district_focus_score(player_index, int(context["district"]), turn_context)
 	elif kind == "city_control_dispute":
 		var control_plan := _ai_direct_city_interaction_plan(player_index, skill)
 		if control_plan.is_empty():
@@ -8129,9 +8133,15 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 			return {}
 		context["score"] = int(context["score"]) + available * 8
 	if kind == "product_futures":
-		var refreshed_futures_plan := _ai_product_futures_plan(player_index, skill, String(context.get("product", "")))
+		var refreshed_futures_plan := _ai_product_futures_plan(
+			player_index,
+			skill,
+			String(context.get("product", "")),
+			turn_context
+		)
 		if refreshed_futures_plan.is_empty():
 			return {}
+		final_futures_plan = refreshed_futures_plan
 		context.merge(refreshed_futures_plan, true)
 	var cash_cost := _skill_play_cash_cost(skill, player_index)
 	if _spendable_cash_units(player_index) < cash_cost:
@@ -8144,15 +8154,15 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		var target_city := _district_city(context_district)
 		if _city_is_active(target_city):
 			target_owner = int(target_city.get("owner", -1))
-	var strategy_bonus := _ai_strategy_bonus_for_candidate(player_index, kind, context_district, String(context.get("product", "")), target_owner, skill, cached_context)
+	var strategy_bonus := _ai_strategy_bonus_for_candidate(player_index, kind, context_district, String(context.get("product", "")), target_owner, skill, turn_context)
 	if strategy_bonus > 0:
 		context["strategy_bonus"] = int(context.get("strategy_bonus", 0)) + strategy_bonus
 		context["score"] = int(context["score"]) + strategy_bonus
-	var route_bonus := _ai_route_plan_bonus_for_candidate(player_index, kind, context_district, String(context.get("product", "")), target_owner, skill, cached_context)
+	var route_bonus := _ai_route_plan_bonus_for_candidate(player_index, kind, context_district, String(context.get("product", "")), target_owner, skill, turn_context)
 	if route_bonus > 0:
 		context["route_plan_bonus"] = int(context.get("route_plan_bonus", 0)) + route_bonus
 		context["score"] = int(context["score"]) + route_bonus
-	var route_gap := _ai_route_gap_adjustment(player_index, skill, context_district, String(context.get("product", "")), target_owner, cached_context)
+	var route_gap := _ai_route_gap_adjustment(player_index, skill, context_district, String(context.get("product", "")), target_owner, turn_context)
 	var route_gap_bonus := int(route_gap.get("bonus", 0))
 	var route_gap_penalty := int(route_gap.get("penalty", 0))
 	if route_gap_bonus != 0 or route_gap_penalty != 0:
@@ -8173,14 +8183,14 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 	if development_route_bonus != 0:
 		context["development_route_bonus"] = development_route_bonus
 		context["score"] = int(context["score"]) + development_route_bonus
-	var phase_bonus := _ai_phase_bonus_for_candidate(player_index, kind, context_district, String(context.get("product", "")), target_owner, skill, cached_context)
+	var phase_bonus := _ai_phase_bonus_for_candidate(player_index, kind, context_district, String(context.get("product", "")), target_owner, skill, turn_context)
 	if phase_bonus != 0:
 		context["phase_bonus"] = phase_bonus
 		context["score"] = int(context["score"]) + phase_bonus
-	var victory_context: Dictionary = cached_context
+	var victory_context: Dictionary = turn_context
 	if cache_active:
-		if not cached_context.has("victory_context"):
-			cached_context["victory_context"] = {
+		if not turn_context.has("victory_context"):
+			turn_context["victory_context"] = {
 				"player_valid": player_index >= 0 and player_index < _public_player_count() and _player_is_ai(player_index),
 				"phase_info": phase_info,
 				"leader_score": int(_visible_score_leader_entry(player_index).get("score", 0)),
@@ -8190,7 +8200,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 				"focus_product": focus_product,
 				"route_product": route_product,
 			}
-		victory_context = cached_context.get("victory_context") as Dictionary
+		victory_context = turn_context.get("victory_context") as Dictionary
 	var victory_race := _ai_victory_race_bonus_for_candidate(player_index, kind, context_district, String(context.get("product", "")), target_owner, skill, victory_context)
 	var victory_race_bonus := int(victory_race.get("bonus", 0))
 	if victory_race_bonus != 0:
@@ -8203,7 +8213,18 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 			victory_race_bonus,
 			String(victory_race.get("reason", "")),
 		]
-	var generic_bonus := _ai_generic_card_effect_score(player_index, skill, context_district, String(context.get("product", "")), target_owner)
+	var generic_effect_context := turn_context
+	if cache_active and kind == "product_futures":
+		generic_effect_context = turn_context.duplicate()
+		generic_effect_context["product_futures_plan"] = final_futures_plan
+	var generic_bonus := _ai_generic_card_effect_score(
+		player_index,
+		skill,
+		context_district,
+		String(context.get("product", "")),
+		target_owner,
+		generic_effect_context
+	)
 	if generic_bonus != 0:
 		context["generic_effect_bonus"] = generic_bonus
 		context["score"] = int(context["score"]) + generic_bonus
@@ -8214,7 +8235,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		String(context.get("product", "")),
 		target_owner,
 		skill,
-		cached_context
+		turn_context
 	) if cache_active else _ai_profile_signature_bonus_for_candidate(
 		player_index,
 		kind,
@@ -8236,11 +8257,11 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 			String(profile_signature.get("reason", "")),
 		]
 	var learning_memory: Dictionary = {}
-	if cache_active and cached_context.has("learning_memory") and cached_context.get("learning_memory") is Dictionary:
-		learning_memory = cached_context.get("learning_memory") as Dictionary
+	if cache_active and turn_context.has("learning_memory") and turn_context.get("learning_memory") is Dictionary:
+		learning_memory = turn_context.get("learning_memory") as Dictionary
 	elif cache_active:
 		learning_memory = _ai_memory_for_player(player_index)
-		cached_context["learning_memory"] = learning_memory
+		turn_context["learning_memory"] = learning_memory
 	var learning_bonus := clampi(
 		(_ai_learning_bonus_from_memory(learning_memory, String(context.get("policy_kind", kind)), String(context.get("strategy_intent", "")), String(context.get("route_plan_stage", "")), String(context.get("product", "")), "匿名出牌")
 		+ _ai_development_route_learning_bonus_from_memory(learning_memory, development_route)) \
