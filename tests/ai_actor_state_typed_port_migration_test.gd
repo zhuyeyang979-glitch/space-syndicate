@@ -296,8 +296,14 @@ func _run_source_negative_gates() -> void:
 	_expect(strategy_candidates_at >= 0 and strategy_commit_snapshot_at > strategy_candidates_at, "strategy refresh re-reads actor memory after nested phase updates")
 	var route_body := _function_body(controller_source, "_ai_refresh_route_plan")
 	var route_candidates_at := route_body.find("_ai_route_plan_candidates")
-	var route_commit_snapshot_at := route_body.find("var actor_state := _ai_actor_state_snapshot", route_candidates_at)
-	_expect(route_candidates_at >= 0 and route_commit_snapshot_at > route_candidates_at, "route-plan refresh re-reads actor memory after nested strategy updates")
+	var route_commit_state_at := route_body.find("var actor_state :=", route_candidates_at)
+	var route_commit_state_binding := "cached_actor_state if cache_active else _ai_actor_state_snapshot(player_index)"
+	_expect(
+		route_candidates_at >= 0 \
+			and route_commit_state_at > route_candidates_at \
+			and route_body.find(route_commit_state_binding, route_commit_state_at) > route_commit_state_at,
+		"route-plan refresh uses its actor-bound cache or re-reads actor memory after nested strategy updates"
+	)
 	_expect(not controller_source.contains("_call_world(&\"_player_is_ai\"") and not controller_source.contains("_call_world(&\"_player_is_eliminated\""), "actor identity uses no Main method-name route")
 	var snapshot_keys_start := port_source.find("const AI_STATE_SNAPSHOT_KEYS")
 	var snapshot_keys_end := port_source.find("@export var world_session_state_path", snapshot_keys_start)
