@@ -1729,6 +1729,13 @@ func _discardable_hand_slots_for_purchase(player_index: int) -> Array:
 		_actor_hand_inventory_snapshot(player_index)
 	)
 
+func _player_inventory_receive_plan(player_index: int, skill_name: String) -> Dictionary:
+	return _district_supply_runtime_query_port.private_inventory_plan_for_actor(
+		_district_supply_ai_query_capability,
+		player_index,
+		skill_name
+	) if _district_supply_runtime_query_port != null else {}
+
 func _player_can_receive_card_with_discard(player_index: int, skill_name: String) -> bool:
 	return _district_supply_runtime_query_port.private_can_receive_with_discard(
 		_district_supply_ai_query_capability,
@@ -4098,15 +4105,20 @@ func _ai_weather_definition_has_opportunity(type_id: String) -> bool:
 	return false
 
 
-func _ai_phase_bonus_for_candidate(player_index: int, kind: String, _district_index: int, product_name: String = "", target_owner: int = -999, skill: Dictionary = {}) -> int:
-	var phase_info := _ai_refresh_game_phase(player_index)
+func _ai_phase_bonus_for_candidate(player_index: int, kind: String, _district_index: int, product_name: String = "", target_owner: int = -999, skill: Dictionary = {}, cached_context: Dictionary = {}) -> int:
+	var phase_info: Dictionary = {}
+	if cached_context.has("phase_info") and cached_context.get("phase_info") is Dictionary:
+		phase_info = cached_context.get("phase_info") as Dictionary
+	else:
+		phase_info = _ai_refresh_game_phase(player_index)
 	var phase := String(phase_info.get("phase", "midgame"))
 	var posture := String(phase_info.get("posture", "contesting"))
 	var leader_index := int(phase_info.get("leader_index", -1))
 	var helpful_target := target_owner == player_index
 	var harmful_target := target_owner >= 0 and target_owner != player_index
 	var targets_leader := leader_index >= 0 and target_owner == leader_index and leader_index != player_index
-	var endgame_urgency := _ai_endgame_urgency_score(player_index)
+	var endgame_urgency := int(cached_context.get("endgame_urgency", 0)) \
+		if cached_context.has("endgame_urgency") else _ai_endgame_urgency_score(player_index)
 	var urgency_half := int(round(float(endgame_urgency) / 2.0))
 	var urgency_third := int(round(float(endgame_urgency) / 3.0))
 	var urgency_fifth := int(round(float(endgame_urgency) / 5.0))
@@ -4126,8 +4138,16 @@ func _ai_phase_bonus_for_candidate(player_index: int, kind: String, _district_in
 				bonus += 55
 			if _ai_pressure_kind(kind, skill) and harmful_target:
 				bonus += 65
-			if product_name != "" and (product_name == _ai_focus_product(player_index) or product_name == _ai_route_plan_product(player_index)):
-				bonus += 38
+			if product_name != "":
+				var focus_product := String(cached_context.get("focus_product", "")) \
+					if cached_context.has("focus_product") else _ai_focus_product(player_index)
+				var product_match := product_name == focus_product
+				if not product_match:
+					var route_product := String(cached_context.get("route_product", "")) \
+						if cached_context.has("route_product") else _ai_route_plan_product(player_index)
+					product_match = product_name == route_product
+				if product_match:
+					bonus += 38
 		"endgame":
 			if posture == "leader":
 				if _ai_defense_kind(kind, skill) and (helpful_target or target_owner == -999):
@@ -4149,24 +4169,35 @@ func _ai_phase_bonus_for_candidate(player_index: int, kind: String, _district_in
 				if _ai_pressure_kind(kind, skill) and (targets_leader or harmful_target):
 					bonus += 90 + urgency_half
 	return bonus
-func _ai_victory_race_bonus_for_candidate(player_index: int, kind: String, district_index: int, product_name: String = "", target_owner: int = -999, skill: Dictionary = {}) -> Dictionary:
+func _ai_victory_race_bonus_for_candidate(player_index: int, kind: String, district_index: int, product_name: String = "", target_owner: int = -999, skill: Dictionary = {}, cached_context: Dictionary = {}) -> Dictionary:
 	var result := {
 		"bonus": 0,
 		"role": "",
 		"reason": "",
 	}
-	if player_index < 0 or player_index >= _public_player_count() or not _player_is_ai(player_index):
+	var player_valid := bool(cached_context.get("player_valid", false)) \
+		if cached_context.has("player_valid") \
+		else player_index >= 0 and player_index < _public_player_count() and _player_is_ai(player_index)
+	if not player_valid:
 		return result
-	var phase_info := _ai_refresh_game_phase(player_index)
+	var phase_info: Dictionary = {}
+	if cached_context.has("phase_info") and cached_context.get("phase_info") is Dictionary:
+		phase_info = cached_context.get("phase_info") as Dictionary
+	else:
+		phase_info = _ai_refresh_game_phase(player_index)
 	var phase := String(phase_info.get("phase", "midgame"))
 	var posture := String(phase_info.get("posture", "contesting"))
 	var leader_index := int(phase_info.get("leader_index", -1))
-	var leader_score := int(_visible_score_leader_entry(player_index).get("score", 0))
-	var own_score := _victory_top_n_gdp(player_index)
-	var gdp_goal := _victory_required_gdp()
+	var leader_score := int(cached_context.get("leader_score", 0)) \
+		if cached_context.has("leader_score") else int(_visible_score_leader_entry(player_index).get("score", 0))
+	var own_score := int(cached_context.get("own_score", 0)) \
+		if cached_context.has("own_score") else _victory_top_n_gdp(player_index)
+	var gdp_goal := int(cached_context.get("gdp_goal", 0)) \
+		if cached_context.has("gdp_goal") else _victory_required_gdp()
 	var gdp_gap := gdp_goal - own_score
 	var leader_goal_gap := gdp_goal - leader_score
-	var urgency := _ai_endgame_urgency_score(player_index)
+	var urgency := int(cached_context.get("endgame_urgency", 0)) \
+		if cached_context.has("endgame_urgency") else _ai_endgame_urgency_score(player_index)
 	var is_endgame_pressure: bool = phase == "endgame" or bool(victory_control_active) or own_score >= int(round(float(gdp_goal) * 0.82)) or leader_score >= int(round(float(gdp_goal) * 0.86))
 	if not is_endgame_pressure:
 		return result
@@ -4179,7 +4210,15 @@ func _ai_victory_race_bonus_for_candidate(player_index: int, kind: String, distr
 	var harmful_target := resolved_owner >= 0 and resolved_owner != player_index
 	var targets_leader := leader_index >= 0 and leader_index != player_index and resolved_owner == leader_index
 	var route_id := _ai_development_route_for_kind(kind, skill)
-	var product_match := product_name != "" and (product_name == _ai_focus_product(player_index) or product_name == _ai_route_plan_product(player_index))
+	var product_match := false
+	if product_name != "":
+		var focus_product := String(cached_context.get("focus_product", "")) \
+			if cached_context.has("focus_product") else _ai_focus_product(player_index)
+		product_match = product_name == focus_product
+		if not product_match:
+			var route_product := String(cached_context.get("route_product", "")) \
+				if cached_context.has("route_product") else _ai_route_plan_product(player_index)
+			product_match = product_name == route_product
 	var pressure := _ai_pressure_kind(kind, skill)
 	var defense := _ai_defense_kind(kind, skill)
 	var bonus := 0
@@ -4644,7 +4683,10 @@ func _ai_apply_learning_sample(player_index: int, memory: Dictionary, sample: Di
 func _ai_learned_tag_bonus(player_index: int, tag: String) -> int:
 	if tag == "" or not _player_is_ai(player_index):
 		return 0
-	var memory := _ai_memory_for_player(player_index)
+	return _ai_learned_tag_bonus_from_memory(_ai_memory_for_player(player_index), tag)
+func _ai_learned_tag_bonus_from_memory(memory: Dictionary, tag: String) -> int:
+	if tag == "":
+		return 0
 	var values := memory.get("learned_policy_values", {}) as Dictionary
 	var entry := values.get(tag, {}) as Dictionary
 	var sample_count := int(entry.get("samples", 0))
@@ -4656,6 +4698,11 @@ func _ai_learning_bonus(player_index: int, policy_kind: String = "", strategy_in
 	var bonus := 0
 	for tag_variant in _ai_learning_tags(action_kind, policy_kind, strategy_intent, route_stage, product_name):
 		bonus += _ai_learned_tag_bonus(player_index, String(tag_variant))
+	return clampi(bonus, -AI_LEARNING_BONUS_CLAMP, AI_LEARNING_BONUS_CLAMP)
+func _ai_learning_bonus_from_memory(memory: Dictionary, policy_kind: String = "", strategy_intent: String = "", route_stage: String = "", product_name: String = "", action_kind: String = "") -> int:
+	var bonus := 0
+	for tag_variant in _ai_learning_tags(action_kind, policy_kind, strategy_intent, route_stage, product_name):
+		bonus += _ai_learned_tag_bonus_from_memory(memory, String(tag_variant))
 	return clampi(bonus, -AI_LEARNING_BONUS_CLAMP, AI_LEARNING_BONUS_CLAMP)
 func _record_ai_decision(player_index: int, kind: String, target_index: int, score: int, reason: String, candidates: Array = [], metadata: Dictionary = {}) -> void:
 	if not _player_is_ai(player_index):
@@ -4852,18 +4899,25 @@ func _ai_memory_for_player(player_index: int) -> Dictionary:
 	var memory_variant: Variant = actor.get("ai_memory", {})
 	return (memory_variant as Dictionary).duplicate(true) if memory_variant is Dictionary else _empty_ai_memory()
 func _ai_development_route_bias(player_index: int, route_id: String) -> float:
-	var profile := _ai_profile_for_player(player_index)
+	return _ai_development_route_bias_from_profile(_ai_profile_for_player(player_index), route_id)
+func _ai_development_route_bias_from_profile(profile: Dictionary, route_id: String) -> float:
 	var preferences_variant: Variant = profile.get("route_preferences", {})
 	if not (preferences_variant is Dictionary):
 		return 1.0
 	var preferences: Dictionary = preferences_variant
 	return clampf(float(preferences.get(route_id, 1.0)), 0.65, 1.65)
 func _ai_development_route_bonus(player_index: int, route_id: String) -> int:
-	return int(round((_ai_development_route_bias(player_index, route_id) - 1.0) * 120.0))
+	return _ai_development_route_bonus_from_profile(_ai_profile_for_player(player_index), route_id)
+func _ai_development_route_bonus_from_profile(profile: Dictionary, route_id: String) -> int:
+	return int(round((_ai_development_route_bias_from_profile(profile, route_id) - 1.0) * 120.0))
 func _ai_development_route_learning_bonus(player_index: int, route_id: String) -> int:
 	if route_id == "":
 		return 0
 	return _ai_learned_tag_bonus(player_index, "development_route:%s" % route_id)
+func _ai_development_route_learning_bonus_from_memory(memory: Dictionary, route_id: String) -> int:
+	if route_id == "":
+		return 0
+	return _ai_learned_tag_bonus_from_memory(memory, "development_route:%s" % route_id)
 func _ai_product_rival_city_count(player_index: int, product_name: String) -> int:
 	var count := 0
 	if product_name == "":
@@ -5186,12 +5240,17 @@ func _ai_strategy_intent(player_index: int) -> String:
 func _ai_strategy_score(player_index: int) -> int:
 	var strategy := _ai_refresh_strategy_intent(player_index)
 	return int(strategy.get("score", 0))
-func _ai_strategy_bonus_for_candidate(player_index: int, kind: String, district_index: int, product_name: String = "", target_owner: int = -999, skill: Dictionary = {}) -> int:
-	var strategy := _ai_refresh_strategy_intent(player_index)
+func _ai_strategy_bonus_for_candidate(player_index: int, kind: String, district_index: int, product_name: String = "", target_owner: int = -999, skill: Dictionary = {}, cached_context: Dictionary = {}) -> int:
+	var strategy: Dictionary = {}
+	if cached_context.has("strategy") and cached_context.get("strategy") is Dictionary:
+		strategy = cached_context.get("strategy") as Dictionary
+	else:
+		strategy = _ai_refresh_strategy_intent(player_index)
 	var intent := String(strategy.get("intent", ""))
 	if intent == "":
 		return 0
-	var focus := _ai_focus_product(player_index)
+	var focus := String(cached_context.get("focus_product", "")) \
+		if cached_context.has("focus_product") else _ai_focus_product(player_index)
 	var resolved_owner := target_owner
 	if resolved_owner == -999 and district_index >= 0 and district_index < districts.size():
 		var city := _district_city(district_index)
@@ -5218,7 +5277,9 @@ func _ai_strategy_bonus_for_candidate(player_index: int, kind: String, district_
 			if focus != "" and product_name == focus:
 				bonus += 54
 			if district_index >= 0:
-				bonus += mini(90, int(float(_ai_district_focus_score(player_index, district_index)) / 2.0))
+				var district_focus_score := int(cached_context.get("district_focus_score", 0)) \
+					if cached_context.has("district_focus_score") else _ai_district_focus_score(player_index, district_index)
+				bonus += mini(90, int(float(district_focus_score) / 2.0))
 	return max(0, bonus)
 func _ai_development_route_for_kind(kind: String, skill: Dictionary = {}) -> String:
 	if not skill.is_empty():
@@ -5262,6 +5323,24 @@ func _ai_profile_route_preference_bonus(profile: Dictionary, route_id: String) -
 		return 0
 	return int(round((bias - 1.0) * 150.0))
 func _ai_profile_signature_bonus_for_candidate(player_index: int, kind: String, district_index: int, product_name: String = "", target_owner: int = -999, skill: Dictionary = {}) -> Dictionary:
+	return _ai_profile_signature_bonus_for_candidate_with_context(
+		player_index,
+		kind,
+		district_index,
+		product_name,
+		target_owner,
+		skill,
+		{}
+	)
+func _ai_profile_signature_bonus_for_candidate_with_context(
+	player_index: int,
+	kind: String,
+	district_index: int,
+	product_name: String = "",
+	target_owner: int = -999,
+	skill: Dictionary = {},
+	cached_context: Dictionary = {}
+) -> Dictionary:
 	var result := {
 		"bonus": 0,
 		"family": "",
@@ -5270,7 +5349,12 @@ func _ai_profile_signature_bonus_for_candidate(player_index: int, kind: String, 
 	}
 	if player_index < 0 or player_index >= _public_player_count() or not _player_is_ai(player_index) or kind == "":
 		return result
-	var profile := _ai_profile_for_player(player_index)
+	var profile: Dictionary = {}
+	if cached_context.has("profile"):
+		var cached_profile_variant: Variant = cached_context.get("profile")
+		profile = cached_profile_variant as Dictionary if cached_profile_variant is Dictionary else {}
+	else:
+		profile = _ai_profile_for_player(player_index)
 	var route_id := _ai_development_route_for_kind(kind, skill)
 	var family := _ai_policy_family_for_kind(kind, skill)
 	var expected_routes := _ai_profile_expected_route_ids(profile)
@@ -5288,9 +5372,17 @@ func _ai_profile_signature_bonus_for_candidate(player_index: int, kind: String, 
 	if family != "" and signature_families.has(family):
 		bonus += 58
 		reasons.append("签名%s+58" % family)
-	if product_name != "" and (product_name == _ai_focus_product(player_index) or product_name == _ai_route_plan_product(player_index)):
-		bonus += 20
-		reasons.append("商品吻合+20")
+	if product_name != "":
+		var signature_focus_product := str(cached_context.get("focus_product")) \
+			if cached_context.has("focus_product") else _ai_focus_product(player_index)
+		var product_matches_signature := product_name == signature_focus_product
+		if not product_matches_signature:
+			var signature_route_product := str(cached_context.get("route_product")) \
+				if cached_context.has("route_product") else _ai_route_plan_product(player_index)
+			product_matches_signature = product_name == signature_route_product
+		if product_matches_signature:
+			bonus += 20
+			reasons.append("商品吻合+20")
 	var resolved_owner := target_owner
 	if resolved_owner == -999 and district_index >= 0 and district_index < districts.size():
 		var city := _district_city(district_index)
@@ -5588,8 +5680,12 @@ func _ai_route_plan_stage(player_index: int) -> String:
 func _ai_route_plan_score(player_index: int) -> int:
 	var plan := _ai_refresh_route_plan(player_index)
 	return int(plan.get("score", 0))
-func _ai_route_plan_bonus_for_candidate(player_index: int, kind: String, district_index: int, product_name: String = "", target_owner: int = -999, skill: Dictionary = {}) -> int:
-	var plan := _ai_refresh_route_plan(player_index)
+func _ai_route_plan_bonus_for_candidate(player_index: int, kind: String, district_index: int, product_name: String = "", target_owner: int = -999, skill: Dictionary = {}, cached_context: Dictionary = {}) -> int:
+	var plan: Dictionary = {}
+	if cached_context.has("route_plan") and cached_context.get("route_plan") is Dictionary:
+		plan = cached_context.get("route_plan") as Dictionary
+	else:
+		plan = _ai_refresh_route_plan(player_index)
 	var plan_product := String(plan.get("product", ""))
 	var stage := String(plan.get("stage", ""))
 	if plan_product == "" or stage == "":
@@ -5639,13 +5735,18 @@ func _ai_route_plan_bonus_for_candidate(player_index: int, kind: String, distric
 			if product_match:
 				bonus += 44
 	return max(0, bonus)
-func _ai_play_requirement_metadata(player_index: int, skill: Dictionary, planned_district: int = -1) -> Dictionary:
+func _ai_play_requirement_metadata(
+	player_index: int,
+	skill: Dictionary,
+	planned_district: int = -1,
+	planned_district_is_precomputed: bool = false
+) -> Dictionary:
 	var evaluated_skill := skill.duplicate(true)
 	var scope := _skill_play_region_scope(evaluated_skill, player_index)
 	var has_locked_requirement_district := evaluated_skill.has("play_requirement_district")
 	var requirement_district := int(evaluated_skill.get("play_requirement_district", planned_district))
 	if not has_locked_requirement_district:
-		if scope == CardPlayRequirementPolicyScript.SCOPE_OWN_BEST_REGION:
+		if scope == CardPlayRequirementPolicyScript.SCOPE_OWN_BEST_REGION and not planned_district_is_precomputed:
 			requirement_district = _best_player_gdp_share_district(player_index)
 	if requirement_district >= 0:
 		evaluated_skill["play_requirement_district"] = requirement_district
@@ -5658,7 +5759,13 @@ func _ai_play_requirement_metadata(player_index: int, skill: Dictionary, planned
 		"qualifying_district": int(status.get("qualifying_district", -1)),
 		"requirement_satisfied": bool(status.get("requirement_satisfied", false)),
 	}
-func _ai_route_hand_inventory(player_index: int, route_id: String, hand_snapshot: Dictionary = {}) -> Dictionary:
+func _ai_route_hand_inventory(
+	player_index: int,
+	route_id: String,
+	hand_snapshot: Dictionary = {},
+	best_district: int = -1,
+	best_district_is_precomputed: bool = false
+) -> Dictionary:
 	var result := {
 		"total": 0,
 		"playable": 0,
@@ -5686,7 +5793,12 @@ func _ai_route_hand_inventory(player_index: int, route_id: String, hand_snapshot
 		if _card_development_route_id(skill) != route_id:
 			continue
 		result["total"] = int(result.get("total", 0)) + 1
-		var requirement := _ai_play_requirement_metadata(player_index, skill, _best_player_gdp_share_district(player_index))
+		var requirement := _ai_play_requirement_metadata(
+			player_index,
+			skill,
+			best_district if best_district_is_precomputed else _best_player_gdp_share_district(player_index),
+			best_district_is_precomputed
+		)
 		var cash_cost := _skill_play_cash_cost(skill, player_index)
 		if bool(requirement.get("requirement_satisfied", false)) and cash >= cash_cost:
 			result["playable"] = int(result.get("playable", 0)) + 1
@@ -5698,8 +5810,25 @@ func _ai_route_hand_inventory(player_index: int, route_id: String, hand_snapshot
 			if cash < cash_cost:
 				result["blocked_cash"] = int(result.get("blocked_cash", 0)) + 1
 	return result
-func _ai_route_inventory_adjustment(player_index: int, route_id: String, required: int, available: int, counted_hand: int, route_bonus: int, development_route_bonus: int, hand_snapshot: Dictionary = {}) -> Dictionary:
-	var inventory := _ai_route_hand_inventory(player_index, route_id, hand_snapshot)
+func _ai_route_inventory_adjustment(
+	player_index: int,
+	route_id: String,
+	required: int,
+	available: int,
+	counted_hand: int,
+	route_bonus: int,
+	development_route_bonus: int,
+	hand_snapshot: Dictionary = {},
+	best_district: int = -1,
+	best_district_is_precomputed: bool = false
+) -> Dictionary:
+	var inventory := _ai_route_hand_inventory(
+		player_index,
+		route_id,
+		hand_snapshot,
+		best_district,
+		best_district_is_precomputed
+	)
 	var total := int(inventory.get("total", 0))
 	var playable := int(inventory.get("playable", 0))
 	var blocked_flow := int(inventory.get("blocked_flow", 0))
@@ -5729,7 +5858,7 @@ func _ai_route_inventory_adjustment(player_index: int, route_id: String, require
 		if hand_limit > 0 and counted_hand >= hand_limit - 1:
 			adjustment["penalty"] = int(adjustment.get("penalty", 0)) + 36
 	return adjustment
-func _ai_route_gap_adjustment(player_index: int, skill: Dictionary, district_index: int, product_name: String = "", target_owner: int = -999) -> Dictionary:
+func _ai_route_gap_adjustment(player_index: int, skill: Dictionary, district_index: int, product_name: String = "", target_owner: int = -999, cached_context: Dictionary = {}) -> Dictionary:
 	var result := {
 		"bonus": 0,
 		"penalty": 0,
@@ -5738,7 +5867,11 @@ func _ai_route_gap_adjustment(player_index: int, skill: Dictionary, district_ind
 		"field_match": 0,
 		"reason": "",
 	}
-	var plan := _ai_refresh_route_plan(player_index)
+	var plan: Dictionary = {}
+	if cached_context.has("route_plan") and cached_context.get("route_plan") is Dictionary:
+		plan = cached_context.get("route_plan") as Dictionary
+	else:
+		plan = _ai_refresh_route_plan(player_index)
 	var plan_product := String(plan.get("product", ""))
 	var stage := String(plan.get("stage", ""))
 	if plan_product == "" or stage == "" or skill.is_empty():
@@ -6191,7 +6324,8 @@ func _ai_monster_delay_plan(player_index: int, _skill: Dictionary) -> Dictionary
 			}
 	return best
 func _ai_card_kind_bias(player_index: int, kind: String) -> float:
-	var profile := _ai_profile_for_player(player_index)
+	return _ai_card_kind_bias_from_profile(_ai_profile_for_player(player_index), kind)
+func _ai_card_kind_bias_from_profile(profile: Dictionary, kind: String) -> float:
 	if kind == "card_counter":
 		return maxf(float(profile.get("business_bias", 1.0)), float(profile.get("economy_bias", 1.0))) * 0.86
 	if kind == "military_force" or kind == "military_command":
@@ -7720,11 +7854,18 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 	var cash := int(economy_facts.get("available_cash_units", 0))
 	var profile := _ai_profile_for_player(player_index)
 	var focus_product := _ai_focus_product(player_index)
-	var strategy_intent := _ai_strategy_intent(player_index)
-	var strategy_score := _ai_strategy_score(player_index)
-	var route_product := _ai_route_plan_product(player_index)
-	var route_stage := _ai_route_plan_stage(player_index)
-	var route_score := _ai_route_plan_score(player_index)
+	var strategy := _ai_refresh_strategy_intent(player_index)
+	var strategy_intent := String(strategy.get("intent", ""))
+	var strategy_score := int(strategy.get("score", 0))
+	var route_plan := _ai_refresh_route_plan(player_index)
+	var route_product := String(route_plan.get("product", ""))
+	var buy_profile_context := {
+		"profile": profile,
+		"focus_product": focus_product,
+		"route_product": route_product,
+	}
+	var route_stage := String(route_plan.get("stage", ""))
+	var route_score := int(route_plan.get("score", 0))
 	var phase_info := _ai_refresh_game_phase(player_index)
 	var phase := String(phase_info.get("phase", "midgame"))
 	var posture := String(phase_info.get("posture", "contesting"))
@@ -7733,12 +7874,42 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 	var posture_label := _ai_competitive_posture_label(posture)
 	var counted_hand := _actor_counted_hand_size(hand_snapshot)
 	var hand_limit := _actor_hand_limit(hand_snapshot)
+	var inventory_receive_plan_by_card_name: Dictionary = {}
+	var district_focus_score_by_index: Dictionary = {}
+	var product_for_card_name: Dictionary = {}
+	var best_district_ready := false
+	var best_district := -1
+	var role_card_ready := false
+	var role_card: Dictionary = {}
+	var focus_score_ready := false
+	var focus_score := 0
+	var learning_memory_ready := false
+	var learning_memory: Dictionary = {}
+	var strategy_candidate_context := {
+		"strategy": strategy,
+		"focus_product": focus_product,
+		"district_focus_score": 0,
+	}
+	var route_candidate_context := {"route_plan": route_plan}
+	var phase_candidate_context := {
+		"phase_info": phase_info,
+		"endgame_urgency": endgame_urgency,
+		"focus_product": focus_product,
+		"route_product": route_product,
+	}
+	var victory_race_context_ready := false
+	var victory_race_context: Dictionary = {}
 	for district_index in range(districts.size()):
 		if not _market_listing_purchasable(district_index) or bool(districts[district_index].get("destroyed", false)):
 			continue
 		for card_variant in _district_supply_card_ids(district_index):
 			var card_name := String(card_variant)
-			if card_name == "" or not _player_can_receive_card_with_discard(player_index, card_name):
+			if card_name == "":
+				continue
+			if not inventory_receive_plan_by_card_name.has(card_name):
+				inventory_receive_plan_by_card_name[card_name] = _player_inventory_receive_plan(player_index, card_name)
+			var inventory_receive_plan := inventory_receive_plan_by_card_name[card_name] as Dictionary
+			if not bool(inventory_receive_plan.get("ready", false)) and not bool(inventory_receive_plan.get("requires_discard", false)):
 				continue
 			var price := _card_price(card_name, district_index, player_index)
 			if cash - price < AI_CARD_BUY_MIN_CASH_RESERVE:
@@ -7746,10 +7917,10 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 			var skill := _make_skill(card_name)
 			var kind := String(skill.get("kind", ""))
 			var development_route := _card_development_route_id(skill)
-			var development_route_bias := _ai_development_route_bias(player_index, development_route)
-			var development_route_bonus := _ai_development_route_bonus(player_index, development_route)
+			var development_route_bias := _ai_development_route_bias_from_profile(profile, development_route)
+			var development_route_bonus := _ai_development_route_bonus_from_profile(profile, development_route)
 			var score := 55 + int(skill.get("cost", 2)) * 11 - int(round(float(price) / 12.0))
-			var needs_discard := _purchase_requires_discard(player_index, card_name)
+			var needs_discard := bool(inventory_receive_plan.get("requires_discard", false))
 			var discard_slot := -1
 			var discard_keep_value := 0
 			var hand_pressure_penalty := 0
@@ -7759,11 +7930,15 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 					continue
 				discard_keep_value = _ai_discard_keep_value(player_index, discard_slot, hand_snapshot)
 				hand_pressure_penalty = maxi(45, int(round(float(discard_keep_value) * 0.55)) + 30)
-			var focus_bonus := int(float(_ai_district_focus_score(player_index, district_index)) / 2.0)
+			if not district_focus_score_by_index.has(district_index):
+				district_focus_score_by_index[district_index] = _ai_district_focus_score(player_index, district_index)
+			var focus_bonus := int(float(district_focus_score_by_index[district_index]) / 2.0)
 			var family_slot := _actor_highest_family_card_slot(hand_snapshot, card_name)
 			if family_slot >= 0:
 				score += 85
-			var product_name := _ai_product_for_skill(player_index, skill)
+			if not product_for_card_name.has(card_name):
+				product_for_card_name[card_name] = _ai_product_for_skill(player_index, skill)
+			var product_name := str(product_for_card_name[card_name])
 			var futures_plan := {}
 			if kind == "product_futures":
 				futures_plan = _ai_product_futures_plan(player_index, skill, product_name)
@@ -7780,38 +7955,76 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				military_deploy_bonus = int(float(int(military_plan.get("score", 0))) / 2.0)
 			var required := _skill_play_flow_required(skill, player_index)
 			var available := _player_product_flow(player_index, product_name)
-			var probable_play_district := _best_player_gdp_share_district(player_index)
-			var requirement_metadata := _ai_play_requirement_metadata(player_index, skill, probable_play_district)
+			if not best_district_ready:
+				best_district = _best_player_gdp_share_district(player_index)
+				best_district_ready = true
+			var probable_play_district := best_district
+			var requirement_metadata := _ai_play_requirement_metadata(player_index, skill, probable_play_district, true)
 			var required_share_percent := int(requirement_metadata.get("required_share_percent", 0))
 			var current_share_percent := int(floor(float(requirement_metadata.get("current_share_percent", 0.0))))
 			var requirement_satisfied := bool(requirement_metadata.get("requirement_satisfied", false))
 			var playability_bonus := 0
-			var strategy_bonus := _ai_strategy_bonus_for_candidate(player_index, kind, district_index, product_name, -999, skill)
-			var route_bonus := _ai_route_plan_bonus_for_candidate(player_index, kind, district_index, product_name, -999, skill)
+			strategy_candidate_context["district_focus_score"] = int(district_focus_score_by_index[district_index])
+			var strategy_bonus := _ai_strategy_bonus_for_candidate(player_index, kind, district_index, product_name, -999, skill, strategy_candidate_context)
+			var route_bonus := _ai_route_plan_bonus_for_candidate(player_index, kind, district_index, product_name, -999, skill, route_candidate_context)
 			var target_owner := -999
 			var city := _district_city(district_index)
 			if _city_is_active(city):
 				target_owner = int(city.get("owner", -1))
 			var generic_bonus := _ai_generic_card_effect_score(player_index, skill, district_index, product_name, target_owner)
-			var phase_bonus := _ai_phase_bonus_for_candidate(player_index, kind, district_index, product_name, target_owner, skill)
-			var victory_race := _ai_victory_race_bonus_for_candidate(player_index, kind, district_index, product_name, target_owner, skill)
+			var phase_bonus := _ai_phase_bonus_for_candidate(player_index, kind, district_index, product_name, target_owner, skill, phase_candidate_context)
+			if not victory_race_context_ready:
+				victory_race_context = {
+					"player_valid": true,
+					"phase_info": phase_info,
+					"leader_score": int(_visible_score_leader_entry(player_index).get("score", 0)),
+					"own_score": _victory_top_n_gdp(player_index),
+					"gdp_goal": _victory_required_gdp(),
+					"endgame_urgency": endgame_urgency,
+					"focus_product": focus_product,
+					"route_product": route_product,
+				}
+				victory_race_context_ready = true
+			var victory_race := _ai_victory_race_bonus_for_candidate(player_index, kind, district_index, product_name, target_owner, skill, victory_race_context)
 			var victory_race_bonus := int(victory_race.get("bonus", 0))
-			var profile_signature := _ai_profile_signature_bonus_for_candidate(player_index, kind, district_index, product_name, target_owner, skill)
+			var profile_signature := _ai_profile_signature_bonus_for_candidate_with_context(
+				player_index,
+				kind,
+				district_index,
+				product_name,
+				target_owner,
+				skill,
+				buy_profile_context
+			)
 			var profile_signature_bonus := int(profile_signature.get("bonus", 0))
-			var route_gap := _ai_route_gap_adjustment(player_index, skill, district_index, product_name, target_owner)
+			var route_gap := _ai_route_gap_adjustment(player_index, skill, district_index, product_name, target_owner, route_candidate_context)
 			var route_gap_bonus := int(route_gap.get("bonus", 0))
 			var route_gap_penalty := int(route_gap.get("penalty", 0))
 			var route_gap_reason := String(route_gap.get("reason", ""))
 			var route_gap_field_match := int(route_gap.get("field_match", 0))
-			var route_inventory := _ai_route_inventory_adjustment(player_index, development_route, required, available, counted_hand, route_bonus, development_route_bonus, hand_snapshot)
+			var route_inventory := _ai_route_inventory_adjustment(
+				player_index,
+				development_route,
+				required,
+				available,
+				counted_hand,
+				route_bonus,
+				development_route_bonus,
+				hand_snapshot,
+				best_district,
+				true
+			)
 			var route_inventory_bonus := int(route_inventory.get("bonus", 0))
 			var route_inventory_penalty := int(route_inventory.get("penalty", 0))
 			var route_hand_total := int(route_inventory.get("total", 0))
 			var route_hand_playable := int(route_inventory.get("playable", 0))
 			var route_hand_blocked := int(route_inventory.get("blocked_flow", 0))
+			if not learning_memory_ready:
+				learning_memory = _ai_memory_for_player(player_index)
+				learning_memory_ready = true
 			var learning_bonus := clampi(
-				_ai_learning_bonus(player_index, kind, strategy_intent, route_stage, product_name, "区域购牌")
-				+ _ai_development_route_learning_bonus(player_index, development_route),
+				_ai_learning_bonus_from_memory(learning_memory, kind, strategy_intent, route_stage, product_name, "区域购牌")
+				+ _ai_development_route_learning_bonus_from_memory(learning_memory, development_route),
 				-AI_LEARNING_BONUS_CLAMP,
 				AI_LEARNING_BONUS_CLAMP
 			)
@@ -7855,10 +8068,15 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				score += victory_race_bonus
 			if learning_bonus != 0:
 				score += learning_bonus
-			var role := _player_role_card_for_index(player_index)
-			if String(role.get("bonus_card_product", "")) != "" and _district_or_city_has_product(district_index, String(role.get("bonus_card_product", ""))):
+			if not role_card_ready:
+				role_card = _player_role_card_for_index(player_index)
+				role_card_ready = true
+			if String(role_card.get("bonus_card_product", "")) != "" and _district_or_city_has_product(district_index, String(role_card.get("bonus_card_product", ""))):
 				score += 65
-			score = maxi(1, int(round(float(score) * _ai_card_kind_bias(player_index, kind))))
+			score = maxi(1, int(round(float(score) * _ai_card_kind_bias_from_profile(profile, kind))))
+			if not focus_score_ready:
+				focus_score = _ai_focus_score(player_index)
+				focus_score_ready = true
 			var candidate := {
 				"action": "购牌",
 				"card_name": card_name,
@@ -7869,7 +8087,7 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 				"price": price,
 				"score": score,
 				"focus_product": focus_product,
-				"focus_score": _ai_focus_score(player_index),
+				"focus_score": focus_score,
 				"focus_bonus": focus_bonus,
 				"strategy_intent": strategy_intent,
 				"strategy_score": strategy_score,
