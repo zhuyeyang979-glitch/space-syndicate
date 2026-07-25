@@ -8252,7 +8252,23 @@ func _ai_card_buy_candidates(player_index: int, supplied_discard_scoring_context
 	var strategy := _ai_refresh_strategy_intent(player_index)
 	var strategy_intent := String(strategy.get("intent", ""))
 	var strategy_score := int(strategy.get("score", 0))
-	var route_plan := _ai_refresh_route_plan(player_index)
+	var route_plan_context: Dictionary = {}
+	if bool(supplied_discard_scoring_context.get("cache_active", false)) \
+			and int(supplied_discard_scoring_context.get("player_index", -1)) == player_index:
+		var route_actor_state := _ai_actor_state_snapshot(player_index)
+		if not route_actor_state.is_empty():
+			var route_learning_memory := _normalized_ai_memory(route_actor_state.get("ai_memory", {}))
+			route_plan_context = {
+				"cache_active": true,
+				"player_index": player_index,
+				"focus_product": focus_product,
+				"focus_score": int(route_learning_memory.get("economic_focus_score", 0)),
+				"strategy": strategy,
+				"actor_state": route_actor_state,
+				"learning_memory": route_learning_memory,
+			}
+	var route_plan := _ai_refresh_route_plan(player_index, false, route_plan_context)
+	route_plan_context.clear()
 	var route_product := String(route_plan.get("product", ""))
 	var buy_profile_context := {
 		"profile": profile,
