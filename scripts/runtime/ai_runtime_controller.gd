@@ -6250,8 +6250,6 @@ func _ai_product_for_skill(player_index: int, skill: Dictionary, cached_context:
 		cached_context["focus_product"] = focus
 	var route_product := ""
 	if cache_active:
-		if not cached_context.has("route_plan"):
-			cached_context["route_plan"] = _ai_refresh_route_plan(player_index)
 		var route_plan: Dictionary = cached_context.get("route_plan", {}) \
 			if cached_context.get("route_plan", {}) is Dictionary else {}
 		route_product = String(route_plan.get("product", ""))
@@ -7791,9 +7789,6 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 	if cache_active:
 		if turn_context.has("route_plan") and turn_context.get("route_plan") is Dictionary:
 			route_plan = turn_context.get("route_plan") as Dictionary
-		else:
-			route_plan = _ai_refresh_route_plan(player_index)
-			turn_context["route_plan"] = route_plan
 		route_product = String(route_plan.get("product", ""))
 		route_stage = String(route_plan.get("stage", ""))
 		turn_context["route_product"] = route_product
@@ -8257,11 +8252,8 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 			String(profile_signature.get("reason", "")),
 		]
 	var learning_memory: Dictionary = {}
-	if cache_active and turn_context.has("learning_memory") and turn_context.get("learning_memory") is Dictionary:
-		learning_memory = turn_context.get("learning_memory") as Dictionary
-	elif cache_active:
+	if cache_active:
 		learning_memory = _ai_memory_for_player(player_index)
-		turn_context["learning_memory"] = learning_memory
 	var learning_bonus := clampi(
 		(_ai_learning_bonus_from_memory(learning_memory, String(context.get("policy_kind", kind)), String(context.get("strategy_intent", "")), String(context.get("route_plan_stage", "")), String(context.get("product", "")), "匿名出牌")
 		+ _ai_development_route_learning_bonus_from_memory(learning_memory, development_route)) \
@@ -8280,17 +8272,48 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 	))))
 	return context
 func _ai_card_turn_scoring_context(player_index: int, supplied_context: Dictionary = {}) -> Dictionary:
-	if bool(supplied_context.get("cache_active", false)) \
+	var supplied_context_valid := bool(supplied_context.get("cache_active", false)) \
 			and int(supplied_context.get("player_index", -1)) == player_index \
 			and supplied_context.get("slot_play_contexts") is Dictionary \
-			and supplied_context.get("district_focus_score_by_index") is Dictionary:
+			and supplied_context.get("district_focus_score_by_index") is Dictionary
+	if supplied_context_valid \
+			and supplied_context.get("route_plan") is Dictionary \
+			and supplied_context.has("route_product") \
+			and supplied_context.has("route_stage"):
+		supplied_context.erase("actor_state")
+		supplied_context.erase("learning_memory")
 		return supplied_context
-	return {
+	var turn_context: Dictionary = supplied_context if supplied_context_valid else {
 		"cache_active": true,
 		"player_index": player_index,
 		"slot_play_contexts": {},
 		"district_focus_score_by_index": {},
 	}
+	var focus_product := _ai_focus_product(player_index)
+	var strategy: Dictionary = _ai_refresh_strategy_intent(player_index)
+	var route_actor_state: Dictionary = _ai_actor_state_snapshot(player_index)
+	var route_learning_memory: Dictionary = _normalized_ai_memory(route_actor_state.get("ai_memory", {})) \
+		if not route_actor_state.is_empty() else {}
+	var route_context: Dictionary = {
+		"cache_active": true,
+		"player_index": player_index,
+		"focus_product": focus_product,
+		"focus_score": int(route_learning_memory.get("economic_focus_score", 0)),
+		"strategy": strategy,
+		"actor_state": route_actor_state,
+		"learning_memory": route_learning_memory,
+	}
+	var route_plan: Dictionary = _ai_refresh_route_plan(player_index, false, route_context)
+	route_context.clear()
+	turn_context["focus_product"] = focus_product
+	turn_context["focus_score"] = int(route_learning_memory.get("economic_focus_score", 0))
+	turn_context["strategy"] = strategy
+	turn_context["route_plan"] = route_plan
+	turn_context["route_product"] = String(route_plan.get("product", ""))
+	turn_context["route_stage"] = String(route_plan.get("stage", ""))
+	turn_context.erase("actor_state")
+	turn_context.erase("learning_memory")
+	return turn_context
 func _ai_card_play_candidates(player_index: int, supplied_scoring_context: Dictionary = {}) -> Array:
 	var result := []
 	var economy_facts := _actor_decision_economy_facts(player_index)
@@ -8809,7 +8832,12 @@ func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_cand
 	selected_trade_product = previous_product
 	return queued
 func _ai_execute_card_turn(player_index: int, force: bool = false) -> String:
-	var turn_play_scoring_context := _ai_card_turn_scoring_context(player_index)
+	var turn_play_scoring_context: Dictionary = {
+		"cache_active": true,
+		"player_index": player_index,
+		"slot_play_contexts": {},
+		"district_focus_score_by_index": {},
+	}
 	var play_candidates := _ai_card_play_candidates(player_index, turn_play_scoring_context)
 	var play_choice := _ai_pick_candidate(player_index, play_candidates, force)
 	if not play_choice.is_empty():

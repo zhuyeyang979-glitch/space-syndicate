@@ -334,11 +334,11 @@ func _measure_buy_path(
 	actor_index: int,
 	optimized: bool
 ) -> Dictionary:
-	var supplied_context: Dictionary = ai.call("_ai_card_turn_scoring_context", actor_index) as Dictionary \
-		if optimized else {}
 	var state_before := actor_state_port.debug_snapshot()
 	var rng_before := rng.capture_plan_checkpoint()
 	var started_msec := Time.get_ticks_msec()
+	var supplied_context: Dictionary = ai.call("_ai_card_turn_scoring_context", actor_index) as Dictionary \
+		if optimized else {}
 	var candidates := ai.call("_ai_card_buy_candidates", actor_index, supplied_context) as Array
 	var candidate_elapsed_msec := Time.get_ticks_msec() - started_msec
 	var state_after_candidates := actor_state_port.debug_snapshot()

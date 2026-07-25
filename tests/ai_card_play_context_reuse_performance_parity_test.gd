@@ -12,6 +12,7 @@ const ORDINARY_FUTURES_CARD_ID := "商品看涨1"
 const WAREHOUSE_FUTURES_CARD_ID := "港仓囤货1"
 const HAND_SIZE := 5
 const CALL_LIMIT_MSEC := 80_000
+const SATURATED_PLAY_SAMPLE_COUNT := 47
 
 const FULL_HAND_GOLDEN_LOCKED := true
 const FULL_HAND_GOLDEN_CANDIDATE_COUNT := 5
@@ -22,7 +23,7 @@ const FULL_HAND_GOLDEN_FORCE_SELECTION_SHA256 := "6c4e9b50341a15d2704543a35b445a
 const FULL_HAND_GOLDEN_NORMAL_SELECTION_SHA256 := "6c4e9b50341a15d2704543a35b445ad82ccefeeac47769fad315d3f2830a729d"
 const FULL_HAND_GOLDEN_NORMAL_TERMINAL_SHA256 := "31f5a028edcf8c0afb56a4f234ae09de7b1b050ea62e51da6f7a9a9a8006d78e"
 const FULL_HAND_GOLDEN_FINAL_MEMORY_SHA256 := "9a1951ceac14f8fdfd28488f9105b2e0c405a5b5b4160666caaa05ec1637c957"
-const FULL_HAND_GOLDEN_AI_QUERY_DELTA := 216
+const FULL_HAND_GOLDEN_AI_QUERY_DELTA := 27
 const FULL_HAND_GOLDEN_COMMIT_DELTA := 4
 
 const FALLBACK_SUGGESTED_LIMIT_MSEC := 8_000
@@ -72,6 +73,29 @@ class CapturingRejectedPurchase:
 			"request_id": str(request_id),
 		}
 		return false
+
+
+class CapturingAcceptedPurchase:
+	extends DistrictSupplyActionPort
+	var submit_count := 0
+	var last_purchase: Dictionary = {}
+
+	func submit_ai_purchase(
+		player_index: int,
+		district_index: int,
+		card_id: String,
+		discard_slot := -1,
+		request_id := ""
+	) -> bool:
+		submit_count += 1
+		last_purchase = {
+			"player_index": player_index,
+			"district": district_index,
+			"card_name": card_id,
+			"discard_slot": int(discard_slot),
+			"request_id": str(request_id),
+		}
+		return true
 
 
 var _checks := 0
@@ -185,6 +209,8 @@ func _run() -> void:
 	)
 
 	_verify_turn_context_scope()
+	_run_saturated_play_turn_route_context_gate(ai, actor_state_port, rng, world, actor_index)
+	_run_play_turn_eligibility_queue_guard_gate(ai, coordinator, actor_state_port, rng, world, actor_index)
 	_run_play_generic_futures_turn_cache_gate(ai, coordinator, actor_state_port, rng, world, actor_index)
 	_run_full_hand_play(ai, actor_state_port, rng, actor_index)
 	_run_queue_failure_fresh_context(ai, coordinator, actor_state_port, rng, world, actor_index)
@@ -206,6 +232,478 @@ func _run() -> void:
 
 	await _cleanup(app_root)
 	_finish(scenario)
+
+
+func _run_saturated_play_turn_route_context_gate(
+	ai: AiRuntimeController,
+	actor_state_port: AiActorStatePort,
+	rng: RunRngService,
+	world: WorldSessionState,
+	actor_index: int
+) -> void:
+	var original_world := world.capture_runtime_checkpoint()
+	var original_rng := rng.capture_plan_checkpoint()
+	var route_skill := ai.call("_make_skill", FULL_HAND_CARD_ID) as Dictionary
+	var skills: Array = []
+	for _slot_index in range(HAND_SIZE):
+		skills.append(route_skill.duplicate(true))
+	var fixture_ready := not route_skill.is_empty() \
+		and _warm_and_saturate_play_route(ai, actor_index, route_skill)
+	var current_world := world.capture_runtime_checkpoint() if fixture_ready else {}
+	var current_rng := rng.capture_plan_checkpoint() if fixture_ready else {}
+	var current_pair := _run_play_slot_pair(
+		ai,
+		actor_state_port,
+		rng,
+		world,
+		actor_index,
+		skills,
+		current_world,
+		current_rng
+	) if fixture_ready else {}
+	var current_restore := _restore_play_checkpoint(world, rng, current_world, current_rng) \
+		if fixture_ready else false
+	var route_cycle := int(ai.get("business_cycle_count"))
+	var stale_ready := _set_play_route_plan_cycle(world, actor_index, route_cycle - 1) \
+		if current_restore else false
+	var stale_world := world.capture_runtime_checkpoint() if stale_ready else {}
+	var stale_rng := rng.capture_plan_checkpoint() if stale_ready else {}
+	var stale_pair := _run_play_slot_pair(
+		ai,
+		actor_state_port,
+		rng,
+		world,
+		actor_index,
+		skills,
+		stale_world,
+		stale_rng
+	) if stale_ready else {}
+	var wrong_actor := _run_wrong_actor_turn_context_gate(
+		ai,
+		rng,
+		world,
+		actor_index,
+		current_world,
+		current_rng
+	) if fixture_ready else {}
+
+	var current_parity := _play_slot_pair_parity(current_pair)
+	var stale_parity := _play_slot_pair_parity(stale_pair)
+	var current_baseline := current_pair.get("baseline", {}) as Dictionary
+	var current_optimized := current_pair.get("optimized", {}) as Dictionary
+	var stale_baseline := stale_pair.get("baseline", {}) as Dictionary
+	var stale_optimized := stale_pair.get("optimized", {}) as Dictionary
+	var current_commit_zero: bool = int(current_baseline.get("commit_delta", -1)) == 0 \
+		and int(current_optimized.get("commit_delta", -1)) == 0
+	var stale_commit_once: bool = int(stale_baseline.get("commit_delta", -1)) == 1 \
+		and int(stale_optimized.get("commit_delta", -1)) == 1
+	var stale_query_reduction := int(stale_baseline.get("query_delta", 0)) \
+		- int(stale_optimized.get("query_delta", 0))
+	var current_not_regressed: bool = int(current_optimized.get("query_delta", 999999)) \
+		<= int(current_baseline.get("query_delta", -1))
+	var candidates_nonempty: bool = (current_baseline.get("projection", []) as Array).size() == HAND_SIZE \
+		and (current_optimized.get("projection", []) as Array).size() == HAND_SIZE \
+		and (stale_baseline.get("projection", []) as Array).size() == HAND_SIZE \
+		and (stale_optimized.get("projection", []) as Array).size() == HAND_SIZE
+	var transient_context_absent: bool = not bool(current_optimized.get("shared_context_has_actor_state", true)) \
+		and not bool(current_optimized.get("shared_context_has_learning_memory", true)) \
+		and not bool(stale_optimized.get("shared_context_has_actor_state", true)) \
+		and not bool(stale_optimized.get("shared_context_has_learning_memory", true))
+	var final_restore := _restore_play_checkpoint(world, rng, original_world, original_rng)
+	var world_restored: bool = _canonicalize(world.capture_runtime_checkpoint()) \
+		== _canonicalize(original_world)
+	var rng_restored: bool = rng.capture_plan_checkpoint() == original_rng
+	var gate_passed: bool = fixture_ready \
+		and stale_ready \
+		and bool(current_parity.get("all", false)) \
+		and bool(stale_parity.get("all", false)) \
+		and candidates_nonempty \
+		and current_commit_zero \
+		and stale_commit_once \
+		and stale_query_reduction >= 150 \
+		and current_not_regressed \
+		and transient_context_absent \
+		and bool(wrong_actor.get("passed", false)) \
+		and final_restore \
+		and world_restored \
+		and rng_restored
+
+	print("SATURATED_PLAY_TURN_ROUTE_CONTEXT_GATE|status=%s|sample_count=%d|current_baseline_msec=%d|current_optimized_msec=%d|current_baseline_queries=%d|current_optimized_queries=%d|stale_baseline_msec=%d|stale_optimized_msec=%d|stale_baseline_queries=%d|stale_optimized_queries=%d|stale_query_reduction=%d|candidate_parity=%s|order_parity=%s|selection_parity=%s|memory_parity=%s|commit_parity=%s|rng_parity=%s|current_commit_zero=%s|stale_commit_once=%s|transient_context_absent=%s|wrong_actor_immutable=%s|world_restored=%s" % [
+		"PASS" if gate_passed else "FAIL",
+		SATURATED_PLAY_SAMPLE_COUNT,
+		int(current_baseline.get("elapsed_msec", -1)),
+		int(current_optimized.get("elapsed_msec", -1)),
+		int(current_baseline.get("query_delta", -1)),
+		int(current_optimized.get("query_delta", -1)),
+		int(stale_baseline.get("elapsed_msec", -1)),
+		int(stale_optimized.get("elapsed_msec", -1)),
+		int(stale_baseline.get("query_delta", -1)),
+		int(stale_optimized.get("query_delta", -1)),
+		stale_query_reduction,
+		str(bool(current_parity.get("candidate", false)) and bool(stale_parity.get("candidate", false))),
+		str(bool(current_parity.get("order", false)) and bool(stale_parity.get("order", false))),
+		str(bool(current_parity.get("selection", false)) and bool(stale_parity.get("selection", false))),
+		str(bool(current_parity.get("memory", false)) and bool(stale_parity.get("memory", false))),
+		str(bool(current_parity.get("commit", false)) and bool(stale_parity.get("commit", false))),
+		str(bool(current_parity.get("rng", false)) and bool(stale_parity.get("rng", false))),
+		str(current_commit_zero),
+		str(stale_commit_once),
+		str(transient_context_absent),
+		str(bool(wrong_actor.get("passed", false))),
+		str(final_restore and world_restored and rng_restored),
+	])
+	_expect(fixture_ready, "play-turn route fixture keeps 47 decision samples with current focus, strategy, phase, and route")
+	_expect(bool(current_parity.get("all", false)), "current route preserves complete candidates, ordering, selection, memory, commits, and RNG")
+	_expect(bool(stale_parity.get("all", false)), "stale route preserves complete candidates, ordering, selection, memory, commits, and RNG")
+	_expect(candidates_nonempty, "current and stale route A/B paths each emit all five play candidates")
+	_expect(current_commit_zero, "current route commits zero times in baseline and optimized paths")
+	_expect(stale_commit_once, "stale route commits exactly once in baseline and optimized paths")
+	_expect(stale_query_reduction >= 150, "stale shared turn route context removes at least 150 actor-state queries")
+	_expect(current_not_regressed, "current shared turn route context does not regress actor-state queries")
+	_expect(transient_context_absent, "shared turn context retains no actor state or temporary learning memory")
+	_expect(bool(wrong_actor.get("passed", false)), "wrong-actor supplied turn context is immutable and fails closed")
+	_expect(final_restore and world_restored and rng_restored, "saturated play-turn route fixture restores complete World and RNG state")
+
+
+func _warm_and_saturate_play_route(
+	ai: AiRuntimeController,
+	actor_index: int,
+	route_skill: Dictionary
+) -> bool:
+	var warm_context := ai.call("_ai_card_turn_scoring_context", actor_index) as Dictionary
+	var warm_candidate := ai.call(
+		"_ai_card_play_context", actor_index, 0, route_skill, warm_context
+	) as Dictionary
+	if warm_candidate.is_empty():
+		return false
+	var actor_state := ai.call("_ai_actor_state_snapshot", actor_index) as Dictionary
+	if actor_state.is_empty():
+		return false
+	var memory: Dictionary = (actor_state.get("ai_memory", {}) as Dictionary).duplicate(true)
+	var samples: Array = []
+	for sample_index in range(SATURATED_PLAY_SAMPLE_COUNT):
+		samples.append({
+			"time": float(sample_index),
+			"cycle": sample_index,
+			"kind": "play",
+			"target": sample_index % 4,
+			"score": 2000 + sample_index,
+			"reason": "saturated-play-turn-route-context",
+			"state": {
+				"cash": 2000 + sample_index,
+				"active_city_count": 2,
+				"total_product_flow": 12,
+				"game_phase": str(memory.get("game_phase", "midgame")),
+			},
+			"candidates": [],
+			"focus_product": str(memory.get("economic_focus_product", "")),
+			"strategy_intent": str(memory.get("strategic_intent", "")),
+			"route_plan_product": str(memory.get("route_plan_product", "")),
+			"route_plan_stage": str(memory.get("route_plan_stage", "")),
+			"reward_finalized": false,
+			"learning_applied": false,
+		})
+	memory["decision_samples"] = samples
+	var commit := ai.call("_commit_ai_memory", actor_index, memory, actor_state) as Dictionary
+	if not bool(commit.get("accepted", false)):
+		return false
+	var stored_memory := ai.call("_ai_memory_for_player", actor_index) as Dictionary
+	var current_cycle := int(ai.get("business_cycle_count"))
+	return (stored_memory.get("decision_samples", []) as Array).size() == SATURATED_PLAY_SAMPLE_COUNT \
+		and int(stored_memory.get("economic_focus_cycle", -1)) == current_cycle \
+		and int(stored_memory.get("strategic_intent_cycle", -1)) == current_cycle \
+		and int(stored_memory.get("route_plan_cycle", -1)) == current_cycle \
+		and not str(stored_memory.get("economic_focus_product", "")).is_empty() \
+		and not str(stored_memory.get("strategic_intent", "")).is_empty() \
+		and not str(stored_memory.get("route_plan_product", "")).is_empty() \
+		and not str(stored_memory.get("route_plan_stage", "")).is_empty()
+
+
+func _set_play_route_plan_cycle(
+	world: WorldSessionState,
+	actor_index: int,
+	route_cycle: int
+) -> bool:
+	if actor_index < 0 or actor_index >= world.players.size() \
+			or not (world.players[actor_index] is Dictionary):
+		return false
+	var players := world.players.duplicate(true)
+	var player := (players[actor_index] as Dictionary).duplicate(true)
+	var memory: Dictionary = (player.get("ai_memory", {}) as Dictionary).duplicate(true)
+	memory["route_plan_cycle"] = route_cycle
+	player["ai_memory"] = memory
+	players[actor_index] = player
+	world.players = players
+	return true
+
+
+func _run_play_turn_eligibility_queue_guard_gate(
+	ai: AiRuntimeController,
+	coordinator: GameRuntimeCoordinator,
+	actor_state_port: AiActorStatePort,
+	rng: RunRngService,
+	world: WorldSessionState,
+	actor_index: int
+) -> void:
+	var queue := coordinator.get_node_or_null("CardResolutionQueueRuntimeService") as CardResolutionQueueRuntimeService
+	_expect(queue != null, "play-turn eligibility fixture uses the production card-resolution queue owner")
+	if queue == null:
+		print("PLAY_TURN_ELIGIBILITY_QUEUE_GUARD_GATE|status=FAIL|reason=queue_owner_missing")
+		return
+	var original_world := world.capture_runtime_checkpoint()
+	var original_rng := rng.capture_plan_checkpoint()
+	var original_queue := queue.capture_runtime_checkpoint()
+	var stale_cycle := int(ai.get("business_cycle_count")) - 1
+
+	var inactive_ready := _set_play_guard_fixture(world, actor_index, stale_cycle, 1.0)
+	var inactive_facts := ai.call("_actor_decision_economy_facts", actor_index) as Dictionary \
+		if inactive_ready else {}
+	var inactive_world := world.capture_runtime_checkpoint() if inactive_ready else {}
+	var inactive_rng := rng.capture_plan_checkpoint() if inactive_ready else {}
+	var inactive_memory := _world_actor_memory(world, actor_index) if inactive_ready else {}
+	var inactive_state_before := actor_state_port.debug_snapshot()
+	var inactive_result := str(ai.call("_ai_execute_card_turn", actor_index, false)) \
+		if inactive_ready else "fixture_failed"
+	var inactive_state_after := actor_state_port.debug_snapshot()
+	var inactive_commit_delta := int(inactive_state_after.get("state_commit_count", 0)) \
+		- int(inactive_state_before.get("state_commit_count", 0))
+	var inactive_world_unchanged: bool = inactive_ready \
+		and _canonicalize(world.capture_runtime_checkpoint()) == _canonicalize(inactive_world)
+	var inactive_memory_unchanged: bool = inactive_ready \
+		and _canonicalize(_world_actor_memory(world, actor_index)) == _canonicalize(inactive_memory)
+	var inactive_rng_unchanged: bool = inactive_ready \
+		and rng.capture_plan_checkpoint() == inactive_rng
+	var inactive_passed: bool = inactive_ready \
+		and not bool(inactive_facts.get("action_ready", true)) \
+		and inactive_result == "wait" \
+		and inactive_commit_delta == 0 \
+		and inactive_world_unchanged \
+		and inactive_memory_unchanged \
+		and inactive_rng_unchanged
+
+	var queued_base_restore := _restore_play_checkpoint(world, rng, original_world, original_rng)
+	var queued_fixture_ready := queued_base_restore \
+		and _set_play_guard_fixture(world, actor_index, stale_cycle, 0.0)
+	queue.restore_runtime_checkpoint(original_queue)
+	queue.replace_current_queue([_play_guard_queue_entry(actor_index)])
+	queued_fixture_ready = queued_fixture_ready \
+		and queue.entry_index_for_player(actor_index) >= 0
+	var queued_world := world.capture_runtime_checkpoint() if queued_fixture_ready else {}
+	var queued_rng := rng.capture_plan_checkpoint() if queued_fixture_ready else {}
+	var queued_queue := queue.capture_runtime_checkpoint() if queued_fixture_ready else {}
+	var queued_memory := _world_actor_memory(world, actor_index) if queued_fixture_ready else {}
+	var structural_context := _new_structural_play_context(actor_index)
+	var structural_context_before: Variant = _canonicalize(structural_context.duplicate(true))
+	var queued_state_before := actor_state_port.debug_snapshot()
+	var queued_candidates := ai.call(
+		"_ai_card_play_candidates", actor_index, structural_context
+	) as Array if queued_fixture_ready else []
+	var queued_state_after := actor_state_port.debug_snapshot()
+	var queued_commit_delta := int(queued_state_after.get("state_commit_count", 0)) \
+		- int(queued_state_before.get("state_commit_count", 0))
+	var structural_context_unchanged: bool = _canonicalize(structural_context) == structural_context_before \
+		and not structural_context.has("focus_product") \
+		and not structural_context.has("strategy") \
+		and not structural_context.has("route_plan")
+	var queued_guard_passed: bool = queued_fixture_ready \
+		and queued_candidates.is_empty() \
+		and structural_context_unchanged \
+		and queued_commit_delta == 0 \
+		and _canonicalize(_world_actor_memory(world, actor_index)) == _canonicalize(queued_memory) \
+		and _canonicalize(world.capture_runtime_checkpoint()) == _canonicalize(queued_world) \
+		and rng.capture_plan_checkpoint() == queued_rng \
+		and _canonicalize(queue.capture_runtime_checkpoint()) == _canonicalize(queued_queue)
+
+	var execute_restore := _restore_play_checkpoint(world, rng, original_world, original_rng)
+	var execute_queue_restore := bool(queue.restore_runtime_checkpoint(original_queue).get("restored", false))
+	var execute_fixture_ready := execute_restore \
+		and execute_queue_restore \
+		and _set_play_guard_fixture(world, actor_index, stale_cycle, 0.0)
+	queue.replace_current_queue([_play_guard_queue_entry(actor_index)])
+	execute_fixture_ready = execute_fixture_ready \
+		and queue.entry_index_for_player(actor_index) >= 0
+	var execute_world := world.capture_runtime_checkpoint() if execute_fixture_ready else {}
+	var execute_rng := rng.capture_plan_checkpoint() if execute_fixture_ready else {}
+	var execute_queue := queue.capture_runtime_checkpoint() if execute_fixture_ready else {}
+	var reference_state_before := actor_state_port.debug_snapshot()
+	var reference_candidates := ai.call("_ai_card_buy_candidates", actor_index, {}) as Array \
+		if execute_fixture_ready else []
+	var reference_choice := ai.call("_ai_pick_candidate", actor_index, reference_candidates, false) as Dictionary \
+		if execute_fixture_ready else {}
+	var reference_state_after := actor_state_port.debug_snapshot()
+	var reference_commit_delta := int(reference_state_after.get("state_commit_count", 0)) \
+		- int(reference_state_before.get("state_commit_count", 0))
+	var reference_rng := rng.capture_plan_checkpoint() if execute_fixture_ready else {}
+	var reference_receipt := {
+		"player_index": actor_index,
+		"district": int(reference_choice.get("district", -1)),
+		"card_name": str(reference_choice.get("card_name", "")),
+		"discard_slot": int(reference_choice.get("discard_slot", -1)),
+		"request_id": "",
+	}
+
+	var production_world_restore := world.restore_runtime_checkpoint(execute_world) \
+		if execute_fixture_ready else {}
+	var production_rng_restore := rng.restore_plan_checkpoint(execute_rng) \
+		if execute_fixture_ready else {}
+	var production_queue_restore := queue.restore_runtime_checkpoint(execute_queue) \
+		if execute_fixture_ready else {}
+	var original_purchase := coordinator.district_supply_action_port()
+	var accepting_purchase := CapturingAcceptedPurchase.new()
+	root.add_child(accepting_purchase)
+	ai.set_district_supply_action_port(accepting_purchase)
+	var production_state_before := actor_state_port.debug_snapshot()
+	var production_result := str(ai.call("_ai_execute_card_turn", actor_index, false)) \
+		if execute_fixture_ready else "fixture_failed"
+	var production_state_after := actor_state_port.debug_snapshot()
+	var production_commit_delta := int(production_state_after.get("state_commit_count", 0)) \
+		- int(production_state_before.get("state_commit_count", 0))
+	var production_rng := rng.capture_plan_checkpoint() if execute_fixture_ready else {}
+	var production_queue_unchanged: bool = execute_fixture_ready \
+		and _canonicalize(queue.capture_runtime_checkpoint()) == _canonicalize(execute_queue)
+	ai.set_district_supply_action_port(original_purchase)
+	accepting_purchase.queue_free()
+	var queued_execute_passed: bool = execute_fixture_ready \
+		and bool(production_world_restore.get("applied", false)) \
+		and bool(production_rng_restore.get("restored", false)) \
+		and bool(production_queue_restore.get("restored", false)) \
+		and not reference_candidates.is_empty() \
+		and not reference_choice.is_empty() \
+		and production_result == "buy" \
+		and accepting_purchase.submit_count == 1 \
+		and accepting_purchase.last_purchase == reference_receipt \
+		and production_commit_delta == reference_commit_delta + 1 \
+		and production_rng == reference_rng \
+		and production_queue_unchanged
+
+	var final_world_restore := world.restore_runtime_checkpoint(original_world)
+	var final_rng_restore := rng.restore_plan_checkpoint(original_rng)
+	var final_queue_restore := queue.restore_runtime_checkpoint(original_queue)
+	var final_restore: bool = bool(final_world_restore.get("applied", false)) \
+		and bool(final_rng_restore.get("restored", false)) \
+		and bool(final_queue_restore.get("restored", false)) \
+		and _canonicalize(world.capture_runtime_checkpoint()) == _canonicalize(original_world) \
+		and rng.capture_plan_checkpoint() == original_rng \
+		and _canonicalize(queue.capture_runtime_checkpoint()) == _canonicalize(original_queue)
+	var gate_passed := inactive_passed and queued_guard_passed and queued_execute_passed and final_restore
+	print("PLAY_TURN_ELIGIBILITY_QUEUE_GUARD_GATE|status=%s|inactive_result=%s|inactive_commits=%d|queued_candidates=%d|queued_commits=%d|queued_context_unchanged=%s|queued_execute_result=%s|reference_buy_candidates=%d|reference_commits=%d|production_commits=%d|purchase_receipt_parity=%s|rng_parity=%s|restored=%s" % [
+		"PASS" if gate_passed else "FAIL",
+		inactive_result,
+		inactive_commit_delta,
+		queued_candidates.size(),
+		queued_commit_delta,
+		str(structural_context_unchanged),
+		production_result,
+		reference_candidates.size(),
+		reference_commit_delta,
+		production_commit_delta,
+		str(accepting_purchase.last_purchase == reference_receipt),
+		str(production_rng == reference_rng),
+		str(final_restore),
+	])
+	_expect(inactive_passed, "action-ready false returns wait without AI-memory, World, or RNG mutation despite stale learning cycles")
+	_expect(queued_guard_passed, "queued play eligibility returns no candidates without preparing or mutating the supplied structural context")
+	_expect(queued_execute_passed, "a complete queued AI turn still prepares the fresh buy path once and preserves purchase receipt and RNG parity")
+	_expect(final_restore, "play-turn eligibility and queue fixtures restore complete World, queue, and RNG state")
+
+
+func _set_play_guard_fixture(
+	world: WorldSessionState,
+	actor_index: int,
+	stale_cycle: int,
+	action_cooldown: float
+) -> bool:
+	if actor_index < 0 or actor_index >= world.players.size() \
+			or not (world.players[actor_index] is Dictionary):
+		return false
+	var players := world.players.duplicate(true)
+	var player := (players[actor_index] as Dictionary).duplicate(true)
+	var memory: Dictionary = (player.get("ai_memory", {}) as Dictionary).duplicate(true)
+	memory["economic_focus_cycle"] = stale_cycle
+	memory["strategic_intent_cycle"] = stale_cycle
+	memory["route_plan_cycle"] = stale_cycle
+	player["ai_memory"] = memory
+	player["action_cooldown"] = action_cooldown
+	players[actor_index] = player
+	world.players = players
+	return float((world.players[actor_index] as Dictionary).get("action_cooldown", -1.0)) \
+		== action_cooldown \
+		and int(_world_actor_memory(world, actor_index).get("economic_focus_cycle", 0)) == stale_cycle \
+		and int(_world_actor_memory(world, actor_index).get("strategic_intent_cycle", 0)) == stale_cycle \
+		and int(_world_actor_memory(world, actor_index).get("route_plan_cycle", 0)) == stale_cycle
+
+
+func _world_actor_memory(world: WorldSessionState, actor_index: int) -> Dictionary:
+	if actor_index < 0 or actor_index >= world.players.size() \
+			or not (world.players[actor_index] is Dictionary):
+		return {}
+	var player := world.players[actor_index] as Dictionary
+	return (player.get("ai_memory", {}) as Dictionary).duplicate(true) \
+		if player.get("ai_memory", {}) is Dictionary else {}
+
+
+func _new_structural_play_context(actor_index: int) -> Dictionary:
+	return {
+		"cache_active": true,
+		"player_index": actor_index,
+		"slot_play_contexts": {},
+		"district_focus_score_by_index": {},
+	}
+
+
+func _play_guard_queue_entry(actor_index: int) -> Dictionary:
+	return {
+		"player_index": actor_index,
+		"slot_index": 0,
+		"resolution_id": 970001,
+		"queued_order": 970001,
+		"skill": {"name": "play-turn-eligibility-guard"},
+	}
+
+
+func _run_wrong_actor_turn_context_gate(
+	ai: AiRuntimeController,
+	rng: RunRngService,
+	world: WorldSessionState,
+	actor_index: int,
+	world_checkpoint: Dictionary,
+	rng_checkpoint: Dictionary
+) -> Dictionary:
+	var restore_ready := _restore_play_checkpoint(world, rng, world_checkpoint, rng_checkpoint)
+	var wrong_context := {
+		"cache_active": true,
+		"player_index": actor_index + 1,
+		"slot_play_contexts": {},
+		"district_focus_score_by_index": {},
+		"route_plan": {"product": "__wrong_actor_route__", "stage": "attack_rival"},
+		"route_product": "__wrong_actor_route__",
+		"route_stage": "attack_rival",
+		"actor_state": {"player_index": actor_index + 1, "poison": true},
+		"learning_memory": {"poison": true},
+	}
+	var wrong_before: Variant = _canonicalize(wrong_context.duplicate(true))
+	var result := ai.call("_ai_card_turn_scoring_context", actor_index, wrong_context) as Dictionary \
+		if restore_ready else {}
+	var wrong_unchanged: bool = _canonicalize(wrong_context) == wrong_before
+	var result_safe: bool = int(result.get("player_index", -1)) == actor_index \
+		and result.get("route_plan") is Dictionary \
+		and not result.has("actor_state") \
+		and not result.has("learning_memory") \
+		and str(result.get("route_product", "")) != "__wrong_actor_route__"
+	var world_unchanged: bool = _canonicalize(world.capture_runtime_checkpoint()) \
+		== _canonicalize(world_checkpoint)
+	var rng_unchanged: bool = rng.capture_plan_checkpoint() == rng_checkpoint
+	var final_restore := _restore_play_checkpoint(world, rng, world_checkpoint, rng_checkpoint)
+	return {
+		"passed": restore_ready \
+			and wrong_unchanged \
+			and result_safe \
+			and world_unchanged \
+			and rng_unchanged \
+			and final_restore,
+		"wrong_unchanged": wrong_unchanged,
+		"result_safe": result_safe,
+	}
 
 
 func _run_play_generic_futures_turn_cache_gate(
@@ -386,11 +884,11 @@ func _measure_play_slot_path(
 	skills: Array,
 	optimized: bool
 ) -> Dictionary:
-	var turn_context := ai.call("_ai_card_turn_scoring_context", actor_index) as Dictionary \
-		if optimized else {}
 	var state_before := actor_state_port.debug_snapshot()
 	var rng_before := rng.capture_plan_checkpoint()
 	var started_msec := Time.get_ticks_msec()
+	var turn_context := ai.call("_ai_card_turn_scoring_context", actor_index) as Dictionary \
+		if optimized else {}
 	var candidates: Array = []
 	for slot_index in range(skills.size()):
 		var skill := skills[slot_index] as Dictionary
@@ -428,6 +926,8 @@ func _measure_play_slot_path(
 		"rng_before": rng_before,
 		"rng_terminal": rng.capture_plan_checkpoint(),
 		"shared_context_has_futures_plan": turn_context.has("product_futures_plan"),
+		"shared_context_has_actor_state": turn_context.has("actor_state"),
+		"shared_context_has_learning_memory": turn_context.has("learning_memory"),
 	}
 
 
@@ -1798,10 +2298,19 @@ func _verify_turn_context_scope() -> void:
 	var function_end := source.find("\nfunc ", function_start + 1)
 	var body := source.substr(function_start, function_end - function_start) \
 		if function_start >= 0 and function_end > function_start else ""
+	var structural_context_at := body.find("var turn_play_scoring_context: Dictionary = {")
+	var play_candidates_at := body.find("_ai_card_play_candidates(player_index, turn_play_scoring_context)")
+	var eager_prepare_at := body.find("_ai_card_turn_scoring_context(")
 	var queue_attempt_at := body.find("if not play_choice.is_empty():")
 	var fresh_context_at := body.find("var fallback_discard_scoring_context: Dictionary = {}")
 	var empty_choice_reuse_at := body.find("if play_choice.is_empty():", fresh_context_at)
 	var buy_call_at := body.find("_ai_card_buy_candidates(player_index, fallback_discard_scoring_context)")
+	_expect(
+		structural_context_at >= 0 \
+			and play_candidates_at > structural_context_at \
+			and eager_prepare_at < 0,
+		"AI card execution creates only a structural play context before eligibility and queue guards"
+	)
 	_expect(
 		queue_attempt_at >= 0 \
 			and fresh_context_at > queue_attempt_at \
