@@ -1191,9 +1191,14 @@ func _card_resolution_active_entry() -> Dictionary:
 func _store_card_resolution_entry(entry: Dictionary) -> bool:
 	return _call_world(&"_store_card_resolution_entry", [entry])
 
-func _intel_city_guess_entries(viewer_index: int, limit: int = 6) -> Array:
+func _intel_city_guess_entries(
+	viewer_index: int,
+	limit: int = 6,
+	cached_snapshot: Dictionary = {},
+	snapshot_is_precomputed: bool = false
+) -> Array:
 	var entries: Array = []
-	var snapshot := _city_inference_snapshot(viewer_index)
+	var snapshot := cached_snapshot if snapshot_is_precomputed else _city_inference_snapshot(viewer_index)
 	if snapshot.is_empty():
 		return entries
 	var player_count := _ai_actor_state_port.player_count()
@@ -4278,9 +4283,62 @@ func _ai_victory_race_bonus_for_candidate(player_index: int, kind: String, distr
 	result["role"] = role
 	result["reason"] = "、".join(reasons) if not reasons.is_empty() else "审计竞速观察"
 	return result
-func _ai_observation_vector(player_index: int) -> Dictionary:
+func _ai_observation_vector(player_index: int, decision_context: Dictionary = {}) -> Dictionary:
 	if player_index < 0 or player_index >= _public_player_count():
 		return {}
+	if bool(decision_context.get("cache_active", false)) \
+			and int(decision_context.get("player_index", -1)) == player_index:
+		var economy_facts: Dictionary = decision_context.get("economy_facts", {}) \
+			if decision_context.get("economy_facts", {}) is Dictionary else {}
+		var hand_snapshot: Dictionary = decision_context.get("hand_snapshot", {}) \
+			if decision_context.get("hand_snapshot", {}) is Dictionary else {}
+		var memory: Dictionary = decision_context.get("observation_memory", {}) \
+			if decision_context.get("observation_memory", {}) is Dictionary else {}
+		var phase_info: Dictionary = decision_context.get("phase_info", {}) \
+			if decision_context.get("phase_info", {}) is Dictionary else {}
+		var strategy: Dictionary = decision_context.get("strategy", {}) \
+			if decision_context.get("strategy", {}) is Dictionary else {}
+		var route_plan: Dictionary = decision_context.get("route_plan", {}) \
+			if decision_context.get("route_plan", {}) is Dictionary else {}
+		var flow_by_product: Dictionary = decision_context.get("flow_by_product", {}) \
+			if decision_context.get("flow_by_product", {}) is Dictionary else {}
+		if economy_facts.is_empty() or hand_snapshot.is_empty() or memory.is_empty() or phase_info.is_empty():
+			return {}
+		var focus_product := String(decision_context.get("focus_product", ""))
+		var own_gdp := int(decision_context.get("victory_top_n_gdp", 0))
+		var controlled_regions := int(decision_context.get("victory_controlled_regions", 0))
+		return {
+			"cash": int(economy_facts.get("total_cash_units", 0)),
+			"victory_top_n_gdp_per_minute": own_gdp,
+			"victory_controlled_region_count": controlled_regions,
+			"counted_hand": _actor_counted_hand_size(hand_snapshot),
+			"cities": int(decision_context.get("active_city_count", 0)),
+			"owned_monsters": int(decision_context.get("owned_monster_count", 0)),
+			"field_monsters": int(decision_context.get("field_monster_count", 0)),
+			"total_product_flow": int(decision_context.get("total_product_flow", 0)),
+			"focus_product": focus_product,
+			"focus_flow": int(flow_by_product.get(focus_product, 0)),
+			"focus_score": int(memory.get("economic_focus_score", 0)),
+			"strategy_intent": String(strategy.get("intent", "")),
+			"strategy_score": int(strategy.get("score", 0)),
+			"route_plan_product": String(route_plan.get("product", "")),
+			"route_plan_stage": String(route_plan.get("stage", "")),
+			"route_plan_score": int(route_plan.get("score", 0)),
+			"game_phase": String(phase_info.get("phase", "midgame")),
+			"competitive_posture": String(phase_info.get("posture", "contesting")),
+			"score_gap_to_leader": int(phase_info.get("gap", 0)),
+			"leader_index": int(phase_info.get("leader_index", -1)),
+			"endgame_urgency": int(decision_context.get("endgame_urgency", 0)),
+			"learning_updates": int(memory.get("learning_updates", 0)),
+			"episode_learning_updates": int(memory.get("episode_learning_updates", 0)),
+			"learned_policy_count": (memory.get("learned_policy_values", {}) as Dictionary).size(),
+			"victory_gdp_gap": maxi(0, int(decision_context.get("victory_required_gdp", 0)) - own_gdp),
+			"victory_region_gap": maxi(0, int(decision_context.get("victory_required_regions", 0)) - controlled_regions),
+			"queue_current": int(decision_context.get("queue_current", 0)),
+			"queue_next": int(decision_context.get("queue_next", 0)),
+			"auction_open": bool(decision_context.get("auction_open", false)),
+			"cycle": int(decision_context.get("cycle", business_cycle_count)),
+		}
 	var focus_product := _ai_focus_product(player_index)
 	var phase_info := _ai_refresh_game_phase(player_index)
 	var economy_facts := _actor_training_economy_facts(player_index)
@@ -4323,9 +4381,10 @@ func _ai_observation_vector(player_index: int) -> Dictionary:
 		"auction_open": card_resolution_auction_open,
 		"cycle": business_cycle_count,
 	}
-func _ai_candidate_training_view(candidate: Dictionary) -> Dictionary:
+func _ai_candidate_training_view(candidate: Dictionary, field_names: Array = []) -> Dictionary:
 	var result := {}
-	for field_name in _ai_training_metadata_field_names():
+	var allowed_fields := field_names if not field_names.is_empty() else _ai_training_metadata_field_names()
+	for field_name in allowed_fields:
 		if candidate.has(field_name):
 			result[field_name] = candidate[field_name]
 	return result
@@ -4338,6 +4397,15 @@ func _ai_candidate_training_views(candidates: Array) -> Array:
 	for i in range(mini(AI_CANDIDATE_SAMPLE_LIMIT, ordered.size())):
 		if ordered[i] is Dictionary:
 			result.append(_ai_candidate_training_view(ordered[i] as Dictionary))
+	return result
+func _ai_candidate_training_views_for_decision(candidates: Array) -> Array:
+	var ordered := candidates.duplicate(true)
+	ordered.sort_custom(Callable(self, "_sort_ai_candidate_score_desc"))
+	var field_names := _ai_training_metadata_field_names()
+	var result := []
+	for i in range(mini(AI_CANDIDATE_SAMPLE_LIMIT, ordered.size())):
+		if ordered[i] is Dictionary:
+			result.append(_ai_candidate_training_view(ordered[i] as Dictionary, field_names))
 	return result
 
 
@@ -4704,18 +4772,134 @@ func _ai_learning_bonus_from_memory(memory: Dictionary, policy_kind: String = ""
 	for tag_variant in _ai_learning_tags(action_kind, policy_kind, strategy_intent, route_stage, product_name):
 		bonus += _ai_learned_tag_bonus_from_memory(memory, String(tag_variant))
 	return clampi(bonus, -AI_LEARNING_BONUS_CLAMP, AI_LEARNING_BONUS_CLAMP)
+func _ai_decision_record_context(
+	player_index: int,
+	focus_product: String,
+	phase_info: Dictionary,
+	candidates: Array,
+	decision_actor_state: Dictionary = {},
+	decision_memory: Dictionary = {}
+) -> Dictionary:
+	var economy_facts := _actor_training_economy_facts(player_index)
+	var hand_snapshot := _actor_hand_inventory_snapshot(player_index)
+	if economy_facts.is_empty() or hand_snapshot.is_empty() or phase_info.is_empty():
+		return {}
+	var provided_state_valid: bool = not decision_actor_state.is_empty() \
+		and int(decision_actor_state.get("player_index", -1)) == player_index \
+		and not decision_memory.is_empty()
+	var observation_memory := decision_memory.duplicate(true) \
+		if provided_state_valid else _ai_memory_for_player(player_index)
+	var flow_by_product: Dictionary = {}
+	var total_product_flow := 0
+	for product_variant in PRODUCT_CATALOG:
+		var product_name := String(product_variant)
+		var product_flow := _player_product_flow(player_index, product_name)
+		flow_by_product[product_name] = product_flow
+		total_product_flow += product_flow
+	var victory_top_n_gdp := _victory_top_n_gdp(player_index)
+	var victory_controlled_regions := _victory_controlled_regions(player_index)
+	var active_city_count := _player_active_city_count(player_index)
+	var owned_monster_count := _ai_owned_active_monster_count(player_index)
+	var field_monster_count := _active_auto_monster_count()
+	var cached_strategy_intent := String(observation_memory.get("strategic_intent", ""))
+	var strategy_current: bool = int(observation_memory.get("strategic_intent_cycle", -1)) == business_cycle_count \
+		and not cached_strategy_intent.is_empty()
+	var strategy := {
+		"intent": cached_strategy_intent,
+		"score": int(observation_memory.get("strategic_intent_score", 0)),
+		"reason": String(observation_memory.get("strategic_intent_reason", "")),
+	} if strategy_current else _ai_refresh_strategy_intent(player_index)
+	var route_actor_state := decision_actor_state \
+		if provided_state_valid and strategy_current \
+		else _ai_actor_state_snapshot(player_index)
+	if route_actor_state.is_empty():
+		return {}
+	var route_memory := _normalized_ai_memory(route_actor_state.get("ai_memory", {}))
+	var route_current: bool = int(route_memory.get("route_plan_cycle", -1)) == business_cycle_count \
+		and not String(route_memory.get("route_plan_product", "")).is_empty() \
+		and not String(route_memory.get("route_plan_stage", "")).is_empty()
+	var route_context := {
+		"cache_active": true,
+		"player_index": player_index,
+		"focus_product": focus_product,
+		"focus_score": int(route_memory.get("economic_focus_score", 0)),
+		"strategy": strategy,
+		"phase_info": phase_info,
+		"flow_by_product": flow_by_product,
+		"learning_memory": route_memory,
+		"actor_state": route_actor_state,
+	}
+	var route_plan := _ai_refresh_route_plan(player_index, false, route_context)
+	var endgame_urgency := _ai_endgame_urgency_score(player_index)
+	var actor_state := route_actor_state \
+		if provided_state_valid and strategy_current and route_current \
+		else _ai_actor_state_snapshot(player_index)
+	if actor_state.is_empty():
+		return {}
+	return {
+		"cache_active": true,
+		"player_index": player_index,
+		"focus_product": focus_product,
+		"phase_info": phase_info,
+		"economy_facts": economy_facts,
+		"hand_snapshot": hand_snapshot,
+		"observation_memory": observation_memory,
+		"flow_by_product": flow_by_product,
+		"total_product_flow": total_product_flow,
+		"victory_top_n_gdp": victory_top_n_gdp,
+		"victory_controlled_regions": victory_controlled_regions,
+		"victory_required_gdp": _victory_required_gdp(),
+		"victory_required_regions": _victory_required_regions(),
+		"active_city_count": active_city_count,
+		"owned_monster_count": owned_monster_count,
+		"field_monster_count": field_monster_count,
+		"strategy": strategy,
+		"route_plan": route_plan,
+		"endgame_urgency": endgame_urgency,
+		"queue_current": _card_resolution_current_queue().size(),
+		"queue_next": _card_resolution_next_queue().size(),
+		"auction_open": card_resolution_auction_open,
+		"cycle": business_cycle_count,
+		"actor_state": actor_state,
+		"candidate_training_views": _ai_candidate_training_views_for_decision(candidates),
+	}
 func _record_ai_decision(player_index: int, kind: String, target_index: int, score: int, reason: String, candidates: Array = [], metadata: Dictionary = {}) -> void:
-	if not _player_is_ai(player_index):
+	var initial_actor_state := _ai_actor_state_snapshot(player_index)
+	if initial_actor_state.is_empty() or not bool(initial_actor_state.get("is_ai", false)):
 		return
-	_ai_refresh_economic_focus(player_index)
+	var initial_memory := _normalized_ai_memory(initial_actor_state.get("ai_memory", {}))
+	var cached_focus_product := String(initial_memory.get("economic_focus_product", ""))
+	var focus_current: bool = int(initial_memory.get("economic_focus_cycle", -1)) == business_cycle_count \
+		and not cached_focus_product.is_empty() \
+		and PRODUCT_CATALOG.has(cached_focus_product)
+	var focus_product := cached_focus_product \
+		if focus_current else _ai_refresh_economic_focus(player_index)
 	var phase_info := _ai_refresh_game_phase(player_index)
-	var observation := _ai_observation_vector(player_index)
-	var actor_state := _ai_actor_state_snapshot(player_index)
+	var phase_current: bool = String(initial_memory.get("game_phase", "")) == String(phase_info.get("phase", "")) \
+		and String(initial_memory.get("competitive_posture", "")) == String(phase_info.get("posture", "")) \
+		and int(initial_memory.get("score_gap_to_leader", 0)) == int(phase_info.get("gap", 0)) \
+		and int(initial_memory.get("leader_index", -1)) == int(phase_info.get("leader_index", -1))
+	var decision_actor_state := initial_actor_state
+	var decision_memory := initial_memory
+	if not focus_current or not phase_current:
+		decision_actor_state = _ai_actor_state_snapshot(player_index)
+		decision_memory = _normalized_ai_memory(decision_actor_state.get("ai_memory", {})) \
+			if not decision_actor_state.is_empty() else {}
+	var decision_context := _ai_decision_record_context(
+		player_index,
+		focus_product,
+		phase_info,
+		candidates,
+		decision_actor_state,
+		decision_memory
+	)
+	var observation := _ai_observation_vector(player_index, decision_context)
+	var actor_state: Dictionary = decision_context.get("actor_state", {}) \
+		if decision_context.get("actor_state", {}) is Dictionary else {}
 	if actor_state.is_empty() or observation.is_empty():
 		return
 	var memory := _normalized_ai_memory(actor_state.get("ai_memory", {}))
 	var samples := (memory.get("decision_samples", []) as Array).duplicate(true)
-	var focus_product := String(memory.get("economic_focus_product", ""))
 	var sample := {
 		"time": game_time,
 		"cycle": business_cycle_count,
@@ -4724,8 +4908,8 @@ func _record_ai_decision(player_index: int, kind: String, target_index: int, sco
 		"score": score,
 		"reason": reason,
 		"state": observation,
-		"candidates": _ai_candidate_training_views(candidates),
-		"focus_product": focus_product,
+		"candidates": (decision_context.get("candidate_training_views", []) as Array).duplicate(true),
+		"focus_product": String(memory.get("economic_focus_product", "")),
 		"focus_score": int(memory.get("economic_focus_score", 0)),
 		"focus_reason": String(memory.get("economic_focus_reason", "")),
 		"strategy_intent": String(memory.get("strategic_intent", "")),
@@ -4740,7 +4924,7 @@ func _record_ai_decision(player_index: int, kind: String, target_index: int, sco
 		"score_gap_to_leader": int(phase_info.get("gap", 0)),
 		"leader_index": int(phase_info.get("leader_index", -1)),
 		"phase_reason": String(phase_info.get("reason", "")),
-		"endgame_urgency": _ai_endgame_urgency_score(player_index),
+		"endgame_urgency": int(decision_context.get("endgame_urgency", 0)),
 		"baseline_cash": int(observation.get("cash", 0)),
 		"baseline_victory_gdp": int(observation.get("victory_top_n_gdp_per_minute", 0)),
 		"baseline_victory_regions": int(observation.get("victory_controlled_region_count", 0)),
@@ -5277,8 +5461,13 @@ func _ai_strategy_bonus_for_candidate(player_index: int, kind: String, district_
 			if focus != "" and product_name == focus:
 				bonus += 54
 			if district_index >= 0:
-				var district_focus_score := int(cached_context.get("district_focus_score", 0)) \
-					if cached_context.has("district_focus_score") else _ai_district_focus_score(player_index, district_index)
+				var district_focus_score := 0
+				if cached_context.has("district_focus_score"):
+					district_focus_score = int(cached_context.get("district_focus_score", 0))
+				elif bool(cached_context.get("cache_active", false)):
+					district_focus_score = _ai_district_focus_score(player_index, district_index, cached_context)
+				else:
+					district_focus_score = _ai_district_focus_score(player_index, district_index)
 				bonus += mini(90, int(float(district_focus_score) / 2.0))
 	return max(0, bonus)
 func _ai_development_route_for_kind(kind: String, skill: Dictionary = {}) -> String:
@@ -5445,13 +5634,18 @@ func _ai_product_route_threat_score(player_index: int, product_name: String) -> 
 		score += int(districts[city_index].get("damage", 0)) * 18
 		score += int(float(int(districts[city_index].get("panic", 0))) / 4.0)
 	return score
-func _ai_best_owned_route_city_for_product(player_index: int, product_name: String, prefer_damaged: bool = false) -> int:
+func _ai_best_owned_route_city_for_product(
+	player_index: int,
+	product_name: String,
+	prefer_damaged: bool = false,
+	cached_context: Dictionary = {}
+) -> int:
 	var best_index := -1
 	var best_score := -1
 	for city_index_variant in _active_city_indices_for_player(player_index):
 		var city_index := int(city_index_variant)
 		var city := _district_city(city_index)
-		var score := 20 + _ai_city_target_score(player_index, city_index, true, prefer_damaged)
+		var score := 20 + _ai_city_target_score(player_index, city_index, true, prefer_damaged, cached_context)
 		if _city_product_names(city).has(product_name):
 			score += 120
 		if _city_demand_names(city).has(product_name):
@@ -5508,19 +5702,31 @@ func _ai_strategy_intent_label(intent: String) -> String:
 		"disrupt_competitors":
 			return "压制竞品"
 	return "观察局势"
-func _ai_route_plan_candidates(player_index: int) -> Array:
+func _ai_route_plan_candidates(player_index: int, cached_context: Dictionary = {}) -> Array:
 	var result := []
 	if player_index < 0 or player_index >= _public_player_count() or not _player_is_ai(player_index):
 		return result
 	_ensure_product_market_catalog()
-	var focus := _ai_focus_product(player_index)
-	var strategy := _ai_strategy_intent(player_index)
+	var cache_active := bool(cached_context.get("cache_active", false)) \
+		and int(cached_context.get("player_index", -1)) == player_index
+	var focus := String(cached_context.get("focus_product", "")) \
+		if cache_active else _ai_focus_product(player_index)
+	var strategy_context: Dictionary = cached_context.get("strategy", {}) \
+		if cache_active and cached_context.get("strategy", {}) is Dictionary else {}
+	var strategy := String(strategy_context.get("intent", "")) \
+		if cache_active else _ai_strategy_intent(player_index)
+	var flow_by_product: Dictionary = cached_context.get("flow_by_product", {}) \
+		if cache_active and cached_context.get("flow_by_product", {}) is Dictionary else {}
+	var learning_memory: Dictionary = cached_context.get("learning_memory", {}) \
+		if cache_active and cached_context.get("learning_memory", {}) is Dictionary else {}
 	var gdp_gap := maxi(0, _victory_required_gdp() - _victory_top_n_gdp(player_index))
 	for product_variant in PRODUCT_CATALOG:
 		var product_name := String(product_variant)
 		if product_name == "":
 			continue
-		var flow := _player_product_flow(player_index, product_name)
+		var flow := int(flow_by_product.get(product_name, 0)) \
+			if cache_active and flow_by_product.has(product_name) \
+			else _player_product_flow(player_index, product_name)
 		var supply_count := _ai_owned_city_product_count(player_index, product_name, false)
 		var demand_count := _ai_owned_city_product_count(player_index, product_name, true)
 		var route_threat := _ai_product_route_threat_score(player_index, product_name)
@@ -5538,12 +5744,14 @@ func _ai_route_plan_candidates(player_index: int) -> Array:
 			stage = "defend_route"
 		elif rival_pressure >= 260 or strategy == "disrupt_competitors":
 			stage = "attack_rival"
-		var target_city := _ai_best_owned_route_city_for_product(player_index, product_name, stage == "defend_route")
+		var target_city := _ai_best_owned_route_city_for_product(player_index, product_name, stage == "defend_route", cached_context)
 		var score := 70 + int(float(_ai_product_market_signal_score(product_name)) / 2.0) + int(round(float(_product_price(product_name)) / 8.0))
 		score += flow * 46 + supply_count * 34 + demand_count * 28
 		score += int(round(float(gdp_gap) / 10.0))
 		if product_name == focus:
-			score += AI_ROUTE_PLAN_MATCH_BONUS + int(float(_ai_focus_score(player_index)) / 4.0)
+			var focus_score := int(cached_context.get("focus_score", 0)) \
+				if cache_active else _ai_focus_score(player_index)
+			score += AI_ROUTE_PLAN_MATCH_BONUS + int(float(focus_score) / 4.0)
 		match stage:
 			"build_supply":
 				score += 150 + maxi(0, 2 - supply_count) * 70
@@ -5559,7 +5767,8 @@ func _ai_route_plan_candidates(player_index: int) -> Array:
 				score += 92 + rival_pressure
 			_:
 				score += 118 + flow * 24
-		var learning_bonus := _ai_learning_bonus(player_index, "", strategy, stage, product_name, "路线规划")
+		var learning_bonus := _ai_learning_bonus_from_memory(learning_memory, "", strategy, stage, product_name, "路线规划") \
+			if cache_active else _ai_learning_bonus(player_index, "", strategy, stage, product_name, "路线规划")
 		score += learning_bonus
 		result.append({
 			"product": product_name,
@@ -5586,11 +5795,16 @@ func _ai_route_plan_candidates(player_index: int) -> Array:
 			],
 		})
 	return result
-func _ai_refresh_route_plan(player_index: int, force: bool = false) -> Dictionary:
+func _ai_refresh_route_plan(player_index: int, force: bool = false, cached_context: Dictionary = {}) -> Dictionary:
 	if not _player_is_ai(player_index):
 		return {}
-	_ai_refresh_economic_focus(player_index, force)
-	var cached_actor_state := _ai_actor_state_snapshot(player_index)
+	var cache_active := bool(cached_context.get("cache_active", false)) \
+		and int(cached_context.get("player_index", -1)) == player_index
+	if not cache_active:
+		_ai_refresh_economic_focus(player_index, force)
+	var cached_actor_state: Dictionary = cached_context.get("actor_state", {}) \
+		if cache_active and cached_context.get("actor_state", {}) is Dictionary \
+		else _ai_actor_state_snapshot(player_index)
 	if cached_actor_state.is_empty():
 		return {}
 	var memory := _normalized_ai_memory(cached_actor_state.get("ai_memory", {}))
@@ -5605,12 +5819,13 @@ func _ai_refresh_route_plan(player_index: int, force: bool = false) -> Dictionar
 			"target_city": int(memory.get("route_plan_target_city", -1)),
 			"partner_district": int(memory.get("route_plan_partner_district", -1)),
 		}
-	var rankings := _ai_route_plan_candidates(player_index)
+	var rankings := _ai_route_plan_candidates(player_index, cached_context)
 	if rankings.is_empty():
 		return {}
-	# Route candidates may commit strategy and phase updates. Preserve those
-	# fields by refreshing the actor snapshot before the route-plan CAS write.
-	var actor_state := _ai_actor_state_snapshot(player_index)
+	# Default candidates may commit strategy and phase updates. A decision-local
+	# context freezes both before candidate construction, so its actor snapshot
+	# remains the valid CAS base for this one route-plan write.
+	var actor_state := cached_actor_state if cache_active else _ai_actor_state_snapshot(player_index)
 	if actor_state.is_empty():
 		return {}
 	var latest_memory := _normalized_ai_memory(actor_state.get("ai_memory", {}))
@@ -5982,9 +6197,19 @@ func _ai_route_gap_adjustment(player_index: int, skill: Dictionary, district_ind
 	result["field_match"] = field_match
 	result["reason"] = "、".join(reasons)
 	return result
-func _ai_district_focus_score(player_index: int, district_index: int) -> int:
-	var focus := _ai_focus_product(player_index)
+func _ai_district_focus_score(player_index: int, district_index: int, cached_context: Dictionary = {}) -> int:
+	var cache_active := bool(cached_context.get("cache_active", false))
+	var cache_key := str(district_index)
+	var scores_by_district: Dictionary = cached_context.get("district_focus_score_by_index", {}) \
+		if cache_active and cached_context.get("district_focus_score_by_index", {}) is Dictionary else {}
+	if cache_active and scores_by_district.has(cache_key):
+		return int(scores_by_district[cache_key])
+	var focus := String(cached_context.get("focus_product", "")) \
+		if cache_active and cached_context.has("focus_product") else _ai_focus_product(player_index)
 	if focus == "" or district_index < 0 or district_index >= districts.size():
+		if cache_active:
+			scores_by_district[cache_key] = 0
+			cached_context["district_focus_score_by_index"] = scores_by_district
 		return 0
 	var score := 0
 	if (districts[district_index].get("products", []) as Array).has(focus):
@@ -5997,17 +6222,32 @@ func _ai_district_focus_score(player_index: int, district_index: int) -> int:
 			score += 72
 		if _city_demand_names(city).has(focus):
 			score += 36
+	if cache_active:
+		scores_by_district[cache_key] = score
+		cached_context["district_focus_score_by_index"] = scores_by_district
 	return score
-func _ai_product_for_skill(player_index: int, skill: Dictionary) -> String:
+func _ai_product_for_skill(player_index: int, skill: Dictionary, cached_context: Dictionary = {}) -> String:
 	var explicit := String(skill.get("play_product", ""))
 	if explicit != "":
 		return explicit
-	var focus := _ai_focus_product(player_index)
-	var route_product := _ai_route_plan_product(player_index)
+	var cache_active := bool(cached_context.get("cache_active", false))
+	var focus := String(cached_context.get("focus_product", "")) \
+		if cache_active and cached_context.has("focus_product") else _ai_focus_product(player_index)
+	if cache_active and not cached_context.has("focus_product"):
+		cached_context["focus_product"] = focus
+	var route_product := ""
+	if cache_active:
+		if not cached_context.has("route_plan"):
+			cached_context["route_plan"] = _ai_refresh_route_plan(player_index)
+		var route_plan: Dictionary = cached_context.get("route_plan", {}) \
+			if cached_context.get("route_plan", {}) is Dictionary else {}
+		route_product = String(route_plan.get("product", ""))
+	else:
+		route_product = _ai_route_plan_product(player_index)
 	var kind := String(skill.get("kind", ""))
 	var harmful_supply := int(skill.get("price_delta", 0)) < 0 or int(skill.get("market_supply_pressure", 0)) > int(skill.get("market_demand_pressure", 0))
 	if harmful_supply:
-		var rival_product := _ai_preferred_product(player_index, true)
+		var rival_product := _ai_preferred_product(player_index, true, cached_context)
 		if rival_product != "":
 			return rival_product
 	if route_product != "" and (_player_product_flow(player_index, route_product) > 0 or ["product_speculation", "product_futures", "product_contract_boon", "product_growth_boon", "market_stabilize", "city_product_shift", "city_demand_shift", "region_economy_shift", "news_event", "weather_control"].has(kind)):
@@ -6018,7 +6258,13 @@ func _ai_product_for_skill(player_index: int, skill: Dictionary) -> String:
 func _ai_first_alive_district() -> int:
 	var alive := _alive_district_indices()
 	return int(alive[0]) if not alive.is_empty() else -1
-func _ai_city_target_score(player_index: int, district_index: int, own_city: bool, prefer_damaged: bool = false) -> int:
+func _ai_city_target_score(
+	player_index: int,
+	district_index: int,
+	own_city: bool,
+	prefer_damaged: bool = false,
+	cached_context: Dictionary = {}
+) -> int:
 	var city := _district_city(district_index)
 	if not _city_is_active(city):
 		return -1
@@ -6039,14 +6285,21 @@ func _ai_city_target_score(player_index: int, district_index: int, own_city: boo
 			score += int(float(warehouse_pressure) / 3.0)
 		else:
 			score += warehouse_pressure * 2
-	var focus := _ai_focus_product(player_index)
+	var cache_active := bool(cached_context.get("cache_active", false)) \
+		and int(cached_context.get("player_index", -1)) == player_index
+	var focus := String(cached_context.get("focus_product", "")) \
+		if cache_active else _ai_focus_product(player_index)
 	if focus != "":
 		if _city_product_names(city).has(focus):
 			score += 82 if own_city else 96
 		if _city_demand_names(city).has(focus):
 			score += 44 if own_city else 34
-		if not own_city and _player_product_flow(player_index, focus) > 0 and _city_product_names(city).has(focus):
-			score += 78
+		if not own_city:
+			var focus_flow := int((cached_context.get("flow_by_product", {}) as Dictionary).get(focus, 0)) \
+				if cache_active and cached_context.get("flow_by_product", {}) is Dictionary \
+				else _player_product_flow(player_index, focus)
+			if focus_flow > 0 and _city_product_names(city).has(focus):
+				score += 78
 	if prefer_damaged:
 		score += int(city.get("trade_route_damage", 0)) * 80
 		score += int(districts[district_index].get("damage", 0)) * 20
@@ -6063,8 +6316,12 @@ func _ai_best_city_district(player_index: int, own_city: bool, prefer_damaged: b
 			best_score = score
 			best_index = district_index
 	return best_index
-func _ai_preferred_product(player_index: int, use_rivals: bool = false) -> String:
-	var focus := _ai_focus_product(player_index)
+func _ai_preferred_product(player_index: int, use_rivals: bool = false, cached_context: Dictionary = {}) -> String:
+	var cache_active := bool(cached_context.get("cache_active", false))
+	var focus := String(cached_context.get("focus_product", "")) \
+		if cache_active and cached_context.has("focus_product") else _ai_focus_product(player_index)
+	if cache_active and not cached_context.has("focus_product"):
+		cached_context["focus_product"] = focus
 	if focus != "":
 		if not use_rivals and _player_product_flow(player_index, focus) > 0:
 			return focus
@@ -7424,19 +7681,84 @@ func _ai_military_command_plan(player_index: int, skill: Dictionary) -> Dictiona
 	plan["military_command"] = command
 	plan["strategic_role"] = String(plan.get("military_command_role", command))
 	return plan
-func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary) -> Dictionary:
+func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary, cached_context: Dictionary = {}) -> Dictionary:
 	var kind := String(skill.get("kind", ""))
-	var own_city := _ai_best_city_district(player_index, true)
-	var rival_city := _ai_best_pressure_target_city(player_index)
-	var fallback := own_city if own_city >= 0 else _ai_first_alive_district()
-	var focus_product := _ai_focus_product(player_index)
-	var planned_product := _ai_product_for_skill(player_index, skill)
-	var route_product := _ai_route_plan_product(player_index)
-	var route_stage := _ai_route_plan_stage(player_index)
-	var phase_info := _ai_refresh_game_phase(player_index)
-	var endgame_urgency := _ai_endgame_urgency_score(player_index)
+	var cache_active := bool(cached_context.get("cache_active", false))
+	var own_city := int(cached_context.get("own_city", -1)) \
+		if cache_active and cached_context.has("own_city") else _ai_best_city_district(player_index, true)
+	if cache_active and not cached_context.has("own_city"):
+		cached_context["own_city"] = own_city
+	var rival_city := int(cached_context.get("rival_city", -1)) \
+		if cache_active and cached_context.has("rival_city") else _ai_best_pressure_target_city(player_index)
+	if cache_active and not cached_context.has("rival_city"):
+		cached_context["rival_city"] = rival_city
+	var fallback := int(cached_context.get("fallback_district", -1)) \
+		if cache_active and cached_context.has("fallback_district") \
+		else (own_city if own_city >= 0 else _ai_first_alive_district())
+	if cache_active and not cached_context.has("fallback_district"):
+		cached_context["fallback_district"] = fallback
+	var focus_product := String(cached_context.get("focus_product", "")) \
+		if cache_active and cached_context.has("focus_product") else _ai_focus_product(player_index)
+	if cache_active and not cached_context.has("focus_product"):
+		cached_context["focus_product"] = focus_product
+	var planned_product := _ai_product_for_skill(player_index, skill, cached_context)
+	var route_plan: Dictionary = {}
+	var route_product := ""
+	var route_stage := ""
+	if cache_active:
+		if cached_context.has("route_plan") and cached_context.get("route_plan") is Dictionary:
+			route_plan = cached_context.get("route_plan") as Dictionary
+		else:
+			route_plan = _ai_refresh_route_plan(player_index)
+			cached_context["route_plan"] = route_plan
+		route_product = String(route_plan.get("product", ""))
+		route_stage = String(route_plan.get("stage", ""))
+		cached_context["route_product"] = route_product
+		cached_context["route_stage"] = route_stage
+	else:
+		route_product = _ai_route_plan_product(player_index)
+		route_stage = _ai_route_plan_stage(player_index)
+	var phase_info: Dictionary = {}
+	if cache_active and cached_context.has("phase_info") and cached_context.get("phase_info") is Dictionary:
+		phase_info = cached_context.get("phase_info") as Dictionary
+	else:
+		phase_info = _ai_refresh_game_phase(player_index)
+		if cache_active:
+			cached_context["phase_info"] = phase_info
+	var endgame_urgency := int(cached_context.get("endgame_urgency", 0)) \
+		if cache_active and cached_context.has("endgame_urgency") else _ai_endgame_urgency_score(player_index)
+	if cache_active and not cached_context.has("endgame_urgency"):
+		cached_context["endgame_urgency"] = endgame_urgency
 	var development_route := _card_development_route_id(skill)
-	var development_route_bias := _ai_development_route_bias(player_index, development_route)
+	var profile: Dictionary = {}
+	if cache_active:
+		if cached_context.has("profile") and cached_context.get("profile") is Dictionary:
+			profile = cached_context.get("profile") as Dictionary
+		else:
+			profile = _ai_profile_for_player(player_index)
+			cached_context["profile"] = profile
+	var development_route_bias := _ai_development_route_bias_from_profile(profile, development_route) \
+		if cache_active else _ai_development_route_bias(player_index, development_route)
+	var focus_score := int(cached_context.get("focus_score", 0)) \
+		if cache_active and cached_context.has("focus_score") else _ai_focus_score(player_index)
+	if cache_active and not cached_context.has("focus_score"):
+		cached_context["focus_score"] = focus_score
+	var strategy: Dictionary = {}
+	var strategy_intent := ""
+	var strategy_score := 0
+	if cache_active:
+		if cached_context.has("strategy") and cached_context.get("strategy") is Dictionary:
+			strategy = cached_context.get("strategy") as Dictionary
+		else:
+			strategy = _ai_refresh_strategy_intent(player_index)
+			cached_context["strategy"] = strategy
+		strategy_intent = String(strategy.get("intent", ""))
+		strategy_score = int(strategy.get("score", 0))
+	else:
+		strategy_intent = _ai_strategy_intent(player_index)
+		strategy_score = _ai_strategy_score(player_index)
+	var route_plan_score := int(route_plan.get("score", 0)) \
+		if cache_active else _ai_route_plan_score(player_index)
 	var context := {
 		"action": "出牌",
 		"slot_index": slot_index,
@@ -7448,14 +7770,14 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		"target_player": -1,
 		"product": planned_product,
 		"focus_product": focus_product,
-		"focus_score": _ai_focus_score(player_index),
+		"focus_score": focus_score,
 		"focus_bonus": 0,
-		"strategy_intent": _ai_strategy_intent(player_index),
-		"strategy_score": _ai_strategy_score(player_index),
+		"strategy_intent": strategy_intent,
+		"strategy_score": strategy_score,
 		"strategy_bonus": 0,
 		"route_plan_product": route_product,
 		"route_plan_stage": route_stage,
-		"route_plan_score": _ai_route_plan_score(player_index),
+		"route_plan_score": route_plan_score,
 		"route_plan_bonus": 0,
 		"route_gap_bonus": 0,
 		"route_gap_penalty": 0,
@@ -7553,7 +7875,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 			return {}
 		context["district"] = own_city
 		context["score"] = int(context["score"]) + 90
-		context["focus_bonus"] = int(context.get("focus_bonus", 0)) + _ai_district_focus_score(player_index, own_city)
+		context["focus_bonus"] = int(context.get("focus_bonus", 0)) + _ai_district_focus_score(player_index, own_city, cached_context)
 	elif kind == "route_insurance":
 		var damaged_city := _ai_best_city_district(player_index, true, true)
 		if damaged_city < 0 or int(_district_city(damaged_city).get("trade_route_damage", 0)) <= 0:
@@ -7609,7 +7931,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		context["district"] = rival_city
 		context["target_city"] = rival_city
 		context["target_owner"] = int(_district_city(rival_city).get("owner", -1))
-		context["product"] = _ai_preferred_product(player_index, true)
+		context["product"] = _ai_preferred_product(player_index, true, cached_context)
 		if String(context.get("product", "")) == focus_product and focus_product != "":
 			context["focus_bonus"] = int(context.get("focus_bonus", 0)) + AI_ECONOMIC_FOCUS_MATCH_BONUS
 		context["score"] = int(context["score"]) + 115 + int(skill.get("panic", 0)) + int(skill.get("route_damage", 0)) * 45
@@ -7630,7 +7952,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		context["district"] = rival_city
 		context["target_city"] = rival_city
 		context["target_owner"] = int(_district_city(rival_city).get("owner", -1))
-		context["product"] = _ai_preferred_product(player_index, true)
+		context["product"] = _ai_preferred_product(player_index, true, cached_context)
 		if String(context.get("product", "")) == focus_product and focus_product != "":
 			context["focus_bonus"] = int(context.get("focus_bonus", 0)) + AI_ECONOMIC_FOCUS_MATCH_BONUS
 		context["score"] = int(context["score"]) + 105
@@ -7643,7 +7965,7 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		if _city_is_active(shifted_city):
 			context["target_city"] = int(context["district"])
 			context["target_owner"] = int(shifted_city.get("owner", -1))
-		context["focus_bonus"] = int(context.get("focus_bonus", 0)) + _ai_district_focus_score(player_index, int(context["district"]))
+		context["focus_bonus"] = int(context.get("focus_bonus", 0)) + _ai_district_focus_score(player_index, int(context["district"]), cached_context)
 	elif kind == "city_control_dispute":
 		var control_plan := _ai_direct_city_interaction_plan(player_index, skill)
 		if control_plan.is_empty():
@@ -7741,15 +8063,15 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 		var target_city := _district_city(context_district)
 		if _city_is_active(target_city):
 			target_owner = int(target_city.get("owner", -1))
-	var strategy_bonus := _ai_strategy_bonus_for_candidate(player_index, kind, context_district, String(context.get("product", "")), target_owner, skill)
+	var strategy_bonus := _ai_strategy_bonus_for_candidate(player_index, kind, context_district, String(context.get("product", "")), target_owner, skill, cached_context)
 	if strategy_bonus > 0:
 		context["strategy_bonus"] = int(context.get("strategy_bonus", 0)) + strategy_bonus
 		context["score"] = int(context["score"]) + strategy_bonus
-	var route_bonus := _ai_route_plan_bonus_for_candidate(player_index, kind, context_district, String(context.get("product", "")), target_owner, skill)
+	var route_bonus := _ai_route_plan_bonus_for_candidate(player_index, kind, context_district, String(context.get("product", "")), target_owner, skill, cached_context)
 	if route_bonus > 0:
 		context["route_plan_bonus"] = int(context.get("route_plan_bonus", 0)) + route_bonus
 		context["score"] = int(context["score"]) + route_bonus
-	var route_gap := _ai_route_gap_adjustment(player_index, skill, context_district, String(context.get("product", "")), target_owner)
+	var route_gap := _ai_route_gap_adjustment(player_index, skill, context_district, String(context.get("product", "")), target_owner, cached_context)
 	var route_gap_bonus := int(route_gap.get("bonus", 0))
 	var route_gap_penalty := int(route_gap.get("penalty", 0))
 	if route_gap_bonus != 0 or route_gap_penalty != 0:
@@ -7765,15 +8087,30 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 				route_gap_bonus,
 				route_gap_penalty,
 			]
-	var development_route_bonus := _ai_development_route_bonus(player_index, development_route)
+	var development_route_bonus := _ai_development_route_bonus_from_profile(profile, development_route) \
+		if cache_active else _ai_development_route_bonus(player_index, development_route)
 	if development_route_bonus != 0:
 		context["development_route_bonus"] = development_route_bonus
 		context["score"] = int(context["score"]) + development_route_bonus
-	var phase_bonus := _ai_phase_bonus_for_candidate(player_index, kind, context_district, String(context.get("product", "")), target_owner, skill)
+	var phase_bonus := _ai_phase_bonus_for_candidate(player_index, kind, context_district, String(context.get("product", "")), target_owner, skill, cached_context)
 	if phase_bonus != 0:
 		context["phase_bonus"] = phase_bonus
 		context["score"] = int(context["score"]) + phase_bonus
-	var victory_race := _ai_victory_race_bonus_for_candidate(player_index, kind, context_district, String(context.get("product", "")), target_owner, skill)
+	var victory_context: Dictionary = cached_context
+	if cache_active:
+		if not cached_context.has("victory_context"):
+			cached_context["victory_context"] = {
+				"player_valid": player_index >= 0 and player_index < _public_player_count() and _player_is_ai(player_index),
+				"phase_info": phase_info,
+				"leader_score": int(_visible_score_leader_entry(player_index).get("score", 0)),
+				"own_score": _victory_top_n_gdp(player_index),
+				"gdp_goal": _victory_required_gdp(),
+				"endgame_urgency": endgame_urgency,
+				"focus_product": focus_product,
+				"route_product": route_product,
+			}
+		victory_context = cached_context.get("victory_context") as Dictionary
+	var victory_race := _ai_victory_race_bonus_for_candidate(player_index, kind, context_district, String(context.get("product", "")), target_owner, skill, victory_context)
 	var victory_race_bonus := int(victory_race.get("bonus", 0))
 	if victory_race_bonus != 0:
 		context["victory_race_bonus"] = victory_race_bonus
@@ -7789,7 +8126,22 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 	if generic_bonus != 0:
 		context["generic_effect_bonus"] = generic_bonus
 		context["score"] = int(context["score"]) + generic_bonus
-	var profile_signature := _ai_profile_signature_bonus_for_candidate(player_index, kind, context_district, String(context.get("product", "")), target_owner, skill)
+	var profile_signature := _ai_profile_signature_bonus_for_candidate_with_context(
+		player_index,
+		kind,
+		context_district,
+		String(context.get("product", "")),
+		target_owner,
+		skill,
+		cached_context
+	) if cache_active else _ai_profile_signature_bonus_for_candidate(
+		player_index,
+		kind,
+		context_district,
+		String(context.get("product", "")),
+		target_owner,
+		skill
+	)
 	var profile_signature_bonus := int(profile_signature.get("bonus", 0))
 	if profile_signature_bonus != 0:
 		context["profile_signature_bonus"] = profile_signature_bonus
@@ -7802,18 +8154,42 @@ func _ai_card_play_context(player_index: int, slot_index: int, skill: Dictionary
 			profile_signature_bonus,
 			String(profile_signature.get("reason", "")),
 		]
+	var learning_memory: Dictionary = {}
+	if cache_active and cached_context.has("learning_memory") and cached_context.get("learning_memory") is Dictionary:
+		learning_memory = cached_context.get("learning_memory") as Dictionary
+	elif cache_active:
+		learning_memory = _ai_memory_for_player(player_index)
+		cached_context["learning_memory"] = learning_memory
 	var learning_bonus := clampi(
-		_ai_learning_bonus(player_index, String(context.get("policy_kind", kind)), String(context.get("strategy_intent", "")), String(context.get("route_plan_stage", "")), String(context.get("product", "")), "匿名出牌")
-		+ _ai_development_route_learning_bonus(player_index, development_route),
+		(_ai_learning_bonus_from_memory(learning_memory, String(context.get("policy_kind", kind)), String(context.get("strategy_intent", "")), String(context.get("route_plan_stage", "")), String(context.get("product", "")), "匿名出牌")
+		+ _ai_development_route_learning_bonus_from_memory(learning_memory, development_route)) \
+			if cache_active else (
+				_ai_learning_bonus(player_index, String(context.get("policy_kind", kind)), String(context.get("strategy_intent", "")), String(context.get("route_plan_stage", "")), String(context.get("product", "")), "匿名出牌")
+				+ _ai_development_route_learning_bonus(player_index, development_route)
+			),
 		-AI_LEARNING_BONUS_CLAMP,
 		AI_LEARNING_BONUS_CLAMP
 	)
 	if learning_bonus != 0:
 		context["learning_bonus"] = learning_bonus
 		context["score"] = int(context["score"]) + learning_bonus
-	context["score"] = maxi(1, int(round(float(context["score"]) * _ai_card_kind_bias(player_index, kind))))
+	context["score"] = maxi(1, int(round(float(context["score"]) * (
+		_ai_card_kind_bias_from_profile(profile, kind) if cache_active else _ai_card_kind_bias(player_index, kind)
+	))))
 	return context
-func _ai_card_play_candidates(player_index: int) -> Array:
+func _ai_card_turn_scoring_context(player_index: int, supplied_context: Dictionary = {}) -> Dictionary:
+	if bool(supplied_context.get("cache_active", false)) \
+			and int(supplied_context.get("player_index", -1)) == player_index \
+			and supplied_context.get("slot_play_contexts") is Dictionary \
+			and supplied_context.get("district_focus_score_by_index") is Dictionary:
+		return supplied_context
+	return {
+		"cache_active": true,
+		"player_index": player_index,
+		"slot_play_contexts": {},
+		"district_focus_score_by_index": {},
+	}
+func _ai_card_play_candidates(player_index: int, supplied_scoring_context: Dictionary = {}) -> Array:
 	var result := []
 	var economy_facts := _actor_decision_economy_facts(player_index)
 	var hand_snapshot := _actor_hand_inventory_snapshot(player_index)
@@ -7826,6 +8202,7 @@ func _ai_card_play_candidates(player_index: int) -> Array:
 		return result
 	if _queued_card_entry_index_for_player(player_index) >= 0 or _next_batch_card_entry_index_for_player(player_index) >= 0:
 		return result
+	var play_scoring_context := _ai_card_turn_scoring_context(player_index, supplied_scoring_context)
 	for entry_variant in _actor_hand_slot_entries(hand_snapshot):
 		if not (entry_variant is Dictionary):
 			continue
@@ -7836,11 +8213,18 @@ func _ai_card_play_candidates(player_index: int) -> Array:
 		var skill: Dictionary = entry.get("card", {})
 		if bool(skill.get("queued_for_resolution", false)) or float(skill.get("cooldown_left", 0.0)) > 0.0 or float(skill.get("lock_left", 0.0)) > 0.0:
 			continue
-		var context := _ai_card_play_context(player_index, slot_index, skill)
+		var slot_play_contexts := play_scoring_context.get("slot_play_contexts") as Dictionary
+		var context: Dictionary = {}
+		if slot_play_contexts.has(slot_index):
+			var cached_slot_context: Variant = slot_play_contexts.get(slot_index)
+			context = cached_slot_context as Dictionary if cached_slot_context is Dictionary else {}
+		else:
+			context = _ai_card_play_context(player_index, slot_index, skill, play_scoring_context)
+			slot_play_contexts[slot_index] = context
 		if not context.is_empty():
 			result.append(context)
 	return result
-func _ai_card_buy_candidates(player_index: int) -> Array:
+func _ai_card_buy_candidates(player_index: int, supplied_discard_scoring_context: Dictionary = {}) -> Array:
 	var result := []
 	var economy_facts := _actor_decision_economy_facts(player_index)
 	var hand_snapshot := _actor_hand_inventory_snapshot(player_index)
@@ -7888,6 +8272,7 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 	var discard_plan_ready := false
 	var cached_discard_slot := -1
 	var cached_discard_keep_value := 0
+	var discard_play_scoring_context := _ai_card_turn_scoring_context(player_index, supplied_discard_scoring_context)
 	var strategy_candidate_context := {
 		"strategy": strategy,
 		"focus_product": focus_product,
@@ -7929,9 +8314,9 @@ func _ai_card_buy_candidates(player_index: int) -> Array:
 			var hand_pressure_penalty := 0
 			if needs_discard:
 				if not discard_plan_ready:
-					cached_discard_slot = _ai_discard_slot_for_purchase(player_index, card_name, hand_snapshot)
+					cached_discard_slot = _ai_discard_slot_for_purchase(player_index, card_name, hand_snapshot, discard_play_scoring_context)
 					if cached_discard_slot >= 0:
-						cached_discard_keep_value = _ai_discard_keep_value(player_index, cached_discard_slot, hand_snapshot)
+						cached_discard_keep_value = _ai_discard_keep_value(player_index, cached_discard_slot, hand_snapshot, discard_play_scoring_context)
 					discard_plan_ready = true
 				discard_slot = cached_discard_slot
 				if discard_slot < 0:
@@ -8268,11 +8653,16 @@ func _ai_queue_play_candidate(player_index: int, candidate: Dictionary, all_cand
 	selected_trade_product = previous_product
 	return queued
 func _ai_execute_card_turn(player_index: int, force: bool = false) -> String:
-	var play_candidates := _ai_card_play_candidates(player_index)
+	var turn_play_scoring_context := _ai_card_turn_scoring_context(player_index)
+	var play_candidates := _ai_card_play_candidates(player_index, turn_play_scoring_context)
 	var play_choice := _ai_pick_candidate(player_index, play_candidates, force)
-	if not play_choice.is_empty() and _ai_queue_play_candidate(player_index, play_choice, play_candidates):
-		return "play"
-	var buy_candidates := _ai_card_buy_candidates(player_index)
+	if not play_choice.is_empty():
+		if _ai_queue_play_candidate(player_index, play_choice, play_candidates):
+			return "play"
+	var fallback_discard_scoring_context: Dictionary = {}
+	if play_choice.is_empty():
+		fallback_discard_scoring_context = turn_play_scoring_context
+	var buy_candidates := _ai_card_buy_candidates(player_index, fallback_discard_scoring_context)
 	var buy_choice := _ai_pick_candidate(player_index, buy_candidates, force)
 	if buy_choice.is_empty():
 		return "wait"
@@ -8467,10 +8857,34 @@ func _auto_ai_counter_responses(force: bool = false) -> int:
 		if _ai_queue_counter_response_candidate(player_index, candidate, player_candidates):
 			return 1
 	return 0
-func _ai_public_player_product_signal(viewer_index: int, guessed_player: int, product_name: String) -> int:
-	var snapshot := _city_inference_snapshot(viewer_index)
-	var player_count := _ai_actor_state_port.player_count() if _ai_actor_state_port != null else 0
+func _ai_public_player_product_signal(
+	viewer_index: int,
+	guessed_player: int,
+	product_name: String,
+	cached_context: Dictionary = {}
+) -> int:
+	var cache_active := bool(cached_context.get("cache_active", false))
+	var guessed_player_key := str(guessed_player)
+	var signals_by_player: Dictionary = cached_context.get("product_signal_by_player", {}) \
+		if cache_active and cached_context.get("product_signal_by_player", {}) is Dictionary else {}
+	var player_signals: Dictionary = signals_by_player.get(guessed_player_key, {}) \
+		if signals_by_player.get(guessed_player_key, {}) is Dictionary else {}
+	if cache_active and player_signals.has(product_name):
+		return int(player_signals[product_name])
+	var snapshot: Dictionary = {}
+	if cache_active and cached_context.has("viewer_snapshot"):
+		var cached_snapshot_variant: Variant = cached_context.get("viewer_snapshot")
+		snapshot = cached_snapshot_variant as Dictionary if cached_snapshot_variant is Dictionary else {}
+	else:
+		snapshot = _city_inference_snapshot(viewer_index)
+	var player_count := int(cached_context.get("player_count", 0)) \
+		if cache_active and cached_context.has("player_count") \
+		else (_ai_actor_state_port.player_count() if _ai_actor_state_port != null else 0)
 	if snapshot.is_empty() or guessed_player < 0 or guessed_player >= player_count or product_name == "":
+		if cache_active:
+			player_signals[product_name] = 0
+			signals_by_player[guessed_player_key] = player_signals
+			cached_context["product_signal_by_player"] = signals_by_player
 		return 0
 	var signal_score := 0
 	for region_variant in snapshot.get("regions", []) as Array:
@@ -8494,10 +8908,21 @@ func _ai_public_player_product_signal(viewer_index: int, guessed_player: int, pr
 			var clue := _normalize_city_public_clue_entry(clue_variant)
 			if (clue.get("products", []) as Array).has(product_name):
 				signal_score += 8 + confidence * 3
+	if cache_active:
+		player_signals[product_name] = signal_score
+		signals_by_player[guessed_player_key] = player_signals
+		cached_context["product_signal_by_player"] = signals_by_player
 	return signal_score
-func _ai_city_guess_owner_candidate(viewer_index: int, city_entry: Dictionary, guessed_player: int) -> Dictionary:
+func _ai_city_guess_owner_candidate(
+	viewer_index: int,
+	city_entry: Dictionary,
+	guessed_player: int,
+	cached_context: Dictionary = {}
+) -> Dictionary:
 	var city_index := int(city_entry.get("district_index", -1))
-	var player_count := _ai_actor_state_port.player_count() if _ai_actor_state_port != null else 0
+	var player_count := int(cached_context.get("player_count", 0)) \
+		if bool(cached_context.get("cache_active", false)) and cached_context.has("player_count") \
+		else (_ai_actor_state_port.player_count() if _ai_actor_state_port != null else 0)
 	if city_index < 0 or guessed_player < 0 or guessed_player >= player_count or guessed_player == viewer_index:
 		return {}
 	var city: Dictionary = city_entry.get("city", {}) if city_entry.get("city", {}) is Dictionary else {}
@@ -8508,14 +8933,14 @@ func _ai_city_guess_owner_candidate(viewer_index: int, city_entry: Dictionary, g
 	var reason_bits := []
 	for product_variant in _city_product_names(city):
 		var product_name := String(product_variant)
-		var product_signal := _ai_public_player_product_signal(viewer_index, guessed_player, product_name)
+		var product_signal := _ai_public_player_product_signal(viewer_index, guessed_player, product_name, cached_context)
 		if product_signal > 0:
 			score += product_signal
 			reason_key = CITY_GUESS_REASON_PRODUCT
 			reason_bits.append("%s商品线索+%d" % [product_name, product_signal])
 	for demand_variant in _city_demand_names(city):
 		var demand_name := String(demand_variant)
-		var demand_signal := int(float(_ai_public_player_product_signal(viewer_index, guessed_player, demand_name)) / 2.0)
+		var demand_signal := int(float(_ai_public_player_product_signal(viewer_index, guessed_player, demand_name, cached_context)) / 2.0)
 		if demand_signal > 0:
 			score += demand_signal
 			if reason_key == CITY_GUESS_REASON_INTUITION:
@@ -8565,7 +8990,14 @@ func _ai_city_guess_candidates(player_index: int) -> Array:
 			or _ai_actor_state_port.is_player_eliminated(player_index):
 		return result
 	var player_count := _ai_actor_state_port.player_count()
-	for entry_variant in _intel_city_guess_entries(player_index, 12):
+	var viewer_snapshot := _city_inference_snapshot(player_index)
+	var candidate_context := {
+		"cache_active": true,
+		"viewer_snapshot": viewer_snapshot,
+		"player_count": player_count,
+		"product_signal_by_player": {},
+	}
+	for entry_variant in _intel_city_guess_entries(player_index, 12, viewer_snapshot, true):
 		if not (entry_variant is Dictionary):
 			continue
 		var entry := entry_variant as Dictionary
@@ -8573,7 +9005,7 @@ func _ai_city_guess_candidates(player_index: int) -> Array:
 			continue
 		var best := {}
 		for guessed_player in range(player_count):
-			var candidate := _ai_city_guess_owner_candidate(player_index, entry, guessed_player)
+			var candidate := _ai_city_guess_owner_candidate(player_index, entry, guessed_player, candidate_context)
 			if candidate.is_empty():
 				continue
 			if best.is_empty() or int(candidate.get("score", 0)) > int(best.get("score", 0)):
@@ -8632,7 +9064,7 @@ func _update_ai_decisions(delta: float) -> void:
 	if ai_intel_decision_timer <= 0.0:
 		_auto_ai_intel_decisions(false)
 		ai_intel_decision_timer = AI_INTEL_DECISION_INTERVAL_SECONDS
-func _ai_discard_keep_value(player_index: int, slot_index: int, hand_snapshot: Dictionary = {}) -> int:
+func _ai_discard_keep_value(player_index: int, slot_index: int, hand_snapshot: Dictionary = {}, cached_context: Dictionary = {}) -> int:
 	if player_index < 0 or player_index >= _public_player_count():
 		return 99999
 	var snapshot := hand_snapshot if not hand_snapshot.is_empty() \
@@ -8641,7 +9073,20 @@ func _ai_discard_keep_value(player_index: int, slot_index: int, hand_snapshot: D
 	if skill.is_empty():
 		return 99999
 	var value := int(skill.get("cost", 2)) * 22 + maxi(1, _skill_rank(String(skill.get("name", "")))) * 18
-	var context := _ai_card_play_context(player_index, slot_index, skill)
+	var cache_active := bool(cached_context.get("cache_active", false))
+	var context: Dictionary = {}
+	if cache_active:
+		var slot_play_contexts: Dictionary = cached_context.get("slot_play_contexts", {}) \
+			if cached_context.get("slot_play_contexts", {}) is Dictionary else {}
+		if slot_play_contexts.has(slot_index):
+			var cached_slot_context: Variant = slot_play_contexts.get(slot_index)
+			context = cached_slot_context as Dictionary if cached_slot_context is Dictionary else {}
+		else:
+			context = _ai_card_play_context(player_index, slot_index, skill, cached_context)
+			slot_play_contexts[slot_index] = context
+			cached_context["slot_play_contexts"] = slot_play_contexts
+	else:
+		context = _ai_card_play_context(player_index, slot_index, skill)
 	if context.is_empty():
 		value -= 34
 	else:
@@ -8649,7 +9094,7 @@ func _ai_discard_keep_value(player_index: int, slot_index: int, hand_snapshot: D
 	if String(skill.get("kind", "")) == "monster_card" and _ai_owned_active_monster_count(player_index) <= 0:
 		value += 140
 	return value
-func _ai_discard_slot_for_purchase(player_index: int, _incoming_card_name: String, hand_snapshot: Dictionary = {}) -> int:
+func _ai_discard_slot_for_purchase(player_index: int, _incoming_card_name: String, hand_snapshot: Dictionary = {}, cached_context: Dictionary = {}) -> int:
 	if player_index < 0 or player_index >= _public_player_count():
 		return -1
 	var snapshot := hand_snapshot if not hand_snapshot.is_empty() \
@@ -8659,7 +9104,7 @@ func _ai_discard_slot_for_purchase(player_index: int, _incoming_card_name: Strin
 	var best_value := 999999
 	for slot_variant in slots:
 		var slot_index := int(slot_variant)
-		var value := _ai_discard_keep_value(player_index, slot_index, snapshot)
+		var value := _ai_discard_keep_value(player_index, slot_index, snapshot, cached_context)
 		if value < best_value:
 			best_value = value
 			best_slot = slot_index
