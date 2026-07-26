@@ -1,0 +1,1035 @@
+{
+  "schema_version": 1,
+  "audit_id": "training_execution_parity_audit_v1",
+  "baseline_sha": "bd24b463660e55d83fc63deaab650c64c134be20",
+  "observed_origin_main_sha": "59756a291f811a064726f59aed27efecc3590c9a",
+  "origin_main_is_baseline_ancestor": true,
+  "branch": "codex/semantic-program-training-parity-bd24b46",
+  "scope": {
+    "read_only_audit": true,
+    "isolated_worktree": true,
+    "production_modified": false,
+    "tests_modified": false,
+    "catalogs_modified": false,
+    "rules_or_balance_modified": false,
+    "rng_modified": false,
+    "save_modified": false,
+    "existing_reports_modified": false,
+    "owned_outputs": [
+      "reports/semantic_program/training_execution_parity_audit.md",
+      "reports/semantic_program/training_execution_parity_audit.json"
+    ]
+  },
+  "verdict": {
+    "parity_established": false,
+    "standalone_training_engine_found": false,
+    "current_training_mode": "online learning from live production decisions and later live world deltas",
+    "production_simulation_is_training_engine": false,
+    "operation_handler_registry_present": false,
+    "rule_execution_plan_present": false,
+    "semantic_ai_projector_composed_in_production": false,
+    "summary": "No second offline trainer was found, but production and formal planning, diagnostics, semantic projection, response handling, catalog authority, and replay lineage are not yet unified through one executable plan and registry."
+  },
+  "scan_inventory": {
+    "production_gd_file_count": 730,
+    "standalone_trainer_self_play_rollout_filename_match_count": 0,
+    "standalone_trainer_self_play_rollout_content_match_file_count": 0,
+    "operation_handler_registry_reference_count": 0,
+    "rule_execution_plan_reference_count": 0,
+    "ai_semantic_projector_external_production_composition_reference_count": 0,
+    "ai_raw_skill_read_occurrence_count": 214,
+    "ai_raw_skill_unique_field_count": 65,
+    "ai_raw_owner_read_occurrence_count": 54,
+    "diagnostics_raw_card_skill_read_occurrence_count": 240,
+    "diagnostics_raw_card_skill_unique_field_count": 85,
+    "finding_count": 32,
+    "classification_counts": {
+      "REMOVE": 6,
+      "MOVE": 15,
+      "KEEP": 11
+    },
+    "scan_notes": [
+      "Raw read counts are lexical occurrences of skill-family or card-family get calls at the audited baseline.",
+      "Occurrence counts are not claims that every read is an independent formula or defect.",
+      "Zero production composition references excludes the projector implementation, its own scene, and tool benches."
+    ]
+  },
+  "raw_field_inventory": {
+    "ai_skill_fields": [
+      "bound_military_uid",
+      "bound_monster_uid",
+      "cash",
+      "catalog_index",
+      "consumption_delta",
+      "contract_income",
+      "control_block_seconds",
+      "control_gdp_penalty",
+      "cooldown",
+      "cooldown_left",
+      "cost",
+      "counter_refund",
+      "counter_strength",
+      "counter_trace",
+      "damage",
+      "demand_shift",
+      "draw_amount",
+      "fixed_skill_count",
+      "global_barrage_damage",
+      "global_barrage_route_damage",
+      "global_barrage_target_count",
+      "growth_multiplier",
+      "hand_discard_count",
+      "hand_lock_seconds",
+      "hand_steal_count",
+      "history_review_count",
+      "history_subscription_count",
+      "hp",
+      "kind",
+      "lock_left",
+      "lure_speedup",
+      "market_demand_pressure",
+      "market_supply_pressure",
+      "military_command",
+      "military_damage",
+      "military_duration_seconds",
+      "military_gdp_penalty",
+      "military_hp",
+      "military_move",
+      "military_range",
+      "military_strike_route_damage",
+      "military_type",
+      "monster_name",
+      "name",
+      "panic",
+      "play_product",
+      "play_requirement_district",
+      "price_delta",
+      "product_shift",
+      "production_delta",
+      "queued_for_resolution",
+      "range",
+      "repair_routes",
+      "reveal_city_count",
+      "revenue_amount",
+      "route_damage",
+      "route_flow_multiplier",
+      "starter_play_free",
+      "steal_fail_cash",
+      "target_cash_penalty",
+      "transport_delta",
+      "weather_duration_seconds",
+      "weather_forecast_lead_seconds",
+      "weather_type",
+      "weather_zone_count"
+    ],
+    "diagnostics_card_fields": [
+      "armor",
+      "art_stats",
+      "authored_skill",
+      "bonus_card_product",
+      "card_id",
+      "card_name",
+      "cash",
+      "chip_texts",
+      "consumption_delta",
+      "contract_income",
+      "control_block_seconds",
+      "control_gdp_penalty",
+      "cost",
+      "counter_strength",
+      "counter_window_seconds",
+      "damage",
+      "delay",
+      "draw_amount",
+      "duration",
+      "family",
+      "fixed_skill_count",
+      "futures_terms",
+      "gdp_derivative_terms",
+      "global_barrage_damage",
+      "global_barrage_route_damage",
+      "global_barrage_target_count",
+      "growth_multiplier",
+      "guard",
+      "hand_discard_count",
+      "hand_lock_seconds",
+      "hand_steal_count",
+      "history_review_count",
+      "history_subscription_count",
+      "hp",
+      "kind",
+      "knockback",
+      "lure_speedup",
+      "market_demand_pressure",
+      "market_supply_pressure",
+      "military_damage",
+      "military_duration_seconds",
+      "military_gdp_penalty",
+      "military_hp",
+      "military_move",
+      "military_range",
+      "monster_cards_as_counter",
+      "move",
+      "name",
+      "panic",
+      "persistent",
+      "play_cash",
+      "play_product",
+      "play_region_gdp_share_required",
+      "price",
+      "production_delta",
+      "quick_effect",
+      "range",
+      "ranged_guard",
+      "rank",
+      "repair_routes",
+      "requirement",
+      "resolution_handler",
+      "reveal_city_count",
+      "revenue_amount",
+      "route_damage",
+      "route_flow_multiplier",
+      "route_label",
+      "skill",
+      "stabilize_amount",
+      "starter_play_free",
+      "starting_cash_bonus",
+      "starting_cash_delta",
+      "steal_fail_cash",
+      "summon_access",
+      "supply_product",
+      "tags",
+      "target",
+      "target_cash_penalty",
+      "target_monster_required",
+      "target_player_required",
+      "text",
+      "transport_delta",
+      "use_case",
+      "weather_duration_seconds",
+      "weather_zone_count"
+    ]
+  },
+  "entrypoints": [
+    {
+      "id": "production_ai_tick",
+      "evidence": [
+        "scripts/runtime/ai_runtime_controller.gd:249-252",
+        "scripts/runtime/runtime_simulation_phase_coordinator.gd:45-46"
+      ],
+      "role": "live production AI cadence",
+      "authority": "production"
+    },
+    {
+      "id": "formal_turn_plan",
+      "evidence": ["scripts/runtime/ai_runtime_controller.gd:260-275"],
+      "role": "top-selects card play and purchase candidates",
+      "authority": "unwired facade"
+    },
+    {
+      "id": "formal_response_plan",
+      "evidence": ["scripts/runtime/ai_runtime_controller.gd:279-302"],
+      "role": "top-selects counter and wager candidates",
+      "authority": "unwired facade"
+    },
+    {
+      "id": "formal_rank_receipt_intent",
+      "evidence": ["scripts/runtime/ai_runtime_controller.gd:305-340"],
+      "role": "sorts caller dictionaries, records receipts, and forwards generic intents",
+      "authority": "api shape only"
+    },
+    {
+      "id": "production_card_choice",
+      "evidence": [
+        "scripts/runtime/ai_runtime_controller.gd:8840-8853",
+        "scripts/runtime/ai_runtime_controller.gd:8911-8932"
+      ],
+      "role": "shared-RNG exploration and live purchase/play submission",
+      "authority": "production"
+    },
+    {
+      "id": "production_counter_choice",
+      "evidence": ["scripts/runtime/ai_runtime_controller.gd:9090-9120"],
+      "role": "score gate plus shared-RNG response probability",
+      "authority": "production"
+    },
+    {
+      "id": "online_decision_recording",
+      "evidence": ["scripts/runtime/ai_runtime_controller.gd:4939-5034"],
+      "role": "records live decision samples and baseline outcomes",
+      "authority": "online learning input"
+    },
+    {
+      "id": "online_reward_finalization",
+      "evidence": [
+        "scripts/runtime/ai_runtime_controller.gd:5035-5070",
+        "scripts/main.gd:847-852"
+      ],
+      "role": "derives reward from later live cash and victory deltas",
+      "authority": "online learning update"
+    },
+    {
+      "id": "ai_memory_save_restore",
+      "evidence": ["scripts/runtime/ai_runtime_controller.gd:343-449"],
+      "role": "persists AI profiles and memory in the existing AI save section",
+      "authority": "production save"
+    },
+    {
+      "id": "developer_world_snapshot",
+      "evidence": ["scripts/runtime/gameplay_balance_diagnostics_world_bridge.gd:53-88"],
+      "role": "builds developer diagnostic facts",
+      "authority": "diagnostic input"
+    },
+    {
+      "id": "gameplay_balance_diagnostics",
+      "evidence": [
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:47-51",
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:815-858"
+      ],
+      "role": "caches snapshots and invokes statistics reports",
+      "authority": "read-only diagnostics"
+    },
+    {
+      "id": "runtime_balance_model",
+      "evidence": [
+        "scripts/balance/runtime_balance_model.gd:314-369",
+        "scripts/balance/runtime_balance_model.gd:648-772"
+      ],
+      "role": "shared numeric formulas plus independently reconstructed reports",
+      "authority": "mixed"
+    },
+    {
+      "id": "legacy_card_balance_analyzer",
+      "evidence": [
+        "scripts/balance/card_balance_analyzer.gd:13-55",
+        "scripts/balance/card_balance_reporter.gd:7-34"
+      ],
+      "role": "vertical-slice heuristic report",
+      "authority": "alternate diagnostic model"
+    },
+    {
+      "id": "military_balance_report",
+      "evidence": ["scripts/runtime/military_runtime_controller.gd:790-870"],
+      "role": "raw military card scoring report",
+      "authority": "diagnostic reinterpretation"
+    },
+    {
+      "id": "weather_balance_reference_bench",
+      "evidence": [
+        "scripts/tools/weather_balance_report_v1_bench.gd:55-60",
+        "scripts/tools/weather_balance_report_v1_bench.gd:146-169"
+      ],
+      "role": "bounded resolver-backed deterministic reference",
+      "authority": "test/tool only"
+    },
+    {
+      "id": "production_simulation",
+      "evidence": [
+        "scripts/runtime/runtime_simulation_step.gd:86-112",
+        "scripts/runtime/runtime_simulation_phase_coordinator.gd:33-58"
+      ],
+      "role": "authoritative production game loop",
+      "authority": "production"
+    },
+    {
+      "id": "simulation_determinism_audit",
+      "evidence": [
+        "scripts/runtime/simulation_determinism_audit.gd:26-74",
+        "scripts/runtime/simulation_determinism_audit.gd:149-169"
+      ],
+      "role": "passive deterministic trace and violation recorder",
+      "authority": "development reference"
+    },
+    {
+      "id": "semantic_ai_projection_bench",
+      "evidence": [
+        "scripts/tools/ai_card_semantic_projection_bench.gd:14-18",
+        "scripts/tools/ai_card_semantic_projection_bench.gd:111-169"
+      ],
+      "role": "determinism, negative, readiness, and source checks for the isolated semantic projector",
+      "authority": "tool only"
+    },
+    {
+      "id": "balance_runtime_bridge_bench",
+      "evidence": [
+        "scripts/tools/balance_runtime_bridge_bench.gd:112-163",
+        "scripts/tools/balance_runtime_bridge_bench.gd:289-318"
+      ],
+      "role": "developer flow and diagnostics acceptance cases",
+      "authority": "tool only"
+    },
+    {
+      "id": "balance_parameter_resource_bench",
+      "evidence": [
+        "scripts/tools/balance_parameter_resource_bench.gd:27-51",
+        "scripts/tools/balance_parameter_resource_bench.gd:114-151"
+      ],
+      "role": "Resource and JSON parameter manifest comparison",
+      "authority": "tool only"
+    },
+    {
+      "id": "balance_model_sandbox_bench",
+      "evidence": [
+        "scripts/tools/balance_model_resource_sandbox_bench.gd:24-66",
+        "scripts/tools/balance_model_resource_sandbox_bench.gd:124-151"
+      ],
+      "role": "bounded model sample cases",
+      "authority": "tool-only alternate model"
+    },
+    {
+      "id": "balance_parameter_model_adapters",
+      "evidence": [
+        "scripts/balance/balance_parameter_model_adapter.gd:14-52",
+        "scripts/balance/balance_runtime_parameter_bridge.gd:17-96"
+      ],
+      "role": "runtime-model, Resource, and JSON value comparison",
+      "authority": "developer comparison only"
+    },
+    {
+      "id": "developer_balance_presentation",
+      "evidence": [
+        "scripts/presentation/developer_balance_application_host.gd:20-60",
+        "scripts/ui/developer_balance_panel.gd:39-46",
+        "scripts/tools/developer_balance_application_host_bench.gd:16-27"
+      ],
+      "role": "mounts, refreshes, and bench-checks the read-only developer panel",
+      "authority": "presentation and tool only"
+    },
+    {
+      "id": "interactive_balance_previews",
+      "evidence": [
+        "scripts/tools/balance_model_resource_sandbox.gd:27-29",
+        "scripts/tools/balance_runtime_bridge_mcp_preview.gd:27-29",
+        "scripts/tools/balance_parameter_resource_mcp_preview.gd:23-24"
+      ],
+      "role": "interactive UI entrypoints for developer comparison models",
+      "authority": "tool only"
+    },
+    {
+      "id": "simulation_migration_benches",
+      "evidence": [
+        "scripts/tools/simulation_runtime_authority_migration_bench.gd:9-13",
+        "scripts/tools/simulation_monster_action_command_migration_bench.gd:6-10",
+        "scripts/tools/simulation_autonomous_behavior_command_migration_bench.gd:6-10"
+      ],
+      "role": "bounded source and composition migration checks",
+      "authority": "test and reference only"
+    },
+    {
+      "id": "simulation_determinism_benches",
+      "evidence": [
+        "scripts/tools/simulation_determinism_foundation_bench.gd:10-14",
+        "scripts/tools/simulation_determinism_consumption_layer_bench.gd:9-13"
+      ],
+      "role": "scene wrappers around focused deterministic tests",
+      "authority": "test and reference only"
+    }
+  ],
+  "production_execution_paths": {
+    "card": {
+      "submission": "CardPlaySubmissionRuntimeController",
+      "queued_execution": "CardResolutionExecutionRuntimeService -> CardEffectRuntimeRouter -> domain owner",
+      "direct_v06_execution": "CardPlaySubmissionRuntimeController -> GameRuntimeCoordinator v0.6 transaction APIs",
+      "evidence": [
+        "scripts/runtime/card_play_submission_runtime_controller.gd:60-109",
+        "scripts/runtime/card_play_submission_runtime_controller.gd:300-477",
+        "scripts/runtime/card_resolution_execution_runtime_service.gd:796-812",
+        "scripts/runtime/card_effect_runtime_router.gd:44-78"
+      ]
+    },
+    "economy": {
+      "path": "ProductMarketRuntimeController -> RuntimeBalanceModel + RunRngService detached cursor -> owner commit",
+      "evidence": [
+        "scripts/runtime/product_market_runtime_controller.gd:520-621",
+        "scripts/balance/runtime_balance_model.gd:129-179"
+      ]
+    },
+    "monster": {
+      "path": "RuntimeSimulationPhaseCoordinator -> MonsterRuntimeController lifecycle/motion/action owners",
+      "evidence": [
+        "scripts/runtime/runtime_simulation_phase_coordinator.gd:43-58",
+        "scripts/runtime/monster_runtime_controller.gd:4312-4338",
+        "scripts/runtime/monster_runtime_controller.gd:6018-6075"
+      ]
+    },
+    "military": {
+      "path": "MilitaryRuntimeController tick/summon/trigger command",
+      "evidence": [
+        "scripts/runtime/military_runtime_controller.gd:159-165",
+        "scripts/runtime/military_runtime_controller.gd:594-788"
+      ]
+    },
+    "weather": {
+      "path": "WeatherRuntimeController tick/control -> WeatherSystem lifecycle and resolver",
+      "evidence": [
+        "scripts/runtime/weather_runtime_controller.gd:220-250",
+        "scripts/runtime/weather_runtime_controller.gd:350-365",
+        "scripts/runtime/weather_system.gd:4-23"
+      ]
+    },
+    "response": {
+      "path": "ForcedDecisionResponsePort -> typed response sink -> production owner",
+      "evidence": [
+        "scripts/runtime/forced_decision_response_port.gd:49-92",
+        "scripts/runtime/card_target_choice_response_sink.gd:30-155",
+        "scripts/runtime/monster_wager_response_sink.gd:23-77"
+      ]
+    }
+  },
+  "findings": [
+    {
+      "id": "TEP-001",
+      "classification": "REMOVE",
+      "severity": "major",
+      "title": "Disconnected generic AI intent facade",
+      "evidence": [
+        "scripts/runtime/ai_runtime_controller.gd:320-340",
+        "scripts/runtime/ai_runtime_world_bridge.gd:100-111",
+        "scripts/main.gd:876-881"
+      ],
+      "conclusion": "The formal intent route reaches only an ai_runtime_noop production action.",
+      "required_action": "Remove the facade after typed action routes cover all callers and never use it as parity evidence."
+    },
+    {
+      "id": "TEP-002",
+      "classification": "REMOVE",
+      "severity": "blocker",
+      "title": "Unrevealed monster owner influences AI wager score",
+      "evidence": [
+        "scripts/runtime/ai_runtime_controller.gd:839-844",
+        "scripts/runtime/ai_runtime_controller.gd:9407-9425",
+        "scripts/runtime/monster_runtime_controller.gd:781-789",
+        "scripts/runtime/monster_runtime_controller.gd:3187-3199"
+      ],
+      "conclusion": "AI reads true owner even when owner_revealed is false, despite an available owner-stripping public projection.",
+      "required_action": "Remove private owner access and score only viewer-authorized monster facts."
+    },
+    {
+      "id": "TEP-003",
+      "classification": "REMOVE",
+      "severity": "blocker",
+      "title": "Unscoped hidden-derived training metadata",
+      "evidence": [
+        "scripts/runtime/ai_runtime_controller.gd:4385-4409",
+        "scripts/runtime/ai_runtime_controller.gd:4937-4989"
+      ],
+      "conclusion": "Training samples can retain target_owner, owner bias, exact candidate names, and internal derived scores without a viewer projection proof.",
+      "required_action": "Remove unauthorized fields and retain stable action, plan, receipt, and sanitized explanation identities only."
+    },
+    {
+      "id": "TEP-004",
+      "classification": "REMOVE",
+      "severity": "blocker",
+      "title": "Generic AI world mutation and dynamic call authority",
+      "evidence": [
+        "scripts/runtime/ai_runtime_controller.gd:786-800",
+        "scripts/runtime/ai_runtime_controller.gd:839-922",
+        "scripts/runtime/ai_runtime_controller.gd:3695-3719",
+        "scripts/runtime/ai_runtime_world_bridge.gd:47-81",
+        "scripts/runtime/ai_runtime_world_bridge.gd:93-97"
+      ],
+      "conclusion": "AI can write world values, call arbitrary exposed methods, and patch player runtime defaults directly.",
+      "required_action": "Remove generic mutation/call authority and use typed production commands plus owner receipts."
+    },
+    {
+      "id": "TEP-005",
+      "classification": "REMOVE",
+      "severity": "major",
+      "title": "Localized runtime diagnostic sample subset",
+      "evidence": ["scripts/runtime/gameplay_balance_diagnostics_world_bridge.gd:306-316"],
+      "conclusion": "Production diagnostics hard-code a localized list of sample card names.",
+      "required_action": "Replace with semantic tags or a test-only explicit fixture."
+    },
+    {
+      "id": "TEP-006",
+      "classification": "REMOVE",
+      "severity": "blocker",
+      "title": "Divergent weather balance model",
+      "evidence": [
+        "scripts/balance/environment_balance_model.gd:13-18",
+        "scripts/balance/environment_balance_model.gd:34-49",
+        "scripts/runtime/weather_system.gd:4-23",
+        "scripts/balance/balance_parameter_model_adapter.gd:168-181"
+      ],
+      "conclusion": "Diagnostic forecast and active ranges differ from production, and the adapter compares against model resources rather than live execution.",
+      "required_action": "Remove this model as a parity oracle and project the production weather contract."
+    },
+    {
+      "id": "TEP-007",
+      "classification": "MOVE",
+      "severity": "blocker",
+      "title": "Formal planner and production scheduler differ",
+      "evidence": [
+        "scripts/runtime/ai_runtime_controller.gd:260-302",
+        "scripts/runtime/ai_runtime_controller.gd:8840-8853",
+        "scripts/runtime/ai_runtime_controller.gd:8911-8928",
+        "scripts/runtime/ai_runtime_controller.gd:9090-9120"
+      ],
+      "conclusion": "Formal planners top-select while production uses exploration and a separate response probability gate.",
+      "required_action": "Move both entrypoints onto one candidate and scheduler contract."
+    },
+    {
+      "id": "TEP-008",
+      "classification": "MOVE",
+      "severity": "blocker",
+      "title": "AI raw card payload interpretation",
+      "evidence": [
+        "scripts/runtime/ai_runtime_controller.gd:3971-4002",
+        "scripts/runtime/ai_runtime_controller.gd:6770-6783",
+        "scripts/runtime/ai_runtime_controller.gd:7519-7530"
+      ],
+      "conclusion": "The audited file contains 214 direct skill-family reads across 65 fields.",
+      "required_action": "Move migrated operations to CardSemanticSpec plus viewer-scoped observation and AiActionCandidate."
+    },
+    {
+      "id": "TEP-009",
+      "classification": "MOVE",
+      "severity": "blocker",
+      "title": "AI forced-response bypass",
+      "evidence": [
+        "scripts/runtime/ai_runtime_controller.gd:1870-1872",
+        "scripts/runtime/ai_runtime_controller.gd:9025-9089",
+        "scripts/runtime/forced_decision_response_port.gd:49-92",
+        "scripts/runtime/monster_wager_response_sink.gd:23-77"
+      ],
+      "conclusion": "AI wager and counter paths bypass typed identity, revision, replay, and receipt boundaries.",
+      "required_action": "Move AI and human responses through the same typed request and sink contracts."
+    },
+    {
+      "id": "TEP-010",
+      "classification": "MOVE",
+      "severity": "blocker",
+      "title": "Learning binds to queue acceptance instead of terminal execution",
+      "evidence": [
+        "scripts/runtime/ai_runtime_controller.gd:8864-8907",
+        "scripts/runtime/ai_runtime_controller.gd:9025-9089",
+        "scripts/runtime/ai_runtime_controller.gd:5035-5070"
+      ],
+      "conclusion": "A queued decision can be sampled before effect success, countering, rollback, or finalization is known.",
+      "required_action": "Bind learning to terminal execution receipts and viewer-safe state deltas."
+    },
+    {
+      "id": "TEP-011",
+      "classification": "MOVE",
+      "severity": "blocker",
+      "title": "Semantic AI projector is isolated and accepts caller-authored outcomes",
+      "evidence": [
+        "scripts/runtime/ai_card_semantic_projection_service.gd:35-78",
+        "scripts/runtime/ai_card_semantic_projection_service.gd:115-160",
+        "scripts/runtime/ai_outcome_vector_v1.gd:37-55",
+        "scenes/runtime/GameRuntimeCoordinator.tscn:1-110"
+      ],
+      "conclusion": "The projector is not composed in production and its legal target outcome adjustments are supplied upstream.",
+      "required_action": "Move legality and neutral outcome evidence behind an authoritative rules projection and terminal receipts."
+    },
+    {
+      "id": "TEP-012",
+      "classification": "MOVE",
+      "severity": "blocker",
+      "title": "v0.4 production catalog and special-source divergence",
+      "evidence": [
+        "scenes/runtime/CardRuntimeCatalogService.tscn:3-8",
+        "scripts/runtime/card_runtime_catalog_service.gd:11-21",
+        "scripts/runtime/card_runtime_definition_world_bridge.gd:31-43",
+        "scripts/runtime/card_runtime_definition_world_bridge.gd:77-102",
+        "scenes/runtime/CardSemanticCatalogService.tscn:3-8"
+      ],
+      "conclusion": "Production reads v0.4 plus monster and finance sources while semantic compilation reads a separate v0.6 service.",
+      "required_action": "Move to one compiled semantic catalog with explicit compatibility adapters and fingerprints."
+    },
+    {
+      "id": "TEP-013",
+      "classification": "MOVE",
+      "severity": "blocker",
+      "title": "Dual card execution paths",
+      "evidence": [
+        "scripts/runtime/card_play_submission_runtime_controller.gd:60-109",
+        "scripts/runtime/card_play_submission_runtime_controller.gd:300-477"
+      ],
+      "conclusion": "v0.6 direct/queued and legacy queued cards do not share one execution-plan lifecycle.",
+      "required_action": "Move all card submission to one RuleExecutionPlan lifecycle while retaining current owner adapters."
+    },
+    {
+      "id": "TEP-014",
+      "classification": "MOVE",
+      "severity": "blocker",
+      "title": "Raw handler inference and dispatch",
+      "evidence": [
+        "scripts/runtime/card_resolution_execution_runtime_service.gd:796-812",
+        "scripts/runtime/card_effect_runtime_router.gd:44-101",
+        "scripts/runtime/card_effect_runtime_router.gd:129-165"
+      ],
+      "conclusion": "Execution selects handlers from target kind, effect kind, or raw card kind and then uses another dispatch table.",
+      "required_action": "Resolve stable operation_id and handler_version through one fail-closed OperationHandlerRegistry."
+    },
+    {
+      "id": "TEP-015",
+      "classification": "MOVE",
+      "severity": "major",
+      "title": "Promote existing v0.6 economic router lifecycle",
+      "evidence": [
+        "scripts/cards/v06/production/core_economic_card_effect_router_v06.gd:4-29",
+        "scripts/cards/v06/production/core_economic_card_effect_router_v06.gd:33-75"
+      ],
+      "conclusion": "A useful registry-like prepare/commit/abort/finalize lifecycle exists but is keyed to legacy effect kinds.",
+      "required_action": "Promote the machinery into the shared registry without adding a second economic engine."
+    },
+    {
+      "id": "TEP-016",
+      "classification": "MOVE",
+      "severity": "major",
+      "title": "Diagnostics bridge reconstructs production meaning",
+      "evidence": [
+        "scripts/runtime/gameplay_balance_diagnostics_world_bridge.gd:106-148",
+        "scripts/runtime/gameplay_balance_diagnostics_world_bridge.gd:181-223",
+        "scripts/runtime/gameplay_balance_diagnostics_world_bridge.gd:274-316"
+      ],
+      "conclusion": "The bridge rebuilds cards and monsters through Main/private helpers and localized samples.",
+      "required_action": "Move to a standard semantic diagnostic projection plus public owner facts."
+    },
+    {
+      "id": "TEP-017",
+      "classification": "MOVE",
+      "severity": "blocker",
+      "title": "Diagnostics raw payload scoring",
+      "evidence": [
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:6-12",
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:889-1023"
+      ],
+      "conclusion": "The audited diagnostic files contain 240 direct card-family reads across 85 fields and localized kind/route maps.",
+      "required_action": "Consume SemanticSpec, RuleExecutionPlan, and terminal receipt projections only."
+    },
+    {
+      "id": "TEP-018",
+      "classification": "MOVE",
+      "severity": "major",
+      "title": "Alternate vertical-slice card analyzer",
+      "evidence": [
+        "scripts/balance/card_balance_analyzer.gd:6-55",
+        "scripts/balance/card_balance_analyzer.gd:75-102",
+        "scripts/balance/card_balance_analyzer.gd:166-194"
+      ],
+      "conclusion": "The analyzer uses a separate subset, heuristic effect values, and rank strings.",
+      "required_action": "Make it a standard semantic diagnostic consumer or retire it as an authority."
+    },
+    {
+      "id": "TEP-019",
+      "classification": "MOVE",
+      "severity": "major",
+      "title": "Military balance scoring duplicates interpretation",
+      "evidence": ["scripts/runtime/military_runtime_controller.gd:790-870"],
+      "conclusion": "The live military owner separately scores raw card fields for diagnostics.",
+      "required_action": "Move diagnostics to military semantic and execution-receipt projections while retaining live state in the owner."
+    },
+    {
+      "id": "TEP-020",
+      "classification": "MOVE",
+      "severity": "major",
+      "title": "Monster attack-pressure diagnostic model",
+      "evidence": [
+        "scripts/balance/runtime_balance_model.gd:709-727",
+        "scripts/runtime/monster_runtime_controller.gd:4312-4338",
+        "scripts/runtime/monster_runtime_controller.gd:6018-6075"
+      ],
+      "conclusion": "Diagnostics rebuild attack pressure from raw actions rather than production semantic and receipt facts.",
+      "required_action": "Move to a standard monster diagnostic projection sharing production handler and formula lineage."
+    },
+    {
+      "id": "TEP-021",
+      "classification": "MOVE",
+      "severity": "blocker",
+      "title": "Save and replay omit semantic execution lineage",
+      "evidence": [
+        "scripts/runtime/v06_save_owner_registry.gd:28-47",
+        "scripts/runtime/simulation_trace_contract.gd:5-40",
+        "scripts/runtime/card_resolution_history_runtime_service.gd:228-249"
+      ],
+      "conclusion": "Current contracts do not bind semantic catalog, registry, handler, plan, RNG-draw, owner-receipt, or terminal-receipt identity.",
+      "required_action": "Add versioned section and trace lineage without changing the existing root envelope."
+    },
+    {
+      "id": "TEP-022",
+      "classification": "KEEP",
+      "severity": "positive",
+      "title": "Shared production product formulas",
+      "evidence": [
+        "scripts/balance/runtime_balance_model.gd:129-179",
+        "scripts/runtime/product_market_runtime_controller.gd:534-618"
+      ],
+      "conclusion": "Production market refresh uses the shared product price and flow model.",
+      "constraint": "Reference the same formula owner; do not copy formulas into training."
+    },
+    {
+      "id": "TEP-023",
+      "classification": "KEEP",
+      "severity": "positive",
+      "title": "Typed AI purchase and normal card-play entrypoints",
+      "evidence": [
+        "scripts/runtime/ai_runtime_controller.gd:1794-1797",
+        "scripts/runtime/ai_runtime_controller.gd:1825-1838"
+      ],
+      "conclusion": "AI already submits purchase and card play to production controllers.",
+      "constraint": "Candidates must reference authoritative plans and terminal receipts."
+    },
+    {
+      "id": "TEP-024",
+      "classification": "KEEP",
+      "severity": "positive",
+      "title": "AI business transaction lifecycle",
+      "evidence": ["scripts/runtime/ai_runtime_controller.gd:2254-2358"],
+      "conclusion": "AI business pressure uses stable requests, owner prepare/commit/rollback/finalize, and a typed cash port.",
+      "constraint": "Reuse this lifecycle model and do not fork a training implementation."
+    },
+    {
+      "id": "TEP-025",
+      "classification": "KEEP",
+      "severity": "positive",
+      "title": "Online learning from actual later world outcomes",
+      "evidence": [
+        "scripts/runtime/ai_runtime_controller.gd:4939-5070",
+        "scripts/main.gd:847-852"
+      ],
+      "conclusion": "Reward is derived from later live cash and victory deltas rather than a separate simulated formula.",
+      "constraint": "Sanitize features and bind each update to a terminal receipt."
+    },
+    {
+      "id": "TEP-026",
+      "classification": "KEEP",
+      "severity": "positive",
+      "title": "Authoritative production simulation order",
+      "evidence": [
+        "scripts/runtime/runtime_simulation_step.gd:86-112",
+        "scripts/runtime/runtime_simulation_phase_coordinator.gd:33-58"
+      ],
+      "conclusion": "The runtime simulation step and phase coordinator form the real game loop.",
+      "constraint": "Training must reuse plans and handlers, not emulate this loop with alternate rules."
+    },
+    {
+      "id": "TEP-027",
+      "classification": "KEEP",
+      "severity": "positive",
+      "title": "Passive development determinism audit",
+      "evidence": [
+        "scripts/runtime/simulation_determinism_audit.gd:26-74",
+        "scripts/runtime/simulation_determinism_audit.gd:149-169"
+      ],
+      "conclusion": "The audit records fingerprints and explicitly owns no world, save, or presentation state.",
+      "constraint": "Extend lineage while preserving passive development-only ownership."
+    },
+    {
+      "id": "TEP-028",
+      "classification": "KEEP",
+      "severity": "positive",
+      "title": "Single checkpointable RNG service",
+      "evidence": ["scripts/runtime/run_rng_service.gd:97-164"],
+      "conclusion": "RunRngService provides checkpoints, detached draws, commit, and restore.",
+      "constraint": "Training uses detached cursors and proves state plus draw-count parity."
+    },
+    {
+      "id": "TEP-029",
+      "classification": "KEEP",
+      "severity": "positive",
+      "title": "Typed production response boundaries",
+      "evidence": [
+        "scripts/runtime/forced_decision_response_port.gd:49-92",
+        "scripts/runtime/card_target_choice_response_sink.gd:30-155",
+        "scripts/runtime/monster_wager_response_sink.gd:23-77"
+      ],
+      "conclusion": "Production response paths already provide identity, revision, exact-once, and typed receipts.",
+      "constraint": "AI responses must use the same contracts."
+    },
+    {
+      "id": "TEP-030",
+      "classification": "KEEP",
+      "severity": "positive",
+      "title": "Bounded deterministic production-class fixtures",
+      "evidence": [
+        "tests/core_economic_card_effect_router_v06_test.gd:148-204",
+        "tests/simulation_determinism_foundation_test.gd:157-259",
+        "tests/simulation_determinism_consumption_layer_test.gd:155-303"
+      ],
+      "conclusion": "These fixtures exercise production classes and lifecycle invariants rather than acting as production authorities.",
+      "constraint": "Fakes remain test-only and cannot substitute for production handler parity."
+    },
+    {
+      "id": "TEP-031",
+      "classification": "KEEP",
+      "severity": "positive",
+      "title": "Resolver-backed weather reference bench",
+      "evidence": [
+        "scripts/tools/weather_balance_report_v1_bench.gd:55-60",
+        "scripts/tools/weather_balance_report_v1_bench.gd:146-169"
+      ],
+      "conclusion": "The bounded bench uses production definitions and WeatherEffectResolver and explicitly avoids a live telemetry claim.",
+      "constraint": "Keep as a reference acceptance model and add separate live execution parity gates."
+    },
+    {
+      "id": "TEP-032",
+      "classification": "KEEP",
+      "severity": "positive",
+      "title": "Read-only diagnostics service shell",
+      "evidence": [
+        "scenes/runtime/GameplayBalanceDiagnosticsRuntimeService.tscn:6-9",
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:47-51"
+      ],
+      "conclusion": "A cached read-only developer diagnostics owner is legitimate.",
+      "constraint": "Keep the shell only after raw rule interpretation moves to standard semantic and receipt projections."
+    }
+  ],
+  "required_shared_execution_protocol": {
+    "principle": "Observation and scoring may remain AI-specific; legality, costs, targets, operation order, RNG policy, owner calls, mutation lifecycle, and receipts may not differ.",
+    "steps": [
+      {
+        "order": 1,
+        "id": "viewer_scoped_observation",
+        "contract": "AiObservationSnapshot contains public facts plus only the acting viewer's authorized private facts."
+      },
+      {
+        "order": 2,
+        "id": "compile_once",
+        "contract": "Authoritative semantic specs compile and cache at catalog initialization or an explicit cache miss, never per frame or candidate."
+      },
+      {
+        "order": 3,
+        "id": "authoritative_plan",
+        "contract": "RulesProjection validates actor, instance, target, costs, conditions, visibility, and randomness policy and emits one immutable RuleExecutionPlan."
+      },
+      {
+        "order": 4,
+        "id": "stable_registry",
+        "contract": "OperationHandlerRegistry resolves operation_id plus handler_version; unknown identity fails before mutation."
+      },
+      {
+        "order": 5,
+        "id": "one_handler_lifecycle",
+        "contract": "Production and training both run all preflights, all checkpoints, ordered apply, reverse rollback, finalize, and terminal receipt through the same handlers."
+      },
+      {
+        "order": 6,
+        "id": "isolated_training_state",
+        "contract": "Training uses owner checkpoints or owner-provided deterministic sandboxes and a detached RunRngService cursor, without live mutation or fake handlers."
+      },
+      {
+        "order": 7,
+        "id": "separate_scoring",
+        "contract": "AI personality, strategy, uncertainty, and outcome weights remain outside SemanticSpec and execution handlers."
+      },
+      {
+        "order": 8,
+        "id": "sanitized_terminal_receipt",
+        "contract": "Training consumes viewer-authorized terminal receipt and state-delta projections, not owner internals or queue acceptance alone."
+      },
+      {
+        "order": 9,
+        "id": "replay_lineage",
+        "contract": "Trace and replay bind catalog, semantic spec, registry, handler versions, plan, owner receipts, RNG before/after and draw count, and terminal receipt fingerprints."
+      }
+    ],
+    "rule_execution_plan_required_fields": [
+      "schema_version",
+      "plan_id",
+      "plan_fingerprint",
+      "semantic_catalog_fingerprint",
+      "semantic_spec_fingerprint",
+      "registry_fingerprint",
+      "source_instance_identity",
+      "actor_identity",
+      "target_bindings",
+      "expected_owner_revisions",
+      "ordered_operations",
+      "expected_rng_checkpoint"
+    ],
+    "ordered_operation_required_fields": [
+      "sequence",
+      "operation_id",
+      "handler_version",
+      "owner_id",
+      "condition_result_fingerprint",
+      "arguments",
+      "visibility_policy_id",
+      "randomness_policy_id"
+    ],
+    "handler_training_mode_branch_allowed": false,
+    "fake_production_handler_allowed": false,
+    "second_simulation_engine_allowed": false
+  },
+  "parity_gates": [
+    {
+      "id": "catalog_spec_identity",
+      "assertion": "Production and training use identical catalog and semantic-spec fingerprints."
+    },
+    {
+      "id": "plan_identity",
+      "assertion": "Same request and baseline produce the same plan fingerprint and ordered operation list."
+    },
+    {
+      "id": "registry_identity",
+      "assertion": "Registry fingerprint, operation IDs, and handler versions match, with no production import of test fakes."
+    },
+    {
+      "id": "owner_calls",
+      "assertion": "Owner ID, capability, normalized arguments, and call count match exactly."
+    },
+    {
+      "id": "operation_ordering",
+      "assertion": "Preflight, checkpoint, apply, rollback, and finalize order match exactly."
+    },
+    {
+      "id": "failure_lifecycle",
+      "assertion": "Same fault yields the same reason, mutation count, reverse rollback order, and terminal state fingerprint."
+    },
+    {
+      "id": "rng",
+      "assertion": "Initial checkpoint, draw labels/order, draw count, terminal cursor, and commit or restore result match."
+    },
+    {
+      "id": "receipts",
+      "assertion": "Prepare, apply, rollback or finalize, and terminal receipt fingerprints match after viewer-safe projection."
+    },
+    {
+      "id": "hidden_information",
+      "assertion": "Candidates, samples, receipts, and replay projections expose only viewer-authorized facts."
+    },
+    {
+      "id": "save_restore",
+      "assertion": "Restore preflights semantic, registry, handler, plan, and owner receipt lineage before apply."
+    },
+    {
+      "id": "replay",
+      "assertion": "Replay yields the same owner-call order, RNG delta, receipt, and state fingerprint or an explicit idempotent receipt."
+    },
+    {
+      "id": "compilation_performance",
+      "assertion": "Candidate loops perform zero semantic compilation calls."
+    },
+    {
+      "id": "raw_field_ban",
+      "assertion": "Migrated operations have zero AI and diagnostic raw-payload reads outside a shrinking explicit allowlist."
+    },
+    {
+      "id": "production_composition",
+      "assertion": "Semantic projector, rules projection, registry, and receipt projector are each composed once in the production graph."
+    }
+  ],
+  "blockers": [
+    "OperationHandlerRegistry is absent from production.",
+    "RuleExecutionPlan is absent from production.",
+    "AiCardSemanticProjectionService is not composed in production.",
+    "The formal planner is not the live scheduler and has different selection semantics.",
+    "AI monster wager scoring consumes unrevealed owner identity.",
+    "AI forced responses bypass typed response ports.",
+    "Card submission and execution retain v0.6 and legacy dual paths plus raw handler inference.",
+    "Production card authority is v0.4 plus special sources while semantic compilation uses v0.6.",
+    "AI and diagnostics still reinterpret raw payload fields at scale.",
+    "Weather diagnostics are demonstrably numerically divergent from production.",
+    "Training samples are not bound to terminal effect receipts.",
+    "Save, replay, and trace omit semantic, registry, handler, RNG, and owner-receipt lineage."
+  ],
+  "non_claims": [
+    "This audit does not claim current training versus production execution parity.",
+    "This audit does not claim every raw AI field read is invalid; authorized live world facts may remain behind AiObservationSnapshot.",
+    "This audit does not classify bounded test doubles as a second production engine when they remain test-only and exercise production classes.",
+    "This audit does not propose changing rules, balance values, RNG order, save root shape, or state ownership.",
+    "This audit does not authorize a second simulation or simplified training rules engine."
+  ]
+}
