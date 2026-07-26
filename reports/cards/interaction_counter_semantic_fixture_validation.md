@@ -2,7 +2,7 @@
 
 ## Scope
 
-- Worktree: `C:/Users/zhuye/AppData/Local/Temp/space-syndicate-codex/card-semantic-wave2-h-a96c34f`
+- Worktree: isolated subagent worktree
 - Branch: `codex/card-semantic-wave2-h-interaction-fixtures-a96c34f`
 - Baseline: `a96c34f9d1a9f79fc20c4689b8d2ff82e22c623e`
 - Owned fixture: `tests/fixtures/card_semantic_phase1/interaction_counter_golden.json`

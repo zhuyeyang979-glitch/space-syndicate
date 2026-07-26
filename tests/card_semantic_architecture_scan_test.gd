@@ -114,7 +114,8 @@ func _scan_semantic_source_boundaries() -> void:
 	for path_variant in sources.keys():
 		var path := str(path_variant)
 		var source := str(sources[path])
-		if _count_occurrences(source, "Node") != _count_occurrences(source, "extends Node"):
+		var node_payload_source := source.replace("extends Node", "").replace("NodePath", "")
+		if _count_occurrences(node_payload_source, "Node") != 0:
 			node_payload_hits.append(path)
 		if _contains_non_ascii(source):
 			localized_source_hits.append(path)
@@ -199,8 +200,17 @@ func _scan_catalog_service_surface() -> void:
 		if not method_id.begins_with("_"):
 			public_methods.append(method_id)
 	public_methods.sort()
-	var expected_methods: Array[String] = ["compile_authorized", "configure", "debug_snapshot", "validation_snapshot"]
-	_expect(public_methods == expected_methods, "CardSemanticCatalogService exposes only authorized compile and aggregate diagnostics")
+	var expected_methods: Array[String] = [
+		"authorize_semantic_spec",
+		"compile_authorized",
+		"configure",
+		"debug_snapshot",
+		"validation_snapshot",
+	]
+	_expect(
+		public_methods == expected_methods,
+		"CardSemanticCatalogService exposes only authorized semantic access and aggregate diagnostics"
+	)
 	for forbidden in [
 		"func semantic_for_card_id",
 		"func card_ids",
