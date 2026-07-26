@@ -154,6 +154,7 @@ static func evaluate(coordinator: GameRuntimeCoordinator) -> Dictionary:
 	var cache_before_timing := FIXTURE.catalog_metrics(
 		catalog.validation_snapshot()
 	)
+	var source_debug_before_timing := source.debug_snapshot()
 	var timing_started_usec := Time.get_ticks_usec()
 	var projection_100_ms := -1.0
 	var repeated_candidate_count := 0
@@ -176,7 +177,43 @@ static func evaluate(coordinator: GameRuntimeCoordinator) -> Dictionary:
 		0.001
 	)
 	var cache_after := FIXTURE.catalog_metrics(catalog.validation_snapshot())
+	var source_debug_after_timing := source.debug_snapshot()
 	var rng_after := rng.capture_plan_checkpoint()
+	var hand_snapshot_query_delta := _counter_delta(
+		source_debug_before_timing,
+		source_debug_after_timing,
+		"hand_snapshot_query_count"
+	)
+	var source_revalidation_delta := _counter_delta(
+		source_debug_before_timing,
+		source_debug_after_timing,
+		"source_revalidation_count"
+	)
+	var actor_state_query_proxy_delta := _counter_delta(
+		source_debug_before_timing,
+		source_debug_after_timing,
+		"actor_state_query_proxy_count"
+	)
+	var card_inventory_policy_query_lower_bound_delta := _counter_delta(
+		source_debug_before_timing,
+		source_debug_after_timing,
+		"card_inventory_policy_query_lower_bound_count"
+	)
+	var catalog_compile_request_delta := _counter_delta(
+		source_debug_before_timing,
+		source_debug_after_timing,
+		"catalog_compile_request_count"
+	)
+	var catalog_spec_authorization_delta := _counter_delta(
+		source_debug_before_timing,
+		source_debug_after_timing,
+		"catalog_spec_authorization_count"
+	)
+	var detached_bundle_copy_delta := _counter_delta(
+		source_debug_before_timing,
+		source_debug_after_timing,
+		"detached_bundle_copy_count"
+	)
 	_check(
 		state,
 		repeated_candidate_count == PROJECTION_ITERATIONS,
@@ -207,9 +244,33 @@ static func evaluate(coordinator: GameRuntimeCoordinator) -> Dictionary:
 		cache_before_timing == cache_after,
 		"400_projection_loop_does_not_touch_compile_cache"
 	)
+	_check(
+		state,
+		hand_snapshot_query_delta == PROJECTION_ITERATIONS
+			and source_revalidation_delta == PROJECTION_ITERATIONS,
+		"400_projection_loop_revalidates_one_current_hand_snapshot_each"
+	)
+	_check(
+		state,
+		actor_state_query_proxy_delta == PROJECTION_ITERATIONS
+			and card_inventory_policy_query_lower_bound_delta
+				== PROJECTION_ITERATIONS * 3,
+		"400_projection_loop_query_work_is_explicit_and_bounded"
+	)
+	_check(
+		state,
+		catalog_compile_request_delta == 0
+			and catalog_spec_authorization_delta == PROJECTION_ITERATIONS,
+		"400_projection_loop_authorizes_cached_specs_without_compiling"
+	)
+	_check(
+		state,
+		detached_bundle_copy_delta == PROJECTION_ITERATIONS,
+		"400_projection_loop_returns_one_detached_bundle_copy_each"
+	)
 	_check(state, rng_before == rng_after, "authorization_projection_rng_delta_zero")
 
-	var source_debug := source.debug_snapshot()
+	var source_debug := source_debug_after_timing
 	var projection_debug := projection.debug_snapshot()
 	var debug_clean := _debug_has_no_raw_leak(
 		source_debug,
@@ -240,6 +301,15 @@ static func evaluate(coordinator: GameRuntimeCoordinator) -> Dictionary:
 			- int(cache_before.get("compile_count", -1))
 		),
 		"projection_cache_delta_zero": cache_before_timing == cache_after,
+		"hand_snapshot_query_delta": hand_snapshot_query_delta,
+		"source_revalidation_delta": source_revalidation_delta,
+		"actor_state_query_proxy_delta": actor_state_query_proxy_delta,
+		"card_inventory_policy_query_lower_bound_delta": (
+			card_inventory_policy_query_lower_bound_delta
+		),
+		"catalog_compile_request_delta": catalog_compile_request_delta,
+		"catalog_spec_authorization_delta": catalog_spec_authorization_delta,
+		"detached_bundle_copy_delta": detached_bundle_copy_delta,
 		"rng_before": rng_before,
 		"rng_after": rng_after,
 		"rng_unchanged": rng_before == rng_after,
@@ -255,6 +325,14 @@ static func _accepted(bundle: Dictionary) -> bool:
 		and bundle.get("accepted") == true \
 		and str(bundle.get("reason_id", "")) == "authorized" \
 		and SemanticWireV1.is_fingerprint(bundle.get("bundle_fingerprint"))
+
+
+static func _counter_delta(
+	before: Dictionary,
+	after: Dictionary,
+	key: String
+) -> int:
+	return int(after.get(key, -1)) - int(before.get(key, -1))
 
 
 static func _debug_has_no_raw_leak(

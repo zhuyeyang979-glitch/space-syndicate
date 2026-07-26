@@ -90,6 +90,11 @@ var _validation_attempt_count := 0
 var _validation_success_count := 0
 var _validation_failure_count := 0
 var _journal_eviction_count := 0
+var _hand_snapshot_query_count := 0
+var _source_revalidation_count := 0
+var _catalog_compile_request_count := 0
+var _catalog_spec_authorization_count := 0
+var _detached_bundle_copy_count := 0
 var _binding_fingerprint_by_request_fingerprint: Dictionary = {}
 var _bundle_fingerprint_by_request_fingerprint: Dictionary = {}
 var _journal_order: Array[String] = []
@@ -188,6 +193,8 @@ func validate_authorized_bundle(bundle: Dictionary) -> Dictionary:
 	var actor_index := int(viewer_ref.get("actor_index", -1))
 	var slot_index := int(envelope.get("source_slot", -1))
 	var hand_port := _hand_port()
+	_hand_snapshot_query_count += 1
+	_source_revalidation_count += 1
 	var attestation := hand_port.actor_hand_slot_attestation(
 		_capability,
 		actor_index,
@@ -231,6 +238,7 @@ func validate_authorized_bundle(bundle: Dictionary) -> Dictionary:
 					""
 				)):
 		return _validation_reject(REASON_BUNDLE_INVALID)
+	_catalog_spec_authorization_count += 1
 	var catalog_authorization := _catalog_service().authorize_semantic_spec(
 		semantic_spec
 	)
@@ -239,6 +247,7 @@ func validate_authorized_bundle(bundle: Dictionary) -> Dictionary:
 				!= semantic_spec:
 		return _validation_reject(REASON_SEMANTIC_SPEC_UNAUTHORIZED)
 	_validation_success_count += 1
+	_detached_bundle_copy_count += 1
 	return bundle.duplicate(true)
 
 
@@ -260,6 +269,15 @@ func debug_snapshot() -> Dictionary:
 		"journal_entry_count": _journal_order.size(),
 		"journal_limit": JOURNAL_LIMIT,
 		"journal_eviction_count": _journal_eviction_count,
+		"hand_snapshot_query_count": _hand_snapshot_query_count,
+		"source_revalidation_count": _source_revalidation_count,
+		"actor_state_query_proxy_count": _hand_snapshot_query_count,
+		"card_inventory_policy_query_lower_bound_count": (
+			_hand_snapshot_query_count * 3
+		),
+		"catalog_compile_request_count": _catalog_compile_request_count,
+		"catalog_spec_authorization_count": _catalog_spec_authorization_count,
+		"detached_bundle_copy_count": _detached_bundle_copy_count,
 		"journal_fingerprint": _journal_fingerprint(),
 		"journal_fingerprint_only": true,
 		"stores_authorized_payloads": false,
@@ -278,11 +296,14 @@ func _authorize_own_hand_card(
 	if not is_ready():
 		return _reject(REASON_DEPENDENCY_UNAVAILABLE)
 	var hand_port := _hand_port()
+	_hand_snapshot_query_count += 1
 	var attestation := hand_port.actor_hand_slot_attestation(
 		capability,
 		actor_index,
 		slot_index
 	)
+	_hand_snapshot_query_count += 1
+	_source_revalidation_count += 1
 	if attestation.is_empty() \
 			or not hand_port.is_current_slot_attestation(
 				capability,
@@ -334,6 +355,7 @@ func _authorize_own_hand_card(
 		replay = true
 
 	var static_record := material.get("static_record", {}) as Dictionary
+	_catalog_compile_request_count += 1
 	var compile_result := _catalog_service().compile_authorized({
 		"schema_version": CARD_SCHEMA.SCHEMA_VERSION,
 		"source_kind": SOURCE_KIND_OWN_HAND,
@@ -370,6 +392,7 @@ func _authorize_own_hand_card(
 					""
 				)):
 		return _reject(REASON_SEMANTIC_SPEC_INVALID)
+	_catalog_spec_authorization_count += 1
 	var catalog_authorization := _catalog_service().authorize_semantic_spec(
 		semantic_spec
 	)
@@ -434,6 +457,7 @@ func _authorize_own_hand_card(
 			str(bundle.get("bundle_fingerprint", ""))
 		)
 	_authorization_success_count += 1
+	_detached_bundle_copy_count += 1
 	return bundle.duplicate(true)
 
 
