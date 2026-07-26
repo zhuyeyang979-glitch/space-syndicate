@@ -1,0 +1,1168 @@
+{
+  "schema_version": 1,
+  "fixture_id": "card_semantic_phase1.interaction_counter_golden",
+  "baseline_commit": "a96c34f9d1a9f79fc20c4689b8d2ff82e22c623e",
+  "source_catalog_id": "space_syndicate.card_runtime_catalog.v06",
+  "source_catalog_path": "res://data/cards/card_runtime_catalog_v06.json",
+  "source_catalog_sha256": "b59b73489d23578558d4a7688a03f50a3ef4d776cf528cd9eafd0e1d2a0fcb40",
+  "expected_card_count": 12,
+  "comparison_contract": {
+    "catalog_values": "exact",
+    "semantic_fields": "exact_except_computed_fingerprints",
+    "effect_op_order": "exact",
+    "fingerprints": "computed_by_schema_and_checked_for_determinism",
+    "runtime_readiness_id": "projection_only"
+  },
+  "response_timing_contract": {
+    "direct_interaction_response_window_seconds": 5.0,
+    "maximum_response_depth": 1,
+    "counter_opens_response_window": false
+  },
+  "cards": [
+    {
+      "card_id": "interaction.starlink_dismantle.rank_1",
+      "catalog_values": {
+        "family_id": "interaction.starlink_dismantle",
+        "rank": 1,
+        "category_id": "interaction",
+        "industry_id": "technology",
+        "acquisition_kind": "dynamic_market_cash",
+        "purchase_cash": 5,
+        "asset_cost": {
+          "life": 0,
+          "energy": 0,
+          "industry": 0,
+          "technology": 2,
+          "commerce": 0,
+          "shipping": 0,
+          "generic": 0
+        },
+        "effect_kind": "player_hand_disrupt",
+        "target_kind": "opponent_discardable_hand",
+        "effect_payload": {
+          "hand_discard_count": 1,
+          "hand_lock_seconds": 0,
+          "target_cash_penalty": 0,
+          "direct_player_interaction": true,
+          "counterable": true
+        },
+        "available_for_acquisition": true,
+        "effect_review_status": "legacy_effect_review_pending",
+        "implementation_status": "catalog_ready_runtime_wiring_pending"
+      },
+      "expected_semantic": {
+        "schema_version": 1,
+        "source_catalog_id": "space_syndicate.card_runtime_catalog.v06",
+        "identity": {
+          "card_id": "interaction.starlink_dismantle.rank_1",
+          "family_id": "interaction.starlink_dismantle",
+          "rank": 1,
+          "category_id": "interaction",
+          "industry_id": "technology",
+          "available_for_acquisition": true
+        },
+        "cost": {
+          "acquisition": {
+            "acquisition_kind": "dynamic_market_cash",
+            "purchase_cash": 5
+          },
+          "activation": {
+            "life": 0,
+            "energy": 0,
+            "industry": 0,
+            "technology": 2,
+            "commerce": 0,
+            "shipping": 0,
+            "generic": 0
+          }
+        },
+        "timing": {
+          "timing_id": "main_action"
+        },
+        "target": {
+          "target_id": "player.opponent",
+          "selection_id": "actor_choice",
+          "cardinality_id": "exactly_one",
+          "filter_ids": [
+            "hand.discardable"
+          ]
+        },
+        "effect_ops": [
+          {
+            "op_id": "discard_random",
+            "count": 1,
+            "target_cash_penalty": 0
+          }
+        ],
+        "response": {
+          "response_id": "counterable"
+        },
+        "information_policy": {
+          "visibility_policy_id": "authorized_source_only"
+        },
+        "runtime_readiness_id": "projection_only"
+      }
+    },
+    {
+      "card_id": "interaction.starlink_dismantle.rank_2",
+      "catalog_values": {
+        "family_id": "interaction.starlink_dismantle",
+        "rank": 2,
+        "category_id": "interaction",
+        "industry_id": "technology",
+        "acquisition_kind": "dynamic_market_cash",
+        "purchase_cash": 8,
+        "asset_cost": {
+          "life": 0,
+          "energy": 0,
+          "industry": 0,
+          "technology": 3,
+          "commerce": 0,
+          "shipping": 0,
+          "generic": 0
+        },
+        "effect_kind": "player_hand_disrupt",
+        "target_kind": "opponent_discardable_hand",
+        "effect_payload": {
+          "hand_discard_count": 1,
+          "hand_lock_seconds": 10,
+          "target_cash_penalty": 0,
+          "direct_player_interaction": true,
+          "counterable": true
+        },
+        "available_for_acquisition": true,
+        "effect_review_status": "legacy_effect_review_pending",
+        "implementation_status": "catalog_ready_runtime_wiring_pending"
+      },
+      "expected_semantic": {
+        "schema_version": 1,
+        "source_catalog_id": "space_syndicate.card_runtime_catalog.v06",
+        "identity": {
+          "card_id": "interaction.starlink_dismantle.rank_2",
+          "family_id": "interaction.starlink_dismantle",
+          "rank": 2,
+          "category_id": "interaction",
+          "industry_id": "technology",
+          "available_for_acquisition": true
+        },
+        "cost": {
+          "acquisition": {
+            "acquisition_kind": "dynamic_market_cash",
+            "purchase_cash": 8
+          },
+          "activation": {
+            "life": 0,
+            "energy": 0,
+            "industry": 0,
+            "technology": 3,
+            "commerce": 0,
+            "shipping": 0,
+            "generic": 0
+          }
+        },
+        "timing": {
+          "timing_id": "main_action"
+        },
+        "target": {
+          "target_id": "player.opponent",
+          "selection_id": "actor_choice",
+          "cardinality_id": "exactly_one",
+          "filter_ids": [
+            "hand.discardable"
+          ]
+        },
+        "effect_ops": [
+          {
+            "op_id": "discard_random",
+            "count": 1,
+            "target_cash_penalty": 0
+          },
+          {
+            "op_id": "lock_random",
+            "duration_seconds": 10
+          }
+        ],
+        "response": {
+          "response_id": "counterable"
+        },
+        "information_policy": {
+          "visibility_policy_id": "authorized_source_only"
+        },
+        "runtime_readiness_id": "projection_only"
+      }
+    },
+    {
+      "card_id": "interaction.starlink_dismantle.rank_3",
+      "catalog_values": {
+        "family_id": "interaction.starlink_dismantle",
+        "rank": 3,
+        "category_id": "interaction",
+        "industry_id": "technology",
+        "acquisition_kind": "dynamic_market_cash",
+        "purchase_cash": 12,
+        "asset_cost": {
+          "life": 0,
+          "energy": 0,
+          "industry": 0,
+          "technology": 5,
+          "commerce": 0,
+          "shipping": 0,
+          "generic": 0
+        },
+        "effect_kind": "player_hand_disrupt",
+        "target_kind": "opponent_discardable_hand",
+        "effect_payload": {
+          "hand_discard_count": 1,
+          "hand_lock_seconds": 18,
+          "target_cash_penalty": 80,
+          "direct_player_interaction": true,
+          "counterable": true
+        },
+        "available_for_acquisition": true,
+        "effect_review_status": "legacy_effect_review_pending",
+        "implementation_status": "catalog_ready_runtime_wiring_pending"
+      },
+      "expected_semantic": {
+        "schema_version": 1,
+        "source_catalog_id": "space_syndicate.card_runtime_catalog.v06",
+        "identity": {
+          "card_id": "interaction.starlink_dismantle.rank_3",
+          "family_id": "interaction.starlink_dismantle",
+          "rank": 3,
+          "category_id": "interaction",
+          "industry_id": "technology",
+          "available_for_acquisition": true
+        },
+        "cost": {
+          "acquisition": {
+            "acquisition_kind": "dynamic_market_cash",
+            "purchase_cash": 12
+          },
+          "activation": {
+            "life": 0,
+            "energy": 0,
+            "industry": 0,
+            "technology": 5,
+            "commerce": 0,
+            "shipping": 0,
+            "generic": 0
+          }
+        },
+        "timing": {
+          "timing_id": "main_action"
+        },
+        "target": {
+          "target_id": "player.opponent",
+          "selection_id": "actor_choice",
+          "cardinality_id": "exactly_one",
+          "filter_ids": [
+            "hand.discardable"
+          ]
+        },
+        "effect_ops": [
+          {
+            "op_id": "discard_random",
+            "count": 1,
+            "target_cash_penalty": 80
+          },
+          {
+            "op_id": "lock_random",
+            "duration_seconds": 18
+          }
+        ],
+        "response": {
+          "response_id": "counterable"
+        },
+        "information_policy": {
+          "visibility_policy_id": "authorized_source_only"
+        },
+        "runtime_readiness_id": "projection_only"
+      }
+    },
+    {
+      "card_id": "interaction.starlink_dismantle.rank_4",
+      "catalog_values": {
+        "family_id": "interaction.starlink_dismantle",
+        "rank": 4,
+        "category_id": "interaction",
+        "industry_id": "technology",
+        "acquisition_kind": "dynamic_market_cash",
+        "purchase_cash": 17,
+        "asset_cost": {
+          "life": 0,
+          "energy": 0,
+          "industry": 0,
+          "technology": 8,
+          "commerce": 0,
+          "shipping": 0,
+          "generic": 0
+        },
+        "effect_kind": "player_hand_disrupt",
+        "target_kind": "opponent_discardable_hand",
+        "effect_payload": {
+          "hand_discard_count": 2,
+          "hand_lock_seconds": 20,
+          "target_cash_penalty": 120,
+          "direct_player_interaction": true,
+          "counterable": true
+        },
+        "available_for_acquisition": true,
+        "effect_review_status": "legacy_effect_review_pending",
+        "implementation_status": "catalog_ready_runtime_wiring_pending"
+      },
+      "expected_semantic": {
+        "schema_version": 1,
+        "source_catalog_id": "space_syndicate.card_runtime_catalog.v06",
+        "identity": {
+          "card_id": "interaction.starlink_dismantle.rank_4",
+          "family_id": "interaction.starlink_dismantle",
+          "rank": 4,
+          "category_id": "interaction",
+          "industry_id": "technology",
+          "available_for_acquisition": true
+        },
+        "cost": {
+          "acquisition": {
+            "acquisition_kind": "dynamic_market_cash",
+            "purchase_cash": 17
+          },
+          "activation": {
+            "life": 0,
+            "energy": 0,
+            "industry": 0,
+            "technology": 8,
+            "commerce": 0,
+            "shipping": 0,
+            "generic": 0
+          }
+        },
+        "timing": {
+          "timing_id": "main_action"
+        },
+        "target": {
+          "target_id": "player.opponent",
+          "selection_id": "actor_choice",
+          "cardinality_id": "exactly_one",
+          "filter_ids": [
+            "hand.discardable"
+          ]
+        },
+        "effect_ops": [
+          {
+            "op_id": "discard_random",
+            "count": 2,
+            "target_cash_penalty": 120
+          },
+          {
+            "op_id": "lock_random",
+            "duration_seconds": 20
+          }
+        ],
+        "response": {
+          "response_id": "counterable"
+        },
+        "information_policy": {
+          "visibility_policy_id": "authorized_source_only"
+        },
+        "runtime_readiness_id": "projection_only"
+      }
+    },
+    {
+      "card_id": "interaction.shadow_warehouse_traction.rank_1",
+      "catalog_values": {
+        "family_id": "interaction.shadow_warehouse_traction",
+        "rank": 1,
+        "category_id": "interaction",
+        "industry_id": "technology",
+        "acquisition_kind": "dynamic_market_cash",
+        "purchase_cash": 5,
+        "asset_cost": {
+          "life": 0,
+          "energy": 0,
+          "industry": 0,
+          "technology": 2,
+          "commerce": 0,
+          "shipping": 0,
+          "generic": 0
+        },
+        "effect_kind": "player_hand_steal",
+        "target_kind": "opponent_discardable_hand",
+        "effect_payload": {
+          "hand_steal_count": 1,
+          "hand_lock_seconds": 0,
+          "steal_fail_cash": 60,
+          "direct_player_interaction": true,
+          "counterable": true
+        },
+        "available_for_acquisition": true,
+        "effect_review_status": "legacy_effect_review_pending",
+        "implementation_status": "catalog_ready_runtime_wiring_pending"
+      },
+      "expected_semantic": {
+        "schema_version": 1,
+        "source_catalog_id": "space_syndicate.card_runtime_catalog.v06",
+        "identity": {
+          "card_id": "interaction.shadow_warehouse_traction.rank_1",
+          "family_id": "interaction.shadow_warehouse_traction",
+          "rank": 1,
+          "category_id": "interaction",
+          "industry_id": "technology",
+          "available_for_acquisition": true
+        },
+        "cost": {
+          "acquisition": {
+            "acquisition_kind": "dynamic_market_cash",
+            "purchase_cash": 5
+          },
+          "activation": {
+            "life": 0,
+            "energy": 0,
+            "industry": 0,
+            "technology": 2,
+            "commerce": 0,
+            "shipping": 0,
+            "generic": 0
+          }
+        },
+        "timing": {
+          "timing_id": "main_action"
+        },
+        "target": {
+          "target_id": "player.opponent",
+          "selection_id": "actor_choice",
+          "cardinality_id": "exactly_one",
+          "filter_ids": [
+            "hand.discardable"
+          ]
+        },
+        "effect_ops": [
+          {
+            "op_id": "steal_random",
+            "count": 1,
+            "steal_fail_cash": 60
+          }
+        ],
+        "response": {
+          "response_id": "counterable"
+        },
+        "information_policy": {
+          "visibility_policy_id": "authorized_source_only"
+        },
+        "runtime_readiness_id": "projection_only"
+      }
+    },
+    {
+      "card_id": "interaction.shadow_warehouse_traction.rank_2",
+      "catalog_values": {
+        "family_id": "interaction.shadow_warehouse_traction",
+        "rank": 2,
+        "category_id": "interaction",
+        "industry_id": "technology",
+        "acquisition_kind": "dynamic_market_cash",
+        "purchase_cash": 8,
+        "asset_cost": {
+          "life": 0,
+          "energy": 0,
+          "industry": 0,
+          "technology": 3,
+          "commerce": 0,
+          "shipping": 0,
+          "generic": 0
+        },
+        "effect_kind": "player_hand_steal",
+        "target_kind": "opponent_discardable_hand",
+        "effect_payload": {
+          "hand_steal_count": 1,
+          "hand_lock_seconds": 8,
+          "steal_fail_cash": 90,
+          "direct_player_interaction": true,
+          "counterable": true
+        },
+        "available_for_acquisition": true,
+        "effect_review_status": "legacy_effect_review_pending",
+        "implementation_status": "catalog_ready_runtime_wiring_pending"
+      },
+      "expected_semantic": {
+        "schema_version": 1,
+        "source_catalog_id": "space_syndicate.card_runtime_catalog.v06",
+        "identity": {
+          "card_id": "interaction.shadow_warehouse_traction.rank_2",
+          "family_id": "interaction.shadow_warehouse_traction",
+          "rank": 2,
+          "category_id": "interaction",
+          "industry_id": "technology",
+          "available_for_acquisition": true
+        },
+        "cost": {
+          "acquisition": {
+            "acquisition_kind": "dynamic_market_cash",
+            "purchase_cash": 8
+          },
+          "activation": {
+            "life": 0,
+            "energy": 0,
+            "industry": 0,
+            "technology": 3,
+            "commerce": 0,
+            "shipping": 0,
+            "generic": 0
+          }
+        },
+        "timing": {
+          "timing_id": "main_action"
+        },
+        "target": {
+          "target_id": "player.opponent",
+          "selection_id": "actor_choice",
+          "cardinality_id": "exactly_one",
+          "filter_ids": [
+            "hand.discardable"
+          ]
+        },
+        "effect_ops": [
+          {
+            "op_id": "steal_random",
+            "count": 1,
+            "steal_fail_cash": 90
+          },
+          {
+            "op_id": "lock_random",
+            "duration_seconds": 8
+          }
+        ],
+        "response": {
+          "response_id": "counterable"
+        },
+        "information_policy": {
+          "visibility_policy_id": "authorized_source_only"
+        },
+        "runtime_readiness_id": "projection_only"
+      }
+    },
+    {
+      "card_id": "interaction.shadow_warehouse_traction.rank_3",
+      "catalog_values": {
+        "family_id": "interaction.shadow_warehouse_traction",
+        "rank": 3,
+        "category_id": "interaction",
+        "industry_id": "technology",
+        "acquisition_kind": "dynamic_market_cash",
+        "purchase_cash": 12,
+        "asset_cost": {
+          "life": 0,
+          "energy": 0,
+          "industry": 0,
+          "technology": 5,
+          "commerce": 0,
+          "shipping": 0,
+          "generic": 0
+        },
+        "effect_kind": "player_hand_steal",
+        "target_kind": "opponent_discardable_hand",
+        "effect_payload": {
+          "hand_steal_count": 1,
+          "hand_lock_seconds": 15,
+          "steal_fail_cash": 140,
+          "direct_player_interaction": true,
+          "counterable": true
+        },
+        "available_for_acquisition": true,
+        "effect_review_status": "legacy_effect_review_pending",
+        "implementation_status": "catalog_ready_runtime_wiring_pending"
+      },
+      "expected_semantic": {
+        "schema_version": 1,
+        "source_catalog_id": "space_syndicate.card_runtime_catalog.v06",
+        "identity": {
+          "card_id": "interaction.shadow_warehouse_traction.rank_3",
+          "family_id": "interaction.shadow_warehouse_traction",
+          "rank": 3,
+          "category_id": "interaction",
+          "industry_id": "technology",
+          "available_for_acquisition": true
+        },
+        "cost": {
+          "acquisition": {
+            "acquisition_kind": "dynamic_market_cash",
+            "purchase_cash": 12
+          },
+          "activation": {
+            "life": 0,
+            "energy": 0,
+            "industry": 0,
+            "technology": 5,
+            "commerce": 0,
+            "shipping": 0,
+            "generic": 0
+          }
+        },
+        "timing": {
+          "timing_id": "main_action"
+        },
+        "target": {
+          "target_id": "player.opponent",
+          "selection_id": "actor_choice",
+          "cardinality_id": "exactly_one",
+          "filter_ids": [
+            "hand.discardable"
+          ]
+        },
+        "effect_ops": [
+          {
+            "op_id": "steal_random",
+            "count": 1,
+            "steal_fail_cash": 140
+          },
+          {
+            "op_id": "lock_random",
+            "duration_seconds": 15
+          }
+        ],
+        "response": {
+          "response_id": "counterable"
+        },
+        "information_policy": {
+          "visibility_policy_id": "authorized_source_only"
+        },
+        "runtime_readiness_id": "projection_only"
+      }
+    },
+    {
+      "card_id": "interaction.shadow_warehouse_traction.rank_4",
+      "catalog_values": {
+        "family_id": "interaction.shadow_warehouse_traction",
+        "rank": 4,
+        "category_id": "interaction",
+        "industry_id": "technology",
+        "acquisition_kind": "dynamic_market_cash",
+        "purchase_cash": 17,
+        "asset_cost": {
+          "life": 0,
+          "energy": 0,
+          "industry": 0,
+          "technology": 8,
+          "commerce": 0,
+          "shipping": 0,
+          "generic": 0
+        },
+        "effect_kind": "player_hand_steal",
+        "target_kind": "opponent_discardable_hand",
+        "effect_payload": {
+          "hand_steal_count": 2,
+          "hand_lock_seconds": 18,
+          "steal_fail_cash": 220,
+          "direct_player_interaction": true,
+          "counterable": true
+        },
+        "available_for_acquisition": true,
+        "effect_review_status": "legacy_effect_review_pending",
+        "implementation_status": "catalog_ready_runtime_wiring_pending"
+      },
+      "expected_semantic": {
+        "schema_version": 1,
+        "source_catalog_id": "space_syndicate.card_runtime_catalog.v06",
+        "identity": {
+          "card_id": "interaction.shadow_warehouse_traction.rank_4",
+          "family_id": "interaction.shadow_warehouse_traction",
+          "rank": 4,
+          "category_id": "interaction",
+          "industry_id": "technology",
+          "available_for_acquisition": true
+        },
+        "cost": {
+          "acquisition": {
+            "acquisition_kind": "dynamic_market_cash",
+            "purchase_cash": 17
+          },
+          "activation": {
+            "life": 0,
+            "energy": 0,
+            "industry": 0,
+            "technology": 8,
+            "commerce": 0,
+            "shipping": 0,
+            "generic": 0
+          }
+        },
+        "timing": {
+          "timing_id": "main_action"
+        },
+        "target": {
+          "target_id": "player.opponent",
+          "selection_id": "actor_choice",
+          "cardinality_id": "exactly_one",
+          "filter_ids": [
+            "hand.discardable"
+          ]
+        },
+        "effect_ops": [
+          {
+            "op_id": "steal_random",
+            "count": 2,
+            "steal_fail_cash": 220
+          },
+          {
+            "op_id": "lock_random",
+            "duration_seconds": 18
+          }
+        ],
+        "response": {
+          "response_id": "counterable"
+        },
+        "information_policy": {
+          "visibility_policy_id": "authorized_source_only"
+        },
+        "runtime_readiness_id": "projection_only"
+      }
+    },
+    {
+      "card_id": "interaction.phase_veto.rank_1",
+      "catalog_values": {
+        "family_id": "interaction.phase_veto",
+        "rank": 1,
+        "category_id": "interaction",
+        "industry_id": "technology",
+        "acquisition_kind": "dynamic_market_cash",
+        "purchase_cash": 5,
+        "asset_cost": {
+          "life": 0,
+          "energy": 0,
+          "industry": 0,
+          "technology": 2,
+          "commerce": 0,
+          "shipping": 0,
+          "generic": 0
+        },
+        "effect_kind": "card_counter",
+        "target_kind": "incoming_direct_player_interaction",
+        "effect_payload": {
+          "counter_strength": 1,
+          "response_depth": 1,
+          "counter_window_seconds": 5.0,
+          "refund_cash": 0,
+          "private_trace_count": 0,
+          "target_scope": "direct_player_interaction"
+        },
+        "available_for_acquisition": true,
+        "effect_review_status": "rule_confirmed",
+        "implementation_status": "catalog_ready_runtime_wiring_pending"
+      },
+      "expected_semantic": {
+        "schema_version": 1,
+        "source_catalog_id": "space_syndicate.card_runtime_catalog.v06",
+        "identity": {
+          "card_id": "interaction.phase_veto.rank_1",
+          "family_id": "interaction.phase_veto",
+          "rank": 1,
+          "category_id": "interaction",
+          "industry_id": "technology",
+          "available_for_acquisition": true
+        },
+        "cost": {
+          "acquisition": {
+            "acquisition_kind": "dynamic_market_cash",
+            "purchase_cash": 5
+          },
+          "activation": {
+            "life": 0,
+            "energy": 0,
+            "industry": 0,
+            "technology": 2,
+            "commerce": 0,
+            "shipping": 0,
+            "generic": 0
+          }
+        },
+        "timing": {
+          "timing_id": "response_window"
+        },
+        "target": {
+          "target_id": "response.incoming_direct_interaction",
+          "selection_id": "trigger_context",
+          "cardinality_id": "exactly_one",
+          "filter_ids": [
+            "interaction.direct"
+          ]
+        },
+        "effect_ops": [
+          {
+            "op_id": "counter_action",
+            "counter_strength": 1,
+            "counter_window_seconds": 5.0,
+            "response_depth": 1,
+            "target_scope_id": "direct_player_interaction",
+            "refund_cash": 0,
+            "private_trace_count": 0
+          }
+        ],
+        "response": {
+          "response_id": "counter"
+        },
+        "information_policy": {
+          "visibility_policy_id": "authorized_source_only"
+        },
+        "runtime_readiness_id": "projection_only"
+      }
+    },
+    {
+      "card_id": "interaction.phase_veto.rank_2",
+      "catalog_values": {
+        "family_id": "interaction.phase_veto",
+        "rank": 2,
+        "category_id": "interaction",
+        "industry_id": "technology",
+        "acquisition_kind": "dynamic_market_cash",
+        "purchase_cash": 8,
+        "asset_cost": {
+          "life": 0,
+          "energy": 0,
+          "industry": 0,
+          "technology": 3,
+          "commerce": 0,
+          "shipping": 0,
+          "generic": 0
+        },
+        "effect_kind": "card_counter",
+        "target_kind": "incoming_direct_player_interaction",
+        "effect_payload": {
+          "counter_strength": 2,
+          "response_depth": 1,
+          "counter_window_seconds": 5.0,
+          "refund_cash": 40,
+          "private_trace_count": 0,
+          "target_scope": "direct_player_interaction"
+        },
+        "available_for_acquisition": true,
+        "effect_review_status": "rule_confirmed",
+        "implementation_status": "catalog_ready_runtime_wiring_pending"
+      },
+      "expected_semantic": {
+        "schema_version": 1,
+        "source_catalog_id": "space_syndicate.card_runtime_catalog.v06",
+        "identity": {
+          "card_id": "interaction.phase_veto.rank_2",
+          "family_id": "interaction.phase_veto",
+          "rank": 2,
+          "category_id": "interaction",
+          "industry_id": "technology",
+          "available_for_acquisition": true
+        },
+        "cost": {
+          "acquisition": {
+            "acquisition_kind": "dynamic_market_cash",
+            "purchase_cash": 8
+          },
+          "activation": {
+            "life": 0,
+            "energy": 0,
+            "industry": 0,
+            "technology": 3,
+            "commerce": 0,
+            "shipping": 0,
+            "generic": 0
+          }
+        },
+        "timing": {
+          "timing_id": "response_window"
+        },
+        "target": {
+          "target_id": "response.incoming_direct_interaction",
+          "selection_id": "trigger_context",
+          "cardinality_id": "exactly_one",
+          "filter_ids": [
+            "interaction.direct"
+          ]
+        },
+        "effect_ops": [
+          {
+            "op_id": "counter_action",
+            "counter_strength": 2,
+            "counter_window_seconds": 5.0,
+            "response_depth": 1,
+            "target_scope_id": "direct_player_interaction",
+            "refund_cash": 40,
+            "private_trace_count": 0
+          }
+        ],
+        "response": {
+          "response_id": "counter"
+        },
+        "information_policy": {
+          "visibility_policy_id": "authorized_source_only"
+        },
+        "runtime_readiness_id": "projection_only"
+      }
+    },
+    {
+      "card_id": "interaction.phase_veto.rank_3",
+      "catalog_values": {
+        "family_id": "interaction.phase_veto",
+        "rank": 3,
+        "category_id": "interaction",
+        "industry_id": "technology",
+        "acquisition_kind": "dynamic_market_cash",
+        "purchase_cash": 12,
+        "asset_cost": {
+          "life": 0,
+          "energy": 0,
+          "industry": 0,
+          "technology": 5,
+          "commerce": 0,
+          "shipping": 0,
+          "generic": 0
+        },
+        "effect_kind": "card_counter",
+        "target_kind": "incoming_direct_player_interaction",
+        "effect_payload": {
+          "counter_strength": 3,
+          "response_depth": 1,
+          "counter_window_seconds": 5.0,
+          "refund_cash": 90,
+          "private_trace_count": 1,
+          "target_scope": "direct_player_interaction"
+        },
+        "available_for_acquisition": true,
+        "effect_review_status": "rule_confirmed",
+        "implementation_status": "catalog_ready_runtime_wiring_pending"
+      },
+      "expected_semantic": {
+        "schema_version": 1,
+        "source_catalog_id": "space_syndicate.card_runtime_catalog.v06",
+        "identity": {
+          "card_id": "interaction.phase_veto.rank_3",
+          "family_id": "interaction.phase_veto",
+          "rank": 3,
+          "category_id": "interaction",
+          "industry_id": "technology",
+          "available_for_acquisition": true
+        },
+        "cost": {
+          "acquisition": {
+            "acquisition_kind": "dynamic_market_cash",
+            "purchase_cash": 12
+          },
+          "activation": {
+            "life": 0,
+            "energy": 0,
+            "industry": 0,
+            "technology": 5,
+            "commerce": 0,
+            "shipping": 0,
+            "generic": 0
+          }
+        },
+        "timing": {
+          "timing_id": "response_window"
+        },
+        "target": {
+          "target_id": "response.incoming_direct_interaction",
+          "selection_id": "trigger_context",
+          "cardinality_id": "exactly_one",
+          "filter_ids": [
+            "interaction.direct"
+          ]
+        },
+        "effect_ops": [
+          {
+            "op_id": "counter_action",
+            "counter_strength": 3,
+            "counter_window_seconds": 5.0,
+            "response_depth": 1,
+            "target_scope_id": "direct_player_interaction",
+            "refund_cash": 90,
+            "private_trace_count": 1
+          }
+        ],
+        "response": {
+          "response_id": "counter"
+        },
+        "information_policy": {
+          "visibility_policy_id": "authorized_source_only"
+        },
+        "runtime_readiness_id": "projection_only"
+      }
+    },
+    {
+      "card_id": "interaction.phase_veto.rank_4",
+      "catalog_values": {
+        "family_id": "interaction.phase_veto",
+        "rank": 4,
+        "category_id": "interaction",
+        "industry_id": "technology",
+        "acquisition_kind": "dynamic_market_cash",
+        "purchase_cash": 17,
+        "asset_cost": {
+          "life": 0,
+          "energy": 0,
+          "industry": 0,
+          "technology": 8,
+          "commerce": 0,
+          "shipping": 0,
+          "generic": 0
+        },
+        "effect_kind": "card_counter",
+        "target_kind": "incoming_direct_player_interaction",
+        "effect_payload": {
+          "counter_strength": 4,
+          "response_depth": 1,
+          "counter_window_seconds": 5.0,
+          "refund_cash": 160,
+          "private_trace_count": 2,
+          "target_scope": "direct_player_interaction"
+        },
+        "available_for_acquisition": true,
+        "effect_review_status": "rule_confirmed",
+        "implementation_status": "catalog_ready_runtime_wiring_pending"
+      },
+      "expected_semantic": {
+        "schema_version": 1,
+        "source_catalog_id": "space_syndicate.card_runtime_catalog.v06",
+        "identity": {
+          "card_id": "interaction.phase_veto.rank_4",
+          "family_id": "interaction.phase_veto",
+          "rank": 4,
+          "category_id": "interaction",
+          "industry_id": "technology",
+          "available_for_acquisition": true
+        },
+        "cost": {
+          "acquisition": {
+            "acquisition_kind": "dynamic_market_cash",
+            "purchase_cash": 17
+          },
+          "activation": {
+            "life": 0,
+            "energy": 0,
+            "industry": 0,
+            "technology": 8,
+            "commerce": 0,
+            "shipping": 0,
+            "generic": 0
+          }
+        },
+        "timing": {
+          "timing_id": "response_window"
+        },
+        "target": {
+          "target_id": "response.incoming_direct_interaction",
+          "selection_id": "trigger_context",
+          "cardinality_id": "exactly_one",
+          "filter_ids": [
+            "interaction.direct"
+          ]
+        },
+        "effect_ops": [
+          {
+            "op_id": "counter_action",
+            "counter_strength": 4,
+            "counter_window_seconds": 5.0,
+            "response_depth": 1,
+            "target_scope_id": "direct_player_interaction",
+            "refund_cash": 160,
+            "private_trace_count": 2
+          }
+        ],
+        "response": {
+          "response_id": "counter"
+        },
+        "information_policy": {
+          "visibility_policy_id": "authorized_source_only"
+        },
+        "runtime_readiness_id": "projection_only"
+      }
+    }
+  ],
+  "privacy_comparison_contract": {
+    "scan_public_result_recursively": true,
+    "scan_entire_ai_candidate_recursively": true,
+    "allowed_target_derived_value_kinds": [
+      "aggregate_count",
+      "stable_public_target_ref"
+    ],
+    "forbid_secret_sentinel_values": true
+  },
+  "privacy_cases": [
+    {
+      "case_id": "direct_interaction_result_and_ai_candidate_redaction",
+      "source_card_id": "interaction.starlink_dismantle.rank_4",
+      "adversarial_private_source": {
+        "stable_public_target_ref": "player.public.seat_2",
+        "secret_card_name": "secret_card_name_sentinel",
+        "hidden_hand": [
+          "hidden_hand_card_alpha",
+          "hidden_hand_card_beta"
+        ],
+        "owner_id": "owner.private.seat_2",
+        "removed_count": 2,
+        "transferred_count": 0,
+        "locked_count": 1
+      },
+      "expected_public_result": {
+        "target_ref": "player.public.seat_2",
+        "removed_count": 2,
+        "transferred_count": 0,
+        "locked_count": 1
+      },
+      "expected_ai_candidate_target_projection": {
+        "target_ref": "player.public.seat_2",
+        "discard_count": 2,
+        "steal_count": 0,
+        "lock_count": 1
+      },
+      "expected_candidate_legality": {
+        "legal": false,
+        "rejection_reason_id": "v06_card_effect_route_unavailable"
+      },
+      "forbidden_recursive_keys": [
+        "secret_card_name",
+        "hidden_hand",
+        "owner",
+        "owner_id",
+        "true_owner"
+      ],
+      "forbidden_values": [
+        "secret_card_name_sentinel",
+        "hidden_hand_card_alpha",
+        "hidden_hand_card_beta",
+        "owner.private.seat_2"
+      ]
+    },
+    {
+      "case_id": "counter_result_and_ai_candidate_redaction",
+      "source_card_id": "interaction.phase_veto.rank_4",
+      "adversarial_private_source": {
+        "stable_public_target_ref": "card_resolution.public.42",
+        "secret_card_name": "incoming_secret_card_name_sentinel",
+        "hidden_hand": [
+          "counter_holder_hidden_hand_sentinel"
+        ],
+        "owner_id": "owner.private.counter_holder",
+        "countered_count": 1
+      },
+      "expected_public_result": {
+        "target_ref": "card_resolution.public.42",
+        "countered_count": 1
+      },
+      "expected_ai_candidate_target_projection": {
+        "target_ref": "card_resolution.public.42",
+        "counter_count": 1
+      },
+      "expected_candidate_legality": {
+        "legal": false,
+        "rejection_reason_id": "v06_card_effect_route_unavailable"
+      },
+      "forbidden_recursive_keys": [
+        "secret_card_name",
+        "hidden_hand",
+        "owner",
+        "owner_id",
+        "true_owner"
+      ],
+      "forbidden_values": [
+        "incoming_secret_card_name_sentinel",
+        "counter_holder_hidden_hand_sentinel",
+        "owner.private.counter_holder"
+      ]
+    }
+  ]
+}
