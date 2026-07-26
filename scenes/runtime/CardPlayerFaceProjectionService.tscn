@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_player_face_projection_service.gd" id="1_service"]
+
+[node name="CardPlayerFaceProjectionService" type="Node"]
+script = ExtResource("1_service")
+editor_description = "Stateless PlayerFaceDTO v1 projector. It accepts only detached CardSemanticSpec dictionaries and public authorized localization identifiers; it owns no rules, legality, state, localization catalog, RNG, or mutation."

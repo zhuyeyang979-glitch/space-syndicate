@@ -1,0 +1,645 @@
+{
+  "schema_version": 1,
+  "audit_id": "product_facility_economy_semantic_audit_v1",
+  "baseline_sha": "4ee3d0e1e80224be362692db9214e960b2f8864f",
+  "branch": "codex/semantic-program-wave1-product-economy-4ee3d0e",
+  "scope": {
+    "read_only": true,
+    "production_modified": false,
+    "owned_outputs": [
+      "reports/semantic_program/product_facility_economy_semantic_audit.md",
+      "reports/semantic_program/product_facility_economy_semantic_audit.json"
+    ],
+    "forbidden_changes_observed": 0
+  },
+  "deterministic_inventory": {
+    "runtime_product_id_count": 46,
+    "resource_product_id_count": 46,
+    "product_id_sets_equal": true,
+    "product_orders_equal": false,
+    "industry_count": 6,
+    "product_profile_count": 46,
+    "unique_profile_category_count": 44,
+    "unique_profile_route_count": 10,
+    "unique_profile_terrain_count": 46,
+    "ocean_product_subset_count": 12,
+    "non_runtime_compendium_product_entry_count": 9,
+    "v06_card_record_count": 348,
+    "commodity_card_count": 184,
+    "commodity_family_count": 46,
+    "facility_card_count": 64,
+    "facility_family_count": 16,
+    "supply_demand_card_count": 8,
+    "supply_demand_family_count": 2,
+    "facility_kind_count": 6,
+    "facility_card_kind_counts": {
+      "factory": 24,
+      "market": 24,
+      "road": 4,
+      "port": 4,
+      "spaceport": 4,
+      "warehouse": 4
+    },
+    "semantic_operation_id_count": 6,
+    "production_market_catalog_reference_file_count": 11,
+    "production_product_industry_reference_file_count": 7,
+    "production_facility_static_set_file_count": 3,
+    "production_industry_allowlist_definition_count": 6,
+    "product_economy_alias_lexical_candidate_count": 19,
+    "product_economy_alias_candidate_file_count": 12,
+    "cross_schema_alias_migration_count": 9,
+    "real_product_specific_equality_or_switch_branch_count": 0,
+    "finding_count": 32,
+    "classification_counts": {
+      "REMOVE": 9,
+      "MOVE": 15,
+      "KEEP": 8
+    }
+  },
+  "fingerprints": {
+    "market_product_order_sha256": "f4fb63967af45db0d3cfc2efb8f5f580be7f495e396ff52c59e7e9d0a46db262",
+    "resource_product_order_sha256": "4a54d8bf6511fbb73fedd6fb8eb1c421d2ea6a2a71740905447537e6e491badb",
+    "canonical_sorted_product_set_sha256": "f9b5cce077451535592191b99b8cc9cf2c62a193b583f2a4d7d4a85df927a815",
+    "facility_kind_order_sha256": "a1ce2f96e109dc9f7be62f2220068e0e01ffe9bf08a872a3efa5a70fbea2c367",
+    "product_market_file_sha256": "516ff4e66f67040f940c51e07ecb35c22872e6cdb5b994fbb67776235729a869",
+    "product_industry_catalog_file_sha256": "5544f01d1f0e50a7be38e4fa8686ba249a89517782d2b77646b913ed93cbd77a",
+    "card_runtime_catalog_v06_file_sha256": "b59b73489d23578558d4a7688a03f50a3ef4d776cf528cd9eafd0e1d2a0fcb40"
+  },
+  "current_authorities": {
+    "product_live_state_owner": "ProductMarketRuntimeController",
+    "product_runtime_identity_and_order": "ProductMarketRuntimeController.PRODUCT_CATALOG",
+    "product_industry_and_weather_metadata": "resources/content/product_industry_catalog_v05.tres",
+    "product_presentation_metadata": "ProductMarketRuntimeController.PRODUCT_PROFILES",
+    "facility_live_state_owner": "RegionInfrastructureRuntimeController",
+    "facility_static_catalog": null,
+    "facility_numeric_rules_owner": "resources/rules/space_syndicate_ruleset_v06.tres",
+    "commodity_live_state_owner": "CommodityFlowRuntimeController",
+    "card_static_semantic_source": "data/cards/card_runtime_catalog_v06.json.machine",
+    "card_semantic_compiler": "CardSemanticCompilerV1"
+  },
+  "target_authorities": {
+    "product_static_authoring_source": "evolve resources/content/product_industry_catalog_v05.tres in place",
+    "product_compiled_type": "ProductSemanticSpec",
+    "facility_static_authoring_source": "one canonical FacilitySemanticSpec catalog introduced in an atomic replacement of code constants",
+    "facility_compiled_type": "FacilitySemanticSpec",
+    "operation_dispatch": "OperationHandlerRegistry promoted from CoreEconomicCardEffectRouterV06",
+    "product_live_state_owner": "ProductMarketRuntimeController",
+    "facility_live_state_owner": "RegionInfrastructureRuntimeController",
+    "commodity_live_state_owner": "CommodityFlowRuntimeController"
+  },
+  "proposed_product_semantic_spec": {
+    "required_fields": [
+      "schema_version",
+      "identity",
+      "market_order_index",
+      "industry_id",
+      "taxonomy_tag_ids",
+      "weather_tag_ids",
+      "terrain_tag_ids",
+      "presentation",
+      "visibility_policy_id",
+      "save_identity_policy_id",
+      "source_fingerprint"
+    ],
+    "identity_contract": {
+      "domain_id": "product",
+      "product_id_policy": "preserve_current_exact_localized_authority_value",
+      "identity_policy_id": "localized_authority_compat_v1",
+      "ascii_alias_allowed": false,
+      "name_parsing_allowed": false
+    },
+    "forbidden_live_fields": [
+      "price",
+      "base_price",
+      "supply",
+      "demand",
+      "trend",
+      "price_history",
+      "futures_positions",
+      "market_timer",
+      "business_cycle_count",
+      "owner_player_index"
+    ]
+  },
+  "proposed_facility_semantic_spec": {
+    "required_fields": [
+      "schema_version",
+      "facility_kind_id",
+      "industry_binding_policy_id",
+      "slot_key_policy_id",
+      "allowed_region_state_ids",
+      "operation_ids",
+      "rank_profile_ref",
+      "resolved_rank_profile",
+      "presentation",
+      "save_identity_policy_id",
+      "source_fingerprints"
+    ],
+    "facility_kind_ids": [
+      "factory",
+      "market",
+      "road",
+      "port",
+      "spaceport",
+      "warehouse"
+    ],
+    "forbidden_live_fields": [
+      "facility_id",
+      "region_id",
+      "owner_kind",
+      "owner_player_index",
+      "current_rank",
+      "generation",
+      "active",
+      "tombstone",
+      "transaction_receipt"
+    ]
+  },
+  "operation_registry": [
+    {
+      "operation_id": "install_rate",
+      "legacy_effect_kind": "install_commodity_rate",
+      "handler_facade": "CommodityCardEffectAdapterV06",
+      "live_owner": "CommodityFlowRuntimeController",
+      "transaction_policy": "exact_once_install"
+    },
+    {
+      "operation_id": "build_facility",
+      "legacy_effect_kind": "build_upgrade_or_repair_facility",
+      "handler_facade": "FacilityCardEffectAdapterV06",
+      "live_owner": "RegionInfrastructureRuntimeController",
+      "transaction_policy": "composite_facility_and_optional_commodity_install"
+    },
+    {
+      "operation_id": "upgrade_facility",
+      "legacy_effect_kind": "build_upgrade_or_repair_facility",
+      "handler_facade": "FacilityCardEffectAdapterV06",
+      "live_owner": "RegionInfrastructureRuntimeController",
+      "transaction_policy": "composite_facility_and_optional_commodity_install"
+    },
+    {
+      "operation_id": "repair_facility",
+      "legacy_effect_kind": "build_upgrade_or_repair_facility",
+      "handler_facade": "FacilityCardEffectAdapterV06",
+      "live_owner": "RegionInfrastructureRuntimeController",
+      "transaction_policy": "facility_atomic_lifecycle"
+    },
+    {
+      "operation_id": "modify_supply",
+      "legacy_effect_kind": "global_supply_spawn",
+      "handler_facade": "GlobalSupplyDemandRuntimeServiceV06",
+      "live_owner": "CommodityFlowRuntimeController",
+      "transaction_policy": "atomic_one_shot_physical_supply_batch"
+    },
+    {
+      "operation_id": "modify_demand",
+      "legacy_effect_kind": "global_order_budget",
+      "handler_facade": "GlobalSupplyDemandRuntimeServiceV06",
+      "live_owner": "CommodityFlowRuntimeController",
+      "transaction_policy": "atomic_one_shot_demand_batch"
+    }
+  ],
+  "findings": [
+    {
+      "id": "PFE-001",
+      "classification": "REMOVE",
+      "title": "duplicate_product_catalog_with_different_order",
+      "evidence": [
+        {"path": "scripts/runtime/product_market_runtime_controller.gd", "line_start": 80, "line_end": 88},
+        {"path": "resources/content/product_industry_catalog_v05.tres", "line_start": 55, "line_end": 423}
+      ],
+      "disposition": "remove controller literal after exact set, order, RNG, and save parity"
+    },
+    {
+      "id": "PFE-002",
+      "classification": "REMOVE",
+      "title": "localized_ocean_product_subset",
+      "evidence": [
+        {"path": "scripts/runtime/session_start_world_plan_builder.gd", "line_start": 13, "line_end": 13},
+        {"path": "scripts/runtime/session_start_world_plan_builder.gd", "line_start": 46, "line_end": 46},
+        {"path": "scripts/runtime/session_start_world_plan_builder.gd", "line_start": 150, "line_end": 153},
+        {"path": "scripts/runtime/session_start_world_plan_builder.gd", "line_start": 184, "line_end": 190}
+      ],
+      "disposition": "replace with explicit semantic terrain tags preserving exact ordered pool"
+    },
+    {
+      "id": "PFE-003",
+      "classification": "REMOVE",
+      "title": "disjoint_compendium_product_catalog",
+      "evidence": [
+        {"path": "resources/compendium/products/water_ice.tres", "line_start": 7, "line_end": 7},
+        {"path": "resources/compendium/products/ore_freight.tres", "line_start": 7, "line_end": 7},
+        {"path": "resources/compendium/products/spice_market.tres", "line_start": 7, "line_end": 7},
+        {"path": "resources/compendium/products/contract_goods_pack.tres", "line_start": 8, "line_end": 118}
+      ],
+      "disposition": "remove from active product catalog surface or quarantine as tutorial fixtures"
+    },
+    {
+      "id": "PFE-004",
+      "classification": "REMOVE",
+      "title": "commodity_rank_parsed_from_card_id_suffix",
+      "evidence": [
+        {"path": "scripts/cards/v06/effects/commodity_card_effect_adapter_v06.gd", "line_start": 49, "line_end": 51},
+        {"path": "scripts/cards/v06/effects/commodity_card_effect_adapter_v06.gd", "line_start": 150, "line_end": 155}
+      ],
+      "disposition": "pass typed rank in RuleExecutionPlan"
+    },
+    {
+      "id": "PFE-005",
+      "classification": "REMOVE",
+      "title": "product_codex_recursive_raw_payload_scan",
+      "evidence": [
+        {"path": "scripts/runtime/product_codex_public_source_service.gd", "line_start": 287, "line_end": 319}
+      ],
+      "disposition": "use typed semantic product relations"
+    },
+    {
+      "id": "PFE-006",
+      "classification": "REMOVE",
+      "title": "ai_parses_localized_clue_text_for_product_identity",
+      "evidence": [
+        {"path": "scripts/runtime/ai_runtime_controller.gd", "line_start": 1551, "line_end": 1554}
+      ],
+      "disposition": "emit typed product IDs from clue producer"
+    },
+    {
+      "id": "PFE-007",
+      "classification": "REMOVE",
+      "title": "ui_product_color_selected_by_text_switch",
+      "evidence": [
+        {"path": "scripts/ui/planet_map_view.gd", "line_start": 1374, "line_end": 1388}
+      ],
+      "disposition": "render ProductPresentationDTO color token"
+    },
+    {
+      "id": "PFE-008",
+      "classification": "REMOVE",
+      "title": "product_market_v04_runtime_gate_beside_v06_domain_owners",
+      "evidence": [
+        {"path": "scripts/runtime/product_market_runtime_controller.gd", "line_start": 177, "line_end": 183},
+        {"path": "scripts/runtime/game_runtime_coordinator.gd", "line_start": 180, "line_end": 187},
+        {"path": "scripts/runtime/game_runtime_coordinator.gd", "line_start": 515, "line_end": 515},
+        {"path": "scripts/main.gd", "line_start": 273, "line_end": 283}
+      ],
+      "disposition": "remove only after finance, timing, execution, and save parity"
+    },
+    {
+      "id": "PFE-009",
+      "classification": "REMOVE",
+      "title": "uncomposed_v05_capacity_and_retired_gdp_residue",
+      "evidence": [
+        {"path": "scripts/runtime/industry_capacity_runtime_service.gd", "line_start": 4, "line_end": 4},
+        {"path": "scripts/runtime/industry_capacity_runtime_service.gd", "line_start": 152, "line_end": 170},
+        {"path": "scripts/rules/space_syndicate_ruleset_profile_v05.gd", "line_start": 4, "line_end": 23},
+        {"path": "scripts/runtime/gdp_formula_runtime_controller.gd", "line_start": 5, "line_end": 18},
+        {"path": "scenes/runtime/GdpFormulaRuntimeController.tscn", "line_start": 10, "line_end": 11}
+      ],
+      "disposition": "confirm tool/test-only consumers then retire without restoring old mechanics"
+    },
+    {
+      "id": "PFE-010",
+      "classification": "MOVE",
+      "title": "product_profiles_embedded_and_reimplemented",
+      "evidence": [
+        {"path": "scripts/runtime/product_market_runtime_controller.gd", "line_start": 98, "line_end": 145},
+        {"path": "scripts/main.gd", "line_start": 2145, "line_end": 2169},
+        {"path": "scripts/runtime/product_codex_public_source_service.gd", "line_start": 236, "line_end": 250}
+      ],
+      "destination": "ProductSemanticSpec -> ProductPresentationDTO"
+    },
+    {
+      "id": "PFE-011",
+      "classification": "MOVE",
+      "title": "product_catalog_mixes_metadata_and_capacity_rules",
+      "evidence": [
+        {"path": "scripts/content/product_industry_catalog_resource.gd", "line_start": 4, "line_end": 6},
+        {"path": "scripts/content/product_industry_catalog_resource.gd", "line_start": 17, "line_end": 43},
+        {"path": "scripts/content/product_industry_catalog_resource.gd", "line_start": 46, "line_end": 109},
+        {"path": "scripts/content/product_industry_definition_resource.gd", "line_start": 4, "line_end": 9}
+      ],
+      "destination": "single product authoring source plus separate ruleset references"
+    },
+    {
+      "id": "PFE-012",
+      "classification": "MOVE",
+      "title": "product_order_is_rng_contract",
+      "evidence": [
+        {"path": "scripts/runtime/product_market_runtime_controller.gd", "line_start": 214, "line_end": 264},
+        {"path": "scripts/runtime/product_market_runtime_controller.gd", "line_start": 267, "line_end": 292},
+        {"path": "scripts/runtime/product_market_runtime_controller.gd", "line_start": 486, "line_end": 510},
+        {"path": "scripts/runtime/product_market_runtime_controller.gd", "line_start": 534, "line_end": 595}
+      ],
+      "destination": "ProductSemanticSpec.market_order_index and frozen fingerprint"
+    },
+    {
+      "id": "PFE-013",
+      "classification": "MOVE",
+      "title": "raw_product_resource_lookups_distributed_across_owners",
+      "evidence": [
+        {"path": "scripts/runtime/commodity_flow_runtime_controller.gd", "line_start": 18, "line_end": 18},
+        {"path": "scripts/runtime/commodity_flow_runtime_controller.gd", "line_start": 352, "line_end": 352},
+        {"path": "scripts/runtime/commodity_flow_runtime_controller.gd", "line_start": 1760, "line_end": 1764},
+        {"path": "scripts/runtime/product_market_runtime_controller.gd", "line_start": 1982, "line_end": 1985},
+        {"path": "scripts/runtime/region_infrastructure_world_bridge.gd", "line_start": 471, "line_end": 489}
+      ],
+      "destination": "detached ProductSemanticSpec facts"
+    },
+    {
+      "id": "PFE-014",
+      "classification": "MOVE",
+      "title": "facility_kind_policy_embedded_in_live_owner",
+      "evidence": [
+        {"path": "scripts/runtime/region_infrastructure_runtime_controller.gd", "line_start": 15, "line_end": 16},
+        {"path": "scripts/runtime/region_infrastructure_runtime_controller.gd", "line_start": 218, "line_end": 235},
+        {"path": "scripts/runtime/region_infrastructure_runtime_controller.gd", "line_start": 1618, "line_end": 1623}
+      ],
+      "destination": "FacilitySemanticSpec"
+    },
+    {
+      "id": "PFE-015",
+      "classification": "MOVE",
+      "title": "facility_and_rate_numbers_need_ruleset_parity_compilation",
+      "evidence": [
+        {"path": "scripts/rules/space_syndicate_ruleset_profile_v06.gd", "line_start": 9, "line_end": 16},
+        {"path": "scripts/rules/space_syndicate_ruleset_profile_v06.gd", "line_start": 38, "line_end": 38},
+        {"path": "scripts/rules/space_syndicate_ruleset_profile_v06.gd", "line_start": 51, "line_end": 51},
+        {"path": "scripts/cards/semantic/card_semantic_compiler_v1.gd", "line_start": 272, "line_end": 297}
+      ],
+      "destination": "compiled FacilitySemanticSpec rank profile validated against ruleset v0.6"
+    },
+    {
+      "id": "PFE-016",
+      "classification": "MOVE",
+      "title": "repeated_facility_and_industry_allowlists",
+      "evidence": [
+        {"path": "scripts/cards/v06/effects/commodity_card_effect_adapter_v06.gd", "line_start": 7, "line_end": 7},
+        {"path": "scripts/cards/v06/effects/facility_card_effect_adapter_v06.gd", "line_start": 7, "line_end": 9},
+        {"path": "scripts/cards/v06/effects/global_supply_demand_runtime_service_v06.gd", "line_start": 7, "line_end": 8},
+        {"path": "scripts/runtime/industry_capacity_runtime_service.gd", "line_start": 4, "line_end": 4},
+        {"path": "scripts/runtime/region_infrastructure_runtime_controller.gd", "line_start": 15, "line_end": 16},
+        {"path": "scripts/cards/semantic/card_semantic_schema_v1.gd", "line_start": 7, "line_end": 7}
+      ],
+      "destination": "shared semantic catalog validation"
+    },
+    {
+      "id": "PFE-017",
+      "classification": "MOVE",
+      "title": "product_facility_economy_alias_bridges",
+      "evidence": [
+        {"path": "scripts/runtime/commodity_flow_runtime_controller.gd", "line_start": 346, "line_end": 346},
+        {"path": "scripts/runtime/commodity_flow_runtime_controller.gd", "line_start": 512, "line_end": 512},
+        {"path": "scripts/runtime/commodity_flow_runtime_controller.gd", "line_start": 4581, "line_end": 4581},
+        {"path": "scripts/runtime/industry_capacity_world_bridge.gd", "line_start": 32, "line_end": 32},
+        {"path": "scripts/runtime/victory_control_world_bridge.gd", "line_start": 293, "line_end": 293},
+        {"path": "scripts/runtime/economy_dashboard_viewer_query_port.gd", "line_start": 125, "line_end": 131},
+        {"path": "scripts/runtime/economy_dashboard_public_snapshot_service.gd", "line_start": 125, "line_end": 125}
+      ],
+      "destination": "typed canonical command and presentation contracts"
+    },
+    {
+      "id": "PFE-018",
+      "classification": "MOVE",
+      "title": "core_economic_router_keyed_by_legacy_effect_kind",
+      "evidence": [
+        {"path": "scripts/cards/v06/production/core_economic_card_effect_router_v06.gd", "line_start": 5, "line_end": 12},
+        {"path": "scripts/cards/v06/production/core_economic_card_effect_router_v06.gd", "line_start": 17, "line_end": 28},
+        {"path": "scripts/cards/v06/production/core_economic_card_effect_router_v06.gd", "line_start": 34, "line_end": 60},
+        {"path": "scripts/cards/v06/production/core_economic_card_effect_router_v06.gd", "line_start": 125, "line_end": 214}
+      ],
+      "destination": "OperationHandlerRegistry keyed by semantic operation_id"
+    },
+    {
+      "id": "PFE-019",
+      "classification": "MOVE",
+      "title": "coordinator_duplicates_economic_kind_target_and_replay_routing",
+      "evidence": [
+        {"path": "scripts/runtime/game_runtime_coordinator.gd", "line_start": 16, "line_end": 26},
+        {"path": "scripts/runtime/game_runtime_coordinator.gd", "line_start": 2897, "line_end": 2977},
+        {"path": "scripts/runtime/game_runtime_coordinator.gd", "line_start": 3045, "line_end": 3112}
+      ],
+      "destination": "registered handler target-planning and replay-validation capabilities"
+    },
+    {
+      "id": "PFE-020",
+      "classification": "MOVE",
+      "title": "compiled_ops_not_yet_execution_input",
+      "evidence": [
+        {"path": "scripts/cards/semantic/card_semantic_compiler_v1.gd", "line_start": 481, "line_end": 506},
+        {"path": "scripts/cards/semantic/card_semantic_compiler_v1.gd", "line_start": 521, "line_end": 543},
+        {"path": "scripts/cards/semantic/card_semantic_schema_v1.gd", "line_start": 56, "line_end": 57}
+      ],
+      "destination": "CardSemanticSpec -> RuleExecutionPlan"
+    },
+    {
+      "id": "PFE-021",
+      "classification": "MOVE",
+      "title": "ai_direct_product_catalog_and_live_dictionary_access",
+      "evidence": [
+        {"path": "scripts/runtime/ai_runtime_controller.gd", "line_start": 1121, "line_end": 1123},
+        {"path": "scripts/runtime/ai_runtime_controller.gd", "line_start": 1394, "line_end": 1454},
+        {"path": "scripts/runtime/ai_runtime_controller.gd", "line_start": 4870, "line_end": 4873},
+        {"path": "scripts/runtime/ai_runtime_controller.gd", "line_start": 5195, "line_end": 5260},
+        {"path": "scripts/runtime/ai_runtime_controller.gd", "line_start": 5283, "line_end": 5295},
+        {"path": "scripts/runtime/ai_runtime_controller.gd", "line_start": 7180, "line_end": 7222}
+      ],
+      "destination": "viewer-authorized AiObservationSnapshot and AiActionCandidate"
+    },
+    {
+      "id": "PFE-022",
+      "classification": "MOVE",
+      "title": "diagnostics_reinterpret_raw_product_card_and_localized_categories",
+      "evidence": [
+        {"path": "scripts/runtime/gameplay_balance_diagnostics_world_bridge.gd", "line_start": 106, "line_end": 177},
+        {"path": "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd", "line_start": 112, "line_end": 234},
+        {"path": "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd", "line_start": 889, "line_end": 930},
+        {"path": "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd", "line_start": 1136, "line_end": 1149},
+        {"path": "scripts/balance/environment_balance_model.gd", "line_start": 66, "line_end": 108},
+        {"path": "scripts/balance/runtime_balance_model.gd", "line_start": 250, "line_end": 298},
+        {"path": "scripts/balance/runtime_balance_model.gd", "line_start": 630, "line_end": 706}
+      ],
+      "destination": "standard semantic diagnostic projection"
+    },
+    {
+      "id": "PFE-023",
+      "classification": "MOVE",
+      "title": "presentation_reads_raw_product_profiles_and_facility_types",
+      "evidence": [
+        {"path": "scripts/runtime/product_codex_public_source_service.gd", "line_start": 49, "line_end": 95},
+        {"path": "scripts/runtime/product_codex_public_source_service.gd", "line_start": 230, "line_end": 250},
+        {"path": "scripts/runtime/economy_dashboard_viewer_query_port.gd", "line_start": 117, "line_end": 157},
+        {"path": "scripts/runtime/codex_public_snapshot_service.gd", "line_start": 188, "line_end": 199},
+        {"path": "scripts/presentation/table_presentation_viewmodel_query.gd", "line_start": 294, "line_end": 294},
+        {"path": "scripts/presentation/table_presentation_viewmodel_query.gd", "line_start": 353, "line_end": 353}
+      ],
+      "destination": "ProductPresentationDTO and FacilityPresentationDTO"
+    },
+    {
+      "id": "PFE-024",
+      "classification": "MOVE",
+      "title": "save_restore_lacks_shared_semantic_catalog_binding",
+      "evidence": [
+        {"path": "scripts/runtime/product_market_runtime_controller.gd", "line_start": 1627, "line_end": 1669},
+        {"path": "scripts/runtime/product_market_runtime_controller.gd", "line_start": 1823, "line_end": 1826},
+        {"path": "scripts/runtime/region_infrastructure_runtime_controller.gd", "line_start": 927, "line_end": 985},
+        {"path": "scripts/runtime/region_infrastructure_runtime_controller.gd", "line_start": 1419, "line_end": 1476},
+        {"path": "scripts/runtime/commodity_flow_runtime_controller.gd", "line_start": 1380, "line_end": 1428},
+        {"path": "scripts/runtime/commodity_flow_runtime_controller.gd", "line_start": 1464, "line_end": 1488}
+      ],
+      "destination": "detached semantic catalog restore preflight preserving envelope and IDs"
+    },
+    {
+      "id": "PFE-025",
+      "classification": "KEEP",
+      "title": "product_market_live_state_owner",
+      "evidence": [
+        {"path": "scripts/runtime/product_market_runtime_controller.gd", "line_start": 148, "line_end": 164},
+        {"path": "scripts/runtime/product_market_runtime_controller.gd", "line_start": 486, "line_end": 531},
+        {"path": "scripts/runtime/product_market_runtime_controller.gd", "line_start": 1627, "line_end": 1678},
+        {"path": "scripts/runtime/product_market_runtime_controller.gd", "line_start": 1749, "line_end": 1752}
+      ],
+      "constraint": "remove static definitions only; do not create another market state owner"
+    },
+    {
+      "id": "PFE-026",
+      "classification": "KEEP",
+      "title": "localized_product_ids_are_current_compatibility_identity",
+      "evidence": [
+        {"path": "scripts/runtime/product_market_runtime_controller.gd", "line_start": 80, "line_end": 88},
+        {"path": "data/cards/card_runtime_catalog_v06.json", "line_start": 29, "line_end": 37},
+        {"path": "scripts/runtime/product_market_runtime_controller.gd", "line_start": 1627, "line_end": 1648}
+      ],
+      "constraint": "preserve exact values; no alias, transliteration, or name parsing"
+    },
+    {
+      "id": "PFE-027",
+      "classification": "KEEP",
+      "title": "region_infrastructure_transaction_and_state_owner",
+      "evidence": [
+        {"path": "scripts/runtime/region_infrastructure_runtime_controller.gd", "line_start": 246, "line_end": 380},
+        {"path": "scripts/runtime/region_infrastructure_runtime_controller.gd", "line_start": 414, "line_end": 567},
+        {"path": "scripts/runtime/region_infrastructure_runtime_controller.gd", "line_start": 927, "line_end": 985}
+      ],
+      "constraint": "register operations to owner; preserve atomic lifecycle"
+    },
+    {
+      "id": "PFE-028",
+      "classification": "KEEP",
+      "title": "commodity_flow_physical_state_and_rules_owner",
+      "evidence": [
+        {"path": "scripts/runtime/commodity_flow_runtime_controller.gd", "line_start": 330, "line_end": 399},
+        {"path": "scripts/runtime/commodity_flow_runtime_controller.gd", "line_start": 500, "line_end": 530},
+        {"path": "scripts/runtime/commodity_flow_runtime_controller.gd", "line_start": 1380, "line_end": 1488},
+        {"path": "scripts/runtime/commodity_flow_runtime_controller.gd", "line_start": 3940, "line_end": 3980},
+        {"path": "scripts/runtime/commodity_flow_runtime_controller.gd", "line_start": 4238, "line_end": 4280}
+      ],
+      "constraint": "static facts move; physical topology and transaction logic stay"
+    },
+    {
+      "id": "PFE-029",
+      "classification": "KEEP",
+      "title": "facility_card_composite_transaction_facade",
+      "evidence": [
+        {"path": "scripts/cards/v06/effects/facility_card_effect_adapter_v06.gd", "line_start": 54, "line_end": 130},
+        {"path": "scripts/cards/v06/effects/facility_card_effect_adapter_v06.gd", "line_start": 141, "line_end": 205},
+        {"path": "scripts/cards/v06/effects/facility_card_effect_adapter_v06.gd", "line_start": 223, "line_end": 316}
+      ],
+      "constraint": "keep facility plus optional commodity install atomic"
+    },
+    {
+      "id": "PFE-030",
+      "classification": "KEEP",
+      "title": "global_supply_demand_domain_allocator",
+      "evidence": [
+        {"path": "scripts/cards/v06/effects/global_supply_demand_runtime_service_v06.gd", "line_start": 103, "line_end": 157},
+        {"path": "scripts/cards/v06/effects/global_supply_demand_runtime_service_v06.gd", "line_start": 453, "line_end": 492},
+        {"path": "scripts/cards/v06/effects/global_supply_demand_runtime_service_v06.gd", "line_start": 525, "line_end": 600},
+        {"path": "scripts/cards/v06/effects/global_supply_demand_runtime_service_v06.gd", "line_start": 665, "line_end": 689}
+      ],
+      "constraint": "consume typed operations; keep real-owner allocation and atomic sink"
+    },
+    {
+      "id": "PFE-031",
+      "classification": "KEEP",
+      "title": "v06_numeric_rules_authority",
+      "evidence": [
+        {"path": "scripts/rules/space_syndicate_ruleset_profile_v06.gd", "line_start": 9, "line_end": 16},
+        {"path": "scripts/rules/space_syndicate_ruleset_profile_v06.gd", "line_start": 38, "line_end": 38},
+        {"path": "scripts/rules/space_syndicate_ruleset_profile_v06.gd", "line_start": 51, "line_end": 51},
+        {"path": "scripts/rules/space_syndicate_ruleset_profile_v06.gd", "line_start": 95, "line_end": 166}
+      ],
+      "constraint": "validate parity without changing or duplicating values"
+    },
+    {
+      "id": "PFE-032",
+      "classification": "KEEP",
+      "title": "typed_public_selection_and_viewer_scoped_facility_boundaries",
+      "evidence": [
+        {"path": "scripts/viewmodels/public_product_selection_catalog_snapshot.gd", "line_start": 5, "line_end": 99},
+        {"path": "scripts/presentation/table_selection_catalog_query_port.gd", "line_start": 41, "line_end": 78},
+        {"path": "scripts/runtime/region_infrastructure_runtime_controller.gd", "line_start": 874, "line_end": 924}
+      ],
+      "constraint": "retarget static source without weakening authorization or adding Main access"
+    }
+  ],
+  "blockers": [
+    {
+      "id": "rng_order",
+      "severity": "blocker",
+      "detail": "The two equal 46-ID sets have different orders, and product enumeration order assigns deterministic draws to identities."
+    },
+    {
+      "id": "localized_identity",
+      "severity": "blocker",
+      "detail": "Current localized product IDs are persisted and cross-referenced; renaming or ASCII alias invention is unsafe."
+    },
+    {
+      "id": "runtime_version_split",
+      "severity": "blocker",
+      "detail": "Product market/coordinator v0.4 gates coexist with v0.6 card, infrastructure, and commodity owners."
+    },
+    {
+      "id": "facility_static_authority_missing",
+      "severity": "blocker",
+      "detail": "No single facility static catalog exists; type policy and numeric profiles have different current authorities."
+    },
+    {
+      "id": "composite_transaction",
+      "severity": "blocker",
+      "detail": "Factory build and automatic commodity installation must remain one rollback-capable transaction."
+    },
+    {
+      "id": "rent_semantics_unresolved",
+      "severity": "blocker",
+      "detail": "rent_rate_profile is pending_first_playtest_table; no new rent rule may be inferred."
+    },
+    {
+      "id": "save_catalog_binding",
+      "severity": "major",
+      "detail": "Owner payloads persist IDs without one shared semantic catalog fingerprint; preflight must not change envelope shape."
+    },
+    {
+      "id": "presentation_atomicity",
+      "severity": "major",
+      "detail": "Main, Codex, dashboard, map, and table consumers require an atomic DTO producer/consumer cutover."
+    },
+    {
+      "id": "legacy_asset_classification",
+      "severity": "major",
+      "detail": "v0.5 capacity and retired GDP assets appear uncomposed in production but still require tool/test consumer classification before deletion."
+    }
+  ],
+  "preservation_contract": {
+    "product_ids_changed": false,
+    "facility_kind_ids_changed": false,
+    "industry_ids_changed": false,
+    "rules_changed": false,
+    "balance_values_changed": false,
+    "rng_order_changed": false,
+    "save_shape_changed": false,
+    "save_owner_added": false,
+    "privacy_boundary_changed": false,
+    "retired_mechanic_restored": false,
+    "second_state_owner_proposed": false,
+    "second_rule_engine_proposed": false
+  }
+}

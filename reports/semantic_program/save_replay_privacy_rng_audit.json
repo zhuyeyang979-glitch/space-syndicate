@@ -1,0 +1,499 @@
+{
+  "schema_version": 1,
+  "report_id": "semantic_program.save_replay_privacy_rng_audit.wave1_j",
+  "audit_identity": {
+    "integration_baseline": "39ec00854d7f0439aab6f053948e5a58088ba2d5",
+    "observed_origin_main": "59756a291f811a064726f59aed27efecc3590c9a",
+    "origin_main_is_integration_ancestor": true,
+    "branch": "codex/semantic-program-wave1-save-replay-39ec008",
+    "audit_date": "2026-07-27",
+    "production_changes": 0,
+    "test_changes": 0,
+    "catalog_changes": 0,
+    "rule_or_balance_changes": 0,
+    "rng_or_save_changes": 0,
+    "owned_files": [
+      "reports/semantic_program/save_replay_privacy_rng_audit.md",
+      "reports/semantic_program/save_replay_privacy_rng_audit.json"
+    ]
+  },
+  "scope": {
+    "included": [
+      "fixed_19_section_v3_v06_save_envelope",
+      "cold_restore_transaction",
+      "card_role_monster_product_facility_military_weather_victory_identity",
+      "card_resolution_history_and_replay_records",
+      "semantic_spec_dto_ai_projection_persistence_boundary",
+      "viewer_and_actor_privacy",
+      "run_rng_consumption_and_restore",
+      "ai_training_runtime_execution_parity",
+      "v04_child_payload_compatibility"
+    ],
+    "excluded": [
+      "production_code_edits",
+      "test_edits",
+      "catalog_edits",
+      "rule_or_balance_changes",
+      "rng_or_save_changes",
+      "other_report_edits",
+      "full_run_resume_claim"
+    ],
+    "production_scan_glob": "scripts/**/*.gd excluding scripts/tools/**",
+    "method": "Source-level producer-to-envelope-to-restore tracing, targeted deterministic scans, and identity/privacy/RNG consumer tracing."
+  },
+  "required_assertions": {
+    "NEW_SEMANTIC_SAVE_SECTION_COUNT": 0,
+    "SEMANTIC_COMPILER_RNG_DELTA": 0,
+    "SEMANTIC_QUERY_RNG_DELTA": 0,
+    "VIEWER_CLIPPING_BEFORE_AI_UI": "required_not_yet_production_composed",
+    "REPLAY_COMPATIBILITY": "versioned_adapters_fail_closed",
+    "TRAINING_PRODUCTION_EXECUTION_ENGINE": "same",
+    "FULL_RUN_RESUME_CLAIM": false
+  },
+  "counts": {
+    "production_gd_files": 530,
+    "fixed_save_sections": 19,
+    "transactional_bindings": 12,
+    "unsupported_bindings": 7,
+    "history_forbidden_private_key_classes": 17,
+    "semantic_compiler_projection_save_api_files": 0,
+    "semantic_compiler_projection_forbidden_rng_calls": 0,
+    "semantic_production_composition_references": 0,
+    "direct_live_rng_call_sites_outside_service": 15,
+    "detached_rng_call_sites": 23,
+    "run_rng_save_api_production_consumers": 0,
+    "product_market_registry_bindings": 0,
+    "separate_training_execution_engine_files": 0,
+    "identity_domains": 8,
+    "findings": 33,
+    "classifications": {
+      "KEEP": 11,
+      "MOVE": 18,
+      "REMOVE": 4
+    },
+    "hard_blockers": 5,
+    "migration_stages": 8
+  },
+  "classification_rules": {
+    "KEEP": "Retain the current owner, transaction, privacy, stable-identity, or single-engine boundary.",
+    "MOVE": "Preserve behavior while moving stable identity or derived responsibility into the named existing owner, semantic spec, projection, or version adapter.",
+    "REMOVE": "Delete only after deterministic version migration and parity fixtures prove the compatibility bridge is no longer required."
+  },
+  "save_registry": {
+    "registry_id": "v06_save_owner_registry",
+    "fixed_section_order": [
+      "ruleset",
+      "region_infrastructure",
+      "region_supply",
+      "commodity_flow",
+      "routes",
+      "player_mana",
+      "commodity_belt_visibility",
+      "card_inventory",
+      "player_organization",
+      "monsters",
+      "military",
+      "weather",
+      "card_resolution_queue",
+      "card_resolution_execution",
+      "card_resolution_history",
+      "ai",
+      "bankruptcy_neutral_estate",
+      "victory_control",
+      "session"
+    ],
+    "order_evidence": "scripts/runtime/v06_save_owner_registry.gd:28-48",
+    "transaction_evidence": [
+      "scripts/runtime/v06_save_owner_registry.gd:115-175",
+      "scripts/runtime/v06_save_owner_registry.gd:356-430"
+    ],
+    "bindings": [
+      {"order": 1, "section_id": "ruleset", "owner_id": "ruleset_runtime", "restore_mode": "unsupported", "reason": "ruleset_apply_api_missing", "evidence": "scenes/runtime/V06SaveOwnerRegistry.tscn:8-10"},
+      {"order": 2, "section_id": "region_infrastructure", "owner_id": "public_facility_region", "restore_mode": "transactional", "reason": "", "evidence": "scenes/runtime/V06SaveOwnerRegistry.tscn:14-21"},
+      {"order": 3, "section_id": "region_supply", "owner_id": "region_supply", "restore_mode": "transactional", "reason": "", "evidence": "scenes/runtime/V06SaveOwnerRegistry.tscn:25-32"},
+      {"order": 4, "section_id": "commodity_flow", "owner_id": "commodity_flow", "restore_mode": "transactional", "reason": "", "evidence": "scenes/runtime/V06SaveOwnerRegistry.tscn:36-45"},
+      {"order": 5, "section_id": "routes", "owner_id": "route_network", "restore_mode": "unsupported", "reason": "strict_preflight_and_exact_rollback_missing", "evidence": "scenes/runtime/V06SaveOwnerRegistry.tscn:49-51"},
+      {"order": 6, "section_id": "player_mana", "owner_id": "player_mana", "restore_mode": "transactional", "reason": "", "evidence": "scenes/runtime/V06SaveOwnerRegistry.tscn:55-62"},
+      {"order": 7, "section_id": "commodity_belt_visibility", "owner_id": "commodity_belt_visibility", "restore_mode": "unsupported", "reason": "apply_api_missing", "evidence": "scenes/runtime/V06SaveOwnerRegistry.tscn:66-68"},
+      {"order": 8, "section_id": "card_inventory", "owner_id": "card_inventory", "restore_mode": "unsupported", "reason": "apply_api_missing", "evidence": "scenes/runtime/V06SaveOwnerRegistry.tscn:72-74"},
+      {"order": 9, "section_id": "player_organization", "owner_id": "player_organization", "restore_mode": "transactional", "reason": "", "evidence": "scenes/runtime/V06SaveOwnerRegistry.tscn:78-85"},
+      {"order": 10, "section_id": "monsters", "owner_id": "monster_runtime", "restore_mode": "transactional", "reason": "", "evidence": "scenes/runtime/V06SaveOwnerRegistry.tscn:89-96"},
+      {"order": 11, "section_id": "military", "owner_id": "military_runtime", "restore_mode": "unsupported", "reason": "strict_preflight_missing", "evidence": "scenes/runtime/V06SaveOwnerRegistry.tscn:100-102"},
+      {"order": 12, "section_id": "weather", "owner_id": "weather_runtime", "restore_mode": "transactional", "reason": "", "evidence": "scenes/runtime/V06SaveOwnerRegistry.tscn:106-113"},
+      {"order": 13, "section_id": "card_resolution_queue", "owner_id": "card_resolution_queue", "restore_mode": "unsupported", "reason": "apply_api_missing", "evidence": "scenes/runtime/V06SaveOwnerRegistry.tscn:117-119"},
+      {"order": 14, "section_id": "card_resolution_execution", "owner_id": "card_resolution_execution", "restore_mode": "transactional", "reason": "", "evidence": "scenes/runtime/V06SaveOwnerRegistry.tscn:123-131"},
+      {"order": 15, "section_id": "card_resolution_history", "owner_id": "card_resolution_history", "restore_mode": "transactional", "reason": "", "evidence": "scenes/runtime/V06SaveOwnerRegistry.tscn:135-143"},
+      {"order": 16, "section_id": "ai", "owner_id": "ai_runtime", "restore_mode": "unsupported", "reason": "strict_preflight_missing", "evidence": "scenes/runtime/V06SaveOwnerRegistry.tscn:147-149"},
+      {"order": 17, "section_id": "bankruptcy_neutral_estate", "owner_id": "bankruptcy_neutral_estate", "restore_mode": "transactional", "reason": "", "evidence": "scenes/runtime/V06SaveOwnerRegistry.tscn:153-160"},
+      {"order": 18, "section_id": "victory_control", "owner_id": "victory_control", "restore_mode": "transactional", "reason": "", "evidence": "scenes/runtime/V06SaveOwnerRegistry.tscn:164-171"},
+      {"order": 19, "section_id": "session", "owner_id": "game_session", "restore_mode": "transactional", "reason": "", "evidence": "scenes/runtime/V06SaveOwnerRegistry.tscn:175-184"}
+    ],
+    "unsupported_section_ids": [
+      "ruleset",
+      "routes",
+      "commodity_belt_visibility",
+      "card_inventory",
+      "military",
+      "card_resolution_queue",
+      "ai"
+    ],
+    "envelope_contract": {
+      "top_level_schema": "space_syndicate.v06.save.v3",
+      "ruleset_id": "v0.6",
+      "unknown_or_missing_fields_fail_closed": true,
+      "legacy_v1_v2_inspect_only": true,
+      "evidence": [
+        "scripts/runtime/ruleset_save_handshake_service.gd:38-108",
+        "scripts/runtime/ruleset_save_handshake_service.gd:121-172",
+        "docs/v06_save_envelope_runtime_contract.md:11-46"
+      ]
+    },
+    "session_composite": {
+      "schema_version": 2,
+      "children": ["game_session_runtime", "world_session_state", "card_history_private_annotations"],
+      "apply_order": ["world_session_state", "card_history_private_annotations", "game_session_runtime"],
+      "full_run_resume_claimed": false,
+      "evidence": [
+        "scripts/runtime/session_envelope_save_owner.gd:5-11",
+        "scripts/runtime/session_envelope_save_owner.gd:31-165",
+        "scripts/runtime/session_envelope_save_owner.gd:179-193"
+      ]
+    }
+  },
+  "identity_matrix": [
+    {
+      "domain": "card",
+      "current_identity": ["card_id", "family_id", "runtime_instance_id_when_present"],
+      "persistence_locations": ["region_supply", "session.world_session_state.players.slots", "card_resolution_queue", "card_resolution_execution", "card_resolution_history"],
+      "restore_status": "partial",
+      "risk": "Inventory and queue sections are unsupported; history strips stable v06 identity and raw skill dictionaries remain in replay-shaped records.",
+      "classification": "MOVE",
+      "target": "Persist stable identity and dynamic instance state in existing owners; bind catalog fingerprint; never save compiled CardSemanticSpec.",
+      "evidence": ["scripts/runtime/region_supply_runtime_controller.gd:353-371", "scripts/runtime/region_supply_runtime_controller.gd:469-510", "scripts/runtime/world_session_envelope_codec.gd:26-91", "scripts/runtime/card_resolution_execution_world_bridge.gd:297-318"]
+    },
+    {
+      "domain": "role",
+      "current_identity": ["role_index", "localized_role_card.name"],
+      "persistence_locations": ["session.world_session_state.players.role_index", "session.world_session_state.players.role_card"],
+      "restore_status": "transactional_session_with_unstable_content_identity",
+      "risk": "Catalog reorder or localization change rejects or misbinds old state; full flat role definition is duplicated into live/save state.",
+      "classification": "MOVE",
+      "target": "Stable role_id plus a deterministic source-schema adapter for role_index/name payloads.",
+      "evidence": ["scripts/runtime/world_session_envelope_codec.gd:448-508"]
+    },
+    {
+      "domain": "monster",
+      "current_identity": ["uid", "monster_family_id_when_present", "formal_card_id_v06_when_present", "catalog_index", "localized_name_fallback"],
+      "persistence_locations": ["monsters.auto_monsters", "monsters.lifecycle_journals"],
+      "restore_status": "transactional_but_legacy_identity_permitted",
+      "risk": "Validation allows actors without family ID and runtime resolves them by localized name/catalog index.",
+      "classification": "MOVE",
+      "target": "Normalize supported payloads to mandatory stable family/spec identity, then remove name fallback.",
+      "evidence": ["scripts/runtime/monster_runtime_controller.gd:1461-1482", "scripts/runtime/monster_runtime_controller.gd:2298-2324", "scripts/runtime/monster_runtime_controller.gd:3098-3103", "scripts/runtime/monster_runtime_controller.gd:3230-3249", "scripts/runtime/monster_runtime_controller.gd:3609-3656"]
+    },
+    {
+      "domain": "product",
+      "current_identity": ["localized_product_id"],
+      "persistence_locations": ["session.world_districts.products", "commodity_flow", "ProductMarketRuntimeController_outside_registry"],
+      "restore_status": "incomplete",
+      "risk": "Localized identity is authority and product-market prices/cycle/timers/futures have no fixed-section binding.",
+      "classification": "MOVE",
+      "target": "Stable ProductSemanticSpec ID with frozen legacy aliases; include dynamic market state through an existing section/composite adapter.",
+      "evidence": ["resources/content/product_industry_catalog_v05.tres:55-69", "scripts/content/product_industry_catalog_resource.gd:17-43", "scripts/runtime/product_market_runtime_controller.gd:1627-1649"]
+    },
+    {
+      "domain": "facility",
+      "current_identity": ["facility_id", "facility_type", "industry_id", "region_id"],
+      "persistence_locations": ["region_infrastructure"],
+      "restore_status": "transactional",
+      "risk": "No identity blocker found; future static spec must not duplicate dynamic state.",
+      "classification": "KEEP",
+      "target": "Keep owner and stable IDs; bind static schema/catalog version through existing handshake.",
+      "evidence": ["scripts/runtime/region_infrastructure_runtime_controller.gd:231-311", "scripts/runtime/region_infrastructure_runtime_controller.gd:927-975", "scripts/runtime/region_infrastructure_runtime_controller.gd:1185-1195"]
+    },
+    {
+      "domain": "military",
+      "current_identity": ["uid", "military_type", "localized_name", "source_card"],
+      "persistence_locations": ["military.military_units"],
+      "restore_status": "unsupported",
+      "risk": "Unversioned raw array is assigned without strict preflight; localized source/display values remain in identity-bearing records.",
+      "classification": "MOVE",
+      "target": "Versioned strict unit-state schema with stable unit family/spec identity and exact rollback.",
+      "evidence": ["scripts/runtime/military_runtime_controller.gd:901-925"]
+    },
+    {
+      "domain": "weather",
+      "current_identity": ["definition_id", "legacy_type_alias", "event_id"],
+      "persistence_locations": ["weather.events", "weather.queue", "weather.history"],
+      "restore_status": "transactional",
+      "risk": "Definition identity is stable but type and district aliases duplicate canonical fields.",
+      "classification": "MOVE",
+      "target": "Keep definition_id and region_indices canonical; remove aliases after versioned replay migration.",
+      "evidence": ["scripts/runtime/weather_runtime_state.gd:22-45", "scripts/runtime/weather_runtime_state.gd:106-200", "scripts/runtime/weather_runtime_controller.gd:712-729"]
+    },
+    {
+      "domain": "victory",
+      "current_identity": ["ruleset_id", "dynamic_state", "outcome_sequence"],
+      "persistence_locations": ["victory_control"],
+      "restore_status": "transactional",
+      "risk": "No static VictorySemanticSpec identity/fingerprint is bound to the envelope.",
+      "classification": "MOVE",
+      "target": "Bind static victory semantic version through existing ruleset handshake and keep dynamic lifecycle in current owner.",
+      "evidence": ["scripts/runtime/victory_control_runtime_controller.gd:368-434"]
+    }
+  ],
+  "semantic_persistence_boundary": {
+    "persist": [
+      "stable_semantic_identity",
+      "authored_schema_version",
+      "catalog_or_ruleset_fingerprint",
+      "dynamic_instance_state_in_existing_owner"
+    ],
+    "do_not_persist": [
+      "compiled_semantic_spec",
+      "rule_execution_plan",
+      "player_presentation_dto",
+      "ai_observation_snapshot",
+      "ai_action_candidate",
+      "handler_object",
+      "compiler_cache",
+      "node",
+      "callable"
+    ],
+    "current_compiler_cache": "schema_version_plus_source_definition_fingerprint",
+    "current_production_composition": false,
+    "evidence": [
+      "scripts/runtime/card_semantic_catalog_service.gd:32-75",
+      "scripts/cards/semantic/card_semantic_compiler_v1.gd:52-89",
+      "scripts/runtime/ai_card_semantic_projection_service.gd:35-78",
+      "scripts/runtime/card_player_face_projection_service.gd:268-283"
+    ]
+  },
+  "replay_and_history": {
+    "history_schema": "v0.6.card-resolution-history.1",
+    "history_identity": "resolution_id_lineage_only",
+    "forbidden_private_keys": [
+      "true_owner", "hidden_owner", "hidden_owner_id", "owner_truth", "ai_plan", "ai_private_plan", "ai_reason", "ai_utility_score", "route_plan_score", "pressure_bucket", "decision_samples", "learning_bonus", "cash", "hand", "discard", "private_hand", "slot_index"
+    ],
+    "stable_card_identity_removed_before_history": true,
+    "localized_public_card_id_manufactured": true,
+    "execution_save_schemas_accepted": [1, 2, 3],
+    "queue_legacy_snapshot_bridge_present": true,
+    "required_policy": "Versioned deterministic adapters; missing or ambiguous identity fails closed; history is not executable authority.",
+    "evidence": [
+      "scripts/runtime/card_history_restore_dependency_contract.gd:13-114",
+      "scripts/runtime/card_resolution_history_runtime_service.gd:228-276",
+      "scripts/runtime/card_resolution_execution_world_bridge.gd:297-318",
+      "scripts/presentation/card_history_public_query_port.gd:74-100",
+      "scripts/runtime/card_resolution_queue_runtime_service.gd:128-160",
+      "scripts/runtime/card_resolution_queue_runtime_service.gd:539-555",
+      "scripts/runtime/card_resolution_execution_runtime_service.gd:419-581",
+      "scripts/runtime/card_resolution_execution_runtime_service.gd:643-750"
+    ],
+    "v04_risk": {
+      "top_level_resume_allowed": false,
+      "child_schema_adapters_present": true,
+      "examples": [
+        "scripts/cards/card_runtime_rank_v05_resource.gd:8-30",
+        "scripts/runtime/card_resolution_queue_runtime_service.gd:539-555",
+        "scripts/runtime/card_resolution_execution_runtime_service.gd:476-581"
+      ],
+      "migration_requirement": "Each bridge declares source schema, deterministic mapping, destination schema, ambiguity rejection, fixture, and removal gate."
+    }
+  },
+  "privacy": {
+    "viewer_clipping_order": ["authoritative_owner", "viewer_or_actor_authorization", "clipped_detached_snapshot", "semantic_projection", "ai_or_ui_dto"],
+    "clipping_must_precede_projection": true,
+    "public_history_private_field_rejection": true,
+    "private_annotations_viewer_bucketed": true,
+    "local_ui_single_human_viewer": true,
+    "ai_hand_actor_private_capability": true,
+    "ai_cash_actor_private_capability": true,
+    "forbidden_projection_inputs": [
+      "rival_exact_cash",
+      "rival_hand_or_card_identity",
+      "hidden_monster_owner",
+      "private_route_plan",
+      "private_target_plan",
+      "rng_state",
+      "save_payload",
+      "rival_ai_memory"
+    ],
+    "evidence": [
+      "scripts/presentation/local_viewer_authorization.gd:42-59",
+      "scripts/presentation/table_presentation_viewer_context.gd:23-32",
+      "scripts/presentation/table_presentation_query_ports.gd:57-100",
+      "scripts/runtime/ai_actor_hand_inventory_query_port.gd:89-145",
+      "scripts/runtime/ai_actor_hand_inventory_query_port.gd:178-208",
+      "scripts/runtime/ai_actor_economy_facts_query_port.gd:89-192",
+      "scripts/runtime/ai_card_semantic_projection_input_v1.gd:19-37",
+      "scripts/runtime/ai_card_semantic_projection_input_v1.gd:76-177"
+    ]
+  },
+  "rng": {
+    "owner": "RunRngService",
+    "randomized_once_from": "scripts/main.gd:176-181",
+    "wired_consumers": ["ai", "monster", "weather", "product_market"],
+    "wire_evidence": "scripts/runtime/game_runtime_coordinator.gd:1374-1390",
+    "live_call_sites": [
+      "scripts/main.gd:4918", "scripts/main.gd:4933",
+      "scripts/runtime/ai_runtime_controller.gd:2045", "scripts/runtime/ai_runtime_controller.gd:2422", "scripts/runtime/ai_runtime_controller.gd:8846", "scripts/runtime/ai_runtime_controller.gd:9111",
+      "scripts/runtime/monster_runtime_controller.gd:3792", "scripts/runtime/monster_runtime_controller.gd:5511", "scripts/runtime/monster_runtime_controller.gd:6182",
+      "scripts/runtime/product_market_runtime_controller.gd:498", "scripts/runtime/product_market_runtime_controller.gd:1853", "scripts/runtime/product_market_runtime_world_bridge.gd:180",
+      "scripts/runtime/weather_system.gd:56", "scripts/runtime/weather_system.gd:72", "scripts/runtime/weather_system.gd:101"
+    ],
+    "detached_call_groups": {
+      "product_market": 6,
+      "session_start_plan": 2,
+      "session_start_world_plan": 12,
+      "weather_plan": 3
+    },
+    "runtime_phase_order": [
+      "card_resolution",
+      "card_cooldowns",
+      "city_gdp_derivative_timers",
+      "product_futures_timers",
+      "weather",
+      "economic_boons",
+      "monster_wagers",
+      "ai",
+      "monster_motion",
+      "military",
+      "monster_actions",
+      "monster_durations",
+      "visual_cues",
+      "monster_revivals"
+    ],
+    "runtime_order_evidence": [
+      "scripts/runtime/runtime_command_phase_coordinator.gd:17-24",
+      "scripts/runtime/runtime_simulation_phase_coordinator.gd:33-58"
+    ],
+    "save_api": {
+      "exists": true,
+      "schema_version": 1,
+      "saved_fields": ["rng_state"],
+      "missing_fields_for_transaction_cursor": ["draw_count"],
+      "production_consumers": 0,
+      "session_saves_only_initial_seed": true,
+      "evidence": ["scripts/runtime/run_rng_service.gd:167-187", "scripts/runtime/game_session_runtime_controller.gd:197-211"]
+    },
+    "random_hand_interaction": {
+      "semantic_operation_ids": ["discard_random", "steal_random", "lock_random"],
+      "actual_selection": "first_ordered_eligible_slots",
+      "actual_rng_delta": 0,
+      "explicit_semantic_randomness_policy_present": false,
+      "status": "rule_and_rng_parity_blocker",
+      "evidence": [
+        "scripts/runtime/player_hand_interaction_runtime_service.gd:264-305",
+        "scripts/runtime/card_inventory_runtime_service.gd:136-154",
+        "scripts/runtime/card_effect_runtime_router.gd:179-202",
+        "scripts/cards/semantic/card_semantic_schema_v1.gd:58-60",
+        "scripts/cards/semantic/card_semantic_compiler_v1.gd:545-552"
+      ]
+    }
+  },
+  "training_runtime_parity": {
+    "separate_execution_engine_found": false,
+    "training_is_decision_metadata_and_samples": true,
+    "ai_authoritative_card_path": "AiRuntimeController._queue_skill_resolution -> CardPlaySubmissionRuntimeController.submit_card_play",
+    "same_engine_required_for_future_training": true,
+    "projected_outcome_simulation_may_be_non_authoritative": true,
+    "evidence": [
+      "scripts/runtime/ai_runtime_controller.gd:1825-1838",
+      "scripts/runtime/ai_runtime_controller.gd:4385-4410",
+      "scripts/runtime/ai_runtime_controller.gd:4939-5015",
+      "scripts/runtime/ai_runtime_controller.gd:8911-8991"
+    ]
+  },
+  "findings": [
+    {"id": "SRPR-001", "disposition": "KEEP", "category": "save_registry", "summary": "Single fixed 19-section atomic registry.", "evidence": ["scripts/runtime/v06_save_owner_registry.gd:28-48", "scripts/runtime/v06_save_owner_registry.gd:115-175", "scripts/runtime/v06_save_owner_registry.gd:356-430"]},
+    {"id": "SRPR-002", "disposition": "KEEP", "category": "save_envelope", "summary": "Strict v3/v0.6 envelope; legacy v1/v2 inspect-only.", "evidence": ["scripts/runtime/ruleset_save_handshake_service.gd:38-108", "scripts/runtime/ruleset_save_handshake_service.gd:141-172"]},
+    {"id": "SRPR-003", "disposition": "KEEP", "category": "session_composite", "summary": "World, annotations, then lifecycle restore; no full-resume claim.", "evidence": ["scripts/runtime/session_envelope_save_owner.gd:5-11", "scripts/runtime/session_envelope_save_owner.gd:107-193"]},
+    {"id": "SRPR-004", "disposition": "KEEP", "category": "card_identity", "summary": "Stable card_id and family_id exist in region supply.", "evidence": ["scripts/runtime/region_supply_runtime_controller.gd:469-510"]},
+    {"id": "SRPR-005", "disposition": "KEEP", "category": "facility_identity", "summary": "Facility stable IDs and transactional owner.", "evidence": ["scripts/runtime/region_infrastructure_runtime_controller.gd:231-311", "scripts/runtime/region_infrastructure_runtime_controller.gd:927-975"]},
+    {"id": "SRPR-006", "disposition": "KEEP", "category": "weather_identity", "summary": "Stable weather definition_id is catalog validated.", "evidence": ["scripts/runtime/weather_runtime_state.gd:106-200"]},
+    {"id": "SRPR-007", "disposition": "KEEP", "category": "history_privacy", "summary": "Public history private-data rejection and viewer-scoped annotations.", "evidence": ["scripts/runtime/card_history_restore_dependency_contract.gd:13-114", "scripts/runtime/card_history_private_annotation_service.gd:325-441"]},
+    {"id": "SRPR-008", "disposition": "KEEP", "category": "viewer_authorization", "summary": "UI and AI private queries are viewer/actor authorized.", "evidence": ["scripts/presentation/local_viewer_authorization.gd:42-59", "scripts/runtime/ai_actor_hand_inventory_query_port.gd:89-145", "scripts/runtime/ai_actor_economy_facts_query_port.gd:89-192"]},
+    {"id": "SRPR-009", "disposition": "KEEP", "category": "rng_owner", "summary": "One shared RunRngService with detached cursor APIs.", "evidence": ["scripts/runtime/game_runtime_coordinator.gd:1374-1390", "scripts/runtime/run_rng_service.gd:97-164"]},
+    {"id": "SRPR-010", "disposition": "KEEP", "category": "semantic_persistence", "summary": "Semantic compile/query/player DTO owns no save state and consumes no RNG.", "evidence": ["scripts/runtime/card_semantic_catalog_service.gd:32-75", "scripts/cards/semantic/card_semantic_compiler_v1.gd:52-89", "scripts/runtime/card_player_face_projection_service.gd:268-283"]},
+    {"id": "SRPR-011", "disposition": "KEEP", "category": "training_execution", "summary": "Training records production decisions and AI cards use production submission.", "evidence": ["scripts/runtime/ai_runtime_controller.gd:1825-1838", "scripts/runtime/ai_runtime_controller.gd:4385-4410", "scripts/runtime/ai_runtime_controller.gd:8911-8991"]},
+
+    {"id": "SRPR-012", "disposition": "MOVE", "category": "save_registry", "summary": "Add transactional APIs to seven unsupported existing owners.", "target": "Existing 19 bindings only.", "evidence": ["scenes/runtime/V06SaveOwnerRegistry.tscn:8-149"]},
+    {"id": "SRPR-013", "disposition": "MOVE", "category": "rng_restore", "summary": "Persist RNG state and draw count in existing session composite.", "target": "RunRngService remains the sole owner.", "evidence": ["scripts/runtime/run_rng_service.gd:167-187", "scripts/runtime/game_session_runtime_controller.gd:197-211"]},
+    {"id": "SRPR-014", "disposition": "MOVE", "category": "product_market_restore", "summary": "Include product-market dynamic state through an existing section/composite adapter.", "target": "No new section or business owner.", "evidence": ["scripts/runtime/product_market_runtime_controller.gd:1627-1649"]},
+    {"id": "SRPR-015", "disposition": "MOVE", "category": "catalog_binding", "summary": "Bind semantic schema/source/catalog fingerprints to existing ruleset compatibility handshake.", "target": "Persist version binding, not compiled specs.", "evidence": ["scripts/runtime/card_semantic_catalog_service.gd:50-63"]},
+    {"id": "SRPR-016", "disposition": "MOVE", "category": "card_static_persistence", "summary": "Replace full static card-definition persistence with IDs plus catalog binding.", "target": "RegionSupply retains dynamic racks/bags/RNG.", "evidence": ["scripts/runtime/region_supply_runtime_controller.gd:353-371"]},
+    {"id": "SRPR-017", "disposition": "MOVE", "category": "duplicate_owner_boundary", "summary": "Move duplicated slots and AI profile/memory out of WorldSession after owners become transactional.", "target": "CardInventory and AI existing owners.", "evidence": ["scripts/runtime/world_session_envelope_codec.gd:26-91"]},
+    {"id": "SRPR-018", "disposition": "MOVE", "category": "role_identity", "summary": "Migrate role index/localized name to stable role_id with explicit adapter.", "target": "RoleSemanticSpec identity.", "evidence": ["scripts/runtime/world_session_envelope_codec.gd:448-508"]},
+    {"id": "SRPR-019", "disposition": "MOVE", "category": "monster_identity", "summary": "Normalize every persisted monster to stable family/formal card identity.", "target": "Existing MonsterRuntimeController owner.", "evidence": ["scripts/runtime/monster_runtime_controller.gd:2298-2324", "scripts/runtime/monster_runtime_controller.gd:3230-3249", "scripts/runtime/monster_runtime_controller.gd:3609-3656"]},
+    {"id": "SRPR-020", "disposition": "MOVE", "category": "military_identity", "summary": "Version and strictly validate military unit identity/state.", "target": "Existing MilitaryRuntimeController owner and registry binding.", "evidence": ["scripts/runtime/military_runtime_controller.gd:901-925"]},
+    {"id": "SRPR-021", "disposition": "MOVE", "category": "product_identity", "summary": "Migrate localized product identity to stable ProductSemanticSpec ID with frozen aliases.", "target": "No lookup guessing.", "evidence": ["resources/content/product_industry_catalog_v05.tres:55-69", "scripts/content/product_industry_catalog_resource.gd:17-43"]},
+    {"id": "SRPR-022", "disposition": "MOVE", "category": "history_identity", "summary": "Carry public-safe stable card semantic identity in new history schema.", "target": "Keep private instance/actor identity clipped.", "evidence": ["scripts/runtime/card_resolution_execution_world_bridge.gd:297-318"]},
+    {"id": "SRPR-023", "disposition": "MOVE", "category": "execution_replay", "summary": "Replace raw queue/inflight skill persistence with versioned plan identity and operands.", "target": "Version adapters for schemas 1/2/3.", "evidence": ["scripts/runtime/card_resolution_queue_runtime_service.gd:128-160", "scripts/runtime/card_resolution_execution_runtime_service.gd:419-581"]},
+    {"id": "SRPR-024", "disposition": "MOVE", "category": "target_identity", "summary": "Make stable target envelope canonical; legacy mirrors become adapter inputs.", "target": "Stable target identity before apply.", "evidence": ["scripts/runtime/card_resolution_queue_runtime_service.gd:128", "scripts/runtime/card_resolution_execution_world_bridge.gd:243-265", "scripts/runtime/card_resolution_execution_world_bridge.gd:383-384"]},
+    {"id": "SRPR-025", "disposition": "MOVE", "category": "weather_alias", "summary": "Canonicalize weather fields to definition_id and region_indices.", "target": "Versioned adapter before alias removal.", "evidence": ["scripts/runtime/weather_runtime_state.gd:22-45", "scripts/runtime/weather_runtime_controller.gd:712-729"]},
+    {"id": "SRPR-026", "disposition": "MOVE", "category": "victory_binding", "summary": "Bind static victory semantic version through ruleset; keep dynamic lifecycle in owner.", "target": "No VictorySemanticSpec save copy.", "evidence": ["scripts/runtime/victory_control_runtime_controller.gd:368-434"]},
+    {"id": "SRPR-027", "disposition": "MOVE", "category": "training_privacy", "summary": "Source training samples from clipped versioned AI projections.", "target": "AiObservationSnapshot and AiActionCandidate remain non-authoritative.", "evidence": ["scripts/runtime/ai_runtime_controller.gd:4385-4410", "scripts/runtime/ai_runtime_controller.gd:4980-5015"]},
+    {"id": "SRPR-028", "disposition": "MOVE", "category": "semantic_composition", "summary": "Compose semantic projections behind authorization and clipping.", "target": "Clipping before AI/UI; no production Main dependency.", "evidence": ["scripts/runtime/ai_card_semantic_projection_input_v1.gd:19-37", "scripts/runtime/ai_card_semantic_projection_input_v1.gd:76-177"]},
+    {"id": "SRPR-029", "disposition": "MOVE", "category": "randomness_policy", "summary": "Declare randomness policy and preserve current draw order pending rule authority.", "target": "No silent randomization of current first-slot behavior.", "evidence": ["scripts/cards/semantic/card_semantic_schema_v1.gd:58-60", "scripts/runtime/card_effect_runtime_router.gd:179-202"]},
+
+    {"id": "SRPR-030", "disposition": "REMOVE", "category": "localized_history_id", "summary": "Stop manufacturing public_card_id from localized card name after history migration.", "gate": "Versioned history adapter and stable public identity fixtures.", "evidence": ["scripts/presentation/card_history_public_query_port.gd:74-100"]},
+    {"id": "SRPR-031", "disposition": "REMOVE", "category": "monster_name_fallback", "summary": "Delete localized monster-name family fallback after normalization.", "gate": "All supported payloads carry or deterministically adapt a stable family ID.", "evidence": ["scripts/runtime/monster_runtime_controller.gd:3098-3103"]},
+    {"id": "SRPR-032", "disposition": "REMOVE", "category": "weather_duplicate_alias", "summary": "Delete weather type/districts aliases after replay migration.", "gate": "Canonical weather fixture parity.", "evidence": ["scripts/runtime/weather_runtime_controller.gd:712-729"]},
+    {"id": "SRPR-033", "disposition": "REMOVE", "category": "duplicate_static_catalog_payload", "summary": "Delete duplicate static card/catalog payload from dynamic save after identity/fingerprint restore is proven.", "gate": "Stable catalog binding plus old-envelope adapters.", "evidence": ["scripts/runtime/region_supply_runtime_controller.gd:353-371"]}
+  ],
+  "blockers": [
+    {
+      "id": "SAVE_REGISTRY_INCOMPLETE",
+      "severity": "blocker",
+      "blocks": ["full_run_resume"],
+      "reason": "Seven fixed sections lack transactional restore capability.",
+      "requirement": "Narrow preflight/checkpoint/apply/rollback APIs in existing owners; no new sections."
+    },
+    {
+      "id": "RUN_RNG_CURSOR_NOT_PERSISTED",
+      "severity": "blocker",
+      "blocks": ["deterministic_cold_continuation", "exact_transaction_cursor"],
+      "reason": "RunRngService save API has no production consumer and omits draw_count; session saves only initial seed.",
+      "requirement": "Versioned checkpoint in existing session composite, restored before runtime tick."
+    },
+    {
+      "id": "PRODUCT_MARKET_OUTSIDE_ENVELOPE",
+      "severity": "blocker",
+      "blocks": ["economic_cold_continuation"],
+      "reason": "Product-market state has save methods but no one of the 19 registry bindings.",
+      "requirement": "Existing-section composite adapter with exact rollback."
+    },
+    {
+      "id": "REPLAY_CARD_IDENTITY_UNSTABLE",
+      "severity": "blocker",
+      "blocks": ["semantic_replay_cutover"],
+      "reason": "History strips v06 card ID and public query derives identity from localized name.",
+      "requirement": "New stable public history identity and deterministic version adapters."
+    },
+    {
+      "id": "RANDOM_OPERATION_PARITY_UNRESOLVED",
+      "severity": "blocker",
+      "blocks": ["semantic_random_operation_execution"],
+      "reason": "Random-named hand operations select first slots and consume zero RNG.",
+      "requirement": "Product-rule decision and golden outcome/RNG-order fixtures; compiler must not guess."
+    }
+  ],
+  "migration_stages": [
+    {"stage": 0, "id": "freeze_invariants", "requirements": ["v3_wrapper_fixtures", "child_schema_1_2_3_fixtures", "identity_legacy_fixtures", "rng_pre_save_and_first_post_load_draws", "privacy_fixtures"]},
+    {"stage": 1, "id": "compatibility_identity_binding", "requirements": ["existing_handshake_semantic_versions", "catalog_fingerprints", "reject_mismatch_before_apply", "no_compiled_spec_persistence"]},
+    {"stage": 2, "id": "stable_identities_and_adapters", "requirements": ["role_id", "product_id", "military_family_id", "mandatory_monster_family_id", "public_card_semantic_identity", "versioned_fail_closed_adapters"]},
+    {"stage": 3, "id": "complete_existing_owner_transactions", "requirements": ["seven_unsupported_bindings", "product_market_existing_composite", "move_duplicate_slots_and_ai_state_after_owner_readiness"]},
+    {"stage": 4, "id": "exact_rng_continuation", "requirements": ["rng_state_and_draw_count", "existing_session_composite", "restore_before_tick", "compiler_and_query_rng_delta_zero"]},
+    {"stage": 5, "id": "production_semantic_projection", "requirements": ["compile_once_at_initialization", "authorize_and_clip_before_projection", "same_operation_handlers_for_human_ai_replay_training", "no_per_candidate_compile"]},
+    {"stage": 6, "id": "remove_compatibility_bridges", "requirements": ["remove_localized_public_card_id", "remove_monster_name_fallback", "remove_weather_aliases", "remove_duplicate_static_payload", "retain_backup_authorization"]},
+    {"stage": 7, "id": "claim_gate", "requirements": ["all_19_transactional", "product_market_present", "rng_exact", "stable_cross_owner_identity", "privacy_rng_replay_fixtures_green", "real_cold_continuation"]}
+  ],
+  "final_status": {
+    "audit_complete": true,
+    "implementation_ready_without_rule_decision": false,
+    "new_semantic_save_owner_allowed": false,
+    "new_semantic_save_section_allowed": false,
+    "full_run_resume_claim": false
+  }
+}

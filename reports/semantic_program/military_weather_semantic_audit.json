@@ -1,0 +1,930 @@
+{
+  "schema_version": "semantic_program.military_weather_audit.v1",
+  "audit": {
+    "baseline_sha": "591b8e295e81ee5d475acd98b48b3b1639f71ec1",
+    "observed_origin_main_sha": "59756a291f811a064726f59aed27efecc3590c9a",
+    "origin_main_is_baseline_ancestor": true,
+    "branch": "codex/semantic-program-wave1-military-weather-591b8e2",
+    "audit_date": "2026-07-27",
+    "mode": "read_only_source_audit",
+    "production_files_modified": 0,
+    "test_files_modified": 0,
+    "catalog_files_modified": 0,
+    "rules_balance_rng_save_files_modified": 0,
+    "owned_files": [
+      "reports/semantic_program/military_weather_semantic_audit.md",
+      "reports/semantic_program/military_weather_semantic_audit.json"
+    ]
+  },
+  "counts": {
+    "finding_count": 35,
+    "dispositions": {
+      "MOVE": 21,
+      "REMOVE": 4,
+      "KEEP": 10
+    },
+    "domains": {
+      "military": {
+        "finding_count": 18,
+        "MOVE": 13,
+        "REMOVE": 1,
+        "KEEP": 4
+      },
+      "weather": {
+        "finding_count": 17,
+        "MOVE": 8,
+        "REMOVE": 3,
+        "KEEP": 6
+      }
+    },
+    "blocker_count": 8
+  },
+  "inventory": {
+    "military": {
+      "live_state_owner_count": 1,
+      "live_state_owner": "MilitaryRuntimeController",
+      "v04_family_count": 7,
+      "v04_authored_rank_count": 28,
+      "v04_family_ids_localized": [
+        "行星防卫军",
+        "制空战斗机",
+        "轨道轰炸机",
+        "重装坦克",
+        "导弹阵地",
+        "潜航舰队",
+        "星海战舰"
+      ],
+      "effective_type_ids": [
+        "defense",
+        "fighter",
+        "bomber",
+        "tank",
+        "missile",
+        "submarine",
+        "warship"
+      ],
+      "v06_card_count": 28,
+      "v06_family_count": 7,
+      "v06_ranks": [1, 2, 3, 4],
+      "v06_effect_kinds": ["deploy_or_upgrade_military"],
+      "v06_target_kinds": ["region_or_owned_same_family_military"],
+      "v06_payload_keys": [
+        "bound_action_profile_review_pending",
+        "bound_actions_excluded_from_hand_limit",
+        "bound_actions_require_assets",
+        "card_rank",
+        "military_family_id",
+        "region_damage_requires_explicit_unit_action",
+        "unit_profile_owns_stats"
+      ],
+      "v06_runtime_readiness": {
+        "active": 0,
+        "projection_only": 28,
+        "implementation_status": "catalog_ready_runtime_wiring_pending",
+        "effect_review_status": "unit_profile_review_pending"
+      },
+      "live_command_ids": [
+        "move",
+        "guard",
+        "strike_district",
+        "attack_monster"
+      ],
+      "formal_save_supported": false,
+      "formal_save_block_reason": "strict_preflight_missing",
+      "dedicated_recording_replay_owner_count": 0
+    },
+    "weather": {
+      "live_state_owner_count": 1,
+      "live_state_owner": "WeatherRuntimeController",
+      "definition_count": 6,
+      "definition_ids": [
+        "ion_storm",
+        "gravity_tide",
+        "spore_season",
+        "crystal_dust_storm",
+        "deep_freeze",
+        "solar_flare"
+      ],
+      "duplicate_identity_or_validation_catalog_count": 4,
+      "duplicate_identity_or_validation_catalog_owners": [
+        "WeatherRuntimeController.WEATHER_TYPES",
+        "WeatherForecastViewModel.WEATHER_IDS",
+        "WeatherTelemetryRuntimeService.DEFINITION_IDS/DEFINITION_NAMES",
+        "WeatherTelemetryBuffer.DEFINITION_IDS"
+      ],
+      "presentation_definition_switch_or_map_count": 3,
+      "v04_weather_control_card_count": 4,
+      "v04_weather_control_family_count": 4,
+      "v06_weather_card_count": 0,
+      "v06_weather_effect_kind_count": 0,
+      "definitions_without_control_card": [
+        "crystal_dust_storm",
+        "deep_freeze"
+      ],
+      "current_card_timing_parity_count": 4,
+      "current_card_timing_parity_total": 4,
+      "save_schema_version": 2,
+      "formal_save_supported": true,
+      "valid_new_session_draw_count": 3,
+      "valid_natural_forecast_draw_count": 3,
+      "valid_explicit_region_card_draw_count": 0,
+      "invalid_preview_possible_draw_count": 1,
+      "dedicated_recording_replay_owner_count": 0
+    }
+  },
+  "blockers": [
+    {
+      "id": "B-001",
+      "domain": "military",
+      "severity": "blocker",
+      "summary": "v0.6 same-family upgrade conflicts with live v0.4 refresh-oldest-any-family behavior",
+      "required_resolution": "Product/rule authority must choose; keep operations distinct and v0.6 fail-closed until then."
+    },
+    {
+      "id": "B-002",
+      "domain": "military",
+      "severity": "blocker",
+      "summary": "No reviewed authoritative unit profile owns exact live rank stats",
+      "required_resolution": "Establish seven family rank profiles by exact parity; do not infer or rebalance values."
+    },
+    {
+      "id": "B-003",
+      "domain": "military",
+      "severity": "blocker",
+      "summary": "Real military owner lacks atomic unit-card and strict save preflight APIs",
+      "required_resolution": "Add revision, prepare, commit, rollback, finalize, exact-once, checkpoint, and strict save preflight."
+    },
+    {
+      "id": "B-004",
+      "domain": "military",
+      "severity": "blocker",
+      "summary": "Deployment/removal crosses military roster and player bound-command inventory without atomic rollback",
+      "required_resolution": "Coordinate both existing owners and defer public/presentation effects to final commit."
+    },
+    {
+      "id": "B-005",
+      "domain": "shared",
+      "severity": "blocker",
+      "summary": "AI lacks viewer/actor-scoped military and weather semantic observations",
+      "required_resolution": "Introduce authorized observations and candidate projections before removing raw reads."
+    },
+    {
+      "id": "B-006",
+      "domain": "weather",
+      "severity": "blocker",
+      "summary": "v0.6 card catalog/compiler has no weather semantic effect",
+      "required_resolution": "Add a schedule operation referencing WeatherSemanticSpec without copying weather effects into cards."
+    },
+    {
+      "id": "B-007",
+      "domain": "weather",
+      "severity": "blocker",
+      "summary": "Diagnostics contain an incompatible second weather taxonomy and timing/effect model",
+      "required_resolution": "Replace only that weather interpretation with a standard semantic diagnostic projection."
+    },
+    {
+      "id": "B-008",
+      "domain": "military",
+      "severity": "blocker",
+      "summary": "Live owner hides controller identity while v0.6 player text says ownership is public",
+      "required_resolution": "Product/visibility authority must resolve; preserve current live privacy until then."
+    }
+  ],
+  "findings": [
+    {
+      "id": "M-001",
+      "domain": "military",
+      "disposition": "MOVE",
+      "category": "catalog_authority",
+      "severity": "major",
+      "evidence": [
+        "scenes/runtime/CardRuntimeCatalogService.tscn:3-9",
+        "scripts/runtime/card_runtime_catalog_service.gd:5-21",
+        "scripts/runtime/military_runtime_controller.gd:76-79",
+        "scripts/runtime/game_runtime_coordinator.gd:515"
+      ],
+      "current": "Production composition and military readiness require the v0.4 catalog/ruleset.",
+      "target": "Compile one MilitaryUnitSemanticSpec catalog, preserving values, then retire v0.4 runtime authority after parity."
+    },
+    {
+      "id": "M-002",
+      "domain": "military",
+      "disposition": "KEEP",
+      "category": "stable_v06_identity",
+      "severity": "info",
+      "evidence": [
+        "data/cards/card_runtime_catalog_v06.json:22480-24572",
+        "scripts/cards/semantic/card_semantic_compiler_v1.gd:12-22"
+      ],
+      "current": "Twenty-eight stable v0.6 military cards compile as projection-only.",
+      "target": "Keep IDs, families, ranks, costs, target, and effect identity unchanged; do not activate before owner gates pass."
+    },
+    {
+      "id": "M-003",
+      "domain": "military",
+      "disposition": "MOVE",
+      "category": "unit_profile_authority",
+      "severity": "blocker",
+      "blocker_ids": ["B-002"],
+      "evidence": [
+        "data/cards/card_runtime_catalog_v06.json:22503-22511",
+        "data/cards/card_runtime_catalog_v06.json:22547-22552",
+        "scripts/runtime/military_runtime_controller.gd:568-587"
+      ],
+      "current": "v0.6 delegates stats to an unreviewed unit profile while live stats come from v0.4 skill fields.",
+      "target": "One reviewed rank-profile table in MilitaryUnitSemanticSpec; missing profiles fail closed."
+    },
+    {
+      "id": "M-004",
+      "domain": "military",
+      "disposition": "KEEP",
+      "category": "rule_conflict_compatibility",
+      "severity": "blocker",
+      "blocker_ids": ["B-001"],
+      "evidence": [
+        "scripts/cards/semantic/card_semantic_compiler_v1.gd:449-450",
+        "scripts/cards/semantic/card_semantic_compiler_v1.gd:515-520",
+        "scripts/runtime/military_runtime_controller.gd:468-479",
+        "scripts/runtime/military_runtime_controller.gd:594-627"
+      ],
+      "current": "v0.6 means actor-owned same-family upgrade; live v0.4 refreshes the oldest owned unit of any family at cap.",
+      "target": "Keep live behavior under explicit compatibility operation until rule authority resolves the conflict."
+    },
+    {
+      "id": "M-005",
+      "domain": "military",
+      "disposition": "MOVE",
+      "category": "atomic_mutation",
+      "severity": "blocker",
+      "blocker_ids": ["B-003", "B-004"],
+      "evidence": [
+        "scripts/runtime/military_runtime_controller.gd:594-650",
+        "scripts/cards/v06/units/unit_card_owner_forwarding_port_v06.gd:5-11",
+        "scripts/cards/v06/units/unit_card_owner_forwarding_port_v06.gd:37-66"
+      ],
+      "current": "One call mutates roster, UID, inventory, visuals, logs, and presentation without unit-card rollback.",
+      "target": "Military owner stages roster mutation; inventory is an explicit participant; presentation is commit-only."
+    },
+    {
+      "id": "M-006",
+      "domain": "military",
+      "disposition": "MOVE",
+      "category": "static_dynamic_mixing",
+      "severity": "major",
+      "evidence": [
+        "scripts/runtime/military_runtime_controller.gd:510-565",
+        "scripts/runtime/military_runtime_controller.gd:568-591"
+      ],
+      "current": "Generated command skill dictionaries mix localized/static semantics with bound UID and cooldown instance state.",
+      "target": "Command profiles live in the spec; command instances retain only stable IDs, binding, status, and cooldown."
+    },
+    {
+      "id": "M-007",
+      "domain": "military",
+      "disposition": "MOVE",
+      "category": "mutable_semantic_text",
+      "severity": "major",
+      "evidence": ["scripts/runtime/card_inventory_runtime_service.gd:301-327"],
+      "current": "Invalidation rewrites saved card text and applies a magic 9999-second lock.",
+      "target": "Store stable invalidation reason/status on the instance and project text from localization tokens."
+    },
+    {
+      "id": "M-008",
+      "domain": "military",
+      "disposition": "KEEP",
+      "category": "domain_state_machine",
+      "severity": "info",
+      "evidence": [
+        "scripts/runtime/military_runtime_controller.gd:665-787",
+        "scripts/balance/movement_balance_model.gd:186-221"
+      ],
+      "current": "The owner legitimately handles move/guard/strike/attack target checks, cooldowns, and ordered mutations.",
+      "target": "Keep formulas and order behind registered operation IDs; do not create a generic replacement engine."
+    },
+    {
+      "id": "M-009",
+      "domain": "military",
+      "disposition": "MOVE",
+      "category": "display_hardcoding",
+      "severity": "major",
+      "evidence": [
+        "scripts/runtime/military_runtime_controller.gd:182-238",
+        "scripts/presentation/table_public_map_query.gd:156-169"
+      ],
+      "current": "The live owner maps type/domain/terrain to localized labels, glyphs, motifs, and colors.",
+      "target": "Player presentation projection owns display metadata; rule dispatch remains in the domain owner."
+    },
+    {
+      "id": "M-010",
+      "domain": "military",
+      "disposition": "MOVE",
+      "category": "raw_field_aliases",
+      "severity": "major",
+      "evidence": [
+        "scripts/runtime/military_runtime_controller.gd:281-298",
+        "scripts/balance/movement_balance_model.gd:186-221"
+      ],
+      "current": "Runtime accepts military_range/range, military_damage/damage, and move/military_move aliases/defaults.",
+      "target": "Resolve aliases once in legacy compilation; handlers consume canonical rank-profile fields."
+    },
+    {
+      "id": "M-011",
+      "domain": "military",
+      "disposition": "MOVE",
+      "category": "operation_dispatch",
+      "severity": "major",
+      "evidence": [
+        "scripts/runtime/card_effect_runtime_router.gd:81-101",
+        "scripts/runtime/card_effect_runtime_router.gd:129-165"
+      ],
+      "current": "A central switch maps effect/kind values directly to owner methods.",
+      "target": "OperationHandlerRegistry maps stable operation IDs to current domain handlers."
+    },
+    {
+      "id": "M-012",
+      "domain": "military",
+      "disposition": "MOVE",
+      "category": "ai_raw_access",
+      "severity": "blocker",
+      "blocker_ids": ["B-005"],
+      "evidence": [
+        "scripts/runtime/ai_runtime_controller.gd:884-886",
+        "scripts/runtime/ai_runtime_controller.gd:7412-7417",
+        "scripts/runtime/ai_runtime_controller.gd:7505-7609",
+        "scripts/runtime/ai_runtime_controller.gd:7629-7838"
+      ],
+      "current": "AI reads unrestricted roster state and military-specific raw skill/unit fields.",
+      "target": "Viewer/actor-scoped AiObservationSnapshot and AiActionCandidate only."
+    },
+    {
+      "id": "M-013",
+      "domain": "military",
+      "disposition": "MOVE",
+      "category": "diagnostic_reinterpretation",
+      "severity": "major",
+      "evidence": [
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:112-159",
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:919-963",
+        "scripts/runtime/military_runtime_controller.gd:790-898"
+      ],
+      "current": "Diagnostics and the live owner independently map raw fields/types to power and role meaning.",
+      "target": "One standard diagnostic projection from MilitaryUnitSemanticSpec rank profiles."
+    },
+    {
+      "id": "M-014",
+      "domain": "military",
+      "disposition": "MOVE",
+      "category": "save_identity",
+      "severity": "blocker",
+      "blocker_ids": ["B-003", "B-004"],
+      "evidence": [
+        "scenes/runtime/V06SaveOwnerRegistry.tscn:98-103",
+        "scripts/runtime/military_runtime_controller.gd:568-587",
+        "scripts/runtime/military_runtime_controller.gd:901-931",
+        "scripts/runtime/world_session_envelope_codec.gd:26-90",
+        "scripts/runtime/world_session_envelope_codec.gd:472-478"
+      ],
+      "current": "Military save lacks strict preflight and stable family identity; bound command UIDs live in a separate player section.",
+      "target": "Versioned stable identity plus cross-section validation/rollback; no second military save section."
+    },
+    {
+      "id": "M-015",
+      "domain": "military",
+      "disposition": "KEEP",
+      "category": "domain_handler_ownership",
+      "severity": "info",
+      "evidence": [
+        "scripts/runtime/military_runtime_controller.gd:310-389",
+        "scripts/runtime/military_runtime_controller.gd:714-774"
+      ],
+      "current": "Military delegates weather resolution, region repair/damage, and monster damage to existing domain owners.",
+      "target": "Keep owners/formulas/order; introduce typed ports only under receipt parity tests."
+    },
+    {
+      "id": "M-016",
+      "domain": "military",
+      "disposition": "REMOVE",
+      "category": "localized_identity_inference",
+      "severity": "major",
+      "evidence": [
+        "scripts/card_art_view.gd:488-493",
+        "scripts/runtime/military_runtime_controller.gd:873-881"
+      ],
+      "current": "Localized family-name substrings and reconstructed localized rank names select art/diagnostic identity.",
+      "target": "Stable art and family/rank IDs from player/diagnostic projections."
+    },
+    {
+      "id": "M-017",
+      "domain": "military",
+      "disposition": "MOVE",
+      "category": "ui_raw_inference",
+      "severity": "major",
+      "evidence": [
+        "scripts/main.gd:3129-3163",
+        "scripts/main.gd:4743-4762",
+        "scripts/main.gd:4858-4883",
+        "scripts/runtime/card_presentation_runtime_service.gd:433-567",
+        "scripts/runtime/card_presentation_runtime_service.gd:642-709",
+        "scripts/runtime/card_presentation_runtime_service.gd:753-882"
+      ],
+      "current": "Main and card presentation reconstruct military/weather rules and classification from raw skill fields/kinds.",
+      "target": "All UI reads a strict PlayerPresentationDTO; no new Main helper or alias."
+    },
+    {
+      "id": "M-018",
+      "domain": "military",
+      "disposition": "MOVE",
+      "category": "generic_world_bridge",
+      "severity": "major",
+      "evidence": [
+        "scripts/runtime/military_runtime_world_bridge.gd:38-90",
+        "scripts/runtime/military_runtime_controller.gd:483-646",
+        "scripts/runtime/military_runtime_controller.gd:706-766",
+        "scripts/runtime/military_runtime_controller.gd:948-1046",
+        "scripts/runtime/military_runtime_controller.gd:1082-1091"
+      ],
+      "current": "The owner relies on generic property/method-name calls for role, inventory, motion, geometry, and formatting.",
+      "target": "Narrow typed ports for facts/motion/inventory; formatting moves to presentation; no second owner."
+    },
+    {
+      "id": "W-001",
+      "domain": "weather",
+      "disposition": "KEEP",
+      "category": "authoritative_definition_catalog",
+      "severity": "info",
+      "evidence": [
+        "resources/weather/weather_definition_catalog_v1.tres:3-13",
+        "scripts/runtime/weather_definition_catalog.gd:8-58",
+        "resources/weather/ion_storm.tres:7-27",
+        "resources/weather/gravity_tide.tres:7-25",
+        "resources/weather/spore_season.tres:7-27",
+        "resources/weather/crystal_dust_storm.tres:7-29",
+        "resources/weather/deep_freeze.tres:7-28",
+        "resources/weather/solar_flare.tres:7-33"
+      ],
+      "current": "One six-resource catalog owns stable IDs and exact weather values.",
+      "target": "Keep as compiler input and value authority; compile immutable WeatherSemanticSpec records."
+    },
+    {
+      "id": "W-002",
+      "domain": "weather",
+      "disposition": "REMOVE",
+      "category": "duplicate_catalog",
+      "severity": "major",
+      "evidence": [
+        "scripts/runtime/weather_runtime_controller.gd:16-23",
+        "scripts/runtime/ai_runtime_controller.gd:1169-1171"
+      ],
+      "current": "Controller duplicates all six IDs/names beside the resource catalog and AI exposes it.",
+      "target": "Remove after callers query the semantic catalog/projection."
+    },
+    {
+      "id": "W-003",
+      "domain": "weather",
+      "disposition": "MOVE",
+      "category": "duplicated_validation_and_names",
+      "severity": "major",
+      "evidence": [
+        "scripts/viewmodels/weather_forecast_view_model.gd:10-23",
+        "scripts/runtime/weather_telemetry_runtime_service.gd:18-33",
+        "scripts/ui/weather/weather_telemetry_buffer.gd:8-30"
+      ],
+      "current": "View and telemetry layers maintain duplicate weather ID/name/icon/pattern allowlists.",
+      "target": "Keep strict validation but generate/version allowed IDs and display metadata from WeatherSemanticSpec."
+    },
+    {
+      "id": "W-004",
+      "domain": "weather",
+      "disposition": "MOVE",
+      "category": "card_semantic_gap",
+      "severity": "blocker",
+      "blocker_ids": ["B-006"],
+      "evidence": [
+        "resources/cards/runtime/families/018_太阳风暴预报.tres:8-29",
+        "resources/cards/runtime/families/019_酸雨云团播种.tres:8-29",
+        "resources/cards/runtime/families/020_引力潮汐播报.tres:8-29",
+        "resources/cards/runtime/families/021_电磁雾干涉.tres:8-29",
+        "scripts/cards/semantic/card_semantic_compiler_v1.gd:12-23"
+      ],
+      "current": "Four v0.4 control cards exist; the v0.6 catalog/compiler has no weather card semantic effect.",
+      "target": "A v0.6 schedule operation references a stable weather definition; effects remain in WeatherSemanticSpec."
+    },
+    {
+      "id": "W-005",
+      "domain": "weather",
+      "disposition": "REMOVE",
+      "category": "fail_open_unknown_id",
+      "severity": "blocker",
+      "evidence": [
+        "scripts/runtime/weather_runtime_controller.gd:296-315",
+        "scripts/runtime/weather_runtime_controller.gd:350-362",
+        "scripts/runtime/weather_runtime_controller.gd:693-702",
+        "scripts/runtime/weather_runtime_controller.gd:946-977",
+        "scripts/runtime/ai_runtime_controller.gd:6980-6989"
+      ],
+      "current": "Unknown weather IDs silently become the first definition in runtime/AI paths.",
+      "target": "Unknown semantic IDs fail closed before mutation or RNG; only known legacy IDs may migrate explicitly."
+    },
+    {
+      "id": "W-006",
+      "domain": "weather",
+      "disposition": "MOVE",
+      "category": "inert_duplicate_card_fields",
+      "severity": "major",
+      "evidence": [
+        "scripts/runtime/weather_runtime_controller.gd:350-362",
+        "scripts/runtime/weather_runtime_controller.gd:1255-1264",
+        "resources/cards/runtime/families/018_太阳风暴预报.tres:18-22",
+        "resources/cards/runtime/families/019_酸雨云团播种.tres:18-22",
+        "resources/cards/runtime/families/020_引力潮汐播报.tres:18-22",
+        "resources/cards/runtime/families/021_电磁雾干涉.tres:18-22"
+      ],
+      "current": "Card zone/lead/duration are authored but live card execution uses definition values; current parity is 4/4.",
+      "target": "Definition timing becomes explicit authority or an override policy is authored; remove duplicates only after parity."
+    },
+    {
+      "id": "W-007",
+      "domain": "weather",
+      "disposition": "KEEP",
+      "category": "domain_state_machine",
+      "severity": "info",
+      "evidence": [
+        "scripts/runtime/weather_runtime_controller.gd:44-53",
+        "scripts/runtime/weather_runtime_controller.gd:668-797",
+        "scripts/runtime/weather_system.gd:26-50"
+      ],
+      "current": "One owner holds canonical event/queue/history/sequence state and deterministic lifecycle transitions.",
+      "target": "Keep owner, phase order, timestamps, queue semantics, and formulas exactly."
+    },
+    {
+      "id": "W-008",
+      "domain": "weather",
+      "disposition": "MOVE",
+      "category": "legacy_alias_projection",
+      "severity": "major",
+      "evidence": [
+        "scripts/runtime/weather_runtime_controller.gd:152-169",
+        "scripts/runtime/weather_runtime_controller.gd:712-729",
+        "scripts/runtime/weather_runtime_controller.gd:929-977",
+        "scripts/runtime/weather_runtime_state.gd:22-44",
+        "scripts/runtime/weather_runtime_state.gd:95-103"
+      ],
+      "current": "Canonical state carries definition_id/type and region_indices/districts aliases and rebuilds legacy projections.",
+      "target": "Confine aliases to a versioned adapter; preserve save schema v2 while consumers move to canonical fields."
+    },
+    {
+      "id": "W-009",
+      "domain": "weather",
+      "disposition": "MOVE",
+      "category": "generic_field_dispatch",
+      "severity": "major",
+      "evidence": ["scripts/runtime/weather_runtime_controller.gd:387-444"],
+      "current": "Generic string multiplier keys and aliases are remapped into five effect domains.",
+      "target": "Typed domain rule projections preserve exact multiplication/floor/cap/order."
+    },
+    {
+      "id": "W-010",
+      "domain": "weather",
+      "disposition": "MOVE",
+      "category": "presentation_rule_reconstruction",
+      "severity": "major",
+      "evidence": [
+        "scripts/runtime/weather_runtime_controller.gd:455-570",
+        "scripts/runtime/weather_presentation_runtime_service.gd:55-78",
+        "scripts/runtime/weather_presentation_runtime_service.gd:157-197",
+        "scripts/runtime/weather_presentation_runtime_service.gd:216-237"
+      ],
+      "current": "Owner and presentation service independently build prose/effect rows/icon/pattern metadata.",
+      "target": "WeatherSemanticSpec projects one PlayerPresentationDTO consumed read-only by UI."
+    },
+    {
+      "id": "W-011",
+      "domain": "weather",
+      "disposition": "MOVE",
+      "category": "ai_raw_access",
+      "severity": "blocker",
+      "blocker_ids": ["B-005"],
+      "evidence": [
+        "scripts/runtime/ai_runtime_controller.gd:6980-7108",
+        "scripts/runtime/ai_runtime_controller.gd:7492-7503",
+        "scripts/runtime/ai_runtime_controller.gd:8095-8105"
+      ],
+      "current": "AI interprets raw weather card fields/templates and maintains its own weather strategy mapping.",
+      "target": "Authorized public weather observations plus semantic candidates/outcome vectors; retain old score as parity oracle temporarily."
+    },
+    {
+      "id": "W-012",
+      "domain": "weather",
+      "disposition": "REMOVE",
+      "category": "second_diagnostic_rules_engine",
+      "severity": "blocker",
+      "blocker_ids": ["B-007"],
+      "evidence": [
+        "scripts/balance/environment_balance_model.gd:15-20",
+        "scripts/balance/environment_balance_model.gd:34-49",
+        "scripts/balance/environment_balance_model.gd:66-141",
+        "scripts/balance/runtime_balance_parameters_resource.gd:99-107"
+      ],
+      "current": "Diagnostics define incompatible timings, zones, weather IDs, and effects.",
+      "target": "Standard semantic diagnostics replace the weather portion; unrelated market/volatility diagnostics stay."
+    },
+    {
+      "id": "W-013",
+      "domain": "weather",
+      "disposition": "KEEP",
+      "category": "central_rule_resolver",
+      "severity": "info",
+      "evidence": [
+        "scripts/runtime/weather_effect_resolver.gd:64-102",
+        "scripts/runtime/weather_effect_resolver.gd:105-257",
+        "scripts/runtime/commodity_flow_runtime_controller.gd:1765-1800",
+        "scripts/runtime/product_market_runtime_controller.gd:1982-2018",
+        "scripts/runtime/route_network_runtime_controller.gd:306-339",
+        "scripts/runtime/monster_runtime_controller.gd:3140-3173",
+        "scripts/runtime/military_runtime_controller.gd:310-389"
+      ],
+      "current": "One resolver computes contextual domain effects consumed by established owners.",
+      "target": "Keep formulas and order; register stable effect operations and type the projection boundary gradually."
+    },
+    {
+      "id": "W-014",
+      "domain": "weather",
+      "disposition": "KEEP",
+      "category": "transactional_save",
+      "severity": "info",
+      "evidence": [
+        "scenes/runtime/V06SaveOwnerRegistry.tscn:104-113",
+        "scripts/runtime/weather_runtime_state.gd:106-200",
+        "scripts/runtime/weather_runtime_controller.gd:585-624"
+      ],
+      "current": "Weather save schema v2 validates exact keys, identity, phases, queue, history, telemetry, and applies after validation.",
+      "target": "Preserve schema, order, IDs, timestamps, and rollback; semantic specs are unsaved immutable data."
+    },
+    {
+      "id": "W-015",
+      "domain": "weather",
+      "disposition": "KEEP",
+      "category": "rng_contract",
+      "severity": "major",
+      "evidence": [
+        "scripts/runtime/weather_runtime_controller.gd:120-185",
+        "scripts/runtime/weather_runtime_controller.gd:350-362",
+        "scripts/runtime/weather_runtime_controller.gd:668-690",
+        "scripts/runtime/weather_system.gd:53-101"
+      ],
+      "current": "Valid new-session/natural forecasts draw region, definition, interval; explicit valid card scheduling draws zero.",
+      "target": "Declare exact draw contracts; compilation/query/projection/failed validation draw zero."
+    },
+    {
+      "id": "W-016",
+      "domain": "weather",
+      "disposition": "MOVE",
+      "category": "query_rng_side_effect",
+      "severity": "major",
+      "evidence": [
+        "scripts/runtime/weather_runtime_controller.gd:280-293",
+        "scripts/runtime/ai_runtime_controller.gd:6996-7000"
+      ],
+      "current": "preview_districts delegates to pick_districts and can draw shared RNG for an invalid anchor; current AI passes alive anchors.",
+      "target": "Pure preview/query operation with zero RNG; live scheduling keeps its existing draw contract."
+    },
+    {
+      "id": "W-017",
+      "domain": "weather",
+      "disposition": "KEEP",
+      "category": "public_privacy_projection",
+      "severity": "info",
+      "evidence": [
+        "scripts/runtime/weather_runtime_state.gd:247-271",
+        "scripts/viewmodels/weather_forecast_view_model.gd:117-119",
+        "scripts/viewmodels/weather_forecast_view_model.gd:487-626",
+        "scripts/runtime/weather_runtime_world_bridge.gd:86-128"
+      ],
+      "current": "Public weather DTOs expose public event/region/timing facts and reject private player/card/cash/hand keys.",
+      "target": "Keep boundary; AI gets this projection plus actor-authorized card facts only."
+    }
+  ],
+  "target_contracts": {
+    "MilitaryUnitSemanticSpec": {
+      "immutable": true,
+      "pure_data": true,
+      "required_sections": [
+        "schema_version",
+        "semantic_identity",
+        "classification",
+        "rank_profiles",
+        "deployment_policy",
+        "terrain_movement_multipliers",
+        "command_profile_ids",
+        "weather_interaction",
+        "visibility_policy_id",
+        "randomness_policy_id",
+        "presentation_refs",
+        "legacy_identity_map"
+      ],
+      "forbidden_fields": [
+        "node",
+        "object",
+        "callable",
+        "live_unit_uid",
+        "owner_player_id",
+        "live_position",
+        "hp_remaining",
+        "cooldown_remaining",
+        "card_slot",
+        "localized_rule_text",
+        "ai_value",
+        "rng_callback"
+      ],
+      "instance_state_types": [
+        "MilitaryUnitInstanceState",
+        "MilitaryCommandInstanceState"
+      ]
+    },
+    "WeatherSemanticSpec": {
+      "immutable": true,
+      "pure_data": true,
+      "required_sections": [
+        "schema_version",
+        "semantic_identity",
+        "timing",
+        "affected_region_count",
+        "effect_operations",
+        "selection_policy",
+        "visibility_policy_id",
+        "randomness_policy_id",
+        "presentation_refs"
+      ],
+      "forbidden_fields": [
+        "node",
+        "object",
+        "callable",
+        "event_id",
+        "live_regions",
+        "live_phase",
+        "live_timestamps",
+        "damage_accounting",
+        "localized_dispatch_name",
+        "ai_value",
+        "rng_callback"
+      ],
+      "instance_state_type": "WeatherEventInstanceState",
+      "preserved_save_schema_version": 2
+    }
+  },
+  "operation_registry": {
+    "military": [
+      {"operation_id": "deploy_unit", "handler_owner": "MilitaryRuntimeController", "rng_draws": 0},
+      {"operation_id": "upgrade_same_family_unit", "handler_owner": "MilitaryRuntimeController", "enabled": false, "blocked_by": ["B-001", "B-002"], "rng_draws": 0},
+      {"operation_id": "refresh_oldest_controlled_unit", "handler_owner": "MilitaryRuntimeController", "compatibility_only": true, "rng_draws": 0},
+      {"operation_id": "military_move", "handler_owner": "MilitaryRuntimeController+typed_motion_port", "rng_draws": 0},
+      {"operation_id": "military_guard", "handler_owner": "MilitaryRuntimeController+RegionInfrastructure", "rng_draws": 0},
+      {"operation_id": "military_strike_region", "handler_owner": "MilitaryRuntimeController+RegionInfrastructure", "rng_draws": 0},
+      {"operation_id": "military_attack_monster", "handler_owner": "MilitaryRuntimeController+RuntimeCommandPipeline", "rng_draws": 0},
+      {"operation_id": "military_remove_unit", "handler_owner": "MilitaryRuntimeController", "rng_draws": 0},
+      {"operation_id": "grant_bound_command_instance", "handler_owner": "CardInventoryRuntimeService", "internal_lifecycle": true, "rng_draws": 0},
+      {"operation_id": "invalidate_bound_command_instance", "handler_owner": "CardInventoryRuntimeService", "internal_lifecycle": true, "rng_draws": 0}
+    ],
+    "weather_lifecycle": [
+      {"operation_id": "schedule_weather_forecast", "handler_owner": "WeatherRuntimeController", "valid_explicit_region_rng_draws": 0},
+      {"operation_id": "select_natural_weather_forecast", "handler_owner": "WeatherSystem+WeatherRuntimeController", "valid_rng_draws": 3, "draw_order": ["region_tie", "definition", "next_interval"]},
+      {"operation_id": "queue_weather_forecast", "handler_owner": "WeatherRuntimeController", "rng_draws": 0},
+      {"operation_id": "activate_weather_event", "handler_owner": "WeatherRuntimeController", "rng_draws": 0},
+      {"operation_id": "fade_weather_event", "handler_owner": "WeatherSystem+WeatherRuntimeController", "rng_draws": 0},
+      {"operation_id": "end_weather_event", "handler_owner": "WeatherRuntimeController", "rng_draws": 0},
+      {"operation_id": "resolve_weather_effects", "handler_owner": "WeatherEffectResolver", "rng_draws": 0},
+      {"operation_id": "apply_nonlethal_capped_region_damage", "handler_owner": "RegionInfrastructure", "rng_draws": 0}
+    ],
+    "weather_effect_operations": [
+      "modify_product_price_growth",
+      "modify_production",
+      "modify_demand",
+      "modify_route_efficiency",
+      "modify_land_movement",
+      "modify_ocean_movement",
+      "modify_air_movement",
+      "modify_ranged_effect",
+      "modify_knockback",
+      "modify_orbital_effect",
+      "modify_city_maintenance",
+      "modify_monster_preference",
+      "modify_monster_speed",
+      "modify_monster_armor",
+      "modify_intel_duration",
+      "modify_intel_range",
+      "modify_flying_risk",
+      "apply_nonlethal_capped_region_damage"
+    ]
+  },
+  "policies": {
+    "military_visibility": {
+      "current_policy_id": "owner_hidden_unless_revealed_or_self_v04",
+      "v06_copy_policy_id": "owner_rank_position_public",
+      "conflict_blocker": "B-008",
+      "migration_rule": "preserve_current_live_privacy_until_authority_resolves"
+    },
+    "military_randomness": {
+      "policy_id": "none",
+      "compile_draws": 0,
+      "query_draws": 0,
+      "deploy_draws": 0,
+      "command_draws": 0
+    },
+    "weather_visibility": {
+      "policy_id": "public_planetary_event",
+      "public_fields": [
+        "definition_id",
+        "phase",
+        "region_indices",
+        "timing",
+        "intensity",
+        "source_type"
+      ],
+      "forbidden_fields": [
+        "actor_identity",
+        "hand",
+        "cash",
+        "private_target",
+        "ai_private_plan"
+      ]
+    },
+    "weather_randomness": {
+      "compile_draws": 0,
+      "query_draws": 0,
+      "failed_validation_draws": 0,
+      "valid_explicit_card_draws": 0,
+      "valid_new_session_draws": 3,
+      "valid_natural_draws": 3,
+      "draw_order": ["region_tie", "definition", "next_interval"]
+    }
+  },
+  "save_and_replay": {
+    "military": {
+      "save_section_id": "military",
+      "current_support": "blocked",
+      "current_identity_fields": [
+        "uid",
+        "name",
+        "source_card",
+        "rank",
+        "military_type"
+      ],
+      "missing_stable_identity": "unit_family_id",
+      "cross_section_reference": "player.slots[].bound_military_uid",
+      "exact_once_reference_adapter_production_composed": false,
+      "new_save_section_allowed": false
+    },
+    "weather": {
+      "save_section_id": "weather",
+      "current_support": "transactional",
+      "schema_version": 2,
+      "stable_identity_fields": [
+        "event.id",
+        "event.definition_id",
+        "event.region_indices",
+        "event.phase",
+        "sequence"
+      ],
+      "compatibility_aliases": [
+        "event.type",
+        "event.districts"
+      ],
+      "new_save_section_allowed": false,
+      "semantic_spec_saved": false
+    },
+    "dedicated_recording_replay_subsystem_found": false,
+    "note": "Occurrences of replay in unit/card infrastructure are transaction idempotence, not a military/weather recording playback owner."
+  },
+  "migration_stages": [
+    {"stage": 1, "name": "freeze_schemas_and_scans", "production_behavior_change": false},
+    {"stage": 2, "name": "compile_catalogs_with_parity", "production_behavior_change": false},
+    {"stage": 3, "name": "player_presentation_cutover", "requires_atomic_consumer_cutover": true},
+    {"stage": 4, "name": "ai_and_diagnostic_projection_cutover", "requires_blockers": ["B-005", "B-007"]},
+    {"stage": 5, "name": "weather_card_semantics", "requires_blockers": ["B-006"]},
+    {"stage": 6, "name": "military_atomic_transaction", "requires_blockers": ["B-001", "B-002", "B-003", "B-004", "B-008"]},
+    {"stage": 7, "name": "save_and_replay_identity_migration", "preserve_weather_schema_v2": true},
+    {"stage": 8, "name": "delete_compatibility_authorities", "requires_zero_production_consumers": true}
+  ],
+  "preservation_constraints": [
+    "rules_unchanged",
+    "balance_values_unchanged",
+    "military_command_order_unchanged",
+    "weather_lifecycle_order_unchanged",
+    "rng_draw_count_and_order_unchanged",
+    "hidden_information_not_expanded",
+    "save_root_and_section_count_unchanged",
+    "no_second_military_owner",
+    "no_second_weather_owner",
+    "no_second_ai_or_diagnostic_rules_engine",
+    "localized_text_not_rule_identity",
+    "unknown_semantic_ids_fail_closed",
+    "v06_military_remains_non_active_until_atomic_gates_pass"
+  ],
+  "claims": {
+    "implementation_complete": false,
+    "production_cutover_complete": false,
+    "save_migration_complete": false,
+    "full_run_replay_complete": false,
+    "audit_complete": true
+  }
+}

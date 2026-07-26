@@ -1,0 +1,320 @@
+{
+  "schema_version": 1,
+  "report_id": "card_semantic_phase1_security_followup_review",
+  "verdict": "PASSIVE_PHASE1_MERGE_READY",
+  "merge_ready": true,
+  "review_scope": "passive_phase1_only",
+  "integration_baseline_sha": "59756a291f811a064726f59aed27efecc3590c9a",
+  "prior_reviewed_tip_sha": "4f50cc439d2879849ca1c125a320af8a18c7465e",
+  "reviewed_tip_sha": "b16b5fecf35578516f612c56acddbd985df73795",
+  "prior_report": {
+    "markdown": "reports/cards/card_semantic_phase1_adversarial_review.md",
+    "json": "reports/cards/card_semantic_phase1_adversarial_review.json",
+    "commit_sha_short": "13dad88"
+  },
+  "security_commits": [
+    {
+      "sha": "6c6268bb21f7d30251706fcca0f85feefe6f2078",
+      "purpose": "seal catalog membership and authorize AI readiness from exact catalog specs"
+    },
+    {
+      "sha": "b16b5fecf35578516f612c56acddbd985df73795",
+      "purpose": "update the architecture scan oracle for the authorized semantic surface"
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 9,
+    "minor": 3,
+    "resolved_blocker": 2,
+    "resolved_major": 1
+  },
+  "blocker_disposition": [
+    {
+      "finding_id": "CSAR-B01",
+      "status": "closed",
+      "title": "Configured catalog membership is sealed",
+      "evidence": [
+        "scripts/runtime/card_semantic_catalog_service.gd:40",
+        "scripts/runtime/card_semantic_catalog_service.gd:80",
+        "scripts/runtime/card_semantic_catalog_service.gd:101",
+        "scripts/runtime/card_semantic_catalog_service.gd:106",
+        "scripts/runtime/card_semantic_catalog_service.gd:149",
+        "tests/card_semantic_authorization_boundary_test.gd:76"
+      ],
+      "verified_outcomes": [
+        "structurally valid foreign identity rejected",
+        "same identity with changed payload rejected",
+        "returned spec empty",
+        "compiler cache metrics unchanged"
+      ]
+    },
+    {
+      "finding_id": "CSAR-B02",
+      "status": "closed",
+      "title": "AI readiness is authorized from the exact sealed catalog spec",
+      "evidence": [
+        "scripts/runtime/card_semantic_catalog_service.gd:110",
+        "scripts/runtime/card_semantic_catalog_service.gd:126",
+        "scripts/runtime/ai_card_semantic_projection_service.gd:42",
+        "scripts/runtime/ai_card_semantic_projection_service.gd:55",
+        "scripts/runtime/ai_card_semantic_projection_service.gd:60",
+        "tests/card_semantic_authorization_boundary_test.gd:109"
+      ],
+      "verified_outcomes": [
+        "genuine projection-only spec emits no candidate",
+        "re-signed active readiness rejected",
+        "re-signed source fingerprint rejected",
+        "genuine active spec emits one candidate",
+        "AI authorization compiles nothing"
+      ]
+    }
+  ],
+  "bypass_attempts": [
+    {
+      "attempt_id": "foreign_catalog_member",
+      "expected": "fail_closed_zero_cache_delta",
+      "result": "PASS"
+    },
+    {
+      "attempt_id": "same_id_changed_payload",
+      "expected": "fail_closed_zero_cache_delta",
+      "result": "PASS"
+    },
+    {
+      "attempt_id": "projection_only_resigned_active",
+      "expected": "zero_legal_candidates",
+      "result": "PASS"
+    },
+    {
+      "attempt_id": "active_spec_resigned_source_fingerprint",
+      "expected": "zero_legal_candidates",
+      "result": "PASS"
+    },
+    {
+      "attempt_id": "genuine_projection_only_spec",
+      "expected": "zero_legal_candidates",
+      "result": "PASS"
+    },
+    {
+      "attempt_id": "genuine_active_spec",
+      "expected": "one_candidate_zero_compile_delta",
+      "result": "PASS"
+    }
+  ],
+  "coverage_assessment": {
+    "prior_script_checks": 211,
+    "current_script_checks": 157,
+    "prior_scene_checks": 183,
+    "current_scene_checks": 141,
+    "prior_legal_representatives": 12,
+    "current_legal_representatives": 6,
+    "required_active_mechanism_coverage_lost": false,
+    "active_representative_ops": [
+      "install_rate",
+      "build_facility",
+      "upgrade_facility",
+      "repair_facility",
+      "modify_supply",
+      "modify_demand"
+    ],
+    "projection_only_rejection_ops": [
+      "deploy_unit",
+      "upgrade_same_family_unit",
+      "discard_random",
+      "steal_random",
+      "lock_random",
+      "counter_action"
+    ],
+    "explanation": "The removed positive assertions relied on hand-built active specs for catalog-projection-only mechanisms. Real catalog records now fail closed while all active Phase 1 operation classes retain positive candidate coverage.",
+    "residual_minor": "The representative-op counter consumes scenario-declared labels for projection-only cases; golden fixtures independently verify current compiled specs."
+  },
+  "invariants": {
+    "semantic_catalog_fingerprint": "1db2ac3fefdeebcdf2a28525be089cdc2fef383aeebf46f9962a23b8c49d1288",
+    "compiled_count": 348,
+    "active_count": 256,
+    "projection_only_count": 92,
+    "operation_count": 606,
+    "per_candidate_production_compilation_count": 0,
+    "hidden_information_field_expansion": false,
+    "candidate_schema_expansion": false,
+    "rule_change_observed": false,
+    "balance_change_observed": false,
+    "rng_delta": 0,
+    "save_section_count": 19,
+    "semantic_save_section_count": 0,
+    "gameplay_executor_connections": 0,
+    "new_ai_raw_payload_reads": 0,
+    "existing_ai_raw_value_reads": 225,
+    "existing_ai_raw_presence_checks": 5,
+    "existing_ai_raw_functions": 33,
+    "existing_ai_raw_keys": 71,
+    "architecture_new_violations": 0
+  },
+  "open_findings": [
+    {
+      "finding_id": "CSAR-M01",
+      "severity": "major",
+      "title": "Card schema admits synthetic non-card capability operations",
+      "passive_phase1_blocker": false
+    },
+    {
+      "finding_id": "CSAR-M02",
+      "severity": "major",
+      "title": "AI allowed value channels and caller-authored legality facts are not viewer-owner attested",
+      "passive_phase1_blocker": false,
+      "becomes_blocker_before": "production_ai_candidate_cutover"
+    },
+    {
+      "finding_id": "CSAR-M03",
+      "severity": "major",
+      "title": "PlayerFace localization authorization remains caller-asserted",
+      "passive_phase1_blocker": false,
+      "becomes_blocker_before": "production_ui_player_face_cutover"
+    },
+    {
+      "finding_id": "CSAR-M04",
+      "severity": "major",
+      "title": "Source visibility is not an effect/result disclosure policy",
+      "passive_phase1_blocker": false,
+      "becomes_blocker_before": "interaction_or_counter_activation"
+    },
+    {
+      "finding_id": "CSAR-M06",
+      "severity": "major",
+      "title": "v0.4 and v0.6 card authority remain composed as a compatibility bridge",
+      "passive_phase1_blocker": false
+    },
+    {
+      "finding_id": "CSAR-M07",
+      "severity": "major",
+      "title": "Production AI retains audited raw-field reads",
+      "passive_phase1_blocker": false
+    },
+    {
+      "finding_id": "CSAR-M08",
+      "severity": "major",
+      "title": "Production UI retains raw skill and alias-chain consumers",
+      "passive_phase1_blocker": false
+    },
+    {
+      "finding_id": "CSAR-M09",
+      "severity": "major",
+      "title": "RulesProjection, RuleExecutionPlan, handler registry, and executor parity are absent",
+      "passive_phase1_blocker": false,
+      "becomes_blocker_before": "rules_execution_or_training_cutover"
+    },
+    {
+      "finding_id": "CSAR-M10",
+      "severity": "major",
+      "title": "Random interaction operations lack explicit RNG policies",
+      "passive_phase1_blocker": false,
+      "becomes_blocker_before": "random_operation_activation"
+    },
+    {
+      "finding_id": "CSAR-m01",
+      "severity": "minor",
+      "title": "Integration manifest retains hard-coded catalog-surface conclusions"
+    },
+    {
+      "finding_id": "CSAR-m02",
+      "severity": "minor",
+      "title": "Performance gates are absolute rather than comparative"
+    },
+    {
+      "finding_id": "CSSF-m03",
+      "severity": "minor",
+      "title": "Projection-only representative coverage uses scenario labels instead of compiled operation IDs"
+    }
+  ],
+  "resolved_findings": [
+    {
+      "finding_id": "CSAR-B01",
+      "resolution": "6c6268b"
+    },
+    {
+      "finding_id": "CSAR-B02",
+      "resolution": "6c6268b"
+    },
+    {
+      "finding_id": "CSAR-M05",
+      "resolution": "tests/card_semantic_golden_fixture_test.gd"
+    }
+  ],
+  "verification": [
+    {
+      "gate": "card_semantic_authorization_boundary_test",
+      "status": "PASS",
+      "checks": 24,
+      "suite_duration_ms": 709.699,
+      "wrapper_duration_seconds": 1.176,
+      "run_id": "20260726-163330-197-card_semantic_authorization_boundary_test-86f987e1"
+    },
+    {
+      "gate": "card_semantic_schema_compiler_test",
+      "status": "PASS",
+      "checks": 5290,
+      "suite_duration_ms": 1632.954,
+      "compile_duration_ms": 312.616,
+      "wrapper_duration_seconds": 2.145,
+      "run_id": "20260726-163407-146-card_semantic_schema_compiler_test-42feb4ad"
+    },
+    {
+      "gate": "ai_card_semantic_projection_test",
+      "status": "PASS",
+      "checks": 157,
+      "projection_iterations": 400,
+      "projection_duration_ms": 231.43,
+      "wrapper_duration_seconds": 2.977,
+      "run_id": "20260726-163414-242-ai_card_semantic_projection_test-ef028966"
+    },
+    {
+      "gate": "card_semantic_golden_fixture_test",
+      "status": "PASS",
+      "checks": 417,
+      "cards": 40,
+      "mismatches": 0,
+      "suite_duration_ms": 155.385,
+      "wrapper_duration_seconds": 0.696,
+      "run_id": "20260726-163423-959-card_semantic_golden_fixture_test-31d5d07c"
+    },
+    {
+      "gate": "card_semantic_architecture_scan_test",
+      "status": "PASS",
+      "checks": 106,
+      "suite_duration_ms": 81.561,
+      "wrapper_duration_seconds": 4.741,
+      "new_violations": 0,
+      "run_id": "20260726-163429-165-card_semantic_architecture_scan_test-85fc5590"
+    },
+    {
+      "gate": "card_semantic_phase1_integration_test",
+      "status": "PASS",
+      "checks": 27,
+      "suite_duration_ms": 1932.923,
+      "wrapper_duration_seconds": 7.419,
+      "run_id": "20260726-163439-994-card_semantic_phase1_integration_test-ea661390"
+    },
+    {
+      "gate": "AiCardSemanticProjectionBench",
+      "status": "PASS",
+      "checks": 141,
+      "representative_candidates": 6,
+      "wrapper_duration_seconds": 2.351,
+      "run_id": "20260726-163452-947-AiCardSemanticProjectionBench-bd6f12d6"
+    }
+  ],
+  "import_bootstrap": {
+    "status": "PASS",
+    "duration_seconds": 25.391,
+    "counted_as_product_failure": false
+  },
+  "godot_process_count_after_review": 0,
+  "passive_projections_only": true,
+  "production_ai_cutover_claim": false,
+  "production_ui_cutover_claim": false,
+  "rules_projection_claim": false,
+  "handler_registry_claim": false,
+  "full_run_resume_claim": false,
+  "push_performed": false
+}

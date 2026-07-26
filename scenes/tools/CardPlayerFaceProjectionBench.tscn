@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/card_player_face_projection_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardPlayerFaceProjectionService.tscn" id="2_service"]
+
+[node name="CardPlayerFaceProjectionBench" type="Node"]
+script = ExtResource("1_bench")
+editor_description = "MCP production-wiring Bench for deterministic PlayerFaceDTO v1 projection, privacy-before-localization rejection, surface emphasis, and bounded timing."
+
+[node name="CardPlayerFaceProjectionService" parent="." instance=ExtResource("2_service")]

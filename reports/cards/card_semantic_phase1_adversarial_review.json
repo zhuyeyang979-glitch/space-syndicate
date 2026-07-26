@@ -1,0 +1,315 @@
+{
+  "schema_version": 1,
+  "report_id": "card_semantic_phase1_adversarial_review",
+  "verdict": "CHANGES_REQUIRED",
+  "merge_ready": false,
+  "integration_baseline_sha": "59756a291f811a064726f59aed27efecc3590c9a",
+  "reviewed_tip_sha": "4f50cc439d2879849ca1c125a320af8a18c7465e",
+  "composition_commit_sha": "ebdd30512c52ac082354052bd1c798905896058e",
+  "fixture_source_commits": [
+    "42b492b2b505ad908f7df13b45fa299d5a4c0acc",
+    "8194efd4349ffbeb8358de45eb851ca625356c9c"
+  ],
+  "fixture_integrated_commits": ["dc004bf", "f08dfe9"],
+  "severity_counts": {
+    "blocker": 2,
+    "major": 10,
+    "minor": 2,
+    "no_finding": 9
+  },
+  "current_runtime_effect": {
+    "services_composed": true,
+    "gameplay_executor_connections": 0,
+    "ai_runtime_consumers": 0,
+    "ui_consumers": 0,
+    "save_sections_added": 0,
+    "rng_delta": 0,
+    "gameplay_change_observed": false
+  },
+  "findings": [
+    {
+      "finding_id": "CSAR-B01",
+      "severity": "blocker",
+      "title": "Authorized compilation is not bound to configured catalog membership",
+      "evidence": [
+        "scripts/runtime/card_semantic_catalog_service.gd:70",
+        "scripts/runtime/card_semantic_catalog_service.gd:75",
+        "scripts/cards/semantic/card_semantic_schema_v1.gd:111",
+        "scripts/cards/semantic/card_semantic_schema_v1.gd:128",
+        "scripts/cards/semantic/card_semantic_compiler_v1.gd:78",
+        "scripts/cards/semantic/card_semantic_compiler_v1.gd:82",
+        "scripts/cards/semantic/card_semantic_compiler_v1.gd:87",
+        "scripts/tools/card_semantic_phase1_integration_bench.gd:289",
+        "tests/card_semantic_schema_compiler_test.gd:224"
+      ],
+      "impact": "A structurally valid full record outside the configured v0.6 catalog can be compiled on a cache miss, cached, and returned under the configured catalog ID.",
+      "required_fix": "Seal configured source fingerprints and identities; make authorized reads cache-hit only; bind them to a typed visibility-owner receipt; test forged-record rejection and zero cache delta."
+    },
+    {
+      "finding_id": "CSAR-B02",
+      "severity": "blocker",
+      "title": "Executable readiness is caller-controlled rather than registry-attested",
+      "evidence": [
+        "scripts/cards/semantic/card_semantic_schema_v1.gd:96",
+        "scripts/cards/semantic/card_semantic_compiler_v1.gd:12",
+        "scripts/runtime/ai_card_semantic_projection_service.gd:41",
+        "scripts/runtime/ai_card_semantic_projection_service.gd:48",
+        "scripts/tools/ai_card_semantic_projection_bench.gd:557",
+        "tests/ai_card_semantic_projection_test.gd:403",
+        "scenes/runtime/GameRuntimeCoordinator.tscn:522"
+      ],
+      "impact": "A caller can re-sign a projection-only or synthetic semantic spec as active and obtain a legal AI candidate without an executable handler.",
+      "required_fix": "Separate projection status from executable readiness and require a sealed coordinator-owned readiness and handler-capability receipt before candidate emission."
+    },
+    {
+      "finding_id": "CSAR-M01",
+      "severity": "major",
+      "title": "Non-card capabilities are admitted as CardSemanticSpec effect operations",
+      "evidence": [
+        "scripts/cards/semantic/card_semantic_schema_v1.gd:63",
+        "scripts/cards/semantic/card_semantic_schema_v1.gd:67",
+        "tests/card_semantic_schema_compiler_test.gd:168",
+        "scripts/runtime/ai_outcome_vector_v1.gd:29"
+      ],
+      "required_fix": "Move military and shared capabilities to their domain specs or the shared operation registry; reject them inside CardSemanticSpec unless emitted by a card compiler contract."
+    },
+    {
+      "finding_id": "CSAR-M02",
+      "severity": "major",
+      "title": "AI privacy validation permits hidden information in allowed value channels",
+      "evidence": [
+        "scripts/runtime/ai_card_semantic_projection_input_v1.gd:197",
+        "scripts/runtime/ai_card_semantic_projection_input_v1.gd:219",
+        "scripts/runtime/ai_card_semantic_projection_input_v1.gd:229",
+        "scripts/runtime/ai_card_semantic_projection_service.gd:122",
+        "scripts/runtime/ai_card_semantic_projection_service.gd:154"
+      ],
+      "required_fix": "Use a viewer-scoped producer with closed target-reference and explanation-token registries and test hidden sentinels embedded in values, not only forbidden keys."
+    },
+    {
+      "finding_id": "CSAR-M03",
+      "severity": "major",
+      "title": "PlayerFace localization authorization is self-asserted",
+      "evidence": [
+        "scripts/runtime/card_player_face_projection_service.gd:298",
+        "scripts/runtime/card_player_face_projection_service.gd:311",
+        "scripts/tools/card_semantic_phase1_integration_bench.gd:384",
+        "scripts/tools/card_semantic_phase1_integration_bench.gd:413"
+      ],
+      "required_fix": "Compose a real localization/query port that deterministically maps semantic IDs to message/token IDs and emits a bound authorization receipt."
+    },
+    {
+      "finding_id": "CSAR-M04",
+      "severity": "major",
+      "title": "Information scope represents source access rather than effect disclosure",
+      "evidence": [
+        "scripts/cards/semantic/card_semantic_schema_v1.gd:283",
+        "scripts/runtime/card_player_face_projection_service.gd:246",
+        "scripts/runtime/card_player_face_projection_service.gd:492",
+        "scripts/runtime/card_player_face_projection_service.gd:496"
+      ],
+      "required_fix": "Add explicit effect and result visibility policies and project both PlayerFace and AI information boundaries from them."
+    },
+    {
+      "finding_id": "CSAR-M05",
+      "severity": "major",
+      "title": "Golden fixtures have no automated consumer",
+      "evidence": [
+        "tests/fixtures/card_semantic_phase1/facility_commodity_golden.json:3",
+        "tests/fixtures/card_semantic_phase1/interaction_counter_golden.json:3",
+        "tests/fixtures/card_semantic_phase1/unit_supply_golden.json:3",
+        "tests/card_semantic_schema_compiler_test.gd:53",
+        "tests/card_semantic_schema_compiler_test.gd:128"
+      ],
+      "measured_reference_count_outside_fixture_declarations": 0,
+      "required_fix": "Add one focused test that loads all three fixtures and compares live compiler output, source SHA, semantic bodies, and fingerprints exactly."
+    },
+    {
+      "finding_id": "CSAR-M06",
+      "severity": "major",
+      "title": "v0.4 and v0.6 catalog authority remain composed together",
+      "evidence": [
+        "scenes/runtime/GameRuntimeCoordinator.tscn:257",
+        "scenes/runtime/GameRuntimeCoordinator.tscn:522",
+        "scenes/runtime/CardRuntimeCatalogService.tscn:4"
+      ],
+      "phase1_regression": false,
+      "required_fix": "Retire the explicit v0.4 compatibility owner before claiming one authoritative catalog or unified execution."
+    },
+    {
+      "finding_id": "CSAR-M07",
+      "severity": "major",
+      "title": "Production AI still reads raw card fields and localized names",
+      "evidence": [
+        "scripts/runtime/ai_runtime_controller.gd:3909",
+        "scripts/runtime/ai_runtime_controller.gd:3916",
+        "scripts/runtime/ai_runtime_controller.gd:6854",
+        "reports/cards/ai_direct_field_read_migration.md:11"
+      ],
+      "audited_raw_value_read_count": 225,
+      "phase1_regression": false,
+      "required_fix": "Keep an explicit ratcheting allowlist and migrate AI to authorized observations and candidates without score, order, privacy, or RNG drift."
+    },
+    {
+      "finding_id": "CSAR-M08",
+      "severity": "major",
+      "title": "Production UI still uses raw skill data and legacy alias chains",
+      "evidence": [
+        "scripts/ui/hand_rack.gd:137",
+        "scripts/ui/hand_rack.gd:139",
+        "scripts/runtime/card_presentation_runtime_service.gd:44",
+        "scripts/runtime/card_presentation_runtime_service.gd:56"
+      ],
+      "phase1_regression": false,
+      "required_fix": "Cut consumers over through one PlayerFace adapter, then remove aliases atomically."
+    },
+    {
+      "finding_id": "CSAR-M09",
+      "severity": "major",
+      "title": "RulesProjection and execution parity are not implemented",
+      "evidence": [
+        "tests/card_semantic_phase1_integration_test.gd:63",
+        "reports/cards/card_semantic_phase1_integration_validation.md:105"
+      ],
+      "phase1_claim_violation": false,
+      "required_fix": "Add RuleExecutionPlan, sealed operation handlers, and semantic-to-existing-executor parity before three-projection or training cutover claims."
+    },
+    {
+      "finding_id": "CSAR-M10",
+      "severity": "major",
+      "title": "Random operations have no explicit randomness policy",
+      "evidence": [
+        "scripts/cards/semantic/card_semantic_schema_v1.gd:58",
+        "scripts/cards/semantic/card_semantic_schema_v1.gd:61",
+        "docs/architecture/semantic_kernel_v1_contract.md:656"
+      ],
+      "current_rng_delta": 0,
+      "required_fix": "Add approved randomness-policy and existing RNG owner/draw-order references before random operations can become active."
+    },
+    {
+      "finding_id": "CSAR-m01",
+      "severity": "minor",
+      "title": "Integration evidence hard-codes boundary conclusions",
+      "evidence": [
+        "scripts/tools/card_semantic_phase1_integration_bench.gd:289",
+        "scripts/tools/card_semantic_phase1_integration_bench.gd:290",
+        "tests/card_semantic_phase1_integration_test.gd:64"
+      ],
+      "required_fix": "Replace literals with adversarial calls and cache metric assertions."
+    },
+    {
+      "finding_id": "CSAR-m02",
+      "severity": "minor",
+      "title": "Performance gates are absolute rather than comparative",
+      "evidence": [
+        "tests/ai_card_semantic_projection_test.gd:438",
+        "tests/card_player_face_projection_test.gd:163",
+        "tests/card_semantic_phase1_integration_test.gd:82"
+      ],
+      "required_fix": "Record stable pre-cutover startup and projection baselines before hot-path adoption while keeping the 60-second cap."
+    }
+  ],
+  "no_findings": [
+    {
+      "check_id": "CSAR-N01",
+      "subject": "second_card_semantic_state_owner",
+      "result": "no_finding",
+      "detail": "The semantic cache is derived and owns no card instance or world state."
+    },
+    {
+      "check_id": "CSAR-N02",
+      "subject": "ai_score_or_localized_text_in_semantics",
+      "result": "no_finding"
+    },
+    {
+      "check_id": "CSAR-N03",
+      "subject": "new_ui_rule_reimplementation",
+      "result": "no_finding",
+      "detail": "New PlayerFace code projects stable semantic fields and does not parse localized prose."
+    },
+    {
+      "check_id": "CSAR-N04",
+      "subject": "new_ai_raw_payload_access",
+      "result": "no_finding",
+      "detail": "Raw effect payload access is confined to compiler input; the new AI projector does not read it."
+    },
+    {
+      "check_id": "CSAR-N05",
+      "subject": "rng_save_main_current_scene_process_dependency",
+      "result": "no_finding"
+    },
+    {
+      "check_id": "CSAR-N06",
+      "subject": "per_candidate_compilation",
+      "result": "no_finding",
+      "detail": "Repeated AI projection leaves compiler cache metrics unchanged."
+    },
+    {
+      "check_id": "CSAR-N07",
+      "subject": "new_specific_card_or_family_production_branch",
+      "result": "no_finding"
+    },
+    {
+      "check_id": "CSAR-N08",
+      "subject": "new_legacy_alias_chain",
+      "result": "no_finding"
+    },
+    {
+      "check_id": "CSAR-N09",
+      "subject": "unsafe_composition_or_executor_connection",
+      "result": "no_finding",
+      "detail": "Composition commit instances three passive sibling services and adds no connection."
+    }
+  ],
+  "verification": [
+    {
+      "gate": "card_semantic_phase1_integration_test",
+      "status": "PASS",
+      "checks": 27,
+      "suite_duration_ms": 1815.641,
+      "wrapper_duration_seconds": 7.129,
+      "run_id": "20260726-155447-156-card_semantic_phase1_integration_test-d362126b"
+    },
+    {
+      "gate": "card_semantic_schema_compiler_test",
+      "status": "PASS",
+      "checks": 5290,
+      "suite_duration_ms": 1372.618,
+      "compile_duration_ms": 281.339,
+      "wrapper_duration_seconds": 1.891,
+      "run_id": "20260726-155530-788-card_semantic_schema_compiler_test-f912737a"
+    },
+    {
+      "gate": "ai_card_semantic_projection_test",
+      "status": "PASS",
+      "checks": 211,
+      "projection_iterations": 400,
+      "projection_duration_ms": 276.093,
+      "wrapper_duration_seconds": 0.875,
+      "run_id": "20260726-155537-657-ai_card_semantic_projection_test-38aa5221"
+    },
+    {
+      "gate": "card_player_face_projection_test",
+      "status": "PASS",
+      "checks": 57,
+      "projection_iterations": 600,
+      "projection_duration_ms": 1440.139,
+      "wrapper_duration_seconds": 1.998,
+      "run_id": "20260726-155546-372-card_player_face_projection_test-01c60bba"
+    },
+    {
+      "gate": "golden_source_catalog_sha",
+      "status": "PASS",
+      "catalog_sha256": "b59b73489d23578558d4a7688a03f50a3ef4d776cf528cd9eafd0e1d2a0fcb40",
+      "fixture_count": 3
+    }
+  ],
+  "environment_note": {
+    "initial_isolated_worktree_run": "ENTRYPOINT_IMPORT_PRECONDITION",
+    "cause": "missing .godot/global_script_class_cache.cfg",
+    "resolution": "bounded EnsureImported bootstrap",
+    "counted_as_product_finding": false
+  },
+  "required_before_merge": ["CSAR-B01", "CSAR-B02"],
+  "push_performed": false
+}

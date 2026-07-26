@@ -1,0 +1,1587 @@
+{
+  "schema_id": "space_syndicate.semantic_kernel_contract",
+  "schema_version": 1,
+  "status": "architecture_wave_1_frozen",
+  "integration_baseline": "39ec00854d7f0439aab6f053948e5a58088ba2d5",
+  "upstream_baseline": "59756a291f811a064726f59aed27efecc3590c9a",
+  "scope": {
+    "kind": "architecture_only",
+    "changes_runtime": false,
+    "changes_rules": false,
+    "changes_balance": false,
+    "changes_rng_order": false,
+    "changes_save_envelope": false,
+    "adds_save_section": false,
+    "claims_full_cutover": false
+  },
+  "domain_ids": [
+    "card",
+    "role",
+    "monster",
+    "monster_behavior",
+    "military_unit",
+    "weather",
+    "product",
+    "facility",
+    "victory"
+  ],
+  "domain_spec_ids": [
+    "CardSemanticSpec",
+    "RoleSemanticSpec",
+    "MonsterSemanticSpec",
+    "MonsterBehaviorSpec",
+    "MilitaryUnitSemanticSpec",
+    "WeatherSemanticSpec",
+    "ProductSemanticSpec",
+    "FacilitySemanticSpec",
+    "VictorySemanticSpec"
+  ],
+  "invariants": [
+    "localized_values_never_select_rules",
+    "static_semantics_are_immutable",
+    "dynamic_state_remains_with_existing_domain_owner",
+    "one_handler_per_active_operation_version",
+    "unknown_ids_fail_closed",
+    "projection_only_never_legal_or_executable",
+    "compile_only_during_catalog_configuration_or_tooling",
+    "authorized_viewer_clipping_precedes_projection",
+    "random_effects_require_explicit_randomness_policy",
+    "existing_transaction_rng_and_receipt_order_is_preserved",
+    "registry_is_not_a_state_owner_or_catalog_owner",
+    "no_fixed_ai_value",
+    "no_second_catalog_state_owner_or_execution_engine",
+    "no_main_autoload_or_current_scene_dependency",
+    "all_boundary_values_are_detached_pure_data",
+    "retired_or_rule_unestablished_mechanics_never_activate"
+  ],
+  "wire_profile": {
+    "profile_id": "semantic_closed_json_v1",
+    "allowed_value_kinds": [
+      "dictionary",
+      "array",
+      "string",
+      "bool",
+      "safe_integer"
+    ],
+    "forbidden_value_kinds": [
+      "null",
+      "float",
+      "nan",
+      "infinity",
+      "node",
+      "object",
+      "resource",
+      "packed_scene",
+      "callable",
+      "signal",
+      "vector",
+      "color"
+    ],
+    "objects_closed": true,
+    "optional_fields_omitted": true,
+    "stable_id_pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$",
+    "stable_id_max_length": 160,
+    "stable_id_ascii_only": true,
+    "fingerprint_algorithm": "sha256",
+    "fingerprint_encoding": "lowercase_hex",
+    "canonicalization": {
+      "encoding": "utf8_json",
+      "dictionary_key_order": "lexicographic",
+      "array_order": "preserved",
+      "self_fingerprint_field_omitted": true
+    },
+    "forbidden_semantic_inputs": [
+      "localized_name",
+      "localized_rules_text",
+      "tooltip",
+      "art_asset",
+      "color",
+      "filename_suffix",
+      "method_name",
+      "script_path",
+      "executable_expression",
+      "rng_callback",
+      "ai_score",
+      "ai_weight",
+      "live_owner"
+    ]
+  },
+  "supporting_types": {
+    "SemanticDefinitionRef": {
+      "schema_version": 1,
+      "required_fields": [
+        "schema_version",
+        "domain_id",
+        "definition_id",
+        "definition_revision",
+        "semantic_schema_version",
+        "semantic_fingerprint"
+      ],
+      "additional_fields": false
+    },
+    "EntityRef": {
+      "schema_version": 1,
+      "required_fields": [
+        "schema_version",
+        "entity_type_id",
+        "entity_id",
+        "revision"
+      ],
+      "additional_fields": false,
+      "forbidden_fields": [
+        "name",
+        "owner_name",
+        "object",
+        "node"
+      ]
+    },
+    "ValidationIssue": {
+      "schema_version": 1,
+      "required_fields": [
+        "schema_version",
+        "severity_id",
+        "issue_code",
+        "domain_id",
+        "definition_id",
+        "path"
+      ],
+      "severity_ids": [
+        "blocker",
+        "error",
+        "warning"
+      ],
+      "sort_order": [
+        "severity_id",
+        "domain_id",
+        "definition_id",
+        "path",
+        "issue_code"
+      ],
+      "additional_fields": false
+    },
+    "DomainValidationSummary": {
+      "schema_version": 1,
+      "required_fields": [
+        "schema_version",
+        "domain_id",
+        "source_definition_count",
+        "compiled_definition_count",
+        "active_definition_count",
+        "projection_only_definition_count",
+        "failed_definition_count",
+        "source_catalog_fingerprint",
+        "semantic_catalog_fingerprint"
+      ],
+      "additional_fields": false
+    },
+    "ResolvedTargetBinding": {
+      "schema_version": 1,
+      "required_fields": [
+        "schema_version",
+        "target_binding_id",
+        "target_id",
+        "selection_revision",
+        "entity_refs",
+        "revalidation_policy_id"
+      ],
+      "additional_fields": false
+    },
+    "ConditionProofRef": {
+      "schema_version": 1,
+      "required_fields": [
+        "schema_version",
+        "condition_binding_id",
+        "condition_id",
+        "rules_revision",
+        "world_revision",
+        "proof_fingerprint"
+      ],
+      "additional_fields": false
+    },
+    "LegalityProofRef": {
+      "schema_version": 1,
+      "required_fields": [
+        "schema_version",
+        "status_id",
+        "rules_revision",
+        "world_revision",
+        "source_revision",
+        "proof_fingerprint"
+      ],
+      "additional_fields": false
+    },
+    "RuleExecutionStep": {
+      "schema_version": 1,
+      "required_fields": [
+        "schema_version",
+        "operation_instance_id",
+        "operation_id",
+        "operation_version",
+        "domain_id",
+        "sequence_index",
+        "atomic_group_id",
+        "target_binding_refs",
+        "condition_proof_refs",
+        "parameter_schema_id",
+        "parameters",
+        "randomness_policy_id",
+        "result_visibility_policy_id"
+      ],
+      "parameters_contract": "closed_tagged_schema_selected_by_parameter_schema_id",
+      "additional_fields": false
+    },
+    "PresentationMessageToken": {
+      "schema_version": 1,
+      "required_fields": [
+        "schema_version",
+        "message_id",
+        "arguments"
+      ],
+      "arguments_contract": "closed_tagged_schema_selected_by_message_id",
+      "additional_fields": false
+    },
+    "PresentationCostRow": {
+      "schema_version": 1,
+      "required_fields": [
+        "schema_version",
+        "cost_kind_id",
+        "emphasis_id",
+        "amounts",
+        "message_token"
+      ],
+      "amounts_contract": "domain_closed_cost_schema",
+      "additional_fields": false
+    },
+    "PresentationSection": {
+      "schema_version": 1,
+      "required_fields": [
+        "schema_version",
+        "section_id",
+        "sequence_index",
+        "message_tokens",
+        "keyword_ids",
+        "icon_id",
+        "color_token_id"
+      ],
+      "section_ids": [
+        "timing",
+        "target",
+        "condition",
+        "effect",
+        "duration",
+        "response",
+        "information"
+      ],
+      "additional_fields": false
+    },
+    "PresentationKeywordToken": {
+      "schema_version": 1,
+      "required_fields": [
+        "schema_version",
+        "keyword_id",
+        "name_message_id",
+        "tooltip_message_id",
+        "icon_id",
+        "color_token_id"
+      ],
+      "additional_fields": false
+    },
+    "AiObservationSlice": {
+      "schema_version": 1,
+      "required_fields": [
+        "schema_version",
+        "domain_id",
+        "schema_id",
+        "slice_schema_version",
+        "source_revision",
+        "facts",
+        "slice_fingerprint"
+      ],
+      "facts_contract": "closed_schema_registered_by_schema_id_and_slice_schema_version",
+      "unknown_schema_behavior": "fail_closed",
+      "additional_fields": false
+    },
+    "OperationHandlerDescriptor": {
+      "schema_version": 1,
+      "required_fields": [
+        "schema_version",
+        "operation_id",
+        "operation_version",
+        "domain_id",
+        "handler_owner_id",
+        "mechanic_ids",
+        "rule_source_refs",
+        "parameter_schema_id",
+        "supported_condition_ids",
+        "supported_target_ids",
+        "supported_randomness_policy_ids",
+        "supported_transaction_policy_ids",
+        "supported_plan_schema_versions",
+        "supports_preflight",
+        "supports_checkpoint",
+        "supports_apply",
+        "supports_rollback",
+        "supports_rules_projection",
+        "supports_player_projection",
+        "supports_ai_projection",
+        "descriptor_fingerprint"
+      ],
+      "additional_fields": false
+    }
+  },
+  "shared_types": {
+    "SemanticIdentity": {
+      "schema_version": 1,
+      "required_fields": [
+        "schema_version",
+        "domain_id",
+        "definition_id",
+        "definition_revision",
+        "ruleset_id",
+        "source_catalog_id",
+        "source_definition_fingerprint",
+        "identity_fingerprint"
+      ],
+      "additional_fields": false,
+      "forbidden_fields": [
+        "name",
+        "localized_name",
+        "rank",
+        "owner",
+        "controller",
+        "viewer",
+        "instance_state"
+      ]
+    },
+    "SemanticCondition": {
+      "schema_version": 1,
+      "required_fields": [
+        "schema_version",
+        "condition_binding_id",
+        "condition_id",
+        "condition_version",
+        "subject_binding_id",
+        "parameter_schema_id",
+        "parameters"
+      ],
+      "parameters_contract": "closed_tagged_schema_selected_by_parameter_schema_id",
+      "unknown_condition_behavior": "fail_closed",
+      "generic_expression_language": false,
+      "additional_fields": false
+    },
+    "SemanticTargetSpec": {
+      "schema_version": 1,
+      "required_fields": [
+        "schema_version",
+        "target_binding_id",
+        "target_id",
+        "target_version",
+        "selection_mode_id",
+        "minimum_count",
+        "maximum_count",
+        "allowed_entity_type_ids",
+        "filter_condition_binding_ids",
+        "revalidation_policy_id",
+        "target_visibility_policy_id"
+      ],
+      "unknown_target_behavior": "fail_closed",
+      "additional_fields": false,
+      "forbidden_fields": [
+        "live_target",
+        "target_object",
+        "target_callback",
+        "player_label",
+        "hidden_owner"
+      ]
+    },
+    "SemanticOperation": {
+      "schema_version": 1,
+      "required_fields": [
+        "schema_version",
+        "operation_instance_id",
+        "operation_id",
+        "operation_version",
+        "domain_id",
+        "target_binding_ids",
+        "condition_binding_ids",
+        "parameter_schema_id",
+        "parameters",
+        "randomness_policy_id",
+        "result_visibility_policy_id",
+        "atomic_group_id",
+        "sequence_index"
+      ],
+      "parameters_contract": "closed_tagged_schema_selected_by_operation_id_version_and_parameter_schema_id",
+      "unknown_operation_behavior": "fail_closed",
+      "breaking_change_policy": "new_operation_version_or_new_operation_id",
+      "additional_fields": false,
+      "forbidden_fields": [
+        "handler",
+        "owner",
+        "method_name",
+        "callable",
+        "localized_text",
+        "ai_value",
+        "ai_weight"
+      ]
+    },
+    "SemanticVisibilityPolicy": {
+      "schema_version": 1,
+      "required_fields": [
+        "schema_version",
+        "visibility_policy_id",
+        "definition_visibility_id",
+        "source_identity_visibility_id",
+        "actor_visibility_id",
+        "target_choice_visibility_id",
+        "outcome_visibility_id",
+        "private_value_visibility_id",
+        "ai_analysis_visibility_id",
+        "redaction_policy_id"
+      ],
+      "grants_authority": false,
+      "unknown_policy_behavior": "fail_closed",
+      "additional_fields": false,
+      "forbidden_fields": [
+        "viewer",
+        "actor_index",
+        "hand",
+        "hidden_card",
+        "capability_token",
+        "private_value"
+      ]
+    },
+    "SemanticRandomnessPolicy": {
+      "schema_version": 1,
+      "required_fields": [
+        "schema_version",
+        "randomness_policy_id",
+        "mode_id",
+        "rng_owner_id",
+        "stream_id",
+        "draw_schedule_id",
+        "draw_count_policy_id",
+        "selection_order_id",
+        "commit_policy_id",
+        "failure_consumption_policy_id",
+        "rollback_policy_id",
+        "replay_policy_id",
+        "result_visibility_policy_id"
+      ],
+      "explicit_none_policy_required": true,
+      "unknown_policy_behavior": "fail_closed",
+      "additional_fields": false,
+      "forbidden_fields": [
+        "seed",
+        "sample",
+        "rng_callback",
+        "global_random_call",
+        "ai_rollout_result"
+      ]
+    },
+    "SemanticValidationReport": {
+      "schema_version": 1,
+      "required_fields": [
+        "schema_version",
+        "report_id",
+        "phase_id",
+        "valid",
+        "source_manifest_fingerprint",
+        "issues",
+        "domain_summaries",
+        "unknown_condition_ids",
+        "unknown_target_ids",
+        "unknown_operation_ids",
+        "unknown_randomness_policy_ids",
+        "unknown_visibility_policy_ids",
+        "unknown_mechanic_ids",
+        "retired_identifier_hits",
+        "active_operation_ids",
+        "projection_only_operation_ids",
+        "report_fingerprint"
+      ],
+      "optional_fields": [
+        "semantic_catalog_fingerprint",
+        "registry_fingerprint"
+      ],
+      "phase_requirements": {
+        "source_validation": [],
+        "semantic_compilation": [
+          "semantic_catalog_fingerprint"
+        ],
+        "registry_seal": [
+          "semantic_catalog_fingerprint",
+          "registry_fingerprint"
+        ],
+        "startup_readiness": [
+          "semantic_catalog_fingerprint",
+          "registry_fingerprint"
+        ]
+      },
+      "invalid_if_severity_present": [
+        "blocker",
+        "error"
+      ],
+      "all_id_arrays_sorted_unique": true,
+      "additional_fields": false
+    },
+    "RuleExecutionPlan": {
+      "schema_version": 1,
+      "required_fields": [
+        "schema_version",
+        "plan_id",
+        "request_id",
+        "ruleset_id",
+        "semantic_ref",
+        "actor_ref",
+        "source_instance_ref",
+        "source_revision",
+        "world_revision",
+        "legality_proof_ref",
+        "registry_fingerprint",
+        "resolved_target_bindings",
+        "condition_proof_refs",
+        "steps",
+        "transaction_policy_id",
+        "rng_precondition_revision",
+        "visibility_policy_id",
+        "plan_fingerprint"
+      ],
+      "step_order": "array_order_and_sequence_index_must_match",
+      "construction_consumes_rng": false,
+      "executable_only_after_legality_proof": true,
+      "additional_fields": false,
+      "forbidden_fields": [
+        "node",
+        "owner",
+        "handler_pointer",
+        "callable",
+        "method_name",
+        "ui_state",
+        "ai_score"
+      ]
+    },
+    "PlayerPresentationDTO": {
+      "schema_version": 1,
+      "required_fields": [
+        "schema_version",
+        "presentation_id",
+        "domain_id",
+        "semantic_ref",
+        "surface_id",
+        "locale_id",
+        "viewer_scope_id",
+        "title_message_token",
+        "subtitle_message_token",
+        "cost_rows",
+        "sections",
+        "keywords",
+        "art_asset_id",
+        "icon_id",
+        "color_token_id",
+        "visibility_receipt_ref",
+        "dto_fingerprint"
+      ],
+      "ui_rule_input": true,
+      "additional_fields": false,
+      "forbidden_fields": [
+        "raw_skill",
+        "effect_payload",
+        "runtime_handler",
+        "legality_inference",
+        "ai_analysis",
+        "cost",
+        "price",
+        "play_cost",
+        "effect",
+        "text",
+        "description",
+        "type",
+        "category"
+      ]
+    },
+    "AiObservationSnapshot": {
+      "schema_version": 1,
+      "required_fields": [
+        "schema_version",
+        "observation_id",
+        "viewer_actor_ref",
+        "session_revision",
+        "world_revision",
+        "projection_manifest_fingerprint",
+        "public_slices",
+        "actor_private_slices",
+        "authorized_action_source_refs",
+        "visibility_receipt_ref",
+        "snapshot_fingerprint"
+      ],
+      "clipping_order": "authorization_then_domain_clipping_then_snapshot",
+      "unknown_slice_schema_behavior": "fail_closed",
+      "additional_fields": false,
+      "forbidden_information": [
+        "opponent_private_hand",
+        "opponent_hidden_card_identity",
+        "hidden_monster_control",
+        "rival_ai_state",
+        "authorization_capability",
+        "save_payload",
+        "unclipped_owner_snapshot"
+      ]
+    },
+    "AiOutcomeVector": {
+      "schema_version": 1,
+      "required_fields": [
+        "self_economy",
+        "opponent_economy",
+        "board_control",
+        "route_control",
+        "hand_advantage",
+        "tempo",
+        "defense",
+        "information",
+        "victory_progress",
+        "variance",
+        "counter_risk"
+      ],
+      "dimension_type": "bounded_signed_integer_neutral_evidence",
+      "maximum_absolute_value": 1000000,
+      "counter_risk_source": "bounded_authorized_fact_only",
+      "interval_or_unit_shape_requires_new_schema_version": true,
+      "is_authoritative_receipt": false,
+      "is_score": false,
+      "additional_fields": false
+    },
+    "AiActionCandidate": {
+      "schema_version": 1,
+      "required_fields": [
+        "schema_version",
+        "candidate_id",
+        "action_id",
+        "action_kind_id",
+        "semantic_ref",
+        "actor_ref",
+        "source_instance_ref",
+        "target_identities",
+        "source_revision",
+        "world_revision",
+        "legality_revision",
+        "legal",
+        "rejection_reason_id",
+        "activation_requirements",
+        "outcome_vector",
+        "uncertainty",
+        "counter_risk",
+        "information_scope_id",
+        "explanation_token_ids",
+        "plan_preview_fingerprint",
+        "candidate_fingerprint"
+      ],
+      "information_scope_id": "actor_private",
+      "projection_only_legal_value": false,
+      "explanation_tokens_are_semantic_facts_not_private_ai_rationale": true,
+      "additional_fields": false,
+      "forbidden_fields": [
+        "raw_skill",
+        "effect_payload",
+        "semantic_spec_body",
+        "rule_execution_plan",
+        "ai_value",
+        "policy_weight",
+        "hidden_reasoning",
+        "opponent_private_value",
+        "mutation_callback"
+      ]
+    }
+  },
+  "domain_spec_common_contract": {
+    "required_fields": [
+      "schema_id",
+      "schema_version",
+      "identity",
+      "conditions",
+      "targets",
+      "operations",
+      "visibility_policies",
+      "randomness_policies",
+      "mechanic_ids",
+      "execution_readiness_id",
+      "semantic_fingerprint"
+    ],
+    "execution_readiness_ids": [
+      "active",
+      "projection_only",
+      "unavailable"
+    ],
+    "active_requires": [
+      "handler_coverage",
+      "accepted_mechanic_coverage",
+      "rule_source_coverage",
+      "transaction_capability",
+      "privacy_coverage",
+      "rng_policy_coverage"
+    ],
+    "arrays_may_be_empty": true,
+    "mechanic_ids_sorted_unique": true,
+    "generic_domain_payload_allowed": false,
+    "domain_body_field_name_declared_per_domain_schema": true,
+    "dynamic_state_allowed": false,
+    "current_card_not_acquirable_mapping": "unavailable",
+    "additional_fields": "only_fields_declared_by_the_domain_specific_closed_schema"
+  },
+  "domain_spec_contracts": {
+    "CardSemanticSpec": {
+      "domain_id": "card",
+      "domain_body_field": "card",
+      "domain_only_sections": [
+        "card_identity",
+        "acquisition_cost",
+        "activation_cost",
+        "timing",
+        "response"
+      ],
+      "dynamic_owners_preserved": [
+        "card_inventory",
+        "card_resolution_queue",
+        "card_resolution_execution",
+        "domain_effect_owners"
+      ]
+    },
+    "RoleSemanticSpec": {
+      "domain_id": "role",
+      "domain_body_field": "role",
+      "domain_only_sections": [
+        "role_identity",
+        "public_profile",
+        "passive_trigger_refs"
+      ],
+      "dynamic_owners_preserved": [
+        "world_session_role_assignment",
+        "role_passive_runtime_owners"
+      ]
+    },
+    "MonsterSemanticSpec": {
+      "domain_id": "monster",
+      "domain_body_field": "monster",
+      "domain_only_sections": [
+        "family",
+        "rank",
+        "immutable_stats",
+        "behavior_refs",
+        "deploy_upgrade_capabilities"
+      ],
+      "dynamic_owners_preserved": [
+        "monster_runtime_controller"
+      ]
+    },
+    "MonsterBehaviorSpec": {
+      "domain_id": "monster_behavior",
+      "domain_body_field": "monster_behavior",
+      "domain_only_sections": [
+        "trigger",
+        "behavior_conditions",
+        "behavior_targets",
+        "ordered_behavior_operations"
+      ],
+      "dynamic_owners_preserved": [
+        "monster_runtime_state_machine"
+      ]
+    },
+    "MilitaryUnitSemanticSpec": {
+      "domain_id": "military_unit",
+      "domain_body_field": "military_unit",
+      "domain_only_sections": [
+        "family",
+        "rank",
+        "immutable_stats",
+        "move_guard_strike_capabilities"
+      ],
+      "dynamic_owners_preserved": [
+        "military_runtime_controller"
+      ]
+    },
+    "WeatherSemanticSpec": {
+      "domain_id": "weather",
+      "domain_body_field": "weather",
+      "domain_only_sections": [
+        "weather_identity",
+        "zone_declaration",
+        "timing_declaration",
+        "ordered_effects"
+      ],
+      "dynamic_owners_preserved": [
+        "weather_runtime_controller",
+        "weather_runtime_state"
+      ]
+    },
+    "ProductSemanticSpec": {
+      "domain_id": "product",
+      "domain_body_field": "product",
+      "domain_only_sections": [
+        "product_identity",
+        "public_tags",
+        "market_units"
+      ],
+      "dynamic_owners_preserved": [
+        "product_market_runtime_controller",
+        "commodity_domain_owners"
+      ]
+    },
+    "FacilitySemanticSpec": {
+      "domain_id": "facility",
+      "domain_body_field": "facility",
+      "domain_only_sections": [
+        "facility_kind",
+        "rank_profile",
+        "capacities",
+        "lifecycle_capabilities"
+      ],
+      "dynamic_owners_preserved": [
+        "region_infrastructure_runtime_controller"
+      ]
+    },
+    "VictorySemanticSpec": {
+      "domain_id": "victory",
+      "domain_body_field": "victory",
+      "domain_only_sections": [
+        "objective_identity",
+        "progress_conditions",
+        "resolution_declarations"
+      ],
+      "dynamic_owners_preserved": [
+        "victory_control_runtime_controller"
+      ]
+    }
+  },
+  "protocols": {
+    "SemanticCompiler": {
+      "runtime_kind": "ref_counted_protocol",
+      "methods": [
+        {
+          "name": "compiler_descriptor",
+          "arguments": [],
+          "returns": "detached_dictionary"
+        },
+        {
+          "name": "validate_source_catalog",
+          "arguments": [
+            "source_snapshot"
+          ],
+          "returns": "SemanticValidationReport"
+        },
+        {
+          "name": "compile_catalog",
+          "arguments": [
+            "source_snapshot"
+          ],
+          "returns": "SemanticCompilationResult"
+        },
+        {
+          "name": "compile_authorized_definition",
+          "arguments": [
+            "source_envelope"
+          ],
+          "returns": "SemanticCompilationResult"
+        },
+        {
+          "name": "validation_snapshot",
+          "arguments": [],
+          "returns": "SemanticValidationReport"
+        },
+        {
+          "name": "cache_metrics",
+          "arguments": [],
+          "returns": "detached_dictionary"
+        }
+      ],
+      "forbidden_capabilities": [
+        "catalog_discovery",
+        "world_owner_read",
+        "ui_read",
+        "ai_read",
+        "main_dependency",
+        "scene_lookup",
+        "rng",
+        "save_registration",
+        "mutation"
+      ]
+    },
+    "OperationHandlerRegistry": {
+      "runtime_kind": "scene_composed_node",
+      "composition_parent": "GameRuntimeCoordinator",
+      "methods": [
+        {
+          "name": "register_handler",
+          "arguments": [
+            "SemanticOperationHandlerPort"
+          ],
+          "returns": "registration_receipt"
+        },
+        {
+          "name": "seal",
+          "arguments": [
+            "compiled_manifests"
+          ],
+          "returns": "SemanticValidationReport"
+        },
+        {
+          "name": "validation_snapshot",
+          "arguments": [],
+          "returns": "SemanticValidationReport"
+        },
+        {
+          "name": "descriptor_for",
+          "arguments": [
+            "operation_id",
+            "operation_version"
+          ],
+          "returns": "OperationHandlerDescriptor"
+        },
+        {
+          "name": "build_rule_plan",
+          "arguments": [
+            "authorized_projection_request"
+          ],
+          "returns": "RuleExecutionPlanResult"
+        },
+        {
+          "name": "build_player_projection",
+          "arguments": [
+            "clipped_player_projection_request"
+          ],
+          "returns": "PlayerPresentationDTOResult"
+        },
+        {
+          "name": "build_ai_projection",
+          "arguments": [
+            "clipped_ai_projection_request"
+          ],
+          "returns": "AiActionCandidateResult"
+        }
+      ],
+      "registration_phase": "before_seal_only",
+      "post_seal_mutation": "fail_closed",
+      "duplicate_registration": "fail_closed",
+      "unknown_lookup": "fail_closed",
+      "enumerable_by_ai_or_ui": false
+    },
+    "SemanticOperationHandlerPort": {
+      "runtime_kind": "stateless_domain_adapter",
+      "methods": [
+        "handler_descriptor",
+        "validate_operation",
+        "project_rule",
+        "project_player",
+        "project_ai",
+        "preflight",
+        "capture_checkpoint",
+        "apply",
+        "rollback"
+      ],
+      "must_delegate_mutation_to_existing_owner": true,
+      "may_own_domain_state": false,
+      "may_be_second_execution_engine": false,
+      "wire_snapshots_pure_data": true
+    }
+  },
+  "operation_registry_contract": {
+    "lookup_key": [
+      "operation_id",
+      "operation_version"
+    ],
+    "active_handler_cardinality": 1,
+    "handler_selection_inputs": [
+      "operation_id",
+      "operation_version"
+    ],
+    "forbidden_handler_selection_inputs": [
+      "localized_name",
+      "family_display_name",
+      "monster_name",
+      "role_name",
+      "product_name",
+      "tooltip",
+      "color",
+      "raw_effect_kind",
+      "method_name"
+    ],
+    "seal_validation": [
+      "all_active_operations_have_exactly_one_handler",
+      "projection_only_operations_cannot_build_executable_plan",
+      "all_parameter_schemas_registered",
+      "all_condition_ids_supported",
+      "all_target_ids_supported",
+      "all_randomness_policies_registered",
+      "all_visibility_policies_registered",
+      "all_active_operations_have_accepted_mechanic_and_rule_source_coverage",
+      "retired_identifiers_absent",
+      "transaction_capabilities_match_readiness",
+      "rules_player_ai_projection_capabilities_present",
+      "descriptor_fingerprints_unique_and_deterministic"
+    ],
+    "owns_state": false,
+    "owns_catalog": false,
+    "owns_transactions": false,
+    "owns_rng": false,
+    "owns_save_section": false
+  },
+  "startup_sequence": [
+    {
+      "order": 1,
+      "phase_id": "load_authoritative_catalogs",
+      "mutation_allowed": "existing_catalog_initialization_only"
+    },
+    {
+      "order": 2,
+      "phase_id": "validate_and_compile_complete_domain_catalogs",
+      "partial_publish_allowed": false
+    },
+    {
+      "order": 3,
+      "phase_id": "freeze_derived_semantic_caches",
+      "cache_key_parts": [
+        "domain_id",
+        "semantic_schema_version",
+        "compiler_version",
+        "source_catalog_id",
+        "source_revision",
+        "ruleset_id",
+        "source_definition_fingerprint"
+      ]
+    },
+    {
+      "order": 4,
+      "phase_id": "register_scene_composed_handlers"
+    },
+    {
+      "order": 5,
+      "phase_id": "validate_registry_coverage_and_capabilities"
+    },
+    {
+      "order": 6,
+      "phase_id": "seal_registry_and_publish_fingerprint"
+    },
+    {
+      "order": 7,
+      "phase_id": "publish_semantic_readiness",
+      "requires_all_reports_valid": true
+    }
+  ],
+  "cache_contract": {
+    "derived": true,
+    "immutable_after_startup": true,
+    "disposable": true,
+    "rebuildable": true,
+    "returns_detached_copies": true,
+    "allowed_compile_sites": [
+      "catalog_configuration",
+      "explicit_developer_tooling"
+    ],
+    "forbidden_compile_sites": [
+      "runtime_tick",
+      "render",
+      "candidate_enumeration",
+      "candidate_scoring",
+      "training_episode_step"
+    ],
+    "post_seal_cache_miss_reason": "semantic_cache_miss_after_seal",
+    "post_seal_cache_miss_behavior": "fail_closed"
+  },
+  "versioning_contract": {
+    "wire_version_kind": "positive_integer",
+    "reader_policy": "exact_supported_versions_only",
+    "closed_shape_change": "increment_type_schema_version",
+    "field_meaning_change": "increment_type_schema_version",
+    "authored_value_change_same_meaning": "increment_definition_revision_and_fingerprints",
+    "operation_meaning_change": "new_operation_version_or_new_operation_id",
+    "compiler_declares_exact_source_and_output_versions": true,
+    "compatibility_adapter_requirements": [
+      "explicit_source_version",
+      "explicit_target_version",
+      "deterministic_mapping",
+      "validation_report",
+      "named_deletion_gate"
+    ],
+    "forbidden_compatibility_behavior": [
+      "best_effort_guess",
+      "localized_name_parse",
+      "silent_downgrade",
+      "silent_unknown_field_drop"
+    ],
+    "fingerprint_bound_artifacts": [
+      "semantic_catalog",
+      "operation_registry",
+      "RuleExecutionPlan",
+      "PlayerPresentationDTO",
+      "AiObservationSnapshot",
+      "AiActionCandidate"
+    ],
+    "unsupported_save_or_replay_version_behavior": "explicit_registered_migration_or_fail_closed"
+  },
+  "projection_contracts": {
+    "RulesProjection": {
+      "inputs": [
+        "domain_semantic_spec",
+        "authorized_intent",
+        "typed_legality_proof",
+        "current_revisions",
+        "sealed_registry_fingerprint"
+      ],
+      "output": "RuleExecutionPlan",
+      "consumes_rng": false,
+      "mutates_state": false
+    },
+    "PlayerProjection": {
+      "inputs": [
+        "domain_semantic_spec",
+        "authorized_clipped_player_context",
+        "localization_catalog",
+        "presentation_asset_catalog"
+      ],
+      "output": "PlayerPresentationDTO",
+      "consumes_rng": false,
+      "mutates_state": false,
+      "localized_text_flows_back_to_rules": false
+    },
+    "AiProjection": {
+      "inputs": [
+        "domain_semantic_spec",
+        "AiObservationSnapshot",
+        "typed_legality_proof"
+      ],
+      "output": "AiActionCandidate",
+      "consumes_rng": false,
+      "mutates_state": false,
+      "samples_hidden_random_outcomes": false
+    },
+    "consistency_rule": "same_semantic_fingerprint_and_operation_sequence_across_all_three_projections"
+  },
+  "authorized_viewer_boundary": {
+    "mandatory_order": [
+      "authoritative_owner_state",
+      "viewer_authorization_capability",
+      "domain_clipping_query_port",
+      "closed_authorized_snapshot",
+      "player_or_ai_projection",
+      "consumer"
+    ],
+    "forbidden_orders": [
+      "project_private_then_redact",
+      "ai_lookup_by_arbitrary_definition_id",
+      "ui_receive_raw_then_hide",
+      "projection_recover_clipped_fields"
+    ],
+    "execution_accepts_player_dto": false,
+    "execution_accepts_ai_candidate": false
+  },
+  "transaction_contract": {
+    "execution_engine": "existing_action_transaction_coordinator",
+    "registry_role": "resolve_handler_only",
+    "phases": [
+      "validate_identity_revisions_fingerprints_and_exact_once_key",
+      "resolve_all_handlers",
+      "preflight_all_steps_and_cross_owner_refs",
+      "capture_all_required_checkpoints",
+      "apply_in_plan_and_existing_domain_order",
+      "rollback_successful_applies_in_reverse_on_failure",
+      "commit_existing_lifecycle_and_journals_last",
+      "publish_commit_only_side_effects"
+    ],
+    "all_preflights_before_apply": true,
+    "all_checkpoints_before_apply": true,
+    "reverse_rollback": true,
+    "exact_once_preserved": true,
+    "public_side_effects_commit_only": true,
+    "checkpoint_persistence": "transient_only",
+    "registry_retains_transaction": false
+  },
+  "randomness_contract": {
+    "sole_rng_authority": "RunRngService",
+    "zero_rng_phases": [
+      "compile",
+      "validate",
+      "player_projection",
+      "ai_observation",
+      "ai_candidate_projection",
+      "plan_construction"
+    ],
+    "required_policy_evidence": [
+      "rng_owner",
+      "stream",
+      "candidate_order",
+      "draw_schedule",
+      "draw_count",
+      "failure_consumption",
+      "rollback",
+      "replay",
+      "result_visibility"
+    ],
+    "failed_planning_live_rng_delta": 0,
+    "failed_execution_requirement": "existing_delayed_commit_or_checkpoint_restore_contract",
+    "ai_projection_rolls_effect": false,
+    "policy_may_change_existing_order_without_parity": false
+  },
+  "persistence_replay_contract": {
+    "new_save_section_count": 0,
+    "save_registry_section_count_unchanged": 19,
+    "save_envelope_shape_changed": false,
+    "semantic_specs_saved": false,
+    "compiler_cache_saved": false,
+    "dynamic_state_saved_by_existing_owners": true,
+    "future_save_reference": "SemanticDefinitionRef",
+    "load_sequence": [
+      "validate_existing_envelope_and_owner_section",
+      "resolve_stable_id_through_sole_domain_catalog",
+      "use_startup_compiled_cache",
+      "compare_schema_version_and_semantic_fingerprint",
+      "apply_explicit_migration_or_fail_closed"
+    ],
+    "replay_required_fields": [
+      "request_id",
+      "semantic_ref",
+      "plan_fingerprint",
+      "registry_fingerprint",
+      "operation_ids_and_versions",
+      "selected_target_refs",
+      "randomness_policy_id",
+      "rng_draw_evidence",
+      "authoritative_domain_receipts"
+    ],
+    "replay_forbidden_fields": [
+      "localized_name",
+      "semantic_spec_body",
+      "handler_name",
+      "save_payload",
+      "ai_analysis"
+    ],
+    "production_and_training_execution_engine_same": true,
+    "training_simplified_engine_allowed": false
+  },
+  "card_semantic_v1_compatibility": {
+    "status": "staged_read_only_bridge",
+    "source": "v0.6_machine_block",
+    "schema_version": 1,
+    "current_compile_count": 348,
+    "current_active_count": 256,
+    "current_projection_only_count": 92,
+    "rng_free": true,
+    "mutation_free": true,
+    "arbitrary_ai_catalog_enumeration": false,
+    "schema_edited_by_this_contract": false,
+    "mapping": [
+      {
+        "current": "identity_and_source_fields",
+        "kernel": "SemanticIdentity_and_card_domain_identity",
+        "rule": "preserve_ids_rank_family_and_existing_card_semantic_fingerprint_ref_while_adapter_values_receive_separate_fingerprints"
+      },
+      {
+        "current": "target",
+        "kernel": "SemanticTargetSpec",
+        "rule": "explicit_versioned_mapping_only"
+      },
+      {
+        "current": "effect_ops",
+        "kernel": "ordered_SemanticOperation",
+        "rule": "preserve_order_and_values_add_deterministic_instance_and_policy_refs"
+      },
+      {
+        "current": "information_policy",
+        "kernel": "SemanticVisibilityPolicy",
+        "rule": "preserve_authorized_source_only_without_widening"
+      },
+      {
+        "current": "random_operation_ids",
+        "kernel": "SemanticRandomnessPolicy_refs",
+        "rule": "approved_current_order_bridge_after_rng_parity"
+      },
+      {
+        "current": "runtime_readiness_id",
+        "kernel": "startup_and_candidate_readiness",
+        "rule": "projection_only_never_executable"
+      },
+      {
+        "current": "cost_and_timing",
+        "kernel": "card_domain_body",
+        "rule": "keep_acquisition_and_activation_cost_separate"
+      }
+    ],
+    "v04_status": "separate_production_compatibility_authority_and_program_blocker",
+    "v04_compiler_input": false,
+    "localized_product_values": "preserved_only_inside_existing_source_boundary_pending_product_identity_registry"
+  },
+  "ai_card_projection_v1_compatibility": {
+    "status": "staged_read_only_bridge_not_yet_consumed_by_AiRuntimeController",
+    "service_id": "AiCardSemanticProjectionService",
+    "outcome_vector_id": "AiOutcomeVectorV1",
+    "schema_version": 1,
+    "active_only_candidate_emission": true,
+    "authorized_source_and_legal_target_validation": true,
+    "outcome_dimensions": [
+      "self_economy",
+      "opponent_economy",
+      "board_control",
+      "route_control",
+      "hand_advantage",
+      "tempo",
+      "defense",
+      "information",
+      "victory_progress",
+      "variance",
+      "counter_risk"
+    ],
+    "outcome_value_shape": "bounded_signed_integer_neutral_evidence",
+    "rng_free": true,
+    "mutation_free": true,
+    "current_op_projection_table": "AiOutcomeVectorV1.OP_NEUTRAL_PROJECTIONS",
+    "migration_rule": "move_entries_into_shared_operation_handler_bundles_then_remove_standalone_table",
+    "long_term_second_mapping_authority_allowed": false
+  },
+  "card_player_face_v1_compatibility": {
+    "status": "staged_read_only_bridge_not_yet_consumed_by_production_ui",
+    "service_id": "CardPlayerFaceProjectionService",
+    "dto_id": "PlayerFaceDTOv1",
+    "schema_version": 1,
+    "acquisition_and_activation_costs_separate": true,
+    "authorized_localization_provenance_required": true,
+    "stable_message_keyword_icon_and_color_ids": true,
+    "effect_order_preserved": true,
+    "duration_uses_explicit_allowlisted_fields": true,
+    "rng_free": true,
+    "mutation_free": true,
+    "migration_target": "PlayerCardFaceDTO_specialization_under_PlayerPresentationDTO",
+    "migration_rule": "adapt_existing_closed_dto_without_copying_or_open_payload",
+    "long_term_second_card_dto_authority_allowed": false
+  },
+  "migration_stages": [
+    {
+      "stage_id": "kernel_validation_shadow",
+      "deliverables": [
+        "shared_validators_refs_reports_and_descriptors",
+        "card_v1_read_only_adapter",
+        "no_execution_cutover"
+      ]
+    },
+    {
+      "stage_id": "registry_and_rules_projection",
+      "deliverables": [
+        "scene_composed_sealed_registry",
+        "one_atomic_domain_route_per_cutover",
+        "plan_receipt_rng_and_rollback_parity"
+      ]
+    },
+    {
+      "stage_id": "player_projection",
+      "deliverables": [
+        "domain_player_dtos",
+        "semantic_presentation_mapping",
+        "named_legacy_alias_adapters_with_retirement_gates"
+      ]
+    },
+    {
+      "stage_id": "ai_projection",
+      "deliverables": [
+        "closed_authorized_observation_slices",
+        "typed_candidates_and_outcome_vectors",
+        "raw_payload_read_allowlist_and_deletion_gates"
+      ]
+    },
+    {
+      "stage_id": "domain_expansion_and_legacy_retirement",
+      "deliverables": [
+        "remaining_domain_specs",
+        "save_and_replay_identity_bridges",
+        "duplicate_catalog_name_branch_dual_path_and_alias_retirement"
+      ]
+    }
+  ],
+  "decisions": {
+    "keep": [
+      "existing_domain_state_owners",
+      "typed_command_and_query_ports",
+      "existing_transaction_coordinators",
+      "exact_once_journals",
+      "rollback_logic",
+      "public_receipt_owners",
+      "RunRngService_and_current_draw_order",
+      "nineteen_section_save_registry_and_envelope",
+      "current_CardSemanticSpec_v1_as_migration_bridge",
+      "separate_acquisition_and_activation_costs",
+      "domain_specific_state_machines"
+    ],
+    "move": [
+      "kind_and_effect_mapping_to_domain_compilers_and_descriptors",
+      "handler_selection_to_stable_operation_registration",
+      "ui_rule_inference_to_player_projection",
+      "ai_payload_interpretation_to_candidates_and_outcome_vectors",
+      "current_ai_only_op_outcome_table_to_shared_operation_handler_bundles",
+      "diagnostic_rule_interpretation_to_semantic_or_diagnostic_projection",
+      "random_effect_declarations_to_explicit_policies",
+      "controller_local_static_definitions_to_single_domain_catalogs"
+    ],
+    "remove": [
+      "localized_name_gameplay_branches",
+      "unapproved_ai_raw_payload_reads",
+      "ui_raw_skill_reads_and_rule_mappings",
+      "legacy_field_alias_chains_after_last_consumer",
+      "name_suffix_rank_inference",
+      "v04_v06_dual_execution_after_authority_cutover",
+      "per_frame_render_candidate_or_training_compilation",
+      "unregistered_operation_fallback",
+      "dynamic_method_name_dispatch",
+      "duplicate_catalogs_and_state_mirrors",
+      "main_callbacks",
+      "simplified_training_execution"
+    ]
+  },
+  "blockers": [
+    {
+      "blocker_id": "blocker.domain_rule_authority",
+      "summary": "whole-game domains do not yet have a complete operation-to-mechanic-to-rule-source matrix",
+      "required_resolution": [
+        "accepted_mechanic_records",
+        "field_authority",
+        "owner",
+        "privacy",
+        "persistence",
+        "retirement_status_for_every_active_operation"
+      ]
+    },
+    {
+      "blocker_id": "blocker.card_single_authority",
+      "summary": "v0.4 remains a production card authority while v0.6 feeds the semantic compiler",
+      "required_resolution": [
+        "consumer_inventory",
+        "one_selected_authority",
+        "atomic_route_migration",
+        "parity",
+        "deletion_gate"
+      ]
+    },
+    {
+      "blocker_id": "blocker.product_identity",
+      "summary": "current product IDs include localized authority values",
+      "required_resolution": [
+        "owner_approved_ascii_identity_registry",
+        "explicit_migration_map"
+      ]
+    },
+    {
+      "blocker_id": "blocker.role_persistence_identity",
+      "summary": "role index and name semantics participate in persistence and runtime behavior",
+      "required_resolution": [
+        "stable_role_ids",
+        "index_parity_table",
+        "save_migration",
+        "portrait_and_passive_parity"
+      ]
+    },
+    {
+      "blocker_id": "blocker.monster_behavior_identity",
+      "summary": "name maps and controller-local behavior thresholds are not yet one catalog",
+      "required_resolution": [
+        "stable_family_and_behavior_ids",
+        "owner_approved_behavior_schemas"
+      ]
+    },
+    {
+      "blocker_id": "blocker.transaction_capability",
+      "summary": "several card routes remain projection_only",
+      "required_resolution": [
+        "preflight",
+        "checkpoint",
+        "apply",
+        "rollback",
+        "exact_once",
+        "fault_injection"
+      ]
+    },
+    {
+      "blocker_id": "blocker.rng_policy_inventory",
+      "summary": "random effects lack a complete stable draw-policy inventory",
+      "required_resolution": [
+        "baseline_checkpoints",
+        "draw_order_and_count_parity",
+        "failure_rollback",
+        "replay_evidence"
+      ]
+    },
+    {
+      "blocker_id": "blocker.viewer_slice_registry",
+      "summary": "whole-game AI and UI facts do not yet share a closed slice manifest",
+      "required_resolution": [
+        "per_domain_typed_slice_schemas",
+        "recursive_privacy_tests"
+      ]
+    },
+    {
+      "blocker_id": "blocker.replay_contract",
+      "summary": "a whole-game semantic replay envelope is not yet established",
+      "required_resolution": [
+        "owner_decision",
+        "format_decision",
+        "existing_journal_and_save_boundary_parity"
+      ]
+    },
+    {
+      "blocker_id": "blocker.ui_alias_consumers",
+      "summary": "legacy presentation aliases still have active consumers",
+      "required_resolution": [
+        "consumer_list",
+        "dto_adapter",
+        "snapshot_parity",
+        "deletion_sequence"
+      ]
+    },
+    {
+      "blocker_id": "blocker.training_execution",
+      "summary": "training entrypoints are not yet proven to share every production handler",
+      "required_resolution": [
+        "bounded_same_plan_registry_owner_rng_and_receipt_parity_test"
+      ]
+    }
+  ],
+  "implementation_gates": [
+    "closed_schema_validation",
+    "unknown_id_fail_closed",
+    "accepted_mechanic_and_rule_source_coverage",
+    "retired_identifier_rejection",
+    "deterministic_compile_and_fingerprint_parity",
+    "one_handler_per_active_operation",
+    "sealed_registry_immutable",
+    "projection_only_never_executable",
+    "all_preflights_and_checkpoints_before_apply",
+    "reverse_rollback_and_exact_once",
+    "zero_rng_for_compile_validation_projection_and_planning",
+    "execution_rng_order_and_count_parity",
+    "viewer_clipping_before_projection",
+    "recursive_private_key_rejection",
+    "rules_player_ai_projection_consistency",
+    "zero_compile_calls_in_candidate_loops",
+    "production_training_execution_receipt_parity",
+    "no_new_save_section",
+    "no_main_dependency",
+    "no_second_owner_catalog_or_engine",
+    "localized_name_raw_payload_alias_dual_path_and_unregistered_operation_scanners"
+  ],
+  "first_small_implementation_pr": {
+    "include": [
+      "shared_value_type_validators",
+      "canonical_fingerprint_helpers",
+      "SemanticValidationReport",
+      "uncomposed_registry_registration_duplicate_rejection_and_sealing",
+      "read_only_current_card_v1_adapter",
+      "focused_schema_fail_closed_cache_timing_and_registry_tests",
+      "one_real_godot_mcp_bench_scene"
+    ],
+    "exclude": [
+      "save_section",
+      "handler_mutation",
+      "ui_consumer_cutover",
+      "ai_consumer_cutover",
+      "catalog_replacement",
+      "main_route",
+      "gameplay_rule_change",
+      "balance_change",
+      "rng_order_change"
+    ]
+  }
+}

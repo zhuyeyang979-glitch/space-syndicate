@@ -1,0 +1,654 @@
+{
+  "schema_version": 1,
+  "report_id": "card_semantic_phase1_delivery_handoff",
+  "status": "PASSIVE_PROJECTIONS_ONLY",
+  "reviewed_state": {
+    "actual_base_sha": "59756a291f811a064726f59aed27efecc3590c9a",
+    "reviewed_tip_sha": "a0a745b5511060fe22e6363a88f573e831a6147d",
+    "branch": "codex/card-semantic-spec-phase1-59756a2",
+    "origin_main_sha": "b53223ea722bb21556f38b73614d665cc33e957d",
+    "evidence_date": "2026-07-27"
+  },
+  "claims": {
+    "passive_projections_only": true,
+    "production_ai_cutover": false,
+    "production_ui_cutover": false,
+    "production_executor_cutover": false,
+    "rules_projection_implemented": false,
+    "trusted_operation_handler_registry_implemented": false,
+    "save_replay_migration": false,
+    "full_run_resume_claim": false,
+    "rule_or_balance_change": false,
+    "rng_order_change": false,
+    "second_live_state_owner_added": false
+  },
+  "delivery": {
+    "pull_requests": [
+      {
+        "number": 61,
+        "state": "MERGED",
+        "title": "docs(cards): freeze semantic migration contract",
+        "merge_commit_sha": "68aa1779fd56d8e9bd8d806402d5f188a5052cf0",
+        "url": "https://github.com/zhuyeyang979-glitch/space-syndicate/pull/61"
+      },
+      {
+        "number": 62,
+        "state": "MERGED",
+        "title": "feat(cards): add deterministic semantic compiler",
+        "merge_commit_sha": "b53223ea722bb21556f38b73614d665cc33e957d",
+        "url": "https://github.com/zhuyeyang979-glitch/space-syndicate/pull/62"
+      },
+      {
+        "number": null,
+        "state": "PENDING",
+        "opened": false,
+        "label": "PR3",
+        "scope": "passive projections, composition, security closure, Wave 3 gates and delivery handoff"
+      }
+    ],
+    "lineage": {
+      "topic_descends_from_pr2_validated_head": true,
+      "github_merge_commits_are_topic_ancestors": false,
+      "content_from_pr61_and_pr62_present": true,
+      "pr3_requires_real_merge_head_validation": true
+    },
+    "push_performed_by_handoff": false
+  },
+  "contracts": [
+    {
+      "id": "card_source_authority",
+      "version": "v0.6_machine",
+      "paths": [
+        "data/cards/card_runtime_catalog_v06.json"
+      ],
+      "responsibility": "sole compiler input"
+    },
+    {
+      "id": "card_semantic_spec",
+      "version": 1,
+      "paths": [
+        "scripts/cards/semantic/card_semantic_schema_v1.gd"
+      ],
+      "responsibility": "closed schema, validation, canonicalization and fingerprints"
+    },
+    {
+      "id": "card_semantic_compiler",
+      "version": 1,
+      "paths": [
+        "scripts/cards/semantic/card_semantic_compiler_v1.gd"
+      ],
+      "responsibility": "deterministic source-to-semantic compilation and cache"
+    },
+    {
+      "id": "card_semantic_catalog",
+      "version": 1,
+      "paths": [
+        "scripts/runtime/card_semantic_catalog_service.gd",
+        "scenes/runtime/CardSemanticCatalogService.tscn"
+      ],
+      "responsibility": "sealed membership, detached authorization and aggregate diagnostics"
+    },
+    {
+      "id": "ai_projection_input",
+      "version": 1,
+      "paths": [
+        "scripts/runtime/ai_card_semantic_projection_input_v1.gd"
+      ],
+      "responsibility": "instance, observation and legal-target proof validation"
+    },
+    {
+      "id": "ai_action_candidate",
+      "version": 1,
+      "paths": [
+        "scripts/runtime/ai_card_semantic_projection_service.gd",
+        "scenes/runtime/AiCardSemanticProjectionService.tscn"
+      ],
+      "representation": "exact_key_dictionary_contract",
+      "responsibility": "passive candidate assembly and deterministic ordering"
+    },
+    {
+      "id": "ai_outcome_vector",
+      "version": 1,
+      "paths": [
+        "scripts/runtime/ai_outcome_vector_v1.gd"
+      ],
+      "dimensions": [
+        "self_economy",
+        "opponent_economy",
+        "board_control",
+        "route_control",
+        "hand_advantage",
+        "tempo",
+        "defense",
+        "information",
+        "victory_progress",
+        "variance",
+        "counter_risk"
+      ]
+    },
+    {
+      "id": "player_face_dto",
+      "version": 1,
+      "paths": [
+        "scripts/presentation/player_face_dto_v1.gd"
+      ],
+      "responsibility": "closed player-facing DTO with acquisition and activation cost separation"
+    },
+    {
+      "id": "player_face_projection",
+      "version": 1,
+      "paths": [
+        "scripts/runtime/card_player_face_projection_service.gd",
+        "scenes/runtime/CardPlayerFaceProjectionService.tscn"
+      ],
+      "responsibility": "passive stateless semantic-to-DTO projection"
+    }
+  ],
+  "composition": {
+    "path": "scenes/runtime/GameRuntimeCoordinator.tscn",
+    "card_semantic_catalog_service_count": 1,
+    "ai_card_semantic_projection_service_count": 1,
+    "card_player_face_projection_service_count": 1,
+    "gameplay_executor_connection_count": 0,
+    "legacy_consumer_cutover_count": 0
+  },
+  "catalog": {
+    "definition_count": 348,
+    "operation_count": 606,
+    "active_count": 256,
+    "projection_only_count": 92,
+    "compile_error_count": 0,
+    "semantic_catalog_fingerprint": "1db2ac3fefdeebcdf2a28525be089cdc2fef383aeebf46f9962a23b8c49d1288",
+    "readiness_by_category": {
+      "active": {
+        "commodity": 184,
+        "facility": 64,
+        "supply_demand": 8
+      },
+      "projection_only": {
+        "monster": 32,
+        "military": 28,
+        "interaction_counter": 12,
+        "organization": 20
+      }
+    }
+  },
+  "representative_fixtures": [
+    {
+      "path": "tests/fixtures/card_semantic_phase1/facility_commodity_golden.json",
+      "card_count": 12,
+      "contract": "exact_specs_and_fingerprints"
+    },
+    {
+      "path": "tests/fixtures/card_semantic_phase1/unit_supply_golden.json",
+      "card_count": 16,
+      "contract": "exact_specs_and_fingerprints"
+    },
+    {
+      "path": "tests/fixtures/card_semantic_phase1/interaction_counter_golden.json",
+      "card_count": 12,
+      "contract": "declared_semantic_subset_with_independent_computed_fingerprints"
+    }
+  ],
+  "candidate_scenarios": {
+    "legal_active_count": 6,
+    "legal_active_operations": [
+      "install_rate",
+      "build_facility",
+      "upgrade_facility",
+      "repair_facility",
+      "modify_supply",
+      "modify_demand"
+    ],
+    "projection_only_fail_closed_count": 6,
+    "projection_only_fail_closed_operations": [
+      "deploy_unit",
+      "upgrade_same_family_unit",
+      "discard_random",
+      "steal_random",
+      "lock_random",
+      "counter_action"
+    ]
+  },
+  "audits": {
+    "canonical_name_kind_scan": {
+      "finding_count": 57,
+      "REMOVE": 16,
+      "MOVE": 33,
+      "KEEP": 8,
+      "path": "reports/semantic_program/name_and_kind_special_case_audit.json"
+    },
+    "cross_domain_aggregate": {
+      "finding_count": 403,
+      "REMOVE": 82,
+      "MOVE": 207,
+      "KEEP": 114,
+      "overlapping": true,
+      "unique_defect_claim": false,
+      "explanation": "The audits intentionally inspect some of the same source locations, raw reads and authority conflicts through different domain, privacy, presentation and execution lenses.",
+      "breakdown": [
+        {
+          "audit": "name_and_kind_special_cases",
+          "findings": 57,
+          "REMOVE": 16,
+          "MOVE": 33,
+          "KEEP": 8
+        },
+        {
+          "audit": "role_and_passive_semantics",
+          "findings": 27,
+          "REMOVE": 6,
+          "MOVE": 13,
+          "KEEP": 8
+        },
+        {
+          "audit": "product_facility_economy",
+          "findings": 32,
+          "REMOVE": 9,
+          "MOVE": 15,
+          "KEEP": 8
+        },
+        {
+          "audit": "monster_behavior",
+          "findings": 41,
+          "REMOVE": 10,
+          "MOVE": 19,
+          "KEEP": 12
+        },
+        {
+          "audit": "military_and_weather",
+          "findings": 35,
+          "REMOVE": 4,
+          "MOVE": 21,
+          "KEEP": 10
+        },
+        {
+          "audit": "save_replay_privacy_rng",
+          "findings": 33,
+          "REMOVE": 4,
+          "MOVE": 18,
+          "KEEP": 11
+        },
+        {
+          "audit": "ui_and_presentation_inference",
+          "findings": 52,
+          "REMOVE": 9,
+          "MOVE": 30,
+          "KEEP": 13
+        },
+        {
+          "audit": "content_authority_duality",
+          "findings": 55,
+          "REMOVE": 14,
+          "MOVE": 22,
+          "KEEP": 19
+        },
+        {
+          "audit": "victory_semantics",
+          "findings": 39,
+          "REMOVE": 4,
+          "MOVE": 21,
+          "KEEP": 14
+        },
+        {
+          "audit": "training_execution_parity",
+          "findings": 32,
+          "REMOVE": 6,
+          "MOVE": 15,
+          "KEEP": 11
+        }
+      ]
+    },
+    "remaining_ai_raw_debt": {
+      "value_reads": 225,
+      "presence_checks": 5,
+      "functions": 33,
+      "keys": 71,
+      "new_violations": 0
+    }
+  },
+  "target_authorities": [
+    {
+      "domain": "card",
+      "target_authority": "CardSemanticSpec compiled from v0.6 machine blocks",
+      "target_owner": "CardSemanticCatalogService",
+      "current_status": "compiler_exists_not_execution_input"
+    },
+    {
+      "domain": "role",
+      "target_authority": "RoleSemanticSpec keyed by stable ASCII role_id",
+      "target_owner": "RoleCatalogRuntimeService after in-place cutover",
+      "current_status": "not_implemented"
+    },
+    {
+      "domain": "monster",
+      "target_authority": "MonsterSemanticSpec plus MonsterBehaviorSpec keyed by stable monster_family_id",
+      "target_owner": "MonsterCatalogV06 after semantic, behavior and presentation split",
+      "current_status": "not_implemented"
+    },
+    {
+      "domain": "product",
+      "target_authority": "ProductSemanticSpec with frozen deterministic product order",
+      "target_owner": "ProductIndustryCatalogResource after parity expansion",
+      "current_status": "blocked_by_order_and_profile_parity"
+    },
+    {
+      "domain": "facility",
+      "target_authority": "FacilitySemanticSpec keyed by facility_kind_id",
+      "target_owner": "one immutable facility semantic catalog compiled from v0.6 rules",
+      "current_status": "not_implemented"
+    },
+    {
+      "domain": "military",
+      "target_authority": "MilitaryUnitSemanticSpec keyed by military_family_id",
+      "target_owner": "one immutable military semantic catalog",
+      "current_status": "blocked_no_complete_profile"
+    },
+    {
+      "domain": "weather",
+      "target_authority": "WeatherSemanticSpec projected from existing WeatherDefinition resources",
+      "target_owner": "WeatherDefinitionCatalog",
+      "current_status": "near_ready_duplicate_maps_remain"
+    },
+    {
+      "domain": "victory",
+      "target_authority": "VictorySemanticSpec compiled once from v0.6 rules and clock registry",
+      "target_owner": "VictoryControlRuntimeController read-only dependency",
+      "current_status": "near_ready_schema_boundary_missing"
+    }
+  ],
+  "migration_matrix": {
+    "completed": [
+      "versioned CardSemanticSpec v1",
+      "deterministic v0.6 compiler and cache",
+      "sealed semantic catalog membership and authorization",
+      "passive AiActionCandidate v1 projection",
+      "passive PlayerFaceDTO v1 projection",
+      "three golden fixture families covering 40 cards",
+      "six active legal and six projection-only fail-closed scenarios",
+      "single passive service composition under GameRuntimeCoordinator",
+      "architecture scanners and cross-domain audits"
+    ],
+    "compatibility_bridge": [
+      "v0.4 and v0.6 card authority coexist",
+      "v0.6 and legacy card execution paths coexist",
+      "production AI retains audited raw payload interpretation",
+      "production UI retains raw skill and legacy alias chains",
+      "role save identity retains index and localized-name coupling",
+      "product catalogs retain RNG-significant order differences",
+      "monster, military, weather, diagnostics and victory retain domain-specific maps",
+      "localized v0.6 product IDs remain opaque source facts"
+    ],
+    "not_migrated": [
+      "RulesProjection and RuleExecutionPlan",
+      "trusted OperationHandlerRegistry and handler dispatch",
+      "semantic-to-owner execution parity",
+      "production AI consumer cutover",
+      "production UI consumer cutover",
+      "RoleSemanticSpec",
+      "MonsterSemanticSpec and MonsterBehaviorSpec",
+      "ProductSemanticSpec and FacilitySemanticSpec",
+      "MilitaryUnitSemanticSpec and WeatherSemanticSpec",
+      "VictorySemanticSpec",
+      "save, replay and shared training execution migration",
+      "legacy catalog, raw payload and presentation alias retirement"
+    ],
+    "blockers_before_cutover": [
+      "viewer-owner-attested AI observation and legal-target authorization",
+      "trusted PlayerFace localization authorization",
+      "separate source visibility and effect-result disclosure policy",
+      "authoritative randomness policies for random operations",
+      "real handler-port and catalog attestation in the operation registry",
+      "rule result, transaction, rollback, RNG, Save and replay parity",
+      "domain-specific identity, order, profile, visibility and passive-authority decisions"
+    ],
+    "next_recommended_batches": [
+      {
+        "order": 1,
+        "batch": "open_and_validate_pr3",
+        "scope": "passive projections, composition, authorization fixes, Wave 3 gates and handoff"
+      },
+      {
+        "order": 2,
+        "batch": "authorized_semantic_envelope_and_instance_decision_state",
+        "scope": "authorize detached catalog output and add a separate CardInstanceDecisionState without changing catalog ownership"
+      },
+      {
+        "order": 3,
+        "batch": "codex_first_player_projection",
+        "scope": "one public read-only Player projection consumer"
+      },
+      {
+        "order": 4,
+        "batch": "ai_privacy_and_raw_read_ratchet",
+        "scope": "viewer-owner authorization, hidden-value closure and monotonic raw-read allowlist reduction"
+      },
+      {
+        "order": 5,
+        "batch": "rules_projection_and_real_handler_dispatch",
+        "scope": "trusted handler manifests plus execution, transaction, RNG, Save and replay parity"
+      }
+    ]
+  },
+  "next_boundary_compatibility": {
+    "new_name_special_case_count": 0,
+    "new_localized_text_special_case_count": 0,
+    "new_raw_payload_special_case_count": 0,
+    "new_alias_special_case_count": 0,
+    "future_projection_support": "Versioned immutable CardSemanticSpec records, stable fingerprints and detached passive services provide one reusable source for later Player, AI and Rules projections.",
+    "static_instance_state_mixing_added": false,
+    "catalog_composition_effect": {
+      "production_instance_count": 1,
+      "read_only": true,
+      "passive": true,
+      "gameplay_executor_connections": 0,
+      "instance_state_owned": false,
+      "second_catalog_added": false
+    },
+    "next_atomic_boundary": "authorized semantic envelope plus CardInstanceDecisionState",
+    "backlog_sequence": [
+      "authorized semantic envelope plus CardInstanceDecisionState",
+      "Codex-first Player projection",
+      "AI privacy authorization and raw-read ratchet migration",
+      "RulesProjection and real registered handler dispatch"
+    ],
+    "pr3_remains_passive": true,
+    "later_boundaries_claimed_complete": false
+  },
+  "final_gates": [
+    {
+      "gate": "card_semantic_authorization_boundary_test",
+      "status": "PASS",
+      "checks": 24,
+      "wrapper_seconds": 1.164,
+      "focused_ms": 627.029
+    },
+    {
+      "gate": "card_semantic_schema_compiler_test",
+      "status": "PASS",
+      "checks": 5290,
+      "wrapper_seconds": 1.963,
+      "focused_ms": 1433.843,
+      "compile_ms": 261.494
+    },
+    {
+      "gate": "ai_card_semantic_projection_test",
+      "status": "PASS",
+      "checks": 157,
+      "wrapper_seconds": 2.78,
+      "projection_iterations": 400,
+      "projection_ms": 220.021
+    },
+    {
+      "gate": "card_player_face_projection_test",
+      "status": "PASS",
+      "checks": 57,
+      "wrapper_seconds": 1.706,
+      "projection_iterations": 600,
+      "projection_ms": 1143.148
+    },
+    {
+      "gate": "card_semantic_golden_fixture_test",
+      "status": "PASS",
+      "checks": 417,
+      "wrapper_seconds": 0.558,
+      "focused_ms": 131.133,
+      "card_count": 40,
+      "mismatch_count": 0
+    },
+    {
+      "gate": "card_semantic_architecture_scan_test",
+      "status": "PASS",
+      "checks": 106,
+      "wrapper_seconds": 4.466,
+      "focused_ms": 79.766,
+      "new_violation_count": 0
+    },
+    {
+      "gate": "card_semantic_phase1_integration_test",
+      "status": "PASS",
+      "checks": 27,
+      "manifest_checks": 46,
+      "wrapper_seconds": 6.957,
+      "focused_ms": 1902.082
+    },
+    {
+      "gate": "card_runtime_catalog_v06_test",
+      "status": "PASS",
+      "checks": 2894,
+      "wrapper_seconds": 0.564
+    },
+    {
+      "gate": "ai_card_play_candidate_performance_parity_test",
+      "status": "PASS",
+      "checks": 32,
+      "wrapper_seconds": 9.742,
+      "candidate_call_ms": 1454,
+      "ai_state_query_count_delta": 23,
+      "state_commit_count_delta": 4
+    },
+    {
+      "gate": "v06_save_owner_registry_test",
+      "status": "PASS",
+      "checks": 12,
+      "wrapper_seconds": 5.554,
+      "fixed_save_sections": 19
+    },
+    {
+      "gate": "main_runtime_composition_test",
+      "status": "PASS",
+      "checks": null,
+      "wrapper_seconds": 8.645
+    },
+    {
+      "gate": "smoke_test_check_only",
+      "status": "PASS",
+      "checks": null,
+      "wrapper_seconds": 4.831
+    }
+  ],
+  "gate_process_summary": {
+    "process_exit_code": 0,
+    "runner_exit_code": 0,
+    "script_error_count": 0,
+    "remaining_scoped_godot_process_count": 0
+  },
+  "supporting_scene_evidence": {
+    "ai_scene_bench": {
+      "status": "PASS",
+      "checks": 141,
+      "legal_representatives": 6,
+      "seconds": 2.351
+    },
+    "player_face_scene_bench": {
+      "status": "PASS",
+      "checks": 22,
+      "accepted_projections": 900,
+      "projection_total_ms": 2208.876,
+      "runtime_console_error_count": 0
+    }
+  },
+  "privacy_rng_save": {
+    "hidden_information_field_expansion": false,
+    "production_consumer_added": false,
+    "ai_value_channel_risk_closed": false,
+    "player_face_authorization_risk_closed": false,
+    "live_rng_delta": 0,
+    "candidate_generation_rng_draws": 0,
+    "rng_order_changed": false,
+    "random_operation_policy_implemented": false,
+    "fixed_save_section_count": 19,
+    "semantic_save_section_count": 0,
+    "save_registry_checks": 12,
+    "save_envelope_changed": false,
+    "replay_migrated": false,
+    "full_resume_claim": false
+  },
+  "production_files_above_500_lines": [
+    {
+      "path": "scripts/cards/semantic/card_semantic_compiler_v1.gd",
+      "lines": 715,
+      "bounded_responsibility": "one closed source validation, normalization, output validation and cache transaction boundary"
+    },
+    {
+      "path": "scripts/presentation/player_face_dto_v1.gd",
+      "lines": 650,
+      "bounded_responsibility": "one exact output DTO schema, validation and sealing boundary"
+    },
+    {
+      "path": "scripts/runtime/card_player_face_projection_service.gd",
+      "lines": 597,
+      "bounded_responsibility": "one stateless authorized semantic-to-presentation projection pipeline"
+    },
+    {
+      "path": "scripts/cards/semantic/card_semantic_schema_v1.gd",
+      "lines": 539,
+      "bounded_responsibility": "sole Card closed-schema validation, canonicalization and fingerprint authority"
+    }
+  ],
+  "reconciled_inconsistencies": [
+    {
+      "id": "ai_candidate_evidence",
+      "older": "211 checks and 12 positive representatives",
+      "current": "157 checks, six legal active representatives and six projection-only fail-closed scenarios",
+      "disposition": "current_authorized_evidence_is_canonical"
+    },
+    {
+      "id": "catalog_gate_count",
+      "older": "earlier reports include 1363 checks",
+      "current": "2894 checks",
+      "disposition": "same_tip_gate_is_canonical"
+    },
+    {
+      "id": "fixture_numeric_fingerprints",
+      "older": "two fixture families use different historic integral normalization conventions",
+      "current": "417-check gate validates each declared contract and identical rule-facing semantics",
+      "disposition": "documented_compatibility_fixture_debt"
+    },
+    {
+      "id": "product_identity",
+      "older": "localized v0.6 IDs and card_family bridge",
+      "current": "ProductSemanticSpec identity unresolved",
+      "disposition": "do_not_invent_alias_before_domain_cutover"
+    },
+    {
+      "id": "shared_kernel_contract",
+      "older": "architecture contract exists",
+      "current": "trusted OperationHandlerRegistry and RulesProjection are not implemented on this tip",
+      "disposition": "future_batch"
+    },
+    {
+      "id": "git_lineage",
+      "older": "PR61 and PR62 are merged on main",
+      "current": "topic branch retains linear validated heads rather than GitHub merge commits",
+      "disposition": "build_and_validate_real_pr3_merge_head"
+    }
+  ],
+  "handoff_validation": {
+    "json_parse": "PASS",
+    "git_diff_check": "PASS",
+    "expected_report_file_count": 2,
+    "only_expected_report_files": true,
+    "absolute_device_or_worktree_path_count": 0
+  }
+}

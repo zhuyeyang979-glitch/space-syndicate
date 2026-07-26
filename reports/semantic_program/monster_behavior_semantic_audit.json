@@ -1,0 +1,1120 @@
+{
+  "report_schema_version": 1,
+  "audit_id": "monster_behavior_semantic_audit",
+  "baseline_sha": "5a4fadb5e76ee6c1e5be50a2529ea64dfea63537",
+  "branch": "codex/semantic-program-wave1-monster-5a4fadb",
+  "scope": {
+    "read_only_domain_audit": true,
+    "production_changed": false,
+    "tests_changed": false,
+    "catalogs_changed": false,
+    "rules_or_balance_changed": false,
+    "rng_changed": false,
+    "save_changed": false,
+    "owned_outputs": [
+      "reports/semantic_program/monster_behavior_semantic_audit.md",
+      "reports/semantic_program/monster_behavior_semantic_audit.json"
+    ]
+  },
+  "verdict": {
+    "live_owner": "MonsterRuntimeController",
+    "live_owner_is_legitimate": true,
+    "second_mutable_monster_owner_required": false,
+    "semantic_cutover_ready": false,
+    "unit_card_owner_wholly_nontransactional": false,
+    "unit_card_semantic_execution_ready": false,
+    "summary": "Keep the existing live owner and domain state machines. Move immutable family, behavior, target, randomness, projection, and diagnostic semantics into stable-ID specs; remove localized-name authority and AI private-owner bypasses."
+  },
+  "counts": {
+    "monster_runtime_controller_physical_lines": 7042,
+    "monster_runtime_controller_methods": 368,
+    "monster_runtime_controller_constants": 65,
+    "monster_runtime_controller_top_level_variables": 45,
+    "monster_catalog_v06_physical_lines": 473,
+    "monster_catalog_v06_static_methods": 22,
+    "roster_family_count": 8,
+    "name_keyed_art_profile_count": 8,
+    "behavior_action_count": 48,
+    "unique_action_field_count": 23,
+    "behavior_weight_row_count": 9,
+    "weather_stable_family_id_count": 8,
+    "v06_monster_card_count": 32,
+    "v06_monster_family_count": 8,
+    "v06_monster_rank_count": 4,
+    "v06_monster_projection_only_count": 32,
+    "legacy_initial_actor_field_count": 38,
+    "atomic_initial_actor_field_count": 43,
+    "production_monster_catalog_consumer_file_count": 9,
+    "production_monster_catalog_reference_file_count_including_definition": 10,
+    "ai_auto_monsters_lexical_line_count": 23,
+    "ai_live_roster_reader_function_count": 12,
+    "ai_live_roster_proxy_count": 1,
+    "ai_live_roster_distinct_field_count": 9,
+    "ai_hidden_owner_read_site_count": 7,
+    "localized_behavior_predicate_count": 7,
+    "localized_legacy_identity_predicate_count": 1,
+    "compendium_active_roster_entry_count": 8,
+    "compendium_standalone_sample_count": 3,
+    "rng_draw_site_count": 8,
+    "rng_policy_count": 8,
+    "focused_test_count": 8,
+    "focused_test_pass_count": 5,
+    "focused_test_fail_count": 3,
+    "grouped_finding_count": 41,
+    "remove_finding_count": 10,
+    "move_finding_count": 19,
+    "keep_finding_count": 12
+  },
+  "stable_family_ids": [
+    "spore_tide_emperor",
+    "sand_armor_rover",
+    "meteor_sentinel",
+    "prism_blade_colossus",
+    "oasis_repairer",
+    "flame_ring_proto_star",
+    "blue_edge_knight",
+    "mirror_hunter"
+  ],
+  "production_monster_catalog_consumer_files": [
+    "scripts/main.gd",
+    "scripts/presentation/intel_dossier_viewer_query_port.gd",
+    "scripts/runtime/gameplay_balance_diagnostics_world_bridge.gd",
+    "scripts/runtime/monster_codex_public_source_service.gd",
+    "scripts/runtime/monster_runtime_controller.gd",
+    "scripts/runtime/new_game_setup_draft_service.gd",
+    "scripts/runtime/new_game_setup_viewer_query_port.gd",
+    "scripts/runtime/product_codex_public_source_service.gd",
+    "scripts/runtime/session_start_plan_builder.gd"
+  ],
+  "action_field_inventory": {
+    "name": 48,
+    "range": 48,
+    "damage": 48,
+    "move_override": 48,
+    "text": 48,
+    "knockback": 18,
+    "stun": 9,
+    "cripple": 6,
+    "chaos_ray": 4,
+    "miasma_count": 4,
+    "paralyze": 4,
+    "tether": 4,
+    "close_damage": 3,
+    "close_range": 3,
+    "self_heal": 2,
+    "throw_radius": 2,
+    "armor": 1,
+    "delay": 1,
+    "repair": 1,
+    "repair_path": 1,
+    "repair_radius": 1,
+    "self_damage": 1,
+    "stun_if_tethered": 1
+  },
+  "initial_instance_shapes": {
+    "legacy": {
+      "evidence": "scripts/runtime/monster_runtime_controller.gd:3609-3656",
+      "field_count": 38,
+      "has_monster_family_id": false,
+      "has_actor_revision": false,
+      "has_owner_actor_id": false
+    },
+    "atomic_v06": {
+      "evidence": "scripts/runtime/monster_runtime_controller.gd:3226-3284",
+      "field_count": 43,
+      "has_monster_family_id": true,
+      "has_actor_revision": true,
+      "has_owner_actor_id": true
+    }
+  },
+  "authority_map": [
+    {
+      "concern": "family_roster",
+      "current": "MonsterCatalogV06.MONSTER_ROSTER",
+      "evidence": "scripts/runtime/monster_catalog_v06.gd:9-120",
+      "destination": "MonsterSemanticSpec catalog"
+    },
+    {
+      "concern": "behavior_actions",
+      "current": "MonsterCatalogV06.MONSTER_ACTION_TABLES",
+      "evidence": "scripts/runtime/monster_catalog_v06.gd:213-278",
+      "destination": "MonsterBehaviorSpec catalog"
+    },
+    {
+      "concern": "behavior_weights",
+      "current": "MonsterRuntimeController.MONSTER_SKILL_WEIGHT_TABLES plus MonsterCatalogV06 transforms",
+      "evidence": "scripts/runtime/monster_runtime_controller.gd:259-269; scripts/runtime/monster_catalog_v06.gd:367-419",
+      "destination": "MonsterBehaviorSpec weight_profiles"
+    },
+    {
+      "concern": "live_instances",
+      "current": "MonsterRuntimeController.auto_monsters and lifecycle collections",
+      "evidence": "scripts/runtime/monster_runtime_controller.gd:74-100",
+      "destination": "keep MonsterRuntimeController"
+    },
+    {
+      "concern": "weather_affinities",
+      "current": "MonsterFamilyWeatherTraits resource",
+      "evidence": "resources/monsters/monster_family_weather_traits_v1.tres:7-16",
+      "destination": "MonsterSemanticSpec weather_affinity_tag_ids"
+    },
+    {
+      "concern": "v06_monster_cards",
+      "current": "card_runtime_catalog_v06 JSON",
+      "evidence": "data/cards/card_runtime_catalog_v06.json:19909-22423",
+      "destination": "CardSemanticSpec references MonsterSemanticSpec"
+    },
+    {
+      "concern": "save",
+      "current": "MonsterRuntimeController monster save payload",
+      "evidence": "scripts/runtime/monster_runtime_controller.gd:1461-1507",
+      "destination": "keep owner and envelope; normalize legacy identity inside owner"
+    }
+  ],
+  "findings": [
+    {
+      "id": "MB-001",
+      "classification": "REMOVE",
+      "severity": "blocker",
+      "category": "localized_family_identity",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:24-33",
+        "scripts/runtime/monster_runtime_controller.gd:3098-3102"
+      ],
+      "summary": "Missing family identity falls back through a Chinese display-name map.",
+      "destination": "Required stable family_id with catalog-index-only legacy normalization"
+    },
+    {
+      "id": "MB-002",
+      "classification": "REMOVE",
+      "severity": "blocker",
+      "category": "localized_behavior_branch",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:3651",
+        "scripts/runtime/monster_runtime_controller.gd:3785",
+        "scripts/runtime/monster_runtime_controller.gd:3809",
+        "scripts/runtime/monster_runtime_controller.gd:3832",
+        "scripts/runtime/monster_runtime_controller.gd:3838",
+        "scripts/runtime/monster_runtime_controller.gd:4313",
+        "scripts/runtime/monster_runtime_controller.gd:4861"
+      ],
+      "summary": "Chinese names select revival, threshold passives, alternate actions, and path effects.",
+      "destination": "Stable passive and behavior IDs"
+    },
+    {
+      "id": "MB-003",
+      "classification": "REMOVE",
+      "severity": "major",
+      "category": "name_keyed_weight_authority",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:259-269",
+        "scripts/runtime/monster_runtime_controller.gd:990-1001",
+        "scripts/runtime/monster_runtime_controller.gd:4317-4328",
+        "scripts/runtime/monster_catalog_v06.gd:375-387"
+      ],
+      "summary": "Nine localized-name weight rows are interpreted in multiple places.",
+      "destination": "MonsterBehaviorSpec weight_profiles keyed by stable action ID"
+    },
+    {
+      "id": "MB-004",
+      "classification": "REMOVE",
+      "severity": "blocker",
+      "category": "name_suffix_rule_parser",
+      "evidence": [
+        "scripts/cards/card_runtime_catalog_resource.gd:59-75",
+        "scripts/runtime/monster_catalog_v06.gd:328-347",
+        "scripts/main.gd:4195-4253",
+        "scripts/main.gd:4260-4310",
+        "scripts/runtime/monster_runtime_controller.gd:3907-4073"
+      ],
+      "summary": "Localized monster and technique names plus numeric suffixes define family, rank, action, upgrade target, and bound skill.",
+      "destination": "Explicit card_id, family_id, rank, behavior_action_id, and unit profile"
+    },
+    {
+      "id": "MB-005",
+      "classification": "REMOVE",
+      "severity": "major",
+      "category": "silent_semantic_fallback",
+      "evidence": [
+        "scripts/runtime/monster_catalog_v06.gd:350-355"
+      ],
+      "summary": "Unknown action lookup silently receives the spore-tide family action table.",
+      "destination": "Fail closed on unknown family or action"
+    },
+    {
+      "id": "MB-006",
+      "classification": "REMOVE",
+      "severity": "blocker",
+      "category": "parallel_runtime_definition_sources",
+      "evidence": [
+        "scenes/runtime/CardRuntimeCatalogService.tscn:3-9",
+        "scripts/runtime/card_runtime_catalog_service.gd:11-21",
+        "scripts/runtime/card_runtime_definition_world_bridge.gd:31-43",
+        "scripts/runtime/card_runtime_definition_world_bridge.gd:77-85",
+        "scripts/runtime/game_runtime_coordinator.gd:515",
+        "scripts/runtime/monster_runtime_controller.gd:303-307"
+      ],
+      "summary": "v0.4 catalog, Main-generated monster definitions, derived definitions, and v0.6 records remain parallel answers.",
+      "destination": "One compiled semantic catalog"
+    },
+    {
+      "id": "MB-007",
+      "classification": "REMOVE",
+      "severity": "blocker",
+      "category": "main_profile_authority",
+      "evidence": [
+        "scripts/main.gd:591-624",
+        "scripts/main.gd:627-656"
+      ],
+      "summary": "Main reconstructs a rank-I profile from player display text, rejects rank II-IV, and only accepts empty cross-owner patches.",
+      "destination": "MonsterSemanticSpec family/rank profile and registered owner operations"
+    },
+    {
+      "id": "MB-008",
+      "classification": "REMOVE",
+      "severity": "blocker",
+      "category": "ai_live_owner_bypass",
+      "evidence": [
+        "scripts/runtime/ai_runtime_controller.gd:35",
+        "scripts/runtime/ai_runtime_controller.gd:92-93",
+        "scripts/runtime/ai_runtime_controller.gd:803-806",
+        "scripts/runtime/ai_runtime_controller.gd:839-844"
+      ],
+      "summary": "AI can call arbitrary monster methods and directly read or replace auto_monsters.",
+      "destination": "Typed read-only viewer-scoped observation port"
+    },
+    {
+      "id": "MB-009",
+      "classification": "REMOVE",
+      "severity": "blocker",
+      "category": "hidden_owner_ai_scoring",
+      "evidence": [
+        "scripts/runtime/ai_runtime_controller.gd:6463-6501",
+        "scripts/runtime/ai_runtime_controller.gd:6570-6602",
+        "scripts/runtime/ai_runtime_controller.gd:6634-6649",
+        "scripts/runtime/ai_runtime_controller.gd:7718-7768",
+        "scripts/runtime/ai_runtime_controller.gd:9398-9434"
+      ],
+      "summary": "Seven owner-truth read sites affect targets and scores even when ownership is unrevealed.",
+      "destination": "Public threat facts plus actor-private is_mine association"
+    },
+    {
+      "id": "MB-010",
+      "classification": "REMOVE",
+      "severity": "major",
+      "category": "localized_diagnostic_classifier",
+      "evidence": [
+        "scripts/balance/combat_balance_model.gd:60-75"
+      ],
+      "summary": "Chinese action substrings choose knockback diagnostic profiles.",
+      "destination": "Explicit semantic diagnostic feature IDs"
+    },
+    {
+      "id": "MB-011",
+      "classification": "MOVE",
+      "severity": "major",
+      "category": "family_definition",
+      "evidence": [
+        "scripts/runtime/monster_catalog_v06.gd:9-120"
+      ],
+      "summary": "Roster rows combine stats, movement, economy, product, card, and display data.",
+      "destination": "MonsterSemanticSpec"
+    },
+    {
+      "id": "MB-012",
+      "classification": "MOVE",
+      "severity": "major",
+      "category": "behavior_definition",
+      "evidence": [
+        "scripts/runtime/monster_catalog_v06.gd:213-278"
+      ],
+      "summary": "Forty-eight raw action dictionaries need stable action IDs and ordered operations.",
+      "destination": "MonsterBehaviorSpec"
+    },
+    {
+      "id": "MB-013",
+      "classification": "MOVE",
+      "severity": "major",
+      "category": "art_metadata",
+      "evidence": [
+        "scripts/runtime/monster_catalog_v06.gd:122-211",
+        "data/art/monster_body_art_manifest.json:1-112"
+      ],
+      "summary": "Two Chinese-name-keyed art sources should become stable presentation references; licensing remains QA metadata.",
+      "destination": "MonsterSemanticSpec presentation profile"
+    },
+    {
+      "id": "MB-014",
+      "classification": "MOVE",
+      "severity": "major",
+      "category": "weight_rank_policy",
+      "evidence": [
+        "scripts/runtime/monster_catalog_v06.gd:6-7",
+        "scripts/runtime/monster_catalog_v06.gd:367-419"
+      ],
+      "summary": "Default distributions and exact rank transform are reusable immutable behavior policy.",
+      "destination": "MonsterBehaviorSpec weight_profiles and rank_weight_transform"
+    },
+    {
+      "id": "MB-015",
+      "classification": "MOVE",
+      "severity": "major",
+      "category": "passive_thresholds_and_actions",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:204-212",
+        "scripts/runtime/monster_runtime_controller.gd:250-257"
+      ],
+      "summary": "Family-specific thresholds and bracelet actions are static behavior semantics inside the live owner.",
+      "destination": "MonsterBehaviorSpec trigger conditions and alternate action-set IDs"
+    },
+    {
+      "id": "MB-016",
+      "classification": "MOVE",
+      "severity": "major",
+      "category": "target_policy",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:232-248",
+        "scripts/runtime/monster_runtime_controller.gd:6224-6268"
+      ],
+      "summary": "Target factors and coefficients are immutable policy mixed with runtime candidate facts.",
+      "destination": "MonsterBehaviorSpec target_weight_policy"
+    },
+    {
+      "id": "MB-017",
+      "classification": "MOVE",
+      "severity": "major",
+      "category": "cross_domain_references",
+      "evidence": [
+        "scripts/runtime/monster_catalog_v06.gd:21-24",
+        "scripts/runtime/monster_catalog_v06.gd:35-38",
+        "scripts/runtime/monster_catalog_v06.gd:50-53",
+        "scripts/runtime/monster_catalog_v06.gd:63-66",
+        "scripts/runtime/monster_catalog_v06.gd:76-79",
+        "scripts/runtime/monster_catalog_v06.gd:89-92",
+        "scripts/runtime/monster_catalog_v06.gd:102-105",
+        "scripts/runtime/monster_catalog_v06.gd:115-118",
+        "scripts/runtime/monster_runtime_controller.gd:4398-4433"
+      ],
+      "summary": "Localized product and card references plus economy boons need stable IDs and owner operations.",
+      "destination": "MonsterSemanticSpec stable refs and owner-specific execution subplans"
+    },
+    {
+      "id": "MB-018",
+      "classification": "MOVE",
+      "severity": "blocker",
+      "category": "instance_schema_separation",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:3609-3656",
+        "scripts/runtime/monster_runtime_controller.gd:3226-3284"
+      ],
+      "summary": "Legacy and atomic constructors produce different identity/revision shapes and mix static semantics into instances.",
+      "destination": "Explicit MonsterInstanceState referencing immutable specs"
+    },
+    {
+      "id": "MB-019",
+      "classification": "MOVE",
+      "severity": "blocker",
+      "category": "save_identity_migration",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:2298-2324",
+        "scripts/runtime/monster_runtime_controller.gd:3098-3109"
+      ],
+      "summary": "Save accepts missing family ID and only protects explicit IDs from duplicates.",
+      "destination": "In-owner load normalization from stable catalog index; unchanged envelope"
+    },
+    {
+      "id": "MB-020",
+      "classification": "MOVE",
+      "severity": "major",
+      "category": "command_identity",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:4599-4611",
+        "scripts/runtime/monster_runtime_controller.gd:4618-4639",
+        "scripts/runtime/monster_action_command_sink.gd:68-76"
+      ],
+      "summary": "Autonomous commands and audits carry localized raw action dictionaries and array indices.",
+      "destination": "Stable behavior_action_id and operation-plan fingerprint"
+    },
+    {
+      "id": "MB-021",
+      "classification": "MOVE",
+      "severity": "blocker",
+      "category": "rng_policy_declaration",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:479-488",
+        "scripts/runtime/monster_runtime_controller.gd:3792",
+        "scripts/runtime/monster_runtime_controller.gd:4591",
+        "scripts/runtime/monster_runtime_controller.gd:4997",
+        "scripts/runtime/monster_runtime_controller.gd:5511",
+        "scripts/runtime/monster_runtime_controller.gd:6182",
+        "scripts/runtime/monster_runtime_controller.gd:6352",
+        "scripts/runtime/monster_runtime_controller.gd:6709-6710",
+        "scripts/main.gd:4915-4918",
+        "scripts/main.gd:4929-4939"
+      ],
+      "summary": "Draw semantics are implicit and two helpers still route through Main.",
+      "destination": "Declarative randomness policies plus typed RunRngService port"
+    },
+    {
+      "id": "MB-022",
+      "classification": "MOVE",
+      "severity": "major",
+      "category": "codex_semantic_derivation",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:883-1135"
+      ],
+      "summary": "The live owner derives role tags, probabilities, numeric facts, and movement archetypes for Codex.",
+      "destination": "MonsterSemanticSpec to MonsterCodexDTO projection"
+    },
+    {
+      "id": "MB-023",
+      "classification": "MOVE",
+      "severity": "major",
+      "category": "diagnostic_reinterpretation",
+      "evidence": [
+        "scripts/runtime/gameplay_balance_diagnostics_world_bridge.gd:181-223",
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:1026-1050"
+      ],
+      "summary": "Diagnostics rebuild ecology and action meaning from raw dictionaries.",
+      "destination": "Standard semantic diagnostic projection"
+    },
+    {
+      "id": "MB-024",
+      "classification": "MOVE",
+      "severity": "major",
+      "category": "presentation_cue_inference",
+      "evidence": [
+        "scripts/main.gd:4558-4622"
+      ],
+      "summary": "Main selects animation and effect profiles from Chinese action substrings and optional fields.",
+      "destination": "Stable presentation_cue_id from semantic projection"
+    },
+    {
+      "id": "MB-025",
+      "classification": "MOVE",
+      "severity": "major",
+      "category": "weather_affinity_authority",
+      "evidence": [
+        "resources/monsters/monster_family_weather_traits_v1.tres:7-16",
+        "scripts/runtime/monster_runtime_controller.gd:3105-3173"
+      ],
+      "summary": "Weather traits have correct stable IDs but remain a separate static authority.",
+      "destination": "MonsterSemanticSpec weather_affinity_tag_ids after parity"
+    },
+    {
+      "id": "MB-026",
+      "classification": "MOVE",
+      "severity": "blocker",
+      "category": "ai_public_threat_projection",
+      "evidence": [
+        "scripts/runtime/ai_runtime_controller.gd:2078-2094",
+        "scripts/runtime/ai_runtime_controller.gd:5327-5349",
+        "scripts/runtime/ai_runtime_controller.gd:7718-7768"
+      ],
+      "summary": "Legitimate public threat calculations read the private live roster instead of an authorized observation.",
+      "destination": "AiObservationSnapshot to AiMonsterThreatProjection"
+    },
+    {
+      "id": "MB-027",
+      "classification": "MOVE",
+      "severity": "major",
+      "category": "viewer_scoped_roster_api",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:781-789",
+        "scripts/runtime/monster_runtime_controller.gd:1219-1223",
+        "scripts/runtime/monster_runtime_controller.gd:1652-1695"
+      ],
+      "summary": "Boolean roster APIs default to private data; private owned-unit query is safer but not mandatory for AI.",
+      "destination": "Explicit public_roster(viewer) and private_owned_monsters(actor_id) ports"
+    },
+    {
+      "id": "MB-028",
+      "classification": "MOVE",
+      "severity": "blocker",
+      "category": "unit_card_semantic_profile",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:1759-1801",
+        "scripts/runtime/monster_runtime_controller.gd:1840-2120",
+        "scripts/runtime/monster_runtime_controller.gd:2151-2177",
+        "tests/card_semantic_schema_compiler_test.gd:114-125"
+      ],
+      "summary": "Transactional owner machinery exists, but profile and operation authority are not semantic or complete for four ranks.",
+      "destination": "Compiled family/rank profile and per-intent owner operation subplans"
+    },
+    {
+      "id": "MB-029",
+      "classification": "MOVE",
+      "severity": "major",
+      "category": "compendium_fixture_projection",
+      "evidence": [
+        "resources/compendium/monsters/active_roster_pack.tres:7-179",
+        "resources/compendium/monsters/mirror_manta.tres:7-24",
+        "resources/compendium/monsters/orbit_crusher.tres:7-24",
+        "resources/compendium/monsters/phase_leviathan.tres:7-24"
+      ],
+      "summary": "Public-only Compendium resources contain placeholder stats/actions that conflict with the formal roster if treated as semantics.",
+      "destination": "Generated or golden MonsterCodexDTO fixtures"
+    },
+    {
+      "id": "MB-030",
+      "classification": "KEEP",
+      "severity": "none",
+      "category": "unique_live_owner",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:74-100",
+        "scripts/runtime/monster_runtime_controller.gd:338-358",
+        "scripts/runtime/monster_runtime_controller.gd:1461-1507"
+      ],
+      "summary": "MonsterRuntimeController is the legitimate unique mutable roster/lifecycle/save owner.",
+      "keep_rule": "Do not create a second monster runtime or state registry"
+    },
+    {
+      "id": "MB-031",
+      "classification": "KEEP",
+      "severity": "none",
+      "category": "movement_state_machine",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:462-488",
+        "scripts/runtime/monster_runtime_controller.gd:600-738",
+        "scripts/runtime/monster_runtime_controller.gd:4782-4950",
+        "scripts/runtime/monster_move_command_sink.gd:21-72"
+      ],
+      "summary": "Linear movement, arrival effects, snapshots, and exact-once command application are legitimate domain behavior.",
+      "keep_rule": "Registered operations call these handlers"
+    },
+    {
+      "id": "MB-032",
+      "classification": "KEEP",
+      "severity": "none",
+      "category": "combat_damage_state_machine",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:6018-6165",
+        "scripts/runtime/monster_runtime_controller.gd:6174-6195",
+        "scripts/runtime/military_monster_damage_command_sink.gd:21-68"
+      ],
+      "summary": "Range, armor order, damage, down/revival transition, knockback, and mutation audit must remain in domain owners.",
+      "keep_rule": "Do not replace with a second execution engine"
+    },
+    {
+      "id": "MB-033",
+      "classification": "KEEP",
+      "severity": "none",
+      "category": "target_selection_mechanism",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:6321-6359"
+      ],
+      "summary": "Candidate enumeration and one weighted draw are valid runtime mechanisms.",
+      "keep_rule": "Move factor definitions and visibility only"
+    },
+    {
+      "id": "MB-034",
+      "classification": "KEEP",
+      "severity": "none",
+      "category": "wager_battle_lifecycle",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:1256-1293",
+        "scripts/runtime/monster_runtime_controller.gd:5485-5569",
+        "scripts/runtime/monster_runtime_controller.gd:5707-6016",
+        "scripts/runtime/monster_battle_lifecycle_policy_v06.gd:1-143"
+      ],
+      "summary": "Monster wagers and battle lifecycle are legitimate transactional state machines.",
+      "keep_rule": "Semantic operations may open them but do not own them"
+    },
+    {
+      "id": "MB-035",
+      "classification": "KEEP",
+      "severity": "none",
+      "category": "atomic_unit_card_transaction",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:1840-2120",
+        "scripts/runtime/monster_runtime_controller.gd:3212-3341",
+        "scripts/runtime/monster_runtime_controller.gd:3377-3545"
+      ],
+      "summary": "Prepare, commit, rollback, finalize, revisions, postimages, fingerprints, and exact-once journals are valid owner APIs.",
+      "keep_rule": "Feed them compiled profiles; do not replace them"
+    },
+    {
+      "id": "MB-036",
+      "classification": "KEEP",
+      "severity": "none",
+      "category": "save_owner_and_envelope",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:1461-1507",
+        "scripts/runtime/monster_runtime_controller.gd:2298-2474"
+      ],
+      "summary": "The existing monster save owner and envelope are correct boundaries.",
+      "keep_rule": "Normalize compatibility inside the owner without a new section or root shape"
+    },
+    {
+      "id": "MB-037",
+      "classification": "KEEP",
+      "severity": "none",
+      "category": "privacy_sanitizers",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:3187-3199",
+        "scripts/runtime/monster_codex_public_source_adapter.gd:5-68",
+        "scripts/runtime/monster_codex_public_source_adapter.gd:94-112"
+      ],
+      "summary": "Existing public allowlists and sanitizers correctly reject owner/RNG/plan fields.",
+      "keep_rule": "Make these mandatory for public and AI paths"
+    },
+    {
+      "id": "MB-038",
+      "classification": "KEEP",
+      "severity": "none",
+      "category": "actor_scoped_private_facts",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:1256-1293",
+        "scripts/runtime/monster_runtime_controller.gd:1652-1695"
+      ],
+      "summary": "Own wager cash/bet and owned-monster private views are correctly actor scoped.",
+      "keep_rule": "Never include rival hidden owner truth"
+    },
+    {
+      "id": "MB-039",
+      "classification": "KEEP",
+      "severity": "none",
+      "category": "shared_rng_authority",
+      "evidence": [
+        "scripts/runtime/monster_runtime_world_bridge.gd:30",
+        "scripts/runtime/monster_runtime_world_bridge.gd:43-44",
+        "scripts/runtime/monster_runtime_world_bridge.gd:110-111",
+        "scripts/runtime/monster_runtime_controller.gd:174-176"
+      ],
+      "summary": "RunRngService remains the only RNG owner.",
+      "keep_rule": "Specs declare policy but never own or consume RNG"
+    },
+    {
+      "id": "MB-040",
+      "classification": "KEEP",
+      "severity": "none",
+      "category": "typed_mutation_pipeline",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:741-758",
+        "scripts/runtime/monster_action_command_sink.gd:21-90",
+        "scripts/runtime/monster_move_command_sink.gd:21-72"
+      ],
+      "summary": "Authorization, command IDs, exact-once caches, snapshots, and mutation audit are correct boundaries.",
+      "keep_rule": "Add stable behavior/action identity to the envelopes"
+    },
+    {
+      "id": "MB-041",
+      "classification": "KEEP",
+      "severity": "none",
+      "category": "presentation_only_renderers",
+      "evidence": [
+        "scripts/runtime/monster_codex_public_snapshot_service.gd:13-86",
+        "scripts/ui/codex/bestiary_monster_action_card.gd:12-35",
+        "scripts/monster_art_view.gd:74-90",
+        "scripts/monster_art_view.gd:156-174"
+      ],
+      "summary": "Detached Codex formatting and stable motif rendering are presentation-only and do not calculate weights or execute rules.",
+      "keep_rule": "Feed these leaves a typed MonsterCodexDTO"
+    }
+  ],
+  "proposed_contracts": {
+    "MonsterSemanticSpec": {
+      "required_fields": [
+        "schema_version",
+        "spec_id",
+        "family_id",
+        "source_catalog_id",
+        "localization_key",
+        "rank_profiles",
+        "movement_profile",
+        "summon_policy",
+        "resource_affinity_ids",
+        "economy_operation_ids",
+        "weather_affinity_tag_ids",
+        "behavior_spec_id",
+        "passive_trigger_ids",
+        "visibility_policy_id",
+        "randomness_policy_ids",
+        "presentation_profile_id",
+        "art_asset_refs"
+      ],
+      "forbidden_value_types": [
+        "Node",
+        "Object",
+        "Callable",
+        "RandomNumberGenerator",
+        "PackedScene"
+      ],
+      "forbidden_concerns": [
+        "live_instance_state",
+        "save_payload",
+        "rng_state",
+        "fixed_ai_value",
+        "localized_name_as_identity"
+      ]
+    },
+    "MonsterBehaviorSpec": {
+      "required_fields": [
+        "schema_version",
+        "behavior_spec_id",
+        "family_id",
+        "actions",
+        "weight_profiles",
+        "rank_weight_transform",
+        "target_weight_policy",
+        "randomness_policies",
+        "visibility_policy"
+      ],
+      "action_required_fields": [
+        "behavior_action_id",
+        "localization_key",
+        "target_policy_id",
+        "trigger_condition_ids",
+        "ordered_operations",
+        "presentation_cue_ids",
+        "diagnostic_feature_ids"
+      ],
+      "unknown_id_policy": "fail_closed_before_mutation"
+    },
+    "MonsterInstanceState": {
+      "owner": "MonsterRuntimeController",
+      "categories": [
+        "stable_spec_reference",
+        "runtime_identity_and_revision",
+        "location_and_motion",
+        "hp_armor_status_and_lifecycle",
+        "private_owner_association",
+        "transaction_and_battle_state"
+      ],
+      "must_not_contain": [
+        "localized_semantic_key",
+        "action_definition_authority",
+        "art_catalog_authority",
+        "ai_score"
+      ]
+    }
+  },
+  "stable_operation_ids": [
+    "select_weighted_region_target",
+    "select_weighted_behavior_action",
+    "move_linear",
+    "damage_region",
+    "damage_path_regions",
+    "damage_unit",
+    "knockback_unit",
+    "throw_unit",
+    "apply_status",
+    "spawn_miasma",
+    "reclaim_miasma",
+    "repair_region",
+    "repair_regions_in_radius",
+    "repair_path_regions",
+    "gain_armor",
+    "heal_self",
+    "damage_self",
+    "delay_next_action",
+    "drain_region_resources",
+    "open_monster_wager",
+    "revive_after_random_delay",
+    "activate_threshold_passive",
+    "reflect_ranged_damage",
+    "deploy_unit",
+    "upgrade_same_family_unit",
+    "extend_presence"
+  ],
+  "visibility_policies": {
+    "public": {
+      "allow": [
+        "public_family_projection",
+        "rank",
+        "hp",
+        "max_hp",
+        "public_armor",
+        "position",
+        "down",
+        "public_movement_and_action_facts",
+        "disclosed_owner_clue"
+      ],
+      "deny": [
+        "true_owner",
+        "owner_actor_id",
+        "unrevealed_owner",
+        "owner_cash_pool",
+        "lure_target",
+        "target_weights",
+        "rng_state",
+        "rng_ticket",
+        "ai_plan"
+      ]
+    },
+    "actor_private": {
+      "allow": [
+        "public_fields",
+        "own_association",
+        "own_starter_state",
+        "own_bound_units",
+        "own_wager_bet",
+        "own_opening_cash"
+      ],
+      "deny": [
+        "rival_hidden_owner",
+        "rival_exact_cash",
+        "rival_private_hand",
+        "rival_ai_plan"
+      ]
+    },
+    "ai": {
+      "source": "viewer_authorized_AiObservationSnapshot",
+      "direct_controller_access": false,
+      "direct_roster_access": false,
+      "opponent_hidden_owner_allowed": false
+    }
+  },
+  "randomness_policies": [
+    {
+      "policy_id": "monster.timer.normal",
+      "evidence": "scripts/runtime/monster_runtime_controller.gd:483-485; scripts/main.gd:4915-4918",
+      "draw_kind": "float_range",
+      "conditionality": "after_normal_monster_tick_when_timer_expires",
+      "order": 1
+    },
+    {
+      "policy_id": "monster.timer.special",
+      "evidence": "scripts/runtime/monster_runtime_controller.gd:486-488; scripts/main.gd:4915-4918",
+      "draw_kind": "float_range",
+      "conditionality": "after_special_monster_tick_when_active_monster_exists_and_timer_expires",
+      "order": 2
+    },
+    {
+      "policy_id": "monster.revival_delay",
+      "evidence": "scripts/runtime/monster_runtime_controller.gd:3785-3793",
+      "draw_kind": "integer_range_1_6",
+      "transform": "multiply_by_4_seconds",
+      "conditionality": "eligible_revival_passive_only"
+    },
+    {
+      "policy_id": "monster.action_weighted_choice",
+      "evidence": "scripts/runtime/monster_runtime_controller.gd:4588-4596; scripts/main.gd:4929-4939",
+      "draw_kind": "integer_ticket_1_to_weight_total",
+      "relative_order": "before_region_target_draw"
+    },
+    {
+      "policy_id": "monster.region_weighted_choice",
+      "evidence": "scripts/runtime/monster_runtime_controller.gd:6338-6359",
+      "draw_kind": "integer_ticket_1_to_weight_total",
+      "relative_order": "after_action_draw_and_after_weather_weight_application"
+    },
+    {
+      "policy_id": "monster.brawl_action_weighted_choice",
+      "evidence": "scripts/runtime/monster_runtime_controller.gd:4968-4998",
+      "draw_kind": "integer_ticket_1_to_weight_total",
+      "conditionality": "at_least_one_in_range_damaging_action"
+    },
+    {
+      "policy_id": "monster.wager_base_percent",
+      "evidence": "scripts/runtime/monster_runtime_controller.gd:5485-5512",
+      "draw_kind": "integer_range",
+      "conditionality": "after_pair_and_decision_eligibility_before_cash_snapshots"
+    },
+    {
+      "policy_id": "monster.coincident_knockback_angle",
+      "evidence": "scripts/runtime/monster_runtime_controller.gd:6174-6183",
+      "draw_kind": "float_angle_0_to_tau",
+      "conditionality": "source_target_offset_length_at_most_0_01"
+    }
+  ],
+  "unit_card_capability": {
+    "owner_transaction_methods_present": true,
+    "prepare_evidence": "scripts/runtime/monster_runtime_controller.gd:1840-2010",
+    "commit_evidence": "scripts/runtime/monster_runtime_controller.gd:2011-2046",
+    "rollback_evidence": "scripts/runtime/monster_runtime_controller.gd:2047-2093",
+    "finalize_evidence": "scripts/runtime/monster_runtime_controller.gd:2094-2120",
+    "exact_once_and_fingerprint_evidence": "scripts/runtime/monster_runtime_controller.gd:3212-3545",
+    "current_ready_scope": "rank_1_starter_and_ordinary_summon_plus_same_family_upgrade_when_authoritative_inputs_exist",
+    "semantic_runtime_readiness": "projection_only",
+    "projection_only_card_count": 32,
+    "blockers": [
+      "rank_2_to_4_authoritative_profiles_absent",
+      "rank_1_profile_derived_from_player_display_name_in_main",
+      "nonempty_cross_owner_patches_fail_closed",
+      "monster_semantic_operation_registry_absent",
+      "legacy_and_v04_parallel_definition_paths_active"
+    ]
+  },
+  "migration_stages": [
+    {
+      "stage": 1,
+      "id": "compile_shadow_specs",
+      "runtime_mutation_change": false,
+      "requirements": [
+        "compile_8_families_and_48_actions",
+        "preserve_all_numbers_and_order",
+        "stable_fingerprint",
+        "unknown_ids_fail_closed"
+      ]
+    },
+    {
+      "stage": 2,
+      "id": "projection_cutover",
+      "requirements": [
+        "codex_from_specs",
+        "diagnostics_from_specs",
+        "leaf_ui_formats_dto_only"
+      ]
+    },
+    {
+      "stage": 3,
+      "id": "identity_bridge",
+      "requirements": [
+        "new_instances_have_stable_ids",
+        "legacy_catalog_index_normalization",
+        "save_envelope_unchanged",
+        "ambiguous_identity_rejected"
+      ]
+    },
+    {
+      "stage": 4,
+      "id": "ai_privacy_cutover",
+      "requirements": [
+        "remove_direct_controller_proxy",
+        "viewer_scoped_observation",
+        "no_hidden_opponent_owner"
+      ]
+    },
+    {
+      "stage": 5,
+      "id": "registered_operation_shadow_parity",
+      "requirements": [
+        "same_handler_outcomes",
+        "no_double_apply",
+        "exact_rng_draw_delta_and_order"
+      ]
+    },
+    {
+      "stage": 6,
+      "id": "registered_operation_execution_cutover",
+      "requirements": [
+        "existing_domain_owners_remain",
+        "mutation_authority_remains",
+        "no_second_engine"
+      ]
+    },
+    {
+      "stage": 7,
+      "id": "unit_card_activation",
+      "requirements": [
+        "rank_1_to_4_profile_authority",
+        "participant_fault_injection",
+        "exact_once_privacy_and_parity_green"
+      ]
+    },
+    {
+      "stage": 8,
+      "id": "legacy_removal",
+      "requirements": [
+        "remove_name_maps_and_suffix_parsers",
+        "remove_main_profile_fallback",
+        "retire_v04_runtime_authority",
+        "save_and_replay_compatibility_green"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "name": "monster_runtime_v06_privacy_test",
+      "status": "PASS",
+      "checks": 31,
+      "failures": 0,
+      "duration_seconds": 5.773,
+      "script_errors": 0
+    },
+    {
+      "name": "monster_card_runtime_v06_test",
+      "status": "PASS",
+      "checks": 56,
+      "failures": 0,
+      "duration_seconds": 0.495,
+      "script_errors": 0
+    },
+    {
+      "name": "monster_cross_owner_upgrade_v06_test",
+      "status": "PASS",
+      "checks": 24,
+      "failures": 0,
+      "duration_seconds": 4.862,
+      "script_errors": 0
+    },
+    {
+      "name": "monster_codex_public_source_service_test",
+      "status": "PASS",
+      "checks": 11,
+      "failures": 0,
+      "duration_seconds": 8.397,
+      "script_errors": 0
+    },
+    {
+      "name": "monster_codex_public_probability_contract_test",
+      "status": "PASS",
+      "checks": 9,
+      "failures": 0,
+      "duration_seconds": 7.552,
+      "script_errors": 0
+    },
+    {
+      "name": "unit_card_owner_capability_v06_test",
+      "status": "FAIL_STALE_ORACLE",
+      "checks": 28,
+      "failures": 7,
+      "duration_seconds": 4.788,
+      "script_errors": 0,
+      "reason": "The test still asserts that the real owner lacks atomic methods; current production owner implements them."
+    },
+    {
+      "name": "monster_card_real_owner_integration_v06_test",
+      "status": "FAIL_HYBRID_ORACLE",
+      "checks": 31,
+      "failures": 9,
+      "duration_seconds": 5.446,
+      "script_errors": 0,
+      "reason": "The fixture mixes former global capability and cross-actor same-family expectations with current per-profile participant readiness and the global family constraint."
+    },
+    {
+      "name": "monster_weather_integration_v1_test",
+      "status": "FAIL_STALE_FIXTURE",
+      "checks": 84,
+      "failures": 33,
+      "duration_seconds": 5.173,
+      "script_errors": 2,
+      "reason": "The bench binds only FakeWorld. Missing RunRngService keeps WeatherRuntimeController unconfigured; missing WorldSessionState leaves the bridge with no district facts. The line-231 array error is cascading.",
+      "evidence": [
+        "scripts/tools/monster_weather_integration_v1_bench.gd:160-180",
+        "scripts/runtime/weather_runtime_controller.gd:1005-1008",
+        "scripts/runtime/weather_runtime_world_bridge.gd:20-25",
+        "scripts/runtime/weather_runtime_world_bridge.gd:82-100"
+      ]
+    }
+  ],
+  "blockers": [
+    "monster_semantic_and_behavior_specs_not_authoritative",
+    "legacy_actor_family_identity_optional",
+    "stable_behavior_action_ids_and_registered_operations_absent",
+    "ai_hidden_owner_and_mutable_roster_bypass",
+    "rank_2_to_4_unit_profile_authority_absent",
+    "v04_and_main_generated_parallel_sources_active",
+    "three_focused_fixtures_or_oracles_require_separate_modernization"
+  ],
+  "risks": [
+    "rng_draw_count_or_order_drift",
+    "legacy_save_identity_ambiguity",
+    "hidden_owner_information_leak",
+    "new_and_old_catalog_double_authority",
+    "atomic_transaction_or_exact_once_regression",
+    "codex_ui_diagnostics_semantic_drift"
+  ],
+  "invariants": [
+    "MonsterRuntimeController remains the only mutable monster owner",
+    "all existing numeric values and rule outcomes remain unchanged",
+    "RunRngService remains the only RNG owner and draw order is preserved",
+    "save section and root envelope remain unchanged",
+    "AI receives no unrevealed opponent owner truth",
+    "unknown family action condition target operation or randomness policy fails closed",
+    "rules player AI and diagnostics project from one immutable semantic source",
+    "operation registry dispatches to existing owners and never owns state",
+    "all 32 monster cards remain projection_only until full profile and participant parity"
+  ]
+}
