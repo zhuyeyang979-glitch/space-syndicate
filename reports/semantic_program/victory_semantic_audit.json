@@ -1,0 +1,778 @@
+{
+  "schema_version": 1,
+  "audit_id": "victory_semantic_audit_v1",
+  "baseline_sha": "bd24b463660e55d83fc63deaab650c64c134be20",
+  "origin_main_observed_sha": "59756a291f811a064726f59aed27efecc3590c9a",
+  "branch": "codex/semantic-program-wave1-victory-bd24b46",
+  "scope": {
+    "read_only": true,
+    "production_modified": false,
+    "tests_modified": false,
+    "catalogs_modified": false,
+    "rules_modified": false,
+    "balance_modified": false,
+    "rng_modified": false,
+    "save_modified": false,
+    "existing_reports_modified": false,
+    "owned_outputs": [
+      "reports/semantic_program/victory_semantic_audit.md",
+      "reports/semantic_program/victory_semantic_audit.json"
+    ]
+  },
+  "result": {
+    "current_live_owner": "VictoryControlRuntimeController",
+    "target_semantic_spec": "VictorySemanticSpec",
+    "existing_state_machine_preserved": true,
+    "balance_change_required": false,
+    "rng_change_required": false,
+    "save_envelope_change_required": false,
+    "product_authority_decision_required": true,
+    "semantic_cutover_ready": false
+  },
+  "deterministic_inventory": {
+    "finding_count": 39,
+    "classification_counts": {
+      "KEEP": 14,
+      "MOVE": 21,
+      "REMOVE": 4
+    },
+    "blocker_count": 5,
+    "product_authority_blocker_count": 1,
+    "engineering_blocker_count": 4,
+    "victory_controller_physical_lines": 952,
+    "victory_controller_method_count": 49,
+    "victory_controller_field_count": 17,
+    "victory_controller_constant_count": 12,
+    "victory_world_bridge_method_count": 20,
+    "victory_owner_scene_instance_count": 1,
+    "victory_save_binding_count": 1,
+    "controller_state_id_count": 4,
+    "timer_policy_id_count": 2,
+    "comparison_metric_id_count": 3,
+    "outcome_reason_id_count": 3,
+    "static_v06_victory_parameter_count": 6,
+    "production_victory_token_file_count": 47,
+    "core_rng_api_reference_count": 0,
+    "core_localized_name_rule_branch_reference_count": 0,
+    "public_receipt_schema_string_coercion_count": 1,
+    "victory_session_cross_section_receipt_equality_check_count": 0,
+    "outcome_id_session_identity_component_count": 0,
+    "final_settlement_composition_reset_method_count": 0,
+    "compatibility_scan_file_count": 12,
+    "top_n_gdp_reference_line_count": 69,
+    "top_k_gdp_reference_line_count": 53
+  },
+  "scan_definitions": {
+    "production_victory_token_pattern": "victory_control|victory\\.v06|public_audit_complete|last_survivor|planet_destroyed|top_[kn]_gdp|cash_goal",
+    "production_victory_token_roots": ["scripts", "scenes", "resources", "data"],
+    "core_rng_scope": [
+      "scripts/runtime/victory_control_runtime_controller.gd",
+      "scripts/runtime/victory_control_world_bridge.gd"
+    ],
+    "compatibility_scope": [
+      "scripts/runtime/victory_control_runtime_controller.gd",
+      "scripts/runtime/ai_runtime_controller.gd",
+      "scripts/runtime/standings_public_snapshot_service.gd",
+      "scripts/runtime/standings_public_query_port.gd",
+      "scripts/runtime/final_settlement_runtime_composition.gd",
+      "scripts/runtime/final_settlement_public_source_adapter.gd",
+      "scripts/runtime/final_settlement_public_snapshot_service.gd",
+      "scripts/presentation/victory_presentation_state_change_receipt.gd",
+      "scripts/presentation/table_presentation_viewmodel_query.gd",
+      "scripts/viewmodels/full_run_quality_snapshot.gd",
+      "scripts/main.gd",
+      "scripts/tools/full_run_quality_driver.gd"
+    ]
+  },
+  "fingerprints": {
+    "docs/tabletop_rulebook_v06.md": "ce15c1e13bce6b7d538dcce3f2e8df27d59449183329a464b7fc7908f746ace7",
+    "scripts/rules/space_syndicate_ruleset_profile_v06.gd": "e555c0bf53ab61c73d3b789acb051b487a749ebc82fa02821e5f8a345ebb4f8a",
+    "resources/rules/space_syndicate_ruleset_v06.tres": "b87e18d12aa29d7d5ad9b3b0d6d64100ab7c4aeeaa22ac869ce66c081560eae9",
+    "resources/rules/clock_domain_registry_v06.tres": "cc6d111460f24f07496c62541acf49e42c8f2b73cc22fff105139894b2ddf34a",
+    "scripts/runtime/victory_control_runtime_controller.gd": "7343c471d6c0bce7ea339c2586c296de9c0376bd7872103f64bb30e0215c67be",
+    "scripts/runtime/victory_control_world_bridge.gd": "0150daf6ff7232b9dd837d4f574eaf42ced6b29015938b3a45a69693addd9d5b",
+    "scripts/runtime/runtime_victory_port.gd": "018206053a58f006d4c35c35f2ee9bd06c3f17a97430147b4a09c6eb64532e0e",
+    "scripts/runtime/final_settlement_public_source_adapter.gd": "c8140e94d65da4509ba8ea37b588df874cb20f9bb080c0e7f25624793ef67b3f",
+    "scripts/runtime/final_settlement_public_snapshot_service.gd": "8fc2e91f05e39e574059e1a0eebbb48a71faa4ba6ca81d3dca361beece5311b0",
+    "scripts/runtime/ai_runtime_controller.gd": "c4287cc4616d55cf3457816b4adaa3f0004df78046945be6c83caaff0c8daa13",
+    "scripts/balance/runtime_balance_model.gd": "15b8eacb05bfb3a8113d17e08de859bb8d19d9c5c9b4f8f697c426954d32eba8"
+  },
+  "current_authorities": {
+    "static_rule_parameters": "SpaceSyndicateRulesetProfileV06",
+    "clock_policies": "ClockDomainRegistryResource v0.6",
+    "live_victory_state": "VictoryControlRuntimeController",
+    "world_fact_assembly": "VictoryControlWorldBridge",
+    "session_lifecycle": "GameSessionRuntimeController",
+    "public_cash_authorization": "VictoryControlRuntimeController sticky audit roster",
+    "public_projection": "Victory public snapshot and VictoryPresentationStateChangeReceipt",
+    "ai_interpretation": "AiRuntimeController direct dictionary reads",
+    "final_settlement": "FinalSettlementPublicSourceAdapter and FinalSettlementPublicSnapshotService",
+    "save_section": "victory_control",
+    "save_schema_version": 2
+  },
+  "preserved_rules": {
+    "region_control_threshold_bp": 3000,
+    "unique_highest_required": true,
+    "dynamic_coverage_bp": 4000,
+    "gdp_per_required_region_per_minute": 36,
+    "gdp_observation_window_seconds": 30,
+    "qualification_seconds": 10,
+    "audit_seconds": 120,
+    "clock_domain": "world_effective",
+    "sticky_audit_roster": true,
+    "late_join_requires_full_qualification": true,
+    "endpoint_checkpoint": "post_world_settlement",
+    "comparison_order": [
+      "top_k_gdp_per_minute_cents",
+      "controlled_region_count",
+      "cash_ledger_cents"
+    ],
+    "exact_tie_policy": "co_victory",
+    "ordinary_victory_paused_when_surviving_region_count_zero": true,
+    "randomness_policy_id": "semantic.randomness.none",
+    "rng_calls": 0
+  },
+  "proposed_victory_semantic_spec": {
+    "schema_version": 1,
+    "semantic_id": "victory.standard.dynamic_top_k",
+    "ruleset_id": "v0.6",
+    "required_fields": [
+      "schema_version",
+      "semantic_id",
+      "ruleset_id",
+      "spec_fingerprint",
+      "region_control_threshold_bp",
+      "dynamic_coverage_bp",
+      "gdp_per_required_region_per_minute",
+      "gdp_observation_window_seconds",
+      "qualification_timer_policy_id",
+      "audit_timer_policy_id",
+      "endpoint_checkpoint_id",
+      "comparison_metric_ids",
+      "exact_tie_policy_id",
+      "visibility_policy_id",
+      "randomness_policy_id",
+      "save_compatibility_policy_id",
+      "condition_ids",
+      "operation_ids"
+    ],
+    "forbidden_fields": [
+      "surviving_region_count",
+      "required_region_count",
+      "required_top_k_gdp_per_minute",
+      "region_controller",
+      "candidate_rows",
+      "qualification_elapsed_by_player",
+      "audit_roster",
+      "audit_remaining_seconds",
+      "cash_ledger_cents",
+      "economic_assets",
+      "outcome_sequence",
+      "outcome_receipt",
+      "session_state",
+      "ai_memory",
+      "ui_state",
+      "Node",
+      "Object",
+      "Callable"
+    ],
+    "condition_ids": [
+      "victory.region.is_surviving",
+      "victory.region.gdp_positive",
+      "victory.region.share_meets_control_threshold",
+      "victory.region.unique_highest_contributor",
+      "victory.world.has_surviving_regions",
+      "victory.player.not_eliminated",
+      "victory.player.controls_required_region_count",
+      "victory.player.top_k_gdp_meets_threshold",
+      "victory.player.qualifies_continuously",
+      "victory.audit.endpoint_reached",
+      "victory.audit.post_world_settlement_checkpoint",
+      "victory.audit.finalist_still_eligible",
+      "victory.special.last_survivor",
+      "victory.special.irreversible_planet_destruction_allowed"
+    ],
+    "operation_ids": [
+      "victory.evaluate_region_control",
+      "victory.derive_dynamic_top_k_threshold",
+      "victory.evaluate_player_eligibility",
+      "victory.advance_qualification",
+      "victory.open_public_audit",
+      "victory.join_public_audit",
+      "victory.advance_public_audit",
+      "victory.resolve_public_audit",
+      "victory.resolve_last_survivor",
+      "victory.resolve_irreversible_planet_destruction",
+      "victory.authorize_public_audit_cash",
+      "victory.emit_outcome_receipt"
+    ],
+    "validation_rules": [
+      "unknown_condition_fail_closed",
+      "unknown_operation_fail_closed",
+      "unknown_visibility_policy_fail_closed",
+      "unknown_timer_policy_fail_closed",
+      "unknown_comparison_metric_fail_closed",
+      "unknown_special_outcome_fail_closed",
+      "pure_data_only",
+      "localized_text_forbidden_as_rule_identity",
+      "deterministic_fingerprint_required",
+      "runtime_compilation_forbidden"
+    ]
+  },
+  "operation_handler_ownership": [
+    {
+      "operation_ids": [
+        "victory.evaluate_region_control",
+        "victory.derive_dynamic_top_k_threshold",
+        "victory.evaluate_player_eligibility"
+      ],
+      "owner": "VictoryControlRuntimeController narrow stateless evaluation facade",
+      "stateful": false
+    },
+    {
+      "operation_ids": [
+        "victory.advance_qualification",
+        "victory.open_public_audit",
+        "victory.join_public_audit",
+        "victory.advance_public_audit",
+        "victory.resolve_public_audit",
+        "victory.resolve_last_survivor",
+        "victory.resolve_irreversible_planet_destruction",
+        "victory.authorize_public_audit_cash",
+        "victory.emit_outcome_receipt"
+      ],
+      "owner": "VictoryControlRuntimeController",
+      "stateful": true
+    },
+    {
+      "operation_ids": [],
+      "owner": "OperationHandlerRegistry",
+      "stateful": false,
+      "note": "registry stores stable ID to handler registrations only and owns no Victory state"
+    }
+  ],
+  "live_state": {
+    "owner": "VictoryControlRuntimeController",
+    "fields": [
+      "state",
+      "qualification_elapsed_by_player",
+      "audit_roster",
+      "audit_remaining_seconds",
+      "last_candidates",
+      "last_player_assets",
+      "last_victory_rule",
+      "last_pause_reasons",
+      "last_settlement_checkpoint",
+      "outcome_sequence",
+      "outcome_receipt",
+      "advance_count"
+    ],
+    "derived_not_static": [
+      "surviving_region_count",
+      "required_region_count_k",
+      "required_top_k_gdp",
+      "region_control",
+      "candidate_eligibility",
+      "finalist_rankings"
+    ]
+  },
+  "projection_contracts": {
+    "rules": {
+      "input": ["VictorySemanticSpec", "VictoryWorldFacts"],
+      "output": "VictoryRuleExecutionPlan",
+      "mutates_state": false,
+      "consumes_rng": false
+    },
+    "player": {
+      "outputs": [
+        "VictoryPublicProgressDTO",
+        "VictoryAuditEntryDTO",
+        "VictoryOutcomePublicDTO",
+        "VictoryViewerPrivateDTO"
+      ],
+      "privacy_boundary": "viewer filtering occurs before DTO construction",
+      "rule_inference_allowed": false
+    },
+    "ai": {
+      "output": "AiVictoryObservation",
+      "feeds": "AiOutcomeVector.victory_progress",
+      "internal_receipt_allowed": false,
+      "hidden_cash_defaulting_allowed": false,
+      "dynamic_strategy_scoring_owner": "AI"
+    }
+  },
+  "save_and_replay": {
+    "preserve_fixed_section_order": true,
+    "preserve_victory_section": true,
+    "preserve_victory_save_schema_2": true,
+    "preserve_session_envelope_shape": true,
+    "new_save_owner_required": false,
+    "cross_section_requirement": "victory and session outcomes must be both empty or canonically identical when session is finished",
+    "future_outcome_id_format": "victory.v06.<session_identity_hash>.<sequence>",
+    "legacy_saved_outcome_id_policy": "accept through an explicit compatibility read path without rewriting the old save",
+    "typed_replay_record_fields": [
+      "session_id",
+      "ruleset_id",
+      "victory_spec_fingerprint",
+      "operation_id",
+      "outcome_id",
+      "comparison_inputs",
+      "winner_player_indices",
+      "visibility_partitions"
+    ],
+    "current_replay_coverage": "in-process outcome reapplication idempotence only",
+    "durable_cross_session_replay_identity_present": false
+  },
+  "findings": [
+    {
+      "id": "VIC-001",
+      "classification": "KEEP",
+      "title": "single_live_owner_and_save_binding",
+      "evidence": [
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 437, "line_end": 465},
+        {"path": "scenes/runtime/GameRuntimeCoordinator.tscn", "line_start": 328, "line_end": 332},
+        {"path": "scenes/runtime/V06SaveOwnerRegistry.tscn", "line_start": 162, "line_end": 170}
+      ],
+      "disposition": "preserve sole live owner and one save binding"
+    },
+    {
+      "id": "VIC-002",
+      "classification": "KEEP",
+      "title": "authoritative_v06_static_parameters",
+      "evidence": [
+        {"path": "scripts/rules/space_syndicate_ruleset_profile_v06.gd", "line_start": 18, "line_end": 24}
+      ],
+      "disposition": "compile exact values into VictorySemanticSpec without rebalance"
+    },
+    {
+      "id": "VIC-003",
+      "classification": "KEEP",
+      "title": "world_effective_timer_policies",
+      "evidence": [
+        {"path": "resources/rules/clock_domain_registry_v06.tres", "line_start": 6, "line_end": 26}
+      ],
+      "disposition": "preserve 10/120 seconds, pause policies, and remaining-time restore"
+    },
+    {
+      "id": "VIC-004",
+      "classification": "KEEP",
+      "title": "unique_highest_region_control",
+      "evidence": [
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 85, "line_end": 132}
+      ],
+      "disposition": "preserve exact cents, 3000bp, tie, and zero-GDP behavior"
+    },
+    {
+      "id": "VIC-005",
+      "classification": "KEEP",
+      "title": "dynamic_top_k_threshold",
+      "evidence": [
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 144, "line_end": 166}
+      ],
+      "disposition": "preserve dynamic A/K and A=0 pause semantics"
+    },
+    {
+      "id": "VIC-006",
+      "classification": "KEEP",
+      "title": "exact_candidate_eligibility",
+      "evidence": [
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 169, "line_end": 257}
+      ],
+      "disposition": "preserve highest-K selection, exact cents gate, and stable district tie order"
+    },
+    {
+      "id": "VIC-007",
+      "classification": "KEEP",
+      "title": "independent_qualification_and_late_join",
+      "evidence": [
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 468, "line_end": 507}
+      ],
+      "disposition": "preserve existing state machine and independent timers"
+    },
+    {
+      "id": "VIC-008",
+      "classification": "KEEP",
+      "title": "sticky_roster_and_no_cooldown",
+      "evidence": [
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 516, "line_end": 526},
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 640, "line_end": 643}
+      ],
+      "disposition": "preserve stable unique roster and direct return to idle when no finalist remains"
+    },
+    {
+      "id": "VIC-009",
+      "classification": "KEEP",
+      "title": "post_settlement_runtime_loop_order",
+      "evidence": [
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 508, "line_end": 515},
+        {"path": "scripts/runtime/runtime_resolution_phase_coordinator.gd", "line_start": 33, "line_end": 39},
+        {"path": "scripts/runtime/runtime_state_commit_coordinator.gd", "line_start": 17, "line_end": 22},
+        {"path": "scripts/runtime/runtime_simulation_step.gd", "line_start": 103, "line_end": 112}
+      ],
+      "disposition": "preserve flow-before-victory endpoint ordering and lifecycle fence"
+    },
+    {
+      "id": "VIC-010",
+      "classification": "KEEP",
+      "title": "exact_three_key_comparator_and_co_victory",
+      "evidence": [
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 14, "line_end": 14},
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 527, "line_end": 533},
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 620, "line_end": 637}
+      ],
+      "disposition": "preserve exact comparator order and exact-tie co-victory"
+    },
+    {
+      "id": "VIC-011",
+      "classification": "KEEP",
+      "title": "special_outcome_semantics",
+      "evidence": [
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 281, "line_end": 304},
+        {"path": "docs/victory_control_runtime_contract.md", "line_start": 92, "line_end": 94}
+      ],
+      "disposition": "preserve semantics behind typed registered operation IDs"
+    },
+    {
+      "id": "VIC-012",
+      "classification": "KEEP",
+      "title": "cash_only_authorized_public_projection",
+      "evidence": [
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 306, "line_end": 360},
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 770, "line_end": 871},
+        {"path": "docs/victory_control_runtime_contract.md", "line_start": 72, "line_end": 82}
+      ],
+      "disposition": "preserve until and unless product authority explicitly changes visibility policy"
+    },
+    {
+      "id": "VIC-013",
+      "classification": "KEEP",
+      "title": "atomic_fail_closed_save_restore",
+      "evidence": [
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 368, "line_end": 434},
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 874, "line_end": 938}
+      ],
+      "disposition": "preserve save schema 2, all-before-apply validation, and fresh-fact cache clearing"
+    },
+    {
+      "id": "VIC-014",
+      "classification": "KEEP",
+      "title": "non_owning_zero_rng_boundary",
+      "evidence": [
+        {"path": "scripts/runtime/victory_control_world_bridge.gd", "line_start": 46, "line_end": 126},
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 941, "line_end": 952},
+        {"path": "scripts/runtime/runtime_victory_port.gd", "line_start": 37, "line_end": 44}
+      ],
+      "disposition": "preserve non-ownership, pure-data inputs, zero RNG, and GameSession final lifecycle ownership"
+    },
+    {
+      "id": "VIC-015",
+      "classification": "MOVE",
+      "title": "audit_visibility_authority_conflict",
+      "evidence": [
+        {"path": "docs/tabletop_rulebook_v06.md", "line_start": 141, "line_end": 148},
+        {"path": "docs/victory_control_runtime_contract.md", "line_start": 72, "line_end": 82}
+      ],
+      "disposition": "resolve product authority before freezing VictorySemanticVisibilityPolicy",
+      "blocker_id": "VBL-001"
+    },
+    {
+      "id": "VIC-016",
+      "classification": "MOVE",
+      "title": "internal_receipt_claims_public_visibility",
+      "evidence": [
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 548, "line_end": 571}
+      ],
+      "disposition": "mark internal/controller-private and expose only typed projections",
+      "blocker_id": "VBL-002"
+    },
+    {
+      "id": "VIC-017",
+      "classification": "MOVE",
+      "title": "internal_and_public_outcome_channels_mixed",
+      "evidence": [
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 364, "line_end": 365},
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 672, "line_end": 679},
+        {"path": "scripts/runtime/game_runtime_coordinator.gd", "line_start": 1177, "line_end": 1180},
+        {"path": "scripts/main.gd", "line_start": 2006, "line_end": 2012}
+      ],
+      "disposition": "route internal receipt only to typed commit sinks and expose public DTOs to Main"
+    },
+    {
+      "id": "VIC-018",
+      "classification": "MOVE",
+      "title": "ai_receives_internal_cash_receipt",
+      "evidence": [
+        {"path": "scripts/runtime/runtime_victory_port.gd", "line_start": 37, "line_end": 44},
+        {"path": "scripts/runtime/game_runtime_coordinator.gd", "line_start": 1790, "line_end": 1805},
+        {"path": "scripts/runtime/ai_runtime_controller.gd", "line_start": 5071, "line_end": 5115}
+      ],
+      "disposition": "provide authorized final AiOutcome projection without opponent private cash"
+    },
+    {
+      "id": "VIC-019",
+      "classification": "MOVE",
+      "title": "public_region_projection_schema_drift",
+      "evidence": [
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 186, "line_end": 228},
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 789, "line_end": 801},
+        {"path": "scripts/presentation/victory_presentation_state_change_receipt.gd", "line_start": 16, "line_end": 24},
+        {"path": "scripts/presentation/victory_presentation_state_change_receipt.gd", "line_start": 155, "line_end": 175}
+      ],
+      "disposition": "freeze one canonical DTO for region control rows and share basis points",
+      "blocker_id": "VBL-003"
+    },
+    {
+      "id": "VIC-020",
+      "classification": "MOVE",
+      "title": "public_schema_version_type_coercion",
+      "evidence": [
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 828, "line_end": 866}
+      ],
+      "disposition": "preserve integer schema version through typed projection"
+    },
+    {
+      "id": "VIC-021",
+      "classification": "MOVE",
+      "title": "main_interprets_victory_state_and_recomputes_rule",
+      "evidence": [
+        {"path": "scripts/main.gd", "line_start": 1937, "line_end": 1985}
+      ],
+      "disposition": "move state, timer, and dynamic rule projection to a player query DTO"
+    },
+    {
+      "id": "VIC-022",
+      "classification": "MOVE",
+      "title": "main_owns_stale_victory_copy",
+      "evidence": [
+        {"path": "scripts/main.gd", "line_start": 2015, "line_end": 2028}
+      ],
+      "disposition": "replace localized rule inference with stable PlayerProjection localization tokens"
+    },
+    {
+      "id": "VIC-023",
+      "classification": "MOVE",
+      "title": "standings_hardcodes_victory_semantics",
+      "evidence": [
+        {"path": "scripts/runtime/standings_public_snapshot_service.gd", "line_start": 51, "line_end": 78},
+        {"path": "scripts/runtime/standings_public_snapshot_service.gd", "line_start": 95, "line_end": 112}
+      ],
+      "disposition": "project rule labels, thresholds, timer labels, and comparison labels from semantic DTOs"
+    },
+    {
+      "id": "VIC-024",
+      "classification": "MOVE",
+      "title": "ai_direct_victory_owner_reads",
+      "evidence": [
+        {"path": "scripts/runtime/ai_runtime_controller.gd", "line_start": 1296, "line_end": 1345}
+      ],
+      "disposition": "replace direct controller queries with authorized AiVictoryObservation"
+    },
+    {
+      "id": "VIC-025",
+      "classification": "MOVE",
+      "title": "ai_rebuilds_ranking_with_hidden_cash_as_zero",
+      "evidence": [
+        {"path": "scripts/runtime/ai_runtime_controller.gd", "line_start": 1347, "line_end": 1373}
+      ],
+      "disposition": "project visible order and uncertainty without fabricated hidden comparator values"
+    },
+    {
+      "id": "VIC-026",
+      "classification": "MOVE",
+      "title": "ai_duplicates_victory_fact_interpretation",
+      "evidence": [
+        {"path": "scripts/runtime/ai_runtime_controller.gd", "line_start": 924, "line_end": 934},
+        {"path": "scripts/runtime/ai_runtime_controller.gd", "line_start": 3754, "line_end": 3792},
+        {"path": "scripts/runtime/ai_runtime_controller.gd", "line_start": 4177, "line_end": 4285}
+      ],
+      "disposition": "move normalized facts/gaps to AI projection while retaining contextual strategy scoring in AI"
+    },
+    {
+      "id": "VIC-027",
+      "classification": "MOVE",
+      "title": "world_bridge_cash_and_hand_alias_reads",
+      "evidence": [
+        {"path": "scripts/runtime/victory_control_world_bridge.gd", "line_start": 77, "line_end": 100},
+        {"path": "scripts/runtime/victory_control_world_bridge.gd", "line_start": 133, "line_end": 146}
+      ],
+      "disposition": "replace with typed cash and hand audit query ports"
+    },
+    {
+      "id": "VIC-028",
+      "classification": "MOVE",
+      "title": "world_bridge_reinterprets_economic_asset_shapes",
+      "evidence": [
+        {"path": "scripts/runtime/victory_control_world_bridge.gd", "line_start": 149, "line_end": 231}
+      ],
+      "disposition": "source owners project typed facility, installation, inventory, and color-GDP audit facts"
+    },
+    {
+      "id": "VIC-029",
+      "classification": "MOVE",
+      "title": "world_bridge_reinterprets_unit_and_financial_aliases",
+      "evidence": [
+        {"path": "scripts/runtime/victory_control_world_bridge.gd", "line_start": 234, "line_end": 300}
+      ],
+      "disposition": "replace with typed owner projections without adding a world-state owner"
+    },
+    {
+      "id": "VIC-030",
+      "classification": "MOVE",
+      "title": "special_outcome_string_dispatch",
+      "evidence": [
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 281, "line_end": 304},
+        {"path": "scripts/runtime/game_runtime_coordinator.gd", "line_start": 1073, "line_end": 1081},
+        {"path": "scripts/runtime/bankruptcy_neutral_estate_world_bridge.gd", "line_start": 122, "line_end": 127}
+      ],
+      "disposition": "dispatch allowlisted typed requests through stable operation IDs"
+    },
+    {
+      "id": "VIC-031",
+      "classification": "MOVE",
+      "title": "duplicated_outcome_commit_sinks",
+      "evidence": [
+        {"path": "scripts/runtime/runtime_victory_port.gd", "line_start": 37, "line_end": 44},
+        {"path": "scripts/runtime/game_runtime_coordinator.gd", "line_start": 1790, "line_end": 1805}
+      ],
+      "disposition": "route normal and special outcomes through one exact-once typed Session/AI/presentation commit sink"
+    },
+    {
+      "id": "VIC-032",
+      "classification": "MOVE",
+      "title": "victory_session_save_receipt_not_cross_validated",
+      "evidence": [
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 368, "line_end": 379},
+        {"path": "scripts/runtime/game_session_runtime_controller.gd", "line_start": 197, "line_end": 210},
+        {"path": "scripts/runtime/v06_save_owner_registry.gd", "line_start": 356, "line_end": 389}
+      ],
+      "disposition": "add cross-section canonical outcome equality preflight without changing envelope shape",
+      "blocker_id": "VBL-005"
+    },
+    {
+      "id": "VIC-033",
+      "classification": "MOVE",
+      "title": "session_local_outcome_id_collides_with_persistent_dedupe",
+      "evidence": [
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 63, "line_end": 69},
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 537, "line_end": 571},
+        {"path": "scripts/runtime/final_settlement_runtime_composition.gd", "line_start": 25, "line_end": 28},
+        {"path": "scripts/runtime/final_settlement_runtime_composition.gd", "line_start": 207, "line_end": 227},
+        {"path": "tests/main_victory_public_privacy_v06_test.gd", "line_start": 123, "line_end": 131}
+      ],
+      "disposition": "add session-scoped identity and typed durable replay event; preserve legacy saved IDs through explicit compatibility",
+      "blocker_id": "VBL-004"
+    },
+    {
+      "id": "VIC-034",
+      "classification": "MOVE",
+      "title": "final_settlement_reinterprets_raw_outcome_fields",
+      "evidence": [
+        {"path": "scripts/runtime/final_settlement_public_source_adapter.gd", "line_start": 18, "line_end": 57},
+        {"path": "scripts/runtime/final_settlement_public_source_adapter.gd", "line_start": 136, "line_end": 149},
+        {"path": "scripts/runtime/final_settlement_public_source_adapter.gd", "line_start": 175, "line_end": 207},
+        {"path": "scripts/runtime/final_settlement_public_snapshot_service.gd", "line_start": 177, "line_end": 201}
+      ],
+      "disposition": "consume VictoryOutcomePublicDTO and stable localization tokens"
+    },
+    {
+      "id": "VIC-035",
+      "classification": "MOVE",
+      "title": "final_settlement_privacy_uses_key_and_text_inference",
+      "evidence": [
+        {"path": "scripts/runtime/final_settlement_public_snapshot_service.gd", "line_start": 312, "line_end": 387}
+      ],
+      "disposition": "keep fail-closed defense during migration, then construct output only from allowlisted typed DTOs"
+    },
+    {
+      "id": "VIC-036",
+      "classification": "REMOVE",
+      "title": "top_n_alias_chain",
+      "evidence": [
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 188, "line_end": 194},
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 248, "line_end": 250},
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 548, "line_end": 552},
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 795, "line_end": 797},
+        {"path": "scripts/runtime/victory_control_runtime_controller.gd", "line_start": 838, "line_end": 840}
+      ],
+      "disposition": "remove after all consumers cut to canonical top_k DTO in one compatibility sunset"
+    },
+    {
+      "id": "VIC-037",
+      "classification": "REMOVE",
+      "title": "removed_cooldown_presentation_branch",
+      "evidence": [
+        {"path": "scripts/runtime/standings_public_snapshot_service.gd", "line_start": 211, "line_end": 221},
+        {"path": "scripts/runtime/standings_public_query_port.gd", "line_start": 125, "line_end": 135}
+      ],
+      "disposition": "delete after fixture migration and never restore runtime cooldown"
+    },
+    {
+      "id": "VIC-038",
+      "classification": "REMOVE",
+      "title": "stale_v05_presentation_identity",
+      "evidence": [
+        {"path": "scripts/runtime/standings_public_snapshot_service.gd", "line_start": 26, "line_end": 39}
+      ],
+      "disposition": "replace with versioned semantic projection identity"
+    },
+    {
+      "id": "VIC-039",
+      "classification": "REMOVE",
+      "title": "legacy_depth_cash_victory_diagnostics",
+      "evidence": [
+        {"path": "data/balance/runtime_balance_targets.json", "line_start": 21, "line_end": 31},
+        {"path": "scripts/balance/runtime_balance_parameters_resource.gd", "line_start": 30, "line_end": 40},
+        {"path": "scripts/balance/runtime_balance_parameters_resource.gd", "line_start": 184, "line_end": 188},
+        {"path": "scripts/balance/runtime_balance_model.gd", "line_start": 122, "line_end": 126},
+        {"path": "scripts/balance/runtime_balance_model.gd", "line_start": 428, "line_end": 456},
+        {"path": "scripts/balance/runtime_balance_model.gd", "line_start": 772, "line_end": 784}
+      ],
+      "disposition": "remove from active diagnostics without changing current economy numbers or v0.6 runtime behavior"
+    }
+  ],
+  "blockers": [
+    {
+      "id": "VBL-001",
+      "severity": "blocker",
+      "category": "product_authority",
+      "summary": "rulebook broad audit disclosure conflicts with runtime cash-only privacy",
+      "required_resolution": "rules authority selects and versions one visibility policy"
+    },
+    {
+      "id": "VBL-002",
+      "severity": "blocker",
+      "category": "privacy",
+      "summary": "internal exact-cash outcome receipt claims public visibility and crosses untyped boundaries",
+      "required_resolution": "separate internal receipt, public DTO, and AI outcome projection"
+    },
+    {
+      "id": "VBL-003",
+      "severity": "blocker",
+      "category": "projection",
+      "summary": "Victory and presentation disagree on region progress field names",
+      "required_resolution": "freeze one typed DTO and add projection parity tests"
+    },
+    {
+      "id": "VBL-004",
+      "severity": "blocker",
+      "category": "identity_replay",
+      "summary": "outcome IDs collide across sessions and durable replay identity is absent",
+      "required_resolution": "session-scope new IDs and emit a typed replay outcome record"
+    },
+    {
+      "id": "VBL-005",
+      "severity": "blocker",
+      "category": "save",
+      "summary": "Victory and Session terminal receipts are not cross-section validated",
+      "required_resolution": "add canonical equality dependency without changing save envelope"
+    }
+  ],
+  "recommended_cutover_order": [
+    "resolve_visibility_authority_and_freeze_victory_semantic_spec",
+    "add_typed_world_facts_and_fix_public_projection_schema",
+    "separate_internal_public_and_ai_outcome_channels",
+    "cut_main_standings_ai_and_final_settlement_to_typed_projections",
+    "add_session_scoped_outcome_replay_identity_and_save_dependency",
+    "remove_top_n_cooldown_v05_and_legacy_cash_victory_residue"
+  ]
+}
