@@ -1567,8 +1567,7 @@ func _wire_card_semantic_source_authorization_port() -> void:
 	if port == null:
 		push_error("GameRuntimeCoordinator requires one CardSemanticSourceAuthorizationPort; authorized semantic reads fail closed.")
 		return
-	if not port.is_ready():
-		push_error("CardSemanticSourceAuthorizationPort is not ready; authorized semantic reads fail closed.")
+	# Readiness is session-bound and is checked by every authorization request.
 
 
 func _wire_monster_wager_cash_commitment_query_port() -> void:

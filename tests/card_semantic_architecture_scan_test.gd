@@ -8,6 +8,7 @@ const AI_RUNTIME_PATH := "res://scripts/runtime/ai_runtime_controller.gd"
 const CATALOG_SERVICE_PATH := "res://scripts/runtime/card_semantic_catalog_service.gd"
 const SOURCE_AUTHORIZATION_PATH := "res://scripts/runtime/card_semantic_source_authorization_port.gd"
 const COORDINATOR_SCENE_PATH := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
+const COORDINATOR_SCRIPT_PATH := "res://scripts/runtime/game_runtime_coordinator.gd"
 
 const SEMANTIC_SOURCE_PATHS := [
 	"res://scripts/cards/semantic/card_semantic_schema_v1.gd",
@@ -236,6 +237,7 @@ func _scan_catalog_service_surface() -> void:
 func _scan_authorized_source_boundary() -> void:
 	var source := FileAccess.get_file_as_string(SOURCE_AUTHORIZATION_PATH)
 	var coordinator_scene := FileAccess.get_file_as_string(COORDINATOR_SCENE_PATH)
+	var coordinator_source := FileAccess.get_file_as_string(COORDINATOR_SCRIPT_PATH)
 	_expect(not source.is_empty(), "authorized semantic source port is readable")
 	_expect(
 		_count_occurrences(
@@ -243,6 +245,12 @@ func _scan_authorized_source_boundary() -> void:
 			'[node name="CardSemanticSourceAuthorizationPort"'
 		) == 1,
 		"production coordinator composes exactly one source authorization port"
+	)
+	_expect(
+		not coordinator_source.contains(
+			"CardSemanticSourceAuthorizationPort is not ready"
+		),
+		"pre-session fail-closed readiness is not reported as a startup error"
 	)
 	for forbidden in [
 		"world_session_state_path",
