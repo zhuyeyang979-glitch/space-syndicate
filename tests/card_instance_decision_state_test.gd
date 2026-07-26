@@ -279,6 +279,13 @@ func _test_exact_fields(valid_state: Dictionary) -> void:
 		"card_instance_decision_state.fields_invalid",
 		"validate rejects unknown field"
 	)
+	for invalid_viewer in ["player.1", ["player.1"], 1]:
+		var invalid_viewer_input := _valid_input()
+		invalid_viewer_input["viewer_ref"] = invalid_viewer
+		_expect(
+			STATE.build(invalid_viewer_input).is_empty(),
+			"build rejects non-dictionary viewer refs"
+		)
 	for owner_field in ["instance_revision", "state_fingerprint"]:
 		var caller_sealed := _valid_input()
 		caller_sealed[owner_field] = "f".repeat(64)

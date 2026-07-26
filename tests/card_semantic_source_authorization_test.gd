@@ -105,6 +105,7 @@ func _run() -> void:
 		"current own-hand card"
 	)
 	_run_positive_contract(source, semantic_catalog, positive)
+	_run_authorized_envelope_schema_checks(positive)
 
 	_authorize_rejected_without_cache_delta(
 		fixture,
@@ -146,6 +147,7 @@ func _run() -> void:
 	_run_impure_source_rejections(fixture, capability)
 	_run_resigned_bundle_rejection(fixture)
 	_run_restore_and_identity_stale_checks(fixture, capability)
+	_run_journal_eviction_check(fixture, capability)
 	_run_surface_and_save_checks(source)
 	_run_debug_privacy_check(source)
 	_expect(
@@ -345,6 +347,40 @@ func _run_positive_contract(
 	)
 
 
+func _run_authorized_envelope_schema_checks(bundle: Dictionary) -> void:
+	var envelope := bundle.get("authorized_envelope_ref", {}) as Dictionary
+	var unsealed := envelope.duplicate(true)
+	unsealed.erase("envelope_fingerprint")
+	_expect(
+		AuthorizedCardSemanticEnvelopeV1.build(unsealed) == envelope,
+		"authorized envelope rebuild is deterministic"
+	)
+	_expect(
+		not bool(AuthorizedCardSemanticEnvelopeV1.validate(7).get(
+			"valid", true
+		)),
+		"authorized envelope rejects non-dictionary input"
+	)
+	var scalar_viewer := unsealed.duplicate(true)
+	scalar_viewer["viewer_ref"] = "player.1"
+	_expect(
+		AuthorizedCardSemanticEnvelopeV1.build(scalar_viewer).is_empty(),
+		"authorized envelope rejects scalar viewer refs"
+	)
+	var unsupported_source := unsealed.duplicate(true)
+	unsupported_source["source_kind"] = "public_rack"
+	_expect(
+		AuthorizedCardSemanticEnvelopeV1.build(unsupported_source).is_empty(),
+		"authorized envelope schema remains own-hand only"
+	)
+	var unknown_field := unsealed.duplicate(true)
+	unknown_field["hidden_owner"] = "player.2"
+	_expect(
+		AuthorizedCardSemanticEnvelopeV1.build(unknown_field).is_empty(),
+		"authorized envelope rejects unknown value channels"
+	)
+
+
 func _run_record_mutation_checks(
 	fixture: Dictionary,
 	capability: AiActorHandInventoryCapability
@@ -477,10 +513,29 @@ func _run_actor_slot_and_instance_rejections(
 		),
 		"hostile capability rebind has zero compiler/cache delta"
 	)
+	var debug_before_human := source.debug_snapshot()
 	_authorize_rejected_without_cache_delta(
 		fixture, "own_hand", capability, 0, 0,
 		"source-human-actor", CardSemanticSourceAuthorizationPort.REASON_SOURCE_ATTESTATION_FAILED,
 		"human actor"
+	)
+	var debug_after_human := source.debug_snapshot()
+	_expect(
+		int(debug_after_human.get("hand_snapshot_query_count", -1))
+			== int(debug_before_human.get("hand_snapshot_query_count", -2)) + 1
+			and int(debug_after_human.get("source_revalidation_count", -1))
+				== int(debug_before_human.get("source_revalidation_count", -2))
+			and int(debug_after_human.get(
+				"actor_state_query_proxy_count", -1
+			)) == int(debug_before_human.get(
+				"actor_state_query_proxy_count", -2
+			)) + 1
+			and int(debug_after_human.get(
+				"card_inventory_policy_query_lower_bound_count", -1
+			)) == int(debug_before_human.get(
+				"card_inventory_policy_query_lower_bound_count", -2
+			)),
+		"rejected actor records one query attempt without phantom revalidation or inventory work"
 	)
 	_authorize_rejected_without_cache_delta(
 		fixture, "own_hand", capability, AI_ACTOR_INDEX, 99,
@@ -711,6 +766,71 @@ func _run_restore_and_identity_stale_checks(
 		"old bundle after session restore"
 	)
 	_replace_ai_slots(fixture, defaults)
+
+
+func _run_journal_eviction_check(
+	fixture: Dictionary,
+	capability: AiActorHandInventoryCapability
+) -> void:
+	var defaults := fixture.get("default_slots", []) as Array
+	_replace_ai_slots(fixture, defaults)
+	var source := fixture.get("source") as CardSemanticSourceAuthorizationPort
+	var semantic_catalog := fixture.get("semantic_catalog") \
+		as CardSemanticCatalogService
+	var debug_before := source.debug_snapshot()
+	var cache_before := _catalog_metrics(semantic_catalog.validation_snapshot())
+	var first_bundle: Dictionary = {}
+	var newest_bundle: Dictionary = {}
+	var all_authorized := true
+	for index in range(CardSemanticSourceAuthorizationPort.JOURNAL_LIMIT + 1):
+		var bundle := source.authorize_own_hand_card(
+			capability,
+			AI_ACTOR_INDEX,
+			0,
+			"source-journal-boundary-%03d" % index
+		)
+		if not _accepted_bundle(bundle):
+			all_authorized = false
+		if index == 0:
+			first_bundle = bundle
+		newest_bundle = bundle
+	var debug_after := source.debug_snapshot()
+	var cache_after := _catalog_metrics(semantic_catalog.validation_snapshot())
+	var expected_evictions := maxi(
+		0,
+		int(debug_before.get("journal_entry_count", 0))
+			+ CardSemanticSourceAuthorizationPort.JOURNAL_LIMIT + 1
+			- CardSemanticSourceAuthorizationPort.JOURNAL_LIMIT
+	)
+	_expect(all_authorized, "journal boundary requests all authorize")
+	_expect(
+		int(debug_after.get("journal_entry_count", -1))
+			== CardSemanticSourceAuthorizationPort.JOURNAL_LIMIT
+			and int(debug_after.get("journal_eviction_count", -1))
+				== int(debug_before.get("journal_eviction_count", -2))
+					+ expected_evictions,
+		"fingerprint-only authorization journal stays at its closed limit"
+	)
+	_expect(
+		int(cache_after.get("compile_count", -1))
+			== int(cache_before.get("compile_count", -2))
+			and int(cache_after.get("cache_entry_count", -1))
+				== int(cache_before.get("cache_entry_count", -2))
+			and int(cache_after.get("cache_hit_count", -1))
+				== int(cache_before.get("cache_hit_count", -2))
+					+ CardSemanticSourceAuthorizationPort.JOURNAL_LIMIT + 1,
+		"journal pressure uses catalog cache hits with compile delta zero"
+	)
+	_validate_rejected_without_cache_delta(
+		fixture,
+		first_bundle,
+		CardSemanticSourceAuthorizationPort.REASON_REQUEST_NOT_JOURNALED,
+		"evicted oldest journal request"
+	)
+	_expect(
+		source.validate_authorized_bundle(newest_bundle) == newest_bundle,
+		"newest journal request remains current and idempotent"
+	)
 
 
 func _run_surface_and_save_checks(

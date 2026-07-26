@@ -47,13 +47,16 @@ static func build(unsealed: Dictionary) -> Dictionary:
 	if not WIRE.is_closed_data(unsealed) \
 			or not WIRE.exact_fields(unsealed, BUILD_FIELDS):
 		return {}
+	var viewer_ref_value: Variant = unsealed.get("viewer_ref")
+	if not (viewer_ref_value is Dictionary):
+		return {}
 	var state := {
 		"schema_version": unsealed.get("schema_version"),
 		"instance_id": unsealed.get("instance_id"),
 		"card_id": unsealed.get("card_id"),
 		"source_kind": unsealed.get("source_kind"),
 		"visibility_scope_id": unsealed.get("visibility_scope_id"),
-		"viewer_ref": (unsealed.get("viewer_ref", {}) as Dictionary).duplicate(true),
+		"viewer_ref": (viewer_ref_value as Dictionary).duplicate(true),
 		"session_id": unsealed.get("session_id"),
 		"session_revision": unsealed.get("session_revision"),
 		"source_revision": unsealed.get("source_revision"),

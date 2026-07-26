@@ -91,6 +91,7 @@ var _validation_success_count := 0
 var _validation_failure_count := 0
 var _journal_eviction_count := 0
 var _hand_snapshot_query_count := 0
+var _successful_hand_snapshot_query_count := 0
 var _source_revalidation_count := 0
 var _catalog_compile_request_count := 0
 var _catalog_spec_authorization_count := 0
@@ -202,6 +203,7 @@ func validate_authorized_bundle(bundle: Dictionary) -> Dictionary:
 	)
 	if attestation.is_empty():
 		return _validation_reject(REASON_SOURCE_ATTESTATION_STALE)
+	_successful_hand_snapshot_query_count += 1
 	var material := _source_material(attestation)
 	if not bool(material.get("valid", false)):
 		return _validation_reject(REASON_SOURCE_ATTESTATION_STALE)
@@ -273,7 +275,7 @@ func debug_snapshot() -> Dictionary:
 		"source_revalidation_count": _source_revalidation_count,
 		"actor_state_query_proxy_count": _hand_snapshot_query_count,
 		"card_inventory_policy_query_lower_bound_count": (
-			_hand_snapshot_query_count * 3
+			_successful_hand_snapshot_query_count * 3
 		),
 		"catalog_compile_request_count": _catalog_compile_request_count,
 		"catalog_spec_authorization_count": _catalog_spec_authorization_count,
@@ -302,13 +304,18 @@ func _authorize_own_hand_card(
 		actor_index,
 		slot_index
 	)
+	if attestation.is_empty():
+		return _reject(REASON_SOURCE_ATTESTATION_FAILED)
+	_successful_hand_snapshot_query_count += 1
 	_hand_snapshot_query_count += 1
 	_source_revalidation_count += 1
-	if attestation.is_empty() \
-			or not hand_port.is_current_slot_attestation(
-				capability,
-				attestation
-			):
+	var source_is_current := hand_port.is_current_slot_attestation(
+		capability,
+		attestation
+	)
+	if source_is_current:
+		_successful_hand_snapshot_query_count += 1
+	else:
 		return _reject(REASON_SOURCE_ATTESTATION_FAILED)
 	var material := _source_material(attestation)
 	if not bool(material.get("valid", false)):
