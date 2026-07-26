@@ -67,8 +67,22 @@ func _run() -> void:
 			and float(result.get("projection_400_ms", 60000.0))
 				< float(result.get("projection_time_limit_ms", 0.0))
 			and float(result.get("projection_400_ms", 60000.0))
-				<= float(result.get("projection_100_ms", 0.0)) * 5.0 + 50.0,
-		"100 and 400 authorized projections stay bounded and linear"
+				- float(result.get("projection_100_ms", 0.0))
+				<= float(result.get("projection_100_ms", 0.0)) * 4.0 + 50.0
+			and float(result.get("authorized_to_direct_ratio", 60000.0))
+				<= float(result.get(
+					"authorized_to_direct_ratio_limit", 0.0
+				)),
+		"authorized projection throughput is bounded against the direct fixture"
+	)
+	_expect(
+		int(result.get("bundle_build_iterations", -1)) == 400
+			and int(result.get("bundle_build_success_count", -1)) == 400
+			and float(result.get("bundle_build_100_ms", -1.0)) > 0.0
+			and float(result.get("bundle_build_400_ms", 60000.0))
+				< float(result.get("bundle_build_time_limit_ms", 0.0))
+			and int(result.get("bundle_build_compile_request_delta", -1)) == 400,
+		"400 real authorized bundles build through cached catalog membership"
 	)
 	_expect(
 		bool(result.get("debug_no_raw_leak", false)),

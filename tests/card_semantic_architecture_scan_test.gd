@@ -246,10 +246,13 @@ func _scan_authorized_source_boundary() -> void:
 		) == 1,
 		"production coordinator composes exactly one source authorization port"
 	)
+	var source_wiring_block := _function_block(
+		coordinator_source,
+		"_wire_card_semantic_source_authorization_port"
+	)
 	_expect(
-		not coordinator_source.contains(
-			"CardSemanticSourceAuthorizationPort is not ready"
-		),
+		not source_wiring_block.is_empty()
+			and not source_wiring_block.contains(".is_ready("),
 		"pre-session fail-closed readiness is not reported as a startup error"
 	)
 	for forbidden in [
@@ -537,6 +540,21 @@ func _count_occurrences(source: String, token: String) -> int:
 	if token.is_empty():
 		return 0
 	return source.split(token).size() - 1
+
+
+func _function_block(source: String, function_id: String) -> String:
+	var lines: Array[String] = []
+	var collecting := false
+	for raw_line in source.split("\n"):
+		var line := str(raw_line)
+		var stripped := line.strip_edges()
+		if stripped.begins_with("func "):
+			if collecting:
+				break
+			collecting = stripped.begins_with("func %s(" % function_id)
+		if collecting:
+			lines.append(line)
+	return "\n".join(lines)
 
 
 func _count_nonliteral_receiver_calls(source: String) -> int:
