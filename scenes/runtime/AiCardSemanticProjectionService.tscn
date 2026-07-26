@@ -4,4 +4,5 @@
 
 [node name="AiCardSemanticProjectionService" type="Node"]
 script = ExtResource("1_projection")
+source_authorization_port_path = NodePath("../CardSemanticSourceAuthorizationPort")
 editor_description = "Read-only pure-data AI card semantic candidate projector."

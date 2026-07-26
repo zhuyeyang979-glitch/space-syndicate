@@ -13,6 +13,11 @@ const SCHEMA_VERSION := 1
 const INFORMATION_SCOPE_ID := "actor_private"
 const ACTIVATION_COST_KEYS := CARD_SEMANTIC_SCHEMA_V1.ASSET_KEYS
 const OUTCOME_DIMENSIONS := OUTCOME_VECTOR_V1.DIMENSIONS
+const AUTHORIZED_SOURCE_RESULT_KEYS := [
+	"schema_version", "accepted", "reason_id", "authorized_envelope_ref",
+	"semantic_spec", "instance_decision_state", "authorization_receipt",
+	"bundle_fingerprint",
+]
 const CANDIDATE_KEYS := [
 	"schema_version", "action_id", "card_id", "source_slot", "source_revision",
 	"world_revision", "target_identity", "legal", "rejection_reason_id",
@@ -21,6 +26,7 @@ const CANDIDATE_KEYS := [
 ]
 
 @export var semantic_catalog_path := NodePath("../CardSemanticCatalogService")
+@export var source_authorization_port_path: NodePath
 
 var _projection_request_count := 0
 var _projection_success_count := 0
@@ -33,10 +39,54 @@ var _unauthorized_provenance_count := 0
 var _stale_revision_count := 0
 var _unavailable_instance_count := 0
 var _semantic_catalog_service: CardSemanticCatalogService
+var _source_authorization_port: CardSemanticSourceAuthorizationPort
 
 
 func _ready() -> void:
 	_resolve_semantic_catalog_service()
+	_resolve_source_authorization_port()
+
+
+func project_authorized_source(
+	authorized_bundle: Dictionary,
+	clipped_world_projection: Dictionary
+) -> Array:
+	_projection_request_count += 1
+	var source_authorization_port := _resolve_source_authorization_port()
+	if source_authorization_port == null:
+		_unauthorized_provenance_count += 1
+		return []
+	var authorization := source_authorization_port.validate_authorized_bundle(
+		authorized_bundle
+	)
+	if not _authorized_source_result_is_accepted(authorization):
+		_unauthorized_provenance_count += 1
+		return []
+	var envelope := authorization.get("authorized_envelope_ref", {}) as Dictionary
+	var semantic_spec := authorization.get("semantic_spec", {}) as Dictionary
+	var decision_state := authorization.get(
+		"instance_decision_state", {}
+	) as Dictionary
+	if not CARD_SEMANTIC_SCHEMA_V1.is_pure_data(semantic_spec):
+		_invalid_spec_count += 1
+		return []
+	var state_error: String = CardInstanceDecisionStateV1.validation_error(
+		decision_state
+	)
+	if not state_error.is_empty():
+		_invalid_instance_count += 1
+		return []
+	var instance_state: Dictionary = CardInstanceDecisionStateV1.to_ai_projection_input(
+		decision_state
+	)
+	return _project_neutral_candidates(
+		semantic_spec,
+		instance_state,
+		clipped_world_projection,
+		CardInstanceDecisionStateV1.is_available(decision_state),
+		envelope,
+		decision_state
+	)
 
 
 func project_candidates(
@@ -44,6 +94,7 @@ func project_candidates(
 	instance_state: Dictionary,
 	world_projection: Dictionary
 ) -> Array:
+	# Compatibility/test-only entry point for legacy detached fixtures.
 	_projection_request_count += 1
 	if not CARD_SEMANTIC_SCHEMA_V1.is_pure_data(semantic_spec):
 		_invalid_spec_count += 1
@@ -57,6 +108,22 @@ func project_candidates(
 		_unauthorized_provenance_count += 1
 		return []
 	var authorized_spec := authorization.get("spec", {}) as Dictionary
+	return _project_neutral_candidates(
+		authorized_spec,
+		instance_state,
+		world_projection,
+		INPUT_V1.instance_is_available(instance_state)
+	)
+
+
+func _project_neutral_candidates(
+	authorized_spec: Dictionary,
+	instance_state: Dictionary,
+	world_projection: Dictionary,
+	instance_available: bool,
+	authorized_envelope_ref: Dictionary = {},
+	decision_state: Dictionary = {}
+) -> Array:
 	if str(authorized_spec.get("runtime_readiness_id", "")) != "active":
 		_non_executable_readiness_count += 1
 		return []
@@ -67,13 +134,23 @@ func project_candidates(
 	if not observation_error.is_empty():
 		_count_boundary_error(observation_error, true)
 		return []
+	if not authorized_envelope_ref.is_empty():
+		var source_boundary_error := _authorized_source_boundary_error(
+			authorized_envelope_ref,
+			decision_state,
+			instance_state,
+			world_projection
+		)
+		if not source_boundary_error.is_empty():
+			_count_boundary_error(source_boundary_error, false)
+			return []
 	var boundary_error: String = INPUT_V1.cross_boundary_error(
 		authorized_spec, instance_state, world_projection
 	)
 	if not boundary_error.is_empty():
 		_count_boundary_error(boundary_error, false)
 		return []
-	if not INPUT_V1.instance_is_available(instance_state):
+	if not instance_available:
 		_unavailable_instance_count += 1
 		return []
 	var candidates: Array = []
@@ -122,6 +199,92 @@ func _resolve_semantic_catalog_service() -> CardSemanticCatalogService:
 		semantic_catalog_path
 	) as CardSemanticCatalogService
 	return _semantic_catalog_service
+
+
+func _resolve_source_authorization_port() -> CardSemanticSourceAuthorizationPort:
+	if _source_authorization_port != null and is_instance_valid(
+		_source_authorization_port
+	):
+		return _source_authorization_port
+	if source_authorization_port_path.is_empty():
+		return null
+	_source_authorization_port = get_node_or_null(
+		source_authorization_port_path
+	) as CardSemanticSourceAuthorizationPort
+	return _source_authorization_port
+
+
+func _authorized_source_result_is_accepted(result: Dictionary) -> bool:
+	if not CARD_SEMANTIC_SCHEMA_V1.is_pure_data(result) \
+			or not _exact_keys(result, AUTHORIZED_SOURCE_RESULT_KEYS) \
+			or not (result.get("schema_version") is int) \
+			or int(result.get("schema_version", -1)) != SCHEMA_VERSION \
+			or not (result.get("accepted") is bool) \
+			or not bool(result.get("accepted", false)) \
+			or str(result.get("reason_id", "")) != "authorized":
+		return false
+	for key in [
+		"authorized_envelope_ref", "semantic_spec",
+		"instance_decision_state", "authorization_receipt",
+	]:
+		if not (result.get(key) is Dictionary) \
+				or (result.get(key) as Dictionary).is_empty():
+			return false
+	return result.get("bundle_fingerprint") is String
+
+
+func _authorized_source_boundary_error(
+	envelope: Dictionary,
+	decision_state: Dictionary,
+	instance: Dictionary,
+	world: Dictionary
+) -> String:
+	var envelope_viewer := envelope.get("viewer_ref", {}) as Dictionary
+	var state_viewer := decision_state.get("viewer_ref", {}) as Dictionary
+	var viewer_actor_id := str(world.get("viewer_actor_id", ""))
+	if viewer_actor_id != str(envelope_viewer.get("actor_ref_id", "")) \
+			or viewer_actor_id != str(state_viewer.get("actor_ref_id", "")):
+		return "unauthorized_viewer_identity"
+	if str(world.get("source_kind", "")) != str(envelope.get("source_kind", "")) \
+			or str(world.get("source_kind", "")) \
+				!= str(decision_state.get("source_kind", "")):
+		return "unauthorized_source_kind"
+	if world.get("source_revision") != envelope.get("hand_source_revision") \
+			or world.get("source_revision") != decision_state.get("source_revision"):
+		return "stale_source_revision"
+	if str(world.get("card_id", "")) != str(envelope.get("card_id", "")) \
+			or str(world.get("card_id", "")) \
+				!= str(decision_state.get("card_id", "")) \
+			or str(world.get("card_id", "")) != str(instance.get("card_id", "")):
+		return "unauthorized_card_identity"
+	if str(world.get("instance_id", "")) \
+			!= str(envelope.get("runtime_instance_id", "")) \
+			or str(world.get("instance_id", "")) \
+				!= str(decision_state.get("instance_id", "")) \
+			or str(world.get("instance_id", "")) \
+				!= str(instance.get("instance_id", "")):
+		return "unauthorized_instance_identity"
+	if int(world.get("source_slot", -1)) != int(envelope.get("source_slot", -2)) \
+			or int(world.get("source_slot", -1)) \
+				!= int(decision_state.get("source_slot", -2)) \
+			or int(world.get("source_slot", -1)) \
+				!= int(instance.get("source_slot", -2)):
+		return "stale_source_slot"
+	if world.get("instance_revision") != envelope.get("instance_revision") \
+			or world.get("instance_revision") \
+				!= decision_state.get("instance_revision") \
+			or world.get("instance_revision") != instance.get("instance_revision"):
+		return "stale_instance_revision"
+	return ""
+
+
+func _exact_keys(value: Dictionary, expected: Array) -> bool:
+	if value.size() != expected.size():
+		return false
+	for key in expected:
+		if not value.has(str(key)):
+			return false
+	return true
 
 
 func _count_boundary_error(error_id: String, observation_validation: bool) -> void:
