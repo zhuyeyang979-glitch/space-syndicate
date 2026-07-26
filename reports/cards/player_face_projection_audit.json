@@ -1,0 +1,1180 @@
+{
+  "schema_version": "player_face_projection_audit.v1",
+  "audit_id": "space_syndicate.card_semantic.wave1.player_face_projection",
+  "status": "design_complete_no_production_changes",
+  "baseline": {
+    "branch": "codex/card-semantic-wave1-f-face-59756a2",
+    "commit": "59756a291f811a064726f59aed27efecc3590c9a",
+    "short_commit": "59756a2"
+  },
+  "scope": {
+    "phase": "wave_1_presentation_audit_and_design",
+    "production_changes": false,
+    "owned_files": [
+      "reports/cards/player_face_projection_audit.json",
+      "reports/cards/player_face_projection_audit.md"
+    ],
+    "surfaces": [
+      "card_view_snapshot",
+      "card_presentation_and_query_services",
+      "codex_browser_and_detail",
+      "hand_and_hover_detail",
+      "market_rack_and_preview",
+      "public_resolution_track",
+      "right_inspector"
+    ]
+  },
+  "executive_verdict": {
+    "current_single_player_face_contract_exists": false,
+    "direct_alias_cleanup_ready": false,
+    "dto_design_ready_for_implementation_planning": true,
+    "privacy_leak_observed_in_audited_outputs": false,
+    "summary": "The baseline has multiple presentation dictionaries and two catalog eras. Static definition facts, viewer-scoped instance state, and legal actions are repeatedly flattened, while UI and presentation services infer rule meaning from aliases, kind values, numeric fields, and localized text. The next implementation phase should introduce one read-only PlayerFaceDTO projection boundary before migrating consumers or removing aliases."
+  },
+  "catalog_observations": {
+    "active_v06_public_catalog": {
+      "path": "data/cards/card_runtime_catalog_v06.json",
+      "card_count": 348,
+      "family_count": 87,
+      "category_count": 7,
+      "keyword_record_count": 1084,
+      "keyword_records_with_keyword_id": 0,
+      "cards_with_player_localization_reference": 0,
+      "cards_with_counterable_payload_field": 28,
+      "cards_with_direct_interaction_payload_field": 28,
+      "cards_with_typed_duration_like_payload": 248,
+      "cards_with_top_level_conditions": 0,
+      "cards_with_top_level_effect_steps": 0,
+      "unique_player_timing_strings": 3,
+      "unique_player_duration_strings": 7
+    },
+    "semantic_split": {
+      "codex": "Reads CardRuntimeCatalogV06Resource machine/player records for all 348 cards.",
+      "table_hand": "CardRuntimeCatalogService is preferred; v0.6 normalization is facility-only and every other category falls back.",
+      "market": "RegionSupply stores copied v0.6 public fields, then DistrictSupplyViewerQueryPort merges them into a legacy catalog definition before CardPresentationRuntimeService interprets the result.",
+      "consequence": "The same card identity can receive different cost, target, route, keyword, and effect presentation depending on surface."
+    }
+  },
+  "findings": [
+    {
+      "id": "PF-001",
+      "severity": "high",
+      "title": "Codex and table surfaces use different semantic authorities",
+      "classification": "authority_split",
+      "evidence": [
+        "scripts/runtime/card_codex_public_source_service.gd:195",
+        "scripts/presentation/table_presentation_viewmodel_query.gd:632",
+        "scripts/presentation/table_presentation_viewmodel_query.gd:638",
+        "scripts/presentation/district_supply_viewer_query_port.gd:177",
+        "scripts/runtime/game_runtime_coordinator.gd:5597"
+      ],
+      "finding": "Codex projects the v0.6 machine/player catalog, but the table prefers the legacy catalog and only normalizes v0.6 facilities. Region supply copies selected v0.6 fields and the market then merges those copies into a legacy definition.",
+      "impact": "A card can show different costs, target semantics, effect copy, category, or duration in codex, market, and hand. Presentation parity cannot be guaranteed by renaming fields.",
+      "required_change": "Choose the active Ruleset/card runtime catalog as the sole static definition input to PlayerFaceDTO. Legacy records may be migration inputs only and may not remain a parallel production source."
+    },
+    {
+      "id": "PF-002",
+      "severity": "high",
+      "title": "Cost aliases collapse acquisition and activation semantics",
+      "classification": "semantic_alias_collision",
+      "evidence": [
+        "scripts/viewmodels/card_view_snapshot.gd:14",
+        "scripts/CardUI.gd:65",
+        "scripts/runtime/card_presentation_runtime_service.gd:205",
+        "scripts/runtime/card_codex_public_source_service.gd:209",
+        "scripts/runtime/card_codex_public_source_service.gd:227",
+        "scripts/runtime/district_supply_snapshot_service.gd:552"
+      ],
+      "finding": "The chain cost -> price -> play_cost is accepted as one display value. In authored legacy resources cost means purchase price; in hand composition cost is activation text; in market preview cost is a current acquisition offer; codex is the only audited path that consistently labels purchase_cost_text and play_cost_text separately.",
+      "impact": "Players can mistake the market payment for the later play payment, or see a live quote where a base cost was intended. Code cannot identify which authority supplied a bare cost value.",
+      "required_change": "Require typed definition.acquisition_cost and definition.activation_cost. Put a dynamic listing or locked quote only in instance_state.acquisition_offer. Reject bare cost, price, and play_cost at the DTO boundary."
+    },
+    {
+      "id": "PF-003",
+      "severity": "high",
+      "title": "Presentation services interpret gameplay rules",
+      "classification": "presentation_rule_interpretation",
+      "evidence": [
+        "scripts/runtime/card_presentation_runtime_service.gd:27",
+        "scripts/runtime/card_presentation_runtime_service.gd:451",
+        "scripts/runtime/card_presentation_runtime_service.gd:478",
+        "scripts/runtime/card_presentation_runtime_service.gd:551",
+        "scripts/runtime/card_presentation_runtime_service.gd:577",
+        "scripts/runtime/card_presentation_runtime_service.gd:668",
+        "scripts/runtime/card_presentation_runtime_service.gd:897"
+      ],
+      "finding": "CardPresentationRuntimeService derives route, use case, category, type, target wording, facts, and duration from effect kind and sparse numeric fields. It also asks financial controllers to fill missing terms and converts legacy turns to seconds.",
+      "impact": "Presentation becomes a second rule oracle. New effect kinds can silently fall through to generic or incorrect copy, and presentation can disagree with runtime resolution or the active rulebook.",
+      "required_change": "Domain/catalog owners must emit canonical presentation semantics. PlayerFaceProjectionService may format typed values and localization references but must not classify effect kinds, derive rules, fill financial terms, or convert retired turn fields."
+    },
+    {
+      "id": "PF-004",
+      "severity": "high",
+      "title": "Card UI and inspector synthesize semantics from text",
+      "classification": "ui_rule_interpretation",
+      "evidence": [
+        "scripts/CardUI.gd:546",
+        "scripts/CardUI.gd:563",
+        "scripts/CardUI.gd:571",
+        "scripts/CardUI.gd:724",
+        "scripts/ui/right_inspector.gd:193",
+        "scripts/ui/right_inspector.gd:261"
+      ],
+      "finding": "CardUI invents target, no-threshold, duration, persistence, and use-case chips when keywords_authoritative is false. RightInspector repeats target/effect/duration aliases and classifies use cases by Chinese and English substrings.",
+      "impact": "Missing semantic data is rendered as confident player-facing rules. Localization changes can change inferred meaning, and two components can disagree on the same card.",
+      "required_change": "UI consumers must render DTO fields only. Missing required semantics must fail closed with a safe unavailable state; substring and default semantic inference must be removed."
+    },
+    {
+      "id": "PF-005",
+      "severity": "high",
+      "title": "Static definitions, instance state, and legal actions are flattened",
+      "classification": "ownership_mixing",
+      "evidence": [
+        "scripts/runtime/card_presentation_runtime_service.gd:205",
+        "scripts/viewmodels/card_view_snapshot.gd:6",
+        "scripts/presentation/table_presentation_viewmodel_query.gd:211",
+        "scripts/runtime/game_table_viewmodel_runtime_service.gd:287",
+        "scripts/presentation/district_supply_viewer_query_port.gd:198",
+        "scripts/runtime/district_supply_snapshot_service.gd:368"
+      ],
+      "finding": "Hand dictionaries combine definition copy, slot identity, eligibility, disabled reason, drag state, and action commands. Market dictionaries combine copied definition facts, listing offer, quote status, inventory feasibility, and purchase actions. CardViewSnapshot normalizes aliases but does not identify field ownership; its id is a hand slot identity rather than the card_id.",
+      "impact": "Stale actions can be mistaken for durable card facts, static public surfaces can accidentally inherit viewer-private fields, and identity cannot be safely joined across surfaces.",
+      "required_change": "PlayerFaceDTO must use strict definition, instance_state, legal_actions, and presentation namespaces with independent revisions and scopes. No field may move between namespaces as a fallback."
+    },
+    {
+      "id": "PF-006",
+      "severity": "high",
+      "title": "The v0.6 player record is readable but not structurally complete",
+      "classification": "semantic_schema_gap",
+      "evidence": [
+        "scripts/cards/card_runtime_catalog_v06_resource.gd:16",
+        "scripts/cards/card_runtime_catalog_v06_resource.gd:103",
+        "data/cards/card_runtime_catalog_v06.json"
+      ],
+      "finding": "The 348-card catalog separates machine purchase_cash/asset_cost from player copy, but timing, target, effect, duration, visibility, and keywords are localized prose. It has no top-level ordered effect steps or conditions, and counterability exists only inside selected effect payloads.",
+      "impact": "A projection service cannot produce complete timing, target, condition, duration, and counterability semantics without parsing prose or effect_payload, both of which would recreate presentation rule authority.",
+      "required_change": "Add or derive the required semantic face fields at the authoritative card-definition boundary, with rule-owner review. Unestablished fields must report RULE_AUTHORITY_NOT_ESTABLISHED and remain unavailable rather than be guessed."
+    },
+    {
+      "id": "PF-007",
+      "severity": "medium",
+      "title": "Alias fallbacks hide invalid or missing data",
+      "classification": "fail_open_normalization",
+      "evidence": [
+        "scripts/viewmodels/card_view_snapshot.gd:14",
+        "scripts/CardUI.gd:65",
+        "scripts/ui/hand_rack.gd:130",
+        "scripts/viewmodels/card_codex_detail_snapshot.gd:29"
+      ],
+      "finding": "Cost, effect, type, rank, identity, display mode, and status accept long fallback chains and generic defaults. Hand identity can be synthesized from name/cost/type/rank/index when no stable id exists.",
+      "impact": "Malformed producers continue rendering and make migration defects look valid. A localized or dynamic field can become an identity key and trigger unstable node reuse.",
+      "required_change": "Validate PlayerFaceDTO strictly, require stable card_id and opaque instance_id where applicable, and quarantine aliases in one temporary migration adapter with telemetry and a deletion gate."
+    },
+    {
+      "id": "PF-008",
+      "severity": "medium",
+      "title": "Keywords, localization, icons, and colors lack stable presentation references",
+      "classification": "presentation_identity_gap",
+      "evidence": [
+        "scripts/runtime/card_codex_public_source_service.gd:7",
+        "scripts/runtime/card_codex_public_source_service.gd:25",
+        "scripts/runtime/card_presentation_runtime_service.gd:426",
+        "scripts/runtime/card_presentation_runtime_service.gd:713",
+        "scripts/presentation/player_text_spec_v05.gd:1"
+      ],
+      "finding": "All 1,084 v0.6 keyword records use display text/tooltip/accent without keyword_id, and no v0.6 player record has a localization reference. Category glyphs, type labels, and colors are hardcoded in multiple services.",
+      "impact": "Keywords cannot be joined across locales, copy changes can break deduplication, and icon/color choices can accidentally become semantic classifiers.",
+      "required_change": "Use stable keyword_id and LocalizedTextRef values compatible with the existing PlayerTextSpec model. Keep icon_id, color_token_id, and illustration_key inside presentation and declare them non-authoritative."
+    },
+    {
+      "id": "PF-009",
+      "severity": "medium",
+      "title": "Privacy gates are strong but tied to surface-specific dictionaries",
+      "classification": "privacy_boundary_risk",
+      "evidence": [
+        "scripts/runtime/district_supply_snapshot_service.gd:5",
+        "scripts/runtime/district_supply_snapshot_service.gd:60",
+        "scripts/runtime/district_supply_snapshot_service.gd:171",
+        "scripts/runtime/card_codex_public_source_adapter.gd:5",
+        "scripts/presentation/table_presentation_viewmodel_query.gd:91"
+      ],
+      "finding": "At baseline, district supply explicitly downgrades unauthorized subjects to public browse, validates viewer-private fields, strips quote credentials, and codex rejects private keys. Hand composition is reached only through an authorized self private projection. These protections are not represented by CardViewSnapshot or CardPresentationRuntimeService themselves.",
+      "impact": "A new shared face adapter could flatten a viewer-private hand or quote payload into a public card dictionary and bypass protections that currently live in outer services.",
+      "required_change": "PlayerFaceDTO must carry explicit scope and revision metadata, apply field allowlists before localization, and prohibit rival cash, hands, targets, owner truth, quote credentials, future supply, and AI internals. Existing privacy tests must remain gates during every migration step."
+    },
+    {
+      "id": "PF-010",
+      "severity": "medium",
+      "title": "Surface emphasis is inconsistent",
+      "classification": "decision_hierarchy_mismatch",
+      "evidence": [
+        "scripts/runtime/district_supply_snapshot_service.gd:415",
+        "scripts/runtime/card_presentation_runtime_service.gd:219",
+        "scripts/runtime/card_codex_public_snapshot_service.gd:49",
+        "scripts/runtime/game_table_viewmodel_runtime_service.gd:287"
+      ],
+      "finding": "Market preview places a live acquisition offer into the generic card cost, hand uses activation text under the same key, and detail/codex compose further summaries and tactical advice from different fields.",
+      "impact": "The player cannot rely on one visual position to mean one economic decision, and detail views may omit the distinction that the codex source already knows.",
+      "required_change": "Adopt the surface emphasis profiles in this audit: market emphasizes acquisition offer, hand emphasizes activation cost and legal play state, and detail/codex label both costs while showing structured timing, targets, conditions, effects, duration, and counterability."
+    }
+  ],
+  "player_face_dto": {
+    "contract_id": "space_syndicate.player_face.v1",
+    "read_only": true,
+    "producer_boundary": "PlayerFaceProjectionService",
+    "mutation_methods": [],
+    "required_root_fields": [
+      "schema_version",
+      "projection",
+      "definition",
+      "instance_state",
+      "legal_actions",
+      "presentation"
+    ],
+    "localized_text_ref": {
+      "required_fields": [
+        "message_key",
+        "args"
+      ],
+      "optional_fields": [
+        "assistive_message_key"
+      ],
+      "rules": [
+        "message_key and assistive_message_key are stable ASCII identifiers",
+        "args are pure data and validated against the localization catalog",
+        "raw localized text is not parsed by projection or UI",
+        "visibility filtering runs before localization resolution"
+      ]
+    },
+    "projection": {
+      "fields": {
+        "surface_id": "market|hand|detail|codex|public_track",
+        "emphasis_profile_id": "market_acquisition|hand_activation|detail_complete|codex_reference|track_public",
+        "scope_id": "public|viewer_private|spectator_sanitized|revealed_at_endgame",
+        "definition_revision": "non_empty_string",
+        "state_revision": "non_negative_integer_or_null",
+        "authorization_revision": "positive_integer_or_null"
+      },
+      "invariants": [
+        "viewer_private requires authorization_revision",
+        "codex has public scope, null state_revision, null authorization_revision, null instance_state, and no legal actions",
+        "public_track never carries owner-private instance state or actions",
+        "surface_id changes emphasis only and never changes definition semantics"
+      ]
+    },
+    "definition": {
+      "source": "active_ruleset_card_definition_owner",
+      "required_fields": [
+        "identity",
+        "taxonomy",
+        "acquisition_cost",
+        "activation_cost",
+        "timing",
+        "targets",
+        "conditions",
+        "effect_steps",
+        "duration",
+        "counterability",
+        "information_scope",
+        "keywords",
+        "decision_hint_ref"
+      ],
+      "identity": {
+        "card_id": "stable_ascii_id",
+        "family_id": "stable_ascii_id",
+        "rank_value": "integer_1_to_4",
+        "rank_roman": "I|II|III|IV",
+        "name_ref": "LocalizedTextRef",
+        "family_name_ref": "LocalizedTextRef"
+      },
+      "taxonomy": {
+        "category_id": "stable_ascii_id",
+        "category_ref": "LocalizedTextRef",
+        "type_id": "stable_ascii_id",
+        "type_ref": "LocalizedTextRef",
+        "industry_id": "stable_ascii_id",
+        "industry_ref": "LocalizedTextRef",
+        "route_id": "stable_ascii_id",
+        "route_ref": "LocalizedTextRef"
+      },
+      "acquisition_cost": {
+        "meaning": "What is paid or reserved to obtain the card before it enters inventory.",
+        "required_fields": [
+          "acquisition_kind_id",
+          "base_components",
+          "label_ref"
+        ],
+        "acquisition_kind_id": "free|market_cash|starter_or_market|not_acquirable",
+        "base_components": "CostComponent[]",
+        "label_ref": "LocalizedTextRef"
+      },
+      "activation_cost": {
+        "meaning": "What is paid or reserved when the owned card is played, installed, submitted, or activated.",
+        "required_fields": [
+          "components",
+          "payment_timing_id",
+          "label_ref"
+        ],
+        "components": "CostComponent[]",
+        "payment_timing_id": "on_submit|on_commit|on_resolution|none",
+        "label_ref": "LocalizedTextRef"
+      },
+      "cost_component": {
+        "required_fields": [
+          "component_id",
+          "resource_id",
+          "amount",
+          "operation_id",
+          "refundable"
+        ],
+        "resource_id": "cash|life|energy|industry|technology|commerce|shipping|generic|other_stable_resource_id",
+        "amount": "non_negative_integer_or_exact_number",
+        "operation_id": "spend|reserve",
+        "refundable": "boolean"
+      },
+      "timing": {
+        "required_fields": [
+          "window_id",
+          "delay_seconds",
+          "timing_ref"
+        ],
+        "window_id": "stable_rule_window_id",
+        "delay_seconds": "non_negative_number_or_null",
+        "timing_ref": "LocalizedTextRef"
+      },
+      "target_entry": {
+        "required_fields": [
+          "target_id",
+          "kind_id",
+          "selection_mode_id",
+          "minimum_count",
+          "maximum_count",
+          "filter_id",
+          "target_ref",
+          "public_on_commit"
+        ],
+        "selection_mode_id": "player_selects|system_resolves|bound_instance|none",
+        "minimum_count": "non_negative_integer",
+        "maximum_count": "integer_not_less_than_minimum",
+        "filter_id": "stable_rule_filter_id",
+        "target_ref": "LocalizedTextRef",
+        "public_on_commit": "boolean"
+      },
+      "condition_entry": {
+        "required_fields": [
+          "condition_id",
+          "kind_id",
+          "operator_id",
+          "value",
+          "unit_id",
+          "condition_ref",
+          "authority_id"
+        ],
+        "operator_id": "eq|neq|gte|lte|contains|exists|custom_stable_operator_id",
+        "value": "pure_data",
+        "unit_id": "stable_unit_id_or_none",
+        "condition_ref": "LocalizedTextRef",
+        "authority_id": "stable_domain_owner_id"
+      },
+      "effect_step": {
+        "required_fields": [
+          "order",
+          "step_id",
+          "effect_kind_id",
+          "target_id",
+          "summary_ref",
+          "detail_ref",
+          "public_parameters"
+        ],
+        "order": "contiguous_integer_starting_at_1",
+        "step_id": "stable_within_card_definition",
+        "effect_kind_id": "stable_rule_effect_id",
+        "target_id": "target_entry_id_or_none",
+        "summary_ref": "LocalizedTextRef",
+        "detail_ref": "LocalizedTextRef",
+        "public_parameters": "allowlisted_pure_data",
+        "invariant": "Presentation and UI never construct effect steps by reading effect_payload or prose."
+      },
+      "duration": {
+        "required_fields": [
+          "kind_id",
+          "seconds",
+          "termination_event_ids",
+          "duration_ref"
+        ],
+        "kind_id": "instant|seconds|until_event|while_bound|run_persistent",
+        "seconds": "non_negative_number_or_null",
+        "termination_event_ids": "stable_rule_event_id[]",
+        "duration_ref": "LocalizedTextRef",
+        "invariant": "No turn-to-second conversion occurs in presentation."
+      },
+      "counterability": {
+        "required_fields": [
+          "mode_id",
+          "response_window_id",
+          "window_seconds",
+          "response_keyword_ids",
+          "counterability_ref"
+        ],
+        "mode_id": "counterable|not_counterable|conditional",
+        "response_window_id": "stable_rule_window_id_or_none",
+        "window_seconds": "non_negative_number_or_null",
+        "response_keyword_ids": "stable_keyword_id[]",
+        "counterability_ref": "LocalizedTextRef"
+      },
+      "information_scope": {
+        "required_fields": [
+          "definition_scope_id",
+          "target_commit_scope_id",
+          "resolution_scope_ids",
+          "owner_identity_policy_id",
+          "information_ref"
+        ],
+        "definition_scope_id": "public",
+        "target_commit_scope_id": "public|viewer_private|target_private|none",
+        "resolution_scope_ids": "public|viewer_private|target_private|revealed_at_endgame[]",
+        "owner_identity_policy_id": "anonymous_until_authoritative_reveal|public|not_applicable",
+        "information_ref": "LocalizedTextRef"
+      },
+      "keyword_entry": {
+        "required_fields": [
+          "keyword_id",
+          "label_ref",
+          "tooltip_ref"
+        ],
+        "keyword_id": "stable_ascii_id",
+        "label_ref": "LocalizedTextRef",
+        "tooltip_ref": "LocalizedTextRef"
+      },
+      "decision_hint_ref": {
+        "type": "LocalizedTextRef",
+        "authority": "authored_non_rule_guidance",
+        "invariant": "Optional strategy guidance is explicitly authored and never inferred from kind, route, or localized effect text."
+      }
+    },
+    "instance_state": {
+      "nullable": true,
+      "source": "viewer_scoped_zone_or_listing_owner",
+      "required_when_present": [
+        "instance_id",
+        "zone_id",
+        "scope_id",
+        "revision",
+        "acquisition_offer",
+        "cooldown",
+        "lock_state",
+        "queue_state"
+      ],
+      "fields": {
+        "instance_id": "opaque_stable_instance_or_listing_id",
+        "zone_id": "market|hand|queue|active|history|installed|bound",
+        "scope_id": "public|viewer_private|revealed_at_endgame",
+        "revision": "non_negative_integer_or_stable_revision_string",
+        "acquisition_offer": "AcquisitionOffer|null",
+        "cooldown": "TimedState|null",
+        "lock_state": "TimedState|null",
+        "queue_state": "PublicQueueState|null"
+      },
+      "acquisition_offer": {
+        "required_fields": [
+          "offer_kind_id",
+          "components",
+          "locked",
+          "remaining_seconds",
+          "availability_code",
+          "scope_id"
+        ],
+        "offer_kind_id": "public_preview|viewer_locked_quote",
+        "components": "CostComponent[]",
+        "locked": "boolean",
+        "remaining_seconds": "non_negative_number_or_null",
+        "availability_code": "stable_public_or_viewer_safe_code",
+        "scope_id": "public|viewer_private",
+        "forbidden_fields": [
+          "quote_binding_fingerprint",
+          "quote_fingerprint",
+          "quote_id",
+          "quote_key",
+          "supply_revision"
+        ]
+      },
+      "invariants": [
+        "Codex and static detail omit instance_state.",
+        "A public market offer contains public price and availability only.",
+        "A viewer-private hand state belongs only to the authorized local viewer.",
+        "Owner identity is never inferred from instance_id or zone state.",
+        "Selection and hover state remain local UI state and are not card semantics."
+      ]
+    },
+    "legal_actions": {
+      "source": "authoritative_action_or_eligibility_query",
+      "entry_required_fields": [
+        "action_id",
+        "action_kind_id",
+        "enabled",
+        "reason_code",
+        "label_ref",
+        "detail_ref",
+        "authority_revision",
+        "expires_in_seconds",
+        "scope_id"
+      ],
+      "entry_fields": {
+        "action_id": "stable_command_id",
+        "action_kind_id": "play|activate|buy|request_quote|inspect|reorder|other_stable_action_kind",
+        "enabled": "boolean",
+        "reason_code": "stable_sanitized_reason_code",
+        "label_ref": "LocalizedTextRef",
+        "detail_ref": "LocalizedTextRef",
+        "authority_revision": "non_negative_integer_or_stable_revision_string",
+        "expires_in_seconds": "non_negative_number_or_null",
+        "scope_id": "public|viewer_private"
+      },
+      "invariants": [
+        "UI never derives enabled from visible costs, targets, conditions, or instance state.",
+        "Codex has no legal actions.",
+        "Public track actions are inspect/navigation only unless a separate public authority explicitly enables another command.",
+        "Reason args are allowlisted and never include exact cash, hand contents, private target, private discard, owner truth, or AI data."
+      ]
+    },
+    "presentation": {
+      "source": "presentation_token_catalog",
+      "required_fields": [
+        "category_icon_id",
+        "route_icon_id",
+        "industry_color_token_id",
+        "keyword_token_ids",
+        "illustration_key"
+      ],
+      "field_types": {
+        "category_icon_id": "stable_presentation_token_id",
+        "route_icon_id": "stable_presentation_token_id",
+        "industry_color_token_id": "stable_presentation_token_id",
+        "keyword_token_ids": "keyword_id_to_presentation_token_id_map",
+        "illustration_key": "stable_optional_presentation_key"
+      },
+      "invariants": [
+        "No raw glyph or color value determines category, route, legality, target, cost, or effect.",
+        "Rules and AI ignore the entire presentation object.",
+        "Missing tokens use neutral visual fallback without changing semantic fields."
+      ]
+    }
+  },
+  "surface_emphasis": [
+    {
+      "surface_id": "market",
+      "primary_order": [
+        "definition.identity.name_ref",
+        "definition.identity.rank_roman",
+        "instance_state.acquisition_offer",
+        "legal_actions.buy_or_request_quote",
+        "definition.activation_cost",
+        "definition.targets",
+        "definition.effect_steps[0].summary_ref"
+      ],
+      "requirements": [
+        "The current public preview or viewer-locked acquisition offer is the dominant cost.",
+        "Activation cost is labeled separately and remains visible in preview/detail.",
+        "Quote lock and expiry are instance state, not definition facts.",
+        "Public browse never exposes exact cash, hand size, discard feasibility, or private purchase eligibility."
+      ]
+    },
+    {
+      "surface_id": "hand",
+      "primary_order": [
+        "definition.identity.name_ref",
+        "definition.identity.rank_roman",
+        "definition.activation_cost",
+        "definition.targets",
+        "definition.effect_steps[0].summary_ref",
+        "legal_actions.play_or_activate",
+        "instance_state.cooldown_or_lock"
+      ],
+      "requirements": [
+        "Activation cost and current legal play state are primary.",
+        "Acquisition cost is omitted from the mini face or relegated to full reference detail.",
+        "The face never derives playability from displayed costs or conditions.",
+        "Only the authorized viewer receives hand instance state and actions."
+      ]
+    },
+    {
+      "surface_id": "detail",
+      "primary_order": [
+        "definition.identity",
+        "definition.acquisition_cost",
+        "definition.activation_cost",
+        "definition.timing",
+        "definition.targets",
+        "definition.conditions",
+        "definition.effect_steps",
+        "definition.duration",
+        "definition.counterability",
+        "definition.information_scope",
+        "legal_actions_if_viewer_owned_instance"
+      ],
+      "requirements": [
+        "Both costs are explicitly labeled and never concatenated into one cost field.",
+        "Effect steps preserve authored order.",
+        "Current legal actions appear only when detail is opened from an authorized live instance.",
+        "Static detail has no viewer-private state."
+      ]
+    },
+    {
+      "surface_id": "codex",
+      "primary_order": [
+        "definition.identity",
+        "definition.taxonomy",
+        "definition.acquisition_cost",
+        "definition.activation_cost",
+        "definition.timing",
+        "definition.targets",
+        "definition.conditions",
+        "definition.effect_steps",
+        "definition.duration",
+        "definition.counterability",
+        "definition.information_scope",
+        "definition.keywords",
+        "family_rank_ladder"
+      ],
+      "requirements": [
+        "Codex is public static reference data only.",
+        "It has no instance state, legal action, current quote, viewer cash, hand data, or owner data.",
+        "I-IV entries use the same definition projection contract and preserve family/rank identity.",
+        "Tactical guidance is authored decision_hint_ref, not inferred from kind or route."
+      ]
+    },
+    {
+      "surface_id": "public_track",
+      "primary_order": [
+        "definition.identity.name_ref",
+        "public_instance_state.queue_state",
+        "committed_public_target",
+        "definition.effect_steps[0].summary_ref",
+        "public_aftermath_receipt"
+      ],
+      "requirements": [
+        "Owner identity remains anonymous until an authoritative reveal.",
+        "Precommit private target and private discard are omitted.",
+        "Navigation and inspect commands are separated from gameplay actions."
+      ]
+    }
+  ],
+  "deprecation_map": [
+    {
+      "legacy_fields": [
+        "id"
+      ],
+      "replacement": "definition.identity.card_id or instance_state.instance_id",
+      "rule": "The producer must choose one meaning; no fallback between definition and instance identity.",
+      "removal_gate": "No production face synthesizes identity from slot or display fields."
+    },
+    {
+      "legacy_fields": [
+        "card_name",
+        "display_name",
+        "name"
+      ],
+      "replacement": "definition.identity.card_id plus definition.identity.name_ref",
+      "rule": "Machine identity and localized display text are separate.",
+      "removal_gate": "All consumers join by card_id and resolve name_ref."
+    },
+    {
+      "legacy_fields": [
+        "cost",
+        "price",
+        "price_cash",
+        "purchase_cost",
+        "purchase_cost_text",
+        "purchase_cash"
+      ],
+      "replacement": "definition.acquisition_cost and instance_state.acquisition_offer",
+      "rule": "Base acquisition terms and a current offer are never represented by the same unqualified scalar.",
+      "removal_gate": "Market snapshots contain no bare cost or price face field."
+    },
+    {
+      "legacy_fields": [
+        "asset_cost",
+        "play_cash",
+        "play_cash_cost",
+        "play_cost",
+        "play_cost_text"
+      ],
+      "replacement": "definition.activation_cost.components",
+      "rule": "Spend versus reserve and refundable status are typed per component.",
+      "removal_gate": "Hand and detail render activation_cost only."
+    },
+    {
+      "legacy_fields": [
+        "description",
+        "display_text",
+        "effect",
+        "effect_text",
+        "full_effect",
+        "full_effect_text",
+        "quick_effect_compact",
+        "quick_effect_full",
+        "rules_text_full",
+        "short_effect",
+        "summary",
+        "text"
+      ],
+      "replacement": "definition.effect_steps[].summary_ref and detail_ref",
+      "rule": "Ordered authored steps replace prose fallback chains; UI may truncate resolved copy but not parse it.",
+      "removal_gate": "No production UI chooses effect meaning by alias precedence."
+    },
+    {
+      "legacy_fields": [
+        "card_type",
+        "category",
+        "category_id",
+        "kind",
+        "subtype_label",
+        "type",
+        "type_label"
+      ],
+      "replacement": "definition.taxonomy; effect_kind remains domain-internal",
+      "rule": "Category, type, industry, route, and effect kind are distinct stable identifiers.",
+      "removal_gate": "UI never maps kind to category or player-facing type."
+    },
+    {
+      "legacy_fields": [
+        "art_stats",
+        "card_stats",
+        "level",
+        "rank",
+        "rank_label",
+        "speed",
+        "stats",
+        "tier"
+      ],
+      "replacement": "definition.identity.rank_value/rank_roman; typed timing and public effect values",
+      "rule": "Rank is not a generic stats slot and timing is not a rank fallback.",
+      "removal_gate": "CardFace accepts rank_roman only for the rank badge."
+    },
+    {
+      "legacy_fields": [
+        "requires_target",
+        "requires_target_monster",
+        "target",
+        "target_kind",
+        "target_text",
+        "target_type",
+        "targets_monster",
+        "targets_player"
+      ],
+      "replacement": "definition.targets[]",
+      "rule": "Target kind, selection mode, cardinality, filter, and reveal policy are explicit.",
+      "removal_gate": "No substring, boolean cascade, or default-current-district target inference remains."
+    },
+    {
+      "legacy_fields": [
+        "condition",
+        "play_requirement",
+        "play_requirement_text",
+        "required_share_percent",
+        "requirement",
+        "requirements"
+      ],
+      "replacement": "definition.conditions[] and legal_actions[].reason_code/detail_ref",
+      "rule": "Static play conditions and current failed eligibility are separate.",
+      "removal_gate": "UI does not infer no-threshold from an absent condition."
+    },
+    {
+      "legacy_fields": [
+        "duration",
+        "duration_seconds",
+        "end_condition",
+        "seconds",
+        "termination",
+        "turns"
+      ],
+      "replacement": "definition.duration and instance_state timed states",
+      "rule": "Definition duration and current remaining time are separate; presentation never converts turns.",
+      "removal_gate": "No presentation code reads retired turn duration fields."
+    },
+    {
+      "legacy_fields": [
+        "family",
+        "lane",
+        "purpose",
+        "route",
+        "table_use",
+        "use_case",
+        "when_to_use"
+      ],
+      "replacement": "definition.identity.family_id, definition.taxonomy.route_id, and definition.decision_hint_ref",
+      "rule": "Card family, route taxonomy, and optional strategy guidance are not interchangeable.",
+      "removal_gate": "No use-case inference from localized type or effect text remains."
+    },
+    {
+      "legacy_fields": [
+        "chips",
+        "keyword_chips",
+        "keyword_explanations",
+        "keywords"
+      ],
+      "replacement": "definition.keywords[] plus presentation.keyword_token_ids",
+      "rule": "Keywords have stable IDs and localization refs; rendered chips are output, not semantic input.",
+      "removal_gate": "Every release keyword has keyword_id and localization entries."
+    },
+    {
+      "legacy_fields": [
+        "action_state",
+        "actionable",
+        "actions",
+        "block_reason",
+        "disabled_reason",
+        "drop_enabled",
+        "drop_label",
+        "play_state",
+        "why"
+      ],
+      "replacement": "instance_state plus legal_actions[]",
+      "rule": "Only an action authority sets enabled and sanitized reason data.",
+      "removal_gate": "Card renderers contain no legality or action-state formulas."
+    },
+    {
+      "legacy_fields": [
+        "public_scope",
+        "visibility",
+        "visibility_scope",
+        "visibility_text"
+      ],
+      "replacement": "projection.scope_id and definition.information_scope",
+      "rule": "Projection authorization and authored reveal policy are separate concepts.",
+      "removal_gate": "All DTO fields pass scope allowlists before localization."
+    },
+    {
+      "legacy_fields": [
+        "accent",
+        "fg",
+        "bg",
+        "icon",
+        "route_icon",
+        "theme_color"
+      ],
+      "replacement": "presentation stable token IDs",
+      "rule": "Raw visual values are presentation-only and never classify rules.",
+      "removal_gate": "Shared token catalog is the only production glyph/color source."
+    }
+  ],
+  "consumer_inventory": [
+    {
+      "migration_order": 0,
+      "consumer_id": "canonical_v06_card_definition",
+      "paths": [
+        "data/cards/card_runtime_catalog_v06.json",
+        "scripts/cards/card_runtime_catalog_v06_resource.gd"
+      ],
+      "role": "static_source",
+      "current_shape": "machine/player/developer",
+      "current_scope": "public_definition_plus_developer_metadata",
+      "migration": "Author and validate missing structured face semantics and stable localization/keyword IDs. Keep developer metadata out of DTO."
+    },
+    {
+      "migration_order": 1,
+      "consumer_id": "player_face_projection_service",
+      "paths": [
+        "new_phase_2_owner"
+      ],
+      "role": "single_projection_owner",
+      "current_shape": "absent",
+      "current_scope": "n/a",
+      "migration": "Implement strict DTO validation, scope filtering, localization refs, token refs, and detached read-only output. Compare against old projections in tests only; do not create a production fallback."
+    },
+    {
+      "migration_order": 2,
+      "consumer_id": "codex_public_source",
+      "paths": [
+        "scripts/runtime/card_codex_public_source_service.gd",
+        "scripts/runtime/card_codex_public_source_adapter.gd"
+      ],
+      "role": "public_static_query",
+      "current_shape": "v06 facts allowlist",
+      "current_scope": "public",
+      "migration": "Adopt definition-only DTO first. Preserve the existing private-key rejection and remove duplicated fact aliases after 348-card parity."
+    },
+    {
+      "migration_order": 3,
+      "consumer_id": "codex_browser_and_detail",
+      "paths": [
+        "scripts/runtime/card_codex_public_snapshot_service.gd",
+        "scripts/viewmodels/card_codex_browser_snapshot.gd",
+        "scripts/viewmodels/card_codex_detail_snapshot.gd",
+        "scripts/ui/card_codex_browser.gd",
+        "scripts/ui/card_codex_detail.gd",
+        "scripts/ui/codex/card_codex_thumbnail_card.gd"
+      ],
+      "role": "public_static_renderer",
+      "current_shape": "surface-specific dictionaries",
+      "current_scope": "public",
+      "migration": "Render definition fields and authored decision_hint_ref. Remove cost/effect/rank aliases and route/kind tactical inference."
+    },
+    {
+      "migration_order": 4,
+      "consumer_id": "region_supply_listing_source",
+      "paths": [
+        "scripts/runtime/game_runtime_coordinator.gd",
+        "scripts/runtime/region_supply_runtime_controller.gd"
+      ],
+      "role": "public_listing_owner",
+      "current_shape": "copied PUBLIC_CARD_FIELDS plus listing state",
+      "current_scope": "public",
+      "migration": "Store card_id and authoritative listing facts only. Resolve static definition through PlayerFaceProjectionService instead of persisting copied effect/type/target text."
+    },
+    {
+      "migration_order": 5,
+      "consumer_id": "district_supply_query_and_snapshot",
+      "paths": [
+        "scripts/presentation/district_supply_viewer_query_port.gd",
+        "scripts/runtime/district_supply_snapshot_service.gd"
+      ],
+      "role": "public_and_viewer_private_market_projection",
+      "current_shape": "definition_plus_offer_plus_inventory_and_action_state",
+      "current_scope": "public_or_authorized_viewer_private",
+      "migration": "Project definition DTO, then attach scoped acquisition_offer and legal actions. Keep public downgrade, recursive forbidden keys, and quote credential stripping. Move exact own cash/hand aggregates to separate player-resource UI projection."
+    },
+    {
+      "migration_order": 6,
+      "consumer_id": "district_supply_renderers",
+      "paths": [
+        "scripts/ui/district_supply_drawer.gd",
+        "scripts/ui/district_supply_market_card.gd",
+        "scripts/ui/district_supply_preview_card.gd"
+      ],
+      "role": "market_renderer",
+      "current_shape": "market card and preview dictionaries",
+      "current_scope": "public_or_authorized_viewer_private",
+      "migration": "Adopt market_acquisition emphasis, render offer and action explicitly, and remove generic CardFace cost injection."
+    },
+    {
+      "migration_order": 7,
+      "consumer_id": "table_hand_query",
+      "paths": [
+        "scripts/presentation/table_presentation_viewmodel_query.gd"
+      ],
+      "role": "authorized_hand_source_and_public_track_source",
+      "current_shape": "legacy_or_facility_v06_definition plus eligibility",
+      "current_scope": "viewer_private_hand_and_public_track",
+      "migration": "Cut all categories to the canonical v0.6 definition, attach owner-authorized instance state and eligibility actions, and remove facility-only normalization/fallback."
+    },
+    {
+      "migration_order": 8,
+      "consumer_id": "card_presentation_runtime_service",
+      "paths": [
+        "scripts/runtime/card_presentation_runtime_service.gd"
+      ],
+      "role": "current_semantic_interpreter",
+      "current_shape": "compose_card/compose_hand_card/compose_resolution dictionaries",
+      "current_scope": "mixed",
+      "migration": "Reduce to DTO-to-view styling or retire. Remove kind classification, controller term enrichment, duration conversion, target inference, and semantic chip construction."
+    },
+    {
+      "migration_order": 9,
+      "consumer_id": "table_viewmodel_and_right_inspector",
+      "paths": [
+        "scripts/runtime/game_table_viewmodel_runtime_service.gd",
+        "scripts/ui/right_inspector.gd"
+      ],
+      "role": "hand_detail_and_public_track_assembly",
+      "current_shape": "flattened card, requirements, actions, and detail",
+      "current_scope": "mixed_by_surface",
+      "migration": "Render DTO namespaces directly, preserve owner-private actions only for authorized hand instances, and remove text/type use-case inference."
+    },
+    {
+      "migration_order": 10,
+      "consumer_id": "hand_renderers",
+      "paths": [
+        "scripts/ui/player_board.gd",
+        "scripts/ui/hand_rack.gd",
+        "scripts/ui/game_screen.gd"
+      ],
+      "role": "viewer_private_hand_renderer_and_input",
+      "current_shape": "CardViewSnapshot-compatible dictionary",
+      "current_scope": "viewer_private",
+      "migration": "Use stable instance_id for node identity, hand_activation emphasis, and typed legal action IDs. Keep hover and selection as local view state."
+    },
+    {
+      "migration_order": 11,
+      "consumer_id": "shared_card_face_renderer",
+      "paths": [
+        "scripts/CardUI.gd",
+        "scripts/ui/card_face.gd"
+      ],
+      "role": "shared_face_renderer",
+      "current_shape": "alias-heavy dictionary",
+      "current_scope": "depends_on_caller",
+      "migration": "Accept only validated PlayerFaceDTO plus emphasis profile. Remove semantic defaults, substring parsing, keyword synthesis, and alias normalization."
+    },
+    {
+      "migration_order": 12,
+      "consumer_id": "public_resolution_track",
+      "paths": [
+        "scripts/presentation/table_presentation_viewmodel_query.gd",
+        "scripts/runtime/game_table_viewmodel_runtime_service.gd"
+      ],
+      "role": "public_history_and_queue_renderer",
+      "current_shape": "public entry plus recomposed card definition",
+      "current_scope": "public_with_authorized_my_card_badge",
+      "migration": "Use public-track DTO and separately sanitized public receipts. Owner identity and precommit private target remain absent; reorder action remains owner-authorized and separate."
+    },
+    {
+      "migration_order": 13,
+      "consumer_id": "legacy_snapshot_and_alias_retirement",
+      "paths": [
+        "scripts/viewmodels/card_view_snapshot.gd",
+        "scripts/viewmodels/card_codex_detail_snapshot.gd"
+      ],
+      "role": "compatibility_normalizers",
+      "current_shape": "fallback aliases",
+      "current_scope": "unspecified",
+      "migration": "Delete CardViewSnapshot production use and remove remaining alias fallbacks after every production consumer is DTO-only. Keep migration parsing test-only if historical saves require it."
+    }
+  ],
+  "privacy_invariants": {
+    "allowed_projection_scopes": [
+      "public",
+      "revealed_at_endgame",
+      "spectator_sanitized",
+      "viewer_private"
+    ],
+    "always_forbidden_in_player_face_dto": [
+      "ai_plan",
+      "ai_reason",
+      "ai_score",
+      "decision_samples",
+      "developer",
+      "effect_payload",
+      "exact_rival_cash",
+      "future_supply_bag",
+      "hidden_owner",
+      "owner_truth",
+      "pressure_bucket",
+      "private_discard",
+      "private_route_plan",
+      "private_target",
+      "quote_binding_fingerprint",
+      "quote_fingerprint",
+      "quote_id",
+      "raw_world",
+      "rival_hand",
+      "supply_revision"
+    ],
+    "rules": [
+      "Public and codex projections are invariant under private world mutations.",
+      "Viewer-private instance state and legal actions are emitted only for the authorized local subject and carry authorization revision.",
+      "Exact own cash and aggregate hand counters belong to a separate player-resource projection, not PlayerFaceDTO.",
+      "A public market face may show public current price and source availability but not whether a rival can afford or receive the card.",
+      "A target identity is emitted only when the authoritative rule declares it public at commit or resolution.",
+      "Anonymous owner identity remains omitted until an authoritative reveal receipt changes scope.",
+      "Localization args are sanitized after privacy filtering and may not contain machine-only or private keys."
+    ],
+    "baseline_strengths_to_preserve": [
+      "DistrictSupplySnapshotService validates public versus viewer-private shape recursively.",
+      "DistrictSupplyViewerQueryPort downgrades unauthorized subjects to public browse.",
+      "CardCodexPublicSourceAdapter rejects private and retired fields.",
+      "Table hand sources require authorized self-view private projection.",
+      "Public market output strips quote credentials and future supply order."
+    ]
+  },
+  "acceptance_gates": [
+    {
+      "gate_id": "dto_schema_validation",
+      "requirement": "Every produced DTO validates exact fields, types, enum values, contiguous effect order, stable IDs, and pure data; unknown fields fail closed."
+    },
+    {
+      "gate_id": "v06_catalog_semantic_completeness",
+      "requirement": "All 348 cards produce complete public definition DTOs or an explicit RULE_AUTHORITY_NOT_ESTABLISHED result; no projection inference fills missing rules."
+    },
+    {
+      "gate_id": "cross_surface_definition_parity",
+      "requirement": "For one card_id and definition_revision, market, hand, detail, codex, and public track share the same canonical definition hash regardless of emphasis profile."
+    },
+    {
+      "gate_id": "cost_semantics",
+      "requirement": "Fixtures prove acquisition base, public offer, locked quote, activation spend, and refundable reserve cannot occupy or overwrite each other's fields."
+    },
+    {
+      "gate_id": "surface_emphasis_snapshots",
+      "requirement": "Market emphasizes acquisition offer; hand emphasizes activation and legal play state; detail/codex label both costs and render ordered semantics."
+    },
+    {
+      "gate_id": "privacy_sentinel_matrix",
+      "requirement": "Public, viewer-private, spectator-sanitized, and revealed-at-endgame DTOs are tested with rival cash, hand, discard, target, owner, AI, quote, and future-bag sentinels."
+    },
+    {
+      "gate_id": "private_invariance",
+      "requirement": "Mutating rival private state leaves canonical public and codex DTO JSON byte-equivalent."
+    },
+    {
+      "gate_id": "localization_and_keyword_identity",
+      "requirement": "Every text reference and keyword_id resolves through validated stable keys; pseudolocalization does not change semantic IDs or layout ownership."
+    },
+    {
+      "gate_id": "no_ui_rule_interpretation",
+      "requirement": "Negative source gates reject kind/text substring classification, absent-condition no-threshold defaults, target boolean cascades, and presentation turn conversion."
+    },
+    {
+      "gate_id": "legal_action_authority",
+      "requirement": "UI action enabled state matches action-owner receipts under stale revisions, target changes, quote expiry, cooldown, and forced-decision blocks; renderers perform no legality calculation."
+    },
+    {
+      "gate_id": "alias_retirement",
+      "requirement": "Production consumers contain no fallback reads for the deprecation map, and CardViewSnapshot has zero production callers before deletion."
+    },
+    {
+      "gate_id": "read_only_and_no_duplicate_owner",
+      "requirement": "Projection and render paths do not mutate catalogs, player state, quotes, inventory, queues, clocks, or rule terms, and no second definition or action owner is introduced."
+    }
+  ],
+  "risks": [
+    {
+      "risk_id": "R-001",
+      "level": "high",
+      "risk": "Treating v0.6 player prose as complete semantics would move rule parsing into the new projection service.",
+      "mitigation": "Require typed semantic authoring and rule-owner confirmation before category migration."
+    },
+    {
+      "risk_id": "R-002",
+      "level": "high",
+      "risk": "A dual production fallback could preserve the current catalog split indefinitely and produce different faces by surface.",
+      "mitigation": "Use old/new comparison in tests only; migrate one consumer atomically and delete its old production path in the same change."
+    },
+    {
+      "risk_id": "R-003",
+      "level": "high",
+      "risk": "Flattening market offer or hand eligibility into definition fields can leak viewer-private state to public/codex surfaces.",
+      "mitigation": "Enforce namespace and scope validation before localization and rendering; retain sentinel tests."
+    },
+    {
+      "risk_id": "R-004",
+      "level": "medium",
+      "risk": "Financial cards currently obtain missing terms from runtime controllers, so a static DTO may be incomplete or stale.",
+      "mitigation": "The financial domain owner must publish a versioned public semantic definition or typed instance terms; projection cannot call controllers to invent missing terms."
+    },
+    {
+      "risk_id": "R-005",
+      "level": "medium",
+      "risk": "Direct Chinese strings and hardcoded glyph/color values make localization and visual parity tests brittle.",
+      "mitigation": "Migrate to stable text and token IDs before removing old snapshot fixtures."
+    },
+    {
+      "risk_id": "R-006",
+      "level": "medium",
+      "risk": "Legacy tools and tests may rely on permissive aliases even after production consumers migrate.",
+      "mitigation": "Inventory test/tool callers separately, quarantine historical adapters outside production, and add negative production dependency gates."
+    },
+    {
+      "risk_id": "R-007",
+      "level": "medium",
+      "risk": "Catalog effect_review_status and runtime wiring are not uniformly rule-confirmed, so projection completeness does not prove gameplay implementation readiness.",
+      "mitigation": "Keep presentation completeness, rule authority, runtime implementation, and balance readiness as separate gates."
+    }
+  ],
+  "merge_readiness": {
+    "audit_artifacts_ready": true,
+    "production_implementation_ready": false,
+    "blocking_condition_for_phase_2": "Confirm the canonical semantic owner and establish typed timing, targets, conditions, ordered effect steps, duration, counterability, information scope, keyword IDs, and localization references without presentation inference.",
+    "recommended_next_boundary": "PlayerFaceDTO schema plus definition-only v0.6 projection and 348-card completeness/privacy gate"
+  }
+}
