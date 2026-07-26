@@ -70,8 +70,8 @@ func _run() -> void:
 	_expect(bool(report.get("ok", false)), "catalog_compile_succeeds:%s" % JSON.stringify(report.get("errors", [])))
 	_expect(int(report.get("source_record_count", 0)) == 348, "source_record_count")
 	_expect(int(report.get("compiled_count", 0)) == 348, "compiled_count")
-	_expect(int(report.get("active_count", 0)) == 288, "active_count")
-	_expect(int(report.get("projection_only_count", 0)) == 60, "projection_only_count")
+	_expect(int(report.get("active_count", 0)) == 256, "active_count")
+	_expect(int(report.get("projection_only_count", 0)) == 92, "projection_only_count")
 	_expect(int(report.get("not_acquirable_count", -1)) == 0, "not_acquirable_count")
 	_expect((report.get("op_counts", {}) as Dictionary) == EXPECTED_OP_COUNTS, "normalized_op_counts")
 	_expect((report.get("errors", []) as Array).is_empty(), "catalog_compile_errors_empty")
@@ -93,6 +93,7 @@ func _run() -> void:
 	_expect(str(fresh_report.get("semantic_catalog_fingerprint", "")) == str(report.get("semantic_catalog_fingerprint", "")), "fresh_semantic_fingerprint_deterministic")
 
 	var total_ops := 0
+	var monster_projection_only_count := 0
 	for card_value in cards:
 		var card: Dictionary = card_value
 		var machine: Dictionary = card.get("machine", {})
@@ -109,13 +110,19 @@ func _run() -> void:
 		_expect(str((spec.get("target", {}) as Dictionary).get("target_id", "")) == str(EXPECTED_TARGETS.get(machine.get("effect_kind", ""), "")), "record_target:%s" % str(machine.get("card_id", "")))
 		_expect(bool((spec.get("identity", {}) as Dictionary).get("available_for_acquisition", false)) == bool(machine.get("available_for_acquisition", false)), "record_acquisition_preserved:%s" % str(machine.get("card_id", "")))
 		var readiness_id := str(spec.get("runtime_readiness_id", ""))
-		if ["military", "interaction", "organization"].has(str(machine.get("category_id", ""))):
+		var category_id := str(machine.get("category_id", ""))
+		if category_id == "monster":
+			_expect(readiness_id == "projection_only", "monster_real_owner_atomic_route_not_ready:%s" % str(machine.get("card_id", "")))
+			if readiness_id == "projection_only":
+				monster_projection_only_count += 1
+		elif ["military", "interaction", "organization"].has(category_id):
 			_expect(readiness_id == "projection_only", "unwired_route_never_active:%s" % str(machine.get("card_id", "")))
 		else:
 			_expect(readiness_id == "active", "production_wired_record_active:%s" % str(machine.get("card_id", "")))
 		for amount in ((spec.get("cost", {}) as Dictionary).get("activation", {}) as Dictionary).values():
 			_expect(amount is int and int(amount) >= 0, "activation_cost_integer:%s" % str(machine.get("card_id", "")))
 		total_ops += (spec.get("effect_ops", []) as Array).size()
+	_expect(monster_projection_only_count == 32, "all_monster_records_remain_projection_only_until_atomic_real_owner_route")
 	_expect(total_ops == 606, "total_normalized_op_count")
 
 	_verify_closed_failures(cards[0], str(snapshot.get("catalog_id", "")))
@@ -188,8 +195,8 @@ func _verify_service(card_value: Variant) -> void:
 	var summary := service.validation_snapshot()
 	_expect(bool(summary.get("configured", false)), "service_configures")
 	_expect(int(summary.get("compiled_count", 0)) == 348, "service_compiles_complete_catalog")
-	_expect(int(summary.get("active_count", 0)) == 288, "service_active_count")
-	_expect(int(summary.get("projection_only_count", 0)) == 60, "service_projection_only_count")
+	_expect(int(summary.get("active_count", 0)) == 256, "service_active_count")
+	_expect(int(summary.get("projection_only_count", 0)) == 92, "service_projection_only_count")
 	_expect(int(summary.get("compile_count", 0)) == 348, "service_compiles_once")
 	_expect(int(summary.get("cache_entry_count", 0)) == 348, "service_cache_entry_count")
 	_expect(not summary.has("card_ids") and not summary.has("specs") and not summary.has("cache"), "service_reports_aggregates_only")

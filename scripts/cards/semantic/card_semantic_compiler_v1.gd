@@ -14,7 +14,7 @@ const EFFECT_CONTRACTS := {
 	"build_upgrade_or_repair_facility": {"category_id": "facility", "target_kind": "region_unique_facility_slot", "runtime_readiness_id": "active"},
 	"global_order_budget": {"category_id": "supply_demand", "target_kind": "global_matching_goods", "runtime_readiness_id": "active"},
 	"global_supply_spawn": {"category_id": "supply_demand", "target_kind": "global_matching_factories", "runtime_readiness_id": "active"},
-	"deploy_or_upgrade_monster": {"category_id": "monster", "target_kind": "region_or_existing_same_family_monster", "runtime_readiness_id": "active"},
+	"deploy_or_upgrade_monster": {"category_id": "monster", "target_kind": "region_or_existing_same_family_monster", "runtime_readiness_id": "projection_only"},
 	"deploy_or_upgrade_military": {"category_id": "military", "target_kind": "region_or_owned_same_family_military", "runtime_readiness_id": "projection_only"},
 	"player_hand_disrupt": {"category_id": "interaction", "target_kind": "opponent_discardable_hand", "runtime_readiness_id": "projection_only"},
 	"player_hand_steal": {"category_id": "interaction", "target_kind": "opponent_discardable_hand", "runtime_readiness_id": "projection_only"},

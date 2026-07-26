@@ -35,8 +35,8 @@ Source authority: `CardRuntimeCatalogV06Resource` machine records from
 | --- | ---: |
 | Source records | 348 |
 | Compiled specs | 348 |
-| Active specs | 288 |
-| `projection_only` specs | 60 |
+| Active specs | 256 |
+| `projection_only` specs | 92 |
 | Not-acquirable specs | 0 |
 | Compile errors | 0 |
 | Normalized operations | 606 |
@@ -45,13 +45,33 @@ Readiness by category:
 
 | Runtime readiness | Categories | Count |
 | --- | --- | ---: |
-| `active` | commodity 184 + facility 64 + supply/demand 8 + monster 32 | 288 |
-| `projection_only` | military 28 + interaction/counter 12 + organization 20 | 60 |
+| `active` | commodity 184 + facility 64 + supply/demand 8 | 256 |
+| `projection_only` | monster 32 + military 28 + interaction/counter 12 + organization 20 | 92 |
 
-Military and interaction/counter records compile into deterministic projections
-but cannot advertise executable readiness until their production executor
-routes are wired. Unknown or unsupported routes still fail closed and return no
-semantic spec, so they cannot carry any readiness claim.
+Monster, military, interaction/counter, and organization records compile into
+deterministic projections but cannot advertise executable readiness until their
+production routes are atomically ready. This is a frozen migration-contract
+classification; the pure compiler does not query live owners. Unknown or
+unsupported routes still fail closed and return no semantic spec, so they cannot
+carry any readiness claim.
+
+### Monster Readiness Evidence
+
+- `docs/monster_military_card_runtime_v06_contract.md` classifies all 32
+  `deploy_or_upgrade_monster` records as production fail-closed because the real
+  owner does not satisfy the atomic transaction capability contract.
+- `reports/cards/monster_military_runtime_v06/effect_support_matrix.md` marks
+  that route `Blocked` with `monster_owner_atomic_contract_missing`.
+- `scripts/runtime/monster_runtime_controller.gd` gates the route in
+  `unit_card_runtime_capabilities_v06()` on `atomic_mutation_ready` and reports
+  `monster_cross_owner_atomicity_unavailable` when required cross-owner
+  dependencies are incomplete.
+- `data/cards/card_runtime_catalog_v06.json` keeps all 32 monster records at
+  developer status
+  `catalog_ready_runtime_wiring_pending`.
+- `tests/unit_card_owner_capability_v06_test.gd` and
+  `tests/monster_card_runtime_v06_test.gd` preserve real/bare-owner fail-closed
+  gaps; positive atomic owners there are explicitly reference fixtures.
 
 Source catalog fingerprint:
 
@@ -59,7 +79,7 @@ Source catalog fingerprint:
 
 Semantic catalog fingerprint:
 
-`5d0f57e3079dab72ec3d5c95ac4825dc23ce5762194d6d2ac93e70153e07b189`
+`1db2ac3fefdeebcdf2a28525be089cdc2fef383aeebf46f9962a23b8c49d1288`
 
 Operation counts:
 
@@ -106,13 +126,14 @@ tools/invoke_godot_test.ps1 `
   -ExpectedCompletionMarker CARD_SEMANTIC_SCHEMA_COMPILER_TEST
 ```
 
-Final run ID: `20260726-150141-591-card_semantic_schema_compiler_test-b6e04078`
+Final run ID: `20260726-151401-620-card_semantic_schema_compiler_test-e84378a4`
 
 - Result: `PASS`, exit `0`, script errors `0`
-- Runner duration: `1.941 s`
-- Test-reported duration: `1376.819 ms`
-- First 348-record compile: `272.795 ms`
-- Checks: `5289`, failures: `0`
+- Runner duration: `1.925 s`
+- Test-reported duration: `1385.410 ms`
+- First 348-record compile: `277.849 ms`
+- Checks: `5290`, failures: `0`
+- Monster readiness regression: all `32` records are `projection_only`
 - No remaining headless child process
 
 ### Real Godot MCP Bench
@@ -124,9 +145,9 @@ Final run ID: `20260726-150141-591-card_semantic_schema_compiler_test-b6e04078`
 - MCP runtime query result: `PASS`
 - Bench checks: `38`, failures: `0`
 - Compiled records: `348`
-- Readiness: `288 active / 60 projection_only / 0 not_acquirable`
+- Readiness: `256 active / 92 projection_only / 0 not_acquirable`
 - Normalized operations: `606`
-- Fresh compile duration: `390.662 ms`
+- Fresh compile duration: `309.003 ms`
 - Cache entries / actual compiles / authorized hits: `348 / 348 / 3`
 - Compiler failure count: `0`
 - Service error count: `0`
@@ -140,9 +161,10 @@ Final run ID: `20260726-150141-591-card_semantic_schema_compiler_test-b6e04078`
 - This owned change creates the production service scene but does not edit
   `GameRuntimeCoordinator.tscn`; the coordinator owner must instance the scene
   during integration.
-- Military, interaction/counter, and organization records intentionally remain
-  `projection_only` even when the catalog marks them acquirable. Their normalized
-  projections must not be treated as executable until production routes exist.
+- Monster, military, interaction/counter, and organization records intentionally
+  remain `projection_only` even when the catalog marks them acquirable. Their
+  normalized projections must not be treated as executable until production
+  routes are atomically ready and the frozen migration mapping is revised.
 - Military bound-action capability markers are schema-recognized fixtures only;
   current catalog compilation emits deploy/upgrade projections and does not
   claim executable move, guard, or strike capability.
