@@ -11,6 +11,12 @@ const AI_PROJECTION_SERVICE_PATH := \
 	"res://scripts/runtime/ai_card_semantic_projection_service.gd"
 const COORDINATOR_SCENE_PATH := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
 const COORDINATOR_SCRIPT_PATH := "res://scripts/runtime/game_runtime_coordinator.gd"
+const CARD_CODEX_SOURCE_PATH := \
+	"res://scripts/runtime/card_codex_public_source_service.gd"
+const PLAYER_FACE_PROJECTION_SERVICE_PATH := \
+	"res://scripts/runtime/card_player_face_projection_service.gd"
+const PUBLIC_LOCALIZATION_SOURCE_PATH := \
+	"res://scripts/runtime/card_player_face_public_localization_source_service.gd"
 
 const SEMANTIC_SOURCE_PATHS := [
 	"res://scripts/cards/semantic/card_semantic_schema_v1.gd",
@@ -81,6 +87,7 @@ func _run() -> void:
 	_scan_ai_projection_boundary()
 	_scan_player_face_boundary()
 	_scan_catalog_service_surface()
+	_scan_codex_only_player_face_cutover()
 	_scan_authorized_source_boundary()
 	_scan_save_registry_contract()
 	_scan_ai_raw_field_debt()
@@ -210,20 +217,80 @@ func _scan_catalog_service_surface() -> void:
 		if not method_id.begins_with("_"):
 			public_methods.append(method_id)
 	public_methods.sort()
-	var expected_methods: Array[String] = [
+	var pre_codex_methods: Array[String] = [
 		"authorize_semantic_spec",
 		"compile_authorized",
 		"configure",
 		"debug_snapshot",
 		"validation_snapshot",
 	]
+	var expected_methods: Array[String] = [
+		"authorize_public_codex_record",
+	]
+	expected_methods.append_array(pre_codex_methods)
+	expected_methods.sort()
 	_expect(
 		public_methods == expected_methods,
 		"CardSemanticCatalogService exposes only authorized semantic access and aggregate diagnostics"
 	)
+	var catalog_method_delta := public_methods.duplicate()
+	for method_id in pre_codex_methods:
+		catalog_method_delta.erase(method_id)
+	_expect(
+		catalog_method_delta == ["authorize_public_codex_record"],
+		"authorize_public_codex_record is the sole new catalog method"
+	)
+	var public_codex_block := _function_block(
+		source,
+		"authorize_public_codex_record"
+	)
+	_expect(
+		public_codex_block.begins_with(
+			"func authorize_public_codex_record(request: Dictionary) -> Dictionary:"
+		),
+		"public Codex authorization accepts only the closed record request"
+	)
+	_expect(
+		public_codex_block.contains('request.get("catalog_member_id"')
+			and public_codex_block.contains('request.get("catalog_ordinal"')
+			and public_codex_block.contains(
+				'request.get("catalog_membership_fingerprint"'
+			)
+			and public_codex_block.contains(
+				'request.get("source_record_fingerprint"'
+			)
+			and public_codex_block.contains('request.get("card_record"')
+			and public_codex_block.contains(
+				"_authorized_card_ids_by_catalog_ordinal[catalog_ordinal] != card_id"
+			)
+			and public_codex_block.contains(
+				"_authorized_record_canonical_by_card_id.get(card_id"
+			),
+		"public Codex authorization binds an exact catalog member and full record"
+	)
+	var arbitrary_access_methods: Array[String] = []
+	for method_id in public_methods:
+		if method_id.contains("card_id") \
+				or method_id.begins_with("get_") \
+				or method_id.begins_with("find_") \
+				or method_id.begins_with("lookup_") \
+				or method_id.begins_with("list_") \
+				or method_id.begins_with("enumerate_") \
+				or method_id.begins_with("all_"):
+			arbitrary_access_methods.append(method_id)
+	_expect(
+		arbitrary_access_methods.is_empty(),
+		"catalog exposes no arbitrary-ID lookup or enumeration method"
+	)
 	for forbidden in [
 		"func semantic_for_card_id",
+		"func semantic_spec_for_card_id",
+		"func authorize_card_id",
+		"func authorize_public_card_id",
 		"func card_ids",
+		"func ordered_card_ids",
+		"func list_",
+		"func enumerate_",
 		"func catalog_snapshot",
 		"func cache_snapshot",
 		"func compiled_specs",
@@ -234,6 +301,63 @@ func _scan_catalog_service_surface() -> void:
 		'"cache_entries":',
 	]:
 		_expect(not source.contains(forbidden), "catalog service exposes no semantic enumeration: %s" % forbidden)
+
+
+func _scan_codex_only_player_face_cutover() -> void:
+	var production_sources := _production_source_map()
+	var expected_token_paths := {
+		"authorize_public_codex_record": [
+			CATALOG_SERVICE_PATH,
+			CARD_CODEX_SOURCE_PATH,
+		],
+		"project_authorized_public_detail": [
+			PLAYER_FACE_PROJECTION_SERVICE_PATH,
+			CARD_CODEX_SOURCE_PATH,
+		],
+		"issue_for_exact_record": [
+			PUBLIC_LOCALIZATION_SOURCE_PATH,
+			CARD_CODEX_SOURCE_PATH,
+		],
+		"verify_bundle": [
+			PUBLIC_LOCALIZATION_SOURCE_PATH,
+			CARD_CODEX_SOURCE_PATH,
+		],
+	}
+	for token_variant in expected_token_paths.keys():
+		var token := str(token_variant)
+		var observed_paths: Array[String] = []
+		for path_variant in production_sources.keys():
+			var path := str(path_variant)
+			if str(production_sources[path]).contains(token):
+				observed_paths.append(path)
+		observed_paths.sort()
+		var expected_paths: Array = expected_token_paths[token]
+		expected_paths.sort()
+		_expect(
+			observed_paths == expected_paths,
+			"Card PlayerFace production API is Codex-only: %s paths=%s"
+				% [token, observed_paths]
+		)
+	var codex_dto_paths: Array[String] = []
+	for path_variant in production_sources.keys():
+		var path := str(path_variant)
+		if str(production_sources[path]).contains("player_card_codex_"):
+			codex_dto_paths.append(path)
+	var non_codex_dto_consumers: Array[String] = []
+	for path in codex_dto_paths:
+		if not path.contains("card_codex"):
+			non_codex_dto_consumers.append(path)
+	_expect(
+		not codex_dto_paths.is_empty() and non_codex_dto_consumers.is_empty(),
+		"PlayerCardCodex DTO has no market, hand, track, AI, or Rules consumer"
+	)
+	var player_face_dto_source := FileAccess.get_file_as_string(
+		"res://scripts/presentation/player_face_dto_v1.gd"
+	)
+	_expect(
+		not player_face_dto_source.contains('"codex"'),
+		"PlayerFaceDTOv1 surface enum remains frozen; Codex uses its specialization"
+	)
 
 
 func _scan_authorized_source_boundary() -> void:

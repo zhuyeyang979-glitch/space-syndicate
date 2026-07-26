@@ -1,0 +1,827 @@
+{
+  "schema_version": 1,
+  "matrix_id": "global_three_projection_adoption_matrix",
+  "observed_repository": {
+    "baseline_sha": "46b356f99da5b536f877d96a946ceddd1720fef4",
+    "branch": "codex/codex-first-playerface-cutover-46b356f",
+    "observed_date": "2026-07-27",
+    "worktree_evidence_state": "codex_cutover_local_and_mcp_gates_green",
+    "claim_policy": "Conservative source audit. Existing domain-specific DTOs, snapshots, state machines, and controllers are not counted as shared SemanticSpec projections unless they consume the shared immutable semantic contract."
+  },
+  "source_reports": [
+    "reports/semantic_program/card_semantic_phase1_delivery_handoff.json",
+    "reports/cards/authorized_semantic_envelope_and_instance_state_validation.md",
+    "reports/semantic_program/role_passive_semantic_audit.json",
+    "reports/semantic_program/monster_behavior_semantic_audit.json",
+    "reports/semantic_program/product_facility_economy_semantic_audit.json",
+    "reports/semantic_program/military_weather_semantic_audit.json",
+    "reports/semantic_program/victory_semantic_audit.json",
+    "reports/semantic_program/save_replay_privacy_rng_audit.json",
+    "reports/semantic_program/content_authority_duality_audit.json"
+  ],
+  "program_invariants": {
+    "immutable_semantics_are_not_saved": true,
+    "dynamic_state_remains_with_existing_domain_owners": true,
+    "shared_rng_owner": "RunRngService",
+    "fixed_save_section_count": 19,
+    "new_semantic_save_sections": 0,
+    "operation_handler_registry_state": "METADATA_ONLY",
+    "production_rules_projection_cutover": false,
+    "full_game_semantic_cutover": false
+  },
+  "domains": [
+    {
+      "domain_id": "Card",
+      "authoritative_catalog": {
+        "status": "SEMANTIC_AUTHORITY_GREEN_EXECUTION_DUAL_DEBT",
+        "primary_source": "data/cards/card_runtime_catalog_v06.json",
+        "loader": "CardRuntimeCatalogV06Resource",
+        "semantic_owner": "CardSemanticCatalogService",
+        "evidence": [
+          "scripts/cards/card_runtime_catalog_v06_resource.gd",
+          "scripts/runtime/card_semantic_catalog_service.gd",
+          "scenes/runtime/CardSemanticCatalogService.tscn"
+        ],
+        "note": "The v0.6 catalog is the sealed semantic source. v0.4 and v0.6 production execution/catalog bridges remain active debt."
+      },
+      "immutable_semantic_spec": {
+        "type": "CardSemanticSpecV1",
+        "status": "GREEN",
+        "compiler": "CardSemanticCompilerV1",
+        "compiled_definition_count": 348,
+        "active_definition_count": 256,
+        "projection_only_definition_count": 92,
+        "evidence": [
+          "scripts/cards/semantic/card_semantic_schema_v1.gd",
+          "scripts/cards/semantic/card_semantic_compiler_v1.gd"
+        ]
+      },
+      "dynamic_state_owner": {
+        "status": "EXISTING_OWNERS_RETAINED",
+        "owners": [
+          "WorldSessionState for player hand slots and authoritative card records",
+          "CardInventoryRuntimeService for hand capacity and inventory policy",
+          "CardCooldownRuntimeController for cooldown and lock transitions",
+          "CardResolutionQueueRuntimeService and CardResolutionExecutionRuntimeService for queued execution state"
+        ],
+        "semantic_layer_owns_dynamic_state": false
+      },
+      "player_projection": {
+        "status": "CODEX_ONLY_ACTIVE",
+        "evidence_state": "LOCAL_AND_MCP_GATES_GREEN",
+        "contracts": [
+          "PlayerFaceDTOv1 detail surface",
+          "PlayerCardCodexDTOv1",
+          "PlayerCardCodexFamilyLadderDTOv1"
+        ],
+        "production_consumers": [
+          "Card Codex only"
+        ],
+        "market_playerface_cutover": false,
+        "hand_playerface_cutover": false,
+        "card_track_playerface_cutover": false,
+        "note": "The production Codex path passed full-catalog, visual, runtime, performance, privacy, and architecture gates. Other player surfaces remain out of scope."
+      },
+      "ai_projection": {
+        "status": "PASSIVE_OWN_HAND_AUTHORIZED",
+        "source_boundary": "CardSemanticSourceAuthorizationPort",
+        "instance_contract": "CardInstanceDecisionStateV1",
+        "production_ai_cutover": false,
+        "raw_read_debt": {
+          "value_reads": 225,
+          "presence_checks": 5,
+          "functions": 33,
+          "keys": 71
+        }
+      },
+      "rules_projection": {
+        "status": "NOT_STARTED",
+        "production_rule_execution_plan": false,
+        "registered_gameplay_handlers": false,
+        "current_execution": "Legacy and v0.6 domain-specific card routes remain authoritative."
+      },
+      "visibility_authority": {
+        "status": "PARTIALLY_STANDARDIZED",
+        "public_codex": "Exact public catalog record authorization in CardSemanticCatalogService plus the scene-owned public localization source; local and MCP gates are green",
+        "actor_private_hand": "AiActorHandInventoryQueryPort plus CardSemanticSourceAuthorizationPort",
+        "unsupported_sources_fail_closed": [
+          "public_rack",
+          "public_reveal",
+          "response_window",
+          "rival_hand",
+          "arbitrary_card_id"
+        ]
+      },
+      "rng_authority": {
+        "owner": "RunRngService for live game randomness",
+        "semantic_compile_draws": 0,
+        "player_projection_draws": 0,
+        "ai_projection_draws": 0,
+        "open_debt": "Random interaction operations still lack authoritative semantic randomness policies and remain projection_only."
+      },
+      "save_identity": {
+        "semantic_spec_saved": false,
+        "semantic_save_section": null,
+        "instance_identity": [
+          "card_id",
+          "family_id",
+          "runtime_instance_id when present"
+        ],
+        "locations": [
+          "session.world_session_state.players[*].slots",
+          "card_inventory",
+          "card_resolution_queue",
+          "card_resolution_execution",
+          "card_resolution_history"
+        ],
+        "restore_status": "PARTIAL"
+      },
+      "compatibility_bridges": [
+        "v0.4 and v0.6 card catalogs/execution paths",
+        "temporary PlayerCardCodexDTO-to-existing-snapshot adapter",
+        "narrow legacy localized-name identity adapter for audited non-Card-Codex callers",
+        "legacy raw AI and non-Codex UI reads"
+      ],
+      "blockers": [
+        "Final Codex full-catalog, production scene, visual, privacy, performance, and merge evidence is pending.",
+        "Production AI still reads raw card fields.",
+        "RulesProjection and trusted gameplay handler dispatch are absent.",
+        "The v0.4/v0.6 authority and execution bridge remains active.",
+        "Market, hand, and card-track surfaces are not cut over."
+      ],
+      "next_atomic_boundary": "AI_VIEWER_PRIVACY_AND_RAW_READ_RATCHET_BATCH1"
+    },
+    {
+      "domain_id": "Role",
+      "authoritative_catalog": {
+        "status": "SINGLE_CATALOG_WITH_MUTABLE_DEFINITION_COPIES",
+        "primary_source": "RoleCatalogRuntimeService in-code ordered definitions",
+        "owner": "RoleCatalogRuntimeService",
+        "definition_count": 24,
+        "evidence": [
+          "scripts/runtime/role_catalog_runtime_service.gd"
+        ]
+      },
+      "immutable_semantic_spec": {
+        "type": "RoleSemanticSpec",
+        "status": "NOT_IMPLEMENTED_BLOCKED_BY_RULE_AUTHORITY",
+        "stable_role_id_present": false,
+        "note": "All audited passive families lack an active v0.6 role rule authority."
+      },
+      "dynamic_state_owner": {
+        "status": "EXISTING_OWNERS_RETAINED",
+        "owners": [
+          "WorldSessionState.players[*] for selected role and copied role definition",
+          "CardHistoryPrivateAnnotationService for viewer-private passive usage",
+          "Existing cash, inventory, monster, military, and response owners for passive effects"
+        ],
+        "risk": "Gameplay often reads saved role_card copies while AI and UI can read the current catalog."
+      },
+      "player_projection": {
+        "status": "LEGACY_DOMAIN_SPECIFIC_ACTIVE",
+        "standard_projection_status": "NOT_IMPLEMENTED",
+        "legacy_consumers": [
+          "Role Codex",
+          "setup seat snapshots",
+          "table seat projection",
+          "intel dossier",
+          "portrait catalog"
+        ]
+      },
+      "ai_projection": {
+        "status": "RAW_CATALOG_AND_SAVED_FIELDS_ACTIVE",
+        "standard_projection_status": "NOT_IMPLEMENTED",
+        "current_path": "AiActorStatePort rehydrates role definitions by index and localized name."
+      },
+      "rules_projection": {
+        "status": "NOT_STARTED",
+        "current_execution": "Flat passive fields are read by multiple existing domain owners.",
+        "authority_gate": "RULE_AUTHORITY_NOT_ESTABLISHED"
+      },
+      "visibility_authority": {
+        "status": "DOMAIN_SPECIFIC",
+        "public_identity": "Current role selection is public through setup/table query ports.",
+        "private_usage": "CardHistoryPrivateAnnotationService viewer buckets",
+        "open_debt": "No RoleSemanticSpec visibility policy or typed player/AI projection."
+      },
+      "rng_authority": {
+        "owner": "RunRngService for random role assignment only",
+        "passive_execution_draws": 0,
+        "semantic_policy_status": "NOT_IMPLEMENTED"
+      },
+      "save_identity": {
+        "section": "session.world_session_state.players[*]",
+        "current_identity": [
+          "role_index",
+          "localized role_card.name"
+        ],
+        "full_definition_copied_to_save": true,
+        "catalog_fingerprint_saved": false,
+        "restore_status": "TRANSACTIONAL_WITH_UNSTABLE_CONTENT_IDENTITY"
+      },
+      "compatibility_bridges": [
+        "Array index plus localized name identity",
+        "Full role definitions copied into live and save state",
+        "Current-catalog reads coexist with saved role_card reads",
+        "Fabricated role rank in legacy presentation paths"
+      ],
+      "blockers": [
+        "Stable role_id is absent.",
+        "Role passive rule authority is not established.",
+        "Authored prose and executed passive triggers disagree for multiple roles.",
+        "Save migration must preserve exact-once materialized rewards and private usage."
+      ],
+      "next_atomic_boundary": "ROLE_STABLE_ID_AND_RULE_AUTHORITY_FREEZE"
+    },
+    {
+      "domain_id": "Monster",
+      "authoritative_catalog": {
+        "status": "MULTIPLE_STATIC_SOURCES_AND_NAME_BRIDGES",
+        "primary_sources": [
+          "MonsterCatalogV06.MONSTER_ROSTER",
+          "MonsterFamilyWeatherTraits resource",
+          "v0.4 monster family resources and Main-generated compatibility definitions"
+        ],
+        "evidence": [
+          "scripts/runtime/monster_catalog_v06.gd",
+          "resources/monsters/monster_family_weather_traits_v1.tres",
+          "scripts/main.gd"
+        ]
+      },
+      "immutable_semantic_spec": {
+        "type": "MonsterSemanticSpec",
+        "status": "NOT_IMPLEMENTED",
+        "stable_family_identity_status": "OPTIONAL_IN_LEGACY_INSTANCES"
+      },
+      "dynamic_state_owner": {
+        "status": "SINGLE_LIVE_OWNER",
+        "owners": [
+          "MonsterRuntimeController"
+        ],
+        "state": "auto_monsters, lifecycle collections, battle, wager, motion, and ownership state"
+      },
+      "player_projection": {
+        "status": "LEGACY_DOMAIN_SPECIFIC_ACTIVE",
+        "standard_projection_status": "NOT_IMPLEMENTED",
+        "legacy_consumers": [
+          "Monster Codex public source/snapshot",
+          "map tokens",
+          "monster event and wager presentation"
+        ]
+      },
+      "ai_projection": {
+        "status": "RAW_CONTROLLER_AND_ROSTER_READS_ACTIVE",
+        "standard_projection_status": "NOT_IMPLEMENTED",
+        "privacy_debt": "Hidden owner and mutable roster bypasses remain."
+      },
+      "rules_projection": {
+        "status": "NOT_STARTED",
+        "current_execution": "MonsterRuntimeController behavior and battle state machines remain authoritative."
+      },
+      "visibility_authority": {
+        "status": "DOMAIN_OWNER_ACTIVE_NOT_STANDARDIZED",
+        "owner": "MonsterRuntimeController and its public/viewer query ports",
+        "public_fields": "Family, rank, HP, armor, position, movement/action facts, and disclosed clues",
+        "private_fields": "True owner, rival owner association, target weights, AI plan, and RNG state"
+      },
+      "rng_authority": {
+        "owner": "RunRngService consumed by MonsterRuntimeController",
+        "policies_observed": [
+          "timer draws",
+          "weighted action choice",
+          "weighted region choice",
+          "brawl action choice",
+          "revival delay",
+          "wager percent",
+          "coincident knockback angle"
+        ],
+        "semantic_policy_status": "NOT_IMPLEMENTED"
+      },
+      "save_identity": {
+        "section": "monsters",
+        "current_identity": [
+          "uid",
+          "monster_family_id when present",
+          "formal_card_id_v06 when present",
+          "catalog_index",
+          "localized_name fallback"
+        ],
+        "restore_status": "TRANSACTIONAL_BUT_LEGACY_IDENTITY_PERMITTED"
+      },
+      "compatibility_bridges": [
+        "Localized-name and catalog-index identity fallback",
+        "Main-generated monster definitions",
+        "v0.6 monster cards remain projection_only",
+        "MonsterCatalogV06 plus controller-owned static weight tables"
+      ],
+      "blockers": [
+        "MonsterSemanticSpec is not authoritative.",
+        "Legacy instances can omit stable family identity.",
+        "Rank 2-4 unit profile authority is incomplete.",
+        "Hidden owner access is not yet viewer-scoped for AI.",
+        "Parallel v0.4 and Main-generated sources remain active."
+      ],
+      "next_atomic_boundary": "MONSTER_STABLE_FAMILY_ID_AND_SOURCE_AUTHORITY_FREEZE"
+    },
+    {
+      "domain_id": "MonsterBehavior",
+      "authoritative_catalog": {
+        "status": "SPLIT_ACTION_AND_WEIGHT_AUTHORITY",
+        "primary_sources": [
+          "MonsterCatalogV06.MONSTER_ACTION_TABLES",
+          "MonsterRuntimeController.MONSTER_SKILL_WEIGHT_TABLES",
+          "MonsterCatalogV06 rank transforms"
+        ],
+        "evidence": [
+          "scripts/runtime/monster_catalog_v06.gd",
+          "scripts/runtime/monster_runtime_controller.gd"
+        ]
+      },
+      "immutable_semantic_spec": {
+        "type": "MonsterBehaviorSpec",
+        "status": "NOT_IMPLEMENTED",
+        "stable_behavior_action_ids": false
+      },
+      "dynamic_state_owner": {
+        "status": "PART_OF_MONSTER_OWNER",
+        "owners": [
+          "MonsterRuntimeController"
+        ],
+        "separate_behavior_state_owner": false
+      },
+      "player_projection": {
+        "status": "LEGACY_MONSTER_CODEX_ACTION_PRESENTATION",
+        "standard_projection_status": "NOT_IMPLEMENTED"
+      },
+      "ai_projection": {
+        "status": "CONTROLLER_INTERNAL_WEIGHTS_AND_RAW_FACTS",
+        "standard_projection_status": "NOT_IMPLEMENTED"
+      },
+      "rules_projection": {
+        "status": "NOT_STARTED",
+        "current_execution": "Behavior selection and ordered effects execute inside the existing monster state machine."
+      },
+      "visibility_authority": {
+        "status": "INHERITS_MONSTER_DOMAIN_BOUNDARY",
+        "owner": "MonsterRuntimeController",
+        "open_debt": "Target weights and hidden ownership must never enter public or rival AI projections."
+      },
+      "rng_authority": {
+        "owner": "RunRngService through MonsterRuntimeController",
+        "order_sensitive_draws": [
+          "action weighted ticket",
+          "region weighted ticket after action and weather modifiers"
+        ],
+        "semantic_policy_status": "NOT_IMPLEMENTED"
+      },
+      "save_identity": {
+        "section": "monsters",
+        "separate_behavior_section": false,
+        "behavior_spec_fingerprint_saved": false,
+        "restore_status": "INHERITS_MONSTER_INSTANCE_AND_JOURNAL_STATE"
+      },
+      "compatibility_bridges": [
+        "Action tables and weight tables have separate authorities",
+        "Localized action labels remain presentation and lookup inputs",
+        "Weather modifiers are applied inside controller selection logic"
+      ],
+      "blockers": [
+        "Stable behavior_action_id and operation_id contracts are absent.",
+        "Weight and rank-transform parity must be frozen before extraction.",
+        "RNG draw order must remain action-before-region.",
+        "Viewer-scoped AI observation is absent."
+      ],
+      "next_atomic_boundary": "MONSTER_BEHAVIOR_SPEC_AND_RNG_PARITY"
+    },
+    {
+      "domain_id": "Product",
+      "authoritative_catalog": {
+        "status": "DUAL_CATALOG_ORDER_SENSITIVE",
+        "primary_sources": [
+          "ProductMarketRuntimeController.PRODUCT_CATALOG and PRODUCT_PROFILES",
+          "resources/content/product_industry_catalog_v05.tres"
+        ],
+        "owner_candidates": [
+          "ProductMarketRuntimeController",
+          "ProductIndustryCatalogResource"
+        ],
+        "definition_count": 46,
+        "note": "The catalogs contain the same IDs in different orders; order changes can reassign deterministic RNG draws."
+      },
+      "immutable_semantic_spec": {
+        "type": "ProductSemanticSpec",
+        "status": "NOT_IMPLEMENTED_BLOCKED_BY_ORDER_AND_PROFILE_PARITY",
+        "target_source": "Evolve ProductIndustryCatalogResource in place after order parity is frozen."
+      },
+      "dynamic_state_owner": {
+        "status": "EXISTING_OWNERS_RETAINED",
+        "owners": [
+          "ProductMarketRuntimeController for prices, market cycle, timers, and futures",
+          "CommodityFlowRuntimeController for commodity flow state",
+          "WorldSessionState districts for placed product state"
+        ]
+      },
+      "player_projection": {
+        "status": "LEGACY_DOMAIN_SPECIFIC_ACTIVE",
+        "standard_projection_status": "NOT_IMPLEMENTED",
+        "legacy_consumers": [
+          "Product Codex public source/snapshot",
+          "market and table presentation"
+        ]
+      },
+      "ai_projection": {
+        "status": "RAW_PRODUCT_PROFILE_AND_MARKET_READS_ACTIVE",
+        "standard_projection_status": "NOT_IMPLEMENTED"
+      },
+      "rules_projection": {
+        "status": "NOT_STARTED",
+        "current_execution": "ProductMarketRuntimeController and CommodityFlowRuntimeController remain direct domain owners."
+      },
+      "visibility_authority": {
+        "status": "DOMAIN_SPECIFIC",
+        "public_market": "ProductMarketRuntimeController public snapshots",
+        "private_state": "Player holdings and futures remain with their existing owners",
+        "standard_visibility_policy": false
+      },
+      "rng_authority": {
+        "owner": "RunRngService consumed by ProductMarketRuntimeController",
+        "order_sensitive_catalog": true,
+        "observed_draws": [
+          "initial prices",
+          "market intervals",
+          "volatility noise",
+          "weighted market actions"
+        ],
+        "semantic_compile_draws": 0
+      },
+      "save_identity": {
+        "current_identity": [
+          "localized_product_id"
+        ],
+        "locations": [
+          "session.world_districts.products",
+          "commodity_flow",
+          "ProductMarketRuntimeController state outside the fixed registry"
+        ],
+        "restore_status": "INCOMPLETE"
+      },
+      "compatibility_bridges": [
+        "Two 46-product catalogs with different deterministic order",
+        "Localized product IDs are cross-system and persistence identity",
+        "Product profiles are duplicated between runtime and content resources",
+        "Card and weather systems reference existing product IDs"
+      ],
+      "blockers": [
+        "Deterministic product order and RNG assignment parity are not frozen.",
+        "Localized product IDs cannot be renamed without Save, route, card, and RNG migration.",
+        "Market dynamic state lacks a complete fixed-section restore boundary.",
+        "Presentation and AI consume parallel raw profiles."
+      ],
+      "next_atomic_boundary": "PRODUCT_ORDER_AND_IDENTITY_PARITY_FREEZE"
+    },
+    {
+      "domain_id": "Facility",
+      "authoritative_catalog": {
+        "status": "NO_SINGLE_STATIC_CATALOG",
+        "primary_sources": [
+          "resources/rules/space_syndicate_ruleset_v06.tres numeric profiles",
+          "v0.6 card machine payload facility profiles",
+          "RegionInfrastructureRuntimeController and facility adapter type policy"
+        ],
+        "dynamic_owner": "RegionInfrastructureRuntimeController"
+      },
+      "immutable_semantic_spec": {
+        "type": "FacilitySemanticSpec",
+        "status": "NOT_IMPLEMENTED",
+        "target": "One immutable facility semantic catalog keyed by facility_kind_id."
+      },
+      "dynamic_state_owner": {
+        "status": "SINGLE_LIVE_OWNER",
+        "owners": [
+          "RegionInfrastructureRuntimeController"
+        ],
+        "transaction_boundary": "FacilityCardEffectAdapterV06 prepare/commit/rollback/finalize remains a legitimate composite transaction."
+      },
+      "player_projection": {
+        "status": "LEGACY_PUBLIC_AND_VIEWER_PRIVATE_SNAPSHOTS",
+        "standard_projection_status": "NOT_IMPLEMENTED"
+      },
+      "ai_projection": {
+        "status": "RAW_FACILITY_KIND_FIELDS_ACTIVE",
+        "standard_projection_status": "NOT_IMPLEMENTED"
+      },
+      "rules_projection": {
+        "status": "NOT_STARTED",
+        "current_execution": "RegionInfrastructureRuntimeController plus FacilityCardEffectAdapterV06 transactions."
+      },
+      "visibility_authority": {
+        "status": "DOMAIN_OWNER_ACTIVE_NOT_STANDARDIZED",
+        "owner": "RegionInfrastructureRuntimeController",
+        "surfaces": [
+          "public region/facility snapshot",
+          "viewer-private owned-facility snapshot"
+        ]
+      },
+      "rng_authority": {
+        "owner": null,
+        "current_domain_draws": 0,
+        "note": "The audited facility transaction owner and adapter do not consume RNG."
+      },
+      "save_identity": {
+        "section": "region_infrastructure",
+        "current_identity": [
+          "facility_id",
+          "facility_type",
+          "industry_id",
+          "region_id"
+        ],
+        "restore_status": "TRANSACTIONAL"
+      },
+      "compatibility_bridges": [
+        "Facility kind allowlists are repeated across owner, adapter, and card schema",
+        "HP, capacity, throughput, and rent profiles are mirrored between rules and cards",
+        "Card payloads currently carry facility static profiles"
+      ],
+      "blockers": [
+        "No single facility static catalog exists.",
+        "Numeric authority is distributed across ruleset and card payloads.",
+        "Rent semantics remain pending rule authority.",
+        "Factory build and automatic commodity installation must preserve atomic rollback."
+      ],
+      "next_atomic_boundary": "FACILITY_STATIC_PROFILE_AUTHORITY_FREEZE"
+    },
+    {
+      "domain_id": "MilitaryUnit",
+      "authoritative_catalog": {
+        "status": "LEGACY_V04_ACTIVE_V06_PROJECTION_ONLY",
+        "primary_sources": [
+          "v0.4 military family resources",
+          "flat skill fields consumed by MilitaryRuntimeController",
+          "28 v0.6 military cards marked projection_only"
+        ],
+        "family_count": 7,
+        "rank_count": 28
+      },
+      "immutable_semantic_spec": {
+        "type": "MilitaryUnitSemanticSpec",
+        "status": "NOT_IMPLEMENTED_BLOCKED_NO_COMPLETE_PROFILE",
+        "v06_executable_readiness": false
+      },
+      "dynamic_state_owner": {
+        "status": "SINGLE_LIVE_OWNER",
+        "owners": [
+          "MilitaryRuntimeController"
+        ],
+        "state": "unit roster, commands, cooldowns, location, HP, and ownership"
+      },
+      "player_projection": {
+        "status": "LEGACY_FLAT_FIELD_DISPLAY_MAPPING",
+        "standard_projection_status": "NOT_IMPLEMENTED"
+      },
+      "ai_projection": {
+        "status": "RAW_V04_SKILL_FIELDS_ACTIVE",
+        "standard_projection_status": "NOT_IMPLEMENTED"
+      },
+      "rules_projection": {
+        "status": "NOT_STARTED",
+        "current_execution": "MilitaryRuntimeController command state machine and legacy card route."
+      },
+      "visibility_authority": {
+        "status": "UNRESOLVED_POLICY_CONFLICT",
+        "current_runtime_policy": "owner_hidden_unless_revealed_or_self_v04",
+        "v06_authored_policy": "owner_rank_position_public",
+        "migration_rule": "Preserve current live privacy until product/rules authority resolves the conflict."
+      },
+      "rng_authority": {
+        "owner": null,
+        "compile_draws": 0,
+        "deploy_draws": 0,
+        "command_draws": 0
+      },
+      "save_identity": {
+        "section": "military",
+        "current_identity": [
+          "uid",
+          "name",
+          "source_card",
+          "rank",
+          "military_type"
+        ],
+        "missing_identity": "unit_family_id",
+        "restore_status": "UNSUPPORTED_STRICT_PREFLIGHT_MISSING"
+      },
+      "compatibility_bridges": [
+        "v0.4 executable family resources and v0.6 projection-only cards",
+        "Localized unit names and source_card fields in saved records",
+        "Bound-command inventory crosses the military and card owners"
+      ],
+      "blockers": [
+        "No reviewed authoritative seven-family rank profile exists.",
+        "v0.4 refresh-oldest-any-family conflicts with v0.6 same-family upgrade semantics.",
+        "Owner visibility policy conflicts with v0.6 copy.",
+        "Atomic card/unit rollback and strict Save preflight are missing."
+      ],
+      "next_atomic_boundary": "MILITARY_UNIT_PROFILE_AND_VISIBILITY_AUTHORITY"
+    },
+    {
+      "domain_id": "Weather",
+      "authoritative_catalog": {
+        "status": "ONE_PRIMARY_CATALOG_WITH_DUPLICATE_MAPS",
+        "primary_source": "resources/weather/weather_definition_catalog_v1.tres",
+        "owner": "WeatherDefinitionCatalog",
+        "definition_count": 6,
+        "duplicate_maps": [
+          "WeatherRuntimeController.WEATHER_TYPES",
+          "WeatherForecastViewModel.WEATHER_IDS",
+          "WeatherTelemetryRuntimeService definition maps",
+          "WeatherTelemetryBuffer.DEFINITION_IDS"
+        ]
+      },
+      "immutable_semantic_spec": {
+        "type": "WeatherSemanticSpec",
+        "status": "NOT_IMPLEMENTED_SOURCE_READY",
+        "target": "Adapt existing WeatherDefinition resources; do not create a second catalog."
+      },
+      "dynamic_state_owner": {
+        "status": "SINGLE_LIVE_OWNER",
+        "owners": [
+          "WeatherRuntimeController with WeatherRuntimeState"
+        ],
+        "state": "events, queue, history, phase, regions, timestamps, and sequence"
+      },
+      "player_projection": {
+        "status": "LEGACY_DOMAIN_SPECIFIC_ACTIVE",
+        "standard_projection_status": "NOT_IMPLEMENTED",
+        "legacy_consumers": [
+          "WeatherPresentationRuntimeService",
+          "WeatherForecastViewModel",
+          "WeatherMapOverlayViewModel"
+        ]
+      },
+      "ai_projection": {
+        "status": "DOMAIN_PUBLIC_TEMPLATE_READS_ACTIVE",
+        "standard_projection_status": "NOT_IMPLEMENTED"
+      },
+      "rules_projection": {
+        "status": "NOT_STARTED",
+        "current_execution": "WeatherRuntimeController and WeatherEffectResolver remain direct domain owners."
+      },
+      "visibility_authority": {
+        "status": "PUBLIC_DOMAIN_POLICY_ACTIVE",
+        "owner": "WeatherRuntimeController",
+        "policy": "public_planetary_event",
+        "forbidden": [
+          "actor identity",
+          "private hand or cash",
+          "private target",
+          "AI private plan"
+        ]
+      },
+      "rng_authority": {
+        "owner": "RunRngService consumed by WeatherRuntimeController",
+        "valid_new_session_draws": 3,
+        "valid_natural_forecast_draws": 3,
+        "valid_explicit_card_draws": 0,
+        "draw_order": [
+          "region tie",
+          "definition",
+          "next interval"
+        ],
+        "semantic_compile_draws": 0
+      },
+      "save_identity": {
+        "section": "weather",
+        "schema_version": 2,
+        "current_identity": [
+          "event.id",
+          "event.definition_id",
+          "event.region_indices",
+          "event.phase",
+          "sequence"
+        ],
+        "compatibility_aliases": [
+          "event.type",
+          "event.districts"
+        ],
+        "restore_status": "TRANSACTIONAL"
+      },
+      "compatibility_bridges": [
+        "Duplicate weather ID and label maps",
+        "Parallel diagnostic weather taxonomy and timing model",
+        "Four v0.4 weather-control cards and no v0.6 weather semantic cards",
+        "Save aliases event.type and event.districts"
+      ],
+      "blockers": [
+        "WeatherSemanticSpec is not implemented.",
+        "Duplicate identity and diagnostic maps remain.",
+        "The v0.6 card semantic catalog has no weather scheduling operation.",
+        "AI lacks a standard viewer-scoped weather projection."
+      ],
+      "next_atomic_boundary": "WEATHER_SEMANTIC_SPEC_FROM_EXISTING_CATALOG"
+    },
+    {
+      "domain_id": "Victory",
+      "authoritative_catalog": {
+        "status": "SPLIT_IMMUTABLE_RULE_INPUTS",
+        "primary_sources": [
+          "SpaceSyndicateRulesetProfileV06",
+          "ClockDomainRegistryResource v0.6"
+        ],
+        "live_owner": "VictoryControlRuntimeController"
+      },
+      "immutable_semantic_spec": {
+        "type": "VictorySemanticSpec",
+        "status": "NOT_IMPLEMENTED_SCHEMA_BOUNDARY_MISSING",
+        "target": "Compile the v0.6 ruleset and clock registry once into one read-only spec."
+      },
+      "dynamic_state_owner": {
+        "status": "SINGLE_LIVE_OWNER",
+        "owners": [
+          "VictoryControlRuntimeController"
+        ],
+        "state": "qualification timers, audit roster, candidates, settlement checkpoint, and exact-once outcome receipt"
+      },
+      "player_projection": {
+        "status": "LEGACY_DOMAIN_SPECIFIC_ACTIVE",
+        "standard_projection_status": "NOT_IMPLEMENTED",
+        "legacy_consumers": [
+          "Victory public snapshot",
+          "viewer-private snapshot",
+          "VictoryPresentationStateChangeReceipt",
+          "final settlement snapshot"
+        ]
+      },
+      "ai_projection": {
+        "status": "DIRECT_DICTIONARY_READS_ACTIVE",
+        "standard_projection_status": "NOT_IMPLEMENTED",
+        "open_debt": "AiRuntimeController reads victory dictionaries without AiVictoryObservation."
+      },
+      "rules_projection": {
+        "status": "NOT_STARTED",
+        "current_execution": "VictoryControlRuntimeController directly interprets ruleset and clock inputs."
+      },
+      "visibility_authority": {
+        "status": "DOMAIN_OWNER_ACTIVE_POLICY_CONFLICT_OPEN",
+        "owner": "VictoryControlRuntimeController sticky audit roster",
+        "public_projection": "Controller public snapshot and presentation receipts",
+        "open_debt": "Rulebook disclosure, runtime cash-only privacy, and internal exact-cash receipts are not reconciled."
+      },
+      "rng_authority": {
+        "owner": null,
+        "rules_projection_draws": 0,
+        "controller_draws": 0
+      },
+      "save_identity": {
+        "section": "victory_control",
+        "schema_version": 2,
+        "current_identity": [
+          "ruleset_id",
+          "dynamic state",
+          "outcome_sequence"
+        ],
+        "semantic_fingerprint_saved": false,
+        "restore_status": "TRANSACTIONAL",
+        "durable_cross_session_replay_identity": false
+      },
+      "compatibility_bridges": [
+        "Victory rule values are split between ruleset and clock registry",
+        "Presentation and controller use mismatched region-progress field names",
+        "Internal and public outcome receipts are not typed separately",
+        "Legacy outcome IDs are not session scoped"
+      ],
+      "blockers": [
+        "Visibility authority must resolve audit disclosure and cash privacy.",
+        "Internal receipt, public DTO, and AI observation are not separated.",
+        "Victory and session terminal receipts are not cross-section validated.",
+        "Durable replay identity and VictorySemanticSpec fingerprint are absent."
+      ],
+      "next_atomic_boundary": "VICTORY_VISIBILITY_POLICY_AND_SEMANTIC_SPEC_FREEZE"
+    }
+  ],
+  "summary": {
+    "domain_count": 9,
+    "core_semantic_green_domains": [
+      "Card"
+    ],
+    "standard_player_projection_active_domains": [
+      "Card: CODEX_ONLY_ACTIVE, local and MCP gates green"
+    ],
+    "standard_ai_projection_status": [
+      "Card: PASSIVE_OWN_HAND_AUTHORIZED"
+    ],
+    "standard_rules_projection_active_domains": [],
+    "domains_without_implemented_immutable_semantic_spec": [
+      "Role",
+      "Monster",
+      "MonsterBehavior",
+      "Product",
+      "Facility",
+      "MilitaryUnit",
+      "Weather",
+      "Victory"
+    ],
+    "card_market_hand_track_cutover": false,
+    "legacy_v04_v06_bridge": "ACTIVE_DEBT",
+    "next_program_boundary": "AI_VIEWER_PRIVACY_AND_RAW_READ_RATCHET_BATCH1"
+  }
+}

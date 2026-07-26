@@ -169,6 +169,21 @@ static func seal(unsealed_dto: Dictionary) -> Dictionary:
 	return dto if bool(report.get("valid", false)) else {}
 
 
+static func seal_catalog_owned(unsealed_dto: Dictionary) -> Dictionary:
+	if not is_detached_pure_data(unsealed_dto) \
+			or not _has_exact_fields(unsealed_dto, UNSEALED_ROOT_FIELDS) \
+			or unsealed_dto.get("schema_version") != SCHEMA_VERSION \
+			or not is_stable_id(str(unsealed_dto.get("card_id", ""))) \
+			or not is_stable_id(str(unsealed_dto.get("family_id", ""))) \
+			or int(unsealed_dto.get("rank", 0)) < 1 \
+			or int(unsealed_dto.get("rank", 0)) > 4 \
+			or not SURFACE_IDS.has(str(unsealed_dto.get("surface_id", ""))):
+		return {}
+	var dto := unsealed_dto.duplicate(true)
+	dto["dto_fingerprint"] = fingerprint_value(dto)
+	return dto if is_fingerprint(str(dto.get("dto_fingerprint", ""))) else {}
+
+
 static func validate(dto: Dictionary) -> Dictionary:
 	if not is_detached_pure_data(dto):
 		return _invalid("dto_not_detached_pure_data")

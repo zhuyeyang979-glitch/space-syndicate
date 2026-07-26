@@ -315,8 +315,25 @@ func configure(ruleset_snapshot: Dictionary) -> void:
 	if card_play_eligibility != null and card_play_eligibility.has_method("configure"):
 		card_play_eligibility.call("configure", _v06_card_group_runtime_snapshot())
 	var card_codex_public_source := _card_codex_public_source_node()
-	if card_codex_public_source != null and card_codex_public_source.has_method("configure"):
-		card_codex_public_source.call("configure", {
+	var card_semantic_catalog := _card_semantic_catalog_node()
+	var card_player_face_projection := _card_player_face_projection_node()
+	var card_player_face_public_localization := \
+		_card_player_face_public_localization_source_node()
+	if card_semantic_catalog != null \
+			and card_semantic_catalog.has_method("configure"):
+		card_semantic_catalog.call("configure")
+	if card_player_face_public_localization != null \
+			and card_player_face_public_localization.has_method("configure"):
+		card_player_face_public_localization.call(
+			"configure",
+			card_semantic_catalog
+		)
+	if card_codex_public_source != null \
+			and card_codex_public_source.has_method("bind_dependencies"):
+		card_codex_public_source.call("bind_dependencies", {
+			"player_face_projection": card_player_face_projection,
+			"public_localization_source": card_player_face_public_localization,
+			"semantic_catalog": card_semantic_catalog,
 			"snapshot": card_codex_public_snapshot,
 		})
 	var table_viewmodel := _table_viewmodel_node()
@@ -6053,6 +6070,18 @@ func _card_codex_public_snapshot_node() -> Node:
 
 func _card_codex_public_source_node() -> Node:
 	return get_node_or_null("CardCodexPublicSourceService")
+
+
+func _card_semantic_catalog_node() -> Node:
+	return get_node_or_null("CardSemanticCatalogService")
+
+
+func _card_player_face_projection_node() -> Node:
+	return get_node_or_null("CardPlayerFaceProjectionService")
+
+
+func _card_player_face_public_localization_source_node() -> Node:
+	return get_node_or_null("CardPlayerFacePublicLocalizationSourceService")
 
 
 func _region_codex_public_source_node() -> Node:

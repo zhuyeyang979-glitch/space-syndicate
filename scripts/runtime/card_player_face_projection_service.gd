@@ -4,6 +4,9 @@ class_name CardPlayerFaceProjectionService
 
 const PlayerFaceDTO := preload("res://scripts/presentation/player_face_dto_v1.gd")
 const CardSemanticSchema := preload("res://scripts/cards/semantic/card_semantic_schema_v1.gd")
+const AuthorizedPublicLocalizationSource := preload(
+	"res://scripts/presentation/authorized_card_player_face_localization_source_v1.gd"
+)
 
 const SCHEMA_VERSION := 1
 
@@ -96,22 +99,37 @@ func project(semantic_spec: Dictionary, localization_source: Dictionary, surface
 
 
 func project_report(semantic_spec: Dictionary, localization_source: Dictionary, surface_id: String) -> Dictionary:
+	return _project_report_internal(
+		semantic_spec,
+		localization_source,
+		surface_id,
+		false
+	)
+
+
+func _project_report_internal(
+	semantic_spec: Dictionary,
+	localization_source: Dictionary,
+	surface_id: String,
+	inputs_prevalidated: bool
+) -> Dictionary:
 	if not PlayerFaceDTO.SURFACE_IDS.has(surface_id):
 		return _rejected("player_face_projection.surface_invalid")
 	if not PlayerFaceDTO.is_detached_pure_data(localization_source):
 		return _rejected("player_face_projection.localization_not_detached_pure_data")
 
-	# Authorization is intentionally checked before any localization identifier is read.
-	var privacy_report := _localization_privacy_report(localization_source)
-	if not bool(privacy_report.get("valid", false)):
-		return _rejected(str(privacy_report.get("reason_id", "player_face_projection.localization_denied")))
+	if not inputs_prevalidated:
+		# Authorization is intentionally checked before any localization identifier is read.
+		var privacy_report := _localization_privacy_report(localization_source)
+		if not bool(privacy_report.get("valid", false)):
+			return _rejected(str(privacy_report.get("reason_id", "player_face_projection.localization_denied")))
 
-	var semantic_report := _semantic_report(semantic_spec)
-	if not bool(semantic_report.get("valid", false)):
-		return _rejected(str(semantic_report.get("reason_id", "player_face_projection.semantic_invalid")))
-	var localization_report := _localization_structure_report(localization_source, semantic_spec)
-	if not bool(localization_report.get("valid", false)):
-		return _rejected(str(localization_report.get("reason_id", "player_face_projection.localization_invalid")))
+		var semantic_report := _semantic_report(semantic_spec)
+		if not bool(semantic_report.get("valid", false)):
+			return _rejected(str(semantic_report.get("reason_id", "player_face_projection.semantic_invalid")))
+		var localization_report := _localization_structure_report(localization_source, semantic_spec)
+		if not bool(localization_report.get("valid", false)):
+			return _rejected(str(localization_report.get("reason_id", "player_face_projection.localization_invalid")))
 
 	var profile := PlayerFaceDTO.surface_profile(surface_id)
 	var identity: Dictionary = semantic_spec.get("identity", {}) as Dictionary
@@ -251,7 +269,8 @@ func project_report(semantic_spec: Dictionary, localization_source: Dictionary, 
 		},
 		"keywords": keyword_rows,
 	}
-	var dto := PlayerFaceDTO.seal(unsealed_dto)
+	var dto := PlayerFaceDTO.seal_catalog_owned(unsealed_dto) \
+		if inputs_prevalidated else PlayerFaceDTO.seal(unsealed_dto)
 	if dto.is_empty():
 		return _rejected("player_face_projection.dto_seal_failed")
 	return {
@@ -259,6 +278,87 @@ func project_report(semantic_spec: Dictionary, localization_source: Dictionary, 
 		"reason_id": "player_face_projection.accepted",
 		"dto": dto,
 	}
+
+
+func project_authorized_public_detail(
+	semantic_spec: Dictionary,
+	exact_card_record: Dictionary,
+	localization_owner: Variant
+) -> Dictionary:
+	if not (localization_owner is CardPlayerFacePublicLocalizationSourceService):
+		return _authorized_public_rejected(
+			"player_face_projection.public_localization_owner_invalid"
+		)
+	var verified_value: Variant = localization_owner.call(
+		"issue_verified_for_exact_record",
+		exact_card_record,
+		semantic_spec
+	)
+	if not (verified_value is Dictionary):
+		return _authorized_public_rejected(
+			"player_face_projection.public_localization_owner_rejected"
+		)
+	var verified_localization_report := verified_value as Dictionary
+	var verification_report := AuthorizedPublicLocalizationSource.validate_verified_report(
+		verified_localization_report
+	)
+	if not bool(verification_report.get("valid", false)):
+		return _authorized_public_rejected(str(verification_report.get(
+			"reason_id",
+			"player_face_projection.public_localization_verification_invalid"
+		)))
+	var verification := verified_localization_report
+	for field_id in [
+		"projection_source",
+		"localization_binding",
+		"taxonomy",
+		"presentation_tokens",
+		"presentation_copy",
+	]:
+		if not (verification.get(field_id) is Dictionary):
+			return _authorized_public_rejected(
+				"player_face_projection.public_localization_%s_invalid" % field_id
+			)
+	var projection_source := verification.get("projection_source", {}) as Dictionary
+	var semantic_report := _semantic_report(semantic_spec)
+	if not bool(semantic_report.get("valid", false)):
+		return _authorized_public_rejected(str(semantic_report.get(
+			"reason_id",
+			"player_face_projection.public_semantic_invalid"
+		)))
+	var localization_report := _localization_structure_report(
+		projection_source,
+		semantic_spec
+	)
+	if not bool(localization_report.get("valid", false)):
+		return _authorized_public_rejected(str(localization_report.get(
+			"reason_id",
+			"player_face_projection.public_localization_binding_invalid"
+		)))
+	var detail_report := _project_report_internal(
+		semantic_spec,
+		projection_source,
+		"detail",
+		true
+	)
+	if not bool(detail_report.get("accepted", false)):
+		return _authorized_public_rejected(str(detail_report.get(
+			"reason_id",
+			"player_face_projection.public_detail_rejected"
+		)))
+	var result := {
+		"accepted": true,
+		"reason_id": "player_face_projection.public_detail_accepted",
+		"detail_face": (detail_report.get("dto", {}) as Dictionary).duplicate(true),
+		"localization_binding": (verification.get("localization_binding", {}) as Dictionary).duplicate(true),
+		"taxonomy": (verification.get("taxonomy", {}) as Dictionary).duplicate(true),
+		"presentation_tokens": (verification.get("presentation_tokens", {}) as Dictionary).duplicate(true),
+		"presentation_copy": (verification.get("presentation_copy", {}) as Dictionary).duplicate(true),
+		"verified_bundle_fingerprint": str(verification.get("bundle_fingerprint", "")),
+	}
+	if not PlayerFaceDTO.is_detached_pure_data(result):
+		return _authorized_public_rejected("player_face_projection.public_detail_not_detached_pure_data")
+	return result
 
 
 func surface_profile(surface_id: String) -> Dictionary:
@@ -278,6 +378,8 @@ func debug_snapshot() -> Dictionary:
 		"uses_rng": false,
 		"mutates_game_state": false,
 		"localization_authorized_before_resolution": true,
+		"public_localization_owner_attestation_required_upstream": true,
+		"legacy_direct_localization_input_compatibility_only": true,
 		"semantic_authority_id": "card_semantic_schema_v1",
 		"duration_parameter_ids": _duration_parameter_ids(),
 		"supported_surface_ids": PlayerFaceDTO.SURFACE_IDS.duplicate(),
@@ -595,3 +697,16 @@ func _invalid(reason_id: String) -> Dictionary:
 
 func _rejected(reason_id: String) -> Dictionary:
 	return {"accepted": false, "reason_id": reason_id, "dto": {}}
+
+
+func _authorized_public_rejected(reason_id: String) -> Dictionary:
+	return {
+		"accepted": false,
+		"reason_id": reason_id,
+		"detail_face": {},
+		"localization_binding": {},
+		"taxonomy": {},
+		"presentation_tokens": {},
+		"presentation_copy": {},
+		"verified_bundle_fingerprint": "",
+	}

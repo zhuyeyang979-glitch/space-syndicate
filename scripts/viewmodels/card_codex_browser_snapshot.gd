@@ -9,12 +9,12 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 	var total_count := names.size()
 	var columns := clampi(int(data.get("columns", 3)), 1, 6)
 	var rows := maxi(1, int(data.get("rows", 1)))
-	var per_page := maxi(1, int(data.get("per_page", columns * rows)))
+	var per_page := maxi(1, columns * rows)
 	var page_count := maxi(1, int(ceil(float(maxi(0, total_count)) / float(per_page))))
-	var page_index := clampi(int(data.get("page_index", data.get("page", 0))), 0, max(0, page_count - 1))
+	var page_index := clampi(int(data.get("page_index", 0)), 0, max(0, page_count - 1))
 	var start_index := page_index * per_page
 	var end_index := mini(total_count, start_index + per_page)
-	var selected_card := str(data.get("selected_card", data.get("preview_card", ""))).strip_edges()
+	var selected_card := str(data.get("selected_card", "")).strip_edges()
 	var selected_index := names.find(selected_card)
 	if total_count > 0 and selected_index < 0:
 		selected_index = clampi(start_index, 0, total_count - 1)
@@ -28,17 +28,17 @@ func apply_dictionary(data: Dictionary) -> RefCounted:
 		cards.append(_normalize_card(source_cards.get(names[i], {"card_name": names[i]}), i, selected_card))
 	browser = {
 		"legend": _legend_text(data),
-		"legend_tooltip": _first_text(data, ["legend_tooltip"], "点筹码只看这一类牌；悬停卡牌看预览，双击进入详情。"),
+		"legend_tooltip": _text(data, "legend_tooltip", "点筹码只看这一类牌；悬停卡牌看预览，双击进入详情。"),
 		"columns": columns,
-		"previous_text": _first_text(data, ["previous_text"], "缩略图上一页"),
-		"next_text": _first_text(data, ["next_text"], "缩略图下一页"),
+		"previous_text": _text(data, "previous_text", "缩略图上一页"),
+		"next_text": _text(data, "next_text", "缩略图下一页"),
 		"previous_disabled": page_count <= 1,
 		"next_disabled": page_count <= 1,
 		"page_text": "第%d/%d页｜%d张卡｜本页%d-%d" % [page_index + 1, page_count, total_count, start_index + 1 if total_count > 0 else 0, end_index],
 		"filters": _normalize_filters(data.get("filters", []), str(data.get("filter_id", "all"))),
 		"cards": cards,
 		"preview": _normalize_preview(data.get("preview", {})),
-		"tooltip": _first_text(data, ["tooltip"], "卡牌缩略图：筛选、悬停预览、双击详情。"),
+		"tooltip": _text(data, "tooltip", "卡牌缩略图：筛选、悬停预览、双击详情。"),
 		"page_index": page_index,
 		"page_count": page_count,
 		"selected_card": selected_card,
@@ -52,10 +52,10 @@ func to_ui_dictionary() -> Dictionary:
 
 
 func _legend_text(data: Dictionary) -> String:
-	var explicit := _first_text(data, ["legend"], "")
+	var explicit := _text(data, "legend", "")
 	if explicit != "":
 		return explicit
-	var icon_legend := _first_text(data, ["icon_legend"], "")
+	var icon_legend := _text(data, "icon_legend", "")
 	if icon_legend != "":
 		return "牌型筛选｜%s" % icon_legend
 	return "牌型筛选"
@@ -68,10 +68,10 @@ func _normalize_filters(entries_variant: Variant, active_filter_id: String) -> A
 		if not (entry_variant is Dictionary):
 			continue
 		var entry: Dictionary = entry_variant
-		var filter_id := _first_text(entry, ["id", "filter_id"], "all")
-		var label := _first_text(entry, ["label", "title"], filter_id)
-		var short_label := _first_text(entry, ["short_label", "short", "text"], label)
-		var icon := _first_text(entry, ["icon"], "")
+		var filter_id := _text(entry, "id", "all")
+		var label := _text(entry, "label", filter_id)
+		var short_label := _text(entry, "short_label", label)
+		var icon := _text(entry, "icon", "")
 		var count := int(entry.get("count", 0))
 		var active := filter_id == active_filter_id or bool(entry.get("active", false))
 		result.append({
@@ -87,29 +87,28 @@ func _normalize_filters(entries_variant: Variant, active_filter_id: String) -> A
 
 func _normalize_card(source_variant: Variant, card_index: int, selected_card: String) -> Dictionary:
 	var source: Dictionary = source_variant if source_variant is Dictionary else {}
-	var card_name := _first_text(source, ["card_name", "id", "name"], "")
-	var rank_label := _first_text(source, ["rank", "stats", "level_text"], "I")
-	var rank_number := _rank_number(source.get("rank_number", source.get("level", rank_label)))
+	var card_name := _text(source, "card_name", "")
+	var rank_label := _text(source, "rank", "I")
+	var rank_number := clampi(int(source.get("rank_number", 1)), 1, 4)
 	return {
 		"card_name": card_name,
-		"title": _first_text(source, ["title"], card_name),
-		"title_tooltip": _first_text(source, ["title_tooltip", "display_name"], card_name),
-		"display_name": _first_text(source, ["display_name", "title_tooltip"], card_name),
-		"art_text": _first_text(source, ["art_text", "kind"], ""),
-		"kind": _first_text(source, ["kind"], ""),
+		"title": _text(source, "title", card_name),
+		"title_tooltip": _text(source, "title_tooltip", card_name),
+		"display_name": _text(source, "display_name", card_name),
+		"art_text": _text(source, "art_text", ""),
+		"kind": _text(source, "kind", ""),
 		"rank": rank_label,
 		"rank_number": rank_number,
-		"card_stats": _first_text(source, ["card_stats", "stats"], rank_label),
-		"card_art_stats": _first_text(source, ["card_art_stats", "art_stats", "card_stats", "stats"], rank_label),
+		"card_art_stats": _text(source, "card_art_stats", rank_label),
 		"chips": _normalize_chips(source.get("chips", [])),
-		"route": _first_text(source, ["route"], ""),
-		"route_tooltip": _first_text(source, ["route_tooltip"], ""),
-		"effect": _first_text(source, ["effect"], ""),
-		"effect_tooltip": _first_text(source, ["effect_tooltip"], ""),
-		"hint": _first_text(source, ["hint"], "悬停预览｜双击详情"),
-		"tooltip": _first_text(source, ["tooltip"], ""),
+		"route": _text(source, "route", ""),
+		"route_tooltip": _text(source, "route_tooltip", ""),
+		"effect": _text(source, "effect", ""),
+		"effect_tooltip": _text(source, "effect_tooltip", ""),
+		"hint": _text(source, "hint", "悬停预览｜双击详情"),
+		"tooltip": _text(source, "tooltip", ""),
 		"accent": source.get("accent", Color("#94a3b8")),
-		"illustration_key": _first_text(source, ["illustration_key"], ""),
+		"illustration_key": _text(source, "illustration_key", ""),
 		"selected": card_name == selected_card,
 		"index": card_index,
 	}
@@ -120,8 +119,8 @@ func _normalize_preview(preview_variant: Variant) -> Dictionary:
 		return {}
 	var preview: Dictionary = preview_variant
 	return {
-		"title": _first_text(preview, ["title"], ""),
-		"body": _first_text(preview, ["body", "detail"], ""),
+		"title": _text(preview, "title", ""),
+		"body": _text(preview, "body", ""),
 		"accent": preview.get("accent", Color("#38bdf8")),
 	}
 
@@ -133,12 +132,12 @@ func _normalize_chips(entries_variant: Variant) -> Array:
 		if not (entry_variant is Dictionary):
 			continue
 		var entry: Dictionary = entry_variant
-		var text := _first_text(entry, ["text", "label"], "")
+		var text := _text(entry, "text", "")
 		if text == "":
 			continue
 		result.append({
 			"text": text,
-			"tooltip": _first_text(entry, ["tooltip", "tip"], ""),
+			"tooltip": _text(entry, "tooltip", ""),
 			"fg": entry.get("fg", Color("#e2e8f0")),
 			"accent": entry.get("accent", entry.get("fg", Color("#94a3b8"))),
 		})
@@ -152,7 +151,7 @@ func _card_source_map(entries_variant: Variant) -> Dictionary:
 		if not (entry_variant is Dictionary):
 			continue
 		var entry: Dictionary = entry_variant
-		var card_name := _first_text(entry, ["card_name", "id", "name"], "")
+		var card_name := _text(entry, "card_name", "")
 		if card_name != "":
 			result[card_name] = entry
 	return result
@@ -168,27 +167,6 @@ func _string_array(entries_variant: Variant) -> Array[String]:
 	return result
 
 
-func _first_text(data: Dictionary, keys: Array, fallback: String) -> String:
-	for key_variant in keys:
-		var key := String(key_variant)
-		if data.has(key):
-			var value := str(data.get(key, "")).strip_edges()
-			if value != "":
-				return value
-	return fallback
-
-
-func _rank_number(value: Variant) -> int:
-	if value is int or value is float:
-		return maxi(1, int(value))
-	var text := str(value).strip_edges().to_upper()
-	match text:
-		"I":
-			return 1
-		"II":
-			return 2
-		"III":
-			return 3
-		"IV":
-			return 4
-	return maxi(1, int(text))
+func _text(data: Dictionary, key: String, fallback: String) -> String:
+	var value := str(data.get(key, "")).strip_edges()
+	return value if value != "" else fallback

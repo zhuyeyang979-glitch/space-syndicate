@@ -1,4 +1,4 @@
-[gd_scene load_steps=130 format=3]
+[gd_scene load_steps=131 format=3]
 
 [ext_resource type="Script" path="res://scripts/runtime/game_runtime_coordinator.gd" id="1_coordinator"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/ForcedDecisionRuntimeScheduler.tscn" id="2_scheduler"]
@@ -129,6 +129,7 @@
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardSemanticSourceAuthorizationPort.tscn" id="138_card_semantic_source_authorization"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/AiCardSemanticProjectionService.tscn" id="136_ai_card_semantic_projection"]
 [ext_resource type="PackedScene" path="res://scenes/runtime/CardPlayerFaceProjectionService.tscn" id="137_card_player_face_projection"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardPlayerFacePublicLocalizationSourceService.tscn" id="139_card_player_face_public_localization"]
 
 [node name="GameRuntimeCoordinator" type="Node"]
 script = ExtResource("1_coordinator")
@@ -530,4 +531,7 @@ unique_name_in_owner = true
 unique_name_in_owner = true
 
 [node name="CardPlayerFaceProjectionService" parent="." instance=ExtResource("137_card_player_face_projection")]
+unique_name_in_owner = true
+
+[node name="CardPlayerFacePublicLocalizationSourceService" parent="." instance=ExtResource("139_card_player_face_public_localization")]
 unique_name_in_owner = true

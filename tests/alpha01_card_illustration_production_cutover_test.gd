@@ -7,13 +7,19 @@ const CATALOG_SCENE_PATH := "res://scenes/runtime/CardIllustrationCatalog.tscn"
 const PRESENTATION_SCENE_PATH := "res://scenes/runtime/CardPresentationRuntimeService.tscn"
 const CODEX_SOURCE_SCENE_PATH := "res://scenes/runtime/CardCodexPublicSourceService.tscn"
 const CODEX_SNAPSHOT_SCENE_PATH := "res://scenes/runtime/CardCodexPublicSnapshotService.tscn"
+const SEMANTIC_CATALOG_SCENE_PATH := "res://scenes/runtime/CardSemanticCatalogService.tscn"
+const PUBLIC_LOCALIZATION_SCENE_PATH := "res://scenes/runtime/CardPlayerFacePublicLocalizationSourceService.tscn"
+const PLAYER_FACE_PROJECTION_SCENE_PATH := "res://scenes/runtime/CardPlayerFaceProjectionService.tscn"
 const CARD_FACE_SCENE_PATH := "res://scenes/ui/CardFace.tscn"
 const CODEX_THUMBNAIL_SCENE_PATH := "res://scenes/ui/codex/CardCodexThumbnailCard.tscn"
 const CODEX_DETAIL_SCENE_PATH := "res://scenes/ui/CardCodexDetail.tscn"
 const V06_CATALOG_PATH := "res://resources/cards/runtime/card_runtime_catalog_v06.tres"
 const FORBIDDEN_PRESENTATION_KEYS := [
 	"illustration_path", "illustration_profile", "source_type", "visual_source_id", "upstream_source_id",
-	"license", "attribution", "sha256", "commercial_status", "prompt_document",
+	"license", "attribution", "sha256", "commercial_status", "prompt_document", "owner", "hidden_owner",
+	"true_owner", "player_index", "hand", "rival_hand", "opponent_hand", "exact_cash", "private_plan",
+	"ai_score", "ai_value", "route_plan", "future_bag", "rng_state", "save_payload", "machine", "player",
+	"developer", "effect_payload", "effect_kind", "target_kind", "skill", "method_name", "script_path",
 ]
 
 var failures: Array[String] = []
@@ -64,19 +70,40 @@ func _run() -> void:
 	_expect(bool(scene_report.get("valid", false)) and bool(catalog_scene.debug_snapshot().get("read_only", false)), "scene-owned catalog loads as a read-only presentation service")
 
 	var presentation := (load(PRESENTATION_SCENE_PATH) as PackedScene).instantiate() as CardPresentationRuntimeService
+	var semantic_catalog := (load(SEMANTIC_CATALOG_SCENE_PATH) as PackedScene).instantiate()
+	var public_localization := (load(PUBLIC_LOCALIZATION_SCENE_PATH) as PackedScene).instantiate()
+	var player_face_projection := (load(PLAYER_FACE_PROJECTION_SCENE_PATH) as PackedScene).instantiate()
 	var codex_snapshot := (load(CODEX_SNAPSHOT_SCENE_PATH) as PackedScene).instantiate() as CardCodexPublicSnapshotService
 	var codex_source := (load(CODEX_SOURCE_SCENE_PATH) as PackedScene).instantiate() as CardCodexPublicSourceService
 	root.add_child(presentation)
+	root.add_child(semantic_catalog)
+	root.add_child(public_localization)
+	root.add_child(player_face_projection)
 	root.add_child(codex_snapshot)
 	root.add_child(codex_source)
 	presentation.configure({})
+	var semantic_report := semantic_catalog.call("configure") as Dictionary
+	var localization_report := public_localization.call("configure", semantic_catalog) as Dictionary
 	codex_snapshot.configure({})
-	var configured := codex_source.configure({"snapshot": codex_snapshot})
-	_expect(bool(presentation.debug_snapshot().get("illustration_catalog_ready", false)) and bool(configured.get("service_ready", false)) and bool(codex_source.debug_snapshot().get("illustration_catalog_ready", false)), "formal card and codex presentation services bind the typed catalog")
+	var compile_before := int(semantic_report.get("compile_count", -1))
+	var configured := codex_source.configure({
+		"player_face_projection": player_face_projection,
+		"public_localization_source": public_localization,
+		"semantic_catalog": semantic_catalog,
+		"snapshot": codex_snapshot,
+	})
+	var semantic_after := semantic_catalog.call("validation_snapshot") as Dictionary
+	var codex_debug := codex_source.debug_snapshot()
+	_expect(bool(presentation.debug_snapshot().get("illustration_catalog_ready", false)) and bool(configured.get("service_ready", false)) and bool(codex_debug.get("illustration_catalog_ready", false)), "formal card and four-dependency Codex projection services bind the typed illustration catalog")
+	_expect(bool(localization_report.get("configured", false)) and int(localization_report.get("sealed_bundle_count", 0)) == 348, "public localization Owner seals all 348 Card records")
+	_expect(int(codex_debug.get("cached_dto_count", 0)) == 348 and int(codex_debug.get("cached_family_ladder_count", 0)) == 87, "production Codex cache contains 348 DTOs and 87 I-IV ladders")
+	_expect(int(codex_debug.get("semantic_compile_delta", -1)) == 0 and int(semantic_after.get("compile_count", -2)) == compile_before, "illustration and Codex projection add zero semantic compilations")
+	_expect(_production_codex_debug_flags_pass(codex_debug, localization_report, player_face_projection.call("debug_snapshot") as Dictionary), "production Codex debug flags remain DTO-only, public, read-only, and non-inferential")
 
 	var v06_catalog: Resource = load(V06_CATALOG_PATH)
 	var rendered_output_count := 0
 	var fallback_output_count := 0
+	var canonical_cost_count := 0
 	for card_id in alpha_ids:
 		var card := v06_catalog.call("card_snapshot", card_id) as Dictionary
 		var source := _presentation_source(card_id, card)
@@ -87,11 +114,17 @@ func _run() -> void:
 		var expected_key := str(rendered_entry.get("presentation_key", ""))
 		_expect(str(card_view.get("illustration_key", "")) == expected_key and str(hand_view.get("illustration_key", "")) == expected_key and str(codex_facts.get("illustration_key", "")) == expected_key, "%s keeps CardUI and Codex illustration parity" % card_id)
 		_expect(not _contains_forbidden_key(card_view) and not _contains_forbidden_key(hand_view) and not _contains_forbidden_key(codex_facts), "%s player ViewModels hide paths, hashes, licenses and provenance" % card_id)
+		if str(codex_facts.get("acquisition_cost_text", "")).strip_edges() != "" \
+				and str(codex_facts.get("activation_cost_text", "")).strip_edges() != "" \
+				and not codex_facts.has("cost") and not codex_facts.has("price") \
+				and not codex_facts.has("play_cost"):
+			canonical_cost_count += 1
 		if expected_key == "":
 			fallback_output_count += 1
 		else:
 			rendered_output_count += 1
 	_expect(rendered_output_count == 5 and fallback_output_count == 35, "formal presentation outputs resolve exactly 5/40 illustrations")
+	_expect(canonical_cost_count == 40, "all 40 Alpha Codex facts separate acquisition and activation costs without aliases")
 
 	var rendered_id := "commodity.ring_crystal_battery.rank_1"
 	var fallback_id := "facility.factory.life.rank_1"
@@ -106,6 +139,9 @@ func _run() -> void:
 	var rendered_key := str(_dictionary(rendered.get(rendered_id, {})).get("presentation_key", ""))
 	_expect(browser_cards.size() == 2 and str(_dictionary(browser_cards[0]).get("illustration_key", "")) == rendered_key and str(_dictionary(browser_cards[1]).get("illustration_key", "")) == "", "Codex thumbnails preserve rendered and fallback identities")
 	_expect(str(detail_face.get("illustration_key", "")) == rendered_key and not _contains_forbidden_key(detail), "Codex detail preserves only the opaque illustration key")
+	_expect(_codex_detail_uses_explicit_semantics(detail_payload), "Codex detail presents explicit timing, target, condition, effect-step, duration, response, and information sections")
+	var rendered_facts := codex_source.compose_card_facts(rendered_id, 0)
+	_expect(str(codex_source.resolve_card_id(rendered_id)) == rendered_id and str(codex_source.resolve_card_id(str(rendered_facts.get("display_name", "")))) == "" and str(codex_source.resolve_card_id("%s IV" % rendered_id)) == "", "illustration flow accepts stable card_id and rejects localized or Roman-rank identity recovery")
 
 	await _verify_card_face(rendered_key, true, Vector2(86.0, 112.0))
 	await _verify_card_face("", false, Vector2(86.0, 112.0))
@@ -119,7 +155,7 @@ func _run() -> void:
 		var source_text := FileAccess.get_file_as_string(source_path)
 		_expect(not source_text.contains("main.gd") and not source_text.contains("current_scene") and not source_text.contains("/root/Main"), "%s has no Main or service-locator dependency" % source_path)
 
-	for node in [catalog_scene, presentation, codex_source, codex_snapshot]:
+	for node in [catalog_scene, presentation, semantic_catalog, public_localization, player_face_projection, codex_source, codex_snapshot]:
 		node.queue_free()
 	await process_frame
 	_finish()
@@ -156,6 +192,53 @@ func _verify_codex_targets(browser_card: Dictionary, detail: Dictionary) -> void
 	_expect(face != null and bool(face.get_meta("external_illustration_active", false)), "formal Codex detail CardFace renders the same approved illustration")
 	detail_node.queue_free()
 	await process_frame
+
+
+func _codex_detail_uses_explicit_semantics(detail: Dictionary) -> bool:
+	var tactical := _dictionary(detail.get("tactical", {}))
+	var entries := tactical.get("entries", []) as Array
+	var facts := detail.get("facts", []) as Array
+	var resolution := _dictionary(detail.get("resolution", {}))
+	if entries.size() != 3 or facts.size() != 4:
+		return false
+	return str(tactical.get("title", "")).contains("时机、目标与条件") \
+		and str(_dictionary(entries[0]).get("title", "")) == "出牌时机" \
+		and str(_dictionary(entries[1]).get("title", "")) == "目标" \
+		and str(_dictionary(entries[2]).get("title", "")) == "条件" \
+		and str(_dictionary(facts[1]).get("title", "")).contains("按序效果") \
+		and str(_dictionary(facts[1]).get("body", "")).begins_with("1. ") \
+		and str(_dictionary(facts[2]).get("title", "")).contains("持续与反制") \
+		and str(_dictionary(facts[3]).get("title", "")).contains("信息范围") \
+		and str(resolution.get("body", "")).strip_edges() != "" \
+		and str(resolution.get("meta", "")).strip_edges() != ""
+
+
+func _production_codex_debug_flags_pass(
+	debug: Dictionary,
+	localization_debug: Dictionary,
+	projection_debug: Dictionary
+) -> bool:
+	var adapter := _dictionary(debug.get("adapter", {}))
+	return int(debug.get("dependency_count", 0)) == 4 \
+		and bool(debug.get("uses_catalog_owned_semantic", false)) \
+		and bool(debug.get("uses_owner_attested_localization", false)) \
+		and bool(debug.get("uses_player_card_codex_dto_v1", false)) \
+		and not bool(debug.get("reads_private_world", true)) \
+		and not bool(debug.get("owns_rules", true)) \
+		and not bool(debug.get("owns_save_state", true)) \
+		and bool(adapter.get("dto_only_semantic_input", false)) \
+		and not bool(adapter.get("reads_raw_card_record", true)) \
+		and not bool(adapter.get("infers_rules_from_text", true)) \
+		and int(localization_debug.get("sealed_bundle_count", 0)) == 348 \
+		and not bool(localization_debug.get("supports_arbitrary_card_id_lookup", true)) \
+		and not bool(localization_debug.get("supports_catalog_enumeration", true)) \
+		and not bool(localization_debug.get("retains_full_card_records", true)) \
+		and not bool(localization_debug.get("depends_on_main", true)) \
+		and not bool(localization_debug.get("owns_save_state", true)) \
+		and not bool(localization_debug.get("uses_rng", true)) \
+		and bool(projection_debug.get("stateless", false)) \
+		and not bool(projection_debug.get("owns_rules", true)) \
+		and not bool(projection_debug.get("uses_rng", true))
 
 
 func _presentation_source(card_id: String, card: Dictionary) -> Dictionary:

@@ -2,8 +2,12 @@
 extends Node
 class_name CardCodexPublicSnapshotService
 
-const BrowserSnapshotScript := preload("res://scripts/viewmodels/card_codex_browser_snapshot.gd")
-const DetailSnapshotScript := preload("res://scripts/viewmodels/card_codex_detail_snapshot.gd")
+const BrowserSnapshotScript := preload(
+	"res://scripts/viewmodels/card_codex_browser_snapshot.gd"
+)
+const DetailSnapshotScript := preload(
+	"res://scripts/viewmodels/card_codex_detail_snapshot.gd"
+)
 
 var _configured := false
 var _browser_compose_count := 0
@@ -17,11 +21,13 @@ func configure(_config: Dictionary = {}) -> void:
 func compose_browser(source: Dictionary) -> Dictionary:
 	_browser_compose_count += 1
 	var names := source.get("names", []) as Array
-	var card_sources := []
-	for card_variant: Variant in source.get("cards", []) as Array:
+	var card_sources: Array = []
+	for card_variant in source.get("cards", []) as Array:
 		if card_variant is Dictionary:
 			card_sources.append(_browser_card_source(card_variant as Dictionary))
-	var preview := _browser_preview_source(_dictionary(source.get("preview_card", {})))
+	var preview := _browser_preview_source(
+		_dictionary(source.get("preview_card", {}))
+	)
 	var browser: Dictionary = BrowserSnapshotScript.new().apply_dictionary({
 		"names": names,
 		"columns": int(source.get("columns", 3)),
@@ -50,61 +56,94 @@ func compose_detail(source: Dictionary) -> Dictionary:
 	_detail_compose_count += 1
 	if not bool(source.get("valid", false)):
 		return {"summary_text": "", "detail": {}}
-	var card_name := str(source.get("card_name", "卡牌"))
-	var display_name := str(source.get("display_name", card_name))
-	var accent := _color(source.get("accent", Color("#38bdf8")), Color("#38bdf8"))
-	var key_facts := source.get("key_rule_facts", []) as Array
-	var scanline := _limited_names(key_facts, 3, str(source.get("art_stats", "")), "｜")
-	var summary_text := "卡牌详情｜第%d/%d张｜%s %s\n%s｜%s｜%s｜%s｜%s\n%s" % [
+	var display_name := str(source.get("display_name", "卡牌"))
+	var accent := _color(
+		source.get("accent", Color("#38bdf8")),
+		Color("#38bdf8")
+	)
+	var effect_steps := source.get("effect_step_texts", []) as Array
+	var summary_text := "卡牌详情｜第%d/%d张｜%s %s\n%s｜%s｜%s｜%s\n时机：%s｜目标：%s" % [
 		int(source.get("index", 0)) + 1,
 		maxi(1, int(source.get("total", 1))),
 		str(source.get("icon", "◇")),
 		display_name,
 		str(source.get("category_label", "卡牌")),
-		str(source.get("icon_route_label", "通用路线")),
-		str(source.get("purchase_cost_text", "购买费用未公开")),
-		str(source.get("play_cost_text", "打出费用未公开")),
-		"需要选择目标" if bool(source.get("requires_target", false)) else "按卡面自动确定目标",
-		_short_text(scanline, 86),
+		str(source.get("industry_label", "通用")),
+		str(source.get("acquisition_cost_text", "获取费用未公开")),
+		str(source.get("activation_cost_text", "打出费用未公开")),
+		str(source.get("timing_text", "语义信息不可用")),
+		str(source.get("target_text", "语义信息不可用")),
 	]
 	var detail_source := {
 		"accent": accent,
-		"tooltip": str(source.get("detail_tooltip", "")),
-		"face_note": "同名同级牌可主动合并升级；价格看I级。",
+		"tooltip": _detail_tooltip(source),
+		"face_note": "同名同级牌可主动合并升级；费用按等级分别展示。",
 		"face_note_tooltip": "资料库只展示公开卡面和公开规则，不展示隐藏牌主。",
 		"card_face": {
 			"name": "%s %s" % [str(source.get("icon", "◇")), display_name],
-			"cost": "%s｜%s" % [str(source.get("purchase_cost_text", "")), str(source.get("play_cost_text", ""))],
-			"effect": str(source.get("quick_effect_full", "")),
-			"type": str(source.get("face_route_text", "")),
+			"cost": "%s｜%s" % [
+				str(source.get("acquisition_cost_text", "")),
+				str(source.get("activation_cost_text", "")),
+			],
+			"effect": str(source.get("full_effect_text", "")),
+			"type": "%s｜%s" % [
+				str(source.get("category_label", "卡牌")),
+				str(source.get("industry_label", "通用")),
+			],
 			"rank": str(source.get("rank_label", "I")),
 			"accent": accent,
 			"illustration_key": str(source.get("illustration_key", "")),
+			"presentation": "codex_full",
 			"minimum_width": 230.0,
 			"minimum_height": 300.0,
 		},
 		"summary": {
+			"title": "规则摘要",
+			"title_tooltip": "分别显示获取费用与打出费用。",
+			"tooltip": "依次查看费用、时机、目标、条件与效果步骤。",
 			"header_chips": [
-				{"text": str(source.get("type_label", "卡牌")), "accent": accent, "tooltip": "卡牌类型"},
-				{"text": str(source.get("icon_route_label", "通用路线")), "accent": Color("#c084fc"), "tooltip": "策略路线"},
-				{"text": str(source.get("subtype_label", "通用")), "accent": Color("#93c5fd"), "tooltip": "子类型"},
+				{
+					"text": str(source.get("category_label", "卡牌")),
+					"accent": accent,
+					"tooltip": "卡牌类别",
+				},
+				{
+					"text": str(source.get("industry_label", "通用")),
+					"accent": Color("#93c5fd"),
+					"tooltip": "产业",
+				},
 			],
-			"chips": _read_chips(source.get("read_chips", []) as Array, accent),
-			"effect": "速读：%s｜%s" % [_short_text(str(source.get("strategy_use_text", "")), 38), _short_text(str(source.get("art_stats", "")), 44)],
+			"chips": _read_chips(
+				source.get("keyword_chips", []) as Array,
+				accent
+			),
+			"effect": _short_text(
+				str(source.get("short_effect_text", "")),
+				96
+			),
 			"effect_tooltip": str(source.get("full_effect_text", "")),
+			"read_order": "读法：获取费用 → 打出费用 → 时机 → 目标 → 条件 → 效果步骤",
 			"accent": accent,
 		},
-		"tactical_entries": _tactical_entries(source, accent, display_name),
-		"facts": _fact_cards(source, accent),
+		"tactical": {
+			"title": "规则结构｜时机、目标与条件",
+			"title_tooltip": "按顺序查看时机、目标、条件与效果。",
+			"tooltip": "不根据卡名、类别或文案推测战术用途。",
+			"entries": _structured_rule_entries(source, accent),
+			"accent": accent,
+		},
+		"facts": _fact_cards(source, effect_steps, accent),
 		"upgrades": _upgrade_cards(source.get("upgrades", []) as Array),
 		"resolution": {
-			"title": "◇ 公开结算",
-			"body": _short_text(str(source.get("resolution_animation_text", "")), 140),
-			"meta": str(source.get("visibility_text", "卡面与合法公开回执可见；私密信息不进入资料库。")),
+			"title": "◇ 反制与信息范围",
+			"body": str(source.get("counterability_text", "语义信息不可用")),
+			"meta": str(source.get("information_scope_text", "语义信息不可用")),
 			"accent": Color("#fb7185"),
 		},
 	}
-	var detail: Dictionary = DetailSnapshotScript.new().apply_dictionary(detail_source).to_ui_dictionary()
+	var detail: Dictionary = DetailSnapshotScript.new() \
+		.apply_dictionary(detail_source) \
+		.to_ui_dictionary()
 	return {"summary_text": summary_text, "detail": detail}
 
 
@@ -120,35 +159,45 @@ func debug_snapshot() -> Dictionary:
 		"calculates_card_price": false,
 		"calculates_card_effects": false,
 		"calculates_play_requirements": false,
+		"infers_tactical_advice": false,
 		"reads_runtime_nodes": false,
 		"legacy_main_formatter_active": false,
 	}
 
 
 func _browser_card_source(source: Dictionary) -> Dictionary:
-	var card_name := str(source.get("card_name", ""))
-	var display_name := str(source.get("display_name", card_name))
-	var accent := _color(source.get("accent", Color("#94a3b8")), Color("#94a3b8"))
+	var display_name := str(source.get("display_name", ""))
+	var accent := _color(
+		source.get("accent", Color("#94a3b8")),
+		Color("#94a3b8")
+	)
+	var route_label := "%s｜%s" % [
+		str(source.get("category_label", "卡牌")),
+		str(source.get("industry_label", "通用")),
+	]
 	return {
-		"card_name": card_name,
+		"card_name": str(source.get("card_name", "")),
 		"display_name": display_name,
-		"title": "%s %s｜%s" % [str(source.get("icon", "◇")), str(source.get("family", card_name)), str(source.get("rank_label", "I"))],
+		"title": "%s %s" % [str(source.get("icon", "◇")), display_name],
 		"title_tooltip": display_name,
-		"art_text": "%s\n%s" % [display_name, str(source.get("tag_text", ""))],
-		"kind": str(source.get("kind", "")),
+		"art_text": "%s\n%s" % [display_name, route_label],
+		"kind": str(source.get("category_id", "")),
 		"rank": str(source.get("rank_label", "I")),
-		"rank_number": maxi(1, int(source.get("rank", 1))),
-		"card_stats": str(source.get("art_stats", "")),
-		"card_art_stats": str(source.get("art_stats", "")),
-		"chips": _read_chips(source.get("read_chips", []) as Array, accent).slice(0, 4),
-		"use_case": str(source.get("use_case", "")),
-		"table_use": str(source.get("use_case", "")),
-		"route": _short_text(str(source.get("strategy_route_label", "")), 18),
-		"route_tooltip": str(source.get("strategy_summary", "")),
-		"effect": _short_text(str(source.get("quick_effect_compact", "")), 30),
+		"rank_number": clampi(int(source.get("rank", 1)), 1, 4),
+		"card_art_stats": "%s｜%s" % [
+			str(source.get("timing_text", "")),
+			str(source.get("duration_text", "")),
+		],
+		"chips": _read_chips(
+			source.get("keyword_chips", []) as Array,
+			accent
+		).slice(0, 4),
+		"route": _short_text(route_label, 22),
+		"route_tooltip": route_label,
+		"effect": _short_text(str(source.get("short_effect_text", "")), 36),
 		"effect_tooltip": str(source.get("full_effect_text", "")),
 		"hint": "悬停预览｜双击详情",
-		"tooltip": str(source.get("detail_tooltip", "")),
+		"tooltip": _detail_tooltip(source),
 		"accent": accent,
 		"illustration_key": str(source.get("illustration_key", "")),
 		"index": int(source.get("index", 0)),
@@ -158,106 +207,201 @@ func _browser_card_source(source: Dictionary) -> Dictionary:
 func _browser_preview_source(source: Dictionary) -> Dictionary:
 	if source.is_empty():
 		return {}
+	var ladder_text := _family_ladder_preview(
+		source.get("family_ladder", []) as Array
+	)
+	var body_lines: Array[String] = [
+		"%s｜%s" % [
+			str(source.get("acquisition_cost_text", "")),
+			str(source.get("activation_cost_text", "")),
+		],
+		"时机：%s｜目标：%s" % [
+			str(source.get("timing_text", "")),
+			str(source.get("target_text", "")),
+		],
+		str(source.get("short_effect_text", "")),
+	]
+	if not ladder_text.is_empty():
+		body_lines.append("I→IV：%s" % ladder_text)
 	return {
-		"title": "悬停预览：%s %s" % [str(source.get("icon", "◇")), str(source.get("display_name", source.get("card_name", "卡牌")))],
-		"body": "路线：%s｜%s\nI→IV：%s" % [str(source.get("strategy_route_label", "")), str(source.get("rules_text_compact", "")).replace("\n", "｜"), str(source.get("level_gradient_text", "")).replace("\n", " / ")],
-		"accent": _color(source.get("accent", Color("#38bdf8")), Color("#38bdf8")),
+		"title": "悬停预览：%s %s" % [
+			str(source.get("icon", "◇")),
+			str(source.get("display_name", "卡牌")),
+		],
+		"body": "\n".join(body_lines),
+		"accent": _color(
+			source.get("accent", Color("#38bdf8")),
+			Color("#38bdf8")
+		),
 	}
 
 
-func _tactical_entries(source: Dictionary, accent: Color, display_name: String) -> Array:
+func _structured_rule_entries(source: Dictionary, accent: Color) -> Array:
+	var conditions := source.get("condition_texts", []) as Array
 	return [
-		{"title": "何时拿", "body": _tactical_timing_text(str(source.get("strategy_route_label", ""))), "accent": accent, "tip": str(source.get("strategy_use_text", ""))},
-		{"title": "怎么配", "body": _tactical_combo_text(str(source.get("kind", "")), str(source.get("strategy_route_label", ""))), "accent": Color("#38bdf8"), "tip": "这张牌在牌组路线里的常见配合。"},
-		{"title": "会暴露", "body": _tactical_clue_text(source), "accent": Color("#f472b6"), "tip": "只描述公开线索，不揭示隐藏玩家。%s" % display_name},
+		{
+			"title": "出牌时机",
+			"body": str(source.get("timing_text", "语义信息不可用")),
+			"accent": accent,
+			"tooltip": "此卡允许使用的出牌窗口。",
+		},
+		{
+			"title": "目标",
+			"body": str(source.get("target_text", "语义信息不可用")),
+			"accent": Color("#38bdf8"),
+			"tooltip": "此卡生效时可以选择的对象。",
+		},
+		{
+			"title": "条件",
+			"body": _limited_names(conditions, 4, "无额外条件", "；"),
+			"accent": Color("#f472b6"),
+			"tooltip": "使用或结算此卡必须满足的条件。",
+		},
 	]
 
 
-func _fact_cards(source: Dictionary, accent: Color) -> Array:
-	var target_text := str(source.get("target_text", "按卡面确定目标"))
-	var numeric_facts := source.get("key_rule_facts", []) as Array
+func _fact_cards(source: Dictionary, effect_steps: Array, accent: Color) -> Array:
 	return [
-		{"title": "◎ 牌面定位", "body": _short_text(str(source.get("strategy_use_text", "")), 64), "meta": "%s｜%s｜%s｜%s" % [str(source.get("type_label", "卡牌")), str(source.get("subtype_label", "通用")), str(source.get("source_type_label", "资料库")), str(source.get("supply_layer", "公开牌池"))], "accent": accent},
-		{"title": "¥ 获取与打出", "body": "%s｜%s" % [str(source.get("purchase_cost_text", "")), str(source.get("play_cost_text", ""))], "meta": "%s｜目标:%s" % [_short_text(str(source.get("timing_text", "")), 52), target_text], "accent": Color("#facc15")},
-		{"title": "✦ 核心效果", "body": _short_text(str(source.get("full_effect_text", "")), 78), "body_tooltip": str(source.get("full_effect_text", "")), "meta": "%s｜%s" % [str(source.get("duration_text", "立即结算")), str(source.get("visibility_text", "公开回执"))], "accent": accent.lightened(0.12)},
-		{"title": "◈ 关键数值", "body": _limited_names(numeric_facts, 5, "按核心效果结算。", "｜"), "meta": "看这里判断收益、风险和目标。", "accent": Color("#38bdf8")},
+		{
+			"title": "¥ 获取与打出",
+			"body": "%s｜%s" % [
+				str(source.get("acquisition_cost_text", "")),
+				str(source.get("activation_cost_text", "")),
+			],
+			"meta": "费用始终分开显示。",
+			"accent": Color("#facc15"),
+		},
+		{
+			"title": "✦ 按序效果",
+			"body": _ordered_steps_text(effect_steps, 5),
+			"body_tooltip": _ordered_steps_text(effect_steps, effect_steps.size()),
+			"meta": "%d 个效果步骤" % effect_steps.size(),
+			"accent": accent.lightened(0.12),
+		},
+		{
+			"title": "◷ 持续与反制",
+			"body": "%s｜%s" % [
+				str(source.get("duration_text", "")),
+				str(source.get("counterability_text", "")),
+			],
+			"meta": "同时列出持续时间与可反制状态。",
+			"accent": Color("#38bdf8"),
+		},
+		{
+			"title": "◈ 信息范围",
+			"body": str(source.get("information_scope_text", "")),
+			"meta": "说明此卡打出后会公开哪些信息。",
+			"accent": Color("#fb7185"),
+		},
 	]
 
 
 func _upgrade_cards(entries: Array) -> Array:
-	var result := []
-	for entry_variant: Variant in entries:
+	var result: Array = []
+	for entry_variant in entries:
 		var entry := _dictionary(entry_variant)
 		if entry.is_empty():
 			continue
-		var preview := str(entry.get("preview", ""))
+		var effect_steps := entry.get("effect_step_texts", []) as Array
+		var activation_text := str(entry.get("activation_cost_text", ""))
 		result.append({
-			"roman": str(entry.get("roman", "")),
-			"price": str(entry.get("purchase_cost_text", "")),
-			"price_tooltip": "%s；同名同级牌可主动合并升级。" % str(entry.get("play_cost_text", "")),
-			"band": str(entry.get("strength_band", "")),
-			"body": _short_text(preview, 62),
-			"body_tooltip": preview,
-			"tooltip": "%s\n%s" % [str(entry.get("display_name", "卡牌")), str(entry.get("full_effect_text", ""))],
-			"accent": _color(entry.get("accent", Color("#38bdf8")), Color("#38bdf8")),
-			"fill_weight": float(entry.get("fill_weight", 0.10)),
+			"roman": str(entry.get("rank_label", "")),
+			"price": str(entry.get("acquisition_cost_text", "")),
+			"price_tooltip": "打出费用：%s" % activation_text,
+			"band": "%s｜目标：%s" % [
+				str(entry.get("duration_text", "")),
+				str(entry.get("target_text", "")),
+			],
+			"body": _ordered_steps_text(effect_steps, 3),
+			"body_tooltip": _ordered_steps_text(effect_steps, effect_steps.size()),
+			"tooltip": "%s\n%s\n%s" % [
+				str(entry.get("display_name", "卡牌")),
+				activation_text,
+				str(entry.get("full_effect_text", "")),
+			],
+			"accent": _color(
+				entry.get("accent", Color("#38bdf8")),
+				Color("#38bdf8")
+			),
+			"fill_weight": 0.10 + 0.03 * float(
+				clampi(int(entry.get("rank", 1)), 1, 4) - 1
+			),
 		})
 	return result
 
 
 func _read_chips(entries: Array, fallback_accent: Color) -> Array:
-	var chips := []
-	for entry_variant: Variant in entries:
+	var chips: Array = []
+	for entry_variant in entries:
 		var entry := _dictionary(entry_variant)
 		var text_value := str(entry.get("text", ""))
 		if text_value == "":
 			continue
-		var accent := _color(entry.get("accent", entry.get("fg", fallback_accent)), fallback_accent)
-		chips.append({"text": text_value, "tooltip": str(entry.get("tooltip", entry.get("tip", ""))), "fg": _color(entry.get("fg", accent), accent), "bg": _color(entry.get("bg", Color("#020617").lerp(accent, 0.16)), Color("#020617").lerp(accent, 0.16)), "accent": accent})
+		var accent := _color(entry.get("accent", fallback_accent), fallback_accent)
+		chips.append({
+			"text": text_value,
+			"tooltip": str(entry.get("tooltip", "")),
+			"fg": _color(entry.get("fg", accent), accent),
+			"bg": _color(
+				entry.get("bg", Color("#020617").lerp(accent, 0.16)),
+				Color("#020617").lerp(accent, 0.16)
+			),
+			"accent": accent,
+		})
 	return chips
 
 
-func _tactical_timing_text(route_label: String) -> String:
-	match route_label:
-		"商品牌": return "有同色工厂或市场槽位时领取并安装。"
-		"公共设施牌": return "比较区域共享生命、供需和设施唯一槽后再建造。"
-		"条件式供需牌": return "真实节点、合法路线和容量能够匹配时使用。"
-		"怪兽单位牌": return "需要部署压力或升级同名怪兽时使用。"
-		"军队单位牌": return "需要保护设施或执行公开军事行动时使用。"
-		"玩家互动与反制牌": return "目标和响应窗口明确时使用，避免无效提交。"
-		"组织牌": return "长期经营轴明确且组织槽可用时安装。"
-	return "先确认获取费用、打出资产、目标与公开回执。"
+func _family_ladder_preview(entries: Array) -> String:
+	var rows: Array[String] = []
+	for entry_variant in entries:
+		var entry := _dictionary(entry_variant)
+		if entry.is_empty():
+			continue
+		rows.append("%s %s" % [
+			str(entry.get("rank_label", "")),
+			str(entry.get("acquisition_cost_text", "")),
+		])
+	return " / ".join(rows)
 
 
-func _tactical_combo_text(kind: String, route_label: String) -> String:
-	if kind == "install_commodity_rate": return "配合同色公开设施，形成持续生产或需求。"
-	if kind.contains("facility"): return "配合区域设施唯一槽、租金和共享生命。"
-	if kind.contains("monster"): return "配合公开怪兽位置、等级和合法部署目标。"
-	if kind.contains("military"): return "配合公开单位档案与显式军事动作。"
-	if route_label == "组织牌": return "同家族仅最高阶生效，围绕一个长期经营轴构筑。"
-	return "配合同产业资产与合法目标形成I→IV梯度。"
+func _detail_tooltip(source: Dictionary) -> String:
+	return "%s\n%s｜%s\n时机：%s\n目标：%s\n%s" % [
+		str(source.get("display_name", "卡牌")),
+		str(source.get("acquisition_cost_text", "")),
+		str(source.get("activation_cost_text", "")),
+		str(source.get("timing_text", "")),
+		str(source.get("target_text", "")),
+		str(source.get("full_effect_text", "")),
+	]
 
 
-func _tactical_clue_text(source: Dictionary) -> String:
-	var visibility := str(source.get("visibility_text", "卡面与合法公开回执可见"))
-	if bool(source.get("targets_player", false)):
-		return "目标玩家与合法公开结果可见；秘密手牌内容只对合法查看者显示。"
-	if bool(source.get("targets_monster", false)):
-		return "目标怪兽、位置和公开结果可见；内部权重与预选目标保持隐藏。"
-	return visibility
+func _ordered_steps_text(values: Array, limit: int) -> String:
+	var rows: Array[String] = []
+	var row_limit := mini(values.size(), maxi(0, limit))
+	for index in range(row_limit):
+		rows.append("%d. %s" % [index + 1, str(values[index])])
+	return "\n".join(rows) if not rows.is_empty() else "语义信息不可用"
 
 
-func _limited_names(values: Array, limit: int, empty_text: String, separator: String = "、") -> String:
-	var names := []
-	for value: Variant in values:
+func _limited_names(
+	values: Array,
+	limit: int,
+	empty_text: String,
+	separator: String = "、"
+) -> String:
+	var names: Array[String] = []
+	for value in values:
 		var text_value := str(value)
-		if text_value != "": names.append(text_value)
-		if names.size() >= maxi(1, limit): break
+		if text_value != "":
+			names.append(text_value)
+		if names.size() >= maxi(1, limit):
+			break
 	return separator.join(names) if not names.is_empty() else empty_text
 
 
 func _short_text(value: String, limit: int) -> String:
-	if limit <= 0 or value.length() <= limit: return value
+	if limit <= 0 or value.length() <= limit:
+		return value
 	return value.substr(0, maxi(0, limit - 1)) + "…"
 
 
@@ -266,6 +410,8 @@ func _dictionary(value: Variant) -> Dictionary:
 
 
 func _color(value: Variant, fallback: Color) -> Color:
-	if value is Color: return value as Color
-	if value is String and str(value).begins_with("#"): return Color(str(value))
+	if value is Color:
+		return value as Color
+	if value is String and str(value).begins_with("#"):
+		return Color(str(value))
 	return fallback
