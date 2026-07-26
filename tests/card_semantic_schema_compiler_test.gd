@@ -70,8 +70,8 @@ func _run() -> void:
 	_expect(bool(report.get("ok", false)), "catalog_compile_succeeds:%s" % JSON.stringify(report.get("errors", [])))
 	_expect(int(report.get("source_record_count", 0)) == 348, "source_record_count")
 	_expect(int(report.get("compiled_count", 0)) == 348, "compiled_count")
-	_expect(int(report.get("active_count", 0)) == 328, "active_count")
-	_expect(int(report.get("projection_only_count", 0)) == 20, "projection_only_count")
+	_expect(int(report.get("active_count", 0)) == 288, "active_count")
+	_expect(int(report.get("projection_only_count", 0)) == 60, "projection_only_count")
 	_expect(int(report.get("not_acquirable_count", -1)) == 0, "not_acquirable_count")
 	_expect((report.get("op_counts", {}) as Dictionary) == EXPECTED_OP_COUNTS, "normalized_op_counts")
 	_expect((report.get("errors", []) as Array).is_empty(), "catalog_compile_errors_empty")
@@ -109,10 +109,10 @@ func _run() -> void:
 		_expect(str((spec.get("target", {}) as Dictionary).get("target_id", "")) == str(EXPECTED_TARGETS.get(machine.get("effect_kind", ""), "")), "record_target:%s" % str(machine.get("card_id", "")))
 		_expect(bool((spec.get("identity", {}) as Dictionary).get("available_for_acquisition", false)) == bool(machine.get("available_for_acquisition", false)), "record_acquisition_preserved:%s" % str(machine.get("card_id", "")))
 		var readiness_id := str(spec.get("runtime_readiness_id", ""))
-		if str(machine.get("category_id", "")) == "organization":
-			_expect(readiness_id == "projection_only", "organization_never_active:%s" % str(machine.get("card_id", "")))
+		if ["military", "interaction", "organization"].has(str(machine.get("category_id", ""))):
+			_expect(readiness_id == "projection_only", "unwired_route_never_active:%s" % str(machine.get("card_id", "")))
 		else:
-			_expect(readiness_id == "active", "rule_backed_record_active:%s" % str(machine.get("card_id", "")))
+			_expect(readiness_id == "active", "production_wired_record_active:%s" % str(machine.get("card_id", "")))
 		for amount in ((spec.get("cost", {}) as Dictionary).get("activation", {}) as Dictionary).values():
 			_expect(amount is int and int(amount) >= 0, "activation_cost_integer:%s" % str(machine.get("card_id", "")))
 		total_ops += (spec.get("effect_ops", []) as Array).size()
@@ -129,10 +129,10 @@ func _verify_closed_failures(card_value: Variant, catalog_id: String) -> void:
 	var card: Dictionary = (card_value as Dictionary).duplicate(true)
 	var unknown_effect := card.duplicate(true)
 	(unknown_effect["machine"] as Dictionary)["effect_kind"] = "unknown_effect"
-	_expect(not bool(COMPILER.new().compile_card_record(unknown_effect, catalog_id).get("ok", true)), "unknown_effect_fails_closed")
+	_expect_closed_failure(COMPILER.new().compile_card_record(unknown_effect, catalog_id), "unknown_effect_fails_closed")
 	var unknown_target := card.duplicate(true)
 	(unknown_target["machine"] as Dictionary)["target_kind"] = "unknown_target"
-	_expect(not bool(COMPILER.new().compile_card_record(unknown_target, catalog_id).get("ok", true)), "unknown_target_fails_closed")
+	_expect_closed_failure(COMPILER.new().compile_card_record(unknown_target, catalog_id), "unknown_target_fails_closed")
 	var missing_payload := card.duplicate(true)
 	((missing_payload["machine"] as Dictionary)["effect_payload"] as Dictionary).erase("rate_per_minute")
 	_expect(not bool(COMPILER.new().compile_card_record(missing_payload, catalog_id).get("ok", true)), "missing_payload_field_fails_closed")
@@ -188,6 +188,8 @@ func _verify_service(card_value: Variant) -> void:
 	var summary := service.validation_snapshot()
 	_expect(bool(summary.get("configured", false)), "service_configures")
 	_expect(int(summary.get("compiled_count", 0)) == 348, "service_compiles_complete_catalog")
+	_expect(int(summary.get("active_count", 0)) == 288, "service_active_count")
+	_expect(int(summary.get("projection_only_count", 0)) == 60, "service_projection_only_count")
 	_expect(int(summary.get("compile_count", 0)) == 348, "service_compiles_once")
 	_expect(int(summary.get("cache_entry_count", 0)) == 348, "service_cache_entry_count")
 	_expect(not summary.has("card_ids") and not summary.has("specs") and not summary.has("cache"), "service_reports_aggregates_only")
@@ -284,6 +286,11 @@ func _expect(condition: bool, failure_id: String) -> void:
 	_checks += 1
 	if not condition:
 		_failures.append(failure_id)
+
+
+func _expect_closed_failure(result: Dictionary, failure_id: String) -> void:
+	var spec: Dictionary = result.get("spec", {}) if result.get("spec", {}) is Dictionary else {}
+	_expect(not bool(result.get("ok", true)) and spec.is_empty() and not spec.has("runtime_readiness_id"), failure_id)
 
 
 func _finish() -> void:

@@ -10,16 +10,16 @@ const SOURCE_MACHINE_KEYS := [
 	"effect_kind", "target_kind", "effect_payload", "available_for_acquisition", "resolution_policy",
 ]
 const EFFECT_CONTRACTS := {
-	"install_commodity_rate": {"category_id": "commodity", "target_kind": "same_industry_factory_or_market"},
-	"build_upgrade_or_repair_facility": {"category_id": "facility", "target_kind": "region_unique_facility_slot"},
-	"global_order_budget": {"category_id": "supply_demand", "target_kind": "global_matching_goods"},
-	"global_supply_spawn": {"category_id": "supply_demand", "target_kind": "global_matching_factories"},
-	"deploy_or_upgrade_monster": {"category_id": "monster", "target_kind": "region_or_existing_same_family_monster"},
-	"deploy_or_upgrade_military": {"category_id": "military", "target_kind": "region_or_owned_same_family_military"},
-	"player_hand_disrupt": {"category_id": "interaction", "target_kind": "opponent_discardable_hand"},
-	"player_hand_steal": {"category_id": "interaction", "target_kind": "opponent_discardable_hand"},
-	"card_counter": {"category_id": "interaction", "target_kind": "incoming_direct_player_interaction"},
-	"install_organization_upgrade": {"category_id": "organization", "target_kind": "self_organization_slot"},
+	"install_commodity_rate": {"category_id": "commodity", "target_kind": "same_industry_factory_or_market", "runtime_readiness_id": "active"},
+	"build_upgrade_or_repair_facility": {"category_id": "facility", "target_kind": "region_unique_facility_slot", "runtime_readiness_id": "active"},
+	"global_order_budget": {"category_id": "supply_demand", "target_kind": "global_matching_goods", "runtime_readiness_id": "active"},
+	"global_supply_spawn": {"category_id": "supply_demand", "target_kind": "global_matching_factories", "runtime_readiness_id": "active"},
+	"deploy_or_upgrade_monster": {"category_id": "monster", "target_kind": "region_or_existing_same_family_monster", "runtime_readiness_id": "active"},
+	"deploy_or_upgrade_military": {"category_id": "military", "target_kind": "region_or_owned_same_family_military", "runtime_readiness_id": "projection_only"},
+	"player_hand_disrupt": {"category_id": "interaction", "target_kind": "opponent_discardable_hand", "runtime_readiness_id": "projection_only"},
+	"player_hand_steal": {"category_id": "interaction", "target_kind": "opponent_discardable_hand", "runtime_readiness_id": "projection_only"},
+	"card_counter": {"category_id": "interaction", "target_kind": "incoming_direct_player_interaction", "runtime_readiness_id": "projection_only"},
+	"install_organization_upgrade": {"category_id": "organization", "target_kind": "self_organization_slot", "runtime_readiness_id": "projection_only"},
 }
 const FACILITY_COMMON_PAYLOAD_KEYS := [
 	"allowed_region_states", "card_rank", "facility_kind", "industry_id", "operation_policy",
@@ -157,7 +157,9 @@ func _compile_uncached(machine: Dictionary, source_catalog_id: String, source_de
 	if effect_ops.is_empty():
 		return _failure(["effect_mapping_unsupported:%s" % effect_kind], source_definition_fingerprint)
 	var available := bool(machine.get("available_for_acquisition", false))
-	var readiness_id := "projection_only" if effect_kind == "install_organization_upgrade" else ("active" if available else "not_acquirable")
+	var readiness_id := _runtime_readiness_id(effect_kind, available)
+	if readiness_id.is_empty():
+		return _failure(["runtime_readiness_unsupported:%s" % effect_kind], source_definition_fingerprint)
 	var identity := {
 		"card_id": str(machine.get("card_id", "")),
 		"family_id": str(machine.get("family_id", "")),
@@ -457,6 +459,15 @@ func _target_spec(machine: Dictionary) -> Dictionary:
 		"install_organization_upgrade":
 			return {"target_id": "organization.self_slot", "selection_id": "actor_choice", "cardinality_id": "exactly_one", "filter_ids": ["organization.slot.available_or_same_family"]}
 	return {}
+
+
+func _runtime_readiness_id(effect_kind: String, available_for_acquisition: bool) -> String:
+	if not EFFECT_CONTRACTS.has(effect_kind):
+		return ""
+	if not available_for_acquisition:
+		return "not_acquirable"
+	var readiness_id := str((EFFECT_CONTRACTS[effect_kind] as Dictionary).get("runtime_readiness_id", ""))
+	return readiness_id if SCHEMA.RUNTIME_READINESS_IDS.has(readiness_id) else ""
 
 
 func _response_id(effect_kind: String) -> String:
