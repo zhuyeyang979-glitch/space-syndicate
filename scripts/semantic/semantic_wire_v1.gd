@@ -42,9 +42,18 @@ const ENTITY_REF_FIELDS := [
 const LEGALITY_PROOF_REF_FIELDS := [
 	"schema_version",
 	"status_id",
+	"request_id",
+	"ruleset_id",
 	"rules_revision",
 	"world_revision",
 	"source_revision",
+	"registry_revision",
+	"rng_precondition_revision",
+	"semantic_definition_revision",
+	"actor_revision",
+	"source_instance_revision",
+	"semantic_fingerprint",
+	"registry_fingerprint",
 	"proof_fingerprint",
 ]
 const CONDITION_PROOF_REF_FIELDS := [
@@ -320,11 +329,29 @@ static func legality_proof_ref_error(value: Variant) -> String:
 		return "legality_proof_schema_version_invalid"
 	if str(proof.get("status_id", "")) != "legal":
 		return "legality_proof_status_invalid"
-	for field in ["rules_revision", "world_revision", "source_revision"]:
+	for field in ["request_id", "ruleset_id"]:
+		if not is_stable_id(proof.get(field)):
+			return "legality_proof_identity_invalid"
+	for field in [
+		"rules_revision",
+		"world_revision",
+		"source_revision",
+		"registry_revision",
+		"rng_precondition_revision",
+		"semantic_definition_revision",
+		"actor_revision",
+		"source_instance_revision",
+	]:
 		if not is_nonnegative_integer(proof.get(field)):
 			return "legality_proof_revision_invalid"
-	if not is_fingerprint(proof.get("proof_fingerprint")):
-		return "legality_proof_fingerprint_invalid"
+	for field in ["semantic_fingerprint", "registry_fingerprint", "proof_fingerprint"]:
+		if not is_fingerprint(proof.get(field)):
+			return "legality_proof_fingerprint_invalid"
+	if int(proof.get("semantic_definition_revision", 0)) <= 0:
+		return "legality_proof_revision_invalid"
+	if str(proof.get("proof_fingerprint", "")) \
+			!= fingerprint(proof, "proof_fingerprint"):
+		return "legality_proof_fingerprint_mismatch"
 	return ""
 
 

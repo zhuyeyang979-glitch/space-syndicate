@@ -24,6 +24,15 @@ const REQUIRED_BUILD_FIELDS := [
 const OPTIONAL_BUILD_FIELDS := ["semantic_catalog_fingerprint", "registry_fingerprint"]
 const REQUIRED_FIELDS := REQUIRED_BUILD_FIELDS + ["report_fingerprint"]
 const OPTIONAL_FIELDS := OPTIONAL_BUILD_FIELDS
+const FAIL_CLOSED_ID_FIELDS := [
+	"unknown_condition_ids",
+	"unknown_target_ids",
+	"unknown_operation_ids",
+	"unknown_randomness_policy_ids",
+	"unknown_visibility_policy_ids",
+	"unknown_mechanic_ids",
+	"retired_identifier_hits",
+]
 const ISSUE_FIELDS := [
 	"schema_version",
 	"severity_id",
@@ -110,7 +119,13 @@ static func validate(value: Variant) -> Dictionary:
 		if ["blocker", "error"].has(str((issue_variant as Dictionary).get("severity_id", ""))):
 			has_invalidating_issue = true
 			break
-	if bool(report.get("valid", false)) == has_invalidating_issue:
+	var has_fail_closed_id := false
+	for field in FAIL_CLOSED_ID_FIELDS:
+		if not (report.get(field, []) as Array).is_empty():
+			has_fail_closed_id = true
+			break
+	var expected_valid := not has_invalidating_issue and not has_fail_closed_id
+	if bool(report.get("valid", false)) != expected_valid:
 		return WIRE.invalid_result("semantic_validation_report.validity_mismatch")
 	if not WIRE.is_fingerprint(report.get("report_fingerprint")) \
 			or str(report.get("report_fingerprint", "")) \

@@ -15,48 +15,59 @@ const MANIFEST_FIELDS := [
 ]
 const READINESS_IDS := ["active", "projection_only", "unavailable"]
 
-var _descriptors: Dictionary = {}
+var _projection_descriptors: Dictionary = {}
 var _sealed := false
-var _registry_fingerprint := ""
+var _projection_metadata_fingerprint := ""
 var _last_report: Dictionary = {}
-var _applied_registration_count := 0
+var _applied_declaration_count := 0
 
 
-# This first slice registers detached descriptors only. Owner-bound executable
-# ports are intentionally deferred so no Callable or gameplay owner is retained.
+# Executable handler registration requires a real owner port attestation, which
+# this metadata-only PR deliberately cannot accept.
 func register_handler(descriptor: Dictionary) -> Dictionary:
+	return _declaration_receipt(
+		false, "executable_handler_registration_unavailable", descriptor, false
+	)
+
+
+func declare_projection_metadata(descriptor: Dictionary) -> Dictionary:
 	if _sealed:
-		return _registration_receipt(false, "registry_sealed", descriptor, false)
+		return _declaration_receipt(false, "projection_metadata_sealed", descriptor, false)
 	var report := DESCRIPTOR.validate(descriptor)
 	if not bool(report.get("valid", false)):
-		return _registration_receipt(false, str(report.get("reason_id", "descriptor_invalid")), descriptor, false)
+		return _declaration_receipt(
+			false, str(report.get("reason_id", "descriptor_invalid")), descriptor, false
+		)
 	var key := _descriptor_key(
 		str(descriptor.get("operation_id", "")), int(descriptor.get("operation_version", 0))
 	)
-	if _descriptors.has(key):
-		var current := _descriptors.get(key) as Dictionary
+	if _projection_descriptors.has(key):
+		var current := _projection_descriptors.get(key) as Dictionary
 		if str(current.get("descriptor_fingerprint", "")) \
 				== str(descriptor.get("descriptor_fingerprint", "")):
-			return _registration_receipt(true, "already_registered", current, false)
-		return _registration_receipt(false, "registration_conflict", descriptor, false)
-	_descriptors[key] = descriptor.duplicate(true)
-	_applied_registration_count += 1
-	return _registration_receipt(true, "registered", descriptor, true)
+			return _declaration_receipt(
+				true, "projection_metadata_already_declared", current, false
+			)
+		return _declaration_receipt(
+			false, "projection_metadata_conflict", descriptor, false
+		)
+	_projection_descriptors[key] = descriptor.duplicate(true)
+	_applied_declaration_count += 1
+	return _declaration_receipt(true, "projection_metadata_declared", descriptor, true)
 
 
-func seal(compiled_manifests: Array[Dictionary]) -> Dictionary:
+func seal_projection_metadata(declared_manifests: Array[Dictionary]) -> Dictionary:
 	if _sealed:
 		return validation_snapshot()
 	var normalized_manifests: Array[Dictionary] = []
 	var issues: Array[Dictionary] = []
 	var manifest_keys: Array[String] = []
-	var active_operation_ids: Array[String] = []
 	var projection_only_operation_ids: Array[String] = []
 	var unknown_operation_ids: Array[String] = []
-	for manifest_variant in compiled_manifests:
+	for manifest_variant in declared_manifests:
 		var manifest_error := _manifest_error(manifest_variant)
 		if not manifest_error.is_empty():
-			issues.append(_issue("blocker", manifest_error, "card", "invalid.manifest", "compiled_manifests"))
+			issues.append(_issue("blocker", manifest_error, "card", "invalid.manifest", "declared_manifests"))
 			continue
 		var manifest := manifest_variant.duplicate(true)
 		var key := _descriptor_key(
@@ -68,7 +79,7 @@ func seal(compiled_manifests: Array[Dictionary]) -> Dictionary:
 				"registry.manifest_duplicate",
 				str(manifest.get("domain_id", "")),
 				str(manifest.get("operation_id", "")),
-				"compiled_manifests"
+				"declared_manifests"
 			))
 			continue
 		manifest_keys.append(key)
@@ -76,37 +87,51 @@ func seal(compiled_manifests: Array[Dictionary]) -> Dictionary:
 		var readiness_id := str(manifest.get("execution_readiness_id", ""))
 		var operation_id := str(manifest.get("operation_id", ""))
 		if readiness_id == "active":
-			_append_unique(active_operation_ids, operation_id)
-			if not _descriptors.has(key):
+			issues.append(_issue(
+				"blocker",
+				"registry.active_readiness_attestation_unavailable",
+				str(manifest.get("domain_id", "")),
+				operation_id,
+				"execution_readiness_id"
+			))
+		elif readiness_id == "projection_only":
+			_append_unique(projection_only_operation_ids, operation_id)
+			if not _projection_descriptors.has(key):
 				_append_unique(unknown_operation_ids, operation_id)
 				issues.append(_issue(
 					"blocker",
-					"registry.active_handler_missing",
+					"registry.projection_metadata_missing",
 					str(manifest.get("domain_id", "")),
 					operation_id,
 					"operation_id"
 				))
 			else:
-				var descriptor := _descriptors.get(key) as Dictionary
-				var capability_error := _active_descriptor_error(descriptor, manifest)
-				if not capability_error.is_empty():
+				var descriptor := _projection_descriptors.get(key) as Dictionary
+				var descriptor_error := _projection_descriptor_error(descriptor, manifest)
+				if not descriptor_error.is_empty():
 					issues.append(_issue(
 						"blocker",
-						capability_error,
+						descriptor_error,
 						str(manifest.get("domain_id", "")),
 						operation_id,
 						"descriptor"
 					))
-		elif readiness_id == "projection_only":
-			_append_unique(projection_only_operation_ids, operation_id)
-
-	for key_variant in _descriptors.keys():
-		var key := str(key_variant)
-		if not manifest_keys.has(key):
-			var descriptor := _descriptors.get(key) as Dictionary
+		elif _projection_descriptors.has(key):
 			issues.append(_issue(
 				"error",
-				"registry.descriptor_without_manifest",
+				"registry.unavailable_operation_has_projection_metadata",
+				str(manifest.get("domain_id", "")),
+				operation_id,
+				"descriptor"
+			))
+
+	for key_variant in _projection_descriptors.keys():
+		var key := str(key_variant)
+		if not manifest_keys.has(key):
+			var descriptor := _projection_descriptors.get(key) as Dictionary
+			issues.append(_issue(
+				"error",
+				"registry.projection_metadata_without_manifest",
 				str(descriptor.get("domain_id", "")),
 				str(descriptor.get("operation_id", "")),
 				"descriptor"
@@ -114,26 +139,25 @@ func seal(compiled_manifests: Array[Dictionary]) -> Dictionary:
 
 	normalized_manifests.sort_custom(_manifest_less)
 	issues.sort_custom(_issue_less)
-	active_operation_ids.sort()
 	projection_only_operation_ids.sort()
 	unknown_operation_ids.sort()
 	var source_manifest_fingerprint := WIRE.fingerprint({
-		"manifest_kind": "compiled_operation_refs",
+		"manifest_kind": "declared_operation_refs",
 		"rows": normalized_manifests,
 	})
 	var semantic_catalog_fingerprint := WIRE.fingerprint({
-		"manifest_kind": "semantic_operation_refs",
+		"manifest_kind": "projection_semantic_refs",
 		"rows": normalized_manifests,
 	})
-	var registry_fingerprint := _calculate_registry_fingerprint()
+	var metadata_fingerprint := _calculate_projection_metadata_fingerprint()
 	var report_input := {
 		"schema_version": SCHEMA_VERSION,
-		"report_id": "semantic.registry.seal",
+		"report_id": "semantic.registry.projection_metadata_seal",
 		"phase_id": "registry_seal",
 		"valid": issues.is_empty(),
 		"source_manifest_fingerprint": source_manifest_fingerprint,
 		"semantic_catalog_fingerprint": semantic_catalog_fingerprint,
-		"registry_fingerprint": registry_fingerprint,
+		"registry_fingerprint": metadata_fingerprint,
 		"issues": issues,
 		"domain_summaries": _domain_summaries(normalized_manifests),
 		"unknown_condition_ids": [],
@@ -143,23 +167,25 @@ func seal(compiled_manifests: Array[Dictionary]) -> Dictionary:
 		"unknown_visibility_policy_ids": [],
 		"unknown_mechanic_ids": [],
 		"retired_identifier_hits": [],
-		"active_operation_ids": active_operation_ids,
+		"active_operation_ids": [],
 		"projection_only_operation_ids": projection_only_operation_ids,
 	}
 	_last_report = VALIDATION_REPORT.build(report_input)
 	if _last_report.is_empty():
 		return {}
 	if bool(_last_report.get("valid", false)):
-		_registry_fingerprint = registry_fingerprint
+		_projection_metadata_fingerprint = metadata_fingerprint
 		_sealed = true
 	return _last_report.duplicate(true)
 
 
-func descriptor_for(operation_id: String, operation_version: int) -> Dictionary:
+func projection_metadata_for(operation_id: String, operation_version: int) -> Dictionary:
 	if not _sealed or not WIRE.is_stable_id(operation_id) \
 			or not WIRE.is_positive_integer(operation_version):
 		return {}
-	var descriptor: Variant = _descriptors.get(_descriptor_key(operation_id, operation_version))
+	var descriptor: Variant = _projection_descriptors.get(
+		_descriptor_key(operation_id, operation_version)
+	)
 	return (descriptor as Dictionary).duplicate(true) if descriptor is Dictionary else {}
 
 
@@ -168,7 +194,7 @@ func validation_snapshot() -> Dictionary:
 		return _last_report.duplicate(true)
 	var report := VALIDATION_REPORT.build({
 		"schema_version": SCHEMA_VERSION,
-		"report_id": "semantic.registry.unsealed",
+		"report_id": "semantic.registry.projection_metadata_unsealed",
 		"phase_id": "source_validation",
 		"valid": true,
 		"source_manifest_fingerprint": WIRE.fingerprint([]),
@@ -187,18 +213,21 @@ func validation_snapshot() -> Dictionary:
 	return report.duplicate(true)
 
 
-func registry_fingerprint() -> String:
-	return _registry_fingerprint if _sealed else ""
+func projection_metadata_fingerprint() -> String:
+	return _projection_metadata_fingerprint if _sealed else ""
 
 
 func debug_snapshot() -> Dictionary:
 	return {
 		"schema_version": SCHEMA_VERSION,
-		"sealed": _sealed,
-		"descriptor_count": _descriptors.size(),
-		"applied_registration_count": _applied_registration_count,
-		"registry_fingerprint": registry_fingerprint(),
+		"projection_metadata_sealed": _sealed,
+		"projection_descriptor_count": _projection_descriptors.size(),
+		"applied_declaration_count": _applied_declaration_count,
+		"projection_metadata_fingerprint": projection_metadata_fingerprint(),
 		"metadata_only": true,
+		"active_readiness_certified": false,
+		"owner_port_attested": false,
+		"projection_port_attested": false,
 		"stores_callable": false,
 		"owns_gameplay_state": false,
 		"owns_catalog": false,
@@ -216,7 +245,8 @@ func _manifest_error(value: Variant) -> String:
 	if manifest.get("schema_version") != SCHEMA_VERSION:
 		return "registry.manifest_schema_version_invalid"
 	if not WIRE.DOMAIN_IDS.has(str(manifest.get("domain_id", ""))) \
-			or not WIRE.is_stable_id(manifest.get("operation_id")):
+			or not WIRE.is_stable_id(manifest.get("operation_id")) \
+			or not str(manifest.get("operation_id", "")).begins_with("operation."):
 		return "registry.manifest_identity_invalid"
 	if not WIRE.is_positive_integer(manifest.get("operation_version")):
 		return "registry.manifest_operation_version_invalid"
@@ -227,32 +257,36 @@ func _manifest_error(value: Variant) -> String:
 	return ""
 
 
-func _active_descriptor_error(descriptor: Dictionary, manifest: Dictionary) -> String:
+func _projection_descriptor_error(descriptor: Dictionary, manifest: Dictionary) -> String:
 	if str(descriptor.get("domain_id", "")) != str(manifest.get("domain_id", "")):
-		return "registry.descriptor_domain_mismatch"
+		return "registry.projection_metadata_domain_mismatch"
 	for capability in [
 		"supports_preflight",
 		"supports_checkpoint",
 		"supports_apply",
 		"supports_rollback",
 		"supports_rules_projection",
-		"supports_player_projection",
-		"supports_ai_projection",
 	]:
-		if not bool(descriptor.get(capability, false)):
-			return "registry.active_capability_missing"
+		if bool(descriptor.get(capability, false)):
+			return "registry.active_capability_not_attested"
+	if not bool(descriptor.get("supports_player_projection", false)) \
+			and not bool(descriptor.get("supports_ai_projection", false)):
+		return "registry.projection_capability_missing"
 	return ""
 
 
-func _calculate_registry_fingerprint() -> String:
+func _calculate_projection_metadata_fingerprint() -> String:
 	var descriptors: Array[Dictionary] = []
 	var keys: Array[String] = []
-	for key_variant in _descriptors.keys():
+	for key_variant in _projection_descriptors.keys():
 		keys.append(str(key_variant))
 	keys.sort()
 	for key in keys:
-		descriptors.append((_descriptors.get(key) as Dictionary).duplicate(true))
-	return WIRE.fingerprint({"registry_kind": "operation_handler_descriptors", "rows": descriptors})
+		descriptors.append((_projection_descriptors.get(key) as Dictionary).duplicate(true))
+	return WIRE.fingerprint({
+		"registry_kind": "projection_operation_metadata",
+		"rows": descriptors,
+	})
 
 
 func _domain_summaries(manifests: Array[Dictionary]) -> Array[Dictionary]:
@@ -275,7 +309,7 @@ func _domain_summaries(manifests: Array[Dictionary]) -> Array[Dictionary]:
 		for row_variant in rows:
 			match str((row_variant as Dictionary).get("execution_readiness_id", "")):
 				"active":
-					active_count += 1
+					failed_count += 1
 				"projection_only":
 					projection_only_count += 1
 				_:
@@ -295,11 +329,11 @@ func _domain_summaries(manifests: Array[Dictionary]) -> Array[Dictionary]:
 	return summaries
 
 
-func _registration_receipt(
+func _declaration_receipt(
 	ok: bool,
 	status_id: String,
 	descriptor: Dictionary,
-	applied: bool
+	declared: bool
 ) -> Dictionary:
 	return {
 		"schema_version": SCHEMA_VERSION,
@@ -308,7 +342,9 @@ func _registration_receipt(
 		"operation_id": str(descriptor.get("operation_id", "")),
 		"operation_version": int(descriptor.get("operation_version", 0)),
 		"descriptor_fingerprint": str(descriptor.get("descriptor_fingerprint", "")),
-		"applied": applied,
+		"declared": declared,
+		"active_readiness_certified": false,
+		"owner_port_attested": false,
 	}
 
 

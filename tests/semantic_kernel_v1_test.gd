@@ -157,7 +157,10 @@ func _test_condition_target_and_policies() -> Dictionary:
 			"randomness.none.v1": none_policy,
 			"randomness.card_discard.v1": random_policy,
 		},
-		"visibility_policies": {"visibility.public_result": visibility},
+		"visibility_policies": {
+			"visibility.actor_private_result": _private_visibility_policy(),
+			"visibility.public_result": visibility,
+		},
 	}
 
 
@@ -197,6 +200,54 @@ func _test_operation_and_rule_plan(contracts: Dictionary) -> void:
 		).is_empty(),
 		"random operation rejects explicit-none policy"
 	)
+	var wrong_visibility := _random_operation()
+	wrong_visibility["result_visibility_policy_id"] = "visibility.actor_private_result"
+	_expect(
+		OPERATION.build(
+			wrong_visibility,
+			contracts.get("operation_contracts", {}),
+			contracts.get("parameter_schemas", {}),
+			contracts.get("randomness_policies", {}),
+			contracts.get("visibility_policies", {})
+		).is_empty(),
+		"random operation result visibility must match its randomness policy"
+	)
+	var deterministic := _deterministic_operation()
+	_expect(
+		not OPERATION.build(
+			deterministic,
+			contracts.get("operation_contracts", {}),
+			contracts.get("parameter_schemas", {}),
+			contracts.get("randomness_policies", {}),
+			contracts.get("visibility_policies", {})
+		).is_empty(),
+		"deterministic operation requires its declared explicit-none policy"
+	)
+	var deterministic_visibility_mismatch := _deterministic_operation()
+	deterministic_visibility_mismatch["result_visibility_policy_id"] = (
+		"visibility.actor_private_result"
+	)
+	_expect(
+		OPERATION.build(
+			deterministic_visibility_mismatch,
+			contracts.get("operation_contracts", {}),
+			contracts.get("parameter_schemas", {}),
+			contracts.get("randomness_policies", {}),
+			contracts.get("visibility_policies", {})
+		).is_empty(),
+		"deterministic operation result visibility must match its none policy"
+	)
+	deterministic["randomness_policy_id"] = "randomness.card_discard.v1"
+	_expect(
+		OPERATION.build(
+			deterministic,
+			contracts.get("operation_contracts", {}),
+			contracts.get("parameter_schemas", {}),
+			contracts.get("randomness_policies", {}),
+			contracts.get("visibility_policies", {})
+		).is_empty(),
+		"deterministic operation rejects a random policy"
+	)
 
 	var plan_input := _rule_plan_input()
 	var plan := RULE_PLAN.build(
@@ -206,11 +257,66 @@ func _test_operation_and_rule_plan(contracts: Dictionary) -> void:
 		contracts.get("randomness_policies", {}),
 		contracts.get("visibility_policies", {})
 	)
-	_expect(not plan.is_empty(), "RuleExecutionPlan builds from authorized pure refs")
+	_expect(not plan.is_empty(), "RuleExecutionPlan builds from revision-bound pure refs")
 	plan_input["steps"][0]["parameters"]["count"] = 7
 	_expect(
 		int((plan.get("steps") as Array)[0]["parameters"]["count"]) == 1,
 		"RuleExecutionPlan is deeply detached"
+	)
+	for revision_field in [
+		"rules_revision",
+		"source_revision",
+		"world_revision",
+		"registry_revision",
+		"rng_precondition_revision",
+		"semantic_definition_revision",
+		"actor_revision",
+		"source_instance_revision",
+	]:
+		var stale_plan := _rule_plan_input()
+		stale_plan["legality_proof_ref"][revision_field] = int(
+			stale_plan["legality_proof_ref"][revision_field]
+		) + 1
+		_reseal_legality_proof(stale_plan["legality_proof_ref"])
+		_expect(
+			RULE_PLAN.build(
+				stale_plan,
+				contracts.get("operation_contracts", {}),
+				contracts.get("parameter_schemas", {}),
+				contracts.get("randomness_policies", {}),
+				contracts.get("visibility_policies", {})
+			).is_empty(),
+			"legality proof %s must exactly match the plan" % revision_field
+		)
+	for binding_field in ["request_id", "ruleset_id", "semantic_fingerprint", "registry_fingerprint"]:
+		var stale_binding := _rule_plan_input()
+		stale_binding["legality_proof_ref"][binding_field] = (
+			"request.other" if binding_field == "request_id"
+			else "ruleset.other" if binding_field == "ruleset_id"
+			else "9".repeat(64)
+		)
+		_reseal_legality_proof(stale_binding["legality_proof_ref"])
+		_expect(
+			RULE_PLAN.build(
+				stale_binding,
+				contracts.get("operation_contracts", {}),
+				contracts.get("parameter_schemas", {}),
+				contracts.get("randomness_policies", {}),
+				contracts.get("visibility_policies", {})
+			).is_empty(),
+			"legality proof %s must exactly match the plan" % binding_field
+		)
+	var hash_only_proof := _rule_plan_input()
+	hash_only_proof["legality_proof_ref"]["proof_fingerprint"] = "8".repeat(64)
+	_expect(
+		RULE_PLAN.build(
+			hash_only_proof,
+			contracts.get("operation_contracts", {}),
+			contracts.get("parameter_schemas", {}),
+			contracts.get("randomness_policies", {}),
+			contracts.get("visibility_policies", {})
+		).is_empty(),
+		"arbitrary hash-shaped legality evidence fails closed"
 	)
 	var unknown_step := _rule_plan_input()
 	unknown_step["steps"][0]["operation_id"] = "operation.unknown"
@@ -251,6 +357,27 @@ func _test_validation_report() -> void:
 	var wrong_validity := input.duplicate(true)
 	wrong_validity["valid"] = false
 	_expect(VALIDATION_REPORT.build(wrong_validity).is_empty(), "report validity cannot contradict issues")
+	for fail_closed_field in [
+		"unknown_condition_ids",
+		"unknown_target_ids",
+		"unknown_operation_ids",
+		"unknown_randomness_policy_ids",
+		"unknown_visibility_policy_ids",
+		"unknown_mechanic_ids",
+		"retired_identifier_hits",
+	]:
+		var unsafe_report := input.duplicate(true)
+		unsafe_report[fail_closed_field] = ["semantic.unknown"]
+		_expect(
+			VALIDATION_REPORT.build(unsafe_report).is_empty(),
+			"non-empty %s prevents a green report without relying on issues" % fail_closed_field
+		)
+		unsafe_report["valid"] = false
+		var closed_report := VALIDATION_REPORT.build(unsafe_report)
+		_expect(
+			not closed_report.is_empty() and not bool(closed_report.get("valid", true)),
+			"non-empty %s can only produce an explicit failed report" % fail_closed_field
+		)
 
 
 func _test_player_presentation() -> void:
@@ -351,28 +478,83 @@ func _test_ai_projection_values() -> void:
 
 func _test_registry() -> void:
 	var descriptor := HANDLER_DESCRIPTOR.build(_handler_descriptor_input())
-	_expect(not descriptor.is_empty(), "metadata-only handler descriptor builds")
+	_expect(not descriptor.is_empty(), "projection-only operation metadata descriptor builds")
+	var active_descriptor_input := _handler_descriptor_input()
+	active_descriptor_input["supported_transaction_policy_ids"] = ["transaction.card_play"]
+	active_descriptor_input["supported_plan_schema_versions"] = [1]
+	active_descriptor_input["supports_preflight"] = true
+	active_descriptor_input["supports_checkpoint"] = true
+	active_descriptor_input["supports_apply"] = true
+	active_descriptor_input["supports_rollback"] = true
+	active_descriptor_input["supports_rules_projection"] = true
+	_expect(
+		HANDLER_DESCRIPTOR.build(active_descriptor_input).is_empty(),
+		"descriptor cannot self-attest active execution capabilities"
+	)
+	for invalid_rule_source in [
+		"res://scripts/card.gd",
+		"docs/rules/card",
+		"owner::apply",
+		"apply_card_effect",
+		"printable reference",
+	]:
+		var invalid_descriptor_input := _handler_descriptor_input()
+		invalid_descriptor_input["rule_source_refs"] = [invalid_rule_source]
+		_expect(
+			HANDLER_DESCRIPTOR.build(invalid_descriptor_input).is_empty(),
+			"descriptor rejects non-semantic rule source ID: %s" % invalid_rule_source
+		)
+	for id_attack in [
+		["operation_id", "res://operation.gd"],
+		["handler_owner_id", "owner::apply"],
+		["parameter_schema_id", "params/card"],
+		["mechanic_ids", ["mechanic::discard"]],
+		["supported_condition_ids", ["condition/apply"]],
+	]:
+		var attacked_descriptor_input := _handler_descriptor_input()
+		attacked_descriptor_input[id_attack[0]] = id_attack[1]
+		_expect(
+			HANDLER_DESCRIPTOR.build(attacked_descriptor_input).is_empty(),
+			"descriptor rejects dispatch-shaped ID in %s" % id_attack[0]
+		)
+	var method_descriptor_input := _handler_descriptor_input()
+	method_descriptor_input["method_name"] = "apply"
+	_expect(
+		HANDLER_DESCRIPTOR.build(method_descriptor_input).is_empty(),
+		"descriptor rejects method-name dispatch metadata"
+	)
 	var registry := HANDLER_REGISTRY.new()
-	var first := registry.register_handler(descriptor)
-	var repeated := registry.register_handler(descriptor.duplicate(true))
-	_expect(bool(first.get("ok", false)) and bool(first.get("applied", false)), "first registration applies once")
+	var handler_registration := registry.register_handler(descriptor)
+	_expect(
+		not bool(handler_registration.get("ok", true))
+			and str(handler_registration.get("status_id", ""))
+				== "executable_handler_registration_unavailable"
+			and not bool(handler_registration.get("active_readiness_certified", true)),
+		"metadata-only registry rejects executable handler registration"
+	)
+	var first := registry.declare_projection_metadata(descriptor)
+	var repeated := registry.declare_projection_metadata(descriptor.duplicate(true))
+	_expect(bool(first.get("ok", false)) and bool(first.get("declared", false)), "first projection metadata declaration applies once")
 	_expect(
 		bool(repeated.get("ok", false))
-			and not bool(repeated.get("applied", true))
-			and str(repeated.get("status_id", "")) == "already_registered",
-		"identical retry is idempotent"
+			and not bool(repeated.get("declared", true))
+			and str(repeated.get("status_id", "")) == "projection_metadata_already_declared",
+		"identical projection metadata retry is idempotent"
 	)
 	var conflicting_input := _handler_descriptor_input()
 	conflicting_input["handler_owner_id"] = "owner.other_inventory"
 	var conflicting := HANDLER_DESCRIPTOR.build(conflicting_input)
-	var conflict_receipt := registry.register_handler(conflicting)
+	var conflict_receipt := registry.declare_projection_metadata(conflicting)
 	_expect(
 		not bool(conflict_receipt.get("ok", true))
-			and str(conflict_receipt.get("status_id", "")) == "registration_conflict",
-		"same operation key with different descriptor fails closed"
+			and str(conflict_receipt.get("status_id", "")) == "projection_metadata_conflict",
+		"same operation key with different projection metadata fails closed"
 	)
-	_expect(registry.descriptor_for("operation.discard_random", 1).is_empty(), "unsealed registry cannot dispatch")
-	var manifests: Array[Dictionary] = [{
+	_expect(
+		registry.projection_metadata_for("operation.discard_random", 1).is_empty(),
+		"unsealed registry cannot expose projection metadata"
+	)
+	var active_manifests: Array[Dictionary] = [{
 		"schema_version": 1,
 		"domain_id": "card",
 		"operation_id": "operation.discard_random",
@@ -380,46 +562,78 @@ func _test_registry() -> void:
 		"execution_readiness_id": "active",
 		"semantic_fingerprint": "d".repeat(64),
 	}]
-	var seal_report := registry.seal(manifests)
-	_expect(bool(seal_report.get("valid", false)), "registry seals with one complete active descriptor")
-	_expect(WIRE.is_fingerprint(registry.registry_fingerprint()), "sealed registry publishes deterministic fingerprint")
-	var lookup := registry.descriptor_for("operation.discard_random", 1)
-	_expect(not lookup.is_empty(), "known stable operation lookup succeeds after seal")
+	var active_report := registry.seal_projection_metadata(active_manifests)
+	_expect(
+		not bool(active_report.get("valid", true))
+			and (active_report.get("active_operation_ids", []) as Array).is_empty()
+			and str(((active_report.get("issues", []) as Array)[0] as Dictionary).get(
+				"issue_code", ""
+			)) == "registry.active_readiness_attestation_unavailable"
+			and registry.projection_metadata_fingerprint().is_empty(),
+		"active readiness always fails without trusted compiler and owner-port attestation"
+	)
+	_expect(
+		not bool(registry.debug_snapshot().get("active_readiness_certified", true)),
+		"failed active seal never certifies active readiness"
+	)
+	var projection_manifests := active_manifests.duplicate(true)
+	projection_manifests[0]["execution_readiness_id"] = "projection_only"
+	var seal_report := registry.seal_projection_metadata(projection_manifests)
+	_expect(bool(seal_report.get("valid", false)), "registry seals projection-only metadata")
+	_expect(
+		WIRE.is_fingerprint(registry.projection_metadata_fingerprint()),
+		"sealed projection metadata publishes a deterministic fingerprint"
+	)
+	var lookup := registry.projection_metadata_for("operation.discard_random", 1)
+	_expect(not lookup.is_empty(), "known stable projection metadata lookup succeeds after seal")
 	lookup["handler_owner_id"] = "owner.mutated"
 	_expect(
-		str(registry.descriptor_for("operation.discard_random", 1).get("handler_owner_id", ""))
+		str(registry.projection_metadata_for("operation.discard_random", 1).get("handler_owner_id", ""))
 			== "owner.card_inventory",
-		"registry lookup is deeply detached"
+		"projection metadata lookup is deeply detached"
 	)
-	_expect(registry.descriptor_for("operation.unknown", 1).is_empty(), "unknown registry lookup fails closed")
-	var post_seal := registry.register_handler(descriptor)
+	_expect(
+		registry.projection_metadata_for("operation.unknown", 1).is_empty(),
+		"unknown projection metadata lookup fails closed"
+	)
+	var post_seal := registry.declare_projection_metadata(descriptor)
 	_expect(
 		not bool(post_seal.get("ok", true))
-			and str(post_seal.get("status_id", "")) == "registry_sealed",
-		"post-seal registration fails closed"
+			and str(post_seal.get("status_id", "")) == "projection_metadata_sealed",
+		"post-seal projection metadata declaration fails closed"
 	)
 	var debug := registry.debug_snapshot()
 	_expect(
-		int(debug.get("applied_registration_count", 0)) == 1
+		int(debug.get("applied_declaration_count", 0)) == 1
 			and bool(debug.get("metadata_only", false))
 			and not bool(debug.get("stores_callable", true))
 			and not bool(debug.get("owns_gameplay_state", true))
-			and not bool(debug.get("owns_rng", true)),
-		"registry stores metadata only and owns no gameplay state"
+			and not bool(debug.get("owns_rng", true))
+			and not bool(debug.get("owner_port_attested", true))
+			and not bool(debug.get("projection_port_attested", true))
+			and not bool(debug.get("active_readiness_certified", true)),
+		"registry stores projection metadata only and owns no authority"
 	)
 	_expect(
-		not registry.has_method("build_rule_plan")
+			not registry.has_method("build_rule_plan")
+			and not registry.has_method("seal")
 			and not registry.has_method("apply")
-			and not registry.has_method("rollback"),
+			and not registry.has_method("rollback")
+			and not registry.has_method("descriptor_for"),
 		"owner-bound executable dispatch remains outside this PR"
 	)
 	registry.free()
 
 	var missing_registry := HANDLER_REGISTRY.new()
-	var missing_report := missing_registry.seal(manifests)
-	_expect(not bool(missing_report.get("valid", true)), "active operation without descriptor blocks seal")
+	var missing_report := missing_registry.seal_projection_metadata(projection_manifests)
 	_expect(
-		bool(missing_registry.register_handler(descriptor).get("ok", false)),
+		not bool(missing_report.get("valid", true))
+			and (missing_report.get("unknown_operation_ids", []) as Array)
+				== ["operation.discard_random"],
+		"projection metadata seal fails closed when its descriptor is unknown"
+	)
+	_expect(
+		bool(missing_registry.declare_projection_metadata(descriptor).get("ok", false)),
 		"failed seal leaves registry repairable rather than partially sealed"
 	)
 	missing_registry.free()
@@ -480,6 +694,7 @@ func _schema_descriptor(required: Array, optional: Array, field_kinds: Dictionar
 
 func _parameter_schemas() -> Dictionary:
 	return {
+		"params.none.v1": _schema_descriptor([], [], {}),
 		"params.minimum_count.v1": _schema_descriptor(
 			["minimum_count"], [], {"minimum_count": "positive_integer"}
 		),
@@ -502,6 +717,13 @@ func _visibility_policy() -> Dictionary:
 		"ai_analysis_visibility_id": "actor_private",
 		"redaction_policy_id": "redact.private_values",
 	}
+
+
+func _private_visibility_policy() -> Dictionary:
+	var policy := _visibility_policy()
+	policy["visibility_policy_id"] = "visibility.actor_private_result"
+	policy["outcome_visibility_id"] = "actor_private"
+	return policy
 
 
 func _none_randomness_policy() -> Dictionary:
@@ -546,7 +768,15 @@ func _operation_contracts() -> Dictionary:
 			"operation_version": 1,
 			"domain_id": "card",
 			"parameter_schema_id": "params.discard_count.v1",
+			"randomness_policy_id": "randomness.card_discard.v1",
 			"randomness_mode_id": "authoritative_rng",
+		},
+		"operation.observe_public": {
+			"operation_version": 1,
+			"domain_id": "card",
+			"parameter_schema_id": "params.none.v1",
+			"randomness_policy_id": "randomness.none.v1",
+			"randomness_mode_id": "none",
 		},
 	}
 
@@ -569,26 +799,39 @@ func _random_operation() -> Dictionary:
 	}
 
 
+func _deterministic_operation() -> Dictionary:
+	return {
+		"schema_version": 1,
+		"operation_instance_id": "operation.instance.observe",
+		"operation_id": "operation.observe_public",
+		"operation_version": 1,
+		"domain_id": "card",
+		"target_binding_ids": [],
+		"condition_binding_ids": [],
+		"parameter_schema_id": "params.none.v1",
+		"parameters": {},
+		"randomness_policy_id": "randomness.none.v1",
+		"result_visibility_policy_id": "visibility.public_result",
+		"atomic_group_id": "atomic.card_observe",
+		"sequence_index": 0,
+	}
+
+
 func _rule_plan_input() -> Dictionary:
 	return {
 		"schema_version": 1,
 		"plan_id": "plan.example",
 		"request_id": "request.example",
 		"ruleset_id": "ruleset.v06",
+		"rules_revision": 4,
 		"semantic_ref": _semantic_ref(),
 		"actor_ref": _entity_ref("player", "player.one", 3),
 		"source_instance_ref": _entity_ref("card_instance", "card.instance.one", 2),
 		"source_revision": 2,
 		"world_revision": 7,
-		"legality_proof_ref": {
-			"schema_version": 1,
-			"status_id": "legal",
-			"rules_revision": 4,
-			"world_revision": 7,
-			"source_revision": 2,
-			"proof_fingerprint": "c".repeat(64),
-		},
+		"legality_proof_ref": _legality_proof_ref(),
 		"registry_fingerprint": "d".repeat(64),
+		"registry_revision": 6,
 		"resolved_target_bindings": [{
 			"schema_version": 1,
 			"target_binding_id": "target.player",
@@ -624,6 +867,32 @@ func _rule_plan_input() -> Dictionary:
 		"rng_precondition_revision": 11,
 		"visibility_policy_id": "visibility.public_result",
 	}
+
+
+func _legality_proof_ref() -> Dictionary:
+	var proof := {
+		"schema_version": 1,
+		"status_id": "legal",
+		"request_id": "request.example",
+		"ruleset_id": "ruleset.v06",
+		"rules_revision": 4,
+		"world_revision": 7,
+		"source_revision": 2,
+		"registry_revision": 6,
+		"rng_precondition_revision": 11,
+		"semantic_definition_revision": 1,
+		"actor_revision": 3,
+		"source_instance_revision": 2,
+		"semantic_fingerprint": "b".repeat(64),
+		"registry_fingerprint": "d".repeat(64),
+		"proof_fingerprint": "",
+	}
+	_reseal_legality_proof(proof)
+	return proof
+
+
+func _reseal_legality_proof(proof: Dictionary) -> void:
+	proof["proof_fingerprint"] = WIRE.fingerprint(proof, "proof_fingerprint")
 
 
 func _message_schemas() -> Dictionary:
@@ -752,19 +1021,19 @@ func _handler_descriptor_input() -> Dictionary:
 		"operation_version": 1,
 		"domain_id": "card",
 		"handler_owner_id": "owner.card_inventory",
-		"mechanic_ids": ["interaction.hand_discard"],
-		"rule_source_refs": ["docs/rules/card.md#discard"],
+		"mechanic_ids": ["mechanic.interaction_hand_discard"],
+		"rule_source_refs": ["rule.card_discard.v06"],
 		"parameter_schema_id": "params.discard_count.v1",
 		"supported_condition_ids": ["condition.target_has_hand"],
 		"supported_target_ids": ["target.player_opponent"],
 		"supported_randomness_policy_ids": ["randomness.card_discard.v1"],
-		"supported_transaction_policy_ids": ["transaction.card_play"],
-		"supported_plan_schema_versions": [1],
-		"supports_preflight": true,
-		"supports_checkpoint": true,
-		"supports_apply": true,
-		"supports_rollback": true,
-		"supports_rules_projection": true,
+		"supported_transaction_policy_ids": [],
+		"supported_plan_schema_versions": [],
+		"supports_preflight": false,
+		"supports_checkpoint": false,
+		"supports_apply": false,
+		"supports_rollback": false,
+		"supports_rules_projection": false,
 		"supports_player_projection": true,
 		"supports_ai_projection": true,
 	}

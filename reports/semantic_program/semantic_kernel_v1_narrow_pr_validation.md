@@ -22,12 +22,28 @@ physically immutable, so the boundary guarantees immutability by never
 retaining caller dictionaries and by returning detached copies from registry
 lookups.
 
-`OperationHandlerRegistry` stores only sealed `OperationHandlerDescriptor`
-metadata. It has no handler pointer, Callable, transaction, gameplay state,
-catalog, save section, or RNG authority. Identical pre-seal registration is an
-idempotent no-op; a different descriptor for the same operation ID/version is
-rejected; all post-seal registration and unknown lookup fail closed. Owner-bound
-dispatch is explicitly deferred to a later scene-composition PR.
+`OperationHandlerRegistry` stores only declared projection metadata. It has no
+handler pointer, Callable, transaction, gameplay state, catalog, save section,
+or RNG authority. `register_handler` always rejects because this PR has neither
+a trusted compiler manifest nor a real owner-port attestation. Projection
+metadata uses explicitly named declaration, seal, fingerprint, and lookup APIs.
+Identical declaration is idempotent, conflicting metadata fails closed, and an
+`active` manifest can never produce a valid report or active readiness claim.
+
+The adversarial follow-up also establishes these gates:
+
+- unknown or retired ID arrays force `SemanticValidationReport.valid=false`
+  even when the issue array is empty;
+- legality proof fingerprints are canonical and every request, ruleset,
+  semantic, actor, source, rules, world, registry, and RNG revision/fingerprint
+  is equality-bound to its `RuleExecutionPlan`;
+- operations use the exact randomness policy declared by their closed contract,
+  deterministic operations use explicit `none`, random operations use non-none,
+  and result visibility must match the randomness policy;
+- descriptor identities use semantic prefixes and stable ASCII IDs only;
+  paths, slashes, double-colon dispatch, method fields, and printable prose are
+  rejected;
+- execution and RulesProjection capability flags are rejected in this PR.
 
 ## Focused Godot evidence
 
@@ -43,11 +59,10 @@ pwsh -NoProfile -File tools/invoke_godot_test.ps1 `
 Results:
 
 - Import bootstrap: PASS, 26.891 seconds, zero script errors.
-- First focused run: `70/70 PASS`, 0.540 seconds process time,
-  46.377 milliseconds in-suite.
-- Warm focused rerun: `70/70 PASS`, 0.558 seconds process time,
-  40.603 milliseconds in-suite.
-- `smoke_test.gd --check-only`: PASS, 5.204 seconds, zero script errors.
+- Original focused gate: `70/70 PASS`.
+- Adversarial focused gate: `116/116 PASS`, 0.564 seconds process time,
+  49.930 milliseconds in-suite.
+- `smoke_test.gd --check-only`: PASS, 5.222 seconds, zero script errors.
 - Scoped Godot processes after each run: 0.
 
 Coverage includes schema/version/ASCII-ID rejection, canonical fingerprints,
@@ -56,11 +71,22 @@ failure, clipping-before-projection privacy rejection, explicit randomness
 policies for random operations, registry exact-once/idempotency/conflict/seal
 behavior, unknown lookup, and zero RNG draws during construction.
 
+The focused test is intentionally large because one SceneTree gate exercises
+all shared value types plus the metadata registry and their cross-boundary
+adversarial matrix. It does not instantiate a domain owner, production scene,
+catalog, card adapter, or dispatch path.
+
 ## Deliberate limitations
 
 - No domain semantic compiler or domain schema is added in this PR.
 - No operation executes; existing owner-bound transaction ports remain the
   required future dispatch boundary.
+- No trusted compiler-manifest or owner-port attestation exists here, so no
+  active readiness can be certified.
+- Revision-bound legality proof refs are integrity envelopes, not authorization
+  capabilities, and they grant no access to hidden values.
+- Privacy authority, production dispatch, and a Card adapter remain explicit
+  unresolved major risks for later PRs.
 - Parameter, observation, message, cost, and activation schemas must be supplied
   as closed trusted manifests by later domain composition.
 - No production consumer is cut over, so this PR changes no rule, balance,

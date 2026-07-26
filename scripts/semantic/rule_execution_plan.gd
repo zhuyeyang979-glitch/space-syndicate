@@ -10,6 +10,7 @@ const BUILD_FIELDS := [
 	"plan_id",
 	"request_id",
 	"ruleset_id",
+	"rules_revision",
 	"semantic_ref",
 	"actor_ref",
 	"source_instance_ref",
@@ -17,6 +18,7 @@ const BUILD_FIELDS := [
 	"world_revision",
 	"legality_proof_ref",
 	"registry_fingerprint",
+	"registry_revision",
 	"resolved_target_bindings",
 	"condition_proof_refs",
 	"steps",
@@ -44,6 +46,7 @@ const OPERATION_CONTRACT_FIELDS := [
 	"operation_version",
 	"domain_id",
 	"parameter_schema_id",
+	"randomness_policy_id",
 	"randomness_mode_id",
 ]
 
@@ -100,11 +103,20 @@ static func validate(
 		nested_error = WIRE.legality_proof_ref_error(plan.get("legality_proof_ref"))
 	if not nested_error.is_empty():
 		return WIRE.invalid_result("rule_execution_plan.%s" % nested_error)
-	for field in ["source_revision", "world_revision", "rng_precondition_revision"]:
+	for field in [
+		"rules_revision",
+		"source_revision",
+		"world_revision",
+		"registry_revision",
+		"rng_precondition_revision",
+	]:
 		if not WIRE.is_nonnegative_integer(plan.get(field)):
 			return WIRE.invalid_result("rule_execution_plan.%s_invalid" % field)
 	if not WIRE.is_fingerprint(plan.get("registry_fingerprint")):
 		return WIRE.invalid_result("rule_execution_plan.registry_fingerprint_invalid")
+	var binding_error := _legality_binding_error(plan)
+	if not binding_error.is_empty():
+		return WIRE.invalid_result("rule_execution_plan.%s" % binding_error)
 
 	var target_bindings: Variant = plan.get("resolved_target_bindings")
 	if not (target_bindings is Array):
@@ -157,6 +169,32 @@ static func validate(
 			or str(plan.get("plan_fingerprint", "")) != WIRE.fingerprint(plan, "plan_fingerprint"):
 		return WIRE.invalid_result("rule_execution_plan.fingerprint_invalid")
 	return WIRE.valid_result()
+
+
+static func _legality_binding_error(plan: Dictionary) -> String:
+	var proof := plan.get("legality_proof_ref", {}) as Dictionary
+	var semantic_ref := plan.get("semantic_ref", {}) as Dictionary
+	var actor_ref := plan.get("actor_ref", {}) as Dictionary
+	var source_instance_ref := plan.get("source_instance_ref", {}) as Dictionary
+	for pair in [
+		["request_id", plan.get("request_id")],
+		["ruleset_id", plan.get("ruleset_id")],
+		["rules_revision", plan.get("rules_revision")],
+		["source_revision", plan.get("source_revision")],
+		["world_revision", plan.get("world_revision")],
+		["registry_revision", plan.get("registry_revision")],
+		["rng_precondition_revision", plan.get("rng_precondition_revision")],
+		["semantic_definition_revision", semantic_ref.get("definition_revision")],
+		["actor_revision", actor_ref.get("revision")],
+		["source_instance_revision", source_instance_ref.get("revision")],
+		["semantic_fingerprint", semantic_ref.get("semantic_fingerprint")],
+		["registry_fingerprint", plan.get("registry_fingerprint")],
+	]:
+		if proof.get(pair[0]) != pair[1]:
+			return "legality_proof_%s_mismatch" % pair[0]
+	if plan.get("source_revision") != source_instance_ref.get("revision"):
+		return "source_instance_revision_mismatch"
+	return ""
 
 
 static func _step_error(
@@ -212,6 +250,7 @@ static func _step_error(
 	if not WIRE.is_positive_integer(contract.get("operation_version")) \
 			or not WIRE.DOMAIN_IDS.has(str(contract.get("domain_id", ""))) \
 			or not WIRE.is_stable_id(contract.get("parameter_schema_id")) \
+			or not WIRE.is_stable_id(contract.get("randomness_policy_id")) \
 			or not WIRE.is_stable_id(contract.get("randomness_mode_id")):
 		return "step_operation_contract_values_invalid"
 	if step.get("operation_version") != contract.get("operation_version") \
@@ -224,6 +263,8 @@ static func _step_error(
 	if not payload_error.is_empty():
 		return "step_%s" % payload_error
 	var randomness_id := str(step.get("randomness_policy_id", ""))
+	if randomness_id != str(contract.get("randomness_policy_id", "")):
+		return "step_randomness_policy_contract_mismatch"
 	if not randomness_policies.has(randomness_id):
 		return "step_randomness_policy_invalid"
 	var randomness_variant: Variant = randomness_policies.get(randomness_id)
@@ -237,6 +278,9 @@ static func _step_error(
 			or str((randomness_variant as Dictionary).get("mode_id", "")) != expected_mode_id:
 		return "step_randomness_policy_invalid"
 	var visibility_id := str(step.get("result_visibility_policy_id", ""))
+	if str((randomness_variant as Dictionary).get("result_visibility_policy_id", "")) \
+			!= visibility_id:
+		return "step_randomness_result_visibility_mismatch"
 	if not visibility_policies.has(visibility_id) \
 			or not bool(VISIBILITY.validate(
 				visibility_policies.get(visibility_id), [visibility_id]

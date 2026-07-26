@@ -24,6 +24,7 @@ const CONTRACT_FIELDS := [
 	"operation_version",
 	"domain_id",
 	"parameter_schema_id",
+	"randomness_policy_id",
 	"randomness_mode_id",
 ]
 
@@ -92,6 +93,7 @@ static func validate(
 	if not WIRE.is_positive_integer(contract.get("operation_version")) \
 			or not WIRE.DOMAIN_IDS.has(str(contract.get("domain_id", ""))) \
 			or not WIRE.is_stable_id(contract.get("parameter_schema_id")) \
+			or not WIRE.is_stable_id(contract.get("randomness_policy_id")) \
 			or not WIRE.is_stable_id(contract.get("randomness_mode_id")):
 		return WIRE.invalid_result("semantic_operation.contract_values_invalid")
 	if operation.get("operation_version") != contract.get("operation_version") \
@@ -107,6 +109,8 @@ static func validate(
 	if not payload_error.is_empty():
 		return WIRE.invalid_result("semantic_operation.%s" % payload_error)
 	var randomness_id := str(operation.get("randomness_policy_id", ""))
+	if randomness_id != str(contract.get("randomness_policy_id", "")):
+		return WIRE.invalid_result("semantic_operation.randomness_policy_contract_mismatch")
 	if not randomness_policies.has(randomness_id):
 		return WIRE.invalid_result("semantic_operation.randomness_policy_unknown")
 	var randomness_variant: Variant = randomness_policies.get(randomness_id)
@@ -120,6 +124,8 @@ static func validate(
 			or str((randomness_variant as Dictionary).get("mode_id", "")) != expected_mode_id:
 		return WIRE.invalid_result("semantic_operation.randomness_policy_mismatch")
 	var visibility_id := str(operation.get("result_visibility_policy_id", ""))
+	if str((randomness_variant as Dictionary).get("result_visibility_policy_id", "")) != visibility_id:
+		return WIRE.invalid_result("semantic_operation.randomness_result_visibility_mismatch")
 	if not visibility_policies.has(visibility_id) \
 			or not bool(VISIBILITY.validate(
 				visibility_policies.get(visibility_id), [visibility_id]
