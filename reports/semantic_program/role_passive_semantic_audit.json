@@ -1,0 +1,1717 @@
+{
+  "schema_version": 1,
+  "report_id": "semantic_program.role_passive_semantic_audit.wave1_f",
+  "audit_identity": {
+    "baseline": "29dac1dd47b04afa60c1d867a0bbe5c5c4d94d0c",
+    "branch": "codex/semantic-program-wave1-role-29dac1d",
+    "audit_date": "2026-07-26",
+    "frozen_contract": "docs/cards/card_semantic_phase1_frozen_contract.md",
+    "production_changes": 0,
+    "test_assertion_changes": 0,
+    "owned_files": [
+      "reports/semantic_program/role_passive_semantic_audit.md",
+      "reports/semantic_program/role_passive_semantic_audit.json"
+    ]
+  },
+  "scope": {
+    "included": [
+      "role_catalog",
+      "role_identity",
+      "setup_selection",
+      "live_player_identity",
+      "save_and_replay_identity",
+      "public_dtos",
+      "ai_role_reads",
+      "passive_trigger_and_application_paths",
+      "privacy",
+      "rng",
+      "persistence",
+      "rule_authority"
+    ],
+    "method": "Source-level producer-to-consumer tracing from the unique role catalog. Tests, benches, migration records, and diagnostics were not treated as product-rule authority.",
+    "production_scan_exclusions": [
+      "tests",
+      "benches",
+      "historical_docs_as_authority"
+    ]
+  },
+  "counts": {
+    "catalog_roles": 24,
+    "catalog_role_inventory_rows": 24,
+    "required_editorial_fields": 5,
+    "distinct_flat_mechanical_fields": 15,
+    "flat_mechanical_field_occurrences": 55,
+    "passive_families": 12,
+    "role_passive_family_assignments": 43,
+    "alpha01_selected_roles": 8,
+    "alpha01_flat_mechanical_field_occurrences": 18,
+    "alpha01_distinct_flat_mechanical_fields": 11,
+    "alpha01_passive_families": 8,
+    "localized_gameplay_match_role_name_branches": 0,
+    "localized_tooling_match_role_name_branches": 1,
+    "localized_identity_or_lookup_boundaries": 8,
+    "fabricated_role_rank_assignments": 3,
+    "fabricated_role_rank_pipelines": 2,
+    "kind_field_special_case_patterns": 7,
+    "public_role_dto_projection_pipelines": 7,
+    "starting_cash_values_missing_from_passive_text": 3,
+    "resource_cash_definitions_with_text_trigger_mismatch": 10,
+    "findings": 27,
+    "classifications": {
+      "MOVE": 13,
+      "REMOVE": 6,
+      "KEEP": 8
+    }
+  },
+  "field_inventory": [
+    {
+      "field": "starting_cash_bonus",
+      "catalog_occurrences": 16,
+      "alpha01_occurrences": 6,
+      "family_id": "opening_cash_modifier",
+      "application_status": "active"
+    },
+    {
+      "field": "bonus_card_product",
+      "catalog_occurrences": 4,
+      "alpha01_occurrences": 1,
+      "family_id": "product_region_bonus_card",
+      "application_status": "active"
+    },
+    {
+      "field": "resource_cash_product",
+      "catalog_occurrences": 10,
+      "alpha01_occurrences": 2,
+      "family_id": "matching_product_sale_cash",
+      "application_status": "active_with_text_trigger_mismatch"
+    },
+    {
+      "field": "resource_cash_amount",
+      "catalog_occurrences": 10,
+      "alpha01_occurrences": 2,
+      "family_id": "matching_product_sale_cash",
+      "application_status": "active_with_text_trigger_mismatch"
+    },
+    {
+      "field": "monster_upgrade_cash",
+      "catalog_occurrences": 2,
+      "alpha01_occurrences": 1,
+      "family_id": "monster_upgrade_cash",
+      "application_status": "active"
+    },
+    {
+      "field": "intel_city_reveal_charges",
+      "catalog_occurrences": 1,
+      "alpha01_occurrences": 0,
+      "family_id": "city_owner_reveal_charges",
+      "application_status": "no_role_application_path"
+    },
+    {
+      "field": "city_guess_reward_bonus",
+      "catalog_occurrences": 2,
+      "alpha01_occurrences": 0,
+      "family_id": "city_guess_reward_bonus",
+      "application_status": "no_active_transaction"
+    },
+    {
+      "field": "card_history_residual_catalog_charges",
+      "catalog_occurrences": 2,
+      "alpha01_occurrences": 1,
+      "family_id": "residual_frame_catalog_charges",
+      "application_status": "active_viewer_private"
+    },
+    {
+      "field": "card_history_public_exclusion_charges",
+      "catalog_occurrences": 2,
+      "alpha01_occurrences": 0,
+      "family_id": "public_evidence_exclusion_charges",
+      "application_status": "production_fail_closed"
+    },
+    {
+      "field": "high_volatility_sale_threshold",
+      "catalog_occurrences": 1,
+      "alpha01_occurrences": 1,
+      "family_id": "first_high_volatility_sale_per_cycle",
+      "application_status": "active"
+    },
+    {
+      "field": "high_volatility_first_sale_bonus",
+      "catalog_occurrences": 1,
+      "alpha01_occurrences": 1,
+      "family_id": "first_high_volatility_sale_per_cycle",
+      "application_status": "active"
+    },
+    {
+      "field": "high_volatility_bonus_once_per_market_cycle",
+      "catalog_occurrences": 1,
+      "alpha01_occurrences": 1,
+      "family_id": "first_high_volatility_sale_per_cycle",
+      "application_status": "active"
+    },
+    {
+      "field": "monster_control_limit_bonus",
+      "catalog_occurrences": 1,
+      "alpha01_occurrences": 1,
+      "family_id": "monster_ownership_cap_modifier",
+      "application_status": "active_capability"
+    },
+    {
+      "field": "military_control_limit_bonus",
+      "catalog_occurrences": 1,
+      "alpha01_occurrences": 1,
+      "family_id": "military_ownership_cap_modifier",
+      "application_status": "active_capability"
+    },
+    {
+      "field": "monster_cards_as_counter",
+      "catalog_occurrences": 1,
+      "alpha01_occurrences": 0,
+      "family_id": "monster_card_counter_conversion",
+      "application_status": "active_legacy_main_conversion"
+    }
+  ],
+  "catalog_role_inventory": [
+    {
+      "source_index": 0,
+      "localized_name": "环港走私议会",
+      "alpha01_selected": true,
+      "mechanical_fields": {
+        "starting_cash_bonus": 80,
+        "bonus_card_product": "环晶电池"
+      },
+      "passive_families": ["opening_cash_modifier", "product_region_bonus_card"],
+      "observed_status": "both_paths_active",
+      "passive_text_consistency": "consistent",
+      "evidence": "scripts/runtime/role_catalog_runtime_service.gd:38-46"
+    },
+    {
+      "source_index": 1,
+      "localized_name": "深海菌毯使团",
+      "alpha01_selected": true,
+      "mechanical_fields": {
+        "starting_cash_bonus": 80,
+        "resource_cash_product": "深海菌毯",
+        "resource_cash_amount": 55
+      },
+      "passive_families": ["opening_cash_modifier", "matching_product_sale_cash"],
+      "observed_status": "active_sale_receipt_path",
+      "passive_text_consistency": "mismatch_city_per_minute_vs_sale_receipt",
+      "evidence": "scripts/runtime/role_catalog_runtime_service.gd:47-56"
+    },
+    {
+      "source_index": 2,
+      "localized_name": "重力矿联董事会",
+      "alpha01_selected": true,
+      "mechanical_fields": {
+        "starting_cash_bonus": 90,
+        "resource_cash_product": "重力陶瓷",
+        "resource_cash_amount": 45
+      },
+      "passive_families": ["opening_cash_modifier", "matching_product_sale_cash"],
+      "observed_status": "active_sale_receipt_path",
+      "passive_text_consistency": "mismatch_city_per_minute_vs_sale_receipt",
+      "evidence": "scripts/runtime/role_catalog_runtime_service.gd:57-66"
+    },
+    {
+      "source_index": 3,
+      "localized_name": "离子军购局",
+      "alpha01_selected": true,
+      "mechanical_fields": {
+        "monster_upgrade_cash": 160
+      },
+      "passive_families": ["monster_upgrade_cash"],
+      "observed_status": "active_monster_and_cash_transaction",
+      "passive_text_consistency": "consistent",
+      "evidence": "scripts/runtime/role_catalog_runtime_service.gd:67-74"
+    },
+    {
+      "source_index": 4,
+      "localized_name": "光合修复会",
+      "alpha01_selected": false,
+      "mechanical_fields": {
+        "starting_cash_bonus": 120,
+        "resource_cash_product": "光合凝胶",
+        "resource_cash_amount": 40
+      },
+      "passive_families": ["opening_cash_modifier", "matching_product_sale_cash"],
+      "observed_status": "not_setup_selected_but_paths_wired",
+      "passive_text_consistency": "mismatch_city_per_minute_vs_sale_receipt",
+      "evidence": "scripts/runtime/role_catalog_runtime_service.gd:75-84"
+    },
+    {
+      "source_index": 5,
+      "localized_name": "虹膜数据券商",
+      "alpha01_selected": false,
+      "mechanical_fields": {
+        "starting_cash_bonus": 60,
+        "bonus_card_product": "活体芯片"
+      },
+      "passive_families": ["opening_cash_modifier", "product_region_bonus_card"],
+      "observed_status": "not_setup_selected_but_paths_wired",
+      "passive_text_consistency": "consistent",
+      "evidence": "scripts/runtime/role_catalog_runtime_service.gd:85-93"
+    },
+    {
+      "source_index": 6,
+      "localized_name": "星鲸餐饮垄断",
+      "alpha01_selected": false,
+      "mechanical_fields": {
+        "resource_cash_product": "星鲸罐头",
+        "resource_cash_amount": 50,
+        "monster_upgrade_cash": 60
+      },
+      "passive_families": ["matching_product_sale_cash", "monster_upgrade_cash"],
+      "observed_status": "not_setup_selected_but_paths_wired",
+      "passive_text_consistency": "sale_trigger_mismatch_upgrade_consistent",
+      "evidence": "scripts/runtime/role_catalog_runtime_service.gd:94-103"
+    },
+    {
+      "source_index": 7,
+      "localized_name": "静电蜂巢银行",
+      "alpha01_selected": false,
+      "mechanical_fields": {
+        "bonus_card_product": "静电蜂蜜"
+      },
+      "passive_families": ["product_region_bonus_card"],
+      "observed_status": "not_setup_selected_but_grant_path_wired",
+      "passive_text_consistency": "consistent",
+      "evidence": "scripts/runtime/role_catalog_runtime_service.gd:104-111"
+    },
+    {
+      "source_index": 8,
+      "localized_name": "星图审计庭",
+      "alpha01_selected": false,
+      "mechanical_fields": {
+        "intel_city_reveal_charges": 2,
+        "city_guess_reward_bonus": 40
+      },
+      "passive_families": ["city_owner_reveal_charges", "city_guess_reward_bonus"],
+      "observed_status": "no_active_role_transactions",
+      "passive_text_consistency": "declared_but_unimplemented",
+      "evidence": "scripts/runtime/role_catalog_runtime_service.gd:112-120"
+    },
+    {
+      "source_index": 9,
+      "localized_name": "幽幕播报社",
+      "alpha01_selected": true,
+      "mechanical_fields": {
+        "card_history_residual_catalog_charges": 2
+      },
+      "passive_families": ["residual_frame_catalog_charges"],
+      "observed_status": "active_viewer_private_command_state",
+      "passive_text_consistency": "consistent",
+      "evidence": "scripts/runtime/role_catalog_runtime_service.gd:121-128"
+    },
+    {
+      "source_index": 10,
+      "localized_name": "双边密约公证团",
+      "alpha01_selected": false,
+      "mechanical_fields": {
+        "card_history_residual_catalog_charges": 2
+      },
+      "passive_families": ["residual_frame_catalog_charges"],
+      "observed_status": "not_setup_selected_but_private_command_path_wired",
+      "passive_text_consistency": "consistent",
+      "evidence": "scripts/runtime/role_catalog_runtime_service.gd:129-136"
+    },
+    {
+      "source_index": 11,
+      "localized_name": "碎光私探行会",
+      "alpha01_selected": false,
+      "mechanical_fields": {
+        "card_history_public_exclusion_charges": 3
+      },
+      "passive_families": ["public_evidence_exclusion_charges"],
+      "observed_status": "production_fail_closed",
+      "passive_text_consistency": "declared_but_no_authoritative_impossibility_set",
+      "evidence": "scripts/runtime/role_catalog_runtime_service.gd:137-144"
+    },
+    {
+      "source_index": 12,
+      "localized_name": "星门补给商会",
+      "alpha01_selected": false,
+      "mechanical_fields": {
+        "starting_cash_bonus": 40
+      },
+      "passive_families": ["opening_cash_modifier"],
+      "observed_status": "not_setup_selected_but_opening_path_wired",
+      "passive_text_consistency": "contains_universal_market_rule_copy",
+      "evidence": "scripts/runtime/role_catalog_runtime_service.gd:145-152"
+    },
+    {
+      "source_index": 13,
+      "localized_name": "赤环航运托拉斯",
+      "alpha01_selected": false,
+      "mechanical_fields": {
+        "starting_cash_bonus": 50,
+        "resource_cash_product": "风暴珍珠",
+        "resource_cash_amount": 35
+      },
+      "passive_families": ["opening_cash_modifier", "matching_product_sale_cash"],
+      "observed_status": "not_setup_selected_but_paths_wired",
+      "passive_text_consistency": "mismatch_city_per_minute_vs_sale_receipt",
+      "evidence": "scripts/runtime/role_catalog_runtime_service.gd:153-162"
+    },
+    {
+      "source_index": 14,
+      "localized_name": "霓虹需求剧院",
+      "alpha01_selected": false,
+      "mechanical_fields": {
+        "resource_cash_product": "梦境香氛",
+        "resource_cash_amount": 45,
+        "bonus_card_product": "梦境香氛"
+      },
+      "passive_families": ["matching_product_sale_cash", "product_region_bonus_card"],
+      "observed_status": "not_setup_selected_but_paths_wired",
+      "passive_text_consistency": "sale_trigger_mismatch_grant_consistent",
+      "evidence": "scripts/runtime/role_catalog_runtime_service.gd:163-172"
+    },
+    {
+      "source_index": 15,
+      "localized_name": "极昼农业云",
+      "alpha01_selected": false,
+      "mechanical_fields": {
+        "starting_cash_bonus": 110,
+        "resource_cash_product": "星露莓",
+        "resource_cash_amount": 35,
+        "city_guess_reward_bonus": 20
+      },
+      "passive_families": ["opening_cash_modifier", "matching_product_sale_cash", "city_guess_reward_bonus"],
+      "observed_status": "sale_path_wired_guess_reward_unimplemented",
+      "passive_text_consistency": "sale_trigger_mismatch_reward_declared_but_unimplemented",
+      "evidence": "scripts/runtime/role_catalog_runtime_service.gd:173-183"
+    },
+    {
+      "source_index": 16,
+      "localized_name": "黑潮风险基金",
+      "alpha01_selected": true,
+      "mechanical_fields": {
+        "starting_cash_bonus": 70,
+        "high_volatility_sale_threshold": 12,
+        "high_volatility_first_sale_bonus": 40,
+        "high_volatility_bonus_once_per_market_cycle": true
+      },
+      "passive_families": ["opening_cash_modifier", "first_high_volatility_sale_per_cycle"],
+      "observed_status": "active_cycle_keyed_sale_plan",
+      "passive_text_consistency": "consistent",
+      "evidence": "scripts/runtime/role_catalog_runtime_service.gd:184-194"
+    },
+    {
+      "source_index": 17,
+      "localized_name": "白噪安保公司",
+      "alpha01_selected": false,
+      "mechanical_fields": {
+        "starting_cash_bonus": 40,
+        "resource_cash_product": "轨迹墨水",
+        "resource_cash_amount": 40
+      },
+      "passive_families": ["opening_cash_modifier", "matching_product_sale_cash"],
+      "observed_status": "not_setup_selected_but_paths_wired",
+      "passive_text_consistency": "mismatch_owned_region_facility_per_minute_vs_sale_receipt",
+      "evidence": "scripts/runtime/role_catalog_runtime_service.gd:195-204"
+    },
+    {
+      "source_index": 18,
+      "localized_name": "钛壳互助清算所",
+      "alpha01_selected": false,
+      "mechanical_fields": {
+        "starting_cash_bonus": 60,
+        "resource_cash_product": "钛壳贝",
+        "resource_cash_amount": 55
+      },
+      "passive_families": ["opening_cash_modifier", "matching_product_sale_cash"],
+      "observed_status": "not_setup_selected_but_paths_wired",
+      "passive_text_consistency": "mismatch_city_per_minute_vs_sale_receipt",
+      "evidence": "scripts/runtime/role_catalog_runtime_service.gd:205-214"
+    },
+    {
+      "source_index": 19,
+      "localized_name": "暗礁公证黑市",
+      "alpha01_selected": false,
+      "mechanical_fields": {
+        "starting_cash_bonus": 30,
+        "card_history_public_exclusion_charges": 1
+      },
+      "passive_families": ["opening_cash_modifier", "public_evidence_exclusion_charges"],
+      "observed_status": "opening_path_wired_exclusion_fail_closed",
+      "passive_text_consistency": "exclusion_declared_but_no_authoritative_impossibility_set",
+      "evidence": "scripts/runtime/role_catalog_runtime_service.gd:215-223"
+    },
+    {
+      "source_index": 20,
+      "localized_name": "太阳鳞片王朝",
+      "alpha01_selected": false,
+      "mechanical_fields": {
+        "starting_cash_bonus": 150,
+        "resource_cash_product": "太阳鳞片",
+        "resource_cash_amount": 30
+      },
+      "passive_families": ["opening_cash_modifier", "matching_product_sale_cash"],
+      "observed_status": "not_setup_selected_but_paths_wired",
+      "passive_text_consistency": "mismatch_city_per_minute_vs_sale_receipt",
+      "evidence": "scripts/runtime/role_catalog_runtime_service.gd:224-233"
+    },
+    {
+      "source_index": 21,
+      "localized_name": "孪星兽栏同盟",
+      "alpha01_selected": true,
+      "mechanical_fields": {
+        "monster_control_limit_bonus": 1,
+        "starting_cash_bonus": 30
+      },
+      "passive_families": ["monster_ownership_cap_modifier", "opening_cash_modifier"],
+      "observed_status": "active_cap_and_opening_paths",
+      "passive_text_consistency": "starting_cash_bonus_omitted_from_passive_text",
+      "evidence": "scripts/runtime/role_catalog_runtime_service.gd:234-242"
+    },
+    {
+      "source_index": 22,
+      "localized_name": "蜂巢防务议会",
+      "alpha01_selected": true,
+      "mechanical_fields": {
+        "military_control_limit_bonus": 1,
+        "starting_cash_bonus": 30
+      },
+      "passive_families": ["military_ownership_cap_modifier", "opening_cash_modifier"],
+      "observed_status": "active_cap_and_opening_paths",
+      "passive_text_consistency": "starting_cash_bonus_omitted_from_passive_text",
+      "evidence": "scripts/runtime/role_catalog_runtime_service.gd:243-251"
+    },
+    {
+      "source_index": 23,
+      "localized_name": "悖论兽契社",
+      "alpha01_selected": false,
+      "mechanical_fields": {
+        "monster_cards_as_counter": true,
+        "starting_cash_bonus": 40
+      },
+      "passive_families": ["monster_card_counter_conversion", "opening_cash_modifier"],
+      "observed_status": "legacy_main_conversion_and_opening_path_wired",
+      "passive_text_consistency": "starting_cash_bonus_omitted_from_passive_text",
+      "evidence": "scripts/runtime/role_catalog_runtime_service.gd:252-260"
+    }
+  ],
+  "kind_field_special_cases": [
+    {
+      "id": "injected_role_kind",
+      "description": "kind=player_role is injected into a copied definition rather than authored as stable identity.",
+      "evidence": "scripts/runtime/session_start_plan_builder.gd:175-181"
+    },
+    {
+      "id": "non_editorial_key_means_passive",
+      "description": "Alpha validation treats every key outside five editorial fields as a passive and proves support through source-token presence.",
+      "evidence": "resources/content/alpha01/alpha01_content_manifest.gd:79-142; resources/content/alpha01/alpha01_content_manifest.gd:625-674"
+    },
+    {
+      "id": "manual_main_copy_allowlist",
+      "description": "Main manually lists both cash aliases and every passive field for role copying.",
+      "evidence": "scripts/main.gd:2840-2860"
+    },
+    {
+      "id": "ai_flat_role_terms",
+      "description": "AI assigns strategy through direct flat-field checks rather than stable passive operations.",
+      "evidence": "scripts/runtime/ai_runtime_controller.gd:5245-5261; scripts/runtime/ai_runtime_controller.gd:8719-8724"
+    },
+    {
+      "id": "codex_field_presence_semantics",
+      "description": "Codex derives route, economy, intel, control, opening, and privacy meaning from field presence.",
+      "evidence": "scripts/runtime/codex_public_snapshot_service.gd:212-276"
+    },
+    {
+      "id": "counter_kind_conjunction",
+      "description": "Counter conversion combines one role bool, skill.kind=monster_card, and live response facts.",
+      "evidence": "scripts/runtime/card_play_eligibility_runtime_service.gd:473-478"
+    },
+    {
+      "id": "save_role_dictionary_open_shape",
+      "description": "Formal save checks index/name but validates role_card only as a dictionary, preserving arbitrary passive fields.",
+      "evidence": "scripts/runtime/world_session_envelope_codec.gd:448-478"
+    }
+  ],
+  "authority_gate": {
+    "status": "BLOCKED",
+    "reason": "No role-specific passive family has an active v0.6 rule section or mechanic-registry entry.",
+    "missing_authority_marker": "RULE_AUTHORITY_NOT_ESTABLISHED",
+    "evidence": [
+      "docs/tabletop_rulebook_v06.md:3-7",
+      "README.md:23-28",
+      "docs/rules/v06_mechanic_status_registry.json:1-24",
+      "docs/rules_v06_runtime_directive.md:9-11"
+    ],
+    "related_but_insufficient_clauses": [
+      {
+        "topic": "role_may_raise_ordinary_submission_cap",
+        "evidence": "docs/tabletop_rulebook_v06.md:382-392",
+        "conflict": "docs/rules_v06_runtime_directive.md:218-222 says only an authoritative organization capability may raise it"
+      },
+      {
+        "topic": "base_monster_and_military_caps",
+        "evidence": "docs/tabletop_rulebook_v06.md:394-406",
+        "limitation": "Only base and organization gradients are specified; no role modifier is specified"
+      },
+      {
+        "topic": "one_layer_counter_response",
+        "evidence": "docs/tabletop_rulebook_v06.md:434-440",
+        "limitation": "The response window is authorized; monster-card conversion by role is not"
+      },
+      {
+        "topic": "commodity_sale_receipt",
+        "evidence": "docs/rules_v06_runtime_directive.md:121-139; docs/rules_v06_runtime_directive.md:165-179",
+        "limitation": "The receipt and settlement order are authorized; role cash bonuses are not"
+      }
+    ]
+  },
+  "passive_families": [
+    {
+      "family_id": "opening_cash_modifier",
+      "definition_count": 16,
+      "raw_field_occurrences": 16,
+      "fields": ["starting_cash_bonus"],
+      "active_rule_section": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "authoritative_role_owner": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "observed_runtime_owner": ["SessionStartPlanBuilder", "WorldSessionState"],
+      "observed_path": "SessionStartPlanBuilder._build_players computes cash; formal session transaction installs it",
+      "application_status": "active",
+      "classification": "MOVE",
+      "privacy": "Role modifier is public; exact cash is private after setup.",
+      "rng": "Effect consumes zero RNG. Random role assignment is a separate RunRngService transaction.",
+      "save": "Full field, base cash, role delta, starting total, and current cash are all saved.",
+      "evidence": [
+        "scripts/runtime/role_catalog_runtime_service.gd:37-261",
+        "scripts/runtime/session_start_plan_builder.gd:169-205",
+        "scripts/runtime/session_start_transaction_coordinator.gd:40-129",
+        "scripts/runtime/world_session_envelope_codec.gd:26-90"
+      ]
+    },
+    {
+      "family_id": "product_region_bonus_card",
+      "definition_count": 4,
+      "raw_field_occurrences": 4,
+      "fields": ["bonus_card_product"],
+      "active_rule_section": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "authoritative_role_owner": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "observed_runtime_owner": ["DistrictSupplyActionPort", "CommodityCardInventoryRuntimeController"],
+      "observed_path": "Post-purchase branch selects the first eligible current rack card and calls grant_card",
+      "application_status": "active_non_atomic_followup",
+      "classification": "MOVE",
+      "privacy": "Trigger/product are public; buyer, grant identity, and hand are private.",
+      "rng": "Zero passive RNG; current rack order is read deterministically.",
+      "save": "Inventory terminal-operation journal persists grant lineage; the passive definition is also embedded in player save.",
+      "evidence": [
+        "scripts/runtime/district_supply_action_port.gd:320-400",
+        "scripts/runtime/commodity_card_inventory_runtime_controller.gd:470-545",
+        "scripts/runtime/commodity_card_inventory_runtime_controller.gd:851-876"
+      ]
+    },
+    {
+      "family_id": "matching_product_sale_cash",
+      "definition_count": 10,
+      "raw_field_occurrences": 20,
+      "fields": ["resource_cash_product", "resource_cash_amount"],
+      "active_rule_section": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "authoritative_role_owner": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "observed_runtime_owner": ["RoleResourceCashSettlementRuntimeService", "CommodityFlowWorldBridge", "WorldSessionState"],
+      "observed_path": "Every owned matching sale receipt creates a cash plan",
+      "application_status": "active_semantic_mismatch",
+      "classification": "MOVE",
+      "privacy": "Reward and exact cash are private; service declares no added public receipt fields.",
+      "rng": "Zero RNG.",
+      "save": "Cash, counters, and transaction ledger persist; saved role copy supplies trigger terms.",
+      "risk": "All ten player texts describe city/facility per-minute cash flow, but code checks only owned matching sale receipt.",
+      "evidence": [
+        "scripts/runtime/role_catalog_runtime_service.gd:48-65",
+        "scripts/runtime/role_catalog_runtime_service.gd:76-83",
+        "scripts/runtime/role_catalog_runtime_service.gd:95-102",
+        "scripts/runtime/role_catalog_runtime_service.gd:154-181",
+        "scripts/runtime/role_catalog_runtime_service.gd:196-213",
+        "scripts/runtime/role_catalog_runtime_service.gd:225-232",
+        "scripts/runtime/role_resource_cash_settlement_runtime_service.gd:20-53",
+        "scripts/runtime/commodity_flow_world_bridge.gd:168-230"
+      ]
+    },
+    {
+      "family_id": "monster_upgrade_cash",
+      "definition_count": 2,
+      "raw_field_occurrences": 2,
+      "fields": ["monster_upgrade_cash"],
+      "active_rule_section": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "authoritative_role_owner": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "observed_runtime_owner": ["MonsterRuntimeController", "PlayerCashMutationPort", "WorldSessionState"],
+      "observed_path": "Cash commit occurs before monster rank mutation",
+      "application_status": "active",
+      "classification": "MOVE",
+      "privacy": "Source card/actor should remain anonymous; localized public role callout may identify the unique role holder.",
+      "rng": "Zero RNG.",
+      "save": "Cash and exact-once player ledger persist; receipt source uses index-derived role ID and localized label.",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:3968-4005",
+        "scripts/runtime/monster_runtime_controller.gd:6454-6490",
+        "scripts/runtime/player_cash_mutation_port.gd:117-147",
+        "scripts/runtime/player_cash_mutation_port.gd:224-375"
+      ]
+    },
+    {
+      "family_id": "city_owner_reveal_charges",
+      "definition_count": 1,
+      "raw_field_occurrences": 1,
+      "fields": ["intel_city_reveal_charges"],
+      "active_rule_section": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "authoritative_role_owner": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "observed_runtime_owner": [],
+      "observed_path": "No role trigger or usage owner; only an unrelated card-driven authorized reveal path exists",
+      "application_status": "no_role_application_path",
+      "classification": "REMOVE",
+      "privacy": "Intended result is viewer-private owner truth.",
+      "rng": "Zero RNG expected; no path exists.",
+      "save": "No role usage is persisted for this ability.",
+      "evidence": [
+        "scripts/runtime/role_catalog_runtime_service.gd:113-119",
+        "scripts/runtime/codex_public_snapshot_service.gd:237-249",
+        "scripts/runtime/card_intel_runtime_service.gd:87-115"
+      ]
+    },
+    {
+      "family_id": "city_guess_reward_bonus",
+      "definition_count": 2,
+      "raw_field_occurrences": 2,
+      "fields": ["city_guess_reward_bonus"],
+      "active_rule_section": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "authoritative_role_owner": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "observed_runtime_owner": [],
+      "observed_path": "Only an orphaned Main formatter computes hypothetical cash; no transaction caller was found",
+      "application_status": "no_active_transaction",
+      "classification": "REMOVE",
+      "privacy": "Guesses and unrevealed truth are private; any settlement needs an explicit reveal policy.",
+      "rng": "Zero RNG expected; no path exists.",
+      "save": "Private guesses persist, but no reward receipt or role reward state exists.",
+      "evidence": [
+        "scripts/runtime/role_catalog_runtime_service.gd:113-119",
+        "scripts/runtime/role_catalog_runtime_service.gd:174-182",
+        "scripts/main.gd:1825-1861"
+      ]
+    },
+    {
+      "family_id": "residual_frame_catalog_charges",
+      "definition_count": 2,
+      "raw_field_occurrences": 2,
+      "fields": ["card_history_residual_catalog_charges"],
+      "active_rule_section": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "authoritative_role_owner": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "observed_runtime_owner": ["IntelPrivateCommandPort", "CardHistoryPrivateAnnotationService"],
+      "observed_path": "Authorized local viewer command uses public history evidence and increments private usage only when changed",
+      "application_status": "active_viewer_private",
+      "classification": "MOVE",
+      "privacy": "viewer_private",
+      "rng": "Zero RNG.",
+      "save": "Annotations and role_usage_by_viewer persist in card_history_private_annotations.",
+      "evidence": [
+        "scripts/runtime/intel_private_command_port.gd:43-91",
+        "scripts/runtime/intel_private_command_port.gd:115-145",
+        "scripts/runtime/card_history_private_annotation_service.gd:120-128",
+        "scripts/runtime/card_history_private_annotation_service.gd:181-188",
+        "scripts/runtime/card_history_private_annotation_service.gd:255-264",
+        "scripts/runtime/card_history_private_annotation_service.gd:325-440"
+      ]
+    },
+    {
+      "family_id": "public_evidence_exclusion_charges",
+      "definition_count": 2,
+      "raw_field_occurrences": 2,
+      "fields": ["card_history_public_exclusion_charges"],
+      "active_rule_section": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "authoritative_role_owner": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "observed_runtime_owner": ["IntelPrivateCommandPort", "CardHistoryPrivateAnnotationService"],
+      "observed_path": "Production public-evidence wrapper always returns no_publicly_impossible_suspect",
+      "application_status": "production_fail_closed",
+      "classification": "REMOVE",
+      "privacy": "viewer_private",
+      "rng": "Zero RNG.",
+      "save": "A dormant usage key is save-valid, but production cannot increment it through the public command path.",
+      "evidence": [
+        "scripts/runtime/intel_private_command_port.gd:142-145",
+        "scripts/runtime/card_history_private_annotation_service.gd:191-197",
+        "scripts/runtime/card_history_private_annotation_service.gd:267-293",
+        "scripts/runtime/card_history_private_annotation_service.gd:372-400"
+      ]
+    },
+    {
+      "family_id": "first_high_volatility_sale_per_cycle",
+      "definition_count": 1,
+      "raw_field_occurrences": 3,
+      "fields": [
+        "high_volatility_sale_threshold",
+        "high_volatility_first_sale_bonus",
+        "high_volatility_bonus_once_per_market_cycle"
+      ],
+      "active_rule_section": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "authoritative_role_owner": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "observed_runtime_owner": ["RoleResourceCashSettlementRuntimeService", "CommodityFlowWorldBridge", "WorldSessionState"],
+      "observed_path": "Cycle-keyed cash plan from public volatility on an owned sale receipt",
+      "application_status": "active",
+      "classification": "MOVE",
+      "privacy": "Volatility is public; actor reward and exact cash are private.",
+      "rng": "Zero RNG.",
+      "save": "Cycle-keyed exact-once transaction ledger persists.",
+      "evidence": [
+        "scripts/runtime/role_catalog_runtime_service.gd:185-193",
+        "scripts/runtime/role_resource_cash_settlement_runtime_service.gd:67-107",
+        "scripts/runtime/commodity_flow_world_bridge.gd:168-230"
+      ]
+    },
+    {
+      "family_id": "monster_ownership_cap_modifier",
+      "definition_count": 1,
+      "raw_field_occurrences": 1,
+      "fields": ["monster_control_limit_bonus"],
+      "active_rule_section": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "authoritative_role_owner": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "related_rule_section": "docs/tabletop_rulebook_v06.md:394-406 defines base and organization caps only",
+      "observed_runtime_owner": ["MonsterRuntimeController"],
+      "observed_path": "Summon and takeover call base 1 plus saved role field",
+      "application_status": "active_capability",
+      "classification": "MOVE",
+      "privacy": "Capability is public; hidden owner/count/target facts remain with monster owner.",
+      "rng": "Zero RNG.",
+      "save": "Monster state persists in its owner; cap currently comes from saved role copy.",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:4027-4047",
+        "scripts/runtime/monster_runtime_controller.gd:4100-4102",
+        "scripts/runtime/monster_runtime_controller.gd:6945-6961"
+      ]
+    },
+    {
+      "family_id": "military_ownership_cap_modifier",
+      "definition_count": 1,
+      "raw_field_occurrences": 1,
+      "fields": ["military_control_limit_bonus"],
+      "active_rule_section": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "authoritative_role_owner": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "related_rule_section": "docs/tabletop_rulebook_v06.md:394-406 defines base and organization caps only",
+      "observed_runtime_owner": ["MilitaryRuntimeController"],
+      "observed_path": "Deploy calls base 1 plus saved role field",
+      "application_status": "active_capability",
+      "classification": "MOVE",
+      "privacy": "Capability is public; command source and protected unit facts remain private.",
+      "rng": "Zero RNG.",
+      "save": "Military state persists in its owner; cap currently comes from saved role copy.",
+      "evidence": [
+        "scripts/runtime/military_runtime_controller.gd:458-485",
+        "scripts/runtime/military_runtime_controller.gd:604-644"
+      ]
+    },
+    {
+      "family_id": "monster_card_counter_conversion",
+      "definition_count": 1,
+      "raw_field_occurrences": 1,
+      "fields": ["monster_cards_as_counter"],
+      "active_rule_section": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "authoritative_role_owner": "RULE_AUTHORITY_NOT_ESTABLISHED",
+      "related_active_mechanic": "card_counter_response",
+      "observed_runtime_owner": [
+        "CardPlayEligibilityWorldBridge",
+        "CardPlayEligibilityRuntimeService",
+        "Main",
+        "CardResolutionRuntimeController",
+        "CardCounterSettlementRuntimeService"
+      ],
+      "observed_path": "Role bool authorizes a monster-card kind special case; Main rewrites a live hand slot to a counter card",
+      "application_status": "active_legacy_main_conversion",
+      "classification": "MOVE",
+      "privacy": "Role permission is public; source hand card and responder are private. Current source_card_name travels in queue-shaped data.",
+      "rng": "Zero RNG.",
+      "save": "Queue/resolution state may persist the rewritten skill; counter state machine has its own save lifecycle.",
+      "evidence": [
+        "docs/tabletop_rulebook_v06.md:434-440",
+        "docs/rules/v06_mechanic_status_registry.json:14",
+        "scripts/runtime/card_play_eligibility_world_bridge.gd:108-146",
+        "scripts/runtime/card_play_eligibility_runtime_service.gd:329-341",
+        "scripts/runtime/card_play_eligibility_runtime_service.gd:473-478",
+        "scripts/main.gd:4086-4125",
+        "scripts/runtime/card_counter_settlement_runtime_service.gd:36-113"
+      ]
+    }
+  ],
+  "identity_audit": {
+    "stable_role_id_present": false,
+    "authored_role_rank_present": false,
+    "current_save_identity": "legacy_role_index_and_chinese_name",
+    "localized_identity_or_lookup_boundaries": [
+      {
+        "boundary": "catalog_lookup",
+        "evidence": "scripts/runtime/role_catalog_runtime_service.gd:268-294"
+      },
+      {
+        "boundary": "alpha_manifest_parallel_name_and_index",
+        "evidence": "resources/content/alpha01/alpha01_content_manifest.tres:15-16"
+      },
+      {
+        "boundary": "runtime_selection_source_index_and_name",
+        "evidence": "scripts/runtime/alpha01_runtime_content_selection.gd:135-155"
+      },
+      {
+        "boundary": "ai_index_name_crosscheck",
+        "evidence": "scripts/runtime/ai_actor_state_port.gd:214-225; scripts/runtime/ai_actor_state_port.gd:684-713"
+      },
+      {
+        "boundary": "save_index_ordered_name_crosscheck",
+        "evidence": "scripts/runtime/world_session_envelope_codec.gd:448-469"
+      },
+      {
+        "boundary": "codex_stable_item_fallback",
+        "evidence": "scripts/presentation/compendium_readonly_query_port.gd:281-290"
+      },
+      {
+        "boundary": "portrait_name_key",
+        "evidence": "scripts/presentation/role_portrait_catalog.gd:36-72; scripts/presentation/role_portrait_catalog.gd:124-148"
+      },
+      {
+        "boundary": "monster_upgrade_index_id_and_localized_label",
+        "evidence": "scripts/runtime/monster_runtime_controller.gd:6464-6479"
+      }
+    ],
+    "fabricated_rank_assignments": [
+      "scripts/runtime/new_game_setup_viewer_query_port.gd:161-162",
+      "scripts/presentation/compendium_readonly_query_port.gd:87-99",
+      "scripts/runtime/codex_public_snapshot_service.gd:30-35"
+    ]
+  },
+  "save_replay_audit": {
+    "formal_save_root": "SessionEnvelopeSaveOwner",
+    "role_related_sections": [
+      "world_session_state.players[*]",
+      "card_history_private_annotations.role_usage_by_viewer"
+    ],
+    "current_compatibility": {
+      "world_session_schema": 2,
+      "legacy_world_session_schema": 1,
+      "max_role_index": 23,
+      "required_catalog_name_count": 24,
+      "validates_saved_passive_values_against_current_catalog": false,
+      "saves_catalog_id_or_fingerprint": false,
+      "evidence": [
+        "scripts/runtime/world_session_envelope_codec.gd:4-9",
+        "scripts/runtime/world_session_envelope_codec.gd:168-206",
+        "scripts/runtime/world_session_envelope_codec.gd:448-478"
+      ]
+    },
+    "risks": [
+      "Catalog reorder or localized rename rejects old saves.",
+      "Catalog value changes do not migrate saved role_card values.",
+      "Most gameplay reads saved role_card while AI/Codex/intel maxima can read the current catalog.",
+      "A modified save can alter executable passive fields without violating role index/name validation.",
+      "Monster-upgrade replay identity uses role index and localized label.",
+      "Catalog hash is not the frozen canonical JSON profile and is not in the save handshake."
+    ],
+    "migration_policy": [
+      "Keep a bounded legacy reader mapping baseline catalog hash plus exact legacy index/name to stable role_id.",
+      "Write stable role_id per player and one session-level role_catalog_id, ruleset_id, and source fingerprint.",
+      "Do not save RoleSemanticSpec, its cache, or PassiveTriggerExecutionPlan.",
+      "Preserve materialized cash and exact-once ledgers; never recompute or replay old rewards on load.",
+      "Keep private usage in CardHistoryPrivateAnnotationService and bind it to resolved role/passive identity.",
+      "Fail closed when the referenced source version cannot be resolved and no explicit migration exists."
+    ]
+  },
+  "consumer_graph": {
+    "nodes": [
+      "RoleCatalogRuntimeService",
+      "Alpha01ContentManifestResource",
+      "NewGameSetupDraftService",
+      "NewGameSetupViewerQueryPort",
+      "SessionStartPlanBuilder",
+      "SessionStartTransactionCoordinator",
+      "RunRngService",
+      "WorldSessionState",
+      "SessionEnvelopeSaveOwner",
+      "RoleCodexPublicSourceService",
+      "CodexPublicSnapshotService",
+      "AiActorStatePort",
+      "AiRuntimeController",
+      "DistrictSupplyActionPort",
+      "CommodityCardInventoryRuntimeController",
+      "RoleResourceCashSettlementRuntimeService",
+      "CommodityFlowWorldBridge",
+      "MonsterRuntimeController",
+      "MilitaryRuntimeController",
+      "PlayerCashMutationPort",
+      "IntelPrivateCommandPort",
+      "CardHistoryPrivateAnnotationService",
+      "CardPlayEligibilityWorldBridge",
+      "CardPlayEligibilityRuntimeService",
+      "Main",
+      "CardResolutionRuntimeController",
+      "CardCounterSettlementRuntimeService"
+    ],
+    "edges": [
+      {
+        "from": "RoleCatalogRuntimeService",
+        "to": "Alpha01ContentManifestResource",
+        "meaning": "validates selected localized names and source indices"
+      },
+      {
+        "from": "Alpha01ContentManifestResource",
+        "to": "NewGameSetupDraftService",
+        "meaning": "allowed role source indices"
+      },
+      {
+        "from": "NewGameSetupDraftService",
+        "to": "SessionStartPlanBuilder",
+        "meaning": "role_indices and random sentinel"
+      },
+      {
+        "from": "RunRngService",
+        "to": "SessionStartPlanBuilder",
+        "meaning": "detached random-role draws only"
+      },
+      {
+        "from": "RoleCatalogRuntimeService",
+        "to": "SessionStartPlanBuilder",
+        "meaning": "full definition lookup by array index"
+      },
+      {
+        "from": "SessionStartPlanBuilder",
+        "to": "WorldSessionState",
+        "meaning": "copies full definition into each live player"
+      },
+      {
+        "from": "WorldSessionState",
+        "to": "SessionEnvelopeSaveOwner",
+        "meaning": "saves full role copy, duplicate identity, cash derivations, and ledgers"
+      },
+      {
+        "from": "RoleCatalogRuntimeService",
+        "to": "RoleCodexPublicSourceService",
+        "meaning": "all public flat fields"
+      },
+      {
+        "from": "RoleCatalogRuntimeService",
+        "to": "AiActorStatePort",
+        "meaning": "current public definition by index/name"
+      },
+      {
+        "from": "AiActorStatePort",
+        "to": "AiRuntimeController",
+        "meaning": "raw role fields for product policy"
+      },
+      {
+        "from": "RoleCatalogRuntimeService",
+        "to": "IntelPrivateCommandPort",
+        "meaning": "current catalog maxima selected by free-form field name"
+      },
+      {
+        "from": "WorldSessionState",
+        "to": "DistrictSupplyActionPort",
+        "meaning": "saved bonus_card_product"
+      },
+      {
+        "from": "WorldSessionState",
+        "to": "RoleResourceCashSettlementRuntimeService",
+        "meaning": "saved sale and volatility fields"
+      },
+      {
+        "from": "WorldSessionState",
+        "to": "MonsterRuntimeController",
+        "meaning": "saved upgrade cash and control limit"
+      },
+      {
+        "from": "WorldSessionState",
+        "to": "MilitaryRuntimeController",
+        "meaning": "saved military control limit"
+      },
+      {
+        "from": "WorldSessionState",
+        "to": "CardPlayEligibilityWorldBridge",
+        "meaning": "saved counter conversion boolean"
+      },
+      {
+        "from": "CardPlayEligibilityRuntimeService",
+        "to": "Main",
+        "meaning": "legacy monster-card conversion special case"
+      },
+      {
+        "from": "Main",
+        "to": "CardResolutionRuntimeController",
+        "meaning": "submits a temporarily rewritten counter card"
+      }
+    ],
+    "split_brain": "AI, Codex, and intel maxima resolve current catalog definitions; most gameplay passives resolve saved player.role_card definitions."
+  },
+  "public_dto_audit": [
+    {
+      "pipeline": "catalog_public_definition",
+      "current_payload": "Localized identity, prose, and every mechanical flat field.",
+      "privacy_result": "Static role data only; no live viewer state.",
+      "classification": "MOVE",
+      "evidence": ["scripts/runtime/role_catalog_runtime_service.gd:297-305"]
+    },
+    {
+      "pipeline": "setup_seat_snapshot",
+      "current_payload": "Definition by index, raw passive text, fabricated role card and rank.",
+      "privacy_result": "AI role can remain random before start; starter monster is separately redacted.",
+      "classification": "MOVE",
+      "remove_subsurface": "fabricated_rank",
+      "evidence": [
+        "scripts/runtime/new_game_setup_viewer_query_port.gd:78-119",
+        "scripts/runtime/new_game_setup_viewer_query_port.gd:161-170"
+      ]
+    },
+    {
+      "pipeline": "compendium_role_codex",
+      "current_payload": "Mechanical allowlist plus inferred route, economy, intel, control, opening, and privacy copy.",
+      "privacy_result": "Adapter rejects obvious private keys, but semantic interpretation is duplicated.",
+      "classification": "MOVE",
+      "evidence": [
+        "scripts/runtime/role_codex_public_source_adapter.gd:4-41",
+        "scripts/runtime/codex_public_snapshot_service.gd:13-74",
+        "scripts/runtime/codex_public_snapshot_service.gd:212-276"
+      ]
+    },
+    {
+      "pipeline": "table_seat_projection",
+      "current_payload": "Full role card is read only to derive localized role_name, then erased from public row.",
+      "privacy_result": "No cash, hand, or passive fields reach public seat row.",
+      "classification": "MOVE",
+      "keep_subsurface": "existing_public_privacy_allowlist",
+      "evidence": [
+        "scripts/presentation/world_session_presentation_query.gd:33-46",
+        "scripts/runtime/player_seat_public_source_service.gd:37-60"
+      ]
+    },
+    {
+      "pipeline": "ai_public_role_projection",
+      "current_payload": "Public roster index/name followed by full current catalog rehydration.",
+      "privacy_result": "Role is public; no rival private state is added.",
+      "classification": "MOVE",
+      "evidence": [
+        "scripts/runtime/ai_actor_state_port.gd:137-225",
+        "scripts/runtime/ai_actor_state_port.gd:660-713"
+      ]
+    },
+    {
+      "pipeline": "intel_dossier_role_projection",
+      "current_payload": "Current catalog definition by public index plus name/passive tooltip.",
+      "privacy_result": "Viewer authorization and private annotations remain in existing owners.",
+      "classification": "MOVE",
+      "evidence": [
+        "scripts/presentation/intel_dossier_viewer_query_port.gd:307-314",
+        "scripts/runtime/intel_dossier_public_snapshot_service.gd:108-123"
+      ]
+    },
+    {
+      "pipeline": "portrait_projection",
+      "current_payload": "Localized role name is manifest and cache key.",
+      "privacy_result": "Art is public, but localization becomes identity.",
+      "classification": "MOVE",
+      "evidence": [
+        "scripts/presentation/role_portrait_catalog.gd:36-72",
+        "scripts/presentation/role_portrait_catalog.gd:124-148"
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "RP-001",
+      "classification": "MOVE",
+      "summary": "Replace localized name plus array offset identity with stable ASCII role_id.",
+      "evidence": [
+        "scripts/runtime/role_catalog_runtime_service.gd:268-294",
+        "scripts/runtime/role_catalog_runtime_service.gd:308-339"
+      ],
+      "privacy_impact": "none from identity migration; role identity remains public",
+      "rng_impact": "none",
+      "save_impact": "requires explicit legacy index/name mapping"
+    },
+    {
+      "id": "RP-002",
+      "classification": "MOVE",
+      "summary": "Separate localized/editorial data from machine role semantics.",
+      "evidence": [
+        "scripts/runtime/role_catalog_runtime_service.gd:7-35",
+        "scripts/runtime/role_catalog_runtime_service.gd:297-305"
+      ],
+      "privacy_impact": "public role meaning remains public; live private values stay outside static spec",
+      "rng_impact": "zero",
+      "save_impact": "static specs remain unsaved"
+    },
+    {
+      "id": "RP-003",
+      "classification": "MOVE",
+      "summary": "Migrate Alpha selection and setup draft from source indices/names to role IDs.",
+      "evidence": [
+        "resources/content/alpha01/alpha01_content_manifest.tres:15-16",
+        "scripts/runtime/new_game_setup_draft_service.gd:42-64",
+        "scripts/runtime/new_game_setup_draft_service.gd:153-216"
+      ],
+      "privacy_impact": "resolved role stays public; AI random placeholder remains redacted before start",
+      "rng_impact": "preserve existing draw count/order and RunRng custody",
+      "save_impact": "setup draft is not a save owner; session result must write stable role ID"
+    },
+    {
+      "id": "RP-004",
+      "classification": "REMOVE",
+      "summary": "Remove full static role definition from live player and formal save after migration.",
+      "evidence": [
+        "scripts/runtime/session_start_plan_builder.gd:169-205",
+        "scripts/runtime/world_session_envelope_codec.gd:26-90",
+        "scripts/runtime/world_session_envelope_codec.gd:389-411"
+      ],
+      "privacy_impact": "reduces accidental private/live coupling",
+      "rng_impact": "none",
+      "save_impact": "new player state stores stable assignment and real mutable state only"
+    },
+    {
+      "id": "RP-005",
+      "classification": "KEEP",
+      "summary": "Keep formal save preflight/checkpoint/apply/rollback transaction and a bounded compatibility reader.",
+      "evidence": [
+        "scripts/runtime/session_envelope_save_owner.gd:31-64",
+        "scripts/runtime/session_envelope_save_owner.gd:67-104",
+        "scripts/runtime/session_envelope_save_owner.gd:107-160"
+      ],
+      "privacy_impact": "preserves viewer-private annotation child",
+      "rng_impact": "none",
+      "save_impact": "real atomic save transaction"
+    },
+    {
+      "id": "RP-006",
+      "classification": "MOVE",
+      "summary": "Consolidate setup, Codex, and Intel role presentation into RolePlayerFaceDTO.",
+      "evidence": [
+        "scripts/runtime/new_game_setup_viewer_query_port.gd:78-119",
+        "scripts/runtime/role_codex_public_source_adapter.gd:22-41",
+        "scripts/runtime/intel_dossier_public_snapshot_service.gd:108-123"
+      ],
+      "privacy_impact": "DTO remains public and excludes live private values",
+      "rng_impact": "zero",
+      "save_impact": "none"
+    },
+    {
+      "id": "RP-007",
+      "classification": "REMOVE",
+      "summary": "Remove fabricated role rank/cost aliases.",
+      "evidence": [
+        "scripts/runtime/new_game_setup_viewer_query_port.gd:161-162",
+        "scripts/presentation/compendium_readonly_query_port.gd:87-99",
+        "scripts/runtime/codex_public_snapshot_service.gd:30-35"
+      ],
+      "privacy_impact": "none",
+      "rng_impact": "none",
+      "save_impact": "none"
+    },
+    {
+      "id": "RP-008",
+      "classification": "MOVE",
+      "summary": "Replace AI raw role-field reads with neutral typed semantic projection while preserving AI-owned weights.",
+      "evidence": [
+        "scripts/runtime/ai_actor_state_port.gd:214-225",
+        "scripts/runtime/ai_runtime_controller.gd:5245-5261",
+        "scripts/runtime/ai_runtime_controller.gd:8719-8724"
+      ],
+      "privacy_impact": "role facts are public; no rival private state is added",
+      "rng_impact": "no scoring RNG change",
+      "save_impact": "AI projection remains derived and unsaved"
+    },
+    {
+      "id": "RP-009",
+      "classification": "REMOVE",
+      "summary": "Remove Codex field-presence semantics and diagnostic ad hoc passive weights.",
+      "evidence": [
+        "scripts/runtime/codex_public_snapshot_service.gd:212-276",
+        "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:357-391"
+      ],
+      "privacy_impact": "typed information policy replaces inferred privacy copy",
+      "rng_impact": "none",
+      "save_impact": "none"
+    },
+    {
+      "id": "RP-010",
+      "classification": "MOVE",
+      "summary": "Compile one initial-cash op and remove starting_cash_delta/bonus alias handling.",
+      "evidence": [
+        "scripts/runtime/session_start_plan_builder.gd:190-198",
+        "scripts/main.gd:2738-2749"
+      ],
+      "privacy_impact": "public modifier, private exact cash",
+      "rng_impact": "zero passive RNG",
+      "save_impact": "save materialized result and stable source identity, not duplicated definition"
+    },
+    {
+      "id": "RP-011",
+      "classification": "KEEP",
+      "summary": "Keep session-start transaction and RunRng checkpoint/commit/rollback custody.",
+      "evidence": [
+        "scripts/runtime/session_start_transaction_coordinator.gd:40-129",
+        "scripts/runtime/session_start_transaction_coordinator.gd:148-165"
+      ],
+      "privacy_impact": "resolved roles become public only through existing session projections",
+      "rng_impact": "real authoritative RNG transaction",
+      "save_impact": "session result is committed atomically"
+    },
+    {
+      "id": "RP-012",
+      "classification": "MOVE",
+      "summary": "Move bonus-card trigger to an explicit post-purchase passive plan with failure policy.",
+      "evidence": [
+        "scripts/runtime/district_supply_action_port.gd:320-354",
+        "scripts/runtime/district_supply_action_port.gd:357-400"
+      ],
+      "privacy_impact": "keep buyer/card/hand private",
+      "rng_impact": "current passive selection uses zero RNG",
+      "save_impact": "preserve source transaction lineage"
+    },
+    {
+      "id": "RP-013",
+      "classification": "KEEP",
+      "summary": "Keep inventory purchase/grant exact-once transaction sink.",
+      "evidence": [
+        "scripts/runtime/commodity_card_inventory_runtime_controller.gd:470-545",
+        "scripts/runtime/commodity_card_inventory_runtime_controller.gd:851-876"
+      ],
+      "privacy_impact": "inventory owner retains actor-private hand custody",
+      "rng_impact": "no passive RNG ownership",
+      "save_impact": "real terminal-operation journal"
+    },
+    {
+      "id": "RP-014",
+      "classification": "MOVE",
+      "summary": "Move matching-sale and volatility field inference into compiled passive ops and typed plans.",
+      "evidence": [
+        "scripts/runtime/role_resource_cash_settlement_runtime_service.gd:9-17",
+        "scripts/runtime/role_resource_cash_settlement_runtime_service.gd:20-53",
+        "scripts/runtime/role_resource_cash_settlement_runtime_service.gd:67-107"
+      ],
+      "privacy_impact": "cash remains private; no public receipt expansion",
+      "rng_impact": "zero",
+      "save_impact": "plans unsaved; cash/ledger persist in existing owner"
+    },
+    {
+      "id": "RP-015",
+      "classification": "KEEP",
+      "summary": "Keep atomic commodity sale/rent/role cash settlement and player-ledger replacement.",
+      "evidence": [
+        "scripts/runtime/commodity_flow_world_bridge.gd:130-244"
+      ],
+      "privacy_impact": "private cash owner remains WorldSessionState",
+      "rng_impact": "none",
+      "save_impact": "real exact-once ledger transaction"
+    },
+    {
+      "id": "RP-016",
+      "classification": "MOVE",
+      "summary": "Move monster-upgrade reward trigger out of MonsterRuntimeController role-field parsing and into a prepared passive plan.",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:3968-4005",
+        "scripts/runtime/monster_runtime_controller.gd:6454-6489"
+      ],
+      "privacy_impact": "remove localized role callout as identity-bearing transaction input",
+      "rng_impact": "zero",
+      "save_impact": "stable role/passive IDs in ledger receipt"
+    },
+    {
+      "id": "RP-017",
+      "classification": "KEEP",
+      "summary": "Keep PlayerCashMutationPort exact-once cash transaction.",
+      "evidence": [
+        "scripts/runtime/player_cash_mutation_port.gd:5-17",
+        "scripts/runtime/player_cash_mutation_port.gd:224-375"
+      ],
+      "privacy_impact": "actor-scoped cash custody remains unchanged",
+      "rng_impact": "none",
+      "save_impact": "real saved transaction ledger"
+    },
+    {
+      "id": "RP-018",
+      "classification": "MOVE",
+      "summary": "Replace free-form intel role field lookup with typed passive/capability IDs.",
+      "evidence": [
+        "scripts/runtime/intel_private_command_port.gd:115-145",
+        "scripts/runtime/intel_private_command_port.gd:206-216"
+      ],
+      "privacy_impact": "viewer authorization and viewer-private projection stay mandatory",
+      "rng_impact": "zero",
+      "save_impact": "usage remains with annotation owner"
+    },
+    {
+      "id": "RP-019",
+      "classification": "KEEP",
+      "summary": "Keep CardHistoryPrivateAnnotationService state machine, command semantics, and save section.",
+      "evidence": [
+        "scripts/runtime/card_history_private_annotation_service.gd:5-21",
+        "scripts/runtime/card_history_private_annotation_service.gd:120-128",
+        "scripts/runtime/card_history_private_annotation_service.gd:181-197",
+        "scripts/runtime/card_history_private_annotation_service.gd:255-293",
+        "scripts/runtime/card_history_private_annotation_service.gd:325-440"
+      ],
+      "privacy_impact": "real viewer-private domain state machine",
+      "rng_impact": "zero",
+      "save_impact": "real private save owner"
+    },
+    {
+      "id": "RP-020",
+      "classification": "REMOVE",
+      "summary": "Remove executable/readiness claims for city reveal, city guess reward, and public exclusion until authority and owners exist.",
+      "evidence": [
+        "scripts/main.gd:1825-1861",
+        "scripts/runtime/card_history_private_annotation_service.gd:191-197"
+      ],
+      "privacy_impact": "prevents unauthorized private truth/reward behavior",
+      "rng_impact": "none",
+      "save_impact": "do not add state or sections"
+    },
+    {
+      "id": "RP-021",
+      "classification": "MOVE",
+      "summary": "Move monster/military cap modifier meaning to typed role capability projection.",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:4100-4102",
+        "scripts/runtime/military_runtime_controller.gd:482-485"
+      ],
+      "privacy_impact": "cap public; hidden ownership facts remain with unit owners",
+      "rng_impact": "zero",
+      "save_impact": "cap spec unsaved"
+    },
+    {
+      "id": "RP-022",
+      "classification": "KEEP",
+      "summary": "Keep monster summon/takeover and military deployment state machines.",
+      "evidence": [
+        "scripts/runtime/monster_runtime_controller.gd:4027-4067",
+        "scripts/runtime/monster_runtime_controller.gd:6945-6970",
+        "scripts/runtime/military_runtime_controller.gd:458-485",
+        "scripts/runtime/military_runtime_controller.gd:604-644"
+      ],
+      "privacy_impact": "real unit-state owners preserve hidden/public boundaries",
+      "rng_impact": "no role semantic RNG",
+      "save_impact": "real unit state persists in existing owners"
+    },
+    {
+      "id": "RP-023",
+      "classification": "REMOVE",
+      "summary": "Delete Main live-hand dictionary rewrite for monster-card counter conversion.",
+      "evidence": [
+        "scripts/main.gd:4086-4125"
+      ],
+      "privacy_impact": "removes source_card_name from fabricated queue-shaped skill data",
+      "rng_impact": "none",
+      "save_impact": "prevents transient definition rewrite from entering queue/save/history"
+    },
+    {
+      "id": "RP-024",
+      "classification": "MOVE",
+      "summary": "Move counter-conversion permission to typed role capability and typed conversion intent, outside CardSemanticSpec.",
+      "evidence": [
+        "scripts/runtime/card_play_eligibility_world_bridge.gd:108-146",
+        "scripts/runtime/card_play_eligibility_runtime_service.gd:329-341",
+        "scripts/runtime/card_play_eligibility_runtime_service.gd:473-478"
+      ],
+      "privacy_impact": "source instance remains actor-private; responder remains anonymous",
+      "rng_impact": "zero",
+      "save_impact": "only normal card transaction state persists"
+    },
+    {
+      "id": "RP-025",
+      "classification": "KEEP",
+      "summary": "Keep counter window and counter settlement state machine/transaction.",
+      "evidence": [
+        "scripts/runtime/card_resolution_runtime_controller.gd:169-208",
+        "scripts/runtime/card_resolution_runtime_controller.gd:339-355",
+        "scripts/runtime/card_counter_settlement_runtime_service.gd:36-113"
+      ],
+      "privacy_impact": "public aftermath and hidden responder are existing domain policy",
+      "rng_impact": "none",
+      "save_impact": "real counter/window state"
+    },
+    {
+      "id": "RP-026",
+      "classification": "REMOVE",
+      "summary": "Remove Alpha passive support proof based on source-token presence.",
+      "evidence": [
+        "resources/content/alpha01/alpha01_content_manifest.gd:625-674"
+      ],
+      "privacy_impact": "none",
+      "rng_impact": "none",
+      "save_impact": "none"
+    },
+    {
+      "id": "RP-027",
+      "classification": "MOVE",
+      "summary": "Migrate Codex links, portrait keys, caches, and receipts from localized/index identity to role_id.",
+      "evidence": [
+        "scripts/presentation/compendium_readonly_query_port.gd:281-290",
+        "scripts/presentation/role_portrait_catalog.gd:36-72",
+        "scripts/presentation/role_portrait_catalog.gd:124-148",
+        "scripts/runtime/monster_runtime_controller.gd:6464-6479"
+      ],
+      "privacy_impact": "none; labels remain localized presentation only",
+      "rng_impact": "none",
+      "save_impact": "stable receipt and asset identity"
+    }
+  ],
+  "proposed_boundaries": {
+    "semantic_kernel_protocol_v1": {
+      "shared_with_card_semantics": [
+        "exact_key_closed_schemas",
+        "closed_enums",
+        "recursive_canonical_json_sorted_dictionary_keys",
+        "array_order_preserved",
+        "utf8_sha256_lowercase_hex",
+        "fingerprints_omitted_from_own_hash_input",
+        "pure_detached_data",
+        "defensive_copies",
+        "context_free_compile_cache",
+        "unknown_meaning_fails_closed",
+        "projection_only_for_recognized_unavailable_meaning",
+        "zero_rng_compile_and_projection",
+        "persistence_none",
+        "no_main_dependency",
+        "no_effect_router_dependency"
+      ],
+      "not_shared": [
+        "CardSemanticSpec_union",
+        "card_target_enums",
+        "card_effect_op_enums",
+        "card_instance_state",
+        "card_authorization_envelope"
+      ],
+      "evidence": [
+        "docs/cards/card_semantic_phase1_frozen_contract.md:22-42",
+        "docs/cards/card_semantic_phase1_frozen_contract.md:48-137",
+        "docs/cards/card_semantic_phase1_frozen_contract.md:225-233"
+      ]
+    },
+    "role_semantic_spec": {
+      "top_level_exact_fields": [
+        "schema_version",
+        "source_catalog_id",
+        "source_definition_fingerprint",
+        "semantic_fingerprint",
+        "identity",
+        "passives",
+        "information_policy",
+        "runtime_readiness_id"
+      ],
+      "identity_exact_fields": [
+        "role_id",
+        "role_kind_id",
+        "available_for_selection",
+        "uniqueness_scope_id",
+        "selection_pool_ids"
+      ],
+      "identity_invariants": {
+        "role_id": "stable_ascii",
+        "role_kind_id": "alien_syndicate",
+        "uniqueness_scope_id": "session",
+        "rank_present": false,
+        "localized_name_present": false,
+        "array_index_present": false
+      },
+      "passive_exact_fields": [
+        "passive_id",
+        "trigger_id",
+        "condition_id",
+        "effect_op_id",
+        "params",
+        "stacking_policy_id",
+        "usage_policy_id",
+        "visibility_policy_id",
+        "execution_owner_id",
+        "runtime_readiness_id"
+      ],
+      "proposed_effect_op_ids": [
+        "modify_initial_cash",
+        "grant_region_supply_card",
+        "credit_matching_sale_cash",
+        "credit_first_sale_cash_per_market_cycle",
+        "credit_monster_upgrade_cash",
+        "authorize_residual_catalog_use",
+        "authorize_public_exclusion_use",
+        "authorize_city_owner_reveal",
+        "modify_city_guess_reward",
+        "modify_monster_control_limit",
+        "modify_military_control_limit",
+        "authorize_monster_card_counter_conversion"
+      ],
+      "forbidden": [
+        "Node",
+        "Object",
+        "Resource",
+        "Callable",
+        "method_name",
+        "script_path",
+        "localized_rule_text",
+        "ai_weight",
+        "ai_score",
+        "live_owner",
+        "live_player_state",
+        "remaining_usage",
+        "rng_state",
+        "save_state"
+      ],
+      "persistence": "none",
+      "rng": "zero"
+    },
+    "role_player_face_dto": {
+      "separate_from_role_semantic_spec": true,
+      "fields": [
+        "schema_version",
+        "role_id",
+        "surface_id",
+        "name_ref",
+        "species_ref",
+        "trait_ref",
+        "ordered_passive_steps",
+        "keywords",
+        "portrait_asset_id",
+        "information_scope_id",
+        "dto_fingerprint"
+      ],
+      "forbidden": [
+        "rank",
+        "cost",
+        "live_legality",
+        "remaining_charges_without_authorized_live_projection",
+        "ai_weight",
+        "private_player_state"
+      ]
+    },
+    "passive_trigger_execution_plan": {
+      "purpose": "Ephemeral typed plan produced from a compiled role passive plus an authorized trigger envelope; never a generic executor or state owner.",
+      "top_level_exact_fields": [
+        "schema_version",
+        "plan_id",
+        "plan_fingerprint",
+        "role_id",
+        "passive_id",
+        "trigger_id",
+        "actor_ref",
+        "source_receipt_ref",
+        "source_revision",
+        "world_revision",
+        "condition_result_id",
+        "ordered_requests",
+        "privacy_scope_id",
+        "persistence_effect_ids",
+        "rng_contract_id"
+      ],
+      "passive_domain_request_exact_fields": [
+        "owner_id",
+        "request_kind",
+        "idempotence_key",
+        "payload"
+      ],
+      "mutation_owners_retained": {
+        "initial_cash": "SessionStartTransactionCoordinator + WorldSessionState",
+        "bonus_card": "CommodityCardInventoryRuntimeController",
+        "sale_cash": "CommodityFlowWorldBridge + WorldSessionState",
+        "monster_upgrade_cash": "PlayerCashMutationPort + WorldSessionState",
+        "private_intel_usage": "CardHistoryPrivateAnnotationService",
+        "monster_legality": "MonsterRuntimeController",
+        "military_legality": "MilitaryRuntimeController",
+        "counter_response": "CardResolutionRuntimeController + CardCounterSettlementRuntimeService"
+      },
+      "capability_only_families": [
+        "monster_ownership_cap_modifier",
+        "military_ownership_cap_modifier",
+        "monster_card_counter_conversion"
+      ],
+      "state_ownership": "none",
+      "save_section": "none",
+      "current_rng_contract": "none",
+      "random_role_assignment": "outside_passive_plans_in_SessionStartTransactionCoordinator_and_RunRngService",
+      "card_semantic_spec_modified": false
+    }
+  },
+  "migration_batches": [
+    {
+      "order": 1,
+      "id": "authority_gate",
+      "work": "Add active v0.6 rule clauses and mechanic-registry entries for each retained family; resolve trigger/text conflicts and hidden starting bonuses.",
+      "blocking": true
+    },
+    {
+      "order": 2,
+      "id": "stable_authored_identity",
+      "work": "Versioned role data with stable role_id/passive_id, machine/player separation, localization refs, and source fingerprints."
+    },
+    {
+      "order": 3,
+      "id": "kernel_and_shadow_compile",
+      "work": "Implement shared kernel protocol and separate RoleSemanticSpec compiler in shadow mode with zero gameplay, RNG, and save change."
+    },
+    {
+      "order": 4,
+      "id": "readonly_projection_cutover",
+      "work": "Cut setup display, Codex, Intel chips, navigation, portraits, diagnostics, and AI to typed role/player-face projections."
+    },
+    {
+      "order": 5,
+      "id": "setup_identity_cutover",
+      "work": "Replace manifest/draft source indices and names with stable role IDs while preserving unique selection and exact RunRng draws."
+    },
+    {
+      "order": 6,
+      "id": "save_replay_migration",
+      "work": "Dual-read legacy mapping, stable new assignment, catalog handshake, stable passive receipt identity, no full role definition in new writes."
+    },
+    {
+      "order": 7,
+      "id": "opening_cash_plan",
+      "work": "Typed initial-cash plan inside existing atomic session-start transaction."
+    },
+    {
+      "order": 8,
+      "id": "receipt_cash_plans",
+      "work": "Typed matching-sale, volatility, and monster-upgrade cash plans through existing cash sinks."
+    },
+    {
+      "order": 9,
+      "id": "region_purchase_bonus_plan",
+      "work": "Explicit bonus-card receipt lineage and failure policy through inventory transaction."
+    },
+    {
+      "order": 10,
+      "id": "capability_cutover",
+      "work": "Typed monster/military cap and charged-intel capability projections; retain unit and annotation state machines."
+    },
+    {
+      "order": 11,
+      "id": "counter_conversion_cutover",
+      "work": "Typed source-card conversion intent through existing counter transaction; delete Main hand-slot rewrite and source-card leakage."
+    },
+    {
+      "order": 12,
+      "id": "deletion_gate",
+      "work": "Remove flat fields, full saved role_card, role_index identity, localized lookups, token checks, aliases, and unsupported orphan fields after compatibility coverage."
+    }
+  ],
+  "acceptance_gates": [
+    "No Main dependency growth and final counter conversion removes Main dependency.",
+    "Unknown role/passive/op IDs fail closed.",
+    "Role compilation and all current passive planning consume zero RNG.",
+    "Random setup role selection preserves RunRng draw count, checkpoint, terminal cursor, and rollback behavior.",
+    "No new semantic save section; semantic caches/plans are absent from saves.",
+    "Legacy index/name saves either migrate explicitly or fail closed with backup guidance.",
+    "New saves contain stable role IDs and a source catalog handshake, not full role definitions.",
+    "AI receives only public neutral role semantics and retains its own weights.",
+    "Public DTOs expose no exact cash, hand card, responder identity, private annotation, hidden unit owner, or AI plan.",
+    "Each retained passive has active rule authority, one static owner, one typed trigger/capability path, and one existing domain mutation owner.",
+    "Exact-once ledgers and private usage survive round trip without replaying rewards.",
+    "No duplicate passive execution path remains."
+  ],
+  "readiness": {
+    "audit": "READY",
+    "role_semantic_implementation": "BLOCKED_BY_RULE_AUTHORITY",
+    "passive_execution_migration": "BLOCKED_BY_RULE_AUTHORITY",
+    "existing_domain_transactions_identified": "READY",
+    "missing_authority": "RULE_AUTHORITY_NOT_ESTABLISHED"
+  },
+  "highest_risks": [
+    "Saved full role definitions can determine gameplay while AI/UI read current catalog values.",
+    "All 12 passive families lack active v0.6 role authority.",
+    "Ten per-minute city/facility texts execute per sale receipt.",
+    "Three starting-cash bonuses are applied but absent from setup passive text.",
+    "Counter conversion rewrites live hand data in Main and carries private source_card_name.",
+    "Bonus-card grant is a second post-purchase transaction whose failure is ignored.",
+    "Localized name and array index couple setup, save, AI, Codex, art, and receipts.",
+    "City reveal and city guess reward lack role execution owners; public exclusion cannot establish a legal exclusion."
+  ]
+}
