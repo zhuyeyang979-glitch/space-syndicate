@@ -57,15 +57,18 @@ func _run() -> void:
 		"authorization and projection leave RNG unchanged"
 	)
 	_expect(
-		int(result.get("projection_iterations", -1)) == 100
-			and int(result.get("repeated_candidate_count", -1)) == 100
+		int(result.get("projection_iterations", -1)) == 400
+			and int(result.get("repeated_candidate_count", -1)) == 400
 			and bool(result.get("projection_deterministic", false)),
-		"100 authorized projections are complete and deterministic"
+		"400 authorized projections are complete and deterministic"
 	)
 	_expect(
-		float(result.get("projection_100_ms", 60000.0))
-			< float(result.get("projection_time_limit_ms", 0.0)),
-		"100 authorized projections stay within the timing bound"
+		float(result.get("projection_100_ms", -1.0)) > 0.0
+			and float(result.get("projection_400_ms", 60000.0))
+				< float(result.get("projection_time_limit_ms", 0.0))
+			and float(result.get("projection_400_ms", 60000.0))
+				<= float(result.get("projection_100_ms", 0.0)) * 5.0 + 50.0,
+		"100 and 400 authorized projections stay bounded and linear"
 	)
 	_expect(
 		bool(result.get("debug_no_raw_leak", false)),

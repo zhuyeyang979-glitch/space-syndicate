@@ -46,13 +46,23 @@ const SLOT_ATTESTATION_KEYS := [
 const EXTRA_FORBIDDEN_CARD_KEYS := [
 	"actor_index",
 	"ai_memory",
+	"ai_score",
+	"ai_value",
 	"cash_cents",
 	"city_guesses",
 	"decision_samples",
+	"exact_cash",
+	"future_bag",
+	"method_name",
 	"opponent_slots",
 	"player_index",
+	"private_plan",
 	"rival_hand",
+	"rng_state",
+	"route_plan",
 	"save_payload",
+	"script_path",
+	"true_owner",
 ]
 
 @export var world_session_state_path: NodePath

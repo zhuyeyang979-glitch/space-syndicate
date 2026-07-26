@@ -134,6 +134,11 @@ func _run() -> void:
 	_run_record_mutation_checks(fixture, capability)
 	_run_stale_replacement_check(fixture, capability)
 	_run_replay_collision_checks(fixture, capability)
+	_run_actor_slot_and_instance_rejections(fixture, capability)
+	_run_instance_state_mapping_checks(fixture, capability)
+	_run_impure_source_rejections(fixture, capability)
+	_run_resigned_bundle_rejection(fixture)
+	_run_restore_and_identity_stale_checks(fixture, capability)
 	_run_surface_and_save_checks(source)
 	_run_debug_privacy_check(source)
 	_expect(
@@ -441,6 +446,264 @@ func _run_replay_collision_checks(
 			and int(debug.get("collision_count", 0)) >= 1,
 		"replay and collision are aggregate-counted"
 	)
+
+
+func _run_actor_slot_and_instance_rejections(
+	fixture: Dictionary,
+	capability: AiActorHandInventoryCapability
+) -> void:
+	var source := fixture.get("source") as CardSemanticSourceAuthorizationPort
+	var semantic_catalog := fixture.get("semantic_catalog") \
+		as CardSemanticCatalogService
+	var defaults := fixture.get("default_slots", []) as Array
+	_replace_ai_slots(fixture, defaults)
+	var cache_before_rebind := _catalog_metrics(
+		semantic_catalog.validation_snapshot()
+	)
+	_expect(
+		not source.bind_ai_capability(AiActorHandInventoryCapability.new()),
+		"hostile capability rebind is rejected"
+	)
+	_expect(
+		cache_before_rebind == _catalog_metrics(
+			semantic_catalog.validation_snapshot()
+		),
+		"hostile capability rebind has zero compiler/cache delta"
+	)
+	_authorize_rejected_without_cache_delta(
+		fixture, "own_hand", capability, 0, 0,
+		"source-human-actor", CardSemanticSourceAuthorizationPort.REASON_SOURCE_ATTESTATION_FAILED,
+		"human actor"
+	)
+	_authorize_rejected_without_cache_delta(
+		fixture, "own_hand", capability, AI_ACTOR_INDEX, 99,
+		"source-slot-out-of-range", CardSemanticSourceAuthorizationPort.REASON_SOURCE_ATTESTATION_FAILED,
+		"out-of-range slot"
+	)
+	_replace_ai_slots(fixture, [defaults[0], null])
+	_authorize_rejected_without_cache_delta(
+		fixture, "own_hand", capability, AI_ACTOR_INDEX, 1,
+		"source-empty-slot", CardSemanticSourceAuthorizationPort.REASON_SOURCE_ATTESTATION_FAILED,
+		"empty slot"
+	)
+	var empty_id_card := _runtime_card(ACTIVE_CARD_ID, "")
+	_replace_ai_slots(fixture, [empty_id_card, defaults[1]])
+	_authorize_rejected_without_cache_delta(
+		fixture, "own_hand", capability, AI_ACTOR_INDEX, 0,
+		"source-empty-instance", CardSemanticSourceAuthorizationPort.REASON_RUNTIME_INSTANCE_ID_INVALID,
+		"empty runtime instance ID"
+	)
+	var control_id_card := _runtime_card(ACTIVE_CARD_ID, "semantic:bad\nid")
+	_replace_ai_slots(fixture, [control_id_card, defaults[1]])
+	_authorize_rejected_without_cache_delta(
+		fixture, "own_hand", capability, AI_ACTOR_INDEX, 0,
+		"source-control-instance", CardSemanticSourceAuthorizationPort.REASON_RUNTIME_INSTANCE_ID_INVALID,
+		"control-character runtime instance ID"
+	)
+	_replace_ai_slots(fixture, defaults)
+	var world := fixture.get("world") as WorldSessionState
+	var eliminated_actor := (world.players[AI_ACTOR_INDEX] as Dictionary).duplicate(true)
+	eliminated_actor["eliminated"] = true
+	world.players[AI_ACTOR_INDEX] = eliminated_actor
+	_authorize_rejected_without_cache_delta(
+		fixture, "own_hand", capability, AI_ACTOR_INDEX, 0,
+		"source-eliminated-actor", CardSemanticSourceAuthorizationPort.REASON_SOURCE_ATTESTATION_FAILED,
+		"eliminated AI actor"
+	)
+	eliminated_actor["eliminated"] = false
+	world.players[AI_ACTOR_INDEX] = eliminated_actor
+	var session := fixture.get("session") as GameSessionRuntimeController
+	session.finish_session({})
+	_authorize_rejected_without_cache_delta(
+		fixture, "own_hand", capability, AI_ACTOR_INDEX, 0,
+		"source-stopped-session", CardSemanticSourceAuthorizationPort.REASON_SOURCE_ATTESTATION_FAILED,
+		"stopped session"
+	)
+	session.begin_session({
+		"session_id": SESSION_ID,
+		"scenario_id": "semantic.source.authorization",
+		"seed": 271828,
+		"player_count": 4,
+	})
+	_replace_ai_slots(fixture, defaults)
+
+
+func _run_instance_state_mapping_checks(
+	fixture: Dictionary,
+	capability: AiActorHandInventoryCapability
+) -> void:
+	var defaults := fixture.get("default_slots", []) as Array
+	var queued := _runtime_card(ACTIVE_CARD_ID, "semantic:queued:01")
+	queued["queued_for_resolution"] = true
+	_replace_ai_slots(fixture, [queued, defaults[1]])
+	var queued_bundle := _authorize_positive(
+		fixture, AI_ACTOR_INDEX, 0, "source-queued-state", "queued source state"
+	)
+	var queued_state := queued_bundle.get("instance_decision_state", {}) as Dictionary
+	_expect(
+		bool(queued_state.get("queued", false))
+			and not CardInstanceDecisionStateV1.is_available(queued_state),
+		"queued source state remains authorized but unavailable"
+	)
+	var locked := _runtime_card(ACTIVE_CARD_ID, "semantic:locked:01")
+	locked["lock_left"] = 0.25
+	_replace_ai_slots(fixture, [locked, defaults[1]])
+	var locked_bundle := _authorize_positive(
+		fixture, AI_ACTOR_INDEX, 0, "source-locked-state", "locked source state"
+	)
+	var locked_state := locked_bundle.get("instance_decision_state", {}) as Dictionary
+	_expect(
+		bool(locked_state.get("locked", false))
+			and not CardInstanceDecisionStateV1.is_available(locked_state),
+		"positive lock duration maps to locked without becoming legality"
+	)
+	var cooling := _runtime_card(ACTIVE_CARD_ID, "semantic:cooling:01")
+	cooling["cooldown_left"] = 0.0000001
+	_replace_ai_slots(fixture, [cooling, defaults[1]])
+	var cooling_bundle := _authorize_positive(
+		fixture, AI_ACTOR_INDEX, 0, "source-cooling-state", "cooling source state"
+	)
+	var cooling_state := cooling_bundle.get("instance_decision_state", {}) as Dictionary
+	_expect(
+		int(cooling_state.get("cooldown_remaining_microseconds", 0)) == 1
+			and not CardInstanceDecisionStateV1.is_available(cooling_state),
+		"positive fractional cooldown rounds up to one microsecond"
+	)
+	_replace_ai_slots(fixture, defaults)
+
+
+func _run_impure_source_rejections(
+	fixture: Dictionary,
+	capability: AiActorHandInventoryCapability
+) -> void:
+	var defaults := fixture.get("default_slots", []) as Array
+	for field in ["hidden_owner", "rival_hand", "ai_value", "save_payload"]:
+		var hidden := _runtime_card(ACTIVE_CARD_ID, "semantic:hidden:%s" % field)
+		hidden[field] = "private-value"
+		_replace_ai_slots(fixture, [hidden, defaults[1]])
+		_authorize_rejected_without_cache_delta(
+			fixture, "own_hand", capability, AI_ACTOR_INDEX, 0,
+			"source-hidden-%s" % field,
+			CardSemanticSourceAuthorizationPort.REASON_SOURCE_ATTESTATION_FAILED,
+			"hidden value channel %s" % field
+		)
+	var node_value := Node.new()
+	var impure_values: Array = [node_value, Resource.new(), Callable(self, "_finish")]
+	for index in range(impure_values.size()):
+		var impure := _runtime_card(ACTIVE_CARD_ID, "semantic:impure:%d" % index)
+		impure["impure_value"] = impure_values[index]
+		_replace_ai_slots(fixture, [impure, defaults[1]])
+		_authorize_rejected_without_cache_delta(
+			fixture, "own_hand", capability, AI_ACTOR_INDEX, 0,
+			"source-impure-%d" % index,
+			CardSemanticSourceAuthorizationPort.REASON_SOURCE_ATTESTATION_FAILED,
+			"impure runtime value %d" % index
+		)
+	node_value.free()
+	for timer_value in [NAN, INF, -1.0]:
+		var malformed_timer := _runtime_card(
+			ACTIVE_CARD_ID,
+			"semantic:timer:%s" % str(timer_value)
+		)
+		malformed_timer["cooldown_left"] = timer_value
+		_replace_ai_slots(fixture, [malformed_timer, defaults[1]])
+		_authorize_rejected_without_cache_delta(
+			fixture, "own_hand", capability, AI_ACTOR_INDEX, 0,
+			"source-timer-%s" % str(timer_value),
+			CardSemanticSourceAuthorizationPort.REASON_SOURCE_ATTESTATION_FAILED,
+			"non-finite or negative timer %s" % str(timer_value)
+		)
+	_replace_ai_slots(fixture, defaults)
+
+
+func _run_resigned_bundle_rejection(fixture: Dictionary) -> void:
+	var defaults := fixture.get("default_slots", []) as Array
+	_replace_ai_slots(fixture, defaults)
+	var bundle := _authorize_positive(
+		fixture, AI_ACTOR_INDEX, 0, "source-resigned-bundle", "pre-tamper bundle"
+	)
+	var resigned := bundle.duplicate(true)
+	var spec := resigned.get("semantic_spec", {}) as Dictionary
+	spec["runtime_readiness_id"] = "projection_only"
+	spec["semantic_fingerprint"] = CardSemanticSchemaV1.fingerprint(
+		spec, "semantic_fingerprint"
+	)
+	var envelope := resigned.get("authorized_envelope_ref", {}) as Dictionary
+	envelope["semantic_fingerprint"] = spec.get("semantic_fingerprint")
+	envelope["envelope_fingerprint"] = SemanticWireV1.fingerprint(
+		envelope, "envelope_fingerprint"
+	)
+	var receipt := resigned.get("authorization_receipt", {}) as Dictionary
+	receipt["semantic_fingerprint"] = spec.get("semantic_fingerprint")
+	receipt["receipt_fingerprint"] = SemanticWireV1.fingerprint(
+		receipt, "receipt_fingerprint"
+	)
+	resigned["bundle_fingerprint"] = CardSemanticSchemaV1.fingerprint(
+		resigned, "bundle_fingerprint"
+	)
+	_validate_rejected_without_cache_delta(
+		fixture,
+		resigned,
+		CardSemanticSourceAuthorizationPort.REASON_JOURNAL_BUNDLE_MISMATCH,
+		"re-signed caller-controlled readiness"
+	)
+	var injected := bundle.duplicate(true)
+	injected["hidden_owner"] = "player.2"
+	injected["bundle_fingerprint"] = CardSemanticSchemaV1.fingerprint(
+		injected, "bundle_fingerprint"
+	)
+	_validate_rejected_without_cache_delta(
+		fixture,
+		injected,
+		CardSemanticSourceAuthorizationPort.REASON_BUNDLE_INVALID,
+		"extra hidden owner bundle channel"
+	)
+
+
+func _run_restore_and_identity_stale_checks(
+	fixture: Dictionary,
+	capability: AiActorHandInventoryCapability
+) -> void:
+	var defaults := fixture.get("default_slots", []) as Array
+	_replace_ai_slots(fixture, defaults)
+	var instance_bundle := _authorize_positive(
+		fixture, AI_ACTOR_INDEX, 0, "source-same-card-instance", "old instance"
+	)
+	_replace_ai_slots(fixture, [
+		_runtime_card(ACTIVE_CARD_ID, "semantic:active:replacement"),
+		defaults[1],
+	])
+	_validate_rejected_without_cache_delta(
+		fixture,
+		instance_bundle,
+		CardSemanticSourceAuthorizationPort.REASON_SOURCE_ATTESTATION_STALE,
+		"same card ID with a replaced runtime instance"
+	)
+	_replace_ai_slots(fixture, defaults)
+	var moved_bundle := _authorize_positive(
+		fixture, AI_ACTOR_INDEX, 0, "source-moved-slot", "pre-move source"
+	)
+	_replace_ai_slots(fixture, [null, defaults[0], defaults[1]])
+	_validate_rejected_without_cache_delta(
+		fixture,
+		moved_bundle,
+		CardSemanticSourceAuthorizationPort.REASON_SOURCE_ATTESTATION_STALE,
+		"source card moved to another slot"
+	)
+	_replace_ai_slots(fixture, defaults)
+	var restore_bundle := _authorize_positive(
+		fixture, AI_ACTOR_INDEX, 0, "source-before-restore", "pre-restore source"
+	)
+	var world := fixture.get("world") as WorldSessionState
+	var checkpoint := world.to_save_data()
+	world.restore(checkpoint, true)
+	_validate_rejected_without_cache_delta(
+		fixture,
+		restore_bundle,
+		CardSemanticSourceAuthorizationPort.REASON_SOURCE_ATTESTATION_STALE,
+		"old bundle after session restore"
+	)
+	_replace_ai_slots(fixture, defaults)
 
 
 func _run_surface_and_save_checks(

@@ -4,7 +4,8 @@ class_name CardSemanticSourceAuthorizationBench
 const FIXTURE := preload(
 	"res://scripts/tools/card_semantic_source_authorization_fixture.gd"
 )
-const PROJECTION_ITERATIONS := 100
+const PROJECTION_SAMPLE_ITERATIONS := 100
+const PROJECTION_ITERATIONS := 400
 const PROJECTION_TIME_LIMIT_MS := 5000.0
 
 var bench_status := "PENDING"
@@ -154,9 +155,10 @@ static func evaluate(coordinator: GameRuntimeCoordinator) -> Dictionary:
 		catalog.validation_snapshot()
 	)
 	var timing_started_usec := Time.get_ticks_usec()
+	var projection_100_ms := -1.0
 	var repeated_candidate_count := 0
 	var deterministic := true
-	for _index in range(PROJECTION_ITERATIONS):
+	for index in range(PROJECTION_ITERATIONS):
 		var candidates := projection.project_authorized_source(
 			active_bundle,
 			active_world
@@ -164,7 +166,12 @@ static func evaluate(coordinator: GameRuntimeCoordinator) -> Dictionary:
 		repeated_candidate_count += candidates.size()
 		if candidates != active_candidates:
 			deterministic = false
-	var projection_100_ms := snappedf(
+		if index + 1 == PROJECTION_SAMPLE_ITERATIONS:
+			projection_100_ms = snappedf(
+				float(Time.get_ticks_usec() - timing_started_usec) / 1000.0,
+				0.001
+			)
+	var projection_400_ms := snappedf(
 		float(Time.get_ticks_usec() - timing_started_usec) / 1000.0,
 		0.001
 	)
@@ -173,13 +180,19 @@ static func evaluate(coordinator: GameRuntimeCoordinator) -> Dictionary:
 	_check(
 		state,
 		repeated_candidate_count == PROJECTION_ITERATIONS,
-		"100_authorized_projections_emit_100_candidates"
+		"400_authorized_projections_emit_400_candidates"
 	)
-	_check(state, deterministic, "100_authorized_projections_are_deterministic")
+	_check(state, deterministic, "400_authorized_projections_are_deterministic")
 	_check(
 		state,
-		projection_100_ms < PROJECTION_TIME_LIMIT_MS,
-		"100_authorized_projection_timing_is_bounded"
+		projection_100_ms > 0.0
+			and projection_400_ms < PROJECTION_TIME_LIMIT_MS,
+		"100_and_400_authorized_projection_timings_are_bounded"
+	)
+	_check(
+		state,
+		projection_400_ms <= projection_100_ms * 5.0 + 50.0,
+		"authorized_projection_scaling_is_linear"
 	)
 	_check(
 		state,
@@ -192,7 +205,7 @@ static func evaluate(coordinator: GameRuntimeCoordinator) -> Dictionary:
 	_check(
 		state,
 		cache_before_timing == cache_after,
-		"100_projection_loop_does_not_touch_compile_cache"
+		"400_projection_loop_does_not_touch_compile_cache"
 	)
 	_check(state, rng_before == rng_after, "authorization_projection_rng_delta_zero")
 
@@ -216,6 +229,7 @@ static func evaluate(coordinator: GameRuntimeCoordinator) -> Dictionary:
 		"projection_iterations": PROJECTION_ITERATIONS,
 		"repeated_candidate_count": repeated_candidate_count,
 		"projection_100_ms": projection_100_ms,
+		"projection_400_ms": projection_400_ms,
 		"projection_time_limit_ms": PROJECTION_TIME_LIMIT_MS,
 		"projection_deterministic": deterministic,
 		"compile_cache_before": cache_before,

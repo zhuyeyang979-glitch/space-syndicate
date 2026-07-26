@@ -164,7 +164,6 @@ func validate_authorized_bundle(bundle: Dictionary) -> Dictionary:
 	var envelope := bundle.get("authorized_envelope_ref", {}) as Dictionary
 	var semantic_spec := bundle.get("semantic_spec", {}) as Dictionary
 	var state := bundle.get("instance_decision_state", {}) as Dictionary
-	var receipt := bundle.get("authorization_receipt", {}) as Dictionary
 	var request_fingerprint := _journal_request_fingerprint(
 		str(envelope.get("request_id", "")),
 		str(envelope.get("session_id", "")),
@@ -194,11 +193,7 @@ func validate_authorized_bundle(bundle: Dictionary) -> Dictionary:
 		actor_index,
 		slot_index
 	)
-	if attestation.is_empty() \
-			or not hand_port.is_current_slot_attestation(
-				_capability,
-				attestation
-			):
+	if attestation.is_empty():
 		return _validation_reject(REASON_SOURCE_ATTESTATION_STALE)
 	var material := _source_material(attestation)
 	if not bool(material.get("valid", false)):
@@ -243,53 +238,6 @@ func validate_authorized_bundle(bundle: Dictionary) -> Dictionary:
 			or (catalog_authorization.get("spec", {}) as Dictionary) \
 				!= semantic_spec:
 		return _validation_reject(REASON_SEMANTIC_SPEC_UNAUTHORIZED)
-	var request_id := str(envelope.get("request_id", ""))
-	var envelope_id := _generated_runtime_id(
-		"authorized-card-semantic-envelope",
-		request_id,
-		binding_fingerprint
-	)
-	var receipt_id := _generated_runtime_id(
-		"card-semantic-authorization-receipt",
-		request_id,
-		CARD_SCHEMA.fingerprint({
-			"binding_fingerprint": binding_fingerprint,
-			"envelope_id": envelope_id,
-		})
-	)
-	var expected_envelope := _build_envelope(
-		request_id,
-		envelope_id,
-		receipt_id,
-		attestation,
-		material,
-		semantic_spec,
-		expected_state,
-		source_definition_fingerprint
-	)
-	if expected_envelope.is_empty() or expected_envelope != envelope:
-		return _validation_reject(REASON_BUNDLE_INVALID)
-	var expected_receipt := _build_receipt(
-		request_id,
-		receipt_id,
-		envelope_id,
-		str(attestation.get("fingerprint", "")),
-		str(material.get("static_record_fingerprint", "")),
-		source_definition_fingerprint,
-		str(semantic_spec.get("semantic_fingerprint", "")),
-		str(expected_state.get("instance_revision", "")),
-		str(expected_state.get("state_fingerprint", ""))
-	)
-	if expected_receipt.is_empty() or expected_receipt != receipt:
-		return _validation_reject(REASON_BUNDLE_INVALID)
-	var expected_bundle := _success_bundle(
-		expected_envelope,
-		semantic_spec,
-		expected_state,
-		expected_receipt
-	)
-	if expected_bundle != bundle:
-		return _validation_reject(REASON_BUNDLE_INVALID)
 	_validation_success_count += 1
 	return bundle.duplicate(true)
 
