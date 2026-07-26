@@ -4,6 +4,8 @@ const MAIN_SCENE := "res://scenes/main.tscn"
 const COORDINATOR_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator"
 const SAVE_COORDINATOR_PATH := "RuntimeServices/RuntimeControllerHost/GameRuntimeCoordinator/GameSessionRuntimeController/GameSaveRuntimeCoordinator"
 const SOURCE_SERVICE_NAME := "CardCodexPublicSourceService"
+const FACILITY_CARD_ID := "facility.factory.life.rank_1"
+const INTERACTION_CARD_ID := "interaction.starlink_dismantle.rank_1"
 const QA_SAVE_PATH := "user://test_runs/card_presentation_public_contract.save"
 const PRIVATE_SENTINELS := [
 	"CARD_PRESENTATION_PRIVATE_CASH_SENTINEL",
@@ -82,36 +84,67 @@ func _test_source_service_contract() -> void:
 	_expect(bool(debug.get("service_ready", false)) and bool(debug.get("owns_public_source_assembly", false)), "source_service_owns_public_card_fact_assembly")
 	_expect(not bool(debug.get("reads_private_world", true)) and not bool(debug.get("reads_player_state", true)), "source_service_declares_no_private_player_world_reads")
 	_expect(not bool(debug.get("owns_rules", true)) and not bool(debug.get("has_save_api", true)), "source_service_does_not_own_rules_or_save")
-	_expect(int(debug.get("dependency_count", 0)) >= 6, "source_service_has_catalog_eligibility_presentation_dependencies")
+	_expect(
+		int(debug.get("dependency_count", 0)) == 4 \
+			and bool(debug.get("dependencies_bound", false)),
+		"source_service_has_exact_semantic_projection_localization_snapshot_dependencies"
+	)
 
 
 func _test_public_card_facts_contract() -> void:
-	var growth := _compose_card_facts("城市融资1")
-	_expect(bool(growth.get("valid", false)), "legal_growth_card_facts_valid")
-	_expect(str(growth.get("strategy_route_label", "")).contains("城市成长"), "legal_growth_card_route_label_from_source_service")
-	_expect(str(growth.get("art_stats", "")).contains("城市成长"), "legal_growth_card_art_stats_from_source_service")
-	_expect(_array(growth.get("key_rule_facts", [])).size() >= 1, "legal_growth_card_rule_facts_from_source_service")
-	var disrupt := _compose_card_facts("星链拆解1")
-	_expect(bool(disrupt.get("targets_player", false)) and str(disrupt.get("key_rule_facts", [])).contains("拆牌"), "direct_interaction_public_source_marks_player_target_and_key_facts")
-	_expect(_canonical_text(growth) != _canonical_text(disrupt), "different_public_card_changes_public_facts")
-	_expect(_forbidden_paths(growth).is_empty(), "public_growth_card_facts_have_no_private_keys|paths=%s" % [_forbidden_paths(growth)])
-	_expect(_sentinel_paths(growth).is_empty(), "public_growth_card_facts_have_no_private_sentinels|paths=%s" % [_sentinel_paths(growth)])
+	var facility := _compose_card_facts(FACILITY_CARD_ID)
+	_expect(bool(facility.get("valid", false)), "stable_facility_card_facts_valid")
+	_expect(
+		str(facility.get("card_name", "")) == FACILITY_CARD_ID \
+			and str(facility.get("category_id", "")) == "facility" \
+			and (facility.get("family_ladder", []) as Array).size() == 4,
+		"facility_identity_and_i_iv_ladder_come_from_playerface_dto"
+	)
+	_expect(
+		not str(facility.get("acquisition_cost_text", "")).is_empty() \
+			and not str(facility.get("activation_cost_text", "")).is_empty(),
+		"facility_acquisition_and_activation_costs_are_separate"
+	)
+	_expect(
+		not str(facility.get("timing_text", "")).is_empty() \
+			and not str(facility.get("target_text", "")).is_empty() \
+			and not (facility.get("condition_texts", []) as Array).is_empty() \
+			and not (facility.get("effect_step_texts", []) as Array).is_empty() \
+			and not str(facility.get("duration_text", "")).is_empty() \
+			and not str(facility.get("counterability_text", "")).is_empty() \
+			and not str(facility.get("information_scope_text", "")).is_empty(),
+		"facility_structured_rule_facts_come_from_playerface_dto"
+	)
+	var interaction := _compose_card_facts(INTERACTION_CARD_ID)
+	_expect(
+		bool(interaction.get("valid", false)) \
+			and str(interaction.get("category_id", "")) == "interaction" \
+			and str(interaction.get("target_text", "")).contains("对手") \
+			and not (interaction.get("effect_step_texts", []) as Array).is_empty(),
+		"projection_only_interaction_is_publicly_structured_without_readiness_promotion"
+	)
+	_expect(
+		_canonical_text(facility) != _canonical_text(interaction),
+		"different_stable_card_ids_change_public_playerface_facts"
+	)
+	_expect(_forbidden_paths(facility).is_empty(), "public_facility_card_facts_have_no_private_keys|paths=%s" % [_forbidden_paths(facility)])
+	_expect(_sentinel_paths(facility).is_empty(), "public_facility_card_facts_have_no_private_sentinels|paths=%s" % [_sentinel_paths(facility)])
 
 
 func _test_private_state_invariance() -> void:
 	_reset_private_fixture()
-	var before := _public_projection(_compose_card_facts("城市融资1"))
+	var before := _public_projection(_compose_card_facts(FACILITY_CARD_ID))
 	_mutate_private_state()
-	var after := _public_projection(_compose_card_facts("城市融资1"))
+	var after := _public_projection(_compose_card_facts(FACILITY_CARD_ID))
 	_expect(_canonical_text(before) == _canonical_text(after), "same_public_card_facts_are_viewer_private_state_invariant")
 	_expect(_forbidden_paths(after).is_empty(), "mutated_public_card_facts_have_no_private_keys|paths=%s" % [_forbidden_paths(after)])
 	_expect(_sentinel_paths(after).is_empty(), "mutated_public_card_facts_have_no_private_sentinels|paths=%s" % [_sentinel_paths(after)])
 
 
-func _compose_card_facts(card_name: String) -> Dictionary:
+func _compose_card_facts(card_id: String) -> Dictionary:
 	if _source_service == null or not _source_service.has_method("compose_card_facts"):
 		return {}
-	var value: Variant = _source_service.call("compose_card_facts", card_name, -1)
+	var value: Variant = _source_service.call("compose_card_facts", card_id, -1)
 	return (value as Dictionary).duplicate(true) if value is Dictionary else {}
 
 
@@ -150,11 +183,21 @@ func _public_projection(snapshot: Dictionary) -> Dictionary:
 	return {
 		"valid": snapshot.get("valid", false),
 		"card_name": snapshot.get("card_name", ""),
-		"strategy_route_label": snapshot.get("strategy_route_label", ""),
-		"art_stats": snapshot.get("art_stats", ""),
-		"key_rule_facts": _array(snapshot.get("key_rule_facts", [])),
-		"quick_effect_compact": snapshot.get("quick_effect_compact", ""),
-		"detail_tooltip": snapshot.get("detail_tooltip", ""),
+		"family_id": snapshot.get("family_id", ""),
+		"rank": snapshot.get("rank", 0),
+		"category_id": snapshot.get("category_id", ""),
+		"industry_id": snapshot.get("industry_id", ""),
+		"acquisition_cost_text": snapshot.get("acquisition_cost_text", ""),
+		"activation_cost_text": snapshot.get("activation_cost_text", ""),
+		"timing_text": snapshot.get("timing_text", ""),
+		"target_text": snapshot.get("target_text", ""),
+		"condition_texts": _array(snapshot.get("condition_texts", [])),
+		"effect_step_texts": _array(snapshot.get("effect_step_texts", [])),
+		"duration_text": snapshot.get("duration_text", ""),
+		"counterability_text": snapshot.get("counterability_text", ""),
+		"information_scope_text": snapshot.get("information_scope_text", ""),
+		"semantic_fingerprint": snapshot.get("semantic_fingerprint", ""),
+		"dto_fingerprint": snapshot.get("dto_fingerprint", ""),
 	}
 
 

@@ -1,0 +1,355 @@
+{
+  "schema_version": 6,
+  "review_id": "codex_first_playerface_final_projector_owner_attestation_adversarial",
+  "baseline_sha": "46b356f99da5b536f877d96a946ceddd1720fef4",
+  "reviewed_state": "current_uncommitted_shared_branch_final_candidate",
+  "review_mode": "static_and_recorded_evidence_no_godot",
+  "scope": "card_codex_only",
+  "status": "PASS",
+  "static_architecture_status": "PASS",
+  "runtime_evidence_status": "PASS",
+  "merge_recommendation": "PASS",
+  "blocker_count": 0,
+  "code_blocker_count": 0,
+  "evidence_blocker_count": 0,
+  "cutover_claim_limit": "PRODUCTION_UI_SEMANTIC_CUTOVER=CODEX_ONLY",
+  "blockers": [],
+  "non_blocking_findings": [
+    {
+      "id": "ARGS-001",
+      "severity": "P2",
+      "blocking": false,
+      "summary": "Message arguments use one closed global typed profile rather than an exact expected argument set per message_id.",
+      "current_safety": [
+        "message_ref has exact closed fields",
+        "message_id must be a stable authorized ID",
+        "typed argument fields and values are closed",
+        "duplicate argument IDs are rejected",
+        "private and value-channel argument segments are rejected",
+        "bundle and semantic binding are reverified before resolution",
+        "arguments are neither interpolated nor returned",
+        "production refs originate in sealed catalog-owned DTOs"
+      ],
+      "follow_up": "Require a canonical per-message argument contract before any future interpolation."
+    }
+  ],
+  "projector_owner_attestation": {
+    "status": "PASS",
+    "production_method": "CardPlayerFaceProjectionService.project_authorized_public_detail",
+    "inputs": [
+      "catalog_owned_semantic_spec",
+      "exact_full_catalog_record",
+      "typed_CardPlayerFacePublicLocalizationSourceService_owner"
+    ],
+    "typed_owner_required": true,
+    "missing_owner_rejected": true,
+    "caller_built_verified_report_accepted": false,
+    "owner_method_invoked": "issue_verified_for_exact_record",
+    "owner_revalidates_registered_card": true,
+    "owner_revalidates_exact_record_fingerprint": true,
+    "owner_revalidates_semantic_registry_binding": true,
+    "owner_revalidates_sealed_bundle_binding": true,
+    "projector_revalidates_verified_report_schema": true,
+    "projector_revalidates_semantic_schema": true,
+    "projector_revalidates_localization_structure": true,
+    "detached_output_required": true,
+    "raw_record_retained_in_output": false,
+    "production_caller_count": 1,
+    "production_caller": "scripts/runtime/card_codex_public_source_service.gd",
+    "negative_tests": {
+      "caller_forged_authorization_rejected": true,
+      "caller_resigned_semantic_rejected": true,
+      "missing_owner_rejected": true
+    },
+    "evidence": [
+      "scripts/runtime/card_player_face_projection_service.gd:283",
+      "scripts/runtime/card_player_face_projection_service.gd:292",
+      "scripts/runtime/card_player_face_projection_service.gd:302",
+      "scripts/runtime/card_player_face_projection_service.gd:349",
+      "scripts/runtime/card_player_face_public_localization_source_service.gd:337",
+      "scripts/runtime/card_player_face_public_localization_source_service.gd:369",
+      "scripts/runtime/card_player_face_public_localization_source_service.gd:425",
+      "scripts/runtime/card_codex_public_source_service.gd:457",
+      "tests/card_codex_playerface_privacy_test.gd:295",
+      "tests/card_codex_playerface_privacy_test.gd:313",
+      "tests/card_codex_playerface_privacy_test.gd:329"
+    ]
+  },
+  "catalog_owned_fast_path": {
+    "status": "PASS",
+    "recorded_checks": 93,
+    "detached_output": true,
+    "fingerprinted_output": true,
+    "closed_schema": true,
+    "adversarial_cases_include": [
+      "unknown_fields",
+      "malformed_or_mismatched_fingerprints",
+      "forbidden_private_value_channels",
+      "unstable_identity",
+      "wrong_surface_or_rank",
+      "object_callable_nonfinite_values",
+      "stale_nested_fingerprints",
+      "family_or_rank_mismatch",
+      "malformed_ladder_entries"
+    ],
+    "production_call_sites_narrow": true,
+    "test_sha256": "afc5c4d9118eb027989207a5e8dcc23fcee5b8ba5105a8ba34c126da6c6f4255",
+    "evidence": [
+      "tests/card_codex_catalog_owned_constructor_test.gd:192",
+      "tests/card_codex_catalog_owned_constructor_test.gd:334",
+      "tests/card_codex_catalog_owned_constructor_test.gd:484"
+    ]
+  },
+  "localization_and_tokens": {
+    "status": "PASS",
+    "shared_token_manifest": "scripts/presentation/card_player_face_public_token_manifest_v1.gd",
+    "localization_owner_uses_shared_icon_value": true,
+    "localization_owner_uses_shared_color_value": true,
+    "adapter_uses_shared_icon_value": true,
+    "adapter_uses_shared_color_value": true,
+    "duplicate_expanded_token_map": false,
+    "parameter_name_authority": "PARAMETER_LABELS",
+    "known_value_authorities": [
+      "SEMANTIC_VALUE_LABELS",
+      "INDUSTRY_PRESENTATION"
+    ],
+    "unknown_stable_value_output": "omitted_empty",
+    "array_empty_members_filtered": true,
+    "dictionary_empty_members_filtered": true,
+    "authored_prose_rule_feedback": false,
+    "message_ref_closed_and_typed": true,
+    "message_value_channel_fail_closed": true,
+    "evidence": [
+      "scripts/runtime/card_player_face_public_localization_source_service.gd:475",
+      "scripts/runtime/card_player_face_public_localization_source_service.gd:531",
+      "scripts/runtime/card_player_face_public_localization_source_service.gd:1018",
+      "scripts/runtime/card_codex_public_source_adapter.gd:432",
+      "scripts/presentation/player_face_dto_v1.gd:566"
+    ]
+  },
+  "identity_and_inference": {
+    "status": "PASS",
+    "new_paths_use_stable_card_id": true,
+    "localized_name_identity_branch": false,
+    "roman_rank_identity_inference": false,
+    "rank_suffix_identity_inference": false,
+    "monster_name_parser_in_new_path": false,
+    "target_kind_contains_in_new_path": false,
+    "raw_effect_payload_rule_interpretation": false,
+    "player_prose_rule_interpretation": false,
+    "compatibility_bridge": {
+      "method": "legacy_monster_codex_card_id",
+      "input": "audited_catalog_index_and_explicit_rank",
+      "text_parsing": false,
+      "production_callers": [
+        "scripts/runtime/monster_codex_public_source_service.gd"
+      ]
+    },
+    "alias_retirement_allowlist": [
+      "card_name",
+      "kind",
+      "route",
+      "effect",
+      "cost",
+      "type",
+      "rank",
+      "roman",
+      "price"
+    ],
+    "play_cost_allowed": false
+  },
+  "focused_evidence": {
+    "status": "PASS",
+    "public_localization_source": {
+      "status": "PASS",
+      "checks": 74
+    },
+    "full_catalog": {
+      "status": "PASS",
+      "checks": 18,
+      "cards": 348,
+      "families": 87,
+      "categories": 7,
+      "semantic_compile_delta": 0
+    },
+    "public_source_snapshot": {
+      "status": "PASS"
+    },
+    "catalog_owned_constructor": {
+      "status": "PASS",
+      "checks": 93
+    },
+    "card_codex_architecture": {
+      "status": "PASS",
+      "checks": 113
+    },
+    "card_semantic_architecture": {
+      "status": "PASS",
+      "checks": 158,
+      "ai_debt": {
+        "value_reads": 225,
+        "presence_checks": 5,
+        "functions": 33,
+        "keys": 71
+      }
+    },
+    "privacy": {
+      "status": "PASS",
+      "checks": 33,
+      "total": 33
+    },
+    "runtime_invariants": {
+      "status": "PASS",
+      "checks": 28,
+      "save_sections": 19,
+      "semantic_compile_count_before": 348,
+      "semantic_compile_count_after": 348
+    },
+    "stable_id_public_contract": {
+      "status": "PASS",
+      "checks": 21
+    },
+    "performance": {
+      "status": "FINAL_PASS"
+    },
+    "visual_mcp": {
+      "status": "CODEX_FIRST_PLAYERFACE_VISUAL_QA_GREEN"
+    }
+  },
+  "full_catalog_internal_value_gate": {
+    "status": "PASS",
+    "checks": 18,
+    "cards": 348,
+    "families": 87,
+    "categories": 7,
+    "forbidden_markers": [
+      "_id=",
+      "_ids=",
+      "until_facility_destroyed",
+      "production_or_demand_by_facility_kind",
+      "card_family"
+    ],
+    "test_sha256": "c63ac4e9077a35a08a821d7085762fa14250e0a16cb093c652e22147f89b45d3"
+  },
+  "performance": {
+    "status": "FINAL_PASS",
+    "sample_source": "final_uncontended_main_review_rerun",
+    "timing_unit": "microseconds",
+    "semantic": 19,
+    "localization": 2609678,
+    "bind": 22533,
+    "startup_authorization": 2632211,
+    "projection_cache": 5123413,
+    "first_open": 5146887,
+    "first_browser": 23474,
+    "repeat_browser": 22514,
+    "hover_100": 2807,
+    "detail_20": 13123,
+    "full_348": 10169,
+    "initialization": 7733091,
+    "startup_plus_projection_cache": 7755624,
+    "startup_through_first_page": 7779098,
+    "initialization_limit": 8000000,
+    "initialization_ratio": 0.9666,
+    "startup_ratio": 9.5042,
+    "startup_ratio_limit": 10.0,
+    "first_open_ratio": 7.5052,
+    "first_open_ratio_limit": 10.0,
+    "hot_path_ratio_limit": 1.25,
+    "hot_paths_passing": 5,
+    "hot_paths_total": 5,
+    "dto_count": 348,
+    "family_count": 87,
+    "semantic_compile_delta": 0,
+    "catalog_snapshot_count": 1,
+    "source": "reports/semantic_program/codex_first_playerface_performance_review.json"
+  },
+  "lazy_binding": {
+    "status": "PASS",
+    "typed_one_shot_bind": true,
+    "same_dependency_idempotence": true,
+    "hostile_rebind_rejected": true,
+    "coordinator_startup_behavior": "bind_only",
+    "projection_cache_trigger": "first_codex_use",
+    "projection_cache_build_count": 1,
+    "render_hover_detail_compile_calls": 0
+  },
+  "scope_and_ownership": {
+    "status": "PASS",
+    "production_owner_counts": {
+      "CardSemanticCatalogService": 1,
+      "CardPlayerFacePublicLocalizationSourceService": 1,
+      "CardPlayerFaceProjectionService": 1,
+      "CardCodexPublicSourceService": 1
+    },
+    "main_responsibility_delta": 0,
+    "production_ai_consumer_delta": 0,
+    "rules_projection_or_execution_plan_delta": 0,
+    "handler_registration_delta": 0,
+    "save_owner_or_section_delta": 0,
+    "save_section_count": 19,
+    "rng_owner_or_draw_delta": 0,
+    "market_playerface_cutover_delta": 0,
+    "hand_playerface_cutover_delta": 0,
+    "card_track_playerface_cutover_delta": 0,
+    "new_state_owner_delta": 0,
+    "cutover_scope": "CODEX_ONLY"
+  },
+  "worktree_scope": {
+    "status": "PASS",
+    "status_path_count_at_review": 62,
+    "tracked_modified_count_at_review": 16,
+    "untracked_count_at_review": 46,
+    "untracked_uid_count_at_review": 17,
+    "task_owned_uid_allowlist_count": 17,
+    "out_of_scope_uid_count": 0,
+    "staging_blocker_count": 0
+  },
+  "visual_acceptance": {
+    "status": "GREEN",
+    "viewports": [
+      "1280x720",
+      "1920x1080"
+    ],
+    "browser": true,
+    "hover": true,
+    "real_double_click_detail": true,
+    "category_count": 7,
+    "rank_i_visible": true,
+    "rank_iv_visible": true,
+    "costs_separated": true,
+    "structured_rule_sections": true,
+    "runtime_internal_value_hits": 0,
+    "unknown_values_omitted": true,
+    "real_illustration": true,
+    "fallback_illustration": true,
+    "long_text_overlap": false,
+    "fresh_runtime_error_lines": 0,
+    "fresh_editor_error_lines": 0,
+    "failed_runtime_events": 0,
+    "is_playing_scene_after_stop": false,
+    "final_godot_process_count": 0,
+    "source": "reports/semantic_program/codex_first_playerface_visual_qa.json"
+  },
+  "evidence_provenance": {
+    "player_face_projector_sha256": "0629c04f7bfeb418fc60a75f3dc4daccea455c0c793df4dfd2b05df70a1441a0",
+    "card_codex_source_sha256": "135f3676c7cba05b83e0a2b85956520819e8ffb4e2b608cb8a73332a4971a6a8",
+    "localization_owner_sha256": "a6f6399d0d4d740cf098c280e5f7f1bc2819a94d802a1778ed1f2be6320bf7de",
+    "token_manifest_sha256": "fb7a900be8a60868806c92be25db60158b907ab79d7d3a8e45822937d7d55513",
+    "compatibility_adapter_sha256": "db93a206196f11c3868a53d2ee6d121cea5c9670296d66fe7e020becefdeb90a",
+    "privacy_test_sha256": "865afe60846ba4739dc05f6a5be40ac5e95e00442c281208df1c0b8378567014",
+    "catalog_owned_constructor_test_sha256": "afc5c4d9118eb027989207a5e8dcc23fcee5b8ba5105a8ba34c126da6c6f4255",
+    "full_catalog_test_sha256": "c63ac4e9077a35a08a821d7085762fa14250e0a16cb093c652e22147f89b45d3",
+    "performance_report_json_sha256": "9fb57edaa6fe277ea36cc3a8e5bedbae801ae796a3dd30ff2a8fa037fb11e218",
+    "visual_report_json_sha256": "7fbb13e0130e90f0e20c03e9d5af66670ce3032a2c6307bcf00788cfd6467e4d"
+  },
+  "evidence_boundary": {
+    "tests_run_by_this_review": false,
+    "godot_started_by_this_review": false,
+    "runtime_results_source": "current focused reports and supplied final reruns",
+    "known_stale_test_assumption_affecting_projector_fix": false,
+    "projector_fix_negative_tests_in_privacy_33": true,
+    "visual_evidence_scope": "unchanged_visible_behavior"
+  },
+  "final_decision": "PASS"
+}

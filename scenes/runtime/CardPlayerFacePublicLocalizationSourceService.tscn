@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/card_player_face_public_localization_source_service.gd" id="1_service"]
+[ext_resource type="Resource" path="res://resources/cards/runtime/card_runtime_catalog_v06.tres" id="2_catalog"]
+
+[node name="CardPlayerFacePublicLocalizationSourceService" type="Node"]
+script = ExtResource("1_service")
+public_catalog_v06 = ExtResource("2_catalog")
+editor_description = "Scene-owned public Card localization authority. It seals exact v0.6 record fingerprints, emits owner-attested PlayerFace message/token manifests, and retains no complete card records, rules, world state, Save state, or RNG state."

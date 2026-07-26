@@ -1,0 +1,270 @@
+{
+  "schema_version": 2,
+  "report_id": "CODEX_FIRST_PLAYERFACE_VISUAL_QA",
+  "generated_at": "2026-07-27T07:38:49+09:00",
+  "status": "CODEX_FIRST_PLAYERFACE_VISUAL_QA_GREEN",
+  "pass": true,
+  "worktree": "C:/Users/zhuye/Documents/New project/space-syndicate-codex-first-playerface-46b356f",
+  "head_reference": "46b356f99da5b536f877d96a946ceddd1720fef4",
+  "candidate_fingerprints": {
+    "card_player_face_public_localization_source_service_sha256": "a6f6399d0d4d740cf098c280e5f7f1bc2819a94d802a1778ed1f2be6320bf7de",
+    "card_player_face_public_token_manifest_sha256": "fb7a900be8a60868806c92be25db60158b907ab79d7d3a8e45822937d7d55513",
+    "player_card_codex_dto_v1_sha256": "9bfce72773cfd1ff0242f82c8a119e49f2d44e0eb42920a6077530d61efd477e",
+    "card_player_face_projection_service_sha256": "0629c04f7bfeb418fc60a75f3dc4daccea455c0c793df4dfd2b05df70a1441a0",
+    "card_codex_public_source_service_sha256": "135f3676c7cba05b83e0a2b85956520819e8ffb4e2b608cb8a73332a4971a6a8",
+    "card_codex_public_source_adapter_sha256": "db93a206196f11c3868a53d2ee6d121cea5c9670296d66fe7e020becefdeb90a",
+    "card_codex_public_snapshot_service_sha256": "246f5be2335866e0f630b3ee4c0f00bc2afe62aa286b22e970a21c3e703d8111",
+    "card_codex_playerface_production_bench_script_sha256": "296a7efcd3e54a3e491bf4d489d71fdf435e5ac76a41a2af1d9d09735d038329",
+    "game_runtime_coordinator_scene_sha256": "ced56c2b26a7813563989e4baf3732d3cc9d9df2d32615a719f542a481dfde80",
+    "card_codex_playerface_production_bench_scene_sha256": "d520007479b9430d7748feecd3168d5e230798f1d17b3a4a7fe6892f8587e312"
+  },
+  "environment": {
+    "godot_version": "4.7-stable (official)",
+    "renderer": "compatibility",
+    "mcp_endpoint": "http://127.0.0.1:7465/",
+    "headed": true,
+    "standalone_window": true,
+    "fresh_editor_session": true,
+    "prior_helper_errors_excluded": true
+  },
+  "final_readonly_mcp_recheck": {
+    "performed_at": "2026-07-27T07:38:49+09:00",
+    "godot_version": "4.7-stable (official)",
+    "production_or_test_code_modified": false,
+    "long_smoke_rerun": false,
+    "production_composition": {
+      "CardSemanticCatalogService": 1,
+      "CardPlayerFacePublicLocalizationSourceService": 1,
+      "CardPlayerFaceProjectionService": 1,
+      "CardCodexPublicSnapshotService": 1,
+      "CardCodexPublicSourceService": 1
+    },
+    "bench": {
+      "scene": "res://scenes/tools/CardCodexPlayerFaceProductionBench.tscn",
+      "status": "PASS",
+      "failure_count": 0,
+      "failure_ids": [],
+      "card_count": 348,
+      "family_count": 87,
+      "category_count": 7,
+      "browser_card_count": 40,
+      "browser_compose_count": 2,
+      "detail_compose_count": 1,
+      "catalog_record_authorization_count": 348,
+      "catalog_snapshot_count": 1,
+      "catalog_reload_count": 0,
+      "semantic_compile_delta": 0
+    },
+    "sample_cards": [
+      {
+        "card_id": "commodity.star_dew_berry.rank_1",
+        "display_name": "星露莓 I",
+        "rank": 1,
+        "projection_id": "card_codex.public",
+        "acquisition_cost_text": "免费领取",
+        "activation_cost_text": "打出免费",
+        "effect_rate_per_minute": 10,
+        "semantic_fingerprint": "264c79ac3a6434d5e83b283fe0f8e1010af933eb58df730d6af35fdd2bebd8c4",
+        "localization_semantic_fingerprint": "264c79ac3a6434d5e83b283fe0f8e1010af933eb58df730d6af35fdd2bebd8c4",
+        "binding_match": true
+      },
+      {
+        "card_id": "commodity.star_dew_berry.rank_4",
+        "display_name": "星露莓 IV",
+        "rank": 4,
+        "projection_id": "card_codex.public",
+        "acquisition_cost_text": "免费领取",
+        "activation_cost_text": "打出免费",
+        "effect_rate_per_minute": 80,
+        "semantic_fingerprint": "83b9eae3ec028b95fc1846908855c06ad64cd062873aff9134fc4c24c6ba40c4",
+        "localization_semantic_fingerprint": "83b9eae3ec028b95fc1846908855c06ad64cd062873aff9134fc4c24c6ba40c4",
+        "binding_match": true
+      }
+    ],
+    "cost_fields_separate": true,
+    "structured_rule_blocks": [
+      "timing",
+      "target",
+      "conditions",
+      "ordered_effect_steps",
+      "duration",
+      "counterability",
+      "information_scope"
+    ],
+    "visible_internal_id_hit_count": 0,
+    "fresh_console_error_lines": 0,
+    "validated_scripts": [
+      "res://scripts/tools/card_codex_playerface_production_bench.gd",
+      "res://scripts/runtime/card_player_face_public_localization_source_service.gd",
+      "res://scripts/runtime/card_player_face_projection_service.gd",
+      "res://scripts/runtime/card_codex_public_source_service.gd",
+      "res://scripts/runtime/card_codex_public_source_adapter.gd",
+      "res://scripts/runtime/card_codex_public_snapshot_service.gd",
+      "res://scripts/presentation/player_card_codex_dto_v1.gd"
+    ],
+    "validated_script_count": 7,
+    "script_diagnostic_count": 0,
+    "runtime_failed_events": 0,
+    "cleanup": {
+      "exit_play_mode": "stopped",
+      "is_playing_scene": false,
+      "godot_process_count": 0
+    },
+    "pass": true
+  },
+  "composition": {
+    "scene": "res://scenes/runtime/GameRuntimeCoordinator.tscn",
+    "scene_node_count": 163,
+    "CardSemanticCatalogService": 1,
+    "CardPlayerFacePublicLocalizationSourceService": 1,
+    "CardPlayerFaceProjectionService": 1,
+    "CardCodexPublicSnapshotService": 1,
+    "CardCodexPublicSourceService": 1
+  },
+  "lazy_binding": {
+    "before_open": {
+      "dependencies_bound": true,
+      "projection_cache_ready": false,
+      "dto_projection_count": 0,
+      "catalog_snapshot_count": 0,
+      "browser_compose_count": 0
+    },
+    "after_open": {
+      "projection_cache_ready": true,
+      "dto_projection_count": 348,
+      "catalog_record_authorization_count": 348,
+      "catalog_snapshot_count": 1,
+      "browser_compose_count": 1,
+      "semantic_compile_delta": 0,
+      "last_error": ""
+    }
+  },
+  "production_path": [
+    "res://scenes/main.tscn",
+    "资料库",
+    "卡牌图鉴",
+    "browser",
+    "hover",
+    "detail"
+  ],
+  "category_filter_results": {
+    "commodity": {"expected": 184, "observed": 184, "pass": true},
+    "facility": {"expected": 64, "observed": 64, "pass": true},
+    "supply_demand": {"expected": 8, "observed": 8, "pass": true},
+    "monster": {"expected": 32, "observed": 32, "pass": true},
+    "military": {"expected": 28, "observed": 28, "pass": true},
+    "interaction": {"expected": 12, "observed": 12, "pass": true},
+    "organization": {"expected": 20, "observed": 20, "pass": true}
+  },
+  "ranks": {
+    "browser_rank_i_visible": true,
+    "browser_rank_iv_visible": true,
+    "detail_ladder": ["I", "II", "III", "IV"],
+    "localized_rate_values": [10, 20, 40, 80]
+  },
+  "structured_detail": {
+    "acquisition_cost": "免费领取",
+    "activation_cost": "打出免费",
+    "timing": "普通出牌窗口",
+    "target": "同产业设施；玩家选择；恰好一个",
+    "conditions": "设施为工厂或市场；产业与卡牌一致",
+    "ordered_effect": "安装生产或需求速率（产业=生命；持续策略=设施被摧毁时结束；每分钟速率=20；适用设施=[工厂、市场]）",
+    "duration": "设施被摧毁时结束",
+    "counterability": "不可反制",
+    "information_scope": "仅向获授权的当前界面公开"
+  },
+  "internal_value_gate": {
+    "patterns": [
+      "_id",
+      "_ids",
+      "until_",
+      "rate_axis",
+      "rate_subject",
+      "facility_kind",
+      "card_family",
+      "production_or_demand"
+    ],
+    "runtime_text_hit_count": 0,
+    "placeholder_card_definition_visible": false,
+    "unknown_values_omitted": true,
+    "empty_collection_layout_residue_visible": false,
+    "pass": true
+  },
+  "illustrations": {
+    "fallback": {
+      "card": "孢子丝绸 II",
+      "art_view_visible": true,
+      "illustration_layer_visible": false,
+      "source_texture": null,
+      "pass": true
+    },
+    "external": {
+      "card": "环晶电池 I",
+      "catalog_page": 6,
+      "art_view_visible": false,
+      "illustration_layer_visible": true,
+      "source_texture_visible": true,
+      "resource_path": "res://assets/art/cards/v06/style_keys/commodity/ring_crystal_battery_v01.png",
+      "pass": true
+    }
+  },
+  "viewport_runs": [
+    {
+      "size": [1280, 720],
+      "exclusive_before": true,
+      "browser": true,
+      "hover": true,
+      "detail": true,
+      "double_click_method": "OS full down/up sequence on card-parent hit area",
+      "contract_errors": [],
+      "long_text_overlap": false,
+      "console_error_lines": 0,
+      "failed_runtime_events": 0
+    },
+    {
+      "size": [1920, 1080],
+      "exclusive_before": true,
+      "browser": true,
+      "hover": true,
+      "detail": true,
+      "double_click_method": "Computer Use live-window coordinate click_count=2",
+      "window_resize_note": "OS restored at 1920x1044; scoped SetWindowPos established exact 1920x1080 before capture",
+      "contract_errors": [],
+      "long_text_overlap": false,
+      "console_error_lines": 0,
+      "failed_runtime_events": 0
+    }
+  ],
+  "screenshots": [
+    {"file": "runtime_50065678.png", "size": [1280, 720], "view": "browser", "sha256": "1b9781f7bab14eae68829204c958255a576661afbe3a7a1a40da52a83f292280"},
+    {"file": "runtime_102358408.png", "size": [1280, 720], "view": "hover", "sha256": "a88e25ad01f5f7f966e1fea10582812e9f205adad54376a3ba84b8075611db0d"},
+    {"file": "runtime_160159769.png", "size": [1280, 720], "view": "detail_top_fallback", "sha256": "cdfb2754d4ed1313049c266326273c5c8d596f68cedb801edf01184ed1919ca6"},
+    {"file": "runtime_233061704.png", "size": [1280, 720], "view": "detail_long", "sha256": "9fe240f51d62e0b496ba4b81210672818043a7fc58a5c72930471da7099ff457"},
+    {"file": "runtime_269662893.png", "size": [1280, 720], "view": "browser_real_illustration", "sha256": "026a4d99a94e397ee779d7d11798cb92a783fe9e99abebd98358581e79575742"},
+    {"file": "final_codex_1920_browser.png", "size": [1920, 1080], "view": "browser", "sha256": "7097c94eed00e5122e585cc51c1d053ba812ce8ab35c3fd754855e3af2793dff"},
+    {"file": "final_codex_1920_hover.png", "size": [1920, 1080], "view": "hover", "sha256": "9d2557555f026e6e78b965b2d23b46156ed8235b1fd69c3942ba2e68d96d3e1b"},
+    {"file": "final_codex_1920_detail.png", "size": [1920, 1080], "view": "detail", "sha256": "8e7eda0efca1e8361ce4c27732facbe185e549261b7075ad5e1a787a36dac97f"}
+  ],
+  "console": {
+    "fresh_1280_error_lines": 0,
+    "fresh_1920_error_lines": 0,
+    "fresh_editor_script_parse_error_lines": 0,
+    "final_recheck_validated_script_count": 7,
+    "final_recheck_script_diagnostic_count": 0,
+    "final_recheck_console_error_lines": 0,
+    "runtime_failed_events": 0,
+    "pass": true
+  },
+  "cleanup": {
+    "exit_play_mode": "stopped",
+    "is_playing_scene": false,
+    "editor_exited": true,
+    "godot_process_count": 0,
+    "pass": true
+  },
+  "repository_files_modified_by_visual_qa": [
+    "reports/semantic_program/codex_first_playerface_visual_qa.md",
+    "reports/semantic_program/codex_first_playerface_visual_qa.json"
+  ],
+  "blockers": []
+}

@@ -37,7 +37,8 @@ func configure(dependencies: Dictionary) -> Dictionary:
 		_last_error = "snapshot_service_invalid"
 		_clear_dependencies()
 		return debug_snapshot()
-	if _card_source == null or not _card_source.has_method("compose_card_facts"):
+	if _card_source == null or not _card_source.has_method("compose_card_facts") \
+			or not _card_source.has_method("legacy_monster_codex_card_id"):
 		_last_error = "card_public_source_invalid"
 		_clear_dependencies()
 		return debug_snapshot()
@@ -57,7 +58,10 @@ func compose_detail_source(catalog_index: int, selected: bool = false) -> Dictio
 	source["selected"] = selected
 	source["profile"] = _presentation_profile(source)
 	source["accent"] = (source.get("profile", {}) as Dictionary).get("accent", Color("#fb7185")) as Color if source.get("profile", {}) is Dictionary else Color("#fb7185")
-	source["monster_card"] = _monster_card_facts(source.get("monster_card", {}))
+	source["monster_card"] = _monster_card_facts(
+		source.get("monster_card", {}),
+		catalog_index
+	)
 	var monster_card_source := source.get("monster_card", {}) as Dictionary if source.get("monster_card", {}) is Dictionary else {}
 	source["monster_card_link"] = _monster_card_link(monster_card_source)
 	var sanitized_variant: Variant = _adapter.call("compose_source", source)
@@ -165,18 +169,27 @@ func debug_snapshot() -> Dictionary:
 	}
 
 
-func _monster_card_facts(owner_card: Variant) -> Dictionary:
+func _monster_card_facts(owner_card: Variant, catalog_index: int) -> Dictionary:
 	var card := (owner_card as Dictionary).duplicate(true) if owner_card is Dictionary else {}
 	if not bool(card.get("valid", false)):
 		return {"valid": false}
-	var card_name := str(card.get("card_name", ""))
-	var card_variant: Variant = _card_source.call("compose_card_facts", card_name, -1) if card_name != "" else {}
+	var card_id := str(_card_source.call(
+		"legacy_monster_codex_card_id",
+		catalog_index,
+		1
+	))
+	var card_variant: Variant = _card_source.call(
+		"compose_card_facts",
+		card_id,
+		-1
+	) if not card_id.is_empty() else {}
 	var card_facts := (card_variant as Dictionary).duplicate(true) if card_variant is Dictionary else {}
 	if not bool(card_facts.get("valid", false)):
 		card["valid"] = false
 		return card
-	card["display_name"] = str(card_facts.get("display_name", card.get("display_name", card_name)))
-	card["price"] = int(card_facts.get("price", card.get("price", 0)))
+	card["card_name"] = card_id
+	card["display_name"] = str(card_facts.get("display_name", card_id))
+	card["price"] = maxi(0, int(card_facts.get("acquisition_cash", 0)))
 	card["region_text"] = str(card.get("region_text", "不限区"))
 	return card
 
@@ -198,7 +211,7 @@ func _monster_card_link(card: Dictionary) -> Dictionary:
 		"card_name": card_name,
 		"label": "对应怪兽牌（属于卡牌图鉴｜悬停看属性｜点击跳转）：",
 		"button_text": "%s｜¥%d" % [str(card.get("display_name", card_name)), int(card.get("price", 0))],
-		"tooltip": str(card_facts.get("detail_tooltip", "")),
+		"tooltip": str(card_facts.get("full_effect_text", "")),
 	}
 
 

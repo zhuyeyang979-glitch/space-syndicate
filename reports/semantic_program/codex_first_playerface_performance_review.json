@@ -1,0 +1,156 @@
+{
+  "schema_version": 4,
+  "review_id": "codex_first_playerface_performance_review",
+  "status": "FINAL_PASS",
+  "evidence": {
+    "source": "final_uncontended_main_review_rerun",
+    "sample_attests_current_worktree": true,
+    "godot_started_by_report_update": false,
+    "timing_unit": "microseconds"
+  },
+  "final_candidate": {
+    "coordinator_startup_behavior": "bind_only",
+    "eager_projection_cache": false,
+    "lazy_projection_cache_trigger": "first_codex_open",
+    "shared_token_manifest_resolution": true,
+    "current_file_sha256": {
+      "scripts/presentation/card_player_face_public_token_manifest_v1.gd": "fb7a900be8a60868806c92be25db60158b907ab79d7d3a8e45822937d7d55513",
+      "scripts/runtime/card_player_face_public_localization_source_service.gd": "a6f6399d0d4d740cf098c280e5f7f1bc2819a94d802a1778ed1f2be6320bf7de",
+      "scripts/runtime/card_codex_public_source_adapter.gd": "db93a206196f11c3868a53d2ee6d121cea5c9670296d66fe7e020becefdeb90a",
+      "scripts/runtime/card_codex_public_source_service.gd": "135f3676c7cba05b83e0a2b85956520819e8ffb4e2b608cb8a73332a4971a6a8",
+      "tests/card_codex_playerface_performance_test.gd": "7ebc3253bdffcac100de05b82fcac0d4f83e36f2001c2408439197515a2f6ca7"
+    },
+    "implementation_review": {
+      "redundant_localization_configure_authorization_removed": true,
+      "configure_uses_compile_authorized_cache_hit": true,
+      "runtime_registry_authorization_preserved": true,
+      "performance_failure_output_expanded": true,
+      "performance_thresholds_widened": false
+    }
+  },
+  "final_sample_usec": {
+    "semantic": 19,
+    "localization": 2609678,
+    "bind": 22533,
+    "startup_authorization": 2632211,
+    "projection_cache": 5123413,
+    "first_open": 5146887,
+    "first_browser": 23474,
+    "repeat_browser": 22514,
+    "hover_100": 2807,
+    "detail_20": 13123,
+    "full_catalog": 10169,
+    "initialization": 7733091,
+    "startup_plus_projection_cache": 7755624,
+    "startup_through_first_page": 7779098
+  },
+  "runtime_counters": {
+    "dto_count": 348,
+    "family_count": 87,
+    "semantic_compile_delta": 0,
+    "catalog_snapshot_count": 1,
+    "catalog_reload_in_hot_paths": 0,
+    "semantic_compile_in_hot_paths": 0
+  },
+  "gate_contract": {
+    "max_initialization_usec": 8000000,
+    "max_magnitude_multiplier": 10.0,
+    "max_hot_path_multiplier": 1.25,
+    "thresholds_widened": false,
+    "failure_output_includes_all_metrics": true
+  },
+  "baseline_usec": {
+    "configure": 276953,
+    "first_browser": 685780,
+    "repeat_browser": 749173,
+    "hover_100": 57699,
+    "detail_20": 53094,
+    "full_catalog": 159751
+  },
+  "gate_comparisons": {
+    "absolute_initialization": {
+      "current_usec": 7733091,
+      "limit_usec": 8000000,
+      "ratio": 0.9666,
+      "headroom_usec": 266909,
+      "status": "PASS"
+    },
+    "startup_increment": {
+      "definition": "localization + bind versus old configure",
+      "current_usec": 2632211,
+      "baseline_usec": 276953,
+      "ratio": 9.5042,
+      "limit_ratio": 10.0,
+      "headroom_usec": 137319,
+      "status": "PASS"
+    },
+    "first_codex_open": {
+      "definition": "projection cache + first browser page versus old first browser",
+      "current_usec": 5146887,
+      "baseline_usec": 685780,
+      "ratio": 7.5052,
+      "limit_ratio": 10.0,
+      "headroom_usec": 1710913,
+      "status": "PASS"
+    },
+    "first_browser": {
+      "current_usec": 23474,
+      "baseline_usec": 685780,
+      "ratio": 0.0342,
+      "speedup": 29.21,
+      "limit_ratio": 1.25,
+      "status": "PASS"
+    },
+    "repeat_browser": {
+      "current_usec": 22514,
+      "baseline_usec": 749173,
+      "ratio": 0.0301,
+      "speedup": 33.28,
+      "limit_ratio": 1.25,
+      "status": "PASS"
+    },
+    "hover_100": {
+      "current_usec": 2807,
+      "baseline_usec": 57699,
+      "ratio": 0.0486,
+      "speedup": 20.56,
+      "limit_ratio": 1.25,
+      "status": "PASS"
+    },
+    "detail_20": {
+      "current_usec": 13123,
+      "baseline_usec": 53094,
+      "ratio": 0.2472,
+      "speedup": 4.05,
+      "limit_ratio": 1.25,
+      "status": "PASS"
+    },
+    "full_catalog": {
+      "current_usec": 10169,
+      "baseline_usec": 159751,
+      "ratio": 0.0637,
+      "speedup": 15.71,
+      "limit_ratio": 1.25,
+      "status": "PASS"
+    }
+  },
+  "gate_summary": {
+    "final_candidate_measured": true,
+    "absolute_initialization_pass": true,
+    "startup_increment_ratio": 9.5042,
+    "first_open_ratio": 7.5052,
+    "hot_paths_passing": 5,
+    "hot_paths_total": 5,
+    "semantic_compile_delta_zero": true,
+    "catalog_snapshot_singleton": true,
+    "status": "FINAL_PASS"
+  },
+  "residual_risks": [
+    "Absolute initialization has 266909 us of headroom below the fixed 8000000 us limit.",
+    "Startup authorization has 137319 us of headroom below the 10x configure gate.",
+    "First Codex open remains approximately 5.15 seconds and should remain a performance ratchet.",
+    "Startup, first-open, and steady-state timings must remain separately reported."
+  ],
+  "blockers": [],
+  "conclusion": "FINAL PASS: initialization is 7733091 us, startup is 9.50x, first open is 7.51x, all hot paths are below 1.25x, DTO/family coverage is 348/87, compile delta is zero, and catalog snapshot count is one."
+}

@@ -1,0 +1,82 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/card_codex_playerface_production_bench.gd" id="1_bench"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardSemanticCatalogService.tscn" id="2_semantic"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardPlayerFacePublicLocalizationSourceService.tscn" id="3_localization"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardPlayerFaceProjectionService.tscn" id="4_projection"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardCodexPublicSnapshotService.tscn" id="5_snapshot"]
+[ext_resource type="PackedScene" path="res://scenes/runtime/CardCodexPublicSourceService.tscn" id="6_source"]
+
+[node name="CardCodexPlayerFaceProductionBench" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_bench")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.025, 0.039, 0.058, 1)
+mouse_filter = 2
+
+[node name="BenchPanel" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -360.0
+offset_top = -135.0
+offset_right = 360.0
+offset_bottom = 135.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 28
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 28
+
+[node name="Layout" type="VBoxContainer" parent="BenchPanel"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Title" type="Label" parent="BenchPanel/Layout"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.886, 0.925, 0.969, 1)
+theme_override_font_sizes/font_size = 24
+text = "Card Codex PlayerFace Production Bench"
+horizontal_alignment = 1
+
+[node name="Status" type="Label" parent="BenchPanel/Layout"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.576, 0.64, 0.72, 1)
+theme_override_font_sizes/font_size = 32
+text = "RUNNING"
+horizontal_alignment = 1
+
+[node name="Metrics" type="Label" parent="BenchPanel/Layout"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.702, 0.761, 0.831, 1)
+theme_override_font_sizes/font_size = 16
+text = "Configuring the public semantic, localization, PlayerFace, adapter, and snapshot chain."
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="CardSemanticCatalogService" parent="." instance=ExtResource("2_semantic")]
+configure_on_ready = false
+
+[node name="CardPlayerFacePublicLocalizationSourceService" parent="." instance=ExtResource("3_localization")]
+
+[node name="CardPlayerFaceProjectionService" parent="." instance=ExtResource("4_projection")]
+
+[node name="CardCodexPublicSnapshotService" parent="." instance=ExtResource("5_snapshot")]
+
+[node name="CardCodexPublicSourceService" parent="." instance=ExtResource("6_source")]

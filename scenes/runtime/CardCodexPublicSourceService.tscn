@@ -7,6 +7,6 @@
 [node name="CardCodexPublicSourceService" type="Node"]
 script = ExtResource("1_service")
 public_catalog_v06 = ExtResource("2_catalog_v06")
-editor_description = "Scene-owned public Card Codex source assembler. It reads only the v0.6 catalog player contract plus allowlisted machine identity/cost fields; gameplay catalogs, world bridges and private player state remain outside this presentation boundary."
+editor_description = "Scene-owned public Card Codex enumerator and DTO cache. Exact v0.6 records are authorized by CardSemanticCatalogService, localized by the public PlayerFace owner, and projected once into PlayerCardCodexDTOv1; browser, hover, and detail reads never reinterpret raw card fields."
 
 [node name="CardIllustrationCatalog" parent="." instance=ExtResource("3_illustrations")]

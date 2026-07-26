@@ -1,0 +1,178 @@
+{
+  "schema_version": 5,
+  "report_id": "codex_first_playerface_final_scope_ownership_audit",
+  "status": "CODEX_FIRST_PLAYERFACE_SCOPE_OWNERSHIP_GREEN",
+  "overall_pass": true,
+  "blocker_count": 0,
+  "code_scope_blocker_count": 0,
+  "ownership_blocker_count": 0,
+  "baseline_sha": "46b356f99da5b536f877d96a946ceddd1720fef4",
+  "head_sha": "46b356f99da5b536f877d96a946ceddd1720fef4",
+  "merge_base_sha": "46b356f99da5b536f877d96a946ceddd1720fef4",
+  "branch": "codex/codex-first-playerface-cutover-46b356f",
+  "audit_mode": "static_only_no_godot",
+  "merge_recommendation": "PASS",
+  "final_evidence": {
+    "localization": {"status": "PASS", "checks": 74},
+    "full_catalog": {
+      "status": "PASS",
+      "checks": 18,
+      "cards": 348,
+      "families": 87,
+      "semantic_compile_delta": 0
+    },
+    "public_source": {"status": "PASS"},
+    "card_codex_architecture": {"status": "PASS", "checks": 113},
+    "card_semantic_architecture": {
+      "status": "PASS",
+      "checks": 158,
+      "ai_debt": "225/5/33/71"
+    },
+    "privacy": {"status": "PASS", "checks": 33},
+    "runtime_invariants": {
+      "status": "PASS",
+      "checks": 28,
+      "save_sections": 19
+    },
+    "performance": {"status": "FINAL_PASS", "blockers": 0},
+    "visual_mcp": {
+      "status": "CODEX_FIRST_PLAYERFACE_VISUAL_QA_GREEN",
+      "blockers": 0
+    }
+  },
+  "typed_localization_owner_revalidation": {
+    "status": "PASS",
+    "projector_method": "project_authorized_public_detail",
+    "projector_inputs": [
+      "catalog_owned_semantic_spec",
+      "exact_full_card_record",
+      "typed_CardPlayerFacePublicLocalizationSourceService"
+    ],
+    "projector_accepts_caller_built_verified_report": false,
+    "projector_invokes_owner_issue_verified_for_exact_record": true,
+    "owner_revalidates_exact_record": true,
+    "owner_revalidates_semantic_registry_binding": true,
+    "verified_report_schema_revalidated": true,
+    "semantic_schema_revalidated": true,
+    "localization_structure_revalidated": true,
+    "detached_output_required": true,
+    "privacy_checks": 33
+  },
+  "lazy_validation_and_performance": {
+    "status": "PASS",
+    "source_bind_is_typed_one_shot_only": true,
+    "source_bind_repeats_catalog_validation": false,
+    "localization_configure_redundant_semantic_canonicalization_removed": true,
+    "lazy_trigger": "first_public_codex_read",
+    "full_catalog_gate_preserved": true,
+    "full_catalog_exact_record_validation": true,
+    "full_catalog_semantic_authorization": true,
+    "full_catalog_card_count": 348,
+    "full_catalog_family_count": 87,
+    "semantic_compile_delta": 0,
+    "coordinator_startup": "bind_only",
+    "render_hover_detail_tick_compile_calls": 0,
+    "performance_status": "FINAL_PASS"
+  },
+  "worktree_and_staging": {
+    "current_status_paths": 62,
+    "tracked_modified": 16,
+    "untracked": 46,
+    "current_untracked_uid_count": 17,
+    "intended_staging_paths": 62,
+    "task_owned_uid_allowlist_count": 17,
+    "regenerated_uid_exclusion_count": 0,
+    "staged_out_of_scope_uid_count": 0,
+    "staging_scope_unchanged": true,
+    "deleted_paths": 0,
+    "task_owned_uid_allowlist": [
+      "scripts/presentation/authorized_card_player_face_localization_source_v1.gd.uid",
+      "scripts/presentation/card_player_face_public_token_manifest_v1.gd.uid",
+      "scripts/presentation/player_card_codex_dto_v1.gd.uid",
+      "scripts/presentation/player_card_codex_family_ladder_dto_v1.gd.uid",
+      "scripts/runtime/card_player_face_public_localization_source_service.gd.uid",
+      "scripts/tools/card_codex_playerface_production_bench.gd.uid",
+      "tests/card_codex_catalog_owned_constructor_test.gd.uid",
+      "tests/card_codex_dto_compatibility_adapter_test.gd.uid",
+      "tests/card_codex_playerface_architecture_scan_test.gd.uid",
+      "tests/card_codex_playerface_full_catalog_integration_test.gd.uid",
+      "tests/card_codex_playerface_performance_test.gd.uid",
+      "tests/card_codex_playerface_privacy_test.gd.uid",
+      "tests/card_codex_playerface_runtime_invariants_test.gd.uid",
+      "tests/card_player_face_public_localization_source_test.gd.uid",
+      "tests/card_semantic_catalog_public_authorization_test.gd.uid",
+      "tests/player_card_codex_dto_v1_test.gd.uid",
+      "tests/player_card_codex_family_ladder_dto_v1_test.gd.uid"
+    ],
+    "regenerated_uid_exclusions": []
+  },
+  "production_ownership": {
+    "semantic_catalog_instances": 1,
+    "localization_owner_instances": 1,
+    "player_face_projector_instances": 1,
+    "card_codex_source_instances": 1,
+    "autoload_instances_added": 0,
+    "new_state_owners": 0,
+    "dependency_rebind_rejected": true,
+    "dual_authority_found": false
+  },
+  "critical_hashes_sha256": {
+    "token_manifest": "fb7a900be8a60868806c92be25db60158b907ab79d7d3a8e45822937d7d55513",
+    "localization_owner": "a6f6399d0d4d740cf098c280e5f7f1bc2819a94d802a1778ed1f2be6320bf7de",
+    "player_face_projector": "0629c04f7bfeb418fc60a75f3dc4daccea455c0c793df4dfd2b05df70a1441a0",
+    "compatibility_adapter": "db93a206196f11c3868a53d2ee6d121cea5c9670296d66fe7e020becefdeb90a",
+    "card_codex_source": "135f3676c7cba05b83e0a2b85956520819e8ffb4e2b608cb8a73332a4971a6a8"
+  },
+  "main": {
+    "changed": false,
+    "origin_blob_hash": "cc3cfc8e57d3ec78a51df139b2d24ca5cda427f9",
+    "worktree_blob_hash": "cc3cfc8e57d3ec78a51df139b2d24ca5cda427f9",
+    "responsibility_delta": 0
+  },
+  "save": {
+    "section_count": 19,
+    "unique_section_count": 19,
+    "semantic_localization_playerface_codex_sections": 0
+  },
+  "ai_debt": {
+    "value_reads": 225,
+    "presence_checks": 5,
+    "functions": 33,
+    "keys": 71,
+    "production_ai_consumer_delta": 0,
+    "ai_runtime_controller_changed": false
+  },
+  "forbidden_deltas": {
+    "rules_projection_or_execution_plan": 0,
+    "handler_registration": 0,
+    "rule_or_balance_data_files": 0,
+    "rng_owner_or_draw": 0,
+    "save_owner_or_section": 0,
+    "market_playerface_cutover": 0,
+    "hand_playerface_cutover": 0,
+    "card_track_playerface_cutover": 0,
+    "v04_execution_deletion": 0,
+    "legacy_execution_deletion": 0
+  },
+  "compatibility": {
+    "monster_bridge_count": 1,
+    "monster_bridge_method": "legacy_monster_codex_card_id",
+    "monster_bridge_production_callers": [
+      "scripts/runtime/monster_codex_public_source_service.gd"
+    ],
+    "localized_name_or_rank_suffix_parser": false,
+    "alias_retirement_count": 9,
+    "alias_retirement": [
+      "card_name",
+      "kind",
+      "route",
+      "effect",
+      "cost",
+      "type",
+      "rank",
+      "roman",
+      "price"
+    ],
+    "play_cost_allowed": false
+  }
+}
