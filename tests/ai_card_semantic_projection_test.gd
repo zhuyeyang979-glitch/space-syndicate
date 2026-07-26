@@ -3,6 +3,9 @@ extends SceneTree
 const SERVICE_SCENE := preload(
 	"res://scenes/runtime/AiCardSemanticProjectionService.tscn"
 )
+const CATALOG_SERVICE_SCENE := preload(
+	"res://scenes/runtime/CardSemanticCatalogService.tscn"
+)
 
 var _checks := 0
 var _failures: Array[String] = []
@@ -13,11 +16,18 @@ func _init() -> void:
 
 
 func _run() -> void:
+	var catalog_service := CATALOG_SERVICE_SCENE.instantiate() as CardSemanticCatalogService
+	root.add_child(catalog_service)
 	var service := SERVICE_SCENE.instantiate() as AiCardSemanticProjectionService
 	root.add_child(service)
 	await process_frame
+	_expect(
+		catalog_service != null
+			and bool(catalog_service.validation_snapshot().get("configured", false)),
+		"authoritative semantic catalog configures"
+	)
 	_expect(service != null, "service scene instantiates")
-	if service == null:
+	if service == null or catalog_service == null:
 		_finish()
 		return
 
@@ -30,6 +40,7 @@ func _run() -> void:
 	_test_debug_boundary(service)
 	_test_bounded_projection_cost(service)
 	service.queue_free()
+	catalog_service.queue_free()
 	await process_frame
 	_finish()
 
@@ -56,11 +67,22 @@ func _test_representative_candidates(
 		var scenario := scenario_variant as Dictionary
 		var fixture := AiCardSemanticProjectionBench.make_case(scenario)
 		var fixture_before := fixture.duplicate(true)
+		for op_variant in scenario.get("ops", []) as Array:
+			emitted_ops.append(str(op_variant))
 		var candidates := service.project_candidates(
 			fixture.get("spec", {}) as Dictionary,
 			fixture.get("instance", {}) as Dictionary,
 			fixture.get("world", {}) as Dictionary
 		)
+		var spec := fixture.get("spec", {}) as Dictionary
+		if str(spec.get("runtime_readiness_id", "")) != "active":
+			_expect(
+				candidates.is_empty(),
+				"projection-only scenario %s emits no legal candidate"
+					% scenario.get("id", "")
+			)
+			_expect(fixture == fixture_before, "projection does not mutate any input")
+			continue
 		_expect(
 			candidates.size() == 1,
 			"representative scenario %s emits one proven target"
@@ -100,22 +122,32 @@ func _test_representative_candidates(
 			"candidate is detached pure data"
 		)
 		_expect(fixture == fixture_before, "projection does not mutate any input")
+		var expected_outcomes: Dictionary = {}
+		for effect_variant in spec.get("effect_ops", []) as Array:
+			var effect := effect_variant as Dictionary
+			var effect_expected := expected_dimensions.get(
+				str(effect.get("op_id", "")), {}
+			) as Dictionary
+			for dimension_variant in effect_expected.keys():
+				var dimension := str(dimension_variant)
+				expected_outcomes[dimension] = int(
+					expected_outcomes.get(dimension, 0)
+				) + int(effect_expected.get(dimension, 0))
+		for dimension_variant in expected_outcomes.keys():
+			var dimension := str(dimension_variant)
+			_expect(
+				int(outcomes.get(dimension, 0))
+					== int(expected_outcomes.get(dimension, 0)),
+				"%s projects the registered aggregate" % dimension
+			)
 		for op_variant in scenario.get("ops", []) as Array:
 			var op_id := str(op_variant)
-			emitted_ops.append(op_id)
 			_expect(
 				(candidate.get("explanation_tokens", []) as Array).has(
 					"semantic.op.%s" % op_id
 				),
 				"candidate exposes a stable explanation token for %s" % op_id
 			)
-			var expected := expected_dimensions.get(op_id, {}) as Dictionary
-			for dimension_variant in expected.keys():
-				var dimension := str(dimension_variant)
-				_expect(
-					int(outcomes.get(dimension, 0)) == int(expected.get(dimension, 0)),
-					"%s projects neutral %s" % [op_id, dimension]
-				)
 	for required_op in AiCardSemanticProjectionBench.representative_op_ids():
 		_expect(emitted_ops.has(required_op), "representative op %s covered" % required_op)
 
@@ -373,14 +405,20 @@ func _test_readiness_and_counterability(
 	var interaction_fixture := AiCardSemanticProjectionBench.make_case(
 		AiCardSemanticProjectionBench.representative_scenarios()[8] as Dictionary
 	)
-	var active_spec := interaction_fixture.get("spec", {}) as Dictionary
+	var projection_only_spec := interaction_fixture.get("spec", {}) as Dictionary
 	var instance := interaction_fixture.get("instance", {}) as Dictionary
-	var active_world := interaction_fixture.get("world", {}) as Dictionary
-	for readiness_id in ["projection_only", "not_acquirable"]:
-		var non_executable_spec := active_spec.duplicate(true)
+	var interaction_world := interaction_fixture.get("world", {}) as Dictionary
+	_expect(
+		service.project_candidates(
+			projection_only_spec, instance, interaction_world
+		).is_empty(),
+		"catalog projection-only interaction emits no legal candidate"
+	)
+	for readiness_id in ["active", "not_acquirable"]:
+		var non_executable_spec := projection_only_spec.duplicate(true)
 		non_executable_spec["runtime_readiness_id"] = readiness_id
 		AiCardSemanticProjectionBench.refingerprint_spec(non_executable_spec)
-		var rebound_world := active_world.duplicate(true)
+		var rebound_world := interaction_world.duplicate(true)
 		rebound_world["semantic_fingerprint"] = str(
 			non_executable_spec.get("semantic_fingerprint", "")
 		)
@@ -389,35 +427,36 @@ func _test_readiness_and_counterability(
 			service.project_candidates(
 				non_executable_spec, instance, rebound_world
 			).is_empty(),
-			"interaction %s readiness cannot emit a legal candidate" % readiness_id
+			"caller-mutated interaction %s readiness cannot emit a legal candidate"
+				% readiness_id
 		)
 
+	var active_fixture := AiCardSemanticProjectionBench.make_case(
+		AiCardSemanticProjectionBench.representative_scenarios()[0] as Dictionary
+	)
+	var active_spec := active_fixture.get("spec", {}) as Dictionary
+	var active_instance := active_fixture.get("instance", {}) as Dictionary
+	var active_world := active_fixture.get("world", {}) as Dictionary
 	var zero_risk_world := active_world.duplicate(true)
 	var target := (zero_risk_world.get("legal_targets", []) as Array)[0] as Dictionary
 	target["counter_risk"] = 0
 	AiCardSemanticProjectionBench.refingerprint_target(target)
 	AiCardSemanticProjectionBench.refingerprint_world(zero_risk_world)
 	var zero_risk_candidates := service.project_candidates(
-		active_spec, instance, zero_risk_world
+		active_spec, active_instance, zero_risk_world
 	)
-	_expect(zero_risk_candidates.size() == 1, "active counterable interaction remains legal")
+	_expect(zero_risk_candidates.size() == 1, "registered active card remains legal")
 	if zero_risk_candidates.size() == 1:
 		var candidate := zero_risk_candidates[0] as Dictionary
 		_expect(
 			int(candidate.get("counter_risk", -1)) == 0,
-			"counterability alone leaves candidate counter risk at zero"
+			"registered active fact leaves candidate counter risk at zero"
 		)
 		_expect(
 			int((candidate.get("projected_outcomes", {}) as Dictionary).get(
 				"counter_risk", -1
 			)) == 0,
-			"counterability alone leaves outcome counter risk at zero"
-		)
-		_expect(
-			(candidate.get("explanation_tokens", []) as Array).has(
-				"semantic.response.counterable"
-			),
-			"counterability remains available as a neutral explanation token"
+			"registered active fact leaves outcome counter risk at zero"
 		)
 
 

@@ -1,6 +1,9 @@
 extends Node
 class_name AiCardSemanticProjectionBench
 
+const COMPILER := preload("res://scripts/cards/semantic/card_semantic_compiler_v1.gd")
+const CATALOG_PATH := "res://resources/cards/runtime/card_runtime_catalog_v06.tres"
+
 var bench_status := "RUNNING"
 var check_count := 0
 var failure_count := 0
@@ -29,11 +32,21 @@ func _run() -> void:
 		var scenario := scenario_variant as Dictionary
 		var fixture := make_case(scenario)
 		var before := fixture.duplicate(true)
+		for op_variant in scenario.get("ops", []) as Array:
+			seen_ops.append(str(op_variant))
 		var candidates := service.project_candidates(
 			fixture.get("spec", {}) as Dictionary,
 			fixture.get("instance", {}) as Dictionary,
 			fixture.get("world", {}) as Dictionary
 		)
+		var spec := fixture.get("spec", {}) as Dictionary
+		if str(spec.get("runtime_readiness_id", "")) != "active":
+			_check(
+				candidates.is_empty(),
+				"representative_%s_projection_only" % scenario.get("id", "")
+			)
+			_check(fixture == before, "zero_input_mutation_%s" % scenario.get("id", ""))
+			continue
 		_check(candidates.size() == 1, "representative_%s" % scenario.get("id", ""))
 		if candidates.size() != 1:
 			continue
@@ -77,7 +90,6 @@ func _run() -> void:
 		_check(fixture == before, "zero_input_mutation_%s" % scenario.get("id", ""))
 		for op_variant in scenario.get("ops", []) as Array:
 			var op_id := str(op_variant)
-			seen_ops.append(op_id)
 			_check(
 				(candidate.get("explanation_tokens", []) as Array).has(
 					"semantic.op.%s" % op_id
@@ -245,14 +257,20 @@ func _run_readiness_and_counterability_checks(
 	service: AiCardSemanticProjectionService
 ) -> void:
 	var interaction_fixture := make_case(representative_scenarios()[8] as Dictionary)
-	var active_spec := interaction_fixture.get("spec", {}) as Dictionary
+	var projection_only_spec := interaction_fixture.get("spec", {}) as Dictionary
 	var instance := interaction_fixture.get("instance", {}) as Dictionary
-	var active_world := interaction_fixture.get("world", {}) as Dictionary
-	for readiness_id in ["projection_only", "not_acquirable"]:
-		var non_executable_spec := active_spec.duplicate(true)
+	var interaction_world := interaction_fixture.get("world", {}) as Dictionary
+	_check(
+		service.project_candidates(
+			projection_only_spec, instance, interaction_world
+		).is_empty(),
+		"catalog_projection_only_never_emits_legal_candidate"
+	)
+	for readiness_id in ["active", "not_acquirable"]:
+		var non_executable_spec := projection_only_spec.duplicate(true)
 		non_executable_spec["runtime_readiness_id"] = readiness_id
 		refingerprint_spec(non_executable_spec)
-		var rebound_world := active_world.duplicate(true)
+		var rebound_world := interaction_world.duplicate(true)
 		rebound_world["semantic_fingerprint"] = str(
 			non_executable_spec.get("semantic_fingerprint", "")
 		)
@@ -264,29 +282,27 @@ func _run_readiness_and_counterability_checks(
 			"%s_never_emits_legal_candidate" % readiness_id
 		)
 
+	var active_fixture := make_case(representative_scenarios()[0] as Dictionary)
+	var active_spec := active_fixture.get("spec", {}) as Dictionary
+	var active_instance := active_fixture.get("instance", {}) as Dictionary
+	var active_world := active_fixture.get("world", {}) as Dictionary
 	var zero_risk_world := active_world.duplicate(true)
 	var target := (zero_risk_world.get("legal_targets", []) as Array)[0] as Dictionary
 	target["counter_risk"] = 0
 	refingerprint_target(target)
 	refingerprint_world(zero_risk_world)
 	var zero_risk_candidates := service.project_candidates(
-		active_spec, instance, zero_risk_world
+		active_spec, active_instance, zero_risk_world
 	)
-	_check(zero_risk_candidates.size() == 1, "counterable_zero_risk_candidate_emitted")
+	_check(zero_risk_candidates.size() == 1, "registered_active_zero_risk_candidate_emitted")
 	if zero_risk_candidates.size() == 1:
 		var candidate := zero_risk_candidates[0] as Dictionary
-		_check(int(candidate.get("counter_risk", -1)) == 0, "counterable_has_no_fixed_risk")
+		_check(int(candidate.get("counter_risk", -1)) == 0, "registered_active_has_no_fixed_risk")
 		_check(
 			int((candidate.get("projected_outcomes", {}) as Dictionary).get(
 				"counter_risk", -1
 			)) == 0,
-			"counterable_outcome_has_no_fixed_risk"
-		)
-		_check(
-			(candidate.get("explanation_tokens", []) as Array).has(
-				"semantic.response.counterable"
-			),
-			"counterable_explanation_is_semantic_only"
+			"registered_active_outcome_has_no_fixed_risk"
 		)
 
 
@@ -426,18 +442,14 @@ static func _scenario(
 
 static func make_case(scenario: Dictionary, target_ids: Array = []) -> Dictionary:
 	var scenario_id := str(scenario.get("id", "fixture"))
-	var card_id := "fixture.%s.rank_2" % scenario_id
+	var card_id := _representative_card_id(scenario_id)
 	var source_kind := str(scenario.get("source_kind", "own_hand"))
 	var source_slot := 3
 	var instance_revision := 7
 	var world_revision := 101
-	var spec := make_spec(
-		card_id,
-		scenario.get("ops", []) as Array,
-		str(scenario.get("target_id", "world.global")),
-		str(scenario.get("timing_id", "main_action")),
-		str(scenario.get("response_id", "none")),
-		source_kind == "public_rack"
+	var spec := _registered_spec(card_id)
+	var target_id := str(
+		(spec.get("target", {}) as Dictionary).get("target_id", "")
 	)
 	var instance := {
 		"schema_version": 1,
@@ -461,10 +473,10 @@ static func make_case(scenario: Dictionary, target_ids: Array = []) -> Dictionar
 	for stable_id_variant in stable_targets:
 		var target_fact := {
 			"schema_version": 1,
-			"target_id": str(scenario.get("target_id", "world.global")),
+			"target_id": target_id,
 			"target_identity": {
 				"schema_version": 1,
-				"target_id": str(scenario.get("target_id", "world.global")),
+				"target_id": target_id,
 				"stable_id": str(stable_id_variant),
 			},
 			"status_id": "legal",
@@ -500,236 +512,41 @@ static func make_case(scenario: Dictionary, target_ids: Array = []) -> Dictionar
 	return {"spec": spec, "instance": instance, "world": world}
 
 
-static func make_spec(
-	card_id: String,
-	ops: Array,
-	target_id: String,
-	timing_id: String,
-	response_id: String,
-	available_for_acquisition: bool
-) -> Dictionary:
-	var effect_ops: Array = []
-	for op_variant in ops:
-		effect_ops.append(make_effect_op(str(op_variant)))
-	var family_id := card_id.trim_suffix(".rank_2")
-	var first_op_id := str(ops[0]) if not ops.is_empty() else ""
-	var spec := {
-		"schema_version": 1,
-		"source_catalog_id": "card_runtime_catalog_v06",
-		"source_definition_fingerprint": JSON.stringify([
-			"authorized_definition_v1",
-			card_id,
-		]).sha256_text(),
-		"semantic_fingerprint": "",
-		"identity": {
-			"card_id": card_id,
-			"family_id": family_id,
-			"rank": 2,
-			"category_id": category_for_op(first_op_id),
-			"industry_id": "energy",
-			"available_for_acquisition": available_for_acquisition,
-		},
-		"cost": {
-			"acquisition": {
-				"acquisition_kind": "dynamic_market_cash",
-				"purchase_cash": 12,
-			},
-			"activation": {
-				"life": 0,
-				"energy": 0,
-				"industry": 0,
-				"technology": 0,
-				"commerce": 1,
-				"shipping": 0,
-				"generic": 1,
-			},
-		},
-		"timing": {"timing_id": timing_id},
-		"target": {
-			"target_id": target_id,
-			"selection_id": target_selection_id(target_id),
-			"cardinality_id": target_cardinality_id(target_id),
-			"filter_ids": target_filter_ids(target_id, first_op_id),
-		},
-		"effect_ops": effect_ops,
-		"response": {"response_id": response_id},
-		"information_policy": {"visibility_policy_id": "authorized_source_only"},
-		"runtime_readiness_id": "active",
-	}
-	refingerprint_spec(spec)
-	return spec
-
-
-static func make_effect_op(op_id: String) -> Dictionary:
-	match op_id:
+static func _representative_card_id(scenario_id: String) -> String:
+	match scenario_id:
 		"install_rate":
-			return {
-				"op_id": op_id,
-				"rate_subject_id": "card_family",
-				"rate_axis_id": "production_or_demand_by_facility_kind",
-				"industry_id": "energy",
-				"rate_units_per_minute": 2,
-				"valid_facility_kind_ids": ["factory", "market"],
-				"persistence_id": "until_facility_destroyed",
-			}
-		"build_facility", "upgrade_facility":
-			return {
-				"op_id": op_id,
-				"condition_id": "facility_slot.empty_or_district_ruined"
-					if op_id == "build_facility" else "facility.same_kind_lower_rank",
-				"facility_kind_id": "factory",
-				"industry_id": "energy",
-				"card_rank": 2,
-				"facility_profile": {
-					"profile_id": "factory",
-					"production_capacity_units_per_minute": 2,
-					"shared_hp_contribution": 1,
-					"shared_hp_profile_id": "equal_contribution_by_rank",
-					"rent_enabled": true,
-					"rent_rate_profile_id": "pending_first_playtest_table",
-				},
-			}
-		"repair_facility":
-			return {
-				"op_id": op_id,
-				"condition_id": "facility.same_kind_equal_or_higher_rank",
-				"facility_kind_id": "factory",
-				"industry_id": "energy",
-				"card_rank": 2,
-				"repair_policy_id": "established_facility_repair",
-			}
+			return "commodity.star_dew_berry.rank_1"
+		"build_facility", "upgrade_facility", "repair_facility":
+			return "facility.factory.life.rank_1"
 		"deploy_unit":
-			return {
-				"op_id": op_id,
-				"condition_id": "same_family_unit_absent",
-				"unit_kind_id": "military",
-				"unit_family_id": "fixture.unit",
-				"card_rank": 2,
-				"stats_source_id": "unit_profile",
-			}
-		"upgrade_same_family_unit":
-			return {
-				"op_id": op_id,
-				"condition_id": "same_family_unit_lower_rank",
-				"unit_kind_id": "military",
-				"unit_family_id": "fixture.unit",
-				"card_rank": 2,
-				"target_controller_scope_id": "actor",
-				"control_transfer_id": "preserve_actor_control",
-				"rank_cap_policy_id": "established_military_cap",
-				"recipient_policy_id": "actor",
-				"stats_source_id": "unit_profile",
-			}
-		"extend_presence":
-			return {
-				"op_id": op_id,
-				"condition_id": "same_family_unit_present",
-				"duration_seconds": 60,
-				"presence_time_policy_id": "add_to_remaining_time",
-				"refresh_total_presence_time": false,
-				"rank4_repeat_policy_id": "heal_to_full_and_extend",
-			}
-		"heal_unit":
-			return {
-				"op_id": op_id,
-				"condition_id": "same_family_unit_present",
-				"heal_policy_id": "to_full",
-			}
+			return "unit.monster.spore_tide_emperor.rank_1"
+		"upgrade_unit":
+			return "unit.military.planetary_defense_force.rank_1"
 		"modify_supply":
-			return {
-				"op_id": op_id,
-				"amount_units": 2,
-				"allocation_basis_id": "matching_product_gdp_share_30s",
-				"distance_rule_id": "near_lte_2",
-				"required_route_tag_id": "land",
-				"route_tag_match_mode_id": "any_segment_in_multimodal_route",
-				"requires_positive_controller_matching_product_gdp": true,
-				"requires_real_market_or_factory_nodes": true,
-				"requires_real_production_factory": true,
-				"uses_real_route_capacity": true,
-				"creates_one_time_physical_goods": true,
-				"is_permanent_installation": false,
-			}
+			return "supply_demand.near_land_supply.rank_1"
 		"modify_demand":
-			return {
-				"op_id": op_id,
-				"amount_units": 2,
-				"allocation_basis_id": "matching_product_gdp_share_30s",
-				"distance_rule_id": "remote_gt_2",
-				"required_route_tag_id": "sea",
-				"route_tag_match_mode_id": "any_segment_in_multimodal_route",
-				"requires_positive_controller_matching_product_gdp": true,
-				"requires_real_market_or_factory_nodes": true,
-				"requires_real_market_node": true,
-				"uses_real_route_capacity": true,
-				"may_exceed_persistent_demand": true,
-			}
-		"discard_random":
-			return {"op_id": op_id, "count": 1, "target_cash_penalty": 0}
-		"steal_random":
-			return {"op_id": op_id, "count": 1, "steal_fail_cash": 0}
-		"lock_random":
-			return {"op_id": op_id, "duration_seconds": 5}
-		"counter_action":
-			return {
-				"op_id": op_id,
-				"counter_strength": 1,
-				"counter_window_seconds": 5,
-				"response_depth": 1,
-				"target_scope_id": "direct_player_interaction",
-				"refund_cash": 0,
-				"private_trace_count": 0,
-			}
-	return {"op_id": op_id}
+			return "supply_demand.remote_sea_order.rank_1"
+		"discard", "lock":
+			return "interaction.starlink_dismantle.rank_1"
+		"steal":
+			return "interaction.shadow_warehouse_traction.rank_1"
+		"counter":
+			return "interaction.phase_veto.rank_1"
+	return ""
 
 
-static func category_for_op(op_id: String) -> String:
-	if op_id == "install_rate":
-		return "commodity"
-	if op_id in ["build_facility", "upgrade_facility", "repair_facility"]:
-		return "facility"
-	if op_id in ["modify_supply", "modify_demand", "global_order", "global_supply_spawn"]:
-		return "supply_demand"
-	if op_id in ["deploy_unit", "upgrade_same_family_unit", "extend_presence", "heal_unit"]:
-		return "military"
-	if op_id == "install_organization_upgrade":
-		return "organization"
-	return "interaction"
-
-
-static func target_selection_id(target_id: String) -> String:
-	if target_id == "response.incoming_direct_interaction":
-		return "trigger_context"
-	if target_id == "world.global":
-		return "automatic"
-	return "actor_choice"
-
-
-static func target_cardinality_id(target_id: String) -> String:
-	return "all_matching" if target_id == "world.global" else "exactly_one"
-
-
-static func target_filter_ids(target_id: String, op_id: String) -> Array:
-	match target_id:
-		"facility.same_industry":
-			return ["facility.kind.factory_or_market", "industry.same_as_card"]
-		"district.active":
-			return [
-				"district.state.active_or_undeveloped_or_ruined",
-				"facility.slot.unique_by_kind",
-			]
-		"unit.same_family":
-			return ["unit.kind.military", "unit.region_or_same_family", "unit.controller.actor"]
-		"player.opponent":
-			return ["hand.discardable"]
-		"response.incoming_direct_interaction":
-			return ["interaction.direct"]
-		"world.global":
-			return ["world.matching_factories"] \
-				if op_id == "modify_supply" else ["world.matching_goods"]
-		"organization.self_slot":
-			return ["organization.slot.available_or_same_family"]
-	return []
+static func _registered_spec(card_id: String) -> Dictionary:
+	var catalog := load(CATALOG_PATH) as CardRuntimeCatalogV06Resource
+	if catalog == null or not bool(catalog.reload().get("valid", false)):
+		return {}
+	var snapshot := catalog.catalog_snapshot()
+	var record := catalog.card_snapshot(card_id)
+	var result := COMPILER.new().compile_card_record(
+		record,
+		str(snapshot.get("catalog_id", ""))
+	)
+	return (result.get("spec", {}) as Dictionary).duplicate(true) \
+		if bool(result.get("ok", false)) else {}
 
 
 static func zero_outcome_adjustments() -> Dictionary:

@@ -20,6 +20,8 @@ const CANDIDATE_KEYS := [
 	"information_scope_id", "explanation_tokens", "candidate_fingerprint",
 ]
 
+@export var semantic_catalog_path := NodePath("../CardSemanticCatalogService")
+
 var _projection_request_count := 0
 var _projection_success_count := 0
 var _candidate_emission_count := 0
@@ -30,6 +32,11 @@ var _invalid_world_projection_count := 0
 var _unauthorized_provenance_count := 0
 var _stale_revision_count := 0
 var _unavailable_instance_count := 0
+var _semantic_catalog_service: CardSemanticCatalogService
+
+
+func _ready() -> void:
+	_resolve_semantic_catalog_service()
 
 
 func project_candidates(
@@ -38,14 +45,19 @@ func project_candidates(
 	world_projection: Dictionary
 ) -> Array:
 	_projection_request_count += 1
-	var semantic_validation: Dictionary = CARD_SEMANTIC_SCHEMA_V1.validate_semantic_spec(
-		semantic_spec
-	)
-	if not CARD_SEMANTIC_SCHEMA_V1.is_pure_data(semantic_spec) \
-			or not bool(semantic_validation.get("valid", false)):
+	if not CARD_SEMANTIC_SCHEMA_V1.is_pure_data(semantic_spec):
 		_invalid_spec_count += 1
 		return []
-	if str(semantic_spec.get("runtime_readiness_id", "")) != "active":
+	var catalog_service := _resolve_semantic_catalog_service()
+	if catalog_service == null:
+		_unauthorized_provenance_count += 1
+		return []
+	var authorization := catalog_service.authorize_semantic_spec(semantic_spec)
+	if not bool(authorization.get("ok", false)):
+		_unauthorized_provenance_count += 1
+		return []
+	var authorized_spec := authorization.get("spec", {}) as Dictionary
+	if str(authorized_spec.get("runtime_readiness_id", "")) != "active":
 		_non_executable_readiness_count += 1
 		return []
 	if not INPUT_V1.instance_state_error(instance_state).is_empty():
@@ -56,7 +68,7 @@ func project_candidates(
 		_count_boundary_error(observation_error, true)
 		return []
 	var boundary_error: String = INPUT_V1.cross_boundary_error(
-		semantic_spec, instance_state, world_projection
+		authorized_spec, instance_state, world_projection
 	)
 	if not boundary_error.is_empty():
 		_count_boundary_error(boundary_error, false)
@@ -67,7 +79,7 @@ func project_candidates(
 	var candidates: Array = []
 	for target_variant in world_projection.get("legal_targets", []) as Array:
 		candidates.append(_candidate_for_target(
-			semantic_spec,
+			authorized_spec,
 			instance_state,
 			world_projection,
 			target_variant as Dictionary
@@ -99,6 +111,17 @@ func debug_snapshot() -> Dictionary:
 
 static func fingerprint_record(record: Dictionary, fingerprint_key: String) -> String:
 	return CARD_SEMANTIC_SCHEMA_V1.fingerprint(record, fingerprint_key)
+
+
+func _resolve_semantic_catalog_service() -> CardSemanticCatalogService:
+	if _semantic_catalog_service != null and is_instance_valid(_semantic_catalog_service):
+		return _semantic_catalog_service
+	if semantic_catalog_path.is_empty():
+		return null
+	_semantic_catalog_service = get_node_or_null(
+		semantic_catalog_path
+	) as CardSemanticCatalogService
+	return _semantic_catalog_service
 
 
 func _count_boundary_error(error_id: String, observation_validation: bool) -> void:
