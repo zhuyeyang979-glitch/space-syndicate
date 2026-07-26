@@ -6,11 +6,16 @@ const AI_DEBT_REPORT_PATH := "res://reports/cards/ai_direct_field_read_migration
 const NAME_KIND_REPORT_PATH := "res://reports/semantic_program/name_and_kind_special_case_audit.json"
 const AI_RUNTIME_PATH := "res://scripts/runtime/ai_runtime_controller.gd"
 const CATALOG_SERVICE_PATH := "res://scripts/runtime/card_semantic_catalog_service.gd"
+const SOURCE_AUTHORIZATION_PATH := "res://scripts/runtime/card_semantic_source_authorization_port.gd"
+const COORDINATOR_SCENE_PATH := "res://scenes/runtime/GameRuntimeCoordinator.tscn"
 
 const SEMANTIC_SOURCE_PATHS := [
 	"res://scripts/cards/semantic/card_semantic_schema_v1.gd",
 	"res://scripts/cards/semantic/card_semantic_compiler_v1.gd",
+	"res://scripts/cards/semantic/authorized_card_semantic_envelope_v1.gd",
+	"res://scripts/cards/semantic/card_instance_decision_state_v1.gd",
 	"res://scripts/runtime/card_semantic_catalog_service.gd",
+	"res://scripts/runtime/card_semantic_source_authorization_port.gd",
 	"res://scripts/runtime/ai_card_semantic_projection_service.gd",
 	"res://scripts/runtime/ai_card_semantic_projection_input_v1.gd",
 	"res://scripts/runtime/ai_outcome_vector_v1.gd",
@@ -21,6 +26,7 @@ const AI_SEMANTIC_SOURCE_PATHS := [
 	"res://scripts/runtime/ai_card_semantic_projection_service.gd",
 	"res://scripts/runtime/ai_card_semantic_projection_input_v1.gd",
 	"res://scripts/runtime/ai_outcome_vector_v1.gd",
+	"res://scripts/cards/semantic/card_instance_decision_state_v1.gd",
 ]
 const PLAYER_FACE_SOURCE_PATHS := [
 	"res://scripts/runtime/card_player_face_projection_service.gd",
@@ -72,6 +78,7 @@ func _run() -> void:
 	_scan_ai_projection_boundary()
 	_scan_player_face_boundary()
 	_scan_catalog_service_surface()
+	_scan_authorized_source_boundary()
 	_scan_save_registry_contract()
 	_scan_ai_raw_field_debt()
 	_scan_name_kind_audit()
@@ -224,6 +231,88 @@ func _scan_catalog_service_surface() -> void:
 		'"cache_entries":',
 	]:
 		_expect(not source.contains(forbidden), "catalog service exposes no semantic enumeration: %s" % forbidden)
+
+
+func _scan_authorized_source_boundary() -> void:
+	var source := FileAccess.get_file_as_string(SOURCE_AUTHORIZATION_PATH)
+	var coordinator_scene := FileAccess.get_file_as_string(COORDINATOR_SCENE_PATH)
+	_expect(not source.is_empty(), "authorized semantic source port is readable")
+	_expect(
+		_count_occurrences(
+			coordinator_scene,
+			'[node name="CardSemanticSourceAuthorizationPort"'
+		) == 1,
+		"production coordinator composes exactly one source authorization port"
+	)
+	for forbidden in [
+		"world_session_state_path",
+		"WorldSessionState",
+		".players",
+		"world_session_state()",
+		"current_scene",
+		"res://scripts/main.gd",
+		"/root/Main",
+		"v06_card_definition",
+		"v06_card_player_snapshot",
+		"card_snapshot(",
+		"catalog_snapshot(",
+		"ordered_card_ids(",
+		"card_ids(",
+		"register_handler(",
+		"RuleExecutionPlan",
+		"RulesProjection",
+		"to_save_data",
+		"apply_save_data",
+		"register_save_owner",
+		"RunRngService",
+		"RandomNumberGenerator",
+		"randf(",
+		"randi(",
+		"func _process(",
+		"func _physics_process(",
+	]:
+		_expect(
+			not source.contains(forbidden),
+			"source authorization port omits forbidden dependency: %s" % forbidden
+		)
+	var public_methods: Array[String] = []
+	for raw_line in source.split("\n"):
+		var line := str(raw_line).strip_edges()
+		if line.begins_with("func "):
+			var method_id := line.trim_prefix("func ").get_slice("(", 0).strip_edges()
+			if not method_id.begins_with("_"):
+				public_methods.append(method_id)
+	public_methods.sort()
+	var expected_methods: Array[String] = [
+		"authorize_own_hand_card",
+		"authorize_source",
+		"bind_ai_capability",
+		"debug_snapshot",
+		"is_ready",
+		"validate_authorized_bundle",
+	]
+	expected_methods.sort()
+	_expect(
+		public_methods == expected_methods,
+		"source authorization port exposes only the closed own-hand surface"
+	)
+	var production_consumer_source := "\n".join([
+		FileAccess.get_file_as_string(AI_RUNTIME_PATH),
+		FileAccess.get_file_as_string("res://scripts/main.gd"),
+		FileAccess.get_file_as_string(
+			"res://scripts/runtime/card_presentation_runtime_service.gd"
+		),
+	])
+	for forbidden_consumer in [
+		"CardSemanticSourceAuthorizationPort",
+		"project_authorized_source(",
+		"AiCardSemanticProjectionService",
+	]:
+		_expect(
+			not production_consumer_source.contains(forbidden_consumer),
+			"production AI/UI/Main has no semantic cutover consumer: %s"
+				% forbidden_consumer
+		)
 
 
 func _scan_save_registry_contract() -> void:
