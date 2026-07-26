@@ -1,0 +1,681 @@
+{
+  "schema_version": 1,
+  "audit_id": "semantic_program.name_and_kind_special_case.v1",
+  "baseline_sha": "29dac1dd47b04afa60c1d867a0bbe5c5c4d94d0c",
+  "branch": "codex/semantic-program-wave1-name-kind-29dac1d",
+  "scope": {
+    "included": [
+      "scripts/**/*.gd production/runtime/UI/AI/diagnostics"
+    ],
+    "excluded": [
+      "scripts/tools/**",
+      "tests/**",
+      "reports/** as scan input",
+      "production edits",
+      "catalog edits",
+      "rule edits"
+    ],
+    "production_changes": 0
+  },
+  "classification_rules": {
+    "REMOVE": "Delete the branch/source/alias after its typed replacement has parity; it is not a legitimate long-term runtime authority.",
+    "MOVE": "Preserve behavior but move semantic classification into the named immutable spec/projection/registry.",
+    "KEEP": "Legitimate stable-ID state machine, current owner, fail-closed compatibility/privacy guard, or display-only localization."
+  },
+  "scan_summary": {
+    "production_gd_files": 522,
+    "production_gd_files_with_han": 219,
+    "localized_control_candidate_lines": 213,
+    "localized_predicate_matches": 347,
+    "localized_control_candidate_files": 35,
+    "kind_control_candidate_lines": 824,
+    "kind_control_candidate_files": 132,
+    "canonical_alias_chain_lines": 22,
+    "canonical_alias_chain_files": 7,
+    "suffix_inference_lines": 7,
+    "suffix_inference_files": 5,
+    "active_v04_exact_gate_lines": 10,
+    "verified_ai_card_field_reads": 225,
+    "verified_ai_card_field_functions": 33,
+    "verified_ai_card_field_keys": 71,
+    "notes": [
+      "Lexical candidate totals intentionally include false positives and legitimate state machines.",
+      "AI direct-field totals are the merged Wave-1 E audit result and were source-anchor checked here."
+    ]
+  },
+  "totals": {
+    "finding_count": 57,
+    "by_disposition": {
+      "REMOVE": 16,
+      "MOVE": 33,
+      "KEEP": 8
+    },
+    "by_category": {
+      "catalog_duality": 3,
+      "version_dual_path": 2,
+      "suffix_rank_inference": 1,
+      "alias_fallback_chain": 1,
+      "localized_identity_parser": 2,
+      "one_off_content_id": 3,
+      "localized_name_rule_branch": 3,
+      "localized_text_or_kind_branch": 1,
+      "localized_ui_control_branch": 1,
+      "duplicate_catalog": 1,
+      "localized_text_classifier": 4,
+      "localized_presentation_inference": 3,
+      "kind_projection_duplication": 4,
+      "raw_field_interpretation": 2,
+      "raw_payload_introspection": 1,
+      "localized_ui_state_branch": 2,
+      "localized_identity": 1,
+      "localized_content_identity": 4,
+      "mixed_semantic_presentation_catalog": 1,
+      "localized_category_rule_branch": 1,
+      "kind_field_policy": 2,
+      "operation_dispatch": 2,
+      "ai_raw_or_kind_interpretation": 1,
+      "diagnostics_raw_or_kind_interpretation": 2,
+      "localized_tag_rule_branch": 1,
+      "authoritative_owner_keep": 2,
+      "stable_id_domain_invariant": 1,
+      "stable_id_domain_state_machine": 1,
+      "compatibility_guard": 2,
+      "privacy_guard": 1,
+      "display_localization": 1
+    }
+  },
+  "findings": [
+    {
+      "id": "NK-001",
+      "disposition": "REMOVE",
+      "category": "catalog_duality",
+      "locations": ["scripts/runtime/card_runtime_catalog_service.gd:5", "scripts/runtime/card_runtime_catalog_service.gd:15", "scripts/cards/card_runtime_authoring_service.gd:5"],
+      "authority": "CardRuntimeCatalogService v0.4 Resource graph",
+      "risk": "The global runtime authority differs from the v0.6 compiler input.",
+      "stable_owner": "CardSemanticSpec catalog compiled once by SemanticCompiler"
+    },
+    {
+      "id": "NK-002",
+      "disposition": "REMOVE",
+      "category": "catalog_duality",
+      "locations": ["scripts/runtime/card_runtime_definition_world_bridge.gd:37", "scripts/runtime/card_runtime_definition_world_bridge.gd:40", "scripts/runtime/card_runtime_definition_world_bridge.gd:43", "scripts/runtime/card_runtime_definition_world_bridge.gd:77", "scripts/runtime/card_runtime_definition_world_bridge.gd:80", "scripts/runtime/card_runtime_definition_world_bridge.gd:83", "scripts/runtime/card_runtime_definition_world_bridge.gd:89", "scripts/runtime/card_runtime_definition_world_bridge.gd:91", "scripts/runtime/card_runtime_definition_world_bridge.gd:97"],
+      "authority": "Catalog bridge plus Main monster and finance supplemental sources",
+      "risk": "One card ID can resolve through multiple semantic sources.",
+      "stable_owner": "Single compiled CardSemanticSpec catalog"
+    },
+    {
+      "id": "NK-003",
+      "disposition": "REMOVE",
+      "category": "version_dual_path",
+      "locations": ["scripts/runtime/card_play_submission_runtime_controller.gd:68", "scripts/runtime/card_play_submission_runtime_controller.gd:75", "scripts/runtime/card_play_submission_runtime_controller.gd:96", "scripts/runtime/card_play_submission_runtime_controller.gd:103", "scripts/runtime/card_play_submission_runtime_controller.gd:782"],
+      "authority": "CardPlaySubmissionRuntimeController",
+      "risk": "Dictionary shape selects legacy or v0.6 execution.",
+      "stable_owner": "OperationHandlerRegistry-selected single submission path"
+    },
+    {
+      "id": "NK-004",
+      "disposition": "REMOVE",
+      "category": "version_dual_path",
+      "locations": ["scripts/runtime/game_session_runtime_controller.gd:57", "scripts/runtime/game_session_runtime_controller.gd:546", "scripts/runtime/session_start_plan_builder.gd:116", "scripts/runtime/game_runtime_coordinator.gd:515"],
+      "authority": "Session/coordinator ruleset gates",
+      "risk": "Runtime composition emits/requires v0.4 while session accepts v0.4 and v0.6.",
+      "stable_owner": "Single current ruleset identity; save migration guard remains separate"
+    },
+    {
+      "id": "NK-005",
+      "disposition": "REMOVE",
+      "category": "suffix_rank_inference",
+      "locations": ["scripts/cards/card_runtime_catalog_resource.gd:59", "scripts/cards/card_runtime_catalog_resource.gd:66", "scripts/cards/card_play_requirement_policy.gd:94", "scripts/cards/card_play_requirement_policy.gd:101", "scripts/cards/card_runtime_change_review_service.gd:229", "scripts/balance/runtime_balance_model.gd:1010", "scripts/balance/runtime_balance_model.gd:1017", "scripts/runtime/card_codex_public_source_service.gd:115", "scripts/runtime/card_codex_public_source_service.gd:117", "scripts/runtime/card_codex_public_source_service.gd:119"],
+      "authority": "Catalog/policy/diagnostic/Codex compatibility code",
+      "risk": "Display-name suffixes silently become rank and family identity.",
+      "stable_owner": "SemanticIdentity.card_id/family_id/rank"
+    },
+    {
+      "id": "NK-006",
+      "disposition": "REMOVE",
+      "category": "alias_fallback_chain",
+      "locations": ["scripts/CardUI.gd:67", "scripts/CardUI.gd:69", "scripts/CardUI.gd:70", "scripts/CardUI.gd:71", "scripts/GameScreen.gd:181", "scripts/GameScreen.gd:182", "scripts/viewmodels/card_view_snapshot.gd:19", "scripts/viewmodels/card_view_snapshot.gd:20", "scripts/viewmodels/card_view_snapshot.gd:21", "scripts/viewmodels/card_view_snapshot.gd:23", "scripts/ui/card_face.gd:17", "scripts/ui/game_screen.gd:1439", "scripts/ui/game_screen.gd:1440", "scripts/ui/game_screen.gd:1676", "scripts/ui/game_screen.gd:1677", "scripts/ui/hand_rack.gd:137", "scripts/ui/hand_rack.gd:138", "scripts/ui/hand_rack.gd:139", "scripts/ui/right_inspector.gd:197", "scripts/ui/right_inspector.gd:266", "scripts/ui/right_inspector.gd:267", "scripts/ui/right_inspector.gd:307"],
+      "authority": "UI/viewmodel compatibility dictionaries",
+      "risk": "Acquisition, activation, effect, type, and rank meanings collide.",
+      "stable_owner": "Strict PlayerPresentationDTO through one temporary migration adapter"
+    },
+    {
+      "id": "NK-007",
+      "disposition": "REMOVE",
+      "category": "localized_identity_parser",
+      "locations": ["scripts/main.gd:4261", "scripts/main.gd:4266", "scripts/main.gd:4267", "scripts/main.gd:4270"],
+      "authority": "Main monster-technique compatibility helpers",
+      "risk": "The localized prefix 兽技· and delimiters define identity.",
+      "stable_owner": "MonsterBehaviorSpec and CardSemanticSpec stable IDs"
+    },
+    {
+      "id": "NK-008",
+      "disposition": "REMOVE",
+      "category": "one_off_content_id",
+      "locations": ["scripts/main.gd:4094", "scripts/runtime/ai_runtime_controller.gd:1667"],
+      "authority": "Main and AI role-counter conversion",
+      "risk": "Both synthesize the concrete localized family 相位否决%d.",
+      "stable_owner": "RoleSemanticSpec passive op resolving a stable counter semantic ID"
+    },
+    {
+      "id": "NK-009",
+      "disposition": "REMOVE",
+      "category": "one_off_content_id",
+      "locations": ["scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:7", "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:8", "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:9", "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:10", "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:11", "scripts/runtime/gameplay_balance_diagnostics_world_bridge.gd:83", "scripts/runtime/gameplay_balance_diagnostics_world_bridge.gd:307"],
+      "authority": "Gameplay balance diagnostics",
+      "risk": "Localized family and hand-picked card lists form a second semantic catalog.",
+      "stable_owner": "Standard semantic diagnostic projection"
+    },
+    {
+      "id": "NK-010",
+      "disposition": "REMOVE",
+      "category": "localized_name_rule_branch",
+      "locations": ["scripts/runtime/monster_runtime_controller.gd:3651", "scripts/runtime/monster_runtime_controller.gd:3785", "scripts/runtime/monster_runtime_controller.gd:3809", "scripts/runtime/monster_runtime_controller.gd:3832", "scripts/runtime/monster_runtime_controller.gd:3838", "scripts/runtime/monster_runtime_controller.gd:4313", "scripts/runtime/monster_runtime_controller.gd:4861"],
+      "authority": "MonsterRuntimeController",
+      "risk": "Chinese actor/template names control revive, thresholds, armor, reflection, and path effects.",
+      "stable_owner": "MonsterBehaviorSpec trigger/feature operation IDs"
+    },
+    {
+      "id": "NK-011",
+      "disposition": "REMOVE",
+      "category": "localized_name_rule_branch",
+      "locations": ["scripts/runtime/monster_runtime_controller.gd:24", "scripts/runtime/monster_runtime_controller.gd:3102"],
+      "authority": "MonsterRuntimeController",
+      "risk": "Missing stable family identity falls back through a Chinese-name map.",
+      "stable_owner": "Required monster_family_id with explicit save/state migration"
+    },
+    {
+      "id": "NK-012",
+      "disposition": "REMOVE",
+      "category": "localized_text_or_kind_branch",
+      "locations": ["scripts/runtime/ai_runtime_controller.gd:2898", "scripts/runtime/ai_runtime_controller.gd:2904", "scripts/runtime/ai_runtime_controller.gd:2925", "scripts/runtime/ai_runtime_controller.gd:3173", "scripts/runtime/ai_runtime_controller.gd:3177", "scripts/runtime/ai_runtime_controller.gd:3179", "scripts/runtime/ai_runtime_controller.gd:3181", "scripts/runtime/ai_runtime_controller.gd:3183", "scripts/runtime/ai_runtime_controller.gd:3185", "scripts/runtime/ai_runtime_controller.gd:3187", "scripts/runtime/ai_runtime_controller.gd:3189", "scripts/runtime/ai_runtime_controller.gd:3191"],
+      "authority": "AiRuntimeController",
+      "risk": "Chinese labels and substring guesses alter route and score.",
+      "stable_owner": "AiActionCandidate and AiOutcomeVector"
+    },
+    {
+      "id": "NK-013",
+      "disposition": "REMOVE",
+      "category": "localized_ui_control_branch",
+      "locations": ["scripts/main.gd:1763", "scripts/main.gd:3753", "scripts/ui/action_dock.gd:237", "scripts/ui/action_dock.gd:239", "scripts/ui/action_dock.gd:241", "scripts/ui/action_dock.gd:243", "scripts/runtime/menu_lifecycle_application_flow_controller.gd:167", "scripts/runtime/menu_lifecycle_application_flow_controller.gd:355", "scripts/runtime/menu_lifecycle_application_flow_controller.gd:357", "scripts/runtime/menu_lifecycle_application_flow_controller.gd:363", "scripts/runtime/menu_lifecycle_application_flow_controller.gd:365"],
+      "authority": "Main/UI/menu flow",
+      "risk": "Visible labels and prose choose commands, accents, and page state.",
+      "stable_owner": "Application-flow action/page IDs and presentation DTOs"
+    },
+    {
+      "id": "NK-014",
+      "disposition": "REMOVE",
+      "category": "localized_identity_parser",
+      "locations": ["scripts/runtime/card_codex_public_source_service.gd:115", "scripts/runtime/card_codex_public_source_service.gd:117", "scripts/runtime/card_codex_public_source_service.gd:119", "scripts/runtime/card_codex_public_source_service.gd:130", "scripts/runtime/card_codex_public_source_service.gd:133"],
+      "authority": "CardCodexPublicSourceService",
+      "risk": "Localized display strings can resolve a card identity.",
+      "stable_owner": "Stable card_id request contract"
+    },
+    {
+      "id": "NK-015",
+      "disposition": "REMOVE",
+      "category": "duplicate_catalog",
+      "locations": ["scripts/runtime/weather_runtime_controller.gd:16", "scripts/runtime/weather_runtime_controller.gd:17", "scripts/runtime/weather_runtime_controller.gd:22", "scripts/runtime/weather_runtime_controller.gd:989", "scripts/runtime/ai_runtime_controller.gd:1169"],
+      "authority": "WeatherRuntimeController plus WeatherDefinitionCatalog",
+      "risk": "A duplicate six-label map exists beside the real definition resources.",
+      "stable_owner": "WeatherSemanticSpec backed by WeatherDefinitionCatalog"
+    },
+    {
+      "id": "NK-016",
+      "disposition": "REMOVE",
+      "category": "localized_name_rule_branch",
+      "locations": ["scripts/balance/combat_balance_model.gd:67", "scripts/balance/combat_balance_model.gd:69", "scripts/balance/combat_balance_model.gd:71", "scripts/balance/combat_balance_model.gd:73"],
+      "authority": "CombatBalanceModel",
+      "risk": "Localized action names and tags alter diagnostic classification.",
+      "stable_owner": "MonsterBehaviorSpec diagnostic projection"
+    },
+    {
+      "id": "NK-017",
+      "disposition": "MOVE",
+      "category": "localized_text_classifier",
+      "locations": ["scripts/main.gd:3494", "scripts/main.gd:3496", "scripts/main.gd:3498", "scripts/main.gd:3500", "scripts/runtime/ai_region_knowledge_query_port.gd:422", "scripts/runtime/ai_region_knowledge_query_port.gd:424", "scripts/runtime/ai_region_knowledge_query_port.gd:426", "scripts/runtime/ai_region_knowledge_query_port.gd:428", "scripts/runtime/ai_runtime_controller.gd:1560", "scripts/runtime/ai_runtime_controller.gd:1562", "scripts/runtime/ai_runtime_controller.gd:1564", "scripts/runtime/ai_runtime_controller.gd:1566", "scripts/runtime/ai_runtime_controller.gd:9213"],
+      "authority": "Public clue producers plus Main/AI consumers",
+      "risk": "Three consumers infer clue meaning from Chinese prose.",
+      "stable_owner": "Stable clue_kind_id in viewer-authorized AiObservationSnapshot"
+    },
+    {
+      "id": "NK-018",
+      "disposition": "MOVE",
+      "category": "localized_text_classifier",
+      "locations": ["scripts/main.gd:1417", "scripts/main.gd:1418", "scripts/main.gd:1420", "scripts/main.gd:1422", "scripts/main.gd:1424", "scripts/main.gd:1426"],
+      "authority": "Main presentation",
+      "risk": "Public log prose selects event color.",
+      "stable_owner": "Public event DTO event_kind_id/presentation token"
+    },
+    {
+      "id": "NK-019",
+      "disposition": "MOVE",
+      "category": "localized_text_classifier",
+      "locations": ["scripts/main.gd:4558", "scripts/main.gd:4560", "scripts/main.gd:4562", "scripts/main.gd:4564", "scripts/main.gd:4566", "scripts/main.gd:4579", "scripts/main.gd:4583", "scripts/main.gd:4585", "scripts/main.gd:4589", "scripts/main.gd:4591", "scripts/main.gd:4593", "scripts/main.gd:4604", "scripts/main.gd:4606", "scripts/main.gd:4608", "scripts/main.gd:4610", "scripts/main.gd:4612", "scripts/main.gd:4614", "scripts/main.gd:4616", "scripts/main.gd:4618", "scripts/main.gd:4620", "scripts/main.gd:4622"],
+      "authority": "Main monster visual profile",
+      "risk": "Action names and optional raw fields choose animation and pose.",
+      "stable_owner": "MonsterBehaviorSpec.presentation_cue_id"
+    },
+    {
+      "id": "NK-020",
+      "disposition": "MOVE",
+      "category": "localized_text_classifier",
+      "locations": ["scripts/runtime/visual_cue_runtime_owner.gd:337", "scripts/runtime/visual_cue_runtime_owner.gd:342", "scripts/runtime/visual_cue_runtime_owner.gd:347", "scripts/runtime/visual_cue_runtime_owner.gd:349", "scripts/runtime/visual_cue_runtime_owner.gd:351"],
+      "authority": "VisualCueRuntimeOwner",
+      "risk": "Public prose selects impact/weather/card effects.",
+      "stable_owner": "Typed presentation_cue_id from semantic projection"
+    },
+    {
+      "id": "NK-021",
+      "disposition": "MOVE",
+      "category": "localized_presentation_inference",
+      "locations": ["scripts/card_art_view.gd:261", "scripts/card_art_view.gd:305", "scripts/card_art_view.gd:417", "scripts/card_art_view.gd:448", "scripts/card_art_view.gd:472", "scripts/card_art_view.gd:486", "scripts/card_art_view.gd:936", "scripts/card_art_view.gd:998", "scripts/card_art_view.gd:1137", "scripts/card_art_view.gd:1158", "scripts/card_art_view.gd:1299"],
+      "authority": "CardArtView",
+      "risk": "Names, tags, types, and concrete identities choose motifs and icons.",
+      "stable_owner": "PlayerPresentationDTO.art_profile"
+    },
+    {
+      "id": "NK-022",
+      "disposition": "MOVE",
+      "category": "localized_presentation_inference",
+      "locations": ["scripts/CardUI.gd:613", "scripts/CardUI.gd:615", "scripts/CardUI.gd:617", "scripts/CardUI.gd:730", "scripts/CardUI.gd:732", "scripts/CardUI.gd:734", "scripts/CardUI.gd:736", "scripts/CardUI.gd:738", "scripts/CardUI.gd:740", "scripts/CardUI.gd:742", "scripts/CardUI.gd:744", "scripts/CardUI.gd:746", "scripts/CardUI.gd:748", "scripts/CardUI.gd:757"],
+      "authority": "CardUI",
+      "risk": "UI infers targets, type, and use case from text.",
+      "stable_owner": "PlayerPresentationDTO"
+    },
+    {
+      "id": "NK-023",
+      "disposition": "MOVE",
+      "category": "localized_presentation_inference",
+      "locations": ["scripts/ui/right_inspector.gd:266", "scripts/ui/right_inspector.gd:267", "scripts/ui/right_inspector.gd:268", "scripts/ui/right_inspector.gd:270", "scripts/ui/right_inspector.gd:272", "scripts/ui/right_inspector.gd:274", "scripts/ui/right_inspector.gd:276", "scripts/ui/right_inspector.gd:278", "scripts/ui/right_inspector.gd:280", "scripts/ui/right_inspector.gd:282", "scripts/ui/right_inspector.gd:307"],
+      "authority": "RightInspector",
+      "risk": "Inspector independently infers route/use case from type and effect prose.",
+      "stable_owner": "PlayerPresentationDTO"
+    },
+    {
+      "id": "NK-024",
+      "disposition": "MOVE",
+      "category": "kind_projection_duplication",
+      "locations": ["scripts/runtime/card_presentation_runtime_service.gd:451", "scripts/runtime/card_presentation_runtime_service.gd:460", "scripts/runtime/card_presentation_runtime_service.gd:463", "scripts/runtime/card_presentation_runtime_service.gd:468", "scripts/runtime/card_presentation_runtime_service.gd:472", "scripts/runtime/card_presentation_runtime_service.gd:474"],
+      "authority": "CardPresentationRuntimeService",
+      "risk": "A local kind/tags/field to strategy-route oracle duplicates AI and diagnostics.",
+      "stable_owner": "CardSemanticSpec taxonomy projected into PlayerPresentationDTO"
+    },
+    {
+      "id": "NK-025",
+      "disposition": "MOVE",
+      "category": "kind_projection_duplication",
+      "locations": ["scripts/runtime/card_presentation_runtime_service.gd:478", "scripts/runtime/card_presentation_runtime_service.gd:487", "scripts/runtime/card_presentation_runtime_service.gd:501", "scripts/runtime/card_presentation_runtime_service.gd:507", "scripts/runtime/card_presentation_runtime_service.gd:511", "scripts/runtime/card_presentation_runtime_service.gd:668", "scripts/runtime/card_presentation_runtime_service.gd:674", "scripts/runtime/card_presentation_runtime_service.gd:690", "scripts/runtime/card_presentation_runtime_service.gd:695", "scripts/runtime/card_presentation_runtime_service.gd:871", "scripts/runtime/card_presentation_runtime_service.gd:890"],
+      "authority": "CardPresentationRuntimeService",
+      "risk": "Use case, category, type, effect style, and labels are separate maps.",
+      "stable_owner": "Stable player-projection tokens and localization refs"
+    },
+    {
+      "id": "NK-026",
+      "disposition": "MOVE",
+      "category": "raw_field_interpretation",
+      "locations": ["scripts/runtime/card_presentation_runtime_service.gd:551", "scripts/runtime/card_presentation_runtime_service.gd:553", "scripts/runtime/card_presentation_runtime_service.gd:554", "scripts/runtime/card_presentation_runtime_service.gd:562", "scripts/runtime/card_presentation_runtime_service.gd:567", "scripts/runtime/card_presentation_runtime_service.gd:577", "scripts/runtime/card_presentation_runtime_service.gd:579", "scripts/runtime/card_presentation_runtime_service.gd:580", "scripts/runtime/card_presentation_runtime_service.gd:582", "scripts/runtime/card_presentation_runtime_service.gd:897", "scripts/runtime/card_presentation_runtime_service.gd:899"],
+      "authority": "CardPresentationRuntimeService",
+      "risk": "Presentation reconstructs rule facts and duration from raw fields and legacy turns.",
+      "stable_owner": "CardSemanticSpec to PlayerPresentationDTO"
+    },
+    {
+      "id": "NK-027",
+      "disposition": "MOVE",
+      "category": "kind_projection_duplication",
+      "locations": ["scripts/runtime/card_codex_public_snapshot_service.gd:220", "scripts/runtime/card_codex_public_snapshot_service.gd:221", "scripts/runtime/card_codex_public_snapshot_service.gd:232", "scripts/runtime/card_codex_public_snapshot_service.gd:233", "scripts/runtime/card_codex_public_snapshot_service.gd:234", "scripts/runtime/card_codex_public_snapshot_service.gd:235", "scripts/runtime/card_codex_public_snapshot_service.gd:236", "scripts/runtime/card_codex_public_snapshot_service.gd:237"],
+      "authority": "CardCodexPublicSnapshotService",
+      "risk": "Localized route labels and kind substrings generate tactical advice.",
+      "stable_owner": "PlayerPresentationDTO message references"
+    },
+    {
+      "id": "NK-028",
+      "disposition": "MOVE",
+      "category": "localized_ui_state_branch",
+      "locations": ["scripts/ui/card_resolution_track.gd:143", "scripts/ui/card_resolution_track.gd:534", "scripts/ui/card_resolution_track.gd:536", "scripts/ui/card_resolution_track.gd:538", "scripts/ui/card_resolution_track.gd:629", "scripts/runtime/game_table_viewmodel_runtime_service.gd:264", "scripts/runtime/game_table_viewmodel_runtime_service.gd:315", "scripts/runtime/game_table_viewmodel_runtime_service.gd:402", "scripts/runtime/game_table_viewmodel_runtime_service.gd:420", "scripts/runtime/game_table_viewmodel_runtime_service.gd:424", "scripts/viewmodels/public_track_snapshot.gd:162"],
+      "authority": "Resolution/table presentation",
+      "risk": "Lane and state behavior is recovered from localized display text.",
+      "stable_owner": "Typed CardResolutionViewState"
+    },
+    {
+      "id": "NK-029",
+      "disposition": "MOVE",
+      "category": "localized_ui_state_branch",
+      "locations": ["scripts/ui/menu_overlay.gd:61", "scripts/ui/intel_dossier_board.gd:270", "scripts/ui/game_screen.gd:1736", "scripts/ui/final_settlement_board.gd:223", "scripts/ui/overlay_layer.gd:518", "scripts/ui/player_seat/player_seat_portrait_skin.gd:112", "scripts/runtime/district_supply_snapshot_service.gd:337", "scripts/runtime/district_supply_snapshot_service.gd:470", "scripts/runtime/district_supply_snapshot_service.gd:717"],
+      "authority": "UI surfaces",
+      "risk": "Titles, labels, and visible status strings act as state identity.",
+      "stable_owner": "Stable page/context/availability/local-player IDs"
+    },
+    {
+      "id": "NK-030",
+      "disposition": "MOVE",
+      "category": "localized_identity",
+      "locations": ["scripts/runtime/role_catalog_runtime_service.gd:287", "scripts/runtime/world_session_state.gd:588", "scripts/runtime/world_session_envelope_codec.gd:184", "scripts/runtime/world_session_envelope_codec.gd:467", "scripts/runtime/ai_actor_state_port.gd:696", "scripts/presentation/role_portrait_catalog.gd:42", "scripts/presentation/role_portrait_catalog.gd:54"],
+      "authority": "Role catalog, world/save identity, AI, and portrait manifest",
+      "risk": "Role order and localized name jointly identify content.",
+      "stable_owner": "RoleSemanticSpec.role_id with explicit save compatibility"
+    },
+    {
+      "id": "NK-031",
+      "disposition": "MOVE",
+      "category": "raw_field_interpretation",
+      "locations": ["scripts/runtime/role_catalog_runtime_service.gd:72", "scripts/runtime/role_catalog_runtime_service.gd:101", "scripts/runtime/role_catalog_runtime_service.gd:118", "scripts/runtime/role_catalog_runtime_service.gd:126", "scripts/runtime/role_catalog_runtime_service.gd:142", "scripts/runtime/role_catalog_runtime_service.gd:239", "scripts/runtime/role_catalog_runtime_service.gd:248", "scripts/runtime/role_catalog_runtime_service.gd:257", "scripts/main.gd:1858", "scripts/runtime/ai_runtime_controller.gd:5251", "scripts/runtime/codex_public_snapshot_service.gd:214", "scripts/runtime/military_runtime_controller.gd:485", "scripts/runtime/monster_runtime_controller.gd:4102", "scripts/runtime/monster_runtime_controller.gd:6461"],
+      "authority": "RoleCatalogRuntimeService plus domain consumers",
+      "risk": "Rules, AI, Codex, and owners separately interpret flat passive fields.",
+      "stable_owner": "RoleSemanticSpec and PassiveTriggerExecutionPlan"
+    },
+    {
+      "id": "NK-032",
+      "disposition": "MOVE",
+      "category": "localized_content_identity",
+      "locations": ["scripts/runtime/monster_catalog_v06.gd:122", "scripts/runtime/monster_catalog_v06.gd:123", "scripts/runtime/monster_catalog_v06.gd:213", "scripts/runtime/monster_catalog_v06.gd:214", "scripts/runtime/monster_catalog_v06.gd:320", "scripts/runtime/monster_catalog_v06.gd:323", "scripts/runtime/monster_codex_public_source_service.gd:186", "scripts/runtime/monster_codex_public_source_service.gd:187"],
+      "authority": "MonsterCatalogV06",
+      "risk": "Art/action tables and catalog lookup are keyed by localized names.",
+      "stable_owner": "MonsterSemanticSpec stable monster_id"
+    },
+    {
+      "id": "NK-033",
+      "disposition": "MOVE",
+      "category": "localized_content_identity",
+      "locations": ["scripts/runtime/monster_runtime_controller.gd:259", "scripts/runtime/monster_runtime_controller.gd:260", "scripts/runtime/monster_runtime_controller.gd:994", "scripts/runtime/monster_runtime_controller.gd:4320", "scripts/runtime/monster_catalog_v06.gd:375", "scripts/runtime/monster_catalog_v06.gd:379"],
+      "authority": "MonsterRuntimeController",
+      "risk": "Action weights are a localized-name behavior table duplicated at runtime.",
+      "stable_owner": "MonsterBehaviorSpec.action_weights"
+    },
+    {
+      "id": "NK-034",
+      "disposition": "MOVE",
+      "category": "one_off_content_id",
+      "locations": ["scripts/runtime/monster_catalog_v06.gd:24", "scripts/runtime/monster_catalog_v06.gd:38", "scripts/runtime/monster_catalog_v06.gd:53", "scripts/runtime/monster_catalog_v06.gd:66", "scripts/runtime/monster_catalog_v06.gd:79", "scripts/runtime/monster_catalog_v06.gd:92", "scripts/runtime/monster_catalog_v06.gd:105", "scripts/runtime/monster_catalog_v06.gd:118"],
+      "authority": "MonsterCatalogV06",
+      "risk": "Localized card lists tie monster rows to concrete legacy card names.",
+      "stable_owner": "Stable card_id references or compiled semantic tags"
+    },
+    {
+      "id": "NK-035",
+      "disposition": "MOVE",
+      "category": "localized_content_identity",
+      "locations": ["scripts/runtime/session_start_world_plan_builder.gd:13", "scripts/runtime/session_start_world_plan_builder.gd:186", "scripts/runtime/session_start_world_plan_builder.gd:188", "scripts/runtime/session_start_world_plan_builder.gd:189"],
+      "authority": "SessionStartWorldPlanBuilder",
+      "risk": "Ocean eligibility is a second list of localized product IDs.",
+      "stable_owner": "ProductSemanticSpec.terrain_tags"
+    },
+    {
+      "id": "NK-036",
+      "disposition": "MOVE",
+      "category": "mixed_semantic_presentation_catalog",
+      "locations": ["scripts/runtime/product_market_runtime_controller.gd:98", "scripts/runtime/product_market_runtime_controller.gd:99", "scripts/runtime/product_market_runtime_controller.gd:108", "scripts/runtime/product_market_runtime_controller.gd:113", "scripts/runtime/product_market_runtime_controller.gd:125", "scripts/runtime/product_market_runtime_controller.gd:136"],
+      "authority": "ProductMarketRuntimeController profiles",
+      "risk": "Profiles mix category/route/terrain/use/hook semantics with display and art.",
+      "stable_owner": "ProductSemanticSpec; market owner keeps live price/state"
+    },
+    {
+      "id": "NK-037",
+      "disposition": "MOVE",
+      "category": "localized_category_rule_branch",
+      "locations": ["scripts/balance/environment_balance_model.gd:83", "scripts/balance/environment_balance_model.gd:96", "scripts/balance/environment_balance_model.gd:102", "scripts/balance/environment_balance_model.gd:103", "scripts/balance/environment_balance_model.gd:107", "scripts/balance/environment_balance_model.gd:108"],
+      "authority": "EnvironmentBalanceModel",
+      "risk": "Chinese category labels alter production, demand, and transport multipliers.",
+      "stable_owner": "Product/Weather semantic diagnostic projection"
+    },
+    {
+      "id": "NK-038",
+      "disposition": "MOVE",
+      "category": "kind_projection_duplication",
+      "locations": ["scripts/runtime/military_runtime_controller.gd:182", "scripts/runtime/military_runtime_controller.gd:193", "scripts/runtime/military_runtime_controller.gd:204", "scripts/runtime/military_runtime_controller.gd:215", "scripts/runtime/military_runtime_controller.gd:226", "scripts/runtime/military_runtime_controller.gd:234", "scripts/runtime/military_runtime_controller.gd:510", "scripts/runtime/military_runtime_controller.gd:790"],
+      "authority": "MilitaryRuntimeController",
+      "risk": "Unit type/domain drives labels, glyphs, motif, color, command copy, and AI role locally.",
+      "stable_owner": "MilitaryUnitSemanticSpec and player/AI projections"
+    },
+    {
+      "id": "NK-039",
+      "disposition": "MOVE",
+      "category": "kind_field_policy",
+      "locations": ["scripts/cards/card_play_requirement_policy.gd:25", "scripts/cards/card_play_requirement_policy.gd:30", "scripts/cards/card_play_requirement_policy.gd:39", "scripts/cards/card_play_requirement_policy.gd:94", "scripts/cards/card_play_requirement_policy.gd:117", "scripts/cards/card_play_requirement_policy.gd:119", "scripts/cards/card_play_requirement_policy.gd:122", "scripts/cards/card_play_requirement_policy.gd:128", "scripts/cards/card_play_requirement_policy.gd:130", "scripts/cards/card_play_requirement_policy.gd:135", "scripts/cards/card_play_requirement_policy.gd:138"],
+      "authority": "CardPlayRequirementPolicy",
+      "risk": "Kind bands and raw damage/economy fields derive conditions and scope.",
+      "stable_owner": "SemanticCondition and SemanticTargetSpec"
+    },
+    {
+      "id": "NK-040",
+      "disposition": "MOVE",
+      "category": "kind_field_policy",
+      "locations": ["scripts/runtime/card_play_eligibility_runtime_service.gd:6", "scripts/runtime/card_play_eligibility_runtime_service.gd:14", "scripts/runtime/card_play_eligibility_runtime_service.gd:15", "scripts/runtime/card_play_eligibility_runtime_service.gd:16", "scripts/runtime/card_play_eligibility_runtime_service.gd:54", "scripts/runtime/card_play_eligibility_runtime_service.gd:58", "scripts/runtime/card_play_eligibility_runtime_service.gd:62", "scripts/runtime/card_play_eligibility_runtime_service.gd:114", "scripts/runtime/card_play_eligibility_runtime_service.gd:148", "scripts/runtime/card_play_eligibility_runtime_service.gd:149", "scripts/runtime/card_play_eligibility_runtime_service.gd:150", "scripts/runtime/card_play_eligibility_runtime_service.gd:151", "scripts/runtime/card_play_eligibility_runtime_service.gd:538"],
+      "authority": "CardPlayEligibilityRuntimeService",
+      "risk": "Kind allowlists independently define target, retired, finance, and counter semantics.",
+      "stable_owner": "CardSemanticSpec target/timing/response contract"
+    },
+    {
+      "id": "NK-041",
+      "disposition": "MOVE",
+      "category": "operation_dispatch",
+      "locations": ["scripts/runtime/card_effect_runtime_router.gd:51", "scripts/runtime/card_effect_runtime_router.gd:84", "scripts/runtime/card_effect_runtime_router.gd:94", "scripts/runtime/card_effect_runtime_router.gd:99", "scripts/runtime/card_effect_runtime_router.gd:121", "scripts/runtime/card_effect_runtime_router.gd:123", "scripts/runtime/card_effect_runtime_router.gd:136", "scripts/runtime/card_effect_runtime_router.gd:143", "scripts/runtime/card_effect_runtime_router.gd:145", "scripts/runtime/card_effect_runtime_router.gd:147", "scripts/runtime/card_effect_runtime_router.gd:149", "scripts/runtime/card_effect_runtime_router.gd:153"],
+      "authority": "CardEffectRuntimeRouter",
+      "risk": "Every new stable operation still requires central switch edits.",
+      "stable_owner": "OperationHandlerRegistry; preserve existing domain handlers"
+    },
+    {
+      "id": "NK-042",
+      "disposition": "MOVE",
+      "category": "ai_raw_or_kind_interpretation",
+      "locations": ["scripts/runtime/ai_runtime_controller.gd:5551", "scripts/runtime/ai_runtime_controller.gd:5556", "scripts/runtime/ai_runtime_controller.gd:5577", "scripts/runtime/ai_runtime_controller.gd:5578", "scripts/runtime/ai_runtime_controller.gd:7398", "scripts/runtime/ai_runtime_controller.gd:7841", "scripts/runtime/ai_runtime_controller.gd:8536", "scripts/runtime/ai_runtime_controller.gd:9336"],
+      "authority": "AiRuntimeController",
+      "risk": "AI maps kinds and 71 raw definition keys itself; 225 reads are verified.",
+      "stable_owner": "AiObservationSnapshot plus AiActionCandidate/AiOutcomeVector"
+    },
+    {
+      "id": "NK-043",
+      "disposition": "MOVE",
+      "category": "diagnostics_raw_or_kind_interpretation",
+      "locations": ["scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:112", "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:117", "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:174", "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:208", "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:217", "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:219", "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:223", "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:225", "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:318", "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:688", "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:787", "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:904", "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd:1023"],
+      "authority": "GameplayBalanceDiagnosticsRuntimeService",
+      "risk": "Diagnostics independently re-score and reclassify raw cards.",
+      "stable_owner": "Standard semantic diagnostic projection"
+    },
+    {
+      "id": "NK-044",
+      "disposition": "MOVE",
+      "category": "diagnostics_raw_or_kind_interpretation",
+      "locations": ["scripts/balance/runtime_balance_model.gd:268", "scripts/balance/runtime_balance_model.gd:270", "scripts/balance/runtime_balance_model.gd:273", "scripts/balance/runtime_balance_model.gd:277", "scripts/balance/runtime_balance_model.gd:280", "scripts/balance/runtime_balance_model.gd:282", "scripts/balance/runtime_balance_model.gd:632", "scripts/balance/runtime_balance_model.gd:639", "scripts/balance/runtime_balance_model.gd:640", "scripts/balance/runtime_balance_model.gd:641", "scripts/balance/runtime_balance_model.gd:792", "scripts/balance/runtime_balance_model.gd:843", "scripts/balance/runtime_balance_model.gd:1024"],
+      "authority": "RuntimeBalanceModel",
+      "risk": "A second kind/field map and name-derived identity can drift from rules and AI.",
+      "stable_owner": "Standard semantic diagnostic projection"
+    },
+    {
+      "id": "NK-045",
+      "disposition": "MOVE",
+      "category": "localized_tag_rule_branch",
+      "locations": ["scripts/cards/card_runtime_family_resource.gd:93"],
+      "authority": "v0.4 CardRuntimeFamilyResource authoring",
+      "risk": "Chinese tag 升级 controls family rank augmentation.",
+      "stable_owner": "Stable family capability/operation ID"
+    },
+    {
+      "id": "NK-046",
+      "disposition": "MOVE",
+      "category": "catalog_duality",
+      "locations": ["scripts/runtime/card_runtime_definition_world_bridge.gd:89", "scripts/runtime/card_runtime_definition_world_bridge.gd:91", "scripts/runtime/card_runtime_definition_world_bridge.gd:97", "scripts/runtime/card_play_eligibility_runtime_service.gd:58", "scripts/runtime/card_play_eligibility_runtime_service.gd:62"],
+      "authority": "Finance controllers and eligibility",
+      "risk": "Missing finance semantics are loaded dynamically by kind during play/query.",
+      "stable_owner": "Validated finance sub-specs compiled at catalog initialization"
+    },
+    {
+      "id": "NK-047",
+      "disposition": "MOVE",
+      "category": "operation_dispatch",
+      "locations": ["scripts/runtime/game_runtime_coordinator.gd:2647", "scripts/runtime/game_runtime_coordinator.gd:2656", "scripts/runtime/game_runtime_coordinator.gd:2906", "scripts/runtime/game_runtime_coordinator.gd:2923", "scripts/runtime/game_runtime_coordinator.gd:2950", "scripts/runtime/game_runtime_coordinator.gd:2963", "scripts/runtime/game_runtime_coordinator.gd:2978", "scripts/runtime/game_runtime_coordinator.gd:3050", "scripts/runtime/game_runtime_coordinator.gd:3066", "scripts/runtime/game_runtime_coordinator.gd:3082", "scripts/runtime/game_runtime_coordinator.gd:3100", "scripts/runtime/game_runtime_coordinator.gd:3113"],
+      "authority": "GameRuntimeCoordinator",
+      "risk": "Coordinator duplicates effect-kind lifecycle routing.",
+      "stable_owner": "OperationHandlerRegistry lifecycle entries; coordinator keeps orchestration"
+    },
+    {
+      "id": "NK-048",
+      "disposition": "MOVE",
+      "category": "localized_content_identity",
+      "locations": ["scripts/runtime/monster_catalog_v06.gd:340", "scripts/runtime/monster_catalog_v06.gd:341", "scripts/runtime/monster_catalog_v06.gd:347", "scripts/main.gd:4264"],
+      "authority": "MonsterCatalogV06 and Main parser",
+      "risk": "Generated technique IDs embed localized monster/action names.",
+      "stable_owner": "Stable MonsterBehaviorSpec/CardSemanticSpec identity"
+    },
+    {
+      "id": "NK-049",
+      "disposition": "MOVE",
+      "category": "raw_payload_introspection",
+      "locations": ["scripts/runtime/product_codex_public_source_service.gd:291", "scripts/runtime/product_codex_public_source_service.gd:297", "scripts/runtime/product_codex_public_source_service.gd:308", "scripts/runtime/product_codex_public_source_service.gd:313", "scripts/runtime/product_codex_public_source_service.gd:317", "scripts/runtime/product_codex_public_source_service.gd:324", "scripts/runtime/product_codex_public_source_service.gd:327"],
+      "authority": "ProductCodexPublicSourceService",
+      "risk": "Codex recursively scans arbitrary payload values to infer product relationships.",
+      "stable_owner": "ProductSemanticSpec related-card projection"
+    },
+    {
+      "id": "NK-050",
+      "disposition": "KEEP",
+      "category": "authoritative_owner_keep",
+      "locations": ["scripts/runtime/product_market_runtime_controller.gd:80", "scripts/runtime/product_market_runtime_controller.gd:148", "scripts/runtime/product_market_runtime_controller.gd:1686", "scripts/presentation/table_selection_catalog_query_port.gd:76"],
+      "authority": "ProductMarketRuntimeController",
+      "risk": "Renaming localized product IDs now would break cross-owner references and deterministic inputs.",
+      "stable_owner": "Keep current live owner and compatibility identity until versioned ProductSemanticSpec migration"
+    },
+    {
+      "id": "NK-051",
+      "disposition": "KEEP",
+      "category": "stable_id_domain_invariant",
+      "locations": ["scripts/runtime/player_organization_runtime_controller.gd:25", "scripts/runtime/player_organization_runtime_controller.gd:26", "scripts/runtime/player_organization_runtime_controller.gd:27", "scripts/runtime/player_organization_runtime_controller.gd:28", "scripts/runtime/player_organization_runtime_controller.gd:29", "scripts/runtime/player_organization_runtime_controller.gd:554", "scripts/runtime/player_organization_runtime_controller.gd:682"],
+      "authority": "PlayerOrganizationRuntimeController",
+      "risk": "None from localization; these are stable ASCII invariant checks.",
+      "stable_owner": "Existing organization owner, optionally fed by compiled semantic spec"
+    },
+    {
+      "id": "NK-052",
+      "disposition": "KEEP",
+      "category": "stable_id_domain_state_machine",
+      "locations": ["scripts/runtime/military_runtime_controller.gd:698", "scripts/runtime/military_runtime_controller.gd:699", "scripts/runtime/military_runtime_controller.gd:714", "scripts/runtime/military_runtime_controller.gd:726", "scripts/runtime/military_runtime_controller.gd:740", "scripts/runtime/military_runtime_controller.gd:775", "scripts/runtime/monster_runtime_controller.gd:6740", "scripts/runtime/monster_runtime_controller.gd:6742", "scripts/runtime/monster_runtime_controller.gd:6761", "scripts/runtime/monster_runtime_controller.gd:6850"],
+      "authority": "MilitaryRuntimeController and MonsterRuntimeController",
+      "risk": "Deleting these would erase real state-machine behavior.",
+      "stable_owner": "Existing live owners; operation registry changes only dispatch"
+    },
+    {
+      "id": "NK-053",
+      "disposition": "KEEP",
+      "category": "authoritative_owner_keep",
+      "locations": ["scripts/runtime/weather_runtime_controller.gd:24", "scripts/runtime/weather_runtime_controller.gd:25", "scripts/runtime/weather_runtime_controller.gd:26", "scripts/runtime/weather_runtime_controller.gd:27", "scripts/runtime/weather_runtime_controller.gd:257", "scripts/runtime/weather_runtime_controller.gd:989", "scripts/runtime/weather_definition_catalog.gd:8", "scripts/runtime/weather_definition_catalog.gd:54"],
+      "authority": "WeatherRuntimeController and WeatherDefinitionCatalog",
+      "risk": "None from localization in these stable source/state IDs.",
+      "stable_owner": "Existing weather owner/catalog projected as WeatherSemanticSpec"
+    },
+    {
+      "id": "NK-054",
+      "disposition": "KEEP",
+      "category": "compatibility_guard",
+      "locations": ["scripts/runtime/ruleset_save_handshake_service.gd:144", "scripts/runtime/ruleset_save_handshake_service.gd:145"],
+      "authority": "RulesetSaveHandshakeService",
+      "risk": "Removing it could accept unsupported legacy saves.",
+      "stable_owner": "Keep fail-closed legacy save inspection"
+    },
+    {
+      "id": "NK-055",
+      "disposition": "KEEP",
+      "category": "compatibility_guard",
+      "locations": ["scripts/runtime/legacy_contract_payload_guard_v06.gd:50", "scripts/runtime/legacy_contract_payload_guard_v06.gd:51", "scripts/runtime/legacy_contract_payload_guard_v06.gd:52", "scripts/runtime/legacy_contract_payload_guard_v06.gd:53", "scripts/runtime/legacy_contract_payload_guard_v06.gd:54", "scripts/runtime/legacy_contract_payload_guard_v06.gd:55", "scripts/runtime/legacy_contract_payload_guard_v06.gd:56", "scripts/runtime/legacy_contract_payload_guard_v06.gd:58", "scripts/runtime/legacy_contract_payload_guard_v06.gd:59"],
+      "authority": "LegacyContractPayloadGuardV06",
+      "risk": "Removing the denylist could revive retired mechanics.",
+      "stable_owner": "Keep as migration/status guard; never active rule semantics"
+    },
+    {
+      "id": "NK-056",
+      "disposition": "KEEP",
+      "category": "privacy_guard",
+      "locations": ["scripts/runtime/region_codex_public_source_adapter.gd:181", "scripts/runtime/final_settlement_public_source_adapter.gd:156"],
+      "authority": "Public projection adapters",
+      "risk": "These text guards are defense in depth, not semantic authorization.",
+      "stable_owner": "Typed viewer-scoped privacy projection plus retained scrub guard"
+    },
+    {
+      "id": "NK-057",
+      "disposition": "KEEP",
+      "category": "display_localization",
+      "locations": ["scripts/presentation/card_history_public_query_port.gd:92", "scripts/runtime/new_game_setup_viewer_query_port.gd:94", "scripts/runtime/action_result_v1.gd:490"],
+      "authority": "Presentation/localization",
+      "risk": "No rule selection observed at these locations.",
+      "stable_owner": "Player presentation/localization message references"
+    }
+  ],
+  "localized_candidate_files": [
+    {"path": "scripts/main.gd", "candidate_lines": 40, "triage": "REMOVE_AND_MOVE"},
+    {"path": "scripts/runtime/game_table_viewmodel_runtime_service.gd", "candidate_lines": 22, "triage": "MOVE"},
+    {"path": "scripts/card_art_view.gd", "candidate_lines": 19, "triage": "MOVE"},
+    {"path": "scripts/runtime/ai_runtime_controller.gd", "candidate_lines": 19, "triage": "REMOVE_AND_MOVE"},
+    {"path": "scripts/CardUI.gd", "candidate_lines": 14, "triage": "MOVE"},
+    {"path": "scripts/runtime/card_presentation_runtime_service.gd", "candidate_lines": 12, "triage": "MOVE"},
+    {"path": "scripts/runtime/gameplay_balance_diagnostics_runtime_service.gd", "candidate_lines": 9, "triage": "MOVE"},
+    {"path": "scripts/ui/right_inspector.gd", "candidate_lines": 9, "triage": "MOVE"},
+    {"path": "scripts/runtime/monster_runtime_controller.gd", "candidate_lines": 8, "triage": "REMOVE_AND_MOVE"},
+    {"path": "scripts/balance/environment_balance_model.gd", "candidate_lines": 6, "triage": "MOVE"},
+    {"path": "scripts/runtime/menu_lifecycle_application_flow_controller.gd", "candidate_lines": 6, "triage": "REMOVE"},
+    {"path": "scripts/ui/card_resolution_track.gd", "candidate_lines": 5, "triage": "MOVE"},
+    {"path": "scripts/runtime/visual_cue_runtime_owner.gd", "candidate_lines": 5, "triage": "MOVE"},
+    {"path": "scripts/runtime/codex_public_snapshot_service.gd", "candidate_lines": 5, "triage": "MOVE"},
+    {"path": "scripts/ui/action_dock.gd", "candidate_lines": 4, "triage": "REMOVE"},
+    {"path": "scripts/balance/combat_balance_model.gd", "candidate_lines": 4, "triage": "REMOVE"},
+    {"path": "scripts/runtime/ai_region_knowledge_query_port.gd", "candidate_lines": 4, "triage": "MOVE"},
+    {"path": "scripts/runtime/district_supply_snapshot_service.gd", "candidate_lines": 3, "triage": "MOVE"},
+    {"path": "scripts/runtime/product_codex_public_source_service.gd", "candidate_lines": 2, "triage": "MOVE"},
+    {"path": "scripts/balance/runtime_balance_model.gd", "candidate_lines": 2, "triage": "MOVE"},
+    {"path": "scripts/ui/player_seat/player_seat_portrait_skin.gd", "candidate_lines": 1, "triage": "MOVE"},
+    {"path": "scripts/ui/overlay_layer.gd", "candidate_lines": 1, "triage": "MOVE"},
+    {"path": "scripts/ui/menu_overlay.gd", "candidate_lines": 1, "triage": "MOVE"},
+    {"path": "scripts/ui/intel_dossier_board.gd", "candidate_lines": 1, "triage": "MOVE"},
+    {"path": "scripts/ui/game_screen.gd", "candidate_lines": 1, "triage": "MOVE"},
+    {"path": "scripts/ui/final_settlement_board.gd", "candidate_lines": 1, "triage": "MOVE"},
+    {"path": "scripts/cards/card_runtime_family_resource.gd", "candidate_lines": 1, "triage": "MOVE"},
+    {"path": "scripts/runtime/action_result_v1.gd", "candidate_lines": 1, "triage": "KEEP"},
+    {"path": "scripts/runtime/region_codex_public_source_adapter.gd", "candidate_lines": 1, "triage": "KEEP"},
+    {"path": "scripts/runtime/product_codex_public_snapshot_service.gd", "candidate_lines": 1, "triage": "MOVE"},
+    {"path": "scripts/runtime/monster_codex_public_snapshot_service.gd", "candidate_lines": 1, "triage": "MOVE"},
+    {"path": "scripts/runtime/card_codex_public_snapshot_service.gd", "candidate_lines": 1, "triage": "MOVE"},
+    {"path": "scripts/runtime/card_codex_public_source_service.gd", "candidate_lines": 1, "triage": "REMOVE"},
+    {"path": "scripts/runtime/final_settlement_public_source_adapter.gd", "candidate_lines": 1, "triage": "KEEP"},
+    {"path": "scripts/viewmodels/public_track_snapshot.gd", "candidate_lines": 1, "triage": "MOVE"}
+  ],
+  "blockers": [
+    {
+      "id": "BLOCK-CARD-COVERAGE",
+      "summary": "v0.6 military, interaction/counter, and organization execution readiness is not universal.",
+      "required_resolution": "Handler parity before removing legacy execution."
+    },
+    {
+      "id": "BLOCK-ROLE-SAVE-IDENTITY",
+      "summary": "Save/runtime role identity still validates 24-role order and localized name.",
+      "required_resolution": "Versioned role_id compatibility migration without changing current save shape in this audit."
+    },
+    {
+      "id": "BLOCK-MONSTER-STATE-IDENTITY",
+      "summary": "Legacy actors can lack monster_family_id and rely on localized-name fallback.",
+      "required_resolution": "Checkpoint/save normalization with exact behavior and RNG parity."
+    },
+    {
+      "id": "BLOCK-PRODUCT-IDENTITY",
+      "summary": "Localized product IDs are current authority across market, world, routes, cards, and saves.",
+      "required_resolution": "Preserve compatibility IDs until a versioned save/RNG-safe ProductSemanticSpec migration."
+    },
+    {
+      "id": "BLOCK-AI-AUTHORIZATION",
+      "summary": "Static semantics cannot sanitize hidden city/monster owner truth by themselves.",
+      "required_resolution": "Viewer-scoped AiObservationSnapshot before candidate projection."
+    },
+    {
+      "id": "BLOCK-UI-ATOMICITY",
+      "summary": "Seven UI/viewmodel files still accept 22 alias-chain lines.",
+      "required_resolution": "Atomic PlayerPresentationDTO producer/consumer cutover before alias deletion."
+    }
+  ],
+  "preservation": {
+    "rules_changed": false,
+    "balance_changed": false,
+    "rng_changed": false,
+    "privacy_changed": false,
+    "save_shape_changed": false,
+    "state_owner_added": false,
+    "production_files_changed": false,
+    "tests_changed": false
+  }
+}
