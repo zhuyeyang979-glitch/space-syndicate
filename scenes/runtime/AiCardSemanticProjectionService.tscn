@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/runtime/ai_card_semantic_projection_service.gd" id="1_projection"]
+
+[node name="AiCardSemanticProjectionService" type="Node"]
+script = ExtResource("1_projection")
+editor_description = "Read-only pure-data AI card semantic candidate projector."
